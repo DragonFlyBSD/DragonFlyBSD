@@ -134,7 +134,7 @@ typedef u_char objtype_t;
  * blocking can allow other threads to squeeze in some work.
  */
 struct vm_object {
-	struct lwkt_token token;
+	struct lwkt_token token;	/* everything else */
 	struct spinlock spin;		/* backing_list */
 	TAILQ_ENTRY(vm_object) object_entry;
 	TAILQ_HEAD(, vm_map_backing) backing_list;

@@ -2695,11 +2695,12 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	    ptepindex >= pmap_pd_pindex(0) ||		/* not terminal or pt */
 	    entry->inheritance != VM_INHERIT_SHARE ||	/* not shared */
 	    entry->maptype != VM_MAPTYPE_NORMAL ||	/* weird map type */
-	    entry->ba.object == NULL ||		/* needs VM object */
+	    entry->ba.object == NULL ||			/* needs VM object */
+	    entry->ba.backing_ba ||			/* no backing objs */
 	    entry->ba.object->type == OBJT_DEVICE ||	/* ick */
 	    entry->ba.object->type == OBJT_MGTDEVICE ||	/* ick */
 	    (entry->ba.offset & SEG_MASK) ||		/* must be aligned */
-	    (entry->start & SEG_MASK)) {
+	    (entry->ba.start & SEG_MASK)) {
 		return(pmap_allocpte(pmap, ptepindex, pvpp));
 	}
 
@@ -2707,7 +2708,7 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	 * Make sure the full segment can be represented.
 	 */
 	b = va & ~(vm_offset_t)SEG_MASK;
-	if (b < entry->start || b + SEG_SIZE > entry->end)
+	if (b < entry->ba.start || b + SEG_SIZE > entry->ba.end)
 		return(pmap_allocpte(pmap, ptepindex, pvpp));
 
 	/*
@@ -2729,7 +2730,7 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 			va, entry->protection, object,
 			obpmapp, *obpmapp);
 		kprintf("pmap_allocpte_seg: entry %p %jx-%jx\n",
-			entry, entry->start, entry->end);
+			entry, entry->ba.start, entry->ba.end);
 	}
 #endif
 
@@ -3482,8 +3483,25 @@ pmap_remove_pv_page(pv_entry_t pv)
 		KKASSERT(TAILQ_EMPTY(&m->md.pv_list));
 	} else {
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
+
+#if 1
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+#else
+		/*
+		 * For normal pages, an empty pv_list does not necessarily
+		 * mean that the page is no longer mapped.  It might still
+		 * be mapped via an extent through its object.
+		 *
+		 * However, if m->object is NULL, or the object has not
+		 * extents, then we can clear the bits.
+		 */
+		if (TAILQ_EMPTY(&m->md.pv_list) &&
+		    (m->object == NULL ||
+		     TAILQ_EMPTY(&m->object->backing_list))) {
+			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+		}
+#endif
 	}
 	pmap_page_stats_deleting(m);
 	vm_page_spin_unlock(m);
@@ -4980,6 +4998,7 @@ pmap_remove_all(vm_page_t m)
 {
 	pv_entry_t pv;
 	pmap_inval_bulk_t bulk;
+	vm_object_t obj;
 
 	if (!pmap_initialized /* || (m->flags & PG_FICTITIOUS)*/)
 		return;
@@ -5015,6 +5034,24 @@ pmap_remove_all(vm_page_t m)
 		pmap_inval_bulk_flush(&bulk);
 		vm_page_spin_lock(m);
 	}
+	if (m->flags & PG_MAPPED) {
+		obj = m->object;
+		if (obj) {
+			vm_map_backing_t ba;
+
+			spin_lock(&obj->spin);
+			TAILQ_FOREACH(ba, &obj->backing_list, entry) {
+				/*
+				pmap_backing_match(ba, m, pmap_backing_remove);
+				*/
+			}
+			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+			spin_unlock(&obj->spin);
+		} else {
+			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+		}
+	}
+
 	KKASSERT((m->flags & (PG_MAPPED|PG_WRITEABLE)) == 0);
 	vm_page_spin_unlock(m);
 }

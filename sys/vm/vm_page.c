@@ -1426,14 +1426,19 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 /*
  * Removes the given vm_page_t from the (object,index) table
  *
- * The underlying pmap entry (if any) is NOT removed here.
- * This routine may not block.
- *
  * The page must be BUSY and will remain BUSY on return.
  * No other requirements.
  *
  * NOTE: FreeBSD side effect was to unbusy the page on return.  We leave
  *	 it busy.
+ *
+ * NOTE: Caller is responsible for any pmap disposition prior to the
+ *	 rename (as the pmap code will not be able to find the entries
+ *	 once the object has been disassociated).  The caller may choose
+ *	 to leave the pmap association intact if this routine is being
+ *	 called as part of a rename between shadowed objects.
+ *
+ * This routine may not block.
  */
 void
 vm_page_remove(vm_page_t m)
@@ -1713,6 +1718,13 @@ vm_page_next(vm_page_t m)
  *	 swap.  If the page is on the cache, we have to deactivate it
  *	 or vm_page_dirty() will panic.  Dirty pages are not allowed
  *	 on the cache.
+ *
+ * NOTE: Caller is responsible for any pmap disposition prior to the
+ *	 rename (as the pmap code will not be able to find the entries
+ *	 once the object has been disassociated or changed).  Nominally
+ *	 the caller is moving a page between shadowed objects and so the
+ *	 pmap association is retained without having to remove the page
+ *	 from it.
  */
 void
 vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)

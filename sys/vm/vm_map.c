@@ -135,7 +135,7 @@ static struct objcache *vmspace_cache;
 #define MAP_ENTRY_PARTITION_MASK	(MAP_ENTRY_PARTITION_SIZE - 1)
 
 #define VM_MAP_ENTRY_WITHIN_PARTITION(entry)	\
-	((((entry)->start ^ (entry)->end) & ~MAP_ENTRY_PARTITION_MASK) == 0)
+	((((entry)->ba.start ^ (entry)->ba.end) & ~MAP_ENTRY_PARTITION_MASK) == 0)
 
 static struct vm_zone mapentzone_store;
 static vm_zone_t mapentzone;
@@ -167,6 +167,10 @@ static void vm_map_entry_dispose (vm_map_t map, vm_map_entry_t entry, int *);
 static void vm_map_entry_dispose_ba (vm_map_backing_t ba);
 static void vm_map_backing_replicated(vm_map_t map,
 		vm_map_entry_t entry, int flags);
+static void vm_map_backing_adjust_start(vm_map_entry_t entry,
+		vm_ooffset_t start);
+static void vm_map_backing_adjust_end(vm_map_entry_t entry,
+		vm_ooffset_t end);
 static void vm_map_backing_attach (vm_map_backing_t ba);
 static void vm_map_backing_detach (vm_map_backing_t ba);
 static void _vm_map_clip_end (vm_map_t, vm_map_entry_t, vm_offset_t, int *);
@@ -261,13 +265,13 @@ vmspace_dtor(void *obj, void *privdata)
 static int rb_vm_map_compare(vm_map_entry_t a, vm_map_entry_t b);
 RB_GENERATE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
 
-/* a->start is address, and the only field which must be initialized */
+/* a->ba.start is address, and the only field which must be initialized */
 static int
 rb_vm_map_compare(vm_map_entry_t a, vm_map_entry_t b)
 {
-	if (a->start < b->start)
+	if (a->ba.start < b->ba.start)
 		return(-1);
-	else if (a->start > b->start)
+	else if (a->ba.start > b->ba.start)
 		return(1);
 	return(0);
 }
@@ -557,7 +561,7 @@ vmspace_swap_count(struct vmspace *vm)
 			if ((object = cur->ba.object) == NULL)
 				break;
 			if (object->swblock_count) {
-				n = (cur->end - cur->start) / PAGE_SIZE;
+				n = (cur->ba.end - cur->ba.start) / PAGE_SIZE;
 				count += object->swblock_count *
 				    SWAP_META_PAGES * n / object->size + 1;
 			}
@@ -735,7 +739,7 @@ vm_map_entry_shadow(vm_map_entry_t entry)
 	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
 		length = 0x7FFFFFFF;
 	else
-		length = atop(entry->end - entry->start);
+		length = atop(entry->ba.end - entry->ba.start);
 	ba = kmalloc(sizeof(*ba), M_MAP_BACKING, M_INTWAIT); /* copied later */
 
 	/*
@@ -849,22 +853,21 @@ vm_map_entry_allocate_object(vm_map_entry_t entry)
 	vm_object_t obj;
 
 	/*
-	 * ba.offset is added cumulatively in the backing_ba scan, so we
-	 * can noly reset it to zero if ba.backing_ba is NULL.  We reset
-	 * it to 0 only for debugging convenience.
+	 * ba.offset is NOT cumulatively added in the backing_ba scan like
+	 * it was in the old object chain, so we can assign whatever offset
+	 * we like to the new object.
 	 *
-	 * ba.offset cannot otherwise be modified because it effects
-	 * the offsets for the entire backing_ba chain.
+	 * For now assign a value of 0 to make debugging object sizes
+	 * easier.
 	 */
-	if (entry->ba.backing_ba == NULL)
-		entry->ba.offset = 0;
+	entry->ba.offset = 0;
 
 	if (entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 		/* XXX */
 		obj = vm_object_allocate(OBJT_DEFAULT, 0x7FFFFFFF);
 	} else {
 		obj = vm_object_allocate(OBJT_DEFAULT,
-					 atop(entry->end - entry->start) +
+					 atop(entry->ba.end - entry->ba.start) +
 					 entry->ba.offset);
 	}
 	entry->ba.object = obj;
@@ -1206,8 +1209,8 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address, vm_map_entry_t *entry)
 	tmp = RB_ROOT(&map->rb_root);
 
 	while (tmp) {
-		if (address >= tmp->start) {
-			if (address < tmp->end) {
+		if (address >= tmp->ba.start) {
+			if (address < tmp->ba.end) {
 				*entry = tmp;
 				return(TRUE);
 			}
@@ -1278,7 +1281,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 		next = vm_map_rb_tree_RB_NEXT(prev_entry);
 	else
 		next = RB_MIN(vm_map_rb_tree, &map->rb_root);
-	if (next && next->start < end)
+	if (next && next->ba.start < end)
 		return (KERN_NO_SPACE);
 
 	protoeflags = 0;
@@ -1307,7 +1310,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 		;
 	} else if (prev_entry &&
 		 (prev_entry->eflags == protoeflags) &&
-		 (prev_entry->end == start) &&
+		 (prev_entry->ba.end == start) &&
 		 (prev_entry->wired_count == 0) &&
 		 (prev_entry->id == id) &&
 		 prev_entry->maptype == maptype &&
@@ -1316,8 +1319,8 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 		 ((prev_entry->ba.object == NULL) ||
 		  vm_object_coalesce(prev_entry->ba.object,
 				     OFF_TO_IDX(prev_entry->ba.offset),
-				     (vm_size_t)(prev_entry->end - prev_entry->start),
-				     (vm_size_t)(end - prev_entry->end)))) {
+				     (vm_size_t)(prev_entry->ba.end - prev_entry->ba.start),
+				     (vm_size_t)(end - prev_entry->ba.end)))) {
 		/*
 		 * We were able to extend the object.  Determine if we
 		 * can extend the previous map entry to include the 
@@ -1326,8 +1329,8 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 		if ((prev_entry->inheritance == VM_INHERIT_DEFAULT) &&
 		    (prev_entry->protection == prot) &&
 		    (prev_entry->max_protection == max)) {
-			map->size += (end - prev_entry->end);
-			prev_entry->end = end;
+			map->size += (end - prev_entry->ba.end);
+			vm_map_backing_adjust_end(prev_entry, end);
 			vm_map_simplify_entry(map, prev_entry, countp);
 			lwkt_reltoken(&map->token);
 			return (KERN_SUCCESS);
@@ -1341,7 +1344,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 		 */
 		object = prev_entry->ba.object;
 		offset = prev_entry->ba.offset +
-			(prev_entry->end - prev_entry->start);
+			(prev_entry->ba.end - prev_entry->ba.start);
 		if (object) {
 			vm_object_hold(object);
 			vm_object_lock_swap(); /* map->token order */
@@ -1361,9 +1364,9 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	 * Create a new entry
 	 */
 	new_entry = vm_map_entry_create(countp);
-	new_entry->map = map;
-	new_entry->start = start;
-	new_entry->end = end;
+	new_entry->ba.pmap = map->pmap;
+	new_entry->ba.start = start;
+	new_entry->ba.end = end;
 	new_entry->id = id;
 
 	new_entry->maptype = maptype;
@@ -1376,7 +1379,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	new_entry->ba.offset = offset;
 	new_entry->ba.refs = 0;
 	new_entry->ba.flags = 0;
-	new_entry->ba.base_entry = new_entry;
+	new_entry->ba.pmap = map->pmap;
 
 	new_entry->inheritance = VM_INHERIT_DEFAULT;
 	new_entry->protection = prot;
@@ -1388,7 +1391,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	 */
 	vm_map_backing_replicated(map, new_entry, MAP_BACK_BASEOBJREFD);
 	vm_map_entry_link(map, new_entry);
-	map->size += new_entry->end - new_entry->start;
+	map->size += new_entry->ba.end - new_entry->ba.start;
 
 	/*
 	 * Don't worry about updating freehint[] when inserting, allow
@@ -1482,7 +1485,7 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 	if (start < hole_start)
 		start = hole_start;
 	if (vm_map_lookup_entry(map, start, &tmp))
-		start = tmp->end;
+		start = tmp->ba.end;
 	entry = tmp;	/* may be NULL */
 
 	/*
@@ -1533,15 +1536,15 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		 * memory map to intrude on the ungrown portion of the
 		 * STACK entry when MAP_TRYFIXED is set.
 		 */
-		if (entry->start >= end) {
+		if (entry->ba.start >= end) {
 			if ((entry->eflags & MAP_ENTRY_STACK) == 0)
 				break;
 			if (flags & MAP_TRYFIXED)
 				break;
-			if (entry->start - entry->aux.avail_ssize >= end)
+			if (entry->ba.start - entry->aux.avail_ssize >= end)
 				break;
 		}
-		start = entry->end;
+		start = entry->ba.end;
 	}
 
 	/*
@@ -1654,8 +1657,8 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 
 	prev = vm_map_rb_tree_RB_PREV(entry);
 	if (prev) {
-		prevsize = prev->end - prev->start;
-		if ( (prev->end == entry->start) &&
+		prevsize = prev->ba.end - prev->ba.start;
+		if ( (prev->ba.end == entry->ba.start) &&
 		     (prev->maptype == entry->maptype) &&
 		     (prev->ba.object == entry->ba.object) &&
 		     (prev->ba.backing_ba == entry->ba.backing_ba) &&
@@ -1667,17 +1670,23 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 		     (prev->inheritance == entry->inheritance) &&
 		     (prev->id == entry->id) &&
 		     (prev->wired_count == entry->wired_count)) {
+			/*
+			 * NOTE: order important.  Unlink before gumming up
+			 *	 the RBTREE w/adjust, adjust before disposal
+			 *	 of prior entry, to avoid pmap snafus.
+			 */
 			vm_map_entry_unlink(map, prev);
-			entry->start = prev->start;
-			entry->ba.offset = prev->ba.offset;
+			vm_map_backing_adjust_start(entry, prev->ba.start);
+			if (entry->ba.object == NULL)
+				entry->ba.offset = 0;
 			vm_map_entry_dispose(map, prev, countp);
 		}
 	}
 
 	next = vm_map_rb_tree_RB_NEXT(entry);
 	if (next) {
-		esize = entry->end - entry->start;
-		if ((entry->end == next->start) &&
+		esize = entry->ba.end - entry->ba.start;
+		if ((entry->ba.end == next->ba.start) &&
 		    (next->maptype == entry->maptype) &&
 		    (next->ba.object == entry->ba.object) &&
 		     (prev->ba.backing_ba == entry->ba.backing_ba) &&
@@ -1689,8 +1698,13 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 		    (next->inheritance == entry->inheritance) &&
 		    (next->id == entry->id) &&
 		    (next->wired_count == entry->wired_count)) {
+			/*
+			 * NOTE: order important.  Unlink before gumming up
+			 *	 the RBTREE w/adjust, adjust before disposal
+			 *	 of prior entry, to avoid pmap snafus.
+			 */
 			vm_map_entry_unlink(map, next);
-			entry->end = next->end;
+			vm_map_backing_adjust_end(entry, next->ba.end);
 			vm_map_entry_dispose(map, next, countp);
 	        }
 	}
@@ -1702,7 +1716,7 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
  */
 #define vm_map_clip_start(map, entry, startaddr, countp)		\
 {									\
-	if (startaddr > entry->start)					\
+	if (startaddr > entry->ba.start)				\
 		_vm_map_clip_start(map, entry, startaddr, countp);	\
 }
 
@@ -1737,14 +1751,21 @@ _vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start,
 		vm_map_entry_allocate_object(entry);
 	}
 
+	/*
+	 * NOTE: The replicated function will adjust start, end, and offset
+	 *	 for the remainder of the backing_ba linkages.  We must fixup
+	 *	 the embedded ba.
+	 */
 	new_entry = vm_map_entry_create(countp);
 	*new_entry = *entry;
+	new_entry->ba.end = start;
 
-	new_entry->end = start;
-	entry->ba.offset += (start - entry->start);
-	entry->start = start;
-
+	/*
+	 * Ordering is important, make sure the new entry is replicated
+	 * before we cut the exiting entry.
+	 */
 	vm_map_backing_replicated(map, new_entry, MAP_BACK_CLIPPED);
+	vm_map_backing_adjust_start(entry, start);
 	vm_map_entry_link(map, new_entry);
 }
 
@@ -1756,7 +1777,7 @@ _vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start,
  */
 #define vm_map_clip_end(map, entry, endaddr, countp)		\
 {								\
-	if (endaddr < entry->end)				\
+	if (endaddr < entry->ba.end)				\
 		_vm_map_clip_end(map, entry, endaddr, countp);	\
 }
 
@@ -1786,14 +1807,22 @@ _vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end,
 
 	/*
 	 * Create a new entry and insert it AFTER the specified entry
+	 *
+	 * NOTE: The replicated function will adjust start, end, and offset
+	 *	 for the remainder of the backing_ba linkages.  We must fixup
+	 *	 the embedded ba.
 	 */
 	new_entry = vm_map_entry_create(countp);
 	*new_entry = *entry;
+	new_entry->ba.start = end;
+	new_entry->ba.offset += (new_entry->ba.start - entry->ba.start);
 
-	new_entry->start = entry->end = end;
-	new_entry->ba.offset += (end - entry->start);
-
+	/*
+	 * Ordering is important, make sure the new entry is replicated
+	 * before we cut the exiting entry.
+	 */
 	vm_map_backing_replicated(map, new_entry, MAP_BACK_CLIPPED);
+	vm_map_backing_adjust_end(entry, end);
 	vm_map_entry_link(map, new_entry);
 }
 
@@ -1835,7 +1864,7 @@ vm_map_transition_wait(vm_map_t map, int relock)
 
 #define CLIP_CHECK_BACK(entry, save_start)			\
     do {							\
-	    while (entry->start != save_start) {		\
+	    while (entry->ba.start != save_start) {		\
 		    entry = vm_map_rb_tree_RB_PREV(entry);	\
 		    KASSERT(entry, ("bad entry clip")); 	\
 	    }							\
@@ -1843,7 +1872,7 @@ vm_map_transition_wait(vm_map_t map, int relock)
 
 #define CLIP_CHECK_FWD(entry, save_end)				\
     do {							\
-	    while (entry->end != save_end) {			\
+	    while (entry->ba.end != save_end) {			\
 		    entry = vm_map_rb_tree_RB_NEXT(entry);	\
 		    KASSERT(entry, ("bad entry clip")); 	\
 	    }							\
@@ -1915,18 +1944,18 @@ again:
 	 */
 	for (;;) {
 		next = vm_map_rb_tree_RB_NEXT(entry);
-		if (next == NULL || next->start >= end)
+		if (next == NULL || next->ba.start >= end)
 			break;
 		if (flags & MAP_CLIP_NO_HOLES) {
-			if (next->start > entry->end) {
+			if (next->ba.start > entry->ba.end) {
 				vm_map_unclip_range(map, start_entry,
-					start, entry->end, countp, flags);
+					start, entry->ba.end, countp, flags);
 				return(NULL);
 			}
 		}
 
 		if (next->eflags & MAP_ENTRY_IN_TRANSITION) {
-			vm_offset_t save_end = entry->end;
+			vm_offset_t save_end = entry->ba.end;
 			next->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
 			++mycpu->gd_cnt.v_intrans_coll;
 			++mycpu->gd_cnt.v_intrans_wait;
@@ -1949,9 +1978,9 @@ again:
 		entry = next;
 	}
 	if (flags & MAP_CLIP_NO_HOLES) {
-		if (entry->end != end) {
+		if (entry->ba.end != end) {
 			vm_map_unclip_range(map, start_entry,
-				start, entry->end, countp, flags);
+				start, entry->ba.end, countp, flags);
 			return(NULL);
 		}
 	}
@@ -1985,12 +2014,12 @@ vm_map_unclip_range(vm_map_t map, vm_map_entry_t start_entry,
 
 	entry = start_entry;
 
-	KASSERT(entry->start == start, ("unclip_range: illegal base entry"));
-	while (entry && entry->start < end) {
+	KASSERT(entry->ba.start == start, ("unclip_range: illegal base entry"));
+	while (entry && entry->ba.start < end) {
 		KASSERT(entry->eflags & MAP_ENTRY_IN_TRANSITION,
 			("in-transition flag not set during unclip on: %p",
 			entry));
-		KASSERT(entry->end <= end,
+		KASSERT(entry->ba.end <= end,
 			("unclip_range: tail wasn't clipped"));
 		entry->eflags &= ~MAP_ENTRY_IN_TRANSITION;
 		if (entry->eflags & MAP_ENTRY_NEEDS_WAKEUP) {
@@ -2004,7 +2033,7 @@ vm_map_unclip_range(vm_map_t map, vm_map_entry_t start_entry,
 	 * Simplification does not block so there is no restart case.
 	 */
 	entry = start_entry;
-	while (entry && entry->start < end) {
+	while (entry && entry->ba.start < end) {
 		vm_map_simplify_entry(map, entry, countp);
 		entry = vm_map_rb_tree_RB_NEXT(entry);
 	}
@@ -2043,7 +2072,7 @@ vm_map_submap(vm_map_t map, vm_offset_t start, vm_offset_t end, vm_map_t submap)
 
 	vm_map_clip_end(map, entry, end, &count);
 
-	if ((entry->start == start) && (entry->end == end) &&
+	if ((entry->ba.start == start) && (entry->ba.end == end) &&
 	    ((entry->eflags & MAP_ENTRY_COW) == 0) &&
 	    (entry->ba.object == NULL)) {
 		entry->ba.sub_map = submap;
@@ -2094,7 +2123,7 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	 * Make a first pass to check for protection violations.
 	 */
 	current = entry;
-	while (current && current->start < end) {
+	while (current && current->ba.start < end) {
 		if (current->maptype == VM_MAPTYPE_SUBMAP) {
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
@@ -2134,7 +2163,7 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	 */
 	current = entry;
 
-	while (current && current->start < end) {
+	while (current && current->ba.start < end) {
 		vm_prot_t old_prot;
 
 		vm_map_clip_end(map, current, end, &count);
@@ -2155,8 +2184,8 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 #define MASK(entry)	(((entry)->eflags & MAP_ENTRY_COW) ? ~VM_PROT_WRITE : \
 							VM_PROT_ALL)
 
-			pmap_protect(map->pmap, current->start,
-			    current->end,
+			pmap_protect(map->pmap, current->ba.start,
+			    current->ba.end,
 			    current->protection & MASK(current));
 #undef	MASK
 		}
@@ -2243,7 +2272,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		 * limited to the specified address range.
 		 */
 		for (current = entry;
-		     current && current->start < end;
+		     current && current->ba.start < end;
 		     current = vm_map_rb_tree_RB_NEXT(current)) {
 			/*
 			 * Ignore submaps
@@ -2297,7 +2326,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 				}
 				current->aux.master_pde = value;
 				pmap_remove(map->pmap,
-					    current->start, current->end);
+					    current->ba.start, current->ba.end);
 				break;
 			case MADV_INVAL:
 				/*
@@ -2311,7 +2340,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 				 * need the range interlock).
 				 */
 				pmap_remove(map->pmap,
-					    current->start, current->end);
+					    current->ba.start, current->ba.end);
 				break;
 			default:
 				error = EINVAL;
@@ -2339,7 +2368,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		 *	  It is not applicable to backing objects.
 		 */
 		for (current = entry;
-		     current && current->start < end;
+		     current && current->ba.start < end;
 		     current = vm_map_rb_tree_RB_NEXT(current)) {
 			vm_offset_t useStart;
 
@@ -2350,16 +2379,16 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			}
 
 			pindex = OFF_TO_IDX(current->ba.offset);
-			delta = atop(current->end - current->start);
-			useStart = current->start;
+			delta = atop(current->ba.end - current->ba.start);
+			useStart = current->ba.start;
 
-			if (current->start < start) {
-				pindex += atop(start - current->start);
-				delta -= atop(start - current->start);
+			if (current->ba.start < start) {
+				pindex += atop(start - current->ba.start);
+				delta -= atop(start - current->ba.start);
 				useStart = start;
 			}
-			if (current->end > end)
-				delta -= atop(current->end - end);
+			if (current->ba.end > end)
+				delta -= atop(current->ba.end - end);
 
 			if ((vm_spindex_t)delta <= 0)
 				continue;
@@ -2456,7 +2485,7 @@ vm_map_inherit(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		entry = RB_MIN(vm_map_rb_tree, &map->rb_root);
 	}
 
-	while (entry && entry->start < end) {
+	while (entry && entry->ba.start < end) {
 		vm_map_clip_end(map, entry, end, &count);
 
 		entry->inheritance = new_inheritance;
@@ -2498,7 +2527,7 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 
 	if (new_pageable == 0) {
 		entry = start_entry;
-		while (entry && entry->start < end) {
+		while (entry && entry->ba.start < end) {
 			vm_offset_t save_start;
 			vm_offset_t save_end;
 
@@ -2542,8 +2571,8 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			 * relocked on return.  The in-transition
 			 * flag protects the entries. 
 			 */
-			save_start = entry->start;
-			save_end = entry->end;
+			save_start = entry->ba.start;
+			save_end = entry->ba.end;
 			rv = vm_fault_wire(map, entry, TRUE, 0);
 			if (rv) {
 				CLIP_CHECK_BACK(entry, save_start);
@@ -2551,7 +2580,7 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 					KASSERT(entry->wired_count == 1, ("bad wired_count on entry"));
 					entry->eflags &= ~MAP_ENTRY_USER_WIRED;
 					entry->wired_count = 0;
-					if (entry->end == save_end)
+					if (entry->ba.end == save_end)
 						break;
 					entry = vm_map_rb_tree_RB_NEXT(entry);
 					KASSERT(entry,
@@ -2595,7 +2624,7 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 		 * are no holes.
 		 */
 		entry = start_entry;
-		while (entry && entry->start < end) {
+		while (entry && entry->ba.start < end) {
 			if ((entry->eflags & MAP_ENTRY_USER_WIRED) == 0) {
 				rv = KERN_INVALID_ARGUMENT;
 				goto done;
@@ -2622,7 +2651,7 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 		 * never unwired. This can lead to a leak of wired pages.
 		 */
 		entry = start_entry;
-		while (entry && entry->start < end) {
+		while (entry && entry->ba.start < end) {
 			KASSERT(entry->eflags & MAP_ENTRY_USER_WIRED,
 				("expected USER_WIRED on entry %p", entry));
 			entry->eflags &= ~MAP_ENTRY_USER_WIRED;
@@ -2704,7 +2733,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		 * change.
 		 */
 		entry = start_entry;
-		while (entry && entry->start < end) {
+		while (entry && entry->ba.start < end) {
 			/*
 			 * Trivial case if the entry is already wired
 			 */
@@ -2761,15 +2790,15 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		 */
 
 		entry = start_entry;
-		while (entry && entry->start < end) {
+		while (entry && entry->ba.start < end) {
 			/*
 			 * If vm_fault_wire fails for any page we need to undo
 			 * what has been done.  We decrement the wiring count
 			 * for those pages which have not yet been wired (now)
 			 * and unwire those that have (later).
 			 */
-			vm_offset_t save_start = entry->start;
-			vm_offset_t save_end = entry->end;
+			vm_offset_t save_start = entry->ba.start;
+			vm_offset_t save_end = entry->ba.end;
 
 			if (entry->wired_count == 1)
 				rv = vm_fault_wire(map, entry, FALSE, kmflags);
@@ -2779,7 +2808,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 					KASSERT(entry->wired_count == 1,
 					  ("wired_count changed unexpectedly"));
 					entry->wired_count = 0;
-					if (entry->end == save_end)
+					if (entry->ba.end == save_end)
 						break;
 					entry = vm_map_rb_tree_RB_NEXT(entry);
 					KASSERT(entry,
@@ -2816,7 +2845,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		 * are no holes.
 		 */
 		entry = start_entry;
-		while (entry && entry->start < end) {
+		while (entry && entry->ba.start < end) {
 			if (entry->wired_count == 0) {
 				rv = KERN_INVALID_ARGUMENT;
 				goto done;
@@ -2830,7 +2859,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		 * mappings.
 		 */
 		entry = start_entry;
-		while (entry && entry->start < end) {
+		while (entry && entry->ba.start < end) {
 			entry->wired_count--;
 			if (entry->wired_count == 0)
 				vm_fault_unwire(map, entry);
@@ -2866,7 +2895,7 @@ vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size,
 	entry = vm_map_clip_range(map, addr, addr + size,
 				  countp, MAP_CLIP_NO_HOLES);
 	scan = entry;
-	while (scan && scan->start < addr + size) {
+	while (scan && scan->ba.start < addr + size) {
 		KKASSERT(scan->wired_count == 0);
 		scan->wired_count = 1;
 		scan = vm_map_rb_tree_RB_NEXT(scan);
@@ -2910,16 +2939,16 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	 * Make a first pass to check for holes.
 	 */
 	current = entry;
-	while (current && current->start < end) {
+	while (current && current->ba.start < end) {
 		if (current->maptype == VM_MAPTYPE_SUBMAP) {
 			lwkt_reltoken(&map->token);
 			vm_map_unlock_read(map);
 			return (KERN_INVALID_ARGUMENT);
 		}
 		next = vm_map_rb_tree_RB_NEXT(current);
-		if (end > current->end &&
+		if (end > current->ba.end &&
 		    (next == NULL ||
-		     current->end != next->start)) {
+		     current->ba.end != next->ba.start)) {
 			lwkt_reltoken(&map->token);
 			vm_map_unlock_read(map);
 			return (KERN_INVALID_ADDRESS);
@@ -2935,9 +2964,9 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	 * objects as we go.
 	 */
 	current = entry;
-	while (current && current->start < end) {
-		offset = current->ba.offset + (start - current->start);
-		size = (end <= current->end ? end : current->end) - start;
+	while (current && current->ba.start < end) {
+		offset = current->ba.offset + (start - current->ba.start);
+		size = (end <= current->ba.end ? end : current->ba.end) - start;
 
 		switch(current->maptype) {
 		case VM_MAPTYPE_SUBMAP:
@@ -2954,10 +2983,10 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 				ba = NULL;
 				offset = 0 + (offset - vm_map_min(smap));
 			} else {
-				tsize = tentry->end - offset;
+				tsize = tentry->ba.end - offset;
 				ba = &tentry->ba;
 				offset = tentry->ba.offset +
-					 (offset - tentry->start);
+					 (offset - tentry->ba.start);
 			}
 			vm_map_unlock_read(smap);
 			if (tsize < size)
@@ -2998,6 +3027,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 
 			tobj = object;
 			while (ba->backing_ba != NULL) {
+				offset -= ba->offset;
 				ba = ba->backing_ba;
 				offset += ba->offset;
 				tobj = ba->object;
@@ -3111,7 +3141,7 @@ static void
 vm_map_entry_delete(vm_map_t map, vm_map_entry_t entry, int *countp)
 {
 	vm_map_entry_unlink(map, entry);
-	map->size -= entry->end - entry->start;
+	map->size -= entry->ba.end - entry->ba.start;
 	vm_map_entry_dispose(map, entry, countp);
 }
 
@@ -3150,9 +3180,9 @@ again:
 		if (first_entry) {
 			entry = vm_map_rb_tree_RB_NEXT(first_entry);
 			if (entry == NULL)
-				hole_start = first_entry->start;
+				hole_start = first_entry->ba.start;
 			else
-				hole_start = first_entry->end;
+				hole_start = first_entry->ba.end;
 		} else {
 			entry = RB_MIN(vm_map_rb_tree, &map->rb_root);
 			if (entry == NULL)
@@ -3165,7 +3195,7 @@ again:
 	/*
 	 * Step through all entries in this region
 	 */
-	while (entry && entry->start < end) {
+	while (entry && entry->ba.start < end) {
 		vm_map_entry_t next;
 		vm_offset_t s, e;
 		vm_pindex_t offidxstart, offidxend, count;
@@ -3180,7 +3210,7 @@ again:
 		 */
 		if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
 			entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
-			start = entry->start;
+			start = entry->ba.start;
 			++mycpu->gd_cnt.v_intrans_coll;
 			++mycpu->gd_cnt.v_intrans_wait;
 			vm_map_transition_wait(map, 1);
@@ -3188,8 +3218,8 @@ again:
 		}
 		vm_map_clip_end(map, entry, end, countp);
 
-		s = entry->start;
-		e = entry->end;
+		s = entry->ba.start;
+		e = entry->ba.end;
 		next = vm_map_rb_tree_RB_NEXT(entry);
 
 		offidxstart = OFF_TO_IDX(entry->ba.offset);
@@ -3288,7 +3318,7 @@ again:
 				     vm_map_max(map) - hole_start);
 	} else {
 		vm_map_freehint_hole(map, hole_start,
-				     entry->start - hole_start);
+				     entry->ba.start - hole_start);
 	}
 
 	lwkt_reltoken(&map->token);
@@ -3353,7 +3383,7 @@ vm_map_check_protection(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		 * No holes allowed!
 		 */
 
-		if (start < entry->start) {
+		if (start < entry->ba.start) {
 			result = FALSE;
 			break;
 		}
@@ -3366,7 +3396,7 @@ vm_map_check_protection(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			break;
 		}
 		/* go to next entry */
-		start = entry->end;
+		start = entry->ba.end;
 		entry = vm_map_rb_tree_RB_NEXT(entry);
 	}
 	if (have_lock == FALSE)
@@ -3375,7 +3405,13 @@ vm_map_check_protection(vm_map_t map, vm_offset_t start, vm_offset_t end,
 }
 
 /*
- * vm_map_backing structures are not shared across forks.
+ * vm_map_backing structures are not shared across forks and must be
+ * replicated.
+ *
+ * Generally speaking we must reallocate the backing_ba sequence and
+ * also adjust it for any changes made to the base entry->ba.start and
+ * entry->ba.end.  The first ba in the chain is of course &entry->ba,
+ * so we only need to adjust subsequent ba's start, end, and offset.
  *
  * MAP_BACK_CLIPPED	- Called as part of a clipping replication.
  *			  Do not clear OBJ_ONEMAPPING.
@@ -3394,7 +3430,7 @@ vm_map_backing_replicated(vm_map_t map, vm_map_entry_t entry, int flags)
 	ba = &entry->ba;
 	for (;;) {
 		object = ba->object;
-		ba->base_entry = entry;
+		ba->pmap = map->pmap;
 		ba->refs = 1;
 		if (object &&
 		    (entry->maptype == VM_MAPTYPE_VPAGETABLE ||
@@ -3413,10 +3449,60 @@ vm_map_backing_replicated(vm_map_t map, vm_map_entry_t entry, int flags)
 			break;
 		nba = kmalloc(sizeof(*nba), M_MAP_BACKING, M_INTWAIT);
 		*nba = *ba->backing_ba;
+		nba->offset += (ba->start - nba->start);  /* += (new - old) */
+		nba->start = ba->start;
+		nba->end = ba->end;
 		ba->backing_ba = nba;
 		ba = nba;
+		/* pmap is replaced at the top of the loop */
 	}
 	entry->ba.refs = 0;	/* base entry refs is 0 */
+}
+
+static
+void
+vm_map_backing_adjust_start(vm_map_entry_t entry, vm_ooffset_t start)
+{
+	vm_map_backing_t ba;
+
+	if (entry->maptype == VM_MAPTYPE_VPAGETABLE ||
+	    entry->maptype == VM_MAPTYPE_NORMAL) {
+		for (ba = &entry->ba; ba; ba = ba->backing_ba) {
+			if (ba->object) {
+				spin_lock(&ba->object->spin);
+				ba->offset += (start - ba->start);
+				ba->start = start;
+				spin_unlock(&ba->object->spin);
+			} else {
+				ba->offset += (start - ba->start);
+				ba->start = start;
+			}
+		}
+	} else {
+		/* not an object and can't be shadowed */
+	}
+}
+
+static
+void
+vm_map_backing_adjust_end(vm_map_entry_t entry, vm_ooffset_t end)
+{
+	vm_map_backing_t ba;
+
+	if (entry->maptype == VM_MAPTYPE_VPAGETABLE ||
+	    entry->maptype == VM_MAPTYPE_NORMAL) {
+		for (ba = &entry->ba; ba; ba = ba->backing_ba) {
+			if (ba->object) {
+				spin_lock(&ba->object->spin);
+				ba->end = end;
+				spin_unlock(&ba->object->spin);
+			} else {
+				ba->end = end;
+			}
+		}
+	} else {
+		/* not an object and can't be shadowed */
+	}
 }
 
 /*
@@ -3470,8 +3556,8 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 			 * we need to write-protect the PTEs.
 			 */
 			pmap_protect(src_map->pmap,
-				     src_entry->start,
-				     src_entry->end,
+				     src_entry->ba.start,
+				     src_entry->ba.end,
 				     src_entry->protection & ~VM_PROT_WRITE);
 		}
 
@@ -3482,10 +3568,9 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 *
 		 * If there is no object then we are golden.  Also, in
 		 * this situation if there are no backing_ba linkages then
-		 * we can set ba.offset to 0 for debugging convenience.
-		 *
-		 * ba.offset cannot otherwise be modified because it effects
-		 * the offsets for the entire backing_ba chain.
+		 * we can set ba.offset to whatever we want.  For now we
+		 * set the offset for 0 for make debugging object sizes
+		 * easier.
 		 */
 		obj = src_entry->ba.object;
 
@@ -3496,8 +3581,7 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 					      MAP_ENTRY_NEEDS_COPY);
 			KKASSERT(dst_entry->ba.offset == src_entry->ba.offset);
 		} else {
-			if (dst_entry->ba.backing_ba == NULL)
-				dst_entry->ba.offset = 0;
+			dst_entry->ba.offset = 0;
 		}
 
 		/*
@@ -3505,9 +3589,9 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 * increase.
 		 */
 		pmap_copy(dst_map->pmap, src_map->pmap,
-			  dst_entry->start,
-			  dst_entry->end - dst_entry->start,
-			  src_entry->start);
+			  dst_entry->ba.start,
+			  dst_entry->ba.end - dst_entry->ba.start,
+			  src_entry->ba.start);
 	}
 }
 
@@ -3671,7 +3755,6 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 
 		new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
 		new_entry->wired_count = 0;
-		new_entry->map = new_map;
 
 		/*
 		 * Replicate and index the vm_map_backing.  Don't share
@@ -3687,9 +3770,9 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 		 * Update the physical map
 		 */
 		pmap_copy(new_map->pmap, old_map->pmap,
-			  new_entry->start,
-			  (old_entry->end - old_entry->start),
-			  old_entry->start);
+			  new_entry->ba.start,
+			  (old_entry->ba.end - old_entry->ba.start),
+			  old_entry->ba.start);
 		break;
 	case VM_INHERIT_COPY:
 		/*
@@ -3704,7 +3787,6 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 
 		new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
 		new_entry->wired_count = 0;
-		new_entry->map = new_map;
 
 		vm_map_backing_replicated(new_map, new_entry, 0);
 		vm_map_entry_link(new_map, new_entry);
@@ -3734,7 +3816,6 @@ vmspace_fork_uksmap_entry(vm_map_t old_map, vm_map_t new_map,
 
 	new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
 	new_entry->wired_count = 0;
-	new_entry->map = new_map;
 	KKASSERT(new_entry->ba.backing_ba == NULL);
 	vm_map_backing_replicated(new_map, new_entry, 0);
 
@@ -3812,7 +3893,7 @@ vm_map_stack (vm_map_t map, vm_offset_t *addrbos, vm_size_t max_ssize,
 	else
 		next = RB_MIN(vm_map_rb_tree, &map->rb_root);
 
-	if (next && next->start < *addrbos + max_ssize) {
+	if (next && next->ba.start < *addrbos + max_ssize) {
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
 		return (KERN_NO_SPACE);
@@ -3846,8 +3927,8 @@ vm_map_stack (vm_map_t map, vm_offset_t *addrbos, vm_size_t max_ssize,
 					*addrbos + max_ssize - init_ssize,
 					&count);
 		}
-		if (next->end   != *addrbos + max_ssize ||
-		    next->start != *addrbos + max_ssize - init_ssize){
+		if (next->ba.end   != *addrbos + max_ssize ||
+		    next->ba.start != *addrbos + max_ssize - init_ssize){
 			panic ("Bad entry start/end for new stack entry");
 		} else {
 			next->aux.avail_ssize = max_ssize - init_ssize;
@@ -3922,9 +4003,9 @@ Retry:
 	if (stack_entry == NULL)
 		goto done;
 	if (prev_entry == NULL)
-		end = stack_entry->start - stack_entry->aux.avail_ssize;
+		end = stack_entry->ba.start - stack_entry->aux.avail_ssize;
 	else
-		end = prev_entry->end;
+		end = prev_entry->ba.end;
 
 	/*
 	 * This next test mimics the old grow function in vm_machdep.c.
@@ -3935,13 +4016,13 @@ Retry:
 	 * caller to proceed as he would normally with normal vm.
 	 */
 	if (stack_entry->aux.avail_ssize < 1 ||
-	    addr >= stack_entry->start ||
-	    addr <  stack_entry->start - stack_entry->aux.avail_ssize) {
+	    addr >= stack_entry->ba.start ||
+	    addr <  stack_entry->ba.start - stack_entry->aux.avail_ssize) {
 		goto done;
 	} 
 	
 	/* Find the minimum grow amount */
-	grow_amount = roundup (stack_entry->start - addr, PAGE_SIZE);
+	grow_amount = roundup (stack_entry->ba.start - addr, PAGE_SIZE);
 	if (grow_amount > stack_entry->aux.avail_ssize) {
 		rv = KERN_NO_SPACE;
 		goto done;
@@ -3957,14 +4038,14 @@ Retry:
 	 * This also effectively destroys any guard page the user
 	 * might have intended by limiting the stack size.
 	 */
-	if (grow_amount > stack_entry->start - end) {
+	if (grow_amount > stack_entry->ba.start - end) {
 		if (use_read_lock && vm_map_lock_upgrade(map)) {
 			/* lost lock */
 			use_read_lock = 0;
 			goto Retry;
 		}
 		use_read_lock = 0;
-		stack_entry->aux.avail_ssize = stack_entry->start - end;
+		stack_entry->aux.avail_ssize = stack_entry->ba.start - end;
 		rv = KERN_NO_SPACE;
 		goto done;
 	}
@@ -4004,18 +4085,18 @@ Retry:
 	use_read_lock = 0;
 
 	/* Get the preliminary new entry start value */
-	addr = stack_entry->start - grow_amount;
+	addr = stack_entry->ba.start - grow_amount;
 
 	/* If this puts us into the previous entry, cut back our growth
 	 * to the available space.  Also, see the note above.
 	 */
 	if (addr < end) {
-		stack_entry->aux.avail_ssize = stack_entry->start - end;
+		stack_entry->aux.avail_ssize = stack_entry->ba.start - end;
 		addr = end;
 	}
 
 	rv = vm_map_insert(map, &count, NULL, NULL,
-			   0, addr, stack_entry->start,
+			   0, addr, stack_entry->ba.start,
 			   VM_MAPTYPE_NORMAL,
 			   VM_SUBSYS_STACK, VM_PROT_ALL, VM_PROT_ALL, 0);
 
@@ -4027,21 +4108,21 @@ Retry:
 		} else {
 			next = RB_MIN(vm_map_rb_tree, &map->rb_root);
 		}
-		if (next->end != stack_entry->start  ||
-		    next->start != addr) {
+		if (next->ba.end != stack_entry->ba.start  ||
+		    next->ba.start != addr) {
 			panic ("Bad stack grow start/end in new stack entry");
 		} else {
 			next->aux.avail_ssize =
 				stack_entry->aux.avail_ssize -
-				(next->end - next->start);
+				(next->ba.end - next->ba.start);
 			if (is_procstack) {
-				vm->vm_ssize += next->end -
-						next->start;
+				vm->vm_ssize += next->ba.end -
+						next->ba.start;
 			}
 		}
 
 		if (map->flags & MAP_WIREFUTURE)
-			vm_map_unwire(map, next->start, next->end, FALSE);
+			vm_map_unwire(map, next->ba.start, next->ba.end, FALSE);
 	}
 
 done:
@@ -4378,7 +4459,8 @@ RetryLookup:
 		 */
 		if (map != &kernel_map &&
 		    entry->maptype == VM_MAPTYPE_NORMAL &&
-		    ((entry->start ^ entry->end) & ~MAP_ENTRY_PARTITION_MASK) &&
+		    ((entry->ba.start ^ entry->ba.end) &
+		     ~MAP_ENTRY_PARTITION_MASK) &&
 		    vm_map_partition_enable) {
 			if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
 				entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
@@ -4399,7 +4481,7 @@ RetryLookup:
 	*bap = &entry->ba;
 
 skip:
-	*pindex = OFF_TO_IDX((vaddr - entry->start) + entry->ba.offset);
+	*pindex = OFF_TO_IDX((vaddr - entry->ba.start) + entry->ba.offset);
 
 	/*
 	 * Return whether this is the only map sharing this data.  On
@@ -4525,7 +4607,8 @@ DB_SHOW_COMMAND(map, vm_map_print)
 	db_indent += 2;
 	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
 		db_iprintf("map entry %p: start=%p, end=%p\n",
-		    (void *)entry, (void *)entry->start, (void *)entry->end);
+		    (void *)entry,
+		    (void *)entry->ba.start, (void *)entry->ba.end);
 		nlines++;
 		{
 			static char *inheritance_name[4] =

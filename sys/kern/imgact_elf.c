@@ -1061,9 +1061,9 @@ cb_put_phdr(vm_map_entry_t entry, void *closure)
 
 	phdr->p_type = PT_LOAD;
 	phdr->p_offset = phc->offset;
-	phdr->p_vaddr = entry->start;
+	phdr->p_vaddr = entry->ba.start;
 	phdr->p_paddr = 0;
-	phdr->p_filesz = phdr->p_memsz = entry->end - entry->start;
+	phdr->p_filesz = phdr->p_memsz = entry->ba.end - entry->ba.start;
 	phdr->p_align = PAGE_SIZE;
 	phdr->p_flags = __elfN(untrans_prot)(entry->protection);
 
@@ -1082,7 +1082,7 @@ cb_size_segment(vm_map_entry_t entry, void *closure)
 	struct sseg_closure *ssc = closure;
 
 	++ssc->count;
-	ssc->vsize += entry->end - entry->start;
+	ssc->vsize += entry->ba.end - entry->ba.start;
 	return (0);
 }
 
@@ -1162,9 +1162,10 @@ cb_put_fp(vm_map_entry_t entry, void *closure)
 
 		phdr->p_type = PT_LOAD;
 		phdr->p_offset = 0;        /* not written to core */
-		phdr->p_vaddr = entry->start;
+		phdr->p_vaddr = entry->ba.start;
 		phdr->p_paddr = 0;
-		phdr->p_filesz = phdr->p_memsz = entry->end - entry->start;
+		phdr->p_filesz = phdr->p_memsz =
+			entry->ba.end - entry->ba.start;
 		phdr->p_align = PAGE_SIZE;
 		phdr->p_flags = 0;
 		if (entry->protection & VM_PROT_READ)

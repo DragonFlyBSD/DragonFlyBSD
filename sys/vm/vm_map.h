@@ -163,8 +163,11 @@ typedef enum {
  * and merges.
  */
 struct vm_map_backing {
+	vm_offset_t	start;		/* start address in pmap */
+	vm_offset_t	end;		/* end address in pmap */
+	struct pmap	*pmap;		/* for vm_object extents */
+
 	struct vm_map_backing	*backing_ba;	/* backing store */
-	struct vm_map_entry	*base_entry;	/* for vm_object extents */
 	TAILQ_ENTRY(vm_map_backing) entry;	/* for vm_object extents */
 
 	/*
@@ -178,7 +181,7 @@ struct vm_map_backing {
 		void		*map_object;	/* generic */
 	};
 
-	vm_ooffset_t		offset;		/* cumulative offset */
+	vm_ooffset_t		offset;		/* absolute offset in obj */
 	long			refs;		/* shared refs */
 	uint32_t		flags;
 	uint32_t		backing_count;	/* #entries backing us */
@@ -206,9 +209,6 @@ typedef struct vm_map_backing *vm_map_backing_t;
  */
 struct vm_map_entry {
 	RB_ENTRY(vm_map_entry) rb_entry;
-	struct vm_map	*map;		/* for vm_object extents */
-	vm_offset_t	start;		/* start address */
-	vm_offset_t	end;		/* end address */
 	union vm_map_aux aux;		/* auxillary data */
 	struct vm_map_backing ba;	/* backing object chain */
 	vm_eflags_t	eflags;		/* map entry flags */

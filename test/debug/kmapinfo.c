@@ -197,27 +197,27 @@ formatnum(int64_t value)
 static void
 mapscan(kvm_t *kd, vm_map_entry_t kptr, vm_map_entry_t ken, vm_offset_t *lastp)
 {
-    if (*lastp != ken->start) {
+    if (*lastp != ken->ba.start) {
 	    printf("%4ldM %p %08lx-%08lx (%s) EMPTY\n",
 		total_used / 1024 / 1024,
 		kptr,
-		*lastp, ken->start,
-		formatnum(ken->start - *lastp));
-	    total_empty += ken->start - *lastp;
+		*lastp, ken->ba.start,
+		formatnum(ken->ba.start - *lastp));
+	    total_empty += ken->ba.start - *lastp;
     }
     printf("%4ldM %p %08lx-%08lx (%6ldK) id=%-8s object=%p\n",
 	total_used / 1024 / 1024,
 	kptr,
-	ken->start, ken->end,
-	(ken->end - ken->start) / 1024,
+	ken->ba.start, ken->ba.end,
+	(ken->ba.end - ken->ba.start) / 1024,
 	entryid(ken->id),
-	ken->object.map_object);
-    total_used += ken->end - ken->start;
+	ken->ba.map_object);
+    total_used += ken->ba.end - ken->ba.start;
     if (ken->id < VM_SUBSYS_LIMIT)
-	total_used_byid[ken->id] += ken->end - ken->start;
+	total_used_byid[ken->id] += ken->ba.end - ken->ba.start;
     else
-	total_used_byid[0] += ken->end - ken->start;
-    *lastp = ken->end;
+	total_used_byid[0] += ken->ba.end - ken->ba.start;
+    *lastp = ken->ba.end;
 }
 
 static

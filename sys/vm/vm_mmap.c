@@ -497,8 +497,8 @@ sys_msync(struct msync_args *uap)
 			rv = KERN_INVALID_ADDRESS;
 			goto done;
 		}
-		addr = entry->start;
-		size = entry->end - entry->start;
+		addr = entry->ba.start;
+		size = entry->ba.end - entry->ba.start;
 		vm_map_unlock_read(map);
 	}
 
@@ -818,7 +818,7 @@ RestartScan:
 	 */
 	lastvecindex = -1;
 	for (current = entry;
-	     current && current->start < end;
+	     current && current->ba.start < end;
 	     current = vm_map_rb_tree_RB_NEXT(current)) {
 		/*
 		 * ignore submaps (for now) or null objects
@@ -834,9 +834,9 @@ RestartScan:
 		 * limit this scan to the current map entry and the
 		 * limits for the mincore call
 		 */
-		if (addr < current->start)
-			addr = current->start;
-		cend = current->end;
+		if (addr < current->ba.start)
+			addr = current->ba.start;
+		cend = current->ba.end;
 		if (cend > end)
 			cend = end;
 
@@ -864,7 +864,7 @@ RestartScan:
 				 * calculate the page index into the object
 				 */
 				offset = current->ba.offset +
-					 (addr - current->start);
+					 (addr - current->ba.start);
 				pindex = OFF_TO_IDX(offset);
 
 				/*

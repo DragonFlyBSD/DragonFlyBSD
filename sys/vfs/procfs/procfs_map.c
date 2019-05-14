@@ -110,8 +110,8 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 
 		e_eflags = entry->eflags;
 		e_prot = entry->protection;
-		e_start = entry->start;
-		e_end = entry->end;
+		e_start = entry->ba.start;
+		e_end = entry->ba.end;
 
 		/*
 		 * Don't count resident pages, its impossible on 64-bit.
@@ -123,8 +123,8 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		vm_offset_t addr;
 
 		resident = 0;
-		addr = entry->start;
-		while (addr < entry->end) {
+		addr = entry->ba.start;
+		while (addr < entry->ba.end) {
 			if (pmap_extract(pmap, addr, NULL))
 				resident++;
 			addr += PAGE_SIZE;

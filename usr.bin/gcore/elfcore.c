@@ -174,9 +174,9 @@ cb_put_phdr(vm_map_entry_t entry, void *closure)
 
 	phdr->p_type = PT_LOAD;
 	phdr->p_offset = phc->offset;
-	phdr->p_vaddr = entry->start;
+	phdr->p_vaddr = entry->ba.start;
 	phdr->p_paddr = 0;
-	phdr->p_filesz = phdr->p_memsz = entry->end - entry->start;
+	phdr->p_filesz = phdr->p_memsz = entry->ba.end - entry->ba.start;
 	phdr->p_align = PAGE_SIZE;
 	phdr->p_flags = 0;
 	if (entry->protection & VM_PROT_READ)
@@ -200,7 +200,7 @@ cb_size_segment(vm_map_entry_t entry, void *closure)
 	struct sseg_closure *ssc = (struct sseg_closure *)closure;
 
 	ssc->count++;
-	ssc->size += entry->end - entry->start;
+	ssc->size += entry->ba.end - entry->ba.start;
 }
 
 /*
@@ -524,8 +524,8 @@ readmap(pid_t pid)
 
 		if ((ent = (vm_map_entry_t)calloc(1, sizeof *ent)) == NULL)
 			errx(1, "out of memory");
-		ent->start = start;
-		ent->end = end;
+		ent->ba.start = start;
+		ent->ba.end = end;
 		ent->protection = VM_PROT_READ | VM_PROT_WRITE;
 		if (prot[2] == 'x')
 		    ent->protection |= VM_PROT_EXECUTE;

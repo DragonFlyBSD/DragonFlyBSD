@@ -516,8 +516,8 @@ RetryFault:
 			      (void *)vaddr);
 		}
 		if ((fs.entry->eflags & MAP_ENTRY_KSTACK) &&
-		    vaddr >= fs.entry->start &&
-		    vaddr < fs.entry->start + PAGE_SIZE) {
+		    vaddr >= fs.entry->ba.start &&
+		    vaddr < fs.entry->ba.start + PAGE_SIZE) {
 			panic("vm_fault: fault on stack guard, addr: %p",
 			      (void *)vaddr);
 		}
@@ -2161,15 +2161,7 @@ next:
 		 * The object lock for the next object is governed by
 		 * fs->shared.
 		 */
-		if ((next_ba = fs->ba->backing_ba) != NULL) {
-			if (fs->shared)
-				vm_object_hold_shared(next_ba->object);
-			else
-				vm_object_hold(next_ba->object);
-			KKASSERT(next_ba == fs->ba->backing_ba);
-			pindex += OFF_TO_IDX(next_ba->offset);
-		}
-
+		next_ba = fs->ba->backing_ba;
 		if (next_ba == NULL) {
 			/*
 			 * If there's no object left, fill the page in the top
@@ -2192,6 +2184,15 @@ next:
 			fs->m->valid = VM_PAGE_BITS_ALL;
 			break;	/* break to PAGE HAS BEEN FOUND */
 		}
+
+		if (fs->shared)
+			vm_object_hold_shared(next_ba->object);
+		else
+			vm_object_hold(next_ba->object);
+		KKASSERT(next_ba == fs->ba->backing_ba);
+		pindex -= OFF_TO_IDX(fs->ba->offset);
+		pindex += OFF_TO_IDX(next_ba->offset);
+
 		if (fs->ba != fs->first_ba) {
 			vm_object_pip_wakeup(fs->ba->object);
 			vm_object_lock_swap();	/* flip ba/next_ba */
@@ -2456,8 +2457,8 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
 		wire_prot |= VM_PROT_NOSYNC;
 
 	pmap = vm_map_pmap(map);
-	start = entry->start;
-	end = entry->end;
+	start = entry->ba.start;
+	end = entry->ba.end;
 
 	switch(entry->maptype) {
 	case VM_MAPTYPE_NORMAL:
@@ -2520,8 +2521,8 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 	vm_page_t m;
 
 	pmap = vm_map_pmap(map);
-	start = entry->start;
-	end = entry->end;
+	start = entry->ba.start;
+	end = entry->ba.end;
 	fictitious = entry->ba.object &&
 			((entry->ba.object->type == OBJT_DEVICE) ||
 			 (entry->ba.object->type == OBJT_MGTDEVICE));
@@ -2576,11 +2577,11 @@ vm_fault_collapse(vm_map_t map, vm_map_entry_t entry)
 	vm_object_hold(object);
 	rv = KERN_SUCCESS;
 
-	scan = entry->start;
+	scan = entry->ba.start;
 	all_shadowed = 1;
 
-	while (scan < entry->end) {
-		pindex = OFF_TO_IDX(entry->ba.offset + (scan - entry->start));
+	while (scan < entry->ba.end) {
+		pindex = OFF_TO_IDX(entry->ba.offset + (scan - entry->ba.start));
 
 		if (vm_page_lookup(object, pindex)) {
 			scan += PAGE_SIZE;
@@ -2610,7 +2611,7 @@ vm_fault_collapse(vm_map_t map, vm_map_entry_t entry)
 	 * the proper pages.
 	 */
 	if (all_shadowed == 0)
-		pmap_remove(map->pmap, entry->start, entry->end);
+		pmap_remove(map->pmap, entry->ba.start, entry->ba.end);
 
 	return rv;
 }
@@ -2660,8 +2661,8 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 	vm_object_hold(src_object);
 	vm_object_hold(dst_object);
 
-	for (vaddr = dst_entry->start, dst_offset = 0;
-	     vaddr < dst_entry->end;
+	for (vaddr = dst_entry->ba.start, dst_offset = 0;
+	     vaddr < dst_entry->ba.end;
 	     vaddr += PAGE_SIZE, dst_offset += PAGE_SIZE) {
 
 		/*
@@ -2990,13 +2991,13 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 				continue;
 			addr = addra + ((i + 2) >> 1) * PAGE_SIZE;
 		}
-		if (addr < entry->start) {
+		if (addr < entry->ba.start) {
 			noneg = 1;
 			if (noneg && nopos)
 				break;
 			continue;
 		}
-		if (addr >= entry->end) {
+		if (addr >= entry->ba.end) {
 			nopos = 1;
 			if (noneg && nopos)
 				break;
@@ -3031,7 +3032,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 		 * we stop if any non-default object is encountered.  e.g.
 		 * a vnode or swap object would stop the loop.
 		 */
-		index = ((addr - entry->start) + entry->ba.offset) >>
+		index = ((addr - entry->ba.start) + entry->ba.offset) >>
 			PAGE_SHIFT;
 		last_ba = ba;
 		lobject = object;
@@ -3071,6 +3072,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 				break;
 			nobject = next_ba->object;
 			vm_object_hold(nobject);
+			pindex -= last_ba->offset >> PAGE_SHIFT;
 			pindex += next_ba->offset >> PAGE_SHIFT;
 			if (last_ba != ba) {
 				vm_object_lock_swap();
@@ -3247,13 +3249,13 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 				continue;
 			addr = addra + ((i + 2) >> 1) * PAGE_SIZE;
 		}
-		if (addr < entry->start) {
+		if (addr < entry->ba.start) {
 			noneg = 1;
 			if (noneg && nopos)
 				break;
 			continue;
 		}
-		if (addr >= entry->end) {
+		if (addr >= entry->ba.end) {
 			nopos = 1;
 			if (noneg && nopos)
 				break;
@@ -3271,7 +3273,7 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 		 * WARNING!  We cannot call swap_pager_unswapped() or insert
 		 *	     a new vm_page with a shared token.
 		 */
-		pindex = ((addr - entry->start) + entry->ba.offset) >>
+		pindex = ((addr - entry->ba.start) + entry->ba.offset) >>
 			 PAGE_SHIFT;
 
 		/*
