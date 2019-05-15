@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2019.04.12
-#	Date:    2019-04-12 03:15:01
+#	Version: 2019.05.14
+#	Date:    2019-05-14 03:15:01
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at https://pci-ids.ucw.cz/.
@@ -600,6 +600,7 @@
 		1000 3030  SAS9207-4i4e
 		1000 3040  9207-8e SAS2.1 HBA
 		1000 3050  SAS9217-8i
+		1000 3060  SAS9217-4i4e
 		1014 0472  N2125 External Host Bus Adapter
 		1590 0044  H220i
 		8086 3000  RS25GB008 RAID Controller
@@ -2452,6 +2453,7 @@
 		1462 3413  Radeon RX 480 Gaming X 8GB
 		1462 3416  Radeon RX 570
 		1462 3418  Radeon RX 580 Armor 4G OC
+		1462 341e  Radeon RX 570 Armor 4G OC
 		1462 8a92  Radeon RX 580
 		148c 2372  Radeon RX 480
 		148c 2373  Radeon RX 470
@@ -3243,12 +3245,12 @@
 	694e  Polaris 22 XL [Radeon RX Vega M GL]
 	694f  Polaris 22 MGL XL [Radeon Pro WX Vega M GL]
 	6980  Polaris12
-	6981  Polaris12
+	6981  Lexa XT [Radeon PRO WX 3200]
 	6985  Lexa XT [Radeon PRO WX 3100]
 	6986  Polaris12
-	6987  Lexa [Radeon E9171 MCM]
+	6987  Lexa [Radeon 540X/550X/630 / RX 640 / E9171 MCM]
 	6995  Lexa XT [Radeon PRO WX 2100]
-	699f  Lexa PRO [Radeon RX 550/550X]
+	699f  Lexa PRO [Radeon 540/540X/550/550X / RX 540X/550/550X]
 		1028 1720  Radeon RX 550X
 		148c 2380  Lexa XL [Radeon RX 550]
 		1da2 e367  Lexa PRO [Radeon RX 550]
@@ -6776,6 +6778,7 @@
 		1590 00fa  StoreFabric SN1100Q 16Gb Dual Port Fibre Channel Host Bus Adapter
 		1590 0203  StoreFabric SN1600Q 32Gb Single Port Fibre Channel Host Bus Adapter
 		1590 0204  StoreFabric SN1600Q 32Gb Dual Port Fibre Channel Host Bus Adapter
+		1590 022d  5830C 32Gb Dual Port Fibre Channel Adapter
 	2281  ISP2812-based 64/32G Fibre Channel to PCIe Controller
 		1077 02e2  QLE2872 Dual Port 64GFC PCIe Gen4 x8 Adapter
 		1077 02e4  QLE2772 Dual Port 32GFC PCIe Gen4 x8 Adapter
@@ -8339,12 +8342,14 @@
 	9056  PCI9056 32-bit 66MHz PCI <-> IOBus Bridge
 		10b5 2979  CellinkBlade 11 - CPCI board VoATM AAL1
 		10b5 3268  IXXAT iPC-I XC16/PCIe CAN Board
+		10b5 3334  Cambridge Pixel HPx Radar Input Card
 		10b5 3352  Alpermann+Velte PCL PCIe HD: Timecode Reader Board
 		10b5 3353  Alpermann+Velte PCL PCIe D: Timecode Reader Board
 		10b5 3354  Alpermann+Velte PCL PCIe LV: Timecode Reader Board
 		10b5 3355  Alpermann+Velte PCL PCIe L: Timecode Reader Board
 		10b5 3415  Alpermann+Velte PCIe TS: Time Synchronisation Board
 		10b5 3493  Alpermann+Velte PCL PCIe 3G: Timecode Reader Board
+		10b5 3565  Cambridge Pixel HPx Radar Output Card
 		1369 c001  LX6464ES
 		1369 c201  LX1616ES
 		14b4 d10a  DekTec DTA-110T
@@ -11719,18 +11724,18 @@
 	1f36  TU106GLM
 	1f50  TU106BM [GeForce RTX 2070 Mobile]
 	1f51  TU106BM [GeForce RTX 2060 Mobile]
-	1f81  TU107
-	1f82  TU107 [GeForce GTX 1650]
-	1f92  TU107M [GeForce GTX 1650 Mobile]
-	1fae  TU107GL
-	1fbf  TU107GL
+	1f81  TU117
+	1f82  TU117 [GeForce GTX 1650]
+	1f92  TU117M [GeForce GTX 1650 Mobile]
+	1fae  TU117GL
+	1fbf  TU117GL
 	2182  TU116 [GeForce GTX 1660 Ti]
 	2183  TU116
 	2184  TU116 [GeForce GTX 1660]
 	2191  TU116M [GeForce GTX 1660 Ti Mobile]
 	21ae  TU116GL
 	21bf  TU116GL
-	21d1  TU116BM [GeForce GTX 1660 Mobile]
+	21d1  TU116BM [GeForce GTX 1660 Ti Mobile]
 10df  Emulex Corporation
 	0720  OneConnect NIC (Skyhawk)
 		103c 1934  FlexFabric 20Gb 2-port 650M Adapter
@@ -11771,7 +11776,8 @@
 		10df e322  Lancer Gen6: LPe31000 Fibre Channel Host Adapter
 		10df e323  Lancer Gen6: LPe31000 Fibre Channel Host Adapter
 		10df e325  Lancer Gen6: LPe31000 Fibre Channel Host Adapter
-	e333  Lancer Gen6: LPe32000 Fibre Channel Host Adapter
+		10df e332  Lancer Gen6: LPe31000 Fibre Channel Host Adapter
+		10df e333  Lancer Gen6: LPe31000 Fibre Channel Host Adapter
 	f011  Saturn: LightPulse Fibre Channel Host Adapter
 	f015  Saturn: LightPulse Fibre Channel Host Adapter
 	f085  LP850 Fibre Channel Host Adapter
@@ -11794,7 +11800,11 @@
 	f400  LPe36000 Fibre Channel Host Adapter [Prism]
 		10df f401  LPe35000 Fibre Channel Host Adapter [Prism]
 		10df f402  LPe35000 Fibre Channel Host Adapter [Prism]
+		10df f405  LPe35000 Fibre Channel Host Adapter [Prism]
 		10df f410  LPe35002-M2-D 2-Port 32Gb Fibre Channel Adapter
+		10df f411  LPe35000-M2-D 1-Port 32Gb Fibre Channel Adapter
+		10df f418  LPe35000 Fibre Channel Host Adapter [Prism]
+		10df f419  LPe35000 Fibre Channel Host Adapter [Prism]
 	f700  LP7000 Fibre Channel Host Adapter
 	f701  LP7000 Fibre Channel Host Adapter Alternate ID (JX1:2-3, JX2:1-2)
 	f800  LP8000 Fibre Channel Host Adapter
@@ -14779,7 +14789,9 @@
 		103c 2a6f  Asus IPIBL-LB Motherboard
 		103c 2a9e  Pavilion p6310f
 		1043 8294  LSI FW322/323 IEEE 1394a FireWire Controller
+		11bd 000e  LSI FW323
 		8086 524c  D865PERL mainboard
+		9005 0033  Adaptec AFW-2100 (HP) 2102900-R
 		dead 0800  FireWire Host Bus Adapter
 	5901  FW643 [TrueFire] PCIe 1394b Controller
 		11c1 5900  FW643 [TrueFire] PCIe 1394b Controller
@@ -18466,6 +18478,7 @@
 	16d4  BCM57402 NetXtreme-E Ethernet Partition
 	16d5  BCM57407 NetXtreme-E 10GBase-T Ethernet Controller
 	16d6  BCM57412 NetXtreme-E 10Gb RDMA Ethernet Controller
+		14e4 4120  NetXtreme E-Series Advanced Dual-port 10Gb SFP+ Ethernet Network Daughter Card
 	16d7  BCM57414 NetXtreme-E 10Gb/25Gb RDMA Ethernet Controller
 		14e4 1202  BCM957412M4122C OCP 1x25G Type1 wRoCE
 		14e4 1402  BCM957414A4142CC 10Gb/25Gb Ethernet PCIe
@@ -19460,6 +19473,7 @@
 	024f  MT53100 [Spectrum-2, Secure Flash recovery mode]
 	0250  Spectrum-3, Flash recovery mode
 	0251  Spectrum-3, Secure Flash recovery mode
+	0252  Amos chiplet
 	0262  MT27710 [ConnectX-4 Lx Programmable] EN
 	0263  MT27710 [ConnectX-4 Lx Programmable Virtual Function] EN
 	0264  Innova-2 Flex Burn image
@@ -19610,7 +19624,7 @@
 	caf1  ConnectX-4 CAPI Function
 # Spectrum, 100GbE Switch
 	cb84  MT52100
-	cf08  MT53236
+	cf08  Switch-IB2
 	cf6c  MT53100 [Spectrum-2]
 	cf70  Spectrum-3
 	d2f0  Quantum HDR (200Gbps) switch
@@ -20906,6 +20920,7 @@
 	0624  MF624 Multifunction I/O PCI Card
 	0625  MF625 3-phase Motor Driver
 	0634  MF634 Multifunction I/O PCIe Card
+	0644  MF644 Multifunction I/O Thb Card
 186f  WiNRADiO Communications
 1876  L-3 Communications
 	a101  VigraWATCH PCI
@@ -21972,12 +21987,32 @@
 		1bb1 0103  Nytro 5000
 		1bb1 0105  Nytro 5020
 		1bb1 0106  Nytro 5020 TCG
+# Larkspur 2.5"
+		1bb1 0107  Nytro 5320
+# Larkspur 2.5" TCG
+		1bb1 0108  Nytro 5320 TCG
 		1bb1 0121  Nytro XM1440
 		1bb1 0123  Nytro 5000
 # Kiowa M.2
 		1bb1 0125  Nytro 5020
 # Kiowa M.2 TCG
 		1bb1 0126  Nytro 5020
+# Larkspur M.2 22110mm
+		1bb1 0127  Nytro 5320 M.2
+# Larkspur M.2 22110mm TCG
+		1bb1 0128  Nytro 5320 M.2 TCG
+# Larkspur M.2 2280mm
+		1bb1 0131  Nytro 5320 M.2
+# Larkspur M.2 2280mm TCG
+		1bb1 0132  Nytro 5320 M.2 TCG
+# Larkspur E1.S
+		1bb1 0141  Nytro 5320 E1.S
+# Larkspur E1.S TCG
+		1bb1 0142  Nytro 5320 E1.S TCG
+# Kersey 2.5"
+		1bb1 0151  Nytro 5520
+# Kersey 2.5" TCG
+		1bb1 0152  Nytro 5520 TCG
 		1bb1 01a1  Nytro XP7102
 1bb3  Bluecherry
 	4304  BC-04120A MPEG4 4 port video encoder / decoder
@@ -22070,7 +22105,8 @@
 	0023  Ultrastar SN200 Series NVMe SSD
 		1c58 8823  Ultrastar Memory (ME200)
 1c5c  SK hynix
-	1283  PC300 NVMe Solid State Drive
+	1283  PC300 NVMe Solid State Drive 256GB
+	1284  PC300 NVMe Solid State Drive 512GB
 	1504  SC300 512GB M.2 2280 SATA Solid State Drive
 1c5f  Beijing Memblaze Technology Co. Ltd.
 	0540  PBlaze4 NVMe SSD
@@ -22085,6 +22121,7 @@
 1c8a  TSF5 Corporation
 	0001  Hunter PCI Express
 1c8c  Mobiveil, Inc.
+1cb0  Shannon Systems
 1cb1  Collion UG & Co.KG
 1cb5  Focusrite Audio Engineering Ltd
 	0002  Clarett
@@ -22335,6 +22372,10 @@
 1e26  Fujitsu Client Computing Limited
 1e38  Thinci, Inc
 1e3d  Burlywood, Inc
+1e57  Beijing Panyi Technology Co., Ltd
+	0001  PY8800
+	0100  PY8800
+		0000 0100  PY8800 64GB Accelerator
 # nee Tumsan Oy
 1fc0  Ascom (Finland) Oy
 	0300  E2200 Dual E1/Rawpipe Card
@@ -23185,6 +23226,7 @@
 	0122  2nd Generation Core Processor Family Integrated Graphics Controller
 	0126  2nd Generation Core Processor Family Integrated Graphics Controller
 		1028 04cc  Vostro 3350
+		17aa 21ce  ThinkPad T420
 		17aa 21cf  ThinkPad T520
 	0150  Xeon E3-1200 v2/3rd Gen Core processor DRAM Controller
 		1043 84ca  P8 series motherboard
@@ -25840,6 +25882,7 @@
 	225c  Xeon Phi coprocessor SE10/7120 series
 	225d  Xeon Phi coprocessor 3120 series 
 	225e  Xeon Phi coprocessor 31S1
+	2262  Xeon Phi coprocessor 7220
 	2280  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series SoC Transaction Register
 	2284  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series High Definition Audio Controller
 	2286  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO1 DMA Controller
