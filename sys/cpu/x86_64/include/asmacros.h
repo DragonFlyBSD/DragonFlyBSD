@@ -254,25 +254,39 @@
 	movq	PCPU(trampoline)+TR_RCX, %rcx 				\
 
 /*
- * KMMUEXIT_CORE handles IBRS and STIBP, but not ISOMMU
+ * KMMUEXIT_CORE handles IBRS, STIBP, and MDS, but not ISOMMU
  *
  * We don't re-execute the IBPB barrier on exit atm.
+ *
+ * The MDS barrier (Microarchitectural Data Sampling) should be executed
+ * prior to any return to user-mode, if supported and enabled.  This is
+ * Intel-only.
+ *
+ * WARNING! %rsp may not be usable (it could be pointing to the user
+ *	    stack at this point).  And we must save/restore any registers
+ *	    we use.
  */
 #define KMMUEXIT_CORE							\
-	testq	$SPEC_CTRL_DUMMY_ENABLE,PCPU(trampoline)+TR_PCB_SPEC_CTRL+4 ; \
-	je	41f ;							\
+	testl	$SPEC_CTRL_DUMMY_ENABLE|SPEC_CTRL_MDS_ENABLE, PCPU(trampoline)+TR_PCB_SPEC_CTRL+4 ; \
+	je	43f ;							\
 	movq	%rax, PCPU(trampoline)+TR_RAX ;				\
+	movl	PCPU(trampoline)+TR_PCB_SPEC_CTRL+4, %eax ;		\
+	testq	$SPEC_CTRL_MDS_ENABLE, %rax ;				\
+	je	41f ;							\
+	movq	$GSEL(GDATA_SEL, SEL_KPL), PCPU(trampoline)+TR_RCX ;	\
+	verw	PCPU(trampoline)+TR_RCX ;				\
+41:	testq	$SPEC_CTRL_DUMMY_ENABLE, %rax ;				\
+	je	42f ;							\
 	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
 	movq	%rdx, PCPU(trampoline)+TR_RDX ;				\
-	movl	PCPU(trampoline)+TR_PCB_SPEC_CTRL+4, %eax ;		\
 	andq	$SPEC_CTRL_IBRS|SPEC_CTRL_STIBP, %rax ;			\
 	movq	$MSR_SPEC_CTRL,%rcx ;					\
 	xorl	%edx,%edx ;						\
 	wrmsr ;								\
 	movq	PCPU(trampoline)+TR_RDX, %rdx ;				\
 	movq	PCPU(trampoline)+TR_RCX, %rcx ;				\
-	movq	PCPU(trampoline)+TR_RAX, %rax ;				\
-41:
+42:	movq	PCPU(trampoline)+TR_RAX, %rax ;				\
+43:
 
 /*
  * We are positioned at the base of the trapframe.  Advance the trapframe
@@ -285,7 +299,7 @@
 	addq	$TF_RIP,%rsp ;						\
 	KMMUEXIT_CORE ;							\
 	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ; 		\
-	je	40f ;							\
+	je	50f ;							\
 	movq	%rcx, PCPU(trampoline)+TR_ERR ;	/* save in TR_ERR */	\
 	popq	%rcx ;				/* copy %rip */		\
 	movq	%rcx, PCPU(trampoline)+TR_RIP ;				\
@@ -303,7 +317,7 @@
 	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%rcx ;			\
 	movq	%rcx,%cr3 ;						\
 	popq	%rcx ;		/* positioned at TR_RIP after this */	\
-40:									\
+50:									\
 
 /*
  * Warning: user stack pointer already loaded into %rsp at this
@@ -315,12 +329,12 @@
 #define KMMUEXIT_SYSCALL						\
 	KMMUEXIT_CORE ;							\
 	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ; 		\
-	je	40f ;							\
+	je	50f ;							\
 	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
 	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%rcx ;			\
 	movq	%rcx,%cr3 ;						\
 	movq	PCPU(trampoline)+TR_RCX, %rcx ;				\
-40:									\
+50:									\
 
 /*
  * Macros to create and destroy a trap frame.  rsp has already been shifted

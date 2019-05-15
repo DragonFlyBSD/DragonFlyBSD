@@ -83,10 +83,15 @@ static void	cpu_reset_real (void);
 
 static int spectre_mitigation = -1;
 static int spectre_support = 0;
-
 static int spectre_mode = 0;
 SYSCTL_INT(_machdep, OID_AUTO, spectre_mode, CTLFLAG_RD,
 	&spectre_mode, 0, "current Spectre enablements");
+
+static int mds_mitigation = -1;
+static int mds_support = 0;
+static int mds_mode = 0;
+SYSCTL_INT(_machdep, OID_AUTO, mds_mode, CTLFLAG_RD,
+	&mds_mode, 0, "current MDS enablements");
 
 /*
  * Finish a fork operation, with lwp lp2 nearly set up.
@@ -412,7 +417,7 @@ SYSINIT(swi_vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY, swi_vm_setup, NULL);
  * NOTE: This routine is also called after a successful microcode
  *	 reload on cpu 0.
  */
-void spectre_vm_setup(void *arg);
+void mitigation_vm_setup(void *arg);
 
 /*
  * Check for IBPB and IBRS support
@@ -518,8 +523,13 @@ spectre_sysctl_changed(void)
 	globaldata_t save_gd;
 	struct trampframe *tr;
 	int spec_ctrl;
+	int spec_mask;
 	int mode;
 	int n;
+
+
+	spec_mask = SPEC_CTRL_IBRS | SPEC_CTRL_STIBP |
+		    SPEC_CTRL_DUMMY_ENABLE | SPEC_CTRL_DUMMY_IBPB;
 
 	/*
 	 * Fixup state
@@ -536,9 +546,12 @@ spectre_sysctl_changed(void)
 		 *
 		 * XXX cleanup, reusing globals inside the loop (they get
 		 * set to the same thing each loop)
+		 *
+		 * [0] kernel entry (idle exit)
+		 * [1] kernel exit  (idle entry)
 		 */
-		tr->tr_pcb_spec_ctrl[0] = 0;	/* kernel entry (idle exit) */
-		tr->tr_pcb_spec_ctrl[1] = 0;	/* kernel exit  (idle entry) */
+		tr->tr_pcb_spec_ctrl[0] &= ~spec_mask;
+		tr->tr_pcb_spec_ctrl[1] &= ~spec_mask;
 
 		/*
 		 * Don't try to parse if not available
@@ -595,12 +608,12 @@ spectre_sysctl_changed(void)
 		 * When auto mode is supported we leave the bit set, otherwise
 		 * we clear the bits.
 		 */
-		tr->tr_pcb_spec_ctrl[0] = spec_ctrl;
+		tr->tr_pcb_spec_ctrl[0] |= spec_ctrl;
 		if (CHECK(IBRS_AUTO_SUPPORTED) == 0)
 			spec_ctrl &= ~SPEC_CTRL_IBRS;
 		if (CHECK(STIBP_AUTO_SUPPORTED) == 0)
 			spec_ctrl &= ~SPEC_CTRL_STIBP;
-		tr->tr_pcb_spec_ctrl[1] = spec_ctrl;
+		tr->tr_pcb_spec_ctrl[1] |= spec_ctrl;
 
 		/*
 		 * Make sure we set this on the first loop.  It will be
@@ -650,6 +663,8 @@ spectre_sysctl_changed(void)
 	}
 	kprintf(" )\n");
 }
+
+#undef CHECK
 
 /*
  * User changes sysctl value
@@ -766,7 +781,7 @@ SYSCTL_PROC(_machdep, OID_AUTO, spectre_support,
  *	 updated.  Microcode updates must be applied to all cpus
  *	 for support to be recognized.
  */
-void
+static void
 spectre_vm_setup(void *arg)
 {
 	int inconsistent = 0;
@@ -876,8 +891,382 @@ spectre_vm_setup(void *arg)
 	spectre_sysctl_changed();
 }
 
-SYSINIT(spectre_vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY,
-	spectre_vm_setup, NULL);
+#define MDS_AVX512_4VNNIW_SUPPORTED	0x0001
+#define MDS_AVX512_4FMAPS_SUPPORTED	0x0002
+#define MDS_MD_CLEAR_SUPPORTED		0x0004
+#define MDS_TSX_FORCE_ABORT_SUPPORTED	0x0008
+#define MDS_NOT_REQUIRED		0x8000
+
+static
+int
+mds_check_support(void)
+{
+	uint64_t msr;
+	uint32_t p[4];
+	int rv = 0;
+
+	/*
+	 * MDS mitigation hw bits
+	 *
+	 * MD_CLEAR	Use microcode-supported verf insn.  This is the
+	 *		only mode we really support.
+	 */
+	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
+		p[0] = 0;
+		p[1] = 0;
+		p[2] = 0;
+		p[3] = 0;
+		cpuid_count(7, 0, p);
+		if (p[3] & CPUID_SEF_ARCH_CAP) {
+			msr = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
+			if (msr & IA32_ARCH_MDS_NO)
+				rv = MDS_NOT_REQUIRED;
+		}
+		if (p[3] & CPUID_SEF_AVX512_4VNNIW)
+			rv |= MDS_AVX512_4VNNIW_SUPPORTED;
+		if (p[3] & CPUID_SEF_AVX512_4FMAPS)
+			rv |= MDS_AVX512_4FMAPS_SUPPORTED;
+		if (p[3] & CPUID_SEF_MD_CLEAR)
+			rv |= MDS_MD_CLEAR_SUPPORTED;
+		if (p[3] & CPUID_SEF_TSX_FORCE_ABORT)
+			rv |= MDS_TSX_FORCE_ABORT_SUPPORTED;
+	} else {
+		rv = MDS_NOT_REQUIRED;
+	}
+
+	return rv;
+}
+
+/*
+ * Iterate CPUs and adjust MSR for global operations, since
+ * the KMMU* code won't do it if spectre_mitigation is 0 or 2.
+ */
+#define CHECK(flag)	(mds_mitigation & mds_support & (flag))
+
+static
+void
+mds_sysctl_changed(void)
+{
+	globaldata_t save_gd;
+	struct trampframe *tr;
+	int spec_ctrl;
+	int spec_mask;
+	int mode;
+	int n;
+
+	spec_mask = SPEC_CTRL_MDS_ENABLE;
+
+	/*
+	 * Fixup state
+	 */
+	mode = 0;
+	save_gd = mycpu;
+	for (n = 0; n < ncpus; ++n) {
+		lwkt_setcpu_self(globaldata_find(n));
+		cpu_ccfence();
+		tr = &pscpu->trampoline;
+
+		/*
+		 * Make sure we are cleaned out.
+		 *
+		 * XXX cleanup, reusing globals inside the loop (they get
+		 * set to the same thing each loop)
+		 *
+		 * [0] kernel entry (idle exit)
+		 * [1] kernel exit  (idle entry)
+		 */
+		tr->tr_pcb_spec_ctrl[0] &= ~spec_mask;
+		tr->tr_pcb_spec_ctrl[1] &= ~spec_mask;
+
+		/*
+		 * Don't try to parse if not available
+		 */
+		if (mds_mitigation < 0)
+			continue;
+
+		spec_ctrl = 0;
+		if (CHECK(MDS_MD_CLEAR_SUPPORTED)) {
+			spec_ctrl |= SPEC_CTRL_MDS_ENABLE;
+			mode |= MDS_MD_CLEAR_SUPPORTED;
+		}
+
+		/*
+		 * Update spec_ctrl fields in the trampoline.
+		 *
+		 * [0] on-kernel-entry (on-idle-exit)
+		 * [1] on-kernel-exit  (on-idle-entry)
+		 *
+		 * The MDS stuff is only needed on kernel-exit or idle-entry
+		 */
+		/* tr->tr_pcb_spec_ctrl[0] |= spec_ctrl; */
+		tr->tr_pcb_spec_ctrl[1] |= spec_ctrl;
+
+		/*
+		 * Make sure we set this on the first loop.  It will be
+		 * the same value on remaining loops.
+		 */
+		mds_mode = mode;
+	}
+	lwkt_setcpu_self(save_gd);
+	cpu_ccfence();
+
+	/*
+	 * Console message on mitigation mode change
+	 */
+	kprintf("MDS: support=(");
+	if (mds_support == 0) {
+		kprintf(" none");
+	} else {
+		if (mds_support & MDS_AVX512_4VNNIW_SUPPORTED)
+			kprintf(" AVX512_4VNNIW");
+		if (mds_support & MDS_AVX512_4FMAPS_SUPPORTED)
+			kprintf(" AVX512_4FMAPS");
+		if (mds_support & MDS_MD_CLEAR_SUPPORTED)
+			kprintf(" MD_CLEAR");
+		if (mds_support & MDS_TSX_FORCE_ABORT_SUPPORTED)
+			kprintf(" TSX_FORCE_ABORT");
+		if (mds_support & MDS_NOT_REQUIRED)
+			kprintf(" MDS_NOT_REQUIRED");
+	}
+	kprintf(" ) req=%04x operating=(", (uint16_t)mds_mitigation);
+	if (mds_mode == 0) {
+		kprintf(" none");
+	} else {
+		if (mds_mode & MDS_AVX512_4VNNIW_SUPPORTED)
+			kprintf(" AVX512_4VNNIW");
+		if (mds_mode & MDS_AVX512_4FMAPS_SUPPORTED)
+			kprintf(" AVX512_4FMAPS");
+		if (mds_mode & MDS_MD_CLEAR_SUPPORTED)
+			kprintf(" MD_CLEAR");
+		if (mds_mode & MDS_TSX_FORCE_ABORT_SUPPORTED)
+			kprintf(" TSX_FORCE_ABORT");
+		if (mds_mode & MDS_NOT_REQUIRED)
+			kprintf(" MDS_NOT_REQUIRED");
+	}
+	kprintf(" )\n");
+}
+
+#undef CHECK
+
+/*
+ * User changes sysctl value
+ */
+static int
+sysctl_mds_mitigation(SYSCTL_HANDLER_ARGS)
+{
+	char buf[128];
+	char *ptr;
+	char *iter;
+	size_t len;
+	int mds;
+	int error = 0;
+	int loop = 0;
+
+	/*
+	 * Return current operating mode or support.
+	 */
+	if (oidp->oid_kind & CTLFLAG_WR)
+		mds = mds_mode;
+	else
+		mds = mds_support;
+
+	mds &= MDS_AVX512_4VNNIW_SUPPORTED |
+	       MDS_AVX512_4FMAPS_SUPPORTED |
+	       MDS_MD_CLEAR_SUPPORTED |
+	       MDS_TSX_FORCE_ABORT_SUPPORTED |
+	       MDS_NOT_REQUIRED;
+
+	while (mds) {
+		if (error)
+			break;
+		if (loop++) {
+			error = SYSCTL_OUT(req, " ", 1);
+			if (error)
+				break;
+		}
+		if (mds & MDS_AVX512_4VNNIW_SUPPORTED) {
+			mds &= ~MDS_AVX512_4VNNIW_SUPPORTED;
+			error = SYSCTL_OUT(req, "AVX512_4VNNIW", 13);
+		} else
+		if (mds & MDS_AVX512_4FMAPS_SUPPORTED) {
+			mds &= ~MDS_AVX512_4FMAPS_SUPPORTED;
+			error = SYSCTL_OUT(req, "AVX512_4FMAPS", 13);
+		} else
+		if (mds & MDS_MD_CLEAR_SUPPORTED) {
+			mds &= ~MDS_MD_CLEAR_SUPPORTED;
+			error = SYSCTL_OUT(req, "MD_CLEAR", 8);
+		} else
+		if (mds & MDS_TSX_FORCE_ABORT_SUPPORTED) {
+			mds &= ~MDS_TSX_FORCE_ABORT_SUPPORTED;
+			error = SYSCTL_OUT(req, "TSX_FORCE_ABORT", 15);
+		} else
+		if (mds & MDS_NOT_REQUIRED) {
+			mds &= ~MDS_NOT_REQUIRED;
+			error = SYSCTL_OUT(req, "MDS_NOT_REQUIRED", 16);
+		}
+	}
+	if (loop == 0) {
+		error = SYSCTL_OUT(req, "NONE", 4);
+	}
+
+	if (error || req->newptr == NULL)
+		return error;
+	if ((oidp->oid_kind & CTLFLAG_WR) == 0)
+		return error;
+
+	/*
+	 * Change current operating mode
+	 */
+	len = req->newlen - req->newidx;
+	if (len >= sizeof(buf)) {
+		error = EINVAL;
+		len = 0;
+	} else {
+		error = SYSCTL_IN(req, buf, len);
+	}
+	buf[len] = 0;
+	iter = &buf[0];
+	mds = 0;
+
+	while (error == 0 && iter) {
+		ptr = strsep(&iter, " ,\t\r\n");
+		if (*ptr == 0)
+			continue;
+		if (strcasecmp(ptr, "NONE") == 0)
+			mds |= 0;
+		else if (strcasecmp(ptr, "AVX512_4VNNIW") == 0)
+			mds |= MDS_AVX512_4VNNIW_SUPPORTED;
+		else if (strcasecmp(ptr, "AVX512_4FMAPS") == 0)
+			mds |= MDS_AVX512_4FMAPS_SUPPORTED;
+		else if (strcasecmp(ptr, "MD_CLEAR") == 0)
+			mds |= MDS_MD_CLEAR_SUPPORTED;
+		else if (strcasecmp(ptr, "TSX_FORCE_ABORT") == 0)
+			mds |= MDS_TSX_FORCE_ABORT_SUPPORTED;
+		else if (strcasecmp(ptr, "MDS_NOT_REQUIRED") == 0)
+			mds |= MDS_NOT_REQUIRED;
+		else
+			error = ENOENT;
+	}
+	if (error == 0) {
+		mds_mitigation = mds;
+		mds_sysctl_changed();
+	}
+	return error;
+}
+
+SYSCTL_PROC(_machdep, OID_AUTO, mds_mitigation,
+	CTLTYPE_STRING | CTLFLAG_RW,
+	0, 0, sysctl_mds_mitigation, "A", "MDS exploit mitigation");
+SYSCTL_PROC(_machdep, OID_AUTO, mds_support,
+	CTLTYPE_STRING | CTLFLAG_RD,
+	0, 0, sysctl_mds_mitigation, "A", "MDS supported features");
+
+/*
+ * NOTE: Called at SI_BOOT2_MACHDEP and also when the microcode is
+ *	 updated.  Microcode updates must be applied to all cpus
+ *	 for support to be recognized.
+ */
+static void
+mds_vm_setup(void *arg)
+{
+	int inconsistent = 0;
+	int supmask;
+
+	/*
+	 * Fetch tunable in auto mode
+	 */
+	if (mds_mitigation < 0) {
+		TUNABLE_INT_FETCH("machdep.mds_mitigation", &mds_mitigation);
+	}
+
+	if ((supmask = mds_check_support()) != 0) {
+		/*
+		 * Must be supported on all cpus before we
+		 * can enable it.  Returns silently if it
+		 * isn't.
+		 *
+		 * NOTE! arg != NULL indicates we were called
+		 *	 from cpuctl after a successful microcode
+		 *	 update.
+		 */
+		if (arg != NULL) {
+			globaldata_t save_gd;
+			int n;
+
+			save_gd = mycpu;
+			for (n = 0; n < ncpus; ++n) {
+				lwkt_setcpu_self(globaldata_find(n));
+				cpu_ccfence();
+				if (mds_check_support() != supmask) {
+					inconsistent = 1;
+					break;
+				}
+			}
+			lwkt_setcpu_self(save_gd);
+			cpu_ccfence();
+		}
+	}
+
+	/*
+	 * Be silent while microcode is being loaded on various CPUs,
+	 * until all done.
+	 */
+	if (inconsistent) {
+		mds_mitigation = -1;
+		mds_support = 0;
+		return;
+	}
+
+	/*
+	 * IBRS support
+	 */
+	mds_support = supmask;
+
+	/*
+	 * Enable mds_mitigation, set defaults if -1, adjust
+	 * tuned value according to support if not.
+	 *
+	 * NOTE!  MDS is not enabled by default.
+	 */
+	if (mds_support) {
+		if (mds_mitigation < 0) {
+			mds_mitigation = 0;
+
+			if ((mds_support & MDS_NOT_REQUIRED) == 0 &&
+			    (mds_support & MDS_MD_CLEAR_SUPPORTED)) {
+				/* mds_mitigation |= MDS_MD_CLEAR_SUPPORTED; */
+			}
+		}
+	} else {
+		mds_mitigation = -1;
+	}
+
+	/*
+	 * Disallow sysctl changes when there is no support (otherwise
+	 * the wrmsr will cause a protection fault).
+	 */
+	if (mds_mitigation < 0)
+		sysctl___machdep_mds_mitigation.oid_kind &= ~CTLFLAG_WR;
+	else
+		sysctl___machdep_mds_mitigation.oid_kind |= CTLFLAG_WR;
+
+	mds_sysctl_changed();
+}
+
+/*
+ * NOTE: Called at SI_BOOT2_MACHDEP and also when the microcode is
+ *	 updated.  Microcode updates must be applied to all cpus
+ *	 for support to be recognized.
+ */
+void
+mitigation_vm_setup(void *arg)
+{
+	spectre_vm_setup(arg);
+	mds_vm_setup(arg);
+}
+
+SYSINIT(mitigation_vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY,
+	mitigation_vm_setup, NULL);
 
 /*
  * platform-specific vmspace initialization (nothing for x86_64)

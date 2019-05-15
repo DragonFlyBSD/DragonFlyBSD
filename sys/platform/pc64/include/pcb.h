@@ -93,6 +93,7 @@ struct pcb {
 
 #define SPEC_CTRL_DUMMY_IBPB	SPEC_CTRL_DUMMY1
 #define SPEC_CTRL_DUMMY_ENABLE	SPEC_CTRL_DUMMY2
+#define SPEC_CTRL_MDS_ENABLE	SPEC_CTRL_DUMMY3
 
 #ifdef _KERNEL
 void	savectx(struct pcb *);
