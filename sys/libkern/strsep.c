@@ -29,7 +29,6 @@
  */
 
 #include <sys/libkern.h>
-#include <sys/_null.h>
 
 char *
 strsep(char **stringp, const char *delim)

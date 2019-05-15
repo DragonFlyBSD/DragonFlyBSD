@@ -60,7 +60,6 @@
 #include <sys/mutex.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-#include <sys/_timespec.h>
 #include <sys/queue.h>
 #include <sys/proc.h>
 #include <sys/filedesc.h>

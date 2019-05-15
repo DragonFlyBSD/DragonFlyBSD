@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/_null.h>
 #include <sys/queue.h>
 #include <vm/vm_extern.h>
 

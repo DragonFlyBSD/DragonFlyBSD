@@ -30,8 +30,8 @@
  * $FreeBSD: src/crypto/telnet/libtelnet/genget.c,v 1.2.8.2 2002/04/13 10:59:07 markm Exp $
  */
 
-#include <sys/_null.h>
 #include <ctype.h>
+#include <stddef.h>
 
 #include "misc-proto.h"
 
