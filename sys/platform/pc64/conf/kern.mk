@@ -27,6 +27,10 @@ CFLAGS+=	-mno-fma -mno-fma4
 CFLAGS+=	-mno-bmi -mno-bmi2
 CFLAGS+=	-mno-xop -mno-lwp -mno-lzcnt -mno-tbm
 .endif
+
+.if ${CCVER:Mgcc8*}
+CFLAGS+=	-mindirect-branch=thunk-inline
+.endif
 .endif
 
 CFLAGS+=	-msoft-float
