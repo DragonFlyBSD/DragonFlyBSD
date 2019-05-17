@@ -3505,13 +3505,13 @@ cpu_implement_smap(void)
 {
 	char **scan;
 
-	for (scan = SET_BEGIN(smap_open);
+	for (scan = SET_BEGIN(smap_open);		/* nop -> stac */
 	     scan < SET_LIMIT(smap_open); ++scan) {
 		(*scan)[0] = 0x0F;
 		(*scan)[1] = 0x01;
 		(*scan)[2] = 0xCB;
 	}
-	for (scan = SET_BEGIN(smap_close);
+	for (scan = SET_BEGIN(smap_close);		/* nop -> clac */
 	     scan < SET_LIMIT(smap_close); ++scan) {
 		(*scan)[0] = 0x0F;
 		(*scan)[1] = 0x01;

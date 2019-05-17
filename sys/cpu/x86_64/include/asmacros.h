@@ -390,7 +390,8 @@
 	KMMUENTER_TFRIP ;	/* from userland */			\
 1:									\
 	subq	$TF_RIP,%rsp ;						\
-	PUSH_FRAME_REGS 						\
+	PUSH_FRAME_REGS ; 						\
+	SMAP_CLOSE							\
 
 #define PUSH_FRAME_TFERR						\
 	testb	$SEL_RPL_MASK,TF_CS-TF_ERR(%rsp) ; /* from userland? */	\
@@ -399,7 +400,8 @@
 	KMMUENTER_TFERR ;	/* from userland */			\
 1:									\
 	subq	$TF_ERR,%rsp ;						\
-	PUSH_FRAME_REGS 						\
+	PUSH_FRAME_REGS ;						\
+	SMAP_CLOSE							\
 
 #define PUSH_FRAME_TFERR_SAVECR2					\
 	testb	$SEL_RPL_MASK,TF_CS-TF_ERR(%rsp) ;			\
@@ -415,7 +417,8 @@
 	PUSH_FRAME_REGS ;						\
 	movq	%cr2, %r10 ;						\
 2:									\
-	movq	%r10, TF_ADDR(%rsp)
+	movq	%r10, TF_ADDR(%rsp) ;					\
+	SMAP_CLOSE							\
 
 /*
  * POP_FRAME is issued just prior to the iretq, or just prior to a
