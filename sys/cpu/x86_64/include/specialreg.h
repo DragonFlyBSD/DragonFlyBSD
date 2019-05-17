@@ -68,6 +68,10 @@
 #define	CR4_XMM		0x00000400	/* Enable SIMD/MMX2 to use except 16 */
 #define	CR4_VMXE	0x00002000	/* Enables VMX - Intel specific */
 #define	CR4_XSAVE	0x00040000	/* Enable XSave (for AVX Instructions)*/
+#define	CR4_SMEP	0x00100000	/* Supervisor-Mode Execution Prevent */
+#define	CR4_SMAP	0x00200000	/* Supervisor-Mode Access Prevent */
+#define	CR4_PKE		0x00400000	/* Protection Keys Enable */
+
 
 /*
  * Bits in x86_64 special registers.  EFER is 64 bits wide.

@@ -1116,6 +1116,17 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	x86_64_protection_init();
 
 	/*
+	 * Check for SMAP support and enable if available.  Must be done
+	 * after cr3 is loaded.
+	 */
+	if (cpu_stdext_feature & CPUID_STDEXT_SMAP) {
+		load_cr4(rcr4() | CR4_SMAP);
+	}
+	if (cpu_stdext_feature & CPUID_STDEXT_SMEP) {
+		load_cr4(rcr4() | CR4_SMEP);
+	}
+
+	/*
 	 * The kernel's pmap is statically allocated so we don't have to use
 	 * pmap_create, which is unlikely to work correctly at this part of
 	 * the boot sequence (XXX and which no longer exists).

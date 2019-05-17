@@ -457,6 +457,28 @@
 	movq %gs:PC_PRVSPACE, reg ;				\
 	addq $PC_ ## member, reg
 
+/*
+ * This adds a code placemarker (the 3-byte NOP) and references
+ * it from a section, allowing it to be replaced with a STAC or CLAC
+ * instruction (also 3-byte instructions) when the system supports
+ * SMAP.
+ */
+#define SMAP_OPEN						\
+	.globl	__start_set_smap_open ;				\
+	.globl	__stop_set_smap_open ;				\
+60:	nop	%eax ;						\
+	.section set_smap_open,"aw" ;				\
+	.quad	60b ;						\
+	.previous						\
+
+#define SMAP_CLOSE						\
+	.globl	__start_set_smap_close ;			\
+	.globl	__stop_set_smap_close ;				\
+60:	nop	%eax ;						\
+	.section set_smap_close,"aw" ;				\
+	.quad	60b ;						\
+	.previous						\
+
 #endif /* LOCORE */
 
 #endif /* !_CPU_ASMACROS_H_ */

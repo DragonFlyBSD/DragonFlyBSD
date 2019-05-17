@@ -299,16 +299,18 @@ END(fillw)
  * Read kernel or user memory with fault protection.
  */
 ENTRY(kreadmem64)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$kreadmem64fault,PCB_ONFAULT(%rcx)
 	movq	%rsp,PCB_ONFAULT_SP(%rcx)
-
 	movq	(%rdi),%rax
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 
 kreadmem64fault:
+	SMAP_CLOSE
 	movq	PCPU(curthread),%rcx
 	xorl	%eax,%eax
 	movq	TD_PCB(%rcx),%rcx
@@ -322,6 +324,7 @@ END(kreadmem64)
  *         %rdi,        %rsi,    %rdx
  */
 ENTRY(std_copyout)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rax
 	movq	TD_PCB(%rax), %rax
 	movq	$copyout_fault,PCB_ONFAULT(%rax)
@@ -367,6 +370,7 @@ ENTRY(std_copyout)
 	movsb
 
 done_copyout:
+	SMAP_CLOSE
 	xorl	%eax,%eax
 	movq	PCPU(curthread),%rdx
 	movq	TD_PCB(%rdx), %rdx
@@ -375,6 +379,7 @@ done_copyout:
 
 	ALIGN_TEXT
 copyout_fault:
+	SMAP_CLOSE
 	movq	PCPU(curthread),%rdx
 	movq	TD_PCB(%rdx), %rdx
 	movq	$0,PCB_ONFAULT(%rdx)
@@ -387,6 +392,7 @@ END(std_copyout)
  *        %rdi,      %rsi,      %rdx
  */
 ENTRY(std_copyin)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rax
 	movq	TD_PCB(%rax), %rax
 	movq	$copyin_fault,PCB_ONFAULT(%rax)
@@ -417,6 +423,7 @@ ENTRY(std_copyin)
 	movsb
 
 done_copyin:
+	SMAP_CLOSE
 	xorl	%eax,%eax
 	movq	PCPU(curthread),%rdx
 	movq	TD_PCB(%rdx), %rdx
@@ -425,6 +432,7 @@ done_copyin:
 
 	ALIGN_TEXT
 copyin_fault:
+	SMAP_CLOSE
 	movq	PCPU(curthread),%rdx
 	movq	TD_PCB(%rdx), %rdx
 	movq	$0,PCB_ONFAULT(%rdx)
@@ -437,6 +445,7 @@ END(std_copyin)
  *          dst = %rdi, old = %rsi, new = %rdx
  */
 ENTRY(casu32)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -459,6 +468,7 @@ ENTRY(casu32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(casu32)
 
@@ -466,6 +476,7 @@ END(casu32)
  * swapu32 - Swap int in user space.  ptr = %rdi, val = %rsi
  */
 ENTRY(std_swapu32)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -487,10 +498,12 @@ ENTRY(std_swapu32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(std_swapu32)
 
 ENTRY(std_fuwordadd32)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -508,10 +521,10 @@ ENTRY(std_fuwordadd32)
 	 * value we expected (old) from before the store, otherwise it will
 	 * be the current value.
 	 */
-
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(std_fuwordadd32)
 
@@ -520,6 +533,7 @@ END(std_fuwordadd32)
  *          dst = %rdi, old = %rsi, new = %rdx
  */
 ENTRY(casu64)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -542,6 +556,7 @@ ENTRY(casu64)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(casu64)
 
@@ -549,6 +564,7 @@ END(casu64)
  * swapu64 - Swap long in user space.  ptr = %rdi, val = %rsi
  */
 ENTRY(std_swapu64)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -570,10 +586,12 @@ ENTRY(std_swapu64)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(std_swapu64)
 
 ENTRY(std_fuwordadd64)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -595,6 +613,7 @@ ENTRY(std_fuwordadd64)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(std_fuwordadd64)
 
@@ -605,6 +624,7 @@ END(std_fuwordadd64)
  */
 
 ENTRY(std_fuword64)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -616,10 +636,12 @@ ENTRY(std_fuword64)
 
 	movq	(%rdi),%rax
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(std_fuword64)
 
 ENTRY(std_fuword32)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -631,10 +653,12 @@ ENTRY(std_fuword32)
 
 	movl	(%rdi),%eax
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(std_fuword32)
 
 ENTRY(std_fubyte)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -646,6 +670,7 @@ ENTRY(std_fubyte)
 
 	movzbl	(%rdi),%eax
 	movq	$0,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 
 	ALIGN_TEXT
@@ -655,6 +680,7 @@ fusufault:
 	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	decq	%rax
+	SMAP_CLOSE
 	ret
 END(std_fubyte)
 
@@ -667,6 +693,7 @@ END(std_fubyte)
  * Write a long
  */
 ENTRY(std_suword64)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -681,6 +708,7 @@ ENTRY(std_suword64)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(std_suword64)
 
@@ -688,6 +716,7 @@ END(std_suword64)
  * Write an int
  */
 ENTRY(std_suword32)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -702,10 +731,12 @@ ENTRY(std_suword32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(std_suword32)
 
 ENTRY(std_subyte)
+	SMAP_OPEN
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -721,6 +752,7 @@ ENTRY(std_subyte)
 	movq	PCPU(curthread),%rcx		/* restore trashed register */
 	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
+	SMAP_CLOSE
 	ret
 END(std_subyte)
 
@@ -734,6 +766,7 @@ END(std_subyte)
  *	return the actual length in *lencopied.
  */
 ENTRY(std_copyinstr)
+	SMAP_OPEN
 	movq	%rdx,%r8			/* %r8 = maxlen */
 	movq	%rcx,%r9			/* %r9 = *len */
 	movq	PCPU(curthread),%rcx
@@ -783,6 +816,7 @@ cpystrflt:
 	movq	$EFAULT,%rax
 
 cpystrflt_x:
+	SMAP_CLOSE
 	/* set *lencopied and return %eax */
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
@@ -802,7 +836,6 @@ END(std_copyinstr)
  */
 ENTRY(copystr)
 	movq	%rdx,%r8			/* %r8 = maxlen */
-
 	incq	%rdx
 1:
 	decq	%rdx
@@ -824,7 +857,6 @@ ENTRY(copystr)
 	movq	$ENAMETOOLONG,%rax
 
 6:
-
 	testq	%rcx,%rcx
 	jz	7f
 	/* set *lencopied and return %rax */

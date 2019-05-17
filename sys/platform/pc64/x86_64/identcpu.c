@@ -474,13 +474,19 @@ printcpuinfo(void)
 	if (*cpu_vendor || cpu_id)
 		kprintf("\n");
 
-	if (!bootverbose)
-		return;
+	if (cpu_stdext_feature & (CPUID_STDEXT_SMAP | CPUID_STDEXT_SMEP)) {
+		kprintf("CPU Special Features Installed:");
+		if (cpu_stdext_feature & CPUID_STDEXT_SMAP)
+			kprintf(" SMAP");
+		if (cpu_stdext_feature & CPUID_STDEXT_SMEP)
+			kprintf(" SMEP");
+		kprintf("\n");
+	}
 
-	if (cpu_vendor_id == CPU_VENDOR_AMD)
-		print_AMD_info();
-
-	kprintf("npx mask: 0x%8.8x\n", npx_mxcsr_mask);
+	if (bootverbose) {
+		if (cpu_vendor_id == CPU_VENDOR_AMD)
+			print_AMD_info();
+	}
 }
 
 void

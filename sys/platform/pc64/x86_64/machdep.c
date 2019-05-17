@@ -316,6 +316,8 @@ vm_offset_t clean_sva, clean_eva;
 static vm_offset_t pager_sva, pager_eva;
 static struct trapframe proc0_tf;
 
+static void cpu_implement_smap(void);
+
 static void
 cpu_startup(void *dummy)
 {
@@ -330,6 +332,9 @@ cpu_startup(void *dummy)
 	startrtclock();
 	printcpuinfo();
 	panicifcpuunsupported();
+	if (cpu_stdext_feature & CPUID_STDEXT_SMAP)
+		cpu_implement_smap();
+
 	kprintf("real memory  = %ju (%ju MB)\n",
 		(intmax_t)Realmem,
 		(intmax_t)Realmem / 1024 / 1024);
@@ -3490,4 +3495,26 @@ pcpu_timer_always(struct intrframe *frame)
 	}
 #endif
 #endif
+}
+
+SET_DECLARE(smap_open, char);
+SET_DECLARE(smap_close, char);
+
+static void
+cpu_implement_smap(void)
+{
+	char **scan;
+
+	for (scan = SET_BEGIN(smap_open);
+	     scan < SET_LIMIT(smap_open); ++scan) {
+		(*scan)[0] = 0x0F;
+		(*scan)[1] = 0x01;
+		(*scan)[2] = 0xCB;
+	}
+	for (scan = SET_BEGIN(smap_close);
+	     scan < SET_LIMIT(smap_close); ++scan) {
+		(*scan)[0] = 0x0F;
+		(*scan)[1] = 0x01;
+		(*scan)[2] = 0xCA;
+	}
 }
