@@ -443,7 +443,7 @@ IDTVEC(fast_syscall)
 	movq	%rax,%r13
 	movq	%rax,%r14
 	movq	%rax,%r15
-	cld
+
 	sti
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	movq	%rsp, %rdi
