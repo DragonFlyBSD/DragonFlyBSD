@@ -705,15 +705,11 @@ pmap_init2(void)
  * XXX User and kernel address spaces are independant for virtual kernels,
  * this function only applies to the kernel pmap.
  */
-int
+static void
 pmap_track_modified(pmap_t pmap, vm_offset_t va)
 {
-	if (pmap != &kernel_pmap)
-		return 1;
-	if ((va < clean_sva) || (va >= clean_eva))
-		return 1;
-	else
-		return 0;
+	KKASSERT(pmap != &kernel_pmap ||
+		 va < clean_save || va >= clean_eva);
 }
 
 /*
@@ -1953,8 +1949,8 @@ pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, pt_entry_t oldpte,
 					va, oldpte);
 			}
 #endif
-			if (pmap_track_modified(pmap, va))
-				vm_page_dirty(m);
+			pmap_track_modified(pmap, va);
+			vm_page_dirty(m);
 		}
 		if (oldpte & VPTE_A)
 			vm_page_flag_set(m, PG_REFERENCED);
@@ -2176,8 +2172,8 @@ restart:
 				    pv->pv_va, tpte);
 			}
 #endif
-			if (pmap_track_modified(pmap, pv->pv_va))
-				vm_page_dirty(m);
+			pmap_track_modified(pmap, pv->pv_va);
+			vm_page_dirty(m);
 		}
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		if (TAILQ_EMPTY(&m->md.pv_list))
@@ -2231,8 +2227,8 @@ again:
 		 * Update the vm_page_t clean and reference bits.
 		 */
 		if (tpte & VPTE_M) {
-			if (pmap_track_modified(pmap, pv->pv_va))
-				vm_page_dirty(m);
+			pmap_track_modified(pmap, pv->pv_va);
+			vm_page_dirty(m);
 		}
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		pv_entry_rb_tree_RB_REMOVE(&pmap->pm_pvroot, pv);
@@ -2339,6 +2335,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 			 * access will force a fault rather then setting
 			 * the modified bit at an unexpected time.
 			 */
+			pmap_track_modified(pmap, sva);
 			pmap_clean_pte(pte, pmap, sva, NULL);
 		}
 		vm_page_unhold(pt_m);
@@ -2409,10 +2406,11 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		panic("pmap_enter: attempted pmap_enter on 2MB page");
 
 	if ((origpte & (VPTE_MANAGED|VPTE_M)) == (VPTE_MANAGED|VPTE_M)) {
-		if (pmap_track_modified(pmap, va)) {
-			vm_page_t om = PHYS_TO_VM_PAGE(opa);
-			vm_page_dirty(om);
-		}
+		vm_page_t om;
+
+		pmap_track_modified(pmap, va);
+		om = PHYS_TO_VM_PAGE(opa);
+		vm_page_dirty(om);
 	}
 
 	/*
@@ -2917,10 +2915,8 @@ pmap_testbit(vm_page_t m, int bit)
 		 * mark clean_map and ptes as never
 		 * modified.
 		 */
-		if (bit & (VPTE_A|VPTE_M)) {
-			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va))
-				continue;
-		}
+		if (bit & (VPTE_A|VPTE_M))
+			pmap_track_modified(pv->pv_pmap, pv->pv_va);
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pv->pv_pmap == NULL) {
@@ -2984,10 +2980,7 @@ restart:
 		 * don't write protect pager mappings
 		 */
 		if (bit == VPTE_RW) {
-			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va)) {
-				vm_object_drop(pmobj);
-				continue;
-			}
+			pmap_track_modified(pv->pv_pmap, pv->pv_va);
 		}
 
 #if defined(PMAP_DIAGNOSTIC)
@@ -3016,6 +3009,7 @@ restart:
 				 * VPTE_RW and synchronize its state to
 				 * the page.
 				 */
+				pmap_track_modified(pv->pv_pmap, pv->pv_va);
 				pbits = pmap_clean_pte(pte, pv->pv_pmap,
 						       pv->pv_va, m);
 			} else if (bit == VPTE_M) {
@@ -3038,6 +3032,7 @@ restart:
 				 * the caller doesn't want us to update
 				 * the dirty status of the VM page.
 				 */
+				pmap_track_modified(pv->pv_pmap, pv->pv_va);
 				pmap_clean_pte(pte, pv->pv_pmap, pv->pv_va, m);
 				panic("shouldn't be called");
 			} else {
@@ -3108,9 +3103,7 @@ pmap_ts_referenced(vm_page_t m)
 			TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 			TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 
-			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va))
-				continue;
-
+			pmap_track_modified(pv->pv_pmap, pv->pv_va);
 			pte = pmap_pte(pv->pv_pmap, pv->pv_va);
 
 			if (pte && (*pte & VPTE_A)) {

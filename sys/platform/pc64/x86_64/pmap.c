@@ -1574,18 +1574,19 @@ pmap_page_init(struct vm_page *m)
  ***************************************************/
 
 /*
- * this routine defines the region(s) of memory that should
+ * This routine defines the region(s) of memory that should
  * not be tested for the modified bit.
+ *
+ * Only called from pv_entry scans, which will NEVER exist in the clean
+ * map, so just assert.  XXX remove routine entirely after testing.
  */
 static __inline
-int
+void
 pmap_track_modified(vm_pindex_t pindex)
 {
 	vm_offset_t va = (vm_offset_t)pindex << PAGE_SHIFT;
-	if ((va < clean_sva) || (va >= clean_eva)) 
-		return 1;
-	else
-		return 0;
+
+	KKASSERT(va < clean_sva || va >= clean_eva);
 }
 
 /*
@@ -3382,8 +3383,8 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 				KKASSERT(pv->pv_m == p);
 			}
 			if (pte & pmap->pmap_bits[PG_M_IDX]) {
-				if (pmap_track_modified(ptepindex))
-					vm_page_dirty(p);
+				pmap_track_modified(ptepindex);
+				vm_page_dirty(p);
 			}
 			if (pte & pmap->pmap_bits[PG_A_IDX]) {
 				vm_page_flag_set(p, PG_REFERENCED);
@@ -5168,16 +5169,14 @@ again:
 			cbits &= ~pmap->pmap_bits[PG_A_IDX];
 		}
 		if (pbits & pmap->pmap_bits[PG_M_IDX]) {
-			if (pmap_track_modified(pte_pv->pv_pindex)) {
-				if ((pbits & pmap->pmap_bits[PG_DEVICE_IDX]) == 0) {
-					if (m == NULL) {
-						m = PHYS_TO_VM_PAGE(pbits &
-								    PG_FRAME);
-					}
-					vm_page_dirty(m);
+			pmap_track_modified(pte_pv->pv_pindex);
+			if ((pbits & pmap->pmap_bits[PG_DEVICE_IDX]) == 0) {
+				if (m == NULL) {
+					m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
 				}
-				cbits &= ~pmap->pmap_bits[PG_M_IDX];
+				vm_page_dirty(m);
 			}
+			cbits &= ~pmap->pmap_bits[PG_M_IDX];
 		}
 	} else if (sharept) {
 		/*
@@ -5988,9 +5987,7 @@ pmap_testbit(vm_page_t m, int bit)
 		 *	     hold the vm_page spin lock.
 		 */
 		if (bit == PG_A_IDX || bit == PG_M_IDX) {
-				//& (pmap->pmap_bits[PG_A_IDX] | pmap->pmap_bits[PG_M_IDX])) {
-			if (!pmap_track_modified(pv->pv_pindex))
-				continue;
+			pmap_track_modified(pv->pv_pindex);
 		}
 
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
@@ -6077,8 +6074,7 @@ restart:
 		/*
 		 * don't write protect pager mappings
 		 */
-		if (!pmap_track_modified(pv->pv_pindex))
-			continue;
+		pmap_track_modified(pv->pv_pindex);
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pv->pv_pmap == NULL) {
@@ -6211,8 +6207,7 @@ pmap_ts_referenced(vm_page_t m)
 
 	vm_page_spin_lock(m);
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
-		if (!pmap_track_modified(pv->pv_pindex))
-			continue;
+		pmap_track_modified(pv->pv_pindex);
 		pmap = pv->pv_pmap;
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
 		if (pte && (*pte & pmap->pmap_bits[PG_A_IDX])) {

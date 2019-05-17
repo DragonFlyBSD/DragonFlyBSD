@@ -358,8 +358,7 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va,
 			atomic_clear_long(ptep, VPTE_A);
 		}
 		if (pte & VPTE_M) {
-			if (pmap_track_modified(pmap, va))
-				vm_page_dirty(m);
+			vm_page_dirty(m);
 		}
 		if (spin)
 			vm_page_spin_unlock(m);
