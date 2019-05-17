@@ -28,8 +28,8 @@ CFLAGS+=-DSHELL -I. -I${.CURDIR}
 # SHSRCS+=show.c
 
 .if defined(BOOTSTRAPPING)
-CFLAGS+= -DNO_HISTORY
-# LIBEDIT is not needed here
+CFLAGS+= -DNO_HISTORY	# LIBEDIT is not needed here
+CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
 .else
 DPADD= ${LIBEDIT} ${LIBNCURSES}
 LDADD= ${LIBEDIT} ${LIBNCURSES}
