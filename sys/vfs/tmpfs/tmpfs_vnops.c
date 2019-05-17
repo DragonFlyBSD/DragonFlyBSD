@@ -1969,7 +1969,7 @@ tmpfs_move_pages_callback(vm_page_t p, void *data)
 		info->error = -1;
 		return -1;
 	}
-	vm_page_rename(p, info->backing_object, pindex);
+	vm_page_rename(p, info->dest_object, pindex);
 	vm_page_clear_commit(p);
 	vm_page_wakeup(p);
 	/* page automaticaly made dirty */
@@ -1986,7 +1986,7 @@ tmpfs_move_pages(vm_object_t src, vm_object_t dst)
 	vm_object_hold(src);
 	vm_object_hold(dst);
 	info.object = src;
-	info.backing_object = dst;
+	info.dest_object = dst;
 	do {
 		info.error = 1;
 		vm_page_rb_tree_RB_SCAN(&src->rb_memq, NULL,

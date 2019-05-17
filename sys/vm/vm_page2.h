@@ -323,9 +323,11 @@ vm_page_sbusy_drop(vm_page_t m)
  * Since 'prot' is usually a constant, this inline usually winds up optimizing
  * out the primary conditional.
  *
+ * Must be called with (m) hard-busied.
+ *
  * WARNING: VM_PROT_NONE can block, but will loop until all mappings have
- * been cleared.  Callers should be aware that other page related elements
- * might have changed, however.
+ *	    been cleared.  Callers should be aware that other page related
+ *	    elements might have changed, however.
  */
 static __inline void
 vm_page_protect(vm_page_t m, int prot)

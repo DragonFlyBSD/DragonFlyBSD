@@ -164,7 +164,7 @@ vm_phys_fictitious_to_vm_page(vm_paddr_t pa)
 
 int
 vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end,
-    vm_memattr_t memattr)
+			     vm_memattr_t memattr)
 {
         struct vm_phys_fictitious_seg *seg;
         vm_page_t fp;

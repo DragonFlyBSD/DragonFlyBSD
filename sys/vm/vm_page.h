@@ -216,9 +216,9 @@ struct rb_vm_page_scan_info {
 	int		count;
 	int		unused01;
 	vm_offset_t	addr;
-	vm_pindex_t	backing_offset_index;
+	struct vm_map_entry *entry;
 	struct vm_object *object;
-	struct vm_object *backing_object;
+	struct vm_object *dest_object;
 	struct vm_page	*mpte;
 	struct pmap	*pmap;
 	struct vm_map	*map;

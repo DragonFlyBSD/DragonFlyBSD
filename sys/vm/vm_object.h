@@ -317,8 +317,6 @@ void vm_object_init1 (void);
 void vm_object_page_clean (vm_object_t, vm_pindex_t, vm_pindex_t, int);
 void vm_object_page_remove (vm_object_t, vm_pindex_t, vm_pindex_t, boolean_t);
 void vm_object_pmap_copy (vm_object_t, vm_pindex_t, vm_pindex_t);
-void vm_object_pmap_copy_1 (vm_object_t, vm_pindex_t, vm_pindex_t);
-void vm_object_pmap_remove (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_madvise (vm_object_t, vm_pindex_t, vm_pindex_t, int);
 void vm_object_init2 (void);
 vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t,

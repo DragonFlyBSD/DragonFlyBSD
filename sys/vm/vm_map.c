@@ -1423,8 +1423,9 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 			vm_object_lock_swap();
 			vm_object_drop(object);
 		}
-		pmap_object_init_pt(map->pmap, start, prot,
-				    object, OFF_TO_IDX(offset), end - start,
+		pmap_object_init_pt(map->pmap, new_entry,
+				    new_entry->ba.start,
+				    new_entry->ba.end - new_entry->ba.start,
 				    cow & MAP_PREFAULT_PARTIAL);
 		if (dorelock) {
 			vm_object_hold(object);
@@ -2432,12 +2433,9 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			if (behav == MADV_WILLNEED &&
 			    current->maptype != VM_MAPTYPE_VPAGETABLE) {
 				pmap_object_init_pt(
-				    map->pmap, 
+				    map->pmap, current,
 				    useStart,
-				    current->protection,
-				    current->ba.object,
-				    pindex, 
-				    (count << PAGE_SHIFT),
+				    (delta << PAGE_SHIFT),
 				    MAP_PREFAULT_MADVISE
 				);
 			}

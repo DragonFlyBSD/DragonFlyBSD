@@ -233,8 +233,7 @@ vm_page_getfake(vm_paddr_t paddr, vm_memattr_t memattr)
 {
 	vm_page_t m;
 
-	m = kmalloc(sizeof(struct vm_page), M_FICT_PAGES,
-	    M_WAITOK | M_ZERO);
+	m = kmalloc(sizeof(struct vm_page), M_FICT_PAGES, M_WAITOK | M_ZERO);
 	vm_page_initfake(m, paddr, memattr);
 	return (m);
 }

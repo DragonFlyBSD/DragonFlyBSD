@@ -1343,7 +1343,6 @@ vm_page_unhold(vm_page_t m)
 void
 vm_page_initfake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr)
 {
-
 	if ((m->flags & PG_FICTITIOUS) != 0) {
 		/*
 		 * The page's memattr might have changed since the
@@ -1390,8 +1389,7 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	atomic_add_int(&object->generation, 1);
 
 	/*
-	 * Record the object/offset pair in this page and add the
-	 * pv_list_count of the page to the object.
+	 * Associate the VM page with an (object, offset).
 	 *
 	 * The vm_page spin lock is required for interactions with the pmap.
 	 */

@@ -5590,19 +5590,6 @@ done:
 }
 
 /*
- * This code works like pmap_enter() but assumes VM_PROT_READ and not-wired.
- * This code also assumes that the pmap has no pre-existing entry for this
- * VA.
- *
- * This code currently may only be used on user pmaps, not kernel_pmap.
- */
-void
-pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
-{
-	pmap_enter(pmap, va, m, VM_PROT_READ, FALSE, NULL);
-}
-
-/*
  * Make a temporary mapping for a physical address.  This is only intended
  * to be used for panic dumps.
  *
@@ -5625,10 +5612,12 @@ pmap_kenter_temporary(vm_paddr_t pa, long i)
 static int pmap_object_init_pt_callback(vm_page_t p, void *data);
 
 void
-pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
-		    vm_object_t object, vm_pindex_t pindex,
-		    vm_size_t size, int limit)
+pmap_object_init_pt(pmap_t pmap, vm_map_entry_t entry,
+		    vm_offset_t addr, vm_size_t size, int limit)
 {
+	vm_prot_t prot = entry->protection;
+	vm_object_t object = entry->ba.object;
+	vm_pindex_t pindex = atop(entry->ba.offset + (addr - entry->ba.start));
 	struct rb_vm_page_scan_info info;
 	struct lwp *lp;
 	vm_size_t psize;
@@ -5693,6 +5682,7 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	info.addr = addr;
 	info.pmap = pmap;
 	info.object = object;
+	info.entry = entry;
 
 	/*
 	 * By using the NOLK scan, the callback function must be sure
@@ -5747,8 +5737,8 @@ again:
 			vm_page_deactivate(p);
 		}
 		rel_index = p->pindex - info->start_pindex;
-		pmap_enter_quick(info->pmap,
-				 info->addr + x86_64_ptob(rel_index), p);
+		pmap_enter(info->pmap, info->addr + x86_64_ptob(rel_index), p,
+			   VM_PROT_READ, FALSE, info->entry);
 	}
 	if (hard_busy)
 		vm_page_wakeup(p);
@@ -5938,35 +5928,6 @@ pmap_copy_page_frag(vm_paddr_t src, vm_paddr_t dst, size_t bytes)
 	bcopy((char *)src_virt + (src & PAGE_MASK),
 	      (char *)dst_virt + (dst & PAGE_MASK),
 	      bytes);
-}
-
-/*
- * Returns true if the pmap's pv is one of the first 16 pvs linked to from
- * this page.  This count may be changed upwards or downwards in the future;
- * it is only necessary that true be returned for a small subset of pmaps
- * for proper page aging.
- */
-boolean_t
-pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
-{
-	pv_entry_t pv;
-	int loops = 0;
-
-	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
-		return FALSE;
-
-	vm_page_spin_lock(m);
-	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
-		if (pv->pv_pmap == pmap) {
-			vm_page_spin_unlock(m);
-			return TRUE;
-		}
-		loops++;
-		if (loops >= 16)
-			break;
-	}
-	vm_page_spin_unlock(m);
-	return (FALSE);
 }
 
 /*
