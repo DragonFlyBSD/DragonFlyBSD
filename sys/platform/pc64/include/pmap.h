@@ -221,12 +221,12 @@ struct vm_page;
 struct vm_object;
 struct vmspace;
 
-TAILQ_HEAD(md_page_pv_list, pv_entry);
 /*
- * vm_page structures embed a list of related pv_entry's
+ * vm_page structure extension for pmap.  Track the number of pmap mappings
+ * for a managed page.  Unmanaged pages do not use this field.
  */
 struct md_page {
-	struct md_page_pv_list	pv_list;
+	long pmap_count;
 };
 
 /*
@@ -235,8 +235,7 @@ struct md_page {
  * PROT_READ|PROT_WRITE maps.
  */
 struct md_object {
-	struct pmap *pmap_rw;
-	struct pmap *pmap_ro;
+	void *dummy_unused;
 };
 
 /*
@@ -300,7 +299,7 @@ struct pmap {
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct spinlock		pm_spin;
 	struct pv_entry		*pm_pvhint_pt;	/* pv_entry lookup hint */
-	struct pv_entry		*pm_pvhint_pte;	/* pv_entry lookup hint */
+	struct pv_entry		*pm_pvhint_unused;
 	vm_pindex_t		pm_placemarks[PM_PLACEMARKS];
 	long			pm_invgen;
 	uint64_t		pmap_bits[PG_BITS_SIZE];
@@ -338,14 +337,13 @@ extern struct pmap	kernel_pmap;
 #endif
 
 /*
- * For each vm_page_t, there is a list of all currently valid virtual
- * mappings of that page.  An entry is a pv_entry_t, the list is pv_table.
+ * The pv_entry structure is used to track higher levels of the page table.
+ * The leaf PTE is no longer tracked with this structure.
  */
 typedef struct pv_entry {
 	pmap_t		pv_pmap;	/* pmap where mapping lies */
 	vm_pindex_t	pv_pindex;	/* PTE, PT, PD, PDP, or PML4 */
-	TAILQ_ENTRY(pv_entry)	pv_list;
-	RB_ENTRY(pv_entry)	pv_entry;
+	RB_ENTRY(pv_entry) pv_entry;
 	struct vm_page	*pv_m;		/* page being mapped */
 	u_int		pv_hold;	/* interlock action */
 	u_int		pv_flags;

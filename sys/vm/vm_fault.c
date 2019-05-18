@@ -2283,6 +2283,11 @@ next:
 				 * Only remove the page from the current
 				 * pmap.
 				 */
+				/*
+				 * NOTE: Since fs->m is a backing page, it
+				 *	 is read-only, so there isn't any
+				 *	 copy race vs writers.
+				 */
 				KKASSERT(fs->first_shared == 0);
 				vm_page_copy(fs->m, fs->first_m);
 				/*vm_page_protect(fs->m, VM_PROT_NONE);*/

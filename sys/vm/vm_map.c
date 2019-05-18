@@ -1061,9 +1061,9 @@ vm_map_backing_attach(vm_map_backing_t ba)
 {
 	vm_object_t obj = ba->object;
 
-	spin_lock(&obj->spin);
+	lockmgr(&obj->backing_lk, LK_EXCLUSIVE);
 	TAILQ_INSERT_TAIL(&obj->backing_list, ba, entry);
-	spin_unlock(&obj->spin);
+	lockmgr(&obj->backing_lk, LK_RELEASE);
 }
 
 static void
@@ -1071,9 +1071,9 @@ vm_map_backing_detach(vm_map_backing_t ba)
 {
 	vm_object_t obj = ba->object;
 
-	spin_lock(&obj->spin);
+	lockmgr(&obj->backing_lk, LK_EXCLUSIVE);
 	TAILQ_REMOVE(&obj->backing_list, ba, entry);
-	spin_unlock(&obj->spin);
+	lockmgr(&obj->backing_lk, LK_RELEASE);
 }
 
 /*
@@ -3467,10 +3467,10 @@ vm_map_backing_adjust_start(vm_map_entry_t entry, vm_ooffset_t start)
 	    entry->maptype == VM_MAPTYPE_NORMAL) {
 		for (ba = &entry->ba; ba; ba = ba->backing_ba) {
 			if (ba->object) {
-				spin_lock(&ba->object->spin);
+				lockmgr(&ba->object->backing_lk, LK_EXCLUSIVE);
 				ba->offset += (start - ba->start);
 				ba->start = start;
-				spin_unlock(&ba->object->spin);
+				lockmgr(&ba->object->backing_lk, LK_RELEASE);
 			} else {
 				ba->offset += (start - ba->start);
 				ba->start = start;
@@ -3491,9 +3491,9 @@ vm_map_backing_adjust_end(vm_map_entry_t entry, vm_ooffset_t end)
 	    entry->maptype == VM_MAPTYPE_NORMAL) {
 		for (ba = &entry->ba; ba; ba = ba->backing_ba) {
 			if (ba->object) {
-				spin_lock(&ba->object->spin);
+				lockmgr(&ba->object->backing_lk, LK_EXCLUSIVE);
 				ba->end = end;
-				spin_unlock(&ba->object->spin);
+				lockmgr(&ba->object->backing_lk, LK_RELEASE);
 			} else {
 				ba->end = end;
 			}

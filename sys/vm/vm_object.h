@@ -135,7 +135,7 @@ typedef u_char objtype_t;
  */
 struct vm_object {
 	struct lwkt_token token;	/* everything else */
-	struct spinlock spin;		/* backing_list */
+	struct lock	backing_lk;	/* lock for backing_list only */
 	TAILQ_ENTRY(vm_object) object_entry;
 	TAILQ_HEAD(, vm_map_backing) backing_list;
 	struct vm_page_rb_tree rb_memq;	/* resident pages */

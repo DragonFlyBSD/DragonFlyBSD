@@ -386,6 +386,8 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	lwkt_token_init(&object->token, "vmobj");
 
 	TAILQ_INIT(&object->backing_list);
+	lockinit(&object->backing_lk, "baclk", 0, 0);
+
 	object->type = type;
 	object->size = size;
 	object->ref_count = 1;
