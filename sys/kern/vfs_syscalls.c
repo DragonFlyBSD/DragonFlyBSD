@@ -1995,7 +1995,6 @@ sys_chroot_kernel(struct chroot_kernel_args *uap)
 	if ((error = cache_vref(nch, nd.nl_cred, &vp)) != 0)
 		goto error_out;
 
-	kprintf("chroot_kernel: set new rootnch/rootvnode to %s\n", uap->path);
 	vfs_cache_setroot(vp, cache_hold(nch));
 
 error_out:
