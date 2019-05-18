@@ -23,7 +23,7 @@ SRCS+=	dbm.c dbm_map.c mansearch.c
 SRCS+=	dba.c dba_array.c dba_read.c dba_write.c mandocdb.c
 SRCS+=	main.c manpath.c mdoc_man.c mdoc_markdown.c out.c tag.c tree.c
 
-SRCS+=	compat_ohash.c compat_recallocarray.c
+SRCS+=	compat_ohash.c
 
 LDADD=	-lz
 DPADD=	${LIBZ}

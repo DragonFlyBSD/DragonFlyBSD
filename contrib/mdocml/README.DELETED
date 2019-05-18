@@ -17,6 +17,7 @@ compat_isblank.c
 compat_mkdtemp.c
 compat_progname.c
 compat_reallocarray.c
+compat_recallocarray.c
 compat_strcasestr.c
 compat_stringlist.c
 compat_stringlist.h

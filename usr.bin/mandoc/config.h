@@ -6,7 +6,6 @@
 #define __attribute__(x)
 #endif
 
-#include <sys/types.h>
 
 #define MAN_CONF_FILE "/etc/man.conf"
 #define MANPATH_BASE "/usr/share/man:/usr/X11R6/man"
@@ -28,7 +27,7 @@
 #define HAVE_PLEDGE 0
 #define HAVE_PROGNAME 1
 #define HAVE_REALLOCARRAY 1
-#define HAVE_RECALLOCARRAY 0
+#define HAVE_RECALLOCARRAY 1
 #define HAVE_REWB_BSD 1
 #define HAVE_REWB_SYSV 0
 #define HAVE_SANDBOX_INIT 0
@@ -52,4 +51,3 @@
 #define BINM_SOELIM "soelim"
 #define BINM_WHATIS "whatis"
 
-extern	void	 *recallocarray(void *, size_t, size_t, size_t);
