@@ -74,8 +74,6 @@
 #include <ddb/ddb.h>
 #include <dlfcn.h>	/* DLL */
 
-#include <sys/user.h>
-
 #include <ddb/db_access.h>
 #include <ddb/db_sym.h>
 #include <ddb/db_variables.h>

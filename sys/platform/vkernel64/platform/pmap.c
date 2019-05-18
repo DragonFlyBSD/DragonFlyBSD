@@ -72,7 +72,6 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_zone.h>
 
-#include <sys/user.h>
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
@@ -82,6 +81,7 @@
 #include <machine/specialreg.h>
 #include <machine/smp.h>
 #include <machine/globaldata.h>
+#include <machine/pcb.h>
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
 

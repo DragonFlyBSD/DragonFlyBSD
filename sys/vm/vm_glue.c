@@ -81,12 +81,10 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <vm/vm_page.h>
+#include <vm/vm_page2.h>
 #include <vm/vm_pageout.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
-
-#include <sys/user.h>
-#include <vm/vm_page2.h>
 
 /*
  * THIS MUST BE THE LAST INITIALIZATION ITEM!!!

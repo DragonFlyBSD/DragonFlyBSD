@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.14 2007/02/01 10:33:25 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +51,6 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <vm/vm_object.h>
-#include <sys/user.h>
 
 static int	exec_aout_imgact (struct image_params *imgp);
 

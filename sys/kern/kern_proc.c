@@ -44,9 +44,9 @@
 #include <sys/exec.h>
 #include <vm/vm.h>
 #include <sys/lock.h>
+#include <sys/kinfo.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
-#include <sys/user.h>
 #include <machine/smp.h>
 
 #include <sys/refcount.h>

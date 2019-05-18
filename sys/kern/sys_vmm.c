@@ -36,7 +36,6 @@
 #include <sys/systm.h>
 #include <sys/sysproto.h>
 #include <sys/proc.h>
-#include <sys/user.h>
 #include <sys/wait.h>
 #include <sys/vmm.h>
 
@@ -44,7 +43,11 @@
 #include <sys/spinlock2.h>
 
 #include <machine/cpu.h>
+#include <machine/pmap.h>
 #include <machine/vmm.h>
+#include <machine/vmparam.h>
+
+#include <vm/vm_map.h>
 
 /*
  * vmm guest system call:

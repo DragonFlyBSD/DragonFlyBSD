@@ -67,7 +67,6 @@
 #include <vm/vnode_pager.h>
 #include <vm/vm_pager.h>
 
-#include <sys/user.h>
 #include <sys/reg.h>
 
 #include <sys/objcache.h>

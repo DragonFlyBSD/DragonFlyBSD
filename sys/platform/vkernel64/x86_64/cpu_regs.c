@@ -76,7 +76,6 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-#include <sys/user.h>
 #include <sys/exec.h>
 #include <sys/cons.h>
 
@@ -86,7 +85,8 @@
 #include <machine/clock.h>
 #include <machine/specialreg.h>
 #include <machine/md_var.h>
-#include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
+#include <machine/pcb.h>
+#include <machine/pcb_ext.h>
 #include <machine/globaldata.h>		/* CPU_prvspace */
 #include <machine/smp.h>
 #include <machine/cputypes.h>

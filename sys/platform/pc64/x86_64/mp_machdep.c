@@ -46,7 +46,6 @@
 #include <vm/vm_extern.h>
 #include <sys/lock.h>
 #include <vm/vm_map.h>
-#include <sys/user.h>
 
 #include <machine/smp.h>
 #include <machine_base/apic/apicreg.h>

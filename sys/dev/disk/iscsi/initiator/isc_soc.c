@@ -50,7 +50,6 @@
 #include <sys/kthread.h>
 #include <sys/syslog.h>
 #include <sys/mbuf.h>
-#include <sys/user.h>
 #include <sys/eventhandler.h>
 #include <sys/socketops.h>
 

@@ -56,7 +56,6 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
-#include <sys/user.h>
 #include <sys/ptrace.h>
 
 #include <machine/vmm.h>
