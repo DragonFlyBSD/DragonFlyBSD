@@ -1,7 +1,7 @@
 /*
  * VMPAGEINFO.C
  *
- * cc -I/usr/src/sys vmpageinfo.c -o /usr/local/bin/vmpageinfo -lkvm
+ * cc -I/usr/src/sys vmpageinfo.c -o ~/bin/vmpageinfo -lkvm
  *
  * vmpageinfo
  *

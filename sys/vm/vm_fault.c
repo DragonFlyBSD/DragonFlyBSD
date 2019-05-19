@@ -161,10 +161,17 @@ __read_mostly int vm_shared_fault = 1;
 TUNABLE_INT("vm.shared_fault", &vm_shared_fault);
 SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW,
 		&vm_shared_fault, 0, "Allow shared token on vm_object");
-__read_mostly static int vm_fault_quick_enable = 0;
+__read_mostly static int vm_fault_quick_enable = 1;
 TUNABLE_INT("vm.fault_quick", &vm_fault_quick_enable);
 SYSCTL_INT(_vm, OID_AUTO, fault_quick, CTLFLAG_RW,
 		&vm_fault_quick_enable, 0, "Allow fast vm_fault shortcut");
+
+/*
+ * Define here for debugging ioctls.  Note that these are globals, so
+ * they were cause a ton of cache line bouncing.  Only use for debugging
+ * purposes.
+ */
+/*#define VM_FAULT_QUICK_DEBUG */
 #ifdef VM_FAULT_QUICK_DEBUG
 static long vm_fault_quick_success_count = 0;
 SYSCTL_LONG(_vm, OID_AUTO, fault_quick_success_count, CTLFLAG_RW,
@@ -865,14 +872,6 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 
 	/*
 	 * Don't waste time if the object is only being used by one vm_map.
-	 *
-	 * WARNING! We can't rely on obj->ref_count here because it might
-	 *	    be part of a shared ba chain, and we can't rely on
-	 *	    ba->refs for the same reason.  The combination of it
-	 *	    being the ba embedded in the entry (aka first_ba) AND
-	 *	    ref_count == 1 would work, but OBJ_ONEMAPPING is better
-	 *	    because it will remain flagged even when ref_count > 1
-	 *	    for situations where entries are clipped.
 	 */
 	obj = fs->first_ba->object;
 	if (obj->flags & OBJ_ONEMAPPING)
@@ -2265,26 +2264,15 @@ next:
 				/*
 				 * Oh, well, lets copy it.
 				 *
-				 * Why are we unmapping the original page
-				 * here?  Well, in short, not all accessors
-				 * of user memory go through the pmap.  The
-				 * procfs code doesn't have access user memory
-				 * via a local pmap, so vm_fault_page*()
-				 * can't call pmap_enter().  And the umtx*()
-				 * code may modify the COW'd page via a DMAP
-				 * or kernel mapping and not via the pmap,
-				 * leaving the original page still mapped
-				 * read-only into the pmap.
+				 * We used to unmap the original page here
+				 * because vm_fault_page() didn't and this
+				 * would cause havoc for the umtx*() code
+				 * and the procfs code.
 				 *
-				 * So we have to remove the page from at
-				 * least the current pmap if it is in it.
-				 *
-				 * We used to just remove it from all pmaps
-				 * but that creates inefficiencies on SMP,
-				 * particularly for COW program & library
-				 * mappings that are concurrently exec'd.
-				 * Only remove the page from the current
-				 * pmap.
+				 * This is no longer necessary.  The
+				 * vm_fault_page() routine will now unmap the
+				 * page after a COW, and the umtx code will
+				 * recover on its own.
 				 */
 				/*
 				 * NOTE: Since fs->m is a backing page, it
@@ -2293,10 +2281,9 @@ next:
 				 */
 				KKASSERT(fs->first_shared == 0);
 				vm_page_copy(fs->m, fs->first_m);
-				/*vm_page_protect(fs->m, VM_PROT_NONE);*/
-				pmap_remove_specific(
+				/* pmap_remove_specific(
 				    &curthread->td_lwp->lwp_vmspace->vm_pmap,
-				    fs->m);
+				    fs->m); */
 			}
 
 			/*

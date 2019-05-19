@@ -106,6 +106,9 @@ struct vm_page_hash_elm {
 	int		unused01;
 };
 
+#define VM_PAGE_HASH_SET	4		/* power of 2, set-assoc */
+#define VM_PAGE_HASH_MAX	(1024 * 1024)	/* power of 2, max size */
+
 /*
  * SET - Minimum required set associative size, must be a power of 2.  We
  *	 want this to match or exceed the set-associativeness of the cpu,
@@ -130,8 +133,9 @@ static struct alist vm_contig_alist;
 static struct almeta vm_contig_ameta[ALIST_RECORDS_65536];
 static struct spinlock vm_contig_spin = SPINLOCK_INITIALIZER(&vm_contig_spin, "vm_contig_spin");
 
-static struct vm_page_hash_elm *vm_page_hash;
+__read_mostly static int vm_page_hash_vnode_only;
 __read_mostly static int vm_page_hash_size;
+__read_mostly static struct vm_page_hash_elm *vm_page_hash;
 
 static u_long vm_dma_reserved = 0;
 TUNABLE_ULONG("vm.dma_reserved", &vm_dma_reserved);
@@ -139,6 +143,14 @@ SYSCTL_ULONG(_vm, OID_AUTO, dma_reserved, CTLFLAG_RD, &vm_dma_reserved, 0,
 	    "Memory reserved for DMA");
 SYSCTL_UINT(_vm, OID_AUTO, dma_free_pages, CTLFLAG_RD,
 	    &vm_contig_alist.bl_free, 0, "Memory reserved for DMA");
+
+SYSCTL_INT(_vm, OID_AUTO, page_hash_vnode_only, CTLFLAG_RW,
+	    &vm_page_hash_vnode_only, 0, "Only hash vnode pages");
+#if 0
+static int vm_page_hash_debug;
+SYSCTL_INT(_vm, OID_AUTO, page_hash_debug, CTLFLAG_RW,
+	    &vm_page_hash_debug, 0, "Only hash vnode pages");
+#endif
 
 static int vm_contig_verbose = 0;
 TUNABLE_INT("vm.contig_verbose", &vm_contig_verbose);
@@ -706,15 +718,18 @@ vm_page_startup_finish(void *dummy __unused)
 	 * Set the set_assoc_mask based on the fitted number of CPUs.
 	 * This is a mask, so we subject 1.
 	 *
-	 * w/PQ_L2_SIZE = 1024:
+	 * w/PQ_L2_SIZE = 1024, Don't let the associativity drop below 8.
+	 * So if we have 256 CPUs, two hyper-threads will wind up sharing.
 	 *
-	 *	Don't let the associativity drop below 8.  So if we have
-	 *	256 CPUs, two hyper-threads will wind up sharing.  The
-	 *	maximum is PQ_L2_SIZE.
+	 * The maximum is PQ_L2_SIZE.  However, we limit the starting
+	 * maximum to 16 (mask = 15) in order to improve the cache locality
+	 * of related kernel data structures.
 	 */
 	mask = PQ_L2_SIZE / ncpus_fit - 1;
 	if (mask < 7)		/* minimum is 8-way w/256 CPU threads */
 		mask = 7;
+	if (mask < 15)
+		mask = 15;
 	cpu_ccfence();
 	set_assoc_mask = mask;
 
@@ -795,8 +810,8 @@ vm_page_startup_finish(void *dummy __unused)
 	vm_page_hash_size = 4096;
 	while (vm_page_hash_size < (vm_page_array_size / 16))
 		vm_page_hash_size <<= 1;
-	if (vm_page_hash_size > 1024*1024)
-		vm_page_hash_size = 1024*1024;
+	if (vm_page_hash_size > VM_PAGE_HASH_MAX)
+		vm_page_hash_size = VM_PAGE_HASH_MAX;
 
 	/*
 	 * hash table for vm_page_lookup_quick()
@@ -1500,9 +1515,12 @@ vm_page_hash_hash(vm_object_t object, vm_pindex_t pindex)
 {
 	size_t hi;
 
-	hi = ((object->pg_color << 8) ^ (uintptr_t)object) + (pindex << 2);
-	hi &= vm_page_hash_size - 1;
-	hi &= ~3;
+	/* mix it up */
+	hi = (intptr_t)object ^ object->pg_color ^ pindex;
+	hi += object->pg_color * pindex;
+	hi = hi ^ (hi >> 20);
+	hi &= vm_page_hash_size - 1;		/* bounds */
+	hi &= ~(VM_PAGE_HASH_SET - 1);		/* set-assoc */
 	return (&vm_page_hash[hi]);
 }
 
@@ -1522,7 +1540,7 @@ vm_page_hash_get(vm_object_t object, vm_pindex_t pindex)
 	if (vm_page_hash == NULL)
 		return NULL;
 	mp = vm_page_hash_hash(object, pindex);
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < VM_PAGE_HASH_SET; ++i) {
 		m = mp[i].m;
 		cpu_ccfence();
 		if (m == NULL)
@@ -1552,28 +1570,49 @@ vm_page_hash_enter(vm_page_t m)
 	struct vm_page_hash_elm *best;
 	int i;
 
-	if (vm_page_hash &&
-	    m > &vm_page_array[0] &&
-	    m < &vm_page_array[vm_page_array_size]) {
-		mp = vm_page_hash_hash(m->object, m->pindex);
-		best = mp;
-		for (i = 0; i < 4; ++i) {
-			if (mp[i].m == m) {
-				mp[i].ticks = ticks;
-				return;
-			}
+	/*
+	 * Only enter type-stable vm_pages with well-shared objects.
+	 */
+	if (vm_page_hash == NULL ||
+	    m < &vm_page_array[0] ||
+	    m >= &vm_page_array[vm_page_array_size])
+		return;
+	if (m->object == NULL)
+		return;
+#if 0
+	/*
+	 * Disabled at the moment, there are some degenerate conditions
+	 * with often-exec'd programs that get ignored.  In particular,
+	 * the kernel's elf loader does a vn_rdwr() on the first page of
+	 * a binary.
+	 */
+	if (m->object->ref_count <= 2 || (m->object->flags & OBJ_ONEMAPPING))
+		return;
+#endif
+	if (vm_page_hash_vnode_only && m->object->type != OBJT_VNODE)
+		return;
 
-			/*
-			 * The best choice is the oldest entry
-			 */
-			if ((ticks - best->ticks) < (ticks - mp[i].ticks) ||
-			    (int)(ticks - mp[i].ticks) < 0) {
-				best = &mp[i];
-			}
+	/*
+	 *
+	 */
+	mp = vm_page_hash_hash(m->object, m->pindex);
+	best = mp;
+	for (i = 0; i < VM_PAGE_HASH_SET; ++i) {
+		if (mp[i].m == m) {
+			mp[i].ticks = ticks;
+			return;
 		}
-		best->m = m;
-		best->ticks = ticks;
+
+		/*
+		 * The best choice is the oldest entry
+		 */
+		if ((ticks - best->ticks) < (ticks - mp[i].ticks) ||
+		    (int)(ticks - mp[i].ticks) < 0) {
+			best = &mp[i];
+		}
 	}
+	best->m = m;
+	best->ticks = ticks;
 }
 
 /*
@@ -1902,12 +1941,17 @@ _vm_page_list_find2(int basequeue, int index, int *lastp)
 	struct vpgqueues *pq;
 	vm_page_t m = NULL;
 	int pqmask = set_assoc_mask >> 1;
-	int pqstart = 0;
 	int pqi;
-	int i;
+	int range;
+	int skip_start;
+	int skip_next;
+	int count;
 
 	index &= PQ_L2_MASK;
 	pq = &vm_page_queues[basequeue];
+	count = 0;
+	skip_start = -1;
+	skip_next = -1;
 
 	/*
 	 * Run local sets of 16, 32, 64, 128, up to the entire queue if all
@@ -1922,9 +1966,16 @@ _vm_page_list_find2(int basequeue, int index, int *lastp)
 	 */
 	do {
 		pqmask = (pqmask << 1) | 1;
-		for (i = pqstart; i <= pqmask; ++i) {
-			pqi = (index & ~pqmask) | ((index + i) & pqmask);
-			if (TAILQ_FIRST(&pq[pqi].pl)) {
+
+		pqi = index;
+		range = pqmask + 1;
+
+		while (range > 0) {
+			if (pqi >= skip_start && pqi < skip_next) {
+				range -= skip_next - pqi;
+				pqi = (pqi & ~pqmask) | (skip_next & pqmask);
+			}
+			if (range > 0 && TAILQ_FIRST(&pq[pqi].pl)) {
 				spin_lock(&pq[pqi].spin);
 				TAILQ_FOREACH(m, &pq[pqi].pl, pageq) {
 					if (spin_trylock(&m->spin) == 0)
@@ -1936,14 +1987,18 @@ _vm_page_list_find2(int basequeue, int index, int *lastp)
 					 * If we had to wander too far, set
 					 * *lastp to skip past empty queues.
 					 */
-					if (i >= 8)
+					if (count >= 8)
 						*lastp = pqi & PQ_L2_MASK;
 					return(m);
 				}
 				spin_unlock(&pq[pqi].spin);
 			}
+			--range;
+			++count;
+			pqi = (pqi & ~pqmask) | ((pqi + 1) & pqmask);
 		}
-		pqstart = i;
+		skip_start = pqi & ~pqmask;
+		skip_next = (pqi | pqmask) + 1;
 	} while (pqmask != PQ_L2_MASK);
 
 	return(m);

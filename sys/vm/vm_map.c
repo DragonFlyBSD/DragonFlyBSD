@@ -740,28 +740,29 @@ vm_map_entry_shadow(vm_map_entry_t entry)
 		length = 0x7FFFFFFF;
 	else
 		length = atop(entry->ba.end - entry->ba.start);
-	ba = kmalloc(sizeof(*ba), M_MAP_BACKING, M_INTWAIT); /* copied later */
 
 	/*
 	 * Don't create the new object if the old object isn't shared.
+	 * This case occurs quite often when programs fork/exec/wait.
 	 *
 	 * Caller ensures source exists (all backing_ba's must have objects),
 	 * typically indirectly by virtue of the NEEDS_COPY flag being set.
+	 * We have a ref on source by virtue of the entry and do not need
+	 * to lock it to do this test.
 	 */
 	source = entry->ba.object;
 	KKASSERT(source);
-	vm_object_hold_shared(source);
 
 	if (source->type != OBJT_VNODE) {
 		if (source->ref_count == 1 &&
 		    source->handle == NULL &&
 		    (source->type == OBJT_DEFAULT ||
 		     source->type == OBJT_SWAP)) {
-			vm_object_drop(source);
-			kfree(ba, M_MAP_BACKING);
 			goto done;
 		}
 	}
+	ba = kmalloc(sizeof(*ba), M_MAP_BACKING, M_INTWAIT); /* copied later */
+	vm_object_hold_shared(source);
 
 	/*
 	 * Once it becomes part of a backing_ba chain it can wind up anywhere,
