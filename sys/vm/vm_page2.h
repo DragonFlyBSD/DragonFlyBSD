@@ -334,11 +334,13 @@ vm_page_protect(vm_page_t m, int prot)
 {
 	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if (prot == VM_PROT_NONE) {
-		if (m->flags & (PG_WRITEABLE|PG_MAPPED)) {
+		if (pmap_mapped_sync(m)) {
 			pmap_page_protect(m, VM_PROT_NONE);
 			/* PG_WRITEABLE & PG_MAPPED cleared by call */
 		}
-	} else if ((prot == VM_PROT_READ) && (m->flags & PG_WRITEABLE)) {
+	} else if ((prot == VM_PROT_READ) &&
+		   (m->flags & PG_WRITEABLE) &&
+		   (pmap_mapped_sync(m) & PG_WRITEABLE)) {
 		pmap_page_protect(m, VM_PROT_READ);
 		/* PG_WRITEABLE cleared by call */
 	}

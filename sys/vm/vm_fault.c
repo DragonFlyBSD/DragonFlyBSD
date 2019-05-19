@@ -952,8 +952,11 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	 * Even though we are only soft-busied we can still move pages
 	 * around in the normal queue(s).  The soft-busy prevents the
 	 * page from being removed from the object, etc (normal operation).
+	 *
+	 * However, in this fast path it is excessively important to avoid
+	 * any hard locks, so we use a special passive version of activate.
 	 */
-	vm_page_activate(m);
+	vm_page_soft_activate(m);
 	fs->m = m;
 	fs->msoftonly = 1;
 #ifdef VM_FAULT_QUICK_DEBUG

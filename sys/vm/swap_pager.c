@@ -1869,10 +1869,12 @@ swp_pager_async_iodone(struct bio *bio)
 				iscsi_crc32(bp->b_data, bp->b_bcount));
 			for (i = 0; i < bp->b_xio.xio_npages; ++i) {
 				vm_page_t m = bp->b_xio.xio_pages[i];
-				if (m->flags & PG_WRITEABLE)
+				if ((m->flags & PG_WRITEABLE) &&
+				    (pmap_mapped_sync(m) & PG_WRITEABLE)) {
 					kprintf("SWAPOUT: "
 						"%d/%d %p writable\n",
 						i, bp->b_xio.xio_npages, m);
+				}
 			}
 		}
 	}

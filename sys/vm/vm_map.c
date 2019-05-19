@@ -747,20 +747,10 @@ vm_map_entry_shadow(vm_map_entry_t entry)
 	 *
 	 * Caller ensures source exists (all backing_ba's must have objects),
 	 * typically indirectly by virtue of the NEEDS_COPY flag being set.
-	 *
-	 * WARNING! Checking ref_count == 1 only works because we are testing
-	 *	    the object embedded in the entry (entry->ba.object).
-	 *	    This test DOES NOT WORK if checking an object hanging off
-	 *	    the backing chain (entry->ba.backing_ba list) because the
-	 *	    vm_map_backing might be shared, or part of a chain that
-	 *	    is shared.  Checking ba->refs is worthless.
-	 *
-	 *	    XXX since we now replicate vm_map_backing's, ref_count==1
-	 *	    actually works generally for non-vnodes.
 	 */
 	source = entry->ba.object;
 	KKASSERT(source);
-	vm_object_hold(source);
+	vm_object_hold_shared(source);
 
 	if (source->type != OBJT_VNODE) {
 		if (source->ref_count == 1 &&
@@ -810,12 +800,10 @@ vm_map_entry_shadow(vm_map_entry_t entry)
 	 */
 	vm_map_backing_detach(&entry->ba);
 	*ba = entry->ba;		/* previous ba */
-	ba->refs = 1;			/* initialize ref count */
 	entry->ba.object = result;	/* new ba (at head of entry) */
 	entry->ba.backing_ba = ba;
 	entry->ba.backing_count = ba->backing_count + 1;
 	entry->ba.offset = 0;
-	entry->ba.refs = 0;
 
 	/* cpu localization twist */
 	result->pg_color = vm_quickcolor();
@@ -1088,13 +1076,8 @@ static void
 vm_map_entry_dispose_ba(vm_map_backing_t ba)
 {
 	vm_map_backing_t next;
-	long refs;
 
 	while (ba) {
-		refs = atomic_fetchadd_long(&ba->refs, -1);
-		if (refs > 1)
-			break;
-		KKASSERT(refs == 1);	/* transitioned 1->0 */
 		if (ba->object) {
 			vm_map_backing_detach(ba);
 			vm_object_deallocate(ba->object);
@@ -1377,7 +1360,6 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	new_entry->ba.backing_ba = NULL;
 	new_entry->ba.backing_count = 0;
 	new_entry->ba.offset = offset;
-	new_entry->ba.refs = 0;
 	new_entry->ba.flags = 0;
 	new_entry->ba.pmap = map->pmap;
 
@@ -3429,7 +3411,6 @@ vm_map_backing_replicated(vm_map_t map, vm_map_entry_t entry, int flags)
 	for (;;) {
 		object = ba->object;
 		ba->pmap = map->pmap;
-		ba->refs = 1;
 		if (object &&
 		    (entry->maptype == VM_MAPTYPE_VPAGETABLE ||
 		     entry->maptype == VM_MAPTYPE_NORMAL)) {
@@ -3454,7 +3435,6 @@ vm_map_backing_replicated(vm_map_t map, vm_map_entry_t entry, int flags)
 		ba = nba;
 		/* pmap is replaced at the top of the loop */
 	}
-	entry->ba.refs = 0;	/* base entry refs is 0 */
 }
 
 static

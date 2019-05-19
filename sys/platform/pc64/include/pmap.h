@@ -227,6 +227,7 @@ struct vmspace;
  */
 struct md_page {
 	long pmap_count;
+	long writeable_count;
 };
 
 /*
@@ -325,6 +326,7 @@ struct pmap {
 #define PMAP_EMULATE_AD_BITS	0x00000002
 #define PMAP_HVM		0x00000004
 #define PMAP_SEGSHARED		0x00000008	/* segment shared opt */
+#define PMAP_MULTI		0x00000010	/* multi-threaded use */
 
 #define pmap_resident_count(pmap) ((pmap)->pm_stats.resident_count)
 #define pmap_resident_tlnw_count(pmap) ((pmap)->pm_stats.resident_count - \

@@ -3459,3 +3459,22 @@ pmap_pgscan(struct pmap_pgscan_info *pginfo)
 	}
 	vm_object_drop(pmap->pm_pteobj);
 }
+
+void
+pmap_maybethreaded(pmap_t pmap)
+{
+	/* nop */
+}
+
+/*
+ * Called while page is hard-busied to clear the PG_MAPPED and PG_WRITEABLE
+ * flags if able.
+ *
+ * vkernel code is using the old pmap style so the flags should already
+ * be properly set.
+ */
+int
+pmap_mapped_sync(vm_page_t m)
+{
+	return (m->flags);
+}

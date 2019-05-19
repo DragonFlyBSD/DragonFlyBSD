@@ -275,7 +275,6 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 	 */
 	if (pmap == NULL)
 		pmap = &kernel_pmap;
-	pmap_inval_init(pmap);
 
 	/*
 	 * Shortcut single-cpu case if possible.
@@ -286,6 +285,8 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 		 * Convert to invltlb if there are too many pages to
 		 * invlpg on.
 		 */
+		if (pmap->pm_flags & PMAP_MULTI)
+			pmap_inval_init(pmap);
 		if (npgs == 1) {
 			if (ptep)
 				opte = atomic_swap_long(ptep, npte);
@@ -313,7 +314,8 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 				--npgs;
 			}
 		}
-		pmap_inval_done(pmap);
+		if (pmap->pm_flags & PMAP_MULTI)
+			pmap_inval_done(pmap);
 
 		return opte;
 	}
@@ -326,6 +328,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 	 * tsc_target is our watchdog timeout that will attempt to recover
 	 * from a lost IPI.  Set to 1/16 second for now.
 	 */
+	pmap_inval_init(pmap);
 	info = &invinfo[cpu];
 
 	/*
@@ -446,22 +449,25 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 */
 	if (pmap == NULL)
 		pmap = &kernel_pmap;
-	pmap_inval_init(pmap);
 
 	/*
 	 * Shortcut single-cpu case if possible.
 	 */
 	if (CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask) &&
 	    pmap_inval_force_nonopt == 0) {
+		if (pmap->pm_flags & PMAP_MULTI)
+			pmap_inval_init(pmap);
 		if (atomic_cmpset_long(ptep, opte, npte)) {
 			if (va == (vm_offset_t)-1)
 				cpu_invltlb();
 			else
 				cpu_invlpg((void *)va);
-			pmap_inval_done(pmap);
+			if (pmap->pm_flags & PMAP_MULTI)
+				pmap_inval_done(pmap);
 			return 1;
 		} else {
-			pmap_inval_done(pmap);
+			if (pmap->pm_flags & PMAP_MULTI)
+				pmap_inval_done(pmap);
 			return 0;
 		}
 	}
@@ -471,6 +477,7 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 * we setup our command.  A preemption might execute its own
 	 * pmap_inval*() command and create confusion below.
 	 */
+	pmap_inval_init(pmap);
 	info = &invinfo[cpu];
 
 	/*

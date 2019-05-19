@@ -4280,6 +4280,11 @@ bio_page_alloc(struct buf *bp, vm_object_t obj, vm_pindex_t pg, int deficit)
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(obj));
 
 	/*
+	 * Randomize
+	 */
+	vmflags |= VM_ALLOC_CPU(obj->pg_color % ncpus);
+
+	/*
 	 * Try a normal allocation first.
 	 */
 	p = vm_page_alloc(obj, pg, vmflags);

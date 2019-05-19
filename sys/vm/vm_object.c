@@ -1472,9 +1472,17 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 	}
 
 	/*
-	 * Destroy the page
+	 * Destroy the page.  But we have to re-test whether its dirty after
+	 * removing it from its pmaps.
 	 */
 	vm_page_protect(p, VM_PROT_NONE);
+	if (info->limit && p->valid) {
+		vm_page_test_dirty(p);
+		if ((p->valid & p->dirty) || (p->flags & PG_NEED_COMMIT)) {
+			vm_page_wakeup(p);
+			goto done;
+		}
+	}
 	vm_page_free(p);
 
 	/*

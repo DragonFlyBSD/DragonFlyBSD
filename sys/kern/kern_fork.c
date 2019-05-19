@@ -729,7 +729,7 @@ done:
 
 static struct lwp *
 lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
-    const cpumask_t *mask)
+	 const cpumask_t *mask)
 {
 	globaldata_t gd = mycpu;
 	struct lwp *lp;
@@ -827,6 +827,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
 	 * This flag is set and never cleared.  It means that the process
 	 * was threaded at some point.  Used to improve exit performance.
 	 */
+	pmap_maybethreaded(&destproc->p_vmspace->vm_pmap);
 	destproc->p_flags |= P_MAYBETHREADED;
 
 	return (lp);

@@ -80,11 +80,11 @@ SYSINIT(sched_dyninit, SI_BOOT1_DYNALLOC, SI_ORDER_FIRST, sched_dyninit, NULL);
 
 int	lbolt;
 void	*lbolt_syncer;
-int	ncpus;
-int	ncpus_fit, ncpus_fit_mask;		/* note: mask not cpumask_t */
-int	safepri;
-int	tsleep_now_works;
 int	tsleep_crypto_dump = 0;
+__read_mostly int ncpus;
+__read_mostly int ncpus_fit, ncpus_fit_mask;	/* note: mask not cpumask_t */
+__read_mostly int safepri;
+__read_mostly int tsleep_now_works;
 
 MALLOC_DEFINE(M_TSLEEP, "tslpque", "tsleep queues");
 

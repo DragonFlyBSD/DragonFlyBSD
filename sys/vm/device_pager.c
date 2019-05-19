@@ -280,7 +280,7 @@ dev_pager_getfake(vm_paddr_t paddr, int pat_mode)
 
 	pmap_page_init(m);
 
-	m->flags = PG_FICTITIOUS;
+	m->flags = PG_FICTITIOUS | PG_UNMANAGED;
 	m->valid = VM_PAGE_BITS_ALL;
 	m->dirty = 0;
 	m->queue = PQ_NONE;

@@ -597,7 +597,8 @@ vm_pageout_mdp_callback(struct pmap_pgscan_info *info, vm_offset_t va,
 	 * longer tracks it so we have to make sure that it is staged for
 	 * potential flush action.
 	 */
-	if ((p->flags & PG_MAPPED) == 0) {
+	if ((p->flags & PG_MAPPED) == 0 ||
+	    (pmap_mapped_sync(p) & PG_MAPPED) == 0) {
 		if (p->queue - p->pc == PQ_ACTIVE) {
 			vm_page_deactivate(p);
 		}
@@ -1593,6 +1594,7 @@ vm_pageout_scan_cache(long avail_shortage, int pass,
 			vm_page_wakeup(m);
 			continue;
 		}
+		pmap_mapped_sync(m);
 		KKASSERT((m->flags & PG_MAPPED) == 0);
 		KKASSERT(m->dirty == 0);
 		vm_pageout_page_free(m);

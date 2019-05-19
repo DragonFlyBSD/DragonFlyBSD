@@ -182,7 +182,6 @@ struct vm_map_backing {
 	};
 
 	vm_ooffset_t		offset;		/* absolute offset in obj */
-	long			refs;		/* shared refs */
 	uint32_t		flags;
 	uint32_t		backing_count;	/* #entries backing us */
 };

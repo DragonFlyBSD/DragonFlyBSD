@@ -186,11 +186,16 @@ typedef struct vm_page *vm_page_t;
  * In today's world of many-core systems, we must be able to provide enough VM
  * page queues for each logical cpu thread to cover the L1/L2/L3 cache set
  * associativity.  If we don't, the cpu caches will not be properly utilized.
- * Using 2048 allows 8-way set-assoc with 256 logical cpus.
+ *
+ * Using 2048 allows 8-way set-assoc with 256 logical cpus, but seems to
+ * have a number of downsides when queues are assymetrically starved.
+ *
+ * Using 1024 allows 4-way set-assoc with 256 logical cpus, and more with
+ * fewer cpus.
  */
 #define PQ_PRIME1 31	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 23	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_L2_SIZE 2048	/* Must be enough for maximal ncpus x hw set-assoc */
+#define PQ_L2_SIZE 1024	/* Must be enough for maximal ncpus x hw set-assoc */
 #define PQ_L2_MASK	(PQ_L2_SIZE - 1)
 
 #define PQ_NONE		0
@@ -232,6 +237,7 @@ struct vpgqueues {
 	long	lcnt;
 	long	adds;		/* heuristic, add operations */
 	int	cnt_offset;	/* offset into vmstats structure (int) */
+	int	lastq;		/* heuristic, skip empty queues */
 } __aligned(64);
 
 extern struct vpgqueues vm_page_queues[PQ_COUNT];
@@ -248,14 +254,20 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  *  PG_MAPPED and PG_WRITEABLE flags are not applicable.
  *
  *  PG_MAPPED only applies to managed pages, indicating whether the page
- *  is mapped onto one or more pmaps.  A page might still be mapped to
+ *  MIGHT be mapped onto one or more pmaps.  A page might still be mapped to
  *  special pmaps in an unmanaged fashion, for example when mapped into a
  *  buffer cache buffer, without setting PG_MAPPED.
+ *
+ *  PG_MAPPED can only be tested for NOT being set after a pmap_mapped_sync()
+ *  called made while the page is hard-busied
  *
  *  PG_WRITEABLE indicates that there may be a writeable managed pmap entry
  *  somewhere, and that the page can be dirtied by hardware at any time
  *  and may have to be tested for that.  The modified bit in unmanaged
  *  mappings or in the special clean map is not tested.
+ *
+ *  PG_WRITEABLE can only be tested for NOT being set after a
+ *  pmap_mapped_sync() called made while the page is hard-busied.
  *
  *  PG_SWAPPED indicates that the page is backed by a swap block.  Any
  *  VM object type other than OBJT_DEFAULT can have swap-backed pages now.
@@ -264,8 +276,8 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define	PG_UNUSED0002	0x00000002
 #define PG_WINATCFLS	0x00000004	/* flush dirty page on inactive q */
 #define	PG_FICTITIOUS	0x00000008	/* physical page doesn't exist (O) */
-#define	PG_WRITEABLE	0x00000010	/* page is writeable */
-#define PG_MAPPED	0x00000020	/* page is mapped (managed) */
+#define	PG_WRITEABLE	0x00000010	/* page may be writeable */
+#define PG_MAPPED	0x00000020	/* page may be mapped (managed) */
 #define	PG_UNUSED0040	0x00000040
 #define PG_REFERENCED	0x00000080	/* page has been referenced */
 #define PG_CLEANCHK	0x00000100	/* page will be checked for cleaning */
@@ -383,6 +395,7 @@ void vm_page_wakeup(vm_page_t m);
 void vm_page_hold(vm_page_t);
 void vm_page_unhold(vm_page_t);
 void vm_page_activate (vm_page_t);
+void vm_page_soft_activate (vm_page_t);
 
 vm_size_t vm_contig_avail_pages(void);
 vm_page_t vm_page_alloc (struct vm_object *, vm_pindex_t, int);
