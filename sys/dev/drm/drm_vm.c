@@ -178,7 +178,6 @@ vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end,
 
         for (i = 0; i < page_count; i++) {
 		vm_page_initfake(&fp[i], start + PAGE_SIZE * i, memattr);
-		fp[i].flags &= ~PG_UNMANAGED;
 		atomic_clear_int(&fp[i].busy_count, PBUSY_LOCKED);
         }
         mtx_lock(&vm_phys_fictitious_reg_mtx);

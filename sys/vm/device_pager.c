@@ -174,7 +174,7 @@ vm_object_t
 dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 {
 	return (cdev_pager_allocate(handle, OBJT_DEVICE, &old_dev_pager_ops,
-	    size, prot, foff, NULL));
+				    size, prot, foff, NULL));
 }
 
 /*

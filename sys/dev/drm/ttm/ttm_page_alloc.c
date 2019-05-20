@@ -55,6 +55,7 @@
 #include <drm/ttm/ttm_page_alloc.h>
 
 #include <sys/eventhandler.h>
+#include <vm/vm_page2.h>
 
 #ifdef TTM_HAS_AGP
 #include <asm/agp.h>
@@ -287,8 +288,9 @@ static void ttm_pages_put(struct page *pages[], unsigned npages)
 	unsigned i;
 	if (set_pages_array_wb(pages, npages))
 		pr_err("Failed to set %d pages to wb!\n", npages);
-	for (i = 0; i < npages; ++i)
+	for (i = 0; i < npages; ++i) {
 		__free_page(pages[i]);
+	}
 }
 
 static void ttm_pool_update_free_locked(struct ttm_page_pool *pool,
@@ -542,7 +544,6 @@ static int ttm_alloc_new_pages(struct pglist *pages, gfp_t gfp_flags,
 			r = -ENOMEM;
 			goto out;
 		}
-		((struct vm_page *)p)->flags |= PG_FICTITIOUS;
 
 #ifdef CONFIG_HIGHMEM
 		/* gfp flags of highmem page should never be dma32 so we
@@ -755,8 +756,6 @@ static int ttm_get_pages(struct page **pages, unsigned npages, int flags,
 				pr_err("Unable to allocate page\n");
 				return -ENOMEM;
 			}
-			p->flags |= PG_FICTITIOUS;
-
 			pages[r] = (struct page *)p;
 		}
 		return 0;

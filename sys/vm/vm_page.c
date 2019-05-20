@@ -2486,6 +2486,7 @@ vm_page_free_contig(vm_page_t m, unsigned long size)
 			(intmax_t)pa, size / 1024);
 	}
 	if (pa < vm_low_phys_reserved) {
+		KKASSERT(m->wire_count == 1);
 		KKASSERT(pa + size <= vm_low_phys_reserved);
 		spin_lock(&vm_contig_spin);
 		alist_free(&vm_contig_alist, start, pages);
@@ -2626,14 +2627,27 @@ vm_wait_pfault(void)
  *
  * The caller should be holding the page busied ? XXX
  * This routine may not block.
+ *
+ * It is ok if the page is wired (so buffer cache operations don't have
+ * to mess with the page queues).
  */
 void
 vm_page_activate(vm_page_t m)
 {
 	u_short oqueue;
 
+	/*
+	 * If already active or inappropriate, just set act_count and
+	 * return.  We don't have to spin-lock the page.
+	 */
+	if (m->queue - m->pc == PQ_ACTIVE || (m->flags & PG_FICTITIOUS)) {
+		if (m->act_count < ACT_INIT)
+			m->act_count = ACT_INIT;
+		return;
+	}
+
 	vm_page_spin_lock(m);
-	if (m->queue - m->pc != PQ_ACTIVE && !(m->flags & PG_FICTITIOUS)) {
+	if (m->queue - m->pc != PQ_ACTIVE && (m->flags & PG_FICTITIOUS) == 0) {
 		_vm_page_queue_spin_lock(m);
 		oqueue = _vm_page_rem_queue_spinlocked(m);
 		/* page is left spinlocked, queue is unlocked */
@@ -2937,6 +2951,9 @@ vm_page_unwire(vm_page_t m, int activate)
  * vm_page's spinlock must be held on entry and will remain held on return.
  * This routine may not block.  The caller does not have to hold the page
  * busied but should have some sort of interlock on its validity.
+ *
+ * It is ok if the page is wired (so buffer cache operations don't have
+ * to mess with the page queues).
  */
 static void
 _vm_page_deactivate_locked(vm_page_t m, int athead)
@@ -2948,6 +2965,7 @@ _vm_page_deactivate_locked(vm_page_t m, int athead)
 	 */
 	if (m->queue - m->pc == PQ_INACTIVE || (m->flags & PG_FICTITIOUS))
 		return;
+
 	_vm_page_queue_spin_lock(m);
 	oqueue = _vm_page_rem_queue_spinlocked(m);
 
@@ -2969,14 +2987,20 @@ _vm_page_deactivate_locked(vm_page_t m, int athead)
 /*
  * Attempt to deactivate a page.
  *
- * No requirements.
+ * No requirements.  We can pre-filter before getting the spinlock.
+ *
+ * It is ok if the page is wired (so buffer cache operations don't have
+ * to mess with the page queues).
  */
 void
 vm_page_deactivate(vm_page_t m)
 {
-	vm_page_spin_lock(m);
-	_vm_page_deactivate_locked(m, 0);
-	vm_page_spin_unlock(m);
+	if (m->queue - m->pc != PQ_INACTIVE &&
+	    (m->flags & PG_FICTITIOUS) == 0) {
+		vm_page_spin_lock(m);
+		_vm_page_deactivate_locked(m, 0);
+		vm_page_spin_unlock(m);
+	}
 }
 
 void
@@ -2999,6 +3023,8 @@ vm_page_try_to_cache(vm_page_t m)
 	/*
 	 * Shortcut if we obviously cannot move the page, or if the
 	 * page is already on the cache queue, or it is ficitious.
+	 *
+	 * Never allow a wired page into the cache.
 	 */
 	if (m->dirty || m->hold_count || m->wire_count ||
 	    m->queue - m->pc == PQ_CACHE ||
