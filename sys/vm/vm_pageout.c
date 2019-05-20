@@ -104,7 +104,7 @@ static int vm_pageout_page(vm_page_t m, long *max_launderp,
 			   long *vnodes_skippedp, struct vnode **vpfailedp,
 			   int pass, int vmflush_flags);
 static int vm_pageout_clean_helper (vm_page_t, int);
-static int vm_pageout_free_page_calc (vm_size_t count);
+static void vm_pageout_free_page_calc (vm_size_t count);
 static void vm_pageout_page_free(vm_page_t m) ;
 struct thread *emergpager;
 struct thread *pagethread;
@@ -1956,11 +1956,9 @@ next:
 	vm_page_queues_spin_unlock(PQ_ACTIVE + q);
 }
 
-static int
+static void
 vm_pageout_free_page_calc(vm_size_t count)
 {
-	if (count < vmstats.v_page_count)
-		 return 0;
 	/*
 	 * v_free_min		normal allocations
 	 * v_free_reserved	system allocations
@@ -1973,15 +1971,24 @@ vm_pageout_free_page_calc(vm_size_t count)
 		vmstats.v_free_min = 64;
 
 	/*
+	 * vmmeter_neg_slop_cnt controls when the per-cpu page stats are
+	 * synchronized with the global stats (incuring serious cache
+	 * contention).
+	 */
+	vmmeter_neg_slop_cnt = -vmstats.v_page_count / ncpus / 128;
+	if (vmmeter_neg_slop_cnt > -VMMETER_SLOP_COUNT)
+		vmmeter_neg_slop_cnt = -VMMETER_SLOP_COUNT;
+
+	/*
 	 * Make sure the vmmeter slop can't blow out our global minimums.
 	 *
 	 * However, to accomodate weird configurations (vkernels with many
 	 * cpus and little memory, or artifically reduced hw.physmem), do
 	 * not allow v_free_min to exceed 1/20 of ram or the pageout demon
-	 * will go out of control.
+	 * might go out of control.
 	 */
-	if (vmstats.v_free_min < VMMETER_SLOP_COUNT * ncpus * 10)
-		vmstats.v_free_min = VMMETER_SLOP_COUNT * ncpus * 10;
+	if (vmstats.v_free_min < -vmmeter_neg_slop_cnt * ncpus * 10)
+		vmstats.v_free_min = -vmmeter_neg_slop_cnt * ncpus * 10;
 	if (vmstats.v_free_min > vmstats.v_page_count / 20)
 		vmstats.v_free_min = vmstats.v_page_count / 20;
 
@@ -1989,8 +1996,6 @@ vm_pageout_free_page_calc(vm_size_t count)
 	vmstats.v_free_severe = vmstats.v_free_min * 4 / 8 + 0;
 	vmstats.v_pageout_free_min = vmstats.v_free_min * 2 / 8 + 7;
 	vmstats.v_interrupt_free_min = vmstats.v_free_min * 1 / 8 + 7;
-
-	return 1;
 }
 
 

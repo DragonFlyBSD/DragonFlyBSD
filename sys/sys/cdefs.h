@@ -193,7 +193,7 @@
 #define	__section(x)	__attribute__((__section__(x)))
 #define __read_mostly		__section(".data.read_mostly")
 #define __read_frequently	__section(".data.read_frequently")
-#define __exclusive_cache_line	__aligned(__VM_CACHELINE_SIZE)		\
+#define __exclusive_cache_line	__aligned(__VM_CACHELINE_SIZE*2)	\
 				__section(".data.exclusive_cache_line")
 
 #else

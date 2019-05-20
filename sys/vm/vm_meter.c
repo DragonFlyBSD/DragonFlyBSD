@@ -63,7 +63,7 @@
  *
  *	    Other consumers should not expect perfect values.
  */
-__cachealign struct vmstats vmstats;
+__exclusive_cache_line struct vmstats vmstats;
 
 static int maxslp = MAXSLP;
 

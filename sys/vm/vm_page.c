@@ -127,6 +127,7 @@ static void vm_numa_add_topology_mem(cpu_node_t *cpup, int physid, long bytes);
  * Array of tailq lists
  */
 struct vpgqueues vm_page_queues[PQ_COUNT];
+__read_mostly long vmmeter_neg_slop_cnt = -VMMETER_SLOP_COUNT;
 
 static volatile int vm_pages_waiting;
 static struct alist vm_contig_alist;
@@ -1007,10 +1008,16 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		 * The idea here is to reduce unnecessary SMP cache
 		 * mastership changes in the global vmstats, which can be
 		 * particularly bad in multi-socket systems.
+		 *
+		 * NOTE: The double *cnt test tries to avoid a global memory
+		 *	 read.  vmmeter_neg_slop_cnt is more generous than
+		 *	 the baseline define, we want to try to avoid atomic
+		 *	 ops on the global 'vmstats' structure as much as
+		 *	 possible.
 		 */
 		cnt = (long *)((char *)&mycpu->gd_vmstats_adj + pq->cnt_offset);
 		atomic_add_long(cnt, -1);
-		if (*cnt < -VMMETER_SLOP_COUNT) {
+		if (*cnt < -VMMETER_SLOP_COUNT && *cnt < vmmeter_neg_slop_cnt) {
 			u_long copy = atomic_swap_long(cnt, 0);
 			cnt = (long *)((char *)&vmstats + pq->cnt_offset);
 			atomic_add_long(cnt, copy);
