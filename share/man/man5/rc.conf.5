@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd April 21, 2019
+.Dd May 20, 2019
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -247,11 +247,7 @@ in the
 script.
 This defaults to
 .Dq Li 5
-seconds to work around a bug in the
-.Xr ed 4
-driver which can lead to system hangs when using some newer
-.Xr ed 4
-based cards.
+seconds.
 .It Va removable_interfaces
 .Pq Vt str
 List of removable network interfaces to be supported by
@@ -846,9 +842,9 @@ to configure all network interfaces
 For example, if the only network devices to be configured are the loopback device
 .Pq Li lo0
 and a NIC using the
-.Xr ed 4
+.Xr em 4
 driver, this could be set to
-.Dq Li "lo0 ed0" .
+.Dq Li "lo0 em0" .
 An
 .Va ifconfig_ Ns Aq Ar interface
 variable is assumed to exist for each value of
