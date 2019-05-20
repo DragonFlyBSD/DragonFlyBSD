@@ -280,7 +280,7 @@ dev_pager_getfake(vm_paddr_t paddr, int pat_mode)
 
 	pmap_page_init(m);
 
-	m->flags = PG_FICTITIOUS | PG_UNMANAGED;
+	m->flags = PG_FICTITIOUS | PG_UNQUEUED;
 	m->valid = VM_PAGE_BITS_ALL;
 	m->dirty = 0;
 	m->queue = PQ_NONE;
@@ -347,8 +347,9 @@ static void old_dev_pager_dtor(void *handle)
 	}
 }
 
-static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
-    int prot, vm_page_t *mres)
+static int
+old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
+		    int prot, vm_page_t *mres)
 {
 	vm_paddr_t paddr;
 	vm_page_t page;
@@ -387,7 +388,6 @@ static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 		}
 		vm_object_drop(object);
 	}
-
 	return (VM_PAGER_OK);
 }
 

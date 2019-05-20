@@ -541,7 +541,7 @@ RetryFault:
 
 		bzero(&fakem, sizeof(fakem));
 		fakem.pindex = first_pindex;
-		fakem.flags = PG_FICTITIOUS | PG_UNMANAGED;
+		fakem.flags = PG_FICTITIOUS | PG_UNQUEUED;
 		fakem.busy_count = PBUSY_LOCKED;
 		fakem.valid = VM_PAGE_BITS_ALL;
 		fakem.pat_mode = VM_MEMATTR_DEFAULT;
@@ -1167,7 +1167,7 @@ RetryFault:
 
 		bzero(&fakem, sizeof(fakem));
 		fakem.pindex = first_pindex;
-		fakem.flags = PG_FICTITIOUS | PG_UNMANAGED;
+		fakem.flags = PG_FICTITIOUS | PG_UNQUEUED;
 		fakem.busy_count = PBUSY_LOCKED;
 		fakem.valid = VM_PAGE_BITS_ALL;
 		fakem.pat_mode = VM_MEMATTR_DEFAULT;

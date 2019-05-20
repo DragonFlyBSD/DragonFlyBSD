@@ -404,9 +404,10 @@ again:
 			if (pqtype == PQ_CACHE &&
 			    m->hold_count == 0 &&
 			    m->wire_count == 0 &&
-			    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) == 0) {
+			    (m->flags & PG_NEED_COMMIT) == 0) {
 				vm_page_protect(m, VM_PROT_NONE);
-				KKASSERT((m->flags & PG_MAPPED) == 0);
+				KKASSERT((m->flags &
+					 (PG_MAPPED | PG_UNQUEUED)) == 0);
 				KKASSERT(m->dirty == 0);
 				vm_page_free(m);
 				--i;
@@ -430,10 +431,15 @@ again:
 			KKASSERT((m->busy_count & PBUSY_MASK) == 0);
 
 			/*
-			 * Clear all flags.  Then unbusy the now allocated
-			 * page.
+			 * Clear all flags, set FICTITIOUS and UNQUEUED to
+			 * indicate the the pages are special, then unbusy
+			 * the now allocated page.
+			 *
+			 * XXX setting FICTITIOUS and UNQUEUED in the future.
+			 *     (also pair up with vm_contig_pg_free)
 			 */
 			vm_page_flag_clear(m, ~PG_KEEP_NEWPAGE_MASK);
+			/* vm_page_flag_set(m, PG_FICTITIOUS | PG_UNQUEUED);*/
 			vm_page_wire(m);
 			vm_page_wakeup(m);
 		}

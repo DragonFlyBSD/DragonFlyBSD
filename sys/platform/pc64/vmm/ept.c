@@ -98,7 +98,7 @@ vmx_ept_init(void)
 	pmap_bits_ept[PG_M_IDX] = EPT_PG_M;
 	pmap_bits_ept[PG_W_IDX] = EPT_PG_AVAIL1;
 	pmap_bits_ept[PG_MANAGED_IDX] = EPT_PG_AVAIL2;
-	pmap_bits_ept[PG_DEVICE_IDX] = EPT_PG_AVAIL3;
+	pmap_bits_ept[PG_UNUSED10_IDX] = EPT_PG_AVAIL3;
 	pmap_bits_ept[PG_N_IDX] = EPT_IGNORE_PAT | EPT_MEM_TYPE_UC;
 	pmap_bits_ept[PG_NX_IDX] = 0;	/* XXX inverted sense */
 

@@ -2349,7 +2349,7 @@ pmap_puninit(pmap_t pmap)
 		pv = NULL;	/* safety */
 		pmap_kremove((vm_offset_t)pmap->pm_pml4);
 		vm_page_busy_wait(p, FALSE, "pgpun");
-		KKASSERT(p->flags & (PG_FICTITIOUS|PG_UNMANAGED));
+		KKASSERT(p->flags & PG_UNQUEUED);
 		vm_page_unwire(p, 0);
 		vm_page_flag_clear(p, PG_MAPPED | PG_WRITEABLE);
 		vm_page_free(p);
@@ -2364,7 +2364,7 @@ pmap_puninit(pmap_t pmap)
 		pv = NULL;	/* safety */
 		pmap_kremove((vm_offset_t)pmap->pm_pml4_iso);
 		vm_page_busy_wait(p, FALSE, "pgpun");
-		KKASSERT(p->flags & (PG_FICTITIOUS|PG_UNMANAGED));
+		KKASSERT(p->flags & PG_UNQUEUED);
 		vm_page_unwire(p, 0);
 		vm_page_flag_clear(p, PG_MAPPED | PG_WRITEABLE);
 		vm_page_free(p);
@@ -2544,21 +2544,13 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 		vm_wait(0);
 	}
 	vm_page_wire(m);	/* wire for mapping in parent */
-	vm_page_unmanage(m);	/* m must be spinunlocked */
 	pmap_zero_page(VM_PAGE_TO_PHYS(m));
 	m->valid = VM_PAGE_BITS_ALL;
+	vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE | PG_UNQUEUED);
+	KKASSERT(m->queue == PQ_NONE);
 
-	vm_page_spin_lock(m);
-	/* pmap_page_stats_adding(m); */
-
-	/*
-	 * PGTABLE pv's only exist in the context of the pmap RB tree
-	 * (pmap->pm_pvroot).
-	 */
 	pv->pv_flags |= PV_FLAG_PGTABLE;
 	pv->pv_m = m;
-	vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
-	vm_page_spin_unlock(m);
 
 	/*
 	 * (isnew) is TRUE, pv is not terminal.
@@ -2892,7 +2884,7 @@ pmap_release_pv(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk)
 			tstr, pv->pv_pindex, p->wire_count);
 	}
 	KKASSERT(p->wire_count == 1);
-	KKASSERT(p->flags & PG_UNMANAGED);
+	KKASSERT(p->flags & PG_UNQUEUED);
 
 	vm_page_unwire(p, 0);
 	KKASSERT(p->wire_count == 0);
@@ -3132,22 +3124,21 @@ pmap_remove_pv_page(pv_entry_t pv)
 	vm_page_t m;
 
 	m = pv->pv_m;
-	vm_page_spin_lock(m);
-	KKASSERT(m && m == pv->pv_m);
 	pv->pv_m = NULL;
+
 	if (pv->pv_flags & PV_FLAG_PGTABLE) {
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-		KKASSERT(m->md.pmap_count == 0);
 	} else {
+		KKASSERT(0);
+#if 0
 		/*
 		 * Used only for page table pages, so safe to clear on
 		 * the 1->0 transition.
 		 */
 		if (atomic_fetchadd_long(&m->md.pmap_count, -1) == 1)
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+#endif
 	}
-	/* pmap_page_stats_deleting(m); */
-	vm_page_spin_unlock(m);
 
 	return(m);
 }
@@ -4591,9 +4582,18 @@ pmap_remove_all(vm_page_t m)
 {
 	int retry;
 
-	if (!pmap_initialized /* || (m->flags & PG_FICTITIOUS)*/)
+	if (!pmap_initialized)
 		return;
+
+	/*
+	 * pmap_count doesn't cover fictitious pages, but PG_MAPPED does
+	 * (albeit without certain race protections).
+	 */
+#if 0
 	if (m->md.pmap_count == 0)
+		return;
+#endif
+	if ((m->flags & PG_MAPPED) == 0)
 		return;
 
 	retry = ticks + hz * 60;
@@ -4670,8 +4670,13 @@ pmap_remove_specific(pmap_t pmap_match, vm_page_t m)
 {
 	if (!pmap_initialized)
 		return;
-	if (m->md.pmap_count == 0)
+
+	/*
+	 * PG_MAPPED test works for both non-fictitious and fictitious pages.
+	 */
+	if ((m->flags & PG_MAPPED) == 0)
 		return;
+
 	PMAP_PAGE_BACKING_SCAN(m, pmap_match, ipmap, iptep, ipte, iva) {
 		if (!pmap_inval_smp_cmpset(ipmap, iva, iptep, ipte, 0))
 			PMAP_PAGE_BACKING_RETRY;
@@ -4790,7 +4795,6 @@ again:
 			}
 		}
 		if (pbits & pmap->pmap_bits[PG_MANAGED_IDX]) {
-			KKASSERT((pbits & pmap->pmap_bits[PG_DEVICE_IDX]) == 0);
 			m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
 			if (pbits & pmap->pmap_bits[PG_A_IDX])
 				vm_page_flag_set(m, PG_REFERENCED);
@@ -4815,9 +4819,6 @@ again:
  *
  * NOTE: This routine MUST insert the page into the pmap now, it cannot
  *	 lazy-evaluate.
- *
- * NOTE: If (m) is PG_UNMANAGED it may also be a temporary fake vm_page_t.
- *	 never record it.
  */
 void
 pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
@@ -4909,13 +4910,11 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		newpte |= pmap->pmap_bits[PG_W_IDX];
 	if (va < VM_MAX_USER_ADDRESS)
 		newpte |= pmap->pmap_bits[PG_U_IDX];
-	if ((m->flags & (/*PG_FICTITIOUS |*/ PG_UNMANAGED)) == 0)
+	if ((m->flags & PG_FICTITIOUS) == 0)
 		newpte |= pmap->pmap_bits[PG_MANAGED_IDX];
 //	if (pmap == &kernel_pmap)
 //		newpte |= pgeflag;
 	newpte |= pmap->pmap_cache_bits[m->pat_mode];
-	if (m->flags & PG_FICTITIOUS)
-		newpte |= pmap->pmap_bits[PG_DEVICE_IDX];
 
 	/*
 	 * It is possible for multiple faults to occur in threaded
@@ -4932,18 +4931,22 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * should be able to safely set PG_* flag bits even with the (shared)
 	 * soft-busy.
 	 *
-	 * As a bit of a safety, bump pmap_count and set the PG_* bits
-	 * before mapping the page.  If another part of the system does
-	 * not properly hard-busy the page (against our soft-busy) in
-	 * order to remove mappings it might not see the pte that we are
-	 * about to add and thus will not be able to drop pmap_count to 0.
+	 * The pmap_count and writeable_count is only tracked for
+	 * non-fictitious pages.  As a bit of a safety, bump pmap_count
+	 * and set the PG_* bits before mapping the page.  If another part
+	 * of the system does not properly hard-busy the page (against our
+	 * soft-busy or hard-busy) in order to remove mappings it might not
+	 * see the pte that we are about to add and thus will not be able to
+	 * drop pmap_count to 0.
+	 *
+	 * The PG_MAPPED and PG_WRITEABLE flags are set for any type of page.
 	 *
 	 * NOTE! PG_MAPPED and PG_WRITEABLE can only be cleared when
 	 *	 the page is hard-busied AND pmap_count is 0.  This
 	 *	 interlocks our setting of the flags here.
 	 */
 	/*vm_page_spin_lock(m);*/
-	if ((m->flags & PG_UNMANAGED) == 0) {
+	if ((m->flags & PG_FICTITIOUS) == 0) {
 		atomic_add_long(&m->md.pmap_count, 1);
 		if (newpte & pmap->pmap_bits[PG_RW_IDX])
 			atomic_add_long(&m->md.writeable_count, 1);
@@ -5038,7 +5041,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 */
 	if (opa && (origpte & pmap->pmap_bits[PG_MANAGED_IDX])) {
 		KKASSERT(oldm == PHYS_TO_VM_PAGE(opa));
-		/* XXX PG_DEVICE_IDX pages */
 		if (origpte & pmap->pmap_bits[PG_M_IDX])
 			vm_page_dirty(oldm);
 		if (origpte & pmap->pmap_bits[PG_A_IDX])
@@ -5064,13 +5066,6 @@ done:
 	 * is not managed but we have a pte_pv (which was locking our
 	 * operation), we can free it now.  pte_pv->pv_m should be NULL.
 	 */
-#if 0
-	if (pte_pv && (newpte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0) {
-		pv_free(pte_pv, pt_pv);
-	} else if (pte_pv) {
-		pv_put(pte_pv);
-	} else
-#endif
 	if (pte_placemark)
 		pv_placemarker_wakeup(pmap, pte_placemark);
 	if (pt_pv)
@@ -5475,7 +5470,8 @@ pmap_testbit(vm_page_t m, int bit)
 
 /*
  * This routine is used to modify bits in ptes.  Only one bit should be
- * specified.  PG_RW requires special handling.
+ * specified.  PG_RW requires special handling.  This call works with
+ * any sort of mapped page.  PG_FICTITIOUS pages might not be optimal.
  *
  * Caller must NOT hold any spin locks
  * Caller must hold (m) hard-busied
@@ -5504,11 +5500,9 @@ pmap_clearbit(vm_page_t m, int bit_index)
 	int retry;
 
 	/*
-	 * XXX It might make sense to allow PG_FICTITIOUS + PG_DEVICE
-	 *     pages through to the backing scan, but atm devices do
-	 *     not care about PG_WRITEABLE;
+	 * Too early in the boot
 	 */
-	if (!pmap_initialized || (m->flags & PG_FICTITIOUS)) {
+	if (!pmap_initialized) {
 		if (bit_index == PG_RW_IDX)
 			vm_page_flag_clear(m, PG_WRITEABLE);
 		return;
@@ -5549,8 +5543,10 @@ again:
 	 * PG_WRITEABLE, and callers expect us to for the PG_RW_IDX path.
 	 */
 	PMAP_PAGE_BACKING_SCAN(m, NULL, ipmap, iptep, ipte, iva) {
+#if 0
 		if ((ipte & ipmap->pmap_bits[PG_MANAGED_IDX]) == 0)
 			continue;
+#endif
 		if ((ipte & ipmap->pmap_bits[PG_RW_IDX]) == 0)
 			continue;
 		npte = ipte & ~(ipmap->pmap_bits[PG_RW_IDX] |
@@ -5564,8 +5560,12 @@ again:
 		 * NOTE: m is not hard-busied so it is not safe to
 		 *	 clear PG_WRITEABLE on the 1->0 transition
 		 *	 against it being set in pmap_enter().
+		 *
+		 *	 pmap_count and writeable_count are only applicable
+		 *	 to non-fictitious pages (PG_MANAGED_IDX from pte)
 		 */
-		atomic_add_long(&m->md.writeable_count, -1);
+		if (ipte & ipmap->pmap_bits[PG_MANAGED_IDX])
+			atomic_add_long(&m->md.writeable_count, -1);
 	} PMAP_PAGE_BACKING_DONE;
 
 	/*
@@ -5910,43 +5910,35 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 		vm_offset_t pa;
 
 		val = MINCORE_INCORE;
-		if ((pte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0)
-			goto done;
-
 		pa = pte & PG_FRAME;
-
-		if (pte & pmap->pmap_bits[PG_DEVICE_IDX])
-			m = NULL;
-		else
+		if (pte & pmap->pmap_bits[PG_MANAGED_IDX])
 			m = PHYS_TO_VM_PAGE(pa);
+		else
+			m = NULL;
 
 		/*
 		 * Modified by us
 		 */
 		if (pte & pmap->pmap_bits[PG_M_IDX])
 			val |= MINCORE_MODIFIED|MINCORE_MODIFIED_OTHER;
+
 		/*
 		 * Modified by someone
 		 */
 		else if (m && (m->dirty || pmap_is_modified(m)))
 			val |= MINCORE_MODIFIED_OTHER;
-		/*
-		 * Referenced by us
-		 */
-		if (pte & pmap->pmap_bits[PG_A_IDX])
-			val |= MINCORE_REFERENCED|MINCORE_REFERENCED_OTHER;
 
 		/*
-		 * Referenced by someone
+		 * Referenced by us, or someone else.
 		 */
-		else if (m && ((m->flags & PG_REFERENCED) ||
-				pmap_ts_referenced(m))) {
+		if (pte & pmap->pmap_bits[PG_A_IDX]) {
+			val |= MINCORE_REFERENCED|MINCORE_REFERENCED_OTHER;
+		} else if (m && ((m->flags & PG_REFERENCED) ||
+				 pmap_ts_referenced(m))) {
 			val |= MINCORE_REFERENCED_OTHER;
 			vm_page_flag_set(m, PG_REFERENCED);
 		}
 	} 
-done:
-
 	return val;
 }
 
@@ -6107,7 +6099,6 @@ pmap_kvtom(vm_offset_t va)
 {
 	pt_entry_t *ptep = vtopte(va);
 
-	KKASSERT((*ptep & kernel_pmap.pmap_bits[PG_DEVICE_IDX]) == 0);
 	return(PHYS_TO_VM_PAGE(*ptep & PG_FRAME));
 }
 

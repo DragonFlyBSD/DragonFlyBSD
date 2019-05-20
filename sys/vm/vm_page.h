@@ -245,37 +245,61 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 /*
  * These are the flags defined for vm_page.
  *
- *  PG_UNMANAGED (used by OBJT_PHYS) indicates that the page is
- *  not under PV management but otherwise should be treated as a
- *  normal page.  Pages not under PV management cannot be paged out
- *  via the object/vm_page_t because there is no knowledge of their
- *  pte mappings, nor can they be removed from their objects via 
- *  the object, and such pages are also not on any PQ queue.  The
- *  PG_MAPPED and PG_WRITEABLE flags are not applicable.
+ *  PG_FICTITIOUS	It is not possible to translate the pte's physical
+ *			address back to a vm_page_t.  The vm_page_t is fake
+ *			or there isn't one at all.
  *
- *  PG_MAPPED only applies to managed pages, indicating whether the page
- *  MIGHT be mapped onto one or more pmaps.  A page might still be mapped to
- *  special pmaps in an unmanaged fashion, for example when mapped into a
- *  buffer cache buffer, without setting PG_MAPPED.
+ *			Fictitious vm_page_t's can be placed in objects and
+ *			it is possible to perform pmap functions on them
+ *			by virtual address range and by their vm_page_t.
+ *			However, pmap_count and writeable_count cannot be
+ *			tracked since there is no way to reverse-map the
+ *			pte back to the vm_page.
  *
- *  PG_MAPPED can only be tested for NOT being set after a pmap_mapped_sync()
- *  called made while the page is hard-busied
+ *			(pmap operations by-vm_page can still be used to
+ *			adjust protections or remove the page from the pmap,
+ *			and will go only by the PG_MAPPED flag).
  *
- *  PG_WRITEABLE indicates that there may be a writeable managed pmap entry
- *  somewhere, and that the page can be dirtied by hardware at any time
- *  and may have to be tested for that.  The modified bit in unmanaged
- *  mappings or in the special clean map is not tested.
+ *			NOTE: The contiguous memory management will flag
+ *			      PG_FICTITIOUS on pages in the vm_page_array,
+ *			      even though the physical addrses can be
+ *			      translated back to a vm_page_t.
  *
- *  PG_WRITEABLE can only be tested for NOT being set after a
- *  pmap_mapped_sync() called made while the page is hard-busied.
+ *			NOTE: Implies PG_UNQUEUED.  PG_UNQUEUED must also
+ *			      be set.  No queue management may be performed
+ *			      on fictitious pages.
  *
- *  PG_SWAPPED indicates that the page is backed by a swap block.  Any
- *  VM object type other than OBJT_DEFAULT can have swap-backed pages now.
+ *  PG_UNQUEUED		The page is not to participate in any VM page queue
+ *			manipulation (even if it is otherwise a normal page).
+ *
+ *  PG_MAPPED		Only applies to non-fictitious regular pages, this
+ *			flag indicates that the page MIGHT be mapped into
+ *			zero or more pmaps via normal managed operations..
+ *
+ *			The page might still be mapped in a specialized manner
+ *			(i.e. pmap_kenter(), or mapped into the buffer cache,
+ *			and so forth) without setting this flag.
+ *
+ *			If this flag is clear it indicates that the page is
+ *			absolutely not mapped into a regular pmap by normal
+ *			means.  If set, the status is unknown.
+ *
+ *  PG_WRITEABLE	Similar to PG_MAPPED, indicates that the page might
+ *			be mapped RW into zero or more pmaps via normal
+ *		        managed operations.
+ *
+ *			If this flag is clear it indicates that the page is
+ *			absolutely not mapped RW into a regular pmap by normal
+ *			means.  If set, the status is unknown.
+ *
+ *  PG_SWAPPED		Indicates that the page is backed by a swap block.
+ *			Any VM object type other than OBJT_DEFAULT can contain
+ *			swap-backed pages now.
  */
 #define	PG_UNUSED0001	0x00000001
 #define	PG_UNUSED0002	0x00000002
 #define PG_WINATCFLS	0x00000004	/* flush dirty page on inactive q */
-#define	PG_FICTITIOUS	0x00000008	/* physical page doesn't exist (O) */
+#define	PG_FICTITIOUS	0x00000008	/* No reverse-map or tracking */
 #define	PG_WRITEABLE	0x00000010	/* page may be writeable */
 #define PG_MAPPED	0x00000020	/* page may be mapped (managed) */
 #define	PG_UNUSED0040	0x00000040
@@ -283,7 +307,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define PG_CLEANCHK	0x00000100	/* page will be checked for cleaning */
 #define PG_UNUSED0200	0x00000200
 #define PG_NOSYNC	0x00000400	/* do not collect for syncer */
-#define PG_UNMANAGED	0x00000800	/* No PV management for page */
+#define PG_UNQUEUED	0x00000800	/* No queue management for page */
 #define PG_MARKER	0x00001000	/* special queue marker page */
 #define PG_RAM		0x00002000	/* read ahead mark */
 #define PG_SWAPPED	0x00004000	/* backed by swap */
@@ -429,7 +453,6 @@ void vm_page_rename (vm_page_t, struct vm_object *, vm_pindex_t);
 void vm_page_startup (void);
 void vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid);
 void vm_numa_organize_finalize(void);
-void vm_page_unmanage (vm_page_t);
 void vm_page_unwire (vm_page_t, int);
 void vm_page_wire (vm_page_t);
 void vm_page_unqueue (vm_page_t);

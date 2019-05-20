@@ -1288,7 +1288,8 @@ relookup:
 		 * any of the below states.
 		 */
 		if (m->wire_count ||
-		    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) ||
+		    (m->flags & (PG_FICTITIOUS | PG_UNQUEUED |
+				 PG_NEED_COMMIT)) ||
 		    m->valid != VM_PAGE_BITS_ALL
 		) {
 			vm_page_wakeup(m);

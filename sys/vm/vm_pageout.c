@@ -262,7 +262,7 @@ vm_pageout_clean_helper(vm_page_t m, int vmflush_flags)
 	 * we can pageout held pages but there is no real need to press our
 	 * luck, so don't.
 	 */
-	if (m->hold_count != 0 || (m->flags & PG_UNMANAGED)) {
+	if (m->hold_count != 0 || (m->flags & PG_UNQUEUED)) {
 		vm_page_wakeup(m);
 		return 0;
 	}
@@ -307,7 +307,7 @@ vm_pageout_clean_helper(vm_page_t m, int vmflush_flags)
 		if (error || p == NULL)
 			break;
 		if ((p->queue - p->pc) == PQ_CACHE ||
-		    (p->flags & PG_UNMANAGED)) {
+		    (p->flags & PG_UNQUEUED)) {
 			vm_page_wakeup(p);
 			break;
 		}
@@ -350,7 +350,7 @@ vm_pageout_clean_helper(vm_page_t m, int vmflush_flags)
 		if (error || p == NULL)
 			break;
 		if (((p->queue - p->pc) == PQ_CACHE) ||
-		    (p->flags & PG_UNMANAGED)) {
+		    (p->flags & PG_UNQUEUED)) {
 			vm_page_wakeup(p);
 			break;
 		}
@@ -540,7 +540,7 @@ vm_pageout_mdp_callback(struct pmap_pgscan_info *info, vm_offset_t va,
 
 	mycpu->gd_cnt.v_pdpages++;
 
-	if (p->wire_count || p->hold_count || (p->flags & PG_UNMANAGED)) {
+	if (p->wire_count || p->hold_count || (p->flags & PG_UNQUEUED)) {
 		vm_page_wakeup(p);
 		goto done;
 	}
@@ -1587,7 +1587,7 @@ vm_pageout_scan_cache(long avail_shortage, int pass,
 		 * Remaining operations run with the page busy and neither
 		 * the page or the queue will be spin-locked.
 		 */
-		if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) ||
+		if ((m->flags & (PG_UNQUEUED | PG_NEED_COMMIT)) ||
 		    m->hold_count ||
 		    m->wire_count) {
 			vm_page_deactivate(m);

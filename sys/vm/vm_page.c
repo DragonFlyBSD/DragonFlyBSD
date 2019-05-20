@@ -246,10 +246,18 @@ vm_add_new_page(vm_paddr_t pa)
 	/*
 	 * Reserve a certain number of contiguous low memory pages for
 	 * contigmalloc() to use.
+	 *
+	 * Even though these pages represent real ram and can be
+	 * reverse-mapped, we set PG_FICTITIOUS and PG_UNQUEUED
+	 * because their use is special-cased.
+	 *
+	 * WARNING! Once PG_FICTITIOUS is set, vm_page_wire*()
+	 *	    and vm_page_unwire*() calls have no effect.
 	 */
 	if (pa < vm_low_phys_reserved) {
 		atomic_add_long(&vmstats.v_page_count, 1);
 		atomic_add_long(&vmstats.v_dma_pages, 1);
+		m->flags |= PG_FICTITIOUS | PG_UNQUEUED;
 		m->queue = PQ_NONE;
 		m->wire_count = 1;
 		atomic_add_long(&vmstats.v_wire_count, 1);
@@ -785,6 +793,7 @@ vm_page_startup_finish(void *dummy __unused)
 		m = PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT);
 		vm_low_phys_reserved = VM_PAGE_TO_PHYS(m);
 		while (count) {
+			vm_page_flag_clear(m, PG_FICTITIOUS | PG_UNQUEUED);
 			vm_page_busy_wait(m, FALSE, "cpgfr");
 			vm_page_unwire(m, 0);
 			vm_page_free(m);
@@ -1034,7 +1043,8 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 	struct vpgqueues *pq;
 	u_long *cnt;
 
-	KKASSERT(m->queue == PQ_NONE && (m->flags & PG_FICTITIOUS) == 0);
+	KKASSERT(m->queue == PQ_NONE &&
+		 (m->flags & (PG_FICTITIOUS | PG_UNQUEUED)) == 0);
 
 	if (queue != PQ_NONE) {
 		vm_page_queues_spin_lock(queue);
@@ -1377,19 +1387,18 @@ vm_page_unhold(vm_page_t m)
 void
 vm_page_initfake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr)
 {
-	if ((m->flags & PG_FICTITIOUS) != 0) {
-		/*
-		 * The page's memattr might have changed since the
-		 * previous initialization.  Update the pmap to the
-		 * new memattr.
-		 */
+	/*
+	 * The page's memattr might have changed since the
+	 * previous initialization.  Update the pmap to the
+	 * new memattr.
+	 */
+	if ((m->flags & PG_FICTITIOUS) != 0)
 		goto memattr;
-	}
 	m->phys_addr = paddr;
 	m->queue = PQ_NONE;
 	/* Fictitious pages don't use "segind". */
 	/* Fictitious pages don't use "order" or "pool". */
-	m->flags = PG_FICTITIOUS | PG_UNMANAGED;
+	m->flags = PG_FICTITIOUS | PG_UNQUEUED;
 	m->busy_count = PBUSY_LOCKED;
 	m->wire_count = 1;
 	spin_init(&m->spin, "fake_page");
@@ -1735,6 +1744,9 @@ VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(struct vm_object *object,
  * Returns a page that is only soft-busied for use by the caller in
  * a read-only fashion.  Returns NULL if the page could not be found,
  * the soft busy could not be obtained, or the page data is invalid.
+ *
+ * XXX Doesn't handle PG_FICTITIOUS pages at the moment, but there is
+ *     no reason why we couldn't.
  */
 vm_page_t
 vm_page_lookup_sbusy_try(struct vm_object *object, vm_pindex_t pindex,
@@ -2046,11 +2058,12 @@ vm_page_select_cache(u_short pg_color)
 			/*
 			 * We successfully busied the page
 			 */
-			if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) == 0 &&
+			if ((m->flags & PG_NEED_COMMIT) == 0 &&
 			    m->hold_count == 0 &&
 			    m->wire_count == 0 &&
 			    (m->dirty & m->valid) == 0) {
 				vm_page_spin_unlock(m);
+				KKASSERT((m->flags & PG_UNQUEUED) == 0);
 				pagedaemon_wakeup();
 				return(m);
 			}
@@ -2117,7 +2130,7 @@ vm_page_select_free(u_short pg_color)
 			 * wiring doesn't adjust queues, a page on the free
 			 * queue should never be wired at this point.
 			 */
-			KKASSERT((m->flags & (PG_UNMANAGED |
+			KKASSERT((m->flags & (PG_UNQUEUED |
 					      PG_NEED_COMMIT)) == 0);
 			KASSERT(m->hold_count == 0,
 				("m->hold_count is not zero "
@@ -2454,6 +2467,10 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 			return(NULL);
 		}
 		spin_unlock(&vm_contig_spin);
+
+		/*
+		 * Base vm_page_t of range
+		 */
 		m = PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT);
 	}
 	if (vm_contig_verbose) {
@@ -2464,8 +2481,10 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 			low, high, alignment, boundary, size, memattr);
 	}
 	if (memattr != VM_MEMATTR_DEFAULT) {
-		for (i = 0;i < size; i++)
+		for (i = 0; i < size; ++i) {
+			KKASSERT(m[i].flags & PG_FICTITIOUS);
 			pmap_page_set_memattr(&m[i], memattr);
+		}
 	}
 	return m;
 }
@@ -2486,13 +2505,19 @@ vm_page_free_contig(vm_page_t m, unsigned long size)
 			(intmax_t)pa, size / 1024);
 	}
 	if (pa < vm_low_phys_reserved) {
+		/*
+		 * Just assert check the first page for convenience.
+		 */
 		KKASSERT(m->wire_count == 1);
+		KKASSERT(m->flags & PG_FICTITIOUS);
 		KKASSERT(pa + size <= vm_low_phys_reserved);
 		spin_lock(&vm_contig_spin);
 		alist_free(&vm_contig_alist, start, pages);
 		spin_unlock(&vm_contig_spin);
 	} else {
 		while (pages) {
+			/* XXX FUTURE, maybe (pair with vm_pg_contig_alloc()) */
+			/*vm_page_flag_clear(m, PG_FICTITIOUS | PG_UNQUEUED);*/
 			vm_page_busy_wait(m, FALSE, "cpgfr");
 			vm_page_unwire(m, 0);
 			vm_page_free(m);
@@ -2640,25 +2665,25 @@ vm_page_activate(vm_page_t m)
 	 * If already active or inappropriate, just set act_count and
 	 * return.  We don't have to spin-lock the page.
 	 */
-	if (m->queue - m->pc == PQ_ACTIVE || (m->flags & PG_FICTITIOUS)) {
+	if (m->queue - m->pc == PQ_ACTIVE ||
+	    (m->flags & (PG_FICTITIOUS | PG_UNQUEUED))) {
 		if (m->act_count < ACT_INIT)
 			m->act_count = ACT_INIT;
 		return;
 	}
 
 	vm_page_spin_lock(m);
-	if (m->queue - m->pc != PQ_ACTIVE && (m->flags & PG_FICTITIOUS) == 0) {
+	if (m->queue - m->pc != PQ_ACTIVE &&
+	    (m->flags & (PG_FICTITIOUS | PG_UNQUEUED)) == 0) {
 		_vm_page_queue_spin_lock(m);
 		oqueue = _vm_page_rem_queue_spinlocked(m);
 		/* page is left spinlocked, queue is unlocked */
 
 		if (oqueue == PQ_CACHE)
 			mycpu->gd_cnt.v_reactivated++;
-		if ((m->flags & PG_UNMANAGED) == 0) {
-			if (m->act_count < ACT_INIT)
-				m->act_count = ACT_INIT;
-			_vm_page_add_queue_spinlocked(m, PQ_ACTIVE + m->pc, 0);
-		}
+		if (m->act_count < ACT_INIT)
+			m->act_count = ACT_INIT;
+		_vm_page_add_queue_spinlocked(m, PQ_ACTIVE + m->pc, 0);
 		_vm_page_and_queue_spin_unlock(m);
 		if (oqueue == PQ_CACHE || oqueue == PQ_FREE)
 			pagedaemon_wakeup();
@@ -2672,7 +2697,8 @@ vm_page_activate(vm_page_t m)
 void
 vm_page_soft_activate(vm_page_t m)
 {
-	if (m->queue - m->pc == PQ_ACTIVE || (m->flags & PG_FICTITIOUS)) {
+	if (m->queue - m->pc == PQ_ACTIVE ||
+	    (m->flags & (PG_FICTITIOUS | PG_UNQUEUED))) {
 		if (m->act_count < ACT_INIT)
 			m->act_count = ACT_INIT;
 	} else {
@@ -2803,13 +2829,11 @@ vm_page_free_toq(vm_page_t m)
 	}
 
 	/*
-	 * Clear the UNMANAGED flag when freeing an unmanaged page.
-	 * Clear the NEED_COMMIT flag
+	 * Clear the PG_NEED_COMMIT and the PG_UNQUEUED flags.  The
+	 * page returns to normal operation and will be placed in
+	 * the PQ_HOLD or PQ_FREE queue.
 	 */
-	if (m->flags & PG_UNMANAGED)
-		vm_page_flag_clear(m, PG_UNMANAGED);
-	if (m->flags & PG_NEED_COMMIT)
-		vm_page_flag_clear(m, PG_NEED_COMMIT);
+	vm_page_flag_clear(m, PG_NEED_COMMIT | PG_UNQUEUED);
 
 	if (m->hold_count != 0) {
 		_vm_page_add_queue_spinlocked(m, PQ_HOLD + m->pc, 0);
@@ -2834,49 +2858,16 @@ vm_page_free_toq(vm_page_t m)
 }
 
 /*
- * vm_page_unmanage()
- *
- * Prevent PV management from being done on the page.  The page is
- * also removed from the paging queues, and as a consequence of no longer
- * being managed the pageout daemon will not touch it (since there is no
- * way to locate the pte mappings for the page).  madvise() calls that
- * mess with the pmap will also no longer operate on the page.
- *
- * Beyond that the page is still reasonably 'normal'.  Freeing the page
- * will clear the flag.
- *
- * This routine is used by OBJT_PHYS objects - objects using unswappable
- * physical memory as backing store rather then swap-backed memory and
- * will eventually be extended to support 4MB unmanaged physical 
- * mappings.
- *
- * Caller must be holding the page busy.
- */
-void
-vm_page_unmanage(vm_page_t m)
-{
-	KKASSERT(m->busy_count & PBUSY_LOCKED);
-	if ((m->flags & PG_UNMANAGED) == 0) {
-		vm_page_unqueue(m);
-	}
-	vm_page_flag_set(m, PG_UNMANAGED);
-}
-
-/*
  * Mark this page as wired down by yet another map.  We do not adjust the
  * queue the page is on, it will be checked for wiring as-needed.
+ *
+ * This function has no effect on fictitious pages.
  *
  * Caller must be holding the page busy.
  */
 void
 vm_page_wire(vm_page_t m)
 {
-	/*
-	 * Only bump the wire statistics if the page is not already wired,
-	 * and only unqueue the page if it is on some queue (if it is unmanaged
-	 * it is already off the queues).  Don't do anything with fictitious
-	 * pages because they are always wired.
-	 */
 	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if ((m->flags & PG_FICTITIOUS) == 0) {
 		if (atomic_fetchadd_int(&m->wire_count, 1) == 0) {
@@ -2917,6 +2908,10 @@ vm_page_wire(vm_page_t m)
  * be placed in the cache - for example, just after dirtying a page.
  * dirty pages in the cache are not allowed.
  *
+ * PG_FICTITIOUS or PG_UNQUEUED pages are never moved to any queue, and
+ * the wire_count will not be adjusted in any way for a PG_FICTITIOUS
+ * page.
+ *
  * This routine may not block.
  */
 void
@@ -2930,7 +2925,7 @@ vm_page_unwire(vm_page_t m, int activate)
 	} else {
 		if (atomic_fetchadd_int(&m->wire_count, -1) == 1) {
 			atomic_add_long(&mycpu->gd_vmstats_adj.v_wire_count,-1);
-			if (m->flags & PG_UNMANAGED) {
+			if (m->flags & PG_UNQUEUED) {
 				;
 			} else if (activate || (m->flags & PG_NEED_COMMIT)) {
 				vm_page_activate(m);
@@ -2963,13 +2958,15 @@ _vm_page_deactivate_locked(vm_page_t m, int athead)
 	/*
 	 * Ignore if already inactive.
 	 */
-	if (m->queue - m->pc == PQ_INACTIVE || (m->flags & PG_FICTITIOUS))
+	if (m->queue - m->pc == PQ_INACTIVE ||
+	    (m->flags & (PG_FICTITIOUS | PG_UNQUEUED))) {
 		return;
+	}
 
 	_vm_page_queue_spin_lock(m);
 	oqueue = _vm_page_rem_queue_spinlocked(m);
 
-	if ((m->flags & PG_UNMANAGED) == 0) {
+	if ((m->flags & (PG_FICTITIOUS | PG_UNQUEUED)) == 0) {
 		if (oqueue == PQ_CACHE)
 			mycpu->gd_cnt.v_reactivated++;
 		vm_page_flag_clear(m, PG_WINATCFLS);
@@ -2996,7 +2993,7 @@ void
 vm_page_deactivate(vm_page_t m)
 {
 	if (m->queue - m->pc != PQ_INACTIVE &&
-	    (m->flags & PG_FICTITIOUS) == 0) {
+	    (m->flags & (PG_FICTITIOUS | PG_UNQUEUED)) == 0) {
 		vm_page_spin_lock(m);
 		_vm_page_deactivate_locked(m, 0);
 		vm_page_spin_unlock(m);
@@ -3028,7 +3025,7 @@ vm_page_try_to_cache(vm_page_t m)
 	 */
 	if (m->dirty || m->hold_count || m->wire_count ||
 	    m->queue - m->pc == PQ_CACHE ||
-	    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT | PG_FICTITIOUS))) {
+	    (m->flags & (PG_UNQUEUED | PG_NEED_COMMIT | PG_FICTITIOUS))) {
 		vm_page_wakeup(m);
 		return(0);
 	}
@@ -3050,6 +3047,10 @@ vm_page_try_to_cache(vm_page_t m)
  * Attempt to free the page.  If we cannot free it, we do nothing.
  * 1 is returned on success, 0 on failure.
  *
+ * The page can be in any state, including already being on the free
+ * queue.  Check to see if it really can be freed.  Note that we disallow
+ * this ad-hoc operation if the page is flagged PG_UNQUEUED.
+ *
  * Caller provides an unlocked/non-busied page.
  * No requirements.
  */
@@ -3059,14 +3060,10 @@ vm_page_try_to_free(vm_page_t m)
 	if (vm_page_busy_try(m, TRUE))
 		return(0);
 
-	/*
-	 * The page can be in any state, including already being on the free
-	 * queue.  Check to see if it really can be freed.
-	 */
 	if (m->dirty ||				/* can't free if it is dirty */
 	    m->hold_count ||			/* or held (XXX may be wrong) */
 	    m->wire_count ||			/* or wired */
-	    (m->flags & (PG_UNMANAGED |		/* or unmanaged */
+	    (m->flags & (PG_UNQUEUED |		/* or unqueued */
 			 PG_NEED_COMMIT |	/* or needs a commit */
 			 PG_FICTITIOUS)) ||	/* or is fictitious */
 	    m->queue - m->pc == PQ_FREE ||	/* already on PQ_FREE */
@@ -3110,7 +3107,7 @@ vm_page_cache(vm_page_t m)
 	/*
 	 * Not suitable for the cache
 	 */
-	if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT | PG_FICTITIOUS)) ||
+	if ((m->flags & (PG_UNQUEUED | PG_NEED_COMMIT | PG_FICTITIOUS)) ||
 	    (m->busy_count & PBUSY_MASK) ||
 	    m->wire_count || m->hold_count) {
 		vm_page_wakeup(m);
@@ -3151,7 +3148,7 @@ vm_page_cache(vm_page_t m)
 	 */
 	vm_page_protect(m, VM_PROT_NONE);
 	pmap_mapped_sync(m);
-	if ((m->flags & (PG_UNMANAGED | PG_MAPPED)) ||
+	if ((m->flags & (PG_UNQUEUED | PG_MAPPED)) ||
 	    (m->busy_count & PBUSY_MASK) ||
 	    m->wire_count || m->hold_count) {
 		vm_page_wakeup(m);

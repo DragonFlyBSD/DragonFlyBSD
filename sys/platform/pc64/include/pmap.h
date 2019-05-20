@@ -273,7 +273,7 @@ RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
 #define	PG_G_IDX		7
 #define	PG_W_IDX		8
 #define	PG_MANAGED_IDX		9
-#define	PG_DEVICE_IDX		10
+#define	PG_UNUSED10_IDX		10
 #define	PG_N_IDX		11
 #define	PG_NX_IDX		12
 #define	PG_BITS_SIZE		13
