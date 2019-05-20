@@ -2,7 +2,6 @@
 
 PROG=	btxld
 SRCS=	btxld.c elfh.c
-#MAN=	btxld.8
 
 WARNS?=	3
 
