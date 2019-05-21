@@ -1,8 +1,5 @@
 /*
- * (MPSAFE)
- *
- * Copyright (c) 1997, 1998 John S. Dyson
- * All rights reserved.
+ * Copyright (c) 1997, 1998 John S. Dyson.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -14,6 +11,38 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
+ *
+ * Copyright (c) 2003-2017,2019 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
 
 #include <sys/param.h>
@@ -303,7 +332,6 @@ zinitna(vm_zone_t z, char *name, size_t size, long nentries, uint32_t flags)
 		z->zallocflag = VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT |
 				VM_ALLOC_NORMAL | VM_ALLOC_RETRY;
 		z->zmax += nentries;
-		z->zmax_pcpu = z->zmax / ncpus / 16;
 
 		/*
 		 * Set reasonable pcpu cache bounds.  Low-memory systems
@@ -313,6 +341,7 @@ zinitna(vm_zone_t z, char *name, size_t size, long nentries, uint32_t flags)
 		 * In particular, pvzone can wind up being excessive and
 		 * waste memory unnecessarily.
 		 */
+		z->zmax_pcpu = z->zmax / ncpus / 64;
 		if (z->zmax_pcpu < 1024)
 			z->zmax_pcpu = 1024;
 		if (z->zmax_pcpu * z->zsize > 16*1024*1024)
@@ -530,10 +559,15 @@ zget(vm_zone_t z)
 		noffset = (size_t)z->zpagecount * PAGE_SIZE;
 		/* noffset -= noffset % z->zsize; */
 		savezpc = z->zpagecount;
+
+		/*
+		 * Track total memory use and kmem offset.
+		 */
 		if (z->zpagecount + nalloc > z->zpagemax)
 			z->zpagecount = z->zpagemax;
 		else
 			z->zpagecount += nalloc;
+
 		item = (char *)z->zkva + noffset;
 		npages = z->zpagecount - savezpc;
 		nitems = ((size_t)(savezpc + npages) * PAGE_SIZE - noffset) /
@@ -570,6 +604,7 @@ zget(vm_zone_t z)
 		 * by vm_map_entry_reserve_cpu_init().
 		 */
 		nbytes = (size_t)z->zalloc * PAGE_SIZE;
+		z->zpagecount += z->zalloc;	/* Track total memory use */
 
 		item = (void *)kmem_alloc3(&kernel_map, nbytes,
 					   VM_SUBSYS_ZALLOC, KM_KRESERVE);
@@ -587,6 +622,7 @@ zget(vm_zone_t z)
 		 * Otherwise allocate KVA from the kernel_map.
 		 */
 		nbytes = (size_t)z->zalloc * PAGE_SIZE;
+		z->zpagecount += z->zalloc;	/* Track total memory use */
 
 		item = (void *)kmem_alloc3(&kernel_map, nbytes,
 					   VM_SUBSYS_ZALLOC, 0);

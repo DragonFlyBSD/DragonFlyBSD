@@ -206,7 +206,7 @@ SYSCTL_INT(_vm, OID_AUTO, swap_size,
 SYSCTL_INT(_vm, OID_AUTO, report_swap_allocs,
         CTLFLAG_RW, &vm_report_swap_allocs, 0, "");
 
-vm_zone_t		swap_zone;
+__read_mostly vm_zone_t	swap_zone;
 
 /*
  * Red-Black tree for swblock entries

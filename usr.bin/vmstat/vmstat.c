@@ -1064,12 +1064,16 @@ dozmem(u_int interval, int reps)
 	struct zlist	zlist;
 	struct vm_zone	*kz;
 	struct vm_zone	zone;
-	struct vm_zone	copy;
 	struct vm_zone	save[MAXSAVE];
+	long zfreecnt_prev;
+	long znalloc_prev;
+	long zfreecnt_next;
+	long znalloc_next;
 	char name[64];
 	size_t namesz;
-	int i;
 	int first = 1;
+	int i;
+	int n;
 
 	bzero(save, sizeof(save));
 
@@ -1084,9 +1088,21 @@ again:
 			perror("kvm_read");
 			break;
 		}
-		copy = zone;
-		zone.znalloc -= save[i].znalloc;
-		save[i] = copy;
+		zfreecnt_prev = save[i].zfreecnt;
+		znalloc_prev = save[i].znalloc;
+		for (n = 0; n < SMP_MAXCPU; ++n) {
+			zfreecnt_prev += save[i].zpcpu[n].zfreecnt;
+			znalloc_prev += save[i].zpcpu[n].znalloc;
+		}
+
+		zfreecnt_next = zone.zfreecnt;
+		znalloc_next = zone.znalloc;
+		for (n = 0; n < SMP_MAXCPU; ++n) {
+			zfreecnt_next += zone.zpcpu[n].zfreecnt;
+			znalloc_next += zone.zpcpu[n].znalloc;
+		}
+		save[i] = zone;
+
 		namesz = sizeof(name);
 		if (kvm_readstr(kd, (intptr_t)zone.zname, name, &namesz) == NULL) {
 			perror("kvm_read");
@@ -1095,25 +1111,27 @@ again:
 		if (first && interval) {
 			/* do nothing */
 		} else if (zone.zmax) {
-			printf("%-10s %9ld/%9ld %5ldM used"
-			       " use=%-9lu %6.2f%%\n",
+			printf("%-10s %9ld / %-9ld %5ldM used"
+			       " %6.2f%% ",
 				name,
-				(long)(zone.ztotal - zone.zfreecnt),
+				(long)(zone.ztotal - zfreecnt_next),
 				(long)zone.zmax,
-				(long)(zone.ztotal - zone.zfreecnt) *
-					zone.zsize / (1024 * 1024),
-				(unsigned long)zone.znalloc,
-				(double)(zone.ztotal - zone.zfreecnt) *
+				(long)zone.zpagecount * 4096 / (1024 * 1024),
+				(double)(zone.ztotal - zfreecnt_next) *
 					100.0 / (double)zone.zmax);
 		} else {
-			printf("%-10s %9ld           %5ldM used"
-			       " use=%-9lu\n",
+			printf("%-10s %9ld             %5ldM used"
+			       "         ",
 				name,
-				(long)(zone.ztotal - zone.zfreecnt),
-				(long)(zone.ztotal - zone.zfreecnt) *
-					zone.zsize / (1024 * 1024),
-				(unsigned long)zone.znalloc);
+				(long)(zone.ztotal - zfreecnt_next),
+				(long)(zone.ztotal - zfreecnt_next) *
+					zone.zsize / (1024 * 1024));
 		}
+		if (first == 0) {
+			printf("use=%ld\n", znalloc_next - znalloc_prev);
+		} else if (interval == 0)
+			printf("\n");
+
 		kz = LIST_NEXT(&zone, zlink);
 		++i;
 	}

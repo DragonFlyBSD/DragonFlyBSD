@@ -1,4 +1,3 @@
-PMAP_SHPGPERPROC	opt_pmap.h
 PPC_PROBE_CHIPSET	opt_ppc.h
 PPC_DEBUG		opt_ppc.h
 MAXMEM

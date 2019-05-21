@@ -1720,20 +1720,6 @@ options 	BOOTP_NFSROOT	# NFS mount root filesystem using BOOTP info
 options 	BOOTP_COMPAT	# Workaround for broken bootp daemons.
 options 	BOOTP_WIRED_TO=fxp0 # Use interface fxp0 for BOOTP
 
-#
-# Set the number of PV entries per process.  Increasing this can
-# stop panics related to heavy use of shared memory. However, that can
-# (combined with large amounts of physical memory) cause panics at
-# boot time due the kernel running out of VM space.
-#
-# If you're tweaking this, you might also want to increase the sysctls
-# "vm.v_free_min", "vm.v_free_reserved", and "vm.v_free_target".
-#
-# The value below is the one more than the default.
-#
-options 	PMAP_SHPGPERPROC=201
-
-#
 # Disable swapping. This option removes all code which actually performs
 # swapping, so it's not possible to turn it back on at run-time.
 #

@@ -96,9 +96,6 @@
 #include <ddb/ddb.h>
 
 #define PMAP_KEEP_PDIRS
-#ifndef PMAP_SHPGPERPROC
-#define PMAP_SHPGPERPROC 2000
-#endif
 
 #if defined(DIAGNOSTIC)
 #define PMAP_DIAGNOSTIC
@@ -247,10 +244,9 @@ static uint64_t	DMPDPphys;	/* phys addr of direct mapped level 3 */
 /*
  * Data for the pv entry allocation mechanism
  */
-static vm_zone_t pvzone;
+__read_mostly static vm_zone_t pvzone;
+__read_mostly static int pmap_pagedaemon_waken = 0;
 static struct vm_zone pvzone_store;
-static vm_pindex_t pv_entry_max=0, pv_entry_high_water=0;
-static int pmap_pagedaemon_waken = 0;
 static struct pv_entry *pvinit;
 
 /*
@@ -320,6 +316,10 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_nx_enable, CTLFLAG_RD,
 static int pmap_pv_debug = 50;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_pv_debug, CTLFLAG_RW,
     &pmap_pv_debug, 0, "");
+
+static long vm_pmap_pv_entries;
+SYSCTL_LONG(_vm, OID_AUTO, pmap_pv_entries, CTLFLAG_RD,
+    &vm_pmap_pv_entries, 0, "");
 
 /* Standard user access funtions */
 extern int std_copyinstr (const void *udaddr, void *kaddr, size_t len,
@@ -1363,20 +1363,29 @@ static void dump_pmap(pmap_t pmap, pt_entry_t pte, int level, vm_offset_t base);
 void
 pmap_init2(void)
 {
-	vm_pindex_t shpgperproc = PMAP_SHPGPERPROC;
 	vm_pindex_t entry_max;
 
-	TUNABLE_LONG_FETCH("vm.pmap.shpgperproc", &shpgperproc);
-	pv_entry_max = shpgperproc * maxproc + vm_page_array_size;
-	TUNABLE_LONG_FETCH("vm.pmap.pv_entries", &pv_entry_max);
-	pv_entry_high_water = 9 * (pv_entry_max / 10);
+	/*
+	 * We can significantly reduce pv_entry_max from historical
+	 * levels because pv_entry's are no longer use for PTEs at the
+	 * leafs.  This prevents excessive pcpu caching on many-core
+	 * boxes (even with the further '/ 16' done in zinitna().
+	 *
+	 * Remember, however, that processes can share physical pages
+	 * with each process still needing the pdp/pd/pt infrstructure
+	 * (which still use pv_entry's).  And don't just assume that
+	 * every PT will be completely filled up.  So don't make it
+	 * too small.
+	 */
+	entry_max = maxproc * 32 + vm_page_array_size / 16;
+	TUNABLE_LONG_FETCH("vm.pmap.pv_entries", &entry_max);
+	vm_pmap_pv_entries = entry_max;
 
 	/*
 	 * Subtract out pages already installed in the zone (hack)
 	 */
-	entry_max = pv_entry_max - vm_page_array_size;
-	if (entry_max <= 0)
-		entry_max = 1;
+	if (entry_max <= MINPV)
+		entry_max = MINPV;
 
 	zinitna(pvzone, NULL, 0, entry_max, ZONE_INTERRUPT);
 
@@ -3840,8 +3849,9 @@ pmap_collect(void)
 		return;
 	pmap_pagedaemon_waken = 0;
 	if (warningdone < 5) {
-		kprintf("pmap_collect: collecting pv entries -- "
-			"suggest increasing PMAP_SHPGPERPROC\n");
+		kprintf("pmap_collect: pv_entries exhausted -- "
+			"suggest increasing vm.pmap_pv_entries above %ld\n",
+			vm_pmap_pv_entries);
 		warningdone++;
 	}
 

@@ -138,7 +138,7 @@ static struct objcache *vmspace_cache;
 	((((entry)->ba.start ^ (entry)->ba.end) & ~MAP_ENTRY_PARTITION_MASK) == 0)
 
 static struct vm_zone mapentzone_store;
-static vm_zone_t mapentzone;
+__read_mostly static vm_zone_t mapentzone;
 
 static struct vm_map_entry map_entry_init[MAX_MAPENT];
 static struct vm_map_entry cpu_map_entry_init_bsp[MAPENTRYBSP_CACHE];
