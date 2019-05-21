@@ -113,7 +113,7 @@
 #include <sys/ioctl.h>
 #include <sys/errno.h>	/* EINVAL */
 #include <fcntl.h>	/* O_RDWR */
-#include <malloc.h>
+#include <stdlib.h>
 
 struct nm_hdr_t {	/* same as pcap_pkthdr */
 	struct timeval	ts;
