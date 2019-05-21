@@ -396,15 +396,28 @@ pv_entry_compare(pv_entry_t pv1, pv_entry_t pv2)
 RB_GENERATE2(pv_entry_rb_tree, pv_entry, pv_entry,
              pv_entry_compare, vm_pindex_t, pv_pindex);
 
+/*
+ * Keep track of pages in the pmap.  The procedure is handed
+ * the vm_page->md.pmap_count value prior to an increment or
+ * decrement.
+ *
+ *	t_arm		- Active real memory
+ *	t_avm		- Active virtual memory
+ *	t_armshr	- Active real memory that is also shared
+ *	t_avmshr	- Active virtual memory that is also shared
+ *
+ * NOTE: At the moment t_avm is effectively just the same as t_arm.
+ */
 static __inline
 void
-pmap_page_stats_adding(vm_page_t m)
+pmap_page_stats_adding(long prev_count)
 {
 	globaldata_t gd = mycpu;
 
-	if (m->md.pmap_count == 0) {
+	if (prev_count == 0) {
 		++gd->gd_vmtotal.t_arm;
-	} else if (m->md.pmap_count == 1) {
+		++gd->gd_vmtotal.t_avm;
+	} else if (prev_count == 1) {
 		++gd->gd_vmtotal.t_armshr;
 		++gd->gd_vmtotal.t_avmshr;
 	} else {
@@ -414,13 +427,14 @@ pmap_page_stats_adding(vm_page_t m)
 
 static __inline
 void
-pmap_page_stats_deleting(vm_page_t m)
+pmap_page_stats_deleting(long prev_count)
 {
 	globaldata_t gd = mycpu;
 
-	if (m->md.pmap_count == 0) {
+	if (prev_count == 1) {
 		--gd->gd_vmtotal.t_arm;
-	} else if (m->md.pmap_count == 1) {
+		--gd->gd_vmtotal.t_avm;
+	} else if (prev_count == 2) {
 		--gd->gd_vmtotal.t_armshr;
 		--gd->gd_vmtotal.t_avmshr;
 	} else {
@@ -2425,24 +2439,10 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 
 	/*
 	 * DragonFly doesn't use PV's to represent terminal PTEs any more.
+	 * The index range is still used for placemarkers, but not for
+	 * actual pv_entry's.
 	 */
 	KKASSERT(ptepindex >= pmap_pt_pindex(0));
-#if 0
-	if (ptepindex < pmap_pt_pindex(0)) {
-		if (ptepindex >= NUPTE_USER && pmap != &iso_pmap) {
-			/* kernel manages this manually for KVM */
-			KKASSERT(pvpp == NULL);
-		} else {
-			KKASSERT(pvpp != NULL);
-			pt_pindex = NUPTE_TOTAL + (ptepindex >> NPTEPGSHIFT);
-			pvp = pmap_allocpte(pmap, pt_pindex, NULL);
-			if (isnew)
-				vm_page_wire_quick(pvp->pv_m);
-			*pvpp = pvp;
-		}
-		return(pv);
-	}
-#endif
 
 	/*
 	 * Note that pt_pv's are only returned for user VAs. We assert that
@@ -2549,7 +2549,6 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE | PG_UNQUEUED);
 	KKASSERT(m->queue == PQ_NONE);
 
-	pv->pv_flags |= PV_FLAG_PGTABLE;
 	pv->pv_m = m;
 
 	/*
@@ -2584,27 +2583,7 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 		else
 			ptep_iso  = NULL;
 		if (*ptep & pmap->pmap_bits[PG_V_IDX]) {
-			KKASSERT(0);
-#if 0
-			/* REMOVED replaces shared page table page */
-			pt_entry_t pte;
-
-			if (ispt == 0) {
-				panic("pmap_allocpte: unexpected pte %p/%d",
-				      pvp, (int)ptepindex);
-			}
-			pte = pmap_inval_smp(pmap, (vm_offset_t)-1, 1,
-					     ptep, v);
-			if (ptep_iso) {
-				pmap_inval_smp(pmap, (vm_offset_t)-1, 1,
-					       ptep_iso, v);
-			}
-			if (vm_page_unwire_quick(
-					PHYS_TO_VM_PAGE(pte & PG_FRAME))) {
-				panic("pmap_allocpte: shared pgtable "
-				      "pg bad wirecount");
-			}
-#endif
+			panic("pmap_allocpte: ptpte present without pv_entry!");
 		} else {
 			pt_entry_t pte;
 
@@ -3125,20 +3104,7 @@ pmap_remove_pv_page(pv_entry_t pv)
 
 	m = pv->pv_m;
 	pv->pv_m = NULL;
-
-	if (pv->pv_flags & PV_FLAG_PGTABLE) {
-		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-	} else {
-		KKASSERT(0);
-#if 0
-		/*
-		 * Used only for page table pages, so safe to clear on
-		 * the 1->0 transition.
-		 */
-		if (atomic_fetchadd_long(&m->md.pmap_count, -1) == 1)
-			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-#endif
-	}
+	vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 
 	return(m);
 }
@@ -4552,7 +4518,8 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		 */
 		if (pte & pmap->pmap_bits[PG_RW_IDX])
 			atomic_add_long(&p->md.writeable_count, -1);
-		atomic_add_long(&p->md.pmap_count, -1);
+		pmap_page_stats_deleting(
+			atomic_fetchadd_long(&p->md.pmap_count, -1));
 	}
 	if (pte & pmap->pmap_bits[PG_V_IDX]) {
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
@@ -4615,7 +4582,8 @@ again:
 			 */
 			if (ipte & ipmap->pmap_bits[PG_RW_IDX])
 				atomic_add_long(&m->md.writeable_count, -1);
-			atomic_add_long(&m->md.pmap_count, -1);
+			pmap_page_stats_deleting(
+				atomic_fetchadd_long(&m->md.pmap_count, -1));
 		}
 
 		/*
@@ -4694,7 +4662,8 @@ pmap_remove_specific(pmap_t pmap_match, vm_page_t m)
 			 */
 			if (ipte & ipmap->pmap_bits[PG_RW_IDX])
 				atomic_add_long(&m->md.writeable_count, -1);
-			atomic_add_long(&m->md.pmap_count, -1);
+			pmap_page_stats_deleting(
+				atomic_fetchadd_long(&m->md.pmap_count, -1));
 		}
 
 		/*
@@ -4947,7 +4916,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 */
 	/*vm_page_spin_lock(m);*/
 	if ((m->flags & PG_FICTITIOUS) == 0) {
-		atomic_add_long(&m->md.pmap_count, 1);
+		pmap_page_stats_adding(
+			atomic_fetchadd_long(&m->md.pmap_count, 1));
 		if (newpte & pmap->pmap_bits[PG_RW_IDX])
 			atomic_add_long(&m->md.writeable_count, 1);
 	}
@@ -4959,7 +4929,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			vm_page_flag_set(m, PG_MAPPED);
 	}
 	/*vm_page_spin_unlock(m);*/
-	/*pmap_page_stats_adding(m);*/
 
 	/*
 	 * A race can develop when replacing an existing mapping.  The new
@@ -5054,7 +5023,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 */
 		if (origpte & pmap->pmap_bits[PG_RW_IDX])
 			atomic_add_long(&oldm->md.writeable_count, -1);
-		atomic_add_long(&oldm->md.pmap_count, -1);
+		pmap_page_stats_deleting(
+			atomic_fetchadd_long(&oldm->md.pmap_count, -1));
 	}
 
 done:

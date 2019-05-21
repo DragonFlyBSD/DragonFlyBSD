@@ -1442,6 +1442,7 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	 * Associate the VM page with an (object, offset).
 	 *
 	 * The vm_page spin lock is required for interactions with the pmap.
+	 * XXX vm_page_spin_lock() might not be needed for this any more.
 	 */
 	vm_page_spin_lock(m);
 	m->object = object;
@@ -1508,6 +1509,7 @@ vm_page_remove(vm_page_t m)
 	 * Remove the page from the object and update the object.
 	 *
 	 * The vm_page spin lock is required for interactions with the pmap.
+	 * XXX vm_page_spin_lock() might not be needed for this any more.
 	 */
 	vm_page_spin_lock(m);
 	vm_page_rb_tree_RB_REMOVE(&object->rb_memq, m);

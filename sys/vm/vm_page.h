@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
- * Copyright (c) 2003-2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003-2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * The Mach Operating System project at Carnegie-Mellon University.
@@ -99,34 +99,73 @@
 #endif
 
 /*
- * vm_page structure
+ * The vm_page structure is the heart of the entire system.  It's fairly
+ * bulky, eating 3.125% of available memory (128 bytes vs 4K page size).
+ * Most normal uses of the structure, representing physical memory, uses
+ * the type-stable vm_page_array[].  Device mappings exposed to mmap()
+ * (such as GPUs) generally use temporary vm_page's outside of this array
+ * and will be flagged FICTITIOUS.  Devices which use the kernel's contig
+ * memory allocator get normal pages, but for convenience the pages will
+ * be temporarily flagged as FICTITIOUS.
  *
- * hard-busy: (PBUSY_LOCKED)
+ * Soft-busying or Hard-busying guarantees a stable m->object, m->pindex,
+ * and m->valid field.  A page cannot be validated or invalidated unless
+ * hard-busied.
  *
- *	Hard-busying a page allows major manipulation of the page structure.
- *	No new soft-busies can accumulate while a page is hard-busied.  The
- *	page busying code typically waits for all soft-busies to drop before
- *	allowing the hard-busy.
+ * The page must be hard-busied to make the following changes:
  *
- * soft-busy: (PBUSY_MASK)
+ *	(1) Any change to m->object or m->pindex (also requires the
+ *	    related object to be exclusively locked).
  *
- *	Soft-busying a page typically indicates I/O or read-only use of
- *	the content.  A page can have multiple soft-busies on it.  New
- *	soft-busies block on any hard-busied page (wait for the hard-busy
- *	to go away).
+ *	(2) Any transition of m->wire_count to 0 or from 0.  Other
+ *	    transitions (e.g. 2->1, 1->2, etc) are allowed without
+ *	    locks.
  *
- * hold_count
+ *	(3) Any change to m->valid.
  *
- *	This prevents a page from being freed.  This does not prevent any
- *	other operation.  The page may still be disassociated from its
- *	object and essentially scrapped.  It just won't be reused while
- *	a non-zero hold_count is present.
+ *	(4) Clearing PG_MAPPED or PG_WRITEABLE (note that because of
+ *	    this, these bits may be left lazily set until they can
+ *	    be cleared later on.
  *
- * wire_count
+ * Most other fields of the vm_page can change at any time with certain
+ * restrictions.
  *
- *	This indicates that the page has been wired into memory somewhere
- *	(typically a buffer cache buffer, or a user wire).  The pageout
- *	daemon will skip wired pages.
+ *	(1) PG_WRITEABLE and PG_MAPPED may be set with the page soft-busied
+ *	    or hard-busied.
+ *
+ *	(2) m->dirty may be set to VM_PAGE_BITS_ALL by a page fault at
+ *	    any time if PG_WRITEABLE is flagged.  Tests of m->dirty are
+ *	    only tentative until all writeable mappings of the page are
+ *	    removed.  This may occur unlocked.  A hard-busy is required
+ *	    if modifying m->dirty under other conditions.
+ *
+ *	(3) PG_REFERENCED may be set at any time by the pmap code to
+ *	    synchronized the [A]ccessed bit, if PG_MAPPED is flagged,
+ *	    unlocked.  A hard-busy is required for any other time.
+ *
+ *	(3) hold_count can be incremented or decremented at any time,
+ *	    including transitions to or from 0.  Holding a page via
+ *	    vm_page_hold() does NOT stop major changes from being made
+ *	    to the page, but WILL prevent the page from being freed
+ *	    or reallocated.  If the hold is emplaced with the page in
+ *	    a known state it can prevent the underlying data from being
+ *	    destroyed.
+ *
+ *	(4) Each individual flag may have a different behavior.  Some flags
+ *	    can be set or cleared at any time, some require hard-busying,
+ *	    etc.
+ *
+ * Moving the page between queues (aka m->pageq and m->queue) requires
+ * m->spin to be exclusively locked first, and then also the spinlock related
+ * to the queue.
+ *
+ *	(1) This is the only use that requires m->spin any more.
+ *
+ *	(2) There is one special case and that is the pageout daemon is
+ *	    allowed to reorder the page within the same queue while just
+ *	    holding the queue's spin-lock.
+ *
+ * Please see the flags section below for flag documentation.
  */
 TAILQ_HEAD(pglist, vm_page);
 
@@ -140,11 +179,11 @@ RB_PROTOTYPE2(vm_page_rb_tree, vm_page, rb_entry,
 RB_HEAD(vm_page_rb_tree, vm_page);
 
 struct vm_page {
-	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list (P)	*/
+	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list 	*/
 	RB_ENTRY(vm_page) rb_entry;	/* Red-Black tree based at object */
 	struct spinlock	spin;
-	struct vm_object *object;	/* which object am I in (O,P)*/
-	vm_pindex_t pindex;		/* offset into object (O,P) */
+	struct vm_object *object;	/* which object am I in */
+	vm_pindex_t pindex;		/* offset into object */
 	vm_paddr_t phys_addr;		/* physical address of page */
 	struct md_page md;		/* machine dependant stuff */
 	uint16_t queue;			/* page queue index */
@@ -157,7 +196,9 @@ struct vm_page {
 	uint32_t wire_count;		/* wired down maps refs (P) */
 	uint32_t busy_count;		/* soft-busy and hard-busy */
 	int 	hold_count;		/* page hold count */
-	int	ku_pagecnt;		/* kmalloc helper */
+	int	ku_pagecnt;		/* help kmalloc() w/oversized allocs */
+	int	unused01;		/* available */
+	/* 128 bytes */
 #ifdef VM_PAGE_DEBUG
 	const char *busy_func;
 	int	busy_line;
@@ -244,58 +285,86 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 extern long vmmeter_neg_slop_cnt;
 
 /*
- * These are the flags defined for vm_page.
+ * The m->flags field is generally categorized as follows.  Unless otherwise
+ * noted, a flag may only be updated while the page is hard-busied.
  *
- *  PG_FICTITIOUS	It is not possible to translate the pte's physical
- *			address back to a vm_page_t.  The vm_page_t is fake
- *			or there isn't one at all.
+ * PG_UNQUEUED	   - This prevents the page from being placed on any queue.
  *
- *			Fictitious vm_page_t's can be placed in objects and
- *			it is possible to perform pmap functions on them
- *			by virtual address range and by their vm_page_t.
- *			However, pmap_count and writeable_count cannot be
- *			tracked since there is no way to reverse-map the
- *			pte back to the vm_page.
+ * PG_FICTITIOUS   - This indicates to the pmap subsystem that the
+ *		     page might not be reverse-addressable via
+ *		     PHYS_TO_VM_PAGE().   The vm_page_t might be
+ *		     temporary and not exist in the vm_page_array[].
  *
- *			(pmap operations by-vm_page can still be used to
- *			adjust protections or remove the page from the pmap,
- *			and will go only by the PG_MAPPED flag).
+ *		     This also generally means that the pmap subsystem
+ *		     cannot synchronize the [M]odified and [A]ccessed
+ *		     bits with the related vm_page_t, and in fact that
+ *		     there might not even BE a related vm_page_t.
  *
- *			NOTE: The contiguous memory management will flag
- *			      PG_FICTITIOUS on pages in the vm_page_array,
- *			      even though the physical addrses can be
- *			      translated back to a vm_page_t.
+ *		     Unlike the old system, the new pmap subsystem is
+ *		     able to do bulk operations on virtual address ranges
+ *		     containing fictitious pages, and can also pick-out
+ *		     specific fictitious pages by matching m->phys_addr
+ *		     if you supply a fake vm_page to it.
  *
- *			NOTE: Implies PG_UNQUEUED.  PG_UNQUEUED must also
- *			      be set.  No queue management may be performed
- *			      on fictitious pages.
+ *		     Fictitious pages can still be organized into vm_objects
+ *		     if desired.
  *
- *  PG_UNQUEUED		The page is not to participate in any VM page queue
- *			manipulation (even if it is otherwise a normal page).
+ * PG_MAPPED	   - Indicates that the page MIGHT be mapped into a pmap.
+ *		     If not set, guarantees that the page is not mapped.
  *
- *  PG_MAPPED		Only applies to non-fictitious regular pages, this
- *			flag indicates that the page MIGHT be mapped into
- *			zero or more pmaps via normal managed operations..
+ *		     This bit can be set unlocked but only cleared while
+ *		     vm_page is hard-busied.
  *
- *			The page might still be mapped in a specialized manner
- *			(i.e. pmap_kenter(), or mapped into the buffer cache,
- *			and so forth) without setting this flag.
+ *		     For FICTITIOUS pages, this bit will be set automatically
+ *		     via a page fault (aka pmap_enter()), but must be cleared
+ *		     manually.
  *
- *			If this flag is clear it indicates that the page is
- *			absolutely not mapped into a regular pmap by normal
- *			means.  If set, the status is unknown.
+ * PG_WRITEABLE    - Indicates that the page MIGHT be writeable via a pte.
+ *		     If not set, guarantees that the page is not writeable.
  *
- *  PG_WRITEABLE	Similar to PG_MAPPED, indicates that the page might
- *			be mapped RW into zero or more pmaps via normal
- *		        managed operations.
+ *		     This bit can be set unlocked but only cleared while
+ *		     vm_page is hard-busied.
  *
- *			If this flag is clear it indicates that the page is
- *			absolutely not mapped RW into a regular pmap by normal
- *			means.  If set, the status is unknown.
+ *		     For FICTITIOUS pages, this bit will be set automatically
+ *		     via a page fault (aka pmap_enter()), but must be cleared
+ *		     manually.
  *
- *  PG_SWAPPED		Indicates that the page is backed by a swap block.
- *			Any VM object type other than OBJT_DEFAULT can contain
- *			swap-backed pages now.
+ * PG_SWAPPED	   - Indicates that the page is backed by a swap block.
+ *		     Any VM object type other than OBJT_DEFAULT can contain
+ *		     swap-backed pages now.  The bit may only be adjusted
+ *		     while the page is hard-busied.
+ *
+ * PG_RAM	   - Heuristic read-ahead-marker.  When I/O brings pages in,
+ *		     this bit is set on one of them to force a page fault on
+ *		     it to proactively read-ahead additional pages.
+ *
+ *		     Can be set or cleared at any time unlocked.
+ *
+ * PG_WINATCFLS	   - This is used to give dirty pages a second chance
+ *		     on the inactive queue before getting flushed by
+ *		     the pageout daemon.
+ *
+ * PG_REFERENCED   - Indicates that the page has been accessed.  If the
+ *		     page is PG_MAPPED, this bit might not reflect the
+ *		     actual state of the page.  The pmap code synchronizes
+ *		     the [A]ccessed bit to this flag and then clears the
+ *		     [A]ccessed bit.
+ *
+ * PG_MARKER	   - Used by any queue-scanning code to recognize a fake
+ *		     vm_page being used only as a scan marker.
+ *
+ * PG_NOTMETA	   - Distinguish pages representing content from pages
+ *		     representing meta-data.
+ *
+ * PG_NEED_COMMIT  - May only be modified while the page is hard-busied.
+ *		     Indicates that even if the page might not appear to
+ *		     be dirty, it must still be validated against some
+ *		     remote entity (e.g. NFS) before it can be thrown away.
+ *
+ * PG_CLEANCHK	   - Used by the vm_object subsystem to detect pages that
+ *		     might have been inserted during a scan.  May be changed
+ *		     at any time by the VM system (usually while holding the
+ *		     related vm_object's lock).
  */
 #define	PG_UNUSED0001	0x00000001
 #define	PG_UNUSED0002	0x00000002

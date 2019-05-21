@@ -363,7 +363,7 @@ typedef struct pv_entry {
 #define PV_HOLD_MASK		0x1FFFFFFFU
 
 #define PV_FLAG_UNUSED01	0x00000001U
-#define PV_FLAG_PGTABLE		0x00000002U	/* page table page */
+#define PV_FLAG_UNUSED02	0x00000002U
 
 #ifdef	_KERNEL
 

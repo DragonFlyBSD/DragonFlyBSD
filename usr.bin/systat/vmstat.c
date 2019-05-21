@@ -164,7 +164,7 @@ static struct nlist namelist[] = {
 #define STATCOL		 2
 #define MEMROW		 2	/* uses 4 rows and 31 cols */
 #define MEMCOLA		 0
-#define MEMCOLB		 20
+#define MEMCOLB		 17
 #define PAGEROW		 2	/* uses 4 rows and 26 cols */
 #define PAGECOL		45
 #define INTSROW		 6	/* uses all rows to bottom and 17 cols */
@@ -320,9 +320,10 @@ labelkre(void)
 
 	mvprintw(MEMROW + 2, MEMCOLA + 14, "i+c+f");
 
-	mvprintw(MEMROW + 0, MEMCOLB, "VM-rss");
-	mvprintw(MEMROW + 1, MEMCOLB, "VM-swp");
-	mvprintw(MEMROW + 1, MEMCOLB + 15, "/");
+	mvprintw(MEMROW + 0, MEMCOLB, "PMAP");
+	mvprintw(MEMROW + 0, MEMCOLB + 13, "VMRSS");
+	mvprintw(MEMROW + 1, MEMCOLB, "SWAP");
+	mvprintw(MEMROW + 1, MEMCOLB + 13, "SWTOT");
 
 	mvprintw(PAGEROW, PAGECOL,     "       VNODE PAGER    SWAP PAGER ");
 	mvprintw(PAGEROW + 1, PAGECOL, "          in   out      in   out ");
@@ -547,9 +548,14 @@ showkre(void)
 		    vms.v_cache_count +
 		    vms.v_free_count), MEMROW + 2, MEMCOLA + 7, 6, 0);
 	put64(s.physmem, MEMROW + 3, MEMCOLA + 7, 6, 0);
-	put64(pgtob(total.t_rm), MEMROW + 0, MEMCOLB + 7, 6, 0);
-	put64(pgtob(total.t_vm - total.t_rm), MEMROW + 1, MEMCOLB + 7, 6, 0);
-	put64(pgtob(s.kvmsw[kvnsw].ksw_total), MEMROW + 1, MEMCOLB + 17, 6, 0);
+	put64(pgtob(total.t_arm),
+			MEMROW + 0, MEMCOLB + 5, 6, 0);
+	put64(pgtob(total.t_avm + total.t_avmshr),
+			MEMROW + 0, MEMCOLB + 19, 6, 0);
+	put64(pgtob(total.t_vm - total.t_rm),
+			MEMROW + 1, MEMCOLB + 5, 6, 0);
+	put64(pgtob(s.kvmsw[kvnsw].ksw_total),
+			MEMROW + 1, MEMCOLB + 19, 6, 0);
 
 #if 0
 	put64(pgtob(total.t_arm), MEMROW + 2, MEMCOL + 4, 6, 0);

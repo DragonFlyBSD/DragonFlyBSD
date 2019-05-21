@@ -69,12 +69,9 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
-#if 0
-    { "_vm_page_buckets" },
-    { "_vm_page_hash_mask" },
-#endif
     { "_vm_page_array" },
     { "_vm_page_array_size" },
+    { "_kernel_object" },
     { NULL }
 };
 
@@ -85,6 +82,7 @@ struct vm_page **vm_page_buckets;
 int vm_page_hash_mask;
 #endif
 struct vm_page *vm_page_array;
+struct vm_object *kernel_object_ptr;
 int vm_page_array_size;
 
 void checkpage(kvm_t *kd, vm_page_t mptr, vm_page_t m, struct vm_object *obj);
@@ -94,8 +92,29 @@ static int kkread_err(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 
 #if 0
 static void addsltrack(vm_page_t m);
-#endif
 static void dumpsltrack(kvm_t *kd);
+#endif
+static int unique_object(void *ptr);
+
+long count_free;
+long count_wired;		/* total */
+long count_wired_vnode;
+long count_wired_anon;
+long count_wired_in_pmap;
+long count_wired_pgtable;
+long count_wired_other;
+long count_wired_kernel;
+long count_wired_obj_other;
+
+long count_anon;
+long count_anon_in_pmap;
+long count_vnode;
+long count_device;
+long count_phys;
+long count_kernel;
+long count_unknown;
+long count_noobj_offqueue;
+long count_noobj_onqueue;
 
 int
 main(int ac, char **av)
@@ -145,12 +164,9 @@ main(int ac, char **av)
 	exit(1);
     }
 
-#if 0
-    kkread(kd, Nl[0].n_value, &vm_page_buckets, sizeof(vm_page_buckets));
-    kkread(kd, Nl[1].n_value, &vm_page_hash_mask, sizeof(vm_page_hash_mask));
-#endif
     kkread(kd, Nl[0].n_value, &vm_page_array, sizeof(vm_page_array));
     kkread(kd, Nl[1].n_value, &vm_page_array_size, sizeof(vm_page_array_size));
+    kernel_object_ptr = (void *)Nl[2].n_value;
 
     /*
      * Scan the vm_page_array validating all pages with associated objects
@@ -165,20 +181,63 @@ main(int ac, char **av)
 	    kkread(kd, (u_long)m.object, &obj, sizeof(obj));
 	    checkpage(kd, &vm_page_array[i], &m, &obj);
 	}
+	if (m.queue >= PQ_HOLD) {
+	    qstr = "HOLD";
+	} else if (m.queue >= PQ_CACHE) {
+	    qstr = "CACHE";
+	} else if (m.queue >= PQ_ACTIVE) {
+	    qstr = "ACTIVE";
+	} else if (m.queue >= PQ_INACTIVE) {
+	    qstr = "INACTIVE";
+	} else if (m.queue >= PQ_FREE) {
+	    qstr = "FREE";
+	    ++count_free;
+	} else {
+	    qstr = "NONE";
+	}
+	if (m.wire_count) {
+		++count_wired;
+		if (m.object == NULL) {
+			if ((m.flags & PG_MAPPED) &&
+			    (m.flags & PG_WRITEABLE) &&
+			    (m.flags & PG_UNQUEUED)) {
+				++count_wired_pgtable;
+			} else {
+				++count_wired_other;
+			}
+		} else if (m.object == kernel_object_ptr) {
+			++count_wired_kernel;
+		} else {
+			switch(obj.type) {
+			case OBJT_VNODE:
+				++count_wired_vnode;
+				break;
+			case OBJT_DEFAULT:
+			case OBJT_SWAP:
+				if (m.md.pmap_count)
+					++count_wired_in_pmap;
+				else
+					++count_wired_anon;
+				break;
+			default:
+				++count_wired_obj_other;
+				break;
+			}
+		}
+	} else if (m.md.pmap_count) {
+		if (m.object && m.object != kernel_object_ptr) {
+			switch(obj.type) {
+			case OBJT_DEFAULT:
+			case OBJT_SWAP:
+				++count_anon_in_pmap;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
 	if (verboseopt) {
-	    if (m.queue >= PQ_HOLD) {
-		qstr = "HOLD";
-	    } else if (m.queue >= PQ_CACHE) {
-		qstr = "CACHE";
-	    } else if (m.queue >= PQ_ACTIVE) {
-		qstr = "ACTIVE";
-	    } else if (m.queue >= PQ_INACTIVE) {
-		qstr = "INACTIVE";
-	    } else if (m.queue >= PQ_FREE) {
-		qstr = "FREE";
-	    } else {
-		qstr = "NONE";
-	    } 
 	    printf("page %p obj %p/%-8ju(%016jx) val=%02x dty=%02x hold=%d "
 		   "wire=%-2d act=%-3d busy=%d %8s",
 		&vm_page_array[i],
@@ -193,33 +252,59 @@ main(int ac, char **av)
 		m.busy_count,
 		qstr
 	    );
-	    if (m.object) {
-		switch(obj.type) {
-		case OBJT_DEFAULT:
-		    ostr = "default";
-		    break;
-		case OBJT_SWAP:
-		    ostr = "swap";
-		    break;
-		case OBJT_VNODE:
-		    ostr = "vnode";
-		    break;
-		case OBJT_DEVICE:
-		    ostr = "device";
-		    break;
-		case OBJT_PHYS:
-		    ostr = "phys";
-		    break;
-		case OBJT_DEAD:
-		    ostr = "dead";
-		    break;
-		default:
-		    ostr = "unknown";
-		    break;
-		}
-	    } else {
-		ostr = "-";
+	}
+
+	if (m.object == kernel_object_ptr) {
+		ostr = "kernel";
+		if (unique_object(m.object))
+			count_kernel += obj.resident_page_count;
+	} else if (m.object) {
+	    switch(obj.type) {
+	    case OBJT_DEFAULT:
+		ostr = "default";
+		if (unique_object(m.object))
+			count_anon += obj.resident_page_count;
+		break;
+	    case OBJT_SWAP:
+		ostr = "swap";
+		if (unique_object(m.object))
+			count_anon += obj.resident_page_count;
+		break;
+	    case OBJT_VNODE:
+		ostr = "vnode";
+		if (unique_object(m.object))
+			count_vnode += obj.resident_page_count;
+		break;
+	    case OBJT_DEVICE:
+		ostr = "device";
+		if (unique_object(m.object))
+			count_device += obj.resident_page_count;
+		break;
+	    case OBJT_PHYS:
+		ostr = "phys";
+		if (unique_object(m.object))
+			count_phys += obj.resident_page_count;
+		break;
+	    case OBJT_DEAD:
+		ostr = "dead";
+		if (unique_object(m.object))
+			count_unknown += obj.resident_page_count;
+		break;
+	    default:
+		if (unique_object(m.object))
+			count_unknown += obj.resident_page_count;
+		ostr = "unknown";
+		break;
 	    }
+	} else {
+	    ostr = "-";
+	    if (m.queue == PQ_NONE)
+		    ++count_noobj_offqueue;
+	    else if (m.queue - m.pc != PQ_FREE)
+		    ++count_noobj_onqueue;
+	}
+
+	if (verboseopt) {
 	    printf(" %-7s", ostr);
 	    if (m.busy_count & PBUSY_LOCKED)
 		printf(" BUSY");
@@ -243,8 +328,8 @@ main(int ac, char **av)
 		printf(" SWAPINPROG");
 	    if (m.flags & PG_NOSYNC)
 		printf(" NOSYNC");
-	    if (m.flags & PG_UNMANAGED)
-		printf(" UNMANAGED");
+	    if (m.flags & PG_UNQUEUED)
+		printf(" UNQUEUED");
 	    if (m.flags & PG_MARKER)
 		printf(" MARKER");
 	    if (m.flags & PG_RAM)
@@ -264,6 +349,41 @@ main(int ac, char **av)
     }
     if (debugopt || verboseopt)
 	printf("\n");
+    printf("%8.2fM free\n", count_free * 4096.0 / 1048576.0);
+
+    printf("%8.2fM wired vnode (in buffer cache)\n",
+	count_wired_vnode * 4096.0 / 1048576.0);
+    printf("%8.2fM wired in-pmap\n",
+	count_wired_in_pmap * 4096.0 / 1048576.0);
+    printf("%8.2fM wired pgtable\n",
+	count_wired_pgtable * 4096.0 / 1048576.0);
+    printf("%8.2fM wired anon\n",
+	count_wired_anon * 4096.0 / 1048576.0);
+    printf("%8.2fM wired kernel_object\n",
+	count_wired_kernel * 4096.0 / 1048576.0);
+    printf("%8.2fM wired other (unknown object)\n",
+	count_wired_obj_other * 4096.0 / 1048576.0);
+    printf("%8.2fM wired other (no object, probably kernel)\n",
+	count_wired_other * 4096.0 / 1048576.0);
+    printf("%8.2fM WIRED TOTAL\n",
+	count_wired * 4096.0 / 1048576.0);
+
+    printf("\n");
+    printf("%8.2fM anonymous (total, includes in-pmap)\n",
+	count_anon * 4096.0 / 1048576.0);
+    printf("%8.2fM anonymous memory in-pmap\n",
+	count_anon_in_pmap * 4096.0 / 1048576.0);
+    printf("%8.2fM vnode (includes wired)\n",
+	count_vnode * 4096.0 / 1048576.0);
+    printf("%8.2fM device\n", count_device * 4096.0 / 1048576.0);
+    printf("%8.2fM phys\n", count_phys * 4096.0 / 1048576.0);
+    printf("%8.2fM kernel (includes wired)\n",
+	count_kernel * 4096.0 / 1048576.0);
+    printf("%8.2fM unknown\n", count_unknown * 4096.0 / 1048576.0);
+    printf("%8.2fM no_object, off queue (includes wired w/o object)\n",
+	count_noobj_offqueue * 4096.0 / 1048576.0);
+    printf("%8.2fM no_object, on non-free queue (includes wired w/o object)\n",
+	count_noobj_onqueue * 4096.0 / 1048576.0);
 
 #if 0
     /*
@@ -295,7 +415,9 @@ main(int ac, char **av)
 #endif
     if (debugopt)
 	printf("\n");
+#if 0
     dumpsltrack(kd);
+#endif
     return(0);
 }
 
@@ -439,4 +561,34 @@ dumpsltrack(kvm_t *kd)
 		}
 	}
 	printf("FullZones/TotalZones: %ld/%ld\n", full_zones, total_zones);
+}
+
+#define HASH_SIZE	(1024*1024)
+#define HASH_MASK	(HASH_SIZE - 1)
+
+struct dup_entry {
+	struct dup_entry *next;
+	void	*ptr;
+};
+
+struct dup_entry *dup_hash[HASH_SIZE];
+
+static int
+unique_object(void *ptr)
+{
+	struct dup_entry *hen;
+	int hv;
+
+	hv = (intptr_t)ptr ^ ((intptr_t)ptr >> 20);
+	hv &= HASH_MASK;
+	for (hen = dup_hash[hv]; hen; hen = hen->next) {
+		if (hen->ptr == ptr)
+			return 0;
+	}
+	hen = malloc(sizeof(*hen));
+	hen->next = dup_hash[hv];
+	hen->ptr = ptr;
+	dup_hash[hv] = hen;
+
+	return 1;
 }

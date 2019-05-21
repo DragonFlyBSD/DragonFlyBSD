@@ -73,10 +73,11 @@ int verboseopt;
 struct vm_map kmap;
 vm_offset_t total_empty;
 vm_offset_t total_used;
+vm_offset_t total_real;
 vm_offset_t total_used_byid[VM_SUBSYS_LIMIT];
 
 static const char *formatnum(int64_t value);
-static const char *entryid(vm_subsys_t id);
+static const char *entryid(vm_subsys_t id, int *realmemp);
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static void mapscan(kvm_t *kd, vm_map_entry_t kptr, vm_map_entry_t ken,
 		    vm_offset_t *lastp);
@@ -140,12 +141,20 @@ main(int ac, char **av)
     total_empty += kmap.max_addr - last;
 
     printf("-----------------------------------------------\n");
-    for (i = 0; i < VM_SUBSYS_LIMIT; ++i)
-	printf("Total-id: %9s %s\n", entryid(i), formatnum(total_used_byid[i]));
+    for (i = 0; i < VM_SUBSYS_LIMIT; ++i) {
+	int realmem;
+	const char *id = entryid(i, &realmem);
+
+	printf("Total-id: %9s %s%s\n",
+		id,
+		formatnum(total_used_byid[i]),
+		(realmem ? " (real memory)" : ""));
+    }
 
     printf("-----------------------------------------------\n");
     printf("Total empty space: %s\n", formatnum(total_empty));
     printf("Total used  space: %s\n", formatnum(total_used));
+    printf("Total real  space: %s\n", formatnum(total_real));
 }
 
 static const char *
@@ -197,6 +206,8 @@ formatnum(int64_t value)
 static void
 mapscan(kvm_t *kd, vm_map_entry_t kptr, vm_map_entry_t ken, vm_offset_t *lastp)
 {
+    int realmem;
+
     if (*lastp != ken->ba.start) {
 	    printf("%4ldM %p %08lx-%08lx (%s) EMPTY\n",
 		total_used / 1024 / 1024,
@@ -210,35 +221,47 @@ mapscan(kvm_t *kd, vm_map_entry_t kptr, vm_map_entry_t ken, vm_offset_t *lastp)
 	kptr,
 	ken->ba.start, ken->ba.end,
 	(ken->ba.end - ken->ba.start) / 1024,
-	entryid(ken->id),
+	entryid(ken->id, &realmem),
 	ken->ba.map_object);
     total_used += ken->ba.end - ken->ba.start;
+
     if (ken->id < VM_SUBSYS_LIMIT)
 	total_used_byid[ken->id] += ken->ba.end - ken->ba.start;
     else
 	total_used_byid[0] += ken->ba.end - ken->ba.start;
+
+    if (realmem)
+	total_real += ken->ba.end - ken->ba.start;
+
     *lastp = ken->ba.end;
 }
 
 static
 const char *
-entryid(vm_subsys_t id)
+entryid(vm_subsys_t id, int *realmemp)
 {
 	static char buf[32];
+	int dummy = 0;
+	int *realmem = (realmemp ? realmemp : &dummy);
+
+	*realmem = 0;
 
 	switch(id) {
 	case VM_SUBSYS_UNKNOWN:
 		return("UNKNOWN");
 	case VM_SUBSYS_KMALLOC:
+		*realmem = 1;
 		return("KMALLOC");
 	case VM_SUBSYS_STACK:
+		*realmem = 1;
 		return("STACK");
 	case VM_SUBSYS_IMGACT:
 		return("IMGACT");
 	case VM_SUBSYS_EFI:
 		return("EFI");
 	case VM_SUBSYS_RESERVED:
-		return("RESERVED");
+		*realmem = 1;
+		return("BOOT+KERN");
 	case VM_SUBSYS_INIT:
 		return("INIT");
 	case VM_SUBSYS_PIPE:
@@ -256,16 +279,21 @@ entryid(vm_subsys_t id)
 	case VM_SUBSYS_BOGUS:
 		return("BOGUS");
 	case VM_SUBSYS_BUF:
+		*realmem = 1;
 		return("BUF");
 	case VM_SUBSYS_BUFDATA:
 		return("BUFDATA");
 	case VM_SUBSYS_GD:
+		*realmem = 1;
 		return("GD");
 	case VM_SUBSYS_IPIQ:
+		*realmem = 1;
 		return("IPIQ");
 	case VM_SUBSYS_PVENTRY:
+		*realmem = 1;
 		return("PVENTRY");
 	case VM_SUBSYS_PML4:
+		*realmem = 1;
 		return("PML4");
 	case VM_SUBSYS_MAPDEV:
 		return("MAPDEV");
@@ -283,12 +311,14 @@ entryid(vm_subsys_t id)
 	case VM_SUBSYS_DRM_SCAT:
 		return("DRM_SCAT");
 	case VM_SUBSYS_DRM_VMAP:
+		*realmem = 1;
 		return("DRM_VMAP");
 	case VM_SUBSYS_DRM_TTM:
 		return("DRM_TTM");
 	case VM_SUBSYS_HAMMER:
 		return("HAMMER");
 	case VM_SUBSYS_VMPGHASH:
+		*realmem = 1;
 		return("VMPGHASH");
 	default:
 		break;
