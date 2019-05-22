@@ -72,6 +72,12 @@ struct nlist Nl[] = {
     { "_vm_page_array" },
     { "_vm_page_array_size" },
     { "_kernel_object" },
+    { "_nbuf" },
+    { "_nswbuf_mem" },
+    { "_nswbuf_kva" },
+    { "_nswbuf_raw" },
+    { "_kernbase" },
+    { "__end" },
     { NULL }
 };
 
@@ -84,6 +90,11 @@ int vm_page_hash_mask;
 struct vm_page *vm_page_array;
 struct vm_object *kernel_object_ptr;
 int vm_page_array_size;
+long nbuf;
+long nswbuf_mem;
+long nswbuf_kva;
+long nswbuf_raw;
+long kern_size;
 
 void checkpage(kvm_t *kd, vm_page_t mptr, vm_page_t m, struct vm_object *obj);
 static void kkread_vmpage(kvm_t *kd, u_long addr, vm_page_t m);
@@ -167,6 +178,11 @@ main(int ac, char **av)
     kkread(kd, Nl[0].n_value, &vm_page_array, sizeof(vm_page_array));
     kkread(kd, Nl[1].n_value, &vm_page_array_size, sizeof(vm_page_array_size));
     kernel_object_ptr = (void *)Nl[2].n_value;
+    kkread(kd, Nl[3].n_value, &nbuf, sizeof(nbuf));
+    kkread(kd, Nl[4].n_value, &nswbuf_mem, sizeof(nswbuf_mem));
+    kkread(kd, Nl[5].n_value, &nswbuf_kva, sizeof(nswbuf_kva));
+    kkread(kd, Nl[6].n_value, &nswbuf_raw, sizeof(nswbuf_raw));
+    kern_size = Nl[8].n_value - Nl[7].n_value;
 
     /*
      * Scan the vm_page_array validating all pages with associated objects
@@ -353,7 +369,7 @@ main(int ac, char **av)
 
     printf("%8.2fM wired vnode (in buffer cache)\n",
 	count_wired_vnode * 4096.0 / 1048576.0);
-    printf("%8.2fM wired in-pmap\n",
+    printf("%8.2fM wired in-pmap (probably vnode pages also in buffer cache)\n",
 	count_wired_in_pmap * 4096.0 / 1048576.0);
     printf("%8.2fM wired pgtable\n",
 	count_wired_pgtable * 4096.0 / 1048576.0);
@@ -361,10 +377,20 @@ main(int ac, char **av)
 	count_wired_anon * 4096.0 / 1048576.0);
     printf("%8.2fM wired kernel_object\n",
 	count_wired_kernel * 4096.0 / 1048576.0);
+
+	printf("\t%8.2fM vm_page_array\n",
+	    vm_page_array_size * sizeof(struct vm_page) / 1048576.0);
+	printf("\t%8.2fM buf, swbuf_mem, swbuf_kva, swbuf_raw\n",
+	    (nbuf + nswbuf_mem + nswbuf_kva + nswbuf_raw) *
+	    sizeof(struct buf) / 1048576.0);
+	printf("\t%8.2fM kernel binary\n", kern_size / 1048576.0);
+	printf("\t(also add in KMALLOC id kmapinfo, or loosely, vmstat -m)\n");
+
     printf("%8.2fM wired other (unknown object)\n",
 	count_wired_obj_other * 4096.0 / 1048576.0);
     printf("%8.2fM wired other (no object, probably kernel)\n",
 	count_wired_other * 4096.0 / 1048576.0);
+
     printf("%8.2fM WIRED TOTAL\n",
 	count_wired * 4096.0 / 1048576.0);
 

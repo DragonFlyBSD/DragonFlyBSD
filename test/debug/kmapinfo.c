@@ -290,7 +290,6 @@ entryid(vm_subsys_t id, int *realmemp)
 		*realmem = 1;
 		return("IPIQ");
 	case VM_SUBSYS_PVENTRY:
-		*realmem = 1;
 		return("PVENTRY");
 	case VM_SUBSYS_PML4:
 		*realmem = 1;
