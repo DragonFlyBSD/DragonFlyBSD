@@ -127,6 +127,7 @@
 #include <machine/mptable.h>
 
 #define PHYSMAP_ENTRIES		10
+#define MAXBUFSTRUCTSIZE	((size_t)512 * 1024 * 1024)
 
 extern u_int64_t hammer_time(u_int64_t, u_int64_t);
 
@@ -383,26 +384,28 @@ again:
 	    (name) = (type *)v; v = (caddr_t)((lim) = ((name)+(num)))
 
 	/*
-	 * The nominal buffer size (and minimum KVA allocation) is MAXBSIZE.
-	 * For the first 64MB of ram nominally allocate sufficient buffers to
-	 * cover 1/4 of our ram.  Beyond the first 64MB allocate additional
-	 * buffers to cover 1/20 of our ram over 64MB.  When auto-sizing
-	 * the buffer cache we limit the eventual kva reservation to
-	 * maxbcache bytes.
+	 * Calculate nbuf such that maxbufspace uses approximately 1/20
+	 * of physical memory by default, with a minimum of 50 buffers.
 	 *
-	 * factor represents the 1/4 x ram conversion.
+	 * The calculation is made after discounting 128MB.
+	 *
+	 * NOTE: maxbufspace is (nbuf * NBUFCALCSIZE) (NBUFCALCSIZE ~= 16KB).
+	 *	 nbuf = (kbytes / factor) would cover all of memory.
 	 */
 	if (nbuf == 0) {
-		long factor = 4 * NBUFCALCSIZE / 1024;
-		long kbytes = physmem * (PAGE_SIZE / 1024);
+		long factor = NBUFCALCSIZE / 1024;		/* KB/nbuf */
+		long kbytes = physmem * (PAGE_SIZE / 1024);	/* physmem */
 
 		nbuf = 50;
-		if (kbytes > 4096)
-			nbuf += min((kbytes - 4096) / factor, 65536 / factor);
-		if (kbytes > 65536)
-			nbuf += (kbytes - 65536) * 2 / (factor * 5);
+		if (kbytes > 128 * 1024)
+			nbuf += (kbytes - 128 * 1024) / (factor * 20);
 		if (maxbcache && nbuf > maxbcache / NBUFCALCSIZE)
 			nbuf = maxbcache / NBUFCALCSIZE;
+		if ((size_t)nbuf * sizeof(struct buf) > MAXBUFSTRUCTSIZE) {
+			kprintf("Warning: nbuf capped at %ld due to the "
+				"reasonability limit\n", nbuf);
+			nbuf = MAXBUFSTRUCTSIZE / sizeof(struct buf);
+		}
 	}
 
 	/*
@@ -437,9 +440,9 @@ again:
 	 *
 	 * NOTE: buffer space in bytes is limited by vfs.*bufspace sysctls.
 	 */
-	if (nbuf > (virtual_end - virtual_start) / sizeof(struct buf) / 4) {
+	if (nbuf > (virtual_end - virtual_start) / (sizeof(struct buf) * 4)) {
 		nbuf = (virtual_end - virtual_start) /
-		       sizeof(struct buf) / 2;
+		       (sizeof(struct buf) * 4);
 		kprintf("Warning: nbufs capped at %ld due to "
 			"valloc considerations\n",
 			nbuf);

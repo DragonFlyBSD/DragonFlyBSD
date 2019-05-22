@@ -151,37 +151,44 @@ rb_buf_compare(struct buf *b1, struct buf *b2)
  *
  * Called from vfsinit()
  */
+#define MAXVNBREAKMEM	(1L * 1024 * 1024 * 1024)
+#define MINVNODES	2000
+#define MAXVNODES	4000000
+
 void
 vfs_subr_init(void)
 {
-	int factor1;
-	int factor2;
+	int factor1;	/* Limit based on ram (x 2 above 1GB) */
+	int factor2;	/* Limit based on available KVM */
+	size_t freemem;
 
 	/*
-	 * Desiredvnodes is kern.maxvnodes.  We want to scale it 
-	 * according to available system memory but we may also have
-	 * to limit it based on available KVM.
+	 * Size maxvnodes to available memory.  Size significantly
+	 * smaller on low-memory systems (calculations for the first
+	 * 1GB of ram), and pump it up a bit when free memory is
+	 * above 1GB.
 	 *
-	 * WARNING!  For machines with 64-256M of ram we have to be sure
-	 *	     that the default limit scales down well due to HAMMER
-	 *	     taking up significantly more memory per-vnode vs UFS.
-	 *	     We want around ~5800 on a 128M machine.
+	 * The general minimum is maxproc * 8 (we want someone pushing
+	 * up maxproc a lot to also get more vnodes).  Usually maxproc
+	 * does not affect this calculation.
 	 *
-	 * WARNING!  Now that KVM is substantially larger (e.g. 8TB+),
-	 *	     also limit maxvnodes based on a 128GB metric.  This
-	 *	     gives us something like ~3 millon vnodes.  sysctl
-	 *	     can be used to increase it further if desired.
-	 *
-	 *	     For disk cachhing purposes, filesystems like HAMMER1
-	 *	     and HAMMER2 will or can be told to cache file data
-	 *	     via the block device instead of excessively in vnodes.
+	 * There isn't much of a point allowing maxvnodes to exceed a
+	 * few million as our modern filesystems cache pages in the
+	 * underlying block device and not so much hanging off of VM
+	 * objects.
 	 */
-	factor1 = 25 * (sizeof(struct vm_object) + sizeof(struct vnode));
+	factor1 = 50 * (sizeof(struct vm_object) + sizeof(struct vnode));
 	factor2 = 30 * (sizeof(struct vm_object) + sizeof(struct vnode));
-	maxvnodes = imin((int64_t)vmstats.v_page_count * PAGE_SIZE / factor1,
-			 KvaSize / factor2);
+
+	freemem = (int64_t)vmstats.v_page_count * PAGE_SIZE;
+
+	maxvnodes = freemem / factor1;
+	if (freemem > MAXVNBREAKMEM)
+		maxvnodes += (freemem - MAXVNBREAKMEM) / factor1;
 	maxvnodes = imax(maxvnodes, maxproc * 8);
-	maxvnodes = imin(maxvnodes, 64LL*1024*1024*1024 / factor2);
+	maxvnodes = imin(maxvnodes, KvaSize / factor2);
+	maxvnodes = imin(maxvnodes, MAXVNODES);
+	maxvnodes = imax(maxvnodes, MINVNODES);
 
 	lwkt_token_init(&spechash_token, "spechash");
 }

@@ -78,6 +78,8 @@
 #include <machine/globaldata.h>
 #include <machine/md_var.h>
 
+#define MAXBUFSTRUCTSIZE	((size_t)512 * 1024 * 1024)
+
 #if NISA > 0
 #include <bus/isa/isavar.h>
 
@@ -132,21 +134,28 @@ cpu_startup(void *dummy)
 	kprintf("real memory = %ju (%juK bytes)\n",
 	    (uintmax_t)ptoa(Maxmem), (uintmax_t)(ptoa(Maxmem) / 1024));
 
-	if (nbuf == 0) {
-		int factor = 4 * NBUFCALCSIZE / 1024;
-		int kbytes = Maxmem * (PAGE_SIZE / 1024);
+       if (nbuf == 0) {
+                long factor = NBUFCALCSIZE / 1024;              /* KB/nbuf */
+                long kbytes = physmem * (PAGE_SIZE / 1024);     /* physmem */
 
-		nbuf = 50;
-		if (kbytes > 4096)
-			nbuf += min((kbytes - 4096) / factor, 65536 / factor);
-		if (kbytes > 65536)
-			nbuf += (kbytes - 65536) * 2 / (factor * 5);
-		if (maxbcache && nbuf > maxbcache / NBUFCALCSIZE)
-			nbuf = maxbcache / NBUFCALCSIZE;
-	}
-	if (nbuf > (virtual_end - virtual_start) / (MAXBSIZE * 2)) {
-		nbuf = (virtual_end - virtual_start) / (MAXBSIZE * 2);
-		kprintf("Warning: nbufs capped at %ld\n", nbuf);
+                nbuf = 50;
+
+                if (kbytes > 128 * 1024)
+                        nbuf += (kbytes - 128 * 1024) / (factor * 20);
+                if (maxbcache && nbuf > maxbcache / NBUFCALCSIZE)
+                        nbuf = maxbcache / NBUFCALCSIZE;
+
+		if ((size_t)nbuf * sizeof(struct buf) > MAXBUFSTRUCTSIZE) {
+			kprintf("Warning: nbuf capped at %ld due to the "
+				"reasonability limit\n", nbuf);
+			nbuf = MAXBUFSTRUCTSIZE / sizeof(struct buf);
+		}
+        }
+
+	if (nbuf > (virtual_end - virtual_start) / (MAXBSIZE * 4)) {
+		nbuf = (virtual_end - virtual_start) / (MAXBSIZE * 4);
+		kprintf("Warning: nbufs capped at %ld for "
+			"valloc considerations\n", nbuf);
 	}
 
 	nswbuf_mem = lmax(lmin(nbuf / 32, 32), 4);

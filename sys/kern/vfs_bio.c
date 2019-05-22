@@ -127,7 +127,7 @@ vm_page_t bogus_page;
  */
 long bufspace;			/* atomic ops */
 long maxbufspace;
-long maxbufmallocspace, lobufspace, hibufspace;
+long lobufspace, hibufspace;
 static long lorunningspace;
 static long hirunningspace;
 static long dirtykvaspace;		/* atomic */
@@ -203,8 +203,6 @@ SYSCTL_LONG(_vfs, OID_AUTO, lobufspace, CTLFLAG_RD, &lobufspace, 0,
 	"Minimum amount of memory to reserve for system buffer space");
 SYSCTL_LONG(_vfs, OID_AUTO, bufspace, CTLFLAG_RD, &bufspace, 0,
 	"Amount of memory available for buffers");
-SYSCTL_LONG(_vfs, OID_AUTO, maxmallocbufspace, CTLFLAG_RD, &maxbufmallocspace,
-	0, "Maximum amount of memory reserved for buffers using malloc");
 SYSCTL_INT(_vfs, OID_AUTO, getnewbufcalls, CTLFLAG_RD, &getnewbufcalls, 0,
 	"New buffer header acquisition requests");
 SYSCTL_INT(_vfs, OID_AUTO, debug_commit, CTLFLAG_RW, &debug_commit, 0, "");
@@ -672,15 +670,6 @@ bufinit(void *dummy __unused)
 
 	lorunningspace = 512 * 1024;
 	/* hirunningspace -- see below */
-
-	/*
-	 * Limit the amount of malloc memory since it is wired permanently
-	 * into the kernel space.  Even though this is accounted for in
-	 * the buffer allocation, we don't want the malloced region to grow
-	 * uncontrolled.  The malloc scheme improves memory utilization
-	 * significantly on average (small) directories.
-	 */
-	maxbufmallocspace = hibufspace / 20;
 
 	/*
 	 * Reduce the chance of a deadlock occuring by limiting the number
