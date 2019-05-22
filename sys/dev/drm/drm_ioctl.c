@@ -646,7 +646,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	u_long cmd = ap->a_cmd;
 	drm_ioctl_t *func;
 	unsigned int nr = DRM_IOCTL_NR(cmd);
-	int retcode = 0;
+	int retcode = -EINVAL;
 	caddr_t data = ap->a_data;
 	bool is_driver_ioctl;
 
@@ -662,16 +662,16 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		return EINVAL;
 	}
 
-	ioctl = &drm_ioctls[nr];
-	/* It's not a core DRM ioctl, try driver-specific. */
-	if (ioctl->func == NULL && nr >= DRM_COMMAND_BASE) {
-		/* The array entries begin at DRM_COMMAND_BASE ioctl nr */
-		nr -= DRM_COMMAND_BASE;
-		if (nr >= dev->driver->num_ioctls) {
-			return EINVAL;
-		}
-		ioctl = &dev->driver->ioctls[nr];
-		is_driver_ioctl = 1;
+	if (is_driver_ioctl) {
+		/* driver ioctl */
+		if (nr - DRM_COMMAND_BASE >= dev->driver->num_ioctls)
+			goto err_i1;
+		ioctl = &dev->driver->ioctls[nr - DRM_COMMAND_BASE];
+	} else {
+		/* core ioctl */
+		if (nr >= DRM_CORE_IOCTL_COUNT)
+			goto err_i1;
+		ioctl = &drm_ioctls[nr];
 	}
 
 	DRM_DEBUG_IOCTL("pid=%d, dev=0x%lx, auth=%d, %s\n",
