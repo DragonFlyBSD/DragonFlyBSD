@@ -143,8 +143,6 @@ struct vmstats {
 	long v_unused_variable[9];
 };
 
-#define VMMETER_SLOP_COUNT	128
-
 #ifdef _KERNEL
 
 /* note: vmmeter 'cnt' structure is now per-cpu */

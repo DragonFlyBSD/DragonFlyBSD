@@ -127,7 +127,6 @@ static void vm_numa_add_topology_mem(cpu_node_t *cpup, int physid, long bytes);
  * Array of tailq lists
  */
 struct vpgqueues vm_page_queues[PQ_COUNT];
-__read_mostly long vmmeter_neg_slop_cnt = -VMMETER_SLOP_COUNT;
 
 static volatile int vm_pages_waiting;
 static struct alist vm_contig_alist;
@@ -991,7 +990,8 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 	struct vpgqueues *pq;
 	u_short queue;
 	u_short oqueue;
-	long *cnt;
+	long *cnt_adj;
+	long *cnt_gd;
 
 	queue = m->queue;
 	if (queue != PQ_NONE) {
@@ -999,31 +999,37 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		TAILQ_REMOVE(&pq->pl, m, pageq);
 
 		/*
-		 * Adjust our pcpu stats.  In order for the nominal low-memory
-		 * algorithms to work properly we don't let any pcpu stat get
-		 * too negative before we force it to be rolled-up into the
-		 * global stats.  Otherwise our pageout and vm_wait tests
-		 * will fail badly.
+		 * Primarily adjust our pcpu stats for rollup, which is
+		 * (mycpu->gd_vmstats_adj + offset).  This is normally
+		 * synchronized on every hardclock().
 		 *
-		 * The idea here is to reduce unnecessary SMP cache
-		 * mastership changes in the global vmstats, which can be
-		 * particularly bad in multi-socket systems.
+		 * However, in order for the nominal low-memory algorithms
+		 * to work properly if the unsynchronized adjustment gets
+		 * too negative and might trigger the pageout daemon, we
+		 * immediately synchronize with the global structure.
 		 *
-		 * NOTE: The double *cnt test tries to avoid a global memory
-		 *	 read.  vmmeter_neg_slop_cnt is more generous than
-		 *	 the baseline define, we want to try to avoid atomic
-		 *	 ops on the global 'vmstats' structure as much as
-		 *	 possible.
+		 * The idea here is to reduce unnecessary SMP cache mastership
+		 * changes in the global vmstats, which can be particularly
+		 * bad in multi-socket systems.
+		 *
+		 * WARNING! In systems with low amounts of memory the
+		 *	    vm_paging_needed(-1024 * ncpus) test could
+		 *	    wind up testing a value above the paging target,
+		 *	    meaning it would almost always return TRUE.  In
+		 *	    that situation we synchronize every time the
+		 *	    cumulative adjustment falls below -1024.
 		 */
-		cnt = (long *)((char *)&mycpu->gd_vmstats_adj + pq->cnt_offset);
-		atomic_add_long(cnt, -1);
-		if (*cnt < -VMMETER_SLOP_COUNT && *cnt < vmmeter_neg_slop_cnt) {
-			u_long copy = atomic_swap_long(cnt, 0);
-			cnt = (long *)((char *)&vmstats + pq->cnt_offset);
-			atomic_add_long(cnt, copy);
-			cnt = (long *)((char *)&mycpu->gd_vmstats +
-				      pq->cnt_offset);
-			atomic_add_long(cnt, copy);
+		cnt_adj = (long *)((char *)&mycpu->gd_vmstats_adj +
+				   pq->cnt_offset);
+		cnt_gd = (long *)((char *)&mycpu->gd_vmstats +
+				   pq->cnt_offset);
+		atomic_add_long(cnt_adj, -1);
+		atomic_add_long(cnt_gd, -1);
+
+		if (*cnt_adj < -1024 && vm_paging_needed(-1024 * ncpus)) {
+			u_long copy = atomic_swap_long(cnt_adj, 0);
+			cnt_adj = (long *)((char *)&vmstats + pq->cnt_offset);
+			atomic_add_long(cnt_adj, copy);
 		}
 		pq->lcnt--;
 		m->queue = PQ_NONE;
@@ -1048,7 +1054,8 @@ static __inline void
 _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 {
 	struct vpgqueues *pq;
-	u_long *cnt;
+	u_long *cnt_adj;
+	u_long *cnt_gd;
 
 	KKASSERT(m->queue == PQ_NONE &&
 		 (m->flags & (PG_FICTITIOUS | PG_UNQUEUED)) == 0);
@@ -1063,8 +1070,12 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 		 * to incorporate the count it will call vmstats_rollup()
 		 * to roll it all up into the global vmstats strufture.
 		 */
-		cnt = (long *)((char *)&mycpu->gd_vmstats_adj + pq->cnt_offset);
-		atomic_add_long(cnt, 1);
+		cnt_adj = (long *)((char *)&mycpu->gd_vmstats_adj +
+				   pq->cnt_offset);
+		cnt_gd = (long *)((char *)&mycpu->gd_vmstats +
+				   pq->cnt_offset);
+		atomic_add_long(cnt_adj, 1);
+		atomic_add_long(cnt_gd, 1);
 
 		/*
 		 * PQ_FREE is always handled LIFO style to try to provide

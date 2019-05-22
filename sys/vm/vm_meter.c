@@ -53,7 +53,7 @@
 
 /*
  * WARNING: vmstats represents the final say, but individual cpu's may
- *	    accumulative adjustments in gd->gd_vmstats_adj.  These are
+ *	    accumualte adjustments in gd->gd_vmstats_adj.  These are
  *	    synchronized to the global vmstats in hardclock.
  *
  *	    In addition, most individual cpus check vmstats using a local

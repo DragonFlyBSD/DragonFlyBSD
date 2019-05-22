@@ -153,15 +153,15 @@ vm_paging_target(void)
  */
 static __inline 
 int
-vm_paging_needed(void)
+vm_paging_needed(int adj)
 {
     globaldata_t gd = mycpu;
 
     if (gd->gd_vmstats.v_free_min + gd->gd_vmstats.v_cache_min >
-	gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count) {
+	gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count + adj) {
 		return 1;
     }
-    if (gd->gd_vmstats.v_free_min > gd->gd_vmstats.v_free_count)
+    if (gd->gd_vmstats.v_free_min > gd->gd_vmstats.v_free_count + adj)
 		return 1;
     return 0;
 }

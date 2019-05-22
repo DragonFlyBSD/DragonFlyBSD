@@ -282,7 +282,6 @@ struct vpgqueues {
 } __aligned(64);
 
 extern struct vpgqueues vm_page_queues[PQ_COUNT];
-extern long vmmeter_neg_slop_cnt;
 
 /*
  * The m->flags field is generally categorized as follows.  Unless otherwise

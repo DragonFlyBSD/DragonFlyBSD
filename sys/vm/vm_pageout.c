@@ -1964,34 +1964,11 @@ vm_pageout_free_page_calc(vm_size_t count)
 	 * v_free_reserved	system allocations
 	 * v_pageout_free_min	allocations by pageout daemon
 	 * v_interrupt_free_min	low level allocations (e.g swap structures)
-	 */
-	if (vmstats.v_page_count > 1024)
-		vmstats.v_free_min = 64 + (vmstats.v_page_count - 1024) / 200;
-	else
-		vmstats.v_free_min = 64;
-
-	/*
-	 * vmmeter_neg_slop_cnt controls when the per-cpu page stats are
-	 * synchronized with the global stats (incuring serious cache
-	 * contention).
-	 */
-	vmmeter_neg_slop_cnt = -vmstats.v_page_count / ncpus / 128;
-	if (vmmeter_neg_slop_cnt > -VMMETER_SLOP_COUNT)
-		vmmeter_neg_slop_cnt = -VMMETER_SLOP_COUNT;
-
-	/*
-	 * Make sure the vmmeter slop can't blow out our global minimums.
 	 *
-	 * However, to accomodate weird configurations (vkernels with many
-	 * cpus and little memory, or artifically reduced hw.physmem), do
-	 * not allow v_free_min to exceed 1/20 of ram or the pageout demon
-	 * might go out of control.
+	 * v_free_min is used to generate several other baselines, and they
+	 * can get pretty silly on systems with a lot of memory.
 	 */
-	if (vmstats.v_free_min < -vmmeter_neg_slop_cnt * ncpus * 10)
-		vmstats.v_free_min = -vmmeter_neg_slop_cnt * ncpus * 10;
-	if (vmstats.v_free_min > vmstats.v_page_count / 20)
-		vmstats.v_free_min = vmstats.v_page_count / 20;
-
+	vmstats.v_free_min = 64 + vmstats.v_page_count / 200;
 	vmstats.v_free_reserved = vmstats.v_free_min * 4 / 8 + 7;
 	vmstats.v_free_severe = vmstats.v_free_min * 4 / 8 + 0;
 	vmstats.v_pageout_free_min = vmstats.v_free_min * 2 / 8 + 7;
@@ -2045,12 +2022,8 @@ vm_pageout_thread(void)
 	 * be big enough to handle memory needs while the pageout daemon
 	 * is signalled and run to free more pages.
 	 */
-	if (vmstats.v_free_count > 6144)
-		vmstats.v_free_target = 4 * vmstats.v_free_min +
-					vmstats.v_free_reserved;
-	else
-		vmstats.v_free_target = 2 * vmstats.v_free_min +
-					vmstats.v_free_reserved;
+	vmstats.v_free_target = 4 * vmstats.v_free_min +
+				vmstats.v_free_reserved;
 
 	/*
 	 * NOTE: With the new buffer cache b_act_count we want the default
@@ -2180,7 +2153,7 @@ skip_setup:
 					       0, "psleep",
 					       vm_pageout_stats_interval * hz);
 				if (error &&
-				    vm_paging_needed() == 0 &&
+				    vm_paging_needed(0) == 0 &&
 				    vm_pages_needed == 0) {
 					for (q = 0; q < PQ_L2_SIZE; ++q)
 						vm_pageout_page_stats(q);
@@ -2436,7 +2409,7 @@ SYSINIT(emergpager, SI_SUB_KTHREAD_PAGE, SI_ORDER_ANY, kproc_start, &pg2_kp);
 void
 pagedaemon_wakeup(void)
 {
-	if (vm_paging_needed() && curthread != pagethread) {
+	if (vm_paging_needed(0) && curthread != pagethread) {
 		if (vm_pages_needed == 0) {
 			vm_pages_needed = 1;	/* SMP race ok */
 			wakeup(&vm_pages_needed);
