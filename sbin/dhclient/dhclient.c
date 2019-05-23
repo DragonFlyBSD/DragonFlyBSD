@@ -313,6 +313,22 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
+	/*
+	 * dport wpa_supplicant uses 'start ifc' instead of 'ifc', allow
+	 * the 'start' keyword.
+	 */
+	if (argc > 1) {
+		if (strcmp(argv[0], "start") == 0) {
+			--argc;
+			++argv;
+			stayalive = 1;
+		} else if (strcmp(argv[0], "stop") == 0) {
+			dokillclient = 1;
+			--argc;
+			++argv;
+		}
+	}
+
 	if (argc != 1)
 		usage();
 	orig_ifname = argv[0];
