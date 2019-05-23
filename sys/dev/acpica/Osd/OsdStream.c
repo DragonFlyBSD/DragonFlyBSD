@@ -39,7 +39,7 @@
 
 #include <dev/acpica/acpivar.h>
 
-static int acpi_silence_all = 0;
+int acpi_silence_all = 0;
 TUNABLE_INT("debug.acpi.silence_all", &acpi_silence_all);
 SYSCTL_INT(_debug_acpi, OID_AUTO, silence_all, CTLFLAG_RW,
     &acpi_silence_all, 0, "Silence ACPI messages");
@@ -59,5 +59,7 @@ AcpiOsPrintf(const char *Format, ...)
 void
 AcpiOsVprintf(const char *Format, va_list Args)
 {
-    kvprintf(Format, Args);
+    if (acpi_silence_all == 0) {
+	    kvprintf(Format, Args);
+    }
 }
