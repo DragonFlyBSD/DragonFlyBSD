@@ -30,8 +30,8 @@
  * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
  */
 
-#ifndef _SYS_FD_SET_H_
-#define	_SYS_FD_SET_H_
+#ifndef _SYS__FD_SET_H_
+#define	_SYS__FD_SET_H_
 
 /*
  * Select uses bit masks of file descriptors in longs.  These macros
@@ -78,4 +78,4 @@ typedef struct fd_set {
 
 #endif /* __BSD_VISIBLE */
 
-#endif /* _SYS_FD_SET_H_ */
+#endif /* _SYS__FD_SET_H_ */

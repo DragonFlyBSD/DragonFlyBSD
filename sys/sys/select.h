@@ -34,7 +34,7 @@
 #define	_SYS_SELECT_H_
 
 #include <sys/cdefs.h>
-#include <sys/fd_set.h>
+#include <sys/_fd_set.h>
 #include <sys/_sigset.h>
 #include <sys/_timespec.h>
 #include <sys/_timeval.h>
