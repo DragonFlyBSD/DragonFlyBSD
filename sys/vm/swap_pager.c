@@ -1518,11 +1518,12 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 		if (tsleep(mreq, PINTERLOCKED, "swread", hz*20)) {
 			kprintf(
 			    "swap_pager: indefinite wait buffer: "
-				" bp %p offset: %lld, size: %ld\n",
+			    " bp %p offset: %lld, size: %ld "
+			    " m=%p busy=%08x flags=%08x\n",
 			    bp,
 			    (long long)bio->bio_offset,
-			    (long)bp->b_bcount
-			);
+			    (long)bp->b_bcount,
+			    mreq, mreq->busy_count, mreq->flags);
 		}
 	}
 
