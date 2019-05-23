@@ -34,24 +34,22 @@
 #define	_SYS_SELECT_H_
 
 #include <sys/cdefs.h>
-
-#ifndef _SYS_SIGNAL_H_
-#include <sys/signal.h>
-#endif
-#ifndef _SYS_TIME_H_
-#include <sys/time.h>
-#endif
-
 #include <sys/fd_set.h>
+#include <sys/_sigset.h>
 #include <sys/_timespec.h>
 #include <sys/_timeval.h>
 
+#ifndef _SIGSET_T_DECLARED
+typedef	struct __sigset	sigset_t;
+#define	_SIGSET_T_DECLARED
+#endif
+
 __BEGIN_DECLS
 int	select(int, fd_set * __restrict, fd_set * __restrict,
-	       fd_set * __restrict, struct timeval * __restrict);
-int	 pselect(int, fd_set * __restrict, fd_set * __restrict,
-		fd_set * __restrict, const struct timespec * __restrict,
-		const sigset_t * __restrict);
+	    fd_set * __restrict, struct timeval * __restrict);
+int	pselect(int, fd_set * __restrict, fd_set * __restrict,
+	    fd_set * __restrict, const struct timespec * __restrict,
+	    const sigset_t * __restrict);
 __END_DECLS
 
 #endif	/* !_SYS_SELECT_H_ */

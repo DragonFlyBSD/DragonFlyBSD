@@ -40,12 +40,12 @@
 
 #include <sys/cdefs.h>
 #include <sys/_pthreadtypes.h>
+#include <sys/_sigset.h>
 #include <machine/stdint.h>	/* for __ types */
 
 /*
  * sigset_t macros.
  */
-#define	_SIG_WORDS	4
 #define	_SIG_MAXSIG	128
 #define	_SIG_IDX(sig)	((sig) - 1)
 #define	_SIG_WORD(sig)	(_SIG_IDX(sig) >> 5)
@@ -268,11 +268,10 @@ typedef struct __siginfo {
 } siginfo_t;
 #endif /* __POSIX_VISIBLE >= 199309 || __XSI_VISIBLE */
 
-/* #if __POSIX_VISIBLE */
-typedef struct __sigset {
-	unsigned int	__bits[_SIG_WORDS];
-} sigset_t;
-/* #endif */
+#ifndef _SIGSET_T_DECLARED
+typedef	struct __sigset	sigset_t;
+#define	_SIGSET_T_DECLARED
+#endif
 
 /*
  * XXX - there are some nasty dependencies on include file order. Now that
