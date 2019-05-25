@@ -148,7 +148,7 @@ struct lwkt_token kbd_token = LWKT_TOKEN_INITIALIZER(kbd_token);
  * parameters.  Remember that tokens backoff to the scheduler, large values
  * not recommended.
  */
-static int token_backoff_max __cachealign = 4096;
+static int token_backoff_max __cachealign = 128;
 SYSCTL_INT(_lwkt, OID_AUTO, token_backoff_max, CTLFLAG_RW,
     &token_backoff_max, 0, "Tokens exponential backoff");
 static int token_window_shift __cachealign = 8;
