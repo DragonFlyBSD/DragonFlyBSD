@@ -75,7 +75,7 @@ __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257666 2013-11-05 01:06:22Z lui
 #include <sys/bus.h>        /* bus_dmamap_* in netmap_kern.h */
 
 // XXX temporary - D() defined here
-#include <net/netmap.h>
+#include <net/netmap/netmap.h>
 #include <net/netmap/netmap_kern.h>
 #include <net/netmap/netmap_mem2.h>
 

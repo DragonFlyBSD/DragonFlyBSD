@@ -65,7 +65,7 @@
 
 #include <stdint.h>
 #include <net/if.h>		/* IFNAMSIZ */
-#include <net/netmap.h>
+#include <net/netmap/netmap.h>
 
 #define _NETMAP_OFFSET(type, ptr, offset) \
 	((type)(void *)((char *)(ptr) + (offset)))

@@ -37,7 +37,7 @@ __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 241723 2012-10-19 09:41:45Z gle
 #include <net/if_var.h>
 #include <sys/bus.h>	/* bus_dmamap_* */
 
-#include <net/netmap.h>
+#include <net/netmap/netmap.h>
 #include <net/netmap/netmap_kern.h>
 #include <net/netmap/netmap_mem2.h>
 

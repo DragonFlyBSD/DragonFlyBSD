@@ -3652,6 +3652,8 @@ TO_REMOVE+=/usr/include/cpu/varargs.h
 TO_REMOVE+=/usr/include/machine/varargs.h
 TO_REMOVE+=/usr/share/man/man3/varargs.3.gz
 TO_REMOVE+=/usr/include/sys/fd_set.h
+TO_REMOVE+=/usr/include/net/netmap.h
+TO_REMOVE+=/usr/include/net/netmap_user.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -160,7 +160,7 @@ extern struct dev_ops netmap_cdevsw;
 /*
  * common headers
  */
-#include <net/netmap.h>
+#include <net/netmap/netmap.h>
 #include <net/netmap/netmap_kern.h>
 #include <net/netmap/netmap_mem2.h>
 

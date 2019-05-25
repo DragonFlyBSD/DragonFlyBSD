@@ -49,7 +49,7 @@
 #include <net/ifq_var.h>
 #include <sys/bus.h>	/* bus_dmamap_* */
 
-#include <net/netmap.h>
+#include <net/netmap/netmap.h>
 #include <net/netmap/netmap_kern.h>
 #include <net/netmap/netmap_mem2.h>
 

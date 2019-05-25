@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/netmap.4 228017 2011-11-27 06:55:57Z gjb $
 .\"
-.Dd December 26, 2013
+.Dd May 25, 2019
 .Dt NETMAP 4
 .Os
 .Sh NAME
@@ -164,7 +164,7 @@ to be notified about incoming packet or available transmit buffers.
 .Ss DATA STRUCTURES
 The data structures in the mmapped memory are described below
 (see
-.In net/netmap.h
+.In net/netmap/netmap.h
 for reference).
 All physical devices operating in
 .Nm
@@ -450,7 +450,7 @@ supports the
 .Xr ioctl 2
 command codes supported by network devices, as well as
 specific command codes defined in
-.In net/netmap.h .
+.In net/netmap/netmap.h .
 These specific command codes are as follows:
 .Bl -tag -width ".Dv NIOCTXSYNC"
 .It Dv NIOCGINFO
@@ -576,7 +576,7 @@ The following code implements a traffic generator:
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <net/netmap_user.h>
+#include <net/netmap/netmap_user.h>
 
 #include <fcntl.h>
 #include <poll.h>
