@@ -1342,10 +1342,19 @@ filt_piperead(struct knote *kn, long hint)
 		wpb = &pipe->bufferB;
 	}
 
+	/*
+	 * We shouldn't need the pipe locks because the knote itself is
+	 * locked via KN_PROCESSING.  If we lose a race against the writer,
+	 * the writer will just issue a KNOTE() after us.
+	 */
+#if 0
 	lwkt_gettoken(&rpb->rlock);
 	lwkt_gettoken(&rpb->wlock);
+#endif
 
 	kn->kn_data = rpb->windex - rpb->rindex;
+	if (kn->kn_data < 0)
+		kn->kn_data = 0;
 
 	if (rpb->state & PIPE_REOF) {
 		/*
@@ -1357,8 +1366,10 @@ filt_piperead(struct knote *kn, long hint)
 		ready = 1;
 	}
 
+#if 0
 	lwkt_reltoken(&rpb->wlock);
 	lwkt_reltoken(&rpb->rlock);
+#endif
 
 	if (!ready)
 		ready = kn->kn_data > 0;
@@ -1390,19 +1401,31 @@ filt_pipewrite(struct knote *kn, long hint)
 		return (1);
 	}
 
+	/*
+	 * We shouldn't need the pipe locks because the knote itself is
+	 * locked via KN_PROCESSING.  If we lose a race against the reader,
+	 * the writer will just issue a KNOTE() after us.
+	 */
+#if 0
 	lwkt_gettoken(&wpb->rlock);
 	lwkt_gettoken(&wpb->wlock);
+#endif
 
 	if (wpb->state & PIPE_WEOF) {
 		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		ready = 1;
 	}
 
-	if (!ready)
+	if (!ready) {
 		kn->kn_data = wpb->size - (wpb->windex - wpb->rindex);
+		if (kn->kn_data < 0)
+			kn->kn_data = 0;
+	}
 
+#if 0
 	lwkt_reltoken(&wpb->wlock);
 	lwkt_reltoken(&wpb->rlock);
+#endif
 
 	if (!ready)
 		ready = kn->kn_data >= PIPE_BUF;
