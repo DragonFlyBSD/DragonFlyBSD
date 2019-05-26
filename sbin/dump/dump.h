@@ -190,10 +190,3 @@ void	putdumptime(void);
 		for (ddp = ddatev[i = 0]; i < nddates; ddp = ddatev[++i])
 
 void	sig(int);
-
-#ifndef	_PATH_UTMP
-#define	_PATH_UTMP	"/etc/utmp"
-#endif
-#ifndef	_PATH_FSTAB
-#define	_PATH_FSTAB	"/etc/fstab"
-#endif
