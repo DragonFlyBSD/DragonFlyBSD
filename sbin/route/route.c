@@ -60,7 +60,6 @@
 #include <ifaddrs.h>
 
 #include "extern.h"
-#include "keywords.h"
 
 union	sockunion {
 	struct	sockaddr sa;
@@ -79,6 +78,14 @@ typedef union sockunion *sup;
 
 int	nflag, wflag;
 int	cpuflag = -1;
+
+static struct keytab {
+	const char	*kt_cp;
+	int	kt_i;
+} const keywords[] = {
+#include "keywords.h"
+	{0, 0}
+};
 
 static struct sockaddr_in so_gate_tried;
 static struct rt_metrics rt_metrics;
@@ -1619,7 +1626,7 @@ bprintf(FILE *fp, int b, u_char *str)
 int
 keyword(const char *cp)
 {
-	struct keytab *kt = keywords;
+	const struct keytab *kt = keywords;
 
 	while (kt->kt_cp != NULL && strcmp(kt->kt_cp, cp) != 0)
 		kt++;

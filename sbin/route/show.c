@@ -53,7 +53,6 @@
 #include <netdb.h>
 
 #include "extern.h"
-#include "keywords.h"
 
 /*
  * Definitions for showing gateway flags.
@@ -79,6 +78,14 @@ static const struct bits bits[] = {
 	{ RTF_PROTO2,	'2' },
 	{ RTF_PROTO3,	'3' },
 	{ 0, 0 }
+};
+
+static __unused struct keytab {
+	const char	*kt_cp;
+	int	kt_i;
+} const keywords[] = {
+#include "keywords.h"
+	{0, 0}
 };
 
 static void	p_rtentry(struct rt_msghdr *);
