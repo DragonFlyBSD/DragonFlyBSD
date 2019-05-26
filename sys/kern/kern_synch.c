@@ -80,7 +80,7 @@ SYSINIT(sched_dyninit, SI_BOOT1_DYNALLOC, SI_ORDER_FIRST, sched_dyninit, NULL);
 
 int	lbolt;
 void	*lbolt_syncer;
-int	tsleep_crypto_dump = 0;
+__read_mostly int tsleep_crypto_dump = 0;
 __read_mostly int ncpus;
 __read_mostly int ncpus_fit, ncpus_fit_mask;	/* note: mask not cpumask_t */
 __read_mostly int safepri;
@@ -103,12 +103,14 @@ KTR_INFO(KTR_TSLEEP, tsleep, ilockfail,  4, "interlock failed %p", const volatil
 #define logtsleep1(name)	KTR_LOG(tsleep_ ## name)
 #define logtsleep2(name, val)	KTR_LOG(tsleep_ ## name, val)
 
+__exclusive_cache_line
 struct loadavg averunnable =
 	{ {0, 0, 0}, FSCALE };	/* load average, of runnable procs */
 /*
  * Constants for averages over 1, 5, and 15 minutes
  * when sampling at 5 second intervals.
  */
+__read_mostly
 static fixpt_t cexp[3] = {
 	0.9200444146293232 * FSCALE,	/* exp(-1/12) */
 	0.9834714538216174 * FSCALE,	/* exp(-1/60) */
@@ -119,14 +121,14 @@ static void	endtsleep (void *);
 static void	loadav (void *arg);
 static void	schedcpu (void *arg);
 
-static int pctcpu_decay = 10;
+__read_mostly static int pctcpu_decay = 10;
 SYSCTL_INT(_kern, OID_AUTO, pctcpu_decay, CTLFLAG_RW,
 	   &pctcpu_decay, 0, "");
 
 /*
  * kernel uses `FSCALE', userland (SHOULD) use kern.fscale 
  */
-int     fscale __unused = FSCALE;	/* exported to systat */
+__read_mostly int fscale __unused = FSCALE;	/* exported to systat */
 SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
 
 /*
@@ -545,7 +547,6 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	logtsleep2(tsleep_beg, ident);
 	gd = td->td_gd;
 	KKASSERT(td != &gd->gd_idlethread);	/* you must be kidding! */
-	td->td_wakefromcpu = -1;		/* overwritten by _wakeup */
 
 	/*
 	 * NOTE: all of this occurs on the current cpu, including any

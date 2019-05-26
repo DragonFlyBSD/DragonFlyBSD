@@ -283,10 +283,12 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_forkbias, CTLFLAG_RW,
  *
  * weight2 - If non-zero, detects thread pairs undergoing synchronous
  *	     communications and tries to move them closer together.
- *	     Behavior is adjusted by bit 4 of features (0x10).
+ *	     The weight advantages the same package and socket and
+ *	     disadvantages the same core and same cpu.
  *
  *	     WARNING!  Weight2 is a ridiculously sensitive parameter,
- *	     change the default at your peril.
+ *	     particularly against weight4.  change the default at your
+ *	     peril.
  *
  * weight3 - Weighting based on the number of recently runnable threads
  *	     on the userland scheduling queue (ignoring their loads).
@@ -300,13 +302,19 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_forkbias, CTLFLAG_RW,
  *	     high a value will kick cpu-bound processes off the cpu
  *	     unnecessarily.
  *
- * weight4 - Weighting based on other cpu queues being available
- *	     or running processes with higher lwp_priority's.
+ * weight4 - Weighting based on availability of other logical cpus running
+ *	     less important threads (by upri) than the thread we are trying
+ *	     to schedule.
  *
  *	     This allows a thread to migrate to another nearby cpu if it
  *	     is unable to run on the current cpu based on the other cpu
- *	     being idle or running a lower priority (higher lwp_priority)
- *	     thread.  This value should be large enough to override weight1
+ *	     being idle or running a less important (higher lwp_priority)
+ *	     thread.  This value should be large enough to override weight1,
+ *	     but not so large as to override weight2.
+ *
+ *	     This parameter generally ensures fairness at the cost of some
+ *	     performance (if set to too high).  It should generally be just
+ *	     a tad lower than weight2.
  *
  * weight5 - Weighting based on the relative amount of ram connected
  *	     to the node a cpu resides on.
@@ -328,6 +336,12 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_forkbias, CTLFLAG_RW,
  * weight6 - rdd transfer weight hysteresis.  Defaults to 0, can be increased
  *	     to improve stabillity at the cost of more mis-schedules.
  *
+ * ipc_smt - If enabled, advantage IPC pairing to sibling cpu threads.
+ *	     If -1, automatic when load >= 1/2 ncpus (default).
+ *
+ * ipc_same- If enabled, advantage IPC pairing to the same logical cpu.
+ *	     If -1, automatic when load >= ncpus (default).
+ *
  * features - These flags can be set or cleared to enable or disable various
  *	      features.
  *
@@ -335,25 +349,27 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_forkbias, CTLFLAG_RW,
  *	      0x02	Enable proactive pushing		(default)
  *	      0x04	Enable rebalancing rover		(default)
  *	      0x08	Enable more proactive pushing		(default)
- *	      0x10	(flip weight2 limit on same cpu)	(default)
+ *	      0x10	(unassigned)
  *	      0x20	choose best cpu for forked process
  *	      0x40	choose current cpu for forked process
  *	      0x80	choose random cpu for forked process	(default)
  */
-static int usched_dfly_smt = 0;
-static int usched_dfly_cache_coherent = 0;
-static int usched_dfly_weight1 = 10;	/* keep thread on current cpu */
-static int usched_dfly_weight2 = 180;	/* synchronous peer's current cpu */
-static int usched_dfly_weight3 = 10;	/* number of threads on queue */
-static int usched_dfly_weight4 = 160;	/* availability of idle cores */
-static int usched_dfly_weight5 = 50;	/* node attached memory */
-static int usched_dfly_weight6 = 0;	/* rdd trasnfer weight */
-static int usched_dfly_features = 0x8F;	/* allow pulls */
-static int usched_dfly_fast_resched = PPQ / 2; /* delta priority / resched */
-static int usched_dfly_swmask = ~PPQMASK; /* allow pulls */
-static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
-static int usched_dfly_decay = 8;
-static long usched_dfly_node_mem;
+__read_mostly static int usched_dfly_smt = 0;
+__read_mostly static int usched_dfly_cache_coherent = 0;
+__read_mostly static int usched_dfly_weight1 = 30;  /* keep thread on cpu */
+__read_mostly static int usched_dfly_weight2 = 180; /* IPC locality */
+__read_mostly static int usched_dfly_weight3 = 10;  /* threads on queue */
+__read_mostly static int usched_dfly_weight4 = 120; /* availability of cores */
+__read_mostly static int usched_dfly_weight5 = 50;  /* node attached memory */
+__read_mostly static int usched_dfly_weight6 = 0;   /* rdd transfer weight */
+__read_mostly static int usched_dfly_features = 0x8F;	     /* allow pulls */
+__read_mostly static int usched_dfly_fast_resched = PPQ / 2; /* delta pri */
+__read_mostly static int usched_dfly_swmask = ~PPQMASK;	     /* allow pulls */
+__read_mostly static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
+__read_mostly static int usched_dfly_decay = 8;
+__read_mostly static int usched_dfly_ipc_smt = -1;  /* IPC auto smt pair */
+__read_mostly static int usched_dfly_ipc_same = -1; /* IPC auto same log cpu */
+__read_mostly static long usched_dfly_node_mem;
 
 /* KTR debug printings */
 
@@ -438,6 +454,12 @@ dfly_acquire_curproc(struct lwp *lp)
 		 */
 		/* lwkt_yield_quick(); */
 
+		if (usched_dfly_debug == lp->lwp_proc->p_pid)
+			kprintf(" pid %d acquire curcpu %d (force %d) ",
+				lp->lwp_proc->p_pid, gd->gd_cpuid,
+				force_resched);
+
+
 		spin_lock(&dd->spin);
 
 		/* This lwp is an outcast; force reschedule. */
@@ -451,6 +473,8 @@ dfly_acquire_curproc(struct lwp *lp)
 			lwkt_switch();
 			gd = mycpu;
 			dd = &dfly_pcpu[gd->gd_cpuid];
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("SEL-A cpu %d\n", gd->gd_cpuid);
 			continue;
 		}
 
@@ -467,16 +491,21 @@ dfly_acquire_curproc(struct lwp *lp)
 		 */
 		if (force_resched &&
 		   (usched_dfly_features & 0x08) &&
-		   (u_int)sched_ticks / 8 % ncpus == gd->gd_cpuid &&
-		   (rdd = dfly_choose_best_queue(lp)) != dd) {
-			dfly_changeqcpu_locked(lp, dd, rdd);
-			spin_unlock(&dd->spin);
-			lwkt_deschedule(lp->lwp_thread);
-			dfly_setrunqueue_dd(rdd, lp);
-			lwkt_switch();
-			gd = mycpu;
-			dd = &dfly_pcpu[gd->gd_cpuid];
-			continue;
+		   (u_int)sched_ticks / 8 % ncpus == gd->gd_cpuid) {
+			if ((rdd = dfly_choose_best_queue(lp)) != dd) {
+				dfly_changeqcpu_locked(lp, dd, rdd);
+				spin_unlock(&dd->spin);
+				lwkt_deschedule(lp->lwp_thread);
+				dfly_setrunqueue_dd(rdd, lp);
+				lwkt_switch();
+				gd = mycpu;
+				dd = &dfly_pcpu[gd->gd_cpuid];
+				if (usched_dfly_debug == lp->lwp_proc->p_pid)
+					kprintf("SEL-B cpu %d\n", gd->gd_cpuid);
+				continue;
+			}
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("(SEL-B same cpu) ");
 		}
 
 		/*
@@ -496,6 +525,9 @@ dfly_acquire_curproc(struct lwp *lp)
 			dd->upri = lp->lwp_priority;
 			KKASSERT(lp->lwp_qcpu == dd->cpuid);
 			spin_unlock(&dd->spin);
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("SEL-C cpu %d (same cpu)\n",
+					gd->gd_cpuid);
 			break;
 		}
 
@@ -531,6 +563,9 @@ dfly_acquire_curproc(struct lwp *lp)
 			KKASSERT(lp->lwp_qcpu == dd->cpuid);
 			need_user_resched();
 			spin_unlock(&dd->spin);
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("SEL-D cpu %d (same cpu)\n",
+					gd->gd_cpuid);
 			break;
 		}
 
@@ -555,6 +590,9 @@ dfly_acquire_curproc(struct lwp *lp)
 			lwkt_switch();
 			gd = mycpu;
 			dd = &dfly_pcpu[gd->gd_cpuid];
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("SEL-E cpu %d (requeue)\n",
+					gd->gd_cpuid);
 			continue;
 		}
 
@@ -573,6 +611,9 @@ dfly_acquire_curproc(struct lwp *lp)
 			lwkt_switch();
 			gd = mycpu;
 			dd = &dfly_pcpu[gd->gd_cpuid];
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("SEL-F cpu %d (requeue new cpu)\n",
+					gd->gd_cpuid);
 			continue;
 		}
 
@@ -591,7 +632,13 @@ dfly_acquire_curproc(struct lwp *lp)
 		lwkt_switch();
 		gd = mycpu;
 		dd = &dfly_pcpu[gd->gd_cpuid];
+		if (usched_dfly_debug == lp->lwp_proc->p_pid)
+			kprintf("SEL-G cpu %d (fallback setrunq)\n",
+				gd->gd_cpuid);
 	}
+	if (usched_dfly_debug == lp->lwp_proc->p_pid)
+		kprintf(" pid %d acquire DONE cpu %d\n",
+			lp->lwp_proc->p_pid, gd->gd_cpuid);
 
 	/*
 	 * Make sure upri is synchronized, then yield to LWKT threads as
@@ -910,10 +957,8 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 		 * second.  This should only occur for cpu-bound batch
 		 * processes.
 		 */
-		if (++lp->lwp_rrcount >= usched_dfly_rrinterval) {
-			lp->lwp_thread->td_wakefromcpu = -1;
+		if (++lp->lwp_rrcount >= usched_dfly_rrinterval)
 			need_user_resched();
-		}
 
 		/*
 		 * Adjust estcpu upward using a real time equivalent
@@ -1092,9 +1137,6 @@ dfly_recalculate_estcpu(struct lwp *lp)
 		lp->lwp_estcpu = ESTCPULIM(
 				(lp->lwp_estcpu * ttlticks + estcpu) /
 				(ttlticks + 1));
-		if (usched_dfly_debug == lp->lwp_proc->p_pid)
-			kprintf(" finalestcpu %d %d\n", estcpu, lp->lwp_estcpu);
-
 		dfly_resetpriority(lp);
 		lp->lwp_cpbase += ttlticks * gd->gd_schedclock.periodic;
 		lp->lwp_cpticks = 0;
@@ -1620,6 +1662,7 @@ dfly_choose_best_queue(struct lwp *lp)
 	int wakecpu;
 	int cpuid;
 	int n;
+	int loadav;
 	long load;
 	long lowest_load;
 
@@ -1630,6 +1673,8 @@ dfly_choose_best_queue(struct lwp *lp)
 	if (dd->cpunode == NULL)
 		return (dfly_choose_queue_simple(dd, lp));
 
+	loadav = (averunnable.ldavg[0] + FSCALE / 2) >> FSHIFT;
+
 	/*
 	 * Pairing mask
 	 */
@@ -1637,6 +1682,10 @@ dfly_choose_best_queue(struct lwp *lp)
 		wakemask = dfly_pcpu[wakecpu].cpumask;
 	else
 		CPUMASK_ASSZERO(wakemask);
+
+	if (usched_dfly_debug == lp->lwp_proc->p_pid)
+		kprintf("choosebest wakefromcpu %d:\n",
+			lp->lwp_thread->td_wakefromcpu);
 
 	/*
 	 * When the topology is known choose a cpu whos group has, in
@@ -1659,11 +1708,15 @@ dfly_choose_best_queue(struct lwp *lp)
 		 */
 		if (cpup->child_no == 0) {
 			rdd = &dfly_pcpu[BSFCPUMASK(cpup->members)];
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("  last cpu %d\n", rdd->cpuid);
 			break;
 		}
 
 		cpub = NULL;
 		lowest_load = 0x7FFFFFFFFFFFFFFFLL;
+		if (usched_dfly_debug == lp->lwp_proc->p_pid)
+			kprintf("  reset lowest_load for scan\n");
 
 		for (n = 0; n < cpup->child_no; ++n) {
 			/*
@@ -1683,10 +1736,38 @@ dfly_choose_best_queue(struct lwp *lp)
 			load = 0;
 			count = 0;
 
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("  mask:");
 			while (CPUMASK_TESTNZERO(mask)) {
 				cpuid = BSFCPUMASK(mask);
 				rdd = &dfly_pcpu[cpuid];
 
+				if (usched_dfly_debug == lp->lwp_proc->p_pid)
+					kprintf(" %d", cpuid);
+
+				/*
+				 * Cumulative load for members.  Note that
+				 * if (lp) is part of the group, lp's
+				 * contribution will be backed out later.
+				 */
+				load += rdd->uload;
+				load += rdd->ucount *
+					usched_dfly_weight3;
+
+				/*
+				 * If the node is running a less important
+				 * thread than our thread, give it an
+				 * advantage.  Witha high-enough weighting
+				 * this can override most other considerations
+				 * to provide ultimate priority fairness at
+				 * the cost of localization.
+				 */
+				if ((rdd->upri & ~PPQMASK) >
+				    (lp->lwp_priority & ~PPQMASK)) {
+					load -= usched_dfly_weight4;
+				}
+
+#if 0
 				if (rdd->uschedcp == NULL &&
 				    rdd->runqcount == 0 &&
 				    rdd->gd->gd_tdrunqcount == 0
@@ -1699,6 +1780,7 @@ dfly_choose_best_queue(struct lwp *lp)
 					load += rdd->ucount *
 						usched_dfly_weight3;
 				}
+#endif
 				CPUMASK_NANDBIT(mask, cpuid);
 				++count;
 			}
@@ -1715,13 +1797,27 @@ dfly_choose_best_queue(struct lwp *lp)
 				load -= usched_dfly_weight3;	/* ucount */
 			}
 
-			load /= count;
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("\n  accum_start c=%d ld=%ld "
+					"cpu=%d ld/cnt=%ld ",
+					count, load, rdd->cpuid,
+					load / count);
+
+			/*
+			 * load is the aggregate load of count CPUs in the
+			 * group.  For the weightings to work as intended,
+			 * we want an average per-cpu load.
+			 */
+			load = load / count;
 
 			/*
 			 * Advantage the cpu group (lp) is already on.
 			 */
 			if (CPUMASK_TESTMASK(cpun->members, dd->cpumask))
 				load -= usched_dfly_weight1;
+
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("B:%ld ", load);
 
 			/*
 			 * Advantage nodes with more memory
@@ -1731,34 +1827,80 @@ dfly_choose_best_queue(struct lwp *lp)
 					usched_dfly_node_mem;
 			}
 
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("C:%ld ", load);
+
 			/*
-			 * Advantage the cpu group we want to pair (lp) to,
-			 * but don't let it go to the exact same cpu as
-			 * the wakecpu target.
+			 * Advantage the cpu group we desire to pair (lp)
+			 * to, but Disadvantage hyperthreads on the same
+			 * core, or the same thread as the ipc peer.
 			 *
-			 * We do this by checking whether cpun is a
-			 * terminal node or not.  All cpun's at the same
-			 * level will either all be terminal or all not
-			 * terminal.
+			 * Under very heavy loads it is usually beneficial
+			 * to set kern.usched_dfly.ipc_smt to 1, and under
+			 * extreme loads it might be beneficial to also set
+			 * kern.usched_dfly.ipc_same to 1.
 			 *
-			 * If it is and we match we disadvantage the load.
-			 * If it is and we don't match we advantage the load.
-			 *
-			 * Also note that we are effectively disadvantaging
-			 * all-but-one by the same amount, so it won't effect
-			 * the weight1 factor for the all-but-one nodes.
+			 * load+    disadvantage
+			 * load-    advantage
 			 */
 			if (CPUMASK_TESTMASK(cpun->members, wakemask)) {
+				if (cpun->child_no) {
+					if (cpun->type == CORE_LEVEL &&
+					    usched_dfly_ipc_smt < 0 &&
+					    loadav >= (ncpus >> 1)) {
+						/*
+						 * Advantage at higher levels
+						 * of the topology.
+						 */
+						load -= usched_dfly_weight2;
+					} else if (cpun->type == CORE_LEVEL &&
+						   usched_dfly_ipc_smt == 0) {
+						/*
+						 * Disadvantage the same core
+						 * when there are hyperthreads.
+						 */
+						load += usched_dfly_weight2;
+					} else {
+						/*
+						 * Advantage at higher levels
+						 * of the topology.
+						 */
+						load -= usched_dfly_weight2;
+					}
+				} else {
+					/*
+					 * Disadvantage the last level (core
+					 * or hyperthread).  Try to schedule
+					 * the ipc
+					 */
+					if (usched_dfly_ipc_same < 0 &&
+					    loadav >= ncpus) {
+						load -= usched_dfly_weight2;
+					} else if (usched_dfly_ipc_same) {
+						load -= usched_dfly_weight2;
+					} else {
+						load += usched_dfly_weight2;
+					}
+				}
+#if 0
 				if (cpun->child_no != 0) {
 					/* advantage */
 					load -= usched_dfly_weight2;
 				} else {
+					/*
+					 * 0x10 (disadvantage)
+					 * 0x00 (advantage)   - default
+					 */
 					if (usched_dfly_features & 0x10)
 						load += usched_dfly_weight2;
 					else
 						load -= usched_dfly_weight2;
 				}
+#endif
 			}
+
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("D:%ld ", load);
 
 			/*
 			 * Calculate the best load
@@ -1770,6 +1912,9 @@ dfly_choose_best_queue(struct lwp *lp)
 				lowest_load = load;
 				cpub = cpun;
 			}
+
+			if (usched_dfly_debug == lp->lwp_proc->p_pid)
+				kprintf("low=%ld]\n", lowest_load);
 		}
 		cpup = cpub;
 	}
@@ -1781,6 +1926,8 @@ dfly_choose_best_queue(struct lwp *lp)
 		kprintf("lp %02d->%02d %s\n",
 			lp->lwp_qcpu, rdd->cpuid, lp->lwp_proc->p_comm);
 	}
+	if (usched_dfly_debug == lp->lwp_proc->p_pid)
+		kprintf("final cpu %d\n", rdd->cpuid);
 	return (rdd);
 }
 
@@ -1871,6 +2018,10 @@ dfly_choose_worst_queue(dfly_pcpu_t dd, int forceit)
 				cpuid = BSFCPUMASK(mask);
 				rdd = &dfly_pcpu[cpuid];
 
+				load += rdd->uload;
+				load += rdd->ucount * usched_dfly_weight3;
+
+#if 0
 				if (rdd->uschedcp == NULL &&
 				    rdd->runqcount == 0 &&
 				    rdd->gd->gd_tdrunqcount == 0
@@ -1883,6 +2034,7 @@ dfly_choose_worst_queue(dfly_pcpu_t dd, int forceit)
 					load += rdd->ucount *
 						usched_dfly_weight3;
 				}
+#endif
 				CPUMASK_NANDBIT(mask, cpuid);
 				++count;
 			}
@@ -2520,6 +2672,14 @@ usched_dfly_cpu_init(void)
 		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
 		       OID_AUTO, "decay", CTLFLAG_RW,
 		       &usched_dfly_decay, 0, "Extra decay when not running");
+	SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
+		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
+		       OID_AUTO, "ipc_smt", CTLFLAG_RW,
+		       &usched_dfly_ipc_smt, 0, "Pair IPC on hyper-threads");
+	SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
+		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
+		       OID_AUTO, "ipc_same", CTLFLAG_RW,
+		       &usched_dfly_ipc_same, 0, "Pair IPC on same thread");
 
 	/* Add enable/disable option for SMT scheduling if supported */
 	if (smt_not_supported) {
