@@ -709,7 +709,7 @@ static void
 pmap_track_modified(pmap_t pmap, vm_offset_t va)
 {
 	KKASSERT(pmap != &kernel_pmap ||
-		 va < clean_save || va >= clean_eva);
+		 va < clean_sva || va >= clean_eva);
 }
 
 /*
@@ -1460,7 +1460,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * Map the page table page into its parent, giving it 1 wire count.
 	 */
 	vm_page_wire(m);
-	vm_page_unmanage(m);
+	vm_page_unqueue(m);
 	atomic_add_long(&pmap->pm_stats.resident_count, 1);
 	vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
 
