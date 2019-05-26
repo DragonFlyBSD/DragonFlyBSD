@@ -588,18 +588,6 @@
  * Our macros begin with two underscores to avoid namespace screwage.
  */
 
-/*
- * If no special macro was specified, make the DragonFly extensions
- * available. Also make them available when requested so.
- */
-#if (!defined(_POSIX_C_SOURCE) && !defined(_XOPEN_SOURCE) && \
-    !defined(_ANSI_SOURCE) && !defined(_C99_SOURCE)) || \
-    defined(_DRAGONFLY_SOURCE) || defined(_NETBSD_SOURCE)
-#define	__DF_VISIBLE	1
-#else
-#define	__DF_VISIBLE	0
-#endif
-
 /* Deal with IEEE Std. 1003.1-1990, in which _POSIX_C_SOURCE == 1. */
 #if defined(_POSIX_C_SOURCE) && (_POSIX_C_SOURCE - 0) == 1
 #undef _POSIX_C_SOURCE		/* Probably illegal, but beyond caring now. */
