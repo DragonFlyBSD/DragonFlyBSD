@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2003,2004,2009 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003-2006,2009-2019 The DragonFly Project.
+ * All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -145,10 +146,12 @@ struct lwkt_token kbd_token = LWKT_TOKEN_INITIALIZER(kbd_token);
 
 /*
  * Exponential backoff (exclusive tokens) and TSC windowing (shared tokens)
- * parameters.  Remember that tokens backoff to the scheduler, large values
- * not recommended.
+ * parameters.  Remember that tokens backoff to the scheduler.  This is a bit
+ * of trade-off.  Smaller values like 128 work better in some situations,
+ * but under extreme loads larger values like 4096 seem to provide the most
+ * determinism.
  */
-static int token_backoff_max __cachealign = 128;
+static int token_backoff_max __cachealign = 4096;
 SYSCTL_INT(_lwkt, OID_AUTO, token_backoff_max, CTLFLAG_RW,
     &token_backoff_max, 0, "Tokens exponential backoff");
 static int token_window_shift __cachealign = 8;
