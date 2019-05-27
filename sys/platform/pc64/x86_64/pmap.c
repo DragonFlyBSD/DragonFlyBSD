@@ -209,8 +209,6 @@ static uint64_t protection_codes[PROTECTION_CODES_SIZE];
 struct pmap kernel_pmap;
 struct pmap iso_pmap;
 
-MALLOC_DEFINE(M_OBJPMAP, "objpmap", "pmaps associated with VM objects");
-
 vm_paddr_t avail_start;		/* PA of first available physical page */
 vm_paddr_t avail_end;		/* PA of last available physical page */
 vm_offset_t virtual2_start;	/* cutout free area prior to kernel start */
