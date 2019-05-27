@@ -523,7 +523,7 @@ set_timeofday(struct timespec *ts)
 }
 	
 /*
- * Each cpu has its own hardclock, but we only increments ticks and softticks
+ * Each cpu has its own hardclock, but we only increment ticks and softticks
  * on cpu #0.
  *
  * NOTE! systimer! the MP lock might not be held here.  We can only safely
@@ -716,6 +716,14 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		 * Update the time_second 'approximate time' global.
 		 */
 		time_second = nts.tv_sec;
+
+		/*
+		 * Clear the IPC hint for the currently running thread once
+		 * per second, allowing us to disconnect the hint from a
+		 * thread which may no longer care.
+		 */
+		curthread->td_wakefromcpu = -1;
+
 	    }
 
 	    /*

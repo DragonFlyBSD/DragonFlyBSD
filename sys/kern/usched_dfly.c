@@ -350,9 +350,17 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_forkbias, CTLFLAG_RW,
  *	      0x04	Enable rebalancing rover		(default)
  *	      0x08	Enable more proactive pushing		(default)
  *	      0x10	(unassigned)
- *	      0x20	choose best cpu for forked process
+ *	      0x20	choose best cpu for forked process	(default)
  *	      0x40	choose current cpu for forked process
- *	      0x80	choose random cpu for forked process	(default)
+ *	      0x80	choose random cpu for forked process
+ *
+ *	     NOTE - The idea behind forking mechanic 0x20 is that most
+ *		    fork()ing is either followed by an exec in the child,
+ *		    or the parent wait*()s.  If the child is short-lived,
+ *		    there is effectively an IPC dependency (td_wakefromcpu
+ *		    is also set in kern_fork.c) and we want to implement
+ *		    the weight2 behavior to reduce IPIs and to reduce CPU
+ *		    cache ping-ponging.
  */
 __read_mostly static int usched_dfly_smt = 0;
 __read_mostly static int usched_dfly_cache_coherent = 0;
@@ -362,7 +370,7 @@ __read_mostly static int usched_dfly_weight3 = 10;  /* threads on queue */
 __read_mostly static int usched_dfly_weight4 = 120; /* availability of cores */
 __read_mostly static int usched_dfly_weight5 = 50;  /* node attached memory */
 __read_mostly static int usched_dfly_weight6 = 0;   /* rdd transfer weight */
-__read_mostly static int usched_dfly_features = 0x8F;	     /* allow pulls */
+__read_mostly static int usched_dfly_features = 0x2f;	     /* allow pulls */
 __read_mostly static int usched_dfly_fast_resched = PPQ / 2; /* delta pri */
 __read_mostly static int usched_dfly_swmask = ~PPQMASK;	     /* allow pulls */
 __read_mostly static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;

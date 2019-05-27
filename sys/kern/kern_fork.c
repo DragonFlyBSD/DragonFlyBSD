@@ -780,6 +780,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
 	 */
 	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, gd->gd_cpuid, 0);
 	lp->lwp_thread = td;
+	td->td_wakefromcpu = gd->gd_cpuid;
 	td->td_ucred = crhold(destproc->p_ucred);
 	td->td_proc = destproc;
 	td->td_lwp = lp;
