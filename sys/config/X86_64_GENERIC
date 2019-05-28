@@ -336,3 +336,7 @@ device		gpio_intel	# GPIO support for Intel SoCs
 #device		ichiic
 device		smbus		# Bus support, required for smb below.
 device		smbacpi
+
+# evdev interface
+device		evdev		# input event device support
+options		EVDEV_SUPPORT	# evdev support in legacy drivers
