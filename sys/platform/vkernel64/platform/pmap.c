@@ -4,7 +4,7 @@
  * Copyright (c) 1994 David Greenman
  * Copyright (c) 2003 Peter Wemm
  * Copyright (c) 2005-2008 Alan L. Cox <alc@cs.rice.edu>
- * Copyright (c) 2008, 2009 The DragonFly Project.
+ * Copyright (c) 2008-2019 The DragonFly Project.
  * Copyright (c) 2008, 2009 Jordan Gordeev.
  * All rights reserved.
  *
@@ -2431,9 +2431,9 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		if (origpte & VPTE_MANAGED) {
 			pa |= VPTE_MANAGED;
 			KKASSERT(m->flags & PG_MAPPED);
-			KKASSERT(!(m->flags & (PG_FICTITIOUS|PG_UNMANAGED)));
+			KKASSERT((m->flags & PG_FICTITIOUS) == 0);
 		} else {
-			KKASSERT((m->flags & (PG_FICTITIOUS|PG_UNMANAGED)));
+			KKASSERT((m->flags & PG_FICTITIOUS));
 		}
 		vm_page_spin_lock(m);
 		goto validate;
@@ -2464,7 +2464,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * called at interrupt time.
 	 */
 	if (pmap_initialized) {
-		if ((m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
+		if ((m->flags & PG_FICTITIOUS) == 0) {
 			/*
 			 * WARNING!  We are using m's spin-lock as a
 			 *	     man's pte lock to interlock against
