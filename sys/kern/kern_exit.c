@@ -1017,6 +1017,8 @@ loop:
 	 * was handled within tsleep(), and the parent would only see
 	 * the CONT when both are stopped and continued together.  This little
 	 * two-line hack restores this effect.
+	 *
+	 * No locks are held so we can safely block the process here.
 	 */
 	if (STOPLWP(q, td->td_lwp))
             tstop();

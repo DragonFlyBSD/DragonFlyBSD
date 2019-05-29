@@ -1963,13 +1963,21 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 		haveptok = 0;
 
 		/*
-		 * If this process is supposed to stop, stop this thread.
+		 * NOTE: Do not tstop here.  Issue the proc_stop()
+		 *	 so other parties see that we know we need
+		 *	 to stop, but don't block here.  Locks might
+		 *	 be held.
+		 *
+		 * XXX If this process is supposed to stop, stop this thread.
+		 *     removed.
 		 */
+#if 0
 		if (STOPLWP(p, lp)) {
 			lwkt_gettoken(&p->p_token);
 			tstop();
 			lwkt_reltoken(&p->p_token);
 		}
+#endif
 
 		/*
 		 * Quick check without token
@@ -2027,12 +2035,16 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 			 * If traced, always stop, and stay stopped until
 			 * released by the parent.
 			 *
-			 * NOTE: SSTOP may get cleared during the loop,
-			 * but we do not re-notify the parent if we have 
-			 * to loop several times waiting for the parent
-			 * to let us continue.
+			 * NOTE: SSTOP may get cleared during the loop, but
+			 *	 we do not re-notify the parent if we have 
+			 *	 to loop several times waiting for the parent
+			 *	 to let us continue.  XXX not sure if this is
+			 * 	 still true
 			 *
-			 * XXX not sure if this is still true
+			 * NOTE: Do not tstop here.  Issue the proc_stop()
+			 *	 so other parties see that we know we need
+			 *	 to stop, but don't block here.  Locks might
+			 *	 be held.
 			 */
 			if (haveptok == 0) {
 				lwkt_gettoken(&p->p_token);
@@ -2040,9 +2052,11 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 			}
 			p->p_xstat = sig;
 			proc_stop(p, SSTOP);
+#if 0
 			do {
 				tstop();
 			} while (!trace_req(p) && (p->p_flags & P_TRACED));
+#endif
 
 			/*
 			 * If parent wants us to take the signal,
@@ -2140,9 +2154,18 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
 				if ((p->p_flags & P_WEXIT) == 0) {
+					/*
+					 * NOTE: We do not block here.  Issue
+					 *	 stopthe stop so other parties
+					 *	 see that we know we need to
+					 *	 stop.  Locks might be held.
+					 */
 					p->p_xstat = sig;
 					proc_stop(p, SSTOP);
+
+#if 0
 					tstop();
+#endif
 				}
 				break;
 			} else if (prop & SA_IGNORE) {
