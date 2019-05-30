@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,13 @@
 
 #include <vm/pmap.h>
 #include <vm/vm_page.h>
+
+static inline int
+set_memory_uc(unsigned long addr, int numpages)
+{
+	pmap_change_attr(addr, numpages, PAT_UNCACHED);
+	return 0;
+}
 
 static inline int set_memory_wc(unsigned long vaddr, int numpages)
 {
