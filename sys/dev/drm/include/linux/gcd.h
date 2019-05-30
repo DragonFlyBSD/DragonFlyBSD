@@ -66,4 +66,10 @@ gcd64(uint64_t a, uint64_t b)
     return (b);
 }
 
+static inline unsigned long
+gcd(unsigned long a, unsigned long b)
+{
+	return gcd64(a, b);
+}
+
 #endif /* _GCD_H */
