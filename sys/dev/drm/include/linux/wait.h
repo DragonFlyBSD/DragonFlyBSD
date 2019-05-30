@@ -73,7 +73,8 @@ init_waitqueue_head(wait_queue_head_t *eq)
  *   - remaining jiffies are always at least 1
  *   - -ERESTARTSYS if interrupted by a signal (when PCATCH is set in flags)
 */
-#define __wait_event_common(wq, condition, timeout_jiffies, flags)	\
+#define __wait_event_common(wq, condition, timeout_jiffies, flags,	\
+			    locked)					\
 ({									\
 	int start_jiffies, elapsed_jiffies, remaining_jiffies, ret;	\
 	bool timeout_expired = false;					\
@@ -82,7 +83,8 @@ init_waitqueue_head(wait_queue_head_t *eq)
 									\
 	start_jiffies = ticks;						\
 									\
-	lockmgr(&wq.lock, LK_EXCLUSIVE);				\
+	if (!locked)							\
+		lockmgr(&wq.lock, LK_EXCLUSIVE);			\
 	while (1) {							\
 		if (condition)						\
 			break;						\
@@ -98,7 +100,8 @@ init_waitqueue_head(wait_queue_head_t *eq)
 			break;						\
 		}							\
 	}								\
-	lockmgr(&wq.lock, LK_RELEASE);					\
+	if (!locked)							\
+		lockmgr(&wq.lock, LK_RELEASE);				\
 									\
 	elapsed_jiffies = ticks - start_jiffies;			\
 	remaining_jiffies = timeout_jiffies - elapsed_jiffies;		\
@@ -118,23 +121,33 @@ init_waitqueue_head(wait_queue_head_t *eq)
 })
 
 #define wait_event(wq, condition)					\
-		__wait_event_common(wq, condition, 0, 0)
+		__wait_event_common(wq, condition, 0, 0, false)
 
 #define wait_event_timeout(wq, condition, timeout)			\
-		__wait_event_common(wq, condition, timeout, 0)
+		__wait_event_common(wq, condition, timeout, 0, false)
 
 #define wait_event_interruptible(wq, condition)				\
 ({									\
 	long retval;							\
 									\
-	retval = __wait_event_common(wq, condition, 0, PCATCH);		\
+	retval = __wait_event_common(wq, condition, 0, PCATCH, false);	\
+	if (retval != -ERESTARTSYS)					\
+		retval = 0;						\
+	retval;								\
+})
+
+#define wait_event_interruptible_locked(wq, condition)			\
+({									\
+	long retval;							\
+									\
+	retval = __wait_event_common(wq, condition, 0, PCATCH, true);	\
 	if (retval != -ERESTARTSYS)					\
 		retval = 0;						\
 	retval;								\
 })
 
 #define wait_event_interruptible_timeout(wq, condition, timeout)	\
-		__wait_event_common(wq, condition, timeout, PCATCH)
+		__wait_event_common(wq, condition, timeout, PCATCH, false)
 
 static inline int
 waitqueue_active(wait_queue_head_t *q)
