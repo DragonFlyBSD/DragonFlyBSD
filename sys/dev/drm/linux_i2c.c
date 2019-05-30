@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 François Tigeot
+ * Copyright (c) 2016-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -96,3 +96,12 @@ const struct i2c_algorithm i2c_bit_algo = {
 	.master_xfer	= bit_xfer,
 	.functionality	= bit_func,
 };
+
+int
+i2c_bit_add_bus(struct i2c_adapter *adapter)
+{
+	adapter->algo = &i2c_bit_algo;
+	adapter->retries = 2;
+
+	return 0;
+}
