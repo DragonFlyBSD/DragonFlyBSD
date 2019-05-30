@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -96,6 +96,18 @@ is_vmalloc_addr(const void *x)
 	}
 
 	return false;
+}
+
+void *
+vmalloc(unsigned long size)
+{
+	return kmalloc(size, M_DRM, M_WAITOK);
+}
+
+void *
+vzalloc(unsigned long size)
+{
+	return kmalloc(size, M_DRM, M_WAITOK | M_ZERO);
 }
 
 /* allocate zeroed virtually contiguous memory for userspace */

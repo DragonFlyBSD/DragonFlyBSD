@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,8 @@ void *vmap(struct page **pages, unsigned int count,
 
 void vunmap(const void *addr);
 
+void *vmalloc(unsigned long size);
+void *vzalloc(unsigned long size);
 void *vmalloc_user(unsigned long size);
 
 void vfree(const void *addr);
