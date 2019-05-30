@@ -598,23 +598,6 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define HW_SENSORS	13		/* node: hardware sensors */
 #define HW_MAXID	14		/* number of valid hw ids */
 
-#define CTL_HW_NAMES { \
-	{ 0, 0 }, \
-	{ "machine", CTLTYPE_STRING }, \
-	{ "model", CTLTYPE_STRING }, \
-	{ "ncpu", CTLTYPE_INT }, \
-	{ "byteorder", CTLTYPE_INT }, \
-	{ "physmem", CTLTYPE_ULONG }, \
-	{ "usermem", CTLTYPE_UINT }, \
-	{ "pagesize", CTLTYPE_INT }, \
-	{ "disknames", CTLTYPE_STRUCT }, \
-	{ "diskstats", CTLTYPE_STRUCT }, \
-	{ "floatingpoint", CTLTYPE_INT }, \
-	{ "arch", CTLTYPE_STRING }, \
-	{ "platform", CTLTYPE_STRING }, \
-	{ "sensors", CTLTYPE_NODE }, \
-}
-
 /*
  * CTL_USER definitions
  */
