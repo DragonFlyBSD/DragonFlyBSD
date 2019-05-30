@@ -83,7 +83,7 @@ SYSCTL_STRING(_kern, KERN_OSRELEASE, osrelease, CTLFLAG_RD | CTLFLAG_NOLOCK,
     osrelease, 0, "Operating system type");
 
 SYSCTL_INT(_kern, KERN_OSREV, osrevision, CTLFLAG_RD, 
-    0, BSD, "Operating system revision");
+    0, __DragonFly_version, "Operating system revision");
 
 SYSCTL_STRING(_kern, KERN_VERSION, version, CTLFLAG_RD | CTLFLAG_NOLOCK,
     version, 0, "Kernel version");

@@ -38,9 +38,12 @@
 #ifndef _SYS_PARAM_H_
 #define _SYS_PARAM_H_
 
-#define BSD	200708		/* XXX kern.osrevision */
-#define BSD4_3	1		/* XXX obsolete */
-#define BSD4_4	1		/* XXX obsolete */
+/*
+ * Historic BSD #defines -- probably will remain untouched for all time.
+ */
+#define BSD	199506		/* System version (year & month). */
+#define BSD4_3	1
+#define BSD4_4	1
 
 /*
  * __DragonFly_version number.  The number doesn't really meaningfully
