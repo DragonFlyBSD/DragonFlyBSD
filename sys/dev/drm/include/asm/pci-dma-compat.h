@@ -31,10 +31,10 @@
 #include <vm/vm_page.h>
 
 static inline dma_addr_t
-pci_map_page(struct pci_dev *hwdev, struct vm_page *page,
+pci_map_page(struct pci_dev *hwdev, struct page *page,
 	     unsigned long offset, size_t size, int direction)
 {
-	return VM_PAGE_TO_PHYS(page) + offset;
+	return VM_PAGE_TO_PHYS((struct vm_page *)page) + offset;
 }
 
 static inline void
