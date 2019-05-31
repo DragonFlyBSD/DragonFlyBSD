@@ -46,17 +46,10 @@
 
 #include "extern.h"
 
-#if (defined(NLIST_ELF32) && (ELFSIZE == 32)) || \
-    (defined(NLIST_ELF64) && (ELFSIZE == 64))
+#if (defined(NLIST_ELF64) && (ELFSIZE == 64))
 
 #define	__ELF_WORD_SIZE ELFSIZE
-#if (ELFSIZE == 32)
-#include <sys/elf32.h>
-#define	xewtoh(x)	((data == ELFDATA2MSB) ? be32toh(x) : le32toh(x))
-#define	htoxew(x)	((data == ELFDATA2MSB) ? htobe32(x) : htole32(x))
-#define	wewtoh(x)	((data == ELFDATA2MSB) ? be32toh(x) : le32toh(x))
-#define	htowew(x)	((data == ELFDATA2MSB) ? htobe32(x) : htole32(x))
-#elif (ELFSIZE == 64)
+#if (ELFSIZE == 64)
 #include <sys/elf64.h>
 #define	xewtoh(x)	((data == ELFDATA2MSB) ? be64toh(x) : le64toh(x))
 #define	htoxew(x)	((data == ELFDATA2MSB) ? htobe64(x) : htole64(x))
