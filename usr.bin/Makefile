@@ -189,7 +189,6 @@ SUBDIR=	alias \
 	stat \
 	strfile \
 	su \
-	symorder \
 	systat \
 	tabs \
 	tail \

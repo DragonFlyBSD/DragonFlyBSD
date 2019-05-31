@@ -3654,6 +3654,8 @@ TO_REMOVE+=/usr/include/sys/fd_set.h
 TO_REMOVE+=/usr/include/net/netmap.h
 TO_REMOVE+=/usr/include/net/netmap_user.h
 TO_REMOVE+=/boot/kernel/radeonkms.ko
+TO_REMOVE+=/usr/bin/symorder
+TO_REMOVE+=/usr/share/man/man1/symorder.1.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
