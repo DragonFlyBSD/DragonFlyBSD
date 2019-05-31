@@ -1398,7 +1398,6 @@ go_user(struct intrframe *frame)
 		gd->gd_flags |= GDF_VIRTUSER;
 		r = vmspace_ctl(id, VMSPACE_CTL_RUN, tf,
 				&curthread->td_savevext);
-		gd->gd_flags &= ~GDF_VIRTUSER;
 
 		frame->if_xflags |= PGEX_U;
 
@@ -1411,6 +1410,7 @@ go_user(struct intrframe *frame)
 			npxsave(mdcpu->gd_npxthread->td_savefpu);
 		}
 		crit_exit();
+		gd->gd_flags &= ~GDF_VIRTUSER;
 #if 0
 		kprintf("GO USER %d trap %ld EVA %08lx RIP %08lx RSP %08lx XFLAGS %02lx/%02lx\n",
 			r, tf->tf_trapno, tf->tf_addr, tf->tf_rip, tf->tf_rsp,

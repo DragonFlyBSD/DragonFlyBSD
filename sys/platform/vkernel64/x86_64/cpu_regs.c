@@ -470,15 +470,9 @@ sys_sigreturn(struct sigreturn_args *uap)
  * Note on cpu_idle_hlt:  On an SMP system we rely on a scheduler IPI
  * to wake a HLTed cpu up.
  */
-static int	cpu_idle_hlt = 1;
-static int	cpu_idle_hltcnt;
-static int	cpu_idle_spincnt;
+__read_mostly static int	cpu_idle_hlt = 1;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
-SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hltcnt, CTLFLAG_RW,
-    &cpu_idle_hltcnt, 0, "Idle loop entry halts");
-SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_spincnt, CTLFLAG_RW,
-    &cpu_idle_spincnt, 0, "Idle loop entry spins");
 
 void
 cpu_idle(void)
@@ -526,11 +520,9 @@ cpu_idle(void)
 				}
 #endif
 			}
-			++cpu_idle_hltcnt;
 		} else {
 			splz();
 			__asm __volatile("pause");
-			++cpu_idle_spincnt;
 		}
 	}
 }

@@ -167,8 +167,7 @@ vkernel_timer_get_timecount(void)
 }
 
 /*
- * Initialize the interrupt for our core systimer.  Use the kqueue timer
- * support functions.
+ * Initialize the interrupt for our core systimer.
  */
 static void
 vktimer_intr_initclock(struct cputimer_intr *cti __unused,
