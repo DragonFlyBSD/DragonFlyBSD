@@ -141,7 +141,14 @@ static struct dn_flowset_head	flowset_table[DN_NR_HASH_MAX];
  */
 static struct netmsg_base dn_netmsg;
 static struct systimer	dn_clock;
+#ifdef _KERNEL_VIRTUAL
+static int		dn_hz = 100;
+#else
 static int		dn_hz = 1000;
+#endif
+static int		dn_count;
+static int		dn_running;
+static struct lock	dn_lock = LOCK_INITIALIZER("dnlk", 0, 0);
 
 static int	sysctl_dn_hz(SYSCTL_HANDLER_ARGS);
 
@@ -175,6 +182,10 @@ SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_max_pkt_size, CTLFLAG_RD,
 
 SYSCTL_PROC(_net_inet_ip_dummynet, OID_AUTO, hz, CTLTYPE_INT | CTLFLAG_RW,
 	    0, 0, sysctl_dn_hz, "I", "Dummynet callout frequency");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, running, CTLFLAG_RD,
+	   &dn_running, 0, "Dummynet Active");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, count, CTLFLAG_RD,
+	   &dn_count, 0, "Dummynet pipe+flow count");
 
 static int	heap_init(struct dn_heap *, int);
 static int	heap_insert(struct dn_heap *, dn_key, void *);
@@ -1261,6 +1272,8 @@ dummynet_flush(void)
     struct dn_flow_set *fs;
     int i;
 
+    lockmgr(&dn_lock, LK_EXCLUSIVE);
+
     /*
      * Prevent future matches...
      */
@@ -1271,6 +1284,7 @@ dummynet_flush(void)
     	while ((p = LIST_FIRST(pipe_hdr)) != NULL) {
 	    LIST_REMOVE(p, p_link);
 	    LIST_INSERT_HEAD(&pipe_list, p, p_link);
+	    --dn_count;
 	}
     }
 
@@ -1281,6 +1295,7 @@ dummynet_flush(void)
 	while ((fs = LIST_FIRST(fs_hdr)) != NULL) {
 	    LIST_REMOVE(fs, fs_link);
 	    LIST_INSERT_HEAD(&fs_list, fs, fs_link);
+	    --dn_count;
 	}
     }
 
@@ -1303,6 +1318,16 @@ dummynet_flush(void)
 	purge_pipe(p);
 	kfree(p, M_DUMMYNET);
     }
+
+    /*
+     * Everything has been cleaned out, clear the run state.
+     */
+    KKASSERT(dn_count == 0);
+    if (dn_running) {
+	    systimer_del(&dn_clock);
+	    dn_running = 0;
+    }
+    lockmgr(&dn_lock, LK_RELEASE);
 }
 
 /*
@@ -1454,7 +1479,9 @@ config_pipe(struct dn_ioc_pipe *ioc_pipe)
     if (ioc_pipe->pipe_nr > DN_PIPE_NR_MAX || ioc_pipe->pipe_nr < 0)
 	return EINVAL;
 
+    lockmgr(&dn_lock, LK_EXCLUSIVE);
     error = EINVAL;
+
     if (ioc_pipe->pipe_nr != 0) {	/* This is a pipe */
 	struct dn_pipe *x, *p;
 
@@ -1499,6 +1526,7 @@ config_pipe(struct dn_ioc_pipe *ioc_pipe)
 
 	    pipe_hdr = &pipe_table[DN_NR_HASH(x->pipe_nr)];
 	    LIST_INSERT_HEAD(pipe_hdr, x, p_link);
+	    ++dn_count;
 	}
     } else {	/* Config flow_set */
 	struct dn_flow_set *x, *fs;
@@ -1535,11 +1563,22 @@ config_pipe(struct dn_ioc_pipe *ioc_pipe)
 
 	    fs_hdr = &flowset_table[DN_NR_HASH(x->fs_nr)];
 	    LIST_INSERT_HEAD(fs_hdr, x, fs_link);
+	    ++dn_count;
 	}
     }
     error = 0;
 
+    /*
+     * We have at least one entry, set run state and start the systimer
+     * poll if necessary.
+     */
+    if (dn_running == 0) {
+	dn_running = 1;
+	systimer_init_periodic_nq(&dn_clock, dummynet_clock, NULL, dn_hz);
+    }
+
 back:
+    lockmgr(&dn_lock, LK_RELEASE);
     return error;
 }
 
@@ -1615,6 +1654,8 @@ delete_pipe(const struct dn_ioc_pipe *ioc_pipe)
     if (ioc_pipe->pipe_nr > DN_NR_HASH_MAX || ioc_pipe->pipe_nr < 0)
     	return EINVAL;
 
+    lockmgr(&dn_lock, LK_EXCLUSIVE);
+
     error = EINVAL;
     if (ioc_pipe->pipe_nr != 0) {	/* This is an old-style pipe */
 	/* Locate pipe */
@@ -1624,6 +1665,7 @@ delete_pipe(const struct dn_ioc_pipe *ioc_pipe)
 
 	/* Unlink from pipe hash table */
 	LIST_REMOVE(p, p_link);
+	--dn_count;
 
 	/* Remove all references to this pipe from flow_sets */
 	dn_iterate_flowset(dn_unref_pipe_cb, p);
@@ -1645,6 +1687,7 @@ delete_pipe(const struct dn_ioc_pipe *ioc_pipe)
 	    goto back; /* Not found */
 
 	LIST_REMOVE(fs, fs_link);
+	--dn_count;
 
 	if ((p = fs->pipe) != NULL) {
 	    /* Update total weight on parent pipe and cleanup parent heaps */
@@ -1659,7 +1702,16 @@ delete_pipe(const struct dn_ioc_pipe *ioc_pipe)
     }
     error = 0;
 
+    /*
+     * If there are no more pipes or flow-sets, clear the run state.
+     */
+    if (dn_count == 0 && dn_running) {
+	    systimer_del(&dn_clock);
+	    dn_running = 0;
+    }
 back:
+    lockmgr(&dn_lock, LK_RELEASE);
+
     return error;
 }
 
@@ -1899,10 +1951,13 @@ sysctl_dn_hz(SYSCTL_HANDLER_ARGS)
     origcpu = mycpuid;
     lwkt_migratecpu(ip_dn_cpu);
 
+    lockmgr(&dn_lock, LK_EXCLUSIVE);
     crit_enter();
     dn_hz = val;
-    systimer_adjust_periodic(&dn_clock, val);
+    if (dn_running)
+	    systimer_adjust_periodic(&dn_clock, val);
     crit_exit();
+    lockmgr(&dn_lock, LK_RELEASE);
 
     lwkt_migratecpu(origcpu);
 
@@ -1948,7 +2003,12 @@ ip_dn_init_dispatch(netmsg_t msg)
 
     netmsg_init(&dn_netmsg, NULL, &netisr_adone_rport,
 		0, dummynet);
+
+    KKASSERT(dn_running == 0);
+#if 0
+    /* REMOVED, initialized on first insertion */
     systimer_init_periodic_nq(&dn_clock, dummynet_clock, NULL, dn_hz);
+#endif
 
 back:
     crit_exit();
@@ -1983,8 +2043,7 @@ ip_dn_stop_dispatch(netmsg_t msg)
 
     ip_dn_ctl_ptr = NULL;
     ip_dn_io_ptr = NULL;
-
-    systimer_del(&dn_clock);
+    KKASSERT(dn_running == 0);
 
     crit_exit();
     lwkt_replymsg(&msg->lmsg, 0);
