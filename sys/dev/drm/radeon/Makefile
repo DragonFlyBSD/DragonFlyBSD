@@ -5,7 +5,7 @@
 #
 
 
-KMOD	= radeonkms
+KMOD	= radeon
 SRCS	+=								\
 	radeon_acpi.c							\
 	radeon_agp.c							\
