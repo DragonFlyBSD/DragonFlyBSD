@@ -51,7 +51,6 @@
 
 #include <machine/vmparam.h>
 
-#include <a.out.h>
 #include <err.h>
 #include <fcntl.h>
 #include <kvm.h>
@@ -77,7 +76,7 @@ int gcore_verbose;
 int
 main(int argc, char **argv)
 {
-	struct exec exec;
+	void *exec;
 	int ch, cnt, efd, fd, sflag;
 	char *binfile, *corefile;
 	char *eptr;
@@ -150,8 +149,8 @@ main(int argc, char **argv)
 	if (efd < 0)
 		err(1, "%s", binfile);
 
-	cnt = read(efd, &exec, sizeof(exec));
-	if (cnt != sizeof(exec))
+	cnt = read(efd, &exec, sizeof(Elf_Ehdr));
+	if (cnt != sizeof(Elf_Ehdr))
 		errx(1, "%s exec header: %s",
 		    binfile, cnt > 0 ? strerror(EIO) : strerror(errno));
 	if (IS_ELF(*(Elf_Ehdr *)&exec)) {
