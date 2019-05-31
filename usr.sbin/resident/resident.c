@@ -31,7 +31,6 @@
 #include <sys/sysctl.h>
 
 #include <machine/elf.h>
-#include <a.out.h>
 #include <dlfcn.h>
 #include <err.h>
 #include <fcntl.h>
@@ -158,7 +157,6 @@ main(int argc, char *argv[])
 	for ( ;  argc > 0;  argc--, argv++) {
 		int	fd;
 		union {
-			struct exec aout;
 			Elf_Ehdr elf;
 		} hdr;
 		int	n;
@@ -183,17 +181,7 @@ main(int argc, char *argv[])
 
 		file_ok = 1;
 		is_shlib = 0;
-		if ((size_t)n >= sizeof hdr.aout && !N_BADMAG(hdr.aout)) {
-			/* a.out file */
-			if ((N_GETFLAG(hdr.aout) & EX_DPMASK) != EX_DYNAMIC
-#if 1 /* Compatibility */
-			    || hdr.aout.a_entry < __LDPGSZ
-#endif
-				) {
-				warnx("%s: not a dynamic executable", *argv);
-				file_ok = 0;
-			}
-		} else if ((size_t)n >= sizeof hdr.elf && IS_ELF(hdr.elf)) {
+		if ((size_t)n >= sizeof hdr.elf && IS_ELF(hdr.elf)) {
 			Elf_Ehdr ehdr;
 			Elf_Phdr phdr;
 			int dynamic = 0, i;
