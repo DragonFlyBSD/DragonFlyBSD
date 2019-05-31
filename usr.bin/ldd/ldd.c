@@ -34,7 +34,6 @@
 #include <sys/wait.h>
 
 #include <machine/elf.h>
-#include <a.out.h>
 #include <dlfcn.h>
 #include <err.h>
 #include <fcntl.h>
