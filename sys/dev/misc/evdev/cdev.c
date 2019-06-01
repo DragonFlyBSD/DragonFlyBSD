@@ -65,7 +65,6 @@
 #endif
 
 #define	DEF_RING_REPORTS	8
-#define GID_INPUT		107	/* input group */
 
 static d_open_t		evdev_open;
 static d_read_t		evdev_read;
@@ -699,8 +698,8 @@ evdev_cdev_create(struct evdev_dev *evdev)
 	 * will make st_rdev unique. This is needed by libinput, which
 	 * determines eventX from st_rdev.
 	 */
-	dev = make_dev(&evdev_cdevsw, unit, UID_ROOT, GID_INPUT,
-				  0660, "input/event%d", unit);
+	dev = make_dev(&evdev_cdevsw, unit, UID_ROOT, GID_WHEEL, 0600,
+	    "input/event%d", unit);
 
 	if (dev != NULL) {
 		dev->si_drv1 = evdev;
