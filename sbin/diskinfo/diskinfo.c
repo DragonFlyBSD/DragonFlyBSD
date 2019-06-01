@@ -98,8 +98,8 @@ dumppart(const char *path, struct partinfo *dpart)
 	printf("%-16s ", path);
 	printf("blksize=%-4d offset=0x%012jx size=0x%012jx ",
 		dpart->media_blksize,
-		(intmax_t)dpart->media_offset,
-		(intmax_t)dpart->media_size
+		(uintmax_t)dpart->media_offset,
+		(uintmax_t)dpart->media_size
 	);
 	if (dpart->media_size >= 100LL*1024*1024*1024) {
 		printf("%7.2f GB", 

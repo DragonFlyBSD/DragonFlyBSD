@@ -815,8 +815,8 @@ print_record(hammer_btree_elm_t elm)
 	case HAMMER_RECTYPE_PFS:
 		printf("\n%s%17s", INDENT, "");
 		printf("pfs sync_beg_tid=%016jx sync_end_tid=%016jx\n",
-			(intmax_t)data->pfsd.sync_beg_tid,
-			(intmax_t)data->pfsd.sync_end_tid);
+			(uintmax_t)data->pfsd.sync_beg_tid,
+			(uintmax_t)data->pfsd.sync_end_tid);
 		hammer_uuid_to_string(&data->pfsd.shared_uuid, &str1);
 		hammer_uuid_to_string(&data->pfsd.unique_uuid, &str2);
 		printf("%17s", "");
@@ -834,7 +834,7 @@ print_record(hammer_btree_elm_t elm)
 	case HAMMER_RECTYPE_SNAPSHOT:
 		printf("\n%s%17s", INDENT, "");
 		printf("snapshot tid=%016jx label=\"%s\"",
-			(intmax_t)data->snap.tid, data->snap.label);
+			(uintmax_t)data->snap.tid, data->snap.label);
 		break;
 	case HAMMER_RECTYPE_CONFIG:
 		if (VerboseOpt > 2) {
@@ -1066,18 +1066,18 @@ hammer_cmd_show_undo(void)
 				hdr->hdr_size, hdr->hdr_seq);
 			break;
 		case HAMMER_HEAD_TYPE_UNDO:
-			printf("UNDO(%d)\tseq=%08x offset=%016jx bytes=%d",
+			printf("UNDO(%u)\tseq=%08x offset=%016jx bytes=%d",
 				hdr->hdr_size, hdr->hdr_seq,
-				(intmax_t)head->undo.undo_offset,
+				(uintmax_t)head->undo.undo_offset,
 				head->undo.undo_data_bytes);
 			break;
 		case HAMMER_HEAD_TYPE_REDO:
-			printf("REDO(%d)\tseq=%08x offset=%016jx bytes=%d "
+			printf("REDO(%u)\tseq=%08x offset=%016jx bytes=%d "
 				"objid=%016jx flags=%08x lo=%08x",
 				hdr->hdr_size, hdr->hdr_seq,
-				(intmax_t)head->redo.redo_offset,
+				(uintmax_t)head->redo.redo_offset,
 				head->redo.redo_data_bytes,
-				(intmax_t)head->redo.redo_objid,
+				(uintmax_t)head->redo.redo_objid,
 				head->redo.redo_flags,
 				head->redo.redo_localization);
 			break;

@@ -3469,7 +3469,7 @@ retry:
 					bcopy(&lundata->luns[i].lundata[j+1],
 					      &tmp_lun[1], sizeof(tmp_lun) - 1);
 					fprintf(stdout, "%#jx",
-					       (intmax_t)scsi_8btou64(tmp_lun));
+					       (uintmax_t)scsi_8btou64(tmp_lun));
 					no_more = 1;
 				} else {
 					fprintf(stderr, "Unknown Extended LUN"

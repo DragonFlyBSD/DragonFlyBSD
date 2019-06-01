@@ -642,11 +642,11 @@ display(FILE *f, const struct disklabel64 *lp)
 	fprintf(f, "# Calculated informational fields for the slice:\n");
 	fprintf(f, "#\n");
 	fprintf(f, "# boot space: %10ju bytes\n",
-		(intmax_t)(lp->d_pbase - lp->d_bbase));
+		(uintmax_t)(lp->d_pbase - lp->d_bbase));
 	fprintf(f, "# data space: %10ju blocks\t# %6.2f MB (%ju bytes)\n",
-			(intmax_t)(lp->d_pstop - lp->d_pbase) / blksize,
+			(uintmax_t)(lp->d_pstop - lp->d_pbase) / blksize,
 			(double)(lp->d_pstop - lp->d_pbase) / 1024.0 / 1024.0,
-			(intmax_t)(lp->d_pstop - lp->d_pbase));
+			(uintmax_t)(lp->d_pstop - lp->d_pbase));
 	fprintf(f, "#\n");
 	fprintf(f, "# NOTE: The partition data base and stop are physically\n");
 	fprintf(f, "#       aligned instead of slice-relative aligned.\n");
@@ -659,12 +659,12 @@ display(FILE *f, const struct disklabel64 *lp)
 	free(str);
 
 	fprintf(f, "label: %s\n", lp->d_packname);
-	fprintf(f, "boot2 data base:      0x%012jx\n", (intmax_t)lp->d_bbase);
-	fprintf(f, "partitions data base: 0x%012jx\n", (intmax_t)lp->d_pbase);
-	fprintf(f, "partitions data stop: 0x%012jx\n", (intmax_t)lp->d_pstop);
-	fprintf(f, "backup label:         0x%012jx\n", (intmax_t)lp->d_abase);
+	fprintf(f, "boot2 data base:      0x%012jx\n", (uintmax_t)lp->d_bbase);
+	fprintf(f, "partitions data base: 0x%012jx\n", (uintmax_t)lp->d_pbase);
+	fprintf(f, "partitions data stop: 0x%012jx\n", (uintmax_t)lp->d_pstop);
+	fprintf(f, "backup label:         0x%012jx\n", (uintmax_t)lp->d_abase);
 	fprintf(f, "total size:           0x%012jx\t# %6.2f MB\n",
-		(intmax_t)lp->d_total_size,
+		(uintmax_t)lp->d_total_size,
 		(double)lp->d_total_size / 1024.0 / 1024.0);
 	fprintf(f, "alignment: %u\n", lp->d_align);
 	fprintf(f, "display block size: %u\t# for partition display and edit only\n",
@@ -686,13 +686,13 @@ display(FILE *f, const struct disklabel64 *lp)
 		if (pp->p_bsize % lp->d_align)
 		    fprintf(f, "%10s  ", "ILLEGAL");
 		else
-		    fprintf(f, "%10ju ", (intmax_t)pp->p_bsize / blksize);
+		    fprintf(f, "%10ju ", (uintmax_t)pp->p_bsize / blksize);
 
 		if ((pp->p_boffset - lp->d_pbase) % lp->d_align)
 		    fprintf(f, "%10s  ", "ILLEGAL");
 		else
 		    fprintf(f, "%10ju  ",
-			    (intmax_t)(pp->p_boffset - lp->d_pbase) / blksize);
+			    (uintmax_t)(pp->p_boffset - lp->d_pbase) / blksize);
 
 		if (pp->p_fstype < FSMAXTYPES)
 			fprintf(f, "%8.8s", fstypenames[pp->p_fstype]);
@@ -1248,7 +1248,7 @@ checklabel(struct disklabel64 *lp)
 	}
 	if (lp->d_pstop > lp->d_total_size) {
 		printf("%012jx\n%012jx\n",
-			(intmax_t)lp->d_pstop, (intmax_t)lp->d_total_size);
+			(uintmax_t)lp->d_pstop, (uintmax_t)lp->d_total_size);
 		Warning("disklabel control info is beyond the total size");
 		return (1);
 	}
@@ -1364,9 +1364,9 @@ checklabel(struct disklabel64 *lp)
 				    pp->p_fstype != FS_VINUM) {
 					fprintf(stderr,
 "Offset 0x%012jx for partition %c overlaps previous partition which ends at 0x%012jx\n",
-					    (intmax_t)pp->p_boffset,
+					    (uintmax_t)pp->p_boffset,
 					    i + 'a',
-					    (intmax_t)current_offset);
+					    (uintmax_t)current_offset);
 					fprintf(stderr,
 "Labels with any *'s for offset must be in ascending order by sector\n");
 					errors++;

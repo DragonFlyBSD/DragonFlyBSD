@@ -163,18 +163,18 @@ bridge_interfaces(int s, const char *prefix)
 			printf("%sbondweight %u\n",
 				pad, req->ifbr_bond_weight);
 			printf("%sdesignated root:   %016jx\n",
-				pad, (intmax_t)req->ifbr_designated_root);
+				pad, (uintmax_t)req->ifbr_designated_root);
 			printf("%sdesignated bridge: %016jx\n",
-				pad, (intmax_t)req->ifbr_designated_bridge);
+				pad, (uintmax_t)req->ifbr_designated_bridge);
 			printf("%sdesignated cost:   %u\n",
 				pad, req->ifbr_designated_cost);
 			printf("%sdesignated port:   %u\n",
 				pad, req->ifbr_designated_port);
 			if (verbose) {
 				printf("%speer root:   %016jx\n",
-					pad, (intmax_t)req->ifbr_peer_root);
+					pad, (uintmax_t)req->ifbr_peer_root);
 				printf("%speer bridge: %016jx\n",
-					pad, (intmax_t)req->ifbr_peer_bridge);
+					pad, (uintmax_t)req->ifbr_peer_bridge);
 				printf("%speer cost:   %u\n",
 					pad, req->ifbr_peer_cost);
 				printf("%speer port:   %u\n",

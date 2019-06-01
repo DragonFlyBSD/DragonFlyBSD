@@ -162,7 +162,7 @@ dumpfs(char *name)
 	    afs.fs_contigsumsize);
 	printf("nindir\t%d\tinopb\t%d\tnspf\t%d\tmaxfilesize\t%ju\n",
 	    afs.fs_nindir, afs.fs_inopb, afs.fs_nspf,
-	    (intmax_t)afs.fs_maxfilesize);
+	    (uintmax_t)afs.fs_maxfilesize);
 	printf("sblkno\t%d\tcblkno\t%d\tiblkno\t%d\tdblkno\t%d\n",
 	    afs.fs_sblkno, afs.fs_cblkno, afs.fs_iblkno, afs.fs_dblkno);
 	printf("sbsize\t%d\tcgsize\t%d\tcgoffset %d\tcgmask\t0x%08x\n",
@@ -261,7 +261,7 @@ dumpcg(char *name, int fd, int c)
 	printf("magic\t%x\ttell\t%jx\ttime\t%s",
 	    afs.fs_postblformat == FS_42POSTBLFMT ?
 	    ((struct ocg *)&acg)->cg_magic : acg.cg_magic,
-	    (intmax_t)cur, ctime(&cg_time));
+	    (uintmax_t)cur, ctime(&cg_time));
 	printf("cgx\t%d\tncyl\t%d\tniblk\t%d\tndblk\t%d\n",
 	    acg.cg_cgx, acg.cg_ncyl, acg.cg_niblk, acg.cg_ndblk);
 	printf("nbfree\t%d\tndir\t%d\tnifree\t%d\tnffree\t%d\n",

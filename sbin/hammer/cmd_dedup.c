@@ -1022,8 +1022,8 @@ dump_simulated_dedup(void)
 	RB_FOREACH(sim_de, sim_dedup_entry_rb_tree, &sim_dedup_tree) {
 		printf("\tcrc=%08x cnt=%ju size=%ju\n",
 			sim_de->crc,
-			(intmax_t)sim_de->ref_blks,
-			(intmax_t)sim_de->ref_size);
+			(uintmax_t)sim_de->ref_blks,
+			(uintmax_t)sim_de->ref_size);
 	}
 	printf("end of dump ===\n");
 }
@@ -1045,8 +1045,8 @@ dump_real_dedup(void)
 				printf("\t\tcrc=%08x cnt=%ju size=%ju\n\t"
 				       "\t\tsha=",
 				       sha_de->leaf.data_crc,
-				       (intmax_t)sha_de->ref_blks,
-				       (intmax_t)sha_de->ref_size);
+				       (uintmax_t)sha_de->ref_blks,
+				       (uintmax_t)sha_de->ref_size);
 				for (i = 0; i < SHA256_DIGEST_LENGTH; ++i)
 					printf("%02x", sha_de->sha_hash[i]);
 				printf("\n");
@@ -1054,8 +1054,8 @@ dump_real_dedup(void)
 		} else {
 			printf("\tcrc=%08x cnt=%ju size=%ju\n",
 			       de->leaf.data_crc,
-			       (intmax_t)de->u.de.ref_blks,
-			       (intmax_t)de->u.de.ref_size);
+			       (uintmax_t)de->u.de.ref_blks,
+			       (uintmax_t)de->u.de.ref_size);
 		}
 	}
 	printf("end of dump ===\n");

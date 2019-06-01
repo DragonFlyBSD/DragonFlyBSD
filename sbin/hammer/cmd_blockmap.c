@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/hammer/cmd_blockmap.c,v 1.4 2008/07/19 18:48:14 dillon Exp $
  */
 
 #include "hammer.h"
@@ -588,20 +586,20 @@ dump_collect(collect_t collect, zone_stat_t stats)
 
 		if (track2->zone != layer2->zone) {
 			printf("BZ\tblock=%016jx calc zone=%-2d, got zone=%-2d\n",
-				(intmax_t)offset,
+				(uintmax_t)offset,
 				track2->zone,
 				layer2->zone);
 			collect->error++;
 		} else if (track2->bytes_free != layer2->bytes_free) {
 			printf("BM\tblock=%016jx zone=%-2d calc %d free, got %d\n",
-				(intmax_t)offset,
+				(uintmax_t)offset,
 				layer2->zone,
 				track2->bytes_free,
 				layer2->bytes_free);
 			collect->error++;
 		} else if (VerboseOpt) {
 			printf("\tblock=%016jx zone=%-2d %d free (correct)\n",
-				(intmax_t)offset,
+				(uintmax_t)offset,
 				layer2->zone,
 				track2->bytes_free);
 		}
