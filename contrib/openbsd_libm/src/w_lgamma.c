@@ -21,8 +21,6 @@
 
 #include "math_private.h"
 
-extern int signgam;
-
 double
 lgamma(double x)
 {

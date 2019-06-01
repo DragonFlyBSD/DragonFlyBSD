@@ -16,8 +16,6 @@
 #include "math.h"
 #include "math_private.h"
 
-extern int signgam;
-
 float
 gammaf(float x)
 {

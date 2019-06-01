@@ -19,8 +19,6 @@
 #include "math.h"
 #include "math_private.h"
 
-extern int signgam;
-
 double
 gamma(double x)
 {
