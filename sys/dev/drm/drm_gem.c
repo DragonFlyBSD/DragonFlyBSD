@@ -555,7 +555,6 @@ EXPORT_SYMBOL(drm_gem_create_mmap_offset);
 
 /**
  * drm_gem_object_lookup - look up a GEM object from it's handle
- * @dev: DRM device
  * @filp: DRM file private date
  * @handle: userspace handle
  *
@@ -573,12 +572,8 @@ drm_gem_object_lookup(struct drm_file *filp, u32 handle)
 
 	/* Check if we currently have a reference on the object */
 	obj = idr_find(&filp->object_idr, handle);
-	if (obj == NULL) {
-		lockmgr(&filp->table_lock, LK_RELEASE);
-		return NULL;
-	}
-
-	drm_gem_object_reference(obj);
+	if (obj)
+		drm_gem_object_reference(obj);
 
 	lockmgr(&filp->table_lock, LK_RELEASE);
 
