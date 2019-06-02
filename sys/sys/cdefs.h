@@ -159,30 +159,6 @@
  * properly (old versions of gcc-2 supported the dead and pure features
  * in a different (wrong) way).
  */
-#ifdef lint
-#define	__dead2
-#define	__pure
-#define	__pure2
-#define	__unused
-#define	__packed
-#define	__aligned(x)
-#define	__alloc_align(x)
-#define	__alloc_size(x)
-#define	__alloc_size2(n, x)
-#define	__section(x)
-#define	__always_inline
-#define	__nonnull(...)
-#define	__heedresult
-#define	__malloclike
-#define	__returns_twice
-#define	__weak_symbol
-
-#define __read_mostly
-#define __read_frequently
-#define __exclusive_cache_line
-
-#else
-
 #define	__weak_symbol	__attribute__((__weak__))
 #if __GNUC_PREREQ__(2, 7)
 #define	__dead2		__attribute__((__noreturn__))
@@ -251,8 +227,6 @@
 #else
 #define	__alloc_align(x)
 #endif
-
-#endif	/* LINT */
 
 #if !__GNUC_PREREQ__(2, 7) && __STDC_VERSION__ < 199901
 #define	__func__	NULL

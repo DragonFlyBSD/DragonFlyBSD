@@ -36,9 +36,7 @@
 
 __BEGIN_DECLS
 #undef  alloca	/* some GNU bits try to get cute and define this on their own */
-#ifndef lint
 void	*alloca(size_t);
-#endif
 
 #if __GNUC__ >= 2 || defined(__INTEL_COMPILER)
 #define alloca(sz) __builtin_alloca(sz)
