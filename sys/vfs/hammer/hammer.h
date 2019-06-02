@@ -1247,7 +1247,6 @@ hammer_tid_t hammer_alloc_tid(hammer_mount_t hmp, int count);
 
 void hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags);
 void hammer_flush_inode(hammer_inode_t ip, int flags);
-void hammer_flush_inode_done(hammer_inode_t ip, int error);
 void hammer_wait_inode(hammer_inode_t ip);
 
 int  hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
@@ -1262,6 +1261,7 @@ int hammer_redo_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
 int hammer_destroy_inode_callback(hammer_inode_t ip, void *data __unused);
 
 int hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip);
+void hammer_sync_inode_done(hammer_inode_t ip, int error);
 void hammer_test_inode(hammer_inode_t dip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
 int hammer_update_atime_quick(hammer_inode_t ip);

@@ -2527,7 +2527,7 @@ hammer_wait_inode(hammer_inode_t ip)
  * inode on the list and re-copy its fields.
  */
 void
-hammer_flush_inode_done(hammer_inode_t ip, int error)
+hammer_sync_inode_done(hammer_inode_t ip, int error)
 {
 	hammer_mount_t hmp;
 	int dorel;

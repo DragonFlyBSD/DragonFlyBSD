@@ -561,7 +561,7 @@ hammer_flusher_flush_inode(hammer_inode_t ip, void *data)
 		if (error == EWOULDBLOCK)
 			error = 0;
 	}
-	hammer_flush_inode_done(ip, error);
+	hammer_sync_inode_done(ip, error);
 	/* ip invalid */
 
 	while (hmp->flusher.finalize_want)
