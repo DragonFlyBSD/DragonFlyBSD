@@ -90,7 +90,7 @@ void	psignal(int, const char *);
 #if __BSD_VISIBLE
 #ifndef _LWP_KILL_DECLARED
 int	lwp_kill(pid_t, lwpid_t, int);
-#define _LWP_KILL_DECLARED
+#define	_LWP_KILL_DECLARED
 #endif
 int	sigblock(int);
 int	sigreturn(ucontext_t *);
