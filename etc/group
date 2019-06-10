@@ -1,6 +1,3 @@
-# $FreeBSD: src/etc/group,v 1.19.2.3 2002/06/30 17:57:17 des Exp $
-# $DragonFly: src/etc/group,v 1.8 2008/08/30 16:07:58 hasso Exp $
-#
 wheel:*:0:root
 daemon:*:1:daemon
 kmem:*:2:root
@@ -17,6 +14,7 @@ sshd:*:22:
 smmsp:*:25:
 mailnull:*:26:
 guest:*:31:root
+input:*:43:
 video:*:44:
 bind:*:53:
 proxy:*:62:
