@@ -1214,6 +1214,7 @@ int __i915_wait_request(struct drm_i915_gem_request *req,
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	const bool irq_test_in_progress =
 		ACCESS_ONCE(dev_priv->gpu_error.test_irq_rings) & intel_engine_flag(engine);
+	int state = interruptible ? TASK_INTERRUPTIBLE : TASK_UNINTERRUPTIBLE;
 	unsigned long timeout_expire;
 	s64 before = 0; /* Only to silence a compiler warning. */
 	int ret, sl_timeout = 1;
@@ -1280,7 +1281,7 @@ int __i915_wait_request(struct drm_i915_gem_request *req,
 			break;
 		}
 
-		if (interruptible && signal_pending(curthread->td_lwp)) {
+		if (signal_pending_state(state, current)) {
 			ret = -ERESTARTSYS;
 			break;
 		}

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -65,28 +66,62 @@
 #define	TASK_INTERRUPTIBLE	1
 #define	TASK_UNINTERRUPTIBLE	2
 
+#define MAX_SCHEDULE_TIMEOUT    LONG_MAX
+
 /*
- * schedule_timeout - sleep until timeout
- * @timeout: timeout value in jiffies
+ * schedule_timeout: puts the current thread to sleep until timeout
+ * if its state allows it to.
  */
 static inline long
 schedule_timeout(signed long timeout)
 {
-	static int dummy;
+	unsigned long time_before, time_after;
+	long slept, ret = 0;
+	int timo;
 
 	if (timeout < 0) {
 		kprintf("schedule_timeout(): timeout cannot be negative\n");
-		return 0;
+		goto done;
 	}
 
-	tsleep(&dummy, 0, "lstim", timeout);
+	/*
+	 * Indefinite wait if timeout is MAX_SCHEDULE_TIMEOUT, but we are
+	 * also translating to an integer.  The first conditional will
+	 * cover both but to code defensively test both.
+	 */
+	if (timeout >= INT_MAX || timeout == MAX_SCHEDULE_TIMEOUT)
+		timo = 0;
+	else
+		timo = timeout;
 
-	return 0;
+	switch (current->state) {
+	case TASK_INTERRUPTIBLE:
+		time_before = hz;
+		tsleep(current, PCATCH, "lstim", timo);
+		time_after = hz;
+		slept = time_after - time_before;
+		ret = timeout - slept;
+		if (ret < 0)
+			ret = 0;
+		break;
+	case TASK_UNINTERRUPTIBLE:
+		tsleep(current, 0, "lstim", timo);
+		break;
+	default:
+		/* We are supposed to return immediately here */
+		tsleep(current, 0, "lstim", 1);
+		break;
+	}
+
+done:
+	if (timeout == MAX_SCHEDULE_TIMEOUT)
+		ret = MAX_SCHEDULE_TIMEOUT;
+
+	current->state = TASK_RUNNING;
+	return ret;
 }
 
 #define TASK_COMM_LEN	MAXCOMLEN
-
-#define signal_pending(lp)	CURSIG(lp)
 
 /*
  * local_clock: fast time source, monotonic on the same cpu
@@ -100,32 +135,49 @@ local_clock(void)
 	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
 }
 
-#define MAX_SCHEDULE_TIMEOUT    LONG_MAX
-
 static inline void
 yield(void)
 {
 	lwkt_yield();
 }
 
+#define __set_current_state(state_value)	current->state = (state_value);
+
+#define set_current_state(state_value)		\
+do {						\
+	__set_current_state(state_value);	\
+	mb();					\
+} while (0)
+
 static inline int
-wake_up_process(struct proc *tsk) {
+wake_up_process(struct task_struct *tsk)
+{
 	/* Among other things, this function is supposed to act as
 	 * a barrier */
 	smp_wmb();
+	wakeup(tsk);
 
 	return 0;
 }
 
 static inline int
-signal_pending_state(long state, struct lwp *lp)
+signal_pending(struct task_struct *p)
 {
+	struct thread *t = container_of(p, struct thread, td_linux_task);
+
+	return CURSIG(t->td_lwp);
+}
+
+static inline int
+signal_pending_state(long state, struct task_struct *p)
+{
+	struct thread *t = container_of(p, struct thread, td_linux_task);
 	sigset_t pending_set;
 
 	if (!(state & TASK_INTERRUPTIBLE))
 		return 0;
 
-	pending_set = lwp_sigpend(lp);
+	pending_set = lwp_sigpend(t->td_lwp);
 
 	return SIGISMEMBER(pending_set, SIGKILL);
 }
