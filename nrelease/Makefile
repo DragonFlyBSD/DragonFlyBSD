@@ -396,7 +396,7 @@ mkimg:
 	vnconfig -u `cat ${ISODIR}/vn.which`
 	rm -f ${ISODIR}/vn.which
 	rmdir ${IMGMNT}
-	@echo "STEP: done"
+	@echo "STEP: done, image files are in ${ISODIR}"
 
 clean:
 	sync

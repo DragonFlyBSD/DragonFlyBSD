@@ -393,16 +393,16 @@ state_configure_menu(struct i_fn_args *a)
 
 	if (during_install == 0) {
 		switch (dfui_be_present_dialog(a->c, _("Select file system"),
-		    _("HAMMER|HAMMER2|UFS|Return to Welcome Menu"),
+		    _("HAMMER2|HAMMER1|UFS|Return to Welcome Menu"),
 		    _("Please select the file system installed on the disk.\n\n")))
 		{
 		case 1:
-			/* HAMMER */
-			use_hammer = 1;
-			break;
-		case 2:
 			/* HAMMER2 */
 			use_hammer = 2;
+			break;
+		case 2:
+			/* HAMMER1 */
+			use_hammer = 1;
 			break;
 		case 3:
 			/* UFS */
@@ -1025,10 +1025,10 @@ state_ask_fs(struct i_fn_args *a)
 	use_hammer = 0;
 
 	switch (dfui_be_present_dialog(a->c, _("Select file system"),
-	    _("Use HAMMER|Use HAMMER2|Use UFS|Return to Select Disk"),
+	    _("Use HAMMER2|Use HAMMER1|Use UFS|Return to Select Disk"),
 	    _("Please select the file system you want to use with %s.\n\n"
-	      "HAMMER is the primary %s file system.  "
-	      "HAMMER2 is the bleeding edge %s file system.  "
+	      "HAMMER2 is the recommended %s file system.  "
+	      "HAMMER1 is the previous %s file system.  "
 	      "UFS is the traditional BSD file system."),
 	    OPERATING_SYSTEM_NAME,
 	    OPERATING_SYSTEM_NAME,
@@ -1036,11 +1036,11 @@ state_ask_fs(struct i_fn_args *a)
 	{
 	case 1:
 		/* HAMMER */
-		use_hammer = 1;
+		use_hammer = 2;
 		break;
 	case 2:
 		/* HAMMER2 */
-		use_hammer = 2;
+		use_hammer = 1;
 		break;
 	case 3:
 		/* UFS */
