@@ -54,6 +54,9 @@
 #undef		listen
 #undef		nanosleep
 #undef		open
+#undef		openat
+#undef		unlink
+#undef		unlinkat
 #undef		poll
 #undef		ppoll
 #undef		pthread_atfork

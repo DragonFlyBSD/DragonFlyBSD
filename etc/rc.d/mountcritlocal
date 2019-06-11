@@ -26,6 +26,7 @@ mountcritlocal_start()
 	esac
 
 	# Mount everything except for network filesystems.
+	#
 	mount_excludes=""
 	for i in ${netfs_types}; do
 		fstype=${i%:*}
@@ -39,6 +40,11 @@ mountcritlocal_start()
 		     'startup aborted'
 		exit ${err}
 	fi
+
+	# Mount /var/run/shm for shm_open() and friends
+	#
+	mount_tmpfs -m 01777 dummy /var/run/shm
+	mkdir -p -m 01777 /var/run/shm/tmp
 }
 
 load_rc_config $name

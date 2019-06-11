@@ -71,7 +71,7 @@ tmpfile(void)
 
 	fd = mkstemp(buf);
 	if (fd != -1)
-		unlink(buf);
+		_unlink(buf);
 
 	free(buf);
 

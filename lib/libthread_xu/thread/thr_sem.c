@@ -654,7 +654,7 @@ retry:
 			errno = ENOMEM;
 
 		if (create)
-			unlink(tmppath);
+			_unlink(tmppath);
 
 		__sys_close(fd);
 		goto error;
@@ -669,7 +669,7 @@ retry:
 		if (link(tmppath, path) != 0) {
 			munmap(semtmp, getpagesize());
 			__sys_close(fd);
-			unlink(tmppath);
+			_unlink(tmppath);
 
 			if (errno == EEXIST && (oflag & O_EXCL) == 0) {
 				goto retry;
@@ -677,7 +677,7 @@ retry:
 
 			goto error;
 		}
-		unlink(tmppath);
+		_unlink(tmppath);
 
 		if (_fstat(fd, &sbuf) != 0) {
 			/* Bad things happened, like another thread closing our descriptor */
@@ -734,7 +734,7 @@ _sem_unlink(const char *name)
 		return (-1);
 	}
 
-	error = unlink(path);
+	error = _unlink(path);
 
 	if(error) {
 		if (errno != ENAMETOOLONG && errno != ENOENT)

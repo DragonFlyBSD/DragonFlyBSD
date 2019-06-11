@@ -861,7 +861,7 @@ open_temp(HTAB *hashp)
 	sigfillset(&set);
 	_sigprocmask(SIG_BLOCK, &set, &oset);
 	if ((hashp->fp = mkostemp(path, O_CLOEXEC)) != -1) {
-		unlink(path);
+		_unlink(path);
 		_fcntl(hashp->fp, F_SETFD, 1);
 	}
 	_sigprocmask(SIG_SETMASK, &oset, NULL);

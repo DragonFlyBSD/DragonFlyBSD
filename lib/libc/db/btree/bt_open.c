@@ -405,7 +405,7 @@ tmp(void)
 	sigfillset(&set);
 	_sigprocmask(SIG_BLOCK, &set, &oset);
 	if ((fd = mkostemp(path, O_CLOEXEC)) != -1)
-		unlink(path);
+		_unlink(path);
 	_sigprocmask(SIG_SETMASK, &oset, NULL);
 	return(fd);
 }

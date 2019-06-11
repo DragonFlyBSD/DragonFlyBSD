@@ -42,6 +42,7 @@
 int
 shm_open(const char *path, int flags, mode_t mode)
 {
+	int dfd;
 	int fd;
 	struct stat stab;
 
@@ -50,7 +51,16 @@ shm_open(const char *path, int flags, mode_t mode)
 		return (-1);
 	}
 
-	fd = _open(path, flags, mode);
+	dfd = _open("/var/run/shm", O_RDONLY|O_DIRECTORY);
+	if (dfd >= 0) {
+		while (*path == '/')
+			++path;
+		fd = _openat(dfd, path, flags, mode);
+		_close(dfd);
+	} else {
+		fd = _open(path, flags, mode);
+	}
+
 	if (fd != -1) {
 		if (_fstat(fd, &stab) != 0 || !S_ISREG(stab.st_mode)) {
 			_close(fd);
@@ -70,5 +80,17 @@ shm_open(const char *path, int flags, mode_t mode)
 int
 shm_unlink(const char *path)
 {
-	return (unlink(path));
+	int res;
+	int dfd;
+
+	dfd = _open("/var/run/shm", O_RDONLY|O_DIRECTORY);
+	if (dfd >= 0) {
+		while (*path == '/')
+			++path;
+		res = _unlinkat(dfd, path, 0);
+		_close(dfd);
+	} else {
+		res = _unlink(path);
+	}
+	return res;
 }

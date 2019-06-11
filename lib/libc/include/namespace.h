@@ -73,6 +73,9 @@
 #define		listen				_listen
 #define		nanosleep			_nanosleep
 #define		open				_open
+#define		openat				_openat
+#define		unlink				_unlink
+#define		unlinkat			_unlinkat
 #define		poll				_poll
 #define		ppoll				_ppoll
 #define		pthread_atfork			_pthread_atfork
