@@ -397,7 +397,7 @@ state_configure_menu(struct i_fn_args *a)
 		    _("Please select the file system installed on the disk.\n\n")))
 		{
 		case 1:
-			/* HAMMER2 */
+			/* HAMMER2 (first menu item is the default) */
 			use_hammer = 2;
 			break;
 		case 2:
@@ -1035,11 +1035,11 @@ state_ask_fs(struct i_fn_args *a)
 	    OPERATING_SYSTEM_NAME))
 	{
 	case 1:
-		/* HAMMER */
+		/* HAMMER2 (first menu item is the default) */
 		use_hammer = 2;
 		break;
 	case 2:
-		/* HAMMER2 */
+		/* HAMMER1 */
 		use_hammer = 1;
 		break;
 	case 3:
