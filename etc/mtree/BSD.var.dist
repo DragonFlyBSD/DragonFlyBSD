@@ -64,10 +64,10 @@
         ..
         sem             mode=01777
         ..
-	shm		mode=01777
-	    tmp		mode=01777
-	    ..
-	..
+        shm             mode=01777
+            tmp         mode=01777
+            ..
+        ..
     ..
     rwho            gname=daemon mode=0775
     ..
