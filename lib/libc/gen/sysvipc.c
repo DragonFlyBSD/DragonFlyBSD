@@ -1,7 +1,7 @@
-#include <namespace.h>
+#include "namespace.h"
 #include <string.h>
 #include <stdlib.h>
-#include <un-namespace.h>
+#include "un-namespace.h"
 
 static void sysvipc_init(void) __attribute__ ((constructor));
 
