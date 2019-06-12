@@ -30,7 +30,6 @@
  * @(#)xdr_reference.c	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: xdr_reference.c,v 1.13 2000/01/22 22:19:18 mycroft Exp $
  * $FreeBSD: src/lib/libc/xdr/xdr_reference.c,v 1.12 2004/10/16 06:32:43 obrien Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_reference.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*
@@ -50,6 +49,8 @@
 
 #include <rpc/types.h>
 #include <rpc/xdr.h>
+#include "un-namespace.h"
+
 #include "libc_private.h"
 
 /*

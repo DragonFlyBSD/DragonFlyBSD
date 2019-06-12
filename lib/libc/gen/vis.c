@@ -66,16 +66,19 @@
 #include <stdlib.h>
 #include <wchar.h>
 #include <wctype.h>
+#include "un-namespace.h"
 
 #ifdef __weak_alias
 __weak_alias(strvisx,_strvisx)
 #endif
 
 #if !HAVE_VIS || !HAVE_SVIS
+#include "namespace.h"
 #include <ctype.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "un-namespace.h"
 
 /*
  * The reason for going through the trouble to deal with character encodings

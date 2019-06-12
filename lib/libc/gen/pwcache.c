@@ -82,6 +82,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #if HAVE_NBTOOL_CONFIG_H
 /* XXX Now, re-apply the renaming that we undid above. */

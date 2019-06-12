@@ -37,6 +37,7 @@
 #include <time.h>
 #include <utmp.h>
 #include <sys/stat.h>
+#include "un-namespace.h"
 
 static struct utmp utmp;
 static FILE *ut;
@@ -58,7 +59,7 @@ getutent(void)
 		off_t numentries;
 		if ((ut = fopen(utfile, "r")) == NULL)
 			return NULL;
-		if (fstat(fileno(ut), &st) == -1)
+		if (_fstat(fileno(ut), &st) == -1)
 			goto out;
 		/*
 		 * If we have a an old version utmp file bail.

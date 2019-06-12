@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <vis.h>
+#include "un-namespace.h"
 
 /*
  * Return the number of elements in a statically-allocated array,
