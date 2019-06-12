@@ -96,9 +96,9 @@ schedule_timeout(signed long timeout)
 
 	switch (current->state) {
 	case TASK_INTERRUPTIBLE:
-		time_before = hz;
+		time_before = ticks;
 		tsleep(current, PCATCH, "lstim", timo);
-		time_after = hz;
+		time_after = ticks;
 		slept = time_after - time_before;
 		ret = timeout - slept;
 		if (ret < 0)
