@@ -1,3 +1,4 @@
+/*	@(#)cache.c	8.1 (Berkeley) 5/31/93 */
 /*	$NetBSD: pwcache.c,v 1.31 2010/03/23 20:28:59 drochner Exp $	*/
 
 /*-
@@ -68,15 +69,6 @@
 #undef group_from_gid
 #undef user_from_uid
 #endif
-
-#include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)cache.c	8.1 (Berkeley) 5/31/93";
-#else
-__RCSID("$NetBSD: pwcache.c,v 1.31 2010/03/23 20:28:59 drochner Exp $");
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 #include "namespace.h"
 
