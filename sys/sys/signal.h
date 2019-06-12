@@ -319,7 +319,7 @@ struct	sigaction {
 /* Additional FreeBSD values. */
 #define SI_UNDEFINED	0
 
-typedef void __siginfohandler_t (int, struct __siginfo *, void *);
+typedef void __siginfohandler_t (int, siginfo_t *, void *);
 
 #endif
 

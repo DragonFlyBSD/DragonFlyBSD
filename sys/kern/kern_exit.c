@@ -926,8 +926,8 @@ int
 sys_wait6(struct wait6_args *uap)
 {
 	struct __wrusage wrusage;
-	struct __siginfo info;
-	struct __siginfo *infop;
+	siginfo_t info;
+	siginfo_t *infop;
 	int error;
 	int status;
 	int options;
@@ -973,7 +973,7 @@ sys_wait6(struct wait6_args *uap)
  */
 int
 kern_wait(idtype_t idtype, id_t id, int *status, int options,
-	  struct __wrusage *wrusage, struct __siginfo *info, int *res)
+	  struct __wrusage *wrusage, siginfo_t *info, int *res)
 {
 	struct thread *td = curthread;
 	struct lwp *lp;

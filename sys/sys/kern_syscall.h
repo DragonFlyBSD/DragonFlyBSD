@@ -33,6 +33,7 @@
 #error "This file should not be included by userland programs."
 #endif
 
+#include <sys/signal.h>
 #include <sys/wait.h>
 #include <sys/uio.h>
 
@@ -51,10 +52,6 @@ struct nlookupdata;
 struct rlimit;
 struct rusage;
 struct __wrusage;
-struct __siginfo;
-struct sigaction;
-struct sigaltstack;
-struct __sigset;
 struct sf_hdtr;
 struct sockaddr;
 struct socket;
@@ -86,16 +83,16 @@ int kern_execve(struct nlookupdata *nd, struct image_args *args);
  * Prototypes for syscalls in kern/kern_exit.c
  */
 int kern_wait(idtype_t idtype, id_t id, int *status, int options,
-	struct __wrusage *wrusage, struct __siginfo *info, int *res);
+	struct __wrusage *wrusage, siginfo_t *info, int *res);
 
 /*
  * Prototypes for syscalls in kern/kern_sig.c
  */
 int kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact);
-int kern_sigprocmask(int how, struct __sigset *set, struct __sigset *oset);
-int kern_sigpending(struct __sigset *set);
-int kern_sigsuspend(struct __sigset *mask);
-int kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss);
+int kern_sigprocmask(int how, sigset_t *set, sigset_t *oset);
+int kern_sigpending(sigset_t *set);
+int kern_sigsuspend(sigset_t *mask);
+int kern_sigaltstack(stack_t *ss, stack_t *oss);
 int kern_kill(int sig, pid_t pid, lwpid_t tid);
 
 /*

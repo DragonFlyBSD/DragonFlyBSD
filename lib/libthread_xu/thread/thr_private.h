@@ -749,7 +749,7 @@ int     __sys_sigpending(sigset_t *);
 int     __sys_sigprocmask(int, const sigset_t *, sigset_t *);
 int     __sys_sigsuspend(const sigset_t *);
 int     __sys_sigreturn(ucontext_t *);
-int     __sys_sigaltstack(const struct sigaltstack *, struct sigaltstack *);
+int     __sys_sigaltstack(const stack_t *, stack_t *);
 #endif
 
 /* #include <time.h> */

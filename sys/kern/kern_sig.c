@@ -539,7 +539,7 @@ sys_sigprocmask(struct sigprocmask_args *uap)
  * MPSAFE
  */
 int
-kern_sigpending(struct __sigset *set)
+kern_sigpending(sigset_t *set)
 {
 	struct lwp *lp = curthread->td_lwp;
 
@@ -571,7 +571,7 @@ sys_sigpending(struct sigpending_args *uap)
  * MPSAFE
  */
 int
-kern_sigsuspend(struct __sigset *set)
+kern_sigsuspend(sigset_t *set)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
@@ -621,7 +621,7 @@ sys_sigsuspend(struct sigsuspend_args *uap)
  * MPSAFE
  */
 int
-kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
+kern_sigaltstack(stack_t *ss, stack_t *oss)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
