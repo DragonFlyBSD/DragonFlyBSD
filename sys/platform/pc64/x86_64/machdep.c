@@ -760,8 +760,8 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	/* Allocate and validate space for the signal handler context. */
         if ((lp->lwp_flags & LWP_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
-		sp = (char *)(lp->lwp_sigstk.ss_sp + lp->lwp_sigstk.ss_size -
-			      sizeof(struct sigframe));
+		sp = (char *)lp->lwp_sigstk.ss_sp + lp->lwp_sigstk.ss_size -
+		    sizeof(struct sigframe);
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	} else {
 		/* We take red zone into account */

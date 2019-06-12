@@ -70,7 +70,8 @@ _makecontext_quick(ucontext_t *ucp)
 	ucp->uc_link = NULL;
 	ucp->uc_mcontext.mc_len = sizeof(mcontext_t);
 
-	stack_top = (uint64_t *)(ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size);
+	stack_top =
+	    (uint64_t *)((char *)ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size);
 	stack_top = (uint64_t *)((uint64_t)(stack_top) & ~63UL);
 	stack_top -= 1;
 

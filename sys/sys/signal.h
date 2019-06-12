@@ -335,7 +335,7 @@ typedef	struct sigaltstack {
 #else
 typedef	struct {
 #endif
-	char	*ss_sp;			/* signal stack base */
+	void	*ss_sp;			/* signal stack base */
 	__size_t ss_size;		/* signal stack length */
 	int	ss_flags;		/* SS_DISABLE and/or SS_ONSTACK */
 } stack_t;

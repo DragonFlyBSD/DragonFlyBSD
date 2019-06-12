@@ -81,7 +81,7 @@ _makecontext(ucontext_t *ucp, void (*start)(void), int argc, ...)
 	if (ucp->uc_mcontext.mc_len == sizeof(mcontext_t)) {
 		/*
 		 */
-		stack_top = (uint64_t *)(ucp->uc_stack.ss_sp +
+		stack_top = (uint64_t *)((char *)ucp->uc_stack.ss_sp +
                                          ucp->uc_stack.ss_size);
 		stack_top = (uint64_t *)((uint64_t)(stack_top) & ~15UL);
 
