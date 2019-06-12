@@ -205,7 +205,7 @@
  * 500700 - 5.7 development
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500600	/* propagated to newvers */
+#define __DragonFly_version 500700	/* propagated to newvers */
 
 #include <sys/_null.h>
 
