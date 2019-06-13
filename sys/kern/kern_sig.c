@@ -2052,11 +2052,13 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 			}
 			p->p_xstat = sig;
 			proc_stop(p, SSTOP);
-#if 0
-			do {
+
+			/*
+			 * Normally we don't stop until we return to userland, but
+			 * make an exception when tracing and 'maytrace' is asserted.
+			 */
+			if (p->p_flags & P_TRACED)
 				tstop();
-			} while (!trace_req(p) && (p->p_flags & P_TRACED));
-#endif
 
 			/*
 			 * If parent wants us to take the signal,
