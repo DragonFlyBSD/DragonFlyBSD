@@ -563,12 +563,6 @@ selectdevs(struct device_selection **dev_select, int *num_selected,
 				case DS_SELECT_REMOVE:
 					(*dev_select)[i].selected = 0;
 					(*num_selected)--;
-					/*
-					 * This isn't passed back out, we
-					 * just use it to keep track of
-					 * how many devices we've removed.
-					 */
-					num_dev_selections--;
 					break;
 				}
 				break;
