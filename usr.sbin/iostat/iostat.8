@@ -213,7 +213,8 @@ Any device that fully matches any
 argument will be included in the
 .Nm
 output, up to the number of devices that can be displayed in
-80 columns, or the maximum number of devices specified by the user.
+available columns (80 minimum), or the maximum number of devices specified
+by the user.
 .It Fl T
 Display TTY statistics.
 This is on by default, unless
@@ -242,8 +243,8 @@ characters written to terminals
 Device operations.
 The header of the field is the device name and unit number.
 .Nm
-will display as many devices as will fit in a standard 80 column screen, or
-the maximum number of devices in the system, whichever is smaller.
+will display as many devices as will fit in available columns (80 minimum),
+or the maximum number of devices in the system, whichever is smaller.
 If
 .Fl n
 is specified on the command line,
@@ -255,15 +256,12 @@ To force
 to display specific drives, their names may be supplied on the command
 line.
 .Nm
-will not display more devices than will fit in an 80 column screen, unless
-the
+will not display more devices than will fit in available columns (80 columns
+minimum), unless the
 .Fl n
 argument is given on the command line to specify a maximum number of
 devices to display.
-If fewer devices are specified on the command line than will fit in an 80
-column screen,
-.Nm
-will show only the specified devices.
+Fewer devices may be displayed.
 .Pp
 The standard
 .Nm

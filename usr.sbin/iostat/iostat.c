@@ -99,6 +99,7 @@
 #include <sys/user.h>
 #include <sys/param.h>
 #include <sys/errno.h>
+#include <sys/ttycom.h>
 
 #include <err.h>
 #include <ctype.h>
@@ -126,6 +127,8 @@ static void usage(void);
 static void phdr(int signo);
 static void devstats(int perf_select);
 static void cpustats(void);
+static void adddeletion(const char *prefix,
+	    int num_selected, char ***deletions, int *num_deletions);
 
 static void
 usage(void)
@@ -149,16 +152,19 @@ main(int argc, char **argv)
 	int count = 0, waittime = 0;
 	struct devstat_match *matches;
 	int num_matches = 0;
+	int num_deletions = 0;
 	int hz;
 	int headercount;
 	long generation;
 	int num_devices_specified;
 	int num_selected, num_selections;
 	long select_generation;
+	char **deletions;
 	char **specified_devices;
 	devstat_select_mode select_mode;
 
 	matches = NULL;
+	deletions = NULL;
 	maxshowdevs = 3;
 
 	while ((c = getopt(argc, argv, "c:CdDhIKM:n:N:ot:Tw:")) != -1) {
@@ -234,6 +240,8 @@ main(int argc, char **argv)
 	 * Figure out how many devices we should display.
 	 */
 	if (nflag == 0) {
+		struct winsize ws;
+
 		if (oflag > 0) {
 			if ((dflag > 0) && (Cflag == 0) && (Tflag == 0))
 				maxshowdevs = 5;
@@ -247,6 +255,8 @@ main(int argc, char **argv)
 			else
 				maxshowdevs = 3;
 		}
+		if (ioctl(1, TIOCGWINSZ, &ws) >= 0 && ws.ws_col > 80)
+			maxshowdevs += (ws.ws_col - 80) / 17;
 	}
 
 	/* find out how many devices we have */
@@ -309,8 +319,27 @@ main(int argc, char **argv)
 		       generation, cur.dinfo->devices, num_devices,
 		       matches, num_matches,
 		       specified_devices, num_devices_specified,
-		       select_mode, maxshowdevs, hflag) == -1)
+		       select_mode, maxshowdevs, hflag) == -1) {
 		errx(1, "%s", devstat_errbuf);
+	}
+
+	/*
+	 * These devices are not usually desired
+	 */
+	if (select_mode == DS_SELECT_ADD) {
+		adddeletion("md", num_selected, &deletions, &num_deletions);
+		adddeletion("pass", num_selected, &deletions, &num_deletions);
+		adddeletion("sg", num_selected, &deletions, &num_deletions);
+		if (selectdevs(&dev_select, &num_selected,
+			       &num_selections, &select_generation,
+			       generation, cur.dinfo->devices, num_devices,
+			       matches, num_matches,
+			       deletions, num_deletions,
+			       DS_SELECT_REMOVE, maxshowdevs, hflag) == -1) {
+			errx(1, "%s", devstat_errbuf);
+		}
+		select_mode = DS_SELECT_ADDONLY;
+	}
 
 	/*
 	 * Look for the traditional wait time and count arguments.
@@ -485,6 +514,27 @@ main(int argc, char **argv)
 }
 
 static void
+adddeletion(const char *prefix, int num_selected,
+	    char ***deletions, int *num_deletions)
+{
+	int i;
+
+	for (i = 0; i < num_selected; i++) {
+		char tmpstr[80];
+
+		if (strcmp(prefix, dev_select[i].device_name) != 0)
+			continue;
+		snprintf(tmpstr, sizeof(tmpstr), "%s%d",
+			dev_select[i].device_name, dev_select[i].unit_number);
+		++*num_deletions;
+		*deletions = realloc(*deletions,
+				     *num_deletions * sizeof(char *));
+		(*deletions)[*num_deletions - 1] = strdup(tmpstr);
+	}
+}
+
+
+static void
 phdr(__unused int signo)
 {
 	int i;
@@ -494,8 +544,7 @@ phdr(__unused int signo)
 		printf("      tty");
 	for (i = 0, printed=0;(i < num_devices) && (printed < maxshowdevs);i++){
 		int di;
-		if ((dev_select[i].selected != 0)
-		 && (dev_select[i].selected <= maxshowdevs)) {
+		if (dev_select[i].selected != 0) {
 			di = dev_select[i].position;
 			if (oflag > 0)
 				printf("%12.6s%d ", 
@@ -522,8 +571,7 @@ phdr(__unused int signo)
 		printf(" tin tout");
 
 	for (i=0, printed = 0;(i < num_devices) && (printed < maxshowdevs);i++){
-		if ((dev_select[i].selected != 0)
-		 && (dev_select[i].selected <= maxshowdevs)) {
+		if (dev_select[i].selected != 0) {
 			if (oflag > 0) {
 				if (Iflag == 0)
 					printf(" sps tps  msps ");
@@ -572,8 +620,7 @@ devstats(int perf_select)
 	for (dn = 0; dn < num_devices; dn++) {
 		int di;
 
-		if (((perf_select == 0) && (dev_select[dn].selected == 0))
-		 || (dev_select[dn].selected > maxshowdevs))
+		if (perf_select == 0 && dev_select[dn].selected == 0)
 			continue;
 
 		di = dev_select[dn].position;
@@ -602,8 +649,7 @@ devstats(int perf_select)
 
 		if (perf_select != 0) {
 			dev_select[dn].bytes = total_bytes;
-			if ((dev_select[dn].selected == 0)
-			 || (dev_select[dn].selected > maxshowdevs))
+			if (dev_select[dn].selected == 0)
 				continue;
 		}
 
