@@ -5056,7 +5056,8 @@ uaudio_mixer_fill_info(struct uaudio_softc *sc,
 	} while (i--);
 
 done:
-	kfree(iot, M_TEMP);
+	if (iot != NULL)
+		kfree(iot, M_TEMP);
 }
 
 static int
