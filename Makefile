@@ -118,10 +118,17 @@ ${TGTS} ${BITGTS}: .PHONY
 	@cd ${.CURDIR}; \
 		${MAKE} ${.TARGET}
 
-# Set a reasonable default
-.MAIN:	all
+# Fail with an error when no target is given.
+.MAIN: _guard
+
+_guard: .PHONY
+	@echo
+	@echo "Explicit target required.  See build(7)."
+	@echo
+	@false
 
 STARTTIME!= LC_ALL=C date
+
 #
 # world
 #
