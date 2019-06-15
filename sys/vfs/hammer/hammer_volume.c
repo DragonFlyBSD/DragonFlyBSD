@@ -293,6 +293,7 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 {
 	hammer_mount_t hmp = trans->hmp;
 	hammer_volume_t volume;
+	int32_t vol_no;
 	int error = 0;
 	int i, len, cnt = 0;
 
@@ -310,9 +311,12 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 		len = strlen(volume->vol_name) + 1;
 		KKASSERT(len <= MAXPATHLEN);
 
-		ioc->vols[cnt].vol_no = volume->vol_no;
-		error = copyout(volume->vol_name, ioc->vols[cnt].device_name,
-				len);
+		vol_no = volume->vol_no;
+		error = copyout(&vol_no, &ioc->vols[cnt].vol_no,
+				sizeof(ioc->vols[cnt].vol_no));
+		if (error == 0)
+			error = copyout(volume->vol_name,
+					&ioc->vols[cnt].device_name[0], len);
 		hammer_rel_volume(volume, 0);
 		if (error)
 			goto end;
