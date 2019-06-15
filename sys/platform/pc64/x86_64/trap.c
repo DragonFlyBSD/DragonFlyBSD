@@ -356,6 +356,25 @@ userexit(struct lwp *lp)
 	lp->lwp_proc->p_usched->acquire_curproc(lp);
 }
 
+/*
+ * A page fault on a userspace address is classified as SMAP-induced
+ * if:
+ *	- SMAP is supported
+ *	- kernel mode accessed present data page
+ *	- rflags.AC was cleared
+ */
+static int
+trap_is_smap(struct trapframe *frame)
+{
+        if ((cpu_stdext_feature & CPUID_STDEXT_SMAP) != 0 &&
+            (frame->tf_err & (PGEX_P | PGEX_U | PGEX_I | PGEX_RSV)) == PGEX_P &&
+	    (frame->tf_rflags & PSL_AC) == 0) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 #if !defined(KTR_KERNENTRY)
 #define	KTR_KERNENTRY	KTR_ALL
 #endif
@@ -881,19 +900,37 @@ trap_pfault(struct trapframe *frame, int usermode)
 			goto nogo;
 		}
 
-		/*
-		 * Debugging, try to catch kernel faults on the user address
-		 * space when not inside on onfault (e.g. copyin/copyout)
-		 * routine.
-		 */
-		if (usermode == 0 && (td->td_pcb == NULL ||
-		    td->td_pcb->pcb_onfault == NULL)) {
+		if (usermode == 0) {
 #ifdef DDB
-			if (freeze_on_seg_fault) {
-				kprintf("trap_pfault: user address fault from kernel mode "
-					"%016lx\n", (long)frame->tf_addr);
-				while (freeze_on_seg_fault)
-					    tsleep(&freeze_on_seg_fault, 0, "frzseg", hz * 20);
+			/*
+			 * Debugging, catch kernel faults on the user address
+			 * space when not inside on onfault (e.g. copyin/
+			 * copyout) routine.
+			 */
+			if (td->td_pcb == NULL ||
+			    td->td_pcb->pcb_onfault == NULL) {
+				if (freeze_on_seg_fault) {
+					kprintf("trap_pfault: user address "
+						"fault from kernel mode "
+						"%016lx\n",
+						(long)frame->tf_addr);
+					while (freeze_on_seg_fault) {
+						    tsleep(&freeze_on_seg_fault,
+							   0,
+							   "frzseg",
+							   hz * 20);
+					}
+				}
+			}
+			if (td->td_gd->gd_intr_nesting_level ||
+			    trap_is_smap(frame) ||
+			    td->td_pcb == NULL ||
+			    td->td_pcb->pcb_onfault == NULL) {
+				kprintf("Fatal user address access "
+					"from kernel mode from %s at %016jx\n",
+					td->td_comm, frame->tf_rip);
+				trap_fatal(frame, frame->tf_addr);
+				return (-1);
 			}
 #endif
 		}
