@@ -874,7 +874,7 @@ hinit(struct hfs *hfs)
 		       volhead->vol_signature != HAMMER_FSBUF_VOLUME ?
 				"in" :
 				"");
-		printf("name: %s\n", volhead->vol_name);
+		printf("name: %s\n", volhead->vol_label);
 	}
 #endif
 
