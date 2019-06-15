@@ -1797,6 +1797,9 @@ ENTRY=	1/1178 \
 	s/soroc120 \
 	s/soroc140 \
 	s/spinwriter \
+	s/st \
+	s/st-16color \
+	s/st-256color \
 	s/st52 \
 	s/st52-color \
 	s/st52-m \
