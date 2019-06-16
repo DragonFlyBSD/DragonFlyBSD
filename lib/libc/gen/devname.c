@@ -34,6 +34,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/param.h>
 #include <sys/sysctl.h>
 
 #include <db.h>
@@ -110,7 +111,7 @@ devname_r(dev_t dev, mode_t type, char *buf, size_t len)
 char *
 devname(dev_t dev, mode_t type)
 {
-	static char buf[30];	 /* XXX: pick up from <sys/conf.h> */
+	static char buf[MAXPATHLEN];
 
 	strlcpy(buf, devname_r(dev, type, buf, sizeof(buf)), sizeof(buf));
 
