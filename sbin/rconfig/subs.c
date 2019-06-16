@@ -1,15 +1,15 @@
 /*
  * RCONFIG/SUBS.C
- * 
+ *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -19,7 +19,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -55,12 +55,12 @@ parse_str(char **scanp, int flags)
 	;
     for (ptr = base; *ptr && !iswhite(*ptr); ++ptr) {
 	if (flags & PAS_ALPHA) {
-	    if ((*ptr >= 'a' && *ptr <= 'z') ||
-		(*ptr >= 'A' && *ptr <= 'Z') ||
-		*ptr == '_'
-	    ) {
+	    if ((*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z'))
 		continue;
-	    }
+	}
+	if (flags & PAS_SYMBOL) {
+	    if (*ptr == '_' || *ptr == '.' || *ptr == '-' || *ptr == '+')
+		continue;
 	}
 	if (flags & PAS_NUMERIC) {
 	    if (*ptr >= '0' && *ptr <= '9')
@@ -76,7 +76,7 @@ parse_str(char **scanp, int flags)
 }
 
 int
-udp_transact(struct sockaddr_in *sain, struct sockaddr_in *rsin, int *pfd, 
+udp_transact(struct sockaddr_in *sain, struct sockaddr_in *rsin, int *pfd,
 		char **bufp, int *lenp, const char *ctl, ...)
 {
     va_list va;
@@ -250,7 +250,7 @@ tcp_transact(struct sockaddr_in *sain, FILE **pfi, FILE **pfo, char **bufp,
 	rc = 509;
     }
     return(rc);
-}    
+}
 
 static
 void
