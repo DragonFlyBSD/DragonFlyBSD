@@ -51,7 +51,7 @@ struct vm_map;
 struct vm_map_entry;
 
 struct kvm_swap {
-	char	ksw_devname[32];
+	char	ksw_devname[64];
 	u_int	ksw_used;
 	u_int	ksw_total;
 	int	ksw_flags;
