@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 
-.PATH: ${.CURDIR}/../../usr.bin/who
+.PATH: ${.CURDIR}/../who
 
 PROG=	systat
 NO_STRICT_ALIASING=
@@ -21,6 +21,6 @@ LDADD+=	-lutil
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-CFLAGS+= -I${.CURDIR}/../../usr.bin/who -DSUPPORT_UTMP -DSUPPORT_UTMPX
+CFLAGS+= -I${.CURDIR}/../who -DSUPPORT_UTMP -DSUPPORT_UTMPX
 
 .include <bsd.prog.mk>

@@ -2,7 +2,7 @@
 
 RPCDIR=	${DESTDIR}/usr/include/rpcsvc
 
-.PATH: ${.CURDIR}/../../usr.sbin/ypserv ${.CURDIR}/../../usr.bin/chpass \
+.PATH: ${.CURDIR}/../ypserv ${.CURDIR}/../../usr.bin/chpass \
        ${.CURDIR}/../../libexec/ypxfr ${RPCDIR}
 
 PROG=	rpc.yppasswdd
@@ -16,8 +16,8 @@ GENSRCS=yp.h yp_clnt.c yppasswd.h yppasswd_private.h yppasswd_private_svc.c \
 
 WARNS?=	5
 CFLAGS+= -fno-strict-aliasing
-CFLAGS+= -I${.CURDIR}/../../usr.sbin/vipw \
-	 -I${.CURDIR}/../../usr.sbin/ypserv \
+CFLAGS+= -I${.CURDIR}/../vipw \
+	 -I${.CURDIR}/../ypserv \
 	 -I${.CURDIR}/../../libexec/ypxfr \
 	 -I${.CURDIR} -I.
 DPADD=	${LIBRPCSVC} ${LIBCRYPT} ${LIBUTIL}

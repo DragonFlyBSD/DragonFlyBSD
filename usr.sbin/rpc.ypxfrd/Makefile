@@ -7,7 +7,7 @@ WARNS?=	2
 
 RPCDIR=	${.CURDIR}/../../include/rpcsvc
 
-.PATH:	${.CURDIR}/../../usr.sbin/ypserv
+.PATH:	${.CURDIR}/../ypserv
 
 MAN=	rpc.ypxfrd.8
 
