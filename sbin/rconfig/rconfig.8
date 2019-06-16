@@ -39,14 +39,17 @@
 .Nd Remote Configuration Client/Server
 .Sh SYNOPSIS
 .Nm
-.Bk -words
 .Op Fl a
-.Op Fl W Ar workdir
-.Op Fl T Ar tagdir
-.Op Fl C Ar configfiles
-.Op Fl s
 .Op Fl v
-.Ek
+.Op Fl W Ar workdir
+.Op Ar host[:tag] Ar ...
+.Nm
+.Fl s
+.Op Fl a
+.Op Fl C Ar configfiles
+.Op Fl T Ar tagdir
+.Op Fl v
+.Op Ar bind_address Ar ...
 .Sh DESCRIPTION
 The
 .Nm
@@ -86,6 +89,10 @@ option should not be used in that case.
 .Pp
 The following command line options are available when operating in server mode:
 .Bl -tag -width Fl
+.It Fl s
+This option is required to operate
+.Nm
+as a server.
 .It Fl a
 .Nm
 will bind to and listen on all available interfaces.  If this option is not
@@ -101,10 +108,6 @@ digits (zero to nine), underscore (_), dot (.),
 minus (-) and plus (+) symbols.
 .It Fl C Ar configfiles
 Specify server configuration files (currently unused).
-.It Fl s
-This option is required to operate
-.Nm
-as a server.
 .It Fl v
 Verbose mode prints additional information during program execution.
 .It bind_address

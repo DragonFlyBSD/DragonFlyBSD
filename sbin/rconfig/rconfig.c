@@ -3,16 +3,16 @@
  *
  * 	rconfig [-W workingdir] [server_ip[:tag]]
  *	rconfig [-f configfile] -s
- * 
+ *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -22,7 +22,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -56,7 +56,7 @@ main(int ac, char **av)
     int ch;
     int i;
     int serverMode = 0;
-    
+
     while ((ch = getopt(ac, av, "aW:T:C:sv")) != -1) {
 	switch(ch) {
 	case 'a':	/* auto tag / standard broadcast */
@@ -121,8 +121,10 @@ addTag(tag_t *basep, const char *name, int flags)
 static void
 usage(int code)
 {
-    fprintf(stderr, "rconfig [-W workdir] [-f servconfig] "
-		    "[-s] [var=data]* [server_ip[:tag]]* \n");
+    fprintf(stderr,
+	    "rconfig [-a] [-v] [-W workdir] [host[:tag] ...]\n"
+	    "rconfig -s [-C configfiles] [-W workdir] [-T tagdir] "
+		"[-v] [bind_address ...]\n");
     exit(code);
 }
 
