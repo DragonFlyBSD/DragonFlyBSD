@@ -73,6 +73,8 @@ struct list_head {
 	struct list_head *prev;
 };
 
+#define	LIST_HEAD_INIT(name)	{ .prev = &(name), .next = &(name) }
+
 static inline void
 INIT_LIST_HEAD(struct list_head *list)
 {
