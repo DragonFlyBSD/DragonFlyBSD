@@ -66,6 +66,8 @@
 #define	TASK_INTERRUPTIBLE	1
 #define	TASK_UNINTERRUPTIBLE	2
 
+#define TASK_NORMAL		(TASK_INTERRUPTIBLE | TASK_UNINTERRUPTIBLE)
+
 #define MAX_SCHEDULE_TIMEOUT    LONG_MAX
 
 /*
@@ -157,7 +159,7 @@ wake_up_process(struct task_struct *tsk)
 	smp_wmb();
 	wakeup(tsk);
 
-	return 0;
+	return 1;	/* Always indicate the process was woken up */
 }
 
 static inline int

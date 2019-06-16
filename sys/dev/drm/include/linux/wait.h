@@ -37,27 +37,50 @@ typedef struct __wait_queue wait_queue_t;
 
 typedef int (*wait_queue_func_t)(wait_queue_t *wait, unsigned mode, int flags, void *key);
 
+int default_wake_function(wait_queue_t *wait, unsigned mode, int flags, void *key);
+int autoremove_wake_function(wait_queue_t *wait, unsigned mode, int sync, void *key);
+
 struct __wait_queue {
 	unsigned int flags;
 	void *private;
 	wait_queue_func_t func;
+	struct list_head task_list;
 };
 
 typedef struct {
-	struct lock	lock;
+	struct lock		lock;
+	struct list_head	task_list;
 } wait_queue_head_t;
 
 static inline void
 init_waitqueue_head(wait_queue_head_t *eq)
 {
 	lockinit(&eq->lock, "lwq", 0, LK_CANRECURSE);
+	INIT_LIST_HEAD(&eq->task_list);
 }
 
-#define wake_up(eq)			wakeup_one(eq)
-#define wake_up_all(eq)			wakeup(eq)
-#define wake_up_all_locked(eq)		wakeup(eq)
-#define wake_up_interruptible(eq)	wakeup_one(eq)
-#define wake_up_interruptible_all(eq)	wakeup(eq)
+void __wake_up_core(wait_queue_head_t *q, int num_to_wake_up);
+
+static inline void
+wake_up(wait_queue_head_t *q)
+{
+	lockmgr(&q->lock, LK_EXCLUSIVE);
+	__wake_up_core(q, 1);
+	lockmgr(&q->lock, LK_RELEASE);
+}
+
+static inline void
+wake_up_all(wait_queue_head_t *q)
+{
+	lockmgr(&q->lock, LK_EXCLUSIVE);
+	__wake_up_core(q, 0);
+	lockmgr(&q->lock, LK_RELEASE);
+}
+
+#define wake_up_all_locked(eq)		__wake_up_core(eq, 0)
+
+#define wake_up_interruptible(eq)	wake_up(eq)
+#define wake_up_interruptible_all(eq)	wake_up_all(eq)
 
 /*
  * wait_event_interruptible_timeout:
@@ -152,11 +175,14 @@ init_waitqueue_head(wait_queue_head_t *eq)
 static inline int
 waitqueue_active(wait_queue_head_t *q)
 {
-	return 0;	/* XXX: not really implemented */
+	return !list_empty(&q->task_list);
 }
 
-#define DEFINE_WAIT(name)	\
-	wait_queue_t name = {}
+#define DEFINE_WAIT(name)					\
+	wait_queue_t name = {					\
+		.private = current,				\
+		.task_list = LIST_HEAD_INIT((name).task_list),	\
+	}
 
 static inline void
 prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
@@ -176,16 +202,19 @@ add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
 static inline void
 __add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
 {
+	list_add(&new->task_list, &head->task_list);
 }
 
 #define DECLARE_WAIT_QUEUE_HEAD(name)					\
 	wait_queue_head_t name = {					\
-		.lock = LOCK_INITIALIZER("name", 0, LK_CANRECURSE)	\
+		.lock = LOCK_INITIALIZER("name", 0, LK_CANRECURSE),	\
+		.task_list = { &(name).task_list, &(name).task_list }	\
 	}
 
 static inline void
 __remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
 {
+	list_del(&old->task_list);
 }
 
 #endif	/* _LINUX_WAIT_H_ */
