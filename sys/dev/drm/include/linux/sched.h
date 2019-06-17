@@ -172,14 +172,14 @@ static inline int
 signal_pending_state(long state, struct task_struct *p)
 {
 	struct thread *t = container_of(p, struct thread, td_linux_task);
-	sigset_t pending_set;
 
-	if (!(state & TASK_INTERRUPTIBLE))
-		return 0;
-
-	pending_set = lwp_sigpend(t->td_lwp);
-
-	return SIGISMEMBER(pending_set, SIGKILL);
+	if (state & TASK_INTERRUPTIBLE) {
+		return (CURSIG(t->td_lwp) != 0);
+	} else {
+		sigset_t pending_set;
+		pending_set = lwp_sigpend(t->td_lwp);
+		return SIGISMEMBER(pending_set, SIGKILL);
+	}
 }
 
 /* Explicit rescheduling in order to reduce latency */
