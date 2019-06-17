@@ -139,9 +139,6 @@ SUBDIR=	alias \
 	nohup \
 	objformat \
 	openssl \
-	opieinfo \
-	opiekey \
-	opiepasswd \
 	pagesize \
 	passwd \
 	paste \

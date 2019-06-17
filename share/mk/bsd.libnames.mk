@@ -53,7 +53,6 @@ LIBMYTINFO?=	"don't use LIBMYTINFO, use LIBNCURSES"
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/priv/libprivate_ncurses.a
 LIBNCURSESW?=	${DESTDIR}${LIBDIR}/priv/libprivate_ncursesw.a
 LIBNETGRAPH?=	${DESTDIR}${LIBDIR}/libnetgraph.a
-LIBOPIE?=	${DESTDIR}${LIBDIR}/libopie.a
 
 # The static PAM library doesn't know its secondary dependencies,
 # so we have to specify them explictly.
@@ -62,10 +61,10 @@ MINUSLPAM?=	-lpam
 .if defined(NOSHARED) && ${NOSHARED} != "no" && ${NOSHARED} != "NO"
 LIBPAM+=	${LIBSSH}
 MINUSLPAM+=	-lprivate_ssh
-LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBOPIE} ${LIBYPCLNT} \
-		${LIBCRYPT} ${LIBMD} ${LIBCRYPTO} ${LIBUTIL}
-MINUSLPAM+=	-lradius -ltacplus -lopie -lypclnt \
-		-lcrypt -lmd -lprivate_crypto -lutil
+LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBYPCLNT} \
+		${LIBCRYPT} ${LIBCRYPTO} ${LIBUTIL}
+MINUSLPAM+=	-lradius -ltacplus -lypclnt \
+		-lcrypt -lprivate_crypto -lutil
 LDFLAGSPAM+=	${PRIVATELIB_LDFLAGS}
 .endif
 

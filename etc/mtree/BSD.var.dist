@@ -81,8 +81,6 @@
         ..
         mqueue
         ..
-        opielocks       mode=0700
-        ..
         output
             lpd
             ..

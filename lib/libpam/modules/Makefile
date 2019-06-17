@@ -8,8 +8,6 @@ SUBDIR=	pam_chroot \
 	pam_lastlog \
 	pam_login_access \
 	pam_nologin \
-	pam_opie \
-	pam_opieaccess \
 	pam_passwdqc \
 	pam_permit \
 	pam_radius \

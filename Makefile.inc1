@@ -1037,8 +1037,6 @@ _generic_libs=	gnu/lib
 _prebuild_libs+= lib/libcrypt lib/libmd \
 		lib/libncurses/libncurses
 
-lib/libopie__L: lib/libmd__L
-
 _generic_libs+=	lib
 
 _prebuild_libs+=	lib/librecrypto lib/libressl
@@ -1047,9 +1045,8 @@ lib/libressl__L: lib/librecrypto__L
 _prebuild_libs+=	lib/libssh
 lib/libssh__L: lib/librecrypto__L lib/libutil__L lib/libz__L
 
-_prebuild_libs+=	lib/libradius lib/libopie
+_prebuild_libs+=	lib/libradius
 lib/libradius__L: lib/librecrypto__L
-lib/libopie__L: lib/librecrypto__L
 
 _prebuild_libs+= lib/libsbuf lib/libtacplus lib/libm \
 		lib/libpam/libpam lib/libypclnt lib/lib${THREAD_LIB} \

@@ -268,7 +268,7 @@ distribution:
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 		${BIN2} ${DESTDIR}/etc; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 600 \
-		master.passwd nsmb.conf opieaccess ${DESTDIR}/etc; \
+		master.passwd nsmb.conf ${DESTDIR}/etc; \
 	    pwd_mkdb -p -d ${DESTDIR}/etc ${DESTDIR}/etc/master.passwd
 	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
@@ -380,7 +380,7 @@ distrib-dirs:
 
 etc-examples:
 	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${BINUPDATE} ${BIN1} ${BIN2} nsmb.conf opieaccess \
+	    ${BINUPDATE} ${BIN1} ${BIN2} nsmb.conf \
 	    ${DESTDIR}/usr/share/examples/etc
 	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${DEFAULTS} ${DESTDIR}/usr/share/examples/etc/defaults

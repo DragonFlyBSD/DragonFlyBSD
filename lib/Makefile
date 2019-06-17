@@ -5,7 +5,6 @@
 # built are visible:
 #
 # [Handled by /usr/src/Makefile.inc1, before this Makefile triggers]
-#    libmd must be built before libopie, libtacplus
 #    libthread_xu|libc_r must be built before libpthread.
 #    libprop must be built before libdevattr
 #
@@ -32,7 +31,6 @@ SUBDIR_ORDERED= \
 	libutil \
 	libssh \
 	libmd \
-	libopie \
 	libypclnt \
 	libncurses \
 	libradius \
