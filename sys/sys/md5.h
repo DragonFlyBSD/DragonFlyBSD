@@ -38,6 +38,12 @@
 #ifndef _SYS_MD5_H_
 #define _SYS_MD5_H_
 
+#if !defined(_KERNEL)
+
+#error "Userland must include openssl/md5.h instead of sys/md5.h"
+
+#else
+
 #include <sys/cdefs.h>
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -47,18 +53,10 @@
 #define MD5_BLOCK_LENGTH		MD5_CBLOCK
 #define MD5_DIGEST_STRING_LENGTH	(MD5_DIGEST_LENGTH * 2 + 1)
 
-__BEGIN_DECLS
 int MD5Init (MD5_CTX *);
 void MD5Update (MD5_CTX *, const void *, unsigned int);
-void MD5Pad (MD5_CTX *);
 void MD5Final (unsigned char [16], MD5_CTX *);
-char *MD5End(MD5_CTX *, char *);
-#ifndef _KERNEL
-char *MD5File(const char *, char *);
-char *MD5FileChunk(const char *, char *, off_t, off_t);
-#endif
-char *MD5Data(const void *, unsigned int, char *);
-void MD5Transform (u_int32_t [4], const unsigned char [64]);
-__END_DECLS
+
+#endif  /* _KERNEL */
 
 #endif /* _MD5_H_ */

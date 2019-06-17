@@ -1,6 +1,5 @@
 /* MD4C.C - RSA Data Security, Inc., MD4 message-digest algorithm
  * $FreeBSD: src/sys/kern/md4c.c,v 1.1.2.1 2001/05/22 08:32:32 bp Exp $
- * $DragonFly: src/sys/kern/md4c.c,v 1.3 2006/12/23 23:47:54 swildner Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. All rights reserved.
@@ -32,7 +31,6 @@ typedef unsigned char *POINTER;
 typedef u_int16_t UINT2;
 typedef u_int32_t UINT4;
 
-#define PROTO_LIST(list) list
 
 /* Constants for MD4Transform routine.
  */
@@ -49,11 +47,9 @@ typedef u_int32_t UINT4;
 #define S33 11
 #define S34 15
 
-static void MD4Transform PROTO_LIST ((UINT4 [4], const unsigned char [64]));
-static void Encode PROTO_LIST
-  ((unsigned char *, UINT4 *, unsigned int));
-static void Decode PROTO_LIST
-  ((UINT4 *, const unsigned char *, unsigned int));
+static void __kern__MD4Transform(UINT4 [4], const unsigned char [64]);
+static void Encode(unsigned char *, UINT4 *, unsigned int);
+static void Decode(UINT4 *, const unsigned char *, unsigned int);
 
 static unsigned char PADDING[64] = {
   0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -127,10 +123,10 @@ MD4Update(MD4_CTX *context, const unsigned char *input, unsigned int inputLen)
    */
   if (inputLen >= partLen) {
     bcopy(input, &context->buffer[index], partLen);
-    MD4Transform (context->state, context->buffer);
+    __kern__MD4Transform (context->state, context->buffer);
 
     for (i = partLen; i + 63 < inputLen; i += 64)
-      MD4Transform (context->state, &input[i]);
+      __kern__MD4Transform (context->state, &input[i]);
 
     index = 0;
   }
@@ -142,8 +138,8 @@ MD4Update(MD4_CTX *context, const unsigned char *input, unsigned int inputLen)
 }
 
 /* MD4 padding. */
-void
-MD4Pad(MD4_CTX *context)
+static void
+__kern__MD4Pad(MD4_CTX *context)
 {
   unsigned char bits[8];
   unsigned int index, padLen;
@@ -171,7 +167,7 @@ void
 MD4Final(unsigned char digest[16], MD4_CTX *context)
 {
   /* Do padding */
-  MD4Pad (context);
+  __kern__MD4Pad (context);
 
   /* Store state in digest */
   Encode (digest, context->state, 16);
@@ -184,7 +180,7 @@ MD4Final(unsigned char digest[16], MD4_CTX *context)
 /* MD4 basic transformation. Transforms state based on block.
  */
 static void
-MD4Transform(UINT4 state[4], const unsigned char block[64])
+__kern__MD4Transform(UINT4 state[4], const unsigned char block[64])
 {
   UINT4 a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 
