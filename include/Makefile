@@ -18,7 +18,7 @@ INCS=	a.out.h alloca.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	netdb.h nl_types.h nlist.h nss.h nsswitch.h objformat.h \
 	paths.h printf.h pthread.h pthread_np.h pwd.h \
 	ranlib.h readpassphrase.h \
-	re_comp.h resolv.h res_update.h rmd160.h runetype.h \
+	re_comp.h resolv.h res_update.h runetype.h \
 	search.h semaphore.h setjmp.h signal.h spawn.h \
 	stdalign.h stdarg.h stdbool.h \
 	stddef.h stdint.h stdio.h stdlib.h stdnoreturn.h \
@@ -45,7 +45,7 @@ LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h sched.h syslog.h ucontext.h
 # XXX allow these directories to not contain header files.
 LDIRS=	net netbt netgraph netgraph7 netinet netinet6 sys vm
 
-# Subdirectories containing header files to copy.  In symlink mode 
+# Subdirectories containing header files to copy.  In symlink mode
 # the subdirectory will be symlinked.  Care must be taken to adjust
 # LSYMSUBDIRS below to remove subdirectories whos parent directories.
 # If you make a mistake, part of your source tree might get overwritten
@@ -145,7 +145,7 @@ INCSLINKS+=	ieeefp.h ${INCLUDEDIR}/floatingpoint.h
 # machine/ header files come from the platform architecture and
 # cpu/ header files come from the cpu architecture.  All code outside
 # of the machine header files ALWAYS #include's <machine/blah.h>.  So
-# if the platform architecture is missing a header file we have to 
+# if the platform architecture is missing a header file we have to
 # copy it in from the cpu architecture.  This way we do not have to
 # create dozens of pure forwarding headers for files that platform
 # architecture does not need to enhance.
