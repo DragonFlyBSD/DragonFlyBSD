@@ -48,10 +48,21 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#if 0
 #include <openssl/md5.h>
+#else
+#define	MD5_LONG	uint32_t
+#define	MD5_CBLOCK	64
+#define	MD5_LBLOCK	(MD5_CBLOCK/4)
+#define	MD5_DIGEST_LENGTH 16
 
-#define MD5_BLOCK_LENGTH		MD5_CBLOCK
-#define MD5_DIGEST_STRING_LENGTH	(MD5_DIGEST_LENGTH * 2 + 1)
+typedef struct MD5state_st {
+    MD5_LONG A,B,C,D;
+    MD5_LONG Nl,Nh;
+    MD5_LONG data[MD5_LBLOCK];
+    unsigned int num;
+} MD5_CTX;
+#endif
 
 int MD5Init (MD5_CTX *);
 void MD5Update (MD5_CTX *, const void *, unsigned int);
