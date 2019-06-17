@@ -67,6 +67,7 @@ wake_up(wait_queue_head_t *q)
 	lockmgr(&q->lock, LK_EXCLUSIVE);
 	__wake_up_core(q, 1);
 	lockmgr(&q->lock, LK_RELEASE);
+	wakeup_one(q);
 }
 
 static inline void
@@ -75,6 +76,7 @@ wake_up_all(wait_queue_head_t *q)
 	lockmgr(&q->lock, LK_EXCLUSIVE);
 	__wake_up_core(q, 0);
 	lockmgr(&q->lock, LK_RELEASE);
+	wakeup(q);
 }
 
 #define wake_up_all_locked(eq)		__wake_up_core(eq, 0)
@@ -112,6 +114,12 @@ wake_up_all(wait_queue_head_t *q)
 		if (condition)						\
 			break;						\
 									\
+		if (flags == PCATCH) {					\
+			__set_current_state(TASK_INTERRUPTIBLE);	\
+		} else {						\
+			__set_current_state(TASK_UNINTERRUPTIBLE);	\
+		}							\
+									\
 		ret = lksleep(&wq, &wq.lock, flags,			\
 					"lwe", timeout_jiffies);	\
 		if (ret == EINTR || ret == ERESTART) {			\
@@ -140,6 +148,7 @@ wake_up_all(wait_queue_head_t *q)
 	else								\
 		retval = 1;						\
 									\
+	__set_current_state(TASK_RUNNING);				\
 	retval;								\
 })
 
