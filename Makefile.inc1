@@ -1034,8 +1034,7 @@ _prebuild_libs+=	lib/libpcap
 
 _generic_libs=	gnu/lib
 
-_prebuild_libs+= lib/libcrypt lib/libmd \
-		lib/libncurses/libncurses
+_prebuild_libs+= lib/libcrypt lib/libncurses/libncurses
 
 _generic_libs+=	lib
 

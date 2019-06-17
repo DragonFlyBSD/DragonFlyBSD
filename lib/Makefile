@@ -30,7 +30,6 @@ SUBDIR_ORDERED= \
 	libz \
 	libutil \
 	libssh \
-	libmd \
 	libypclnt \
 	libncurses \
 	libradius \
@@ -77,6 +76,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libkvm \
 	libm \
 	libmagic \
+	libmd \
 	${_libnetgraph} \
 	libpam \
 	libposix1e \
