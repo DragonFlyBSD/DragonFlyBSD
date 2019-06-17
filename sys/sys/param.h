@@ -203,9 +203,10 @@
  * 500506 - LibreSSL, OpenSSH, XZ, libarchive update, libopie/libmd deprecation
  * 500600 - 5.6 release
  * 500700 - 5.7 development
+ * 500701 - libopie/libmd removal
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500700	/* propagated to newvers */
+#define __DragonFly_version 500701	/* propagated to newvers */
 
 #include <sys/_null.h>
 

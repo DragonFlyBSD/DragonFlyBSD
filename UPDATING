@@ -9,6 +9,15 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 5.6 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+LIBOPIE, LIBMD REMOVED
+----------------------
+
+Removal of OPIE requires /etc/pam.d/ configs to be updated.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 5.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
