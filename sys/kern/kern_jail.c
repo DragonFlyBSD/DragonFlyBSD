@@ -648,6 +648,21 @@ end:
 SYSCTL_OID(_jail, OID_AUTO, list, CTLTYPE_STRING | CTLFLAG_RD, NULL, 0,
 	   sysctl_jail_list, "A", "List of active jails");
 
+static int
+sysctl_jail_jailed(SYSCTL_HANDLER_ARGS)
+{
+	int error, injail;
+
+	injail = jailed(req->td->td_ucred);
+	error = SYSCTL_OUT(req, &injail, sizeof(injail));
+
+	return (error);
+}
+
+SYSCTL_PROC(_jail, OID_AUTO, jailed,
+	    CTLTYPE_INT | CTLFLAG_RD | CTLFLAG_NOLOCK, NULL, 0,
+	    sysctl_jail_jailed, "I", "Process in jail?");
+
 /*
  * MPSAFE
  */

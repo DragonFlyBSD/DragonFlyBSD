@@ -62,12 +62,17 @@ else
 	_boot="start"
 fi
 
+skip="-s nostart"
+if _jailed=`${SYSCTL_N} -q jail.jailed` && [ ${_jailed} -eq 1 ]; then
+	skip="${skip} -s nojail"
+fi
+
 # If the /firstboot sentinel doesn't exist, we want to skip firstboot scripts.
 if ! [ -e /firstboot ]; then
 	skip_firstboot="-s firstboot"
 fi
 
-files=`rcorder -s nostart ${skip_firstboot} /etc/rc.d/* 2>/dev/null`
+files=`rcorder ${skip} ${skip_firstboot} /etc/rc.d/* 2>/dev/null`
 
 for _rc_elem in ${files}; do
 	run_rc_script ${_rc_elem} ${_boot}
