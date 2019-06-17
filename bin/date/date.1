@@ -31,7 +31,7 @@
 .\"     @(#)date.1	8.3 (Berkeley) 4/28/95
 .\" $FreeBSD: src/bin/date/date.1,v 1.72 2005/02/13 22:25:09 ru Exp $
 .\"
-.Dd November 15, 2014
+.Dd June 17, 2019
 .Dt DATE 1
 .Os
 .Sh NAME
@@ -60,9 +60,6 @@
 .Op Fl jnu
 .Fl f Ar input_fmt new_date
 .Op Cm + Ns Ar output_fmt
-.Nm
-.Op Fl d Ar dst
-.Op Fl t Ar minutes_west
 .Sh DESCRIPTION
 When invoked without arguments, the
 .Nm
@@ -85,15 +82,6 @@ the time may not be changed by more than 1 second.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
-.It Fl d Ar dst
-Set the kernel's value for daylight saving time.
-If
-.Ar dst
-is non-zero, future calls
-to
-.Xr gettimeofday 2
-will return a non-zero for
-.Fa tz_dsttime .
 .It Fl f
 Use
 .Ar input_fmt
@@ -120,15 +108,7 @@ flag in addition to the
 .Cm +
 option to convert one date format to another.
 .It Fl n
-By default, if the
-.Xr timed 8
-daemon is running,
-.Nm
-sets the time on all of the machines in the local group.
-The
-.Fl n
-option suppresses this behavior and causes the time to be set only on the
-current machine.
+Obsolete flag, accepted and ignored for compatibility.
 .It Fl R
 Use RFC 2822 date and time output format. This is equivalent to use
 .Dq Li %a, %d %b %Y \&%T %z
@@ -149,14 +129,6 @@ is the number of seconds since the Epoch
 see
 .Xr time 3 ) ,
 and can be specified in decimal, octal, or hex.
-.It Fl t Ar minutes_west
-Set the system's value for minutes west of
-.Tn GMT .
-.Ar minutes_west
-specifies the number of minutes returned in
-.Fa tz_minuteswest
-by future calls to
-.Xr gettimeofday 2 .
 .It Fl u
 Display or set the date in
 .Tn UTC
@@ -395,34 +367,11 @@ Finally the command:
 can be used to parse the output from
 .Nm
 and express it in Epoch time.
-.Sh DIAGNOSTICS
-Occasionally, when
-.Xr timed 8
-synchronizes the time on many hosts, the setting of a new time value may
-require more than a few seconds.
-On these occasions,
-.Nm
-prints:
-.Ql Network time being set .
-The message
-.Ql Communication error with timed
-occurs when the communication
-between
-.Nm
-and
-.Xr timed 8
-fails.
 .Sh SEE ALSO
 .Xr gettimeofday 2 ,
 .Xr strftime 3 ,
 .Xr strptime 3 ,
-.Xr utmp 5 ,
-.Xr timed 8
-.Rs
-.%T "TSP: The Time Synchronization Protocol for UNIX 4.3BSD"
-.%A R. Gusella
-.%A S. Zatti
-.Re
+.Xr utmp 5
 .Sh STANDARDS
 The
 .Nm

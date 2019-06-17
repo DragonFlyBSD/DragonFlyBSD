@@ -123,7 +123,6 @@ SUBDIR= 802_11 \
 	tcpdmatch \
 	tcpdrop \
 	tcpdump \
-	timed \
 	traceroute \
 	traceroute6 \
 	trpt \

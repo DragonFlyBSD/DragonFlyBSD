@@ -3745,6 +3745,11 @@ TO_REMOVE+=/usr/share/man/man3/md5.3.gz
 TO_REMOVE+=/usr/share/man/man3/sha.3.gz
 TO_REMOVE+=/usr/share/man/man3/sha256.3.gz
 TO_REMOVE+=/usr/share/man/man3/sha512.3.gz
+TO_REMOVE+=/etc/rc.d/timed
+TO_REMOVE+=/usr/sbin/timed
+TO_REMOVE+=/usr/sbin/timedc
+TO_REMOVE+=/usr/share/man/man8/timed.8.gz
+TO_REMOVE+=/usr/share/man/man8/timedc.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

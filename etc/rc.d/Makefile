@@ -23,7 +23,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS \
 	routing rpcbind rtadvd rtsold rwho sysdb savecore sdpd securelevel \
 	sendmail sensorsd serial sppp sshd statd swap1 syscons \
 	sysctl syslogd sysvipcd \
-	timed ttys udevd udevd_early \
+	ttys udevd udevd_early \
 	varsym vfs_quota vinum virecover vkernel vknetd \
 	watchdogd wpa_supplicant \
 	ypbind yppasswdd ypserv ypset ypupdated ypxfrd
