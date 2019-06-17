@@ -123,6 +123,12 @@ done:
 	return ret;
 }
 
+static inline long
+io_schedule_timeout(signed long timeout)
+{
+	return schedule_timeout(timeout);
+}
+
 #define TASK_COMM_LEN	MAXCOMLEN
 
 /*
