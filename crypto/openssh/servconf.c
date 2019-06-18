@@ -274,7 +274,13 @@ fill_default_server_options(ServerOptions *options)
 {
 	u_int i;
 
-	/* Portable-specific options */
+	/*
+	 * Portable-specific options.
+	 *
+	 * Please do NOT under any circumstances change the default to 1,
+	 * for any reason.  The use of PAM is not considered to be secure
+	 * by default.
+	 */
 	if (options->use_pam == -1)
 		options->use_pam = 0;
 
@@ -355,8 +361,13 @@ fill_default_server_options(ServerOptions *options)
 		options->gss_cleanup_creds = 1;
 	if (options->gss_strict_acceptor == -1)
 		options->gss_strict_acceptor = 1;
+	/*
+	 * Please do NOT under any circumstances change the default to 1,
+	 * for any reason.  The use of plaintext passwords are not considered
+	 * secure by default.
+	 */
 	if (options->password_authentication == -1)
-		options->password_authentication = 1;
+		options->password_authentication = 0;
 	if (options->kbd_interactive_authentication == -1)
 		options->kbd_interactive_authentication = 0;
 	if (options->challenge_response_authentication == -1)
