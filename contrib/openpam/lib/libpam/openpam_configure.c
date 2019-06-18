@@ -254,6 +254,20 @@ openpam_parse_chain(pam_handle_t *pamh,
 			goto fail;
 		}
 
+		/*
+		 * Check if blacklisted.  Legacy support for removed previously
+		 * enabled modules only.
+		 */
+		if ((strcmp(modulename, "pam_opie.so") == 0) ||
+		    (strcmp(modulename, "pam_opieaccess.so") == 0)) {
+			openpam_log(PAM_LOG_ERROR,
+			    "ignoring blacklisted %s module,"
+			    " update your /etc/pam.d/ configs",
+			    modulename);
+			FREEV(wordc, wordv);
+			continue;
+		}
+
 		/* allocate new entry */
 		if ((this = calloc(1, sizeof *this)) == NULL)
 			goto syserr;
