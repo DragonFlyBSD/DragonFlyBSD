@@ -88,7 +88,7 @@ SYSCTL_INT(_jail, OID_AUTO, sysvipc_allowed, CTLFLAG_RW,
 int    jail_chflags_allowed = 0;
 SYSCTL_INT(_jail, OID_AUTO, chflags_allowed, CTLFLAG_RW,
     &jail_chflags_allowed, 0,
-    "Process in jail can set chflags(1)");
+    "Processes in jail can alter system file flags");
 
 int    jail_allow_raw_sockets = 0;
 SYSCTL_INT(_jail, OID_AUTO, allow_raw_sockets, CTLFLAG_RW,

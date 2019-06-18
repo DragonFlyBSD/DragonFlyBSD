@@ -356,9 +356,33 @@ MIB variables.
 Currently, these variables affect all jails on the system, although in
 the future this functionality may be finer grained.
 .Bl -tag -width XXX
+.It Va jail.allow_raw_sockets
+This MIB entry determines whether or not prison root is allowed to
+create raw sockets.
+Setting this MIB to 1 allows utilities like
+.Xr ping 8
+and
+.Xr traceroute 8
+to operate inside the prison.
+If this MIB is set, the source IP addresses are enforced to comply
+with the IP address bound to the jail, regardless of whether or not the
+.Dv IP_HDRINCL
+flag has been set on the socket. Because raw sockets can be used to configure
+and interact with various network subsystems, extra caution should be used
+where privileged access to jails is given out to untrusted parties.
+As such, this option is disabled by default.
+.It Va jail.chflags_allowed
+This MIB entry determines how a privileged user inside a jail will be
+treated by
+.Xr chflags 2 .
+If zero, such users are treated as unprivileged, and are unable to set
+or clear system file flags; if non-zero, such users are treated as
+privileged, and may manipulate system file flags subject to the usual
+constaints on
+.Va kern.securelevel .
 .It Va jail.jailed
-The read-only entry can be used to determine if a process is running inside
-a jail (value is 1) or not (value is 0).
+This read-only MIB entry can be used to determine if a process is running
+inside a jail (value is 1) or not (value is 0).
 .It Va jail.set_hostname_allowed
 This MIB entry determines whether or not processes within a jail are
 allowed to change their hostname via
@@ -386,8 +410,7 @@ permitting them access to
 .Ux
 domain sockets,
 IPv4 and IPv6 addresses, and routing sockets.
-To enable access to other domains, this MIB variable may be set to
-0.
+To enable access to other domains, this MIB variable may be set to 0.
 .It Va jail.sysvipc_allowed
 This MIB entry determines whether or not processes within a jail have access
 to System V IPC primitives.
