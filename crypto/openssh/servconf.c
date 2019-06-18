@@ -276,11 +276,7 @@ fill_default_server_options(ServerOptions *options)
 
 	/* Portable-specific options */
 	if (options->use_pam == -1)
-#ifdef USE_PAM
-		options->use_pam = 1;
-#else
 		options->use_pam = 0;
-#endif
 
 	/* Standard Options */
 	if (options->num_host_key_files == 0) {
@@ -360,11 +356,7 @@ fill_default_server_options(ServerOptions *options)
 	if (options->gss_strict_acceptor == -1)
 		options->gss_strict_acceptor = 1;
 	if (options->password_authentication == -1)
-#ifdef USE_PAM
-		options->password_authentication = 0;
-#else
 		options->password_authentication = 1;
-#endif
 	if (options->kbd_interactive_authentication == -1)
 		options->kbd_interactive_authentication = 0;
 	if (options->challenge_response_authentication == -1)
