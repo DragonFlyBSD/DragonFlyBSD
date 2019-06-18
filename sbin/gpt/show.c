@@ -135,9 +135,14 @@ show(int fd __unused)
 				if (m->map_start == p->map_start + start)
 					break;
 			}
-			printf("%d%s", mbr->mbr_part[i].part_typ,
-			    mbr->mbr_part[i].part_flag == 0x80 ?
-			    " (active)" : "");
+			if (i == 4) {
+				/* wasn't there */
+				printf("[partition not found?]");
+			} else {
+				printf("%d%s", mbr->mbr_part[i].part_typ,
+				    mbr->mbr_part[i].part_flag == 0x80 ?
+				    " (active)" : "");
+			}
 			break;
 		case MAP_TYPE_GPT_PART:
 			printf("GPT part ");
