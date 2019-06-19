@@ -161,7 +161,7 @@ ${KMOD:S/$/.c/}: @
 .else
 ${KMOD:S/$/.c/}: @/tools/fw_stub.awk
 .endif
-	${AWK} -f @/tools/fw_stub.awk ${FIRMWS} -m${KMOD} -c${KMOD:S/$/.c/g} \
+	${AWK} -f @/tools/fw_stub.awk ${FIRMWS} -m ${KMOD} -c ${KMOD:S/$/.c/g} \
 	    ${FIRMWARE_LICENSE:C/.+/-l/}${FIRMWARE_LICENSE}
 
 SRCS+=	${KMOD:S/$/.c/}
