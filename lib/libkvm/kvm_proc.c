@@ -467,13 +467,9 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 	int miblen = ((op & ~KERN_PROC_FLAGMASK) == KERN_PROC_ALL) ? 3 : 4;
 	size_t size;
 
-	if (kd->procbase != 0) {
-		free((void *)kd->procbase);
-		/*
-		 * Clear this pointer in case this call fails.  Otherwise,
-		 * kvm_close() will free it again.
-		 */
-		kd->procbase = 0;
+	if (kd->procbase != NULL) {
+		free(kd->procbase);
+		kd->procbase = NULL;
 	}
 	if (kvm_ishost(kd)) {
 		size = 0;

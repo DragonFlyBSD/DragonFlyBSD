@@ -58,8 +58,54 @@ dev_t dev2udev(cdev_t dev);	/* kvm_proc.c */
 #endif
 
 
+#ifndef _KERNEL
 /*
- * Fill in a struct kinfo_proc.
+ * This is a temporary hack for when libkvm compiles in this file
+ * from userland.  These functions don't belong here.
+ */
+static void
+timevalfix(struct timeval *t1)
+{
+
+	if (t1->tv_usec < 0) {
+		t1->tv_sec--;
+		t1->tv_usec += 1000000;
+	}
+	if (t1->tv_usec >= 1000000) {
+		t1->tv_sec++;
+		t1->tv_usec -= 1000000;
+	}
+}
+
+static void
+timevaladd(struct timeval *t1, const struct timeval *t2)
+{
+
+	t1->tv_sec += t2->tv_sec;
+	t1->tv_usec += t2->tv_usec;
+	timevalfix(t1);
+}
+
+static void
+ruadd(struct rusage *ru, struct rusage *ru2)
+{
+	long *ip, *ip2;
+	int i;
+
+	timevaladd(&ru->ru_utime, &ru2->ru_utime);
+	timevaladd(&ru->ru_stime, &ru2->ru_stime);
+	if (ru->ru_maxrss < ru2->ru_maxrss)
+		ru->ru_maxrss = ru2->ru_maxrss;
+	ip = &ru->ru_first; ip2 = &ru2->ru_first;
+	for (i = &ru->ru_last - &ru->ru_first; i >= 0; i--)
+		*ip++ += *ip2++;
+}
+
+#endif
+
+/*
+ * Fill in a struct kinfo_proc, and zero the lwp fields for a possible
+ * fill_kinfo_lwp() aggregation.
  *
  * NOTE!  We may be asked to fill in kinfo_proc for a zombied process, and
  * the process may be in the middle of being deallocated.  Check all pointers
@@ -163,13 +209,15 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 }
 
 /*
- * Fill in a struct kinfo_lwp.
+ * Fill in a struct kinfo_lwp.  This routine also doubles as an aggregator
+ * of lwps for the proc.
+ *
+ * The kl structure must be initially zerod by the caller.  Note that
+ * fill_kinfo_proc() will do this for us.
  */
 void
 fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 {
-	bzero(kl, sizeof(*kl));
-
 	kl->kl_pid = lwp->lwp_proc->p_pid;
 	kl->kl_tid = lwp->lwp_tid;
 
@@ -201,17 +249,17 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 	kl->kl_tdprio = lwp->lwp_thread->td_pri;
 	kl->kl_rtprio = lwp->lwp_rtprio;
 
-	kl->kl_uticks = lwp->lwp_thread->td_uticks;
-	kl->kl_sticks = lwp->lwp_thread->td_sticks;
-	kl->kl_iticks = lwp->lwp_thread->td_iticks;
-	kl->kl_cpticks = lwp->lwp_cpticks;
-	kl->kl_pctcpu = lwp->lwp_proc->p_stat == SZOMB ? 0 : lwp->lwp_pctcpu;
-	kl->kl_slptime = lwp->lwp_slptime;
+	kl->kl_uticks += lwp->lwp_thread->td_uticks;
+	kl->kl_sticks += lwp->lwp_thread->td_sticks;
+	kl->kl_iticks += lwp->lwp_thread->td_iticks;
+	kl->kl_cpticks += lwp->lwp_cpticks;
+	kl->kl_pctcpu += lwp->lwp_proc->p_stat == SZOMB ? 0 : lwp->lwp_pctcpu;
+	kl->kl_slptime += lwp->lwp_slptime;
 	kl->kl_origcpu = lwp->lwp_usdata.bsd4.batch;
 	kl->kl_estcpu = lwp->lwp_usdata.bsd4.estcpu;
 	kl->kl_cpuid = lwp->lwp_thread->td_gd->gd_cpuid;
 
-	kl->kl_ru = lwp->lwp_ru;
+	ruadd(&kl->kl_ru, &lwp->lwp_ru);
 
 	kl->kl_siglist = lwp->lwp_siglist;
 	kl->kl_sigmask = lwp->lwp_sigmask;

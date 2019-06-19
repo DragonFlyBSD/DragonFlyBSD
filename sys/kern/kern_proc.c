@@ -1480,16 +1480,28 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
 		LWPHOLD(lp);
 		fill_kinfo_lwp(lp, &ki.kp_lwp);
 		had_output = 1;
-		error = SYSCTL_OUT(req, &ki, sizeof(ki));
+		if (skp == 0) {
+			error = SYSCTL_OUT(req, &ki, sizeof(ki));
+			bzero(&ki.kp_lwp, sizeof(ki.kp_lwp));
+		}
 		LWPRELE(lp);
 		if (error)
 			break;
-		if (skp)
-			break;
 	}
 	lwkt_reltoken(&p->p_token);
-	/* We need to output at least the proc, even if there is no lwp. */
-	if (had_output == 0) {
+
+	/*
+	 * If aggregating threads, set the tid field to -1.
+	 */
+	if (skp)
+		ki.kp_lwp.kl_tid = -1;
+
+	/*
+	 * We need to output at least the proc, even if there is no lwp.
+	 * If skp is non-zero we aggregated the lwps and need to output
+	 * the result.
+	 */
+	if (had_output == 0 || skp) {
 		error = SYSCTL_OUT(req, &ki, sizeof(ki));
 	}
 	return (error);

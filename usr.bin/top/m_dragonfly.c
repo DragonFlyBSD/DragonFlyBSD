@@ -494,8 +494,8 @@ fixup_pctcpu(struct kinfo_proc *fixit, uint64_t d)
 	ticks = LP(fixit, iticks) - LP(pp, iticks);
 	ticks += LP(fixit, sticks) - LP(pp, sticks);
 	ticks += LP(fixit, uticks) - LP(pp, uticks);
-	if (ticks > d)
-		ticks = d;
+	if (ticks > d * 1000)
+		ticks = d * 1000;
 	LP(fixit, pctcpu) = (ticks * (uint64_t)fscale) / d;
 }
 
