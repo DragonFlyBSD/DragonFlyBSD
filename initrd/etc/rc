@@ -69,6 +69,7 @@ kill $(cat /var/run/udevd.pid)
 
 echo "Cleaning up and umounting /var ..."
 rm -rf /var/*
+cd /
 umount /var
 
 echo "Mounting devfs on real root ..."
