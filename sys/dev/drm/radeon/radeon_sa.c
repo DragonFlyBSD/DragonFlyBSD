@@ -40,10 +40,7 @@
  *
  * If we are asked to block we wait on all the oldest fence of all
  * rings. We just wait for any of those fence to complete.
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_sa.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "radeon.h"
 
@@ -56,8 +53,7 @@ int radeon_sa_bo_manager_init(struct radeon_device *rdev,
 {
 	int i, r;
 
-	lockinit(&sa_manager->wq_lock, "drsamwm", 0, LK_CANRECURSE);
-	cv_init(&sa_manager->wq, "drm__radeon_sa_manager__wq");
+	init_waitqueue_head(&sa_manager->wq);
 	sa_manager->bo = NULL;
 	sa_manager->size = size;
 	sa_manager->domain = domain;
@@ -69,7 +65,7 @@ int radeon_sa_bo_manager_init(struct radeon_device *rdev,
 	}
 
 	r = radeon_bo_create(rdev, size, align, true,
-			     domain, flags, NULL, &sa_manager->bo);
+			     domain, flags, NULL, NULL, &sa_manager->bo);
 	if (r) {
 		dev_err(rdev->dev, "(%d) failed to allocate bo for manager\n", r);
 		return r;
@@ -95,8 +91,6 @@ void radeon_sa_bo_manager_fini(struct radeon_device *rdev,
 	}
 	radeon_bo_unref(&sa_manager->bo);
 	sa_manager->size = 0;
-	cv_destroy(&sa_manager->wq);
-	lockuninit(&sa_manager->wq_lock);
 }
 
 int radeon_sa_bo_manager_start(struct radeon_device *rdev,
@@ -327,8 +321,7 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 	BUG_ON(align > sa_manager->align);
 	BUG_ON(size > sa_manager->size);
 
-	*sa_bo = kmalloc(sizeof(struct radeon_sa_bo), M_DRM,
-			 M_WAITOK | M_ZERO);
+	*sa_bo = kmalloc(sizeof(struct radeon_sa_bo), M_DRM, GFP_KERNEL);
 	if ((*sa_bo) == NULL) {
 		return -ENOMEM;
 	}
@@ -337,7 +330,7 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 	INIT_LIST_HEAD(&(*sa_bo)->olist);
 	INIT_LIST_HEAD(&(*sa_bo)->flist);
 
-	lockmgr(&sa_manager->wq_lock, LK_EXCLUSIVE);
+	lockmgr(&sa_manager->wq.lock, LK_EXCLUSIVE);
 	do {
 		for (i = 0; i < RADEON_NUM_RINGS; ++i) {
 			fences[i] = NULL;
@@ -349,29 +342,27 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 
 			if (radeon_sa_bo_try_alloc(sa_manager, *sa_bo,
 						   size, align)) {
-				lockmgr(&sa_manager->wq_lock, LK_RELEASE);
+				lockmgr(&sa_manager->wq.lock, LK_RELEASE);
 				return 0;
 			}
 
 			/* see if we can skip over some allocations */
 		} while (radeon_sa_bo_next_hole(sa_manager, fences, tries));
 
-		lockmgr(&sa_manager->wq_lock, LK_RELEASE);
+		lockmgr(&sa_manager->wq.lock, LK_RELEASE);
 		r = radeon_fence_wait_any(rdev, fences, false);
-		lockmgr(&sa_manager->wq_lock, LK_EXCLUSIVE);
+		lockmgr(&sa_manager->wq.lock, LK_EXCLUSIVE);
 		/* if we have nothing to wait for block */
 		if (r == -ENOENT) {
-			while (!radeon_sa_event(sa_manager, size, align)) {
-				r = -cv_wait_sig(&sa_manager->wq,
-						 &sa_manager->wq_lock);
-				if (r != 0)
-					break;
-			}
+			r = wait_event_interruptible_locked(
+				sa_manager->wq, 
+				radeon_sa_event(sa_manager, size, align)
+			);
 		}
 
 	} while (!r);
 
-	lockmgr(&sa_manager->wq_lock, LK_RELEASE);
+	lockmgr(&sa_manager->wq.lock, LK_RELEASE);
 	kfree(*sa_bo);
 	*sa_bo = NULL;
 	return r;
@@ -387,7 +378,7 @@ void radeon_sa_bo_free(struct radeon_device *rdev, struct radeon_sa_bo **sa_bo,
 	}
 
 	sa_manager = (*sa_bo)->manager;
-	lockmgr(&sa_manager->wq_lock, LK_EXCLUSIVE);
+	lockmgr(&sa_manager->wq.lock, LK_EXCLUSIVE);
 	if (fence && !radeon_fence_signaled(fence)) {
 		(*sa_bo)->fence = radeon_fence_ref(fence);
 		list_add_tail(&(*sa_bo)->flist,
@@ -395,8 +386,8 @@ void radeon_sa_bo_free(struct radeon_device *rdev, struct radeon_sa_bo **sa_bo,
 	} else {
 		radeon_sa_bo_remove_locked(*sa_bo);
 	}
-	cv_broadcast(&sa_manager->wq);
-	lockmgr(&sa_manager->wq_lock, LK_RELEASE);
+	wake_up_all_locked(&sa_manager->wq);
+	lockmgr(&sa_manager->wq.lock, LK_RELEASE);
 	*sa_bo = NULL;
 }
 

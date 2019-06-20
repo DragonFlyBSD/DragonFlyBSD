@@ -3,6 +3,7 @@
  */
 
 #define CONFIG_X86	1
+#define CONFIG_X86_PAT	1
 #define CONFIG_PCI	1
 #define CONFIG_ACPI	1
 

@@ -77,33 +77,30 @@ static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 
 static bool radeon_read_bios(struct radeon_device *rdev)
 {
-	device_t vga_dev;
-	uint8_t __iomem *bios;
+	uint8_t __iomem *bios, val1, val2;
 	size_t size;
+	device_t vga_dev = device_get_parent(rdev->dev->bsddev);
 
-	DRM_INFO("%s: ===> Try PCI Expansion ROM...\n", __func__);
-
-	vga_dev = device_get_parent(rdev->dev->bsddev);
 	rdev->bios = NULL;
 	/* XXX: some cards may return 0 for rom size? ddx has a workaround */
 	bios = vga_pci_map_bios(vga_dev, &size);
 	if (!bios) {
 		return false;
 	}
-	DRM_INFO("%s: Map address: %p (%zu bytes)\n", __func__, bios, size);
 
-	if (size == 0 || bios[0] != 0x55 || bios[1] != 0xaa) {
-		if (size == 0) {
-			DRM_INFO("%s: Incorrect BIOS size\n", __func__);
-		} else {
-			DRM_INFO("%s: Incorrect BIOS signature: 0x%02X%02X\n",
-			    __func__, bios[0], bios[1]);
-		}
+	val1 = readb(&bios[0]);
+	val2 = readb(&bios[1]);
+
+	if (size == 0 || val1 != 0x55 || val2 != 0xaa) {
 		vga_pci_unmap_bios(vga_dev, bios);
 		return false;
 	}
-	rdev->bios = kmalloc(size, M_DRM, M_WAITOK);
-	memcpy(rdev->bios, bios, size);
+	rdev->bios = kzalloc(size, GFP_KERNEL);
+	if (rdev->bios == NULL) {
+		vga_pci_unmap_bios(vga_dev, bios);
+		return false;
+	}
+	memcpy_fromio(rdev->bios, bios, size);
 	vga_pci_unmap_bios(vga_dev, bios);
 	return true;
 }
@@ -115,13 +112,13 @@ static bool radeon_read_platform_bios(struct radeon_device *rdev)
 
 	rdev->bios = NULL;
 
-	#if 0
+#if 0
 	// XXX: FIXME
 	bios = pci_platform_rom(rdev->pdev, &size);
-	#else
+#else
 	size = 0;
 	bios = NULL;
-	#endif
+#endif
 	if (!bios) {
 		return false;
 	}
@@ -129,11 +126,11 @@ static bool radeon_read_platform_bios(struct radeon_device *rdev)
 	if (size == 0 || bios[0] != 0x55 || bios[1] != 0xaa) {
 		return false;
 	}
-	rdev->bios = kmalloc(size, M_DRM, M_WAITOK);
+	rdev->bios = kmemdup(bios, size, GFP_KERNEL);
 	if (rdev->bios == NULL) {
 		return false;
 	}
-	memcpy(rdev->bios, bios, size);
+
 	return true;
 }
 

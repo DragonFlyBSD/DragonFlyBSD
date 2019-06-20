@@ -1093,7 +1093,7 @@ static int evergreen_cs_parse_packet0(struct radeon_cs_parser *p,
 static int evergreen_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 {
 	struct evergreen_cs_track *track = (struct evergreen_cs_track *)p->track;
-	struct radeon_cs_reloc *reloc;
+	struct radeon_bo_list *reloc;
 	u32 last_reg;
 	u32 m, i, tmp, *ib;
 	int r;
@@ -1791,7 +1791,7 @@ static bool evergreen_is_safe_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 static int evergreen_packet3_check(struct radeon_cs_parser *p,
 				   struct radeon_cs_packet *pkt)
 {
-	struct radeon_cs_reloc *reloc;
+	struct radeon_bo_list *reloc;
 	struct evergreen_cs_track *track;
 	volatile u32 *ib;
 	unsigned idx;
@@ -2660,7 +2660,7 @@ int evergreen_cs_parse(struct radeon_cs_parser *p)
 			p->track = NULL;
 			return r;
 		}
-	} while (p->idx < p->chunks[p->chunk_ib_idx].length_dw);
+	} while (p->idx < p->chunk_ib->length_dw);
 #if 0
 	for (r = 0; r < p->ib.length_dw; r++) {
 		printk(KERN_INFO "%05d  0x%08X\n", r, p->ib.ptr[r]);
@@ -2683,8 +2683,8 @@ int evergreen_cs_parse(struct radeon_cs_parser *p)
  **/
 int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 {
-	struct radeon_cs_chunk *ib_chunk = &p->chunks[p->chunk_ib_idx];
-	struct radeon_cs_reloc *src_reloc, *dst_reloc, *dst2_reloc;
+	struct radeon_cs_chunk *ib_chunk = p->chunk_ib;
+	struct radeon_bo_list *src_reloc, *dst_reloc, *dst2_reloc;
 	u32 header, cmd, count, sub_cmd;
 	volatile u32 *ib = p->ib.ptr;
 	u32 idx;
@@ -3099,7 +3099,7 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 			DRM_ERROR("Unknown packet type %d at %d !\n", cmd, idx);
 			return -EINVAL;
 		}
-	} while (p->idx < p->chunks[p->chunk_ib_idx].length_dw);
+	} while (p->idx < p->chunk_ib->length_dw);
 #if 0
 	for (r = 0; r < p->ib->length_dw; r++) {
 		printk(KERN_INFO "%05d  0x%08X\n", r, p->ib.ptr[r]);

@@ -116,10 +116,8 @@
 #define DRIVER_MINOR		34
 #define DRIVER_PATCHLEVEL	0
 
-#ifdef PM_TODO
 long radeon_drm_ioctl(struct file *filp,
 		      unsigned int cmd, unsigned long arg);
-#endif
 
 /* The rest of the file is DEPRECATED! */
 #ifdef CONFIG_DRM_RADEON_UMS

@@ -88,11 +88,6 @@ MODULE_FIRMWARE("radeon/SUMO_pfp.bin");
 MODULE_FIRMWARE("radeon/SUMO_me.bin");
 MODULE_FIRMWARE("radeon/SUMO2_pfp.bin");
 MODULE_FIRMWARE("radeon/SUMO2_me.bin");
-MODULE_FIRMWARE("radeon/OLAND_pfp.bin");
-MODULE_FIRMWARE("radeon/OLAND_me.bin");
-MODULE_FIRMWARE("radeon/OLAND_ce.bin");
-MODULE_FIRMWARE("radeon/OLAND_mc.bin");
-MODULE_FIRMWARE("radeon/OLAND_rlc.bin");
 
 static const u32 crtc_offsets[2] =
 {
@@ -997,7 +992,7 @@ void r600_pcie_gart_tlb_flush(struct radeon_device *rdev)
 	/* flush hdp cache so updates hit vram */
 	if ((rdev->family >= CHIP_RV770) && (rdev->family <= CHIP_RV740) &&
 	    !(rdev->flags & RADEON_IS_AGP)) {
-		volatile uint32_t *ptr = rdev->gart.ptr;
+		void __iomem *ptr = (void *)rdev->gart.ptr;
 		u32 tmp;
 
 		/* r7xx hw bug.  write to HDP_DEBUG1 followed by fb read
@@ -1006,7 +1001,7 @@ void r600_pcie_gart_tlb_flush(struct radeon_device *rdev)
 		 * method for them.
 		 */
 		WREG32(HDP_DEBUG1, 0);
-		tmp = *ptr;
+		tmp = readl((void __iomem *)ptr);
 	} else
 		WREG32(R_005480_HDP_MEM_COHERENCY_FLUSH_CNTL, 0x1);
 
@@ -1404,8 +1399,8 @@ static int r600_mc_init(struct radeon_device *rdev)
 #endif
 			{
 				/* FastFB shall be used with UMA memory. Here it is simply disabled when sideport
-				* memory is present.
-				*/
+		 		* memory is present.
+		 		*/
 				if (rdev->mc.igp_sideport_enabled == false && radeon_fastfb == 1) {
 					DRM_INFO("Direct mapping: aper base at 0x%llx, replaced by direct mapping base 0x%llx.\n",
 						(unsigned long long)rdev->mc.aper_base, k8_addr);
@@ -1413,7 +1408,7 @@ static int r600_mc_init(struct radeon_device *rdev)
 					rdev->fastfb_working = true;
 				}
 			}
-		}
+  		}
 	}
 
 	radeon_update_bandwidth_info(rdev);
@@ -1428,22 +1423,19 @@ int r600_vram_scratch_init(struct radeon_device *rdev)
 	if (rdev->vram_scratch.robj == NULL) {
 		r = radeon_bo_create(rdev, RADEON_GPU_PAGE_SIZE,
 				     PAGE_SIZE, true, RADEON_GEM_DOMAIN_VRAM,
-				     0, NULL, &rdev->vram_scratch.robj);
+				     0, NULL, NULL, &rdev->vram_scratch.robj);
 		if (r) {
 			return r;
 		}
 	}
 
 	r = radeon_bo_reserve(rdev->vram_scratch.robj, false);
-	if (unlikely(r != 0)) {
-		radeon_bo_unref(&rdev->vram_scratch.robj);
+	if (unlikely(r != 0))
 		return r;
-	}
 	r = radeon_bo_pin(rdev->vram_scratch.robj,
 			  RADEON_GEM_DOMAIN_VRAM, &rdev->vram_scratch.gpu_addr);
 	if (r) {
 		radeon_bo_unreserve(rdev->vram_scratch.robj);
-		radeon_bo_unref(&rdev->vram_scratch.robj);
 		return r;
 	}
 	vram_scratch_ptr_ptr = &rdev->vram_scratch.ptr;
@@ -1452,8 +1444,6 @@ int r600_vram_scratch_init(struct radeon_device *rdev)
 	if (r)
 		radeon_bo_unpin(rdev->vram_scratch.robj);
 	radeon_bo_unreserve(rdev->vram_scratch.robj);
-	if (r)
-		radeon_bo_unref(&rdev->vram_scratch.robj);
 
 	return r;
 }
@@ -1769,7 +1759,7 @@ static void r600_gpu_pci_config_reset(struct radeon_device *rdev)
 	if (rdev->family >= CHIP_RV770)
 		rv770_set_clk_bypass_mode(rdev);
 	/* disable BM */
-	pci_disable_busmaster(rdev->pdev->dev.bsddev);
+	pci_clear_master(rdev->pdev);
 	/* disable mem access */
 	rv515_mc_stop(rdev, &save);
 	if (r600_mc_wait_for_idle(rdev)) {
@@ -2910,31 +2900,27 @@ struct radeon_fence *r600_copy_cpdma(struct radeon_device *rdev,
 				     unsigned num_gpu_pages,
 				     struct reservation_object *resv)
 {
-	struct radeon_semaphore *sem = NULL;
 	struct radeon_fence *fence;
+	struct radeon_sync sync;
 	int ring_index = rdev->asic->copy.blit_ring_index;
 	struct radeon_ring *ring = &rdev->ring[ring_index];
 	u32 size_in_bytes, cur_size_in_bytes, tmp;
 	int i, num_loops;
 	int r = 0;
 
-	r = radeon_semaphore_create(rdev, &sem);
-	if (r) {
-		DRM_ERROR("radeon: moving bo (%d).\n", r);
-		return ERR_PTR(r);
-	}
+	radeon_sync_create(&sync);
 
 	size_in_bytes = (num_gpu_pages << RADEON_GPU_PAGE_SHIFT);
 	num_loops = DIV_ROUND_UP(size_in_bytes, 0x1fffff);
 	r = radeon_ring_lock(rdev, ring, num_loops * 6 + 24);
 	if (r) {
 		DRM_ERROR("radeon: moving bo (%d).\n", r);
-		radeon_semaphore_free(rdev, &sem, NULL);
+		radeon_sync_free(rdev, &sync, NULL);
 		return ERR_PTR(r);
 	}
 
-	radeon_semaphore_sync_resv(rdev, sem, resv, false);
-	radeon_semaphore_sync_rings(rdev, sem, ring->idx);
+	radeon_sync_resv(rdev, &sync, resv, false);
+	radeon_sync_rings(rdev, &sync, ring->idx);
 
 	radeon_ring_write(ring, PACKET3(PACKET3_SET_CONFIG_REG, 1));
 	radeon_ring_write(ring, (WAIT_UNTIL - PACKET3_SET_CONFIG_REG_OFFSET) >> 2);
@@ -2963,12 +2949,12 @@ struct radeon_fence *r600_copy_cpdma(struct radeon_device *rdev,
 	r = radeon_fence_emit(rdev, &fence, ring->idx);
 	if (r) {
 		radeon_ring_unlock_undo(rdev, ring);
-		radeon_semaphore_free(rdev, &sem, NULL);
+		radeon_sync_free(rdev, &sync, NULL);
 		return ERR_PTR(r);
 	}
 
 	radeon_ring_unlock_commit(rdev, ring, false);
-	radeon_semaphore_free(rdev, &sem, fence);
+	radeon_sync_free(rdev, &sync, fence);
 
 	return fence;
 }
@@ -3391,34 +3377,28 @@ int r600_ih_ring_alloc(struct radeon_device *rdev)
 		r = radeon_bo_create(rdev, rdev->ih.ring_size,
 				     PAGE_SIZE, true,
 				     RADEON_GEM_DOMAIN_GTT, 0,
-				     NULL, &rdev->ih.ring_obj);
+				     NULL, NULL, &rdev->ih.ring_obj);
 		if (r) {
 			DRM_ERROR("radeon: failed to create ih ring buffer (%d).\n", r);
 			return r;
 		}
 		r = radeon_bo_reserve(rdev->ih.ring_obj, false);
-		if (unlikely(r != 0)) {
-			radeon_bo_unref(&rdev->ih.ring_obj);
+		if (unlikely(r != 0))
 			return r;
-		}
 		r = radeon_bo_pin(rdev->ih.ring_obj,
 				  RADEON_GEM_DOMAIN_GTT,
 				  (u64 *)&rdev->ih.gpu_addr);
 		if (r) {
 			radeon_bo_unreserve(rdev->ih.ring_obj);
-			radeon_bo_unref(&rdev->ih.ring_obj);
 			DRM_ERROR("radeon: failed to pin ih ring buffer (%d).\n", r);
 			return r;
 		}
 		ring_ptr = &rdev->ih.ring;
 		r = radeon_bo_kmap(rdev->ih.ring_obj,
 				   ring_ptr);
-		if (r)
-			radeon_bo_unpin(rdev->ih.ring_obj);
 		radeon_bo_unreserve(rdev->ih.ring_obj);
 		if (r) {
 			DRM_ERROR("radeon: failed to map ih ring buffer (%d).\n", r);
-			radeon_bo_unref(&rdev->ih.ring_obj);
 			return r;
 		}
 	}
@@ -3652,7 +3632,7 @@ int r600_irq_init(struct radeon_device *rdev)
 		r600_disable_interrupt_state(rdev);
 
 	/* at this point everything should be setup correctly to enable master */
-	pci_enable_busmaster(rdev->dev->bsddev);
+	pci_set_master(rdev->pdev);
 
 	/* enable irqs */
 	r600_enable_interrupts(rdev);
@@ -3816,6 +3796,9 @@ int r600_irq_set(struct radeon_device *rdev)
 	} else if (rdev->family >= CHIP_RV770) {
 		WREG32(RV770_CG_THERMAL_INT, thermal_int);
 	}
+
+	/* posting read */
+	RREG32(R_000E50_SRBM_STATUS);
 
 	return 0;
 }
@@ -4278,11 +4261,11 @@ void r600_mmio_hdp_flush(struct radeon_device *rdev)
 	 */
 	if ((rdev->family >= CHIP_RV770) && (rdev->family <= CHIP_RV740) &&
 	    rdev->vram_scratch.ptr && !(rdev->flags & RADEON_IS_AGP)) {
-		volatile uint32_t *ptr = rdev->vram_scratch.ptr;
+		volatile void __iomem *ptr = (volatile void *)rdev->vram_scratch.ptr;
 		u32 tmp;
 
 		WREG32(HDP_DEBUG1, 0);
-		tmp = *ptr;
+		tmp = readl((volatile void __iomem *)ptr);
 	} else
 		WREG32(R_005480_HDP_MEM_COHERENCY_FLUSH_CNTL, 0x1);
 }
@@ -4511,7 +4494,7 @@ uint64_t r600_get_gpu_clock_counter(struct radeon_device *rdev)
 	mutex_lock(&rdev->gpu_clock_mutex);
 	WREG32(RLC_CAPTURE_GPU_CLOCK_COUNT, 1);
 	clock = (uint64_t)RREG32(RLC_GPU_CLOCK_COUNT_LSB) |
-		((uint64_t)RREG32(RLC_GPU_CLOCK_COUNT_MSB) << 32ULL);
+	        ((uint64_t)RREG32(RLC_GPU_CLOCK_COUNT_MSB) << 32ULL);
 	mutex_unlock(&rdev->gpu_clock_mutex);
 	return clock;
 }

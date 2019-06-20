@@ -22,23 +22,17 @@
  *
  * Authors: Dave Airlie
  *          Alex Deucher
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_display.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <drm/radeon_drm.h>
 #include "radeon.h"
 
 #include "atom.h"
 
-#ifdef PM_TODO
 #include <linux/pm_runtime.h>
-#endif
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_plane_helper.h>
 #include <drm/drm_edid.h>
-#include <linux/err.h>
 
 #include <linux/gcd.h>
 
@@ -291,6 +285,7 @@ static void radeon_unpin_work_func(struct work_struct *__work)
 void radeon_crtc_handle_vblank(struct radeon_device *rdev, int crtc_id)
 {
 	struct radeon_crtc *radeon_crtc = rdev->mode_info.crtcs[crtc_id];
+	unsigned long flags;
 	u32 update_pending;
 	int vpos, hpos;
 
@@ -310,13 +305,13 @@ void radeon_crtc_handle_vblank(struct radeon_device *rdev, int crtc_id)
 	if ((radeon_use_pflipirq == 2) && ASIC_IS_DCE4(rdev))
 		return;
 
-	lockmgr(&rdev->ddev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->ddev->event_lock, flags);
 	if (radeon_crtc->flip_status != RADEON_FLIP_SUBMITTED) {
 		DRM_DEBUG_DRIVER("radeon_crtc->flip_status = %d != "
 				 "RADEON_FLIP_SUBMITTED(%d)\n",
 				 radeon_crtc->flip_status,
 				 RADEON_FLIP_SUBMITTED);
-		lockmgr(&rdev->ddev->event_lock, LK_RELEASE);
+		spin_unlock_irqrestore(&rdev->ddev->event_lock, flags);
 		return;
 	}
 
@@ -339,7 +334,7 @@ void radeon_crtc_handle_vblank(struct radeon_device *rdev, int crtc_id)
 		 */
 		update_pending = 0;
 	}
-	lockmgr(&rdev->ddev->event_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->ddev->event_lock, flags);
 	if (!update_pending)
 		radeon_crtc_handle_flip(rdev, crtc_id);
 }
@@ -356,19 +351,20 @@ void radeon_crtc_handle_flip(struct radeon_device *rdev, int crtc_id)
 {
 	struct radeon_crtc *radeon_crtc = rdev->mode_info.crtcs[crtc_id];
 	struct radeon_flip_work *work;
+	unsigned long flags;
 
 	/* this can happen at init */
 	if (radeon_crtc == NULL)
 		return;
 
-	lockmgr(&rdev->ddev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->ddev->event_lock, flags);
 	work = radeon_crtc->flip_work;
 	if (radeon_crtc->flip_status != RADEON_FLIP_SUBMITTED) {
 		DRM_DEBUG_DRIVER("radeon_crtc->flip_status = %d != "
 				 "RADEON_FLIP_SUBMITTED(%d)\n",
 				 radeon_crtc->flip_status,
 				 RADEON_FLIP_SUBMITTED);
-		lockmgr(&rdev->ddev->event_lock, LK_RELEASE);
+		spin_unlock_irqrestore(&rdev->ddev->event_lock, flags);
 		return;
 	}
 
@@ -380,7 +376,7 @@ void radeon_crtc_handle_flip(struct radeon_device *rdev, int crtc_id)
 	if (work->event)
 		drm_send_vblank_event(rdev->ddev, crtc_id, work->event);
 
-	lockmgr(&rdev->ddev->event_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->ddev->event_lock, flags);
 
 	drm_vblank_put(rdev->ddev, radeon_crtc->crtc_id);
 	radeon_irq_kms_pflip_irq_put(rdev, work->crtc_id);
@@ -402,18 +398,26 @@ static void radeon_flip_work_func(struct work_struct *__work)
 	struct radeon_crtc *radeon_crtc = rdev->mode_info.crtcs[work->crtc_id];
 
 	struct drm_crtc *crtc = &radeon_crtc->base;
+	unsigned long flags;
 	int r;
 
-	lockmgr(&rdev->exclusive_lock, LK_EXCLUSIVE);
+        down_read(&rdev->exclusive_lock);
 	if (work->fence) {
-		r = radeon_fence_wait(work->fence, false);
-		if (r == -EDEADLK) {
-			lockmgr(&rdev->exclusive_lock, LK_RELEASE);
-			do {
-				r = radeon_gpu_reset(rdev);
-			} while (r == -EAGAIN);
-			lockmgr(&rdev->exclusive_lock, LK_EXCLUSIVE);
-		}
+		struct radeon_fence *fence;
+
+		fence = to_radeon_fence(work->fence);
+		if (fence && fence->rdev == rdev) {
+			r = radeon_fence_wait(fence, false);
+			if (r == -EDEADLK) {
+				up_read(&rdev->exclusive_lock);
+				do {
+					r = radeon_gpu_reset(rdev);
+				} while (r == -EAGAIN);
+				down_read(&rdev->exclusive_lock);
+			}
+		} else
+			r = fence_wait(work->fence, false);
+
 		if (r)
 			DRM_ERROR("failed to wait on page flip fence (%d)!\n", r);
 
@@ -422,11 +426,12 @@ static void radeon_flip_work_func(struct work_struct *__work)
 		 * confused about which BO the CRTC is scanning out
 		 */
 
-		radeon_fence_unref(&work->fence);
+		fence_put(work->fence);
+		work->fence = NULL;
 	}
 
 	/* We borrow the event spin lock for protecting flip_status */
-	lockmgr(&crtc->dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&crtc->dev->event_lock, flags);
 
 	/* set the proper interrupt */
 	radeon_irq_kms_pflip_irq_get(rdev, radeon_crtc->crtc_id);
@@ -435,8 +440,8 @@ static void radeon_flip_work_func(struct work_struct *__work)
 	radeon_page_flip(rdev, radeon_crtc->crtc_id, work->base);
 
 	radeon_crtc->flip_status = RADEON_FLIP_SUBMITTED;
-	lockmgr(&crtc->dev->event_lock, LK_RELEASE);
-	lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
+	up_read(&rdev->exclusive_lock);
 }
 
 static int radeon_crtc_page_flip(struct drm_crtc *crtc,
@@ -454,6 +459,7 @@ static int radeon_crtc_page_flip(struct drm_crtc *crtc,
 	struct radeon_bo *new_rbo;
 	uint32_t tiling_flags, pitch_pixels;
 	uint64_t base;
+	unsigned long flags;
 	int r;
 
 	work = kzalloc(sizeof *work, GFP_KERNEL);
@@ -497,7 +503,7 @@ static int radeon_crtc_page_flip(struct drm_crtc *crtc,
 		DRM_ERROR("failed to pin new rbo buffer before flip\n");
 		goto cleanup;
 	}
-	work->fence = (struct radeon_fence *)fence_get(reservation_object_get_excl(new_rbo->tbo.resv));
+	work->fence = fence_get(reservation_object_get_excl(new_rbo->tbo.resv));
 	radeon_bo_get_tiling_flags(new_rbo, &tiling_flags, NULL);
 	radeon_bo_unreserve(new_rbo);
 
@@ -545,11 +551,11 @@ static int radeon_crtc_page_flip(struct drm_crtc *crtc,
 	}
 
 	/* We borrow the event spin lock for protecting flip_work */
-	lockmgr(&crtc->dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&crtc->dev->event_lock, flags);
 
 	if (radeon_crtc->flip_status != RADEON_FLIP_NONE) {
 		DRM_DEBUG_DRIVER("flip queue: crtc already busy\n");
-		lockmgr(&crtc->dev->event_lock, LK_RELEASE);
+		spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
 		r = -EBUSY;
 		goto vblank_cleanup;
 	}
@@ -559,7 +565,7 @@ static int radeon_crtc_page_flip(struct drm_crtc *crtc,
 	/* update crtc fb */
 	crtc->primary->fb = fb;
 
-	lockmgr(&crtc->dev->event_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
 
 	queue_work(radeon_crtc->flip_queue, &work->flip_work);
 	return 0;
@@ -579,7 +585,7 @@ pflip_cleanup:
 
 cleanup:
 	drm_gem_object_unreference_unlocked(&work->old_rbo->gem_base);
-	radeon_fence_unref(&work->fence);
+	fence_put(work->fence);
 	kfree(work);
 	return r;
 }
@@ -637,7 +643,7 @@ radeon_crtc_set_config(struct drm_mode_set *set)
 	return ret;
 }
 static const struct drm_crtc_funcs radeon_crtc_funcs = {
-	.cursor_set = radeon_crtc_cursor_set,
+	.cursor_set2 = radeon_crtc_cursor_set2,
 	.cursor_move = radeon_crtc_cursor_move,
 	.gamma_set = radeon_crtc_gamma_set,
 	.set_config = radeon_crtc_set_config,
@@ -962,6 +968,9 @@ void radeon_compute_pll_avivo(struct radeon_pll *pll,
 	if (pll->flags & RADEON_PLL_USE_FRAC_FB_DIV &&
 	    pll->flags & RADEON_PLL_USE_REF_DIV)
 		ref_div_max = pll->reference_div;
+	else if (pll->flags & RADEON_PLL_PREFER_MINM_OVER_MAXP)
+		/* fix for problems on RS880 */
+		ref_div_max = min(pll->max_ref_div, 7u);
 	else
 		ref_div_max = pll->max_ref_div;
 
@@ -1644,9 +1653,7 @@ void radeon_modeset_fini(struct radeon_device *rdev)
 		radeon_afmt_fini(rdev);
 		drm_kms_helper_poll_fini(rdev->ddev);
 		radeon_hpd_fini(rdev);
-		DRM_UNLOCK(rdev->ddev); /* Work around lock recursion. dumbbell@ */
 		drm_mode_config_cleanup(rdev->ddev);
-		DRM_LOCK(rdev->ddev);
 		rdev->mode_info.mode_config_initialized = false;
 	}
 	/* free i2c buses */
@@ -1903,7 +1910,7 @@ int radeon_get_crtc_scanoutpos(struct drm_device *dev, int crtc, unsigned int fl
 	}
 	else {
 		/* No: Fake something reasonable which gives at least ok results. */
-		vbl_start = mode->crtc_vdisplay;
+		vbl_start = rdev->mode_info.crtcs[crtc]->base.hwmode.crtc_vdisplay;
 		vbl_end = 0;
 	}
 
@@ -1919,7 +1926,7 @@ int radeon_get_crtc_scanoutpos(struct drm_device *dev, int crtc, unsigned int fl
 
 	/* Inside "upper part" of vblank area? Apply corrective offset if so: */
 	if (in_vbl && (*vpos >= vbl_start)) {
-		vtotal = mode->crtc_vtotal;
+		vtotal = rdev->mode_info.crtcs[crtc]->base.hwmode.crtc_vtotal;
 		*vpos = *vpos - vtotal;
 	}
 

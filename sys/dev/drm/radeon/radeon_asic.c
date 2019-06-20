@@ -26,9 +26,12 @@
  *          Jerome Glisse
  */
 
+#include <linux/console.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/radeon_drm.h>
+#include <linux/vgaarb.h>
+#include <linux/vga_switcheroo.h>
 #include "radeon_reg.h"
 #include "radeon.h"
 #include "radeon_asic.h"
@@ -158,11 +161,13 @@ void radeon_agp_disable(struct radeon_device *rdev)
 		DRM_INFO("Forcing AGP to PCIE mode\n");
 		rdev->flags |= RADEON_IS_PCIE;
 		rdev->asic->gart.tlb_flush = &rv370_pcie_gart_tlb_flush;
+		rdev->asic->gart.get_page_entry = &rv370_pcie_gart_get_page_entry;
 		rdev->asic->gart.set_page = &rv370_pcie_gart_set_page;
 	} else {
 		DRM_INFO("Forcing AGP to PCI mode\n");
 		rdev->flags |= RADEON_IS_PCI;
 		rdev->asic->gart.tlb_flush = &r100_pci_gart_tlb_flush;
+		rdev->asic->gart.get_page_entry = &r100_pci_gart_get_page_entry;
 		rdev->asic->gart.set_page = &r100_pci_gart_set_page;
 	}
 	rdev->mc.gtt_size = radeon_gart_size * 1024 * 1024;
@@ -198,6 +203,7 @@ static struct radeon_asic r100_asic = {
 	.mc_wait_for_idle = &r100_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &r100_pci_gart_tlb_flush,
+		.get_page_entry = &r100_pci_gart_get_page_entry,
 		.set_page = &r100_pci_gart_set_page,
 	},
 	.ring = {
@@ -264,6 +270,7 @@ static struct radeon_asic r200_asic = {
 	.mc_wait_for_idle = &r100_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &r100_pci_gart_tlb_flush,
+		.get_page_entry = &r100_pci_gart_get_page_entry,
 		.set_page = &r100_pci_gart_set_page,
 	},
 	.ring = {
@@ -358,6 +365,7 @@ static struct radeon_asic r300_asic = {
 	.mc_wait_for_idle = &r300_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &r100_pci_gart_tlb_flush,
+		.get_page_entry = &r100_pci_gart_get_page_entry,
 		.set_page = &r100_pci_gart_set_page,
 	},
 	.ring = {
@@ -424,6 +432,7 @@ static struct radeon_asic r300_asic_pcie = {
 	.mc_wait_for_idle = &r300_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &rv370_pcie_gart_tlb_flush,
+		.get_page_entry = &rv370_pcie_gart_get_page_entry,
 		.set_page = &rv370_pcie_gart_set_page,
 	},
 	.ring = {
@@ -490,6 +499,7 @@ static struct radeon_asic r420_asic = {
 	.mc_wait_for_idle = &r300_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &rv370_pcie_gart_tlb_flush,
+		.get_page_entry = &rv370_pcie_gart_get_page_entry,
 		.set_page = &rv370_pcie_gart_set_page,
 	},
 	.ring = {
@@ -556,6 +566,7 @@ static struct radeon_asic rs400_asic = {
 	.mc_wait_for_idle = &rs400_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &rs400_gart_tlb_flush,
+		.get_page_entry = &rs400_gart_get_page_entry,
 		.set_page = &rs400_gart_set_page,
 	},
 	.ring = {
@@ -622,6 +633,7 @@ static struct radeon_asic rs600_asic = {
 	.mc_wait_for_idle = &rs600_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &rs600_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.ring = {
@@ -690,6 +702,7 @@ static struct radeon_asic rs690_asic = {
 	.mc_wait_for_idle = &rs690_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &rs400_gart_tlb_flush,
+		.get_page_entry = &rs400_gart_get_page_entry,
 		.set_page = &rs400_gart_set_page,
 	},
 	.ring = {
@@ -758,6 +771,7 @@ static struct radeon_asic rv515_asic = {
 	.mc_wait_for_idle = &rv515_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &rv370_pcie_gart_tlb_flush,
+		.get_page_entry = &rv370_pcie_gart_get_page_entry,
 		.set_page = &rv370_pcie_gart_set_page,
 	},
 	.ring = {
@@ -824,6 +838,7 @@ static struct radeon_asic r520_asic = {
 	.mc_wait_for_idle = &r520_mc_wait_for_idle,
 	.gart = {
 		.tlb_flush = &rv370_pcie_gart_tlb_flush,
+		.get_page_entry = &rv370_pcie_gart_get_page_entry,
 		.set_page = &rv370_pcie_gart_set_page,
 	},
 	.ring = {
@@ -918,6 +933,7 @@ static struct radeon_asic r600_asic = {
 	.get_gpu_clock_counter = &r600_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &r600_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.ring = {
@@ -1003,6 +1019,7 @@ static struct radeon_asic rv6xx_asic = {
 	.get_gpu_clock_counter = &r600_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &r600_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.ring = {
@@ -1094,6 +1111,7 @@ static struct radeon_asic rs780_asic = {
 	.get_gpu_clock_counter = &r600_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &r600_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.ring = {
@@ -1198,6 +1216,7 @@ static struct radeon_asic rv770_asic = {
 	.get_gpu_clock_counter = &r600_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &r600_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.ring = {
@@ -1316,6 +1335,7 @@ static struct radeon_asic evergreen_asic = {
 	.get_gpu_clock_counter = &r600_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &evergreen_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.ring = {
@@ -1408,6 +1428,7 @@ static struct radeon_asic sumo_asic = {
 	.get_gpu_clock_counter = &r600_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &evergreen_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.ring = {
@@ -1499,6 +1520,7 @@ static struct radeon_asic btc_asic = {
 	.get_gpu_clock_counter = &r600_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &evergreen_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.ring = {
@@ -1634,6 +1656,7 @@ static struct radeon_asic cayman_asic = {
 	.get_gpu_clock_counter = &r600_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &cayman_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.vm = {
@@ -1737,6 +1760,7 @@ static struct radeon_asic trinity_asic = {
 	.get_gpu_clock_counter = &r600_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &cayman_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.vm = {
@@ -1870,6 +1894,7 @@ static struct radeon_asic si_asic = {
 	.get_gpu_clock_counter = &si_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &si_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.vm = {
@@ -2031,6 +2056,7 @@ static struct radeon_asic ci_asic = {
 	.get_gpu_clock_counter = &cik_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &cik_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.vm = {
@@ -2138,6 +2164,7 @@ static struct radeon_asic kv_asic = {
 	.get_gpu_clock_counter = &cik_get_gpu_clock_counter,
 	.gart = {
 		.tlb_flush = &cik_pcie_gart_tlb_flush,
+		.get_page_entry = &rs600_gart_get_page_entry,
 		.set_page = &rs600_gart_set_page,
 	},
 	.vm = {

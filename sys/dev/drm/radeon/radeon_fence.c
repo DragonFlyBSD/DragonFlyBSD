@@ -36,9 +36,7 @@
 #include <drm/drmP.h>
 #include "radeon_reg.h"
 #include "radeon.h"
-#ifdef TRACE_TODO
 #include "radeon_trace.h"
-#endif
 
 /*
  * Fences
@@ -141,12 +139,11 @@ int radeon_fence_emit(struct radeon_device *rdev,
 	(*fence)->rdev = rdev;
 	(*fence)->seq = seq;
 	(*fence)->ring = ring;
+	(*fence)->is_vm_update = false;
 	fence_init(&(*fence)->base, &radeon_fence_ops,
 		   &rdev->fence_queue.lock, rdev->fence_context + ring, seq);
 	radeon_fence_ring_emit(rdev, ring, *fence);
-#ifdef TRACE_TODO
 	trace_radeon_fence_emit(rdev->ddev, ring, (*fence)->seq);
-#endif
 	radeon_fence_schedule_check(rdev, ring);
 	return 0;
 }
@@ -500,9 +497,7 @@ static long radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
 		if (!target_seq[i])
 			continue;
 
-#ifdef TRACE_TODO
 		trace_radeon_fence_wait_begin(rdev->ddev, i, target_seq[i]);
-#endif
 		radeon_irq_kms_sw_irq_get(rdev, i);
 	}
 
@@ -524,9 +519,7 @@ static long radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
 			continue;
 
 		radeon_irq_kms_sw_irq_put(rdev, i);
-#ifdef TRACE_TODO
 		trace_radeon_fence_wait_end(rdev->ddev, i, target_seq[i]);
-#endif
 	}
 
 	return r;
@@ -547,6 +540,15 @@ int radeon_fence_wait(struct radeon_fence *fence, bool intr)
 {
 	u64 seq[RADEON_NUM_RINGS] = {};
 	long r;
+
+	/*
+	 * This function should not be called on !radeon fences.
+	 * If this is the case, it would mean this function can
+	 * also be called on radeon fences belonging to another card.
+	 * exclusive_lock is not held in that case.
+	 */
+	if (WARN_ON_ONCE(!to_radeon_fence(&fence->base)))
+		return fence_wait(&fence->base, intr);
 
 	seq[fence->ring] = fence->seq;
 	r = radeon_fence_wait_seq_timeout(fence->rdev, seq, intr, MAX_SCHEDULE_TIMEOUT);
@@ -1024,8 +1026,21 @@ static const char *radeon_fence_get_timeline_name(struct fence *f)
 
 static inline bool radeon_test_signaled(struct radeon_fence *fence)
 {
-	/* XXX: This flag is probably not set as it should */
 	return test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->base.flags);
+}
+
+struct radeon_wait_cb {
+	struct fence_cb base;
+	struct task_struct *task;
+};
+
+static void
+radeon_fence_wait_cb(struct fence *fence, struct fence_cb *cb)
+{
+	struct radeon_wait_cb *wait =
+		container_of(cb, struct radeon_wait_cb, base);
+
+	wake_up_process(wait->task);
 }
 
 static signed long radeon_fence_default_wait(struct fence *f, bool intr,
@@ -1033,41 +1048,40 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 {
 	struct radeon_fence *fence = to_radeon_fence(f);
 	struct radeon_device *rdev = fence->rdev;
-	bool signaled;
+	struct radeon_wait_cb cb;
 
-	fence_enable_sw_signaling(&fence->base);
+	cb.task = current;
 
-	/*
-	 * This function has to return -EDEADLK, but cannot hold
-	 * exclusive_lock during the wait because some callers
-	 * may already hold it. This means checking needs_reset without
-	 * lock, and not fiddling with any gpu internals.
-	 *
-	 * The callback installed with fence_enable_sw_signaling will
-	 * run before our wait_event_*timeout call, so we will see
-	 * both the signaled fence and the changes to needs_reset.
-	 */
+	if (fence_add_callback(f, &cb.base, radeon_fence_wait_cb))
+		return t;
 
-	if (intr)
-		t = wait_event_interruptible_timeout(rdev->fence_queue,
-		/* XXX: there is something very wrong here */
-#ifdef __DragonFly__
-			((signaled = radeon_test_signaled(fence)) || 1 ||
-#else
-			((signaled = radeon_test_signaled(fence)) ||
-#endif
-			 rdev->needs_reset), t);
-	else
-		t = wait_event_timeout(rdev->fence_queue,
-#ifdef __DragonFly__
-			((signaled = radeon_test_signaled(fence)) || 1 ||
-#else
-			((signaled = radeon_test_signaled(fence)) ||
-#endif
-			 rdev->needs_reset), t);
+	while (t > 0) {
+		if (intr)
+			set_current_state(TASK_INTERRUPTIBLE);
+		else
+			set_current_state(TASK_UNINTERRUPTIBLE);
 
-	if (t > 0 && !signaled)
-		return -EDEADLK;
+		/*
+		 * radeon_test_signaled must be called after
+		 * set_current_state to prevent a race with wake_up_process
+		 */
+		if (radeon_test_signaled(fence))
+			break;
+
+		if (rdev->needs_reset) {
+			t = -EDEADLK;
+			break;
+		}
+
+		t = schedule_timeout(t);
+
+		if (t > 0 && intr && signal_pending(current))
+			t = -ERESTARTSYS;
+	}
+
+	__set_current_state(TASK_RUNNING);
+	fence_remove_callback(f, &cb.base);
+
 	return t;
 }
 

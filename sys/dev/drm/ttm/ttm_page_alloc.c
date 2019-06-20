@@ -308,11 +308,12 @@ static void ttm_pool_update_free_locked(struct ttm_page_pool *pool,
  *
  * @pool: to free the pages from
  * @free_all: If set to true will free all pages in pool
- * @gfp: GFP flags.
+ * @use_static: Safe to use static buffer
  **/
 static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free,
-			      gfp_t gfp)
+			      bool use_static)
 {
+	static struct page *static_buf[NUM_PAGES_TO_ALLOC];
 	unsigned long irq_flags;
 	struct vm_page *p, *p1;
 	struct page **pages_to_free;
@@ -323,7 +324,11 @@ static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free,
 	if (NUM_PAGES_TO_ALLOC < nr_free)
 		npages_to_free = NUM_PAGES_TO_ALLOC;
 
-	pages_to_free = kmalloc(npages_to_free * sizeof(struct page *), M_DRM, gfp);
+	if (use_static)
+		pages_to_free = static_buf;
+	else
+		pages_to_free = kmalloc(npages_to_free * sizeof(struct page *),
+					M_DRM, GFP_KERNEL);
 	if (!pages_to_free) {
 		pr_err("Failed to allocate memory for pool free operation\n");
 		return 0;
@@ -388,7 +393,8 @@ restart:
 	if (freed_pages)
 		ttm_pages_put(pages_to_free, freed_pages);
 out:
-	kfree(pages_to_free);
+	if (pages_to_free != static_buf)
+		kfree(pages_to_free);
 	return nr_free;
 }
 
@@ -396,8 +402,6 @@ out:
  * Callback for mm to request pool to reduce number of page held.
  *
  * XXX: (dchinner) Deadlock warning!
- *
- * We need to pass sc->gfp_mask to ttm_page_pool_free().
  *
  * This code is crying out for a shrinker per pool....
  */
@@ -429,8 +433,8 @@ ttm_pool_shrink_scan(void *arg)
 		if (shrink_pages == 0)
 			break;
 		pool = &_manager->pools[(i + pool_offset)%NUM_POOLS];
-		shrink_pages = ttm_page_pool_free(pool, nr_free,
-						  sc->gfp_mask);
+		/* OK to use static buffer since global mutex is held. */
+		shrink_pages = ttm_page_pool_free(pool, nr_free, true);
 		freed += nr_free - shrink_pages;
 	}
 	mutex_unlock(&lock);
@@ -721,7 +725,7 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 	}
 	spin_unlock_irqrestore(&pool->lock, irq_flags);
 	if (npages)
-		ttm_page_pool_free(pool, npages, GFP_KERNEL);
+		ttm_page_pool_free(pool, npages, false);
 }
 
 /*
@@ -856,9 +860,9 @@ void ttm_page_alloc_fini(void)
 	pr_info("Finalizing pool allocator\n");
 	ttm_pool_mm_shrink_fini(_manager);
 
+	/* OK to use static buffer since global mutex is no longer used. */
 	for (i = 0; i < NUM_POOLS; ++i)
-		ttm_page_pool_free(&_manager->pools[i], FREE_ALL_PAGES,
-				   GFP_KERNEL);
+		ttm_page_pool_free(&_manager->pools[i], FREE_ALL_PAGES, true);
 
 	kobject_put(&_manager->kobj);
 	_manager = NULL;

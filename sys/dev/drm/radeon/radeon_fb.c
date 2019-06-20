@@ -22,9 +22,9 @@
  *
  * Authors:
  *     David Airlie
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_fb.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
+#include <linux/module.h>
+#include <linux/fb.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
@@ -33,6 +33,8 @@
 #include "radeon.h"
 
 #include <drm/drm_fb_helper.h>
+
+#include <linux/vga_switcheroo.h>
 
 /* object hierarchy -
    this contains a helper + a radeon fb
@@ -45,12 +47,42 @@ struct radeon_fbdev {
 	struct radeon_device *rdev;
 };
 
+/**
+ * radeon_fb_helper_set_par - Hide cursor on CRTCs used by fbdev.
+ *
+ * @info: fbdev info
+ *
+ * This function hides the cursor on all CRTCs used by fbdev.
+ */
+static int radeon_fb_helper_set_par(struct fb_info *info)
+{
+	int ret;
+
+	ret = drm_fb_helper_set_par(info);
+
+	/* XXX: with universal plane support fbdev will automatically disable
+	 * all non-primary planes (including the cursor)
+	 */
+	if (ret == 0) {
+		struct drm_fb_helper *fb_helper = info->par;
+		int i;
+
+		for (i = 0; i < fb_helper->crtc_count; i++) {
+			struct drm_crtc *crtc = fb_helper->crtc_info[i].mode_set.crtc;
+
+			radeon_crtc_cursor_set2(crtc, NULL, 0, 0, 0, 0, 0);
+		}
+	}
+
+	return ret;
+}
+
 static struct fb_ops radeonfb_ops = {
 #if 0
 	.owner = THIS_MODULE,
 	.fb_check_var = drm_fb_helper_check_var,
 #endif
-	.fb_set_par = drm_fb_helper_set_par,
+	.fb_set_par = radeon_fb_helper_set_par,
 #if 0
 	.fb_fillrect = cfb_fillrect,
 	.fb_copyarea = cfb_copyarea,
@@ -203,7 +235,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	struct drm_gem_object *gobj = NULL;
 	struct radeon_bo *rbo = NULL;
 #ifdef DUMBBELL_WIP
-	device_t device = rdev->dev;
+	struct device *device = &rdev->pdev->dev;
 #endif /* DUMBBELL_WIP */
 	device_t vga_dev = device_get_parent(rdev->dev->bsddev);
 	int ret;
@@ -227,6 +259,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 	rbo = gem_to_radeon_bo(gobj);
 
+	/* okay we have an object now allocate the framebuffer */
 	info = drm_fb_helper_alloc_fbi(helper);
 	if (IS_ERR(info)) {
 		ret = PTR_ERR(info);
@@ -245,8 +278,10 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 	/* setup helper */
 	rfbdev->helper.fb = fb;
+	rfbdev->helper.fbdev = info;
 
-	memset(rbo->kptr, 0, radeon_bo_size(rbo));
+	memset_io(rbo->kptr, 0x0, radeon_bo_size(rbo));
+
 	tmp = radeon_bo_gpu_offset(rbo) - rdev->mc.vram_start;
 	info->vaddr = (vm_offset_t)rbo->kptr;
 	info->paddr = rdev->mc.aper_base + tmp;
@@ -261,11 +296,15 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	info->fbops = &radeonfb_ops;
 #endif
 
+	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
+
 	DRM_INFO("fb mappable at 0x%jX\n",  info->paddr);
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)rdev->mc.aper_base);
 	DRM_INFO("size %lu\n", (unsigned long)radeon_bo_size(rbo));
 	DRM_INFO("fb depth is %d\n", fb->depth);
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
+
+	vga_switcheroo_client_fb_set(rdev->ddev->pdev, info);
 	return 0;
 
 out_destroy_fbi:
@@ -278,7 +317,7 @@ out_unref:
 		drm_gem_object_unreference(gobj);
 		drm_framebuffer_unregister_private(fb);
 		drm_framebuffer_cleanup(fb);
-		kfree(fb); /* XXX malloc'd in radeon_user_framebuffer_create? */
+		kfree(fb);
 	}
 	return ret;
 }
@@ -364,6 +403,16 @@ void radeon_fbdev_set_suspend(struct radeon_device *rdev, int state)
 #ifdef DUMBBELL_WIP
 	fb_set_suspend(rdev->mode_info.rfbdev->helper.fbdev, state);
 #endif /* DUMBBELL_WIP */
+}
+
+int radeon_fbdev_total_size(struct radeon_device *rdev)
+{
+	struct radeon_bo *robj;
+	int size = 0;
+
+	robj = gem_to_radeon_bo(rdev->mode_info.rfbdev->rfb.obj);
+	size += radeon_bo_size(robj);
+	return size;
 }
 
 bool radeon_fbdev_robj_is_fb(struct radeon_device *rdev, struct radeon_bo *robj)

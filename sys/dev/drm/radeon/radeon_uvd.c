@@ -140,7 +140,8 @@ int radeon_uvd_init(struct radeon_device *rdev)
 		  RADEON_UVD_STACK_SIZE + RADEON_UVD_HEAP_SIZE +
 		  RADEON_GPU_PAGE_SIZE;
 	r = radeon_bo_create(rdev, bo_size, PAGE_SIZE, true,
-			     RADEON_GEM_DOMAIN_VRAM, 0, NULL, &rdev->uvd.vcpu_bo);
+			     RADEON_GEM_DOMAIN_VRAM, 0, NULL,
+			     NULL, &rdev->uvd.vcpu_bo);
 	if (r) {
 		dev_err(rdev->dev, "(%d) failed to allocate UVD bo\n", r);
 		return r;
@@ -486,12 +487,12 @@ static int radeon_uvd_cs_reloc(struct radeon_cs_parser *p,
 			       unsigned buf_sizes[], bool *has_msg_cmd)
 {
 	struct radeon_cs_chunk *relocs_chunk;
-	struct radeon_cs_reloc *reloc;
+	struct radeon_bo_list *reloc;
 	unsigned idx, cmd, offset;
 	uint64_t start, end;
 	int r;
 
-	relocs_chunk = &p->chunks[p->chunk_relocs_idx];
+	relocs_chunk = p->chunk_relocs;
 	offset = radeon_get_ib_value(p, data0);
 	idx = radeon_get_ib_value(p, data1);
 	if (idx >= relocs_chunk->length_dw) {
@@ -500,7 +501,7 @@ static int radeon_uvd_cs_reloc(struct radeon_cs_parser *p,
 		return -EINVAL;
 	}
 
-	reloc = p->relocs_ptr[(idx / 4)];
+	reloc = &p->relocs[(idx / 4)];
 	start = reloc->gpu_offset;
 	end = start + radeon_bo_size(reloc->robj);
 	start += offset;
@@ -608,13 +609,13 @@ int radeon_uvd_cs_parse(struct radeon_cs_parser *p)
 		[0x00000003]	=	2048,
 	};
 
-	if (p->chunks[p->chunk_ib_idx].length_dw % 16) {
+	if (p->chunk_ib->length_dw % 16) {
 		DRM_ERROR("UVD IB length (%d) not 16 dwords aligned!\n",
-			  p->chunks[p->chunk_ib_idx].length_dw);
+			  p->chunk_ib->length_dw);
 		return -EINVAL;
 	}
 
-	if (p->chunk_relocs_idx == -1) {
+	if (p->chunk_relocs == NULL) {
 		DRM_ERROR("No relocation chunk !\n");
 		return -EINVAL;
 	}
@@ -638,7 +639,7 @@ int radeon_uvd_cs_parse(struct radeon_cs_parser *p)
 			DRM_ERROR("Unknown packet type %d !\n", pkt.type);
 			return -EINVAL;
 		}
-	} while (p->idx < p->chunks[p->chunk_ib_idx].length_dw);
+	} while (p->idx < p->chunk_ib->length_dw);
 
 	if (!has_msg_cmd) {
 		DRM_ERROR("UVD-IBs need a msg command!\n");

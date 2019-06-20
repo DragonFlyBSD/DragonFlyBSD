@@ -1,4 +1,30 @@
-#if !defined(_RADEON_TRACE_H) || defined(TRACE_HEADER_MULTI_READ)
+/*
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice unmodified, this list of conditions, and the following
+ *    disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef _RADEON_TRACE_H
 #define _RADEON_TRACE_H_
 
 #include <linux/stringify.h>
@@ -7,203 +33,15 @@
 
 #include <drm/drmP.h>
 
-#undef TRACE_SYSTEM
-#define TRACE_SYSTEM radeon
-#define TRACE_SYSTEM_STRING __stringify(TRACE_SYSTEM)
-#define TRACE_INCLUDE_FILE radeon_trace
+#define trace_radeon_bo_create(bo)
 
-TRACE_EVENT(radeon_bo_create,
-	    TP_PROTO(struct radeon_bo *bo),
-	    TP_ARGS(bo),
-	    TP_STRUCT__entry(
-			     __field(struct radeon_bo *, bo)
-			     __field(u32, pages)
-			     ),
+#define trace_radeon_fence_emit(device, ring, number)
+#define trace_radeon_fence_wait_begin(device, ring, number)
+#define trace_radeon_fence_wait_end(device, ring, number)
 
-	    TP_fast_assign(
-			   __entry->bo = bo;
-			   __entry->pages = bo->tbo.num_pages;
-			   ),
-	    TP_printk("bo=%p, pages=%u", __entry->bo, __entry->pages)
-);
+#define trace_radeon_vm_bo_update(bo_va)
+#define trace_radeon_vm_flush(pd_addr, ring, vm_id)
+#define trace_radeon_vm_grab_id(i, ring)
+#define trace_radeon_vm_set_page(pe, addr, count, incr, flags)
 
-TRACE_EVENT(radeon_cs,
-	    TP_PROTO(struct radeon_cs_parser *p),
-	    TP_ARGS(p),
-	    TP_STRUCT__entry(
-			     __field(u32, ring)
-			     __field(u32, dw)
-			     __field(u32, fences)
-			     ),
-
-	    TP_fast_assign(
-			   __entry->ring = p->ring;
-			   __entry->dw = p->chunks[p->chunk_ib_idx].length_dw;
-			   __entry->fences = radeon_fence_count_emitted(
-				p->rdev, p->ring);
-			   ),
-	    TP_printk("ring=%u, dw=%u, fences=%u",
-		      __entry->ring, __entry->dw,
-		      __entry->fences)
-);
-
-TRACE_EVENT(radeon_vm_grab_id,
-	    TP_PROTO(unsigned vmid, int ring),
-	    TP_ARGS(vmid, ring),
-	    TP_STRUCT__entry(
-			     __field(u32, vmid)
-			     __field(u32, ring)
-			     ),
-
-	    TP_fast_assign(
-			   __entry->vmid = vmid;
-			   __entry->ring = ring;
-			   ),
-	    TP_printk("vmid=%u, ring=%u", __entry->vmid, __entry->ring)
-);
-
-TRACE_EVENT(radeon_vm_bo_update,
-	    TP_PROTO(struct radeon_bo_va *bo_va),
-	    TP_ARGS(bo_va),
-	    TP_STRUCT__entry(
-			     __field(u64, soffset)
-			     __field(u64, eoffset)
-			     __field(u32, flags)
-			     ),
-
-	    TP_fast_assign(
-			   __entry->soffset = bo_va->soffset;
-			   __entry->eoffset = bo_va->eoffset;
-			   __entry->flags = bo_va->flags;
-			   ),
-	    TP_printk("soffs=%010llx, eoffs=%010llx, flags=%08x",
-		      __entry->soffset, __entry->eoffset, __entry->flags)
-);
-
-TRACE_EVENT(radeon_vm_set_page,
-	    TP_PROTO(uint64_t pe, uint64_t addr, unsigned count,
-		     uint32_t incr, uint32_t flags),
-	    TP_ARGS(pe, addr, count, incr, flags),
-	    TP_STRUCT__entry(
-			     __field(u64, pe)
-			     __field(u64, addr)
-			     __field(u32, count)
-			     __field(u32, incr)
-			     __field(u32, flags)
-			     ),
-
-	    TP_fast_assign(
-			   __entry->pe = pe;
-			   __entry->addr = addr;
-			   __entry->count = count;
-			   __entry->incr = incr;
-			   __entry->flags = flags;
-			   ),
-	    TP_printk("pe=%010Lx, addr=%010Lx, incr=%u, flags=%08x, count=%u",
-		      __entry->pe, __entry->addr, __entry->incr,
-		      __entry->flags, __entry->count)
-);
-
-TRACE_EVENT(radeon_vm_flush,
-	    TP_PROTO(uint64_t pd_addr, unsigned ring, unsigned id),
-	    TP_ARGS(pd_addr, ring, id),
-	    TP_STRUCT__entry(
-			     __field(u64, pd_addr)
-			     __field(u32, ring)
-			     __field(u32, id)
-			     ),
-
-	    TP_fast_assign(
-			   __entry->pd_addr = pd_addr;
-			   __entry->ring = ring;
-			   __entry->id = id;
-			   ),
-	    TP_printk("pd_addr=%010Lx, ring=%u, id=%u",
-		      __entry->pd_addr, __entry->ring, __entry->id)
-);
-
-DECLARE_EVENT_CLASS(radeon_fence_request,
-
-	    TP_PROTO(struct drm_device *dev, int ring, u32 seqno),
-
-	    TP_ARGS(dev, ring, seqno),
-
-	    TP_STRUCT__entry(
-			     __field(u32, dev)
-			     __field(int, ring)
-			     __field(u32, seqno)
-			     ),
-
-	    TP_fast_assign(
-			   __entry->dev = dev->primary->index;
-			   __entry->ring = ring;
-			   __entry->seqno = seqno;
-			   ),
-
-	    TP_printk("dev=%u, ring=%d, seqno=%u",
-		      __entry->dev, __entry->ring, __entry->seqno)
-);
-
-DEFINE_EVENT(radeon_fence_request, radeon_fence_emit,
-
-	    TP_PROTO(struct drm_device *dev, int ring, u32 seqno),
-
-	    TP_ARGS(dev, ring, seqno)
-);
-
-DEFINE_EVENT(radeon_fence_request, radeon_fence_wait_begin,
-
-	    TP_PROTO(struct drm_device *dev, int ring, u32 seqno),
-
-	    TP_ARGS(dev, ring, seqno)
-);
-
-DEFINE_EVENT(radeon_fence_request, radeon_fence_wait_end,
-
-	    TP_PROTO(struct drm_device *dev, int ring, u32 seqno),
-
-	    TP_ARGS(dev, ring, seqno)
-);
-
-DECLARE_EVENT_CLASS(radeon_semaphore_request,
-
-	    TP_PROTO(int ring, struct radeon_semaphore *sem),
-
-	    TP_ARGS(ring, sem),
-
-	    TP_STRUCT__entry(
-			     __field(int, ring)
-			     __field(signed, waiters)
-			     __field(uint64_t, gpu_addr)
-			     ),
-
-	    TP_fast_assign(
-			   __entry->ring = ring;
-			   __entry->waiters = sem->waiters;
-			   __entry->gpu_addr = sem->gpu_addr;
-			   ),
-
-	    TP_printk("ring=%u, waiters=%d, addr=%010Lx", __entry->ring,
-		      __entry->waiters, __entry->gpu_addr)
-);
-
-DEFINE_EVENT(radeon_semaphore_request, radeon_semaphore_signale,
-
-	    TP_PROTO(int ring, struct radeon_semaphore *sem),
-
-	    TP_ARGS(ring, sem)
-);
-
-DEFINE_EVENT(radeon_semaphore_request, radeon_semaphore_wait,
-
-	    TP_PROTO(int ring, struct radeon_semaphore *sem),
-
-	    TP_ARGS(ring, sem)
-);
-
-#endif
-
-/* This part must be outside protection */
-#undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH .
-#include <trace/define_trace.h>
+#endif	/* _RADEON_TRACE_H_ */
