@@ -194,7 +194,7 @@ TUNABLE_INT("debug.acpi.ec.timeout", &ec_timeout);
 SYSCTL_INT(_debug_acpi_ec, OID_AUTO, timeout, CTLFLAG_RW, &ec_timeout,
     EC_TIMEOUT, "Total time spent waiting for a response (poll+sleep)");
 static int	ec_timeout_backoff = EC_TIMEOUT_BACKOFF;
-TUNABLE_INT("debug.acpi.ec.timeout_backoff", &ec_timeout);
+TUNABLE_INT("debug.acpi.ec.timeout_backoff", &ec_timeout_backoff);
 SYSCTL_INT(_debug_acpi_ec, OID_AUTO, timeout_backoff, CTLFLAG_RW,
 	&ec_timeout_backoff, EC_TIMEOUT_BACKOFF,
 	"Total time spent waiting for a response (poll+sleep)");
