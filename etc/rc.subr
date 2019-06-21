@@ -39,6 +39,8 @@
 #	functions used by various rc scripts
 #
 
+: ${RC_PID:=$$}; export RC_PID
+
 #
 #	Operating System dependent/independent variables
 #
@@ -56,6 +58,7 @@ _rc_subr_loaded="YES"
 
 SYSCTL="/sbin/sysctl"
 SYSCTL_N="${SYSCTL} -n"
+SYSCTL_W="${SYSCTL}"
 CMD_OSTYPE="${SYSCTL_N} kern.ostype"
 OSTYPE=`${CMD_OSTYPE}`
 
@@ -65,7 +68,6 @@ RC_DISABLED=2
 RC_IRRELEVANT=3
 RC_CONFIGURED=4
 RC_STOPPED=5
-SYSCTL_W="${SYSCTL}"
 
 #
 #	functions
@@ -262,6 +264,7 @@ checkyesno()
 	esac
 }
 
+#
 # reverse_list list
 #	print the list in reverse order
 #
@@ -272,6 +275,32 @@ reverse_list()
 		_revlist="$_revfile $_revlist"
 	done
 	echo $_revlist
+}
+
+#
+# stop_boot always
+#	If booting directly to multiuser or $always is true,
+#	send SIGTERM to the parent (/etc/rc) to abort the boot.
+#	Otherwise just exit.
+#
+stop_boot()
+{
+	local always
+
+	case $1 in
+		#	"yes", "true", "on", or "1"
+        [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee]|[Oo][Nn]|1)
+		always=true
+		;;
+	*)
+		always=false
+		;;
+	esac
+	if [ "$autoboot" = yes -o "$always" = true ]; then
+		echo "ERROR: ABORTING BOOT (sending SIGTERM to parent)!"
+		kill -TERM ${RC_PID}
+	fi
+	exit 1
 }
 
 #
