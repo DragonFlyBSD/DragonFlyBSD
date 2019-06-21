@@ -36,9 +36,8 @@ mountcritlocal_start()
 	mount -a -t no${mount_excludes%,}
 	err=$?
 	if [ ${err} -ne 0 ]; then
-		echo 'Mounting /etc/fstab filesystems failed,' \
-		     'startup aborted'
-		exit ${err}
+		echo 'Mounting /etc/fstab filesystems failed; startup aborted'
+		stop_boot true
 	fi
 
 	# Mount /var/run/shm for shm_open() and friends

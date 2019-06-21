@@ -2,7 +2,6 @@
 #
 # $NetBSD: root,v 1.2 2000/05/13 08:45:09 lukem Exp $
 # $FreeBSD: src/etc/rc.d/root,v 1.5 2002/10/31 02:06:05 gordon Exp $
-# $DragonFly: src/etc/rc.d/root,v 1.4 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: root
@@ -24,8 +23,8 @@ root_start()
 		;;
 	*)
 		if ! mount -u -o rw /; then
-			echo 'Mounting root filesystem rw failed, startup aborted'
-			exit 1
+			echo 'Mounting root filesystem rw failed; startup aborted'
+			stop_boot true
 		fi
 		;;
 	esac
