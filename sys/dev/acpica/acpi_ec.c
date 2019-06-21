@@ -197,12 +197,12 @@ static int	ec_timeout_backoff = EC_TIMEOUT_BACKOFF;
 TUNABLE_INT("debug.acpi.ec.timeout_backoff", &ec_timeout_backoff);
 SYSCTL_INT(_debug_acpi_ec, OID_AUTO, timeout_backoff, CTLFLAG_RW,
 	&ec_timeout_backoff, EC_TIMEOUT_BACKOFF,
-	"Total time spent waiting for a response (poll+sleep)");
+	"Total time spent retrying for a response (poll+sleep) in case of failure");
 static int	ec_auto_silence = 10;	/* silence after 10 errors */
 TUNABLE_INT("debug.acpi.ec.auto_silence", &ec_auto_silence);
 SYSCTL_INT(_debug_acpi_ec, OID_AUTO, auto_silence, CTLFLAG_RW,
 	&ec_auto_silence, 1,
-	"Total time spent waiting for a response (poll+sleep)");
+	"Auto-silence ACPI messages after x retries in case of failure");
 
 #ifndef KTR_ACPI_EC
 #define	KTR_ACPI_EC	KTR_ALL
