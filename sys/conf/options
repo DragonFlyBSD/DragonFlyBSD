@@ -75,6 +75,7 @@ MSGMNI		opt_sysvipc.h
 MSGSEG		opt_sysvipc.h
 MSGSSZ		opt_sysvipc.h
 MSGTQL		opt_sysvipc.h
+NO_SYSCTL_DESCR	opt_global.h
 UCONSOLE
 ICMP_BANDLIM
 
@@ -678,8 +679,4 @@ SYSCTL_DEBUG		opt_sysctl.h
 
 # Obsolete options (will be removed in the future)
 #
-FAST_IPSEC		opt_dontuse.h
-IPSEC			opt_dontuse.h
-IPSEC_DEBUG		opt_dontuse.h
-IPSEC_ESP		opt_dontuse.h
-IPSEC_FILTERGIF		opt_dontuse.h
+# [none at the moment]
