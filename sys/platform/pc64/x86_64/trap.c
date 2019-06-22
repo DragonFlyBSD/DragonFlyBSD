@@ -922,6 +922,7 @@ trap_pfault(struct trapframe *frame, int usermode)
 					}
 				}
 			}
+#endif
 			if (td->td_gd->gd_intr_nesting_level ||
 			    trap_is_smap(frame) ||
 			    td->td_pcb == NULL ||
@@ -932,7 +933,6 @@ trap_pfault(struct trapframe *frame, int usermode)
 				trap_fatal(frame, frame->tf_addr);
 				return (-1);
 			}
-#endif
 		}
 		map = &vm->vm_map;
 	}
