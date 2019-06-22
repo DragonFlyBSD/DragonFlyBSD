@@ -607,7 +607,7 @@ an infinite lease time.
 If you set
 .Ic ip6_address ,
 .Nm dhcpcd
-will continue auto-configuation as normal.
+will continue auto-configuration as normal.
 .Pp
 Here is an example which configures two static address, overriding the default
 IPv4 broadcast address, an IPv4 router, DNS and disables IPv6 auto-configuration.
