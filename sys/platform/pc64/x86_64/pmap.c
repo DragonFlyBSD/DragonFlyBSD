@@ -3440,8 +3440,8 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 			pmark = pmap_placemarker_hash(pmap, pindex);
 
 			if (((*pmark ^ pindex) & ~PM_PLACEMARK_WAKEUP) == 0) {
-				atomic_set_long(pmark, PM_PLACEMARK_WAKEUP);
 				tsleep_interlock(pmark, 0);
+				atomic_set_long(pmark, PM_PLACEMARK_WAKEUP);
 				if (((*pmark ^ pindex) &
 				     ~PM_PLACEMARK_WAKEUP) == 0) {
 					spin_unlock(&pmap->pm_spin);
@@ -3562,8 +3562,8 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 
 			if ((pmarkp && *pmark != PM_NOPLACEMARK) ||
 			    ((*pmark ^ pindex) & ~PM_PLACEMARK_WAKEUP) == 0) {
-				atomic_set_long(pmark, PM_PLACEMARK_WAKEUP);
 				tsleep_interlock(pmark, 0);
+				atomic_set_long(pmark, PM_PLACEMARK_WAKEUP);
 				if ((pmarkp && *pmark != PM_NOPLACEMARK) ||
 				    ((*pmark ^ pindex) &
 				     ~PM_PLACEMARK_WAKEUP) == 0) {
@@ -6181,16 +6181,31 @@ pmap_pgscan(struct pmap_pgscan_info *pginfo)
  * NOTE: PM_PLACEMARK_WAKEUP sets a bit which is already set in
  *	 PM_NOPLACEMARK, so it does not interfere with placemarks
  *	 which have already been woken up.
+ *
+ * NOTE: This routine is called without the pmap spin-lock and so can
+ *	 race changes to *pmark.  Due to the sensitivity of the routine
+ *	 to possible MULTIPLE interactions from other cpus, and the
+ *	 overloading of the WAKEUP bit on PM_NOPLACEMARK, we have to
+ *	 use a cmpset loop to avoid a race that might cause the WAKEUP
+ *	 bit to be lost.
+ *
+ * Caller is expected to retry its operation upon return.
  */
 static
 void
 pv_placemarker_wait(pmap_t pmap, vm_pindex_t *pmark)
 {
-	if (*pmark != PM_NOPLACEMARK) {
-		atomic_set_long(pmark, PM_PLACEMARK_WAKEUP);
+	vm_pindex_t mark;
+
+	mark = *pmark;
+	cpu_ccfence();
+	while (mark != PM_NOPLACEMARK) {
 		tsleep_interlock(pmark, 0);
-		if (*pmark != PM_NOPLACEMARK)
+		if (atomic_fcmpset_long(pmark, &mark,
+				       mark | PM_PLACEMARK_WAKEUP)) {
 			tsleep(pmark, PINTERLOCKED, "pvplw", 0);
+			break;
+		}
 	}
 }
 
