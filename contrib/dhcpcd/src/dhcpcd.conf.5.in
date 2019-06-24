@@ -709,7 +709,7 @@ of a randomly generated number.
 DHCP, ND and DHCPv6 allow for the use of custom options.
 Each option needs to be started with the
 .Ic define ,
-.If definend
+.Ic definend
 or
 .Ic define6
 directive.
