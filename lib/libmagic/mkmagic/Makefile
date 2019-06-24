@@ -11,6 +11,10 @@ MAGIC=	${MAGICSHAREDIR}/magic
 CFLAGS+=	-DHAVE_CONFIG_H -DCOMPILE_ONLY -DMAGIC=\"${MAGIC}\"
 CFLAGS+=	-I${.CURDIR}/../libmagic
 
+# needed to access magic.h
+#
+CFLAGS+=	-I${.OBJDIR}
+
 VER!=  grep -w VERSION ${.CURDIR}/../libmagic/config.h | awk -F\" '{print $$2}'
 
 # XXX -Wunused-function in apprentice.c
