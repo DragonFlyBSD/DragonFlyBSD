@@ -69,7 +69,7 @@
 .Fl k , Fl Fl release
 .Op interface
 .Nm
-.Fl U, Fl Fl dumplease
+.Fl U , Fl Fl dumplease
 .Ar interface
 .Nm
 .Fl Fl version
@@ -259,7 +259,7 @@ otheriwse if persistent storage is available then a DUID-LLT
 (link local address + time) is generated,
 otherwise DUID-LL is generated (link local address).
 This, plus the IAID will be used as the
-.Fl I, Fl Fl clientid .
+.Fl I , Fl Fl clientid .
 The DUID generated will be held in
 .Pa @DBDIR@/duid
 and should not be copied to other hosts.
@@ -473,7 +473,7 @@ This option is only needed when
 .Nm
 is not processing IPv6RA messages and the need for DHCPv6 Information Request
 exists.
-.It Fl S, Fl Fl static Ar value
+.It Fl S , Fl Fl static Ar value
 Configures a static DHCP
 .Ar value .
 If you set
@@ -663,7 +663,7 @@ Quiet
 .Nm
 on the command line, only warnings and errors will be displayed.
 The messages are still logged though.
-.It Fl T, Fl Fl test
+.It Fl T , Fl Fl test
 On receipt of DHCP messages just call
 .Pa @SCRIPT@
 with the reason of TEST which echos the DHCP variables found in the message
@@ -676,7 +676,7 @@ option is not sent in TEST mode so that the server does not lease an address.
 To test INFORM the interface needs to be configured with the desired address
 before starting
 .Nm .
-.It Fl U, Fl Fl dumplease Ar interface
+.It Fl U , Fl Fl dumplease Ar interface
 Dumps the last lease for the
 .Ar interface
 to stdout.
@@ -686,20 +686,20 @@ Use the
 or
 .Fl 6
 flags to specify an address family.
-.It Fl V, Fl Fl variables
+.It Fl V , Fl Fl variables
 Display a list of option codes, the associated variable and encoding for use in
 .Xr dhcpcd-run-hooks 8 .
 Variables are prefixed with new_ and old_ unless the option number is -.
 Variables without an option are part of the DHCP message and cannot be
 directly requested.
-.It Fl W, Fl Fl whitelist Ar address Ns Op /cidr
+.It Fl W , Fl Fl whitelist Ar address Ns Op /cidr
 Only accept packets from
 .Ar address Ns Op /cidr .
-.Fl X, Fl Fl blacklist
+.Fl X , Fl Fl blacklist
 is ignored if
-.Fl W, Fl Fl whitelist
+.Fl W , Fl Fl whitelist
 is set.
-.It Fl X, Fl Fl blacklist Ar address Ns Op Ar /cidr
+.It Fl X , Fl Fl blacklist Ar address Ns Op Ar /cidr
 Ignore all packets from
 .Ar address Ns Op Ar /cidr .
 .It Fl Z , Fl Fl denyinterfaces Ar pattern

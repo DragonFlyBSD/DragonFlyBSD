@@ -108,7 +108,7 @@ detailed further below:
 Create a new encrypted TrueCrypt volume on the device
 specified by
 .Fl -device .
-.It Fl h, Fl -help
+.It Fl h , Fl -help
 Print help message and exit.
 .It Fl i , Fl -info
 Print out information about the encrypted device specified by
@@ -143,7 +143,7 @@ If you mapped a volume using full disk encryption and created
 mapping for individual partitions using
 .Xr kpartx 8 ,
 you must remove these prior to unmapping the volume.
-.It Fl v, Fl -version
+.It Fl v , Fl -version
 Print version message and exit.
 .El
 .Pp
@@ -189,7 +189,7 @@ Specifies which cipher algorithm or cascade of ciphers to use
 to encrypt the new volume.
 To see which algorithms are supported, specify
 .Fl -cipher Ns = Ns Cm help .
-.It Fl g, Fl -hidden
+.It Fl g , Fl -hidden
 Specifies that the newly created volume will contain a hidden
 volume.
 The keyfiles applied to the passphrase for the hidden
@@ -197,7 +197,7 @@ volume are those specified by
 .Fl -keyfile-hidden .
 The user will be prompted for the size of the hidden volume
 interactively.
-.It Fl w, Fl -weak-keys
+.It Fl w , Fl -weak-keys
 Use
 .Xr urandom 4
 for key material instead of a strong entropy source.
@@ -221,7 +221,7 @@ If no cipher is specified, the same as for the outer volume
 will be used.
 To see which algorithms are supported, specify
 .Fl -cipher-hidden Ns = Ns Cm help .
-.It Fl z, Fl -insecure-erase
+.It Fl z , Fl -insecure-erase
 Skips the secure erase of the disk.
 Use this option carefully as it is a security risk!
 .El
@@ -233,7 +233,7 @@ and
 .Fl -modify
 commands are:
 .Bl -tag -width indent
-.It Fl e, Fl -protect-hidden
+.It Fl e , Fl -protect-hidden
 Specifies that an outer volume will be queried or mapped, but
 its reported size will be adjusted accordingly to the size of
 the hidden volume contained in it.
