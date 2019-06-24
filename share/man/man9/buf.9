@@ -71,7 +71,8 @@ and not just
 Finally, the VM system's core buffer cache supports valid and dirty bits
 .Fa ( m->valid , m->dirty )
 for pages in
-.Dv DEV_BSIZE chunks.
+.Dv DEV_BSIZE
+chunks.
 Thus a platform with a hardware page size of 4096 bytes has 8 valid and 8
 dirty bits.
 These bits are generally set and cleared in groups based on the device
