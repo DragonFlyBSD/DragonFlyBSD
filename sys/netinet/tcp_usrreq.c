@@ -121,6 +121,13 @@
 #ifdef TCPDEBUG
 #include <netinet/tcp_debug.h>
 #endif
+#include <machine/limits.h>
+
+/*
+ * Instead of erroring out, just cap values such that the t_maxidle doesn't
+ * overflow.
+ */
+#define MAXKEEP		(INT_MAX / 2)
 
 /*
  * TCP protocol interface to socket abstraction.
@@ -1623,37 +1630,42 @@ tcp_ctloutput(netmsg_t msg)
 			break;
 
 		case TCP_KEEPINIT:
-			opthz = ((int64_t)optval * hz) / 1000;
-			if (opthz >= 1)
-				tp->t_keepinit = opthz;
-			else
-				error = EINVAL;
-			break;
-
 		case TCP_KEEPIDLE:
-			opthz = ((int64_t)optval * hz) / 1000;
-			if (opthz >= 1) {
+		case TCP_KEEPINTVL:
+			if ((uint32_t)optval >= MAXKEEP / hz)
+				opthz = MAXKEEP;
+			else
+				opthz = optval * hz;
+			if (opthz == 0)
+				opthz = 1;
+			switch (sopt->sopt_name) {
+			case TCP_KEEPINIT:
+				tp->t_keepinit = opthz;
+				break;
+			case TCP_KEEPIDLE:
 				tp->t_keepidle = opthz;
 				tcp_timer_keep_activity(tp, 0);
-			} else {
-				error = EINVAL;
-			}
-			break;
-
-		case TCP_KEEPINTVL:
-			opthz = ((int64_t)optval * hz) / 1000;
-			if (opthz >= 1) {
+				break;
+			case TCP_KEEPINTVL:
 				tp->t_keepintvl = opthz;
-				tp->t_maxidle = tp->t_keepintvl * tp->t_keepcnt;
-			} else {
-				error = EINVAL;
+				if (tp->t_keepcnt == 0 ||
+				    tp->t_keepintvl >= MAXKEEP / tp->t_keepcnt)
+					tp->t_maxidle = MAXKEEP;
+				else
+					tp->t_maxidle = tp->t_keepintvl *
+							tp->t_keepcnt;
 			}
 			break;
 
 		case TCP_KEEPCNT:
 			if (optval > 0) {
 				tp->t_keepcnt = optval;
-				tp->t_maxidle = tp->t_keepintvl * tp->t_keepcnt;
+				if (tp->t_keepcnt == 0 ||
+				    tp->t_keepintvl >= MAXKEEP / tp->t_keepcnt)
+					tp->t_maxidle = MAXKEEP;
+				else
+					tp->t_maxidle = tp->t_keepintvl *
+							tp->t_keepcnt;
 			} else {
 				error = EINVAL;
 			}
@@ -1685,13 +1697,13 @@ tcp_ctloutput(netmsg_t msg)
 			optval = tp->t_flags & TF_NOPUSH;
 			break;
 		case TCP_KEEPINIT:
-			optval = ((int64_t)tp->t_keepinit * 1000) / hz;
+			optval = tp->t_keepinit / hz;
 			break;
 		case TCP_KEEPIDLE:
-			optval = ((int64_t)tp->t_keepidle * 1000) / hz;
+			optval = tp->t_keepidle / hz;
 			break;
 		case TCP_KEEPINTVL:
-			optval = ((int64_t)tp->t_keepintvl * 1000) / hz;
+			optval = tp->t_keepintvl / hz;
 			break;
 		case TCP_KEEPCNT:
 			optval = tp->t_keepcnt;
