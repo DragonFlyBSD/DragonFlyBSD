@@ -52,12 +52,12 @@
 /*
  * Virtual memory related constants, all in bytes
  */
-#define	MAXTSIZ		(256UL*1024*1024)	/* max text size */
+#define	MAXTSIZ		(32UL*1024*1024*1024)	/* max text size */
 #ifndef DFLDSIZ
 #define	DFLDSIZ		(128UL*1024*1024)	/* initial data size limit */
 #endif
 #ifndef MAXDSIZ
-#define	MAXDSIZ		(32768UL*1024*1024)	/* max data size */
+#define	MAXDSIZ		(32UL*1024*1024*1024)	/* max data size */
 #endif
 #ifndef	DFLSSIZ
 #define	DFLSSIZ		(8UL*1024*1024)		/* initial stack size limit */
@@ -66,7 +66,7 @@
 #define	MAXSSIZ		(512UL*1024*1024)	/* max stack size */
 #endif
 #ifndef	MAXTHRSSIZ
-#define	MAXTHRSSIZ	(128UL*1024UL*1024*1024) /* thread stack area */
+#define	MAXTHRSSIZ	(128UL*1024*1024*1024)	/* thread stack area */
 #endif
 #ifndef SGROWSIZ
 #define	SGROWSIZ	(128UL*1024)		/* amount to grow stack */
