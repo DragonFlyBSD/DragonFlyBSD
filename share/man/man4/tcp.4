@@ -184,11 +184,11 @@ connection cannot be established within a period of time,
 will time out the connection attempt.
 The
 .Dv TCP_KEEPINIT
-option specifies the number of milliseconds to wait
+option specifies the number of seconds to wait
 before the connection attempt times out.
 The default value for
 .Dv TCP_KEEPINIT
-is tcp.keepinit milliseconds.
+is tcp.keepinit seconds.
 For the accepted sockets, the
 .Dv TCP_KEEPINIT
 option value is inherited from the listening socket.
@@ -201,12 +201,12 @@ sends a keepalive probe to the remote system of a connection
 that has been idle for a period of time.
 The
 .Dv TCP_KEEPIDLE
-specifies the number of milliseconds before
+specifies the number of seconds before
 .Tn TCP
 will send the initial keepalive probe.
 The default value for
 .Dv TCP_KEEPIDLE
-is tcp.keepidle milliseconds.
+is tcp.keepidle seconds.
 For the accepted sockets,
 the
 .Dv TCP_KEEPIDLE
@@ -220,11 +220,11 @@ sends a keepalive probe to the remote system of a connection
 that has been idle for a period of time.
 The
 .Dv TCP_KEEPINTVL
-option specifies the number of milliseconds to wait
+option specifies the number of seconds to wait
 before retransmitting a keepalive probe.
 The default value for
 .Dv TCP_KEEPINTVL
-is tcp.keepintvl milliseconds.
+is tcp.keepintvl seconds.
 For the accepted sockets,
 the
 .Dv TCP_KEEPINTVL
@@ -242,7 +242,7 @@ option specifies the maximum number of keepalive
 probes to be sent before dropping the connection.
 The default value for
 .Dv TCP_KEEPCNT
-is tcp.keepcnt milliseconds.
+is tcp.keepcnt seconds.
 For the accepted sockets,
 the
 .Dv TCP_KEEPCNT
