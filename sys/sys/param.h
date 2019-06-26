@@ -204,9 +204,10 @@
  * 500600 - 5.6 release
  * 500700 - 5.7 development
  * 500701 - libopie/libmd removal
+ * 500702 - TCP_KEEP* milliseconds -> seconds
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500701	/* propagated to newvers */
+#define __DragonFly_version 500702	/* propagated to newvers */
 
 #include <sys/_null.h>
 
