@@ -35,6 +35,8 @@
 #include <drm/drm_dp_helper.h>
 #include <drm/drm_fixed.h>
 #include <drm/drm_crtc_helper.h>
+#include <linux/i2c.h>
+#include <linux/i2c-algo-bit.h>
 
 struct radeon_bo;
 struct radeon_device;
@@ -187,13 +189,13 @@ struct radeon_pll {
 };
 
 struct radeon_i2c_chan {
-	device_t adapter;
-	device_t iic_bus;
+	struct i2c_adapter adapter;
 	struct drm_device *dev;
+	struct i2c_algo_bit_data bit;
 	struct radeon_i2c_bus_rec rec;
 	struct drm_dp_aux aux;
+	bool has_aux;
 	struct lock mutex;
-	char   name[48];
 };
 
 /* mostly for macs, but really any system without connector tables */
@@ -751,6 +753,8 @@ extern void radeon_i2c_put_byte(struct radeon_i2c_chan *i2c,
 extern void radeon_router_select_ddc_port(struct radeon_connector *radeon_connector);
 extern void radeon_router_select_cd_port(struct radeon_connector *radeon_connector);
 extern bool radeon_ddc_probe(struct radeon_connector *radeon_connector, bool use_aux);
+
+extern struct drm_encoder *radeon_best_encoder(struct drm_connector *connector);
 
 extern bool radeon_atombios_get_ppll_ss_info(struct radeon_device *rdev,
 					     struct radeon_atom_ss *ss,

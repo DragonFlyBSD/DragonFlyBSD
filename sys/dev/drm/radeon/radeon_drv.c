@@ -158,7 +158,11 @@ int radeon_connector_table = 0;
 int radeon_tv = 1;
 int radeon_audio = -1;
 int radeon_disp_priority = 0;
+#ifdef __DragonFly__
+int radeon_hw_i2c = 1;
+#else
 int radeon_hw_i2c = 0;
+#endif
 int radeon_pcie_gen2 = -1;
 int radeon_msi = -1;
 int radeon_lockup_timeout = 10000;

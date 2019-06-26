@@ -21,18 +21,11 @@
  *
  * Authors: Alex Deucher
  *
- * $FreeBSD: head/sys/dev/drm2/radeon/atombios_i2c.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <drm/radeon_drm.h>
-#include <bus/iicbus/iic.h>
-#include <bus/iicbus/iiconf.h>
-#include <bus/iicbus/iicbus.h>
 #include "radeon.h"
 #include "atom.h"
-#include "iicbus_if.h"
-#include "iicbb_if.h"
 
 #define TARGET_HW_I2C_CLOCK 50
 
@@ -54,8 +47,8 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 
 	memset(&args, 0, sizeof(args));
 
-	lockmgr(&chan->mutex, LK_EXCLUSIVE);
-	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_EXCLUSIVE);
+	mutex_lock(&chan->mutex);
+	mutex_lock(&rdev->mode_info.atom_context->scratch_mutex);
 
 	base = (unsigned char *)rdev->mode_info.atom_context->scratch;
 
@@ -103,17 +96,19 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 		radeon_atom_copy_swap(buf, base, num, false);
 
 done:
-	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_RELEASE);
-	lockmgr(&chan->mutex, LK_RELEASE);
+	mutex_unlock(&rdev->mode_info.atom_context->scratch_mutex);
+	mutex_unlock(&chan->mutex);
 
 	return r;
 }
 
-static int
-radeon_atom_hw_i2c_xfer(device_t dev, struct iic_msg *msgs, u_int num)
+int radeon_atom_hw_i2c_xfer(struct i2c_adapter *i2c_adap,
+			    struct i2c_msg *msgs, int num);
+int radeon_atom_hw_i2c_xfer(struct i2c_adapter *i2c_adap,
+			    struct i2c_msg *msgs, int num)
 {
-	struct radeon_i2c_chan *i2c = device_get_softc(dev);
-	struct iic_msg *p;
+	struct radeon_i2c_chan *i2c = i2c_get_adapdata(i2c_adap);
+	struct i2c_msg *p;
 	int i, remaining, current_count, buffer_offset, max_bytes, ret;
 	u8 flags;
 
@@ -121,12 +116,12 @@ radeon_atom_hw_i2c_xfer(device_t dev, struct iic_msg *msgs, u_int num)
 	p = &msgs[0];
 	if ((num == 1) && (p->len == 0)) {
 		ret = radeon_process_i2c_ch(i2c,
-					    p->slave, HW_I2C_WRITE,
+					    p->addr, HW_I2C_WRITE,
 					    NULL, 0);
 		if (ret)
 			return ret;
 		else
-			return (0);
+			return num;
 	}
 
 	for (i = 0; i < num; i++) {
@@ -134,7 +129,7 @@ radeon_atom_hw_i2c_xfer(device_t dev, struct iic_msg *msgs, u_int num)
 		remaining = p->len;
 		buffer_offset = 0;
 		/* max_bytes are a limitation of ProcessI2cChannelTransaction not the hw */
-		if (p->flags & IIC_M_RD) {
+		if (p->flags & I2C_M_RD) {
 			max_bytes = ATOM_MAX_HW_I2C_READ;
 			flags = HW_I2C_READ;
 		} else {
@@ -147,7 +142,7 @@ radeon_atom_hw_i2c_xfer(device_t dev, struct iic_msg *msgs, u_int num)
 			else
 				current_count = remaining;
 			ret = radeon_process_i2c_ch(i2c,
-						    p->slave, flags,
+						    p->addr, flags,
 						    &p->buf[buffer_offset], current_count);
 			if (ret)
 				return ret;
@@ -156,71 +151,12 @@ radeon_atom_hw_i2c_xfer(device_t dev, struct iic_msg *msgs, u_int num)
 		}
 	}
 
-	return (0);
+	return num;
 }
 
-static int
-radeon_atom_hw_i2c_probe(device_t dev)
+u32 radeon_atom_hw_i2c_func(struct i2c_adapter *adap);;
+u32 radeon_atom_hw_i2c_func(struct i2c_adapter *adap)
 {
-
-	return (BUS_PROBE_SPECIFIC);
+	return I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL;
 }
 
-static int
-radeon_atom_hw_i2c_attach(device_t dev)
-{
-	struct radeon_i2c_chan *i2c;
-	device_t iic_dev;
-
-	i2c = device_get_softc(dev);
-	device_set_desc(dev, i2c->name);
-
-	/* add generic bit-banging code */
-	iic_dev = device_add_child(dev, "iicbus", -1);
-	if (iic_dev == NULL)
-		return (ENXIO);
-	device_quiet(iic_dev);
-
-	/* attach and probe added child */
-	bus_generic_attach(dev);
-
-	return (0);
-}
-
-static int
-radeon_atom_hw_i2c_detach(device_t dev)
-{
-	/* detach bit-banding code. */
-	bus_generic_detach(dev);
-
-	/* delete bit-banding code. */
-	device_delete_children(dev);
-	return (0);
-}
-
-static int
-radeon_atom_hw_i2c_reset(device_t dev, u_char speed,
-    u_char addr, u_char *oldaddr)
-{
-
-	return (0);
-}
-
-static device_method_t radeon_atom_hw_i2c_methods[] = {
-	DEVMETHOD(device_probe,		radeon_atom_hw_i2c_probe),
-	DEVMETHOD(device_attach,	radeon_atom_hw_i2c_attach),
-	DEVMETHOD(device_detach,	radeon_atom_hw_i2c_detach),
-	DEVMETHOD(iicbus_reset,		radeon_atom_hw_i2c_reset),
-	DEVMETHOD(iicbus_transfer,	radeon_atom_hw_i2c_xfer),
-	DEVMETHOD_END
-};
-
-static driver_t radeon_atom_hw_i2c_driver = {
-	"radeon_atom_hw_i2c",
-	radeon_atom_hw_i2c_methods,
-	0
-};
-
-static devclass_t radeon_atom_hw_i2c_devclass;
-DRIVER_MODULE_ORDERED(radeon_atom_hw_i2c, drm, radeon_atom_hw_i2c_driver,
-    radeon_atom_hw_i2c_devclass, NULL, NULL, SI_ORDER_ANY);
