@@ -123,10 +123,11 @@
 #include <machine/limits.h>
 
 /*
- * Instead of erroring out, just cap values such that the t_maxidle doesn't
- * overflow.
+ * Limits for TCP_KEEP* options (we will adopt the same limits that linux
+ * uses).
  */
-#define MAXKEEP		(INT_MAX / 2)
+#define MAXKEEPALIVE		32767
+#define MAXKEEPCNT		127
 
 /*
  * TCP protocol interface to socket abstraction.
@@ -1631,12 +1632,12 @@ tcp_ctloutput(netmsg_t msg)
 		case TCP_KEEPINIT:
 		case TCP_KEEPIDLE:
 		case TCP_KEEPINTVL:
-			if ((uint32_t)optval >= MAXKEEP / hz)
-				opthz = MAXKEEP;
-			else
-				opthz = optval * hz;
-			if (opthz == 0)
-				opthz = 1;
+			if (optval < 1 || optval > MAXKEEPALIVE) {
+				error = EINVAL;
+				break;
+			}
+			opthz = optval * hz;
+
 			switch (sopt->sopt_name) {
 			case TCP_KEEPINIT:
 				tp->t_keepinit = opthz;
@@ -1647,27 +1648,18 @@ tcp_ctloutput(netmsg_t msg)
 				break;
 			case TCP_KEEPINTVL:
 				tp->t_keepintvl = opthz;
-				if (tp->t_keepcnt == 0 ||
-				    tp->t_keepintvl >= MAXKEEP / tp->t_keepcnt)
-					tp->t_maxidle = MAXKEEP;
-				else
-					tp->t_maxidle = tp->t_keepintvl *
-							tp->t_keepcnt;
+				tp->t_maxidle = tp->t_keepintvl * tp->t_keepcnt;
+				break;
 			}
 			break;
 
 		case TCP_KEEPCNT:
-			if (optval > 0) {
-				tp->t_keepcnt = optval;
-				if (tp->t_keepcnt == 0 ||
-				    tp->t_keepintvl >= MAXKEEP / tp->t_keepcnt)
-					tp->t_maxidle = MAXKEEP;
-				else
-					tp->t_maxidle = tp->t_keepintvl *
-							tp->t_keepcnt;
-			} else {
+			if (optval < 1 || optval > MAXKEEPCNT) {
 				error = EINVAL;
+				break;
 			}
+			tp->t_keepcnt = optval;
+			tp->t_maxidle = tp->t_keepintvl * tp->t_keepcnt;
 			break;
 
 		default:
