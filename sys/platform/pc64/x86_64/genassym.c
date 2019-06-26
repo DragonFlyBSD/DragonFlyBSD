@@ -70,7 +70,6 @@
 #include <machine/pcb.h>
 #include <machine/pmap.h>
 
-ASSYM(P_VMSPACE, offsetof(struct proc, p_vmspace));
 ASSYM(VM_PMAP, offsetof(struct vmspace, vm_pmap));
 ASSYM(PM_ACTIVE, offsetof(struct pmap, pm_active));
 ASSYM(PM_ACTIVE_LOCK, offsetof(struct pmap, pm_active_lock));
@@ -89,10 +88,6 @@ ASSYM(PAGE_MASK, PAGE_MASK);
 ASSYM(PDRSHIFT, PDRSHIFT);
 ASSYM(USRSTACK, USRSTACK);
 ASSYM(KERNBASE,	KERNBASE);
-
-ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
-ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
-ASSYM(V_INTR, offsetof(struct vmmeter, v_intr));
 
 ASSYM(MAXCOMLEN, MAXCOMLEN);
 ASSYM(EFAULT, EFAULT);
