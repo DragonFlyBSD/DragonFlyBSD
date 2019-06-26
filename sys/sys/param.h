@@ -202,9 +202,10 @@
  * 500505 - rename <sys/termios.h> to <termios.h>
  * 500506 - LibreSSL, OpenSSH, XZ, libarchive update, libopie/libmd deprecation
  * 500600 - 5.6 release
+ * 500601 - TCP_KEEP* milliseconds -> seconds
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500600	/* propagated to newvers */
+#define __DragonFly_version 500601	/* propagated to newvers */
 
 #include <sys/_null.h>
 
