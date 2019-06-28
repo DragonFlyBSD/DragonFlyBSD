@@ -399,7 +399,7 @@ ahci_port_thread(void *arg)
 		lockmgr(&ap->ap_sig_lock, LK_EXCLUSIVE);
 		if (ap->ap_signal == 0) {
 			lksleep(&ap->ap_thread, &ap->ap_sig_lock, 0,
-				"ahport", 0);
+				"ahport", 10 * hz);
 		}
 		mask = ap->ap_signal;
 		atomic_clear_int(&ap->ap_signal, mask);
