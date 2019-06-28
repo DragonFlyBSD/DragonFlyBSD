@@ -146,8 +146,11 @@ struct da_softc {
 	da_flags flags;	
 	da_quirks quirks;
 	int	 minimum_cmd_size;
-	int	 outstanding_cmds_rd;
-	int	 outstanding_cmds_wr;
+	int	 outstanding_cmds_rd;	/* outstanding read requests */
+	int	 outstanding_cmds_wr;	/* outstanding write requests */
+	int	 tps_ticks;
+	long	 tps_rd;		/* read bandwidth exponential/tick */
+	long	 tps_wr;		/* write bandwidth exponential/tick */
 	int      trim_max_ranges;
 	int      trim_running;
 	int      trim_enabled;
@@ -362,8 +365,11 @@ static void		dashutdown(void *arg, int howto);
 #define	DA_DEFAULT_RETRY	4
 #endif
 
-static int da_retry_count = DA_DEFAULT_RETRY;
-static int da_default_timeout = DA_DEFAULT_TIMEOUT;
+__read_mostly int da_retry_count = DA_DEFAULT_RETRY;
+__read_mostly int da_default_timeout = DA_DEFAULT_TIMEOUT;
+__read_mostly static int da_balance_enable = 1;
+__read_mostly static int da_balance_ratio = 100;	/* read-to-write */
+__read_mostly static int da_balance_debug = 0;
 
 SYSCTL_NODE(_kern_cam, OID_AUTO, da, CTLFLAG_RD, 0,
             "CAM Direct Access Disk driver");
@@ -373,6 +379,13 @@ TUNABLE_INT("kern.cam.da.retry_count", &da_retry_count);
 SYSCTL_INT(_kern_cam_da, OID_AUTO, default_timeout, CTLFLAG_RW,
            &da_default_timeout, 0, "Normal I/O timeout (in seconds)");
 TUNABLE_INT("kern.cam.da.default_timeout", &da_default_timeout);
+
+SYSCTL_INT(_kern_cam_da, OID_AUTO, balance_enable, CTLFLAG_RW,
+           &da_balance_enable, 0, "Enable tps balancing");
+SYSCTL_INT(_kern_cam_da, OID_AUTO, balance_ratio, CTLFLAG_RW,
+           &da_balance_ratio, 0, "Set read-to-write ratio 100=1:1");
+SYSCTL_INT(_kern_cam_da, OID_AUTO, balance_debug, CTLFLAG_RW,
+           &da_balance_debug, 0, "Enable tps balance debugging");
 
 static struct periph_driver dadriver =
 {
@@ -1276,7 +1289,8 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		struct bio *bio_wr;
 		struct buf *bp;
 		u_int8_t tag_code;
-		int limit;
+		int rd_limit;
+		int wr_limit;
 
 		/*
 		 * See if there is a buf with work for us to do..
@@ -1387,26 +1401,61 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		 * and prevent any writes from draining, even if the HD's
 		 * cache is not full.
 		 */
-		limit = periph->sim->max_tagged_dev_openings * 2 / 3 + 1;
-#if 0
+		rd_limit = periph->sim->max_tagged_dev_openings * 2 / 3 + 1;
+		wr_limit = rd_limit;
+
+		/*
+		 * When TPS balancing is enabled we force wr_limit to 0
+		 * as necessary to balance the read TPS against the write
+		 * TPS.  A lower or higher read:write ratio may be selected
+		 * via da_balance_ratio.
+		 *
+		 * wr_limit forcing stops queueing writes.  This is generally
+		 * necessary because devices buffer writes and may starve
+		 * reads even when plenty of read tags are available.
+		 *
+		 * When no reads are being done, normalize tps_rd to avoid
+		 * instantly crowbaring the write tps.
+		 */
+		if (da_balance_enable &&
+		    periph->sim->max_tagged_dev_openings >= 8 &&
+		    (bio_rd || softc->outstanding_cmds_rd) &&
+		    (bio_wr || softc->outstanding_cmds_wr) &&
+		    softc->tps_rd * 100 < softc->tps_wr * da_balance_ratio) {
+			wr_limit = 0;
+		} else if (bio_rd == NULL && softc->outstanding_cmds_rd == 0 &&
+			   softc->tps_rd < softc->tps_wr * 2) {
+			softc->tps_rd += 100;
+		}
+		if (softc->tps_ticks != ticks) {
+			softc->tps_ticks = ticks;
+			softc->tps_rd = (softc->tps_rd * (hz - 1)) / hz;
+			softc->tps_wr = (softc->tps_wr * (hz - 1)) / hz;
+		}
+
+#if 1
 		/* DEBUGGING */
-		static int savets;
-		static long savets2;
-		if (1 || time_uptime != savets2 || (ticks != savets && (softc->outstanding_cmds_rd || softc->outstanding_cmds_wr))) {
-			kprintf("%d %d (%d)\n",
-				softc->outstanding_cmds_rd,
-				softc->outstanding_cmds_wr,
-				limit);
-			savets = ticks;
-			savets2 = time_uptime;
+		static time_t savets;
+		if (da_balance_debug &&
+		    time_uptime != savets && (bio_rd || bio_wr ||
+					      softc->outstanding_cmds_rd ||
+					      softc->outstanding_cmds_wr)) {
+			kprintf("softc=%p %d/%d %d/%d tps %ld/%ld\n",
+				softc,
+				softc->outstanding_cmds_rd, rd_limit,
+				softc->outstanding_cmds_wr, wr_limit,
+				softc->tps_rd / 100, softc->tps_wr / 100);
+			savets = time_uptime;
 		}
 #endif
-		if (bio_rd && softc->outstanding_cmds_rd < limit) {
+		if (bio_rd && softc->outstanding_cmds_rd < rd_limit) {
 			bio = bio_rd;
 			bioq_remove(&softc->bio_queue_rd, bio);
-		} else if (bio_wr && softc->outstanding_cmds_wr < limit) {
+			softc->tps_rd += 100;
+		} else if (bio_wr && softc->outstanding_cmds_wr < wr_limit) {
 			bio = bio_wr;
 			bioq_remove(&softc->bio_queue_wr, bio);
+			softc->tps_wr += 100;
 		} else {
 			if (bio_rd)
 				softc->flags |= DA_FLAG_RD_LIMIT;
@@ -1692,8 +1741,13 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 
 		/*
-		 * Block out any asyncronous callbacks
-		 * while we touch the pending ccb list.
+		 * Schedule the peripheral to pipeline further reads and
+		 * writes.  A completed write wakes up more pending writes.
+		 * A completed read must wake up on either pending reads
+		 * or writes due to TPS balancing.
+		 *
+		 * Block out any asyncronous callbacks while we touch the
+		 * pending ccb list.
 		 */
 		LIST_REMOVE(&done_ccb->ccb_h, periph_links.le);
 		if (bp->b_cmd == BUF_CMD_WRITE || bp->b_cmd == BUF_CMD_FLUSH) {
@@ -1704,8 +1758,10 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			}
 		} else {
 			--softc->outstanding_cmds_rd;
-			if (softc->flags & DA_FLAG_RD_LIMIT) {
-				softc->flags &= ~DA_FLAG_RD_LIMIT;
+			if (softc->flags &
+			    (DA_FLAG_RD_LIMIT | DA_FLAG_WR_LIMIT)) {
+				softc->flags &=
+					~(DA_FLAG_RD_LIMIT | DA_FLAG_WR_LIMIT);
 				mustsched = 1;
 			}
 		}
