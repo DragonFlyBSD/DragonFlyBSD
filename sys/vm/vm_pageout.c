@@ -133,24 +133,27 @@ static int vm_pagedaemon_time;
 static int vm_pageout_req_swapout;
 static int vm_daemon_needed;
 #endif
-static int vm_max_launder = 4096;
-static int vm_emerg_launder = 100;
-static int vm_pageout_stats_max=0, vm_pageout_stats_interval = 0;
-static int vm_pageout_full_stats_interval = 0;
-static int vm_pageout_stats_free_max=0, vm_pageout_algorithm=0;
-static int defer_swap_pageouts=0;
-static int disable_swap_pageouts=0;
-static u_int vm_anonmem_decline = ACT_DECLINE;
-static u_int vm_filemem_decline = ACT_DECLINE * 2;
+__read_mostly static int vm_max_launder = 4096;
+__read_mostly static int vm_emerg_launder = 100;
+__read_mostly static int vm_pageout_stats_max=0, vm_pageout_stats_interval = 0;
+__read_mostly static int vm_pageout_full_stats_interval = 0;
+__read_mostly static int vm_pageout_stats_free_max=0, vm_pageout_algorithm=0;
+__read_mostly static int defer_swap_pageouts=0;
+__read_mostly static int disable_swap_pageouts=0;
+__read_mostly static u_int vm_anonmem_decline = ACT_DECLINE;
+__read_mostly static u_int vm_filemem_decline = ACT_DECLINE * 2;
+__read_mostly static int vm_pageout_debug;
 
 #if defined(NO_SWAPPING)
-static int vm_swap_enabled=0;
-static int vm_swap_idle_enabled=0;
+__read_mostly static int vm_swap_enabled=0;
+__read_mostly static int vm_swap_idle_enabled=0;
 #else
-static int vm_swap_enabled=1;
-static int vm_swap_idle_enabled=0;
+__read_mostly static int vm_swap_enabled=1;
+__read_mostly static int vm_swap_idle_enabled=0;
 #endif
-int vm_pageout_memuse_mode=1;	/* 0-disable, 1-passive, 2-active swp*/
+
+/* 0-disable, 1-passive, 2-active swp*/
+__read_mostly int vm_pageout_memuse_mode=1;
 
 SYSCTL_UINT(_vm, VM_PAGEOUT_ALGORITHM, anonmem_decline,
 	CTLFLAG_RW, &vm_anonmem_decline, 0, "active->inactive anon memory");
@@ -180,6 +183,9 @@ SYSCTL_INT(_vm, OID_AUTO, pageout_stats_free_max,
 	CTLFLAG_RW, &vm_pageout_stats_free_max, 0, "Not implemented");
 SYSCTL_INT(_vm, OID_AUTO, pageout_memuse_mode,
 	CTLFLAG_RW, &vm_pageout_memuse_mode, 0, "memoryuse resource mode");
+SYSCTL_INT(_vm, OID_AUTO, pageout_debug,
+	CTLFLAG_RW, &vm_pageout_debug, 0, "debug pageout pages (count)");
+
 
 #if defined(NO_SWAPPING)
 SYSCTL_INT(_vm, VM_SWAPPING_ENABLED, swap_enabled,
@@ -410,6 +416,14 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 	int pageout_status[count];
 	int numpagedout = 0;
 	int i;
+	int dodebug;
+
+	if (vm_pageout_debug > 0) {
+		--vm_pageout_debug;
+		dodebug = 1;
+	} else {
+		dodebug = 0;
+	}
 
 	/*
 	 * Initiate I/O.  Bump the vm_page_t->busy counter.
@@ -431,13 +445,19 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 	 * Then we can unbusy the pages, we still hold a reference by virtue
 	 * of our soft-busy.
 	 */
+	if (dodebug)
+		kprintf("pageout: ");
 	for (i = 0; i < count; i++) {
 		if (vmflush_flags & VM_PAGER_TRY_TO_CACHE)
 			vm_page_protect(mc[i], VM_PROT_NONE);
 		else
 			vm_page_protect(mc[i], VM_PROT_READ);
 		vm_page_wakeup(mc[i]);
+		if (dodebug)
+			kprintf(" %p", mc[i]);
 	}
+	if (dodebug)
+		kprintf("\n");
 
 	object = mc[0]->object;
 	vm_object_pip_add(object, count);
@@ -448,8 +468,13 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 				VM_PAGER_PUT_SYNC : 0)),
 			   pageout_status);
 
+	if (dodebug)
+		kprintf("result: ");
 	for (i = 0; i < count; i++) {
 		vm_page_t mt = mc[i];
+
+		if (dodebug)
+			kprintf("  S%d", pageout_status[i]);
 
 		switch (pageout_status[i]) {
 		case VM_PAGER_OK:
@@ -502,15 +527,24 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 			vm_page_io_finish(mt);
 			if (vmflush_flags & VM_PAGER_TRY_TO_CACHE) {
 				vm_page_try_to_cache(mt);
+				if (dodebug)
+				kprintf("A[pq_cache=%d]",
+					 ((mt->queue - mt->pc) == PQ_CACHE));
 			} else if (vm_page_count_severe()) {
 				vm_page_deactivate(mt);
 				vm_page_wakeup(mt);
+				if (dodebug)
+				kprintf("B");
 			} else {
 				vm_page_wakeup(mt);
+				if (dodebug)
+				kprintf("C");
 			}
 			vm_object_pip_wakeup(object);
 		}
 	}
+	if (dodebug)
+		kprintf("\n");
 	return numpagedout;
 }
 
@@ -745,6 +779,7 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 	long delta = 0;
 	long max_launder;
 	int isep;
+	int vmflush_flags;
 
 	isep = (curthread == emergpager);
 
@@ -880,9 +915,16 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 
 		/*
 		 * Try to pageout the page and perhaps other nearby pages.
+		 * We want to get the pages into the cache on the second
+		 * pass.  Otherwise the pages can wind up just cycling in
+		 * the inactive queue, getting flushed over and over again.
 		 */
+		if (m->flags & PG_WINATCFLS)
+			vmflush_flags = VM_PAGER_TRY_TO_CACHE;
+		else
+			vmflush_flags = 0;
 		count = vm_pageout_page(m, &max_launder, vnodes_skipped,
-					&vpfailed, pass, 0);
+					&vpfailed, pass, vmflush_flags);
 		delta += count;
 
 		/*
