@@ -237,4 +237,6 @@ work_busy(struct work_struct *work)
 	return 0;
 }
 
+bool flush_delayed_work(struct delayed_work *dwork);
+
 #endif	/* _LINUX_WORKQUEUE_H_ */

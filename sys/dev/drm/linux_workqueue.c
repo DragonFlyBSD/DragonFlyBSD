@@ -75,3 +75,10 @@ destroy_workqueue(struct workqueue_struct *wq)
 
 SYSINIT(linux_workqueue_init, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, init_workqueues, NULL);
 SYSUNINIT(linux_workqueue_destroy, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, destroy_workqueues, NULL);
+
+bool
+flush_delayed_work(struct delayed_work *dwork)
+{
+	callout_drain(&dwork->timer);
+	return flush_work(&dwork->work);
+}
