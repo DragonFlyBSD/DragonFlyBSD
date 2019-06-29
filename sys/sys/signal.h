@@ -41,7 +41,22 @@
 #include <sys/cdefs.h>
 #include <sys/_pthreadtypes.h>
 #include <sys/_sigset.h>
-#include <machine/stdint.h>	/* for __ types */
+#include <sys/stdint.h>		/* for __ types */
+
+#ifndef _PID_T_DECLARED
+typedef	__pid_t		pid_t;
+#define	_PID_T_DECLARED
+#endif
+
+#ifndef _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
+#endif
+
+#ifndef _UID_T_DECLARED
+typedef	__uint32_t	uid_t;
+#define	_UID_T_DECLARED
+#endif
 
 /*
  * sigset_t macros.
@@ -258,8 +273,8 @@ typedef struct __siginfo {
 	 * FreeBSD signal handler.
 	 */
 	int	si_code;		/* signal code */
-	int	si_pid;			/* sending process */
-	unsigned int si_uid;		/* sender's ruid */
+	pid_t	si_pid;			/* sending process */
+	uid_t	si_uid;			/* sender's ruid */
 	int	si_status;		/* exit value */
 	void	*si_addr;		/* faulting instruction */
 	union sigval si_value;		/* signal value */
@@ -336,7 +351,7 @@ typedef	struct sigaltstack {
 typedef	struct {
 #endif
 	void	*ss_sp;			/* signal stack base */
-	__size_t ss_size;		/* signal stack length */
+	size_t	ss_size;		/* signal stack length */
 	int	ss_flags;		/* SS_DISABLE and/or SS_ONSTACK */
 } stack_t;
 
