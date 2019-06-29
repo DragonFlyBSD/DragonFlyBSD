@@ -165,21 +165,34 @@ signal_pending(struct task_struct *p)
 {
 	struct thread *t = container_of(p, struct thread, td_linux_task);
 
+	/* Some kernel threads do not have lwp, t->td_lwp can be NULL */
+	if (t->td_lwp == NULL)
+		return 0;
+
 	return CURSIG(t->td_lwp);
+}
+
+static inline int
+fatal_signal_pending(struct task_struct *p)
+{
+	struct thread *t = container_of(p, struct thread, td_linux_task);
+	sigset_t pending_set;
+
+	/* Some kernel threads do not have lwp, t->td_lwp can be NULL */
+	if (t->td_lwp == NULL)
+		return 0;
+
+	pending_set = lwp_sigpend(t->td_lwp);
+	return SIGISMEMBER(pending_set, SIGKILL);
 }
 
 static inline int
 signal_pending_state(long state, struct task_struct *p)
 {
-	struct thread *t = container_of(p, struct thread, td_linux_task);
-
-	if (state & TASK_INTERRUPTIBLE) {
-		return (CURSIG(t->td_lwp) != 0);
-	} else {
-		sigset_t pending_set;
-		pending_set = lwp_sigpend(t->td_lwp);
-		return SIGISMEMBER(pending_set, SIGKILL);
-	}
+	if (state & TASK_INTERRUPTIBLE)
+		return (signal_pending(p));
+	else
+		return (fatal_signal_pending(p));
 }
 
 /* Explicit rescheduling in order to reduce latency */
