@@ -616,8 +616,10 @@ clear_session_logs(session_t *sp)
 	if (logoutx(line, 0, DEAD_PROCESS))
 		 logwtmpx(line, "", "", 0, DEAD_PROCESS);
 #endif
+#ifdef SUPPORT_UTMP
 	if (logout(line))
 		logwtmp(line, "", "");
+#endif
 }
 
 /*
@@ -881,7 +883,9 @@ f_runcom(void)
 #ifdef SUPPORT_UTMPX
 	logwtmpx("~", "reboot", "", 0, INIT_PROCESS);
 #endif
+#ifdef SUPPORT_UTMP
 	logwtmp("~", "reboot", "");
+#endif
 	return read_ttys;
 }
 
@@ -1546,7 +1550,9 @@ f_death(void)
 #ifdef SUPPORT_UTMPX
 	logwtmpx("~", "shutdown", "", 0, INIT_PROCESS);
 #endif
+#ifdef SUPPORT_UTMP
 	logwtmp("~", "shutdown", "");
+#endif
 
 	for (sp = sessions; sp; sp = sp->se_next) {
 		sp->se_flags |= SE_SHUTDOWN;
