@@ -6282,11 +6282,9 @@ void intel_cleanup_gt_powersave(struct drm_device *dev)
 
 static void gen6_suspend_rps(struct drm_device *dev)
 {
-#if 0
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	flush_delayed_work(&dev_priv->rps.delayed_resume_work);
-#endif
 
 	gen6_disable_rps_interrupts(dev);
 }
