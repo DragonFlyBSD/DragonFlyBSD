@@ -40,8 +40,6 @@
 #include <dev/disk/mpt/mpilib/mpi_cnfg.h>
 #include <dev/disk/mpt/mpilib/mpi_raid.h>
 
-#define	SPECNAMELEN 15 /* XXX: hidden under _KERNEL in <sys/conf.h> */
-
 #define	IOC_STATUS_SUCCESS(status)					\
 	(((status) & MPI_IOCSTATUS_MASK) == MPI_IOCSTATUS_SUCCESS)
 
