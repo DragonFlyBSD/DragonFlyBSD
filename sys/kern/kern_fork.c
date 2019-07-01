@@ -816,9 +816,15 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
 		lp->lwp_tid = destproc->p_lasttid;
 	}
 
+	/*
+	 * Leave 2 bits open so the pthreads library can optimize locks
+	 * by combining the TID with a few LOck-related flags.
+	 */
 	do {
-		if (++lp->lwp_tid <= 0)
+		if (lp->lwp_tid == 0 || lp->lwp_tid == 0x3FFFFFFF)
 			lp->lwp_tid = 1;
+		else
+			++lp->lwp_tid;
 	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp) != NULL);
 
 	destproc->p_lasttid = lp->lwp_tid;
