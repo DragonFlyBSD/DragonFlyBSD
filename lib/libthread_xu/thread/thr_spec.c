@@ -41,6 +41,7 @@
 
 struct pthread_key _thread_keytable[PTHREAD_KEYS_MAX];
 umtx_t	_keytable_lock;
+static size_t _pthread_specific_bytes;
 
 int
 _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
@@ -152,25 +153,37 @@ _thread_cleanupspecific(void)
 		}
 	}
 	THR_LOCK_RELEASE(curthread, &_keytable_lock);
-	free(curthread->specific);
+
+	munmap(curthread->specific, _pthread_specific_bytes);
 	curthread->specific = NULL;
-	if (curthread->specific_data_count > 0)
+
+	if (curthread->specific_data_count > 0) {
 		stderr_debug("Thread %p has exited with leftover "
-		    "thread-specific data after %d destructor iterations\n",
-		    curthread, PTHREAD_DESTRUCTOR_ITERATIONS);
+			     "thread-specific data after %d destructor "
+			     "iterations\n",
+			     curthread, PTHREAD_DESTRUCTOR_ITERATIONS);
+	}
 }
 
 static inline struct pthread_specific_elem *
 pthread_key_allocate_data(void)
 {
 	struct pthread_specific_elem *new_data;
+	size_t bytes;
+	size_t pgmask;
 
-	new_data = (struct pthread_specific_elem *)
-	    malloc(sizeof(struct pthread_specific_elem) * PTHREAD_KEYS_MAX);
-	if (new_data != NULL) {
-		memset((void *) new_data, 0,
-		    sizeof(struct pthread_specific_elem) * PTHREAD_KEYS_MAX);
+	bytes = _pthread_specific_bytes;
+	if (bytes == 0) {
+		pgmask = getpagesize() - 1;
+		bytes = sizeof(struct pthread_specific_elem) * PTHREAD_KEYS_MAX;
+		bytes = (bytes + pgmask) & ~pgmask;
+		_pthread_specific_bytes = bytes;
 	}
+	new_data = mmap(NULL, bytes, PROT_READ | PROT_WRITE,
+			MAP_ANON | MAP_PRIVATE, -1, 0);
+	if (new_data == MAP_FAILED)
+		new_data = NULL;
+
 	return (new_data);
 }
 
@@ -183,8 +196,8 @@ _pthread_setspecific(pthread_key_t key, const void *value)
 	/* Point to the running thread: */
 	pthread = tls_get_curthread();
 
-	if ((pthread->specific) ||
-	    (pthread->specific = pthread_key_allocate_data())) {
+	if (pthread->specific ||
+	    (pthread->specific = pthread_key_allocate_data()) != NULL) {
 		if ((unsigned int)key < PTHREAD_KEYS_MAX) {
 			if (_thread_keytable[key].allocated) {
 				if (pthread->specific[key].data == NULL) {
@@ -196,12 +209,15 @@ _pthread_setspecific(pthread_key_t key, const void *value)
 				pthread->specific[key].seqno =
 				    _thread_keytable[key].seqno;
 				ret = 0;
-			} else
+			} else {
 				ret = EINVAL;
-		} else
+			}
+		} else {
 			ret = EINVAL;
-	} else
+		}
+	} else {
 		ret = ENOMEM;
+	}
 	return (ret);
 }
 

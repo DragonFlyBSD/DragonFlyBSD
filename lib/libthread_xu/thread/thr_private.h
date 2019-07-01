@@ -43,6 +43,7 @@
 #include <sys/cdefs.h>
 #include <sys/queue.h>
 #include <sys/rtprio.h>
+#include <sys/mman.h>
 #include <machine/atomic.h>
 #include <machine/cpumask.h>
 #include <errno.h>
