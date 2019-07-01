@@ -41,7 +41,6 @@ MAN+=	byteorder.3 ethers.3 eui64.3 \
 	gai_strerror.3 getaddrinfo.3 gethostbyname.3 \
 	getifaddrs.3 getipnodebyname.3 \
 	getnameinfo.3 getnetent.3 getprotoent.3 getservent.3 if_indextoname.3 \
-	inet.3 inet_net.3 \
 	inet6_opt_init.3 inet6_option_space.3 inet6_rth_space.3 \
 	inet6_rthdr_space.3 linkaddr.3 nsdispatch.3 \
 	rcmd.3 rcmdsh.3 resolver.3 sockatmark.3
@@ -100,21 +99,6 @@ MLINKS+=getservent.3 endservent.3 \
 MLINKS+=if_indextoname.3 if_freenameindex.3 \
 	if_indextoname.3 if_nameindex.3 \
 	if_indextoname.3 if_nametoindex.3
-MLINKS+=inet.3 addr.3 \
-	inet.3 inet_addr.3 \
-	inet.3 inet_aton.3 \
-	inet.3 inet_lnaof.3 \
-	inet.3 inet_makeaddr.3 \
-	inet.3 inet_netof.3 \
-	inet.3 inet_network.3 \
-	inet.3 inet_ntoa.3 \
-	inet.3 inet_ntoa_r.3 \
-	inet.3 inet_ntop.3 \
-	inet.3 inet_pton.3 \
-	inet.3 network.3 \
-	inet.3 ntoa.3 
-MLINKS+=inet_net.3 inet_net_ntop.3 \
-	inet_net.3 inet_net_pton.3
 MLINKS+=inet6_opt_init.3 inet6_opt_append.3 \
 	inet6_opt_init.3 inet6_opt_find.3 \
 	inet6_opt_init.3 inet6_opt_finish.3 \
