@@ -50,6 +50,7 @@ SRCS	= \
 	linux_compat.c \
 	linux_dma.c \
 	linux_dma-buf.c \
+	linux_dmi.c \
 	linux_fence.c \
 	linux_hdmi.c \
 	linux_i2c.c \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,36 +24,45 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_DMI_H_
-#define _LINUX_DMI_H_
+#include <linux/types.h>
+#include <linux/string.h>
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/ctype.h>
+#include <linux/dmi.h>
+#include <asm/unaligned.h>
 
-#include <linux/list.h>
-#include <linux/kobject.h>
-#include <linux/mod_devicetable.h>
+bool
+dmi_match(enum dmi_field f, const char *str)
+{
+	const char *s = NULL;
 
-enum dmi_field {
-        DMI_NONE,
-        DMI_BIOS_VENDOR,
-        DMI_BIOS_VERSION,
-        DMI_BIOS_DATE,
-        DMI_SYS_VENDOR,
-        DMI_PRODUCT_NAME,
-        DMI_PRODUCT_VERSION,
-        DMI_PRODUCT_SERIAL,
-        DMI_PRODUCT_UUID,
-        DMI_BOARD_VENDOR,
-        DMI_BOARD_NAME,
-        DMI_BOARD_VERSION,
-        DMI_BOARD_SERIAL,
-        DMI_BOARD_ASSET_TAG,
-        DMI_CHASSIS_VENDOR,
-        DMI_CHASSIS_TYPE,
-        DMI_CHASSIS_VERSION,
-        DMI_CHASSIS_SERIAL,
-        DMI_CHASSIS_ASSET_TAG,
-        DMI_STRING_MAX,
-};
+	switch (f) {
+	case DMI_NONE:
+		break;
+	case DMI_SYS_VENDOR:
+		s = kgetenv("smbios.system.maker");
+		if (s != NULL && !strcmp(s, str))
+			return true;
+		break;
+	case DMI_BOARD_VENDOR:
+		s = kgetenv("smbios.planar.maker");
+		if (s != NULL && !strcmp(s, str))
+			return true;
+		break;
+	case DMI_PRODUCT_NAME:
+		s = kgetenv("smbios.system.product");
+		if (s != NULL && !strcmp(s, str))
+			return true;
+		break;
+	case DMI_BOARD_NAME:
+		s = kgetenv("smbios.planar.product");
+		if (s != NULL && !strcmp(s, str))
+			return true;
+		break;
+	default:
+		return false;
+	}
 
-extern bool dmi_match(enum dmi_field f, const char *str);
-
-#endif	/* _LINUX_DMI_H_ */
+	return false;
+}
