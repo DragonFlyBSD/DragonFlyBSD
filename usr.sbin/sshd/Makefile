@@ -18,6 +18,8 @@ SRCS+=	auth.c auth-options.c auth-pam.c auth-passwd.c auth-rhosts.c \
 # Custom password routine
 SRCS+=	auth-passwd-custom.c
 CFLAGS+= -DCUSTOM_SYS_AUTH_PASSWD
+CFLAGS+= -DUSE_UTMPX -DUSE_WTMPX
+CFLAGS+= -DWTMPX_FILE=_PATH_WTMPX -DUTMPX_FILE=_PATH_UTMPX
 
 WARNS?=	3
 
