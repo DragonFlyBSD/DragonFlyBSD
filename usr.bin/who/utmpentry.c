@@ -36,7 +36,9 @@
 #include <time.h>
 #include <string.h>
 #include <err.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef SUPPORT_UTMP
 #include <utmp.h>
@@ -310,9 +312,13 @@ getentry(struct utmpentry *e, struct utmp *up)
 	 * reason we use the size of the _source_ as the length
 	 * argument.
 	 */
-	(void)strncpy(e->name, up->ut_name, sizeof(e->name) - 1);
-	(void)strncpy(e->line, up->ut_line, sizeof(e->line) - 1);
-	(void)strncpy(e->host, up->ut_host, sizeof(e->host) - 1);
+
+	snprintf(e->name, sizeof(e->name), "%.*s",
+		 (int)sizeof(up->ut_name), up->ut_name);
+	snprintf(e->line, sizeof(e->line), "%.*s",
+		 (int)sizeof(up->ut_line), up->ut_line);
+	snprintf(e->host, sizeof(e->host), "%.*s",
+		 (int)sizeof(up->ut_host), up->ut_host);
 
 	e->tv.tv_sec = up->ut_time;
 	e->tv.tv_usec = 0;
@@ -343,9 +349,12 @@ getentryx(struct utmpentry *e, struct utmpx *up)
 	 * reason we use the size of the _source_ as the length
 	 * argument.
 	 */
-	(void)strncpy(e->name, up->ut_name, sizeof(e->name) - 1);
-	(void)strncpy(e->line, up->ut_line, sizeof(e->line) - 1);
-	(void)strncpy(e->host, up->ut_host, sizeof(e->host) - 1);
+	snprintf(e->name, sizeof(e->name), "%.*s",
+		 (int)sizeof(up->ut_name), up->ut_name);
+	snprintf(e->line, sizeof(e->line), "%.*s",
+		 (int)sizeof(up->ut_line), up->ut_line);
+	snprintf(e->host, sizeof(e->host), "%.*s",
+		 (int)sizeof(up->ut_host), up->ut_host);
 
 	e->tv = up->ut_tv;
 	e->pid = up->ut_pid;
