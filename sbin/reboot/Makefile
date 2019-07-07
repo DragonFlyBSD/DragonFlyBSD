@@ -4,6 +4,7 @@
 PROG=	reboot
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
+CFLAGS+=-DSUPPORT_UTMP -DSUPPORT_UTMPX
 MAN=	reboot.8
 MLINKS=	reboot.8 halt.8 reboot.8 fastboot.8 reboot.8 fasthalt.8
 
