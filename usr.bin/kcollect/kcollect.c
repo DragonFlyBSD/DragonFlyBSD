@@ -60,6 +60,7 @@ int OutputWidth = 1024;
 int OutputHeight = 1024;
 int SmoothOpt;
 int LoadedFromDB = 0;
+int Fflag = 0;
 
 int
 main(int ac, char **av)
@@ -89,7 +90,7 @@ main(int ac, char **av)
 		exit(1);
 	}
 
-	while ((ch = getopt(ac, av, "o:b:d:r:flsgt:xw:GW:H:")) != -1) {
+	while ((ch = getopt(ac, av, "o:b:d:r:fFlsgt:xw:GW:H:")) != -1) {
 		char *suffix;
 
 		switch(ch) {
@@ -109,6 +110,10 @@ main(int ac, char **av)
 			cmd = 'r';
 			break;
 		case 'f':
+			keepalive = 1;
+			break;
+		case 'F':
+			Fflag = 1;
 			keepalive = 1;
 			break;
 		case 'l':
@@ -183,6 +188,9 @@ main(int ac, char **av)
 		sysctlbyname("kern.collect_data", NULL, &bytes, NULL, 0);
 		if (cmd == 'l')
 			bytes = sizeof(kcollect_t) * 2;
+
+		if (Fflag && loops == 0)
+			loops++;
 
 		if (loops) {
 			size_t loop_bytes;
