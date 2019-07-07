@@ -114,9 +114,10 @@ static void	 usage(void);
 static
 void usage(void)
 {
-	(void)fprintf(stderr, "Usage: %s [-#%s] [-f file] [-t tty]"
-	    " [-h hostname] [-T] [user ...]\n", getprogname(),
-#ifdef SUPPORT_UTMPX
+	fprintf(stderr, "Usage: %s [-#%s] [-T] [-f file]"
+	    " [-h host] [-H hostsize] [-L linesize]\n"
+	    "\t    [-N namesize] [-t tty] [user ...]\n", getprogname(),
+#if 0 /* XXX NOTYET_SUPPORT_UTMPX??? */
 	    "w"
 #else
 	    ""
@@ -194,15 +195,15 @@ main(int argc, char *argv[])
 		}
 	}
 	if (file == NULL) {
-		/* XXX: for now, default to utmp */
-#ifdef SUPPORT_UTMP
-		if (access(_PATH_WTMP, R_OK) == 0)
-			file = _PATH_WTMP;
-		else
-#endif
+		/* default to wtmpx */
 #ifdef SUPPORT_UTMPX
 		if (access(_PATH_WTMPX, R_OK) == 0)
 			file = _PATH_WTMPX;
+		else
+#endif
+#ifdef SUPPORT_UTMP
+		if (access(_PATH_WTMP, R_OK) == 0)
+			file = _PATH_WTMP;
 #endif
 		if (file == NULL)
 #if defined(SUPPORT_UTMPX) && defined(SUPPORT_UTMP)
@@ -310,10 +311,10 @@ ttyconv(char *arg)
 		if (!(mval = malloc((u_int)8)))
 			err(1, "malloc failure");
 		if (!strcmp(arg, "co"))
-			(void)strcpy(mval, "console");
+			strcpy(mval, "console");
 		else {
-			(void)strcpy(mval, "tty");
-			(void)strcpy(mval + 3, arg);
+			strcpy(mval, "tty");
+			strcpy(mval + 3, arg);
 		}
 		return (mval);
 	}

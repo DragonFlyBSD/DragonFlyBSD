@@ -29,7 +29,7 @@
 .\"
 .\"     @(#)last.1	8.1 (Berkeley) 6/6/93
 .\"
-.Dd June 6, 1993
+.Dd Jul 7, 2019
 .Dt LAST 1
 .Os
 .Sh NAME
@@ -41,10 +41,10 @@
 .Op Fl T
 .Op Fl f Ar file
 .Op Fl h Ar host
-.Op Fl t Ar tty
+.Op Fl H Ar hostsize
 .Op Fl L Ar linesize
 .Op Fl N Ar namesize
-.Op Fl H Ar hostsize
+.Op Fl t Ar tty
 .Op user ...
 .Sh DESCRIPTION
 .Nm
@@ -63,23 +63,32 @@ a crash or shutdown,
 .Nm
 will so indicate.
 .Bl -tag -width indent-two
+.It Fl Ar n
+Limits the report to
+.Ar n
+lines.
 .It Fl f Ar file
 .Nm
 reads the file
 .Ar file
 instead of the default,
 .Pa /var/log/wtmpx
-or
+or (if not found)
 .Pa /var/log/wtmp .
 If the file ends with `x', it is treated as a
 .Xr utmpx 5
 format file, else it is treated as a
 .Xr utmp 5
 format file.
-.It Fl Ar n
-Limits the report to
-.Ar n
-lines.
+.It Fl h Ar host
+.Ar Host
+names may be names or internet numbers.
+.It Fl H Ar hostsize
+Use the provided hostsize as the width to format the host name field.
+.It Fl L Ar linesize
+Use the provided linesize as the width to format the tty field.
+.It Fl N Ar namesize
+Use the provided namesize as the width to format the login name field.
 .It Fl t Ar tty
 Specify the
 .Ar tty .
@@ -88,17 +97,8 @@ Tty names may be given fully or abbreviated, for example,
 is
 equivalent to
 .Dq Li "last -t tty03" .
-.It Fl h Ar host
-.Ar Host
-names may be names or internet numbers.
 .It Fl T
 Display better time information, including the year and seconds.
-.It Fl L Ar linesize
-Use the provided linesize as the width to format the tty field.
-.It Fl N Ar namesize
-Use the provided namesize as the width to format the login name field.
-.It Fl H Ar hostsize
-Use the provided hostsize as the width to format the host name field.
 .El
 .Pp
 If
@@ -130,9 +130,9 @@ far the search has progressed and then continues.
 .Sh FILES
 .Bl -tag -width /var/log/wtmpx -compact
 .It Pa /var/log/wtmpx
-login data base
+default login data base
 .It Pa /var/log/wtmp
-login data base
+legacy login data base
 .El
 .Sh SEE ALSO
 .Xr lastcomm 1 ,
