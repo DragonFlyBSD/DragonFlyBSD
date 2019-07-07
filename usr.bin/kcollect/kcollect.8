@@ -61,33 +61,35 @@ collection and then going back in time.
 The following options are available:
 .Bl -tag -width indent
 .It Fl o Ar fields
-Indicate which fields to extract.  If not specified, all available
-fields are extracted.  Unknown fields are ignored.  Note that not
-all commands will filter based on the field list.
+Indicate which fields to extract.
+If not specified, all available fields are extracted.
+Unknown fields are ignored.
+Note that not all commands will filter based on the field list.
 .Pp
-You may specify space or comma-separated fieldnames.  Whitespace is
-ignored.  Use the
+You may specify space or comma-separated fieldnames.
+Whitespace is ignored.
+Use the
 .Fl l
 option to get a list of available fields.
 .It Fl b Ar file
 Dump the data to a dbm database, creating the database if necessary.
 Data is indexed by gmt time, which will be calculated from the ticks.
-Duplicate tuples are ignored.  The database will retain data from prior
-runs.
+Duplicate tuples are ignored.
+The database will retain data from prior runs.
 .It Fl d Ar file
 Load the data from a dbm database instead of loading the active data
 from the current machine.
 .It Fl r Ar file
 This will overwrite headers stored in the specified dbm database with the
-in-memory headers.  This can be used to renormalize saved historical dbm
-files when machine specs change, or if the dbm is somehow missing the
-header fields.
+in-memory headers.
+This can be used to renormalize saved historical dbm files when machine specs
+change, or if the dbm is somehow missing the header fields.
 .It Fl g
 Generate gnuplot output for the data.
 .It Fl s
 Smooth plot output (only applicable to gnuplot).
-This may make it more readable.  Data is smoothed using an exponential
-average over 10 samples (~100 seconds).
+This may make it more readable.
+Data is smoothed using an exponential average over 10 samples (~100 seconds).
 .It Fl t Ar time
 Specify the number of seconds worth of recent data to extract.
 The 'm', 'h', and 'd' suffixes can be used to specify the value in minutes,
@@ -100,8 +102,8 @@ List all available fields and the field format
 .It Fl f
 Dump available output then enter a 60-second sleep/collection loop
 to incrementally collect and output more data.
-If outputting to gnuplot, the plot will be updated regularly.  However,
-please note that this is fairly expensive since the plot data has to
+If outputting to gnuplot, the plot will be updated regularly.
+However, please note that this is fairly expensive since the plot data has to
 be completely re-sent to gnuplot on each update.
 .It Fl F
 Same as
