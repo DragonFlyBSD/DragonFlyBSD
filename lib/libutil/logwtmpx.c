@@ -41,7 +41,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
 #include <utmpx.h>
 #include <libutil.h>
 
