@@ -27,6 +27,8 @@
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
 
+#include <linux/slab.h>
+
 static struct lock i2c_lock;
 LOCK_SYSINIT(i2c_lock, &i2c_lock, "i2cl", LK_CANRECURSE);
 
@@ -104,4 +106,22 @@ i2c_bit_add_bus(struct i2c_adapter *adapter)
 	adapter->retries = 2;
 
 	return 0;
+}
+
+struct i2c_client *
+i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info)
+{
+	struct i2c_client *client;
+
+	client = kzalloc(sizeof(*client), GFP_KERNEL);
+	if (client == NULL)
+		goto done;
+
+	client->adapter = adap;
+
+	strlcpy(client->name, info->type, sizeof(client->name));
+	client->addr = info->addr;
+
+done:
+	return client;
 }

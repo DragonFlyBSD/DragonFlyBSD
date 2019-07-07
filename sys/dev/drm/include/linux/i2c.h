@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2013-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,6 +50,13 @@ struct i2c_adapter {
 	char name[48];
 };
 
+struct i2c_client {
+	unsigned short flags;
+	unsigned short addr;
+	char name[I2C_NAME_SIZE];
+	struct i2c_adapter *adapter;
+};
+
 extern int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs,
 			int num);
 
@@ -74,5 +81,13 @@ i2c_get_adapdata(const struct i2c_adapter *dev)
 {
 	return dev->private_data;
 }
+
+struct i2c_board_info {
+	char		type[I2C_NAME_SIZE];
+	unsigned short	addr;
+};
+
+struct i2c_client *
+i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info);
 
 #endif	/* _LINUX_I2C_H_ */
