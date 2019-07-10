@@ -233,7 +233,7 @@ typedef uLong FAR uLongf;
 #endif
 
 #if defined(STDC) || defined(Z_HAVE_STDARG_H)
-#    include <stdarg.h>         /* for va_list */
+#    include <sys/stdarg.h>     /* for va_list */
 #endif
 
 /* a little trick to accommodate both "#define _LARGEFILE64_SOURCE" and
