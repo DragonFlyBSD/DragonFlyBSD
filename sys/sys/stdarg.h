@@ -24,10 +24,24 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _STDARG_H_
-#define _STDARG_H_
+#ifndef _SYS_STDARG_H_
+#define _SYS_STDARG_H_
 
-#include <sys/stdarg.h>
+#include <sys/cdefs.h>
 
-#endif /* !_STDARG_H_ */
+#include <machine/stdarg.h>
 
+#ifndef _VA_LIST_DECLARED
+typedef	__va_list	va_list;
+#define	_VA_LIST_DECLARED
+#endif
+
+#define va_start(ap, last)	__va_start(ap, last)
+#define va_arg(ap, type)	__va_arg(ap, type)
+/* __STRICT_ANSI__ case is for compatibility with other implementations */
+#if defined(_KERNEL) || __ISO_C_VISIBLE >= 1999 || __cplusplus >= 201103L || !defined(__STRICT_ANSI__)
+#define va_copy(dest, src)	__va_copy(dest, src)
+#endif
+#define va_end(ap)		__va_end(ap)
+
+#endif /* !_SYS_STDARG_H_ */
