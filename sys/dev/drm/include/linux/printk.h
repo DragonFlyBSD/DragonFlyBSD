@@ -27,7 +27,7 @@
 #ifndef _LINUX_PRINTK_H_
 #define _LINUX_PRINTK_H_
 
-#include <stdarg.h>
+#include <sys/stdarg.h>
 #include <linux/init.h>
 #include <linux/cache.h>
 
@@ -36,7 +36,7 @@
 
 struct va_format {
 	const char *fmt;
-	__va_list *va;
+	va_list *va;
 };
 
 #define printk(X...)	kprintf(X)

@@ -30,7 +30,7 @@
 #ifndef	_LINUX_KERNEL_H_
 #define	_LINUX_KERNEL_H_
 
-#include <stdarg.h>
+#include <sys/stdarg.h>
 #include <linux/stddef.h>
 #include <linux/types.h>
 #include <linux/compiler.h>
@@ -168,7 +168,7 @@ might_sleep(void)
 #define snprintf	ksnprintf
 
 static inline int
-vsnprintf(char *buf, size_t size, const char *fmt, __va_list args)
+vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
 	return kvsnprintf(buf, size, fmt, args);
 }

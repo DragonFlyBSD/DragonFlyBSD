@@ -34,7 +34,7 @@
 #include <linux/compiler.h>
 #include <linux/types.h>
 #include <linux/stddef.h>
-#include <stdarg.h>
+#include <sys/stdarg.h>
 
 #define __UNCONST(a)	((void *)(unsigned long)(const void *)(a))
 

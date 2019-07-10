@@ -77,19 +77,19 @@ static struct dentry *drm_debugfs_root;
 
 void drm_err(const char *func, const char *format, ...)
 {
-	__va_list args;
+	va_list args;
 
 	kprintf("error: [" DRM_NAME ":pid%d:%s] *ERROR* ", DRM_CURRENTPID, func);
 
-	__va_start(args, format);
+	va_start(args, format);
 	kvprintf(format, args);
-	__va_end(args);
+	va_end(args);
 }
 EXPORT_SYMBOL(drm_err);
 
 void drm_ut_debug_printk(const char *function_name, const char *format, ...)
 {
-	__va_list args;
+	va_list args;
 
 	if (unlikely(drm_debug & DRM_UT_PID)) {
 		kprintf("[" DRM_NAME ":pid%d:%s] ",
@@ -98,9 +98,9 @@ void drm_ut_debug_printk(const char *function_name, const char *format, ...)
 		kprintf("[" DRM_NAME ":%s] ", function_name);
 	}
 
-	__va_start(args, format);
+	va_start(args, format);
 	kvprintf(format, args);
-	__va_end(args);
+	va_end(args);
 }
 EXPORT_SYMBOL(drm_ut_debug_printk);
 

@@ -676,11 +676,11 @@ int drm_crtc_init_with_planes(struct drm_device *dev, struct drm_crtc *crtc,
 		return ret;
 
 	if (name) {
-		__va_list ap;
+		va_list ap;
 
-		__va_start(ap, name);
+		va_start(ap, name);
 		crtc->name = kvasprintf(GFP_KERNEL, name, ap);
-		__va_end(ap);
+		va_end(ap);
 	} else {
 		crtc->name = kasprintf(GFP_KERNEL, "crtc-%d",
 				       drm_num_crtcs(dev));
@@ -1161,11 +1161,11 @@ int drm_encoder_init(struct drm_device *dev,
 	encoder->encoder_type = encoder_type;
 	encoder->funcs = funcs;
 	if (name) {
-		__va_list ap;
+		va_list ap;
 
-		__va_start(ap, name);
+		va_start(ap, name);
 		encoder->name = kvasprintf(GFP_KERNEL, name, ap);
-		__va_end(ap);
+		va_end(ap);
 	} else {
 		encoder->name = kasprintf(GFP_KERNEL, "%s-%d",
 					  drm_encoder_enum_list[encoder_type].name,
@@ -1290,11 +1290,11 @@ int drm_universal_plane_init(struct drm_device *dev, struct drm_plane *plane,
 	}
 
 	if (name) {
-		__va_list ap;
+		va_list ap;
 
-		__va_start(ap, name);
+		va_start(ap, name);
 		plane->name = kvasprintf(GFP_KERNEL, name, ap);
-		__va_end(ap);
+		va_end(ap);
 	} else {
 		plane->name = kasprintf(GFP_KERNEL, "plane-%d",
 					drm_num_planes(dev));

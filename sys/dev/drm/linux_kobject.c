@@ -26,7 +26,7 @@
 
 #include <linux/kobject.h>
 
-extern char *drm_vasprintf(int flags, const char *format, __va_list ap);
+extern char *drm_vasprintf(int flags, const char *format, va_list ap);
 
 int kobject_init_and_add(struct kobject *kobj, struct kobj_type *ktype,
 			 struct kobject *parent, const char *fmt, ...)
@@ -36,9 +36,9 @@ int kobject_init_and_add(struct kobject *kobj, struct kobj_type *ktype,
 	kobj->ktype = ktype;
 	kref_init(&kobj->kref);
 
-	__va_start(ap, fmt);
+	va_start(ap, fmt);
 	kobj->name = drm_vasprintf(M_WAITOK, fmt, ap);
-	__va_end(ap);
+	va_end(ap);
 
 	return 0;
 }

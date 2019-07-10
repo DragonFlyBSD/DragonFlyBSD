@@ -2000,14 +2000,14 @@ __phy_reg_verify_state(struct drm_i915_private *dev_priv, enum dpio_phy phy,
 		       const char *reg_fmt, ...)
 {
 	struct va_format vaf;
-	__va_list args;
+	va_list args;
 	u32 val;
 
 	val = I915_READ(reg);
 	if ((val & mask) == expected)
 		return true;
 
-	__va_start(args, reg_fmt);
+	va_start(args, reg_fmt);
 	vaf.fmt = reg_fmt;
 	vaf.va = &args;
 
@@ -2016,7 +2016,7 @@ __phy_reg_verify_state(struct drm_i915_private *dev_priv, enum dpio_phy phy,
 			 phy, &vaf, reg.reg, val, (val & ~mask) | expected,
 			 mask);
 
-	__va_end(args);
+	va_end(args);
 
 	return false;
 }
