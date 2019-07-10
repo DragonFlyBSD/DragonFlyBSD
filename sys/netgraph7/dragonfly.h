@@ -35,13 +35,6 @@
 #include <sys/globaldata.h>	/* curthread in mtx_assert() */
 #include <sys/lock.h>
 
-#ifndef _VA_LIST_DECLARED
-#define _VA_LIST_DECLARED
-typedef __va_list	va_list;
-#endif
-#define va_start(ap,last)	__va_start(ap,last)
-#define va_end(ap)	__va_end(ap)
-
 #define IFNET_RLOCK()	crit_enter()
 #define IFNET_RUNLOCK()	crit_exit()
 
