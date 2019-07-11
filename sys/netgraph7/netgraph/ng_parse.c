@@ -50,8 +50,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/ctype.h>
-
-#include <machine/stdarg.h>
+#include <sys/stdarg.h>
 
 #include <net/ethernet.h>
 
