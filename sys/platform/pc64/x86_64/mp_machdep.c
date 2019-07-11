@@ -136,6 +136,7 @@ int	current_postcode;
 /** XXX FIXME: what system files declare these??? */
 
 extern int naps;
+extern int _udatasel;
 
 int64_t tsc0_offset;
 extern int64_t tsc_offsets[];
@@ -268,6 +269,10 @@ init_secondary(void)
 	wrmsr(MSR_KGSBASE, 0);		/* XXX User value while we're in the kernel */
 
 	lidt(&r_idt_arr[mdcpu->mi.gd_cpuid]);
+
+	load_ds(_udatasel);
+	load_es(_udatasel);
+	load_fs(_udatasel);
 
 #if 0
 	lldt(_default_ldt);
