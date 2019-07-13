@@ -3,6 +3,7 @@
 
 PROG=	date
 SRCS=	date.c vary.c
+CFLAGS+=-DSUPPORT_UTMP -DSUPPORT_UTMPX
 
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
