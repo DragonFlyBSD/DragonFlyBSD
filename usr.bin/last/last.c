@@ -227,7 +227,7 @@ main(int argc, char *argv[])
 #elif defined(SUPPORT_UTMP)
 	wtmp(file, namesize, linesize, hostsize);
 #else
-	errx(1, "Nu utmp or utmpx support compiled in.");
+	errx(1, "No utmp or utmpx support compiled in.");
 #endif
 	exit(0);
 }
