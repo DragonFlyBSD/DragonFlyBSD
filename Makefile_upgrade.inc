@@ -3750,6 +3750,8 @@ TO_REMOVE+=/usr/sbin/timed
 TO_REMOVE+=/usr/sbin/timedc
 TO_REMOVE+=/usr/share/man/man8/timed.8.gz
 TO_REMOVE+=/usr/share/man/man8/timedc.8.gz
+TO_REMOVE+=/sbin/nextboot
+TO_REMOVE+=/usr/share/man/man8/nextboot.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

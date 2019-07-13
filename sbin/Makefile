@@ -106,8 +106,7 @@ SUBDIR=	adjkerntz \
 
 .if ${MACHINE_ARCH} == "x86_64"
 SUBDIR+=mount_smbfs \
-	fdisk \
-	nextboot
+	fdisk
 .endif
 
 .if exists(${.CURDIR}/${MACHINE})
