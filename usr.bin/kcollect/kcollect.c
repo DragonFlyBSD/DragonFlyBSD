@@ -42,9 +42,13 @@
 #define HDR_FMT "HEADER0"
 #define HDR_TITLE "HEADER1"
 
+#define HOST_NAME_MAX sysconf(_SC_HOST_NAME_MAX)
+
 static void format_output(uintmax_t value,char fmt,uintmax_t scale, char* ret);
 static void dump_text(kcollect_t *ary, size_t count,
 			size_t total_count, const char* display_fmt);
+static void dump_influxdb(kcollect_t *, size_t, size_t, const char*);
+
 static void dump_dbm(kcollect_t *ary, size_t count, const char *datafile);
 static int str2unix(const char* str, const char* fmt);
 static int rec_comparator(const void *c1, const void *c2);
@@ -53,6 +57,8 @@ static void load_dbm(const char *datafile,
 static void dump_fields(kcollect_t *ary);
 static void adjust_fields(kcollect_t *ent, const char *fields);
 static void restore_headers(kcollect_t *ary, const char *datafile);
+
+static void (*dumpfn)(kcollect_t *, size_t, size_t, const char*);
 
 FILE *OutFP;
 int UseGMT;
@@ -83,6 +89,7 @@ main(int ac, char **av)
 	int fromFile = 0;
 
 	OutFP = stdout;
+	dumpfn = dump_text;
 
 	sysctlbyname("kern.collect_data", NULL, &bytes, NULL, 0);
 	if (bytes == 0) {
@@ -90,12 +97,22 @@ main(int ac, char **av)
 		exit(1);
 	}
 
-	while ((ch = getopt(ac, av, "o:b:d:r:fFlsgt:xw:GW:H:")) != -1) {
+	while ((ch = getopt(ac, av, "o:O:b:d:r:fFlsgt:xw:GW:H:")) != -1) {
 		char *suffix;
 
 		switch(ch) {
 		case 'o':
 			fields = optarg;
+			break;
+		case 'O':
+			if ((strncasecmp("influxdb", optarg, 16) == 0)) {
+				dumpfn = dump_influxdb;
+			} else if (strncasecmp("text", optarg, 16) == 0) {
+				dumpfn = dump_text;
+			} else {
+				fprintf(stderr, "Bad output text format %s\n", optarg);
+				exit(1);
+			}
 			break;
 		case 'b':
 			datafile = optarg;
@@ -247,7 +264,7 @@ main(int ac, char **av)
 		switch(cmd) {
 		case 't':
 			if (count > 2) {
-				dump_text(ary, count, total_count,
+				dumpfn(ary, count, total_count,
 					  (fromFile ? DISPLAY_FULL_DATE :
 						      DISPLAY_TIME_ONLY));
 			}
@@ -379,6 +396,104 @@ format_output(uintmax_t value,char fmt,uintmax_t scale, char* ret)
 		sprintf(ret,"%s","        ");
 		break;
 	}
+}
+
+static
+const char *
+get_influx_series(const char *val)
+{
+	/* cpu values (user, idle, syst) */
+	if ((strncmp("user", val, 8) == 0) ||
+	    (strncmp("idle", val, 8) == 0 ) ||
+	    (strncmp("syst", val, 8) == 0))
+		return "cpu_value";
+
+	/* load value (load) */
+	if (strncmp("load", val, 8) == 0)
+		return "load_value";
+
+	/* swap values (swapuse, swapano, swapcac) */
+	if ((strncmp("swapuse", val, 8) == 0) ||
+	    (strncmp("swapano", val, 8) == 0 ) ||
+	    (strncmp("swapcac", val, 8) == 0))
+		return "swap_value";
+
+	/* vm values (fault, cow, zfill) */
+	if ((strncmp("fault", val, 8) == 0) ||
+	    (strncmp("cow", val, 8) == 0 ) ||
+	    (strncmp("zfill", val, 8) == 0))
+		return "vm_value";
+
+	/* memory values (fault, cow, zfill) */
+	if ((strncmp("cache", val, 8) == 0) ||
+	    (strncmp("inact", val, 8) == 0 ) ||
+	    (strncmp("act", val, 8) == 0) ||
+	    (strncmp("wired", val, 8) == 0) ||
+	    (strncmp("free", val, 8) == 0))
+		return "memory_value";
+
+	/* misc values (syscalls, nlookup, intr, ipi, timer) */
+	if ((strncmp("syscalls", val, 8) == 0) ||
+	    (strncmp("nlookup", val, 8) == 0 ) ||
+	    (strncmp("intr", val, 8) == 0) ||
+	    (strncmp("ipi", val, 8) == 0) ||
+	    (strncmp("timer", val, 8) == 0))
+		return "misc_value";
+
+	return "misc_value";
+
+}
+
+static
+void
+dump_influxdb(kcollect_t *ary, size_t count, size_t total_count,
+	  __unused const char* display_fmt)
+{
+	int j;
+	int i;
+	uintmax_t value;
+	size_t ts_nsec;
+	char hostname[HOST_NAME_MAX];
+	char *colname;
+
+	if (gethostname(hostname, HOST_NAME_MAX) != 0) {
+		fprintf(stderr, "Failed to get hostname\n");
+		exit(1);
+	}
+
+	for (i = count - 1; i >= 2; --i) {
+		/*
+		 * Timestamp
+		 */
+		ts_nsec = (ary[i].realtime.tv_sec
+		    * 1000 /* ms */
+		    * 1000 /* usec */
+		    * 1000 /* nsec */
+		    + 123  /* add a few ns since due to missing precision */);
+		ts_nsec += (ary[i].realtime.tv_usec * 1000);
+
+		for (j = 0; j < KCOLLECT_ENTRIES; ++j) {
+			if (ary[1].data[j] == 0)
+				continue;
+
+			/*
+			 * NOTE: kernel does not have to provide the scale
+			 *	 (that is, the highest likely value), nor
+			 *	 does it make sense in all cases.
+			 *
+			 *       But should we since we're using raw values?
+			 */
+			value = ary[i].data[j];
+			colname = (char *)&ary[1].data[j];
+
+			printf("%s,host=%s,type=%.8s value=%jd %jd\n",
+			    get_influx_series(colname),
+			    hostname, colname, value, ts_nsec);
+		}
+		printf("\n");
+		++total_count;
+	}
+
 }
 
 static

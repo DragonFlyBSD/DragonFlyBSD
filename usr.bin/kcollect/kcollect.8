@@ -36,10 +36,12 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl o Ar fields
+.Op Fl O Ar format
 .Op Fl b Ar file
 .Op Fl d Ar file
 .Op Fl r Ar file
 .Op Fl f
+.Op Fl F
 .Op Fl l
 .Op Fl g
 .Op Fl s
@@ -71,6 +73,17 @@ Whitespace is ignored.
 Use the
 .Fl l
 option to get a list of available fields.
+.It Fl O Ar format
+Specify the desired output format.
+The following output formats are available:
+.Bl -tag -width indent
+.It text
+This is the default.
+It produces a human readable text output.
+.It influxdb
+EXPERIMENTAL.
+It tries to dump the entries in a InfluxDB line protocol compatible format.
+.El
 .It Fl b Ar file
 Dump the data to a dbm database, creating the database if necessary.
 Data is indexed by gmt time, which will be calculated from the ticks.
