@@ -34,7 +34,6 @@
 #include <sys/param.h>
 #include <errno.h>
 #include <pwd.h>
-#include <utmp.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>

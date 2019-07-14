@@ -40,7 +40,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <libutil.h>
-#include <utmp.h>
 #include <utmpx.h>
 
 void

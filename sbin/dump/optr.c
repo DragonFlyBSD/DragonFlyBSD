@@ -44,7 +44,6 @@
 #include <stdarg.h>
 #include <signal.h>
 #include <unistd.h>
-#include <utmp.h>
 
 #include <vfs/ufs/dinode.h>
 
