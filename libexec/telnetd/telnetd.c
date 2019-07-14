@@ -38,7 +38,9 @@
 #include <libutil.h>
 #include <paths.h>
 #include <termcap.h>
+#ifdef SUPPORT_UTMP
 #include <utmp.h>
+#endif
 
 #include <arpa/inet.h>
 
@@ -52,7 +54,9 @@ int	auth_level = 0;
 #include <libtelnet/misc.h>
 
 char	remote_hostname[MAXHOSTNAMELEN];
+#ifdef SUPPORT_UTMP
 size_t	utmp_len = sizeof(remote_hostname) - 1;
+#endif
 int	registerd_host_only = 0;
 
 
@@ -267,9 +271,13 @@ main(int argc, char *argv[])
 			break;
 
 		case 'u':
+#ifdef SUPPORT_UTMP
 			utmp_len = (size_t)atoi(optarg);
 			if (utmp_len >= sizeof(remote_hostname))
 				utmp_len = sizeof(remote_hostname) - 1;
+#else
+			fprintf(stderr, "telnetd: -u option unneeded\n");
+#endif
 			break;
 
 		case 'U':
@@ -665,12 +673,14 @@ doit(struct sockaddr *who)
 	Please contact your net administrator");
 	remote_hostname[sizeof(remote_hostname) - 1] = '\0';
 
+#ifdef SUPPORT_UTMP
 	trimdomain(remote_hostname, UT_HOSTSIZE);
 	if (!isdigit(remote_hostname[0]) && strlen(remote_hostname) > utmp_len)
 		err_ = getnameinfo(who, who->sa_len, remote_hostname,
 				  sizeof(remote_hostname), NULL, 0,
 				  NI_NUMERICHOST|NI_WITHSCOPEID);
 		/* XXX: do 'err_' check */
+#endif
 
 	(void) gethostname(host_name, sizeof(host_name) - 1);
 	host_name[sizeof(host_name) - 1] = '\0';

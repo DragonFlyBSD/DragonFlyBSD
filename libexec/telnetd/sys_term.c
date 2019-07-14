@@ -34,7 +34,9 @@
 #include <sys/tty.h>
 #include <libutil.h>
 #include <stdlib.h>
-#include <utmp.h>
+#ifdef SUPPORT_UTMPX
+#include <utmpx.h>
+#endif
 
 #include "telnetd.h"
 #include "pathnames.h"
@@ -45,19 +47,6 @@
 
 int cleanopen(char *);
 void scrub_env(void);
-
-struct	utmp wtmp;
-
-#ifdef _PATH_WTMP
-char    wtmpf[] = _PATH_WTMP;
-#else
-char	wtmpf[]	= "/var/log/wtmp";
-#endif
-#ifdef _PATH_UTMP
-char    utmpf[] = _PATH_UTMP;
-#else
-char	utmpf[] = "/var/run/utmp";
-#endif
 
 char	*envinit[3];
 extern char **environ;
@@ -1334,8 +1323,14 @@ cleanup(int sig __unused)
 	 */
 	sigfillset(&mask);
 	sigprocmask(SIG_SETMASK, &mask, NULL);
+#ifdef SUPPORT_UTMP
 	if (logout(p))
 		logwtmp(p, "", "");
+#endif
+#ifdef SUPPORT_UTMPX
+	if (logoutx(p, 0, DEAD_PROCESS))
+		logwtmpx(p, "", "", 0, DEAD_PROCESS);
+#endif
 	(void)chmod(line, 0666);
 	(void)chown(line, 0, 0);
 	*p = 'p';
