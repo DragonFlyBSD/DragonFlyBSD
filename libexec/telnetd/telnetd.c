@@ -641,7 +641,9 @@ terminaltypeok(char *s)
 void
 doit(struct sockaddr *who)
 {
+#ifdef SUPPORT_UTMP
 	int err_; /* XXX */
+#endif
 	int ptynum;
 
 	/*
