@@ -902,17 +902,6 @@ typedef struct hammer2_bmap_data hammer2_bmap_data_t;
  * inode number key via bit 63.  Access to the hardlink silently looks up
  * the real file and forwards all operations to that file.  Removal of the
  * last hardlink also removes the real file.
- *
- * (attr_tid) is only updated when the inode's specific attributes or regular
- * file size has changed, and affects path lookups and stat.  (attr_tid)
- * represents a special cache coherency lock under the inode.  The inode
- * blockref's modify_tid will always cover it.
- *
- * (dirent_tid) is only updated when an entry under a directory inode has
- * been created, deleted, renamed, or had its attributes change, and affects
- * directory lookups and scans.  (dirent_tid) represents another special cache
- * coherency lock under the inode.  The inode blockref's modify_tid will
- * always cover it.
  */
 #define HAMMER2_INODE_BYTES		1024	/* (asserted by code) */
 #define HAMMER2_INODE_MAXNAME		256	/* maximum name in bytes */
