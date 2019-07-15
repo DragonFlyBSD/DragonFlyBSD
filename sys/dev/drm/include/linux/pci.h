@@ -76,6 +76,8 @@ struct pci_dev {
 	unsigned int irq;		/* handle with care */
 	void *pci_dev_data;
 
+	unsigned int	no_64bit_msi:1;
+
 	/* DragonFly-specific data */
 	int		_irq_type;
 	struct resource	*_irqr;
@@ -349,5 +351,8 @@ pci_pcie_cap(struct pci_dev *pdev)
 {
 	return pci_get_pciecap_ptr(pdev->dev.bsddev);
 }
+
+/* DRM_MAX_PCI_RESOURCE */
+#define DEVICE_COUNT_RESOURCE	6
 
 #endif /* LINUX_PCI_H */
