@@ -12,7 +12,6 @@ SRCS	= \
 	drm_dp_aux_dev.c \
 	drm_dp_dual_mode_helper.c \
 	drm_dp_helper.c \
-	drm_dp_iic_helper.c \
 	drm_dp_mst_topology.c \
 	drm_dragonfly.c \
 	drm_drv.c \
@@ -81,7 +80,7 @@ SRCS	= \
 # if CONFIG_AGP is set
 #SRCS+=	drm_agpsupport.c \
 
-SRCS   += device_if.h bus_if.h pci_if.h device_if.h iicbus_if.h opt_drm.h \
+SRCS   += device_if.h bus_if.h pci_if.h iicbus_if.h opt_drm.h \
 	  opt_vm.h
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include

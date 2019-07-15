@@ -39,10 +39,6 @@
 #include <drm/drm_displayid.h>
 #include <linux/string.h>
 
-#include <bus/iicbus/iic.h>
-#include <bus/iicbus/iiconf.h>
-#include "iicbus_if.h"
-
 #define version_greater(edid, maj, min) \
 	(((edid)->version > (maj)) || \
 	 ((edid)->version == (maj) && (edid)->revision > (min)))
@@ -1272,84 +1268,6 @@ drm_do_probe_ddc_edid(void *data, u8 *buf, unsigned int block, size_t len)
 	} while (ret != xfers && --retries);
 
 	return ret == xfers ? 0 : -1;
-}
-
-/*
- * Old version of drm_do_probe_ddc_edid, still using
- * the FreeBSD/DragonFly iic API
- */
-static int
-drm_do_probe_ddc_edid_iic(void *data, u8 *buf, unsigned int block, size_t len)
-{
-	device_t adapter = data;
-	unsigned char start = block * EDID_LENGTH;
-	unsigned char segment = block >> 1;
-	unsigned char xfers = segment ? 3 : 2;
-	int ret, retries = 5;
-
-	/*
-	 * The core I2C driver will automatically retry the transfer if the
-	 * adapter reports EAGAIN. However, we find that bit-banging transfers
-	 * are susceptible to errors under a heavily loaded machine and
-	 * generate spurious NAKs and timeouts. Retrying the transfer
-	 * of the individual block a few times seems to overcome this.
-	 */
-	do {
-		struct iic_msg msgs[] = {
-			{
-				.slave	= DDC_SEGMENT_ADDR << 1,
-				.flags	= 0,
-				.len	= 1,
-				.buf	= &segment,
-			}, {
-				.slave	= DDC_ADDR << 1,
-				.flags	= 0,
-				.len	= 1,
-				.buf	= &start,
-			}, {
-				.slave	= DDC_ADDR << 1,
-				.flags	= I2C_M_RD,
-				.len	= len,
-				.buf	= buf,
-			}
-		};
-
-		/*
-		 * Avoid sending the segment addr to not upset non-compliant
-		 * DDC monitors.
-		 */
-		ret = iicbus_transfer(adapter, &msgs[3 - xfers], xfers);
-		if (ret != 0)
-			DRM_DEBUG_KMS("iicbus_transfer countdown %d error %d\n",
-			    retries, ret);
-	} while (ret != 0 && --retries);
-
-	return (ret == 0 ? 0 : -1);
-}
-
-/*
- * Old version of drm_probe_ddc(), still using
- * the FreeBSD/DragonFly iic API
- */
-static bool
-drm_probe_ddc_iic(device_t adapter)
-{
-	unsigned char out;
-
-	return (drm_do_probe_ddc_edid_iic(adapter, &out, 0, 1) == 0);
-}
-
-/*
- * Old version of drm_get_edid(), still using
- * the FreeBSD/DragonFly iic API
- */
-struct edid *drm_get_edid_iic(struct drm_connector *connector,
-			      device_t adapter)
-{
-	if (!drm_probe_ddc_iic(adapter))
-		return NULL;
-
-	return drm_do_get_edid(connector, drm_do_probe_ddc_edid_iic, adapter);
 }
 
 /**

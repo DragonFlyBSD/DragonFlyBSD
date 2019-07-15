@@ -622,10 +622,6 @@ struct i2c_algo_dp_aux_data {
 	device_t port;
 };
 
-int iic_dp_aux_add_bus(device_t dev, const char *name,
-    int (*ch)(device_t idev, int mode, uint8_t write_byte, uint8_t *read_byte),
-    void *priv, device_t *bus, device_t *adapter);
-
 /* DP 1.2 MST PORTs - Section 2.5.1 v1.2a spec */
 #define DP_MST_PHYSICAL_PORT_0 0
 #define DP_MST_LOGICAL_PORT_0 8

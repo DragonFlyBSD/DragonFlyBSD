@@ -133,8 +133,6 @@ SRCS	+=								\
 	acpi_if.h							\
 	bus_if.h							\
 	device_if.h							\
-	iicbb_if.h							\
-	iicbus_if.h							\
 	pci_if.h
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
