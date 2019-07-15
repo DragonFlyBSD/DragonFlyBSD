@@ -880,7 +880,6 @@ load_dbm(const char* datafile, kcollect_t **ret_ary,
 	gethostname(hostname, sizeof(hostname) - 1);
 
 	if (headersFound & 0x0004) {
-		printf("HOST %s\n", (char *)(*ret_ary)[2].data);
 		if (*(char *)(*ret_ary)[2].data &&
 		    strcmp(hostname, (char *)(*ret_ary)[2].data) != 0) {
 			fprintf(stderr,
