@@ -144,7 +144,7 @@ static int radeon_init_mem_type(struct ttm_bo_device *bdev, uint32_t type,
 		man->available_caching = TTM_PL_MASK_CACHING;
 		man->default_caching = TTM_PL_FLAG_CACHED;
 		man->flags = TTM_MEMTYPE_FLAG_MAPPABLE | TTM_MEMTYPE_FLAG_CMA;
-#if __OS_HAS_AGP
+#if IS_ENABLED(CONFIG_AGP)
 		if (rdev->flags & RADEON_IS_AGP) {
 			if (!rdev->ddev->agp) {
 				DRM_ERROR("AGP is not enabled for memory type %u\n",
@@ -213,8 +213,8 @@ static void radeon_evict_flags(struct ttm_buffer_object *bo,
 			rbo->placement.num_busy_placement = 0;
 			for (i = 0; i < rbo->placement.num_placement; i++) {
 				if (rbo->placements[i].flags & TTM_PL_FLAG_VRAM) {
-					if (rbo->placements[0].fpfn < fpfn)
-						rbo->placements[0].fpfn = fpfn;
+					if (rbo->placements[i].fpfn < fpfn)
+						rbo->placements[i].fpfn = fpfn;
 				} else {
 					rbo->placement.busy_placement =
 						&rbo->placements[i];
@@ -263,8 +263,8 @@ static int radeon_move_blit(struct ttm_buffer_object *bo,
 
 	rdev = radeon_get_rdev(bo->bdev);
 	ridx = radeon_copy_ring_index(rdev);
-	old_start = old_mem->start << PAGE_SHIFT;
-	new_start = new_mem->start << PAGE_SHIFT;
+	old_start = (u64)old_mem->start << PAGE_SHIFT;
+	new_start = (u64)new_mem->start << PAGE_SHIFT;
 
 	switch (old_mem->mem_type) {
 	case TTM_PL_VRAM:
@@ -463,7 +463,7 @@ static int radeon_ttm_io_mem_reserve(struct ttm_bo_device *bdev, struct ttm_mem_
 		/* system memory */
 		return 0;
 	case TTM_PL_TT:
-#if __OS_HAS_AGP
+#if IS_ENABLED(CONFIG_AGP)
 		if (rdev->flags & RADEON_IS_AGP) {
 			/* RADEON_IS_AGP is set only if AGP is active */
 			mem->bus.offset = mem->start << PAGE_SHIFT;
@@ -558,7 +558,7 @@ static int radeon_ttm_tt_pin_userptr(struct ttm_tt *ttm)
 		struct page **pages = ttm->pages + pinned;
 
 		r = get_user_pages(current, current->mm, userptr, num_pages,
-				   write, 0, pages, NULL);
+				   write ? FOLL_WRITE : 0, pages, NULL);
 		if (r < 0)
 			goto release_pages;
 
@@ -594,8 +594,7 @@ static void radeon_ttm_tt_unpin_userptr(struct ttm_tt *ttm)
 {
 	struct radeon_device *rdev = radeon_get_rdev(ttm->bdev);
 	struct radeon_ttm_tt *gtt = (void *)ttm;
-	struct scatterlist *sg;
-	int i;
+	struct sg_page_iter sg_iter;
 
 	int write = !(gtt->userflags & RADEON_GEM_USERPTR_READONLY);
 	enum dma_data_direction direction = write ?
@@ -608,9 +607,8 @@ static void radeon_ttm_tt_unpin_userptr(struct ttm_tt *ttm)
 	/* free the sg table and pages again */
 	dma_unmap_sg(rdev->dev, ttm->sg->sgl, ttm->sg->nents, direction);
 
-	for_each_sg(ttm->sg->sgl, sg, ttm->sg->nents, i) {
-		struct page *page = sg_page(sg);
-
+	for_each_sg_page(ttm->sg->sgl, &sg_iter, ttm->sg->nents, 0) {
+		struct page *page = sg_page_iter_page(&sg_iter);
 		if (!(gtt->userflags & RADEON_GEM_USERPTR_READONLY))
 			set_page_dirty(page);
 
@@ -689,7 +687,7 @@ static struct ttm_tt *radeon_ttm_tt_create(struct ttm_bo_device *bdev,
 	struct radeon_ttm_tt *gtt;
 
 	rdev = radeon_get_rdev(bdev);
-#if __OS_HAS_AGP
+#if IS_ENABLED(CONFIG_AGP)
 	if (rdev->flags & RADEON_IS_AGP) {
 		return ttm_agp_tt_create(bdev, rdev->ddev->agp->agpdev,
 					 size, page_flags, dummy_read_page);
@@ -731,7 +729,7 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 
 #if 0
 	if (gtt && gtt->userptr) {
-		ttm->sg = kcalloc(1, sizeof(struct sg_table), GFP_KERNEL);
+		ttm->sg = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
 		if (!ttm->sg)
 			return -ENOMEM;
 
@@ -755,7 +753,7 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 #endif /* DUMBBELL_WIP */
 
 	rdev = radeon_get_rdev(ttm->bdev);
-#if __OS_HAS_AGP
+#if IS_ENABLED(CONFIG_AGP)
 	if (rdev->flags & RADEON_IS_AGP) {
 		return ttm_agp_tt_populate(ttm);
 	}
@@ -778,7 +776,7 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 						       PCI_DMA_BIDIRECTIONAL);
 #ifdef DUMBBELL_WIP
 		if (pci_dma_mapping_error(rdev->pdev, gtt->ttm.dma_address[i])) {
-			while (--i) {
+			while (i--) {
 				pci_unmap_page(rdev->pdev, gtt->ttm.dma_address[i],
 					       PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
 				gtt->ttm.dma_address[i] = 0;
@@ -810,7 +808,7 @@ static void radeon_ttm_tt_unpopulate(struct ttm_tt *ttm)
 		return;
 
 	rdev = radeon_get_rdev(ttm->bdev);
-#if __OS_HAS_AGP
+#if IS_ENABLED(CONFIG_AGP)
 	if (rdev->flags & RADEON_IS_AGP) {
 		ttm_agp_tt_unpopulate(ttm);
 		return;
@@ -835,6 +833,20 @@ static void radeon_ttm_tt_unpopulate(struct ttm_tt *ttm)
 	}
 
 	ttm_pool_unpopulate(ttm);
+}
+
+bool radeon_ttm_tt_has_userptr(struct ttm_tt *ttm)
+{
+#if 0
+	struct radeon_ttm_tt *gtt = radeon_ttm_tt_to_gtt(ttm);
+
+	if (gtt == NULL)
+#endif
+		return false;
+
+#if 0
+	return !!gtt->userptr;
+#endif
 }
 
 bool radeon_ttm_tt_is_readonly(struct ttm_tt *ttm)

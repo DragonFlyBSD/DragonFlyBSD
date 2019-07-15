@@ -22,7 +22,7 @@
  * Authors: Alex Deucher
  */
 
-#include <drm/drmP.h>
+#include "drmP.h"
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "rv6xxd.h"
@@ -142,7 +142,6 @@ static int rv6xx_convert_clock_to_stepping(struct radeon_device *rdev,
 	int ret;
 	struct atom_clock_dividers dividers;
 
-	bzero(&dividers, sizeof(dividers));	/* avoid gcc warning */
 	ret = radeon_atom_get_clock_dividers(rdev, COMPUTE_ENGINE_PLL_PARAM,
 					     clock, false, &dividers);
 	if (ret)
@@ -247,8 +246,6 @@ static void rv6xx_generate_steps(struct radeon_device *rdev,
 	bool increasing_vco;
 	u32 step_index = start_index;
 
-	bzero(&cur, sizeof(cur));	/* silence gcc warnings */
-	bzero(&target, sizeof(target));	/* silence gcc warnings */
 	rv6xx_convert_clock_to_stepping(rdev, low, &cur);
 	rv6xx_convert_clock_to_stepping(rdev, high, &target);
 
@@ -302,7 +299,6 @@ static void rv6xx_generate_single_step(struct radeon_device *rdev,
 {
 	struct rv6xx_sclk_stepping step;
 
-	bzero(&step, sizeof(step));	/* silence gcc warnings */
 	rv6xx_convert_clock_to_stepping(rdev, clock, &step);
 	rv6xx_output_stepping(rdev, index, &step);
 }
@@ -662,7 +658,6 @@ static void rv6xx_program_mclk_spread_spectrum_parameters(struct radeon_device *
 	struct radeon_atom_ss ss;
 	u32 vco_freq = 0, clk_v, clk_s;
 
-	bzero(&dividers, sizeof(dividers));	/* avoid gcc warning */
 	rv6xx_enable_memory_spread_spectrum(rdev, false);
 
 	if (pi->mclk_ss) {
@@ -1891,7 +1886,7 @@ static int rv6xx_parse_power_table(struct radeon_device *rdev)
 	if (!atom_parse_data_header(mode_info->atom_context, index, NULL,
 				   &frev, &crev, &data_offset))
 		return -EINVAL;
-	power_info = (union power_info *)((uint8_t*)mode_info->atom_context->bios + data_offset);
+	power_info = (union power_info *)(mode_info->atom_context->bios + data_offset);
 
 	rdev->pm.dpm.ps = kzalloc(sizeof(struct radeon_ps) *
 				  power_info->pplib.ucNumStates, GFP_KERNEL);
@@ -1900,11 +1895,11 @@ static int rv6xx_parse_power_table(struct radeon_device *rdev)
 
 	for (i = 0; i < power_info->pplib.ucNumStates; i++) {
 		power_state = (union pplib_power_state *)
-			((uint8_t*)mode_info->atom_context->bios + data_offset +
+			(mode_info->atom_context->bios + data_offset +
 			 le16_to_cpu(power_info->pplib.usStateArrayOffset) +
 			 i * power_info->pplib.ucStateEntrySize);
 		non_clock_info = (struct _ATOM_PPLIB_NONCLOCK_INFO *)
-			((uint8_t*)mode_info->atom_context->bios + data_offset +
+			(mode_info->atom_context->bios + data_offset +
 			 le16_to_cpu(power_info->pplib.usNonClockInfoArrayOffset) +
 			 (power_state->v1.ucNonClockStateIndex *
 			  power_info->pplib.ucNonClockSize));
@@ -1921,7 +1916,7 @@ static int rv6xx_parse_power_table(struct radeon_device *rdev)
 			idx = (u8 *)&power_state->v1.ucClockStateIndices[0];
 			for (j = 0; j < (power_info->pplib.ucStateEntrySize - 1); j++) {
 				clock_info = (union pplib_clock_info *)
-					((uint8_t*)mode_info->atom_context->bios + data_offset +
+					(mode_info->atom_context->bios + data_offset +
 					 le16_to_cpu(power_info->pplib.usClockInfoArrayOffset) +
 					 (idx[j] * power_info->pplib.ucClockInfoSize));
 				rv6xx_parse_pplib_clock_info(rdev,
@@ -1941,7 +1936,6 @@ int rv6xx_dpm_init(struct radeon_device *rdev)
 	struct rv6xx_power_info *pi;
 	int ret;
 
-	bzero(&dividers, sizeof(dividers));	/* avoid gcc warning */
 	pi = kzalloc(sizeof(struct rv6xx_power_info), GFP_KERNEL);
 	if (pi == NULL)
 		return -ENOMEM;
@@ -2053,6 +2047,52 @@ void rv6xx_dpm_debugfs_print_current_performance_level(struct radeon_device *rde
 		seq_printf(m, "uvd    vclk: %d dclk: %d\n", rps->vclk, rps->dclk);
 		seq_printf(m, "power level %d    sclk: %u mclk: %u vddc: %u\n",
 			   current_index, pl->sclk, pl->mclk, pl->vddc);
+	}
+}
+
+/* get the current sclk in 10 khz units */
+u32 rv6xx_dpm_get_current_sclk(struct radeon_device *rdev)
+{
+	struct radeon_ps *rps = rdev->pm.dpm.current_ps;
+	struct rv6xx_ps *ps = rv6xx_get_ps(rps);
+	struct rv6xx_pl *pl;
+	u32 current_index =
+		(RREG32(TARGET_AND_CURRENT_PROFILE_INDEX) & CURRENT_PROFILE_INDEX_MASK) >>
+		CURRENT_PROFILE_INDEX_SHIFT;
+
+	if (current_index > 2) {
+		return 0;
+	} else {
+		if (current_index == 0)
+			pl = &ps->low;
+		else if (current_index == 1)
+			pl = &ps->medium;
+		else /* current_index == 2 */
+			pl = &ps->high;
+		return pl->sclk;
+	}
+}
+
+/* get the current mclk in 10 khz units */
+u32 rv6xx_dpm_get_current_mclk(struct radeon_device *rdev)
+{
+	struct radeon_ps *rps = rdev->pm.dpm.current_ps;
+	struct rv6xx_ps *ps = rv6xx_get_ps(rps);
+	struct rv6xx_pl *pl;
+	u32 current_index =
+		(RREG32(TARGET_AND_CURRENT_PROFILE_INDEX) & CURRENT_PROFILE_INDEX_MASK) >>
+		CURRENT_PROFILE_INDEX_SHIFT;
+
+	if (current_index > 2) {
+		return 0;
+	} else {
+		if (current_index == 0)
+			pl = &ps->low;
+		else if (current_index == 1)
+			pl = &ps->medium;
+		else /* current_index == 2 */
+			pl = &ps->high;
+		return pl->mclk;
 	}
 }
 

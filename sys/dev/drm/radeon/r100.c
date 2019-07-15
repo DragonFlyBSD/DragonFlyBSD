@@ -24,9 +24,8 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r100.c 255573 2013-09-14 17:24:41Z dumbbell $
  */
+#include <linux/seq_file.h>
 #include <drm/drmP.h>
 #include <drm/radeon_drm.h>
 #include "radeon_reg.h"
@@ -806,7 +805,7 @@ irqreturn_t r100_irq_process(struct radeon_device *rdev)
 		status = r100_irq_ack(rdev);
 	}
 	if (queue_hotplug)
-		schedule_work(&rdev->hotplug_work);
+		schedule_delayed_work(&rdev->hotplug_work, 0);
 	if (rdev->msi_enabled) {
 		switch (rdev->family) {
 		case CHIP_RS400:
@@ -3228,6 +3227,9 @@ void r100_bandwidth_update(struct radeon_device *rdev)
 	uint32_t pixel_bytes1 = 0;
 	uint32_t pixel_bytes2 = 0;
 
+	/* Guess line buffer size to be 8192 pixels */
+	u32 lb_size = 8192;
+
 	if (!rdev->mode_info.mode_config_initialized)
 		return;
 
@@ -3465,6 +3467,16 @@ void r100_bandwidth_update(struct radeon_device *rdev)
 	else
 		max_stop_req = 0x7c;
 
+/*
+XXX: disp_drain_rate.full not initialized in (mode2) block
+Looks like a real bug. Try to report it upstream.
+*/
+#ifdef __DragonFly__
+	disp_drain_rate.full = dfixed_div(pix_clk, temp_ff);
+	crit_point_ff.full = dfixed_mul(disp_drain_rate, disp_latency);
+	crit_point_ff.full += dfixed_const_half(0);
+#endif
+
 	if (mode1) {
 		/*  CRTC1
 		    Set GRPH_BUFFER_CNTL register using h/w defined optimal values.
@@ -3642,6 +3654,13 @@ void r100_bandwidth_update(struct radeon_device *rdev)
 		DRM_DEBUG_KMS("GRPH2_BUFFER_CNTL from to %x\n",
 			  (unsigned int)RREG32(RADEON_GRPH2_BUFFER_CNTL));
 	}
+
+	/* Save number of lines the linebuffer leads before the scanout */
+	if (mode1)
+	    rdev->mode_info.crtcs[0]->lb_vblank_lead_lines = DIV_ROUND_UP(lb_size, mode1->crtc_hdisplay);
+
+	if (mode2)
+	    rdev->mode_info.crtcs[1]->lb_vblank_lead_lines = DIV_ROUND_UP(lb_size, mode2->crtc_hdisplay);
 }
 
 int r100_ring_test(struct radeon_device *rdev, struct radeon_ring *ring)
@@ -4102,34 +4121,23 @@ int r100_init(struct radeon_device *rdev)
 	return 0;
 }
 
-uint32_t r100_mm_rreg(struct radeon_device *rdev, uint32_t reg,
-		      bool always_indirect)
+uint32_t r100_mm_rreg_slow(struct radeon_device *rdev, uint32_t reg)
 {
-	if (reg < rdev->rmmio_size && !always_indirect)
-		return bus_read_4(rdev->rmmio, reg);
-	else {
-		uint32_t ret;
+	uint32_t ret;
 
-		spin_lock(&rdev->mmio_idx_lock);
-		bus_write_4(rdev->rmmio, RADEON_MM_INDEX, reg);
-		ret = bus_read_4(rdev->rmmio, RADEON_MM_DATA);
-		spin_unlock(&rdev->mmio_idx_lock);
-
-		return ret;
-	}
+	spin_lock(&rdev->mmio_idx_lock);
+	bus_write_4(rdev->rmmio, RADEON_MM_INDEX, reg);
+	ret = bus_read_4(rdev->rmmio, RADEON_MM_DATA);
+	spin_unlock(&rdev->mmio_idx_lock);
+	return ret;
 }
 
-void r100_mm_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v,
-		  bool always_indirect)
+void r100_mm_wreg_slow(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	if (reg < rdev->rmmio_size && !always_indirect)
-		bus_write_4(rdev->rmmio, reg, v);
-	else {
-		spin_lock(&rdev->mmio_idx_lock);
-		bus_write_4(rdev->rmmio, RADEON_MM_INDEX, reg);
-		bus_write_4(rdev->rmmio, RADEON_MM_DATA, v);
-		spin_unlock(&rdev->mmio_idx_lock);
-	}
+	spin_lock(&rdev->mmio_idx_lock);
+	bus_write_4(rdev->rmmio, RADEON_MM_INDEX, reg);
+	bus_write_4(rdev->rmmio, RADEON_MM_DATA, v);
+	spin_unlock(&rdev->mmio_idx_lock);
 }
 
 u32 r100_io_rreg(struct radeon_device *rdev, u32 reg)
@@ -4148,7 +4156,6 @@ void r100_io_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 	if (reg < rdev->rio_mem_size)
 		bus_write_4(rdev->rio_mem, reg, v);
 	else {
-		/* XXX No locking? -- dumbbell@ */
 		bus_write_4(rdev->rio_mem, RADEON_MM_INDEX, reg);
 		bus_write_4(rdev->rio_mem, RADEON_MM_DATA, v);
 	}

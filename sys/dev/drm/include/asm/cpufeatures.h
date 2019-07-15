@@ -29,4 +29,6 @@
 
 #define X86_FEATURE_CLFLUSH	( 0*32+19) /* CLFLUSH instruction */
 
+#define X86_FEATURE_HYPERVISOR	( 4*32+31) /* Running on a hypervisor */
+
 #endif	/* _ASM_CPUFEATURES_H_ */

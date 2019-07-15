@@ -368,7 +368,6 @@ int r600_dma_ib_test(struct radeon_device *rdev, struct radeon_ring *ring)
 	}
 	r = radeon_fence_wait(ib.fence, false);
 	if (r) {
-		radeon_ib_free(rdev, &ib); /* zRJ XXX culprit */
 		DRM_ERROR("radeon: fence wait failed (%d).\n", r);
 		return r;
 	}

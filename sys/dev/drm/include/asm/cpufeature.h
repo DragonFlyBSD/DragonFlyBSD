@@ -43,4 +43,6 @@ static_cpu_has(uint16_t feature)
 	}
 }
 
+#define boot_cpu_has(bit)	static_cpu_has(bit)
+
 #endif	/* _ASM_CPUFEATURE_H_ */

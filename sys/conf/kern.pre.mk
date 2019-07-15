@@ -71,6 +71,7 @@ INCLUDES+= -I$S/dev/netif/ath/ath_hal -I$S/contrib/dev/ath/ath_hal
 INCLUDES+= -I$S/dev/drm/include
 INCLUDES+= -I$S/dev/drm/include/drm
 INCLUDES+= -I$S/dev/drm/include/uapi
+INCLUDES+= -I$S/dev/drm/amd/include
 
 COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS -include opt_global.h
 CFLAGS=	${COPTFLAGS} ${KCFLAGS} ${CWARNFLAGS} ${DEBUG} ${COPTS}

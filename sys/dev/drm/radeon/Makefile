@@ -95,9 +95,13 @@ SRCS	+=								\
 	dce6_afmt.c
 
 # add KMS driver
-SRCS+=				\
-	radeon_mn.c		\
-	radeon_sync.c
+SRCS+=									\
+	radeon_prime.c							\
+	radeon_sync.c radeon_audio.c radeon_dp_auxch.c radeon_dp_mst.c
+
+# CONFIG_MMU_NOTIFIER
+#SRCS+=				\
+#	radeon_mn.c
 
 # async DMA block
 SRCS	+=								\
@@ -124,7 +128,6 @@ SRCS	+=								\
 	radeon_kfd.c
 
 #radeon_ioc32.c
-#radeon_prime.c
 #--radeon_trace_points.c
 
 SRCS	+=								\
@@ -138,6 +141,7 @@ SRCS	+=								\
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/drm
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/uapi
+KCFLAGS+= -I${SYSDIR}/dev/drm/amd/include
 KCFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
 KCFLAGS+= -include ${SYSDIR}/dev/drm/kconfig.h
 

@@ -52,7 +52,8 @@ enum kgd_engine_type {
 	KGD_ENGINE_MEC1,
 	KGD_ENGINE_MEC2,
 	KGD_ENGINE_RLC,
-	KGD_ENGINE_SDMA,
+	KGD_ENGINE_SDMA1,
+	KGD_ENGINE_SDMA2,
 	KGD_ENGINE_MAX
 };
 
@@ -77,6 +78,118 @@ struct kgd2kfd_shared_resources {
 };
 
 /**
+ * struct kfd2kgd_calls
+ *
+ * @init_gtt_mem_allocation: Allocate a buffer on the gart aperture.
+ * The buffer can be used for mqds, hpds, kernel queue, fence and runlists
+ *
+ * @free_gtt_mem: Frees a buffer that was allocated on the gart aperture
+ *
+ * @get_vmem_size: Retrieves (physical) size of VRAM
+ *
+ * @get_gpu_clock_counter: Retrieves GPU clock counter
+ *
+ * @get_max_engine_clock_in_mhz: Retrieves maximum GPU clock in MHz
+ *
+ * @program_sh_mem_settings: A function that should initiate the memory
+ * properties such as main aperture memory type (cache / non cached) and
+ * secondary aperture base address, size and memory type.
+ * This function is used only for no cp scheduling mode.
+ *
+ * @set_pasid_vmid_mapping: Exposes pasid/vmid pair to the H/W for no cp
+ * scheduling mode. Only used for no cp scheduling mode.
+ *
+ * @init_pipeline: Initialized the compute pipelines.
+ *
+ * @hqd_load: Loads the mqd structure to a H/W hqd slot. used only for no cp
+ * sceduling mode.
+ *
+ * @hqd_sdma_load: Loads the SDMA mqd structure to a H/W SDMA hqd slot.
+ * used only for no HWS mode.
+ *
+ * @hqd_is_occupies: Checks if a hqd slot is occupied.
+ *
+ * @hqd_destroy: Destructs and preempts the queue assigned to that hqd slot.
+ *
+ * @hqd_sdma_is_occupied: Checks if an SDMA hqd slot is occupied.
+ *
+ * @hqd_sdma_destroy: Destructs and preempts the SDMA queue assigned to that
+ * SDMA hqd slot.
+ *
+ * @get_fw_version: Returns FW versions from the header
+ *
+ * This structure contains function pointers to services that the kgd driver
+ * provides to amdkfd driver.
+ *
+ */
+struct kfd2kgd_calls {
+	int (*init_gtt_mem_allocation)(struct kgd_dev *kgd, size_t size,
+					void **mem_obj, uint64_t *gpu_addr,
+					void **cpu_ptr);
+
+	void (*free_gtt_mem)(struct kgd_dev *kgd, void *mem_obj);
+
+	uint64_t (*get_vmem_size)(struct kgd_dev *kgd);
+	uint64_t (*get_gpu_clock_counter)(struct kgd_dev *kgd);
+
+	uint32_t (*get_max_engine_clock_in_mhz)(struct kgd_dev *kgd);
+
+	/* Register access functions */
+	void (*program_sh_mem_settings)(struct kgd_dev *kgd, uint32_t vmid,
+			uint32_t sh_mem_config,	uint32_t sh_mem_ape1_base,
+			uint32_t sh_mem_ape1_limit, uint32_t sh_mem_bases);
+
+	int (*set_pasid_vmid_mapping)(struct kgd_dev *kgd, unsigned int pasid,
+					unsigned int vmid);
+
+	int (*init_pipeline)(struct kgd_dev *kgd, uint32_t pipe_id,
+				uint32_t hpd_size, uint64_t hpd_gpu_addr);
+
+	int (*init_interrupts)(struct kgd_dev *kgd, uint32_t pipe_id);
+
+	int (*hqd_load)(struct kgd_dev *kgd, void *mqd, uint32_t pipe_id,
+			uint32_t queue_id, uint32_t __user *wptr);
+
+	int (*hqd_sdma_load)(struct kgd_dev *kgd, void *mqd);
+
+	bool (*hqd_is_occupied)(struct kgd_dev *kgd, uint64_t queue_address,
+				uint32_t pipe_id, uint32_t queue_id);
+
+	int (*hqd_destroy)(struct kgd_dev *kgd, uint32_t reset_type,
+				unsigned int timeout, uint32_t pipe_id,
+				uint32_t queue_id);
+
+	bool (*hqd_sdma_is_occupied)(struct kgd_dev *kgd, void *mqd);
+
+	int (*hqd_sdma_destroy)(struct kgd_dev *kgd, void *mqd,
+				unsigned int timeout);
+
+	int (*address_watch_disable)(struct kgd_dev *kgd);
+	int (*address_watch_execute)(struct kgd_dev *kgd,
+					unsigned int watch_point_id,
+					uint32_t cntl_val,
+					uint32_t addr_hi,
+					uint32_t addr_lo);
+	int (*wave_control_execute)(struct kgd_dev *kgd,
+					uint32_t gfx_index_val,
+					uint32_t sq_cmd);
+	uint32_t (*address_watch_get_offset)(struct kgd_dev *kgd,
+					unsigned int watch_point_id,
+					unsigned int reg_offset);
+	bool (*get_atc_vmid_pasid_mapping_valid)(
+					struct kgd_dev *kgd,
+					uint8_t vmid);
+	uint16_t (*get_atc_vmid_pasid_mapping_pasid)(
+					struct kgd_dev *kgd,
+					uint8_t vmid);
+	void (*write_vmid_invalidate_request)(struct kgd_dev *kgd,
+					uint8_t vmid);
+
+	uint16_t (*get_fw_version)(struct kgd_dev *kgd,
+				enum kgd_engine_type type);
+};
+
+/**
  * struct kgd2kfd_calls
  *
  * @exit: Notifies amdkfd that kgd module is unloaded
@@ -98,7 +211,8 @@ struct kgd2kfd_shared_resources {
  */
 struct kgd2kfd_calls {
 	void (*exit)(void);
-	struct kfd_dev* (*probe)(struct kgd_dev *kgd, struct pci_dev *pdev);
+	struct kfd_dev* (*probe)(struct kgd_dev *kgd, struct pci_dev *pdev,
+		const struct kfd2kgd_calls *f2g);
 	bool (*device_init)(struct kfd_dev *kfd,
 			const struct kgd2kfd_shared_resources *gpu_resources);
 	void (*device_exit)(struct kfd_dev *kfd);
@@ -107,94 +221,7 @@ struct kgd2kfd_calls {
 	int (*resume)(struct kfd_dev *kfd);
 };
 
-/**
- * struct kfd2kgd_calls
- *
- * @init_sa_manager: Initialize an instance of the sa manager, used by
- * amdkfd for all system memory allocations that are mapped to the GART
- * address space
- *
- * @fini_sa_manager: Releases all memory allocations for amdkfd that are
- * handled by kgd sa manager
- *
- * @allocate_mem: Allocate a buffer from amdkfd's sa manager. The buffer can
- * be used for mqds, hpds, kernel queue, fence and runlists
- *
- * @free_mem: Frees a buffer that was allocated by amdkfd's sa manager
- *
- * @get_vmem_size: Retrieves (physical) size of VRAM
- *
- * @get_gpu_clock_counter: Retrieves GPU clock counter
- *
- * @get_max_engine_clock_in_mhz: Retrieves maximum GPU clock in MHz
- *
- * @program_sh_mem_settings: A function that should initiate the memory
- * properties such as main aperture memory type (cache / non cached) and
- * secondary aperture base address, size and memory type.
- * This function is used only for no cp scheduling mode.
- *
- * @set_pasid_vmid_mapping: Exposes pasid/vmid pair to the H/W for no cp
- * scheduling mode. Only used for no cp scheduling mode.
- *
- * @init_memory: Initializes memory apertures to fixed base/limit address
- * and non cached memory types.
- *
- * @init_pipeline: Initialized the compute pipelines.
- *
- * @hqd_load: Loads the mqd structure to a H/W hqd slot. used only for no cp
- * sceduling mode.
- *
- * @hqd_is_occupies: Checks if a hqd slot is occupied.
- *
- * @hqd_destroy: Destructs and preempts the queue assigned to that hqd slot.
- *
- * @get_fw_version: Returns FW versions from the header
- *
- * This structure contains function pointers to services that the kgd driver
- * provides to amdkfd driver.
- *
- */
-struct kfd2kgd_calls {
-	/* Memory management. */
-	int (*init_sa_manager)(struct kgd_dev *kgd, unsigned int size);
-	void (*fini_sa_manager)(struct kgd_dev *kgd);
-	int (*allocate_mem)(struct kgd_dev *kgd, size_t size, size_t alignment,
-			enum kgd_memory_pool pool, struct kgd_mem **mem);
-
-	void (*free_mem)(struct kgd_dev *kgd, struct kgd_mem *mem);
-
-	uint64_t (*get_vmem_size)(struct kgd_dev *kgd);
-	uint64_t (*get_gpu_clock_counter)(struct kgd_dev *kgd);
-
-	uint32_t (*get_max_engine_clock_in_mhz)(struct kgd_dev *kgd);
-
-	/* Register access functions */
-	void (*program_sh_mem_settings)(struct kgd_dev *kgd, uint32_t vmid,
-			uint32_t sh_mem_config,	uint32_t sh_mem_ape1_base,
-			uint32_t sh_mem_ape1_limit, uint32_t sh_mem_bases);
-
-	int (*set_pasid_vmid_mapping)(struct kgd_dev *kgd, unsigned int pasid,
-					unsigned int vmid);
-
-	int (*init_memory)(struct kgd_dev *kgd);
-	int (*init_pipeline)(struct kgd_dev *kgd, uint32_t pipe_id,
-				uint32_t hpd_size, uint64_t hpd_gpu_addr);
-
-	int (*hqd_load)(struct kgd_dev *kgd, void *mqd, uint32_t pipe_id,
-			uint32_t queue_id, uint32_t __user *wptr);
-
-	bool (*hqd_is_occupied)(struct kgd_dev *kgd, uint64_t queue_address,
-				uint32_t pipe_id, uint32_t queue_id);
-
-	int (*hqd_destroy)(struct kgd_dev *kgd, uint32_t reset_type,
-				unsigned int timeout, uint32_t pipe_id,
-				uint32_t queue_id);
-	uint16_t (*get_fw_version)(struct kgd_dev *kgd,
-				enum kgd_engine_type type);
-};
-
 bool kgd2kfd_init(unsigned interface_version,
-		  const struct kfd2kgd_calls *f2g,
-		  const struct kgd2kfd_calls **g2f);
+		const struct kgd2kfd_calls **g2f);
 
-#endif /* KGD_KFD_INTERFACE_H_INCLUDED */
+#endif	/* KGD_KFD_INTERFACE_H_INCLUDED */

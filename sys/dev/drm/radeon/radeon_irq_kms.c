@@ -79,19 +79,40 @@ irqreturn_t radeon_driver_irq_handler_kms(int irq, void *arg)
 static void radeon_hotplug_work_func(struct work_struct *work)
 {
 	struct radeon_device *rdev = container_of(work, struct radeon_device,
-						  hotplug_work);
+						  hotplug_work.work);
 	struct drm_device *dev = rdev->ddev;
 	struct drm_mode_config *mode_config = &dev->mode_config;
 	struct drm_connector *connector;
 
+	/* we can race here at startup, some boards seem to trigger
+	 * hotplug irqs when they shouldn't. */
+	if (!rdev->mode_info.mode_config_initialized)
+		return;
+
+	mutex_lock(&mode_config->mutex);
 	if (mode_config->num_connector) {
 		list_for_each_entry(connector, &mode_config->connector_list, head)
 			radeon_connector_hotplug(connector);
 	}
+	mutex_unlock(&mode_config->mutex);
 	/* Just fire off a uevent and let userspace tell us what to do */
 	drm_helper_hpd_irq_event(dev);
 }
 
+static void radeon_dp_work_func(struct work_struct *work)
+{
+	struct radeon_device *rdev = container_of(work, struct radeon_device,
+						  dp_work);
+	struct drm_device *dev = rdev->ddev;
+	struct drm_mode_config *mode_config = &dev->mode_config;
+	struct drm_connector *connector;
+
+	/* this should take a mutex */
+	if (mode_config->num_connector) {
+		list_for_each_entry(connector, &mode_config->connector_list, head)
+			radeon_connector_hotplug(connector);
+	}
+}
 /**
  * radeon_driver_irq_preinstall_kms - drm irq preinstall callback
  *
@@ -133,7 +154,13 @@ void radeon_driver_irq_preinstall_kms(struct drm_device *dev)
  */
 int radeon_driver_irq_postinstall_kms(struct drm_device *dev)
 {
-	dev->max_vblank_count = 0x001fffff;
+	struct radeon_device *rdev = dev->dev_private;
+
+	if (ASIC_IS_AVIVO(rdev))
+		dev->max_vblank_count = 0x00ffffff;
+	else
+		dev->max_vblank_count = 0x001fffff;
+
 	return 0;
 }
 
@@ -191,6 +218,16 @@ int radeon_msi_ok(struct drm_device *rdev, unsigned long flags)
 	/* MSIs don't work on AGP */
 	if (drm_pci_device_is_agp(rdev))
 		return false;
+
+	/*
+	 * Older chips have a HW limitation, they can only generate 40 bits
+	 * of address for "64-bit" MSIs which breaks on some platforms, notably
+	 * IBM POWER servers, so we limit them
+	 */
+	if (family < CHIP_BONAIRE) {
+		dev_info(rdev->dev, "radeon: MSI limited to 32-bit\n");
+		rdev->pdev->no_64bit_msi = 1;
+	}
 
 	/* force MSI on */
 	if (radeon_msi == 1)
@@ -275,14 +312,15 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	}
 #endif
 
-	INIT_WORK(&rdev->hotplug_work, radeon_hotplug_work_func);
+	INIT_DELAYED_WORK(&rdev->hotplug_work, radeon_hotplug_work_func);
+	INIT_WORK(&rdev->dp_work, radeon_dp_work_func);
 	INIT_WORK(&rdev->audio_work, r600_audio_update_hdmi);
 
 	rdev->irq.installed = true;
 	r = drm_irq_install(rdev->ddev, rdev->ddev->pdev->irq);
 	if (r) {
 		rdev->irq.installed = false;
-		flush_work(&rdev->hotplug_work);
+		flush_delayed_work(&rdev->hotplug_work);
 		return r;
 	}
 
@@ -303,7 +341,11 @@ void radeon_irq_kms_fini(struct radeon_device *rdev)
 	if (rdev->irq.installed) {
 		drm_irq_uninstall(rdev->ddev);
 		rdev->irq.installed = false;
-		flush_work(&rdev->hotplug_work);
+#ifndef __DragonFly__
+		if (rdev->msi_enabled)
+			pci_disable_msi(rdev->pdev);
+#endif
+		flush_delayed_work(&rdev->hotplug_work);
 	}
 }
 
