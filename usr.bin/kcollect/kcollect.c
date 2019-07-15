@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2017-2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -36,11 +36,16 @@
 #include <errno.h>
 
 #define SLEEP_INTERVAL	60	/* minimum is KCOLLECT_INTERVAL */
+#define DATA_BASE_INDEX	8	/* up to 8 headers */
 
 #define DISPLAY_TIME_ONLY "%H:%M:%S"
 #define DISPLAY_FULL_DATE "%F %H:%M:%S"
-#define HDR_FMT "HEADER0"
-#define HDR_TITLE "HEADER1"
+#define HDR_BASE	"HEADER"
+#define HDR_STRLEN	6
+
+#define HDR_FMT_INDEX	0
+#define HDR_FMT_TITLE	1
+#define HDR_FMT_HOST	2
 
 #define HOST_NAME_MAX sysconf(_SC_HOST_NAME_MAX)
 
@@ -54,6 +59,8 @@ static int str2unix(const char* str, const char* fmt);
 static int rec_comparator(const void *c1, const void *c2);
 static void load_dbm(const char *datafile,
 			kcollect_t **ret_ary, size_t *counter);
+static kcollect_t *load_kernel(kcollect_t *scaleid, kcollect_t *ary,
+			size_t *counter);
 static void dump_fields(kcollect_t *ary);
 static void adjust_fields(kcollect_t *ent, const char *fields);
 static void restore_headers(kcollect_t *ary, const char *datafile);
@@ -71,6 +78,7 @@ int Fflag = 0;
 int
 main(int ac, char **av)
 {
+	kcollect_t *ary_base;
 	kcollect_t *ary;
 	size_t bytes = 0;
 	size_t count;
@@ -83,8 +91,6 @@ main(int ac, char **av)
 	int last_ticks;
 	int loops = 0;
 	int maxtime = 0;
-
-	kcollect_t *dbmAry = NULL;
 	const char *dbmFile = NULL;
 	int fromFile = 0;
 
@@ -218,19 +224,32 @@ main(int ac, char **av)
 				bytes = loop_bytes;
 		}
 
-		ary = malloc(bytes);
-		sysctlbyname("kern.collect_data", ary, &bytes, NULL, 0);
-		count = bytes / sizeof(kcollect_t);
-
 		/*
 		 * If we got specified a file to load from: replace the data
 		 * array and counter
 		 */
 		if (fromFile) {
-			load_dbm(dbmFile, &dbmAry, &count);
-			free(ary);
-			ary = dbmAry;
+			kcollect_t *dbmAry = NULL;
 
+			load_dbm(dbmFile, &dbmAry, &count);
+			ary = ary_base = dbmAry;
+		} else {
+			kcollect_t scaleid[2];
+
+			ary_base = malloc(bytes +
+					  DATA_BASE_INDEX * sizeof(kcollect_t));
+			ary = ary_base + DATA_BASE_INDEX;
+			sysctlbyname("kern.collect_data", ary, &bytes, NULL, 0);
+			count = bytes / sizeof(kcollect_t);
+			if (count < 2) {
+				fprintf(stderr,
+					"[ERR] kern.collect_data failed\n");
+				exit(1);
+			}
+			scaleid[0] = ary[0];
+			scaleid[1] = ary[1];
+			count -= 2;
+			ary = load_kernel(scaleid, ary + 2, &count);
 		}
 		if (fields)
 			adjust_fields(&ary[1], fields);
@@ -240,7 +259,7 @@ main(int ac, char **av)
 		 * Delete duplicate entries when looping
 		 */
 		if (loops) {
-			while (count > 2) {
+			while (count > DATA_BASE_INDEX) {
 				if ((int)(ary[count-1].ticks - last_ticks) > 0)
 					break;
 				--count;
@@ -252,7 +271,7 @@ main(int ac, char **av)
 		 */
 		if (maxtime) {
 			maxtime *= ary[0].hz;
-			while (count > 2) {
+			while (count > DATA_BASE_INDEX) {
 				if ((int)(ary[0].ticks - ary[count-1].ticks) <
 				    maxtime) {
 					break;
@@ -263,18 +282,18 @@ main(int ac, char **av)
 
 		switch(cmd) {
 		case 't':
-			if (count > 2) {
+			if (count > DATA_BASE_INDEX) {
 				dumpfn(ary, count, total_count,
 					  (fromFile ? DISPLAY_FULL_DATE :
 						      DISPLAY_TIME_ONLY));
 			}
 			break;
 		case 'b':
-			if (count > 2)
+			if (count > DATA_BASE_INDEX)
 				dump_dbm(ary, count, datafile);
 			break;
 		case 'r':
-			if (count >= 2)
+			if (count >= DATA_BASE_INDEX)
 				restore_headers(ary, datafile);
 			break;
 		case 'l':
@@ -282,15 +301,15 @@ main(int ac, char **av)
 			exit(0);
 			break;		/* NOT REACHED */
 		case 'g':
-			if (count > 2)
+			if (count > DATA_BASE_INDEX)
 				dump_gnuplot(ary, count);
 			break;
 		case 'w':
-			if (count >= 2)
+			if (count >= DATA_BASE_INDEX)
 				dump_gnuplot(ary, count);
 			break;
 		case 'x':
-			if (count > 2)
+			if (count > DATA_BASE_INDEX)
 				dump_gnuplot(ary, count);
 			break;
 		}
@@ -311,9 +330,9 @@ main(int ac, char **av)
 				break;
 			}
 		}
-		last_ticks = ary[2].ticks;
-		if (count >= 2)
-			total_count += count - 2;
+		last_ticks = ary[DATA_BASE_INDEX].ticks;
+		if (count >= DATA_BASE_INDEX)
+			total_count += count - DATA_BASE_INDEX;
 
 		/*
 		 * Loop for incremental aquisition.  When outputting to
@@ -323,7 +342,7 @@ main(int ac, char **av)
 		if (cmd != 'g' && cmd != 'x' && cmd != 'w')
 			++loops;
 
-		free(ary);
+		free(ary_base);
 	} while (keepalive);
 
 	if (cmd == 'x')
@@ -461,7 +480,7 @@ dump_influxdb(kcollect_t *ary, size_t count, size_t total_count,
 		exit(1);
 	}
 
-	for (i = count - 1; i >= 2; --i) {
+	for (i = count - 1; i >= DATA_BASE_INDEX; --i) {
 		/*
 		 * Timestamp
 		 */
@@ -510,7 +529,7 @@ dump_text(kcollect_t *ary, size_t count, size_t total_count,
 	struct tm *tmv;
 	time_t t;
 
-	for (i = count - 1; i >= 2; --i) {
+	for (i = count - 1; i >= DATA_BASE_INDEX; --i) {
 		if ((total_count & 15) == 0) {
 			if (!strcmp(display_fmt, DISPLAY_FULL_DATE)) {
 				printf("%20s", "timestamp ");
@@ -571,9 +590,9 @@ void
 restore_headers(kcollect_t *ary, const char *datafile)
 {
 	DBM *db;
-	char hdr_fmt[] = HDR_FMT;
-        char hdr_title[] = HDR_TITLE;
+	char hdr[32];
 	datum key, value;
+	int i;
 
 	db = dbm_open(datafile, (O_RDWR),
 		      (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP));
@@ -594,30 +613,20 @@ restore_headers(kcollect_t *ary, const char *datafile)
 		}
 		exit(EXIT_FAILURE);
 	} else {
-		key.dptr = hdr_fmt;
-		key.dsize = sizeof(HDR_FMT);
-		value.dptr = &ary[0].data;
-		value.dsize = sizeof(uint64_t) * KCOLLECT_ENTRIES;
-		if (dbm_store(db,key,value,DBM_REPLACE) == -1) {
-			fprintf(stderr,
-				"[ERR] error storing the value in "
-				"the database file \"%s\" (%i)\n",
-				datafile, errno);
-			dbm_close(db);
-			exit(EXIT_FAILURE);
-		}
-
-		key.dptr = hdr_title;
-		key.dsize = sizeof(HDR_FMT);
-		value.dptr = &ary[1].data;
-		value.dsize = sizeof(uint64_t) * KCOLLECT_ENTRIES;
-		if (dbm_store(db,key,value,DBM_REPLACE) == -1) {
-			fprintf(stderr,
-				"[ERR] error storing the value in "
-				"the database file \"%s\" (%i)\n",
-				datafile, errno);
-			dbm_close(db);
-			exit(EXIT_FAILURE);
+		for (i = 0; i < DATA_BASE_INDEX; ++i) {
+			snprintf(hdr, sizeof(hdr), "%s%d", HDR_BASE, i);
+			key.dptr = hdr;
+			key.dsize = strlen(key.dptr) + 1;
+			value.dptr = &ary[i].data;
+			value.dsize = sizeof(uint64_t) * KCOLLECT_ENTRIES;
+			if (dbm_store(db,key,value,DBM_REPLACE) == -1) {
+				fprintf(stderr,
+					"[ERR] error storing the value in "
+					"the database file \"%s\" (%i)\n",
+					datafile, errno);
+				dbm_close(db);
+				exit(EXIT_FAILURE);
+			}
 		}
 	}
 	dbm_close(db);
@@ -658,18 +667,32 @@ dump_dbm(kcollect_t *ary, size_t count, const char *datafile)
 		datum value;
 		time_t t;
 		uint i;
-	        char hdr_fmt[] = HDR_FMT;
-	        char hdr_title[] = HDR_TITLE;
+		int cmd;
+		char hdr[32];
 
-		for (i = 0; i < (count); ++i) {
-			/* first 2 INFO records are special and get 0|1 */
+		for (i = 0; i < count; ++i) {
+			/*
+			 * The first DATA_BASE_INDEX records are special.
+			 */
+			cmd = DBM_INSERT;
+			if (i < DATA_BASE_INDEX) {
+				snprintf(hdr, sizeof(hdr), "%s%d", HDR_BASE, i);
+				key.dptr = hdr;
+				key.dsize = strlen(hdr) + 1;
 
-			if (i < 2) {
-				if (i == 0)
-					key.dptr = hdr_fmt;
-				else
-					key.dptr = hdr_title;
-				key.dsize = sizeof(HDR_FMT);
+				value = dbm_fetch(db, key);
+				if (value.dptr == NULL ||
+				    bcmp(ary[i].data, value.dptr,
+					 sizeof(uint64_t) * KCOLLECT_ENTRIES)) {
+					cmd = DBM_REPLACE;
+					if (value.dptr != NULL) {
+						fprintf(stderr,
+							"Header %d changed "
+							"in database, "
+							"updating\n",
+							i);
+					}
+				}
 			} else {
 				t = ary[i].realtime.tv_sec;
 				if (LoadedFromDB)
@@ -683,7 +706,7 @@ dump_dbm(kcollect_t *ary, size_t count, const char *datafile)
 			}
 			value.dptr = ary[i].data;
 			value.dsize = sizeof(uint64_t) * KCOLLECT_ENTRIES;
-			if (dbm_store(db, key, value, DBM_INSERT) == -1) {
+			if (dbm_store(db, key, value, cmd) == -1) {
 				fprintf(stderr,
 					"[ERR] error storing the value in "
 					"the database file \"%s\" (%i)\n",
@@ -737,7 +760,31 @@ rec_comparator(const void *c1, const void *c2)
 }
 
 /*
- * Loads the ckollect records from a dbm DB database specified in datafile.
+ * Normalizes kcollect records from the kernel.  We reserve the first
+ * DATA_BASE_INDEX elements for specific headers.
+ */
+static
+kcollect_t *
+load_kernel(kcollect_t *scaleid, kcollect_t *ary, size_t *counter)
+{
+	ary -= DATA_BASE_INDEX;
+	bzero(ary, sizeof(*ary) * DATA_BASE_INDEX);
+	ary[0] = scaleid[0];
+	ary[1] = scaleid[1];
+
+	/*
+	 * Add host field
+	 */
+	gethostname((char *)ary[2].data,
+		    sizeof(uint64_t) * KCOLLECT_ENTRIES - 1);
+
+	*counter += DATA_BASE_INDEX;
+
+	return ary;
+}
+
+/*
+ * Loads the kcollect records from a dbm DB database specified in datafile.
  * returns the resulting array in ret_ary and the array counter in counter
  */
 static
@@ -745,11 +792,14 @@ void
 load_dbm(const char* datafile, kcollect_t **ret_ary,
 	 size_t *counter)
 {
-	DBM * db = dbm_open(datafile,(O_RDONLY),(S_IRUSR|S_IRGRP));
+	char hostname[sizeof(uint64_t) * KCOLLECT_ENTRIES];
+	DBM *db = dbm_open(datafile,(O_RDONLY),(S_IRUSR|S_IRGRP));
 	datum key;
 	datum value;
-	size_t recCounter = 0;
+	size_t recCounter = DATA_BASE_INDEX;
 	int headersFound = 0;
+	uint c;
+	uint sc;
 
 	if (db == NULL) {
 		fprintf(stderr,
@@ -757,59 +807,86 @@ load_dbm(const char* datafile, kcollect_t **ret_ary,
 			"an error! (%i)\n",
 			datafile, errno);
 		exit(EXIT_FAILURE);
-	} else {
-		/* counting loop */
-		for (key = dbm_firstkey(db); key.dptr; key = dbm_nextkey(db)) {
-			value = dbm_fetch(db, key);
-			if (value.dptr != NULL)
-				recCounter++;
+	}
+
+	/* counting loop */
+	for (key = dbm_firstkey(db); key.dptr; key = dbm_nextkey(db)) {
+		value = dbm_fetch(db, key);
+		if (value.dptr == NULL)
+			continue;
+		if (strncmp(key.dptr, HDR_BASE, HDR_STRLEN) == 0)
+			continue;
+		recCounter++;
+	}
+
+	/* with the count allocate enough memory */
+	if (*ret_ary)
+		free(*ret_ary);
+
+	*ret_ary = malloc(sizeof(kcollect_t) * recCounter);
+
+	if (*ret_ary == NULL) {
+		fprintf(stderr,
+			"[ERR] failed to allocate enough memory to "
+			"hold the database! Aborting.\n");
+		dbm_close(db);
+		exit(EXIT_FAILURE);
+	}
+	bzero(*ret_ary, sizeof(kcollect_t) * recCounter);
+
+	/*
+	 * Actual data retrieval  but only of recCounter
+	 * records
+	 */
+	c = DATA_BASE_INDEX;
+	key = dbm_firstkey(db);
+	while (key.dptr && c < recCounter) {
+		value = dbm_fetch(db, key);
+		if (value.dptr == NULL) {
+			key = dbm_nextkey(db);
+			continue;
 		}
-
-		/* with the count allocate enough memory */
-		if (*ret_ary)
-			free(*ret_ary);
-		*ret_ary = malloc(sizeof(kcollect_t) * recCounter);
-		bzero(*ret_ary, sizeof(kcollect_t) * recCounter);
-		if (*ret_ary == NULL) {
-			fprintf(stderr,
-				"[ERR] failed to allocate enough memory to "
-				"hold the database! Aborting.\n");
-			dbm_close(db);
-			exit(EXIT_FAILURE);
-		} else {
-			uint c;
-			uint sc;
+		if (!strncmp(key.dptr, HDR_BASE, HDR_STRLEN)) {
 			/*
-			 * Actual data retrieval  but only of recCounter
-			 * records
+			 * Ignore unsupported header indices
 			 */
-			c = 2;
-			key = dbm_firstkey(db);
-			while (key.dptr && c < recCounter) {
-				value = dbm_fetch(db, key);
-				if (value.dptr != NULL) {
-					if (!strcmp(key.dptr, HDR_FMT)) {
-						sc = 0;
-						headersFound |= 1;
-					}
-					else if (!strcmp(key.dptr, HDR_TITLE)) {
-						sc = 1;
-						headersFound |= 2;
-					}
-					else {
-						sc = c;
-						c++;
-					}
-
-					memcpy((*ret_ary)[sc].data,
-					       value.dptr,
-					   sizeof(uint64_t) * KCOLLECT_ENTRIES);
-					(*ret_ary)[sc].realtime.tv_sec =
-					    str2unix(key.dptr,
-						     DISPLAY_FULL_DATE);
-				}
+			sc = strtoul((char *)key.dptr +
+				     HDR_STRLEN, NULL, 10);
+			if (sc >= DATA_BASE_INDEX) {
 				key = dbm_nextkey(db);
+				continue;
 			}
+			headersFound |= 1 << sc;
+		} else {
+			sc = c++;
+			(*ret_ary)[sc].realtime.tv_sec =
+				str2unix(key.dptr,
+					 DISPLAY_FULL_DATE);
+		}
+		memcpy((*ret_ary)[sc].data,
+		       value.dptr,
+		       sizeof(uint64_t) * KCOLLECT_ENTRIES);
+
+		key = dbm_nextkey(db);
+	}
+
+	/*
+	 * HEADER2 - hostname (must match)
+	 */
+	if ((headersFound & 4) && *(char *)(*ret_ary)[2].data == 0)
+		headersFound &= ~4;
+
+	bzero(hostname, sizeof(hostname));
+	gethostname(hostname, sizeof(hostname) - 1);
+
+	if (headersFound & 0x0004) {
+		printf("HOST %s\n", (char *)(*ret_ary)[2].data);
+		if (*(char *)(*ret_ary)[2].data &&
+		    strcmp(hostname, (char *)(*ret_ary)[2].data) != 0) {
+			fprintf(stderr,
+				"Cannot load database %s, hostname mismatch\n",
+				datafile);
+			exit(1);
 		}
 	}
 
@@ -818,11 +895,14 @@ load_dbm(const char* datafile, kcollect_t **ret_ary,
 	 * and sort the non-header records.
 	 */
 	*counter = recCounter;
-        qsort(&(*ret_ary)[2], recCounter - 2, sizeof(kcollect_t), rec_comparator);
+        qsort(&(*ret_ary)[DATA_BASE_INDEX], recCounter - DATA_BASE_INDEX,
+	      sizeof(kcollect_t), rec_comparator);
 	dbm_close(db);
 
-	if (headersFound != 3) {
-		fprintf(stderr, "We could not retrieve all necessary headers, might be the database file is corrupted? (%i)\n", headersFound);
+	if ((headersFound & 3) != 3) {
+		fprintf(stderr, "We could not retrieve all necessary headers, "
+			"might be the database file is corrupted? (%i)\n",
+			headersFound);
 		exit(EXIT_FAILURE);
 	}
 	LoadedFromDB = 1;
