@@ -49,7 +49,7 @@ __BEGIN_DECLS
 int	raise(int);
 
 #if __POSIX_VISIBLE
-int	kill(__pid_t, int);
+int	kill(pid_t, int);
 int	pthread_kill(pthread_t, int);
 int	pthread_sigmask(int, const sigset_t * __restrict,
 	    sigset_t * __restrict);
@@ -67,7 +67,7 @@ int	sigwait(const sigset_t * __restrict, int * __restrict);
 #endif /* __POSIX_VISIBLE */
 
 #if __XSI_VISIBLE
-int	killpg(__pid_t, int);
+int	killpg(pid_t, int);
 int	sigaltstack(const stack_t * __restrict, stack_t * __restrict);
 int	siginterrupt(int, int);
 int	sigpause(int);
@@ -75,7 +75,7 @@ int	sigpause(int);
 
 #if __POSIX_VISIBLE >= 199506
 #if 0
-int	sigqueue(__pid_t, int, union sigval);
+int	sigqueue(pid_t, int, union sigval);
 #endif
 int	sigtimedwait(const sigset_t * __restrict, siginfo_t * __restrict,
 	    const struct timespec * __restrict);
@@ -89,7 +89,7 @@ void	psignal(unsigned int, const char *); /* XXX signum should be int */
 
 #if __BSD_VISIBLE
 #ifndef _LWP_KILL_DECLARED
-int	lwp_kill(__pid_t, lwpid_t, int);
+int	lwp_kill(pid_t, lwpid_t, int);
 #define _LWP_KILL_DECLARED
 #endif
 int	sigblock(int);
