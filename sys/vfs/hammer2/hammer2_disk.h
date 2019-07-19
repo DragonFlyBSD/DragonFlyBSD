@@ -1003,7 +1003,7 @@ struct hammer2_inode_data {
 	unsigned char	filename[HAMMER2_INODE_MAXNAME];
 					/* 0100-01FF (256 char, unterminated) */
 	union {				/* 0200-03FF (64x8 = 512 bytes) */
-		struct hammer2_blockset blockset;
+		hammer2_blockset_t blockset;
 		char data[HAMMER2_EMBEDDED_BYTES];
 	} u;
 } __packed;
