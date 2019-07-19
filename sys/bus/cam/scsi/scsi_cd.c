@@ -887,8 +887,10 @@ cdregister(struct cam_periph *periph, void *arg)
 		else {
 			nchanger = kmalloc(sizeof(struct cdchanger),
 					M_DEVBUF, M_INTWAIT | M_ZERO);
-			callout_init(&nchanger->short_handle);
-			callout_init(&nchanger->long_handle);
+			callout_init_lk(&nchanger->short_handle,
+					periph->sim->lock);
+			callout_init_lk(&nchanger->long_handle,
+					periph->sim->lock);
 			if (camq_init(&nchanger->devq, 1) != 0) {
 				softc->flags &= ~CD_FLAG_CHANGER;
 				kprintf("cdregister: changer support "
@@ -904,8 +906,10 @@ cdregister(struct cam_periph *periph, void *arg)
 
 			STAILQ_INIT(&nchanger->chluns);
 
-			callout_init(&nchanger->long_handle);
-			callout_init(&nchanger->short_handle);
+			callout_init_lk(&nchanger->long_handle,
+					periph->sim->lock);
+			callout_init_lk(&nchanger->short_handle,
+					periph->sim->lock);
 
 			lockmgr(&changerq_lock, LK_EXCLUSIVE);
 			num_changers++;
