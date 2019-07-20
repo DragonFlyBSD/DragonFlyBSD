@@ -129,7 +129,9 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	 *		directory, the directory must be invalidated and
 	 *		the attribute cache must be cleared.
 	 *
-	 *		GETATTR is called to synchronize the file size.
+	 *		GETATTR is called to synchronize the file size.  To
+	 *		avoid a deadlock again the VM system, we cannot do
+	 *		this for UIO_NOCOPY reads.
 	 *
 	 *		If remote changes are detected local data is flushed
 	 *		and the cache is invalidated.
@@ -145,9 +147,17 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			return (error);
 		np->n_attrstamp = 0;
 	}
-	error = VOP_GETATTR(vp, &vattr);
-	if (error)
-		return (error);
+
+	/*
+	 * Synchronize the file size when possible.  We can't do this without
+	 * risking a deadlock if this is NOCOPY read from a vm_fault->getpages
+	 * sequence.
+	 */
+	if (uio->uio_segflg != UIO_NOCOPY) {
+		error = VOP_GETATTR(vp, &vattr);
+		if (error)
+			return (error);
+	}
 
 	/*
 	 * This can deadlock getpages/putpages for regular
