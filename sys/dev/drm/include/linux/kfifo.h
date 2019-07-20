@@ -40,7 +40,7 @@
 #include <linux/slab.h>
 
 struct kfifo_meta {
-	kmutex_t	kfm_lock;
+	struct lock	kfm_lock;
 	size_t		kfm_head;
 	size_t		kfm_tail;
 	size_t		kfm_nbytes;
@@ -64,14 +64,14 @@ _kfifo_alloc(struct kfifo_meta *meta, void *bufp, size_t nbytes, gfp_t gfp)
 {
 	void *buf;
 
-	buf = kmalloc(nbytes, gfp);
+	buf = kmalloc(nbytes, M_DRM, gfp);
 	if (buf == NULL)
 		return -ENOMEM;
 
 	/* Type pun!  Hope void * == struct whatever *.  */
 	memcpy(bufp, &buf, sizeof(void *));
 
-	mutex_init(&meta->kfm_lock, MUTEX_DEFAULT, IPL_VM);
+	lockinit(&meta->kfm_lock, "lkfl", 0, LK_CANRECURSE);
 	meta->kfm_head = 0;
 	meta->kfm_tail = 0;
 	meta->kfm_nbytes = nbytes;
@@ -120,7 +120,7 @@ _kfifo_out_peek(struct kfifo_meta *meta, void *buf, void *ptr, size_t size)
 	char *dst = ptr;
 	size_t copied = 0;
 
-	mutex_spin_enter(&meta->kfm_lock);
+	lockmgr(&meta->kfm_lock, LK_EXCLUSIVE);
 	const size_t head = meta->kfm_head;
 	const size_t tail = meta->kfm_tail;
 	const size_t nbytes = meta->kfm_nbytes;
@@ -140,7 +140,7 @@ _kfifo_out_peek(struct kfifo_meta *meta, void *buf, void *ptr, size_t size)
 			copied = size;
 		}
 	}
-	mutex_spin_exit(&meta->kfm_lock);
+	lockmgr(&meta->kfm_lock, LK_RELEASE);
 
 	return copied;
 }
@@ -155,7 +155,7 @@ _kfifo_out(struct kfifo_meta *meta, const void *buf, void *ptr, size_t size)
 	char *dst = ptr;
 	size_t copied = 0;
 
-	mutex_spin_enter(&meta->kfm_lock);
+	lockmgr(&meta->kfm_lock, LK_EXCLUSIVE);
 	const size_t head = meta->kfm_head;
 	const size_t tail = meta->kfm_tail;
 	const size_t nbytes = meta->kfm_nbytes;
@@ -178,7 +178,7 @@ _kfifo_out(struct kfifo_meta *meta, const void *buf, void *ptr, size_t size)
 			copied = size;
 		}
 	}
-	mutex_spin_exit(&meta->kfm_lock);
+	lockmgr(&meta->kfm_lock, LK_RELEASE);
 
 	return copied;
 }
@@ -193,7 +193,7 @@ _kfifo_in(struct kfifo_meta *meta, void *buf, const void *ptr, size_t size)
 	char *dst = buf;
 	size_t copied = 0;
 
-	mutex_spin_enter(&meta->kfm_lock);
+	lockmgr(&meta->kfm_lock, LK_EXCLUSIVE);
 	const size_t head = meta->kfm_head;
 	const size_t tail = meta->kfm_tail;
 	const size_t nbytes = meta->kfm_nbytes;
@@ -215,7 +215,7 @@ _kfifo_in(struct kfifo_meta *meta, void *buf, const void *ptr, size_t size)
 			copied = size;
 		}
 	}
-	mutex_spin_exit(&meta->kfm_lock);
+	lockmgr(&meta->kfm_lock, LK_RELEASE);
 
 	return copied;
 }
