@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd March 9, 2019
+.Dd July 21, 2019
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -622,9 +622,13 @@ database of current users;
 see
 .Xr utmp 5
 .It Pa sem/
-rendez-vous files for posix named semaphores;
+rendez-vous files for POSIX named semaphores;
 see
 .Xr sem_open 3
+.It Pa shm/
+files associated with POSIX shared memory objects;
+see
+.Xr shm_open 3
 .El
 .Pp
 .It Pa rwho/
