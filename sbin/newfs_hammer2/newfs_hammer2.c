@@ -499,11 +499,6 @@ check_volume(const char *path, int *fdp)
  * [----reserved_area----][boot_area][aux_area]
  * [[vol_hdr]...         ]                     [sroot][root]...
  *
- * The sroot and root inodes eat 512 bytes each.  newfs labels can only be
- * 64 bytes so the root (snapshot) inode does not need to extend past 512
- * bytes.  We use the correct hash slot correct but note that because
- * directory hashes are chained 16x, any slot in the inode will work.
- *
  * Also format the allocation map.
  *
  * NOTE: The passed total_space is 8MB-aligned to avoid edge cases.
