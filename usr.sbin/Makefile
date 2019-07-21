@@ -89,7 +89,6 @@ SUBDIR= 802_11 \
 	quot \
 	quotaon \
 	rarpd \
-	rdate \
 	repquota \
 	resident \
 	rip6query \
