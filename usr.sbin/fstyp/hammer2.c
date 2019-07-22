@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2017 The DragonFly Project
+ * Copyright (c) 2017-2019 The DragonFly Project
  * All rights reserved.
  *
  * This software was developed by Edward Tomasz Napierala under sponsorship
@@ -57,6 +57,74 @@ __test_voldata(const hammer2_volume_data_t *voldata)
 	return (0);
 }
 
+static int
+__read_label(FILE *fp, char *label, size_t size)
+{
+	hammer2_blockref_t broot, best, *bref;
+	hammer2_media_data_t *vols[4], *media;
+	hammer2_off_t io_off, io_base;
+	size_t bytes, io_bytes, boff;
+	int i, best_i, error = 0;
+
+	best_i = -1;
+	memset(&best, 0, sizeof(best));
+
+	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
+		memset(&broot, 0, sizeof(broot));
+		broot.type = HAMMER2_BREF_TYPE_VOLUME;
+		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
+		vols[i] = read_buf(fp, broot.data_off & ~HAMMER2_OFF_MASK_RADIX,
+		    sizeof(*vols[i]));
+		broot.mirror_tid = vols[i]->voldata.mirror_tid;
+		if (best_i < 0 || best.mirror_tid < broot.mirror_tid) {
+			best_i = i;
+			best = broot;
+		}
+	}
+	if (best_i == -1) {
+		error = 1;
+		goto done;
+	}
+
+	bref = &vols[best_i]->voldata.sroot_blockset.blockref[0];
+	if (bref->type != HAMMER2_BREF_TYPE_INODE) {
+		error = 2;
+		goto done;
+	}
+
+	bytes = bref->data_off & HAMMER2_OFF_MASK_RADIX;
+	if (bytes)
+		bytes = (size_t)1 << bytes;
+	if (bytes != sizeof(hammer2_inode_data_t)) {
+		error = 3;
+		goto done;
+	}
+
+	io_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
+	io_base = io_off & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
+	boff = io_off - io_base;
+
+	io_bytes = HAMMER2_MINIOSIZE;
+	while (io_bytes + boff < bytes)
+		io_bytes <<= 1;
+	if (io_bytes > sizeof(*media)) {
+		error = 4;
+		goto done;
+	}
+
+	media = read_buf(fp, io_base, io_bytes);
+	if (boff)
+		memcpy(media, (char*)media + boff, bytes);
+
+	strlcpy(label, media->ipdata.filename, size);
+	free(media);
+done:
+	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++)
+		free(vols[i]);
+
+	return (error);
+}
+
 int
 fstyp_hammer2(FILE *fp, char *label, size_t size)
 {
@@ -67,10 +135,7 @@ fstyp_hammer2(FILE *fp, char *label, size_t size)
 	if (__test_voldata(voldata))
 		goto done;
 
-	// XXX -l option not supported yet
-	//strlcpy(label, "label", size);
-
-	error = 0;
+	error = __read_label(fp, label, size);
 done:
 	free(voldata);
 	return (error);
