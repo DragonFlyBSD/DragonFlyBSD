@@ -134,7 +134,7 @@ preupgrade:
 		pw -V ${DESTDIR}/etc groupadd _dhcp -g 77
 	# make sure /var/db/entropy is not a file (mtree will make it
 	# as a directory)
-	-[ -f ${DESTDIR}/var/db/entropy ] && rm -f ${DESTDIR}/var/db/entropy)
+	-([ -f ${DESTDIR}/var/db/entropy ] && rm -f ${DESTDIR}/var/db/entropy)
 
 upgrade_check:
 	@if [ -n "`grep '^sendmail.*/usr/libexec/sendmail/sendmail' ${DESTDIR}/etc/mail/mailer.conf`" ]; then \
