@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2013-2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -34,50 +34,107 @@
 
 #include "hammer2.h"
 
-void 
-print_inode(char* inode_string)
+static void
+hexdump_inode(const void *data, size_t len)
 {
-	printf("Printing the inode's contents of directory/file %s\n", inode_string);
-	int fd = hammer2_ioctl_handle(inode_string);
-	if (fd != -1) {
-		hammer2_ioc_inode_t inode;
-		int res = ioctl(fd, HAMMER2IOC_INODE_GET, &inode);
-		hammer2_inode_data_t inode_data;
-		inode_data = inode.ip_data;
-		printf("Got res = %d\n", res);
-		printf("Printing inode data.\n");
-		/*printf("version = %d\n", inode_data.meta.version);
-		printf("uflags = %d\n", inode_data.meta.uflags);
-		printf("rmajor = %d\n", inode_data.meta.rmajor);
-		printf("rminor = %d\n", inode_data.meta.rminor);
-		printf("ctime = %u !\n", (unsigned int)inode_data.meta.ctime);
-		printf("mtime = %u !\n", (unsigned int)inode_data.meta.mtime);*/
-		printf("type = %d\n", inode_data.meta.type);
-		printf("op_flags = %d\n", inode_data.meta.op_flags);
-		/*printf("cap_flags = %d\n", inode_data.meta.cap_flags);
-		printf("mode = %d\n", inode_data.meta.mode);
-		printf("inum = %u !\n", (unsigned int)inode_data.meta.inum);
-		printf("size = %u !\n", (unsigned int)inode_data.meta.size),*/
-		printf("name_key = %u !\n", (unsigned int)inode_data.meta.name_key);
-		/*printf("name_len = %d\n", inode_data.meta.name_len);
-		printf("ncopies = %d\n", inode_data.meta.ncopies);*/
-		printf("comp_algo = %d\n", inode_data.meta.comp_algo);
-		if (inode_data.meta.op_flags != HAMMER2_OPFLAG_DIRECTDATA) {
-			int i;
-			for (i = 0; i < HAMMER2_SET_COUNT; ++i) {
-				if (inode_data.u.blockset.blockref[i].type != HAMMER2_BREF_TYPE_EMPTY) {
-					printf("blockrefs %d type = %d\n", i, inode_data.u.blockset.blockref[i].type);
-					printf("blockrefs %d methods = %d\n", i, inode_data.u.blockset.blockref[i].methods);
-					printf("blockrefs %d copyid = %d\n", i, inode_data.u.blockset.blockref[i].copyid);
-					printf("blockrefs %d flags = %d\n", i, inode_data.u.blockset.blockref[i].flags);
-					printf("blockrefs %d key = %u !\n", i, (unsigned int)inode_data.u.blockset.blockref[i].key);
-				}
-				else
-					printf("blockrefs %d is empty.\n", i);
-				}
+	const unsigned char *p = data;
+	size_t i;
+
+	if (VerboseOpt <= 0)
+		return;
+
+	for (i = 0; i < len; i++) {
+		printf("%02X", *p);
+		if (i != len - 1)
+			printf(" ");
+		p++;
+	}
+	printf("\n");
+}
+
+void
+print_inode(const char *path)
+{
+	hammer2_ioc_inode_t inode;
+	hammer2_inode_data_t *ipdata;
+	hammer2_inode_meta_t *meta;
+	int i, fd;
+
+	fd = hammer2_ioctl_handle(path);
+	if (fd == -1)
+		return;
+
+	if (ioctl(fd, HAMMER2IOC_INODE_GET, &inode) == -1) {
+		printf("ioctl(HAMMER2IOC_INODE_GET) failed\n");
+		return;
+	}
+	ipdata = &inode.ip_data;
+	meta = &ipdata->meta;
+
+	hexdump_inode(meta, sizeof(*meta));
+	printf("version = %u\n", meta->version);
+	printf("pfs_subtype = %u\n", meta->pfs_subtype);
+	printf("uflags = 0x%x\n", (unsigned int)meta->uflags);
+	printf("rmajor = %u\n", meta->rmajor);
+	printf("rminor = %u\n", meta->rminor);
+	printf("ctime = 0x%jx\n", (uintmax_t)meta->ctime);
+	printf("mtime = 0x%jx\n", (uintmax_t)meta->mtime);
+	printf("atime = 0x%jx\n", (uintmax_t)meta->atime);
+	printf("btime = 0x%jx\n", (uintmax_t)meta->btime);
+	printf("type = %u\n", meta->type);
+	printf("op_flags = 0x%x\n", meta->op_flags);
+	printf("cap_flags = 0x%x\n", meta->cap_flags);
+	printf("mode = 0%o\n", meta->mode);
+	printf("inum = %ju\n", (uintmax_t)meta->inum);
+	printf("size = %ju\n", (uintmax_t)meta->size);
+	printf("nlinks = %ju\n", (uintmax_t)meta->nlinks);
+	printf("iparent = %ju\n", (uintmax_t)meta->iparent);
+	printf("name_key = %ju\n", (uintmax_t)meta->name_key);
+	printf("name_len = %u\n", meta->name_len);
+	printf("ncopies = %u\n", meta->ncopies);
+	printf("comp_algo = %u\n", meta->comp_algo);
+	/* XXX offset 0x0084- missing */
+	/* XXX HAMMER2IOC_INODE_GET only supports meta part */
+	return;
+	printf("\n");
+
+	hexdump_inode(ipdata->filename, sizeof(ipdata->filename));
+	printf("filename = \"%s\"\n", ipdata->filename);
+	printf("\n");
+
+	if (!(meta->op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
+		for (i = 0; i < HAMMER2_SET_COUNT; ++i) {
+			hammer2_blockref_t *bref =
+			    &ipdata->u.blockset.blockref[i];
+			hexdump_inode(bref, sizeof(*bref));
+
+			if (bref->type == HAMMER2_BREF_TYPE_EMPTY) {
+				printf("blockref[%d] is empty\n", i);
+				continue;
 			}
-		else {
-			printf("This inode has data instead of blockrefs.\n");
+			printf("blockref[%d] type = %u\n", i, bref->type);
+			printf("blockref[%d] methods = %u\n", i, bref->methods);
+			printf("blockref[%d] copyid = %u\n", i, bref->copyid);
+			printf("blockref[%d] keybits = %u\n", i, bref->keybits);
+			printf("blockref[%d] vradix = %u\n", i, bref->vradix);
+			printf("blockref[%d] flags = 0x%x\n", i, bref->flags);
+			printf("blockref[%d] leaf_count = %u\n", i,
+			    bref->leaf_count);
+			printf("blockref[%d] key = 0x%jx\n", i,
+			    (intmax_t)bref->key);
+			printf("blockref[%d] mirror_tid = 0x%jx\n", i,
+			    (intmax_t)bref->mirror_tid);
+			printf("blockref[%d] modify_tid = 0x%jx\n", i,
+			    (intmax_t)bref->modify_tid);
+			printf("blockref[%d] data_off = 0x%jx\n", i,
+			    (intmax_t)bref->data_off);
+			printf("blockref[%d] update_tid = 0x%jx\n", i,
+			    (intmax_t)bref->update_tid);
+			if (i != HAMMER2_SET_COUNT - 1)
+				printf("\n");
 		}
+	} else {
+		hexdump_inode(ipdata->u.data, sizeof(ipdata->u.data));
+		printf("embedded data\n");
 	}
 }

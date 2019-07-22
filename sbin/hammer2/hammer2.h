@@ -176,6 +176,6 @@ uint32_t hammer2_icrc32(const void *buf, size_t size);
 uint32_t hammer2_icrc32c(const void *buf, size_t size, uint32_t crc);
 
 void hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged);
-void print_inode(char* inode_string);
+void print_inode(const char *path);
 
 #endif /* !HAMMER2_HAMMER2_H_ */
