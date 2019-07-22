@@ -865,6 +865,10 @@ struct hammer2_bmap_data {
 typedef struct hammer2_bmap_data hammer2_bmap_data_t;
 
 /*
+ * XXX "Inodes ARE directory entries" is no longer the case.  Hardlinks are
+ * dirents which refer to the same inode#, which is how filesystems usually
+ * implement hardlink.  The following comments need to be updated.
+ *
  * In HAMMER2 inodes ARE directory entries, with a special exception for
  * hardlinks.  The inode number is stored in the inode rather than being
  * based on the location of the inode (since the location moves every time
