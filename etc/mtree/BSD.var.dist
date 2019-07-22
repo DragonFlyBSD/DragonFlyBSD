@@ -28,8 +28,8 @@
     ..
 /set mode=0755
     db
-	entropy		uname=operator gname=operator mode=0700
-	..
+        entropy         uname=operator gname=operator mode=0700
+        ..
         dhcpcd
         ..
     ..

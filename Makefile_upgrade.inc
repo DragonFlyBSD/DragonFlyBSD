@@ -3,7 +3,6 @@
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
 # Formatted manual pages (i.e., cat[1-9]) need not be specified separately
 
-TO_REMOVE+=/entropy
 TO_REMOVE+=/usr/libexec/named-xfer
 TO_REMOVE+=/usr/bin/dnsquery
 TO_REMOVE+=/usr/bin/dnskeygen
@@ -3755,6 +3754,7 @@ TO_REMOVE+=/sbin/nextboot
 TO_REMOVE+=/usr/share/man/man8/nextboot.8.gz
 TO_REMOVE+=/usr/sbin/rdate
 TO_REMOVE+=/usr/share/man/man8/rdate.8.gz
+TO_REMOVE+=/entropy
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
