@@ -239,7 +239,7 @@ h2disk_check(const char *devpath,
 	 */
 	best_i = -1;
 	bzero(&best, sizeof(best));
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		bzero(&broot, sizeof(broot));
 		broot.type = HAMMER2_BREF_TYPE_VOLUME;
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) |

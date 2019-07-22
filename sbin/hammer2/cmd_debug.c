@@ -406,7 +406,7 @@ cmd_show(const char *devpath, int dofreemap)
 	 */
 	best_i = -1;
 	bzero(&best, sizeof(best));
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		bzero(&broot, sizeof(broot));
 		broot.type = HAMMER2_BREF_TYPE_VOLUME;
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) |
@@ -515,7 +515,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 
 		io_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
 		io_base = io_off & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
-		io_bytes = bytes;
 		boff = io_off - io_base;
 
 		io_bytes = HAMMER2_MINIOSIZE;
