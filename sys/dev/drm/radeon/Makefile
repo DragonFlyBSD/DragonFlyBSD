@@ -1,5 +1,5 @@
 #
-# Makefile for the drm device(radeonkms) driver.
+# Makefile for the drm device(radeon) driver.
 #
 # Please keep SRC list structured in blocks and sorted.
 #
@@ -96,8 +96,11 @@ SRCS	+=								\
 
 # add KMS driver
 SRCS+=									\
+	radeon_audio.c							\
+	radeon_dp_auxch.c						\
+	radeon_dp_mst.c							\
 	radeon_prime.c							\
-	radeon_sync.c radeon_audio.c radeon_dp_auxch.c radeon_dp_mst.c
+	radeon_sync.c
 
 # CONFIG_MMU_NOTIFIER
 #SRCS+=				\

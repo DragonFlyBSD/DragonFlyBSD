@@ -718,5 +718,5 @@ DRIVER_MODULE_ORDERED(radeon, vgapci, radeon_driver, drm_devclass,
     NULL, NULL, SI_ORDER_ANY);
 MODULE_DEPEND(radeon, drm, 1, 1, 1);
 #ifdef CONFIG_ACPI
-MODULE_DEPEND(radeonkms, acpi, 1, 1, 1);
+MODULE_DEPEND(radeon, acpi, 1, 1, 1);
 #endif
