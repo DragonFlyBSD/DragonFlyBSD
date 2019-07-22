@@ -255,7 +255,7 @@ main(int ac, char **av)
 
 	if (verboseopt) {
 	    printf("page %p obj %p/%-8ju(%016jx) val=%02x dty=%02x hold=%d "
-		   "wire=%-2d act=%-3d busy=%d %8s",
+		   "wire=%-2d act=%-3d busy=%d w/pmapcnt=%d/%d %8s",
 		&vm_page_array[i],
 		m.object,
 		(intmax_t)m.pindex,
@@ -266,6 +266,8 @@ main(int ac, char **av)
 		m.wire_count,
 		m.act_count,
 		m.busy_count,
+		m.md.writeable_count,
+		m.md.pmap_count,
 		qstr
 	    );
 	}
