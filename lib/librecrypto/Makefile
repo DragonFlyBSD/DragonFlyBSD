@@ -267,7 +267,6 @@ SRCS+=		${SRCS_LOCAL}
 	${LCRYPTO_SRC}/cast \
 	${LCRYPTO_SRC}/chacha \
 	${LCRYPTO_SRC}/cmac \
-	${LCRYPTO_SRC}/comp \
 	${LCRYPTO_SRC}/conf \
 	${LCRYPTO_SRC}/curve25519 \
 	${LCRYPTO_SRC}/des \
@@ -277,7 +276,6 @@ SRCS+=		${SRCS_LOCAL}
 	${LCRYPTO_SRC}/ec \
 	${LCRYPTO_SRC}/ecdh \
 	${LCRYPTO_SRC}/ecdsa \
-	${LCRYPTO_SRC}/engine \
 	${LCRYPTO_SRC}/err \
 	${LCRYPTO_SRC}/evp \
 	${LCRYPTO_SRC}/gost \
