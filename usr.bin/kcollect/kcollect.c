@@ -49,23 +49,21 @@
 
 #define HOST_NAME_MAX sysconf(_SC_HOST_NAME_MAX)
 
-static void format_output(uintmax_t value,char fmt,uintmax_t scale, char* ret);
-static void dump_text(kcollect_t *ary, size_t count,
-			size_t total_count, const char* display_fmt);
-static void dump_influxdb(kcollect_t *, size_t, size_t, const char*);
+static void format_output(uintmax_t, char, uintmax_t, char *);
+static void dump_text(kcollect_t *, size_t, size_t, const char *);
+static const char *get_influx_series(const char *);
+static void dump_influxdb(kcollect_t *, size_t, size_t, const char *);
 
-static void dump_dbm(kcollect_t *ary, size_t count, const char *datafile);
-static int str2unix(const char* str, const char* fmt);
-static int rec_comparator(const void *c1, const void *c2);
-static void load_dbm(const char *datafile,
-			kcollect_t **ret_ary, size_t *counter);
-static kcollect_t *load_kernel(kcollect_t *scaleid, kcollect_t *ary,
-			size_t *counter);
-static void dump_fields(kcollect_t *ary);
-static void adjust_fields(kcollect_t *ent, const char *fields);
-static void restore_headers(kcollect_t *ary, const char *datafile);
+static void (*dumpfn)(kcollect_t *, size_t, size_t, const char *);
 
-static void (*dumpfn)(kcollect_t *, size_t, size_t, const char*);
+static void dump_dbm(kcollect_t *, size_t, const char *);
+static void load_dbm(const char *datafile, kcollect_t **, size_t *);
+static int rec_comparator(const void *, const void *);
+static void dump_fields(kcollect_t *);
+static void adjust_fields(kcollect_t *, const char *);
+static void restore_headers(kcollect_t *, const char *);
+static int str2unix(const char *, const char*);
+static kcollect_t *load_kernel(kcollect_t *, kcollect_t *, size_t *);
 
 FILE *OutFP;
 int UseGMT;
