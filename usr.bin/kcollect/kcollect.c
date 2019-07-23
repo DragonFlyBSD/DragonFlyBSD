@@ -70,8 +70,9 @@ int UseGMT;
 int OutputWidth = 1024;
 int OutputHeight = 1024;
 int SmoothOpt;
-int LoadedFromDB = 0;
-int Fflag = 0;
+int LoadedFromDB;
+int HostnameMismatch;
+int Fflag;
 
 int
 main(int ac, char **av)
@@ -202,6 +203,17 @@ main(int ac, char **av)
 
 	do {
 		/*
+		 * We do not allow keepalive if there is a hostname
+		 * mismatch, there is no point in showing data for the
+		 * current host after dumping the data from another one.
+		 */
+		if (HostnameMismatch) {
+			fprintf(stderr,
+			    "Hostname mismatch, can't show live data\n");
+			exit(1);
+		}
+
+		/*
 		 * Snarf as much data as we can.  If we are looping,
 		 * snarf less (no point snarfing stuff we already have).
 		 */
@@ -210,6 +222,7 @@ main(int ac, char **av)
 		if (cmd == 'l')
 			bytes = sizeof(kcollect_t) * 2;
 
+		/* Skip to the newest entries */
 		if (Fflag && loops == 0)
 			loops++;
 
@@ -287,8 +300,14 @@ main(int ac, char **av)
 			}
 			break;
 		case 'b':
-			if (count > DATA_BASE_INDEX)
-				dump_dbm(ary, count, datafile);
+			if (HostnameMismatch) {
+				fprintf(stderr,
+				    "Hostname mismatch, cannot save to DB\n");
+				exit(1);
+			} else {
+				if (count > DATA_BASE_INDEX)
+					dump_dbm(ary, count, datafile);
+			}
 			break;
 		case 'r':
 			if (count >= DATA_BASE_INDEX)
@@ -473,9 +492,13 @@ dump_influxdb(kcollect_t *ary, size_t count, size_t total_count,
 	char hostname[HOST_NAME_MAX];
 	char *colname;
 
-	if (gethostname(hostname, HOST_NAME_MAX) != 0) {
-		fprintf(stderr, "Failed to get hostname\n");
-		exit(1);
+	if (LoadedFromDB) {
+		snprintf(hostname, HOST_NAME_MAX, "%s", (char *)ary[2].data);
+	} else {
+		if (gethostname(hostname, HOST_NAME_MAX) != 0) {
+			fprintf(stderr, "Failed to get hostname\n");
+			exit(1);
+		}
 	}
 
 	for (i = count - 1; i >= DATA_BASE_INDEX; --i) {
@@ -880,10 +903,7 @@ load_dbm(const char* datafile, kcollect_t **ret_ary,
 	if (headersFound & 0x0004) {
 		if (*(char *)(*ret_ary)[2].data &&
 		    strcmp(hostname, (char *)(*ret_ary)[2].data) != 0) {
-			fprintf(stderr,
-				"Cannot load database %s, hostname mismatch\n",
-				datafile);
-			exit(1);
+			HostnameMismatch = 1;	/* Disable certain options */
 		}
 	}
 
