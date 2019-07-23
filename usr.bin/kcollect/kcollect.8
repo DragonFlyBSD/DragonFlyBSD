@@ -27,7 +27,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd July 29, 2017
+.Dd July 23, 2019
 .Dt KCOLLECT 8
 .Os
 .Sh NAME
@@ -132,6 +132,57 @@ Timestamps for text output will be in GMT instead of localtime.
 Set the width and height of the output plot for the plotfile or for X.
 The default is 512x512.
 .El
+.Pp
+The standard
+.Nm
+display shows the following statistics:
+.Pp
+.Bl -tag -width syscalls -compact
+.It load
+system load average
+.It user
+% of total cpu time in user mode
+.It syst
+% of total cpu time in system mode
+.It idle
+% of total cpu time in idle mode
+.It swapuse
+% of total swap space used
+.It swapano
+total amount of anonymous swap used in MB
+.It swapcac
+total amount of swapcache in MB
+.It fault
+total amount of vm faults including both zero-fill and cow faults
+.It cow
+total amount of copy-on-write faults
+.It zfill
+total amount of zero-fill faults
+.It free
+amount of free memory in bytes
+.It cache
+amount of almost free memory in bytes
+.It inact
+amount of inactive memory in bytes
+.It act
+amount of active memory in bytes
+.It wired
+amount of wired/kernel memory in bytes
+.It syscalls
+total amount of system calls
+.It nlookup
+total amount of path lookups
+.It intr
+total amount of nominal external interrupts
+.It ipi
+total amount of inter-cpu interrupts
+.It timer
+total amount of timer interrupts
+.El
+.Pp
+The output fields in bytes are typically converted with
+.Xr humanize_number 3
+before displaying, at least for the default output format.
 .Sh SEE ALSO
 .Xr systat 1
 .Sh HISTORY
