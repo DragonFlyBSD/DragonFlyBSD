@@ -24,7 +24,6 @@
 #
 # $FreeBSD: head/lib/libefivar/Makefile 307071 2016-10-11 22:30:41Z imp $
 
-PACKAGE=lib${LIB}
 LIB=		efivar
 SRCS=		efivar.c libefivar.c
 INCS=		efivar.h
