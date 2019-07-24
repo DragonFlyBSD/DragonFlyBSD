@@ -58,7 +58,8 @@ print_inode(const char *path)
 	hammer2_ioc_inode_t inode;
 	hammer2_inode_data_t *ipdata;
 	hammer2_inode_meta_t *meta;
-	int i, fd;
+	char *uid_str, *gid_str, *pfs_clid_str, *pfs_fsid_str;
+	int i, fd, status;
 
 	fd = hammer2_ioctl_handle(path);
 	if (fd == -1)
@@ -71,6 +72,11 @@ print_inode(const char *path)
 	ipdata = &inode.ip_data;
 	meta = &ipdata->meta;
 
+	uuid_to_string(&meta->uid, &uid_str, &status);
+	uuid_to_string(&meta->gid, &gid_str, &status);
+	uuid_to_string(&meta->pfs_clid, &pfs_clid_str, &status);
+	uuid_to_string(&meta->pfs_fsid, &pfs_fsid_str, &status);
+
 	hexdump_inode(meta, sizeof(*meta));
 	printf("version = %u\n", meta->version);
 	printf("pfs_subtype = %u\n", meta->pfs_subtype);
@@ -81,19 +87,31 @@ print_inode(const char *path)
 	printf("mtime = 0x%jx\n", (uintmax_t)meta->mtime);
 	printf("atime = 0x%jx\n", (uintmax_t)meta->atime);
 	printf("btime = 0x%jx\n", (uintmax_t)meta->btime);
+	printf("uid = %s\n", uid_str);
+	printf("gid = %s\n", gid_str);
 	printf("type = %u\n", meta->type);
 	printf("op_flags = 0x%x\n", meta->op_flags);
 	printf("cap_flags = 0x%x\n", meta->cap_flags);
 	printf("mode = 0%o\n", meta->mode);
-	printf("inum = %ju\n", (uintmax_t)meta->inum);
+	printf("inum = 0x%jx\n", (uintmax_t)meta->inum);
 	printf("size = %ju\n", (uintmax_t)meta->size);
 	printf("nlinks = %ju\n", (uintmax_t)meta->nlinks);
 	printf("iparent = %ju\n", (uintmax_t)meta->iparent);
-	printf("name_key = %ju\n", (uintmax_t)meta->name_key);
+	printf("name_key = 0x%jx\n", (uintmax_t)meta->name_key);
 	printf("name_len = %u\n", meta->name_len);
 	printf("ncopies = %u\n", meta->ncopies);
 	printf("comp_algo = %u\n", meta->comp_algo);
-	/* XXX offset 0x0084- missing */
+	printf("target_type = %u\n", meta->target_type);
+	printf("check_algo = %u\n", meta->check_algo);
+	printf("pfs_nmasters = %u\n", meta->pfs_nmasters);
+	printf("pfs_type = %u\n", meta->pfs_type);
+	printf("pfs_inum = 0x%jx\n", (uintmax_t)meta->pfs_inum);
+	printf("pfs_clid = %s\n", pfs_clid_str);
+	printf("pfs_fsid = %s\n", pfs_fsid_str);
+	printf("data_quota = 0x%jx\n", (uintmax_t)meta->data_quota);
+	printf("inode_quota = 0x%jx\n", (uintmax_t)meta->inode_quota);
+	printf("pfs_lsnap_tid = 0x%jx\n", (uintmax_t)meta->pfs_lsnap_tid);
+	printf("decrypt_check = 0x%jx\n", (uintmax_t)meta->decrypt_check);
 	/* XXX HAMMER2IOC_INODE_GET only supports meta part */
 	return;
 	printf("\n");
@@ -121,15 +139,15 @@ print_inode(const char *path)
 			printf("blockref[%d] leaf_count = %u\n", i,
 			    bref->leaf_count);
 			printf("blockref[%d] key = 0x%jx\n", i,
-			    (intmax_t)bref->key);
+			    (uintmax_t)bref->key);
 			printf("blockref[%d] mirror_tid = 0x%jx\n", i,
-			    (intmax_t)bref->mirror_tid);
+			    (uintmax_t)bref->mirror_tid);
 			printf("blockref[%d] modify_tid = 0x%jx\n", i,
-			    (intmax_t)bref->modify_tid);
+			    (uintmax_t)bref->modify_tid);
 			printf("blockref[%d] data_off = 0x%jx\n", i,
-			    (intmax_t)bref->data_off);
+			    (uintmax_t)bref->data_off);
 			printf("blockref[%d] update_tid = 0x%jx\n", i,
-			    (intmax_t)bref->update_tid);
+			    (uintmax_t)bref->update_tid);
 			if (i != HAMMER2_SET_COUNT - 1)
 				printf("\n");
 		}
