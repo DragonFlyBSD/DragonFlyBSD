@@ -61,7 +61,7 @@ static int
 __read_label(FILE *fp, char *label, size_t size)
 {
 	hammer2_blockref_t broot, best, *bref;
-	hammer2_media_data_t *vols[4], *media;
+	hammer2_media_data_t *vols[HAMMER2_NUM_VOLHDRS], *media;
 	hammer2_off_t io_off, io_base;
 	size_t bytes, io_bytes, boff;
 	int i, best_i, error = 0;
@@ -82,12 +82,14 @@ __read_label(FILE *fp, char *label, size_t size)
 		}
 	}
 	if (best_i == -1) {
+		warnx("Failed to find volume header from zones");
 		error = 1;
 		goto done;
 	}
 
 	bref = &vols[best_i]->voldata.sroot_blockset.blockref[0];
 	if (bref->type != HAMMER2_BREF_TYPE_INODE) {
+		warnx("Superroot blockref type is not inode");
 		error = 2;
 		goto done;
 	}
@@ -96,6 +98,7 @@ __read_label(FILE *fp, char *label, size_t size)
 	if (bytes)
 		bytes = (size_t)1 << bytes;
 	if (bytes != sizeof(hammer2_inode_data_t)) {
+		warnx("Superroot blockref size does not match inode size");
 		error = 3;
 		goto done;
 	}
@@ -108,6 +111,7 @@ __read_label(FILE *fp, char *label, size_t size)
 	while (io_bytes + boff < bytes)
 		io_bytes <<= 1;
 	if (io_bytes > sizeof(*media)) {
+		warnx("Invalid I/O bytes");
 		error = 4;
 		goto done;
 	}
