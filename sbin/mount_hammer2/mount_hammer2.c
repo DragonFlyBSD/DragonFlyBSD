@@ -187,7 +187,7 @@ main(int ac, char *av[])
 				"%s integrated with %s\n",
 				info.volume, mountpt);
 		} else {
-			perror("mount: ");
+			perror("mount");
 			exit(1);
 		}
 	}
