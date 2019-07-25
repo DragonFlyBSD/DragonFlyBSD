@@ -568,8 +568,9 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	 * be updated by hardware interrupt routing, which could
 	 * be bound to any CPU.
 	 */
-	ifp->if_data_pcpu = kmalloc_cachealign(
-	    ncpus * sizeof(struct ifdata_pcpu), M_DEVBUF, M_WAITOK | M_ZERO);
+	ifp->if_data_pcpu = kmalloc(ncpus * sizeof(struct ifdata_pcpu),
+				    M_DEVBUF,
+				    M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	if (ifp->if_mapsubq == NULL)
 		ifp->if_mapsubq = ifq_mapsubq_default;
@@ -583,9 +584,10 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 
 	if (ifq->altq_subq_cnt <= 0)
 		ifq->altq_subq_cnt = 1;
-	ifq->altq_subq = kmalloc_cachealign(
-	    ifq->altq_subq_cnt * sizeof(struct ifaltq_subque),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
+	ifq->altq_subq =
+		kmalloc(ifq->altq_subq_cnt * sizeof(struct ifaltq_subque),
+			M_DEVBUF,
+			M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	if (ifq->altq_maxlen == 0) {
 		if_printf(ifp, "driver didn't set altq_maxlen\n");
@@ -621,8 +623,9 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 
 		/* XXX: netisr_ncpus */
 		ifsq->ifsq_stage =
-		    kmalloc_cachealign(ncpus * sizeof(struct ifsubq_stage),
-		    M_DEVBUF, M_WAITOK | M_ZERO);
+			kmalloc(ncpus * sizeof(struct ifsubq_stage),
+				M_DEVBUF,
+				M_WAITOK | M_ZERO | M_CACHEALIGN);
 		for (i = 0; i < ncpus; ++i)
 			ifsq->ifsq_stage[i].stg_subq = ifsq;
 
@@ -3270,8 +3273,9 @@ ifa_create(int size)
 	 * could be accessed by any threads.
 	 */
 	ifa->ifa_containers =
-	    kmalloc_cachealign(ncpus * sizeof(struct ifaddr_container),
-	        M_IFADDR, M_INTWAIT | M_ZERO);
+		kmalloc(ncpus * sizeof(struct ifaddr_container),
+			M_IFADDR,
+			M_INTWAIT | M_ZERO | M_CACHEALIGN);
 
 	ifa->ifa_ncnt = ncpus;
 	for (i = 0; i < ncpus; ++i) {

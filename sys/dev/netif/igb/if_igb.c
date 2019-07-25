@@ -1785,9 +1785,9 @@ igb_alloc_rings(struct igb_softc *sc)
 	/*
 	 * Allocate TX descriptor rings and buffers
 	 */
-	sc->tx_rings = kmalloc_cachealign(
-	    sizeof(struct igb_tx_ring) * sc->tx_ring_cnt,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->tx_rings = kmalloc(sizeof(struct igb_tx_ring) * sc->tx_ring_cnt,
+			       M_DEVBUF,
+			       M_WAITOK | M_ZERO | M_CACHEALIGN);
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		struct igb_tx_ring *txr = &sc->tx_rings[i];
 
@@ -1806,9 +1806,9 @@ igb_alloc_rings(struct igb_softc *sc)
 	/*
 	 * Allocate RX descriptor rings and buffers
 	 */ 
-	sc->rx_rings = kmalloc_cachealign(
-	    sizeof(struct igb_rx_ring) * sc->rx_ring_cnt,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->rx_rings = kmalloc(sizeof(struct igb_rx_ring) * sc->rx_ring_cnt,
+			       M_DEVBUF,
+			       M_WAITOK | M_ZERO | M_CACHEALIGN);
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
@@ -1887,7 +1887,8 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 
 	tsize = __VM_CACHELINE_ALIGN(
 	    sizeof(struct igb_tx_buf) * txr->num_tx_desc);
-	txr->tx_buf = kmalloc_cachealign(tsize, M_DEVBUF, M_WAITOK | M_ZERO);
+	txr->tx_buf = kmalloc(tsize, M_DEVBUF,
+			      M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	/*
 	 * Allocate TX head write-back buffer
@@ -2293,7 +2294,8 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 
 	rsize = __VM_CACHELINE_ALIGN(
 	    sizeof(struct igb_rx_buf) * rxr->num_rx_desc);
-	rxr->rx_buf = kmalloc_cachealign(rsize, M_DEVBUF, M_WAITOK | M_ZERO);
+	rxr->rx_buf = kmalloc(rsize, M_DEVBUF,
+			      M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	/*
 	 * Create DMA tag for RX buffers

@@ -56,6 +56,7 @@
 #define	M_USE_INTERRUPT_RESERVE \
 			0x1000	/* can exhaust free list entirely */
 #define	M_POWEROF2	0x2000	/* roundup size to the nearest power of 2 */
+#define	M_CACHEALIGN	0x4000	/* force CPU cache line alignment */
 
 /*
  * M_NOWAIT has to be a set of flags for equivalence to prior use. 
@@ -267,8 +268,6 @@ char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
 #define kstrndup_debug(str, maxlen, type, file, line)		\
 	kstrndup(str, maxlen, type)
 #endif
-void	*kmalloc_cachealign(unsigned long size, struct malloc_type *type,
-			    int flags) __heedresult;
 void	kfree(void *addr, struct malloc_type *type) __nonnull(2);
 long	kmalloc_limit(struct malloc_type *type);
 void	slab_cleanup(void);

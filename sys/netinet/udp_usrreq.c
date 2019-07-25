@@ -199,8 +199,8 @@ udp_init(void)
 	struct inpcbportinfo *portinfo;
 	int cpu;
 
-	portinfo = kmalloc_cachealign(sizeof(*portinfo) * netisr_ncpus, M_PCB,
-	    M_WAITOK);
+	portinfo = kmalloc(sizeof(*portinfo) * netisr_ncpus, M_PCB,
+			   M_WAITOK | M_CACHEALIGN);
 
 	for (cpu = 0; cpu < netisr_ncpus; cpu++) {
 		struct inpcbinfo *uicb = &udbinfo[cpu];

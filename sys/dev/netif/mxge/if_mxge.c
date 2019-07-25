@@ -3126,8 +3126,9 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	 * aligned
 	 */
 	bytes = sizeof(*ss->tx.req_list) * (ss->tx.max_desc + 4);
-	ss->tx.req_list = kmalloc_cachealign(__VM_CACHELINE_ALIGN(bytes),
-	    M_DEVBUF, M_WAITOK);
+	ss->tx.req_list = kmalloc(__VM_CACHELINE_ALIGN(bytes),
+				  M_DEVBUF,
+				  M_WAITOK | M_CACHEALIGN);
 
 	/* Allocate the tx busdma segment list */
 	bytes = sizeof(*ss->tx.seg_list) * ss->tx.max_desc;
@@ -3963,7 +3964,8 @@ mxge_alloc_slices(mxge_softc_t *sc)
 	sc->rx_intr_slots = 2 * (rx_ring_size / sizeof (mcp_dma_addr_t));
 
 	bytes = sizeof(*sc->ss) * sc->num_slices;
-	sc->ss = kmalloc_cachealign(bytes, M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->ss = kmalloc(bytes, M_DEVBUF,
+			 M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	for (i = 0; i < sc->num_slices; i++) {
 		ss = &sc->ss[i];

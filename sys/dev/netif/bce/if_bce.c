@@ -2122,9 +2122,9 @@ bce_create_tx_ring(struct bce_tx_ring *txr)
 	txr->tx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * txr->tx_pages,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
-	txr->tx_bufs = kmalloc_cachealign(
-	    sizeof(struct bce_tx_buf) * TOTAL_TX_BD(txr),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
+	txr->tx_bufs = kmalloc(sizeof(struct bce_tx_buf) * TOTAL_TX_BD(txr),
+			       M_DEVBUF,
+			       M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	/*
 	 * Create a DMA tag for the TX buffer descriptor chain,
@@ -2236,9 +2236,9 @@ bce_create_rx_ring(struct bce_rx_ring *rxr)
 	rxr->rx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * rxr->rx_pages,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
-	rxr->rx_bufs = kmalloc_cachealign(
-	    sizeof(struct bce_rx_buf) * TOTAL_RX_BD(rxr),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
+	rxr->rx_bufs = kmalloc(sizeof(struct bce_rx_buf) * TOTAL_RX_BD(rxr),
+			       M_DEVBUF,
+			       M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	/*
 	 * Create a DMA tag for the RX buffer descriptor chain,
@@ -2500,9 +2500,9 @@ bce_dma_alloc(struct bce_softc *sc)
 		}
 	}
 
-	sc->tx_rings = kmalloc_cachealign(
-	    sizeof(struct bce_tx_ring) * sc->tx_ring_cnt, M_DEVBUF,
-	    M_WAITOK | M_ZERO);
+	sc->tx_rings = kmalloc(sizeof(struct bce_tx_ring) * sc->tx_ring_cnt,
+			       M_DEVBUF,
+			       M_WAITOK | M_ZERO | M_CACHEALIGN);
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		sc->tx_rings[i].sc = sc;
 		if (i == 0) {
@@ -2528,9 +2528,9 @@ bce_dma_alloc(struct bce_softc *sc)
 		}
 	}
 
-	sc->rx_rings = kmalloc_cachealign(
-	    sizeof(struct bce_rx_ring) * sc->rx_ring_cnt, M_DEVBUF,
-	    M_WAITOK | M_ZERO);
+	sc->rx_rings = kmalloc(sizeof(struct bce_rx_ring) * sc->rx_ring_cnt,
+			       M_DEVBUF,
+			       M_WAITOK | M_ZERO | M_CACHEALIGN);
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		sc->rx_rings[i].sc = sc;
 		sc->rx_rings[i].idx = i;

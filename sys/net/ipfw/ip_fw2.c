@@ -2372,8 +2372,8 @@ ipfw_trkcnt_alloc(struct ipfw_context *ctx)
 		trk = ctx->ipfw_trkcnt_spare;
 		ctx->ipfw_trkcnt_spare = NULL;
 	} else {
-		trk = kmalloc_cachealign(sizeof(*trk), M_IPFW,
-		    M_INTWAIT | M_NULLOK);
+		trk = kmalloc(sizeof(*trk), M_IPFW,
+			      M_INTWAIT | M_NULLOK | M_CACHEALIGN);
 	}
 	return (trk);
 }

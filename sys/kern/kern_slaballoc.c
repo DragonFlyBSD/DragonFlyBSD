@@ -1,9 +1,8 @@
 /*
- * (MPSAFE)
- *
  * KERN_SLABALLOC.C	- Kernel SLAB memory allocator
  * 
- * Copyright (c) 2003,2004,2010 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2010-2019 The DragonFly Project.
+ * All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -123,6 +122,16 @@
 
 #include <sys/thread2.h>
 #include <vm/vm_page2.h>
+
+#if (__VM_CACHELINE_SIZE == 32)
+#define CAN_CACHEALIGN(sz)	((sz) >= 256)
+#elif (__VM_CACHELINE_SIZE == 64)
+#define CAN_CACHEALIGN(sz)	((sz) >= 512)
+#elif (__VM_CACHELINE_SIZE == 128)
+#define CAN_CACHEALIGN(sz)	((sz) >= 1024)
+#else
+#error "unsupported cacheline size"
+#endif
 
 #define btokup(z)	(&pmap_kvtom((vm_offset_t)(z))->ku_pagecnt)
 
@@ -670,6 +679,19 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
     }
     ++type->ks_use[gd->gd_cpuid].calls;
 
+    /*
+     * Flagged for cache-alignment
+     */
+    if (flags & M_CACHEALIGN) {
+	if (size < __VM_CACHELINE_SIZE)
+		size = __VM_CACHELINE_SIZE;
+	else if (!CAN_CACHEALIGN(size))
+		flags |= M_POWEROF2;
+    }
+
+    /*
+     * Flagged to force nearest power-of-2 (higher or same)
+     */
     if (flags & M_POWEROF2)
 	size = powerof2_size(size);
 
@@ -1673,38 +1695,4 @@ kmem_slab_free(void *ptr, vm_size_t size)
     vm_map_remove(&kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
     atomic_add_long(&SlabsFreed, 1);
     crit_exit();
-}
-
-void *
-kmalloc_cachealign(unsigned long size_alloc, struct malloc_type *type,
-    int flags)
-{
-#if (__VM_CACHELINE_SIZE == 32)
-#define CAN_CACHEALIGN(sz)	((sz) >= 256)
-#elif (__VM_CACHELINE_SIZE == 64)
-#define CAN_CACHEALIGN(sz)	((sz) >= 512)
-#elif (__VM_CACHELINE_SIZE == 128)
-#define CAN_CACHEALIGN(sz)	((sz) >= 1024)
-#else
-#error "unsupported cacheline size"
-#endif
-
-	void *ret;
-
-	if (size_alloc < __VM_CACHELINE_SIZE)
-		size_alloc = __VM_CACHELINE_SIZE;
-	else if (!CAN_CACHEALIGN(size_alloc))
-		flags |= M_POWEROF2;
-
-#ifdef SLAB_DEBUG
-	ret = kmalloc_debug(size_alloc, type, flags, __FILE__, __LINE__);
-#else
-	ret = kmalloc(size_alloc, type, flags);
-#endif
-	KASSERT(((uintptr_t)ret & (__VM_CACHELINE_SIZE - 1)) == 0,
-	    ("%p(%lu) not cacheline %d aligned",
-	     ret, size_alloc, __VM_CACHELINE_SIZE));
-	return ret;
-
-#undef CAN_CACHEALIGN
 }

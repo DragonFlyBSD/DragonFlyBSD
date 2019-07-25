@@ -4168,9 +4168,10 @@ bnx_dma_alloc(device_t dev)
 	 * Create RX return rings
 	 */
 	mbx = BGE_MBX_RX_CONS0_LO;
-	sc->bnx_rx_ret_ring = kmalloc_cachealign(
-	    sizeof(struct bnx_rx_ret_ring) * sc->bnx_rx_retcnt, M_DEVBUF,
-	    M_WAITOK | M_ZERO);
+	sc->bnx_rx_ret_ring =
+		kmalloc(sizeof(struct bnx_rx_ret_ring) * sc->bnx_rx_retcnt,
+			M_DEVBUF,
+			M_WAITOK | M_ZERO | M_CACHEALIGN);
 	for (i = 0; i < sc->bnx_rx_retcnt; ++i) {
 		struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[i];
 		struct bnx_intr_data *intr;
@@ -4219,9 +4220,10 @@ bnx_dma_alloc(device_t dev)
 	/*
 	 * Create TX rings
 	 */
-	sc->bnx_tx_ring = kmalloc_cachealign(
-	    sizeof(struct bnx_tx_ring) * sc->bnx_tx_ringcnt, M_DEVBUF,
-	    M_WAITOK | M_ZERO);
+	sc->bnx_tx_ring =
+		kmalloc(sizeof(struct bnx_tx_ring) * sc->bnx_tx_ringcnt,
+			M_DEVBUF,
+			M_WAITOK | M_ZERO | M_CACHEALIGN);
 	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
 		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
 		struct bnx_intr_data *intr;

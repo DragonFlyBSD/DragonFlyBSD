@@ -1217,16 +1217,16 @@ jme_dma_alloc(struct jme_softc *sc)
 
 	asize = __VM_CACHELINE_ALIGN(
 	    tdata->jme_tx_desc_cnt * sizeof(struct jme_txdesc));
-	tdata->jme_txdesc = kmalloc_cachealign(asize, M_DEVBUF,
-	    M_WAITOK | M_ZERO);
+	tdata->jme_txdesc = kmalloc(asize, M_DEVBUF,
+				    M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	for (i = 0; i < sc->jme_cdata.jme_rx_ring_cnt; ++i) {
 		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[i];
 
 		asize = __VM_CACHELINE_ALIGN(
 		    rdata->jme_rx_desc_cnt * sizeof(struct jme_rxdesc));
-		rdata->jme_rxdesc = kmalloc_cachealign(asize, M_DEVBUF,
-		    M_WAITOK | M_ZERO);
+		rdata->jme_rxdesc = kmalloc(asize, M_DEVBUF,
+					    M_WAITOK | M_ZERO | M_CACHEALIGN);
 	}
 
 	/* Create parent ring tag. */

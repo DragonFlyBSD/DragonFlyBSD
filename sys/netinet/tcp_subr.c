@@ -385,8 +385,8 @@ tcp_init(void)
 	if (portinfo_hsize > hashsize)
 		portinfo_hsize = hashsize;
 
-	portinfo = kmalloc_cachealign(sizeof(*portinfo) * netisr_ncpus, M_PCB,
-	    M_WAITOK);
+	portinfo = kmalloc(sizeof(*portinfo) * netisr_ncpus, M_PCB,
+			   M_WAITOK | M_CACHEALIGN);
 
 	for (cpu = 0; cpu < netisr_ncpus; cpu++) {
 		ticb = &tcbinfo[cpu];
@@ -2463,8 +2463,10 @@ tcp_pcbport_create(struct tcpcb *tp)
 	    ("not a listen tcpcb"));
 
 	KASSERT(tp->t_pcbport == NULL, ("tcpcb port cache was created"));
-	tp->t_pcbport = kmalloc_cachealign(
-	    sizeof(struct tcp_pcbport) * netisr_ncpus, M_PCB, M_WAITOK);
+	tp->t_pcbport =
+		kmalloc(sizeof(struct tcp_pcbport) * netisr_ncpus,
+			M_PCB,
+			M_WAITOK | M_CACHEALIGN);
 
 	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		struct inpcbport *phd;

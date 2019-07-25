@@ -172,7 +172,7 @@ mag_alloc(int capacity)
 	KASSERT(size > 0 && (size & __VM_CACHELINE_MASK) == 0,
 	    ("magazine size is not multiple cache line size"));
 
-	mag = kmalloc_cachealign(size, M_OBJMAG, M_INTWAIT | M_ZERO);
+	mag = kmalloc(size, M_OBJMAG, M_INTWAIT | M_ZERO | M_CACHEALIGN);
 	mag->capacity = capacity;
 	mag->rounds = 0;
 	return (mag);
@@ -231,9 +231,9 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 	/*
 	 * Allocate object cache structure
 	 */
-	oc = kmalloc_cachealign(
-	    __offsetof(struct objcache, cache_percpu[ncpus]),
-	    M_OBJCACHE, M_WAITOK | M_ZERO);
+	oc = kmalloc(__offsetof(struct objcache, cache_percpu[ncpus]),
+		     M_OBJCACHE,
+		     M_WAITOK | M_ZERO | M_CACHEALIGN);
 	oc->ctor = ctor ? ctor : null_ctor;
 	oc->dtor = dtor ? dtor : null_dtor;
 	oc->privdata = privdata;

@@ -183,9 +183,10 @@ lapic_init(boolean_t bsp)
 		    (cpu_feature2 & CPUID2_TSCDLT) &&
 		    tsc_invariant && tsc_frequency != 0) {
 			lapic_use_tscdeadline = 1;
-			tsc_deadlines = kmalloc_cachealign(
-			    sizeof(struct deadlines) * (naps + 1),
-			    M_DEVBUF, M_WAITOK | M_ZERO);
+			tsc_deadlines =
+				kmalloc(sizeof(struct deadlines) * (naps + 1),
+					M_DEVBUF,
+					M_WAITOK | M_ZERO | M_CACHEALIGN);
 		}
 	}
 

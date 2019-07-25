@@ -2341,7 +2341,8 @@ emx_create_tx_ring(struct emx_txdata *tdata)
 
 	tsize = __VM_CACHELINE_ALIGN(
 	    sizeof(struct emx_txbuf) * tdata->num_tx_desc);
-	tdata->tx_buf = kmalloc_cachealign(tsize, M_DEVBUF, M_WAITOK | M_ZERO);
+	tdata->tx_buf = kmalloc(tsize, M_DEVBUF,
+				M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	/*
 	 * Create DMA tags for tx buffers
@@ -2958,7 +2959,8 @@ emx_create_rx_ring(struct emx_rxdata *rdata)
 
 	rsize = __VM_CACHELINE_ALIGN(
 	    sizeof(struct emx_rxbuf) * rdata->num_rx_desc);
-	rdata->rx_buf = kmalloc_cachealign(rsize, M_DEVBUF, M_WAITOK | M_ZERO);
+	rdata->rx_buf = kmalloc(rsize, M_DEVBUF,
+				M_WAITOK | M_ZERO | M_CACHEALIGN);
 
 	/*
 	 * Create DMA tag for rx buffers
