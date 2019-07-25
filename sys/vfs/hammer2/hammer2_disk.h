@@ -104,7 +104,7 @@
  * HAMMER2_PBUFSIZE	- Topological block size used by files for all
  *			  blocks except the block straddling EOF.
  *
- * HAMMER2_SEGSIZE	- Allocation map segment size, typically 2MB
+ * HAMMER2_SEGSIZE	- Allocation map segment size, typically 4MB
  *			  (space represented by a level0 bitmap).
  */
 
@@ -139,9 +139,9 @@
  * future optimization we will be able to flag that such arrays are sorted
  * and thus optimize lookups, but for now we don't.
  *
- * Inodes embed either 512 bytes of direct data or an array of 8 blockrefs,
+ * Inodes embed either 512 bytes of direct data or an array of 4 blockrefs,
  * resulting in highly efficient storage for files <= 512 bytes and for files
- * <= 512KB.  Up to 8 directory entries can be referenced from a directory
+ * <= 512KB.  Up to 4 directory entries can be referenced from a directory
  * without requiring an indirect block.
  *
  * Indirect blocks are typically either 4KB (64 blockrefs / ~4MB represented),
@@ -165,38 +165,69 @@
 #define HAMMER2_UUID_STRING	"5cbb9ad1-862d-11dc-a94d-01301bb8a9f5"
 
 /*
- * A HAMMER2 filesystem is always sized in multiples of 8MB.
- *
  * A 4MB segment is reserved at the beginning of each 2GB zone.  This segment
  * contains the volume header (or backup volume header), the free block
- * table, and possibly other information in the future.
+ * table, and possibly other information in the future.  A 4MB segment for
+ * freemap is reserved at the beginning of every 1GB.
  *
  * 4MB = 64 x 64K blocks.  Each 4MB segment is broken down as follows:
  *
- *	+-----------------------+
- *      |	Volume Hdr	| block 0	volume header & alternates
- *	+-----------------------+		(first four zones only)
- *	|   FreeBlk Section A   | block 1-4
- *	+-----------------------+
- *	|   FreeBlk Section B   | block 5-8
- *	+-----------------------+
- *	|   FreeBlk Section C   | block 9-12
- *	+-----------------------+
- *	|   FreeBlk Section D   | block 13-16
- *	+-----------------------+
- *      |			| block 17...63
- *      |	reserved	|
- *      |			|
- *	+-----------------------+
+ * ==========
+ *  0 volume header (for the first four 2GB zones)
+ *  1 freemap00 level1 FREEMAP_LEAF (256 x 128B bitmap data per 1GB)
+ *  2           level2 FREEMAP_NODE (256 x 128B indirect block per 256GB)
+ *  3           level3 FREEMAP_NODE (256 x 128B indirect block per 64TB)
+ *  4           level4 FREEMAP_NODE (256 x 128B indirect block per 16PB)
+ *  5           level5 FREEMAP_NODE (256 x 128B indirect block per 4EB)
+ *  6 freemap01 level1 (rotation)
+ *  7           level2
+ *  8           level3
+ *  9           level4
+ * 10           level5
+ * 11 freemap02 level1 (rotation)
+ * 12           level2
+ * 13           level3
+ * 14           level4
+ * 15           level5
+ * 16 freemap03 level1 (rotation)
+ * 17           level2
+ * 18           level3
+ * 19           level4
+ * 20           level5
+ * 21 freemap04 level1 (rotation)
+ * 22           level2
+ * 23           level3
+ * 24           level4
+ * 25           level5
+ * 26 freemap05 level1 (rotation)
+ * 27           level2
+ * 28           level3
+ * 29           level4
+ * 30           level5
+ * 31 freemap06 level1 (rotation)
+ * 32           level2
+ * 33           level3
+ * 34           level4
+ * 35           level5
+ * 36 freemap07 level1 (rotation)
+ * 37           level2
+ * 38           level3
+ * 39           level4
+ * 40           level5
+ * 41 unused
+ * .. unused
+ * 63 unused
+ * ==========
  *
- * The first few 2GB zones contain volume headers and volume header backups.
+ * The first four 2GB zones contain volume headers and volume header backups.
  * After that the volume header block# is reserved for future use.  Similarly,
  * there are many blocks related to various Freemap levels which are not
  * used in every segment and those are also reserved for future use.
+ * Note that each FREEMAP_LEAF or FREEMAP_NODE uses 32KB out of 64KB slot.
  *
  *			Freemap (see the FREEMAP document)
  *
- * The freemap utilizes blocks #1-16 in 8 sets of 4 blocks.  Each block in
+ * The freemap utilizes blocks #1-40 in 8 sets of 5 blocks.  Each block in
  * a set represents a level of depth in the freemap topology.  Eight sets
  * exist to prevent live updates from disturbing the state of the freemap
  * were a crash/reboot to occur.  That is, a live update is not committed
@@ -205,14 +236,14 @@
  * must be consistent no matter which volume root is chosen by the mount
  * code.
  *
- * Each freemap set is 4 x 64K blocks and represents the 2GB, 2TB, 2PB,
- * and 2EB indirect map.  The volume header itself has a set of 8 freemap
- * blockrefs representing another 3 bits, giving us a total 64 bits of
+ * Each freemap set is 5 x 64K blocks and represents the 1GB, 256GB, 64TB,
+ * 16PB and 4EB indirect map.  The volume header itself has a set of 4 freemap
+ * blockrefs representing another 2 bits, giving us a total 64 bits of
  * representable address space.
  *
- * The Level 0 64KB block represents 2GB of storage represented by
- * (64 x struct hammer2_bmap_data).  Each structure represents 2MB of storage
- * and has a 256 bit bitmap, using 2 bits to represent a 16KB chunk of
+ * The Level 0 64KB block represents 1GB of storage represented by 32KB
+ * (256 x struct hammer2_bmap_data).  Each structure represents 4MB of storage
+ * and has a 512 bit bitmap, using 2 bits to represent a 16KB chunk of
  * storage.  These 2 bits represent the following states:
  *
  *	00	Free
@@ -238,21 +269,13 @@
  * Normal 'rm's or other deletions do not.
  *
  * WARNING!  ZONE_SEG and VOLUME_ALIGN must be a multiple of 1<<LEVEL0_RADIX
- *	     (i.e. a multiple of 2MB).  VOLUME_ALIGN must be >= ZONE_SEG.
+ *	     (i.e. a multiple of 4MB).  VOLUME_ALIGN must be >= ZONE_SEG.
  *
  * In Summary:
  *
  * (1) Modifications to freemap blocks 'allocate' a new copy (aka use a block
  *     from the next set).  The new copy is reused until a flush occurs at
  *     which point the next modification will then rotate to the next set.
- *
- * (2) A total of 10 freemap sets is required.
- *
- *     - 8 sets - 2 sets per volume header backup x 4 volume header backups
- *     - 2 sets used as backing store for the bulk freemap scan.
- *     - The freemap recovery scan which runs on-mount just uses the inactive
- *	 set for whichever volume header was selected by the mount code.
- *
  */
 #define HAMMER2_VOLUME_ALIGN		(8 * 1024 * 1024)
 #define HAMMER2_VOLUME_ALIGN64		((hammer2_off_t)HAMMER2_VOLUME_ALIGN)
@@ -393,7 +416,7 @@ typedef uint64_t			hammer2_bitmap_t;
 #define HAMMER2_BMAP_MASK		(HAMMER2_BMAP_SIZE - 1)
 
 /*
- * Two linear areas can be reserved after the initial 2MB segment in the base
+ * Two linear areas can be reserved after the initial 4MB segment in the base
  * zone (the one starting at offset 0).  These areas are NOT managed by the
  * block allocator and do not fall under HAMMER2 crc checking rules based
  * at the volume header (but can be self-CRCd internally, depending).
@@ -806,7 +829,7 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  * hammer2_bmap_data - A freemap entry in the LEVEL1 block.
  *
  * Each 128-byte entry contains the bitmap and meta-data required to manage
- * a LEVEL0 (128KB) block of storage.  The storage is managed in 128 x 1KB
+ * a LEVEL0 (4MB) block of storage.  The storage is managed in 256 x 16KB
  * chunks.
  *
  * A smaller allocation granularity is supported via a linear iterator and/or
@@ -815,7 +838,7 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  * (data structure must be 128 bytes exactly)
  *
  * linear  - A BYTE linear allocation offset used for sub-16KB allocations
- *	     only.  May contain values between 0 and 2MB.  Must be ignored
+ *	     only.  May contain values between 0 and 4MB.  Must be ignored
  *	     if 16KB-aligned (i.e. force bitmap scan), otherwise may be
  *	     used to sub-allocate within the 16KB block (which is already
  *	     marked as allocated in the bitmap).
@@ -838,7 +861,7 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  *	     and directory scans.
  *
  * bitmap  - Two bits per 16KB allocation block arranged in arrays of
- *	     32-bit elements, 256x2 bits representing ~4MB worth of media
+ *	     64-bit elements, 256x2 bits representing ~4MB worth of media
  *	     storage.  Bit patterns are as follows:
  *
  *	     00	Unallocated
