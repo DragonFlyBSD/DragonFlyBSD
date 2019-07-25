@@ -629,9 +629,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		printf("{\n");
-		if (media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
-			/* no blockrefs */
-		} else {
+		if (!(media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
 			bscan = &media.ipdata.u.blockset.blockref[0];
 			bcount = HAMMER2_SET_COUNT;
 		}
@@ -641,6 +639,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		tabprintf(tab, "filename \"%*.*s\"\n",
 			  namelen, namelen, media.ipdata.filename);
 		tabprintf(tab, "version  %d\n", media.ipdata.meta.version);
+		tabprintf(tab, "pfs_st   %d\n", media.ipdata.meta.pfs_subtype);
 		tabprintf(tab, "uflags   0x%08x\n",
 			  media.ipdata.meta.uflags);
 		if (media.ipdata.meta.rmajor || media.ipdata.meta.rminor) {
@@ -671,8 +670,13 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			  media.ipdata.meta.mode);
 		tabprintf(tab, "inum     0x%016jx\n",
 			  media.ipdata.meta.inum);
-		tabprintf(tab, "size     %ju\n",
+		tabprintf(tab, "size     %ju ",
 			  (uintmax_t)media.ipdata.meta.size);
+		if (media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA &&
+		    media.ipdata.meta.size <= HAMMER2_EMBEDDED_BYTES)
+			printf("(embedded data)\n");
+		else
+			printf("\n");
 		tabprintf(tab, "nlinks   %ju\n",
 			  (uintmax_t)media.ipdata.meta.nlinks);
 		tabprintf(tab, "iparent  0x%016jx\n",
@@ -685,10 +689,14 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			  media.ipdata.meta.ncopies);
 		tabprintf(tab, "compalg  %u\n",
 			  media.ipdata.meta.comp_algo);
+		tabprintf(tab, "target_t %u\n",
+			  media.ipdata.meta.target_type);
 		tabprintf(tab, "checkalg %u\n",
 			  media.ipdata.meta.check_algo);
 		if ((media.ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) ||
 		    media.ipdata.meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT) {
+			tabprintf(tab, "pfs_nmas %u\n",
+				  media.ipdata.meta.pfs_nmasters);
 			tabprintf(tab, "pfs_type %u (%s)\n",
 				  media.ipdata.meta.pfs_type,
 				  hammer2_pfstype_to_str(media.ipdata.meta.pfs_type));
@@ -717,6 +725,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		bcount = bytes / sizeof(hammer2_blockref_t);
 		didnl = 1;
 		printf("{\n");
+		tabprintf(tab, "count %d\n", bcount);
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 #if 0
@@ -786,6 +795,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		printf("{\n");
 		bscan = &media.npdata[0];
 		bcount = bytes / sizeof(hammer2_blockref_t);
+		tabprintf(tab, "count %d\n", bcount);
 		break;
 	default:
 		printf("\n");
