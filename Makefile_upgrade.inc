@@ -3755,6 +3755,7 @@ TO_REMOVE+=/usr/share/man/man8/nextboot.8.gz
 TO_REMOVE+=/usr/sbin/rdate
 TO_REMOVE+=/usr/share/man/man8/rdate.8.gz
 TO_REMOVE+=/entropy
+TO_REMOVE+=/usr/share/man/man9/kmalloc_cachealign.9.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
