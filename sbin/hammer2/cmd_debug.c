@@ -35,7 +35,7 @@
 
 #include "hammer2.h"
 
-#define SHOW_TAB	2
+static int show_tab = 2;
 
 static void shell_msghandler(dmsg_msg_t *msg, int unmanaged);
 static void shell_ttymsg(dmsg_iocom_t *iocom);
@@ -391,9 +391,18 @@ cmd_show(const char *devpath, int dofreemap)
 	int fd;
 	int i;
 	int best_i;
+	char *env;
 
 	TotalFreeAccum16 = 0;	/* includes TotalFreeAccum64 */
 	TotalFreeAccum64 = 0;
+
+	env = getenv("HAMMER2_SHOW_TAB");
+	if (env != NULL) {
+		show_tab = (int)strtol(env, NULL, 0);
+		if (errno || show_tab < 0 || show_tab > 8)
+			show_tab = 2;
+	}
+
 	fd = open(devpath, O_RDONLY);
 	if (fd < 0) {
 		perror("open");
@@ -495,7 +504,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	       (intmax_t)bref->key, (intmax_t)bref->keybits,
 	       (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid,
 	       bref->leaf_count);
-	tab += SHOW_TAB;
+	tab += show_tab;
 	if (bref->flags)
 		printf("flags=%02x ", bref->flags);
 	if (bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
@@ -821,7 +830,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 				  i, &bscan[i], dofreemap, failed);
 		}
 	}
-	tab -= SHOW_TAB;
+	tab -= show_tab;
 	if (obrace) {
 		if (bref->type == HAMMER2_BREF_TYPE_INODE)
 			tabprintf(tab, "} (%s.%d, \"%*.*s\")\n",
