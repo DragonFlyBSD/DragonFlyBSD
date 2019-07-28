@@ -80,6 +80,7 @@
 #include <sys/proc.h>
 #include <sys/mountctl.h>
 #include <sys/priv.h>
+#include <sys/spinlock2.h>
 #include <sys/stat.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>

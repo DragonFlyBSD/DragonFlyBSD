@@ -41,6 +41,7 @@
 #include <sys/mount.h>
 #include <sys/signalvar.h>
 #include <sys/signal2.h>
+#include <sys/spinlock2.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 #include <sys/sysproto.h>

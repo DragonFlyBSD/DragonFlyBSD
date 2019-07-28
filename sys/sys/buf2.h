@@ -33,7 +33,6 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.21 2008/01/28 07:19:06 nth Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -42,16 +41,7 @@
 #ifdef _KERNEL
 
 #ifndef _SYS_BUF_H_
-#include <sys/buf.h>		/* crit_*() functions */
-#endif
-#ifndef _SYS_GLOBALDATA_H_
-#include <sys/globaldata.h>	/* curthread */
-#endif
-#ifndef _SYS_THREAD2_H_
-#include <sys/thread2.h>	/* crit_*() functions */
-#endif
-#ifndef _SYS_SPINLOCK2_H_
-#include <sys/spinlock2.h>	/* crit_*() functions */
+#include <sys/buf.h>
 #endif
 #ifndef _SYS_MOUNT_H_
 #include <sys/mount.h>

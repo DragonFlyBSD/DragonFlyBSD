@@ -75,14 +75,12 @@
 #include <sys/mount.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
-#include <sys/buf.h>
+#include <sys/spinlock2.h>
 #include <sys/eventhandler.h>
 #include <sys/kthread.h>
 #include <sys/sysctl.h>
 
 #include <machine/limits.h>
-
-#include <sys/buf2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>

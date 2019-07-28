@@ -59,15 +59,13 @@
 #include <sys/mount.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
-#include <sys/buf.h>
+#include <sys/spinlock2.h>
 #include <sys/sysctl.h>
 
 #include <machine/limits.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
-
-#include <sys/buf2.h>
 
 #define VACT_MAX	10
 #define VACT_INC	2
