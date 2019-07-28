@@ -28,9 +28,7 @@
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
  */
 
-#include "opt_vga.h"
 #include "opt_fb.h"
-#include "opt_syscons.h"	/* should be removed in the future, XXX */
 
 #include <sys/param.h>
 #include <sys/systm.h>
