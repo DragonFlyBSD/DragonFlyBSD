@@ -18,7 +18,7 @@ MIRROR?=https://mirror-master.dragonflybsd.org
 DPTBALL=/tmp/dports.tar.gz
 PKGBALL=/tmp/pkgboot.tar.xz
 DPDLURL=https://api.github.com/repos/DragonFlyBSD/DPorts/tarball/
-PKGBOOT_VERSION=02
+PKGBOOT_VERSION=03
 PKGBOOT_x86_64=bootstrap_pkg_${PKGBOOT_VERSION}_x86-64.tar.xz
 PKGBOOT=${MIRROR}/dports/bootstraps/${PKGBOOT_${MACHINE_ARCH}}
 ERRPKG="Error: Bootstrap not necessary, ${.CURDIR}/local/sbin/pkg already exists"
@@ -169,6 +169,8 @@ pkg-bootstrap-fetch:
 	tar -xJf ${PKGBALL} -C ${.CURDIR}/local
 	@rm -f ${PKGBALL}
 
+# This is a bit problematic
+#
 pkg-bootstrap-install:
 .if defined(ABIVERS)
 	ABI=${ABIVERS} ${.CURDIR}/local/sbin/pkg-static \
@@ -176,6 +178,9 @@ pkg-bootstrap-install:
 .else
 	${.CURDIR}/local/sbin/pkg-static install -y ${PKG_FLAGS} pkg
 .endif
+	${.CURDIR}/local/sbin/pkg install -y ${PKG_FLAGS} ca_root_nss
+	cp -f ${.CURDIR}/local/etc/pkg/repos/df-latest.conf.sample \
+		${.CURDIR}/local/etc/pkg/repos/df-latest.conf \
 
 pkg-bootstrap:
 .if exists(${.CURDIR}/local/sbin/pkg)
