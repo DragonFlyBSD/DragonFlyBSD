@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: pl_5.c,v 1.26 2019/02/03 03:19:25 mrg Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,39 +27,51 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)pl_5.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/pl_5.c,v 1.6 1999/11/30 03:49:37 billf Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)pl_5.c	8.1 (Berkeley) 5/31/93";
+#else
+__RCSID("$NetBSD: pl_5.c,v 1.26 2019/02/03 03:19:25 mrg Exp $");
+#endif
+#endif /* not lint */
+
+#include <ctype.h>
+#include <signal.h>
+#include <stdio.h>
 #include <string.h>
+#include "extern.h"
 #include "player.h"
+#include "display.h"
 
 #define turnfirst(x) (*x == 'r' || *x == 'l')
 
-static void parties(int [3], struct ship *, char, char);
+static void parties(struct ship *, int *, int, int);
 
 void
 acceptmove(void)
 {
 	int ta;
 	int ma;
-	char af;
-	int moved = 0;
+	bool af;
+	bool moved = false;
 	int vma, dir;
-	char prompt[60];
+	char promptstr[60];
 	char buf[60], last = '\0';
 	char *p;
 
 	if (!mc->crew3 || snagged(ms) || !windspeed) {
-		Signal("Unable to move", NULL);
+		Msg("Unable to move");
 		return;
 	}
 
 	ta = maxturns(ms, &af);
 	ma = maxmove(ms, mf->dir, 0);
-	sprintf(prompt, "move (%d,%c%d): ", ma, af ? '\'' : ' ', ta);
-	sgetstr(prompt, buf, sizeof buf);
+	snprintf(promptstr, sizeof(promptstr),
+		"move (%d,%c%d): ", ma, af ? '\'' : ' ', ta);
+	sgetstr(promptstr, buf, sizeof buf);
 	dir = mf->dir;
 	vma = ma;
 	for (p = buf; *p; p++)
@@ -71,8 +85,7 @@ acceptmove(void)
 			else if (dir == 9)
 				dir = 1;
 			if (last == 't') {
-				Signal("Ship can't turn that fast.",
-					NULL);
+				Msg("Ship can't turn that fast.");
 				*p-- = '\0';
 			}
 			last = 't';
@@ -99,48 +112,45 @@ acceptmove(void)
 		case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7':
 			if (last == '0') {
-				Signal("Can't move that fast.",
-					NULL);
+				Msg("Can't move that fast.");
 				*p-- = '\0';
 			}
 			last = '0';
-			moved = 1;
+			moved = true;
 			ma -= *p - '0';
 			vma -= *p - '0';
 			if ((ta < 0 && moved) || (vma < 0 && moved))
 				*p-- = '\0';
 			break;
 		default:
-			if (!isspace(*p)) {
-				Signal("Input error.", NULL);
+			if (!isspace((unsigned char)*p)) {
+				Msg("Input error.");
 				*p-- = '\0';
 			}
 		}
 	if ((ta < 0 && moved) || (vma < 0 && moved)
 	    || (af && turnfirst(buf) && moved)) {
-		Signal("Movement error.", NULL);
+		Msg("Movement error.");
 		if (ta < 0 && moved) {
 			if (mf->FS == 1) {
-				Write(W_FS, ms, 0, 0, 0, 0);
-				Signal("No hands to set full sails.",
-					NULL);
+				send_fs(ms, 0);
+				Msg("No hands to set full sails.");
 			}
 		} else if (ma >= 0)
 			buf[1] = '\0';
 	}
 	if (af && !moved) {
 		if (mf->FS == 1) {
-			Write(W_FS, ms, 0, 0, 0, 0);
-			Signal("No hands to set full sails.",
-				NULL);
+			send_fs(ms, 0);
+			Msg("No hands to set full sails.");
 		}
 	}
 	if (*buf)
-		strcpy(movebuf, buf);
+		strlcpy(movebuf, buf, sizeof(movebuf));
 	else
-		strcpy(movebuf, "d");
-	Writestr(W_MOVE, ms, movebuf);
-	Signal("Helm: %s.", NULL, movebuf);
+		strlcpy(movebuf, "d", sizeof(movebuf));
+	send_move(ms, movebuf);
+	Msg("Helm: %s.", movebuf);
 }
 
 void
@@ -178,26 +188,24 @@ acceptboard(void)
 		if (ms->nationality == capship(sp)->nationality)
 			continue;
 		if (meleeing(ms, sp) && crew[2]) {
-			c = sgetch("How many more to board the %s (%c%c)? ",
+			c = sgetch("How many more to board the $$? ",
 				sp, 1);
-			parties(crew, sp, 0, c);
+			parties(sp, crew, 0, c);
 		} else if ((fouled2(ms, sp) || grappled2(ms, sp)) && crew[2]) {
-			c = sgetch("Crew sections to board the %s (%c%c) (3 max) ?", sp, 1);
-			parties(crew, sp, 0, c);
+			c = sgetch("Crew sections to board the $$ (3 max) ?",
+				   sp, 1);
+			parties(sp, crew, 0, c);
 		}
 	}
 	if (crew[2]) {
 		c = sgetch("How many sections to repel boarders? ",
-			NULL, 1);
-		parties(crew, ms, 1, c);
+			(struct ship *)0, 1);
+		parties(ms, crew, 1, c);
 	}
-	blockalarm();
-	draw_slot();
-	unblockalarm();
 }
 
 static void
-parties(int crew[3], struct ship *to, char isdefense, char buf)
+parties(struct ship *to, int *crew, int isdefense, int buf)
 {
 	int k, j, men;
 	struct BP *ptr;
@@ -209,7 +217,7 @@ parties(int crew[3], struct ship *to, char isdefense, char buf)
 		ptr = isdefense ? to->file->DBP : to->file->OBP;
 		for (j = 0; j < NBP && ptr[j].turnsent; j++)
 			;
-		if (!ptr[j].turnsent && buf > '0') {
+		if (j < NBP && !ptr[j].turnsent && buf > '0') {
 			men = 0;
 			for (k = 0; k < 3 && buf > '0'; k++) {
 				men += crew[k]
@@ -219,34 +227,24 @@ parties(int crew[3], struct ship *to, char isdefense, char buf)
 					buf--;
 			}
 			if (buf > '0')
-				Signal("Sending all crew sections.",
-					NULL);
-			Write(isdefense ? W_DBP : W_OBP, ms,
-				j, turn, to->file->index, men);
+				Msg("Sending all crew sections.");
 			if (isdefense) {
-				wmove(slot_w, 2, 0);
-				for (k=0; k < NBP; k++)
-					if (temp[k] && !crew[k])
-						waddch(slot_w, k + '1');
-					else
-						wmove(slot_w, 2, 1 + k);
-				mvwaddstr(slot_w, 3, 0, "DBP");
-				makesignal(ms, "repelling boarders",
-					NULL);
+				send_dbp(ms, j, turn, to->file->index, men);
 			} else {
-				wmove(slot_w, 0, 0);
-				for (k=0; k < NBP; k++)
-					if (temp[k] && !crew[k])
-						waddch(slot_w, k + '1');
-					else
-						wmove(slot_w, 0, 1 + k);
-				mvwaddstr(slot_w, 1, 0, "OBP");
-				makesignal(ms, "boarding the %s (%c%c)", to);
+				send_obp(ms, j, turn, to->file->index, men);
 			}
-			blockalarm();
-			wrefresh(slot_w);
-			unblockalarm();
+			if (isdefense) {
+				for (k=0; k < NBP; k++)
+					display_set_dbp(k,
+							 temp[k] && !crew[k]);
+				makemsg(ms, "repelling boarders");
+			} else {
+				for (k=0; k < NBP; k++)
+					display_set_obp(k,
+							 temp[k] && !crew[k]);
+				makesignal(ms, "boarding the $$", to);
+			}
 		} else
-			Signal("Sending no crew sections.", NULL);
+			Msg("Sending no crew sections.");
 	}
 }

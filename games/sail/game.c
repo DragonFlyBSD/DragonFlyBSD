@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: game.c,v 1.13 2009/03/14 20:04:43 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,16 +27,23 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)game.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/game.c,v 1.5 1999/11/30 03:49:33 billf Exp $
- * $DragonFly: src/games/sail/game.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
-#include "externs.h"
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)game.c	8.2 (Berkeley) 4/28/95";
+#else
+__RCSID("$NetBSD: game.c,v 1.13 2009/03/14 20:04:43 dholland Exp $");
+#endif
+#endif /* not lint */
+
+#include <sys/types.h>
+#include <stdbool.h>
+#include "extern.h"
 
 int
-maxturns(struct ship *ship, char *af)
+maxturns(struct ship *ship, bool *af)
 {
 	int turns;
 

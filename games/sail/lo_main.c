@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: lo_main.c,v 1.19 2010/08/06 09:14:40 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,63 +27,133 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)lo_main.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/lo_main.c,v 1.2 1999/11/30 03:49:34 billf Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)lo_main.c	8.2 (Berkeley) 4/28/95";
+#else
+__RCSID("$NetBSD: lo_main.c,v 1.19 2010/08/06 09:14:40 dholland Exp $");
+#endif
+#endif /* not lint */
 
 /*
  * Print out the top ten SAILors
  *
  * -l force a long listing (print out real usernames)
  */
-#include <sys/types.h>
+
+#include <err.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <pwd.h>
-#include "externs.h"
+#include <curses.h>
+
+#include "extern.h"
 #include "pathnames.h"
 
-const char *title[] = {
+
+static const char *const title[] = {
 	"Admiral", "Commodore", "Captain", "Captain",
 	"Captain", "Captain", "Captain", "Commander",
 	"Commander", "Lieutenant"
 };
+
+void
+lo_curses(void)
+{
+	FILE *fp;
+	char sbuf[32];
+	int n = 0, npeople;
+	int line;
+	struct passwd *pass;
+	struct logs log;
+	struct ship *ship;
+
+	erase();
+
+	fp = fopen(_PATH_LOGFILE, "r");
+	if (fp == NULL) {
+		mvprintw(5, 10, "%s: %s", _PATH_LOGFILE, strerror(errno));
+		mvaddstr(7, 10, "Press any key...");
+		getch();
+		return;
+	}
+	switch (fread(&npeople, sizeof npeople, 1, fp)) {
+	    case 0:
+		mvprintw(5, 10, "Nobody has sailed yet.");
+		mvaddstr(7, 10, "Press any key...");
+		getch();
+		return;
+	    case 1:
+		break;
+	    default:
+		mvprintw(5, 10, "%s: %s", _PATH_LOGFILE, strerror(errno));
+		mvaddstr(7, 10, "Press any key...");
+		getch();
+		return;
+	}
+	line = 0;
+	while (fread(&log, sizeof log, 1, fp) == 1 &&
+	       log.l_name[0] != '\0' &&
+		line < LINES - 2) {
+		if (longfmt && (pass = getpwuid(log.l_uid)) != NULL)
+			snprintf(sbuf, sizeof(sbuf),
+				"%10.10s (%s)", log.l_name, pass->pw_name);
+		else
+			snprintf(sbuf, sizeof(sbuf),
+				"%20.20s", log.l_name);
+		ship = &scene[log.l_gamenum].ship[log.l_shipnum];
+		mvprintw(line, 0,
+			"%-10s %21s of the %15s %3d points, %5.2f equiv",
+			title[n++], sbuf, ship->shipname, log.l_netpoints,
+			(float) log.l_netpoints / ship->specs->pts);
+		line++;
+	}
+	fclose(fp);
+	mvprintw(line+1, 0, "%d people have played. Press any key.", npeople);
+	getch();
+}
 
 int
 lo_main(void)
 {
 	FILE *fp;
 	char sbuf[32];
-	int n = 0, ppl;
+	int n = 0, npeople;
 	struct passwd *pass;
 	struct logs log;
 	struct ship *ship;
 
-	if ((fp = fopen(_PATH_LOGFILE, "r")) == NULL) {
-		perror(_PATH_LOGFILE);
-		exit(1);
+	if ((fp = fopen(_PATH_LOGFILE, "r")) == 0) {
+		err(1, "%s", _PATH_LOGFILE);
 	}
-	switch (fread((char *)&ppl, sizeof ppl, 1, fp)) {
+	switch (fread(&npeople, sizeof npeople, 1, fp)) {
 	case 0:
 		printf("Nobody has sailed yet.\n");
 		exit(0);
 	case 1:
 		break;
 	default:
-		perror(_PATH_LOGFILE);
-		exit(1);
+		err(1, "%s", _PATH_LOGFILE);
 	}
-	while (fread((char *)&log, sizeof log, 1, fp) == 1 &&
+	while (fread(&log, sizeof log, 1, fp) == 1 &&
 	       log.l_name[0] != '\0') {
 		if (longfmt && (pass = getpwuid(log.l_uid)) != NULL)
-			sprintf(sbuf, "%10.10s (%s)",
-				log.l_name, pass->pw_name);
+			snprintf(sbuf, sizeof(sbuf),
+				"%10.10s (%s)", log.l_name, pass->pw_name);
 		else
-			sprintf(sbuf, "%20.20s", log.l_name);
+			snprintf(sbuf, sizeof(sbuf),
+				"%20.20s", log.l_name);
 		ship = &scene[log.l_gamenum].ship[log.l_shipnum];
 		printf("%-10s %21s of the %15s %3d points, %5.2f equiv\n",
 			title[n++], sbuf, ship->shipname, log.l_netpoints,
 			(float) log.l_netpoints / ship->specs->pts);
 	}
-	printf("\n%d people have played.\n", ppl);
+	fclose(fp);
+	printf("\n%d people have played.\n", npeople);
 	return 0;
 }

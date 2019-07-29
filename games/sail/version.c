@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: version.c,v 1.6 2009/03/14 20:10:43 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,10 +27,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)version.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/version.c,v 1.2 1999/11/30 03:49:38 billf Exp $
- * $DragonFly: src/games/sail/version.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
  */
 
-char version[] = "Wooden Ships and Iron Men, Version 8.1 (93/05/31)";
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)version.c	8.1 (Berkeley) 5/31/93";
+#else
+__RCSID("$NetBSD: version.c,v 1.6 2009/03/14 20:10:43 dholland Exp $");
+#endif
+#endif /* not lint */
+
+const char version[] = "Wooden Ships and Iron Men, Version 8.1 (93/05/31)";

@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: dr_3.c,v 1.19 2009/03/14 22:52:52 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,17 +27,26 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)dr_3.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/dr_3.c,v 1.6 1999/11/30 03:49:32 billf Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)dr_3.c	8.1 (Berkeley) 5/31/93";
+#else
+__RCSID("$NetBSD: dr_3.c,v 1.19 2009/03/14 22:52:52 dholland Exp $");
+#endif
+#endif /* not lint */
+
+#include <stdlib.h>
+#include <string.h>
+#include "extern.h"
 #include "driver.h"
 
-static bool stillmoving(int);
-static bool isolated(struct ship *);
-static bool push(struct ship *, struct ship *);
-static void step(char, struct ship *, char *);
+static int stillmoving(int);
+static int is_isolated(struct ship *);
+static int push(struct ship *, struct ship *);
+static void step(struct ship *, int, char *);
 
 /* move all comp ships */
 void
@@ -53,7 +64,7 @@ moveall(void)
 	foreachship(sp) {
 		struct ship *closest;
 		int ma, ta;
-		char af;
+		bool af;
 
 		if (sp->file->captain[0] || sp->file->dir == 0)
 			continue;
@@ -62,10 +73,11 @@ moveall(void)
 			ta = maxturns(sp, &af);
 			ma = maxmove(sp, sp->file->dir, 0);
 			closest = closestenemy(sp, 0, 0);
-			if (closest == NULL)
+			if (closest == 0)
 				*sp->file->movebuf = '\0';
 			else
 				closeon(sp, closest, sp->file->movebuf,
+					sizeof(sp->file->movebuf),
 					ta, ma, af);
 		} else
 			*sp->file->movebuf = '\0';
@@ -104,7 +116,7 @@ moveall(void)
 			if (!sp->file->movebuf[k])
 				sp->file->movebuf[k+1] = '\0';
 			else if (sp->file->dir)
-				step(sp->file->movebuf[k], sp, &moved[n]);
+				step(sp, sp->file->movebuf[k], &moved[n]);
 			n++;
 		}
 		/*
@@ -112,7 +124,7 @@ moveall(void)
 		 */
 		n = 0;
 		foreachship(sp) {
-			if (sp->file->dir == 0 || isolated(sp))
+			if (sp->file->dir == 0 || is_isolated(sp))
 				goto cont1;
 			l = 0;
 			foreachship(sq) {
@@ -127,14 +139,12 @@ moveall(void)
 				if (snagged2(sp, sq) && range(sp, sq) > 1)
 					snap++;
 				if (!range(sp, sq) && !fouled2(sp, sq)) {
-					makesignal(sp,
-						"collision with %s (%c%c)", sq);
-					if (die() < 4) {
-						makesignal(sp,
-							"fouled with %s (%c%c)",
-							sq);
-						Write(W_FOUL, sp, l, 0, 0, 0);
-						Write(W_FOUL, sq, n, 0, 0, 0);
+					makesignal(sp, "collision with $$", sq);
+					if (dieroll() < 4) {
+						makesignal(sp, "fouled with $$",
+						    sq);
+						send_foul(sp, l);
+						send_foul(sq, n);
 					}
 					snap++;
 				}
@@ -165,19 +175,19 @@ moveall(void)
 		if (sp->file->dir != 0) {
 			*sp->file->movebuf = 0;
 			if (row[n] != sp->file->row)
-				Write(W_ROW, sp, sp->file->row, 0, 0, 0);
+				send_row(sp, sp->file->row);
 			if (col[n] != sp->file->col)
-				Write(W_COL, sp, sp->file->col, 0, 0, 0);
+				send_col(sp, sp->file->col);
 			if (dir[n] != sp->file->dir)
-				Write(W_DIR, sp, sp->file->dir, 0, 0, 0);
+				send_dir(sp, sp->file->dir);
 			if (drift[n] != sp->file->drift)
-				Write(W_DRIFT, sp, sp->file->drift, 0, 0, 0);
+				send_drift(sp, sp->file->drift);
 		}
 		n++;
 	}
 }
 
-static bool
+static int
 stillmoving(int k)
 {
 	struct ship *sp;
@@ -188,8 +198,8 @@ stillmoving(int k)
 	return 0;
 }
 
-static bool
-isolated(struct ship *ship)
+static int
+is_isolated(struct ship *ship)
 {
 	struct ship *sp;
 
@@ -200,7 +210,7 @@ isolated(struct ship *ship)
 	return 1;
 }
 
-static bool
+static int
 push(struct ship *from, struct ship *to)
 {
 	int bs, sb;
@@ -215,7 +225,7 @@ push(struct ship *from, struct ship *to)
 }
 
 static void
-step(char com, struct ship *sp, char *moved)
+step(struct ship *sp, int com, char *moved)
 {
 	int dist;
 
@@ -256,7 +266,7 @@ step(char com, struct ship *sp, char *moved)
 }
 
 void
-sendbp(struct ship *from, struct ship *to, int sections, char isdefense)
+sendbp(struct ship *from, struct ship *to, int sections, int isdefense)
 {
 	int n;
 	struct BP *bp;
@@ -265,17 +275,20 @@ sendbp(struct ship *from, struct ship *to, int sections, char isdefense)
 	for (n = 0; n < NBP && bp[n].turnsent; n++)
 		;
 	if (n < NBP && sections) {
-		Write(isdefense ? W_DBP : W_OBP, from,
-			n, turn, to->file->index, sections);
+		if (isdefense) {
+			send_dbp(from, n, turn, to->file->index, sections);
+		} else {
+			send_obp(from, n, turn, to->file->index, sections);
+		}
 		if (isdefense)
-			makesignal(from, "repelling boarders", NULL);
+			makemsg(from, "repelling boarders");
 		else
-			makesignal(from, "boarding the %s (%c%c)", to);
+			makesignal(from, "boarding the $$", to);
 	}
 }
 
 int
-toughmelee(struct ship *ship, struct ship *to, int isdefense, int count)
+is_toughmelee(struct ship *ship, struct ship *to, int isdefense, int count)
 {
 	struct BP *bp;
 	int obp = 0;
@@ -296,9 +309,9 @@ toughmelee(struct ship *ship, struct ship *to, int isdefense, int count)
 	}
 	if (count || isdefense)
 		return obp;
-	OBP = toughmelee(to, ship, 0, count + 1);
-	dbp = toughmelee(ship, to, 1, count + 1);
-	DBP = toughmelee(to, ship, 1, count + 1);
+	OBP = is_toughmelee(to, ship, 0, count + 1);
+	dbp = is_toughmelee(ship, to, 1, count + 1);
+	DBP = is_toughmelee(to, ship, 1, count + 1);
 	if (OBP > obp + 10 || OBP + DBP >= obp + dbp + 10)
 		return 1;
 	else
@@ -320,7 +333,7 @@ checksails(void)
 {
 	struct ship *sp;
 	int rig, full;
-	struct ship *closest;
+	struct ship *close;
 
 	foreachship(sp) {
 		if (sp->file->captain[0] != 0)
@@ -329,17 +342,19 @@ checksails(void)
 		if (windspeed == 6 || (windspeed == 5 && sp->specs->class > 4))
 			rig = 0;
 		if (rig && sp->specs->crew3) {
-			closest = closestenemy(sp, 0, 0);
-			if (closest != NULL) {
-				if (range(sp, closest) > 9)
+			close = closestenemy(sp, 0, 0);
+			if (close != 0) {
+				if (range(sp, close) > 9)
 					full = 1;
 				else
 					full = 0;
-			} else
+			} else {
 				full = 0;
-		} else
+			}
+		} else {
 			full = 0;
+		}
 		if ((sp->file->FS != 0) != full)
-			Write(W_FS, sp, full, 0, 0, 0);
+			send_fs(sp, full);
 	}
 }

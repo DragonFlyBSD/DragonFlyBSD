@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: main.c,v 1.26 2010/08/06 09:14:40 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,56 +27,132 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
- * @(#)main.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/main.c,v 1.5 1999/11/30 03:49:34 billf Exp $
  */
 
-#include "externs.h"
+#include <sys/cdefs.h>
+#ifndef lint
+__COPYRIGHT("@(#) Copyright (c) 1983, 1993\
+ The Regents of the University of California.  All rights reserved.");
+#endif /* not lint */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)main.c	8.2 (Berkeley) 4/28/95";
+#else
+__RCSID("$NetBSD: main.c,v 1.26 2010/08/06 09:14:40 dholland Exp $");
+#endif
+#endif /* not lint */
+
+#include <ctype.h>
+#include <err.h>
+#include <fcntl.h>
+#include <pwd.h>
+#include <setjmp.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include "extern.h"
+#include "pathnames.h"
+#include "restart.h"
+
+static void
+initialize(void)
+{
+	int fd;
+	const char *name;
+	struct passwd *pw;
+	char *s;
+
+	gid = getgid();
+	egid = getegid();
+	setegid(gid);
+
+	fd = open("/dev/null", O_RDONLY);
+	if (fd < 3)
+		exit(1);
+	close(fd);
+
+	if (chdir(_PATH_SAILDIR) < 0) {
+		err(1, "%s", _PATH_SAILDIR);
+	}
+
+	srandom((u_long)time(NULL));
+
+	name = getenv("SAILNAME");
+	if (name != NULL && *name != '\0') {
+		strlcpy(myname, name, sizeof(myname));
+	} else {
+		pw = getpwuid(getuid());
+		if (pw != NULL) {
+			strlcpy(myname, pw->pw_gecos, sizeof(myname));
+			/* trim to just the realname */
+			s = strchr(myname, ',');
+			if (s != NULL) {
+				*s = '\0';
+			}
+			/* use just the first name */
+			s = strchr(myname, ' ');
+			if (s != NULL) {
+				*s = '\0';
+			}
+			/* should really do &-expansion properly */
+			if (!strcmp(myname, "&")) {
+				strlcpy(myname, pw->pw_name, sizeof(myname));
+				myname[0] = toupper((unsigned char)myname[0]);
+			}
+		}
+	}
+	if (*myname == '\0') {
+		strlcpy(myname, "Anonymous", sizeof(myname));
+	}
+}
 
 int
-main(int argc __unused, char **argv)
+main(int argc, char **argv)
 {
 	char *p;
-	int i;
+	int a, i;
 
-	srandomdev();
-	issetuid = getuid() != geteuid();
-	if ((p = rindex(*argv, '/')))
+	initialize();
+
+	if ((p = strrchr(*argv, '/')) != NULL)
 		p++;
 	else
 		p = *argv;
+
 	if (strcmp(p, "driver") == 0 || strcmp(p, "saildriver") == 0)
 		mode = MODE_DRIVER;
 	else if (strcmp(p, "sail.log") == 0)
 		mode = MODE_LOGGER;
 	else
 		mode = MODE_PLAYER;
-	while ((p = *++argv) && *p == '-')
-		switch (p[1]) {
+
+	while ((a = getopt(argc, argv, "dsxlb")) != -1)
+		switch (a) {
 		case 'd':
 			mode = MODE_DRIVER;
 			break;
 		case 's':
 			mode = MODE_LOGGER;
 			break;
-		case 'D':
-			debug++;
-			break;
 		case 'x':
-			randomize++;
+			randomize = true;
 			break;
 		case 'l':
-			longfmt++;
+			longfmt = true;
 			break;
 		case 'b':
-			nobells++;
+			nobells = true;
 			break;
 		default:
-			fprintf(stderr, "SAIL: Unknown flag %s.\n", p);
-			exit(1);
+			errx(1, "Usage: %s [-bdlsx] [scenario-number]", p);
 		}
+
+	argc -= optind;
+	argv += optind;
+
 	if (*argv)
 		game = atoi(*argv);
 	else
@@ -85,13 +163,16 @@ main(int argc __unused, char **argv)
 
 	switch (mode) {
 	case MODE_PLAYER:
-		pl_main();
+		initscreen();
+		startup();
+		cleanupscreen();
+		return 0;
 	case MODE_DRIVER:
 		return dr_main();
 	case MODE_LOGGER:
 		return lo_main();
 	default:
-		fprintf(stderr, "SAIL: Unknown mode %d.\n", mode);
+		warnx("Unknown mode %d", mode);
 		abort();
 	}
 	/*NOTREACHED*/

@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: driver.h,v 1.8 2003/08/07 09:37:42 agc Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -26,9 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)driver.h	8.1 (Berkeley) 5/31/93
+ *	@(#)driver.h	8.2 (Berkeley) 5/3/95
  */
 
-#include "externs.h"
-
-extern int dtab[];
+extern const int dtab[];
