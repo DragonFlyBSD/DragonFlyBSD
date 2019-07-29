@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: pl_6.c,v 1.14 2009/03/15 03:33:56 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,15 +27,22 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)pl_6.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/pl_6.c,v 1.5 1999/11/30 03:49:37 billf Exp $
- * $DragonFly: src/games/sail/pl_6.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)pl_6.c	8.1 (Berkeley) 5/31/93";
+#else
+__RCSID("$NetBSD: pl_6.c,v 1.14 2009/03/15 03:33:56 dholland Exp $");
+#endif
+#endif /* not lint */
+
+#include <signal.h>
+#include "extern.h"
 #include "player.h"
 
-static bool turned(void);
+static int turned(void);
 
 void
 repair(void)
@@ -47,10 +56,10 @@ repair(void)
 	? (ptr->x += count, count = 0) : (count -= m - ptr->x, ptr->x = m))
 
 	if (repaired || loaded || fired || changed || turned()) {
-		Signal("No hands free to repair", NULL);
+		Msg("No hands free to repair");
 		return;
 	}
-	c = sgetch("Repair (hull, guns, rigging)? ", NULL, 1);
+	c = sgetch("Repair (hull, guns, rigging)? ", (struct ship *)0, 1);
 	switch (c) {
 		case 'h':
 			repairs = &mf->RH;
@@ -62,7 +71,7 @@ repair(void)
 			repairs = &mf->RR;
 			break;
 		default:
-			Signal("Avast heaving!", NULL);
+			Msg("Avast heaving!");
 			return;
 	}
 	if (++*repairs >= 3) {
@@ -72,7 +81,7 @@ repair(void)
 			int max = ptr->guns/4;
 			if (ptr->hull < max) {
 				FIX(hull, max);
-				Write(W_HULL, ms, ptr->hull, 0, 0, 0);
+				send_hull(ms, ptr->hull);
 			}
 			break;
 			}
@@ -81,15 +90,13 @@ repair(void)
 				int max = ptr->guns/5 - ptr->carL;
 				if (ptr->gunL < max) {
 					FIX(gunL, max);
-					Write(W_GUNL, ms, ptr->gunL,
-						ptr->carL, 0, 0);
+					send_gunl(ms, ptr->gunL, ptr->carL);
 				}
 			} else {
 				int max = ptr->guns/5 - ptr->carR;
 				if (ptr->gunR < max) {
 					FIX(gunR, max);
-					Write(W_GUNR, ms, ptr->gunR,
-						ptr->carR, 0, 0);
+					send_gunr(ms, ptr->gunR, ptr->carR);
 				}
 			}
 			break;
@@ -97,39 +104,33 @@ repair(void)
 #define X 2
 			if (ptr->rig4 >= 0 && ptr->rig4 < X) {
 				FIX(rig4, X);
-				Write(W_RIG4, ms, ptr->rig4, 0, 0, 0);
+				send_rig4(ms, ptr->rig4);
 			}
 			if (count && ptr->rig3 < X) {
 				FIX(rig3, X);
-				Write(W_RIG3, ms, ptr->rig3, 0, 0, 0);
+				send_rig3(ms, ptr->rig3);
 			}
 			if (count && ptr->rig2 < X) {
 				FIX(rig2, X);
-				Write(W_RIG2, ms, ptr->rig2, 0, 0, 0);
+				send_rig2(ms, ptr->rig2);
 			}
 			if (count && ptr->rig1 < X) {
 				FIX(rig1, X);
-				Write(W_RIG1, ms, ptr->rig1, 0, 0, 0);
+				send_rig1(ms, ptr->rig1);
 			}
 			break;
 		}
 		if (count == 2) {
-			Signal("Repairs completed.", NULL);
+			Msg("Repairs completed.");
 			*repairs = 2;
 		} else {
 			*repairs = 0;
-			blockalarm();
-			draw_stat();
-			unblockalarm();
 		}
 	}
-	blockalarm();
-	draw_slot();
-	unblockalarm();
 	repaired = 1;
 }
 
-static bool
+static int
 turned(void)
 {
 	char *p;
@@ -147,14 +148,14 @@ loadplayer(void)
 	int loadL, loadR, ready, load;
 
 	if (!mc->crew3) {
-		Signal("Out of crew", NULL);
+		Msg("Out of crew");
 		return;
 	}
 	loadL = mf->loadL;
 	loadR = mf->loadR;
 	if (!loadL && !loadR) {
 		c = sgetch("Load which broadside (left or right)? ",
-			NULL, 1);
+			(struct ship *)0, 1);
 		if (c == 'r')
 			loadL = 1;
 		else
@@ -162,7 +163,7 @@ loadplayer(void)
 	}
 	if ((!loadL && loadR) || (loadL && !loadR)) {
 		c = sgetch("Reload with (round, double, chain, grape)? ",
-			NULL, 1);
+			(struct ship *)0, 1);
 		switch (c) {
 		case 'r':
 			load = L_ROUND;
@@ -181,8 +182,7 @@ loadplayer(void)
 			ready = 0;
 			break;
 		default:
-			Signal("Broadside not loaded.",
-				NULL);
+			Msg("Broadside not loaded.");
 			return;
 		}
 		if (!loadR) {

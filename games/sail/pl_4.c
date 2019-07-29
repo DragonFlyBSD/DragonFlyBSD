@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: pl_4.c,v 1.16 2009/03/14 22:52:52 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +27,20 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)pl_4.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/pl_4.c,v 1.5 1999/11/30 03:49:37 billf Exp $
- * $DragonFly: src/games/sail/pl_4.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)pl_4.c	8.1 (Berkeley) 5/31/93";
+#else
+__RCSID("$NetBSD: pl_4.c,v 1.16 2009/03/14 22:52:52 dholland Exp $");
+#endif
+#endif /* not lint */
+
+#include <sys/types.h>
+#include <ctype.h>
+#include "extern.h"
 #include "player.h"
 
 void
@@ -45,19 +55,19 @@ changesail(void)
 	if (mc->crew3 && rig) {
 		if (!full) {
 			if (sgetch("Increase to Full sails? ",
-				NULL, 1) == 'y') {
+				(struct ship *)0, 1) == 'y') {
 				changed = 1;
-				Write(W_FS, ms, 1, 0, 0, 0);
+				send_fs(ms, 1);
 			}
 		} else {
 			if (sgetch("Reduce to Battle sails? ",
-				NULL, 1) == 'y') {
-				Write(W_FS, ms, 0, 0, 0, 0);
+				(struct ship *)0, 1) == 'y') {
+				send_fs(ms, 0);
 				changed = 1;
 			}
 		}
 	} else if (!rig)
-		Signal("Sails rent to pieces", NULL);
+		Msg("Sails rent to pieces");
 }
 
 void
@@ -72,7 +82,7 @@ acceptsignal(void)
 		;
 	p[-1] = '"';
 	*p = 0;
-	Writestr(W_SIGNAL, ms, buf);
+	send_signal(ms, buf);
 }
 
 void
@@ -85,7 +95,7 @@ lookout(void)
 	sgetstr("What ship? ", buf, sizeof buf);
 	foreachship(sp) {
 		c = *countryname[sp->nationality];
-		if ((c == *buf || tolower(c) == *buf || colours(sp) == *buf)
+		if ((tolower((unsigned char)c) == *buf || colours(sp) == *buf)
 		    && (sp->file->stern == buf[1] || sterncolour(sp) == buf[1]
 			|| buf[1] == '?')) {
 			eyeball(sp);
@@ -94,7 +104,7 @@ lookout(void)
 }
 
 const char *
-saywhat(struct ship *sp, char flag)
+saywhat(struct ship *sp, int flag)
 {
 	if (sp->file->captain[0])
 		return sp->file->captain;
@@ -114,12 +124,12 @@ eyeball(struct ship *ship)
 	int i;
 
 	if (ship->file->dir != 0) {
-		Signal("Sail ho! (range %d, %s)",
-		    NULL, range(ms, ship), saywhat(ship, 0));
+		Msg("Sail ho! (range %d, %s)",
+		    range(ms, ship), saywhat(ship, 0));
 		i = portside(ms, ship, 1) - mf->dir;
 		if (i <= 0)
 			i += 8;
-		Signal("%s (%c%c) %s %s %s.",
+		Signal("$$ %s %s %s.",
 			ship, countryname[ship->nationality],
 			classname[ship->specs->class], directionname[i]);
 	}

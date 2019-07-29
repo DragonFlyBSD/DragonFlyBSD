@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: pl_3.c,v 1.20 2009/03/15 03:33:56 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,11 +27,20 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)pl_3.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/pl_3.c,v 1.6 1999/11/30 03:49:37 billf Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)pl_3.c	8.1 (Berkeley) 5/31/93";
+#else
+__RCSID("$NetBSD: pl_3.c,v 1.20 2009/03/15 03:33:56 dholland Exp $");
+#endif
+#endif /* not lint */
+
+#include <signal.h>
+#include <stdlib.h>
+#include "extern.h"
 #include "player.h"
 
 void
@@ -38,7 +49,7 @@ acceptcombat(void)
 	int men = 0;
 	int target, temp;
 	int n, r;
-	int idx, rakehim, sternrake;
+	int index, rakehim, sternrake;
 	int hhits = 0, ghits = 0, rhits = 0, chits = 0;
 	int crew[3];
 	int load;
@@ -80,18 +91,18 @@ acceptcombat(void)
 		if (mf->struck || !crew[2])
 			goto cant;
 		closest = closestenemy(ms, (r ? 'r' : 'l'), 1);
-		if (closest == NULL)
+		if (closest == 0)
 			goto cant;
 		if (closest->file->struck)
 			goto cant;
 		target = range(ms, closest);
 		if (target > rangeofshot[load] || (!guns && target >= 3))
 			goto cant;
-		Signal("%s (%c%c) within range of %s broadside.",
+		Signal("$$ within range of %s broadside.",
 			closest, r ? "right" : "left");
 		if (load > L_CHAIN && target < 6) {
 			switch (sgetch("Aim for hull or rigging? ",
-				NULL, 1)) {
+				(struct ship *)0, 1)) {
 			case 'r':
 				shootat = RIGGING;
 				break;
@@ -100,14 +111,12 @@ acceptcombat(void)
 				break;
 			default:
 				shootat = -1;
-				Signal("'Avast there! Hold your fire.'",
-					NULL);
+				Msg("'Avast there! Hold your fire.'");
 			}
 		} else {
-			if (sgetch("Fire? ", NULL, 1) == 'n') {
+			if (sgetch("Fire? ", (struct ship *)0, 1) == 'n') {
 				shootat = -1;
-				Signal("Belay that! Hold your fire.",
-					NULL);
+				Msg("Belay that! Hold your fire.");
 			} else
 				shootat = RIGGING;
 		}
@@ -123,42 +132,43 @@ acceptcombat(void)
 		sternrake = temp > 4 && temp < 6;
 		if (rakehim) {
 			if (!sternrake)
-				Signal("Raking the %s!", closest);
+				Msg("Raking the %s!", closest->shipname);
 			else
-				Signal("Stern Rake! %s splintering!", closest);
+				Msg("Stern Rake! %s splintering!",
+				    closest->shipname);
 		}
-		idx = guns;
+		index = guns;
 		if (target < 3)
-			idx += car;
-		idx = (idx - 1)/3;
-		idx = idx > 8 ? 8 : idx;
+			index += car;
+		index = (index - 1)/3;
+		index = index > 8 ? 8 : index;
 		if (!rakehim)
-			hit = HDT[idx][target-1];
+			hit = HDT[index][target-1];
 		else
-			hit = HDTrake[idx][target-1];
+			hit = HDTrake[index][target-1];
 		if (rakehim && sternrake)
 			hit++;
-		hit += QUAL[idx][mc->qual-1];
+		hit += QUAL[index][mc->qual-1];
 		for (n = 0; n < 3 && mf->captured == 0; n++)
 			if (!crew[n]) {
-				if (idx <= 5)
+				if (index <= 5)
 					hit--;
 				else
 					hit -= 2;
 			}
 		if (ready & R_INITIAL) {
-			if (idx <= 3)
+			if (index <= 3)
 				hit++;
 			else
 				hit += 2;
 		}
 		if (mf->captured != 0) {
-			if (idx <= 1)
+			if (index <= 1)
 				hit--;
 			else
 				hit -= 2;
 		}
-		hit += AMMO[idx][load - 1];
+		hit += AMMO[index][load - 1];
 		if (((temp = mc->class) >= 5 || temp == 1) && windspeed == 5)
 			hit--;
 		if (windspeed == 6 && temp == 4)
@@ -166,11 +176,11 @@ acceptcombat(void)
 		if (windspeed == 6 && temp <= 3)
 			hit--;
 		if (hit >= 0) {
-			roll = die();
+			roll = dieroll();
 			if (load == L_GRAPE)
 				chits = hit;
 			else {
-				struct Tables *t;
+				const struct Tables *t;
 				if (hit > 10)
 					hit = 10;
 				t = &(shootat == RIGGING ? RigTable : HullTable)
@@ -186,12 +196,11 @@ acceptcombat(void)
 					hhits = 0;
 				}
 			}
-			table(shootat, load, hit, closest, ms, roll);
+			table(ms, closest, shootat, load, hit, roll);
 		}
-		Signal("Damage inflicted on the %s:",
-			NULL, closest->shipname);
-		Signal("\t%d HULL, %d GUNS, %d CREW, %d RIGGING",
-			NULL, hhits, ghits, chits, rhits);
+		Msg("Damage inflicted on the %s:", closest->shipname);
+		Msg("\t%d HULL, %d GUNS, %d CREW, %d RIGGING",
+		    hhits, ghits, chits, rhits);
 		if (!r) {
 			mf->loadL = L_EMPTY;
 			mf->readyL = R_EMPTY;
@@ -201,12 +210,8 @@ acceptcombat(void)
 		}
 		continue;
 	cant:
-		Signal("Unable to fire %s broadside",
-			NULL, r ? "right" : "left");
+		Msg("Unable to fire %s broadside", r ? "right" : "left");
 	}
-	blockalarm();
-	draw_stat();
-	unblockalarm();
 }
 
 void
@@ -220,32 +225,29 @@ grapungrap(void)
 			continue;
 		if (range(ms, sp) > 1 && !grappled2(ms, sp))
 			continue;
-		switch (sgetch("Attempt to grapple or ungrapple %s (%c%c): ",
+		switch (sgetch("Attempt to grapple or ungrapple $$: ",
 			sp, 1)) {
 		case 'g':
-			if (die() < 3
+			if (dieroll() < 3
 			    || ms->nationality == capship(sp)->nationality) {
-				Write(W_GRAP, ms, sp->file->index, 0, 0, 0);
-				Write(W_GRAP, sp, player, 0, 0, 0);
-				Signal("Attempt succeeds!", NULL);
-				makesignal(ms, "grappled with %s (%c%c)", sp);
+				send_grap(ms, sp->file->index);
+				send_grap(sp, player);
+				Msg("Attempt succeeds!");
+				makesignal(ms, "grappled with $$", sp);
 			} else
-				Signal("Attempt fails.", NULL);
+				Msg("Attempt fails.");
 			break;
 		case 'u':
 			for (i = grappled2(ms, sp); --i >= 0;) {
 				if (ms->nationality
 					== capship(sp)->nationality
-				    || die() < 3) {
+				    || dieroll() < 3) {
 					cleangrapple(ms, sp, 0);
-					Signal("Attempt succeeds!",
-						NULL);
-					makesignal(ms,
-						"ungrappling with %s (%c%c)",
+					Msg("Attempt succeeds!");
+					makesignal(ms, "ungrappling with $$",
 						sp);
 				} else
-					Signal("Attempt fails.",
-						NULL);
+					Msg("Attempt fails.");
 			}
 			break;
 		}
@@ -261,15 +263,15 @@ unfoulplayer(void)
 	foreachship(to) {
 		if (fouled2(ms, to) == 0)
 			continue;
-		if (sgetch("Attempt to unfoul with the %s (%c%c)? ", to, 1) != 'y')
+		if (sgetch("Attempt to unfoul with the $$? ", to, 1) != 'y')
 			continue;
 		for (i = fouled2(ms, to); --i >= 0;) {
-			if (die() <= 2) {
+			if (dieroll() <= 2) {
 				cleanfoul(ms, to, 0);
-				Signal("Attempt succeeds!", NULL);
-				makesignal(ms, "Unfouling %s (%c%c)", to);
+				Msg("Attempt succeeds!");
+				makesignal(ms, "Unfouling $$", to);
 			} else
-				Signal("Attempt fails.", NULL);
+				Msg("Attempt fails.");
 		}
 	}
 }

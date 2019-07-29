@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: dr_1.c,v 1.27 2009/03/14 22:52:52 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,11 +27,22 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)dr_1.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/dr_1.c,v 1.7 1999/11/30 03:49:32 billf Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)dr_1.c	8.1 (Berkeley) 5/31/93";
+#else
+__RCSID("$NetBSD: dr_1.c,v 1.27 2009/03/14 22:52:52 dholland Exp $");
+#endif
+#endif /* not lint */
+
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "extern.h"
 #include "driver.h"
 
 static int fightitout(struct ship *, struct ship *, int);
@@ -48,10 +61,10 @@ unfoul(void)
 		nat = capship(sp)->nationality;
 		foreachship(to) {
 			if (nat != capship(to)->nationality &&
-			    !toughmelee(sp, to, 0, 0))
+			    !is_toughmelee(sp, to, 0, 0))
 				continue;
 			for (i = fouled2(sp, to); --i >= 0;)
-				if (die() <= 2)
+				if (dieroll() <= 2)
 					cleanfoul(sp, to, 0);
 		}
 	}
@@ -129,15 +142,15 @@ fightitout(struct ship *from, struct ship *to, int key)
 	int crewfrom[3], crewto[3], menfrom, mento;
 	int pcto, pcfrom, fromstrength, strengthto, frominjured, toinjured;
 	int topoints;
-	int idx, totalfrom = 0, totalto = 0;
+	int indx, totalfrom = 0, totalto = 0;
 	int count;
 	char message[60];
 
 	menfrom = mensent(from, to, crewfrom, &fromcap, &pcfrom, key);
 	mento = mensent(to, from, crewto, &tocap, &pcto, 0);
-	if (fromcap == NULL)
+	if (fromcap == 0)
 		fromcap = from;
-	if (tocap == NULL)
+	if (tocap == 0)
 		tocap = to;
 	if (key) {
 		if (!menfrom) {		 /* if crew surprised */
@@ -157,15 +170,15 @@ fightitout(struct ship *from, struct ship *to, int key)
 	     ((fromstrength < strengthto * 3 && strengthto < fromstrength * 3)
 	      || fromstrength == -1) && count < 4;
 	     count++) {
-		idx = fromstrength/10;
-		if (idx > 8)
-			idx = 8;
-		toinjured = MT[idx][2 - die() / 3];
+		indx = fromstrength/10;
+		if (indx > 8)
+			indx = 8;
+		toinjured = MT[indx][2 - dieroll() / 3];
 		totalto += toinjured;
-		idx = strengthto/10;
-		if (idx > 8)
-			idx = 8;
-		frominjured = MT[idx][2 - die() / 3];
+		indx = strengthto/10;
+		if (indx > 8)
+			indx = 8;
+		frominjured = MT[indx][2 - dieroll() / 3];
 		totalfrom += frominjured;
 		menfrom -= frominjured;
 		mento -= toinjured;
@@ -174,47 +187,44 @@ fightitout(struct ship *from, struct ship *to, int key)
 	}
 	if (fromstrength >= strengthto * 3 || count == 4) {
 		unboard(to, from, 0);
-		subtract(from, totalfrom, crewfrom, fromcap, pcfrom);
-		subtract(to, totalto, crewto, tocap, pcto);
-		makesignal(from, "boarders from %s repelled", to);
-		sprintf(message, "killed in melee: %d.  %s: %d",
+		subtract(from, fromcap, totalfrom, crewfrom, pcfrom);
+		subtract(to, tocap, totalto, crewto, pcto);
+		makemsg(from, "boarders from %s repelled", to->shipname);
+		snprintf(message, sizeof(message),
+			"killed in melee: %d.  %s: %d",
 			totalto, from->shipname, totalfrom);
-		Writestr(W_SIGNAL, to, message);
+		send_signal(to, message);
 		if (key)
 			return 1;
 	} else if (strengthto >= fromstrength * 3) {
 		unboard(from, to, 0);
-		subtract(from, totalfrom, crewfrom, fromcap, pcfrom);
-		subtract(to, totalto, crewto, tocap, pcto);
+		subtract(from, fromcap, totalfrom, crewfrom, pcfrom);
+		subtract(to, tocap, totalto, crewto, pcto);
 		if (key) {
 			if (fromcap != from)
-				Write(W_POINTS, fromcap,
+				send_points(fromcap,
 					fromcap->file->points -
 						from->file->struck
 						? from->specs->pts
-						: 2 * from->specs->pts,
-					0, 0, 0);
+						: 2 * from->specs->pts);
 
-/* ptr1 points to the shipspec for the ship that was just unboarded.
-   I guess that what is going on here is that the pointer is multiplied
-   or something. */
-
-			Write(W_CAPTURED, from, to->file->index, 0, 0, 0);
+			send_captured(from, to->file->index);
 			topoints = 2 * from->specs->pts + to->file->points;
 			if (from->file->struck)
 				topoints -= from->specs->pts;
-			Write(W_POINTS, to, topoints, 0, 0, 0);
+			send_points(to, topoints);
 			mento = crewto[0] ? crewto[0] : crewto[1];
 			if (mento) {
-				subtract(to, mento, crewto, tocap, pcto);
-				subtract(from, - mento, crewfrom, to, 0);
+				subtract(to, tocap, mento, crewto, pcto);
+				subtract(from, to, - mento, crewfrom, 0);
 			}
-			sprintf(message, "captured by the %s!",
-				to->shipname);
-			Writestr(W_SIGNAL, from, message);
-			sprintf(message, "killed in melee: %d.  %s: %d",
+			snprintf(message, sizeof(message),
+				"captured by the %s!", to->shipname);
+			send_signal(from, message);
+			snprintf(message, sizeof(message),
+				"killed in melee: %d.  %s: %d",
 				totalto, from->shipname, totalfrom);
-			Writestr(W_SIGNAL, to, message);
+			send_signal(to, message);
 			mento = 0;
 			return 0;
 		}
@@ -262,7 +272,7 @@ compcombat(void)
 	struct ship *closest;
 	int crew[3], men = 0, target, temp;
 	int r, guns, ready, load, car;
-	int idx, rakehim, sternrake;
+	int indx, rakehim, sternrake;
 	int shootat, hit;
 
 	foreachship(sp) {
@@ -303,7 +313,7 @@ compcombat(void)
 			if ((ready & R_LOADED) == 0)
 				continue;
 			closest = closestenemy(sp, r ? 'r' : 'l', 0);
-			if (closest == NULL)
+			if (closest == 0)
 				continue;
 			if (range(closest, sp) >
 			    range(sp, closestenemy(sp, r ? 'r' : 'l', 1)))
@@ -335,21 +345,21 @@ compcombat(void)
 			if (temp > 8)
 				temp -= 8;
 			sternrake = temp > 4 && temp < 6;
-			idx = guns;
+			indx = guns;
 			if (target < 3)
-				idx += car;
-			idx = (idx - 1) / 3;
-			idx = idx > 8 ? 8 : idx;
+				indx += car;
+			indx = (indx - 1) / 3;
+			indx = indx > 8 ? 8 : indx;
 			if (!rakehim)
-				hit = HDT[idx][target-1];
+				hit = HDT[indx][target-1];
 			else
-				hit = HDTrake[idx][target-1];
+				hit = HDTrake[indx][target-1];
 			if (rakehim && sternrake)
 				hit++;
-			hit += QUAL[idx][capship(sp)->specs->qual - 1];
+			hit += QUAL[indx][capship(sp)->specs->qual - 1];
 			for (n = 0; n < 3 && sp->file->captured == 0; n++) {
 				if (!crew[n]) {
-					if (idx <= 5)
+					if (indx <= 5)
 						hit--;
 					else
 						hit -= 2;
@@ -360,18 +370,18 @@ compcombat(void)
 					sp->file->readyL &= ~R_INITIAL;
 				else
 					sp->file->readyR &= ~R_INITIAL;
-				if (idx <= 3)
+				if (indx <= 3)
 					hit++;
 				else
 					hit += 2;
 			}
 			if (sp->file->captured != 0) {
-				if (idx <= 1)
+				if (indx <= 1)
 					hit--;
 				else
 					hit -= 2;
 			}
-			hit += AMMO[idx][load - 1];
+			hit += AMMO[indx][load - 1];
 			temp = sp->specs->class;
 			if ((temp >= 5 || temp == 1) && windspeed == 5)
 				hit--;
@@ -382,7 +392,8 @@ compcombat(void)
 			if (hit >= 0) {
 				if (load != L_GRAPE)
 					hit = hit > 10 ? 10 : hit;
-				table(shootat, load, hit, closest, sp, die());
+				table(sp, closest, shootat, load, hit,
+				      dieroll());
 			}
 		}
 	}
@@ -410,25 +421,24 @@ next(void)
 				bestship = s;
 			}
 		}
-		if (best > 0.0) {
-			char *p = getenv("WOTD");
-			if (p == NULL) {
-				char buf[6] = "Driver";
-				p = buf;
+		if (best > 0.0 && bestship) {
+			char *tp = getenv("WOTD");
+			const char *p;
+			if (tp == 0)
+				p = "Driver";
+			else {
+				*tp = toupper((unsigned char)*tp);
+				p = tp;
 			}
-			if (islower(*p))
-				*p = toupper(*p);
-			strncpy(bestship->file->captain, p,
+			strlcpy(bestship->file->captain, p,
 				sizeof bestship->file->captain);
-			bestship->file->captain
-				[sizeof bestship->file->captain - 1] = 0;
-			write_log(bestship);
+			logger(bestship);
 		}
 		return -1;
 	}
-	Write(W_TURN, SHIP(0), turn, 0, 0, 0);
-	if (turn % 7 == 0 && (die() >= cc->windchange || !windspeed)) {
-		switch (die()) {
+	send_turn(turn);
+	if (turn % 7 == 0 && (dieroll() >= cc->windchange || !windspeed)) {
+		switch (dieroll()) {
 		case 1:
 			winddir = 1;
 			break;
@@ -452,7 +462,7 @@ next(void)
 		if (winddir < 1)
 			winddir += 8;
 		if (windspeed)
-			switch (die()) {
+			switch (dieroll()) {
 			case 1:
 			case 2:
 				windspeed--;
@@ -464,7 +474,7 @@ next(void)
 			}
 		else
 			windspeed++;
-		Write(W_WIND, SHIP(0), winddir, windspeed, 0, 0);
+		send_wind( winddir, windspeed);
 	}
 	return 0;
 }

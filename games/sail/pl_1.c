@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: pl_1.c,v 1.21 2009/03/14 22:52:52 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,13 +27,24 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)pl_1.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/pl_1.c,v 1.2 1999/11/30 03:49:36 billf Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)pl_1.c	8.1 (Berkeley) 5/31/93";
+#else
+__RCSID("$NetBSD: pl_1.c,v 1.21 2009/03/14 22:52:52 dholland Exp $");
+#endif
+#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "extern.h"
 #include "player.h"
 
 /*
@@ -52,28 +65,24 @@ leave(int conditions)
 	signal(SIGCHLD, SIG_IGN);
 
 	if (done_curses) {
-		Signal("It looks like you've had it!",
-			NULL);
+		Msg("It looks like you've had it!");
 		switch (conditions) {
 		case LEAVE_QUIT:
 			break;
 		case LEAVE_CAPTURED:
-			Signal("Your ship was captured.",
-				NULL);
+			Msg("Your ship was captured.");
 			break;
 		case LEAVE_HURRICAN:
-			Signal("Hurricane!  All ships destroyed.",
-				NULL);
+			Msg("Hurricane!  All ships destroyed.");
 			break;
 		case LEAVE_DRIVER:
-			Signal("The driver died.", NULL);
+			Msg("The driver died.");
 			break;
 		case LEAVE_SYNC:
-			Signal("Synchronization error.", NULL);
+			Msg("Synchronization error.");
 			break;
 		default:
-			Signal("A funny thing happened (%d).",
-				NULL, conditions);
+			Msg("A funny thing happened (%d).", conditions);
 		}
 	} else {
 		switch (conditions) {
@@ -83,7 +92,6 @@ leave(int conditions)
 			printf("The driver died.\n");
 			break;
 		case LEAVE_FORK:
-			perror("fork");
 			break;
 		case LEAVE_SYNC:
 			printf("Synchronization error\n.");
@@ -95,34 +103,37 @@ leave(int conditions)
 	}
 
 	if (ms != 0) {
-		write_log(ms);
+		logger(ms);
 		if (conditions != LEAVE_SYNC) {
-			makesignal(ms, "Captain %s relinquishing.",
-				NULL, mf->captain);
-			Write(W_END, ms, 0, 0, 0, 0);
+			makemsg(ms, "Captain %s relinquishing.",
+				mf->captain);
+			send_end(ms);
 			Sync();
 		}
 	}
 	sync_close(!hasdriver);
+	sleep(5);
 	cleanupscreen();
 	exit(0);
 }
 
+/*ARGSUSED*/
 void
-choke(__unused int sig)
+choke(int n __unused)
 {
 	leave(LEAVE_QUIT);
 }
 
+/*ARGSUSED*/
 void
-child(__unused int sig)
+child(int n __unused)
 {
-	pid_t pid;
 	int status;
+	int pid;
 
 	signal(SIGCHLD, SIG_IGN);
 	do {
-		pid = wait3(&status, WNOHANG, NULL);
+		pid = wait3(&status, WNOHANG, (struct rusage *)0);
 		if (pid < 0 || (pid > 0 && !WIFSTOPPED(status)))
 			hasdriver = 0;
 	} while (pid > 0);

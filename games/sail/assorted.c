@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: assorted.c,v 1.19 2011/08/16 11:26:16 christos Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,19 +27,26 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)assorted.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/assorted.c,v 1.5 1999/11/30 03:49:31 billf Exp $
- * $DragonFly: src/games/sail/assorted.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
-#include "externs.h"
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)assorted.c	8.2 (Berkeley) 4/28/95";
+#else
+__RCSID("$NetBSD: assorted.c,v 1.19 2011/08/16 11:26:16 christos Exp $");
+#endif
+#endif /* not lint */
+
+#include <stdlib.h>
+#include <err.h>
+#include "extern.h"
 
 static void strike(struct ship *, struct ship *);
 
 void
-table(int rig, int shot, int hittable,
-      struct ship *on, struct ship *from, int roll)
+table(struct ship *from, struct ship *on,
+      int rig, int shot, int hittable, int roll)
 {
 	int hhits = 0, chits = 0, ghits = 0, rhits = 0;
 	int Ghit = 0, Hhit = 0, Rhit = 0, Chit = 0;
@@ -45,8 +54,8 @@ table(int rig, int shot, int hittable,
 	int crew[3];
 	int n;
 	int rigg[4];
-	const char *message = NULL;
-	struct Tables *tp;
+	const char *message;
+	const struct Tables *tp;
 
 	pc = on->file->pcrew;
 	hull = on->specs->hull;
@@ -101,7 +110,7 @@ table(int rig, int shot, int hittable,
 		rigg[3] -= rhits;
 	}
 	if (rig && !rigg[2] && (!rigg[3] || rigg[3] == -1))
-		makesignal(on, "dismasted!", NULL);
+		makemsg(on, "dismasted!");
 	if (portside(from, on, 0)) {
 		guns = on->specs->gunR;
 		car = on->specs->carR;
@@ -124,36 +133,44 @@ table(int rig, int shot, int hittable,
 		ghits = 0;
 	}
 	hull -= ghits;
-	if (Ghit)
-		Write(portside(from, on, 0) ? W_GUNR : W_GUNL,
-			on, guns, car, 0, 0);
+	if (Ghit) {
+		if (portside(from, on, 0)) {
+			send_gunr(on, guns, car);
+		} else {
+			send_gunl(on, guns, car);
+		}
+	}
 	hull -= hhits;
 	hull = hull < 0 ? 0 : hull;
 	if (on->file->captured != 0 && Chit)
-		Write(W_PCREW, on, pc, 0, 0, 0);
+		send_pcrew(on, pc);
 	if (Hhit)
-		Write(W_HULL, on, hull, 0, 0, 0);
+		send_hull(on, hull);
 	if (Chit)
-		Write(W_CREW, on, crew[0], crew[1], crew[2], 0);
+		send_crew(on, crew[0], crew[1], crew[2]);
 	if (Rhit)
-		Write(W_RIGG, on, rigg[0], rigg[1], rigg[2], rigg[3]);
+		send_rigg(on, rigg[0], rigg[1], rigg[2], rigg[3]);
 	switch (shot) {
 	case L_ROUND:
-		message = "firing round shot on %s (%c%c)";
+		message = "firing round";
 		break;
 	case L_GRAPE:
-		message = "firing grape shot on %s (%c%c)";
+		message = "firing grape";
 		break;
 	case L_CHAIN:
-		message = "firing chain shot on %s (%c%c)";
+		message = "firing chain";
 		break;
 	case L_DOUBLE:
-		message = "firing double shot on %s (%c%c)";
+		message = "firing double";
 		break;
 	case L_EXPLODE:
-		message = "exploding shot on %s (%c%c)";
+		message = "exploding";
+		break;
+	default:
+		errx(1, "Unknown shot type %d", shot);
+
 	}
-	makesignal(from, message, on);
+	makesignal(from, "%s shot on $$", on, message);
 	if (roll == 6 && rig) {
 		switch(Rhit) {
 		case 0:
@@ -177,8 +194,10 @@ table(int rig, int shot, int hittable,
 		case 7:
 			message = "main topmast and mizzen mast shattered";
 			break;
+		default:
+			errx(1, "Bad Rhit = %d", Rhit);
 		}
-		makesignal(on, message, NULL);
+		makemsg(on, "%s", message);
 	} else if (roll == 6) {
 		switch (Hhit) {
 		case 0:
@@ -198,28 +217,44 @@ table(int rig, int shot, int hittable,
 			break;
 		case 5:
 			message = "rudder cables shot through";
-			Write(W_TA, on, 0, 0, 0, 0);
+			send_ta(on, 0);
 			break;
 		case 6:
 			message = "shot holes below the water line";
 			break;
+		default:
+			errx(1, "Bad Hhit = %d", Hhit);
 		}
-		makesignal(on, message, NULL);
+		makemsg(on, "%s", message);
 	}
+	/*
+	if (Chit > 1 && on->file->readyL & R_INITIAL &&
+	    on->file->readyR & R_INITIAL) {
+		on->specs->qual--;
+		if (on->specs->qual <= 0) {
+			makemsg(on, "crew mutinying!");
+			on->specs->qual = 5;
+			Write(W_CAPTURED, on, on->file->index, 0, 0, 0);
+		} else {
+			makemsg(on, "crew demoralized");
+		}
+		Write(W_QUAL, on, on->specs->qual, 0, 0, 0);
+	}
+	*/
 	if (!hull)
 		strike(on, from);
 }
 
 void
-Cleansnag(struct ship *from, struct ship *to, char all, char flag)
+Cleansnag(struct ship *from, struct ship *to, int all, int flag)
 {
 	if (flag & 1) {
-		Write(W_UNGRAP, from, to->file->index, all, 0, 0);
-		Write(W_UNGRAP, to, from->file->index, all, 0, 0);
+		send_ungrap(from, to->file->index, all);
+		send_ungrap(to, from->file->index, all);
 	}
 	if (flag & 2) {
-		Write(W_UNFOUL, from, to->file->index, all, 0, 0);
-		Write(W_UNFOUL, to, from->file->index, all, 0, 0);
+		send_unfoul(from, to->file->index, all);
+		send_unfoul(to, from->file->index, all);
 	}
 	if (!snagged2(from, to)) {
 		if (!snagged(from)) {
@@ -242,20 +277,20 @@ strike(struct ship *ship, struct ship *from)
 
 	if (ship->file->struck)
 		return;
-	Write(W_STRUCK, ship, 1, 0, 0, 0);
+	send_struck(ship, 1);
 	points = ship->specs->pts + from->file->points;
-	Write(W_POINTS, from, points, 0, 0, 0);
+	send_points(from, points);
 	unboard(ship, ship, 0);		/* all offense */
 	unboard(ship, ship, 1);		/* all defense */
-	switch (die()) {
+	switch (dieroll()) {
 	case 3:
 	case 4:		/* ship may sink */
-		Write(W_SINK, ship, 1, 0, 0, 0);
+		send_sink(ship, 1);
 		break;
 	case 5:
 	case 6:		/* ship may explode */
-		Write(W_EXPLODE, ship, 1, 0, 0, 0);
+		send_explode(ship, 1);
 		break;
 	}
-	Writestr(W_SIGNAL, ship, "striking her colours!");
+	send_signal(ship, "striking her colours!");
 }

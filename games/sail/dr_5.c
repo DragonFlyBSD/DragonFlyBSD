@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: dr_5.c,v 1.14 2009/03/14 22:52:52 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,15 +27,23 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)dr_5.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/dr_5.c,v 1.4 1999/11/30 03:49:33 billf Exp $
  */
 
-#include "externs.h"
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)dr_5.c	8.2 (Berkeley) 4/28/95";
+#else
+__RCSID("$NetBSD: dr_5.c,v 1.14 2009/03/14 22:52:52 dholland Exp $");
+#endif
+#endif /* not lint */
+
+#include <sys/types.h>
+#include "extern.h"
 
 void
-subtract(struct ship *from, int totalfrom, int crewfrom[3], struct ship *fromcap, int pcfrom)
+subtract(struct ship *from, struct ship *fromcap, int totalfrom, int *crewfrom,
+	 int pcfrom)
 {
 	int n;
 
@@ -47,16 +57,17 @@ subtract(struct ship *from, int totalfrom, int crewfrom[3], struct ship *fromcap
 				totalfrom = 0;
 			}
 		}
-		Write(W_CREW, from, crewfrom[0], crewfrom[1], crewfrom[2], 0);
+		send_crew(from, crewfrom[0], crewfrom[1], crewfrom[2]);
 	} else if (totalfrom) {
 		pcfrom -= totalfrom;
 		pcfrom = pcfrom < 0 ? 0 : pcfrom;
-		Write(W_PCREW, from, pcfrom, 0, 0, 0);
+		send_pcrew(from, pcfrom);
 	}
 }
 
 int
-mensent(struct ship *from, struct ship *to, int crew[3], struct ship **captured, int *pc, char isdefense)
+mensent(struct ship *from, struct ship *to, int *crew, struct ship **captured,
+	int *pc, int isdefense)
 {					/* returns # of crew squares sent */
 	int men = 0;
 	int n;
@@ -77,7 +88,7 @@ mensent(struct ship *from, struct ship *to, int crew[3], struct ship **captured,
 		c1 = men/100 ? crew[0] : 0;
 		c2 = (men%100)/10 ? crew[1] : 0;
 		c3 = men/10 ? crew[2] : 0;
-		c3 = *captured == NULL ? crew[2] : *pc;
+		c3 = *captured == 0 ? crew[2] : *pc;
 	} else
 		c1 = c2 = c3 = 0;
 	return(c1 + c2 + c3);

@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: dr_4.c,v 1.15 2009/03/14 22:52:52 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,13 +27,19 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)dr_4.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/dr_4.c,v 1.5 1999/11/30 03:49:32 billf Exp $
- * $DragonFly: src/games/sail/dr_4.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
-#include "externs.h"
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)dr_4.c	8.2 (Berkeley) 4/28/95";
+#else
+__RCSID("$NetBSD: dr_4.c,v 1.15 2009/03/14 22:52:52 dholland Exp $");
+#endif
+#endif /* not lint */
+
+#include <stdlib.h>
+#include "extern.h"
 
 void
 ungrap(struct ship *from, struct ship *to)
@@ -43,9 +51,9 @@ ungrap(struct ship *from, struct ship *to)
 		return;
 	friend = capship(from)->nationality == capship(to)->nationality;
 	while (--k >= 0) {
-		if (friend || die() < 3) {
+		if (friend || dieroll() < 3) {
 			cleangrapple(from, to, 0);
-			makesignal(from, "ungrappling %s (%c%c)", to);
+			makesignal(from, "ungrappling $$", to);
 		}
 	}
 }
@@ -53,9 +61,10 @@ ungrap(struct ship *from, struct ship *to)
 void
 grap(struct ship *from, struct ship *to)
 {
-	if (capship(from)->nationality != capship(to)->nationality && die() > 2)
+	if (capship(from)->nationality != capship(to)->nationality &&
+	    dieroll() > 2)
 		return;
-	Write(W_GRAP, from, to->file->index, 0, 0, 0);
-	Write(W_GRAP, to, from->file->index, 0, 0, 0);
-	makesignal(from, "grappled with %s (%c%c)", to);
+	send_grap(from, to->file->index);
+	send_grap(to, from->file->index);
+	makesignal(from, "grappled with $$", to);
 }

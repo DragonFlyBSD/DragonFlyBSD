@@ -1,3 +1,5 @@
+/*	$NetBSD: pathnames.h,v 1.6 2009/03/14 23:47:18 dholland Exp $	*/
+
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -30,3 +32,8 @@
  */
 
 #define	_PATH_LOGFILE	"/var/games/saillog"
+#define	_PATH_SAILDIR	"/tmp"
+
+/* in _PATH_SAILDIR */
+#define	_FILE_SYNC	"#sailsink.%d"
+#define	_FILE_LOCK	"#saillock.%d"

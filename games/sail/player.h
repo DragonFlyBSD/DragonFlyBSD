@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: player.h,v 1.13 2009/08/12 09:05:08 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -26,13 +28,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)player.h	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/sail/player.h,v 1.2.6.1 2001/05/01 11:45:08 dwmalone Exp $
- * $DragonFly: src/games/sail/player.h,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ *	@(#)player.h	8.2 (Berkeley) 5/3/95
  */
-
-#include <curses.h>
-#include "externs.h"
 
 /* sizes and coordinates for the screen */
 
@@ -88,28 +85,15 @@
 #define SLOT_B		VIEW_B
 #define SLOT_R		(SLOT_L+SLOT_X-1)
 
-#ifdef SIGTSTP
-#define SCREENTEST()	(initscr() != NULL && signal(SIGTSTP, SIG_DFL) != SIG_ERR && STAT_R < COLS && SCROLL_Y > 0)
-#else
-#define SCREENTEST()	(initscr() != NULL && STAT_R < COLS && SCROLL_Y > 0)
-#endif
-
-WINDOW *view_w;
-WINDOW *slot_w;
-WINDOW *scroll_w;
-WINDOW *stat_w;
-WINDOW *turn_w;
-
-char done_curses;
-char loaded, fired, changed, repaired;
-char dont_adjust;
-int viewrow, viewcol;
-char movebuf[sizeof SHIP(0)->file->movebuf];
-extern char version[];
-int player;
-struct ship *ms;		/* memorial structure, &cc->ship[player] */
-struct File *mf;		/* ms->file */
-struct shipspecs *mc;		/* ms->specs */
+extern int done_curses;
+extern int loaded, fired, changed, repaired;
+extern int dont_adjust;
+extern char movebuf[sizeof SHIP(0)->file->movebuf];
+extern const char version[];
+extern int player;
+extern struct ship *ms;		/* memorial structure, &cc->ship[player] */
+extern struct File *mf;		/* ms->file */
+extern struct shipspecs *mc;	/* ms->specs */
 
 /* condition codes for leave() */
 #define LEAVE_QUIT	0
