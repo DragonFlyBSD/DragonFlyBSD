@@ -41,9 +41,9 @@ typedef struct {
 #define KCOLLECT_SWAPANO	6	/* anonymous swap used MB */
 #define KCOLLECT_SWAPCAC	7	/* swapcache swap used MB */
 
-#define KCOLLECT_VMFAULT	8	/* all vm faults incl zero-fill */
-#define KCOLLECT_COWFAULT	9	/* all vm faults incl zero-fill */
-#define KCOLLECT_ZFILL		10	/* zero-fill faults */
+#define KCOLLECT_VMFAULT	8	/* all vm faults */
+#define KCOLLECT_COWFAULT	9	/* all vm copy-on-write faults */
+#define KCOLLECT_ZFILL		10	/* all vm zero-fill faults */
 
 #define KCOLLECT_MEMFRE		11	/* amount of free memory, bytes */
 #define KCOLLECT_MEMCAC		12	/* amount of almost free memory */
