@@ -57,12 +57,6 @@
 #include "if_tunvar.h"
 #include "if_tun.h"
 
-#if NTUN <= 1
-#define TUN_PREALLOCATED_UNITS	4
-#else
-#define TUN_PREALLOCATED_UNITS	NTUN
-#endif
-
 #define TUN		"tun"
 #define TUNDEBUG	if (tundebug) if_printf
 
@@ -155,7 +149,6 @@ tunmodevent(module_t mod, int type, void *data)
 {
 	static cdev_t dev = NULL;
 	struct tun_softc *sc, *sc_tmp;
-	int i;
 
 	switch (type) {
 	case MOD_LOAD:
@@ -165,12 +158,6 @@ tunmodevent(module_t mod, int type, void *data)
 
 		SLIST_INIT(&tun_listhead);
 		if_clone_attach(&tun_cloner);
-
-		for (i = 0; i < TUN_PREALLOCATED_UNITS; ++i) {
-			make_dev(&tun_ops, i, UID_UUCP, GID_DIALER,
-				 0600, "%s%d", TUN, i);
-			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), i);
-		}
 		break;
 
 	case MOD_UNLOAD:
@@ -269,10 +256,8 @@ tundestroy(struct tun_softc *sc)
 	release_dev(dev);  /* device disassociation */
 
 	/* Also destroy the cloned device */
-	if (unit >= TUN_PREALLOCATED_UNITS) {
-		destroy_dev(dev);
-		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tun), unit);
-	}
+	destroy_dev(dev);
+	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tun), unit);
 
 	SLIST_REMOVE(&tun_listhead, sc, tun_softc, tun_link);
 	kfree(sc, M_TUN);
@@ -363,8 +348,7 @@ tunclose(struct dev_close_args *ap)
 		 unit, tunrefcnt);
 
 	/* Only auto-destroy if the interface was not manually created. */
-	if ((sc->tun_flags & TUN_MANUALMAKE) == 0 &&
-	    unit >= TUN_PREALLOCATED_UNITS) {
+	if ((sc->tun_flags & TUN_MANUALMAKE) == 0) {
 		tundestroy(sc);
 		dev->si_drv1 = NULL;
 	}

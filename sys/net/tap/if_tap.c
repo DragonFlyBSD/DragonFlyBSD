@@ -79,12 +79,6 @@
 
 #define TAP_IFFLAGS	(IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST)
 
-#if NTAP <= 1
-#define TAP_PREALLOCATED_UNITS	4
-#else
-#define TAP_PREALLOCATED_UNITS	NTAP
-#endif
-
 #define TAP		"tap"
 #define TAPDEBUG	if (tapdebug) if_printf
 
@@ -183,7 +177,6 @@ tapmodevent(module_t mod, int type, void *data)
 {
 	static cdev_t dev = NULL;
 	struct tap_softc *sc, *sc_tmp;
-	int i;
 
 	switch (type) {
 	case MOD_LOAD:
@@ -192,12 +185,6 @@ tapmodevent(module_t mod, int type, void *data)
 					 0600, TAP);
 		SLIST_INIT(&tap_listhead);
 		if_clone_attach(&tap_cloner);
-
-		for (i = 0; i < TAP_PREALLOCATED_UNITS; ++i) {
-			make_dev(&tap_ops, i, UID_ROOT, GID_WHEEL,
-				 0600, "%s%d", TAP, i);
-			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tap), i);
-		}
 		break;
 
 	case MOD_UNLOAD:
@@ -457,8 +444,7 @@ tapclose(struct dev_close_args *ap)
 		 unit, taprefcnt);
 
 	/* Only auto-destroy if the interface was not manually created. */
-	if ((sc->tap_flags & TAP_MANUALMAKE) == 0 &&
-	    unit >= TAP_PREALLOCATED_UNITS) {
+	if ((sc->tap_flags & TAP_MANUALMAKE) == 0) {
 		tapdestroy(sc);
 		dev->si_drv1 = NULL;
 	}
@@ -487,15 +473,15 @@ tapdestroy(struct tap_softc *sc)
 
 	ether_ifdetach(ifp);
 
+	kprintf("TAPDESTROY UNIT %d\n", unit);
+
 	sc->tap_dev = NULL;
 	dev->si_drv1 = NULL;
 	release_dev(dev); /* device disassociation */
 
 	/* Also destroy the cloned device */
-	if (unit >= TAP_PREALLOCATED_UNITS) {
-		destroy_dev(dev);
-		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tap), unit);
-	}
+	destroy_dev(dev);
+	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tap), unit);
 
 	SLIST_REMOVE(&tap_listhead, sc, tap_softc, tap_link);
 	kfree(sc, M_TAP);
