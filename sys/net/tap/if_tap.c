@@ -775,6 +775,8 @@ tapioctl(struct dev_ioctl_args *ap)
 
 	case FIOSETOWN:
 		error = fsetown(*(int *)data, &sc->tap_sigio);
+		if (error == 0)
+			error = fsetown(*(int *)data, &sc->tap_sigtd);
 		break;
 
 	case FIOGETOWN:
