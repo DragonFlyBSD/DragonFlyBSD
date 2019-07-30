@@ -21,7 +21,7 @@ MACHINE_CPU=	${generic_${MACHINE_ARCH}}
 # Logic to set up correct gcc optimization flag.  This must be included
 # after /etc/make.conf so it can react to the local value of CPUTYPE
 # defined therein.  Consult:
-#	https://gcc.gnu.org/onlinedocs/gcc-5.3.0/gcc/x86-Options.html
+#	https://gcc.gnu.org/onlinedocs/gcc-8.3.0/gcc/x86-Options.html
 ###############################################################################
 
 # Some GCC cpu-types have aliases, rename them to a single identifier
@@ -47,11 +47,15 @@ known_x86_64=	athlon64 \
 		bonnell \
 		broadwell \
 		btver1 btver2 \
+		cannonlake \
 		core2 \
 		haswell \
 		i386 \
+		icelake-client \
+		icelake-server \
 		ivybridge \
 		knl \
+		knm \
 		nocona \
 		nehalem \
 		sandybridge \
@@ -81,9 +85,18 @@ C_haswell=	${C_ivybridge} movbe avx2 fma bmi bmi2
 C_broadwell=	${C_haswell} rdseed adcx prefetchw
 C_skylake=	${C_broadwell} xsavec xsaves clflushop
 C_knl=		${C_broadwell} avx512f avx512pf avx512er avx512cd
+C_knm=		${C_knl} avx5124vnniw avx5124fmaps avx512vpopcntdq
 C_bonnell=	${C_core2} movbe
 C_silvermont=	${C_westmere} movbe rdrnd
-C_skylakeavx512=${C_skylake} pku avx512f avx512vl avx512bw avx512dq avx512cd
+C_skylakeavx512=${C_skylake} pku avx512f clwb avx512vl avx512bw avx512dq \
+		avx512cd
+C_cannonlake=	${C_skylake} pku avx512f avx512vl avx512bw avx512dq avx512cd \
+		avx512vbmi avx512ifma sha umip
+C_icelakeclient=${C_skylakeavx512} avx512vbmi avx512ifma sha umip rdpid gfni \
+		avx512vbmi2 avx512vpopcntdq avx512bitalg avx512vnni \
+		vpclmulqdq vaes
+C_icelakeserver=${C_icelakeclient} pconfig wbnoinvd
+
 C_athlon64=	${generic_x86_64} 3dnow
 C_athlon64sse3=	${C_athlon64} sse3
 C_barcelona=	${C_athlon64sse3} sse4a abm
