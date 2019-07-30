@@ -173,6 +173,10 @@ main(int ac, char **av)
 	signal(SIGINT, cleanup);
 	signal(SIGHUP, cleanup);
 	signal(SIGTERM, cleanup);
+	if (tap_info && tap_info->fd >= 0) {
+		int pid = getpid();
+		ioctl(tap_info->fd, FIOSETOWN, &pid);
+	}
 
 	pthread_mutex_init(&BridgeMutex, NULL);
 	pthread_create(&dummy_td, NULL, vknet_io, tap_info);
