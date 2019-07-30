@@ -192,19 +192,12 @@ vknet_tap(const char *tapName, const char *bridgeName)
 	char *buf = NULL;
 	int tap_fd;
 	int tap_unit;
-	int i;
 	int s;
 	int flags;
 	ioinfo_t info;
 
 	if (strcmp(tapName, "auto") == 0) {
-		for (i = 0; ; ++i) {
-			asprintf(&buf, "/dev/tap%d", i);
-			tap_fd = open(buf, O_RDWR | O_NONBLOCK);
-			free(buf);
-			if (tap_fd >= 0 || errno == ENOENT)
-				break;
-		}
+		tap_fd = open("/dev/tap", O_RDWR);
 	} else if (strncmp(tapName, "tap", 3) == 0) {
 		asprintf(&buf, "/dev/%s", tapName);
 		tap_fd = open(buf, O_RDWR | O_NONBLOCK);
@@ -223,6 +216,13 @@ vknet_tap(const char *tapName, const char *bridgeName)
 		return(NULL);
 	}
 	tap_unit = TAPDEV_MINOR(st.st_rdev);
+
+	/*
+	 * Output the tap interface before detaching for any script
+	 * that might be using vknetd.
+	 */
+	printf("/dev/tap%d\n", tap_unit);
+	fflush(stdout);
 
 	/*
 	 * Setup for ioctls
