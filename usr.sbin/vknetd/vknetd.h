@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/usr.sbin/vknetd/vknetd.h,v 1.1 2008/05/27 01:58:01 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -42,6 +40,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/queue.h>
+#include <sys/filio.h>
 #include <sys/sockio.h>
 #include <net/if.h>
 #include <net/ethernet.h>
