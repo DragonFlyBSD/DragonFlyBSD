@@ -5150,7 +5150,7 @@ hammer2_chain_delete_obref(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	 * We need the spinlock on the core whos RBTREE contains chain
 	 * to protect against races.
 	 */
-	obref->type = 0;
+	obref->type = HAMMER2_BREF_TYPE_EMPTY;
 	if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
 		KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
 			 chain->parent == parent);
@@ -5230,7 +5230,8 @@ hammer2_base_find(hammer2_chain_t *parent,
 	 * Search backwards
 	 */
 	scan = &base[i];
-	while (i > 0 && (scan->type == 0 || scan->key > key_beg)) {
+	while (i > 0 && (scan->type == HAMMER2_BREF_TYPE_EMPTY ||
+	    scan->key > key_beg)) {
 		--scan;
 		--i;
 	}
@@ -5242,7 +5243,7 @@ hammer2_base_find(hammer2_chain_t *parent,
 	 * elements.
 	 */
 	while (i < count) {
-		if (scan->type != 0) {
+		if (scan->type != HAMMER2_BREF_TYPE_EMPTY) {
 			scan_end = scan->key +
 				   ((hammer2_key_t)1 << scan->keybits) - 1;
 			if (scan->key > key_beg || scan_end >= key_beg)
@@ -5396,7 +5397,7 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	i = hammer2_base_find(parent, base, count, &key_next,
 			      elm->key, elm->key);
 	scan = &base[i];
-	if (i == count || scan->type == 0 ||
+	if (i == count || scan->type == HAMMER2_BREF_TYPE_EMPTY ||
 	    scan->key != elm->key ||
 	    ((chain->flags & HAMMER2_CHAIN_BMAPUPD) == 0 &&
 	     scan->keybits != elm->keybits)) {
@@ -5467,7 +5468,7 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	 * We can only optimize parent->core.live_zero for live chains.
 	 */
 	if (parent->core.live_zero == i + 1) {
-		while (--i >= 0 && base[i].type == 0)
+		while (--i >= 0 && base[i].type == HAMMER2_BREF_TYPE_EMPTY)
 			;
 		parent->core.live_zero = i + 1;
 	}
@@ -5587,7 +5588,7 @@ hammer2_base_insert(hammer2_chain_t *parent,
 	k = i;
 	while (j > 0 || k < count) {
 		--j;
-		if (j >= 0 && base[j].type == 0) {
+		if (j >= 0 && base[j].type == HAMMER2_BREF_TYPE_EMPTY) {
 			if (j == i - 1) {
 				base[j] = *elm;
 			} else {
@@ -5598,7 +5599,7 @@ hammer2_base_insert(hammer2_chain_t *parent,
 			goto validate;
 		}
 		++k;
-		if (k < count && base[k].type == 0) {
+		if (k < count && base[k].type == HAMMER2_BREF_TYPE_EMPTY) {
 			bcopy(&base[i], &base[i+1],
 			      (k - i) * sizeof(hammer2_blockref_t));
 			base[i] = *elm;
@@ -5659,11 +5660,11 @@ hammer2_base_sort_callback(const void *v1, const void *v2)
 	/*
 	 * Make sure empty elements are placed at the end of the array
 	 */
-	if (bref1->type == 0) {
-		if (bref2->type == 0)
+	if (bref1->type == HAMMER2_BREF_TYPE_EMPTY) {
+		if (bref2->type == HAMMER2_BREF_TYPE_EMPTY)
 			return(0);
 		return(1);
-	} else if (bref2->type == 0) {
+	} else if (bref2->type == HAMMER2_BREF_TYPE_EMPTY) {
 		return(-1);
 	}
 
