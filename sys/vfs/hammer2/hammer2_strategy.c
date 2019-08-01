@@ -471,11 +471,11 @@ hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
 			bp->b_error = 0;
 			break;
 		default:
-			panic("hammer2_strategy_read: "
+			panic("hammer2_strategy_read_completion: "
 			      "unknown compression type");
 		}
 	} else {
-		panic("hammer2_strategy_read: unknown bref type");
+		panic("hammer2_strategy_read_completion: unknown bref type");
 	}
 }
 
@@ -1081,7 +1081,7 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
-			panic("hammer2_write_bp: unexpected inode\n");
+			panic("hammer2_compress_and_write: unexpected inode\n");
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
 			/*
@@ -1152,7 +1152,7 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 			}
 			break;
 		default:
-			panic("hammer2_write_bp: bad chain type %d\n",
+			panic("hammer2_compress_and_write: bad chain type %d\n",
 				chain->bref.type);
 			/* NOT REACHED */
 			break;

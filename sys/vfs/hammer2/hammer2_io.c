@@ -812,7 +812,7 @@ hammer2_io_dedup_delete(hammer2_dev_t *hmp, uint8_t btype,
 		if (data_off < dio->pbase ||
 		    (data_off & ~HAMMER2_OFF_MASK_RADIX) + bytes >
 		    dio->pbase + dio->psize) {
-			panic("hammer2_dedup_delete: DATAOFF BAD "
+			panic("hammer2_io_dedup_delete: DATAOFF BAD "
 			      "%016jx/%d %016jx\n",
 			      data_off, bytes, dio->pbase);
 		}

@@ -129,7 +129,8 @@ hammer2_chain_assert_no_data(hammer2_chain_t *chain)
 	if (chain->bref.type != HAMMER2_BREF_TYPE_VOLUME &&
 	    chain->bref.type != HAMMER2_BREF_TYPE_FREEMAP &&
 	    chain->data) {
-		panic("hammer2_assert_no_data: chain %p still has data", chain);
+		panic("hammer2_chain_assert_no_data: chain %p still has data",
+		    chain);
 	}
 }
 
@@ -1467,7 +1468,7 @@ hammer2_chain_base_and_count(hammer2_chain_t *parent, int *countp)
 			count = HAMMER2_SET_COUNT;
 			break;
 		default:
-			panic("hammer2_chain_create_indirect: "
+			panic("hammer2_chain_base_and_count: "
 			      "unrecognized blockref type: %d",
 			      parent->bref.type);
 			count = 0;
@@ -1494,7 +1495,7 @@ hammer2_chain_base_and_count(hammer2_chain_t *parent, int *countp)
 			count = HAMMER2_SET_COUNT;
 			break;
 		default:
-			panic("hammer2_chain_create_indirect: "
+			panic("hammer2_chain_base_and_count: "
 			      "unrecognized blockref type: %d",
 			      parent->bref.type);
 			count = 0;
@@ -3134,7 +3135,7 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		panic("hammer2_chain_lookup: unrecognized blockref type: %d",
+		panic("hammer2_chain_scan: unrecognized blockref type: %d",
 		      parent->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
@@ -3833,7 +3834,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		default:
 			base = NULL;
 			count = 0;
-			panic("hammer2_flush_pass2: "
+			panic("_hammer2_chain_delete_helper: "
 			      "unrecognized blockref type: %d",
 			      parent->bref.type);
 		}
@@ -5724,7 +5725,7 @@ hammer2_base_sort(hammer2_chain_t *chain)
 		        chain->bref.type);
 		while (1)
 			tsleep(&base, 0, "dead", 0);
-		panic("hammer2_chain_lookup: unrecognized "
+		panic("hammer2_base_sort: unrecognized "
 		      "blockref(A) type: %d",
 		      chain->bref.type);
 		base = NULL;	/* safety */
