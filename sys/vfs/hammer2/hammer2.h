@@ -247,9 +247,6 @@ RB_HEAD(hammer2_chain_tree, hammer2_chain);
 TAILQ_HEAD(h2_flush_list, hammer2_chain);
 TAILQ_HEAD(h2_core_list, hammer2_chain);
 
-#define CHAIN_CORE_DELETE_BMAP_ENTRIES	\
-	(HAMMER2_PBUFSIZE / sizeof(hammer2_blockref_t) / sizeof(uint32_t))
-
 struct hammer2_reptrack {
 	hammer2_spin_t	spin;
 	struct hammer2_reptrack *next;
