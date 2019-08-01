@@ -91,7 +91,6 @@
 #include <machine/globaldata.h>
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
-#include <machine/inttypes.h>
 
 #include <ddb/ddb.h>
 

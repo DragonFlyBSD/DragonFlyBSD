@@ -53,8 +53,6 @@
 #include <sys/kthread.h>
 #include <sys/spinlock.h>
 
-#include <machine/inttypes.h>
-
 #include <sys/md5.h>
 
 #include <net/if.h>

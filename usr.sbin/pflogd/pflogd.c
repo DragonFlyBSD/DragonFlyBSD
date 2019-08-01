@@ -37,8 +37,6 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#include <machine/inttypes.h>
-
 #include <errno.h>
 #include <err.h>
 #include <fcntl.h>

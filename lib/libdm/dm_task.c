@@ -33,7 +33,6 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <machine/inttypes.h>
 #include <dev/disk/dm/netbsd-dm.h>
 #include <stdlib.h>
 #include <string.h>

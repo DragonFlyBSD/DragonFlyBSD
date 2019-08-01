@@ -48,8 +48,6 @@
 
 #include <sys/rman.h>
 
-#include <machine/inttypes.h>
-
 #include <bus/cam/scsi/scsi_all.h>
 
 #include <dev/raid/mps/mpi/mpi2_type.h>

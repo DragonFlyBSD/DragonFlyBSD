@@ -43,8 +43,6 @@
 #include <machine/metadata.h>
 #endif
 
-#include <machine/inttypes.h>
-
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
