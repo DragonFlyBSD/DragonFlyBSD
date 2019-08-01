@@ -323,6 +323,13 @@ pcib_attach_common(device_t dev)
      *     pick 255; the only tradeoff here is that configuration transactions
      *     would be more widely routed than absolutely necessary.
      */
+
+    /*
+     * Always enable busmastering on bridges so that transactions
+     * initiated on the secondary bus are passed through to the
+     * primary bus.
+     */
+    pci_enable_busmaster(dev);
 }
 
 int
