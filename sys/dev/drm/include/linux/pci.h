@@ -316,6 +316,12 @@ pci_bus_read_config_word(struct pci_bus *bus, unsigned int devfn, int where, u16
 	return 0;
 }
 
+static inline const char *
+pci_name(struct pci_dev *pdev)
+{
+	return device_get_desc(pdev->dev.bsddev);
+}
+
 static inline void *
 pci_get_drvdata(struct pci_dev *pdev)
 {
