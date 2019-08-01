@@ -350,7 +350,6 @@ struct hammer2_chain {
 	int		error;			/* on-lock data error state */
 	int		cache_index;		/* heur speeds up lookup */
 
-	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush list */
 	TAILQ_ENTRY(hammer2_chain) lru_node;	/* 0-refs LRU */
 };
 
