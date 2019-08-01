@@ -48,6 +48,7 @@
 #include <bus/u4b/usbdi_util.h>
 #include <bus/u4b/usb_ioctl.h>
 #include <bus/u4b/usbhid.h>
+#include <bus/u4b/quirk/usb_quirk.h>
 
 #define	USB_DEBUG_VAR usb_debug
 
@@ -715,6 +716,10 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 	}
 	USB_XFER_UNLOCK(xfer);
 
+	if (udev->flags.uq_delay_ctrl) {
+		usb_pause_mtx(NULL, 200 * hz / 1000 + 1);
+	}
+
 done:
 	usbd_sr_lock(udev);
 
@@ -1217,6 +1222,10 @@ usbd_req_get_descriptor_ptr(struct usb_device *udev,
 	const void *ptr;
 	uint16_t len;
 	usb_error_t err;
+
+	if (udev->flags.uq_delay_init) {
+		usb_pause_mtx(NULL, 200 * hz / 1000 + 1);
+	}
 
 	req.bmRequestType = UT_READ_DEVICE;
 	req.bRequest = UR_GET_DESCRIPTOR;

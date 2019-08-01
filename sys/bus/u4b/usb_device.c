@@ -1753,12 +1753,14 @@ usb_alloc_device(device_t parent_dev, struct usb_bus *bus,
 	 */
 	usb_init_attach_arg(udev, &uaa);
 
-	if (usb_test_quirk(&uaa, UQ_BUS_POWERED)) {
+	if (usb_test_quirk(&uaa, UQ_BUS_POWERED))
 		udev->flags.uq_bus_powered = 1;
-	}
-	if (usb_test_quirk(&uaa, UQ_NO_STRINGS)) {
+	if (usb_test_quirk(&uaa, UQ_NO_STRINGS))
 		udev->flags.no_strings = 1;
-	}
+	if (usb_test_quirk(&uaa, UQ_KBD_DELAY_INIT))
+		udev->flags.uq_delay_init = 1;
+	if (usb_test_quirk(&uaa, UQ_KBD_DELAY_CTRL_MSG))
+		udev->flags.uq_delay_ctrl = 1;
 	/*
 	 * Workaround for buggy USB devices.
 	 *

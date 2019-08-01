@@ -101,6 +101,12 @@ struct usb_device_flags {
 	 */
 	uint8_t peer_suspended:1;	/* set if peer is suspended */
 	uint8_t self_suspended:1;	/* set if self is suspended */
+
+	/*
+	 * Transfered quirks
+	 */
+	uint8_t uq_delay_ctrl:1;	/* delay after ctrl message */
+	uint8_t	uq_delay_init:1;	/* delay during initialization */
 };
 
 /*
