@@ -51,6 +51,8 @@ enum {
 	UQ_HID_IGNORE,		/* device should be ignored by hid class */
 	UQ_KBD_IGNORE,		/* device should be ignored by kbd class */
 	UQ_KBD_BOOTPROTO,	/* device should set the boot protocol */
+	UQ_KBD_DELAY_INIT,	/* add short delay during initialization */
+	UQ_KBD_DELAY_CTRL_MSG,	/* add short delay after sending ctl msg */
 	UQ_UMS_IGNORE,          /* device should be ignored by ums class */
 	UQ_MS_BAD_CLASS,	/* doesn't identify properly */
 	UQ_MS_LEADING_BYTE,	/* mouse sends an unknown leading byte */
