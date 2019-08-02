@@ -421,6 +421,9 @@ again:
 			error = hammer2_chain_delete(parent, chain,
 					     xop->head.mtid, dopermanent);
 		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
+		    xop->isdir == 0) {
+			error = HAMMER2_ERROR_EISDIR;
+		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 			   (error = checkdirempty(parent, chain, clindex)) != 0) {
 			/*
 			 * error may be EAGAIN or ENOTEMPTY
@@ -432,9 +435,6 @@ again:
 				hammer2_chain_drop(parent);
 				goto again;
 			}
-		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
-		    xop->isdir == 0) {
-			error = HAMMER2_ERROR_EISDIR;
 		} else if (type != HAMMER2_OBJTYPE_DIRECTORY &&
 			   xop->isdir >= 1) {
 			error = HAMMER2_ERROR_ENOTDIR;
