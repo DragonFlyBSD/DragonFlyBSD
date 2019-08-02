@@ -1532,12 +1532,12 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
         if ((chain->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0) {
 		if (base) {
 			while (--count >= 0) {
-				if (base[count].type)
+				if (base[count].type != HAMMER2_BREF_TYPE_EMPTY)
 					break;
 			}
 			chain->core.live_zero = count + 1;
 			while (count >= 0) {
-				if (base[count].type)
+				if (base[count].type != HAMMER2_BREF_TYPE_EMPTY)
 					atomic_add_int(&chain->core.live_count,
 						       1);
 				--count;
@@ -3727,7 +3727,7 @@ hammer2_chain_rename_obref(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 {
 	hammer2_chain_rename(parentp, chain, mtid, flags);
 
-	if (obref->type) {
+	if (obref->type != HAMMER2_BREF_TYPE_EMPTY) {
 		hammer2_blockref_t *tbase;
 		int tcount;
 
@@ -5623,14 +5623,14 @@ hammer2_base_insert(hammer2_chain_t *parent,
 validate:
 	key_next = 0;
 	for (l = 0; l < count; ++l) {
-		if (base[l].type) {
+		if (base[l].type != HAMMER2_BREF_TYPE_EMPTY) {
 			key_next = base[l].key +
 				   ((hammer2_key_t)1 << base[l].keybits) - 1;
 			break;
 		}
 	}
 	while (++l < count) {
-		if (base[l].type) {
+		if (base[l].type != HAMMER2_BREF_TYPE_EMPTY) {
 			if (base[l].key <= key_next)
 				panic("base_insert %d %d,%d,%d fail %p:%d", u, i, j, k, base, l);
 			key_next = base[l].key +
