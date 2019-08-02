@@ -36,7 +36,6 @@
  */
 
 #include "opt_inet.h"
-#include "use_tap.h"
 
 #include <sys/param.h>
 #include <sys/conf.h>
