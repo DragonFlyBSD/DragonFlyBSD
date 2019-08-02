@@ -76,6 +76,7 @@
 /* 37 SIOCGIFNETMASK */
 #define	SIOCGIFDATA	_IOWR('i', 38, struct ifreq)	/* get if_data */
 #define	SIOCSIFNAME	 _IOW('i', 40, struct ifreq)	/* set IF name */
+#define	SIOCGIFALIAS	_IOWR('i', 41, struct ifaliasreq)/* get IF alias */
 
 #define	SIOCADDMULTI	 _IOW('i', 49, struct ifreq)	/* add m'cast addr */
 #define	SIOCDELMULTI	 _IOW('i', 50, struct ifreq)	/* del m'cast addr */

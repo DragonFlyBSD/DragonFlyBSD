@@ -231,6 +231,7 @@ in_control(u_long cmd, caddr_t data, struct ifnet *ifp, struct thread *td)
 	case SIOCSIFNETMASK:
 	case SIOCAIFADDR:
 	case SIOCDIFADDR:
+	case SIOCGIFALIAS:
 		/*
 		 * Dispatch these SIOCs to netisr0.
 		 */
@@ -477,6 +478,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	switch (cmd) {
 	case SIOCAIFADDR:
 	case SIOCDIFADDR:
+	case SIOCGIFALIAS:
 		if (ifp == NULL)
 			return (EADDRNOTAVAIL);
 		if (ifra->ifra_addr.sin_family == AF_INET) {
@@ -493,8 +495,10 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				return EDESTADDRREQ;
 			}
 		}
-		if (cmd == SIOCDIFADDR && ia == NULL)
+		if ((cmd == SIOCDIFADDR || cmd == SIOCGIFALIAS) && ia == NULL)
 			return (EADDRNOTAVAIL);
+		if (cmd == SIOCGIFALIAS)
+			break;
 		/* FALLTHROUGH */
 	case SIOCSIFADDR:
 	case SIOCSIFNETMASK:
@@ -680,6 +684,19 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			if_up(ifp);
 		}
 		return (error);
+
+	case SIOCGIFALIAS:
+		ifra->ifra_mask = ia->ia_sockmask;
+		if ((ifp->if_flags & IFF_POINTOPOINT) &&
+		    (ia->ia_dstaddr.sin_family == AF_INET))
+			ifra->ifra_dstaddr = ia->ia_dstaddr;
+		else if ((ifp->if_flags & IFF_BROADCAST) &&
+		    (ia->ia_broadaddr.sin_family == AF_INET))
+			ifra->ifra_broadaddr = ia->ia_broadaddr;
+		else
+			memset(&ifra->ifra_broadaddr, 0,
+			    sizeof(ifra->ifra_broadaddr));
+		return (0);
 
 	case SIOCDIFADDR:
 		/*

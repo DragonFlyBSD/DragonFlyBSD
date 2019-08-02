@@ -28,7 +28,7 @@
 .\"     @(#)netintro.4	8.2 (Berkeley) 11/30/93
 .\" $FreeBSD: src/share/man/man4/netintro.4,v 1.10.2.6 2002/08/30 14:23:38 sobomax Exp $
 .\"
-.Dd August 8, 2015
+.Dd August 2, 2019
 .Dt NETINTRO 4
 .Os
 .Sh NAME
@@ -287,6 +287,13 @@ multiple masks or destination addresses, and also adopts the
 convention that specification of the default address means
 to delete the first address for the interface belonging to
 the address family in which the original socket was opened.
+.It Dv SIOCGIFALIAS
+This request provides means to get additional addresses
+together with netmask and broadcast/destination from an
+interface.
+It also uses the
+.Vt ifaliasreq
+structure.
 .It Dv SIOCGIFCONF
 Get interface configuration list.  This request takes an
 .Vt ifconf
