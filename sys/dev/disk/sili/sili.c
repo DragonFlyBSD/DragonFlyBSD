@@ -560,7 +560,7 @@ sili_port_state_machine(struct sili_port *ap, int initial)
 			 * which have changed state.  This will adjust
 			 * at_probe and set ATA_PORT_F_RESCAN
 			 *
-			 * We want to wait at least 10 seconds before probing
+			 * We want to wait at least 5 seconds before probing
 			 * a newly inserted device.  If the check status
 			 * indicates a device is present and in need of a
 			 * hard reset, we make sure we have slept before
@@ -568,7 +568,7 @@ sili_port_state_machine(struct sili_port *ap, int initial)
 			 *
 			 * We also need to wait at least 1 second for the
 			 * PHY state to change after insertion, if we
-			 * haven't already waited the 10 seconds.
+			 * haven't already waited the 5 seconds.
 			 *
 			 * NOTE: When pm_check_good finds a good port it
 			 *	 typically starts us in probe state
@@ -582,8 +582,8 @@ sili_port_state_machine(struct sili_port *ap, int initial)
 				    at->at_probe <= ATA_PROBE_NEED_HARD_RESET
 				) {
 					didsleep = 1;
-					kprintf("%s: Waiting 10 seconds on insertion\n", PORTNAME(ap));
-					sili_os_sleep(10000);
+					kprintf("%s: Waiting 5 seconds on insertion\n", PORTNAME(ap));
+					sili_os_sleep(5000);
 				}
 			}
 
