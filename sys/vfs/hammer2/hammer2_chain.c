@@ -86,12 +86,7 @@ static hammer2_chain_t *hammer2_combined_find(
 static struct krate krate_h2me = { .freq = 1 };
 
 /*
- * Basic RBTree for chains (core->rbtree and core->dbtree).  Chains cannot
- * overlap in the RB trees.  Deleted chains are moved from rbtree to either
- * dbtree or to dbq.
- *
- * Chains in delete-duplicate sequences can always iterate through core_entry
- * to locate the live version of the chain.
+ * Basic RBTree for chains (core.rbtree).
  */
 RB_GENERATE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 

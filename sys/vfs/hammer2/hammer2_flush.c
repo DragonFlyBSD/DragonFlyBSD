@@ -1175,14 +1175,9 @@ done:
  * Flush recursion helper, called from flush_core, calls flush_core.
  *
  * Flushes the children of the caller's chain (info->parent), restricted
- * by sync_tid.  Set info->domodify if the child's blockref must propagate
- * back up to the parent.
+ * by sync_tid.
  *
  * This function may set info->error as a side effect.
- *
- * Ripouts can move child from rbtree to dbtree or dbq but the caller's
- * flush scan order prevents any chains from being lost.  A child can be
- * executes more than once.
  *
  * WARNING! If we do not call hammer2_flush_core() we must update
  *	    bref.mirror_tid ourselves to indicate that the flush has
