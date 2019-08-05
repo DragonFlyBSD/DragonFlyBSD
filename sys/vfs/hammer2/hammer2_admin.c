@@ -41,7 +41,7 @@
 	hammer2_xop_desc_t hammer2_##label##_desc = {		\
 		.storage_func = hammer2_xop_##label,		\
 		.id = #label					\
-	};							\
+	}
 
 H2XOPDESCRIPTOR(ipcluster);
 H2XOPDESCRIPTOR(readdir);
