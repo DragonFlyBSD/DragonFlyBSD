@@ -325,9 +325,7 @@ static bool drm_dp_sideband_msg_build(struct drm_dp_sideband_msg_rx *msg,
 		struct drm_dp_sideband_msg_hdr recv_hdr;
 		ret = drm_dp_decode_sideband_msg_hdr(&recv_hdr, replybuf, replybuflen, &hdrlen);
 		if (ret == false) {
-#if 0
 			print_hex_dump(KERN_DEBUG, "failed hdr", DUMP_PREFIX_NONE, 16, 1, replybuf, replybuflen, false);
-#endif
 			return false;
 		}
 

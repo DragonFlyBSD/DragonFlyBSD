@@ -1166,16 +1166,9 @@ bad:
 			printk(KERN_ERR "EDID block is all zeroes\n");
 		} else {
 			printk(KERN_ERR "Raw EDID:\n");
-			for (int i = 0; i < EDID_LENGTH; ) {
-				kprintf("%02x", raw_edid[i]);
-				i++;
-				if (i % 16 == 0 || i == EDID_LENGTH)
-					kprintf("\n");
-				else if (i % 8 == 0)
-					kprintf("  ");
-				else
-					kprintf(" ");
-			}
+			print_hex_dump(KERN_NOTICE,
+				       " \t", DUMP_PREFIX_NONE, 16, 1,
+				       raw_edid, EDID_LENGTH, false);
 		}
 	}
 	return false;

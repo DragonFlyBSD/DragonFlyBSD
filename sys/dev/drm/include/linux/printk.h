@@ -113,4 +113,19 @@ enum {
 	DUMP_PREFIX_OFFSET
 };
 
+static inline void
+print_hex_dump(const char *level, const char *prefix_str, int prefix_type,
+    int rowsize, int groupsize, const void *buf, size_t len, bool ascii)
+{
+	int flags;
+
+	flags = rowsize;
+	if (prefix_type != DUMP_PREFIX_OFFSET)
+		flags |= HD_OMIT_COUNT;
+	if (!ascii)
+		flags |= HD_OMIT_CHARS;
+
+	hexdump(buf, len, prefix_str, flags);
+}
+
 #endif	/* _LINUX_PRINTK_H_ */
