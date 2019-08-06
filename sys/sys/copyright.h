@@ -41,4 +41,4 @@
 #define COPYRIGHT_UCB \
 	"Copyright (c) 1979, 1980, 1983, 1986, 1988, 1989, 1991, 1992, 1993, 1994\n\tThe Regents of the University of California. All rights reserved.\n"
 
-char copyright[] = COPYRIGHT_DragonFly/**/COPYRIGHT_FreeBSD/**/COPYRIGHT_UCB;
+char copyright[] = COPYRIGHT_DragonFly COPYRIGHT_FreeBSD COPYRIGHT_UCB;
