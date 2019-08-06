@@ -28,7 +28,7 @@
 .\"	@(#)dbopen.3	8.5 (Berkeley) 1/2/94
 .\" $FreeBSD: head/lib/libc/db/man/dbopen.3 212492 2010-09-12 14:04:05Z gjb $
 .\"
-.Dd September 10, 2010
+.Dd August 6, 2019
 .Dt DBOPEN 3
 .Os
 .Sh NAME
@@ -83,9 +83,9 @@ are as specified to the
 .Xr open 2
 routine, however, only the
 .Dv O_CREAT , O_EXCL , O_EXLOCK , O_NOFOLLOW , O_NONBLOCK ,
-.Dv O_RDONLY , O_RDWR , O_SHLOCK , O_SYNC
+.Dv O_RDONLY , O_RDWR , O_SHLOCK , O_SYNC , O_TRUNC
 and
-.Dv O_TRUNC
+.Dv O_CLOEXEC
 flags are meaningful.
 (Note, opening a database file
 .Dv O_WRONLY
