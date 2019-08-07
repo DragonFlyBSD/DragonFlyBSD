@@ -1861,10 +1861,10 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 				lwkt_gettoken(&so->so_rcv.ssb_token);
 				if (ssb_appendaddr(&so->so_rcv,
 				    (struct sockaddr *)&fromsa, n, opts) == 0) {
-					/* should notify about lost packet */
 					m_freem(n);
 					if (opts)
 						m_freem(opts);
+					soroverflow(so);
 				} else {
 					sorwakeup(so);
 				}
@@ -1888,6 +1888,7 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 			m_freem(m);
 			if (opts)
 				m_freem(opts);
+			soroverflow(so);
 		} else {
 			sorwakeup(so);
 		}

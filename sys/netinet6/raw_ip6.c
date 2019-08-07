@@ -175,6 +175,7 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 					if (opts)
 						m_freem(opts);
 					rip6stat.rip6s_fullsock++;
+					soroverflow(so);
 				} else {
 					sorwakeup(so);
 				}
@@ -201,6 +202,7 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 			if (opts)
 				m_freem(opts);
 			rip6stat.rip6s_fullsock++;
+			soroverflow(so);
 		} else {
 			sorwakeup(so);
 		}

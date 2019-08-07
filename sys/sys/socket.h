@@ -99,6 +99,7 @@ typedef __socklen_t	socklen_t;
 #define	SO_TIMESTAMP	0x0400		/* timestamp received dgram traffic */
 #define	SO_NOSIGPIPE	0x0800		/* no SIGPIPE from EPIPE */
 #define	SO_ACCEPTFILTER	0x1000		/* there is an accept filter */
+#define	SO_RERROR	0x2000		/* Keep track of receive errors */
 
 /*
  * Additional options, not kept in so_options.

@@ -269,6 +269,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 						if (opts)
 							m_freem(opts);
 						udp_stat.udps_fullsock++;
+						soroverflow(so);
 					} else {
 						sorwakeup(so);
 					}
@@ -313,6 +314,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *)&udp_in6,
 				   m, opts) == 0) {
 			udp_stat.udps_fullsock++;
+			soroverflow(so);
 			lwkt_reltoken(&so->so_rcv.ssb_token);
 			goto bad;
 		}
@@ -361,6 +363,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *)&udp_in6,
 			   m, opts) == 0) {
 		udp_stat.udps_fullsock++;
+		soroverflow(so);
 		lwkt_reltoken(&so->so_rcv.ssb_token);
 		goto bad;
 	}

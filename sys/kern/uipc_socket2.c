@@ -523,6 +523,19 @@ socantrcvmore(struct socket *so)
 }
 
 /*
+ * soroverflow(): indicates that data was attempted to be sent
+ * but the receiving buffer overflowed.
+ */
+void
+soroverflow(struct socket *so)
+{
+	if (so->so_options & SO_RERROR) {
+		so->so_rerror = ENOBUFS;
+		sorwakeup(so);
+	}
+}
+
+/*
  * Wakeup processes waiting on a socket buffer.  Do asynchronous notification
  * via SIGIO if the socket has the SS_ASYNC flag set.
  *

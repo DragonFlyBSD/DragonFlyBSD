@@ -108,8 +108,8 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 				lwkt_gettoken(&last->so_rcv.ssb_token);
 				if (ssb_appendaddr(&last->so_rcv, src, n,
 						 NULL) == 0) {
-					/* should notify about lost packet */
 					m_freem(n);
+					soroverflow(last);
 				} else {
 					sorwakeup(last);
 				}
@@ -120,9 +120,10 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 	}
 	if (last) {
 		lwkt_gettoken(&last->so_rcv.ssb_token);
-		if (ssb_appendaddr(&last->so_rcv, src, m, NULL) == 0)
+		if (ssb_appendaddr(&last->so_rcv, src, m, NULL) == 0) {
 			m_freem(m);
-		else
+			soroverflow(last);
+		} else
 			sorwakeup(last);
 		lwkt_reltoken(&last->so_rcv.ssb_token);
 	} else {

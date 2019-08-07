@@ -921,7 +921,8 @@ socket_send(struct socket *so, struct mbuf *mm, struct sockaddr_in6 *src)
 			sorwakeup(so);
 			lwkt_reltoken(&so->so_rcv.ssb_token);
 			return 0;
-		}
+		} else
+			soroverflow(so);
 		lwkt_reltoken(&so->so_rcv.ssb_token);
 	}
 	m_freem(mm);

@@ -635,6 +635,7 @@ done:
 	    (struct sockaddr *)&udp_in, m, opts) == 0) {
 		lwkt_reltoken(&inp->inp_socket->so_rcv.ssb_token);
 		udp_stat.udps_fullsock++;
+		soroverflow(inp->inp_socket);
 		goto bad;
 	}
 	lwkt_reltoken(&inp->inp_socket->so_rcv.ssb_token);

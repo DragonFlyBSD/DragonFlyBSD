@@ -1130,7 +1130,8 @@ socket_send(struct socket *s, struct mbuf *mm, struct sockaddr_in *src)
 	if (ssb_appendaddr(&s->so_rcv, (struct sockaddr *)src, mm, NULL) != 0) {
 	    sorwakeup(s);
 	    return 0;
-	}
+	} else
+	    soroverflow(s);
     }
     m_freem(mm);
     return -1;
@@ -2198,6 +2199,7 @@ X_rsvp_input(struct mbuf **mp, int *offp, int proto)
 	m_freem(m);
 	if (opts)
 	    m_freem(opts);
+	soroverflow(so);
 	if (rsvpdebug)
 	    kprintf("rsvp_input: Failed to append to socket\n");
     }

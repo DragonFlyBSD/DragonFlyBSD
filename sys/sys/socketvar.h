@@ -139,6 +139,7 @@ struct socket {
 	 */
 	short	so_timeo;		/* connection timeout */
 	u_short	so_error;		/* error affecting connection */
+	u_short	so_rerror;		/* error affecting receiving */
 	struct  sigio *so_sigio;	/* information for async I/O or
 					   out of band data (SIGURG) */
 	u_long	so_oobmark;		/* chars to oob mark */
@@ -425,6 +426,7 @@ struct	socket *soalloc (int waitok, struct protosw *);
 int	sobind (struct socket *so, struct sockaddr *nam, struct thread *td);
 void	socantrcvmore (struct socket *so);
 void	socantsendmore (struct socket *so);
+void	soroverflow(struct socket *so);
 int	socket_wait (struct socket *so, struct timespec *ts, int *res);
 int	soclose (struct socket *so, int fflags);
 int	soconnect (struct socket *so, struct sockaddr *nam, struct thread *td,

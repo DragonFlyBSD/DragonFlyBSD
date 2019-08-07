@@ -239,9 +239,10 @@ div_packet(struct mbuf *m, int incoming, int port)
 	}
 	if (sa) {
 		lwkt_gettoken(&sa->so_rcv.ssb_token);
-		if (ssb_appendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc, m, NULL) == 0)
+		if (ssb_appendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc, m, NULL) == 0) {
 			m_freem(m);
-		else
+			soroverflow(sa);
+		} else
 			sorwakeup(sa);
 		lwkt_reltoken(&sa->so_rcv.ssb_token);
 	} else {

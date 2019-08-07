@@ -28,7 +28,7 @@
 .\"     @(#)getsockopt.2	8.4 (Berkeley) 5/2/95
 .\" $FreeBSD: src/lib/libc/sys/getsockopt.2,v 1.12.2.11 2002/01/09 17:44:15 yar Exp $
 .\"
-.Dd May 2, 1995
+.Dd August 7, 2019
 .Dt GETSOCKOPT 2
 .Os
 .Sh NAME
@@ -152,6 +152,7 @@ and set with
 .It Dv SO_ACCEPTFILTER Ta "set accept filter on listening socket"
 .It Dv SO_TYPE Ta "get the type of the socket (get only)"
 .It Dv SO_ERROR Ta "get and clear error on the socket (get only)"
+.It Dv SO_RERROR Ta "enables receive error reporting"
 .El
 .Pp
 .Dv SO_DEBUG
@@ -180,6 +181,13 @@ indicates that outgoing messages should
 bypass the standard routing facilities.  Instead, messages are directed
 to the appropriate network interface according to the network portion
 of the destination address.
+.Dv SO_RERROR
+indicates that receive buffer overflows should be handled as errors.
+Historically receive buffer overflows have been ignored and programs
+could not tell if they missed messages or messages had been truncated
+because of overflows.
+Since programs historically do not expect to get receive overflow errors,
+this behavior is not the default.
 .Pp
 .Dv SO_LINGER
 controls the action taken when unsent messages

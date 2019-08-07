@@ -1341,12 +1341,19 @@ restart:
 	    ((flags & MSG_WAITALL) && resid <= (size_t)so->so_rcv.ssb_hiwat)) &&
 	    m->m_nextpkt == 0 && (pr->pr_flags & PR_ATOMIC) == 0)) {
 		KASSERT(m != NULL || !so->so_rcv.ssb_cc, ("receive 1"));
-		if (so->so_error) {
+		if (so->so_error || so->so_rerror) {
 			if (m)
 				goto dontblock;
-			error = so->so_error;
-			if ((flags & MSG_PEEK) == 0)
-				so->so_error = 0;
+			if (so->so_error)
+				error = so->so_error;
+			else
+				error = so->so_rerror;
+			if ((flags & MSG_PEEK) == 0) {
+				if (so->so_error)
+					so->so_error = 0;
+				else
+					so->so_rerror = 0;
+			}
 			goto release;
 		}
 		if (so->so_state & SS_CANTRCVMORE) {
@@ -1539,7 +1546,8 @@ dontblock:
 		while ((flags & MSG_WAITALL) && m == NULL && 
 		       resid > 0 && !sosendallatonce(so) && 
 		       so->so_rcv.ssb_mb == NULL) {
-			if (so->so_error || so->so_state & SS_CANTRCVMORE)
+			if (so->so_error || so->so_rerror ||
+			    so->so_state & SS_CANTRCVMORE)
 				break;
 			/*
 			 * The window might have closed to zero, make
@@ -2136,6 +2144,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 		case SO_OOBINLINE:
 		case SO_TIMESTAMP:
 		case SO_NOSIGPIPE:
+		case SO_RERROR:
 			error = sooptcopyin(sopt, &optval, sizeof optval,
 					    sizeof optval);
 			if (error)
@@ -2334,6 +2343,7 @@ sogetopt(struct socket *so, struct sockopt *sopt)
 		case SO_OOBINLINE:
 		case SO_TIMESTAMP:
 		case SO_NOSIGPIPE:
+		case SO_RERROR:
 			optval = so->so_options & sopt->sopt_name;
 integer:
 			error = sooptcopyout(sopt, &optval, sizeof optval);
@@ -2344,8 +2354,13 @@ integer:
 			goto integer;
 
 		case SO_ERROR:
-			optval = so->so_error;
-			so->so_error = 0;
+			if (so->so_error) {
+				optval = so->so_error;
+				so->so_error = 0;
+			} else {
+				optval = so->so_rerror;
+				so->so_rerror = 0;
+			}
 			goto integer;
 
 		case SO_SNDBUF:
@@ -2572,7 +2587,7 @@ filt_soread(struct knote *kn, long hint __unused)
 		kn->kn_fflags = so->so_error;
 		return (1);
 	}
-	if (so->so_error)	/* temporary udp error */
+	if (so->so_error || so->so_rerror)
 		return (1);
 	if (kn->kn_sfflags & NOTE_LOWAT)
 		return (kn->kn_data >= kn->kn_sdata);

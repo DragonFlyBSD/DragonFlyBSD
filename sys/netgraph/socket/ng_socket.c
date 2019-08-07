@@ -747,6 +747,7 @@ ship_msg(struct ngpcb *pcbp, struct ng_mesg *msg, struct sockaddr_ng *addr)
 	lwkt_gettoken(&so->so_rcv.ssb_token);
 	if (ssb_appendaddr(&so->so_rcv,
 	    (struct sockaddr *) addr, mdata, NULL) == 0) {
+		soroverflow(so);
 		lwkt_reltoken(&so->so_rcv.ssb_token);
 		TRAP_ERROR;
 		m_freem(mdata);
@@ -868,6 +869,7 @@ ngs_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	/* Try to tell the socket which hook it came in on */
 	lwkt_gettoken(&so->so_rcv.ssb_token);
 	if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *) addr, m, NULL) == 0) {
+		soroverflow(so);
 		lwkt_reltoken(&so->so_rcv.ssb_token);
 		m_freem(m);
 		TRAP_ERROR;

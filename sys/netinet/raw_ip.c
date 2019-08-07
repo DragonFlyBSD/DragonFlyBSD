@@ -172,10 +172,10 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 				if (ssb_appendaddr(&last->inp_socket->so_rcv,
 					    (struct sockaddr *)&ripsrc, n,
 					    opts) == 0) {
-					/* should notify about lost packet */
 					m_freem(n);
 					if (opts)
 					    m_freem(opts);
+					soroverflow(last->inp_socket);
 				} else {
 					sorwakeup(last->inp_socket);
 				}
@@ -199,6 +199,7 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 			m_freem(m);
 			if (opts)
 			    m_freem(opts);
+			soroverflow(last->inp_socket);
 		} else {
 			sorwakeup(last->inp_socket);
 		}
