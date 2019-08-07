@@ -171,7 +171,7 @@ wake_up_process(struct task_struct *tsk)
 static inline int
 signal_pending(struct task_struct *p)
 {
-	struct thread *t = container_of(p, struct thread, td_linux_task);
+	struct thread *t = p->dfly_td;
 
 	/* Some kernel threads do not have lwp, t->td_lwp can be NULL */
 	if (t->td_lwp == NULL)
@@ -183,7 +183,7 @@ signal_pending(struct task_struct *p)
 static inline int
 fatal_signal_pending(struct task_struct *p)
 {
-	struct thread *t = container_of(p, struct thread, td_linux_task);
+	struct thread *t = p->dfly_td;
 	sigset_t pending_set;
 
 	/* Some kernel threads do not have lwp, t->td_lwp can be NULL */

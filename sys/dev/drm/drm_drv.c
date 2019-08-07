@@ -980,6 +980,12 @@ drm_modevent(module_t mod, int type, void *data)
 	switch (type) {
 	case MOD_LOAD:
 		TUNABLE_INT_FETCH("drm.debug", &drm_debug);
+		linux_task_drop_callback = linux_task_drop;
+		linux_proc_drop_callback = linux_proc_drop;
+		break;
+	case MOD_UNLOAD:
+		linux_task_drop_callback = NULL;
+		linux_proc_drop_callback = NULL;
 		break;
 	}
 	return (0);

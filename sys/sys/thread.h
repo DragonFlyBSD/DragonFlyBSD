@@ -230,11 +230,6 @@ struct fdcache {
 
 #define NFDCACHE	4		/* max fd's cached by a thread */
 
-/* Linux task_struct, used by the drm subsystem */
-struct task_struct {
-	volatile long state;
-};
-
 /*
  * Thread structure.  Note that ownership of a thread structure is special
  * cased and there is no 'token'.  A thread is always owned by the cpu
@@ -299,7 +294,7 @@ struct thread {
     int		td_fairq_count;		/* fairq */
     struct globaldata *td_migrate_gd;	/* target gd for thread migration */
     struct fdcache    td_fdcache[NFDCACHE];
-    struct task_struct	td_linux_task;	/* Linux task identifier */
+    void	*td_linux_task;		/* drm/linux support */
 #ifdef DEBUG_CRIT_SECTIONS
 #define CRIT_DEBUG_ARRAY_SIZE   32
 #define CRIT_DEBUG_ARRAY_MASK   (CRIT_DEBUG_ARRAY_SIZE - 1)
@@ -420,6 +415,9 @@ struct thread {
 #define IN_CRITICAL_SECT(td)	((td)->td_critcount)
 
 #ifdef _KERNEL
+
+extern void (*linux_task_drop_callback)(struct thread *);
+extern void (*linux_proc_drop_callback)(struct proc *);
 
 /*
  * Global tokens

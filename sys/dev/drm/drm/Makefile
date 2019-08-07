@@ -45,6 +45,7 @@ SRCS	= \
 	drm_sysfs.c \
 	drm_vm.c \
 	drm_vma_manager.c \
+	linux_sched.c \
 	linux_async.c \
 	linux_compat.c \
 	linux_dma.c \

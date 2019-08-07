@@ -27,6 +27,21 @@
 #ifndef _ASM_CURRENT_H_
 #define _ASM_CURRENT_H_
 
-#define current	(&(curthread->td_linux_task))
+struct task_struct;
+struct mm_struct;
+struct thread;
+struct proc;
+
+struct task_struct *linux_task_alloc(struct thread *td);
+void linux_task_drop(struct thread *td);
+void linux_proc_drop(struct proc *p);
+void linux_mm_drop(struct mm_struct *mm);
+
+#define current	({						\
+	struct task_struct *__task;				\
+								\
+	if ((__task = curthread->td_linux_task) == NULL)	\
+		__task = linux_task_alloc(curthread);		\
+	__task; })
 
 #endif	/* _ASM_CURRENT_H_ */
