@@ -282,10 +282,4 @@ typedef	__ct_rune_t	__wint_t;	/* wint_t (see above) */
  */
 typedef	int		__nl_item;
 
-/* Clang already provides these types as built-ins, but only in c++ mode. */
-#if !defined(__clang__) || !defined(__cplusplus)
-typedef	__uint_least16_t	__char16_t;
-typedef	__uint_least32_t	__char32_t;
-#endif
-
 #endif /* !_SYS_TYPES_H_ */
