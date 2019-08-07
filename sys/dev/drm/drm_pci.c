@@ -260,6 +260,77 @@ int drm_irq_by_busid(struct drm_device *dev, void *data,
 }
 
 /**
+ * drm_get_pci_dev - Register a PCI device with the DRM subsystem
+ * @pdev: PCI device
+ * @ent: entry from the PCI ID table that matches @pdev
+ * @driver: DRM device driver
+ *
+ * Attempt to gets inter module "drm" information. If we are first
+ * then register the character device and inter module information.
+ * Try and register, if we fail to register, backout previous work.
+ *
+ * NOTE: This function is deprecated, please use drm_dev_alloc() and
+ * drm_dev_register() instead and remove your ->load() callback.
+ *
+ * Return: 0 on success or a negative error code on failure.
+ */
+int drm_get_pci_dev(struct pci_dev *pdev, const struct pci_device_id *ent,
+		    struct drm_driver *driver)
+{
+	struct drm_device *dev;
+	int ret;
+
+	DRM_DEBUG("\n");
+
+	dev = drm_dev_alloc(driver, &pdev->dev);
+	if (!dev)
+		return -ENOMEM;
+
+#if 0
+	ret = pci_enable_device(pdev);
+	if (ret)
+		goto err_free;
+#endif
+
+	dev->pdev = pdev;
+#ifdef __alpha__
+	dev->hose = pdev->sysdata;
+#endif
+
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		pci_set_drvdata(pdev, dev);
+
+#if 0
+	drm_pci_agp_init(dev);
+#endif
+
+	ret = drm_dev_register(dev, ent->driver_data);
+	if (ret)
+		goto err_agp;
+
+	DRM_INFO("Initialized %s %d.%d.%d %s for %s on minor %d\n",
+		 driver->name, driver->major, driver->minor, driver->patchlevel,
+		 driver->date, pci_name(pdev), dev->primary->index);
+
+	/* No locking needed since shadow-attach is single-threaded since it may
+	 * only be called from the per-driver module init hook. */
+	if (!drm_core_check_feature(dev, DRIVER_MODESET))
+		list_add_tail(&dev->legacy_dev_list, &driver->legacy_dev_list);
+
+	return 0;
+
+err_agp:
+#if 0
+	drm_pci_agp_destroy(dev);
+	pci_disable_device(pdev);
+err_free:
+	drm_dev_unref(dev);
+#endif
+	return ret;
+}
+EXPORT_SYMBOL(drm_get_pci_dev);
+
+/**
  * drm_pci_init - Register matching PCI devices with the DRM subsystem
  * @driver: DRM device driver
  * @pdriver: PCI device driver
