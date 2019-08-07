@@ -91,4 +91,26 @@ ida_simple_get(struct ida *ida, unsigned int start, unsigned int end, gfp_t gfp_
 	return id;
 }
 
+static inline void *
+idr_get_next(struct idr *idp, int *nextid)
+{
+	void *res = NULL;
+
+	lwkt_gettoken(&idp->idr_token);
+
+	for (int id = *nextid; id < idp->idr_count; id++) {
+		res = idr_find(idp, id);
+		if (res == NULL)
+			continue;
+		*nextid = id;
+		break;
+	}
+
+	lwkt_reltoken(&idp->idr_token);
+	return res;
+}
+
+#define idr_for_each_entry(idp, entry, id)			\
+	for (id = 0; ((entry) = idr_get_next(idp, &(id))) != NULL; ++id)
+
 #endif	/* _LINUX_IDR_H_ */
