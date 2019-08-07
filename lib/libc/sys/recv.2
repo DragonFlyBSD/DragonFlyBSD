@@ -28,7 +28,7 @@
 .\"     @(#)recv.2	8.3 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/recv.2,v 1.8.2.8 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd November 1, 2015
+.Dd August 7, 2019
 .Dt RECV 2
 .Os
 .Sh NAME
@@ -289,6 +289,8 @@ The calls fail if:
 The argument
 .Fa s
 is an invalid descriptor.
+.It Bq Er ENOBUFS
+A message was not delivered because it would have overflowed the buffer.
 .It Bq Er ENOTCONN
 The socket is associated with a connection-oriented protocol
 and has not been connected (see
