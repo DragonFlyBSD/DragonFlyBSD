@@ -638,8 +638,22 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 	}
 
 	if (ndopts.nd_opts_tgt_lladdr) {
+		struct ifnet *ifp_ll;
+
 		lladdr = (char *)(ndopts.nd_opts_tgt_lladdr + 1);
 		lladdrlen = ndopts.nd_opts_tgt_lladdr->nd_opt_len << 3;
+
+		if (lladdr && ((ifp->if_addrlen + 2 + 7) & ~7) != lladdrlen) {
+			nd6log((LOG_INFO, "nd6_na_input: lladdrlen mismatch "
+			    "for %s (if %d, NA packet %d)\n", ip6_sprintf(&taddr6),
+			    ifp->if_addrlen, lladdrlen - 2));
+			goto bad;
+		}
+
+		/* If it's from me, ignore it. */
+		ifp_ll = if_bylla(lladdr, ifp->if_addrlen);
+		if (ifp_ll != NULL)
+			goto freeit;
 	}
 
 	ifa = (struct ifaddr *)in6ifa_ifpwithaddr(ifp, &taddr6);
@@ -676,13 +690,6 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			    "NA packet from non-neighbor\n"));
 			goto bad;
 		}
-	}
-
-	if (lladdr && ((ifp->if_addrlen + 2 + 7) & ~7) != lladdrlen) {
-		nd6log((LOG_INFO, "nd6_na_input: lladdrlen mismatch for %s "
-		    "(if %d, NA packet %d)\n", ip6_sprintf(&taddr6),
-		    ifp->if_addrlen, lladdrlen - 2));
-		goto bad;
 	}
 
 	/*
