@@ -138,7 +138,7 @@ main(int argc, char *argv[])
 	logwtmp("~", "shutdown", "");
 #endif
 #ifdef SUPPORT_UTMPX
-	logwtmpx("~", "shutdown", "", INIT_PROCESS, 0);
+	logwtmpx("~", "shutdown", "", 0, INIT_PROCESS);
 #endif
 
 	/*
