@@ -945,6 +945,7 @@ struct ifnet *if_alloc(uint8_t);
 void	if_free(struct ifnet *);
 void	if_route(struct ifnet *, int flag, int fam);
 int	if_setlladdr(struct ifnet *, const u_char *, int);
+struct ifnet *if_bylla(const void *, unsigned char);
 void	if_unroute(struct ifnet *, int flag, int fam);
 void	if_up(struct ifnet *);
 /*void	ifinit(void);*/ /* declared in systm.h for main() */

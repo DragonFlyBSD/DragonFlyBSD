@@ -2815,6 +2815,31 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 	return (0);
 }
 
+
+/*
+ * Locate an interface based on a complete address.
+ */
+struct ifnet *
+if_bylla(const void *lla, unsigned char lla_len)
+{
+	const struct ifnet_array *arr;
+	struct ifnet *ifp;
+	struct sockaddr_dl *sdl;
+	int i;
+
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		ifp = arr->ifnet_arr[i];
+		if (ifp->if_addrlen != lla_len)
+			continue;
+
+		sdl = IF_LLSOCKADDR(ifp);
+		if (memcmp(lla, LLADDR(sdl), lla_len) == 0)
+			return (ifp);
+	}
+	return (NULL);
+}
+
 struct ifmultiaddr *
 ifmaof_ifpforaddr(struct sockaddr *sa, struct ifnet *ifp)
 {
