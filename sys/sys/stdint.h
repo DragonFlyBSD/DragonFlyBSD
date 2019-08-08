@@ -41,8 +41,6 @@ typedef	int		__wint_t;
 typedef	int		__rune_t;
 #define ___RUNE_T_DECLARED
 #endif
-typedef	void		*__wctrans_t;
-typedef	void		*__wctype_t;
 
 /*
  * mbstate_t is an opaque object to keep conversion state, during multibyte
