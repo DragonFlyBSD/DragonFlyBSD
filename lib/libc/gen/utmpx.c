@@ -355,6 +355,7 @@ _updwtmpx(const char *file, const struct utmpx *utx)
 {
 	int fd;
 	int saved_errno;
+	struct stat st;
 
 	_DIAGASSERT(file != NULL);
 	_DIAGASSERT(utx != NULL);
@@ -363,23 +364,29 @@ _updwtmpx(const char *file, const struct utmpx *utx)
 
 	if (fd == -1) {
 		if ((fd = open(file, O_CREAT|O_WRONLY|O_EXLOCK, 0644)) == -1)
-			return -1;
+			goto fail;
+	}
+	if (fstat(fd, &st) == -1)
+		goto failclose;
+	if (st.st_size == 0) {
+		/* new file, add signature record */
 		(void)memset(&ut, 0, sizeof(ut));
 		ut.ut_type = SIGNATURE;
 		(void)memcpy(ut.ut_user, vers, sizeof(vers));
 		if (write(fd, &ut, sizeof(ut)) == -1)
-			goto failed;
+			goto failclose;
 	}
 	if (write(fd, utx, sizeof(*utx)) == -1)
-		goto failed;
+		goto failclose;
 	if (close(fd) == -1)
 		return -1;
 	return 0;
 
-  failed:
+failclose:
 	saved_errno = errno;
 	(void) close(fd);
 	errno = saved_errno;
+fail:
 	return -1;
 }
 
