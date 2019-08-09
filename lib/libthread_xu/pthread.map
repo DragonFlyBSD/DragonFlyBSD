@@ -87,6 +87,7 @@ global:
 	_pthread_condattr_setpshared;
 	_pthread_create;
 	_pthread_detach;
+	_pthread_distribute_static_tls;
 	_pthread_equal;
 	_pthread_exit;
 	_pthread_getaffinity_np;

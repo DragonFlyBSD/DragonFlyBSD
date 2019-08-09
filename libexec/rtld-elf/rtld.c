@@ -85,6 +85,7 @@ static void digest_dynamic2(Obj_Entry *, const Elf_Dyn *, const Elf_Dyn *,
     const Elf_Dyn *);
 static void digest_dynamic(Obj_Entry *, int);
 static Obj_Entry *digest_phdr(const Elf_Phdr *, int, caddr_t, const char *);
+static void distribute_static_tls(Objlist *, RtldLockState *);
 static Obj_Entry *dlcheck(void *);
 static Obj_Entry *dlopen_object(const char *name, int fd, Obj_Entry *refobj,
     int lo_flags, int mode, RtldLockState *lockstate);
@@ -1209,8 +1210,8 @@ digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
 		    obj->textrel = true;
 		if (dynp->d_un.d_val & DF_BIND_NOW)
 		    obj->bind_now = true;
-		/*if (dynp->d_un.d_val & DF_STATIC_TLS)
-		    ;*/
+		if (dynp->d_un.d_val & DF_STATIC_TLS)
+		    obj->static_tls = true;
 	    break;
 
 	case DT_FLAGS_1:
@@ -3053,8 +3054,20 @@ dlopen_object(const char *name, int fd, Obj_Entry *refobj, int lo_flags,
 	    objlist_push_tail(&list_global, obj);
 	if (*old_obj_tail != NULL) {		/* We loaded something new. */
 	    assert(*old_obj_tail == obj);
-	    result = load_needed_objects(obj,
-		lo_flags & (RTLD_LO_DLOPEN | RTLD_LO_EARLY));
+	    if ((lo_flags & RTLD_LO_EARLY) == 0 && obj->static_tls &&
+		!allocate_tls_offset(obj)) {
+		    _rtld_error("%s: No space available "
+				"for static TLS",
+				obj->path);
+		    result = -1;
+	    } else {
+		    result = 0;
+	    }
+	    if (result == 0) {
+		result = load_needed_objects(
+			    obj,
+			    lo_flags & (RTLD_LO_DLOPEN | RTLD_LO_EARLY));
+	    }
 	    init_dag(obj);
 	    ref_dag(obj);
 	    if (result != -1)
@@ -3114,8 +3127,10 @@ dlopen_object(const char *name, int fd, Obj_Entry *refobj, int lo_flags,
 	name);
     GDB_STATE(RT_CONSISTENT,obj ? &obj->linkmap : NULL);
 
-    if (!(lo_flags & RTLD_LO_EARLY)) {
+    if ((lo_flags & RTLD_LO_EARLY) == 0) {
 	map_stacks_exec(lockstate);
+	if (obj)
+	    distribute_static_tls(&initlist, lockstate);
     }
 
     if (initlist_objects_ifunc(&initlist, (mode & RTLD_MODEMASK) == RTLD_NOW,
@@ -3166,12 +3181,17 @@ do_dlsym(void *handle, const char *name, void *retaddr, const Ver_Entry *ve,
     if (sigsetjmp(lockstate.env, 0) != 0)
 	    lock_upgrade(rtld_bind_lock, &lockstate);
     if (handle == NULL || handle == RTLD_NEXT ||
-	handle == RTLD_DEFAULT || handle == RTLD_SELF) {
+	handle == RTLD_DEFAULT || handle == RTLD_SELF ||
+	handle == RTLD_ALL) {
 
-	if ((obj = obj_from_addr(retaddr)) == NULL) {
-	    _rtld_error("Cannot determine caller's shared object");
-	    lock_release(rtld_bind_lock, &lockstate);
-	    return NULL;
+	if (handle != RTLD_ALL) {
+		if ((obj = obj_from_addr(retaddr)) == NULL) {
+		    _rtld_error("Cannot determine caller's shared object");
+		    lock_release(rtld_bind_lock, &lockstate);
+		    return NULL;
+		}
+	} else {
+		obj = obj_list;
 	}
 	if (handle == NULL) {	/* Just the caller's shared object. */
 	    res = symlook_obj(&req, obj);
@@ -3180,7 +3200,8 @@ do_dlsym(void *handle, const char *name, void *retaddr, const Ver_Entry *ve,
 		defobj = req.defobj_out;
 	    }
 	} else if (handle == RTLD_NEXT || /* Objects after caller's */
-		   handle == RTLD_SELF) { /* ... caller included */
+		   handle == RTLD_SELF || /* ... caller included */
+		   handle == RTLD_ALL) {  /* All Objects */
 	    if (handle == RTLD_NEXT)
 		obj = obj->next;
 	    for (; obj != NULL; obj = obj->next) {
@@ -4454,8 +4475,10 @@ allocate_tls(Obj_Entry *objs)
 	    addr = (Elf_Addr)tcb - obj->tlsoffset;
 	    memset((void *)(addr + obj->tlsinitsize),
 		   0, obj->tlssize - obj->tlsinitsize);
-	    if (obj->tlsinit)
+	    if (obj->tlsinit) {
 		memcpy((void*) addr, obj->tlsinit, obj->tlsinitsize);
+		obj->static_tls_copied = true;
+	    }
 	    dtv[obj->tlsindex + 1] = addr;
 	}
     }
@@ -4870,6 +4893,43 @@ map_stacks_exec(RtldLockState *lockstate)
 	 *     thr_map_stacks_exec();
 	 * }
 	 */
+}
+
+/*
+ * Only called after all primary shared libraries are loaded (EARLY is
+ * not set).  Resolves the static TLS distribution function at first-call.
+ * This is typically a weak libc symbol that is overrideen by the threading
+ * library.
+ */
+static void
+distribute_static_tls(Objlist *list, RtldLockState *lockstate)
+{
+	Objlist_Entry *elm;
+	Obj_Entry *obj;
+	static void (*dtlsfunc)(size_t, void *, size_t, size_t);
+
+	/*
+	 * First time, resolve "_pthread_distribute_static_tls".
+	 */
+	if (dtlsfunc == NULL) {
+		dtlsfunc = (void *)dlfunc(RTLD_ALL,
+					  "_pthread_distribute_static_tls");
+		if (dtlsfunc == NULL)
+			return;
+	}
+
+	/*
+	 * Initialize static TLS data for the object list using the callback
+	 * function (to either libc or pthreads).
+	 */
+	STAILQ_FOREACH(elm, list, link) {
+		obj = elm->obj;
+		if (/*obj->marker ||*/ !obj->tls_done || obj->static_tls_copied)
+			continue;
+		dtlsfunc(obj->tlsoffset, obj->tlsinit,
+			 obj->tlsinitsize, obj->tlssize);
+		obj->static_tls_copied = true;
+	}
 }
 
 void

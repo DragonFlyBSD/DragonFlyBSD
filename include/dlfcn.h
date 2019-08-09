@@ -62,6 +62,7 @@
 #define	RTLD_NEXT	((void *) -1)	/* Search subsequent objects. */
 #define	RTLD_DEFAULT	((void *) -2)	/* Use default search algorithm. */
 #define	RTLD_SELF	((void *) -3)	/* Search the caller itself. */
+#define	RTLD_ALL	((void *) -4)	/* Search everything. */
 
 #if __BSD_VISIBLE
 /*

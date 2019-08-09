@@ -35,6 +35,7 @@
 #ifndef _LIBC_PRIVATE_H_
 #define _LIBC_PRIVATE_H_
 
+#include <machine/types.h>
 #include <sys/_pthreadtypes.h>
 
 /*
@@ -106,6 +107,8 @@ void _nmalloc_thr_childfork(void);
 
 struct dl_phdr_info;
 int __elf_phdr_match_addr(struct dl_phdr_info *, void *);
+void __libc_distribute_static_tls(__size_t, void *, __size_t, __size_t);
+__uintptr_t __libc_static_tls_base(__size_t);
 
 /*
  * libc should use libc_dlopen internally, which respects a global

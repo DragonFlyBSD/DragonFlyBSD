@@ -254,6 +254,8 @@ typedef struct Struct_Obj_Entry {
     bool valid_hash_sysv : 1;	/* A valid System V hash hash tag is available */
     bool valid_hash_gnu : 1;	/* A valid GNU hash tag is available */
     bool relro_protected : 1;	/* relro section has been protected */
+    bool static_tls : 1;	/* Object wants to use static TLS space */
+    bool static_tls_copied : 1;	/* Object's static TLS space initialized */
 
     struct link_map linkmap;	/* For GDB and dlinfo() */
     Objlist dldags;		/* Object belongs to these dlopened DAGs (%) */
