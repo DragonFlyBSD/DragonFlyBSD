@@ -129,20 +129,4 @@ typedef __uint32_t	__socklen_t;
 typedef volatile int	__atomic_intr_t;
 typedef __int64_t	__rlim_t;
 
-/*
- * Its convenient to put these here rather then create another header file.
- */
-#if __GNUC_PREREQ__(4, 1)
-#define __offsetof(type, field) __builtin_offsetof(type, field)
-#else
-#ifndef __cplusplus
-#define __offsetof(type, field) ((__size_t)(&((type *)0)->field))
-#else
-#define __offsetof(type, field)					\
-	(__offsetof__ (reinterpret_cast <__size_t>		\
-		 (&reinterpret_cast <const volatile char &>	\
-		  (static_cast<type *> (0)->field))))
-#endif
-#endif
-
 #endif /* _CPU_STDINT_H_ */
