@@ -24,17 +24,14 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/power.h,v 1.3.6.1 2003/08/18 20:22:23 jhb Exp $
- *	$DragonFly: src/sys/sys/power.h,v 1.3 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_POWER_H_
 #define _SYS_POWER_H_
 
 #ifndef _KERNEL
-
 #error "This file should not be included by userland programs."
-
-#else
+#endif
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -73,6 +70,5 @@ extern void	power_profile_set_state(int);
 typedef void (*power_profile_change_hook)(void *, int);
 EVENTHANDLER_DECLARE(power_profile_change, power_profile_change_hook);
 
-#endif	/* _KERNEL */
 #endif	/* !_SYS_POWER_H_ */
 

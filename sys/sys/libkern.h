@@ -35,7 +35,7 @@
 
 #if !defined(_KERNEL)
 #error "This file should not be included by userland programs."
-#else
+#endif
 
 /*
  * Hacks to prevent conflicts with standard header files
@@ -183,5 +183,4 @@ strrchr(const char *p, int ch)
 #define	FNM_IGNORECASE	FNM_CASEFOLD
 #define	FNM_FILE_NAME	FNM_PATHNAME
 
-#endif	/* _KERNEL */
 #endif	/* !_SYS_LIBKERN_H_ */

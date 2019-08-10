@@ -13,10 +13,8 @@
 #define _SYS_THREAD2_H_
 
 #ifndef _KERNEL
-
 #error "This file should not be included by userland programs."
-
-#else
+#endif
 
 /*
  * Userland will have its own globaldata which it includes prior to this.
@@ -370,6 +368,4 @@ lwkt_need_ipiq_process(globaldata_t gd)
     return (ipiq->ip_rindex != ipiq->ip_windex);
 }
 
-#endif	/* _KERNEL */
 #endif	/* _SYS_THREAD2_H_ */
-

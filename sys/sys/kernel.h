@@ -47,7 +47,7 @@
 
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
-#else
+#endif
 
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
@@ -479,5 +479,4 @@ struct intr_config_hook {
 int	config_intrhook_establish (struct intr_config_hook *);
 void	config_intrhook_disestablish (struct intr_config_hook *);
 
-#endif	/* _KERNEL */
 #endif /* !_SYS_KERNEL_H_*/

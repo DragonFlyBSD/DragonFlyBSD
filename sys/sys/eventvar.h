@@ -24,17 +24,14 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/eventvar.h,v 1.1.2.2 2000/07/18 21:49:12 jlemon Exp $
- *	$DragonFly: src/sys/sys/eventvar.h,v 1.7 2007/01/15 01:26:56 dillon Exp $
  */
 
 #ifndef _SYS_EVENTVAR_H_
 #define _SYS_EVENTVAR_H_
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
-
 #error "This file should not be included by userland programs."
-
-#else
+#endif
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -72,5 +69,4 @@ struct kqueue {
 #define KQ_ASYNC	0x04
 #define KQ_REGWAIT	0x08
 
-#endif	/* _KERNEL */
 #endif	/* !_SYS_EVENTVAR_H_ */

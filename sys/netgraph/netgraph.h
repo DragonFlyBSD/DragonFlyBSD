@@ -60,10 +60,8 @@
 #endif
 
 #ifndef _KERNEL
-
 #error "This file should not be included in user level programs"
-
-#else
+#endif
 
 #define NG_ABI_VERSION NG_VERSION
 
@@ -356,6 +354,4 @@ void	ng_unname(node_p node);
 void	ng_unref(node_p node);
 int	ng_wait_node(node_p node, char *msg);
 
-#endif	/* _KERNEL */
 #endif	/* _NETGRAPH_NETGRAPH_H_ */
-

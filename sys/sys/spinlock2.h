@@ -34,10 +34,8 @@
 #define _SYS_SPINLOCK2_H_
 
 #ifndef _KERNEL
-
 #error "This file should not be included by userland programs."
-
-#else
+#endif
 
 #ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
@@ -304,6 +302,4 @@ spin_uninit(struct spinlock *spin)
 	/* unused */
 }
 
-#endif	/* _KERNEL */
 #endif	/* _SYS_SPINLOCK2_H_ */
-

@@ -8,10 +8,8 @@
 #define _SYS_MSGPORT2_H_
 
 #ifndef _KERNEL
-
 #error "This file should not be included by userland programs."
-
-#else
+#endif
 
 #include <sys/systm.h>
 
@@ -111,5 +109,4 @@ lwkt_setmsg_receipt(lwkt_msg_t msg, void (*receiptfn)(lwkt_msg_t, lwkt_port_t))
 	msg->ms_receiptfn = receiptfn;
 }
 
-#endif	/* _KERNEL */
 #endif	/* _SYS_MSGPORT2_H_ */

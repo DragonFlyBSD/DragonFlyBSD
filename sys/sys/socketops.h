@@ -29,18 +29,14 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/socketops.h,v 1.14 2008/10/27 02:56:30 sephe Exp $
  */
 
 #ifndef _SOCKETOPS_H_
 #define _SOCKETOPS_H_
 
 #ifndef _KERNEL
-
 #error "This file should not be included by userland programs."
-
-#else
+#endif
 
 #ifndef _SYS_PROTOSW_H_
 #include <sys/protosw.h>
@@ -132,5 +128,4 @@ so_pru_senda(struct socket *so, int flags, struct mbuf *m,
 	}
 }
 
-#endif	/* _KERNEL */
 #endif	/* _SYS_SOCKETOPS_H_ */

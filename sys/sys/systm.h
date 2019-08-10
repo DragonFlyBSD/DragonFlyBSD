@@ -40,7 +40,7 @@
 
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
-#else
+#endif
 
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
@@ -478,5 +478,4 @@ bitcount64(uint64_t x)
 	return (x);
 }
 
-#endif	/* _KERNEL */
 #endif /* !_SYS_SYSTM_H_ */
