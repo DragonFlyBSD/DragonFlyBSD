@@ -250,16 +250,12 @@ int
 hammer2_strategy_read(struct vop_strategy_args *ap)
 {
 	hammer2_xop_strategy_t *xop;
-	struct buf *bp;
 	struct bio *bio;
-	struct bio *nbio;
 	hammer2_inode_t *ip;
 	hammer2_key_t lbase;
 
 	bio = ap->a_bio;
-	bp = bio->bio_buf;
 	ip = VTOI(ap->a_vp);
-	nbio = push_bio(bio);
 
 	lbase = bio->bio_offset;
 	KKASSERT(((int)lbase & HAMMER2_PBUFMASK) == 0);
@@ -513,18 +509,16 @@ static void hammer2_write_bp(hammer2_chain_t *chain, char *data,
 
 int
 hammer2_strategy_write(struct vop_strategy_args *ap)
-{	
+{
 	hammer2_xop_strategy_t *xop;
 	hammer2_pfs_t *pmp;
 	struct bio *bio;
-	struct buf *bp;
 	hammer2_inode_t *ip;
-	
+
 	bio = ap->a_bio;
-	bp = bio->bio_buf;
 	ip = VTOI(ap->a_vp);
 	pmp = ip->pmp;
-	
+
 	atomic_set_int(&ip->flags, HAMMER2_INODE_DIRTYDATA);
 	hammer2_lwinprog_ref(pmp);
 	hammer2_trans_assert_strategy(pmp);
