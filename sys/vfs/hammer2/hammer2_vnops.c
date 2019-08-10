@@ -1001,7 +1001,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 						&lbase, NULL);
 		loff = (int)(uio->uio_offset - lbase);
 
-		KKASSERT(lblksize <= 65536);
+		KKASSERT(lblksize <= MAXBSIZE);
 
 		/*
 		 * Calculate bytes to copy this transfer and whether the
