@@ -1166,7 +1166,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 }
 
 /*
- * Truncate the size of a file.  The inode must not be locked.
+ * Truncate the size of a file.  The inode must be locked.
  *
  * We must unconditionally set HAMMER2_INODE_RESIZED to properly
  * ensure that any on-media data beyond the new file EOF has been destroyed.
@@ -1205,7 +1205,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 }
 
 /*
- * Extend the size of a file.  The inode must not be locked.
+ * Extend the size of a file.  The inode must be locked.
  *
  * Even though the file size is changing, we do not have to set the
  * INODE_RESIZED bit unless the file size crosses the EMBEDDED_BYTES
