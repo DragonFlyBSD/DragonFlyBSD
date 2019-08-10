@@ -260,7 +260,7 @@ dumpheader(struct ktr_header *kth)
 
 #include <sys/syscall.h>
 #define KTRACE
-#include <sys/kern/syscalls.c>
+#include <kern/syscalls.c>
 #undef KTRACE
 int nsyscalls = sizeof (syscallnames) / sizeof (syscallnames[0]);
 
