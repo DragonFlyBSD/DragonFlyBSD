@@ -625,10 +625,10 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		if (cookie_index == ncookies)
 			break;
 		if (hammer2_debug & 0x0020)
-		kprintf("cluster chain %p %p\n",
-			xop->head.cluster.focus,
-			(xop->head.cluster.focus ?
-			 xop->head.cluster.focus->data : (void *)-1));
+			kprintf("cluster chain %p %p\n",
+				xop->head.cluster.focus,
+				(xop->head.cluster.focus ?
+				 xop->head.cluster.focus->data : (void *)-1));
 		hammer2_cluster_bref(&xop->head.cluster, &bref);
 
 		if (bref.type == HAMMER2_BREF_TYPE_INODE) {
