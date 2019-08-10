@@ -38,6 +38,8 @@ static_cpu_has(uint16_t feature)
 	case X86_FEATURE_CLFLUSH:
 		/* All amd64 CPUs have the clflush instruction */
 		return true;
+	case X86_FEATURE_HYPERVISOR:
+		return ((cpu_feature2 & CPUID2_VMM) != 0);
 	default:
 		return false;
 	}
