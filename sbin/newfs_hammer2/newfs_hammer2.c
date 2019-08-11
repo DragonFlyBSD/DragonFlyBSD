@@ -340,8 +340,8 @@ void
 usage(void)
 {
 	fprintf(stderr,
-		"usage: newfs_hammer2 -L label [-f] [-b bootsize] "
-		"[-r redosize] [-V version] special ...\n"
+		"usage: newfs_hammer2 [-f] [-b bootsize] [-r redosize] "
+		"[-V version] [-L label ...] special\n"
 	);
 	exit(1);
 }
