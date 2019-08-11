@@ -142,8 +142,7 @@ main(int ac, char **av)
 				break;
 			}
 			if (NLabels >= MAXLABELS) {
-				errx(1,
-				     "Limit of %d local labels",
+				errx(1, "Limit of %d local labels",
 				     MAXLABELS - 1);
 			}
 			Label[NLabels++] = optarg;
@@ -298,8 +297,7 @@ main(int ac, char **av)
 	reserved_space = ((total_space + HAMMER2_FREEMAP_LEVEL1_MASK) /
 			  HAMMER2_FREEMAP_LEVEL1_SIZE) * HAMMER2_ZONE_SEG64;
 
-	free_space = total_space - reserved_space -
-		     BootAreaSize - AuxAreaSize;
+	free_space = total_space - reserved_space - BootAreaSize - AuxAreaSize;
 
 	format_hammer2(fd, total_space, free_space);
 	fsync(fd);
@@ -657,7 +655,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	rawip->meta.type = HAMMER2_OBJTYPE_DIRECTORY;
 	rawip->meta.mode = 0700;	/* super-root - root only */
 	rawip->meta.inum = 0;		/* super root inode, inumber 0 */
-	rawip->meta.nlinks = 2; 	/* directory link count compat */
+	rawip->meta.nlinks = 2;		/* directory link count compat */
 
 	rawip->meta.name_len = 0;	/* super-root is unnamed */
 	rawip->meta.name_key = 0;
@@ -702,7 +700,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	sroot_blockref.copyid = HAMMER2_COPYID_LOCAL;
 	sroot_blockref.keybits = 0;
 	sroot_blockref.check.xxhash64.value =
-					XXH64(rawip, sizeof(*rawip), XXH_HAMMER2_SEED);
+				XXH64(rawip, sizeof(*rawip), XXH_HAMMER2_SEED);
 	sroot_blockref.type = HAMMER2_BREF_TYPE_INODE;
 	sroot_blockref.methods = HAMMER2_ENC_CHECK(HAMMER2_CHECK_XXHASH64) |
 			         HAMMER2_ENC_COMP(HAMMER2_COMP_AUTOZERO);
