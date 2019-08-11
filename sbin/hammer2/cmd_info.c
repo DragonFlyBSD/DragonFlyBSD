@@ -226,10 +226,11 @@ h2disk_check(const char *devpath,
 	if (partinfo.fstype != FS_HAMMER2) {
 		uint32_t status;
 		uuid_t h2uuid;
+		int is_nil = uuid_is_nil(&partinfo.fstype_uuid, NULL);
 
 		uuid_from_string(HAMMER2_UUID_STRING, &h2uuid, &status);
-		if (status != uuid_s_ok ||
-		    uuid_compare(&partinfo.fstype_uuid, &h2uuid, NULL) != 0) {
+		if (!is_nil && (status != uuid_s_ok ||
+		    uuid_compare(&partinfo.fstype_uuid, &h2uuid, NULL) != 0)) {
 			goto done;
 		}
 	}
