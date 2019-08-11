@@ -87,8 +87,6 @@ static hammer2_off_t BootAreaSize;
 static hammer2_off_t AuxAreaSize;
 static int NLabels;
 
-#define GIG	((hammer2_off_t)1024*1024*1024)
-
 int
 main(int ac, char **av)
 {
