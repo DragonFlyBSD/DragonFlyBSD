@@ -271,39 +271,36 @@ h2pfs_check(int fd, hammer2_blockref_t *bref,
 	int bcount;
 	int i;
 	size_t bytes;
+	size_t io_bytes;
+	size_t boff;
 	uint32_t cv;
 	uint64_t cv64;
+	hammer2_off_t io_off;
+	hammer2_off_t io_base;
 
 	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 
-	{
-		hammer2_off_t io_off;
-		hammer2_off_t io_base;
-		size_t io_bytes;
-		size_t boff;
+	io_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
+	io_base = io_off & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
+	io_bytes = bytes;
+	boff = io_off - io_base;
 
-		io_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
-		io_base = io_off & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
-		io_bytes = bytes;
-		boff = io_off - io_base;
+	io_bytes = HAMMER2_MINIOSIZE;
+	while (io_bytes + boff < bytes)
+		io_bytes <<= 1;
 
-		io_bytes = HAMMER2_MINIOSIZE;
-		while (io_bytes + boff < bytes)
-			io_bytes <<= 1;
-
-		if (io_bytes > sizeof(media)) {
-			printf("(bad block size %zd)\n", bytes);
+	if (io_bytes > sizeof(media)) {
+		printf("(bad block size %zd)\n", bytes);
+		return;
+	}
+	if (bref->type != HAMMER2_BREF_TYPE_DATA) {
+		lseek(fd, io_base, 0);
+		if (read(fd, &media, io_bytes) != (ssize_t)io_bytes) {
+			printf("(media read failed)\n");
 			return;
 		}
-		if (bref->type != HAMMER2_BREF_TYPE_DATA) {
-			lseek(fd, io_base, 0);
-			if (read(fd, &media, io_bytes) != (ssize_t)io_bytes) {
-				printf("(media read failed)\n");
-				return;
-			}
-			if (boff)
-				bcopy((char *)&media + boff, &media, bytes);
-		}
+		if (boff)
+			bcopy((char *)&media + boff, &media, bytes);
 	}
 
 	bscan = NULL;
