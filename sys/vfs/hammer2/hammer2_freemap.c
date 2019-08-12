@@ -68,13 +68,6 @@ static int hammer2_freemap_iterate(hammer2_chain_t **parentp,
 			hammer2_chain_t **chainp,
 			hammer2_fiterate_t *iter);
 
-static __inline
-int
-hammer2_freemapradix(int radix)
-{
-	return(radix);
-}
-
 /*
  * Calculate the device offset for the specified FREEMAP_NODE or FREEMAP_LEAF
  * bref.  Return a combined media offset and physical size radix.  Freemap
