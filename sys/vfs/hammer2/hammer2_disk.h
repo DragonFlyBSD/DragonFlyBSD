@@ -385,6 +385,15 @@
 					 sizeof(hammer2_bmap_data_t))
 
 /*
+ * XXX I made a mistake and made the reserved area begin at each LEVEL1 zone,
+ *     which is on a 1GB demark.  This will eat a little more space but for
+ *     now we retain compatibility and make FMZONEBASE every 1GB
+ */
+#define H2FMZONEBASE(key)	((key) & ~HAMMER2_FREEMAP_LEVEL1_MASK)
+#define H2FMBASE(key, radix)	((key) & ~(((hammer2_off_t)1 << (radix)) - 1))
+#define H2FMSHIFT(radix)	((hammer2_off_t)1 << (radix))
+
+/*
  * 16KB bitmap granularity (x2 bits per entry).
  */
 #define HAMMER2_FREEMAP_BLOCK_RADIX	14

@@ -74,21 +74,10 @@ static int hammer2_freemap_iterate(hammer2_chain_t **parentp,
  * chains use fixed storage offsets in the 4MB reserved area at the
  * beginning of each 2GB zone
  *
- * XXX I made a mistake and made the reserved area begin at each LEVEL1 zone,
- *     which is on a 1GB demark.  This will eat a little more space but for
- *     now we retain compatibility and make FMZONEBASE every 1GB
- *
- *     (see same thing in hammer2_bulkfree.c near the top, as well as in
- *     newfs_hammer2).
- *
  * Rotate between four possibilities.  Theoretically this means we have three
  * good freemaps in case of a crash which we can use as a base for the fixup
  * scan at mount-time.
  */
-#define H2FMZONEBASE(key)	((key) & ~HAMMER2_FREEMAP_LEVEL1_MASK)
-#define H2FMBASE(key, radix)	((key) & ~(((hammer2_off_t)1 << (radix)) - 1))
-#define H2FMSHIFT(radix)	((hammer2_off_t)1 << (radix))
-
 static
 int
 hammer2_freemap_reserve(hammer2_chain_t *chain, int radix)
