@@ -121,8 +121,7 @@ hammer2_freemap_reserve(hammer2_chain_t *chain, int radix)
 		index = 0;
 	} else {
 		off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX &
-		      (((hammer2_off_t)1 <<
-			HAMMER2_FREEMAP_LEVEL1_RADIX) - 1);
+		      (HAMMER2_FREEMAP_LEVEL1_SIZE - 1);
 		off = off / HAMMER2_PBUFSIZE;
 		KKASSERT(off >= HAMMER2_ZONE_FREEMAP_00 &&
 			 off < HAMMER2_ZONE_FREEMAP_END);
