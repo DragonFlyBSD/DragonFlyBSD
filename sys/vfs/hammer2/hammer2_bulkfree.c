@@ -616,7 +616,7 @@ cbinfo_bmap_init(hammer2_bulkfree_info_t *cbinfo, size_t size)
 			bmap->avail = 0;
 			bmap->linear = HAMMER2_SEGSIZE;
 		} else {
-			bmap->avail = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL0_RADIX);
+			bmap->avail = HAMMER2_FREEMAP_LEVEL0_SIZE;
 		}
 		size -= sizeof(*bmap);
 		key += HAMMER2_FREEMAP_LEVEL0_SIZE;

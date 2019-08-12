@@ -331,8 +331,8 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 	 * when necessary by hammer2_chain_create().
 	 */
 	key = H2FMBASE(iter->bnext, HAMMER2_FREEMAP_LEVEL1_RADIX);
-	l0size = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL0_RADIX);
-	l1size = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
+	l0size = HAMMER2_FREEMAP_LEVEL0_SIZE;
+	l1size = HAMMER2_FREEMAP_LEVEL1_SIZE;
 	l1mask = l1size - 1;
 
 	chain = hammer2_chain_lookup(parentp, &key_dummy, key, key + l1mask,
@@ -844,7 +844,7 @@ hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
 	/*
 	 * LEVEL1 is 1GB, there are two level1 1GB freemaps per 2GB zone.
 	 */
-	l1size = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
+	l1size = HAMMER2_FREEMAP_LEVEL1_SIZE;
 
 	/*
 	 * Calculate the portion of the 1GB map that should be initialized
@@ -878,7 +878,7 @@ hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
 	 * (3) Ensure that any trailing space at the end-of-volume is marked
 	 *     allocated.
 	 */
-	hikey = key + H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
+	hikey = key + HAMMER2_FREEMAP_LEVEL1_SIZE;
 	if (hikey > hmp->voldata.volu_size) {
 		hikey = hmp->voldata.volu_size & ~HAMMER2_SEGMASK64;
 	}
@@ -886,8 +886,7 @@ hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
 	/*
 	 * Heuristic highest possible value
 	 */
-	chain->bref.check.freemap.avail =
-		H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
+	chain->bref.check.freemap.avail = HAMMER2_FREEMAP_LEVEL1_SIZE;
 	bmap = &chain->data->bmdata[0];
 
 	/*
@@ -900,11 +899,11 @@ hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
 			bmap->avail = 0;
 			bmap->linear = HAMMER2_SEGSIZE;
 			chain->bref.check.freemap.avail -=
-				H2FMSHIFT(HAMMER2_FREEMAP_LEVEL0_RADIX);
+				HAMMER2_FREEMAP_LEVEL0_SIZE;
 		} else {
-			bmap->avail = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL0_RADIX);
+			bmap->avail = HAMMER2_FREEMAP_LEVEL0_SIZE;
 		}
-		key += H2FMSHIFT(HAMMER2_FREEMAP_LEVEL0_RADIX);
+		key += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		++bmap;
 	}
 }
@@ -927,8 +926,8 @@ hammer2_freemap_iterate(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 {
 	hammer2_dev_t *hmp = (*parentp)->hmp;
 
-	iter->bnext &= ~(H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX) - 1);
-	iter->bnext += H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
+	iter->bnext &= ~(HAMMER2_FREEMAP_LEVEL1_SIZE - 1);
+	iter->bnext += HAMMER2_FREEMAP_LEVEL1_SIZE;
 	if (iter->bnext >= hmp->voldata.volu_size) {
 		iter->bnext = 0;
 		if (++iter->loops >= 2) {
@@ -1011,8 +1010,8 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	 * Lookup the level1 freemap chain.  The chain must exist.
 	 */
 	key = H2FMBASE(data_off, HAMMER2_FREEMAP_LEVEL1_RADIX);
-	l0size = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL0_RADIX);
-	l1size = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
+	l0size = HAMMER2_FREEMAP_LEVEL0_SIZE;
+	l1size = HAMMER2_FREEMAP_LEVEL1_SIZE;
 	l1mask = l1size - 1;
 
 	parent = &hmp->fchain;
