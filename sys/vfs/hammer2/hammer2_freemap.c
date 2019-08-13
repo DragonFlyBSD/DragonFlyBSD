@@ -103,7 +103,7 @@ hammer2_freemap_reserve(hammer2_chain_t *chain, int radix)
 		index = 0;
 	} else {
 		off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX &
-		      (HAMMER2_FREEMAP_LEVEL1_SIZE - 1);
+		      HAMMER2_FREEMAP_LEVEL1_MASK;
 		off = off / HAMMER2_PBUFSIZE;
 		KKASSERT(off >= HAMMER2_ZONE_FREEMAP_00 &&
 			 off < HAMMER2_ZONE_FREEMAP_END);
@@ -926,7 +926,7 @@ hammer2_freemap_iterate(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 {
 	hammer2_dev_t *hmp = (*parentp)->hmp;
 
-	iter->bnext &= ~(HAMMER2_FREEMAP_LEVEL1_SIZE - 1);
+	iter->bnext &= ~HAMMER2_FREEMAP_LEVEL1_MASK;
 	iter->bnext += HAMMER2_FREEMAP_LEVEL1_SIZE;
 	if (iter->bnext >= hmp->voldata.volu_size) {
 		iter->bnext = 0;
