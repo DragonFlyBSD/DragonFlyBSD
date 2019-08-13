@@ -44,8 +44,7 @@
 
 #include <net/raw_cb.h>
 
-
-static struct lwkt_token raw_token = LWKT_TOKEN_INITIALIZER(raw_token);
+struct lock raw_lock = LOCK_INITIALIZER("rawlk", 0, 0);
 
 /*
  * Initialize raw connection block q.
@@ -77,9 +76,9 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 	struct mbuf *m = m0;
 	struct socket *last;
 
-	lwkt_gettoken(&raw_token);
-
+	lockmgr(&raw_lock, LK_SHARED);
 	last = NULL;
+
 	LIST_FOREACH(rp, &rawcb_list, list) {
 		if (rp == skip)
 			continue;
@@ -129,7 +128,7 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 	} else {
 		m_freem(m);
 	}
-	lwkt_reltoken(&raw_token);
+	lockmgr(&raw_lock, LK_RELEASE);
 }
 
 /*

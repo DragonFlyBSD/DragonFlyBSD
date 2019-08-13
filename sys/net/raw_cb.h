@@ -69,6 +69,7 @@ struct rawcb {
 
 #ifdef _KERNEL
 extern LIST_HEAD(rawcb_list_head, rawcb) rawcb_list;
+extern struct lock raw_lock;
 
 union netmsg;
 
