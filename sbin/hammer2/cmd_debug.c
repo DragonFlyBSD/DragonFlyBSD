@@ -417,7 +417,8 @@ cmd_show(const char *devpath, int dofreemap)
 	bzero(&best, sizeof(best));
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		bzero(&broot, sizeof(broot));
-		broot.type = HAMMER2_BREF_TYPE_VOLUME;
+		broot.type = dofreemap ?
+		    HAMMER2_BREF_TYPE_FREEMAP : HAMMER2_BREF_TYPE_VOLUME;
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) |
 				 HAMMER2_PBUFRADIX;
 		lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX, 0);
@@ -751,13 +752,16 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		printf("mirror_tid=%016jx freemap_tid=%016jx ",
 			media.voldata.mirror_tid,
 			media.voldata.freemap_tid);
-		if (dofreemap) {
-			bscan = &media.voldata.freemap_blockset.blockref[0];
-			bcount = HAMMER2_SET_COUNT;
-		} else {
-			bscan = &media.voldata.sroot_blockset.blockref[0];
-			bcount = HAMMER2_SET_COUNT;
-		}
+		bscan = &media.voldata.sroot_blockset.blockref[0];
+		bcount = HAMMER2_SET_COUNT;
+		printf("{\n");
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		printf("mirror_tid=%016jx freemap_tid=%016jx ",
+			media.voldata.mirror_tid,
+			media.voldata.freemap_tid);
+		bscan = &media.voldata.freemap_blockset.blockref[0];
+		bcount = HAMMER2_SET_COUNT;
 		printf("{\n");
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
