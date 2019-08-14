@@ -616,6 +616,37 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	}
 
 	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		if (!(media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
+			bscan = &media.ipdata.u.blockset.blockref[0];
+			bcount = HAMMER2_SET_COUNT;
+		}
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		bscan = &media.npdata[0];
+		bcount = bytes / sizeof(hammer2_blockref_t);
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		bscan = &media.voldata.sroot_blockset.blockref[0];
+		bcount = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		bscan = &media.voldata.freemap_blockset.blockref[0];
+		bcount = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		bscan = &media.npdata[0];
+		bcount = bytes / sizeof(hammer2_blockref_t);
+		break;
+	}
+
+	if (QuietOpt > 0) {
+		obrace = 0;
+		printf("\n");
+		goto skip_data;
+	}
+
+	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
 		obrace = 0;
 		break;
@@ -639,10 +670,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		printf("{\n");
-		if (!(media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
-			bscan = &media.ipdata.u.blockset.blockref[0];
-			bcount = HAMMER2_SET_COUNT;
-		}
 		namelen = media.ipdata.meta.name_len;
 		if (namelen > HAMMER2_INODE_MAXNAME)
 			namelen = 0;
@@ -731,8 +758,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			  (uintmax_t)bref->embed.stats.inode_count);
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		bscan = &media.npdata[0];
-		bcount = bytes / sizeof(hammer2_blockref_t);
 		didnl = 1;
 		printf("{\n");
 		tabprintf(tab, "count %d\n", bcount);
@@ -752,16 +777,12 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		printf("mirror_tid=%016jx freemap_tid=%016jx ",
 			media.voldata.mirror_tid,
 			media.voldata.freemap_tid);
-		bscan = &media.voldata.sroot_blockset.blockref[0];
-		bcount = HAMMER2_SET_COUNT;
 		printf("{\n");
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP:
 		printf("mirror_tid=%016jx freemap_tid=%016jx ",
 			media.voldata.mirror_tid,
 			media.voldata.freemap_tid);
-		bscan = &media.voldata.freemap_blockset.blockref[0];
-		bcount = HAMMER2_SET_COUNT;
 		printf("{\n");
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
@@ -806,8 +827,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		printf("{\n");
-		bscan = &media.npdata[0];
-		bcount = bytes / sizeof(hammer2_blockref_t);
 		tabprintf(tab, "count %d\n", bcount);
 		break;
 	default:
@@ -818,6 +837,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	if (str)
 		free(str);
 
+skip_data:
 	/*
 	 * Recurse if norecurse == 0.  If the CRC failed, pass norecurse = 1.
 	 * That is, if an indirect or inode fails we still try to list its
