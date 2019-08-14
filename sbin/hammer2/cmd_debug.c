@@ -452,6 +452,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 {
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
+	hammer2_off_t tmp;
 	int bcount;
 	int i;
 	int namelen;
@@ -777,6 +778,14 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		printf("{\n");
+		tmp = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
+		tmp &= HAMMER2_SEGMASK;
+		tmp /= HAMMER2_PBUFSIZE;
+		assert(tmp < HAMMER2_ZONE_FREEMAP_END);
+		tmp -= HAMMER2_ZONE_FREEMAP_00;
+		tmp /= HAMMER2_ZONE_FREEMAP_INC;
+		tabprintf(tab, "rotation=%d\n", (int)tmp);
+
 		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
 			hammer2_off_t data_off = bref->key +
 				i * 256 * HAMMER2_FREEMAP_BLOCK_SIZE;
@@ -807,6 +816,13 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		printf("{\n");
+		tmp = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
+		tmp &= HAMMER2_SEGMASK;
+		tmp /= HAMMER2_PBUFSIZE;
+		assert(tmp < HAMMER2_ZONE_FREEMAP_END);
+		tmp -= HAMMER2_ZONE_FREEMAP_00;
+		tmp /= HAMMER2_ZONE_FREEMAP_INC;
+		tabprintf(tab, "rotation=%d\n", (int)tmp);
 		break;
 	default:
 		printf("\n");
