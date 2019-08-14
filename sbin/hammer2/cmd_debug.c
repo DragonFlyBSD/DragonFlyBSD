@@ -379,8 +379,8 @@ static void show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			int dofreemap, int norecurse);
 static void tabprintf(int tab, const char *ctl, ...);
 
-int64_t TotalFreeAccum16;
-int64_t TotalFreeAccum64;
+static int64_t TotalFreeAccum16;
+static int64_t TotalFreeAccum64;
 
 int
 cmd_show(const char *devpath, int dofreemap)
@@ -419,8 +419,7 @@ cmd_show(const char *devpath, int dofreemap)
 		bzero(&broot, sizeof(broot));
 		broot.type = dofreemap ?
 		    HAMMER2_BREF_TYPE_FREEMAP : HAMMER2_BREF_TYPE_VOLUME;
-		broot.data_off = (i * HAMMER2_ZONE_BYTES64) |
-				 HAMMER2_PBUFRADIX;
+		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
 		lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX, 0);
 		if (read(fd, &media, HAMMER2_PBUFSIZE) ==
 		    (ssize_t)HAMMER2_PBUFSIZE) {
@@ -430,7 +429,8 @@ cmd_show(const char *devpath, int dofreemap)
 				best = broot;
 			}
 			if (VerboseOpt >= 3)
-				show_bref(&media.voldata, fd, 0, i, &broot, dofreemap, 0);
+				show_bref(&media.voldata, fd, 0, i, &broot,
+				    dofreemap, 0);
 		}
 	}
 	if (VerboseOpt < 3)
@@ -446,7 +446,6 @@ cmd_show(const char *devpath, int dofreemap)
 	return 0;
 }
 
-extern uint32_t iscsi_crc32(const void *buf, size_t size);
 static void
 show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	  int bi, hammer2_blockref_t *bref, int dofreemap, int norecurse)
@@ -501,10 +500,10 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	tabprintf(tab,
 		  "%s.%-3d %016jx %016jx/%-2d "
 		  "mir=%016jx mod=%016jx leafcnt=%d ",
-	       type_str, bi, (intmax_t)bref->data_off,
-	       (intmax_t)bref->key, (intmax_t)bref->keybits,
-	       (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid,
-	       bref->leaf_count);
+		  type_str, bi, (intmax_t)bref->data_off,
+		  (intmax_t)bref->key, (intmax_t)bref->keybits,
+		  (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid,
+		  bref->leaf_count);
 	tab += show_tab;
 	if (bref->flags)
 		printf("flags=%02x ", bref->flags);
@@ -664,7 +663,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 				media.buf);
 		}
 		tabprintf(tab, "inum 0x%016jx\n",
-			(uintmax_t)bref->embed.dirent.inum);
+			  (uintmax_t)bref->embed.dirent.inum);
 		tabprintf(tab, "type     %s\n",
 			  hammer2_iptype_to_str(bref->embed.dirent.type));
 		break;
@@ -763,15 +762,8 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		tabprintf(tab, "count %d\n", bcount);
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
-#if 0
-		if (VerboseOpt >= 2) {
-			printf("{\n");
-		} else
-#endif
-		{
-			printf("\n");
-			obrace = 0;
-		}
+		printf("\n");
+		obrace = 0;
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		printf("mirror_tid=%016jx freemap_tid=%016jx ",
@@ -788,25 +780,15 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		printf("{\n");
 		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
-			hammer2_off_t data_off;
-
-			data_off = bref->key +
-				   i * 256 * HAMMER2_FREEMAP_BLOCK_SIZE;
-			/*
-			if (media.bmdata[i].class == 0 &&
-			    media.bmdata[i].avail == 0) {
-				continue;
-			}
-			*/
+			hammer2_off_t data_off = bref->key +
+				i * 256 * HAMMER2_FREEMAP_BLOCK_SIZE;
 #if HAMMER2_BMAP_ELEMENTS != 8
 #error "cmd_debug.c: HAMMER2_BMAP_ELEMENTS expected to be 8"
 #endif
-
 			tabprintf(tab + 4, "%016jx %04d.%04x (avail=%7d) "
 				  "%016jx %016jx %016jx %016jx "
 				  "%016jx %016jx %016jx %016jx\n",
-				  data_off,
-				  i, media.bmdata[i].class,
+				  data_off, i, media.bmdata[i].class,
 				  media.bmdata[i].avail,
 				  media.bmdata[i].bitmapq[0],
 				  media.bmdata[i].bitmapq[1],
@@ -850,16 +832,16 @@ skip_data:
 				printf("\n");
 				didnl = 1;
 			}
-			show_bref(voldata, fd, tab,
-				  i, &bscan[i], dofreemap, failed);
+			show_bref(voldata, fd, tab, i, &bscan[i], dofreemap,
+				  failed);
 		}
 	}
 	tab -= show_tab;
 	if (obrace) {
 		if (bref->type == HAMMER2_BREF_TYPE_INODE)
 			tabprintf(tab, "} (%s.%d, \"%*.*s\")\n",
-				  type_str, bi,
-				  namelen, namelen, media.ipdata.filename);
+				  type_str, bi, namelen, namelen,
+				  media.ipdata.filename);
 		else
 			tabprintf(tab, "} (%s.%d)\n", type_str,bi);
 	}
