@@ -463,55 +463,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	uint32_t cv;
 	uint64_t cv64;
 
-	switch(bref->type) {
-	case HAMMER2_BREF_TYPE_EMPTY:
-		type_str = "empty";
-		break;
-	case HAMMER2_BREF_TYPE_DIRENT:
-		type_str = "dirent";
-		break;
-	case HAMMER2_BREF_TYPE_INODE:
-		type_str = "inode";
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		type_str = "indblk";
-		break;
-	case HAMMER2_BREF_TYPE_DATA:
-		type_str = "data";
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		type_str = "volume";
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		type_str = "freemap";
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		type_str = "fmapnode";
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		type_str = "fbitmap";
-		break;
-	default:
-		type_str = "unknown";
-		break;
-	}
-
-	tabprintf(tab,
-		  "%s.%-3d %016jx %016jx/%-2d "
-		  "mir=%016jx mod=%016jx leafcnt=%d ",
-		  type_str, bi, (intmax_t)bref->data_off,
-		  (intmax_t)bref->key, (intmax_t)bref->keybits,
-		  (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid,
-		  bref->leaf_count);
-	tab += show_tab;
-	if (bref->flags)
-		printf("flags=%02x ", bref->flags);
-	if (bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
-	    bref->type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
-		printf("bigmask=%08x avail=%ld ",
-			bref->check.freemap.bigmask, bref->check.freemap.avail);
-	}
-
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
 		bytes = (size_t)1 << bytes;
@@ -548,6 +499,80 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	bcount = 0;
 	namelen = 0;
 	failed = 0;
+
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_EMPTY:
+		type_str = "empty";
+		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		type_str = "dirent";
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		type_str = "inode";
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		type_str = "indblk";
+		break;
+	case HAMMER2_BREF_TYPE_DATA:
+		type_str = "data";
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		type_str = "volume";
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		type_str = "freemap";
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		type_str = "fmapnode";
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		type_str = "fbitmap";
+		break;
+	default:
+		type_str = "unknown";
+		break;
+	}
+
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		if (!(media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
+			bscan = &media.ipdata.u.blockset.blockref[0];
+			bcount = HAMMER2_SET_COUNT;
+		}
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		bscan = &media.npdata[0];
+		bcount = bytes / sizeof(hammer2_blockref_t);
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		bscan = &media.voldata.sroot_blockset.blockref[0];
+		bcount = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		bscan = &media.voldata.freemap_blockset.blockref[0];
+		bcount = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		bscan = &media.npdata[0];
+		bcount = bytes / sizeof(hammer2_blockref_t);
+		break;
+	}
+
+	tabprintf(tab,
+		  "%s.%-3d %016jx %016jx/%-2d "
+		  "mir=%016jx mod=%016jx leafcnt=%d ",
+		  type_str, bi, (intmax_t)bref->data_off,
+		  (intmax_t)bref->key, (intmax_t)bref->keybits,
+		  (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid,
+		  bref->leaf_count);
+	tab += show_tab;
+	if (bref->flags)
+		printf("flags=%02x ", bref->flags);
+	if (bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
+	    bref->type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
+		printf("bigmask=%08x avail=%ld ",
+			bref->check.freemap.bigmask, bref->check.freemap.avail);
+	}
 
 	/*
 	 * Check data integrity in verbose mode, otherwise we are just doing
@@ -610,31 +635,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			}
 			break;
 		}
-	}
-
-	switch(bref->type) {
-	case HAMMER2_BREF_TYPE_INODE:
-		if (!(media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
-			bscan = &media.ipdata.u.blockset.blockref[0];
-			bcount = HAMMER2_SET_COUNT;
-		}
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		bscan = &media.npdata[0];
-		bcount = bytes / sizeof(hammer2_blockref_t);
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		bscan = &media.voldata.sroot_blockset.blockref[0];
-		bcount = HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		bscan = &media.voldata.freemap_blockset.blockref[0];
-		bcount = HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		bscan = &media.npdata[0];
-		bcount = bytes / sizeof(hammer2_blockref_t);
-		break;
 	}
 
 	if (QuietOpt > 0) {
