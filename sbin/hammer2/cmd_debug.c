@@ -566,6 +566,8 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		  (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid,
 		  bref->leaf_count);
 	tab += show_tab;
+	if (bcount)
+		printf("bcnt=%d ", bcount);
 	if (bref->flags)
 		printf("flags=%02x ", bref->flags);
 	if (bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
@@ -756,7 +758,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		printf("{\n");
-		tabprintf(tab, "count %d\n", bcount);
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 		printf("\n");
@@ -806,7 +807,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		printf("{\n");
-		tabprintf(tab, "count %d\n", bcount);
 		break;
 	default:
 		printf("\n");
