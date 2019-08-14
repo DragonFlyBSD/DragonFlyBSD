@@ -454,7 +454,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	hammer2_blockref_t *bscan;
 	int bcount;
 	int i;
-	int didnl;
 	int namelen;
 	int obrace = 1;
 	int failed;
@@ -547,7 +546,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 
 	bscan = NULL;
 	bcount = 0;
-	didnl = 1;
 	namelen = 0;
 	failed = 0;
 
@@ -757,7 +755,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			  (uintmax_t)bref->embed.stats.inode_count);
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		didnl = 1;
 		printf("{\n");
 		tabprintf(tab, "count %d\n", bcount);
 		break;
@@ -828,10 +825,6 @@ skip_data:
 	 */
 	for (i = 0; norecurse == 0 && i < bcount; ++i) {
 		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY) {
-			if (didnl == 0) {
-				printf("\n");
-				didnl = 1;
-			}
 			show_bref(voldata, fd, tab, i, &bscan[i], dofreemap,
 				  failed);
 		}
