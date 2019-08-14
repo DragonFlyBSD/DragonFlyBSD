@@ -43,8 +43,12 @@
 #include <sys/msgport2.h>
 
 #include <net/raw_cb.h>
+#include <net/netisr2.h>
 
-struct lock raw_lock = LOCK_INITIALIZER("rawlk", 0, 0);
+/*
+ * Except from the raw_init(), rest of interfaces must be called
+ * from netisr0.
+ */
 
 /*
  * Initialize raw connection block q.
@@ -76,7 +80,8 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 	struct mbuf *m = m0;
 	struct socket *last;
 
-	lockmgr(&raw_lock, LK_SHARED);
+	ASSERT_NETISR0;
+
 	last = NULL;
 
 	LIST_FOREACH(rp, &rawcb_list, list) {
@@ -128,7 +133,6 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 	} else {
 		m_freem(m);
 	}
-	lockmgr(&raw_lock, LK_RELEASE);
 }
 
 /*
@@ -138,6 +142,8 @@ void
 raw_ctlinput(netmsg_t msg)
 {
 	int error = 0;
+
+	ASSERT_NETISR0;
 
 	if (msg->ctlinput.nm_cmd < 0 || msg->ctlinput.nm_cmd > PRC_NCMDS) {
 		; /* no-op */
@@ -154,6 +160,8 @@ raw_uabort(netmsg_t msg)
 {
 	struct rawcb *rp = sotorawcb(msg->base.nm_so);
 	int error;
+
+	ASSERT_NETISR0;
 
 	if (rp) {
 		raw_disconnect(rp);
@@ -176,6 +184,8 @@ raw_uattach(netmsg_t msg)
 	struct rawcb *rp;
 	int error;
 
+	ASSERT_NETISR0;
+
 	rp = sotorawcb(so);
 	if (rp) {
 		error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY);
@@ -190,12 +200,14 @@ raw_uattach(netmsg_t msg)
 static void
 raw_ubind(netmsg_t msg)
 {
+	ASSERT_NETISR0;
 	lwkt_replymsg(&msg->lmsg, EINVAL);
 }
 
 static void
 raw_uconnect(netmsg_t msg)
 {
+	ASSERT_NETISR0;
 	lwkt_replymsg(&msg->lmsg, EINVAL);
 }
 
@@ -207,6 +219,8 @@ raw_udetach(netmsg_t msg)
 {
 	struct rawcb *rp = sotorawcb(msg->base.nm_so);
 	int error;
+
+	ASSERT_NETISR0;
 
 	if (rp) {
 		raw_detach(rp);
@@ -223,6 +237,8 @@ raw_udisconnect(netmsg_t msg)
 	struct socket *so = msg->base.nm_so;
 	struct rawcb *rp;
 	int error;
+
+	ASSERT_NETISR0;
 
 	rp = sotorawcb(so);
 	if (rp == NULL) {
@@ -246,6 +262,8 @@ raw_upeeraddr(netmsg_t msg)
 {
 	struct rawcb *rp = sotorawcb(msg->base.nm_so);
 	int error;
+
+	ASSERT_NETISR0;
 
 	if (rp == NULL) {
 		error = EINVAL;
@@ -271,6 +289,8 @@ raw_usend(netmsg_t msg)
 	struct pr_output_info oi;
 	int flags = msg->send.nm_flags;
 	int error;
+
+	ASSERT_NETISR0;
 
 	if (rp == NULL) {
 		error = EINVAL;
@@ -315,6 +335,8 @@ raw_ushutdown(netmsg_t msg)
 	struct rawcb *rp = sotorawcb(msg->base.nm_so);
 	int error;
 
+	ASSERT_NETISR0;
+
 	if (rp) {
 		socantsendmore(msg->base.nm_so);
 		error = 0;
@@ -329,6 +351,8 @@ raw_usockaddr(netmsg_t msg)
 {
 	struct rawcb *rp = sotorawcb(msg->base.nm_so);
 	int error;
+
+	ASSERT_NETISR0;
 
 	if (rp == NULL) {
 		error = EINVAL;

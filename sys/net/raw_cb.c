@@ -38,9 +38,12 @@
 #include <sys/protosw.h>
 
 #include <net/raw_cb.h>
+#include <net/netisr2.h>
 
 /*
  * Routines to manage the raw protocol control blocks.
+ *
+ * All of them must run in netisr0.
  *
  * TODO:
  *	hash lookups by protocol family/protocol + address family
@@ -66,6 +69,8 @@ raw_attach(struct socket *so, int proto, struct rlimit *rl)
 	struct rawcb *rp = sotorawcb(so);
 	int error;
 
+	ASSERT_NETISR0;
+
 	/*
 	 * It is assumed that raw_attach is called
 	 * after space has been allocated for the
@@ -80,9 +85,7 @@ raw_attach(struct socket *so, int proto, struct rlimit *rl)
 	rp->rcb_proto.sp_family = so->so_proto->pr_domain->dom_family;
 	rp->rcb_proto.sp_protocol = proto;
 
-	lockmgr(&raw_lock, LK_EXCLUSIVE);
 	LIST_INSERT_HEAD(&rawcb_list, rp, list);
-	lockmgr(&raw_lock, LK_RELEASE);
 
 	return (0);
 }
@@ -96,9 +99,9 @@ raw_detach(struct rawcb *rp)
 {
 	struct socket *so = rp->rcb_socket;
 
-	lockmgr(&raw_lock, LK_EXCLUSIVE);
+	ASSERT_NETISR0;
+
 	LIST_REMOVE(rp, list);
-	lockmgr(&raw_lock, LK_RELEASE);
 
 	so->so_pcb = NULL;
 	sofree(so);		/* remove pcb ref */
@@ -111,6 +114,8 @@ raw_detach(struct rawcb *rp)
 void
 raw_disconnect(struct rawcb *rp)
 {
+	ASSERT_NETISR0;
+
 	if (rp->rcb_socket->so_state & SS_NOFDREF)
 		raw_detach(rp);
 }
@@ -123,6 +128,8 @@ raw_bind(struct socket *so, struct mbuf *nam)
 {
 	struct sockaddr *addr = mtod(nam, struct sockaddr *);
 	struct rawcb *rp;
+
+	ASSERT_NETISR0;
 
 	if (ifnet == NULL)
 		return (EADDRNOTAVAIL);
