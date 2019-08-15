@@ -200,11 +200,6 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		/*
-		 * Chain's are really only associated with the hmp but we
-		 * maintain a pmp association for per-mount memory tracking
-		 * purposes.  The pmp can be NULL.
-		 */
 		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
