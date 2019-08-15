@@ -788,7 +788,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 
 		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
 			hammer2_off_t data_off = bref->key +
-				i * 256 * HAMMER2_FREEMAP_BLOCK_SIZE;
+				i * HAMMER2_FREEMAP_LEVEL0_SIZE;
 #if HAMMER2_BMAP_ELEMENTS != 8
 #error "cmd_debug.c: HAMMER2_BMAP_ELEMENTS expected to be 8"
 #endif
