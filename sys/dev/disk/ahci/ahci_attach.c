@@ -248,6 +248,12 @@ ahci_pci_attach(device_t dev)
 			      "Enable 88SE9230 workarounds for broken chip\n");
 		sc->sc_flags |= AHCI_F_CYCLE_FR;
 		break;
+	case 0x07f410de:
+		device_printf(dev,
+			      "Enable nForce 630i workarounds for broken chip\n");
+		sc->sc_flags |= AHCI_F_IGN_FR;
+		sc->sc_flags |= AHCI_F_IGN_CR;
+		break;
 	}
 
 	sc->sc_dev = dev;
