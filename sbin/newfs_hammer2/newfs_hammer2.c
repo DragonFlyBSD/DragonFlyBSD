@@ -550,9 +550,20 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 */
 	assert((alloc_base & HAMMER2_PBUFMASK) == 0);
 	assert(alloc_base < HAMMER2_ZONE_BYTES64 - HAMMER2_ZONE_SEG);
-	now = nowtime();
-	bzero(buf, HAMMER2_PBUFSIZE);
 
+	/*
+	 * Clear the boot/aux area.
+	 */
+	for (tmp_base = boot_base; tmp_base < alloc_base;
+	     tmp_base += HAMMER2_PBUFSIZE) {
+		n = pwrite(fd, buf, HAMMER2_PBUFSIZE, tmp_base);
+		if (n != HAMMER2_PBUFSIZE) {
+			perror("write (boot/aux)");
+			exit(1);
+		}
+	}
+
+	now = nowtime();
 	alloc_base &= ~HAMMER2_PBUFMASK64;
 	alloc_direct(&alloc_base, &sroot_blockref, HAMMER2_INODE_BYTES);
 
