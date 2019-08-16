@@ -130,6 +130,12 @@ struct netmsg_rttable_walk {
 	struct rttable_walkarg	*w;
 };
 
+struct routecb {
+	struct rawcb	rocb_rcb;
+	unsigned int	rocb_msgfilter;
+};
+#define	sotoroutecb(so)	((struct routecb *)(so)->so_pcb)
+
 static struct mbuf *
 		rt_msg_mbuf (int, struct rt_addrinfo *);
 static void	rt_msg_buffer (int, struct rt_addrinfo *, void *buf, int len);
@@ -154,6 +160,40 @@ rts_abort(netmsg_t msg)
 	crit_exit();
 }
 
+static int
+rts_filter(struct mbuf *m, const struct sockproto *proto,
+	const struct rawcb *rp)
+{
+	const struct routecb *rop = (const struct routecb *)rp;
+	const struct rt_msghdr *rtm;
+
+	KKASSERT(m != NULL);
+	KKASSERT(proto != NULL);
+	KKASSERT(rp != NULL);
+
+	/* Wrong family for this socket. */
+	if (proto->sp_family != PF_ROUTE)
+		return ENOPROTOOPT;
+
+	/* If no filter set, just return. */
+	if (rop->rocb_msgfilter == 0)
+		return 0;
+
+	/* Ensure we can access rtm_type */
+	if (m->m_len <
+	    offsetof(struct rt_msghdr, rtm_type) + sizeof(rtm->rtm_type))
+		return EINVAL;
+
+	rtm = mtod(m, const struct rt_msghdr *);
+	/* If the rtm type is filtered out, return a positive. */
+	if (!(rop->rocb_msgfilter & ROUTE_FILTER(rtm->rtm_type)))
+		return EEXIST;
+
+	/* Passed the filter. */
+	return 0;
+}
+
+
 /* pru_accept is EOPNOTSUPP */
 
 static void
@@ -162,6 +202,7 @@ rts_attach(netmsg_t msg)
 	struct socket *so = msg->base.nm_so;
 	struct pru_attach_info *ai = msg->attach.nm_ai;
 	struct rawcb *rp;
+	struct routecb *rop;
 	int proto = msg->attach.nm_proto;
 	int error;
 
@@ -171,7 +212,8 @@ rts_attach(netmsg_t msg)
 		goto done;
 	}
 
-	rp = kmalloc(sizeof *rp, M_PCB, M_WAITOK | M_ZERO);
+	rop = kmalloc(sizeof *rop, M_PCB, M_WAITOK | M_ZERO);
+	rp = &rop->rocb_rcb;
 
 	/*
 	 * The critical section is necessary to block protocols from sending
@@ -185,7 +227,7 @@ rts_attach(netmsg_t msg)
 	error = raw_attach(so, proto, ai->sb_rlimit);
 	rp = sotorawcb(so);
 	if (error) {
-		kfree(rp, M_PCB);
+		kfree(rop, M_PCB);
 		goto done;
 	}
 	switch(rp->rcb_proto.sp_protocol) {
@@ -197,6 +239,7 @@ rts_attach(netmsg_t msg)
 		break;
 	}
 	rp->rcb_faddr = &route_src;
+	rp->rcb_filter = rts_filter;
 	route_cb.any_count++;
 	soisconnected(so);
 	so->so_options |= SO_USELOOPBACK;
@@ -383,6 +426,53 @@ rts_input(struct mbuf *m, sa_family_t family)
 {
 	rts_input_skip(m, family, NULL);
 }
+
+static void
+route_ctloutput(netmsg_t msg)
+{
+	struct socket *so = msg->ctloutput.base.nm_so;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
+	struct routecb *rop = sotoroutecb(so);
+	int error;
+	unsigned int msgfilter;
+
+	if (sopt->sopt_level != AF_ROUTE) {
+		error = EINVAL;
+		goto out;
+	}
+
+	error = 0;
+
+	switch (sopt->sopt_dir) {
+	case SOPT_SET:
+		switch (sopt->sopt_name) {
+		case ROUTE_MSGFILTER:
+			error = soopt_to_kbuf(sopt, &msgfilter,
+			    sizeof(msgfilter), sizeof(msgfilter));
+			if (error == 0)
+				rop->rocb_msgfilter = msgfilter;
+			break;
+		default:
+			error = ENOPROTOOPT;
+			break;
+		}
+		break;
+	case SOPT_GET:
+		switch (sopt->sopt_name) {
+		case ROUTE_MSGFILTER:
+			msgfilter = rop->rocb_msgfilter;
+			soopt_from_kbuf(sopt, &msgfilter, sizeof(msgfilter));
+			break;
+		default:
+			error = ENOPROTOOPT;
+			break;
+		}
+	}
+out:
+	lwkt_replymsg(&msg->ctloutput.base.lmsg, error);
+}
+
+
 
 static void *
 reallocbuf_nofree(void *ptr, size_t len, size_t olen)
@@ -1682,7 +1772,7 @@ static struct protosw routesw[] = {
 	.pr_input = NULL,
 	.pr_output = route_output,
 	.pr_ctlinput = raw_ctlinput,
-	.pr_ctloutput = NULL,
+	.pr_ctloutput = route_ctloutput,
 	.pr_ctlport = cpu0_ctlport,
 
 	.pr_init = raw_init,

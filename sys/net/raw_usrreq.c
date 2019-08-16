@@ -104,6 +104,9 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 			continue;
 		if (rp->rcb_faddr && !sa_equal(rp->rcb_faddr, src))
 			continue;
+		/* Run any filtering that may have been installed. */
+		if (rp->rcb_filter != NULL && rp->rcb_filter(m, proto, rp) != 0)
+			continue;
 		if (last) {
 			struct mbuf *n;
 

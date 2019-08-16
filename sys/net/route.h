@@ -250,6 +250,12 @@ struct rt_msghdr {
 #define	RTM_IEEE80211	0x12	/* IEEE80211 wireless event */
 
 /*
+ * setsockopt defines used for the filtering.
+ */
+#define	ROUTE_MSGFILTER	1	/* bitmask of which rtm_type to send to client */
+#define	ROUTE_FILTER(m)	(1U << (m))
+
+/*
  * Bitmask values for rtm_inits and rmx_locks.
  */
 #define RTV_MTU		0x1	/* init or lock _mtu */
