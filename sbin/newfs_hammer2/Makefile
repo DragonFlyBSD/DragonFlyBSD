@@ -1,10 +1,9 @@
-#
-#
 PROG=	newfs_hammer2
+SRCS=	newfs_hammer2.c
 MAN=	newfs_hammer2.8
+
 CFLAGS+= -I${.CURDIR}/../../sys
-cFLAGS+= -DXXH_NAMESPACE=h2_
-SRCS= newfs_hammer2.c
+CFLAGS+= -DXXH_NAMESPACE=h2_
 
 .PATH: ${.CURDIR}/../../sys/libkern ${.CURDIR}/../../sys/vfs/hammer2/xxhash
 SRCS+= icrc32.c xxhash.c
