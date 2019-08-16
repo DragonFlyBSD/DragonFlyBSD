@@ -206,9 +206,10 @@
  * 500701 - libopie/libmd removal
  * 500702 - TCP_KEEP* milliseconds -> seconds
  * 500703 - Static TLS bindings support for late-loaded shared libraries
+ * 500704 - Announce IP6 address flag changes via route(4)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500703	/* propagated to newvers */
+#define __DragonFly_version 500704	/* propagated to newvers */
 
 #include <sys/_null.h>
 
