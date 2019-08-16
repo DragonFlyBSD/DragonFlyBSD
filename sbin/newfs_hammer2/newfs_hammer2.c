@@ -252,7 +252,7 @@ main(int ac, char **av)
 		BootAreaSize = HAMMER2_BOOT_MIN_BYTES;
 	}
 	BootAreaSize = (BootAreaSize + HAMMER2_VOLUME_ALIGNMASK64) &
-		       ~HAMMER2_VOLUME_ALIGNMASK64;
+		        ~HAMMER2_VOLUME_ALIGNMASK64;
 
 	/*
 	 * Calculate defaults for the redo area size and round to the
@@ -310,7 +310,7 @@ main(int ac, char **av)
 	       (intmax_t)total_space);
 	printf("boot-area-size:   %s\n", sizetostr(BootAreaSize));
 	printf("aux-area-size:    %s\n", sizetostr(AuxAreaSize));
-	printf("topo-reserved:	  %s\n", sizetostr(reserved_space));
+	printf("topo-reserved:    %s\n", sizetostr(reserved_space));
 	printf("free-space:       %s\n", sizetostr(free_space));
 	printf("vol-fsid:         %s\n", vol_fsid);
 	printf("sup-clid:         %s\n", sup_clid_name);
