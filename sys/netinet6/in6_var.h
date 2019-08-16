@@ -624,6 +624,7 @@ int	in6_addr2zoneid(struct ifnet *, struct in6_addr *, u_int32_t *);
 int	in6_matchlen (struct in6_addr *, struct in6_addr *);
 int	in6_are_prefix_equal(struct in6_addr *p1, struct in6_addr *p2, int len);
 void	in6_prefixlen2mask(struct in6_addr *maskp, int len);
+void	in6_newaddrmsg(struct ifaddr *);
 void	in6_ifremloop(struct ifaddr *);
 void	in6_ifaddloop(struct ifaddr *);
 

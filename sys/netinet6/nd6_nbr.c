@@ -1107,12 +1107,9 @@ nd6_dad_start(struct ifaddr *ifa,
 			ifa->ifa_ifp ? if_name(ifa->ifa_ifp) : "???");
 		return;
 	}
-	if (ia->ia6_flags & IN6_IFF_ANYCAST) {
+	if (ia->ia6_flags & IN6_IFF_ANYCAST || !ip6_dad_count) {
 		ia->ia6_flags &= ~IN6_IFF_TENTATIVE;
-		return;
-	}
-	if (!ip6_dad_count) {
-		ia->ia6_flags &= ~IN6_IFF_TENTATIVE;
+		in6_newaddrmsg(ifa);
 		return;
 	}
 	if (!ifa->ifa_ifp)
@@ -1331,6 +1328,7 @@ nd6_dad_timer_handler(netmsg_t msg)
 			 * duplicated address found.
 			 */
 			ia->ia6_flags &= ~IN6_IFF_TENTATIVE;
+			in6_newaddrmsg(ifa);
 			nd6log((LOG_DEBUG,
 			    "%s: DAD complete for %s - no duplicates found\n",
 			    if_name(ifa->ifa_ifp),
@@ -1367,6 +1365,7 @@ nd6_dad_duplicated(struct ifaddr *ifa)
 
 	ia->ia6_flags &= ~IN6_IFF_TENTATIVE;
 	ia->ia6_flags |= IN6_IFF_DUPLICATED;
+	in6_newaddrmsg(ifa);
 
 	log(LOG_ERR, "%s: DAD complete for %s - duplicate found\n",
 	    if_name(ifa->ifa_ifp), ip6_sprintf(&ia->ia_addr.sin6_addr));

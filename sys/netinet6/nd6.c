@@ -595,7 +595,10 @@ addrloop:
 		if (IFA6_IS_DEPRECATED(ia6)) {
 			int oldflags = ia6->ia6_flags;
 
-			ia6->ia6_flags |= IN6_IFF_DEPRECATED;
+			if ((oldflags & IN6_IFF_DEPRECATED) == 0) {
+				ia6->ia6_flags |= IN6_IFF_DEPRECATED;
+				in6_newaddrmsg((struct ifaddr *)ia6);
+			}
 
 			/*
 			 * If a temporary address has just become deprecated,
@@ -626,7 +629,10 @@ addrloop:
 			 * A new RA might have made a deprecated address
 			 * preferred.
 			 */
-			ia6->ia6_flags &= ~IN6_IFF_DEPRECATED;
+			if (ia6->ia6_flags & IN6_IFF_DEPRECATED) {
+				ia6->ia6_flags &= ~IN6_IFF_DEPRECATED;
+				in6_newaddrmsg((struct ifaddr *)ia6);
+			}
 		}
 	}
 

@@ -1002,6 +1002,19 @@ makeroute:
 			*ret_nrt = rt;
 		}
 		break;
+	case RTM_GET:
+		/* Get the item from the tree. */
+		rn = rnh->rnh_lookup((char *)rtinfo->rti_info[RTAX_DST],
+				     (char *)rtinfo->rti_info[RTAX_NETMASK],
+				      rnh);
+		if (rn == NULL)
+			gotoerr(ESRCH);
+		if (ret_nrt != NULL) {
+			rt = (struct rtentry *)rn;
+			rt->rt_refcnt++;
+			*ret_nrt = rt;
+		}
+		break;
 	default:
 		error = EOPNOTSUPP;
 	}

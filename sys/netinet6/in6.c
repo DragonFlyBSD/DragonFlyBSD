@@ -146,7 +146,8 @@ struct in6_multihead in6_multihead;	/* XXX BSS initialization */
  * This routine does actual work.
  */
 static void
-in6_ifloop_request(int cmd, struct ifaddr *ifa)
+in6_ifloop_request(int cmd, struct ifaddr *ifa,
+    void (*callback)(int, int, struct rt_addrinfo *, struct rtentry *, void *))
 {
 	struct sockaddr_in6 all1_sa;
         struct rt_addrinfo rtinfo;
@@ -171,12 +172,11 @@ in6_ifloop_request(int cmd, struct ifaddr *ifa)
 	rtinfo.rti_info[RTAX_NETMASK] = (struct sockaddr *)&all1_sa;
 	rtinfo.rti_flags = RTF_UP|RTF_HOST|RTF_LLINFO;
 
-	error = rtrequest1_global(cmd, &rtinfo,
-	    in6_ifloop_request_callback, ifa, RTREQ_PRIO_NORM);
+	error = rtrequest1_global(cmd, &rtinfo, callback, ifa, RTREQ_PRIO_NORM);
 	if (error != 0) {
 		log(LOG_ERR, "in6_ifloop_request: "
 		    "%s operation failed for %s (errno=%d)\n",
-		    cmd == RTM_ADD ? "ADD" : "DELETE",
+		    cmd == RTM_ADD ? "ADD" : cmd == RTM_DELETE ? "DELETE" : "GET",
 		    ip6_sprintf(&((struct in6_ifaddr *)ifa)->ia_addr.sin6_addr),
 		    error);
 	}
@@ -207,14 +207,21 @@ in6_ifloop_request_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 	}
 
 	/*
-	 * Report the addition/removal of the address to the routing socket.
+	 * Report the addition/removal of the address to the routing socket,
+	 * unless the address is marked as tentative, where it will be reported
+	 * once DAD completes.
 	 * XXX: since we called rtinit for a p2p interface with a destination,
 	 *      we end up reporting twice in such a case.  Should we rather
 	 *      omit the second report?
 	 */
 	if (rt) {
-		if (mycpuid == 0)
-			rt_newaddrmsg(cmd, ifa, error, rt);
+		if (mycpuid == 0) {
+			struct in6_ifaddr *ia6 = (struct in6_ifaddr *)ifa;
+
+			if (cmd != RTM_ADD ||
+			    !(ia6->ia6_flags & IN6_IFF_TENTATIVE))
+				rt_newaddrmsg(cmd, ifa, error, rt);
+		}
 		if (cmd == RTM_DELETE) {
 			if (rt->rt_refcnt == 0) {
 				++rt->rt_refcnt;
@@ -225,6 +232,22 @@ in6_ifloop_request_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 done:
 	/* no way to return any new error */
 	;
+}
+
+static void
+in6_newaddrmsg_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
+			struct rtentry *rt, void *arg)
+{
+	struct ifaddr *ifa = arg;
+
+	if (error == 0 && rt != NULL && mycpuid == 0)
+		rt_newaddrmsg(RTM_ADD, ifa, error, rt);
+}
+
+void
+in6_newaddrmsg(struct ifaddr *ifa)
+{
+	in6_ifloop_request(RTM_GET, ifa, in6_newaddrmsg_callback);
 }
 
 /*
@@ -243,7 +266,7 @@ in6_ifaddloop(struct ifaddr *ifa)
 	rt = rtpurelookup(ifa->ifa_addr);
 	if (rt == NULL || !(rt->rt_flags & RTF_HOST) ||
 	    !(rt->rt_ifp->if_flags & IFF_LOOPBACK))
-		in6_ifloop_request(RTM_ADD, ifa);
+		in6_ifloop_request(RTM_ADD, ifa, in6_ifloop_request_callback);
 	if (rt != NULL)
 		rt->rt_refcnt--;
 }
@@ -296,7 +319,8 @@ in6_ifremloop(struct ifaddr *ifa)
 		if (rt != NULL && (rt->rt_flags & RTF_HOST) &&
 		    (rt->rt_ifp->if_flags & IFF_LOOPBACK)) {
 			rt->rt_refcnt--;
-			in6_ifloop_request(RTM_DELETE, ifa);
+			in6_ifloop_request(RTM_DELETE, ifa,
+			                   in6_ifloop_request_callback);
 		}
 	}
 }
@@ -851,7 +875,7 @@ int
 in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 	       struct in6_ifaddr *ia)
 {
-	int error = 0, hostIsNew = 0, plen = -1;
+	int error = 0, hostIsNew = 0, was_tentative, plen = -1;
 	struct in6_ifaddr *oia;
 	struct sockaddr_in6 dst6;
 	struct in6_addrlifetime *lt;
@@ -1041,6 +1065,28 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		ia->ia_dstaddr = dst6;
 	}
 
+	was_tentative = ia->ia6_flags & (IN6_IFF_TENTATIVE|IN6_IFF_DUPLICATED);
+	ia->ia6_flags = ifra->ifra_flags;
+	ia->ia6_flags &= ~IN6_IFF_DUPLICATED;	/*safety*/
+	ia->ia6_flags &= ~IN6_IFF_NODAD;	/* Mobile IPv6 */
+	if ((hostIsNew || was_tentative) &&
+	    in6if_do_dad(ifp) &&
+	    !(ifra->ifra_flags & IN6_IFF_NODAD))
+		ia->ia6_flags |= IN6_IFF_TENTATIVE;
+
+	ia->ia6_lifetime = ifra->ifra_lifetime;
+	/* for sanity */
+	if (ia->ia6_lifetime.ia6t_vltime != ND6_INFINITE_LIFETIME) {
+		ia->ia6_lifetime.ia6t_expire =
+			time_uptime + ia->ia6_lifetime.ia6t_vltime;
+	} else
+		ia->ia6_lifetime.ia6t_expire = 0;
+	if (ia->ia6_lifetime.ia6t_pltime != ND6_INFINITE_LIFETIME) {
+		ia->ia6_lifetime.ia6t_preferred =
+			time_uptime + ia->ia6_lifetime.ia6t_pltime;
+	} else
+		ia->ia6_lifetime.ia6t_preferred = 0;
+
 	/* reset the interface and routing table appropriately. */
 	if ((error = in6_ifinit(ifp, ia, &ifra->ifra_addr, hostIsNew)) != 0)
 		goto unlink;
@@ -1163,32 +1209,15 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		}
 	}
 
-	ia->ia6_flags = ifra->ifra_flags;
-	ia->ia6_flags &= ~IN6_IFF_DUPLICATED;	/*safety*/
-	ia->ia6_flags &= ~IN6_IFF_NODAD;	/* Mobile IPv6 */
-
-	ia->ia6_lifetime = ifra->ifra_lifetime;
-	/* for sanity */
-	if (ia->ia6_lifetime.ia6t_vltime != ND6_INFINITE_LIFETIME) {
-		ia->ia6_lifetime.ia6t_expire =
-			time_uptime + ia->ia6_lifetime.ia6t_vltime;
-	} else
-		ia->ia6_lifetime.ia6t_expire = 0;
-	if (ia->ia6_lifetime.ia6t_pltime != ND6_INFINITE_LIFETIME) {
-		ia->ia6_lifetime.ia6t_preferred =
-			time_uptime + ia->ia6_lifetime.ia6t_pltime;
-	} else
-		ia->ia6_lifetime.ia6t_preferred = 0;
-
 	/*
 	 * Perform DAD, if needed.
 	 * XXX It may be of use, if we can administratively
 	 * disable DAD.
 	 */
-	if (in6if_do_dad(ifp) && !(ifra->ifra_flags & IN6_IFF_NODAD)) {
-		ia->ia6_flags |= IN6_IFF_TENTATIVE;
+	if (in6if_do_dad(ifp) &&
+	    !(ifra->ifra_flags & IN6_IFF_NODAD) &&
+	    ia->ia6_flags & IN6_IFF_TENTATIVE)
 		nd6_dad_start((struct ifaddr *)ia, NULL);
-	}
 
 	return (error);
 

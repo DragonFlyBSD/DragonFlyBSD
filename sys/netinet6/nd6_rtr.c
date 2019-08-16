@@ -1296,10 +1296,18 @@ pfxlist_onlink_check(void)
 			if (ifa->ia6_ndpr == NULL) /* XXX: see above. */
 				continue;
 
-			if (find_pfxlist_reachable_router(ifa->ia6_ndpr))
-				ifa->ia6_flags &= ~IN6_IFF_DETACHED;
-			else
-				ifa->ia6_flags |= IN6_IFF_DETACHED;
+			if (find_pfxlist_reachable_router(ifa->ia6_ndpr)) {
+				if (ifa->ia6_flags & IN6_IFF_DETACHED) {
+					ifa->ia6_flags &= ~IN6_IFF_DETACHED;
+					ifa->ia6_flags |= IN6_IFF_TENTATIVE;
+					nd6_dad_start((struct ifaddr *)ifa, 0);
+				}
+			} else {
+				if ((ifa->ia6_flags & IN6_IFF_DETACHED) == 0) {
+					ifa->ia6_flags |= IN6_IFF_DETACHED;
+					in6_newaddrmsg((struct ifaddr *)ifa);
+				}
+			}
 		}
 	}
 	else {
@@ -1308,6 +1316,8 @@ pfxlist_onlink_check(void)
 				continue;
 
 			ifa->ia6_flags &= ~IN6_IFF_DETACHED;
+			ifa->ia6_flags |= IN6_IFF_TENTATIVE;
+			nd6_dad_start((struct ifaddr *)ifa, 0);
 		}
 	}
 }
