@@ -491,11 +491,13 @@ check_volume(const char *path, int *fdp)
  * Create the volume header, the super-root directory inode, and
  * the writable snapshot subdirectory (named via the label) which
  * is to be the initial mount point, or at least the first mount point.
+ * newfs_hammer2 doesn't format the freemap bitmaps for these.
  *
+ * 0                      4MB
  * [----reserved_area----][boot_area][aux_area]
- * [[vol_hdr]...         ]                     [sroot][root]...
- *
- * Also format the allocation map.
+ * [[vol_hdr][freemap]...]                     [sroot][root][root]...
+ *     \                                        ^\     ^     ^
+ *      \--------------------------------------/  \---/-----/---...
  *
  * NOTE: The passed total_space is 8MB-aligned to avoid edge cases.
  */
