@@ -188,7 +188,7 @@ want(struct utmp *bp, int check)
 	if (!arglist)
 		return (YES);
 
-	for (step = arglist; step; step = step->next)
+	for (step = arglist; step; step = step->next) {
 		switch(step->type) {
 		case HOST_TYPE:
 			if (!strncasecmp(step->name, bp->ut_host, HOSTSIZE))
@@ -202,6 +202,7 @@ want(struct utmp *bp, int check)
 			if (!strncmp(step->name, bp->ut_name, NAMESIZE))
 				return (YES);
 			break;
+		}
 	}
 	return (NO);
 }
