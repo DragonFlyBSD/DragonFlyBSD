@@ -105,7 +105,7 @@ main(int ac, char *av[])
 	 */
 	if (init_flags & MNT_UPDATE) {
 		if (ac != 1) {
-			usage("missing parameter (mountpoint)");
+			usage("missing parameter (node)");
 			/* not reached */
 		}
 		mountpt = av[0];
@@ -118,7 +118,7 @@ main(int ac, char *av[])
 	 * New mount
 	 */
 	if (ac != 2) {
-		usage("missing parameter(s) (dev@LABEL mountpt)");
+		usage("missing parameter(s) (special[@label] node)");
 		/* not reached */
 	}
 
@@ -255,11 +255,12 @@ usage(const char *ctl, ...)
 	vfprintf(stderr, ctl, va);
 	va_end(va);
 	fprintf(stderr, "\n");
-	fprintf(stderr, " mount_hammer2 -u [-o opts] mountpt\n");
-	fprintf(stderr, " mount_hammer2 [-o opts] dev@LABEL mountpt\n");
+	fprintf(stderr, " mount_hammer2 [-o options] special[@label] node\n");
+	fprintf(stderr, " mount_hammer2 [-o options] @label node\n");
+	fprintf(stderr, " mount_hammer2 -u [-o options] node\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "options:\n"
-			" <standard_mount_opts>\n"
+			" <standard_mount_options>\n"
 			" local\t- disable PFS clustering for whole device\n"
 	);
 	exit(1);
