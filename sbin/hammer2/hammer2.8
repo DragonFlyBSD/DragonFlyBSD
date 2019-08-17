@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 2, 2017
+.Dd August 19, 2019
 .Dt HAMMER2 8
 .Os
 .Sh NAME
@@ -100,7 +100,7 @@ Add a cluster link entry to the volume header.
 The volume header can support up to 255 link entries.
 This feature is not currently used.
 .\" ==== destroy ====
-.It Cm destroy Ar path
+.It Cm destroy Ar path...
 Destroy the specified directory entry in a hammer2 filesystem.  This bypasses
 all normal checks and will unconditionally destroy the directory entry.
 The underlying inode is not checked and, if it does exist, its nlinks count
@@ -111,12 +111,15 @@ which no longer has a working inode.
 Note that this command may desynchronize the system namecache for the
 specified entry.  If this happens, you may have to unmount and remount the
 filesystem.
+.\" ==== destroy-inum ====
+.It Cm destroy-inum Ar path...
+Destroy the specified inode in a hammer2 filesystem.
 .\" ==== disconnect ====
 .It Cm disconnect Ar target
 Delete a cluster link entry from the volume header.
 This feature is not currently used.
 .\" ==== info ====
-.It Cm info Op devpath
+.It Cm info Op devpath...
 Access and print the status and super-root entries for all HAMMER2
 partitions found in /dev/serno or the specified device path(s).
 The partitions do not have to be mounted.
@@ -124,18 +127,21 @@ Note that only mounted partitions will be under active management.
 This is accomplished by mounting at least one PFS within the partition.
 Typically at least the @LOCAL PFS is mounted.
 .\" ==== mountall ====
-.It Cm mountall Op devpath
+.It Cm mountall Op devpath...
 This directive mounts the @LOCAL PFS on all HAMMER2 partitions found
 in /dev/serno, or the specified device path(s).
 The partitions are mounted as /var/hammer2/LOCAL.<id>.
 Mounts are executed in the background and this command will wait a
 limited amount of time for the mounts to complete before returning.
 .\" ==== status ====
-.It Cm status Ar path...
+.It Cm status Op path...
 Dump a list of all cluster link entries configured in the volume header.
 .\" ==== hash ====
-.It Cm hash Ar filename...
+.It Cm hash Op filename...
 Compute and print the directory hash for any number of filenames.
+.\" ==== dhash ====
+.It Cm dhash Op filename...
+Compute and print the data hash for long directory entry for any number of filenames.
 .\" ==== pfs-list ====
 .It Cm pfs-list Op path...
 List all local PFSs available on a mounted HAMMER2 filesystem, their type,
@@ -256,6 +262,9 @@ Snapshots are effectively separate from the cluster they came from
 and can be used as a starting point for a new cluster.
 So unless you build a new cluster from the snapshot, it will stay local
 to the machine it was made on.
+.\" ==== snapshot-debug ====
+.It Cm snapshot-debug Ar path Op label
+Snapshot without filesystem sync.
 .\" ==== service ====
 .It Cm service
 Start the
@@ -274,13 +283,13 @@ with a list of paths.
 .It Cm leaf
 XXX
 .\" ==== shell ====
-.It Cm shell
+.It Cm shell Op host
 Start a debug shell to the local hammer2 service daemon via the DMSG protocol.
 .\" ==== debugspan ====
-.It Cm debugspan
+.It Cm debugspan Ar target
 (do not use)
 .\" ==== rsainit ====
-.It Cm rsainit
+.It Cm rsainit Op path
 Create the
 .Pa /etc/hammer2
 directory and initialize a public/private keypair in that directory for
@@ -290,11 +299,11 @@ use by the network cluster protocols.
 Dump the radix tree for the HAMMER2 filesystem by scanning a
 block device directly.  No mount is required.
 .\" ==== freemap ====
+.It Cm freemap Ar devpath
 Dump the freemap tree for the HAMMER2 filesystem by scanning a
 block device directly.  No mount is required.
-.It Cm freemap Ar devpath
 .\" ==== setcomp ====
-.It Cm setcomp Ar mode[:level] Op path...
+.It Cm setcomp Ar mode[:level] Ar path...
 Set the compression mode as specified for any newly created elements at or
 under the path if not overridden by deeper elements.
 Available modes are none, autozero, lz4, or zlib.
@@ -326,7 +335,7 @@ and the check code is set to
 Formal snapshots will still snapshot such files.  However,
 de-duplication will no longer function on the data blocks.
 .\" ==== setcheck ====
-.It Cm setcheck Ar check Op path...
+.It Cm setcheck Ar check Ar path...
 Set the check code as specified for any newly created elements at or under
 the path if not overridden by deeper elements.
 Available codes are default, disabled, crc32, xxhash64, or sha192.
@@ -346,7 +355,7 @@ Set the check code to XXHASH64, a fast 64-bit hash
 Set the check code to SHA192 for any newly created elements at or under
 the path if not overridden by deeper elements.
 .\" ==== bulkfree ====
-.It Cm bulkfree Op path...
+.It Cm bulkfree Ar path
 Run a bulkfree pass on a HAMMER2 mount.
 You can specify any PFS for the mount, the bulkfree pass is run on the
 entire partition.
@@ -355,6 +364,12 @@ By default this directive will use up to 1/16 physical memory to track
 the freemap.  The amount of memory used may be overridden with the
 .Op Fl m Ar mem
 option.
+.\" ==== printinode ====
+.It Cm printinode Ar path
+Dump inode.
+.\" ==== printinode ====
+.It Cm dumpchain Op path Op chnflags
+Dump in-memory chain topology.
 .El
 .Sh SYSCTLS
 .Bl -tag -width indent
