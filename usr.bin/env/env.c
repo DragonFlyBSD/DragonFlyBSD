@@ -27,6 +27,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)env.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: head/usr.bin/env/env.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
 #include <err.h>
@@ -117,14 +120,14 @@ main(int argc, char **argv)
 		err(errno == ENOENT ? 127 : 126, "%s", *argv);
 	}
 	for (ep = environ; *ep; ep++)
-		(void)printf("%s\n", *ep);
+		printf("%s\n", *ep);
 	exit(0);
 }
 
 static void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: env [-iv] [-P utilpath] [-S string] [-u name]\n"
 	    "           [name=value ...] [utility [argument ...]]\n");
 	exit(1);

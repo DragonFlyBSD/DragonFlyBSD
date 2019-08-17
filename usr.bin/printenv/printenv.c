@@ -27,6 +27,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)printenv.c	8.2 (Berkeley) 5/4/95
+ * $FreeBSD: head/usr.bin/printenv/printenv.c 335395 2018-06-19 23:43:14Z oshogbo $
  */
 
 #include <sys/types.h>
@@ -64,7 +67,7 @@ main(int argc, char *argv[])
 
 	if (argc == 0) {
 		for (ep = environ; *ep; ep++)
-			(void)printf("%s\n", *ep);
+			printf("%s\n", *ep);
 		exit(0);
 	}
 	len = strlen(*argv);
@@ -72,7 +75,7 @@ main(int argc, char *argv[])
 		if (!memcmp(*ep, *argv, len)) {
 			cp = *ep + len;
 			if (*cp == '=') {
-				(void)printf("%s\n", cp + 1);
+				printf("%s\n", cp + 1);
 				exit(0);
 			}
 		}
@@ -82,6 +85,6 @@ main(int argc, char *argv[])
 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: printenv [name]\n");
+	fprintf(stderr, "usage: printenv [name]\n");
 	exit(1);
 }
