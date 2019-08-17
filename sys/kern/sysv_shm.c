@@ -75,6 +75,7 @@ struct shm_handle {
 struct shmmap_state {
 	vm_offset_t va;
 	int shmid;
+	int reserved;
 };
 
 static void shm_deallocate_segment (struct shmid_ds *);
@@ -278,8 +279,10 @@ again:
 	if (shmmap_s == NULL) {
 		size = shminfo.shmseg * sizeof(struct shmmap_state);
 		shmmap_s = kmalloc(size, M_SHM, M_WAITOK);
-		for (i = 0; i < shminfo.shmseg; i++)
+		for (i = 0; i < shminfo.shmseg; i++) {
 			shmmap_s[i].shmid = -1;
+			shmmap_s[i].reserved = 0;
+		}
 		if (p->p_vmspace->vm_shm != NULL) {
 			kfree(shmmap_s, M_SHM);
 			goto again;
@@ -295,9 +298,18 @@ again:
 			(uap->shmflg & SHM_RDONLY) ? IPC_R : IPC_R|IPC_W);
 	if (error)
 		goto done;
+
+	/*
+	 * Find a free element and mark reserved.  This fixes races
+	 * against concurrent allocations due to the token being
+	 * interrupted by blocking operations.  The shmmap_s reservation
+	 * will be cleared upon completion or error.
+	 */
 	for (i = 0; i < shminfo.shmseg; i++) {
-		if (shmmap_s->shmid == -1)
+		if (shmmap_s->shmid == -1 && shmmap_s->reserved == 0) {
+			shmmap_s->reserved = 1;
 			break;
+		}
 		shmmap_s++;
 	}
 	if (i >= shminfo.shmseg) {
@@ -321,6 +333,7 @@ again:
 			attach_va = (vm_offset_t)uap->shmaddr;
 		} else {
 			error = EINVAL;
+			shmmap_s->reserved = 0;
 			goto done;
 		}
 	} else {
@@ -354,6 +367,7 @@ again:
 	vm_object_drop(shm_handle->shm_object);
 	if (rv != KERN_SUCCESS) {
                 vm_object_deallocate(shm_handle->shm_object);
+		shmmap_s->reserved = 0;
 		error = ENOMEM;
 		goto done;
 	}
@@ -363,6 +377,7 @@ again:
 	KKASSERT(shmmap_s->shmid == -1);
 	shmmap_s->va = attach_va;
 	shmmap_s->shmid = uap->shmid;
+	shmmap_s->reserved = 0;
 	shmseg->shm_lpid = p->p_pid;
 	shmseg->shm_atime = time_second;
 	shmseg->shm_nattch++;
