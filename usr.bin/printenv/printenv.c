@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1987, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,23 +27,18 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
- * @(#)printenv.c	8.2 (Berkeley) 5/4/95
- *
- * $DragonFly: src/usr.bin/printenv/printenv.c,v 1.4 2005/01/07 02:32:50 cpressey Exp $
  */
 
 #include <sys/types.h>
 
+#include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
+void	usage(void);
 extern char **environ;
-
-static void	usage(void);
 
 /*
  * printenv
@@ -50,43 +47,41 @@ static void	usage(void);
  * February, 1979
  */
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	char *cp, **ep;
 	size_t len;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "")) != -1) {
+	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
 		case '?':
 		default:
 			usage();
 		}
-	}
 	argc -= optind;
 	argv += optind;
 
 	if (argc == 0) {
-		for (ep = environ; *ep != NULL; ep++)
-			printf("%s\n", *ep);
+		for (ep = environ; *ep; ep++)
+			(void)printf("%s\n", *ep);
 		exit(0);
 	}
 	len = strlen(*argv);
-	for (ep = environ; *ep != NULL; ep++) {
-		cp = strchr(*ep, '=');
-		if (cp == *ep + len) {
-			if (memcmp(*ep, *argv, len) == 0) {
-				printf("%s\n", cp + 1);
+	for (ep = environ; *ep; ep++)
+		if (!memcmp(*ep, *argv, len)) {
+			cp = *ep + len;
+			if (*cp == '=') {
+				(void)printf("%s\n", cp + 1);
 				exit(0);
 			}
 		}
-	}
 	exit(1);
 }
 
-static void
+void
 usage(void)
 {
-	fprintf(stderr, "usage: printenv [name]\n");
+	(void)fprintf(stderr, "usage: printenv [name]\n");
 	exit(1);
 }

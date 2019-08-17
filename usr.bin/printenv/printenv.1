@@ -28,23 +28,16 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)printenv.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/printenv/printenv.1,v 1.6.2.10 2002/06/26 08:25:30 tjr Exp $
 .\"
-.Dd June 6, 1993
+.Dd May 12, 2003
 .Dt PRINTENV 1
 .Os
 .Sh NAME
-.Nm printenv ,
-.Nm env
-.Nd print out the environment, set and print environment
+.Nm printenv
+.Nd print out the environment
 .Sh SYNOPSIS
 .Nm
 .Op Ar name
-.Nm env
-.Op Fl
-.Op Fl i
-.Op Ar name Ns = Ns Ar value ...
-.Op Ar utility Oo Ar argument ... Oc
 .Sh DESCRIPTION
 The
 .Nm
@@ -61,88 +54,30 @@ command which is similar or identical to this utility.
 Consult the
 .Xr builtin 1
 manual page.
-.Pp
-The
-.Nm env
-utility executes
-.Ar utility
-after modifying the environment as
-specified on the command line.
-The option
-.Ar name Ns = Ns Ar value
-specifies
-an environment variable,
-.Ar name ,
-with a value of
-.Ar value .
-.Pp
-The options are as follows:
-.Bl -tag -width indent
-.It Fl i
-Execute the
-.Ar utility
-with only those environment values specified.
-The environment inherited
-by
-.Nm env
-is ignored completely.
-.It Fl
-Identical to the
-.Fl i
-option, available for backward compatibility.
-.El
-.Pp
-If no utility is specified,
-.Nm env
-prints out the names and values
-of the variables in the environment, with one name/value pair per line.
-.Pp
-The
-.Nm env
-utility is sometimes useful with the
-.Dq Li #!
-construct (see
-.Xr execve 2 ) .
-The only difference between
-.Dq Li #!/usr/local/bin/foo
-and
-.Dq Li "#!/usr/bin/env\ /usr/local/bin/foo"
-is that the latter works even if
-.Pa /usr/local/bin/foo
-is itself interpreted.
-Using
-.Nm env
-this way also allows one to reference
-.Pa foo
-without the path,
-as well as set up the environment as desired.
 .Sh EXIT STATUS
-.Ex -std printenv
-.Pp
-.Ex -std env
-An exit status of 126 indicates
-.Ar utility
-was found, but could not be executed.
-An exit status of 127 indicates
-.Ar utility
-could not be found.
+.Ex -std
 .Sh SEE ALSO
 .Xr csh 1 ,
+.Xr env 1 ,
 .Xr sh 1 ,
-.Xr execvp 3 ,
 .Xr environ 7
 .Sh STANDARDS
 The
-.Nm env
-utility conforms to
-.St -p1003.1-2001 .
+.Nm
+utility is provided for compatibility with earlier
+.Bx
+and
+.Fx
+releases and is not specified by any standards.
+The functionality of
+.Nm
+can be duplicated with the
+.Xr echo 1
+and
+.Xr env 1
+utilities.
 .Sh HISTORY
 The
 .Nm
 command appeared in
 .Bx 3.0 .
-.Sh BUGS
-The
-.Nm env
-utility doesn't handle utility arguments with equal (``='') signs in their
-names, for obvious reasons.
