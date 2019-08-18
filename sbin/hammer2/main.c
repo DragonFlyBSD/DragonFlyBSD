@@ -205,14 +205,17 @@ main(int ac, char **av)
 		if (ac < 2) {
 			fprintf(stderr,
 				"Specify one or more paths to destroy\n");
+			usage(1);
 		}
 		ecode = cmd_destroy_path(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "destroy-inum") == 0) {
 		if (ac < 2) {
 			fprintf(stderr,
 				"Specify one or more inode numbers to destroy\n");
+			usage(1);
 		}
-		ecode = cmd_destroy_inum(sel_path, ac - 1, (const char **)(void *)&av[1]);
+		ecode = cmd_destroy_inum(sel_path, ac - 1,
+					 (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "hash") == 0) {
 		ecode = cmd_hash(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "dhash") == 0) {
