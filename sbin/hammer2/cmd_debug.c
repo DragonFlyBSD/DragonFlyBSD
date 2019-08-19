@@ -379,8 +379,8 @@ static void show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			int dofreemap, int norecurse);
 static void tabprintf(int tab, const char *ctl, ...);
 
-static int64_t TotalFreeAccum16;
-static int64_t TotalFreeAccum64;
+static hammer2_off_t TotalFreeAccum16;
+static hammer2_off_t TotalFreeAccum64;
 
 int
 cmd_show(const char *devpath, int dofreemap)
@@ -887,7 +887,9 @@ cmd_hash(int ac, const char **av)
 	int i;
 
 	for (i = 0; i < ac; ++i) {
-		printf("%016jx %s\n", dirhash(av[i], strlen(av[i])), av[i]);
+		printf("%016jx %s\n",
+		       dirhash((const unsigned char*)av[i], strlen(av[i])),
+		       av[i]);
 	}
 	return(0);
 }
