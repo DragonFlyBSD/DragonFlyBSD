@@ -43,7 +43,6 @@ cmd_pfs_list(int ac, const char **av)
 	int count = 0;
 	int fd;
 	int i;
-	uint32_t status;
 	char *pfs_id_str = NULL;
 
 	for (i = 0; i < ac; ++i) {
@@ -98,7 +97,7 @@ cmd_pfs_list(int ac, const char **av)
 				printf("%02x          ", pfs.pfs_type);
 				break;
 			}
-			uuid_to_string(&pfs.pfs_clid, &pfs_id_str, &status);
+			hammer2_uuid_to_str(&pfs.pfs_clid, &pfs_id_str);
 			printf("%s ", pfs_id_str);
 			free(pfs_id_str);
 			pfs_id_str = NULL;
@@ -117,7 +116,6 @@ cmd_pfs_getid(const char *sel_path, const char *name, int privateid)
 	hammer2_ioc_pfs_t pfs;
 	int ecode = 0;
 	int fd;
-	uint32_t status;
 	char *pfs_id_str = NULL;
 
 	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)
@@ -130,9 +128,9 @@ cmd_pfs_getid(const char *sel_path, const char *name, int privateid)
 		ecode = 1;
 	} else {
 		if (privateid)
-			uuid_to_string(&pfs.pfs_fsid, &pfs_id_str, &status);
+			hammer2_uuid_to_str(&pfs.pfs_fsid, &pfs_id_str);
 		else
-			uuid_to_string(&pfs.pfs_clid, &pfs_id_str, &status);
+			hammer2_uuid_to_str(&pfs.pfs_clid, &pfs_id_str);
 		printf("%s\n", pfs_id_str);
 		free(pfs_id_str);
 		pfs_id_str = NULL;

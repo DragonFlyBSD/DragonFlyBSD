@@ -58,8 +58,8 @@ print_inode(const char *path)
 	hammer2_ioc_inode_t inode;
 	hammer2_inode_data_t *ipdata;
 	hammer2_inode_meta_t *meta;
-	char *uid_str, *gid_str, *pfs_clid_str, *pfs_fsid_str, *str = NULL;
-	int i, fd, status;
+	char *str = NULL;
+	int i, fd;
 
 	fd = hammer2_ioctl_handle(path);
 	if (fd == -1)
@@ -72,11 +72,6 @@ print_inode(const char *path)
 	ipdata = &inode.ip_data;
 	meta = &ipdata->meta;
 
-	uuid_to_string(&meta->uid, &uid_str, &status);
-	uuid_to_string(&meta->gid, &gid_str, &status);
-	uuid_to_string(&meta->pfs_clid, &pfs_clid_str, &status);
-	uuid_to_string(&meta->pfs_fsid, &pfs_fsid_str, &status);
-
 	hexdump_inode(meta, sizeof(*meta));
 	printf("version = %u\n", meta->version);
 	printf("pfs_subtype = %u\n", meta->pfs_subtype);
@@ -87,8 +82,8 @@ print_inode(const char *path)
 	printf("mtime = %s\n", hammer2_time64_to_str(meta->mtime, &str));
 	printf("atime = %s\n", hammer2_time64_to_str(meta->atime, &str));
 	printf("btime = %s\n", hammer2_time64_to_str(meta->btime, &str));
-	printf("uid = %s\n", uid_str);
-	printf("gid = %s\n", gid_str);
+	printf("uid = %s\n", hammer2_uuid_to_str(&meta->uid, &str));
+	printf("gid = %s\n", hammer2_uuid_to_str(&meta->gid, &str));
 	printf("type = %u\n", meta->type);
 	printf("op_flags = 0x%x\n", meta->op_flags);
 	printf("cap_flags = 0x%x\n", meta->cap_flags);
@@ -106,8 +101,10 @@ print_inode(const char *path)
 	printf("pfs_nmasters = %u\n", meta->pfs_nmasters);
 	printf("pfs_type = %u\n", meta->pfs_type);
 	printf("pfs_inum = 0x%jx\n", (uintmax_t)meta->pfs_inum);
-	printf("pfs_clid = %s\n", pfs_clid_str);
-	printf("pfs_fsid = %s\n", pfs_fsid_str);
+	printf("pfs_clid = %s\n",
+	    hammer2_uuid_to_str(&meta->pfs_clid, &str));
+	printf("pfs_fsid = %s\n",
+	    hammer2_uuid_to_str(&meta->pfs_fsid, &str));
 	printf("data_quota = 0x%jx\n", (uintmax_t)meta->data_quota);
 	printf("inode_quota = 0x%jx\n", (uintmax_t)meta->inode_quota);
 	printf("pfs_lsnap_tid = 0x%jx\n", (uintmax_t)meta->pfs_lsnap_tid);
