@@ -58,7 +58,7 @@ print_inode(const char *path)
 	hammer2_ioc_inode_t inode;
 	hammer2_inode_data_t *ipdata;
 	hammer2_inode_meta_t *meta;
-	char *uid_str, *gid_str, *pfs_clid_str, *pfs_fsid_str;
+	char *uid_str, *gid_str, *pfs_clid_str, *pfs_fsid_str, *str = NULL;
 	int i, fd, status;
 
 	fd = hammer2_ioctl_handle(path);
@@ -83,10 +83,10 @@ print_inode(const char *path)
 	printf("uflags = 0x%x\n", (unsigned int)meta->uflags);
 	printf("rmajor = %u\n", meta->rmajor);
 	printf("rminor = %u\n", meta->rminor);
-	printf("ctime = 0x%jx\n", (uintmax_t)meta->ctime);
-	printf("mtime = 0x%jx\n", (uintmax_t)meta->mtime);
-	printf("atime = 0x%jx\n", (uintmax_t)meta->atime);
-	printf("btime = 0x%jx\n", (uintmax_t)meta->btime);
+	printf("ctime = %s\n", hammer2_time64_to_str(meta->ctime, &str));
+	printf("mtime = %s\n", hammer2_time64_to_str(meta->mtime, &str));
+	printf("atime = %s\n", hammer2_time64_to_str(meta->atime, &str));
+	printf("btime = %s\n", hammer2_time64_to_str(meta->btime, &str));
 	printf("uid = %s\n", uid_str);
 	printf("gid = %s\n", gid_str);
 	printf("type = %u\n", meta->type);
@@ -112,6 +112,8 @@ print_inode(const char *path)
 	printf("inode_quota = 0x%jx\n", (uintmax_t)meta->inode_quota);
 	printf("pfs_lsnap_tid = 0x%jx\n", (uintmax_t)meta->pfs_lsnap_tid);
 	printf("decrypt_check = 0x%jx\n", (uintmax_t)meta->decrypt_check);
+
+	free(str);
 	/* XXX HAMMER2IOC_INODE_GET only supports meta part */
 	return;
 	printf("\n");
