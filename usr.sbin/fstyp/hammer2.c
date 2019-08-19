@@ -120,7 +120,7 @@ __read_label(FILE *fp, char *label, size_t size)
 	if (boff)
 		memcpy(media, (char*)media + boff, bytes);
 
-	strlcpy(label, media->ipdata.filename, size);
+	strlcpy(label, (char*)media->ipdata.filename, size);
 	free(media);
 done:
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++)
