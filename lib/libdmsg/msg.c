@@ -38,9 +38,9 @@
 #define DMSG_BLOCK_DEBUG
 
 int DMsgDebugOpt;
-int dmsg_state_count;
+static unsigned int dmsg_state_count;
 #ifdef DMSG_BLOCK_DEBUG
-static int biocount;
+static unsigned int biocount;
 #endif
 
 static int dmsg_state_msgrx(dmsg_msg_t *msg, int mstate);

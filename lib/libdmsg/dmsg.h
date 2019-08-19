@@ -180,7 +180,7 @@ struct dmsg_state {
 	uint64_t	msgid;
 	int		flags;
 	int		error;
-	int		refs;			/* prevent destruction */
+	unsigned int	refs;			/* prevent destruction */
 	void (*func)(struct dmsg_msg *);
 	union {
 		void *any;
@@ -300,7 +300,7 @@ struct dmsg_iocom {
 	int	sock_fd;			/* comm socket or pipe */
 	int	alt_fd;				/* thread signal, tty, etc */
 	int	wakeupfds[2];			/* pipe wakes up iocom thread */
-	int	flags;
+	unsigned int	flags;
 	int	rxmisc;
 	int	txmisc;
 	void	(*signal_callback)(struct dmsg_iocom *);
