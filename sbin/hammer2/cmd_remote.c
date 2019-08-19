@@ -52,7 +52,8 @@ cmd_remote_connect(const char *sel_path, const char *url)
 		close(fd);
 		return(1);
 	}
-	snprintf(remote.copy1.path, sizeof(remote.copy1.path), "%s", url);
+	snprintf((char*)remote.copy1.path, sizeof(remote.copy1.path), "%s",
+		 url);
 	if (ioctl(fd, HAMMER2IOC_REMOTE_ADD, &remote) < 0) {
 		perror("ioctl");
 		ecode = 1;
@@ -78,7 +79,8 @@ cmd_remote_disconnect(const char *sel_path, const char *url)
 		close(fd);
 		return(1);
 	}
-	snprintf(remote.copy1.path, sizeof(remote.copy1.path), "%s", url);
+	snprintf((char*)remote.copy1.path, sizeof(remote.copy1.path), "%s",
+		 url);
 	if (ioctl(fd, HAMMER2IOC_REMOTE_DEL, &remote) < 0) {
 		perror("ioctl");
 		ecode = 1;

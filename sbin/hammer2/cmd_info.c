@@ -363,7 +363,7 @@ h2pfs_check(int fd, hammer2_blockref_t *bref,
 			}
 		} else
 		if (media.ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) {
-			callback2(media.ipdata.filename, bref, fd);
+			callback2((char*)media.ipdata.filename, bref, fd);
 			bscan = NULL;
 			bcount = 0;
 		} else {

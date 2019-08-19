@@ -407,15 +407,15 @@ hammer2_volconf_thread(void *info)
 			hammer2_volconf_stop(conf);
 			conf->copy_run = conf->copy_pend;
 			if (conf->copy_run.copyid != 0 &&
-			    strncmp(conf->copy_run.path, "span:", 5) == 0) {
+			    strncmp((char*)conf->copy_run.path, "span:", 5) == 0) {
 				hammer2_volconf_start(conf,
-						      conf->copy_run.path + 5);
+						      (char*)conf->copy_run.path + 5);
 			}
 			pthread_mutex_lock(&confmtx);
 			fprintf(stderr, "VOLCONF UPDATE DONE state %d\n", conf->state);
 		}
 		if (conf->state == H2MC_CONNECT) {
-			hammer2_volconf_start(conf, conf->copy_run.path + 5);
+			hammer2_volconf_start(conf, (char*)conf->copy_run.path + 5);
 			pthread_mutex_unlock(&confmtx);
 			sleep(5);
 			pthread_mutex_lock(&confmtx);
