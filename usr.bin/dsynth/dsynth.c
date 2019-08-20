@@ -116,6 +116,14 @@ main(int ac, char **av)
 	ParseConfiguration(isworker);
 
 	/*
+	 * Setup some environment for bulk operations (pkglist scan).
+	 * These will be overridden by the builder for the chrooted
+	 * builds.
+	 */
+	setenv("PORTSDIR", DPortsPath, 1);
+	setenv("BATCH", "yes", 1);
+
+	/*
 	 * Special directive for when dsynth execs itself to manage
 	 * a worker chroot.
 	 */
