@@ -403,6 +403,7 @@ void freebulk(bulk_t *bulk);
 void freestrp(char **strp);
 void dupstrp(char **strp);
 int askyn(const char *ctl, ...);
+double getswappct(int *noswapp);
 
 void ParseConfiguration(int isworker);
 pkg_t *ParsePackageList(int ac, char **av);
@@ -428,6 +429,7 @@ void RemovePackages(pkg_t *pkgs);
 void PurgeDistfiles(pkg_t *pkgs);
 
 void GuiInit(void);
+void GuiDone(void);
 void GuiReset(void);
 void GuiUpdate(worker_t *work);
 void GuiUpdateTop(void);

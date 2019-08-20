@@ -50,7 +50,7 @@ static int qsort_depi(const void *pkg1, const void *pkg2);
 static int qsort_idep(const void *pkg1, const void *pkg2);
 static void startworker(pkg_t *pkg, worker_t *work);
 static void cleanworker(worker_t *work);
-static void waitbuild(int whilematch);
+static void waitbuild(int whilematch, int dynamicmax);
 static void workercomplete(worker_t *work);
 static void *childBuilderThread(void *arg);
 static int childInstallPkgDeps(worker_t *work);
@@ -59,7 +59,7 @@ static void dophase(worker_t *work, wmsg_t *wmsg,
 			int wdog, int phaseid, const char *phase);
 static void phaseReapAll(void);
 static void phaseTerminateSignal(int sig);
-static char *buildskipreason(pkg_t *pkg);
+static char *buildskipreason(pkglink_t *parent, pkg_t *pkg);
 static int copyfile(char *src, char *dst);
 
 static worker_t *SigWork;
@@ -107,7 +107,7 @@ DoInitBuild(int slot_override)
 	}
 
 	BuildInitialized = 1;
-	DynamicMaxWorkers = MaxWorkers;
+	DynamicMaxWorkers = 1;	/* slow-start (1 per sec) */
 }
 
 /*
@@ -173,7 +173,8 @@ DoBuild(pkg_t *pkgs)
 		build_list = scan;
 		build_tail = &scan->build_next;
 		startbuild(&build_list, &build_tail);
-		waitbuild(1);
+		while (RunningWorkers == 1)
+			waitbuild(1, 0);
 
 		if (scan->flags & PKGF_NOBUILD)
 			dfatal("Unable to build 'pkg'");
@@ -214,7 +215,7 @@ DoBuild(pkg_t *pkgs)
 			 *	 need to be rebuilt.
 			 */
 			if (scan->flags & (PKGF_SUCCESS | PKGF_FAILURE |
-					   PKGF_ERROR | PKGF_NOBUILD)) {
+					   PKGF_ERROR)) {
 #if 0
 				ddprintf(0, "%s: already built\n",
 					 scan->portdir);
@@ -234,11 +235,13 @@ DoBuild(pkg_t *pkgs)
 		startbuild(&build_list, &build_tail);
 
 		if (haswork == 0 && RunningWorkers) {
-			waitbuild(RunningWorkers);
+			waitbuild(RunningWorkers, 1);
 			haswork = 1;
 		}
 	}
 	pthread_mutex_unlock(&WorkerMutex);
+
+	GuiDone();
 
 	ddprintf(0, "BuildCount %d\n", BuildCount);
 }
@@ -586,10 +589,8 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 		while (idep_index < count) {
 			ipkg = idep_ary[idep_index];
 			if ((ipkg->flags &
-			     (PKGF_SUCCESS |
-			      PKGF_FAILURE |
-			      PKGF_ERROR | PKGF_NOBUILD |
-			      PKGF_RUNNING)) == 0) {
+			     (PKGF_SUCCESS | PKGF_FAILURE |
+			      PKGF_ERROR | PKGF_RUNNING)) == 0) {
 				break;
 			}
 			ipkg = NULL;
@@ -600,10 +601,8 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 		while (depi_index < count) {
 			pkgi = depi_ary[depi_index];
 			if ((pkgi->flags &
-			     (PKGF_SUCCESS |
-			      PKGF_FAILURE |
-			      PKGF_ERROR | PKGF_NOBUILD |
-			      PKGF_RUNNING)) == 0) {
+			     (PKGF_SUCCESS | PKGF_FAILURE |
+			      PKGF_ERROR | PKGF_RUNNING)) == 0) {
 				break;
 			}
 			pkgi = NULL;
@@ -626,7 +625,7 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 
 			++BuildSkipCount;
 			++BuildCount;
-			reason = buildskipreason(ipkg);
+			reason = buildskipreason(NULL, ipkg);
 			dlog(DLOG_SKIP, "[XXX] %s skipped due to%s\n",
 			     ipkg->portdir, reason);
 			free(reason);
@@ -640,7 +639,7 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 
 			++BuildSkipCount;
 			++BuildCount;
-			reason = buildskipreason(pkgi);
+			reason = buildskipreason(NULL, pkgi);
 			dlog(DLOG_SKIP, "[XXX] %s skipped due to%s\n",
 			     pkgi->portdir, reason);
 			free(reason);
@@ -652,7 +651,7 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 		 * will clean out any DONE states.
 		 */
 		while (RunningWorkers >= DynamicMaxWorkers) {
-			waitbuild(RunningWorkers);
+			waitbuild(RunningWorkers, 1);
 		}
 
 		/*
@@ -793,7 +792,7 @@ workercomplete(worker_t *work)
 			char *reason;
 
 			++BuildSkipCount;
-			reason = buildskipreason(pkg);
+			reason = buildskipreason(NULL, pkg);
 			dlog(DLOG_SKIP, "[%03d] %s skipped due to%s\n",
 			     work->index, pkg->portdir, reason);
 			free(reason);
@@ -843,7 +842,7 @@ workercomplete(worker_t *work)
  * WorkerMutex must be held.
  */
 static void
-waitbuild(int whilematch)
+waitbuild(int whilematch, int dynamicmax)
 {
 	static time_t wblast_time;
 	struct timespec ts;
@@ -880,44 +879,82 @@ waitbuild(int whilematch)
 		 * up to 75% of MaxWorkers @ (5 x ncpus) load.
 		 */
 		t = time(NULL);
-		if (wblast_time == 0 || wblast_time != t) {
-			double min_range = 1.5 * NumCores;
-			double max_range = 5.0 * NumCores;
+		if (dynamicmax && (wblast_time == 0 ||
+				   (unsigned)(t - wblast_time) >= 5)) {
+			double min_load = 1.5 * NumCores;
+			double max_load = 5.0 * NumCores;
+			double min_swap = 0.10;
+			double max_swap = 0.40;
 			double dload[3];
+			double dswap;
+			int reduce1;
+			int reduce2;
+			int reduce;
+			int noswap;
 
 			wblast_time = t;
 			getloadavg(dload, 3);
-			if (dload[0] >= min_range) {
-				int reduce;
+			dswap = getswappct(&noswap);
 
-				if (dload[0] <= max_range) {
-					reduce = 75 * (dload[0] - min_range) /
-						 (max_range - min_range);
-				} else {
-					reduce = 75;	/* 75% */
-				}
-				reduce = MaxWorkers * reduce / 100;
-				reduce = MaxWorkers - reduce;
-				if (reduce < 4)
-					reduce = 4;
-				if (reduce > MaxWorkers)
-					reduce = MaxWorkers;
-				if (DynamicMaxWorkers != reduce) {
-					dlog(DLOG_ALL,
-					     "[XXX] Load %6.2f "
-					     "Adjust MaxWorkers "
-					     "%d->%d\n",
-					     dload[0],
-					     DynamicMaxWorkers,
-					     reduce);
-					DynamicMaxWorkers = reduce;
-				}
-			} else if (DynamicMaxWorkers != MaxWorkers) {
+			if (dload[0] < min_load) {
+				reduce1 = 0;
+			} else if (dload[0] <= max_load) {
+				reduce1 = 75 * (dload[0] - min_load) /
+					  (max_load - min_load);
+			} else {
+				reduce1 = MaxWorkers * 75 / 100;
+			}
+
+			if (dswap < min_swap) {
+				reduce2 = 0;
+			} else if (dswap <= max_swap) {
+				reduce2 = 75 * (dswap - min_swap) /
+					  (max_swap - min_swap);
+			} else {
+				reduce2 = MaxWorkers * 75 / 100;
+			}
+
+			/*
+			 * Priority reduction, convert to DynamicMaxWorkers
+			 */
+			if (reduce1 > reduce2)
+				reduce = reduce1;
+			else
+				reduce = reduce2;
+			reduce = MaxWorkers - reduce;
+			if (reduce < 4)
+				reduce = 4;
+			if (reduce > MaxWorkers)
+				reduce = MaxWorkers;
+
+			/*
+			 * Handle slow-start
+			 */
+			if (reduce > DynamicMaxWorkers + 1) {
+				reduce = DynamicMaxWorkers + 1;
+			}
+
+			/*
+			 * Stop waiting if DynamicMaxWorkers is going
+			 * to increase.
+			 */
+			if (DynamicMaxWorkers < reduce)
+				whilematch = -1;
+
+			/*
+			 * And adjust
+			 */
+			if (DynamicMaxWorkers != reduce) {
 				dlog(DLOG_ALL,
-				     "[XXX] Load %6.2f Adjust MaxWorkers "
-				     "%d->%d\n",
-				     dload[0], DynamicMaxWorkers, MaxWorkers);
-				DynamicMaxWorkers = MaxWorkers;
+				     "[XXX] Load=%-6.2f(-%-2d) "
+				     "Swappct=%-3.2f(-%-2d) "
+				     "Adjust MaxWorkers "
+				     "%2d->%-2d\n",
+				     dload[0], reduce1,
+				     dswap * 100.0, reduce2,
+				     DynamicMaxWorkers,
+				     reduce);
+				DynamicMaxWorkers = reduce;
 			}
 		}
 	}
@@ -1843,13 +1880,15 @@ phaseTerminateSignal(int sig __unused)
 
 static
 char *
-buildskipreason(pkg_t *pkg)
+buildskipreason(pkglink_t *parent, pkg_t *pkg)
 {
 	pkglink_t *link;
 	pkg_t *scan;
 	char *reason = NULL;
+	char *ptr;
 	size_t tot;
 	size_t len;
+	pkglink_t stack;
 
 	tot = 0;
 	PKGLIST_FOREACH(link, &pkg->idepon_list) {
@@ -1858,10 +1897,29 @@ buildskipreason(pkg_t *pkg)
 			continue;
 		if ((scan->flags & (PKGF_ERROR | PKGF_NOBUILD)) == 0)
 			continue;
-		len = strlen(scan->portdir);
-		reason = realloc(reason, tot + len + 8);
-		snprintf(reason + tot, len + 8, " %s", scan->portdir);
+		if (scan->flags & PKGF_NOBUILD) {
+			stack.pkg = scan;
+			stack.next = parent;
+			ptr = buildskipreason(&stack, scan);
+			len = strlen(scan->portdir) + strlen(ptr) + 8;
+			reason = realloc(reason, tot + len);
+			snprintf(reason + tot, len, "%s->%s",
+				 scan->portdir, ptr);
+			free(ptr);
+		} else {
+			len = strlen(scan->portdir) + 8;
+			reason = realloc(reason, tot + len);
+			snprintf(reason + tot, len, "%s", scan->portdir);
+		}
+
+		/*
+		 * Don't try to print the entire graph
+		 */
+		if (parent)
+			break;
 		tot += strlen(reason + tot);
+		reason[tot++] = ' ';
+		reason[tot] = 0;
 	}
 	return (reason);
 }

@@ -119,12 +119,9 @@ GuiUpdateTop(void)
 	int s;
 	int pkgrate;
 	int pkgimpulse;
-	long swap_size = 0;
-	long swap_anon = 0;
-	long swap_cache = 0;
-	size_t len;
 	double dload[3];
 	double dswap;
+	int noswap;
 	time_t t;
 
 	/*
@@ -140,17 +137,7 @@ GuiUpdateTop(void)
 	 * Load and swap
 	 */
 	getloadavg(dload, 3);
-	len = sizeof(swap_size);
-	sysctlbyname("vm.swap_size", &swap_size, &len, NULL, 0);
-	len = sizeof(swap_size);
-	sysctlbyname("vm.swap_anon_use", &swap_anon, &len, NULL, 0);
-	len = sizeof(swap_size);
-	sysctlbyname("vm.swap_cache_use", &swap_cache, &len, NULL, 0);
-	if (swap_size) {
-		dswap = (swap_anon + swap_cache) * 100.0 / swap_size;
-	} else {
-		dswap = 0;
-	}
+	dswap = getswappct(&noswap) * 100.0;
 
 	/*
 	 * Rate and 10-minute impulse
@@ -199,10 +186,10 @@ GuiUpdateTop(void)
 	mvwprintw(CWin, 1, LEFT_COL, "%-4d", BuildTotal - BuildCount);
 	mvwprintw(CWin, 1, FAILED_COL, "%-4d", BuildFailCount);
 	mvwprintw(CWin, 1, SKIPPED_COL, "%-4d", BuildSkipCount);
-	if (swap_size)
-		mvwprintw(CWin, 1, SWAP_COL, "%5.1f", dswap);
-	else
+	if (noswap)
 		mvwprintw(CWin, 1, SWAP_COL, "-   ");
+	else
+		mvwprintw(CWin, 1, SWAP_COL, "%5.1f", dswap);
 	mvwprintw(CWin, 1, IMPULSE_COL, "%-5d", pkgimpulse);
 	if (h > 99)
 		mvwprintw(CWin, 1, TIME_COL-1, "%3d:%02d:%02d", h, m, s);
@@ -354,4 +341,10 @@ void
 GuiSync(void)
 {
 	wrefresh(CWin);
+}
+
+void
+GuiDone(void)
+{
+	endwin();
 }

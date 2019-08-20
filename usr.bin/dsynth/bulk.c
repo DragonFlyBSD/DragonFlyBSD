@@ -114,7 +114,9 @@ donebulk(void)
 		if (JobsAry[i].active) {
 			freebulk(JobsAry[i].active);
 			JobsAry[i].active = NULL;
+			pthread_mutex_lock(&BulkMutex);
 			--BulkCurJobs;
+			pthread_mutex_unlock(&BulkMutex);
 		}
 		JobsAry[i].terminate = 0;
 	}

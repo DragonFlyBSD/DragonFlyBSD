@@ -82,23 +82,44 @@ static const char *DLogNames[] = {
 	"06_obsolete_packages.log"
 };
 
+static int DLogFd[DLOG_COUNT];
+static pthread_mutex_t DLogFdMutex;
+
 #define arysize(ary)	(sizeof((ary)) / sizeof((ary)[0]))
+
+static int
+dlogfd(int which, int modes)
+{
+	char *path;
+	int fd;
+
+	if ((fd = DLogFd[which]) > 0)
+		return fd;
+	pthread_mutex_lock(&DLogFdMutex);
+	if ((fd = DLogFd[which]) <= 0) {
+		asprintf(&path, "%s/%s", LogsPath, DLogNames[which]);
+		fd = open(path, modes, 0666);
+		DLogFd[which] = fd;
+		free(path);
+	}
+	pthread_mutex_unlock(&DLogFdMutex);
+
+	return fd;
+}
+
 
 void
 dlogreset(void)
 {
-	char *path;
 	int i;
-	int fd;
 
 	ddassert(DLOG_COUNT == arysize(DLogNames));
 	for (i = 0; i < DLOG_COUNT; ++i) {
-		asprintf(&path, "%s/%s", LogsPath, DLogNames[i]);
-		remove(path);
-		fd = open(path, O_RDWR|O_CREAT|O_TRUNC, 0666);
-		if (fd >= 0)
-			close(fd);
-		free(path);
+		if (DLogFd[i] > 0) {
+			close(DLogFd[i]);
+			DLogFd[i] = -1;
+		}
+		(void)dlogfd(i, O_RDWR|O_CREAT|O_TRUNC|O_APPEND);
 	}
 }
 
@@ -106,7 +127,6 @@ void
 _dlog(int which, const char *ctl, ...)
 {
 	va_list va;
-	char path[256];
 	char *buf;
 	size_t len;
 	int fd;
@@ -118,20 +138,13 @@ _dlog(int which, const char *ctl, ...)
 	len = strlen(buf);
 
 	if (which != DLOG_ALL) {
-		snprintf(path, sizeof(path),
-			 "%s/%s", LogsPath, DLogNames[0]);
-		fd = open(path, O_RDWR|O_CREAT|O_APPEND, 0644);
-		if (fd >= 0) {
+		fd = dlogfd(DLOG_ALL, O_RDWR|O_CREAT|O_APPEND);
+		if (fd > 0)
 			write(fd, buf, len);
-			close(fd);
-		}
 	}
-	snprintf(path, sizeof(path), "%s/%s", LogsPath, DLogNames[which]);
-	fd = open(path, O_RDWR|O_CREAT|O_APPEND, 0644);
-	if (fd >= 0) {
-		write(fd, buf, len);
-		close(fd);
-	}
+	fd = dlogfd(which, O_RDWR|O_CREAT|O_APPEND);
+	write(fd, buf, len);
+	free(buf);
 }
 
 void
@@ -234,4 +247,34 @@ askyn(const char *ctl, ...)
 		printf("Please type y/n\n");
 	}
 	return res;
+}
+
+/*
+ * Get swap% used 0.0-1.0.
+ *
+ * NOTE: This routine is intended to return quickly.
+ */
+double
+getswappct(int *noswapp)
+{
+	long swap_size = 0;
+	long swap_anon = 0;
+	long swap_cache = 0;
+	size_t len;
+	double dswap;
+
+	len = sizeof(swap_size);
+	sysctlbyname("vm.swap_size", &swap_size, &len, NULL, 0);
+	len = sizeof(swap_size);
+	sysctlbyname("vm.swap_anon_use", &swap_anon, &len, NULL, 0);
+	len = sizeof(swap_size);
+	sysctlbyname("vm.swap_cache_use", &swap_cache, &len, NULL, 0);
+	if (swap_size) {
+		dswap = (double)(swap_anon + swap_cache) / (double)swap_size;
+		*noswapp = 0;
+	} else {
+		dswap = 0.0;
+		*noswapp = 1;
+	}
+	return dswap;
 }
