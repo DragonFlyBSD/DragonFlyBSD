@@ -240,11 +240,8 @@ in6_newaddrmsg_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 {
 	struct ifaddr *ifa = arg;
 
-	if (error == 0 && rt != NULL && mycpuid == 0) {
-		++rt->rt_refcnt;
+	if (error == 0 && rt != NULL && mycpuid == 0)
 		rt_newaddrmsg(RTM_ADD, ifa, error, rt);
-		--rt->rt_refcnt;
-	}
 }
 
 void

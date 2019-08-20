@@ -1577,11 +1577,8 @@ rtinit_rtrequest_callback(int cmd, int error,
 	struct ifaddr *ifa = arg;
 
 	if (error == 0 && rt) {
-		if (mycpuid == 0) {
-			++rt->rt_refcnt;
+		if (mycpuid == 0)
 			rt_newaddrmsg(cmd, ifa, error, rt);
-			--rt->rt_refcnt;
-		}
 		if (cmd == RTM_DELETE) {
 			if (rt->rt_refcnt == 0) {
 				++rt->rt_refcnt;
