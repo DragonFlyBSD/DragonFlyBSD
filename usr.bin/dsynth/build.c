@@ -592,7 +592,7 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 		 * Block while no slots are available.  waitbuild()
 		 * will clean out any DONE states.
 		 */
-		if (RunningWorkers >= DynamicMaxWorkers) {
+		while (RunningWorkers >= DynamicMaxWorkers) {
 			waitbuild(RunningWorkers);
 		}
 
@@ -831,11 +831,20 @@ waitbuild(int whilematch)
 					reduce = MaxWorkers;
 				if (DynamicMaxWorkers != reduce) {
 					dlog(DLOG_ALL,
-					     "[XXX] Adjust MaxWorkers "
+					     "[XXX] Load %6.2f "
+					     "Adjust MaxWorkers "
 					     "%d->%d\n",
-					     reduce, DynamicMaxWorkers);
+					     dload[0],
+					     DynamicMaxWorkers,
+					     reduce);
 					DynamicMaxWorkers = reduce;
 				}
+			} else if (DynamicMaxWorkers != MaxWorkers) {
+				dlog(DLOG_ALL,
+				     "[XXX] Load %6.2f Adjust MaxWorkers "
+				     "%d->%d\n",
+				     dload[0], DynamicMaxWorkers, MaxWorkers);
+				DynamicMaxWorkers = MaxWorkers;
 			}
 		}
 	}
@@ -1157,8 +1166,12 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
  * SSL_NO_VERIFY_PEER=1
  * USE_PACKAGE_DEPENDS_ONLY=1	(exec_phase_depends)
  * PORTSDIR=/xports
+ * PORT_DBDIR=/options		For ports options
+ * PACKAGE_BUILDING=yes		Don't build packages that aren't legally
+ *				buildable for a binary repo.
  * PKG_DBDIR=/var/db/pkg
  * PKG_CACHEDIR=/var/cache/pkg
+ * PKG_CREATE_VERBOSE=yes	Ensure periodic output during packaging
  * (custom environment)
  * PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
  * UNAME_s=DragonFly		(example)
@@ -1255,6 +1268,7 @@ WorkerProcess(int ac, char **av)
 	setenv("SSL_NO_VERIFY_PEER", "1", 1);
 	setenv("USE_PACKAGE_DEPENDS_ONLY", "1", 1);
 	setenv("PORTSDIR", "/xports", 1);
+	setenv("PORT_DBDIR", "/options", 1);
 	setenv("PKG_DBDIR", "/var/db/pkg", 1);
 	setenv("PKG_CACHEDIR", "/var/cache/pkg", 1);
 
@@ -1272,6 +1286,19 @@ WorkerProcess(int ac, char **av)
 	setenv("DISTDIR", "/distfiles", 1);
 	setenv("WRKDIRPREFIX", "/construction", 1);
 	setenv("BATCH", "yes", 1);
+
+	/*
+	 * Special consideration
+	 *
+	 * PACKAGE_BUILDING	- Disallow packaging ports which do not allow
+	 *			  for binary distribution.
+	 *
+	 * PKG_CREATE_VERBOSE	- Ensure periodic output during the packaging
+	 *			  process to avoid a watchdog timeout.
+	 *
+	 */
+	setenv("PACKAGE_BUILDING", "yes", 1);
+	setenv("PKG_CREATE_VERBOSE", "yes", 1);
 
 	asprintf(&buf, "%d", MaxJobs);
 	setenv("MAKE_JOBS_NUMBER", buf, 1);

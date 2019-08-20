@@ -194,7 +194,7 @@ GuiUpdateTop(void)
 		mvwprintw(CWin, 0, LOAD_COL, "%5.0f", dload[0]);
 	else
 		mvwprintw(CWin, 0, LOAD_COL, "%5.1f", dload[0]);
-	mvwprintw(CWin, 0, GPKGRATE_COL, "%-4d", pkgrate);
+	mvwprintw(CWin, 0, GPKGRATE_COL, "%-5d", pkgrate);
 
 	mvwprintw(CWin, 1, LEFT_COL, "%-4d", BuildTotal - BuildCount);
 	mvwprintw(CWin, 1, FAILED_COL, "%-4d", BuildFailCount);
@@ -203,7 +203,7 @@ GuiUpdateTop(void)
 		mvwprintw(CWin, 1, SWAP_COL, "%5.1f", dswap);
 	else
 		mvwprintw(CWin, 1, SWAP_COL, "-   ");
-	mvwprintw(CWin, 1, IMPULSE_COL, "%-4d", pkgimpulse);
+	mvwprintw(CWin, 1, IMPULSE_COL, "%-5d", pkgimpulse);
 	if (h > 99)
 		mvwprintw(CWin, 1, TIME_COL-1, "%3d:%02d:%02d", h, m, s);
 	else
