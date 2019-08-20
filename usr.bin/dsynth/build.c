@@ -1547,6 +1547,7 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	status = 0;
 	for (;;) {
 		struct pollfd pfd;
+		pid_t wpid;
 
 		pfd.fd = fdmaster;
 		pfd.events = POLLIN;
@@ -1631,11 +1632,15 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		 * but if background processes remain we need to
 		 * check here to see if our primary exec is done,
 		 * so we can break out and reap those processes.
+		 *
+		 * Generally reap any other processes we have inherited
+		 * while we are here.
 		 */
-		if (waitpid(pid, &status, WNOHANG) == pid &&
-		    WIFEXITED(status)) {
+		do {
+			wpid = wait3(&status, WNOHANG, NULL);
+		} while (wpid > 0 && wpid != pid);
+		if (wpid == pid && WIFEXITED(status))
 			break;
-		}
 	}
 	close(fdmaster);
 
