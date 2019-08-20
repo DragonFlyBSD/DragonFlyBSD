@@ -63,7 +63,7 @@ static char *buildskipreason(pkglink_t *parent, pkg_t *pkg);
 static int copyfile(char *src, char *dst);
 
 static worker_t *SigWork;
-static int FDMaster = -1;
+static int MasterPtyFd = -1;
 static pid_t SigPid;
 static int DynamicMaxWorkers;
 
@@ -150,7 +150,9 @@ DoBuild(pkg_t *pkgs)
 	 * and pkg-static.
 	 */
 	if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0) {
-		DoCreateTemplate();
+		DoCreateTemplate(1);	/* force a fresh template */
+	} else {
+		DoCreateTemplate(0);
 	}
 
 	/*
@@ -626,7 +628,7 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 			++BuildSkipCount;
 			++BuildCount;
 			reason = buildskipreason(NULL, ipkg);
-			dlog(DLOG_SKIP, "[XXX] %s skipped due to%s\n",
+			dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
 			     ipkg->portdir, reason);
 			free(reason);
 			continue;
@@ -640,7 +642,7 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 			++BuildSkipCount;
 			++BuildCount;
 			reason = buildskipreason(NULL, pkgi);
-			dlog(DLOG_SKIP, "[XXX] %s skipped due to%s\n",
+			dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
 			     pkgi->portdir, reason);
 			free(reason);
 			continue;
@@ -793,7 +795,7 @@ workercomplete(worker_t *work)
 
 			++BuildSkipCount;
 			reason = buildskipreason(NULL, pkg);
-			dlog(DLOG_SKIP, "[%03d] %s skipped due to%s\n",
+			dlog(DLOG_SKIP, "[%03d] %s skipped due to %s\n",
 			     work->index, pkg->portdir, reason);
 			free(reason);
 		} else {
@@ -1324,6 +1326,7 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
  *	install
  *	deinstall
  */
+
 void
 WorkerProcess(int ac, char **av)
 {
@@ -1552,6 +1555,11 @@ WorkerProcess(int ac, char **av)
 #endif
 	}
 
+	if (MasterPtyFd >= 0) {
+		close(MasterPtyFd);
+		MasterPtyFd = -1;
+	}
+
 	setproctitle("WORKER [%02d] CLEANUP  %s", slot, portdir);
 
 	/*
@@ -1592,7 +1600,6 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	pid_t pid;
 	ssize_t r;
 	int status;
-	int fdmaster;
 	int fdlog;
 	time_t start_time;
 	time_t last_time;
@@ -1618,7 +1625,22 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	 */
 	fflush(stdout);
 	fflush(stderr);
-	if ((pid = forkpty(&fdmaster, NULL, NULL, NULL)) == 0) {
+	if (MasterPtyFd >= 0) {
+		int slavefd;
+
+		slavefd = open(ptsname(MasterPtyFd), O_RDWR);
+		dassert_errno(slavefd >= 0, "Cannot open slave pty");
+		pid = fork();
+		if (pid == 0) {
+			login_tty(slavefd);
+		} else {
+			close(slavefd);
+		}
+	} else {
+		pid = forkpty(&MasterPtyFd, NULL, NULL, NULL);
+	}
+
+	if (pid == 0) {
 		closefrom(3);
 		if (chdir(work->basedir) < 0)
 			dfatal_errno("chdir in phase initialization");
@@ -1660,7 +1682,13 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		_exit(1);
 	}
 
-	FDMaster = fdmaster;	/* for signal handler */
+	if (pid < 0) {
+		dlog(DLOG_ALL, "[%03d] %s Fork Failed\n",
+		     work->index, pkg->logfile);
+		++work->accum_error;
+		return;
+	}
+
 	SigPid = pid;
 
 	fdlog = open(pkg->logfile, O_RDWR|O_CREAT|O_APPEND, 0644);
@@ -1678,13 +1706,13 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		struct pollfd pfd;
 		pid_t wpid;
 
-		pfd.fd = fdmaster;
+		pfd.fd = MasterPtyFd;
 		pfd.events = POLLIN;
 		pfd.revents = 0;
 
 		poll(&pfd, 1, 1000);
 		if (pfd.revents) {
-			r = read(fdmaster, buf, sizeof(buf));
+			r = read(MasterPtyFd, buf, sizeof(buf));
 			if (r <= 0) {
 				if (r < 0 && errno == EINTR)
 					continue;
@@ -1771,7 +1799,6 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		if (wpid == pid && WIFEXITED(status))
 			break;
 	}
-	close(fdmaster);
 
 	next_time = time(NULL);
 
@@ -1868,8 +1895,8 @@ phaseReapAll(void)
 static void
 phaseTerminateSignal(int sig __unused)
 {
-	if (FDMaster >= 0)
-		close(FDMaster);
+	if (MasterPtyFd >= 0)
+		close(MasterPtyFd);
 	if (SigPid > 1)
 		kill(SigPid, SIGKILL);
 	phaseReapAll();

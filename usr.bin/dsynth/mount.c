@@ -37,8 +37,10 @@
 #include "dsynth.h"
 
 static void domount(worker_t *work, int type,
-			const char *spath, const char *dpath);
+			const char *spath, const char *dpath,
+			const char *discretefmt);
 static void dounmount(worker_t *work, const char *rpath);
+static void makeDiscreteCopies(const char *spath, const char *discretefmt);
 
 /*
  * Called by the frontend to create a template which will be cpdup'd
@@ -47,18 +49,53 @@ static void dounmount(worker_t *work, const char *rpath);
  * Template must have been previously destroyed.  Errors are fatal
  */
 int
-DoCreateTemplate(void)
+DoCreateTemplate(int force)
 {
+	struct stat st;
 	char *buf;
 	int rc;
 
 	rc = 0;
-	asprintf(&buf, "%s/mktemplate %s %s/Template",
-		 SCRIPTPATH(SCRIPTDIR), SystemPath, BuildBase);
-	rc = system(buf);
-	if (rc)
-		dfatal("Command failed: %s\n", buf);
-	free(buf);
+
+	/*
+	 * Conditionally create the template and discrete copies of certain
+	 * directories if we think we are missing things.
+	 */
+	if (force == 0) {
+		asprintf(&buf, "%s/Template", BuildBase);
+		if (stat(buf, &st) < 0)
+			force = 1;
+		free(buf);
+
+		asprintf(&buf, "%s/usr.bin.%03d", BuildBase, MaxWorkers - 1);
+		if (stat(buf, &st) < 0)
+			force = 1;
+		free(buf);
+	}
+
+	/*
+	 * Create the template
+	 */
+	if (force) {
+		rc = 0;
+		asprintf(&buf, "%s/mktemplate %s %s/Template",
+			 SCRIPTPATH(SCRIPTDIR), SystemPath, BuildBase);
+		rc = system(buf);
+		if (rc)
+			dfatal("Command failed: %s\n", buf);
+		free(buf);
+	}
+
+	/*
+	 * Make discrete copies of certain extremely heavily used
+	 * but small directories.
+	 */
+	if (force) {
+		makeDiscreteCopies("$/bin", "/bin.%03d");
+		makeDiscreteCopies("$/lib", "/lib.%03d");
+		makeDiscreteCopies("$/libexec", "/libexec.%03d");
+		makeDiscreteCopies("$/usr/bin", "/usr.bin.%03d");
+	}
 
 	return rc;
 }
@@ -102,34 +139,34 @@ DoWorkerMounts(worker_t *work)
 	 * directory if necessary and prefix spath with SystemPath if
 	 * it starts with $/
 	 */
-	domount(work, TMPFS_RW, "dummy", "");
+	domount(work, TMPFS_RW, "dummy", "", NULL);
 	asprintf(&buf, "%s/usr", work->basedir);
 	if (mkdir(buf, 0755) != 0) {
 		fprintf(stderr, "Command failed: mkdir %s\n", buf);
 		++work->mount_error;
 	}
-	domount(work, NULLFS_RO, "$/boot", "/boot");
-	domount(work, TMPFS_RW,  "dummy", "/boot/modules.local");
-	domount(work, DEVFS_RW,  "dummy", "/dev");
-	domount(work, NULLFS_RO, "$/bin", "/bin");
-	domount(work, NULLFS_RO, "$/sbin", "/sbin");
-	domount(work, NULLFS_RO, "$/lib", "/lib");
-	domount(work, NULLFS_RO, "$/libexec", "/libexec");
-	domount(work, NULLFS_RO, "$/usr/bin", "/usr/bin");
-	domount(work, NULLFS_RO, "$/usr/include", "/usr/include");
-	domount(work, NULLFS_RO, "$/usr/lib", "/usr/lib");
-	domount(work, NULLFS_RO, "$/usr/libdata", "/usr/libdata");
-	domount(work, NULLFS_RO, "$/usr/libexec", "/usr/libexec");
-	domount(work, NULLFS_RO, "$/usr/sbin", "/usr/sbin");
-	domount(work, NULLFS_RO, "$/usr/share", "/usr/share");
-	domount(work, TMPFS_RW,  "dummy", "/usr/local");
-	domount(work, NULLFS_RO, "$/usr/games", "/usr/games");
-	domount(work, NULLFS_RO, "$/usr/src", "/usr/src");
-	domount(work, NULLFS_RO, DPortsPath, "/xports");
-	domount(work, NULLFS_RW, OptionsPath, "/options");
-	domount(work, NULLFS_RW, PackagesPath, "/packages");
-	domount(work, NULLFS_RW, DistFilesPath, "/distfiles");
-	domount(work, TMPFS_RW_BIG, "dummy", "/construction");
+	domount(work, NULLFS_RO, "$/boot", "/boot", NULL);
+	domount(work, TMPFS_RW,  "dummy", "/boot/modules.local", NULL);
+	domount(work, DEVFS_RW,  "dummy", "/dev", NULL);
+	domount(work, NULLFS_RO, "$/bin", "/bin", "/bin.%03d");
+	domount(work, NULLFS_RO, "$/sbin", "/sbin", NULL);
+	domount(work, NULLFS_RO, "$/lib", "/lib", "/lib.%03d");
+	domount(work, NULLFS_RO, "$/libexec", "/libexec", "/libexec.%03d");
+	domount(work, NULLFS_RO, "$/usr/bin", "/usr/bin", "/usr.bin.%03d");
+	domount(work, NULLFS_RO, "$/usr/include", "/usr/include", NULL);
+	domount(work, NULLFS_RO, "$/usr/lib", "/usr/lib", NULL);
+	domount(work, NULLFS_RO, "$/usr/libdata", "/usr/libdata", NULL);
+	domount(work, NULLFS_RO, "$/usr/libexec", "/usr/libexec", NULL);
+	domount(work, NULLFS_RO, "$/usr/sbin", "/usr/sbin", NULL);
+	domount(work, NULLFS_RO, "$/usr/share", "/usr/share", NULL);
+	domount(work, TMPFS_RW,  "dummy", "/usr/local", NULL);
+	domount(work, NULLFS_RO, "$/usr/games", "/usr/games", NULL);
+	domount(work, NULLFS_RO, "$/usr/src", "/usr/src", NULL);
+	domount(work, NULLFS_RO, DPortsPath, "/xports", NULL);
+	domount(work, NULLFS_RW, OptionsPath, "/options", NULL);
+	domount(work, NULLFS_RW, PackagesPath, "/packages", NULL);
+	domount(work, NULLFS_RW, DistFilesPath, "/distfiles", NULL);
+	domount(work, TMPFS_RW_BIG, "dummy", "/construction", NULL);
 
 	/*
 	 * NOTE: Uses blah/. to prevent cp from creating 'Template' under
@@ -194,7 +231,8 @@ DoWorkerUnmounts(worker_t *work)
 
 static
 void
-domount(worker_t *work, int type, const char *spath, const char *dpath)
+domount(worker_t *work, int type, const char *spath, const char *dpath,
+	const char *discretefmt)
 {
 	const char *prog;
 	const char *sbase;
@@ -202,6 +240,7 @@ domount(worker_t *work, int type, const char *spath, const char *dpath)
 	const char *optstr;
 	struct stat st;
 	char *buf;
+	char *tmp;
 	int rc;
 
 	/*
@@ -248,13 +287,21 @@ domount(worker_t *work, int type, const char *spath, const char *dpath)
 	/*
 	 * Prefix spath
 	 */
-	if (spath[0] == '$') {
-		++spath;
-		sbase = SystemPath;
+	if (discretefmt) {
+		sbase = BuildBase;
+		asprintf(&tmp, discretefmt, work->index);
+		spath = tmp;
 	} else {
-		sbase = "";
+		if (spath[0] == '$') {
+			++spath;
+			sbase = SystemPath;
+			if (strcmp(sbase, "/") == 0)
+				++sbase;
+		} else {
+			sbase = "";
+		}
+		tmp = NULL;
 	}
-
 	asprintf(&buf, "%s%s -o %s %s%s %s%s",
 		 prog, optstr, rwstr,
 		 sbase, spath, work->basedir, dpath);
@@ -264,6 +311,8 @@ domount(worker_t *work, int type, const char *spath, const char *dpath)
 		++work->mount_error;
 	}
 	free(buf);
+	if (tmp)
+		free(tmp);
 }
 
 static
@@ -279,10 +328,50 @@ dounmount(worker_t *work, const char *rpath)
 		case EINVAL:
 			break;
 		default:
-			fprintf(stderr, "Cannot umount %s (%s)\n", buf, strerror(errno));
+			fprintf(stderr, "Cannot umount %s (%s)\n",
+				buf, strerror(errno));
 			++work->mount_error;
 			break;
 		}
 	}
 	free(buf);
+}
+
+static
+void
+makeDiscreteCopies(const char *spath, const char *discretefmt)
+{
+	char *src;
+	char *dst;
+	char *buf;
+	struct stat st;
+	int i;
+	int rc;
+
+	for (i = 0; i < MaxWorkers; ++i) {
+		if (spath[0] == '$') {
+			if (strcmp(SystemPath, "/") == 0)
+				asprintf(&src, "%s%s",
+					 SystemPath + 1, spath + 1);
+			else
+				asprintf(&src, "%s%s",
+					 SystemPath, spath + 1);
+		} else {
+			src = strdup(spath);
+		}
+		asprintf(&buf, discretefmt, i);
+		asprintf(&dst, "%s%s", BuildBase, buf);
+		free(buf);
+		if (stat(dst, &st) < 0) {
+			if (mkdir(dst, 0555) < 0)
+				dfatal_errno("Cannot mkdir %s", dst);
+		}
+		asprintf(&buf, "cpdup %s %s", src, dst);
+		rc = system(buf);
+		if (rc)
+			dfatal("Command failed: %s", buf);
+		free(buf);
+		free(src);
+		free(dst);
+	}
 }

@@ -419,7 +419,7 @@ void DoInitBuild(int slot_override);
 void DoCleanBuild(void);
 void WorkerProcess(int ac, char **av);
 
-int DoCreateTemplate(void);
+int DoCreateTemplate(int force);
 void DoDestroyTemplate(void);
 void DoWorkerMounts(worker_t *work);
 void DoWorkerUnmounts(worker_t *work);
