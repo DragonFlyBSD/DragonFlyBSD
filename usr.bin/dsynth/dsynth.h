@@ -325,7 +325,7 @@ typedef enum os_id os_id_t;
 	dassert((exp), "\"%s\" line %d", __FILE__, __LINE__)
 
 #define dassert_errno(exp, fmt, ...)	\
-	if (!(cond)) dpanic_errno(fmt, ## __VA_ARGS__)
+	if (!(exp)) dpanic_errno(fmt, ## __VA_ARGS__)
 
 #define dlog(which, fmt, ...)		\
 	_dlog(which, fmt, ## __VA_ARGS__)
@@ -357,6 +357,7 @@ extern int BuildSuccessCount;
 extern buildenv_t *BuildEnv;
 extern int DebugOpt;
 extern int YesOpt;
+extern int NullStdinOpt;
 extern int UseCCache;
 extern int UseTmpfs;
 extern int NumCores;

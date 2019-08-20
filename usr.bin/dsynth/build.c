@@ -297,14 +297,23 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			++idep_count;
 			continue;
 		}
-		if (scan->flags & PKGF_ERROR) {
-			ddprintf(0, "ERROR - OK (propogate failure upward)\n");
-			*app |= PKGF_NOBUILD_S;
-			continue;
-		}
+
+		/*
+		 * ERROR includes FAILURE, which is set in numerous situations
+		 * including when NOBUILD state is processed.  So check for
+		 * NOBUILD state first.
+		 *
+		 * An ERROR in a sub-package causes a NOBUILD in packages
+		 * that depend on it.
+		 */
 		if (scan->flags & PKGF_NOBUILD) {
 			ddprintf(0, "NOBUILD - OK "
 				    "(propogate failure upward)\n");
+			*app |= PKGF_NOBUILD_S;
+			continue;
+		}
+		if (scan->flags & PKGF_ERROR) {
+			ddprintf(0, "ERROR - OK (propogate failure upward)\n");
 			*app |= PKGF_NOBUILD_S;
 			continue;
 		}
@@ -405,15 +414,25 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 	 * Handle propagated flags
 	 */
 	if (pkg->flags & PKGF_ERROR) {
+		/*
+		 * This can only happen if the ERROR has already been
+		 * processed and accounted for.
+		 */
 		ddprintf(level, "} (ERROR - %s)\n", pkg->portdir);
-	} else if (pkg->flags & PKGF_NOBUILD) {
-		ddprintf(level, "} (SKIPPED - %s)\n", pkg->portdir);
 	} else if (*app & PKGF_NOTREADY) {
 		/*
 		 * We don't set PKGF_NOTREADY in the pkg, it is strictly
 		 * a transient flag propagated via build_find_leaves().
 		 *
 		 * Just don't add the package to the list.
+		 *
+		 * NOTE: Even if NOBUILD is set (meaning we could list it
+		 *	 and let startbuild() finish it up as a skip, we
+		 *	 don't process it to the list because we want to
+		 *	 process all the dependencies, so someone doing a
+		 *	 manual build can get more complete information and
+		 *	 does not have to iterate each failed dependency one
+		 *	 at a time.
 		 */
 		;
 	} else if (pkg->flags & PKGF_SUCCESS) {
@@ -449,9 +468,16 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		 * All dependencies are successful, queue new work
 		 * and indicate not-ready to the parent (since our
 		 * package has to be built).
+		 *
+		 * NOTE: The NOBUILD case propagates to here as well
+		 *	 and is ultimately handled by startbuild().
 		 */
 		*hasworkp = 1;
-		ddprintf(level, "} (ADDLIST - %s)\n", pkg->portdir);
+		if (pkg->flags & PKGF_NOBUILD)
+			ddprintf(level, "} (ADDLIST(NOBUILD) - %s)\n",
+				 pkg->portdir);
+		else
+			ddprintf(level, "} (ADDLIST - %s)\n", pkg->portdir);
 		pkg->flags |= PKGF_BUILDLIST;
 		**build_tailp = pkg;
 		*build_tailp = &pkg->build_next;
@@ -587,6 +613,39 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 		if (ipkg == NULL && pkgi == NULL)
 			break;
 		ddassert(ipkg && pkgi);
+
+		/*
+		 * Handle the NOBUILD case right here, there's no point
+		 * queueing it anywhere.
+		 */
+		if (ipkg->flags & PKGF_NOBUILD) {
+			char *reason;
+
+			ipkg->flags |= PKGF_FAILURE;
+			ipkg->flags &= ~PKGF_BUILDLIST;
+
+			++BuildSkipCount;
+			++BuildCount;
+			reason = buildskipreason(ipkg);
+			dlog(DLOG_SKIP, "[XXX] %s skipped due to%s\n",
+			     ipkg->portdir, reason);
+			free(reason);
+			continue;
+		}
+		if (pkgi->flags & PKGF_NOBUILD) {
+			char *reason;
+
+			pkgi->flags |= PKGF_FAILURE;
+			pkgi->flags &= ~PKGF_BUILDLIST;
+
+			++BuildSkipCount;
+			++BuildCount;
+			reason = buildskipreason(pkgi);
+			dlog(DLOG_SKIP, "[XXX] %s skipped due to%s\n",
+			     pkgi->portdir, reason);
+			free(reason);
+			continue;
+		}
 
 		/*
 		 * Block while no slots are available.  waitbuild()
@@ -725,6 +784,11 @@ workercomplete(worker_t *work)
 	pkg = work->pkg;
 	if (pkg->flags & (PKGF_ERROR|PKGF_NOBUILD)) {
 		pkg->flags |= PKGF_FAILURE;
+
+		/*
+		 * This NOBUILD condition XXX can occur if the package is
+		 * not allowed to be built.
+		 */
 		if (pkg->flags & PKGF_NOBUILD) {
 			char *reason;
 
@@ -813,17 +877,26 @@ waitbuild(int whilematch)
 		/*
 		 * Dynamically reduce MaxWorkers based on the load.  When
 		 * the load exceeds 2 x ncpus we reduce the number of workers
-		 * by (2 * load / ncpus), but go no lower than 4.
+		 * up to 75% of MaxWorkers @ (5 x ncpus) load.
 		 */
 		t = time(NULL);
 		if (wblast_time == 0 || wblast_time != t) {
+			double min_range = 1.5 * NumCores;
+			double max_range = 5.0 * NumCores;
 			double dload[3];
 
 			wblast_time = t;
 			getloadavg(dload, 3);
-			if (dload[0] > NumCores * 2) {
-				int reduce = dload[0] * 2.0 / NumCores;
+			if (dload[0] >= min_range) {
+				int reduce;
 
+				if (dload[0] <= max_range) {
+					reduce = 75 * (dload[0] - min_range) /
+						 (max_range - min_range);
+				} else {
+					reduce = 75;	/* 75% */
+				}
+				reduce = MaxWorkers * reduce / 100;
 				reduce = MaxWorkers - reduce;
 				if (reduce < 4)
 					reduce = 4;
@@ -1514,6 +1587,25 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 			dfatal_errno("chdir in phase initialization");
 		if (chroot(work->basedir) < 0)
 			dfatal_errno("chroot in phase initialization");
+
+		/*
+		 * We have a choice here on how to handle stdin (fd 0).
+		 * We can leave it connected to the pty in which case
+		 * the build will just block if it tries to ask a
+		 * question (and the watchdog will kill it, eventually),
+		 * or we can try to EOF the pty, or we can attach /dev/null
+		 * to descriptor 0.
+		 */
+		if (NullStdinOpt) {
+			int fd;
+
+			fd = open("/dev/null", O_RDWR);
+			dassert_errno(fd >= 0, "cannot open /dev/null");
+			if (fd != 0) {
+				dup2(fd, 0);
+				close(fd);
+			}
+		}
 
 		/*
 		 * Execute the appropriate command.

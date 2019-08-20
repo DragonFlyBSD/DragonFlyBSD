@@ -41,6 +41,7 @@ static void usage(int ecode) __dead2;
 
 int YesOpt;
 int DebugOpt;
+int NullStdinOpt = 1;
 char *DSynthExecPath;
 
 int
