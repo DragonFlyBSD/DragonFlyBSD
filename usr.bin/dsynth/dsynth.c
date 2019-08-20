@@ -39,7 +39,7 @@
 
 static void usage(int ecode) __dead2;
 
-int DryRunOpt;
+int YesOpt;
 int DebugOpt;
 char *DSynthExecPath;
 
@@ -70,8 +70,11 @@ main(int ac, char **av)
 	/*
 	 * Process options and make sure the directive is present
 	 */
-	while ((c = getopt(ac, av, "dhv")) != -1) {
+	while ((c = getopt(ac, av, "dhvy")) != -1) {
 		switch(c) {
+		case 'y':
+			++YesOpt;
+			break;
 		case 'd':
 			++DebugOpt;
 			UseNCurses = 0;
@@ -133,12 +136,11 @@ main(int ac, char **av)
 	} else
 #endif
 	if (strcmp(av[0], "status") == 0) {
-		DryRunOpt = 1;
 		if (ac - 1)
 			pkgs = ParsePackageList(ac - 1, av + 1);
 		else
 			pkgs = GetLocalPackageList();
-		DoBuild(pkgs);
+		DoStatus(pkgs);
 	} else if (strcmp(av[0], "cleanup") == 0) {
 		DoCleanBuild();
 	} else if (strcmp(av[0], "configure") == 0) {
@@ -161,9 +163,8 @@ main(int ac, char **av)
 		pkgs = GetFullPackageList();
 		PurgeDistfiles(pkgs);
 	} else if (strcmp(av[0], "status-everything") == 0) {
-		DryRunOpt = 1;
 		pkgs = GetFullPackageList();
-		DoBuild(pkgs);
+		DoStatus(pkgs);
 	} else if (strcmp(av[0], "everything") == 0) {
 		DoCleanBuild();
 		pkgs = GetFullPackageList();

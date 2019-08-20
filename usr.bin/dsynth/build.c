@@ -65,6 +65,7 @@ static int copyfile(char *src, char *dst);
 static worker_t *SigWork;
 static int FDMaster = -1;
 static pid_t SigPid;
+static int DynamicMaxWorkers;
 
 int BuildTotal;
 int BuildCount;
@@ -106,6 +107,7 @@ DoInitBuild(int slot_override)
 	}
 
 	BuildInitialized = 1;
+	DynamicMaxWorkers = MaxWorkers;
 }
 
 /*
@@ -144,8 +146,19 @@ DoBuild(pkg_t *pkgs)
 	scan = GetPkgPkg(pkgs);
 
 	/*
-	 * This will clear the screen and set-up our gui
+	 * Create our template.  The template will be missing pkg
+	 * and pkg-static.
 	 */
+	if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0) {
+		DoCreateTemplate();
+	}
+
+	/*
+	 * This will clear the screen and set-up our gui, so sleep
+	 * a little first in case the user wants to see what was
+	 * printed before.
+	 */
+	sleep(2);
 	pthread_mutex_lock(&WorkerMutex);
 	GuiInit();
 	GuiReset();
@@ -153,12 +166,6 @@ DoBuild(pkg_t *pkgs)
 	if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0) {
 		char *buf;
 		int rc;
-
-		/*
-		 * Create our template.  The template will be missing pkg
-		 * and pkg-static.
-		 */
-		DoCreateTemplate();
 
 		/*
 		 * Build pkg/pkg-static.
@@ -181,7 +188,7 @@ DoBuild(pkg_t *pkgs)
 		asprintf(&buf,
 			 "cd %s/Template; "
 			 "tar --exclude '+*' --exclude '*/man/*' "
-			 "-xvzpf %s/%s",
+			 "-xvzpf %s/%s > /dev/null 2>&1",
 			 BuildBase,
 			 RepositoryPath,
 			 scan->pkgfile);
@@ -585,8 +592,8 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 		 * Block while no slots are available.  waitbuild()
 		 * will clean out any DONE states.
 		 */
-		if (RunningWorkers == MaxWorkers) {
-			waitbuild(MaxWorkers);
+		if (RunningWorkers >= DynamicMaxWorkers) {
+			waitbuild(RunningWorkers);
 		}
 
 		/*
@@ -774,8 +781,10 @@ workercomplete(worker_t *work)
 static void
 waitbuild(int whilematch)
 {
+	static time_t wblast_time;
 	struct timespec ts;
 	worker_t *work;
+	time_t t;
 	int i;
 
 	if (whilematch == 0)
@@ -799,6 +808,35 @@ waitbuild(int whilematch)
 			ts.tv_sec += 1;
 			ts.tv_nsec = 0;
 			pthread_cond_timedwait(&WorkerCond, &WorkerMutex, &ts);
+		}
+
+		/*
+		 * Dynamically reduce MaxWorkers based on the load.  When
+		 * the load exceeds 2 x ncpus we reduce the number of workers
+		 * by (2 * load / ncpus), but go no lower than 4.
+		 */
+		t = time(NULL);
+		if (wblast_time == 0 || wblast_time != t) {
+			double dload[3];
+
+			wblast_time = t;
+			getloadavg(dload, 3);
+			if (dload[0] > NumCores * 2) {
+				int reduce = dload[0] * 2.0 / NumCores;
+
+				reduce = MaxWorkers - reduce;
+				if (reduce < 4)
+					reduce = 4;
+				if (reduce > MaxWorkers)
+					reduce = MaxWorkers;
+				if (DynamicMaxWorkers != reduce) {
+					dlog(DLOG_ALL,
+					     "[XXX] Adjust MaxWorkers "
+					     "%d->%d\n",
+					     reduce, DynamicMaxWorkers);
+					DynamicMaxWorkers = reduce;
+				}
+			}
 		}
 	}
 }
@@ -1186,7 +1224,7 @@ WorkerProcess(int ac, char **av)
 	 * Parse arguments
 	 */
 	if (ac != 5) {
-		dlog(DLOG_ALL, "WORKER PROCESS %d- bad arguments", getpid());
+		dlog(DLOG_ALL, "WORKER PROCESS %d- bad arguments\n", getpid());
 		exit(1);
 	}
 	slot = strtol(av[1], NULL, 0);

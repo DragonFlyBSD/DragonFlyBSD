@@ -73,6 +73,7 @@ static char *dokernsysctl(int m1, int m2);
 void
 ParseConfiguration(int isworker)
 {
+	struct stat st;
 	size_t len;
 
 	/*
@@ -101,6 +102,12 @@ ParseConfiguration(int isworker)
 		MaxJobs = 1;
 
 	/*
+	 * Configuration file must exist
+	 */
+	if (stat(SynthConfig, &st) < 0)
+		dfatal("Configuration file missing: %s", SynthConfig);
+
+	/*
 	 * Parse the configuration file(s)
 	 */
 	parseConfigFile(SynthConfig);
@@ -112,6 +119,36 @@ ParseConfiguration(int isworker)
 	 */
 	if (isworker)
 		MaxWorkers = 1;
+
+	if (stat(DPortsPath, &st) < 0)
+		dfatal("Directory missing: %s", DPortsPath);
+	if (stat(PackagesPath, &st) < 0)
+		dfatal("Directory missing: %s", PackagesPath);
+	if (stat(OptionsPath, &st) < 0)
+		dfatal("Directory missing: %s", OptionsPath);
+	if (stat(DistFilesPath, &st) < 0)
+		dfatal("Directory missing: %s", DistFilesPath);
+	if (stat(BuildBase, &st) < 0)
+		dfatal("Directory missing: %s", BuildBase);
+	if (stat(LogsPath, &st) < 0)
+		dfatal("Directory missing: %s", LogsPath);
+	if (stat(SystemPath, &st) < 0)
+		dfatal("Directory missing: %s", SystemPath);
+
+	/*
+	 * If RepositoryPath is under PackagesPath, make sure it
+	 * is created.
+	 */
+	if (strncmp(RepositoryPath, PackagesPath, strlen(PackagesPath)) == 0) {
+		if (stat(RepositoryPath, &st) < 0) {
+			if (mkdir(RepositoryPath, 0755) < 0)
+				dfatal_errno("Cannot mkdir '%s'",
+					     RepositoryPath);
+		}
+	}
+
+	if (stat(RepositoryPath, &st) < 0)
+		dfatal("Directory missing: %s", RepositoryPath);
 }
 
 void

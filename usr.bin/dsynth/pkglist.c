@@ -278,6 +278,7 @@ processPackageListBulk(int total)
 		}
 		freebulk(bulk);
 	}
+	printf("100.00%%\n");
 	printf("\nTotal %d\n", count);
 	fflush(stdout);
 
@@ -331,6 +332,7 @@ processPackageListBulk(int total)
 		}
 		freebulk(bulk);
 	}
+	printf("100.00%%\n");
 	printf("\nTotal %d\n", count);
 	fflush(stdout);
 	donebulk();
@@ -584,6 +586,8 @@ again:
 		 "exec %s -C %s/%s/%s %s%s "
 		 "-VPKGVERSION "
 		 "-VPKGFILE:T "
+		 "-VDISTFILES "
+		 "-VDIST_SUBDIR "
 		 "-VMAKE_JOBS_NUMBER "
 		 "-VIGNORE "
 		 "-VFETCH_DEPENDS "
@@ -623,41 +627,47 @@ again:
 		case 2:		/* PKGFILE */
 			asprintf(&pkg->pkgfile, "%s", ptr);
 			break;
-		case 3:		/* MAKE_JOBS_NUMBER */
+		case 3:		/* DISTFILES */
+			asprintf(&pkg->distfiles, "%s", ptr);
+			break;
+		case 4:		/* DIST_SUBDIR */
+			asprintf(&pkg->distsubdir, "%s", ptr);
+			break;
+		case 5:		/* MAKE_JOBS_NUMBER */
 			pkg->make_jobs_number = strtol(ptr, NULL, 0);
 			break;
-		case 4:		/* IGNORE */
+		case 6:		/* IGNORE */
 			asprintf(&pkg->ignore, "%s", ptr);
 			break;
-		case 5:		/* FETCH_DEPENDS */
+		case 7:		/* FETCH_DEPENDS */
 			asprintf(&pkg->fetch_deps, "%s", ptr);
 			break;
-		case 6:		/* EXTRACT_DEPENDS */
+		case 8:		/* EXTRACT_DEPENDS */
 			asprintf(&pkg->ext_deps, "%s", ptr);
 			break;
-		case 7:		/* PATCH_DEPENDS */
+		case 9:		/* PATCH_DEPENDS */
 			asprintf(&pkg->patch_deps, "%s", ptr);
 			break;
-		case 8:		/* BUILD_DEPENDS */
+		case 10:	/* BUILD_DEPENDS */
 			asprintf(&pkg->build_deps, "%s", ptr);
 			break;
-		case 9:		/* LIB_DEPENDS */
+		case 11:	/* LIB_DEPENDS */
 			asprintf(&pkg->lib_deps, "%s", ptr);
 			break;
-		case 10:	/* RUN_DEPENDS */
+		case 12:	/* RUN_DEPENDS */
 			asprintf(&pkg->run_deps, "%s", ptr);
 			break;
-		case 11:	/* SELECTED_OPTIONS */
+		case 13:	/* SELECTED_OPTIONS */
 			asprintf(&pkg->pos_options, "%s", ptr);
 			break;
-		case 12:	/* DESELECTED_OPTIONS */
+		case 14:	/* DESELECTED_OPTIONS */
 			asprintf(&pkg->neg_options, "%s", ptr);
 			break;
-		case 13:	/* USE_LINUX */
+		case 15:	/* USE_LINUX */
 			if (ptr[0])
 				pkg->use_linux = 1;
 			break;
-		case 14:	/* FLAVORS */
+		case 16:	/* FLAVORS */
 			asprintf(&pkg->flavors, "%s", ptr);
 			break;
 		default:
@@ -669,7 +679,7 @@ again:
 	if (line == 1) {
 		printf("DPort not found: %s/%s\n", bulk->s1, bulk->s2);
 		pkg->flags |= PKGF_NOTFOUND;
-	} else if (line != 14 + 1) {
+	} else if (line != 16 + 1) {
 		printf("DPort corrupt: %s/%s\n", bulk->s1, bulk->s2);
 		pkg->flags |= PKGF_CORRUPT;
 	}

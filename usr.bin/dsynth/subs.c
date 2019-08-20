@@ -205,3 +205,33 @@ ipcwritemsg(int fd, wmsg_t *msg)
 	}
 	return 0;
 }
+
+int
+askyn(const char *ctl, ...)
+{
+	va_list va;
+	char buf[256];
+	int res = 0;
+
+	if (YesOpt)
+		return 1;
+
+	for (;;) {
+		va_start(va, ctl);
+		vprintf(ctl, va);
+		va_end(va);
+		fflush(stdout);
+		if (fgets(buf, sizeof(buf), stdin) == NULL)
+			break;
+		if (buf[0] == 'y' || buf[0] == 'Y') {
+			res = 1;
+			break;
+		}
+		if (buf[0] == 'n' || buf[0] == 'N') {
+			res = 0;
+			break;
+		}
+		printf("Please type y/n\n");
+	}
+	return res;
+}

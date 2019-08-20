@@ -97,6 +97,8 @@ typedef struct pkg {
 	char *logfile;		/* relative logfile path */
 	char *version;		/* PKGVERSION - e.g. 3.5.0_1		*/
 	char *pkgfile;		/* PKGFILE    - e.g. flav-blah-3.5.0_1.txz */
+	char *distfiles;	/* DISTFILES  - e.g. blah-68.0.source.tar.xz */
+	char *distsubdir;	/* DIST_SUBDIR- e.g. cabal		*/
 	char *ignore;		/* IGNORE				*/
 	char *fetch_deps;	/* FETCH_DEPENDS			*/
 	char *ext_deps;		/* EXTRACT_DEPENDS			*/
@@ -354,6 +356,7 @@ extern int BuildSuccessCount;
 
 extern buildenv_t *BuildEnv;
 extern int DebugOpt;
+extern int YesOpt;
 extern int UseCCache;
 extern int UseTmpfs;
 extern int NumCores;
@@ -398,6 +401,7 @@ void donebulk(void);
 void freebulk(bulk_t *bulk);
 void freestrp(char **strp);
 void dupstrp(char **strp);
+int askyn(const char *ctl, ...);
 
 void ParseConfiguration(int isworker);
 pkg_t *ParsePackageList(int ac, char **av);
@@ -407,6 +411,7 @@ pkg_t *GetFullPackageList(void);
 pkg_t *GetPkgPkg(pkg_t *list);
 
 void DoConfigure(void);
+void DoStatus(pkg_t *pkgs);
 void DoBuild(pkg_t *pkgs);
 void DoInitBuild(int slot_override);
 void DoCleanBuild(void);
