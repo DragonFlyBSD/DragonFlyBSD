@@ -162,14 +162,17 @@ sysctl_hostname(SYSCTL_HANDLER_ARGS)
 {
 	struct thread *td = req->td;
 	struct proc *p = td ? td->td_proc : NULL;
+	struct prison *pr;
 	int error;
 
 	if (req->newptr) {
 		SYSCTL_SUNLOCK();
 		SYSCTL_XLOCK();
 	}
-	if (p && p->p_ucred->cr_prison) {
-		if (!jail_set_hostname_allowed && req->newptr)
+	if (p)
+		pr = p->p_ucred->cr_prison;
+	if (p && pr) {
+		if (!pr->pr_set_hostname_allowed && req->newptr)
 			return(EPERM);
 		error = sysctl_handle_string(oidp, 
 		    p->p_ucred->cr_prison->pr_host,

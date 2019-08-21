@@ -340,6 +340,7 @@ int
 sys___semctl(struct __semctl_args *uap)
 {
 	struct thread *td = curthread;
+	struct prison *pr = td->td_proc->p_ucred->cr_prison;
 	int semid = uap->semid;
 	int semnum = uap->semnum;
 	int cmd = uap->cmd;
@@ -355,7 +356,7 @@ sys___semctl(struct __semctl_args *uap)
 	kprintf("call to semctl(%d, %d, %d, 0x%x)\n", semid, semnum, cmd, arg);
 #endif
 
-	if (!jail_sysvipc_allowed && cred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	semid = IPCID_TO_IX(semid);
@@ -566,6 +567,7 @@ int
 sys_semget(struct semget_args *uap)
 {
 	struct thread *td = curthread;
+	struct prison *pr = td->td_proc->p_ucred->cr_prison;
 	int semid, eval;
 	int key = uap->key;
 	int nsems = uap->nsems;
@@ -576,7 +578,7 @@ sys_semget(struct semget_args *uap)
 	kprintf("semget(0x%x, %d, 0%o)\n", key, nsems, semflg);
 #endif
 
-	if (!jail_sysvipc_allowed && cred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	eval = 0;
@@ -719,6 +721,7 @@ int
 sys_semop(struct semop_args *uap)
 {
 	struct thread *td = curthread;
+	struct prison *pr = td->td_proc->p_ucred->cr_prison;
 	int semid = uap->semid;
 	u_int nsops = uap->nsops;
 	struct sembuf sops[MAX_SOPS];
@@ -732,7 +735,7 @@ sys_semop(struct semop_args *uap)
 #ifdef SEM_DEBUG
 	kprintf("call to semop(%d, 0x%x, %u)\n", semid, sops, nsops);
 #endif
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	semid = IPCID_TO_IX(semid);	/* Convert back to zero origin */

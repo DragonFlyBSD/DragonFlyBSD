@@ -206,6 +206,7 @@ socreate(int dom, struct socket **aso, int type,
 	struct protosw *prp;
 	struct socket *so;
 	struct pru_attach_info ai;
+	struct prison *pr = p->p_ucred->cr_prison;
 	int error;
 
 	if (proto)
@@ -216,7 +217,7 @@ socreate(int dom, struct socket **aso, int type,
 	if (prp == NULL || prp->pr_usrreqs->pru_attach == 0)
 		return (EPROTONOSUPPORT);
 
-	if (p->p_ucred->cr_prison && jail_socket_unixiproute_only &&
+	if (pr && pr->pr_socket_unixiproute_only &&
 	    prp->pr_domain->dom_family != PF_LOCAL &&
 	    prp->pr_domain->dom_family != PF_INET &&
 	    prp->pr_domain->dom_family != PF_INET6 &&

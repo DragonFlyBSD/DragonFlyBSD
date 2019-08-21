@@ -224,10 +224,12 @@ sys_shmdt(struct shmdt_args *uap)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct shmmap_state *shmmap_s;
+	struct prison *pr = p->p_ucred->cr_prison;
+
 	long i;
 	int error;
 
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	lwkt_gettoken(&shm_token);
@@ -259,6 +261,7 @@ sys_shmat(struct shmat_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct prison *pr = p->p_ucred->cr_prison;
 	int error, flags;
 	long i;
 	struct shmid_ds *shmseg;
@@ -270,7 +273,7 @@ sys_shmat(struct shmat_args *uap)
 	vm_size_t align;
 	int rv;
 
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	lwkt_gettoken(&shm_token);
@@ -397,11 +400,12 @@ sys_shmctl(struct shmctl_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct prison *pr = p->p_ucred->cr_prison;
 	int error;
 	struct shmid_ds inbuf;
 	struct shmid_ds *shmseg;
 
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	lwkt_gettoken(&shm_token);
@@ -604,9 +608,10 @@ sys_shmget(struct shmget_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct prison *pr = p->p_ucred->cr_prison;
 	int segnum, mode, error;
 
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	mode = uap->shmflg & ACCESSPERMS;

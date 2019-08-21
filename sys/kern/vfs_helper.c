@@ -182,7 +182,7 @@ vop_helper_setattr_flags(u_int32_t *ino_flags, u_int32_t vaflags,
 		return(error);
 	}
 	if (cred->cr_uid == 0 &&
-	    (!jailed(cred)|| jail_chflags_allowed)) {
+	    (!jailed(cred) || cred->cr_prison->pr_chflags_allowed)) {
 		if ((*ino_flags & (SF_NOUNLINK|SF_IMMUTABLE|SF_APPEND)) &&
 		    securelevel > 0)
 			return (EPERM);

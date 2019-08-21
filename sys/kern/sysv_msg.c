@@ -204,6 +204,7 @@ sys_msgctl(struct msgctl_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct prison *pr = p->p_ucred->cr_prison;
 	int msqid = uap->msqid;
 	int cmd = uap->cmd;
 	struct msqid_ds *user_msqptr = uap->buf;
@@ -215,7 +216,7 @@ sys_msgctl(struct msgctl_args *uap)
 	kprintf("call to msgctl(%d, %d, 0x%x)\n", msqid, cmd, user_msqptr);
 #endif
 
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	lwkt_gettoken(&msg_token);
@@ -344,6 +345,7 @@ int
 sys_msgget(struct msgget_args *uap)
 {
 	struct thread *td = curthread;
+	struct prison *pr = td->td_proc->p_ucred->cr_prison;
 	int msqid, eval;
 	int key = uap->key;
 	int msgflg = uap->msgflg;
@@ -353,7 +355,7 @@ sys_msgget(struct msgget_args *uap)
 #ifdef MSG_DEBUG_OK
 	kprintf("msgget(0x%x, 0%o)\n", key, msgflg);
 #endif
-	if (!jail_sysvipc_allowed && cred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	eval = 0;
@@ -454,6 +456,7 @@ int
 sys_msgsnd(struct msgsnd_args *uap)
 {
 	struct thread *td = curthread;
+	struct prison *pr = td->td_proc->p_ucred->cr_prison;
 	int msqid = uap->msqid;
 	const void *user_msgp = uap->msgp;
 	size_t msgsz = uap->msgsz;
@@ -468,7 +471,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 	    msgflg);
 #endif
 
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	lwkt_gettoken(&msg_token);
@@ -785,6 +788,7 @@ int
 sys_msgrcv(struct msgrcv_args *uap)
 {
 	struct thread *td = curthread;
+	struct prison *pr = td->td_proc->p_ucred->cr_prison;
 	int msqid = uap->msqid;
 	void *user_msgp = uap->msgp;
 	size_t msgsz = uap->msgsz;
@@ -801,7 +805,7 @@ sys_msgrcv(struct msgrcv_args *uap)
 	    msgsz, msgtyp, msgflg);
 #endif
 
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
+	if (pr && !pr->pr_sysvipc_allowed)
 		return (ENOSYS);
 
 	lwkt_gettoken(&msg_token);

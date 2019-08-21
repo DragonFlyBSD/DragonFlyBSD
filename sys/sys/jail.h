@@ -27,6 +27,10 @@
 #ifndef _NET_IF_H_
 #include <net/if.h>
 #endif
+#ifndef _SYS_SYSCTL_H_
+#include <sys/sysctl.h>
+#endif
+
 
 struct jail {
 	uint32_t	version;
@@ -96,6 +100,15 @@ struct prison {
 	void		*pr_linux;			/* Linux ABI emulation */
 	int		 pr_securelevel;		/* jail securelevel */
 	struct varsymset pr_varsymset;			/* jail varsyms */
+
+	struct sysctl_ctx_list *pr_sysctl_ctx;
+	struct sysctl_oid *pr_sysctl_tree;
+
+	int8_t		pr_set_hostname_allowed;
+	int8_t		pr_socket_unixiproute_only;
+	int8_t		pr_sysvipc_allowed;
+	int8_t		pr_chflags_allowed;
+	int8_t		pr_allow_raw_sockets;
 };
 
 /*
@@ -121,6 +134,8 @@ struct sockaddr *
 int	prison_priv_check(struct ucred *cred, int priv);
 int	prison_remote_ip(struct thread *td, struct sockaddr *ip);
 int	prison_replace_wildcards(struct thread *td, struct sockaddr *ip);
+int	prison_sysctl_create(struct prison *);
+int	prison_sysctl_done(struct prison *);
 
 /*
  * Return 1 if the passed credential is in a jail, otherwise 0.
