@@ -176,7 +176,6 @@ TAILQ_HEAD(, snd_midi) midi_devs;
 static struct lock midistat_lock;
 static int      midistat_isopen = 0;
 static struct sbuf midistat_sbuf;
-static int      midistat_bufptr;
 static struct cdev *midistat_dev;
 
 /*
@@ -370,15 +369,18 @@ midi_init(kobj_class_t cls, int unit, int channel, void *cookie)
 
 	return m;
 
-err2:	lockuninit(&m->qlock);
+err2:
+	lockuninit(&m->qlock);
 	lockuninit(&m->lock);
 
 	if (MIDIQ_BUF(m->inq))
 		kfree(MIDIQ_BUF(m->inq), M_MIDI);
 	if (MIDIQ_BUF(m->outq))
 		kfree(MIDIQ_BUF(m->outq), M_MIDI);
-err1:	kfree(m, M_MIDI);
-err0:	lockmgr(&midistat_lock, LK_RELEASE);
+err1:
+	kfree(m, M_MIDI);
+err0:
+	lockmgr(&midistat_lock, LK_RELEASE);
 	MIDI_DEBUG(1, kprintf("midi_init ended in error\n"));
 	return NULL;
 }
@@ -992,18 +994,15 @@ midistat_open(struct dev_open_args *ap)
 		return EBUSY;
 	}
 	midistat_isopen = 1;
-	lockmgr(&midistat_lock, LK_RELEASE);
 
 	if (sbuf_new(&midistat_sbuf, NULL, 4096, SBUF_AUTOEXTEND) == NULL) {
 		error = ENXIO;
-		lockmgr(&midistat_lock, LK_EXCLUSIVE);
 		goto out;
 	}
-	lockmgr(&midistat_lock, LK_EXCLUSIVE);
-	midistat_bufptr = 0;
 	error = (midistat_prepare(&midistat_sbuf) > 0) ? 0 : ENOMEM;
 
-out:	if (error)
+out:
+	if (error)
 		midistat_isopen = 0;
 	lockmgr(&midistat_lock, LK_RELEASE);
 	return error;
@@ -1028,7 +1027,7 @@ midistat_close(struct dev_close_args *ap)
 static int
 midistat_read(struct dev_read_args *ap)
 {
-	struct uio *buf = ap->a_uio;
+	struct uio *uio = ap->a_uio;
 	int l, err;
 
 	MIDI_DEBUG(4, kprintf("midistat_read\n"));
@@ -1037,17 +1036,14 @@ midistat_read(struct dev_read_args *ap)
 		lockmgr(&midistat_lock, LK_RELEASE);
 		return EBADF;
 	}
-	l = min(buf->uio_resid, sbuf_len(&midistat_sbuf) - midistat_bufptr);
+	l = min(uio->uio_resid, sbuf_len(&midistat_sbuf) - uio->uio_offset);
 	err = 0;
 	if (l > 0) {
-		lockmgr(&midistat_lock, LK_RELEASE);
-		err = uiomove(sbuf_data(&midistat_sbuf) + midistat_bufptr, l,
-		    buf);
-		lockmgr(&midistat_lock, LK_EXCLUSIVE);
-	} else
-		l = 0;
-	midistat_bufptr += l;
+		err = uiomove(sbuf_data(&midistat_sbuf) + uio->uio_offset,
+			      l, uio);
+	}
 	lockmgr(&midistat_lock, LK_RELEASE);
+
 	return err;
 }
 
