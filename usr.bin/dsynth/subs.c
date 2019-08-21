@@ -253,13 +253,16 @@ askyn(const char *ctl, ...)
  * Get swap% used 0.0-1.0.
  *
  * NOTE: This routine is intended to return quickly.
+ *
+ * NOTE: swap_cache (caching for hard drives) is persistent and should
+ *	 not be counted for our purposes.
  */
 double
 getswappct(int *noswapp)
 {
 	long swap_size = 0;
 	long swap_anon = 0;
-	long swap_cache = 0;
+	long swap_cache __unused = 0;
 	size_t len;
 	double dswap;
 
@@ -270,7 +273,7 @@ getswappct(int *noswapp)
 	len = sizeof(swap_size);
 	sysctlbyname("vm.swap_cache_use", &swap_cache, &len, NULL, 0);
 	if (swap_size) {
-		dswap = (double)(swap_anon + swap_cache) / (double)swap_size;
+		dswap = (double)(swap_anon /*+swap_cache*/) / (double)swap_size;
 		*noswapp = 0;
 	} else {
 		dswap = 0.0;

@@ -43,7 +43,7 @@
  */
 static WINDOW *CWin;
 static const char *Line0 = " Total -       Built -      Ignored -      "
-			   "Load -      Pkg/hour -              ";
+			   "Load -      Pkg/hour -               ";
 static const char *Line1 = "  Left -      Failed -      Skipped -      "
 			   "Swap -       Impulse -      --:--:-- ";
 static const char *LineB = "==========================================="
@@ -52,12 +52,14 @@ static const char *LineI = " ID  Duration  Build Phase      Origin     "
 			   "                               Lines";
 
 static time_t GuiStartTime;
+static int LastReduce;
 
 #define TOTAL_COL	7
 #define BUILT_COL	21
 #define IGNORED_COL	36
 #define LOAD_COL	48
 #define GPKGRATE_COL	64
+#define REDUCE_COL	71
 
 #define LEFT_COL	7
 #define FAILED_COL	21
@@ -103,6 +105,7 @@ GuiReset(void)
 		mvwprintw(CWin, 5 + i, LINES_COL, "%6.6s", "");
 	}
 	wrefresh(CWin);
+	LastReduce = -1;
 }
 
 #define RHISTSIZE	600	/* 10 minutes */
@@ -182,6 +185,19 @@ GuiUpdateTop(void)
 	else
 		mvwprintw(CWin, 0, LOAD_COL, "%5.1f", dload[0]);
 	mvwprintw(CWin, 0, GPKGRATE_COL, "%-5d", pkgrate);
+
+	/*
+	 * If dynamic worker reduction is active include a field,
+	 * Otherwise blank the field.
+	 */
+	if (LastReduce != DynamicMaxWorkers) {
+		LastReduce = DynamicMaxWorkers;
+		if (MaxWorkers == LastReduce)
+			mvwprintw(CWin, 0, REDUCE_COL, "        ");
+		else
+			mvwprintw(CWin, 0, REDUCE_COL, "Limit %-2d",
+				  LastReduce);
+	}
 
 	mvwprintw(CWin, 1, LEFT_COL, "%-4d", BuildTotal - BuildCount);
 	mvwprintw(CWin, 1, FAILED_COL, "%-4d", BuildFailCount);

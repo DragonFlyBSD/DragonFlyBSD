@@ -42,6 +42,7 @@ static void usage(int ecode) __dead2;
 int YesOpt;
 int DebugOpt;
 int NullStdinOpt = 1;
+int SlowStartOpt = 1;
 char *DSynthExecPath;
 
 int
@@ -71,7 +72,7 @@ main(int ac, char **av)
 	/*
 	 * Process options and make sure the directive is present
 	 */
-	while ((c = getopt(ac, av, "dhvy")) != -1) {
+	while ((c = getopt(ac, av, "dhvys:")) != -1) {
 		switch(c) {
 		case 'y':
 			++YesOpt;
@@ -87,6 +88,9 @@ main(int ac, char **av)
 		case 'v':
 			printf("dsynth %s\n", DSYNTH_VERSION);
 			exit(0);
+		case 's':
+			SlowStartOpt = strtol(optarg, NULL, 0);
+			break;
 		default:
 			fprintf(stderr, "Unknown option: %c\n", c);
 			usage(2);

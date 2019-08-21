@@ -353,9 +353,11 @@ extern int BuildTotal;
 extern int BuildFailCount;
 extern int BuildSkipCount;
 extern int BuildSuccessCount;
+extern int DynamicMaxWorkers;
 
 extern buildenv_t *BuildEnv;
 extern int DebugOpt;
+extern int SlowStartOpt;
 extern int YesOpt;
 extern int NullStdinOpt;
 extern int UseCCache;

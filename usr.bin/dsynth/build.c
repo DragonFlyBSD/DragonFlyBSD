@@ -39,6 +39,7 @@
 worker_t WorkerAry[MAXWORKERS];
 int BuildInitialized;
 int RunningWorkers;
+int DynamicMaxWorkers;
 pthread_mutex_t WorkerMutex;
 pthread_cond_t WorkerCond;
 
@@ -65,7 +66,6 @@ static int copyfile(char *src, char *dst);
 static worker_t *SigWork;
 static int MasterPtyFd = -1;
 static pid_t SigPid;
-static int DynamicMaxWorkers;
 
 int BuildTotal;
 int BuildCount;
@@ -107,7 +107,16 @@ DoInitBuild(int slot_override)
 	}
 
 	BuildInitialized = 1;
-	DynamicMaxWorkers = 1;	/* slow-start (1 per sec) */
+
+	/*
+	 * slow-start (increases at a rate of 1 per 5 seconds)
+	 */
+	if (SlowStartOpt > MaxWorkers)
+		DynamicMaxWorkers = MaxWorkers;
+	else if (SlowStartOpt > 0)
+		DynamicMaxWorkers = SlowStartOpt;
+	else
+		DynamicMaxWorkers = MaxWorkers;
 }
 
 /*
@@ -611,6 +620,10 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 			++depi_index;
 		}
 
+		/*
+		 * ipkg and pkgi must either both be NULL, or both
+		 * be non-NULL.
+		 */
 		if (ipkg == NULL && pkgi == NULL)
 			break;
 		ddassert(ipkg && pkgi);
@@ -879,6 +892,21 @@ waitbuild(int whilematch, int dynamicmax)
 		 * Dynamically reduce MaxWorkers based on the load.  When
 		 * the load exceeds 2 x ncpus we reduce the number of workers
 		 * up to 75% of MaxWorkers @ (5 x ncpus) load.
+		 *
+		 * Dynamically reduce MaxWorkers based on swap use, starting
+		 * at 10% swap and up to 75% of MaxWorkers at 40% swap.
+		 *
+		 * NOTE! Generally speaking this allows more workers to be
+		 *	 configured which helps in two ways.  First it allows
+		 *	 a higher build rate for smaller packages.  Second
+		 *	 it allows dsynth to ratchet-down the number of slots
+		 *	 when large packages are forcing the load up.
+		 *
+		 *	 A high load doesn't hurt efficiency, but swap usage
+		 *	 due to loading the tmpfs in lots of worker slots up
+		 *	 with tons of pkg install's (pre-reqs for a build)
+		 *	 does.  Reducing the number of worker slots has a
+		 *	 huge beneficial effect on reducing swap use / paging.
 		 */
 		t = time(NULL);
 		if (dynamicmax && (wblast_time == 0 ||
@@ -1319,12 +1347,12 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
  *	build
  *	run-depends
  *	stage
- *	test
+ *	test		(skipped)
  *	check-plist
  *	package		 e.g. /construction/lang/perl5.28/pkg/perl5-5.28.2.txz
- *	install-mtree
- *	install
- *	deinstall
+ *	install-mtree	(skipped)
+ *	install		(skipped)
+ *	deinstall	(skipped)
  */
 
 void
@@ -1981,6 +2009,8 @@ copyfile(char *src, char *dst)
 		if (write(fd2, buf, r) != r)
 			error = 1;
 	}
+	if (r < 0)
+		error = 1;
 	close(fd1);
 	close(fd2);
 	if (error) {

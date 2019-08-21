@@ -46,6 +46,7 @@ static int pinfocmp(const void *s1, const void *s2);
 static void scanit(const char *path, const char *subpath,
 			int *countp, pinfo_t ***list_tailp);
 pinfo_t *pinfofind(pinfo_t **ary, int count, char *spath);
+static void scandeletenew(const char *path);
 
 void
 DoRebuildRepo(int ask)
@@ -56,6 +57,15 @@ DoRebuildRepo(int ask)
 		if (askyn("Rebuild the repository? ") == 0)
 			return;
 	}
+
+	/*
+	 * Scan the repository for temporary .new files and delete them.
+	 */
+	scandeletenew(RepositoryPath);
+
+	/*
+	 * Issue the repo command to rebuild the repo
+	 */
 	asprintf(&buf, "pkg repo -o %s %s", PackagesPath, RepositoryPath);
 	printf("Rebuilding repository\n");
 	if (system(buf)) {
@@ -251,4 +261,31 @@ scanit(const char *path, const char *subpath,
 		}
 		closedir(dir);
 	}
+}
+
+/*
+ * This removes any .new files left over in the repo.  These can wind
+ * being left around when dsynth is killed.
+ */
+static void
+scandeletenew(const char *path)
+{
+	struct dirent *den;
+	const char *ptr;
+	DIR *dir;
+	char *buf;
+
+	if ((dir = opendir(path)) == NULL)
+		dfatal_errno("Cannot scan directory %s", path);
+	while ((den = readdir(dir)) != NULL) {
+		if ((ptr = strrchr(den->d_name, '.')) != NULL &&
+		    strcmp(ptr, ".new") == 0) {
+			asprintf(&buf, "%s/%s", path, den->d_name);
+			if (remove(buf) < 0)
+				dfatal_errno("remove: Garbage %s\n", buf);
+			printf("Deleted Garbage %s\n", buf);
+			free(buf);
+		}
+	}
+	closedir(dir);
 }
