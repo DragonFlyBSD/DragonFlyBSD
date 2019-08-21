@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  */
 /*
- * Filesystem FIFO type ops.  All entry points are MPSAFE.  We primarily
- * use v_token to interlock operations.
+ * Filesystem FIFO type ops.  All entry points are MPSAFE.
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -60,6 +59,9 @@ struct fifoinfo {
 	long		fi_writers;
 };
 
+#define FIFO_LOCK_POOL	128
+#define FIFO_LOCK_MASK	(FIFO_LOCK_POOL - 1)
+
 static int	fifo_badop (void);
 static int	fifo_print (struct vop_print_args *);
 static int	fifo_lookup (struct vop_old_lookup_args *);
@@ -83,7 +85,7 @@ static struct filterops fiforead_filtops =
 	{ FILTEROP_ISFD, NULL, filt_fifordetach, filt_fiforead };
 static struct filterops fifowrite_filtops =
 	{ FILTEROP_ISFD, NULL, filt_fifowdetach, filt_fifowrite };
-  
+
 struct vop_ops fifo_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_access =		(void *)vop_ebadf,
@@ -120,6 +122,42 @@ VNODEOP_SET(fifo_vnode_vops);
 static MALLOC_DEFINE(M_FIFOINFO, "Fifo info", "Fifo info entries");
 
 /*
+ * The vnode might be using a shared lock, we need an exclusive lock
+ * for open/close sequencing.  Create a little pool of locks.
+ */
+static struct lock fifo_locks[FIFO_LOCK_POOL];
+
+static __inline
+void
+fifo_lock(struct vnode *vp)
+{
+	int hv;
+
+	hv = ((intptr_t)vp / sizeof(*vp)) & FIFO_LOCK_MASK;
+	lockmgr(&fifo_locks[hv], LK_EXCLUSIVE);
+}
+
+static __inline
+void
+fifo_unlock(struct vnode *vp)
+{
+	int hv;
+
+	hv = ((intptr_t)vp / sizeof(*vp)) & FIFO_LOCK_MASK;
+	lockmgr(&fifo_locks[hv], LK_RELEASE);
+}
+
+static void
+fifo_init(void)
+{
+	int i;
+
+	for (i = 0; i < FIFO_LOCK_POOL; ++i)
+		lockinit(&fifo_locks[i], "fifolk", 0, 0);
+}
+SYSINIT(fifoinit, SI_SUB_PSEUDO, SI_ORDER_ANY, fifo_init, NULL);
+
+/*
  * fifo_vnoperate()
  */
 int
@@ -143,6 +181,60 @@ fifo_lookup(struct vop_old_lookup_args *ap)
 }
 
 /*
+ * Create/destroy the socket pairs for the fifo
+ */
+static
+struct fifoinfo *
+fifo_fip_create(int *errorp)
+{
+	struct thread *td = curthread;
+	struct fifoinfo *fip;
+	struct socket *rso, *wso;
+
+	fip = kmalloc(sizeof(*fip), M_FIFOINFO, M_WAITOK);
+	*errorp = socreate(AF_LOCAL, &rso, SOCK_STREAM, 0, td);
+	if (*errorp) {
+		kfree(fip, M_FIFOINFO);
+		return NULL;
+	}
+	rso->so_options &= ~SO_LINGER;
+	fip->fi_readsock = rso;
+	*errorp = socreate(AF_LOCAL, &wso, SOCK_STREAM, 0, td);
+	if (*errorp) {
+		soclose(rso, FNONBLOCK);
+		kfree(fip, M_FIFOINFO);
+		return NULL;
+	}
+	wso->so_options &= ~SO_LINGER;
+	fip->fi_writesock = wso;
+	*errorp = unp_connect2(wso, rso);
+	if (*errorp) {
+		soclose(wso, FNONBLOCK);
+		soclose(rso, FNONBLOCK);
+		kfree(fip, M_FIFOINFO);
+		return NULL;
+	}
+	fip->fi_readers = fip->fi_writers = 0;
+	wso->so_snd.ssb_lowat = PIPE_BUF;
+	sosetstate(rso, SS_CANTRCVMORE);
+
+	return fip;
+}
+
+static int
+fifo_fip_destroy(struct fifoinfo *fip)
+{
+	int error1, error;
+
+	error1 = soclose(fip->fi_readsock, FNONBLOCK);
+	error = soclose(fip->fi_writesock, FNONBLOCK);
+	kfree(fip, M_FIFOINFO);
+	if (error1)
+		error = error1;
+	return error;
+}
+
+/*
  * Open called to set up a new instance of a fifo or
  * to find an active instance of a fifo.
  *
@@ -153,43 +245,29 @@ fifo_lookup(struct vop_old_lookup_args *ap)
 static int
 fifo_open(struct vop_open_args *ap)
 {
-	struct thread *td = curthread;
 	struct vnode *vp = ap->a_vp;
 	struct fifoinfo *fip;
-	struct socket *rso, *wso;
 	int error;
 
-	lwkt_gettoken(&vp->v_token);
+	error = 0;
+
+	/*
+	 * Create the fip if necessary
+	 */
+	fifo_lock(vp);
 	if ((fip = vp->v_fifoinfo) == NULL) {
-		fip = kmalloc(sizeof(*fip), M_FIFOINFO, M_WAITOK);
+		fip = fifo_fip_create(&error);
+		if (fip == NULL) {
+			fifo_unlock(vp);
+			return error;
+		}
 		vp->v_fifoinfo = fip;
-		error = socreate(AF_LOCAL, &rso, SOCK_STREAM, 0, td);
-		if (error) {
-			kfree(fip, M_FIFOINFO);
-			vp->v_fifoinfo = NULL;
-			goto done;
-		}
-		fip->fi_readsock = rso;
-		error = socreate(AF_LOCAL, &wso, SOCK_STREAM, 0, td);
-		if (error) {
-			soclose(rso, FNONBLOCK);
-			kfree(fip, M_FIFOINFO);
-			vp->v_fifoinfo = NULL;
-			goto done;
-		}
-		fip->fi_writesock = wso;
-		error = unp_connect2(wso, rso);
-		if (error) {
-			soclose(wso, FNONBLOCK);
-			soclose(rso, FNONBLOCK);
-			kfree(fip, M_FIFOINFO);
-			vp->v_fifoinfo = NULL;
-			goto done;
-		}
-		fip->fi_readers = fip->fi_writers = 0;
-		wso->so_snd.ssb_lowat = PIPE_BUF;
-		sosetstate(rso, SS_CANTRCVMORE);
 	}
+
+	/*
+	 * Adjust fi_readers and fi_writers interlocked and issue wakeups
+	 * as appropriate.
+	 */
 	if (ap->a_mode & FREAD) {
 		fip->fi_readers++;
 		if (fip->fi_readers == 1) {
@@ -210,12 +288,18 @@ fifo_open(struct vop_open_args *ap)
 			}
 		}
 	}
+
+	/*
+	 * Handle blocking as appropriate
+	 */
 	if ((ap->a_mode & FREAD) && (ap->a_mode & O_NONBLOCK) == 0) {
 		if (fip->fi_writers == 0) {
+			fifo_unlock(vp);
 			vn_unlock(vp);
 			error = tsleep((caddr_t)&fip->fi_readers,
-			    PCATCH, "fifoor", 0);
+				       PCATCH, "fifoor", 0);
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+			fifo_lock(vp);
 			if (error)
 				goto bad;
 			/*
@@ -233,10 +317,12 @@ fifo_open(struct vop_open_args *ap)
 			}
 		} else {
 			if (fip->fi_readers == 0) {
+				fifo_unlock(vp);
 				vn_unlock(vp);
 				error = tsleep((caddr_t)&fip->fi_writers,
-				    PCATCH, "fifoow", 0);
+					       PCATCH, "fifoow", 0);
 				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+				fifo_lock(vp);
 				if (error)
 					goto bad;
 				/*
@@ -249,13 +335,27 @@ fifo_open(struct vop_open_args *ap)
 	}
 	vsetflags(vp, VNOTSEEKABLE);
 	error = vop_stdopen(ap);
-	lwkt_reltoken(&vp->v_token);
+	fifo_unlock(vp);
+
 	return (error);
+
 bad:
-	vop_stdopen(ap);	/* bump opencount/writecount as appropriate */
-	VOP_CLOSE(vp, ap->a_mode, NULL);
-done:
-	lwkt_reltoken(&vp->v_token);
+	if (ap->a_mode & FREAD) {
+		fip->fi_readers--;
+		if (fip->fi_readers == 0)
+			soisdisconnected(fip->fi_writesock);
+	}
+	if (ap->a_mode & FWRITE) {
+		fip->fi_writers--;
+		if (fip->fi_writers == 0)
+			soisdisconnected(fip->fi_readsock);
+	}
+	if (fip->fi_readers == 0 && fip->fi_writers == 0) {
+		vp->v_fifoinfo = NULL;
+		(void)fifo_fip_destroy(fip);
+	}
+	fifo_unlock(vp);
+
 	return (error);
 }
 
@@ -496,10 +596,15 @@ fifo_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct fifoinfo *fip;
-	int error1, error2;
+	int error;
 
-	lwkt_gettoken(&vp->v_token);
+	fifo_lock(vp);
 	fip = vp->v_fifoinfo;
+	if (fip == NULL) {
+		vop_stdclose(ap);
+		fifo_unlock(vp);
+		return 0;
+	}
 	if (ap->a_fflag & FREAD) {
 		fip->fi_readers--;
 		if (fip->fi_readers == 0)
@@ -510,24 +615,17 @@ fifo_close(struct vop_close_args *ap)
 		if (fip->fi_writers == 0)
 			soisdisconnected(fip->fi_readsock);
 	}
-	if (VREFCNT(vp) > 1) {
-		vop_stdclose(ap);
-		lwkt_reltoken(&vp->v_token);
-		return (0);
-	}
-	error1 = soclose(fip->fi_readsock, FNONBLOCK);
-	error2 = soclose(fip->fi_writesock, FNONBLOCK);
-	kfree(fip, M_FIFOINFO);
-	vp->v_fifoinfo = NULL;
-	if (error1) {
-		error2 = error1;
+	if (fip->fi_readers == 0 && fip->fi_writers == 0) {
+		vp->v_fifoinfo = NULL;
+		error = fifo_fip_destroy(fip);
 	} else {
-		vop_stdclose(ap);
+		error = 0;
 	}
-	lwkt_reltoken(&vp->v_token);
-	return (error2);
-}
+	vop_stdclose(ap);
+	fifo_unlock(vp);
 
+	return error;
+}
 
 /*
  * Print out internal contents of a fifo vnode.
