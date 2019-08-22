@@ -1435,6 +1435,8 @@ WorkerProcess(int ac, char **av)
 	setenv("PORT_DBDIR", "/options", 1);
 	setenv("PKG_DBDIR", "/var/db/pkg", 1);
 	setenv("PKG_CACHEDIR", "/var/cache/pkg", 1);
+	setenv("PKG_SUFX", USE_PKG_SUFX, 1);
+
 
 #if 0
 	setenv("_PERL5_FROM_BIN", "5.28.2", 1);

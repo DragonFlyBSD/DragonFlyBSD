@@ -133,6 +133,7 @@ main(int ac, char **av)
 	 */
 	setenv("PORTSDIR", DPortsPath, 1);
 	setenv("BATCH", "yes", 1);
+	setenv("PKG_SUFX", USE_PKG_SUFX, 1);
 
 	/*
 	 * Special directive for when dsynth execs itself to manage

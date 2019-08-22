@@ -76,6 +76,17 @@ struct pkglink;
 #define UMOUNT_BINARY		"/sbin/umount"
 
 /*
+ * This can be ".tar", ".tgz", ".txz", or ".tbz".
+ *
+ * .tar	- very fast but you'll need 1TB+ of storage just for the package files.
+ * .txz - very compact but decompression speed is horrible.
+ * .tgz - reasonable compression, extremely fast decompression.  Roughly
+ *	  1.1x to 2.0x the size of a .txz, but decompresses 10x faster.
+ * .tbz - worse than .tgz generally
+ */
+#define USE_PKG_SUFX		".tgz"
+
+/*
  * Topology linkages
  */
 typedef struct pkglink {
