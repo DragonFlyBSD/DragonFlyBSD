@@ -159,8 +159,10 @@ vnclone(struct dev_clone_args *ap)
 {
 	int unit;
 
-	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(vn), 0);
-	ap->a_dev = vn_create(unit, &DEVFS_CLONE_BITMAP(vn), 1);
+	do {
+		unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(vn), 0);
+		ap->a_dev = vn_create(unit, &DEVFS_CLONE_BITMAP(vn), 1);
+	} while (ap->a_dev == NULL);
 
 	return 0;
 }
@@ -842,12 +844,21 @@ vnsize(struct dev_psize_args *ap)
 	return(0);
 }
 
+/*
+ * Returns NULL only if the specified unit cannot be allocated.
+ */
 static cdev_t
 vn_create(int unit, struct devfs_bitmap *bitmap, int clone)
 {
 	struct vn_softc *vn;
 	struct disk_info info;
 	cdev_t dev, ret_dev;
+
+	/*
+	 * Returns NULL onlyif the unit is already set in the bitmap
+	 */
+	if (devfs_clone_bitmap_set(bitmap, unit) < 0)
+		return NULL;
 
 	vn = vncreatevn();
 	if (clone) {
@@ -871,9 +882,6 @@ vn_create(int unit, struct devfs_bitmap *bitmap, int clone)
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 	info.d_ncylinders = 0;
 	disk_setdiskinfo_sync(&vn->sc_disk, &info);
-
-	if (bitmap != NULL)
-		devfs_clone_bitmap_set(bitmap, unit);
 
 	return ret_dev;
 }

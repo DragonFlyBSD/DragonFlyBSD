@@ -336,7 +336,7 @@ struct devfs_unit_hash {
 
 void devfs_clone_bitmap_init(struct devfs_bitmap *);
 void devfs_clone_bitmap_uninit(struct devfs_bitmap *);
-void devfs_clone_bitmap_set(struct devfs_bitmap *, int);
+int devfs_clone_bitmap_set(struct devfs_bitmap *, int);
 int devfs_clone_bitmap_get(struct devfs_bitmap *, int);
 int devfs_clone_bitmap_chk(struct devfs_bitmap *, int);
 void devfs_clone_bitmap_put(struct devfs_bitmap *, int);

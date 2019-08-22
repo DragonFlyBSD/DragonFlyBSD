@@ -485,6 +485,7 @@ snpclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
+	int unit;
 	int ret;
 
 	lwkt_gettoken(&snp_token);
@@ -494,12 +495,14 @@ snpclose(struct dev_close_args *ap)
 	kfree(snp->snp_buf, M_SNP);
 	snp->snp_flags &= ~SNOOP_OPEN;
 	dev->si_drv1 = NULL;
-	if (dev->si_uminor >= SNP_PREALLOCATED_UNITS) {
-		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(snp), dev->si_uminor);
+	unit = dev->si_uminor;
+	if (unit >= SNP_PREALLOCATED_UNITS) {
 		destroy_dev(dev);
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(snp), unit);
 	}
 	ret = snp_detach(snp);
 	lwkt_reltoken(&snp_token);
+
 	return ret;
 }
 
@@ -719,7 +722,8 @@ snp_modevent(module_t mod, int type, void *data)
 			snpclone, UID_ROOT, GID_WHEEL, 0600, "snp");
 
 		for (i = 0; i < SNP_PREALLOCATED_UNITS; i++) {
-			make_dev(&snp_ops, i, UID_ROOT, GID_WHEEL, 0600, "snp%d", i);
+			make_dev(&snp_ops, i, UID_ROOT, GID_WHEEL, 0600,
+				 "snp%d", i);
 			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(snp), i);
 		}
 		break;

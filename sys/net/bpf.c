@@ -409,6 +409,7 @@ bpfclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
+	int unit;
 
 	lwkt_gettoken(&bpf_token);
 	funsetown(&d->bd_sigio);
@@ -419,9 +420,11 @@ bpfclose(struct dev_close_args *ap)
 		bpf_detachd(d);
 	bpf_freed(d);
 	dev->si_drv1 = NULL;
-	if (dev->si_uminor >= BPF_PREALLOCATED_UNITS) {
-		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(bpf), dev->si_uminor);
+
+	unit = dev->si_uminor;
+	if (unit >= BPF_PREALLOCATED_UNITS) {
 		destroy_dev(dev);
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(bpf), unit);
 	}
 	kfree(d, M_BPF);
 	lwkt_reltoken(&bpf_token);
