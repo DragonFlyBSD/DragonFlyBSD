@@ -415,6 +415,7 @@ void _dfatal(const char *file, int line, const char *func, int do_errno,
 	     const char *fmt, ...);
 void _ddprintf(int tab, const char *fmt, ...);
 void _dlog(int which, const char *fmt, ...);
+char *strdup_or_null(char *str);
 void dlogreset(void);
 void addbuildenv(const char *label, const char *data);
 

@@ -72,6 +72,14 @@ _ddprintf(int tab, const char *ctl, ...)
 	va_end(va);
 }
 
+char *
+strdup_or_null(char *str)
+{
+	if (str && str[0])
+		return(strdup(str));
+	return NULL;
+}
+
 static const char *DLogNames[] = {
 	"00_last_results.log",
 	"01_success_list.log",

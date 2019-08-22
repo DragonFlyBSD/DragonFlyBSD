@@ -118,7 +118,7 @@ PurgeDistfiles(pkg_t *pkgs)
 		dstr = strtok(pkgs->distfiles, " \t");
 		while (dstr) {
 			for (;;) {
-				if (pkgs->distsubdir && pkgs->distsubdir[0]) {
+				if (pkgs->distsubdir) {
 					asprintf(&buf, "%s/%s",
 						 pkgs->distsubdir, dstr);
 					item = pinfofind(ary, count, buf);

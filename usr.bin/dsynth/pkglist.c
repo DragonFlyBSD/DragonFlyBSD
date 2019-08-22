@@ -631,37 +631,37 @@ again:
 			asprintf(&pkg->distfiles, "%s", ptr);
 			break;
 		case 4:		/* DIST_SUBDIR */
-			asprintf(&pkg->distsubdir, "%s", ptr);
+			pkg->distsubdir = strdup_or_null(ptr);
 			break;
 		case 5:		/* MAKE_JOBS_NUMBER */
 			pkg->make_jobs_number = strtol(ptr, NULL, 0);
 			break;
 		case 6:		/* IGNORE */
-			asprintf(&pkg->ignore, "%s", ptr);
+			pkg->ignore = strdup_or_null(ptr);
 			break;
 		case 7:		/* FETCH_DEPENDS */
-			asprintf(&pkg->fetch_deps, "%s", ptr);
+			pkg->fetch_deps = strdup_or_null(ptr);
 			break;
 		case 8:		/* EXTRACT_DEPENDS */
-			asprintf(&pkg->ext_deps, "%s", ptr);
+			pkg->ext_deps = strdup_or_null(ptr);
 			break;
 		case 9:		/* PATCH_DEPENDS */
-			asprintf(&pkg->patch_deps, "%s", ptr);
+			pkg->patch_deps = strdup_or_null(ptr);
 			break;
 		case 10:	/* BUILD_DEPENDS */
-			asprintf(&pkg->build_deps, "%s", ptr);
+			pkg->build_deps = strdup_or_null(ptr);
 			break;
 		case 11:	/* LIB_DEPENDS */
-			asprintf(&pkg->lib_deps, "%s", ptr);
+			pkg->lib_deps = strdup_or_null(ptr);
 			break;
 		case 12:	/* RUN_DEPENDS */
-			asprintf(&pkg->run_deps, "%s", ptr);
+			pkg->run_deps = strdup_or_null(ptr);
 			break;
 		case 13:	/* SELECTED_OPTIONS */
-			asprintf(&pkg->pos_options, "%s", ptr);
+			pkg->pos_options = strdup_or_null(ptr);
 			break;
 		case 14:	/* DESELECTED_OPTIONS */
-			asprintf(&pkg->neg_options, "%s", ptr);
+			pkg->neg_options = strdup_or_null(ptr);
 			break;
 		case 15:	/* USE_LINUX */
 			if (ptr[0])
@@ -710,12 +710,6 @@ again:
 			freestrp(&pkg->build_deps);
 			freestrp(&pkg->lib_deps);
 			freestrp(&pkg->run_deps);
-			pkg->fetch_deps = strdup("");
-			pkg->ext_deps = strdup("");
-			pkg->patch_deps = strdup("");
-			pkg->build_deps = strdup("");
-			pkg->lib_deps = strdup("");
-			pkg->run_deps = strdup("");
 
 			freestrp(&pkg->pkgfile);
 			*list_tail = pkg;

@@ -262,6 +262,8 @@ DoBuild(pkg_t *pkgs)
 	}
 	pthread_mutex_unlock(&WorkerMutex);
 
+	GuiUpdateTop();
+	GuiSync();
 	GuiDone();
 
 	ddprintf(0, "BuildCount %d\n", BuildCount);
@@ -437,7 +439,7 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 	/*
 	 * Set PKGF_NOBUILD_I if there is IGNORE data
 	 */
-	if (pkg->ignore && pkg->ignore[0])
+	if (pkg->ignore)
 		pkg->flags |= PKGF_NOBUILD_I;
 
 	/*
@@ -657,14 +659,17 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 			ipkg->flags |= PKGF_FAILURE;
 			ipkg->flags &= ~PKGF_BUILDLIST;
 
-			if (ipkg->flags & PKGF_NOBUILD_I)
-				++BuildIgnoreCount;
-			else
-				++BuildSkipCount;
-			++BuildCount;
 			reason = buildskipreason(NULL, ipkg);
-			dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
-			     ipkg->portdir, reason);
+			if (ipkg->flags & PKGF_NOBUILD_I) {
+				++BuildIgnoreCount;
+				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
+				     ipkg->portdir, reason);
+			} else {
+				++BuildSkipCount;
+				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
+				     ipkg->portdir, reason);
+			}
+			++BuildCount;
 			free(reason);
 			continue;
 		}
@@ -2047,6 +2052,9 @@ buildskipreason(pkglink_t *parent, pkg_t *pkg)
 	size_t tot;
 	size_t len;
 	pkglink_t stack;
+
+	if ((pkg->flags & PKGF_NOBUILD_I) && pkg->ignore)
+		asprintf(&reason, "%s ", pkg->ignore);
 
 	tot = 0;
 	PKGLIST_FOREACH(link, &pkg->idepon_list) {
