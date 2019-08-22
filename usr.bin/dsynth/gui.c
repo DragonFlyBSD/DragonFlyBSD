@@ -55,8 +55,14 @@ static const char *LineI = " ID  Duration  Build Phase      Origin     "
 static time_t GuiStartTime;
 static int LastReduce;
 static off_t MonitorLogOff;
-static int MonitorLogCol;
 static int MonitorLogLines;
+static int MonitorBufBeg;
+static int MonitorBufEnd;
+static int MonitorBufScan;
+static int MonitorBufDiscardMode;
+static char MonitorBuf[1024];
+
+static int guireadline(int fd, char **bufp);
 
 #define TOTAL_COL	7
 #define BUILT_COL	21
@@ -96,6 +102,12 @@ GuiInit(void)
 	nonl();
 	noecho();
 	cbreak();
+
+	start_color();
+	use_default_colors();
+	init_pair(1, COLOR_RED, -1);
+	init_pair(2, COLOR_GREEN, -1);
+	init_pair(3, -1, -1);
 }
 
 void
@@ -132,7 +144,10 @@ GuiReset(void)
 	scrollok(CMon, 1);
 	MonitorLogLines = LINES - LOG_START;
 	MonitorLogOff = 0;
-	MonitorLogCol = 0;
+	MonitorBufBeg = 0;
+	MonitorBufEnd = 0;
+	MonitorBufScan = 0;
+	MonitorBufDiscardMode = 0;
 	nodelay(CMon, 1);
 
 	LastReduce = -1;
@@ -246,46 +261,37 @@ GuiUpdateTop(void)
 void
 GuiUpdateLogs(void)
 {
-	char buf[1024];
-	ssize_t r;
-	ssize_t i;
-	ssize_t n;
-	ssize_t w;
 	int fd = dlog00_fd();
-
-	i = 0;
-	r = 0;
+	char *ptr;
+	char c;
+	ssize_t n;
+	int w;
 
 	for (;;) {
-		if (i == r) {
-			r = pread(fd, buf, sizeof(buf), MonitorLogOff);
-			if (r <= 0)
-				break;
-			MonitorLogOff += r;
-			i = 0;
-		}
-		for (n = i; n < r && buf[n] != '\n'; ++n)
-			;
+		n = guireadline(fd, &ptr);
+		if (n < 0)
+			break;
+		if (n == 0)
+			continue;
 
 		/*
 		 * Scroll down
 		 */
-		if (MonitorLogCol == 0)
-			wscrl(CMon, 1);
-		if (MonitorLogCol < COLS) {
-			if (n - i > COLS - MonitorLogCol)
-				w = COLS - MonitorLogCol;
-			else
-				w = n - i;
-			mvwprintw(CMon, MonitorLogLines - 1, MonitorLogCol,
-				  "%*.*s", (int)w, (int)w, buf + i);
-			MonitorLogCol += w;
+		wscrl(CMon, -1);
+		if (n > COLS)
+			w = COLS;
+		else
+			w = n;
+		c = ptr[w];
+		ptr[w] = 0;
+		if (strstr(ptr, "succeeded in")) {
+			wattrset(CMon, COLOR_PAIR(2));
+		} else if (strstr(ptr, "failed in")) {
+			wattrset(CMon, COLOR_PAIR(1));
 		}
-		i = n;
-		if (i < r && buf[i] == '\n') {
-			++i;
-			MonitorLogCol = 0;
-		}
+		mvwprintw(CMon, 0, 0, "%s", ptr);
+		ptr[w] = c;
+		wattrset(CMon, COLOR_PAIR(3));
 	}
 }
 
@@ -457,4 +463,98 @@ void
 GuiDone(void)
 {
 	endwin();
+}
+
+static int
+guireadline(int fd, char **bufp)
+{
+	int r;
+	int n;
+
+	/*
+	 * Reset buffer as an optimization to avoid unnecessary
+	 * shifts.
+	 */
+	*bufp = NULL;
+	if (MonitorBufBeg == MonitorBufEnd) {
+		MonitorBufBeg = 0;
+		MonitorBufEnd = 0;
+		MonitorBufScan = 0;
+	}
+
+	/*
+	 * Look for newline, handle discard mode
+	 */
+again:
+	for (n = MonitorBufScan; n < MonitorBufEnd; ++n) {
+		if (MonitorBuf[n] == '\n') {
+			*bufp = MonitorBuf + MonitorBufBeg;
+			r = n - MonitorBufBeg;
+			MonitorBufBeg = n + 1;
+			MonitorBufScan = n + 1;
+
+			if (MonitorBufDiscardMode == 0)
+				return r;
+			MonitorBufDiscardMode = 0;
+			goto again;
+		}
+	}
+
+	/*
+	 * Handle overflow
+	 */
+	if (n == sizeof(MonitorBuf)) {
+		if (MonitorBufBeg) {
+			/*
+			 * Shift the buffer to make room and read more data.
+			 */
+			bcopy(MonitorBuf + MonitorBufBeg,
+			      MonitorBuf,
+			      n - MonitorBufBeg);
+			MonitorBufEnd -= MonitorBufBeg;
+			MonitorBufScan -= MonitorBufBeg;
+			n -= MonitorBufBeg;
+			MonitorBufBeg = 0;
+		} else if (MonitorBufDiscardMode) {
+			/*
+			 * Overflow.  If in discard mode just throw it all
+			 * away.  Stay in discard mode.
+			 */
+			MonitorBufBeg = 0;
+			MonitorBufEnd = 0;
+			MonitorBufScan = 0;
+		} else {
+			/*
+			 * Overflow.  If not in discard mode return a truncated
+			 * line and enter discard mode.
+			 *
+			 * The caller will temporarily set ptr[r] = 0 so make
+			 * sure that does not overflow our buffer as we are not
+			 * at a newline.
+			 *
+			 * (MonitorBufBeg is 0);
+			 */
+			*bufp = MonitorBuf + MonitorBufBeg;
+			r = n - 1;
+			MonitorBufBeg = n;
+			MonitorBufScan = n;
+			MonitorBufDiscardMode = 1;
+
+			return r;
+		}
+	}
+
+	/*
+	 * Read more data.  If there is no data pending then return -1,
+	 * otherwise loop up to see if more complete line(s) are available.
+	 */
+	r = pread(fd,
+		  MonitorBuf + MonitorBufEnd,
+		  sizeof(MonitorBuf) - MonitorBufEnd,
+		  MonitorLogOff);
+	if (r <= 0)
+		return -1;
+	MonitorLogOff += r;
+	MonitorBufEnd += r;
+	goto again;
 }

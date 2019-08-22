@@ -816,6 +816,10 @@ static void
 workercomplete(worker_t *work)
 {
 	pkg_t *pkg;
+	time_t t;
+	int h;
+	int m;
+	int s;
 
 	/*
 	 * Steady state FAILED case.
@@ -824,6 +828,11 @@ workercomplete(worker_t *work)
 		if (work->pkg == NULL)
 			return;
 	}
+
+	t = time(NULL) - work->start_time;
+	s = t % 60;
+	m = t / 60 % 60;
+	h = t / 3600;
 
 	/*
 	 * Process pkg out of the worker
@@ -839,32 +848,25 @@ workercomplete(worker_t *work)
 		if (pkg->flags & PKGF_NOBUILD) {
 			char *reason;
 
-			if (pkg->flags & PKGF_NOBUILD_I)
-				++BuildIgnoreCount;
-			else
-				++BuildSkipCount;
 			reason = buildskipreason(NULL, pkg);
-			dlog(DLOG_SKIP, "[%03d] %s skipped due to %s\n",
-			     work->index, pkg->portdir, reason);
+			if (pkg->flags & PKGF_NOBUILD_I) {
+				++BuildIgnoreCount;
+				dlog(DLOG_SKIP, "[%03d] %s ignored due to %s\n",
+				     work->index, pkg->portdir, reason);
+			} else {
+				++BuildSkipCount;
+				dlog(DLOG_SKIP, "[%03d] %s skipped due to %s\n",
+				     work->index, pkg->portdir, reason);
+			}
 			free(reason);
 		} else {
 			++BuildFailCount;
-			dlog(DLOG_FAIL, "[%03d] %s build-failed\n",
-			     work->index, pkg->portdir);
+			dlog(DLOG_FAIL, "[%03d] %s failed in %02d:%02d:%02d\n",
+			     work->index, pkg->portdir, h, m, s);
 		}
 	} else {
-		time_t t;
-		int h;
-		int m;
-		int s;
-
-		t = time(NULL) - work->start_time;
-		s = t % 60;
-		m = t / 60 % 60;
-		h = t / 3600;
-
 		dlog(DLOG_SUCC,
-		     "[%03d] %s build-succeded in %02d:%02d:%02d\n",
+		     "[%03d] %s succeeded in %02d:%02d:%02d\n",
 		     work->index, pkg->portdir, h, m, s);
 		pkg->flags |= PKGF_SUCCESS;
 		++BuildSuccessCount;
