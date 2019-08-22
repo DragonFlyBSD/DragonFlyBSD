@@ -149,14 +149,14 @@ main(int ac, char **av)
 	if (strcmp(av[0], "debug") == 0) {
 		DebugStopMode = 1;
 #if 0
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		RemovePackages(pkgs);
 		addbuildenv("DEVELOPER", "yes");
 		DoBuild(pkgs);
 #endif
 		DebugStopMode = 1;
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		DoBuild(pkgs);
 	} else if (strcmp(av[0], "status") == 0) {
@@ -166,18 +166,18 @@ main(int ac, char **av)
 			pkgs = GetLocalPackageList();
 		DoStatus(pkgs);
 	} else if (strcmp(av[0], "cleanup") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(0);
 	} else if (strcmp(av[0], "configure") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(0);
 		DoConfigure();
 	} else if (strcmp(av[0], "upgrade-system") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = GetLocalPackageList();
 		DoBuild(pkgs);
 		DoRebuildRepo(0);
 		DoUpgradePkgs(pkgs, 0);
 	} else if (strcmp(av[0], "prepare-system") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = GetLocalPackageList();
 		DoBuild(pkgs);
 		DoRebuildRepo(0);
@@ -190,7 +190,7 @@ main(int ac, char **av)
 		pkgs = GetFullPackageList();
 		DoStatus(pkgs);
 	} else if (strcmp(av[0], "everything") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = GetFullPackageList();
 		DoBuild(pkgs);
 		DoRebuildRepo(1);
@@ -202,30 +202,30 @@ main(int ac, char **av)
 		/* NOT REACHED */
 		exit(0);
 	} else if (strcmp(av[0], "build") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		DoBuild(pkgs);
 		DoRebuildRepo(1);
 		DoUpgradePkgs(pkgs, 1);
 	} else if (strcmp(av[0], "just-build") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		DoBuild(pkgs);
 	} else if (strcmp(av[0], "install") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		DoBuild(pkgs);
 		DoRebuildRepo(0);
 		DoUpgradePkgs(pkgs, 0);
 	} else if (strcmp(av[0], "force") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		RemovePackages(pkgs);
 		DoBuild(pkgs);
 		DoRebuildRepo(1);
 		DoUpgradePkgs(pkgs, 1);
 	} else if (strcmp(av[0], "test") == 0) {
-		DoCleanBuild();
+		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		RemovePackages(pkgs);
 		addbuildenv("DEVELOPER", "yes");

@@ -78,6 +78,7 @@ static pid_t SigPid;
 int BuildTotal;
 int BuildCount;
 int BuildSkipCount;
+int BuildIgnoreCount;
 int BuildFailCount;
 int BuildSuccessCount;
 
@@ -131,16 +132,17 @@ DoInitBuild(int slot_override)
  * Called by the frontend to clean-up any hanging mounts.
  */
 void
-DoCleanBuild(void)
+DoCleanBuild(int resetlogs)
 {
 	int i;
 
 	ddassert(BuildInitialized);
 
+	if (resetlogs)
+		dlogreset();
 	for (i = 0; i < MaxWorkers; ++i) {
 		DoWorkerUnmounts(&WorkerAry[i]);
 	}
-	dlogreset();
 }
 
 void
@@ -433,6 +435,12 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 	}
 
 	/*
+	 * Set PKGF_NOBUILD_I if there is IGNORE data
+	 */
+	if (pkg->ignore && pkg->ignore[0])
+		pkg->flags |= PKGF_NOBUILD_I;
+
+	/*
 	 * Handle propagated flags
 	 */
 	if (pkg->flags & PKGF_ERROR) {
@@ -495,7 +503,10 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		 *	 and is ultimately handled by startbuild().
 		 */
 		*hasworkp = 1;
-		if (pkg->flags & PKGF_NOBUILD)
+		if (pkg->flags & PKGF_NOBUILD_I)
+			ddprintf(level, "} (ADDLIST(IGNORE/BROKEN) - %s)\n",
+				 pkg->portdir);
+		else if (pkg->flags & PKGF_NOBUILD)
 			ddprintf(level, "} (ADDLIST(NOBUILD) - %s)\n",
 				 pkg->portdir);
 		else
@@ -646,7 +657,10 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 			ipkg->flags |= PKGF_FAILURE;
 			ipkg->flags &= ~PKGF_BUILDLIST;
 
-			++BuildSkipCount;
+			if (ipkg->flags & PKGF_NOBUILD_I)
+				++BuildIgnoreCount;
+			else
+				++BuildSkipCount;
 			++BuildCount;
 			reason = buildskipreason(NULL, ipkg);
 			dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
@@ -660,7 +674,10 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 			pkgi->flags |= PKGF_FAILURE;
 			pkgi->flags &= ~PKGF_BUILDLIST;
 
-			++BuildSkipCount;
+			if (pkgi->flags & PKGF_NOBUILD_I)
+				++BuildIgnoreCount;
+			else
+				++BuildSkipCount;
 			++BuildCount;
 			reason = buildskipreason(NULL, pkgi);
 			dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
@@ -816,7 +833,10 @@ workercomplete(worker_t *work)
 		if (pkg->flags & PKGF_NOBUILD) {
 			char *reason;
 
-			++BuildSkipCount;
+			if (pkg->flags & PKGF_NOBUILD_I)
+				++BuildIgnoreCount;
+			else
+				++BuildSkipCount;
 			reason = buildskipreason(NULL, pkg);
 			dlog(DLOG_SKIP, "[%03d] %s skipped due to %s\n",
 			     work->index, pkg->portdir, reason);

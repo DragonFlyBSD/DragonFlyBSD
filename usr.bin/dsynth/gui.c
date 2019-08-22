@@ -179,7 +179,7 @@ GuiUpdateTop(void)
 
 	mvwprintw(CWin, 0, TOTAL_COL, "%-5d", BuildTotal);
 	mvwprintw(CWin, 0, BUILT_COL, "%-5d", BuildSuccessCount);
-	mvwprintw(CWin, 0, IGNORED_COL, "%-5d", -1);
+	mvwprintw(CWin, 0, IGNORED_COL, "%-5d", BuildIgnoreCount);
 	if (dload[0] > 999.9)
 		mvwprintw(CWin, 0, LOAD_COL, "%5.0f", dload[0]);
 	else

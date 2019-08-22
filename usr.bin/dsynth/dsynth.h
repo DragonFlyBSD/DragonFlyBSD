@@ -111,7 +111,7 @@ typedef struct pkg {
 	char *pkgfile;		/* PKGFILE    - e.g. flav-blah-3.5.0_1.txz */
 	char *distfiles;	/* DISTFILES  - e.g. blah-68.0.source.tar.xz */
 	char *distsubdir;	/* DIST_SUBDIR- e.g. cabal		*/
-	char *ignore;		/* IGNORE				*/
+	char *ignore;		/* IGNORE (also covers BROKEN)		*/
 	char *fetch_deps;	/* FETCH_DEPENDS			*/
 	char *ext_deps;		/* EXTRACT_DEPENDS			*/
 	char *patch_deps;	/* PATCH_DEPENDS			*/
@@ -140,14 +140,16 @@ typedef struct pkg {
 #define PKGF_NOBUILD_D	0x00000100	/* can't build - dependency problem */
 #define PKGF_NOBUILD_S	0x00000200	/* can't build - skipped */
 #define PKGF_NOBUILD_F	0x00000400	/* can't build - failed */
-#define PKGF_SUCCESS	0x00000800	/* build complete */
-#define PKGF_FAILURE	0x00001000	/* build complete */
-#define PKGF_RUNNING	0x00002000	/* build complete */
-#define PKGF_PKGPKG	0x00004000	/* pkg/pkg-static special */
-#define PKGF_NOTREADY	0x00008000	/* build_find_leaves() only */
+#define PKGF_NOBUILD_I	0x00000800	/* can't build - ignored or broken */
+#define PKGF_SUCCESS	0x00001000	/* build complete */
+#define PKGF_FAILURE	0x00002000	/* build complete */
+#define PKGF_RUNNING	0x00004000	/* build complete */
+#define PKGF_PKGPKG	0x00008000	/* pkg/pkg-static special */
+#define PKGF_NOTREADY	0x00010000	/* build_find_leaves() only */
 #define PKGF_ERROR	(PKGF_PLACEHOLD | PKGF_CORRUPT | PKGF_NOTFOUND | \
 			 PKGF_FAILURE)
-#define PKGF_NOBUILD	(PKGF_NOBUILD_D | PKGF_NOBUILD_S | PKGF_NOBUILD_F)
+#define PKGF_NOBUILD	(PKGF_NOBUILD_D | PKGF_NOBUILD_S | PKGF_NOBUILD_F | \
+			 PKGF_NOBUILD_I)
 
 #define PKGLIST_EMPTY(pkglink)		((pkglink)->next == (pkglink))
 #define PKGLIST_FOREACH(var, head)	\
@@ -368,6 +370,7 @@ extern int BuildCount;
 extern int BuildTotal;
 extern int BuildFailCount;
 extern int BuildSkipCount;
+extern int BuildIgnoreCount;
 extern int BuildSuccessCount;
 extern int DynamicMaxWorkers;
 
@@ -437,7 +440,7 @@ void DoConfigure(void);
 void DoStatus(pkg_t *pkgs);
 void DoBuild(pkg_t *pkgs);
 void DoInitBuild(int slot_override);
-void DoCleanBuild(void);
+void DoCleanBuild(int resetlogs);
 void WorkerProcess(int ac, char **av);
 
 int DoCreateTemplate(int force);
