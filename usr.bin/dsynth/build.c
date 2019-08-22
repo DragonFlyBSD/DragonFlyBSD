@@ -61,11 +61,18 @@ static void dophase(worker_t *work, wmsg_t *wmsg,
 static void phaseReapAll(void);
 static void phaseTerminateSignal(int sig);
 static char *buildskipreason(pkglink_t *parent, pkg_t *pkg);
+static int mptylogpoll(int ptyfd, int fdlog, wmsg_t *wmsg,
+			time_t *wdog_timep);
 static int copyfile(char *src, char *dst);
 
 static worker_t *SigWork;
 static int MasterPtyFd = -1;
 static pid_t SigPid;
+
+#define MPTY_FAILED	-2
+#define MPTY_AGAIN	-1
+#define MPTY_EOF	0
+#define MPTY_DATA	1
 
 int BuildTotal;
 int BuildCount;
@@ -1661,8 +1668,10 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	pkg_t *pkg = work->pkg;
 	char buf[1024];
 	pid_t pid;
-	ssize_t r;
 	int status;
+	int ms;
+	pid_t wpid;
+	int wpid_reaped;
 	int fdlog;
 	time_t start_time;
 	time_t last_time;
@@ -1744,6 +1753,7 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		}
 		_exit(1);
 	}
+	fcntl(MasterPtyFd, F_SETFL, O_NONBLOCK);
 
 	if (pid < 0) {
 		dlog(DLOG_ALL, "[%03d] %s Fork Failed\n",
@@ -1763,32 +1773,19 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	start_time = time(NULL);
 	last_time = start_time;
 	wdog_time = start_time;
+	wpid_reaped = 0;
 
 	status = 0;
 	for (;;) {
-		struct pollfd pfd;
-		pid_t wpid;
-
-		pfd.fd = MasterPtyFd;
-		pfd.events = POLLIN;
-		pfd.revents = 0;
-
-		poll(&pfd, 1, 1000);
-		if (pfd.revents) {
-			r = read(MasterPtyFd, buf, sizeof(buf));
-			if (r <= 0) {
-				if (r < 0 && errno == EINTR)
-					continue;
-				break;
-			}
-			wdog_time = time(NULL);
-			if (r > 0 && fdlog >= 0)
-				write(fdlog, buf, r);
-			while (--r >= 0) {
-				if (buf[r] == '\n')
-					++wmsg->lines;
-			}
+		ms = mptylogpoll(MasterPtyFd, fdlog, wmsg, &wdog_time);
+		if (ms == MPTY_FAILED) {
+			dlog(DLOG_ALL,
+			     "[%03d] %s lost pty in phase %s, terminating\n",
+			     work->index, pkg->portdir, phase);
+			break;
 		}
+		if (ms == MPTY_EOF)
+			break;
 
 		/*
 		 * Generally speaking update status once a second.
@@ -1859,25 +1856,70 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		do {
 			wpid = wait3(&status, WNOHANG, NULL);
 		} while (wpid > 0 && wpid != pid);
-		if (wpid == pid && WIFEXITED(status))
+		if (wpid == pid && WIFEXITED(status)) {
+			wpid_reaped = 1;
 			break;
+		}
 	}
 
 	next_time = time(NULL);
 
 	setproctitle("WORKER [%02d] EXITREAP %s",
 		     work->index, pkg->portdir);
-	kill(pid, SIGKILL);
-	while (WIFEXITED(status) == 0) {
-		if (waitpid(pid, &status, 0) < 0) {
-			if (errno != EINTR)
-				break;
+
+	/*
+	 * We usually get here due to a mpty EOF, but not always as there
+	 * could be persistent processes still holding the slave.  Finish
+	 * up getting the exit status for the main process we are waiting
+	 * on and clean out any data left on the MasterPtyFd (as it could
+	 * be blocking the exit).
+	 */
+	while (wpid_reaped == 0) {
+		(void)mptylogpoll(MasterPtyFd, fdlog, wmsg, &wdog_time);
+		wpid = waitpid(pid, &status, WNOHANG);
+		if (wpid == pid && WIFEXITED(status)) {
+			wpid_reaped = 1;
+			break;
+		}
+		if (wpid < 0 && errno != EINTR) {
+			break;
 		}
 
+		/*
+		 * Safety.  The normal phase waits until the fork/exec'd
+		 * pid finishes, causing a pty EOF on exit (the slave
+		 * descriptor is closed by the kernel on exit so the
+		 * process should already have exited).
+		 *
+		 * However, it is also possible to get here if the pty fails
+		 * for some reason.  In this case, make sure that the process
+		 * is killed.
+		 */
+		kill(pid, SIGKILL);
 	}
 
-	if (WEXITSTATUS(status)) {
-		dlog(DLOG_ALL, "[%03d] %s Build phase '%s' failed\n",
+	/*
+	 * Clean out anything left on the pty but don't wait around
+	 * because there could be background processes preventing the
+	 * slave side from closing.
+	 */
+	while (mptylogpoll(MasterPtyFd, fdlog, wmsg, &wdog_time) == MPTY_DATA)
+		;
+
+	/*
+	 * Report on the exit condition.  If the pid was somehow lost
+	 * (probably due to someone gdb'ing the process), assume an error.
+	 */
+	if (wpid_reaped) {
+		if (WEXITSTATUS(status)) {
+			dlog(DLOG_ALL, "[%03d] %s Build phase '%s' "
+				       "failed exit %d\n",
+			     work->index, pkg->portdir, phase,
+			     WEXITSTATUS(status));
+			++work->accum_error;
+		}
+	} else {
+		dlog(DLOG_ALL, "[%03d] %s Build phase '%s' failed - lost pid\n",
 		     work->index, pkg->portdir, phase);
 		++work->accum_error;
 	}
@@ -2012,6 +2054,47 @@ buildskipreason(pkglink_t *parent, pkg_t *pkg)
 		reason[tot] = 0;
 	}
 	return (reason);
+}
+
+/*
+ * The master ptyfd is in non-blocking mode.  Drain up to 1024 bytes
+ * and update wmsg->lines and *wdog_timep as appropriate.
+ *
+ * This function will poll, stalling up to 1 second.
+ */
+static int
+mptylogpoll(int ptyfd, int fdlog, wmsg_t *wmsg, time_t *wdog_timep)
+{
+	struct pollfd pfd;
+	char buf[1024];
+	ssize_t r;
+
+	pfd.fd = ptyfd;
+	pfd.events = POLLIN;
+	pfd.revents = 0;
+
+	poll(&pfd, 1, 1000);
+	if (pfd.revents) {
+		r = read(ptyfd, buf, sizeof(buf));
+		if (r > 0) {
+			*wdog_timep = time(NULL);
+			if (r > 0 && fdlog >= 0)
+				write(fdlog, buf, r);
+			while (--r >= 0) {
+				if (buf[r] == '\n')
+					++wmsg->lines;
+			}
+			return MPTY_DATA;
+			return 1;
+		} else if (r < 0) {
+			if (errno != EINTR && errno != EAGAIN)
+				return MPTY_FAILED;
+			return MPTY_AGAIN;
+		} else if (r == 0) {
+			return MPTY_EOF;
+		}
+	}
+	return MPTY_AGAIN;
 }
 
 /*
