@@ -199,9 +199,9 @@ GuiUpdateTop(void)
 				  LastReduce);
 	}
 
-	mvwprintw(CWin, 1, LEFT_COL, "%-4d", BuildTotal - BuildCount);
-	mvwprintw(CWin, 1, FAILED_COL, "%-4d", BuildFailCount);
-	mvwprintw(CWin, 1, SKIPPED_COL, "%-4d", BuildSkipCount);
+	mvwprintw(CWin, 1, LEFT_COL, "%-5d", BuildTotal - BuildCount);
+	mvwprintw(CWin, 1, FAILED_COL, "%-5d", BuildFailCount);
+	mvwprintw(CWin, 1, SKIPPED_COL, "%-5d", BuildSkipCount);
 	if (noswap)
 		mvwprintw(CWin, 1, SWAP_COL, "-   ");
 	else
