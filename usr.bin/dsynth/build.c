@@ -41,6 +41,7 @@ int BuildInitialized;
 int RunningWorkers;
 int DynamicMaxWorkers;
 int FailedWorkers;
+size_t RunningPkgDepSize;
 pthread_mutex_t WorkerMutex;
 pthread_cond_t WorkerCond;
 
@@ -56,7 +57,7 @@ static void waitbuild(int whilematch, int dynamicmax);
 static void workercomplete(worker_t *work);
 static void *childBuilderThread(void *arg);
 static int childInstallPkgDeps(worker_t *work);
-static void childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit);
+static size_t childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit);
 static void dophase(worker_t *work, wmsg_t *wmsg,
 			int wdog, int phaseid, const char *phase);
 static void phaseReapAll(void);
@@ -68,6 +69,7 @@ static int copyfile(char *src, char *dst);
 
 static worker_t *SigWork;
 static int MasterPtyFd = -1;
+static int CopyFileFd = -1;
 static pid_t SigPid;
 
 #define MPTY_FAILED	-2
@@ -772,7 +774,14 @@ startworker(pkg_t *pkg, worker_t *work)
 		work->state = WORKER_IDLE;
 		/* fall through */
 	case WORKER_IDLE:
-		dlog(DLOG_ALL, "[%03d] %s START\n", work->index, pkg->portdir);
+		work->pkg_dep_size =
+		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 0);
+		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 1);
+		RunningPkgDepSize += work->pkg_dep_size;
+
+		dlog(DLOG_ALL, "[%03d] %s START (estdep %ld bytes)\n",
+		     work->index, pkg->portdir, work->pkg_dep_size);
+
 		cleanworker(work);
 		pkg->flags |= PKGF_RUNNING;
 		work->pkg = pkg;
@@ -833,6 +842,11 @@ workercomplete(worker_t *work)
 	s = t % 60;
 	m = t / 60 % 60;
 	h = t / 3600;
+
+	/*
+	 * Reduce total dep size
+	 */
+	RunningPkgDepSize -= work->pkg_dep_size;
 
 	/*
 	 * Process pkg out of the worker
@@ -965,13 +979,16 @@ waitbuild(int whilematch, int dynamicmax)
 			double dswap;
 			int reduce1;
 			int reduce2;
+			int reduce3;
 			int reduce;
 			int noswap;
 
 			wblast_time = t;
-			getloadavg(dload, 3);
-			dswap = getswappct(&noswap);
 
+			/*
+			 * Reduction based on load
+			 */
+			getloadavg(dload, 3);
 			if (dload[0] < min_load) {
 				reduce1 = 0;
 			} else if (dload[0] <= max_load) {
@@ -981,6 +998,10 @@ waitbuild(int whilematch, int dynamicmax)
 				reduce1 = MaxWorkers * 75 / 100;
 			}
 
+			/*
+			 * Reduction based on swap
+			 */
+			dswap = getswappct(&noswap);
 			if (dswap < min_swap) {
 				reduce2 = 0;
 			} else if (dswap <= max_swap) {
@@ -991,12 +1012,23 @@ waitbuild(int whilematch, int dynamicmax)
 			}
 
 			/*
+			 * Reduction based on memory use.  Slow-start
+			 * will handle slowly increasing the limit.
+			 */
+			if (RunningPkgDepSize > PhysMem * 1 / 2)
+				reduce3 = RunningWorkers - 1;
+			else
+				reduce3 = 0;
+
+			/*
 			 * Priority reduction, convert to DynamicMaxWorkers
 			 */
-			if (reduce1 > reduce2)
-				reduce = reduce1;
-			else
+			reduce = reduce1;
+			if (reduce < reduce2)
 				reduce = reduce2;
+			if (reduce < reduce3)
+				reduce = reduce3;
+
 			reduce = MaxWorkers - reduce;
 			if (reduce < 4)
 				reduce = 4;
@@ -1021,17 +1053,16 @@ waitbuild(int whilematch, int dynamicmax)
 			 * And adjust
 			 */
 			if (DynamicMaxWorkers != reduce) {
-				if (DebugOpt) {
-					dlog(DLOG_ALL,
-					     "[XXX] Load=%-6.2f(-%-2d) "
-					     "Swappct=%-3.2f(-%-2d) "
-					     "Adjust MaxWorkers "
-					     "%2d->%-2d\n",
-					     dload[0], reduce1,
-					     dswap * 100.0, reduce2,
-					     DynamicMaxWorkers,
-					     reduce);
-				}
+				dlog(DLOG_ALL,
+				     "[XXX] Load=%-6.2f(-%-2d) "
+				     "Swap=%-3.2f(-%-2d) "
+				     "Mem=%3.2fG(-%-2d) "
+				     "Adjust Workers %d->%d\n",
+				     dload[0], reduce1,
+				     dswap * 100.0, reduce2,
+				     RunningPkgDepSize / 1e9, reduce3,
+				     DynamicMaxWorkers,
+				     reduce);
 				DynamicMaxWorkers = reduce;
 			}
 		}
@@ -1273,11 +1304,12 @@ childInstallPkgDeps(worker_t *work)
 	return 1;
 }
 
-static void
+static size_t
 childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
 {
 	pkglink_t *link;
 	pkg_t *pkg;
+	size_t tot = 0;
 
 	PKGLIST_FOREACH(link, list) {
 		pkg = link->pkg;
@@ -1285,21 +1317,22 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
 		if (undoit) {
 			if (pkg->dsynth_install_flg == 1) {
 				pkg->dsynth_install_flg = 0;
-				childInstallPkgDeps_recurse(fp,
+				tot += childInstallPkgDeps_recurse(fp,
 							    &pkg->idepon_list,
 							    undoit);
 			}
 			continue;
 		}
 		if (pkg->dsynth_install_flg) {
-			if (DebugOpt >= 2 && pkg->pkgfile) {
+			if (DebugOpt >= 2 && pkg->pkgfile && fp) {
 				fprintf(fp, "echo 'AlreadyHave %s'\n",
 					pkg->pkgfile);
 			}
 			continue;
 		}
 
-		childInstallPkgDeps_recurse(fp, &pkg->idepon_list, undoit);
+		tot += childInstallPkgDeps_recurse(fp,
+						   &pkg->idepon_list, undoit);
 		if (pkg->dsynth_install_flg)
 			continue;
 		pkg->dsynth_install_flg = 1;
@@ -1314,31 +1347,58 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
 
 			if (spkg) {
 				pkg = spkg;
-				fprintf(fp,
-					"echo 'DUMMY use %s (%p)'\n",
-					pkg->portdir, pkg->pkgfile);
+				if (fp) {
+					fprintf(fp,
+						"echo 'DUMMY use %s (%p)'\n",
+						pkg->portdir, pkg->pkgfile);
+				}
 			} else {
-				fprintf(fp,
-					"echo 'CANNOT FIND DEFAULT FLAVOR "
-					"FOR %s'\n",
-					pkg->portdir);
+				if (fp) {
+					fprintf(fp,
+						"echo 'CANNOT FIND DEFAULT "
+						"FLAVOR FOR %s'\n",
+						pkg->portdir);
+				}
 			}
 		}
 
 		/*
 		 * Generate package installation command
 		 */
-		if (pkg->pkgfile) {
+		if (fp && pkg->pkgfile) {
 			fprintf(fp, "echo 'Installing /packages/All/%s'\n",
 				pkg->pkgfile);
 			fprintf(fp, "pkg install -q -y /packages/All/%s "
 				"|| exit 1\n",
 				pkg->pkgfile);
-		} else {
+		} else if (fp) {
 			fprintf(fp, "echo 'CANNOT FIND PKG FOR %s'\n",
 				pkg->portdir);
 		}
+
+		if (pkg->pkgfile) {
+			struct stat st;
+			char *path;
+			char *ptr;
+
+			asprintf(&path, "%s/%s", RepositoryPath, pkg->pkgfile);
+			ptr = strrchr(pkg->pkgfile, '.');
+			if (stat(path, &st) == 0) {
+				if (strcmp(ptr, ".tar") == 0)
+					tot += st.st_size;
+				else if (strcmp(ptr, ".tgz") == 0)
+					tot += st.st_size * 3;
+				else if (strcmp(ptr, ".txz") == 0)
+					tot += st.st_size * 5;
+				else if (strcmp(ptr, ".tbz") == 0)
+					tot += st.st_size * 3;
+				else
+					tot += st.st_size * 2;
+			}
+			free(path);
+		}
 	}
+	return tot;
 }
 
 /*
@@ -2041,6 +2101,8 @@ phaseReapAll(void)
 static void
 phaseTerminateSignal(int sig __unused)
 {
+	if (CopyFileFd >= 0)
+		close(CopyFileFd);
 	if (MasterPtyFd >= 0)
 		close(MasterPtyFd);
 	if (SigPid > 1)
@@ -2160,21 +2222,28 @@ copyfile(char *src, char *dst)
 	int fd1;
 	int fd2;
 	int error = 0;
+	int mask;
 	ssize_t r;
 
 	asprintf(&tmp, "%s.new", dst);
 	buf = malloc(COPYBLKSIZE);
 
+	mask = sigsetmask(sigmask(SIGTERM)|sigmask(SIGINT)|sigmask(SIGHUP));
 	fd1 = open(src, O_RDONLY|O_CLOEXEC);
 	fd2 = open(tmp, O_RDWR|O_CREAT|O_TRUNC|O_CLOEXEC, 0644);
+	CopyFileFd = fd1;
+	sigsetmask(mask);
 	while ((r = read(fd1, buf, COPYBLKSIZE)) > 0) {
 		if (write(fd2, buf, r) != r)
 			error = 1;
 	}
 	if (r < 0)
 		error = 1;
+	mask = sigsetmask(sigmask(SIGTERM)|sigmask(SIGINT)|sigmask(SIGHUP));
+	CopyFileFd = -1;
 	close(fd1);
 	close(fd2);
+	sigsetmask(mask);
 	if (error) {
 		remove(tmp);
 	} else {

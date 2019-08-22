@@ -47,6 +47,7 @@ int UseTmpfsWork = 1;
 int UseTmpfsBase = 1;
 int UseNCurses = 1;
 int LeveragePrebuilt = 0;
+size_t PhysMem;
 const char *OperatingSystemName = "Unknown";
 const char *ArchitectureName = "unknown";
 const char *MachineName = "unknown";
@@ -96,14 +97,27 @@ ParseConfiguration(int isworker)
 	VersionName = dokernsysctl(CTL_KERN, KERN_VERSION);
 
 	/*
-	 * Nominal build defaults.
+	 * Retrieve resource information from the system.  Note that
+	 * NumCores and PhysMem will also be used for dynamic load
+	 * management.
 	 */
 	NumCores = 1;
 	len = sizeof(NumCores);
 	if (sysctlbyname("hw.ncpu", &NumCores, &len, NULL, 0) < 0)
 		dfatal_errno("Cannot get hw.ncpu");
+
+	len = sizeof(PhysMem);
+	if (sysctlbyname("hw.physmem", &PhysMem, &len, NULL, 0) < 0)
+		dfatal_errno("Cannot get hw.physmem");
+
+	/*
+	 * Calculate nominal defaults
+	 */
 	MaxBulk = NumCores;
 	MaxWorkers = MaxBulk / 2;
+	if (MaxWorkers > (int)(PhysMem / 1000000000))
+		MaxWorkers = PhysMem / 1000000000;
+
 	if (MaxBulk < 1)
 		MaxBulk = 1;
 	if (MaxWorkers < 1)

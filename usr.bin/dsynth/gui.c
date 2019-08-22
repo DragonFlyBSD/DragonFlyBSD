@@ -277,13 +277,24 @@ GuiUpdateLogs(void)
 		/*
 		 * Scroll down
 		 */
-		wscrl(CMon, -1);
 		if (n > COLS)
 			w = COLS;
 		else
 			w = n;
 		c = ptr[w];
 		ptr[w] = 0;
+
+		/*
+		 * Filter out these logs from the display (they remain in
+		 * the 00*.log file) to reduce clutter.
+		 */
+		if (strncmp(ptr, "[XXX] Load=", 11) == 0)
+			continue;
+
+		/*
+		 * Output possibly colored log line
+		 */
+		wscrl(CMon, -1);
 		if (strstr(ptr, "succeeded in")) {
 			wattrset(CMon, COLOR_PAIR(2));
 		} else if (strstr(ptr, "failed in")) {

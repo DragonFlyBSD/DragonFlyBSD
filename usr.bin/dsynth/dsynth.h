@@ -127,6 +127,7 @@ typedef struct pkg {
 	int depi_count;		/* count recursive deponi build deps	*/
 	int dsynth_install_flg;	/* locked with WorkerMutex	*/
 	int flags;
+	size_t pkgfile_size;	/* size of pkgfile */
 } pkg_t;
 
 #define PKGF_PACKAGED	0x00000001	/* has a repo package */
@@ -265,6 +266,7 @@ typedef struct worker {
 	pid_t	pid;
 	int	fds[2];		/* forked environment process */
 	char	status[64];
+	size_t	pkg_dep_size;	/* pkg dependency size(s) */
 } worker_t;
 
 #define WORKERF_STATUS_UPDATE	0x0001	/* display update */
@@ -383,6 +385,7 @@ extern int NullStdinOpt;
 extern int UseCCache;
 extern int UseTmpfs;
 extern int NumCores;
+extern size_t PhysMem;
 extern int MaxBulk;
 extern int MaxWorkers;
 extern int MaxJobs;
