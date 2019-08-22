@@ -72,6 +72,7 @@ struct pkglink;
 #define MOUNT_NULLFS_BINARY	"/sbin/mount_null"
 #define MOUNT_TMPFS_BINARY	"/sbin/mount_tmpfs"
 #define MOUNT_DEVFS_BINARY	"/sbin/mount_devfs"
+#define MOUNT_PROCFS_BINARY	"/sbin/mount_procfs"
 #define UMOUNT_BINARY		"/sbin/umount"
 
 /*
@@ -189,7 +190,7 @@ typedef struct bulk {
  */
 enum worker_state { WORKER_NONE, WORKER_IDLE, WORKER_PENDING,
 		    WORKER_RUNNING, WORKER_DONE, WORKER_FAILED,
-		    WORKER_EXITING };
+		    WORKER_FROZEN, WORKER_EXITING };
 typedef enum worker_state worker_state_t;
 
 enum worker_phase { PHASE_PENDING,
@@ -256,17 +257,20 @@ typedef struct worker {
 #define WORKERF_STATUS_UPDATE	0x0001	/* display update */
 #define WORKERF_SUCCESS		0x0002	/* completion flag */
 #define WORKERF_FAILURE		0x0004	/* completion flag */
+#define WORKERF_FREEZE		0x0008	/* freeze the worker */
 
 #define MOUNT_TYPE_MASK		0x000F
 #define MOUNT_TYPE_TMPFS	0x0001
 #define MOUNT_TYPE_NULLFS	0x0002
 #define MOUNT_TYPE_DEVFS	0x0003
+#define MOUNT_TYPE_PROCFS	0x0004
 #define MOUNT_TYPE_RW		0x0010
 #define MOUNT_TYPE_BIG		0x0020
 #define MOUNT_TYPE_TMP		0x0040
 
 #define NULLFS_RO		(MOUNT_TYPE_NULLFS)
 #define NULLFS_RW		(MOUNT_TYPE_NULLFS | MOUNT_TYPE_RW)
+#define PROCFS_RO		(MOUNT_TYPE_PROCFS)
 #define TMPFS_RW		(MOUNT_TYPE_TMPFS | MOUNT_TYPE_RW)
 #define TMPFS_RW_BIG		(MOUNT_TYPE_TMPFS | MOUNT_TYPE_RW |	\
 				 MOUNT_TYPE_BIG)
@@ -287,6 +291,7 @@ typedef struct wmsg {
 #define WMSG_CMD_FAILURE	0x0003
 #define WMSG_CMD_INSTALL_PKGS	0x0004
 #define WMSG_RES_INSTALL_PKGS	0x0005
+#define WMSG_CMD_FREEZEWORKER	0x0006
 
 /*
  * Make variables and build environment
@@ -357,6 +362,7 @@ extern int DynamicMaxWorkers;
 
 extern buildenv_t *BuildEnv;
 extern int DebugOpt;
+extern int DebugStopMode;
 extern int SlowStartOpt;
 extern int YesOpt;
 extern int NullStdinOpt;
@@ -378,6 +384,8 @@ extern const char *MachineName;
 extern const char *ReleaseName;
 extern const char *VersionName;
 
+extern const char *ConfigBase;
+extern const char *AltConfigBase;
 extern const char *DPortsPath;
 extern const char *CCachePath;
 extern const char *SynthConfig;

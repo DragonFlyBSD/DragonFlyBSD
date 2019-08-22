@@ -256,6 +256,9 @@ GuiUpdate(worker_t *work)
 	case WORKER_DONE:
 		phase = "Done";
 		break;
+	case WORKER_FROZEN:
+		phase = "FROZEN";
+		break;
 	default:
 		break;
 	}

@@ -52,10 +52,13 @@ int
 DoCreateTemplate(int force)
 {
 	struct stat st;
+	char *goodbuf;
 	char *buf;
 	int rc;
+	int fd;
 
 	rc = 0;
+	asprintf(&goodbuf, "%s/.template.good", BuildBase);
 
 	/*
 	 * Conditionally create the template and discrete copies of certain
@@ -67,8 +70,7 @@ DoCreateTemplate(int force)
 			force = 1;
 		free(buf);
 
-		asprintf(&buf, "%s/usr.bin.%03d", BuildBase, MaxWorkers - 1);
-		if (stat(buf, &st) < 0)
+		if (stat(goodbuf, &st) < 0)
 			force = 1;
 		free(buf);
 	}
@@ -77,6 +79,11 @@ DoCreateTemplate(int force)
 	 * Create the template
 	 */
 	if (force) {
+		printf("Creating Template for workers...");
+		fflush(stdout);
+
+		remove(goodbuf);	/* ignore exit code */
+
 		rc = 0;
 		asprintf(&buf, "%s/mktemplate %s %s/Template",
 			 SCRIPTPATH(SCRIPTDIR), SystemPath, BuildBase);
@@ -84,18 +91,31 @@ DoCreateTemplate(int force)
 		if (rc)
 			dfatal("Command failed: %s\n", buf);
 		free(buf);
-	}
 
-	/*
-	 * Make discrete copies of certain extremely heavily used
-	 * but small directories.
-	 */
-	if (force) {
-		makeDiscreteCopies("$/bin", "/bin.%03d");
-		makeDiscreteCopies("$/lib", "/lib.%03d");
-		makeDiscreteCopies("$/libexec", "/libexec.%03d");
-		makeDiscreteCopies("$/usr/bin", "/usr.bin.%03d");
+		/*
+		 * Make discrete copies of certain extremely heavily used
+		 * but small directories.
+		 */
+		if (force) {
+			makeDiscreteCopies("$/bin", "/bin.%03d");
+			makeDiscreteCopies("$/lib", "/lib.%03d");
+			makeDiscreteCopies("$/libexec", "/libexec.%03d");
+			makeDiscreteCopies("$/usr/bin", "/usr.bin.%03d");
+		}
+
+		/*
+		 * Mark the template good... ah, do a sync() to really
+		 * be sure that it can't get corrupted.
+		 */
+		sync();
+		fd = open(goodbuf, O_RDWR|O_CREAT|O_TRUNC, 0644);
+		dassert_errno(fd >= 0, "could not create %s", goodbuf);
+		close(fd);
+
+		printf("done\n");
+		fflush(stdout);
 	}
+	free(goodbuf);
 
 	return rc;
 }
@@ -148,6 +168,7 @@ DoWorkerMounts(worker_t *work)
 	domount(work, NULLFS_RO, "$/boot", "/boot", NULL);
 	domount(work, TMPFS_RW,  "dummy", "/boot/modules.local", NULL);
 	domount(work, DEVFS_RW,  "dummy", "/dev", NULL);
+	domount(work, PROCFS_RO, "dummy", "/proc", NULL);
 	domount(work, NULLFS_RO, "$/bin", "/bin", "/bin.%03d");
 	domount(work, NULLFS_RO, "$/sbin", "/sbin", NULL);
 	domount(work, NULLFS_RO, "$/lib", "/lib", "/lib.%03d");
@@ -194,6 +215,7 @@ DoWorkerUnmounts(worker_t *work)
 
 	work->mount_error = 0;
 	for (retries = 0; retries < 10; ++retries) {
+		dounmount(work, "/proc");
 		dounmount(work, "/dev");
 		dounmount(work, "/usr/src");
 		dounmount(work, "/usr/games");
@@ -276,6 +298,9 @@ domount(worker_t *work, int type, const char *spath, const char *dpath,
 		break;
 	case MOUNT_TYPE_DEVFS:
 		prog = MOUNT_DEVFS_BINARY;
+		break;
+	case MOUNT_TYPE_PROCFS:
+		prog = MOUNT_PROCFS_BINARY;
 		break;
 	default:
 		dfatal("Illegal mount type: %08x", type);
@@ -366,7 +391,10 @@ makeDiscreteCopies(const char *spath, const char *discretefmt)
 			if (mkdir(dst, 0555) < 0)
 				dfatal_errno("Cannot mkdir %s", dst);
 		}
-		asprintf(&buf, "cpdup %s %s", src, dst);
+		asprintf(&buf, "chflags -R noschg %s; "
+			       "rm -rf %s; "
+			       "cp -Rp %s/. %s",
+			       dst, dst, src, dst);
 		rc = system(buf);
 		if (rc)
 			dfatal("Command failed: %s", buf);

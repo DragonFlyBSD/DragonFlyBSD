@@ -54,7 +54,6 @@ const char *VersionName = "unknown";
 const char *ReleaseName = "unknown";
 const char *DPortsPath = "/usr/dports";
 const char *CCachePath = "/build/ccache";
-const char *SynthConfig = "/usr/local/etc/synth/synth.ini";
 const char *PackagesPath = "/build/synth/live_packages";
 const char *RepositoryPath = "/build/synth/live_packages/All";
 const char *OptionsPath = "/build/synth/options";
@@ -63,6 +62,9 @@ const char *BuildBase = "/build/synth/build";
 const char *LogsPath = "/build/synth/logs";
 const char *SystemPath = "/";
 const char *ProfileLabel = "[LiveSystem]";
+
+const char *ConfigBase = "/etc/dsynth";
+const char *AltConfigBase = "/usr/local/etc/dsynth";
 
 static void parseConfigFile(const char *path);
 static void parseProfile(const char *cpath, const char *path);
@@ -75,6 +77,14 @@ ParseConfiguration(int isworker)
 {
 	struct stat st;
 	size_t len;
+	char *synth_config;
+
+	/*
+	 *
+	 */
+	asprintf(&synth_config, "%s/dsynth.ini", ConfigBase);
+	if (stat(synth_config, &st) < 0)
+		asprintf(&synth_config, "%s/dsynth.ini", AltConfigBase);
 
 	/*
 	 * OperatingSystemName, ArchitectureName, ReleaseName
@@ -104,14 +114,18 @@ ParseConfiguration(int isworker)
 	/*
 	 * Configuration file must exist
 	 */
-	if (stat(SynthConfig, &st) < 0)
-		dfatal("Configuration file missing: %s", SynthConfig);
+	if (stat(synth_config, &st) < 0) {
+		dfatal("Configuration file missing, "
+		       "could not find %s/dsynth.ini or %s/dsynth.ini\n",
+		       ConfigBase,
+		       AltConfigBase);
+	}
 
 	/*
 	 * Parse the configuration file(s)
 	 */
-	parseConfigFile(SynthConfig);
-	parseProfile(SynthConfig, ProfileLabel);
+	parseConfigFile(synth_config);
+	parseProfile(synth_config, ProfileLabel);
 
 	/*
 	 * If this is a dsynth WORKER exec it handles a single slot,
@@ -259,17 +273,23 @@ parseConfigFile(const char *path)
 				SystemPath = l2;
 			} else if (strcmp(l1, "Number_of_builders") == 0) {
 				MaxWorkers = strtol(l2, NULL, 0);
-				if (MaxWorkers < 1 || MaxWorkers > MAXWORKERS) {
+				if (MaxWorkers == 0)
+					MaxWorkers = NumCores / 2 + 1;
+				else
+				if (MaxWorkers < 0 || MaxWorkers > MAXWORKERS) {
 					dfatal("Config: Number_of_builders "
-					       "must range 1..%d",
+					       "must range %d..%d",
 					       1, MAXWORKERS);
 				}
 				free(l2);
 			} else if (strcmp(l1, "Max_jobs_per_builder") == 0) {
 				MaxJobs = strtol(l2, NULL, 0);
-				if (MaxJobs < 1 || MaxJobs > MAXJOBS) {
+				if (MaxJobs == 0) {
+					MaxJobs = NumCores;
+				} else
+				if (MaxJobs < 0 || MaxJobs > MAXJOBS) {
 					dfatal("Config: Max_jobs_per_builder "
-					       "must range 1..%d",
+					       "must range %d..%d",
 					       1, MAXJOBS);
 				}
 				free(l2);

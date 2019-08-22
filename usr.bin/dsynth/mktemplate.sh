@@ -50,6 +50,7 @@ mkdir -p $template/usr/local/etc
 mkdir -p $template/usr/local/etc/pkg
 mkdir -p $template/usr/local/bin
 mkdir -p $template/usr/local/sbin
+mkdir -p $template/usr/local/lib
 mkdir -p $template/var/run
 
 cp /var/run/ld-elf.so.hints $template/var/run

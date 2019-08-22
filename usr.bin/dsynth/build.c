@@ -752,6 +752,7 @@ startworker(pkg_t *pkg, worker_t *work)
 	case WORKER_RUNNING:
 	case WORKER_DONE:
 	case WORKER_FAILED:
+	case WORKER_FROZEN:
 	case WORKER_EXITING:
 	default:
 		dfatal("startworker: Unexpected state %d for worker %d",
@@ -846,6 +847,10 @@ workercomplete(worker_t *work)
 	if (work->state == WORKER_FAILED) {
 		dlog(DLOG_ALL, "[%03d] XXX/XXX WORKER IS IN A FAILED STATE\n",
 		     work->index);
+	} else if (work->flags & WORKERF_FREEZE) {
+		dlog(DLOG_ALL, "[%03d] XXX/XXX WORKER FROZEN BY REQUEST\n",
+		     work->index);
+		work->state = WORKER_FROZEN;
 	} else {
 		work->state = WORKER_IDLE;
 	}
@@ -1009,6 +1014,7 @@ childBuilderThread(void *arg)
 	volatile int dowait;
 	char slotbuf[8];
 	char fdbuf[8];
+	char flagsbuf[16];
 
 	pthread_mutex_lock(&WorkerMutex);
 	while (work->terminate == 0) {
@@ -1035,8 +1041,12 @@ childBuilderThread(void *arg)
 				       PF_UNSPEC, work->fds)) {
 				dfatal_errno("socketpair() during worker fork");
 			}
-			snprintf(slotbuf, sizeof(slotbuf), "%d", work->index);
-			snprintf(fdbuf, sizeof(fdbuf), "3");
+			snprintf(slotbuf, sizeof(slotbuf),
+				 "%d", work->index);
+			snprintf(fdbuf, sizeof(fdbuf),
+				 "3");
+			snprintf(flagsbuf, sizeof(flagsbuf),
+				 "%d", DebugStopMode);
 
 			/*
 			 * fds[0] - master
@@ -1055,6 +1065,7 @@ childBuilderThread(void *arg)
 				execle(DSynthExecPath, DSynthExecPath,
 				       "WORKER", slotbuf, fdbuf,
 				       work->pkg->portdir, work->pkg->pkgfile,
+				       flagsbuf,
 				       NULL, envary);
 				write(2, "EXECLE FAILURE\n", 15);
 				_exit(1);
@@ -1101,6 +1112,9 @@ childBuilderThread(void *arg)
 					break;
 				case WMSG_CMD_FAILURE:
 					work->flags |= WORKERF_FAILURE;
+					break;
+				case WMSG_CMD_FREEZEWORKER:
+					work->flags |= WORKERF_FREEZE;
 					break;
 				default:
 					break;
@@ -1363,7 +1377,7 @@ WorkerProcess(int ac, char **av)
 	int slot;
 	int tmpfd;
 	int pkgpkg = 0;
-	int status __unused;
+	int status;
 	int len;
 	int do_install_phase;
 	char *portdir;
@@ -1377,7 +1391,7 @@ WorkerProcess(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	if (ac != 5) {
+	if (ac != 6) {
 		dlog(DLOG_ALL, "WORKER PROCESS %d- bad arguments\n", getpid());
 		exit(1);
 	}
@@ -1388,6 +1402,8 @@ WorkerProcess(int ac, char **av)
 	flavor = strchr(portdir, '@');
 	if (flavor)
 		*flavor++ = 0;
+	DebugStopMode = strtol(av[5], NULL, 0);
+
 	bzero(&wmsg, sizeof(wmsg));
 
 	setproctitle("WORKER [%02d] STARTUP  %s", slot, portdir);
@@ -1412,6 +1428,15 @@ WorkerProcess(int ac, char **av)
 	setenv("PORT_DBDIR", "/options", 1);
 	setenv("PKG_DBDIR", "/var/db/pkg", 1);
 	setenv("PKG_CACHEDIR", "/var/cache/pkg", 1);
+
+#if 0
+	setenv("_PERL5_FROM_BIN", "5.28.2", 1);
+	setenv("OPSYS", OperatingSystemName, 1);
+#endif
+#if 0
+	setenv("DFLYVERSION", "5.7.0", 1);
+	setenv("OSVERSION", "9999999", 1);
+#endif
 
 	setenv("PATH",
 	       "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin",
@@ -1609,15 +1634,25 @@ WorkerProcess(int ac, char **av)
 		free(b2);
 	}
 
-	DoWorkerUnmounts(work);
+	/*
+	 * Unmount, unless we are in DebugStopMode.
+	 */
+	if (DebugStopMode == 0)
+		DoWorkerUnmounts(work);
 
+	/*
+	 * Send completion status to master dsynth worker thread.
+	 */
 	if (work->accum_error) {
 		wmsg.cmd = WMSG_CMD_FAILURE;
 	} else {
 		wmsg.cmd = WMSG_CMD_SUCCESS;
 	}
-
-	status = ipcwritemsg(fd, &wmsg);
+	ipcwritemsg(fd, &wmsg);
+	if (DebugStopMode) {
+		wmsg.cmd = WMSG_CMD_FREEZEWORKER;
+		ipcwritemsg(fd, &wmsg);
+	}
 }
 
 static void

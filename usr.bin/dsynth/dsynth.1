@@ -1,0 +1,331 @@
+.\" Copyright (c) 2019 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\" This code is based on a concept originally developed by John R. Marino.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd August 21, 2019
+.Dt DSYNC 8
+.Os
+.Sh NAME
+.Nm dsynth
+.Nd dsynth bulk dports builder utility
+.Sh SYNOPSIS
+.Nm
+.Op Fl dhvy
+.Op Fl s Ar n
+.Ar directive
+.Op origins
+.Nm
+.Ar help
+.Sh DESCRIPTION
+The
+.Nm
+utility allows a user to build and maintain part or all of dports
+locally.
+.Nm
+figures out the dependency topology of the dport(s) you
+is capable of building any number of ports concurrently based
+on the configuration parameters you supply.
+.Pp
+.Nm
+is based on an application called
+.Xr synth 1
+which was written by John Marino in ADA and served as the conceptual base
+for this program.
+.Nm
+is written in C and designed to be as portable as possible given a
+ports-style infrastructure.
+.Pp
+Our recommended build topology is with a configuration as follows:
+.Bd -literal
+[Global Configuration]
+profile_selected= LiveSystem
+
+[LiveSystem]
+Operating_system= DragonFly
+Directory_packages= /build/synth/live_packages
+Directory_repository= /build/synth/live_packages/All
+Directory_portsdir= /build/synth/dports
+Directory_options= /build/synth/options
+Directory_distfiles= /build/synth/distfiles
+Directory_buildbase= /build/synth/build
+Directory_logs= /build/synth/logs
+Directory_ccache= disabled
+Directory_system= /
+Number_of_builders= 8
+Max_jobs_per_builder= 8
+Display_with_ncurses= true
+.Ed
+.Pp
+This places all major directories under
+.Pa /build/synth .
+If you want to use the same dports and the same distfiles as your base
+system, you can null-mount /usr/distfiles onto /build/synth/distfiles
+and /usr/dports onto /build/synth/dports with
+.Pa /etc/fstab
+entries as follows:
+.Bd -literal
+# Device              Mountpoint		FStype  Options DumpPass#
+/usr/distfiles        /build/synth/distfiles	null    rw      4 4
+/usr/dports           /build/synth/dports	null    rw      4 4
+.Ed
+.Pp
+Please set the number of builders and the maximum number of jobs per
+builder according to available system resources.  Remember that the total
+load on the system can be as high as (builders x jobs), and at least 4x
+that value in processes.  Systems are typically restricted by memory and
+cpu horsepower.  Start conservative and ramp up according to what your
+system can handle.
+A good rule of thumb is to set workers to the number of cpu threads your
+machine has or to 1/2 the number of gigabytes of memory your system has,
+whichever is lower.  Then set the jobs per worker to no more than the
+number of cpu threads your machine has.
+.Pp
+.Nm
+has numerous feature to manage machine load and swap usage to
+prevent a machine from being overloaded, allowing more workers
+to be configured than you might otherwise think is reasonable
+(which helps a lot when building the smaller ports).
+However, users running this program should be aware that very high loads
+and modest swap use are still likely to develop when building a large
+number of ports or when building very large ports like chromium.
+If the system is not dedicated to building packages you can reduce the
+impact to the rest of the system by running
+.Nm
+at nice +20 and also by reducing the number of workers and number of
+jobs per worker somewhat.
+.Pp
+We recommend that a minimum of 64GB of SSD-based swap be configured,
+or twice as much swap as main memory, whichever is the higher value.
+.Pp
+We recommend a minimum of 500GB of storage be configured in
+.Pa /build
+or wherever you have configured various directories.
+A full set of distfiles requires at least 120GB, a full dports including
+the git repo requires at least 1.5GB, and a full set of built packages
+requires at least 75GB.  If using a filesystem such as HAMMER or HAMMER2
+which frees space overnight, double all of those numbers.
+.Pp
+The actual build infrastructure uses tmpfs... memory and swap, and does
+not use regular filesystem space.
+.Pp
+.Sh OPTIONS
+.Bl -tag -width indent
+.It Fl d
+Run in debug mode.  This automatically turns off ncurses and outputs
+the primary log (00_last_results.log) to the standard output.
+.It Fl h
+Quickly output a synopsis of options and directives and exit.
+.It Fl v
+Quickly output the version and exit.
+.It Fl y
+Automatically answer 'y'es to any questions.
+.It Fl s Ar n
+.Nm
+usually slow-starts the worker slots, beginning with one slot and increasing
+by one every 5 seconds until the maximum configured number of workers is
+reached.
+This gives
+.Nm
+a slower ramp that it can load manage against.
+Specifying 0 disables the slow-start feature and the maximum number of
+worker slots (limited by the dependency graph) will be loaded immediately.
+.El
+.Sh DIRECTIVES
+.Pp
+Generally
+.Nm
+is run with a directive and some directives allow a list of ports to be
+specified.  This list should be space-delimited in DIR/SUBDIR format,
+for example:
+.Ar www/chromium .
+For directives with an optional ports list, your current installed set
+of ports will be used if you do not specify a list.
+.Pp
+.Bl -tag -width indent
+.It Cm status
+This will do a dry-run of
+.Cm upgrade-system
+but not actually build anything.
+.It Cm cleanup
+This will clean up any left-over mounts from prior builds.
+.Nm
+attempts to clean up all processes and mounts when you interrupt
+a build but doesn't always succeed.
+.It Cm init
+Creates and initializes the
+.Pa /etc/dsynth
+directory if it does not exst.
+This directive will complain and exit if either
+.Pa /etc/dsynth
+or
+.Pa /usr/local/etc/dsynth
+exists.  It will not create
+.Pa /etc/dsynth
+in this situation.
+.It Cm configure
+NOT CURRENTLY IMPLEMENTED
+.It Cm upgrade-system
+NOT CURRENTLY IMPLEMENTED.  Incrementally build and upgrade your locally
+installed packages, then upgrade your local system with them.
+.It Cm prepare-system
+Incrementally build and upgrade your locally installed packages, but
+do not upgrade your system with them.
+.It Cm rebuild-repository
+Build or rebuild the database files for the configured repository.
+.It Cm purge-distfiles
+Delete any obsolete source distribution files.
+.It Cm status-everything
+This will do a dry-run of a full bulk build of everything,
+but not actually build anything.
+.It Cm everything
+This will build the entire dports tree and then rebuild the repository
+when it finishes.
+.It Cm version
+This is for synth compatibility.  The version of
+.Nm
+will be printed and the program will exit.
+.It Cm help
+Output a synopsis of options and directives and exit.
+.It Cm status Op Ar ports
+Do a dry-run with 'build' of the given list.
+.It Cm build Op Ar ports
+Incrementally build dports based on the given list.  When
+done, ask whether the repository should be rebuilt or not.
+.It Cm just-build Op Ar ports
+Incrementally build dports based on the given list, then
+exits.  No post-build steps will be taken.
+.It Cm install Op Ar ports
+NOT CURRENTLY IMPLEMENTED.  'build' based on the supplied
+list (or using currently installed packages), then rebuild
+the repository and uprgade the system without asking any further
+questions.
+.It Cm force Op Ar ports
+This is the same as 'build' but will delete existing packages
+first.  Dependencies are not deleted unless they are out of date.
+.It Cm test Op Ar ports
+This is the same as 'build' but sets the environment variable
+.La DEVELOPER=yes
+and pre-deletes specified packages.  Dependencies are not deleted
+unless they are out of date.
+.El
+
+.Sh FILES
+.Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
+.It Pa /etc/dsynth/synth.ini
+The primary configuration file.  If not found,
+.Nm
+will also look in
+.Pa /usr/local/etc/dsynth/synth.ini .
+.Pp
+.It Pa /etc/dsynth/LiveSystem-make.conf
+Typically contains the environment variables that will be set in
+the workers.
+.Nm
+firewalls the environment it is run under from the environment it
+provides to the workers.
+.Pp
+.It Pa /build/synth/build
+Recommended setting for
+.La Directory_buildbase ,
+contains the build infrastructure... typically a template, mirrored
+system directories, and mount points for all the worker slots.
+The template will be [re]generated if 'pkg' needs to be built or
+if the
+.Pa .template.good
+file in this directory is deleted.
+.Pp
+.It Pa /build/synth/distfiles
+Recommended setting for
+.La Directory_distfiles ,
+ports to a directory into which
+.Nm
+will download any source distribution files required for building.
+.Pp
+.It Pa /build/synth/dports
+Recommended setting for
+.La Directory_portsdir ,
+points to a checked out dports repo.
+Note that
+.Nm
+does not automatically 'git pull' or otherwise synchronize the dports repo,
+you must do that yourself prior to starting a build.
+.Pp
+.It Pa /build/synth/live_packages
+Recommended setting for
+.La Directory_packages ,
+points to a directory which will contain the completed application
+packages.
+.Pp
+.It Pa /build/synth/logs
+Recommended setting for
+.La Directory_logs ,
+all log files will be placed in this directory.
+Special management logfiles begin with the numeral '0' for easily
+location.
+The logfiles for ports while and after building are stored in the
+form subdir____portname.log, with three underscores.
+.Pp
+.It Pa /build/synth/options
+Recommended setting for
+.La Directory_options ,
+where options overrides for specific ports may be located.
+.Pp
+.It Pa /
+Recommended setting for
+.La Directory_system ,
+which
+.Nm
+uses as a basis for creating the jails or chroots in each worker slot
+during building.
+No part of the system root is ever NULL-mounted read-write... it is always
+NULL-mounted read-only.
+Some elements from the system base will be mirrored in the build-base
+as an optimization.
+.Pp
+Note that the packages directory and the distfiles directory is mounted
+read-write in jails or chroots.  All other r/w filesystems in the workers
+are
+.Xr tmpfs 5
+based filesystems and will be created and torn-down for each port.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr synth 1
+.Xr dports 7
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 5.7 .
+.Sh AUTHORS
+.An Matthew Dillon Aq Mt dillon@backplane.com

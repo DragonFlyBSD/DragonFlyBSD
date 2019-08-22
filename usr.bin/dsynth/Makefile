@@ -4,7 +4,6 @@
 PROG=	dsynth
 SRCS=	dsynth.c subs.c pkglist.c config.c bulk.c build.c repo.c mount.c
 SRCS+=	status.c gui.c
-NOMAN=true
 
 SCRIPTS=mktemplate.sh
 SCRIPTSDIR= ${SHAREDIR}/dsynth

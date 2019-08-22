@@ -37,12 +37,14 @@
 
 #include "dsynth.h"
 
+static void DoInit(void);
 static void usage(int ecode) __dead2;
 
 int YesOpt;
 int DebugOpt;
 int NullStdinOpt = 1;
 int SlowStartOpt = 1;
+int DebugStopMode;
 char *DSynthExecPath;
 
 int
@@ -107,6 +109,11 @@ main(int ac, char **av)
 		/* NOT REACHED */
 	}
 
+	if (strcmp(av[0], "init") == 0) {
+		DoInit();
+		exit(0);
+	}
+
 	if (strcmp(av[0], "WORKER") == 0) {
 		isworker = 1;
 	} else {
@@ -138,17 +145,20 @@ main(int ac, char **av)
 
 	DoInitBuild(-1);
 
-#if 1
 	if (strcmp(av[0], "debug") == 0) {
+		DebugStopMode = 1;
+#if 0
 		DoCleanBuild();
-		pkgs = GetFullPackageList();
-		printf("DoBuild: %p\n", pkgs);
-		MaxWorkers = 8;	/* XXX */
+		pkgs = ParsePackageList(ac - 1, av + 1);
+		RemovePackages(pkgs);
+		addbuildenv("DEVELOPER", "yes");
 		DoBuild(pkgs);
-		printf("DoBuild - done: %p\n", pkgs);
-	} else
 #endif
-	if (strcmp(av[0], "status") == 0) {
+		DebugStopMode = 1;
+		DoCleanBuild();
+		pkgs = ParsePackageList(ac - 1, av + 1);
+		DoBuild(pkgs);
+	} else if (strcmp(av[0], "status") == 0) {
 		if (ac - 1)
 			pkgs = ParsePackageList(ac - 1, av + 1);
 		else
@@ -227,6 +237,80 @@ main(int ac, char **av)
 	return 0;
 }
 
+static void
+DoInit(void)
+{
+	struct stat st;
+	char *path;
+	FILE *fp;
+
+	if (stat(ConfigBase, &st) == 0) {
+		dfatal("init will not overwrite %s", ConfigBase);
+	}
+	if (stat(AltConfigBase, &st) == 0) {
+		dfatal("init will not create %s if %s exists",
+		       ConfigBase, AltConfigBase);
+	}
+	if (mkdir(ConfigBase, 0755) < 0)
+		dfatal_errno("Unable to mkdir %s", ConfigBase);
+
+	asprintf(&path, "%s/dsynth.ini", ConfigBase);
+	fp = fopen(path, "w");
+	dassert_errno(fp, "Unable to create %s", path);
+	fprintf(fp, "%s",
+	    "; This Synth configuration file is automatically generated\n"
+	    "; Take care when hand editing!\n"
+	    "\n"
+	    "[Global Configuration]\n"
+	    "profile_selected= LiveSystem\n"
+	    "\n"
+	    "[LiveSystem]\n"
+	    "Operating_system= DragonFly\n"
+	    "Directory_packages= /build/synth/live_packages\n"
+	    "Directory_repository= /build/synth/live_packages/All\n"
+	    "Directory_portsdir= /build/synth/dports\n"
+	    "Directory_options= /build/synth/options\n"
+	    "Directory_distfiles= /build/synth/distfiles\n"
+	    "Directory_buildbase= /build/synth/build\n"
+	    "Directory_logs= /build/synth/logs\n"
+	    "Directory_ccache= disabled\n"
+	    "Directory_system= /\n"
+	    "Number_of_builders= 0\n"
+	    "Max_jobs_per_builder= 0\n"
+	    "Tmpfs_workdir= true\n"
+	    "Tmpfs_localbase= true\n"
+	    "Display_with_ncurses= true\n"
+	    "leverage_prebuilt= false\n"
+	    "\n");
+	if (fclose(fp))
+		dfatal_errno("Unable to write to %s\n", ConfigBase);
+	free(path);
+
+	asprintf(&path, "%s/LiveSystem-make.conf", ConfigBase);
+	fp = fopen(path, "w");
+	dassert_errno(fp, "Unable to create %s", path);
+	fprintf(fp, "%s",
+	    "#\n"
+	    "# Various dports options that might be of interest\n"
+	    "#\n"
+	    "#LICENSES_ACCEPTED=      NONE\n"
+	    "#DISABLE_LICENSES=       yes\n"
+	    "#DEFAULT_VERSIONS=       ssl=openssl\n"
+	    "#FORCE_PACKAGE=          yes\n"
+	    "#DPORTS_BUILDER=         yes\n"
+	    "#\n"
+	    "# Turn these on to generate debug binaries.  However, these\n"
+	    "# options will seriously bloat memory use and storage use,\n"
+	    "# do not use lightly\n"
+	    "#\n"
+	    "#STRIP=\n"
+	    "#WITH_DEBUG=yes\n"
+	);
+	if (fclose(fp))
+		dfatal_errno("Unable to write to %s\n", ConfigBase);
+	free(path);
+}
+
 __dead2 static void
 usage(int ecode)
 {
@@ -237,6 +321,7 @@ usage(int ecode)
 
 	fprintf(stderr,
     "dsynth [options] directive\n"
+    "    init		      - Initialize /etc/dsynth\n"
     "    status               - Dry-run of 'upgrade-system'\n"
     "    cleanup              - Clean-up mounts\n"
     "    configure            - Bring up configuration menu\n"
