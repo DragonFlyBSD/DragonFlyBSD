@@ -42,6 +42,7 @@
  * ncurses - LINES, COLS are the main things we care about
  */
 static WINDOW *CWin;
+static WINDOW *CMon;
 static const char *Line0 = " Total -       Built -      Ignored -      "
 			   "Load -      Pkg/hour -               ";
 static const char *Line1 = "  Left -      Failed -      Skipped -      "
@@ -53,6 +54,9 @@ static const char *LineI = " ID  Duration  Build Phase      Origin     "
 
 static time_t GuiStartTime;
 static int LastReduce;
+static off_t MonitorLogOff;
+static int MonitorLogCol;
+static int MonitorLogLines;
 
 #define TOTAL_COL	7
 #define BUILT_COL	21
@@ -74,18 +78,35 @@ static int LastReduce;
 #define ORIGIN_COL	32
 #define LINES_COL	73
 
+/*
+ * The row that the worker list starts on, and the row that the log starts
+ * on.
+ */
+#define WORKER_START	5
+#define LOG_START	(WORKER_START + MaxWorkers + 1)
+
 void
 GuiInit(void)
 {
 	CWin = initscr();
 	GuiReset();
 	GuiStartTime = time(NULL);
+
+	intrflush(stdscr, FALSE);
+	nonl();
+	noecho();
+	cbreak();
 }
 
 void
 GuiReset(void)
 {
 	int i;
+
+	if (CMon) {
+		delwin(CMon);
+		CMon = NULL;
+	}
 
 	werase(CWin);
 	curs_set(0);
@@ -98,13 +119,22 @@ GuiReset(void)
 	mvwprintw(CWin, 4, 0, "%s", LineB);
 
 	for (i = 0; i < MaxWorkers; ++i) {
-		mvwprintw(CWin, 5 + i, ID_COL, "%02d", i);
-		mvwprintw(CWin, 5 + i, DURATION_COL, "--:--:--");
-		mvwprintw(CWin, 5 + i, BUILD_PHASE_COL, "Idle");
-		mvwprintw(CWin, 5 + i, ORIGIN_COL, "%39.39s", "");
-		mvwprintw(CWin, 5 + i, LINES_COL, "%6.6s", "");
+		mvwprintw(CWin, WORKER_START + i, ID_COL, "%02d", i);
+		mvwprintw(CWin, WORKER_START + i, DURATION_COL, "--:--:--");
+		mvwprintw(CWin, WORKER_START + i, BUILD_PHASE_COL, "Idle");
+		mvwprintw(CWin, WORKER_START + i, ORIGIN_COL, "%39.39s", "");
+		mvwprintw(CWin, WORKER_START + i, LINES_COL, "%6.6s", "");
 	}
+	mvwprintw(CWin, WORKER_START + MaxWorkers, 0, "%s", LineB);
 	wrefresh(CWin);
+
+	CMon = subwin(CWin, 0, 0, LOG_START, 0);
+	scrollok(CMon, 1);
+	MonitorLogLines = LINES - LOG_START;
+	MonitorLogOff = 0;
+	MonitorLogCol = 0;
+	nodelay(CMon, 1);
+
 	LastReduce = -1;
 }
 
@@ -214,6 +244,52 @@ GuiUpdateTop(void)
 }
 
 void
+GuiUpdateLogs(void)
+{
+	char buf[1024];
+	ssize_t r;
+	ssize_t i;
+	ssize_t n;
+	ssize_t w;
+	int fd = dlog00_fd();
+
+	i = 0;
+	r = 0;
+
+	for (;;) {
+		if (i == r) {
+			r = pread(fd, buf, sizeof(buf), MonitorLogOff);
+			if (r <= 0)
+				break;
+			MonitorLogOff += r;
+			i = 0;
+		}
+		for (n = i; n < r && buf[n] != '\n'; ++n)
+			;
+
+		/*
+		 * Scroll down
+		 */
+		if (MonitorLogCol == 0)
+			wscrl(CMon, 1);
+		if (MonitorLogCol < COLS) {
+			if (n - i > COLS - MonitorLogCol)
+				w = COLS - MonitorLogCol;
+			else
+				w = n - i;
+			mvwprintw(CMon, MonitorLogLines - 1, MonitorLogCol,
+				  "%*.*s", (int)w, (int)w, buf + i);
+			MonitorLogCol += w;
+		}
+		i = n;
+		if (i < r && buf[i] == '\n') {
+			++i;
+			MonitorLogCol = 0;
+		}
+	}
+}
+
+void
 GuiUpdate(worker_t *work)
 {
 	const char *phase;
@@ -242,10 +318,14 @@ GuiUpdate(worker_t *work)
 	case WORKER_EXITING:
 		if (work->state == WORKER_EXITING)
 			phase = "Exiting";
-		mvwprintw(CWin, 5 + i, DURATION_COL, "--:--:--");
-		mvwprintw(CWin, 5 + i, BUILD_PHASE_COL, "%-16.16s", phase);
-		mvwprintw(CWin, 5 + i, ORIGIN_COL, "%-39.39s", "");
-		mvwprintw(CWin, 5 + i, LINES_COL, "%-6.6s", "");
+		mvwprintw(CWin, WORKER_START + i, DURATION_COL,
+			  "--:--:--");
+		mvwprintw(CWin, WORKER_START + i, BUILD_PHASE_COL,
+			  "%-16.16s", phase);
+		mvwprintw(CWin, WORKER_START + i, ORIGIN_COL,
+			  "%-39.39s", "");
+		mvwprintw(CWin, WORKER_START + i, LINES_COL,
+			  "%-6.6s", "");
 		return;
 	case WORKER_PENDING:
 		phase = "Pending";
@@ -350,16 +430,27 @@ GuiUpdate(worker_t *work)
 	else
 		origin = "";
 
-	mvwprintw(CWin, 5 + i, DURATION_COL, "%02d:%02d:%02d", h, m, s);
-	mvwprintw(CWin, 5 + i, BUILD_PHASE_COL, "%-16.16s", phase);
-	mvwprintw(CWin, 5 + i, ORIGIN_COL, "%-39.39s", origin);
-	mvwprintw(CWin, 5 + i, LINES_COL, "%6d", work->lines);
+	mvwprintw(CWin, WORKER_START + i, DURATION_COL,
+		  "%02d:%02d:%02d", h, m, s);
+	mvwprintw(CWin, WORKER_START + i, BUILD_PHASE_COL,
+		  "%-16.16s", phase);
+	mvwprintw(CWin, WORKER_START + i, ORIGIN_COL,
+		  "%-39.39s", origin);
+	mvwprintw(CWin, WORKER_START + i, LINES_COL,
+		  "%6d", work->lines);
 }
 
 void
 GuiSync(void)
 {
+	int c;
+
+	while ((c = wgetch(CMon)) != ERR) {
+		if (c == KEY_RESIZE)
+			GuiReset();
+	}
 	wrefresh(CWin);
+	wrefresh(CMon);
 }
 
 void

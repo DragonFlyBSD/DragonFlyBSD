@@ -361,7 +361,7 @@ typedef enum os_id os_id_t;
 	_dfatal(__FILE__, __LINE__, __func__, 3, fmt, ## __VA_ARGS__)
 
 #define ddprintf(tab, fmt, ...)		\
-	do { if (DebugOpt) _ddprintf(tab, fmt, ## __VA_ARGS__); } while(0)
+	do { if (DebugOpt >= 2) _ddprintf(tab, fmt, ## __VA_ARGS__); } while(0)
 
 #define DOSTRING(label)	#label
 #define SCRIPTPATH(x)	DOSTRING(x)
@@ -417,6 +417,7 @@ void _ddprintf(int tab, const char *fmt, ...);
 void _dlog(int which, const char *fmt, ...);
 char *strdup_or_null(char *str);
 void dlogreset(void);
+int dlog00_fd(void);
 void addbuildenv(const char *label, const char *data);
 
 void initbulk(void (*func)(bulk_t *bulk), int jobs);
@@ -458,6 +459,7 @@ void GuiDone(void);
 void GuiReset(void);
 void GuiUpdate(worker_t *work);
 void GuiUpdateTop(void);
+void GuiUpdateLogs(void);
 void GuiSync(void);
 
 int ipcreadmsg(int fd, wmsg_t *msg);

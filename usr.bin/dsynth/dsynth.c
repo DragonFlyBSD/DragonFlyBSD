@@ -74,14 +74,18 @@ main(int ac, char **av)
 	/*
 	 * Process options and make sure the directive is present
 	 */
-	while ((c = getopt(ac, av, "dhvys:")) != -1) {
+	while ((c = getopt(ac, av, "dhvys:S")) != -1) {
 		switch(c) {
 		case 'y':
 			++YesOpt;
 			break;
+		case 'S':
+			UseNCurses = 0;
+			break;
 		case 'd':
 			++DebugOpt;
-			UseNCurses = 0;
+			if (DebugOpt >= 2)
+				UseNCurses = 0;
 			break;
 		case 'h':
 			usage(0);

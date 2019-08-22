@@ -263,6 +263,7 @@ DoBuild(pkg_t *pkgs)
 	pthread_mutex_unlock(&WorkerMutex);
 
 	GuiUpdateTop();
+	GuiUpdateLogs();
 	GuiSync();
 	GuiDone();
 
@@ -863,17 +864,19 @@ workercomplete(worker_t *work)
 		h = t / 3600;
 
 		dlog(DLOG_SUCC,
-		     "[%03d] %s\tbuild-succeded in %02d:%02d:%02d\n",
+		     "[%03d] %s build-succeded in %02d:%02d:%02d\n",
 		     work->index, pkg->portdir, h, m, s);
 		pkg->flags |= PKGF_SUCCESS;
 		++BuildSuccessCount;
 	}
 	++BuildCount;
 	pkg->flags &= ~PKGF_BUILDLIST;
-	dlog(DLOG_ALL, "[%03d] %s FINISHED (%s)\n",
-	     work->index,
-	     pkg->portdir,
-	     ((pkg->flags & PKGF_SUCCESS) ? "success" : "failure"));
+	if (DebugOpt) {
+		dlog(DLOG_ALL, "[%03d] %s FINISHED (%s)\n",
+		     work->index,
+		     pkg->portdir,
+		     ((pkg->flags & PKGF_SUCCESS) ? "success" : "failure"));
+	}
 	pkg->flags &= ~PKGF_RUNNING;
 	work->pkg = NULL;
 	--RunningWorkers;
@@ -920,6 +923,7 @@ waitbuild(int whilematch, int dynamicmax)
 			GuiUpdate(work);
 		}
 		GuiUpdateTop();
+		GuiUpdateLogs();
 		GuiSync();
 		if (RunningWorkers == whilematch) {
 			clock_gettime(CLOCK_REALTIME, &ts);
@@ -1015,15 +1019,17 @@ waitbuild(int whilematch, int dynamicmax)
 			 * And adjust
 			 */
 			if (DynamicMaxWorkers != reduce) {
-				dlog(DLOG_ALL,
-				     "[XXX] Load=%-6.2f(-%-2d) "
-				     "Swappct=%-3.2f(-%-2d) "
-				     "Adjust MaxWorkers "
-				     "%2d->%-2d\n",
-				     dload[0], reduce1,
-				     dswap * 100.0, reduce2,
-				     DynamicMaxWorkers,
-				     reduce);
+				if (DebugOpt) {
+					dlog(DLOG_ALL,
+					     "[XXX] Load=%-6.2f(-%-2d) "
+					     "Swappct=%-3.2f(-%-2d) "
+					     "Adjust MaxWorkers "
+					     "%2d->%-2d\n",
+					     dload[0], reduce1,
+					     dswap * 100.0, reduce2,
+					     DynamicMaxWorkers,
+					     reduce);
+				}
 				DynamicMaxWorkers = reduce;
 			}
 		}
@@ -1284,7 +1290,7 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
 			continue;
 		}
 		if (pkg->dsynth_install_flg) {
-			if (DebugOpt && pkg->pkgfile) {
+			if (DebugOpt >= 2 && pkg->pkgfile) {
 				fprintf(fp, "echo 'AlreadyHave %s'\n",
 					pkg->pkgfile);
 			}
@@ -1552,8 +1558,10 @@ WorkerProcess(int ac, char **av)
 		 (flavor ? flavor : ""));
 	tmpfd = open(pkg.logfile, O_RDWR|O_CREAT|O_TRUNC, 0666);
 	if (tmpfd >= 0) {
-		dlog(DLOG_ALL, "[%03d] %s LOGFILE %s\n",
-		     slot, pkg.portdir, pkg.logfile);
+		if (DebugOpt >= 2) {
+			dlog(DLOG_ALL, "[%03d] %s LOGFILE %s\n",
+			     slot, pkg.portdir, pkg.logfile);
+		}
 		close(tmpfd);
 	} else {
 		dlog(DLOG_ALL, "[%03d] LOGFILE %s (create failed)\n",

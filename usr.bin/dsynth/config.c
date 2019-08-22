@@ -188,7 +188,7 @@ parseConfigFile(const char *path)
 		ddprintf(0, "Warning: Config file %s does not exist\n", path);
 		return;
 	}
-	if (DebugOpt)
+	if (DebugOpt >= 2)
 		ddprintf(0, "ParseConfig %s\n", path);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
@@ -356,7 +356,7 @@ parseProfile(const char *cpath, const char *profile)
 		ddprintf(0, "Warning: Profile %s does not exist\n", ppath);
 		return;
 	}
-	if (DebugOpt)
+	if (DebugOpt >= 2)
 		ddprintf(0, "ParseProfile %s\n", ppath);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
@@ -401,11 +401,11 @@ parseProfile(const char *cpath, const char *profile)
 		 * Add to builder environment
 		 */
 		addbuildenv(l1, l2);
-		if (DebugOpt)
+		if (DebugOpt >= 2)
 			ddprintf(4, "%s=%s\n", l1, l2);
 	}
 	fclose(fp);
-	if (DebugOpt)
+	if (DebugOpt >= 2)
 		ddprintf(0, "ParseProfile finished\n");
 }
 

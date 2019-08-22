@@ -155,6 +155,12 @@ _dlog(int which, const char *ctl, ...)
 	free(buf);
 }
 
+int
+dlog00_fd(void)
+{
+	return(dlogfd(DLOG_ALL, O_RDWR|O_CREAT|O_APPEND));
+}
+
 void
 addbuildenv(const char *label, const char *data)
 {
