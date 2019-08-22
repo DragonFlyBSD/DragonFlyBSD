@@ -242,7 +242,6 @@ scanit(const char *path, const char *subpath,
 					scanit(npath, den->d_name,
 					       countp, list_tailp);
 				}
-				free(npath);
 			} else if (S_ISREG(st.st_mode)) {
 				item = calloc(1, sizeof(*item));
 				if (subpath) {
@@ -255,9 +254,8 @@ scanit(const char *path, const char *subpath,
 				*list_tailp = &item->next;
 				++*countp;
 				ddprintf(0, "scan   %s\n", item->spath);
-			} else {
-				free(npath);
 			}
+			free(npath);
 		}
 		closedir(dir);
 	}

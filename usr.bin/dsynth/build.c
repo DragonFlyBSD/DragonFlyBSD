@@ -1762,8 +1762,8 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	fcntl(MasterPtyFd, F_SETFL, O_NONBLOCK);
 
 	if (pid < 0) {
-		dlog(DLOG_ALL, "[%03d] %s Fork Failed\n",
-		     work->index, pkg->logfile);
+		dlog(DLOG_ALL, "[%03d] %s Fork Failed: %s\n",
+		     work->index, pkg->logfile, strerror(errno));
 		++work->accum_error;
 		return;
 	}
