@@ -804,14 +804,15 @@ childGetBinaryDistInfo(bulk_t *bulk)
 		if (len == 0 || ptr[len-1] != '\n')
 			continue;
 		ptr[len-1] = 0;
-		snprintf(buf, sizeof(buf), "%s.%s", ptr, USE_PKG_SUFX);
+		snprintf(buf, sizeof(buf), "%s%s", ptr, USE_PKG_SUFX);
 
 		pkg = pkg_find(buf);
-		if (pkg)
+		if (pkg) {
 			pkg->flags |= PKGF_PACKAGED;
-		else
+		} else {
 			ddprintf(0, "Note: package scan, not in list, "
 				    "skipping %s\n", buf);
+		}
 	}
 	pclose(fp);
 }
@@ -870,6 +871,9 @@ scan_binary_repo(const char *path)
 	dir = opendir(path);
 	dassert(dir, "Cannot open repository path \"%s\"", path);
 
+	/*
+	 * NOTE: Test includes the '.' in the suffix.
+	 */
 	while ((den = readdir(dir)) != NULL) {
 		len = strlen(den->d_name);
 		if (len > 4 &&

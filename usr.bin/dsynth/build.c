@@ -40,6 +40,7 @@ worker_t WorkerAry[MAXWORKERS];
 int BuildInitialized;
 int RunningWorkers;
 int DynamicMaxWorkers;
+int FailedWorkers;
 pthread_mutex_t WorkerMutex;
 pthread_cond_t WorkerCond;
 
@@ -672,7 +673,8 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 		 * Block while no slots are available.  waitbuild()
 		 * will clean out any DONE states.
 		 */
-		while (RunningWorkers >= DynamicMaxWorkers) {
+		while (RunningWorkers >= DynamicMaxWorkers ||
+		       RunningWorkers >= MaxWorkers - FailedWorkers) {
 			waitbuild(RunningWorkers, 1);
 		}
 
@@ -854,6 +856,7 @@ workercomplete(worker_t *work)
 	if (work->state == WORKER_FAILED) {
 		dlog(DLOG_ALL, "[%03d] XXX/XXX WORKER IS IN A FAILED STATE\n",
 		     work->index);
+		++FailedWorkers;
 	} else if (work->flags & WORKERF_FREEZE) {
 		dlog(DLOG_ALL, "[%03d] XXX/XXX WORKER FROZEN BY REQUEST\n",
 		     work->index);
@@ -1232,6 +1235,7 @@ childInstallPkgDeps(worker_t *work)
 	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 1);
 	fprintf(fp, "\nexit 0\n");
 	fclose(fp);
+	free(buf);
 
 	return 1;
 }

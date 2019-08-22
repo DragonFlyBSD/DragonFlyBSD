@@ -72,7 +72,6 @@ DoCreateTemplate(int force)
 
 		if (stat(goodbuf, &st) < 0)
 			force = 1;
-		free(buf);
 	}
 
 	/*
@@ -387,18 +386,20 @@ makeDiscreteCopies(const char *spath, const char *discretefmt)
 		asprintf(&buf, discretefmt, i);
 		asprintf(&dst, "%s%s", BuildBase, buf);
 		free(buf);
+
 		if (stat(dst, &st) < 0) {
 			if (mkdir(dst, 0555) < 0)
-				dfatal_errno("Cannot mkdir %s", dst);
+				dfatal_errno("Cannot mkdir %s:", dst);
+		} else {
+			asprintf(&buf, "chflags -R noschg %s; "
+				       "rm -rf %s; "
+				       "cp -Rp %s/. %s",
+				       dst, dst, src, dst);
+			rc = system(buf);
+			if (rc)
+				dfatal("Command failed: %s", buf);
+			free(buf);
 		}
-		asprintf(&buf, "chflags -R noschg %s; "
-			       "rm -rf %s; "
-			       "cp -Rp %s/. %s",
-			       dst, dst, src, dst);
-		rc = system(buf);
-		if (rc)
-			dfatal("Command failed: %s", buf);
-		free(buf);
 		free(src);
 		free(dst);
 	}
