@@ -79,7 +79,9 @@ ParseConfiguration(int isworker)
 {
 	struct stat st;
 	size_t len;
+	int reln;
 	char *synth_config;
+	char *buf;
 
 	/*
 	 *
@@ -95,7 +97,18 @@ ParseConfiguration(int isworker)
 	ArchitectureName = dokernsysctl(CTL_HW, HW_MACHINE_ARCH);
 	MachineName = dokernsysctl(CTL_HW, HW_MACHINE);
 	ReleaseName = dokernsysctl(CTL_KERN, KERN_OSRELEASE);
-	VersionName = dokernsysctl(CTL_KERN, KERN_VERSION);
+
+	if (strchr(ReleaseName, '-')) {
+		reln = strchr(ReleaseName, '-') - ReleaseName;
+		asprintf(&buf, "%s %*.*s-SYNTH",
+			 OperatingSystemName,
+			 reln, reln, ReleaseName);
+	} else {
+		asprintf(&buf, "%s %s",
+			 OperatingSystemName,
+			 ReleaseName);
+	}
+	VersionName = buf;
 
 	/*
 	 * Retrieve resource information from the system.  Note that
