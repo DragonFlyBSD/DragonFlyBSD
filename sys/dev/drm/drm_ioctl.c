@@ -640,10 +640,10 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 int drm_ioctl(struct dev_ioctl_args *ap)
 {
 	struct file *filp = ap->a_fp;
+	u_long cmd = ap->a_cmd;
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev;
 	const struct drm_ioctl_desc *ioctl = NULL;
-	u_long cmd = ap->a_cmd;
 	drm_ioctl_t *func;
 	unsigned int nr = DRM_IOCTL_NR(cmd);
 	int retcode = -EINVAL;
@@ -656,11 +656,6 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		return -ENODEV;
 
 	is_driver_ioctl = nr >= DRM_COMMAND_BASE && nr < DRM_COMMAND_END;
-
-	if (IOCGROUP(cmd) != DRM_IOCTL_BASE) {
-		DRM_DEBUG_FIOCTL("Bad ioctl group 0x%x\n", (int)IOCGROUP(cmd));
-		return EINVAL;
-	}
 
 	if (is_driver_ioctl) {
 		/* driver ioctl */
@@ -694,15 +689,13 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 
 	/* Enforce sane locking for kms driver ioctls. Core ioctls are
 	 * too messy still. */
-	if (is_driver_ioctl) {
-		if ((ioctl->flags & DRM_UNLOCKED) == 0)
-			mutex_lock(&drm_global_mutex);
-		/* shared code returns -errno */
-		retcode = -func(dev, data, file_priv);
-		if ((ioctl->flags & DRM_UNLOCKED) == 0)
-			mutex_unlock(&drm_global_mutex);
-	} else {
-		retcode = -func(dev, data, file_priv);
+	if ((drm_core_check_feature(dev, DRIVER_MODESET) && is_driver_ioctl) ||
+	    (ioctl->flags & DRM_UNLOCKED))
+		retcode = func(dev, data, file_priv);
+	else {
+		mutex_lock(&drm_global_mutex);
+		retcode = func(dev, data, file_priv);
+		mutex_unlock(&drm_global_mutex);
 	}
 	if (retcode == ERESTARTSYS)
 			retcode = EINTR;
