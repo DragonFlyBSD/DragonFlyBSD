@@ -58,7 +58,8 @@ static void waitbuild(int whilematch, int dynamicmax);
 static void workercomplete(worker_t *work);
 static void *childBuilderThread(void *arg);
 static int childInstallPkgDeps(worker_t *work);
-static size_t childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit);
+static size_t childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list,
+			int undoit, int depth);
 static void dophase(worker_t *work, wmsg_t *wmsg,
 			int wdog, int phaseid, const char *phase);
 static void phaseReapAll(void);
@@ -820,8 +821,8 @@ startworker(pkg_t *pkg, worker_t *work)
 		/* fall through */
 	case WORKER_IDLE:
 		work->pkg_dep_size =
-		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 0);
-		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 1);
+		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 0, 1);
+		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 1, 1);
 		RunningPkgDepSize += work->pkg_dep_size;
 
 		dlog(DLOG_ALL, "[%03d] %s START "
@@ -1365,8 +1366,8 @@ childInstallPkgDeps(worker_t *work)
 	fprintf(fp, "#\n");
 	fchmod(fileno(fp), 0755);
 
-	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 0);
-	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 1);
+	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 0, 1);
+	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 1, 1);
 	fprintf(fp, "\nexit 0\n");
 	fclose(fp);
 	free(buf);
@@ -1375,7 +1376,7 @@ childInstallPkgDeps(worker_t *work)
 }
 
 static size_t
-childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
+childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit, int depth)
 {
 	pkglink_t *link;
 	pkg_t *pkg;
@@ -1384,12 +1385,21 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
 	PKGLIST_FOREACH(link, list) {
 		pkg = link->pkg;
 
+		/*
+		 * We only need all packages for the top-level dependencies.
+		 * The deeper ones only need DEP_TYPE_LIB and DEP_TYPE_RUN
+		 * (types greater than DEP_TYPE_BUILD) since they are already
+		 * built.
+		 */
+		if (depth > 1 && link->dep_type <= DEP_TYPE_BUILD)
+			continue;
+
 		if (undoit) {
 			if (pkg->dsynth_install_flg == 1) {
 				pkg->dsynth_install_flg = 0;
 				tot += childInstallPkgDeps_recurse(fp,
 							    &pkg->idepon_list,
-							    undoit);
+							    undoit, depth + 1);
 			}
 			continue;
 		}
@@ -1401,8 +1411,8 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
 			continue;
 		}
 
-		tot += childInstallPkgDeps_recurse(fp,
-						   &pkg->idepon_list, undoit);
+		tot += childInstallPkgDeps_recurse(fp, &pkg->idepon_list,
+						   undoit, depth + 1);
 		if (pkg->dsynth_install_flg)
 			continue;
 		pkg->dsynth_install_flg = 1;
@@ -2225,6 +2235,10 @@ buildskipreason(pkglink_t *parent, pkg_t *pkg)
 
 	tot = 0;
 	PKGLIST_FOREACH(link, &pkg->idepon_list) {
+#if 0
+		if (link->dep_type > DEP_TYPE_BUILD)
+			continue;
+#endif
 		scan = link->pkg;
 		if (scan == NULL)
 			continue;

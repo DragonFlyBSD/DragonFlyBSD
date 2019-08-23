@@ -95,7 +95,15 @@ typedef struct pkglink {
 	struct pkglink *next;
 	struct pkglink *prev;
 	struct pkg *pkg;
+	int	dep_type;
 } pkglink_t;
+
+#define DEP_TYPE_FETCH	1
+#define DEP_TYPE_EXT	2
+#define DEP_TYPE_PATCH	3
+#define DEP_TYPE_BUILD	4
+#define DEP_TYPE_LIB	5
+#define DEP_TYPE_RUN	6
 
 /*
  * Describes a [flavored] package

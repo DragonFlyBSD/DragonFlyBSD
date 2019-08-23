@@ -43,7 +43,8 @@
 static void childGetPackageInfo(bulk_t *bulk);
 static void childGetBinaryDistInfo(bulk_t *bulk);
 static pkg_t *resolveDeps(pkg_t *dep_list, pkg_t ***list_tailp, int gentopo);
-static void resolveDepString(pkg_t *pkg, char *depstr, int gentopo);
+static void resolveDepString(pkg_t *pkg, char *depstr,
+			int gentopo, int dep_type);
 static pkg_t *processPackageListBulk(int total);
 static int scan_and_queue_dir(const char *path, const char *level1, int level);
 static int scan_binary_repo(const char *path);
@@ -377,12 +378,18 @@ resolveDeps(pkg_t *list, pkg_t ***list_tailp, int gentopo)
 	bulk_t *bulk;
 
 	for (scan = list; scan; scan = scan->bnext) {
-		resolveDepString(scan, scan->fetch_deps, gentopo);
-		resolveDepString(scan, scan->ext_deps, gentopo);
-		resolveDepString(scan, scan->patch_deps, gentopo);
-		resolveDepString(scan, scan->build_deps, gentopo);
-		resolveDepString(scan, scan->lib_deps, gentopo);
-		resolveDepString(scan, scan->run_deps, gentopo);
+		resolveDepString(scan, scan->fetch_deps,
+				 gentopo, DEP_TYPE_FETCH);
+		resolveDepString(scan, scan->ext_deps,
+				 gentopo, DEP_TYPE_EXT);
+		resolveDepString(scan, scan->patch_deps,
+				 gentopo, DEP_TYPE_PATCH);
+		resolveDepString(scan, scan->build_deps,
+				 gentopo, DEP_TYPE_BUILD);
+		resolveDepString(scan, scan->lib_deps,
+				 gentopo, DEP_TYPE_LIB);
+		resolveDepString(scan, scan->run_deps,
+				 gentopo, DEP_TYPE_RUN);
 	}
 
 	/*
@@ -408,7 +415,7 @@ resolveDeps(pkg_t *list, pkg_t ***list_tailp, int gentopo)
 }
 
 static void
-resolveDepString(pkg_t *pkg, char *depstr, int gentopo)
+resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 {
 	char *copy_base;
 	char *copy;
@@ -482,6 +489,7 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo)
 				link->prev = pkg->idepon_list.prev;
 				link->next->prev = link;
 				link->prev->next = link;
+				link->dep_type = dep_type;
 
 				link = calloc(1, sizeof(*link));
 				link->pkg = pkg;
@@ -489,6 +497,7 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo)
 				link->prev = dpkg->deponi_list.prev;
 				link->next->prev = link;
 				link->prev->next = link;
+				link->dep_type = dep_type;
 				++dpkg->depi_count;
 			}
 			continue;
@@ -777,6 +786,7 @@ again:
 			link->prev = dummy_node->idepon_list.prev;
 			link->next->prev = link;
 			link->prev->next = link;
+			link->dep_type = DEP_TYPE_BUILD;
 
 			link = calloc(1, sizeof(*link));
 			link->pkg = dummy_node;
@@ -784,6 +794,7 @@ again:
 			link->prev = pkg->deponi_list.prev;
 			link->next->prev = link;
 			link->prev->next = link;
+			link->dep_type = DEP_TYPE_BUILD;
 			++pkg->depi_count;
 		}
 
