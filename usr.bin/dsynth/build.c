@@ -156,6 +156,7 @@ DoBuild(pkg_t *pkgs)
 	pkg_t *scan;
 	int haswork = 1;
 	int first = 1;
+	int newtemplate;
 
 	for (scan = pkgs; scan; scan = scan->bnext)
 		++BuildTotal;
@@ -172,9 +173,10 @@ DoBuild(pkg_t *pkgs)
 	 * and pkg-static.
 	 */
 	if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0) {
-		DoCreateTemplate(1);	/* force a fresh template */
+		/* force a fresh template */
+		newtemplate = DoCreateTemplate(1);
 	} else {
-		DoCreateTemplate(0);
+		newtemplate = DoCreateTemplate(0);
 	}
 
 	/*
@@ -187,13 +189,10 @@ DoBuild(pkg_t *pkgs)
 	GuiInit();
 	GuiReset();
 
+	/*
+	 * Build pkg/pkg-static.
+	 */
 	if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0) {
-		char *buf;
-		int rc;
-
-		/*
-		 * Build pkg/pkg-static.
-		 */
 		build_list = scan;
 		build_tail = &scan->build_next;
 		startbuild(&build_list, &build_tail);
@@ -206,10 +205,16 @@ DoBuild(pkg_t *pkgs)
 			dfatal("Error building 'pkg'");
 		if ((scan->flags & PKGF_SUCCESS) == 0)
 			dfatal("Error building 'pkg'");
+		newtemplate = 1;
+	}
 
-		/*
-		 * Install pkg/pkg-static into the template
-		 */
+	/*
+	 * Install pkg/pkg-static into the template
+	 */
+	if (newtemplate) {
+		char *buf;
+		int rc;
+
 		asprintf(&buf,
 			 "cd %s/Template; "
 			 "tar --exclude '+*' --exclude '*/man/*' "
@@ -839,8 +844,8 @@ startworker(pkg_t *pkg, worker_t *work)
 	case WORKER_FROZEN:
 	case WORKER_EXITING:
 	default:
-		dfatal("startworker: Unexpected state %d for worker %d",
-		       work->state, work->index);
+		dfatal("startworker: [%03d] Unexpected state %d for worker %d",
+		       work->index, work->state, work->index);
 		break;
 	}
 }
@@ -1121,7 +1126,7 @@ waitbuild(int whilematch, int dynamicmax)
 			if (DynamicMaxWorkers != max1) {
 				dlog(DLOG_ALL,
 				     "[XXX] Load=%-6.2f(%2d) "
-				     "Swap=%-3.2f(%2d) "
+				     "Swap=%-3.2f%%(%2d) "
 				     "Mem=%3.2fG(%2d) "
 				     "Adjust Workers %d->%d\n",
 				     dload[0], max1,
@@ -1185,7 +1190,7 @@ childBuilderThread(void *arg)
 			snprintf(fdbuf, sizeof(fdbuf),
 				 "3");
 			snprintf(flagsbuf, sizeof(flagsbuf),
-				 "%d", DebugStopMode);
+				 "%d", WorkerProcFlags);
 
 			/*
 			 * fds[0] - master
@@ -1301,8 +1306,8 @@ childBuilderThread(void *arg)
 			 */
 			break;
 		default:
-			dfatal("worker: Unexpected state %d for worker %d",
-			       work->state, work->index);
+			dfatal("worker: [%03d] Unexpected state %d for worker %d",
+			       work->index, work->state, work->index);
 			/* NOT REACHED */
 			break;
 		}
@@ -1537,7 +1542,6 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit)
  *	install		(skipped)
  *	deinstall	(skipped)
  */
-
 void
 WorkerProcess(int ac, char **av)
 {
@@ -1556,6 +1560,7 @@ WorkerProcess(int ac, char **av)
 	worker_t *work;
 	pkg_t pkg;
 	buildenv_t *benv;
+	FILE *fp;
 
 	/*
 	 * Parse arguments
@@ -1571,7 +1576,7 @@ WorkerProcess(int ac, char **av)
 	flavor = strchr(portdir, '@');
 	if (flavor)
 		*flavor++ = 0;
-	DebugStopMode = strtol(av[5], NULL, 0);
+	WorkerProcFlags = strtol(av[5], NULL, 0);
 
 	bzero(&wmsg, sizeof(wmsg));
 
@@ -1592,12 +1597,23 @@ WorkerProcess(int ac, char **av)
 	setenv("HOME", "/root", 1);
 	setenv("LANG", "C", 1);
 	setenv("SSL_NO_VERIFY_PEER", "1", 1);
-	setenv("USE_PACKAGE_DEPENDS_ONLY", "1", 1);
-	setenv("PORTSDIR", "/xports", 1);
-	setenv("PORT_DBDIR", "/options", 1);
-	setenv("PKG_DBDIR", "/var/db/pkg", 1);
-	setenv("PKG_CACHEDIR", "/var/cache/pkg", 1);
-	setenv("PKG_SUFX", USE_PKG_SUFX, 1);
+
+	addbuildenv("USE_PACKAGE_DEPENDS_ONLY", "yes", BENV_MAKECONF);
+	addbuildenv("PORTSDIR", "/xports", BENV_MAKECONF);
+	addbuildenv("PORT_DBDIR", "/options", BENV_MAKECONF);
+	addbuildenv("PKG_DBDIR", "/var/db/pkg", BENV_MAKECONF);
+	addbuildenv("PKG_CACHEDIR", "/var/cache/pkg", BENV_MAKECONF);
+	addbuildenv("PKG_SUFX", USE_PKG_SUFX, BENV_MAKECONF);
+	if (WorkerProcFlags & WORKER_PROC_DEVELOPER)
+		addbuildenv("DEVELOPER", "1", BENV_MAKECONF);
+
+	/*
+	 *
+	 */
+	if (UseCCache) {
+		addbuildenv("WITH_CCACHE_BUILD", "yes", BENV_MAKECONF);
+		addbuildenv("CCACHE_DIR", "/ccache", BENV_MAKECONF);
+	}
 
 
 #if 0
@@ -1619,10 +1635,10 @@ WorkerProcess(int ac, char **av)
 	setenv("UNAME_m", MachineName, 1);
 	setenv("UNAME_r", ReleaseName, 1);
 
-	setenv("NO_DEPENDS", "yes", 1);
-	setenv("DISTDIR", "/distfiles", 1);
-	setenv("WRKDIRPREFIX", "/construction", 1);
-	setenv("BATCH", "yes", 1);
+	addbuildenv("NO_DEPENDS", "yes", BENV_MAKECONF);
+	addbuildenv("DISTDIR", "/distfiles", BENV_MAKECONF);
+	addbuildenv("WRKDIRPREFIX", "/construction", BENV_MAKECONF);
+	addbuildenv("BATCH", "yes", BENV_MAKECONF);
 
 	/*
 	 * Special consideration
@@ -1634,26 +1650,14 @@ WorkerProcess(int ac, char **av)
 	 *			  process to avoid a watchdog timeout.
 	 *
 	 */
-	setenv("PACKAGE_BUILDING", "yes", 1);
-	setenv("PKG_CREATE_VERBOSE", "yes", 1);
-
+	addbuildenv("PACKAGE_BUILDING", "yes", BENV_MAKECONF);
+	addbuildenv("PKG_CREATE_VERBOSE", "yes", BENV_MAKECONF);
 	asprintf(&buf, "%d", MaxJobs);
-	setenv("MAKE_JOBS_NUMBER", buf, 1);
+	addbuildenv("MAKE_JOBS_NUMBER", buf, BENV_MAKECONF);
 	free(buf);
 
 	if (flavor)
 		setenv("FLAVOR", flavor, 1);
-
-	/*
-	 * Load environment from profile
-	 */
-	for (benv = BuildEnv; benv; benv = benv->next) {
-		if (DebugOpt >= 2) {
-			dlog(DLOG_ALL, "[%03d] ENV %s=%s\n",
-			     slot, benv->label, benv->data);
-		}
-		setenv(benv->label, benv->data, 1);
-	}
 
 	/*
 	 * Become the reaper
@@ -1706,12 +1710,32 @@ WorkerProcess(int ac, char **av)
 	work->start_time = time(NULL);
 
 	/*
-	 * Do mounts and start the phases
+	 * Do mounts
 	 */
 	SigWork = work;
 	setproctitle("WORKER [%02d] MOUNTS   %s", slot, portdir);
 	DoWorkerMounts(work);
 
+	/*
+	 * Generate an /etc/make.conf in the build base
+	 */
+	asprintf(&buf, "%s/etc/make.conf", work->basedir);
+	fp = fopen(buf, "w");
+	dassert_errno(fp, "Unable to create %s\n", buf);
+	for (benv = BuildEnv; benv; benv = benv->next) {
+		if (DebugOpt >= 2) {
+			dlog(DLOG_ALL, "[%03d] ENV %s=%s\n",
+			     slot, benv->label, benv->data);
+		}
+		if (benv->type == BENV_MAKECONF)
+			fprintf(fp, "%s=%s\n", benv->label, benv->data);
+	}
+	fclose(fp);
+	free(buf);
+
+	/*
+	 * Start phases
+	 */
 	wmsg.cmd = WMSG_CMD_INSTALL_PKGS;
 	ipcwritemsg(fd, &wmsg);
 	status = ipcreadmsg(fd, &wmsg);
@@ -1810,7 +1834,7 @@ WorkerProcess(int ac, char **av)
 	/*
 	 * Unmount, unless we are in DebugStopMode.
 	 */
-	if (DebugStopMode == 0)
+	if ((WorkerProcFlags & WORKER_PROC_DEBUGSTOP) == 0)
 		DoWorkerUnmounts(work);
 
 	/*
@@ -1822,7 +1846,7 @@ WorkerProcess(int ac, char **av)
 		wmsg.cmd = WMSG_CMD_SUCCESS;
 	}
 	ipcwritemsg(fd, &wmsg);
-	if (DebugStopMode) {
+	if (WorkerProcFlags & WORKER_PROC_DEBUGSTOP) {
 		wmsg.cmd = WMSG_CMD_FREEZEWORKER;
 		ipcwritemsg(fd, &wmsg);
 	}
@@ -1936,6 +1960,14 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		     work->index, pkg->portdir,
 		     pkg->logfile, strerror(errno));
 	}
+
+	snprintf(buf, sizeof(buf),
+		 "-----------------------------------------------\n"
+		 "-- Phase: %s\n"
+		 "-----------------------------------------------\n",
+		 phase);
+	write(fdlog, buf, strlen(buf));
+
 	start_time = time(NULL);
 	last_time = start_time;
 	wdog_time = start_time;
@@ -2120,13 +2152,11 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 			goto skip;
 		}
 
-		fprintf(fp, "--------\n");
+		fprintf(fp, "\n");
 		if (work->accum_error) {
-			fprintf(fp, "PHASE %s FAILED %02d:%02d:%02d\n",
-				phase, h, m, s);
+			fprintf(fp, "FAILED %02d:%02d:%02d\n", h, m, s);
 		} else {
-			fprintf(fp, "PHASE %s SUCCEEDED %02d:%02d:%02d\n",
-				phase, h, m, s);
+			fprintf(fp, "SUCCEEDED %02d:%02d:%02d\n", h, m, s);
 		}
 		last_time = next_time - work->start_time;
 		s = last_time % 60;
@@ -2135,7 +2165,7 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		if (phaseid == PHASE_PACKAGE) {
 			fprintf(fp, "TOTAL TIME %02d:%02d:%02d\n", h, m, s);
 		}
-		fprintf(fp, "--------\n");
+		fprintf(fp, "\n");
 		fclose(fp);
 skip:
 		;

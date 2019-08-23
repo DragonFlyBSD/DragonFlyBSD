@@ -40,6 +40,8 @@
 buildenv_t *BuildEnv;
 static buildenv_t **BuildEnvTail = &BuildEnv;
 
+extern char **environ;
+
 __dead2 void
 _dfatal(const char *file __unused, int line __unused, const char *func,
 	int do_errno, const char *ctl, ...)
@@ -178,13 +180,14 @@ dlog00_fd(void)
 }
 
 void
-addbuildenv(const char *label, const char *data)
+addbuildenv(const char *label, const char *data, int type)
 {
 	buildenv_t *env;
 
 	env = calloc(1, sizeof(*env));
 	env->label = strdup(label);
 	env->data = strdup(data);
+	env->type = type;
 	*BuildEnvTail = env;
 	BuildEnvTail = &env->next;
 }
@@ -310,4 +313,124 @@ getswappct(int *noswapp)
 		*noswapp = 1;
 	}
 	return dswap;
+}
+
+/*
+ * dexec_open()/fgets/dexec_close()
+ *
+ * Similar to popen() but directly exec()s the argument list (cav[0] must
+ * be an absolute path).
+ *
+ * If with_env is non-zero the configured environment is included.
+ *
+ * If with_mvars is non-zero the make environment is passed as VAR=DATA
+ * elements on the command line.
+ */
+FILE *
+dexec_open(const char **cav, int cac, pid_t *pidp, int with_env, int with_mvars)
+{
+	buildenv_t *benv;
+	const char **cenv;
+	char *allocary[MAXCAC*2];
+	int env_basei;
+	int envi;
+	int alloci;
+	int nullfd;
+	int fds[2];
+	pid_t pid;
+	FILE *fp;
+
+	env_basei = 0;
+	while (environ[env_basei])
+		++env_basei;
+	cenv = calloc(env_basei + MAXCAC, sizeof(char *));
+	env_basei = 0;
+	for (envi = 0; envi < env_basei; ++envi)
+		cenv[envi] = environ[envi];
+
+	alloci = 0;
+	for (benv = BuildEnv; benv; benv = benv->next) {
+		if (with_mvars && benv->type == BENV_MAKECONF) {
+			asprintf(&allocary[alloci], "%s=%s",
+				 benv->label, benv->data);
+			cav[cac++] = allocary[alloci];
+			++alloci;
+		}
+		if (with_env && benv->type == BENV_ENVIRONMENT) {
+			asprintf(&allocary[alloci], "%s=%s",
+				 benv->label, benv->data);
+			cenv[envi++] = allocary[alloci];
+			++alloci;
+		}
+		ddassert(cac < MAXCAC && envi - env_basei < MAXCAC);
+	}
+	cav[cac] = NULL;
+	cenv[envi] = NULL;
+
+	if (pipe(fds) < 0)
+		dfatal_errno("pipe");
+	nullfd = open("/dev/null", O_RDWR);
+	if (nullfd < 0)
+		dfatal_errno("open(\"/dev/null\")");
+
+	/*
+	 * We have to be very careful using vfork(), do only the bare
+	 * minimum necessary in the child to set it up and exec it.
+	 */
+	pid = vfork();
+	if (pid == 0) {
+#if 0
+		int i;
+		printf("%s", cav[0]);
+		for (i = 0; cav[i]; ++i)
+			printf(" %s", cav[i]);
+		printf("\n");
+		printf("ENV: ");
+		for (i = 0; cenv[i]; ++i)
+			printf(" %s", cenv[i]);
+#endif
+
+		if (fds[1] != 1) {
+			dup2(fds[1], 1);
+			close(fds[1]);
+		}
+		close(fds[0]);		/* safety */
+		dup2(nullfd, 0);	/* no questions! */
+		closefrom(3);		/* be nice */
+
+		execve(cav[0], (void *)cav, (void *)cenv);
+		write(2, "EXEC FAILURE\n", 13);
+		_exit(1);
+	}
+	close(nullfd);
+	close(fds[1]);
+	if (pid < 0) {
+		close(fds[0]);
+		dfatal_errno("vfork failed");
+	}
+	fp = fdopen(fds[0], "r");
+	*pidp = pid;
+
+	while (--alloci >= 0)
+		free(allocary[alloci]);
+	free(cenv);
+
+	return fp;
+}
+
+int
+dexec_close(FILE *fp, pid_t pid)
+{
+	pid_t rpid;
+	int status;
+
+	fclose(fp);
+	while ((rpid = waitpid(pid, &status, 0)) != pid) {
+		if (rpid < 0) {
+			if (errno == EINTR)
+				continue;
+			return 1;
+		}
+	}
+	return (WEXITSTATUS(status));
 }

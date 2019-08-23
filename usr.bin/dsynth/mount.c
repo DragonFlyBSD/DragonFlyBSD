@@ -74,13 +74,13 @@ DoCreateTemplate(int force)
 			force = 1;
 	}
 
+	dlog(DLOG_ALL, "Check Template: %s\n",
+	     (force ? "Must-Create" : "Good"));
+
 	/*
 	 * Create the template
 	 */
 	if (force) {
-		printf("Creating Template for workers...");
-		fflush(stdout);
-
 		remove(goodbuf);	/* ignore exit code */
 
 		rc = 0;
@@ -89,6 +89,7 @@ DoCreateTemplate(int force)
 		rc = system(buf);
 		if (rc)
 			dfatal("Command failed: %s\n", buf);
+		dlog(DLOG_ALL, "Template - rc=%d running %s\n", rc, buf);
 		free(buf);
 
 		/*
@@ -111,12 +112,11 @@ DoCreateTemplate(int force)
 		dassert_errno(fd >= 0, "could not create %s", goodbuf);
 		close(fd);
 
-		printf("done\n");
-		fflush(stdout);
+		dlog(DLOG_ALL, "Template - done\n");
 	}
 	free(goodbuf);
 
-	return rc;
+	return force;
 }
 
 void
@@ -187,6 +187,8 @@ DoWorkerMounts(worker_t *work)
 	domount(work, NULLFS_RW, PackagesPath, "/packages", NULL);
 	domount(work, NULLFS_RW, DistFilesPath, "/distfiles", NULL);
 	domount(work, TMPFS_RW_BIG, "dummy", "/construction", NULL);
+	if (UseCCache)
+		domount(work, TMPFS_RW_BIG, "dummy", "/ccache", NULL);
 
 	/*
 	 * NOTE: Uses blah/. to prevent cp from creating 'Template' under
@@ -222,6 +224,7 @@ DoWorkerUnmounts(worker_t *work)
 		dounmount(work, "/boot");
 		dounmount(work, "/usr/local");
 		dounmount(work, "/construction");
+		dounmount(work, "/ccache");	/* in case of config change */
 		dounmount(work, "/distfiles");
 		dounmount(work, "/packages");
 		dounmount(work, "/options");
@@ -388,18 +391,21 @@ makeDiscreteCopies(const char *spath, const char *discretefmt)
 		free(buf);
 
 		if (stat(dst, &st) < 0) {
-			if (mkdir(dst, 0555) < 0)
+			if (mkdir(dst, 0555) < 0) {
+				dlog(DLOG_ALL, "Template - mkdir %s failed\n",
+				     dst);
 				dfatal_errno("Cannot mkdir %s:", dst);
-		} else {
-			asprintf(&buf, "chflags -R noschg %s; "
-				       "rm -rf %s; "
-				       "cp -Rp %s/. %s",
-				       dst, dst, src, dst);
-			rc = system(buf);
-			if (rc)
-				dfatal("Command failed: %s", buf);
-			free(buf);
+			}
 		}
+		asprintf(&buf, "chflags -R noschg %s; "
+			       "rm -rf %s; "
+			       "cp -Rp %s/. %s",
+			       dst, dst, src, dst);
+		rc = system(buf);
+		dlog(DLOG_ALL, "Template - rc=%d running %s\n", rc, buf);
+		if (rc)
+			dfatal("Command failed: %s", buf);
+		free(buf);
 		free(src);
 		free(dst);
 	}

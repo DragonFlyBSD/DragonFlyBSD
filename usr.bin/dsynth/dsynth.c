@@ -44,7 +44,6 @@ int YesOpt;
 int DebugOpt;
 int NullStdinOpt = 1;
 int SlowStartOpt = 1;
-int DebugStopMode;
 long PkgDepMemoryTarget;
 char *DSynthExecPath;
 
@@ -140,9 +139,9 @@ main(int ac, char **av)
 	 * These will be overridden by the builder for the chrooted
 	 * builds.
 	 */
-	setenv("PORTSDIR", DPortsPath, 1);
-	setenv("BATCH", "yes", 1);
-	setenv("PKG_SUFX", USE_PKG_SUFX, 1);
+	addbuildenv("PORTSDIR", DPortsPath, BENV_ENVIRONMENT);
+	addbuildenv("BATCH", "yes", BENV_ENVIRONMENT);
+	addbuildenv("PKG_SUFX", USE_PKG_SUFX, BENV_ENVIRONMENT);
 
 	/*
 	 * Special directive for when dsynth execs itself to manage
@@ -156,15 +155,14 @@ main(int ac, char **av)
 	DoInitBuild(-1);
 
 	if (strcmp(av[0], "debug") == 0) {
-		DebugStopMode = 1;
 #if 0
 		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		RemovePackages(pkgs);
-		addbuildenv("DEVELOPER", "yes");
+		addbuildenv("DEVELOPER", "yes", BENV_ENVIRONMENT);
 		DoBuild(pkgs);
 #endif
-		DebugStopMode = 1;
+		WorkerProcFlags |= WORKER_PROC_DEBUGSTOP;
 		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		DoBuild(pkgs);
@@ -237,7 +235,7 @@ main(int ac, char **av)
 		DoCleanBuild(1);
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		RemovePackages(pkgs);
-		addbuildenv("DEVELOPER", "yes");
+		WorkerProcFlags |= WORKER_PROC_DEVELOPER;
 		DoBuild(pkgs);
 	} else {
 		fprintf(stderr, "Unknown directive '%s'\n", av[0]);

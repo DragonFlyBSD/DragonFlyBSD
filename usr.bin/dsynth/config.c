@@ -47,6 +47,7 @@ int UseTmpfsWork = 1;
 int UseTmpfsBase = 1;
 int UseNCurses = -1;		/* indicates default operation (enabled) */
 int LeveragePrebuilt = 0;
+int WorkerProcFlags = 0;
 long PhysMem;
 const char *OperatingSystemName = "Unknown";
 const char *ArchitectureName = "unknown";
@@ -417,7 +418,7 @@ parseProfile(const char *cpath, const char *profile)
 		/*
 		 * Add to builder environment
 		 */
-		addbuildenv(l1, l2);
+		addbuildenv(l1, l2, BENV_MAKECONF);
 		if (DebugOpt >= 2)
 			ddprintf(4, "%s=%s\n", l1, l2);
 	}

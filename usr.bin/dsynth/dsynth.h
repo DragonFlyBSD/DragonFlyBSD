@@ -318,6 +318,7 @@ typedef struct buildenv {
 	struct buildenv *next;
 	const char *label;
 	const char *data;
+	int type;
 } buildenv_t;
 
 /*
@@ -368,8 +369,24 @@ typedef enum os_id os_id_t;
 #define ddprintf(tab, fmt, ...)		\
 	do { if (DebugOpt >= 2) _ddprintf(tab, fmt, ## __VA_ARGS__); } while(0)
 
+/*
+ * addbuildenv() types
+ */
+#define BENV_ENVIRONMENT	1
+#define BENV_MAKECONF		2
+
+/*
+ * WORKER process flags
+ */
+#define WORKER_PROC_DEBUGSTOP	0x0001
+#define WORKER_PROC_DEVELOPER	0x0002
+
+/*
+ * Misc
+ */
 #define DOSTRING(label)	#label
 #define SCRIPTPATH(x)	DOSTRING(x)
+#define MAXCAC		256
 
 extern int BuildCount;
 extern int BuildTotal;
@@ -380,8 +397,8 @@ extern int BuildSuccessCount;
 extern int DynamicMaxWorkers;
 
 extern buildenv_t *BuildEnv;
+extern int WorkerProcFlags;
 extern int DebugOpt;
-extern int DebugStopMode;
 extern int SlowStartOpt;
 extern int YesOpt;
 extern int NullStdinOpt;
@@ -425,7 +442,7 @@ void _dlog(int which, const char *fmt, ...);
 char *strdup_or_null(char *str);
 void dlogreset(void);
 int dlog00_fd(void);
-void addbuildenv(const char *label, const char *data);
+void addbuildenv(const char *label, const char *data, int type);
 
 void initbulk(void (*func)(bulk_t *bulk), int jobs);
 void queuebulk(const char *s1, const char *s2, const char *s3,
@@ -437,6 +454,9 @@ void freestrp(char **strp);
 void dupstrp(char **strp);
 int askyn(const char *ctl, ...);
 double getswappct(int *noswapp);
+FILE *dexec_open(const char **cav, int cac, pid_t *pidp,
+			int with_env, int with_mvars);
+int dexec_close(FILE *fp, pid_t pid);
 
 void ParseConfiguration(int isworker);
 pkg_t *ParsePackageList(int ac, char **av);

@@ -430,6 +430,13 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo)
 		} while (dep && *dep == 0);
 		if (dep == NULL)
 			break;
+
+		/*
+		 * Ignore dependencies prefixed with ${NONEXISTENT}
+		 */
+		if (strncmp(dep, "/nonexistent:", 13) == 0)
+			continue;
+
 		dep = strchr(dep, ':');
 		if (dep == NULL || *dep != ':') {
 			printf("Error parsing dependency for %s: %s\n",
@@ -560,7 +567,6 @@ childGetPackageInfo(bulk_t *bulk)
 	pkg_t *pkg;
 	pkg_t *dummy_node;
 	pkg_t **list_tail;
-	char buf[1024];
 	char *flavors_save;
 	char *flavors;
 	char *flavor;
@@ -568,6 +574,11 @@ childGetPackageInfo(bulk_t *bulk)
 	FILE *fp;
 	int line;
 	size_t len;
+	char *portpath;
+	char *flavarg;
+	const char *cav[MAXCAC];
+	pid_t pid;
+	int cac;
 
 	/*
 	 * If the package has flavors we will loop on each one.  If a flavor
@@ -582,30 +593,38 @@ childGetPackageInfo(bulk_t *bulk)
 	bulk->list = NULL;
 	list_tail = &bulk->list;
 again:
-	snprintf(buf, sizeof(buf),
-		 "exec %s -C %s/%s/%s %s%s "
-		 "-VPKGVERSION "
-		 "-VPKGFILE:T "
-		 "-VDISTFILES "
-		 "-VDIST_SUBDIR "
-		 "-VMAKE_JOBS_NUMBER "
-		 "-VIGNORE "
-		 "-VFETCH_DEPENDS "
-		 "-VEXTRACT_DEPENDS "
-		 "-VPATCH_DEPENDS "
-		 "-VBUILD_DEPENDS "
-		 "-VLIB_DEPENDS "
-		 "-VRUN_DEPENDS "
-		 "-VSELECTED_OPTIONS "
-		 "-VDESELECTED_OPTIONS "
-		 "-VUSE_LINUX "
-		 "-VFLAVORS",
-		 MAKE_BINARY,
-		 DPortsPath, bulk->s1, bulk->s2,
-		 (flavor ? "FLAVOR=" : ""),
-		 (flavor ? flavor : ""));
-	fp = popen(buf, "r");
-	line = 1;
+	asprintf(&portpath, "%s/%s/%s", DPortsPath, bulk->s1, bulk->s2);
+	if (flavor)
+		asprintf(&flavarg, "FLAVOR=%s", flavor);
+	else
+		flavarg = NULL;
+
+	cac = 0;
+	cav[cac++] = MAKE_BINARY;
+	cav[cac++] = "-C";
+	cav[cac++] = portpath;
+	if (flavarg)
+		cav[cac++] = flavarg;
+	cav[cac++] = "-VPKGVERSION";
+	cav[cac++] = "-VPKGFILE:T";
+	cav[cac++] = "-VDISTFILES";
+	cav[cac++] = "-VDIST_SUBDIR";
+	cav[cac++] = "-VMAKE_JOBS_NUMBER";
+	cav[cac++] = "-VIGNORE";
+	cav[cac++] = "-VFETCH_DEPENDS";
+	cav[cac++] = "-VEXTRACT_DEPENDS";
+	cav[cac++] = "-VPATCH_DEPENDS";
+	cav[cac++] = "-VBUILD_DEPENDS";
+	cav[cac++] = "-VLIB_DEPENDS";
+	cav[cac++] = "-VRUN_DEPENDS";
+	cav[cac++] = "-VSELECTED_OPTIONS";
+	cav[cac++] = "-VDESELECTED_OPTIONS";
+	cav[cac++] = "-VUSE_LINUX";
+	cav[cac++] = "-VFLAVORS";
+
+	fp = dexec_open(cav, cac, &pid, 1, 1);
+	free(portpath);
+	freestrp(&flavarg);
 
 	pkg = allocpkg();
 	if (flavor)
@@ -613,6 +632,7 @@ again:
 	else
 		asprintf(&pkg->portdir, "%s/%s", bulk->s1, bulk->s2);
 
+	line = 1;
 	while ((ptr = fgetln(fp, &len)) != NULL) {
 		if (len == 0 || ptr[len-1] != '\n') {
 			dfatal("Bad package info for %s/%s response line %d",
@@ -683,7 +703,11 @@ again:
 		printf("DPort corrupt: %s/%s\n", bulk->s1, bulk->s2);
 		pkg->flags |= PKGF_CORRUPT;
 	}
-	pclose(fp);
+	if (dexec_close(fp, pid)) {
+		printf("make -V* command for %s/%s failed\n",
+			bulk->s1, bulk->s2);
+		pkg->flags |= PKGF_CORRUPT;
+	}
 	ddassert(bulk->s1);
 
 	/*
@@ -783,17 +807,27 @@ again:
 static void
 childGetBinaryDistInfo(bulk_t *bulk)
 {
-	char buf[1024];
 	char *ptr;
 	FILE *fp;
 	size_t len;
 	pkg_t *pkg;
+	const char *cav[MAXCAC];
+	char *repopath;
+	char buf[1024];
+	pid_t pid;
+	int cac;
 
-	snprintf(buf, sizeof(buf),
-		 "exec %s query -F %s/%s %%n-%%v",
-		 PKG_BINARY,
-		 RepositoryPath, bulk->s1);
-	fp = popen(buf, "r");
+	asprintf(&repopath, "%s/%s", RepositoryPath, bulk->s1);
+
+	cac = 0;
+	cav[cac++] = PKG_BINARY;
+	cav[cac++] = "query";
+	cav[cac++] = "-F";
+	cav[cac++] = repopath;
+	cav[cac++] = "%n-%v";
+
+	fp = dexec_open(cav, cac, &pid, 1, 0);
+
 	while ((ptr = fgetln(fp, &len)) != NULL) {
 		if (len == 0 || ptr[len-1] != '\n')
 			continue;
@@ -808,7 +842,10 @@ childGetBinaryDistInfo(bulk_t *bulk)
 				    "skipping %s\n", buf);
 		}
 	}
-	pclose(fp);
+	if (dexec_close(fp, pid)) {
+		printf("pkg query command failed for %s\n", repopath);
+	}
+	free(repopath);
 }
 
 static int
