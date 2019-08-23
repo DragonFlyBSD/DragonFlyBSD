@@ -492,7 +492,8 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		pkg->flags |= PKGF_SUCCESS;
 		*hasworkp = 1;
 		if (first) {
-			dlog(DLOG_ALL, "[XXX] %s META-ALREADY-BUILT\n",
+			dlog(DLOG_ALL | DLOG_FILTER,
+			     "[XXX] %s META-ALREADY-BUILT\n",
 			     pkg->portdir);
 			--BuildTotal;
 		} else {
@@ -509,7 +510,8 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		pkg->flags |= PKGF_SUCCESS;
 		*hasworkp = 1;
 		if (first) {
-			dlog(DLOG_ALL, "[XXX] %s ALREADY-BUILT\n",
+			dlog(DLOG_ALL | DLOG_FILTER,
+			     "[XXX] %s ALREADY-BUILT\n",
 			     pkg->portdir);
 			--BuildTotal;
 		}
@@ -825,11 +827,11 @@ startworker(pkg_t *pkg, worker_t *work)
 		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 1, 1);
 		RunningPkgDepSize += work->pkg_dep_size;
 
-		dlog(DLOG_ALL, "[%03d] %s START "
-			       "(idep=%d depi=%d/%d pkgdep=%3.2fM)\n",
+		dlog(DLOG_ALL, "[%03d] START   %s "
+			       "##idep=%02d depi=%02d/%02d dep=%-4.2fG\n",
 		     work->index, pkg->portdir,
 		     pkg->idep_count, pkg->depi_count, pkg->depi_depth,
-		     (double)work->pkg_dep_size / (1024.0 * 1024.0));
+		     (double)work->pkg_dep_size / (double)ONEGB);
 
 		cleanworker(work);
 		pkg->flags |= PKGF_RUNNING;
@@ -888,9 +890,9 @@ workercomplete(worker_t *work)
 	}
 
 	t = time(NULL) - work->start_time;
-	s = t % 60;
-	m = t / 60 % 60;
 	h = t / 3600;
+	m = t / 60 % 60;
+	s = t % 60;
 
 	/*
 	 * Reduce total dep size
@@ -914,34 +916,29 @@ workercomplete(worker_t *work)
 			reason = buildskipreason(NULL, pkg);
 			if (pkg->flags & PKGF_NOBUILD_I) {
 				++BuildIgnoreCount;
-				dlog(DLOG_SKIP, "[%03d] %s ignored due to %s\n",
+				dlog(DLOG_SKIP, "[%03d] IGNORD %s - %s\n",
 				     work->index, pkg->portdir, reason);
 			} else {
 				++BuildSkipCount;
-				dlog(DLOG_SKIP, "[%03d] %s skipped due to %s\n",
+				dlog(DLOG_SKIP, "[%03d] SKIPPD %s - %s\n",
 				     work->index, pkg->portdir, reason);
 			}
 			free(reason);
 		} else {
 			++BuildFailCount;
-			dlog(DLOG_FAIL, "[%03d] %s failed in %02d:%02d:%02d\n",
+			dlog(DLOG_FAIL | DLOG_RED,
+			     "[%03d] FAILURE %s##%02d:%02d:%02d\n",
 			     work->index, pkg->portdir, h, m, s);
 		}
 	} else {
-		dlog(DLOG_SUCC,
-		     "[%03d] %s succeeded in %02d:%02d:%02d\n",
+		dlog(DLOG_SUCC | DLOG_GRN,
+		     "[%03d] SUCCESS %s ##%02d:%02d:%02d\n",
 		     work->index, pkg->portdir, h, m, s);
 		pkg->flags |= PKGF_SUCCESS;
 		++BuildSuccessCount;
 	}
 	++BuildCount;
 	pkg->flags &= ~PKGF_BUILDLIST;
-	if (DebugOpt) {
-		dlog(DLOG_ALL, "[%03d] %s FINISHED (%s)\n",
-		     work->index,
-		     pkg->portdir,
-		     ((pkg->flags & PKGF_SUCCESS) ? "success" : "failure"));
-	}
 	pkg->flags &= ~PKGF_RUNNING;
 	work->pkg = NULL;
 	--RunningWorkers;
@@ -951,8 +948,8 @@ workercomplete(worker_t *work)
 		     work->index);
 		++FailedWorkers;
 	} else if (work->flags & WORKERF_FREEZE) {
-		dlog(DLOG_ALL, "[%03d] XXX/XXX WORKER FROZEN BY REQUEST\n",
-		     work->index);
+		dlog(DLOG_ALL, "[%03d] FROZEN(DEBUG) %s\n",
+		     work->index, pkg->portdir);
 		work->state = WORKER_FROZEN;
 	} else {
 		work->state = WORKER_IDLE;
@@ -1125,7 +1122,7 @@ waitbuild(int whilematch, int dynamicmax)
 			 * And adjust
 			 */
 			if (DynamicMaxWorkers != max1) {
-				dlog(DLOG_ALL,
+				dlog(DLOG_ALL | DLOG_FILTER,
 				     "[XXX] Load=%-6.2f(%2d) "
 				     "Swap=%-3.2f%%(%2d) "
 				     "Mem=%3.2fG(%2d) "
@@ -1590,7 +1587,7 @@ WorkerProcess(int ac, char **av)
 
 	bzero(&wmsg, sizeof(wmsg));
 
-	setproctitle("WORKER [%02d] STARTUP  %s", slot, portdir);
+	setproctitle("[%02d] WORKER STARTUP  %s", slot, portdir);
 
 	if (strcmp(portdir, "ports-mgmt/pkg") == 0)
 		pkgpkg = 1;
@@ -1723,7 +1720,7 @@ WorkerProcess(int ac, char **av)
 	 * Do mounts
 	 */
 	SigWork = work;
-	setproctitle("WORKER [%02d] MOUNTS   %s", slot, portdir);
+	setproctitle("[%02d] WORKER MOUNTS   %s", slot, portdir);
 	DoWorkerMounts(work);
 
 	/*
@@ -1820,7 +1817,7 @@ WorkerProcess(int ac, char **av)
 		MasterPtyFd = -1;
 	}
 
-	setproctitle("WORKER [%02d] CLEANUP  %s", slot, portdir);
+	setproctitle("[%02d] WORKER CLEANUP  %s", slot, portdir);
 
 	/*
 	 * Copy the package to the repo.
@@ -1881,7 +1878,7 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 
 	if (work->accum_error)
 		return;
-	setproctitle("WORKER [%02d] %8.8s %s",
+	setproctitle("[%02d] WORKER %8.8s %s",
 		     work->index, phase, pkg->portdir);
 	wmsg->phase = phaseid;
 	if (ipcwritemsg(work->fds[0], wmsg) < 0) {
@@ -1913,6 +1910,32 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	}
 
 	if (pid == 0) {
+		struct termios tio;
+
+		/*
+		 * We are going through a pty, so set the tty modes to
+		 * Set tty modes so we do not get ^M's in the log files.
+		 *
+		 * This isn't fatal if it doesn't work.  Remember that
+		 * our output goes through the pty to the management
+		 * process which will log it.
+		 */
+		if (tcgetattr(1, &tio) == 0) {
+			tio.c_oflag |= OPOST | ONOCR;
+			tio.c_oflag &= ~(OCRNL | ONLCR);
+			tio.c_iflag |= ICRNL;
+			tio.c_iflag &= ~(INLCR|IGNCR);
+			if (tcsetattr(1, TCSANOW, &tio)) {
+				printf("tcsetattr failed: %s\n",
+				       strerror(errno));
+			}
+		} else {
+			printf("tcgetattr failed: %s\n", strerror(errno));
+		}
+
+		/*
+		 * Clean-up, chdir, and chroot.
+		 */
 		closefrom(3);
 		if (chdir(work->basedir) < 0)
 			dfatal_errno("chdir in phase initialization");
@@ -2042,7 +2065,7 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 				if (fdlog >= 0)
 					write(fdlog, buf, strlen(buf));
 				dlog(DLOG_ALL,
-				     "[%03d] WATCHDOG TIMEOUT FOR %s in %s "
+				     "[%03d] %s WATCHDOG TIMEOUT in %s "
 				     "after %d minutes (%d min scaled)\n",
 				     work->index, pkg->portdir, phase,
 				     wdog, wdog_scaled);
@@ -2072,7 +2095,7 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 
 	next_time = time(NULL);
 
-	setproctitle("WORKER [%02d] EXITREAP %s",
+	setproctitle("[%02d] WORKER EXITREAP %s",
 		     work->index, pkg->portdir);
 
 	/*
@@ -2120,8 +2143,8 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	 */
 	if (wpid_reaped) {
 		if (WEXITSTATUS(status)) {
-			dlog(DLOG_ALL, "[%03d] %s Build phase '%s' "
-				       "failed exit %d\n",
+			dlog(DLOG_ALL | DLOG_FILTER,
+			     "[%03d] %s Build phase '%s' failed exit %d\n",
 			     work->index, pkg->portdir, phase,
 			     WEXITSTATUS(status));
 			++work->accum_error;

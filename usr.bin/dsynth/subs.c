@@ -103,6 +103,7 @@ dlogfd(int which, int modes)
 	char *path;
 	int fd;
 
+	which &= DLOG_MASK;
 	if ((fd = DLogFd[which]) > 0)
 		return fd;
 	pthread_mutex_lock(&DLogFdMutex);
@@ -138,14 +139,47 @@ _dlog(int which, const char *ctl, ...)
 {
 	va_list va;
 	char *buf;
+	char *ptr;
 	size_t len;
 	int fd;
+	int filter;
+
+	filter = which;
+	which &= DLOG_MASK;
 
 	ddassert((uint)which < DLOG_COUNT);
 	va_start(va, ctl);
 	vasprintf(&buf, ctl, va);
 	va_end(va);
 	len = strlen(buf);
+
+	/*
+	 * The special sequence ## right-justfies the text after the ##.
+	 *
+	 * NOTE: Alignment test includes \n so use 80 instead of 79 to
+	 *	 leave one char unused on a 80-column terminal.
+	 */
+	if ((ptr = strstr(buf, "##")) != NULL) {
+		size_t l2;
+		size_t l1;
+		char *b2;
+		int spc;
+
+		l1 = (int)(ptr - buf);
+		l2 = len - l1 - 2;
+		if (l1 <= 80 - l2) {
+			spc = 80 - l1 - l2;
+			buf[l1] = 0;
+			asprintf(&b2, "%s%*.*s%s",
+				 buf, spc, spc, "", ptr + 2);
+		} else {
+			buf[l1] = 0;
+			asprintf(&b2, "%s%s", buf, ptr + 2);
+		}
+		len = strlen(b2);
+		free(buf);
+		buf = b2;
+	}
 
 	/*
 	 * All logs also go to log 00.
@@ -164,12 +198,20 @@ _dlog(int which, const char *ctl, ...)
 
 	/*
 	 * If ncurses is not being used, all log output also goes
-	 * to stdout.
+	 * to stdout, unless filtered.
 	 */
-	if (UseNCurses == 0) {
+	if (UseNCurses == 0 && (filter & DLOG_FILTER) == 0) {
+		if (ColorOpt) {
+			if (filter & DLOG_GRN)
+				write(1, "\x1b[0;42m", 7);
+			if (filter & DLOG_RED)
+				write(1, "\x1b[0;41m", 7);
+		}
 		write(1, buf, len);
+		if (ColorOpt && (filter & (DLOG_GRN|DLOG_RED))) {
+			write(1, "\x1b[0;39m", 7);
+		}
 	}
-
 	free(buf);
 }
 

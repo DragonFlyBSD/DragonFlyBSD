@@ -73,6 +73,7 @@ static void parseProfile(const char *cpath, const char *path);
 static char *stripwhite(char *str);
 static int truefalse(const char *str);
 static char *dokernsysctl(int m1, int m2);
+static void getElfInfo(const char *path);
 
 void
 ParseConfiguration(int isworker)
@@ -84,31 +85,13 @@ ParseConfiguration(int isworker)
 	char *buf;
 
 	/*
-	 *
-	 */
-	asprintf(&synth_config, "%s/dsynth.ini", ConfigBase);
-	if (stat(synth_config, &st) < 0)
-		asprintf(&synth_config, "%s/dsynth.ini", AltConfigBase);
-
-	/*
-	 * OperatingSystemName, ArchitectureName, ReleaseName
+	 * Get the default OperatingSystemName, ArchitectureName, and
+	 * ReleaseName.
 	 */
 	OperatingSystemName = dokernsysctl(CTL_KERN, KERN_OSTYPE);
 	ArchitectureName = dokernsysctl(CTL_HW, HW_MACHINE_ARCH);
 	MachineName = dokernsysctl(CTL_HW, HW_MACHINE);
 	ReleaseName = dokernsysctl(CTL_KERN, KERN_OSRELEASE);
-
-	if (strchr(ReleaseName, '-')) {
-		reln = strchr(ReleaseName, '-') - ReleaseName;
-		asprintf(&buf, "%s %*.*s-SYNTH",
-			 OperatingSystemName,
-			 reln, reln, ReleaseName);
-	} else {
-		asprintf(&buf, "%s %s",
-			 OperatingSystemName,
-			 ReleaseName);
-	}
-	VersionName = buf;
 
 	/*
 	 * Retrieve resource information from the system.  Note that
@@ -127,7 +110,7 @@ ParseConfiguration(int isworker)
 		PkgDepMemoryTarget = PhysMem / 2;
 
 	/*
-	 * Calculate nominal defaults
+	 * Calculate nominal defaults.
 	 */
 	MaxBulk = NumCores;
 	MaxWorkers = MaxBulk / 2;
@@ -142,8 +125,13 @@ ParseConfiguration(int isworker)
 		MaxJobs = 1;
 
 	/*
-	 * Configuration file must exist
+	 * Configuration file must exist.  Look for it in
+	 * "/etc/dsynth" and "/usr/local/etc/dsynth".
 	 */
+	asprintf(&synth_config, "%s/dsynth.ini", ConfigBase);
+	if (stat(synth_config, &st) < 0)
+		asprintf(&synth_config, "%s/dsynth.ini", AltConfigBase);
+
 	if (stat(synth_config, &st) < 0) {
 		dfatal("Configuration file missing, "
 		       "could not find %s/dsynth.ini or %s/dsynth.ini\n",
@@ -152,7 +140,8 @@ ParseConfiguration(int isworker)
 	}
 
 	/*
-	 * Parse the configuration file(s)
+	 * Parse the configuration file(s).  This may override some of
+	 * the above defaults.
 	 */
 	parseConfigFile(synth_config);
 	parseProfile(synth_config, ProfileLabel);
@@ -178,6 +167,33 @@ ParseConfiguration(int isworker)
 		dfatal("Directory missing: %s", LogsPath);
 	if (stat(SystemPath, &st) < 0)
 		dfatal("Directory missing: %s", SystemPath);
+
+	/*
+	 * Now use the SystemPath to retrieve file information from /bin/sh,
+	 * and use this to set OperatingSystemName, ArchitectureName,
+	 * MachineName, and ReleaseName.
+	 *
+	 * Since this method is used to build for specific releases, require
+	 * that it succeed.
+	 */
+	asprintf(&buf, "%s/bin/sh", SystemPath);
+	getElfInfo(buf);
+	free(buf);
+
+	/*
+	 * Calculate VersionName from OperatingSystemName and ReleaseName.
+	 */
+	if (strchr(ReleaseName, '-')) {
+		reln = strchr(ReleaseName, '-') - ReleaseName;
+		asprintf(&buf, "%s %*.*s-SYNTH",
+			 OperatingSystemName,
+			 reln, reln, ReleaseName);
+	} else {
+		asprintf(&buf, "%s %s-SYNTH",
+			 OperatingSystemName,
+			 ReleaseName);
+	}
+	VersionName = buf;
 
 	/*
 	 * If RepositoryPath is under PackagesPath, make sure it
@@ -389,6 +405,7 @@ parseProfile(const char *cpath, const char *profile)
 	}
 	if (DebugOpt >= 2)
 		ddprintf(0, "ParseProfile %s\n", ppath);
+	free(ppath);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		++lineno;
@@ -483,4 +500,68 @@ dokernsysctl(int m1, int m2)
 		dfatal_errno("sysctl for system/architecture");
 	buf[len] = 0;
 	return(strdup(buf));
+}
+
+struct NoteTag {
+	Elf_Note note;
+	char osname1[12];
+	int version;		/* e.g. 500702 -> 5.7 */
+	int x1;
+	int x2;
+	int x3;
+	char osname2[12];
+	int zero;
+};
+
+static void
+getElfInfo(const char *path)
+{
+	struct NoteTag note;
+	char *cmd;
+	char *base;
+	FILE *fp;
+	size_t size;
+	size_t n;
+	int r;
+	uint32_t addr;
+	uint32_t v[4];
+
+	asprintf(&cmd, "readelf -x .note.tag %s", path);
+	fp = popen(cmd, "r");
+	dassert_errno(fp, "Cannot run: %s", cmd);
+	n = 0;
+
+	while (n != sizeof(note) &&
+	       (base = fgetln(fp, &size)) != NULL && size) {
+		base[--size] = 0;
+		if (strncmp(base, "  0x", 3) != 0)
+			continue;
+		r = sscanf(base, "%x %x %x %x %x",
+			   &addr, &v[0], &v[1], &v[2], &v[3]);
+		v[0] = ntohl(v[0]);
+		v[1] = ntohl(v[1]);
+		v[2] = ntohl(v[2]);
+		v[3] = ntohl(v[3]);
+		if (r < 2)
+			continue;
+		r = (r - 1) * sizeof(v[0]);
+		if (n + r > sizeof(note))
+			r = sizeof(note) - n;
+		bcopy((char *)v, (char *)&note + n, r);
+		n += r;
+	}
+	pclose(fp);
+
+	if (n != sizeof(note))
+		dfatal("Unable to parse output from: %s", cmd);
+	if (strncmp(OperatingSystemName, note.osname1, sizeof(note.osname1))) {
+		dfatal("%s ELF, mismatch OS name %.*s vs %s",
+		       path, (int)sizeof(note.osname1),
+		       note.osname1, OperatingSystemName);
+	}
+	free(cmd);
+	asprintf(&cmd, "%d.%d",
+		note.version / 100000,
+		(note.version % 100000) / 100);
+	ReleaseName = cmd;
 }

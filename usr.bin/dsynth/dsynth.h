@@ -59,6 +59,8 @@
 #include <ctype.h>
 #include <libutil.h>
 
+#include <elf.h>
+
 struct pkglink;
 
 #define DSYNTH_VERSION	"1.01"
@@ -349,6 +351,11 @@ typedef enum os_id os_id_t;
 #define DLOG_ABN	5	/* abnormal_command_output	*/
 #define DLOG_OBS	6	/* obsolete_packages.log	*/
 #define DLOG_COUNT	7	/* total number of DLOGs	*/
+#define DLOG_MASK	0x0FF
+
+#define DLOG_FILTER	0x100	/* Filter out of stdout in non-curses mode  */
+#define DLOG_RED	0x200	/* Print in color */
+#define DLOG_GRN	0x400	/* Print in color */
 
 #define dassert(exp, fmt, ...)		\
 	if (!(exp)) dpanic(fmt, ## __VA_ARGS__)
@@ -360,6 +367,9 @@ typedef enum os_id os_id_t;
 	if (!(exp)) dpanic_errno(fmt, ## __VA_ARGS__)
 
 #define dlog(which, fmt, ...)		\
+	_dlog(which, fmt, ## __VA_ARGS__)
+
+#define dlog_tsnl(which, fmt, ...)	\
 	_dlog(which, fmt, ## __VA_ARGS__)
 
 #define dfatal(fmt, ...)		\
@@ -407,6 +417,7 @@ extern int DynamicMaxWorkers;
 extern buildenv_t *BuildEnv;
 extern int WorkerProcFlags;
 extern int DebugOpt;
+extern int ColorOpt;
 extern int SlowStartOpt;
 extern int YesOpt;
 extern int NullStdinOpt;

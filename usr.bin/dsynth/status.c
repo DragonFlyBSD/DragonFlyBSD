@@ -264,11 +264,13 @@ status_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		pkg->flags |= PKGF_SUCCESS;
 		*hasworkp = 1;
 		if (first) {
-			dlog(DLOG_ALL, "[XXX] %s META-ALREADY-BUILT\n",
+			dlog(DLOG_ALL | DLOG_FILTER,
+			     "[XXX] %s META-ALREADY-BUILT\n",
 			     pkg->portdir);
 			--BuildTotal;
 		} else {
-			dlog(DLOG_SUCC, "[XXX] %s meta-node complete\n",
+			dlog(DLOG_SUCC | DLOG_FILTER,
+			     "[XXX] %s meta-node complete\n",
 			     pkg->portdir);
 		}
 	} else if (pkg->flags & PKGF_PACKAGED) {
@@ -281,7 +283,8 @@ status_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		pkg->flags |= PKGF_SUCCESS;
 		*hasworkp = 1;
 		if (first) {
-			dlog(DLOG_ALL, "[XXX] %s ALREADY-BUILT\n",
+			dlog(DLOG_ALL | DLOG_FILTER,
+			    "[XXX] %s ALREADY-BUILT\n",
 			     pkg->portdir);
 			--BuildTotal;
 		}

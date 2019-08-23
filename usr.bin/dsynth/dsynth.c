@@ -42,6 +42,7 @@ static void usage(int ecode) __dead2;
 
 int YesOpt;
 int DebugOpt;
+int ColorOpt = 1;
 int NullStdinOpt = 1;
 int SlowStartOpt = 1;
 long PkgDepMemoryTarget;
@@ -53,6 +54,7 @@ main(int ac, char **av)
 	pkg_t *pkgs;
 	int isworker;
 	int c;
+	int sopt;
 
 	/*
 	 * Get our exec path so we can self-exec clean WORKER
@@ -74,6 +76,7 @@ main(int ac, char **av)
 	/*
 	 * Process options and make sure the directive is present
 	 */
+	sopt = 0;
 	while ((c = getopt(ac, av, "dhm:vys:S")) != -1) {
 		switch(c) {
 		case 'y':
@@ -81,6 +84,8 @@ main(int ac, char **av)
 			break;
 		case 'S':
 			UseNCurses = 0;
+			if (++sopt == 2)
+				ColorOpt = 0;
 			break;
 		case 'd':
 			++DebugOpt;

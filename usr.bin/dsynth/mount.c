@@ -89,7 +89,8 @@ DoCreateTemplate(int force)
 		rc = system(buf);
 		if (rc)
 			dfatal("Command failed: %s\n", buf);
-		dlog(DLOG_ALL, "Template - rc=%d running %s\n", rc, buf);
+		dlog(DLOG_ALL | DLOG_FILTER,
+		     "Template - rc=%d running %s\n", rc, buf);
 		free(buf);
 
 		/*
@@ -112,7 +113,7 @@ DoCreateTemplate(int force)
 		dassert_errno(fd >= 0, "could not create %s", goodbuf);
 		close(fd);
 
-		dlog(DLOG_ALL, "Template - done\n");
+		dlog(DLOG_ALL | DLOG_FILTER, "Template - done\n");
 	}
 	free(goodbuf);
 
@@ -402,7 +403,8 @@ makeDiscreteCopies(const char *spath, const char *discretefmt)
 			       "cp -Rp %s/. %s",
 			       dst, dst, src, dst);
 		rc = system(buf);
-		dlog(DLOG_ALL, "Template - rc=%d running %s\n", rc, buf);
+		dlog(DLOG_ALL | DLOG_FILTER,
+		     "Template - rc=%d running %s\n", rc, buf);
 		if (rc)
 			dfatal("Command failed: %s", buf);
 		free(buf);
