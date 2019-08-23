@@ -127,6 +127,7 @@ typedef struct pkg {
 	int use_linux;		/* USE_LINUX				*/
 	int idep_count;		/* count recursive idepon build deps	*/
 	int depi_count;		/* count recursive deponi build deps	*/
+	int depi_depth;		/* tree depth who depends on me		*/
 	int dsynth_install_flg;	/* locked with WorkerMutex	*/
 	int flags;
 	size_t pkgfile_size;	/* size of pkgfile */

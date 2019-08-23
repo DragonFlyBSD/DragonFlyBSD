@@ -47,6 +47,7 @@ pthread_cond_t WorkerCond;
 
 static int build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			int *app, int *hasworkp, int level, int first);
+static int buildCalculateDepiDepth(pkg_t *pkg);
 static void build_clear_trav(pkg_t *pkg);
 static void startbuild(pkg_t **build_listp, pkg_t ***build_tailp);
 static int qsort_depi(const void *pkg1, const void *pkg2);
@@ -220,6 +221,14 @@ DoBuild(pkg_t *pkgs)
 		if (rc)
 			dfatal("Command failed: %s\n", buf);
 		free(buf);
+	}
+
+	/*
+	 * Calculate depi_depth, the longest chain of dependencies
+	 * for who depends on me, weighted by powers of two.
+	 */
+	for (scan = pkgs; scan; scan = scan->bnext) {
+		buildCalculateDepiDepth(scan);
 	}
 
 	/*
@@ -541,6 +550,36 @@ build_clear_trav(pkg_t *pkg)
 }
 
 /*
+ * Calculate the longest chain of packages that depend on me.  The
+ * long the chain, the more important my package is to build earlier
+ * rather than later.
+ */
+static int
+buildCalculateDepiDepth(pkg_t *pkg)
+{
+	pkglink_t *link;
+	pkg_t *scan;
+	int best_depth = 0;
+	int res;
+
+	if (pkg->depi_depth)
+		return(pkg->depi_depth + 1);
+	pkg->flags |= PKGF_BUILDLOOP;
+	PKGLIST_FOREACH(link, &pkg->deponi_list) {
+		scan = link->pkg;
+		if (scan && (scan->flags & PKGF_BUILDLOOP) == 0) {
+			res = buildCalculateDepiDepth(scan);
+			if (best_depth < res)
+				best_depth = res;
+		}
+	}
+	pkg->flags &= ~PKGF_BUILDLOOP;
+	pkg->depi_depth = best_depth;
+
+	return (best_depth + 1);
+}
+
+/*
  * Take a list of pkg ready to go, sort it, and assign it to worker
  * slots.  This routine blocks in waitbuild() until it can dispose of
  * the entire list.
@@ -757,7 +796,8 @@ qsort_depi(const void *pkg1_arg, const void *pkg2_arg)
 	const pkg_t *pkg1 = *(const pkg_tt *)pkg1_arg;
 	const pkg_t *pkg2 = *(const pkg_tt *)pkg2_arg;
 
-	return (pkg2->depi_count - pkg1->depi_count);
+	return ((pkg2->depi_count * pkg2->depi_depth) -
+		(pkg1->depi_count * pkg1->depi_depth));
 }
 
 /*
@@ -779,8 +819,11 @@ startworker(pkg_t *pkg, worker_t *work)
 		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 1);
 		RunningPkgDepSize += work->pkg_dep_size;
 
-		dlog(DLOG_ALL, "[%03d] %s START (estdep %ld bytes)\n",
-		     work->index, pkg->portdir, work->pkg_dep_size);
+		dlog(DLOG_ALL, "[%03d] %s START "
+			       "(idep=%d depi=%d/%d pkgdep=%3.2fM)\n",
+		     work->index, pkg->portdir,
+		     pkg->idep_count, pkg->depi_count, pkg->depi_depth,
+		     (double)work->pkg_dep_size / (1024.0 * 1024.0));
 
 		cleanworker(work);
 		pkg->flags |= PKGF_RUNNING;
