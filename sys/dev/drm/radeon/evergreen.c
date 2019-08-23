@@ -5786,7 +5786,16 @@ int evergreen_init(struct radeon_device *rdev)
 	if (r)
 		return r;
 
+#ifdef __DragonFly__
+	/*
+	   There are unresolved crashes on evergreen hardware,
+	   tell userland acceleration is not working properly
+	   Bug report: https://bugs.dragonflybsd.org/issues/3198
+	*/
+	rdev->accel_working = false;
+#else
 	rdev->accel_working = true;
+#endif
 	r = evergreen_startup(rdev);
 	if (r) {
 		dev_err(rdev->dev, "disabling GPU acceleration\n");
