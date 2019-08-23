@@ -145,13 +145,29 @@ _dlog(int which, const char *ctl, ...)
 	va_end(va);
 	len = strlen(buf);
 
+	/*
+	 * All logs also go to log 00.
+	 */
 	if (which != DLOG_ALL) {
 		fd = dlogfd(DLOG_ALL, O_RDWR|O_CREAT|O_APPEND);
 		if (fd > 0)
 			write(fd, buf, len);
 	}
+
+	/*
+	 * Nominal log target
+	 */
 	fd = dlogfd(which, O_RDWR|O_CREAT|O_APPEND);
 	write(fd, buf, len);
+
+	/*
+	 * If ncurses is not being used, all log output also goes
+	 * to stdout.
+	 */
+	if (UseNCurses == 0) {
+		write(1, buf, len);
+	}
+
 	free(buf);
 }
 

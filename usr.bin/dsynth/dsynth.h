@@ -75,6 +75,8 @@ struct pkglink;
 #define MOUNT_PROCFS_BINARY	"/sbin/mount_procfs"
 #define UMOUNT_BINARY		"/sbin/umount"
 
+#define ONEGB		(1024L * 1024 * 1024)
+
 /*
  * This can be ".tar", ".tgz", ".txz", or ".tbz".
  *
@@ -385,7 +387,8 @@ extern int NullStdinOpt;
 extern int UseCCache;
 extern int UseTmpfs;
 extern int NumCores;
-extern size_t PhysMem;
+extern long PhysMem;
+extern long PkgDepMemoryTarget;
 extern int MaxBulk;
 extern int MaxWorkers;
 extern int MaxJobs;
@@ -424,7 +427,7 @@ int dlog00_fd(void);
 void addbuildenv(const char *label, const char *data);
 
 void initbulk(void (*func)(bulk_t *bulk), int jobs);
-bulk_t *queuebulk(const char *s1, const char *s2, const char *s3,
+void queuebulk(const char *s1, const char *s2, const char *s3,
 			const char *s4);
 bulk_t *getbulk(void);
 void donebulk(void);

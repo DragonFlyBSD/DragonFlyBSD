@@ -45,9 +45,9 @@ int MaxWorkers = 8;
 int MaxJobs = 8;
 int UseTmpfsWork = 1;
 int UseTmpfsBase = 1;
-int UseNCurses = 1;
+int UseNCurses = -1;		/* indicates default operation (enabled) */
 int LeveragePrebuilt = 0;
-size_t PhysMem;
+long PhysMem;
 const char *OperatingSystemName = "Unknown";
 const char *ArchitectureName = "unknown";
 const char *MachineName = "unknown";
@@ -109,14 +109,16 @@ ParseConfiguration(int isworker)
 	len = sizeof(PhysMem);
 	if (sysctlbyname("hw.physmem", &PhysMem, &len, NULL, 0) < 0)
 		dfatal_errno("Cannot get hw.physmem");
+	if (PkgDepMemoryTarget == 0)
+		PkgDepMemoryTarget = PhysMem / 2;
 
 	/*
 	 * Calculate nominal defaults
 	 */
 	MaxBulk = NumCores;
 	MaxWorkers = MaxBulk / 2;
-	if (MaxWorkers > (int)(PhysMem / 1000000000))
-		MaxWorkers = PhysMem / 1000000000;
+	if (MaxWorkers > (int)((PhysMem + (ONEGB/2)) / ONEGB))
+		MaxWorkers = (PhysMem + (ONEGB/2)) / ONEGB;
 
 	if (MaxBulk < 1)
 		MaxBulk = 1;
@@ -318,7 +320,8 @@ parseConfigFile(const char *path)
 					"Config: Tmpfs_localbase must be "
 					"set to true, 'false' not supported");
 			} else if (strcmp(l1, "Display_with_ncurses") == 0) {
-				UseNCurses = truefalse(l2);
+				if (UseNCurses == -1)
+					UseNCurses = truefalse(l2);
 			} else if (strcmp(l1, "leverage_prebuilt") == 0) {
 				LeveragePrebuilt = truefalse(l2);
 				dassert(LeveragePrebuilt == 0,

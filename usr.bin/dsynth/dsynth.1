@@ -41,6 +41,7 @@
 .Nm
 .Op Fl dhvyS
 .Op Fl s Ar n
+.Op Fl m Ar gb
 .Ar directive
 .Op origins
 .Nm
@@ -145,6 +146,19 @@ ncurses and output the primary log (00_last_results.log) to the standard
 output, along with additional spew.
 .It Fl h
 Quickly output a synopsis of options and directives and exit.
+.It Fl m Ar gb
+Override the default package dependency memory target, in gigabytes.
+The default is 1/2 physical memory.  The number of workers will be limited
+such that the aggregate size of package dependencies installed in each
+worker slot does not exceed this value.
+.Pp
+This handles a well-known effect where the sheer amount of data that has
+to be installed in tmpfs filesystems for large ports, when multiplied by
+the number of worker slots, can force excessive paging to occur and leave
+preciously little memory available to actually run compiles.  Some paging
+is necessary to maintain maximum cpu utilization, but excessive paging
+can cause the whole machine to essentially become idle for extended
+periods of time.
 .It Fl v
 Quickly output the version and exit.
 .It Fl y

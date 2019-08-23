@@ -41,7 +41,7 @@ int BuildInitialized;
 int RunningWorkers;
 int DynamicMaxWorkers;
 int FailedWorkers;
-size_t RunningPkgDepSize;
+long RunningPkgDepSize;
 pthread_mutex_t WorkerMutex;
 pthread_cond_t WorkerCond;
 
@@ -919,6 +919,7 @@ static void
 waitbuild(int whilematch, int dynamicmax)
 {
 	static time_t wblast_time;
+	static time_t dmlast_time;
 	struct timespec ts;
 	worker_t *work;
 	time_t t;
@@ -977,93 +978,114 @@ waitbuild(int whilematch, int dynamicmax)
 			double max_swap = 0.40;
 			double dload[3];
 			double dswap;
-			int reduce1;
-			int reduce2;
-			int reduce3;
-			int reduce;
+			int max1;
+			int max2;
+			int max3;
+			int max_sel;
 			int noswap;
 
 			wblast_time = t;
 
 			/*
-			 * Reduction based on load
+			 * Cap based on load.  This is back-loaded.
 			 */
 			getloadavg(dload, 3);
 			if (dload[0] < min_load) {
-				reduce1 = 0;
+				max1 = MaxWorkers;
 			} else if (dload[0] <= max_load) {
-				reduce1 = 75 * (dload[0] - min_load) /
-					  (max_load - min_load);
+				max1 = MaxWorkers -
+				       MaxWorkers * 0.75 *
+				       (dload[0] - min_load) /
+				       (max_load - min_load);
 			} else {
-				reduce1 = MaxWorkers * 75 / 100;
+				max1 = MaxWorkers * 25 / 100;
 			}
 
 			/*
-			 * Reduction based on swap
+			 * Cap based on swap use.  This is back-loaded.
 			 */
 			dswap = getswappct(&noswap);
 			if (dswap < min_swap) {
-				reduce2 = 0;
+				max2 = MaxWorkers;
 			} else if (dswap <= max_swap) {
-				reduce2 = 75 * (dswap - min_swap) /
-					  (max_swap - min_swap);
+				max2 = MaxWorkers -
+				       MaxWorkers * 0.75 *
+				       (dswap - min_swap) /
+				       (max_swap - min_swap);
 			} else {
-				reduce2 = MaxWorkers * 75 / 100;
+				max2 = MaxWorkers * 25 / 100;
 			}
 
 			/*
-			 * Reduction based on memory use.  Slow-start
-			 * will handle slowly increasing the limit.
+			 * Cap based on aggregate pkg-dependency memory
+			 * use installed in worker slots.  This is
+			 * front-loaded.
+			 *
+			 * Since it can take a while for workers to retire
+			 * (to reduce RunningPkgDepSize), just set our
+			 * target 1 below the current run count to allow
+			 * jobs to retire without being replaced with new
+			 * jobs.
+			 *
+			 * In addition, in order to avoid a paging 'shock',
+			 * We enforce a 30 second-per-increment slow-start
+			 * once RunningPkgDepSize exceeds 1/2 the target.
 			 */
-			if (RunningPkgDepSize > PhysMem * 1 / 2)
-				reduce3 = RunningWorkers - 1;
-			else
-				reduce3 = 0;
+			if (RunningPkgDepSize > PkgDepMemoryTarget) {
+				max3 = RunningWorkers - 1;
+			} else if (RunningPkgDepSize > PkgDepMemoryTarget / 2) {
+				if (dmlast_time == 0 ||
+				    (unsigned)(t - dmlast_time) >= 30) {
+					dmlast_time = t;
+					max3 = RunningWorkers + 1;
+				} else {
+					max3 = RunningWorkers;
+				}
+			} else {
+				max3 = MaxWorkers;
+			}
 
 			/*
 			 * Priority reduction, convert to DynamicMaxWorkers
 			 */
-			reduce = reduce1;
-			if (reduce < reduce2)
-				reduce = reduce2;
-			if (reduce < reduce3)
-				reduce = reduce3;
-
-			reduce = MaxWorkers - reduce;
-			if (reduce < 4)
-				reduce = 4;
-			if (reduce > MaxWorkers)
-				reduce = MaxWorkers;
+			max_sel = max1;
+			if (max_sel > max2)
+				max_sel = max2;
+			if (max_sel > max3)
+				max_sel = max3;
 
 			/*
-			 * Handle slow-start
+			 * Restrict to allowed range, and also handle
+			 * slow-start.
 			 */
-			if (reduce > DynamicMaxWorkers + 1) {
-				reduce = DynamicMaxWorkers + 1;
-			}
+			if (max_sel < 1)
+				max_sel = 1;
+			if (max_sel > DynamicMaxWorkers + 1)
+				max_sel = DynamicMaxWorkers + 1;
+			if (max_sel > MaxWorkers)
+				max_sel = MaxWorkers;
 
 			/*
-			 * Stop waiting if DynamicMaxWorkers is going
-			 * to increase.
+			 * Stop waiting if DynamicMaxWorkers is going to
+			 * increase.
 			 */
-			if (DynamicMaxWorkers < reduce)
+			if (DynamicMaxWorkers < max1)
 				whilematch = -1;
 
 			/*
 			 * And adjust
 			 */
-			if (DynamicMaxWorkers != reduce) {
+			if (DynamicMaxWorkers != max1) {
 				dlog(DLOG_ALL,
-				     "[XXX] Load=%-6.2f(-%-2d) "
-				     "Swap=%-3.2f(-%-2d) "
-				     "Mem=%3.2fG(-%-2d) "
+				     "[XXX] Load=%-6.2f(%2d) "
+				     "Swap=%-3.2f(%2d) "
+				     "Mem=%3.2fG(%2d) "
 				     "Adjust Workers %d->%d\n",
-				     dload[0], reduce1,
-				     dswap * 100.0, reduce2,
-				     RunningPkgDepSize / 1e9, reduce3,
-				     DynamicMaxWorkers,
-				     reduce);
-				DynamicMaxWorkers = reduce;
+				     dload[0], max1,
+				     dswap * 100.0, max2,
+				     RunningPkgDepSize / (double)ONEGB, max3,
+				     DynamicMaxWorkers, max_sel);
+				DynamicMaxWorkers = max_sel;
 			}
 		}
 	}

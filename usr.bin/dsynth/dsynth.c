@@ -45,6 +45,7 @@ int DebugOpt;
 int NullStdinOpt = 1;
 int SlowStartOpt = 1;
 int DebugStopMode;
+long PkgDepMemoryTarget;
 char *DSynthExecPath;
 
 int
@@ -74,7 +75,7 @@ main(int ac, char **av)
 	/*
 	 * Process options and make sure the directive is present
 	 */
-	while ((c = getopt(ac, av, "dhvys:S")) != -1) {
+	while ((c = getopt(ac, av, "dhm:vys:S")) != -1) {
 		switch(c) {
 		case 'y':
 			++YesOpt;
@@ -96,6 +97,10 @@ main(int ac, char **av)
 			exit(0);
 		case 's':
 			SlowStartOpt = strtol(optarg, NULL, 0);
+			break;
+		case 'm':
+			PkgDepMemoryTarget = strtoul(optarg, NULL, 0);
+			PkgDepMemoryTarget *= ONEGB;
 			break;
 		default:
 			fprintf(stderr, "Unknown option: %c\n", c);
@@ -326,7 +331,15 @@ usage(int ecode)
 
 	fprintf(stderr,
     "dsynth [options] directive\n"
-    "    init		      - Initialize /etc/dsynth\n"
+    "    -d                   - Debug verbosity (-dd disables ncurses)\n"
+    "    -h                   - Display this screen and exit\n"
+    "    -m gb                - Load management based on pkgdep memory\n"
+    "    -v                   - Print version info and exit\n"
+    "    -y                   - Automatically answer yes to dsynth questions\n"
+    "    -s n                 - Set initial DynamicMaxWorkers\n"
+    "    -S                   - Disable ncurses\n"
+    "\n"
+    "    init                 - Initialize /etc/dsynth\n"
     "    status               - Dry-run of 'upgrade-system'\n"
     "    cleanup              - Clean-up mounts\n"
     "    configure            - Bring up configuration menu\n"
@@ -338,8 +351,8 @@ usage(int ecode)
     "    purge-distfiles      - Delete obsolete source distribution files\n"
     "    status-everything    - Dry-run of 'everything'\n"
     "    everything           - Build entire dports tree and repo database\n"
-    "    version              - Display version info and exit\n"
-    "    help                 - Displays this screen\n"
+    "    version              - Print version info and exit\n"
+    "    help                 - Display this screen and exit\n"
     "    status     [ports]   - Dry-run of 'build' with given list\n"
     "    build      [ports]   - Incrementally build dports based on the given\n"
     "                           list, but asks before updating the repo\n"

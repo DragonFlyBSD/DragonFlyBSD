@@ -181,7 +181,7 @@ DoWorkerMounts(worker_t *work)
 	domount(work, NULLFS_RO, "$/usr/share", "/usr/share", NULL);
 	domount(work, TMPFS_RW,  "dummy", "/usr/local", NULL);
 	domount(work, NULLFS_RO, "$/usr/games", "/usr/games", NULL);
-	domount(work, NULLFS_RO, "$/usr/src", "/usr/src", NULL);
+/*	domount(work, NULLFS_RO, "$/usr/src", "/usr/src", NULL);*/
 	domount(work, NULLFS_RO, DPortsPath, "/xports", NULL);
 	domount(work, NULLFS_RW, OptionsPath, "/options", NULL);
 	domount(work, NULLFS_RW, PackagesPath, "/packages", NULL);
@@ -216,7 +216,7 @@ DoWorkerUnmounts(worker_t *work)
 	for (retries = 0; retries < 10; ++retries) {
 		dounmount(work, "/proc");
 		dounmount(work, "/dev");
-		dounmount(work, "/usr/src");
+/*		dounmount(work, "/usr/src");*/
 		dounmount(work, "/usr/games");
 		dounmount(work, "/boot/modules.local");
 		dounmount(work, "/boot");

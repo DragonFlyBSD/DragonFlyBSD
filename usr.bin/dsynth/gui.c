@@ -94,6 +94,9 @@ static int guireadline(int fd, char **bufp);
 void
 GuiInit(void)
 {
+	if (UseNCurses == 0)
+		return;
+
 	CWin = initscr();
 	GuiReset();
 	GuiStartTime = time(NULL);
@@ -114,6 +117,9 @@ void
 GuiReset(void)
 {
 	int i;
+
+	if (UseNCurses == 0)
+		return;
 
 	if (CMon) {
 		delwin(CMon);
@@ -171,6 +177,9 @@ GuiUpdateTop(void)
 	double dswap;
 	int noswap;
 	time_t t;
+
+	if (UseNCurses == 0)
+		return;
 
 	/*
 	 * Time
@@ -267,6 +276,9 @@ GuiUpdateLogs(void)
 	ssize_t n;
 	int w;
 
+	if (UseNCurses == 0)
+		return;
+
 	for (;;) {
 		n = guireadline(fd, &ptr);
 		if (n < 0)
@@ -316,6 +328,9 @@ GuiUpdate(worker_t *work)
 	int h;
 	int m;
 	int s;
+
+	if (UseNCurses == 0)
+		return;
 
 	phase = "Unknown";
 	origin = "";
@@ -462,6 +477,9 @@ GuiSync(void)
 {
 	int c;
 
+	if (UseNCurses == 0)
+		return;
+
 	while ((c = wgetch(CMon)) != ERR) {
 		if (c == KEY_RESIZE)
 			GuiReset();
@@ -473,6 +491,9 @@ GuiSync(void)
 void
 GuiDone(void)
 {
+	if (UseNCurses == 0)
+		return;
+
 	endwin();
 }
 

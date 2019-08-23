@@ -133,7 +133,7 @@ donebulk(void)
 	bzero(JobsAry, sizeof(JobsAry));
 }
 
-bulk_t *
+void
 queuebulk(const char *s1, const char *s2, const char *s3, const char *s4)
 {
 	bulk_t *bulk;
@@ -152,12 +152,12 @@ queuebulk(const char *s1, const char *s2, const char *s3, const char *s4)
 	pthread_mutex_lock(&BulkMutex);
 	*BulkSubmitTail = bulk;
 	BulkSubmitTail = &bulk->next;
-	pthread_mutex_unlock(&BulkMutex);
-
-	if (BulkCurJobs < BulkMaxJobs)
+	if (BulkCurJobs < BulkMaxJobs) {
+		pthread_mutex_unlock(&BulkMutex);
 		bulkstart();
-
-	return bulk;
+	} else {
+		pthread_mutex_unlock(&BulkMutex);
+	}
 }
 
 /*
@@ -325,7 +325,6 @@ bulkthread(void *arg)
 			pthread_cond_wait(&job->cond, &BulkMutex);
 		bulk = job->active;
 		if (bulk) {
-			job->active = NULL;
 			bulk->state = ISRUNNING;
 
 			pthread_mutex_unlock(&BulkMutex);
@@ -350,6 +349,8 @@ bulkthread(void *arg)
 			bulk->state = ONRUN;
 			job->active = bulk;
 			++BulkCurJobs;
+		} else {
+			job->active = NULL;
 		}
 	}
 	pthread_mutex_unlock(&BulkMutex);
