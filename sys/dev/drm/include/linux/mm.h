@@ -58,8 +58,14 @@ nth_page(struct page *page, int n)
 
 #define PAGE_ALIGN(addr) round_page(addr)
 
+#define VM_FAULT_RETRY		0x0400
+
+#define FAULT_FLAG_ALLOW_RETRY		0x04
+#define FAULT_FLAG_RETRY_NOWAIT		0x08
+
 struct vm_fault {
-	uintptr_t	virtual_address;
+	unsigned int flags;
+	void __user *virtual_address;
 };
 
 #define VM_FAULT_NOPAGE		0x0001

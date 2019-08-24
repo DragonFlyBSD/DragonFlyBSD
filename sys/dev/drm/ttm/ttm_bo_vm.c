@@ -48,7 +48,6 @@
 
 #define TTM_BO_VM_NUM_PREFAULT 16
 
-#if 0
 static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 				struct vm_area_struct *vma,
 				struct vm_fault *vmf)
@@ -74,7 +73,9 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 		if (vmf->flags & FAULT_FLAG_RETRY_NOWAIT)
 			goto out_unlock;
 
+#if 0
 		up_read(&vma->vm_mm->mmap_sem);
+#endif
 		(void) ttm_bo_wait(bo, true, false);
 		goto out_unlock;
 	}
@@ -90,7 +91,6 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 out_unlock:
 	return ret;
 }
-#endif
 
 /*
  * Always unstall on unexpected vm_page alias, fatal bus fault.
@@ -418,9 +418,25 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 	vm_page_t m, mtmp;
 	int ret;
 	int retval = VM_PAGER_OK;
-	struct ttm_mem_type_manager *man;
+	struct ttm_mem_type_manager *man =
+		&bdev->man[bo->mem.mem_type];
+	struct vm_area_struct cvma;
 
-	man = &bdev->man[bo->mem.mem_type];
+/*
+   The Linux code expects to receive these arguments:
+   - struct vm_area_struct *vma
+   - struct vm_fault *vmf
+*/
+#ifdef __DragonFly__
+	struct vm_area_struct vmas;
+	struct vm_area_struct *vma = &vmas;
+	struct vm_fault vmfs;
+	struct vm_fault *vmf = &vmfs;
+
+	memset(vma, 0, sizeof(*vma));
+	memset(vmf, 0, sizeof(*vmf));
+#endif
+
 	vm_object_pip_add(vm_obj, 1);
 
 	/*
@@ -451,14 +467,48 @@ retry:
 	m = NULL;
 
 	/*
-	 * NOTE: set nowait to false, we don't have ttm_bo_wait_unreserved()
-	 * 	 for the -BUSY case yet.
+	 * Work around locking order reversal in fault / nopfn
+	 * between mmap_sem and bo_reserve: Perform a trylock operation
+	 * for reserve, and if it fails, retry the fault after waiting
+	 * for the buffer to become unreserved.
 	 */
-	ret = ttm_bo_reserve(bo, true, false, 0);
+	ret = ttm_bo_reserve(bo, true, true, NULL);
 	if (unlikely(ret != 0)) {
+		if (ret != -EBUSY) {
+			retval = VM_PAGER_ERROR;
+			VM_OBJECT_LOCK(vm_obj);
+			goto out_unlock2;
+		}
+
+		if (vmf->flags & FAULT_FLAG_ALLOW_RETRY || 1) {
+			if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
+#if 0
+				up_read(&vma->vm_mm->mmap_sem);
+#endif
+				(void) ttm_bo_wait_unreserved(bo);
+			}
+
+#ifndef __DragonFly__
+			return VM_FAULT_RETRY;
+#else
+			VM_OBJECT_LOCK(vm_obj);
+			lwkt_yield();
+			goto retry;
+#endif
+		}
+
+		/*
+		 * If we'd want to change locking order to
+		 * mmap_sem -> bo::reserve, we'd use a blocking reserve here
+		 * instead of retrying the fault...
+		 */
+#ifndef __DragonFly__
+		return VM_FAULT_NOPAGE;
+#else
 		retval = VM_PAGER_ERROR;
 		VM_OBJECT_LOCK(vm_obj);
 		goto out_unlock2;
+#endif
 	}
 
 	if (bdev->driver->fault_reserve_notify) {
@@ -483,28 +533,13 @@ retry:
 	 * Wait for buffer data in transit, due to a pipelined
 	 * move.
 	 */
-	if (test_bit(TTM_BO_PRIV_FLAG_MOVING, &bo->priv_flags)) {
-		/*
-		 * Here, the behavior differs between Linux and FreeBSD.
-		 *
-		 * On Linux, the wait is interruptible (3rd argument to
-		 * ttm_bo_wait). There must be some mechanism to resume
-		 * page fault handling, once the signal is processed.
-		 *
-		 * On FreeBSD, the wait is uninteruptible. This is not a
-		 * problem as we can't end up with an unkillable process
-		 * here, because the wait will eventually time out.
-		 *
-		 * An example of this situation is the Xorg process
-		 * which uses SIGALRM internally. The signal could
-		 * interrupt the wait, causing the page fault to fail
-		 * and the process to receive SIGSEGV.
-		 */
-		ret = ttm_bo_wait(bo, false, false);
-		if (unlikely(ret != 0)) {
-			retval = VM_PAGER_ERROR;
-			goto out_unlock;
-		}
+	ret = ttm_bo_vm_fault_idle(bo, vma, vmf);
+	if (unlikely(ret != 0)) {
+		retval = ret;
+#ifdef __DragonFly__
+		retval = VM_PAGER_ERROR;
+#endif
+		goto out_unlock;
 	}
 
 	ret = ttm_mem_io_lock(man, true);
@@ -537,18 +572,37 @@ retry:
 	 * vma->vm_page_prot when the object changes caching policy, with
 	 * the correct locks held.
 	 */
+
+	/*
+	 * Make a local vma copy to modify the page_prot member
+	 * and vm_flags if necessary. The vma parameter is protected
+	 * by mmap_sem in write mode.
+	 */
+	cvma = *vma;
+#if 0
+	cvma.vm_page_prot = vm_get_page_prot(cvma.vm_flags);
+#else
+	cvma.vm_page_prot = 0;
+#endif
+
 	if (bo->mem.bus.is_iomem) {
+#ifdef __DragonFly__
 		m = vm_phys_fictitious_to_vm_page(bo->mem.bus.base +
 						  bo->mem.bus.offset + offset);
 		pmap_page_set_memattr(m, ttm_io_prot(bo->mem.placement, 0));
+#endif
+		cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
+						cvma.vm_page_prot);
 	} else {
-		/* Allocate all page at once, most common usage */
 		ttm = bo->ttm;
+		cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
+						cvma.vm_page_prot);
+
+		/* Allocate all page at once, most common usage */
 		if (ttm->bdev->driver->ttm_tt_populate(ttm)) {
 			retval = VM_PAGER_ERROR;
 			goto out_io_unlock;
 		}
-		ttm = bo->ttm;
 
 		m = (struct vm_page *)ttm->pages[OFF_TO_IDX(offset)];
 		if (unlikely(!m)) {
