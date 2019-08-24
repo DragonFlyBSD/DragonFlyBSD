@@ -45,8 +45,9 @@ long RunningPkgDepSize;
 pthread_mutex_t WorkerMutex;
 pthread_cond_t WorkerCond;
 
-static int build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
-			int *app, int *hasworkp, int level, int first);
+static int build_find_leaves(pkg_t *parent, pkg_t *pkg,
+			pkg_t ***build_tailp, int *app, int *hasworkp,
+			int depth, int first, int first_one_only);
 static int buildCalculateDepiDepth(pkg_t *pkg);
 static void build_clear_trav(pkg_t *pkg);
 static void startbuild(pkg_t **build_listp, pkg_t ***build_tailp);
@@ -59,7 +60,7 @@ static void workercomplete(worker_t *work);
 static void *childBuilderThread(void *arg);
 static int childInstallPkgDeps(worker_t *work);
 static size_t childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list,
-			int undoit, int depth);
+			int undoit, int depth, int first_one_only);
 static void dophase(worker_t *work, wmsg_t *wmsg,
 			int wdog, int phaseid, const char *phase);
 static void phaseReapAll(void);
@@ -261,7 +262,7 @@ DoBuild(pkg_t *pkgs)
 			} else {
 				int ap = 0;
 				build_find_leaves(NULL, scan, &build_tail,
-						  &ap, &haswork, 0, first);
+						  &ap, &haswork, 0, first, 0);
 				ddprintf(0, "TOPLEVEL %s %08x\n",
 					 scan->portdir, ap);
 			}
@@ -297,22 +298,27 @@ DoBuild(pkg_t *pkgs)
 static
 int
 build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
-		  int *app, int *hasworkp, int level, int first)
+		  int *app, int *hasworkp, int depth, int first,
+		  int first_one_only)
 {
 	pkglink_t *link;
 	pkg_t *scan;
 	int idep_count = 0;
 	int apsub;
+	int dfirst_one_only;
+	int ndepth;
 	char *buf;
+
+	ndepth = depth + 1;
 
 	/*
 	 * Already on build list, possibly in-progress, tell caller that
 	 * it is not ready.
 	 */
-	ddprintf(level, "sbuild_find_leaves %d %s %08x {\n",
-		 level, pkg->portdir, pkg->flags);
+	ddprintf(ndepth, "sbuild_find_leaves %d %s %08x {\n",
+		 depth, pkg->portdir, pkg->flags);
 	if (pkg->flags & PKGF_BUILDLIST) {
-		ddprintf(level, "} (already on build list)\n");
+		ddprintf(ndepth, "} (already on build list)\n");
 		*app |= PKGF_NOTREADY;
 		return (pkg->idep_count);
 	}
@@ -320,13 +326,27 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 	/*
 	 * Check dependencies
 	 */
-	++level;
 	PKGLIST_FOREACH(link, &pkg->idepon_list) {
 		scan = link->pkg;
 
-		if (scan == NULL)
+		if (scan == NULL) {
+			if (first_one_only)
+				break;
 			continue;
-		ddprintf(level, "check %s %08x\t", scan->portdir, scan->flags);
+		}
+		ddprintf(ndepth, "check %s %08x\t", scan->portdir, scan->flags);
+
+		/*
+		 * If this dependency is to a DUMMY node it is a dependency
+		 * only on the default flavor which is only the first node
+		 * under this one, not all of them.
+		 *
+		 * NOTE: The depth is not being for complex dependency type
+		 *	 tests like it is in childInstallPkgDeps_recurse(),
+		 *	 so we don't have to hicup it like we do in that
+		 *	 procedure.
+		 */
+		dfirst_one_only = (scan->flags & PKGF_DUMMY) ? 1 : 0;
 
 		/*
 		 * When accounting for a successful build, just bump
@@ -339,6 +359,8 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		if (scan->flags & PKGF_SUCCESS) {
 			ddprintf(0, "SUCCESS - OK\n");
 			++idep_count;
+			if (first_one_only)
+				break;
 			continue;
 		}
 
@@ -354,11 +376,15 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			ddprintf(0, "NOBUILD - OK "
 				    "(propogate failure upward)\n");
 			*app |= PKGF_NOBUILD_S;
+			if (first_one_only)
+				break;
 			continue;
 		}
 		if (scan->flags & PKGF_ERROR) {
 			ddprintf(0, "ERROR - OK (propogate failure upward)\n");
 			*app |= PKGF_NOBUILD_S;
+			if (first_one_only)
+				break;
 			continue;
 		}
 
@@ -388,6 +414,8 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		if (scan->flags & PKGF_BUILDTRAV) {
 			ddprintf(0, " [BUILDTRAV]\n");
 			*app |= PKGF_NOTREADY;
+			if (first_one_only)
+				break;
 			continue;
 		}
 
@@ -399,25 +427,32 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			dfatal("pkg dependency loop %s -> %s",
 				parent->portdir, scan->portdir);
 		}
+
+		/*
+		 * NOTE: For debug tabbing purposes we use (ndepth + 1)
+		 *	 here (i.e. depth + 2) in our iteration.
+		 */
 		scan->flags |= PKGF_BUILDLOOP;
 		apsub = 0;
 		ddprintf(0, " SUBRECURSION {\n");
 		idep_count += build_find_leaves(pkg, scan, build_tailp,
 						&apsub, hasworkp,
-						level + 1, first);
+						ndepth + 1, first,
+						dfirst_one_only);
 		scan->flags &= ~PKGF_BUILDLOOP;
 		*app |= apsub;
 		if (apsub & PKGF_NOBUILD) {
-			ddprintf(level, "} (sub-nobuild)\n");
+			ddprintf(ndepth, "} (sub-nobuild)\n");
 		} else if (apsub & PKGF_ERROR) {
-			ddprintf(level, "} (sub-error)\n");
+			ddprintf(ndepth, "} (sub-error)\n");
 		} else if (apsub & PKGF_NOTREADY) {
-			ddprintf(level, "} (sub-notready)\n");
+			ddprintf(ndepth, "} (sub-notready)\n");
 		} else {
-			ddprintf(level, "} (sub-ok)\n");
+			ddprintf(ndepth, "} (sub-ok)\n");
 		}
+		if (first_one_only)
+			break;
 	}
-	--level;
 	pkg->idep_count = idep_count;
 	pkg->flags |= PKGF_BUILDTRAV;
 
@@ -468,7 +503,7 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		 * This can only happen if the ERROR has already been
 		 * processed and accounted for.
 		 */
-		ddprintf(level, "} (ERROR - %s)\n", pkg->portdir);
+		ddprintf(depth, "} (ERROR - %s)\n", pkg->portdir);
 	} else if (*app & PKGF_NOTREADY) {
 		/*
 		 * We don't set PKGF_NOTREADY in the pkg, it is strictly
@@ -486,9 +521,9 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		 */
 		;
 	} else if (pkg->flags & PKGF_SUCCESS) {
-		ddprintf(level, "} (SUCCESS - %s)\n", pkg->portdir);
+		ddprintf(depth, "} (SUCCESS - %s)\n", pkg->portdir);
 	} else if (pkg->flags & PKGF_DUMMY) {
-		ddprintf(level, "} (DUMMY/META - SUCCESS)\n");
+		ddprintf(depth, "} (DUMMY/META - SUCCESS)\n");
 		pkg->flags |= PKGF_SUCCESS;
 		*hasworkp = 1;
 		if (first) {
@@ -506,7 +541,7 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		 * the first pass, we count this as an initial pruning
 		 * pass and reduce BuildTotal.
 		 */
-		ddprintf(level, "} (PACKAGED - SUCCESS)\n");
+		ddprintf(depth, "} (PACKAGED - SUCCESS)\n");
 		pkg->flags |= PKGF_SUCCESS;
 		*hasworkp = 1;
 		if (first) {
@@ -526,13 +561,13 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		 */
 		*hasworkp = 1;
 		if (pkg->flags & PKGF_NOBUILD_I)
-			ddprintf(level, "} (ADDLIST(IGNORE/BROKEN) - %s)\n",
+			ddprintf(depth, "} (ADDLIST(IGNORE/BROKEN) - %s)\n",
 				 pkg->portdir);
 		else if (pkg->flags & PKGF_NOBUILD)
-			ddprintf(level, "} (ADDLIST(NOBUILD) - %s)\n",
+			ddprintf(depth, "} (ADDLIST(NOBUILD) - %s)\n",
 				 pkg->portdir);
 		else
-			ddprintf(level, "} (ADDLIST - %s)\n", pkg->portdir);
+			ddprintf(depth, "} (ADDLIST - %s)\n", pkg->portdir);
 		pkg->flags |= PKGF_BUILDLIST;
 		**build_tailp = pkg;
 		*build_tailp = &pkg->build_next;
@@ -823,8 +858,8 @@ startworker(pkg_t *pkg, worker_t *work)
 		/* fall through */
 	case WORKER_IDLE:
 		work->pkg_dep_size =
-		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 0, 1);
-		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 1, 1);
+		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 0, 1, 0);
+		childInstallPkgDeps_recurse(NULL, &pkg->idepon_list, 1, 1, 0);
 		RunningPkgDepSize += work->pkg_dep_size;
 
 		dlog(DLOG_ALL, "[%03d] START   %s "
@@ -1365,8 +1400,8 @@ childInstallPkgDeps(worker_t *work)
 	fprintf(fp, "#\n");
 	fchmod(fileno(fp), 0755);
 
-	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 0, 1);
-	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 1, 1);
+	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 0, 1, 0);
+	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 1, 1, 0);
 	fprintf(fp, "\nexit 0\n");
 	fclose(fp);
 	free(buf);
@@ -1375,14 +1410,29 @@ childInstallPkgDeps(worker_t *work)
 }
 
 static size_t
-childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit, int depth)
+childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
+			    int depth, int first_one_only)
 {
 	pkglink_t *link;
 	pkg_t *pkg;
 	size_t tot = 0;
+	int ndepth;
+	int nfirst;
 
 	PKGLIST_FOREACH(link, list) {
 		pkg = link->pkg;
+
+		/*
+		 * We don't want to mess up our depth test just below if
+		 * a DUMMY node had to be inserted.  The nodes under the
+		 * dummy node.
+		 *
+		 * The elements under a dummy node represent all the flabor,
+		 * a dependency that directly references a dummy node only
+		 * uses the first flavor (first_one_only / nfirst).
+		 */
+		ndepth = (pkg->flags & PKGF_DUMMY) ? depth : depth + 1;
+		nfirst = (pkg->flags & PKGF_DUMMY) ? 1 : 0;
 
 		/*
 		 * We only need all packages for the top-level dependencies.
@@ -1390,16 +1440,22 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit, int depth)
 		 * (types greater than DEP_TYPE_BUILD) since they are already
 		 * built.
 		 */
-		if (depth > 1 && link->dep_type <= DEP_TYPE_BUILD)
+		if (depth > 1 && link->dep_type <= DEP_TYPE_BUILD) {
+			if (first_one_only)
+				break;
 			continue;
+		}
 
 		if (undoit) {
 			if (pkg->dsynth_install_flg == 1) {
 				pkg->dsynth_install_flg = 0;
 				tot += childInstallPkgDeps_recurse(fp,
 							    &pkg->idepon_list,
-							    undoit, depth + 1);
+							    undoit,
+							    ndepth, nfirst);
 			}
+			if (first_one_only)
+				break;
 			continue;
 		}
 		if (pkg->dsynth_install_flg) {
@@ -1407,13 +1463,18 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit, int depth)
 				fprintf(fp, "echo 'AlreadyHave %s'\n",
 					pkg->pkgfile);
 			}
+			if (first_one_only)
+				break;
 			continue;
 		}
 
 		tot += childInstallPkgDeps_recurse(fp, &pkg->idepon_list,
-						   undoit, depth + 1);
-		if (pkg->dsynth_install_flg)
+						   undoit, ndepth, nfirst);
+		if (pkg->dsynth_install_flg) {
+			if (first_one_only)
+				break;
 			continue;
+		}
 		pkg->dsynth_install_flg = 1;
 
 		/*
@@ -1476,6 +1537,8 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit, int depth)
 			}
 			free(path);
 		}
+		if (first_one_only)
+			break;
 	}
 	return tot;
 }
