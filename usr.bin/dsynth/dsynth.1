@@ -39,7 +39,7 @@
 .Nd dsynth bulk dports builder utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl dhvyS
+.Op Fl dhvyDS
 .Op Fl s Ar n
 .Op Fl m Ar gb
 .Ar directive
@@ -140,7 +140,7 @@ not use regular filesystem space.
 .Pp
 .Sh OPTIONS
 .Bl -tag -width indent
-.It Fl d
+.It Fl d[d...]
 Run in debug mode.  If specified two or more times this will turn off
 ncurses and output the primary log (00_last_results.log) to the standard
 output, along with additional spew.
@@ -173,9 +173,13 @@ This gives
 a slower ramp that it can load manage against.
 Specifying 0 disables the slow-start feature and the maximum number of
 worker slots (limited by the dependency graph) will be loaded immediately.
-.It Fl S
+.It Fl D
+Turn on DEVELOPER mode when building ports.
+.It Fl S[S]
 Turn off curses for script friendliness.  The output will be log 00 and
 should be redirected to /dev/null or something similar.
+If you supply the options twice, color output escapes will also be
+turned off.
 You may also wish to use the
 .Fl y
 option for scripting dsynth.

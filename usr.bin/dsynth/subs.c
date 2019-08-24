@@ -221,6 +221,10 @@ dlog00_fd(void)
 	return(dlogfd(DLOG_ALL, O_RDWR|O_CREAT|O_APPEND));
 }
 
+/*
+ * Bulk and Build environment control.  These routines are only called
+ * unthreaded or when dsynth threads are idle.
+ */
 void
 addbuildenv(const char *label, const char *data, int type)
 {
@@ -232,6 +236,26 @@ addbuildenv(const char *label, const char *data, int type)
 	env->type = type;
 	*BuildEnvTail = env;
 	BuildEnvTail = &env->next;
+}
+
+void
+delbuildenv(const char *label)
+{
+	buildenv_t **envp;
+	buildenv_t *env;
+
+	envp = &BuildEnv;
+	while ((env = *envp) != NULL) {
+		if (strcmp(env->label, label) == 0) {
+			*envp = env->next;
+			free(env->label);
+			free(env->data);
+			free(env);
+		} else {
+			envp = &env->next;
+		}
+	}
+	BuildEnvTail = envp;
 }
 
 void

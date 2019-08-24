@@ -42,6 +42,7 @@
 
 static void childGetPackageInfo(bulk_t *bulk);
 static void childGetBinaryDistInfo(bulk_t *bulk);
+static void childOptimizeEnv(bulk_t *bulk);
 static pkg_t *resolveDeps(pkg_t *dep_list, pkg_t ***list_tailp, int gentopo);
 static void resolveDepString(pkg_t *pkg, char *depstr,
 			int gentopo, int dep_type);
@@ -364,6 +365,31 @@ GetPkgPkg(pkg_t *list)
 	donebulk();
 
 	return scan;
+}
+
+/*
+ * Try to optimize the environment by supplying information that
+ * the ports system would generally have to run stuff to get on
+ * every package.
+ *
+ * See childOptimizeEnv() for the actual handling.  We execute
+ * a single make -V... -V... for ports-mgmt/pkg from within the
+ * bulk system (which handles the environment and disables
+ * /etc/make.conf), and we then call addbuildenv() as appropriate.
+ *
+ * _PERL5_FROM_BIN
+ * add others...
+ */
+void
+OptimizeEnv(void)
+{
+	bulk_t *bulk;
+
+	initbulk(childOptimizeEnv, MaxBulk);
+	queuebulk("ports-mgmt", "pkg", NULL, NULL);
+	bulk = getbulk();
+	freebulk(bulk);
+	donebulk();
 }
 
 /*
@@ -857,6 +883,57 @@ childGetBinaryDistInfo(bulk_t *bulk)
 		printf("pkg query command failed for %s\n", repopath);
 	}
 	free(repopath);
+}
+
+static void
+childOptimizeEnv(bulk_t *bulk)
+{
+	char *portpath;
+	char *ptr;
+	FILE *fp;
+	int line;
+	size_t len;
+	const char *cav[MAXCAC];
+	pid_t pid;
+	int cac;
+
+	asprintf(&portpath, "%s/%s/%s", DPortsPath, bulk->s1, bulk->s2);
+
+	cac = 0;
+	cav[cac++] = MAKE_BINARY;
+	cav[cac++] = "-C";
+	cav[cac++] = portpath;
+	cav[cac++] = "-V_PERL5_FROM_BIN";
+
+	fp = dexec_open(cav, cac, &pid, 1, 1);
+	free(portpath);
+
+	line = 1;
+	while ((ptr = fgetln(fp, &len)) != NULL) {
+		if (len == 0 || ptr[len-1] != '\n') {
+			dfatal("Bad package info for %s/%s response line %d",
+			       bulk->s1, bulk->s2, line);
+		}
+		ptr[--len] = 0;
+
+		switch(line) {
+		case 1:		/* _PERL5_FROM_BIN */
+			addbuildenv("_PERL5_FROM_BIN", ptr, BENV_ENVIRONMENT);
+			break;
+		default:
+			printf("childOptimizeEnv: EXTRA LINE: %s\n", ptr);
+			break;
+		}
+		++line;
+	}
+	if (line == 1) {
+		printf("DPort not found: %s/%s\n", bulk->s1, bulk->s2);
+	} else if (line != 1 + 1) {
+		printf("DPort corrupt: %s/%s\n", bulk->s1, bulk->s2);
+	}
+	if (dexec_close(fp, pid)) {
+		printf("childOptimizeEnv() failed\n");
+	}
 }
 
 static int

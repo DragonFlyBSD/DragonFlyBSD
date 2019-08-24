@@ -1706,7 +1706,6 @@ WorkerProcess(int ac, char **av)
 		addbuildenv("CCACHE_DIR", "/ccache", BENV_MAKECONF);
 	}
 
-
 #if 0
 	setenv("_PERL5_FROM_BIN", "5.28.2", 1);
 	setenv("OPSYS", OperatingSystemName, 1);

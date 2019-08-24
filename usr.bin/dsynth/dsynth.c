@@ -77,10 +77,13 @@ main(int ac, char **av)
 	 * Process options and make sure the directive is present
 	 */
 	sopt = 0;
-	while ((c = getopt(ac, av, "dhm:vys:S")) != -1) {
+	while ((c = getopt(ac, av, "dhm:vys:DS")) != -1) {
 		switch(c) {
 		case 'y':
 			++YesOpt;
+			break;
+		case 'D':
+			WorkerProcFlags |= WORKER_PROC_DEVELOPER;
 			break;
 		case 'S':
 			UseNCurses = 0;
@@ -148,6 +151,14 @@ main(int ac, char **av)
 	addbuildenv("BATCH", "yes", BENV_ENVIRONMENT);
 	addbuildenv("PKG_SUFX", USE_PKG_SUFX, BENV_ENVIRONMENT);
 
+#if 0
+	/*
+	 *
+	 */
+	addbuildenv("OSTYPE", OperatingSystemName, BENV_ENVIRONMENT);
+	addbuildenv("MACHTYPE", MachineName, BENV_ENVIRONMENT);
+#endif
+
 	/*
 	 * Special directive for when dsynth execs itself to manage
 	 * a worker chroot.
@@ -169,9 +180,11 @@ main(int ac, char **av)
 #endif
 		WorkerProcFlags |= WORKER_PROC_DEBUGSTOP;
 		DoCleanBuild(1);
+		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		DoBuild(pkgs);
 	} else if (strcmp(av[0], "status") == 0) {
+		OptimizeEnv();
 		if (ac - 1)
 			pkgs = ParsePackageList(ac - 1, av + 1);
 		else
@@ -184,25 +197,31 @@ main(int ac, char **av)
 		DoConfigure();
 	} else if (strcmp(av[0], "upgrade-system") == 0) {
 		DoCleanBuild(1);
+		OptimizeEnv();
 		pkgs = GetLocalPackageList();
 		DoBuild(pkgs);
 		DoRebuildRepo(0);
 		DoUpgradePkgs(pkgs, 0);
 	} else if (strcmp(av[0], "prepare-system") == 0) {
 		DoCleanBuild(1);
+		OptimizeEnv();
 		pkgs = GetLocalPackageList();
 		DoBuild(pkgs);
 		DoRebuildRepo(0);
 	} else if (strcmp(av[0], "rebuild-repository") == 0) {
+		OptimizeEnv();
 		DoRebuildRepo(0);
 	} else if (strcmp(av[0], "purge-distfiles") == 0) {
+		OptimizeEnv();
 		pkgs = GetFullPackageList();
 		PurgeDistfiles(pkgs);
 	} else if (strcmp(av[0], "status-everything") == 0) {
+		OptimizeEnv();
 		pkgs = GetFullPackageList();
 		DoStatus(pkgs);
 	} else if (strcmp(av[0], "everything") == 0) {
 		DoCleanBuild(1);
+		OptimizeEnv();
 		pkgs = GetFullPackageList();
 		DoBuild(pkgs);
 		DoRebuildRepo(1);
@@ -215,22 +234,26 @@ main(int ac, char **av)
 		exit(0);
 	} else if (strcmp(av[0], "build") == 0) {
 		DoCleanBuild(1);
+		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		DoBuild(pkgs);
 		DoRebuildRepo(1);
 		DoUpgradePkgs(pkgs, 1);
 	} else if (strcmp(av[0], "just-build") == 0) {
 		DoCleanBuild(1);
+		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		DoBuild(pkgs);
 	} else if (strcmp(av[0], "install") == 0) {
 		DoCleanBuild(1);
+		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		DoBuild(pkgs);
 		DoRebuildRepo(0);
 		DoUpgradePkgs(pkgs, 0);
 	} else if (strcmp(av[0], "force") == 0) {
 		DoCleanBuild(1);
+		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		RemovePackages(pkgs);
 		DoBuild(pkgs);
@@ -238,6 +261,7 @@ main(int ac, char **av)
 		DoUpgradePkgs(pkgs, 1);
 	} else if (strcmp(av[0], "test") == 0) {
 		DoCleanBuild(1);
+		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1);
 		RemovePackages(pkgs);
 		WorkerProcFlags |= WORKER_PROC_DEVELOPER;
@@ -340,6 +364,7 @@ usage(int ecode)
     "    -v                   - Print version info and exit\n"
     "    -y                   - Automatically answer yes to dsynth questions\n"
     "    -s n                 - Set initial DynamicMaxWorkers\n"
+    "    -D                   - Enable DEVELOPER mode\n"
     "    -S                   - Disable ncurses\n"
     "\n"
     "    init                 - Initialize /etc/dsynth\n"

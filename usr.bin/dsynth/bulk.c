@@ -65,6 +65,9 @@ static int writeall(int fd, const void *buf, size_t bytes);
 #endif
 static void *bulkthread(void *arg);
 
+/*
+ * Initialize for bulk scan operations.  Always paired with donebulk()
+ */
 void
 initbulk(void (*func)(bulk_t *bulk), int jobs)
 {
@@ -78,6 +81,8 @@ initbulk(void (*func)(bulk_t *bulk), int jobs)
 	BulkMaxJobs = jobs;
 	BulkFunc = func;
 	BulkScanJob = 0;
+
+	addbuildenv("__MAKE_CONF", "/dev/null", BENV_ENVIRONMENT);
 
 	pthread_mutex_init(&BulkMutex, NULL);
 	pthread_cond_init(&BulkResponseCond, NULL);
@@ -131,6 +136,8 @@ donebulk(void)
 	BulkFunc = NULL;
 
 	bzero(JobsAry, sizeof(JobsAry));
+
+	delbuildenv("__MAKE_CONF");
 }
 
 void

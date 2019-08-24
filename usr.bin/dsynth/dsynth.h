@@ -328,8 +328,8 @@ typedef struct wmsg {
  */
 typedef struct buildenv {
 	struct buildenv *next;
-	const char *label;
-	const char *data;
+	char *label;
+	char *data;
 	int type;
 } buildenv_t;
 
@@ -437,6 +437,7 @@ extern int UseNCurses;
 extern int LeveragePrebuilt;
 extern char *DSynthExecPath;
 
+
 extern const char *OperatingSystemName;
 extern const char *ArchitectureName;
 extern const char *MachineName;
@@ -464,6 +465,7 @@ char *strdup_or_null(char *str);
 void dlogreset(void);
 int dlog00_fd(void);
 void addbuildenv(const char *label, const char *data, int type);
+void delbuildenv(const char *label);
 
 void initbulk(void (*func)(bulk_t *bulk), int jobs);
 void queuebulk(const char *s1, const char *s2, const char *s3,
@@ -492,6 +494,7 @@ void DoStatus(pkg_t *pkgs);
 void DoBuild(pkg_t *pkgs);
 void DoInitBuild(int slot_override);
 void DoCleanBuild(int resetlogs);
+void OptimizeEnv(void);
 void WorkerProcess(int ac, char **av);
 
 int DoCreateTemplate(int force);
