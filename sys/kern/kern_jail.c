@@ -59,8 +59,6 @@
 #include <netinet/in.h>
 #include <netinet6/in6_var.h>
 
-#include <sys/mplock2.h>
-
 static struct prison	*prison_find(int);
 static void		prison_ipcache_init(struct prison *);
 
@@ -100,6 +98,9 @@ SYSCTL_INT(_jail_defaults, OID_AUTO, allow_raw_sockets, CTLFLAG_RW,
 int	lastprid = 0;
 int	prisoncount = 0;
 
+static struct lock jail_lock =
+       LOCK_INITIALIZER("jail", 0, LK_CANRECURSE);
+
 LIST_HEAD(prisonlist, prison);
 struct	prisonlist allprison = LIST_HEAD_INITIALIZER(&allprison);
 
@@ -138,17 +139,21 @@ assign_prison_id(struct prison *pr)
 	tryprid = lastprid + 1;
 	if (tryprid == JAIL_MAX)
 		tryprid = 1;
+
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 next:
 	LIST_FOREACH(tpr, &allprison, pr_list) {
 		if (tpr->pr_id != tryprid)
 			continue;
 		tryprid++;
 		if (tryprid == JAIL_MAX) {
+			lockmgr(&jail_lock, LK_RELEASE);
 			return (ERANGE);
 		}
 		goto next;
 	}
 	pr->pr_id = lastprid = tryprid;
+	lockmgr(&jail_lock, LK_RELEASE);
 
 	return (0);
 }
@@ -181,8 +186,10 @@ kern_jail(struct prison *pr, struct jail *j)
 		return (error);
 	}
 
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	LIST_INSERT_HEAD(&allprison, pr, pr_list);
 	++prisoncount;
+	lockmgr(&jail_lock, LK_RELEASE);
 
 	error = prison_sysctl_create(pr);
 	if (error)
@@ -199,8 +206,10 @@ out2:
 	prison_sysctl_done(pr);
 
 out:
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	LIST_REMOVE(pr, pr_list);
 	--prisoncount;
+	lockmgr(&jail_lock, LK_RELEASE);
 	varsymset_clean(&pr->pr_varsymset);
 	nlookup_done(&nd);
 	return (error);
@@ -235,7 +244,7 @@ sys_jail(struct jail_args *uap)
 
 	pr = kmalloc(sizeof(*pr), M_PRISON, M_WAITOK | M_ZERO);
 	SLIST_INIT(&pr->pr_ips);
-	get_mplock();
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 
 	switch (jversion) {
 	case 0:
@@ -302,7 +311,8 @@ sys_jail(struct jail_args *uap)
 		goto out;
 
 	uap->sysmsg_result = pr->pr_id;
-	rel_mplock();
+	lockmgr(&jail_lock, LK_RELEASE);
+
 	return (0);
 
 out:
@@ -312,8 +322,9 @@ out:
 		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
 		kfree(jip, M_PRISON);
 	}
-	rel_mplock();
+	lockmgr(&jail_lock, LK_RELEASE);
 	kfree(pr, M_PRISON);
+
 	return (error);
 }
 
@@ -331,9 +342,9 @@ sys_jail_attach(struct jail_attach_args *uap)
 	error = priv_check(td, PRIV_JAIL_ATTACH);
 	if (error)
 		return(error);
-	get_mplock();
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	error = kern_jail_attach(uap->jid);
-	rel_mplock();
+	lockmgr(&jail_lock, LK_RELEASE);
 	return (error);
 }
 
@@ -344,6 +355,7 @@ prison_ipcache_init(struct prison *pr)
 	struct sockaddr_in *ip4;
 	struct sockaddr_in6 *ip6;
 
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	SLIST_FOREACH(jis, &pr->pr_ips, entries) {
 		switch (jis->ip.ss_family) {
 		case AF_INET:
@@ -374,6 +386,7 @@ prison_ipcache_init(struct prison *pr)
 			break;
 		}
 	}
+	lockmgr(&jail_lock, LK_RELEASE);
 }
 
 /* 
@@ -518,23 +531,30 @@ jailed_ip(struct prison *pr, struct sockaddr *ip)
 		return(0);
 	ip4 = (struct sockaddr_in *)ip;
 	ip6 = (struct sockaddr_in6 *)ip;
+
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	SLIST_FOREACH(jis, &pr->pr_ips, entries) {
 		switch (ip->sa_family) {
 		case AF_INET:
 			jip4 = (struct sockaddr_in *) &jis->ip;
 			if (jip4->sin_family == AF_INET &&
-			    ip4->sin_addr.s_addr == jip4->sin_addr.s_addr)
+			    ip4->sin_addr.s_addr == jip4->sin_addr.s_addr) {
+				lockmgr(&jail_lock, LK_RELEASE);
 				return(1);
+			}
 			break;
 		case AF_INET6:
 			jip6 = (struct sockaddr_in6 *) &jis->ip;
 			if (jip6->sin6_family == AF_INET6 &&
 			    IN6_ARE_ADDR_EQUAL(&ip6->sin6_addr,
-					       &jip6->sin6_addr))
+				&jip6->sin6_addr)) {
+				lockmgr(&jail_lock, LK_RELEASE);
 				return(1);
+			}
 			break;
 		}
 	}
+	lockmgr(&jail_lock, LK_RELEASE);
 	/* Ip not in list */
 	return(0);
 }
@@ -565,10 +585,13 @@ prison_find(int prid)
 {
 	struct prison *pr;
 
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	LIST_FOREACH(pr, &allprison, pr_list) {
 		if (pr->pr_id == prid)
 			break;
 	}
+	lockmgr(&jail_lock, LK_RELEASE);
+
 	return(pr);
 }
 
@@ -608,6 +631,7 @@ retry:
 	}
 	count = prisoncount;
 
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	LIST_FOREACH(pr, &allprison, pr_list) {
 		error = cache_fullpath(lp->lwp_proc, &pr->pr_root, NULL,
 					&fullpath, &freepath, 0);
@@ -616,9 +640,9 @@ retry:
 		if (jlsused && jlsused < jlssize)
 			jls[jlsused++] = '\n';
 		count = ksnprintf(jls + jlsused, (jlssize - jlsused),
-				 "%d %s %s", 
+				 "%d %s %s",
 				 pr->pr_id, pr->pr_host, fullpath);
-		kfree(freepath, M_TEMP);		
+		kfree(freepath, M_TEMP);
 		if (count < 0)
 			goto end;
 		jlsused += count;
@@ -662,7 +686,9 @@ retry:
 	 */
 	error = SYSCTL_OUT(req, jls, jlsused);
 end:
+	lockmgr(&jail_lock, LK_RELEASE);
 	kfree(jls, M_TEMP);
+
 	return(error);
 }
 
@@ -709,14 +735,13 @@ prison_free(struct prison *pr)
 	 * The MP lock is needed on the last ref to adjust
 	 * the list.
 	 */
-	get_mplock();
+	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	if (pr->pr_ref) {
-		rel_mplock();
+		lockmgr(&jail_lock, LK_RELEASE);
 		return;
 	}
 	LIST_REMOVE(pr, pr_list);
 	--prisoncount;
-	rel_mplock();
 
 	/*
 	 * Clean up
@@ -726,6 +751,7 @@ prison_free(struct prison *pr)
 		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
 		kfree(jls, M_PRISON);
 	}
+	lockmgr(&jail_lock, LK_RELEASE);
 
 	if (pr->pr_linux != NULL)
 		kfree(pr->pr_linux, M_PRISON);
