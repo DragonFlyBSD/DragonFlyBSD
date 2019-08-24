@@ -276,6 +276,7 @@ typedef struct worker {
 	worker_phase_t phase;	/* phase control in childBuilderThread */
 	time_t	start_time;
 	long	lines;
+	long	memuse;
 	pid_t	pid;
 	int	fds[2];		/* forked environment process */
 	char	status[64];
@@ -311,6 +312,7 @@ typedef struct wmsg {
 	int	cmd;
 	int	status;
 	long	lines;
+	long	memuse;
 	worker_phase_t phase;
 } wmsg_t;
 

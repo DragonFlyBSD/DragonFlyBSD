@@ -933,6 +933,9 @@ workercomplete(worker_t *work)
 	 * Reduce total dep size
 	 */
 	RunningPkgDepSize -= work->pkg_dep_size;
+	RunningPkgDepSize -= work->memuse;
+	work->pkg_dep_size = 0;
+	work->memuse = 0;
 
 	/*
 	 * Process pkg out of the worker
@@ -1253,6 +1256,7 @@ childBuilderThread(void *arg)
 			close(work->fds[1]);
 			work->phase = PHASE_PENDING;
 			work->lines = 0;
+			work->memuse = 0;
 			work->pid = pid;
 			work->state = WORKER_RUNNING;
 			/* fall through */
@@ -1285,6 +1289,11 @@ childBuilderThread(void *arg)
 				case WMSG_CMD_STATUS_UPDATE:
 					work->phase = wmsg.phase;
 					work->lines = wmsg.lines;
+					if (work->memuse != wmsg.memuse) {
+						RunningPkgDepSize +=
+						wmsg.memuse - work->memuse;
+						work->memuse = wmsg.memuse;
+					}
 					break;
 				case WMSG_CMD_SUCCESS:
 					work->flags |= WORKERF_SUCCESS;
@@ -2230,6 +2239,27 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	phaseReapAll();
 
 	/*
+	 * After the extraction phase add the space used by /construction
+	 * to the memory use.  This helps us reduce the amount of paging
+	 * we do due to extremely large package extractions (languages,
+	 * chromium, etc).
+	 *
+	 * (dsynth already estimated the space used by the package deps
+	 * up front, but this will help us further).
+	 */
+	if (work->accum_error == 0 && phaseid == PHASE_EXTRACT) {
+		struct statfs sfs;
+		char *b1;
+
+		asprintf(&b1, "%s/construction", work->basedir);
+		if (statfs(b1, &sfs) == 0) {
+			wmsg->memuse = (sfs.f_blocks - sfs.f_bfree) *
+				       sfs.f_bsize;
+			ipcwritemsg(work->fds[0], wmsg);
+		}
+	}
+
+	/*
 	 * Update log
 	 */
 	if (fdlog >= 0) {
@@ -2256,6 +2286,10 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		if (work->accum_error) {
 			fprintf(fp, "FAILED %02d:%02d:%02d\n", h, m, s);
 		} else {
+			if (phaseid == PHASE_EXTRACT && wmsg->memuse) {
+				fprintf(fp, "Extracted Memory Use: %6.2fM\n",
+					wmsg->memuse / (1024.0 * 1024.0));
+			}
 			fprintf(fp, "SUCCEEDED %02d:%02d:%02d\n", h, m, s);
 		}
 		last_time = next_time - work->start_time;
