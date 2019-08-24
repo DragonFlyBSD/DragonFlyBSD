@@ -234,11 +234,11 @@ jail_mount_fstab()
 jail_start()
 {
 	echo -n 'Configuring jails:'
-	set_sysctl jail_set_hostname_allow jail.set_hostname_allowed \
+	set_sysctl jail_set_hostname_allow jail.defaults.set_hostname_allowed \
 	    set_hostname_allow
 	set_sysctl jail_socket_unixiproute_only \
-	    jail.socket_unixiproute_only unixiproute_only
-	set_sysctl jail_sysvipc_allow jail.sysvipc_allowed \
+	    jail.defaults.socket_unixiproute_only unixiproute_only
+	set_sysctl jail_sysvipc_allow jail.defaults.sysvipc_allowed \
 	    sysvipc_allow
 	echo '.'
 
