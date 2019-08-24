@@ -24,10 +24,7 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_gem.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <drm/radeon_drm.h>
 #include "radeon.h"
@@ -260,7 +257,7 @@ int radeon_gem_create_ioctl(struct drm_device *dev, void *data,
 	uint32_t handle;
 	int r;
 
-	lockmgr(&rdev->exclusive_lock, LK_SHARED);
+	down_read(&rdev->exclusive_lock);
 	/* create a gem object to contain this object in */
 	args->size = roundup(args->size, PAGE_SIZE);
 	r = radeon_gem_object_create(rdev, args->size, args->alignment,
@@ -269,21 +266,20 @@ int radeon_gem_create_ioctl(struct drm_device *dev, void *data,
 	if (r) {
 		if (r == -ERESTARTSYS)
 			r = -EINTR;
-		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+		up_read(&rdev->exclusive_lock);
 		r = radeon_gem_handle_lockup(rdev, r);
 		return r;
 	}
-	handle = 0;
 	r = drm_gem_handle_create(filp, gobj, &handle);
 	/* drop reference from allocate - handle holds it now */
 	drm_gem_object_unreference_unlocked(gobj);
 	if (r) {
-		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+		up_read(&rdev->exclusive_lock);
 		r = radeon_gem_handle_lockup(rdev, r);
 		return r;
 	}
 	args->handle = handle;
-	lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+	up_read(&rdev->exclusive_lock);
 	return 0;
 }
 
@@ -390,12 +386,12 @@ int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
 
 	/* for now if someone requests domain CPU -
 	 * just make sure the buffer is finished with */
-	lockmgr(&rdev->exclusive_lock, LK_SHARED);
+	down_read(&rdev->exclusive_lock);
 
 	/* just do a BO wait for now */
 	gobj = drm_gem_object_lookup(filp, args->handle);
 	if (gobj == NULL) {
-		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+		up_read(&rdev->exclusive_lock);
 		return -ENOENT;
 	}
 	robj = gem_to_radeon_bo(gobj);
@@ -403,7 +399,7 @@ int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
 	r = radeon_gem_set_domain(gobj, args->read_domains, args->write_domain);
 
 	drm_gem_object_unreference_unlocked(gobj);
-	lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+	up_read(&rdev->exclusive_lock);
 	r = radeon_gem_handle_lockup(robj->rdev, r);
 	return r;
 }
@@ -420,6 +416,12 @@ int radeon_mode_dumb_mmap(struct drm_file *filp,
 		return -ENOENT;
 	}
 	robj = gem_to_radeon_bo(gobj);
+#if 0
+	if (radeon_ttm_tt_has_userptr(robj->tbo.ttm)) {
+		drm_gem_object_unreference_unlocked(gobj);
+		return -EPERM;
+	}
+#endif
 	*offset_p = radeon_bo_mmap_offset(robj);
 	drm_gem_object_unreference_unlocked(gobj);
 	return 0;
@@ -672,6 +674,7 @@ int radeon_gem_va_ioctl(struct drm_device *dev, void *data,
 	bo_va = radeon_vm_bo_find(&fpriv->vm, rbo);
 	if (!bo_va) {
 		args->operation = RADEON_VA_RESULT_ERROR;
+		radeon_bo_unreserve(rbo);
 		drm_gem_object_unreference_unlocked(gobj);
 		return -ENOENT;
 	}
@@ -716,6 +719,13 @@ int radeon_gem_op_ioctl(struct drm_device *dev, void *data,
 		return -ENOENT;
 	}
 	robj = gem_to_radeon_bo(gobj);
+
+	r = -EPERM;
+#if 0
+	if (radeon_ttm_tt_has_userptr(robj->tbo.ttm))
+		goto out;
+#endif
+
 	r = radeon_bo_reserve(robj, false);
 	if (unlikely(r))
 		goto out;

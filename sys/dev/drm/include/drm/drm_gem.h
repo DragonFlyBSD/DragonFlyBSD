@@ -106,8 +106,10 @@ struct drm_gem_object {
 	 * that userspace is allowed to access the object.
 	 */
 	struct drm_vma_offset_node vma_node;
+#ifdef __DragonFly__
 	bool on_map;
 	struct drm_hash_item map_list;
+#endif
 
 	/**
 	 * @size:

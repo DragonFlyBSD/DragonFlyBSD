@@ -762,10 +762,13 @@ drm_gem_object_free(struct kref *kref)
 		container_of(kref, struct drm_gem_object, refcount);
 	struct drm_device *dev = obj->dev;
 
-	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
+	if (dev->driver->gem_free_object_unlocked) {
+		dev->driver->gem_free_object_unlocked(obj);
+	} else if (dev->driver->gem_free_object) {
+		WARN_ON(!mutex_is_locked(&dev->struct_mutex));
 
-	if (dev->driver->gem_free_object != NULL)
 		dev->driver->gem_free_object(obj);
+	}
 }
 EXPORT_SYMBOL(drm_gem_object_free);
 
@@ -787,10 +790,13 @@ drm_gem_object_unreference_unlocked(struct drm_gem_object *obj)
 		return;
 
 	dev = obj->dev;
-	if (kref_put_mutex(&obj->refcount, drm_gem_object_free, &dev->struct_mutex))
+	might_lock(&dev->struct_mutex);
+
+	if (dev->driver->gem_free_object_unlocked)
+		kref_put(&obj->refcount, drm_gem_object_free);
+	else if (kref_put_mutex(&obj->refcount, drm_gem_object_free,
+				&dev->struct_mutex))
 		mutex_unlock(&dev->struct_mutex);
-	else
-		might_lock(&dev->struct_mutex);
 }
 EXPORT_SYMBOL(drm_gem_object_unreference_unlocked);
 
@@ -808,7 +814,7 @@ EXPORT_SYMBOL(drm_gem_object_unreference_unlocked);
 void
 drm_gem_object_unreference(struct drm_gem_object *obj)
 {
-	if (obj != NULL) {
+	if (obj) {
 #if 0
 		WARN_ON(!mutex_is_locked(&obj->dev->struct_mutex));
 #endif

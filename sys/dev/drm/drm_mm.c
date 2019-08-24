@@ -47,8 +47,6 @@
 #include <linux/seq_file.h>
 #include <linux/export.h>
 
-#define MM_UNUSED_TARGET 4
-
 /**
  * DOC: Overview
  *

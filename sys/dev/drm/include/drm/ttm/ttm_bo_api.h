@@ -49,9 +49,9 @@ struct drm_mm_node;
 /**
  * struct ttm_place
  *
- * @fpfn:       first valid page frame number to put the object
- * @lpfn:       last valid page frame number to put the object
- * @flags:      memory domain and caching flags for the object
+ * @fpfn:	first valid page frame number to put the object
+ * @lpfn:	last valid page frame number to put the object
+ * @flags:	memory domain and caching flags for the object
  *
  * Structure indicating a possible place to put an object.
  */
@@ -72,8 +72,6 @@ struct ttm_place {
  * Structure indicating the placement you request for an object.
  */
 struct ttm_placement {
-	unsigned	fpfn;
-	unsigned	lpfn;
 	unsigned		num_placement;
 	const struct ttm_place	*placement;
 	unsigned		num_busy_placement;
@@ -318,7 +316,7 @@ ttm_bo_reference(struct ttm_buffer_object *bo)
  * Returns -EBUSY if no_wait is true and the buffer is busy.
  * Returns -ERESTARTSYS if interrupted by a signal.
  */
-extern int ttm_bo_wait(struct ttm_buffer_object *bo, bool lazy,
+extern int ttm_bo_wait(struct ttm_buffer_object *bo,
 		       bool interruptible, bool no_wait);
 
 /**
@@ -401,6 +399,16 @@ extern void ttm_bo_add_to_lru(struct ttm_buffer_object *bo);
  */
 extern int ttm_bo_del_from_lru(struct ttm_buffer_object *bo);
 
+/**
+ * ttm_bo_move_to_lru_tail
+ *
+ * @bo: The buffer object.
+ *
+ * Move this BO to the tail of all lru lists used to lookup and reserve an
+ * object. This function must be called with struct ttm_bo_global::lru_lock
+ * held, and is used to make a BO less likely to be considered for eviction.
+ */
+extern void ttm_bo_move_to_lru_tail(struct ttm_buffer_object *bo);
 
 /**
  * ttm_bo_lock_delayed_workqueue

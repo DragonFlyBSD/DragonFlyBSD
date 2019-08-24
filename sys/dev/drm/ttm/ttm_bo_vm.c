@@ -36,6 +36,7 @@
 #include <ttm/ttm_placement.h>
 #include <drm/drm_vma_manager.h>
 #include <linux/mm.h>
+#include <linux/pfn_t.h>
 #include <linux/rbtree.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
@@ -60,7 +61,7 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 	/*
 	 * Quick non-stalling check for idle.
 	 */
-	ret = ttm_bo_wait(bo, false, false, true);
+	ret = ttm_bo_wait(bo, false, true);
 	if (likely(ret == 0))
 		goto out_unlock;
 
@@ -74,14 +75,14 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 			goto out_unlock;
 
 		up_read(&vma->vm_mm->mmap_sem);
-		(void) ttm_bo_wait(bo, false, true, false);
+		(void) ttm_bo_wait(bo, true, false);
 		goto out_unlock;
 	}
 
 	/*
 	 * Ordinary wait.
 	 */
-	ret = ttm_bo_wait(bo, false, true, false);
+	ret = ttm_bo_wait(bo, true, false);
 	if (unlikely(ret != 0))
 		ret = (ret != -ERESTARTSYS) ? VM_FAULT_SIGBUS :
 			VM_FAULT_NOPAGE;
@@ -127,7 +128,7 @@ static int ttm_bo_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	 * for reserve, and if it fails, retry the fault after waiting
 	 * for the buffer to become unreserved.
 	 */
-	ret = ttm_bo_reserve(bo, true, true, false, NULL);
+	ret = ttm_bo_reserve(bo, true, true, NULL);
 	if (unlikely(ret != 0)) {
 		if (ret != -EBUSY)
 			return VM_FAULT_NOPAGE;
@@ -250,7 +251,8 @@ static int ttm_bo_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		}
 
 		if (vma->vm_flags & VM_MIXEDMAP)
-			ret = vm_insert_mixed(&cvma, address, pfn);
+			ret = vm_insert_mixed(&cvma, address,
+					__pfn_to_pfn_t(pfn, PFN_DEV));
 		else
 			ret = vm_insert_pfn(&cvma, address, pfn);
 
@@ -452,7 +454,7 @@ retry:
 	 * NOTE: set nowait to false, we don't have ttm_bo_wait_unreserved()
 	 * 	 for the -BUSY case yet.
 	 */
-	ret = ttm_bo_reserve(bo, true, false, false, 0);
+	ret = ttm_bo_reserve(bo, true, false, 0);
 	if (unlikely(ret != 0)) {
 		retval = VM_PAGER_ERROR;
 		VM_OBJECT_LOCK(vm_obj);
@@ -498,7 +500,7 @@ retry:
 		 * interrupt the wait, causing the page fault to fail
 		 * and the process to receive SIGSEGV.
 		 */
-		ret = ttm_bo_wait(bo, false, false, false);
+		ret = ttm_bo_wait(bo, false, false);
 		if (unlikely(ret != 0)) {
 			retval = VM_PAGER_ERROR;
 			goto out_unlock;

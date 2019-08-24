@@ -34,9 +34,11 @@
 #include "radeon_drv.h"
 
 #include <drm/drm_pciids.h>
+#include <linux/apple-gmux.h>
 #include <linux/console.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
+#include <linux/vgaarb.h>
 #include <linux/vga_switcheroo.h>
 #include <drm/drm_gem.h>
 
@@ -91,9 +93,11 @@
  *   2.41.0 - evergreen/cayman: Add SET_BASE/DRAW_INDIRECT command parsing support
  *   2.42.0 - Add VCE/VUI (Video Usability Information) support
  *   2.43.0 - RADEON_INFO_GPU_RESET_COUNTER
+ *   2.44.0 - SET_APPEND_CNT packet3 support
+ *   2.45.0 - Allow setting shader registers using DMA/COPY packet3 on SI
  */
 #define KMS_DRIVER_MAJOR	2
-#define KMS_DRIVER_MINOR	43
+#define KMS_DRIVER_MINOR	45
 #define KMS_DRIVER_PATCHLEVEL	0
 int radeon_driver_load_kms(struct drm_device *dev, unsigned long flags);
 int radeon_driver_unload_kms(struct drm_device *dev);
@@ -103,7 +107,8 @@ void radeon_driver_postclose_kms(struct drm_device *dev,
 				 struct drm_file *file_priv);
 void radeon_driver_preclose_kms(struct drm_device *dev,
 				struct drm_file *file_priv);
-int radeon_suspend_kms(struct drm_device *dev, bool suspend, bool fbcon);
+int radeon_suspend_kms(struct drm_device *dev, bool suspend,
+		       bool fbcon, bool freeze);
 int radeon_resume_kms(struct drm_device *dev, bool resume, bool fbcon);
 u32 radeon_get_vblank_counter_kms(struct drm_device *dev, unsigned int pipe);
 int radeon_enable_vblank_kms(struct drm_device *dev, unsigned int pipe);
@@ -200,6 +205,8 @@ int radeon_bapm = -1;
 int radeon_backlight = -1;
 int radeon_auxch = -1;
 int radeon_mst = 0;
+int radeon_uvd = 1;
+int radeon_vce = 1;
 
 TUNABLE_INT("drm.radeon.no_wb", &radeon_no_wb);
 MODULE_PARM_DESC(no_wb, "Disable AGP writeback for scratch registers");
@@ -320,6 +327,14 @@ TUNABLE_INT("drm.radeon.mst", &radeon_mst);
 MODULE_PARM_DESC(mst, "DisplayPort MST experimental support (1 = enable, 0 = disable)");
 module_param_named(mst, radeon_mst, int, 0444);
 
+TUNABLE_INT("drm.radeon.uvd", &radeon_uvd);
+MODULE_PARM_DESC(uvd, "uvd enable/disable uvd support (1 = enable, 0 = disable)");
+module_param_named(uvd, radeon_uvd, int, 0444);
+
+TUNABLE_INT("drm.radeon.vce", &radeon_vce);
+MODULE_PARM_DESC(vce, "vce enable/disable vce support (1 = enable, 0 = disable)");
+module_param_named(vce, radeon_vce, int, 0444);
+
 static drm_pci_id_list_t pciidlist[] = {
 	radeon_PCI_IDS
 };
@@ -353,6 +368,23 @@ static int radeon_pci_probe(struct pci_dev *pdev,
 {
 	int ret;
 
+	/*
+	 * Initialize amdkfd before starting radeon. If it was not loaded yet,
+	 * defer radeon probing
+	 */
+	ret = radeon_kfd_init();
+	if (ret == -EPROBE_DEFER)
+		return ret;
+
+	/*
+	 * apple-gmux is needed on dual GPU MacBook Pro
+	 * to probe the panel if we're the inactive GPU.
+	 */
+	if (IS_ENABLED(CONFIG_VGA_ARB) && IS_ENABLED(CONFIG_VGA_SWITCHEROO) &&
+	    apple_gmux_present() && pdev != vga_default_device() &&
+	    !vga_switcheroo_handler_flags())
+		return -EPROBE_DEFER;
+
 	/* Get rid of things like offb */
 	ret = radeon_kick_out_firmware_fb(pdev);
 	if (ret)
@@ -373,7 +405,7 @@ static int radeon_pmops_suspend(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
-	return radeon_suspend_kms(drm_dev, true, true);
+	return radeon_suspend_kms(drm_dev, true, true, false);
 }
 
 static int radeon_pmops_resume(struct device *dev)
@@ -387,7 +419,7 @@ static int radeon_pmops_freeze(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
-	return radeon_suspend_kms(drm_dev, false, true);
+	return radeon_suspend_kms(drm_dev, false, true, true);
 }
 
 static int radeon_pmops_thaw(struct device *dev)
@@ -412,7 +444,7 @@ static int radeon_pmops_runtime_suspend(struct device *dev)
 	drm_kms_helper_poll_disable(drm_dev);
 	vga_switcheroo_set_dynamic_switch(pdev, VGA_SWITCHEROO_OFF);
 
-	ret = radeon_suspend_kms(drm_dev, false, false);
+	ret = radeon_suspend_kms(drm_dev, false, false, false);
 	pci_save_state(pdev);
 	pci_disable_device(pdev);
 	pci_ignore_hotplug(pdev);
@@ -550,7 +582,7 @@ static struct drm_driver kms_driver = {
 	.irq_handler = radeon_driver_irq_handler_kms,
 	.sysctl_init = radeon_sysctl_init,
 	.ioctls = radeon_ioctls_kms,
-	.gem_free_object = radeon_gem_object_free,
+	.gem_free_object_unlocked = radeon_gem_object_free,
 	.gem_open_object = radeon_gem_object_open,
 	.gem_close_object = radeon_gem_object_close,
 	.dumb_create = radeon_mode_dumb_create,
@@ -600,12 +632,10 @@ static struct pci_driver radeon_kms_pci_driver = {
 
 static int __init radeon_init(void)
 {
-#ifdef CONFIG_VGA_CONSOLE
 	if (vgacon_text_force() && radeon_modeset == -1) {
 		DRM_INFO("VGACON disable radeon kernel modesetting.\n");
 		radeon_modeset = 0;
 	}
-#endif
 	/* set to modesetting by default if not nomodeset */
 	if (radeon_modeset == -1)
 		radeon_modeset = 1;
@@ -630,8 +660,6 @@ static int __init radeon_init(void)
 		return -EINVAL;
 #endif
 	}
-
-	radeon_kfd_init();
 
 	/* let modprobe override vga console setting */
 	return drm_pci_init(driver, pdriver);
@@ -677,7 +705,7 @@ radeon_suspend(device_t kdev)
 	int ret;
 
 	dev = device_get_softc(kdev);
-	ret = radeon_suspend_kms(dev, true, true);
+	ret = radeon_suspend_kms(dev, true, true, false);
 
 	return (-ret);
 }
