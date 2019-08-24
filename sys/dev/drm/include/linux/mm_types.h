@@ -61,4 +61,16 @@ struct proc_struct {
 	struct mm_struct *mm;
 };
 
+struct vm_area_struct {
+	vm_offset_t	vm_start;
+	vm_offset_t	vm_end;
+	vm_offset_t	vm_pgoff;
+	vm_paddr_t	vm_pfn;		/* PFN For mmap. */
+	vm_memattr_t	vm_page_prot;
+	void		*vm_private_data;
+	int		vm_flags;
+	const struct vm_operations_struct *vm_ops;
+	struct mm_struct *vm_mm;
+};
+
 #endif	/* _LINUX_MM_TYPES_H_ */
