@@ -79,7 +79,8 @@ dump_gnuplot(kcollect_t *ary, size_t count)
 	int plot2[] = { KCOLLECT_IDLEPCT, KCOLLECT_INTRPCT,
 			KCOLLECT_SYSTPCT, KCOLLECT_USERPCT,
 			KCOLLECT_SWAPPCT,
-			KCOLLECT_VMFAULT, KCOLLECT_SYSCALLS, KCOLLECT_NLOOKUP };
+			KCOLLECT_VMFAULT, -1/*KCOLLECT_SYSCALLS*/,
+			KCOLLECT_NLOOKUP };
 	const char *id1[] = {
 			"free", "cache",
 			"inact", "active",
@@ -203,6 +204,17 @@ dump_gnuplot(kcollect_t *ary, size_t count)
 	for (jj = 0; jj < (int)(sizeof(plot2) / sizeof(plot2[0])); ++jj) {
 		j = plot2[jj];
 
+		/*
+		 * Skip if disabled
+		 */
+		if (j < 0) {
+			fprintf(OutFP, "e\n");
+			continue;
+		}
+
+		/*
+		 * Dump points
+		 */
 		smoothed_dv = 0.0;
 		for (i = count - 1; i >= 2; --i) {
 			/*
