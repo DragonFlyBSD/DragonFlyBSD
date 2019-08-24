@@ -33,7 +33,7 @@
 #include <linux/spinlock.h>
 #include <linux/atomic.h>
 
-#define down_read(semaphore)	lockmgr((semaphore), LK_EXCLUSIVE)
+#define down_read(semaphore)	lockmgr((semaphore), LK_SHARED)
 #define up_read(semaphore)	lockmgr((semaphore), LK_RELEASE)
 
 #define down_write(semaphore)	lockmgr((semaphore), LK_EXCLUSIVE)
