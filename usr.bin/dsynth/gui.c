@@ -307,9 +307,9 @@ GuiUpdateLogs(void)
 		 * Output possibly colored log line
 		 */
 		wscrl(CMon, -1);
-		if (strstr(ptr, "succeeded in")) {
+		if (strstr(ptr, "] SUCCESS ")) {
 			wattrset(CMon, COLOR_PAIR(2));
-		} else if (strstr(ptr, "failed in")) {
+		} else if (strstr(ptr, "] FAILURE ")) {
 			wattrset(CMon, COLOR_PAIR(1));
 		}
 		mvwprintw(CMon, 0, 0, "%s", ptr);
