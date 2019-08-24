@@ -77,6 +77,7 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 	struct radeon_cs_chunk *chunk;
 	struct radeon_cs_buckets buckets;
 	unsigned i;
+	bool need_mmap_lock = false;
 	int r;
 
 	if (p->chunk_relocs == NULL) {
@@ -176,17 +177,13 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 	if (p->cs_flags & RADEON_CS_USE_VM)
 		p->vm_bos = radeon_vm_get_bos(p->rdev, p->ib.vm,
 					      &p->validated);
-#if 0
 	if (need_mmap_lock)
 		down_read(&current->mm->mmap_sem);
-#endif
 
 	r = radeon_bo_list_validate(p->rdev, &p->ticket, &p->validated, p->ring);
 
-#if 0
 	if (need_mmap_lock)
 		up_read(&current->mm->mmap_sem);
-#endif
 
 	return r;
 }
