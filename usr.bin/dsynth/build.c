@@ -160,8 +160,13 @@ DoBuild(pkg_t *pkgs)
 	int first = 1;
 	int newtemplate;
 
-	for (scan = pkgs; scan; scan = scan->bnext)
-		++BuildTotal;
+	/*
+	 * Count up the packages, not counting dummies
+	 */
+	for (scan = pkgs; scan; scan = scan->bnext) {
+		if ((scan->flags & PKGF_DUMMY) == 0)
+			++BuildTotal;
+	}
 
 	/*
 	 * The pkg and pkg-static binaries are needed.  If already present
@@ -523,6 +528,12 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 	} else if (pkg->flags & PKGF_SUCCESS) {
 		ddprintf(depth, "} (SUCCESS - %s)\n", pkg->portdir);
 	} else if (pkg->flags & PKGF_DUMMY) {
+		/*
+		 * Just mark dummy packages as successful when all of their
+		 * sub-depends (flavors) complete successfully.  Note that
+		 * dummy packages are not counted in the total, so do not
+		 * decrement BuildTotal.
+		 */
 		ddprintf(depth, "} (DUMMY/META - SUCCESS)\n");
 		pkg->flags |= PKGF_SUCCESS;
 		*hasworkp = 1;
@@ -530,7 +541,6 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			dlog(DLOG_ALL | DLOG_FILTER,
 			     "[XXX] %s META-ALREADY-BUILT\n",
 			     pkg->portdir);
-			--BuildTotal;
 		} else {
 			dlog(DLOG_SUCC, "[XXX] %s meta-node complete\n",
 			     pkg->portdir);

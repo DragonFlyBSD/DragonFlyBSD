@@ -54,8 +54,13 @@ DoStatus(pkg_t *pkgs)
 	int haswork = 1;
 	int first = 1;
 
-	for (scan = pkgs; scan; scan = scan->bnext)
-		++BuildTotal;
+	/*
+	 * Count up all the packages, do not include dummy packages.
+	 */
+	for (scan = pkgs; scan; scan = scan->bnext) {
+		if ((scan->flags & PKGF_DUMMY) == 0)
+			++BuildTotal;
+	}
 
 	/*
 	 * Nominal bulk build sequence
@@ -260,6 +265,12 @@ status_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 	} else if (pkg->flags & PKGF_SUCCESS) {
 		ddprintf(level, "} (SUCCESS - %s)\n", pkg->portdir);
 	} else if (pkg->flags & PKGF_DUMMY) {
+		/*
+		 * Just mark dummy packages as successful when all of their
+		 * sub-depends (flavors) complete successfully.  Note that
+		 * dummy packages are not counted in the total, so do not
+		 * decrement BuildTotal.
+		 */
 		ddprintf(level, "} (DUMMY/META - SUCCESS)\n");
 		pkg->flags |= PKGF_SUCCESS;
 		*hasworkp = 1;
@@ -267,7 +278,6 @@ status_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			dlog(DLOG_ALL | DLOG_FILTER,
 			     "[XXX] %s META-ALREADY-BUILT\n",
 			     pkg->portdir);
-			--BuildTotal;
 		} else {
 			dlog(DLOG_SUCC | DLOG_FILTER,
 			     "[XXX] %s meta-node complete\n",
