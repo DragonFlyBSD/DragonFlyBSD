@@ -203,9 +203,9 @@ _dlog(int which, const char *ctl, ...)
 	if (UseNCurses == 0 && (filter & DLOG_FILTER) == 0) {
 		if (ColorOpt) {
 			if (filter & DLOG_GRN)
-				write(1, "\x1b[0;42m", 7);
+				write(1, "\x1b[0;32m", 7);
 			if (filter & DLOG_RED)
-				write(1, "\x1b[0;41m", 7);
+				write(1, "\x1b[0;31m", 7);
 		}
 		write(1, buf, len);
 		if (ColorOpt && (filter & (DLOG_GRN|DLOG_RED))) {
