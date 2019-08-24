@@ -927,8 +927,10 @@ workercomplete(worker_t *work)
 		} else {
 			++BuildFailCount;
 			dlog(DLOG_FAIL | DLOG_RED,
-			     "[%03d] FAILURE %s##%02d:%02d:%02d\n",
-			     work->index, pkg->portdir, h, m, s);
+			     "[%03d] FAILURE %s ##%16.16s %02d:%02d:%02d\n",
+			     work->index, pkg->portdir,
+			     getphasestr(work->phase),
+			     h, m, s);
 		}
 	} else {
 		dlog(DLOG_SUCC | DLOG_GRN,
@@ -1995,9 +1997,11 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	}
 
 	snprintf(buf, sizeof(buf),
-		 "-----------------------------------------------\n"
+		 "----------------------------------------"
+		 "---------------------------------------\n"
 		 "-- Phase: %s\n"
-		 "-----------------------------------------------\n",
+		 "----------------------------------------"
+		 "---------------------------------------\n",
 		 phase);
 	write(fdlog, buf, strlen(buf));
 

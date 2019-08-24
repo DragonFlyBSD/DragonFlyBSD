@@ -476,3 +476,85 @@ dexec_close(FILE *fp, pid_t pid)
 	}
 	return (WEXITSTATUS(status));
 }
+
+const char *
+getphasestr(worker_phase_t phaseid)
+{
+	const char *phase;
+
+	switch(phaseid) {
+	case PHASE_PENDING:
+		phase = "pending";
+		break;
+	case PHASE_INSTALL_PKGS:
+		phase = "install-pkgs";
+		break;
+	case PHASE_CHECK_SANITY:
+		phase = "check-sanity";
+		break;
+	case PHASE_PKG_DEPENDS:
+		phase = "pkg-depends";
+		break;
+	case PHASE_FETCH_DEPENDS:
+		phase = "fetch-depends";
+		break;
+	case PHASE_FETCH:
+		phase = "fetch";
+		break;
+	case PHASE_CHECKSUM:
+		phase = "checksum";
+		break;
+	case PHASE_EXTRACT_DEPENDS:
+		phase = "extract-depends";
+		break;
+	case PHASE_EXTRACT:
+		phase = "extract";
+		break;
+	case PHASE_PATCH_DEPENDS:
+		phase = "patch-depends";
+		break;
+	case PHASE_PATCH:
+		phase = "patch";
+		break;
+	case PHASE_BUILD_DEPENDS:
+		phase = "build-depends";
+		break;
+	case PHASE_LIB_DEPENDS:
+		phase = "lib-depends";
+		break;
+	case PHASE_CONFIGURE:
+		phase = "configure";
+		break;
+	case PHASE_BUILD:
+		phase = "build";
+		break;
+	case PHASE_RUN_DEPENDS:
+		phase = "run-depends";
+		break;
+	case PHASE_STAGE:
+		phase = "stage";
+		break;
+	case PHASE_TEST:
+		phase = "test";
+		break;
+	case PHASE_CHECK_PLIST:
+		phase = "check-plist";
+		break;
+	case PHASE_PACKAGE:
+		phase = "package";
+		break;
+	case PHASE_INSTALL_MTREE:
+		phase = "install-mtree";
+		break;
+	case PHASE_INSTALL:
+		phase = "install";
+		break;
+	case PHASE_DEINSTALL:
+		phase = "deinstall";
+		break;
+	default:
+		phase = "Run-Unknown";
+		break;
+	}
+	return phase;
+}

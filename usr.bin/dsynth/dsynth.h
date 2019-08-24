@@ -476,6 +476,7 @@ double getswappct(int *noswapp);
 FILE *dexec_open(const char **cav, int cac, pid_t *pidp,
 			int with_env, int with_mvars);
 int dexec_close(FILE *fp, pid_t pid);
+const char *getphasestr(worker_phase_t phase);
 
 void ParseConfiguration(int isworker);
 pkg_t *ParsePackageList(int ac, char **av);
