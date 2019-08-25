@@ -152,17 +152,15 @@ static int	vnget (cdev_t dev, struct vn_softc *vn , struct vn_user *vnu);
 static int	vn_modevent (module_t, int, void *);
 static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
 static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
-static cdev_t	vn_create(int unit, struct devfs_bitmap *bitmap, int clone);
+static cdev_t	vn_create(int unit, int clone);
 
 static int
 vnclone(struct dev_clone_args *ap)
 {
 	int unit;
 
-	do {
-		unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(vn), 0);
-		ap->a_dev = vn_create(unit, &DEVFS_CLONE_BITMAP(vn), 1);
-	} while (ap->a_dev == NULL);
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(vn), 0);
+	ap->a_dev = vn_create(unit, 1);
 
 	return 0;
 }
@@ -848,17 +846,11 @@ vnsize(struct dev_psize_args *ap)
  * Returns NULL only if the specified unit cannot be allocated.
  */
 static cdev_t
-vn_create(int unit, struct devfs_bitmap *bitmap, int clone)
+vn_create(int unit, int clone)
 {
 	struct vn_softc *vn;
 	struct disk_info info;
 	cdev_t dev, ret_dev;
-
-	/*
-	 * Returns NULL onlyif the unit is already set in the bitmap
-	 */
-	if (devfs_clone_bitmap_set(bitmap, unit) < 0)
-		return NULL;
 
 	vn = vncreatevn();
 	if (clone) {
@@ -895,11 +887,12 @@ vn_modevent(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		dev = make_autoclone_dev(&vn_ops, &DEVFS_CLONE_BITMAP(vn), vnclone, UID_ROOT,
-		    GID_OPERATOR, 0640, "vn");
-
+		dev = make_autoclone_dev(&vn_ops, &DEVFS_CLONE_BITMAP(vn),
+					 vnclone, UID_ROOT, GID_OPERATOR,
+					 0640, "vn");
 		for (i = 0; i < VN_PREALLOCATED_UNITS; i++) {
-			vn_create(i, &DEVFS_CLONE_BITMAP(vn), 0);
+			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(vn), i);
+			vn_create(i, 0);
 		}
 		break;
 
