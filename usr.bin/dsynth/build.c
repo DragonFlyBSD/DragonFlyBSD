@@ -1973,20 +1973,33 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	}
 
 	/*
-	 * Execute the port make command in chroot on a pty
+	 * Execute the port make command in chroot on a pty.
 	 */
 	fflush(stdout);
 	fflush(stderr);
 	if (MasterPtyFd >= 0) {
 		int slavefd;
+		char c = 'x';
 
+		/*
+		 * NOTE: We can't open the slave in the child because the
+		 *	 master may race a disconnection test.  If we open
+		 *	 it in the parent our close() will flush any pending
+		 *	 output not read by the master (which is the same
+		 *	 parent process) and deadlock.
+		 *
+		 *	 Solve this by hand-shaking the slave tty to give
+		 *	 the master time to close its slavefd.
+		 */
 		slavefd = open(ptsname(MasterPtyFd), O_RDWR);
 		dassert_errno(slavefd >= 0, "Cannot open slave pty");
 		pid = fork();
 		if (pid == 0) {
 			login_tty(slavefd);
+			read(slavefd, &c, 1);
 		} else {
 			close(slavefd);
+			write(MasterPtyFd, "x", 1);
 		}
 	} else {
 		pid = forkpty(&MasterPtyFd, NULL, NULL, NULL);
