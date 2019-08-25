@@ -691,10 +691,10 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	 * too messy still. */
 	if ((drm_core_check_feature(dev, DRIVER_MODESET) && is_driver_ioctl) ||
 	    (ioctl->flags & DRM_UNLOCKED))
-		retcode = func(dev, data, file_priv);
+		retcode = -func(dev, data, file_priv);
 	else {
 		mutex_lock(&drm_global_mutex);
-		retcode = func(dev, data, file_priv);
+		retcode = -func(dev, data, file_priv);
 		mutex_unlock(&drm_global_mutex);
 	}
 	if (retcode == ERESTARTSYS)
