@@ -2010,7 +2010,7 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	fflush(stderr);
 	if (MasterPtyFd >= 0) {
 		int slavefd;
-		char c = 'x';
+		char ttybuf[2];
 
 		/*
 		 * NOTE: We can't open the slave in the child because the
@@ -2021,16 +2021,21 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		 *
 		 *	 Solve this by hand-shaking the slave tty to give
 		 *	 the master time to close its slavefd.
+		 *
+		 *	 Leave the tty defaults intact, which also likely
+		 *	 means it will be in line-buffered mode, so handshake
+		 *	 with a full line.
 		 */
 		slavefd = open(ptsname(MasterPtyFd), O_RDWR);
 		dassert_errno(slavefd >= 0, "Cannot open slave pty");
 		pid = fork();
 		if (pid == 0) {
 			login_tty(slavefd);
-			read(slavefd, &c, 1);
+			/* login_tty() closes slavefd */
+			read(0, ttybuf, 2);
 		} else {
 			close(slavefd);
-			write(MasterPtyFd, "x", 1);
+			write(MasterPtyFd, "x\n", 2);
 		}
 	} else {
 		pid = forkpty(&MasterPtyFd, NULL, NULL, NULL);
