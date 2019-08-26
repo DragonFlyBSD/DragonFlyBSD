@@ -74,6 +74,7 @@ static worker_t *SigWork;
 static int MasterPtyFd = -1;
 static int CopyFileFd = -1;
 static pid_t SigPid;
+static const char *WorkerFlavorPrt = "";	/* "" or "@flavor" */
 
 #define MPTY_FAILED	-2
 #define MPTY_AGAIN	-1
@@ -236,7 +237,7 @@ DoBuild(pkg_t *pkgs)
 		rc = system(buf);
 		if (rc)
 			dfatal("Command failed: %s\n", buf);
-		free(buf);
+		freestrp(&buf);
 	}
 
 	/*
@@ -506,8 +507,7 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			     "(due to dependencies)\n",
 			     pkg->portdir, buf);
 		}
-		free(buf);
-		buf = NULL;
+		freestrp(&buf);
 		*hasworkp = 1;
 	}
 
@@ -781,8 +781,8 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
 				     ipkg->portdir, reason);
 			}
-			++BuildCount;
 			free(reason);
+			++BuildCount;
 			continue;
 		}
 		if (pkgi->flags & PKGF_NOBUILD) {
@@ -791,15 +791,18 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 			pkgi->flags |= PKGF_FAILURE;
 			pkgi->flags &= ~PKGF_BUILDLIST;
 
-			if (pkgi->flags & PKGF_NOBUILD_I)
-				++BuildIgnoreCount;
-			else
-				++BuildSkipCount;
-			++BuildCount;
 			reason = buildskipreason(NULL, pkgi);
-			dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
-			     pkgi->portdir, reason);
+			if (pkgi->flags & PKGF_NOBUILD_I) {
+				++BuildIgnoreCount;
+				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
+				     pkgi->portdir, reason);
+			} else {
+				++BuildSkipCount;
+				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
+				     pkgi->portdir, reason);
+			}
 			free(reason);
+			++BuildCount;
 			continue;
 		}
 
@@ -1440,7 +1443,7 @@ childInstallPkgDeps(worker_t *work)
 	childInstallPkgDeps_recurse(fp, &work->pkg->idepon_list, 1, 1, 0);
 	fprintf(fp, "\nexit 0\n");
 	fclose(fp);
-	free(buf);
+	freestrp(&buf);
 
 	return 1;
 }
@@ -1682,13 +1685,18 @@ WorkerProcess(int ac, char **av)
 	portdir = av[3];
 	pkgfile = av[4];
 	flavor = strchr(portdir, '@');
-	if (flavor)
+	if (flavor) {
 		*flavor++ = 0;
+		asprintf(&buf, "@%s", flavor);
+		WorkerFlavorPrt = buf;
+		buf = NULL;	/* safety */
+	}
 	WorkerProcFlags = strtol(av[5], NULL, 0);
 
 	bzero(&wmsg, sizeof(wmsg));
 
-	setproctitle("[%02d] WORKER STARTUP  %s", slot, portdir);
+	setproctitle("[%02d] WORKER STARTUP  %s%s",
+		     slot, portdir, WorkerFlavorPrt);
 
 	if (strcmp(portdir, "ports-mgmt/pkg") == 0)
 		pkgpkg = 1;
@@ -1762,7 +1770,7 @@ WorkerProcess(int ac, char **av)
 	addbuildenv("PKG_CREATE_VERBOSE", "yes", BENV_MAKECONF);
 	asprintf(&buf, "%d", MaxJobs);
 	addbuildenv("MAKE_JOBS_NUMBER", buf, BENV_MAKECONF);
-	free(buf);
+	freestrp(&buf);
 
 	if (flavor)
 		setenv("FLAVOR", flavor, 1);
@@ -1821,7 +1829,8 @@ WorkerProcess(int ac, char **av)
 	 * Do mounts
 	 */
 	SigWork = work;
-	setproctitle("[%02d] WORKER MOUNTS   %s", slot, portdir);
+	setproctitle("[%02d] WORKER MOUNTS   %s%s",
+		     slot, portdir, WorkerFlavorPrt);
 	DoWorkerMounts(work);
 
 	/*
@@ -1842,7 +1851,7 @@ WorkerProcess(int ac, char **av)
 		}
 	}
 	fclose(fp);
-	free(buf);
+	freestrp(&buf);
 
 	/*
 	 * Start phases
@@ -1921,7 +1930,8 @@ WorkerProcess(int ac, char **av)
 		MasterPtyFd = -1;
 	}
 
-	setproctitle("[%02d] WORKER CLEANUP  %s", slot, portdir);
+	setproctitle("[%02d] WORKER CLEANUP  %s%s",
+		     slot, portdir, WorkerFlavorPrt);
 
 	/*
 	 * Copy the package to the repo.
@@ -1982,8 +1992,8 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 
 	if (work->accum_error)
 		return;
-	setproctitle("[%02d] WORKER %8.8s %s",
-		     work->index, phase, pkg->portdir);
+	setproctitle("[%02d] WORKER %-8.8s %s%s",
+		     work->index, phase, pkg->portdir, WorkerFlavorPrt);
 	wmsg->phase = phaseid;
 	if (ipcwritemsg(work->fds[0], wmsg) < 0) {
 		dlog(DLOG_ALL, "[%03d] %s Lost Communication with dsynth, "
@@ -2214,8 +2224,8 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 
 	next_time = time(NULL);
 
-	setproctitle("[%02d] WORKER EXITREAP %s",
-		     work->index, pkg->portdir);
+	setproctitle("[%02d] WORKER EXITREAP %s%s",
+		     work->index, pkg->portdir, WorkerFlavorPrt);
 
 	/*
 	 * We usually get here due to a mpty EOF, but not always as there
@@ -2529,8 +2539,8 @@ copyfile(char *src, char *dst)
 		}
 	}
 
-	free(buf);
-	free(tmp);
+	freestrp(&buf);
+	freestrp(&tmp);
 
 	return error;
 }
