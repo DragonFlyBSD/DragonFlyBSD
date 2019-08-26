@@ -38,6 +38,7 @@
 #include "dsynth.h"
 
 int UseCCache;
+int UseUsrSrc;
 int UseTmpfs;
 int NumCores = 1;
 int MaxBulk = 8;
@@ -55,7 +56,7 @@ const char *MachineName = "unknown";
 const char *VersionName = "unknown";
 const char *ReleaseName = "unknown";
 const char *DPortsPath = "/usr/dports";
-const char *CCachePath = "/build/ccache";
+const char *CCachePath = DISABLED_STR;
 const char *PackagesPath = "/build/synth/live_packages";
 const char *RepositoryPath = "/build/synth/live_packages/All";
 const char *OptionsPath = "/build/synth/options";
@@ -147,12 +148,32 @@ ParseConfiguration(int isworker)
 	parseProfile(synth_config, ProfileLabel);
 
 	/*
+	 * Figure out whether CCache is configured.  Also set UseUsrSrc
+	 * if it exists under the system path.
+	 *
+	 * Not supported for the moment
+	 */
+	if (strcmp(CCachePath, "disabled") != 0) {
+		dfatal("Directory_ccache is not supported, please\n"
+		       " set to 'disabled'\n");
+		/* NOT REACHED */
+		UseCCache = 1;
+	}
+	asprintf(&buf, "%s/usr/src/sys/Makefile", SystemPath);
+	if (stat(buf, &st) == 0)
+		UseUsrSrc = 1;
+	free(buf);
+
+	/*
 	 * If this is a dsynth WORKER exec it handles a single slot,
 	 * just set MaxWorkers to 1.
 	 */
 	if (isworker)
 		MaxWorkers = 1;
 
+	/*
+	 * Final check
+	 */
 	if (stat(DPortsPath, &st) < 0)
 		dfatal("Directory missing: %s", DPortsPath);
 	if (stat(PackagesPath, &st) < 0)
@@ -167,6 +188,8 @@ ParseConfiguration(int isworker)
 		dfatal("Directory missing: %s", LogsPath);
 	if (stat(SystemPath, &st) < 0)
 		dfatal("Directory missing: %s", SystemPath);
+	if (UseCCache && stat(CCachePath, &st) < 0)
+		dfatal("Directory missing: %s", CCachePath);
 
 	/*
 	 * Now use the SystemPath to retrieve file information from /bin/sh,

@@ -78,6 +78,7 @@ struct pkglink;
 #define UMOUNT_BINARY		"/sbin/umount"
 
 #define ONEGB		(1024L * 1024 * 1024)
+#define DISABLED_STR	"disabled"
 
 /*
  * This can be ".tar", ".tgz", ".txz", or ".tbz".
@@ -133,6 +134,7 @@ typedef struct pkg {
 	char *pos_options;	/* SELECTED_OPTIONS			*/
 	char *neg_options;	/* DESELECTED_OPTIONS			*/
 	char *flavors;		/* FLAVORS    - e.g. py36 py27		*/
+	char *uses;		/* USES (metaport test)			*/
 	int make_jobs_number;	/* MAKE_JOBS_NUMBER			*/
 	int use_linux;		/* USE_LINUX				*/
 	int idep_count;		/* count recursive idepon build deps	*/
@@ -160,6 +162,8 @@ typedef struct pkg {
 #define PKGF_RUNNING	0x00004000	/* build complete */
 #define PKGF_PKGPKG	0x00008000	/* pkg/pkg-static special */
 #define PKGF_NOTREADY	0x00010000	/* build_find_leaves() only */
+#define PKGF_MANUALSEL	0x00020000	/* manually specified */
+#define PKGF_META	0x00040000	/* USES contains 'metaport' */
 #define PKGF_ERROR	(PKGF_PLACEHOLD | PKGF_CORRUPT | PKGF_NOTFOUND | \
 			 PKGF_FAILURE)
 #define PKGF_NOBUILD	(PKGF_NOBUILD_D | PKGF_NOBUILD_S | PKGF_NOBUILD_F | \
@@ -427,6 +431,7 @@ extern int SlowStartOpt;
 extern int YesOpt;
 extern int NullStdinOpt;
 extern int UseCCache;
+extern int UseUsrSrc;
 extern int UseTmpfs;
 extern int NumCores;
 extern long PhysMem;

@@ -182,14 +182,15 @@ DoWorkerMounts(worker_t *work)
 	domount(work, NULLFS_RO, "$/usr/share", "/usr/share", NULL);
 	domount(work, TMPFS_RW,  "dummy", "/usr/local", NULL);
 	domount(work, NULLFS_RO, "$/usr/games", "/usr/games", NULL);
-/*	domount(work, NULLFS_RO, "$/usr/src", "/usr/src", NULL);*/
+	if (UseUsrSrc)
+		domount(work, NULLFS_RO, "$/usr/src", "/usr/src", NULL);
 	domount(work, NULLFS_RO, DPortsPath, "/xports", NULL);
 	domount(work, NULLFS_RW, OptionsPath, "/options", NULL);
 	domount(work, NULLFS_RW, PackagesPath, "/packages", NULL);
 	domount(work, NULLFS_RW, DistFilesPath, "/distfiles", NULL);
 	domount(work, TMPFS_RW_BIG, "dummy", "/construction", NULL);
 	if (UseCCache)
-		domount(work, TMPFS_RW_BIG, "dummy", "/ccache", NULL);
+		domount(work, NULLFS_RW, CCachePath, "/ccache", NULL);
 
 	/*
 	 * NOTE: Uses blah/. to prevent cp from creating 'Template' under
@@ -209,6 +210,11 @@ DoWorkerMounts(worker_t *work)
 /*
  * Called by the worker support thread to remove a worker
  * filesystem topology.
+ *
+ * NOTE: No need to conditionalize UseUsrSrc, it doesn't hurt to
+ *	 issue the umount() if it isn't mounted and it ensures that
+ *	 everything is unmounted properly on cleanup if the state
+ *	 changes.
  */
 void
 DoWorkerUnmounts(worker_t *work)
@@ -219,7 +225,7 @@ DoWorkerUnmounts(worker_t *work)
 	for (retries = 0; retries < 10; ++retries) {
 		dounmount(work, "/proc");
 		dounmount(work, "/dev");
-/*		dounmount(work, "/usr/src");*/
+		dounmount(work, "/usr/src");
 		dounmount(work, "/usr/games");
 		dounmount(work, "/boot/modules.local");
 		dounmount(work, "/boot");

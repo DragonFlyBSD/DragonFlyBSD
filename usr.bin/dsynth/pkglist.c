@@ -156,7 +156,12 @@ ParsePackageList(int n, char **ary)
 	total = 0;
 	initbulk(childGetPackageInfo, MaxBulk);
 
-	queuebulk("ports-mgmt", "pkg", NULL, NULL);
+	/*
+	 * Always include ports-mgmt/pkg.  A non-null s4 field just tells
+	 * the processing code that this isn't a manual selection.
+	 */
+	queuebulk("ports-mgmt", "pkg", NULL, "x");
+
 	for (i = 0; i < n; ++i) {
 		char *l1;
 		char *l2;
@@ -198,7 +203,12 @@ GetLocalPackageList(void)
 
 	fp = popen("pkg info -a -o", "r");
 
-	queuebulk("ports-mgmt", "pkg", NULL, NULL);
+	/*
+	 * Always include ports-mgmt/pkg.  A non-null s4 field just tells
+	 * the processing code that this isn't a manual selection.
+	 */
+	queuebulk("ports-mgmt", "pkg", NULL, "x");
+
 	while ((base = fgetln(fp, &len)) != NULL) {
 		if (len == 0 || base[len-1] != '\n')
 			continue;
@@ -273,9 +283,11 @@ processPackageListBulk(int total)
 		if (bulk->list) {
 			*list_tail = bulk->list;
 			bulk->list = NULL;
-			while (*list_tail) {
-				pkg_enter(*list_tail);
-				list_tail = &(*list_tail)->bnext;
+			while ((scan = *list_tail) != NULL) {
+				if (bulk->s4 == NULL)
+					scan->flags |= PKGF_MANUALSEL;
+				pkg_enter(scan);
+				list_tail = &scan->bnext;
 			}
 		}
 		freebulk(bulk);
@@ -355,8 +367,13 @@ GetPkgPkg(pkg_t *list)
 			return scan;
 	}
 
+	/*
+	 * This will force pkg to be built, but generally this code
+	 * is not reached because the package list processing code
+	 * adds ports-mgmt/pkg unconditionally.
+	 */
 	initbulk(childGetPackageInfo, MaxBulk);
-	queuebulk("ports-mgmt", "pkg", NULL, NULL);
+	queuebulk("ports-mgmt", "pkg", NULL, "x");
 	bulk = getbulk();
 	dassert(bulk, "Cannot find ports-mgmt/pkg");
 	scan = bulk->list;
@@ -656,6 +673,7 @@ again:
 	cav[cac++] = "-VDESELECTED_OPTIONS";
 	cav[cac++] = "-VUSE_LINUX";
 	cav[cac++] = "-VFLAVORS";
+	cav[cac++] = "-VUSES";
 
 	fp = dexec_open(cav, cac, &pid, 1, 1);
 	free(portpath);
@@ -725,6 +743,11 @@ again:
 		case 16:	/* FLAVORS */
 			asprintf(&pkg->flavors, "%s", ptr);
 			break;
+		case 17:	/* USES */
+			asprintf(&pkg->uses, "%s", ptr);
+			if (strstr(pkg->uses, "metaport"))
+				pkg->flags |= PKGF_META;
+			break;
 		default:
 			printf("EXTRA LINE: %s\n", ptr);
 			break;
@@ -734,7 +757,7 @@ again:
 	if (line == 1) {
 		printf("DPort not found: %s/%s\n", bulk->s1, bulk->s2);
 		pkg->flags |= PKGF_NOTFOUND;
-	} else if (line != 16 + 1) {
+	} else if (line != 17 + 1) {
 		printf("DPort corrupt: %s/%s\n", bulk->s1, bulk->s2);
 		pkg->flags |= PKGF_CORRUPT;
 	}

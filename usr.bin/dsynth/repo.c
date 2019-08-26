@@ -42,6 +42,7 @@ typedef struct pinfo {
 	int foundit;
 } pinfo_t;
 
+static void removePackagesMetaRecurse(pkg_t *pkg);
 static int pinfocmp(const void *s1, const void *s2);
 static void scanit(const char *path, const char *subpath,
 			int *countp, pinfo_t ***list_tailp);
@@ -168,9 +169,53 @@ PurgeDistfiles(pkg_t *pkgs)
 }
 
 void
-RemovePackages(pkg_t *pkgs __unused)
+RemovePackages(pkg_t *list)
 {
-	dfatal("Not Implemented");
+	pkg_t *scan;
+	char *path;
+
+	for (scan = list; scan; scan = scan->bnext) {
+		if ((scan->flags & PKGF_MANUALSEL) == 0)
+			continue;
+		if (scan->pkgfile) {
+			scan->flags &= ~PKGF_PACKAGED;
+			scan->pkgfile_size = 0;
+			asprintf(&path, "%s/%s", RepositoryPath, scan->pkgfile);
+			if (remove(path) == 0)
+				printf("Removed: %s\n", path);
+			free(path);
+		}
+		if (scan->pkgfile == NULL ||
+		    (scan->flags & (PKGF_DUMMY | PKGF_META))) {
+			removePackagesMetaRecurse(scan);
+		}
+	}
+}
+
+static void
+removePackagesMetaRecurse(pkg_t *pkg)
+{
+	pkglink_t *link;
+	pkg_t *scan;
+	char *path;
+
+	PKGLIST_FOREACH(link, &pkg->idepon_list) {
+		scan = link->pkg;
+		if (scan == NULL)
+			continue;
+		if (scan->pkgfile == NULL ||
+		    (scan->flags & (PKGF_DUMMY | PKGF_META))) {
+			removePackagesMetaRecurse(scan);
+			continue;
+		}
+		scan->flags &= ~PKGF_PACKAGED;
+		scan->pkgfile_size = 0;
+
+		asprintf(&path, "%s/%s", RepositoryPath, scan->pkgfile);
+		if (remove(path) == 0)
+			printf("Removed: %s\n", path);
+		free(path);
+	}
 }
 
 static int

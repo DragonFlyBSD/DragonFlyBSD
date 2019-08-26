@@ -159,6 +159,9 @@ DoBuild(pkg_t *pkgs)
 	int haswork = 1;
 	int first = 1;
 	int newtemplate;
+	time_t startTime;
+	time_t t;
+	int h, m, s;
 
 	/*
 	 * Count up the packages, not counting dummies
@@ -193,6 +196,7 @@ DoBuild(pkg_t *pkgs)
 	 */
 	sleep(2);
 	pthread_mutex_lock(&WorkerMutex);
+	startTime = time(NULL);
 	GuiInit();
 	GuiReset();
 
@@ -290,7 +294,20 @@ DoBuild(pkg_t *pkgs)
 	GuiSync();
 	GuiDone();
 
-	ddprintf(0, "BuildCount %d\n", BuildCount);
+	t = time(NULL) - startTime;
+	h = t / 3600;
+	m = t / 60 % 60;
+	s = t % 60;
+
+	printf("\n");
+	printf("Initial queue size: %d\n", BuildTotal);
+	printf("    packages built: %d\n", BuildSuccessCount);
+	printf("           ignored: %d\n", BuildIgnoreCount);
+	printf("           skipped: %d\n", BuildSkipCount);
+	printf("            failed: %d\n", BuildFailCount);
+	printf("\n");
+	printf("Duration: %02d:%02d:%02d\n", h, m, s);
+	printf("\n");
 }
 
 /*
@@ -1699,7 +1716,8 @@ WorkerProcess(int ac, char **av)
 		addbuildenv("DEVELOPER", "1", BENV_MAKECONF);
 
 	/*
-	 *
+	 * CCache is a horrible unreliable hack but... leave the
+	 * mechanism in-place in case someone has a death wish.
 	 */
 	if (UseCCache) {
 		addbuildenv("WITH_CCACHE_BUILD", "yes", BENV_MAKECONF);
