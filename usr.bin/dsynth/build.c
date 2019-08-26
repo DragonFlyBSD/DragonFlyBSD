@@ -1813,12 +1813,15 @@ WorkerProcess(int ac, char **av)
 	fp = fopen(buf, "w");
 	dassert_errno(fp, "Unable to create %s\n", buf);
 	for (benv = BuildEnv; benv; benv = benv->next) {
-		if (DebugOpt >= 2) {
-			dlog(DLOG_ALL, "[%03d] ENV %s=%s\n",
-			     slot, benv->label, benv->data);
-		}
-		if (benv->type == BENV_MAKECONF)
+		if (benv->type & BENV_PKGLIST)
+			continue;
+		if ((benv->type & BENV_CMDMASK) == BENV_MAKECONF) {
+			if (DebugOpt >= 2) {
+				dlog(DLOG_ALL, "[%03d] ENV %s=%s\n",
+				     slot, benv->label, benv->data);
+			}
 			fprintf(fp, "%s=%s\n", benv->label, benv->data);
+		}
 	}
 	fclose(fp);
 	free(buf);

@@ -394,6 +394,9 @@ typedef enum os_id os_id_t;
  */
 #define BENV_ENVIRONMENT	1
 #define BENV_MAKECONF		2
+#define BENV_CMDMASK		0x000F
+
+#define BENV_PKGLIST		0x0010
 
 /*
  * WORKER process flags

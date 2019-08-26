@@ -416,13 +416,16 @@ dexec_open(const char **cav, int cac, pid_t *pidp, int with_env, int with_mvars)
 
 	alloci = 0;
 	for (benv = BuildEnv; benv; benv = benv->next) {
-		if (with_mvars && benv->type == BENV_MAKECONF) {
+		if (with_mvars &&
+		    (benv->type & BENV_CMDMASK) == BENV_MAKECONF) {
 			asprintf(&allocary[alloci], "%s=%s",
 				 benv->label, benv->data);
 			cav[cac++] = allocary[alloci];
 			++alloci;
 		}
-		if (with_env && benv->type == BENV_ENVIRONMENT) {
+		if (with_env &&
+		    (benv->type & BENV_PKGLIST) &&
+		    (benv->type & BENV_CMDMASK) == BENV_ENVIRONMENT) {
 			asprintf(&allocary[alloci], "%s=%s",
 				 benv->label, benv->data);
 			cenv[envi++] = allocary[alloci];

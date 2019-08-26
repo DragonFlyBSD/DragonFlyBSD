@@ -144,19 +144,26 @@ main(int ac, char **av)
 
 	/*
 	 * Setup some environment for bulk operations (pkglist scan).
-	 * These will be overridden by the builder for the chrooted
-	 * builds.
+	 * These are not used by the builder (the builder will replicate
+	 * all of these).
 	 */
-	addbuildenv("PORTSDIR", DPortsPath, BENV_ENVIRONMENT);
-	addbuildenv("BATCH", "yes", BENV_ENVIRONMENT);
-	addbuildenv("PKG_SUFX", USE_PKG_SUFX, BENV_ENVIRONMENT);
+	addbuildenv("PORTSDIR", DPortsPath,
+		    BENV_ENVIRONMENT | BENV_PKGLIST);
+	addbuildenv("BATCH", "yes",
+		    BENV_ENVIRONMENT | BENV_PKGLIST);
+	addbuildenv("PKG_SUFX", USE_PKG_SUFX,
+		    BENV_ENVIRONMENT | BENV_PKGLIST);
+	addbuildenv("PACKAGE_BUILDING", "yes",
+		    BENV_ENVIRONMENT | BENV_PKGLIST);
 
 #if 0
 	/*
 	 *
 	 */
-	addbuildenv("OSTYPE", OperatingSystemName, BENV_ENVIRONMENT);
-	addbuildenv("MACHTYPE", MachineName, BENV_ENVIRONMENT);
+	addbuildenv("OSTYPE", OperatingSystemName,
+		    BENV_ENVIRONMENT | BENV_PKGLIST);
+	addbuildenv("MACHTYPE", MachineName,
+		    BENV_ENVIRONMENT | BENV_PKGLIST);
 #endif
 
 	/*
