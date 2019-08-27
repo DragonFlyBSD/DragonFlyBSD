@@ -47,12 +47,20 @@ static int pinfocmp(const void *s1, const void *s2);
 static void scanit(const char *path, const char *subpath,
 			int *countp, pinfo_t ***list_tailp);
 pinfo_t *pinfofind(pinfo_t **ary, int count, char *spath);
+static void childRebuildRepo(bulk_t *bulk);
 static void scandeletenew(const char *path);
+
+static void rebuildTerminateSignal(int signo);
+
+static char *RebuildRemovePath;
 
 void
 DoRebuildRepo(int ask)
 {
-	char *buf;
+	bulk_t *bulk;
+	FILE *fp;
+	int fd;
+	char tpath[256];
 
 	if (ask) {
 		if (askyn("Rebuild the repository? ") == 0)
@@ -65,14 +73,68 @@ DoRebuildRepo(int ask)
 	scandeletenew(RepositoryPath);
 
 	/*
-	 * Issue the repo command to rebuild the repo
+	 * Generate temporary file
 	 */
-	asprintf(&buf, "pkg repo -o %s %s", PackagesPath, RepositoryPath);
-	printf("Rebuilding repository\n");
-	if (system(buf)) {
-		printf("Rebuild failed\n");
-	} else {
+	snprintf(tpath, sizeof(tpath), "/tmp/meta.XXXXXXXX.conf");
+
+	signal(SIGTERM, rebuildTerminateSignal);
+	signal(SIGINT, rebuildTerminateSignal);
+	signal(SIGHUP, rebuildTerminateSignal);
+
+	RebuildRemovePath = tpath;
+
+	fd = mkostemps(tpath, 5, 0);
+	if (fd < 0)
+		dfatal_errno("Cannot create %s", tpath);
+	fp = fdopen(fd, "w");
+	fprintf(fp, "version = 1;\n");
+	fprintf(fp, "packing_format = \"%s\";\n", USE_PKG_SUFX + 1);
+	fclose(fp);
+
+	/*
+	 * Run the operation under our bulk infrastructure to
+	 * get the correct environment.
+	 */
+	initbulk(childRebuildRepo, 1);
+	queuebulk(tpath, NULL, NULL, NULL);
+	bulk = getbulk();
+
+	if (bulk->r1)
 		printf("Rebuild succeeded\n");
+	else
+		printf("Rebuild failed\n");
+	donebulk();
+
+	remove(tpath);
+}
+
+static void
+childRebuildRepo(bulk_t *bulk)
+{
+	FILE *fp;
+	char *ptr;
+	size_t len;
+	pid_t pid;
+	const char *cav[MAXCAC];
+	int cac;
+
+	cac = 0;
+	cav[cac++] = PKG_BINARY;
+	cav[cac++] = "repo";
+	cav[cac++] = "-m";
+	cav[cac++] = bulk->s1;
+	cav[cac++] = "-o";
+	cav[cac++] = PackagesPath;
+	cav[cac++] = RepositoryPath;
+
+	printf("pkg repo -m %s -o %s %s\n",
+	       bulk->s1, PackagesPath, RepositoryPath);
+
+	fp = dexec_open(cav, cac, &pid, 1, 0);
+	while ((ptr = fgetln(fp, &len)) != NULL)
+		fwrite(ptr, 1, len, stdout);
+	if (dexec_close(fp, pid) == 0) {
+		bulk->r1 = strdup("");
 	}
 }
 
@@ -331,4 +393,13 @@ scandeletenew(const char *path)
 		}
 	}
 	closedir(dir);
+}
+
+static void
+rebuildTerminateSignal(int signo __unused)
+{
+	if (RebuildRemovePath)
+		remove(RebuildRemovePath);
+	exit(1);
+
 }
