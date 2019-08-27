@@ -438,11 +438,22 @@ int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 }
 EXPORT_SYMBOL(drm_pcie_get_speed_cap_mask);
 
-#if 0
+static int
+pcie_capability_read_dword(struct pci_dev *dev, int pos, u32 *dst)
+{
+	if (pos & 3)
+		return -EINVAL;
+
+	if (!pcie_capability_reg_implemented(dev, pos))
+		return -EINVAL;
+
+	return pci_read_config_dword(dev, pci_pcie_cap(dev) + pos, dst);
+}
+
 int drm_pcie_get_max_link_width(struct drm_device *dev, u32 *mlw)
 {
 	struct pci_dev *root;
-	u32 lnkcap;
+	u32 lnkcap = 0;
 
 	*mlw = 0;
 	if (!dev->pdev)
@@ -458,7 +469,6 @@ int drm_pcie_get_max_link_width(struct drm_device *dev, u32 *mlw)
 	return 0;
 }
 EXPORT_SYMBOL(drm_pcie_get_max_link_width);
-#endif
 
 #else
 

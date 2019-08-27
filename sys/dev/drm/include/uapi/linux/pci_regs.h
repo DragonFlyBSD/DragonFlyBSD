@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,13 +24,49 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _UAPI_LINUX_PCI_H_
-#define _UAPI_LINUX_PCI_H_
+#ifndef UAPI_LINUX_PCIREGS_H
+#define UAPI_LINUX_PCIREGS_H
 
-#include <linux/pci_regs.h>
+#define PCI_EXP_RTCAP		30
 
-#define PCI_DEVFN(slot, func)	((((slot) & 0x1f) << 3) | ((func) & 0x07))
-#define PCI_SLOT(devfn)		(((devfn) >> 3) & 0x1f)
-#define PCI_FUNC(devfn)		((devfn) & 0x07)
+#define PCI_EXP_FLAGS		2
+#define PCI_EXP_FLAGS_VERS	0x000f
+#define PCI_EXP_FLAGS_TYPE	0x00f0
 
-#endif /* _UAPI_LINUX_PCI_H_ */
+#define PCI_EXP_DEVCAP		4
+
+#define PCI_EXP_LNKCAP		12
+
+#define PCI_EXP_DEVCTL		8
+#define PCI_EXP_DEVCTL2		40
+
+#define PCI_EXP_LNKSTA		18
+#define PCI_EXP_LNKSTA2		50
+
+#define PCI_EXP_SLTCAP		20
+
+#define PCI_CAP_ID_EXP		0x10
+
+#define PCI_EXP_TYPE_ENDPOINT	0x0
+#define PCI_EXP_TYPE_LEG_END	0x1
+#define PCI_EXP_TYPE_ROOT_PORT	0x4
+#define PCI_EXP_TYPE_DOWNSTREAM 0x6
+#define PCI_EXP_TYPE_RC_EC	0xa
+
+#define PCI_EXP_SLTCTL		24
+
+#define PCI_EXP_SLTSTA		26
+
+#define PCI_EXP_FLAGS_SLOT	0x0100
+
+#define PCI_EXP_RTCTL		28
+
+#define PCI_EXP_RTSTA		32
+
+#define PCI_EXP_DEVCAP2		36
+
+#define PCI_EXP_LNKCAP2		44
+
+#define PCI_EXP_LNKCAP_MLW	0x000003f0
+
+#endif /* UAPI_LINUX_PCIREGS_H */

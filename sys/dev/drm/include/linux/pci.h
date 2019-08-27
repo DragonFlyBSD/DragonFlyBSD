@@ -361,4 +361,110 @@ pci_pcie_cap(struct pci_dev *pdev)
 /* DRM_MAX_PCI_RESOURCE */
 #define DEVICE_COUNT_RESOURCE	6
 
+#include <uapi/linux/pci_regs.h>
+
+/* From FreeBSD */
+static inline bool pcie_cap_has_devctl(const struct pci_dev *dev)
+{
+		return true;
+}
+
+static inline int
+pci_find_capability(struct pci_dev *pdev, int capid)
+{
+	int reg;
+
+	if (pci_find_extcap(pdev->dev.bsddev, capid, &reg))
+		return (0);
+	return (reg);
+}
+
+static inline u16 pcie_flags_reg(struct pci_dev *dev)
+{
+	int pos;
+	u16 reg16;
+
+	pos = pci_find_capability(dev, PCI_CAP_ID_EXP);
+	if (!pos)
+		return 0;
+
+	pci_read_config_word(dev, pos + PCI_EXP_FLAGS, &reg16);
+
+	return reg16;
+}
+
+static inline int pci_pcie_type(struct pci_dev *dev)
+{
+	return (pcie_flags_reg(dev) & PCI_EXP_FLAGS_TYPE) >> 4;
+}
+
+
+static inline int pcie_cap_version(struct pci_dev *dev)
+{
+	return pcie_flags_reg(dev) & PCI_EXP_FLAGS_VERS;
+}
+
+static inline bool pcie_cap_has_lnkctl(struct pci_dev *dev)
+{
+	int type = pci_pcie_type(dev);
+
+	return pcie_cap_version(dev) > 1 ||
+	       type == PCI_EXP_TYPE_ROOT_PORT ||
+	       type == PCI_EXP_TYPE_ENDPOINT ||
+	       type == PCI_EXP_TYPE_LEG_END;
+}
+
+static inline bool pcie_cap_has_sltctl(struct pci_dev *dev)
+{
+	int type = pci_pcie_type(dev);
+
+	return pcie_cap_version(dev) > 1 || type == PCI_EXP_TYPE_ROOT_PORT ||
+	    (type == PCI_EXP_TYPE_DOWNSTREAM &&
+	    pcie_flags_reg(dev) & PCI_EXP_FLAGS_SLOT);
+}
+
+static inline bool pcie_cap_has_rtctl(struct pci_dev *dev)
+{
+	int type = pci_pcie_type(dev);
+
+	return pcie_cap_version(dev) > 1 || type == PCI_EXP_TYPE_ROOT_PORT ||
+	    type == PCI_EXP_TYPE_RC_EC;
+}
+
+static inline bool
+pcie_capability_reg_implemented(struct pci_dev *dev, int pos)
+{
+	if (!pci_is_pcie(dev->dev.bsddev))
+		return false;
+
+	switch (pos) {
+	case PCI_EXP_FLAGS_TYPE:
+		return true;
+	case PCI_EXP_DEVCAP:
+	case PCI_EXP_DEVCTL:
+	case PCI_EXP_DEVSTA:
+		return pcie_cap_has_devctl(dev);
+	case PCI_EXP_LNKCAP:
+	case PCI_EXP_LNKCTL:
+	case PCI_EXP_LNKSTA:
+		return pcie_cap_has_lnkctl(dev);
+	case PCI_EXP_SLTCAP:
+	case PCI_EXP_SLTCTL:
+	case PCI_EXP_SLTSTA:
+		return pcie_cap_has_sltctl(dev);
+	case PCI_EXP_RTCTL:
+	case PCI_EXP_RTCAP:
+	case PCI_EXP_RTSTA:
+		return pcie_cap_has_rtctl(dev);
+	case PCI_EXP_DEVCAP2:
+	case PCI_EXP_DEVCTL2:
+	case PCI_EXP_LNKCAP2:
+	case PCI_EXP_LNKCTL2:
+	case PCI_EXP_LNKSTA2:
+		return pcie_cap_version(dev) > 1;
+	default:
+		return false;
+	}
+}
+
 #endif /* LINUX_PCI_H */
