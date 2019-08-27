@@ -31,9 +31,8 @@
 .\" this stuff is worth it, you can buy me a beer in return.   Poul-Henning Kamp
 .\" ----------------------------------------------------------------------------
 .\"
-.\" $FreeBSD: src/usr.sbin/jail/jail.8,v 1.13.2.15 2003/05/08 13:04:24 maxim Exp $
 .\"
-.Dd June 18, 2019
+.Dd August 28, 2019
 .Dt JAIL 8
 .Os
 .Sh NAME
@@ -258,7 +257,7 @@ script from within the jail.
 .Pp
 NOTE: If you plan to allow untrusted users to have root access inside the
 jail, you may wish to consider setting the
-.Va jail.set_hostname_allowed
+.Va jail.defaults.set_hostname_allowed
 to 0.
 Please see the management reasons why this is a good idea.
 If you do decide to set this variable,
@@ -342,7 +341,7 @@ You can have this sysctl set on each boot using
 Just add the following line to
 .Pa /etc/sysctl.conf :
 .Pp
-.Dl jail.set_hostname_allowed=0
+.Dl jail.defaults.set_hostname_allowed=0
 .Pp
 In a future version of
 .Dx ,
@@ -353,10 +352,16 @@ Certain aspects of the jail containments environment may be modified from
 the host environment using
 .Xr sysctl 8
 MIB variables.
-Currently, these variables affect all jails on the system, although in
-the future this functionality may be finer grained.
+For each jail there will be the same set of MIB variables as shown below but
+under
+.Va jail.<id>
+which allows control of every jail individually.
+The values of the variables under
+.Va jail.defaults
+will be copied to the per-jail MIB variables upon creation thus serving as
+a kind of system-wide template.
 .Bl -tag -width XXX
-.It Va jail.allow_raw_sockets
+.It Va jail.defaults.allow_raw_sockets
 This MIB entry determines whether or not prison root is allowed to
 create raw sockets.
 Setting this MIB to 1 allows utilities like
@@ -371,7 +376,7 @@ flag has been set on the socket. Because raw sockets can be used to configure
 and interact with various network subsystems, extra caution should be used
 where privileged access to jails is given out to untrusted parties.
 As such, this option is disabled by default.
-.It Va jail.chflags_allowed
+.It Va jail.defaults.chflags_allowed
 This MIB entry determines how a privileged user inside a jail will be
 treated by
 .Xr chflags 2 .
@@ -383,7 +388,7 @@ constraints on
 .It Va jail.jailed
 This read-only MIB entry can be used to determine if a process is running
 inside a jail (value is 1) or not (value is 0).
-.It Va jail.set_hostname_allowed
+.It Va jail.defaults.set_hostname_allowed
 This MIB entry determines whether or not processes within a jail are
 allowed to change their hostname via
 .Xr hostname 1
@@ -395,7 +400,7 @@ information in
 .Pa /proc .
 As such, this should be disabled in environments where privileged access to
 jails is given out to untrusted parties.
-.It Va jail.socket_unixiproute_only
+.It Va jail.defaults.socket_unixiproute_only
 The jail functionality binds IPv4 and IPv6 addresses to each jail, and limits
 access to other network addresses in the IPv4 and IPv6 space that may be available
 in the host environment.
@@ -411,7 +416,7 @@ permitting them access to
 domain sockets,
 IPv4 and IPv6 addresses, and routing sockets.
 To enable access to other domains, this MIB variable may be set to 0.
-.It Va jail.sysvipc_allowed
+.It Va jail.defaults.sysvipc_allowed
 This MIB entry determines whether or not processes within a jail have access
 to System V IPC primitives.
 In the current jail implementation, System V primitives share a single
