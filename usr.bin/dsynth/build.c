@@ -198,8 +198,8 @@ DoBuild(pkg_t *pkgs)
 	sleep(2);
 	pthread_mutex_lock(&WorkerMutex);
 	startTime = time(NULL);
-	GuiInit();
-	GuiReset();
+	RunStatsInit();
+	RunStatsReset();
 
 	/*
 	 * Build pkg/pkg-static.
@@ -290,10 +290,10 @@ DoBuild(pkg_t *pkgs)
 	}
 	pthread_mutex_unlock(&WorkerMutex);
 
-	GuiUpdateTop();
-	GuiUpdateLogs();
-	GuiSync();
-	GuiDone();
+	RunStatsUpdateTop();
+	RunStatsUpdateLogs();
+	RunStatsSync();
+	RunStatsDone();
 
 	t = time(NULL) - startTime;
 	h = t / 3600;
@@ -834,14 +834,14 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 				} else {
 					startworker(ipkg, work);
 				}
-				/*GuiUpdate(work);*/
+				/*RunStatsUpdate(work);*/
 				break;
 			}
 			++IterateWorker;
 		}
 		ddassert(i != MaxWorkers);
 	}
-	GuiSync();
+	RunStatsSync();
 
 	/*
 	 * We disposed of the whole list
@@ -903,7 +903,7 @@ startworker(pkg_t *pkg, worker_t *work)
 		work->pkg = pkg;
 		pthread_cond_signal(&work->cond);
 		++RunningWorkers;
-		/*GuiUpdate(work);*/
+		/*RunStatsUpdate(work);*/
 		break;
 	case WORKER_PENDING:
 	case WORKER_RUNNING:
@@ -1053,11 +1053,11 @@ waitbuild(int whilematch, int dynamicmax)
 			} else {
 				pthread_cond_signal(&work->cond);
 			}
-			GuiUpdate(work);
+			RunStatsUpdate(work);
 		}
-		GuiUpdateTop();
-		GuiUpdateLogs();
-		GuiSync();
+		RunStatsUpdateTop();
+		RunStatsUpdateLogs();
+		RunStatsSync();
 		if (RunningWorkers == whilematch) {
 			clock_gettime(CLOCK_REALTIME, &ts);
 			ts.tv_sec += 1;
@@ -1337,8 +1337,8 @@ childBuilderThread(void *arg)
 				default:
 					break;
 				}
-				GuiUpdate(work);
-				GuiSync();
+				RunStatsUpdate(work);
+				RunStatsSync();
 			} else {
 				close(work->fds[0]);
 				pthread_mutex_unlock(&WorkerMutex);

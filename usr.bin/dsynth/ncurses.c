@@ -52,7 +52,6 @@ static const char *LineB = "==========================================="
 static const char *LineI = " ID  Duration  Build Phase      Origin     "
 			   "                               Lines";
 
-static time_t GuiStartTime;
 static int LastReduce;
 static off_t MonitorLogOff;
 static int MonitorLogLines;
@@ -91,15 +90,16 @@ static int guireadline(int fd, char **bufp);
 #define WORKER_START	5
 #define LOG_START	(WORKER_START + MaxWorkers + 1)
 
-void
-GuiInit(void)
+static void NCursesReset(void);
+
+static void
+NCursesInit(void)
 {
 	if (UseNCurses == 0)
 		return;
 
 	CWin = initscr();
-	GuiReset();
-	GuiStartTime = time(NULL);
+	NCursesReset();
 
 	intrflush(stdscr, FALSE);
 	nonl();
@@ -113,8 +113,8 @@ GuiInit(void)
 	init_pair(3, -1, -1);
 }
 
-void
-GuiReset(void)
+static void
+NCursesReset(void)
 {
 	int i;
 
@@ -159,86 +159,20 @@ GuiReset(void)
 	LastReduce = -1;
 }
 
-#define RHISTSIZE	600	/* 10 minutes */
-#define ONEHOUR		(60 * 60)
-
-void
-GuiUpdateTop(void)
+static void
+NCursesUpdateTop(topinfo_t *info)
 {
-	static int rate_history[RHISTSIZE];
-	static u_int last_ti;
-	u_int ti;
-	int h;
-	int m;
-	int s;
-	int pkgrate;
-	int pkgimpulse;
-	double dload[3];
-	double dswap;
-	int noswap;
-	time_t t;
-
 	if (UseNCurses == 0)
 		return;
 
-	/*
-	 * Time
-	 */
-
-	t = time(NULL) - GuiStartTime;
-	s = t % 60;
-	m = t / 60 % 60;
-	h = t / 60 / 60;
-
-	/*
-	 * Load and swap
-	 */
-	getloadavg(dload, 3);
-	dswap = getswappct(&noswap) * 100.0;
-
-	/*
-	 * Rate and 10-minute impulse
-	 */
-	if (t > 20)
-		pkgrate = (BuildSuccessCount + BuildFailCount) * ONEHOUR / t;
+	mvwprintw(CWin, 0, TOTAL_COL, "%-5d", info->total);
+	mvwprintw(CWin, 0, BUILT_COL, "%-5d", info->successful);
+	mvwprintw(CWin, 0, IGNORED_COL, "%-5d", info->ignored);
+	if (info->dload[0] > 999.9)
+		mvwprintw(CWin, 0, LOAD_COL, "%5.0f", info->dload[0]);
 	else
-		pkgrate = 0;
-	ti = (u_int)((unsigned long)t % RHISTSIZE);
-	rate_history[ti] = BuildSuccessCount + BuildFailCount;
-#if 0
-	dlog(DLOG_ALL, "ti[%3d] = %d\n", ti, rate_history[ti]);
-#endif
-	while (last_ti != ti) {
-		rate_history[last_ti] = rate_history[ti];
-		last_ti = (last_ti + 1) % RHISTSIZE;
-	}
-
-	if (t < 20) {
-		pkgimpulse = 0;
-	} else if (t < RHISTSIZE) {
-		pkgimpulse = rate_history[ti] -
-			     rate_history[(ti - t) % RHISTSIZE];
-		pkgimpulse = pkgimpulse * ONEHOUR / t;
-	} else {
-		pkgimpulse = rate_history[ti] -
-			     rate_history[(ti + 1) % RHISTSIZE];
-		pkgimpulse = pkgimpulse * ONEHOUR / RHISTSIZE;
-#if 0
-		dlog(DLOG_ALL, "pkgimpulse %d - %d -> %d\n",
-		     rate_history[ti],
-		     rate_history[(ti + 1) % RHISTSIZE],
-		     pkgimpulse);
-#endif
-	}
-
-	mvwprintw(CWin, 0, TOTAL_COL, "%-5d", BuildTotal);
-	mvwprintw(CWin, 0, BUILT_COL, "%-5d", BuildSuccessCount);
-	mvwprintw(CWin, 0, IGNORED_COL, "%-5d", BuildIgnoreCount);
-	if (dload[0] > 999.9)
-		mvwprintw(CWin, 0, LOAD_COL, "%5.0f", dload[0]);
-	else
-		mvwprintw(CWin, 0, LOAD_COL, "%5.1f", dload[0]);
-	mvwprintw(CWin, 0, GPKGRATE_COL, "%-5d", pkgrate);
+		mvwprintw(CWin, 0, LOAD_COL, "%5.1f", info->dload[0]);
+	mvwprintw(CWin, 0, GPKGRATE_COL, "%-5d", info->pkgrate);
 
 	/*
 	 * If dynamic worker reduction is active include a field,
@@ -253,22 +187,24 @@ GuiUpdateTop(void)
 				  LastReduce);
 	}
 
-	mvwprintw(CWin, 1, LEFT_COL, "%-5d", BuildTotal - BuildCount);
-	mvwprintw(CWin, 1, FAILED_COL, "%-5d", BuildFailCount);
-	mvwprintw(CWin, 1, SKIPPED_COL, "%-5d", BuildSkipCount);
-	if (noswap)
+	mvwprintw(CWin, 1, LEFT_COL, "%-5d", info->remaining);
+	mvwprintw(CWin, 1, FAILED_COL, "%-5d", info->failed);
+	mvwprintw(CWin, 1, SKIPPED_COL, "%-5d", info->skipped);
+	if (info->noswap)
 		mvwprintw(CWin, 1, SWAP_COL, "-   ");
 	else
-		mvwprintw(CWin, 1, SWAP_COL, "%5.1f", dswap);
-	mvwprintw(CWin, 1, IMPULSE_COL, "%-5d", pkgimpulse);
-	if (h > 99)
-		mvwprintw(CWin, 1, TIME_COL-1, "%3d:%02d:%02d", h, m, s);
+		mvwprintw(CWin, 1, SWAP_COL, "%5.1f", info->dswap);
+	mvwprintw(CWin, 1, IMPULSE_COL, "%-5d", info->pkgimpulse);
+	if (info->h > 99)
+		mvwprintw(CWin, 1, TIME_COL-1, "%3d:%02d:%02d",
+			  info->h, info->m, info->s);
 	else
-		mvwprintw(CWin, 1, TIME_COL, "%02d:%02d:%02d", h, m, s);
+		mvwprintw(CWin, 1, TIME_COL, "%02d:%02d:%02d",
+			  info->h, info->m, info->s);
 }
 
-void
-GuiUpdateLogs(void)
+static void
+NCursesUpdateLogs(void)
 {
 	int fd = dlog00_fd();
 	char *ptr;
@@ -318,8 +254,8 @@ GuiUpdateLogs(void)
 	}
 }
 
-void
-GuiUpdate(worker_t *work)
+static void
+NCursesUpdate(worker_t *work)
 {
 	const char *phase;
 	const char *origin;
@@ -398,8 +334,8 @@ GuiUpdate(worker_t *work)
 		  "%6d", work->lines);
 }
 
-void
-GuiSync(void)
+static void
+NCursesSync(void)
 {
 	int c;
 
@@ -408,14 +344,14 @@ GuiSync(void)
 
 	while ((c = wgetch(CMon)) != ERR) {
 		if (c == KEY_RESIZE)
-			GuiReset();
+			NCursesReset();
 	}
 	wrefresh(CWin);
 	wrefresh(CMon);
 }
 
-void
-GuiDone(void)
+static void
+NCursesDone(void)
 {
 	if (UseNCurses == 0)
 		return;
@@ -516,3 +452,13 @@ again:
 	MonitorBufEnd += r;
 	goto again;
 }
+
+runstats_t NCursesRunStats = {
+	.init = NCursesInit,
+	.done = NCursesDone,
+	.reset = NCursesReset,
+	.update = NCursesUpdate,
+	.updateTop = NCursesUpdateTop,
+	.updateLogs = NCursesUpdateLogs,
+	.sync = NCursesSync
+};

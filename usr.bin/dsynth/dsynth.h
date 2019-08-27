@@ -415,6 +415,41 @@ typedef enum os_id os_id_t;
 #define SCRIPTPATH(x)	DOSTRING(x)
 #define MAXCAC		256
 
+/*
+ * RunStats satellite modules
+ */
+typedef struct topinfo {
+	int pkgimpulse;
+	int pkgrate;
+	int noswap;
+	int h;
+	int m;
+	int s;
+	int total;
+	int successful;
+	int ignored;
+	int remaining;
+	int failed;
+	int skipped;
+	double dswap;
+	double dload[3];
+} topinfo_t;
+
+typedef struct runstats {
+	struct runstats *next;
+	void (*init)(void);
+	void (*done)(void);
+	void (*reset)(void);
+	void (*update)(worker_t *work);
+	void (*updateTop)(topinfo_t *info);
+	void (*updateLogs)(void);
+	void (*sync)(void);
+} runstats_t;
+
+extern runstats_t NCursesRunStats;
+extern runstats_t MonitorRunStats;
+extern runstats_t HtmlRunStats;
+
 extern int BuildCount;
 extern int BuildTotal;
 extern int BuildFailCount;
@@ -514,13 +549,13 @@ void DoUpgradePkgs(pkg_t *pkgs, int ask);
 void RemovePackages(pkg_t *pkgs);
 void PurgeDistfiles(pkg_t *pkgs);
 
-void GuiInit(void);
-void GuiDone(void);
-void GuiReset(void);
-void GuiUpdate(worker_t *work);
-void GuiUpdateTop(void);
-void GuiUpdateLogs(void);
-void GuiSync(void);
+void RunStatsInit(void);
+void RunStatsDone(void);
+void RunStatsReset(void);
+void RunStatsUpdate(worker_t *work);
+void RunStatsUpdateTop(void);
+void RunStatsUpdateLogs(void);
+void RunStatsSync(void);
 
 int ipcreadmsg(int fd, wmsg_t *msg);
 int ipcwritemsg(int fd, wmsg_t *msg);
