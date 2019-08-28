@@ -201,4 +201,19 @@ scnprintf(char *buf, size_t size, const char *fmt, ...)
 	return (i);
 }
 
+static inline int
+kstrtol(const char *cp, unsigned int base, long *res)
+{
+	char *end;
+
+	*res = strtol(cp, &end, base);
+
+	/* skip newline character, if any */
+	if (*end == '\n')
+		end++;
+	if (*cp == 0 || *end != 0)
+		return (-EINVAL);
+	return (0);
+}
+
 #endif	/* _LINUX_KERNEL_H_ */
