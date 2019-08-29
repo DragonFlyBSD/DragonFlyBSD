@@ -177,7 +177,7 @@ static void	adjttyent(struct ttyent *typ);
 
 static char	**construct_argv(char *);
 static void	start_window_system(session_t *);
-static void	collect_child(pid_t);
+static void	collect_child(pid_t, int);
 static pid_t	start_getty(session_t *);
 static void	transition_handler(int);
 static void	alrm_handler(int);
@@ -189,7 +189,7 @@ static int	setupargv(session_t *, struct ttyent *);
 static void	setprocresources(const char *);
 #endif
 
-static void	clear_session_logs(session_t *);
+static void	clear_session_logs(session_t *, int);
 
 static int	start_session_db(void);
 static void	add_session(session_t *);
@@ -608,13 +608,13 @@ transition(state_t s)
  * Close out the accounting files for a login session.
  */
 static void
-clear_session_logs(session_t *sp)
+clear_session_logs(session_t *sp, int status)
 {
 	char *line = sp->se_device + sizeof(_PATH_DEV) - 1;
 
 #ifdef SUPPORT_UTMPX
-	if (logoutx(line, 0, DEAD_PROCESS))
-		 logwtmpx(line, "", "", 0, DEAD_PROCESS);
+	if (logoutx(line, status, DEAD_PROCESS))
+		 logwtmpx(line, "", "", status, DEAD_PROCESS);
 #endif
 #ifdef SUPPORT_UTMP
 	if (logout(line))
@@ -757,7 +757,7 @@ f_single_user(void)
 	requested_transition = 0;
 	do {
 		if ((wpid = waitpid(-1, &status, WUNTRACED)) != -1)
-			collect_child(wpid);
+			collect_child(wpid, status);
 		if (wpid == -1) {
 			if (errno == EINTR)
 				continue;
@@ -842,7 +842,7 @@ f_runcom(void)
 	requested_transition = 0;
 	do {
 		if ((wpid = waitpid(-1, &status, WUNTRACED)) != -1)
-			collect_child(wpid);
+			collect_child(wpid, status);
 		if (wpid == -1) {
 			if (requested_transition == death)
 				return death;
@@ -1170,7 +1170,7 @@ f_read_ttys(void)
 	 */
 	for (sp = sessions; sp; sp = snext) {
 		if (sp->se_process)
-			clear_session_logs(sp);
+			clear_session_logs(sp, 0);
 		snext = sp->se_next;
 		free_session(sp);
 	}
@@ -1306,7 +1306,7 @@ start_getty(session_t *sp)
  * If an exiting login, start a new login running.
  */
 static void
-collect_child(pid_t pid)
+collect_child(pid_t pid, int status)
 {
 	session_t *sp, *sprev, *snext;
 
@@ -1316,7 +1316,7 @@ collect_child(pid_t pid)
 	if (! (sp = find_session(pid)))
 		return;
 
-	clear_session_logs(sp);
+	clear_session_logs(sp, status);
 	del_session(sp);
 	sp->se_process = 0;
 
@@ -1381,6 +1381,7 @@ static state_t
 f_multi_user(void)
 {
 	pid_t pid;
+	int status;
 	session_t *sp;
 
 	requested_transition = 0;
@@ -1408,8 +1409,8 @@ f_multi_user(void)
 	}
 
 	while (!requested_transition)
-		if ((pid = waitpid(-1, NULL, 0)) != -1)
-			collect_child(pid);
+		if ((pid = waitpid(-1, &status, 0)) != -1)
+			collect_child(pid, status);
 
 	return requested_transition;
 }
@@ -1545,6 +1546,7 @@ f_death(void)
 	session_t *sp;
 	int i;
 	pid_t pid;
+	int status;
 	static const int death_sigs[2] = { SIGTERM, SIGKILL };
 
 #ifdef SUPPORT_UTMPX
@@ -1569,8 +1571,8 @@ f_death(void)
 		clang = 0;
 		alarm(DEATH_WATCH);
 		do
-			if ((pid = waitpid(-1, NULL, 0)) != -1)
-				collect_child(pid);
+			if ((pid = waitpid(-1, &status, 0)) != -1)
+				collect_child(pid, status);
 		while (clang == 0 && errno != ECHILD);
 
 		if (errno == ECHILD)
@@ -1675,7 +1677,7 @@ runshutdown(void)
 	 */
 	do {
 		if ((wpid = waitpid(-1, &status, WUNTRACED)) != -1)
-			collect_child(wpid);
+			collect_child(wpid, status);
 		if (clang == 1) {
 			/* we were waiting for the sub-shell */
 			kill(wpid, SIGTERM);
