@@ -1,4 +1,4 @@
-#	$NetBSD: Makefile,v 1.2 2002/09/18 06:21:15 lukem Exp $
+#	$NetBSD: Makefile,v 1.4 2011/09/17 01:50:54 christos Exp $
 
 PROG=	utmp_update
 MAN=	utmp_update.8
