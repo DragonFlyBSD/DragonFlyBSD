@@ -75,9 +75,7 @@
 #define timespec2ns(x) (((uint64_t)(x)->tv_sec) * 1000000000L + (x)->tv_nsec)
 
 
-/* Fail the compile if x is not true, by constructing an illegal type. */
-#define COMPILE_ASSERT(x) /*LINTED null effect */ \
-	((void)sizeof(struct { unsigned : ((x) ? 1 : -1); }))
+#define	COMPILE_ASSERT(x)	_Static_assert(x, "assertion failed")
 
 
 #ifdef SUPPORT_UTMP
@@ -333,11 +331,9 @@ getentry(struct utmpentry *e, struct utmp *up)
 static void
 getentryx(struct utmpentry *e, struct utmpx *up)
 {
-#if 1
 	COMPILE_ASSERT(sizeof(e->name) > sizeof(up->ut_name));
 	COMPILE_ASSERT(sizeof(e->line) > sizeof(up->ut_line));
 	COMPILE_ASSERT(sizeof(e->host) > sizeof(up->ut_host));
-#endif
 
 	/*
 	 * e has just been calloc'd. We don't need to clear it or
