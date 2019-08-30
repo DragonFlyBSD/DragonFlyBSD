@@ -60,7 +60,7 @@ static utx_db_t dbtype = UTX_DB_UTMPX;
 DB *lastlogx_db = NULL;
 
 static int
-_open_db(char *fname)
+_open_db(const char *fname)
 {
 	struct stat st;
 
@@ -103,7 +103,7 @@ fail:
 }
 
 int
-setutxdb(utx_db_t db_type, char *fname)
+setutxdb(utx_db_t db_type, const char *fname)
 {
 	switch (db_type) {
 	case UTX_DB_UTMPX:
