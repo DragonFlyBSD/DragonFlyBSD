@@ -48,7 +48,7 @@
 #include <utmpx.h>
 #include <vis.h>
 
-static FILE *fp = NULL;
+static FILE *fp;
 static int readonly = 0;
 static struct utmpx ut;
 static char utfile[MAXPATHLEN] = _PATH_UTMPX;
@@ -64,9 +64,9 @@ _open_db(char *fname)
 {
 	struct stat st;
 
-	if ((fp = fopen(fname, "r+")) == NULL)
-		if ((fp = fopen(fname, "w+")) == NULL) {
-			if ((fp = fopen(fname, "r")) == NULL)
+	if ((fp = fopen(fname, "re+")) == NULL)
+		if ((fp = fopen(fname, "we+")) == NULL) {
+			if ((fp = fopen(fname, "re")) == NULL)
 				goto fail;
 			else
 				readonly = 1;
@@ -139,11 +139,6 @@ setutxent(void)
 	(void)memset(&ut, 0, sizeof(ut));
 	if (fp == NULL)
 		return;
-
-#if 0
-	if (dbtype != UTX_DB_UTMPX)
-		setutxdb(UTX_DB_UTMPX, utfile);
-#endif
 	(void)fseeko(fp, (off_t)sizeof(ut), SEEK_SET);
 }
 
@@ -322,7 +317,7 @@ utmp_update(const struct utmpx *utx)
 	_DIAGASSERT(utx != NULL);
 
 	(void)strvisx(buf, (const char *)(const void *)utx, sizeof(*utx),
-	    VIS_WHITE);
+	    VIS_WHITE | VIS_NOLOCALE);
 	switch (pid = fork()) {
 	case 0:
 		(void)execl(_PATH_UTMP_UPDATE,
@@ -360,10 +355,10 @@ _updwtmpx(const char *file, const struct utmpx *utx)
 	_DIAGASSERT(file != NULL);
 	_DIAGASSERT(utx != NULL);
 
-	fd = open(file, O_WRONLY|O_APPEND|O_SHLOCK);
+	fd = open(file, O_WRONLY|O_APPEND|O_SHLOCK|O_CLOEXEC);
 
 	if (fd == -1) {
-		if ((fd = open(file, O_CREAT|O_WRONLY|O_EXLOCK, 0644)) == -1)
+		if ((fd = open(file, O_CREAT|O_WRONLY|O_EXLOCK|O_CLOEXEC, 0644)) == -1)
 			goto fail;
 	}
 	if (fstat(fd, &st) == -1)
@@ -453,7 +448,7 @@ getlastlogx(const char *fname, uid_t uid, struct lastlogx *ll)
 	_DIAGASSERT(fname != NULL);
 	_DIAGASSERT(ll != NULL);
 
-	db = dbopen(fname, O_RDONLY|O_SHLOCK, 0, DB_HASH, NULL);
+	db = dbopen(fname, O_RDONLY|O_SHLOCK|O_CLOEXEC, 0, DB_HASH, NULL);
 
 	if (db == NULL)
 		return NULL;
@@ -492,7 +487,7 @@ updlastlogx(const char *fname, uid_t uid, struct lastlogx *ll)
 	_DIAGASSERT(fname != NULL);
 	_DIAGASSERT(ll != NULL);
 
-	db = dbopen(fname, O_RDWR|O_CREAT|O_EXLOCK, 0644, DB_HASH, NULL);
+	db = dbopen(fname, O_RDWR|O_CREAT|O_EXLOCK|O_CLOEXEC, 0644, DB_HASH, NULL);
 
 	if (db == NULL)
 		return -1;
