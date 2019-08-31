@@ -11,10 +11,5 @@
 
 #include <cpu/param.h>
 
-/* JG from fbsd/sys/amd64/include/param.h */
-#ifndef	KSTACK_PAGES
-#define	KSTACK_PAGES	4	/* pages of kstack (with pcb) */
-#endif
-
 #endif
 
