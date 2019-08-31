@@ -28,7 +28,6 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.16 2008/10/26 07:11:28 sephe Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -36,9 +35,6 @@
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
-#endif
-#ifndef _SYS_FNV_HASH_H_
-#include <sys/fnv_hash.h>
 #endif
 #ifndef _NET_IF_VAR_H_
 #include <net/if_var.h>
@@ -89,7 +85,9 @@ struct	in_aliasreq {
 	((ntohl((in).s_addr) & ~((struct in_ifaddr *)(ifa)->ia_subnetmask))
 
 
-#ifdef	_KERNEL
+#ifdef _KERNEL
+#include <sys/fnv_hash.h>
+
 struct in_ifaddr_container;
 
 extern	struct	in_addr zeroin_addr;
