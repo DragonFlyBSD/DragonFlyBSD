@@ -42,6 +42,7 @@ struct hammer2_media_config {
 	hammer2_volconf_t	copy_run;
 	hammer2_volconf_t	copy_pend;
 	pthread_t		thread;
+	int			thread_started;
 	pthread_cond_t		cond;
 	int			ctl;
 	int			fd;
@@ -323,7 +324,7 @@ hammer2_usrmsg_handler(dmsg_msg_t *msg, int unmanaged)
 		for (i = 0; i < HAMMER2_COPYID_COUNT; ++i) {
 			if (conf[i].thread) {
 				pthread_join(conf[i].thread, NULL);
-				conf->thread = NULL;
+				conf->thread_started = 0;
 				pthread_cond_destroy(&conf[i].cond);
 			}
 		}
@@ -363,11 +364,12 @@ hammer2_usrmsg_handler(dmsg_msg_t *msg, int unmanaged)
 		conf->copy_pend = msgconf->copy;
 		conf->ctl |= H2CONFCTL_UPDATE;
 		pthread_mutex_unlock(&confmtx);
-		if (conf->thread == NULL) {
+		if (conf->thread_started == 0) {
 			fprintf(stderr, "VOLCONF THREAD STARTED\n");
 			pthread_cond_init(&conf->cond, NULL);
 			pthread_create(&conf->thread, NULL,
 				       hammer2_volconf_thread, (void *)conf);
+			conf->thread_started = 1;
 		}
 		pthread_cond_signal(&conf->cond);
 		break;
