@@ -204,14 +204,6 @@ extern int pmap_fast_kernel_cpusync;
 
 #define	pte_load_clear(pte)	atomic_readandclear_long(pte)
 
-static __inline void
-pte_store(pt_entry_t *ptep, pt_entry_t pte)
-{
-	*ptep = pte;
-}
-
-#define	pde_store(pdep, pde)	pte_store((pdep), (pde))
-
 /*
  * Pmap stuff
  */
