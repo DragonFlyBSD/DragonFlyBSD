@@ -36,9 +36,9 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
 
-__asm__(".symver pastfrexp,frexp@DF306.0");
+__sym_compat(frexp, past_frexp, DF306.0);
 double
-pastfrexp(double v, int *ex)
+past_frexp(double v, int *ex)
 {
 	union  {
 		double v;

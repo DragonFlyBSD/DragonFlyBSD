@@ -452,6 +452,10 @@
 	__asm__(".section .gnu.warning." #sym);	\
 	__asm__(".asciz \"" msg "\"");	\
 	__asm__(".previous")
+#define	__sym_compat(sym,impl,verid)	\
+	__asm__(".symver " #impl ", " #sym "@" #verid)
+#define	__sym_default(sym,impl,verid)	\
+	__asm__(".symver " #impl ", " #sym "@@@" #verid)
 #endif	/* __GNUC__ */
 
 #if defined(__GNUC__)

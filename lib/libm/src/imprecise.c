@@ -49,13 +49,13 @@
 	WARN_IMPRECISE(x)
 
 #define DECLARE_FORMER_IMPRECISE(f) \
-	__asm__(".symver imprecise_" #f "l," #f "l@DF306.1"); \
+	__sym_compat(f ## l, imprecise_ ## f ## l, DF306.1); \
 	long double imprecise_ ## f ## l(long double v) { return f(v); }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
 
-__asm__(".symver imprecise_powl,powl@DF306.1");
+__sym_compat(powl, imprecise_powl, DF306.1);
 long double
 imprecise_powl(long double x, long double y) { return pow(x, y); }
 

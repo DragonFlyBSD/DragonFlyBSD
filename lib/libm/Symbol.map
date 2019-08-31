@@ -240,7 +240,7 @@ DF306.0 {
 	/*
 	 * Erroneously versioned in libm previously.
 	 * These functions are only available in this version now for
-	 * backwards compatibility reasons (implemented with .symver)
+	 * backwards compatibility reasons (implemented with __sym_compat())
 	 *
 	 * frexp;
 	 * isnanf;
@@ -264,7 +264,7 @@ DF306.0 {
 
 DF306.1 {
 	/*
-	 * These old versions are implemented with __asm__ .symver
+	 * These old versions are implemented with __sym_compat()
 	 * coshl;
 	 * erfcl;
 	 * erfl;

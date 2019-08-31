@@ -22,9 +22,9 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
 
-__asm__(".symver past__signbitl,__signbitl@DF306.0");
+__sym_compat(__signbitl, past___signbitl, DF306.0);
 int
-past__signbitl(long double e)
+past___signbitl(long double e)
 {
 	struct ieee_ext *p = (struct ieee_ext *)&e;
 

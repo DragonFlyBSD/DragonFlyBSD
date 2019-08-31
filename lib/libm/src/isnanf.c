@@ -23,16 +23,16 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
 
-__asm__(".symver past__isnanf,__isnanf@DF306.0");
+__sym_compat(__isnanf, past___isnanf, DF306.0);
 int
-past__isnanf(float f)
+past___isnanf(float f)
 {
 	struct ieee_single *p = (struct ieee_single *)&f;
  
 	return (p->sng_exp == SNG_EXP_INFNAN && p->sng_frac != 0);
 }
 
-__asm__(".symver weak_isnanf,isnanf@DF306.0");
+__sym_compat(isnanf, weak_isnanf, DF306.0);
 int
 weak_isnanf(float f)
 {

@@ -23,18 +23,18 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
 
-__asm__(".symver past__isfinite,__isfinite@DF306.0");
+__sym_compat(__isfinite, past___isfinite, DF306.0);
 int
-past__isfinite(double d)
+past___isfinite(double d)
 {
 	struct ieee_double *p = (struct ieee_double *)&d;
 
 	return (p->dbl_exp != DBL_EXP_INFNAN);
 }
 
-__asm__(".symver past__isfinitef,__isfinitef@DF306.0");
+__sym_compat(__isfinitef, past___isfinitef, DF306.0);
 int
-past__isfinitef(float f)
+past___isfinitef(float f)
 {
 	struct ieee_single *p = (struct ieee_single *)&f;
 
