@@ -62,6 +62,7 @@
 #ifndef _SYS_VFSOPS_H_
 #define	_SYS_VFSOPS_H_
 
+#ifdef _KERNEL
 #ifndef _SYS_ACL_H_
 #include <sys/acl.h>
 #endif
@@ -652,6 +653,7 @@ struct vop_ops {
 	int	(*vop_nrename)(struct vop_nrename_args *);
 #define vop_ops_last_field	vop_nrename
 };
+#endif	/* _KERNEL */
 
 /*
  * vop_mountctl() operations
@@ -983,12 +985,13 @@ extern struct syslink_desc vop_nremove_desc;
 extern struct syslink_desc vop_nrmdir_desc;
 extern struct syslink_desc vop_nrename_desc;
 
-#endif
+#endif	/* _KERNEL */
 
 /*
  * VOP_*() convenience macros extract the operations vector and make the
  * vop_*() call.
  */
+#ifdef _KERNEL
 #define VOP_OPEN(vp, mode, cred, fp)			\
 	vop_open(*(vp)->v_ops, vp, mode, cred, fp)
 #define VOP_CLOSE(vp, fflag, fp)			\
@@ -1127,6 +1130,7 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_nrmdir((nch)->mount->mnt_vn_use_ops, nch, dvp, cred)
 #define VOP_NREMOVE(nch, dvp, cred)			\
 	vop_nremove((nch)->mount->mnt_vn_use_ops, nch, dvp, cred)
+#endif	/* _KERNEL */
 
-#endif
+#endif	/* !_SYS_VFSOPS_H_ */
 

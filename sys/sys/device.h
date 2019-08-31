@@ -35,6 +35,7 @@
 #ifndef _SYS_DEVICE_H_
 #define _SYS_DEVICE_H_
 
+#ifdef _KERNEL
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -251,6 +252,7 @@ struct dev_ops {
 	int (*d_uksmap)(struct cdev *dev, struct vm_page *fake);
 #define dev_ops_last_field	d_uksmap
 };
+#endif /* _KERNEL */
 
 /*
  * Types for d_flags.
@@ -269,6 +271,7 @@ struct dev_ops {
  * D_NOEMERGPGR		Indicates complex layering, the emergency pager
  *			should skip buffers related to such devices.
  */
+#ifdef _KERNEL
 #define D_MEMDISK	0x00010000	/* memory type disk */
 #define D_UNUSED17	0x00020000	/* was: nagged about missing make_dev() */
 #define D_CANFREE	0x00040000	/* can free blocks */
@@ -278,6 +281,7 @@ struct dev_ops {
 #define D_MPSAFE	0x00400000	/* all dev_d*() calls are MPSAFE */
 #define D_KVABIO	0x00800000	/* device support KVABIO API */
 #define D_QUICK		0x01000000	/* no fancy open/close support needed*/
+#endif
 
 /*
  * A union of all possible argument structures.
@@ -299,6 +303,7 @@ union dev_args_union {
 };
 #endif
 
+#ifdef _KERNEL
 /*
  * Linking structure for mask/match registration
  */
@@ -317,6 +322,7 @@ struct dev_ops_maj {
 
 RB_HEAD(dev_ops_rb_tree, dev_ops_maj);
 RB_PROTOTYPE2(dev_ops_rb_tree, dev_ops_maj, rbnode, rb_dev_ops_compare, int);
+#endif /* _KERNEL */
 
 #ifdef _KERNEL
 

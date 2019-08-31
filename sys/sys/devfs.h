@@ -36,9 +36,13 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifdef _KERNEL
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
 #endif
@@ -48,15 +52,18 @@
 #ifndef _SYS_MSGPORT_H_
 #include <sys/msgport.h>
 #endif
+#endif	/* _KERNEL */
 #ifndef _SYS_DIRENT_H_
 #include <sys/dirent.h>
 #endif
 #ifndef _SYS_DEVICE_H_
 #include <sys/device.h>
 #endif
+#ifdef _KERNEL
 #ifndef _SYS_UCRED_H_
 #include <sys/ucred.h>
 #endif
+#endif	/* _KERNEL */
 
 
 typedef enum {
@@ -114,6 +121,7 @@ struct devfs_node {
 	TAILQ_HEAD(, devfs_node) list;	/* linked list of children */
 };
 
+#ifdef _KERNEL
 struct devfs_orphan {
 	struct devfs_node *node;
 	TAILQ_ENTRY(devfs_orphan) link;
@@ -329,6 +337,7 @@ struct devfs_bitmap {
 	int		chunks;
 	unsigned long	*bitmap;
 };
+#endif /* _KERNEL */
 
 #if 0
 struct devfs_unit_hash {
@@ -338,6 +347,7 @@ struct devfs_unit_hash {
 };
 #endif
 
+#ifdef _KERNEL
 void devfs_clone_bitmap_init(struct devfs_bitmap *);
 void devfs_clone_bitmap_uninit(struct devfs_bitmap *);
 int devfs_clone_bitmap_set(struct devfs_bitmap *, int);
@@ -443,6 +453,7 @@ void devfs_clear_cdevpriv(struct file *file);
 
 int devfs_WildCmp(const char *w, const char *s);
 int devfs_WildCaseCmp(const char *w, const char *s);
+#endif	/* _KERNEL */
 
 #endif /* KERNEL || _KERNEL_STRUCTURES */
 
