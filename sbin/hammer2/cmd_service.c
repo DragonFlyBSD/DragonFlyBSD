@@ -227,7 +227,6 @@ service_thread(void *data)
 	 * Start up a thread to handle block device monitoring for
 	 * export to the cluster.
 	 */
-	thread = NULL;
 	pthread_create(&thread, NULL, udev_thread, NULL);
 
 	/*
@@ -239,7 +238,6 @@ service_thread(void *data)
 	/*
 	 * Start thread to manage /etc/hammer2/autoconn
 	 */
-	thread = NULL;
 	pthread_create(&thread, NULL, autoconn_thread, NULL);
 
 	/*
@@ -266,7 +264,6 @@ service_thread(void *data)
 		}
 		opt = 1;
 		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof opt);
-		thread = NULL;
 		fprintf(stderr, "service_thread: accept fd %d\n", fd);
 		info = malloc(sizeof(*info));
 		bzero(info, sizeof(*info));
@@ -478,7 +475,6 @@ hammer2_volconf_stop(hammer2_media_config_t *conf)
 		close(conf->pipefd[1]);
 		conf->pipefd[1] = -1;
 		pthread_join(conf->iocom_thread, NULL);
-		conf->iocom_thread = NULL;
 		conf->state = H2MC_STOPPED;
 		break;
 	}
@@ -654,7 +650,6 @@ autoconn_thread(void *data __unused)
 				if (pipe(ac->pipefd) == 0) {
 					ac->stopme = 0;
 					ac->state = AUTOCONN_ACTIVE;
-					thread = NULL;
 					pthread_create(&thread, NULL,
 						       autoconn_connect_thread,
 						       ac);

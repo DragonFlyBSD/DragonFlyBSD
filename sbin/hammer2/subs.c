@@ -70,7 +70,7 @@ hammer2_ioctl_handle(const char *sel_path)
 void
 hammer2_demon(void *(*func)(void *), void *arg)
 {
-	pthread_t thread = NULL;
+	pthread_t thread;
 	pid_t pid;
 	int ttyfd;
 
