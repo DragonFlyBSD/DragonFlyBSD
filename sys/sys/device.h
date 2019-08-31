@@ -270,7 +270,7 @@ struct dev_ops {
  *			should skip buffers related to such devices.
  */
 #define D_MEMDISK	0x00010000	/* memory type disk */
-#define D_NAGGED	0x00020000	/* nagged about missing make_dev() */
+#define D_UNUSED17	0x00020000	/* was: nagged about missing make_dev() */
 #define D_CANFREE	0x00040000	/* can free blocks */
 #define D_TRACKCLOSE	0x00080000	/* track all closes */
 #define D_MASTER	0x00100000	/* used by pty/tty code */
@@ -282,6 +282,7 @@ struct dev_ops {
 /*
  * A union of all possible argument structures.
  */
+#if 0
 union dev_args_union {
 	struct dev_generic_args	du_head;
 	struct dev_open_args	du_open;
@@ -296,6 +297,7 @@ union dev_args_union {
 	struct dev_kqfilter_args du_kqfilter;
 	struct dev_clone_args	du_clone;
 };
+#endif
 
 /*
  * Linking structure for mask/match registration

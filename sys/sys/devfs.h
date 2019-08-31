@@ -251,7 +251,9 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 #define DEVFS_MNTDATA(x)	((struct devfs_mnt_data *)((x)->mnt_data))
 #define DEVFS_ORPHANLIST(x)	(&(DEVFS_MNTDATA(x)->orphan_list))
 #define DEVFS_DENODE_HEAD(x)	(&((x)->list))
+#if 0
 #define DEVFS_ISDIGIT(x)	((x >= '0') && (x <= '9'))
+#endif
 
 /*
  * -rwxr-xr-x
@@ -328,11 +330,13 @@ struct devfs_bitmap {
 	unsigned long	*bitmap;
 };
 
+#if 0
 struct devfs_unit_hash {
         struct devfs_unit_hash *next;
         int		unit_no;
 	cdev_t		dev;
 };
+#endif
 
 void devfs_clone_bitmap_init(struct devfs_bitmap *);
 void devfs_clone_bitmap_uninit(struct devfs_bitmap *);

@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -37,7 +37,7 @@
  * fixed set of vectors.
  *
  * In DragonFly the ultimate goal is to thread the VFS, which means that
- * the dispatch functions will eventually be called from the context of 
+ * the dispatch functions will eventually be called from the context of
  * a management thread rather then directly called by a process.  This
  * requires us to divorce direct process dependancies (in particular ioctl
  * and UIO's).  In addition, it is our intention to implement kernel
@@ -574,7 +574,7 @@ struct vop_nrename_args {
  * function wrappers to implement hooks for per-mount management functions
  * such as journaling and cache coherency protocols.  The second section is
  * the function dispatch for the VFSs.  The functions are supposed to run
- * in the context of the VFS's thread (if it has one) and should not be 
+ * in the context of the VFS's thread (if it has one) and should not be
  * directly called from random kernel code.  Note that VOCALL()s are direct
  * calls used for chaining vop_ops structures from a VFS context.
  */
@@ -664,6 +664,7 @@ struct vop_ops {
  * structures.  The vop_args_union can hold any VOP call argument structure.
  * Note that vu_head is broken out.
  */
+#if 0
 union vop_args_union {
 	struct vop_generic_args vu_head;
 	struct vop_generic_args vu_default;
@@ -723,6 +724,7 @@ union vop_args_union {
 	struct vop_nrmdir_args vu_nrmdir;
 	struct vop_nrename_args vu_nrename;
 };
+#endif
 
 #ifdef _KERNEL
 
@@ -734,14 +736,14 @@ union vop_args_union {
  * routine directly in order to allow DragonFly to properly wrap the operation
  * in a message and dispatch it to the correct thread.
  */
-int vop_old_lookup(struct vop_ops *ops, struct vnode *dvp, 
+int vop_old_lookup(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp);
 int vop_old_create(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
-int vop_old_whiteout(struct vop_ops *ops, struct vnode *dvp, 
+int vop_old_whiteout(struct vop_ops *ops, struct vnode *dvp,
 		struct componentname *cnp, int flags);
-int vop_old_mknod(struct vop_ops *ops, struct vnode *dvp, 
+int vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
 int vop_open(struct vop_ops *ops, struct vnode *vp, int mode,
@@ -785,7 +787,7 @@ int vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap, char *target);
 int vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
-		struct ucred *cred, int *eofflag, 
+		struct ucred *cred, int *eofflag,
 		int *ncookies, off_t **cookies, struct file *fp);
 int vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		struct ucred *cred);
@@ -853,8 +855,8 @@ int vop_nrename(struct vop_ops *ops,
 
 /*
  * Kernel VOP forwarding wrappers.  These are called when a VFS such as
- * nullfs needs to push down into another VFS, changing the 
- * a_ops pointer and consequentially necessitating additional 
+ * nullfs needs to push down into another VFS, changing the
+ * a_ops pointer and consequentially necessitating additional
  * cache management.
  *
  * Note that this is different from vop_ops chaining within the same
