@@ -197,18 +197,16 @@
  */
 #define	round_page(x)	((((unsigned long)(x)) + PAGE_MASK) & ~(unsigned long)(PAGE_MASK))
 #define	trunc_page(x)	((unsigned long)(x) & ~(unsigned long)(PAGE_MASK))
-#define trunc_2mpage(x)	((unsigned long)(x) & ~(unsigned long)PDRMASK)
-#define round_2mpage(x)	((((unsigned long)(x)) + PDRMASK) & ~(unsigned long)PDRMASK)
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define	atop(x)		((vm_pindex_t)((x) >> PAGE_SHIFT))
-#endif
 #define	ptoa(x)		((vm_paddr_t)(x) << PAGE_SHIFT)
 
 #define	x86_64_btop(x)	((vm_pindex_t)((x) >> PAGE_SHIFT))
 #define	x86_64_ptob(x)	((vm_paddr_t)(x) << PAGE_SHIFT)
 
 #define	pgtok(x)		((x) * (PAGE_SIZE / 1024))
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 #ifdef _KERNEL
 
