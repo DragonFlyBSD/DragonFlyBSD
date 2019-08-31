@@ -72,11 +72,11 @@ static struct mntopt mopts[] = {
 	MOPT_NULL
 };
 
-static gid_t	a_gid(char *);
-static uid_t	a_uid(char *);
-static mode_t	a_mask(char *);
-static void	usage(void) __dead2;
-int set_charset(struct msdosfs_args*, const char*, const char*);
+static gid_t a_gid(char *);
+static uid_t a_uid(char *);
+static mode_t a_mask(char *);
+static void usage(void) __dead2;
+int set_charset(struct msdosfs_args *, const char *, const char *);
 
 int
 main(int argc, char **argv)
@@ -260,7 +260,7 @@ a_mask(char *s)
 static void
 usage(void)
 {
-	fprintf(stderr, "%s\n%s\n", 
+	fprintf(stderr, "%s\n%s\n",
 	    "usage: mount_msdos [-9ls] [-D DOS_codepage] [-g gid] [-L locale]",
 	    "                   [-m mask] [-o options] [-u uid] special node");
 	exit(EX_USAGE);
@@ -271,8 +271,7 @@ set_charset(struct msdosfs_args *args, const char *cs_local, const char *cs_dos)
 {
         int error;
         if (modfind("msdos_iconv") < 0) {
-                if (kldload("msdos_iconv") < 0 || modfind("msdos_iconv") < 0)
-		{
+                if (kldload("msdos_iconv") < 0 || modfind("msdos_iconv") < 0) {
                         warnx("cannot find or load \"msdos_iconv\" kernel module");
                         return (-1);
                 }

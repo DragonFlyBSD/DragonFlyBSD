@@ -205,7 +205,8 @@ struct denode {
 	 putushort((dp)->deMDate, (dep)->de_MDate),	\
 	 putushort((dp)->deStartCluster, (dep)->de_StartCluster), \
 	 putulong((dp)->deFileSize,			\
-	     ((dep)->de_Attributes & ATTR_DIRECTORY) ? 0 : (dep)->de_FileSize), \
+	     ((dep)->de_Attributes & ATTR_DIRECTORY) ?	\
+	     0 : (dep)->de_FileSize), \
 	 putushort((dp)->deHighClust, (dep)->de_StartCluster >> 16))
 
 #define	de_forw		de_chain[0]
@@ -217,18 +218,18 @@ struct denode {
 #define	DETOV(de)	((de)->de_vnode)
 
 #define	DETIMES(dep, acc, mod, cre) do {				\
-	if ((dep)->de_flag & DE_UPDATE) { 				\
+	if ((dep)->de_flag & DE_UPDATE) {				\
 		(dep)->de_flag |= DE_MODIFIED;				\
 		unix2dostime((mod), &(dep)->de_MDate, &(dep)->de_MTime,	\
 		    NULL);						\
-		(dep)->de_Attributes |= ATTR_ARCHIVE; 			\
+		(dep)->de_Attributes |= ATTR_ARCHIVE;			\
 	}								\
 	if ((dep)->de_pmp->pm_flags & MSDOSFSMNT_NOWIN95) {		\
 		(dep)->de_flag &= ~(DE_UPDATE | DE_CREATE | DE_ACCESS);	\
 		break;							\
 	}								\
 	if ((dep)->de_flag & DE_ACCESS) {				\
-	    	u_int16_t adate;					\
+		u_int16_t adate;					\
 									\
 		unix2dostime((acc), &adate, NULL, NULL);		\
 		if (adate != (dep)->de_ADate) {				\
@@ -258,26 +259,29 @@ struct defid {
 #endif
 };
 
-int msdosfs_lookup (struct vop_old_lookup_args *);
-int msdosfs_inactive (struct vop_inactive_args *);
-int msdosfs_reclaim (struct vop_reclaim_args *);
+int msdosfs_lookup(struct vop_old_lookup_args *);
+int msdosfs_inactive(struct vop_inactive_args *);
+int msdosfs_reclaim(struct vop_reclaim_args *);
 
 /*
  * Internal service routine prototypes.
  */
-int deget (struct msdosfsmount *, u_long, u_long, struct denode **);
-int uniqdosname (struct denode *, struct componentname *, u_char *);
-int findwin95 (struct denode *);
+int deget(struct msdosfsmount *, u_long, u_long, struct denode **);
+int uniqdosname(struct denode *, struct componentname *, u_char *);
+int findwin95(struct denode *);
 
-int readep (struct msdosfsmount *pmp, u_long dirclu, u_long dirofs,  struct buf **bpp, struct direntry **epp);
-int readde (struct denode *dep, struct buf **bpp, struct direntry **epp);
-int deextend (struct denode *dep, u_long length);
-int fillinusemap (struct msdosfsmount *pmp);
-void msdosfs_reinsert(struct denode *ip, u_long new_dirclust, u_long new_diroffset);
-int dosdirempty (struct denode *dep);
-int createde (struct denode *dep, struct denode *ddep, struct denode **depp, struct componentname *cnp);
-int deupdat (struct denode *dep, int waitfor);
-int removede (struct denode *pdep, struct denode *dep);
-int detrunc (struct denode *dep, u_long length, int flags);
-int doscheckpath ( struct denode *source, struct denode *target);
+int readep(struct msdosfsmount *pmp, u_long dirclu, u_long dirofs,
+    struct buf **bpp, struct direntry **epp);
+int readde(struct denode *dep, struct buf **bpp, struct direntry **epp);
+int deextend(struct denode *dep, u_long length);
+int fillinusemap(struct msdosfsmount *pmp);
+void msdosfs_reinsert(struct denode *ip, u_long new_dirclust,
+    u_long new_diroffset);
+int dosdirempty(struct denode *dep);
+int createde(struct denode *dep, struct denode *ddep, struct denode **depp,
+    struct componentname *cnp);
+int deupdat(struct denode *dep, int waitfor);
+int removede(struct denode *pdep, struct denode *dep);
+int detrunc(struct denode *dep, u_long length, int flags);
+int doscheckpath( struct denode *source, struct denode *target);
 #endif	/* _KERNEL */

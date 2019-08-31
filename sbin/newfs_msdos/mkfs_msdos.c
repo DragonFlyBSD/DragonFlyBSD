@@ -153,11 +153,11 @@ struct bpb {
     u_int bpbSecPerTrack;		/* sectors per track */
     u_int bpbHeads;			/* drive heads */
     u_int bpbHiddenSecs;		/* hidden sectors */
-    u_int bpbHugeSectors; 		/* big total sectors */
-    u_int bpbBigFATsecs; 		/* big sectors per FAT */
-    u_int bpbRootClust; 		/* root directory start cluster */
-    u_int bpbFSInfo; 			/* file system info sector */
-    u_int bpbBackup; 			/* backup boot sector */
+    u_int bpbHugeSectors;		/* big total sectors */
+    u_int bpbBigFATsecs;		/* big sectors per FAT */
+    u_int bpbRootClust;			/* root directory start cluster */
+    u_int bpbFSInfo;			/* file system info sector */
+    u_int bpbBackup;			/* backup boot sector */
 };
 
 #define	BPBGAP 0, 0, 0, 0, 0, 0
@@ -180,25 +180,25 @@ static struct {
 
 static const u_int8_t bootcode[] = {
     0xfa,			/* cli		    */
-    0x31, 0xc0, 		/* xor	   ax,ax    */
-    0x8e, 0xd0, 		/* mov	   ss,ax    */
+    0x31, 0xc0,			/* xor	   ax,ax    */
+    0x8e, 0xd0,			/* mov	   ss,ax    */
     0xbc, 0x00, 0x7c,		/* mov	   sp,7c00h */
     0xfb,			/* sti		    */
-    0x8e, 0xd8, 		/* mov	   ds,ax    */
+    0x8e, 0xd8,			/* mov	   ds,ax    */
     0xe8, 0x00, 0x00,		/* call    $ + 3    */
     0x5e,			/* pop	   si	    */
     0x83, 0xc6, 0x19,		/* add	   si,+19h  */
     0xbb, 0x07, 0x00,		/* mov	   bx,0007h */
     0xfc,			/* cld		    */
     0xac,			/* lodsb	    */
-    0x84, 0xc0, 		/* test    al,al    */
-    0x74, 0x06, 		/* jz	   $ + 8    */
-    0xb4, 0x0e, 		/* mov	   ah,0eh   */
-    0xcd, 0x10, 		/* int	   10h	    */
-    0xeb, 0xf5, 		/* jmp	   $ - 9    */
-    0x30, 0xe4, 		/* xor	   ah,ah    */
-    0xcd, 0x16, 		/* int	   16h	    */
-    0xcd, 0x19, 		/* int	   19h	    */
+    0x84, 0xc0,			/* test    al,al    */
+    0x74, 0x06,			/* jz	   $ + 8    */
+    0xb4, 0x0e,			/* mov	   ah,0eh   */
+    0xcd, 0x10,			/* int	   10h	    */
+    0xeb, 0xf5,			/* jmp	   $ - 9    */
+    0x30, 0xe4,			/* xor	   ah,ah    */
+    0xcd, 0x16,			/* int	   16h	    */
+    0xcd, 0x19,			/* int	   19h	    */
     0x0d, 0x0a,
     'N', 'o', 'n', '-', 's', 'y', 's', 't',
     'e', 'm', ' ', 'd', 'i', 's', 'k',
@@ -347,7 +347,8 @@ mkfs_msdos(const char *fname, const char *dtype, const struct msdos_options *op)
 	else if (!o.directory_entries && (o.info_sector || o.backup_sector))
 	    fat = 32;
     }
-    if ((fat == 32 && o.directory_entries) || (fat != 32 && (o.info_sector || o.backup_sector))) {
+    if ((fat == 32 && o.directory_entries) ||
+        (fat != 32 && (o.info_sector || o.backup_sector))) {
 	warnx("-%c is not a legal FAT%s option",
 	     fat == 32 ? 'e' : o.info_sector ? 'i' : 'k',
 	     fat == 32 ? "32" : "12/16");

@@ -232,17 +232,19 @@ argtooff(const char *arg, const char *msg)
 static void
 usage(void)
 {
+    static struct {
+        char o;
+        const char *h;
+    } opts[] = {
+#define AOPT(_opt, _type, _name, _min, _desc) { _opt, _desc },
+        ALLOPTS
+#undef AOPT
+    };
+
     fprintf(stderr,
 	    "usage: %s [ -options ] special [disktype]\n", getprogname());
     fprintf(stderr, "where the options are:\n");
-static struct {
-    char o;
-    const char *h;
-} opts[] = {
-#define AOPT(_opt, _type, _name, _min, _desc) { _opt, _desc },
-ALLOPTS
-#undef AOPT
-    };
+
     for (size_t i = 0; i < NELEM(opts); i++)
 	fprintf(stderr, "\t-%c %s\n", opts[i].o, opts[i].h);
     exit(1);

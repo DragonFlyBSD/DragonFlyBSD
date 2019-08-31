@@ -68,9 +68,6 @@
 #include "denode.h"
 #include "fat.h"
 
-static int msdosfs_hashins (struct denode *dep);
-static void msdosfs_hashrem (struct denode *dep);
-
 static MALLOC_DEFINE(M_MSDOSFSNODE, "MSDOSFS node", "MSDOSFS vnode private part");
 
 /*
@@ -89,7 +86,7 @@ static MALLOC_DEFINE(M_MSDOSFSNODE, "MSDOSFS node", "MSDOSFS vnode private part"
  */
 static struct denode **dehashtbl;
 static u_long dehash;			/* size of hash table - 1 */
-#define	DEHASH(dev, dcl, doff)	(dehashtbl[(minor(dev) + (dcl) + (doff) / 	\
+#define	DEHASH(dev, dcl, doff)	(dehashtbl[(minor(dev) + (dcl) + (doff) / \
 				sizeof(struct direntry)) & dehash])
 static struct lwkt_token dehash_token;
 
@@ -110,11 +107,8 @@ union _qcvt {
 	(q) = tmp.qcvt; \
 }
 
-static struct denode *
-		msdosfs_hashget (cdev_t dev, u_long dirclust, u_long diroff);
-
 /*ARGSUSED*/
-int 
+int
 msdosfs_init(struct vfsconf *vfsp)
 {
 	dehash = vfs_inodehashsize();
@@ -126,7 +120,7 @@ msdosfs_init(struct vfsconf *vfsp)
 	return (0);
 }
 
-int 
+int
 msdosfs_uninit(struct vfsconf *vfsp)
 {
 
@@ -301,8 +295,7 @@ again:
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	ldep = kmalloc(sizeof(struct denode), M_MSDOSFSNODE,
-		       M_WAITOK | M_ZERO);
+	ldep = kmalloc(sizeof(struct denode), M_MSDOSFSNODE, M_WAITOK | M_ZERO);
 
 	/*
 	 * Directory entry was not in cache, have to create a vnode and
@@ -475,9 +468,9 @@ deupdat(struct denode *dep, int waitfor)
 	if (error)
 		return (error);
 	DE_EXTERNALIZE(dirp, dep);
-	if (waitfor)
+	if (waitfor) {
 		return (bwrite(bp));
-	else {
+	} else {
 		bdwrite(bp);
 		return (0);
 	}
@@ -500,7 +493,8 @@ detrunc(struct denode *dep, u_long length, int flags)
 	struct msdosfsmount *pmp = dep->de_pmp;
 
 #ifdef MSDOSFS_DEBUG
-	kprintf("detrunc(): file %s, length %lu, flags %x\n", dep->de_Name, length, flags);
+	kprintf("detrunc(): file %s, length %lu, flags %x\n", dep->de_Name,
+		length, flags);
 #endif
 
 	/*
@@ -557,10 +551,12 @@ detrunc(struct denode *dep, u_long length, int flags)
 	if ((boff = length & pmp->pm_crbomask) != 0) {
 		if (isadir) {
 			bn = xcntobn(pmp, eofentry);
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
+			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+				      pmp->pm_bpcluster, &bp);
 		} else {
 			cn = de_cluster(pmp, length);
-			error = bread(DETOV(dep), de_cn2doff(pmp, cn), pmp->pm_bpcluster, &bp);
+			error = bread(DETOV(dep), de_cn2doff(pmp, cn),
+				      pmp->pm_bpcluster, &bp);
 		}
 		if (error) {
 			brelse(bp);

@@ -93,14 +93,13 @@ static u_long  lastday;
 static u_short lastddate;
 static u_short lastdtime;
 
-static __inline u_int8_t find_lcode (u_int16_t code, u_int16_t *u2w);
-
 /*
  * Convert the unix version of time to dos's idea of time to be used in
  * file timestamps. The passed in unix time is assumed to be in GMT.
  */
 void
-unix2dostime(struct timespec *tsp, u_int16_t *ddp, u_int16_t *dtp, u_int8_t *dhp)
+unix2dostime(struct timespec *tsp, u_int16_t *ddp, u_int16_t *dtp,
+    u_int8_t *dhp)
 {
 	u_long t;
 	u_long days;
@@ -181,6 +180,7 @@ mbnambuf_init(struct mbnambuf *nbp)
         nbp->nb_last_id = -1;
         nbp->nb_buf[sizeof(nbp->nb_buf) - 1] = '\0';
 }
+
 /*
  * Fill out our concatenation buffer with the given substring, at the offset
  * specified by its id.  Since this function must be called with ids in
@@ -217,6 +217,7 @@ mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
 	nbp->nb_len = newlen;
 	nbp->nb_last_id = id;
 }
+
 /*
  * Take the completed string and use it to setup the struct dirent.
  * Be sure to always nul-terminate the d_name and then copy the string
@@ -298,7 +299,7 @@ dos2unixtime(u_int dd, u_int dt, u_int dh, struct timespec *tsp)
 
 /*
  * 0 - character disallowed in long file name.
- * 1 - character should be replaced by '_' in DOS file name, 
+ * 1 - character should be replaced by '_' in DOS file name,
  *     and generation number inserted.
  * 2 - character ('.' and ' ') should be skipped in DOS file name,
  *     and generation number inserted.
@@ -451,8 +452,8 @@ l2u[256] = {
  * Convert DOS char to Local char
  */
 static u_int16_t
-dos2unixchr(const u_char **instr, size_t *ilen, int lower, struct msdosfsmount *
-pmp)
+dos2unixchr(const u_char **instr, size_t *ilen, int lower,
+    struct msdosfsmount *pmp)
 {
 	u_char c;
 	char *outp, outbuf[3];
@@ -463,8 +464,9 @@ pmp)
 		olen = len = 2;
 		outp = outbuf;
 		if (lower & (LCASE_BASE | LCASE_EXT))
-			msdos_iconv->convchr_case(pmp->pm_d2u, (const char **)instr,
-						  ilen, &outp, &olen, KICONV_LOWER);
+			msdos_iconv->convchr_case(pmp->pm_d2u,
+						  (const char **)instr, ilen,
+						  &outp, &olen, KICONV_LOWER);
 		else
 			msdos_iconv->convchr(pmp->pm_d2u, (const char **)instr,
 					     ilen, &outp, &olen);
@@ -562,7 +564,7 @@ dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
  */
 static int
 mbsadjpos(const char **instr, size_t inlen, size_t outlen, int weight, int flag,
- void *handle)
+    void *handle)
 {
 	char *outp, outstr[outlen * weight + 1];
 
@@ -626,7 +628,8 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
 		olen = len = 2;
 		outp = outbuf;
 		msdos_iconv->convchr_case(pmp->pm_u2d, (const char **)instr,
-					  ilen, &outp, &olen, KICONV_FROM_UPPER);
+					  ilen, &outp, &olen,
+					  KICONV_FROM_UPPER);
 		len -= olen;
 		/*
 		 * cannot be converted, but has unicode char, should return magic number
@@ -661,7 +664,8 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
  */
 
 int
-unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen, struct msdosfsmount *pmp)
+unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
+    struct msdosfsmount *pmp)
 {
 	ssize_t i, j;
 	int l;
@@ -841,7 +845,8 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen, struct msdo
 	 * Correct posision to where insert the generation number
 	 */
 	cp = dn;
-	i -= mbsadjpos((const char**)&cp, i, unlen, 1, pmp->pm_flags, pmp->pm_d2u);
+	i -= mbsadjpos((const char**)&cp, i, unlen, 1, pmp->pm_flags,
+		       pmp->pm_d2u);
 	dn[i++] = '~';
 	while (wcp < gentext + sizeof(gentext))
 		dn[i++] = *wcp++;
@@ -865,8 +870,8 @@ done:
  * Convert Local char to Windows char
  */
 static u_int16_t
-unix2winchr(const u_char **instr, size_t *ilen, int lower, struct msdosfsmount *
-pmp)
+unix2winchr(const u_char **instr, size_t *ilen, int lower,
+    struct msdosfsmount *pmp)
 {
 	u_char *outp, outbuf[3];
 	u_int16_t wc;
@@ -878,8 +883,8 @@ pmp)
 		outp = outbuf;
 		olen = 2;
 		if (lower & (LCASE_BASE | LCASE_EXT))
-			msdos_iconv->convchr_case(pmp->pm_u2w, (const char **)
-instr,
+			msdos_iconv->convchr_case(pmp->pm_u2w,
+						  (const char **)instr,
 						  ilen, (char **)&outp, &olen,
 						  KICONV_FROM_LOWER);
 		else
@@ -907,7 +912,8 @@ instr,
  *	 i.e. doesn't consist solely of blanks and dots
  */
 int
-unix2winfn(const u_char *un, size_t unlen, struct winentry *wep, int cnt, int chksum, struct msdosfsmount *pmp)
+unix2winfn(const u_char *un, size_t unlen, struct winentry *wep, int cnt,
+    int chksum, struct msdosfsmount *pmp)
 {
 	u_int8_t *wcp;
 	int i, end;
@@ -1154,6 +1160,7 @@ win2unixfn(struct mbnambuf *nbp, struct winentry *wep, int chksum,
 	mbnambuf_write(nbp, name, (wep->weCnt & WIN_CNT) - 1);
 	return chksum;
 }
+
 /*
  * Compute the checksum of a DOS filename for Win95 use
  */
@@ -1181,7 +1188,8 @@ winSlotCnt(const u_char *un, size_t unlen, struct msdosfsmount *pmp)
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
 		wlen = WIN_MAXLEN * 2;
 		wnp = wn;
-		msdos_iconv->conv(pmp->pm_u2w, (const char **)&un, &unlen, &wnp, &wlen);
+		msdos_iconv->conv(pmp->pm_u2w, (const char **)&un, &unlen, &wnp,
+				  &wlen);
 		if (unlen > 0)
 			return 0;
 		return howmany(WIN_MAXLEN - wlen/2, WIN_CHARS);

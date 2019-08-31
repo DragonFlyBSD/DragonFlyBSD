@@ -75,6 +75,7 @@ struct bootsector710 {
 #define	BOOTSIG2	0
 #define	BOOTSIG3	0
 };
+
 #ifdef	atari
 /*
  * The boot sector on a gemdos fs is a little bit different from the msdos fs

@@ -82,7 +82,8 @@
 #define	FAT16(pmp)	(pmp->pm_fatmask == FAT16_MASK)
 #define	FAT32(pmp)	(pmp->pm_fatmask == FAT32_MASK)
 
-#define	MSDOSFSEOF(pmp, cn)	((((cn) | ~(pmp)->pm_fatmask) & CLUST_EOFS) == CLUST_EOFS)
+#define	MSDOSFSEOF(pmp, cn)	\
+	((((cn) | ~(pmp)->pm_fatmask) & CLUST_EOFS) == CLUST_EOFS)
 
 #ifdef _KERNEL
 /*
@@ -98,12 +99,16 @@
  */
 #define	DE_CLEAR	1	/* Zero out the blocks allocated */
 
-int pcbmap (struct denode *dep, u_long findcn, daddr_t *bnp, u_long *cnp, int* sp);
-int clusterfree (struct msdosfsmount *pmp, u_long cn, u_long *oldcnp);
-int clusteralloc (struct msdosfsmount *pmp, u_long start, u_long count, u_long fillwith, u_long *retcluster, u_long *got);
-int fatentry (int function, struct msdosfsmount *pmp, u_long cluster, u_long *oldcontents, u_long newcontents);
-int freeclusterchain (struct msdosfsmount *pmp, u_long startchain);
-int extendfile (struct denode *dep, u_long count, struct buf **bpp, u_long *ncp, int flags);
-void fc_purge (struct denode *dep, u_int frcn);
+int pcbmap(struct denode *dep, u_long findcn, daddr_t *bnp, u_long *cnp,
+    int *sp);
+int clusterfree(struct msdosfsmount *pmp, u_long cn, u_long *oldcnp);
+int clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
+    u_long fillwith, u_long *retcluster, u_long *got);
+int fatentry(int function, struct msdosfsmount *pmp, u_long cluster,
+    u_long *oldcontents, u_long newcontents);
+int freeclusterchain(struct msdosfsmount *pmp, u_long startchain);
+int extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
+    int flags);
+void fc_purge(struct denode *dep, u_int frcn);
 
 #endif	/* _KERNEL */

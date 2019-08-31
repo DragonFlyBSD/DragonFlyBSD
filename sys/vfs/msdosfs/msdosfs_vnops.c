@@ -82,31 +82,6 @@
 #define	DOS_FILESIZE_MAX	0xffffffff
 
 /*
- * Prototypes for MSDOSFS vnode operations
- */
-static int msdosfs_create (struct vop_old_create_args *);
-static int msdosfs_mknod (struct vop_old_mknod_args *);
-static int msdosfs_open (struct vop_open_args *);
-static int msdosfs_close (struct vop_close_args *);
-static int msdosfs_access (struct vop_access_args *);
-static int msdosfs_getattr (struct vop_getattr_args *);
-static int msdosfs_setattr (struct vop_setattr_args *);
-static int msdosfs_read (struct vop_read_args *);
-static int msdosfs_write (struct vop_write_args *);
-static int msdosfs_fsync (struct vop_fsync_args *);
-static int msdosfs_remove (struct vop_old_remove_args *);
-static int msdosfs_link (struct vop_old_link_args *);
-static int msdosfs_rename (struct vop_old_rename_args *);
-static int msdosfs_mkdir (struct vop_old_mkdir_args *);
-static int msdosfs_rmdir (struct vop_old_rmdir_args *);
-static int msdosfs_symlink (struct vop_old_symlink_args *);
-static int msdosfs_readdir (struct vop_readdir_args *);
-static int msdosfs_bmap (struct vop_bmap_args *);
-static int msdosfs_strategy (struct vop_strategy_args *);
-static int msdosfs_print (struct vop_print_args *);
-static int msdosfs_pathconf (struct vop_pathconf_args *ap);
-
-/*
  * Some general notes:
  *
  * In the ufs filesystem the inodes, superblocks, and indirect blocks are
@@ -126,7 +101,7 @@ static int msdosfs_pathconf (struct vop_pathconf_args *ap);
 
 /*
  * Create a regular file. On entry the directory to contain the file being
- * created is locked.  We must release before we return. 
+ * created is locked.  We must release before we return.
  *
  * msdosfs_create(struct vnode *a_dvp, struct vnode **a_vpp,
  *		  struct componentname *a_cnp, struct vattr *a_vap)
@@ -188,6 +163,8 @@ bad:
 	return (error);
 }
 
+static int msdosfs_mkdir(struct vop_old_mkdir_args *);
+
 /*
  * msdosfs_mknod(struct vnode *a_dvp, struct vnode **a_vpp,
  *		 struct componentname *a_cnp, struct vattr *a_vap)
@@ -199,11 +176,9 @@ msdosfs_mknod(struct vop_old_mknod_args *ap)
 	case VDIR:
 		return (msdosfs_mkdir((struct vop_old_mkdir_args *)ap));
 		break;
-
 	case VREG:
 		return (msdosfs_create((struct vop_old_create_args *)ap));
 		break;
-
 	default:
 		return (EINVAL);
 	}
@@ -248,8 +223,8 @@ msdosfs_access(struct vop_access_args *ap)
 	mode_t file_mode;
 
 	file_mode = (S_IXUSR|S_IXGRP|S_IXOTH) | (S_IRUSR|S_IRGRP|S_IROTH) |
-	    ((dep->de_Attributes & ATTR_READONLY) ? 
-	     	0 : (S_IWUSR|S_IWGRP|S_IWOTH));
+	    ((dep->de_Attributes & ATTR_READONLY) ?
+	    0 : (S_IWUSR|S_IWGRP|S_IWOTH));
 	file_mode &= pmp->pm_mask;
 
 	return (vop_helper_access(ap, pmp->pm_uid, pmp->pm_gid, file_mode, 0));
@@ -302,7 +277,8 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	dos2unixtime(dep->de_MDate, dep->de_MTime, 0, &vap->va_mtime);
 	if (pmp->pm_flags & MSDOSFSMNT_LONGNAME) {
 		dos2unixtime(dep->de_ADate, 0, 0, &vap->va_atime);
-		dos2unixtime(dep->de_CDate, dep->de_CTime, dep->de_CHun, &vap->va_ctime);
+		dos2unixtime(dep->de_CDate, dep->de_CTime, dep->de_CHun,
+			     &vap->va_ctime);
 	} else {
 		vap->va_atime = vap->va_mtime;
 		vap->va_ctime = vap->va_mtime;
@@ -350,7 +326,8 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		kprintf("    va_type %u, va_nlink %"PRIx64", va_fsid %x, va_fileid %"PRIx64"\n",
 		    vap->va_type, vap->va_nlink, vap->va_fsid, vap->va_fileid);
 		kprintf("    va_blocksize %lx, va_rmajor %x, va_bytes %"PRIx64", va_gen %"PRIx64"\n",
-		    vap->va_blocksize, vap->va_rmajor, vap->va_bytes, vap->va_gen);
+		    vap->va_blocksize, vap->va_rmajor, vap->va_bytes,
+		    vap->va_gen);
 		kprintf("    va_uid %x, va_gid %x\n",
 		    vap->va_uid, vap->va_gid);
 #endif
@@ -390,7 +367,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
 		uid_t uid;
 		gid_t gid;
-		
+
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		uid = vap->va_uid;
@@ -554,7 +531,7 @@ msdosfs_read(struct vop_read_args *ap)
 			    raoffset < dep->de_FileSize) {
 				rasize = pmp->pm_bpcluster;
 				error = breadn(vp, loffset, blsize,
-						&raoffset, &rasize, 1, &bp); 
+					       &raoffset, &rasize, 1, &bp);
 			} else {
 				error = bread(vp, loffset, blsize, &bp);
 			}
@@ -575,6 +552,7 @@ msdosfs_read(struct vop_read_args *ap)
 		error = uiomovebp(bp, bp->b_data + on, (size_t)n, uio);
 		brelse(bp);
 	} while (error == 0 && uio->uio_resid > 0 && n != 0);
+
 	if (!isadir && (error == 0 || uio->uio_resid != orig_resid) &&
 	    (vp->v_mount->mnt_flag & MNT_NOATIME) == 0)
 		dep->de_flag |= DE_ACCESS;
@@ -706,7 +684,7 @@ msdosfs_write(struct vop_write_args *ap)
 		cn = de_off2cn(pmp, uio->uio_offset);
 		if ((uio->uio_offset & pmp->pm_crbomask) == 0
 		    && uio->uio_segflg != UIO_NOCOPY
-		    && (de_off2cn(pmp, uio->uio_offset + uio->uio_resid) 
+		    && (de_off2cn(pmp, uio->uio_offset + uio->uio_resid)
 		        > de_off2cn(pmp, uio->uio_offset)
 			|| uio->uio_offset + uio->uio_resid >= dep->de_FileSize)) {
 			bp = getblk(thisvp, de_cn2doff(pmp, cn),
@@ -725,7 +703,8 @@ msdosfs_write(struct vop_write_args *ap)
 				if (error || dblkno == (daddr_t)-1) {
 					bp->b_bio2.bio_offset = NOOFFSET;
 				} else {
-					bp->b_bio2.bio_offset = de_bntodoff(pmp, dblkno);
+					bp->b_bio2.bio_offset = de_bntodoff(pmp,
+					    dblkno);
 				}
 			}
 			if (bp->b_bio2.bio_offset == NOOFFSET) {
@@ -1152,7 +1131,7 @@ abortit:
 	}
 
 	/*
-	 * No error occured.  tdvp, fdvp and fvp are all locked.  If 
+	 * No error occured.  tdvp, fdvp and fvp are all locked.  If
 	 * newparent was 0 be aware that fdvp == tdvp.  tvp has been cleaned
 	 * up.  ap->a_fvp is still refd.
 	 */
@@ -1203,7 +1182,7 @@ abortit:
 			goto done;
 		}
 		if (!doingdirectory) {
-			error = pcbmap(dp, de_cluster(pmp, to_diroffset), 
+			error = pcbmap(dp, de_cluster(pmp, to_diroffset),
 				       NULL, &new_dirclust, NULL);
 			if (error) {
 				/* XXX should really panic here, fs is corrupt */
@@ -1229,7 +1208,8 @@ abortit:
 		} else {
 			bn = xcntobn(pmp, cn);
 		}
-		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
+		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+			      pmp->pm_bpcluster, &bp);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
 			brelse(bp);
@@ -1288,17 +1268,17 @@ static struct {
 } dosdirtemplate = {
 	{	".          ",				/* the . entry */
 		ATTR_DIRECTORY,				/* file attribute */
-		0,	 				/* reserved */
+		0,					/* reserved */
 		0, { 0, 0 }, { 0, 0 },			/* create time & date */
 		{ 0, 0 },				/* access date */
 		{ 0, 0 },				/* high bits of start cluster */
 		{ 210, 4 }, { 210, 4 },			/* modify time & date */
 		{ 0, 0 },				/* startcluster */
-		{ 0, 0, 0, 0 } 				/* filesize */
+		{ 0, 0, 0, 0 }				/* filesize */
 	},
 	{	"..         ",				/* the .. entry */
 		ATTR_DIRECTORY,				/* file attribute */
-		0,	 				/* reserved */
+		0,					/* reserved */
 		0, { 0, 0 }, { 0, 0 },			/* create time & date */
 		{ 0, 0 },				/* access date */
 		{ 0, 0 },				/* high bits of start cluster */
@@ -1361,7 +1341,7 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 	bp = getblk(pmp->pm_devvp, de_bntodoff(pmp, bn),
 		    pmp->pm_bpcluster, 0, 0);
 	bzero(bp->b_data, pmp->pm_bpcluster);
-	bcopy(&dosdirtemplate, bp->b_data, sizeof dosdirtemplate);
+	bcopy(&dosdirtemplate, bp->b_data, sizeof(dosdirtemplate));
 	denp = (struct direntry *)bp->b_data;
 	putushort(denp[0].deStartCluster, newcluster);
 	putushort(denp[0].deCDate, ndirent.de_CDate);
@@ -1427,7 +1407,7 @@ msdosfs_rmdir(struct vop_old_rmdir_args *ap)
 	struct vnode *dvp = ap->a_dvp;
 	struct denode *ip, *dp;
 	int error;
-	
+
 	ip = VTODE(vp);
 	dp = VTODE(dvp);
 

@@ -162,7 +162,7 @@ struct msdosfsmount {
 	(de_cn2bn(pmp, de_cluster((pmp), (off))))
 
 /*
- * Convert a logical cluster number to file offset.  This typically 
+ * Convert a logical cluster number to file offset.  This typically
  * represents a logical cluster number relative to a file, not relative
  * to the device.
  */
@@ -170,7 +170,7 @@ struct msdosfsmount {
 	((cn) << (pmp)->pm_cnshift)
 
 /*
- * Convert a device block number to a file offset.  
+ * Convert a device block number to a file offset.
  */
 #define	de_bn2off(pmp, bn) \
 	((bn) << (pmp)->pm_bnshift)
@@ -192,7 +192,7 @@ struct msdosfsmount {
 	((daddr_t)((off) >> (pmp)->pm_cnshift))
 
 /*
- * Map an on-disk cluster number into a device relative block number or 
+ * Map an on-disk cluster number into a device relative block number or
  * a device relative offset.   This is different from a logical cluster
  * number.  The cluster numbers stored on-disk are not relative to block 0
  * on the disk.
@@ -229,9 +229,9 @@ struct msdosfsmount {
 
 #ifdef _KERNEL
 
-int msdosfs_init (struct vfsconf *vfsp);
-int msdosfs_uninit (struct vfsconf *vfsp);
-int msdosfs_mountroot (void);
+int msdosfs_init(struct vfsconf *vfsp);
+int msdosfs_uninit(struct vfsconf *vfsp);
+int msdosfs_mountroot(void);
 
 #endif
 

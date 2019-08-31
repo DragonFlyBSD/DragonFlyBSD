@@ -74,30 +74,15 @@
 static int fc_fileextends;	/* # of file extends			 */
 static int fc_lfcempty;		/* # of time last file cluster cache entry
 				 * was empty */
-static int fc_bmapcalls;		/* # of times pcbmap was called		 */
+static int fc_bmapcalls;	/* # of times pcbmap was called		 */
 
 #define	LMMAX	20
 static int fc_lmdistance[LMMAX];/* counters for how far off the last
 				 * cluster mapped entry was. */
 static int fc_largedistance;	/* off by more than LMMAX		 */
 
-static int	chainalloc (struct msdosfsmount *pmp, u_long start,
-				u_long count, u_long fillwith,
-				u_long *retcluster, u_long *got);
-static int	chainlength (struct msdosfsmount *pmp, u_long start,
-				 u_long count);
-static void	fatblock (struct msdosfsmount *pmp, u_long ofs,
-			      u_long *bnp, u_long *sizep, u_long *bop);
-static int	fatchain (struct msdosfsmount *pmp, u_long start,
-			      u_long count, u_long fillwith);
-static void	fc_lookup (struct denode *dep, u_long findcn,
-			       u_long *frcnp, u_long *fsrcnp);
-static void	updatefats (struct msdosfsmount *pmp, struct buf *bp,
-				u_long fatbn);
-static __inline void
-		usemap_alloc (struct msdosfsmount *pmp, u_long cn);
-static __inline void
-		usemap_free (struct msdosfsmount *pmp, u_long cn);
+static void fc_lookup(struct denode *dep, u_long findcn, u_long *frcnp,
+    u_long *fsrcnp);
 
 static void
 fatblock(struct msdosfsmount *pmp, u_long ofs, u_long *bnp, u_long *sizep,
@@ -175,11 +160,13 @@ pcbmap(struct denode *dep,
 		if (dep->de_Attributes & ATTR_DIRECTORY) {
 			if (de_cn2off(pmp, findcn) >= dep->de_FileSize) {
 				if (cnp)
-					*cnp = de_bn2cn(pmp, pmp->pm_rootdirsize);
+					*cnp = de_bn2cn(pmp,
+							pmp->pm_rootdirsize);
 				return (E2BIG);
 			}
 			if (bnp)
-				*bnp = pmp->pm_rootdirblk + de_cn2bn(pmp, findcn);
+				*bnp = pmp->pm_rootdirblk +
+					de_cn2bn(pmp, findcn);
 			if (cnp)
 				*cnp = MSDOSFSROOT;
 			if (sp)
@@ -225,7 +212,8 @@ pcbmap(struct denode *dep,
 		if (bn != bp_bn) {
 			if (bp)
 				brelse(bp);
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
+			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+				      bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -352,7 +340,8 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 				+ ffs(pmp->pm_inusemap[cn / N_INUSEBITS]
 				      ^ (u_int)-1) - 1;
 		}
-		if (bread(pmp->pm_devvp, de_bntodoff(pmp, pmp->pm_fsinfo), fsi_size(pmp), &bpn) != 0) {
+		if (bread(pmp->pm_devvp, de_bntodoff(pmp, pmp->pm_fsinfo),
+		    fsi_size(pmp), &bpn) != 0) {
 			/*
 			 * Ignore the error, but turn off FSInfo update for the future.
 			 */
@@ -749,8 +738,9 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 #endif
 	if (start) {
 		if ((len = chainlength(pmp, start, count)) >= count)
-			return (chainalloc(pmp, start, count, fillwith, retcluster, got));
-	} else 
+			return (chainalloc(pmp, start, count, fillwith,
+				retcluster, got));
+	} else
 		len = 0;
 
 	/*
@@ -767,7 +757,8 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 		if (map != (u_int)-1) {
 			cn = idx * N_INUSEBITS + ffs(map^(u_int)-1) - 1;
 			if ((l = chainlength(pmp, cn, count)) >= count)
-				return (chainalloc(pmp, cn, count, fillwith, retcluster, got));
+				return (chainalloc(pmp, cn, count, fillwith,
+					retcluster, got));
 			if (l > foundl) {
 				foundcn = cn;
 				foundl = l;
@@ -784,7 +775,8 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 		if (map != (u_int)-1) {
 			cn = idx * N_INUSEBITS + ffs(map^(u_int)-1) - 1;
 			if ((l = chainlength(pmp, cn, count)) >= count)
-				return (chainalloc(pmp, cn, count, fillwith, retcluster, got));
+				return (chainalloc(pmp, cn, count, fillwith,
+					retcluster, got));
 			if (l > foundl) {
 				foundcn = cn;
 				foundl = l;
@@ -801,7 +793,8 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 	if (len)
 		return (chainalloc(pmp, start, len, fillwith, retcluster, got));
 	else
-		return (chainalloc(pmp, foundcn, foundl, fillwith, retcluster, got));
+		return (chainalloc(pmp, foundcn, foundl, fillwith, retcluster,
+			got));
 }
 
 
@@ -827,7 +820,8 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 		if (lbn != bn) {
 			if (bp)
 				updatefats(pmp, bp, lbn);
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
+			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+				      bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -901,7 +895,8 @@ fillinusemap(struct msdosfsmount *pmp)
 			if (bp)
 				brelse(bp);
 			fatblock(pmp, byteoffset, &bn, &bsize, NULL);
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
+			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+				      bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -1040,7 +1035,8 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 					 * Do the bmap now, as in msdosfs_write
 					 */
 					if (pcbmap(dep,
-					    de_bn2cn(pmp, de_off2bn(pmp, bp->b_bio1.bio_offset)),
+					    de_bn2cn(pmp, de_off2bn(pmp,
+					    bp->b_bio1.bio_offset)),
 					    &dblkno, NULL, NULL)) {
 						bp->b_bio2.bio_offset = NOOFFSET;
 					} else {

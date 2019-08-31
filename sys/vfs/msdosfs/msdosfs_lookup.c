@@ -280,7 +280,8 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 				 * Check for a checksum or name match
 				 */
 				if (chksum != winChksum(dep->deName)
-				    && (!olddos || bcmp(dosfilename, dep->deName, 11))) {
+				    && (!olddos || bcmp(dosfilename,
+				    dep->deName, 11))) {
 					chksum = -1;
 					continue;
 				}
@@ -405,7 +406,7 @@ found:
 	 */
 	brelse(bp);
 	bp = NULL;
-	
+
 foundroot:
 	/*
 	 * If we entered at foundroot, then we are looking for the . or ..
@@ -427,7 +428,7 @@ foundroot:
 		 * Don't allow deleting the root.
 		 */
 		if (blkoff == MSDOSFSROOT_OFS)
-			return EROFS;				/* really? XXX */
+			return EROFS;	/* really? XXX */
 
 		/*
 		 * Write access to directory required to delete files.
@@ -512,7 +513,7 @@ foundroot:
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = deget(pmp, cluster, blkoff,  &tdp);
 		if (error) {
-			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY); 
+			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY);
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
@@ -630,7 +631,9 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 				if (error)
 					return error;
 
-				error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
+				error = bread(pmp->pm_devvp,
+					      de_bntodoff(pmp, bn), blsize,
+					      &bp);
 				if (error) {
 					brelse(bp);
 					return error;
@@ -958,7 +961,7 @@ uniqdosname(struct denode *dep, struct componentname *cnp, u_char *cp)
 	daddr_t bn;
 	struct buf *bp;
 	int error;
-	
+
 	if (pmp->pm_flags & MSDOSFSMNT_SHORTNAME)
 		return (unix2dosfn((const u_char *)cnp->cn_nameptr, cp,
 		    cnp->cn_namelen, 0, pmp) ?
@@ -981,7 +984,8 @@ uniqdosname(struct denode *dep, struct componentname *cnp, u_char *cp)
 					return 0;
 				return error;
 			}
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
+			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+				      blsize, &bp);
 			if (error) {
 				brelse(bp);
 				return error;
@@ -1027,7 +1031,7 @@ findwin95(struct denode *dep)
 	win95 = 1;
 	/*
 	 * Read through the directory looking for Win'95 entries
-	 * Note: Error currently handled just as EOF			XXX
+	 * Note: Error currently handled just as EOF XXX
 	 */
 	for (cn = 0;; cn++) {
 		if (pcbmap(dep, cn, &bn, 0, &blsize))
@@ -1049,7 +1053,7 @@ findwin95(struct denode *dep)
 			if (dentp->deName[0] == SLOT_DELETED) {
 				/*
 				 * Ignore deleted files
-				 * Note: might be an indication of Win'95 anyway	XXX
+				 * Note: might be an indication of Win'95 anyway XXX
 				 */
 				continue;
 			}
