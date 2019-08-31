@@ -27,10 +27,6 @@
 #ifndef _NET_IF_H_
 #include <net/if.h>
 #endif
-#ifndef _SYS_SYSCTL_H_
-#include <sys/sysctl.h>
-#endif
-
 
 struct jail {
 	uint32_t	version;
@@ -85,6 +81,8 @@ struct jail_ip_storage {
  * ucred's of the inmates.  pr_ref keeps track of them and is used to
  * delete the struture when the last inmate is dead.
  */
+struct sysctl_ctx_list;
+struct sysctl_oid;
 
 struct prison {
 	LIST_ENTRY(prison) pr_list;			/* all prisons */

@@ -54,6 +54,7 @@
 #include <sys/priv.h>
 #include <sys/jail.h>
 #include <sys/socket.h>
+#include <sys/sysctl.h>
 #include <sys/kern_syscall.h>
 #include <net/if.h>
 #include <netinet/in.h>
