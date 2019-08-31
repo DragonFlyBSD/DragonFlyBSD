@@ -60,6 +60,7 @@
 #include "stand.h"
 #endif
 
+#include <machine/param.h>	/* for DEV_BSHIFT */
 #include <vfs/hammer2/hammer2_disk.h>
 
 uint32_t iscsi_crc32(const void *buf, size_t size);

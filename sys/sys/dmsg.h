@@ -35,6 +35,10 @@
 #ifndef _SYS_DMSG_H_
 #define _SYS_DMSG_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #ifndef _SYS_MALLOC_H_
 #include <sys/malloc.h>
 #endif
@@ -43,6 +47,7 @@
 #endif
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
+#endif
 #endif
 #ifndef _SYS_UUID_H_
 #include <sys/uuid.h>
@@ -861,6 +866,6 @@ void kdmsg_state_result(kdmsg_state_t *state, uint32_t error);
 void kdmsg_detach_aux_data(kdmsg_msg_t *msg, kdmsg_data_t *data);
 void kdmsg_free_aux_data(kdmsg_data_t *data);
 
-#endif
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
-#endif
+#endif	/* !_SYS_DMSG_H_ */
