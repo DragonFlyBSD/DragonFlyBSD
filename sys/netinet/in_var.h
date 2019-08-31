@@ -79,10 +79,12 @@ struct	in_aliasreq {
  * return a pointer to the addr as a sockaddr_in.
  */
 #define IA_SIN(ia)    (&(((struct in_ifaddr *)(ia))->ia_addr))
+#if 0
 #define IA_DSTSIN(ia) (&(((struct in_ifaddr *)(ia))->ia_dstaddr))
 
 #define IN_LNAOF(in, ifa) \
 	((ntohl((in).s_addr) & ~((struct in_ifaddr *)(ifa)->ia_subnetmask))
+#endif
 
 
 #ifdef _KERNEL
@@ -140,6 +142,7 @@ IFP_TO_IA(const struct ifnet *_ifp)
 
 #endif	/* _KERNEL */
 
+#ifdef _KERNEL
 /*
  * This information should be part of the ifnet structure but we don't wish
  * to change that - as it might break a number of things
@@ -169,6 +172,7 @@ struct in_multi {
 	u_int	inm_state;		/*  state of the membership */
 	struct	router_info *inm_rti;	/* router info*/
 };
+#endif	/* _KERNEL */
 
 #ifdef _KERNEL
 
