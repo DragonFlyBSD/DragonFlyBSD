@@ -166,8 +166,6 @@ void	set_user_TLS(void);
 void	set_vkernel_fp(struct trapframe *);
 int	kvm_access_check(vm_offset_t, vm_offset_t, int);
 
-vm_paddr_t kvtop(void *addr);
-
 /*
  * Old CRC32 API
  */
