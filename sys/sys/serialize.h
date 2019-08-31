@@ -6,7 +6,7 @@
  *
  * This API is designed to be used whenever low level serialization is
  * required.  Unlike tokens this serialization is not safe from deadlocks
- * nor is it recursive, and care must be taken when using it. 
+ * nor is it recursive, and care must be taken when using it.
  */
 
 #ifndef _SYS_SERIALIZE_H_
@@ -21,6 +21,7 @@ struct lwkt_serialize {
     struct thread	*last_td;
 };
 
+#ifdef _KERNEL
 #define LWKT_SERIALIZE_INITIALIZER      { 0, NULL }
 
 #define IS_SERIALIZED(ss)		((ss)->last_td == curthread)
@@ -38,5 +39,6 @@ void lwkt_serialize_handler_disable(lwkt_serialize_t);
 void lwkt_serialize_handler_enable(lwkt_serialize_t);
 void lwkt_serialize_handler_call(lwkt_serialize_t, void (*)(void *, void *), void *, void *);
 int lwkt_serialize_handler_try(lwkt_serialize_t, void (*)(void *, void *), void *, void *);
+#endif	/* _KERNEL */
 
 #endif	/* !_SYS_SERIALIZE_H_ */
