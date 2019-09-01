@@ -86,9 +86,10 @@ static MALLOC_DEFINE(M_MSDOSFSNODE, "MSDOSFS node", "MSDOSFS vnode private part"
  */
 static struct denode **dehashtbl;
 static u_long dehash;			/* size of hash table - 1 */
+static struct lwkt_token dehash_token;
+
 #define	DEHASH(dev, dcl, doff)	(dehashtbl[(minor(dev) + (dcl) + (doff) / \
 				sizeof(struct direntry)) & dehash])
-static struct lwkt_token dehash_token;
 
 union _qcvt {
 	quad_t qcvt;
@@ -123,7 +124,6 @@ msdosfs_init(struct vfsconf *vfsp)
 int
 msdosfs_uninit(struct vfsconf *vfsp)
 {
-
 	if (dehashtbl)
 		kfree(dehashtbl, M_MSDOSFSMNT);
 	return (0);
@@ -152,7 +152,8 @@ loop:
 		 * We must check to see if the inode has been ripped
 		 * out from under us after blocking.
 		 */
-		for (dep = DEHASH(dev, dirclust, diroff); dep; dep = dep->de_next) {
+		for (dep = DEHASH(dev, dirclust, diroff); dep;
+		     dep = dep->de_next) {
 			if (dirclust == dep->de_dirclust
 			    && diroff == dep->de_diroffset
 			    && dev == dep->de_dev
@@ -506,11 +507,11 @@ detrunc(struct denode *dep, u_long length, int flags)
 	 * directory's life.
 	 */
 	if ((DETOV(dep)->v_flag & VROOT) && !FAT32(pmp)) {
-		kprintf("detrunc(): can't truncate root directory, clust %ld, offset %ld\n",
-		    dep->de_dirclust, dep->de_diroffset);
+		kprintf("detrunc(): can't truncate root directory, clust %ld, "
+			"offset %ld\n",
+			dep->de_dirclust, dep->de_diroffset);
 		return (EINVAL);
 	}
-
 
 	if (dep->de_FileSize < length) {
 		vnode_pager_setsize(DETOV(dep), length);

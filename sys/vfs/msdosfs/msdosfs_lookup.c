@@ -601,7 +601,8 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 	diroffset = ddep->de_fndoffset;
 	if (dirclust != MSDOSFSROOT)
 		diroffset &= pmp->pm_crbomask;
-	if ((error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp)) != 0) {
+	error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
+	if (error != 0) {
 		brelse(bp);
 		return error;
 	}
@@ -775,7 +776,7 @@ doscheckpath(struct denode *source, struct denode *target)
 	if (dep->de_StartCluster == MSDOSFSROOT)
 		goto out;
 	pmp = dep->de_pmp;
-#ifdef	DIAGNOSTIC
+#ifdef DIAGNOSTIC
 	if (pmp != source->de_pmp)
 		panic("doscheckpath: source and target on different filesystems");
 #endif
@@ -824,7 +825,7 @@ doscheckpath(struct denode *source, struct denode *target)
 		if ((error = deget(pmp, scn, 0, &dep)) != 0)
 			break;
 	}
-out:;
+out:
 	if (bp)
 		brelse(bp);
 	if (error == ENOTDIR)
@@ -852,7 +853,8 @@ readep(struct msdosfsmount *pmp, u_long dirclust, u_long diroffset,
 	    && de_blk(pmp, diroffset + blsize) > pmp->pm_rootdirsize)
 		blsize = de_bn2off(pmp, pmp->pm_rootdirsize) & pmp->pm_crbomask;
 	bn = detobn(pmp, dirclust, diroffset);
-	if ((error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, bpp)) != 0) {
+	error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, bpp);
+	if (error != 0) {
 		brelse(*bpp);
 		*bpp = NULL;
 		return (error);

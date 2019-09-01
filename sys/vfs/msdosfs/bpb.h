@@ -84,7 +84,7 @@ struct bpb710 {
 	u_int8_t	bpbReserved[12]; /* reserved for future expansion */
 };
 
-#ifdef	atari
+#ifdef atari
 /*
  * BPB for gemdos filesystems. Atari leaves the obsolete stuff undefined.
  * Currently there is no need for a separate BPB structure.

@@ -91,8 +91,7 @@ fatblock(struct msdosfsmount *pmp, u_long ofs, u_long *bnp, u_long *sizep,
 	u_long bn, size;
 
 	bn = ofs / pmp->pm_fatblocksize * pmp->pm_fatblocksec;
-	size = min(pmp->pm_fatblocksec, pmp->pm_FATsecs - bn)
-	    * DEV_BSIZE;
+	size = min(pmp->pm_fatblocksec, pmp->pm_FATsecs - bn) * DEV_BSIZE;
 	bn += pmp->pm_fatblk + pmp->pm_curfat * pmp->pm_FATsecs;
 
 	if (bnp)
@@ -250,7 +249,7 @@ pcbmap(struct denode *dep,
 		return (0);
 	}
 
-hiteof:;
+hiteof:
 	if (cnp)
 		*cnp = i;
 	if (bp)
