@@ -299,14 +299,13 @@ static int
 msdosfs_setattr(struct vop_setattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct denode *dep = VTODE(ap->a_vp);
+	struct denode *dep = VTODE(vp);
 	struct msdosfsmount *pmp = dep->de_pmp;
 	struct vattr *vap = ap->a_vap;
 	struct ucred *cred = ap->a_cred;
 	int error = 0;
 
-	mprintf("msdosfs_setattr(): vp %p, vap %p, cred %p\n",
-	    ap->a_vp, vap, cred);
+	mprintf("msdosfs_setattr(): vp %p, vap %p, cred %p\n", vp, vap, cred);
 
 	/*
 	 * Check for unsettable attributes.
@@ -404,7 +403,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (cred->cr_uid != pmp->pm_uid &&
 		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_EACCESS(ap->a_vp, VWRITE, cred))))
+		    (error = VOP_EACCESS(vp, VWRITE, cred))))
 			return (error);
 		if (vp->v_type != VDIR) {
 			if ((pmp->pm_flags & MSDOSFSMNT_NOWIN95) == 0 &&
@@ -1625,8 +1624,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 					continue;
 				chksum = win2unixfn(&nb,
 					(struct winentry *)dentp,
-					chksum,
-					pmp);
+					chksum, pmp);
 				continue;
 			}
 
@@ -1667,10 +1665,10 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 					((pmp->pm_flags & MSDOSFSMNT_SHORTNAME) ?
 					(LCASE_BASE | LCASE_EXT) : 0),
 					pmp);
-					mbnambuf_init(&nb);
+				mbnambuf_init(&nb);
 			} else {
-					mbnambuf_flush(&nb, d_name, &d_namlen);
-}
+				mbnambuf_flush(&nb, d_name, &d_namlen);
+			}
 			chksum = -1;
 			if (vop_write_dirent(&error, uio, d_ino, d_type,
 			    d_namlen, d_name)) {
@@ -1820,12 +1818,11 @@ msdosfs_print(struct vop_print_args *ap)
 {
 	struct denode *dep = VTODE(ap->a_vp);
 
-	kprintf(
-	    "tag VT_MSDOSFS, startcluster %lu, dircluster %lu, diroffset %lu ",
-	       dep->de_StartCluster, dep->de_dirclust, dep->de_diroffset);
-	kprintf(" dev %d, %d", major(dep->de_dev), minor(dep->de_dev));
+	kprintf("tag VT_MSDOSFS, startcluster %lu, dircluster %lu, "
+		"diroffset %lu, dev %d, %d",
+		dep->de_StartCluster, dep->de_dirclust, dep->de_diroffset,
+		major(dep->de_dev), minor(dep->de_dev));
 	lockmgr_printinfo(&ap->a_vp->v_lock);
-	kprintf("\n");
 	return (0);
 }
 
