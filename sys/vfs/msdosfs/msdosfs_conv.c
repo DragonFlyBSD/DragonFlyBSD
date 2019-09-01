@@ -1005,11 +1005,8 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
 	 */
 	if (!mbnambuf_flush(nbp, d_name, &d_namlen) || d_namlen == 0)
 		return -1;
-#ifdef MSDOSFS_DEBUG
-	kprintf("winChkName(): un=%s:%zd,d_name=%s:%d\n", un, unlen,
-							d_name,
-							d_namlen);
-#endif
+	mprintf("winChkName(): un=%s:%zd,d_name=%s:%d\n",
+		un, unlen, d_name, d_namlen);
 	/*
 	 * Compare the name parts
 	 */

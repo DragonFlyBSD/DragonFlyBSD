@@ -696,9 +696,7 @@ msdosfs_root(struct mount *mp, struct vnode **vpp)
 	struct denode *ndep;
 	int error;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_root(); mp %p, pmp %p\n", mp, pmp);
-#endif
+	mprintf("msdosfs_root(); mp %p, pmp %p\n", mp, pmp);
 	error = deget(pmp, MSDOSFSROOT, MSDOSFSROOT_OFS, &ndep);
 	if (error)
 		return (error);

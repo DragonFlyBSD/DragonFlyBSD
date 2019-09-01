@@ -116,9 +116,7 @@ msdosfs_create(struct vop_old_create_args *ap)
 	struct timespec ts;
 	int error;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_create(cnp %p, vap %p\n", cnp, ap->a_vap);
-#endif
+	mprintf("msdosfs_create(cnp %p, vap %p\n", cnp, ap->a_vap);
 
 	/*
 	 * If this is the root directory and there is no space left we
@@ -307,10 +305,8 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	struct ucred *cred = ap->a_cred;
 	int error = 0;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_setattr(): vp %p, vap %p, cred %p\n",
+	mprintf("msdosfs_setattr(): vp %p, vap %p, cred %p\n",
 	    ap->a_vp, vap, cred);
-#endif
 
 	/*
 	 * Check for unsettable attributes.
@@ -319,16 +315,14 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	    (vap->va_fsid != VNOVAL) || (vap->va_fileid != VNOVAL) ||
 	    (vap->va_blocksize != VNOVAL) || (vap->va_rmajor != VNOVAL) ||
 	    (vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
-#ifdef MSDOSFS_DEBUG
-		kprintf("msdosfs_setattr(): returning EINVAL\n");
-		kprintf("    va_type %u, va_nlink %"PRIx64", va_fsid %x, va_fileid %"PRIx64"\n",
+		mprintf("msdosfs_setattr(): returning EINVAL\n");
+		mprintf("    va_type %u, va_nlink %"PRIx64", va_fsid %x, va_fileid %"PRIx64"\n",
 		    vap->va_type, vap->va_nlink, vap->va_fsid, vap->va_fileid);
-		kprintf("    va_blocksize %lx, va_rmajor %x, va_bytes %"PRIx64", va_gen %"PRIx64"\n",
+		mprintf("    va_blocksize %lx, va_rmajor %x, va_bytes %"PRIx64", va_gen %"PRIx64"\n",
 		    vap->va_blocksize, vap->va_rmajor, vap->va_bytes,
 		    vap->va_gen);
-		kprintf("    va_uid %x, va_gid %x\n",
+		mprintf("    va_uid %x, va_gid %x\n",
 		    vap->va_uid, vap->va_gid);
-#endif
 		return (EINVAL);
 	}
 	if (vap->va_flags != VNOVAL) {
@@ -584,12 +578,10 @@ msdosfs_write(struct vop_write_args *ap)
 	struct proc *p = (td ? td->td_proc : NULL);
 	struct lwp *lp = (td ? td->td_lwp : NULL);
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_write(vp %p, uio %p, ioflag %x, cred %p\n",
+	mprintf("msdosfs_write(vp %p, uio %p, ioflag %x, cred %p\n",
 	    vp, uio, ioflag, ap->a_cred);
-	kprintf("msdosfs_write(): diroff %lu, dirclust %lu, startcluster %lu\n",
+	mprintf("msdosfs_write(): diroff %lu, dirclust %lu, startcluster %lu\n",
 	    dep->de_diroffset, dep->de_dirclust, dep->de_StartCluster);
-#endif
 
 	switch (vp->v_type) {
 	case VREG:
@@ -818,10 +810,8 @@ msdosfs_remove(struct vop_old_remove_args *ap)
 		error = EPERM;
 	else
 		error = removede(ddep, dep);
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_remove(), dep %p, v_refcnt 0x%08x\n",
+	mprintf("msdosfs_remove(), dep %p, v_refcnt 0x%08x\n",
 		dep, ap->a_vp->v_refcnt);
-#endif
 	return (error);
 }
 
@@ -1501,10 +1491,8 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	dep = VTODE(ap->a_vp);
 	pmp = dep->de_pmp;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_readdir(): vp %p, uio %p, cred %p, eofflagp %p\n",
+	mprintf("msdosfs_readdir(): vp %p, uio %p, cred %p, eofflagp %p\n",
 	    ap->a_vp, uio, ap->a_cred, ap->a_eofflag);
-#endif
 
 	/*
 	 * msdosfs_readdir() won't operate properly on regular files since

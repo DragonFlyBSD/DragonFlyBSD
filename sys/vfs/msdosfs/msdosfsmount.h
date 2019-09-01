@@ -268,4 +268,10 @@ struct msdosfs_args {
 
 #define MSDOSFS_ARGSMAGIC	0xe4eff300
 
+#ifdef MSDOSFS_DEBUG
+#define mprintf(fmt, ...)	kprintf(fmt, ## __VA_ARGS__)
+#else
+#define mprintf(fmt, ...)
+#endif
+
 #endif /* !_MSDOSFS_MSDOSFSMOUNT_H_ */

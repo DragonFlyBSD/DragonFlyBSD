@@ -118,18 +118,14 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 	int olddos = 1;
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_lookup(): looking for %s\n", cnp->cn_nameptr);
-#endif
+	mprintf("msdosfs_lookup(): looking for %s\n", cnp->cn_nameptr);
 	dp = VTODE(vdp);
 	pmp = dp->de_pmp;
 	*vpp = NULL;
 	lockparent = flags & CNP_LOCKPARENT;
 	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_lookup(): vdp %p, dp %p, Attr %02x\n",
+	mprintf("msdosfs_lookup(): vdp %p, dp %p, Attr %02x\n",
 	    vdp, dp, dp->de_Attributes);
-#endif
 
 	/*
 	 * If they are going after the . or .. entry in the root directory,
@@ -141,9 +137,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 		(cnp->cn_namelen == 2 && cnp->cn_nameptr[1] == '.'))) {
 		isadir = ATTR_DIRECTORY;
 		scn = MSDOSFSROOT;
-#ifdef MSDOSFS_DEBUG
-		kprintf("msdosfs_lookup(): looking for . or .. in root directory\n");
-#endif
+		mprintf("msdosfs_lookup(): looking for . or .. in root directory\n");
 		cluster = MSDOSFSROOT;
 		blkoff = MSDOSFSROOT_OFS;
 		goto foundroot;
@@ -180,10 +174,8 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 	if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)
 		slotcount = 0;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_lookup(): dos version of filename %s, length %ld\n",
+	mprintf("msdosfs_lookup(): dos version of filename %s, length %ld\n",
 	    dosfilename, cnp->cn_namelen);
-#endif
 	/*
 	 * Search the directory pointed at by vdp for the name pointed at
 	 * by cnp->cn_nameptr.
@@ -285,10 +277,8 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 					chksum = -1;
 					continue;
 				}
-#ifdef MSDOSFS_DEBUG
-				kprintf("msdosfs_lookup(): match blkoff %d, diroff %d\n",
+				mprintf("msdosfs_lookup(): match blkoff %d, diroff %d\n",
 				    blkoff, diroff);
-#endif
 				/*
 				 * Remember where this directory
 				 * entry came from for whoever did
@@ -329,12 +319,10 @@ notfound:
 	 * that's ok if we are creating or renaming and are at the end of
 	 * the pathname and the directory hasn't been removed.
 	 */
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_lookup(): op %d, refcnt %ld\n",
+	mprintf("msdosfs_lookup(): op %d, refcnt %ld\n",
 	    nameiop, dp->de_refcnt);
-	kprintf("               slotcount %d, slotoffset %d\n",
+	mprintf("               slotcount %d, slotoffset %d\n",
 	       slotcount, slotoffset);
-#endif
 	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
 	    dp->de_refcnt > 0) {
 		/*
@@ -560,10 +548,8 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 	daddr_t bn;
 	int blsize;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("createde(dep %p, ddep %p, depp %p, cnp %p)\n",
+	mprintf("createde(dep %p, ddep %p, depp %p, cnp %p)\n",
 	    dep, ddep, depp, cnp);
-#endif
 
 	/*
 	 * If no space left in the directory then allocate another cluster
@@ -727,10 +713,8 @@ dosdirempty(struct denode *dep)
 				if (bcmp(dentp->deName, ".          ", 11) &&
 				    bcmp(dentp->deName, "..         ", 11)) {
 					brelse(bp);
-#ifdef MSDOSFS_DEBUG
-					kprintf("dosdirempty(): entry found %02x, %02x\n",
+					mprintf("dosdirempty(): entry found %02x, %02x\n",
 					    dentp->deName[0], dentp->deName[1]);
-#endif
 					return (0);	/* not empty */
 				}
 			}
@@ -896,10 +880,8 @@ removede(struct denode *pdep,	/* directory where the entry is removed */
 	struct msdosfsmount *pmp = pdep->de_pmp;
 	u_long offset = pdep->de_fndoffset;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("removede(): filename %s, dep %p, offset %08lx\n",
+	mprintf("removede(): filename %s, dep %p, offset %08lx\n",
 	    dep->de_Name, dep, offset);
-#endif
 
 	KKASSERT(dep->de_refcnt > 0);
 	dep->de_refcnt--;

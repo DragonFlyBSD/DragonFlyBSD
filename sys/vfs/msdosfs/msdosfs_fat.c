@@ -315,9 +315,7 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 	int i;
 	struct buf *bpn;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("updatefats(pmp %p, bp %p, fatbn %lu)\n", pmp, bp, fatbn);
-#endif
+	mprintf("updatefats(pmp %p, bp %p, fatbn %lu)\n", pmp, bp, fatbn);
 
 	/*
 	 * If we have an FSInfo block, update it.
@@ -477,10 +475,8 @@ fatentry(int function, struct msdosfsmount *pmp, u_long cn, u_long *oldcontents,
 	u_long bn, bo, bsize, byteoffset;
 	struct buf *bp;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("fatentry(func %d, pmp %p, clust %lu, oldcon %p, newcon %lx)\n",
+	mprintf("fatentry(func %d, pmp %p, clust %lu, oldcon %p, newcon %lx)\n",
 		function, pmp, cn, oldcontents, newcontents);
-#endif
 
 #ifdef DIAGNOSTIC
 	/*
@@ -579,10 +575,8 @@ fatchain(struct msdosfsmount *pmp, u_long start, u_long count, u_long fillwith)
 	u_long bn, bo, bsize, byteoffset, readcn, newc;
 	struct buf *bp;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("fatchain(pmp %p, start %lu, count %lu, fillwith %lx)\n",
+	mprintf("fatchain(pmp %p, start %lu, count %lu, fillwith %lx)\n",
 	    pmp, start, count, fillwith);
-#endif
 	/*
 	 * Be sure the clusters are in the filesystem.
 	 */
@@ -699,10 +693,8 @@ chainalloc(struct msdosfsmount *pmp, u_long start, u_long count,
 	error = fatchain(pmp, start, count, fillwith);
 	if (error != 0)
 		return (error);
-#ifdef MSDOSFS_DEBUG
-	kprintf("clusteralloc(): allocated cluster chain at %lu (%lu clusters)\n",
+	mprintf("clusteralloc(): allocated cluster chain at %lu (%lu clusters)\n",
 	    start, count);
-#endif
 	if (retcluster)
 		*retcluster = start;
 	if (got)
@@ -730,9 +722,7 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 	u_long foundcn = 0; /* XXX: foundcn could be used unititialized */
 	u_int map;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("clusteralloc(): find %lu clusters\n",count);
-#endif
+	mprintf("clusteralloc(): find %lu clusters\n",count);
 	if (start) {
 		if ((len = chainlength(pmp, start, count)) >= count)
 			return (chainalloc(pmp, start, count, fillwith,

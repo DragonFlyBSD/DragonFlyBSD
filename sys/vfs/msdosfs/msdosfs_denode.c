@@ -260,10 +260,8 @@ deget(struct msdosfsmount *pmp,	/* so we know the maj/min number */
 	struct buf *bp;
 	struct timeval tv;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("deget(pmp %p, dirclust %lu, diroffset %lx, depp %p)\n",
+	mprintf("deget(pmp %p, dirclust %lu, diroffset %lx, depp %p)\n",
 	    pmp, dirclust, diroffset, depp);
-#endif
 
 	/*
 	 * On FAT32 filesystems, root is a (more or less) normal
@@ -493,10 +491,8 @@ detrunc(struct denode *dep, u_long length, int flags)
 	struct buf *bp;
 	struct msdosfsmount *pmp = dep->de_pmp;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("detrunc(): file %s, length %lu, flags %x\n", dep->de_Name,
+	mprintf("detrunc(): file %s, length %lu, flags %x\n", dep->de_Name,
 		length, flags);
-#endif
 
 	/*
 	 * Disallow attempts to truncate the root directory since it is of
@@ -535,9 +531,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 		error = pcbmap(dep, de_clcount(pmp, length) - 1,
 			       NULL, &eofentry, NULL);
 		if (error) {
-#ifdef MSDOSFS_DEBUG
-			kprintf("detrunc(): pcbmap fails %d\n", error);
-#endif
+			mprintf("detrunc(): pcbmap fails %d\n", error);
 			return (error);
 		}
 	}
@@ -561,9 +555,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 		}
 		if (error) {
 			brelse(bp);
-#ifdef MSDOSFS_DEBUG
-			kprintf("detrunc(): bread fails %d\n", error);
-#endif
+			mprintf("detrunc(): bread fails %d\n", error);
 			return (error);
 		}
 		/*
@@ -591,10 +583,8 @@ detrunc(struct denode *dep, u_long length, int flags)
 	error = deupdat(dep, 1);
 	if (error && (allerror == 0))
 		allerror = error;
-#ifdef MSDOSFS_DEBUG
-	kprintf("detrunc(): allerror %d, eofentry %lu\n",
+	mprintf("detrunc(): allerror %d, eofentry %lu\n",
 		allerror, eofentry);
-#endif
 
 	/*
 	 * If we need to break the cluster chain for the file then do it
@@ -604,9 +594,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 		error = fatentry(FAT_GET_AND_SET, pmp, eofentry,
 				 &chaintofree, CLUST_EOFE);
 		if (error) {
-#ifdef MSDOSFS_DEBUG
-			kprintf("detrunc(): fatentry errors %d\n", error);
-#endif
+			mprintf("detrunc(): fatentry errors %d\n", error);
 			return (error);
 		}
 		fc_setcache(dep, FC_LASTFC, de_cluster(pmp, length - 1),
@@ -676,10 +664,8 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct denode *dep = VTODE(vp);
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_reclaim(): dep %p, file %s, refcnt %ld\n",
+	mprintf("msdosfs_reclaim(): dep %p, file %s, refcnt %ld\n",
 	    dep, dep ? (char *)dep->de_Name : "?", dep ? dep->de_refcnt : -1);
-#endif
 
 	if (prtactive && VREFCNT(vp) > 1)
 		vprint("msdosfs_reclaim(): pushing active", vp);
@@ -708,10 +694,8 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	struct denode *dep = VTODE(vp);
 	int error = 0;
 
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_inactive(): dep %p, de_Name[0] %x\n",
+	mprintf("msdosfs_inactive(): dep %p, de_Name[0] %x\n",
 		dep, (dep ? dep->de_Name[0] : 0));
-#endif
 
 	if (prtactive && VREFCNT(vp) > 1)
 		vprint("msdosfs_inactive(): pushing active", vp);
@@ -727,10 +711,8 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	 * filesystem, then truncate the file, and mark the directory slot
 	 * as empty.  (This may not be necessary for the dos filesystem.)
 	 */
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_inactive(): dep %p, refcnt %ld, mntflag %x, MNT_RDONLY %x\n",
+	mprintf("msdosfs_inactive(): dep %p, refcnt %ld, mntflag %x, MNT_RDONLY %x\n",
 		dep, dep->de_refcnt, vp->v_mount->mnt_flag, MNT_RDONLY);
-#endif
 	if (dep->de_refcnt <= 0 && (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
 		error = detrunc(dep, (u_long) 0, 0);
 		dep->de_flag |= DE_UPDATE;
@@ -743,10 +725,8 @@ out:
 	 * If we are done with the denode, reclaim it
 	 * so that it can be reused immediately.
 	 */
-#ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_inactive(): v_refcnt 0x%08x, de_Name[0] %x\n",
+	mprintf("msdosfs_inactive(): v_refcnt 0x%08x, de_Name[0] %x\n",
 		vp->v_refcnt, (dep ? dep->de_Name[0] : 0));
-#endif
 	if (dep == NULL || dep->de_Name[0] == SLOT_DELETED)
 		vrecycle(vp);
 	return (error);
