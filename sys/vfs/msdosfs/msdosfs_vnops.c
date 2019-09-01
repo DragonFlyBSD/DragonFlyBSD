@@ -175,10 +175,8 @@ msdosfs_mknod(struct vop_old_mknod_args *ap)
 	switch (ap->a_vap->va_type) {
 	case VDIR:
 		return (msdosfs_mkdir((struct vop_old_mkdir_args *)ap));
-		break;
 	case VREG:
 		return (msdosfs_create((struct vop_old_create_args *)ap));
-		break;
 	default:
 		return (EINVAL);
 	}
@@ -1551,10 +1549,6 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	 */
 	if (dep->de_StartCluster == MSDOSFSROOT
 	    || (FAT32(pmp) && dep->de_StartCluster == pmp->pm_rootdirblk)) {
-#if 0
-		kprintf("msdosfs_readdir(): going after . or .. in root dir, offset %d\n",
-		    offset);
-#endif
 		bias = 2 * sizeof(struct direntry);
 		if (offset < bias) {
 			for (n = (int)offset / sizeof(struct direntry); n < 2;
@@ -1618,10 +1612,6 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		for (dentp = (struct direntry *)(bp->b_data + on);
 		     (char *)dentp < bp->b_data + on + n;
 		     dentp++, offset += sizeof(struct direntry)) {
-#if 0
-			kprintf("rd: dentp %08x prev %08x crnt %08x deName %02x attr %02x\n",
-			    dentp, prev, crnt, dentp->deName[0], dentp->deAttributes);
-#endif
 			d_name = d_name_storage;
 			d_namlen = 0;
 			/*

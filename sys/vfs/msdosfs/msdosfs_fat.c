@@ -417,7 +417,6 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 static __inline void
 usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 {
-
 	pmp->pm_inusemap[cn / N_INUSEBITS] |= 1 << (cn % N_INUSEBITS);
 	pmp->pm_freeclustercount--;
 }
@@ -425,7 +424,6 @@ usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 static __inline void
 usemap_free(struct msdosfsmount *pmp, u_long cn)
 {
-
 	pmp->pm_freeclustercount++;
 	pmp->pm_inusemap[cn / N_INUSEBITS] &= ~(1 << (cn % N_INUSEBITS));
 }
@@ -480,9 +478,9 @@ fatentry(int function, struct msdosfsmount *pmp, u_long cn, u_long *oldcontents,
 	u_long bn, bo, bsize, byteoffset;
 	struct buf *bp;
 
-#ifdef	MSDOSFS_DEBUG
+#ifdef MSDOSFS_DEBUG
 	kprintf("fatentry(func %d, pmp %p, clust %lu, oldcon %p, newcon %lx)\n",
-	     function, pmp, cn, oldcontents, newcontents);
+		function, pmp, cn, oldcontents, newcontents);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -850,7 +848,8 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 		case FAT32_MASK:
 			cluster = getulong(&bp->b_data[bo]);
 			putulong(&bp->b_data[bo],
-				 (MSDOSFSFREE & FAT32_MASK) | (cluster & ~FAT32_MASK));
+				 (MSDOSFSFREE & FAT32_MASK) |
+				 (cluster & ~FAT32_MASK));
 			break;
 		}
 		cluster &= pmp->pm_fatmask;

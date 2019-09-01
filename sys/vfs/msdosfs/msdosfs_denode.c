@@ -415,7 +415,7 @@ again:
 		 */
 		if ((diroffset == 0) && (ldep->de_StartCluster != dirclust)) {
 			kprintf("deget(): . entry at clust %ld != %ld\n",
-					dirclust, ldep->de_StartCluster);
+				dirclust, ldep->de_StartCluster);
 			ldep->de_StartCluster = dirclust;
 		}
 
@@ -592,7 +592,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 		allerror = error;
 #ifdef MSDOSFS_DEBUG
 	kprintf("detrunc(): allerror %d, eofentry %lu\n",
-	       allerror, eofentry);
+		allerror, eofentry);
 #endif
 
 	/*
@@ -728,7 +728,7 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	 */
 #ifdef MSDOSFS_DEBUG
 	kprintf("msdosfs_inactive(): dep %p, refcnt %ld, mntflag %x, MNT_RDONLY %x\n",
-	       dep, dep->de_refcnt, vp->v_mount->mnt_flag, MNT_RDONLY);
+		dep, dep->de_refcnt, vp->v_mount->mnt_flag, MNT_RDONLY);
 #endif
 	if (dep->de_refcnt <= 0 && (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
 		error = detrunc(dep, (u_long) 0, 0);

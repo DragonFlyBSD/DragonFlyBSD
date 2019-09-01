@@ -129,18 +129,17 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 			return error;
 	}
 
-	if (pmp->pm_flags & MSDOSFSMNT_NOWIN95)
+	if (pmp->pm_flags & MSDOSFSMNT_NOWIN95) {
 		pmp->pm_flags |= MSDOSFSMNT_SHORTNAME;
-	else if (!(pmp->pm_flags &
+	} else if (!(pmp->pm_flags &
 	    (MSDOSFSMNT_SHORTNAME | MSDOSFSMNT_LONGNAME))) {
-		struct vnode *rootvp;
-
 		/*
 		 * Try to divine whether to support Win'95 long filenames
 		 */
-		if (FAT32(pmp))
+		if (FAT32(pmp)) {
 			pmp->pm_flags |= MSDOSFSMNT_LONGNAME;
-		else {
+		} else {
+			struct vnode *rootvp;
 			if ((error = msdosfs_root(mp, &rootvp)) != 0)
 				return error;
 			pmp->pm_flags |= findwin95(VTODE(rootvp))
@@ -180,7 +179,8 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (mp->mnt_flag & MNT_UPDATE) {
 		pmp = VFSTOMSDOSFS(mp);
 		error = 0;
-		if (!(pmp->pm_flags & MSDOSFSMNT_RONLY) && (mp->mnt_flag & MNT_RDONLY)) {
+		if (!(pmp->pm_flags & MSDOSFSMNT_RONLY) &&
+		    (mp->mnt_flag & MNT_RDONLY)) {
 			flags = WRITECLOSE;
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
@@ -199,7 +199,8 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			error = EOPNOTSUPP;
 		if (error)
 			return (error);
-		if ((pmp->pm_flags & MSDOSFSMNT_RONLY) && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
+		if ((pmp->pm_flags & MSDOSFSMNT_RONLY) &&
+		    (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
 			/*
 			 * If upgrade to read-write by non-root, then verify
 			 * that user has necessary permissions on the device.
@@ -207,7 +208,8 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			devvp = pmp->pm_devvp;
 			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			if (cred->cr_uid != 0) {
-				error = VOP_EACCESS(devvp, VREAD | VWRITE, cred);
+				error = VOP_EACCESS(devvp, VREAD | VWRITE,
+						    cred);
 				if (error) {
 					vn_unlock(devvp);
 					return (error);
@@ -219,7 +221,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			pmp->pm_flags &= ~MSDOSFSMNT_RONLY;
 		}
 		if (args.fspec == NULL) {
-#ifdef	__notyet__		/* doesn't work correctly with current mountd	XXX */
+#ifdef __notyet__	/* doesn't work correctly with current mountd XXX */
 			if (args.flags & MSDOSFSMNT_MNTOPT) {
 				pmp->pm_flags &= ~MSDOSFSMNT_MNTOPT;
 				pmp->pm_flags |= args.flags & MSDOSFSMNT_MNTOPT;
@@ -293,7 +295,8 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	msdosfs_statfs(mp, &mp->mnt_stat, cred);
 #ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_mount(): mp %p, pmp %p, inusemap %p\n", mp, pmp, pmp->pm_inusemap);
+	kprintf("msdosfs_mount(): mp %p, pmp %p, inusemap %p\n",
+		mp, pmp, pmp->pm_inusemap);
 #endif
 	return (0);
 }
@@ -636,7 +639,9 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 {
 	struct msdosfsmount *pmp;
 	int error, flags;
-
+#ifdef MSDOSFS_DEBUG
+	struct vnode *vp;
+#endif
 	flags = 0;
 	if (mntflags & MNT_FORCE)
 		flags |= FORCECLOSE;
@@ -655,28 +660,22 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 		if(pmp->pm_u2d)
 			msdos_iconv->close(pmp->pm_u2d);
 	}
-#ifdef MSDOSFS_DEBUG
-	{
-		struct vnode *vp = pmp->pm_devvp;
 
-		kprintf("msdosfs_umount(): just before calling VOP_CLOSE()\n");
-		kprintf("flag %08x, refcnt 0x%08x, writecount %d, "
-			"auxrefs 0x%08x\n",
-			vp->v_flag, vp->v_refcnt,
-			vp->v_writecount, vp->v_auxrefs);
-		kprintf("mount %p, op %p\n", vp->v_mount, vp->v_ops);
-		kprintf("mount %p\n", vp->v_mount);
-		kprintf("cleanblkhd %p, dirtyblkhd %p, numoutput %d, type %d\n",
-		    RB_ROOT(&vp->v_rbclean_tree),
-		    RB_ROOT(&vp->v_rbdirty_tree),
-		    bio_track_active(&vp->v_track_write),
-		    vp->v_type);
-		kprintf("union %p, tag %d, data[0] %08x, data[1] %08x\n",
-		    vp->v_socket, vp->v_tag,
-		    ((u_int *)vp->v_data)[0],
-		    ((u_int *)vp->v_data)[1]);
-	}
+#ifdef MSDOSFS_DEBUG
+	vp = pmp->pm_devvp;
+	kprintf("msdosfs_umount(): just before calling VOP_CLOSE()\n");
+	kprintf("flag %08x, refcnt 0x%08x, writecount %d, auxrefs 0x%08x\n",
+		vp->v_flag, vp->v_refcnt, vp->v_writecount, vp->v_auxrefs);
+	kprintf("mount %p, op %p\n", vp->v_mount, vp->v_ops);
+	kprintf("mount %p\n", vp->v_mount);
+	kprintf("cleanblkhd %p, dirtyblkhd %p, numoutput %d, type %d\n",
+		RB_ROOT(&vp->v_rbclean_tree), RB_ROOT(&vp->v_rbdirty_tree),
+		bio_track_active(&vp->v_track_write), vp->v_type);
+	kprintf("union %p, tag %d, data[0] %08x, data[1] %08x\n",
+		vp->v_socket, vp->v_tag, ((u_int *)vp->v_data)[0],
+		((u_int *)vp->v_data)[1]);
 #endif
+
 	vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_CLOSE(pmp->pm_devvp,
 		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE,
