@@ -543,14 +543,18 @@ urandfail:
 			 */
 			do {
 				++*(int *)(ptr + 4);
-				if (RSA_private_encrypt(blksize, ptr, buf1,
+				if (RSA_private_encrypt(blksize,
+					    (unsigned char*)ptr,
+					    (unsigned char*)buf1,
 					    keys[2], RSA_NO_PADDING) < 0) {
 					iocom->ioq_rx.error =
 						DMSG_IOQ_ERROR_KEYXCHGFAIL;
 				}
 			} while (buf1[0] & 0xC0);
 
-			if (RSA_public_encrypt(blksize, buf1, buf2,
+			if (RSA_public_encrypt(blksize,
+					    (unsigned char*)buf1,
+					    (unsigned char*)buf2,
 					    keys[0], RSA_NO_PADDING) < 0) {
 				iocom->ioq_rx.error =
 					DMSG_IOQ_ERROR_KEYXCHGFAIL;
@@ -580,11 +584,15 @@ urandfail:
 		ptr -= (i & blkmask);
 		i += n;
 		if (keys[0] && (i & blkmask) == 0) {
-			if (RSA_private_decrypt(blksize, ptr, buf1,
+			if (RSA_private_decrypt(blksize,
+					   (unsigned char*)ptr,
+					   (unsigned char*)buf1,
 					   keys[2], RSA_NO_PADDING) < 0)
 				iocom->ioq_rx.error =
 						DMSG_IOQ_ERROR_KEYXCHGFAIL;
-			if (RSA_public_decrypt(blksize, buf1, ptr,
+			if (RSA_public_decrypt(blksize,
+					   (unsigned char*)buf1,
+					   (unsigned char*)ptr,
 					   keys[0], RSA_NO_PADDING) < 0)
 				iocom->ioq_rx.error =
 						DMSG_IOQ_ERROR_KEYXCHGFAIL;
