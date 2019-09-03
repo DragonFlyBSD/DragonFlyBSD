@@ -796,13 +796,13 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 				++BuildIgnoreCount;
 				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
 				     ipkg->portdir, reason);
-				doHook(pkg, "hook_pkg_ignored",
+				doHook(ipkg, "hook_pkg_ignored",
 				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
 				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
 				     ipkg->portdir, reason);
-				doHook(pkg, "hook_pkg_skipped",
+				doHook(ipkg, "hook_pkg_skipped",
 				       HookPkgSkipped, 0);
 			}
 			free(reason);
@@ -820,13 +820,13 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 				++BuildIgnoreCount;
 				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
 				     pkgi->portdir, reason);
-				doHook(pkg, "hook_pkg_ignored",
+				doHook(pkgi, "hook_pkg_ignored",
 				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
 				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
 				     pkgi->portdir, reason);
-				doHook(pkg, "hook_pkg_skipped",
+				doHook(pkgi, "hook_pkg_skipped",
 				       HookPkgSkipped, 0);
 			}
 			free(reason);
