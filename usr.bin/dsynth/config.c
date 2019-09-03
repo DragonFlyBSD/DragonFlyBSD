@@ -64,10 +64,23 @@ const char *DistFilesPath = "/build/synth/distfiles";
 const char *BuildBase = "/build/synth/build";
 const char *LogsPath = "/build/synth/logs";
 const char *SystemPath = "/";
-const char *ProfileLabel = "[LiveSystem]";
+const char *ProfileLabel = "[LiveSystem]";	/* with the brackets */
+const char *Profile = "LiveSystem";		/* without the brackets */
 
-const char *ConfigBase = "/etc/dsynth";
-const char *AltConfigBase = "/usr/local/etc/dsynth";
+/*
+ * Hooks are scripts in ConfigBase
+ */
+int UsingHooks;
+const char *HookRunStart;
+const char *HookRunEnd;
+const char *HookPkgSuccess;
+const char *HookPkgFailure;
+const char *HookPkgIgnored;
+const char *HookPkgSkipped;
+
+const char *ConfigBase;				/* The config base we found */
+const char *ConfigBase1 = "/etc/dsynth";
+const char *ConfigBase2 = "/usr/local/etc/dsynth";
 
 static void parseConfigFile(const char *path);
 static void parseProfile(const char *cpath, const char *path);
@@ -75,6 +88,7 @@ static char *stripwhite(char *str);
 static int truefalse(const char *str);
 static char *dokernsysctl(int m1, int m2);
 static void getElfInfo(const char *path);
+static char *checkhook(const char *scriptname);
 
 void
 ParseConfiguration(int isworker)
@@ -129,16 +143,29 @@ ParseConfiguration(int isworker)
 	 * Configuration file must exist.  Look for it in
 	 * "/etc/dsynth" and "/usr/local/etc/dsynth".
 	 */
-	asprintf(&synth_config, "%s/dsynth.ini", ConfigBase);
-	if (stat(synth_config, &st) < 0)
-		asprintf(&synth_config, "%s/dsynth.ini", AltConfigBase);
+	ConfigBase = ConfigBase1;
+	asprintf(&synth_config, "%s/dsynth.ini", ConfigBase1);
+	if (stat(synth_config, &st) < 0) {
+		ConfigBase = ConfigBase2;
+		asprintf(&synth_config, "%s/dsynth.ini", ConfigBase2);
+	}
 
 	if (stat(synth_config, &st) < 0) {
 		dfatal("Configuration file missing, "
 		       "could not find %s/dsynth.ini or %s/dsynth.ini\n",
-		       ConfigBase,
-		       AltConfigBase);
+		       ConfigBase1,
+		       ConfigBase2);
 	}
+
+	/*
+	 * Check to see what hooks we have
+	 */
+	HookRunStart = checkhook("hook_run_start");
+	HookRunEnd = checkhook("hook_run_end");
+	HookPkgSuccess = checkhook("hook_pkg_success");
+	HookPkgFailure = checkhook("hook_pkg_failure");
+	HookPkgIgnored = checkhook("hook_pkg_ignored");
+	HookPkgSkipped = checkhook("hook_pkg_skipped");
 
 	/*
 	 * Parse the configuration file(s).  This may override some of
@@ -299,6 +326,10 @@ parseConfigFile(const char *path)
 			       lineno, buf);
 		}
 		l2 = strtok(NULL, " \t\n");
+		if (l2 == NULL) {
+			dfatal("Syntax error in config line %d: %s\n",
+			       lineno, buf);
+		}
 		l1 = stripwhite(l1);
 		l2 = stripwhite(l2);
 
@@ -308,6 +339,7 @@ parseConfigFile(const char *path)
 			 * Global Configuration
 			 */
 			if (strcmp(l1, "profile_selected") == 0) {
+				Profile = strdup(l2);
 				asprintf(&l2, "[%s]", l2);
 				ProfileLabel = l2;
 			} else {
@@ -587,4 +619,20 @@ getElfInfo(const char *path)
 		note.version / 100000,
 		(note.version % 100000) / 100);
 	ReleaseName = cmd;
+}
+
+static char *
+checkhook(const char *scriptname)
+{
+	struct stat st;
+	char *path;
+
+	asprintf(&path, "%s/%s", ConfigBase, scriptname);
+	if (stat(path, &st) < 0 || (st.st_mode & 0111) == 0) {
+		free(path);
+		return NULL;
+	}
+	UsingHooks = 1;
+
+	return path;
 }

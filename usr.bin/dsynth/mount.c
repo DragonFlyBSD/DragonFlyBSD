@@ -358,8 +358,9 @@ dounmount(worker_t *work, const char *rpath)
 	asprintf(&buf, "%s%s", work->basedir, rpath);
 	if (unmount(buf, 0) < 0) {
 		switch(errno) {
-		case ENOENT:
-		case EINVAL:
+		case EPERM:	/* This is probably fatal later on in mount */
+		case ENOENT:	/* Expected if mount already gone */
+		case EINVAL:	/* Expected if mount already gone (maybe) */
 			break;
 		default:
 			fprintf(stderr, "Cannot umount %s (%s)\n",

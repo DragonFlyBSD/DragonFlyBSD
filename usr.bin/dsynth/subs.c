@@ -231,8 +231,10 @@ addbuildenv(const char *label, const char *data, int type)
 	buildenv_t *env;
 
 	env = calloc(1, sizeof(*env));
-	env->label = strdup(label);
-	env->data = strdup(data);
+	env->a1 = strdup(label);
+	env->a2 = strdup(data);
+	env->label = env->a1;
+	env->data = env->a2;
 	env->type = type;
 	*BuildEnvTail = env;
 	BuildEnvTail = &env->next;
@@ -248,8 +250,10 @@ delbuildenv(const char *label)
 	while ((env = *envp) != NULL) {
 		if (strcmp(env->label, label) == 0) {
 			*envp = env->next;
-			free(env->label);
-			free(env->data);
+			if (env->a1)
+				free(env->a1);
+			if (env->a2)
+				free(env->a2);
 			free(env);
 		} else {
 			envp = &env->next;
@@ -387,13 +391,17 @@ getswappct(int *noswapp)
  * Similar to popen() but directly exec()s the argument list (cav[0] must
  * be an absolute path).
  *
+ * If xenv is non-NULL its an array of local buildenv_t's to be used.
+ * The array is terminated with a NULL xenv->label.
+ *
  * If with_env is non-zero the configured environment is included.
  *
  * If with_mvars is non-zero the make environment is passed as VAR=DATA
  * elements on the command line.
  */
 FILE *
-dexec_open(const char **cav, int cac, pid_t *pidp, int with_env, int with_mvars)
+dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
+	   int with_env, int with_mvars)
 {
 	buildenv_t *benv;
 	const char **cenv;
@@ -433,6 +441,18 @@ dexec_open(const char **cav, int cac, pid_t *pidp, int with_env, int with_mvars)
 		}
 		ddassert(cac < MAXCAC && envi - env_basei < MAXCAC);
 	}
+
+	/*
+	 * Extra environment specific to this particular dexec
+	 */
+	while (xenv && xenv->label) {
+		asprintf(&allocary[alloci], "%s=%s",
+			 xenv->label, xenv->data);
+		cenv[envi++] = allocary[alloci];
+		++alloci;
+		++xenv;
+	}
+
 	cav[cac] = NULL;
 	cenv[envi] = NULL;
 

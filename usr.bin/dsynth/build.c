@@ -69,6 +69,8 @@ static char *buildskipreason(pkglink_t *parent, pkg_t *pkg);
 static int mptylogpoll(int ptyfd, int fdlog, wmsg_t *wmsg,
 			time_t *wdog_timep);
 static int copyfile(char *src, char *dst);
+static void doHook(pkg_t *pkg, const char *id, const char *path, int waitfor);
+static void childHookRun(bulk_t *bulk);
 
 static worker_t *SigWork;
 static int MasterPtyFd = -1;
@@ -157,6 +159,7 @@ DoBuild(pkg_t *pkgs)
 	pkg_t *build_list = NULL;
 	pkg_t **build_tail = &build_list;
 	pkg_t *scan;
+	bulk_t *bulk;
 	int haswork = 1;
 	int first = 1;
 	int newtemplate;
@@ -165,12 +168,22 @@ DoBuild(pkg_t *pkgs)
 	int h, m, s;
 
 	/*
+	 * We use our bulk system to run hooks.  This will be for
+	 * Skipped and Ignored.  Success and Failure are handled by
+	 * WorkerProcess() which is a separately-exec'd dsynth.
+	 */
+	if (UsingHooks)
+		initbulk(childHookRun, MaxBulk);
+
+	/*
 	 * Count up the packages, not counting dummies
 	 */
 	for (scan = pkgs; scan; scan = scan->bnext) {
 		if ((scan->flags & PKGF_DUMMY) == 0)
 			++BuildTotal;
 	}
+
+	doHook(NULL, "hook_run_start", HookRunStart, 1);
 
 	/*
 	 * The pkg and pkg-static binaries are needed.  If already present
@@ -294,6 +307,13 @@ DoBuild(pkg_t *pkgs)
 	RunStatsUpdateLogs();
 	RunStatsSync();
 	RunStatsDone();
+
+	doHook(NULL, "hook_run_end", HookRunEnd, 1);
+	if (UsingHooks) {
+		while ((bulk = getbulk()) != NULL)
+			freebulk(bulk);
+		donebulk();
+	}
 
 	t = time(NULL) - startTime;
 	h = t / 3600;
@@ -776,10 +796,14 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 				++BuildIgnoreCount;
 				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
 				     ipkg->portdir, reason);
+				doHook(pkg, "hook_pkg_ignored",
+				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
 				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
 				     ipkg->portdir, reason);
+				doHook(pkg, "hook_pkg_skipped",
+				       HookPkgSkipped, 0);
 			}
 			free(reason);
 			++BuildCount;
@@ -796,10 +820,14 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 				++BuildIgnoreCount;
 				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
 				     pkgi->portdir, reason);
+				doHook(pkg, "hook_pkg_ignored",
+				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
 				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
 				     pkgi->portdir, reason);
+				doHook(pkg, "hook_pkg_skipped",
+				       HookPkgSkipped, 0);
 			}
 			free(reason);
 			++BuildCount;
@@ -986,10 +1014,14 @@ workercomplete(worker_t *work)
 				++BuildIgnoreCount;
 				dlog(DLOG_SKIP, "[%03d] IGNORD %s - %s\n",
 				     work->index, pkg->portdir, reason);
+				doHook(pkg, "hook_pkg_ignored",
+				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
 				dlog(DLOG_SKIP, "[%03d] SKIPPD %s - %s\n",
 				     work->index, pkg->portdir, reason);
+				doHook(pkg, "hook_pkg_skipped",
+				       HookPkgSkipped, 0);
 			}
 			free(reason);
 		} else {
@@ -999,13 +1031,15 @@ workercomplete(worker_t *work)
 			     work->index, pkg->portdir,
 			     getphasestr(work->phase),
 			     h, m, s);
+			doHook(pkg, "hook_pkg_failure", HookPkgFailure, 0);
 		}
 	} else {
+		pkg->flags |= PKGF_SUCCESS;
+		++BuildSuccessCount;
 		dlog(DLOG_SUCC | DLOG_GRN,
 		     "[%03d] SUCCESS %s ##%02d:%02d:%02d\n",
 		     work->index, pkg->portdir, h, m, s);
-		pkg->flags |= PKGF_SUCCESS;
-		++BuildSuccessCount;
+		doHook(pkg, "hook_pkg_success", HookPkgSuccess, 0);
 	}
 	++BuildCount;
 	pkg->flags &= ~PKGF_BUILDLIST;
@@ -1669,6 +1703,7 @@ WorkerProcess(int ac, char **av)
 	char *flavor;
 	char *buf;
 	worker_t *work;
+	bulk_t *bulk;
 	pkg_t pkg;
 	buildenv_t *benv;
 	FILE *fp;
@@ -1854,6 +1889,12 @@ WorkerProcess(int ac, char **av)
 	freestrp(&buf);
 
 	/*
+	 * Set up our hooks
+	 */
+	if (UsingHooks)
+		initbulk(childHookRun, MaxBulk);
+
+	/*
 	 * Start phases
 	 */
 	wmsg.cmd = WMSG_CMD_INSTALL_PKGS;
@@ -1970,6 +2011,11 @@ WorkerProcess(int ac, char **av)
 	if (WorkerProcFlags & WORKER_PROC_DEBUGSTOP) {
 		wmsg.cmd = WMSG_CMD_FREEZEWORKER;
 		ipcwritemsg(fd, &wmsg);
+	}
+	if (UsingHooks) {
+		while ((bulk = getbulk()) != NULL)
+			freebulk(bulk);
+		donebulk();
 	}
 }
 
@@ -2548,4 +2594,177 @@ copyfile(char *src, char *dst)
 	freestrp(&tmp);
 
 	return error;
+}
+
+/*
+ * doHook()
+ *
+ * primary process (threaded) - run_start, run_end, pkg_ignored, pkg_skipped
+ * worker process  (threaded) - pkg_sucess, pkg_failure
+ *
+ * If waitfor is non-zero this hook will be serialized.
+ */
+static void
+doHook(pkg_t *pkg, const char *id, const char *path, int waitfor)
+{
+	if (path == NULL)
+		return;
+	while (waitfor && getbulk() != NULL)
+		;
+	if (pkg)
+		queuebulk(pkg->portdir, id, path, pkg->pkgfile);
+	else
+		queuebulk(NULL, id, path, NULL);
+	while (waitfor && getbulk() != NULL)
+		;
+}
+
+/*
+ * Execute hook (backend)
+ *
+ * s1 - portdir
+ * s2 - id
+ * s3 - script path
+ * s4 - pkgfile		(if applicable)
+ */
+static void
+childHookRun(bulk_t *bulk)
+{
+	const char *cav[MAXCAC];
+	buildenv_t benv[MAXCAC];
+	char buf1[128];
+	char buf2[128];
+	char buf3[128];
+	char buf4[128];
+	FILE *fp;
+	char *ptr;
+	size_t len;
+	pid_t pid;
+	int cac;
+	int bi;
+
+	cac = 0;
+	bi = 0;
+	bzero(benv, sizeof(benv));
+
+	cav[cac++] = bulk->s3;
+
+	benv[bi].label = "PROFILE";
+	benv[bi].data = Profile;
+	++bi;
+
+	benv[bi].label = "DIR_PACKAGES";
+	benv[bi].data = PackagesPath;
+	++bi;
+
+	benv[bi].label = "DIR_REPOSITORY";
+	benv[bi].data = RepositoryPath;
+	++bi;
+
+	benv[bi].label = "DIR_PORTS";
+	benv[bi].data = DPortsPath;
+	++bi;
+
+	benv[bi].label = "DIR_OPTIONS";
+	benv[bi].data = OptionsPath;
+	++bi;
+
+	benv[bi].label = "DIR_DISTFILES";
+	benv[bi].data = DistFilesPath;
+	++bi;
+
+	benv[bi].label = "DIR_LOGS";
+	benv[bi].data = LogsPath;
+	++bi;
+
+	benv[bi].label = "DIR_BUILDBASE";
+	benv[bi].data = BuildBase;
+	++bi;
+
+	if (strcmp(bulk->s2, "hook_run_start") == 0) {
+		snprintf(buf1, sizeof(buf1), "%d", BuildTotal);
+		benv[bi].label = "PORTS_QUEUED";
+		benv[bi].data = buf1;
+		++bi;
+	} else if (strcmp(bulk->s2, "hook_run_end") == 0) {
+		snprintf(buf1, sizeof(buf1), "%d", BuildSuccessCount);
+		benv[bi].label = "PORTS_BUILT";
+		benv[bi].data = buf1;
+		++bi;
+		snprintf(buf2, sizeof(buf2), "%d", BuildFailCount);
+		benv[bi].label = "PORTS_FAILED";
+		benv[bi].data = buf2;
+		++bi;
+		snprintf(buf3, sizeof(buf3), "%d", BuildIgnoreCount);
+		benv[bi].label = "PORTS_IGNORED";
+		benv[bi].data = buf3;
+		++bi;
+		snprintf(buf4, sizeof(buf4), "%d", BuildSkipCount);
+		benv[bi].label = "PORTS_SKIPPED";
+		benv[bi].data = buf4;
+		++bi;
+	} else {
+		/*
+		 * success, failure, ignored, skipped
+		 */
+		benv[bi].label = "RESULT";
+		if (strcmp(bulk->s2, "hook_pkg_success") == 0) {
+			benv[bi].data = "success";
+		} else if (strcmp(bulk->s2, "hook_pkg_failure") == 0) {
+			benv[bi].data = "failure";
+		} else if (strcmp(bulk->s2, "hook_pkg_ignored") == 0) {
+			benv[bi].data = "ignored";
+		} else if (strcmp(bulk->s2, "hook_pkg_skipped") == 0) {
+			benv[bi].data = "skipped";
+		} else {
+			dfatal("Unknown hook id: %s", bulk->s2);
+			/* NOT REACHED */
+		}
+		++bi;
+
+		/*
+		 * For compatibility with synth:
+		 *
+		 * ORIGIN does not include any @flavor, thus it is suitable
+		 * for finding the actual port directory/subdirectory.
+		 *
+		 * FLAVOR is set to ORIGIN if there is no flavor, otherwise
+		 * it is set to only the flavor sans the '@'.
+		 */
+		if ((ptr = strchr(bulk->s1, '@')) != NULL) {
+			snprintf(buf1, sizeof(buf1), "%*.*s",
+				 (int)(ptr - bulk->s1),
+				 (int)(ptr - bulk->s1),
+				 bulk->s1);
+			benv[bi].label = "ORIGIN";
+			benv[bi].data = buf1;
+			++bi;
+			benv[bi].label = "FLAVOR";
+			benv[bi].data = ptr + 1;
+			++bi;
+		} else {
+			benv[bi].label = "ORIGIN";
+			benv[bi].data = bulk->s1;
+			++bi;
+			benv[bi].label = "FLAVOR";
+			benv[bi].data = bulk->s1;
+			++bi;
+		}
+		benv[bi].label = "PKGNAME";
+		benv[bi].data = bulk->s4;
+		++bi;
+	}
+
+	benv[bi].label = NULL;
+	benv[bi].data = NULL;
+
+	fp = dexec_open(cav, cac, &pid, benv, 0, 0);
+	while ((ptr = fgetln(fp, &len)) != NULL)
+		;
+
+	if (dexec_close(fp, pid)) {
+		dlog(DLOG_ALL,
+		     "[XXX] %s SCRIPT %s (%s)\n",
+		     bulk->s1, bulk->s2, bulk->s3);
+	}
 }

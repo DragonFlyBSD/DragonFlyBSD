@@ -288,17 +288,17 @@ DoInit(void)
 	char *path;
 	FILE *fp;
 
-	if (stat(ConfigBase, &st) == 0) {
-		dfatal("init will not overwrite %s", ConfigBase);
+	if (stat(ConfigBase1, &st) == 0) {
+		dfatal("init will not overwrite %s", ConfigBase1);
 	}
-	if (stat(AltConfigBase, &st) == 0) {
+	if (stat(ConfigBase2, &st) == 0) {
 		dfatal("init will not create %s if %s exists",
-		       ConfigBase, AltConfigBase);
+		       ConfigBase2, ConfigBase1);
 	}
-	if (mkdir(ConfigBase, 0755) < 0)
-		dfatal_errno("Unable to mkdir %s", ConfigBase);
+	if (mkdir(ConfigBase1, 0755) < 0)
+		dfatal_errno("Unable to mkdir %s", ConfigBase1);
 
-	asprintf(&path, "%s/dsynth.ini", ConfigBase);
+	asprintf(&path, "%s/dsynth.ini", ConfigBase1);
 	fp = fopen(path, "w");
 	dassert_errno(fp, "Unable to create %s", path);
 	fprintf(fp, "%s",
@@ -327,10 +327,10 @@ DoInit(void)
 	    "leverage_prebuilt= false\n"
 	    "\n");
 	if (fclose(fp))
-		dfatal_errno("Unable to write to %s\n", ConfigBase);
+		dfatal_errno("Unable to write to %s\n", ConfigBase1);
 	free(path);
 
-	asprintf(&path, "%s/LiveSystem-make.conf", ConfigBase);
+	asprintf(&path, "%s/LiveSystem-make.conf", ConfigBase1);
 	fp = fopen(path, "w");
 	dassert_errno(fp, "Unable to create %s", path);
 	fprintf(fp, "%s",
@@ -351,7 +351,7 @@ DoInit(void)
 	    "#WITH_DEBUG=yes\n"
 	);
 	if (fclose(fp))
-		dfatal_errno("Unable to write to %s\n", ConfigBase);
+		dfatal_errno("Unable to write to %s\n", ConfigBase1);
 	free(path);
 }
 

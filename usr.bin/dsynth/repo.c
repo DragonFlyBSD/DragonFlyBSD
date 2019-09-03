@@ -61,6 +61,7 @@ DoRebuildRepo(int ask)
 	FILE *fp;
 	int fd;
 	char tpath[256];
+	const char *sufx;
 
 	if (ask) {
 		if (askyn("Rebuild the repository? ") == 0)
@@ -83,12 +84,13 @@ DoRebuildRepo(int ask)
 
 	RebuildRemovePath = tpath;
 
+	sufx = USE_PKG_SUFX;
 	fd = mkostemps(tpath, 5, 0);
 	if (fd < 0)
 		dfatal_errno("Cannot create %s", tpath);
 	fp = fdopen(fd, "w");
 	fprintf(fp, "version = 1;\n");
-	fprintf(fp, "packing_format = \"%s\";\n", USE_PKG_SUFX + 1);
+	fprintf(fp, "packing_format = \"%s\";\n", sufx + 1);
 	fclose(fp);
 
 	/*
@@ -130,7 +132,7 @@ childRebuildRepo(bulk_t *bulk)
 	printf("pkg repo -m %s -o %s %s\n",
 	       bulk->s1, PackagesPath, RepositoryPath);
 
-	fp = dexec_open(cav, cac, &pid, 1, 0);
+	fp = dexec_open(cav, cac, &pid, NULL, 1, 0);
 	while ((ptr = fgetln(fp, &len)) != NULL)
 		fwrite(ptr, 1, len, stdout);
 	if (dexec_close(fp, pid) == 0) {

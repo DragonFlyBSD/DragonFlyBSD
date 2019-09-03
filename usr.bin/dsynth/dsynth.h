@@ -57,9 +57,13 @@
 #include <dirent.h>
 #include <termios.h>
 #include <ctype.h>
-#include <libutil.h>
 
-#include <elf.h>
+/*
+ * More esoteric headers
+ */
+#include <libutil.h>	/* forkpty() */
+#include <arpa/inet.h>	/* ntohl() */
+#include <elf.h>	/* try to get elf info */
 
 struct pkglink;
 
@@ -332,8 +336,10 @@ typedef struct wmsg {
  */
 typedef struct buildenv {
 	struct buildenv *next;
-	char *label;
-	char *data;
+	const char *label;
+	const char *data;
+	char *a1;		/* allocations */
+	char *a2;		/* allocations */
 	int type;
 } buildenv_t;
 
@@ -487,8 +493,9 @@ extern const char *MachineName;
 extern const char *ReleaseName;
 extern const char *VersionName;
 
+extern const char *ConfigBase1;
+extern const char *ConfigBase2;
 extern const char *ConfigBase;
-extern const char *AltConfigBase;
 extern const char *DPortsPath;
 extern const char *CCachePath;
 extern const char *SynthConfig;
@@ -499,6 +506,15 @@ extern const char *DistFilesPath;
 extern const char *BuildBase;
 extern const char *LogsPath;
 extern const char *SystemPath;
+extern const char *Profile;
+
+extern int UsingHooks;
+extern const char *HookRunStart;
+extern const char *HookRunEnd;
+extern const char *HookPkgSuccess;
+extern const char *HookPkgFailure;
+extern const char *HookPkgIgnored;
+extern const char *HookPkgSkipped;
 
 void _dfatal(const char *file, int line, const char *func, int do_errno,
 	     const char *fmt, ...);
@@ -520,7 +536,7 @@ void freestrp(char **strp);
 void dupstrp(char **strp);
 int askyn(const char *ctl, ...);
 double getswappct(int *noswapp);
-FILE *dexec_open(const char **cav, int cac, pid_t *pidp,
+FILE *dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
 			int with_env, int with_mvars);
 int dexec_close(FILE *fp, pid_t pid);
 const char *getphasestr(worker_phase_t phase);

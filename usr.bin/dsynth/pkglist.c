@@ -675,7 +675,7 @@ again:
 	cav[cac++] = "-VFLAVORS";
 	cav[cac++] = "-VUSES";
 
-	fp = dexec_open(cav, cac, &pid, 1, 1);
+	fp = dexec_open(cav, cac, &pid, NULL, 1, 1);
 	free(portpath);
 	freestrp(&flavarg);
 
@@ -886,7 +886,7 @@ childGetBinaryDistInfo(bulk_t *bulk)
 	cav[cac++] = repopath;
 	cav[cac++] = "%n-%v";
 
-	fp = dexec_open(cav, cac, &pid, 1, 0);
+	fp = dexec_open(cav, cac, &pid, NULL, 1, 0);
 
 	while ((ptr = fgetln(fp, &len)) != NULL) {
 		if (len == 0 || ptr[len-1] != '\n')
@@ -928,7 +928,7 @@ childOptimizeEnv(bulk_t *bulk)
 	cav[cac++] = portpath;
 	cav[cac++] = "-V_PERL5_FROM_BIN";
 
-	fp = dexec_open(cav, cac, &pid, 1, 1);
+	fp = dexec_open(cav, cac, &pid, NULL, 1, 1);
 	free(portpath);
 
 	line = 1;
