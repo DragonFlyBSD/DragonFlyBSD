@@ -118,10 +118,10 @@ dmsg_crypto_gcm_init(dmsg_ioq_t *ioq, char *key, int klen,
 
 	if (enc)
 		ok = EVP_EncryptInit_ex(&ioq->ctx, EVP_aes_256_gcm(), NULL,
-					key, NULL);
+					(unsigned char*)key, NULL);
 	else
 		ok = EVP_DecryptInit_ex(&ioq->ctx, EVP_aes_256_gcm(), NULL,
-					key, NULL);
+					(unsigned char*)key, NULL);
 	if (!ok)
 		goto fail;
 
@@ -203,17 +203,19 @@ dmsg_crypto_gcm_encrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 	*out_size = 0;
 
 	/* Re-initialize with new IV (but without redoing the key schedule) */
-	ok = EVP_EncryptInit_ex(&ioq->ctx, NULL, NULL, NULL, ioq->iv);
+	ok = EVP_EncryptInit_ex(&ioq->ctx, NULL, NULL, NULL,
+		(unsigned char*)ioq->iv);
 	if (!ok)
 		goto fail;
 
 	u_len = 0;	/* safety */
-	ok = EVP_EncryptUpdate(&ioq->ctx, ct, &u_len, pt, in_size);
+	ok = EVP_EncryptUpdate(&ioq->ctx, (unsigned char*)ct, &u_len,
+		(unsigned char*)pt, in_size);
 	if (!ok)
 		goto fail;
 
 	f_len = 0;	/* safety */
-	ok = EVP_EncryptFinal_ex(&ioq->ctx, ct + u_len, &f_len);
+	ok = EVP_EncryptFinal_ex(&ioq->ctx, (unsigned char*)ct + u_len, &f_len);
 	if (!ok)
 		goto fail;
 
@@ -254,7 +256,8 @@ dmsg_crypto_gcm_decrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 	*consume_size = 0;
 
 	/* Re-initialize with new IV (but without redoing the key schedule) */
-	ok = EVP_DecryptInit_ex(&ioq->ctx, NULL, NULL, NULL, ioq->iv);
+	ok = EVP_DecryptInit_ex(&ioq->ctx, NULL, NULL, NULL,
+		(unsigned char*)ioq->iv);
 	if (!ok) {
 		ioq->error = DMSG_IOQ_ERROR_ALGO;
 		goto fail_out;
@@ -268,11 +271,12 @@ dmsg_crypto_gcm_decrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 		goto fail_out;
 	}
 
-	ok = EVP_DecryptUpdate(&ioq->ctx, pt, &u_len, ct, out_size);
+	ok = EVP_DecryptUpdate(&ioq->ctx, (unsigned char*)pt, &u_len,
+		(unsigned char*)ct, out_size);
 	if (!ok)
 		goto fail;
 
-	ok = EVP_DecryptFinal_ex(&ioq->ctx, pt + u_len, &f_len);
+	ok = EVP_DecryptFinal_ex(&ioq->ctx, (unsigned char*)pt + u_len, &f_len);
 	if (!ok)
 		goto fail;
 
