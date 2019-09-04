@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd: BPF arp and bootp filtering
- * Copyright (c) 2006-2018 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -31,11 +32,13 @@
 #define	BPF_READING		(1U << 0)
 #define	BPF_EOF			(1U << 1)
 #define	BPF_PARTIALCSUM		(1U << 2)
+#define	BPF_BCAST		(1U << 3)
 
 #include "dhcpcd.h"
 
 extern const char *bpf_name;
 size_t bpf_frame_header_len(const struct interface *);
+int bpf_frame_bcast(const struct interface *, const char *frame);
 int bpf_open(struct interface *, int (*)(struct interface *, int));
 int bpf_close(struct interface *, int);
 int bpf_attach(int, void *, unsigned int);

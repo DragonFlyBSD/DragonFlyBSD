@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd - DHCP client daemon
- * Copyright (c) 2006-2018 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -49,9 +50,10 @@
 #define IF_ACTIVE	1
 #define IF_ACTIVE_USER	2
 
-#define LINK_UP		1
-#define LINK_UNKNOWN	0
-#define LINK_DOWN	-1
+#define	LINK_UP		1
+#define	LINK_UNKNOWN	0
+#define	LINK_DOWN	-1
+#define	LINK_DOWN_IFFUP	-2
 
 #define IF_DATA_IPV4	0
 #define IF_DATA_ARP	1
@@ -84,8 +86,8 @@ struct interface {
 	unsigned short vlanid;
 	unsigned int metric;
 	int carrier;
-	int wireless;
-	uint8_t ssid[IF_SSIDLEN + 1]; /* NULL terminated */
+	bool wireless;
+	uint8_t ssid[IF_SSIDLEN];
 	unsigned int ssid_len;
 
 	char profile[PROFILE_LEN];
@@ -135,24 +137,33 @@ struct dhcpcd_ctx {
 	size_t duid_len;
 	struct if_head *ifaces;
 
-	struct rt_head routes;	/* our routes */
-	struct rt_head kroutes;	/* all kernel routes */
-	struct rt_head froutes;	/* free routes for re-use */
+	rb_tree_t routes;	/* our routes */
+#ifdef RT_FREE_ROUTE_TABLE
+	rb_tree_t froutes;	/* free routes for re-use */
+#endif
+	size_t rt_order;	/* route order storage */
 
 	int pf_inet_fd;
-#ifdef IFLR_ACTIVE
-	int pf_link_fd;
-#endif
 	void *priv;
 	int link_fd;
+#ifndef SMALL
+	int link_rcvbuf;
+#endif
 	int seq;	/* route message sequence no */
 	int sseq;	/* successful seq no sent */
-	struct iovec iov[1];	/* generic iovec buffer */
 
 #ifdef USE_SIGNALS
 	sigset_t sigset;
 #endif
 	struct eloop *eloop;
+
+#ifdef HAVE_OPEN_MEMSTREAM
+	FILE *script_fp;
+#endif
+	char *script_buf;
+	size_t script_buflen;
+	char **script_env;
+	size_t script_envlen;
 
 	int control_fd;
 	int control_unpriv_fd;
@@ -165,13 +176,6 @@ struct dhcpcd_ctx {
 	size_t vivso_len;
 
 	char *randomstate; /* original state */
-
-	/* Used to track the last routing message,
-	 * so we can ignore messages the parent process sent
-	 * but the child receives when forking.
-	 * getppid(2) is unreliable because we detach. */
-	pid_t ppid;	/* parent pid */
-	int pseq;	/* last seq in parent */
 
 #ifdef INET
 	struct dhcp_opt *dhcp_opts;
@@ -189,24 +193,19 @@ struct dhcpcd_ctx {
 	uint8_t *secret;
 	size_t secret_len;
 
-	unsigned char ctlbuf[IP6BUFLEN];
-	struct sockaddr_in6 from;
-	struct msghdr sndhdr;
-	struct iovec sndiov[1];
-	unsigned char sndbuf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
-	struct msghdr rcvhdr;
-	char ntopbuf[INET6_ADDRSTRLEN];
-	const char *sfrom;
-
+#ifndef __sun
 	int nd_fd;
+#endif
 	struct ra_head *ra_routers;
 
 	int dhcp6_fd;
 
 	struct dhcp_opt *nd_opts;
 	size_t nd_opts_len;
+#ifdef DHCP6
 	struct dhcp_opt *dhcp6_opts;
 	size_t dhcp6_opts_len;
+#endif
 
 #ifndef __linux__
 	int ra_global;

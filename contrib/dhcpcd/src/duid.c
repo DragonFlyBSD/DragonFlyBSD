@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd - DHCP client daemon
- * Copyright (c) 2006-2018 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -51,10 +52,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifndef ARPHRD_NETROM
-#  define ARPHRD_NETROM	0
-#endif
-
 #include "common.h"
 #include "dhcpcd.h"
 #include "duid.h"
@@ -88,8 +85,9 @@ duid_machineuuid(char *uuid, size_t uuid_len)
 	}
 	len = strlen(uuid) + 1;
 	fclose(fp);
-	r = 0;
+	r = len == 1 ? -1 : 0;
 #else
+	UNUSED(uuid);
 	r = -1;
 	errno = ENOSYS;
 #endif
@@ -187,10 +185,10 @@ duid_get(uint8_t **d, const struct interface *ifp)
 		return len;
 
 	/* No UUID? OK, lets make one based on our interface */
-	if (ifp->family == ARPHRD_NETROM) {
-		logwarnx("%s: is a NET/ROM pseudo interface", ifp->name);
+	if (ifp->hwlen == 0) {
+		logwarnx("%s: does not have hardware address", ifp->name);
 		TAILQ_FOREACH(ifp2, ifp->ctx->ifaces, next) {
-			if (ifp2->family != ARPHRD_NETROM)
+			if (ifp2->hwlen != 0)
 				break;
 		}
 		if (ifp2) {

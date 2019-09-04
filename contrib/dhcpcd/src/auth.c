@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd - DHCP client daemon
- * Copyright (c) 2006-2018 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -30,6 +31,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -117,7 +119,11 @@ dhcp_auth_validate(struct authstate *state, const struct auth *auth,
 
 	m = vm;
 	data = vdata;
-	/* Ensure that d is inside m which *may* not be the case for DHPCPv4 */
+	/* Ensure that d is inside m which *may* not be the case for DHCPv4.
+	 * This can occur if the authentication option is split using
+	 * DHCP long option from RFC 3399. Section 9 which does infact note that
+	 * implementations should take this into account.
+	 * Fixing this would be problematic, patches welcome. */
 	if (data < m || data > m + mlen || data + dlen > m + mlen) {
 		errno = ERANGE;
 		return NULL;
@@ -354,7 +360,7 @@ gottoken:
 	}
 
 	free(mm);
-	if (memcmp(d, &hmac_code, dlen)) {
+	if (!consttime_memequal(d, &hmac_code, dlen)) {
 		errno = EPERM;
 		return NULL;
 	}

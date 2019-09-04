@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd - DHCP client daemon
- * Copyright (c) 2006-2018 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -30,6 +31,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 
+#include <arpa/inet.h>
 #include <net/if.h>
 #include <net/route.h>
 #include <netinet/in.h>
@@ -128,30 +130,17 @@ int
 ipv6_init(struct dhcpcd_ctx *ctx)
 {
 
-	if (ctx->sndhdr.msg_iovlen == 1)
+	if (ctx->ra_routers != NULL)
 		return 0;
 
-	if (ctx->ra_routers == NULL) {
-		ctx->ra_routers = malloc(sizeof(*ctx->ra_routers));
-		if (ctx->ra_routers == NULL)
-			return -1;
-	}
+	ctx->ra_routers = malloc(sizeof(*ctx->ra_routers));
+	if (ctx->ra_routers == NULL)
+		return -1;
 	TAILQ_INIT(ctx->ra_routers);
 
-	ctx->sndhdr.msg_namelen = sizeof(struct sockaddr_in6);
-	ctx->sndhdr.msg_iov = ctx->sndiov;
-	ctx->sndhdr.msg_iovlen = 1;
-	ctx->sndhdr.msg_control = ctx->sndbuf;
-	ctx->sndhdr.msg_controllen = sizeof(ctx->sndbuf);
-	ctx->rcvhdr.msg_name = &ctx->from;
-	ctx->rcvhdr.msg_namelen = sizeof(ctx->from);
-	ctx->rcvhdr.msg_iov = ctx->iov;
-	ctx->rcvhdr.msg_iovlen = 1;
-	ctx->rcvhdr.msg_control = ctx->ctlbuf;
-	// controllen is set at recieve
-	//ctx->rcvhdr.msg_controllen = sizeof(ctx->rcvbuf);
-
+#ifndef __sun
 	ctx->nd_fd = -1;
+#endif
 	ctx->dhcp6_fd = -1;
 	return 0;
 }
@@ -626,31 +615,39 @@ ipv6_deleteaddr(struct ipv6_addr *ia)
 			break;
 		}
 	}
+
+#ifdef ND6_ADVERTISE
+	/* Advertise the address if it exists on another interface. */
+	ipv6nd_advertise(ia);
+#endif
 }
 
 static int
 ipv6_addaddr1(struct ipv6_addr *ia, const struct timespec *now)
 {
 	struct interface *ifp;
-	struct ipv6_state *state;
-	struct ipv6_addr *ia2;
 	uint32_t pltime, vltime;
 	__printflike(1, 2) void (*logfunc)(const char *, ...);
+#ifdef ND6_ADVERTISE
+	bool vltime_was_zero = ia->prefix_vltime == 0;
+#endif
+#ifdef __sun
+	struct ipv6_state *state;
+	struct ipv6_addr *ia2;
 
-	/* Ensure no other interface has this address */
-	TAILQ_FOREACH(ifp, ia->iface->ctx->ifaces, next) {
-		if (ifp == ia->iface)
-			continue;
-		state = IPV6_STATE(ifp);
-		if (state == NULL)
-			continue;
-		TAILQ_FOREACH(ia2, &state->addrs, next) {
-			if (IN6_ARE_ADDR_EQUAL(&ia2->addr, &ia->addr)) {
-				ipv6_deleteaddr(ia2);
-				break;
-			}
-		}
+	/* If we re-add then address on Solaris then the prefix
+	 * route will be scrubbed and re-added. Something might
+	 * be using it, so let's avoid it. */
+	if (ia->flags & IPV6_AF_DADCOMPLETED) {
+		logdebugx("%s: IP address %s already exists",
+		    ia->iface->name, ia->saddr);
+#ifdef ND6_ADVERTISE
+		goto advertise;
+#else
+		return 0;
+#endif
 	}
+#endif
 
 	/* Remember the interface of the address. */
 	ifp = ia->iface;
@@ -713,7 +710,6 @@ ipv6_addaddr1(struct ipv6_addr *ia, const struct timespec *now)
 		logdebugx("%s: pltime %"PRIu32" seconds, vltime %"PRIu32
 		    " seconds",
 		    ifp->name, ia->prefix_pltime, ia->prefix_vltime);
-
 
 	if (if_address6(RTM_NEWADDR, ia) == -1) {
 		logerr(__func__);
@@ -778,17 +774,26 @@ ipv6_addaddr1(struct ipv6_addr *ia, const struct timespec *now)
 	}
 #endif
 
+#ifdef ND6_ADVERTISE
+#ifdef __sun
+advertise:
+#endif
+	/* Re-advertise the preferred address to be safe. */
+	if (!vltime_was_zero)
+		ipv6nd_advertise(ia);
+#endif
+
 	return 0;
 }
 
 #ifdef ALIAS_ADDR
-/* Find the next logical aliase address we can use. */
+/* Find the next logical alias address we can use. */
 static int
 ipv6_aliasaddr(struct ipv6_addr *ia, struct ipv6_addr **repl)
 {
 	struct ipv6_state *state;
 	struct ipv6_addr *iap;
-	unsigned int unit;
+	unsigned int lun;
 	char alias[IF_NAMESIZE];
 
 	if (ia->alias[0] != '\0')
@@ -807,12 +812,14 @@ ipv6_aliasaddr(struct ipv6_addr *ia, struct ipv6_addr **repl)
 		}
 	}
 
-	unit = 0;
+	lun = 0;
 find_unit:
-	if (unit == 0)
-		strlcpy(alias, ia->iface->name, sizeof(alias));
-	else
-		snprintf(alias, sizeof(alias), "%s:%u", ia->iface->name, unit);
+	if (if_makealias(alias, IF_NAMESIZE, ia->iface->name, lun) >=
+	    IF_NAMESIZE)
+	{
+		errno = ENOMEM;
+		return -1;
+	}
 	TAILQ_FOREACH(iap, &state->addrs, next) {
 		if (iap->alias[0] == '\0')
 			continue;
@@ -828,11 +835,11 @@ find_unit:
 	}
 
 	if (iap != NULL) {
-		if (unit == UINT_MAX) {
+		if (lun == UINT_MAX) {
 			errno = ERANGE;
 			return -1;
 		}
-		unit++;
+		lun++;
 		goto find_unit;
 	}
 
@@ -891,10 +898,14 @@ ipv6_findaddrmatch(const struct ipv6_addr *addr, const struct in6_addr *match,
 struct ipv6_addr *
 ipv6_findaddr(struct dhcpcd_ctx *ctx, const struct in6_addr *addr, unsigned int flags)
 {
-	struct ipv6_addr *dap, *nap;
+	struct ipv6_addr *nap;
+#ifdef DHCP6
+	struct ipv6_addr *dap;
+#endif
 
-	dap = dhcp6_findaddr(ctx, addr, flags);
 	nap = ipv6nd_findaddr(ctx, addr, flags);
+#ifdef DHCP6
+	dap = dhcp6_findaddr(ctx, addr, flags);
 	if (!dap && !nap)
 		return NULL;
 	if (dap && !nap)
@@ -904,12 +915,15 @@ ipv6_findaddr(struct dhcpcd_ctx *ctx, const struct in6_addr *addr, unsigned int 
 	if (nap->iface->metric < dap->iface->metric)
 		return nap;
 	return dap;
+#else
+	return nap;
+#endif
 }
 
 ssize_t
 ipv6_addaddrs(struct ipv6_addrhead *addrs)
 {
-	struct ipv6_addr *ap, *apn, *apf;
+	struct ipv6_addr *ap, *apn;
 	ssize_t i;
 	struct timespec now;
 
@@ -935,27 +949,6 @@ ipv6_addaddrs(struct ipv6_addrhead *addrs)
 		} else if (!(ap->flags & IPV6_AF_STALE) &&
 		    !IN6_IS_ADDR_UNSPECIFIED(&ap->addr))
 		{
-			apf = ipv6_findaddr(ap->iface->ctx,
-			    &ap->addr, IPV6_AF_ADDED);
-			if (apf && apf->iface != ap->iface) {
-				if (apf->iface->metric <= ap->iface->metric) {
-					loginfox("%s: preferring %s on %s",
-					    ap->iface->name,
-					    ap->saddr,
-					    apf->iface->name);
-					continue;
-				}
-				loginfox("%s: preferring %s on %s",
-				    apf->iface->name,
-				    ap->saddr,
-				    ap->iface->name);
-				if (if_address6(RTM_DELADDR, apf) == -1 &&
-				    errno != EADDRNOTAVAIL && errno != ENXIO)
-					logerr(__func__);
-				apf->flags &=
-				    ~(IPV6_AF_ADDED | IPV6_AF_DADCOMPLETED);
-			} else if (apf)
-				apf->flags &= ~IPV6_AF_ADDED;
 			if (ap->flags & IPV6_AF_NEW)
 				i++;
 			if (!timespecisset(&now))
@@ -989,6 +982,7 @@ ipv6_freeaddr(struct ipv6_addr *ia)
 	}
 
 	eloop_q_timeout_delete(ia->iface->ctx->eloop, 0, NULL, ia);
+	free(ia->na);
 	free(ia);
 }
 
@@ -1070,6 +1064,31 @@ ipv6_getstate(struct interface *ifp)
 	return state;
 }
 
+struct ipv6_addr *
+ipv6_ifanyglobal(struct interface *ifp)
+{
+	struct ipv6_state *state;
+	struct ipv6_addr *ia;
+
+	if (ifp->carrier == LINK_DOWN)
+		return NULL;
+
+	state = IPV6_STATE(ifp);
+	if (state == NULL)
+		return NULL;
+
+	TAILQ_FOREACH(ia, &state->addrs, next) {
+		if (IN6_IS_ADDR_LINKLOCAL(&ia->addr))
+			continue;
+		/* Let's be optimistic.
+		 * Any decent OS won't forward or accept traffic
+		 * from/to tentative or detached addresses. */
+		if (!(ia->addr_flags & IN6_IFF_DUPLICATED))
+			break;
+	}
+	return ia;
+}
+
 void
 ipv6_handleifa(struct dhcpcd_ctx *ctx,
     int cmd, struct if_head *ifs, const char *ifname,
@@ -1079,6 +1098,22 @@ ipv6_handleifa(struct dhcpcd_ctx *ctx,
 	struct ipv6_state *state;
 	struct ipv6_addr *ia;
 	struct ll_callback *cb;
+	bool anyglobal;
+
+#ifdef __sun
+	struct sockaddr_in6 subnet;
+
+	/* Solaris on-link route is an unspecified address! */
+	if (IN6_IS_ADDR_UNSPECIFIED(addr)) {
+		if (if_getsubnet(ctx, ifname, AF_INET6,
+		    &subnet, sizeof(subnet)) == -1)
+		{
+			logerr(__func__);
+			return;
+		}
+		addr = &subnet.sin6_addr;
+	}
+#endif
 
 #if 0
 	char dbuf[INET6_ADDRSTRLEN];
@@ -1086,8 +1121,8 @@ ipv6_handleifa(struct dhcpcd_ctx *ctx,
 
 	dbp = inet_ntop(AF_INET6, &addr->s6_addr,
 	    dbuf, INET6_ADDRSTRLEN);
-	loginfox("%s: cmd %d addr %s",
-	    ifname, cmd, dbp);
+	loginfox("%s: cmd %d addr %s addrflags %d",
+	    ifname, cmd, dbp, addrflags);
 #endif
 
 	if (ifs == NULL)
@@ -1098,6 +1133,7 @@ ipv6_handleifa(struct dhcpcd_ctx *ctx,
 		return;
 	if ((state = ipv6_getstate(ifp)) == NULL)
 		return;
+	anyglobal = ipv6_ifanyglobal(ifp) != NULL;
 
 	TAILQ_FOREACH(ia, &state->addrs, next) {
 		if (IN6_ARE_ADDR_EQUAL(&ia->addr, addr))
@@ -1108,6 +1144,11 @@ ipv6_handleifa(struct dhcpcd_ctx *ctx,
 	case RTM_DELADDR:
 		if (ia != NULL) {
 			TAILQ_REMOVE(&state->addrs, ia, next);
+#ifdef ND6_ADVERTISE
+			/* Advertise the address if it exists on
+			 * another interface. */
+			ipv6nd_advertise(ia);
+#endif
 			/* We'll free it at the end of the function. */
 		}
 		break;
@@ -1192,6 +1233,7 @@ ipv6_handleifa(struct dhcpcd_ctx *ctx,
 	if (ia == NULL)
 		return;
 
+	ctx->options &= ~DHCPCD_RTBUILD;
 	ipv6nd_handleifa(cmd, ia, pid);
 #ifdef DHCP6
 	dhcp6_handleifa(cmd, ia, pid);
@@ -1201,6 +1243,17 @@ out:
 	/* Done with the ia now, so free it. */
 	if (cmd == RTM_DELADDR)
 		ipv6_freeaddr(ia);
+	else if (!(ia->addr_flags & IN6_IFF_NOTUSEABLE))
+		ia->flags |= IPV6_AF_DADCOMPLETED;
+
+	/* If we've not already called rt_build via the IPv6ND
+	 * or DHCP6 handlers and the existance of any useable
+	 * global address on the interface has changed,
+	 * call rt_build to add/remove the default route. */
+	if (ifp->active && ifp->options->options & DHCPCD_IPV6 &&
+	    !(ctx->options & DHCPCD_RTBUILD) &&
+	    (ipv6_ifanyglobal(ifp) != NULL) != anyglobal)
+		rt_build(ctx, AF_INET6);
 }
 
 int
@@ -1209,8 +1262,10 @@ ipv6_hasaddr(const struct interface *ifp)
 
 	if (ipv6nd_iffindaddr(ifp, NULL, 0) != NULL)
 		return 1;
+#ifdef DHCP6
 	if (dhcp6_iffindaddr(ifp, NULL, 0) != NULL)
 		return 1;
+#endif
 	return 0;
 }
 
@@ -1477,8 +1532,10 @@ ipv6_newaddr(struct interface *ifp, const struct in6_addr *addr,
 		goto err;
 
 	ia->iface = ifp;
-	ia->flags = IPV6_AF_NEW | flags;
 	ia->addr_flags = addr_flags;
+	ia->flags = IPV6_AF_NEW | flags;
+	if (!(ia->addr_flags & IN6_IFF_NOTUSEABLE))
+		ia->flags |= IPV6_AF_DADCOMPLETED;
 	ia->prefix_len = prefix_len;
 	ia->dhcp6_fd = -1;
 
@@ -1497,7 +1554,13 @@ ipv6_newaddr(struct interface *ifp, const struct in6_addr *addr,
 			goto err;
 	} else if (ia->flags & IPV6_AF_RAPFX) {
 		ia->prefix = *addr;
+#ifdef __sun
+		ia->addr = *addr;
+		cbp = inet_ntop(AF_INET6, &ia->addr, buf, sizeof(buf));
+		goto paddr;
+#else
 		return ia;
+#endif
 	} else if (ia->flags & (IPV6_AF_REQUEST | IPV6_AF_DELEGATEDPFX) &&
 	           prefix_len != 128)
 	{
@@ -1563,23 +1626,17 @@ ipv6_staticdadcallback(void *arg)
 }
 
 ssize_t
-ipv6_env(char **env, const char *prefix, const struct interface *ifp)
+ipv6_env(FILE *fp, const char *prefix, const struct interface *ifp)
 {
-	char **ep;
-	ssize_t n;
 	struct ipv6_addr *ia;
 
-	ep = env;
-	n = 0;
 	ia = ipv6_iffindaddr(UNCONST(ifp), &ifp->options->req_addr6,
 	    IN6_IFF_NOTUSEABLE);
-	if (ia) {
-		if (env)
-			addvar(&ep, prefix, "ip6_address", ia->saddr);
-		n++;
-	}
-
-	return n;
+	if (ia == NULL)
+		return 0;
+	if (efprintf(fp, "%s_ip6_address=%s", prefix, ia->saddr) == -1)
+		return -1;
+	return 1;
 }
 
 int
@@ -1635,7 +1692,6 @@ ipv6_startstatic(struct interface *ifp)
 	ia->prefix_pltime = ND6_INFINITE_LIFETIME;
 	ia->dadcallback = ipv6_staticdadcallback;
 	ipv6_addaddr(ia, NULL);
-	if_initrt(ifp->ctx, AF_INET6);
 	rt_build(ifp->ctx, AF_INET6);
 	if (run_script)
 		script_runreason(ifp, "STATIC6");
@@ -1677,8 +1733,6 @@ ipv6_start(struct interface *ifp)
 			ipv6_regentempifid(ifp);
 	}
 
-	/* Load existing routes */
-	if_initrt(ifp->ctx, AF_INET6);
 	return 0;
 }
 
@@ -1702,10 +1756,8 @@ ipv6_freedrop(struct interface *ifp, int drop)
 
 	ipv6_freedrop_addrs(&state->addrs, drop ? 2 : 0, NULL);
 	if (drop) {
-		if (ifp->ctx->ra_routers != NULL) {
-			if_initrt(ifp->ctx, AF_INET6);
+		if (ifp->ctx->ra_routers != NULL)
 			rt_build(ifp->ctx, AF_INET6);
-		}
 	} else {
 		/* Because we need to cache the addresses we don't control,
 		 * we only free the state on when NOT dropping addresses. */
@@ -2177,13 +2229,11 @@ inet6_makeprefix(struct interface *ifp, const struct ra *rap,
 	}
 
 	/* There is no point in trying to manage a /128 prefix,
-	 * ones without a lifetime or ones not on link or delegated */
-	if (addr->prefix_len == 128 ||
-	    addr->prefix_vltime == 0 ||
-	    !(addr->flags & (IPV6_AF_ONLINK | IPV6_AF_DELEGATEDPFX)))
+	 * ones without a lifetime.  */
+	if (addr->prefix_len == 128 || addr->prefix_vltime == 0)
 		return NULL;
 
-	/* Don't install a reject route when not creating bigger prefixes */
+	/* Don't install a reject route when not creating bigger prefixes. */
 	if (addr->flags & IPV6_AF_NOREJECT)
 		return NULL;
 
@@ -2215,7 +2265,9 @@ inet6_makeprefix(struct interface *ifp, const struct ra *rap,
 #ifndef __linux__
 		sa_in6_init(&rt->rt_gateway, &in6addr_loopback);
 #endif
-	} else
+	} else if (!(addr->flags & IPV6_AF_ONLINK))
+		sa_in6_init(&rt->rt_gateway, &rap->from);
+	else
 		rt->rt_gateway.sa_family = AF_UNSPEC;
 	sa_in6_init(&rt->rt_ifa, &addr->addr);
 	return rt;
@@ -2239,7 +2291,7 @@ inet6_makerouter(struct ra *rap)
 	    IN6_ARE_ADDR_EQUAL(&((rtp)->mask), &in6addr_any))
 
 static int
-inet6_staticroutes(struct rt_head *routes, struct dhcpcd_ctx *ctx)
+inet6_staticroutes(rb_tree_t *routes, struct dhcpcd_ctx *ctx)
 {
 	struct interface *ifp;
 	struct ipv6_state *state;
@@ -2255,7 +2307,7 @@ inet6_staticroutes(struct rt_head *routes, struct dhcpcd_ctx *ctx)
 			{
 				rt = inet6_makeprefix(ifp, NULL, ia);
 				if (rt)
-					TAILQ_INSERT_TAIL(routes, rt, rt_next);
+					rt_proto_add(routes, rt);
 			}
 		}
 	}
@@ -2263,15 +2315,14 @@ inet6_staticroutes(struct rt_head *routes, struct dhcpcd_ctx *ctx)
 }
 
 static int
-inet6_raroutes(struct rt_head *routes, struct dhcpcd_ctx *ctx, int expired,
-    bool *have_default)
+inet6_raroutes(rb_tree_t *routes, struct dhcpcd_ctx *ctx)
 {
 	struct rt *rt;
 	struct ra *rap;
 	const struct ipv6_addr *addr;
 
 	TAILQ_FOREACH(rap, ctx->ra_routers, next) {
-		if (rap->expired != expired)
+		if (rap->expired)
 			continue;
 		TAILQ_FOREACH(addr, &rap->addrs, next) {
 			if (addr->prefix_vltime == 0)
@@ -2279,24 +2330,25 @@ inet6_raroutes(struct rt_head *routes, struct dhcpcd_ctx *ctx, int expired,
 			rt = inet6_makeprefix(rap->iface, rap, addr);
 			if (rt) {
 				rt->rt_dflags |= RTDF_RA;
-				TAILQ_INSERT_TAIL(routes, rt, rt_next);
+				rt_proto_add(routes, rt);
 			}
 		}
-		if (rap->lifetime) {
-			rt = inet6_makerouter(rap);
-			if (rt) {
-				rt->rt_dflags |= RTDF_RA;
-				TAILQ_INSERT_TAIL(routes, rt, rt_next);
-				if (have_default)
-					*have_default = true;
-			}
-		}
+		if (rap->lifetime == 0)
+			continue;
+		if (ipv6_ifanyglobal(rap->iface) == NULL)
+			continue;
+		rt = inet6_makerouter(rap);
+		if (rt == NULL)
+			continue;
+		rt->rt_dflags |= RTDF_RA;
+		rt_proto_add(routes, rt);
 	}
 	return 0;
 }
 
+#ifdef DHCP6
 static int
-inet6_dhcproutes(struct rt_head *routes, struct dhcpcd_ctx *ctx,
+inet6_dhcproutes(rb_tree_t *routes, struct dhcpcd_ctx *ctx,
     enum DH6S dstate)
 {
 	struct interface *ifp;
@@ -2309,52 +2361,37 @@ inet6_dhcproutes(struct rt_head *routes, struct dhcpcd_ctx *ctx,
 		if (d6_state && d6_state->state == dstate) {
 			TAILQ_FOREACH(addr, &d6_state->addrs, next) {
 				rt = inet6_makeprefix(ifp, NULL, addr);
-				if (rt) {
-					rt->rt_dflags |= RTDF_DHCP;
-					TAILQ_INSERT_TAIL(routes, rt, rt_next);
-				}
+				if (rt == NULL)
+					continue;
+				rt->rt_dflags |= RTDF_DHCP;
+				rt_proto_add(routes, rt);
 			}
 		}
 	}
 	return 0;
 }
+#endif
 
 bool
-inet6_getroutes(struct dhcpcd_ctx *ctx, struct rt_head *routes)
+inet6_getroutes(struct dhcpcd_ctx *ctx, rb_tree_t *routes)
 {
-	bool have_default;
 
 	/* Should static take priority? */
 	if (inet6_staticroutes(routes, ctx) == -1)
 		return false;
 
 	/* First add reachable routers and their prefixes */
-	have_default = false;
-	if (inet6_raroutes(routes, ctx, 0, &have_default) == -1)
+	if (inet6_raroutes(routes, ctx) == -1)
 		return false;
 
+#ifdef DHCP6
 	/* We have no way of knowing if prefixes added by DHCP are reachable
 	 * or not, so we have to assume they are.
-	 * Add bound before delegated so we can prefer interfaces better */
+	 * Add bound before delegated so we can prefer interfaces better. */
 	if (inet6_dhcproutes(routes, ctx, DH6S_BOUND) == -1)
 		return false;
 	if (inet6_dhcproutes(routes, ctx, DH6S_DELEGATED) == -1)
 		return false;
-
-#ifdef HAVE_ROUTE_METRIC
-	/* If we have an unreachable router, we really do need to remove the
-	 * route to it beause it could be a lower metric than a reachable
-	 * router. Of course, we should at least have some routers if all
-	 * are unreachable. */
-	if (!have_default) {
-#endif
-	/* Add our non-reachable routers and prefixes
-	 * Unsure if this is needed, but it's a close match to kernel
-	 * behaviour */
-		if (inet6_raroutes(routes, ctx, 1, NULL) == -1)
-			return false;
-#ifdef HAVE_ROUTE_METRIC
-	}
 #endif
 
 	return true;
