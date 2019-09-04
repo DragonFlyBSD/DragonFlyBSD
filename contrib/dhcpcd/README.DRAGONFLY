@@ -1,0 +1,32 @@
+DHCPCD
+======
+
+Original source can be downloaded from:
+https://roy.marples.name/downloads/dhcpcd/
+
+file   = dhcpcd-8.0.4.tar.xz
+date   = 2019 September 4
+size   = 224236
+SHA256 = 25e4f8c5abd12830875440c9f9501118e9eb1c80254d93fd9726daa264f13454
+
+The source is imported via a Makefile target rather than by hand.
+There is no README.DELETED for this import as it's all automated.
+
+Use "git diff vendor/DHCPCD contrib/dhcpcd" to see local modifications.
+
+The program and hook scripts are installed by 'sbin/dhcpcd', and the
+configuration file is installed by 'etc/Makefile'.
+
+
+Upgrade notes
+-------------
+
+1. Configure
+2. Import
+3. Copy config.h to sbin/dhcpcd
+4. Tailor Makefile in sbin/dhcpcd to import
+
+$ ./configure
+$ make import-src DESTDIR=/usr/src/contrib/dhcpcd
+$ cp config.h /usr/src/sbin/dhcpcd
+$ vi /usr/src/sbin/dhcpcd/Makefile
