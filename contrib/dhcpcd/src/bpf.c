@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd: BPF arp and bootp filtering
- * Copyright (c) 2006-2018 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -84,11 +85,28 @@ size_t
 bpf_frame_header_len(const struct interface *ifp)
 {
 
-	switch(ifp->family) {
+	switch (ifp->family) {
 	case ARPHRD_ETHER:
 		return sizeof(struct ether_header);
 	default:
 		return 0;
+	}
+}
+
+static const uint8_t etherbcastaddr[] =
+    { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+
+int
+bpf_frame_bcast(const struct interface *ifp, const char *frame)
+{
+
+	switch (ifp->family) {
+	case ARPHRD_ETHER:
+		return memcmp(frame +
+		    offsetof(struct ether_header, ether_dhost),
+		    etherbcastaddr, sizeof(etherbcastaddr));
+	default:
+		return -1;
 	}
 }
 
@@ -227,8 +245,12 @@ bpf_read(struct interface *ifp, int fd, void *data, size_t len,
 		if (state->buffer_pos + packet.bh_caplen + packet.bh_hdrlen >
 		    state->buffer_len)
 			goto next; /* Packet beyond buffer, drop. */
-		payload = state->buffer + state->buffer_pos +
-		    packet.bh_hdrlen + fl;
+		payload = state->buffer + state->buffer_pos + packet.bh_hdrlen;
+		if (bpf_frame_bcast(ifp, payload) == 0)
+			*flags |= BPF_BCAST;
+		else
+			*flags &= ~BPF_BCAST;
+		payload += fl;
 		bytes = (ssize_t)packet.bh_caplen - fl;
 		if ((size_t)bytes > len)
 			bytes = (ssize_t)len;
@@ -301,6 +323,7 @@ bpf_close(struct interface *ifp, int fd)
 /* Normally this is needed by bootp.
  * Once that uses this again, the ARP guard here can be removed. */
 #ifdef ARP
+#define BPF_CMP_HWADDR_LEN	((((HWADDR_LEN / 4) + 2) * 2) + 1)
 static unsigned int
 bpf_cmp_hwaddr(struct bpf_insn *bpf, size_t bpf_len, size_t off,
     bool equal, uint8_t *hwaddr, size_t hwaddr_len)
@@ -414,7 +437,7 @@ static const struct bpf_insn bpf_arp_ether [] = {
 	         sizeof(((struct ether_arp *)0)->arp_sha), 1, 0),
 	BPF_STMT(BPF_RET + BPF_K, 0),
 };
-#define bpf_arp_ether_len	__arraycount(bpf_arp_ether)
+#define BPF_ARP_ETHER_LEN	__arraycount(bpf_arp_ether)
 
 static const struct bpf_insn bpf_arp_filter [] = {
 	/* Make sure this is for IP. */
@@ -425,21 +448,25 @@ static const struct bpf_insn bpf_arp_filter [] = {
 	BPF_STMT(BPF_LD + BPF_H + BPF_IND, offsetof(struct arphdr, ar_op)),
 	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, ARPOP_REQUEST, 2, 0),
 	/* or ARP REPLY. */
-	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, ARPOP_REPLY, 1, 1),
+	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, ARPOP_REPLY, 1, 0),
 	BPF_STMT(BPF_RET + BPF_K, 0),
 	/* Make sure the protocol length matches. */
 	BPF_STMT(BPF_LD + BPF_B + BPF_IND, offsetof(struct arphdr, ar_pln)),
 	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, sizeof(in_addr_t), 1, 0),
 	BPF_STMT(BPF_RET + BPF_K, 0),
 };
-#define bpf_arp_filter_len	__arraycount(bpf_arp_filter)
-#define bpf_arp_extra		((((ARP_ADDRS_MAX + 1) * 2) * 2) + 2)
-#define bpf_arp_hw		((((HWADDR_LEN / 4) + 2) * 2) + 1)
+#define BPF_ARP_FILTER_LEN	__arraycount(bpf_arp_filter)
+
+#define BPF_ARP_ADDRS_LEN	1 + (ARP_ADDRS_MAX * 2) + 3 + \
+				(ARP_ADDRS_MAX * 2) + 1
+
+#define BPF_ARP_LEN		BPF_ARP_ETHER_LEN + BPF_ARP_FILTER_LEN + \
+				BPF_CMP_HWADDR_LEN + BPF_ARP_ADDRS_LEN
 
 int
 bpf_arp(struct interface *ifp, int fd)
 {
-	struct bpf_insn bpf[3+ bpf_arp_filter_len + bpf_arp_hw + bpf_arp_extra];
+	struct bpf_insn bpf[BPF_ARP_LEN];
 	struct bpf_insn *bp;
 	struct iarp_state *state;
 	uint16_t arp_len;
@@ -452,7 +479,7 @@ bpf_arp(struct interface *ifp, int fd)
 	switch(ifp->family) {
 	case ARPHRD_ETHER:
 		memcpy(bp, bpf_arp_ether, sizeof(bpf_arp_ether));
-		bp += bpf_arp_ether_len;
+		bp += BPF_ARP_ETHER_LEN;
 		arp_len = sizeof(struct ether_header)+sizeof(struct ether_arp);
 		break;
 	default:
@@ -462,10 +489,10 @@ bpf_arp(struct interface *ifp, int fd)
 
 	/* Copy in the main filter. */
 	memcpy(bp, bpf_arp_filter, sizeof(bpf_arp_filter));
-	bp += bpf_arp_filter_len;
+	bp += BPF_ARP_FILTER_LEN;
 
 	/* Ensure it's not from us. */
-	bp += bpf_cmp_hwaddr(bp, bpf_arp_hw, sizeof(struct arphdr),
+	bp += bpf_cmp_hwaddr(bp, BPF_CMP_HWADDR_LEN, sizeof(struct arphdr),
 	                     false, ifp->hwaddr, ifp->hwlen);
 
 	state = ARP_STATE(ifp);
@@ -525,6 +552,21 @@ bpf_arp(struct interface *ifp, int fd)
 }
 #endif
 
+#define	BPF_M_FHLEN	0
+#define	BPF_M_IPHLEN	1
+#define	BPF_M_IPLEN	2
+#define	BPF_M_UDP	3
+#define	BPF_M_UDPLEN	4
+
+#ifdef ARPHRD_NONE
+static const struct bpf_insn bpf_bootp_none[] = {
+	/* Set the frame header length to zero. */
+	BPF_STMT(BPF_LD + BPF_IMM, 0),
+	BPF_STMT(BPF_ST, BPF_M_FHLEN),
+};
+#define BPF_BOOTP_NONE_LEN	__arraycount(bpf_bootp_none)
+#endif
+
 static const struct bpf_insn bpf_bootp_ether[] = {
 	/* Make sure this is an IP packet. */
 	BPF_STMT(BPF_LD + BPF_H + BPF_ABS,
@@ -534,16 +576,26 @@ static const struct bpf_insn bpf_bootp_ether[] = {
 
 	/* Load frame header length into X. */
 	BPF_STMT(BPF_LDX + BPF_W + BPF_IMM, sizeof(struct ether_header)),
-	/* Copy to M0. */
-	BPF_STMT(BPF_STX, 0),
+	/* Copy frame header length to memory */
+	BPF_STMT(BPF_STX, BPF_M_FHLEN),
 };
 #define BPF_BOOTP_ETHER_LEN	__arraycount(bpf_bootp_ether)
 
 static const struct bpf_insn bpf_bootp_filter[] = {
-	/* Make sure it's an optionless IPv4 packet. */
+	/* Make sure it's an IPv4 packet. */
 	BPF_STMT(BPF_LD + BPF_B + BPF_IND, 0),
-	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, 0x45, 1, 0),
+	BPF_STMT(BPF_ALU + BPF_AND + BPF_K, 0xf0),
+	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, 0x40, 1, 0),
 	BPF_STMT(BPF_RET + BPF_K, 0),
+
+	/* Ensure IP header length is big enough and
+	 * store the IP header length in memory. */
+	BPF_STMT(BPF_LD + BPF_B + BPF_IND, 0),
+	BPF_STMT(BPF_ALU + BPF_AND + BPF_K, 0x0f),
+	BPF_STMT(BPF_ALU + BPF_MUL + BPF_K, 4),
+	BPF_JUMP(BPF_JMP + BPF_JGE + BPF_K, sizeof(struct ip), 1, 0),
+	BPF_STMT(BPF_RET + BPF_K, 0),
+	BPF_STMT(BPF_ST, BPF_M_IPHLEN),
 
 	/* Make sure it's a UDP packet. */
 	BPF_STMT(BPF_LD + BPF_B + BPF_IND, offsetof(struct ip, ip_p)),
@@ -555,39 +607,42 @@ static const struct bpf_insn bpf_bootp_filter[] = {
 	BPF_JUMP(BPF_JMP + BPF_JSET + BPF_K, 0x1fff, 0, 1),
 	BPF_STMT(BPF_RET + BPF_K, 0),
 
-	/* Store IP location in M1. */
+	/* Store IP length. */
 	BPF_STMT(BPF_LD + BPF_H + BPF_IND, offsetof(struct ip, ip_len)),
-	BPF_STMT(BPF_ST, 1),
-
-	/* Store IP length in M2. */
-	BPF_STMT(BPF_LD + BPF_H + BPF_IND, offsetof(struct ip, ip_len)),
-	BPF_STMT(BPF_ST, 2),
+	BPF_STMT(BPF_ST, BPF_M_IPLEN),
 
 	/* Advance to the UDP header. */
-	BPF_STMT(BPF_MISC + BPF_TXA, 0),
-	BPF_STMT(BPF_ALU + BPF_ADD + BPF_K, sizeof(struct ip)),
+	BPF_STMT(BPF_LD + BPF_MEM, BPF_M_IPHLEN),
+	BPF_STMT(BPF_ALU + BPF_ADD + BPF_X, 0),
 	BPF_STMT(BPF_MISC + BPF_TAX, 0),
 
-	/* Store X in M3. */
-	BPF_STMT(BPF_STX, 3),
+	/* Store UDP location */
+	BPF_STMT(BPF_STX, BPF_M_UDP),
 
 	/* Make sure it's from and to the right port. */
 	BPF_STMT(BPF_LD + BPF_W + BPF_IND, 0),
 	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, (BOOTPS << 16) + BOOTPC, 1, 0),
 	BPF_STMT(BPF_RET + BPF_K, 0),
 
-	/* Store UDP length in X. */
+	/* Store UDP length. */
 	BPF_STMT(BPF_LD + BPF_H + BPF_IND, offsetof(struct udphdr, uh_ulen)),
+	BPF_STMT(BPF_ST, BPF_M_UDPLEN),
+
+	/* Ensure that UDP length + IP header length == IP length */
+	/* Copy IP header length to X. */
+	BPF_STMT(BPF_LDX + BPF_MEM, BPF_M_IPHLEN),
+	/* Add UDP length (A) to IP header length (X). */
+	BPF_STMT(BPF_ALU + BPF_ADD + BPF_X, 0),
+	/* Store result in X. */
 	BPF_STMT(BPF_MISC + BPF_TAX, 0),
-	/* Copy IP length in M2 to A. */
-	BPF_STMT(BPF_LD + BPF_MEM, 2),
-	/* Ensure IP length - IP header size == UDP length. */
-	BPF_STMT(BPF_ALU + BPF_SUB + BPF_K, sizeof(struct ip)),
+	/* Copy IP length to A. */
+	BPF_STMT(BPF_LD + BPF_MEM, BPF_M_IPLEN),
+	/* Ensure X == A. */
 	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_X, 0, 1, 0),
 	BPF_STMT(BPF_RET + BPF_K, 0),
 
-	/* Advance to the BOOTP packet (UDP X is in M3). */
-	BPF_STMT(BPF_LD + BPF_MEM, 3),
+	/* Advance to the BOOTP packet. */
+	BPF_STMT(BPF_LD + BPF_MEM, BPF_M_UDP),
 	BPF_STMT(BPF_ALU + BPF_ADD + BPF_K, sizeof(struct udphdr)),
 	BPF_STMT(BPF_MISC + BPF_TAX, 0),
 
@@ -619,6 +674,12 @@ bpf_bootp(struct interface *ifp, int fd)
 	bp = bpf;
 	/* Check frame header. */
 	switch(ifp->family) {
+#ifdef ARPHRD_NONE
+	case ARPHRD_NONE:
+		memcpy(bp, bpf_bootp_none, sizeof(bpf_bootp_none));
+		bp += BPF_BOOTP_NONE_LEN;
+		break;
+#endif
 	case ARPHRD_ETHER:
 		memcpy(bp, bpf_bootp_ether, sizeof(bpf_bootp_ether));
 		bp += BPF_BOOTP_ETHER_LEN;
@@ -668,11 +729,10 @@ bpf_bootp(struct interface *ifp, int fd)
 	}
 #endif
 
-	/* All passed, return the packet
-	 * (Frame length in M0, IP length in M2). */
-	BPF_SET_STMT(bp, BPF_LD + BPF_MEM, 0);
+	/* All passed, return the packet - frame length + ip length */
+	BPF_SET_STMT(bp, BPF_LD + BPF_MEM, BPF_M_FHLEN);
 	bp++;
-	BPF_SET_STMT(bp, BPF_LDX + BPF_MEM, 2);
+	BPF_SET_STMT(bp, BPF_LDX + BPF_MEM, BPF_M_IPLEN);
 	bp++;
 	BPF_SET_STMT(bp, BPF_ALU + BPF_ADD + BPF_X, 0);
 	bp++;

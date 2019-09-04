@@ -1,6 +1,6 @@
 /*
  * dhcpcd - DHCP client daemon
- * Copyright (c) 2006-2018 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,8 @@
  * SUCH DAMAGE.
  */
 
-#define INITDEFINES	124
-#define INITDEFINENDS	6
-#define INITDEFINE6S	69
+#define INITDEFINES	     124
+#define INITDEFINENDS	       6
+#define INITDEFINE6S	      69
 
 extern const char * const dhcpcd_embedded_conf[];

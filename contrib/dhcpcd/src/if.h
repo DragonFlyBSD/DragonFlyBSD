@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd - DHCP client daemon
- * Copyright (c) 2006-2018 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -90,9 +91,6 @@
 	    ((addr & IN_CLASSB_NET) == 0xc0a80000))
 #endif
 
-#define RAW_EOF			1 << 0
-#define RAW_PARTIALCSUM		2 << 0
-
 #ifndef CLLADDR
 #ifdef AF_LINK
 #  define CLLADDR(sdl) (const void *)((sdl)->sdl_data + (sdl)->sdl_nlen)
@@ -109,8 +107,10 @@
 struct ifaddrs;
 int if_getifaddrs(struct ifaddrs **);
 #define	getifaddrs	if_getifaddrs
+int if_getsubnet(struct dhcpcd_ctx *, const char *, int, void *, size_t);
 #endif
 
+int if_getflags(struct interface *ifp);
 int if_setflag(struct interface *ifp, short flag);
 #define if_up(ifp) if_setflag((ifp), (IFF_UP | IFF_RUNNING))
 bool if_valid_hwaddr(const uint8_t *, size_t);
@@ -122,12 +122,17 @@ void if_deletestaleaddrs(struct if_head *);
 struct interface *if_find(struct if_head *, const char *);
 struct interface *if_findindex(struct if_head *, unsigned int);
 struct interface *if_loopback(struct dhcpcd_ctx *);
-void if_sortinterfaces(struct dhcpcd_ctx *);
 void if_free(struct interface *);
 int if_domtu(const struct interface *, short int);
 #define if_getmtu(ifp) if_domtu((ifp), 0)
 #define if_setmtu(ifp, mtu) if_domtu((ifp), (mtu))
 int if_carrier(struct interface *);
+
+#ifdef ALIAS_ADDR
+int if_makealias(char *, size_t, const char *, int);
+#endif
+
+int if_mtu_os(const struct interface *);
 
 /*
  * Helper to decode an interface name of bge0:1 to
@@ -179,7 +184,7 @@ int if_handlelink(struct dhcpcd_ctx *);
 #endif
 
 int if_route(unsigned char, const struct rt *rt);
-int if_initrt(struct dhcpcd_ctx *, int);
+int if_initrt(struct dhcpcd_ctx *, rb_tree_t *, int);
 
 #ifdef INET
 int if_address(unsigned char, const struct ipv4_addr *);
@@ -197,6 +202,7 @@ int ip6_temp_valid_lifetime(const char *ifname);
 #else
 #define ip6_use_tempaddr(a) (0)
 #endif
+int ip6_forwarding(const char *ifname);
 
 int if_address6(unsigned char, const struct ipv6_addr *);
 int if_addrflags6(const struct interface *, const struct in6_addr *,
@@ -208,5 +214,7 @@ int if_getlifetime6(struct ipv6_addr *);
 #endif
 
 int if_machinearch(char *, size_t);
+struct interface *if_findifpfromcmsg(struct dhcpcd_ctx *,
+    struct msghdr *, int *);
 int xsocket(int, int, int);
 #endif

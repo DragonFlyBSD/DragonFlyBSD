@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd - DHCP client daemon
- * Copyright (c) 2006-2018 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -44,8 +45,6 @@
 #  endif
 #endif
 
-#define ALLROUTERS "ff02::2"
-
 #define EUI64_GBIT		0x01
 #define EUI64_UBIT		0x02
 #define EUI64_TO_IFID(in6)	do {(in6)->s6_addr[8] ^= EUI64_UBIT; } while (0)
@@ -76,6 +75,17 @@
 	(((d)->s6_addr32[3] ^ (a)->s6_addr32[3]) & (m)->s6_addr32[3]) == 0 )
 #endif
 
+#ifndef IN6ADDR_LINKLOCAL_ALLNODES_INIT
+#define	IN6ADDR_LINKLOCAL_ALLNODES_INIT				\
+	{{{ 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	\
+	    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 }}}
+#endif
+#ifndef IN6ADDR_LINKLOCAL_ALLROUTERS_INIT
+#define	IN6ADDR_LINKLOCAL_ALLROUTERS_INIT			\
+	{{{ 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	\
+	    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02 }}}
+#endif
+
 /*
  * BSD kernels don't inform userland of DAD results.
  * See the discussion here:
@@ -90,7 +100,8 @@
 #endif
 
 /* This was fixed in NetBSD */
-#if defined(__NetBSD_Version__) && __NetBSD_Version__ >= 699002000
+#if (defined(__DragonFly_version) && __DragonFly_version >= 500704) || \
+    (defined(__NetBSD_Version__) && __NetBSD_Version__ >= 699002000)
 #  undef IPV6_POLLADDRFLAG
 #endif
 
@@ -99,9 +110,9 @@
     * While it supports DaD, to seems to only expose IFF_DUPLICATE
     * so we have no way of knowing if it's tentative or not.
     * I don't even know if Solaris has any special treatment for tentative. */
-#  define IN6_IFF_TENTATIVE	0
+#  define IN6_IFF_TENTATIVE	0x02
 #  define IN6_IFF_DUPLICATED	0x04
-#  define IN6_IFF_DETACHED	0
+#  define IN6_IFF_DETACHED	0x00
 #endif
 
 #define IN6_IFF_NOTUSEABLE \
@@ -139,6 +150,20 @@
 #  define IN6_IFF_DETACHED	0
 #endif
 
+/*
+ * ND6 Advertising is only used for IP address sharing to prefer
+ * the address on a specific interface.
+ * This just fails to work on OpenBSD and causes erroneous duplicate
+ * address messages on BSD's other then DragonFly and NetBSD.
+ */
+#if !defined(SMALL) && \
+    ((defined(__DragonFly_version) && __DragonFly_version >= 500703) || \
+    (defined(__NetBSD_Version__) && __NetBSD_Version__ >= 899002800) || \
+    defined(__linux__) || defined(__sun))
+#  define ND6_ADVERTISE
+#endif
+
+#ifdef INET6
 TAILQ_HEAD(ipv6_addrhead, ipv6_addr);
 struct ipv6_addr {
 	TAILQ_ENTRY(ipv6_addr) next;
@@ -168,6 +193,10 @@ struct ipv6_addr {
 
 	void (*dadcallback)(void *);
 	int dadcounter;
+
+	struct nd_neighbor_advert *na;
+	size_t na_len;
+	int na_count;
 
 #ifdef ALIAS_ADDR
 	char alias[IF_NAMESIZE];
@@ -218,7 +247,6 @@ struct ipv6_state {
 	((const struct ipv6_state *)(ifp)->if_data[IF_DATA_IPV6])
 #define IPV6_STATE_RUNNING(ifp) ipv6_staticdadcompleted((ifp))
 
-#ifdef INET6
 
 int ipv6_init(struct dhcpcd_ctx *);
 int ipv6_makestableprivate(struct in6_addr *addr,
@@ -245,6 +273,7 @@ int ipv6_handleifa_addrs(int, struct ipv6_addrhead *, const struct ipv6_addr *,
 struct ipv6_addr *ipv6_iffindaddr(struct interface *,
     const struct in6_addr *, int);
 int ipv6_hasaddr(const struct interface *);
+struct ipv6_addr *ipv6_ifanyglobal(struct interface *);
 int ipv6_findaddrmatch(const struct ipv6_addr *, const struct in6_addr *,
     unsigned int);
 struct ipv6_addr *ipv6_findaddr(struct dhcpcd_ctx *,
@@ -274,19 +303,9 @@ void ipv6_addtempaddrs(struct interface *, const struct timespec *);
 int ipv6_start(struct interface *);
 int ipv6_staticdadcompleted(const struct interface *);
 int ipv6_startstatic(struct interface *);
-ssize_t ipv6_env(char **, const char *, const struct interface *);
+ssize_t ipv6_env(FILE *, const char *, const struct interface *);
 void ipv6_ctxfree(struct dhcpcd_ctx *);
-bool inet6_getroutes(struct dhcpcd_ctx *, struct rt_head *);
+bool inet6_getroutes(struct dhcpcd_ctx *, rb_tree_t *);
+#endif /* INET6 */
 
-#else
-#define ipv6_start(a) (-1)
-#define ipv6_startstatic(a)
-#define ipv6_staticdadcompleted(a) (0)
-#define ipv6_hasaddr(a) (0)
-#define ipv6_free_ll_callbacks(a) {}
-#define ipv6_free(a) {}
-#define ipv6_ctxfree(a) {}
-#define ipv6_gentempifid(a) {}
-#endif
-
-#endif
+#endif /* INET6_H */
