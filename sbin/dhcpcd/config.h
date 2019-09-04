@@ -19,7 +19,7 @@
 #define	HAVE_KQUEUE
 #ifdef	USE_PRIVATECRYPTO
 #define	HAVE_MD5_H
-#define	SHA2_H	<sha256.h>
+#define	SHA2_H			<openssl/sha.h>
 #else
 #include			"compat/crypt/md5.h"
 #include			"compat/crypt/sha256.h"
