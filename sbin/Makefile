@@ -13,9 +13,9 @@ SUBDIR=	adjkerntz \
 	devfsctl \
 	dhclient \
 	dhcpcd \
+	diskinfo \
 	disklabel32 \
 	disklabel64 \
-	diskinfo \
 	dmesg \
 	dump \
 	dumpfs \
@@ -27,8 +27,8 @@ SUBDIR=	adjkerntz \
 	fsid \
 	fsirand \
 	getdevpath \
-	growfs \
 	gpt \
+	growfs \
 	hammer \
 	hammer2 \
 	ifconfig \
@@ -44,13 +44,13 @@ SUBDIR=	adjkerntz \
 	kldunload \
 	ldconfig \
 	md5 \
-	mountctl \
 	mount \
-	mount_ufs \
+	mount_autofs \
 	mount_cd9660 \
 	mount_devfs \
 	mount_dirfs \
 	mount_ext2fs \
+	mount_fuse \
 	mount_hammer \
 	mount_hammer2 \
 	mount_hpfs \
@@ -61,8 +61,8 @@ SUBDIR=	adjkerntz \
 	mount_std \
 	mount_tmpfs \
 	mount_udf \
-	mount_autofs \
-	mount_fuse \
+	mount_ufs \
+	mountctl \
 	mountd \
 	natacontrol \
 	natd \
@@ -79,23 +79,23 @@ SUBDIR=	adjkerntz \
 	ping \
 	ping6 \
 	quotacheck \
-	reboot \
 	rconfig \
 	rcorder \
+	rcrun \
+	reboot \
 	resolvconf \
 	restore \
 	route \
 	routed \
 	rtsol \
-	rcrun \
 	savecore \
 	shutdown \
 	slattach \
 	spppcontrol \
 	startslip \
+	svc \
 	swapon \
 	sysctl \
-	svc \
 	tcplay \
 	tunefs \
 	udevd \
