@@ -196,6 +196,8 @@ atomic_andnot(int i, atomic_t *v)
 
 #define cmpxchg_relaxed(...)	cmpxchg(__VA_ARGS__)
 
+#define atomic64_inc_return(p)	__sync_add_and_fetch_8(p, 1)
+
 #include <asm-generic/atomic-long.h>
 
 #endif	/* _LINUX_ATOMIC_H_ */
