@@ -15,9 +15,11 @@ SRCS+=		if-bsd.c
 CFLAGS+=	-DAUTH
 SRCS+=		auth.c
 
-CFLAGS+=	-DARP -DINET
-SRCS+=		arp.c bpf.c dhcp.c ipv4.c
-CFLAGS+=	-DIPV4LL -DARPING
+CFLAGS+=	-DINET
+SRCS+=		bpf.c dhcp.c ipv4.c
+CFLAGS+=	-DARP -DARPING
+SRCS+=		arp.c
+CFLAGS+=	-DIPV4LL
 SRCS+=		ipv4ll.c
 
 CFLAGS+=	-DINET6
@@ -26,11 +28,12 @@ CFLAGS+=	-DDHCP6
 SRCS+=		dhcp6.c
 
 .PATH:		${DISTDIR}/compat
-SRCS+=		pidfile.c strtoi.c strtou.c
+SRCS+=		pidfile.c rb.c strtoi.c strtou.c
 .PATH:		${DISTDIR}/compat/crypt
 SRCS+=		hmac.c
 
 # Fully convert to openssl/md5.h and openssl/sha2.h
+CFLAGS+=	-DUSE_PRIVATECRYPTO
 FLAGS_GROUPS=	openssl
 openssl_FLAGS=	-I${_SHLIBDIRPREFIX}/usr/include/priv/openssl
 openssl_FLAGS+=	-DMD5Init=MD5_Init -DMD5Update=MD5_Update -DMD5Final=MD5_Final
@@ -76,9 +79,6 @@ CLEANFILES+=	${f}
 ${f}: ${f}.in
 	sed ${_SED_CMDS} ${SRCDIR}/${f}.in > $@
 .endfor
-
-# XXX -Wunused-parameter in duid.c, not implemented duid_machineuuid().
-WARNS?=		3
 
 # NOTE:
 # The configuration file 'dhcpcd.conf' is installed by 'etc/Makefile'
