@@ -84,6 +84,10 @@ static int fc_largedistance;	/* off by more than LMMAX		 */
 static void fc_lookup(struct denode *dep, u_long findcn, u_long *frcnp,
     u_long *fsrcnp);
 
+/*
+ * Given a byte offset `ofs` within FAT, return block number in backing device,
+ * block size, and byte offset within a block in FAT.
+ */
 static void
 fatblock(struct msdosfsmount *pmp, u_long ofs, u_long *bnp, u_long *sizep,
 	 u_long *bop)
@@ -592,7 +596,8 @@ fatchain(struct msdosfsmount *pmp, u_long start, u_long count, u_long fillwith)
 			return (error);
 		}
 		while (count > 0) {
-			start++;
+			start++; /* Callers must guarantee contiguous free
+				    clusters. */
 			newc = --count > 0 ? start : fillwith;
 			switch (pmp->pm_fatmask) {
 			case FAT12_MASK:
