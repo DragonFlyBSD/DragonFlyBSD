@@ -267,29 +267,6 @@ counttostr(hammer2_off_t size)
 	return(buf);
 }
 
-#if 0
-/*
- * Allocation wrappers give us shims for possible future use
- */
-void *
-hammer2_alloc(size_t bytes)
-{
-	void *ptr;
-
-	ptr = malloc(bytes);
-	assert(ptr);
-	bzero(ptr, bytes);
-	return (ptr);
-}
-
-void
-hammer2_free(void *ptr)
-{
-	free(ptr);
-}
-
-#endif
-
 hammer2_key_t
 dirhash(const unsigned char *name, size_t len)
 {
