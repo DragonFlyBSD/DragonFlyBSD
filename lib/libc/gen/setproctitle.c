@@ -115,7 +115,7 @@ setproctitle(const char *fmt, ...)
 		nargc = 1;
 		kbuf = buf;
 	} else if (*obuf != '\0') {
-  		/* Idea from NetBSD - reset the title on fmt == NULL */
+		/* Idea from NetBSD - reset the title on fmt == NULL */
 		nargvp = oargv;
 		nargc = oargc;
 		kbuf = obuf;
