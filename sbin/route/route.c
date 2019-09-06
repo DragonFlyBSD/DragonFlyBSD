@@ -1263,8 +1263,8 @@ monitor(void)
 		error = errno;
 		now = time(NULL);
 		if (n == -1) {
-			printf("\nsocket error %d on %s: %s\n",
-			    error, ctime(&now), strerror(error));
+			printf("\nsocket error %d on %s %s\n",
+			    error, ctime(&now), strerror(errno));
 			continue;
 		}
 		printf("\ngot message of size %d on %s", n, ctime(&now));
