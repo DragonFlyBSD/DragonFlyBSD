@@ -1667,6 +1667,8 @@ if_unroute_dispatch(netmsg_t nmsg)
 
 	ifp->if_flags &= ~flag;
 	getmicrotime(&ifp->if_lastchange);
+	rt_ifmsg(ifp);
+
 	/*
 	 * The ifaddr processing in the following loop will block,
 	 * however, this function is called in netisr0, in which
@@ -1683,13 +1685,12 @@ if_unroute_dispatch(netmsg_t nmsg)
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			kpfctlinput(PRC_IFDOWN, ifa->ifa_addr);
 	}
-	ifq_purge_all(&ifp->if_snd);
-	rt_ifmsg(ifp);
 
+	ifq_purge_all(&ifp->if_snd);
 	netisr_replymsg(&nmsg->base, 0);
 }
 
-void
+static void
 if_unroute(struct ifnet *ifp, int flag, int fam)
 {
 	struct netmsg_ifroute msg;
@@ -1718,6 +1719,8 @@ if_route_dispatch(netmsg_t nmsg)
 	ifq_purge_all(&ifp->if_snd);
 	ifp->if_flags |= flag;
 	getmicrotime(&ifp->if_lastchange);
+	rt_ifmsg(ifp);
+
 	/*
 	 * The ifaddr processing in the following loop will block,
 	 * however, this function is called in netisr0, in which
@@ -1734,7 +1737,6 @@ if_route_dispatch(netmsg_t nmsg)
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			kpfctlinput(PRC_IFUP, ifa->ifa_addr);
 	}
-	rt_ifmsg(ifp);
 #ifdef INET6
 	in6_if_up(ifp);
 #endif
@@ -1742,7 +1744,7 @@ if_route_dispatch(netmsg_t nmsg)
 	netisr_replymsg(&nmsg->base, 0);
 }
 
-void
+static void
 if_route(struct ifnet *ifp, int flag, int fam)
 {
 	struct netmsg_ifroute msg;
