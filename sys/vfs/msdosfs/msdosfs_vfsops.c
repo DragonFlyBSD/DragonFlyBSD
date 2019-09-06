@@ -313,7 +313,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	struct byte_bpb710 *b710;
 	u_int8_t SecPerClust;
 	u_long clusters;
-	int	ronly, error;
+	int ronly, error;
 
 	/*
 	 * Disallow multiple mounts of the same device.
@@ -469,7 +469,6 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 
 	pmp->pm_maxcluster = (pmp->pm_HugeSectors - pmp->pm_firstcluster) /
 	    SecPerClust + 1;
-	pmp->pm_fatsize = pmp->pm_FATsecs * DEV_BSIZE; /* XXX not used? */
 
 	if (pmp->pm_fatmask == 0) {
 		if (pmp->pm_maxcluster
@@ -489,7 +488,8 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		}
 	}
 
-	clusters = (pmp->pm_fatsize / pmp->pm_fatmult) * pmp->pm_fatdiv;
+	clusters = ((pmp->pm_FATsecs * DEV_BSIZE) / pmp->pm_fatmult) *
+		pmp->pm_fatdiv;
 	if (pmp->pm_maxcluster >= clusters) {
 		kprintf("Warning: number of clusters (%ld) exceeds FAT "
 		    "capacity (%ld)\n", pmp->pm_maxcluster + 1, clusters);
