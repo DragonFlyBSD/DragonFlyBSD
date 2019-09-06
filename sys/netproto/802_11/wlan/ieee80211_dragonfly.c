@@ -757,6 +757,7 @@ ieee80211_notify_node_join(struct ieee80211_node *ni, int newassoc)
 	    (ni == vap->iv_bss) ? "bss " : "");
 
 	if (ni == vap->iv_bss) {
+		ifp->if_link_state = LINK_STATE_UP;
 		notify_macaddr(ifp, newassoc ?
 		    RTM_IEEE80211_ASSOC : RTM_IEEE80211_REASSOC, ni->ni_bssid);
 		if_link_state_change(ifp);
@@ -776,6 +777,7 @@ ieee80211_notify_node_leave(struct ieee80211_node *ni)
 	    (ni == vap->iv_bss) ? "bss " : "");
 
 	if (ni == vap->iv_bss) {
+		ifp->if_link_state = LINK_STATE_DOWN;
 		rt_ieee80211msg(ifp, RTM_IEEE80211_DISASSOC, NULL, 0);
 		if_link_state_change(ifp);
 	} else {
