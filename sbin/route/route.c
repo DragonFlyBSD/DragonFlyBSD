@@ -171,8 +171,15 @@ main(int argc, char **argv)
 	uid = geteuid();
 	if (tflag)
 		s = open(_PATH_DEVNULL, O_WRONLY, 0);
-	else
+	else {
+
 		s = socket(PF_ROUTE, SOCK_RAW, 0);
+#ifdef SO_RERROR
+		int on = 1;
+		if (setsockopt(s, SOL_SOCKET, SO_RERROR, &on, sizeof(on)) == -1)
+			warn("SO_RERROR");
+#endif
+	}
 	if (s < 0)
 		err(EX_OSERR, "socket");
 	if (*argv != NULL)
@@ -1235,18 +1242,25 @@ interfaces(void)
 static void
 monitor(void)
 {
-	int n;
+	int n, error;
 	char msg[2048];
+	time_t now;
 
 	verbose = 1;
 	if (debugonly) {
 		interfaces();
 		exit(0);
 	}
+
 	for (;;) {
-		time_t now;
-		n = read(s, msg, 2048);
+		n = read(s, msg, sizeof(msg));
+		error = errno;
 		now = time(NULL);
+		if (n == -1) {
+			printf("\nsocket error %d on %s: %s\n",
+			    error, ctime(&now), strerror(error));
+			continue;
+		}
 		printf("\ngot message of size %d on %s", n, ctime(&now));
 		print_rtmsg((struct rt_msghdr *)msg, n);
 	}
