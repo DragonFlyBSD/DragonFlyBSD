@@ -86,7 +86,7 @@ struct msdosfsmount {
 	u_long pm_fmod;		/* ~0 if fs is modified, this can rollover to 0	*/
 	u_long pm_fatblocksize;	/* size of fat blocks in bytes */
 	u_long pm_fatblocksec;	/* size of fat blocks in sectors */
-	u_int32_t pm_fatmask;	/* mask to use for fat numbers */
+	uint32_t pm_fatmask;	/* mask to use for fat numbers */
 	u_long pm_fsinfo;	/* fsinfo block number */
 	u_long pm_nxtfree;	/* next free cluster in fsinfo block */
 	u_int pm_fatmult;	/* these 2 values are used in fat */

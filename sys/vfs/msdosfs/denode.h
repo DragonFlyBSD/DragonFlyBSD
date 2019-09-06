@@ -229,7 +229,7 @@ struct denode {
 		break;							\
 	}								\
 	if ((dep)->de_flag & DE_ACCESS) {				\
-		u_int16_t adate;					\
+		uint16_t adate;						\
 									\
 		unix2dostime((acc), &adate, NULL, NULL);		\
 		if (adate != (dep)->de_ADate) {				\

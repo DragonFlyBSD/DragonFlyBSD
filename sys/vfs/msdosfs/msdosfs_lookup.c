@@ -600,7 +600,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 	 * Now write the Win95 long name
 	 */
 	if (ddep->de_fndcnt > 0) {
-		u_int8_t chksum = winChksum(ndep->deName);
+		uint8_t chksum = winChksum(ndep->deName);
 		const u_char *un = (const u_char *)cnp->cn_nameptr;
 		int unlen = cnp->cn_namelen;
 		int cnt = 1;

@@ -98,8 +98,8 @@ static u_short lastdtime;
  * file timestamps. The passed in unix time is assumed to be in GMT.
  */
 void
-unix2dostime(struct timespec *tsp, u_int16_t *ddp, u_int16_t *dtp,
-    u_int8_t *dhp)
+unix2dostime(struct timespec *tsp, uint16_t *ddp, uint16_t *dtp,
+    uint8_t *dhp)
 {
 	u_long t;
 	u_long days;
@@ -226,7 +226,7 @@ mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
  * have been written via mbnambuf_write(), the result will be incorrect.
  */
 char *
-mbnambuf_flush(struct mbnambuf *nbp, char *d_name, u_int16_t *d_namlen)
+mbnambuf_flush(struct mbnambuf *nbp, char *d_name, uint16_t *d_namlen)
 {
 #if 0
 	if (nbp->nb_len > 127) {
@@ -451,13 +451,13 @@ l2u[256] = {
 /*
  * Convert DOS char to Local char
  */
-static u_int16_t
+static uint16_t
 dos2unixchr(const u_char **instr, size_t *ilen, int lower,
     struct msdosfsmount *pmp)
 {
 	u_char c;
 	char *outp, outbuf[3];
-	u_int16_t wc;
+	uint16_t wc;
 	size_t len, olen;
 
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
@@ -489,7 +489,7 @@ dos2unixchr(const u_char **instr, size_t *ilen, int lower,
 	c = dos2unix[c];
 	if (lower & (LCASE_BASE | LCASE_EXT))
 		c = u2l[c];
-	return ((u_int16_t)c);
+	return ((uint16_t)c);
 }
 
 /*
@@ -582,12 +582,12 @@ mbsadjpos(const char **instr, size_t inlen, size_t outlen, int weight, int flag,
 /*
  * Convert Local char to DOS char
  */
-static u_int16_t
+static uint16_t
 unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
 {
 	u_char c;
 	char *up, *outp, unicode[3], outbuf[3];
-	u_int16_t wc;
+	uint16_t wc;
 	size_t len, ucslen, unixlen, olen;
 
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
@@ -648,7 +648,7 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
 	c = *(*instr)++;
 	c = l2u[c];
 	c = unix2dos[c];
-	return ((u_int16_t)c);
+	return ((uint16_t)c);
 }
 
 /*
@@ -672,7 +672,7 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
 	int conv = 1;
 	const u_char *cp, *dp, *dp1;
 	u_char gentext[6], *wcp;
-	u_int16_t c;
+	uint16_t c;
 
 	/*
 	 * Fill the dos filename string with blanks. These are DOS's pad
@@ -869,12 +869,12 @@ done:
 /*
  * Convert Local char to Windows char
  */
-static u_int16_t
+static uint16_t
 unix2winchr(const u_char **instr, size_t *ilen, int lower,
     struct msdosfsmount *pmp)
 {
 	u_char *outp, outbuf[3];
-	u_int16_t wc;
+	uint16_t wc;
 	size_t olen;
 
 	if (*ilen == 0)
@@ -915,9 +915,9 @@ int
 unix2winfn(const u_char *un, size_t unlen, struct winentry *wep, int cnt,
     int chksum, struct msdosfsmount *pmp)
 {
-	u_int8_t *wcp;
+	uint8_t *wcp;
 	int i, end;
-	u_int16_t code;
+	uint16_t code;
 
 	/*
 	 * Drop trailing blanks and dots
@@ -933,7 +933,7 @@ unix2winfn(const u_char *un, size_t unlen, struct winentry *wep, int cnt,
 	/*
 	 * Initialize winentry to some useful default
 	 */
-	for (wcp = (u_int8_t *)wep, i = sizeof(*wep); --i >= 0; *wcp++ = 0xff);
+	for (wcp = (uint8_t *)wep, i = sizeof(*wep); --i >= 0; *wcp++ = 0xff);
 	wep->weCnt = cnt;
 	wep->weAttributes = ATTR_WIN95;
 	wep->weReserved1 = 0;
@@ -974,8 +974,8 @@ unix2winfn(const u_char *un, size_t unlen, struct winentry *wep, int cnt,
 	return !end;
 }
 
-static __inline u_int8_t
-find_lcode(u_int16_t code, u_int16_t *u2w)
+static __inline uint8_t
+find_lcode(uint16_t code, uint16_t *u2w)
 {
 	int i;
 
@@ -994,9 +994,9 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
     struct msdosfsmount *pmp)
 {
 	size_t len;
-	u_int16_t c1, c2;
+	uint16_t c1, c2;
 	u_char *np;
-	u_int16_t d_namlen;
+	uint16_t d_namlen;
 	char d_name[127];
 
 	bzero(d_name, 127);
@@ -1031,8 +1031,8 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
 /*
  * Convert Windows char to Local char
  */
-static u_int16_t
-win2unixchr(u_int16_t wc, struct msdosfsmount *pmp)
+static uint16_t
+win2unixchr(uint16_t wc, struct msdosfsmount *pmp)
 {
 	u_char *inp, *outp, inbuf[3], outbuf[3];
 	size_t ilen, olen, len;
@@ -1075,9 +1075,9 @@ int
 win2unixfn(struct mbnambuf *nbp, struct winentry *wep, int chksum,
     struct msdosfsmount *pmp)
 {
-	u_int8_t *cp;
-	u_int8_t *np, name[WIN_CHARS * 2 + 1];
-	u_int16_t code;
+	uint8_t *cp;
+	uint8_t *np, name[WIN_CHARS * 2 + 1];
+	uint16_t code;
 	int i;
 
 	if ((wep->weCnt&WIN_CNT) > howmany(WIN_MAXLEN, WIN_CHARS)
@@ -1161,11 +1161,11 @@ win2unixfn(struct mbnambuf *nbp, struct winentry *wep, int chksum,
 /*
  * Compute the checksum of a DOS filename for Win95 use
  */
-u_int8_t
-winChksum(u_int8_t *name)
+uint8_t
+winChksum(uint8_t *name)
 {
 	int i;
-	u_int8_t s;
+	uint8_t s;
 
 	for (s = 0, i = 11; --i >= 0; s += *name++)
 		s = (s << 7)|(s >> 1);
