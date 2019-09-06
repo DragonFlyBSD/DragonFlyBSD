@@ -46,11 +46,13 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include <netproto/802_11/ieee80211_dragonfly.h>
 #include <netproto/mpls/mpls.h>
 
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,6 +120,10 @@ static int	 prefixlen(const char *);
 #ifdef INET6
 static int	 inet6_makenetandmask(struct sockaddr_in6 *, const char *);
 #endif
+
+#define	PRIETHER	"02x:%02x:%02x:%02x:%02x:%02x"
+#define	PRIETHER_ARGS(__enaddr)	(__enaddr)[0], (__enaddr)[1], (__enaddr)[2], \
+				(__enaddr)[3], (__enaddr)[4], (__enaddr)[5]
 
 void
 usage(const char *cp)
@@ -1391,6 +1397,7 @@ const char *msgtypes[] = {
 	"RTM_NEWMADDR: new multicast group membership on iface",
 	"RTM_DELMADDR: multicast group membership removed from iface",
 	"RTM_IFANNOUNCE: interface arrival/departure",
+	"RTM_IEEE80211: IEEE80211 wireless event",
 	0,
 };
 
@@ -1419,6 +1426,13 @@ print_rtmsg(struct rt_msghdr *rtm, int msglen __unused)
 	struct ifma_msghdr *ifmam;
 #endif
 	struct if_announcemsghdr *ifan;
+	union {
+		struct ieee80211_join_event join;
+		struct ieee80211_leave_event leave;
+		struct ieee80211_replay_event replay;
+		struct ieee80211_michael_event michael;
+	} ev;
+	size_t evlen = 0;
 
 	if (verbose == 0)
 		return;
@@ -1453,6 +1467,73 @@ print_rtmsg(struct rt_msghdr *rtm, int msglen __unused)
 		pmsg_addrs((char *)(ifmam + 1), ifmam->ifmam_addrs);
 		break;
 #endif
+	case RTM_IEEE80211:
+		ifan = (struct if_announcemsghdr *)rtm;
+		(void)printf("if# %d, what: ", ifan->ifan_index);
+		switch (ifan->ifan_what) {
+		case RTM_IEEE80211_ASSOC:
+			printf("associate");
+			break;
+		case RTM_IEEE80211_REASSOC:
+			printf("re-associate");
+			break;
+		case RTM_IEEE80211_DISASSOC:
+			printf("disassociate");
+			break;
+		case RTM_IEEE80211_SCAN:
+			printf("scan complete");
+			break;
+		case RTM_IEEE80211_JOIN:
+			evlen = sizeof(ev.join);
+			printf("join");
+			break;
+		case RTM_IEEE80211_LEAVE:
+			evlen = sizeof(ev.leave);
+			printf("leave");
+			break;
+		case RTM_IEEE80211_MICHAEL:
+			evlen = sizeof(ev.michael);
+			printf("michael");
+			break;
+		case RTM_IEEE80211_REPLAY:
+			evlen = sizeof(ev.replay);
+			printf("replay");
+			break;
+		default:
+			evlen = 0;
+			printf("#%d", ifan->ifan_what);
+			break;
+		}
+		if (sizeof(*ifan) + evlen > ifan->ifan_msglen) {
+			printf(" (truncated)\n");
+			break;
+		}
+		(void)memcpy(&ev, (ifan + 1), evlen);
+		switch (ifan->ifan_what) {
+		case RTM_IEEE80211_JOIN:
+		case RTM_IEEE80211_LEAVE:
+			printf(" mac %" PRIETHER,
+			    PRIETHER_ARGS(ev.join.iev_addr));
+			break;
+		case RTM_IEEE80211_REPLAY:
+		case RTM_IEEE80211_MICHAEL:
+			printf(" src %" PRIETHER " dst %" PRIETHER
+			       " cipher %" PRIu8 " keyix %" PRIu8,
+			       PRIETHER_ARGS(ev.replay.iev_src),
+			       PRIETHER_ARGS(ev.replay.iev_dst),
+			       ev.replay.iev_cipher,
+			       ev.replay.iev_keyix);
+			if (ifan->ifan_what == RTM_IEEE80211_REPLAY) {
+				printf(" key rsc %#" PRIx64
+				       " frame rsc %#" PRIx64,
+				       ev.replay.iev_keyrsc, ev.replay.iev_rsc);
+			}
+			break;
+		default:
+			break;
+		}
+		printf("\n");
+		break;
 	case RTM_IFANNOUNCE:
 		ifan = (struct if_announcemsghdr *)rtm;
 		printf("if# %d, what: ", ifan->ifan_index);
