@@ -1417,6 +1417,25 @@ char addrnames[] =
 "\1DST\2GATEWAY\3NETMASK\4GENMASK\5IFP\6IFA\7AUTHOR\010BRD"
 "\011MPLS1\012MPLS2\013MPLS3";
 
+static const char *
+linkstate(struct if_msghdr *ifm)
+{
+	static char buf[64];
+
+	switch (ifm->ifm_data.ifi_link_state) {
+	case LINK_STATE_UNKNOWN:
+		return "carrier: unknown";
+	case LINK_STATE_DOWN:
+		return "carrier: no carrier";
+	case LINK_STATE_UP:
+		return "carrier: active";
+	default:
+		(void)snprintf(buf, sizeof(buf), "carrier: 0x%lx",
+		    ifm->ifm_data.ifi_link_state);
+		return buf;
+	}
+}
+
 static void
 print_rtmsg(struct rt_msghdr *rtm, int msglen __unused)
 {
@@ -1449,7 +1468,7 @@ print_rtmsg(struct rt_msghdr *rtm, int msglen __unused)
 	switch (rtm->rtm_type) {
 	case RTM_IFINFO:
 		ifm = (struct if_msghdr *)rtm;
-		printf("if# %d, flags:", ifm->ifm_index);
+		printf("if# %d, %s, flags:", ifm->ifm_index, linkstate(ifm));
 		bprintf(stdout, ifm->ifm_flags, ifnetflags);
 		pmsg_addrs((char *)(ifm + 1), ifm->ifm_addrs);
 		break;
