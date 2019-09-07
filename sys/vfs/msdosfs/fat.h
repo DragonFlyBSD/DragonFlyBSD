@@ -1,8 +1,9 @@
-/* $FreeBSD: src/sys/msdosfs/fat.h,v 1.9 1999/12/29 04:54:53 peter Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/fat.h,v 1.3 2003/08/20 09:56:32 rob Exp $ */
+/* $FreeBSD$ */
 /*	$NetBSD: fat.h,v 1.12 1997/11/17 15:36:36 ws Exp $	*/
 
 /*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (C) 1994, 1997 Wolfgang Solfrank.
  * Copyright (C) 1994, 1997 TooLs GmbH.
  * All rights reserved.
@@ -33,7 +34,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
+/*-
  * Written by Paul Popelka (paulp@uts.amdahl.com)
  *
  * You can do anything you want with this software, just don't say you wrote
@@ -49,6 +50,8 @@
  * October 1992
  */
 
+#ifndef _FS_MSDOSFS_FAT_H_
+#define	_FS_MSDOSFS_FAT_H_
 /*
  * Some useful cluster numbers.
  */
@@ -67,16 +70,11 @@
 
 /*
  * MSDOSFS:
- * Return true if filesystem uses 12 bit fats. Microsoft Programmer's
+ * Return true if filesystem uses 12 bit FATs. Microsoft Programmer's
  * Reference says if the maximum cluster number in a filesystem is greater
- * than 4078 ((CLUST_RSRVS - CLUST_FIRST) & FAT12_MASK) then we've got a
- * 16 bit fat filesystem. While mounting, the result of this test is stored
+ * than 4084 ((CLUST_RSRVD - CLUST_FIRST) & FAT12_MASK) then we've got a
+ * 16 bit FAT filesystem. While mounting, the result of this test is stored
  * in pm_fatentrysize.
- * GEMDOS-flavour (atari):
- * If the filesystem is on floppy we've got a 12 bit fat filesystem, otherwise
- * 16 bit. We check the d_type field in the disklabel struct while mounting
- * and store the result in the pm_fatentrysize. Note that this kind of
- * detection gets flakey when mounting a vnd-device.
  */
 #define	FAT12(pmp)	(pmp->pm_fatmask == FAT12_MASK)
 #define	FAT16(pmp)	(pmp->pm_fatmask == FAT16_MASK)
@@ -90,8 +88,8 @@
  * These are the values for the function argument to the function
  * fatentry().
  */
-#define	FAT_GET		0x0001	/* get a fat entry */
-#define	FAT_SET		0x0002	/* set a fat entry */
+#define	FAT_GET		0x0001	/* get a FAT entry */
+#define	FAT_SET		0x0002	/* set a FAT entry */
 #define	FAT_GET_AND_SET	(FAT_GET | FAT_SET)
 
 /*
@@ -112,3 +110,4 @@ int extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 void fc_purge(struct denode *dep, u_int frcn);
 
 #endif	/* _KERNEL */
+#endif	/* !_FS_MSDOSFS_FAT_H_ */

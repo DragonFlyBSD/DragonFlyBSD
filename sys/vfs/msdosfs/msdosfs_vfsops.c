@@ -1,7 +1,9 @@
-/* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
+/* $FreeBSD$ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (C) 1994, 1995, 1997 Wolfgang Solfrank.
  * Copyright (C) 1994, 1995, 1997 TooLs GmbH.
  * All rights reserved.
@@ -32,7 +34,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
+/*-
  * Written by Paul Popelka (paulp@uts.amdahl.com)
  *
  * You can do anything you want with this software, just don't say you wrote
@@ -237,7 +239,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	}
 	/*
 	 * Not an update, or updating the name: look up the name
-	 * and verify that it refers to a sensible block device.
+	 * and verify that it refers to a sensible disk device.
 	 */
 	devvp = NULL;
 	error = nlookup_init(&nd, args.fspec, UIO_USERSPACE, NLC_FOLLOW);
@@ -354,7 +356,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	bsp = (union bootsector *)bp->b_data;
 	b33 = (struct byte_bpb33 *)bsp->bs33.bsBPB;
 	b50 = (struct byte_bpb50 *)bsp->bs50.bsBPB;
-	b710 = (struct byte_bpb710 *)bsp->bs710.bsPBP;
+	b710 = (struct byte_bpb710 *)bsp->bs710.bsBPB;
 
 #ifndef MSDOSFS_NOCHECKSIG
 	if (bsp->bs50.bsBootSectSig0 != BOOTSIG0
@@ -447,7 +449,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	}
 
 	pmp->pm_HugeSectors *= pmp->pm_BlkPerSec;
-	pmp->pm_HiddenSects *= pmp->pm_BlkPerSec; /* XXX not used? */
+	pmp->pm_HiddenSects *= pmp->pm_BlkPerSec;	/* XXX not used? */
 	pmp->pm_FATsecs     *= pmp->pm_BlkPerSec;
 	SecPerClust         *= pmp->pm_BlkPerSec;
 
@@ -475,7 +477,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		    <= ((CLUST_RSRVD - CLUST_FIRST) & FAT12_MASK)) {
 			/*
 			 * This will usually be a floppy disk. This size makes
-			 * sure that one fat entry will not be split across
+			 * sure that one FAT entry will not be split across
 			 * multiple blocks.
 			 */
 			pmp->pm_fatmask = FAT12_MASK;
@@ -580,8 +582,8 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	/*
 	 * fillinusemap() needs pm_devvp.
 	 */
-	pmp->pm_dev = dev;
 	pmp->pm_devvp = devvp;
+	pmp->pm_dev = dev;
 
 	/*
 	 * Have the inuse map filled in.
@@ -590,9 +592,9 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		goto error_exit;
 
 	/*
-	 * If they want fat updates to be synchronous then let them suffer
+	 * If they want FAT updates to be synchronous then let them suffer
 	 * the performance degradation in exchange for the on disk copy of
-	 * the fat being correct just about all the time.  I suppose this
+	 * the FAT being correct just about all the time.  I suppose this
 	 * would be a good thing to turn on if the kernel is still flakey.
 	 */
 	if (mp->mnt_flag & MNT_SYNCHRONOUS)
@@ -612,7 +614,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	vfs_add_vnodeops(mp, &msdosfs_vnode_vops, &mp->mnt_vn_norm_ops);
 	dev->si_mountpoint = mp;
 
-	return 0;
+	return (0);
 
 error_exit:
 	if (bp) {
@@ -717,7 +719,7 @@ msdosfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	sbp->f_blocks = pmp->pm_maxcluster + 1;
 	sbp->f_bfree = pmp->pm_freeclustercount;
 	sbp->f_bavail = pmp->pm_freeclustercount;
-	sbp->f_files = pmp->pm_RootDirEnts;			/* XXX */
+	sbp->f_files = pmp->pm_RootDirEnts;	/* XXX */
 	sbp->f_ffree = 0;	/* what to put in here? */
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
@@ -743,14 +745,14 @@ msdosfs_sync(struct mount *mp, int waitfor)
 	int error;
 
 	/*
-	 * If we ever switch to not updating all of the fats all the time,
+	 * If we ever switch to not updating all of the FATs all the time,
 	 * this would be the place to update them from the first one.
 	 */
 	if (pmp->pm_fmod != 0) {
 		if (pmp->pm_flags & MSDOSFSMNT_RONLY) {
 			panic("msdosfs_sync: rofs mod");
 		} else {
-			/* update fats here */
+			/* update FATs here */
 		}
 	}
 	/*

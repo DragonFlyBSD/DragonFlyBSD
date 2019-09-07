@@ -1,4 +1,4 @@
-/* $FreeBSD: head/sys/fs/msdosfs/bpb.h 203827 2010-02-13 12:41:07Z kib $ */
+/* $FreeBSD$ */
 /*	$NetBSD: bpb.h,v 1.7 1997/11/17 15:36:24 ws Exp $	*/
 
 /*-
@@ -17,8 +17,8 @@
  * October 1992
  */
 
-#ifndef _VFS_MSDOSFS_BPB_H_
-#define	_VFS_MSDOSFS_BPB_H_
+#ifndef _FS_MSDOSFS_BPB_H_
+#define	_FS_MSDOSFS_BPB_H_
 
 /*
  * BIOS Parameter Block (BPB) for DOS 3.3
@@ -83,28 +83,6 @@ struct bpb710 {
 	uint16_t	bpbBackup;	/* backup boot sector */
 	uint8_t		bpbReserved[12]; /* reserved for future expansion */
 };
-
-#ifdef atari
-/*
- * BPB for gemdos filesystems. Atari leaves the obsolete stuff undefined.
- * Currently there is no need for a separate BPB structure.
- */
-#if 0
-struct bpb_a {
-	uint16_t	bpbBytesPerSec;	/* bytes per sector		*/
-	uint8_t		bpbSecPerClust;	/* sectors per cluster		*/
-	uint16_t	bpbResSectors;	/* number of reserved sectors	*/
-	uint8_t		bpbFATs;	/* number of FATs		*/
-	uint16_t	bpbRootDirEnts;	/* number of root directory entries */
-	uint16_t	bpbSectors;	/* total number of sectors	*/
-	uint8_t		bpbUseless1;	/* meaningless on gemdos fs	*/
-	uint16_t	bpbFATsecs;	/* number of sectors per FAT	*/
-	uint16_t	bpbUseless2;	/* meaningless for harddisk fs	*/
-	uint16_t	bpbUseless3;	/* meaningless for harddisk fs	*/
-	uint16_t	bpbHiddenSecs;	/* the TOS-BIOS ignores this	*/
-};
-#endif
-#endif	/* atari */
 
 /*
  * The following structures represent how the bpb's look on disk.  shorts
@@ -195,5 +173,4 @@ struct fsinfo {
 	uint8_t fsifill3[508];
 	uint8_t fsisig4[4];
 };
-
-#endif /* !_VFS_MSDOSFS_BPB_H_ */
+#endif /* !_FS_MSDOSFS_BPB_H_ */

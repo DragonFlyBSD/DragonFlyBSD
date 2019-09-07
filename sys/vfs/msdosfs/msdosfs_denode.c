@@ -1,7 +1,9 @@
-/* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
+/* $FreeBSD$ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (C) 1994, 1995, 1997 Wolfgang Solfrank.
  * Copyright (C) 1994, 1995, 1997 TooLs GmbH.
  * All rights reserved.
@@ -32,7 +34,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
+/*-
  * Written by Paul Popelka (paulp@uts.amdahl.com)
  *
  * You can do anything you want with this software, just don't say you wrote
@@ -50,11 +52,11 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/buf.h>
 #include <sys/kernel.h>
-#include <sys/mount.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/buf.h>
+#include <sys/mount.h>
 #include <sys/vnode.h>
 
 #include <vm/vm.h>

@@ -1,7 +1,9 @@
-/* $FreeBSD: src/sys/msdosfs/direntry.h,v 1.15 1999/12/29 04:54:52 peter Exp $ */
+/* $FreeBSD$ */
 /*	$NetBSD: direntry.h,v 1.14 1997/11/17 15:36:32 ws Exp $	*/
 
 /*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (C) 1994, 1995, 1997 Wolfgang Solfrank.
  * Copyright (C) 1994, 1995, 1997 TooLs GmbH.
  * All rights reserved.
@@ -32,7 +34,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
+/*-
  * Written by Paul Popelka (paulp@uts.amdahl.com)
  *
  * You can do anything you want with this software, just don't say you wrote
@@ -47,19 +49,18 @@
  *
  * October 1992
  */
-
-#ifndef _VFS_MSDOSFS_DIRENTRY_H_
-#define	_VFS_MSDOSFS_DIRENTRY_H_
+#ifndef _FS_MSDOSFS_DIRENTRY_H_
+#define	_FS_MSDOSFS_DIRENTRY_H_
 
 /*
  * Structure of a dos directory entry.
  */
 struct direntry {
-	uint8_t	deName[11];		/* filename, blank filled */
+	uint8_t		deName[11];	/* filename, blank filled */
 #define	SLOT_EMPTY	0x00		/* slot has never been used */
 #define	SLOT_E5		0x05		/* the real value is 0xe5 */
 #define	SLOT_DELETED	0xe5		/* file in this slot deleted */
-	uint8_t	deAttributes;		/* file attributes */
+	uint8_t		deAttributes;	/* file attributes */
 #define	ATTR_NORMAL	0x00		/* normal file */
 #define	ATTR_READONLY	0x01		/* file is readonly */
 #define	ATTR_HIDDEN	0x02		/* file is hidden */
@@ -67,18 +68,18 @@ struct direntry {
 #define	ATTR_VOLUME	0x08		/* entry is a volume label */
 #define	ATTR_DIRECTORY	0x10		/* entry is a directory name */
 #define	ATTR_ARCHIVE	0x20		/* file is new or modified */
-	uint8_t	deLowerCase;		/* NT VFAT lower case flags */
+	uint8_t		deLowerCase;	/* NT VFAT lower case flags */
 #define	LCASE_BASE	0x08		/* filename base in lower case */
 #define	LCASE_EXT	0x10		/* filename extension in lower case */
-	uint8_t	deCHundredth;		/* hundredth of seconds in CTime */
-	uint8_t	deCTime[2];		/* create time */
-	uint8_t	deCDate[2];		/* create date */
-	uint8_t	deADate[2];		/* access date */
-	uint8_t	deHighClust[2];		/* high bytes of cluster number */
-	uint8_t	deMTime[2];		/* last update time */
-	uint8_t	deMDate[2];		/* last update date */
-	uint8_t	deStartCluster[2];	/* starting cluster of file */
-	uint8_t	deFileSize[4];		/* size of file in bytes */
+	uint8_t		deCHundredth;	/* hundredth of seconds in CTime */
+	uint8_t		deCTime[2];	/* create time */
+	uint8_t		deCDate[2];	/* create date */
+	uint8_t		deADate[2];	/* access date */
+	uint8_t		deHighClust[2];	/* high bytes of cluster number */
+	uint8_t		deMTime[2];	/* last update time */
+	uint8_t		deMDate[2];	/* last update date */
+	uint8_t		deStartCluster[2]; /* starting cluster of file */
+	uint8_t		deFileSize[4];	/* size of file in bytes */
 };
 
 /*
@@ -131,10 +132,11 @@ struct winentry {
 
 #ifdef _KERNEL
 struct mbnambuf {
-        size_t  nb_len;
-        int     nb_last_id;
-        char    nb_buf[WIN_MAXLEN + 1];
+	size_t	nb_len;
+	int	nb_last_id;
+	char	nb_buf[WIN_MAXLEN + 1];
 };
+
 struct dirent;
 struct msdosfsmount;
 
@@ -157,5 +159,4 @@ uint8_t winChksum(uint8_t *name);
 int winSlotCnt(const u_char *un, size_t unlen, struct msdosfsmount *pmp);
 size_t winLenFixup(const u_char *un, size_t unlen);
 #endif	/* _KERNEL */
-
-#endif	/* !_VFS_MSDOSFS_DIRENTRY_H_ */
+#endif	/* !_FS_MSDOSFS_DIRENTRY_H_ */

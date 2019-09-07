@@ -1,7 +1,9 @@
-/* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
+/* $FreeBSD$ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (C) 1994, 1995, 1997 Wolfgang Solfrank.
  * Copyright (C) 1994, 1995, 1997 TooLs GmbH.
  * All rights reserved.
@@ -32,7 +34,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
+/*-
  * Written by Paul Popelka (paulp@uts.amdahl.com)
  *
  * You can do anything you want with this software, just don't say you wrote
@@ -51,10 +53,10 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
-#include <sys/vnode.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
 #include <sys/mount.h>
+#include <sys/namei.h>
+#include <sys/vnode.h>
 
 #include <sys/buf2.h>
 
@@ -81,9 +83,6 @@
  * Then update the disk block and the denode, and then write the disk block
  * out to disk.  This way disk blocks containing directory entries and in
  * memory denode's will be in synch.
- *
- * msdosfs_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
- *		  struct componentname *a_cnp)
  */
 int
 msdosfs_lookup(struct vop_old_lookup_args *ap)
@@ -145,6 +144,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 		blkoff = MSDOSFSROOT_OFS;
 		goto foundroot;
 	}
+
 	switch (unix2dosfn((const u_char *)cnp->cn_nameptr, dosfilename,
 	    cnp->cn_namelen, 0, pmp)) {
 	case 0:
@@ -250,18 +250,18 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 					    MSDOSFSMNT_SHORTNAME)
 						continue;
 					chksum = win2unixfn(&nb,
-                                            (struct winentry *)dep, chksum,
-                                            pmp);
+					    (struct winentry *)dep, chksum,
+					    pmp);
 					continue;
 				}
 
-                                chksum = winChkName(&nb,
-                                    (const u_char *)cnp->cn_nameptr, unlen,
-                                    chksum, pmp);
+				chksum = winChkName(&nb,
+				    (const u_char *)cnp->cn_nameptr, unlen,
+				    chksum, pmp);
 				if (chksum == -2) {
-                                        chksum = -1;
-                                        continue;
-                                }
+					chksum = -1;
+					continue;
+				}
 
 				/*
 				 * Ignore volume labels (anywhere, not just
@@ -542,7 +542,7 @@ foundroot:
  */
 int
 createde(struct denode *dep, struct denode *ddep, struct denode **depp,
-	 struct componentname *cnp)
+    struct componentname *cnp)
 {
 	int error;
 	u_long dirclust, diroffset;
@@ -763,7 +763,7 @@ doscheckpath(struct denode *source, struct denode *target)
 	if (dep->de_StartCluster == MSDOSFSROOT)
 		goto out;
 	pmp = dep->de_pmp;
-#ifdef DIAGNOSTIC
+#ifdef	DIAGNOSTIC
 	if (pmp != source->de_pmp)
 		panic("doscheckpath: source and target on different filesystems");
 #endif
@@ -829,7 +829,7 @@ out:
  */
 int
 readep(struct msdosfsmount *pmp, u_long dirclust, u_long diroffset,
-       struct buf **bpp, struct direntry **epp)
+    struct buf **bpp, struct direntry **epp)
 {
 	int error;
 	daddr_t bn;
@@ -865,15 +865,17 @@ readde(struct denode *dep, struct buf **bpp, struct direntry **epp)
 
 /*
  * Remove a directory entry. At this point the file represented by the
- * directory entry to be removed is still full length until noone has it
+ * directory entry to be removed is still full length until no one has it
  * open.  When the file no longer being used msdosfs_inactive() is called
  * and will truncate the file to 0 length.  When the vnode containing the
  * denode is needed for some other purpose by VFS it will call
  * msdosfs_reclaim() which will remove the denode from the denode cache.
+ *
+ * pdep	directory where the entry is removed
+ * dep	file to be removed
  */
 int
-removede(struct denode *pdep,	/* directory where the entry is removed */
-	 struct denode *dep)	/* file to be removed */
+removede(struct denode *pdep, struct denode *dep)
 {
 	int error;
 	struct direntry *ep;

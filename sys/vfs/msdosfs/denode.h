@@ -1,8 +1,9 @@
-/* $FreeBSD: src/sys/msdosfs/denode.h,v 1.20 1999/12/29 04:54:52 peter Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/denode.h,v 1.12 2006/09/10 01:26:41 dillon Exp $ */
+/* $FreeBSD$ */
 /*	$NetBSD: denode.h,v 1.25 1997/11/17 15:36:28 ws Exp $	*/
 
 /*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (C) 1994, 1995, 1997 Wolfgang Solfrank.
  * Copyright (C) 1994, 1995, 1997 TooLs GmbH.
  * All rights reserved.
@@ -33,7 +34,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
+/*-
  * Written by Paul Popelka (paulp@uts.amdahl.com)
  *
  * You can do anything you want with this software, just don't say you wrote
@@ -48,6 +49,8 @@
  *
  * October 1992
  */
+#ifndef _FS_MSDOSFS_DENODE_H_
+#define	_FS_MSDOSFS_DENODE_H_
 
 /*
  * This is the pc filesystem specific portion of the vnode structure.
@@ -99,7 +102,7 @@
 #define	MSDOSFSROOT_OFS	0x1fffffff
 
 /*
- * The fat cache structure. fc_fsrcn is the filesystem relative cluster
+ * The FAT cache structure. fc_fsrcn is the filesystem relative cluster
  * number that corresponds to the file relative cluster number in this
  * structure (fc_frcn).
  */
@@ -109,11 +112,11 @@ struct fatcache {
 };
 
 /*
- * The fat entry cache as it stands helps make extending files a "quick"
- * operation by avoiding having to scan the fat to discover the last
+ * The FAT entry cache as it stands helps make extending files a "quick"
+ * operation by avoiding having to scan the FAT to discover the last
  * cluster of the file. The cache also helps sequential reads by
  * remembering the last cluster read from the file.  This also prevents us
- * from having to rescan the fat to find the next cluster to read.  This
+ * from having to rescan the FAT to find the next cluster to read.  This
  * cache is probably pretty worthless if a file is opened by multiple
  * processes.
  */
@@ -125,11 +128,11 @@ struct fatcache {
 #define	FCE_EMPTY	0xffffffff	/* doesn't represent an actual cluster # */
 
 /*
- * Set a slot in the fat cache.
+ * Set a slot in the FAT cache.
  */
 #define	fc_setcache(dep, slot, frcn, fsrcn) \
-	(dep)->de_fc[slot].fc_frcn = frcn; \
-	(dep)->de_fc[slot].fc_fsrcn = fsrcn;
+	(dep)->de_fc[(slot)].fc_frcn = (frcn); \
+	(dep)->de_fc[(slot)].fc_fsrcn = (fsrcn);
 
 /*
  * This is the in memory variant of a dos directory entry.  It is usually
@@ -158,7 +161,7 @@ struct denode {
 	u_short de_MDate;	/* modification date */
 	u_long de_StartCluster; /* starting cluster of file */
 	u_long de_FileSize;	/* size of file in bytes */
-	struct fatcache de_fc[FC_SIZE];	/* fat cache */
+	struct fatcache de_fc[FC_SIZE];	/* FAT cache */
 	u_quad_t de_modrev;	/* Revision level for lease. */
 };
 
@@ -180,7 +183,7 @@ struct denode {
 #define DE_INTERNALIZE32(dep, dp)			\
 	 ((dep)->de_StartCluster |= getushort((dp)->deHighClust) << 16)
 #define DE_INTERNALIZE(dep, dp)				\
-	(bcopy((dp)->deName, (dep)->de_Name, 11),	\
+	(memcpy((dep)->de_Name, (dp)->deName, 11),	\
 	 (dep)->de_Attributes = (dp)->deAttributes,	\
 	 (dep)->de_LowerCase = (dp)->deLowerCase,	\
 	 (dep)->de_CHun = (dp)->deCHundredth,		\
@@ -194,7 +197,7 @@ struct denode {
 	 (FAT32((dep)->de_pmp) ? DE_INTERNALIZE32((dep), (dp)) : 0))
 
 #define DE_EXTERNALIZE(dp, dep)				\
-	(bcopy((dep)->de_Name, (dp)->deName, 11),	\
+	(memcpy((dp)->deName, (dep)->de_Name, 11),	\
 	 (dp)->deAttributes = (dep)->de_Attributes,	\
 	 (dp)->deLowerCase = (dep)->de_LowerCase,	\
 	 (dp)->deCHundredth = (dep)->de_CHun,		\
@@ -208,9 +211,6 @@ struct denode {
 	     ((dep)->de_Attributes & ATTR_DIRECTORY) ?	\
 	     0 : (dep)->de_FileSize), \
 	 putushort((dp)->deHighClust, (dep)->de_StartCluster >> 16))
-
-#define	de_forw		de_chain[0]
-#define	de_back		de_chain[1]
 
 #ifdef _KERNEL
 
@@ -243,7 +243,7 @@ struct denode {
 		    (dep)->de_flag |= DE_MODIFIED;			\
 	}								\
 	(dep)->de_flag &= ~(DE_UPDATE | DE_CREATE | DE_ACCESS);		\
-} while (0);
+} while (0)
 
 /*
  * This overlays the fid structure (see mount.h)
@@ -285,3 +285,5 @@ int removede(struct denode *pdep, struct denode *dep);
 int detrunc(struct denode *dep, u_long length, int flags);
 int doscheckpath( struct denode *source, struct denode *target);
 #endif	/* _KERNEL */
+
+#endif	/* !_FS_MSDOSFS_DENODE_H_ */

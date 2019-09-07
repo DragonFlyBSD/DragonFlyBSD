@@ -1,7 +1,9 @@
-/* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
+/* $FreeBSD$ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (C) 1994, 1995, 1997 Wolfgang Solfrank.
  * Copyright (C) 1994, 1995, 1997 TooLs GmbH.
  * All rights reserved.
@@ -32,7 +34,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
+/*-
  * Written by Paul Popelka (paulp@uts.amdahl.com)
  *
  * You can do anything you want with this software, just don't say you wrote
@@ -95,16 +97,15 @@
  * that when a directory is actually read/written (via read, write, or
  * readdir, or seek) we must use the vnode for the filesystem instead of
  * the vnode for the directory as would happen in ufs. This is to insure we
- * retreive the correct block from the buffer cache since the hash value is
+ * retrieve the correct block from the buffer cache since the hash value is
  * based upon the vnode address and the desired block number.
  */
 
 /*
  * Create a regular file. On entry the directory to contain the file being
- * created is locked.  We must release before we return.
- *
- * msdosfs_create(struct vnode *a_dvp, struct vnode **a_vpp,
- *		  struct componentname *a_cnp, struct vattr *a_vap)
+ * created is locked.  We must release before we return. We must also free
+ * the pathname buffer pointed at by cnp->cn_pnbuf, always on error, or
+ * only if the SAVESTART bit in cn_flags is clear on success.
  */
 static int
 msdosfs_create(struct vop_old_create_args *ap)
@@ -163,10 +164,6 @@ bad:
 
 static int msdosfs_mkdir(struct vop_old_mkdir_args *);
 
-/*
- * msdosfs_mknod(struct vnode *a_dvp, struct vnode **a_vpp,
- *		 struct componentname *a_cnp, struct vattr *a_vap)
- */
 static int
 msdosfs_mknod(struct vop_old_mknod_args *ap)
 {
@@ -181,19 +178,12 @@ msdosfs_mknod(struct vop_old_mknod_args *ap)
 	/* NOTREACHED */
 }
 
-/*
- * msdosfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *		struct file *a_fp)
- */
 static int
 msdosfs_open(struct vop_open_args *ap)
 {
 	return(vop_stdopen(ap));
 }
 
-/*
- * msdosfs_close(struct vnode *a_vp, int a_fflag)
- */
 static int
 msdosfs_close(struct vop_close_args *ap)
 {
@@ -208,9 +198,6 @@ msdosfs_close(struct vop_close_args *ap)
 	return (vop_stdclose(ap));
 }
 
-/*
- * msdosfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
- */
 static int
 msdosfs_access(struct vop_access_args *ap)
 {
@@ -226,9 +213,6 @@ msdosfs_access(struct vop_access_args *ap)
 	return (vop_helper_access(ap, pmp->pm_uid, pmp->pm_gid, file_mode, 0));
 }
 
-/*
- * msdosfs_getattr(struct vnode *a_vp, struct vattr *a_vap)
- */
 static int
 msdosfs_getattr(struct vop_getattr_args *ap)
 {
@@ -291,10 +275,6 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	return (0);
 }
 
-/*
- * msdosfs_setattr(struct vnode *a_vp, struct vattr *a_vap,
- *		   struct ucred *a_cred)
- */
 static int
 msdosfs_setattr(struct vop_setattr_args *ap)
 {
@@ -445,10 +425,6 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	return (deupdat(dep, 1));
 }
 
-/*
- * msdosfs_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
- *		struct ucred *a_cred)
- */
 static int
 msdosfs_read(struct vop_read_args *ap)
 {
@@ -552,9 +528,6 @@ msdosfs_read(struct vop_read_args *ap)
 
 /*
  * Write data to a file or directory.
- *
- * msdosfs_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
- *		 struct ucred *a_cred)
  */
 static int
 msdosfs_write(struct vop_write_args *ap)
@@ -681,7 +654,7 @@ msdosfs_write(struct vop_write_args *ap)
 			clrbuf(bp);
 			/*
 			 * Do the bmap now, since pcbmap needs buffers
-			 * for the fat table. (see msdosfs_strategy)
+			 * for the FAT table. (see msdosfs_strategy)
 			 */
 			if (bp->b_bio2.bio_offset == NOOFFSET) {
 				daddr_t lblkno = de_off2cn(pmp, bp->b_loffset);
@@ -770,8 +743,6 @@ errexit:
  *
  * This function is worthless for vnodes that represent directories. Maybe we
  * could just do a sync if they try an fsync on a directory file.
- *
- * msdosfs_fsync(struct vnode *a_vp, int a_waitfor)
  */
 static int
 msdosfs_fsync(struct vop_fsync_args *ap)
@@ -794,10 +765,6 @@ loop:
 	return (deupdat(VTODE(vp), ap->a_waitfor == MNT_WAIT));
 }
 
-/*
- * msdosfs_remove(struct vnode *a_dvp, struct vnode *a_vp,
- *		  struct componentname *a_cnp)
- */
 static int
 msdosfs_remove(struct vop_old_remove_args *ap)
 {
@@ -818,9 +785,6 @@ msdosfs_remove(struct vop_old_remove_args *ap)
  * DOS filesystems don't know what links are. But since we already called
  * msdosfs_lookup() with create and lockparent, the parent is locked so we
  * have to free it before we return the error.
- *
- * msdosfs_link(struct vnode *a_tdvp, struct vnode *a_vp,
- *		struct componentname *a_cnp)
  */
 static int
 msdosfs_link(struct vop_old_link_args *ap)
@@ -878,10 +842,6 @@ msdosfs_link(struct vop_old_link_args *ap)
  * I'm not sure how the memory containing the pathnames pointed at by the
  * componentname structures is freed, there may be some memory bleeding
  * for each rename done.
- *
- * msdosfs_rename(struct vnode *a_fdvp, struct vnode *a_fvp,
- *		  struct componentname *a_fcnp, struct vnode *a_tdvp,
- *		  struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
 msdosfs_rename(struct vop_old_rename_args *ap)
@@ -983,7 +943,7 @@ abortit:
 	/*
 	 * If ".." must be changed (ie the directory gets a new
 	 * parent) then the source directory must not be in the
-	 * directory heirarchy above the target, as this would
+	 * directory hierarchy above the target, as this would
 	 * orphan everything below the source directory. Also
 	 * the user must have write permission in the source so
 	 * as to be able to change "..". We must repeat the call
@@ -1275,10 +1235,6 @@ static struct {
 	}
 };
 
-/*
- * msdosfs_mkdir(struct vnode *a_dvp, struct vnode **a_vpp,
- *		 struct componentname *a_cnp, struct vattr *a_vap)
- */
 static int
 msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 {
@@ -1383,10 +1339,6 @@ bad2:
 	return (error);
 }
 
-/*
- * msdosfs_rmdir(struct vnode *a_dvp, struct vnode *a_vp,
- *		 struct componentname *a_cnp)
- */
 static int
 msdosfs_rmdir(struct vop_old_rmdir_args *ap)
 {
@@ -1439,10 +1391,6 @@ out:
 
 /*
  * DOS filesystems don't know what symlinks are.
- *
- * msdosfs_symlink(struct vnode *a_dvp, struct vnode **a_vpp,
- *		   struct componentname *a_cnp, struct vattr *a_vap,
- *		   char *a_target)
  */
 static int
 msdosfs_symlink(struct vop_old_symlink_args *ap)
@@ -1450,11 +1398,6 @@ msdosfs_symlink(struct vop_old_symlink_args *ap)
 	return (EOPNOTSUPP);
 }
 
-/*
- * msdosfs_readdir(struct vnode *a_vp, struct uio *a_uio,
- *		   struct ucred *a_cred, int *a_eofflag, int *a_ncookies,
- *		   off_t **a_cookies)
- */
 static int
 msdosfs_readdir(struct vop_readdir_args *ap)
 {
@@ -1721,9 +1664,6 @@ done:
  * vpp - returns the vnode for the block special file holding the filesystem
  *	 containing the file of interest
  * bnp - address of where to return the filesystem relative block number
- *
- * msdosfs_bmap(struct vnode *a_vp, off_t a_loffset,
- *		off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 msdosfs_bmap(struct vop_bmap_args *ap)
@@ -1756,9 +1696,6 @@ msdosfs_bmap(struct vop_bmap_args *ap)
 	return (error);
 }
 
-/*
- * msdosfs_strategy(struct vnode *a_vp, struct bio *a_bio)
- */
 static int
 msdosfs_strategy(struct vop_strategy_args *ap)
 {
@@ -1810,9 +1747,6 @@ msdosfs_strategy(struct vop_strategy_args *ap)
 	return (0);
 }
 
-/*
- * msdosfs_print(struct vnode *vp)
- */
 static int
 msdosfs_print(struct vop_print_args *ap)
 {
@@ -1826,9 +1760,6 @@ msdosfs_print(struct vop_print_args *ap)
 	return (0);
 }
 
-/*
- * msdosfs_pathconf(struct vnode *a_vp, int a_name, int *a_retval)
- */
 static int
 msdosfs_pathconf(struct vop_pathconf_args *ap)
 {

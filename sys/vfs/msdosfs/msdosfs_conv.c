@@ -1,7 +1,9 @@
-/* $FreeBSD: src/sys/msdosfs/msdosfs_conv.c,v 1.29.2.1 2002/11/08 22:01:22 semenu Exp $ */
+/* $FreeBSD$ */
 /*	$NetBSD: msdosfs_conv.c,v 1.25 1997/11/17 15:36:40 ws Exp $	*/
 
 /*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (C) 1995, 1997 Wolfgang Solfrank.
  * Copyright (C) 1995, 1997 TooLs GmbH.
  * All rights reserved.
@@ -32,7 +34,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
+/*-
  * Written by Paul Popelka (paulp@uts.amdahl.com)
  *
  * You can do anything you want with this software, just don't say you wrote
@@ -48,20 +50,15 @@
  * October 1992
  */
 
-/*
- * System include files.
- */
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/kernel.h>		/* defines tz */
 #include <sys/systm.h>
-#include <sys/iconv.h>
 #include <machine/clock.h>
 #include <sys/dirent.h>
+#include <sys/iconv.h>
 #include <sys/mount.h>
-/*
- * MSDOSFS include files.
- */
+
 #include "bpb.h"
 #include "msdosfsmount.h"
 #include "direntry.h"
@@ -304,8 +301,9 @@ dos2unixtime(u_int dd, u_int dt, u_int dh, struct timespec *tsp)
  * 2 - character ('.' and ' ') should be skipped in DOS file name,
  *     and generation number inserted.
  */
-static u_char
+static const u_char
 unix2dos[256] = {
+/* iso8859-1 -> cp850 */
 	0,    0,    0,    0,    0,    0,    0,    0,	/* 00-07 */
 	0,    0,    0,    0,    0,    0,    0,    0,	/* 08-0f */
 	0,    0,    0,    0,    0,    0,    0,    0,	/* 10-17 */
@@ -340,8 +338,9 @@ unix2dos[256] = {
 	0x9d, 0xeb, 0xe9, 0xea, 0x9a, 0xed, 0xe8, 0x98,	/* f8-ff */
 };
 
-static u_char
+static const u_char
 dos2unix[256] = {
+/* cp850 -> iso8859-1 */
 	0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f,	/* 00-07 */
 	0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f,	/* 08-0f */
 	0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f,	/* 10-17 */
@@ -376,8 +375,9 @@ dos2unix[256] = {
 	0xb0, 0xa8, 0xb7, 0xb9, 0xb3, 0xb2, 0x3f, 0x3f,	/* f8-ff */
 };
 
-static u_char
+static const u_char
 u2l[256] = {
+/* tolower */
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, /* 00-07 */
 	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, /* 08-0f */
 	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, /* 10-17 */
@@ -412,8 +412,9 @@ u2l[256] = {
 	0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff, /* f8-ff */
 };
 
-static u_char
+static const u_char
 l2u[256] = {
+/* toupper */
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, /* 00-07 */
 	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, /* 08-0f */
 	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, /* 10-17 */
@@ -519,6 +520,7 @@ dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
 	 */
 	if (*dn == SLOT_E5)
 		*dn = 0xe5;
+
 	/*
 	 * Copy the name portion into the unix filename string.
 	 */
@@ -538,7 +540,7 @@ dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
 	 * Now, if there is an extension then put in a period and copy in
 	 * the extension.
 	 */
-	 if (*dn != ' ') {
+	if (*dn != ' ') {
 		*un++ = '.';
 		thislong++;
 		for (i = 3; i > 0 && *dn != ' ';) {
@@ -662,7 +664,6 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
  *	2 if conversion was successful
  *	3 if conversion was successful and generation number was inserted
  */
-
 int
 unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
     struct msdosfsmount *pmp)
@@ -681,6 +682,7 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
 	for (i = 0; i < 11; i++)
 		dn[i] = ' ';
 	dn[11] = 0;
+
 	/*
 	 * The filenames "." and ".." are handled specially, since they
 	 * don't follow dos filename rules.
@@ -694,6 +696,7 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
 		dn[1] = '.';
 		return gen <= 1;
 	}
+
 	/*
 	 * Filenames with only blanks and dots are not allowed!
 	 */
@@ -702,20 +705,22 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
 			break;
 	if (i < 0)
 		return 0;
+
 	/*
 	 * Filenames with some characters are not allowed!
 	 */
 	for (cp = un, i = unlen; i > 0;)
 		if (unix2doschr(&cp, (size_t *)&i, pmp) == 0)
 			return 0;
+
 	/*
 	 * Now find the extension
 	 * Note: dot as first char doesn't start extension
-	 *       and trailing dots and blanks are ignored
+	 *	 and trailing dots and blanks are ignored
 	 * Note(2003/7): It seems recent Windows has
-	 *       defferent rule than this code, that Windows
-	 *       ignores all dots before extension, and use all
-	 *       chars as filename except for dots.
+	 *	 defferent rule than this code, that Windows
+	 *	 ignores all dots before extension, and use all
+	 *	 chars as filename except for dots.
 	 */
 	dp = dp1 = NULL;
 	for (cp = un + 1, i = unlen - 1; --i >= 0;) {
@@ -733,6 +738,7 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
 			break;
 		}
 	}
+
 	/*
 	 * Now convert it (this part is for extension).
 	 * As Windows XP do, if it's not ascii char,
@@ -778,6 +784,7 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
 		for (dp = cp; *--dp == ' ' || *dp == '.';);
 		dp++;
 	}
+
 	/*
 	 * Now convert the rest of the name
 	 */
@@ -817,6 +824,7 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
 	 */
 	if (!j)
 		dn[0] = '_';
+
 	/*
 	 * If there wasn't any char dropped,
 	 * there is no place for generation numbers
@@ -826,6 +834,7 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
 			conv = 0;
 		goto done;
 	}
+
 	/*
 	 * Now insert the generation number into the filename part
 	 */
@@ -850,12 +859,14 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen,
 	dn[i++] = '~';
 	while (wcp < gentext + sizeof(gentext))
 		dn[i++] = *wcp++;
+
 	/*
 	 * Tail of the filename should be space
 	 */
 	while (i < 8)
 		dn[i++] = ' ';
 	conv = 3;
+
 done:
 	/*
 	 * The first character cannot be E5,
@@ -863,6 +874,7 @@ done:
 	 */
 	if (dn[0] == 0xe5)
 		dn[0] = SLOT_E5;
+
 	return conv;
 }
 
@@ -944,24 +956,21 @@ unix2winfn(const u_char *un, size_t unlen, struct winentry *wep, int cnt,
 	 * Now convert the filename parts
 	 */
 	end = 0;
-	for (wcp = wep->wePart1, i = sizeof(wep->wePart1)/2; --i >= 0 && !end;)
-	{
+	for (wcp = wep->wePart1, i = sizeof(wep->wePart1)/2; --i >= 0 && !end;) {
 		code = unix2winchr(&un, &unlen, 0, pmp);
 		*wcp++ = code;
 		*wcp++ = code >> 8;
 		if (!code)
 			end = WIN_LAST;
 	}
-	for (wcp = wep->wePart2, i = sizeof(wep->wePart2)/2; --i >= 0 && !end;)
-	{
+	for (wcp = wep->wePart2, i = sizeof(wep->wePart2)/2; --i >= 0 && !end;) {
 		code = unix2winchr(&un, &unlen, 0, pmp);
 		*wcp++ = code;
 		*wcp++ = code >> 8;
 		if (!code)
 			end = WIN_LAST;
 	}
-	for (wcp = wep->wePart3, i = sizeof(wep->wePart3)/2; --i >= 0 && !end;)
-	{
+	for (wcp = wep->wePart3, i = sizeof(wep->wePart3)/2; --i >= 0 && !end;) {
 		code = unix2winchr(&un, &unlen, 0, pmp);
 		*wcp++ = code;
 		*wcp++ = code >> 8;
@@ -1013,6 +1022,7 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
 	len = d_namlen;
 	if (unlen != len)
 		return -2;
+
 	for (np = d_name; unlen > 0 && len > 0;) {
 		/*
 		 * Comparison must be case insensitive, because FAT disallows
@@ -1083,6 +1093,7 @@ win2unixfn(struct mbnambuf *nbp, struct winentry *wep, int chksum,
 	if ((wep->weCnt&WIN_CNT) > howmany(WIN_MAXLEN, WIN_CHARS)
 	    || !(wep->weCnt&WIN_CNT))
 		return -1;
+
 	/*
 	 * First compare checksums
 	 */
@@ -1092,6 +1103,7 @@ win2unixfn(struct mbnambuf *nbp, struct winentry *wep, int chksum,
 		chksum = -1;
 	if (chksum == -1)
 		return -1;
+
 	/*
 	 * Convert the name parts
 	 */
@@ -1159,7 +1171,7 @@ win2unixfn(struct mbnambuf *nbp, struct winentry *wep, int chksum,
 }
 
 /*
- * Compute the checksum of a DOS filename for Win95 use
+ * Compute the unrolled checksum of a DOS filename for Win95 LFN use.
  */
 uint8_t
 winChksum(uint8_t *name)
@@ -1169,7 +1181,7 @@ winChksum(uint8_t *name)
 
 	for (s = 0, i = 11; --i >= 0; s += *name++)
 		s = (s << 7)|(s >> 1);
-	return s;
+	return (s);
 }
 
 /*
@@ -1182,6 +1194,7 @@ winSlotCnt(const u_char *un, size_t unlen, struct msdosfsmount *pmp)
 	char wn[WIN_MAXLEN * 2 + 1], *wnp;
 
 	unlen = winLenFixup(un, unlen);
+
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
 		wlen = WIN_MAXLEN * 2;
 		wnp = wn;
@@ -1191,13 +1204,14 @@ winSlotCnt(const u_char *un, size_t unlen, struct msdosfsmount *pmp)
 			return 0;
 		return howmany(WIN_MAXLEN - wlen/2, WIN_CHARS);
 	}
+
 	if (unlen > WIN_MAXLEN)
 		return 0;
 	return howmany(unlen, WIN_CHARS);
 }
 
 /*
- * Determine the number of bytes neccesary for Win95 names
+ * Determine the number of bytes necessary for Win95 names
  */
 size_t
 winLenFixup(const u_char *un, size_t unlen)
