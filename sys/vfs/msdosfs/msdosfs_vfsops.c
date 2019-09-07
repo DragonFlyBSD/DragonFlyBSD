@@ -109,6 +109,7 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 	pmp->pm_uid = argp->uid;
 	pmp->pm_mask = argp->mask & ALLPERMS;
 	pmp->pm_flags |= argp->flags & MSDOSFSMNT_MNTOPT;
+
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
 		bcopy(argp->cs_local, cs_local, sizeof(cs_local));
 		bcopy(argp->cs_dos, cs_dos, sizeof(cs_dos));
@@ -195,8 +196,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			}
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD))
-			/* not yet implemented */
-			error = EOPNOTSUPP;
+			error = EOPNOTSUPP; /* not yet implemented */
 		if (error)
 			return (error);
 		if ((pmp->pm_flags & MSDOSFSMNT_RONLY) &&
@@ -562,9 +562,9 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	 * Check and validate (or perhaps invalidate?) the fsinfo structure?
 	 */
 	if (pmp->pm_fsinfo && pmp->pm_nxtfree > pmp->pm_maxcluster) {
-		kprintf(
-		"Next free cluster in FSInfo (%lu) exceeds maxcluster (%lu)\n",
-		    pmp->pm_nxtfree, pmp->pm_maxcluster);
+		kprintf("Next free cluster in FSInfo (%lu) exceeds "
+			"maxcluster (%lu)\n",
+			pmp->pm_nxtfree, pmp->pm_maxcluster);
 		error = EINVAL;
 		goto error_exit;
 	}
@@ -648,8 +648,10 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 	error = vflush(mp, 0, flags);
 	if (error)
 		return error;
+
 	pmp = VFSTOMSDOSFS(mp);
 	pmp->pm_devvp->v_rdev->si_mountpoint = NULL;
+
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
 		if(pmp->pm_w2u)
 			msdos_iconv->close(pmp->pm_w2u);
@@ -678,7 +680,7 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 
 	vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_CLOSE(pmp->pm_devvp,
-		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE,
+		    pmp->pm_flags & MSDOSFSMNT_RONLY ? FREAD : FREAD | FWRITE,
 		    NULL);
 	vn_unlock(pmp->pm_devvp);
 	vrele(pmp->pm_devvp);
@@ -745,9 +747,9 @@ msdosfs_sync(struct mount *mp, int waitfor)
 	 * this would be the place to update them from the first one.
 	 */
 	if (pmp->pm_fmod != 0) {
-		if (pmp->pm_flags & MSDOSFSMNT_RONLY)
+		if (pmp->pm_flags & MSDOSFSMNT_RONLY) {
 			panic("msdosfs_sync: rofs mod");
-		else {
+		} else {
 			/* update fats here */
 		}
 	}

@@ -354,10 +354,10 @@ again:
 
 		ldep->de_Attributes = ATTR_DIRECTORY;
 		ldep->de_LowerCase = 0;
-		if (FAT32(pmp))
+		if (FAT32(pmp)) {
 			ldep->de_StartCluster = pmp->pm_rootdirblk;
 			/* de_FileSize will be filled in further down */
-		else {
+		} else {
 			ldep->de_StartCluster = MSDOSFSROOT;
 			ldep->de_FileSize = pmp->pm_rootdirsize * DEV_BSIZE;
 		}

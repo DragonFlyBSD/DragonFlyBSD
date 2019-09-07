@@ -65,6 +65,9 @@
 #include "fat.h"
 
 /*
+ * XXX Implement .vop_nresolve and replace old vnops which depend on this.
+ */
+/*
  * When we search a directory the blocks containing directory entries are
  * read and examined.  The directory entries contain information that would
  * normally be in the inode of a unix filesystem.  This means that some of
@@ -243,7 +246,8 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 				 * Check for Win95 long filename entry
 				 */
 				if (dep->deAttributes == ATTR_WIN95) {
-				if (pmp->pm_flags & MSDOSFSMNT_SHORTNAME)
+					if (pmp->pm_flags &
+					    MSDOSFSMNT_SHORTNAME)
 						continue;
 					chksum = win2unixfn(&nb,
                                             (struct winentry *)dep, chksum,
@@ -320,9 +324,9 @@ notfound:
 	 * the pathname and the directory hasn't been removed.
 	 */
 	mprintf("msdosfs_lookup(): op %d, refcnt %ld\n",
-	    nameiop, dp->de_refcnt);
+		nameiop, dp->de_refcnt);
 	mprintf("               slotcount %d, slotoffset %d\n",
-	       slotcount, slotoffset);
+		slotcount, slotoffset);
 	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
 	    dp->de_refcnt > 0) {
 		/*
@@ -631,8 +635,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 				ddep->de_fndoffset -= sizeof(struct direntry);
 			}
 			if (!unix2winfn(un, unlen, (struct winentry *)ndep,
-					cnt++, chksum,
-					pmp))
+					cnt++, chksum, pmp))
 				break;
 		}
 	}
