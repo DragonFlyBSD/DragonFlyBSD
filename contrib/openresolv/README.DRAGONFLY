@@ -2,16 +2,28 @@ OPENRESOLV
 ==========
 
 Original source can be downloaded from:
-https://github.com/rsmarples/openresolv/releases
+https://roy.marples.name/downloads/openresolv/
 
-file = openresolv-openresolv-3.9.0.tar.gz
-date = 2016 December 30
-size = 20931
-sha1 = f1cf9b923b812b56e50c792cd953891bee93cdf6
+file = openresolv-3.9.2.tar.gz
+date = 2019 September 8
+size = 20200
+SHA256 = 14d7e241682e5566f6b8bf4c7316c86d7a9b8e7ed48e1de4967dbf1ea84ed373
 
-The file README.DELETED contains a list of deleted files and directories.
+The source is imported via a Makefile target rather than by hand.
+There is no README.DELETED for this import as it's all automated.
 
-No local modification is applied.
+Use "git diff vendor/OPENRESOLV contrib/resolvconf" to see local modifications.
 
-The program is installed by 'sbin/resolvconf', and the configuration file is
-installed by 'etc/Makefile'.
+The program and hook scripts are installed by 'sbin/resolvconf', and the
+configuration file is installed by 'etc/Makefile'.
+
+Upgrade notes
+-------------
+
+1. Configure
+2. Import
+4. Tailor Makefile in sbin/resolvconf to import
+
+$ ./configure
+$ make import-src DESTDIR=/usr/src/contrib/openresolv
+$ vi /usr/src/sbin/resolvconf/Makefile
