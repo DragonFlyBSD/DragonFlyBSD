@@ -12,7 +12,7 @@ SHA256 = 14d7e241682e5566f6b8bf4c7316c86d7a9b8e7ed48e1de4967dbf1ea84ed373
 The source is imported via a Makefile target rather than by hand.
 There is no README.DELETED for this import as it's all automated.
 
-Use "git diff vendor/OPENRESOLV contrib/resolvconf" to see local modifications.
+Use "git diff vendor/OPENRESOLV contrib/openresolv" to see local modifications.
 
 The program and hook scripts are installed by 'sbin/resolvconf', and the
 configuration file is installed by 'etc/Makefile'.
