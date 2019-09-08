@@ -499,6 +499,7 @@ nd6_timer_dispatch(netmsg_t nmsg)
 						    ICMP6_DST_UNREACH_ADDR, 0);
 					ln->ln_hold = NULL;
 				}
+				rt_rtmsg(RTM_MISS, rt, rt->rt_ifp, 0);
 				next = nd6_free(rt);
 			}
 			break;
@@ -1004,6 +1005,8 @@ nd6_free(struct rtentry *rt)
 	struct llinfo_nd6 *ln = (struct llinfo_nd6 *)rt->rt_llinfo, *next;
 	struct in6_addr in6 = ((struct sockaddr_in6 *)rt_key(rt))->sin6_addr;
 	struct nd_defrouter *dr;
+	int error;
+	struct rtentry *nrt = NULL;
 
 	/*
 	 * we used to have kpfctlinput(PRC_HOSTDEAD) here.
@@ -1079,7 +1082,15 @@ nd6_free(struct rtentry *rt)
 	 * caches, and disable the route entry not to be used in already
 	 * cached routes.
 	 */
-	rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, NULL);
+	error = rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, &nrt);
+	if (error == 0 && nrt != NULL) {
+		struct sockaddr_dl *sdl;
+
+		sdl = (struct sockaddr_dl *)nrt->rt_gateway;
+		if (sdl->sdl_alen != 0)
+			rt_rtmsg(RTM_DELETE, nrt, nrt->rt_ifp, 0);
+		rtfree(nrt);
+	}
 
 	return (next);
 }
@@ -1194,8 +1205,7 @@ nd6_rtrequest(int req, struct rtentry *rt)
 			 * treated as on-link.
 			 */
 			rt_setgate(rt, rt_key(rt),
-				   (struct sockaddr *)&null_sdl,
-				   RTL_DONTREPORT);
+				   (struct sockaddr *)&null_sdl);
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = ifp->if_type;
 			SDL(gate)->sdl_index = ifp->if_index;
@@ -1813,6 +1823,9 @@ fail:
 		}
 		break;
 	}
+
+	if (llchange || lladdr)
+		rt_rtmsg(llchange ? RTM_CHANGE : RTM_ADD, rt, rt->rt_ifp, 0);
 
 	/*
 	 * When the link-layer address of a router changes, select the

@@ -162,7 +162,7 @@ static void	arpintr(netmsg_t msg);
 static void	arptfree(struct llinfo_arp *);
 static void	arptimer(void *);
 static struct llinfo_arp *
-		arplookup(in_addr_t, boolean_t, boolean_t, boolean_t);
+		arplookup(in_addr_t, boolean_t, boolean_t);
 #ifdef INET
 static void	in_arpinput(struct mbuf *);
 static void	in_arpreply(struct mbuf *m, in_addr_t, in_addr_t);
@@ -246,8 +246,7 @@ arp_rtrequest(int req, struct rtentry *rt)
 			 * Case 1: This route should come from a route to iface.
 			 */
 			rt_setgate(rt, rt_key(rt),
-				   (struct sockaddr *)&null_sdl,
-				   RTL_DONTREPORT);
+				   (struct sockaddr *)&null_sdl);
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = rt->rt_ifp->if_type;
 			SDL(gate)->sdl_index = rt->rt_ifp->if_index;
@@ -529,8 +528,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		la = rt->rt_llinfo;
 	}
 	if (la == NULL) {
-		la = arplookup(SIN(dst)->sin_addr.s_addr,
-			       TRUE, RTL_REPORTMSG, FALSE);
+		la = arplookup(SIN(dst)->sin_addr.s_addr, TRUE, FALSE);
 		if (la != NULL)
 			rt = la->la_rt;
 	}
@@ -599,6 +597,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 				rt->rt_expire += arpt_down;
 				la->la_asked = 0;
 				la->la_preempt = arp_maxtries;
+				rt_rtmsg(RTM_MISS, rt, rt->rt_ifp, 0);
 			}
 		}
 	}
@@ -691,7 +690,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_creation_failure, CTLFLAG_RW,
  */
 static int
 arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
-		 boolean_t generate_report, boolean_t dologging)
+		 boolean_t dologging)
 {
 	struct arphdr *ah = mtod(m, struct arphdr *);
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
@@ -705,9 +704,11 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	KASSERT(curthread->td_type == TD_TYPE_NETISR,
 	    ("arp update not in netisr"));
 
-	la = arplookup(saddr, create, generate_report, FALSE);
+	la = arplookup(saddr, create, FALSE);
 	if (la && (rt = la->la_rt) && (sdl = SDL(rt->rt_gateway))) {
 		struct in_addr isaddr = { saddr };
+		int rt_cmd = sdl->sdl_alen == 0 ? RTM_ADD : RTM_CHANGE;
+		bool do_rtmsg = false;
 
 		/*
 		 * Normally arps coming in on the wrong interface are ignored,
@@ -760,10 +761,12 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			if (sdl->sdl_type != ifp->if_type) {
 				sdl->sdl_type = ifp->if_type;
 				changed = 1;
+				do_rtmsg = true;
 			}
 			if (sdl->sdl_index != ifp->if_index) {
 				sdl->sdl_index = ifp->if_index;
 				changed = 1;
+				do_rtmsg = true;
 			}
 		}
 		if (sdl->sdl_alen &&
@@ -791,6 +794,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 				}
 				return changed;
 			}
+			do_rtmsg = true;
 		}
 		/*
 		 * sanity check for the address length.
@@ -815,6 +819,8 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			}
 			return changed;
 		}
+		if (sdl->sdl_alen == 0)
+			do_rtmsg = true;
 		memcpy(LLADDR(sdl), ar_sha(ah), sdl->sdl_alen = ah->ar_hln);
 		if (rt->rt_expire != 0) {
 			if (rt->rt_expire != time_uptime + arpt_keep &&
@@ -848,6 +854,9 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			ifp->if_output(ifp, m, rt_key(rt), rt);
 			changed = 1;
 		}
+
+		if (do_rtmsg && mycpuid == 0)
+			rt_rtmsg(rt_cmd, rt, rt->rt_ifp, 0);
 	}
 	return changed;
 }
@@ -1056,7 +1065,7 @@ match:
 	ASSERT_NETISR0;
 	changed = arp_update_oncpu(m, isaddr.s_addr,
 				   itaddr.s_addr == myaddr.s_addr,
-				   RTL_REPORTMSG, TRUE);
+				   TRUE);
 
 	if (netisr_ncpus > 1 && changed) {
 		struct netmsg_inarp *msg = &m->m_hdr.mh_arpmsg;
@@ -1106,7 +1115,7 @@ arp_update_msghandler(netmsg_t msg)
 	KASSERT(mycpuid > 0, ("arp update msg on cpu%d", mycpuid));
 	arp_update_oncpu(rmsg->m, rmsg->saddr,
 			 rmsg->taddr == rmsg->myaddr,
-			 RTL_DONTREPORT, FALSE);
+			 FALSE);
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < netisr_ncpus) {
@@ -1161,7 +1170,7 @@ in_arpreply(struct mbuf *m, in_addr_t taddr, in_addr_t myaddr)
 		struct llinfo_arp *la;
 		struct rtentry *rt;
 
-		la = arplookup(taddr, FALSE, RTL_DONTREPORT, SIN_PROXY);
+		la = arplookup(taddr, FALSE, SIN_PROXY);
 		if (la == NULL) {
 			struct sockaddr_in sin;
 #ifdef DEBUG_PROXY
@@ -1248,8 +1257,9 @@ in_arpreply(struct mbuf *m, in_addr_t taddr, in_addr_t myaddr)
 static void
 arptfree(struct llinfo_arp *la)
 {
-	struct rtentry *rt = la->la_rt;
+	struct rtentry *rt = la->la_rt, *nrt;
 	struct sockaddr_dl *sdl;
+	int error;
 
 	if (rt == NULL)
 		panic("arptfree");
@@ -1262,14 +1272,18 @@ arptfree(struct llinfo_arp *la)
 		rt->rt_flags &= ~RTF_REJECT;
 		return;
 	}
-	rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, NULL);
+	error = rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, &nrt);
+	if (error == 0 && nrt != NULL) {
+		rt_rtmsg(RTM_DELETE, nrt, nrt->rt_ifp, 0);
+		rtfree(nrt);
+	}
 }
 
 /*
  * Lookup or enter a new address in arptab.
  */
 static struct llinfo_arp *
-arplookup(in_addr_t addr, boolean_t create, boolean_t generate_report,
+arplookup(in_addr_t addr, boolean_t create,
 	  boolean_t proxy)
 {
 	struct rtentry *rt;
@@ -1283,8 +1297,7 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t generate_report,
 	sin.sin_addr.s_addr = addr;
 	sin.sin_other = proxy ? SIN_PROXY : 0;
 	if (create) {
-		rt = _rtlookup((struct sockaddr *)&sin,
-			       generate_report, RTL_DOCLONE);
+		rt = rtlookup((struct sockaddr *)&sin);
 	} else {
 		rt = rtpurelookup((struct sockaddr *)&sin);
 	}

@@ -823,8 +823,7 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 		 * We only need to generate rtmsg upon the
 		 * first route to be changed.
 		 */
-		error = rt_setgate(rt, rt_key(rt), rtinfo->rti_gateway,
-			found_cnt == 1 ? RTL_REPORTMSG : RTL_DONTREPORT);
+		error = rt_setgate(rt, rt_key(rt), rtinfo->rti_gateway);
 		if (error != 0)
 			goto done;
 	}
@@ -855,6 +854,8 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 		}
 	}
 	rtm->rtm_index = rt->rt_ifp->if_index;
+	if (found_cnt == 1)
+		rt_rtmsg(RTM_CHANGE, rt, rt->rt_ifp, 0);
 done:
 	return error;
 }
@@ -1176,7 +1177,8 @@ rt_rtmsg(int cmd, struct rtentry *rt, struct ifnet *ifp, int error)
 		rtinfo.rti_ifpaddr =
 		TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa->ifa_addr;
 	}
-	rtinfo.rti_ifaaddr = rt->rt_ifa->ifa_addr;
+	if (rt->rt_ifa != NULL)
+		rtinfo.rti_ifaaddr = rt->rt_ifa->ifa_addr;
 
 	m = rt_msg_mbuf(cmd, &rtinfo);
 	if (m == NULL)

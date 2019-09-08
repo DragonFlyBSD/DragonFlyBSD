@@ -220,7 +220,7 @@ rtalloc_ign(struct route *ro, u_long ignoreflags)
 		rtfree(ro->ro_rt);
 		ro->ro_rt = NULL;
 	}
-	ro->ro_rt = _rtlookup(&ro->ro_dst, RTL_REPORTMSG, ignoreflags);
+	ro->ro_rt = _rtlookup(&ro->ro_dst, ignoreflags);
 }
 
 /*
@@ -233,7 +233,7 @@ rtalloc_ign(struct route *ro, u_long ignoreflags)
  * Any route returned has its reference count incremented.
  */
 struct rtentry *
-_rtlookup(struct sockaddr *dst, boolean_t generate_report, u_long ignore)
+_rtlookup(struct sockaddr *dst, u_long ignore)
 {
 	struct radix_node_head *rnh = rt_tables[mycpuid][dst->sa_family];
 	struct rtentry *rt;
@@ -261,18 +261,12 @@ _rtlookup(struct sockaddr *dst, boolean_t generate_report, u_long ignore)
 		error = rtrequest(RTM_RESOLVE, dst, NULL, NULL, 0,
 				  &clonedroute);	/* clone the route */
 		if (error != 0) {	/* cloning failed */
-			if (generate_report)
-				rt_dstmsg(RTM_MISS, dst, error);
+			rt_dstmsg(RTM_MISS, dst, error);
 			rt->rt_refcnt++;
 			return (rt);	/* return the uncloned route */
 		}
-		if (generate_report) {
-			if (clonedroute->rt_flags & RTF_XRESOLVE)
-				rt_dstmsg(RTM_RESOLVE, dst, 0);
-			else
-				rt_rtmsg(RTM_ADD, clonedroute,
-					 clonedroute->rt_ifp, 0);
-		}
+		if (clonedroute->rt_flags & RTF_XRESOLVE)
+			rt_dstmsg(RTM_RESOLVE, dst, 0);
 		return (clonedroute);	/* return cloned route */
 	}
 
@@ -284,8 +278,7 @@ _rtlookup(struct sockaddr *dst, boolean_t generate_report, u_long ignore)
 
 unreach:
 	rtstat.rts_unreach++;
-	if (generate_report)
-		rt_dstmsg(RTM_MISS, dst, 0);
+	rt_dstmsg(RTM_MISS, dst, 0);
 	return (NULL);
 }
 
@@ -429,8 +422,9 @@ create:
 		flags |= RTF_MODIFIED;
 
 		/* We only need to report rtmsg on CPU0 */
-		rt_setgate(rt, rt_key(rt), gateway,
-			   mycpuid == 0 ? RTL_REPORTMSG : RTL_DONTREPORT);
+		rt_setgate(rt, rt_key(rt), gateway);
+		if (mycpuid == 0)
+			rt_rtmsg(RTM_CHANGE, rt, rt->rt_ifp, 0);
 		error = 0;
 		stat = &rtstat.rts_newgateway;
 	}
@@ -744,7 +738,6 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 	struct radix_node_head *rnh;
 	struct ifaddr *ifa;
 	struct sockaddr *ndst;
-	boolean_t reportmsg;
 	int error = 0;
 
 	ASSERT_NETISR_NCPUS(mycpuid);
@@ -873,18 +866,7 @@ makeroute:
 		rt->rt_flags = RTF_UP | rtinfo->rti_flags;
 		rt->rt_cpuid = mycpuid;
 
-		if (mycpuid != 0 && req == RTM_ADD) {
-			/* For RTM_ADD, we have already sent rtmsg on CPU0. */
-			reportmsg = RTL_DONTREPORT;
-		} else {
-			/*
-			 * For RTM_ADD, we only send rtmsg on CPU0.
-			 * For RTM_RESOLVE, we always send rtmsg. XXX
-			 */
-			reportmsg = RTL_REPORTMSG;
-		}
-		error = rt_setgate(rt, dst, rtinfo->rti_info[RTAX_GATEWAY],
-				   reportmsg);
+		error = rt_setgate(rt, dst, rtinfo->rti_info[RTAX_GATEWAY]);
 		if (error != 0) {
 			Free(rt);
 			gotoerr(error);
@@ -1153,8 +1135,7 @@ rt_fixchange(struct radix_node *rn, void *vp)
 }
 
 int
-rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate,
-	   boolean_t generate_report)
+rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 {
 	char *space, *oldspace;
 	int dlen = RT_ROUNDUP(dst->sa_len), glen = RT_ROUNDUP(gate->sa_len);
@@ -1237,8 +1218,7 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate,
 		 *
 		 * This breaks TTCP for hosts outside the gateway!  XXX JH
 		 */
-		rt->rt_gwroute = _rtlookup(gate, generate_report,
-					   RTF_PRCLONING);
+		rt->rt_gwroute = _rtlookup(gate, RTF_PRCLONING);
 		if (rt->rt_gwroute == rt) {
 			rt->rt_gwroute = NULL;
 			--rt->rt_refcnt;

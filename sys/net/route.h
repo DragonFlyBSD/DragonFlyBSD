@@ -354,15 +354,12 @@ void	 rt_missmsg (int, struct rt_addrinfo *, int, int);
 void	 rt_newaddrmsg (int, struct ifaddr *, int, struct rtentry *);
 void	 rt_newmaddrmsg (int, struct ifmultiaddr *);
 void	 rt_rtmsg(int cmd, struct rtentry *rt, struct ifnet *ifp, int error);
-int	 rt_setgate (struct rtentry *,
-	    struct sockaddr *, struct sockaddr *, boolean_t);
+int	 rt_setgate (struct rtentry *, struct sockaddr *, struct sockaddr *);
 void	 rtalloc (struct route *);
 void	 rtalloc_ign (struct route *, u_long);
 
 struct rtentry *
-	 _rtlookup (struct sockaddr *, __boolean_t, u_long);
-#define		RTL_REPORTMSG	TRUE
-#define		RTL_DONTREPORT	FALSE
+	 _rtlookup (struct sockaddr *, u_long);
 
 /* flags to ignore */
 #define		RTL_DOCLONE	0UL
@@ -374,7 +371,7 @@ struct rtentry *
 static __inline struct rtentry *
 rtpurelookup(struct sockaddr *dst)
 {
-	return _rtlookup(dst, RTL_DONTREPORT, RTL_DONTCLONE);
+	return _rtlookup(dst, RTL_DONTCLONE);
 }
 
 /*
@@ -383,7 +380,7 @@ rtpurelookup(struct sockaddr *dst)
 static __inline struct rtentry *
 rtlookup(struct sockaddr *dst)
 {
-	return _rtlookup(dst, RTL_REPORTMSG, RTL_DOCLONE);
+	return _rtlookup(dst, RTL_DOCLONE);
 }
 
 typedef void (*rtrequest1_callback_func_t)(int, int, struct rt_addrinfo *,
