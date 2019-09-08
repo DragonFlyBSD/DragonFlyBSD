@@ -1,4 +1,4 @@
-# $FreeBSD: head/sbin/newfs_msdos/Makefile 298107 2016-04-16 07:45:30Z gjb $
+# $FreeBSD$
 
 PROG=	newfs_msdos
 SRCS=	newfs_msdos.c mkfs_msdos.c

@@ -1,4 +1,4 @@
-/*	$FreeBSD: head/sbin/newfs_msdos/mkfs_msdos.h 291218 2015-11-23 18:56:10Z emaste $	*/
+/*	$FreeBSD$	*/
 /*	$NetBSD: mkfs_msdos.h,v 1.3 2015/10/16 17:38:17 christos Exp $	*/
 
 /*-
@@ -35,6 +35,7 @@
 
 #define ALLOPTS \
 AOPT('@', off_t, offset, 0, "Offset in device") \
+AOPT('A', bool, align, -2, "Attempt to cluster align root directory") \
 AOPT('B', const char *, bootstrap, -1, "Bootstrap file") \
 AOPT('C', off_t, create_size, 0, "Create file") \
 AOPT('F', uint8_t,  fat_type, 12, "FAT type (12, 16, or 32)") \
@@ -43,6 +44,7 @@ AOPT('L', const char *, volume_label, -1, "Volume Label") \
 AOPT('N', bool, no_create, -2, "Don't create filesystem, print params only") \
 AOPT('O', const char *, OEM_string, -1, "OEM string") \
 AOPT('S', uint16_t, bytes_per_sector, 1, "Bytes per sector") \
+AOPT('T', time_t, timestamp, 0, "Timestamp") \
 AOPT('a', uint32_t, sectors_per_fat, 1, "Sectors per FAT") \
 AOPT('b', uint32_t, block_size, 1, "Block size") \
 AOPT('c', uint8_t, sectors_per_cluster, 1, "Sectors per cluster") \
@@ -62,6 +64,7 @@ struct msdos_options {
 #define AOPT(_opt, _type, _name, _min, _desc) _type _name;
 	ALLOPTS
 #undef AOPT
+	uint32_t timestamp_set:1;
 	uint32_t volume_id_set:1;
 	uint32_t media_descriptor_set:1;
 	uint32_t hidden_sectors_set:1;

@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 1998 Robert Nordier
  * All rights reserved.
  *
@@ -23,11 +25,10 @@
  * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sbin/newfs_msdos/newfs_msdos.c 291385 2015-11-27 14:40:21Z emaste $
  */
 
 #include <sys/param.h>
+#include <sys/stat.h>
 
 #include <err.h>
 #include <errno.h>
@@ -48,13 +49,30 @@ static u_int argtou(const char *, u_int, u_int, const char *);
 static off_t argtooff(const char *, const char *);
 static void usage(void);
 
+static time_t
+get_tstamp(const char *b)
+{
+    struct stat st;
+    char *eb;
+    long long l;
+
+    if (stat(b, &st) != -1)
+        return (time_t)st.st_mtime;
+
+    errno = 0;
+    l = strtoll(b, &eb, 0);
+    if (b == eb || *eb || errno)
+        errx(EXIT_FAILURE, "Can't parse timestamp '%s'", b);
+    return (time_t)l;
+}
+
 /*
  * Construct a FAT12, FAT16, or FAT32 file system.
  */
 int
 main(int argc, char *argv[])
 {
-    static const char opts[] = "@:NB:C:F:I:L:O:S:a:b:c:e:f:h:i:k:m:n:o:r:s:u:";
+    static const char opts[] = "@:NAB:C:F:I:L:O:S:a:b:c:e:f:h:i:k:m:n:o:r:s:T:u:";
     struct msdos_options o;
     const char *fname, *dtype;
     char buf[MAXPATHLEN];
@@ -69,6 +87,9 @@ main(int argc, char *argv[])
 	    break;
 	case 'N':
 	    o.no_create = 1;
+	    break;
+	case 'A':
+	    o.align = true;
 	    break;
 	case 'B':
 	    o.bootstrap = optarg;
@@ -139,6 +160,10 @@ main(int argc, char *argv[])
 	case 's':
 	    o.size = argto4(optarg, 1, "file system size");
 	    break;
+	case 'T':
+	    o.timestamp_set = 1;
+	    o.timestamp = get_tstamp(optarg);
+	    break;
 	case 'u':
 	    o.sectors_per_track = argto2(optarg, 1, "sectors/track");
 	    break;
@@ -149,6 +174,10 @@ main(int argc, char *argv[])
     argv += optind;
     if (argc < 1 || argc > 2)
 	usage();
+    if (o.align) {
+	if (o.hidden_sectors_set)
+	    errx(1, "align (-A) is incompatible with -r");
+    }
     fname = *argv++;
     if (!o.create_size && !strchr(fname, '/')) {
 	snprintf(buf, sizeof(buf), "%s%s", _PATH_DEV, fname);
