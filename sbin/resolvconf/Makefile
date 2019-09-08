@@ -18,7 +18,7 @@ ${f}: ${f}.in
 		-e 's:@LIBEXECDIR@:${FILESDIR}:g' \
 		-e 's:@VARDIR@:/var/run/resolvconf:g' \
 		-e 's:@RESTARTCMD@::g' \
-		-e 's:@STATUSARG@::g' \
+		-e 's:@STATUSARG@:onestatus:g' \
 		${DISTDIR}/$@.in > $@
 .endfor
 
