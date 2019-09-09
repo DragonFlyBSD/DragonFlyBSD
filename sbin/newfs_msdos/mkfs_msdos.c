@@ -246,6 +246,7 @@ mkfs_msdos(const char *fname, const char *dtype, const struct msdos_options *op)
 
     img = NULL;
     rv = -1;
+    fd = fd1 = -1;
 
     if (o.block_size && o.sectors_per_cluster) {
 	warnx("Cannot specify both block size and sectors per cluster");
@@ -708,6 +709,10 @@ mkfs_msdos(const char *fname, const char *dtype, const struct msdos_options *op)
     rv = 0;
 done:
     free(img);
+    if (fd != -1)
+	    close(fd);
+    if (fd1 != -1)
+	    close(fd1);
 
     return rv;
 }
