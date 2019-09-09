@@ -511,19 +511,21 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	struct rtentry *rt = NULL;
 	struct llinfo_arp *la = NULL;
 	struct sockaddr_dl *sdl;
+	int error;
 
 	if (m->m_flags & M_BCAST) {	/* broadcast */
 		memcpy(desten, ifp->if_broadcastaddr, ifp->if_addrlen);
-		return (1);
+		return 0;
 	}
 	if (m->m_flags & M_MCAST) {/* multicast */
 		ETHER_MAP_IP_MULTICAST(&SIN(dst)->sin_addr, desten);
-		return (1);
+		return 0;
 	}
 	if (rt0 != NULL) {
-		if (rt_llroute(dst, rt0, &rt) != 0) {
+		error = rt_llroute(dst, rt0, &rt);
+		if (error != 0) {
 			m_freem(m);
-			return 0;
+			return error;
 		}
 		la = rt->rt_llinfo;
 	}
@@ -539,13 +541,14 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		    kinet_ntoa(SIN(dst)->sin_addr, addr), la ? "la" : " ",
 		    rt ? "rt" : "");
 		m_freem(m);
-		return (0);
+		return ENOBUFS;
 	}
-	sdl = SDL(rt->rt_gateway);
+
 	/*
 	 * Check the address family and length is valid, the address
 	 * is resolved; otherwise, try to resolve.
 	 */
+	sdl = SDL(rt->rt_gateway);
 	if ((rt->rt_expire == 0 || rt->rt_expire > time_uptime) &&
 	    sdl->sdl_family == AF_LINK && sdl->sdl_alen != 0) {
 		/*
@@ -563,8 +566,9 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		}
 
 		bcopy(LLADDR(sdl), desten, sdl->sdl_alen);
-		return 1;
+		return 0;
 	}
+
 	/*
 	 * If ARP is disabled or static on this interface, stop.
 	 * XXX
@@ -573,8 +577,9 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	 */
 	if (ifp->if_flags & (IFF_NOARP | IFF_STATICARP)) {
 		m_freem(m);
-		return (0);
+		return ifp->if_flags & IFF_NOARP ? ENOTSUP : EINVAL;
 	}
+
 	/*
 	 * There is an arptab entry, but no ethernet address
 	 * response yet.  Replace the held mbuf with this
@@ -583,6 +588,19 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	if (la->la_hold != NULL)
 		m_freem(la->la_hold);
 	la->la_hold = m;
+
+	/*
+	 * Return EWOULDBLOCK if we have tried less than arp_maxtries. It
+	 * will be masked by ether_output(). Return EHOSTDOWN/EHOSTUNREACH
+	 * if we have already sent arp_maxtries ARP requests. Retransmit the
+	 * ARP request, but not faster than one request per second.
+	 */
+	if (la->la_asked < arp_maxtries)
+		error = EWOULDBLOCK;
+	else
+		error = (rt != NULL && rt->rt_flags & RTF_GATEWAY) ?
+		    EHOSTUNREACH : EHOSTDOWN;
+
 	if (rt->rt_expire || ((rt->rt_flags & RTF_STATIC) && !sdl->sdl_alen)) {
 		rt->rt_flags &= ~RTF_REJECT;
 		if (la->la_asked == 0 || rt->rt_expire != time_uptime) {
@@ -598,7 +616,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 			}
 		}
 	}
-	return (0);
+	return error;
 }
 
 /*

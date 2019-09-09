@@ -247,8 +247,9 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	switch (dst->sa_family) {
 #ifdef INET
 	case AF_INET:
-		if (!arpresolve(ifp, rt, m, dst, edst))
-			return (0);	/* if not yet resolved */
+		error = arpresolve(ifp, rt, m, dst, edst);
+		if (error != 0)
+			return error == EWOULDBLOCK ? 0 : error;
 #ifdef MPLS
 		if (m->m_flags & M_MPLSLABELED)
 			eh->ether_type = htons(ETHERTYPE_MPLS);
