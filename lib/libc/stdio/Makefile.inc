@@ -15,7 +15,7 @@ SRCS+=	__fpending.c _flock_stub.c \
 	fputc.c fputs.c fputwc.c fputws.c fread.c freopen.c fscanf.c \
 	fseek.c fsetpos.c ftell.c funopen.c fvwrite.c fwalk.c fwide.c \
 	fwprintf.c fwrite.c fwscanf.c getc.c getchar.c \
-	getdelim.c getline.c gets.c getw.c \
+	getdelim.c getline.c gets.c gets_s.c getw.c \
 	getwc.c getwchar.c makebuf.c mktemp.c \
 	open_memstream.c open_wmemstream.c \
 	perror.c printf-pos.c printf.c putc.c \
@@ -35,8 +35,8 @@ SRCS+=	__fpending.c _flock_stub.c \
 .if ${LIB} == "c"
 MAN+=	fclose.3 ferror.3 fflush.3 fgetln.3 fgets.3 fgetwln.3 fgetws.3 \
 	flockfile.3 fmemopen.3 fopen.3 fputs.3 fputws.3 fread.3 fseek.3 \
-	funopen.3 fwide.3 getc.3 getline.3 \
-	getwc.3 mktemp.3 open_memstream.3 \
+	funopen.3 fwide.3 \
+	getc.3 getline.3 gets.3 getwc.3 mktemp.3 open_memstream.3 \
 	printf.3 printf_l.3 putc.3 putwc.3 remove.3 \
 	scanf.3 scanf_l.3 setbuf.3 stdio.3 tmpnam.3 \
 	ungetc.3 ungetwc.3 wprintf.3 wprintf_l.3 wscanf.3 wscanf_l.3
@@ -50,7 +50,7 @@ MLINKS+=ferror.3 clearerr.3 \
 	ferror.3 fileno.3 \
 	ferror.3 fileno_unlocked.3
 MLINKS+=fflush.3 fpurge.3
-MLINKS+=fgets.3 gets.3
+MLINKS+=fgets.3 gets_s.3
 MLINKS+=fgetws.3 fgetws_l.3
 MLINKS+=flockfile.3 ftrylockfile.3 \
 	flockfile.3 funlockfile.3

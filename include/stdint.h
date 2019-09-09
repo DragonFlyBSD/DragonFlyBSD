@@ -77,5 +77,10 @@ typedef __uint_least64_t	uint_least64_t;
 #include <machine/int_limits.h>
 #endif
 
+#if __EXT1_VISIBLE
+#ifndef RSIZE_MAX
+#define	RSIZE_MAX (SIZE_MAX >> 1)
 #endif
+#endif /* __EXT1_VISIBLE */
 
+#endif

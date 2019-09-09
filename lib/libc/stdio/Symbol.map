@@ -157,6 +157,10 @@ DF406.0 {
     mkostemps;
 };
 
+DF508.0 {
+    gets_s;
+};
+
 DFprivate_1.0 {
     __fcloseall;
     __fflush;

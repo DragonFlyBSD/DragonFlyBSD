@@ -56,6 +56,13 @@ typedef	__wchar_t	wchar_t;	/* _GCC_WCHAR_T OK */
 #endif
 #endif
 
+#if __EXT1_VISIBLE
+#ifndef _ERRNO_T_DEFINED
+typedef	int		errno_t;
+#define	_ERRNO_T_DEFINED
+#endif
+#endif
+
 typedef struct {
 	int	quot;		/* quotient */
 	int	rem;		/* remainder */
@@ -324,6 +331,19 @@ __uint64_t
 
 extern char *suboptarg;			/* getsubopt(3) external variable */
 #endif /* __BSD_VISIBLE */
+
+#if __EXT1_VISIBLE
+/* K.3.6 */
+typedef	void (*constraint_handler_t)(const char * __restrict,
+    void * __restrict, errno_t);
+/* K.3.6.1.1 */
+constraint_handler_t set_constraint_handler_s(constraint_handler_t handler);
+/* K.3.6.1.2 */
+_Noreturn void abort_handler_s(const char * __restrict, void * __restrict,
+    errno_t);
+/* K3.6.1.3 */
+void ignore_handler_s(const char * __restrict, void * __restrict, errno_t);
+#endif /* __EXT1_VISIBLE */
 __END_DECLS
 
 #endif /* !_STDLIB_H_ */

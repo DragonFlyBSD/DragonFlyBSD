@@ -127,4 +127,6 @@ void _rtld_error(const char *fmt, ...);
  */
 int _once(pthread_once_t *, void (*)(void));
 
+void __throw_constraint_handler_s(const char * restrict msg, int error);
+
 #endif /* _LIBC_PRIVATE_H_ */

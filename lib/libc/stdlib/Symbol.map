@@ -125,6 +125,12 @@ DF506.0 {
     recallocarray;
 };
 
+DF508.0 {
+    	abort_handler_s;
+	ignore_handler_s;
+	set_constraint_handler_s;
+};
+
 /*
  * ignore WEAK:  __pthread_cxa_finalize;
  */

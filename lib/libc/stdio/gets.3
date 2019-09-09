@@ -33,53 +33,46 @@
 .\" $FreeBSD: src/lib/libc/stdio/fgets.3,v 1.22 2009/02/28 06:00:58 das Exp $
 .\"
 .Dd September 9, 2019
-.Dt FGETS 3
+.Dt GETS 3
 .Os
 .Sh NAME
-.Nm fgets ,
-.Nm gets_s
+.Nm gets
 .Nd get a line from a stream
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In stdio.h
 .Ft char *
-.Fn fgets "char * restrict str" "int size" "FILE * restrict stream"
-.Ft char *
-.Fn gets_s "char *str" "rsize_t size"
+.Fn gets "char *str"
 .Sh DESCRIPTION
-The
-.Fn fgets
-function
-reads at most one less than the number of characters specified by
-.Fa size
-from the given
-.Fa stream
-and stores them in the string
-.Fa str .
-Reading stops when a newline character is found,
-at end-of-file or error.
-The newline, if any, is retained.
-If any characters are read and there is no error, a
-.Ql \e0
-character is appended to end the string.
+.Bf -symbolic
+This interface is made obsolete by
+.Xr fgets 3
+and
+.Xr gets_s 3 .
+See
+.Sx SECURITY CONSIDERATIONS
+below.
+.Ef
 .Pp
 The
-.Fn gets_s
+.Fn gets
 function
 is equivalent to
-.Fn fgets
-with a
+.Xr fgets 3
+with an infinite
+.Fa size
+and a
 .Fa stream
 of
 .Dv stdin ,
 except that the newline character (if any) is not stored in the string.
+It is the caller's responsibility to ensure that the input line,
+if any, is sufficiently short to fit in the string.
 .Sh RETURN VALUES
 Upon successful completion,
-.Fn fgets
-and
-.Fn gets_s
-return
+.Fn gets
+returns
 a pointer to the string.
 If end-of-file occurs before any characters are read,
 they return
@@ -90,11 +83,9 @@ they return
 .Dv NULL
 and the buffer contents are indeterminate.
 The
-.Fn fgets
-and
-.Fn gets_s
-functions
-do not distinguish between end-of-file and error, and callers must use
+.Fn gets
+function
+does not distinguish between end-of-file and error, and callers must use
 .Xr feof 3
 and
 .Xr ferror 3
@@ -108,34 +99,31 @@ is not a readable stream.
 .El
 .Pp
 The
-.Fn fgets
-function may also fail and set
-.Va errno
-for any of the errors specified for the routines
-.Xr fflush 3 ,
-.Xr fstat 2 ,
-.Xr read 2 ,
-or
-.Xr malloc 3 .
-.Pp
-The
-.Fn gets_s
+.Fn gets
 function may also fail and set
 .Va errno
 for any of the errors specified for the routine
 .Xr getchar 3 .
+.Sh SECURITY CONSIDERATIONS
+The
+.Fn gets
+function cannot be used securely.
+Because of its lack of bounds checking,
+and the inability for the calling program
+to reliably determine the length of the next incoming line,
+the use of this function enables malicious users
+to arbitrarily change a running program's functionality through
+a buffer overflow attack.
+It is strongly suggested that the
+.Fn fgets
+and
+.Fn gets_s
+functions be used in all cases.
 .Sh SEE ALSO
-.Xr feof 3 ,
-.Xr ferror 3 ,
-.Xr fgetln 3 ,
-.Xr fgetws 3 ,
-.Xr getline 3
+.Xr fgets 3 ,
+.Xr gets_s 3
 .Sh STANDARDS
 The
-.Fn fgets
+.Fn gets
 function conforms to
 .St -isoC-99 .
-.Fn gets_s
-conforms to
-.St -isoC-2011
-K.3.7.4.1.
