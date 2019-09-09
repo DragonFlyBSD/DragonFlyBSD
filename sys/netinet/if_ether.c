@@ -587,15 +587,12 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		rt->rt_flags &= ~RTF_REJECT;
 		if (la->la_asked == 0 || rt->rt_expire != time_uptime) {
 			rt->rt_expire = time_uptime;
-			if (la->la_asked++ < arp_maxtries) {
-				arprequest(ifp,
-					   &SIN(rt->rt_ifa->ifa_addr)->sin_addr,
-					   &SIN(dst)->sin_addr,
-					   NULL);
-			} else {
-				rt->rt_flags |= RTF_REJECT;
+			arprequest(ifp,
+				   &SIN(rt->rt_ifa->ifa_addr)->sin_addr,
+				   &SIN(dst)->sin_addr,
+				   NULL);
+			if (la->la_asked++ >= arp_maxtries) {
 				rt->rt_expire += arpt_down;
-				la->la_asked = 0;
 				la->la_preempt = arp_maxtries;
 				rt_rtmsg(RTM_MISS, rt, rt->rt_ifp, 0);
 			}
