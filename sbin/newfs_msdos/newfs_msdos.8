@@ -38,7 +38,7 @@
 .Op Fl B Ar boot
 .Op Fl C Ar create-size
 .Op Fl F Ar FAT-type
-.Op Fl I Ar VolumeId
+.Op Fl I Ar VolumeID
 .Op Fl L Ar label
 .Op Fl O Ar OEM
 .Op Fl S Ar sector-size
@@ -81,7 +81,7 @@ is prepended to the name to construct the actual device name.
 To work a file in the current directory use
 .Ar ./filename
 .Pp
-The options are as follows:
+The options are as follow:
 .Bl -tag -width indent
 .It Fl N
 Do not create a file system: just print out parameters.
@@ -163,7 +163,7 @@ File system size.
 Number of sectors per track.
 .El
 .Sh NOTES
-If some parameters (e.g. size, number of sectors, etc.) are not specified
+If some parameters (e.g., size, number of sectors, etc.) are not specified
 through options or disktype, the program tries to generate them automatically.
 In particular, the size is determined as the device or file size minus the
 offset specified with the
