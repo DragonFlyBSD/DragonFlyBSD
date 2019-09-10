@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -27,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * @(#)logwtmp.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/libexec/ftpd/logwtmp.c,v 1.9.2.2 2002/08/08 12:24:54 yar Exp $
+ * $FreeBSD: head/libexec/ftpd/logwtmp.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
 #include <sys/types.h>
@@ -36,44 +38,36 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-#include <fcntl.h>
-#include <time.h>
-#include <netdb.h>
-#include <utmp.h>
-#include <unistd.h>
+#include <libutil.h>
 #include <stdio.h>
 #include <string.h>
-#include <libutil.h>
+#include <unistd.h>
+#include <utmpx.h>
 #include "extern.h"
 
-static int fd = -1;
-
-/*
- * Modified version of logwtmp that holds wtmp file open
- * after first call, for use with ftp (which may chroot
- * after login, but before logout).
- */
 void
-ftpd_logwtmp(char *line, char *name, struct sockaddr *addr)
+ftpd_logwtmp(char *id, char *user, struct sockaddr *addr)
 {
-	struct utmp ut;
-	struct stat buf;
-	char host[UT_HOSTSIZE];
+	struct utmpx ut;
 
-	if (addr == NULL)
-		host[0] = '\0';
-	else
-		realhostname_sa(host, sizeof(host), addr, addr->sa_len);
+	memset(&ut, 0, sizeof(ut));
 
-	if (fd < 0 && (fd = open(_PATH_WTMP, O_WRONLY|O_APPEND, 0)) < 0)
-		return;
-	if (fstat(fd, &buf) == 0) {
-		(void)strncpy(ut.ut_line, line, sizeof(ut.ut_line));
-		(void)strncpy(ut.ut_name, name, sizeof(ut.ut_name));
-		(void)strncpy(ut.ut_host, host, sizeof(ut.ut_host));
-		(void)time(&ut.ut_time);
-		if (write(fd, &ut, sizeof(struct utmp)) !=
-		    sizeof(struct utmp))
-			(void)ftruncate(fd, buf.st_size);
+	if (user != NULL) {
+		/* Log in. */
+		ut.ut_type = USER_PROCESS;
+		(void)strncpy(ut.ut_user, user, sizeof(ut.ut_user));
+		if (addr != NULL)
+			realhostname_sa(ut.ut_host, sizeof(ut.ut_host),
+			    addr, addr->sa_len);
+	} else {
+		/* Log out. */
+		ut.ut_type = DEAD_PROCESS;
 	}
+
+	ut.ut_pid = getpid();
+	gettimeofday(&ut.ut_tv, NULL);
+	(void)strncpy(ut.ut_id, id, sizeof(ut.ut_id));
+	(void)strncpy(ut.ut_line, "ftpd", sizeof(ut.ut_line));
+
+	pututxline(&ut);
 }
