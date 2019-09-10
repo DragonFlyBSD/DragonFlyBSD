@@ -238,6 +238,7 @@ SUBDIR=	alias \
 	window \
 	wmake \
 	write \
+	wtmpcvt \
 	xargs \
 	xinstall \
 	xstr \
