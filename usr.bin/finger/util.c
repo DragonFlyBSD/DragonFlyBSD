@@ -31,7 +31,6 @@
  *
  * @(#)util.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/util.c,v 1.8.2.6 2002/07/03 01:14:24 des Exp $
- * $DragonFly: src/usr.bin/finger/util.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +48,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "utmpentry.h"
-#include <utmp.h>
+#include <utmpx.h>
 #include "finger.h"
 #include "pathnames.h"
 
@@ -101,29 +100,18 @@ void
 enter_lastlog(PERSON *pn)
 {
 	WHERE *w;
-	static int opened, fd;
-	struct lastlog ll;
+	struct utmpx *ut = NULL;
 	char doit = 0;
 
-	/* some systems may not maintain lastlog, don't report errors. */
-	if (!opened) {
-		fd = open(_PATH_LASTLOG, O_RDONLY, 0);
-		opened = 1;
-	}
-	if (fd == -1 ||
-	    lseek(fd, (long)pn->uid * sizeof(ll), SEEK_SET) !=
-	    (off_t)((long)pn->uid * sizeof(ll)) ||
-	    read(fd, (char *)&ll, sizeof(ll)) != sizeof(ll)) {
-			/* as if never logged in */
-			ll.ll_line[0] = ll.ll_host[0] = '\0';
-			ll.ll_time = 0;
-		}
+	if (setutxdb(UTX_DB_LASTLOGX, NULL) == 0)
+		ut = getutxuser(pn->name);
 	if ((w = pn->whead) == NULL)
 		doit = 1;
-	else if (ll.ll_time != 0) {
+	else if (ut != NULL && ut->ut_type == USER_PROCESS) {
 		/* if last login is earlier than some current login */
 		for (; !doit && w != NULL; w = w->next)
-			if (w->info == LOGGEDIN && w->loginat < ll.ll_time)
+			if (w->info == LOGGEDIN &&
+			    w->loginat < ut->ut_tv.tv_sec)
 				doit = 1;
 		/*
 		 * and if it's not any of the current logins
@@ -132,16 +120,17 @@ enter_lastlog(PERSON *pn)
 		 */
 		for (w = pn->whead; doit && w != NULL; w = w->next)
 			if (w->info == LOGGEDIN &&
-			    strncmp(w->tty, ll.ll_line, UT_LINESIZE) == 0)
+			    strcmp(w->tty, ut->ut_line) == 0)
 				doit = 0;
 	}
-	if (doit) {
+	if (ut != NULL && doit) {
 		w = walloc(pn);
 		w->info = LASTLOG;
-		asprintf(&w->tty, "%s", ll.ll_line);
-		asprintf(&w->host, "%s", ll.ll_host);
-		w->loginat = ll.ll_time;
+		strcpy(w->tty, ut->ut_line);
+		strcpy(w->host, ut->ut_host);
+		w->loginat = ut->ut_tv.tv_sec;
 	}
+	endutxent();
 }
 
 void
@@ -197,10 +186,8 @@ find_person(char *name)
 {
 	struct passwd *pw;
 
-	int cnt;
 	DBT data, key;
 	PERSON *p;
-	char buf[UT_NAMESIZE + 1];
 
 	if (!db)
 		return(NULL);
@@ -208,12 +195,8 @@ find_person(char *name)
 	if ((pw = getpwnam(name)) && hide(pw))
 		return(NULL);
 
-	/* Name may be only UT_NAMESIZE long and not NUL terminated. */
-	for (cnt = 0; cnt < UT_NAMESIZE && *name; ++name, ++cnt)
-		buf[cnt] = *name;
-	buf[cnt] = '\0';
-	key.data = buf;
-	key.size = cnt;
+	key.data = name;
+	key.size = strlen(name);
 
 	if ((*db->get)(db, &key, &data, 0))
 		return (NULL);

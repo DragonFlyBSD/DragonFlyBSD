@@ -37,13 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#ifdef SUPPORT_UTMP
-#include <utmp.h>
-#endif
-#ifdef SUPPORT_UTMPX
 #include <utmpx.h>
-#endif
 
 #include "utmpentry.h"
 
@@ -78,25 +72,16 @@
 #define	COMPILE_ASSERT(x)	_Static_assert(x, "assertion failed")
 
 
-#ifdef SUPPORT_UTMP
-static void getentry(struct utmpentry *, struct utmp *);
-static struct timespec utmptime = {0, 0};
-#endif
-#ifdef SUPPORT_UTMPX
 static void getentryx(struct utmpentry *, struct utmpx *);
 static struct timespec utmpxtime = {0, 0};
-#endif
-#if defined(SUPPORT_UTMPX) || defined(SUPPORT_UTMP)
 static int setup(const char *);
 static void adjust_size(struct utmpentry *e);
-#endif
 
 int maxname = 8, maxline = 8, maxhost = 16;
 int etype = 1 << USER_PROCESS;
 static int numutmp = 0;
 static struct utmpentry *ehead;
 
-#if defined(SUPPORT_UTMPX) || defined(SUPPORT_UTMP)
 static void
 adjust_size(struct utmpentry *e)
 {
@@ -118,36 +103,18 @@ setup(const char *fname)
 	const char *sfname;
 
 	if (fname == NULL) {
-#ifdef SUPPORT_UTMPX
 		setutxent();
-#endif
-#ifdef SUPPORT_UTMP
-		setutent();
-#endif
 	} else {
 		size_t len = strlen(fname);
 		if (len == 0)
 			errx(1, "Filename cannot be 0 length.");
 		what = fname[len - 1] == 'x' ? 1 : 2;
 		if (what == 1) {
-#ifdef SUPPORT_UTMPX
 			if (utmpxname(fname) == 0)
 				warnx("Cannot set utmpx file to `%s'",
 				    fname);
-#else
-			warnx("utmpx support not compiled in");
-#endif
-		} else {
-#ifdef SUPPORT_UTMP
-			if (utmpname(fname) == 0)
-				warnx("Cannot set utmp file to `%s'",
-				    fname);
-#else
-			warnx("utmp support not compiled in");
-#endif
 		}
 	}
-#ifdef SUPPORT_UTMPX
 	if (what & 1) {
 		sfname = fname ? fname : _PATH_UTMPX;
 		if (stat(sfname, &st) == -1) {
@@ -160,36 +127,15 @@ setup(const char *fname)
 			    what &= ~1;
 		}
 	}
-#endif
-#ifdef SUPPORT_UTMP
-	if (what & 2) {
-		sfname = fname ? fname : _PATH_UTMP;
-		if (stat(sfname, &st) == -1) {
-			warn("Cannot stat `%s'", sfname);
-			what &= ~2;
-		} else {
-			if (timespeccmp(&st.st_mtimespec, &utmptime, >))
-				utmptime = st.st_mtimespec;
-			else
-				what &= ~2;
-		}
-	}
-#endif
 	return what;
 }
-#endif
 
 void
 endutentries(void)
 {
 	struct utmpentry *ep;
 
-#ifdef SUPPORT_UTMP
-	timespecclear(&utmptime);
-#endif
-#ifdef SUPPORT_UTMPX
 	timespecclear(&utmpxtime);
-#endif
 	ep = ehead;
 	while (ep) {
 		struct utmpentry *sep = ep;
@@ -203,13 +149,7 @@ endutentries(void)
 int
 getutentries(const char *fname, struct utmpentry **epp)
 {
-#ifdef SUPPORT_UTMPX
 	struct utmpx *utx;
-#endif
-#ifdef SUPPORT_UTMP
-	struct utmp *ut;
-#endif
-#if defined(SUPPORT_UTMP) || defined(SUPPORT_UTMPX)
 	struct utmpentry *ep;
 	int what = setup(fname);
 	struct utmpentry **nextp = &ehead;
@@ -223,9 +163,7 @@ getutentries(const char *fname, struct utmpentry **epp)
 		ehead = NULL;
 		numutmp = 0;
 	}
-#endif
 
-#ifdef SUPPORT_UTMPX
 	while ((what & 1) && (utx = getutxent()) != NULL) {
 		if (fname == NULL && ((1 << utx->ut_type) & etype) == 0) {
 			continue;
@@ -238,34 +176,8 @@ getutentries(const char *fname, struct utmpentry **epp)
 		*nextp = ep;
 		nextp = &(ep->next);
 	}
-#endif
 
-#ifdef SUPPORT_UTMP
-	if ((etype & (1 << USER_PROCESS)) != 0) {
-		while ((what & 2) && (ut = getutent()) != NULL) {
-			if (fname == NULL && (*ut->ut_name == '\0' ||
-			    *ut->ut_line == '\0'))
-				continue;
-			/* Don't process entries that we have utmpx for */
-			for (ep = ehead; ep != NULL; ep = ep->next) {
-				if (strncmp(ep->line, ut->ut_line,
-				    sizeof(ut->ut_line)) == 0)
-					break;
-			}
-			if (ep != NULL)
-				continue;
-			if ((ep = calloc(1, sizeof(*ep))) == NULL) {
-				warn(NULL);
-				return 0;
-			}
-			getentry(ep, ut);
-			*nextp = ep;
-			nextp = &(ep->next);
-		}
-	}
-#endif
 	numutmp = 0;
-#if defined(SUPPORT_UTMP) || defined(SUPPORT_UTMPX)
 	if (ehead != NULL) {
 		struct utmpentry *from = ehead, *save;
 		
@@ -284,50 +196,8 @@ getutentries(const char *fname, struct utmpentry **epp)
 	}
 	*epp = ehead;
 	return numutmp;
-#else
-	*epp = NULL;
-	return 0;
-#endif
 }
 
-#ifdef SUPPORT_UTMP
-static void
-getentry(struct utmpentry *e, struct utmp *up)
-{
-#if 1
-	COMPILE_ASSERT(sizeof(e->name) > sizeof(up->ut_name));
-	COMPILE_ASSERT(sizeof(e->line) > sizeof(up->ut_line));
-	COMPILE_ASSERT(sizeof(e->host) > sizeof(up->ut_host));
-#endif
-
-	/*
-	 * e has just been calloc'd. We don't need to clear it or
-	 * append null-terminators, because its length is strictly
-	 * greater than the source string. Use strncpy to _read_
-	 * up->ut_* because they may not be terminated. For this
-	 * reason we use the size of the _source_ as the length
-	 * argument.
-	 */
-
-	snprintf(e->name, sizeof(e->name), "%.*s",
-		 (int)sizeof(up->ut_name), up->ut_name);
-	snprintf(e->line, sizeof(e->line), "%.*s",
-		 (int)sizeof(up->ut_line), up->ut_line);
-	snprintf(e->host, sizeof(e->host), "%.*s",
-		 (int)sizeof(up->ut_host), up->ut_host);
-
-	e->tv.tv_sec = up->ut_time;
-	e->tv.tv_usec = 0;
-	e->pid = 0;
-	e->term = 0;
-	e->exit = 0;
-	e->sess = 0;
-	e->type = USER_PROCESS;
-	adjust_size(e);
-}
-#endif
-
-#ifdef SUPPORT_UTMPX
 static void
 getentryx(struct utmpentry *e, struct utmpx *up)
 {
@@ -358,4 +228,3 @@ getentryx(struct utmpentry *e, struct utmpx *up)
 	e->type = up->ut_type;
 	adjust_size(e);
 }
-#endif

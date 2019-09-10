@@ -45,12 +45,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#ifdef SUPPORT_UTMP
-#include <utmp.h>
-#endif
-#ifdef SUPPORT_UTMPX
 #include <utmpx.h>
-#endif
 
 #include "utmpentry.h"
 
@@ -73,7 +68,6 @@ struct ut_type_names {
   int type;
   const char *name;
 } ut_type_names[] = {
-#ifdef SUPPORT_UTMPX
   { EMPTY, "empty" },
   { RUN_LVL, "run level" },
   { BOOT_TIME, "boot time" },
@@ -86,7 +80,6 @@ struct ut_type_names {
   { ACCOUNTING, "accounting" },
   { SIGNATURE, "signature" },
   { DOWN_TIME, "down time" },
-#endif /* SUPPORT_UTMPX */
   { -1, "unknown" }
 };
 

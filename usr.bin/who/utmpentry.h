@@ -29,19 +29,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if defined(SUPPORT_UTMPX)
-# include <utmpx.h>
-# define WHO_NAME_LEN		_UTX_USERSIZE
-# define WHO_LINE_LEN		_UTX_LINESIZE
-# define WHO_HOST_LEN		_UTX_HOSTSIZE
-#elif defined(SUPPORT_UTMP)
-# include <utmp.h>
-# define WHO_NAME_LEN		UT_NAMESIZE
-# define WHO_LINE_LEN		UT_LINESIZE
-# define WHO_HOST_LEN		UT_HOSTSIZE
-#else
-# error Either SUPPORT_UTMPX or SUPPORT_UTMP must be defined!
-#endif
+#include <utmpx.h>
+#define WHO_NAME_LEN		_UTX_USERSIZE
+#define WHO_LINE_LEN		_UTX_LINESIZE
+#define WHO_HOST_LEN		_UTX_HOSTSIZE
 
 
 struct utmpentry {

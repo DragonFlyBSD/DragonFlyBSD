@@ -10,6 +10,6 @@ BINGRP=	tty
 DPADD+=	${LIBUTIL}
 LDADD+=	-lutil
 
-CFLAGS+= -I${.CURDIR}/../who -DSUPPORT_UTMP -DSUPPORT_UTMPX
+CFLAGS+= -I${.CURDIR}/../who
 
 .include <bsd.prog.mk>

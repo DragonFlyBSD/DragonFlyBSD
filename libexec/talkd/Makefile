@@ -11,6 +11,6 @@ DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
 CFLAGS+=-I${.CURDIR}/../../usr.bin/wall
-CFLAGS+=-I${.CURDIR}/../../usr.bin/who -DSUPPORT_UTMP -DSUPPORT_UTMPX
+CFLAGS+=-I${.CURDIR}/../../usr.bin/who
 
 .include <bsd.prog.mk>

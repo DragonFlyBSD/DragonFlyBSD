@@ -31,7 +31,6 @@
  *
  * @(#)lprint.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/lprint.c,v 1.10.2.4 2002/07/03 01:14:24 des Exp $
- * $DragonFly: src/usr.bin/finger/lprint.c,v 1.4 2004/09/03 19:13:23 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -48,7 +47,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <utmp.h>
 #include "finger.h"
 #include "pathnames.h"
 #include "extern.h"

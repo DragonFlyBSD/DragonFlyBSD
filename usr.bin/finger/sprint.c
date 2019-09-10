@@ -31,9 +31,9 @@
  *
  * @(#)sprint.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/sprint.c,v 1.11.2.5 2002/07/03 01:14:24 des Exp $
- * $DragonFly: src/usr.bin/finger/sprint.c,v 1.4 2008/02/09 17:12:05 matthias Exp $
  */
 
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <db.h>
 #include <err.h>
@@ -42,7 +42,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <utmp.h>
 #include "finger.h"
 
 static void	  stimeprint(WHERE *);
@@ -78,7 +77,7 @@ sflag_print(void)
 	 */
 #define	MAXREALNAME	20
 #define MAXHOSTNAME     17      /* in reality, hosts are never longer than 16 */
-	(void)printf("%-*s %-*s%s  %s\n", UT_NAMESIZE, "Login", MAXREALNAME,
+	(void)printf("%-*s %-*s%s  %s\n", MAXLOGNAME, "Login", MAXREALNAME,
 	    "Name", " TTY  Idle  Login  Time ", (gflag) ? "" :
 	    oflag ? "Office  Phone" : "Where");
 
@@ -95,7 +94,7 @@ sflag_print(void)
 			namelen = MAXREALNAME;
 			if (w->info == LOGGEDIN && !w->writable)
 				--namelen;	/* leave space before `*' */
-			(void)printf("%-*.*s %-*.*s", UT_NAMESIZE, UT_NAMESIZE,
+			(void)printf("%-*.*s %-*.*s", MAXLOGNAME, MAXLOGNAME,
 				pn->name, MAXREALNAME, namelen,
 				pn->realname ? pn->realname : "");
 			if (!w->loginat) {

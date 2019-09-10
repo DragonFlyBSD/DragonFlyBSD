@@ -45,7 +45,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <utmp.h>
 #include "finger.h"
 
 static void cleanup(int sig);
