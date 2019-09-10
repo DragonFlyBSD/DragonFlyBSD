@@ -57,6 +57,7 @@
 #include <syslog.h>
 #include <time.h>
 #include <unistd.h>
+#include <utmpx.h>
 
 #define PAM_SM_SESSION
 
@@ -64,30 +65,12 @@
 #include <security/pam_modules.h>
 #include <security/pam_mod_misc.h>
 
-#define SUPPORT_UTMP 1
-#define SUPPORT_UTMPX 1
-
-#ifdef SUPPORT_UTMP
-#include <utmp.h>
-static void doutmp(const char *, const char *, const char *,
-    const struct timeval *);
-static void dolastlog(pam_handle_t *, int, const struct passwd *, const char *,
-    const char *, const struct timeval *);
-#endif
-
-#ifdef SUPPORT_UTMPX
-#include <utmpx.h>
 static void doutmpx(const char *, const char *, const char *,
     const struct sockaddr_storage *ss, const struct timeval *);
 static void dolastlogx(pam_handle_t *, int, const struct passwd *, const char *,
     const char *, const struct sockaddr_storage *ss, const struct timeval *);
-#endif
-
-#if defined(SUPPORT_UTMPX) || defined(SUPPORT_UTMP)
 static void domsg(pam_handle_t *, time_t, const char *, size_t, const char *,
     size_t);
-#endif
-
 static void logit(int, const char *, ...) __printflike(2, 3);
 
 static void
@@ -166,15 +149,9 @@ pam_sm_open_session(pam_handle_t *pamh, int flags,
 		quiet = 0;
 #endif
 	}
-#ifdef SUPPORT_UTMPX
 	dolastlogx(pamh, quiet, pwd, rhost, tty, NULL, &now);
 	doutmpx(user, rhost, tty, NULL, &now);
 	quiet = 1;
-#endif
-#ifdef SUPPORT_UTMP
-	doutmp(user, rhost, tty, &now);
-	dolastlog(pamh, quiet, pwd, rhost, tty, &now);
-#endif
 err:
 	if (openpam_get_option(pamh, "no_fail"))
 		return PAM_SUCCESS;
@@ -199,25 +176,15 @@ pam_sm_close_session(pam_handle_t *pamh __unused, int flags __unused,
 	if (*tty == '\0')
 		return PAM_SERVICE_ERR;
 
-#ifdef SUPPORT_UTMPX
 	if (logoutx(tty, 0, DEAD_PROCESS))
 		logwtmpx(tty, "", "", 0, DEAD_PROCESS);
 	else
 		logit(LOG_NOTICE, "%s(): no utmpx record for %s",
 		    __func__, tty);
-#endif
 
-#ifdef SUPPORT_UTMP
-	if (logout(tty))
-		logwtmp(tty, "", "");
-	else
-		logit(LOG_NOTICE, "%s(): no utmp record for %s",
-		    __func__, tty);
-#endif
         return PAM_SUCCESS;
 }
 
-#if defined(SUPPORT_UTMPX) || defined(SUPPORT_UTMP)
 static void
 domsg(pam_handle_t *pamh, time_t t, const char *host, size_t hsize,
     const char *line, size_t lsize)
@@ -237,9 +204,7 @@ domsg(pam_handle_t *pamh, time_t t, const char *host, size_t hsize,
 	if (pam_err == PAM_SUCCESS && promptresp)
 		free(promptresp);
 }
-#endif
 
-#ifdef SUPPORT_UTMPX
 static void
 doutmpx(const char *username, const char *hostname, const char *tty,
     const struct sockaddr_storage *ss, const struct timeval *now)
@@ -304,59 +269,5 @@ dolastlogx(pam_handle_t *pamh, int quiet, const struct passwd *pwd,
 	PAM_LOG("Login recorded in %s", _PATH_LASTLOGX);
 #endif
 }
-#endif
-
-#ifdef SUPPORT_UTMP
-static void
-doutmp(const char *username, const char *hostname, const char *tty,
-    const struct timeval *now)
-{
-	struct utmp utmp;
-
-	(void)memset((void *)&utmp, 0, sizeof(utmp));
-	utmp.ut_time = now->tv_sec;
-	(void)strncpy(utmp.ut_name, username, sizeof(utmp.ut_name));
-	if (hostname)
-		(void)strncpy(utmp.ut_host, hostname, sizeof(utmp.ut_host));
-	(void)strncpy(utmp.ut_line, tty, sizeof(utmp.ut_line));
-	login(&utmp);
-}
-
-static void
-dolastlog(pam_handle_t *pamh, int quiet, const struct passwd *pwd,
-    const char *hostname, const char *tty, const struct timeval *now)
-{
-	struct lastlog ll;
-	int fd;
-
-	if ((fd = open(_PATH_LASTLOG, O_RDWR, 0)) == -1) {
-		logit(LOG_NOTICE, "Cannot open `%s' %m", _PATH_LASTLOG);
-		return;
-	}
-	(void)lseek(fd, (off_t)(pwd->pw_uid * sizeof(ll)), SEEK_SET);
-
-	if (!quiet) {
-		if (read(fd, (char *)&ll, sizeof(ll)) == sizeof(ll) &&
-		    ll.ll_time != 0)
-			domsg(pamh, ll.ll_time, ll.ll_host,
-			    sizeof(ll.ll_host), ll.ll_line,
-			    sizeof(ll.ll_line));
-		(void)lseek(fd, (off_t)(pwd->pw_uid * sizeof(ll)), SEEK_SET);
-	}
-
-	ll.ll_time = now->tv_sec;
-	(void)strncpy(ll.ll_line, tty, sizeof(ll.ll_line));
-
-	if (hostname)
-		(void)strncpy(ll.ll_host, hostname, sizeof(ll.ll_host));
-	else
-		(void)memset(ll.ll_host, 0, sizeof(ll.ll_host));
-
-	(void)write(fd, &ll, sizeof(ll));
-	(void)close(fd);
-
-	PAM_LOG("Login recorded in %s", _PATH_LASTLOG);
-}
-#endif
 
 PAM_MODULE_ENTRY("pam_lastlog");
