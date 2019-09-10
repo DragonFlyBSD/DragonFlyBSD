@@ -150,16 +150,16 @@
 #define HAVE_STRUCT_UTMPX_UT_XTIME 1
 
 /* Define to 1 if `ut_host' is a member of `struct utmp'. */
-#define HAVE_STRUCT_UTMP_UT_HOST 1
+/* #undef HAVE_STRUCT_UTMP_UT_HOST */
 
 /* Define to 1 if `ut_tv' is a member of `struct utmp'. */
-#define HAVE_STRUCT_UTMP_UT_TV 1
+/* #undef HAVE_STRUCT_UTMP_UT_TV */
 
 /* Define to 1 if `ut_user' is a member of `struct utmp'. */
-#define HAVE_STRUCT_UTMP_UT_USER 1
+/* #undef HAVE_STRUCT_UTMP_UT_USER */
 
 /* Define to 1 if `ut_xtime' is a member of `struct utmp'. */
-#define HAVE_STRUCT_UTMP_UT_XTIME 1
+/* #undef HAVE_STRUCT_UTMP_UT_XTIME */
 
 /* Define to 1 if you have the `sysconf' function. */
 #define HAVE_SYSCONF 1
@@ -185,7 +185,7 @@
 #define HAVE_UTMPX_H 1
 
 /* Define to 1 if you have the <utmp.h> header file. */
-#define HAVE_UTMP_H 1
+/* #undef HAVE_UTMP_H */
 
 /* Define to 1 if you have the <wchar.h> header file. */
 #define HAVE_WCHAR_H 1
