@@ -43,12 +43,7 @@
 #include <time.h>
 #include <tzfile.h>
 #include <unistd.h>
-#ifdef SUPPORT_UTMPX
 #include <utmpx.h>
-#endif
-#ifdef SUPPORT_UTMP
-#include <utmp.h>
-#endif
 
 #ifndef UT_NAMESIZE
 #define UT_NAMESIZE 8
@@ -94,6 +89,7 @@ typedef struct ttytab {
 } TTY;
 static TTY	*ttylist;		/* head of linked list */
 
+static struct utmpx *bufx;
 static time_t	currentout;		/* current logout value */
 static long	maxrec;			/* records to display */
 static int	fulltime = 0;		/* Display seconds? */
@@ -102,14 +98,11 @@ static void	 addarg(int, char *);
 static TTY	*addtty(const char *);
 static void	 hostconv(char *);
 static char	*ttyconv(char *);
-#ifdef SUPPORT_UTMPX
 static void	 wtmpx(const char *, int, int, int);
-#endif
-#ifdef SUPPORT_UTMP
-static void	 wtmp(const char *, int, int, int);
-#endif
 static char	*fmttime(time_t, int);
 static void	 usage(void);
+static void	 onintrx(int);
+static int	 wantx(struct utmpx *, int);
 
 static
 void usage(void)
@@ -195,40 +188,12 @@ main(int argc, char *argv[])
 		}
 	}
 	if (file == NULL) {
-		/* default to wtmpx */
-#ifdef SUPPORT_UTMPX
 		if (access(_PATH_WTMPX, R_OK) == 0)
 			file = _PATH_WTMPX;
-		else
-#endif
-#ifdef SUPPORT_UTMP
-		if (access(_PATH_WTMP, R_OK) == 0)
-			file = _PATH_WTMP;
-#endif
 		if (file == NULL)
-#if defined(SUPPORT_UTMPX) && defined(SUPPORT_UTMP)
-			errx(1, "Cannot access `%s' or `%s'", _PATH_WTMPX,
-			    _PATH_WTMP);
-#elif defined(SUPPORT_UTMPX)
 			errx(1, "Cannot access `%s'", _PATH_WTMPX);
-#elif defined(SUPPORT_UTMP)
-			errx(1, "Cannot access `%s'", _PATH_WTMP);
-#else
-			errx(1, "No utmp or utmpx support compiled in.");
-#endif
 	}
-#if defined(SUPPORT_UTMPX) && defined(SUPPORT_UTMP)
-	if (file[strlen(file) - 1] == 'x')
-		wtmpx(file, namesize, linesize, hostsize);
-	else
-		wtmp(file, namesize, linesize, hostsize);
-#elif defined(SUPPORT_UTMPX)
 	wtmpx(file, namesize, linesize, hostsize);
-#elif defined(SUPPORT_UTMP)
-	wtmp(file, namesize, linesize, hostsize);
-#else
-	errx(1, "No utmp or utmpx support compiled in.");
-#endif
 	exit(0);
 }
 
@@ -342,33 +307,190 @@ fmttime(time_t t, int flags)
 	return (tbuf);
 }
 
-#ifdef SUPPORT_UTMP
-#define TYPE(a)	0
-#define NAMESIZE UT_NAMESIZE
-#define LINESIZE UT_LINESIZE
-#define HOSTSIZE UT_HOSTSIZE
-#define ut_timefld ut_time
-#define FIRSTVALID 0
-#include "want.c"
-#undef TYPE
-#undef NAMESIZE
-#undef LINESIZE
-#undef HOSTSIZE
-#undef ut_timefld
-#undef FIRSTVALID
-#endif
+/*
+ * wtmpx --
+ *	read through the wtmpx file
+ */
+static void
+wtmpx(const char *file, int namesz, int linesz, int hostsz)
+{
+	struct utmpx	*bp;		/* current structure */
+	TTY	*T;			/* tty list entry */
+	struct stat	stb;		/* stat of file for sz */
+	time_t	delta;			/* time difference */
+	off_t	bl;
+	int	bytes, wfd;
+	char	*ct;
+	const char *crmsg;
+	size_t  len = sizeof(*bufx) * MAXUTMP;
 
-#ifdef SUPPORT_UTMPX
-#define utmp utmpx
-#define want wantx
-#define wtmp wtmpx
-#define buf bufx
-#define onintr onintrx
-#define TYPE(a) (a)->ut_type
-#define NAMESIZE UTX_USERSIZE
-#define LINESIZE UTX_LINESIZE
-#define HOSTSIZE UTX_HOSTSIZE
-#define ut_timefld ut_xtime
-#define FIRSTVALID 1
-#include "want.c"
-#endif
+	if ((bufx = malloc(len)) == NULL)
+		err(1, "Cannot allocate utmpx buffer");
+
+	crmsg = NULL;
+
+	if ((wfd = open(file, O_RDONLY, 0)) < 0 || fstat(wfd, &stb) == -1)
+		err(1, "%s", file);
+	bl = (stb.st_size + len - 1) / len;
+
+	bufx[1].ut_xtime = time(NULL);
+	(void)signal(SIGINT, onintrx);
+	(void)signal(SIGQUIT, onintrx);
+
+	while (--bl >= 0) {
+		if (lseek(wfd, bl * len, SEEK_SET) == -1 ||
+		    (bytes = read(wfd, bufx, len)) == -1)
+			err(1, "%s", file);
+		for (bp = &bufx[bytes / sizeof(*bufx) - 1]; bp >= bufx; --bp) {
+			/*
+			 * if the terminal line is '~', the machine stopped.
+			 * see utmpx(5) for more info.
+			 */
+			if (bp->ut_line[0] == '~' && !bp->ut_line[1]) {
+				/* everybody just logged out */
+				for (T = ttylist; T; T = T->next)
+					T->logout = -bp->ut_xtime;
+				currentout = -bp->ut_xtime;
+				crmsg = strncmp(bp->ut_name, "shutdown",
+				    namesz) ? "crash" : "shutdown";
+				if (wantx(bp, NO)) {
+					ct = fmttime(bp->ut_xtime, fulltime);
+					printf("%-*.*s  %-*.*s %-*.*s %s\n",
+					    namesz, namesz, bp->ut_name,
+					    linesz, linesz, bp->ut_line,
+					    hostsz, hostsz, bp->ut_host, ct);
+					if (maxrec != -1 && !--maxrec)
+						return;
+				}
+				continue;
+			}
+			/*
+			 * if the line is '{' or '|', date got set; see
+			 * utmpx(5) for more info.
+			 */
+			if ((bp->ut_line[0] == '{' || bp->ut_line[0] == '|')
+			    && !bp->ut_line[1]) {
+				if (wantx(bp, NO)) {
+					ct = fmttime(bp->ut_xtime, fulltime);
+				printf("%-*.*s  %-*.*s %-*.*s %s\n",
+				    namesz, namesz,
+				    bp->ut_name,
+				    linesz, linesz,
+				    bp->ut_line,
+				    hostsz, hostsz,
+				    bp->ut_host,
+				    ct);
+					if (maxrec && !--maxrec)
+						return;
+				}
+				continue;
+			}
+			/* find associated tty */
+			for (T = ttylist;; T = T->next) {
+				if (!T) {
+					/* add new one */
+					T = addtty(bp->ut_line);
+					break;
+				}
+				if (!strncmp(T->tty, bp->ut_line, UTX_LINESIZE))
+					break;
+			}
+			if (bp->ut_type == SIGNATURE)
+				continue;
+			if (bp->ut_name[0] && wantx(bp, YES)) {
+				ct = fmttime(bp->ut_xtime, fulltime);
+				printf("%-*.*s  %-*.*s %-*.*s %s ",
+				    namesz, namesz, bp->ut_name,
+				    linesz, linesz, bp->ut_line,
+				    hostsz, hostsz, bp->ut_host,
+				    ct);
+				if (!T->logout)
+					puts("  still logged in");
+				else {
+					if (T->logout < 0) {
+						T->logout = -T->logout;
+						printf("- %s", crmsg);
+					}
+					else
+						printf("- %s",
+						    fmttime(T->logout,
+						    fulltime | TIMEONLY));
+					delta = T->logout - bp->ut_xtime;
+					if (delta < SECSPERDAY)
+						printf("  (%s)\n",
+						    fmttime(delta,
+						    fulltime | TIMEONLY | GMT));
+					else
+						printf(" (%ld+%s)\n",
+						    delta / SECSPERDAY,
+						    fmttime(delta,
+						    fulltime | TIMEONLY | GMT));
+				}
+				if (maxrec != -1 && !--maxrec)
+					return;
+			}
+			T->logout = bp->ut_xtime;
+		}
+	}
+	fulltime = 1;	/* show full time */
+	crmsg = fmttime(bufx[1].ut_xtime, FULLTIME);
+	if ((ct = strrchr(file, '/')) != NULL)
+		ct++;
+	printf("\n%s begins %s\n", ct ? ct : file, crmsg);
+}
+
+/*
+ * wantx --
+ *	see if want this entry
+ */
+static int
+wantx(struct utmpx *bp, int check)
+{
+	ARG *step;
+
+	if (check) {
+		/*
+		 * when uucp and ftp log in over a network, the entry in
+		 * the utmpx file is the name plus their process id.  See
+		 * etc/ftpd.c and usr.bin/uucp/uucpd.c for more information.
+		 */
+		if (!strncmp(bp->ut_line, "ftp", sizeof("ftp") - 1))
+			bp->ut_line[3] = '\0';
+		else if (!strncmp(bp->ut_line, "uucp", sizeof("uucp") - 1))
+			bp->ut_line[4] = '\0';
+	}
+	if (!arglist)
+		return (YES);
+
+	for (step = arglist; step; step = step->next)
+		switch(step->type) {
+		case HOST_TYPE:
+			if (!strncasecmp(step->name, bp->ut_host, UTX_HOSTSIZE))
+				return (YES);
+			break;
+		case TTY_TYPE:
+			if (!strncmp(step->name, bp->ut_line, UTX_LINESIZE))
+				return (YES);
+			break;
+		case USER_TYPE:
+			if (!strncmp(step->name, bp->ut_name, UTX_USERSIZE))
+				return (YES);
+			break;
+	}
+	return (NO);
+}
+
+/*
+ * onintrx --
+ *	on interrupt, we inform the user how far we've gotten
+ */
+static void
+onintrx(int signo)
+{
+
+	printf("\ninterrupted %s\n", fmttime(bufx[1].ut_xtime,
+	    FULLTIME));
+	if (signo == SIGINT)
+		exit(1);
+	(void)fflush(stdout);		/* fix required for rsh */
+}
