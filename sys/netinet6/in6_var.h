@@ -609,6 +609,7 @@ void	in6_purgeaddr (struct ifaddr *);
 int	in6if_do_dad (struct ifnet *);
 void	in6_purgeif (struct ifnet *);
 void	in6_savemkludge (struct in6_ifaddr *);
+void	in6_if_up(struct ifnet *);
 void	*in6_domifattach (struct ifnet *);
 void	in6_domifdetach (struct ifnet *, void *);
 void	in6_setmaxmtu   (void);

@@ -1747,9 +1747,6 @@ if_route_dispatch(netmsg_t nmsg)
 	SLIST_FOREACH(dp, &domains, dom_next)
 		if (dp->dom_if_up != NULL)
 			dp->dom_if_up(ifp);
-#ifdef INET6
-	in6_if_up(ifp);
-#endif
 
 	netisr_replymsg(&nmsg->base, 0);
 }

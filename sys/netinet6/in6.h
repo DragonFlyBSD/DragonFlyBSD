@@ -608,7 +608,6 @@ int	in6_localaddr (struct in6_addr *);
 int	in6_addrscope (struct in6_addr *);
 struct	in6_ifaddr *in6_ifawithscope (struct ifnet *, struct in6_addr *, struct ucred *);
 struct	in6_ifaddr *in6_ifawithifp (struct ifnet *, struct in6_addr *);
-void	in6_if_up (struct ifnet *);
 
 void	addrsel_policy_init (void);
 
