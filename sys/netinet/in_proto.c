@@ -49,6 +49,7 @@
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/in_pcb.h>
+#include <netinet/in_var.h>
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
@@ -346,7 +347,9 @@ struct domain inetdomain = {
 	.dom_rtoffset		= 32,
 	.dom_maxrtkey		= sizeof(struct sockaddr_in),
 	.dom_ifattach		= NULL,
-	.dom_ifdetach		= NULL
+	.dom_ifdetach		= NULL,
+	.dom_if_up		= NULL,
+	.dom_if_down		= in_if_down
 };
 
 DOMAIN_SET(inet);

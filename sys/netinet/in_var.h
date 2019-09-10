@@ -247,6 +247,7 @@ struct  lwkt_serialize;
 union	netmsg;
 
 void	in_ifdetach(struct ifnet *ifp);
+void	in_if_down(struct ifnet *ifp);
 struct	in_multi *in_addmulti (struct in_addr *, struct ifnet *);
 void	in_delmulti (struct in_multi *);
 int	in_control (u_long, caddr_t, struct ifnet *, struct thread *);

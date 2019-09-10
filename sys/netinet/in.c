@@ -1391,6 +1391,12 @@ in_delmulti(struct in_multi *inm)
 		igmp_leavegroup(&my_inm);
 }
 
+void
+in_if_down(struct ifnet *ifp)
+{
+	rt_purgecloned(ifp, AF_INET);
+}
+
 static void
 in_ifdetach_dispatch(netmsg_t nmsg)
 {
