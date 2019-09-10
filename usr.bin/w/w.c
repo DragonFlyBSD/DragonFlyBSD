@@ -65,12 +65,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#ifdef SUPPORT_UTMP
-#include <utmp.h>
-#endif
-#ifdef SUPPORT_UTMPX
 #include <utmpx.h>
-#endif
 #include <vis.h>
 
 #include <arpa/nameser.h>
@@ -79,9 +74,6 @@
 #include "extern.h"
 
 struct timeval	boottime;
-#ifdef SUPPORT_UTMP
-struct utmp	utmp;
-#endif
 struct winsize	ws;
 kvm_t	       *kd;
 time_t		now;		/* the current time of day */
@@ -120,10 +112,8 @@ struct	entry {
 #define debugproc(p) *((struct kinfo_proc **)&(p)->kp_spare[0])
 
 static void		 pr_header(time_t *, int);
-#if defined(SUPPORT_UTMP) || defined(SUPPORT_UTMPX)
 static struct stat	*ttystat(char *, int);
 static void	process(struct entry *);
-#endif
 static void		 usage(int);
 static int		 this_is_uptime(const char *s);
 
@@ -138,12 +128,7 @@ main(int argc, char **argv)
 	in_addr_t l;
 	int ch, i, nentries, nusers, wcmd, longidle, dropgid;
 	char *memf, *nlistf, *p, *x;
-#ifdef SUPPORT_UTMP
-	struct utmp *ut;
-#endif
-#ifdef SUPPORT_UTMPX
 	struct utmpx *utx;
-#endif
 	char buf[MAXHOSTNAMELEN], errbuf[_POSIX2_LINE_MAX];
 
 	(void)setlocale(LC_ALL, "");
@@ -210,18 +195,12 @@ main(int argc, char **argv)
 		errx(1, "%s", errbuf);
 
 	(void)time(&now);
-#ifdef SUPPORT_UTMPX
 	setutxent();
-#endif
-#ifdef SUPPORT_UTMP
-	setutent();
-#endif
 
 	if (*argv)
 		sel_users = argv;
 
 	nusers = 0;
-#ifdef SUPPORT_UTMPX
 	while ((utx = getutxent()) != NULL) {
 		if (utx->ut_type != USER_PROCESS)
 			continue;
@@ -266,59 +245,7 @@ main(int argc, char **argv)
 		if (wcmd != 0)
 			process(ep);
 	}
-#endif
-
-#ifdef SUPPORT_UTMP
-	while ((ut = getutent()) != NULL) {
-		if (ut->ut_name[0] == '\0')
-			continue;
-		++nusers;
-		if (sel_users) {
-			int usermatch;
-			char **user;
-
-			usermatch = 0;
-			for (user = sel_users; !usermatch && *user; user++)
-				if (!strncmp(ut->ut_name, *user, UT_NAMESIZE))
-					usermatch = 1;
-			if (!usermatch)
-				continue;
-		}
-
-		/* Don't process entries that we have utmpx for */
-		for (ep = ehead; ep != NULL; ep = ep->next) {
-			if (strncmp(ep->line, ut->ut_line,
-			    sizeof(ut->ut_line)) == 0)
-				break;
-		}
-		if (ep != NULL) {
-			--nusers; /* Duplicate entry */
-			continue;
-		}
-
-		if ((ep = calloc(1, sizeof(struct entry))) == NULL)
-			err(1, NULL);
-		(void)memcpy(ep->name, ut->ut_name, sizeof(ut->ut_name));
-		(void)memcpy(ep->line, ut->ut_line, sizeof(ut->ut_line));
-		(void)memcpy(ep->host, ut->ut_host, sizeof(ut->ut_host));
-		ep->name[sizeof(ut->ut_name)] = '\0';
-		ep->line[sizeof(ut->ut_line)] = '\0';
-		ep->host[sizeof(ut->ut_host)] = '\0';
-		ep->tv.tv_sec = ut->ut_time;
-
-		*nextp = ep;
-		nextp = &(ep->next);
-		if (wcmd != 0)
-			process(ep);
-	}
-#endif
-
-#ifdef SUPPORT_UTMPX
 	endutxent();
-#endif
-#ifdef SUPPORT_UTMP
-	endutent();
-#endif	
 	
 	if (header || wcmd == 0) {
 		pr_header(&now, nusers);
@@ -409,9 +336,7 @@ main(int argc, char **argv)
 			save->next = *nextp;
 			*nextp = save;
 		}
-	}
-#if defined(SUPPORT_UTMP) && defined(SUPPORT_UTMPX)
-	else if (ehead != NULL) {
+	} else if (ehead != NULL) {
 		struct entry *from = ehead, *save;
 
 		ehead = NULL;
@@ -426,7 +351,6 @@ main(int argc, char **argv)
 			*nextp = save;
 		}
 	}
-#endif
 
 	if (!nflag) {
 		if (gethostname(domain, sizeof(domain)) < 0 ||
@@ -610,7 +534,6 @@ this_is_uptime(const char *s)
 	return (-1);
 }
 
-#if defined(SUPPORT_UTMP) || defined(SUPPORT_UTMPX)
 static void
 process(struct entry *ep)
 {
@@ -656,4 +579,3 @@ process(struct entry *ep)
 	if ((ep->idle = now - touched) < 0)
 		ep->idle = 0;
 }
-#endif
