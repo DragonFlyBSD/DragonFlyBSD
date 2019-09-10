@@ -45,9 +45,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#ifdef SUPPORT_UTMPX
 #include <utmpx.h>
-#endif
 
 void usage(void) __dead2;
 u_int get_pageins(void);
@@ -134,12 +132,7 @@ main(int argc, char *argv[])
 			syslog(LOG_CRIT, "rebooted by %s", user);
 		}
 	}
-#ifdef SUPPORT_UTMP
-	logwtmp("~", "shutdown", "");
-#endif
-#ifdef SUPPORT_UTMPX
 	logwtmpx("~", "shutdown", "", 0, INIT_PROCESS);
-#endif
 
 	/*
 	 * Do a sync early on, so disks start transfers while we're off
