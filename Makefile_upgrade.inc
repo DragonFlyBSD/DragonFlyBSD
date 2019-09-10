@@ -3756,6 +3756,15 @@ TO_REMOVE+=/usr/sbin/rdate
 TO_REMOVE+=/usr/share/man/man8/rdate.8.gz
 TO_REMOVE+=/entropy
 TO_REMOVE+=/usr/share/man/man9/kmalloc_cachealign.9.gz
+TO_REMOVE+=/usr/include/utmp.h
+TO_REMOVE+=/usr/share/man/man3/getutmp.3.gz
+TO_REMOVE+=/usr/share/man/man3/getutmpx.3.gz
+TO_REMOVE+=/usr/share/man/man3/login.3.gz
+TO_REMOVE+=/usr/share/man/man3/logout.3.gz
+TO_REMOVE+=/usr/share/man/man3/logwtmp.3.gz
+TO_REMOVE+=/usr/share/man/man5/lastlog.5.gz
+TO_REMOVE+=/usr/share/man/man5/utmp.5.gz
+TO_REMOVE+=/usr/share/man/man5/wtmp.5.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

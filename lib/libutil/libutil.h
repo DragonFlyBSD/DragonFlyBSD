@@ -67,12 +67,9 @@ struct utmpx;
 
 __BEGIN_DECLS
 char	*auth_getval(const char *_name);
-void	login(struct utmp *);
 void	loginx(const struct utmpx *);
 int	login_tty(int);
-int	logout(const char *);
 int	logoutx(const char *, int, int);
-void	logwtmp(const char *, const char *, const char *);
 void	logwtmpx(const char *, const char *, const char *, int, int);
 void	trimdomain(char *, int);
 int	flopen(const char *_path, int _flags, ...);

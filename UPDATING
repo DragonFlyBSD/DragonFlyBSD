@@ -12,6 +12,19 @@
 +         UPGRADING DRAGONFLY FROM 5.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+UTMP LEGACY API REMOVED
+-----------------------
+
+The legacy "utmp" API (getutent() and friends, utmp.h, etc.) has been
+removed, and we are now using the POSIX "utmpx" API (getutxent(),
+utmpx.h, etc.) only. The most visible change for users is that the
+/var/log/wtmp file will no longer be written to, just /var/log/wtmpx.
+The wtmpcvt(1) utility is provided to convert old wtmp format files to
+wtmpx.
+
+To not break old applications, the utmp symbols are still provided by
+libc as dummy functions that do nothing and always succeed.
+
 TIMED AND TIMEDC REMOVED
 ------------------------
 

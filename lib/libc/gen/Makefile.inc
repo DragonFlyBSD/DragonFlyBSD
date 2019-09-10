@@ -170,9 +170,7 @@ MLINKS+=getgrent.3 endgrent.3 \
 	getgrent.3 setgroupent.3
 MLINKS+=gethostid.3 sethostid.3
 MLINKS+=gethostname.3 sethostname.3
-MLINKS+=getlastlogx.3 getutmp.3 \
-	getlastlogx.3 getutmpx.3 \
-	getlastlogx.3 updlastlogx.3 \
+MLINKS+=getlastlogx.3 updlastlogx.3 \
 	getlastlogx.3 _updwtmpx.3 \
 	getlastlogx.3 updwtmpx.3 \
 	getlastlogx.3 utmpxname.3

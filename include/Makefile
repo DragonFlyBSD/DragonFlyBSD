@@ -26,7 +26,7 @@ INCS=	a.out.h alloca.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	tar.h termios.h time.h \
 	timeconv.h \
 	timers.h ttyent.h \
-	uchar.h unistd.h ulimit.h utime.h utmp.h utmpx.h \
+	uchar.h unistd.h ulimit.h utime.h utmpx.h \
 	uuid.h vis.h \
 	wchar.h wctype.h wordexp.h xlocale.h
 

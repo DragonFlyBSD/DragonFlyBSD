@@ -44,7 +44,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <pwd.h>
-#include <utmp.h>
 #include <utmpx.h>
 #include <vis.h>
 
@@ -426,37 +425,17 @@ utmpxname(const char *fname)
 	return 1;
 }
 
+
+__sym_compat(getutmp, past_getutmp, DF404.0);
 void
-getutmp(const struct utmpx *ux, struct utmp *u)
+past_getutmp(void *ux, void *u)
 {
-
-	_DIAGASSERT(ux != NULL);
-	_DIAGASSERT(u != NULL);
-
-	(void)memcpy(u->ut_name, ux->ut_name, sizeof(u->ut_name));
-	(void)memcpy(u->ut_line, ux->ut_line, sizeof(u->ut_line));
-	(void)memcpy(u->ut_host, ux->ut_host, sizeof(u->ut_host));
-	u->ut_time = ux->ut_tv.tv_sec;
 }
 
+__sym_compat(getutmpx, past_getutmpx, DF404.0);
 void
-getutmpx(const struct utmp *u, struct utmpx *ux)
+past_getutmpx(void *u, void *ux)
 {
-
-	_DIAGASSERT(ux != NULL);
-	_DIAGASSERT(u != NULL);
-
-	(void)memcpy(ux->ut_name, u->ut_name, sizeof(u->ut_name));
-	(void)memcpy(ux->ut_line, u->ut_line, sizeof(u->ut_line));
-	(void)memcpy(ux->ut_host, u->ut_host, sizeof(u->ut_host));
-	ux->ut_tv.tv_sec = u->ut_time;
-	ux->ut_tv.tv_usec = 0;
-	(void)memset(&ux->ut_ss, 0, sizeof(ux->ut_ss));
-	ux->ut_pid = 0;
-	ux->ut_type = USER_PROCESS;
-	ux->ut_session = 0;
-	ux->ut_exit.e_termination = 0;
-	ux->ut_exit.e_exit = 0;
 }
 
 struct lastlogx *

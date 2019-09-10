@@ -172,23 +172,17 @@ DF404.0 {
     tcsetattr;
     tcsetpgrp;
 
-	/* utmp(x) */
-    endutent;
+	/* utmpx */
     endutxent;
     getlastlogx;
-    getutent;
-    getutmp;
-    getutmpx;
     getutxent;
     getutxid;
     getutxline;
     pututxline;
-    setutent;
     setutxdb;
     setutxent;
     updlastlogx;
     updwtmpx;
-    utmpname;
     utmpxname;
 
 	/* normal functions */

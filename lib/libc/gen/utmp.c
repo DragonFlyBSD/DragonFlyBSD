@@ -29,74 +29,30 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "namespace.h"
-#include <sys/types.h>
 #include <sys/param.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-#include <utmp.h>
-#include <sys/stat.h>
-#include "un-namespace.h"
 
-static struct utmp utmp;
-static FILE *ut;
-static char utfile[MAXPATHLEN] = _PATH_UTMP;
-
+__sym_compat(setutent, past_setutent, DF404.0);
 void
-setutent(void)
+past_setutent(void)
 {
-	if (ut == NULL)
-		return;
-	(void)fseeko(ut, (off_t)0, SEEK_SET);
 }
 
-struct utmp *
-getutent(void)
+__sym_compat(getutent, past_getutent, DF404.0);
+void *
+past_getutent(void)
 {
-	if (ut == NULL) {
-		struct stat st;
-		off_t numentries;
-		if ((ut = fopen(utfile, "r")) == NULL)
-			return NULL;
-		if (_fstat(fileno(ut), &st) == -1)
-			goto out;
-		/*
-		 * If we have a an old version utmp file bail.
-		 */
-		numentries = st.st_size / sizeof(utmp);
-		if ((off_t)(numentries * sizeof(utmp)) != st.st_size)
-			goto out;
-	}
-	if (fread(&utmp, sizeof(utmp), 1, ut) == 1)
-		return &utmp;
-out:
-	(void)fclose(ut);
 	return NULL;
 }
 
+__sym_compat(endutent, past_endutent, DF404.0);
 void
-endutent(void)
+past_endutent(void)
 {
-	if (ut != NULL) {
-		(void)fclose(ut);
-		ut = NULL;
-	}
 }
 
+__sym_compat(utmpname, past_utmpname, DF404.0);
 int
-utmpname(const char *fname)
+past_utmpname(const char *fname)
 {
-	size_t len = strlen(fname);
-
-	if (len >= sizeof(utfile))
-		return 0;
-
-	/* must not end in x! */
-	if (fname[len - 1] == 'x')
-		return 0;
-
-	(void)strlcpy(utfile, fname, sizeof(utfile));
-	endutent();
-	return 1;
+	return 0;
 }

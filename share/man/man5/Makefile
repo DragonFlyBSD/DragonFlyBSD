@@ -54,7 +54,6 @@ MAN=	acct.5 \
 	sysctl.conf.5 \
 	tmpfs.5 \
 	autofs.5 \
-	utmp.5 \
 	utmpx.5 \
 	uuids.5 \
 	varsym.conf.5
@@ -72,8 +71,6 @@ MLINKS+=null.5 nullfs.5
 MLINKS+=hosts.equiv.5 rhosts.5
 MLINKS+=passwd.5 master.passwd.5
 MLINKS+=resolver.5 resolv.conf.5
-MLINKS+=utmp.5 lastlog.5 \
-	utmp.5 wtmp.5
 MLINKS+=utmpx.5 lastlogx.5 \
 	utmpx.5 wtmpx.5
 

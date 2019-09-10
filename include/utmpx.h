@@ -139,8 +139,6 @@ void updwtmpx(const char *, const struct utmpx *);
 struct lastlogx *getlastlogx(const char *, uid_t, struct lastlogx *);
 int updlastlogx(const char *, uid_t, struct lastlogx *);
 struct utmp;
-void getutmp(const struct utmpx *, struct utmp *);
-void getutmpx(const struct utmp *, struct utmpx *);
 int utmpxname(const char *);
 struct utmpx *getutxuser(const char *);
 int setutxdb(utx_db_t, const char *);

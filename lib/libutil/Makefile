@@ -6,7 +6,7 @@ SHLIB_MAJOR= 4
 SHLIBDIR?= /lib
 CFLAGS+=-DINET6
 CFLAGS+=-D_CTYPE_H_DISABLE_MACROS_ 
-SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c logwtmpx.c pty.c \
+SRCS=	flopen.c login_tty.c logwtmpx.c pty.c \
 	login_cap.c login_class.c login_auth.c login_times.c login_ok.c \
 	login_crypt.c loginx.c logoutx.c _secure_path.c uucplock.c \
 	property.c auth.c \
@@ -20,7 +20,7 @@ INCSLINKS=libutil.h ${INCLUDEDIR}/util.h
 
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../libc/gen/
 
-MAN+=	flopen.3 login.3 loginx.3 login_auth.3 login_tty.3 logout.3 logwtmp.3 \
+MAN+=	flopen.3 loginx.3 login_auth.3 login_tty.3 \
 	pty.3 \
 	login_cap.3 login_class.3 login_times.3 login_ok.3 \
 	_secure_path.3 uucplock.3 property.3 auth.3 realhostname.3 \

@@ -207,9 +207,10 @@
  * 500702 - TCP_KEEP* milliseconds -> seconds
  * 500703 - Static TLS bindings support for late-loaded shared libraries
  * 500704 - Announce IP6 address flag changes via route(4)
+ * 500705 - Move us to utmpx only, delete utmp
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500704	/* propagated to newvers */
+#define __DragonFly_version 500705	/* propagated to newvers */
 
 #include <sys/_null.h>
 
@@ -222,13 +223,12 @@
  * Redefined constants are from POSIX 1003.1 limits file.
  *
  * MAXCOMLEN should be >= sizeof(ac_comm) (see <acct.h>)
- * MAXLOGNAME should be == UT_NAMESIZE+1 (see <utmp.h>)
  */
 #include <sys/syslimits.h>
 
 #define MAXCOMLEN	16		/* max command name remembered */
 #define MAXINTERP	32		/* max interpreter file name length */
-#define MAXLOGNAME	17		/* max login name length (incl. NUL) */
+#define MAXLOGNAME	33		/* max login name length (incl. NUL) */
 #define MAXUPRC		CHILD_MAX	/* max simultaneous processes */
 #define NCARGS		ARG_MAX		/* max bytes for an exec function */
 #define NGROUPS		NGROUPS_MAX	/* max number groups */
