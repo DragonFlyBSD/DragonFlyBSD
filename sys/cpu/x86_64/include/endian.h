@@ -69,7 +69,7 @@
 #ifdef __GNUC__
 
 #define __word_swap_int_var(x) \
-__extension__ ({ register __uint32_t __X = (x); \
+__extension__ ({ __uint32_t __X = (x); \
    __asm ("rorl $16, %0" : "+r" (__X)); \
    __X; })
 
@@ -88,7 +88,7 @@ __extension__ ({ register __uint32_t __X = (x); \
 #endif	/* __OPTIMIZE__ */
 
 #define __byte_swap_int_var(x) \
-__extension__ ({ register __uint32_t __X = (x); \
+__extension__ ({ __uint32_t __X = (x); \
    __asm ("bswap %0" : "+r" (__X)); \
    __X; })
 
@@ -109,7 +109,7 @@ __extension__ ({ register __uint32_t __X = (x); \
 #endif	/* __OPTIMIZE__ */
 
 #define __byte_swap_long_var(x) \
-__extension__ ({ register __uint64_t __X = (x); \
+__extension__ ({ __uint64_t __X = (x); \
    __asm ("bswap %0" : "+r" (__X)); \
    __X; })
 
@@ -139,7 +139,7 @@ __extension__ ({ register __uint64_t __X = (x); \
 #endif	/* __i386__ */
 
 #define __byte_swap_word_var(x) \
-__extension__ ({ register __uint16_t __X = (x); \
+__extension__ ({ __uint16_t __X = (x); \
    __asm ("xchgb %h0, %b0" : "+Q" (__X)); \
    __X; })
 
