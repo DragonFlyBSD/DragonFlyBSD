@@ -28,7 +28,7 @@
 .\"	@(#)telnetd.8	8.4 (Berkeley) 6/1/94
 .\" $FreeBSD: src/crypto/telnet/telnetd/telnetd.8,v 1.5.2.6 2002/04/13 10:59:09 markm Exp $
 .\"
-.Dd July 27, 2009
+.Dd September 10, 2019
 .Dt TELNETD 8
 .Os
 .Sh NAME
@@ -244,21 +244,7 @@ The alternate command must
 understand the same command arguments as the standard login.
 .It Fl S Ar tos
 .It Fl u Ar len
-This option is used to specify the size of the field
-in the
-.Dv utmp
-structure that holds the remote host name.
-If the resolved host name is longer than
-.Ar len ,
-the dotted decimal value will be used instead.
-This allows hosts with very long host names that
-overflow this field to still be uniquely identified.
-Specifying
-.Fl u0
-indicates that only dotted decimal addresses
-should be put into the
-.Pa utmp
-file.
+This option is provided for backward compatibility and has no effect.
 .It Fl U
 This option causes
 .Nm

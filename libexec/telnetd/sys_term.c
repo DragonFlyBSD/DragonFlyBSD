@@ -34,9 +34,7 @@
 #include <sys/tty.h>
 #include <libutil.h>
 #include <stdlib.h>
-#ifdef SUPPORT_UTMPX
 #include <utmpx.h>
-#endif
 
 #include "telnetd.h"
 #include "pathnames.h"
@@ -1323,14 +1321,8 @@ cleanup(int sig __unused)
 	 */
 	sigfillset(&mask);
 	sigprocmask(SIG_SETMASK, &mask, NULL);
-#ifdef SUPPORT_UTMP
-	if (logout(p))
-		logwtmp(p, "", "");
-#endif
-#ifdef SUPPORT_UTMPX
 	if (logoutx(p, 0, DEAD_PROCESS))
 		logwtmpx(p, "", "", 0, DEAD_PROCESS);
-#endif
 	(void)chmod(line, 0666);
 	(void)chown(line, 0, 0);
 	*p = 'p';
