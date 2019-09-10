@@ -95,25 +95,25 @@
 /* #undef CONF_LASTLOG_FILE */
 
 /* Define if you want to specify the path to your utmp file */
-#define CONF_UTMP_FILE "/var/run/utmp"
+/* #undef CONF_UTMP_FILE */
 
 /* Define if you want to specify the path to your wtmpx file */
-/* #undef CONF_WTMPX_FILE */
+#define CONF_WTMPX_FILE "/var/log/wtmpx"
 
 /* Define if you want to specify the path to your wtmp file */
-#define CONF_WTMP_FILE "/var/log/wtmp"
+/* #undef CONF_WTMP_FILE */
 
 /* Define if your platform needs to skip post auth file descriptor passing */
 /* #undef DISABLE_FD_PASSING */
 
 /* Define if you don't want to use lastlog */
-/* #undef DISABLE_LASTLOG */
+#define DISABLE_LASTLOG 1
 
 /* Define if you don't want to use your system's login() call */
-/* #undef DISABLE_LOGIN */
+#define DISABLE_LOGIN 1
 
 /* Define if you don't want to use pututline() etc. to write [uw]tmp */
-/* #undef DISABLE_PUTUTLINE */
+#define DISABLE_PUTUTLINE 1
 
 /* Define if you don't want to use pututxline() etc. to write [uw]tmpx */
 /* #undef DISABLE_PUTUTXLINE */
@@ -122,16 +122,16 @@
 /* #undef DISABLE_SHADOW */
 
 /* Define if you don't want to use utmp */
-/* #undef DISABLE_UTMP */
+#define DISABLE_UTMP 1
 
 /* Define if you don't want to use utmpx */
 /* #undef DISABLE_UTMPX */
 
 /* Define if you don't want to use wtmp */
-/* #undef DISABLE_WTMP */
+#define DISABLE_WTMP 1
 
 /* Define if you don't want to use wtmpx */
-#define DISABLE_WTMPX 1
+/* #undef DISABLE_WTMPX */
 
 /* Enable for PKCS#11 support */
 /* #undef ENABLE_PKCS11 */
@@ -458,7 +458,7 @@
 /* #undef HAVE_ENDIAN_H */
 
 /* Define to 1 if you have the `endutent' function. */
-#define HAVE_ENDUTENT 1
+/* #undef HAVE_ENDUTENT */
 
 /* Define to 1 if you have the `endutxent' function. */
 #define HAVE_ENDUTXENT 1
@@ -662,7 +662,7 @@
 #define HAVE_GETTTYENT 1
 
 /* Define to 1 if you have the `getutent' function. */
-#define HAVE_GETUTENT 1
+/* #undef HAVE_GETUTENT */
 
 /* Define to 1 if you have the `getutid' function. */
 /* #undef HAVE_GETUTID */
@@ -680,7 +680,7 @@
 #define HAVE_GETUTXLINE 1
 
 /* Define to 1 if you have the `getutxuser' function. */
-/* #undef HAVE_GETUTXUSER */
+#define HAVE_GETUTXUSER 1
 
 /* Define to 1 if you have the `get_default_context_with_level' function. */
 /* #undef HAVE_GET_DEFAULT_CONTEXT_WITH_LEVEL */
@@ -719,7 +719,7 @@
 #define HAVE_HMAC_CTX_INIT 1
 
 /* Define if you have ut_host in utmp.h */
-#define HAVE_HOST_IN_UTMP 1
+/* #undef HAVE_HOST_IN_UTMP */
 
 /* Define if you have ut_host in utmpx.h */
 #define HAVE_HOST_IN_UTMPX 1
@@ -848,7 +848,7 @@
 #define HAVE_LOCALE_H 1
 
 /* Define to 1 if you have the `login' function. */
-#define HAVE_LOGIN 1
+/* #undef HAVE_LOGIN */
 
 /* Define to 1 if you have the <login_cap.h> header file. */
 #define HAVE_LOGIN_CAP_H 1
@@ -860,10 +860,10 @@
 /* #undef HAVE_LOGIN_H */
 
 /* Define to 1 if you have the `logout' function. */
-#define HAVE_LOGOUT 1
+/* #undef HAVE_LOGOUT */
 
 /* Define to 1 if you have the `logwtmp' function. */
-#define HAVE_LOGWTMP 1
+/* #undef HAVE_LOGWTMP */
 
 /* Define to 1 if the system has the type `long double'. */
 #define HAVE_LONG_DOUBLE 1
@@ -1178,7 +1178,7 @@
 #define HAVE_SETSID 1
 
 /* Define to 1 if you have the `setutent' function. */
-#define HAVE_SETUTENT 1
+/* #undef HAVE_SETUTENT */
 
 /* Define to 1 if you have the `setutxdb' function. */
 #define HAVE_SETUTXDB 1
@@ -1469,7 +1469,7 @@
 #define HAVE_TIME_H 1
 
 /* Define if you have ut_time in utmp.h */
-#define HAVE_TIME_IN_UTMP 1
+/* #undef HAVE_TIME_IN_UTMP */
 
 /* Define if you have ut_time in utmpx.h */
 /* #undef HAVE_TIME_IN_UTMPX */
@@ -1544,7 +1544,7 @@
 #define HAVE_UTIME_H 1
 
 /* Define to 1 if you have the `utmpname' function. */
-#define HAVE_UTMPNAME 1
+/* #undef HAVE_UTMPNAME */
 
 /* Define to 1 if you have the `utmpxname' function. */
 #define HAVE_UTMPXNAME 1
@@ -1553,7 +1553,7 @@
 #define HAVE_UTMPX_H 1
 
 /* Define to 1 if you have the <utmp.h> header file. */
-#define HAVE_UTMP_H 1
+/* #undef HAVE_UTMP_H */
 
 /* define if you have u_char data type */
 #define HAVE_U_CHAR 1
