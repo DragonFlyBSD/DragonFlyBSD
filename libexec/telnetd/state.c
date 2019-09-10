@@ -521,6 +521,7 @@ willoption(int option)
 			slctab[SLC_XON].defset.flag |= SLC_DEFAULT;
 			slctab[SLC_XOFF].defset.flag &= ~SLC_LEVELBITS;
 			slctab[SLC_XOFF].defset.flag |= SLC_DEFAULT;
+			/* FALLTHROUGH */
 		case TELOPT_TTYPE:
 		case TELOPT_SGA:
 		case TELOPT_NAWS:

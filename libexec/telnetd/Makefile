@@ -9,7 +9,7 @@ MAN=		telnetd.8
 SRCS=		authenc.c global.c slc.c state.c sys_term.c telnetd.c \
 		termstat.c utility.c
 
-WARNS?=		2
+WARNS?=		5
 
 CFLAGS+=	-DLINEMODE -DUSE_TERMIO -DDIAGNOSTICS -DOLD_ENVIRON -DENV_HACK
 CFLAGS+=	-I${.CURDIR}/../../lib
