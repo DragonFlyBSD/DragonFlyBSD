@@ -1303,6 +1303,37 @@ rt_llroute(struct sockaddr *dst, struct rtentry *rt0, struct rtentry **drt)
 	return 0;
 }
 
+struct rt_purgecloned_arg {
+	struct ifnet	*ifp;
+	int		family;
+};
+
+static int
+rt_purgecloned_callback(struct radix_node *rn, void *xap)
+{
+	struct rtentry *rt = (struct rtentry *)rn;
+	struct rt_purgecloned_arg *arg = xap;
+
+	if (rt->rt_ifp == arg->ifp && rt->rt_flags & RTF_WASCLONED)
+		rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, NULL);
+	return 0;
+}
+
+void
+rt_purgecloned(struct ifnet *ifp, int af)
+{
+	struct radix_node_head *rnh;
+	struct rt_purgecloned_arg arg = {
+		.ifp = ifp,
+		.family = af,
+	};
+
+	ASSERT_NETISR0;
+
+	if ((rnh = rt_tables[mycpuid][af]) != NULL)
+		rnh->rnh_walktree(rnh, rt_purgecloned_callback, &arg);
+}
+
 static int
 rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim){
 	int i;

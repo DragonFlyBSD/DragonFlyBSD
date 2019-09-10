@@ -353,6 +353,7 @@ int	 rt_llroute (struct sockaddr *dst, struct rtentry *rt0,
 void	 rt_missmsg (int, struct rt_addrinfo *, int, int);
 void	 rt_newaddrmsg (int, struct ifaddr *, int, struct rtentry *);
 void	 rt_newmaddrmsg (int, struct ifmultiaddr *);
+void	 rt_purgecloned(struct ifnet *, int);
 void	 rt_rtmsg(int cmd, struct rtentry *rt, struct ifnet *ifp, int error);
 int	 rt_setgate (struct rtentry *, struct sockaddr *, struct sockaddr *);
 void	 rtalloc (struct route *);
