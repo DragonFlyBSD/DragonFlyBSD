@@ -241,6 +241,26 @@ getutxline(const struct utmpx *utx)
 }
 
 struct utmpx *
+getutxuser(const char *user)
+{
+	_DIAGASSERT(utx != NULL);
+
+	do {
+		switch (ut.ut_type) {
+		case EMPTY:
+			break;
+		case USER_PROCESS:
+			if (strncmp(ut.ut_user, user, sizeof(ut.ut_user)) == 0)
+				return &ut;
+			break;
+		default:
+			break;
+		}
+	} while (getutxent() != NULL);
+	return NULL;
+}
+
+struct utmpx *
 pututxline(const struct utmpx *utx)
 {
 	struct passwd *pw;

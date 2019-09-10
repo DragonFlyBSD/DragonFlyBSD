@@ -496,6 +496,10 @@ DF506.0 {
     dup3;
 };
 
+DF508.0 {
+    getutxuser;
+};
+
 DFprivate_1.0 {
 	/* pthread stubs */
     _pthread_atfork;

@@ -142,6 +142,7 @@ struct utmp;
 void getutmp(const struct utmpx *, struct utmp *);
 void getutmpx(const struct utmp *, struct utmpx *);
 int utmpxname(const char *);
+struct utmpx *getutxuser(const char *);
 int setutxdb(utx_db_t, const char *);
 #endif
 __END_DECLS

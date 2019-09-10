@@ -105,6 +105,7 @@ MLINKS+=dlsym.3 dlfunc.3
 MLINKS+=endutxent.3 getutxent.3 \
 	endutxent.3 getutxid.3 \
 	endutxent.3 getutxline.3 \
+	endutxent.3 getutxuser.3 \
 	endutxent.3 pututxline.3 \
 	endutxent.3 setutxdb.3 \
 	endutxent.3 setutxent.3
