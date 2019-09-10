@@ -215,7 +215,6 @@ struct mbuf *
 void	 ip_stripoptions(struct mbuf *);
 u_int16_t ip_randomid(void);
 void	rip_ctloutput(union netmsg *);
-void	rip_ctlinput(union netmsg *);
 void	rip_init(void);
 int	rip_input(struct mbuf **, int *, int);
 int	rip_output(struct mbuf *, struct socket *, ...);

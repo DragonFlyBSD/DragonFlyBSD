@@ -137,10 +137,10 @@ struct protosw inetsw[] = {
 
 	.pr_input = rip_input,
 	.pr_output = NULL,
-	.pr_ctlinput = rip_ctlinput,
+	.pr_ctlinput = NULL,
 	.pr_ctloutput = rip_ctloutput,
 
-	.pr_ctlport = cpu0_ctlport,
+	.pr_ctlport = NULL,
 	.pr_usrreqs = &rip_usrreqs
     },
     {
