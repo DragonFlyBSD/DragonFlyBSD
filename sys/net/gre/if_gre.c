@@ -128,10 +128,10 @@ static const struct protosw in_gre_protosw =
 
 	.pr_input = gre_input,
 	.pr_output = rip_output,
-	.pr_ctlinput = rip_ctlinput,
+	.pr_ctlinput = NULL,
 	.pr_ctloutput = rip_ctloutput,
 
-	.pr_ctlport = cpu0_ctlport,
+	.pr_ctlport = NULL,
 	.pr_usrreqs = &rip_usrreqs
     };
 
@@ -144,10 +144,10 @@ static const struct protosw in_mobile_protosw =
 
 	.pr_input = gre_mobile_input,
 	.pr_output = rip_output,
-	.pr_ctlinput = rip_ctlinput,
+	.pr_ctlinput = NULL,
 	.pr_ctloutput = rip_ctloutput,
 
-	.pr_ctlport = cpu0_ctlport,
+	.pr_ctlport = NULL,
 	.pr_usrreqs = &rip_usrreqs
     };
 
