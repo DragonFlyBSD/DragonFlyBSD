@@ -1,6 +1,8 @@
 /*	$NetBSD: mount_msdos.c,v 1.18 1997/09/16 12:24:18 lukem Exp $	*/
 
-/*
+/*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (c) 1994 Christopher G. Demetriou
  * All rights reserved.
  *
@@ -28,8 +30,6 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: src/sbin/mount_msdos/mount_msdos.c,v 1.19.2.1 2000/07/20 10:35:13 kris Exp $
  */
 
 #include <sys/param.h>
@@ -63,9 +63,6 @@ static struct mntopt mopts[] = {
 	MOPT_FORCE,
 	MOPT_SYNC,
 	MOPT_UPDATE,
-#ifdef MSDOSFSMNT_GEMDOSFS
-	{ "gemdosfs", 0, MSDOSFSMNT_GEMDOSFS, 1 },
-#endif
 	{ "shortnames", 0, MSDOSFSMNT_SHORTNAME, 1 },
 	{ "longnames", 0, MSDOSFSMNT_LONGNAME, 1 },
 	{ "nowin95", 0, MSDOSFSMNT_NOWIN95, 1 },
@@ -95,11 +92,6 @@ main(int argc, char **argv)
 
 	while ((c = getopt(argc, argv, "sl9u:g:m:o:L:D:")) != -1) {
 		switch (c) {
-#ifdef MSDOSFSMNT_GEMDOSFS
-		case 'G':
-			args.flags |= MSDOSFSMNT_GEMDOSFS;
-			break;
-#endif
 		case 's':
 			args.flags |= MSDOSFSMNT_SHORTNAME;
 			break;
