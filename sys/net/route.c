@@ -829,6 +829,9 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 		if (ret_nrt == NULL || (rt = *ret_nrt) == NULL)
 			gotoerr(EINVAL);
 
+		if (!(rt->rt_ifp->if_flags & IFF_UP))
+			gotoerr(ENETDOWN);
+
 		KASSERT(rt->rt_cpuid == mycpuid,
 		    ("rt resolve rt_cpuid %d, mycpuid %d",
 		     rt->rt_cpuid, mycpuid));
