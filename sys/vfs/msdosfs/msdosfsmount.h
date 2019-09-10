@@ -71,6 +71,8 @@ struct msdosfsmount {
 	gid_t pm_gid;		/* gid to set as owner of the files */
 	mode_t pm_mask;		/* mask to and with file protection bits
 				   for files */
+	mode_t pm_dirmask;	/* mask to and with file protection bits
+				   for directories */
 	struct vnode *pm_devvp;	/* vnode for character device mounted */
 	cdev_t pm_dev;		/* character device mounted */
 	struct bpb50 pm_bpb;	/* BIOS parameter blk for this fs */
@@ -245,6 +247,7 @@ struct msdosfs_args {
 	uid_t	uid;		/* uid that owns msdosfs files */
 	gid_t	gid;		/* gid that owns msdosfs files */
 	mode_t	mask;		/* file mask to be applied for msdosfs perms */
+	mode_t	dirmask;	/* dir  mask to be applied for msdosfs perms */
 	int	flags;		/* see below */
 	int magic;		/* version number */
         char cs_local[ICONV_CSNMAXLEN];

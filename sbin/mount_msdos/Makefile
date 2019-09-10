@@ -4,6 +4,7 @@
 
 PROG=	mount_msdos
 MAN=	mount_msdos.8
+CFLAGS+= -I${.CURDIR}/../../sys
 DPADD=	${LIBUTIL} ${LIBKICONV}
 LDADD=	-lutil -lkiconv
 

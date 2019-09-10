@@ -110,6 +110,7 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 	pmp->pm_gid = argp->gid;
 	pmp->pm_uid = argp->uid;
 	pmp->pm_mask = argp->mask & ALLPERMS;
+	pmp->pm_dirmask = argp->dirmask & ALLPERMS;
 	pmp->pm_flags |= argp->flags & MSDOSFSMNT_MNTOPT;
 
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {

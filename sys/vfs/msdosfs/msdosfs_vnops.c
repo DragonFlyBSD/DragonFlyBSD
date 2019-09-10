@@ -208,7 +208,7 @@ msdosfs_access(struct vop_access_args *ap)
 	file_mode = (S_IXUSR|S_IXGRP|S_IXOTH) | (S_IRUSR|S_IRGRP|S_IROTH) |
 	    ((dep->de_Attributes & ATTR_READONLY) ?
 	    0 : (S_IWUSR|S_IWGRP|S_IWOTH));
-	file_mode &= pmp->pm_mask;
+	file_mode &= (ap->a_vp->v_type == VDIR ? pmp->pm_dirmask : pmp->pm_mask);
 
 	return (vop_helper_access(ap, pmp->pm_uid, pmp->pm_gid, file_mode, 0));
 }
@@ -247,7 +247,8 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 		mode = S_IRWXU|S_IRWXG|S_IRWXO;
 	else
 		mode = S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH;
-	vap->va_mode = mode & pmp->pm_mask;
+	vap->va_mode = mode &
+		(ap->a_vp->v_type == VDIR ? pmp->pm_dirmask : pmp->pm_mask);
 	vap->va_uid = pmp->pm_uid;
 	vap->va_gid = pmp->pm_gid;
 	vap->va_nlink = 1;

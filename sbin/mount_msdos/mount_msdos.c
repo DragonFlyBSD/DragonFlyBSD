@@ -56,7 +56,7 @@
 
 /*
  * XXX - no way to specify "foo=<bar>"-type options; that's what we'd
- * want for "-u", "-g", "-m", "-L", and "-D".
+ * want for "-u", "-g", "-m", "-M", "-L", and "-D".
  */
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,
@@ -80,17 +80,17 @@ main(int argc, char **argv)
 {
 	struct msdosfs_args args;
 	struct stat sb;
-	int c, error, mntflags, set_gid, set_uid, set_mask;
+	int c, error, mntflags, set_gid, set_uid, set_mask, set_dirmask;
 	char *dev, *dir, mntpath[MAXPATHLEN], *csp;
 	const char *quirk = NULL;
 	char *cs_local = NULL;
 	char *cs_dos = NULL;
 	struct vfsconf vfc;
-	mntflags = set_gid = set_uid = set_mask = 0;
+	mntflags = set_gid = set_uid = set_mask = set_dirmask = 0;
 	memset(&args, '\0', sizeof(args));
 	args.magic = MSDOSFS_ARGSMAGIC;
 
-	while ((c = getopt(argc, argv, "sl9u:g:m:o:L:D:")) != -1) {
+	while ((c = getopt(argc, argv, "sl9u:g:m:M:o:L:D:")) != -1) {
 		switch (c) {
 		case 's':
 			args.flags |= MSDOSFSMNT_SHORTNAME;
@@ -112,6 +112,10 @@ main(int argc, char **argv)
 		case 'm':
 			args.mask = a_mask(optarg);
 			set_mask = 1;
+			break;
+		case 'M':
+			args.dirmask = a_mask(optarg);
+			set_dirmask = 1;
 			break;
 		case 'L':
 			if (setlocale(LC_CTYPE, optarg) == NULL)
@@ -140,6 +144,15 @@ main(int argc, char **argv)
 
 	if (optind + 2 != argc)
 		usage();
+
+	if (set_mask && !set_dirmask) {
+		args.dirmask = args.mask;
+		set_dirmask = 1;
+	}
+	else if (set_dirmask && !set_mask) {
+		args.mask = args.dirmask;
+		set_mask = 1;
+	}
 
 	dev = argv[optind];
 	dir = argv[optind + 1];
@@ -175,7 +188,8 @@ main(int argc, char **argv)
 		if (!set_gid)
 			args.gid = sb.st_gid;
 		if (!set_mask)
-			args.mask = sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+			args.mask = args.dirmask =
+				sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
 	}
 
 	error = getvfsbyname("msdos", &vfc);
@@ -252,9 +266,10 @@ a_mask(char *s)
 static void
 usage(void)
 {
-	fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n",
 	    "usage: mount_msdos [-9ls] [-D DOS_codepage] [-g gid] [-L locale]",
-	    "                   [-m mask] [-o options] [-u uid] special node");
+	    "                   [-M mask] [-m mask] [-o options] [-u uid]",
+	    "                   special node");
 	exit(EX_USAGE);
 }
 
