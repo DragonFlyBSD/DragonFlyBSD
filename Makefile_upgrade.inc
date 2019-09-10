@@ -3765,6 +3765,7 @@ TO_REMOVE+=/usr/share/man/man3/logwtmp.3.gz
 TO_REMOVE+=/usr/share/man/man5/lastlog.5.gz
 TO_REMOVE+=/usr/share/man/man5/utmp.5.gz
 TO_REMOVE+=/usr/share/man/man5/wtmp.5.gz
+TO_REMOVE+=/usr/share/man/man3/ttyslot.3.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

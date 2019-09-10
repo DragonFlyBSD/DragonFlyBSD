@@ -424,7 +424,6 @@ DF404.0 {
     times;
     ttyname;
     ttyname_r;
-    ttyslot;
     ualarm;
     ulimit;
     uname;

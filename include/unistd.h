@@ -596,7 +596,6 @@ int	 swapoff(const char *);
 int	 swapon(const char *);
 int	 syscall(int, ...);
 off_t	 __syscall(quad_t, ...);
-int	 ttyslot(void);
 int	 umtx_sleep(volatile const int *, int , int);
 int	 umtx_wakeup(volatile const int *, int);
 int	 undelete(const char *);
