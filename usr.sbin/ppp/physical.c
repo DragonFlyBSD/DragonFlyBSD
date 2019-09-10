@@ -40,7 +40,7 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
+#include <utmpx.h>
 #if defined(__OpenBSD__) || defined(__NetBSD__)
 #include <sys/ioctl.h>
 #include <util.h>
@@ -99,8 +99,6 @@
 #include "netgraph.h"
 #endif
 #include "tcpmss.h"
-
-#define PPPOTCPLINE "ppp"
 
 static int physical_DescriptorWrite(struct fdescriptor *, struct bundle *,
                                     const fd_set *);
@@ -323,6 +321,7 @@ physical_Close(struct physical *p)
 {
   int newsid;
   char fn[PATH_MAX];
+  struct utmpx ut;
 
   if (p->fd < 0)
     return;
@@ -334,12 +333,11 @@ physical_Close(struct physical *p)
 
   physical_StopDeviceTimer(p);
   if (p->Utmp) {
-    if (p->handler && (p->handler->type == TCP_DEVICE ||
-                       p->handler->type == UDP_DEVICE))
-      /* Careful - we logged in on line ``ppp'' with IP as our host */
-      ID0logout(PPPOTCPLINE, 1);
-    else
-      ID0logout(p->name.base, 0);
+    memset(&ut, 0, sizeof ut);
+    ut.ut_type = DEAD_PROCESS;
+    gettimeofday(&ut.ut_tv, NULL);
+    snprintf(ut.ut_id, sizeof ut.ut_id, "%xppp", (int)getpid());
+    ID0logout(&ut);
     p->Utmp = 0;
   }
   newsid = tcgetpgrp(p->fd) == getpgrp();
@@ -894,16 +892,17 @@ void
 physical_Login(struct physical *p, const char *name)
 {
   if (p->type == PHYS_DIRECT && *p->name.base && !p->Utmp) {
-    struct utmp ut;
+    struct utmpx ut;
     const char *connstr;
     char *colon;
 
     memset(&ut, 0, sizeof ut);
-    time(&ut.ut_time);
-    strncpy(ut.ut_name, name, sizeof ut.ut_name);
+    ut.ut_type = USER_PROCESS;
+    gettimeofday(&ut.ut_tv, NULL);
+    snprintf(ut.ut_id, sizeof ut.ut_id, "%xppp", (int)getpid());
+    strncpy(ut.ut_user, name, sizeof ut.ut_user);
     if (p->handler && (p->handler->type == TCP_DEVICE ||
                        p->handler->type == UDP_DEVICE)) {
-      strncpy(ut.ut_line, PPPOTCPLINE, sizeof ut.ut_line);
       strncpy(ut.ut_host, p->name.base, sizeof ut.ut_host);
       colon = memchr(ut.ut_host, ':', sizeof ut.ut_host);
       if (colon)
@@ -914,7 +913,7 @@ physical_Login(struct physical *p, const char *name)
       /* mgetty sets this to the connection speed */
       strncpy(ut.ut_host, connstr, sizeof ut.ut_host);
     ID0login(&ut);
-    p->Utmp = ut.ut_time;
+    p->Utmp = 1;
   }
 }
 
