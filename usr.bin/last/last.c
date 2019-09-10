@@ -351,8 +351,17 @@ wtmpx(const char *file, int namesz, int linesz, int hostsz)
 				for (T = ttylist; T; T = T->next)
 					T->logout = -bp->ut_xtime;
 				currentout = -bp->ut_xtime;
+#ifdef __DragonFly__	/* XXX swildner: this should not be needed afaict */
+				if (!strncmp(bp->ut_name, "shutdown", namesz))
+					crmsg = "shutdown";
+				else if (!strncmp(bp->ut_name, "reboot", namesz))
+					crmsg = "reboot";
+				else
+					crmsg = "crash";
+#else
 				crmsg = strncmp(bp->ut_name, "shutdown",
 				    namesz) ? "crash" : "shutdown";
+#endif
 				if (wantx(bp, NO)) {
 					ct = fmttime(bp->ut_xtime, fulltime);
 					printf("%-*.*s  %-*.*s %-*.*s %s\n",
