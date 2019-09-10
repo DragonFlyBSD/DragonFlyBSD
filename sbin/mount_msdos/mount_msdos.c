@@ -86,8 +86,8 @@ main(int argc, char **argv)
 	int c, error, mntflags, set_gid, set_uid, set_mask;
 	char *dev, *dir, mntpath[MAXPATHLEN], *csp;
 	const char *quirk = NULL;
-        char *cs_local = NULL;
-        char *cs_dos = NULL;
+	char *cs_local = NULL;
+	char *cs_dos = NULL;
 	struct vfsconf vfc;
 	mntflags = set_gid = set_uid = set_mask = 0;
 	memset(&args, '\0', sizeof(args));
@@ -122,11 +122,11 @@ main(int argc, char **argv)
 			set_mask = 1;
 			break;
 		case 'L':
-                        if (setlocale(LC_CTYPE, optarg) == NULL)
-                                err(EX_CONFIG, "%s", optarg);
-                        csp = strchr(optarg,'.');
-                        if (!csp)
-                                err(EX_CONFIG, "%s", optarg);
+			if (setlocale(LC_CTYPE, optarg) == NULL)
+				err(EX_CONFIG, "%s", optarg);
+			csp = strchr(optarg,'.');
+			if (!csp)
+				err(EX_CONFIG, "%s", optarg);
 			quirk = kiconv_quirkcs(csp + 1, KICONV_VENDOR_MICSFT);
 			cs_local = strdup(quirk);
 			args.flags |= MSDOSFSMNT_KICONV;
@@ -162,13 +162,13 @@ main(int argc, char **argv)
 	args.fspec = dev;
 	args.export.ex_root = -2;	/* unchecked anyway on DOS fs */
 
-        if (cs_local != NULL) {
-                if (set_charset(&args, cs_local, cs_dos) == -1)
-                        err(EX_OSERR, "msdos_iconv");
-        } else if (cs_dos != NULL) {
-                if (set_charset(&args, "ISO8859-1", cs_dos) == -1)
-                        err(EX_OSERR, "msdos_iconv");
-        }
+	if (cs_local != NULL) {
+		if (set_charset(&args, cs_local, cs_dos) == -1)
+			err(EX_OSERR, "msdos_iconv");
+	} else if (cs_dos != NULL) {
+		if (set_charset(&args, "ISO8859-1", cs_dos) == -1)
+			err(EX_OSERR, "msdos_iconv");
+	}
 
 	if (mntflags & MNT_RDONLY)
 		args.export.ex_flags = MNT_EXRDONLY;
@@ -269,22 +269,22 @@ usage(void)
 int
 set_charset(struct msdosfs_args *args, const char *cs_local, const char *cs_dos)
 {
-        int error;
-        if (modfind("msdos_iconv") < 0) {
-                if (kldload("msdos_iconv") < 0 || modfind("msdos_iconv") < 0) {
-                        warnx("cannot find or load \"msdos_iconv\" kernel module");
-                        return (-1);
-                }
+	int error;
+	if (modfind("msdos_iconv") < 0) {
+		if (kldload("msdos_iconv") < 0 || modfind("msdos_iconv") < 0) {
+			warnx("cannot find or load \"msdos_iconv\" kernel module");
+			return (-1);
+		}
 	}
 	snprintf(args->cs_local, ICONV_CSNMAXLEN, "%s", cs_local);
-        error = kiconv_add_xlat16_cspairs(ENCODING_UNICODE, cs_local);
-        if (error)
-                return (-1);
-        if (!cs_dos)
+	error = kiconv_add_xlat16_cspairs(ENCODING_UNICODE, cs_local);
+	if (error)
+		return (-1);
+	if (!cs_dos)
 		cs_dos = strdup("CP437");
 	snprintf(args->cs_dos, ICONV_CSNMAXLEN, "%s", cs_dos);
 	error = kiconv_add_xlat16_cspairs(cs_dos, cs_local);
 	if (error)
 		return (-1);
-        return (0);
+	return (0);
 }
