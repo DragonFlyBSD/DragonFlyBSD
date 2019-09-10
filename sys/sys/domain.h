@@ -64,6 +64,8 @@ struct	domain {
 	int	dom_maxrtkey;		/* for routing layer */
 	void	*(*dom_ifattach)(struct ifnet *);
 	void	(*dom_ifdetach)(struct ifnet *, void *);
+	void	(*dom_if_up)(struct ifnet *);
+	void	(*dom_if_down)(struct ifnet *);
 					/* af-dependent data on ifnet */
 };
 

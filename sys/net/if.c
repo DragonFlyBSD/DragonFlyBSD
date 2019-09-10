@@ -1662,6 +1662,7 @@ if_unroute_dispatch(netmsg_t nmsg)
 	struct ifnet *ifp = msg->ifp;
 	int flag = msg->flag, fam = msg->fam;
 	struct ifaddr_container *ifac;
+	struct domain *dp;
 
 	ASSERT_NETISR0;
 
@@ -1685,6 +1686,10 @@ if_unroute_dispatch(netmsg_t nmsg)
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			kpfctlinput(PRC_IFDOWN, ifa->ifa_addr);
 	}
+
+	SLIST_FOREACH(dp, &domains, dom_next)
+		if (dp->dom_if_down != NULL)
+			dp->dom_if_down(ifp);
 
 	ifq_purge_all(&ifp->if_snd);
 	netisr_replymsg(&nmsg->base, 0);
@@ -1713,6 +1718,7 @@ if_route_dispatch(netmsg_t nmsg)
 	struct ifnet *ifp = msg->ifp;
 	int flag = msg->flag, fam = msg->fam;
 	struct ifaddr_container *ifac;
+	struct domain *dp;
 
 	ASSERT_NETISR0;
 
@@ -1737,6 +1743,10 @@ if_route_dispatch(netmsg_t nmsg)
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			kpfctlinput(PRC_IFUP, ifa->ifa_addr);
 	}
+
+	SLIST_FOREACH(dp, &domains, dom_next)
+		if (dp->dom_if_up != NULL)
+			dp->dom_if_up(ifp);
 #ifdef INET6
 	in6_if_up(ifp);
 #endif
