@@ -1,74 +1,93 @@
-/*
- *      Copyright (c) 1994 Christopher G. Demetriou.
- *      @(#)Copyright (c) 1994, Simon J. Gerraty.
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
- *      This is free software.  It comes with NO WARRANTY.
- *      Permission to use, modify and distribute this source code
- *      is granted subject to the following conditions.
- *      1/ that the above copyright notice and this notice
- *      are preserved in all copies and that due credit be given
- *      to the author.
- *      2/ that any changes to this code are clearly commented
- *      as such so that the author does not get blamed for bugs
- *      other than his own.
+ * Copyright (c) 1994 Christopher G. Demetriou
+ * Copyright (c) 1994 Simon J. Gerraty
+ * Copyright (c) 2012 Ed Schouten <ed@FreeBSD.org>
+ * All rights reserved.
  *
- * $FreeBSD: src/usr.sbin/ac/ac.c,v 1.14.2.2 2002/03/12 19:55:04 phantom Exp $
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.sbin/ac/ac.c 326276 2017-11-27 15:37:16Z pfg $
  */
 
-#include <sys/types.h>
-#include <sys/file.h>
+#include <sys/queue.h>
 #include <sys/time.h>
+
 #include <err.h>
 #include <errno.h>
 #include <langinfo.h>
 #include <locale.h>
-#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <timeconv.h>
 #include <unistd.h>
-#include <utmp.h>
+#include <utmpx.h>
 
 /*
  * this is for our list of currently logged in sessions
  */
-struct utmp_list {
-	struct utmp_list *next;
-	struct utmp usr;
+struct utmpx_entry {
+	SLIST_ENTRY(utmpx_entry) next;
+	char		user[sizeof(((struct utmpx *)0)->ut_user)];
+	char		id[sizeof(((struct utmpx *)0)->ut_id)];
+#ifdef CONSOLE_TTY
+	char		line[sizeof(((struct utmpx *)0)->ut_line)];
+#endif
+	struct timeval	time;
 };
 
 /*
  * this is for our list of users that are accumulating time.
  */
-struct user_list {
-	struct user_list *next;
-	char	name[UT_NAMESIZE+1];
-	time_t	secs;
+struct user_entry {
+	SLIST_ENTRY(user_entry) next;
+	char		user[sizeof(((struct utmpx *)0)->ut_user)];
+	struct timeval	time;
 };
 
 /*
  * this is for chosing whether to ignore a login
  */
-struct tty_list {
-	struct tty_list *next;
-	char	name[UT_LINESIZE+3];
-	int	len;
-	int	ret;
+struct tty_entry {
+	SLIST_ENTRY(tty_entry) next;
+	char		line[sizeof(((struct utmpx *)0)->ut_line) + 2];
+	size_t		len;
+	int		ret;
 };
 
 /*
  * globals - yes yuk
  */
 #ifdef CONSOLE_TTY
-static char 	*Console = CONSOLE_TTY;
+static const char *Console = CONSOLE_TTY;
 #endif
-static time_t	Total = 0;
-static time_t	FirstTime = 0;
+static struct timeval Total = { 0, 0 };
+static struct timeval FirstTime = { 0, 0 };
 static int	Flags = 0;
-static struct user_list *Users = NULL;
-static struct tty_list *Ttys = NULL;
-
-#define NEW(type) (type *)malloc(sizeof(type))
+static SLIST_HEAD(, utmpx_entry) CurUtmpx = SLIST_HEAD_INITIALIZER(CurUtmpx);
+static SLIST_HEAD(, user_entry) Users = SLIST_HEAD_INITIALIZER(Users);
+static SLIST_HEAD(, tty_entry) Ttys = SLIST_HEAD_INITIALIZER(Ttys);
 
 #define	AC_W	1				/* not _PATH_WTMP */
 #define	AC_D	2				/* daily totals (ignore -p) */
@@ -76,90 +95,56 @@ static struct tty_list *Ttys = NULL;
 #define	AC_U	8				/* specified users only */
 #define	AC_T	16				/* specified ttys only */
 
-#ifdef DEBUG
-static int Debug = 0;
-#endif
+static void	ac(const char *);
+static void	usage(void) __dead2;
 
-static int		ac(FILE *);
-static struct tty_list	*add_tty(char *);
-static int		do_tty(char *);
-static FILE		*file(const char *);
-static struct utmp_list	*log_in(struct utmp_list *, struct utmp *);
-static struct utmp_list	*log_out(struct utmp_list *, struct utmp *);
-#ifdef CONSOLE_TTY
-static int		on_console(struct utmp_list *);
-#endif
-static void		show(const char *, time_t);
-static void		show_today(struct user_list *, struct utmp_list *,
-			    time_t);
-static void		show_users(struct user_list *);
-static struct user_list	*update_user(struct user_list *, char *, time_t);
-static void		usage(void) __dead2;
-
-/*
- * open wtmp or die
- */
-static FILE *
-file(const char *name)
+static void
+add_tty(const char *line)
 {
-	FILE *fp;
-
-	if ((fp = fopen(name, "r")) == NULL)
-		err(1, "%s", name);
-	/* in case we want to discriminate */
-	if (strcmp(_PATH_WTMP, name))
-		Flags |= AC_W;
-	return fp;
-}
-
-static struct tty_list *
-add_tty(char *name)
-{
-	struct tty_list *tp;
+	struct tty_entry *tp;
 	char *rcp;
 
 	Flags |= AC_T;
 
-	if ((tp = NEW(struct tty_list)) == NULL)
+	if ((tp = malloc(sizeof(*tp))) == NULL)
 		errx(1, "malloc failed");
 	tp->len = 0;				/* full match */
 	tp->ret = 1;				/* do if match */
-	if (*name == '!') {			/* don't do if match */
+	if (*line == '!') {			/* don't do if match */
 		tp->ret = 0;
-		name++;
+		line++;
 	}
-	strncpy(tp->name, name, sizeof(tp->name) - 1);
-	tp->name[sizeof(tp->name) - 1] = '\0';
-	if ((rcp = strchr(tp->name, '*')) != NULL) {	/* wild card */
+	strlcpy(tp->line, line, sizeof(tp->line));
+	/* Wildcard. */
+	if ((rcp = strchr(tp->line, '*')) != NULL) {
 		*rcp = '\0';
-		tp->len = strlen(tp->name);	/* match len bytes only */
+		/* Match len bytes only. */
+		tp->len = strlen(tp->line);
 	}
-	tp->next = Ttys;
-	Ttys = tp;
-	return Ttys;
+	SLIST_INSERT_HEAD(&Ttys, tp, next);
 }
 
 /*
  * should we process the named tty?
  */
 static int
-do_tty(char *name)
+do_tty(const char *line)
 {
-	struct tty_list *tp;
+	struct tty_entry *tp;
 	int def_ret = 0;
 
-	for (tp = Ttys; tp != NULL; tp = tp->next) {
+	SLIST_FOREACH(tp, &Ttys, next) {
 		if (tp->ret == 0)		/* specific don't */
 			def_ret = 1;		/* default do */
 		if (tp->len != 0) {
-			if (strncmp(name, tp->name, tp->len) == 0)
+			if (strncmp(line, tp->line, tp->len) == 0)
 				return tp->ret;
 		} else {
-			if (strncmp(name, tp->name, sizeof(tp->name)) == 0)
+			if (strncmp(line, tp->line, sizeof(tp->line)) == 0)
 				return tp->ret;
 		}
 	}
-	return def_ret;
+	return (def_ret);
 }
 
 #ifdef CONSOLE_TTY
@@ -167,66 +152,66 @@ do_tty(char *name)
  * is someone logged in on Console?
  */
 static int
-on_console(struct utmp_list *head)
+on_console(void)
 {
-	struct utmp_list *up;
+	struct utmpx_entry *up;
 
-	for (up = head; up; up = up->next) {
-		if (strncmp(up->usr.ut_line, Console,
-		    sizeof(up->usr.ut_line)) == 0)
-			return 1;
-	}
-	return 0;
+	SLIST_FOREACH(up, &CurUtmpx, next)
+		if (strcmp(up->line, Console) == 0)
+			return (1);
+	return (0);
 }
 #endif
 
 /*
- * update user's login time
+ * Update user's login time.
+ * If no entry for this user is found, a new entry is inserted into the
+ * list alphabetically.
  */
-static struct user_list *
-update_user(struct user_list *head, char *name, time_t secs)
+static void
+update_user(const char *user, struct timeval secs)
 {
-	struct user_list *up;
+	struct user_entry *up, *aup;
+	int c;
 
-	for (up = head; up != NULL; up = up->next) {
-		if (strncmp(up->name, name, UT_NAMESIZE) == 0) {
-			up->secs += secs;
-			Total += secs;
-			return head;
-		}
+	aup = NULL;
+	SLIST_FOREACH(up, &Users, next) {
+		c = strcmp(up->user, user);
+		if (c == 0) {
+			timeradd(&up->time, &secs, &up->time);
+			timeradd(&Total, &secs, &Total);
+			return;
+		} else if (c > 0)
+			break;
+		aup = up;
 	}
 	/*
 	 * not found so add new user unless specified users only
 	 */
 	if (Flags & AC_U)
-		return head;
+		return;
 
-	if ((up = NEW(struct user_list)) == NULL)
+	if ((up = malloc(sizeof(*up))) == NULL)
 		errx(1, "malloc failed");
-	up->next = head;
-	strncpy(up->name, name, sizeof(up->name) - 1);
-	up->name[sizeof(up->name) - 1] = '\0';	/* paranoid! */
-	up->secs = secs;
-	Total += secs;
-	return up;
+	if (aup == NULL)
+		SLIST_INSERT_HEAD(&Users, up, next);
+	else
+		SLIST_INSERT_AFTER(aup, up, next);
+	strlcpy(up->user, user, sizeof(up->user));
+	up->time = secs;
+	timeradd(&Total, &secs, &Total);
 }
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
-	FILE *fp;
+	const char *wtmpf = NULL;
 	int c;
 
 	setlocale(LC_TIME, "");
 
-	fp = NULL;
-	while ((c = getopt(argc, argv, "Dc:dpt:w:")) != -1) {
+	while ((c = getopt(argc, argv, "c:dpt:w:")) != -1) {
 		switch (c) {
-#ifdef DEBUG
-		case 'D':
-			Debug++;
-			break;
-#endif
 		case 'c':
 #ifdef CONSOLE_TTY
 			Console = optarg;
@@ -244,7 +229,8 @@ main(int argc, char **argv)
 			add_tty(optarg);
 			break;
 		case 'w':
-			fp = file(optarg);
+			Flags |= AC_W;
+			wtmpf = optarg;
 			break;
 		case '?':
 		default:
@@ -257,129 +243,111 @@ main(int argc, char **argv)
 		 * initialize user list
 		 */
 		for (; optind < argc; optind++) {
-			Users = update_user(Users, argv[optind], 0L);
+			update_user(argv[optind], (struct timeval){ 0, 0 });
 		}
 		Flags |= AC_U;			/* freeze user list */
 	}
 	if (Flags & AC_D)
 		Flags &= ~AC_P;
-	if (fp == NULL) {
-		/*
-		 * if _PATH_WTMP does not exist, exit quietly
-		 */
-		if (access(_PATH_WTMP, 0) != 0 && errno == ENOENT)
-			return 0;
+	ac(wtmpf);
 
-		fp = file(_PATH_WTMP);
-	}
-	ac(fp);
-
-	return 0;
+	return (0);
 }
 
 /*
  * print login time in decimal hours
  */
 static void
-show(const char *name, time_t secs)
+show(const char *user, struct timeval secs)
 {
-	printf("\t%-*s %8.2f\n", UT_NAMESIZE, name,
-	    ((double)secs / 3600));
+	printf("\t%-*s %8.2f\n",
+	    (int)sizeof(((struct user_entry *)0)->user), user,
+	    (double)secs.tv_sec / 3600);
 }
 
 static void
-show_users(struct user_list *list)
+show_users(void)
 {
-	struct user_list *lp;
+	struct user_entry *lp;
 
-	for (lp = list; lp; lp = lp->next)
-		show(lp->name, lp->secs);
+	SLIST_FOREACH(lp, &Users, next)
+		show(lp->user, lp->time);
 }
 
 /*
  * print total login time for 24hr period in decimal hours
  */
 static void
-show_today(struct user_list *users, struct utmp_list *logins, time_t secs)
+show_today(struct timeval today)
 {
-	struct user_list *up;
-	struct utmp_list *lp;
+	struct user_entry *up;
+	struct utmpx_entry *lp;
 	char date[64];
-	time_t yesterday = secs - 1;
+	struct timeval diff, total = { 0, 0 }, usec = { 0, 1 }, yesterday;
 	static int d_first = -1;
 
 	if (d_first < 0)
 		d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
+	timersub(&today, &usec, &yesterday);
 	strftime(date, sizeof(date),
 		       d_first ? "%e %b  total" : "%b %e  total",
-		       localtime(&yesterday));
+		       localtime(&yesterday.tv_sec));
 
-	/* restore the missing second */
-	yesterday++;
-
-	for (lp = logins; lp != NULL; lp = lp->next) {
-		secs = yesterday - lp->usr.ut_time;
-		Users = update_user(Users, lp->usr.ut_name, secs);
-		lp->usr.ut_time = yesterday;	/* as if they just logged in */
+	SLIST_FOREACH(lp, &CurUtmpx, next) {
+		timersub(&today, &lp->time, &diff);
+		update_user(lp->user, diff);
+		/* As if they just logged in. */
+		lp->time = today;
 	}
-	secs = 0;
-	for (up = users; up != NULL; up = up->next) {
-		secs += up->secs;
-		up->secs = 0;			/* for next day */
+	SLIST_FOREACH(up, &Users, next) {
+		timeradd(&total, &up->time, &total);
+		/* For next day. */
+		timerclear(&up->time);
 	}
- 	if (secs)
-		printf("%s %11.2f\n", date, ((double)secs / 3600));
+	if (timerisset(&total))
+		printf("%s %11.2f\n", date, (double)total.tv_sec / 3600);
 }
 
 /*
- * log a user out and update their times.
- * if ut_line is "~", we log all users out as the system has
- * been shut down.
+ * Log a user out and update their times.
+ * If ut_type is BOOT_TIME or INIT_PROCESS, we log all users out as the
+ * system has been shut down.
  */
-static struct utmp_list *
-log_out(struct utmp_list *head, struct utmp *up)
+static void
+log_out(const struct utmpx *up)
 {
-	struct utmp_list *lp, *lp2, *tlp;
-	time_t secs;
+	struct utmpx_entry *lp, *lp2, *tlp;
+	struct timeval secs;
 
-	for (lp = head, lp2 = NULL; lp != NULL; )
-		if (*up->ut_line == '~' || strncmp(lp->usr.ut_line, up->ut_line,
-		    sizeof(up->ut_line)) == 0) {
-			secs = up->ut_time - lp->usr.ut_time;
-			Users = update_user(Users, lp->usr.ut_name, secs);
-#ifdef DEBUG
-			if (Debug)
-				printf("%-.*s %-.*s: %-.*s logged out (%2d:%02d:%02d)\n",
-				    19, ctime(&up->ut_time),
-				    sizeof(lp->usr.ut_line), lp->usr.ut_line,
-				    sizeof(lp->usr.ut_name), lp->usr.ut_name,
-				    secs / 3600, (secs % 3600) / 60, secs % 60);
-#endif
+	for (lp = SLIST_FIRST(&CurUtmpx), lp2 = NULL; lp != NULL;)
+		if (up->ut_type == BOOT_TIME || up->ut_type == INIT_PROCESS ||
+		    (up->ut_type == DEAD_PROCESS &&
+		    memcmp(lp->id, up->ut_id, sizeof(up->ut_id)) == 0)) {
+			timersub(&up->ut_tv, &lp->time, &secs);
+			update_user(lp->user, secs);
 			/*
 			 * now lose it
 			 */
 			tlp = lp;
-			lp = lp->next;
-			if (tlp == head)
-				head = lp;
-			else if (lp2 != NULL)
-				lp2->next = lp;
+			lp = SLIST_NEXT(lp, next);
+			if (lp2 == NULL)
+				SLIST_REMOVE_HEAD(&CurUtmpx, next);
+			else
+				SLIST_REMOVE_AFTER(lp2, next);
 			free(tlp);
 		} else {
 			lp2 = lp;
-			lp = lp->next;
+			lp = SLIST_NEXT(lp, next);
 		}
-	return head;
 }
-
 
 /*
  * if do_tty says ok, login a user
  */
-static struct utmp_list *
-log_in(struct utmp_list *head, struct utmp *up)
+static void
+log_in(struct utmpx *up)
 {
-	struct utmp_list *lp;
+	struct utmpx_entry *lp;
 
 	/*
 	 * this could be a login. if we're not dealing with
@@ -398,140 +366,147 @@ log_in(struct utmp_list *head, struct utmp *up)
 		 * SunOS 4.0.2 does not treat ":0.0" as special but we
 		 * do.
 		 */
-		if (on_console(head))
-			return head;
+		if (on_console())
+			return;
 		/*
 		 * ok, no recorded login, so they were here when wtmp
 		 * started!  Adjust ut_time!
 		 */
-		up->ut_time = FirstTime;
+		up->ut_tv = FirstTime;
 		/*
 		 * this allows us to pick the right logout
 		 */
-		strncpy(up->ut_line, Console, sizeof(up->ut_line) - 1);
-		up->ut_line[sizeof(up->ut_line) - 1] = '\0'; /* paranoid! */
+		strlcpy(up->ut_line, Console, sizeof(up->ut_line));
 	}
 #endif
 	/*
 	 * If we are doing specified ttys only, we ignore
 	 * anything else.
 	 */
-	if (Flags & AC_T)
-		if (!do_tty(up->ut_line))
-			return head;
+	if (Flags & AC_T && !do_tty(up->ut_line))
+		return;
 
 	/*
 	 * go ahead and log them in
 	 */
-	if ((lp = NEW(struct utmp_list)) == NULL)
+	if ((lp = malloc(sizeof(*lp))) == NULL)
 		errx(1, "malloc failed");
-	lp->next = head;
-	head = lp;
-	memmove((char *)&lp->usr, (char *)up, sizeof(struct utmp));
-#ifdef DEBUG
-	if (Debug) {
-		printf("%-.*s %-.*s: %-.*s logged in", 19,
-		    ctime(&lp->usr.ut_time), sizeof(up->ut_line),
-		       up->ut_line, sizeof(up->ut_name), up->ut_name);
-		if (*up->ut_host)
-			printf(" (%-.*s)", sizeof(up->ut_host), up->ut_host);
-		putchar('\n');
-	}
+	SLIST_INSERT_HEAD(&CurUtmpx, lp, next);
+	strlcpy(lp->user, up->ut_user, sizeof(lp->user));
+	memcpy(lp->id, up->ut_id, sizeof(lp->id));
+#ifdef CONSOLE_TTY
+	memcpy(lp->line, up->ut_line, sizeof(lp->line));
 #endif
-	return head;
+	lp->time = up->ut_tv;
 }
 
-static int
-ac(FILE *fp)
+static void
+ac(const char *file)
 {
-	struct utmp_list *lp, *head = NULL;
-	struct utmp usr;
+	struct utmpx_entry *lp;
+	struct utmpx *usr, usht;
 	struct tm *ltm;
-	time_t secs;
-	int day = -1;
+	struct timeval prev_secs, ut_timecopy, secs, clock_shift, now;
+	int day, rfound;
 
-	secs = 0;
+	day = -1;
+	timerclear(&prev_secs);	/* Minimum acceptable date == 1970. */
+	timerclear(&secs);
+	timerclear(&clock_shift);
+	rfound = 0;
+	if (setutxdb(UTX_DB_WTMPX, file) != 0)
+		err(1, "%s", file);
+	while ((usr = getutxent()) != NULL) {
+		rfound++;
+		ut_timecopy = usr->ut_tv;
+		/* Don't let the time run backwards. */
+		if (timercmp(&ut_timecopy, &prev_secs, <))
+			ut_timecopy = prev_secs;
+		prev_secs = ut_timecopy;
 
-	while (fread((char *)&usr, sizeof(usr), 1, fp) == 1) {
-		if (!FirstTime)
-			FirstTime = usr.ut_time;
+		if (!timerisset(&FirstTime))
+			FirstTime = ut_timecopy;
 		if (Flags & AC_D) {
-			ltm = localtime(&usr.ut_time);
+			ltm = localtime(&ut_timecopy.tv_sec);
 			if (day >= 0 && day != ltm->tm_yday) {
 				day = ltm->tm_yday;
 				/*
 				 * print yesterday's total
 				 */
-				secs = usr.ut_time;
-				secs -= ltm->tm_sec;
-				secs -= 60 * ltm->tm_min;
-				secs -= 3600 * ltm->tm_hour;
-				show_today(Users, head, secs);
+				secs = ut_timecopy;
+				secs.tv_sec -= ltm->tm_sec;
+				secs.tv_sec -= 60 * ltm->tm_min;
+				secs.tv_sec -= 3600 * ltm->tm_hour;
+				secs.tv_usec = 0;
+				show_today(secs);
 			} else
 				day = ltm->tm_yday;
 		}
-		switch(*usr.ut_line) {
-		case '|':
-			secs = usr.ut_time;
+		switch(usr->ut_type) {
+		case OLD_TIME:
+			clock_shift = ut_timecopy;
 			break;
-		case '{':
-			secs -= usr.ut_time;
+		case NEW_TIME:
+			timersub(&clock_shift, &ut_timecopy, &clock_shift);
 			/*
 			 * adjust time for those logged in
 			 */
-			for (lp = head; lp != NULL; lp = lp->next)
-				lp->usr.ut_time -= secs;
+			SLIST_FOREACH(lp, &CurUtmpx, next)
+				timersub(&lp->time, &clock_shift, &lp->time);
 			break;
-		case '~':			/* reboot or shutdown */
-			head = log_out(head, &usr);
-			FirstTime = usr.ut_time; /* shouldn't be needed */
+		case BOOT_TIME:
+		case INIT_PROCESS:
+			log_out(usr);
+			FirstTime = ut_timecopy; /* shouldn't be needed */
 			break;
-		default:
+		case USER_PROCESS:
 			/*
-			 * if they came in on tty[p-sP-S]*, then it is only
-			 * a login session if the ut_host field is non-empty
+			 * If they came in on pts/..., then it is only
+			 * a login session if the ut_host field is non-empty.
 			 */
-			if (*usr.ut_name) {
-				if (strncmp(usr.ut_line, "tty", 3) != 0 ||
-				    strchr("pqrsPQRS", usr.ut_line[3]) == 0 ||
-				    *usr.ut_host != '\0')
-					head = log_in(head, &usr);
-			} else
-				head = log_out(head, &usr);
+			if (strncmp(usr->ut_line, "pts/", 4) != 0 ||
+			    *usr->ut_host != '\0')
+				log_in(usr);
+			break;
+		case DEAD_PROCESS:
+			log_out(usr);
 			break;
 		}
 	}
-	fclose(fp);
-	if (!(Flags & AC_W))
-		usr.ut_time = time(NULL);
-	strcpy(usr.ut_line, "~");
+	endutxent();
+	gettimeofday(&now, NULL);
+	if (Flags & AC_W)
+		usht.ut_tv = ut_timecopy;
+	else
+		usht.ut_tv = now;
+	usht.ut_type = INIT_PROCESS;
 
 	if (Flags & AC_D) {
-		ltm = localtime(&usr.ut_time);
+		ltm = localtime(&ut_timecopy.tv_sec);
 		if (day >= 0 && day != ltm->tm_yday) {
 			/*
 			 * print yesterday's total
 			 */
-			secs = usr.ut_time;
-			secs -= ltm->tm_sec;
-			secs -= 60 * ltm->tm_min;
-			secs -= 3600 * ltm->tm_hour;
-			show_today(Users, head, secs);
+			secs = ut_timecopy;
+			secs.tv_sec -= ltm->tm_sec;
+			secs.tv_sec -= 60 * ltm->tm_min;
+			secs.tv_sec -= 3600 * ltm->tm_hour;
+			secs.tv_usec = 0;
+			show_today(secs);
 		}
 	}
 	/*
 	 * anyone still logged in gets time up to now
 	 */
-	head = log_out(head, &usr);
+	log_out(&usht);
 
 	if (Flags & AC_D)
-		show_today(Users, head, time(NULL));
+		show_today(now);
 	else {
 		if (Flags & AC_P)
-			show_users(Users);
+			show_users();
 		show("total", Total);
 	}
-	return 0;
 }
 
 static void
