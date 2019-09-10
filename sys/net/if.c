@@ -1645,28 +1645,25 @@ link_rtrequest(int cmd, struct rtentry *rt)
 	}
 }
 
-struct netmsg_ifroute {
+struct netmsg_if {
 	struct netmsg_base	base;
 	struct ifnet		*ifp;
-	int			flag;
-	int			fam;
 };
 
 /*
  * Mark an interface down and notify protocols of the transition.
  */
 static void
-if_unroute_dispatch(netmsg_t nmsg)
+if_down_dispatch(netmsg_t nmsg)
 {
-	struct netmsg_ifroute *msg = (struct netmsg_ifroute *)nmsg;
+	struct netmsg_if *msg = (struct netmsg_if *)nmsg;
 	struct ifnet *ifp = msg->ifp;
-	int flag = msg->flag, fam = msg->fam;
 	struct ifaddr_container *ifac;
 	struct domain *dp;
 
 	ASSERT_NETISR0;
 
-	ifp->if_flags &= ~flag;
+	ifp->if_flags &= ~IFF_UP;
 	getmicrotime(&ifp->if_lastchange);
 	rt_ifmsg(ifp);
 
@@ -1683,8 +1680,7 @@ if_unroute_dispatch(netmsg_t nmsg)
 		if (ifa->ifa_addr->sa_family == AF_UNSPEC)
 			continue;
 
-		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
-			kpfctlinput(PRC_IFDOWN, ifa->ifa_addr);
+		kpfctlinput(PRC_IFDOWN, ifa->ifa_addr);
 	}
 
 	SLIST_FOREACH(dp, &domains, dom_next)
@@ -1695,35 +1691,21 @@ if_unroute_dispatch(netmsg_t nmsg)
 	netisr_replymsg(&nmsg->base, 0);
 }
 
-static void
-if_unroute(struct ifnet *ifp, int flag, int fam)
-{
-	struct netmsg_ifroute msg;
-
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
-	    if_unroute_dispatch);
-	msg.ifp = ifp;
-	msg.flag = flag;
-	msg.fam = fam;
-	netisr_domsg(&msg.base, 0);
-}
-
 /*
  * Mark an interface up and notify protocols of the transition.
  */
 static void
-if_route_dispatch(netmsg_t nmsg)
+if_up_dispatch(netmsg_t nmsg)
 {
-	struct netmsg_ifroute *msg = (struct netmsg_ifroute *)nmsg;
+	struct netmsg_if *msg = (struct netmsg_if *)nmsg;
 	struct ifnet *ifp = msg->ifp;
-	int flag = msg->flag, fam = msg->fam;
 	struct ifaddr_container *ifac;
 	struct domain *dp;
 
 	ASSERT_NETISR0;
 
 	ifq_purge_all(&ifp->if_snd);
-	ifp->if_flags |= flag;
+	ifp->if_flags |= IFF_UP;
 	getmicrotime(&ifp->if_lastchange);
 	rt_ifmsg(ifp);
 
@@ -1740,8 +1722,7 @@ if_route_dispatch(netmsg_t nmsg)
 		if (ifa->ifa_addr->sa_family == AF_UNSPEC)
 			continue;
 
-		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
-			kpfctlinput(PRC_IFUP, ifa->ifa_addr);
+		kpfctlinput(PRC_IFUP, ifa->ifa_addr);
 	}
 
 	SLIST_FOREACH(dp, &domains, dom_next)
@@ -1749,19 +1730,6 @@ if_route_dispatch(netmsg_t nmsg)
 			dp->dom_if_up(ifp);
 
 	netisr_replymsg(&nmsg->base, 0);
-}
-
-static void
-if_route(struct ifnet *ifp, int flag, int fam)
-{
-	struct netmsg_ifroute msg;
-
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
-	    if_route_dispatch);
-	msg.ifp = ifp;
-	msg.flag = flag;
-	msg.fam = fam;
-	netisr_domsg(&msg.base, 0);
 }
 
 /*
@@ -1776,8 +1744,13 @@ if_route(struct ifnet *ifp, int flag, int fam)
 void
 if_down(struct ifnet *ifp)
 {
+	struct netmsg_if msg;
+
 	EVENTHANDLER_INVOKE(ifnet_event, ifp, IFNET_EVENT_DOWN);
-	if_unroute(ifp, IFF_UP, AF_UNSPEC);
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	    if_down_dispatch);
+	msg.ifp = ifp;
+	netisr_domsg(&msg.base, 0);
 	netmsg_service_sync();
 }
 
@@ -1789,7 +1762,12 @@ if_down(struct ifnet *ifp)
 void
 if_up(struct ifnet *ifp)
 {
-	if_route(ifp, IFF_UP, AF_UNSPEC);
+	struct netmsg_if msg;
+
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	    if_up_dispatch);
+	msg.ifp = ifp;
+	netisr_domsg(&msg.base, 0);
 	EVENTHANDLER_INVOKE(ifnet_event, ifp, IFNET_EVENT_UP);
 }
 
