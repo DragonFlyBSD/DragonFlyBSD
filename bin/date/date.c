@@ -43,9 +43,7 @@
 #include <unistd.h>
 #include <locale.h>
 #include <libutil.h>
-#ifdef SUPPORT_UTMPX
 #include <utmpx.h>
-#endif
 
 #include "vary.h"
 
@@ -255,22 +253,12 @@ setthetime(const char *fmt, const char *p, int jflag)
 		errx(1, "nonexistent time");
 
 	if (!jflag) {
-#ifdef SUPPORT_UTMP
-		logwtmp("|", "date", "");
-#endif
-#ifdef SUPPORT_UTMPX
 		logwtmpx("|", "date", "", 0, OLD_TIME);
-#endif
 		tv.tv_sec = tval;
 		tv.tv_usec = 0;
 		if (settimeofday(&tv, NULL))
 			err(1, "settimeofday (timeval)");
-#ifdef SUPPORT_UTMP
-		logwtmp("{", "date", "");
-#endif
-#ifdef SUPPORT_UTMPX
 		logwtmpx("{", "date", "", 0, NEW_TIME);
-#endif
 
 		if ((p = getlogin()) == NULL)
 			p = "???";
