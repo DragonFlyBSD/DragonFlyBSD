@@ -322,7 +322,8 @@ struct domain inet6domain = {
 	.dom_maxrtkey		= sizeof(struct sockaddr_in6),
 	.dom_ifattach		= in6_domifattach,
 	.dom_ifdetach		= in6_domifdetach,
-	.dom_if_up		= in6_if_up
+	.dom_if_up		= in6_if_up,
+	.dom_if_down		= in6_if_down
 };
 
 DOMAIN_SET(inet6);

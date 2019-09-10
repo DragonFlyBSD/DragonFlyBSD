@@ -2451,6 +2451,12 @@ in6_if_up(struct ifnet *ifp)
 	netisr_domsg(&nmsg, 0);
 }
 
+void
+in6_if_down(struct ifnet *ifp)
+{
+	rt_purgecloned(ifp, AF_INET6);
+}
+
 int
 in6if_do_dad(struct ifnet *ifp)
 {
