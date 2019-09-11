@@ -39,7 +39,9 @@
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <limits.h>
+#ifdef __LIBC
 #include "xlocale_private.h"
+#endif
 
 /*
  * Work around buildworld bootstrapping from older systems whose limits.h
@@ -110,6 +112,7 @@ typedef struct collate_subst {
 	int32_t pri[COLLATE_STR_LEN];
 } collate_subst_t;
 
+#ifdef __LIBC
 struct xlocale_collate {
 	struct xlocale_component header;
 	int __collate_load_error;
@@ -135,5 +138,6 @@ size_t	_collate_wxfrm(struct xlocale_collate *, const wchar_t *, wchar_t *,
 size_t	_collate_sxfrm(struct xlocale_collate *, const wchar_t *, char *,
 	size_t);
 __END_DECLS
+#endif
 
 #endif /* !_COLLATE_H_ */

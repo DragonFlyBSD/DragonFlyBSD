@@ -34,7 +34,9 @@
 #ifndef _LMESSAGES_H_
 #define	_LMESSAGES_H_
 
+#ifdef __LIBC
 #include "xlocale_private.h"
+#endif
 
 struct	lc_messages_T {
 	const char	*yesexpr;
@@ -43,7 +45,9 @@ struct	lc_messages_T {
 	const char	*nostr;
 };
 
+#ifdef __LIBC
 struct lc_messages_T *__get_current_messages_locale(locale_t);
 int	__messages_load_locale(const char *);
+#endif
 
 #endif /* !_LMESSAGES_H_ */

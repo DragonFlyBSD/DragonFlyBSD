@@ -33,13 +33,18 @@
 
 #ifndef _LNUMERIC_H_
 #define	_LNUMERIC_H_
+
+#ifdef __LIBC
 #include "xlocale_private.h"
+#endif
 
 struct lc_numeric_T {
 	const char	*decimal_point;
 	const char	*thousands_sep;
 	const char	*grouping;
 };
+
+#ifdef __LIBC
 struct xlocale_numeric {
 	struct xlocale_component header;
 	char *buffer;
@@ -48,5 +53,6 @@ struct xlocale_numeric {
 
 struct lc_numeric_T *__get_current_numeric_locale(locale_t loc);
 int	__numeric_load_locale(const char *);
+#endif
 
 #endif /* !_LNUMERIC_H_ */

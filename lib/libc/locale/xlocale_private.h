@@ -29,6 +29,10 @@
  * $FreeBSD: head/lib/libc/locale/xlocale_private.h 326193 2017-11-25 17:12:48Z pfg $
  */
 
+#ifndef __LIBC
+#error "Userland tools should not use this private header."
+#endif
+
 #ifndef _XLOCALE_PRIVATE__H_
 #define _XLOCALE_PRIVATE__H_
 
@@ -100,7 +104,7 @@ struct xlocale_component {
 };
 
 /**
- * xlocale structure, stores per-thread locale information.  
+ * xlocale structure, stores per-thread locale information.
  */
 struct _xlocale {
 	struct xlocale_refcounted header;
@@ -185,7 +189,7 @@ xlocale_release(void *val)
 
 /**
  * Load functions.  Each takes the name of a locale and a pointer to the data
- * to be initialised as arguments.  Two special values are allowed for the 
+ * to be initialised as arguments.  Two special values are allowed for the
  */
 extern void* __collate_load(const char*, locale_t);
 extern void* __ctype_load(const char*, locale_t);
