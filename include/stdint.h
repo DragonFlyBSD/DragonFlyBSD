@@ -41,7 +41,10 @@ typedef __uint16_t	uint16_t;
 typedef __uint32_t	uint32_t;
 typedef __uint64_t	uint64_t;
 
+#ifndef _INTPTR_T_DECLARED
+#define _INTPTR_T_DECLARED
 typedef __intptr_t	intptr_t;
+#endif
 typedef __uintptr_t	uintptr_t;
 
 typedef __intmax_t	intmax_t;

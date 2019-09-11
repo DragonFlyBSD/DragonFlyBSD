@@ -38,6 +38,13 @@
 #include <sys/unistd.h>
 #include <sys/_null.h>
 
+#if __XSI_VISIBLE
+#ifndef _INTPTR_T_DECLARED
+typedef	__intptr_t	intptr_t;
+#define	_INTPTR_T_DECLARED
+#endif
+#endif /* __XSI_VISIBLE */
+
 #ifndef _GID_T_DECLARED
 typedef	__uint32_t	gid_t;		/* XXX __gid_t */
 #define	_GID_T_DECLARED
