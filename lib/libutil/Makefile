@@ -5,7 +5,6 @@ LIB=	util
 SHLIB_MAJOR= 4
 SHLIBDIR?= /lib
 CFLAGS+=-DINET6
-CFLAGS+=-D_CTYPE_H_DISABLE_MACROS_ 
 SRCS=	flopen.c login_tty.c logwtmpx.c pty.c \
 	login_cap.c login_class.c login_auth.c login_times.c login_ok.c \
 	login_crypt.c loginx.c logoutx.c _secure_path.c uucplock.c \

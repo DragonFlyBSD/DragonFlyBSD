@@ -18,7 +18,6 @@ MLINKS=		crypt.3 crypt_get_format.3 crypt.3 crypt_set_format.3
 MLINKS+=	crypt.3 encrypt.3 crypt.3 setkey.3
 CFLAGS+=	-I${.CURDIR}/../omd -I${.CURDIR}/../libutil
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-CFLAGS+=	-D_CTYPE_H_DISABLE_MACROS_
 CFLAGS+=	-I${.CURDIR} -DHAS_DES -DHAS_BLOWFISH
 # And the auth_getval() code and support.
 .PATH:		${.CURDIR}/../libutil
