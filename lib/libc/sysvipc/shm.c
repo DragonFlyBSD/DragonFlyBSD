@@ -33,6 +33,7 @@
 #include <sys/queue.h>
 #include <sys/mman.h>
 #include <sys/shm.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -244,8 +245,8 @@ sysvipc_shmat(int shmid, const void *shmaddr, int shmflg)
 	flags = MAP_SHARED;
 	if (shmaddr) {
 		if (shmflg & SHM_RND) {
-			addr = (void *)((vm_offset_t)shmaddr & ~(SHMLBA-1));
-		} else if (((vm_offset_t)shmaddr & (SHMLBA-1)) == 0) {
+			addr = (void *)((uintptr_t)shmaddr & ~(SHMLBA-1));
+		} else if (((uintptr_t)shmaddr & (SHMLBA-1)) == 0) {
 			addr = __DECONST(void *, shmaddr);
 		} else {
 			errno = EINVAL;
