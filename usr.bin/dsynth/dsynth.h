@@ -492,6 +492,8 @@ extern const char *ArchitectureName;
 extern const char *MachineName;
 extern const char *ReleaseName;
 extern const char *VersionName;
+extern const char *VersionOnlyName;
+extern const char *VersionFromParamHeader;
 
 extern const char *ConfigBase1;
 extern const char *ConfigBase2;

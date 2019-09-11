@@ -1767,14 +1767,19 @@ WorkerProcess(int ac, char **av)
 		addbuildenv("CCACHE_DIR", "/ccache", BENV_MAKECONF);
 	}
 
-#if 0
-	setenv("_PERL5_FROM_BIN", "5.28.2", 1);
-	setenv("OPSYS", OperatingSystemName, 1);
+	addbuildenv("UID", "0", BENV_MAKECONF);
+	addbuildenv("ARCH", ArchitectureName, BENV_MAKECONF);
+
+#ifdef __DragonFly__
+	addbuildenv("OPSYS", "DragonFly", BENV_MAKECONF);
+	addbuildenv("DFLYVERSION", VersionFromParamHeader, BENV_MAKECONF);
+	addbuildenv("OSVERSION", "9999999", BENV_MAKECONF);
+#else
+#error "Need OS-specific data to generate make.conf"
 #endif
-#if 0
-	setenv("DFLYVERSION", "5.7.0", 1);
-	setenv("OSVERSION", "9999999", 1);
-#endif
+
+	addbuildenv("OSREL", ReleaseName, BENV_MAKECONF);
+	addbuildenv("_OSRELEASE", VersionOnlyName, BENV_MAKECONF);
 
 	setenv("PATH",
 	       "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin",

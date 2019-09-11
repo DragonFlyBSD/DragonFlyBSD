@@ -50,11 +50,13 @@ int UseNCurses = -1;		/* indicates default operation (enabled) */
 int LeveragePrebuilt = 0;
 int WorkerProcFlags = 0;
 long PhysMem;
-const char *OperatingSystemName = "Unknown";
-const char *ArchitectureName = "unknown";
-const char *MachineName = "unknown";
-const char *VersionName = "unknown";
-const char *ReleaseName = "unknown";
+const char *OperatingSystemName = "Unknown";	/* e.g. "DragonFly" */
+const char *ArchitectureName = "unknown";	/* e.g. "x86_64" */
+const char *MachineName = "unknown";		/* e.g. "x86_64" */
+const char *VersionName = "unknown";		/* e.g. "DragonFly 5.7-SYNTH" */
+const char *VersionOnlyName = "unknown";	/* e.g. "5.7-SYNTH" */
+const char *VersionFromParamHeader = "unknown";	/* e.g. "500704" */
+const char *ReleaseName = "unknown";		/* e.g. "5.7" */
 const char *DPortsPath = "/usr/dports";
 const char *CCachePath = DISABLED_STR;
 const char *PackagesPath = "/build/synth/live_packages";
@@ -238,12 +240,41 @@ ParseConfiguration(int isworker)
 		asprintf(&buf, "%s %*.*s-SYNTH",
 			 OperatingSystemName,
 			 reln, reln, ReleaseName);
+		VersionName = buf;
+		asprintf(&buf, "%*.*s-SYNTH", reln, reln, ReleaseName);
+		VersionOnlyName = buf;
 	} else {
 		asprintf(&buf, "%s %s-SYNTH",
 			 OperatingSystemName,
 			 ReleaseName);
+		asprintf(&buf, "%s-SYNTH", ReleaseName);
+		VersionOnlyName = buf;
 	}
-	VersionName = buf;
+
+	/*
+	 * Get __DragonFly_version from the system header via SystemPath
+	 */
+	{
+		char *ptr;
+		FILE *fp;
+
+		asprintf(&buf, "%s/usr/include/sys/param.h", SystemPath);
+		fp = fopen(buf, "r");
+		if (fp == NULL)
+			dpanic_errno("Cannot open %s", buf);
+		while ((ptr = fgetln(fp, &len)) != NULL) {
+			if (len == 0 || ptr[len-1] != '\n')
+				continue;
+			ptr[len-1] = 0;
+			if (strncmp(ptr, "#define __DragonFly_version", 27))
+				continue;
+			ptr += 27;
+			ptr = strtok(ptr, " \t\r\n");
+			VersionFromParamHeader = strdup(ptr);
+			break;
+		}
+		fclose(fp);
+	}
 
 	/*
 	 * If RepositoryPath is under PackagesPath, make sure it
