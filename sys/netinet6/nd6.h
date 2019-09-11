@@ -74,14 +74,7 @@ struct	llinfo_nd6 {
 };
 
 #define ND6_LLINFO_NOSTATE	-2
-/*
- * We don't need the WAITDELETE state any more, but we keep the definition
- * in a comment line instead of removing it. This is necessary to avoid
- * unintentionally reusing the value for another purpose, which might
- * affect backward compatibility with old applications.
- * (20000711 jinmei@kame.net)
- */
-/* #define ND6_LLINFO_WAITDELETE	-1 */
+#define ND6_LLINFO_WAITDELETE	-1
 #define ND6_LLINFO_INCOMPLETE	0
 #define ND6_LLINFO_REACHABLE	1
 #define ND6_LLINFO_STALE	2

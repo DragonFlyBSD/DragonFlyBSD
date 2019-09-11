@@ -475,14 +475,11 @@ nd6_timer_dispatch(netmsg_t nmsg)
 			panic("dst=0 in nd6_timer(ln=%p)", ln);
 
 		switch (ln->ln_state) {
+		case ND6_LLINFO_WAITDELETE:
+			next = nd6_free(rt);
+			break;
 		case ND6_LLINFO_INCOMPLETE:
-			if (ln->ln_asked < nd6_mmaxtries) {
-				ln->ln_asked++;
-				ln->ln_expire = time_uptime +
-					ND_IFINFO(ifp)->retrans / 1000;
-				nd6_ns_output(ifp, NULL, &dst->sin6_addr,
-					ln, 0);
-			} else {
+			if (ln->ln_asked++ >= nd6_mmaxtries) {
 				struct mbuf *m = ln->ln_hold;
 				if (m) {
 					if (rt->rt_ifp) {
@@ -499,9 +496,13 @@ nd6_timer_dispatch(netmsg_t nmsg)
 						    ICMP6_DST_UNREACH_ADDR, 0);
 					ln->ln_hold = NULL;
 				}
+				ln->ln_state = ND6_LLINFO_WAITDELETE;
 				rt_rtmsg(RTM_MISS, rt, rt->rt_ifp, 0);
-				next = nd6_free(rt);
 			}
+			ln->ln_expire = time_uptime +
+				ND_IFINFO(ifp)->retrans / 1000;
+			nd6_ns_output(ifp, NULL, &dst->sin6_addr,
+				ln, 0);
 			break;
 		case ND6_LLINFO_REACHABLE:
 			if (ln->ln_expire) {
@@ -2020,7 +2021,8 @@ nd6_resolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	 * 7.2.2 of RFC 2461, because the timer is set correctly after sending
 	 * an NS below.
 	 */
-	if (ln->ln_state == ND6_LLINFO_NOSTATE) {
+	if (ln->ln_state == ND6_LLINFO_NOSTATE ||
+	    ln->ln_state == ND6_LLINFO_WAITDELETE) {
 		/*
 		 * This neighbor cache entry was just created; change its
 		 * state to INCOMPLETE and start its life cycle.
@@ -2038,6 +2040,10 @@ nd6_resolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		ln->ln_expire = time_uptime + ND_IFINFO(ifp)->retrans / 1000;
 		nd6_ns_output(ifp, NULL, &dst->sin6_addr, ln, 0);
 	}
+
+	if (ln->ln_asked >= nd6_mmaxtries)
+		return (rt != NULL && rt->rt_flags & RTF_GATEWAY) ?
+		    EHOSTUNREACH : EHOSTDOWN;
 	return EWOULDBLOCK;
 
 bad:
