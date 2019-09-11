@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 #include <sys/types.h>
-#include <sys/device.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
