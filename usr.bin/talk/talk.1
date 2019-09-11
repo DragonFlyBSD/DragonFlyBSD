@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)talk.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/talk/talk.1,v 1.6.2.5 2002/07/15 07:57:15 keramida Exp $
-.\" $DragonFly: src/usr.bin/talk/talk.1,v 1.4 2006/02/17 19:39:11 swildner Exp $
 .\"
-.Dd June 6, 1993
+.Dd September 11, 2019
 .Dt TALK 1
 .Os
 .Sh NAME
@@ -113,10 +112,10 @@ Permission to talk may be denied or granted by use of the
 command.
 At the outset talking is allowed.
 .Sh FILES
-.Bl -tag -width /var/run/utmp -compact
+.Bl -tag -width /var/run/utmpx -compact
 .It Pa /etc/hosts
 to find the recipient's machine
-.It Pa /var/run/utmp
+.It Pa /var/run/utmpx
 to find the recipient's tty
 .El
 .Sh SEE ALSO

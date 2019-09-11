@@ -98,8 +98,8 @@ if [ -n "$LOGFILES" ]; then
 	/usr/bin/touch $LOGFILES
 fi
 
-echo "+++ create lastlog"
-/usr/bin/touch /var/log/lastlog
+echo "+++ create lastlogx"
+/usr/bin/touch /var/log/lastlogx
 
 # XXX make sure to create one dir for each printer as requested by lpd
 #

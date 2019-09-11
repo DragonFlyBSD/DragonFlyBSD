@@ -46,7 +46,7 @@
 #include "extern.h"
 
 void
-ftpd_logwtmp(char *id, char *user, struct sockaddr *addr)
+ftpd_logwtmpx(char *id, char *user, struct sockaddr *addr)
 {
 	struct utmpx ut;
 

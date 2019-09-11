@@ -326,8 +326,6 @@ distribution:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 640 /dev/null \
 	    ${DESTDIR}/var/log/maillog
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 /dev/null \
-	    ${DESTDIR}/var/log/lastlog
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 /dev/null \
 	    ${DESTDIR}/var/log/lastlogx
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 /dev/null \
 	    ${DESTDIR}/var/log/messages
@@ -338,11 +336,7 @@ distribution:
 	${INSTALL} -o ${BINOWN} -g network -m 640 /dev/null \
 	    ${DESTDIR}/var/log/ppp.log
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 /dev/null \
-	    ${DESTDIR}/var/log/wtmp
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 /dev/null \
 	    ${DESTDIR}/var/log/wtmpx
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 /dev/null \
-	    ${DESTDIR}/var/run/utmp
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 /dev/null \
 	    ${DESTDIR}/var/run/utmpx
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${.CURDIR}/minfree \

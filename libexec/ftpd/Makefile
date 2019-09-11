@@ -3,7 +3,7 @@
 
 PROG=	ftpd
 MAN=	ftpd.8 ftpchroot.5
-SRCS=	ftpd.c ftpcmd.y logwtmp.c popen.c
+SRCS=	ftpd.c ftpcmd.y logwtmpx.c popen.c
 
 CFLAGS+=-DSETPROCTITLE -DLOGIN_CAP -DVIRTUAL_HOSTING
 CFLAGS+=-I${.CURDIR}

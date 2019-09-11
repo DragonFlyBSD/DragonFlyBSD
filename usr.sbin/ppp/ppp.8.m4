@@ -27,7 +27,7 @@ changecom(,)dnl
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
 .\"
-.Dd October 17, 2017
+.Dd September 11, 2019
 .Dt PPP 8
 .Os
 .Sh NAME
@@ -3111,10 +3111,10 @@ Normally, when a user is authenticated using PAP or CHAP, and when
 .Nm
 is running in
 .Fl direct
-mode, an entry is made in the utmp and wtmp files for that user.
+mode, an entry is made in the utmpx and wtmpx files for that user.
 Disabling this option will tell
 .Nm
-not to make any utmp or wtmp entries.
+not to make any utmpx or wtmpx entries.
 This is usually only necessary if
 you require the user to both login and authenticate themselves.
 .El
@@ -3550,7 +3550,7 @@ This is replaced with the bundle uptime in HH:MM:SS format.
 This is replaced with the username that has been authenticated with PAP or
 CHAP.
 Normally, this variable is assigned only in -direct mode.
-This value is available irrespective of whether utmp logging is enabled.
+This value is available irrespective of whether utmpx logging is enabled.
 .It Li VERSION
 This is replaced with the current version number of
 .Nm .

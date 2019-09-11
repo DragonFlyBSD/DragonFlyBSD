@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd July 21, 2019
+.Dd September 11, 2019
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -580,11 +580,11 @@ file systems
 .It Pa log/
 misc. system log files
 .Pp
-.Bl -tag -width ".Pa wtmp" -compact
-.It Pa wtmp
+.Bl -tag -width ".Pa wtmpx" -compact
+.It Pa wtmpx
 login/logout log;
 see
-.Xr wtmp 5
+.Xr wtmpx 5
 .El
 .Pp
 .It Pa mail/
@@ -617,10 +617,10 @@ group for command connection sockets; see
 .It Pa resolvconf/
 state directory for
 .Xr resolvconf 8
-.It Pa utmp
+.It Pa utmpx
 database of current users;
 see
-.Xr utmp 5
+.Xr utmpx 5
 .It Pa sem/
 rendez-vous files for POSIX named semaphores;
 see

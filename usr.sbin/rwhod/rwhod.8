@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)rwhod.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/usr.sbin/rwhod/rwhod.8,v 1.13.2.4 2003/03/11 22:31:33 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/rwhod/rwhod.8,v 1.7 2008/09/02 11:50:47 matthias Exp $
 .\"
-.Dd September 2, 2008
+.Dd September 11, 2019
 .Dt RWHOD 8
 .Os
 .Sh NAME
@@ -199,7 +198,7 @@ system call, with any trailing domain name omitted.
 The array at the end of the message contains information about
 the users logged in to the sending machine.  This information
 includes the contents of the
-.Xr utmp 5
+.Xr utmpx 5
 entry for each non-idle terminal line and a value indicating the
 time in seconds since a character was last received on the terminal line.
 .Pp

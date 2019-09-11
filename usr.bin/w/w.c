@@ -92,7 +92,7 @@ char		domain[MAXHOSTNAMELEN];
 int maxname = 8, maxline = 3, maxhost = 16;
 
 /*
- * One of these per active utmp entry.
+ * One of these per active utmpx entry.
  */
 struct	entry {
 	struct	entry *next;

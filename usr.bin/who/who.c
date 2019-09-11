@@ -233,7 +233,7 @@ who_am_i(const char *fname, int show_labels)
 	time_t now;
 	struct utmpentry *ehead, *ep;
 
-	/* search through the utmp and find an entry for this tty */
+	/* search through the utmpx and find an entry for this tty */
 	if ((p = ttyname(STDIN_FILENO)) != NULL) {
 
 		/* strip directory prefixes for ttys */

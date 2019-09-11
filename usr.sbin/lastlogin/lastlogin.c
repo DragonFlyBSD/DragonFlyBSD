@@ -73,7 +73,7 @@ main(int argc, char **argv)
 			}
 		}
 	}
-	/* Read all lastlog entries, looking for active ones */
+	/* Read all lastlogx entries, looking for active ones */
 	else {
 		while ((passwd = getpwent()) != NULL) {
 			if ((getlastlogx(_PATH_LASTLOGX, passwd->pw_uid,

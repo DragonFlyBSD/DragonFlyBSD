@@ -31,7 +31,7 @@
 .\"     @(#)date.1	8.3 (Berkeley) 4/28/95
 .\" $FreeBSD: src/bin/date/date.1,v 1.72 2005/02/13 22:25:09 ru Exp $
 .\"
-.Dd June 17, 2019
+.Dd September 11, 2019
 .Dt DATE 1
 .Os
 .Sh NAME
@@ -280,7 +280,7 @@ for more information.
 .El
 .Sh FILES
 .Bl -tag -width /var/log/messages -compact
-.It Pa /var/log/wtmp
+.It Pa /var/log/wtmpx
 record of date resets and time changes
 .It Pa /var/log/messages
 record of the user setting the time
@@ -371,7 +371,7 @@ and express it in Epoch time.
 .Xr gettimeofday 2 ,
 .Xr strftime 3 ,
 .Xr strptime 3 ,
-.Xr utmp 5
+.Xr utmpx 5
 .Sh STANDARDS
 The
 .Nm

@@ -89,7 +89,7 @@ static SLIST_HEAD(, utmpx_entry) CurUtmpx = SLIST_HEAD_INITIALIZER(CurUtmpx);
 static SLIST_HEAD(, user_entry) Users = SLIST_HEAD_INITIALIZER(Users);
 static SLIST_HEAD(, tty_entry) Ttys = SLIST_HEAD_INITIALIZER(Ttys);
 
-#define	AC_W	1				/* not _PATH_WTMP */
+#define	AC_W	1				/* not _PATH_WTMPX */
 #define	AC_D	2				/* daily totals (ignore -p) */
 #define	AC_P	4				/* per-user totals */
 #define	AC_U	8				/* specified users only */
@@ -355,9 +355,9 @@ log_in(struct utmpx *up)
 	 *
 	 * If we are, and if ut_host==":0.0" we know that it
 	 * isn't a real login. _But_ if we have not yet recorded
-	 * someone being logged in on Console - due to the wtmp
+	 * someone being logged in on Console - due to the wtmpx
 	 * file starting after they logged in, we'll pretend they
-	 * logged in, at the start of the wtmp file.
+	 * logged in, at the start of the wtmpx file.
 	 */
 
 #ifdef CONSOLE_TTY
@@ -369,7 +369,7 @@ log_in(struct utmpx *up)
 		if (on_console())
 			return;
 		/*
-		 * ok, no recorded login, so they were here when wtmp
+		 * ok, no recorded login, so they were here when wtmpx
 		 * started!  Adjust ut_time!
 		 */
 		up->ut_tv = FirstTime;

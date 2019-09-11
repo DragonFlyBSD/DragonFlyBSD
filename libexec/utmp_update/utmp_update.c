@@ -152,14 +152,14 @@ main(int argc, char *argv[])
 			    utx->ut_line);
 		if (utoldp->ut_pid != (ppid = getppid()))
 			logerr(0, "Cannot modify entry for `%s' "
-			    "utmp pid %ld != parent %ld", tty,
+			    "utmpx pid %ld != parent %ld", tty,
 			    (long)utoldp->ut_pid, (long)ppid);
 	}
 
 	if (seteuid(euid) == 1)
 		logerr(errno, "Can't setuid %ld", (long)euid);
 	if (pututxline(utx) == NULL)
-		logerr(errno, "Cannot update utmp entry");
+		logerr(errno, "Cannot update utmpx entry");
 
 	return 0;
 }

@@ -31,7 +31,7 @@
 .\"     @(#)init.8	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/sbin/init/init.8,v 1.22.2.11 2003/05/03 22:19:20 keramida Exp $
 .\"
-.Dd September 29, 2016
+.Dd September 11, 2019
 .Dt INIT 8
 .Os
 .Sh NAME
@@ -180,9 +180,9 @@ the
 .Nm
 utility wakes up, deletes the user
 from the
-.Xr utmp 5
+.Xr utmpx 5
 file of current users and records the logout in the
-.Xr wtmp 5
+.Xr wtmpx 5
 file.
 The cycle is
 then restarted by
@@ -242,7 +242,7 @@ However, it will complain that the relationship between lines
 in the
 .Xr ttys 5
 file and records in the
-.Xr utmp 5
+.Xr utmpx 5
 file is out of sync,
 so this practice is not recommended.
 .Pp
@@ -346,9 +346,9 @@ system console device
 .It Pa /dev/tty*
 terminal ports found in
 .Xr ttys 5
-.It Pa /var/run/utmp
+.It Pa /var/run/utmpx
 record of current users on the system
-.It Pa /var/log/wtmp
+.It Pa /var/log/wtmpx
 record of all logins and logouts
 .It Pa /etc/ttys
 the terminal initialization information file

@@ -1,5 +1,4 @@
 .\" $FreeBSD: src/usr.sbin/lastlogin/lastlogin.8,v 1.2.2.2 2003/03/11 21:13:50 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/lastlogin/lastlogin.8,v 1.2 2003/06/17 04:29:55 dillon Exp $
 .\"	$NetBSD: lastlogin.8,v 1.3 1998/02/06 06:20:39 perry Exp $
 .\"
 .\" Copyright (c) 1996 John M. Vinopal
@@ -32,7 +31,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 11, 1996
+.Dd September 11, 2019
 .Dt LASTLOGIN 8
 .Os
 .Sh NAME
@@ -64,14 +63,12 @@ in that it only prints information regarding the very last login session.
 The last login database is never turned over or deleted in standard usage.
 .Sh FILES
 .Bl -tag -width /var/log/lastlogx -compact
-.It Pa /var/log/lastlog
-last login database
 .It Pa /var/log/lastlogx
 last login database
 .El
 .Sh SEE ALSO
 .Xr last 1 ,
-.Xr lastlog 5 ,
+.Xr lastlogx 5 ,
 .Xr ac 8
 .Sh AUTHORS
 .An John M. Vinopal

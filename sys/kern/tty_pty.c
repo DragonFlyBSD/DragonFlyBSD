@@ -219,7 +219,7 @@ ptyclone(struct dev_clone_args *ap)
 
 	/*
 	 * Limit the number of unix98 pty (slave) devices to 1000, as
-	 * the utmp(5) format only allows for 8 bytes for the tty,
+	 * the utmpx(5) format only allows for 8 bytes for the tty,
 	 * "pts/XXX".
 	 *
 	 * If this limit is reached, we don't clone and return an error

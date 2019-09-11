@@ -474,7 +474,7 @@ main(int argc, char **argv)
 
 		/*
 		 * Set all user context except for: Environmental variables
-		 * Umask Login records (wtmp, etc) Path
+		 * Umask Login records (wtmpx, etc) Path
 		 * XXX Missing LOGIN_SETMAC
 		 */
 		setwhat = LOGIN_SETALL & ~(LOGIN_SETENV | LOGIN_SETUMASK |

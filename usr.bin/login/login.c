@@ -464,7 +464,7 @@ main(int argc, char **argv)
 #ifdef LOGALL
 	/*
 	 * Syslog each successful login, so we don't have to watch
-	 * hundreds of wtmp or lastlogin files.
+	 * hundreds of wtmpx or lastlogin files.
 	 */
 	if (hflag)
 		syslog(LOG_INFO, "login from %s on %s as %s",

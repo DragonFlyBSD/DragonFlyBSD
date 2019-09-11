@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)finger.1	8.3 (Berkeley) 5/5/94
 .\" $FreeBSD: src/usr.bin/finger/finger.1,v 1.9.2.12 2003/02/25 20:31:18 trhodes Exp $
-.\" $DragonFly: src/usr.bin/finger/finger.1,v 1.4 2004/09/03 19:13:23 dillon Exp $
 .\"
-.Dd August 30, 2004
+.Dd September 11, 2019
 .Dt FINGER 1
 .Os
 .Sh NAME
@@ -224,10 +223,10 @@ This variable may be set with favored options to
 .Nm .
 .El
 .Sh FILES
-.Bl -tag -width /var/log/lastlog -compact
+.Bl -tag -width /var/log/lastlogx -compact
 .It Pa /etc/finger.conf
 alias definition data base
-.It Pa /var/log/lastlog
+.It Pa /var/log/lastlogx
 last login data base
 .El
 .Sh SEE ALSO

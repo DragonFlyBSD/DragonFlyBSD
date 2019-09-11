@@ -116,7 +116,7 @@ int	assumeutf8 = 0;   /* Assume that server file names are in UTF-8 */
 int	guest;
 int	dochroot;
 char	*chrootdir;
-int	dowtmp = 1;
+int	dowtmpx = 1;
 int	stats;
 int	statfd = -1;
 int	type;
@@ -394,7 +394,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'W':
-			dowtmp = 0;
+			dowtmpx = 0;
 			break;
 
 		default:
@@ -1166,8 +1166,8 @@ end_login(void)
 #endif
 
 	seteuid(0);
-	if (logged_in && dowtmp)
-		ftpd_logwtmp(ttyline, "", NULL);
+	if (logged_in && dowtmpx)
+		ftpd_logwtmpx(ttyline, "", NULL);
 	pw = NULL;
 #ifdef	LOGIN_CAP
 	/* XXX Missing LOGIN_SETMAC */
@@ -1468,9 +1468,9 @@ skip:
 	}
 #endif
 
-	/* open wtmp before chroot */
-	if (dowtmp)
-		ftpd_logwtmp(ttyline, pw->pw_name,
+	/* open wtmpx before chroot */
+	if (dowtmpx)
+		ftpd_logwtmpx(ttyline, pw->pw_name,
 		    (struct sockaddr *)&his_addr);
 	logged_in = 1;
 
@@ -2717,16 +2717,16 @@ dolog(struct sockaddr *who)
 }
 
 /*
- * Record logout in wtmp file
+ * Record logout in wtmpx file
  * and exit with supplied status.
  */
 void
 dologout(int status)
 {
 
-	if (logged_in && dowtmp) {
+	if (logged_in && dowtmpx) {
 		seteuid(0);
-		ftpd_logwtmp(ttyline, "", NULL);
+		ftpd_logwtmpx(ttyline, "", NULL);
 	}
 	/* beware of flushing buffers after a SIGPIPE */
 	_exit(status);

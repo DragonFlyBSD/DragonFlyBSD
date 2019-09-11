@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)w.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/w/w.1,v 1.12.2.5 2001/12/14 15:53:32 ru Exp $
-.\" $DragonFly: src/usr.bin/w/w.1,v 1.5 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd September 2, 2008
+.Dd September 11, 2019
 .Dt W 1
 .Os
 .Sh NAME
@@ -84,8 +83,8 @@ If one or more
 .Ar user
 names are specified, the output is restricted to those users.
 .Sh FILES
-.Bl -tag -width /var/run/utmp -compact
-.It Pa /var/run/utmp
+.Bl -tag -width /var/run/utmpx -compact
+.It Pa /var/run/utmpx
 list of users on the system
 .El
 .Sh COMPATIBILITY

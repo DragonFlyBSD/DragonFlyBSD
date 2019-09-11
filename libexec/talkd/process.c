@@ -174,7 +174,7 @@ do_announce(CTL_MSG *mp, CTL_RESPONSE *rp)
 }
 
 /*
- * Search utmp for the local user
+ * Search utmpx for the local user
  */
 int
 find_user(const char *name, char *tty)

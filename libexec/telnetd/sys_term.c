@@ -1315,9 +1315,9 @@ cleanup(int sig __unused)
 
 	p = line + sizeof(_PATH_DEV) - 1;
 	/*
-	 * Block all signals before clearing the utmp entry.  We don't want to
-	 * be called again after calling logout() and then not add the wtmp
-	 * entry because of not finding the corresponding entry in utmp.
+	 * Block all signals before clearing the utmpx entry.  We don't want to
+	 * be called again after calling logout() and then not add the wtmpx
+	 * entry because of not finding the corresponding entry in utmpx.
 	 */
 	sigfillset(&mask);
 	sigprocmask(SIG_SETMASK, &mask, NULL);

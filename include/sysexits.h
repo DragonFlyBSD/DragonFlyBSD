@@ -71,7 +71,7 @@
  *		fork", "cannot create pipe", or the like.  It includes
  *		things like getuid returning a user that does not
  *		exist in the passwd file.
- *	EX_OSFILE -- Some system file (e.g., /etc/passwd, /etc/utmp,
+ *	EX_OSFILE -- Some system file (e.g., /etc/passwd, /var/run/utmpx,
  *		etc.) does not exist, cannot be opened, or has some
  *		sort of error (e.g., syntax error).
  *	EX_CANTCREAT -- A (user specified) output file cannot be

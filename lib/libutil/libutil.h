@@ -62,7 +62,6 @@ struct pidfh;
 struct sockaddr;
 struct termios;
 struct winsize;
-struct utmp;
 struct utmpx;
 
 __BEGIN_DECLS

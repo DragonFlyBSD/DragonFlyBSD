@@ -29,7 +29,7 @@
 .\"
 .\"     @(#)who.1	8.2 (Berkeley) 12/30/93
 .\"
-.Dd January 17, 2007
+.Dd September 11, 2019
 .Dt WHO 1
 .Os
 .Sh NAME
@@ -136,11 +136,7 @@ An alternative
 may be specified which is usually
 .Pa /var/log/wtmpx
 (or
-.Pa /var/log/wtmp ,
-or
 .Pa /var/log/wtmpx.[0-6]
-or
-.Pa /var/log/wtmp.[0-6]
 depending on site policy as
 .Pa wtmpx
 can grow quite large and daily versions may or may not
@@ -148,34 +144,25 @@ be kept around after compression by
 .Xr ac 8 ) .
 The
 .Pa wtmpx
-and
-.Pa wtmp
 file contains a record of every login, logout,
 crash, shutdown and date change
 since
 .Pa wtmpx
-and
-.Pa wtmp
-were last truncated or
+was last truncated or
 created.
 .El
 .Pp
 If
 .Pa /var/log/wtmpx
-or
-.Pa /var/log/wtmp
-are being used as the file, the user name may be empty
+is being used as the file, the user name may be empty
 or one of the special characters '|', '}' and '~'.
 Logouts produce an output line without any user name.
 For more information on the
 special characters, see
-.Xr utmp 5 .
+.Xr utmpx 5 .
 .Sh FILES
-.Bl -tag -width /var/log/wtmp.[0-6] -compact
-.It Pa /var/run/utmp
+.Bl -tag -width /var/log/wtmpx.[0-6] -compact
 .It Pa /var/run/utmpx
-.It Pa /var/log/wtmp
-.It Pa /var/log/wtmp.[0-6]
 .It Pa /var/log/wtmpx
 .It Pa /var/log/wtmpx.[0-6]
 .El
@@ -184,7 +171,6 @@ special characters, see
 .Xr mesg 1 ,
 .Xr users 1 ,
 .Xr getuid 2 ,
-.Xr utmp 5 ,
 .Xr utmpx 5
 .Sh STANDARDS
 The

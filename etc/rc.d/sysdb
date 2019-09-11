@@ -19,7 +19,7 @@ sysdb_start()
 {
 	echo "Building databases..."
 	dev_mkdb
-	install -c -m 644 -g wheel /dev/null /var/run/utmp
+	install -c -m 644 -g wheel /dev/null /var/run/utmpx
 }
 
 load_rc_config $name

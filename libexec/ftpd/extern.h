@@ -39,7 +39,7 @@ void	cwd(char *);
 void	delete(char *);
 void	dologout(int) __dead2;
 void	fatalerror(char *) __dead2;
-void    ftpd_logwtmp(char *, char *, struct sockaddr *addr);
+void    ftpd_logwtmpx(char *, char *, struct sockaddr *addr);
 int	ftpd_pclose(FILE *);
 FILE   *ftpd_popen(char *, char *);
 int	get_line(char *, int, FILE *);

@@ -1428,7 +1428,7 @@ f_clean_ttys(void)
 			/* we want this one to live */
 			sp->se_flags |= SE_PRESENT;
 			if (sp->se_index != session_index) {
-				warning("port %s changed utmp index from %d to %d",
+				warning("port %s changed utmpx index from %d to %d",
 				       sp->se_device, sp->se_index,
 				       session_index);
 				sp->se_index = session_index;

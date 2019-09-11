@@ -28,7 +28,7 @@
 .\"	@(#)reboot.8	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/sbin/reboot/reboot.8,v 1.10.2.7 2003/02/23 22:42:10 trhodes Exp $
 .\"
-.Dd September 29, 2016
+.Dd September 11, 2019
 .Dt REBOOT 8
 .Os
 .Sh NAME
@@ -62,7 +62,7 @@ a
 .Dv SIGKILL )
 and, respectively, halt or restart the system.
 The action is logged, including entering a shutdown record into the
-.Xr wtmp 5
+.Xr wtmpx 5
 file.
 .Pp
 The options are as follows:
@@ -129,7 +129,7 @@ utility is used when the system needs to be halted or restarted, giving
 users advance warning of their impending doom and cleanly terminating
 specific programs.
 .Sh SEE ALSO
-.Xr wtmp 5 ,
+.Xr wtmpx 5 ,
 .Xr boot 8 ,
 .Xr dumpon 8 ,
 .Xr savecore 8 ,

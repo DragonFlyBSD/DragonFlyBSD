@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)write.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/write/write.c,v 1.12 1999/08/28 01:07:48 peter Exp $
- * $DragonFly: src/usr.bin/write/write.c,v 1.7 2005/08/30 22:02:36 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -57,8 +56,8 @@ static void	do_write(const char *, const char *, uid_t, int *);
 static void	usage(void);
 static int	term_chk(const char *, int *, time_t *, int);
 static void	wr_fputs(unsigned char *s);
-static void	search_utmp(const char *, char *, size_t, const char *, uid_t);
-static int	utmp_chk(const char *, const char *);
+static void	search_utmpx(const char *, char *, size_t, const char *, uid_t);
+static int	utmpx_chk(const char *, const char *);
 
 int
 main(int argc, char **argv)
@@ -93,13 +92,13 @@ main(int argc, char **argv)
 	/* check args */
 	switch (argc) {
 	case 2:
-		search_utmp(argv[1], tty, sizeof tty, mytty, myuid);
+		search_utmpx(argv[1], tty, sizeof tty, mytty, myuid);
 		do_write(tty, mytty, myuid, &mymsgok);
 		break;
 	case 3:
 		if (!strncmp(argv[2], _PATH_DEV, strlen(_PATH_DEV)))
 			argv[2] += strlen(_PATH_DEV);
-		if (utmp_chk(argv[1], argv[2]))
+		if (utmpx_chk(argv[1], argv[2]))
 			errx(1, "%s is not logged in on %s", argv[1], argv[2]);
 		if (term_chk(argv[2], &msgsok, &atime, 1))
 			exit(1);
@@ -122,11 +121,11 @@ usage(void)
 }
 
 /*
- * utmp_chk - checks that the given user is actually logged in on
+ * utmpx_chk - checks that the given user is actually logged in on
  *     the given tty
  */
 static int
-utmp_chk(const char *user, const char *tty)
+utmpx_chk(const char *user, const char *tty)
 {
 	struct utmpentry *ep;
 
@@ -143,7 +142,7 @@ utmp_chk(const char *user, const char *tty)
 }
 
 /*
- * search_utmp - search utmp for the "best" terminal to write to
+ * search_utmpx - search utmpx for the "best" terminal to write to
  *
  * Ignores terminals with messages disabled, and of the rest, returns
  * the one with the most recent access time.  Returns as value the number
@@ -154,7 +153,7 @@ utmp_chk(const char *user, const char *tty)
  * writing from, unless that's the only terminal with messages enabled.
  */
 static void
-search_utmp(const char *user, char *tty, size_t ttyl, const char *mytty, uid_t myuid)
+search_utmpx(const char *user, char *tty, size_t ttyl, const char *mytty, uid_t myuid)
 {
 	struct utmpentry *ep;
 	time_t bestatime, atime;

@@ -93,9 +93,9 @@ check wait status of children we reap
 don't use SIGCHILD, it's too expensive
 	but it may close windows and avoid races, sigh
 look for EINTR in case we need to change state
-init is responsible for utmp and wtmp maintenance (ick)
+init is responsible for utmpx and wtmpx maintenance (ick)
 	maybe now we can consider replacements?  maintain them in parallel
-	init only removes utmp and closes out wtmp entries...
+	init only removes utmpx and closes out wtmpx entries...
 
 necessary states and state transitions (gleaned from the man page):
 	1: single user shell (with password checking?); on exit, go to 2

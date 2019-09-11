@@ -29,6 +29,6 @@ killall syslogd
 sleep 0.1
 find /var/log -type f -delete
 touch /var/log/{auth.log,cron,daemon,maillog,messages,security,userlog}
-touch /var/log/{wtmp,wtmpx}
+touch /var/log/wtmpx
 
 echo "Cleanup complete"

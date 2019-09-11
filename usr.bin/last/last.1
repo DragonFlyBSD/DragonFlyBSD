@@ -29,7 +29,7 @@
 .\"
 .\"     @(#)last.1	8.1 (Berkeley) 6/6/93
 .\"
-.Dd July 7, 2019
+.Dd September 11, 2019
 .Dt LAST 1
 .Os
 .Sh NAME
@@ -72,14 +72,11 @@ lines.
 reads the file
 .Ar file
 instead of the default,
-.Pa /var/log/wtmpx
-or (if not found)
-.Pa /var/log/wtmp .
-If the file ends with `x', it is treated as a
-.Xr utmpx 5
-format file, else it is treated as a
-.Xr utmp 5
-format file.
+.Pa /var/log/wtmpx .
+Former
+.Pa /var/log/wtmp
+format files can be converted using
+.Xr wtmpcvt 1 .
 .It Fl h Ar host
 .Ar Host
 names may be names or internet numbers.
@@ -131,13 +128,11 @@ far the search has progressed and then continues.
 .Bl -tag -width /var/log/wtmpx -compact
 .It Pa /var/log/wtmpx
 default login data base
-.It Pa /var/log/wtmp
-legacy login data base
 .El
 .Sh SEE ALSO
 .Xr lastcomm 1 ,
+.Xr wtmpcvt 1 ,
 .Xr utmpx 5 ,
-.Xr utmp 5 ,
 .Xr ac 8
 .Sh HISTORY
 .Nm

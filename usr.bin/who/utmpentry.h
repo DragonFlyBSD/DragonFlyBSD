@@ -54,11 +54,11 @@ extern int etype;
 /*
  * getutentries provides a linked list of struct utmpentry and returns
  * the number of entries. The first argument, if not null, names an 
- * alternate utmp(x) file to look in.
+ * alternate utmpx file to look in.
  *
  * The memory returned by getutentries belongs to getutentries. The
  * list returned (or elements of it) may be returned again later if
- * utmp hasn't changed in the meantime.
+ * utmpx hasn't changed in the meantime.
  *
  * endutentries clears and frees the cached data.
  */

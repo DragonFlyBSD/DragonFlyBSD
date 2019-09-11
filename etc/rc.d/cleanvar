@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/cleanvar,v 1.5 2003/07/14 13:02:36 mtm Exp $
-# $DragonFly: src/etc/rc.d/cleanvar,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: cleanvar
@@ -47,8 +46,8 @@ purgedir()
 #
 if [ -d /var/run -a ! -f /var/run/clean_var ]; then
 	purgedir /var/run
-	# And an initial utmp file
-	(cd /var/run && cp /dev/null utmp && chmod 644 utmp;)
+	# And an initial utmpx file
+	(cd /var/run && cp /dev/null utmpx && chmod 644 utmpx;)
 	>/var/run/clean_var
 fi
 if [ -d /var/spool/lock -a ! -f /var/spool/lock/clean_var ]; then
