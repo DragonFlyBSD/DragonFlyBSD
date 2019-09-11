@@ -3,7 +3,9 @@
 #ifndef _PORT_BEFORE_H_
 #define _PORT_BEFORE_H_
 
+#ifdef __LIBC
 #define _LIBC		1
+#endif
 #define DO_PTHREADS	1
 #define USE_KQUEUE	1
 

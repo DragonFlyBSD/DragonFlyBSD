@@ -10,7 +10,7 @@ CFLAGS+=-I${.CURDIR}/../../include
 CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
 CFLAGS+=-I${.OBJDIR}
 CFLAGS+=-D__thread=
-CFLAGS+=-D__LIBC_RTLD
+CFLAGS+=-D__LIBC -D__LIBC_RTLD
 
 PRECIOUSLIB=	yes
 
