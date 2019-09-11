@@ -1900,105 +1900,78 @@ nd6_slowtimo_dispatch(netmsg_t nmsg)
 	    nd6_slowtimo, NULL);
 }
 
-#define gotoerr(e) { error = (e); goto bad;}
-
 int
 nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 	   struct sockaddr_in6 *dst, struct rtentry *rt)
 {
+	int error;
+
+	if (ifp->if_flags & IFF_LOOPBACK)
+		error = ifp->if_output(origifp, m, (struct sockaddr *)dst, rt);
+	else
+		error = ifp->if_output(ifp, m, (struct sockaddr *)dst, rt);
+	return error;
+}
+
+int
+nd6_resolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
+    struct sockaddr *dst0, u_char *desten)
+{
+	struct sockaddr_in6 *dst = SIN6(dst0);
+	struct rtentry *rt = NULL;
 	struct llinfo_nd6 *ln = NULL;
-	int error = 0;
+	int error;
 
-	if (IN6_IS_ADDR_MULTICAST(&dst->sin6_addr))
-		goto sendpkt;
-
-	if (nd6_need_cache(ifp) == 0)
-		goto sendpkt;
-
-	/*
-	 * Next hop determination.  This routine is derived from rt_llroute.
-	 */
-	if (rt != NULL) {
-		if (!(rt->rt_flags & RTF_UP)) {
-			rt = rtlookup((struct sockaddr *)dst);
-			if (rt == NULL)
-				gotoerr(EHOSTUNREACH);
-			rt->rt_refcnt--;
-			if (rt->rt_ifp != ifp) {
-				/* XXX: loop care? */
-				return nd6_output(ifp, origifp, m, dst, rt);
-			}
-		}
-		if (rt->rt_flags & RTF_GATEWAY) {
-			struct sockaddr_in6 *gw6;
-
-			/*
-			 * We skip link-layer address resolution and NUD
-			 * if the gateway is not a neighbor from ND point
-			 * of view, regardless of the value of nd_ifinfo.flags.
-			 * The second condition is a bit tricky; we skip
-			 * if the gateway is our own address, which is
-			 * sometimes used to install a route to a p2p link.
-			 */
-			gw6 = (struct sockaddr_in6 *)rt->rt_gateway;
-			if (!nd6_is_addr_neighbor(gw6, ifp) ||
-			    in6ifa_ifpwithaddr(ifp, &gw6->sin6_addr)) {
-				/*
-				 * We allow this kind of tricky route only
-				 * when the outgoing interface is p2p.
-				 * XXX: we may need a more generic rule here.
-				 */
-				if (!(ifp->if_flags & IFF_POINTOPOINT))
-					gotoerr(EHOSTUNREACH);
-
-				goto sendpkt;
-			}
-
-			if (rt->rt_gwroute == NULL) {
-				rt->rt_gwroute = rtlookup(rt->rt_gateway);
-				if (rt->rt_gwroute == NULL)
-					gotoerr(EHOSTUNREACH);
-			} else if (!(rt->rt_gwroute->rt_flags & RTF_UP)) {
-				rtfree(rt->rt_gwroute);
-				rt->rt_gwroute = rtlookup(rt->rt_gateway);
-				if (rt->rt_gwroute == NULL)
-					gotoerr(EHOSTUNREACH);
-			}
-			rt = rt->rt_gwroute;
+	if (m->m_flags & M_MCAST) {
+		switch (ifp->if_type) {
+		case IFT_ETHER:
+#ifdef IFT_L2VLAN
+		case IFT_L2VLAN:
+#endif
+#ifdef IFT_IEEE80211
+		case IFT_IEEE80211:
+#endif
+			ETHER_MAP_IPV6_MULTICAST(&dst->sin6_addr,
+						 desten);
+			return 0;
+		case IFT_IEEE1394:
+			bcopy(ifp->if_broadcastaddr, desten, ifp->if_addrlen);
+			return 0;
+		default:
+			error = EAFNOSUPPORT;
+			goto bad;
 		}
 	}
 
-	/*
-	 * Address resolution or Neighbor Unreachability Detection
-	 * for the next hop.
-	 * At this point, the destination of the packet must be a unicast
-	 * or an anycast address(i.e. not a multicast).
-	 */
-
-	/* Look up the neighbor cache for the nexthop */
-	if (rt && (rt->rt_flags & RTF_LLINFO))
-		ln = (struct llinfo_nd6 *)rt->rt_llinfo;
-	else {
-		/*
-		 * Since nd6_is_addr_neighbor() internally calls nd6_lookup(),
-		 * the condition below is not very efficient.  But we believe
-		 * it is tolerable, because this should be a rare case.
-		 */
-		if (nd6_is_addr_neighbor(dst, ifp) &&
-		    (rt = nd6_lookup(&dst->sin6_addr, 1, ifp)) != NULL)
-			ln = (struct llinfo_nd6 *)rt->rt_llinfo;
+	if (rt0 != NULL) {
+		error = rt_llroute(dst0, rt0, &rt);
+		if (error != 0)
+			goto bad;
+		ln = rt->rt_llinfo;
 	}
-	if (!ln || !rt) {
+
+	/*
+	 * Since nd6_is_addr_neighbor() internally calls nd6_lookup(),
+	 * the condition below is not very efficient.  But we believe
+	 * it is tolerable, because this should be a rare case.
+	 */
+	if (ln == NULL && nd6_is_addr_neighbor(dst, ifp)) {
+		rt = nd6_lookup(&dst->sin6_addr, 1, ifp);
+		if (rt != NULL)
+			ln = rt->rt_llinfo;
+	}
+
+	if (ln == NULL || rt == NULL) {
 		if (!(ifp->if_flags & IFF_POINTOPOINT) &&
 		    !(ND_IFINFO(ifp)->flags & ND6_IFF_PERFORMNUD)) {
 			log(LOG_DEBUG,
 			    "nd6_output: can't allocate llinfo for %s "
 			    "(ln=%p, rt=%p)\n",
 			    ip6_sprintf(&dst->sin6_addr), ln, rt);
-			gotoerr(EIO);	/* XXX: good error? */
+			error = ENOBUFS;
+			goto bad;
 		}
-
-		goto sendpkt;	/* send anyway */
+		return 0;
 	}
 
 	/* We don't have to do link-layer address resolution on a p2p link. */
@@ -2023,17 +1996,26 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 
 	/*
 	 * If the neighbor cache entry has a state other than INCOMPLETE
-	 * (i.e. its link-layer address is already resolved), just
-	 * send the packet.
+	 * (i.e. its link-layer address is already resolved), return it.
 	 */
-	if (ln->ln_state > ND6_LLINFO_INCOMPLETE)
-		goto sendpkt;
+	if (ln->ln_state > ND6_LLINFO_INCOMPLETE) {
+		struct sockaddr_dl *sdl = SDL(rt->rt_gateway);
+
+		KKASSERT(sdl->sdl_family == AF_LINK && sdl->sdl_alen != 0);
+		bcopy(LLADDR(sdl), desten, sdl->sdl_alen);
+		return 0;
+	}
 
 	/*
 	 * There is a neighbor cache entry, but no ethernet address
 	 * response yet.  Replace the held mbuf (if any) with this
 	 * latest one.
-	 *
+	 */
+	if (ln->ln_hold)
+		m_freem(ln->ln_hold);
+	ln->ln_hold = m;
+
+	/*
 	 * This code conforms to the rate-limiting rule described in Section
 	 * 7.2.2 of RFC 2461, because the timer is set correctly after sending
 	 * an NS below.
@@ -2051,32 +2033,17 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 		ln->ln_expire = 1;
 		ln->ln_asked = 0;
 	}
-	if (ln->ln_hold)
-		m_freem(ln->ln_hold);
-	ln->ln_hold = m;
-	if (ln->ln_expire) {
-		if (ln->ln_asked < nd6_mmaxtries &&
-		    ln->ln_expire < time_uptime) {
-			ln->ln_asked++;
-			ln->ln_expire = time_uptime +
-				ND_IFINFO(ifp)->retrans / 1000;
-			nd6_ns_output(ifp, NULL, &dst->sin6_addr, ln, 0);
-		}
+	if (ln->ln_expire && ln->ln_expire < time_uptime && ln->ln_asked == 0) {
+		ln->ln_asked++;
+		ln->ln_expire = time_uptime + ND_IFINFO(ifp)->retrans / 1000;
+		nd6_ns_output(ifp, NULL, &dst->sin6_addr, ln, 0);
 	}
-	return (0);
-
-sendpkt:
-	if (ifp->if_flags & IFF_LOOPBACK)
-		error = ifp->if_output(origifp, m, (struct sockaddr *)dst, rt);
-	else
-		error = ifp->if_output(ifp, m, (struct sockaddr *)dst, rt);
-	return (error);
+	return EWOULDBLOCK;
 
 bad:
 	m_freem(m);
-	return (error);
+	return error;
 }
-#undef gotoerr
 
 int
 nd6_need_cache(struct ifnet *ifp)
@@ -2105,60 +2072,6 @@ nd6_need_cache(struct ifnet *ifp)
 	default:
 		return (0);
 	}
-}
-
-int
-nd6_storelladdr(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
-		struct sockaddr *dst, u_char *desten)
-{
-	struct sockaddr_dl *sdl;
-	struct rtentry *rt;
-
-
-	if (m->m_flags & M_MCAST) {
-		switch (ifp->if_type) {
-		case IFT_ETHER:
-#ifdef IFT_L2VLAN
-	case IFT_L2VLAN:
-#endif
-#ifdef IFT_IEEE80211
-		case IFT_IEEE80211:
-#endif
-			ETHER_MAP_IPV6_MULTICAST(&SIN6(dst)->sin6_addr,
-						 desten);
-			return (1);
-		case IFT_IEEE1394:
-			bcopy(ifp->if_broadcastaddr, desten, ifp->if_addrlen);
-			return (1);
-		default:
-			m_freem(m);
-			return (0);
-		}
-	}
-	if (rt0 == NULL) {
-		/* this could happen, if we could not allocate memory */
-		m_freem(m);
-		return (0);
-	}
-	if (rt_llroute(dst, rt0, &rt) != 0) {
-		m_freem(m);
-		return (0);
-	}
-	if (rt->rt_gateway->sa_family != AF_LINK) {
-		kprintf("nd6_storelladdr: something odd happens\n");
-		m_freem(m);
-		return (0);
-	}
-	sdl = SDL(rt->rt_gateway);
-	if (sdl->sdl_alen == 0) {
-		/* this should be impossible, but we bark here for debugging */
-		kprintf("nd6_storelladdr: sdl_alen == 0\n");
-		m_freem(m);
-		return (0);
-	}
-
-	bcopy(LLADDR(sdl), desten, sdl->sdl_alen);
-	return (1);
 }
 
 static int nd6_sysctl_drlist(SYSCTL_HANDLER_ARGS);

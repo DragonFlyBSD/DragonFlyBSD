@@ -260,8 +260,9 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #endif
 #ifdef INET6
 	case AF_INET6:
-		if (!nd6_storelladdr(&ac->ac_if, rt, m, dst, edst))
-			return (0);		/* Something bad happenned. */
+		error = nd6_resolve(&ac->ac_if, rt, m, dst, edst);
+		if (error != 0)
+			return error == EWOULDBLOCK ? 0 : error;
 		eh->ether_type = htons(ETHERTYPE_IPV6);
 		break;
 #endif

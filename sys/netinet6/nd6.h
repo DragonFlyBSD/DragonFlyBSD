@@ -391,8 +391,6 @@ struct rtentry *nd6_cache_lladdr (struct ifnet *, struct in6_addr *,
 	char *, int, int, int);
 int nd6_output(struct ifnet *, struct ifnet *, struct mbuf *,
 	struct sockaddr_in6 *, struct rtentry *);
-int nd6_storelladdr(struct ifnet *, struct rtentry *, struct mbuf *,
-	struct sockaddr *, u_char *);
 int nd6_need_cache (struct ifnet *);
 
 /* nd6_nbr.c */
