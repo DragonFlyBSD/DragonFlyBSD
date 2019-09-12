@@ -172,8 +172,10 @@ const char *sizetostr(hammer2_off_t size);
 const char *counttostr(hammer2_off_t size);
 hammer2_key_t dirhash(const unsigned char *name, size_t len);
 
-uint32_t hammer2_icrc32(const void *buf, size_t size);
-uint32_t hammer2_icrc32c(const void *buf, size_t size, uint32_t crc);
+#define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
+#define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
+uint32_t iscsi_crc32(const void *buf, size_t size);
+uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 
 void hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged);
 void print_inode(const char *path);

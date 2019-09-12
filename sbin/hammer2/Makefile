@@ -1,5 +1,5 @@
 PROG=	hammer2
-SRCS=	main.c subs.c icrc.c
+SRCS=	main.c subs.c
 SRCS+=	cmd_remote.c cmd_snapshot.c cmd_pfs.c
 SRCS+=	cmd_service.c cmd_leaf.c cmd_debug.c
 SRCS+=	cmd_rsa.c cmd_stat.c cmd_setcomp.c cmd_setcheck.c
@@ -22,9 +22,7 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 DPADD+=		${LIBPTHREAD}
 LDADD+=		-lpthread
 
-#.PATH: ${.CURDIR}/../../sys/libkern
-#SRCS+= crc32.c
-.PATH: ${.CURDIR}/../../sys/vfs/hammer2/xxhash
-SRCS+= xxhash.c
+.PATH: ${.CURDIR}/../../sys/libkern ${.CURDIR}/../../sys/vfs/hammer2/xxhash
+SRCS+= icrc32.c xxhash.c
 
 .include <bsd.prog.mk>
