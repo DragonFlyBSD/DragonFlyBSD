@@ -247,6 +247,7 @@ getifaddrs(struct ifaddrs **pif)
 			ift->ifa_name = cif->ifa_name;
 			ift->ifa_flags = cif->ifa_flags;
 			ift->ifa_data = NULL;
+			ift->ifa_addrflags = ifam->ifam_addrflags;
 			p = (char *)(void *)(ifam + 1);
 			/* Scan to look for length of address */
 			alen = 0;

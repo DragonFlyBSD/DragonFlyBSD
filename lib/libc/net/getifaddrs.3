@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/net/getifaddrs.3,v 1.10 2005/02/09 18:03:13 ru Exp $
 .\"
-.Dd February 24, 2014
+.Dd 12 September, 2019
 .Dt GETIFADDRS 3
 .Os
 .Sh NAME
@@ -61,6 +61,7 @@ structure contains at least the following entries:
     struct sockaddr  *ifa_netmask;      /* Interface netmask */
     struct sockaddr  *ifa_dstaddr;      /* P2P interface destination */
     void             *ifa_data;         /* Address specific data */
+    u_int             ifa_addrflags;    /* Family specific address flags */
 .Ed
 .Pp
 The
@@ -112,6 +113,10 @@ references the broadcast address associated with
 if one exists, otherwise it is NULL.
 It is really just another name for
 .Fa ifa_dstaddr .
+.PP
+The
+.Fa ifa_addrflags
+field contains the address flags, which are specific to the address family.
 .Pp
 The
 .Fa ifa_data
@@ -158,6 +163,10 @@ The
 .Nm
 implementation first appeared in BSDi
 .Bsx .
+.Pp
+.Fa if_addrflags
+was added in
+.Nx 8.0 .
 .Sh BUGS
 If both
 .In net/if.h
