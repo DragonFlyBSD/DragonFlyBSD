@@ -40,7 +40,7 @@
 
 #define DOSBOOTBLOCKSIZE 512
 
-typedef	u_int32_t	cl_t;	/* type holding a cluster number */
+typedef	uint32_t	cl_t;	/* type holding a cluster number */
 
 /*
  * architecture independent description of all the info stored in a
@@ -56,9 +56,9 @@ struct bootblock {
 	u_int	FATsmall;		/* number of sectors per FAT */
 	u_int	SecPerTrack;		/* sectors per track */
 	u_int	Heads;			/* number of heads */
-	u_int32_t Sectors;		/* total number of sectors */
-	u_int32_t HiddenSecs;		/* # of hidden sectors */
-	u_int32_t HugeSectors;		/* # of sectors if bpbSectors == 0 */
+	uint32_t Sectors;		/* total number of sectors */
+	uint32_t HiddenSecs;		/* # of hidden sectors */
+	uint32_t HugeSectors;		/* # of sectors if bpbSectors == 0 */
 	u_int	FSInfo;			/* FSInfo sector */
 	u_int	Backup;			/* Backup of Bootblocks */
 	cl_t	RootCl;			/* Start of Root Directory */
@@ -75,9 +75,9 @@ struct bootblock {
 	int	ValidFat;		/* valid fat if FAT32 non-mirrored */
 	cl_t	ClustMask;		/* mask for entries in FAT */
 	cl_t	NumClusters;		/* # of entries in a FAT */
-	u_int32_t NumSectors;		/* how many sectors are there */
-	u_int32_t FATsecs;		/* how many sectors are in FAT */
-	u_int32_t NumFatEntries;	/* how many entries really are there */
+	uint32_t NumSectors;		/* how many sectors are there */
+	uint32_t FATsecs;		/* how many sectors are in FAT */
+	uint32_t NumFatEntries;	/* how many entries really are there */
 	u_int	ClusterOffset;		/* at what sector would sector 0 start */
 	u_int	ClusterSize;		/* Cluster size in bytes */
 
@@ -90,7 +90,7 @@ struct bootblock {
 struct fatEntry {
 	cl_t	next;			/* pointer to next cluster */
 	cl_t	head;			/* pointer to start of chain */
-	u_int32_t length;		/* number of clusters on chain */
+	uint32_t length;		/* number of clusters on chain */
 	int	flags;			/* see below */
 };
 
@@ -127,7 +127,7 @@ struct dosDirEntry {
 	char lname[DOSLONGNAMELEN];	/* real name */
 	uint flags;			/* attributes */
 	cl_t head;			/* cluster no */
-	u_int32_t size;			/* filesize in bytes */
+	uint32_t size;			/* filesize in bytes */
 	uint fsckflags;			/* flags during fsck */
 };
 /* Flags in fsckflags: */

@@ -457,7 +457,7 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 	u_char *buffer, *p;
 	cl_t cl;
 	int i;
-	u_int32_t fatsz;
+	uint32_t fatsz;
 	off_t off;
 	int ret = FSOK;
 
