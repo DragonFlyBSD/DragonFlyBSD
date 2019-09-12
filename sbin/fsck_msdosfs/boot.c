@@ -49,14 +49,15 @@ readboot(int dosfs, struct bootblock *boot)
 	u_char fsinfo[2 * DOSBOOTBLOCKSIZE];
 	u_char backup[DOSBOOTBLOCKSIZE];
 	int ret = FSOK;
-	
+
 	if (read(dosfs, block, sizeof block) < sizeof block) {
 		perror("could not read boot block");
 		return FSFATAL;
 	}
 
 	if (block[510] != 0x55 || block[511] != 0xaa) {
-		pfatal("Invalid signature in boot block: %02x%02x", block[511], block[510]);
+		pfatal("Invalid signature in boot block: %02x%02x",
+		    block[511], block[510]);
 		return FSFATAL;
 	}
 

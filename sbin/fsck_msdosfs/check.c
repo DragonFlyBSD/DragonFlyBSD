@@ -175,7 +175,7 @@ checkfilesys(const char *fname)
 
 	ret = 0;
 
-    out:
+out:
 	if (finish_dosdirsection)
 		finishDosDirSection();
 	free(fat);

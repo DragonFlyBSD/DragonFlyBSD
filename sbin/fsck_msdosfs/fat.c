@@ -108,7 +108,7 @@ _readfat(int fs, struct bootblock *boot, int no, u_char **buffer)
 
 	return 1;
 
-    err:
+err:
 	free(*buffer);
 	return 0;
 }
@@ -128,7 +128,7 @@ readfat(int fs, struct bootblock *boot, int no, struct fatEntry **fp)
 
 	if (!_readfat(fs, boot, no, &buffer))
 		return FSFATAL;
-		
+
 	fat = calloc(boot->NumClusters, sizeof(struct fatEntry));
 	if (fat == NULL) {
 		perror("No space for FAT");
@@ -160,7 +160,6 @@ readfat(int fs, struct bootblock *boot, int no, struct fatEntry **fp)
 			ret |= FSDIRTY;
 		else {
 			/* just some odd byte sequence in FAT */
-				
 			switch (boot->ClustMask) {
 			case CLUST32_MASK:
 				pwarn("%s (%02x%02x%02x%02x%02x%02x%02x%02x)\n",
@@ -180,7 +179,6 @@ readfat(int fs, struct bootblock *boot, int no, struct fatEntry **fp)
 				break;
 			}
 
-	
 			if (ask(1, "Correct"))
 				ret |= FSFIXFAT;
 		}
@@ -317,7 +315,7 @@ clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, int fatnum)
  * into the first one.
  */
 int
-comparefat(struct bootblock *boot, struct fatEntry *first, 
+comparefat(struct bootblock *boot, struct fatEntry *first,
            struct fatEntry *second, int fatnum)
 {
 	cl_t cl;
@@ -514,7 +512,7 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 		free(old_fat);
 		p += count;
 	}
-			
+
 	for (cl = CLUST_FIRST; cl < boot->NumClusters; cl++) {
 		switch (boot->ClustMask) {
 		case CLUST32_MASK:
@@ -567,7 +565,7 @@ checklost(int dosfs, struct bootblock *boot, struct fatEntry *fat)
 	cl_t head;
 	int mod = FSOK;
 	int ret;
-	
+
 	for (head = CLUST_FIRST; head < boot->NumClusters; head++) {
 		/* find next untravelled chain */
 		if (fat[head].head != head
