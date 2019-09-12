@@ -1154,7 +1154,6 @@ rt_ifamsg(int cmd, struct ifaddr *ifa)
 	ifam->ifam_index = ifp->if_index;
 	ifam->ifam_flags = ifa->ifa_flags;
 	ifam->ifam_addrs = rtinfo.rti_addrs;
-	ifam->ifam_pid = curproc->p_pid;
 	ifam->ifam_addrflags = if_addrflags(ifa);
 	ifam->ifam_metric = ifa->ifa_metric;
 
@@ -1480,7 +1479,6 @@ sysctl_iflist(int af, struct walkarg *w)
 				ifam->ifam_index = ifa->ifa_ifp->if_index;
 				ifam->ifam_flags = ifa->ifa_flags;
 				ifam->ifam_addrs = rtinfo.rti_addrs;
-				ifam->ifam_pid = 0 ;
 				ifam->ifam_addrflags = if_addrflags(ifa);
 				ifam->ifam_metric = ifa->ifa_metric;
 				error = SYSCTL_OUT(w->w_req, w->w_tmem, msglen);
