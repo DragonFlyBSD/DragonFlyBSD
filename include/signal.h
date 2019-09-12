@@ -84,7 +84,7 @@ int	sigwaitinfo(const sigset_t * __restrict, siginfo_t * __restrict);
 
 #if __POSIX_VISIBLE >= 200809
 void	psiginfo(const siginfo_t *, const char *);
-void	psignal(unsigned int, const char *); /* XXX signum should be int */
+void	psignal(int, const char *);
 #endif
 
 #if __BSD_VISIBLE

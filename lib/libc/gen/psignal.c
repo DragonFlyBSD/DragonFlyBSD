@@ -42,7 +42,7 @@
 #include "un-namespace.h"
 
 void
-psignal(unsigned int sig, const char *s)
+psignal(int sig, const char *s)
 {
 	const char *c;
 

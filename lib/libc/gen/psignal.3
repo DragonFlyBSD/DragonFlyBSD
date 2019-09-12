@@ -28,7 +28,7 @@
 .\"     @(#)psignal.3	8.2 (Berkeley) 2/27/95
 .\" $FreeBSD: src/lib/libc/gen/psignal.3,v 1.10.2.5 2003/03/15 15:11:05 trhodes Exp $
 .\"
-.Dd January 2, 2015
+.Dd September 12, 2019
 .Dt PSIGNAL 3
 .Os
 .Sh NAME
@@ -44,7 +44,7 @@
 .Sh SYNOPSIS
 .In signal.h
 .Ft void
-.Fn psignal "unsigned sig" "const char *s"
+.Fn psignal "int sig" "const char *s"
 .Ft void
 .Fn psiginfo "const siginfo_t *si" "const char *s"
 .Vt extern const char * const sys_siglist[] ;
