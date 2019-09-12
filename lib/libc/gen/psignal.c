@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -26,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/psignal.c,v 1.5 2000/01/27 23:06:19 jasone Exp $
+ * $FreeBSD: head/lib/libc/gen/psignal.c 335898 2018-07-03 17:31:45Z jhb $
  *
  * @(#)psignal.c	8.1 (Berkeley) 6/4/93
  */
@@ -46,7 +48,7 @@ psignal(int sig, const char *s)
 {
 	const char *c;
 
-	if (sig < NSIG)
+	if (sig >= 0 && sig < NSIG)
 		c = sys_siglist[sig];
 	else
 		c = "Unknown signal";
