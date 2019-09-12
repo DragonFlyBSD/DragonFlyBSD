@@ -86,7 +86,7 @@ _readfat(int fs, struct bootblock *boot, int no, u_char **buffer)
 {
 	off_t off;
 
-	*buffer = malloc(boot->FATsecs * boot->BytesPerSec);
+	*buffer = calloc(boot->FATsecs, boot->BytesPerSec);
 	if (*buffer == NULL) {
 		perror("No space for FAT");
 		return 0;
@@ -461,12 +461,12 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 	off_t off;
 	int ret = FSOK;
 
-	buffer = malloc(fatsz = boot->FATsecs * boot->BytesPerSec);
+	fatsz = boot->FATsecs * boot->BytesPerSec;
+	buffer = calloc(boot->FATsecs, boot->BytesPerSec);
 	if (buffer == NULL) {
 		perror("No space for FAT");
 		return FSFATAL;
 	}
-	memset(buffer, 0, fatsz);
 	boot->NumFree = 0;
 	p = buffer;
 	if (correct_fat) {
