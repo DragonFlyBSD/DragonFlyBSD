@@ -426,7 +426,8 @@ struct cmsgcred {
 };
 
 /* Alignment requirement for CMSG struct manipulation */
-#define	_CMSG_ALIGN(n)		(((size_t)(n) + _ALIGNBYTES) & ~_ALIGNBYTES)
+#define	__ALIGNBYTES		(sizeof(long) - 1) /* XXX -> cpu/cdefs.h? */
+#define	_CMSG_ALIGN(n)		(((n) + __ALIGNBYTES) & ~__ALIGNBYTES)
 
 #ifdef _KERNEL
 #define	CMSG_ALIGN(n)		_CMSG_ALIGN(n)
