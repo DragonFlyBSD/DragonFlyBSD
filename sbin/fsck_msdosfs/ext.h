@@ -50,8 +50,6 @@ extern int alwaysyes;	/* assume "yes" for all questions */
 extern int preen;	/* we are preening */
 extern int rdonly;	/* device is opened read only (supersedes above) */
 
-extern char *fname;	/* filesystem currently checked */
-
 extern struct dosDirEntry *rootDir;
 
 /*
