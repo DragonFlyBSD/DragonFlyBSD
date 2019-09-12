@@ -169,9 +169,9 @@ struct if_msghdr {
 	u_short	ifm_msglen;	/* to skip over non-understood messages */
 	u_char	ifm_version;	/* future binary compatibility */
 	u_char	ifm_type;	/* message type */
-	int	ifm_addrs;	/* like rtm_addrs */
-	int	ifm_flags;	/* value of if_flags */
 	u_short	ifm_index;	/* index for associated ifp */
+	int	ifm_flags;	/* value of if_flags */
+	int	ifm_addrs;	/* like rtm_addrs */
 	struct	if_data ifm_data;/* statistics and other data about if */
 };
 
@@ -183,9 +183,11 @@ struct ifa_msghdr {
 	u_short	ifam_msglen;	/* to skip over non-understood messages */
 	u_char	ifam_version;	/* future binary compatibility */
 	u_char	ifam_type;	/* message type */
-	int	ifam_addrs;	/* like rtm_addrs */
-	int	ifam_flags;	/* value of ifa_flags */
 	u_short	ifam_index;	/* index for associated ifp */
+	int	ifam_flags;	/* value of ifa_flags */
+	int	ifam_addrs;	/* like rtm_addrs */
+	pid_t	ifam_pid;	/* identify sender */
+	int	ifam_addrflags;	/* family specific address flags */
 	int	ifam_metric;	/* value of ifa_metric */
 };
 
@@ -197,9 +199,9 @@ struct ifma_msghdr {
 	u_short	ifmam_msglen;	/* to skip over non-understood messages */
 	u_char	ifmam_version;	/* future binary compatibility */
 	u_char	ifmam_type;	/* message type */
-	int	ifmam_addrs;	/* like rtm_addrs */
-	int	ifmam_flags;	/* value of ifa_flags */
 	u_short	ifmam_index;	/* index for associated ifp */
+	int	ifmam_flags;	/* value of ifa_flags */
+	int	ifmam_addrs;	/* like rtm_addrs */
 };
 
 /*

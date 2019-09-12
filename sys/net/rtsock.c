@@ -142,6 +142,7 @@ static void	rt_msg_buffer (int, struct rt_addrinfo *, void *buf, int len);
 static int	rt_msgsize(int type, const struct rt_addrinfo *rtinfo);
 static int	rt_xaddrs (char *, char *, struct rt_addrinfo *);
 static int	sysctl_rttable(int af, struct sysctl_req *req, int op, int arg);
+static int	if_addrflags(const struct ifaddr *ifa);
 static int	sysctl_iflist (int af, struct walkarg *w);
 static int	route_output(struct mbuf *, struct socket *, ...);
 static void	rt_setmetrics (u_long, struct rt_metrics *,
@@ -1151,9 +1152,11 @@ rt_ifamsg(int cmd, struct ifaddr *ifa)
 
 	ifam = mtod(m, struct ifa_msghdr *);
 	ifam->ifam_index = ifp->if_index;
-	ifam->ifam_metric = ifa->ifa_metric;
 	ifam->ifam_flags = ifa->ifa_flags;
 	ifam->ifam_addrs = rtinfo.rti_addrs;
+	ifam->ifam_pid = curproc->p_pid;
+	ifam->ifam_addrflags = if_addrflags(ifa);
+	ifam->ifam_metric = ifa->ifa_metric;
 
 	rts_input(m, familyof(ifa->ifa_addr));
 }
@@ -1370,6 +1373,19 @@ ifnet_compute_stats(struct ifnet *ifp)
 }
 
 static int
+if_addrflags(const struct ifaddr *ifa)
+{
+	switch (ifa->ifa_addr->sa_family) {
+#ifdef INET6
+	case AF_INET6:
+		return ((const struct in6_ifaddr *)ifa)->ia6_flags;
+#endif
+	default:
+		return 0;
+	}
+}
+
+static int
 sysctl_iflist(int af, struct walkarg *w)
 {
 	struct ifnet *ifp;
@@ -1463,8 +1479,10 @@ sysctl_iflist(int af, struct walkarg *w)
 
 				ifam->ifam_index = ifa->ifa_ifp->if_index;
 				ifam->ifam_flags = ifa->ifa_flags;
-				ifam->ifam_metric = ifa->ifa_metric;
 				ifam->ifam_addrs = rtinfo.rti_addrs;
+				ifam->ifam_pid = 0 ;
+				ifam->ifam_addrflags = if_addrflags(ifa);
+				ifam->ifam_metric = ifa->ifa_metric;
 				error = SYSCTL_OUT(w->w_req, w->w_tmem, msglen);
 				if (error) {
 					IFAFREE(ifa);
