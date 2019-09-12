@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/sys/shmctl.2,v 1.9.2.4 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd January 4, 2014
+.Dd September 12, 2019
 .Dt SHMCTL 2
 .Os
 .Sh NAME
@@ -116,6 +116,13 @@ struct shmid_ds {
     void           *shm_internal; /* sysv stupidity */
 };
 .Ed
+.Pp
+The
+.Vt ipc_perm
+structure used inside the
+.Vt shmid_ds
+structure is defined in
+.In sys/ipc.h .
 .Sh RETURN VALUES
 .Rv -std shmctl
 .Sh ENVIRONMENT
