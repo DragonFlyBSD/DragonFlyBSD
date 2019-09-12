@@ -190,6 +190,17 @@ counttostr(hammer2_off_t size)
 	return(buf);
 }
 
+/*
+ * Borrow HAMMER1's directory hash algorithm #1 with a few modifications.
+ * The filename is split into fields which are hashed separately and then
+ * added together.
+ *
+ * Differences include: bit 63 must be set to 1 for HAMMER2 (HAMMER1 sets
+ * it to 0), this is because bit63=0 is used for hidden hardlinked inodes.
+ * (This means we do not need to do a 0-check/or-with-0x100000000 either).
+ *
+ * Also, the iscsi crc code is used instead of the old crc32 code.
+ */
 hammer2_key_t
 dirhash(const unsigned char *name, size_t len)
 {

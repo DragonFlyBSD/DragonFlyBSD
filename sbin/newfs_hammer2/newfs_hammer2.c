@@ -54,16 +54,12 @@
 #include <err.h>
 #include <uuid.h>
 
-#define MAXLABELS	HAMMER2_SET_COUNT
+#include <hammer2.h>
 
-#define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
-#define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
-uint32_t iscsi_crc32(const void *buf, size_t size);
-uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
+#define MAXLABELS	HAMMER2_SET_COUNT
 
 static hammer2_off_t check_volume(const char *path, int *fdp);
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
-static const char *sizetostr(hammer2_off_t size);
 static uint64_t nowtime(void);
 static int blkrefary_cmp(const void *b1, const void *b2);
 static void usage(void);
@@ -72,10 +68,9 @@ static void format_hammer2(int fd, hammer2_off_t total_space,
 				hammer2_off_t free_space);
 static void alloc_direct(hammer2_off_t *basep, hammer2_blockref_t *bref,
 				size_t bytes);
-static hammer2_key_t dirhash(const unsigned char *name, size_t len);
 
 static int Hammer2Version = -1;
-static int ForceOpt = 0;
+int ForceOpt = 0;
 static uuid_t Hammer2_FSType;	/* static filesystem type id for HAMMER2 */
 static uuid_t Hammer2_VolFSID;	/* unique filesystem id in volu header */
 static uuid_t Hammer2_SupCLID;	/* PFS cluster id in super-root inode */
@@ -98,11 +93,11 @@ main(int ac, char **av)
 	int fd = -1;
 	int i;
 	int defaultlabels = 1;
-	char *vol_fsid;
-	char *sup_clid_name;
-	char *sup_fsid_name;
-	char *pfs_clid_name;
-	char *pfs_fsid_name;
+	char *vol_fsid = NULL;
+	char *sup_clid_name = NULL;
+	char *sup_fsid_name = NULL;
+	char *pfs_clid_name = NULL;
+	char *pfs_fsid_name = NULL;
 
 	Label[NLabels++] = "LOCAL";
 
@@ -276,9 +271,9 @@ main(int ac, char **av)
 	/*
 	 * We'll need to stuff this in the volume header soon.
 	 */
-	uuid_to_string(&Hammer2_VolFSID, &vol_fsid, &status);
-	uuid_to_string(&Hammer2_SupCLID, &sup_clid_name, &status);
-	uuid_to_string(&Hammer2_SupFSID, &sup_fsid_name, &status);
+	hammer2_uuid_to_str(&Hammer2_VolFSID, &vol_fsid);
+	hammer2_uuid_to_str(&Hammer2_SupCLID, &sup_clid_name);
+	hammer2_uuid_to_str(&Hammer2_SupFSID, &sup_fsid_name);
 
 	/*
 	 * Calculate the amount of reserved space.  HAMMER2_ZONE_SEG (4MB)
@@ -317,8 +312,8 @@ main(int ac, char **av)
 	printf("sup-fsid:         %s\n", sup_fsid_name);
 	for (i = 0; i < NLabels; ++i) {
 		printf("PFS \"%s\"\n", Label[i]);
-		uuid_to_string(&Hammer2_PfsCLID[i], &pfs_clid_name, &status);
-		uuid_to_string(&Hammer2_PfsFSID[i], &pfs_fsid_name, &status);
+		hammer2_uuid_to_str(&Hammer2_PfsCLID[i], &pfs_clid_name);
+		hammer2_uuid_to_str(&Hammer2_PfsFSID[i], &pfs_fsid_name);
 		printf("    clid %s\n", pfs_clid_name);
 		printf("    fsid %s\n", pfs_fsid_name);
 	}
@@ -342,33 +337,6 @@ usage(void)
 		"[-V version] [-L label ...] special\n"
 	);
 	exit(1);
-}
-
-/*
- * Convert the size in bytes to a human readable string.
- */
-static
-const char *
-sizetostr(hammer2_off_t size)
-{
-	static char buf[32];
-
-	if (size < 1024 / 2) {
-		snprintf(buf, sizeof(buf), "%6.2f", (double)size);
-	} else if (size < 1024 * 1024 / 2) {
-		snprintf(buf, sizeof(buf), "%6.2fKB",
-			(double)size / 1024);
-	} else if (size < 1024 * 1024 * 1024LL / 2) {
-		snprintf(buf, sizeof(buf), "%6.2fMB",
-			(double)size / (1024 * 1024));
-	} else if (size < 1024 * 1024 * 1024LL * 1024LL / 2) {
-		snprintf(buf, sizeof(buf), "%6.2fGB",
-			(double)size / (1024 * 1024 * 1024LL));
-	} else {
-		snprintf(buf, sizeof(buf), "%6.2fTB",
-			(double)size / (1024 * 1024 * 1024LL * 1024LL));
-	}
-	return(buf);
 }
 
 /*
@@ -816,81 +784,6 @@ alloc_direct(hammer2_off_t *basep, hammer2_blockref_t *bref, size_t bytes)
 	bref->vradix = radix;
 
 	*basep += 1U << radix;
-}
-
-/*
- * Borrow HAMMER1's directory hash algorithm #1 with a few modifications.
- * The filename is split into fields which are hashed separately and then
- * added together.
- *
- * Differences include: bit 63 must be set to 1 for HAMMER2 (HAMMER1 sets
- * it to 0), this is because bit63=0 is used for hidden hardlinked inodes.
- * (This means we do not need to do a 0-check/or-with-0x100000000 either).
- *
- * Also, the iscsi crc code is used instead of the old crc32 code.
- */
-static hammer2_key_t
-dirhash(const unsigned char *name, size_t len)
-{
-	const unsigned char *aname = name;
-	uint32_t crcx;
-	uint64_t key;
-	size_t i;
-	size_t j;
-
-	/*
-	 * Filesystem version 6 or better will create directories
-	 * using the ALG1 dirhash.  This hash breaks the filename
-	 * up into domains separated by special characters and
-	 * hashes each domain independently.
-	 *
-	 * We also do a simple sub-sort using the first character
-	 * of the filename in the top 5-bits.
-	 */
-	key = 0;
-
-	/*
-	 * m32
-	 */
-	crcx = 0;
-	for (i = j = 0; i < len; ++i) {
-		if (aname[i] == '.' ||
-		    aname[i] == '-' ||
-		    aname[i] == '_' ||
-		    aname[i] == '~') {
-			if (i != j)
-				crcx += hammer2_icrc32(aname + j, i - j);
-			j = i + 1;
-		}
-	}
-	if (i != j)
-		crcx += hammer2_icrc32(aname + j, i - j);
-
-	/*
-	 * The directory hash utilizes the top 32 bits of the 64-bit key.
-	 * Bit 63 must be set to 1.
-	 */
-	crcx |= 0x80000000U;
-	key |= (uint64_t)crcx << 32;
-
-	/*
-	 * l16 - crc of entire filename
-	 *
-	 * This crc reduces degenerate hash collision conditions
-	 */
-	crcx = hammer2_icrc32(aname, len);
-	crcx = crcx ^ (crcx << 16);
-	key |= crcx & 0xFFFF0000U;
-
-	/*
-	 * Set bit 15.  This allows readdir to strip bit 63 so a positive
-	 * 64-bit cookie/offset can always be returned, and still guarantee
-	 * that the values 0x0000-0x7FFF are available for artificial entries.
-	 * ('.' and '..').
-	 */
-	key |= 0x8000U;
-
-	return (key);
 }
 
 static int
