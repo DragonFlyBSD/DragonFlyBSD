@@ -492,6 +492,8 @@ nd6_timer_dispatch(netmsg_t nmsg)
 						 */
 						m->m_pkthdr.rcvif = rt->rt_ifp;
 					}
+					/* XXX This will log a diagnostic
+					 * that it's not an IPv6 header. */
 					icmp6_error(m, ICMP6_DST_UNREACH,
 						    ICMP6_DST_UNREACH_ADDR, 0);
 					ln->ln_hold = NULL;

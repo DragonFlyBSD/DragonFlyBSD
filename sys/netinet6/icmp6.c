@@ -277,6 +277,12 @@ icmp6_error(struct mbuf *m, int type, int code, int param)
 	}
 #endif
 	oip6 = mtod(m, struct ip6_hdr *);
+	if ((oip6->ip6_vfc & IPV6_VERSION_MASK) != IPV6_VERSION) {
+		kprintf("%s to %s not IPv6 (%d != %d)\n",
+		    __func__, ip6_sprintf(&oip6->ip6_src),
+		    oip6->ip6_vfc & IPV6_VERSION_MASK, IPV6_VERSION);
+		goto freeit;
+	}
 
 	/*
 	 * Multicast destination check. For unrecognized option errors,
