@@ -995,3 +995,80 @@ xdisk_connect(void)
 		return;
 	}
 }
+
+/*
+ * Execute the specified function as a detached independent process/daemon,
+ * unless we are in debug mode.  If we are in debug mode the function is
+ * executed as a pthread in the current process.
+ */
+void
+hammer2_demon(void *(*func)(void *), void *arg)
+{
+	pthread_t thread;
+	pid_t pid;
+	int ttyfd;
+
+	/*
+	 * Do not disconnect in debug mode
+	 */
+	if (DebugOpt) {
+                pthread_create(&thread, NULL, func, arg);
+		NormalExit = 0;
+		return;
+	}
+
+	/*
+	 * Otherwise disconnect us.  Double-fork to get rid of the ppid
+	 * association and disconnect the TTY.
+	 */
+	if ((pid = fork()) < 0) {
+		fprintf(stderr, "hammer2: fork(): %s\n", strerror(errno));
+		exit(1);
+	}
+	if (pid > 0) {
+		while (waitpid(pid, NULL, 0) != pid)
+			;
+		return;		/* parent returns */
+	}
+
+	/*
+	 * Get rid of the TTY/session before double-forking to finish off
+	 * the ppid.
+	 */
+	ttyfd = open("/dev/null", O_RDWR);
+	if (ttyfd >= 0) {
+		if (ttyfd != 0)
+			dup2(ttyfd, 0);
+		if (ttyfd != 1)
+			dup2(ttyfd, 1);
+		if (ttyfd != 2)
+			dup2(ttyfd, 2);
+		if (ttyfd > 2)
+			close(ttyfd);
+	}
+
+	ttyfd = open("/dev/tty", O_RDWR);
+	if (ttyfd >= 0) {
+		ioctl(ttyfd, TIOCNOTTY, 0);
+		close(ttyfd);
+	}
+	setsid();
+
+	/*
+	 * Second fork to disconnect ppid (the original parent waits for
+	 * us to exit).
+	 */
+	if ((pid = fork()) < 0) {
+		_exit(2);
+	}
+	if (pid > 0)
+		_exit(0);
+
+	/*
+	 * The double child
+	 */
+	setsid();
+	pthread_create(&thread, NULL, func, arg);
+	pthread_exit(NULL);
+	_exit(2);	/* NOT REACHED */
+}
