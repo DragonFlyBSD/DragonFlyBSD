@@ -7,6 +7,7 @@
 #define	DBDIR			"/var/db/dhcpcd"
 #define	RUNDIR			"/var/run"
 #endif
+#define	HAVE_IFADDRS_ADDRFLAGS
 #define	HAVE_OPEN_MEMSTREAM
 #include			"compat/pidfile.h"
 #include			"compat/strtoi.h"
