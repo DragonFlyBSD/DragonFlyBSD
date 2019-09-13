@@ -60,9 +60,6 @@
  * stat structure notes:
  *
  * NOTE: st_fsmid removed in DragonFly 2.5.x.
- *
- * XXX st_blocks should be blkcnt_t; st_blksize should be blksize_t;
- *     see 1003.1-2008
  */
 struct stat {
 	ino_t	  st_ino;		/* inode's number */
@@ -77,12 +74,12 @@ struct stat {
 	struct	timespec st_mtim;	/* time of last data modification */
 	struct	timespec st_ctim;	/* time of last file status change */
 	off_t	  st_size;		/* file size, in bytes */
-	int64_t	  st_blocks;		/* blocks allocated for file */
-	u_int32_t st_blksize;		/* optimal blocksize for I/O */
+	blkcnt_t  st_blocks;		/* blocks allocated for file */
+	u_int32_t __old_st_blksize;	/* old ABI compatibility only */
 	u_int32_t st_flags;		/* user defined flags for file */
 	u_int32_t st_gen;		/* file generation number */
 	int32_t	  st_lspare;
-	int64_t   st_qspare1;		/* was recursive change detect */
+	blksize_t st_blksize;		/* optimal blocksize for I/O */
 	int64_t	  st_qspare2;
 };
 

@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/gen/msgctl.3,v 1.8.2.7 2003/03/13 18:05:37 trhodes Exp $
 .\"
-.Dd September 12, 2019
+.Dd September 13, 2019
 .Dt MSGCTL 2
 .Os
 .Sh NAME
@@ -89,11 +89,11 @@ structure is defined in
 and looks like this:
 .Bd -literal
 struct ipc_perm {
-	ushort	cuid;	/* creator user id */
-	ushort	cgid;	/* creator group id */
-	ushort	uid;	/* user id */
-	ushort	gid;	/* group id */
-	ushort	mode;	/* r/w permission */
+	uid_t	cuid;	/* creator user id */
+	gid_t	cgid;	/* creator group id */
+	uid_t	uid;	/* user id */
+	gid_t	gid;	/* group id */
+	mode_t	mode;	/* r/w permission */
 	ushort	seq;	/* sequence # (to generate unique msg/sem/shm id) */
 	key_t	key;	/* user specified msg/sem/shm key */
 };

@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/rpcsvc/yp_prot.h,v 1.13 2005/12/06 02:01:06 peter Exp $
- * $DragonFly: src/include/rpcsvc/yp_prot.h,v 1.3 2004/12/15 09:44:47 dillon Exp $
  */
 
 #ifndef _RPCSVC_YP_PROT_H_
@@ -88,7 +87,7 @@
 #ifndef DATUM
 typedef struct {
 	char	*dptr;
-	int	dsize;
+	size_t	dsize;
 } datum;
 #define DATUM
 #endif

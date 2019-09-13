@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/xdryp.c,v 1.15 2008/03/26 07:32:06 brueffer Exp $
- * $DragonFly: src/lib/libc/yp/xdryp.c,v 1.4 2005/11/20 13:24:36 swildner Exp $
  */
 
 #include <rpc/rpc.h>
@@ -45,8 +44,8 @@ extern void *ypresp_data;
  * leave it in case somebody goes looking for it.
  */
 typedef struct {
-	char *dptr;
-	int  dsize;
+	char   *dptr;
+	size_t dsize;
 } datum;
 
 bool_t

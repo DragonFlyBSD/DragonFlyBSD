@@ -775,7 +775,6 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	 * Zero the spare stat fields
 	 */
 	sb->st_lspare = 0;
-	sb->st_qspare1 = 0;
 	sb->st_qspare2 = 0;
 
 	/*
@@ -892,6 +891,13 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		sb->st_gen = (u_int32_t)vap->va_gen;
 
 	sb->st_blocks = vap->va_bytes / S_BLKSIZE;
+
+	/*
+	 * This is for ABI compatibility <= 5.7 (for ABI change made in
+	 * 5.7 master).
+	 */
+	sb->__old_st_blksize = sb->st_blksize;
+
 	return (0);
 }
 

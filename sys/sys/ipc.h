@@ -49,16 +49,12 @@
 #include <sys/cdefs.h>
 #include <sys/types.h>
 
-/*
- * XXX cuid and uid should be uid_t; cgid and gid should be gid_t
- *     mode should be mode_t; see 1003.1-2008
- */
 struct ipc_perm {
-	unsigned short	cuid;	/* creator user id; XXX should be uid_t */
-	unsigned short	cgid;	/* creator group id; XXX should be gid_t */
-	unsigned short	uid;	/* user id; XXX should be uid_t */
-	unsigned short	gid;	/* group id; XXX should be gid_t */
-	unsigned short	mode;	/* r/w permission */
+	uid_t		cuid;	/* creator user id */
+	gid_t		cgid;	/* creator group id */
+	uid_t		uid;	/* user id */
+	gid_t		gid;	/* group id */
+	mode_t		mode;	/* r/w permission */
 	unsigned short	seq;	/* sequence # (to generate unique msg/sem/shm id) */
 	key_t		key;	/* user specified msg/sem/shm key */
 };

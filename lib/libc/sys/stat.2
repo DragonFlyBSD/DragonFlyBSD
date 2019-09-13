@@ -28,7 +28,7 @@
 .\"     @(#)stat.2	8.4 (Berkeley) 5/1/95
 .\" $FreeBSD: src/lib/libc/sys/stat.2,v 1.16.2.7 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd August 3, 2016
+.Dd September 13, 2019
 .Dt STAT 2
 .Os
 .Sh NAME
@@ -141,13 +141,13 @@ struct stat {
     struct timespec st_mtim;        /* time of last data modification */
     struct timespec st_ctim;        /* time of last file status change */
     off_t     st_size;              /* file size, in bytes */
-    int64_t   st_blocks;            /* blocks allocated for file */
-    u_int32_t st_blksize;           /* optimal blocksize for I/O */
+    blkcnt_t  st_blocks;            /* blocks allocated for file */
+    u_int32_t __old_st_blksize;     /* (for old ABI compat only, do not use) */
     u_int32_t st_flags;             /* user defined flags for file */
     u_int32_t st_gen;               /* file generation number */
     int32_t   st_lspare;
-    int64_t   st_qspare1;           /* was recursive change detect */
-    int64_t   st_qspare2;
+    blksize_t st_blksize;	    /* optimal blocksize for I/O */
+    int64_t   st_qspare2;           /* (placeholder for future, do not use) */
 };
 .Ed
 .Pp

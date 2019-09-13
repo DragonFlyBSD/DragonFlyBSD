@@ -15,7 +15,7 @@
 .\"
 .\" $FreeBSD: head/lib/libc/db/man/dbm.3 187918 2009-01-30 15:28:35Z gabor $
 .\"
-.Dd April 16, 2006
+.Dd September 13, 2019
 .Dt DBM 3
 .Os
 .Sh NAME
@@ -69,7 +69,7 @@ is declared in
 .Bd -literal
 typedef struct {
 	char *dptr;
-	int dsize;
+	size_t dsize;
 } datum;
 .Ed
 .Pp
