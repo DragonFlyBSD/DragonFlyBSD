@@ -48,6 +48,7 @@ SUBDIR=	alias \
 	dfregress \
 	dirname \
 	drill \
+	dsynth \
 	du \
 	ee \
 	enigma \
