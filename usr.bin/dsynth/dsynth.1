@@ -111,7 +111,7 @@ whichever is lower.  Then set the jobs per worker to no more than the
 number of cpu threads your machine has.
 .Pp
 .Nm
-has numerous feature to manage machine load and swap usage to
+has numerous features to manage machine load and swap usage to
 prevent a machine from being overloaded, allowing more workers
 to be configured than you might otherwise think is reasonable
 (which helps a lot when building the smaller ports).
@@ -137,7 +137,6 @@ which frees space overnight, double all of those numbers.
 .Pp
 The actual build infrastructure uses tmpfs... memory and swap, and does
 not use regular filesystem space.
-.Pp
 .Sh OPTIONS
 .Bl -tag -width indent
 .It Fl d[d...]
@@ -185,7 +184,6 @@ You may also wish to use the
 option for scripting dsynth.
 .El
 .Sh DIRECTIVES
-.Pp
 Generally
 .Nm
 is run with a directive and some directives allow a list of ports to be
@@ -194,7 +192,6 @@ for example:
 .Ar www/chromium .
 For directives with an optional ports list, your current installed set
 of ports will be used if you do not specify a list.
-.Pp
 .Bl -tag -width indent
 .It Cm status
 This will do a dry-run of
@@ -251,7 +248,7 @@ exits.  No post-build steps will be taken.
 .It Cm install Op Ar ports
 NOT CURRENTLY IMPLEMENTED.  'build' based on the supplied
 list (or using currently installed packages), then rebuild
-the repository and uprgade the system without asking any further
+the repository and upgrade the system without asking any further
 questions.
 .It Cm force Op Ar ports
 This is the same as 'build' but will delete existing packages
@@ -262,7 +259,6 @@ This is the same as 'build' but sets the environment variable
 and pre-deletes specified packages.  Dependencies are not deleted
 unless they are out of date.
 .El
-
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
 .It Pa /etc/dsynth/synth.ini
@@ -345,7 +341,7 @@ based filesystems and will be created and torn-down for each port.
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
-.Xr synth 1
+.Xr synth 1 ,
 .Xr dports 7
 .Sh HISTORY
 The
