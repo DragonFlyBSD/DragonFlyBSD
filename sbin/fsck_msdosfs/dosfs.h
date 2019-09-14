@@ -48,13 +48,13 @@ struct bootblock {
 	u_int	bpbResSectors;		/* number of reserved sectors */
 	u_int	bpbFATs;		/* number of bpbFATs */
 	u_int	bpbRootDirEnts;		/* number of root directory entries */
-	u_int32_t bpbSectors;		/* total number of sectors */
+	uint32_t bpbSectors;		/* total number of sectors */
 	u_int	bpbMedia;		/* media descriptor */
 	u_int	bpbFATsmall;		/* number of sectors per FAT */
 	u_int	SecPerTrack;		/* sectors per track */
 	u_int	bpbHeads;		/* number of heads */
-	u_int32_t bpbHiddenSecs;	/* # of hidden sectors */
-	u_int32_t bpbHugeSectors;	/* # of sectors if bpbbpbSectors == 0 */
+	uint32_t bpbHiddenSecs;		/* # of hidden sectors */
+	uint32_t bpbHugeSectors;	/* # of sectors if bpbbpbSectors == 0 */
 	cl_t	bpbRootClust;		/* Start of Root Directory */
 	u_int	bpbFSInfo;		/* FSInfo sector */
 	u_int	bpbBackup;		/* Backup of Bootblocks */
