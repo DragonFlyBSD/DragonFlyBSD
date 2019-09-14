@@ -22,6 +22,6 @@ LDADD+=		-lprivate_ncurses
 LDADD+=		-lm
 
 beforeinstall:
-	mkdir -p ${SCRIPTSDIR}
+	mkdir -p ${DESTDIR}${SCRIPTSDIR}
 
 .include <bsd.prog.mk>
