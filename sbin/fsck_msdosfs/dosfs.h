@@ -32,7 +32,9 @@
 #ifndef DOSFS_H
 #define DOSFS_H
 
-#define DOSBOOTBLOCKSIZE 512
+/* support 4Kn disk reads */
+#define DOSBOOTBLOCKSIZE_REAL 512
+#define DOSBOOTBLOCKSIZE 4096
 
 typedef	uint32_t	cl_t;	/* type holding a cluster number */
 
