@@ -57,9 +57,9 @@ typedef	__wchar_t	wchar_t;	/* _GCC_WCHAR_T OK */
 #endif
 
 #if __EXT1_VISIBLE
-#ifndef _ERRNO_T_DEFINED
+#ifndef _ERRNO_T_DECLARED
 typedef	int		errno_t;
-#define	_ERRNO_T_DEFINED
+#define	_ERRNO_T_DECLARED
 #endif
 #endif
 
