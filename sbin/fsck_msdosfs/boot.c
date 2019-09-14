@@ -43,7 +43,7 @@ readboot(int dosfs, struct bootblock *boot)
 	int ret = FSOK;
 
 	if (read(dosfs, block, sizeof block) < sizeof block) {
-		perror("could not read boot block");
+		perr("could not read boot block");
 		return FSFATAL;
 	}
 
@@ -96,7 +96,7 @@ readboot(int dosfs, struct bootblock *boot)
 		    != boot->bpbFSInfo * boot->bpbBytesPerSec
 		    || read(dosfs, fsinfo, sizeof fsinfo)
 		    != sizeof fsinfo) {
-			perror("could not read fsinfo block");
+			perr("could not read fsinfo block");
 			return FSFATAL;
 		}
 		if (memcmp(fsinfo, "RRaA", 4)
@@ -123,7 +123,7 @@ readboot(int dosfs, struct bootblock *boot)
 				    != boot->bpbFSInfo * boot->bpbBytesPerSec
 				    || write(dosfs, fsinfo, sizeof fsinfo)
 				    != sizeof fsinfo) {
-					perror("Unable to write bpbFSInfo");
+					perr("Unable to write bpbFSInfo");
 					return FSFATAL;
 				}
 				ret = FSBOOTMOD;
@@ -142,7 +142,7 @@ readboot(int dosfs, struct bootblock *boot)
 		if (lseek(dosfs, boot->bpbBackup * boot->bpbBytesPerSec, SEEK_SET)
 		    != boot->bpbBackup * boot->bpbBytesPerSec
 		    || read(dosfs, backup, sizeof backup) != sizeof  backup) {
-			perror("could not read backup bootblock");
+			perr("could not read backup bootblock");
 			return FSFATAL;
 		}
 		if (memcmp(block, backup, DOSBOOTBLOCKSIZE)) {
@@ -219,7 +219,7 @@ writefsinfo(int dosfs, struct bootblock *boot)
 	if (lseek(dosfs, boot->bpbFSInfo * boot->bpbBytesPerSec, SEEK_SET)
 	    != boot->bpbFSInfo * boot->bpbBytesPerSec
 	    || read(dosfs, fsinfo, sizeof fsinfo) != sizeof fsinfo) {
-		perror("could not read fsinfo block");
+		perr("could not read fsinfo block");
 		return FSFATAL;
 	}
 	fsinfo[0x1e8] = (u_char)boot->FSFree;
@@ -234,7 +234,7 @@ writefsinfo(int dosfs, struct bootblock *boot)
 	    != boot->bpbFSInfo * boot->bpbBytesPerSec
 	    || write(dosfs, fsinfo, sizeof fsinfo)
 	    != sizeof fsinfo) {
-		perror("Unable to write bpbFSInfo");
+		perr("Unable to write bpbFSInfo");
 		return FSFATAL;
 	}
 	/*

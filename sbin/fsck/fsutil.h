@@ -35,6 +35,7 @@ void perror(const char *);
 void errexit(const char *, ...) __printflike(1, 2) __dead2;
 void pfatal(const char *, ...) __printflike(1, 2);
 void pwarn(const char *, ...) __printflike(1, 2);
+void perr(const char *, ...) __printflike(1, 2);
 void panic(const char *, ...) __printflike(1, 2) __dead2;
 const char *rawname(const char *);
 const char *unrawname(const char *);

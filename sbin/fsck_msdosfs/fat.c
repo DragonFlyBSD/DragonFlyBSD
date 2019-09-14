@@ -80,7 +80,8 @@ _readfat(int fs, struct bootblock *boot, int no, u_char **buffer)
 
 	*buffer = calloc(boot->FATsecs, boot->bpbBytesPerSec);
 	if (*buffer == NULL) {
-		perror("No space for FAT");
+		perr("No space for FAT sectors (%zu)",
+		    (size_t)boot->FATsecs);
 		return 0;
 	}
 
@@ -88,13 +89,13 @@ _readfat(int fs, struct bootblock *boot, int no, u_char **buffer)
 	off *= boot->bpbBytesPerSec;
 
 	if (lseek(fs, off, SEEK_SET) != off) {
-		perror("Unable to read FAT");
+		perr("Unable to read FAT");
 		goto err;
 	}
 
 	if (read(fs, *buffer, boot->FATsecs * boot->bpbBytesPerSec)
 	    != boot->FATsecs * boot->bpbBytesPerSec) {
-		perror("Unable to read FAT");
+		perr("Unable to read FAT");
 		goto err;
 	}
 
@@ -123,7 +124,8 @@ readfat(int fs, struct bootblock *boot, int no, struct fatEntry **fp)
 
 	fat = calloc(boot->NumClusters, sizeof(struct fatEntry));
 	if (fat == NULL) {
-		perror("No space for FAT");
+		perr("No space for FAT clusters (%zu)",
+		    (size_t)boot->NumClusters);
 		free(buffer);
 		return FSFATAL;
 	}
@@ -456,7 +458,8 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 	fatsz = boot->FATsecs * boot->bpbBytesPerSec;
 	buffer = calloc(boot->FATsecs, boot->bpbBytesPerSec);
 	if (buffer == NULL) {
-		perror("No space for FAT");
+		perr("No space for FAT sectors (%zu)",
+		    (size_t)boot->FATsecs);
 		return FSFATAL;
 	}
 	boot->NumFree = 0;
@@ -540,7 +543,7 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 		off *= boot->bpbBytesPerSec;
 		if (lseek(fs, off, SEEK_SET) != off
 		    || write(fs, buffer, fatsz) != fatsz) {
-			perror("Unable to write FAT");
+			perr("Unable to write FAT");
 			ret = FSFATAL; /* Return immediately?		XXX */
 		}
 	}

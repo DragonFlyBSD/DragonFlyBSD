@@ -126,6 +126,16 @@ pwarn(const char *fmt, ...)
 }
 
 void
+perr(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vmsg(1, fmt, ap);
+	va_end(ap);
+}
+
+void
 perror(const char *s)
 {
 	pfatal("%s (%s)", s, strerror(errno));
