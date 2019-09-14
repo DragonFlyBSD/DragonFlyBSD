@@ -250,9 +250,9 @@ clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, u_int fatnum)
 			if ((*cp1 != CLUST_FREE && *cp1 < CLUST_BAD
 			     && *cp2 != CLUST_FREE && *cp2 < CLUST_BAD)
 			    || (*cp1 > CLUST_BAD && *cp2 > CLUST_BAD)) {
-				pwarn("Cluster %u is marked %s with different indicators, ",
+				pwarn("Cluster %u is marked %s with different indicators\n",
 				      cl, rsrvdcltype(*cp1));
-				if (ask(1, "fix")) {
+				if (ask(1, "Fix")) {
 					*cp2 = *cp1;
 					return FSFATMOD;
 				}
@@ -591,7 +591,7 @@ checklost(int dosfs, struct bootblock *boot, struct fatEntry *fat)
 		if (boot->FSFree != boot->NumFree) {
 			pwarn("Free space in FSInfo block (%d) not correct (%d)\n",
 			      boot->FSFree, boot->NumFree);
-			if (ask(1, "fix")) {
+			if (ask(1, "Fix")) {
 				boot->FSFree = boot->NumFree;
 				ret = 1;
 			}
