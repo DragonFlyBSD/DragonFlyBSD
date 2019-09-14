@@ -49,7 +49,6 @@ MLINKS+=index.3 rindex.3
 MLINKS+=memchr.3 memrchr.3
 MLINKS+=memcmp.3 bcmp.3
 MLINKS+=memcpy.3 mempcpy.3
-MLINKS+=timingsafe_bcmp.3 timingsafe_memcmp.3
 MLINKS+=strcasecmp.3 strcasecmp_l.3 \
 	strcasecmp.3 strncasecmp.3 \
 	strcasecmp.3 strncasecmp_l.3
@@ -73,6 +72,7 @@ MLINKS+=strstr.3 strcasestr.3 \
 	strstr.3 strnstr.3
 MLINKS+=strtok.3 strtok_r.3
 MLINKS+=strxfrm.3 strxfrm_l.3
+MLINKS+=timingsafe_bcmp.3 timingsafe_memcmp.3
 MLINKS+=wcscoll.3 wcscoll_l.3
 MLINKS+=wcswidth.3 wcswidth_l.3
 MLINKS+=wcsxfrm.3 wcsxfrm_l.3
