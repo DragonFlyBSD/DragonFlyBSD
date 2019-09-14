@@ -243,7 +243,8 @@ resetDosDirSection(struct bootblock *boot, struct fatEntry *fat)
 
 	memset(rootDir, 0, sizeof *rootDir);
 	if (boot->flags & FAT32) {
-		if (boot->bpbRootClust < CLUST_FIRST || boot->bpbRootClust >= boot->NumClusters) {
+		if (boot->bpbRootClust < CLUST_FIRST ||
+		    boot->bpbRootClust >= boot->NumClusters) {
 			pfatal("Root directory starts with cluster out of range(%u)",
 			       boot->bpbRootClust);
 			return FSFATAL;
@@ -363,7 +364,8 @@ removede(int f, struct bootblock *boot, struct fatEntry *fat, u_char *start,
 		pwarn("Invalid long filename entry for %s\n", path);
 		break;
 	case 1:
-		pwarn("Invalid long filename entry at end of directory %s\n", path);
+		pwarn("Invalid long filename entry at end of directory %s\n",
+		    path);
 		break;
 	case 2:
 		pwarn("Invalid long filename entry for volume label\n");
@@ -540,7 +542,8 @@ readDosDirSection(int f, struct bootblock *boot, struct fatEntry *fat,
 	do {
 		if (!(boot->flags & FAT32) && !dir->parent) {
 			last = boot->bpbRootDirEnts * 32;
-			off = boot->bpbResSectors + boot->bpbFATs * boot->FATsecs;
+			off = boot->bpbResSectors + boot->bpbFATs *
+			    boot->FATsecs;
 		} else {
 			last = boot->bpbSecPerClust * boot->bpbBytesPerSec;
 			off = cl * boot->bpbSecPerClust + boot->ClusterOffset;
@@ -632,7 +635,8 @@ readDosDirSection(int f, struct bootblock *boot, struct fatEntry *fat,
 					continue;
 				}
 				t = longName + --lidx * 13;
-				for (k = 1; k < 11 && t < longName + sizeof(longName); k += 2) {
+				for (k = 1; k < 11 && t < longName +
+				    sizeof(longName); k += 2) {
 					if (!p[k] && !p[k + 1])
 						break;
 					*t++ = p[k];
