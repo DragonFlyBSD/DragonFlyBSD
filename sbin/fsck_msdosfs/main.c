@@ -40,7 +40,7 @@ int alwaysyes;		/* assume "yes" for all questions */
 int preen;		/* set when preening */
 int rdonly;		/* device is opened read only (supersedes above) */
 
-static void usage(void);
+static void usage(void) __dead2;
 
 static void
 usage(void)

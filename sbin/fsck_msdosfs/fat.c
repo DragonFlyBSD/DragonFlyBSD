@@ -230,7 +230,7 @@ readfat(int fs, struct bootblock *boot, u_int no, struct fatEntry **fp)
 /*
  * Get type of reserved cluster
  */
-char *
+const char *
 rsrvdcltype(cl_t cl)
 {
 	if (cl == CLUST_FREE)
@@ -340,13 +340,13 @@ clearchain(struct bootblock *boot, struct fatEntry *fat, cl_t head)
 }
 
 int
-tryclear(struct bootblock *boot, struct fatEntry *fat, cl_t head, cl_t *trunc)
+tryclear(struct bootblock *boot, struct fatEntry *fat, cl_t head, cl_t *truncp)
 {
 	if (ask(0, "Clear chain starting at %u", head)) {
 		clearchain(boot, fat, head);
 		return FSFATMOD;
 	} else if (ask(0, "Truncate")) {
-		*trunc = CLUST_EOF;
+		*truncp = CLUST_EOF;
 		return FSFATMOD;
 	} else
 		return FSERROR;

@@ -258,7 +258,7 @@ writefsinfo(int dosfs, struct bootblock *boot)
 	 * correctly, it has to be fixed pretty often.
 	 *
 	 * Therefor, we handle the FSINFO block only informally,
-	 * fixing it if neccessary, but otherwise ignoring the
+	 * fixing it if necessary, but otherwise ignoring the
 	 * fact that it was incorrect.
 	 */
 	return 0;

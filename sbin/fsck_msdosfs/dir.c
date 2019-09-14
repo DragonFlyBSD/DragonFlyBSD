@@ -147,7 +147,7 @@ freeDirTodo(struct dirTodoNode *dt)
 /*
  * The stack of unread directories
  */
-struct dirTodoNode *pendingDirectories = NULL;
+static struct dirTodoNode *pendingDirectories = NULL;
 
 /*
  * Return the full pathname for a directory entry.
@@ -204,7 +204,7 @@ static char longName[DOSLONGNAMELEN] = "";
 static u_char *buffer = NULL;
 static u_char *delbuf = NULL;
 
-struct dosDirEntry *rootDir;
+static struct dosDirEntry *rootDir;
 static struct dosDirEntry *lostDir;
 
 /*
@@ -307,7 +307,7 @@ finishDosDirSection(void)
  */
 static int
 delete(int f, struct bootblock *boot, struct fatEntry *fat, cl_t startcl,
-       int startoff, cl_t endcl, int endoff, int notlast)
+    int startoff, cl_t endcl, int endoff, int notlast)
 {
 	u_char *s, *e;
 	off_t off;
@@ -347,8 +347,7 @@ delete(int f, struct bootblock *boot, struct fatEntry *fat, cl_t startcl,
 
 static int
 removede(int f, struct bootblock *boot, struct fatEntry *fat, u_char *start,
-         u_char *end, cl_t startcl, cl_t endcl, cl_t curcl, char *path,
-         int type)
+    u_char *end, cl_t startcl, cl_t endcl, cl_t curcl, char *path, int type)
 {
 	switch (type) {
 	case 0:
@@ -384,7 +383,7 @@ removede(int f, struct bootblock *boot, struct fatEntry *fat, u_char *start,
  */
 static int
 checksize(struct bootblock *boot, struct fatEntry *fat, u_char *p,
-          struct dosDirEntry *dir)
+    struct dosDirEntry *dir)
 {
 	/*
 	 * Check size on ordinary files
@@ -505,7 +504,7 @@ check_subdirectory(int f, struct bootblock *boot, struct dosDirEntry *dir)
  */
 static int
 readDosDirSection(int f, struct bootblock *boot, struct fatEntry *fat,
-                  struct dosDirEntry *dir)
+    struct dosDirEntry *dir)
 {
 	struct dosDirEntry dirent, *d;
 	u_char *p, *vallfn, *invlfn, *empty;

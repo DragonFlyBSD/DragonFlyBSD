@@ -44,8 +44,6 @@ extern int alwaysyes;	/* assume "yes" for all questions */
 extern int preen;	/* we are preening */
 extern int rdonly;	/* device is opened read only (supersedes above) */
 
-extern struct dosDirEntry *rootDir;
-
 /*
  * function declarations
  */
@@ -127,7 +125,7 @@ void finishlf(void);
 /*
  * Return the type of a reserved cluster as text
  */
-char *rsrvdcltype(cl_t);
+const char *rsrvdcltype(cl_t);
 
 /*
  * Clear a cluster chain in a FAT
