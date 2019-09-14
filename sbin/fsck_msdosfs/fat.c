@@ -34,16 +34,16 @@
 #include "ext.h"
 #include "fsutil.h"
 
-static int checkclnum(struct bootblock *, int, cl_t, cl_t *);
-static int clustdiffer(cl_t, cl_t *, cl_t *, int);
+static int checkclnum(struct bootblock *, u_int, cl_t, cl_t *);
+static int clustdiffer(cl_t, cl_t *, cl_t *, u_int);
 static int tryclear(struct bootblock *, struct fatEntry *, cl_t, cl_t *);
-static int _readfat(int, struct bootblock *, int, u_char **);
+static int _readfat(int, struct bootblock *, u_int, u_char **);
 
 /*
  * Check a cluster number for valid value
  */
 static int
-checkclnum(struct bootblock *boot, int fat, cl_t cl, cl_t *next)
+checkclnum(struct bootblock *boot, u_int fat, cl_t cl, cl_t *next)
 {
 	if (*next >= (CLUST_RSRVD&boot->ClustMask))
 		*next |= ~boot->ClustMask;
@@ -74,7 +74,7 @@ checkclnum(struct bootblock *boot, int fat, cl_t cl, cl_t *next)
  * Read a FAT from disk. Returns 1 if successful, 0 otherwise.
  */
 static int
-_readfat(int fs, struct bootblock *boot, int no, u_char **buffer)
+_readfat(int fs, struct bootblock *boot, u_int no, u_char **buffer)
 {
 	off_t off;
 
@@ -93,7 +93,7 @@ _readfat(int fs, struct bootblock *boot, int no, u_char **buffer)
 		goto err;
 	}
 
-	if (read(fs, *buffer, boot->FATsecs * boot->bpbBytesPerSec)
+	if ((size_t)read(fs, *buffer, boot->FATsecs * boot->bpbBytesPerSec)
 	    != boot->FATsecs * boot->bpbBytesPerSec) {
 		perr("Unable to read FAT");
 		goto err;
@@ -110,7 +110,7 @@ err:
  * Read a FAT and decode it into internal format
  */
 int
-readfat(int fs, struct bootblock *boot, int no, struct fatEntry **fp)
+readfat(int fs, struct bootblock *boot, u_int no, struct fatEntry **fp)
 {
 	struct fatEntry *fat;
 	u_char *buffer, *p;
@@ -219,7 +219,11 @@ readfat(int fs, struct bootblock *boot, int no, struct fatEntry **fp)
 	}
 
 	free(buffer);
-	*fp = fat;
+	if (ret & FSFATAL) {
+		free(fat);
+		*fp = NULL;
+	} else
+		*fp = fat;
 	return ret;
 }
 
@@ -239,7 +243,7 @@ rsrvdcltype(cl_t cl)
 }
 
 static int
-clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, int fatnum)
+clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, u_int fatnum)
 {
 	if (*cp1 == CLUST_FREE || *cp1 >= CLUST_RSRVD) {
 		if (*cp2 == CLUST_FREE || *cp2 >= CLUST_RSRVD) {
@@ -254,13 +258,13 @@ clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, int fatnum)
 				}
 				return FSFATAL;
 			}
-			pwarn("Cluster %u is marked %s in FAT 0, %s in FAT %d\n",
+			pwarn("Cluster %u is marked %s in FAT 0, %s in FAT %u\n",
 			      cl, rsrvdcltype(*cp1), rsrvdcltype(*cp2), fatnum);
-			if (ask(0, "use FAT 0's entry")) {
+			if (ask(0, "Use FAT 0's entry")) {
 				*cp2 = *cp1;
 				return FSFATMOD;
 			}
-			if (ask(0, "use FAT %d's entry", fatnum)) {
+			if (ask(0, "Use FAT %u's entry", fatnum)) {
 				*cp1 = *cp2;
 				return FSFATMOD;
 			}
@@ -268,7 +272,7 @@ clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, int fatnum)
 		}
 		pwarn("Cluster %u is marked %s in FAT 0, but continues with cluster %u in FAT %d\n",
 		      cl, rsrvdcltype(*cp1), *cp2, fatnum);
-		if (ask(0, "Use continuation from FAT %d", fatnum)) {
+		if (ask(0, "Use continuation from FAT %u", fatnum)) {
 			*cp1 = *cp2;
 			return FSFATMOD;
 		}
@@ -279,7 +283,7 @@ clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, int fatnum)
 		return FSFATAL;
 	}
 	if (*cp2 == CLUST_FREE || *cp2 >= CLUST_RSRVD) {
-		pwarn("Cluster %u continues with cluster %u in FAT 0, but is marked %s in FAT %d\n",
+		pwarn("Cluster %u continues with cluster %u in FAT 0, but is marked %s in FAT %u\n",
 		      cl, *cp1, rsrvdcltype(*cp2), fatnum);
 		if (ask(0, "Use continuation from FAT 0")) {
 			*cp2 = *cp1;
@@ -291,13 +295,13 @@ clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, int fatnum)
 		}
 		return FSERROR;
 	}
-	pwarn("Cluster %u continues with cluster %u in FAT 0, but with cluster %u in FAT %d\n",
+	pwarn("Cluster %u continues with cluster %u in FAT 0, but with cluster %u in FAT %u\n",
 	      cl, *cp1, *cp2, fatnum);
 	if (ask(0, "Use continuation from FAT 0")) {
 		*cp2 = *cp1;
 		return FSFATMOD;
 	}
-	if (ask(0, "Use continuation from FAT %d", fatnum)) {
+	if (ask(0, "Use continuation from FAT %u", fatnum)) {
 		*cp1 = *cp2;
 		return FSFATMOD;
 	}
@@ -310,7 +314,7 @@ clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, int fatnum)
  */
 int
 comparefat(struct bootblock *boot, struct fatEntry *first,
-           struct fatEntry *second, int fatnum)
+    struct fatEntry *second, u_int fatnum)
 {
 	cl_t cl;
 	int ret = FSOK;
@@ -450,8 +454,8 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 {
 	u_char *buffer, *p;
 	cl_t cl;
-	int i;
-	uint32_t fatsz;
+	u_int i;
+	size_t fatsz;
 	off_t off;
 	int ret = FSOK;
 
@@ -542,7 +546,7 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 		off = boot->bpbResSectors + i * boot->FATsecs;
 		off *= boot->bpbBytesPerSec;
 		if (lseek(fs, off, SEEK_SET) != off
-		    || write(fs, buffer, fatsz) != fatsz) {
+		    || (size_t)write(fs, buffer, fatsz) != fatsz) {
 			perr("Unable to write FAT");
 			ret = FSFATAL; /* Return immediately?		XXX */
 		}
@@ -591,18 +595,6 @@ checklost(int dosfs, struct bootblock *boot, struct fatEntry *fat)
 				boot->FSFree = boot->NumFree;
 				ret = 1;
 			}
-		}
-		if (boot->NumFree && (boot->FSNext >= boot->NumClusters ||
-				      fat[boot->FSNext].next != CLUST_FREE)) {
-			pwarn("Next free cluster in FSInfo block (%u) not free\n",
-			      boot->FSNext);
-			if (ask(1, "fix"))
-				for (head = CLUST_FIRST; head < boot->NumClusters; head++)
-					if (fat[head].next == CLUST_FREE) {
-						boot->FSNext = head;
-						ret = 1;
-						break;
-					}
 		}
 		if (ret)
 			mod |= writefsinfo(dosfs, boot);

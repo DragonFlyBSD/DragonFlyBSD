@@ -27,7 +27,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -41,7 +40,8 @@ checkfilesys(const char *fname)
 	int dosfs;
 	struct bootblock boot;
 	struct fatEntry *fat = NULL;
-	int i, finish_dosdirsection=0;
+	int finish_dosdirsection=0;
+	u_int i;
 	int mod = 0;
 	int ret = 8;
 

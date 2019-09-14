@@ -27,7 +27,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -41,8 +40,9 @@ readboot(int dosfs, struct bootblock *boot)
 	u_char fsinfo[2 * DOSBOOTBLOCKSIZE];
 	u_char backup[DOSBOOTBLOCKSIZE];
 	int ret = FSOK;
+	int i;
 
-	if (read(dosfs, block, sizeof block) < sizeof block) {
+	if ((size_t)read(dosfs, block, sizeof block) != sizeof block) {
 		perr("could not read boot block");
 		return FSFATAL;
 	}
@@ -146,9 +146,22 @@ readboot(int dosfs, struct bootblock *boot)
 			return FSFATAL;
 		}
 		if (memcmp(block, backup, DOSBOOTBLOCKSIZE)) {
-			/* Correct?					XXX */
-			pfatal("backup doesn't compare to primary bootblock");
-			return FSFATAL;
+			/*
+			 * XXX We require a reference that explains
+			 * that these bytes need to match, or should
+			 * drop the check.  gdt@NetBSD has observed
+			 * filesystems that work fine under Windows XP
+			 * and NetBSD that do not match, so the
+			 * requirement is suspect.  For now, just
+			 * print out useful information and continue.
+			 */
+			pfatal("backup (block %d) mismatch with primary bootblock:\n",
+			        boot->bpbBackup);
+			for (i = 11; i < 11 + 90; i++) {
+				if (block[i] != backup[i])
+					pfatal("\ti=%d\tprimary 0x%02x\tbackup 0x%02x\n",
+					       i, block[i], backup[i]);
+			}
 		}
 		/* Check backup bpbFSInfo?					XXX */
 	}
