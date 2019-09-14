@@ -604,13 +604,28 @@ checklost(int dosfs, struct bootblock *boot, struct fatEntry *fat)
 
 	if (boot->bpbFSInfo) {
 		ret = 0;
-		if (boot->FSFree != boot->NumFree) {
-			pwarn("Free space in FSInfo block (%d) not correct (%d)\n",
+		if (boot->FSFree != 0xffffffffU &&
+		    boot->FSFree != boot->NumFree) {
+			pwarn("Free space in FSInfo block (%u) not correct (%u)\n",
 			      boot->FSFree, boot->NumFree);
 			if (ask(1, "Fix")) {
 				boot->FSFree = boot->NumFree;
 				ret = 1;
 			}
+		}
+		if (boot->FSNext != 0xffffffffU &&
+		    (boot->FSNext >= boot->NumClusters ||
+		    (boot->NumFree && fat[boot->FSNext].next != CLUST_FREE))) {
+			pwarn("Next free cluster in FSInfo block (%u) %s\n",
+			      boot->FSNext,
+			      (boot->FSNext >= boot->NumClusters) ? "invalid" : "not free");
+			if (ask(1, "fix"))
+				for (head = CLUST_FIRST; head < boot->NumClusters; head++)
+					if (fat[head].next == CLUST_FREE) {
+						boot->FSNext = head;
+						ret = 1;
+						break;
+					}
 		}
 		if (ret)
 			mod |= writefsinfo(dosfs, boot);
