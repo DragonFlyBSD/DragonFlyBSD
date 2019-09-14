@@ -174,7 +174,7 @@ readboot(int dosfs, struct bootblock *boot)
 		boot->NumSectors = boot->bpbHugeSectors;
 	boot->NumClusters = (boot->NumSectors - boot->ClusterOffset) / boot->bpbSecPerClust;
 
-	if (boot->flags&FAT32)
+	if (boot->flags & FAT32)
 		boot->ClustMask = CLUST32_MASK;
 	else if (boot->NumClusters < (CLUST_RSRVD&CLUST12_MASK))
 		boot->ClustMask = CLUST12_MASK;
