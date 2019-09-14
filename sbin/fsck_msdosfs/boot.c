@@ -83,7 +83,7 @@ readboot(int dosfs, struct bootblock *boot)
 		/* check version number: */
 		if (block[42] || block[43]) {
 			/* Correct?				XXX */
-			pfatal("Unknown filesystem version: %x.%x",
+			pfatal("Unknown file system version: %x.%x",
 			       block[43], block[42]);
 			return FSFATAL;
 		}

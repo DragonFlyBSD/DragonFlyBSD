@@ -52,7 +52,7 @@ extern struct dosDirEntry *rootDir;
 int ask(int, const char *, ...) __printflike(2, 3);
 
 /*
- * Check filesystem given as arg
+ * Check file system given as arg
  */
 int checkfilesys(const char *);
 
