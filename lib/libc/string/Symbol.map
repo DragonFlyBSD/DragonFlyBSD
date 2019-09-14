@@ -100,6 +100,10 @@ DF506.0 {
     timingsafe_memcmp;
 };
 
+DF508.0 {
+    memset_s;
+};
+
 DFprivate_1.0 {
     __strchrnul;
     __strtok_r;

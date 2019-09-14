@@ -153,4 +153,19 @@ int	 timingsafe_memcmp(const void *, const void *, size_t) __pure;
 #endif
 __END_DECLS
 
+#if __EXT1_VISIBLE
+#ifndef _RSIZE_T_DECLARED
+typedef	size_t		rsize_t;
+#define	_RSIZE_T_DECLARED
+#endif
+
+#ifndef _ERRNO_T_DECLARED
+#define	_ERRNO_T_DECLARED
+typedef	int		errno_t;
+#endif
+
+/* ISO/IEC 9899:2011 K.3.7.4.1.1 */
+errno_t memset_s(void *, rsize_t, int, rsize_t);
+#endif /* __EXT1_VISIBLE */
+
 #endif /* _STRING_H_ */
