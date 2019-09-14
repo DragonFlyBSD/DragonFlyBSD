@@ -480,7 +480,7 @@ check_subdirectory(int f, struct bootblock *boot, struct dosDirEntry *dir)
 
 	off *= boot->bpbBytesPerSec;
 	if (lseek(f, off, SEEK_SET) != off ||
-	    read(f, buf, boot->bpbBytesPerSec) != boot->bpbBytesPerSec) {
+	    read(f, buf, boot->bpbBytesPerSec) != (ssize_t)boot->bpbBytesPerSec) {
 		perr("Unable to read directory");
 		free(buf);
 		return FSFATAL;
