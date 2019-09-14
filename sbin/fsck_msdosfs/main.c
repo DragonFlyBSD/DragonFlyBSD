@@ -72,19 +72,17 @@ main(int argc, char **argv)
 			 * is intentionally left out of the usage message.
 			 */
 			exit(5);
-			break;
 		case 'n':
 			alwaysno = 1;
-			alwaysyes = preen = 0;
+			alwaysyes = 0;
 			break;
 		case 'y':
 			alwaysyes = 1;
-			alwaysno = preen = 0;
+			alwaysno = 0;
 			break;
 
 		case 'p':
 			preen = 1;
-			alwaysyes = alwaysno = 0;
 			break;
 
 		default:
