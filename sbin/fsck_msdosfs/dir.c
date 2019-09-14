@@ -225,8 +225,8 @@ resetDosDirSection(struct bootblock *boot, struct fatEntry *fat)
 	cl_t cl;
 	int ret = FSOK;
 
-	b1 = boot->RootDirEnts * 32;
-	b2 = boot->SecPerClust * boot->BytesPerSec;
+	b1 = boot->bpbRootDirEnts * 32;
+	b2 = boot->bpbSecPerClust * boot->bpbBytesPerSec;
 
 	if (!(buffer = malloc(b1 > b2 ? b1 : b2))
 	    || !(delbuf = malloc(b2))
@@ -236,15 +236,15 @@ resetDosDirSection(struct bootblock *boot, struct fatEntry *fat)
 	}
 	memset(rootDir, 0, sizeof *rootDir);
 	if (boot->flags & FAT32) {
-		if (boot->RootCl < CLUST_FIRST || boot->RootCl >= boot->NumClusters) {
+		if (boot->bpbRootClust < CLUST_FIRST || boot->bpbRootClust >= boot->NumClusters) {
 			pfatal("Root directory starts with cluster out of range(%u)",
-			       boot->RootCl);
+			       boot->bpbRootClust);
 			return FSFATAL;
 		}
-		cl = fat[boot->RootCl].next;
+		cl = fat[boot->bpbRootClust].next;
 		if (cl < CLUST_FIRST
 		    || (cl >= CLUST_RSRVD && cl< CLUST_EOFS)
-		    || fat[boot->RootCl].head != boot->RootCl) {
+		    || fat[boot->bpbRootClust].head != boot->bpbRootClust) {
 			if (cl == CLUST_FREE)
 				pwarn("Root directory starts with free cluster\n");
 			else if (cl >= CLUST_RSRVD)
@@ -255,14 +255,14 @@ resetDosDirSection(struct bootblock *boot, struct fatEntry *fat)
 				return FSFATAL;
 			}
 			if (ask(1, "Fix")) {
-				fat[boot->RootCl].next = CLUST_FREE;
+				fat[boot->bpbRootClust].next = CLUST_FREE;
 				ret = FSFATMOD;
 			} else
 				ret = FSFATAL;
 		}
 
-		fat[boot->RootCl].flags |= FAT_USED;
-		rootDir->head = boot->RootCl;
+		fat[boot->bpbRootClust].flags |= FAT_USED;
+		rootDir->head = boot->bpbRootClust;
 	}
 
 	return ret;
@@ -307,7 +307,7 @@ delete(int f, struct bootblock *boot, struct fatEntry *fat, cl_t startcl,
 {
 	u_char *s, *e;
 	off_t off;
-	int clsz = boot->SecPerClust * boot->BytesPerSec;
+	int clsz = boot->bpbSecPerClust * boot->bpbBytesPerSec;
 
 	s = delbuf + startoff;
 	e = delbuf + clsz;
@@ -317,8 +317,8 @@ delete(int f, struct bootblock *boot, struct fatEntry *fat, cl_t startcl,
 				break;
 			e = delbuf + endoff;
 		}
-		off = startcl * boot->SecPerClust + boot->ClusterOffset;
-		off *= boot->BytesPerSec;
+		off = startcl * boot->bpbSecPerClust + boot->ClusterOffset;
+		off *= boot->bpbBytesPerSec;
 		if (lseek(f, off, SEEK_SET) != off
 		    || read(f, delbuf, clsz) != clsz) {
 			perror("Unable to read directory");
@@ -455,14 +455,14 @@ readDosDirSection(int f, struct bootblock *boot, struct fatEntry *fat,
 	vallfn = invlfn = empty = NULL;
 	do {
 		if (!(boot->flags & FAT32) && !dir->parent) {
-			last = boot->RootDirEnts * 32;
-			off = boot->ResSectors + boot->FATs * boot->FATsecs;
+			last = boot->bpbRootDirEnts * 32;
+			off = boot->bpbResSectors + boot->bpbFATs * boot->FATsecs;
 		} else {
-			last = boot->SecPerClust * boot->BytesPerSec;
-			off = cl * boot->SecPerClust + boot->ClusterOffset;
+			last = boot->bpbSecPerClust * boot->bpbBytesPerSec;
+			off = cl * boot->bpbSecPerClust + boot->ClusterOffset;
 		}
 
-		off *= boot->BytesPerSec;
+		off *= boot->bpbBytesPerSec;
 		if (lseek(f, off, SEEK_SET) != off
 		    || read(f, buffer, last) != last) {
 			perror("Unable to read directory");
@@ -942,7 +942,7 @@ reconnect(int dosfs, struct bootblock *boot, struct fatEntry *fat, cl_t head)
 			return FSERROR;
 		}
 		lfoff = lfcl * boot->ClusterSize
-		    + boot->ClusterOffset * boot->BytesPerSec;
+		    + boot->ClusterOffset * boot->bpbBytesPerSec;
 		if (lseek(dosfs, lfoff, SEEK_SET) != lfoff
 		    || read(dosfs, lfbuf, boot->ClusterSize) != boot->ClusterSize) {
 			perror("could not read LOST.DIR");

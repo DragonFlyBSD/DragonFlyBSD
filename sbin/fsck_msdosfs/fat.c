@@ -86,22 +86,22 @@ _readfat(int fs, struct bootblock *boot, int no, u_char **buffer)
 {
 	off_t off;
 
-	*buffer = calloc(boot->FATsecs, boot->BytesPerSec);
+	*buffer = calloc(boot->FATsecs, boot->bpbBytesPerSec);
 	if (*buffer == NULL) {
 		perror("No space for FAT");
 		return 0;
 	}
 
-	off = boot->ResSectors + no * boot->FATsecs;
-	off *= boot->BytesPerSec;
+	off = boot->bpbResSectors + no * boot->FATsecs;
+	off *= boot->bpbBytesPerSec;
 
 	if (lseek(fs, off, SEEK_SET) != off) {
 		perror("Unable to read FAT");
 		goto err;
 	}
 
-	if (read(fs, *buffer, boot->FATsecs * boot->BytesPerSec)
-	    != boot->FATsecs * boot->BytesPerSec) {
+	if (read(fs, *buffer, boot->FATsecs * boot->bpbBytesPerSec)
+	    != boot->FATsecs * boot->bpbBytesPerSec) {
 		perror("Unable to read FAT");
 		goto err;
 	}
@@ -136,7 +136,7 @@ readfat(int fs, struct bootblock *boot, int no, struct fatEntry **fp)
 		return FSFATAL;
 	}
 
-	if (buffer[0] != boot->Media
+	if (buffer[0] != boot->bpbMedia
 	    || buffer[1] != 0xff || buffer[2] != 0xff
 	    || (boot->ClustMask == CLUST16_MASK && buffer[3] != 0xff)
 	    || (boot->ClustMask == CLUST32_MASK
@@ -150,7 +150,7 @@ readfat(int fs, struct bootblock *boot, int no, struct fatEntry **fp)
 		 * filesystem is dirty if it doesn't reboot cleanly.
 		 * Check this special condition before errorring out.
 		 */
-		if (buffer[0] == boot->Media && buffer[1] == 0xff
+		if (buffer[0] == boot->bpbMedia && buffer[1] == 0xff
 		    && buffer[2] == 0xff
 		    && ((boot->ClustMask == CLUST16_MASK && buffer[3] == 0x7f)
 			|| (boot->ClustMask == CLUST32_MASK
@@ -461,8 +461,8 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 	off_t off;
 	int ret = FSOK;
 
-	fatsz = boot->FATsecs * boot->BytesPerSec;
-	buffer = calloc(boot->FATsecs, boot->BytesPerSec);
+	fatsz = boot->FATsecs * boot->bpbBytesPerSec;
+	buffer = calloc(boot->FATsecs, boot->bpbBytesPerSec);
 	if (buffer == NULL) {
 		perror("No space for FAT");
 		return FSFATAL;
@@ -470,7 +470,7 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 	boot->NumFree = 0;
 	p = buffer;
 	if (correct_fat) {
-		*p++ = (u_char)boot->Media;
+		*p++ = (u_char)boot->bpbMedia;
 		*p++ = 0xff;
 		*p++ = 0xff;
 		switch (boot->ClustMask) {
@@ -543,9 +543,9 @@ writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 			break;
 		}
 	}
-	for (i = 0; i < boot->FATs; i++) {
-		off = boot->ResSectors + i * boot->FATsecs;
-		off *= boot->BytesPerSec;
+	for (i = 0; i < boot->bpbFATs; i++) {
+		off = boot->bpbResSectors + i * boot->FATsecs;
+		off *= boot->bpbBytesPerSec;
 		if (lseek(fs, off, SEEK_SET) != off
 		    || write(fs, buffer, fatsz) != fatsz) {
 			perror("Unable to write FAT");
@@ -587,7 +587,7 @@ checklost(int dosfs, struct bootblock *boot, struct fatEntry *fat)
 	}
 	finishlf();
 
-	if (boot->FSInfo) {
+	if (boot->bpbFSInfo) {
 		ret = 0;
 		if (boot->FSFree != boot->NumFree) {
 			pwarn("Free space in FSInfo block (%d) not correct (%d)\n",
