@@ -119,9 +119,10 @@ ask(int def, const char *fmt, ...)
 	char prompt[256];
 	int c;
 
+	if (alwaysyes || alwaysno || rdonly)
+		def = (alwaysyes && !rdonly && !alwaysno);
+
 	if (preen) {
-		if (rdonly)
-			def = 0;
 		if (def)
 			printf("FIXED\n");
 		return def;
@@ -129,9 +130,9 @@ ask(int def, const char *fmt, ...)
 
 	va_start(ap, fmt);
 	vsnprintf(prompt, sizeof(prompt), fmt, ap);
-	if (alwaysyes || rdonly) {
-		printf("%s? %s\n", prompt, rdonly ? "no" : "yes");
-		return !rdonly;
+	if (alwaysyes || alwaysno || rdonly) {
+		printf("%s? %s\n", prompt, def ? "yes" : "no");
+		return def;
 	}
 	do {
 		printf("%s? [yn] ", prompt);
