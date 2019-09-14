@@ -763,6 +763,9 @@ nfs_setattr(struct vop_setattr_args *ap)
 
 	lwkt_gettoken(&nmp->nm_token);
 
+	/*
+	 * Handle size changes
+	 */
 	if (vap->va_size != VNOVAL) {
 		/*
 		 * truncation requested
@@ -819,29 +822,42 @@ again:
 				kflags |= NOTE_EXTEND;
 			break;
 		}
-	} else if ((np->n_flag & NLMODIFIED) && vp->v_type == VREG) {
-		/*
-		 * What to do.  If we are modifying the mtime we lose
-		 * mtime detection of changes made by the server or other
-		 * clients.  But programs like rsync/rdist/cpdup are going
-		 * to call utimes a lot.  We don't want to piecemeal sync.
-		 *
-		 * For now sync if any prior remote changes were detected,
-		 * but allow us to lose track of remote changes made during
-		 * the utimes operation.
-		 */
-		if (np->n_flag & NRMODIFIED)
+	}
+
+	/*
+	 * If setting the mtime or if server/other-client modifications have
+	 * been detected, we must fully flush any pending writes.
+	 *
+	 * This will slow down cp/cpdup/rdist/rsync and other operations which
+	 * might call [l]utimes() to set the mtime after writing to a file,
+	 * but honestly there is no way to properly defer the write flush
+	 * and still get reasonably accurate/dependable synchronization of
+	 * [l]utimes().
+	 */
+	if ((np->n_flag & NLMODIFIED) && vp->v_type == VREG) {
+		if ((np->n_flag & NRMODIFIED) ||
+		    (vap->va_mtime.tv_sec != VNOVAL)) {
 			error = nfs_vinvalbuf(vp, V_SAVE, 1);
-		if (error == EINTR) {
-			lwkt_reltoken(&nmp->nm_token);
-			return (error);
-		}
-		if (error == 0) {
-			if (vap->va_mtime.tv_sec != VNOVAL) {
-				np->n_mtime = vap->va_mtime.tv_sec;
+			if (error == EINTR) {
+				lwkt_reltoken(&nmp->nm_token);
+				return (error);
 			}
 		}
 	}
+
+	/*
+	 * Get the blasted mtime to report properly.
+	 */
+	if (vap->va_mtime.tv_sec != VNOVAL) {
+		np->n_mtime = vap->va_mtime.tv_sec;
+		np->n_flag &= ~NUPD;
+		np->n_vattr.va_mtime = vap->va_mtime;
+	}
+
+	/*
+	 * Issue the setattr rpc, adjust our mtime and make sure NUPD
+	 * has been cleared so it does not get overridden.
+	 */
 	error = nfs_setattrrpc(vp, vap, ap->a_cred, td);
 	if (error == 0)
 		kflags |= NOTE_EXTEND;
