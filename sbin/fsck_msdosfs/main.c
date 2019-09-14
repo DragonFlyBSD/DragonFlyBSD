@@ -130,6 +130,7 @@ ask(int def, const char *fmt, ...)
 
 	va_start(ap, fmt);
 	vsnprintf(prompt, sizeof(prompt), fmt, ap);
+	va_end(ap);
 	if (alwaysyes || alwaysno || rdonly) {
 		printf("%s? %s\n", prompt, def ? "yes" : "no");
 		return def;
