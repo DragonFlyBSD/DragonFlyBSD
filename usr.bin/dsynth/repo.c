@@ -111,6 +111,10 @@ DoRebuildRepo(int ask)
 }
 
 static void
+repackage(const char *basepath, const char *basefile, const char *sufx,
+	  const char *comp, const char *decomp);
+
+static void
 childRebuildRepo(bulk_t *bulk)
 {
 	FILE *fp;
@@ -127,10 +131,16 @@ childRebuildRepo(bulk_t *bulk)
 	cav[cac++] = bulk->s1;
 	cav[cac++] = "-o";
 	cav[cac++] = PackagesPath;
-	cav[cac++] = RepositoryPath;
 
-	printf("pkg repo -m %s -o %s %s\n",
-	       bulk->s1, PackagesPath, RepositoryPath);
+	/*
+	 * The yaml needs to generate paths relative to PackagePath
+	 */
+	if (strncmp(PackagesPath, RepositoryPath, strlen(PackagesPath)) == 0)
+		cav[cac++] = PackagesPath;
+	else
+		cav[cac++] = RepositoryPath;
+
+	printf("pkg repo -m %s -o %s %s\n", bulk->s1, cav[cac-2], cav[cac-1]);
 
 	fp = dexec_open(cav, cac, &pid, NULL, 1, 0);
 	while ((ptr = fgetln(fp, &len)) != NULL)
@@ -138,6 +148,48 @@ childRebuildRepo(bulk_t *bulk)
 	if (dexec_close(fp, pid) == 0) {
 		bulk->r1 = strdup("");
 	}
+
+	/*
+	 * Repackage the .txz files created by pkg repo if necessary
+	 */
+	if (strcmp(USE_PKG_SUFX, ".txz") != 0) {
+		const char *comp;
+		const char *decomp;
+
+		if (strcmp(USE_PKG_SUFX, ".tar") == 0) {
+			decomp = "unxz";
+			comp = "cat";
+		} else if (strcmp(USE_PKG_SUFX, ".tgz") == 0) {
+			decomp = "unxz";
+			comp = "gzip";
+		} else if (strcmp(USE_PKG_SUFX, ".tbz") == 0) {
+			decomp = "unxz";
+			comp = "bzip";
+		} else {
+			dfatal("repackaging as %s not supported", USE_PKG_SUFX);
+			decomp = "unxz";
+			comp = "cat";
+		}
+		repackage(PackagesPath, "digests", USE_PKG_SUFX,
+			  comp, decomp);
+		repackage(PackagesPath, "packagesite", USE_PKG_SUFX,
+			  comp, decomp);
+	}
+}
+
+static
+void
+repackage(const char *basepath, const char *basefile, const char *sufx,
+	  const char *comp, const char *decomp)
+{
+	char *buf;
+
+	asprintf(&buf, "%s < %s/%s.txz | %s > %s/%s%s",
+		decomp, basepath, basefile, comp, basepath, basefile, sufx);
+	if (system(buf) != 0) {
+		dfatal("command failed: %s", buf);
+	}
+	free(buf);
 }
 
 void
