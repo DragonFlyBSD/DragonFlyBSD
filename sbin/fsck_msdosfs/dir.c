@@ -218,18 +218,19 @@ resetDosDirSection(struct bootblock *boot, struct fatEntry *fat)
 	int b1, b2;
 	cl_t cl;
 	int ret = FSOK;
+	size_t len;
 
 	b1 = boot->bpbRootDirEnts * 32;
 	b2 = boot->bpbSecPerClust * boot->bpbBytesPerSec;
 
-	if ((buffer = malloc( b1 > b2 ? b1 : b2)) == NULL) {
-		perr("No space for directory buffer");
+	if ((buffer = malloc(len = MAX(b1, b2))) == NULL) {
+		perr("No space for directory buffer (%zu)", len);
 		return FSFATAL;
 	}
 
-	if ((delbuf = malloc(b2)) == NULL) {
+	if ((delbuf = malloc(len = b2)) == NULL) {
 		free(buffer);
-		perr("No space for directory delbuf");
+		perr("No space for directory delbuf (%zu)", len);
 		return FSFATAL;
 	}
 
