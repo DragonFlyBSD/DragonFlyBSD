@@ -520,26 +520,6 @@ out:
 /* --------------------------------------------------------------------- */
 
 /*
- * Destroys the association between the vnode vp and the node it
- * references.
- */
-void
-tmpfs_free_vp(struct vnode *vp)
-{
-	struct tmpfs_node *node;
-
-	node = VP_TO_TMPFS_NODE(vp);
-
-	TMPFS_NODE_LOCK(node);
-	KKASSERT(lockinuse(TMPFS_NODE_MTX(node)));
-	node->tn_vnode = NULL;
-	vp->v_data = NULL;
-	TMPFS_NODE_UNLOCK(node);
-}
-
-/* --------------------------------------------------------------------- */
-
-/*
  * Allocates a new file of type 'type' and adds it to the parent directory
  * 'dvp'; this addition is done using the component name given in 'cnp'.
  * The ownership of the new file is automatically assigned based on the

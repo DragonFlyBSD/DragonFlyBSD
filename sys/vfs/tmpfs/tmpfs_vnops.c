@@ -1703,7 +1703,10 @@ tmpfs_reclaim(struct vop_reclaim_args *ap)
 	tmp = VFS_TO_TMPFS(vp->v_mount);
 	KKASSERT(mp == tmp->tm_mount);
 
-	tmpfs_free_vp(vp);
+        TMPFS_NODE_LOCK(node);
+	KKASSERT(node->tn_vnode == vp);
+        node->tn_vnode = NULL;
+        vp->v_data = NULL;
 
 	/*
 	 * If the node referenced by this vnode was deleted by the
@@ -1712,7 +1715,6 @@ tmpfs_reclaim(struct vop_reclaim_args *ap)
 	 *
 	 * Directories have an extra link ref.
 	 */
-	TMPFS_NODE_LOCK(node);
 	if ((node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0 &&
 	    node->tn_links == 0) {
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;

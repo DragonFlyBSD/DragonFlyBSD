@@ -400,7 +400,6 @@ int	tmpfs_alloc_dirent(struct tmpfs_mount *, struct tmpfs_node *,
 void	tmpfs_free_dirent(struct tmpfs_mount *, struct tmpfs_dirent *);
 int	tmpfs_alloc_vp(struct mount *, struct tmpfs_node *,
 	    struct tmpfs_node *, int, struct vnode **);
-void	tmpfs_free_vp(struct vnode *);
 int	tmpfs_alloc_file(struct vnode *, struct vnode **, struct vattr *,
 	    struct namecache *, struct ucred *, char *);
 void	tmpfs_dir_attach(struct tmpfs_node *, struct tmpfs_dirent *);

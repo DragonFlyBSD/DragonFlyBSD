@@ -332,11 +332,11 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 		 */
 		TMPFS_NODE_LOCK(node);
 		++node->tn_links;
-		TMPFS_NODE_UNLOCK(node);
 
 		while (node->tn_type == VREG && node->tn_vnode) {
 			vp = node->tn_vnode;
 			vhold(vp);
+			TMPFS_NODE_UNLOCK(node);
 			lwkt_yield();
 
 			/*
@@ -356,12 +356,12 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 			TMPFS_NODE_UNLOCK(node);
 			vx_put(vp);
 			vdrop(vp);
+			TMPFS_NODE_LOCK(node);
 			if (isok)
 				break;
 			/* retry */
 		}
 
-		TMPFS_NODE_LOCK(node);
 		--node->tn_links;
 		TMPFS_NODE_UNLOCK(node);
 	}
