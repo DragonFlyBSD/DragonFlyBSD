@@ -160,6 +160,14 @@
 	(m->protection_codes[p & (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)])
 static uint64_t protection_codes[PROTECTION_CODES_SIZE];
 
+/*
+ * Backing scan macros.  Note that in the use case 'ipte' is only a tentitive
+ * value and must be validated by a pmap_inval_smp_cmpset*() or equivalent
+ * function.
+ *
+ * NOTE: cpu_ccfence() is required to prevent excessive optmization of
+ *	 of the (ipte) variable.
+ */
 #define PMAP_PAGE_BACKING_SCAN(m, match_pmap, ipmap, iptep, ipte, iva)	\
 	if (m->object) {						\
 		vm_object_t iobj = m->object;				\
@@ -191,6 +199,7 @@ static uint64_t protection_codes[PROTECTION_CODES_SIZE];
 			if (iptep == NULL)				\
 				continue;				\
 			ipte = *iptep;					\
+			cpu_ccfence();					\
 			if (m->phys_addr != (ipte & PG_FRAME))		\
 				continue;				\
 
@@ -4629,8 +4638,8 @@ again:
 		if (retry - ticks > 0)
 			goto again;
 		panic("pmap_remove_all: cannot return pmap_count "
-		      "to 0 (%ld, %ld)",
-		      m->md.pmap_count, m->md.writeable_count);
+		      "to 0 (%p, %ld, %ld)",
+		      m, m->md.pmap_count, m->md.writeable_count);
 	}
 	vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 }

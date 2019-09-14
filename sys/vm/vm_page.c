@@ -2848,6 +2848,9 @@ vm_page_free_toq(vm_page_t m)
 		panic("vm_page_free: freeing wired page");
 	}
 
+	if (!MD_PAGE_FREEABLE(m))
+		panic("vm_page_free: page %p is still mapped!", m);
+
 	/*
 	 * Clear the PG_NEED_COMMIT and the PG_UNQUEUED flags.  The
 	 * page returns to normal operation and will be placed in

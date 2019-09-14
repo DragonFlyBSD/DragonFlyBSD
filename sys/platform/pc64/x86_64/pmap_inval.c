@@ -410,6 +410,10 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 	/*
 	 * Pass our copy of the done bits (so they don't change out from
 	 * under us) to generate the Xinvltlb interrupt on the targets.
+	 *
+	 * smp_invlpg() issues the command, synchronizes with other cpus,
+	 * and executes the command on our cpu.  Upon return other cpus
+	 * may still be in the process of exiting their synchroniization.
 	 */
 	smp_invlpg(&tmpmask);
 	opte = info->opte;

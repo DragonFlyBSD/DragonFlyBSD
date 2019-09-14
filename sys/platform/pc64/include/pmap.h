@@ -222,6 +222,9 @@ struct md_page {
 	long writeable_count;
 };
 
+#define MD_PAGE_FREEABLE(m)	\
+	((m)->md.pmap_count == 0 && (m)->md.writeable_count == 0)
+
 /*
  * vm_object's representing large mappings can contain embedded pmaps
  * to organize sharing at higher page table levels for PROT_READ and
