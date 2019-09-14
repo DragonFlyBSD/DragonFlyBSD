@@ -12,14 +12,17 @@ SCRIPTSDIR= ${SHAREDIR}/dsynth
 CFLAGS+=	-pthread
 CFLAGS+=	-DSCRIPTDIR=${SHAREDIR}/dsynth
 LDADD+=		-lpthread -lutil
+DPADD+=		${LIBPTHREAD} ${LIBUTIL}
 
 # ncurses, DragonFlyBSD
 #
 CFLAGS+=        -I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=       ${PRIVATELIB_LDFLAGS}
 LDADD+=		-lprivate_ncurses
+DPADD+=		${LIBNCURSES}
 
 LDADD+=		-lm
+DPADD+=		${LIBM}
 
 beforeinstall:
 	mkdir -p ${DESTDIR}${SCRIPTSDIR}
