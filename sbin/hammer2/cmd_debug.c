@@ -375,8 +375,7 @@ cmd_debugspan(const char *hostname)
  ************************************************************************/
 
 static void show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
-			int bi, hammer2_blockref_t *bref,
-			int dofreemap, int norecurse);
+			int bi, hammer2_blockref_t *bref, int norecurse);
 static void tabprintf(int tab, const char *ctl, ...);
 
 static hammer2_off_t TotalFreeAccum16;
@@ -429,12 +428,11 @@ cmd_show(const char *devpath, int dofreemap)
 				best = broot;
 			}
 			if (VerboseOpt >= 3)
-				show_bref(&media.voldata, fd, 0, i, &broot,
-				    dofreemap, 0);
+				show_bref(&media.voldata, fd, 0, i, &broot, 0);
 		}
 	}
 	if (VerboseOpt < 3)
-		show_bref(&media.voldata, fd, 0, best_i, &best, dofreemap, 0);
+		show_bref(&media.voldata, fd, 0, best_i, &best, 0);
 	close(fd);
 
 	if (dofreemap && VerboseOpt < 3) {
@@ -448,7 +446,7 @@ cmd_show(const char *devpath, int dofreemap)
 
 static void
 show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
-	  int bi, hammer2_blockref_t *bref, int dofreemap, int norecurse)
+	  int bi, hammer2_blockref_t *bref, int norecurse)
 {
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
@@ -841,8 +839,7 @@ skip_data:
 	 */
 	for (i = 0; norecurse == 0 && i < bcount; ++i) {
 		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY) {
-			show_bref(voldata, fd, tab, i, &bscan[i], dofreemap,
-				  failed);
+			show_bref(voldata, fd, tab, i, &bscan[i], failed);
 		}
 	}
 	tab -= show_tab;
