@@ -1676,10 +1676,19 @@ unp_internalize(struct mbuf *control, struct thread *td)
 
 	KKASSERT(p);
 
+	/*
+	 * Make sure the message is reasonable, and either CREDS or RIGHTS.
+	 *
+	 * NOTE: overall message length does not have to be aligned, but the
+	 *	 data start does.
+	 */
 	if ((cm->cmsg_type != SCM_RIGHTS && cm->cmsg_type != SCM_CREDS) ||
 	    cm->cmsg_level != SOL_SOCKET ||
-	    CMSG_ALIGN(cm->cmsg_len) != control->m_len)
+	    control->m_len < sizeof(*cm) ||	/* control too small */
+	    cm->cmsg_len < sizeof(*cm) ||	/* cmsg_len too small */
+	    cm->cmsg_len > control->m_len) {	/* cmsg_len too big */
 		return EINVAL;
+	}
 
 	/*
 	 * Fill in credential information.
@@ -1700,9 +1709,16 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	/*
 	 * cmsghdr may not be aligned, do not allow calculation(s) to
 	 * go negative.
+	 *
+	 * Data must be aligned but the data length does not have to be.
+	 *
+	 * If there are multiple headers (XXX not supported) then the
+	 * next header will be aligned after the end of the possibly
+	 * unaligned data.
 	 */
-	if (cm->cmsg_len < CMSG_LEN(0))
+	if (cm->cmsg_len < CMSG_LEN(0)) {
 		return EINVAL;
+	}
 
 	oldfds = (cm->cmsg_len - CMSG_LEN(0)) / sizeof(int);
 
