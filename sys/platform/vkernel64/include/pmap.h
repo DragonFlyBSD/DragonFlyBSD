@@ -85,6 +85,10 @@
 #define NUPML4E		NUPDP_TOTAL	/* for vmparam.h */
 
 
+/*
+ * Currently no tests available (see vm/vm_page.c)
+ */
+#define MD_PAGE_FREEABLE(m)	1
 
 #ifndef LOCORE
 

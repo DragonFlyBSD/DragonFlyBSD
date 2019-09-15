@@ -1288,7 +1288,7 @@ unix_connect(const char *path)
 	}
 	setsockopt(net_fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
 	if (fstat(net_fd, &st) == 0)
-		printf("Network socket buffer: %d bytes\n", st.st_blksize);
+		printf("Network socket buffer: %ld bytes\n", st.st_blksize);
 	fcntl(net_fd, F_SETFL, O_NONBLOCK);
 	return(net_fd);
 }
