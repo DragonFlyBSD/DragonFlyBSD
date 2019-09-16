@@ -779,6 +779,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		tmp = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
 		tmp &= HAMMER2_SEGMASK;
 		tmp /= HAMMER2_PBUFSIZE;
+		assert(tmp >= HAMMER2_ZONE_FREEMAP_00);
 		assert(tmp < HAMMER2_ZONE_FREEMAP_END);
 		tmp -= HAMMER2_ZONE_FREEMAP_00;
 		tmp /= HAMMER2_ZONE_FREEMAP_INC;
@@ -817,6 +818,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		tmp = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
 		tmp &= HAMMER2_SEGMASK;
 		tmp /= HAMMER2_PBUFSIZE;
+		assert(tmp >= HAMMER2_ZONE_FREEMAP_00);
 		assert(tmp < HAMMER2_ZONE_FREEMAP_END);
 		tmp -= HAMMER2_ZONE_FREEMAP_00;
 		tmp /= HAMMER2_ZONE_FREEMAP_INC;
