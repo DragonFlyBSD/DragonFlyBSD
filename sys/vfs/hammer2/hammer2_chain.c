@@ -3942,9 +3942,9 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
 	hammer2_blockref_t bcopy;
+	hammer2_blockref_t dummy;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *ichain;
-	hammer2_chain_t dummy;
 	hammer2_key_t key = create_key;
 	hammer2_key_t key_beg;
 	hammer2_key_t key_end;
@@ -3984,11 +3984,6 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 
 	/*hammer2_chain_modify(&parent, HAMMER2_MODIFY_OPTDATA);*/
 	base = hammer2_chain_base_and_count(parent, &count);
-
-	/*
-	 * dummy used in later chain allocation (no longer used for lookups).
-	 */
-	bzero(&dummy, sizeof(dummy));
 
 	/*
 	 * How big should our new indirect block be?  It has to be at least
@@ -4077,20 +4072,21 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	/*
 	 * Ok, create our new indirect block
 	 */
+	bzero(&dummy, sizeof(dummy));
 	if (for_type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
 	    for_type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
-		dummy.bref.type = HAMMER2_BREF_TYPE_FREEMAP_NODE;
+		dummy.type = HAMMER2_BREF_TYPE_FREEMAP_NODE;
 	} else {
-		dummy.bref.type = HAMMER2_BREF_TYPE_INDIRECT;
+		dummy.type = HAMMER2_BREF_TYPE_INDIRECT;
 	}
-	dummy.bref.key = key;
-	dummy.bref.keybits = keybits;
-	dummy.bref.data_off = hammer2_getradix(nbytes);
-	dummy.bref.methods =
+	dummy.key = key;
+	dummy.keybits = keybits;
+	dummy.data_off = hammer2_getradix(nbytes);
+	dummy.methods =
 		HAMMER2_ENC_CHECK(HAMMER2_DEC_CHECK(parent->bref.methods)) |
 		HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
 
-	ichain = hammer2_chain_alloc(hmp, parent->pmp, &dummy.bref);
+	ichain = hammer2_chain_alloc(hmp, parent->pmp, &dummy);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
 	hammer2_chain_lock(ichain, HAMMER2_RESOLVE_MAYBE);
 	/* ichain has one ref at this point */
