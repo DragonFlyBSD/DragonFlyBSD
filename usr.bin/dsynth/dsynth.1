@@ -59,7 +59,7 @@ on the configuration parameters you supply.
 .Nm
 is based on an application called
 .Xr synth 1
-which was written by John Marino in ADA and served as the conceptual base
+which was written by John Marino in Ada and served as the conceptual base
 for this program.
 .Nm
 is written in C and designed to be as portable as possible given a
@@ -100,15 +100,17 @@ entries as follows:
 .Ed
 .Pp
 Please set the number of builders and the maximum number of jobs per
-builder according to available system resources.  Remember that the total
+builder according to available system resources.
+Remember that the total
 load on the system can be as high as (builders x jobs), and at least 4x
-that value in processes.  Systems are typically restricted by memory and
-cpu horsepower.  Start conservative and ramp up according to what your
-system can handle.
-A good rule of thumb is to set workers to the number of cpu threads your
+that value in processes.
+Systems are typically restricted by memory and CPU horsepower.
+Start conservative and ramp up according to what your system can handle.
+A good rule of thumb is to set workers to the number of CPU threads your
 machine has or to 1/2 the number of gigabytes of memory your system has,
-whichever is lower.  Then set the jobs per worker to no more than the
-number of cpu threads your machine has.
+whichever is lower.
+Then set the jobs per worker to no more than the
+number of CPU threads your machine has.
 .Pp
 .Nm
 has numerous features to manage machine load and swap usage to
@@ -132,7 +134,8 @@ We recommend a minimum of 500GB of storage be configured in
 or wherever you have configured various directories.
 A full set of distfiles requires at least 120GB, a full dports including
 the git repo requires at least 1.5GB, and a full set of built packages
-requires at least 75GB.  If using a filesystem such as HAMMER or HAMMER2
+requires at least 75GB.
+If using a filesystem such as HAMMER or HAMMER2
 which frees space overnight, double all of those numbers.
 .Pp
 The actual build infrastructure uses tmpfs... memory and swap, and does
@@ -140,22 +143,25 @@ not use regular filesystem space.
 .Sh OPTIONS
 .Bl -tag -width indent
 .It Fl d[d...]
-Run in debug mode.  If specified two or more times this will turn off
+Run in debug mode.
+If specified two or more times this will turn off
 ncurses and output the primary log (00_last_results.log) to the standard
 output, along with additional spew.
 .It Fl h
 Quickly output a synopsis of options and directives and exit.
 .It Fl m Ar gb
 Override the default package dependency memory target, in gigabytes.
-The default is 1/2 physical memory.  The number of workers will be limited
+The default is 1/2 physical memory.
+The number of workers will be limited
 such that the aggregate size of package dependencies installed in each
 worker slot does not exceed this value.
 .Pp
 This handles a well-known effect where the sheer amount of data that has
 to be installed in tmpfs filesystems for large ports, when multiplied by
 the number of worker slots, can force excessive paging to occur and leave
-preciously little memory available to actually run compiles.  Some paging
-is necessary to maintain maximum cpu utilization, but excessive paging
+preciously little memory available to actually run compiles.
+Some paging
+is necessary to maintain maximum CPU utilization, but excessive paging
 can cause the whole machine to essentially become idle for extended
 periods of time.
 .It Fl v
@@ -175,7 +181,8 @@ worker slots (limited by the dependency graph) will be loaded immediately.
 .It Fl D
 Turn on DEVELOPER mode when building ports.
 .It Fl S[S]
-Turn off curses for script friendliness.  The output will be log 00 and
+Turn off curses for script friendliness.
+The output will be log 00 and
 should be redirected to /dev/null or something similar.
 If you supply the options twice, color output escapes will also be
 turned off.
@@ -187,8 +194,8 @@ option for scripting dsynth.
 Generally
 .Nm
 is run with a directive and some directives allow a list of ports to be
-specified.  This list should be space-delimited in DIR/SUBDIR format,
-for example:
+specified.
+This list should be space-delimited in DIR/SUBDIR format, for example:
 .Ar www/chromium .
 For directives with an optional ports list, your current installed set
 of ports will be used if you do not specify a list.
@@ -210,13 +217,15 @@ This directive will complain and exit if either
 .Pa /etc/dsynth
 or
 .Pa /usr/local/etc/dsynth
-exists.  It will not create
+exists.
+It will not create
 .Pa /etc/dsynth
 in this situation.
 .It Cm configure
 NOT CURRENTLY IMPLEMENTED
 .It Cm upgrade-system
-NOT CURRENTLY IMPLEMENTED.  Incrementally build and upgrade your locally
+NOT CURRENTLY IMPLEMENTED.
+Incrementally build and upgrade your locally
 installed packages, then upgrade your local system with them.
 .It Cm prepare-system
 Incrementally build and upgrade your locally installed packages, but
@@ -232,7 +241,8 @@ but not actually build anything.
 This will build the entire dports tree and then rebuild the repository
 when it finishes.
 .It Cm version
-This is for synth compatibility.  The version of
+This is for synth compatibility.
+The version of
 .Nm
 will be printed and the program will exit.
 .It Cm help
@@ -240,29 +250,33 @@ Output a synopsis of options and directives and exit.
 .It Cm status Op Ar ports
 Do a dry-run with 'build' of the given list.
 .It Cm build Op Ar ports
-Incrementally build dports based on the given list.  When
-done, ask whether the repository should be rebuilt or not.
+Incrementally build dports based on the given list.
+When done, ask whether the repository should be rebuilt or not.
 .It Cm just-build Op Ar ports
 Incrementally build dports based on the given list, then
-exits.  No post-build steps will be taken.
+exits.
+No post-build steps will be taken.
 .It Cm install Op Ar ports
 NOT CURRENTLY IMPLEMENTED.  'build' based on the supplied
 list (or using currently installed packages), then rebuild
 the repository and upgrade the system without asking any further
 questions.
 .It Cm force Op Ar ports
-This is the same as 'build' but will delete existing packages
-first.  Dependencies are not deleted unless they are out of date.
+This is the same as 'build' but will delete existing packages first.
+Dependencies are not deleted unless they are out of date.
 .It Cm test Op Ar ports
 This is the same as 'build' but sets the environment variable
-.La DEVELOPER=yes
-and pre-deletes specified packages.  Dependencies are not deleted
-unless they are out of date.
+.Ev DEVELOPER
+to
+.Sq yes
+and pre-deletes specified packages.
+Dependencies are not deleted unless they are out of date.
 .El
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
 .It Pa /etc/dsynth/synth.ini
-The primary configuration file.  If not found,
+The primary configuration file.
+If not found,
 .Nm
 will also look in
 .Pa /usr/local/etc/dsynth/synth.ini .
@@ -276,7 +290,7 @@ provides to the workers.
 .Pp
 .It Pa /build/synth/build
 Recommended setting for
-.La Directory_buildbase ,
+.Va Directory_buildbase ,
 contains the build infrastructure... typically a template, mirrored
 system directories, and mount points for all the worker slots.
 The template will be [re]generated if 'pkg' needs to be built or
@@ -286,14 +300,14 @@ file in this directory is deleted.
 .Pp
 .It Pa /build/synth/distfiles
 Recommended setting for
-.La Directory_distfiles ,
+.Va Directory_distfiles ,
 ports to a directory into which
 .Nm
 will download any source distribution files required for building.
 .Pp
 .It Pa /build/synth/dports
 Recommended setting for
-.La Directory_portsdir ,
+.Va Directory_portsdir ,
 points to a checked out dports repo.
 Note that
 .Nm
@@ -302,13 +316,13 @@ you must do that yourself prior to starting a build.
 .Pp
 .It Pa /build/synth/live_packages
 Recommended setting for
-.La Directory_packages ,
+.Va Directory_packages ,
 points to a directory which will contain the completed application
 packages.
 .Pp
 .It Pa /build/synth/logs
 Recommended setting for
-.La Directory_logs ,
+.Va Directory_logs ,
 all log files will be placed in this directory.
 Special management logfiles begin with the numeral '0' for easily
 location.
@@ -317,12 +331,12 @@ form subdir____portname.log, with three underscores.
 .Pp
 .It Pa /build/synth/options
 Recommended setting for
-.La Directory_options ,
+.Va Directory_options ,
 where options overrides for specific ports may be located.
 .Pp
 .It Pa /
 Recommended setting for
-.La Directory_system ,
+.Va Directory_system ,
 which
 .Nm
 uses as a basis for creating the jails or chroots in each worker slot
@@ -333,8 +347,8 @@ Some elements from the system base will be mirrored in the build-base
 as an optimization.
 .Pp
 Note that the packages directory and the distfiles directory is mounted
-read-write in jails or chroots.  All other r/w filesystems in the workers
-are
+read-write in jails or chroots.
+All other r/w filesystems in the workers are
 .Xr tmpfs 5
 based filesystems and will be created and torn-down for each port.
 .El
