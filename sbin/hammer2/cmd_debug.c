@@ -865,17 +865,22 @@ CountFreeBlocks(hammer2_bmap_data_t *bmap,
 
 	for (i = 0; i < 8; ++i) {
 		uint64_t bm = bmap->bitmapq[i];
+		uint64_t bm_save = bm;
 		uint64_t mask;
 
 		mask = 0x03;
 		for (j = 0; j < 64; j += 2) {
 			if ((bm & mask) == 0)
 				*accum16 += 16384;
+			bm >>= 2;
 		}
+
+		bm = bm_save;
 		mask = 0xFF;
 		for (j = 0; j < 64; j += 8) {
 			if ((bm & mask) == 0)
 				*accum64 += 65536;
+			bm >>= 8;
 		}
 	}
 }
