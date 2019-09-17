@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD$
 .\"
-.Dd September 10, 2019
+.Dd September 17, 2019
 .Dt WTMPCVT 1
 .Os
 .Sh NAME
@@ -40,7 +40,7 @@ The
 utility converts traditional
 .Pa wtmp
 user accounting database files to the same format that is used by
-.Pa /var/log/utx.log .
+.Pa /var/log/wtmpx .
 This makes it possible to view their contents using existing accounting
 utilities, such as
 .Xr last 1
@@ -56,7 +56,7 @@ The
 utility appeared in
 .Fx 9.0 .
 .Sh AUTHORS
-.An Ed Schouten Aq ed@FreeBSD.org
+.An Ed Schouten Aq Mt ed@FreeBSD.org
 .Sh BUGS
 The application assumes the
 .Ar input
