@@ -396,6 +396,7 @@ cmd_show(const char *devpath, int dofreemap)
 
 	memset(TotalAccum16, 0, sizeof(TotalAccum16));
 	memset(TotalAccum64, 0, sizeof(TotalAccum64));
+	TotalUnavail = TotalFreemap = 0;
 
 	env = getenv("HAMMER2_SHOW_TAB");
 	if (env != NULL) {
