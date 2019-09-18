@@ -860,25 +860,26 @@ void
 CountFreeBlocks(hammer2_bmap_data_t *bmap,
 		hammer2_off_t *accum16, hammer2_off_t *accum64)
 {
-	int i;
-	int j;
+	int i, j;
+	int bits = (int)sizeof(hammer2_bitmap_t) * 8;
+	assert(bits == 64);
 
-	for (i = 0; i < 8; ++i) {
-		uint64_t bm = bmap->bitmapq[i];
-		uint64_t bm_save = bm;
-		uint64_t mask;
+	for (i = 0; i < HAMMER2_BMAP_ELEMENTS; ++i) {
+		hammer2_bitmap_t bm = bmap->bitmapq[i];
+		hammer2_bitmap_t bm_save = bm;
+		hammer2_bitmap_t mask;
 
-		mask = 0x03;
-		for (j = 0; j < 64; j += 2) {
-			if ((bm & mask) == 0)
+		mask = 0x03; /* 2 bits per 16KB */
+		for (j = 0; j < bits; j += 2) {
+			if ((bm & mask) == 0) /* unallocated */
 				*accum16 += 16384;
 			bm >>= 2;
 		}
 
 		bm = bm_save;
-		mask = 0xFF;
-		for (j = 0; j < 64; j += 8) {
-			if ((bm & mask) == 0)
+		mask = 0xFF; /* 8 bits per 64KB chunk */
+		for (j = 0; j < bits; j += 8) {
+			if ((bm & mask) == 0) /* unallocated */
 				*accum64 += 65536;
 			bm >>= 8;
 		}
