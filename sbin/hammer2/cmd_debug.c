@@ -39,7 +39,7 @@ static int show_tab = 2;
 
 static void shell_msghandler(dmsg_msg_t *msg, int unmanaged);
 static void shell_ttymsg(dmsg_iocom_t *iocom);
-static void CountFreeBlocks(hammer2_bmap_data_t *bmap,
+static void CountBlocks(hammer2_bmap_data_t *bmap, int value,
 		hammer2_off_t *accum16, hammer2_off_t *accum64);
 
 /************************************************************************
@@ -378,8 +378,10 @@ static void show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			int bi, hammer2_blockref_t *bref, int norecurse);
 static void tabprintf(int tab, const char *ctl, ...);
 
-static hammer2_off_t TotalFreeAccum16;
-static hammer2_off_t TotalFreeAccum64;
+static hammer2_off_t TotalAccum16[4]; /* includes TotalAccum64 */
+static hammer2_off_t TotalAccum64[4];
+static hammer2_off_t TotalUnavail;
+static hammer2_off_t TotalFreemap;
 
 int
 cmd_show(const char *devpath, int dofreemap)
@@ -392,8 +394,8 @@ cmd_show(const char *devpath, int dofreemap)
 	int best_i;
 	char *env;
 
-	TotalFreeAccum16 = 0;	/* includes TotalFreeAccum64 */
-	TotalFreeAccum64 = 0;
+	memset(TotalAccum16, 0, sizeof(TotalAccum16));
+	memset(TotalAccum64, 0, sizeof(TotalAccum64));
 
 	env = getenv("HAMMER2_SHOW_TAB");
 	if (env != NULL) {
@@ -435,10 +437,21 @@ cmd_show(const char *devpath, int dofreemap)
 		show_bref(&media.voldata, fd, 0, best_i, &best, 0);
 	close(fd);
 
+#define GIG	(1024LL*1024*1024)
 	if (dofreemap && VerboseOpt < 3) {
-		printf("Total free storage: %6.3fGB (%6.3fGB in 64KB chunks)\n",
-		       (double)TotalFreeAccum16 / (1024.0 * 1024.0 * 1024.0),
-		       (double)TotalFreeAccum64 / (1024.0 * 1024.0 * 1024.0));
+		printf("Total unallocated storage:   %6.3fGB (%6.3fGB in 64KB chunks)\n",
+		       (double)TotalAccum16[0] / GIG,
+		       (double)TotalAccum64[0] / GIG);
+		printf("Total possibly free storage: %6.3fGB (%6.3fGB in 64KB chunks)\n",
+		       (double)TotalAccum16[2] / GIG,
+		       (double)TotalAccum64[2] / GIG);
+		printf("Total allocated storage:     %6.3fGB (%6.3fGB in 64KB chunks)\n",
+		       (double)TotalAccum16[3] / GIG,
+		       (double)TotalAccum64[3] / GIG);
+		printf("Total unavailable storage:   %6.3fGB\n",
+		       (double)TotalUnavail / GIG);
+		printf("Total freemap storage:       %6.3fGB\n",
+		       (double)TotalFreemap / GIG);
 	}
 
 	return 0;
@@ -806,11 +819,15 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 				  media.bmdata[i].bitmapq[7]);
 			if (data_off >= voldata->aux_end &&
 			    data_off < voldata->volu_size) {
-				CountFreeBlocks(&media.bmdata[i],
-						&TotalFreeAccum16,
-						&TotalFreeAccum64);
-			}
+				int j;
+				for (j = 0; j < 4; ++j)
+					CountBlocks(&media.bmdata[i], j,
+						    &TotalAccum16[j],
+						    &TotalAccum64[j]);
+			} else
+				TotalUnavail += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		}
+		TotalFreemap += HAMMER2_FREEMAP_LEVEL1_SIZE;
 		tabprintf(tab, "}\n");
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
@@ -857,12 +874,19 @@ skip_data:
 
 static
 void
-CountFreeBlocks(hammer2_bmap_data_t *bmap,
-		hammer2_off_t *accum16, hammer2_off_t *accum64)
+CountBlocks(hammer2_bmap_data_t *bmap, int value,
+	    hammer2_off_t *accum16, hammer2_off_t *accum64)
 {
-	int i, j;
-	int bits = (int)sizeof(hammer2_bitmap_t) * 8;
+	int i, j, bits;
+	hammer2_bitmap_t value16, value64;
+
+	bits = (int)sizeof(hammer2_bitmap_t) * 8;
 	assert(bits == 64);
+
+	value16 = value;
+	assert(value16 < 4);
+	value64 = (value16 << 6) | (value16 << 4) | (value16 << 2) | value16;
+	assert(value64 < 256);
 
 	for (i = 0; i < HAMMER2_BMAP_ELEMENTS; ++i) {
 		hammer2_bitmap_t bm = bmap->bitmapq[i];
@@ -871,7 +895,7 @@ CountFreeBlocks(hammer2_bmap_data_t *bmap,
 
 		mask = 0x03; /* 2 bits per 16KB */
 		for (j = 0; j < bits; j += 2) {
-			if ((bm & mask) == 0) /* unallocated */
+			if ((bm & mask) == value16)
 				*accum16 += 16384;
 			bm >>= 2;
 		}
@@ -879,7 +903,7 @@ CountFreeBlocks(hammer2_bmap_data_t *bmap,
 		bm = bm_save;
 		mask = 0xFF; /* 8 bits per 64KB chunk */
 		for (j = 0; j < bits; j += 8) {
-			if ((bm & mask) == 0) /* unallocated */
+			if ((bm & mask) == value64)
 				*accum64 += 65536;
 			bm >>= 8;
 		}
