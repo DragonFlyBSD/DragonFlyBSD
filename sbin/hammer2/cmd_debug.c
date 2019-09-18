@@ -817,17 +817,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 				  media.bmdata[i].bitmapq[5],
 				  media.bmdata[i].bitmapq[6],
 				  media.bmdata[i].bitmapq[7]);
-			if (data_off >= voldata->aux_end &&
-			    data_off < voldata->volu_size) {
-				int j;
-				for (j = 0; j < 4; ++j)
-					CountBlocks(&media.bmdata[i], j,
-						    &TotalAccum16[j],
-						    &TotalAccum64[j]);
-			} else
-				TotalUnavail += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		}
-		TotalFreemap += HAMMER2_FREEMAP_LEVEL1_SIZE;
 		tabprintf(tab, "}\n");
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
@@ -850,6 +840,30 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		free(str);
 
 skip_data:
+	/*
+	 * Update statistics.
+	 */
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
+			hammer2_off_t data_off = bref->key +
+				i * HAMMER2_FREEMAP_LEVEL0_SIZE;
+			if (data_off >= voldata->aux_end &&
+			    data_off < voldata->volu_size) {
+				int j;
+				for (j = 0; j < 4; ++j)
+					CountBlocks(&media.bmdata[i], j,
+						    &TotalAccum16[j],
+						    &TotalAccum64[j]);
+			} else
+				TotalUnavail += HAMMER2_FREEMAP_LEVEL0_SIZE;
+		}
+		TotalFreemap += HAMMER2_FREEMAP_LEVEL1_SIZE;
+		break;
+	default:
+		break;
+	}
+
 	/*
 	 * Recurse if norecurse == 0.  If the CRC failed, pass norecurse = 1.
 	 * That is, if an indirect or inode fails we still try to list its
