@@ -212,7 +212,7 @@ openresolv ships with subscribers for the name servers
 .Xr dnsmasq 8 ,
 .Xr named 8 ,
 .Xr pdnsd 8 ,
-.Xr pdns_recursor 8 ,
+.Xr pdns_recursor 1 ,
 and
 .Xr unbound 8 .
 Each subscriber can create configuration files which should be included in
