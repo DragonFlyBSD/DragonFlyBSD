@@ -422,7 +422,7 @@ cmd_show(const char *devpath, int dofreemap)
 		broot.type = dofreemap ?
 		    HAMMER2_BREF_TYPE_FREEMAP : HAMMER2_BREF_TYPE_VOLUME;
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
-		lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX, 0);
+		lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX, SEEK_SET);
 		if (read(fd, &media, HAMMER2_PBUFSIZE) ==
 		    (ssize_t)HAMMER2_PBUFSIZE) {
 			broot.mirror_tid = media.voldata.mirror_tid;
@@ -465,11 +465,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
 	hammer2_off_t tmp;
-	int bcount;
-	int i;
-	int namelen;
-	int obrace = 1;
-	int failed;
+	int i, bcount, namelen, failed, obrace;
 	size_t bytes;
 	const char *type_str;
 	char *str = NULL;
@@ -498,7 +494,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			return;
 		}
 		if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {
-			lseek(fd, io_base, 0);
+			lseek(fd, io_base, SEEK_SET);
 			if (read(fd, &media, io_bytes) != (ssize_t)io_bytes) {
 				printf("(media read failed)\n");
 				return;
@@ -512,6 +508,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	bcount = 0;
 	namelen = 0;
 	failed = 0;
+	obrace = 1;
 
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
@@ -883,7 +880,7 @@ skip_data:
 				  type_str, bi, namelen, namelen,
 				  media.ipdata.filename);
 		else
-			tabprintf(tab, "} (%s.%d)\n", type_str,bi);
+			tabprintf(tab, "} (%s.%d)\n", type_str, bi);
 	}
 }
 

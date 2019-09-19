@@ -245,7 +245,7 @@ h2disk_check(const char *devpath,
 		broot.type = HAMMER2_BREF_TYPE_VOLUME;
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) |
 				 HAMMER2_PBUFRADIX;
-		lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX, 0);
+		lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX, SEEK_SET);
 		if (read(fd, &media, HAMMER2_PBUFSIZE) ==
 		    (ssize_t)HAMMER2_PBUFSIZE &&
 		    media.voldata.magic == HAMMER2_VOLUME_ID_HBO) {
@@ -295,7 +295,7 @@ h2pfs_check(int fd, hammer2_blockref_t *bref,
 		return;
 	}
 	if (bref->type != HAMMER2_BREF_TYPE_DATA) {
-		lseek(fd, io_base, 0);
+		lseek(fd, io_base, SEEK_SET);
 		if (read(fd, &media, io_bytes) != (ssize_t)io_bytes) {
 			printf("(media read failed)\n");
 			return;
