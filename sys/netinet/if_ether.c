@@ -1272,9 +1272,8 @@ in_arpreply(struct mbuf *m, in_addr_t taddr, in_addr_t myaddr)
 static void
 arptfree(struct llinfo_arp *la)
 {
-	struct rtentry *rt = la->la_rt, *nrt;
+	struct rtentry *rt = la->la_rt;
 	struct sockaddr_dl *sdl;
-	int error;
 
 	if (rt == NULL)
 		panic("arptfree");
@@ -1287,11 +1286,14 @@ arptfree(struct llinfo_arp *la)
 		rt->rt_flags &= ~RTF_REJECT;
 		return;
 	}
-	error = rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, &nrt);
-	if (error == 0 && nrt != NULL) {
-		rt_rtmsg(RTM_DELETE, nrt, nrt->rt_ifp, 0);
-		rtfree(nrt);
-	}
+
+	/*
+	 * ARP expiry happens under one big timer.
+	 * To avoid overflowing the route socket, don't report this.
+	 * Now that RTM_MISS is reported when an address is unresolvable
+	 * the benefit of reporting this deletion is questionable.
+	 */
+	rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, NULL);
 }
 
 /*

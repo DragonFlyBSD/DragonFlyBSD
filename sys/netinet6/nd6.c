@@ -1008,8 +1008,6 @@ nd6_free(struct rtentry *rt)
 	struct llinfo_nd6 *ln = (struct llinfo_nd6 *)rt->rt_llinfo, *next;
 	struct in6_addr in6 = ((struct sockaddr_in6 *)rt_key(rt))->sin6_addr;
 	struct nd_defrouter *dr;
-	int error;
-	struct rtentry *nrt = NULL;
 
 	/*
 	 * we used to have kpfctlinput(PRC_HOSTDEAD) here.
@@ -1084,16 +1082,13 @@ nd6_free(struct rtentry *rt)
 	 * Detach the route from the routing tree and the list of neighbor
 	 * caches, and disable the route entry not to be used in already
 	 * cached routes.
+	 *
+	 * ND expiry happens under one big timer.
+	 * To avoid overflowing the route socket, don't report this.
+	 * Now that RTM_MISS is reported when an address is unresolvable
+	 * the benefit of reporting this deletion is questionable.
 	 */
-	error = rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, &nrt);
-	if (error == 0 && nrt != NULL) {
-		struct sockaddr_dl *sdl;
-
-		sdl = (struct sockaddr_dl *)nrt->rt_gateway;
-		if (sdl->sdl_alen != 0)
-			rt_rtmsg(RTM_DELETE, nrt, nrt->rt_ifp, 0);
-		rtfree(nrt);
-	}
+	rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, NULL);
 
 	return (next);
 }
