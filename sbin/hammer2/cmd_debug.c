@@ -35,6 +35,8 @@
 
 #include "hammer2.h"
 
+#include <openssl/sha.h>
+
 static int show_tab = 2;
 
 static void shell_msghandler(dmsg_msg_t *msg, int unmanaged);
@@ -472,6 +474,12 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	uint32_t cv;
 	uint64_t cv64;
 
+	SHA256_CTX hash_ctx;
+	union {
+		uint8_t digest[SHA256_DIGEST_LENGTH];
+		uint64_t digest64[SHA256_DIGEST_LENGTH/8];
+	} u;
+
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
 		bytes = (size_t)1 << bytes;
@@ -631,7 +639,17 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			}
 			break;
 		case HAMMER2_CHECK_SHA192:
-			printf("(meth %02x) ", bref->methods);
+			SHA256_Init(&hash_ctx);
+			SHA256_Update(&hash_ctx, &media, bytes);
+			SHA256_Final(u.digest, &hash_ctx);
+			u.digest64[2] ^= u.digest64[3];
+			if (memcmp(u.digest, bref->check.sha192.data,
+			    sizeof(bref->check.sha192.data))) {
+				printf("(sha192 failed) ");
+				failed = 1;
+			} else {
+				printf("(meth %02x) ", bref->methods);
+			}
 			break;
 		case HAMMER2_CHECK_FREEMAP:
 			cv = hammer2_icrc32(&media, bytes);
