@@ -23,6 +23,7 @@ SUBDIR=	adjkerntz \
 	ffsinfo \
 	fsck \
 	fsck_msdosfs \
+	fsck_hammer2 \
 	fsdb \
 	fsid \
 	fsirand \
