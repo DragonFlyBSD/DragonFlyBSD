@@ -140,7 +140,7 @@ find_best_zone(int fd)
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		hammer2_volume_data_t voldata;
 		hammer2_blockref_t broot;
-		size_t ret;
+		ssize_t ret;
 
 		memset(&broot, 0, sizeof(broot));
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
@@ -156,11 +156,11 @@ find_best_zone(int fd)
 				best_i = i;
 				best = broot;
 			}
-		} else if (ret > 0) {
-			tfprintf(stderr, 1, "Failed to read volume header\n");
+		} else if (ret == -1) {
+			perror("read");
 			return -1;
 		} else {
-			perror("read");
+			tfprintf(stderr, 1, "Failed to read volume header\n");
 			return -1;
 		}
 	}
@@ -177,7 +177,7 @@ test_volume_header(int fd)
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		hammer2_volume_data_t voldata;
 		hammer2_blockref_t broot;
-		size_t ret;
+		ssize_t ret;
 
 		memset(&broot, 0, sizeof(broot));
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
@@ -191,11 +191,11 @@ test_volume_header(int fd)
 			    (i == best_zone) ? " (best)" : "");
 			if (verify_volume_header(&voldata) == -1)
 				failed = true;
-		} else if (ret > 0) {
-			tfprintf(stderr, 1, "Failed to read volume header\n");
+		} else if (ret == -1) {
+			perror("read");
 			return -1;
 		} else {
-			perror("read");
+			tfprintf(stderr, 1, "Failed to read volume header\n");
 			return -1;
 		}
 	}
@@ -212,7 +212,7 @@ test_blockref(int fd, uint8_t type)
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		hammer2_volume_data_t voldata;
 		hammer2_blockref_t broot;
-		size_t ret;
+		ssize_t ret;
 
 		memset(&broot, 0, sizeof(broot));
 		broot.type = type;
@@ -241,11 +241,11 @@ test_blockref(int fd, uint8_t type)
 				}
 			}
 			cleanup_blockref_stats(&bstats);
-		} else if (ret > 0) {
-			tfprintf(stderr, 1, "Failed to read volume header\n");
+		} else if (ret == -1) {
+			perror("read");
 			return -1;
 		} else {
-			perror("read");
+			tfprintf(stderr, 1, "Failed to read volume header\n");
 			return -1;
 		}
 	}
