@@ -57,6 +57,7 @@
 
 struct blockref_msg {
 	TAILQ_ENTRY(blockref_msg) entry;
+	hammer2_blockref_t bref;
 	char *msg;
 };
 
@@ -187,7 +188,8 @@ test_volume_header(int fd)
 		if (ret == HAMMER2_PBUFSIZE) {
 			broot.mirror_tid = voldata.mirror_tid;
 
-			printf("zone.%d %016lX%s\n", i, broot.data_off,
+			printf("zone.%d %016jx%s\n",
+			    i, (uintmax_t)broot.data_off,
 			    (i == best_zone) ? " (best)" : "");
 			if (verify_volume_header(&voldata) == -1)
 				failed = true;
@@ -226,7 +228,8 @@ test_blockref(int fd, uint8_t type)
 			broot.mirror_tid = voldata.mirror_tid;
 			init_blockref_stats(&bstats, type);
 
-			printf("zone.%d %016lX%s\n", i, broot.data_off,
+			printf("zone.%d %016jx%s\n",
+			    i, (uintmax_t)broot.data_off,
 			    (i == best_zone) ? " (best)" : "");
 			if (verify_blockref(fd, &voldata, &broot, false,
 			    &bstats) == -1)
@@ -236,8 +239,13 @@ test_blockref(int fd, uint8_t type)
 			RB_FOREACH(e, blockref_tree, &bstats.root) {
 				struct blockref_msg *m;
 				TAILQ_FOREACH(m, &e->head, entry) {
-					tfprintf(stderr, 1, "%016lX %s\n",
-					    e->data_off, m->msg);
+					tfprintf(stderr, 1, "%016jx %3d "
+					    "%016jx/%-2d \"%s\"\n",
+					    (uintmax_t)e->data_off,
+					    m->bref.type,
+					    (uintmax_t)m->bref.key,
+					    m->bref.keybits,
+					    m->msg);
 				}
 			}
 			cleanup_blockref_stats(&bstats);
@@ -272,13 +280,13 @@ charsperline(void)
 }
 
 static void
-add_blockref_entry(blockref_stats_t *bstats, hammer2_off_t data_off,
+add_blockref_entry(blockref_stats_t *bstats, const hammer2_blockref_t *bref,
     const char *msg)
 {
 	struct blockref_entry *e;
 	struct blockref_msg *m;
 
-	e = RB_LOOKUP(blockref_tree, &bstats->root, data_off);
+	e = RB_LOOKUP(blockref_tree, &bstats->root, bref->data_off);
 	if (!e) {
 		e = calloc(1, sizeof(*e));
 		assert(e);
@@ -287,9 +295,10 @@ add_blockref_entry(blockref_stats_t *bstats, hammer2_off_t data_off,
 
 	m = calloc(1, sizeof(*m));
 	assert(m);
+	m->bref = *bref;
 	m->msg = strdup(msg);
 
-	e->data_off = data_off;
+	e->data_off = bref->data_off;
 	TAILQ_INSERT_TAIL(&e->head, m, entry);
 	RB_INSERT(blockref_tree, &bstats->root, e);
 }
@@ -453,7 +462,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		bstats->total_invalid++;
 		snprintf(msg, sizeof(msg),
 		    "Invalid blockref type %d", bref->type);
-		add_blockref_entry(bstats, bref->data_off, msg);
+		add_blockref_entry(bstats, bref, msg);
 		failed = true;
 		break;
 	}
@@ -485,12 +494,12 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		if (io_bytes > sizeof(media)) {
 			snprintf(msg, sizeof(msg),
 			    "Bad I/O bytes %ju", io_bytes);
-			add_blockref_entry(bstats, bref->data_off, msg);
+			add_blockref_entry(bstats, bref, msg);
 			return -1;
 		}
 		lseek(fd, io_base, SEEK_SET);
 		if (read(fd, &media, io_bytes) != (ssize_t)io_bytes) {
-			add_blockref_entry(bstats, bref->data_off,
+			add_blockref_entry(bstats, bref,
 			    "Failed to read media");
 			return -1;
 		}
@@ -501,7 +510,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		case HAMMER2_CHECK_ISCSI32:
 			cv = hammer2_icrc32(&media, bytes);
 			if (bref->check.iscsi32.value != cv) {
-				add_blockref_entry(bstats, bref->data_off,
+				add_blockref_entry(bstats, bref,
 				    "Bad HAMMER2_CHECK_ISCSI32");
 				failed = true;
 			}
@@ -509,7 +518,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		case HAMMER2_CHECK_XXHASH64:
 			cv64 = XXH64(&media, bytes, XXH_HAMMER2_SEED);
 			if (bref->check.xxhash64.value != cv64) {
-				add_blockref_entry(bstats, bref->data_off,
+				add_blockref_entry(bstats, bref,
 				    "Bad HAMMER2_CHECK_XXHASH64");
 				failed = true;
 			}
@@ -521,7 +530,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			u.digest64[2] ^= u.digest64[3];
 			if (memcmp(u.digest, bref->check.sha192.data,
 			    sizeof(bref->check.sha192.data))) {
-				add_blockref_entry(bstats, bref->data_off,
+				add_blockref_entry(bstats, bref,
 				    "Bad HAMMER2_CHECK_SHA192");
 				failed = true;
 			}
@@ -529,7 +538,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		case HAMMER2_CHECK_FREEMAP:
 			cv = hammer2_icrc32(&media, bytes);
 			if (bref->check.freemap.icrc32 != cv) {
-				add_blockref_entry(bstats, bref->data_off,
+				add_blockref_entry(bstats, bref,
 				    "Bad HAMMER2_CHECK_FREEMAP");
 				failed = true;
 			}
