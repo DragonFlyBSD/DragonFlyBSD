@@ -65,6 +65,14 @@
 
 extern struct iconv_functions *msdos_iconv;
 
+static int mbsadjpos(const char **, size_t, size_t, int, int, void *);
+static uint16_t dos2unixchr(const u_char **, size_t *, int,
+    struct msdosfsmount *);
+static uint16_t unix2doschr(const u_char **, size_t *, struct msdosfsmount *);
+static uint16_t win2unixchr(uint16_t, struct msdosfsmount *);
+static uint16_t unix2winchr(const u_char **, size_t *, int,
+    struct msdosfsmount *);
+
 /*
  * Total number of days that have passed for each month in a regular year.
  */
@@ -166,77 +174,6 @@ unix2dostime(struct timespec *tsp, uint16_t *ddp, uint16_t *dtp,
 
 static u_short lastdosdate;
 static u_long  lastseconds;
-
-/*
- * Initialize the temporary concatenation buffer.
- */
-void
-mbnambuf_init(struct mbnambuf *nbp)
-{
-	nbp->nb_len = 0;
-        nbp->nb_last_id = -1;
-        nbp->nb_buf[sizeof(nbp->nb_buf) - 1] = '\0';
-}
-
-/*
- * Fill out our concatenation buffer with the given substring, at the offset
- * specified by its id.  Since this function must be called with ids in
- * descending order, we take advantage of the fact that ASCII substrings are
- * exactly WIN_CHARS in length.  For non-ASCII substrings, we shift all
- * previous (i.e. higher id) substrings upwards to make room for this one.
- * This only penalizes portions of substrings that contain more than
- * WIN_CHARS bytes when they are first encountered.
- */
-void
-mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
-{
-        char *slot;
-	size_t count, newlen;
-
-	if (nbp->nb_len != 0 && id != nbp->nb_last_id - 1) {
-		kprintf("msdosfs: non-decreasing id: id %d, last id %d\n",
-		    id, nbp->nb_last_id);
-		return;
-	}
-	/* Will store this substring in a WIN_CHARS-aligned slot. */
-	slot = &nbp->nb_buf[id * WIN_CHARS];
-	count = strlen(name);
-	newlen = nbp->nb_len + count;
-	if (newlen > WIN_MAXLEN || newlen > 127) {
-		kprintf("msdosfs: file name length %zu too large\n", newlen);
-		return;
-	}
-	/* Shift suffix upwards by the amount length exceeds WIN_CHARS. */
-	if (count > WIN_CHARS && nbp->nb_len != 0)
-		bcopy(slot + WIN_CHARS, slot + count, nbp->nb_len);
-	/* Copy in the substring to its slot and update length so far. */
-	bcopy(name, slot, count);
-	nbp->nb_len = newlen;
-	nbp->nb_last_id = id;
-}
-
-/*
- * Take the completed string and use it to setup the struct dirent.
- * Be sure to always nul-terminate the d_name and then copy the string
- * from our buffer.  Note that this function assumes the full string has
- * been reassembled in the buffer.  If it's called before all substrings
- * have been written via mbnambuf_write(), the result will be incorrect.
- */
-char *
-mbnambuf_flush(struct mbnambuf *nbp, char *d_name, uint16_t *d_namlen)
-{
-#if 0
-	if (nbp->nb_len > 127) {
-		mbnambuf_init(nbp);
-		return (NULL);
-	}
-#endif
-	bcopy(&nbp->nb_buf[0], d_name, nbp->nb_len);
-	d_name[nbp->nb_len] = '\0';
-	*d_namlen = nbp->nb_len;
-	mbnambuf_init(nbp);
-	return (d_name);
-}
 
 /*
  * Convert from dos' idea of time to unix'. This will probably only be
@@ -450,50 +387,6 @@ l2u[256] = {
 };
 
 /*
- * Convert DOS char to Local char
- */
-static uint16_t
-dos2unixchr(const u_char **instr, size_t *ilen, int lower,
-    struct msdosfsmount *pmp)
-{
-	u_char c;
-	char *outp, outbuf[3];
-	uint16_t wc;
-	size_t len, olen;
-
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
-		olen = len = 2;
-		outp = outbuf;
-		if (lower & (LCASE_BASE | LCASE_EXT))
-			msdos_iconv->convchr_case(pmp->pm_d2u,
-						  (const char **)instr, ilen,
-						  &outp, &olen, KICONV_LOWER);
-		else
-			msdos_iconv->convchr(pmp->pm_d2u, (const char **)instr,
-					     ilen, &outp, &olen);
-		len -= olen;
-		/*
-		 * return '?' if failed to convert
-		 */
-		if (len == 0) {
-			(*ilen)--;
-			(*instr)++;
-			return ('?');
-		}
-		wc = 0;
-		while(len--)
-			wc |= (*(outp - len - 1) & 0xff) << (len << 3);
-		return (wc);
-	}
-	(*ilen)--;
-	c = *(*instr)++;
-	c = dos2unix[c];
-	if (lower & (LCASE_BASE | LCASE_EXT))
-		c = u2l[c];
-	return ((uint16_t)c);
-}
-
-/*
  * DOS filenames are made of 2 parts, the name part and the extension part.
  * The name part is 8 characters long and the extension part is 3
  * characters long.  They may contain trailing blanks if the name or
@@ -557,100 +450,6 @@ dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
 	*un++ = 0;
 
 	return (thislong);
-}
-
-/*
- * Store an area with multi byte string instr, and reterns left
- * byte of instr and moves pointer forward. The area's size is
- * inlen or outlen.
- */
-static int
-mbsadjpos(const char **instr, size_t inlen, size_t outlen, int weight, int flag,
-    void *handle)
-{
-	char *outp, outstr[outlen * weight + 1];
-
-	bzero(outstr, outlen*weight+1);
-	if (flag & MSDOSFSMNT_KICONV && msdos_iconv) {
-		outp = outstr;
-		outlen *= weight;
-		msdos_iconv->conv(handle, instr, &inlen, &outp, &outlen);
-		return (inlen);
-	}
-	(*instr) += min(inlen, outlen);
-	return (inlen - min(inlen, outlen));
-}
-
-/*
- * Convert Local char to DOS char
- */
-static uint16_t
-unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
-{
-	u_char c;
-	char *up, *outp, unicode[3], outbuf[3];
-	uint16_t wc;
-	size_t len, ucslen, unixlen, olen;
-
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
-		/*
-		 * to hide an invisible character, using a unicode filter
-		 */
-		ucslen = 2;
-		len = *ilen;
-		up = unicode;
-		msdos_iconv->convchr(pmp->pm_u2w, (const char **)instr,
-				     ilen, &up, &ucslen);
-		unixlen = len - *ilen;
-
-		/*
-		 * cannot be converted
-		 */
-		if (unixlen == 0) {
-			(*ilen)--;
-			(*instr)++;
-			return (0);
-		}
-		/*
-		 * return magic number for ascii char
-		 */
-		if (unixlen == 1) {
-			c = *(*instr -1);
-			if (! (c & 0x80)) {
-				c = unix2dos[c];
-				if (c <= 2)
-					return (c);
-			}
-		}
-		/*
-		 * now convert using libiconv
-		 */
-		*instr -= unixlen;
-		*ilen = len;
-		olen = len = 2;
-		outp = outbuf;
-		msdos_iconv->convchr_case(pmp->pm_u2d, (const char **)instr,
-					  ilen, &outp, &olen,
-					  KICONV_FROM_UPPER);
-		len -= olen;
-		/*
-		 * cannot be converted, but has unicode char, should return magic number
-		 */
-		if (len == 0) {
-			(*ilen) -= unixlen;
-			(*instr) += unixlen;
-			return (1);
-		}
-		wc = 0;
-		while(len--)
-			wc |= (*(outp - len - 1) & 0xff) << (len << 3);
-		return (wc);
-	}
-	(*ilen)--;
-	c = *(*instr)++;
-	c = l2u[c];
-	c = unix2dos[c];
-	return ((uint16_t)c);
 }
 
 /*
@@ -879,46 +678,6 @@ done:
 }
 
 /*
- * Convert Local char to Windows char
- */
-static uint16_t
-unix2winchr(const u_char **instr, size_t *ilen, int lower,
-    struct msdosfsmount *pmp)
-{
-	u_char *outp, outbuf[3];
-	uint16_t wc;
-	size_t olen;
-
-	if (*ilen == 0)
-		return (0);
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
-		outp = outbuf;
-		olen = 2;
-		if (lower & (LCASE_BASE | LCASE_EXT))
-			msdos_iconv->convchr_case(pmp->pm_u2w,
-						  (const char **)instr,
-						  ilen, (char **)&outp, &olen,
-						  KICONV_FROM_LOWER);
-		else
-			msdos_iconv->convchr(pmp->pm_u2w, (const char **)instr,
-					     ilen, (char **)&outp, &olen);
-		/*
-		 * return '0' if end of filename
-		 */
-		if (olen == 2)
-			return (0);
-		wc = (outbuf[0]<<8) | outbuf[1];
-		return (wc);
-	}
-	(*ilen)--;
-	wc = (*instr)[0];
-	if (lower & (LCASE_BASE | LCASE_EXT))
-		wc = u2l[wc];
-	(*instr)++;
-	return (wc);
-}
-
-/*
  * Create a Win95 long name directory entry
  * Note: assumes that the filename is valid,
  *	 i.e. doesn't consist solely of blanks and dots
@@ -1036,45 +795,6 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
 			return -2;
 	}
 	return chksum;
-}
-
-/*
- * Convert Windows char to Local char
- */
-static uint16_t
-win2unixchr(uint16_t wc, struct msdosfsmount *pmp)
-{
-	u_char *inp, *outp, inbuf[3], outbuf[3];
-	size_t ilen, olen, len;
-
-	if (wc == 0)
-		return (0);
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
-		inbuf[0] = (u_char)(wc>>8);
-		inbuf[1] = (u_char)wc;
-		inbuf[2] = '\0';
-		ilen = olen = len = 2;
-		inp = inbuf;
-		outp = outbuf;
-		msdos_iconv->convchr(pmp->pm_w2u, (const char **)&inp, &ilen,
-				     (char **)&outp, &olen);
-		len -= olen;
-
-		/*
-		 * return '?' if failed to convert
-		 */
-		if (len == 0) {
-			wc = '?';
-			return (wc);
-		}
-		wc = 0;
-		while(len--)
-			wc |= (*(outp - len - 1) & 0xff) << (len << 3);
-		return (wc);
-	}
-	if (wc & 0xff00)
-		wc = '?';
-	return (wc);
 }
 
 /*
@@ -1220,4 +940,292 @@ winLenFixup(const u_char *un, size_t unlen)
 		if (*--un != ' ' && *un != '.')
 			break;
 	return unlen;
+}
+
+/*
+ * Store an area with multi byte string instr, and reterns left
+ * byte of instr and moves pointer forward. The area's size is
+ * inlen or outlen.
+ */
+static int
+mbsadjpos(const char **instr, size_t inlen, size_t outlen, int weight, int flag,
+    void *handle)
+{
+	char *outp, outstr[outlen * weight + 1];
+
+	bzero(outstr, outlen*weight+1);
+	if (flag & MSDOSFSMNT_KICONV && msdos_iconv) {
+		outp = outstr;
+		outlen *= weight;
+		msdos_iconv->conv(handle, instr, &inlen, &outp, &outlen);
+		return (inlen);
+	}
+	(*instr) += min(inlen, outlen);
+	return (inlen - min(inlen, outlen));
+}
+
+/*
+ * Convert DOS char to Local char
+ */
+static uint16_t
+dos2unixchr(const u_char **instr, size_t *ilen, int lower,
+    struct msdosfsmount *pmp)
+{
+	u_char c;
+	char *outp, outbuf[3];
+	uint16_t wc;
+	size_t len, olen;
+
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+		olen = len = 2;
+		outp = outbuf;
+		if (lower & (LCASE_BASE | LCASE_EXT))
+			msdos_iconv->convchr_case(pmp->pm_d2u,
+						  (const char **)instr, ilen,
+						  &outp, &olen, KICONV_LOWER);
+		else
+			msdos_iconv->convchr(pmp->pm_d2u, (const char **)instr,
+					     ilen, &outp, &olen);
+		len -= olen;
+		/*
+		 * return '?' if failed to convert
+		 */
+		if (len == 0) {
+			(*ilen)--;
+			(*instr)++;
+			return ('?');
+		}
+		wc = 0;
+		while(len--)
+			wc |= (*(outp - len - 1) & 0xff) << (len << 3);
+		return (wc);
+	}
+	(*ilen)--;
+	c = *(*instr)++;
+	c = dos2unix[c];
+	if (lower & (LCASE_BASE | LCASE_EXT))
+		c = u2l[c];
+	return ((uint16_t)c);
+}
+
+/*
+ * Convert Local char to DOS char
+ */
+static uint16_t
+unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
+{
+	u_char c;
+	char *up, *outp, unicode[3], outbuf[3];
+	uint16_t wc;
+	size_t len, ucslen, unixlen, olen;
+
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+		/*
+		 * to hide an invisible character, using a unicode filter
+		 */
+		ucslen = 2;
+		len = *ilen;
+		up = unicode;
+		msdos_iconv->convchr(pmp->pm_u2w, (const char **)instr,
+				     ilen, &up, &ucslen);
+		unixlen = len - *ilen;
+
+		/*
+		 * cannot be converted
+		 */
+		if (unixlen == 0) {
+			(*ilen)--;
+			(*instr)++;
+			return (0);
+		}
+		/*
+		 * return magic number for ascii char
+		 */
+		if (unixlen == 1) {
+			c = *(*instr -1);
+			if (! (c & 0x80)) {
+				c = unix2dos[c];
+				if (c <= 2)
+					return (c);
+			}
+		}
+		/*
+		 * now convert using libiconv
+		 */
+		*instr -= unixlen;
+		*ilen = len;
+		olen = len = 2;
+		outp = outbuf;
+		msdos_iconv->convchr_case(pmp->pm_u2d, (const char **)instr,
+					  ilen, &outp, &olen,
+					  KICONV_FROM_UPPER);
+		len -= olen;
+		/*
+		 * cannot be converted, but has unicode char, should return magic number
+		 */
+		if (len == 0) {
+			(*ilen) -= unixlen;
+			(*instr) += unixlen;
+			return (1);
+		}
+		wc = 0;
+		while(len--)
+			wc |= (*(outp - len - 1) & 0xff) << (len << 3);
+		return (wc);
+	}
+	(*ilen)--;
+	c = *(*instr)++;
+	c = l2u[c];
+	c = unix2dos[c];
+	return ((uint16_t)c);
+}
+
+/*
+ * Convert Windows char to Local char
+ */
+static uint16_t
+win2unixchr(uint16_t wc, struct msdosfsmount *pmp)
+{
+	u_char *inp, *outp, inbuf[3], outbuf[3];
+	size_t ilen, olen, len;
+
+	if (wc == 0)
+		return (0);
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+		inbuf[0] = (u_char)(wc>>8);
+		inbuf[1] = (u_char)wc;
+		inbuf[2] = '\0';
+		ilen = olen = len = 2;
+		inp = inbuf;
+		outp = outbuf;
+		msdos_iconv->convchr(pmp->pm_w2u, (const char **)&inp, &ilen,
+				     (char **)&outp, &olen);
+		len -= olen;
+
+		/*
+		 * return '?' if failed to convert
+		 */
+		if (len == 0) {
+			wc = '?';
+			return (wc);
+		}
+		wc = 0;
+		while(len--)
+			wc |= (*(outp - len - 1) & 0xff) << (len << 3);
+		return (wc);
+	}
+	if (wc & 0xff00)
+		wc = '?';
+	return (wc);
+}
+
+/*
+ * Convert Local char to Windows char
+ */
+static uint16_t
+unix2winchr(const u_char **instr, size_t *ilen, int lower,
+    struct msdosfsmount *pmp)
+{
+	u_char *outp, outbuf[3];
+	uint16_t wc;
+	size_t olen;
+
+	if (*ilen == 0)
+		return (0);
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+		outp = outbuf;
+		olen = 2;
+		if (lower & (LCASE_BASE | LCASE_EXT))
+			msdos_iconv->convchr_case(pmp->pm_u2w,
+						  (const char **)instr,
+						  ilen, (char **)&outp, &olen,
+						  KICONV_FROM_LOWER);
+		else
+			msdos_iconv->convchr(pmp->pm_u2w, (const char **)instr,
+					     ilen, (char **)&outp, &olen);
+		/*
+		 * return '0' if end of filename
+		 */
+		if (olen == 2)
+			return (0);
+		wc = (outbuf[0]<<8) | outbuf[1];
+		return (wc);
+	}
+	(*ilen)--;
+	wc = (*instr)[0];
+	if (lower & (LCASE_BASE | LCASE_EXT))
+		wc = u2l[wc];
+	(*instr)++;
+	return (wc);
+}
+
+/*
+ * Initialize the temporary concatenation buffer.
+ */
+void
+mbnambuf_init(struct mbnambuf *nbp)
+{
+	nbp->nb_len = 0;
+        nbp->nb_last_id = -1;
+        nbp->nb_buf[sizeof(nbp->nb_buf) - 1] = '\0';
+}
+
+/*
+ * Fill out our concatenation buffer with the given substring, at the offset
+ * specified by its id.  Since this function must be called with ids in
+ * descending order, we take advantage of the fact that ASCII substrings are
+ * exactly WIN_CHARS in length.  For non-ASCII substrings, we shift all
+ * previous (i.e. higher id) substrings upwards to make room for this one.
+ * This only penalizes portions of substrings that contain more than
+ * WIN_CHARS bytes when they are first encountered.
+ */
+void
+mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
+{
+        char *slot;
+	size_t count, newlen;
+
+	if (nbp->nb_len != 0 && id != nbp->nb_last_id - 1) {
+		kprintf("msdosfs: non-decreasing id: id %d, last id %d\n",
+		    id, nbp->nb_last_id);
+		return;
+	}
+	/* Will store this substring in a WIN_CHARS-aligned slot. */
+	slot = &nbp->nb_buf[id * WIN_CHARS];
+	count = strlen(name);
+	newlen = nbp->nb_len + count;
+	if (newlen > WIN_MAXLEN || newlen > 127) {
+		kprintf("msdosfs: file name length %zu too large\n", newlen);
+		return;
+	}
+	/* Shift suffix upwards by the amount length exceeds WIN_CHARS. */
+	if (count > WIN_CHARS && nbp->nb_len != 0)
+		bcopy(slot + WIN_CHARS, slot + count, nbp->nb_len);
+	/* Copy in the substring to its slot and update length so far. */
+	bcopy(name, slot, count);
+	nbp->nb_len = newlen;
+	nbp->nb_last_id = id;
+}
+
+/*
+ * Take the completed string and use it to setup the struct dirent.
+ * Be sure to always nul-terminate the d_name and then copy the string
+ * from our buffer.  Note that this function assumes the full string has
+ * been reassembled in the buffer.  If it's called before all substrings
+ * have been written via mbnambuf_write(), the result will be incorrect.
+ */
+char *
+mbnambuf_flush(struct mbnambuf *nbp, char *d_name, uint16_t *d_namlen)
+{
+#if 0
+	if (nbp->nb_len > 127) {
+		mbnambuf_init(nbp);
+		return (NULL);
+	}
+#endif
+	bcopy(&nbp->nb_buf[0], d_name, nbp->nb_len);
+	d_name[nbp->nb_len] = '\0';
+	*d_namlen = nbp->nb_len;
+	mbnambuf_init(nbp);
+	return (d_name);
 }
