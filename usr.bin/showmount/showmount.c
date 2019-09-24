@@ -83,12 +83,12 @@ static struct mountlist *mntdump;
 static struct exportslist *exports;
 static int type = 0;
 
-void print_dump(struct mountlist *);
+static void print_dump(struct mountlist *);
 static void usage(void);
-int xdr_mntdump(XDR *, struct mountlist **);
-int xdr_exports(XDR *, struct exportslist **);
-int tcp_callrpc(const char *, int, int, int, xdrproc_t, char *, xdrproc_t,
-		char *);
+static int xdr_mntdump(XDR *, struct mountlist **);
+static int xdr_exports(XDR *, struct exportslist **);
+static enum clnt_stat tcp_callrpc(const char *, int, int, int, xdrproc_t,
+			  char *, xdrproc_t, char *);
 
 /*
  * This command queries the NFS mount daemon for it's mount list and/or
@@ -104,7 +104,8 @@ main(int argc, char **argv)
 	struct grouplist *grp;
 	int rpcs = 0, mntvers = 1;
 	const char *host;
-	int ch, estat, nbytes;
+	int ch, nbytes;
+	enum clnt_stat estat;
 	char strvised[1024 * 4 + 1];
 
 	while ((ch = getopt(argc, argv, "adEe3")) != -1)
@@ -220,13 +221,13 @@ main(int argc, char **argv)
  * tcp_callrpc has the same interface as callrpc, but tries to
  * use tcp as transport method in order to handle large replies.
  */
-int
+static enum clnt_stat
 tcp_callrpc(const char *host, int prognum, int versnum, int procnum,
 	    xdrproc_t inproc, char *in, xdrproc_t outproc, char *out)
 {
 	CLIENT *client;
 	struct timeval timeout;
-	int rval;
+	enum clnt_stat rval;
 
 	if ((client = clnt_create(host, prognum, versnum, "tcp")) == NULL &&
 	    (client = clnt_create(host, prognum, versnum, "udp")) == NULL)
@@ -234,10 +235,7 @@ tcp_callrpc(const char *host, int prognum, int versnum, int procnum,
 
 	timeout.tv_sec = 25;
 	timeout.tv_usec = 0;
-	rval = (int) clnt_call(client, procnum,
-			       inproc, in,
-			       outproc, out,
-			       timeout);
+	rval = clnt_call(client, procnum, inproc, in, outproc, out, timeout);
 	clnt_destroy(client);
 	return rval;
 }
@@ -245,7 +243,7 @@ tcp_callrpc(const char *host, int prognum, int versnum, int procnum,
 /*
  * Xdr routine for retrieving the mount dump list
  */
-int
+static int
 xdr_mntdump(XDR *xdrsp, struct mountlist **mlp)
 {
 	struct mountlist *mp;
@@ -325,7 +323,7 @@ next:
 /*
  * Xdr routine to retrieve exports list
  */
-int
+static int
 xdr_exports(XDR *xdrsp, struct exportslist **exp)
 {
 	struct exportslist *ep;
@@ -376,7 +374,7 @@ usage(void)
 /*
  * Print the binary tree in inorder so that output is sorted.
  */
-void
+static void
 print_dump(struct mountlist *mp)
 {
 
