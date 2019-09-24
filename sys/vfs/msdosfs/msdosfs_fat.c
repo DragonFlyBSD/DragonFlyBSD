@@ -373,7 +373,7 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 			/* getblk() never fails */
 			bpn = getblk(pmp->pm_devvp, de_bntodoff(pmp, fatbn),
 				     bp->b_bcount, 0, 0);
-			bcopy(bp->b_data, bpn->b_data, bp->b_bcount);
+			memcpy(bpn->b_data, bp->b_data, bp->b_bcount);
 			if (pmp->pm_flags & MSDOSFSMNT_WAITONFAT)
 				bwrite(bpn);
 			else

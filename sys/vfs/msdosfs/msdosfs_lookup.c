@@ -276,7 +276,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 				 * Check for a checksum or name match
 				 */
 				if (chksum != winChksum(dep->deName)
-				    && (!olddos || bcmp(dosfilename,
+				    && (!olddos || memcmp(dosfilename,
 				    dep->deName, 11))) {
 					chksum = -1;
 					continue;
@@ -713,8 +713,8 @@ dosdirempty(struct denode *dep)
 				 * Any names other than "." and ".." in a
 				 * directory mean it is not empty.
 				 */
-				if (bcmp(dentp->deName, ".          ", 11) &&
-				    bcmp(dentp->deName, "..         ", 11)) {
+				if (memcmp(dentp->deName, ".          ", 11) &&
+				    memcmp(dentp->deName, "..         ", 11)) {
 					brelse(bp);
 					mprintf("dosdirempty(): entry found %02x, %02x\n",
 					    dentp->deName[0], dentp->deName[1]);
@@ -783,7 +783,7 @@ doscheckpath(struct denode *source, struct denode *target)
 
 		ep = (struct direntry *) bp->b_data + 1;
 		if ((ep->deAttributes & ATTR_DIRECTORY) == 0 ||
-		    bcmp(ep->deName, "..         ", 11) != 0) {
+		    memcmp(ep->deName, "..         ", 11) != 0) {
 			error = ENOTDIR;
 			break;
 		}
@@ -994,7 +994,7 @@ uniqdosname(struct denode *dep, struct componentname *cnp, u_char *cp)
 				 */
 				if (dentp->deAttributes & ATTR_VOLUME)
 					continue;
-				if (!bcmp(dentp->deName, cp, 11)) {
+				if (!memcmp(dentp->deName, cp, 11)) {
 					error = EEXIST;
 					break;
 				}

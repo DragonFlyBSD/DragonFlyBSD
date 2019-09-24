@@ -136,7 +136,7 @@ msdosfs_create(struct vop_old_create_args *ap)
 	 * use the absence of the owner write bit to make the file
 	 * readonly.
 	 */
-	bzero(&ndirent, sizeof(ndirent));
+	memset(&ndirent, 0, sizeof(ndirent));
 	error = uniqdosname(pdep, cnp, ndirent.de_Name);
 	if (error)
 		goto bad;
@@ -1113,13 +1113,13 @@ abortit:
 		 * we moved a directory, then update its .. entry to point
 		 * to the new parent directory.
 		 */
-		bcopy(ip->de_Name, oldname, 11);
-		bcopy(toname, ip->de_Name, 11);	/* update denode */
+		memcpy(oldname, ip->de_Name, 11);
+		memcpy(ip->de_Name, toname, 11);	/* update denode */
 		dp->de_fndoffset = to_diroffset;
 		dp->de_fndcnt = to_count;
 		error = createde(ip, dp, NULL, tcnp);
 		if (error) {
-			bcopy(oldname, ip->de_Name, 11);
+			memcpy(ip->de_Name, oldname, 11);
 			goto done;
 		}
 		ip->de_refcnt++;
@@ -1269,7 +1269,7 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 	if (error)
 		goto bad2;
 
-	bzero(&ndirent, sizeof(ndirent));
+	memset(&ndirent, 0, sizeof(ndirent));
 	ndirent.de_pmp = pmp;
 	ndirent.de_flag = DE_ACCESS | DE_CREATE | DE_UPDATE;
 	getnanotime(&ts);
@@ -1284,8 +1284,8 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 	/* always succeeds */
 	bp = getblk(pmp->pm_devvp, de_bntodoff(pmp, bn),
 		    pmp->pm_bpcluster, 0, 0);
-	bzero(bp->b_data, pmp->pm_bpcluster);
-	bcopy(&dosdirtemplate, bp->b_data, sizeof(dosdirtemplate));
+	memset(bp->b_data, 0, pmp->pm_bpcluster);
+	memcpy(bp->b_data, &dosdirtemplate, sizeof(dosdirtemplate));
 	denp = (struct direntry *)bp->b_data;
 	putushort(denp[0].deStartCluster, newcluster);
 	putushort(denp[0].deCDate, ndirent.de_CDate);

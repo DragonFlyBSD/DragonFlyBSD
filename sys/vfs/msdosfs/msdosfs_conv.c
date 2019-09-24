@@ -767,7 +767,7 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
 	uint16_t d_namlen;
 	char d_name[127];
 
-	bzero(d_name, 127);
+	memset(d_name, 0, 127);
 	/*
 	 * We already have winentry in *nbp.
 	 */
@@ -953,7 +953,7 @@ mbsadjpos(const char **instr, size_t inlen, size_t outlen, int weight, int flag,
 {
 	char *outp, outstr[outlen * weight + 1];
 
-	bzero(outstr, outlen*weight+1);
+	memset(outstr, 0, outlen*weight+1);
 	if (flag & MSDOSFSMNT_KICONV && msdos_iconv) {
 		outp = outstr;
 		outlen *= weight;
@@ -1200,9 +1200,9 @@ mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
 	}
 	/* Shift suffix upwards by the amount length exceeds WIN_CHARS. */
 	if (count > WIN_CHARS && nbp->nb_len != 0)
-		bcopy(slot + WIN_CHARS, slot + count, nbp->nb_len);
+		memcpy(slot + count, slot + WIN_CHARS, nbp->nb_len);
 	/* Copy in the substring to its slot and update length so far. */
-	bcopy(name, slot, count);
+	memcpy(slot, name, count);
 	nbp->nb_len = newlen;
 	nbp->nb_last_id = id;
 }
@@ -1223,7 +1223,7 @@ mbnambuf_flush(struct mbnambuf *nbp, char *d_name, uint16_t *d_namlen)
 		return (NULL);
 	}
 #endif
-	bcopy(&nbp->nb_buf[0], d_name, nbp->nb_len);
+	memcpy(d_name, &nbp->nb_buf[0], nbp->nb_len);
 	d_name[nbp->nb_len] = '\0';
 	*d_namlen = nbp->nb_len;
 	mbnambuf_init(nbp);

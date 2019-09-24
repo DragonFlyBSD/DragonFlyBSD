@@ -114,8 +114,8 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 	pmp->pm_flags |= argp->flags & MSDOSFSMNT_MNTOPT;
 
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
-		bcopy(argp->cs_local, cs_local, sizeof(cs_local));
-		bcopy(argp->cs_dos, cs_dos, sizeof(cs_dos));
+		memcpy(cs_local, argp->cs_local, sizeof(cs_local));
+		memcpy(cs_dos, argp->cs_dos, sizeof(cs_dos));
 		kprintf("local: %s dos: %s\n",argp->cs_local, argp->cs_dos);
 		error = msdos_iconv->open(cs_local, ENCODING_UNICODE,
 					  &pmp->pm_w2u);
@@ -295,7 +295,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	}
 
 	copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
-	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
+	memset(mp->mnt_stat.f_mntfromname + size, 0, MNAMELEN - size);
 	msdosfs_statfs(mp, &mp->mnt_stat, cred);
 #ifdef MSDOSFS_DEBUG
 	kprintf("msdosfs_mount(): mp %p, pmp %p, inusemap %p\n",
@@ -541,10 +541,10 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		    fsi_size(pmp), &bp)) != 0)
 			goto error_exit;
 		fp = (struct fsinfo *)bp->b_data;
-		if (!bcmp(fp->fsisig1, "RRaA", 4) &&
-		    !bcmp(fp->fsisig2, "rrAa", 4) &&
-		    !bcmp(fp->fsisig3, "\0\0\125\252", 4) &&
-		    !bcmp(fp->fsisig4, "\0\0\125\252", 4)) {
+		if (!memcmp(fp->fsisig1, "RRaA", 4) &&
+		    !memcmp(fp->fsisig2, "rrAa", 4) &&
+		    !memcmp(fp->fsisig3, "\0\0\125\252", 4) &&
+		    !memcmp(fp->fsisig4, "\0\0\125\252", 4)) {
 			pmp->pm_nxtfree = getulong(fp->fsinxtfree);
 			if (pmp->pm_nxtfree == (u_long)-1)
 				pmp->pm_nxtfree = CLUST_FIRST;
@@ -724,7 +724,7 @@ msdosfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	sbp->f_ffree = 0;	/* what to put in here? */
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
-		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
+		memcpy(sbp->f_mntfromname, mp->mnt_stat.f_mntfromname, MNAMELEN);
 	}
 	strncpy(sbp->f_fstypename, mp->mnt_vfc->vfc_name, MFSNAMELEN);
 	return (0);
