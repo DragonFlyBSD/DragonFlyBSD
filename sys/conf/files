@@ -1392,6 +1392,7 @@ kern/subr_disklabel32.c	standard
 kern/subr_disklabel64.c	standard
 kern/subr_diskslice.c	standard
 kern/subr_eventhandler.c	standard
+kern/subr_fattime.c	standard
 kern/subr_firmware.c	standard
 # temporarily not included in kernel, included
 # by cyapa until stable.
