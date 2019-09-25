@@ -65,6 +65,7 @@
 #include <sys/malloc.h>
 #include <sys/dirent.h>
 #include <sys/signalvar.h>
+#include <sys/time.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -255,11 +256,11 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	vap->va_rmajor = VNOVAL;
 	vap->va_rminor = VNOVAL;
 	vap->va_size = dep->de_FileSize;
-	dos2unixtime(dep->de_MDate, dep->de_MTime, 0, &vap->va_mtime);
+	fattime2timespec(dep->de_MDate, dep->de_MTime, 0, 0, &vap->va_mtime);
 	if (pmp->pm_flags & MSDOSFSMNT_LONGNAME) {
-		dos2unixtime(dep->de_ADate, 0, 0, &vap->va_atime);
-		dos2unixtime(dep->de_CDate, dep->de_CTime, dep->de_CHun,
-			     &vap->va_ctime);
+		fattime2timespec(dep->de_ADate, 0, 0, 0, &vap->va_atime);
+		fattime2timespec(dep->de_CDate, dep->de_CTime, dep->de_CHun,
+		    0, &vap->va_ctime);
 	} else {
 		vap->va_atime = vap->va_mtime;
 		vap->va_ctime = vap->va_mtime;
@@ -390,13 +391,13 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 			if ((pmp->pm_flags & MSDOSFSMNT_NOWIN95) == 0 &&
 			    vap->va_atime.tv_sec != VNOVAL) {
 				dep->de_flag &= ~DE_ACCESS;
-				unix2dostime(&vap->va_atime, &dep->de_ADate,
-				    NULL, NULL);
+				timespec2fattime(&vap->va_atime, 0,
+				    &dep->de_ADate, NULL, NULL);
 			}
 			if (vap->va_mtime.tv_sec != VNOVAL) {
 				dep->de_flag &= ~DE_UPDATE;
-				unix2dostime(&vap->va_mtime, &dep->de_MDate,
-				    &dep->de_MTime, NULL);
+				timespec2fattime(&vap->va_mtime, 0,
+				    &dep->de_MDate, &dep->de_MTime, NULL);
 			}
 			dep->de_Attributes |= ATTR_ARCHIVE;
 			dep->de_flag |= DE_MODIFIED;

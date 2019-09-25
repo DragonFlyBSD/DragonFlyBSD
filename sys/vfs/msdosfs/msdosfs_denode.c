@@ -58,6 +58,7 @@
 #include <sys/proc.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
+#include <sys/time.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -364,7 +365,7 @@ again:
 			ldep->de_FileSize = pmp->pm_rootdirsize * DEV_BSIZE;
 		}
 		/*
-		 * fill in time and date so that dos2unixtime() doesn't
+		 * fill in time and date so that fattime2timespec() doesn't
 		 * spit up when called from msdosfs_getattr() with root
 		 * denode
 		 */
