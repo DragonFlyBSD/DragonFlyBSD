@@ -696,18 +696,6 @@ usage(void)
 	exit(1);
 }
 
-#ifndef timespecsub
-#define timespecsub(vvp, uvp)						\
-	do {								\
-		(vvp)->tv_sec -= (uvp)->tv_sec;				\
-		(vvp)->tv_nsec -= (uvp)->tv_nsec;			\
-		if ((vvp)->tv_nsec < 0) {				\
-			(vvp)->tv_sec--;				\
-			(vvp)->tv_nsec += 1000000000;			\
-		}							\
-	} while (0)
-#endif
-
 #define BAT_SYSCTL_TIME_MAX	50000000 /* unit: nanosecond */
 
 static int
@@ -727,7 +715,7 @@ has_battery(void)
 	}
 	clock_gettime(CLOCK_MONOTONIC_FAST, &e);
 
-	timespecsub(&e, &s);
+	timespecsub(&e, &s, &e);
 	if (e.tv_sec > 0 || e.tv_nsec > BAT_SYSCTL_TIME_MAX) {
 		/* hw.acpi.acline takes to long to be useful */
 		syslog(LOG_NOTICE, "hw.acpi.acline takes too long");
@@ -742,7 +730,7 @@ has_battery(void)
 	}
 	clock_gettime(CLOCK_MONOTONIC_FAST, &e);
 
-	timespecsub(&e, &s);
+	timespecsub(&e, &s, &e);
 	if (e.tv_sec > 0 || e.tv_nsec > BAT_SYSCTL_TIME_MAX) {
 		/* hw.acpi.battery.life takes to long to be useful */
 		syslog(LOG_NOTICE, "hw.acpi.battery.life takes too long");
@@ -795,8 +783,7 @@ mon_battery(void)
 	size_t len;
 
 	clock_gettime(CLOCK_MONOTONIC_FAST, &cur);
-	ts = cur;
-	timespecsub(&ts, &BatLifePrevT);
+	timespecsub(&cur, &BatLifePrevT, &ts);
 	if (ts.tv_sec < BatLifePollIntvl)
 		return 1;
 	BatLifePrevT = cur;
@@ -852,8 +839,7 @@ after_backlight:
 		return 1;
 
 	if (BatShutdownLinger > 0) {
-		ts = cur;
-		timespecsub(&ts, &BatShutdownStartT);
+		timespecsub(&cur, &BatShutdownStartT, &ts);
 		if (ts.tv_sec > BatShutdownLinger)
 			BatShutdownLinger = 0;
 	}

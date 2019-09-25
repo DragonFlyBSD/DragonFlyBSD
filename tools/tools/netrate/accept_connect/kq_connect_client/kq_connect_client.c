@@ -19,18 +19,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifndef timespecsub
-#define timespecsub(vvp, uvp)                                           \
-	do {                                                            \
-		(vvp)->tv_sec -= (uvp)->tv_sec;                         \
-		(vvp)->tv_nsec -= (uvp)->tv_nsec;                       \
-		if ((vvp)->tv_nsec < 0) {                               \
-			(vvp)->tv_sec--;                                \
-			(vvp)->tv_nsec += 1000000000;                   \
-		}                                                       \
-	} while (0)
-#endif
-
 static void	mainloop(const struct sockaddr_in *, int, int, long, u_long *,
 		    int, int);
 
@@ -310,7 +298,7 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 	}
 	clock_gettime(CLOCK_MONOTONIC_PRECISE, &end);
 
-	timespecsub(&end, &start);
+	timespecsub(&end, &start, &end);
 	time_us = ((double)end.tv_sec * 1000000.0) +
 	    ((double)end.tv_nsec / 1000.0);
 

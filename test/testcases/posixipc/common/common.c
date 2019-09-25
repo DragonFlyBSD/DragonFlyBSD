@@ -118,7 +118,7 @@ testwait(sem_t *id, u_int *delta)
 		perror("clock_gettime(CLOCK_REALTIME)");
 		return (-1);
 	}
-	timespecsub(&end, &start);
+	timespecsub(&end, &start, &end);
 	*delta = end.tv_nsec / 1000000;
 	*delta += end.tv_sec * 1000;
 	return (0);
@@ -268,7 +268,7 @@ timedwait(sem_t *id, u_int msec, u_int *delta, int error)
 	}
 	end.tv_sec = msec / 1000;
 	end.tv_nsec = msec % 1000 * 1000000;
-	timespecadd(&end, &start);
+	timespecadd(&end, &start, &end);
 	if (sem_timedwait(id, &end) < 0) {
 		if (errno != error) {
 			perror("sem_timedwait");
@@ -281,7 +281,7 @@ timedwait(sem_t *id, u_int msec, u_int *delta, int error)
 		perror("clock_gettime(CLOCK_REALTIME)");
 		return (-1);
 	}
-	timespecsub(&end, &start);
+	timespecsub(&end, &start, &end);
 	*delta = end.tv_nsec / 1000000;
 	*delta += end.tv_sec * 1000;
 	return (0);

@@ -474,7 +474,7 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	if (rqt->tv_sec < 0 || (rqt->tv_sec == 0 && rqt->tv_nsec == 0))
 		return (0);
 	nanouptime(&ts);
-	timespecadd(&ts, rqt);		/* ts = target timestamp compare */
+	timespecadd(&ts, rqt, &ts);	/* ts = target timestamp compare */
 	TIMESPEC_TO_TIMEVAL(&tv, rqt);	/* tv = sleep interval */
 
 	for (;;) {
@@ -511,7 +511,7 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 			if (error == ERESTART)
 				error = EINTR;
 			if (rmt != NULL) {
-				timespecsub(&ts, &ts2);
+				timespecsub(&ts, &ts2, &ts);
 				if (ts.tv_sec < 0)
 					timespecclear(&ts);
 				*rmt = ts;
@@ -520,8 +520,7 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 		}
 		if (timespeccmp(&ts2, &ts, >=))
 			return (0);
-		ts3 = ts;
-		timespecsub(&ts3, &ts2);
+		timespecsub(&ts, &ts2, &ts3);
 		TIMESPEC_TO_TIMEVAL(&tv, &ts3);
 	}
 }

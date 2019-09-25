@@ -51,35 +51,6 @@ extern sem_t *alarm_id;
 extern int alarm_errno;
 extern int alarm_handler_installed;
 
-/* Cut and pasted from kernel header, bah! */
-
-/* Operations on timespecs */
-#define	timespecclear(tvp)	((tvp)->tv_sec = (tvp)->tv_nsec = 0)
-#define	timespecisset(tvp)	((tvp)->tv_sec || (tvp)->tv_nsec)
-#define	timespeccmp(tvp, uvp, cmp)					\
-	(((tvp)->tv_sec == (uvp)->tv_sec) ?				\
-	    ((tvp)->tv_nsec cmp (uvp)->tv_nsec) :			\
-	    ((tvp)->tv_sec cmp (uvp)->tv_sec))
-#define timespecadd(vvp, uvp)						\
-	do {								\
-		(vvp)->tv_sec += (uvp)->tv_sec;				\
-		(vvp)->tv_nsec += (uvp)->tv_nsec;			\
-		if ((vvp)->tv_nsec >= 1000000000) {			\
-			(vvp)->tv_sec++;				\
-			(vvp)->tv_nsec -= 1000000000;			\
-		}							\
-	} while (0)
-#define timespecsub(vvp, uvp)						\
-	do {								\
-		(vvp)->tv_sec -= (uvp)->tv_sec;				\
-		(vvp)->tv_nsec -= (uvp)->tv_nsec;			\
-		if ((vvp)->tv_nsec < 0) {				\
-			(vvp)->tv_sec--;				\
-			(vvp)->tv_nsec += 1000000000;			\
-		}							\
-	} while (0)
-
-
 /* Macros for passing child status to parent over a pipe. */
 #define	CSTAT(class, error)		((class) << 16 | (error))
 #define	CSTAT_CLASS(stat)		((stat) >> 16)

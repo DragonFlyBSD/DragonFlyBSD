@@ -35,18 +35,6 @@
  *	@(#)input.h	8.1 (Berkeley) 5/31/93
  */
 
-/* Operations on timespecs. */
-#define	timespecclear(tsp)	(tsp)->tv_sec = (time_t)((tsp)->tv_nsec = 0L)
-#define	timespecsub(tsp, usp, vsp)					\
-	do {								\
-		(vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;		\
-		(vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec;	\
-		if ((vsp)->tv_nsec < 0) {				\
-			(vsp)->tv_sec--;				\
-			(vsp)->tv_nsec += 1000000000L;			\
-		}							\
-	} while (/* CONSTCOND */ 0)
-
 int rwait(struct timespec *);
 int tgetchar(void);
 void tsleep(void);

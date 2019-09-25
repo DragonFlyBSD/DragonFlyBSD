@@ -208,9 +208,11 @@
  * 500703 - Static TLS bindings support for late-loaded shared libraries
  * 500704 - Announce IP6 address flag changes via route(4)
  * 500705 - Move us to utmpx only, delete utmp
+ * 500706 - Switch to the now common three argument versions of the
+ *	    timespecadd() and timespecsub() macros in <sys/time.h>
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500705	/* propagated to newvers */
+#define __DragonFly_version 500706	/* propagated to newvers */
 
 #include <sys/_null.h>
 

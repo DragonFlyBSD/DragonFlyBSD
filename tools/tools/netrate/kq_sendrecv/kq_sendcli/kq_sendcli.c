@@ -42,25 +42,6 @@
  * start roughly at the same time.
  */
 
-#ifndef timespecsub
-#define timespecsub(vvp, uvp)						\
-	do {								\
-		(vvp)->tv_sec -= (uvp)->tv_sec;				\
-		(vvp)->tv_nsec -= (uvp)->tv_nsec;			\
-		if ((vvp)->tv_nsec < 0) {				\
-			(vvp)->tv_sec--;				\
-			(vvp)->tv_nsec += 1000000000;			\
-		}							\
-	} while (0)
-#endif
-
-#ifndef timespeccmp
-#define	timespeccmp(tvp, uvp, cmp)					\
-	(((tvp)->tv_sec == (uvp)->tv_sec) ?				\
-	    ((tvp)->tv_nsec cmp (uvp)->tv_nsec) :			\
-	    ((tvp)->tv_sec cmp (uvp)->tv_sec))
-#endif
-
 #if 0
 #define SEND_DEBUG
 #endif
@@ -425,8 +406,7 @@ main(int argc, char *argv[])
 		ctx = &ctx_arr[i];
 		pthread_join(ctx->t_tid, NULL);
 
-		run = ctx->t_end;
-		timespecsub(&run, &ctx->t_start);
+		timespecsub(&ctx->t_end, &ctx->t_start, &run);
 		ctx->t_run_us = ((double)run.tv_sec * 1000000.0) +
 		    ((double)run.tv_nsec / 1000.0);
 
@@ -452,8 +432,7 @@ main(int argc, char *argv[])
 	    start.tv_sec, start.tv_nsec, end.tv_sec, end.tv_nsec);
 #endif
 
-	run = end;
-	timespecsub(&run, &start);
+	timespecsub(&end, &start, &run);
 	total_run_us = ((double)run.tv_sec * 1000000.0) +
 	    ((double)run.tv_nsec / 1000.0);
 	total = 0.0;
@@ -508,7 +487,8 @@ main(int argc, char *argv[])
 				continue;
 
 			run = conn->c_terr;
-			timespecsub(&run, &ctx_arr[conn->c_thr_id].t_start);
+			timespecsub(&conn->c_terr,
+			    &ctx_arr[conn->c_thr_id].t_start, &run);
 			tmp_run = ((double)run.tv_sec * 1000000.0) +
 			    ((double)run.tv_nsec / 1000.0);
 			fprintf(stderr, "snd%d ->%s:%d, %ld sec, %.2lf Mbps, "

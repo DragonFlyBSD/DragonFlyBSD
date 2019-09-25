@@ -247,7 +247,7 @@ abstimeout2timo(struct timespec *ts, int *timo)
 		return error;
 	}
 	getnanotime(&tsd);
-	timespecsub(ts, &tsd);
+	timespecsub(ts, &tsd, ts);
 	if (ts->tv_sec < 0 || (ts->tv_sec == 0 && ts->tv_nsec <= 0)) {
 		return ETIMEDOUT;
 	}

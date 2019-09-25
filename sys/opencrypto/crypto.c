@@ -1027,7 +1027,7 @@ crypto_tstat(struct cryptotstat *ts, struct timespec *tv)
 		t.tv_sec--;
 		t.tv_nsec += 1000000000;
 	}
-	timespecadd(&ts->acc, &t);
+	timespecadd(&ts->acc, &t, &ts->acc);
 	if (timespeccmp(&t, &ts->min, <))
 		ts->min = t;
 	if (timespeccmp(&t, &ts->max, >))

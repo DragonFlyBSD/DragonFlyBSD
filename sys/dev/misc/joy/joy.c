@@ -193,7 +193,7 @@ joyread(struct dev_read_args *ap)
     nanotime(&start);
     end.tv_sec = 0;
     end.tv_nsec = joy->timeout[joypart(dev)] * 1000;
-    timespecadd(&end, &start);
+    timespecadd(&end, &start, &end);
     t = start;
     timespecclear(&x);
     timespecclear(&y);
@@ -213,12 +213,12 @@ joyread(struct dev_read_args *ap)
     crit_exit();
 
     if (timespecisset(&x)) {
-	timespecsub(&x, &start);
+	timespecsub(&x, &start, &x);
 	c.x = joy->x_off[joypart(dev)] + x.tv_nsec / 1000;
     } else
 	c.x = 0x80000000;
     if (timespecisset(&y)) {
-	timespecsub(&y, &start);
+	timespecsub(&y, &start, &y);
 	c.y = joy->y_off[joypart(dev)] + y.tv_nsec / 1000;
     } else
 	c.y = 0x80000000;
