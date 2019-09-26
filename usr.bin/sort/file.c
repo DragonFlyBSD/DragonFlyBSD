@@ -1235,7 +1235,7 @@ sort_list_to_file(struct sort_list *list, const char *outfile)
 {
 	struct sort_mods *sm = &(keys[0].sm);
 
-	if (!(sm->Mflag) && !(sm->Vflag) && !(sm->Vflag) &&
+	if (!(sm->Mflag) && !(sm->Vflag) &&
 #if defined(SORT_RANDOM)
 	    !(sm->Rflag) &&
 #endif
