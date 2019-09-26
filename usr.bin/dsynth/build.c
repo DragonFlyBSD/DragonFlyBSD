@@ -2533,7 +2533,6 @@ mptylogpoll(int ptyfd, int fdlog, wmsg_t *wmsg, time_t *wdog_timep)
 					++wmsg->lines;
 			}
 			return MPTY_DATA;
-			return 1;
 		} else if (r < 0) {
 			if (errno != EINTR && errno != EAGAIN)
 				return MPTY_FAILED;

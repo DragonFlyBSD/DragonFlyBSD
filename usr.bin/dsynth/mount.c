@@ -97,12 +97,10 @@ DoCreateTemplate(int force)
 		 * Make discrete copies of certain extremely heavily used
 		 * but small directories.
 		 */
-		if (force) {
-			makeDiscreteCopies("$/bin", "/bin.%03d");
-			makeDiscreteCopies("$/lib", "/lib.%03d");
-			makeDiscreteCopies("$/libexec", "/libexec.%03d");
-			makeDiscreteCopies("$/usr/bin", "/usr.bin.%03d");
-		}
+		makeDiscreteCopies("$/bin", "/bin.%03d");
+		makeDiscreteCopies("$/lib", "/lib.%03d");
+		makeDiscreteCopies("$/libexec", "/libexec.%03d");
+		makeDiscreteCopies("$/usr/bin", "/usr.bin.%03d");
 
 		/*
 		 * Mark the template good... ah, do a sync() to really
