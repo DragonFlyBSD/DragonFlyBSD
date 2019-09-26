@@ -110,8 +110,7 @@
 
 /* cc -shared -fPIC -g -O -I/usr/src/lib/libc/include -o nmalloc.so nmalloc.c */
 
-#include "libc_private.h"
-
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -129,10 +128,10 @@
 #include <errno.h>
 #include <pthread.h>
 #include <machine/atomic.h>
-
-#include "spinlock.h"
 #include "un-namespace.h"
 
+#include "libc_private.h"
+#include "spinlock.h"
 
 void __free(void *);
 void *__malloc(size_t);
@@ -435,9 +434,9 @@ _nmalloc_thr_init(void)
 
 	if (init_once == 0) {
 		init_once = 1;
-		pthread_once(&thread_mags_once, mtmagazine_init);
+		_pthread_once(&thread_mags_once, mtmagazine_init);
 	}
-	pthread_setspecific(thread_mags_key, tp);
+	_pthread_setspecific(thread_mags_key, tp);
 	tp->init = 1;
 }
 
@@ -1759,7 +1758,7 @@ mtmagazine_init(void)
 {
 	int error;
 
-	error = pthread_key_create(&thread_mags_key, mtmagazine_destructor);
+	error = _pthread_key_create(&thread_mags_key, mtmagazine_destructor);
 	if (error)
 		abort();
 }
