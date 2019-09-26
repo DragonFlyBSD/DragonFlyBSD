@@ -250,8 +250,8 @@ struct msdosfs_args {
 	mode_t	dirmask;	/* dir  mask to be applied for msdosfs perms */
 	int	flags;		/* see below */
 	int magic;		/* version number */
-        char cs_local[ICONV_CSNMAXLEN];
-        char cs_dos[ICONV_CSNMAXLEN];
+	char cs_local[ICONV_CSNMAXLEN];
+	char cs_dos[ICONV_CSNMAXLEN];
 };
 
 /*

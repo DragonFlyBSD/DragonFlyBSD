@@ -240,7 +240,7 @@ struct denode {
 	if ((dep)->de_flag & DE_CREATE) {				\
 		timespec2fattime((cre), 0, &(dep)->de_CDate,		\
 		    &(dep)->de_CTime, &(dep)->de_CHun);			\
-		    (dep)->de_flag |= DE_MODIFIED;			\
+		(dep)->de_flag |= DE_MODIFIED;				\
 	}								\
 	(dep)->de_flag &= ~(DE_UPDATE | DE_CREATE | DE_ACCESS);		\
 } while (0)

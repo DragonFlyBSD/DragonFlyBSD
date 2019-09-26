@@ -104,8 +104,8 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	int error;
-        char cs_local[ICONV_CSNMAXLEN];
-        char cs_dos[ICONV_CSNMAXLEN];
+	char cs_local[ICONV_CSNMAXLEN];
+	char cs_dos[ICONV_CSNMAXLEN];
 
 	pmp->pm_gid = argp->gid;
 	pmp->pm_uid = argp->uid;

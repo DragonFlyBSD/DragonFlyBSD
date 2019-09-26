@@ -453,7 +453,7 @@ msdosfs_read(struct vop_read_args *ap)
 		return (EINVAL);
 
 	if ((uoff_t)uio->uio_offset > DOS_FILESIZE_MAX)
-                return (0);
+		return (0);
 	/*
 	 * If they didn't ask for any data, then we are done.
 	 */
@@ -586,9 +586,9 @@ msdosfs_write(struct vop_write_args *ap)
 	}
 
 	if ((uoff_t)uio->uio_offset > DOS_FILESIZE_MAX)
-                return (EFBIG);
+		return (EFBIG);
 	if ((uoff_t)uio->uio_offset + uio->uio_resid > DOS_FILESIZE_MAX)
-                return (EFBIG);
+		return (EFBIG);
 
 	/*
 	 * If the offset we are starting the write at is beyond the end of

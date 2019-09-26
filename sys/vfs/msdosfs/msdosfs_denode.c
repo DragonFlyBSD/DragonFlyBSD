@@ -411,8 +411,8 @@ again:
 		u_long size;
 
 		/*
-		 * XXX Sometimes, these arrives that . entry have cluster
-		 * number 0, when it shouldn't.  Use real cluster number
+		 * XXX it sometimes happens that the "." entry has cluster
+		 * number 0 when it shouldn't.  Use the actual cluster number
 		 * instead of what is written in directory entry.
 		 */
 		if ((diroffset == 0) && (ldep->de_StartCluster != dirclust)) {
@@ -658,9 +658,6 @@ deextend(struct denode *dep, u_long length)
 	return (deupdat(dep, 1));
 }
 
-/*
- * msdosfs_reclaim(struct vnode *a_vp)
- */
 int
 msdosfs_reclaim(struct vop_reclaim_args *ap)
 {
@@ -687,9 +684,6 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 	return (0);
 }
 
-/*
- * msdosfs_inactive(struct vnode *a_vp)
- */
 int
 msdosfs_inactive(struct vop_inactive_args *ap)
 {

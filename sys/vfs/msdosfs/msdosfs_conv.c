@@ -1007,8 +1007,8 @@ void
 mbnambuf_init(struct mbnambuf *nbp)
 {
 	nbp->nb_len = 0;
-        nbp->nb_last_id = -1;
-        nbp->nb_buf[sizeof(nbp->nb_buf) - 1] = '\0';
+	nbp->nb_last_id = -1;
+	nbp->nb_buf[sizeof(nbp->nb_buf) - 1] = '\0';
 }
 
 /*
@@ -1023,7 +1023,7 @@ mbnambuf_init(struct mbnambuf *nbp)
 void
 mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
 {
-        char *slot;
+	char *slot;
 	size_t count, newlen;
 
 	if (nbp->nb_len != 0 && id != nbp->nb_last_id - 1) {
