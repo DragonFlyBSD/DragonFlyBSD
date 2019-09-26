@@ -2076,6 +2076,9 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		 *	 Leave the tty defaults intact, which also likely
 		 *	 means it will be in line-buffered mode, so handshake
 		 *	 with a full line.
+		 *
+		 * TODO: Our handshake probably echos back to the master pty
+		 *	 due to tty echo, and ends up in the log, fix me.
 		 */
 		slavefd = open(ptsname(MasterPtyFd), O_RDWR);
 		dassert_errno(slavefd >= 0, "Cannot open slave pty");

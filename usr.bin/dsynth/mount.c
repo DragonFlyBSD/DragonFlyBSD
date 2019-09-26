@@ -56,6 +56,7 @@ DoCreateTemplate(int force)
 	char *buf;
 	int rc;
 	int fd;
+	int n;
 
 	rc = 0;
 	asprintf(&goodbuf, "%s/.template.good", BuildBase);
@@ -65,10 +66,30 @@ DoCreateTemplate(int force)
 	 * directories if we think we are missing things.
 	 */
 	if (force == 0) {
+		time_t ls_mtime;
+
 		asprintf(&buf, "%s/Template", BuildBase);
 		if (stat(buf, &st) < 0)
 			force = 1;
 		free(buf);
+
+		/*
+		 * Check to see if the worker count changed and some
+		 * template dirs are missing or out of date, and also if
+		 * a new world was installed (via /bin/ls mtime).
+		 */
+		asprintf(&buf, "%s/bin/ls", SystemPath);
+		if (stat(buf, &st) < 0)
+			dfatal_errno("Unable to locate %s", buf);
+		free(buf);
+		ls_mtime = st.st_mtime;
+
+		for (n = 0; n < MaxWorkers; ++n) {
+			asprintf(&buf, "%s/bin.%03d/ls", BuildBase, n);
+			if (stat(buf, &st) < 0 || st.st_mtime != ls_mtime)
+				force = 1;
+			free(buf);
+		}
 
 		if (stat(goodbuf, &st) < 0)
 			force = 1;
