@@ -177,12 +177,12 @@ do_unmount(const fsid_t fsid __unused, const char *mountpoint)
 	return (error);
 }
 
-static double
-expire_automounted(double expiration_time)
+static time_t
+expire_automounted(time_t expiration_time)
 {
 	struct automounted_fs *af, *tmpaf;
 	time_t now;
-	double mounted_for, mounted_max = -1.0;
+	time_t mounted_for, mounted_max = -1;
 	int error;
 
 	now = time(NULL);
@@ -194,9 +194,9 @@ expire_automounted(double expiration_time)
 
 		if (mounted_for < expiration_time) {
 			log_debugx("skipping %s (FSID:%d:%d), mounted "
-			    "for %.0f seconds", af->af_mountpoint,
+			    "for %jd seconds", af->af_mountpoint,
 			    af->af_fsid.val[0], af->af_fsid.val[1],
-			    mounted_for);
+			    (intmax_t)mounted_for);
 
 			if (mounted_for > mounted_max)
 				mounted_max = mounted_for;
@@ -205,9 +205,9 @@ expire_automounted(double expiration_time)
 		}
 
 		log_debugx("filesystem mounted on %s (FSID:%d:%d), "
-		    "was mounted for %.0f seconds; unmounting",
+		    "was mounted for %jd seconds; unmounting",
 		    af->af_mountpoint, af->af_fsid.val[0], af->af_fsid.val[1],
-		    mounted_for);
+		    (intmax_t)mounted_for);
 		error = do_unmount(af->af_fsid, af->af_mountpoint);
 		if (error != 0) {
 			if (mounted_for > mounted_max)
@@ -227,18 +227,19 @@ usage_autounmountd(void)
 }
 
 static void
-do_wait(int kq, double sleep_time)
+do_wait(int kq, time_t sleep_time)
 {
 	struct timespec timeout;
 	struct kevent unused;
 	int nevents;
 
-	if (sleep_time != -1.0) {
-		assert(sleep_time > 0.0);
+	if (sleep_time != -1) {
+		assert(sleep_time > 0);
 		timeout.tv_sec = sleep_time;
 		timeout.tv_nsec = 0;
 
-		log_debugx("waiting for filesystem event for %.0f seconds", sleep_time);
+		log_debugx("waiting for filesystem event for %jd seconds",
+		    (intmax_t)sleep_time);
 		nevents = kevent(kq, NULL, 0, &unused, 1, &timeout);
 	} else {
 		log_debugx("waiting for filesystem event");
@@ -252,7 +253,7 @@ do_wait(int kq, double sleep_time)
 
 	if (nevents == 0) {
 		log_debugx("timeout reached");
-		assert(sleep_time > 0.0);
+		assert(sleep_time > 0);
 	} else {
 		log_debugx("got filesystem event");
 	}
@@ -266,7 +267,7 @@ main_autounmountd(int argc, char **argv)
 	pid_t otherpid;
 	const char *pidfile_path = AUTOUNMOUNTD_PIDFILE;
 	int ch, debug = 0, error, kq;
-	double expiration_time = 600, retry_time = 600, mounted_max, sleep_time;
+	time_t expiration_time = 600, retry_time = 600, mounted_max, sleep_time;
 	bool dont_daemonize = false;
 
 	while ((ch = getopt(argc, argv, "dr:t:v")) != -1) {
@@ -334,17 +335,17 @@ main_autounmountd(int argc, char **argv)
 	for (;;) {
 		refresh_automounted();
 		mounted_max = expire_automounted(expiration_time);
-		if (mounted_max == -1.0) {
+		if (mounted_max == -1) {
 			sleep_time = mounted_max;
 			log_debugx("no filesystems to expire");
 		} else if (mounted_max < expiration_time) {
 			sleep_time = difftime(expiration_time, mounted_max);
-			log_debugx("some filesystems expire in %.0f seconds",
-			    sleep_time);
+			log_debugx("some filesystems expire in %jd seconds",
+			    (intmax_t)sleep_time);
 		} else {
 			sleep_time = retry_time;
 			log_debugx("some expired filesystems remain mounted, "
-			    "will retry in %.0f seconds", sleep_time);
+			    "will retry in %jd seconds", (intmax_t)sleep_time);
 		}
 
 		do_wait(kq, sleep_time);
