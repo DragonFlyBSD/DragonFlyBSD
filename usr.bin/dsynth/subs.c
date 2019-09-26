@@ -605,3 +605,97 @@ getphasestr(worker_phase_t phaseid)
 	}
 	return phase;
 }
+
+int
+readlogline(monitorlog_t *log, char **bufp)
+{
+	int r;
+	int n;
+
+	/*
+	 * Reset buffer as an optimization to avoid unnecessary
+	 * shifts.
+	 */
+	*bufp = NULL;
+	if (log->buf_beg == log->buf_end) {
+		log->buf_beg = 0;
+		log->buf_end = 0;
+		log->buf_scan = 0;
+	}
+
+	/*
+	 * Look for newline, handle discard mode
+	 */
+again:
+	for (n = log->buf_scan; n < log->buf_end; ++n) {
+		if (log->buf[n] == '\n') {
+			*bufp = log->buf + log->buf_beg;
+			r = n - log->buf_beg;
+			log->buf_beg = n + 1;
+			log->buf_scan = n + 1;
+
+			if (log->buf_discard_mode == 0)
+				return r;
+			log->buf_discard_mode = 0;
+			goto again;
+		}
+	}
+
+	/*
+	 * Handle overflow
+	 */
+	if (n == sizeof(log->buf)) {
+		if (log->buf_beg) {
+			/*
+			 * Shift the buffer to make room and read more data.
+			 */
+			bcopy(log->buf + log->buf_beg,
+			      log->buf,
+			      n - log->buf_beg);
+			log->buf_end -= log->buf_beg;
+			log->buf_scan -= log->buf_beg;
+			n -= log->buf_beg;
+			log->buf_beg = 0;
+		} else if (log->buf_discard_mode) {
+			/*
+			 * Overflow.  If in discard mode just throw it all
+			 * away.  Stay in discard mode.
+			 */
+			log->buf_beg = 0;
+			log->buf_end = 0;
+			log->buf_scan = 0;
+		} else {
+			/*
+			 * Overflow.  If not in discard mode return a truncated
+			 * line and enter discard mode.
+			 *
+			 * The caller will temporarily set ptr[r] = 0 so make
+			 * sure that does not overflow our buffer as we are not
+			 * at a newline.
+			 *
+			 * (log->buf_beg is 0);
+			 */
+			*bufp = log->buf + log->buf_beg;
+			r = n - 1;
+			log->buf_beg = n;
+			log->buf_scan = n;
+			log->buf_discard_mode = 1;
+
+			return r;
+		}
+	}
+
+	/*
+	 * Read more data.  If there is no data pending then return -1,
+	 * otherwise loop up to see if more complete line(s) are available.
+	 */
+	r = pread(log->fd,
+		  log->buf + log->buf_end,
+		  sizeof(log->buf) - log->buf_end,
+		  log->offset);
+	if (r <= 0)
+		return -1;
+	log->offset += r;
+	log->buf_end += r;
+	goto again;
+}

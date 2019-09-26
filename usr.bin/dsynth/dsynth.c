@@ -197,6 +197,19 @@ main(int ac, char **av)
 		else
 			pkgs = GetLocalPackageList();
 		DoStatus(pkgs);
+	} else if (strcmp(av[0], "monitor") == 0) {
+		char *spath;
+		char *lpath;
+
+		if (ac == 1) {
+			asprintf(&spath, "%s/%s", StatsBase, STATS_FILE);
+			asprintf(&lpath, "%s/%s", StatsBase, STATS_LOCKFILE);
+			MonitorDirective(spath, lpath);
+			free(spath);
+			free(lpath);
+		} else {
+			MonitorDirective(av[1], NULL);
+		}
 	} else if (strcmp(av[0], "cleanup") == 0) {
 		DoCleanBuild(0);
 	} else if (strcmp(av[0], "configure") == 0) {
@@ -396,6 +409,7 @@ usage(int ecode)
     "    install    [ports]   - 'build' but upgrades system without asking\n"
     "    force      [ports]   - 'build' but deletes existing packages first\n"
     "    test       [ports]   - 'build' w/DEVELOPER=yes and pre-deletes pkgs\n"
+    "    monitor    [datfile] - Monitor a running dsynth\n"
     "\n"
     "    [ports] is a space-delimited list of origins, e.g. editors/joe.  It\n"
     "            may also be a path to a file containing one origin per line.\n"

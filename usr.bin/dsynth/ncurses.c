@@ -53,15 +53,7 @@ static const char *LineI = " ID  Duration  Build Phase      Origin     "
 			   "                               Lines";
 
 static int LastReduce;
-static off_t MonitorLogOff;
-static int MonitorLogLines;
-static int MonitorBufBeg;
-static int MonitorBufEnd;
-static int MonitorBufScan;
-static int MonitorBufDiscardMode;
-static char MonitorBuf[1024];
-
-static int guireadline(int fd, char **bufp);
+static monitorlog_t nclog;
 
 #define TOTAL_COL	7
 #define BUILT_COL	21
@@ -148,12 +140,9 @@ NCursesReset(void)
 
 	CMon = subwin(CWin, 0, 0, LOG_START, 0);
 	scrollok(CMon, 1);
-	MonitorLogLines = LINES - LOG_START;
-	MonitorLogOff = 0;
-	MonitorBufBeg = 0;
-	MonitorBufEnd = 0;
-	MonitorBufScan = 0;
-	MonitorBufDiscardMode = 0;
+
+	bzero(&nclog, sizeof(nclog));
+	nclog.fd = dlog00_fd();
 	nodelay(CMon, 1);
 
 	LastReduce = -1;
@@ -178,8 +167,8 @@ NCursesUpdateTop(topinfo_t *info)
 	 * If dynamic worker reduction is active include a field,
 	 * Otherwise blank the field.
 	 */
-	if (LastReduce != DynamicMaxWorkers) {
-		LastReduce = DynamicMaxWorkers;
+	if (LastReduce != info->dynmaxworkers) {
+		LastReduce = info->dynmaxworkers;
 		if (MaxWorkers == LastReduce)
 			mvwprintw(CWin, 0, REDUCE_COL, "        ");
 		else
@@ -206,7 +195,6 @@ NCursesUpdateTop(topinfo_t *info)
 static void
 NCursesUpdateLogs(void)
 {
-	int fd = dlog00_fd();
 	char *ptr;
 	char c;
 	ssize_t n;
@@ -216,7 +204,7 @@ NCursesUpdateLogs(void)
 		return;
 
 	for (;;) {
-		n = guireadline(fd, &ptr);
+		n = readlogline(&nclog, &ptr);
 		if (n < 0)
 			break;
 		if (n == 0)
@@ -236,26 +224,25 @@ NCursesUpdateLogs(void)
 		 * Filter out these logs from the display (they remain in
 		 * the 00*.log file) to reduce clutter.
 		 */
-		if (strncmp(ptr, "[XXX] Load=", 11) == 0)
-			continue;
-
-		/*
-		 * Output possibly colored log line
-		 */
-		wscrl(CMon, -1);
-		if (strstr(ptr, "] SUCCESS ")) {
-			wattrset(CMon, COLOR_PAIR(2));
-		} else if (strstr(ptr, "] FAILURE ")) {
-			wattrset(CMon, COLOR_PAIR(1));
+		if (strncmp(ptr, "[XXX] Load=", 11) != 0) {
+			/*
+			 * Output possibly colored log line
+			 */
+			wscrl(CMon, -1);
+			if (strstr(ptr, "] SUCCESS ")) {
+				wattrset(CMon, COLOR_PAIR(2));
+			} else if (strstr(ptr, "] FAILURE ")) {
+				wattrset(CMon, COLOR_PAIR(1));
+			}
+			mvwprintw(CMon, 0, 0, "%s", ptr);
+			wattrset(CMon, COLOR_PAIR(3));
 		}
-		mvwprintw(CMon, 0, 0, "%s", ptr);
 		ptr[w] = c;
-		wattrset(CMon, COLOR_PAIR(3));
 	}
 }
 
 static void
-NCursesUpdate(worker_t *work)
+NCursesUpdate(worker_t *work, const char *portdir)
 {
 	const char *phase;
 	const char *origin;
@@ -319,7 +306,13 @@ NCursesUpdate(worker_t *work)
 	if (work->state == WORKER_RUNNING)
 		phase = getphasestr(work->phase);
 
-	if (work->pkg)
+	/*
+	 * When called from the monitor frontend portdir has to be passed
+	 * in directly because work->pkg is not mapped.
+	 */
+	if (portdir)
+		origin = portdir;
+	else if (work->pkg)
 		origin = work->pkg->portdir;
 	else
 		origin = "";
@@ -357,100 +350,6 @@ NCursesDone(void)
 		return;
 
 	endwin();
-}
-
-static int
-guireadline(int fd, char **bufp)
-{
-	int r;
-	int n;
-
-	/*
-	 * Reset buffer as an optimization to avoid unnecessary
-	 * shifts.
-	 */
-	*bufp = NULL;
-	if (MonitorBufBeg == MonitorBufEnd) {
-		MonitorBufBeg = 0;
-		MonitorBufEnd = 0;
-		MonitorBufScan = 0;
-	}
-
-	/*
-	 * Look for newline, handle discard mode
-	 */
-again:
-	for (n = MonitorBufScan; n < MonitorBufEnd; ++n) {
-		if (MonitorBuf[n] == '\n') {
-			*bufp = MonitorBuf + MonitorBufBeg;
-			r = n - MonitorBufBeg;
-			MonitorBufBeg = n + 1;
-			MonitorBufScan = n + 1;
-
-			if (MonitorBufDiscardMode == 0)
-				return r;
-			MonitorBufDiscardMode = 0;
-			goto again;
-		}
-	}
-
-	/*
-	 * Handle overflow
-	 */
-	if (n == sizeof(MonitorBuf)) {
-		if (MonitorBufBeg) {
-			/*
-			 * Shift the buffer to make room and read more data.
-			 */
-			bcopy(MonitorBuf + MonitorBufBeg,
-			      MonitorBuf,
-			      n - MonitorBufBeg);
-			MonitorBufEnd -= MonitorBufBeg;
-			MonitorBufScan -= MonitorBufBeg;
-			n -= MonitorBufBeg;
-			MonitorBufBeg = 0;
-		} else if (MonitorBufDiscardMode) {
-			/*
-			 * Overflow.  If in discard mode just throw it all
-			 * away.  Stay in discard mode.
-			 */
-			MonitorBufBeg = 0;
-			MonitorBufEnd = 0;
-			MonitorBufScan = 0;
-		} else {
-			/*
-			 * Overflow.  If not in discard mode return a truncated
-			 * line and enter discard mode.
-			 *
-			 * The caller will temporarily set ptr[r] = 0 so make
-			 * sure that does not overflow our buffer as we are not
-			 * at a newline.
-			 *
-			 * (MonitorBufBeg is 0);
-			 */
-			*bufp = MonitorBuf + MonitorBufBeg;
-			r = n - 1;
-			MonitorBufBeg = n;
-			MonitorBufScan = n;
-			MonitorBufDiscardMode = 1;
-
-			return r;
-		}
-	}
-
-	/*
-	 * Read more data.  If there is no data pending then return -1,
-	 * otherwise loop up to see if more complete line(s) are available.
-	 */
-	r = pread(fd,
-		  MonitorBuf + MonitorBufEnd,
-		  sizeof(MonitorBuf) - MonitorBufEnd,
-		  MonitorLogOff);
-	if (r <= 0)
-		return -1;
-	MonitorLogOff += r;
-	MonitorBufEnd += r;
-	goto again;
 }
 
 runstats_t NCursesRunStats = {

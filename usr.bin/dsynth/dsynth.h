@@ -69,6 +69,7 @@ struct pkglink;
 
 #define DSYNTH_VERSION	"1.01"
 #define MAXWORKERS	1024
+#define MAXLOGLINES	1024
 #define MAXJOBS		8192	/* just used for -j sanity */
 #define MAXBULK		MAXWORKERS
 
@@ -80,6 +81,9 @@ struct pkglink;
 #define MOUNT_DEVFS_BINARY	"/sbin/mount_devfs"
 #define MOUNT_PROCFS_BINARY	"/sbin/mount_procfs"
 #define UMOUNT_BINARY		"/sbin/umount"
+
+#define STATS_FILE		"monitor.dat"		/* under LogsPath */
+#define STATS_LOCKFILE		"monitor.lk"		/* under LogsPath */
 
 #define ONEGB		(1024L * 1024 * 1024)
 #define DISABLED_STR	"disabled"
@@ -437,6 +441,7 @@ typedef struct topinfo {
 	int remaining;
 	int failed;
 	int skipped;
+	int dynmaxworkers;
 	double dswap;
 	double dload[3];
 } topinfo_t;
@@ -446,11 +451,21 @@ typedef struct runstats {
 	void (*init)(void);
 	void (*done)(void);
 	void (*reset)(void);
-	void (*update)(worker_t *work);
+	void (*update)(worker_t *work, const char *portdir);
 	void (*updateTop)(topinfo_t *info);
 	void (*updateLogs)(void);
 	void (*sync)(void);
 } runstats_t;
+
+typedef struct monitorlog {
+	off_t	offset;
+	int	fd;
+	int	buf_beg;
+	int	buf_end;
+	int	buf_scan;
+	int	buf_discard_mode;
+	char	buf[1024];
+} monitorlog_t;
 
 extern runstats_t NCursesRunStats;
 extern runstats_t MonitorRunStats;
@@ -509,6 +524,9 @@ extern const char *BuildBase;
 extern const char *LogsPath;
 extern const char *SystemPath;
 extern const char *Profile;
+extern char *StatsBase;
+extern char *StatsFilePath;
+extern char *StatsLockPath;
 
 extern int UsingHooks;
 extern const char *HookRunStart;
@@ -527,6 +545,7 @@ void dlogreset(void);
 int dlog00_fd(void);
 void addbuildenv(const char *label, const char *data, int type);
 void delbuildenv(const char *label);
+int readlogline(monitorlog_t *log, char **bufp);
 
 void initbulk(void (*func)(bulk_t *bulk), int jobs);
 void queuebulk(const char *s1, const char *s2, const char *s3,
@@ -570,10 +589,11 @@ void PurgeDistfiles(pkg_t *pkgs);
 void RunStatsInit(void);
 void RunStatsDone(void);
 void RunStatsReset(void);
-void RunStatsUpdate(worker_t *work);
+void RunStatsUpdate(worker_t *work, const char *portdir);
 void RunStatsUpdateTop(void);
 void RunStatsUpdateLogs(void);
 void RunStatsSync(void);
 
 int ipcreadmsg(int fd, wmsg_t *msg);
 int ipcwritemsg(int fd, wmsg_t *msg);
+extern void MonitorDirective(const char *datfile, const char *lkfile);

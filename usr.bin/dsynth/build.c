@@ -1087,7 +1087,7 @@ waitbuild(int whilematch, int dynamicmax)
 			} else {
 				pthread_cond_signal(&work->cond);
 			}
-			RunStatsUpdate(work);
+			RunStatsUpdate(work, NULL);
 		}
 		RunStatsUpdateTop();
 		RunStatsUpdateLogs();
@@ -1371,7 +1371,7 @@ childBuilderThread(void *arg)
 				default:
 					break;
 				}
-				RunStatsUpdate(work);
+				RunStatsUpdate(work, NULL);
 				RunStatsSync();
 			} else {
 				close(work->fds[0]);

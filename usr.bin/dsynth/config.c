@@ -66,6 +66,9 @@ const char *DistFilesPath = "/build/synth/distfiles";
 const char *BuildBase = "/build/synth/build";
 const char *LogsPath = "/build/synth/logs";
 const char *SystemPath = "/";
+char *StatsBase;
+char *StatsFilePath;
+char *StatsLockPath;
 const char *ProfileLabel = "[LiveSystem]";	/* with the brackets */
 const char *Profile = "LiveSystem";		/* without the brackets */
 
@@ -290,6 +293,13 @@ ParseConfiguration(int isworker)
 
 	if (stat(RepositoryPath, &st) < 0)
 		dfatal("Directory missing: %s", RepositoryPath);
+
+	/*
+	 * StatsBase, StatsFilePath, StatsLockPath
+	 */
+	asprintf(&StatsBase, "%s/stats", LogsPath);
+	asprintf(&StatsFilePath, "%s/monitor.dat", StatsBase);
+	asprintf(&StatsLockPath, "%s/monitor.lk", StatsBase);
 }
 
 void

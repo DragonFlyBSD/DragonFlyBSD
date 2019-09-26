@@ -52,7 +52,7 @@ HtmlReset(void)
 }
 
 static void
-HtmlUpdate(worker_t *work __unused)
+HtmlUpdate(worker_t *work __unused, const char *portdir __unused)
 {
 }
 

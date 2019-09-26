@@ -83,12 +83,12 @@ RunStatsReset(void)
 }
 
 void
-RunStatsUpdate(worker_t *work)
+RunStatsUpdate(worker_t *work, const char *portdir)
 {
 	runstats_t *rs;
 
 	for (rs = RSBase; rs; rs = rs->next)
-		rs->update(work);
+		rs->update(work, portdir);
 }
 
 void
@@ -161,6 +161,8 @@ RunStatsUpdateTop(void)
 		     info.pkgimpulse);
 #endif
 	}
+
+	info.dynmaxworkers = DynamicMaxWorkers;
 
 	/*
 	 * Issue update
