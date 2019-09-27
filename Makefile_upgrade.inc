@@ -3768,6 +3768,11 @@ TO_REMOVE+=/usr/share/man/man5/wtmp.5.gz
 TO_REMOVE+=/usr/share/man/man3/ttyslot.3.gz
 TO_REMOVE+=/var/log/lastlog
 TO_REMOVE+=/var/run/utmp
+TO_REMOVE+=/usr/libdata/clang
+TO_REMOVE+=/usr/libdata/clangb
+TO_REMOVE+=/usr/libexec/clang
+TO_REMOVE+=/usr/libexec/clangb
+TO_REMOVE+=/usr/share/mk/bsd.cpu.clang.mk
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

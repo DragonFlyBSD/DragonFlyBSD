@@ -184,17 +184,9 @@ main(int argc, char **argv)
 	/*
 	 * make buildworld glue and CCVER overrides.
 	 */
-	/*
-	 * CCVER=clang check temporary; only for base clang import work
-	 */
-	if (cmds && cmds->type == COMPILER &&
-	    strcmp (env_value, "clang") == 0) {
-		objformat_path = "";
-	} else {
-		objformat_path = getenv("OBJFORMAT_PATH");
-		if (objformat_path == NULL)
-			objformat_path = OBJFORMAT_PATH_DEFAULT;
-	}
+	objformat_path = getenv("OBJFORMAT_PATH");
+	if (objformat_path == NULL)
+		objformat_path = OBJFORMAT_PATH_DEFAULT;
 
 again:
 	path = strdup(objformat_path);

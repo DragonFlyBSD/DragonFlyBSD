@@ -68,10 +68,6 @@
         ..
     ..
     libdata
-        clang
-        ..
-        clangb
-        ..
         gcc47
             ssp
             ..
@@ -99,10 +95,6 @@
             ..
             elf
             ..
-        ..
-        clang
-        ..
-        clangb
         ..
         custom
         ..
