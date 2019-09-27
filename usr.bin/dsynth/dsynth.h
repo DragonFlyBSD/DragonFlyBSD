@@ -524,6 +524,7 @@ extern const char *DistFilesPath;
 extern const char *BuildBase;
 extern const char *LogsPath;
 extern const char *SystemPath;
+extern const char *UsePkgSufx;
 extern const char *Profile;
 extern char *StatsBase;
 extern char *StatsFilePath;

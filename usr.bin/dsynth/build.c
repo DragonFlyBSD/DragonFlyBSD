@@ -1761,7 +1761,7 @@ WorkerProcess(int ac, char **av)
 	addbuildenv("PORT_DBDIR", "/options", BENV_MAKECONF);
 	addbuildenv("PKG_DBDIR", "/var/db/pkg", BENV_MAKECONF);
 	addbuildenv("PKG_CACHEDIR", "/var/cache/pkg", BENV_MAKECONF);
-	addbuildenv("PKG_SUFX", USE_PKG_SUFX, BENV_MAKECONF);
+	addbuildenv("PKG_SUFX", UsePkgSufx, BENV_MAKECONF);
 	if (WorkerProcFlags & WORKER_PROC_DEVELOPER)
 		addbuildenv("DEVELOPER", "1", BENV_MAKECONF);
 

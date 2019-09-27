@@ -82,6 +82,7 @@ Directory_buildbase= /build/synth/build
 Directory_logs= /build/synth/logs
 Directory_ccache= disabled
 Directory_system= /
+Package_suffix= .txz
 Number_of_builders= 8
 Max_jobs_per_builder= 8
 Display_with_ncurses= true
@@ -352,6 +353,27 @@ read-write in jails or chroots.
 All other r/w filesystems in the workers are
 .Xr tmpfs 5
 based filesystems and will be created and torn-down for each port.
+.Pp
+.It Pa .txz
+.It Pa .tgz
+.It Pa .tar
+.It Pa .tbz
+The recommended setting for
+.Va Package_suffix
+is either
+.Pa .txz
+or
+.Pa .tgz .
+Use
+.Pa .txz
+for better compression at the cost of somewhat slower bulk builds due
+to the time overhead for compression and decompression, or
+use
+.Pa .tgz
+for modest compression and very fast compression and decompression.
+Due to the way the builder works, package dependencies are fresly
+installed into the chroot slot for each package being built, so
+decompression time matters.
 .El
 .Sh EXIT STATUS
 .Ex -std

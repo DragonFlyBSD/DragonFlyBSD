@@ -66,6 +66,7 @@ const char *DistFilesPath = "/build/synth/distfiles";
 const char *BuildBase = "/build/synth/build";
 const char *LogsPath = "/build/synth/logs";
 const char *SystemPath = "/";
+const char *UsePkgSufx = USE_PKG_SUFX;
 char *StatsBase;
 char *StatsFilePath;
 char *StatsLockPath;
@@ -413,6 +414,14 @@ parseConfigFile(const char *path)
 				CCachePath = l2;
 			} else if (strcmp(l1, "Directory_system") == 0) {
 				SystemPath = l2;
+			} else if (strcmp(l1, "Package_suffix") == 0) {
+				UsePkgSufx = l2;
+				dassert(strcmp(l2, ".tgz") == 0 ||
+					strcmp(l2, ".tar") == 0 ||
+					strcmp(l2, ".txz") == 0 ||
+					strcmp(l2, ".tbz") == 0,
+					"Config: Unknown Package_suffix,"
+					"specify .tgz .tar .txz or .tbz");
 			} else if (strcmp(l1, "Number_of_builders") == 0) {
 				MaxWorkers = strtol(l2, NULL, 0);
 				if (MaxWorkers == 0)

@@ -151,7 +151,7 @@ main(int ac, char **av)
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
 	addbuildenv("BATCH", "yes",
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
-	addbuildenv("PKG_SUFX", USE_PKG_SUFX,
+	addbuildenv("PKG_SUFX", UsePkgSufx,
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
 	addbuildenv("PACKAGE_BUILDING", "yes",
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
@@ -332,6 +332,7 @@ DoInit(void)
 	    "Directory_logs= /build/synth/logs\n"
 	    "Directory_ccache= disabled\n"
 	    "Directory_system= /\n"
+	    "Package_suffix= .txz\n"
 	    "Number_of_builders= 0\n"
 	    "Max_jobs_per_builder= 0\n"
 	    "Tmpfs_workdir= true\n"

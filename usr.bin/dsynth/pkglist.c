@@ -892,7 +892,7 @@ childGetBinaryDistInfo(bulk_t *bulk)
 		if (len == 0 || ptr[len-1] != '\n')
 			continue;
 		ptr[len-1] = 0;
-		snprintf(buf, sizeof(buf), "%s%s", ptr, USE_PKG_SUFX);
+		snprintf(buf, sizeof(buf), "%s%s", ptr, UsePkgSufx);
 
 		pkg = pkg_find(buf);
 		if (pkg) {
@@ -1019,7 +1019,7 @@ scan_binary_repo(const char *path)
 	while ((den = readdir(dir)) != NULL) {
 		len = strlen(den->d_name);
 		if (len > 4 &&
-		    strcmp(den->d_name + len - 4, USE_PKG_SUFX) == 0) {
+		    strcmp(den->d_name + len - 4, UsePkgSufx) == 0) {
 			queuebulk(den->d_name, NULL, NULL, NULL);
 			++count;
 		}

@@ -84,7 +84,7 @@ DoRebuildRepo(int ask)
 
 	RebuildRemovePath = tpath;
 
-	sufx = USE_PKG_SUFX;
+	sufx = UsePkgSufx;
 	fd = mkostemps(tpath, 5, 0);
 	if (fd < 0)
 		dfatal_errno("Cannot create %s", tpath);
@@ -152,27 +152,27 @@ childRebuildRepo(bulk_t *bulk)
 	/*
 	 * Repackage the .txz files created by pkg repo if necessary
 	 */
-	if (strcmp(USE_PKG_SUFX, ".txz") != 0) {
+	if (strcmp(UsePkgSufx, ".txz") != 0) {
 		const char *comp;
 		const char *decomp;
 
-		if (strcmp(USE_PKG_SUFX, ".tar") == 0) {
+		if (strcmp(UsePkgSufx, ".tar") == 0) {
 			decomp = "unxz";
 			comp = "cat";
-		} else if (strcmp(USE_PKG_SUFX, ".tgz") == 0) {
+		} else if (strcmp(UsePkgSufx, ".tgz") == 0) {
 			decomp = "unxz";
 			comp = "gzip";
-		} else if (strcmp(USE_PKG_SUFX, ".tbz") == 0) {
+		} else if (strcmp(UsePkgSufx, ".tbz") == 0) {
 			decomp = "unxz";
 			comp = "bzip";
 		} else {
-			dfatal("repackaging as %s not supported", USE_PKG_SUFX);
+			dfatal("repackaging as %s not supported", UsePkgSufx);
 			decomp = "unxz";
 			comp = "cat";
 		}
-		repackage(PackagesPath, "digests", USE_PKG_SUFX,
+		repackage(PackagesPath, "digests", UsePkgSufx,
 			  comp, decomp);
-		repackage(PackagesPath, "packagesite", USE_PKG_SUFX,
+		repackage(PackagesPath, "packagesite", UsePkgSufx,
 			  comp, decomp);
 	}
 }
