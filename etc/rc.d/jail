@@ -233,13 +233,17 @@ jail_mount_fstab()
 
 jail_start()
 {
-	echo -n 'Configuring jails:'
-	set_sysctl jail_set_hostname_allow jail.defaults.set_hostname_allowed \
-	    set_hostname_allow
-	set_sysctl jail_socket_unixiproute_only \
+	echo -n 'Default global settings for jails:'
+	set_sysctl jail_default_set_hostname_allow \
+	    jail.defaults.set_hostname_allowed set_hostname_allow
+	set_sysctl jail_default_socket_unixiproute_only \
 	    jail.defaults.socket_unixiproute_only unixiproute_only
-	set_sysctl jail_sysvipc_allow jail.defaults.sysvipc_allowed \
+	set_sysctl jail_default_sysvipc_allow jail.defaults.sysvipc_allowed \
 	    sysvipc_allow
+	set_sysctl jail_default_chflags_allow jail.defaults.chflags_allowed \
+	    chflags_allow
+	set_sysctl jail_default_raw_sockets_allow \
+	    jail.defaults.allow_raw_sockets  raw_sockets_allow
 	echo '.'
 
 	echo -n 'Starting jails:'

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd June 17, 2019
+.Dd September 28, 2019
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -2460,23 +2460,33 @@ Set to
 .Dq Li /bin/sh /etc/rc.shutdown
 by default.
 This is the command executed at jail shutdown.
-.It Va jail_set_hostname_allow
+.It Va jail_default_set_hostname_allow
 .Pq Vt bool
 If set to
 .Dq Li NO ,
 do not allow the root user in a jail to set its hostname.
-.It Va jail_socket_unixiproute_only
+.It Va jail_default_socket_unixiproute_only
 .Pq Vt bool
 If set to
 .Dq Li YES ,
 do not allow any sockets,
 besides UNIX/IP/route sockets,
 to be used within a jail.
-.It Va jail_sysvipc_allow
+.It Va jail_default_sysvipc_allow
 .Pq Vt bool
 If set to
 .Dq Li YES ,
 allow applications within a jail to use System V IPC.
+.It Va jail_default_chflags_allow
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+allow applications within a jail to alter system file flags.
+.It Va jail_default_raw_sockets_allow
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+allow applications within a jail to user raw sockets.
 .It Va lvm_enable
 .Pq Vt bool
 If set to
