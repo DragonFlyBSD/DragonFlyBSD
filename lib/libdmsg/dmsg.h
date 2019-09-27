@@ -369,8 +369,8 @@ typedef struct dmsg_master_service_info dmsg_master_service_info_t;
 /*
  * icrc
  */
-uint32_t dmsg_icrc32(const void *buf, size_t size);
-uint32_t dmsg_icrc32c(const void *buf, size_t size, uint32_t crc);
+#define dmsg_icrc32(buf, size)		iscsi_crc32((buf), (size))
+#define dmsg_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
 
 /*
  * debug

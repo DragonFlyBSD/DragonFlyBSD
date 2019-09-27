@@ -67,3 +67,10 @@
 #include <machine/atomic.h>
 
 #include "dmsg.h"
+
+/*
+ * Define prototypes here to prevent conflict with hammer2.h.
+ * The real problem is that there is no userspace header for these two.
+ */
+uint32_t iscsi_crc32(const void *buf, size_t size);
+uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
