@@ -200,7 +200,8 @@ _dlog(int which, const char *ctl, ...)
 	 * If ncurses is not being used, all log output also goes
 	 * to stdout, unless filtered.
 	 */
-	if (UseNCurses == 0 && (filter & DLOG_FILTER) == 0) {
+	if ((UseNCurses == 0 || (filter & DLOG_STDOUT)) &&
+	    (filter & DLOG_FILTER) == 0) {
 		if (ColorOpt) {
 			if (filter & DLOG_GRN)
 				write(1, "\x1b[0;32m", 7);

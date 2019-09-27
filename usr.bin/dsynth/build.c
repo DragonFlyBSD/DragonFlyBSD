@@ -320,15 +320,22 @@ DoBuild(pkg_t *pkgs)
 	m = t / 60 % 60;
 	s = t % 60;
 
-	printf("\n");
-	printf("Initial queue size: %d\n", BuildTotal);
-	printf("    packages built: %d\n", BuildSuccessCount);
-	printf("           ignored: %d\n", BuildIgnoreCount);
-	printf("           skipped: %d\n", BuildSkipCount);
-	printf("            failed: %d\n", BuildFailCount);
-	printf("\n");
-	printf("Duration: %02d:%02d:%02d\n", h, m, s);
-	printf("\n");
+	dlog(DLOG_ALL|DLOG_STDOUT,
+		"\n"
+		"Initial queue size: %d\n"
+		"    packages built: %d\n"
+		"           ignored: %d\n"
+		"           skipped: %d\n"
+		"            failed: %d\n"
+		"\n"
+		"Duration: %02d:%02d:%02d\n"
+		"\n",
+		BuildTotal,
+		BuildSuccessCount,
+		BuildIgnoreCount,
+		BuildSkipCount,
+		BuildFailCount,
+		h, m, s);
 }
 
 /*

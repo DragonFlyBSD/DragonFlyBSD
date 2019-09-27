@@ -199,6 +199,7 @@ MonitorDirective(const char *datfile, const char *lkfile)
 	monitor_file_t *rs;
 	monitor_file_t copy;
 	int i;
+	int running;
 
 	bzero(&copy, sizeof(copy));
 
@@ -230,23 +231,30 @@ MonitorDirective(const char *datfile, const char *lkfile)
 		exit(1);
 	}
 
+	/*
+	 * Display setup
+	 */
 	NCursesRunStats.init();
 	NCursesRunStats.reset();
 
-	for (;;) {
+	/*
+	 * Run until done.  When we detect completion we still give the
+	 * body one more chance at the logs so the final log lines are
+	 * properly displayed before exiting.
+	 */
+	running = 1;
+	while (running) {
 		/*
 		 * Expect flock() to fail, if it doesn't then dsynth i
 		 * not running.
 		 */
 		if (LockFd >= 0 && flock(LockFd, LOCK_SH|LOCK_NB) == 0) {
 			flock(LockFd, LOCK_UN);
-			break;
+			running = 0;
 		}
-		if (rs->version[0] == 0) {
-			break;
-		}
-		NCursesRunStats.updateTop(&rs->info);
-		for (i = 0; i < rs->maxworkers; ++i) {
+		if (rs->version[0])
+			NCursesRunStats.updateTop(&rs->info);
+		for (i = 0; rs->version[0] && i < rs->maxworkers; ++i) {
 			/*
 			if (bcmp(&copy.slots[i].work,
 				 &rs->slots[i].work,

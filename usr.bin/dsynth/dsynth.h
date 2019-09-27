@@ -372,6 +372,7 @@ typedef enum os_id os_id_t;
 #define DLOG_FILTER	0x100	/* Filter out of stdout in non-curses mode  */
 #define DLOG_RED	0x200	/* Print in color */
 #define DLOG_GRN	0x400	/* Print in color */
+#define DLOG_STDOUT	0x800	/* And stdout */
 
 #define dassert(exp, fmt, ...)		\
 	if (!(exp)) dpanic(fmt, ## __VA_ARGS__)
