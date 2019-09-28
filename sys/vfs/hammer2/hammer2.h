@@ -593,8 +593,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  */
 #define HAMMER2_XOPFIFO		16
 #define HAMMER2_XOPFIFO_MASK	(HAMMER2_XOPFIFO - 1)
-#define HAMMER2_XOPGROUPS	32
-#define HAMMER2_XOPGROUPS_MASK	(HAMMER2_XOPGROUPS - 1)
+#define HAMMER2_XOPGROUPS_MIN	32
 
 #define HAMMER2_MAXCLUSTER	8
 #define HAMMER2_XOPMASK_CLUSTER	(uint64_t)((1LLU << HAMMER2_MAXCLUSTER) - 1)
@@ -1283,7 +1282,7 @@ struct hammer2_pfs {
 	uint32_t		cluster_flags;	/* cached cluster flags */
 	int			has_xop_threads;
 	struct spinlock		xop_spin;	/* xop sequencer */
-	hammer2_xop_group_t	xop_groups[HAMMER2_XOPGROUPS];
+	hammer2_xop_group_t	*xop_groups;
 };
 
 typedef struct hammer2_pfs hammer2_pfs_t;
@@ -1457,6 +1456,7 @@ extern struct lock hammer2_mntlk;
 
 
 extern int hammer2_debug;
+extern int hammer2_xopgroups;
 extern long hammer2_debug_inode;
 extern int hammer2_cluster_meta_read;
 extern int hammer2_cluster_data_read;

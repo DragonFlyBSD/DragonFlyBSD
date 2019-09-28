@@ -81,6 +81,7 @@ struct lock hammer2_mntlk;
 
 int hammer2_supported_version = HAMMER2_VOL_VERSION_DEFAULT;
 int hammer2_debug;
+int hammer2_xopgroups;
 long hammer2_debug_inode;
 int hammer2_cluster_meta_read = 1;	/* physical read-ahead */
 int hammer2_cluster_data_read = 4;	/* physical read-ahead */
@@ -275,6 +276,15 @@ hammer2_vfs_init(struct vfsconf *conf)
 	kmalloc_raise_limit(M_HAMMER2, 0);	/* unlimited */
 
 	/*
+	 * hammer2_xopgroups must be even and is most optimal if
+	 * 2 x ncpus so strategy functions can be queued to the same
+	 * cpu.
+	 */
+	hammer2_xopgroups = HAMMER2_XOPGROUPS_MIN;
+	if (hammer2_xopgroups < ncpus * 2)
+		hammer2_xopgroups = ncpus * 2;
+
+	/*
 	 * A large DIO cache is needed to retain dedup enablement masks.
 	 * The bulkfree code clears related masks as part of the disk block
 	 * recycling algorithm, preventing it from being used for a later
@@ -428,12 +438,6 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 		TAILQ_INIT(&pmp->depq);
 		TAILQ_INIT(&pmp->lru_list);
 		spin_init(&pmp->list_spin, "h2pfsalloc_list");
-
-		/*
-		 * Distribute backend operations to threads
-		 */
-		for (i = 0; i < HAMMER2_XOPGROUPS; ++i)
-			hammer2_xop_group_init(pmp, &pmp->xop_groups[i]);
 
 		/*
 		 * Save the last media transaction id for the flusher.  Set
@@ -665,7 +669,7 @@ hammer2_pfsdealloc(hammer2_pfs_t *pmp, int clindex, int destroying)
 		/*
 		 * Terminate all XOP threads for the cluster index.
 		 */
-		for (j = 0; j < HAMMER2_XOPGROUPS; ++j)
+		for (j = 0; j < hammer2_xopgroups; ++j)
 			hammer2_thr_delete(&pmp->xop_groups[j].thrs[clindex]);
 	}
 }
@@ -716,7 +720,7 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 	if (iroot) {
 		for (i = 0; i < iroot->cluster.nchains; ++i) {
 			hammer2_thr_delete(&pmp->sync_thrs[i]);
-			for (j = 0; j < HAMMER2_XOPGROUPS; ++j)
+			for (j = 0; j < hammer2_xopgroups; ++j)
 				hammer2_thr_delete(&pmp->xop_groups[j].thrs[i]);
 			chain = iroot->cluster.array[i].chain;
 			if (chain && !RB_EMPTY(&chain->core.rbtree)) {
@@ -799,7 +803,7 @@ again:
 			if (pmp->pfs_hmps[i] == NULL)
 				continue;
 			hammer2_thr_freeze_async(&pmp->sync_thrs[i]);
-			for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+			for (j = 0; j < hammer2_xopgroups; ++j) {
 				hammer2_thr_freeze_async(
 					&pmp->xop_groups[j].thrs[i]);
 			}
@@ -808,7 +812,7 @@ again:
 			if (pmp->pfs_hmps[i] == NULL)
 				continue;
 			hammer2_thr_freeze(&pmp->sync_thrs[i]);
-			for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+			for (j = 0; j < hammer2_xopgroups; ++j) {
 				hammer2_thr_freeze(
 					&pmp->xop_groups[j].thrs[i]);
 			}
@@ -833,7 +837,7 @@ again:
 			if (pmp->pfs_hmps[i] != hmp)
 				continue;
 			hammer2_thr_delete(&pmp->sync_thrs[i]);
-			for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+			for (j = 0; j < hammer2_xopgroups; ++j) {
 				hammer2_thr_delete(
 					&pmp->xop_groups[j].thrs[i]);
 			}
@@ -896,7 +900,7 @@ again:
 				continue;
 			hammer2_thr_remaster(&pmp->sync_thrs[i]);
 			hammer2_thr_unfreeze(&pmp->sync_thrs[i]);
-			for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+			for (j = 0; j < hammer2_xopgroups; ++j) {
 				hammer2_thr_remaster(
 					&pmp->xop_groups[j].thrs[i]);
 				hammer2_thr_unfreeze(

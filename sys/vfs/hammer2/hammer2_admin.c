@@ -314,12 +314,6 @@ hammer2_thr_break(hammer2_thread_t *thr)
  *			    HAMMER2 XOPS API	 			    *
  ****************************************************************************/
 
-void
-hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp)
-{
-	/* no extra fields in structure at the moment */
-}
-
 /*
  * Allocate a XOP request.
  *
@@ -427,8 +421,11 @@ hammer2_xop_helper_create(hammer2_pfs_t *pmp)
 	lockmgr(&pmp->lock, LK_EXCLUSIVE);
 	pmp->has_xop_threads = 1;
 
+	pmp->xop_groups = kmalloc(hammer2_xopgroups *
+				  sizeof(hammer2_xop_group_t),
+				  M_HAMMER2, M_WAITOK | M_ZERO);
 	for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
-		for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+		for (j = 0; j < hammer2_xopgroups; ++j) {
 			if (pmp->xop_groups[j].thrs[i].td)
 				continue;
 			hammer2_thr_create(&pmp->xop_groups[j].thrs[i],
@@ -446,13 +443,20 @@ hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp)
 	int i;
 	int j;
 
+	if (pmp->xop_groups == NULL) {
+		KKASSERT(pmp->has_xop_threads == 0);
+		return;
+	}
+
 	for (i = 0; i < pmp->pfs_nmasters; ++i) {
-		for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+		for (j = 0; j < hammer2_xopgroups; ++j) {
 			if (pmp->xop_groups[j].thrs[i].td)
 				hammer2_thr_delete(&pmp->xop_groups[j].thrs[i]);
 		}
 	}
 	pmp->has_xop_threads = 0;
+	kfree(pmp->xop_groups, M_HAMMER2);
+	pmp->xop_groups = NULL;
 }
 
 /*
@@ -505,10 +509,13 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_desc_t *desc,
 	 */
 	if (xop->flags & HAMMER2_XOP_STRATEGY) {
 		hammer2_xop_strategy_t *xopst;
+
+		xopst = &((hammer2_xop_t *)xop)->xop_strategy;
+		ng = mycpu->gd_cpuid % (hammer2_xopgroups >> 1);
+#if 0
 		hammer2_off_t off;
 		int cdr;
 
-		xopst = &((hammer2_xop_t *)xop)->xop_strategy;
 		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)));
 		if (desc == &hammer2_strategy_read_desc) {
 			off = xopst->lbase / HAMMER2_PBUFSIZE;
@@ -527,11 +534,12 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_desc_t *desc,
 #endif
 			ng &= ~1;
 		}
-		ng = ng & (HAMMER2_XOPGROUPS_MASK >> 1);
-		ng += HAMMER2_XOPGROUPS / 2;
+		ng = ng % (hammer2_xopgroups >> 1);
+		ng += (hammer2_xopgroups >> 1);
+#endif
 	} else {
 		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)));
-		ng = ng & (HAMMER2_XOPGROUPS_MASK >> 1);
+		ng = (unsigned int)ng % (hammer2_xopgroups >> 1);
 	}
 	xop->desc = desc;
 
