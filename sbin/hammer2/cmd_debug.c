@@ -844,7 +844,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 				       cv64);
 				failed = 1;
 			} else {
-				printf("(meth %02x, xxh=%016jx) ",
+				printf("meth=%02x, xxh=%016jx ",
 				       bref->methods, cv64);
 			}
 			break;
@@ -858,7 +858,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 				printf("(sha192 failed) ");
 				failed = 1;
 			} else {
-				printf("(meth %02x) ", bref->methods);
+				printf("meth=%02x ", bref->methods);
 			}
 			break;
 		case HAMMER2_CHECK_FREEMAP:
@@ -870,7 +870,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 					cv);
 				failed = 1;
 			} else {
-				printf("(meth %02x, fcrc=%08x) ",
+				printf("meth=%02x, fcrc=%08x ",
 					bref->methods, cv);
 			}
 			break;
