@@ -79,7 +79,7 @@ TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	buildworld crossworld quickworld realquickworld checkdpadd clean \
 	cleandepend cleandir depend everything \
 	hierarchy install installcheck installkernel \
-	reinstallkernel installworld installworld-force initrd \
+	reinstallkernel installworld installworld-force os-release initrd \
 	libraries lint maninstall \
 	manlint mk obj objlink regress rerelease tags \
 	backupworld restoreworld restoreworld-auto \

@@ -9,6 +9,13 @@
 # Build-time options are documented in make.conf(5).
 #
 
+DFLYVERSION!=   awk '/^\#define[[:blank:]]__DragonFly_version/ {print $$3}' \
+		< ${.CURDIR}/sys/sys/param.h
+
+OSREL!=		echo ${DFLYVERSION} | \
+		awk '{a=int($$1/100000); b=int(($$1-(a*100000))/100); \
+		print a "." b}'
+
 # Put initial settings here.
 SUBDIR=
 
@@ -520,12 +527,27 @@ installworld: installcheck
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc \
 	    ${DESTDIR}/etc/upgrade/
+	cd ${.CURDIR}; ${IMAKE} -DWORLDINSTALL os-release
 	cd ${.CURDIR}; ${IMAKE} -DWORLDINSTALL initrd
-
 	sync
 	@echo "--------------------------------------------------------------"
 	@echo ">>> installworld target complete"
 	@echo "--------------------------------------------------------------"
+
+os-release:
+	@echo "NAME=DragonFly" >> ${DESTDIR}/etc/os-release
+	@echo "VERSION=${OSREL}-SYNTH" >> ${DESTDIR}/etc/os-release
+	@echo "VERSION_ID=${OSREL}" >> ${DESTDIR}/etc/os-release
+	@echo "ID=dragonfly" >> ${DESTDIR}/etc/os-release
+	@echo "ANSI_COLOR=\"0;32\"" >> ${DESTDIR}/etc/os-release
+	@echo "PRETTY_NAME=\"DragonFlyBSD ${OSREL}-SYNTH\"" >> ${DESTDIR}/etc/os-release
+	@echo "CPE_NAME=\"cpe:/o:dragonflybsd:dragonfly:${OSREL}\"" >> ${DESTDIR}/etc/os-release
+	@echo "SUPPORT_URL=\"http://chat.efnet.org:9090/?nick=dflynick&channels=%23dragonflybsd&Login=Login\"" >> ${DESTDIR}/etc/os-release
+	@echo "HOME_URL=\"https://www.dragonflybsd.org/\"" >> ${DESTDIR}/etc/os-release
+	@echo "BUG_REPORT_URL=\"https://bugs.dragonflybsd.org/\"" >> ${DESTDIR}/etc/os-release
+	@echo "MACHINE_ARCH=${MACHINE_ARCH}" >> ${DESTDIR}/etc/os-release
+	@echo "MACHINE=${MACHINE}" >> ${DESTDIR}/etc/os-release
+	@echo "DFLYVERSION=${DFLYVERSION}" >> ${DESTDIR}/etc/os-release
 
 installworld-force:
 	@echo "Doing a forced installworld.  This will install to a temporary directory,"
