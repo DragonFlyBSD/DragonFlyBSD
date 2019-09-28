@@ -395,6 +395,16 @@ main(int ac, char **av)
 			ecode = cmd_rsadec((const char **)(void *)&av[1],
 					   ac - 1);
 		}
+	} else if (strcmp(av[0], "volhdr") == 0) {
+		/*
+		 * Dump the volume header.
+		 */
+		if (ac != 2) {
+			fprintf(stderr, "volhdr: requires device path\n");
+			usage(1);
+		} else {
+			cmd_show(av[1], 2);
+		}
 	} else if (strcmp(av[0], "show") == 0) {
 		/*
 		 * Raw dump of filesystem.  Use -v to check all crc's, and
@@ -564,6 +574,8 @@ usage(int code)
 			"Raw hammer2 media dump for topology\n"
 		"    freemap <devpath>                 "
 			"Raw hammer2 media dump for freemap\n"
+		"    volhdr <devpath>                 "
+			"Raw hammer2 media dump for the volume header(s)\n"
 		"    setcomp <comp[:level]> <path>...  "
 			"Set comp algo {none, autozero, lz4, zlib} & level\n"
 		"    setcheck <check> <path>...        "
