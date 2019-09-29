@@ -908,7 +908,7 @@ struct hammer2_dedup {
 	hammer2_off_t	data_off;
 	uint64_t	data_crc;
 	uint32_t	ticks;
-	uint32_t	unused03;
+	uint32_t	saved_error;
 };
 
 typedef struct hammer2_dedup hammer2_dedup_t;
@@ -1289,7 +1289,11 @@ typedef struct hammer2_pfs hammer2_pfs_t;
 
 TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
 
+/*
+ * pmp->flags
+ */
 #define HAMMER2_PMPF_SPMP	0x00000001
+#define HAMMER2_PMPF_EMERG	0x00000002	/* Emergency delete mode */
 
 /*
  * NOTE: The LRU list contains at least all the chains with refs == 0

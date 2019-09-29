@@ -370,8 +370,16 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 
 	if (ip->pmp->ronly)
 		return (EROFS);
-	if (hammer2_vfs_enospace(ip, 0, ap->a_cred) > 1)
+
+	/*
+	 * Normally disallow setattr if there is no space, unless we
+	 * are in emergency mode (might be needed to chflags -R noschg
+	 * files prior to removal).
+	 */
+	if ((ip->pmp->flags & HAMMER2_PMPF_EMERG) == 0 &&
+	    hammer2_vfs_enospace(ip, 0, ap->a_cred) > 1) {
 		return (ENOSPC);
+	}
 
 	/*hammer2_pfs_memory_wait(ip->pmp);*/
 	hammer2_trans_init(ip->pmp, 0);
@@ -781,7 +789,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 	ioflag = ap->a_ioflag;
 	uio = ap->a_uio;
 	error = 0;
-	if (ip->pmp->ronly)
+	if (ip->pmp->ronly || (ip->pmp->flags & HAMMER2_PMPF_EMERG))
 		return (EROFS);
 	switch (hammer2_vfs_enospace(ip, uio->uio_resid, ap->a_cred)) {
 	case 2:
@@ -1369,7 +1377,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	int error;
 
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly)
+	if (dip->pmp->ronly || (dip->pmp->flags & HAMMER2_PMPF_EMERG))
 		return (EROFS);
 	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
 		return (ENOSPC);
@@ -1492,7 +1500,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 		return(EXDEV);
 
 	tdip = VTOI(ap->a_dvp);
-	if (tdip->pmp->ronly)
+	if (tdip->pmp->ronly || (tdip->pmp->flags & HAMMER2_PMPF_EMERG))
 		return (EROFS);
 	if (hammer2_vfs_enospace(tdip, 0, ap->a_cred) > 1)
 		return (ENOSPC);
@@ -1582,7 +1590,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	int error;
 
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly)
+	if (dip->pmp->ronly || (dip->pmp->flags & HAMMER2_PMPF_EMERG))
 		return (EROFS);
 	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
 		return (ENOSPC);
@@ -1665,7 +1673,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	int error;
 
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly)
+	if (dip->pmp->ronly || (dip->pmp->flags & HAMMER2_PMPF_EMERG))
 		return (EROFS);
 	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
 		return (ENOSPC);
@@ -1743,7 +1751,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	int error;
 
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly)
+	if (dip->pmp->ronly || (dip->pmp->flags & HAMMER2_PMPF_EMERG))
 		return (EROFS);
 	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
 		return (ENOSPC);
@@ -2059,7 +2067,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	fdip = VTOI(ap->a_fdvp);	/* source directory */
 	tdip = VTOI(ap->a_tdvp);	/* target directory */
 
-	if (fdip->pmp->ronly)
+	if (fdip->pmp->ronly || (fdip->pmp->flags & HAMMER2_PMPF_EMERG))
 		return (EROFS);
 	if (hammer2_vfs_enospace(fdip, 0, ap->a_cred) > 1)
 		return (ENOSPC);
@@ -2419,7 +2427,7 @@ hammer2_vop_markatime(struct vop_markatime_args *ap)
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 
-	if (ip->pmp->ronly)
+	if (ip->pmp->ronly || (ip->pmp->flags & HAMMER2_PMPF_EMERG))
 		return (EROFS);
 	return(0);
 }

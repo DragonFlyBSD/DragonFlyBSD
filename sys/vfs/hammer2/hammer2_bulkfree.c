@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2013-2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -90,7 +90,7 @@ typedef struct hammer2_bulkfree_info {
 } hammer2_bulkfree_info_t;
 
 static int h2_bulkfree_test(hammer2_bulkfree_info_t *info,
-			hammer2_blockref_t *bref, int pri);
+			hammer2_blockref_t *bref, int pri, int saved_error);
 
 /*
  * General bulk scan function with callback.  Called with a referenced
@@ -105,17 +105,43 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 {
 	hammer2_blockref_t bref;
 	hammer2_chain_t *chain;
+	hammer2_chain_save_t *tail;
+	hammer2_chain_save_t *save;
 	int first = 1;
 	int rup_error;
 	int error;
+	int e2;
 
 	++info->pri;
 
-	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
-				   HAMMER2_RESOLVE_SHARED);
 	chain = NULL;
 	rup_error = 0;
 	error = 0;
+
+	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
+				   HAMMER2_RESOLVE_SHARED);
+	tail = TAILQ_LAST(&info->list, hammer2_chain_save_list);
+
+	/*
+	 * The parent was previously retrieved NODATA and thus has not
+	 * tested the CRC.  Now that we have locked it normally, check
+	 * for a CRC problem and skip it if we found one.  The bulk scan
+	 * cannot safely traverse invalid block tables (we could end up
+	 * in an endless loop or cause a panic).
+	 */
+	if (parent->error & HAMMER2_ERROR_CHECK) {
+		error = parent->error;
+		goto done;
+	}
+
+	/*
+	 * Report which PFS is being scanned
+	 */
+	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE &&
+	    (parent->bref.flags & HAMMER2_BREF_FLAG_PFSROOT)) {
+		kprintf("hammer2_bulkfree: Scanning %s\n",
+			parent->data->ipdata.filename);
+	}
 
 	/*
 	 * Generally loop on the contents if we have not been flagged
@@ -134,7 +160,7 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 		 * Handle EOF or other error at current level.  This stops
 		 * the bulkfree scan.
 		 */
-		if (error)
+		if (error & ~HAMMER2_ERROR_CHECK)
 			break;
 
 		/*
@@ -154,16 +180,23 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 		 * Process bref, chain is only non-NULL if the bref
 		 * might be recursable (its possible that we sometimes get
 		 * a non-NULL chain where the bref cannot be recursed).
+		 *
+		 * If we already ran down this tree we do not have to do it
+		 * again, but we must still recover any cumulative error
+		 * recorded from the time we did.
 		 */
 		++info->pri;
-		if (h2_bulkfree_test(info, &bref, 1))
+		e2 = h2_bulkfree_test(info, &bref, 1, 0);
+		if (e2) {
+			error |= e2 & ~HAMMER2_ERROR_EOF;
 			continue;
+		}
 
 		if (bref.type == HAMMER2_BREF_TYPE_INODE)
 			++info->count_inodes_scanned;
 
 		error |= func(info, &bref);
-		if (error)
+		if (error & ~HAMMER2_ERROR_CHECK)
 			break;
 
 		/*
@@ -194,7 +227,6 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 			}
 		}
 
-
 		/*
 		 * Else check type and setup depth-first scan.
 		 *
@@ -207,8 +239,13 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 		case HAMMER2_BREF_TYPE_VOLUME:
 		case HAMMER2_BREF_TYPE_FREEMAP:
 			++info->depth;
-			if (info->depth > 16) {
-				hammer2_chain_save_t *save;
+			if (chain->error & HAMMER2_ERROR_CHECK) {
+				/*
+				 * Cannot safely recurse chains with crc
+				 * errors, even in emergency mode.
+				 */
+				/* NOP */
+			} else if (info->depth > 16) {
 				save = kmalloc(sizeof(*save), M_HAMMER2,
 					       M_WAITOK | M_ZERO);
 				save->chain = chain;
@@ -223,8 +260,8 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 				hammer2_chain_unlock(chain);
 				hammer2_chain_unlock(parent);
 				info->pri = 0;
-				rup_error |=
-					hammer2_bulk_scan(chain, func, info);
+				rup_error |= hammer2_bulk_scan(chain,
+							       func, info);
 				info->pri += savepri;
 				hammer2_chain_lock(parent,
 						   HAMMER2_RESOLVE_ALWAYS |
@@ -250,13 +287,53 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 	}
 
 	/*
+	 * If this is a PFSROOT, also re-run any defered elements
+	 * added during our scan so we can report any cumulative errors
+	 * for the PFS.
+	 */
+	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE &&
+	    (parent->bref.flags & HAMMER2_BREF_FLAG_PFSROOT)) {
+		for (;;) {
+			int opri;
+
+			save = tail ? TAILQ_NEXT(tail, entry) :
+				      TAILQ_FIRST(&info->list);
+			if (save == NULL)
+				break;
+
+			TAILQ_REMOVE(&info->list, save, entry);
+			opri = info->pri;
+			info->pri = 0;
+			rup_error |= hammer2_bulk_scan(save->chain, func, info);
+			hammer2_chain_drop(save->chain);
+			kfree(save, M_HAMMER2);
+			info->pri = opri;
+		}
+	}
+
+	error |= rup_error;
+
+	/*
+	 * Report which PFS the errors were encountered in.
+	 */
+	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE &&
+	    (parent->bref.flags & HAMMER2_BREF_FLAG_PFSROOT) &&
+	    (error & ~HAMMER2_ERROR_EOF)) {
+		kprintf("hammer2_bulkfree: Encountered errors (%08x) "
+			"while scanning \"%s\"\n",
+			error, parent->data->ipdata.filename);
+	}
+
+	/*
 	 * Save with higher pri now that we know what it is.
 	 */
-	h2_bulkfree_test(info, &parent->bref, info->pri + 1);
+	h2_bulkfree_test(info, &parent->bref, info->pri + 1,
+			 (error & ~HAMMER2_ERROR_EOF));
 
+done:
 	hammer2_chain_unlock(parent);
 
-	return ((error | rup_error) & ~HAMMER2_ERROR_EOF);
+	return (error & ~HAMMER2_ERROR_EOF);
 }
 
 /*
@@ -507,11 +584,11 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		cbinfo.mtid = 0;
 #endif
 		cbinfo.pri = 0;
-		error |= hammer2_bulk_scan(vchain, h2_bulkfree_callback,
-					   &cbinfo);
+		error |= hammer2_bulk_scan(vchain,
+					   h2_bulkfree_callback, &cbinfo);
 
 		while ((save = TAILQ_FIRST(&cbinfo.list)) != NULL &&
-		       error == 0) {
+		       (error & ~HAMMER2_ERROR_CHECK) == 0) {
 			TAILQ_REMOVE(&cbinfo.list, save, entry);
 			cbinfo.pri = 0;
 			error |= hammer2_bulk_scan(save->chain,
@@ -532,13 +609,22 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		 * in-memory freemap against live storage.  If an abort
 		 * occured we cannot safely synchronize our partially
 		 * filled-out in-memory freemap.
+		 *
+		 * We still synchronize on CHECK failures.  That is, we still
+		 * want bulkfree to operate even if the filesystem has defects.
 		 */
-		if (error) {
+		if (error & ~HAMMER2_ERROR_CHECK) {
 			kprintf("bulkfree lastdrop %d %d error=0x%04x\n",
 				vchain->refs, vchain->core.chain_count, error);
 		} else {
-			kprintf("bulkfree lastdrop %d %d\n",
-				vchain->refs, vchain->core.chain_count);
+			if (error & HAMMER2_ERROR_CHECK) {
+				kprintf("bulkfree lastdrop %d %d "
+					"(with check errors)\n",
+					vchain->refs, vchain->core.chain_count);
+			} else {
+				kprintf("bulkfree lastdrop %d %d\n",
+					vchain->refs, vchain->core.chain_count);
+			}
 
 			error = h2_bulkfree_sync(&cbinfo);
 
@@ -554,7 +640,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 #ifdef HAMMER2_BULKFREE_TRANS
 		hammer2_trans_done(hmp->spmp, 0);
 #endif
-		if (error)
+		if (error & ~HAMMER2_ERROR_CHECK)
 			break;
 		cbinfo.sbase = cbinfo.sstop;
 		cbinfo.adj_free = 0;
@@ -573,9 +659,13 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		(int)incr / 100,
 		(int)incr % 100);
 
-	if (error) {
+	if (error & ~HAMMER2_ERROR_CHECK) {
 		kprintf("    bulkfree was aborted\n");
 	} else {
+		if (error & HAMMER2_ERROR_CHECK) {
+			kprintf("    WARNING: bulkfree "
+				"encountered CRC errors\n");
+		}
 		kprintf("    transition->free   %ld\n", cbinfo.count_10_00);
 		kprintf("    transition->staged %ld\n", cbinfo.count_11_10);
 		kprintf("    ERR(00)->allocated %ld\n", cbinfo.count_00_11);
@@ -1168,7 +1258,7 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 static
 int
 h2_bulkfree_test(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref,
-		 int pri)
+		 int pri, int saved_error)
 {
 	hammer2_dedup_t *dedup;
 	int best;
@@ -1184,13 +1274,14 @@ h2_bulkfree_test(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref,
 				dedup[i].ticks = pri;
 			if (pri == 1)
 				cbinfo->count_dedup_factor += dedup[i].ticks;
-			return 1;
+			return (dedup[i].saved_error | HAMMER2_ERROR_EOF);
 		}
 		if (dedup[i].ticks < dedup[best].ticks)
 			best = i;
 	}
 	dedup[best].data_off = bref->data_off;
 	dedup[best].ticks = pri;
+	dedup[best].saved_error = saved_error;
 
 	return 0;
 }

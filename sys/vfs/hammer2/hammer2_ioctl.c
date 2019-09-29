@@ -58,6 +58,7 @@ static int hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_debug_dump(hammer2_inode_t *ip, u_int flags);
+static int hammer2_ioctl_emerg_mode(hammer2_inode_t *ip, u_int mode);
 //static int hammer2_ioctl_inode_comp_set(hammer2_inode_t *ip, void *data);
 //static int hammer2_ioctl_inode_comp_rec_set(hammer2_inode_t *ip, void *data);
 //static int hammer2_ioctl_inode_comp_rec_set2(hammer2_inode_t *ip, void *data);
@@ -141,21 +142,16 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_BULKFREE_ASYNC:
 		error = hammer2_ioctl_bulkfree_scan(ip, NULL);
 		break;
-	/*case HAMMER2IOC_INODE_COMP_SET:
-		error = hammer2_ioctl_inode_comp_set(ip, data);
-		break;
-	case HAMMER2IOC_INODE_COMP_REC_SET:
-	 	error = hammer2_ioctl_inode_comp_rec_set(ip, data);
-	 	break;
-	case HAMMER2IOC_INODE_COMP_REC_SET2:
-		error = hammer2_ioctl_inode_comp_rec_set2(ip, data);
-		break;*/
 	case HAMMER2IOC_DESTROY:
 		if (error == 0)
 			error = hammer2_ioctl_destroy(ip, data);
 		break;
 	case HAMMER2IOC_DEBUG_DUMP:
 		error = hammer2_ioctl_debug_dump(ip, *(u_int *)data);
+		break;
+	case HAMMER2IOC_EMERG_MODE:
+		if (error == 0)
+			error = hammer2_ioctl_emerg_mode(ip, *(u_int *)data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -848,6 +844,10 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	 * which theoretically allows the snapshot to be used as part of
 	 * the same cluster (perhaps as a cache).
 	 *
+	 * Note that pfs_lsnap_tid must be set in the snapshot as well,
+	 * ensuring that any nocrc/nocomp file data modifications force
+	 * a copy-on-write.
+	 *
 	 * Copy the (flushed) blockref array.  Theoretically we could use
 	 * chain_duplicate() but it becomes difficult to disentangle
 	 * the shared core so for now just brute-force it.
@@ -874,6 +874,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		nip->meta.pfs_type = HAMMER2_PFSTYPE_MASTER;
 		nip->meta.pfs_subtype = HAMMER2_PFSSUBTYPE_SNAPSHOT;
 		nip->meta.op_flags |= HAMMER2_OPFLAG_PFSROOT;
+		nip->meta.pfs_lsnap_tid = mtid;
 		nchain->bref.embed.stats = chain->bref.embed.stats;
 
 		kern_uuidgen(&nip->meta.pfs_fsid, 1);
@@ -1039,6 +1040,37 @@ hammer2_ioctl_debug_dump(hammer2_inode_t *ip, u_int flags)
 		if (chain == NULL)
 			continue;
 		hammer2_dump_chain(chain, 0, &count, 'i', flags);
+	}
+	return 0;
+}
+
+/*
+ * Turn on or off emergency mode on a filesystem.
+ */
+static
+int
+hammer2_ioctl_emerg_mode(hammer2_inode_t *ip, u_int mode)
+{
+	hammer2_pfs_t *pmp;
+	hammer2_dev_t *hmp;
+	int i;
+
+	pmp = ip->pmp;
+	if (mode) {
+		kprintf("hammer2: WARNING: Emergency mode enabled\n");
+		atomic_set_int(&pmp->flags, HAMMER2_PMPF_EMERG);
+	} else {
+		kprintf("hammer2: WARNING: Emergency mode disabled\n");
+		atomic_clear_int(&pmp->flags, HAMMER2_PMPF_EMERG);
+	}
+	for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+		hmp = pmp->pfs_hmps[i];
+		if (hmp == NULL)
+			continue;
+		if (mode)
+			atomic_set_int(&hmp->hflags, HMNT2_EMERG);
+		else
+			atomic_clear_int(&hmp->hflags, HMNT2_EMERG);
 	}
 	return 0;
 }

@@ -216,6 +216,12 @@ main(int ac, char **av)
 		}
 		ecode = cmd_destroy_inum(sel_path, ac - 1,
 					 (const char **)(void *)&av[1]);
+	} else if (strcmp(av[0], "emergency-mode-enable") == 0) {
+		ecode = cmd_emergency_mode(sel_path, 1, ac - 1,
+					 (const char **)(void *)&av[1]);
+	} else if (strcmp(av[0], "emergency-mode-disable") == 0) {
+		ecode = cmd_emergency_mode(sel_path, 0, ac - 1,
+					 (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "hash") == 0) {
 		ecode = cmd_hash(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "dhash") == 0) {
@@ -534,6 +540,12 @@ usage(int code)
 			"Destroy inodes (only use if inode bad)\n"
 		"    disconnect <target>               "
 			"Del cluster link\n"
+		"    emergency-mode-enable <target>    "
+			"Enable emergency operations mode on filesystem\n"
+		"                                      "
+			"THIS IS A VERY DANGEROUS MODE\n"
+		"    emergency-mode-disable <target>    "
+			"Disable emergency operations mode on filesystem\n"
 		"    info [<devpath>...]               "
 			"Info on all offline or online H2 partitions\n"
 		"    mountall [<devpath>...]           "

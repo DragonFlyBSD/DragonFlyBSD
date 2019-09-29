@@ -83,7 +83,14 @@ static hammer2_chain_t *hammer2_combined_find(
 		hammer2_key_t key_beg, hammer2_key_t key_end,
 		hammer2_blockref_t **bresp);
 
+/*
+ * There are many degenerate situations where an extreme rate of console
+ * output can occur from warnings and errors.  Make sure this output does
+ * not impede operations.
+ */
+static struct krate krate_h2chk = { .freq = 5 };
 static struct krate krate_h2me = { .freq = 1 };
+static struct krate krate_h2em = { .freq = 1 };
 
 /*
  * Basic RBTree for chains (core.rbtree).
@@ -1745,6 +1752,22 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 			 * Sector overwrite allowed.
 			 */
 			newmod = 0;
+		} else if ((hmp->hflags & HMNT2_EMERG) &&
+			   chain->pmp &&
+			   chain->bref.modify_tid >
+			    chain->pmp->iroot->meta.pfs_lsnap_tid) {
+			/*
+			 * If in emergency delete mode then do a modify-in-
+			 * place on any chain type belonging to the PFS as
+			 * long as it doesn't mess up a snapshot.  We might
+			 * be forced to do this anyway a little further down
+			 * in the code if the allocation fails.
+			 *
+			 * Also note that in emergency mode, these modify-in-
+			 * place operations are NOT SAFE.  A storage failure,
+			 * power failure, or panic can corrupt the filesystem.
+			 */
+			newmod = 0;
 		} else {
 			/*
 			 * Sector overwrite not allowed, must copy-on-write.
@@ -1814,7 +1837,7 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	if (chain != &hmp->vchain && chain != &hmp->fchain &&
 	    chain->bytes) {
 		if ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
-		     newmod
+		    newmod
 		) {
 			/*
 			 * NOTE: We do not have to remove the dedup
@@ -1842,6 +1865,37 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 							      chain->bytes);
 				atomic_clear_int(&chain->flags,
 						HAMMER2_CHAIN_DEDUPABLE);
+
+				/*
+				 * If we are unable to allocate a new block
+				 * but we are in emergency mode, issue a
+				 * warning to the console and reuse the same
+				 * block.
+				 *
+				 * We behave as if the allocation were
+				 * successful.
+				 *
+				 * THIS IS IMPORTANT: These modifications
+				 * are virtually guaranteed to corrupt any
+				 * snapshots related to this filesystem.
+				 */
+				if (error && (hmp->hflags & HMNT2_EMERG)) {
+					error = 0;
+					chain->bref.flags |=
+						HAMMER2_BREF_FLAG_EMERG_MIP;
+
+					krateprintf(&krate_h2em,
+					    "hammer2: Emergency Mode WARNING: "
+					    "Operation will likely corrupt "
+					    "related snapshot: "
+					    "%016jx.%02x key=%016jx\n",
+					    chain->bref.data_off,
+					    chain->bref.type,
+					    chain->bref.key);
+				} else if (error == 0) {
+					chain->bref.flags &=
+						~HAMMER2_BREF_FLAG_EMERG_MIP;
+				}
 			}
 		}
 	}
@@ -5805,14 +5859,19 @@ hammer2_characterize_failed_chain(hammer2_chain_t *chain, uint64_t check,
 {
 	hammer2_chain_t *lchain;
 	hammer2_chain_t *ochain;
+	int did;
 
-	kprintf("chain %016jx.%02x (%s) meth=%02x CHECK FAIL "
+	did = krateprintf(&krate_h2chk,
+		"chain %016jx.%02x (%s) meth=%02x CHECK FAIL "
 		"(flags=%08x, bref/data ",
 		chain->bref.data_off,
 		chain->bref.type,
 		hammer2_bref_type_str(&chain->bref),
 		chain->bref.methods,
 		chain->flags);
+	if (did == 0)
+		return;
+
 	if (bits == 32) {
 		kprintf("%08x/%08x)\n",
 			chain->bref.check.iscsi32.value,
@@ -5864,6 +5923,9 @@ hammer2_characterize_failed_chain(hammer2_chain_t *chain, uint64_t check,
 	}
 }
 
+/*
+ * Returns non-zero on success, 0 on failure.
+ */
 int
 hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 {
@@ -5915,7 +5977,8 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 				r = 1;
 			} else {
 				r = 0;
-				kprintf("chain %016jx.%02x meth=%02x "
+				krateprintf(&krate_h2chk,
+					"chain %016jx.%02x meth=%02x "
 					"CHECK FAIL\n",
 					chain->bref.data_off,
 					chain->bref.type,
@@ -5927,22 +5990,30 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 		r = (chain->bref.check.freemap.icrc32 ==
 		     hammer2_icrc32(bdata, chain->bytes));
 		if (r == 0) {
-			kprintf("chain %016jx.%02x meth=%02x "
-				"CHECK FAIL\n",
-				chain->bref.data_off,
-				chain->bref.type,
-				chain->bref.methods);
-			kprintf("freemap.icrc %08x icrc32 %08x (%d)\n",
-				chain->bref.check.freemap.icrc32,
-				hammer2_icrc32(bdata, chain->bytes),
-					       chain->bytes);
-			if (chain->dio)
-				kprintf("dio %p buf %016jx,%d bdata %p/%p\n",
-					chain->dio, chain->dio->bp->b_loffset,
-					chain->dio->bp->b_bufsize, bdata,
-					chain->dio->bp->b_data);
-		}
+			int did;
 
+			did = krateprintf(&krate_h2chk,
+					  "chain %016jx.%02x meth=%02x "
+					  "CHECK FAIL\n",
+					  chain->bref.data_off,
+					  chain->bref.type,
+					  chain->bref.methods);
+			if (did) {
+				kprintf("freemap.icrc %08x icrc32 %08x (%d)\n",
+					chain->bref.check.freemap.icrc32,
+					hammer2_icrc32(bdata, chain->bytes),
+					chain->bytes);
+				if (chain->dio) {
+					kprintf("dio %p buf %016jx,%d "
+						"bdata %p/%p\n",
+						chain->dio,
+						chain->dio->bp->b_loffset,
+						chain->dio->bp->b_bufsize,
+						bdata,
+						chain->dio->bp->b_data);
+				}
+			}
+		}
 		break;
 	default:
 		kprintf("hammer2_chain_setcheck: unknown check type %02x\n",

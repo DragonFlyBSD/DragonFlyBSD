@@ -1,4 +1,4 @@
-.\" Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+.\" Copyright (c) 2015-2019 The DragonFly Project.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthew Dillon <dillon@backplane.com>
@@ -118,6 +118,75 @@ Destroy the specified inode in a hammer2 filesystem.
 .It Cm disconnect Ar target
 Delete a cluster link entry from the volume header.
 This feature is not currently used.
+.\" ==== emergency-mode-enable ===
+.It Cm emergency-mode-enable Ar target
+Flag emergency operations mode in the filesystem.  This mode may be used
+as a last resort to delete files and directories from a full filesystem.
+Inode creation, file writes, and certain meta-data cleanups are disallowed
+while emergency mode is active.
+File and directory removal and mode/attr setting is still allowed.
+This mode is extremely dangerous and should only be used as a last resort.
+.Pp
+This mode allows the filesystem to modify blocks in-place when it is unable
+to allocate a copy.  Thus it is possible to chflags and remove files and
+directories even when the filesystem is completely full.  However, there
+is a price.  This mode of operation WILL LIKELY CORRUPT ANY SNAPSHOTS related
+to this filesystem.  The filesystem will report this condition if it encounters
+it but if you are forced to use this mode to fix a filesystem full condition
+your snapshots can get a bit dicey.  It is usually safest to delete any
+related snapshots when using this mode.
+.Pp
+You can detect whether related snapshots have been corrupted by running
+a bulkfree pass and checking the console output for reported CRC errors.
+If no errors are reported, your snapshots are fine.  If errors are reported
+you should delete related snapshots until bulkfree reports no further errors.
+.Pp
+The emergency mode will also make meta-data updates unsafe due to the lack of
+copy-on-write, causing potential harm if the system unexpectedly panics or
+loses power.  GREAT CARE MUST BE TAKEN WHILE THIS MODE IS ACTIVE.
+.Pp
+.Bl -tag -width indent
+.It (1)
+Determine that you are unable to recover space with normal file and directory
+removal commands due to ENOSPC errors being returned by 'rm', or through the
+removal of snapshots (if any).  The 'bulkfree' directive must be issued to
+scan the filesystem and free up the actual space, then check with 'df'.
+Continue if you still have insufficient space and are unable to remove items
+normally.
+.It (2)
+If you need any related snapshots, this is a good time to copy them elsewhere.
+.It (3)
+Idle or kill any processes trying to use the filesystem.
+.It (4)
+Issue the emergency-mode-enable directive on the filesystem.
+Once enabled, run 'sync' to update any dirty inodes which may still
+be dirty due to not being able to flush.  Please remember that this
+directive is a LAST RESORT, is dangerous, and will likely corrupt any
+other snapshots you have based on the filesystem you are removing files
+from.
+.It (5)
+Remove file trees as necessary with 'rm -rf' to free space, being cognizant
+of any warnings issued by the kernel on the console (via 'dmesg') while
+doing so.
+.It (6)
+Issue the 'bulkfree' directive to actually free the space and check that
+sufficient space has been freed with 'df'.
+.It (7)
+If bulkfree reports CHECK errors, or if you have snapshots and insufficient
+space has been freed, you will need to delete snapshots.  Re-run bulkfree
+and delete snapshots until no errors are reported.
+.It (8)
+Issue the emergency-mode-disable directive when done.  It might also be a
+good idea to reboot after using this mode, but theoretically you should not
+have to.
+.It (9)
+Restore services using the filesystem.
+.El
+.Pp
+.\" ==== emergency-mode-disable ===
+.It Cm emergency-mode-disable Ar target
+Turn off the emergency operations mode on a filesystem, restoring normal
+operation.
 .\" ==== info ====
 .It Cm info Op devpath...
 Access and print the status and super-root entries for all HAMMER2

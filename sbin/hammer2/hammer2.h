@@ -150,6 +150,8 @@ int cmd_debugspan(const char *hostname);
 int cmd_destroy_path(int ac, const char **av);
 int cmd_destroy_inum(const char *sel_path, int ac, const char **av);
 int cmd_dumpchain(const char *path, u_int flags);
+int cmd_emergency_mode(const char *sel_path, int enable,
+			int ac, const char **av);
 int cmd_show(const char *devpath, int which);
 int cmd_rsainit(const char *dir_path);
 int cmd_rsaenc(const char **keys, int nkeys);
