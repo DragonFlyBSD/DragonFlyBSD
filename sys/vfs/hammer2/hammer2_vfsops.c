@@ -669,8 +669,12 @@ hammer2_pfsdealloc(hammer2_pfs_t *pmp, int clindex, int destroying)
 		/*
 		 * Terminate all XOP threads for the cluster index.
 		 */
-		for (j = 0; j < hammer2_xopgroups; ++j)
-			hammer2_thr_delete(&pmp->xop_groups[j].thrs[clindex]);
+		if (pmp->xop_groups) {
+			for (j = 0; j < hammer2_xopgroups; ++j) {
+				hammer2_thr_delete(
+					&pmp->xop_groups[j].thrs[clindex]);
+			}
+		}
 	}
 }
 
@@ -720,8 +724,11 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 	if (iroot) {
 		for (i = 0; i < iroot->cluster.nchains; ++i) {
 			hammer2_thr_delete(&pmp->sync_thrs[i]);
-			for (j = 0; j < hammer2_xopgroups; ++j)
-				hammer2_thr_delete(&pmp->xop_groups[j].thrs[i]);
+			if (pmp->xop_groups) {
+				for (j = 0; j < hammer2_xopgroups; ++j)
+					hammer2_thr_delete(
+						&pmp->xop_groups[j].thrs[i]);
+			}
 			chain = iroot->cluster.array[i].chain;
 			if (chain && !RB_EMPTY(&chain->core.rbtree)) {
 				kprintf("hammer2: Warning pmp %p still "
@@ -803,18 +810,22 @@ again:
 			if (pmp->pfs_hmps[i] == NULL)
 				continue;
 			hammer2_thr_freeze_async(&pmp->sync_thrs[i]);
-			for (j = 0; j < hammer2_xopgroups; ++j) {
-				hammer2_thr_freeze_async(
-					&pmp->xop_groups[j].thrs[i]);
+			if (pmp->xop_groups) {
+				for (j = 0; j < hammer2_xopgroups; ++j) {
+					hammer2_thr_freeze_async(
+						&pmp->xop_groups[j].thrs[i]);
+				}
 			}
 		}
 		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
 			if (pmp->pfs_hmps[i] == NULL)
 				continue;
 			hammer2_thr_freeze(&pmp->sync_thrs[i]);
-			for (j = 0; j < hammer2_xopgroups; ++j) {
-				hammer2_thr_freeze(
-					&pmp->xop_groups[j].thrs[i]);
+			if (pmp->xop_groups) {
+				for (j = 0; j < hammer2_xopgroups; ++j) {
+					hammer2_thr_freeze(
+						&pmp->xop_groups[j].thrs[i]);
+				}
 			}
 		}
 
@@ -837,9 +848,11 @@ again:
 			if (pmp->pfs_hmps[i] != hmp)
 				continue;
 			hammer2_thr_delete(&pmp->sync_thrs[i]);
-			for (j = 0; j < hammer2_xopgroups; ++j) {
-				hammer2_thr_delete(
-					&pmp->xop_groups[j].thrs[i]);
+			if (pmp->xop_groups) {
+				for (j = 0; j < hammer2_xopgroups; ++j) {
+					hammer2_thr_delete(
+						&pmp->xop_groups[j].thrs[i]);
+				}
 			}
 			rchain = iroot->cluster.array[i].chain;
 			iroot->cluster.array[i].chain = NULL;
@@ -900,11 +913,13 @@ again:
 				continue;
 			hammer2_thr_remaster(&pmp->sync_thrs[i]);
 			hammer2_thr_unfreeze(&pmp->sync_thrs[i]);
-			for (j = 0; j < hammer2_xopgroups; ++j) {
-				hammer2_thr_remaster(
-					&pmp->xop_groups[j].thrs[i]);
-				hammer2_thr_unfreeze(
-					&pmp->xop_groups[j].thrs[i]);
+			if (pmp->xop_groups) {
+				for (j = 0; j < hammer2_xopgroups; ++j) {
+					hammer2_thr_remaster(
+						&pmp->xop_groups[j].thrs[i]);
+					hammer2_thr_unfreeze(
+						&pmp->xop_groups[j].thrs[i]);
+				}
 			}
 		}
 	}
