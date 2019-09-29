@@ -347,11 +347,14 @@ kvprintf(const char *fmt, __va_list ap)
  *
  * count may be initialized to a negative number to allow an initial
  * burst.
+ *
+ * Returns 0 if it did not issue the printf, non-zero if it did.
  */
-void
+int
 krateprintf(struct krate *rate, const char *fmt, ...)
 {
 	__va_list ap;
+	int res;
 
 	if (rate->ticks != (int)time_uptime) {
 		rate->ticks = (int)time_uptime;
@@ -363,7 +366,11 @@ krateprintf(struct krate *rate, const char *fmt, ...)
 		__va_start(ap, fmt);
 		kvprintf(fmt, ap);
 		__va_end(ap);
+		res = 1;
+	} else {
+		res = 0;
 	}
+	return res;
 }
 
 /*
