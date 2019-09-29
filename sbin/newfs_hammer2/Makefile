@@ -4,7 +4,6 @@ MAN=	newfs_hammer2.8
 
 CFLAGS+= -I${.CURDIR}/../../sys -I${.CURDIR}/../hammer2
 CFLAGS+= -DXXH_NAMESPACE=h2_
-CFLAGS+= ${PRIVATELIB_CFLAGS} # XXX <openssl/*.h> via <dmsg.h>
 
 .PATH: ${.CURDIR}/../../sys/libkern ${.CURDIR}/../../sys/vfs/hammer2/xxhash
 SRCS+= icrc32.c xxhash.c

@@ -54,7 +54,7 @@
 #include <err.h>
 #include <uuid.h>
 
-#include <hammer2.h>
+#include "hammer2_subs.h"
 
 #define MAXLABELS	HAMMER2_SET_COUNT
 
@@ -70,7 +70,7 @@ static void alloc_direct(hammer2_off_t *basep, hammer2_blockref_t *bref,
 				size_t bytes);
 
 static int Hammer2Version = -1;
-int ForceOpt = 0;
+static int ForceOpt = 0;
 static uuid_t Hammer2_FSType;	/* static filesystem type id for HAMMER2 */
 static uuid_t Hammer2_VolFSID;	/* unique filesystem id in volu header */
 static uuid_t Hammer2_SupCLID;	/* PFS cluster id in super-root inode */

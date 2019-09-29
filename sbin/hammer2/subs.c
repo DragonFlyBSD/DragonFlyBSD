@@ -33,7 +33,21 @@
  * SUCH DAMAGE.
  */
 
-#include "hammer2.h"
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <uuid.h>
+
+#include <vfs/hammer2/hammer2_disk.h>
+#include <vfs/hammer2/hammer2_ioctl.h>
+
+#include "hammer2_subs.h"
 
 /*
  * Obtain a file descriptor that the caller can execute ioctl()'s on.

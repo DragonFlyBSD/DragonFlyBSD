@@ -53,6 +53,7 @@
 #include <vfs/hammer2/hammer2_disk.h>
 #include <vfs/hammer2/hammer2_xxhash.h>
 
+#include "hammer2_subs.h"
 #include "fsck_hammer2.h"
 
 struct blockref_msg {

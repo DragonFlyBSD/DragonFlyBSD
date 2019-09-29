@@ -86,6 +86,8 @@
 
 #include <libutil.h>
 
+#include "hammer2_subs.h"
+
 #define HAMMER2_DEFAULT_DIR	"/etc/hammer2"
 #define HAMMER2_PATH_REMOTE	HAMMER2_DEFAULT_DIR "/remote"
 #ifndef UDEV_DEVICE_PATH
@@ -122,7 +124,6 @@ extern size_t MemOpt;
 /*
  * Hammer2 command APIs
  */
-int hammer2_ioctl_handle(const char *sel_path);
 void hammer2_demon(void *(*func)(void *), void *arg);
 
 int cmd_remote_connect(const char *sel_path, const char *url);
@@ -160,22 +161,6 @@ int cmd_cleanup(const char *dir_path);
 #if 0
 int cmd_bulkfree_async(const char *dir_path);
 #endif
-
-/*
- * Misc functions
- */
-const char *hammer2_time64_to_str(uint64_t htime64, char **strp);
-const char *hammer2_uuid_to_str(uuid_t *uuid, char **strp);
-const char *hammer2_iptype_to_str(uint8_t type);
-const char *hammer2_pfstype_to_str(uint8_t type);
-const char *sizetostr(hammer2_off_t size);
-const char *counttostr(hammer2_off_t size);
-hammer2_key_t dirhash(const unsigned char *name, size_t len);
-
-#define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
-#define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
-uint32_t iscsi_crc32(const void *buf, size_t size);
-uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 
 void hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged);
 void print_inode(const char *path);

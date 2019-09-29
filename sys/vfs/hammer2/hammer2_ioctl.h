@@ -36,6 +36,9 @@
 #ifndef _VFS_HAMMER2_IOCTL_H_
 #define _VFS_HAMMER2_IOCTL_H_
 
+#include <sys/param.h>
+#include <sys/syslimits.h>
+
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
 #endif

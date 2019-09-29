@@ -1,7 +1,5 @@
 /*
- * Copyright (c) 2019 Tomohiro Kusumi <tkusumi@netbsd.org>
- * Copyright (c) 2019 The DragonFly Project
- * All rights reserved.
+ * Copyright (c) 2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -34,14 +32,29 @@
  * SUCH DAMAGE.
  */
 
-#ifndef FSCK_HAMMER2_H_
-#define FSCK_HAMMER2_H_
+#ifndef HAMMER2_HAMMER2_SUBS_H_
+#define HAMMER2_HAMMER2_SUBS_H_
 
-extern int DebugOpt;
-extern int ForceOpt;
-extern int VerboseOpt;
-extern int QuietOpt;
+#include <sys/types.h>
+#include <uuid.h>
 
-int test_hammer2(const char *);
+#include <vfs/hammer2/hammer2_disk.h>
 
-#endif /* !FSCK_HAMMER2_H_ */
+/*
+ * Misc functions
+ */
+int hammer2_ioctl_handle(const char *sel_path);
+const char *hammer2_time64_to_str(uint64_t htime64, char **strp);
+const char *hammer2_uuid_to_str(uuid_t *uuid, char **strp);
+const char *hammer2_iptype_to_str(uint8_t type);
+const char *hammer2_pfstype_to_str(uint8_t type);
+const char *sizetostr(hammer2_off_t size);
+const char *counttostr(hammer2_off_t size);
+hammer2_key_t dirhash(const unsigned char *name, size_t len);
+
+#define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
+#define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
+uint32_t iscsi_crc32(const void *buf, size_t size);
+uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
+
+#endif /* !HAMMER2_HAMMER2_SUBS_H_ */
