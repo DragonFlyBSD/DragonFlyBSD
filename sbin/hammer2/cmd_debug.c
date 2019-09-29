@@ -526,13 +526,13 @@ show_volhdr(hammer2_volume_data_t *voldata, int fd, int bi)
 	printf("    peer_type      %d\n", voldata->peer_type);
 
 	str = NULL;
-	uuid_to_string(&voldata->fsid, &str, &status);
+	hammer2_uuid_to_str(&voldata->fsid, &str);
 	printf("    fsid           %s\n", str);
 	free(str);
 
 	str = NULL;
 	name = NULL;
-	uuid_to_string(&voldata->fstype, &str, &status);
+	hammer2_uuid_to_str(&voldata->fstype, &str);
 	printf("    fstype         %s\n", str);
 	uuid_addr_lookup(&voldata->fstype, &name, &status);
 	if (name == NULL)
