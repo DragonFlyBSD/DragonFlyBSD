@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/printf.9,v 1.8 2006/09/08 14:05:03 ru Exp $
 .\"
-.Dd December 21, 2012
+.Dd September 29, 2019
 .Dt KPRINTF 9
 .Os
 .Sh NAME
@@ -56,7 +56,7 @@
 .Fn kvsprintf "char *str" "const char *format" "__va_list ap"
 .Ft int
 .Fn kvsnprintf "char *str" "size_t size" "const char *format" "__va_list ap"
-.Ft void
+.Ft int
 .Fn krateprintf "struct krate *rate" "const char *format" ...
 .Ft int
 .Fn uprintf "const char *format" ...
@@ -183,6 +183,13 @@ The
 and
 .Fn log
 functions return the number of characters displayed.
+.Pp
+The
+.Fn krateprintf
+function returns 1 or 0, depending on whether anything was printed or not,
+allowing code to issue additional
+.Fn kprintf Ns s
+if desired.
 .Sh EXAMPLES
 This example demonstrates the use of the
 .Cm \&%pb%i
