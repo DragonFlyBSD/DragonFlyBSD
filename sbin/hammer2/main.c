@@ -544,7 +544,7 @@ usage(int code)
 			"Enable emergency operations mode on filesystem\n"
 		"                                      "
 			"THIS IS A VERY DANGEROUS MODE\n"
-		"    emergency-mode-disable <target>    "
+		"    emergency-mode-disable <target>   "
 			"Disable emergency operations mode on filesystem\n"
 		"    info [<devpath>...]               "
 			"Info on all offline or online H2 partitions\n"
