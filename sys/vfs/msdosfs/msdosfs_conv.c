@@ -62,7 +62,7 @@
 #include "msdosfsmount.h"
 #include "direntry.h"
 
-extern struct iconv_functions *msdos_iconv;
+extern struct iconv_functions *msdosfs_iconv;
 
 static int mbsadjpos(const char **, size_t, size_t, int, int, void *);
 static uint16_t dos2unixchr(const u_char **, size_t *, int,
@@ -756,11 +756,11 @@ winSlotCnt(const u_char *un, size_t unlen, struct msdosfsmount *pmp)
 
 	unlen = winLenFixup(un, unlen);
 
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		wlen = WIN_MAXLEN * 2;
 		wnp = wn;
-		msdos_iconv->conv(pmp->pm_u2w, (const char **)&un, &unlen, &wnp,
-				  &wlen);
+		msdosfs_iconv->conv(pmp->pm_u2w, (const char **)&un, &unlen,
+				    &wnp, &wlen);
 		if (unlen > 0)
 			return 0;
 		return howmany(WIN_MAXLEN - wlen/2, WIN_CHARS);
@@ -784,7 +784,7 @@ winLenFixup(const u_char *un, size_t unlen)
 }
 
 /*
- * Store an area with multi byte string instr, and reterns left
+ * Store an area with multi byte string instr, and returns left
  * byte of instr and moves pointer forward. The area's size is
  * inlen or outlen.
  */
@@ -795,10 +795,10 @@ mbsadjpos(const char **instr, size_t inlen, size_t outlen, int weight, int flag,
 	char *outp, outstr[outlen * weight + 1];
 
 	memset(outstr, 0, outlen*weight+1);
-	if (flag & MSDOSFSMNT_KICONV && msdos_iconv) {
+	if (flag & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		outp = outstr;
 		outlen *= weight;
-		msdos_iconv->conv(handle, instr, &inlen, &outp, &outlen);
+		msdosfs_iconv->conv(handle, instr, &inlen, &outp, &outlen);
 		return (inlen);
 	}
 	(*instr) += min(inlen, outlen);
@@ -817,16 +817,17 @@ dos2unixchr(const u_char **instr, size_t *ilen, int lower,
 	uint16_t wc;
 	size_t len, olen;
 
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		olen = len = 2;
 		outp = outbuf;
 		if (lower & (LCASE_BASE | LCASE_EXT))
-			msdos_iconv->convchr_case(pmp->pm_d2u,
-						  (const char **)instr, ilen,
-						  &outp, &olen, KICONV_LOWER);
+			msdosfs_iconv->convchr_case(pmp->pm_d2u,
+						    (const char **)instr, ilen,
+						    &outp, &olen, KICONV_LOWER);
 		else
-			msdos_iconv->convchr(pmp->pm_d2u, (const char **)instr,
-					     ilen, &outp, &olen);
+			msdosfs_iconv->convchr(pmp->pm_d2u,
+					       (const char **)instr,
+					       ilen, &outp, &olen);
 		len -= olen;
 		/*
 		 * return '?' if failed to convert
@@ -860,15 +861,15 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
 	uint16_t wc;
 	size_t len, ucslen, unixlen, olen;
 
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		/*
 		 * to hide an invisible character, using a unicode filter
 		 */
 		ucslen = 2;
 		len = *ilen;
 		up = unicode;
-		msdos_iconv->convchr(pmp->pm_u2w, (const char **)instr,
-				     ilen, &up, &ucslen);
+		msdosfs_iconv->convchr(pmp->pm_u2w, (const char **)instr,
+				       ilen, &up, &ucslen);
 		unixlen = len - *ilen;
 
 		/*
@@ -897,9 +898,9 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
 		*ilen = len;
 		olen = len = 2;
 		outp = outbuf;
-		msdos_iconv->convchr_case(pmp->pm_u2d, (const char **)instr,
-					  ilen, &outp, &olen,
-					  KICONV_FROM_UPPER);
+		msdosfs_iconv->convchr_case(pmp->pm_u2d, (const char **)instr,
+					    ilen, &outp, &olen,
+					    KICONV_FROM_UPPER);
 		len -= olen;
 		/*
 		 * cannot be converted, but has unicode char, should return magic number
@@ -932,15 +933,15 @@ win2unixchr(uint16_t wc, struct msdosfsmount *pmp)
 
 	if (wc == 0)
 		return (0);
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		inbuf[0] = (u_char)(wc>>8);
 		inbuf[1] = (u_char)wc;
 		inbuf[2] = '\0';
 		ilen = olen = len = 2;
 		inp = inbuf;
 		outp = outbuf;
-		msdos_iconv->convchr(pmp->pm_w2u, (const char **)&inp, &ilen,
-				     (char **)&outp, &olen);
+		msdosfs_iconv->convchr(pmp->pm_w2u, (const char **)&inp, &ilen,
+				       (char **)&outp, &olen);
 		len -= olen;
 
 		/*
@@ -973,17 +974,18 @@ unix2winchr(const u_char **instr, size_t *ilen, int lower,
 
 	if (*ilen == 0)
 		return (0);
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		outp = outbuf;
 		olen = 2;
 		if (lower & (LCASE_BASE | LCASE_EXT))
-			msdos_iconv->convchr_case(pmp->pm_u2w,
-						  (const char **)instr,
-						  ilen, (char **)&outp, &olen,
-						  KICONV_FROM_LOWER);
+			msdosfs_iconv->convchr_case(pmp->pm_u2w,
+						    (const char **)instr,
+						    ilen, (char **)&outp, &olen,
+						    KICONV_FROM_LOWER);
 		else
-			msdos_iconv->convchr(pmp->pm_u2w, (const char **)instr,
-					     ilen, (char **)&outp, &olen);
+			msdosfs_iconv->convchr(pmp->pm_u2w,
+					       (const char **)instr,
+					       ilen, (char **)&outp, &olen);
 		/*
 		 * return '0' if end of filename
 		 */

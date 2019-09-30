@@ -75,7 +75,7 @@
 #include "fat.h"
 
 extern struct vop_ops msdosfs_vnode_vops;
-struct iconv_functions *msdos_iconv;
+struct iconv_functions *msdosfs_iconv;
 
 #define MSDOSFS_DFLTBSIZE       4096
 #define ENCODING_UNICODE        "UTF-16BE"
@@ -113,22 +113,22 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 	pmp->pm_dirmask = argp->dirmask & ALLPERMS;
 	pmp->pm_flags |= argp->flags & MSDOSFSMNT_MNTOPT;
 
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		memcpy(cs_local, argp->cs_local, sizeof(cs_local));
 		memcpy(cs_dos, argp->cs_dos, sizeof(cs_dos));
 		kprintf("local: %s dos: %s\n",argp->cs_local, argp->cs_dos);
-		error = msdos_iconv->open(cs_local, ENCODING_UNICODE,
-					  &pmp->pm_w2u);
+		error = msdosfs_iconv->open(cs_local, ENCODING_UNICODE,
+					    &pmp->pm_w2u);
 		if(error)
 			return error;
-		error = msdos_iconv->open(ENCODING_UNICODE, cs_local,
-					  &pmp->pm_u2w);
+		error = msdosfs_iconv->open(ENCODING_UNICODE, cs_local,
+					    &pmp->pm_u2w);
 		if(error)
 			return error;
-		error = msdos_iconv->open(cs_dos, cs_local, &pmp->pm_u2d);
+		error = msdosfs_iconv->open(cs_dos, cs_local, &pmp->pm_u2d);
 		if(error)
 			return error;
-		error = msdos_iconv->open(cs_local, cs_dos, &pmp->pm_d2u);
+		error = msdosfs_iconv->open(cs_local, cs_dos, &pmp->pm_d2u);
 		if(error)
 			return error;
 	}
@@ -655,15 +655,15 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 	pmp = VFSTOMSDOSFS(mp);
 	pmp->pm_devvp->v_rdev->si_mountpoint = NULL;
 
-	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
-		if(pmp->pm_w2u)
-			msdos_iconv->close(pmp->pm_w2u);
-		if(pmp->pm_u2w)
-			msdos_iconv->close(pmp->pm_u2w);
-		if(pmp->pm_d2u)
-			msdos_iconv->close(pmp->pm_d2u);
-		if(pmp->pm_u2d)
-			msdos_iconv->close(pmp->pm_u2d);
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdosfs_iconv) {
+		if (pmp->pm_w2u)
+			msdosfs_iconv->close(pmp->pm_w2u);
+		if (pmp->pm_u2w)
+			msdosfs_iconv->close(pmp->pm_u2w);
+		if (pmp->pm_d2u)
+			msdosfs_iconv->close(pmp->pm_d2u);
+		if (pmp->pm_u2d)
+			msdosfs_iconv->close(pmp->pm_u2d);
 	}
 
 #ifdef MSDOSFS_DEBUG

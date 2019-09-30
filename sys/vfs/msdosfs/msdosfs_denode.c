@@ -577,7 +577,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 	 */
 	dep->de_FileSize = length;
 	if (!isadir)
-		dep->de_flag |= DE_UPDATE|DE_MODIFIED;
+		dep->de_flag |= DE_UPDATE | DE_MODIFIED;
 	allerror = vtruncbuf(DETOV(dep), length, pmp->pm_bpcluster);
 #ifdef MSDOSFS_DEBUG
 	if (allerror)
@@ -654,7 +654,7 @@ deextend(struct denode *dep, u_long length)
 		}
 	}
 	dep->de_FileSize = length;
-	dep->de_flag |= DE_UPDATE|DE_MODIFIED;
+	dep->de_flag |= DE_UPDATE | DE_MODIFIED;
 	return (deupdat(dep, 1));
 }
 

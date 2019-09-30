@@ -1297,7 +1297,7 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 	putushort(denp[0].deMTime, ndirent.de_MTime);
 	pcl = pdep->de_StartCluster;
 	if (FAT32(pmp) && pcl == pmp->pm_rootdirblk)
-		pcl = 0;
+		pcl = MSDOSFSROOT;
 	putushort(denp[1].deStartCluster, pcl);
 	putushort(denp[1].deCDate, ndirent.de_CDate);
 	putushort(denp[1].deCTime, ndirent.de_CTime);
@@ -1440,7 +1440,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 
 	/*
 	 * msdosfs_readdir() won't operate properly on regular files since
-	 * it does i/o only with the the filesystem vnode, and hence can
+	 * it does i/o only with the filesystem vnode, and hence can
 	 * retrieve the wrong block from the buffer cache for a plain file.
 	 * So, fail attempts to readdir() on a plain file.
 	 */
