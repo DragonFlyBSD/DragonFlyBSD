@@ -747,12 +747,14 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_INODE:
+		assert(bytes);
 		if (!(media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
 			bscan = &media.ipdata.u.blockset.blockref[0];
 			bcount = HAMMER2_SET_COUNT;
 		}
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+		assert(bytes);
 		bscan = &media.npdata[0];
 		bcount = bytes / sizeof(hammer2_blockref_t);
 		break;
@@ -765,6 +767,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		bcount = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		assert(bytes);
 		bscan = &media.npdata[0];
 		bcount = bytes / sizeof(hammer2_blockref_t);
 		break;
