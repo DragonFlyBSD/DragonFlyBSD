@@ -63,10 +63,10 @@ Every HAMMER2 filesystem typically has a PFS called "LOCAL" for this purpose.
 Specify the type when creating, upgrading, or downgrading a PFS.
 Supported types are MASTER, SLAVE, SOFT_MASTER, SOFT_SLAVE, CACHE, and DUMMY.
 If not specified the pfs-create directive will default to MASTER if no
-uuid is specified, and SLAVE if a uuid is specified.
+UUID is specified, and SLAVE if a UUID is specified.
 .It Fl u Ar uuid
-Specify the cluster uuid when creating a PFS.  If not specified, a unique,
-random uuid will be generated.
+Specify the cluster UUID when creating a PFS.
+If not specified, a unique, random UUID will be generated.
 Note that every PFS also has a unique pfs_id which is always generated
 and cannot be overridden with an option.
 The { pfs_clid, pfs_fsid } tuple uniquely identifies a component of a cluster.
@@ -101,7 +101,8 @@ The volume header can support up to 255 link entries.
 This feature is not currently used.
 .\" ==== destroy ====
 .It Cm destroy Ar path...
-Destroy the specified directory entry in a hammer2 filesystem.  This bypasses
+Destroy the specified directory entry in a hammer2 filesystem.
+This bypasses
 all normal checks and will unconditionally destroy the directory entry.
 The underlying inode is not checked and, if it does exist, its nlinks count
 is not decremented.
@@ -109,8 +110,8 @@ This directive should only be used to destroy a corrupted directory entry
 which no longer has a working inode.
 .Pp
 Note that this command may desynchronize the system namecache for the
-specified entry.  If this happens, you may have to unmount and remount the
-filesystem.
+specified entry.
+If this happens, you may have to unmount and remount the filesystem.
 .\" ==== destroy-inum ====
 .It Cm destroy-inum Ar path...
 Destroy the specified inode in a hammer2 filesystem.
@@ -120,7 +121,8 @@ Delete a cluster link entry from the volume header.
 This feature is not currently used.
 .\" ==== emergency-mode-enable ===
 .It Cm emergency-mode-enable Ar target
-Flag emergency operations mode in the filesystem.  This mode may be used
+Flag emergency operations mode in the filesystem.
+This mode may be used
 as a last resort to delete files and directories from a full filesystem.
 Inode creation, file writes, and certain meta-data cleanups are disallowed
 while emergency mode is active.
@@ -128,61 +130,68 @@ File and directory removal and mode/attr setting is still allowed.
 This mode is extremely dangerous and should only be used as a last resort.
 .Pp
 This mode allows the filesystem to modify blocks in-place when it is unable
-to allocate a copy.  Thus it is possible to chflags and remove files and
-directories even when the filesystem is completely full.  However, there
-is a price.  This mode of operation WILL LIKELY CORRUPT ANY SNAPSHOTS related
-to this filesystem.  The filesystem will report this condition if it encounters
+to allocate a copy.
+Thus it is possible to chflags and remove files and
+directories even when the filesystem is completely full.
+However, there is a price.
+This mode of operation WILL LIKELY CORRUPT ANY SNAPSHOTS related
+to this filesystem.
+The filesystem will report this condition if it encounters
 it but if you are forced to use this mode to fix a filesystem full condition
-your snapshots can get a bit dicey.  It is usually safest to delete any
-related snapshots when using this mode.
+your snapshots can get a bit dicey.
+It is usually safest to delete any related snapshots when using this mode.
 .Pp
 You can detect whether related snapshots have been corrupted by running
 a bulkfree pass and checking the console output for reported CRC errors.
-If no errors are reported, your snapshots are fine.  If errors are reported
+If no errors are reported, your snapshots are fine.
+If errors are reported
 you should delete related snapshots until bulkfree reports no further errors.
 .Pp
 The emergency mode will also make meta-data updates unsafe due to the lack of
 copy-on-write, causing potential harm if the system unexpectedly panics or
-loses power.  GREAT CARE MUST BE TAKEN WHILE THIS MODE IS ACTIVE.
-.Pp
-.Bl -tag -width indent
-.It (1)
+loses power.
+GREAT CARE MUST BE TAKEN WHILE THIS MODE IS ACTIVE.
+.Bl -enum
+.It
 Determine that you are unable to recover space with normal file and directory
-removal commands due to ENOSPC errors being returned by 'rm', or through the
+removal commands due to
+.Er ENOSPC
+errors being returned by 'rm', or through the
 removal of snapshots (if any).  The 'bulkfree' directive must be issued to
 scan the filesystem and free up the actual space, then check with 'df'.
 Continue if you still have insufficient space and are unable to remove items
 normally.
-.It (2)
+.It
 If you need any related snapshots, this is a good time to copy them elsewhere.
-.It (3)
+.It
 Idle or kill any processes trying to use the filesystem.
-.It (4)
+.It
 Issue the emergency-mode-enable directive on the filesystem.
 Once enabled, run 'sync' to update any dirty inodes which may still
-be dirty due to not being able to flush.  Please remember that this
+be dirty due to not being able to flush.
+Please remember that this
 directive is a LAST RESORT, is dangerous, and will likely corrupt any
 other snapshots you have based on the filesystem you are removing files
 from.
-.It (5)
+.It
 Remove file trees as necessary with 'rm -rf' to free space, being cognizant
 of any warnings issued by the kernel on the console (via 'dmesg') while
 doing so.
-.It (6)
+.It
 Issue the 'bulkfree' directive to actually free the space and check that
 sufficient space has been freed with 'df'.
-.It (7)
+.It
 If bulkfree reports CHECK errors, or if you have snapshots and insufficient
-space has been freed, you will need to delete snapshots.  Re-run bulkfree
-and delete snapshots until no errors are reported.
-.It (8)
-Issue the emergency-mode-disable directive when done.  It might also be a
+space has been freed, you will need to delete snapshots.
+Re-run bulkfree and delete snapshots until no errors are reported.
+.It
+Issue the emergency-mode-disable directive when done.
+It might also be a
 good idea to reboot after using this mode, but theoretically you should not
 have to.
-.It (9)
+.It
 Restore services using the filesystem.
 .El
-.Pp
 .\" ==== emergency-mode-disable ===
 .It Cm emergency-mode-disable Ar target
 Turn off the emergency operations mode on a filesystem, restoring normal
@@ -225,8 +234,8 @@ Print the unique filesystem id for a PFS specified by name.
 .\" ==== pfs-create ====
 .It Cm pfs-create Ar label
 Create a local PFS on a mounted HAMMER2 filesystem.
-If no uuid is specified the pfs-type defaults to MASTER.
-If a uuid is specified via the
+If no UUID is specified the pfs-type defaults to MASTER.
+If a UUID is specified via the
 .Fl u
 option the pfs-type defaults to SLAVE.
 Other types can be specified with the
@@ -252,7 +261,8 @@ access the cluster via the full cluster protocol.
 There are two exceptions.
 If you mount a SOFT_SLAVE or a SOFT_MASTER then soft quorum semantics are
 employed... the soft slave or soft master's current state will always be used
-and the quorum protocol will not be used.  The soft PFS will still be
+and the quorum protocol will not be used.
+The soft PFS will still be
 synchronized to masters in the background when available.
 Also, you can use
 .Sq mount -o local
@@ -289,7 +299,8 @@ for use as a MASTER later on.
 .Pp
 SOFT_SLAVE - Create a PFS which maintains synchronization with and provides
 a read-only copy of the cluster.
-This is one of the special mount cases.  A SOFT_SLAVE will synchronize with
+This is one of the special mount cases.
+A SOFT_SLAVE will synchronize with
 the cluster when the cluster is available, but can still be accessed when
 the cluster is not available.
 .Pp
@@ -307,7 +318,8 @@ new PFS as a SLAVE and then upgrade it to a MASTER.
 .Pp
 SOFT_MASTER - Create a PFS which maintains synchronization with and provides
 a read-write copy of the cluster.
-This is one of the special mount cases.  A SOFT_MASTER will synchronize with
+This is one of the special mount cases.
+A SOFT_MASTER will synchronize with
 the cluster when the cluster is available, but can still be read AND written
 to even when the cluster is not available.
 Modifications made to a SOFT_MASTER will be automatically flushed to the
@@ -342,7 +354,8 @@ service daemon.
 This daemon is also automatically started when you run
 .Xr mount_hammer2 8 .
 The hammer2 service daemon handles incoming TCP connections and maintains
-outgoing TCP connections.  It will interconnect available services on the
+outgoing TCP connections.
+It will interconnect available services on the
 machine (e.g. hammer2 mounts and xdisks) to the network.
 .\" ==== stat ====
 .It Cm stat Op path...
@@ -366,15 +379,18 @@ use by the network cluster protocols.
 .\" ==== show ====
 .It Cm show Ar devpath
 Dump the radix tree for the HAMMER2 filesystem by scanning a
-block device directly.  No mount is required.
+block device directly.
+No mount is required.
 .\" ==== freemap ====
 .It Cm freemap Ar devpath
 Dump the freemap tree for the HAMMER2 filesystem by scanning a
-block device directly.  No mount is required.
+block device directly.
+No mount is required.
 .\" ==== volhdr ====
 .It Cm volhdr Ar devpath
 Dump the volume header for the HAMMER2 filesystem by scanning a
-block device directly.  No mount is required.
+block device directly.
+No mount is required.
 .\" ==== setcomp ====
 .It Cm setcomp Ar mode[:level] Ar path...
 Set the compression mode as specified for any newly created elements at or
@@ -397,16 +413,17 @@ only compresses to 40K will not yield any storage improvement.
 Generally speaking you do not want to set the compression mode to
 .Sq none ,
 as this will cause blocks of all-zeros to be written as all-zero blocks,
-instead of holes.  The
+instead of holes.
+The
 .Sq autozero
 compression mode detects blocks of all-zeros
-and writes them as holes.  However, HAMMER2 will rewrite data in-place if
-the compression mode is set to
+and writes them as holes.
+However, HAMMER2 will rewrite data in-place if the compression mode is set to
 .Sq none
 and the check code is set to
 .Sq  disabled .
-Formal snapshots will still snapshot such files.  However,
-de-duplication will no longer function on the data blocks.
+Formal snapshots will still snapshot such files.
+However, de-duplication will no longer function on the data blocks.
 .\" ==== setcheck ====
 .It Cm setcheck Ar check Ar path...
 Set the check code as specified for any newly created elements at or under
@@ -434,7 +451,8 @@ You can specify any PFS for the mount, the bulkfree pass is run on the
 entire partition.
 Note that it takes two passes to actually free space.
 By default this directive will use up to 1/16 physical memory to track
-the freemap.  The amount of memory used may be overridden with the
+the freemap.
+The amount of memory used may be overridden with the
 .Op Fl m Ar mem
 option.
 .\" ==== printinode ====
@@ -447,9 +465,11 @@ Dump in-memory chain topology.
 .Sh SYSCTLS
 .Bl -tag -width indent
 .It Va vfs.hammer2.dedup_enable (default on)
-Enables live de-duplication.  Any recently read data that is on-media
+Enables live de-duplication.
+Any recently read data that is on-media
 (already synchronized to media) is tested against pending writes for
-compatibility.  If a match is found, the write will reference the
+compatibility.
+If a match is found, the write will reference the
 existing on-media data instead of writing new data.
 .It Va vfs.hammer2.always_compress (default off)
 This disables the H2 compression heuristic and forces H2 to always
@@ -461,16 +481,18 @@ repeatability.
 Set the amount of read-ahead clustering to perform on data and meta-data
 blocks.
 .It Va vfs.hammer2.cluster_write (default 4)
-Set the amount of write-behind clustering to perform in buffers.  Each
-buffer represents 64KB.  The default is 4 and higher values typically do
-not improve performance.  A value of 0 disables clustered writes.
+Set the amount of write-behind clustering to perform in buffers.
+Each buffer represents 64KB.
+The default is 4 and higher values typically do not improve performance.
+A value of 0 disables clustered writes.
 This variable applies to the underlying media device, not to logical
 file writes, so it should not interfere with temporary file optimization.
 Generally speaking you want this enabled to generate smoothly pipelined
 writes to the media.
 .It Va vfs.hammer2.bulkfree_tps (default 5000)
-Set bulkfree's maximum scan rate.  This is primarily intended to limit
-I/O utilization on SSDs and cpu utilization when the meta-data is mostly
+Set bulkfree's maximum scan rate.
+This is primarily intended to limit
+I/O utilization on SSDs and CPU utilization when the meta-data is mostly
 cached in memory.
 .El
 .Sh SETTING UP /etc/hammer2
@@ -479,7 +501,8 @@ The
 directive will create the
 .Pa /etc/hammer2
 directory with appropriate permissions and also generate a public key
-pair in this directory for the machine.  These files will be
+pair in this directory for the machine.
+These files will be
 .Pa rsa.pub
 and
 .Pa rsa.prv
@@ -520,7 +543,8 @@ and
 .Pa /dev/serno/*
 devices on the remote machines making up the cluster.
 Remote block devices are just what they appear to be... direct access to a
-block device on a remote machine.  If the link goes down remote accesses
+block device on a remote machine.
+If the link goes down remote accesses
 will stall until it comes back up again, then automatically requeue any
 pending I/O and resume as if nothing happened.
 However, if the server hosting the physical disks crashes or is rebooted,
@@ -538,7 +562,7 @@ a HAMMER2 filesystem or use the
 .Sq pfs-create
 directive on one already mounted
 to create a new PFS, with no special options, you wind up with a PFS
-typed as a MASTER and a unique cluster uuid, but because there is only one
+typed as a MASTER and a unique cluster UUID, but because there is only one
 PFS for that cluster (for each PFS you create via pfs-create), it will
 act just like a normal filesystem would act and does not require any special
 protocols to operate.
@@ -547,7 +571,7 @@ If you use the
 .Sq pfs-create
 directive along with the
 .Fl u
-option to specify a cluster uuid that already exists in the cluster,
+option to specify a cluster UUID that already exists in the cluster,
 you are adding a PFS to an existing cluster and this can trigger a whole
 series of events in the background.
 When you specify the
@@ -585,7 +609,8 @@ available.
 A SOFT_SLAVE PFS type is a special type which must be specifically mounted
 by a machine.
 It is a RO mount which does not use the quorum protocol and is not
-cache coherent with the cluster.  It will receive synchronization from
+cache coherent with the cluster.
+It will receive synchronization from
 the cluster when network connectivity is available but will not stall if
 network connectivity is lost.
 .Sh FSYNC FLUSH MODES
@@ -594,13 +619,15 @@ TODO.
 TODO.
 .Sh PERFORMANCE TUNING
 Because HAMMER2 implements compression, decompression, and dedup natively,
-it always double-buffers file data.  This means that the file data is
+it always double-buffers file data.
+This means that the file data is
 cached via the device vnode (in compressed / dedupped-form) and the same
 data is also cached by the file vnode (in decompressed / non-dedupped form).
 .Pp
 While HAMMER2 will try to age the logical file buffers on its, some
 additional performance tuning may be necessary for optimal operation
-whether swapcache is used or not.  Our recommendation is to reduce the
+whether swapcache is used or not.
+Our recommendation is to reduce the
 number of vnodes (and thus also the logical buffer cache behind the
 vnodes) that the system caches via the
 .Va kern.maxvnodes
