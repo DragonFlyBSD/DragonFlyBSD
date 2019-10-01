@@ -41,6 +41,8 @@ extern int DebugOpt;
 extern int ForceOpt;
 extern int VerboseOpt;
 extern int QuietOpt;
+extern int ScanPFS;
+extern const char *PFSName;
 
 int test_hammer2(const char *);
 
