@@ -28,7 +28,6 @@
  *
  * @(#)autover.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/autover.c,v 1.4 1999/11/30 03:49:43 billf Exp $
- * $DragonFly: src/games/trek/autover.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 #include "trek.h"
@@ -41,7 +40,7 @@
 **	called from checkcond().
 **
 **	It sets you to a random warp (guaranteed to be over 6.0)
-**	and starts sending you off "somewhere" (whereever that is).
+**	and starts sending you off "somewhere" (wherever that is).
 **
 **	Please note that it is VERY important that you reset your
 **	warp speed after the automatic override is called.  The new

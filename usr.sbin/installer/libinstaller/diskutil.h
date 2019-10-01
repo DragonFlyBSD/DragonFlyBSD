@@ -69,7 +69,7 @@ struct disk {
 	struct disk *prev;
 	struct slice *slice_head;
 	struct slice *slice_tail;
-	char *desc;			/* from whereever we get the best */
+	char *desc;			/* from wherever we get the best */
 	int number;			/* Position in kern.disks */
 	char *device;			/* `ad0', `da1', and such */
 	char *serno;			/* serial number */
