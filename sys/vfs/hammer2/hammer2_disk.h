@@ -998,7 +998,7 @@ struct hammer2_inode_meta {
 	uint8_t		check_algo;	/* 0085 check code request & algo */
 	uint8_t		pfs_nmasters;	/* 0086 (if PFSROOT) if multi-master */
 	uint8_t		pfs_type;	/* 0087 (if PFSROOT) node type */
-	uint64_t	pfs_inum;	/* 0088 (if PFSROOT) inum allocator */
+	hammer2_tid_t	pfs_inum;	/* 0088 (if PFSROOT) inum allocator */
 	uuid_t		pfs_clid;	/* 0090 (if PFSROOT) cluster uuid */
 	uuid_t		pfs_fsid;	/* 00A0 (if PFSROOT) unique uuid */
 

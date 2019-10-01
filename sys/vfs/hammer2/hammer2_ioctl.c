@@ -860,7 +860,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		hammer2_dev_t *force_local;
 		hammer2_chain_t *nchain;
 		hammer2_inode_data_t *wipdata;
-		hammer2_key_t	starting_inum;
+		hammer2_tid_t starting_inum;
 
 		atomic_set_int(&nip->flags, HAMMER2_INODE_NOSIDEQ);
 		hammer2_inode_modify(nip);
