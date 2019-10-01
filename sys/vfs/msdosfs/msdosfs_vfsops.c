@@ -133,24 +133,10 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 			return error;
 	}
 
-	if (pmp->pm_flags & MSDOSFSMNT_NOWIN95) {
+	if (pmp->pm_flags & MSDOSFSMNT_NOWIN95)
 		pmp->pm_flags |= MSDOSFSMNT_SHORTNAME;
-	} else if (!(pmp->pm_flags &
-	    (MSDOSFSMNT_SHORTNAME | MSDOSFSMNT_LONGNAME))) {
-		/*
-		 * Try to divine whether to support Win'95 long filenames
-		 */
-		if (FAT32(pmp)) {
-			pmp->pm_flags |= MSDOSFSMNT_LONGNAME;
-		} else {
-			struct vnode *rootvp;
-			if ((error = msdosfs_root(mp, &rootvp)) != 0)
-				return error;
-			pmp->pm_flags |= findwin95(VTODE(rootvp))
-				? MSDOSFSMNT_LONGNAME : MSDOSFSMNT_SHORTNAME;
-			vput(rootvp);
-		}
-	}
+	else
+		pmp->pm_flags |= MSDOSFSMNT_LONGNAME;
 	return 0;
 }
 

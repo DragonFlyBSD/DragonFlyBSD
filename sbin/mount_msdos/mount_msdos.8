@@ -30,7 +30,7 @@
 .\"
 .\" $FreeBSD: src/sbin/mount_msdos/mount_msdos.8,v 1.19.2.1 2000/12/08 14:03:59 ru Exp $
 .\"
-.Dd September 10, 2019
+.Dd October 2, 2019
 .Dt MOUNT_MSDOS 8
 .Os
 .Sh NAME
@@ -136,15 +136,8 @@ If neither
 nor
 .Fl l
 are given,
-.Nm
-searches the root directory of the filesystem to
-be mounted for any existing Win'95 long filenames.
-If no such entries are found, but short DOS filenames are found,
-.Fl s
-is the default.
-Otherwise
 .Fl l
-is assumed.
+is the default.
 .It Fl 9
 Ignore the special Win'95 directory entries even
 if deleting or renaming a file.
