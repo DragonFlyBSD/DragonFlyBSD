@@ -120,10 +120,12 @@ struct fatcache {
  * cache is probably pretty worthless if a file is opened by multiple
  * processes.
  */
-#define	FC_SIZE		2	/* number of entries in the cache */
+#define	FC_SIZE		3	/* number of entries in the cache */
 #define	FC_LASTMAP	0	/* entry the last call to pcbmap() resolved
 				 * to */
 #define	FC_LASTFC	1	/* entry for the last cluster in the file */
+#define	FC_NEXTTOLASTFC	2	/* entry for a close to the last cluster in
+				 * the file */
 
 #define	FCE_EMPTY	0xffffffff	/* doesn't represent an actual cluster # */
 

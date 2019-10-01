@@ -952,6 +952,10 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 			return (error);
 	}
 
+	dep->de_fc[FC_NEXTTOLASTFC].fc_frcn =
+	    dep->de_fc[FC_LASTFC].fc_frcn;
+	dep->de_fc[FC_NEXTTOLASTFC].fc_fsrcn =
+	    dep->de_fc[FC_LASTFC].fc_fsrcn;
 	while (count > 0) {
 		/*
 		 * Allocate a new cluster chain and cat onto the end of the
