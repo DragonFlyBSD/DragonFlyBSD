@@ -545,7 +545,7 @@ unix2winfn(const u_char *un, size_t unlen, struct winentry *wep, int cnt,
 	/*
 	 * Initialize winentry to some useful default
 	 */
-	for (wcp = (uint8_t *)wep, i = sizeof(*wep); --i >= 0; *wcp++ = 0xff);
+	memset(wep, 0xff, sizeof(*wep));
 	wep->weCnt = cnt;
 	wep->weAttributes = ATTR_WIN95;
 	wep->weReserved1 = 0;
@@ -1033,6 +1033,7 @@ mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
 		    id, nbp->nb_last_id);
 		return;
 	}
+
 	/* Will store this substring in a WIN_CHARS-aligned slot. */
 	slot = &nbp->nb_buf[id * WIN_CHARS];
 	count = strlen(name);
@@ -1041,9 +1042,11 @@ mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
 		kprintf("msdosfs: file name length %zu too large\n", newlen);
 		return;
 	}
+
 	/* Shift suffix upwards by the amount length exceeds WIN_CHARS. */
 	if (count > WIN_CHARS && nbp->nb_len != 0)
-		memcpy(slot + count, slot + WIN_CHARS, nbp->nb_len);
+		memmove(slot + count, slot + WIN_CHARS, nbp->nb_len);
+
 	/* Copy in the substring to its slot and update length so far. */
 	memcpy(slot, name, count);
 	nbp->nb_len = newlen;
