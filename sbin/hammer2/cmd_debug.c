@@ -773,23 +773,34 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		break;
 	}
 
-	tabprintf(tab, "%s.%-3d%*.*s 0x%016jx 0x%016jx/%-2d ",
-		  type_str, bi, type_pad, type_pad, "",
-		  (intmax_t)bref->data_off,
-		  (intmax_t)bref->key, (intmax_t)bref->keybits);
-	/*if (norecurse > 1)*/ {
-		printf("\n");
-		tabprintf(tab + 13, "");
-	}
-	printf("mir=%016jx mod=%016jx lfcnt=%d ",
-	       (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid,
-	       bref->leaf_count);
-
-	if (/*norecurse > 1 && */ (bcount || bref->flags ||
-	    bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
-	    bref->type == HAMMER2_BREF_TYPE_FREEMAP_LEAF)) {
-		printf("\n");
-		tabprintf(tab + 13, "");
+	if (QuietOpt > 0) {
+		tabprintf(tab,
+			  "%s.%-3d %016jx %016jx/%-2d "
+			  "mir=%016jx mod=%016jx leafcnt=%d ",
+			  type_str, bi, (intmax_t)bref->data_off,
+			  (intmax_t)bref->key, (intmax_t)bref->keybits,
+			  (intmax_t)bref->mirror_tid,
+			  (intmax_t)bref->modify_tid,
+			  bref->leaf_count);
+		tab += show_tab;
+	} else {
+		tabprintf(tab, "%s.%-3d%*.*s 0x%016jx 0x%016jx/%-2d ",
+			  type_str, bi, type_pad, type_pad, "",
+			  (intmax_t)bref->data_off,
+			  (intmax_t)bref->key, (intmax_t)bref->keybits);
+		/*if (norecurse > 1)*/ {
+			printf("\n");
+			tabprintf(tab + 13, "");
+		}
+		printf("mir=%016jx mod=%016jx lfcnt=%d ",
+		       (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid,
+		       bref->leaf_count);
+		if (/*norecurse > 1 && */ (bcount || bref->flags ||
+		    bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
+		    bref->type == HAMMER2_BREF_TYPE_FREEMAP_LEAF)) {
+			printf("\n");
+			tabprintf(tab + 13, "");
+		}
 	}
 
 	if (bcount)
@@ -813,9 +824,11 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	 */
 	if (bytes &&
 	    (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1)) {
-		/*if (norecurse > 1)*/ {
-			printf("\n");
-			tabprintf(tab + 13, "");
+		if (!(QuietOpt > 0)) {
+			/*if (norecurse > 1)*/ {
+				printf("\n");
+				tabprintf(tab + 13, "");
+			}
 		}
 
 		switch(HAMMER2_DEC_CHECK(bref->methods)) {
