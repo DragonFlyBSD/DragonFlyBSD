@@ -583,17 +583,6 @@ unix2winfn(const u_char *un, size_t unlen, struct winentry *wep, int cnt,
 	return !end;
 }
 
-static __inline uint8_t
-find_lcode(uint16_t code, uint16_t *u2w)
-{
-	int i;
-
-	for (i = 0; i < 128; i++)
-		if (u2w[i] == code)
-			return (i | 0x80);
-	return '?';
-}
-
 /*
  * Compare our filename to the one in the Win95 entry
  * Returns the checksum or -1 if no match
