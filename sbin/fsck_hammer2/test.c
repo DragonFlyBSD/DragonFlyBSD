@@ -613,45 +613,46 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	if (QuietOpt <= 0 && (bstats->total_blockref % 100) == 0)
 		print_blockref_stats(bstats, false);
 
-	if (bytes) {
-		switch (HAMMER2_DEC_CHECK(bref->methods)) {
-		case HAMMER2_CHECK_ISCSI32:
-			cv = hammer2_icrc32(&media, bytes);
-			if (bref->check.iscsi32.value != cv) {
-				add_blockref_entry(bstats, bref,
-				    "Bad HAMMER2_CHECK_ISCSI32");
-				failed = true;
-			}
-			break;
-		case HAMMER2_CHECK_XXHASH64:
-			cv64 = XXH64(&media, bytes, XXH_HAMMER2_SEED);
-			if (bref->check.xxhash64.value != cv64) {
-				add_blockref_entry(bstats, bref,
-				    "Bad HAMMER2_CHECK_XXHASH64");
-				failed = true;
-			}
-			break;
-		case HAMMER2_CHECK_SHA192:
-			SHA256_Init(&hash_ctx);
-			SHA256_Update(&hash_ctx, &media, bytes);
-			SHA256_Final(u.digest, &hash_ctx);
-			u.digest64[2] ^= u.digest64[3];
-			if (memcmp(u.digest, bref->check.sha192.data,
-			    sizeof(bref->check.sha192.data))) {
-				add_blockref_entry(bstats, bref,
-				    "Bad HAMMER2_CHECK_SHA192");
-				failed = true;
-			}
-			break;
-		case HAMMER2_CHECK_FREEMAP:
-			cv = hammer2_icrc32(&media, bytes);
-			if (bref->check.freemap.icrc32 != cv) {
-				add_blockref_entry(bstats, bref,
-				    "Bad HAMMER2_CHECK_FREEMAP");
-				failed = true;
-			}
-			break;
+	if (!bytes)
+		return 0;
+
+	switch (HAMMER2_DEC_CHECK(bref->methods)) {
+	case HAMMER2_CHECK_ISCSI32:
+		cv = hammer2_icrc32(&media, bytes);
+		if (bref->check.iscsi32.value != cv) {
+			add_blockref_entry(bstats, bref,
+			    "Bad HAMMER2_CHECK_ISCSI32");
+			failed = true;
 		}
+		break;
+	case HAMMER2_CHECK_XXHASH64:
+		cv64 = XXH64(&media, bytes, XXH_HAMMER2_SEED);
+		if (bref->check.xxhash64.value != cv64) {
+			add_blockref_entry(bstats, bref,
+			    "Bad HAMMER2_CHECK_XXHASH64");
+			failed = true;
+		}
+		break;
+	case HAMMER2_CHECK_SHA192:
+		SHA256_Init(&hash_ctx);
+		SHA256_Update(&hash_ctx, &media, bytes);
+		SHA256_Final(u.digest, &hash_ctx);
+		u.digest64[2] ^= u.digest64[3];
+		if (memcmp(u.digest, bref->check.sha192.data,
+		    sizeof(bref->check.sha192.data))) {
+			add_blockref_entry(bstats, bref,
+			    "Bad HAMMER2_CHECK_SHA192");
+			failed = true;
+		}
+		break;
+	case HAMMER2_CHECK_FREEMAP:
+		cv = hammer2_icrc32(&media, bytes);
+		if (bref->check.freemap.icrc32 != cv) {
+			add_blockref_entry(bstats, bref,
+			    "Bad HAMMER2_CHECK_FREEMAP");
+			failed = true;
+		}
+		break;
 	}
 
 	switch (bref->type) {
