@@ -438,7 +438,7 @@ restart:
 		 */
 		if (brange->lf_flags == 0)
 			TAILQ_REMOVE(&lock->lf_blocked, brange, lf_link);
-		if (count == 2)
+		if (error == 0 && count == 2)
 			tsleep(brange, 0, "lockfz", 2);
 		else
 			++count;
