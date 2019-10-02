@@ -62,7 +62,7 @@
 #include "msdosfsmount.h"
 #include "direntry.h"
 
-extern struct iconv_functions *msdosfs_iconv;
+extern struct iconv_functions *msdos_iconv;
 
 static int mbsadjpos(const char **, size_t, size_t, int, int, void *);
 static uint16_t dos2unixchr(const u_char **, size_t *, int,

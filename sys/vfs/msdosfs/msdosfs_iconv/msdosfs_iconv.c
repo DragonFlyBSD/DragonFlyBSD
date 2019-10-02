@@ -32,4 +32,4 @@
 #include <sys/module.h>
 #include <sys/mount.h>
 
-VFS_DECLARE_ICONV(msdosfs);
+VFS_DECLARE_ICONV(msdos);

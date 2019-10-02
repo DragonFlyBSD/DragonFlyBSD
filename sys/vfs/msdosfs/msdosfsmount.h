@@ -62,6 +62,8 @@ MALLOC_DECLARE(M_MSDOSFSMNT);
 #include <sys/iconv.h>
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#define msdosfs_iconv msdos_iconv
+
 /*
  * Layout of the mount control block for a MSDOSFS filesystem.
  */
