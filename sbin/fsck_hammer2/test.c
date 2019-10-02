@@ -610,7 +610,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	    bref->type != HAMMER2_BREF_TYPE_FREEMAP)
 		bstats->total_bytes += bytes;
 
-	if ((bstats->total_blockref % 100) == 0)
+	if (QuietOpt <= 0 && (bstats->total_blockref % 100) == 0)
 		print_blockref_stats(bstats, false);
 
 	if (bytes) {
