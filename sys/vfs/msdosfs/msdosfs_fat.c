@@ -64,19 +64,6 @@
 #include "denode.h"
 #include "fat.h"
 
-/*
- * Fat cache stats.
- */
-static int fc_fileextends;	/* # of file extends			 */
-static int fc_lfcempty;		/* # of time last file cluster cache entry
-				 * was empty */
-static int fc_bmapcalls;	/* # of times pcbmap was called		 */
-
-#define	LMMAX	20
-static int fc_lmdistance[LMMAX];/* counters for how far off the last
-				 * cluster mapped entry was. */
-static int fc_largedistance;	/* off by more than LMMAX		 */
-
 static void fc_lookup(struct denode *dep, u_long findcn, u_long *frcnp,
     u_long *fsrcnp);
 
@@ -140,8 +127,6 @@ pcbmap(struct denode *dep,
 	struct msdosfsmount *pmp = dep->de_pmp;
 	u_long bsize;
 
-	fc_bmapcalls++;
-
 	/*
 	 * If they don't give us someplace to return a value then don't
 	 * bother doing anything.
@@ -193,10 +178,6 @@ pcbmap(struct denode *dep,
 	 */
 	i = 0;
 	fc_lookup(dep, findcn, &i, &cn);
-	if ((bn = findcn - i) >= LMMAX)
-		fc_largedistance++;
-	else
-		fc_lmdistance[bn]++;
 
 	/*
 	 * Handle all other files or directories the normal way.
@@ -942,10 +923,8 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 	 * If the "file's last cluster" cache entry is empty, and the file
 	 * is not empty, then fill the cache entry by calling pcbmap().
 	 */
-	fc_fileextends++;
 	if (dep->de_fc[FC_LASTFC].fc_frcn == FCE_EMPTY &&
 	    dep->de_StartCluster != 0) {
-		fc_lfcempty++;
 		error = pcbmap(dep, 0xffff, NULL, &cn, NULL);
 		/* we expect it to return E2BIG */
 		if (error != E2BIG)
