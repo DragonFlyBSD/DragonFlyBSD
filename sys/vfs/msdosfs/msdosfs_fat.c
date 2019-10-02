@@ -393,6 +393,8 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 static __inline void
 usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 {
+	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
+	    ("usemap_alloc on ro msdosfs mount"));
 	KASSERT((pmp->pm_inusemap[cn / N_INUSEBITS] & (1 << (cn % N_INUSEBITS)))
 	    == 0, ("Allocating used sector %ld %ld %x", cn, cn % N_INUSEBITS,
 		(unsigned)pmp->pm_inusemap[cn / N_INUSEBITS]));
@@ -404,6 +406,8 @@ usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 static __inline void
 usemap_free(struct msdosfsmount *pmp, u_long cn)
 {
+	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
+	    ("usemap_free on ro msdosfs mount"));
 	pmp->pm_freeclustercount++;
 	KASSERT((pmp->pm_inusemap[cn / N_INUSEBITS] & (1 << (cn % N_INUSEBITS)))
 	    != 0, ("Freeing unused sector %ld %ld %x", cn, cn % N_INUSEBITS,
@@ -673,6 +677,9 @@ chainalloc(struct msdosfsmount *pmp, u_long start, u_long count,
 {
 	int error;
 	u_long cl, n;
+
+	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
+	    ("chainalloc on ro msdosfs mount"));
 
 	for (cl = start, n = count; n-- > 0;)
 		usemap_alloc(pmp, cl++);
