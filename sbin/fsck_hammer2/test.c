@@ -472,7 +472,7 @@ print_blockref_stats(const blockref_stats_t *bstats, bool newline)
 static int
 verify_volume_header(const hammer2_volume_data_t *voldata)
 {
-	hammer2_crc32_t crc0, crc, bcrc0, bcrc;
+	hammer2_crc32_t crc0, crc1;
 	const char *p = (const char*)voldata;
 
 	if ((voldata->magic != HAMMER2_VOLUME_ID_HBO) &&
@@ -484,19 +484,27 @@ verify_volume_header(const hammer2_volume_data_t *voldata)
 	if (voldata->magic == HAMMER2_VOLUME_ID_ABO)
 		tfprintf(stderr, 1, "Reverse endian\n");
 
-	crc = voldata->icrc_sects[HAMMER2_VOL_ICRC_SECT0];
-	crc0 = hammer2_icrc32(p + HAMMER2_VOLUME_ICRC0_OFF,
+	crc0 = voldata->icrc_sects[HAMMER2_VOL_ICRC_SECT0];
+	crc1 = hammer2_icrc32(p + HAMMER2_VOLUME_ICRC0_OFF,
 	    HAMMER2_VOLUME_ICRC0_SIZE);
-	if (crc0 != crc) {
+	if (crc0 != crc1) {
 		tfprintf(stderr, 1, "Bad HAMMER2_VOL_ICRC_SECT0 CRC\n");
 		return -1;
 	}
 
-	bcrc = voldata->icrc_sects[HAMMER2_VOL_ICRC_SECT1];
-	bcrc0 = hammer2_icrc32(p + HAMMER2_VOLUME_ICRC1_OFF,
+	crc0 = voldata->icrc_sects[HAMMER2_VOL_ICRC_SECT1];
+	crc1 = hammer2_icrc32(p + HAMMER2_VOLUME_ICRC1_OFF,
 	    HAMMER2_VOLUME_ICRC1_SIZE);
-	if (bcrc0 != bcrc) {
+	if (crc0 != crc1) {
 		tfprintf(stderr, 1, "Bad HAMMER2_VOL_ICRC_SECT1 CRC\n");
+		return -1;
+	}
+
+	crc0 = voldata->icrc_volheader;
+	crc1 = hammer2_icrc32(p + HAMMER2_VOLUME_ICRCVH_OFF,
+	    HAMMER2_VOLUME_ICRCVH_SIZE);
+	if (crc0 != crc1) {
+		tfprintf(stderr, 1, "Bad volume header CRC\n");
 		return -1;
 	}
 
@@ -688,12 +696,12 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	}
 
 	if (ForceOpt)
-		norecurse = 0;
+		norecurse = false;
 	/*
 	 * If failed, no recurse, but still verify its direct children.
 	 * Beyond that is probably garbage.
 	 */
-	for (i = 0; norecurse == 0 && i < bcount; ++i)
+	for (i = 0; norecurse == false && i < bcount; ++i)
 		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY)
 			if (verify_blockref(fd, voldata, &bscan[i], failed,
 			    bstats) == -1)
