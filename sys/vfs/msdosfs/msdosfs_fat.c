@@ -393,7 +393,11 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 static __inline void
 usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 {
+	KASSERT((pmp->pm_inusemap[cn / N_INUSEBITS] & (1 << (cn % N_INUSEBITS)))
+	    == 0, ("Allocating used sector %ld %ld %x", cn, cn % N_INUSEBITS,
+		(unsigned)pmp->pm_inusemap[cn / N_INUSEBITS]));
 	pmp->pm_inusemap[cn / N_INUSEBITS] |= 1 << (cn % N_INUSEBITS);
+	KASSERT(pmp->pm_freeclustercount > 0, ("usemap_alloc: too little"));
 	pmp->pm_freeclustercount--;
 }
 
@@ -401,6 +405,9 @@ static __inline void
 usemap_free(struct msdosfsmount *pmp, u_long cn)
 {
 	pmp->pm_freeclustercount++;
+	KASSERT((pmp->pm_inusemap[cn / N_INUSEBITS] & (1 << (cn % N_INUSEBITS)))
+	    != 0, ("Freeing unused sector %ld %ld %x", cn, cn % N_INUSEBITS,
+		(unsigned)pmp->pm_inusemap[cn / N_INUSEBITS]));
 	pmp->pm_inusemap[cn / N_INUSEBITS] &= ~(1 << (cn % N_INUSEBITS));
 }
 
