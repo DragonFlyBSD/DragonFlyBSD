@@ -774,6 +774,7 @@ int
 test_hammer2(const char *devpath)
 {
 	struct stat st;
+	bool failed = false;
 	int fd;
 
 	fd = open(devpath, O_RDONLY);
@@ -784,13 +785,13 @@ test_hammer2(const char *devpath)
 
 	if (fstat(fd, &st) == -1) {
 		perror("fstat");
-		close(fd);
-		return -1;
+		failed = true;
+		goto end;
 	}
 	if (!S_ISCHR(st.st_mode)) {
 		fprintf(stderr, "%s is not a block device\n", devpath);
-		close(fd);
-		return -1;
+		failed = true;
+		goto end;
 	}
 
 	best_zone = find_best_zone(fd);
@@ -799,36 +800,33 @@ test_hammer2(const char *devpath)
 
 	printf("volume header\n");
 	if (test_volume_header(fd) == -1) {
-		if (!ForceOpt) {
-			close(fd);
-			return -1;
-		}
+		failed = true;
+		if (!ForceOpt)
+			goto end;
 	}
 
 	printf("freemap\n");
 	if (test_blockref(fd, HAMMER2_BREF_TYPE_FREEMAP) == -1) {
-		if (!ForceOpt) {
-			close(fd);
-			return -1;
-		}
+		failed = true;
+		if (!ForceOpt)
+			goto end;
 	}
 	printf("volume\n");
 	if (!ScanPFS) {
 		if (test_blockref(fd, HAMMER2_BREF_TYPE_VOLUME) == -1) {
-			if (!ForceOpt) {
-				close(fd);
-				return -1;
-			}
+			failed = true;
+			if (!ForceOpt)
+				goto end;
 		}
 	} else {
 		if (test_pfs_blockref(fd, PFSName) == -1) {
-			if (!ForceOpt) {
-				close(fd);
-				return -1;
-			}
+			failed = true;
+			if (!ForceOpt)
+				goto end;
 		}
 	}
+end:
 	close(fd);
 
-	return 0;
+	return failed ? -1 : 0;
 }
