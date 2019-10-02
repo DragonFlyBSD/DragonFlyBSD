@@ -64,6 +64,8 @@
 #include "denode.h"
 #include "fat.h"
 
+#define	FULL_RUN	((u_int)0xffffffff)
+
 static void fc_lookup(struct denode *dep, u_long findcn, u_long *frcnp,
     u_long *fsrcnp);
 
@@ -735,8 +737,8 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 		idx = cn / N_INUSEBITS;
 		map = pmp->pm_inusemap[idx];
 		map |= (1 << (cn % N_INUSEBITS)) - 1;
-		if (map != (u_int)-1) {
-			cn = idx * N_INUSEBITS + ffs(map^(u_int)-1) - 1;
+		if (map != FULL_RUN) {
+			cn = idx * N_INUSEBITS + ffs(map ^ FULL_RUN) - 1;
 			if ((l = chainlength(pmp, cn, count)) >= count)
 				return (chainalloc(pmp, cn, count, fillwith,
 					retcluster, got));
@@ -753,8 +755,8 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 		idx = cn / N_INUSEBITS;
 		map = pmp->pm_inusemap[idx];
 		map |= (1 << (cn % N_INUSEBITS)) - 1;
-		if (map != (u_int)-1) {
-			cn = idx * N_INUSEBITS + ffs(map^(u_int)-1) - 1;
+		if (map != FULL_RUN) {
+			cn = idx * N_INUSEBITS + ffs(map ^ FULL_RUN) - 1;
 			if ((l = chainlength(pmp, cn, count)) >= count)
 				return (chainalloc(pmp, cn, count, fillwith,
 					retcluster, got));
@@ -861,7 +863,7 @@ fillinusemap(struct msdosfsmount *pmp)
 	 * loop further down.
 	 */
 	for (cn = 0; cn < (pmp->pm_maxcluster + N_INUSEBITS) / N_INUSEBITS; cn++)
-		pmp->pm_inusemap[cn] = (u_int)-1;
+		pmp->pm_inusemap[cn] = FULL_RUN;
 
 	/*
 	 * Figure how many free clusters are in the filesystem by ripping
