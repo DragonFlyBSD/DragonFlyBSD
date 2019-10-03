@@ -695,6 +695,9 @@ chainalloc(struct msdosfsmount *pmp, u_long start, u_long count,
 		*retcluster = start;
 	if (got)
 		*got = count;
+	pmp->pm_nxtfree = start + count;
+	if (pmp->pm_nxtfree > pmp->pm_maxcluster)
+		pmp->pm_nxtfree = CLUST_FIRST;
 	return (0);
 }
 
@@ -726,11 +729,7 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 	} else
 		len = 0;
 
-	/*
-	 * Start at a (pseudo) random place to maximize cluster runs
-	 * under multiple writers.
-	 */
-	newst = krandom() % (pmp->pm_maxcluster + 1);
+	newst = pmp->pm_nxtfree;
 	foundl = 0;
 
 	for (cn = newst; cn <= pmp->pm_maxcluster;) {
