@@ -270,6 +270,7 @@ struct msdosfs_args {
 #define	MSDOSFSMNT_RONLY	0x80000000	/* mounted read-only	*/
 #define	MSDOSFSMNT_WAITONFAT	0x40000000	/* mounted synchronous	*/
 #define	MSDOSFS_FATMIRROR	0x20000000	/* FAT is mirrored */
+#define	MSDOSFS_FSIMOD		0x01000000
 
 #define MSDOSFS_ARGSMAGIC	0xe4eff300
 

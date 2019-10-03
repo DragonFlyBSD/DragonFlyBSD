@@ -301,45 +301,6 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 
 	mprintf("updatefats(pmp %p, bp %p, fatbn %lu)\n", pmp, bp, fatbn);
 
-	/*
-	 * If we have an FSInfo block, update it.
-	 */
-	if (pmp->pm_fsinfo) {
-		u_long cn = pmp->pm_nxtfree;
-
-		if (pmp->pm_freeclustercount
-		    && (pmp->pm_inusemap[cn / N_INUSEBITS]
-			& (1 << (cn % N_INUSEBITS)))) {
-			/*
-			 * The cluster indicated in FSInfo isn't free
-			 * any longer.  Got get a new free one.
-			 */
-			for (cn = 0; cn < pmp->pm_maxcluster; cn += N_INUSEBITS)
-				if (pmp->pm_inusemap[cn / N_INUSEBITS] != (u_int)-1)
-					break;
-			pmp->pm_nxtfree = cn
-				+ ffs(pmp->pm_inusemap[cn / N_INUSEBITS]
-				      ^ (u_int)-1) - 1;
-		}
-		if (bread(pmp->pm_devvp, de_bntodoff(pmp, pmp->pm_fsinfo),
-		    fsi_size(pmp), &bpn) != 0) {
-			/*
-			 * Ignore the error, but turn off FSInfo update for the future.
-			 */
-			pmp->pm_fsinfo = 0;
-			brelse(bpn);
-		} else {
-			struct fsinfo *fp = (struct fsinfo *)bpn->b_data;
-
-			putulong(fp->fsinfree, pmp->pm_freeclustercount);
-			putulong(fp->fsinxtfree, pmp->pm_nxtfree);
-			if (pmp->pm_flags & MSDOSFSMNT_WAITONFAT)
-				bwrite(bpn);
-			else
-				bdwrite(bpn);
-		}
-	}
-
 	if (pmp->pm_flags & MSDOSFS_FATMIRROR) {
 		/*
 		 * Now copy the block(s) of the modified FAT to the other copies of
@@ -403,6 +364,7 @@ usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 	pmp->pm_inusemap[cn / N_INUSEBITS] |= 1 << (cn % N_INUSEBITS);
 	KASSERT(pmp->pm_freeclustercount > 0, ("usemap_alloc: too little"));
 	pmp->pm_freeclustercount--;
+	pmp->pm_flags |= MSDOSFS_FSIMOD;
 }
 
 static __inline void
@@ -411,6 +373,7 @@ usemap_free(struct msdosfsmount *pmp, u_long cn)
 	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
 	    ("usemap_free on ro msdosfs mount"));
 	pmp->pm_freeclustercount++;
+	pmp->pm_flags |= MSDOSFS_FSIMOD;
 	KASSERT((pmp->pm_inusemap[cn / N_INUSEBITS] & (1 << (cn % N_INUSEBITS)))
 	    != 0, ("Freeing unused sector %ld %ld %x", cn, cn % N_INUSEBITS,
 		(unsigned)pmp->pm_inusemap[cn / N_INUSEBITS]));
@@ -686,6 +649,11 @@ chainalloc(struct msdosfsmount *pmp, u_long start, u_long count,
 	for (cl = start, n = count; n-- > 0;)
 		usemap_alloc(pmp, cl++);
 
+	pmp->pm_nxtfree = start + count;
+	if (pmp->pm_nxtfree > pmp->pm_maxcluster)
+		pmp->pm_nxtfree = CLUST_FIRST;
+	pmp->pm_flags |= MSDOSFS_FSIMOD;
+
 	error = fatchain(pmp, start, count, fillwith);
 	if (error != 0)
 		return (error);
@@ -695,9 +663,6 @@ chainalloc(struct msdosfsmount *pmp, u_long start, u_long count,
 		*retcluster = start;
 	if (got)
 		*got = count;
-	pmp->pm_nxtfree = start + count;
-	if (pmp->pm_nxtfree > pmp->pm_maxcluster)
-		pmp->pm_nxtfree = CLUST_FIRST;
 	return (0);
 }
 

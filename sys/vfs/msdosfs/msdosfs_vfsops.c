@@ -724,6 +724,38 @@ struct scaninfo {
 
 static int msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data);
 
+/*
+ * If we have an FSInfo block, update it.
+ */
+static int
+msdosfs_fsiflush(struct msdosfsmount *pmp, int waitfor)
+{
+	struct fsinfo *fp;
+	struct buf *bp;
+	int error;
+
+	if (pmp->pm_fsinfo == 0 || (pmp->pm_flags & MSDOSFS_FSIMOD) == 0)
+		return (0);
+
+	error = bread(pmp->pm_devvp, de_bntodoff(pmp, pmp->pm_fsinfo),
+	    fsi_size(pmp), &bp);
+	if (error != 0) {
+		brelse(bp);
+		return (error);
+	}
+
+	fp = (struct fsinfo *)bp->b_data;
+	putulong(fp->fsinfree, pmp->pm_freeclustercount);
+	putulong(fp->fsinxtfree, pmp->pm_nxtfree);
+	pmp->pm_flags &= ~MSDOSFS_FSIMOD;
+	if (waitfor == MNT_WAIT)
+		error = bwrite(bp);
+	else
+		bawrite(bp);
+
+	return (error);
+}
+
 static int
 msdosfs_sync(struct mount *mp, int waitfor)
 {
@@ -762,6 +794,10 @@ msdosfs_sync(struct mount *mp, int waitfor)
 			scaninfo.allerror = error;
 		vn_unlock(pmp->pm_devvp);
 	}
+
+	error = msdosfs_fsiflush(pmp, waitfor);
+	if (error != 0)
+		scaninfo.allerror = error;
 	return (scaninfo.allerror);
 }
 
