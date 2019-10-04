@@ -258,7 +258,7 @@ dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
 	/*
 	 * Copy the name portion into the unix filename string.
 	 */
-	for(i  = 8; i > 0 && *dn != ' ';) {
+	for (i = 8; i > 0 && *dn != ' ';) {
 		c = dos2unixchr(tmpbuf, __DECONST(const u_char **, &dn), &i,
 		    lower & LCASE_BASE, pmp);
 		if (c & 0xff00) {
@@ -791,13 +791,14 @@ mbsadjpos(const char **instr, size_t inlen, size_t outlen, int weight, int flag,
 {
 	char *outp, outstr[outlen * weight + 1];
 
-	memset(outstr, 0, outlen*weight+1);
+	memset(outstr, 0, outlen*weight+1); /* XXX needed ? */
 	if (flag & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		outp = outstr;
 		outlen *= weight;
 		msdosfs_iconv->conv(handle, instr, &inlen, &outp, &outlen);
 		return (inlen);
 	}
+
 	(*instr) += min(inlen, outlen);
 	return (inlen - min(inlen, outlen));
 }
@@ -1066,7 +1067,7 @@ mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
 char *
 mbnambuf_flush(struct mbnambuf *nbp, char *d_name, uint16_t *d_namlen)
 {
-#if 0
+#if 0 /* XXX needed ? */
 	if (nbp->nb_len > 127) {
 		mbnambuf_init(nbp);
 		return (NULL);
