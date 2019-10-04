@@ -1612,7 +1612,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 					pmp);
 				mbnambuf_init(&nb);
 			} else {
-				mbnambuf_flush(&nb, d_name, &d_namlen);
+				mbnambuf_flush_compat(&nb, d_name, &d_namlen);
 			}
 			chksum = -1;
 			if (vop_write_dirent(&error, uio, d_ino, d_type,

@@ -594,25 +594,23 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
 	size_t len;
 	uint16_t c1, c2;
 	u_char *np;
-	uint16_t d_namlen;
-	char d_name[127];
+	struct dirent dirbuf;
 
-	memset(d_name, 0, 127);
 	/*
 	 * We already have winentry in *nbp.
 	 */
-	if (!mbnambuf_flush(nbp, d_name, &d_namlen) || d_namlen == 0)
+	if (!mbnambuf_flush(nbp, &dirbuf) || dirbuf.d_namlen == 0)
 		return -1;
 	mprintf("winChkName(): un=%s:%zd,d_name=%s:%d\n",
-		un, unlen, d_name, d_namlen);
+		un, unlen, dirbuf.d_name, dirbuf.d_namlen);
 	/*
 	 * Compare the name parts
 	 */
-	len = d_namlen;
+	len = dirbuf.d_namlen;
 	if (unlen != len)
 		return -2;
 
-	for (np = d_name; unlen > 0 && len > 0;) {
+	for (np = dirbuf.d_name; unlen > 0 && len > 0;) {
 		/*
 		 * Comparison must be case insensitive, because FAT disallows
 		 * to look up or create files in case sensitive even when
@@ -1065,7 +1063,25 @@ mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
  * have been written via mbnambuf_write(), the result will be incorrect.
  */
 char *
-mbnambuf_flush(struct mbnambuf *nbp, char *d_name, uint16_t *d_namlen)
+mbnambuf_flush(struct mbnambuf *nbp, struct dirent *dp)
+{
+#if 0 /* XXX needed ? */
+	if (nbp->nb_len > sizeof(dp->d_name) - 1) {
+		mbnambuf_init(nbp);
+		return (NULL);
+	}
+#endif
+	memcpy(dp->d_name, &nbp->nb_buf[0], nbp->nb_len);
+	dp->d_name[nbp->nb_len] = '\0';
+	dp->d_namlen = nbp->nb_len;
+
+	mbnambuf_init(nbp);
+	return (dp->d_name);
+}
+
+/* XXX to be removed */
+char *
+mbnambuf_flush_compat(struct mbnambuf *nbp, char *d_name, uint16_t *d_namlen)
 {
 #if 0 /* XXX needed ? */
 	if (nbp->nb_len > 127) {
@@ -1076,6 +1092,7 @@ mbnambuf_flush(struct mbnambuf *nbp, char *d_name, uint16_t *d_namlen)
 	memcpy(d_name, &nbp->nb_buf[0], nbp->nb_len);
 	d_name[nbp->nb_len] = '\0';
 	*d_namlen = nbp->nb_len;
+
 	mbnambuf_init(nbp);
 	return (d_name);
 }
