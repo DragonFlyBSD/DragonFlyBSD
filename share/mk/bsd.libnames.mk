@@ -59,9 +59,9 @@ LIBNETGRAPH?=	${DESTDIR}${LIBDIR}/libnetgraph.a
 LIBPAM?=	${DESTDIR}${LIBDIR}/libpam.a
 MINUSLPAM?=	-lpam
 .if defined(NOSHARED) && ${NOSHARED} != "no" && ${NOSHARED} != "NO"
-LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBYPCLNT} \
+LIBPAM+=	${LIBRADIUS} ${LIBYPCLNT} \
 		${LIBCRYPT} ${LIBCRYPTO} ${LIBUTIL}
-MINUSLPAM+=	-lradius -ltacplus -lypclnt \
+MINUSLPAM+=	-lradius -lypclnt \
 		-lcrypt -lprivate_crypto -lutil
 LDFLAGSPAM+=	${PRIVATELIB_LDFLAGS}
 .endif
