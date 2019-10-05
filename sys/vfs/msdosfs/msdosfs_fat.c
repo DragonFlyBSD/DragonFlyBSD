@@ -111,11 +111,7 @@ fatblock(struct msdosfsmount *pmp, u_long ofs, u_long *bnp, u_long *sizep,
  *  If cnp is null, nothing is returned.
  */
 int
-pcbmap(struct denode *dep,
-       u_long findcn,		/* file relative cluster to get		 */
-       daddr_t *bnp,		/* returned filesys relative blk number	 */
-       u_long *cnp,		/* returned cluster number		 */
-       int *sp)			/* returned block size		 */
+pcbmap(struct denode *dep, u_long findcn, daddr_t *bnp, u_long *cnp, int *sp)
 {
 	int error;
 	u_long i;

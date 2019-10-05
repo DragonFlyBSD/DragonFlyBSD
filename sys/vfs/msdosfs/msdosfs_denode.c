@@ -249,10 +249,8 @@ msdosfs_reinsert(struct denode *ip, u_long new_dirclust, u_long new_diroffset)
  * depp	     - returns the address of the gotten denode.
  */
 int
-deget(struct msdosfsmount *pmp,	/* so we know the maj/min number */
-      u_long dirclust,		/* cluster this dir entry came from */
-      u_long diroffset,		/* index of entry within the cluster */
-      struct denode **depp)	/* returns the addr of the gotten denode */
+deget(struct msdosfsmount *pmp, u_long dirclust, u_long diroffset,
+    struct denode **depp)
 {
 	int error;
 	cdev_t dev = pmp->pm_dev;
