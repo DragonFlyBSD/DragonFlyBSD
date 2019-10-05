@@ -857,17 +857,17 @@ fillinusemap(struct msdosfsmount *pmp)
 	 * zero.  These represent free clusters.
 	 */
 	pmp->pm_freeclustercount = 0;
-	for (cn = CLUST_FIRST; cn <= pmp->pm_maxcluster; cn++) {
+	for (cn = 0; cn <= pmp->pm_maxcluster; cn++) {
 		byteoffset = FATOFS(pmp, cn);
 		bo = byteoffset % pmp->pm_fatblocksize;
-		if (!bo || !bp) {
+		if (bo == 0) {
 			/* Read new FAT block */
-			if (bp)
+			if (bp != NULL)
 				brelse(bp);
 			fatblock(pmp, byteoffset, &bn, &bsize, NULL);
 			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
 				      bsize, &bp);
-			if (error) {
+			if (error != 0) {
 				brelse(bp);
 				return (error);
 			}
@@ -880,7 +880,17 @@ fillinusemap(struct msdosfsmount *pmp)
 			readcn >>= 4;
 		readcn &= pmp->pm_fatmask;
 
-		if (readcn == 0)
+		/*
+		 * Check if the FAT ID matches the BPB's media descriptor and
+		 * all other bits are set to 1.
+		 */
+		if (cn == 0 && readcn != ((pmp->pm_fatmask & 0xffffff00) |
+		    pmp->pm_bpb.bpbMedia)) {
+			mprintf("fillinusemap(): Media descriptor in BPB "
+			    "does not match FAT ID\n");
+			brelse(bp);
+			return (EINVAL);
+		} else if (readcn == CLUST_FREE)
 			usemap_free(pmp, cn);
 	}
 	brelse(bp);
