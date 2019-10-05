@@ -44,13 +44,14 @@ int DebugOpt;
 int ForceOpt;
 int VerboseOpt;
 int QuietOpt;
+int ScanBest;
 int ScanPFS;
 const char *PFSName;
 
 static void
 usage(void)
 {
-	fprintf(stderr, "fsck_hammer2 [-f] [-v] [-q] [-p] [-l pfs_name] "
+	fprintf(stderr, "fsck_hammer2 [-f] [-v] [-q] [-b] [-p] [-l pfs_name] "
 		"special\n");
 	exit(1);
 }
@@ -60,7 +61,7 @@ main(int ac, char **av)
 {
 	int ch;
 
-	while ((ch = getopt(ac, av, "dfvqpl:")) != -1) {
+	while ((ch = getopt(ac, av, "dfvqbpl:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
@@ -79,6 +80,9 @@ main(int ac, char **av)
 				--VerboseOpt;
 			else
 				++QuietOpt;
+			break;
+		case 'b':
+			ScanBest = 1;
 			break;
 		case 'p':
 			ScanPFS = 1;

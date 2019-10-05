@@ -192,11 +192,12 @@ test_volume_header(int fd)
 
 		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
+			if (ScanBest && i != best_zone)
+				continue;
 			broot.mirror_tid = voldata.mirror_tid;
-
 			printf("zone.%d %016jx%s\n",
 			    i, (uintmax_t)broot.data_off,
-			    (i == best_zone) ? " (best)" : "");
+			    (!ScanBest && i == best_zone) ? " (best)" : "");
 			if (verify_volume_header(&voldata) == -1)
 				failed = true;
 		} else if (ret == -1) {
@@ -231,12 +232,14 @@ test_blockref(int fd, uint8_t type)
 		if (ret == HAMMER2_PBUFSIZE) {
 			blockref_stats_t bstats;
 			struct blockref_entry *e;
+
+			if (ScanBest && i != best_zone)
+				continue;
 			broot.mirror_tid = voldata.mirror_tid;
 			init_blockref_stats(&bstats, type);
-
 			printf("zone.%d %016jx%s\n",
 			    i, (uintmax_t)broot.data_off,
-			    (i == best_zone) ? " (best)" : "");
+			    (!ScanBest && i == best_zone) ? " (best)" : "");
 			if (verify_blockref(fd, &voldata, &broot, false,
 			    &bstats) == -1)
 				failed = true;
@@ -289,11 +292,13 @@ test_pfs_blockref(int fd, const char *name)
 			struct blockref_list blist;
 			struct blockref_msg *p;
 			int count = 0;
-			broot.mirror_tid = voldata.mirror_tid;
 
+			if (ScanBest && i != best_zone)
+				continue;
+			broot.mirror_tid = voldata.mirror_tid;
 			printf("zone.%d %016jx%s\n",
 			    i, (uintmax_t)broot.data_off,
-			    (i == best_zone) ? " (best)" : "");
+			    (!ScanBest && i == best_zone) ? " (best)" : "");
 
 			TAILQ_INIT(&blist);
 			if (init_pfs_blockref(fd, &voldata, &broot, &blist) ==

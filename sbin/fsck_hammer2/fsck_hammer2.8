@@ -32,7 +32,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd October 2, 2019
+.Dd October 6, 2019
 .Dt FSCK_HAMMER2 8
 .Os
 .Sh NAME
@@ -43,6 +43,7 @@
 .Op Fl f
 .Op Fl v
 .Op Fl q
+.Op Fl b
 .Op Fl p
 .Op Fl l Ar pfs_name
 .Ar special
@@ -60,6 +61,8 @@ Force option.
 Verbose option.
 .It Fl q
 Quiet option.
+.It Fl b
+Scan only best zone.
 .It Fl p
 Scan each PFS separately.
 .It Fl l
@@ -77,9 +80,5 @@ The
 .Nm
 utility appeared in
 .Dx 5.7 .
-.Sh BUGS
-The
-.Nm
-utility is currently under development.
 .Sh AUTHORS
 .An Tomohiro Kusumi Aq Mt tkusumi@netbsd.org
