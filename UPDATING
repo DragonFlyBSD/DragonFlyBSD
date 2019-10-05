@@ -12,6 +12,11 @@
 +         UPGRADING DRAGONFLY FROM 5.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+LIBRADIUS AND LIBTACPLUS REMOVED
+--------------------------------
+
+Both libraries have been moved from base to DPorts net/ category.
+
 PAM_SSH MODULE REMOVED
 ----------------------
 

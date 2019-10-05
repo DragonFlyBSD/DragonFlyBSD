@@ -210,9 +210,10 @@
  * 500705 - Move us to utmpx only, delete utmp
  * 500706 - Switch to the now common three argument versions of the
  *	    timespecadd() and timespecsub() macros in <sys/time.h>
+ * 500707 - libradius/libtacplus removal
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500706	/* propagated to newvers */
+#define __DragonFly_version 500707	/* propagated to newvers */
 
 #include <sys/_null.h>
 
