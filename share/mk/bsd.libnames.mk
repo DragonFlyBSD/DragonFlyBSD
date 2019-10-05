@@ -59,8 +59,6 @@ LIBNETGRAPH?=	${DESTDIR}${LIBDIR}/libnetgraph.a
 LIBPAM?=	${DESTDIR}${LIBDIR}/libpam.a
 MINUSLPAM?=	-lpam
 .if defined(NOSHARED) && ${NOSHARED} != "no" && ${NOSHARED} != "NO"
-LIBPAM+=	${LIBSSH}
-MINUSLPAM+=	-lprivate_ssh
 LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBYPCLNT} \
 		${LIBCRYPT} ${LIBCRYPTO} ${LIBUTIL}
 MINUSLPAM+=	-lradius -ltacplus -lypclnt \

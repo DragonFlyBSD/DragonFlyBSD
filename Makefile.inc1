@@ -1063,9 +1063,6 @@ _generic_libs+=	lib
 _prebuild_libs+=	lib/librecrypto lib/libressl
 lib/libressl__L: lib/librecrypto__L
 
-_prebuild_libs+=	lib/libssh
-lib/libssh__L: lib/librecrypto__L lib/libutil__L lib/libz__L
-
 _prebuild_libs+=	lib/libradius
 lib/libradius__L: lib/librecrypto__L
 

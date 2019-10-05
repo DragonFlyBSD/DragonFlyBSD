@@ -29,7 +29,6 @@ SUBDIR_ORDERED= \
 	liblzma \
 	libz \
 	libutil \
-	libssh \
 	libypclnt \
 	libncurses \
 	libradius \
@@ -85,6 +84,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libsmb \
 	${_libsmdb} \
 	${_libsmutil} \
+	libssh \
 	libstand \
 	libtelnet \
 	libu4bhid \
