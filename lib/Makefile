@@ -33,7 +33,6 @@ SUBDIR_ORDERED= \
 	libncurses \
 	libradius \
 	libsbuf \
-	libtacplus \
 	libthread_xu \
 	libpthread \
 	libfetch \

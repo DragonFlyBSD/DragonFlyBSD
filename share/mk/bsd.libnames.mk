@@ -77,7 +77,6 @@ LIBSMB?=	${DESTDIR}${LIBDIR}/libsmb.a
 LIBSSH?=	${DESTDIR}${LIBDIR}/priv/libprivate_ssh.a
 LIBSSL?=	${DESTDIR}${LIBDIR}/priv/libprivate_ssl.a
 LIBSTAND?=	${DESTDIR}${LIBDIR}/libstand.a
-LIBTACPLUS?=	${DESTDIR}${LIBDIR}/libtacplus.a
 LIBTCPLAY?=	${DESTDIR}${LIBDIR}/libtcplay.a
 LIBUSBHID?=	${DESTDIR}${LIBDIR}/libusbhid.a
 LIBUSB?=	${DESTDIR}${LIBDIR}/libusb.a

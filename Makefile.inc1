@@ -1066,7 +1066,7 @@ lib/libressl__L: lib/librecrypto__L
 _prebuild_libs+=	lib/libradius
 lib/libradius__L: lib/librecrypto__L
 
-_prebuild_libs+= lib/libsbuf lib/libtacplus lib/libm \
+_prebuild_libs+= lib/libsbuf lib/libm \
 		lib/libpam/libpam lib/libypclnt lib/lib${THREAD_LIB} \
 		lib/libpthread lib/libprop
 
