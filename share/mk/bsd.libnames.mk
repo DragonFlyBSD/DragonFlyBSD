@@ -68,7 +68,6 @@ LIBPANEL?=	${DESTDIR}${LIBDIR}/priv/libprivate_panel.a
 LIBPCAP?=	${DESTDIR}${LIBDIR}/libpcap.a
 LIBPOSIX1E?=	${DESTDIR}${LIBDIR}/libposix1e.a
 LIBPROP?=	${DESTDIR}${LIBDIR}/libprop.a
-LIBRADIUS?=	${DESTDIR}${LIBDIR}/libradius.a
 LIBRPCSVC?=	${DESTDIR}${LIBDIR}/librpcsvc.a
 LIBRT?=		${DESTDIR}${LIBDIR}/librt.a
 LIBSBUF?=	${DESTDIR}${LIBDIR}/libsbuf.a

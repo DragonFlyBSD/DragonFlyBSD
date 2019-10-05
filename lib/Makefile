@@ -8,7 +8,7 @@
 #    libthread_xu|libc_r must be built before libpthread.
 #    libprop must be built before libdevattr
 #
-# libcrypt must be built before libfetch, libarchive, and libradius.
+# libcrypt must be built before libfetch, libarchive.
 # libz must be built before libarchive, libmagic.
 # libbz2 must be built before libarchive
 # liblmza must be built before libarchive.
@@ -31,7 +31,6 @@ SUBDIR_ORDERED= \
 	libutil \
 	libypclnt \
 	libncurses \
-	libradius \
 	libsbuf \
 	libthread_xu \
 	libpthread \
