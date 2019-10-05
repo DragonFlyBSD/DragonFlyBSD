@@ -27,6 +27,7 @@
  * via PXE w/o having to write a separate PXE-aware client just to load
  * the loader.
  */
+#include <sys/reboot.h>
 #include "../bootasm.h"
 
 		/*
@@ -44,10 +45,6 @@
 		 */
 		.set KARGS_FLAGS_PXE,0x2	# flag to indicate booting from
 						#  PXE loader
-		/*
-		 * Boot howto bits
-		 */
-		.set RB_SERIAL,0x1000		# serial console
 
 		/*
 		 * Segment selectors.
@@ -110,6 +107,9 @@ start:		cld				# string ops inc
 		orb $KARGS_FLAGS_PXE, 0x8(%bx)	# kargs->bootflags |=
 						#  KARGS_FLAGS_PXE
 		popl 0xc(%bx)			# kargs->pxeinfo = *PXENV+
+#if !defined(ALWAYS_SERIAL) && !defined(PROBE_KEYBOARD)
+		orl $(RB_DUAL | RB_MULTIPLE), (%bx) # enable multi console
+#endif 
 #ifdef ALWAYS_SERIAL
 		/*
 		 * set the RBX_SERIAL bit in the howto byte.
@@ -124,7 +124,7 @@ start:		cld				# string ops inc
 		 */
 		testb $KEYBOARD_BIT, BDA_KEYBOARD # keyboard present?
 		jnz keyb			# yes, so skip
-		orl $RB_SERIAL, (%bx)		# enable serial console
+		orl $(RB_MULTIPLE | RB_SERIAL), (%bx) # enable serial console
 keyb:
 #endif
 		/*
@@ -261,7 +261,7 @@ seta20.3:	sti				# Enable interrupts
 		 * BTX client to start btxldr
 		 */
 		.code32
-btx_client:	movl $(MEM_BTX_USR_ARG-MEM_BTX_USR+MEM_ARG_SIZE-4), %esi
+btx_client:	movl $(MEM_BTX_USR_ARG - MEM_BTX_USR + MEM_ARG_SIZE-4), %esi
 						# %ds:(%esi) -> end
 						#  of boot[12] args
 		movl $(MEM_ARG_SIZE/4), %ecx	# Number of words to push
@@ -270,7 +270,7 @@ push_arg:	lodsl				# Read argument
 		pushl %eax			# Push it onto the stack
 		loop push_arg			# Push all of the arguments
 		cld				# In case anyone depends on this
-		pushl MEM_BTX_USR_ARG-MEM_BTX_USR+MEM_ARG_SIZE # Entry point of
+		pushl MEM_BTX_USR_ARG - MEM_BTX_USR + MEM_ARG_SIZE # Entry point of
 						#  the loader
 		pushl %eax			# Emulate a near call
 		movl $0x1, %eax			# "exec" system call

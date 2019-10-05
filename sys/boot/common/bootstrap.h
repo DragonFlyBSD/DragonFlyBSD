@@ -124,6 +124,8 @@ struct console
 };
 extern struct console	*consoles[];
 void		cons_probe(void);
+int isa_inb(int port);
+void isa_outb(int port, int value);
 
 /*
  * Plug-and-play enumerator/configurator interface.

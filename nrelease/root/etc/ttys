@@ -32,19 +32,22 @@ console	none				unknown	off secure
 #
 ttyv0	"/usr/libexec/getty Pc"		cons25	on  secure
 # Virtual terminals
+ttyv1	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv2	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv3	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv4	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv5	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv6	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv7	"/usr/libexec/getty Pc"		cons25	on  secure
-#ttyv8	"/usr/local/bin/xdm -nodaemon"	xterm	off secure
+ttyv8	"/usr/local/bin/xdm -nodaemon"	xterm	off secure
 # Serial terminals - keep it simple
 #
-ttyd0	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
-ttyd1	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
-ttyd2	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
-ttyd3	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
+ttyd0	"/usr/libexec/getty std.115200"	vt100	on secure ifconsole
+ttyd1	"/usr/libexec/getty std.115200"	vt100	on secure ifconsole
+ttyd2	"/usr/libexec/getty std.115200"	vt100	on secure ifconsole
+ttyd3	"/usr/libexec/getty std.115200"	vt100	on secure ifconsole
+# Dumb console
+dcons	"/usr/libexec/getty std.115200"	vt100	on secure ifconsole
 # Pseudo terminals
 ttyp0	none			network
 ttyp1	none			network

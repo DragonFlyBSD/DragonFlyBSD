@@ -78,8 +78,14 @@ will probe for a console and set the
 .Va console
 variable, or set it to serial console
 .Pq Dq comconsole
-if the previous boot stage used that.
-Then, devices are probed,
+if the previous boot stage already used it. If the speed of
+the serial connection was already specified in a previous boot
+stage it will set
+.Va comconsole_speed
+to the baud rate of the connection. This speed can be set/changed
+manually as well.
+.Pp
+After this, devices are probed,
 .Va currdev
 and
 .Va loaddev
@@ -476,14 +482,36 @@ will be automatically attempted after processing
 though explicit
 .Ic autoboot Ns 's
 will be processed normally, defaulting to 10 seconds delay.
+
 .It Va boot_askname
 Instructs the kernel to prompt the user for the name of the root device
 when the kernel is booted.
-.It Va boot_ddb
-Instructs the kernel to start in the DDB debugger, rather than
-proceeding to initialize when booted.
+.It Va boot_cdrom
+Instructs the kernel to try to mount the root file system from CD-ROM.
+.It Va boot_dfltroot
+Instructs the kernel to mount the statically compiled-in root file system.
 .It Va boot_gdb
 Selects gdb-remote mode for the kernel debugger by default.
+.It Va boot_kdb
+Instructs the kernel to start in the DDB debugger, rather than
+proceeding to initialize when booted.
+.It Va boot_multicons
+Enables multiple console support in the kernel early on boot.
+/*
+In a running system, console configuration can be manipulated
+by the
+.Xr conscontrol 8
+utility.
+*/
+All kernel console output is suppressed when console is muted.
+In a running system, the state of console muting can be manipulated by the
+.Xr conscontrol 8
+utility.
+.It Va boot_pause
+During the device probe, pause after each line is printed.
+.It Va boot_serial
+Force the use of a serial console even when an internal console
+is present.
 .It Va boot_single
 Prevents the kernel from initiating a multi-user startup; instead single-user
 mode will be entered when the kernel has finished device probing.
@@ -494,8 +522,42 @@ by the kernel during and after the boot phase.
 List of semicolon-separated search path for bootable kernels.
 The default is
 .Dq Li kernel .
+
+.It Va comconsole_speed
+Defines the speed of the serial console. If the previous boot stage
+indicated that a serial console is in use then this variable is initialized
+to the current speed of the console serial port.
+Otherwise it is set to 115200 unless this was overridden using the
+.Va BOOT_COMCONSOLE_SPEED
+variable when
+.Nm
+was compiled.
+Changes to the
+.Va comconsole_speed
+variable take effect 5 seconds after setting it. A warning to the user
+will be displayed so they have time to disconnect and reconnect their
+terminal(client).
+.It Va comconsole_port
+Defines the base i/o port used to access console UART.
+If the variable is not set, its assumed value is 0x3F8, which
+corresponds to PC port COM1, unless overridden by
+.Va BOOT_COMCONSOLE_PORT
+variable during the compilation of
+.Nm .
+Setting the
+.Va comconsole_port
+variable automatically set
+.Va hw.uart.console
+environment variable to provide a hint to kernel for location of the console.
+Loader console is changed immediately after variable
+.Va comconsole_port
+is set.
 .It Va console
-Defines the current console.
+Defines the current console or consoles.
+Multiple consoles may be specified.
+In that case, the first listed console will become the default console for
+userland output (e.g.\& from
+.Xr init 8 ) .
 .It Va currdev
 Selects the default device.
 Syntax for devices is odd.
@@ -653,6 +715,8 @@ are also accepted and indicate kilobytes, megabytes and gigabytes
 respectively.
 An invalid suffix will result in the variable being ignored by the
 kernel.
+.It Va hw.uart.console
+Will show the port and speed of the active serial console.
 .It Va hw.usb.hack_defer_exploration
 The USB keyboard will sometimes not attach properly unless you set this
 variable to 0.
@@ -866,7 +930,6 @@ boot kernel
 .Xr cryptsetup 8 ,
 .Xr lvm 8 ,
 .Xr pxeboot 8 ,
-.Xr pxeboot_tftp 8 ,
 .Xr sysctl 8
 .Sh HISTORY
 The

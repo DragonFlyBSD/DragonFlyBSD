@@ -18,7 +18,7 @@ INSTALLFLAGS=	-b
 SRCS=		main.c conf.c
 
 # Enable PXE TFTP or NFS support, not both.
-#CFLAGS+=	-DLOADER_TFTP_SUPPORT
+CFLAGS+=	-DLOADER_TFTP_SUPPORT
 CFLAGS+=	-DLOADER_NFS_SUPPORT
 
 # Enable PnP and ISA-PnP code.

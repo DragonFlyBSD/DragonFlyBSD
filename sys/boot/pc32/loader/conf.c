@@ -65,11 +65,11 @@ struct fs_ops *file_system[] = {
 #ifdef LOADER_BZIP2_SUPPORT
     &bzipfs_fsops,
 #endif
-#ifdef LOADER_TFTP_SUPPORT
-    &tftp_fsops,
-#endif
 #ifdef LOADER_NFS_SUPPORT 
     &nfs_fsops,
+#endif
+#ifdef LOADER_TFTP_SUPPORT
+    &tftp_fsops,
 #endif
     NULL
 };
