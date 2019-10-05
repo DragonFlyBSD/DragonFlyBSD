@@ -839,10 +839,11 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 int
 fillinusemap(struct msdosfsmount *pmp)
 {
-	struct buf *bp = NULL;
-	u_long cn, readcn;
+	struct buf *bp;
+	u_long bn, bo, bsize, byteoffset, cn, readcn;
 	int error;
-	u_long bn, bo, bsize, byteoffset;
+
+	bp = NULL;
 
 	/*
 	 * Mark all clusters in use, we mark the free ones in the FAT scan
