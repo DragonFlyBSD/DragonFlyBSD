@@ -365,6 +365,8 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 static __inline void
 usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 {
+	KASSERT(cn <= pmp->pm_maxcluster, ("cn too large %lu %lu", cn,
+	    pmp->pm_maxcluster));
 	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
 	    ("usemap_alloc on ro msdosfs mount"));
 	KASSERT((pmp->pm_inusemap[cn / N_INUSEBITS] & (1 << (cn % N_INUSEBITS)))
@@ -379,6 +381,8 @@ usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 static __inline void
 usemap_free(struct msdosfsmount *pmp, u_long cn)
 {
+	KASSERT(cn <= pmp->pm_maxcluster, ("cn too large %lu %lu", cn,
+	    pmp->pm_maxcluster));
 	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
 	    ("usemap_free on ro msdosfs mount"));
 	pmp->pm_freeclustercount++;
@@ -609,6 +613,8 @@ chainlength(struct msdosfsmount *pmp, u_long start, u_long count)
 	u_int map;
 	u_long len;
 
+	if (start > pmp->pm_maxcluster)
+		return (0);
 	max_idx = pmp->pm_maxcluster / N_INUSEBITS;
 	idx = start / N_INUSEBITS;
 	start %= N_INUSEBITS;
@@ -616,11 +622,18 @@ chainlength(struct msdosfsmount *pmp, u_long start, u_long count)
 	map &= ~((1 << start) - 1);
 	if (map) {
 		len = ffs(map) - 1 - start;
-		return (len > count ? count : len);
+		len = MIN(len, count);
+		if (start + len > pmp->pm_maxcluster)
+			len = pmp->pm_maxcluster - start + 1;
+		return (len);
 	}
 	len = N_INUSEBITS - start;
-	if (len >= count)
-		return (count);
+	if (len >= count) {
+		len = count;
+		if (start + len > pmp->pm_maxcluster)
+			len = pmp->pm_maxcluster - start + 1;
+		return (len);
+	}
 	while (++idx <= max_idx) {
 		if (len >= count)
 			break;
@@ -631,7 +644,10 @@ chainlength(struct msdosfsmount *pmp, u_long start, u_long count)
 		}
 		len += N_INUSEBITS;
 	}
-	return (len > count ? count : len);
+	len = MIN(len, count);
+	if (start + len > pmp->pm_maxcluster)
+		len = pmp->pm_maxcluster - start + 1;
+	return (len);
 }
 
 /*
@@ -895,6 +911,11 @@ fillinusemap(struct msdosfsmount *pmp)
 			usemap_free(pmp, cn);
 	}
 	brelse(bp);
+
+	for (cn = pmp->pm_maxcluster + 1; cn < (pmp->pm_maxcluster +
+	    N_INUSEBITS) / N_INUSEBITS; cn++)
+		pmp->pm_inusemap[cn / N_INUSEBITS] |= 1U << (cn % N_INUSEBITS);
+
 	return (0);
 }
 
