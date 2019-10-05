@@ -906,7 +906,8 @@ fillinusemap(struct msdosfsmount *pmp)
 		} else if (readcn == CLUST_FREE)
 			usemap_free(pmp, cn);
 	}
-	brelse(bp);
+	if (bp != NULL)
+		brelse(bp);
 
 	for (cn = pmp->pm_maxcluster + 1; cn < (pmp->pm_maxcluster +
 	    N_INUSEBITS) / N_INUSEBITS; cn++)
