@@ -10,7 +10,6 @@ SUBDIR=	pam_chroot \
 	pam_nologin \
 	pam_passwdqc \
 	pam_permit \
-	pam_radius \
 	pam_rhosts \
 	pam_rootok \
 	pam_securetty \
