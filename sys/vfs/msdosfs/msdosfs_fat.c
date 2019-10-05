@@ -127,12 +127,8 @@ pcbmap(struct denode *dep, u_long findcn, daddr_t *bnp, u_long *cnp, int *sp)
 	struct msdosfsmount *pmp = dep->de_pmp;
 	u_long bsize;
 
-	/*
-	 * If they don't give us someplace to return a value then don't
-	 * bother doing anything.
-	 */
-	if (bnp == NULL && cnp == NULL && sp == NULL)
-		return (0);
+	KASSERT(bnp != NULL || cnp != NULL || sp != NULL,
+	    ("pcbmap: extra call"));
 
 	cn = dep->de_StartCluster;
 	/*
