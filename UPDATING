@@ -12,6 +12,11 @@
 +         UPGRADING DRAGONFLY FROM 5.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+PAM_SSH MODULE REMOVED
+----------------------
+
+The pam_ssh(8) have been removed from base to DPorts security/pam_ssh.
+
 UTMP LEGACY API REMOVED
 -----------------------
 

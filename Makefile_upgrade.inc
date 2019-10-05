@@ -3773,6 +3773,9 @@ TO_REMOVE+=/usr/libdata/clangb
 TO_REMOVE+=/usr/libexec/clang
 TO_REMOVE+=/usr/libexec/clangb
 TO_REMOVE+=/usr/share/mk/bsd.cpu.clang.mk
+TO_REMOVE+=/usr/lib/security/pam_ssh.so
+TO_REMOVE+=/usr/lib/security/pam_ssh.so.2
+TO_REMOVE+=/usr/share/man/man8/pam_ssh.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

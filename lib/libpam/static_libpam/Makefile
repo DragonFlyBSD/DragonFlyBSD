@@ -35,7 +35,6 @@ MODULES=	pam_chroot \
 		pam_rootok \
 		pam_securetty \
 		pam_self \
-		pam_ssh \
 		pam_tacplus \
 		pam_unix
 
