@@ -60,6 +60,7 @@ CFLAGS+=-DNODES
 SRCS+=		chap_ms.c mppe.c
 .endif
 
+NORADIUS=
 .if defined(NORADIUS)
 CFLAGS+=-DNORADIUS
 .else
