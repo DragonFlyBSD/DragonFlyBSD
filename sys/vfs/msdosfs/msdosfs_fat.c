@@ -294,8 +294,8 @@ fc_purge(struct denode *dep, u_int frcn)
 static void
 updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 {
-	int i;
 	struct buf *bpn;
+	int cleanfat, i;
 
 	mprintf("updatefats(pmp %p, bp %p, fatbn %lu)\n", pmp, bp, fatbn);
 
@@ -310,12 +310,23 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 		 * filesystem was mounted.  If synch is asked for then use
 		 * bwrite()'s and really slow things down.
 		 */
+		if (fatbn != pmp->pm_fatblk || FAT12(pmp))
+			cleanfat = 0;
+		else if (FAT16(pmp))
+			cleanfat = 16;
+		else
+			cleanfat = 32;
 		for (i = 1; i < pmp->pm_FATs; i++) {
 			fatbn += pmp->pm_FATsecs;
 			/* getblk() never fails */
 			bpn = getblk(pmp->pm_devvp, de_bntodoff(pmp, fatbn),
 				     bp->b_bcount, 0, 0);
 			memcpy(bpn->b_data, bp->b_data, bp->b_bcount);
+			/* Force the clean bit on in the other copies. */
+			if (cleanfat == 16)
+				((uint8_t *)bpn->b_data)[3] |= 0x80;
+			else if (cleanfat == 32)
+				((uint8_t *)bpn->b_data)[7] |= 0x08;
 			if (pmp->pm_flags & MSDOSFSMNT_WAITONFAT)
 				bwrite(bpn);
 			else
