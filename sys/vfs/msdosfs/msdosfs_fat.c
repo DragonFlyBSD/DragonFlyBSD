@@ -68,6 +68,8 @@
 
 static void fc_lookup(struct denode *dep, u_long findcn, u_long *frcnp,
     u_long *fsrcnp);
+static int clusteralloc1(struct msdosfsmount *pmp, u_long start,
+    u_long count, u_long fillwith, u_long *retcluster, u_long *got);
 
 /*
  * Given a byte offset `ofs` within FAT, return block number in backing device,
@@ -675,6 +677,16 @@ chainalloc(struct msdosfsmount *pmp, u_long start, u_long count,
  */
 int
 clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
+    u_long fillwith, u_long *retcluster, u_long *got)
+{
+	int error;
+
+	error = clusteralloc1(pmp, start, count, fillwith, retcluster, got);
+	return (error);
+}
+
+static int
+clusteralloc1(struct msdosfsmount *pmp, u_long start, u_long count,
     u_long fillwith, u_long *retcluster, u_long *got)
 {
 	u_long idx;
