@@ -43,14 +43,22 @@
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 __BEGIN_DECLS
 extern __thread int	errno;
+
+int * __errno_location(void);		/* For language bindings only */
 __END_DECLS
 
+/*
+ * Some python parsers unable to parse such __error() inline.
+ */
+#ifdef __WANT_NO_INLINED___ERROR
+#define	errno		(* __errno_location())
+#else
 static __inline int *__error(void)
 {
 	return (&errno);
 }
-
 #define	errno		(* __error())
+#endif
 #endif
 
 #define	EPERM		1		/* Operation not permitted */

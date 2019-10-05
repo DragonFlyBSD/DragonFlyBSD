@@ -490,6 +490,7 @@ DF506.0 {
 };
 
 DF508.0 {
+    __errno_location;
     getutxuser;
 };
 

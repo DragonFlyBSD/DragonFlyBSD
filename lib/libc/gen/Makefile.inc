@@ -8,8 +8,9 @@ CFLAGS+=-I${.CURDIR}/../libc/sysvipc
 
 CMAPS+=	${.CURDIR}/gen/Symbol.map
 
-SRCS+=  _once_stub.c _pthread_stubs.c _rand48.c _spinlock_stub.c \
-	_thread_init.c alarm.c arc4random.c assert.c basename.c \
+SRCS+=  __errno_location.c _once_stub.c _pthread_stubs.c _rand48.c \
+	_spinlock_stub.c _thread_init.c \
+	alarm.c arc4random.c assert.c basename.c \
 	clock.c clock_getcpuclockid.c closedir.c confstr.c creat.c \
 	ctermid.c daemon.c devname.c dirfd.c dirname.c disklabel.c disktab.c \
 	dlfcn.c drand48.c dup3.c elf_utils.c erand48.c err.c errlst.c exec.c \
