@@ -60,13 +60,15 @@ CFLAGS+=-DNODES
 SRCS+=		chap_ms.c mppe.c
 .endif
 
-NORADIUS=
 .if defined(NORADIUS)
 CFLAGS+=-DNORADIUS
 .else
 SRCS+=	radius.c
-LDADD+=	-lradius
-DPADD+= ${LIBRADIUS}
+.PATH: ${.CURDIR}/libradius
+SRCS+=	radlib.c
+FLAGS_GROUPS+=	radius
+radius_FLAGS=	-I${.CURDIR}/libradius -DWITH_SSL
+radius_FLAGS_FILES= radius.c radlib.c
 .endif
 
 .if defined(WANT_NETGRAPH7)
