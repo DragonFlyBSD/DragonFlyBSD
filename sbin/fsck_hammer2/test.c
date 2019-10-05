@@ -108,6 +108,7 @@ typedef struct {
 	};
 } blockref_stats_t;
 
+static void print_blockref_entry(struct blockref_tree *);
 static void init_blockref_stats(blockref_stats_t *, uint8_t);
 static void cleanup_blockref_stats(blockref_stats_t *);
 static void print_blockref_stats(const blockref_stats_t *, bool);
@@ -134,6 +135,14 @@ tfprintf(FILE *fp, int tab, const char *ctl, ...)
 	va_start(va, ctl);
 	vfprintf(fp, ctl, va);
 	va_end(va);
+}
+
+static void
+tprintf_zone(int tab, int i, const hammer2_blockref_t *bref)
+{
+	tfprintf(stdout, tab, "zone.%d %016jx%s\n",
+	    i, (uintmax_t)bref->data_off,
+	    (!ScanBest && i == best_zone) ? " (best)" : "");
 }
 
 static int
@@ -195,9 +204,7 @@ test_volume_header(int fd)
 			if (ScanBest && i != best_zone)
 				continue;
 			broot.mirror_tid = voldata.mirror_tid;
-			printf("zone.%d %016jx%s\n",
-			    i, (uintmax_t)broot.data_off,
-			    (!ScanBest && i == best_zone) ? " (best)" : "");
+			tprintf_zone(0, i, &broot);
 			if (verify_volume_header(&voldata) == -1)
 				failed = true;
 		} else if (ret == -1) {
@@ -231,32 +238,16 @@ test_blockref(int fd, uint8_t type)
 		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
 			blockref_stats_t bstats;
-			struct blockref_entry *e;
-
 			if (ScanBest && i != best_zone)
 				continue;
 			broot.mirror_tid = voldata.mirror_tid;
 			init_blockref_stats(&bstats, type);
-			printf("zone.%d %016jx%s\n",
-			    i, (uintmax_t)broot.data_off,
-			    (!ScanBest && i == best_zone) ? " (best)" : "");
+			tprintf_zone(0, i, &broot);
 			if (verify_blockref(fd, &voldata, &broot, false,
 			    &bstats) == -1)
 				failed = true;
 			print_blockref_stats(&bstats, true);
-
-			RB_FOREACH(e, blockref_tree, &bstats.root) {
-				struct blockref_msg *m;
-				TAILQ_FOREACH(m, &e->head, entry) {
-					tfprintf(stderr, 1, "%016jx %3d "
-					    "%016jx/%-2d \"%s\"\n",
-					    (uintmax_t)e->data_off,
-					    m->bref.type,
-					    (uintmax_t)m->bref.key,
-					    m->bref.keybits,
-					    m->msg);
-				}
-			}
+			print_blockref_entry(&bstats.root);
 			cleanup_blockref_stats(&bstats);
 		} else if (ret == -1) {
 			perror("read");
@@ -296,9 +287,7 @@ test_pfs_blockref(int fd, const char *name)
 			if (ScanBest && i != best_zone)
 				continue;
 			broot.mirror_tid = voldata.mirror_tid;
-			printf("zone.%d %016jx%s\n",
-			    i, (uintmax_t)broot.data_off,
-			    (!ScanBest && i == best_zone) ? " (best)" : "");
+			tprintf_zone(0, i, &broot);
 
 			TAILQ_INIT(&blist);
 			if (init_pfs_blockref(fd, &voldata, &broot, &blist) ==
@@ -317,7 +306,6 @@ test_pfs_blockref(int fd, const char *name)
 
 			TAILQ_FOREACH(p, &blist, entry) {
 				blockref_stats_t bstats;
-				struct blockref_entry *e;
 				if (name && strcmp(name, p->msg))
 					continue;
 				count++;
@@ -327,19 +315,7 @@ test_pfs_blockref(int fd, const char *name)
 				    false, &bstats) == -1)
 					failed = true;
 				print_blockref_stats(&bstats, true);
-
-				RB_FOREACH(e, blockref_tree, &bstats.root) {
-					struct blockref_msg *m;
-					TAILQ_FOREACH(m, &e->head, entry) {
-						tfprintf(stderr, 1, "%016jx %3d "
-						    "%016jx/%-2d \"%s\"\n",
-						    (uintmax_t)e->data_off,
-						    m->bref.type,
-						    (uintmax_t)m->bref.key,
-						    m->bref.keybits,
-						    m->msg);
-					}
-				}
+				print_blockref_entry(&bstats.root);
 				cleanup_blockref_stats(&bstats);
 			}
 			cleanup_pfs_blockref(&blist);
@@ -379,54 +355,100 @@ charsperline(void)
 }
 
 static void
-add_blockref_entry(blockref_stats_t *bstats, const hammer2_blockref_t *bref,
-    const char *msg)
+cleanup_blockref_msg(struct blockref_list *head)
+{
+	struct blockref_msg *p;
+
+	while ((p = TAILQ_FIRST(head)) != NULL) {
+		TAILQ_REMOVE(head, p, entry);
+		free(p->msg);
+		free(p);
+	}
+	assert(TAILQ_EMPTY(head));
+}
+
+static void
+cleanup_blockref_entry(struct blockref_tree *root)
 {
 	struct blockref_entry *e;
-	struct blockref_msg *m;
 
-	e = RB_LOOKUP(blockref_tree, &bstats->root, bref->data_off);
-	if (!e) {
-		e = calloc(1, sizeof(*e));
-		assert(e);
-		TAILQ_INIT(&e->head);
+	while ((e = RB_ROOT(root)) != NULL) {
+		RB_REMOVE(blockref_tree, root, e);
+		cleanup_blockref_msg(&e->head);
+		free(e);
 	}
+	assert(RB_EMPTY(root));
+}
+
+static void
+add_blockref_msg(struct blockref_list *head, const hammer2_blockref_t *bref,
+    const char *msg)
+{
+	struct blockref_msg *m;
 
 	m = calloc(1, sizeof(*m));
 	assert(m);
 	m->bref = *bref;
 	m->msg = strdup(msg);
 
-	e->data_off = bref->data_off;
-	TAILQ_INSERT_TAIL(&e->head, m, entry);
-	RB_INSERT(blockref_tree, &bstats->root, e);
+	TAILQ_INSERT_TAIL(head, m, entry);
+}
+
+static void
+add_blockref_entry(struct blockref_tree *root, const hammer2_blockref_t *bref,
+    const char *msg)
+{
+	struct blockref_entry *e;
+
+	e = RB_LOOKUP(blockref_tree, root, bref->data_off);
+	if (!e) {
+		e = calloc(1, sizeof(*e));
+		assert(e);
+		TAILQ_INIT(&e->head);
+		e->data_off = bref->data_off;
+	}
+
+	add_blockref_msg(&e->head, bref, msg);
+
+	RB_INSERT(blockref_tree, root, e);
+}
+
+static void
+print_blockref_msg(struct blockref_list *head)
+{
+	struct blockref_msg *m;
+
+	TAILQ_FOREACH(m, head, entry) {
+		tfprintf(stderr, 1, "%016jx %3d %016jx/%-2d \"%s\"\n",
+		    (uintmax_t)m->bref.data_off,
+		    m->bref.type,
+		    (uintmax_t)m->bref.key,
+		    m->bref.keybits,
+		    m->msg);
+	}
+}
+
+static void
+print_blockref_entry(struct blockref_tree *root)
+{
+	struct blockref_entry *e;
+
+	RB_FOREACH(e, blockref_tree, root)
+		print_blockref_msg(&e->head);
 }
 
 static void
 init_blockref_stats(blockref_stats_t *bstats, uint8_t type)
 {
 	memset(bstats, 0, sizeof(*bstats));
-	bstats->type = type;
 	RB_INIT(&bstats->root);
+	bstats->type = type;
 }
 
 static void
 cleanup_blockref_stats(blockref_stats_t *bstats)
 {
-	struct blockref_entry *e;
-
-	while ((e = RB_ROOT(&bstats->root)) != NULL) {
-		struct blockref_msg *m;
-		RB_REMOVE(blockref_tree, &bstats->root, e);
-		while ((m = TAILQ_FIRST(&e->head)) != NULL) {
-			TAILQ_REMOVE(&e->head, m, entry);
-			free(m->msg);
-			free(m);
-		}
-		assert(TAILQ_EMPTY(&e->head));
-		free(e);
-	}
-	assert(RB_EMPTY(&bstats->root));
+	cleanup_blockref_entry(&bstats->root);
 }
 
 static void
@@ -603,17 +625,17 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		bstats->total_invalid++;
 		snprintf(msg, sizeof(msg),
 		    "Invalid blockref type %d", bref->type);
-		add_blockref_entry(bstats, bref, msg);
+		add_blockref_entry(&bstats->root, bref, msg);
 		failed = true;
 		break;
 	}
 
 	switch (read_media(fd, bref, &media, &bytes)) {
 	case -1:
-		add_blockref_entry(bstats, bref, "Bad I/O bytes");
+		add_blockref_entry(&bstats->root, bref, "Bad I/O bytes");
 		return -1;
 	case -2:
-		add_blockref_entry(bstats, bref, "Failed to read media");
+		add_blockref_entry(&bstats->root, bref, "Failed to read media");
 		return -1;
 	default:
 		break;
@@ -633,7 +655,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	case HAMMER2_CHECK_ISCSI32:
 		cv = hammer2_icrc32(&media, bytes);
 		if (bref->check.iscsi32.value != cv) {
-			add_blockref_entry(bstats, bref,
+			add_blockref_entry(&bstats->root, bref,
 			    "Bad HAMMER2_CHECK_ISCSI32");
 			failed = true;
 		}
@@ -641,7 +663,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	case HAMMER2_CHECK_XXHASH64:
 		cv64 = XXH64(&media, bytes, XXH_HAMMER2_SEED);
 		if (bref->check.xxhash64.value != cv64) {
-			add_blockref_entry(bstats, bref,
+			add_blockref_entry(&bstats->root, bref,
 			    "Bad HAMMER2_CHECK_XXHASH64");
 			failed = true;
 		}
@@ -653,7 +675,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		u.digest64[2] ^= u.digest64[3];
 		if (memcmp(u.digest, bref->check.sha192.data,
 		    sizeof(bref->check.sha192.data))) {
-			add_blockref_entry(bstats, bref,
+			add_blockref_entry(&bstats->root, bref,
 			    "Bad HAMMER2_CHECK_SHA192");
 			failed = true;
 		}
@@ -661,7 +683,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	case HAMMER2_CHECK_FREEMAP:
 		cv = hammer2_icrc32(&media, bytes);
 		if (bref->check.freemap.icrc32 != cv) {
-			add_blockref_entry(bstats, bref,
+			add_blockref_entry(&bstats->root, bref,
 			    "Bad HAMMER2_CHECK_FREEMAP");
 			failed = true;
 		}
@@ -774,14 +796,7 @@ init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
 static void
 cleanup_pfs_blockref(struct blockref_list *blist)
 {
-	struct blockref_msg *p;
-
-	while ((p = TAILQ_FIRST(blist)) != NULL) {
-		TAILQ_REMOVE(blist, p, entry);
-		free(p->msg);
-		free(p);
-	}
-	assert(TAILQ_EMPTY(blist));
+	cleanup_blockref_msg(blist);
 }
 
 int
