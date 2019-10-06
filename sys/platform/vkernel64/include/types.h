@@ -37,8 +37,4 @@
 
 #include <cpu/types.h>
 
-#ifdef _KERNEL
-typedef __uint32_t	intrmask_t;
-#endif
-
 #endif /* !_MACHINE_TYPES_H_ */

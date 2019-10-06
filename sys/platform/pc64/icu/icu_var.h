@@ -30,8 +30,12 @@
 #ifndef _ARCH_ICU_ICU_VAR_H_
 #define	_ARCH_ICU_ICU_VAR_H_
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
+#include <machine/stdint.h>
+
+/* Same as in bus/isa/isavar.h */
+#ifndef _INTRMASK_T_DECLARED
+#define _INTRMASK_T_DECLARED
+typedef __uint32_t	intrmask_t; /* Interrupt mask (spl, xxx_imask, etc) */
 #endif
 
 void		icu_definit(void);

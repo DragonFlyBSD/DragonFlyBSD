@@ -41,6 +41,15 @@ typedef void isa_config_cb(void *arg, struct isa_config *config, int enable);
 #ifdef _KERNEL
 
 /*
+ * The intrmask_t has to be wide enough to hold any value used by the platform,
+ * u_long would be best type, but use fixed 32bit type for historic reasons.
+ */
+#ifndef _INTRMASK_T_DECLARED
+#define _INTRMASK_T_DECLARED
+typedef __uint32_t	intrmask_t; /* Interrupt mask (spl, xxx_imask, etc) */
+#endif
+
+/*
  * ISA devices are partially ordered to ensure that devices which are
  * sensitive to other driver probe routines are probed first. Plug and
  * Play devices are added after devices with speculative probes so that
