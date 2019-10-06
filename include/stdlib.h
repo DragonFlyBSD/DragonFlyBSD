@@ -37,13 +37,6 @@
 #include <sys/_null.h>
 #include <sys/types.h>
 
-#if __BSD_VISIBLE
-#ifndef _RUNE_T_DECLARED
-typedef	__rune_t	rune_t;
-#define	_RUNE_T_DECLARED
-#endif
-#endif
-
 #ifndef _SIZE_T_DECLARED
 typedef	__size_t	size_t;		/* _GCC_SIZE_T OK */
 #define	_SIZE_T_DECLARED

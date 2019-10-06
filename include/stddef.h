@@ -50,13 +50,6 @@ typedef	__size_t	size_t;		/* open group, _GCC_SIZE_T OK */
 typedef	__ptrdiff_t	ptrdiff_t;	/* open group, _GCC_PTRDIFF_T OK */
 #endif
 
-#if __BSD_VISIBLE
-#ifndef _RUNE_T_DECLARED
-#define _RUNE_T_DECLARED
-typedef	__rune_t	rune_t;
-#endif
-#endif
-
 #ifndef	__cplusplus
 #ifndef _WCHAR_T_DECLARED
 #define _WCHAR_T_DECLARED
