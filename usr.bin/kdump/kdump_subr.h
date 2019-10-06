@@ -52,6 +52,6 @@ void uschedcmdname (int);
 void ckpttypename (int);
 void procctlcmdname (int);
 void mountctlopname (int);
-void chflagsname (int);
+void chflagsname (long);
 void atflagsname (int);
 void varsymlvlname (int);

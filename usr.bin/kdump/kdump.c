@@ -430,7 +430,7 @@ ktrsyscall(struct ktr_syscall *ktr)
 					print_number(ip,narg,c);
 				print_number(ip,narg,c);
 				putchar(',');
-				chflagsname((int)*ip);
+				chflagsname((long)*ip);
 				ip++;
 				narg--;
 				if (ktr->ktr_code == SYS_chflagsat) {

@@ -28,7 +28,7 @@
 .\"	@(#)chflags.2	8.3 (Berkeley) 5/2/95
 .\" $FreeBSD: src/lib/libc/sys/chflags.2,v 1.11.2.7 2001/12/14 18:34:00 ru Exp $
 .\"
-.Dd February 13, 2015
+.Dd November 6, 2019
 .Dt CHFLAGS 2
 .Os
 .Sh NAME
@@ -43,13 +43,13 @@
 .In sys/stat.h
 .In unistd.h
 .Ft int
-.Fn chflags "const char *path" "u_long flags"
+.Fn chflags "const char *path" "unsigned long flags"
 .Ft int
-.Fn lchflags "const char *path" "u_long flags"
+.Fn lchflags "const char *path" "unsigned long flags"
 .Ft int
-.Fn fchflags "int fd" "u_long flags"
+.Fn fchflags "int fd" "unsigned long flags"
 .Ft int
-.Fn chflagsat "int fd" "const char *path" "u_long flags" "int atflag"
+.Fn chflagsat "int fd" "const char *path" "unsigned long flags" "int atflag"
 .Sh DESCRIPTION
 The file whose name
 is given by

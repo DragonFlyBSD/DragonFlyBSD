@@ -68,6 +68,44 @@ _EOF_
 }
 
 #
+# Automatically generates a C function that will print out the
+# numeric input as a pipe-delimited string of the appropriate
+# #define keys. ex:
+# S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+# The XOR is necessary to prevent including the "0"-value in every
+# line.
+#
+auto_or_typelong () {
+	local name grep file
+	name=$1
+	grep=$2
+	file=$3
+
+	cat <<_EOF_
+/* AUTO */
+void
+$name (long arg)
+{
+	long	or = 0;
+	printf("%#lx<", arg);
+_EOF_
+	egrep "^#[[:space:]]*define[[:space:]]+"${grep}"[[:space:]]*" \
+		$include_dir/$file | \
+	awk '{ for (i = 1; i <= NF; i++) \
+		if ($i ~ /define/) \
+			break; \
+		++i; \
+		printf "\tif(!((arg>0)^((%s)>0)))\n\t\tif_print_or(arg, %s, or);\n", $i, $i }'
+cat <<_EOF_
+	printf(">");
+	if (or == 0)
+		printf("<invalid>%ld", (long)arg);
+}
+
+_EOF_
+}
+
+#
 # Automatically generates a C function used when the argument
 # maps to a single, specific #definition
 #
@@ -332,7 +370,7 @@ auto_or_type "flockname" "LOCK_[A-Z]+[[:space:]]+0x[0-9]+" "sys/fcntl.h"
 auto_or_type "mlockallname" "MCL_[A-Z]+[[:space:]]+0x[0-9]+" "sys/mman.h"
 auto_or_type "shmatname" "SHM_[A-Z]+[[:space:]]+[0-9]{6}+" "sys/shm.h"
 auto_or_type "rforkname" "RF[A-Z]+[[:space:]]+\([0-9]+<<[0-9]+\)" "sys/unistd.h"
-auto_or_type "chflagsname" "[SU]F_[A-Z]+[[:space:]]+0x[0-9]+" "sys/stat.h"
+auto_or_typelong "chflagsname" "[SU]F_[A-Z]+[[:space:]]+0x[0-9]+" "sys/stat.h"
 auto_or_type "atflagsname" "AT_[A-Z_]+[[:space:]]+[1-9]+[0-9]*" "sys/fcntl.h"
 
 auto_switch_type "whencename" "SEEK_[A-Z]+[[:space:]]+[0-9]+" "sys/unistd.h"

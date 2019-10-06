@@ -279,10 +279,10 @@ int	mkfifoat(int, const char *, mode_t);
 int	mknodat(int, const char *, mode_t, dev_t);
 #endif
 #if __BSD_VISIBLE
-int	chflags(const char *, u_long);
-int	fchflags(int, u_long);
-int	lchflags(const char *, u_long);
-int	chflagsat(int, const char *, u_long, int);
+int	chflags(const char *, unsigned long);
+int	fchflags(int, unsigned long);
+int	lchflags(const char *, unsigned long);
+int	chflagsat(int, const char *, unsigned long, int);
 int	lchmod(const char *, mode_t);
 #endif
 __END_DECLS

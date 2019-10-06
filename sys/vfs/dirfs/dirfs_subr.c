@@ -669,7 +669,7 @@ dirfs_node_chtimes(dirfs_node_t dnp)
 }
 
 int
-dirfs_node_chflags(dirfs_node_t dnp, int vaflags, struct ucred *cred)
+dirfs_node_chflags(dirfs_node_t dnp, u_long vaflags, struct ucred *cred)
 {
 	struct vnode *vp;
 	dirfs_mount_t dmp;

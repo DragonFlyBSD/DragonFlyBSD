@@ -248,15 +248,15 @@ struct	chflags_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
-	char *	path;	char path_[PAD_(char *)];
-	int	flags;	char flags_[PAD_(int)];
+	const char *	path;	char path_[PAD_(const char *)];
+	u_long	flags;	char flags_[PAD_(u_long)];
 };
 struct	fchflags_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
 	int	fd;	char fd_[PAD_(int)];
-	int	flags;	char flags_[PAD_(int)];
+	u_long	flags;	char flags_[PAD_(u_long)];
 };
 struct	sync_args {
 #ifdef _KERNEL
@@ -1622,8 +1622,8 @@ struct	lchflags_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
-	char *	path;	char path_[PAD_(char *)];
-	int	flags;	char flags_[PAD_(int)];
+	const char *	path;	char path_[PAD_(const char *)];
+	u_long	flags;	char flags_[PAD_(u_long)];
 };
 struct	uuidgen_args {
 #ifdef _KERNEL
@@ -2251,7 +2251,7 @@ struct	chflagsat_args {
 #endif
 	int	fd;	char fd_[PAD_(int)];
 	const char *	path;	char path_[PAD_(const char *)];
-	int	flags;	char flags_[PAD_(int)];
+	u_long	flags;	char flags_[PAD_(u_long)];
 	int	atflags;	char atflags_[PAD_(int)];
 };
 struct	pipe2_args {

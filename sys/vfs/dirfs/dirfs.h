@@ -157,7 +157,7 @@ struct dirfs_node {
 	uid_t			dn_uid;
 	gid_t			dn_gid;
 	mode_t			dn_mode;
-	int			dn_flags;
+	u_int			dn_flags;
 	nlink_t			dn_links;
 	int32_t			dn_atime;
 	int32_t			dn_atimensec;
@@ -270,7 +270,7 @@ int dirfs_close_helper(dirfs_node_t);
 int dirfs_node_refcnt(dirfs_node_t);
 char *dirfs_flag2str(dirfs_node_t);
 int dirfs_node_getperms(dirfs_node_t, int *);
-int dirfs_node_chflags(dirfs_node_t, int, struct ucred *);
+int dirfs_node_chflags(dirfs_node_t, u_long, struct ucred *);
 int dirfs_node_chtimes(dirfs_node_t);
 int dirfs_node_chmod(dirfs_mount_t, dirfs_node_t, mode_t cur_mode);
 int dirfs_node_chown(dirfs_mount_t, dirfs_node_t,

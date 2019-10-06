@@ -83,8 +83,8 @@
 31	STD	{ int getpeername(int fdes, caddr_t asa, int *alen); }
 32	STD	{ int getsockname(int fdes, caddr_t asa, int *alen); }
 33	STD	{ int access(char *path, int flags); }
-34	STD	{ int chflags(char *path, int flags); }
-35	STD	{ int fchflags(int fd, int flags); }
+34	STD	{ int chflags(const char *path, u_long flags); }
+35	STD	{ int fchflags(int fd, u_long flags); }
 36	STD	{ int sync(void); }
 37	STD	{ int kill(int pid, int signum); }
 38	OBSOL	old stat
@@ -531,7 +531,7 @@
 388	UNIMPL	nosys
 389	UNIMPL	nosys
 390	STD	{ int kenv(int what, const char *name, char *value, int len); }
-391	STD	{ int lchflags(char *path, int flags); }
+391	STD	{ int lchflags(const char *path, u_long flags); }
 392	STD	{ int uuidgen(struct uuid *store, int count); }
 393	STD	{ int sendfile(int fd, int s, off_t offset, size_t nbytes, \
 				struct sf_hdtr *hdtr, off_t *sbytes, int flags); }
@@ -720,7 +720,7 @@
 534	STD	{ int vmm_guest_ctl(int op, struct vmm_guest_options *options); }
 535	STD	{ int vmm_guest_sync_addr(long *dstaddr, long *srcaddr); }
 536	STD	{ int procctl(idtype_t idtype, id_t id, int cmd, void *data); }
-537	STD	{ int chflagsat(int fd, const char *path, int flags, int atflags);}
+537	STD	{ int chflagsat(int fd, const char *path, u_long flags, int atflags);}
 538	STD	{ int pipe2(int *fildes, int flags); }
 539	STD	{ int utimensat(int fd, const char *path, const struct timespec *ts, int flags); }
 540	STD	{ int futimens(int fd, const struct timespec *ts); }

@@ -175,7 +175,7 @@ struct tmpfs_node {
 	uid_t			tn_uid;
 	gid_t			tn_gid;
 	mode_t			tn_mode;
-	int			tn_flags;
+	u_int			tn_flags;
 	nlink_t			tn_links;
 	long			tn_atime;
 	long			tn_atimensec;
@@ -413,7 +413,7 @@ int	tmpfs_dir_getdotdotdent(struct tmpfs_mount *,
 struct tmpfs_dirent *	tmpfs_dir_lookupbycookie(struct tmpfs_node *, off_t);
 int	tmpfs_dir_getdents(struct tmpfs_node *, struct uio *, off_t *);
 int	tmpfs_reg_resize(struct vnode *, off_t, int);
-int	tmpfs_chflags(struct vnode *, int, struct ucred *);
+int	tmpfs_chflags(struct vnode *, u_long, struct ucred *);
 int	tmpfs_chmod(struct vnode *, mode_t, struct ucred *);
 int	tmpfs_chown(struct vnode *, uid_t, gid_t, struct ucred *);
 int	tmpfs_chsize(struct vnode *, u_quad_t, struct ucred *);

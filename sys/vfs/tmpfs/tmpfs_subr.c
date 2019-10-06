@@ -1020,7 +1020,7 @@ out:
  * The vnode must be locked on entry and remain locked on exit.
  */
 int
-tmpfs_chflags(struct vnode *vp, int vaflags, struct ucred *cred)
+tmpfs_chflags(struct vnode *vp, u_long vaflags, struct ucred *cred)
 {
 	int error;
 	struct tmpfs_node *node;

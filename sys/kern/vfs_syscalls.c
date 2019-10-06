@@ -86,7 +86,7 @@ static int getutimes (struct timeval *, struct timespec *);
 static int getutimens (const struct timespec *, struct timespec *, int *);
 static int setfown (struct mount *, struct vnode *, uid_t, gid_t);
 static int setfmode (struct vnode *, int);
-static int setfflags (struct vnode *, int);
+static int setfflags (struct vnode *, u_long);
 static int setutimes (struct vnode *, struct vattr *,
 			const struct timespec *, int);
 
@@ -3154,7 +3154,7 @@ sys_readlinkat(struct readlinkat_args *uap)
 }
 
 static int
-setfflags(struct vnode *vp, int flags)
+setfflags(struct vnode *vp, u_long flags)
 {
 	struct thread *td = curthread;
 	int error;
@@ -3184,7 +3184,7 @@ setfflags(struct vnode *vp, int flags)
 }
 
 /*
- * chflags(char *path, int flags)
+ * chflags(const char *path, u_long flags)
  *
  * Change flags of a file given a path name.
  */
@@ -3212,7 +3212,7 @@ sys_chflags(struct chflags_args *uap)
 }
 
 /*
- * lchflags(char *path, int flags)
+ * lchflags(const char *path, u_long flags)
  *
  * Change flags of a file given a path name, but don't follow symlinks.
  */
@@ -3240,7 +3240,7 @@ sys_lchflags(struct lchflags_args *uap)
 }
 
 /*
- * fchflags_args(int fd, int flags)
+ * fchflags_args(int fd, u_flags flags)
  *
  * Change flags of a file given a file descriptor.
  */
@@ -3262,7 +3262,7 @@ sys_fchflags(struct fchflags_args *uap)
 }
 
 /*
- * chflagsat_args(int fd, const char *path, int flags, int atflags)
+ * chflagsat_args(int fd, const char *path, u_long flags, int atflags)
  * change flags given a pathname relative to a filedescriptor
  */
 int sys_chflagsat(struct chflagsat_args *uap)
