@@ -218,9 +218,9 @@ __read_label(FILE *fp, char *label, size_t size, const char *devpath)
 		pfs++;
 
 	if (__find_pfs(fp, bref, pfs, &res) == 0 && res)
-		snprintf(label, size, "%s", pfs);
+		strlcpy(label, pfs, size);
 	else
-		snprintf(label, size, "%s", (char*)media->ipdata.filename);
+		strlcpy(label, (char*)media->ipdata.filename, size);
 	free(media);
 done:
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++)

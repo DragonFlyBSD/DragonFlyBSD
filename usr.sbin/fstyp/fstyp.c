@@ -29,6 +29,7 @@
  *
  */
 
+#include <sys/param.h>
 #include <sys/diskslice.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -167,8 +168,9 @@ main(int argc, char **argv)
 	int ch, error, i, nbytes;
 	bool ignore_type = false, show_label = false, show_unmountable = false;
 	char label[LABEL_LEN + 1], strvised[LABEL_LEN * 4 + 1];
-	char fdpath[LABEL_LEN + 1];
-	char *path, *p;
+	char fdpath[MAXPATHLEN];
+	char *p;
+	const char *path;
 	const char *name = NULL;
 	FILE *fp;
 	fstyp_function fstyp_f;
@@ -207,8 +209,14 @@ main(int argc, char **argv)
 		*p = '\0';
 
 	fp = fopen(fdpath, "r");
-	if (fp == NULL)
-		goto fsvtyp; /* DragonFly */
+	if (fp == NULL) {
+		if (strcmp(path, fdpath))
+			fp = fopen(path, "r");
+		if (fp == NULL)
+			goto fsvtyp; /* DragonFly */
+		else
+			strlcpy(fdpath, path, sizeof(fdpath));
+	}
 
 	if (ignore_type == false)
 		type_check(fdpath, fp);
