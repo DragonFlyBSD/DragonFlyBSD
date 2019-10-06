@@ -42,6 +42,8 @@
 #define	_CACHED_RUNES	(1 <<8 )	/* Must be a power of 2 */
 #define	_CRMASK		(~(_CACHED_RUNES - 1))
 
+typedef __ct_rune_t	__rune_t;	/* Internal runetype.h type */
+
 /*
  * The lower 8 bits of runetype[] contain the digit value of the rune.
  */
@@ -93,9 +95,9 @@ extern __thread const _RuneLocale *_ThreadRuneLocale;
 static __inline const _RuneLocale *__getCurrentRuneLocale(void)
 {
 
-	if (_ThreadRuneLocale) 
+	if (_ThreadRuneLocale)
 		return _ThreadRuneLocale;
-	if (_CurrentRuneLocale) 
+	if (_CurrentRuneLocale)
 		return _CurrentRuneLocale;
 	return &_DefaultRuneLocale;
 }

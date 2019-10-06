@@ -37,10 +37,6 @@ typedef	int		__wchar_t;
 typedef	int		__wint_t;
 #define	___WINT_T_DECLARED
 #endif
-#ifndef ___RUNE_T_DECLARED
-typedef	int		__rune_t;
-#define ___RUNE_T_DECLARED
-#endif
 
 /*
  * mbstate_t is an opaque object to keep conversion state, during multibyte
