@@ -41,7 +41,7 @@
 #define LABEL_NO_NAME		"NO NAME    "
 
 int
-fstyp_msdosfs(FILE *fp, char *label, size_t size)
+fstyp_msdosfs(FILE *fp, char *label, size_t size, const char *devpath)
 {
 	FAT_BSBPB *pfat_bsbpb;
 	FAT32_BSBPB *pfat32_bsbpb;

@@ -50,7 +50,7 @@ typedef struct e2sb {
 } e2sb_t;
 
 int
-fstyp_ext2fs(FILE *fp, char *label, size_t size)
+fstyp_ext2fs(FILE *fp, char *label, size_t size, const char *devpath)
 {
 	e2sb_t *fs;
 	char *s_volume_name;

@@ -53,7 +53,7 @@ struct exfat_vbr {
 } __packed;
 
 int
-fstyp_exfat(FILE *fp, char *label, size_t size)
+fstyp_exfat(FILE *fp, char *label, size_t size, const char *devpath)
 {
 	struct exfat_vbr *ev;
 

@@ -41,7 +41,7 @@
 #define	VOLUME_LEN	32
 
 int
-fstyp_cd9660(FILE *fp, char *label, size_t size)
+fstyp_cd9660(FILE *fp, char *label, size_t size, const char *devpath)
 {
 	char *sector, *volume;
 

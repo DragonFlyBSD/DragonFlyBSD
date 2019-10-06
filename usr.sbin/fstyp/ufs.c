@@ -58,7 +58,7 @@
 static const int superblocks[] = SBLOCKSEARCH;
 
 int
-fstyp_ufs(FILE *fp, char *label, size_t labelsize)
+fstyp_ufs(FILE *fp, char *label, size_t labelsize, const char *devpath)
 {
 	int sb, superblock;
 	struct fs *fs;

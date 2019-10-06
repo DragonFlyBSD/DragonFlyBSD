@@ -91,7 +91,7 @@ struct ntfs_bootfile {
 } __packed;
 
 int
-fstyp_ntfs(FILE *fp, char *label, size_t size)
+fstyp_ntfs(FILE *fp, char *label, size_t size, const char *devpath)
 {
 	struct ntfs_bootfile *bf;
 	struct ntfs_filerec *fr;

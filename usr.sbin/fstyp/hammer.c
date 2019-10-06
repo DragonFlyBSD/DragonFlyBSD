@@ -86,7 +86,7 @@ __test_ondisk(const hammer_volume_ondisk_t ondisk)
 }
 
 int
-fstyp_hammer(FILE *fp, char *label, size_t size)
+fstyp_hammer(FILE *fp, char *label, size_t size, const char *devpath)
 {
 	hammer_volume_ondisk_t ondisk;
 	int error = 1;

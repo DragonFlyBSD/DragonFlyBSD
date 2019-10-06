@@ -29,8 +29,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <err.h>
+#include <assert.h>
 #include <vfs/hammer2/hammer2_disk.h>
 
 #include "fstyp.h"
@@ -57,14 +59,112 @@ __test_voldata(const hammer2_volume_data_t *voldata)
 	return (0);
 }
 
+static hammer2_media_data_t*
+__read_media(FILE *fp, const hammer2_blockref_t *bref, size_t *media_bytes)
+{
+	hammer2_media_data_t *media;
+	hammer2_off_t io_off, io_base;
+	size_t bytes, io_bytes, boff;
+
+	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	if (bytes)
+		bytes = (size_t)1 << bytes;
+	*media_bytes = bytes;
+
+	if (!bytes) {
+		warnx("Blockref has no data");
+		return (NULL);
+	}
+
+	io_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
+	io_base = io_off & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
+	boff = io_off - io_base;
+
+	io_bytes = HAMMER2_MINIOSIZE;
+	while (io_bytes + boff < bytes)
+		io_bytes <<= 1;
+
+	if (io_bytes > sizeof(hammer2_media_data_t)) {
+		warnx("Invalid I/O bytes");
+		return (NULL);
+	}
+
+	if (fseek(fp, io_base, SEEK_SET) == -1) {
+		warnx("Failed to seek media");
+		return (NULL);
+	}
+	media = read_buf(fp, io_base, io_bytes);
+	if (media == NULL) {
+		warnx("Failed to read media");
+		return (NULL);
+	}
+	if (boff)
+		memcpy(media, (char *)media + boff, bytes);
+
+	return (media);
+}
+
 static int
-__read_label(FILE *fp, char *label, size_t size)
+__find_pfs(FILE *fp, const hammer2_blockref_t *bref, const char *pfs, bool *res)
+{
+	hammer2_media_data_t *media;
+	hammer2_inode_data_t ipdata;
+	hammer2_blockref_t *bscan;
+	size_t bytes;
+	int i, bcount;
+
+	media = __read_media(fp, bref, &bytes);
+	if (media == NULL)
+		return (-1);
+
+	switch (bref->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		ipdata = media->ipdata;
+		if (ipdata.meta.pfs_type & HAMMER2_PFSTYPE_SUPROOT) {
+			bscan = &ipdata.u.blockset.blockref[0];
+			bcount = HAMMER2_SET_COUNT;
+		} else {
+			bscan = NULL;
+			bcount = 0;
+			if (ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) {
+				if (!strcmp(ipdata.filename, pfs))
+					*res = true;
+			} else
+				assert(0);
+		}
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		bscan = &media->npdata[0];
+		bcount = bytes / sizeof(hammer2_blockref_t);
+		break;
+	default:
+		bscan = NULL;
+		bcount = 0;
+		break;
+	}
+
+	for (i = 0; i < bcount; ++i) {
+		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY) {
+			if (__find_pfs(fp, &bscan[i], pfs, res) == -1) {
+				free(media);
+				return (-1);
+			}
+		}
+	}
+	free(media);
+
+	return (0);
+}
+
+static int
+__read_label(FILE *fp, char *label, size_t size, const char *devpath)
 {
 	hammer2_blockref_t broot, best, *bref;
 	hammer2_media_data_t *vols[HAMMER2_NUM_VOLHDRS], *media;
-	hammer2_off_t io_off, io_base;
-	size_t bytes, io_bytes, boff;
+	size_t bytes;
+	bool res = false;
 	int i, best_i, error = 0;
+	const char *pfs;
 
 	best_i = -1;
 	memset(&best, 0, sizeof(best));
@@ -82,45 +182,45 @@ __read_label(FILE *fp, char *label, size_t size)
 		}
 	}
 	if (best_i == -1) {
-		warnx("Failed to find volume header from zones");
+		warnx("Failed to find best zone");
 		error = 1;
 		goto done;
 	}
 
 	bref = &vols[best_i]->voldata.sroot_blockset.blockref[0];
 	if (bref->type != HAMMER2_BREF_TYPE_INODE) {
-		warnx("Superroot blockref type is not inode");
-		error = 2;
+		warnx("Blockref type is not inode");
+		error = 1;
 		goto done;
 	}
 
-	bytes = bref->data_off & HAMMER2_OFF_MASK_RADIX;
-	if (bytes)
-		bytes = (size_t)1 << bytes;
-	if (bytes != sizeof(hammer2_inode_data_t)) {
-		warnx("Superroot blockref size does not match inode size");
-		error = 3;
+	media = __read_media(fp, bref, &bytes);
+	if (media == NULL) {
+		error = 1;
 		goto done;
 	}
 
-	io_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
-	io_base = io_off & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
-	boff = io_off - io_base;
+	pfs = strchr(devpath, '@');
+	if (!pfs) {
+		assert(strlen(devpath));
+		switch (devpath[strlen(devpath) - 1]) {
+		case 'a':
+			pfs = "BOOT";
+			break;
+		case 'd':
+			pfs = "ROOT";
+			break;
+		default:
+			pfs = "DATA";
+			break;
+		}
+	} else
+		pfs++;
 
-	io_bytes = HAMMER2_MINIOSIZE;
-	while (io_bytes + boff < bytes)
-		io_bytes <<= 1;
-	if (io_bytes > sizeof(*media)) {
-		warnx("Invalid I/O bytes");
-		error = 4;
-		goto done;
-	}
-
-	media = read_buf(fp, io_base, io_bytes);
-	if (boff)
-		memcpy(media, (char*)media + boff, bytes);
-
-	strlcpy(label, (char*)media->ipdata.filename, size);
+	if (__find_pfs(fp, bref, pfs, &res) == 0 && res)
+		snprintf(label, size, "%s", pfs);
+	else
+		snprintf(label, size, "%s", (char*)media->ipdata.filename);
 	free(media);
 done:
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++)
@@ -130,7 +230,7 @@ done:
 }
 
 int
-fstyp_hammer2(FILE *fp, char *label, size_t size)
+fstyp_hammer2(FILE *fp, char *label, size_t size, const char *devpath)
 {
 	hammer2_volume_data_t *voldata;
 	int error = 1;
@@ -139,7 +239,7 @@ fstyp_hammer2(FILE *fp, char *label, size_t size)
 	if (__test_voldata(voldata))
 		goto done;
 
-	error = __read_label(fp, label, size);
+	error = __read_label(fp, label, size, devpath);
 done:
 	free(voldata);
 	return (error);
