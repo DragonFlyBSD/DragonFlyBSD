@@ -21,6 +21,9 @@ OBJSYS=		${.OBJDIR}/../sys
 GITURL_SRC?=	git://git.dragonflybsd.org/dragonfly.git
 GITURL_DPORTS?=	git://mirror-master.dragonflybsd.org/dports.git
 MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
+.if !defined(NOFSCHG)
+MTREE_FSCHG=	-i
+.endif
 
 # XXX makeshift fix to build the right kernel for the (target) architecture
 # We should configure this in the platform files somehow
@@ -191,7 +194,8 @@ buildiso:
 		done )
 	rm -rf ${ISOROOT}/boot/kernel.old
 	ln -sf kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
-	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
+	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist \
+		-p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
 # The GUI build includes the ports tree (~1G+) while the nominal release

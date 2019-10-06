@@ -46,6 +46,9 @@ DEFAULTS= compilers.conf devfs.conf make.conf periodic.conf \
 	  pfi.conf rc.conf uuids
 
 MTREE=	BSD.include.dist BSD.root.dist BSD.usr.dist BSD.var.dist
+.if !defined(NOFSCHG)
+MTREE_FSCHG=	-i
+.endif
 
 PPPCNF=	ppp.conf
 
@@ -356,10 +359,13 @@ distribution:
 #
 #
 distrib-dirs:
-	mtree -deU -f ${.CURDIR}/mtree/BSD.root.dist -p ${DESTDIR}/
-	mtree -deU -f ${.CURDIR}/mtree/BSD.var.dist -p ${DESTDIR}/var
-	mtree -deU -f ${.CURDIR}/mtree/BSD.usr.dist -p ${DESTDIR}/usr
-	mtree -deU -f ${.CURDIR}/mtree/BSD.include.dist \
+	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/mtree/BSD.root.dist \
+		-p ${DESTDIR}/
+	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/mtree/BSD.var.dist \
+		-p ${DESTDIR}/var
+	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/mtree/BSD.usr.dist \
+		-p ${DESTDIR}/usr
+	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/mtree/BSD.include.dist \
 		-p ${DESTDIR}/usr/include
 	-chflags xlink ${DESTDIR}/* ${DESTDIR}/usr/* ${DESTDIR}/var/* \
 			${DESTDIR}/home/*

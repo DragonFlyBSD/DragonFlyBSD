@@ -463,9 +463,12 @@ fn_install_os(struct i_fn_args *a)
 	}
 
 	/*
+	 * XXX This should not be needed. It was added to fix /var/run/sem
+	 *     issues, see d4c25c30fc5f9ffeb258150a9590ef56954435bb.
+	 *
 	 * Ensure /var has all directories it needs.
 	 */
-	command_add(cmds, "%s%s -deU -f %setc/mtree/BSD.var.dist -p %smnt/var",
+	command_add(cmds, "%s%s -deiU -f %setc/mtree/BSD.var.dist -p %smnt/var",
 	    a->os_root, cmd_name(a, "MTREE"), a->os_root, a->os_root);
 
 	/*
