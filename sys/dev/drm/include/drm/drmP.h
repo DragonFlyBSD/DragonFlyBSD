@@ -425,7 +425,8 @@ struct drm_file {
 	struct file *filp;
 	void *driver_priv;
 
-	struct drm_master *masterp;
+	struct drm_master *master; /* master this node is currently associated with
+				      N.B. not always minor->master */
 	/**
 	 * fbs - List of framebuffers associated with this file.
 	 *
@@ -450,7 +451,6 @@ struct drm_file {
 
 #ifdef __DragonFly__
 	struct drm_device *dev;
-	int		  master;
 	unsigned long ioctl_count;
 	struct kqinfo	  dkq;
 #endif

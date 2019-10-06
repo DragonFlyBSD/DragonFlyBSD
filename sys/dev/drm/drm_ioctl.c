@@ -490,7 +490,7 @@ int drm_ioctl_permit(u32 flags, struct drm_file *file_priv)
 		return -EACCES;
 
 	/* MASTER is only for master or control clients */
-	if (unlikely((flags & DRM_MASTER) && !file_priv->master))
+	if (unlikely((flags & DRM_MASTER) && !file_priv->is_master))
 		return -EACCES;
 
 	return 0;

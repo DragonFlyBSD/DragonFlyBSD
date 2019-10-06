@@ -172,7 +172,7 @@ int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 {
 	DRM_DEBUG("setmaster\n");
 
-	if (file_priv->master != 0)
+	if (file_priv->is_master != 0)
 		return (0);
 
 	return (-EPERM);
@@ -182,7 +182,7 @@ int drm_dropmaster_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
 {
 	DRM_DEBUG("dropmaster\n");
-	if (file_priv->master != 0)
+	if (file_priv->is_master != 0)
 		return -EINVAL;
 	return 0;
 }

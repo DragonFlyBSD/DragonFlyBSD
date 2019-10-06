@@ -247,7 +247,7 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 
 	/* first opener automatically becomes master */
 	mutex_lock(&dev->master_mutex);
-	priv->master = list_empty(&dev->filelist);
+	priv->is_master = list_empty(&dev->filelist);
 	mutex_unlock(&dev->master_mutex);
 
 	mutex_lock(&dev->filelist_mutex);
