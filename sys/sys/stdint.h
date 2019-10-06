@@ -47,7 +47,4 @@ typedef union {
 	__int64_t __mbstateL;	/* for alignment */
 } __mbstate_t;
 
-typedef __int64_t	__off_t;
-typedef __int32_t	__pid_t;
-
 #endif	/* SYS_STDINT_H */

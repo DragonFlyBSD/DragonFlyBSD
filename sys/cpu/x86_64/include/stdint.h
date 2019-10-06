@@ -119,6 +119,7 @@ typedef __int32_t	__ssize_t;
 typedef __int32_t	__register_t;
 typedef __uint32_t	__u_register_t;
 #endif
+
 typedef long		__suseconds_t;
 typedef long		__time_t;
 typedef int		__timer_t;
@@ -128,5 +129,7 @@ typedef unsigned long	__clockid_t;
 typedef __uint32_t	__socklen_t;
 typedef volatile int	__atomic_intr_t;
 typedef __int64_t	__rlim_t;
+typedef __int64_t	__off_t;
+typedef __int32_t	__pid_t;
 
 #endif /* _CPU_STDINT_H_ */
