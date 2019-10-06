@@ -30,9 +30,8 @@
 .\"
 .\"	@(#)profil.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/profil.2,v 1.9.2.3 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/profil.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd November 6, 2019
 .Dt PROFIL 2
 .Os
 .Sh NAME
@@ -43,7 +42,7 @@
 .Sh SYNOPSIS
 .In unistd.h
 .Ft int
-.Fn profil "char *samples" "size_t size" "vm_offset_t offset" "int scale"
+.Fn profil "char *samples" "size_t size" "unsigned long offset" "unsigned int scale"
 .Sh DESCRIPTION
 The
 .Fn profil

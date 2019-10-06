@@ -301,7 +301,7 @@ struct	profil_args {
 #endif
 	caddr_t	samples;	char samples_[PAD_(caddr_t)];
 	size_t	size;	char size_[PAD_(size_t)];
-	size_t	offset;	char offset_[PAD_(size_t)];
+	u_long	offset;	char offset_[PAD_(u_long)];
 	u_int	scale;	char scale_[PAD_(u_int)];
 };
 struct	ktrace_args {

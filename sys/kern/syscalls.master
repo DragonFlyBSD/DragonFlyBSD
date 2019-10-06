@@ -94,7 +94,7 @@
 42	STD	{ int pipe(void); }
 43	STD	{ gid_t getegid(void); }
 44	STD	{ int profil(caddr_t samples, size_t size, \
-			    size_t offset, u_int scale); }
+			    u_long offset, u_int scale); }
 45	STD	{ int ktrace(const char *fname, int ops, int facs, \
 			    int pid); }
 46	OBSOL	freebsd3_sigaction
