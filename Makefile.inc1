@@ -535,7 +535,7 @@ installworld: installcheck
 	@echo "--------------------------------------------------------------"
 
 os-release:
-	@echo "NAME=DragonFly" >> ${DESTDIR}/etc/os-release
+	@echo "NAME=DragonFly" > ${DESTDIR}/etc/os-release
 	@echo "VERSION=${OSREL}-SYNTH" >> ${DESTDIR}/etc/os-release
 	@echo "VERSION_ID=${OSREL}" >> ${DESTDIR}/etc/os-release
 	@echo "ID=dragonfly" >> ${DESTDIR}/etc/os-release
