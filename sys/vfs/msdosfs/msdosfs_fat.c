@@ -400,17 +400,15 @@ clusterfree(struct msdosfsmount *pmp, u_long cluster, u_long *oldcnp)
 	int error;
 	u_long oldcn;
 
-	usemap_free(pmp, cluster);
 	error = fatentry(FAT_GET_AND_SET, pmp, cluster, &oldcn, MSDOSFSFREE);
-	if (error) {
-		usemap_alloc(pmp, cluster);
+	if (error)
 		return (error);
-	}
 	/*
 	 * If the cluster was successfully marked free, then update
 	 * the count of free clusters, and turn off the "allocated"
 	 * bit in the "in use" cluster bit map.
 	 */
+	usemap_free(pmp, cluster);
 	if (oldcnp)
 		*oldcnp = oldcn;
 	return (0);
