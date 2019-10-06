@@ -38,7 +38,7 @@
 #define	FUNCTION_ALIGNMENT	4
 
 #define	_MCOUNT_DECL \
-static void _mcount(uintfptr_t frompc, uintfptr_t selfpc) __used; \
+static void _mcount(u_long frompc, u_long selfpc) __used; \
 static void _mcount
 
 #ifdef	__GNUC__
@@ -74,14 +74,6 @@ mcount()		\
 {			\
 }
 #endif	/* __GNUC__ */
-
-typedef	unsigned long	uintfptr_t;
-
-/*
- * An unsigned integral type that can hold non-negative difference between
- * function pointers.
- */
-typedef	unsigned long	fptrdiff_t;
 
 __BEGIN_DECLS
 #ifdef __GNUC__

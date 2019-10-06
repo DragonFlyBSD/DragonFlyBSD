@@ -156,8 +156,8 @@ struct gmonparam {
 	struct tostruct	*tos;
 	u_long		tossize;
 	long		tolimit;
-	uintfptr_t	lowpc;
-	uintfptr_t	highpc;
+	u_long		lowpc;
+	u_long		highpc;
 	u_long		textsize;
 	u_long		hashfraction;
 	int		profrate;	/* XXX wrong type to match gmonhdr */

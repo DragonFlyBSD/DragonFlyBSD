@@ -482,8 +482,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		}
 
 		if (addr != (void *)1) {
-			if ((error = ptrace_set_pc (lp,
-			    (u_long)(uintfptr_t)addr))) {
+			if ((error = ptrace_set_pc (lp, (u_long)addr))) {
 				LWPRELE(lp);
 				lwkt_reltoken(&p->p_token);
 				PRELE(p);

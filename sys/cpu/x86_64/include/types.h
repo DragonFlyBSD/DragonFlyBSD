@@ -55,11 +55,6 @@ typedef	__int64_t	vm_ooffset_t;	/* VM object bounded offset */
 typedef __uint64_t	vm_poff_t;	/* physical offset */
 typedef __uint64_t	vm_paddr_t;	/* physical addr (same as vm_poff_t) */
 
-#ifdef _KERNEL
-typedef	__int64_t	intfptr_t;
-typedef	__uint64_t	uintfptr_t;
-#endif
-
 /*
  * MMU page tables
  */

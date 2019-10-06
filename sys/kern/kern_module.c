@@ -112,7 +112,7 @@ module_register_init(const void *arg)
 	module_unload(mod);	/* ignore error */
 	module_release(mod);
 	kprintf("module_register_init: MOD_LOAD (%s, %lx, %p) error %d\n",
-	       data->name, (u_long)(uintfptr_t)data->evhand, data->priv, error);
+	       data->name, (u_long)data->evhand, data->priv, error);
     }
 }
 
