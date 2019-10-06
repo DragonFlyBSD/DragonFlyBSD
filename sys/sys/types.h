@@ -273,9 +273,4 @@ typedef	__ct_rune_t	__wint_t;	/* wint_t (see above) */
 #define	___WINT_T_DECLARED
 #endif
 
-/*
- * Also required for locale support
- */
-typedef	int		__nl_item;
-
 #endif /* !_SYS_TYPES_H_ */
