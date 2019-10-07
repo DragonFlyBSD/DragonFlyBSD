@@ -524,13 +524,12 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		struct fsinfo *fp;
 
 		if ((error = bread(devvp, de_bn2doff(pmp, pmp->pm_fsinfo),
-		    fsi_size(pmp), &bp)) != 0)
+		    pmp->pm_BytesPerSec, &bp)) != 0)
 			goto error_exit;
 		fp = (struct fsinfo *)bp->b_data;
 		if (!memcmp(fp->fsisig1, "RRaA", 4) &&
 		    !memcmp(fp->fsisig2, "rrAa", 4) &&
-		    !memcmp(fp->fsisig3, "\0\0\125\252", 4) &&
-		    !memcmp(fp->fsisig4, "\0\0\125\252", 4)) {
+		    !memcmp(fp->fsisig3, "\0\0\125\252", 4)) {
 			pmp->pm_nxtfree = getulong(fp->fsinxtfree);
 			if (pmp->pm_nxtfree == (u_long)-1)
 				pmp->pm_nxtfree = CLUST_FIRST;
@@ -738,7 +737,7 @@ msdosfs_fsiflush(struct msdosfsmount *pmp, int waitfor)
 		return (0);
 
 	error = bread(pmp->pm_devvp, de_bn2doff(pmp, pmp->pm_fsinfo),
-	    fsi_size(pmp), &bp);
+	    pmp->pm_BytesPerSec, &bp);
 	if (error != 0) {
 		brelse(bp);
 		return (error);

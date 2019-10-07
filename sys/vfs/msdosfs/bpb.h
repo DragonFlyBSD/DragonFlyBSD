@@ -170,7 +170,5 @@ struct fsinfo {
 	uint8_t fsinxtfree[4];
 	uint8_t fsifill2[12];
 	uint8_t fsisig3[4];
-	uint8_t fsifill3[508];
-	uint8_t fsisig4[4];
 };
 #endif /* !_FS_MSDOSFS_BPB_H_ */

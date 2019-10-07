@@ -220,12 +220,6 @@ struct msdosfsmount {
 	 ? roottobn((pmp), (dirofs)) \
 	 : cntobn((pmp), (dirclu)))
 
-/*
- * Calculate fsinfo block size
- */
-#define	fsi_size(pmp) \
-	(1024 << ((pmp)->pm_BlkPerSec >> 2))
-
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 #ifdef _KERNEL
