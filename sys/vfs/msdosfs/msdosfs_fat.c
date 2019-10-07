@@ -189,7 +189,7 @@ pcbmap(struct denode *dep, u_long findcn, daddr_t *bnp, u_long *cnp, int *sp)
 		if (bn != bp_bn) {
 			if (bp)
 				brelse(bp);
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+			error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn),
 				      bsize, &bp);
 			if (error) {
 				brelse(bp);
@@ -320,7 +320,7 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 		for (i = 1; i < pmp->pm_FATs; i++) {
 			fatbn += pmp->pm_FATsecs;
 			/* getblk() never fails */
-			bpn = getblk(pmp->pm_devvp, de_bntodoff(pmp, fatbn),
+			bpn = getblk(pmp->pm_devvp, de_bn2doff(pmp, fatbn),
 				     bp->b_bcount, 0, 0);
 			memcpy(bpn->b_data, bp->b_data, bp->b_bcount);
 			/* Force the clean bit on in the other copies. */
@@ -472,7 +472,7 @@ fatentry(int function, struct msdosfsmount *pmp, u_long cn, u_long *oldcontents,
 
 	byteoffset = FATOFS(pmp, cn);
 	fatblock(pmp, byteoffset, &bn, &bsize, &bo);
-	error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
+	error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), bsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -553,7 +553,7 @@ fatchain(struct msdosfsmount *pmp, u_long start, u_long count, u_long fillwith)
 	while (count > 0) {
 		byteoffset = FATOFS(pmp, start);
 		fatblock(pmp, byteoffset, &bn, &bsize, &bo);
-		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
+		error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), bsize, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);
@@ -804,7 +804,7 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 		if (lbn != bn) {
 			if (bp)
 				updatefats(pmp, bp, lbn);
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+			error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn),
 				      bsize, &bp);
 			if (error) {
 				brelse(bp);
@@ -881,7 +881,7 @@ fillinusemap(struct msdosfsmount *pmp)
 			if (bp != NULL)
 				brelse(bp);
 			fatblock(pmp, byteoffset, &bn, &bsize, NULL);
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+			error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn),
 				      bsize, &bp);
 			if (error != 0) {
 				brelse(bp);
@@ -1025,7 +1025,7 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 				 */
 				if (dep->de_Attributes & ATTR_DIRECTORY) {
 					bp = getblk(pmp->pm_devvp,
-						    de_bntodoff(pmp, cntobn(pmp, cn)),
+						    de_bn2doff(pmp, cntobn(pmp, cn)),
 						    pmp->pm_bpcluster, 0, 0);
 					++cn;
 				} else {
@@ -1044,7 +1044,7 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 					    &dblkno, NULL, NULL)) {
 						bp->b_bio2.bio_offset = NOOFFSET;
 					} else {
-						bp->b_bio2.bio_offset = de_bntodoff(pmp, dblkno);
+						bp->b_bio2.bio_offset = de_bn2doff(pmp, dblkno);
 					}
 					if (bp->b_bio2.bio_offset == NOOFFSET)
 						panic("extendfile: pcbmap");
@@ -1110,7 +1110,7 @@ markvoldirty_upgrade(struct msdosfsmount *pmp, bool dirty, bool rw_upgrade)
 	 */
 	byteoffset = FATOFS(pmp, 1);
 	fatblock(pmp, byteoffset, &bn, &bsize, &bo);
-	error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
+	error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), bsize, &bp);
 	if (error)
 		return (error);
 

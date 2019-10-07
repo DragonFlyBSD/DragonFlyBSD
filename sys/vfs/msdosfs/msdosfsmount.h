@@ -185,7 +185,7 @@ struct msdosfsmount {
  * Convert a device block number to a 64 bit offset, used for getblk(),
  * bread(), etc.
  */
-#define	de_bntodoff(pmp, bn) \
+#define	de_bn2doff(pmp, bn) \
 	((off_t)(bn) << (pmp)->pm_bnshift)
 
 #define	de_cn2doff(pmp, cn) \

@@ -485,7 +485,7 @@ msdosfs_read(struct vop_read_args *ap)
 			 * device block number after this.
 			 */
 			error = pcbmap(dep, lbn, &lbn, NULL, &blsize);
-			loffset = de_bntodoff(pmp, lbn);
+			loffset = de_bn2doff(pmp, lbn);
 			if (error == E2BIG) {
 				error = EINVAL;
 				break;
@@ -667,7 +667,7 @@ msdosfs_write(struct vop_write_args *ap)
 				if (error || dblkno == (daddr_t)-1) {
 					bp->b_bio2.bio_offset = NOOFFSET;
 				} else {
-					bp->b_bio2.bio_offset = de_bntodoff(pmp,
+					bp->b_bio2.bio_offset = de_bn2doff(pmp,
 					    dblkno);
 				}
 			}
@@ -1157,7 +1157,7 @@ abortit:
 		} else {
 			bn = cntobn(pmp, cn);
 		}
-		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+		error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn),
 			      pmp->pm_bpcluster, &bp);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
@@ -1283,7 +1283,7 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 	 */
 	bn = cntobn(pmp, newcluster);
 	/* always succeeds */
-	bp = getblk(pmp->pm_devvp, de_bntodoff(pmp, bn),
+	bp = getblk(pmp->pm_devvp, de_bn2doff(pmp, bn),
 		    pmp->pm_bpcluster, 0, 0);
 	memset(bp->b_data, 0, pmp->pm_bpcluster);
 	memcpy(bp->b_data, &dosdirtemplate, sizeof(dosdirtemplate));
@@ -1529,7 +1529,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		error = pcbmap(dep, lbn, &bn, &cn, &blsize);
 		if (error)
 			break;
-		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
+		error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), blsize, &bp);
 		if (error) {
 			brelse(bp);
 			kfree(d_name_storage, M_TEMP);
@@ -1693,7 +1693,7 @@ msdosfs_bmap(struct vop_bmap_args *ap)
 	if (error || dbn == (daddr_t)-1) {
 		*ap->a_doffsetp = NOOFFSET;
 	} else {
-		*ap->a_doffsetp = de_bntodoff(pmp, dbn);
+		*ap->a_doffsetp = de_bn2doff(pmp, dbn);
 	}
 	return (error);
 }
@@ -1733,7 +1733,7 @@ msdosfs_strategy(struct vop_strategy_args *ap)
 			nbio->bio_offset = NOOFFSET;
 			vfs_bio_clrbuf(bp);
 		} else {
-			nbio->bio_offset = de_bntodoff(pmp, dblkno);
+			nbio->bio_offset = de_bn2doff(pmp, dblkno);
 		}
 	}
 	if (nbio->bio_offset == NOOFFSET) {

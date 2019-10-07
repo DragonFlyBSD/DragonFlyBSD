@@ -523,7 +523,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	if (pmp->pm_fsinfo) {
 		struct fsinfo *fp;
 
-		if ((error = bread(devvp, de_bntodoff(pmp, pmp->pm_fsinfo),
+		if ((error = bread(devvp, de_bn2doff(pmp, pmp->pm_fsinfo),
 		    fsi_size(pmp), &bp)) != 0)
 			goto error_exit;
 		fp = (struct fsinfo *)bp->b_data;
@@ -737,7 +737,7 @@ msdosfs_fsiflush(struct msdosfsmount *pmp, int waitfor)
 	if (pmp->pm_fsinfo == 0 || (pmp->pm_flags & MSDOSFS_FSIMOD) == 0)
 		return (0);
 
-	error = bread(pmp->pm_devvp, de_bntodoff(pmp, pmp->pm_fsinfo),
+	error = bread(pmp->pm_devvp, de_bn2doff(pmp, pmp->pm_fsinfo),
 	    fsi_size(pmp), &bp);
 	if (error != 0) {
 		brelse(bp);

@@ -547,7 +547,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 	if ((boff = length & pmp->pm_crbomask) != 0) {
 		if (isadir) {
 			bn = cntobn(pmp, eofentry);
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+			error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn),
 				      pmp->pm_bpcluster, &bp);
 		} else {
 			cn = de_cluster(pmp, length);

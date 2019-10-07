@@ -200,7 +200,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 				break;
 			return (error);
 		}
-		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
+		error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), blsize, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);
@@ -591,7 +591,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 	diroffset = ddep->de_fndoffset;
 	if (dirclust != MSDOSFSROOT)
 		diroffset &= pmp->pm_crbomask;
-	error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
+	error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), blsize, &bp);
 	if (error != 0) {
 		brelse(bp);
 		return error;
@@ -623,7 +623,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 					return error;
 
 				error = bread(pmp->pm_devvp,
-					      de_bntodoff(pmp, bn), blsize,
+					      de_bn2doff(pmp, bn), blsize,
 					      &bp);
 				if (error) {
 					brelse(bp);
@@ -688,7 +688,7 @@ dosdirempty(struct denode *dep)
 				return (1);	/* it's empty */
 			return (0);
 		}
-		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
+		error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), blsize, &bp);
 		if (error) {
 			brelse(bp);
 			return (0);
@@ -776,7 +776,7 @@ doscheckpath(struct denode *source, struct denode *target)
 			break;
 		}
 		scn = dep->de_StartCluster;
-		error = bread(pmp->pm_devvp, de_bntodoff(pmp, cntobn(pmp, scn)),
+		error = bread(pmp->pm_devvp, de_bn2doff(pmp, cntobn(pmp, scn)),
 			      pmp->pm_bpcluster, &bp);
 		if (error)
 			break;
@@ -840,7 +840,7 @@ readep(struct msdosfsmount *pmp, u_long dirclust, u_long diroffset,
 	    && de_blk(pmp, diroffset + blsize) > pmp->pm_rootdirsize)
 		blsize = de_bn2off(pmp, pmp->pm_rootdirsize) & pmp->pm_crbomask;
 	bn = detobn(pmp, dirclust, diroffset);
-	error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, bpp);
+	error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), blsize, bpp);
 	if (error != 0) {
 		brelse(*bpp);
 		*bpp = NULL;
@@ -897,7 +897,7 @@ removede(struct denode *pdep, struct denode *dep)
 			       &bn, NULL, &blsize);
 		if (error)
 			return error;
-		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
+		error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), blsize, &bp);
 		if (error) {
 			brelse(bp);
 			return error;
@@ -973,7 +973,7 @@ uniqdosname(struct denode *dep, struct componentname *cnp, u_char *cp)
 					return 0;
 				return error;
 			}
-			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
+			error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn),
 				      blsize, &bp);
 			if (error) {
 				brelse(bp);
