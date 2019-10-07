@@ -1025,7 +1025,7 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 				 */
 				if (dep->de_Attributes & ATTR_DIRECTORY) {
 					bp = getblk(pmp->pm_devvp,
-						    xcntodoff(pmp, cn),
+						    de_bntodoff(pmp, cntobn(pmp, cn)),
 						    pmp->pm_bpcluster, 0, 0);
 					++cn;
 				} else {

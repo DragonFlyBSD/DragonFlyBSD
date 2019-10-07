@@ -198,14 +198,10 @@ struct msdosfsmount {
 	((daddr_t)((off) >> (pmp)->pm_cnshift))
 
 /*
- * Map an on-disk cluster number into a device relative block number or
- * a device relative offset.   This is different from a logical cluster
- * number.  The cluster numbers stored on-disk are not relative to block 0
- * on the disk.
+ * Map an on-disk cluster number into a device relative block number.
+ * This is different from a logical cluster number.  The cluster numbers
+ * stored on-disk are not relative to block 0 on the disk.
  */
-#define xcntodoff(pmp, cn) \
-	de_bntodoff(pmp, cntobn(pmp, cn))
-
 #define	cntobn(pmp, cn) \
 	(de_cn2bn((pmp), (cn)-CLUST_FIRST) + (pmp)->pm_firstcluster)
 

@@ -776,7 +776,7 @@ doscheckpath(struct denode *source, struct denode *target)
 			break;
 		}
 		scn = dep->de_StartCluster;
-		error = bread(pmp->pm_devvp, xcntodoff(pmp, scn),
+		error = bread(pmp->pm_devvp, de_bntodoff(pmp, cntobn(pmp, scn)),
 			      pmp->pm_bpcluster, &bp);
 		if (error)
 			break;
