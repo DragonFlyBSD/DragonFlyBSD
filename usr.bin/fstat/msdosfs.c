@@ -127,12 +127,12 @@ msdosfs_filestat(struct vnode *vp, struct filestat *fsp)
 	 */
 	dirsperblk = mnt->data.pm_BytesPerSec / sizeof(struct direntry);
 	if (denode.de_Attributes & ATTR_DIRECTORY) {
-		fileid = xcntobn(&mnt->data, denode.de_StartCluster)
+		fileid = cntobn(&mnt->data, denode.de_StartCluster)
 		    * dirsperblk;
 		if (denode.de_StartCluster == MSDOSFSROOT)
 			fileid = 1;
 	} else {
-		fileid = xcntobn(&mnt->data, denode.de_dirclust) * dirsperblk;
+		fileid = cntobn(&mnt->data, denode.de_dirclust) * dirsperblk;
 		if (denode.de_dirclust == MSDOSFSROOT)
 			fileid = roottobn(&mnt->data, 0) * dirsperblk;
 		fileid += denode.de_diroffset / sizeof(struct direntry);

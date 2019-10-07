@@ -204,9 +204,9 @@ struct msdosfsmount {
  * on the disk.
  */
 #define xcntodoff(pmp, cn) \
-	de_bntodoff(pmp, xcntobn(pmp, cn))
+	de_bntodoff(pmp, cntobn(pmp, cn))
 
-#define	xcntobn(pmp, cn) \
+#define	cntobn(pmp, cn) \
 	(de_cn2bn((pmp), (cn)-CLUST_FIRST) + (pmp)->pm_firstcluster)
 
 /*
@@ -222,7 +222,7 @@ struct msdosfsmount {
 #define	detobn(pmp, dirclu, dirofs) \
 	((dirclu) == MSDOSFSROOT \
 	 ? roottobn((pmp), (dirofs)) \
-	 : xcntobn((pmp), (dirclu)))
+	 : cntobn((pmp), (dirclu)))
 
 /*
  * Calculate fsinfo block size

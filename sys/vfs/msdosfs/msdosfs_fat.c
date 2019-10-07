@@ -225,7 +225,7 @@ pcbmap(struct denode *dep, u_long findcn, daddr_t *bnp, u_long *cnp, int *sp)
 		if (bp)
 			brelse(bp);
 		if (bnp)
-			*bnp = xcntobn(pmp, cn);
+			*bnp = cntobn(pmp, cn);
 		if (cnp)
 			*cnp = cn;
 		fc_setcache(dep, FC_LASTMAP, i, cn);

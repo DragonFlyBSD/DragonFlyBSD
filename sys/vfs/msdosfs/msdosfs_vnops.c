@@ -234,11 +234,11 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	 * doesn't work.
 	 */
 	if (dep->de_Attributes & ATTR_DIRECTORY) {
-		fileid = xcntobn(pmp, dep->de_StartCluster) * dirsperblk;
+		fileid = cntobn(pmp, dep->de_StartCluster) * dirsperblk;
 		if (dep->de_StartCluster == MSDOSFSROOT)
 			fileid = 1;
 	} else {
-		fileid = xcntobn(pmp, dep->de_dirclust) * dirsperblk;
+		fileid = cntobn(pmp, dep->de_dirclust) * dirsperblk;
 		if (dep->de_dirclust == MSDOSFSROOT)
 			fileid = roottobn(pmp, 0) * dirsperblk;
 		fileid += dep->de_diroffset / sizeof(struct direntry);
@@ -1155,7 +1155,7 @@ abortit:
 			/* this should never happen */
 			panic("msdosfs_rename(): updating .. in root directory?");
 		} else {
-			bn = xcntobn(pmp, cn);
+			bn = cntobn(pmp, cn);
 		}
 		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn),
 			      pmp->pm_bpcluster, &bp);
@@ -1281,7 +1281,7 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 	 * the cluster to disk.  This way it is there for the parent
 	 * directory to be pointing at if there were a crash.
 	 */
-	bn = xcntobn(pmp, newcluster);
+	bn = cntobn(pmp, newcluster);
 	/* always succeeds */
 	bp = getblk(pmp->pm_devvp, de_bntodoff(pmp, bn),
 		    pmp->pm_bpcluster, 0, 0);
@@ -1486,7 +1486,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 			for (n = (int)offset / sizeof(struct direntry); n < 2;
 			     n++) {
 				if (FAT32(pmp))
-					d_ino = xcntobn(pmp, pmp->pm_rootdirblk)
+					d_ino = cntobn(pmp, pmp->pm_rootdirblk)
 					    * dirsperblk;
 				else
 					d_ino = 1;
@@ -1592,9 +1592,9 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 					d_ino |= getushort(dentp->deHighClust) << 16;
 				/* if this is the root directory */
 				if (d_ino != MSDOSFSROOT)
-					d_ino = xcntobn(pmp, d_ino) * dirsperblk;
+					d_ino = cntobn(pmp, d_ino) * dirsperblk;
 				else if (FAT32(pmp))
-					d_ino = xcntobn(pmp, pmp->pm_rootdirblk)
+					d_ino = cntobn(pmp, pmp->pm_rootdirblk)
 					    * dirsperblk;
 				else
 					d_ino = 1;
