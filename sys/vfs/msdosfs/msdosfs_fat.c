@@ -1062,3 +1062,104 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 
 	return (0);
 }
+
+/*-
+ * Routine to mark a FAT16 or FAT32 volume as "clean" or "dirty" by
+ * manipulating the upper bit of the FAT entry for cluster 1.  Note that
+ * this bit is not defined for FAT12 volumes, which are always assumed to
+ * be clean.
+ *
+ * The fatentry() routine only works on cluster numbers that a file could
+ * occupy, so it won't manipulate the entry for cluster 1.  So we have to do
+ * it here.  The code was stolen from fatentry() and tailored for cluster 1.
+ *
+ * Inputs:
+ *	pmp	The MS-DOS volume to mark
+ *	dirty	Non-zero if the volume should be marked dirty; zero if it
+ *		should be marked clean
+ *
+ * Result:
+ *	0	Success
+ *	EROFS	Volume is read-only
+ *	?	(other errors from called routines)
+ */
+int
+markvoldirty_upgrade(struct msdosfsmount *pmp, bool dirty, bool rw_upgrade)
+{
+	struct buf *bp;
+	u_long bn, bo, bsize, byteoffset, fatval;
+	int error;
+
+	/*
+	 * FAT12 does not support a "clean" bit, so don't do anything for
+	 * FAT12.
+	 */
+	if (FAT12(pmp))
+		return (0);
+
+	/*
+	 * Can't change the bit on a read-only filesystem, except as part of
+	 * ro->rw upgrade.
+	 */
+	if ((pmp->pm_flags & MSDOSFSMNT_RONLY) != 0 && !rw_upgrade)
+		return (EROFS);
+
+	/*
+	 * Fetch the block containing the FAT entry.  It is given by the
+	 * pseudo-cluster 1.
+	 */
+	byteoffset = FATOFS(pmp, 1);
+	fatblock(pmp, byteoffset, &bn, &bsize, &bo);
+	error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
+	if (error)
+		return (error);
+
+	/*
+	 * Get the current value of the FAT entry and set/clear the relevant
+	 * bit.  Dirty means clear the "clean" bit; clean means set the
+	 * "clean" bit.
+	 */
+	if (FAT32(pmp)) {
+		/* FAT32 uses bit 27. */
+		fatval = getulong(&bp->b_data[bo]);
+		if (dirty)
+			fatval &= 0xF7FFFFFF;
+		else
+			fatval |= 0x08000000;
+		putulong(&bp->b_data[bo], fatval);
+	} else {
+		/* Must be FAT16; use bit 15. */
+		fatval = getushort(&bp->b_data[bo]);
+		if (dirty)
+			fatval &= 0x7FFF;
+		else
+			fatval |= 0x8000;
+		putushort(&bp->b_data[bo], fatval);
+	}
+#if 0
+	/*
+	 * The concern here is that a devvp may be readonly, without reporting
+	 * itself as such through the usual channels.  In that case, we'd like
+	 * it if attempting to mount msdosfs rw didn't panic the system.
+	 *
+	 * markvoldirty is invoked as the first write on backing devvps when
+	 * either msdosfs is mounted for the first time, or a ro mount is
+	 * upgraded to rw.
+	 *
+	 * In either event, if a write error occurs dirtying the volume:
+	 *   - No user data has been permitted to be written to cache yet.
+	 *   - We can abort the high-level operation (mount, or ro->rw) safely.
+	 *   - We don't derive any benefit from leaving a zombie dirty buf in
+	 *   the cache that can not be cleaned or evicted.
+	 *
+	 * So, mark B_INVALONERR to have bwrite() -> brelse() detect that
+	 * condition and force-invalidate our write to the block if it occurs.
+	 *
+	 * PR 210316 provides more context on the discovery and diagnosis of
+	 * the problem, as well as earlier attempts to solve it.
+	 */
+	bp->b_flags |= B_INVALONERR;
+#endif
+	/* Write out the modified FAT block synchronously. */
+	return (bwrite(bp));
+}

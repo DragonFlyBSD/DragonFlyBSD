@@ -108,6 +108,13 @@ int freeclusterchain(struct msdosfsmount *pmp, u_long startchain);
 int extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
     int flags);
 void fc_purge(struct denode *dep, u_int frcn);
+int markvoldirty_upgrade(struct msdosfsmount *pmp, bool dirty, bool rw_upgrade);
+
+static inline int
+markvoldirty(struct msdosfsmount *pmp, bool dirty)
+{
+	return (markvoldirty_upgrade(pmp, dirty, false));
+}
 
 #endif	/* _KERNEL */
 #endif	/* !_FS_MSDOSFS_FAT_H_ */
