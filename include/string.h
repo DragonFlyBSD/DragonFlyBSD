@@ -151,7 +151,6 @@ int	 timingsafe_memcmp(const void *, const void *, size_t) __pure;
 #if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
 #include <xlocale/_string.h>
 #endif
-__END_DECLS
 
 #if __EXT1_VISIBLE
 #ifndef _RSIZE_T_DECLARED
@@ -167,5 +166,6 @@ typedef	int		errno_t;
 /* ISO/IEC 9899:2011 K.3.7.4.1.1 */
 errno_t memset_s(void *, rsize_t, int, rsize_t);
 #endif /* __EXT1_VISIBLE */
+__END_DECLS
 
 #endif /* _STRING_H_ */
