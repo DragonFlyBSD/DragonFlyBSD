@@ -27,7 +27,7 @@ changecom(,)dnl
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
 .\"
-.Dd September 11, 2019
+.Dd October 10, 2019
 .Dt PPP 8
 .Os
 .Sh NAME
@@ -288,8 +288,8 @@ allows authentication information to be stored in a central or
 distributed database along with various per-user framed connection
 characteristics.
 ifdef({LOCALRAD},{},{If
-.Xr libradius 3
-is available at compile time,
+.Em RADIUS
+support was enabled at compile time,
 .Nm
 will use it to make
 .Em RADIUS
@@ -5201,8 +5201,7 @@ are executed.
 .It set radius Op Ar config-file
 This command enables RADIUS support (if it's compiled in).
 .Ar config-file
-refers to the radius client configuration file as described in
-.Xr radius.conf 5 .
+refers to the radius client configuration file.
 If PAP, CHAP, MSCHAP or MSCHAPv2 are
 .Dq enable Ns No d ,
 .Nm
@@ -5810,8 +5809,6 @@ This socket is used to pass links between different instances of
 .Xr kldload 2 ,
 ifdef({LOCALNAT},{},{.Xr libalias 3 ,
 })dnl
-ifdef({LOCALRAD},{},{.Xr libradius 3 ,
-})dnl
 .Xr syslog 3 ,
 .Xr uucplock 3 ,
 .Xr netgraph 4 ,
@@ -5820,7 +5817,6 @@ ifdef({LOCALRAD},{},{.Xr libradius 3 ,
 .Xr group 5 ,
 .Xr passwd 5 ,
 .Xr protocols 5 ,
-.Xr radius.conf 5 ,
 .Xr resolv.conf 5 ,
 .Xr syslog.conf 5 ,
 .Xr adduser 8 ,
