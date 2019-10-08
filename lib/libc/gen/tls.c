@@ -266,19 +266,6 @@ _libc_allocate_tls(void)
 	struct tls_tcb *tcb;
 
 	tcb = _rtld_allocate_tls();
-
-#if 0
-#if defined(__thread)
-	/* non-TLS libc */
-	tcb->tcb_errno_p = &errno;
-#elif defined(PIC)
-	/* TLS libc dynamically linked */
-	tcb->tcb_errno_p = __tls_get_addr_tcb(tcb, __get_errno_GOT_ptr());
-#else
-	/* TLS libc (threaded or unthreaded) */
-	tcb->tcb_errno_p = (void *)((char *)tcb + __get_errno_GS_offset());
-#endif
-#endif
 	return(tcb);
 }
 
