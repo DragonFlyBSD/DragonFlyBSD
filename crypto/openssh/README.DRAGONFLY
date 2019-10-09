@@ -32,7 +32,6 @@ Update config.h and openbsd-compat in lib/libssh.
 
 Used in:
 lib/libssh/
-lib/libpam/modules/pam_ssh/
 libexec/sftp-server/
 libexec/ssh-keysign/
 libexec/ssh-pkcs11-helper/
