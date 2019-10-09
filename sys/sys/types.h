@@ -243,12 +243,8 @@ typedef	__timer_t	timer_t;
 #endif
 
 #if __BSD_VISIBLE
-
 #include <sys/_fd_set.h>
 #include <sys/_timeval.h>
-
-#define	NBBY 8		/* number of bits in a byte */
-
 #endif /* __BSD_VISIBLE */
 
 /*
