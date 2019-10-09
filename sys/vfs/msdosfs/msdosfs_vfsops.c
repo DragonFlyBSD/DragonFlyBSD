@@ -160,8 +160,6 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	error = copyin(data, (caddr_t)&args, sizeof(struct msdosfs_args));
 	if (error)
 		return (error);
-	if (args.magic != MSDOSFS_ARGSMAGIC)
-		args.flags = 0;
 	/*
 	 * If updating, check whether changing from read-only to
 	 * read/write; if there is no device name, that's all we do.

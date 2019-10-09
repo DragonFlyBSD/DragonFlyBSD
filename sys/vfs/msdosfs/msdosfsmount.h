@@ -239,11 +239,10 @@ struct msdosfs_args {
 	uid_t	uid;		/* uid that owns msdosfs files */
 	gid_t	gid;		/* gid that owns msdosfs files */
 	mode_t	mask;		/* file mask to be applied for msdosfs perms */
-	mode_t	dirmask;	/* dir  mask to be applied for msdosfs perms */
 	int	flags;		/* see below */
-	int magic;		/* version number */
 	char cs_local[ICONV_CSNMAXLEN];
 	char cs_dos[ICONV_CSNMAXLEN];
+	mode_t	dirmask;	/* dir  mask to be applied for msdosfs perms */
 };
 
 /*

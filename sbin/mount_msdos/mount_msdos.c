@@ -88,7 +88,6 @@ main(int argc, char **argv)
 	struct vfsconf vfc;
 	mntflags = set_gid = set_uid = set_mask = set_dirmask = 0;
 	memset(&args, '\0', sizeof(args));
-	args.magic = MSDOSFS_ARGSMAGIC;
 
 	while ((c = getopt(argc, argv, "sl9u:g:m:M:o:L:D:")) != -1) {
 		switch (c) {
