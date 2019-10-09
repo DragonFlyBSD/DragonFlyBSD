@@ -34,6 +34,8 @@
  * @(#)restore.h 8.3 (Berkeley) 9/13/94
  */
 
+#include <sys/param.h>
+
 /*
  * Flags
  */
