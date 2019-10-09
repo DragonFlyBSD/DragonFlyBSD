@@ -257,6 +257,7 @@
 #endif
 
 /* Machine type dependent parameters. */
+#include <machine/alignbytes.h>
 #include <machine/param.h>
 #ifndef _KERNEL
 #include <machine/limits.h>
@@ -350,6 +351,21 @@
  */
 #define trunc_page64(x)           ((x) & ~(int64_t)PAGE_MASK)
 #define round_page64(x)           (((x) + PAGE_MASK) & ~(int64_t)PAGE_MASK)
+
+/*
+ * Round p (pointer or byte index) up to a correctly-aligned value
+ * for all data types (int, long, ...).   The result is unsigned int
+ * and must be cast to any desired pointer type.  Single underscore
+ * versions are for FreeBSD/OpenBSD compat.
+ */
+#define _ALIGNBYTES	__ALIGNBYTES
+#define _ALIGN(p)	__ALIGNPTR(p)
+#ifndef ALIGNBYTES
+#define ALIGNBYTES	__ALIGNBYTES
+#endif
+#ifndef ALIGN
+#define ALIGN(p)	__ALIGNPTR(p)
+#endif
 
 /* Macros for min/max. */
 #define MIN(a,b) (((a)<(b))?(a):(b))

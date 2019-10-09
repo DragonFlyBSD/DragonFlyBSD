@@ -42,6 +42,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#include <machine/alignbytes.h>
 #include <machine/stdint.h>
 
 /*
@@ -61,7 +62,6 @@ typedef __uint8_t	sa_family_t;
 typedef __socklen_t	socklen_t;
 #endif
 
- 
 /*
  * Types
  */
@@ -426,7 +426,6 @@ struct cmsgcred {
 };
 
 /* Alignment requirement for CMSG struct manipulation */
-#define	__ALIGNBYTES		(sizeof(long) - 1) /* XXX -> cpu/cdefs.h? */
 #define	_CMSG_ALIGN(n)		(((n) + __ALIGNBYTES) & ~__ALIGNBYTES)
 
 #ifdef _KERNEL
@@ -455,7 +454,7 @@ struct cmsgcred {
 	 NULL)
 
 /* RFC 2292 additions */
-	
+
 #define	CMSG_SPACE(l)		(_CMSG_ALIGN(sizeof(struct cmsghdr)) + _CMSG_ALIGN(l))
 #define	CMSG_LEN(l)		(_CMSG_ALIGN(sizeof(struct cmsghdr)) + (l))
 

@@ -41,18 +41,6 @@
  * Machine dependent constants for x86_64.
  */
 
-/*
- * Round p (pointer or byte index) up to a correctly-aligned value
- * for all data types (int, long, ...).   The result is unsigned int
- * and must be cast to any desired pointer type.
- */
-#ifndef _ALIGNBYTES
-#define _ALIGNBYTES	(sizeof(long) - 1)
-#endif
-#ifndef _ALIGN
-#define _ALIGN(p)	(((unsigned long)(p) + _ALIGNBYTES) & ~_ALIGNBYTES)
-#endif
-
 #ifndef _MACHINE
 #define	_MACHINE	x86_64
 #endif
@@ -82,9 +70,6 @@
  */
 #define SMP_MAXCPU	256
 #define MAXCPU		SMP_MAXCPU
-
-#define ALIGNBYTES	_ALIGNBYTES
-#define ALIGN(p)	_ALIGN(p)
 
 /* JG license? from fbsd/src/sys/amd64/include/param.h */
 /* level 1 == page table */
