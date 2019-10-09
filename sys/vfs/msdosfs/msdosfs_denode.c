@@ -455,7 +455,7 @@ deupdat(struct denode *dep, int waitfor)
 
 	if (DETOV(dep)->v_mount->mnt_flag & MNT_RDONLY)
 		return (0);
-	getnanotime(&ts);
+	vfs_timestamp(&ts);
 	DETIMES(dep, &ts, &ts, &ts);
 	if ((dep->de_flag & DE_MODIFIED) == 0)
 		return (0);

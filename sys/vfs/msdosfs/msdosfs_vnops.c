@@ -151,7 +151,7 @@ msdosfs_create(struct vop_old_create_args *ap)
 	ndirent.de_devvp = pdep->de_devvp;
 	ndirent.de_pmp = pdep->de_pmp;
 	ndirent.de_flag = DE_ACCESS | DE_CREATE | DE_UPDATE;
-	getnanotime(&ts);
+	vfs_timestamp(&ts);
 	DETIMES(&ndirent, &ts, &ts, &ts);
 	error = createde(&ndirent, pdep, &dep, cnp);
 	if (error)
@@ -193,7 +193,7 @@ msdosfs_close(struct vop_close_args *ap)
 	struct timespec ts;
 
 	if (VREFCNT(vp) > 1) {
-		getnanotime(&ts);
+		vfs_timestamp(&ts);
 		DETIMES(dep, &ts, &ts, &ts);
 	}
 	return (vop_stdclose(ap));
@@ -225,7 +225,7 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	u_long dirsperblk = pmp->pm_BytesPerSec / sizeof(struct direntry);
 	u_long fileid;
 
-	getnanotime(&ts);
+	vfs_timestamp(&ts);
 	DETIMES(dep, &ts, &ts, &ts);
 	vap->va_fsid = dev2udev(dep->de_dev);
 	/*
@@ -1273,7 +1273,7 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 	memset(&ndirent, 0, sizeof(ndirent));
 	ndirent.de_pmp = pmp;
 	ndirent.de_flag = DE_ACCESS | DE_CREATE | DE_UPDATE;
-	getnanotime(&ts);
+	vfs_timestamp(&ts);
 	DETIMES(&ndirent, &ts, &ts, &ts);
 
 	/*
