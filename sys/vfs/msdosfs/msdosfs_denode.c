@@ -698,7 +698,7 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	/*
 	 * Ignore denodes related to stale file handles.
 	 */
-	if (dep == NULL || dep->de_Name[0] == SLOT_DELETED)
+	if (dep == NULL || dep->de_Name[0] == SLOT_DELETED || dep->de_Name[0] == SLOT_EMPTY)
 		goto out;
 
 	/*
@@ -722,7 +722,7 @@ out:
 	 */
 	mprintf("msdosfs_inactive(): v_refcnt 0x%08x, de_Name[0] %x\n",
 		vp->v_refcnt, (dep ? dep->de_Name[0] : 0));
-	if (dep == NULL || dep->de_Name[0] == SLOT_DELETED)
+	if (dep == NULL || dep->de_Name[0] == SLOT_DELETED || dep->de_Name[0] == SLOT_EMPTY)
 		vrecycle(vp);
 	return (error);
 }
