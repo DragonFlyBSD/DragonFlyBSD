@@ -219,7 +219,7 @@ struct sockproto {
  * RFC 2553: protocol-independent placeholder for socket addresses
  */
 #define	_SS_MAXSIZE	128
-#define	_SS_ALIGNSIZE	(sizeof(int64_t))
+#define	_SS_ALIGNSIZE	(sizeof(__int64_t))
 #define	_SS_PAD1SIZE	(_SS_ALIGNSIZE - sizeof(unsigned char) - sizeof(sa_family_t))
 #define	_SS_PAD2SIZE	(_SS_MAXSIZE - sizeof(unsigned char) - sizeof(sa_family_t) - \
 				_SS_PAD1SIZE - _SS_ALIGNSIZE)
@@ -438,11 +438,11 @@ struct cmsgcred {
 
 /* given pointer to struct cmsghdr, return pointer to next cmsghdr */
 #define	CMSG_NXTHDR(mhdr, cmsg)	\
-	(((caddr_t)(cmsg) + _CMSG_ALIGN((cmsg)->cmsg_len) + \
+	(((char *)(cmsg) + _CMSG_ALIGN((cmsg)->cmsg_len) + \
 	  _CMSG_ALIGN(sizeof(struct cmsghdr)) > \
-	    (caddr_t)(mhdr)->msg_control + (mhdr)->msg_controllen) ? \
+	    (char *)(mhdr)->msg_control + (mhdr)->msg_controllen) ? \
 	    NULL : \
-	    (struct cmsghdr *)((caddr_t)(cmsg) + _CMSG_ALIGN((cmsg)->cmsg_len)))
+	    (struct cmsghdr *)((char *)(cmsg) + _CMSG_ALIGN((cmsg)->cmsg_len)))
 
 /*
  * RFC 2292 requires to check msg_controllen, in case that the kernel returns
