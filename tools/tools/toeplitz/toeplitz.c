@@ -10,6 +10,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifndef NBBY
+#define NBBY	__NBBY
+#endif
+
 #define HASHMASK	0x7f
 
 #define KEYLEN		40
