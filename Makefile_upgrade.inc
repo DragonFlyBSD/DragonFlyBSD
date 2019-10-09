@@ -3852,6 +3852,10 @@ TO_REMOVE+=/usr/share/man/man3/rad_server_open.3.gz
 TO_REMOVE+=/usr/share/man/man3/rad_server_secret.3.gz
 TO_REMOVE+=/usr/share/man/man3/rad_strerror.3.gz
 TO_REMOVE+=/usr/share/man/man5/radius.conf.5.gz
+TO_REMOVE+=/usr/share/man/man4/i915drm.4.gz
+TO_REMOVE+=/usr/share/man/man4/i915kms.4.gz
+TO_REMOVE+=/usr/share/man/man4/radeondrm.4.gz
+TO_REMOVE+=/usr/share/man/man4/radeonkms.4.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
