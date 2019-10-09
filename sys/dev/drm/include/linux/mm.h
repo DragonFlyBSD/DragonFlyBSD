@@ -186,4 +186,13 @@ unmap_mapping_range(struct address_space *mapping,
 
 #define VM_PFNMAP	0x00000400
 
+static inline struct page *
+vmalloc_to_page(const void *addr)
+{
+	vm_paddr_t paddr;
+
+	paddr = pmap_kextract((vm_offset_t)addr);
+	return (struct page *)(PHYS_TO_VM_PAGE(paddr));
+}
+
 #endif	/* _LINUX_MM_H_ */
