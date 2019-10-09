@@ -65,16 +65,16 @@ The
 driver is implemented on top of the keyboard driver
 .Pq Xr atkbd 4
 and the video card drivers
-.Xr ( i915kms 4 ,
-.Xr radeonkms 4 ,
+.Xr ( i915 4 ,
+.Xr radeon 4 ,
 or
 .Xr vga 4 ) .
 Please see
 .Sx DRIVER CONFIGURATION
 below on how to make the console work with
-.Xr i915kms 4
+.Xr i915 4
 or
-.Xr radeonkms 4 .
+.Xr radeon 4 .
 .Pp
 There can be only one
 .Nm
@@ -256,16 +256,16 @@ The following tunables are available and can be set in
 .It Va kern.kms_console
 Setting this tunable to 0 disables experimental framebuffer support
 in conjunction with the
-.Xr i915kms 4
+.Xr i915 4
 or
-.Xr radeonkms 4
+.Xr radeon 4
 drivers.
 It is 1 by default.
 .It Va kern.kms_columns
 The number of columns to use in conjunction with the
-.Xr i915kms 4
+.Xr i915 4
 and
-.Xr radeonkms 4
+.Xr radeon 4
 drivers.
 The font size is scaled to match the requested number of columns.
 This requires
