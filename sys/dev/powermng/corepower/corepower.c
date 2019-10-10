@@ -173,7 +173,7 @@ corepower_probe(device_t dev)
 		case 0x3f:
 		case 0x4f:
 		case 0x56:
-		/* Haswell, Broadwell, Skylake, Kabylake */
+		/* Haswell, Broadwell, Skylake, Kaby Lake */
 		case 0x3c:
 		case 0x3d:
 		case 0x45:
@@ -181,7 +181,7 @@ corepower_probe(device_t dev)
 		case 0x47:
 		case 0x4e:
 		case 0x5e:
-		case 0x8e:	/* Kabylake */
+		case 0x8e:	/* Kaby Lake */
 		/* Atom CPUs */
 		case 0x37:
 		case 0x4a:
@@ -246,10 +246,10 @@ corepower_attach(device_t dev)
 			/* Check if Core or Xeon (Xeon CPUs might be 0x7) */
 			sc->sc_have_sens = 0xf;
 			break;
-		/* Skylake, Kabylake, Coffeelake */
+		/* Skylake, Kaby Lake, Coffee Lake */
 		case 0x4e:
 		case 0x5e:
-		case 0x8e:	/* Kabylake */
+		case 0x8e:	/* Kaby Lake */
 			sc->sc_have_sens = 0x1f;
 			break;
 		/* Atom CPUs */
