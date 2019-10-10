@@ -31,6 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <devattr.h>
 #include <errno.h>
