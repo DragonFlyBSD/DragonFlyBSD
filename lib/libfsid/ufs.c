@@ -34,6 +34,7 @@
 
 #include "libfsid.h"
 
+#include <sys/param.h>
 #include <vfs/ufs/ufs_types.h>
 #include <vfs/ufs/fs.h>
 
