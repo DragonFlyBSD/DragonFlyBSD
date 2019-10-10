@@ -82,8 +82,6 @@
 #include "msdosfsmount.h"
 #include "fat.h"
 
-#define	DOS_FILESIZE_MAX	0xffffffff
-
 /*
  * Some general notes:
  *
@@ -452,7 +450,7 @@ msdosfs_read(struct vop_read_args *ap)
 	if (uio->uio_offset < 0)
 		return (EINVAL);
 
-	if ((uoff_t)uio->uio_offset > DOS_FILESIZE_MAX)
+	if ((uoff_t)uio->uio_offset > MSDOSFS_FILESIZE_MAX)
 		return (0);
 	/*
 	 * If they didn't ask for any data, then we are done.
@@ -585,9 +583,9 @@ msdosfs_write(struct vop_write_args *ap)
 		return (EFBIG);
 	}
 
-	if ((uoff_t)uio->uio_offset > DOS_FILESIZE_MAX)
+	if ((uoff_t)uio->uio_offset > MSDOSFS_FILESIZE_MAX)
 		return (EFBIG);
-	if ((uoff_t)uio->uio_offset + uio->uio_resid > DOS_FILESIZE_MAX)
+	if ((uoff_t)uio->uio_offset + uio->uio_resid > MSDOSFS_FILESIZE_MAX)
 		return (EFBIG);
 
 	/*
