@@ -173,7 +173,7 @@ corepower_probe(device_t dev)
 		case 0x3f:
 		case 0x4f:
 		case 0x56:
-		/* Haswell, Broadwell, Skylake, Kaby Lake */
+		/* Haswell, Broadwell, Skylake, Kaby Lake, Coffee Lake */
 		case 0x3c:
 		case 0x3d:
 		case 0x45:
@@ -182,6 +182,7 @@ corepower_probe(device_t dev)
 		case 0x4e:
 		case 0x5e:
 		case 0x8e:	/* Kaby Lake */
+		case 0x9e:	/* Coffee Lake */
 		/* Atom CPUs */
 		case 0x37:
 		case 0x4a:
@@ -250,6 +251,7 @@ corepower_attach(device_t dev)
 		case 0x4e:
 		case 0x5e:
 		case 0x8e:	/* Kaby Lake */
+		case 0x9e:	/* Coffee Lake */
 			sc->sc_have_sens = 0x1f;
 			break;
 		/* Atom CPUs */
