@@ -181,8 +181,8 @@ corepower_probe(device_t dev)
 		case 0x47:
 		case 0x4e:
 		case 0x5e:
-		case 0x8e:	/* Kaby Lake */
-		case 0x9e:	/* Coffee Lake */
+		case 0x8e:	/* Kaby Lake, Coffee Lake */
+		case 0x9e:	/* dito */
 		/* Atom CPUs */
 		case 0x37:
 		case 0x4a:
@@ -250,8 +250,8 @@ corepower_attach(device_t dev)
 		/* Skylake, Kaby Lake, Coffee Lake */
 		case 0x4e:
 		case 0x5e:
-		case 0x8e:	/* Kaby Lake */
-		case 0x9e:	/* Coffee Lake */
+		case 0x8e:	/* Kaby Lake, Coffee Lake */
+		case 0x9e:	/* dito */
 			sc->sc_have_sens = 0x1f;
 			break;
 		/* Atom CPUs */
