@@ -52,7 +52,7 @@ past_endutent(void)
 
 __sym_compat(utmpname, past_utmpname, DF404.0);
 int
-past_utmpname(const char *fname)
+past_utmpname(const char *fname __unused)
 {
 	return 0;
 }

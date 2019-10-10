@@ -428,13 +428,13 @@ utmpxname(const char *fname)
 
 __sym_compat(getutmp, past_getutmp, DF404.0);
 void
-past_getutmp(void *ux, void *u)
+past_getutmp(void *ux __unused, void *u __unused)
 {
 }
 
 __sym_compat(getutmpx, past_getutmpx, DF404.0);
 void
-past_getutmpx(void *u, void *ux)
+past_getutmpx(void *u __unused, void *ux __unused)
 {
 }
 
