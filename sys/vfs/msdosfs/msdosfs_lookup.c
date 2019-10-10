@@ -916,7 +916,7 @@ removede(struct denode *pdep, struct denode *dep)
 		offset += sizeof(struct direntry);
 		while (1) {
 			/*
-			 * We are a bit agressive here in that we delete any Win95
+			 * We are a bit aggressive here in that we delete any Win95
 			 * entries preceding this entry, not just the ones we "own".
 			 * Since these presumably aren't valid anyway,
 			 * there should be no harm.
