@@ -554,8 +554,8 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	 * Allocate memory for the bitmap of allocated clusters, and then
 	 * fill it in.
 	 */
-	pmp->pm_inusemap = kmalloc(((pmp->pm_maxcluster + N_INUSEBITS - 1)
-				   / N_INUSEBITS) * sizeof(*pmp->pm_inusemap),
+	pmp->pm_inusemap = kmalloc(howmany(pmp->pm_maxcluster + 1, N_INUSEBITS)
+				   * sizeof(*pmp->pm_inusemap),
 				   M_MSDOSFSFAT, M_WAITOK);
 
 	/*
