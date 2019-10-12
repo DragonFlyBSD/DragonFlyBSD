@@ -559,11 +559,8 @@ detrunc(struct denode *dep, u_long length, int flags)
 			mprintf("detrunc(): bread fails %d\n", error);
 			return (error);
 		}
-		/*
-		 * is this the right place for it?
-		 */
 		memset(bp->b_data + boff, 0, pmp->pm_bpcluster - boff);
-		if (flags & IO_SYNC)
+		if ((flags & IO_SYNC) != 0)
 			bwrite(bp);
 		else
 			bdwrite(bp);
