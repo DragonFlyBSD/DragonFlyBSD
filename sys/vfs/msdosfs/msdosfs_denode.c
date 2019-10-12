@@ -413,9 +413,9 @@ again:
 		 * number 0 when it shouldn't.  Use the actual cluster number
 		 * instead of what is written in directory entry.
 		 */
-		if ((diroffset == 0) && (ldep->de_StartCluster != dirclust)) {
-			kprintf("deget(): . entry at clust %ld != %ld\n",
-				dirclust, ldep->de_StartCluster);
+		if (diroffset == 0 && ldep->de_StartCluster != dirclust) {
+			kprintf("deget(): \".\" entry at clust %lu != %lu\n",
+			    dirclust, ldep->de_StartCluster);
 			ldep->de_StartCluster = dirclust;
 		}
 
@@ -579,7 +579,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 		kprintf("detrunc(): vtruncbuf error %d\n", allerror);
 #endif
 	error = deupdat(dep, 1);
-	if (error && (allerror == 0))
+	if (error != 0 && allerror == 0)
 		allerror = error;
 	mprintf("detrunc(): allerror %d, eofentry %lu\n",
 		allerror, eofentry);
