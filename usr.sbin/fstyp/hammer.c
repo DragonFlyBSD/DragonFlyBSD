@@ -172,6 +172,7 @@ __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 		if (x[i] != 0)
 			goto done;
 success:
+	/* XXX autofs -media mount can't handle multiple mounts */
 	strlcpy(label, ondisk->vol_label, size);
 	error = 0;
 done:

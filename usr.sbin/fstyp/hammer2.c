@@ -217,6 +217,7 @@ __read_label(FILE *fp, char *label, size_t size, const char *devpath)
 	} else
 		pfs++;
 
+	/* XXX autofs -media mount can't handle multiple mounts */
 	if (__find_pfs(fp, bref, pfs, &res) == 0 && res)
 		strlcpy(label, pfs, size);
 	else
