@@ -168,9 +168,7 @@ struct msdosfsmount {
 	(de_cn2bn(pmp, de_cluster((pmp), (off))))
 
 /*
- * Convert a logical cluster number to file offset.  This typically
- * represents a logical cluster number relative to a file, not relative
- * to the device.
+ * Convert a logical cluster number to file offset.
  */
 #define	de_cn2off(pmp, cn) \
 	((cn) << (pmp)->pm_cnshift)
@@ -183,7 +181,7 @@ struct msdosfsmount {
 
 /*
  * Convert a device block number to a 64 bit offset, used for getblk(),
- * bread(), etc.
+ * bread(), etc.  These are DragonFly specific macros.
  */
 #define	de_bn2doff(pmp, bn) \
 	((off_t)(bn) << (pmp)->pm_bnshift)
@@ -198,9 +196,7 @@ struct msdosfsmount {
 	((daddr_t)((off) >> (pmp)->pm_cnshift))
 
 /*
- * Map an on-disk cluster number into a device relative block number.
- * This is different from a logical cluster number.  The cluster numbers
- * stored on-disk are not relative to block 0 on the disk.
+ * Map a cluster number into a filesystem relative block number.
  */
 #define	cntobn(pmp, cn) \
 	(de_cn2bn((pmp), (cn)-CLUST_FIRST) + (pmp)->pm_firstcluster)
