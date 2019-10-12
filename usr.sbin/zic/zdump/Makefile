@@ -3,10 +3,7 @@
 .PATH:	${.CURDIR}/..
 
 PROG=	zdump
-
-SRCS=	zdump.c ialloc.c scheck.c
-MAN=	${.CURDIR}/../zdump.8
-CFLAGS+= -I${.CURDIR}/.. -I${.CURDIR}/../../../lib/libc/stdtime
-CFLAGS+= -DTM_GMTOFF=tm_gmtoff
+MAN=	zdump.8
+CFLAGS+=-DTM_GMTOFF=tm_gmtoff
 
 .include <bsd.prog.mk>

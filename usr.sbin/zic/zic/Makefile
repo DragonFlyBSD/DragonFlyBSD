@@ -3,9 +3,8 @@
 .PATH:	${.CURDIR}/..
 
 PROG=	zic
-
 SRCS=	zic.c ialloc.c scheck.c
-MAN=	${.CURDIR}/../zic.8
-CFLAGS+= -I${.CURDIR}/.. -I${.CURDIR}/../../../lib/libc/stdtime
+MAN=	zic.8
+CFLAGS+=-I${.CURDIR}/../../../lib/libc/stdtime
 
 .include <bsd.prog.mk>
