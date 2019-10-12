@@ -240,7 +240,7 @@ msdosfs_reinsert(struct denode *ip, u_long new_dirclust, u_long new_diroffset)
  * If deget() succeeds it returns with the gotten denode locked().
  *
  * pmp	     - address of msdosfsmount structure of the filesystem containing
- *	       the denode of interest.  The pm_dev field and the address of
+ *	       the denode of interest.  The address of
  *	       the msdosfsmount structure are used.
  * dirclust  - which cluster bp contains, if dirclust is 0 (root directory)
  *	       diroffset is relative to the beginning of the root directory,
