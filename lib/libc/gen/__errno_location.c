@@ -32,5 +32,5 @@
 int *
 __errno_location(void)
 {
-  return (__error());
+	return (__error());
 }
