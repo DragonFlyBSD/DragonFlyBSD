@@ -108,16 +108,21 @@ typedef struct {
 	};
 } blockref_stats_t;
 
-static void print_blockref_entry(struct blockref_tree *);
+static void print_blockref_entry(int, struct blockref_tree *);
 static void init_blockref_stats(blockref_stats_t *, uint8_t);
 static void cleanup_blockref_stats(blockref_stats_t *);
 static void print_blockref_stats(const blockref_stats_t *, bool);
 static int verify_volume_header(const hammer2_volume_data_t *);
+static int read_media(int, const hammer2_blockref_t *, hammer2_media_data_t *,
+    size_t *);
 static int verify_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, bool, blockref_stats_t *);
 static int init_pfs_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, struct blockref_list *);
 static void cleanup_pfs_blockref(struct blockref_list *);
+static void print_media(FILE *, int, const hammer2_blockref_t *,
+    hammer2_media_data_t *);
+static const char* hammer2_blockref_to_str(uint8_t);
 
 static int best_zone = -1;
 
@@ -264,7 +269,7 @@ test_blockref(int fd, uint8_t type)
 			    &bstats) == -1)
 				failed = true;
 			print_blockref_stats(&bstats, true);
-			print_blockref_entry(&bstats.root);
+			print_blockref_entry(fd, &bstats.root);
 			cleanup_blockref_stats(&bstats);
 		} else if (ret == -1) {
 			perror("read");
@@ -325,7 +330,7 @@ test_pfs_blockref(int fd, const char *name)
 				    false, &bstats) == -1)
 					failed = true;
 				print_blockref_stats(&bstats, true);
-				print_blockref_entry(&bstats.root);
+				print_blockref_entry(fd, &bstats.root);
 				cleanup_blockref_stats(&bstats);
 			}
 			cleanup_pfs_blockref(&blist);
@@ -424,27 +429,37 @@ add_blockref_entry(struct blockref_tree *root, const hammer2_blockref_t *bref,
 }
 
 static void
-print_blockref_msg(struct blockref_list *head)
+print_blockref_msg(int fd, struct blockref_list *head)
 {
 	struct blockref_msg *m;
 
 	TAILQ_FOREACH(m, head, entry) {
-		tfprintf(stderr, 1, "%016jx %3d %016jx/%-2d \"%s\"\n",
-		    (uintmax_t)m->bref.data_off,
-		    m->bref.type,
-		    (uintmax_t)m->bref.key,
-		    m->bref.keybits,
+		hammer2_blockref_t *bref = &m->bref;
+		hammer2_media_data_t media;
+
+		tfprintf(stderr, 1, "%016jx %-12s %016jx/%-2d \"%s\"\n",
+		    (uintmax_t)bref->data_off,
+		    hammer2_blockref_to_str(bref->type),
+		    (uintmax_t)bref->key,
+		    bref->keybits,
 		    m->msg);
+
+		if (fd != -1 && VerboseOpt > 0) {
+			if (!read_media(fd, bref, &media, NULL))
+				print_media(stderr, 2, bref, &media);
+			else
+				tfprintf(stderr, 2, "Failed to read media\n");
+		}
 	}
 }
 
 static void
-print_blockref_entry(struct blockref_tree *root)
+print_blockref_entry(int fd, struct blockref_tree *root)
 {
 	struct blockref_entry *e;
 
 	RB_FOREACH(e, blockref_tree, root)
-		print_blockref_msg(&e->head);
+		print_blockref_msg(fd, &e->head);
 }
 
 static void
@@ -556,7 +571,8 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
 		bytes = (size_t)1 << bytes;
-	*media_bytes = bytes;
+	if (media_bytes)
+		*media_bytes = bytes;
 
 	if (!bytes)
 		return 0;
@@ -805,6 +821,165 @@ static void
 cleanup_pfs_blockref(struct blockref_list *blist)
 {
 	cleanup_blockref_msg(blist);
+}
+
+static void
+print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
+    hammer2_media_data_t *media)
+{
+	hammer2_inode_data_t *ipdata;
+	int i, namelen;
+	char *str = NULL;
+
+	switch (bref->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		ipdata = &media->ipdata;
+		namelen = ipdata->meta.name_len;
+		if (namelen > HAMMER2_INODE_MAXNAME)
+			namelen = 0;
+		tfprintf(fp, tab, "filename \"%*.*s\"\n", namelen, namelen,
+		    ipdata->filename);
+		tfprintf(fp, tab, "version %d\n", ipdata->meta.version);
+		tfprintf(fp, tab, "pfs_subtype %d\n", ipdata->meta.pfs_subtype);
+		tfprintf(fp, tab, "uflags 0x%08x\n", ipdata->meta.uflags);
+		if (ipdata->meta.rmajor || ipdata->meta.rminor) {
+			tfprintf(fp, tab, "rmajor %d\n", ipdata->meta.rmajor);
+			tfprintf(fp, tab, "rminor %d\n", ipdata->meta.rminor);
+		}
+		tfprintf(fp, tab, "ctime %s\n",
+		    hammer2_time64_to_str(ipdata->meta.ctime, &str));
+		tfprintf(fp, tab, "mtime %s\n",
+		    hammer2_time64_to_str(ipdata->meta.mtime, &str));
+		tfprintf(fp, tab, "atime %s\n",
+		    hammer2_time64_to_str(ipdata->meta.atime, &str));
+		tfprintf(fp, tab, "btime %s\n",
+		    hammer2_time64_to_str(ipdata->meta.btime, &str));
+		tfprintf(fp, tab, "uid %s\n",
+		    hammer2_uuid_to_str(&ipdata->meta.uid, &str));
+		tfprintf(fp, tab, "gid %s\n",
+		    hammer2_uuid_to_str(&ipdata->meta.gid, &str));
+		tfprintf(fp, tab, "type %s\n",
+		    hammer2_iptype_to_str(ipdata->meta.type));
+		tfprintf(fp, tab, "op_flags 0x%02x\n", ipdata->meta.op_flags);
+		tfprintf(fp, tab, "cap_flags 0x%04x\n", ipdata->meta.cap_flags);
+		tfprintf(fp, tab, "mode %-7o\n", ipdata->meta.mode);
+		tfprintf(fp, tab, "inum 0x%016jx\n", ipdata->meta.inum);
+		tfprintf(fp, tab, "size %ju ", (uintmax_t)ipdata->meta.size);
+		if (ipdata->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA &&
+		    ipdata->meta.size <= HAMMER2_EMBEDDED_BYTES)
+			printf("(embedded data)\n");
+		else
+			printf("\n");
+		tfprintf(fp, tab, "nlinks %ju\n",
+		    (uintmax_t)ipdata->meta.nlinks);
+		tfprintf(fp, tab, "iparent 0x%016jx\n",
+		    (uintmax_t)ipdata->meta.iparent);
+		tfprintf(fp, tab, "name_key 0x%016jx\n",
+		    (uintmax_t)ipdata->meta.name_key);
+		tfprintf(fp, tab, "name_len %u\n", ipdata->meta.name_len);
+		tfprintf(fp, tab, "ncopies %u\n", ipdata->meta.ncopies);
+		tfprintf(fp, tab, "comp_algo %u\n", ipdata->meta.comp_algo);
+		tfprintf(fp, tab, "target_type %u\n", ipdata->meta.target_type);
+		tfprintf(fp, tab, "check_algo %u\n", ipdata->meta.check_algo);
+		if ((ipdata->meta.op_flags & HAMMER2_OPFLAG_PFSROOT) ||
+		    ipdata->meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT) {
+			tfprintf(fp, tab, "pfs_nmasters %u\n",
+			    ipdata->meta.pfs_nmasters);
+			tfprintf(fp, tab, "pfs_type %u (%s)\n",
+			    ipdata->meta.pfs_type,
+			    hammer2_pfstype_to_str(ipdata->meta.pfs_type));
+			tfprintf(fp, tab, "pfs_inum 0x%016jx\n",
+			    (uintmax_t)ipdata->meta.pfs_inum);
+			tfprintf(fp, tab, "pfs_clid %s\n",
+			    hammer2_uuid_to_str(&ipdata->meta.pfs_clid, &str));
+			tfprintf(fp, tab, "pfs_fsid %s\n",
+			    hammer2_uuid_to_str(&ipdata->meta.pfs_fsid, &str));
+			tfprintf(fp, tab, "pfs_lsnap_tid 0x%016jx\n",
+			    (uintmax_t)ipdata->meta.pfs_lsnap_tid);
+		}
+		tfprintf(fp, tab, "data_quota %ju\n",
+		    (uintmax_t)ipdata->meta.data_quota);
+		tfprintf(fp, tab, "data_count %ju\n",
+		    (uintmax_t)bref->embed.stats.data_count);
+		tfprintf(fp, tab, "inode_quota %ju\n",
+		    (uintmax_t)ipdata->meta.inode_quota);
+		tfprintf(fp, tab, "inode_count %ju\n",
+		    (uintmax_t)bref->embed.stats.inode_count);
+		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		if (bref->embed.dirent.namlen <= sizeof(bref->check.buf)) {
+			tfprintf(fp, tab, "filename \"%*.*s\"\n",
+			    bref->embed.dirent.namlen,
+			    bref->embed.dirent.namlen,
+			    bref->check.buf);
+		} else {
+			tfprintf(fp, tab, "filename \"%*.*s\"\n",
+			    bref->embed.dirent.namlen,
+			    bref->embed.dirent.namlen,
+			    media->buf);
+		}
+		tfprintf(fp, tab, "inum 0x%016jx\n",
+		    (uintmax_t)bref->embed.dirent.inum);
+		tfprintf(fp, tab, "namlen %d\n",
+		    (uintmax_t)bref->embed.dirent.namlen);
+		tfprintf(fp, tab, "type %s\n",
+		    hammer2_iptype_to_str(bref->embed.dirent.type));
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
+			hammer2_off_t data_off = bref->key +
+				i * HAMMER2_FREEMAP_LEVEL0_SIZE;
+#if HAMMER2_BMAP_ELEMENTS != 8
+#error "HAMMER2_BMAP_ELEMENTS != 8"
+#endif
+			tfprintf(fp, tab, "%016jx %04d.%04x (avail=%7d) "
+			    "%016jx %016jx %016jx %016jx "
+			    "%016jx %016jx %016jx %016jx\n",
+			    data_off, i, media->bmdata[i].class,
+			    media->bmdata[i].avail,
+			    media->bmdata[i].bitmapq[0],
+			    media->bmdata[i].bitmapq[1],
+			    media->bmdata[i].bitmapq[2],
+			    media->bmdata[i].bitmapq[3],
+			    media->bmdata[i].bitmapq[4],
+			    media->bmdata[i].bitmapq[5],
+			    media->bmdata[i].bitmapq[6],
+			    media->bmdata[i].bitmapq[7]);
+		}
+		break;
+	default:
+		break;
+	}
+	if (str)
+		free(str);
+}
+
+static const char*
+hammer2_blockref_to_str(uint8_t type)
+{
+	switch (type) {
+	case HAMMER2_BREF_TYPE_EMPTY:
+		return "empty";
+	case HAMMER2_BREF_TYPE_INODE:
+		return "inode";
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		return "indirect";
+	case HAMMER2_BREF_TYPE_DATA:
+		return "data";
+	case HAMMER2_BREF_TYPE_DIRENT:
+		return "dirent";
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		return "freemap_node";
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		return "freemap_leaf";
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		return "freemap";
+	case HAMMER2_BREF_TYPE_VOLUME:
+		return "volume";
+	default:
+		return NULL;
+	}
+	return NULL;
 }
 
 int
