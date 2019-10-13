@@ -77,7 +77,6 @@ static int count_digits(int);
  * make file system for cylinder-group style file systems
  */
 #define	UMASK		0755
-#define	POWEROF2(num)	(((num) & ((num) - 1)) == 0)
 
 static union {
 	struct fs fs;
@@ -195,12 +194,12 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 	 */
 	sblock.fs_bsize = bsize;
 	sblock.fs_fsize = fsize;
-	if (!POWEROF2(sblock.fs_bsize)) {
+	if (!powerof2(sblock.fs_bsize)) {
 		printf("block size must be a power of 2, not %d\n",
 		    sblock.fs_bsize);
 		exit(16);
 	}
-	if (!POWEROF2(sblock.fs_fsize)) {
+	if (!powerof2(sblock.fs_fsize)) {
 		printf("fragment size must be a power of 2, not %d\n",
 		    sblock.fs_fsize);
 		exit(17);
@@ -227,7 +226,7 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 	}
 
 #ifndef __DragonFly__
-	if (maxbsize < bsize || !POWEROF2(maxbsize)) {
+	if (maxbsize < bsize || !powerof2(maxbsize)) {
 		sblock.fs_maxbsize = sblock.fs_bsize;
 		printf("Extent size set to %d\n", sblock.fs_maxbsize);
 	} else if (sblock.fs_maxbsize > FS_MAXCONTIG * sblock.fs_bsize) {

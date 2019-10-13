@@ -1254,8 +1254,7 @@ ioapic_abi_msi_alloc_intern(int type, const char *desc,
 	    ("invalid cpuid %d", cpuid));
 
 	KASSERT(count > 0 && count <= 32, ("invalid count %d", count));
-	KASSERT((count & (count - 1)) == 0,
-	    ("count %d is not power of 2", count));
+	KASSERT(powerof2(count), ("count %d is not power of 2", count));
 
 	lwkt_gettoken(&ioapic_irqmap_tok);
 

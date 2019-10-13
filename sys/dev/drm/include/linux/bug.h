@@ -35,7 +35,7 @@
 #define	BUILD_BUG_ON(x)	CTASSERT(!(x))
 
 #define	BUILD_BUG_ON_NOT_POWER_OF_2(n)			      \
-	CTASSERT(((n) != 0) && (((n) & ((n) - 1)) == 0))
+	CTASSERT(((n) != 0) && (powerof2((n))))
 
 #define	BUILD_BUG()	BUILD_BUG_ON(1)
 

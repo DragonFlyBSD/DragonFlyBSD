@@ -2921,8 +2921,7 @@ uhci_xfer_setup(struct usb_setup_params *parm)
 	}
 
 	/* check for power of two */
-	if (!(xfer->max_frame_size &
-	    (xfer->max_frame_size - 1))) {
+	if (powerof2(xfer->max_frame_size)) {
 		n--;
 	}
 	/*

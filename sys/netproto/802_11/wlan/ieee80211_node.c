@@ -59,7 +59,7 @@ __FBSDID("$FreeBSD$");
 /*
  * IEEE80211_NODE_HASHSIZE must be a power of 2.
  */
-CTASSERT((IEEE80211_NODE_HASHSIZE & (IEEE80211_NODE_HASHSIZE-1)) == 0);
+CTASSERT(powerof2(IEEE80211_NODE_HASHSIZE));
 
 /*
  * Association id's are managed with a bit vector.

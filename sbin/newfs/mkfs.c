@@ -52,7 +52,6 @@
 
 #define UMASK		0755
 #define MAXINOPB	(MAXBSIZE / sizeof(struct ufs1_dinode))
-#define POWEROF2(num)	(((num) & ((num) - 1)) == 0)
 
 #ifdef STANDALONE
 #error "mkfs.c: STANDALONE compilation no longer supported"
@@ -271,12 +270,12 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 	 */
 	sblock.fs_bsize = bsize;
 	sblock.fs_fsize = fsize;
-	if (!POWEROF2(sblock.fs_bsize)) {
+	if (!powerof2(sblock.fs_bsize)) {
 		printf("block size must be a power of 2, not %d\n",
 		    sblock.fs_bsize);
 		exit(16);
 	}
-	if (!POWEROF2(sblock.fs_fsize)) {
+	if (!powerof2(sblock.fs_fsize)) {
 		printf("fragment size must be a power of 2, not %d\n",
 		    sblock.fs_fsize);
 		exit(17);
@@ -328,7 +327,7 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 	    howmany(sblock.fs_nsect, NSPF(&sblock)), sblock.fs_frag);
 	for (sblock.fs_cgmask = 0xffffffff, i = sblock.fs_ntrak; i > 1; i >>= 1)
 		sblock.fs_cgmask <<= 1;
-	if (!POWEROF2(sblock.fs_ntrak))
+	if (!powerof2(sblock.fs_ntrak))
 		sblock.fs_cgmask <<= 1;
 	sblock.fs_maxfilesize = sblock.fs_bsize * UFS_NDADDR - 1;
 	for (sizepb = sblock.fs_bsize, i = 0; i < UFS_NIADDR; i++) {

@@ -173,7 +173,7 @@ struct	inpcbinfo udbinfo[MAXCPU];
 #ifndef UDBHASHSIZE
 #define UDBHASHSIZE 16
 #endif
-CTASSERT((UDBHASHSIZE & (UDBHASHSIZE - 1)) == 0);
+CTASSERT(powerof2(UDBHASHSIZE));
 
 struct	udpstat udpstat_percpu[MAXCPU] __cachealign;
 
