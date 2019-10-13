@@ -87,6 +87,7 @@ s/\$//g
 		printf "#include <sys/select.h>\n" > sysarg
 		printf "#include <sys/signal.h>\n" > sysarg
 		printf "#include <sys/acl.h>\n" > sysarg
+		printf "#include <sys/mqueue.h>\n" > sysarg
 		printf "#include <sys/msgport.h>\n" > sysarg
 		printf "#include <sys/sysmsg.h>\n" > sysarg
 		printf "#include <sys/procctl.h>\n\n" > sysarg

@@ -35,6 +35,8 @@
 /* Maximal priority of the message */
 #define	MQ_PRIO_MAX		32
 
+typedef	int		mqd_t;		/* message queue descriptor */
+
 struct mq_attr {
 	long	mq_flags;	/* Flags of message queue */
 	long	mq_maxmsg;	/* Maximum number of messages */

@@ -29,14 +29,21 @@
 #ifndef _MQUEUE_H_
 #define _MQUEUE_H_
 
-#include <fcntl.h>
-#include <signal.h>
-#include <time.h>
-
 #include <sys/cdefs.h>
-#include <sys/types.h>
-
 #include <sys/mqueue.h>
+#include <sys/_pthreadtypes.h>
+#include <sys/signal.h>
+#include <sys/_timespec.h>
+
+#ifndef _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
+#endif
+
+#ifndef _SSIZE_T_DECLARED
+typedef	__ssize_t	ssize_t;
+#define	_SSIZE_T_DECLARED
+#endif
 
 __BEGIN_DECLS
 int	mq_close(mqd_t);

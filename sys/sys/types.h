@@ -136,7 +136,6 @@ typedef	__uint32_t	uid_t;		/* user id */
 #define	_UID_T_DECLARED
 #endif
 typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
-typedef	int		mqd_t;		/* message queue descriptor */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
