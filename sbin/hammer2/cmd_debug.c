@@ -920,7 +920,8 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		}
 		tabprintf(tab, "inum 0x%016jx\n",
 			  (uintmax_t)bref->embed.dirent.inum);
-		tabprintf(tab, "type     %s\n",
+		tabprintf(tab, "nlen %d\n", bref->embed.dirent.namlen);
+		tabprintf(tab, "type %s\n",
 			  hammer2_iptype_to_str(bref->embed.dirent.type));
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
