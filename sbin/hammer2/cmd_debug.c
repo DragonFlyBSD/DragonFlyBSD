@@ -847,7 +847,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 				       cv);
 				failed = 1;
 			} else {
-				printf("meth=%02x, iscsi32=%08x ",
+				printf("meth=%02x iscsi32=%08x ",
 				       bref->methods, cv);
 			}
 			break;
@@ -860,7 +860,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 				       cv64);
 				failed = 1;
 			} else {
-				printf("meth=%02x, xxh=%016jx ",
+				printf("meth=%02x xxh=%016jx ",
 				       bref->methods, cv64);
 			}
 			break;
@@ -886,7 +886,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 					cv);
 				failed = 1;
 			} else {
-				printf("meth=%02x, fcrc=%08x ",
+				printf("meth=%02x fcrc=%08x ",
 					bref->methods, cv);
 			}
 			break;
