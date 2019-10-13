@@ -187,8 +187,8 @@ interval(time_t tval, const char *updown)
 		(void)snprintf(resbuf, sizeof(resbuf), "   %s ??:??", updown);
 		return (resbuf);
 	}
-						/* round to minutes. */
-	minutes = (tval + (60 - 1)) / 60;
+	/* round to minutes. */
+	minutes = howmany(tval, 60);
 	hours = minutes / 60;
 	minutes %= 60;
 	days = hours / 24;

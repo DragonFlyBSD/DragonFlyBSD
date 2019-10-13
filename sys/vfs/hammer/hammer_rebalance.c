@@ -330,7 +330,7 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor,
 		count += item->count;
 		KKASSERT(item->node->ondisk->type == type1);
 	}
-	avg_elms = (count + (lockroot.count - 1)) / lockroot.count;
+	avg_elms = howmany(count, lockroot.count);
 	KKASSERT(avg_elms >= 0);
 
 	/*
@@ -343,8 +343,8 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor,
 	 * but that is ok.
 	 */
 	if (count && avg_elms < rebal->saturation) {
-		n = (count + (rebal->saturation - 1)) / rebal->saturation;
-		avg_elms = (count + (n - 1)) / n;
+		n = howmany(count, rebal->saturation);
+		avg_elms = howmany(count, n);
 	}
 
 	/*

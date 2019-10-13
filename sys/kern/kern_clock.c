@@ -1108,8 +1108,7 @@ tvtohz_high(struct timeval *tv)
 #endif
 		ticks = 1;
 	} else if (sec <= INT_MAX / hz) {
-		ticks = (int)(sec * hz + 
-			    ((u_long)usec + (ustick - 1)) / ustick) + 1;
+		ticks = (int)(sec * hz + howmany((u_long)usec, ustick)) + 1;
 	} else {
 		ticks = INT_MAX;
 	}
@@ -1140,8 +1139,7 @@ tstohz_high(struct timespec *ts)
 #endif
 		ticks = 1;
 	} else if (sec <= INT_MAX / hz) {
-		ticks = (int)(sec * hz +
-			    ((u_long)nsec + (nstick - 1)) / nstick) + 1;
+		ticks = (int)(sec * hz + howmany((u_long)nsec, nstick)) + 1;
 	} else {
 		ticks = INT_MAX;
 	}
