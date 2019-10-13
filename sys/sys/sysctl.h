@@ -434,7 +434,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 /*
  * Top-level identifiers
  */
-#define	CTL_UNSPEC	0		/* unused */
+#define	CTL_SYSCTL	0		/* "magic" numbers */
 #define	CTL_KERN	1		/* "high kernel": proc, limits */
 #define	CTL_VM		2		/* virtual memory */
 #define	CTL_VFS		3		/* file system, mount type is next */
@@ -444,7 +444,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	CTL_MACHDEP	7		/* machine dependent */
 #define	CTL_USER	8		/* user-level */
 #define	CTL_P1003_1B	9		/* POSIX 1003.1B */
-#define CTL_LWKT	10		/* light weight kernel threads */
+#define	CTL_LWKT	10		/* light weight kernel threads */
 #define	CTL_MAXID	11		/* number of valid top-level ids */
 
 #define CTL_NAMES { \
@@ -460,6 +460,16 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	{ "p1003_1b", CTLTYPE_NODE }, \
 	{ "lwkt", CTLTYPE_NODE }, \
 }
+
+/*
+ * CTL_SYSCTL identifiers
+ */
+#define	CTL_SYSCTL_DEBUG	0	/* printf all nodes */
+#define	CTL_SYSCTL_NAME		1	/* string name of OID */
+#define	CTL_SYSCTL_NEXT		2	/* next OID */
+#define	CTL_SYSCTL_NAME2OID	3	/* int array of name */
+#define	CTL_SYSCTL_OIDFMT	4	/* OID's kind and format */
+#define	CTL_SYSCTL_OIDDESCR	5	/* OID's description */
 
 /*
  * CTL_KERN identifiers

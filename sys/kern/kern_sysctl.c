@@ -538,11 +538,16 @@ SYSINIT(sysctl, SI_BOOT1_POST, SI_ORDER_ANY, sysctl_register_all, 0);
  * (be aware though, that the proper interface isn't as obvious as it
  * may seem, there are various conflicting requirements.
  *
- * {0,0}	kprintf the entire MIB-tree.
- * {0,1,...}	return the name of the "..." OID.
- * {0,2,...}	return the next OID.
- * {0,3}	return the OID of the name in "new"
- * {0,4,...}	return the kind & format info for the "..." OID.
+ * {CTL_SYSCTL, CTL_SYSCTL_DEBUG}		kprintf the entire MIB-tree.
+ * {CTL_SYSCTL, CTL_SYSCTL_NAME, ...}		return the name of the "..."
+ *						OID.
+ * {CTL_SYSCTL, CTL_SYSCTL_NEXT, ...}		return the next OID.
+ * {CTL_SYSCTL, CTL_SYSCTL_NAME2OID}		return the OID of the name in
+ *						"new"
+ * {CTL_SYSCTL, CTL_SYSCTL_OIDFMT, ...}		return the kind & format info
+ *						for the "..." OID.
+ * {CTL_SYSCTL, CTL_SYSCTL_OIDDESCR, ...}	return the description of the
+ *						"..." OID.
  */
 
 static void
@@ -606,7 +611,7 @@ sysctl_sysctl_debug(SYSCTL_HANDLER_ARGS)
 	return (ENOENT);
 }
 
-SYSCTL_PROC(_sysctl, 0, debug, CTLTYPE_STRING | CTLFLAG_RD,
+SYSCTL_PROC(_sysctl, CTL_SYSCTL_DEBUG, debug, CTLTYPE_STRING | CTLFLAG_RD,
 	    0, 0, sysctl_sysctl_debug, "-", "");
 #endif /* SYSCTL_DEBUG */
 
@@ -665,7 +670,7 @@ sysctl_sysctl_name(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_NODE(_sysctl, 1, name, CTLFLAG_RD | CTLFLAG_NOLOCK,
+SYSCTL_NODE(_sysctl, CTL_SYSCTL_NAME, name, CTLFLAG_RD | CTLFLAG_NOLOCK,
 	    sysctl_sysctl_name, "");
 
 static int
@@ -745,7 +750,7 @@ sysctl_sysctl_next(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_NODE(_sysctl, 2, next, CTLFLAG_RD | CTLFLAG_NOLOCK,
+SYSCTL_NODE(_sysctl, CTL_SYSCTL_NEXT, next, CTLFLAG_RD | CTLFLAG_NOLOCK,
 	    sysctl_sysctl_next, "");
 
 static int
@@ -820,7 +825,8 @@ sysctl_sysctl_name2oid(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_PROC(_sysctl, 3, name2oid, CTLFLAG_RW | CTLFLAG_ANYBODY | CTLFLAG_NOLOCK,
+SYSCTL_PROC(_sysctl, CTL_SYSCTL_NAME2OID, name2oid,
+	    CTLFLAG_RW | CTLFLAG_ANYBODY | CTLFLAG_NOLOCK,
 	    0, 0, sysctl_sysctl_name2oid, "I", "");
 
 static int
@@ -843,7 +849,7 @@ sysctl_sysctl_oidfmt(SYSCTL_HANDLER_ARGS)
 }
 
 
-SYSCTL_NODE(_sysctl, 4, oidfmt, CTLFLAG_RD | CTLFLAG_NOLOCK,
+SYSCTL_NODE(_sysctl, CTL_SYSCTL_OIDFMT, oidfmt, CTLFLAG_RD | CTLFLAG_NOLOCK,
 	    sysctl_sysctl_oidfmt, "");
 
 static int
@@ -862,7 +868,8 @@ sysctl_sysctl_oiddescr(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_NODE(_sysctl, 5, oiddescr, CTLFLAG_RD | CTLFLAG_NOLOCK,
+SYSCTL_NODE(_sysctl, CTL_SYSCTL_OIDDESCR, oiddescr,
+	    CTLFLAG_RD | CTLFLAG_NOLOCK,
 	    sysctl_sysctl_oiddescr, "");
 
 /*
@@ -1177,8 +1184,8 @@ kernel_sysctlbyname(char *name,
         size_t oidlen, plen;
 	int error;
 
-	oid[0] = 0;		/* sysctl internal magic */
-	oid[1] = 3;		/* name2oid */
+	oid[0] = CTL_SYSCTL;
+	oid[1] = CTL_SYSCTL_NAME2OID;
 	oidlen = sizeof(oid);
 
 	error = kernel_sysctl(oid, 2, oid, &oidlen, name, strlen(name), &plen);
