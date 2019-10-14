@@ -50,14 +50,13 @@
 
 #include <vfs/hammer2/hammer2_disk.h>
 
-static int modify_blockref(int, const hammer2_volume_data_t *,
-    hammer2_blockref_t *);
+static int modify_blockref(int, const hammer2_volume_data_t *, int,
+    hammer2_blockref_t *, hammer2_blockref_t *);
 static int modify_inode(int, const hammer2_blockref_t *,
     hammer2_media_data_t *, size_t);
-static int modify_dirent_short(int, hammer2_blockref_t *,
-    hammer2_media_data_t *, size_t);
-static int modify_dirent(int, hammer2_blockref_t *, hammer2_media_data_t *,
-    size_t);
+static int modify_dirent_embedded(int, int, hammer2_blockref_t *);
+static int modify_dirent(int, int, hammer2_blockref_t *,
+    const hammer2_blockref_t *, hammer2_media_data_t *, size_t);
 
 static hammer2_tid_t src_inode = 0;
 static hammer2_tid_t dst_inode = 0;
@@ -85,7 +84,8 @@ destroy_blockref(int fd, uint8_t type)
 		if (ret == HAMMER2_PBUFSIZE) {
 			fprintf(stdout, "zone.%d %016jx\n",
 			    i, (uintmax_t)broot.data_off);
-			if (modify_blockref(fd, &voldata, &broot) == -1)
+			if (modify_blockref(fd, &voldata, -1, &broot, NULL)
+			    == -1)
 				failed = true;
 		} else if (ret == -1) {
 			perror("read");
@@ -99,7 +99,6 @@ destroy_blockref(int fd, uint8_t type)
 	return failed ? -1 : 0;
 }
 
-/* from sbin/fsck_hammer2/test.c */
 static int
 read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
     size_t *media_bytes)
@@ -124,11 +123,18 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 	while (io_bytes + boff < bytes)
 		io_bytes <<= 1;
 
-	if (io_bytes > sizeof(*media))
+	if (io_bytes > sizeof(*media)) {
+		fprintf(stderr, "Bad I/O bytes\n");
 		return -1;
-	lseek(fd, io_base, SEEK_SET);
-	if (read(fd, media, io_bytes) != (ssize_t)io_bytes)
-		return -2;
+	}
+	if (lseek(fd, io_base, SEEK_SET) == -1) {
+		perror("lseek");
+		return -1;
+	}
+	if (read(fd, media, io_bytes) != (ssize_t)io_bytes) {
+		perror("read");
+		return -1;
+	}
 	if (boff)
 		memcpy(media, (char *)media + boff, bytes);
 
@@ -157,41 +163,47 @@ write_media(int fd, const hammer2_blockref_t *bref,
 	while (io_bytes + boff < bytes)
 		io_bytes <<= 1;
 
-	if (io_bytes > sizeof(buf))
+	if (io_bytes > sizeof(buf)) {
+		fprintf(stderr, "Bad I/O bytes\n");
 		return -1;
-	lseek(fd, io_base, SEEK_SET);
-	if (read(fd, buf, io_bytes) != (ssize_t)io_bytes)
-		return -2;
+	}
+	if (lseek(fd, io_base, SEEK_SET) == -1) {
+		perror("lseek");
+		return -1;
+	}
+	if (read(fd, buf, io_bytes) != (ssize_t)io_bytes) {
+		perror("read");
+		return -1;
+	}
 
 	memcpy(buf + boff, media, media_bytes);
-	lseek(fd, io_base, SEEK_SET);
-	if (write(fd, buf, io_bytes) != (ssize_t)io_bytes)
-		return -3;
-	if (fsync(fd) == -1)
-		return -3;
+	if (lseek(fd, io_base, SEEK_SET) == -1) {
+		perror("lseek");
+		return -1;
+	}
+	if (write(fd, buf, io_bytes) != (ssize_t)io_bytes) {
+		perror("write");
+		return -1;
+	}
+	if (fsync(fd) == -1) {
+		perror("fsync");
+		return -1;
+	}
 
 	return 0;
 }
 
 static int
-modify_blockref(int fd, const hammer2_volume_data_t *voldata,
-    hammer2_blockref_t *bref)
+modify_blockref(int fd, const hammer2_volume_data_t *voldata, int bi,
+    hammer2_blockref_t *bref, hammer2_blockref_t *prev_bref)
 {
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
 	int i, bcount, namlen;
 	size_t bytes;
 
-	switch (read_media(fd, bref, &media, &bytes)) {
-	case -1:
-		fprintf(stderr, "Bad I/O bytes\n");
+	if (read_media(fd, bref, &media, &bytes) == -1)
 		return -1;
-	case -2:
-		fprintf(stderr, "Failed to read media\n");
-		return -1;
-	default:
-		break;
-	}
 
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_INODE:
@@ -217,12 +229,12 @@ modify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		if (src_dirent && namlen == strlen(src_dirent)) {
 			if (namlen <= sizeof(bref->check.buf) &&
 			    !memcmp(bref->check.buf, src_dirent, namlen)) {
-				if (modify_dirent_short(fd, bref, &media, bytes)
+				if (modify_dirent_embedded(fd, bi, prev_bref)
 				    == -1)
 					return -1;
 			} else if (!memcmp(media.buf, src_dirent, namlen)) {
-				if (modify_dirent(fd, bref, &media, bytes)
-				    == -1)
+				if (modify_dirent(fd, bi, prev_bref, bref,
+				    &media, bytes) == -1)
 					return -1;
 			}
 		}
@@ -239,7 +251,8 @@ modify_blockref(int fd, const hammer2_volume_data_t *voldata,
 
 	for (i = 0; i < bcount; ++i)
 		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY)
-			if (modify_blockref(fd, voldata, &bscan[i]) == -1)
+			if (modify_blockref(fd, voldata, i, &bscan[i], bref)
+			    == -1)
 				return -1;
 	return 0;
 }
@@ -248,62 +261,123 @@ static int
 modify_inode(int fd, const hammer2_blockref_t *bref,
     hammer2_media_data_t *media, size_t media_bytes)
 {
+	assert(src_inode == media->ipdata.meta.inum);
+
 	if (ForceOpt) {
 		media->ipdata.meta.inum = dst_inode;
-		switch (write_media(fd, bref, media, media_bytes)) {
-		case -1:
-			fprintf(stderr, "Bad I/O bytes\n");
+		if (write_media(fd, bref, media, media_bytes) == -1)
 			return -1;
-		case -2:
-			fprintf(stderr, "Failed to read media\n");
-			return -1;
-		case -3:
-			fprintf(stderr, "Failed to write media\n");
-			return -1;
-		default:
-			printf("Modified inode# 0x%016jx -> 0x%016jx\n",
-			    src_inode, dst_inode);
-			break;
-		}
-	} else
-		printf("inode# 0x%016jx\n", (uintmax_t)media->ipdata.meta.inum);
+	}
+
+	printf("%sinode# 0x%016jx -> 0x%016jx\n", ForceOpt ? "Modified " : "",
+	    src_inode, dst_inode);
 
 	return 0;
 }
 
 static int
-modify_dirent_short(int fd, hammer2_blockref_t *bref,
-    hammer2_media_data_t *media, size_t media_bytes)
+modify_dirent_embedded(int fd, int bi, hammer2_blockref_t *prev_bref)
 {
-	/* XXX can't modify by media write */
-	printf("dirent %s, but short name unsupported\n", bref->check.buf);
+	hammer2_media_data_t bscan_media;
+	hammer2_blockref_t *bscan;
+	size_t bytes;
+
+	if (read_media(fd, prev_bref, &bscan_media, &bytes) == -1)
+		return -1;
+	assert(bytes);
+
+	switch (prev_bref->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		bscan = &bscan_media.ipdata.u.blockset.blockref[bi];
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		bscan = &bscan_media.npdata[bi];
+		break;
+	default:
+		assert(0);
+		break;
+	}
+	assert(!memcmp(src_dirent, bscan->check.buf, strlen(src_dirent)));
+
+	if (strlen(dst_dirent) > sizeof(bscan->check.buf)) {
+		fprintf(stderr, "embedded dirent %s (%d bytes) can't exceed "
+		    "%lu bytes\n", dst_dirent, (int)strlen(dst_dirent),
+		    sizeof(bscan->check.buf));
+		return -1;
+	}
+
+	if (ForceOpt) {
+		memset(bscan->check.buf, 0, sizeof(bscan->check.buf));
+		memcpy(bscan->check.buf, dst_dirent, strlen(dst_dirent));
+		bscan->embed.dirent.namlen = strlen(dst_dirent);
+		if (write_media(fd, prev_bref, &bscan_media, bytes) == -1)
+			return -1;
+	}
+
+	printf("%sembedded dirent %s (%d bytes) -> %s (%d bytes)\n",
+	    ForceOpt ? "Modified " : "",
+	    src_dirent, (int)strlen(src_dirent),
+	    dst_dirent, (int)strlen(dst_dirent));
 
 	return 0;
 }
 
 static int
-modify_dirent(int fd, hammer2_blockref_t *bref, hammer2_media_data_t *media,
+modify_dirent(int fd, int bi, hammer2_blockref_t *prev_bref,
+    const hammer2_blockref_t *bref, hammer2_media_data_t *media,
     size_t media_bytes)
 {
+	hammer2_media_data_t bscan_media;
+	hammer2_blockref_t *bscan;
+	size_t bytes;
+
+	assert(!memcmp(src_dirent, media->buf, strlen(src_dirent)));
+	if (read_media(fd, prev_bref, &bscan_media, &bytes) == -1)
+		return -1;
+	assert(bytes);
+
+	switch (prev_bref->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		bscan = &bscan_media.ipdata.u.blockset.blockref[bi];
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		bscan = &bscan_media.npdata[bi];
+		break;
+	default:
+		assert(0);
+		break;
+	}
+
+	if (memcmp(bref, bscan, sizeof(*bref))) {
+		fprintf(stderr, "Blockref contents mismatch\n");
+		return -1;
+	}
+	if (strlen(dst_dirent) > sizeof(media->buf)) {
+		fprintf(stderr, "dirent %s (%d bytes) can't exceed %lu bytes\n",
+		    dst_dirent, (int)strlen(dst_dirent), sizeof(media->buf));
+		return -1;
+	}
+	if (strlen(dst_dirent) <= sizeof(bscan->check.buf)) {
+		fprintf(stderr, "dirent %s (%d bytes) must exceed %lu bytes\n",
+		    dst_dirent, (int)strlen(dst_dirent),
+		    sizeof(bscan->check.buf));
+		return -1;
+	}
+
 	if (ForceOpt) {
-		strlcpy(media->buf, dst_dirent, sizeof(media->buf));
-		switch (write_media(fd, bref, media, media_bytes)) {
-		case -1:
-			fprintf(stderr, "Bad I/O bytes\n");
+		memset(media->buf, 0, sizeof(media->buf));
+		memcpy(media->buf, dst_dirent, strlen(dst_dirent));
+		bscan->embed.dirent.namlen = strlen(dst_dirent);
+		if (write_media(fd, bref, media, media_bytes) == -1)
 			return -1;
-		case -2:
-			fprintf(stderr, "Failed to read media\n");
+		if (write_media(fd, prev_bref, &bscan_media, bytes) == -1)
 			return -1;
-		case -3:
-			fprintf(stderr, "Failed to write media\n");
-			return -1;
-		default:
-			printf("Modified dirent %s -> %s\n", src_dirent,
-			    dst_dirent);
-			break;
-		}
-	} else
-		printf("dirent %s\n", media->buf);
+	}
+
+	printf("%sdirent %s (%d bytes) -> %s (%d bytes)\n",
+	    ForceOpt ? "Modified " : "",
+	    src_dirent, (int)strlen(src_dirent),
+	    dst_dirent, (int)strlen(dst_dirent));
 
 	return 0;
 }
@@ -347,7 +421,15 @@ init_args(int argc, char **argv, const char **devpathp)
 		    (uintmax_t)dst_inode);
 	} else if (!strcmp(type, "dirent")) {
 		src_dirent = argv[2];
+		if (strlen(src_dirent) > HAMMER2_PBUFSIZE) {
+			fprintf(stderr, "src dirent too long\n");
+			return -1;
+		}
 		dst_dirent = argv[3];
+		if (strlen(dst_dirent) > HAMMER2_PBUFSIZE) {
+			fprintf(stderr, "dst dirent too long\n");
+			return -1;
+		}
 		if (!strcmp(src_dirent, dst_dirent)) {
 			fprintf(stderr, "src equals dst\n");
 			return -1;
