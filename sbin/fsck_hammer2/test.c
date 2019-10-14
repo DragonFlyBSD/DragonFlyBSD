@@ -121,7 +121,7 @@ static int init_pfs_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, struct blockref_list *);
 static void cleanup_pfs_blockref(struct blockref_list *);
 static void print_media(FILE *, int, const hammer2_blockref_t *,
-    hammer2_media_data_t *);
+    hammer2_media_data_t *, size_t);
 static const char* hammer2_blockref_to_str(uint8_t);
 
 static int best_zone = -1;
@@ -445,8 +445,9 @@ print_blockref_msg(int fd, struct blockref_list *head)
 		    m->msg);
 
 		if (fd != -1 && VerboseOpt > 0) {
-			if (!read_media(fd, bref, &media, NULL))
-				print_media(stderr, 2, bref, &media);
+			size_t bytes;
+			if (!read_media(fd, bref, &media, &bytes))
+				print_media(stderr, 2, bref, &media, bytes);
 			else
 				tfprintf(stderr, 2, "Failed to read media\n");
 		}
@@ -825,10 +826,11 @@ cleanup_pfs_blockref(struct blockref_list *blist)
 
 static void
 print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
-    hammer2_media_data_t *media)
+    hammer2_media_data_t *media, size_t media_bytes)
 {
+	hammer2_blockref_t *bscan;
 	hammer2_inode_data_t *ipdata;
-	int i, namelen;
+	int i, bcount, namelen;
 	char *str = NULL;
 
 	switch (bref->type) {
@@ -906,6 +908,17 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 		tfprintf(fp, tab, "inode_count %ju\n",
 		    (uintmax_t)bref->embed.stats.inode_count);
 		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		bcount = media_bytes / sizeof(hammer2_blockref_t);
+		for (i = 0; i < bcount; ++i) {
+			bscan = &media->npdata[i];
+			tfprintf(fp, tab, "%3d %016jx %-12s %016jx/%-2d\n",
+			    i, (uintmax_t)bscan->data_off,
+			    hammer2_blockref_to_str(bscan->type),
+			    (uintmax_t)bscan->key,
+			    bscan->keybits);
+		}
+		break;
 	case HAMMER2_BREF_TYPE_DIRENT:
 		if (bref->embed.dirent.namlen <= sizeof(bref->check.buf)) {
 			tfprintf(fp, tab, "filename \"%*.*s\"\n",
@@ -924,6 +937,17 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 		    (uintmax_t)bref->embed.dirent.namlen);
 		tfprintf(fp, tab, "type %s\n",
 		    hammer2_iptype_to_str(bref->embed.dirent.type));
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		bcount = media_bytes / sizeof(hammer2_blockref_t);
+		for (i = 0; i < bcount; ++i) {
+			bscan = &media->npdata[i];
+			tfprintf(fp, tab, "%3d %016jx %-12s %016jx/%-2d\n",
+			    i, (uintmax_t)bscan->data_off,
+			    hammer2_blockref_to_str(bscan->type),
+			    (uintmax_t)bscan->key,
+			    bscan->keybits);
+		}
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
