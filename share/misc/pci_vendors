@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2019.09.14
-#	Date:    2019-09-14 03:15:02
+#	Version: 2019.10.12
+#	Date:    2019-10-12 03:15:02
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at https://pci-ids.ucw.cz/.
@@ -3448,6 +3448,7 @@
 		174b e329  Radeon R9 FURY
 	7310  Navi 10
 	731f  Navi 10 [Radeon RX 5700 / 5700 XT]
+	7340  Navi 14 [Radeon RX 5500 / 5500M]
 	7833  RS350 Host Bridge
 	7834  RS350 [Radeon 9100 PRO/XT IGP]
 	7835  RS350M [Mobility Radeon 9000 IGP]
@@ -6831,6 +6832,8 @@
 		1077 02e4  QLE2772 Dual Port 32GFC PCIe Gen4 x8 Adapter
 		1077 02ee  QLE2870 Single Port 64GFC PCIe Gen4 x8 Adapter
 		1077 02f0  QLE2770 Single Port 32GFC PCIe Gen4 x8 Adapter
+		1590 02d3  SN1610Q - 1P Enhanced 32GFC Single Port Fibre Channel Host Bus Adapter
+		1590 02d4  SN1610Q – 2P Enhanced 32GFC Dual Port Fibre Channel Host Bus Adapter
 	2300  QLA2300 64-bit Fibre Channel Adapter
 	2312  ISP2312-based 2Gb Fibre Channel to PCI-X HBA
 		103c 0131  2Gb Fibre Channel - Single port [A7538A]
@@ -6902,6 +6905,11 @@
 		1077 0012  FastLinQ QL41112H 10GbE Adapter
 		1077 0019  QL41232HOCU - Dual Port 25/10GbE SFP28 OCP Adapter
 		1077 0039  QLogic QL41262 PCIe 25Gb 2-Port SFP28 Ethernet Adapter
+		1077 0053  QLogic 2x25GE QL41232HQCU NIC
+		1077 0054  2x10GE QL41132HQRJ NIC
+		1077 0055  QLogic 2x10GE QL41132HQCU NIC
+		1077 0056  2x10GE QL41132HxRJ NIC
+		1077 0057  2x25GE QL41232HxCU NIC
 		1590 021a  10GbE 2P QL41162HLRJ-HP Adapter
 		1590 021b  10GbE 2P QL41162HLRJ-HP Adapter
 		1590 021d  10/25GbE 2P QL41222HLCU-HP Adapter
@@ -6957,6 +6965,11 @@
 		1077 0010  2x25GE QL41232HMKR NIC
 		1077 0011  FastLinQ QL41212H 25GbE Adapter (SR-IOV VF)
 		1077 0012  FastLinQ QL41112H 10GbE Adapter (SR-IOV VF)
+		1077 0053  QLogic 2x25GE QL41232HQCU NIC
+		1077 0054  QLogic 2x10GE QL41132HQRJ NIC
+		1077 0055  QLogic 2x10GE QL41132HQCU NIC
+		1077 0056  2x10GE QL41132HxRJ NIC
+		1077 0057  2x25GE QL41232HxCU NIC
 		1590 021a  10GbE 2P QL41162HLRJ-HP Adapter
 		1590 021b  10GbE 2P QL41162HLRJ-HP Adapter
 		1590 021e  10/25GbE 2P QL41162HMRJ-HP Adapter
@@ -11617,6 +11630,7 @@
 	17c2  GM200 [GeForce GTX TITAN X]
 	17c8  GM200 [GeForce GTX 980 Ti]
 	17f0  GM200GL [Quadro M6000]
+		10de 1141  VCA 6000
 	17f1  GM200GL [Quadro M6000 24GB]
 	17fd  GM200GL [Tesla M40]
 	1ad6  TU102 USB 3.1 Controller
@@ -14122,7 +14136,7 @@
 1177  Silicon Engineering
 1178  Alfa, Inc.
 	afa1  Fast Ethernet Adapter
-1179  Toshiba America Info Systems
+1179  Toshiba Corporation
 	0102  Extended IDE Controller
 	0103  EX-IDE Type-B
 	010f  NVMe Controller
@@ -14131,6 +14145,8 @@
 		1028 1ffc  Express Flash NVMe 1.92T (RI) U.2 (CD5)
 		1028 1ffd  Express Flash NVMe 3.84T (RI) U.2 (CD5)
 		1028 1ffe  Express Flash NVMe 7.68T (RI) U.2 (CD5)
+		1179 0001  KIOXIA CM5-R series SSD
+		1179 0021  KIOXIA CD5 series SSD
 		1d49 4039  Thinksystem U.2 CM5 NVMe SSD
 		1d49 403a  Thinksystem AIC CM5 NVMe SSD
 	0113  BG3 NVMe SSD Controller
@@ -18628,6 +18644,11 @@
 		1028 0209  XPS M1330
 		103c 30c0  Compaq 6710b
 		17aa 3a23  IdeaPad S10e
+	1750  BCM57508 NetXtreme-E 10Gb/25Gb/40Gb/50Gb/100Gb/200Gb Ethernet
+	1751  BCM57504 NetXtreme-E 10Gb/25Gb/40Gb/50Gb/100Gb/200Gb Ethernet
+	1752  BCM57502 NetXtreme-E 10Gb/25Gb/40Gb/50Gb Ethernet
+	1806  BCM5750X NetXtreme-E Ethernet Virtual Function
+	1807  BCM5750X NetXtreme-E RDMA Virtual Function
 	3352  BCM3352
 	3360  BCM3360
 	4210  BCM4210 iLine10 HomePNA 2.0
@@ -18812,6 +18833,7 @@
 	43bc  BCM43602 802.11ac Wireless LAN SoC
 	43d3  BCM43567 802.11ac Wireless Network Adapter
 	43d9  BCM43570 802.11ac Wireless Network Adapter
+	43dc  BCM4355 802.11ac Wireless LAN SoC
 	43df  BCM4354 802.11ac Wireless LAN SoC
 	43e9  BCM4358 802.11ac Wireless LAN SoC
 	43ec  BCM4356 802.11ac Wireless Network Adapter
@@ -18828,7 +18850,7 @@
 	4412  BCM4412 10/100BaseT
 	4430  BCM44xx CardBus iLine32 HomePNA 2.0
 	4432  BCM4432 CardBus 10/100BaseT
-	4464  BCM4464 802.11ac Wireless Network Adapter
+	4464  BCM4364 802.11ac Wireless Network Adapter
 	4610  BCM4610 Sentry5 PCI to SB Bridge
 	4611  BCM4610 Sentry5 iLine32 HomePNA 1.0
 	4612  BCM4610 Sentry5 V.90 56k Modem
@@ -20248,6 +20270,7 @@
 		1a32 0303  EM303 802.11bgn Wireless Mini PCIe Card [AR9281]
 		1a32 0306  EM306 802.11bgn Wireless Half-size Mini PCIe Card [AR9283]
 		1a3b 1067  AW-NE771 802.11bgn Wireless Mini PCIe Card [AR9281]
+		1a3b 1071  AW-NE772 802.11abgn Wireless Mini PCIe Card [AR9280]
 		1a3b 1081  AW-NE773 802.11abgn Wireless Half-size Mini PCIe Card [AR9280]
 	002b  AR9285 Wireless Network Adapter (PCI-Express)
 		1028 0204  Wireless 1502 802.11bgn Half-size Mini PCIe Card
@@ -21000,6 +21023,10 @@
 # HT1000 uses 3 IDs 1166:024a (Native SATA Mode), 1166:024b (PATA/IDE Mode), 182f:000b (RAID Mode) depends on SATA BIOS setting
 	000b  BCM5785 [HT1000] SATA (RAID Mode)
 1830  Credence Systems Corporation
+	8000  CPIn
+	8001  CPId
+	8002  CPIx
+	8003  CPIq
 183b  MikroM GmbH
 	08a7  MVC100 DVI
 	08a8  MVC101 SDI
@@ -22262,6 +22289,8 @@
 	0303  Simulyzer-RT CompactPCI Serial PSI5-SIM-1 card
 	0304  Simulyzer-RT CompactPCI Serial PWR-ANA-1 card
 	0305  Simulyzer-RT CompactPCI Serial CAN-1 card
+# supports 8x CAN (-FD) interfaces
+	0306  Simulyzer-RT CompactPCI Serial CAN-2 card (CAN-FD)
 1cd7  Nanjing Magewell Electronics Co., Ltd.
 	0010  Pro Capture Endpoint
 	0014  PRO CAPTURE AIO 4K PLUS
@@ -22407,6 +22436,10 @@
 		1d6c 2001  DPDK-Aware Virtual Function [Arkville VF]
 	100f  AR-ARKA-FX1 [Arkville 64B DPDK Data Mover for Versal]
 	1010  AR-ARKA-FX1 [Arkville 64B DPDK Data Mover for Agilex]
+	1011  AR-MAN-U50 [Manitou Class Accelerator for U50]
+	1012  AR-MAN-U200 [Manitou Class Accelerator for U200]
+	1013  AR-MAN-U250 [Manitou Class Accelerator for U250]
+	1014  AR-MAN-U280 [Manitou Class Accelerator for U280]
 	4200  A5PL-E1-10GETI [10 GbE Ethernet Traffic Instrument]
 1d72  Xiaomi
 1d78  DERA
@@ -22460,6 +22493,8 @@
 1da2  Sapphire Technology Limited
 1da3  Habana Labs Ltd.
 	0001  HL-1000 AI Inference Accelerator [Goya]
+# PCIe accelerator card for Deep Learning training tasks
+	1000  HL-2000 AI Training Accelerator [Gaudi]
 1dbb  NGD Systems, Inc.
 1dbf  Guizhou Huaxintong Semiconductor Technology Co., Ltd
 	0401  StarDragon4800 PCI Express Root Port
@@ -22523,9 +22558,6 @@
 	0010  Gemini [ Lida ]
 		1e4c 0120  SE120
 1e57  Beijing Panyi Technology Co., Ltd
-	0001  PY8800
-	0100  PY8800
-		0000 0100  PY8800 64GB Accelerator
 1e6b  Axiado Corp.
 # nee Tumsan Oy
 1fc0  Ascom (Finland) Oy
@@ -25095,6 +25127,7 @@
 		8086 00a1  Ethernet Server Adapter I350-T4
 		8086 00a2  Ethernet Server Adapter I350-T2
 		8086 00a3  Ethernet Network Adapter I350-T4 for OCP NIC 3.0
+		8086 00aa  Ethernet Network Adapter I350-T4 for OCP NIC 3.0
 		8086 5001  Ethernet Server Adapter I350-T4
 		8086 5002  Ethernet Server Adapter I350-T2
 		8086 5003  Ethernet 1G 4P I350-t OCP
@@ -25154,6 +25187,7 @@
 	1531  I210 Gigabit Unprogrammed
 	1533  I210 Gigabit Network Connection
 		103c 0003  Ethernet I210-T1 GbE NIC
+		1059 0180  RD10019 1GbE interface
 		1093 7706  Compact Vision System Ethernet Adapter
 		10a9 802c  UV300 BaseIO single-port GbE
 		10a9 802d  UV3000 BaseIO GbE Network
@@ -25363,7 +25397,15 @@
 		8086 4001  Ethernet Network Adapter XXV710-2
 	1591  Ethernet Controller E810-C for backplane
 	1592  Ethernet Controller E810-C for QSFP
+		8086 0002  Ethernet Network Adapter E810-C-Q2
+		8086 0004  Ethernet Network Adapter E810-C-Q2
+		8086 0009  Ethernet Network Adapter E810-C-Q1
 	1593  Ethernet Controller E810-C for SFP
+		8086 0005  Ethernet Network Adapter E810-XXV-4
+		8086 0006  Ethernet Network Adapter E810-XXV-4
+		8086 0007  Ethernet Network Adapter E810-XXV-4
+		8086 0008  Ethernet Network Adapter E810-XXV-2
+		8086 0009  Ethernet Network Adapter E810-XXV-2 for OCP 2.0
 	15a0  Ethernet Connection (2) I218-LM
 	15a1  Ethernet Connection (2) I218-V
 	15a2  Ethernet Connection (3) I218-LM
@@ -25442,6 +25484,7 @@
 	15f0  JHL7540 Thunderbolt 3 USB Controller [Titan Ridge DD 2018]
 	15f6  I210 Gigabit Ethernet Connection
 	15ff  Ethernet Controller X710 for 10GBASE-T
+		1137 02c1  Ethernet Network Adapter X710-T2L
 		8086 0000  Ethernet Network Adapter X710-TL
 		8086 0001  Ethernet Network Adapter X710-T4L
 		8086 0002  Ethernet Network Adapter X710-T4L
@@ -25451,6 +25494,11 @@
 		8086 0006  Ethernet 10G 4P X710-T4L-t Adapter
 		8086 0007  Ethernet 10G 2P X710-T2L-t OCP
 		8086 0008  Ethernet 10G 4P X710-T4L-t OCP
+		8086 0009  Ethernet Network Adapter X710-T4L for OCP 3.0
+		8086 000a  Ethernet Network Adapter X710-T4L for OCP 3.0
+		8086 000b  Ethernet Network Adapter X710-T2L for OCP 3.0
+		8086 000c  Ethernet Network Adapter X710-T2L for OCP 3.0
+		8086 000f  Ethernet Network Adapter X710-T2L for OCP 3.0
 	1600  Broadwell-U Host Bridge -OPI
 	1601  Broadwell-U PCI Express x16 Controller
 	1602  Broadwell-U Integrated Graphics
@@ -29128,6 +29176,7 @@
 		17aa 4022  Ethernet Connection X722 for 1GbE
 		17aa 4024  Ethernet Connection X722 for 1GbE
 	37d2  Ethernet Connection X722 for 10GBASE-T
+		1059 0180  RD10019 10GbE interface
 		1170 37d2  Ethernet Connection X722 for 10GBASE-T
 		14cd 0030  Ethernet OCP 2x10G RJ45 Phy Card [USI-X557-10GbaseT]
 		1590 0218  Ethernet 10Gb 2-port 568FLR-MMT Adapter
@@ -31509,6 +31558,7 @@ bdbd  Blackmagic Design
 	a1ff  eGPU RX580
 c001  TSI Telsys
 c0a9  Micron/Crucial Technology
+	2263  P1 NVMe PCIe SSD
 c0de  Motorola
 c0fe  Motion Engineering, Inc.
 ca3b  Cambrionix Ltd.
