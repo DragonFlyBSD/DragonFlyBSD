@@ -370,8 +370,13 @@ modify_dirent(int fd, int bi, hammer2_blockref_t *prev_bref,
 		bscan->embed.dirent.namlen = strlen(dst_dirent);
 		if (write_media(fd, bref, media, media_bytes) == -1)
 			return -1;
-		if (write_media(fd, prev_bref, &bscan_media, bytes) == -1)
+		if (write_media(fd, prev_bref, &bscan_media, bytes) == -1) {
+			memset(media->buf, 0, sizeof(media->buf));
+			memcpy(media->buf, src_dirent, strlen(src_dirent));
+			if (write_media(fd, bref, media, media_bytes) == -1)
+				return -1;
 			return -1;
+		}
 	}
 
 	printf("%sdirent %s (%d bytes) -> %s (%d bytes)\n",
