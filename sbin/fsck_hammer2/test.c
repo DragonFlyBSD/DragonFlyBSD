@@ -754,10 +754,9 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	 * Beyond that is probably garbage.
 	 */
 	for (i = 0; norecurse == false && i < bcount; ++i)
-		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY)
-			if (verify_blockref(fd, voldata, &bscan[i], failed,
-			    bstats) == -1)
-				return -1;
+		if (verify_blockref(fd, voldata, &bscan[i], failed, bstats)
+		    == -1)
+			return -1;
 	return failed ? -1 : 0;
 }
 
@@ -811,10 +810,8 @@ init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
 	}
 
 	for (i = 0; i < bcount; ++i)
-		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY)
-			if (init_pfs_blockref(fd, voldata, &bscan[i], blist)
-			    == -1)
-				return -1;
+		if (init_pfs_blockref(fd, voldata, &bscan[i], blist) == -1)
+			return -1;
 	return 0;
 }
 
