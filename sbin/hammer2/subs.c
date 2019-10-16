@@ -158,6 +158,33 @@ hammer2_pfstype_to_str(uint8_t type)
 }
 
 const char *
+hammer2_breftype_to_str(uint8_t type)
+{
+	switch (type) {
+	case HAMMER2_BREF_TYPE_EMPTY:
+		return("empty");
+	case HAMMER2_BREF_TYPE_INODE:
+		return("inode");
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		return("indirect");
+	case HAMMER2_BREF_TYPE_DATA:
+		return("data");
+	case HAMMER2_BREF_TYPE_DIRENT:
+		return("dirent");
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		return("freemap_node");
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		return("freemap_leaf");
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		return("freemap");
+	case HAMMER2_BREF_TYPE_VOLUME:
+		return("volume");
+	default:
+		return("unknown");
+	}
+}
+
+const char *
 sizetostr(hammer2_off_t size)
 {
 	static char buf[32];

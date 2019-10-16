@@ -709,38 +709,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	failed = 0;
 	obrace = 1;
 
-	switch(bref->type) {
-	case HAMMER2_BREF_TYPE_EMPTY:
-		type_str = "empty";
-		break;
-	case HAMMER2_BREF_TYPE_DIRENT:
-		type_str = "dirent";
-		break;
-	case HAMMER2_BREF_TYPE_INODE:
-		type_str = "inode";
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		type_str = "indblk";
-		break;
-	case HAMMER2_BREF_TYPE_DATA:
-		type_str = "data";
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		type_str = "volume";
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		type_str = "freemap";
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		type_str = "fmapnode";
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		type_str = "fbitmap";
-		break;
-	default:
-		type_str = "unknown";
-		break;
-	}
+	type_str = hammer2_breftype_to_str(bref->type);
 	type_pad = 8 - strlen(type_str);
 	if (type_pad < 0)
 		type_pad = 0;

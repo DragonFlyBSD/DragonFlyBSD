@@ -122,7 +122,6 @@ static int init_pfs_blockref(int, const hammer2_volume_data_t *,
 static void cleanup_pfs_blockref(struct blockref_list *);
 static void print_media(FILE *, int, const hammer2_blockref_t *,
     hammer2_media_data_t *, size_t);
-static const char* hammer2_blockref_to_str(uint8_t);
 
 static int best_zone = -1;
 
@@ -439,7 +438,7 @@ print_blockref_msg(int fd, struct blockref_list *head)
 
 		tfprintf(stderr, 1, "%016jx %-12s %016jx/%-2d \"%s\"\n",
 		    (uintmax_t)bref->data_off,
-		    hammer2_blockref_to_str(bref->type),
+		    hammer2_breftype_to_str(bref->type),
 		    (uintmax_t)bref->key,
 		    bref->keybits,
 		    m->msg);
@@ -911,7 +910,7 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 			bscan = &media->npdata[i];
 			tfprintf(fp, tab, "%3d %016jx %-12s %016jx/%-2d\n",
 			    i, (uintmax_t)bscan->data_off,
-			    hammer2_blockref_to_str(bscan->type),
+			    hammer2_breftype_to_str(bscan->type),
 			    (uintmax_t)bscan->key,
 			    bscan->keybits);
 		}
@@ -941,7 +940,7 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 			bscan = &media->npdata[i];
 			tfprintf(fp, tab, "%3d %016jx %-12s %016jx/%-2d\n",
 			    i, (uintmax_t)bscan->data_off,
-			    hammer2_blockref_to_str(bscan->type),
+			    hammer2_breftype_to_str(bscan->type),
 			    (uintmax_t)bscan->key,
 			    bscan->keybits);
 		}
@@ -973,34 +972,6 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 	}
 	if (str)
 		free(str);
-}
-
-static const char*
-hammer2_blockref_to_str(uint8_t type)
-{
-	switch (type) {
-	case HAMMER2_BREF_TYPE_EMPTY:
-		return "empty";
-	case HAMMER2_BREF_TYPE_INODE:
-		return "inode";
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		return "indirect";
-	case HAMMER2_BREF_TYPE_DATA:
-		return "data";
-	case HAMMER2_BREF_TYPE_DIRENT:
-		return "dirent";
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		return "freemap_node";
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		return "freemap_leaf";
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		return "freemap";
-	case HAMMER2_BREF_TYPE_VOLUME:
-		return "volume";
-	default:
-		return NULL;
-	}
-	return NULL;
 }
 
 int

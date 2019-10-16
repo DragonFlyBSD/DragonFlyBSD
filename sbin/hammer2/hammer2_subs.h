@@ -48,6 +48,7 @@ const char *hammer2_time64_to_str(uint64_t htime64, char **strp);
 const char *hammer2_uuid_to_str(uuid_t *uuid, char **strp);
 const char *hammer2_iptype_to_str(uint8_t type);
 const char *hammer2_pfstype_to_str(uint8_t type);
+const char *hammer2_breftype_to_str(uint8_t type);
 const char *sizetostr(hammer2_off_t size);
 const char *counttostr(hammer2_off_t size);
 hammer2_key_t dirhash(const unsigned char *name, size_t len);
