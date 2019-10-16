@@ -78,10 +78,6 @@ ZLIB_1.2.8 {
     zlibVersion;
 };
 
-DF306.0 {
-    zopen;
-};
-
 ZLIBprivate_1.0 {
     _tr_align;
     _tr_flush_bits;

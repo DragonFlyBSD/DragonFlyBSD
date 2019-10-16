@@ -19,7 +19,7 @@ xgzread(void *cookie, char *data, int size)
 static int
 xgzwrite(void *cookie, const char *data, int size)
 {
-    return gzwrite(cookie, (void*)data, size);
+    return gzwrite(cookie, __DECONST(void *, data), size);
 }
 
 static int
