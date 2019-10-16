@@ -29,6 +29,8 @@
 #ifndef ELOOP_H
 #define ELOOP_H
 
+#include <sys/signal.h>
+
 #include <time.h>
 
 /* Some systems don't define timespec macros */
