@@ -4,7 +4,7 @@ ZLIB
 Original source can be downloaded from:
 http://www.zlib.net
 
-file = zlib-1.2.8.tar.gz
+file = zlib-1.2.11.tar.gz
 date = January 15, 2017
 size = 607698
 sha1 = e6d119755acdf9104d7ba236b1242696940ed6dd
