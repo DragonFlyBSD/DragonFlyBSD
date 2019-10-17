@@ -591,7 +591,7 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 	if (read(fd, media, io_bytes) != (ssize_t)io_bytes)
 		return -2;
 	if (boff)
-		memcpy(media, (char *)media + boff, bytes);
+		memmove(media, (char *)media + boff, bytes);
 
 	return 0;
 }

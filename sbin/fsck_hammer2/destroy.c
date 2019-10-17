@@ -136,7 +136,7 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 		return -1;
 	}
 	if (boff)
-		memcpy(media, (char *)media + boff, bytes);
+		memmove(media, (char *)media + boff, bytes);
 
 	return 0;
 }
