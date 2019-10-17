@@ -1,5 +1,8 @@
 ZLIB_1.2.8 {
 };
 
-ZLIBprivate_1.0 {
+ZLIB_1.2.11 {
 } ZLIB_1.2.8;
+
+ZLIBprivate_1.0 {
+} ZLIB_1.2.11;

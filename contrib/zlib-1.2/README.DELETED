@@ -3,7 +3,6 @@ INDEX
 Makefile
 Makefile.in
 amiga/
-as400/
 configure
 contrib/
 doc/
@@ -12,6 +11,7 @@ make_vms.com
 msdos/
 nintendods/
 old/
+os400/
 qnx/
 test/
 treebuild.xml
@@ -22,6 +22,6 @@ zconf.h.cmakein
 zconf.h.in
 zlib.3.pdf
 zlib.map
-zlib.pc.in
 zlib.pc.cmakein
+zlib.pc.in
 zlib2ansi
