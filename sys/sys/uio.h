@@ -35,12 +35,19 @@
 
 #include <sys/cdefs.h>
 #include <sys/_iovec.h>
-#if __BSD_VISIBLE
-#include <sys/param.h>
-#endif
 #if defined(_KERNEL)
+#include <sys/_null.h>		/* XXX */
 #include <sys/malloc.h>		/* Needed to inline iovec_free(). */
 #endif
+
+#ifdef __BSD_VISIBLE
+#ifndef _OFF_T_DECLARED
+typedef	__off_t		off_t;
+#define	_OFF_T_DECLARED
+#endif
+#endif
+
+/* The size_t and __ types are expected to be provided by <sys/_iovec.h> */
 
 #ifndef _SSIZE_T_DECLARED
 typedef	__ssize_t	ssize_t;
@@ -69,8 +76,6 @@ enum uio_seg {
  *	 iov uses an unsigned quantity, DragonFly will use the (unsigned)
  *	 size_t.
  */
-struct buf;
-
 struct uio {
 	struct	iovec *uio_iov;
 	int	uio_iovcnt;
@@ -87,10 +92,10 @@ struct uio {
 #define UIO_MAXIOV	1024		/* max 1K of iov's */
 #define UIO_SMALLIOV	8		/* 8 on stack, else malloc */
 
-#endif
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 #if defined(_KERNEL)
-
+struct buf;
 struct vm_object;
 struct vm_page;
 
@@ -116,9 +121,9 @@ iovec_free(struct iovec **kiov, struct iovec *siov)
 		*kiov = NULL;
 	}
 }
+#endif /* _KERNEL */
 
-#else /* !_KERNEL */
-
+#ifndef _KERNEL
 __BEGIN_DECLS
 ssize_t	readv(int, const struct iovec *, int);
 ssize_t	writev(int, const struct iovec *, int);
@@ -127,7 +132,6 @@ ssize_t	preadv(int, const struct iovec *, int, off_t);
 ssize_t	pwritev(int, const struct iovec *, int, off_t);
 #endif
 __END_DECLS
-
-#endif /* _KERNEL */
+#endif /* !_KERNEL */
 
 #endif /* !_SYS_UIO_H_ */
