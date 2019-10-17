@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)ktrace.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/ktrace.2,v 1.9.2.7 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/ktrace.2,v 1.4 2008/10/16 08:15:18 swildner Exp $
 .\"
-.Dd November 15, 2009
+.Dd November 24, 2019
 .Dt KTRACE 2
 .Os
 .Sh NAME
@@ -40,7 +39,6 @@
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/time.h
-.In sys/uio.h
 .In sys/ktrace.h
 .Ft int
 .Fn ktrace "const char *tracefile" "int ops" "int trpoints" "int pid"
@@ -137,7 +135,8 @@ include file.
 .Sh RETURN VALUES
 .Rv -std ktrace
 .Sh ERRORS
-.Fn Ktrace
+The
+.Fn ktrace
 will fail if:
 .Bl -tag -width Er
 .It Bq Er ENOTDIR

@@ -54,37 +54,8 @@ typedef	__ssize_t	ssize_t;
 #define	_SSIZE_T_DECLARED
 #endif
 
-#if __BSD_VISIBLE
-enum	uio_rw { UIO_READ, UIO_WRITE };
-
-/* Segment flag values. */
-enum uio_seg {
-	UIO_USERSPACE,		/* from user data space */
-	UIO_SYSSPACE,		/* from system space */
-	UIO_NOCOPY		/* don't copy, already in object */
-};
-#endif
-
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-
-/*
- * uio_td is primarily used for USERSPACE transfers, but some devices
- * like ttys may also use it to get at the process.
- *
- * NOTE: uio_resid: Previously used int and FreeBSD decided to use ssize_t,
- *	 but after reviewing use cases and in particular the fact that the
- *	 iov uses an unsigned quantity, DragonFly will use the (unsigned)
- *	 size_t.
- */
-struct uio {
-	struct	iovec *uio_iov;
-	int	uio_iovcnt;
-	off_t	uio_offset;
-	size_t	uio_resid;
-	enum	uio_seg uio_segflg;
-	enum	uio_rw uio_rw;
-	struct	thread *uio_td;
-};
+#include <sys/_uio.h>			/* struct uio and enums */
 
 /*
  * Limits

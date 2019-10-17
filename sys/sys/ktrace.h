@@ -28,7 +28,6 @@
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/ktrace.h,v 1.19.2.3 2001/01/06 09:58:23 alfred Exp $
- * $DragonFly: src/sys/sys/ktrace.h,v 1.10 2008/04/14 12:01:53 dillon Exp $
  */
 
 #ifndef _SYS_KTRACE_H_
@@ -39,9 +38,6 @@
 #endif
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>
-#endif
-#ifndef _SYS_UIO_H_
-#include <sys/uio.h>
 #endif
 #ifndef _SYS_SIGNAL_H_
 #include <sys/signal.h>
@@ -135,6 +131,8 @@ struct ktr_sysret {
  * KTR_GENIO - trace generic process i/o
  */
 #define KTR_GENIO	4
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#include <sys/_uio.h>		/* enum uio_rw, struct uio */
 struct ktr_genio {
 	int	ktr_fd;
 	enum	uio_rw ktr_rw;
@@ -142,6 +140,7 @@ struct ktr_genio {
 	 * followed by data successfully read/written
 	 */
 };
+#endif
 
 /*
  * KTR_PSIG - trace processed signal
