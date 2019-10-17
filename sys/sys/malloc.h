@@ -59,7 +59,7 @@
 #define	M_CACHEALIGN	0x4000	/* force CPU cache line alignment */
 
 /*
- * M_NOWAIT has to be a set of flags for equivalence to prior use. 
+ * M_NOWAIT has to be a set of flags for equivalence to prior use.
  *
  * M_SYSALLOC should be used for any critical infrastructure allocations
  * made by the kernel proper.
@@ -70,7 +70,7 @@
  *
  * NOTE ON DRAGONFLY USE OF M_NOWAIT.  In FreeBSD M_NOWAIT allocations
  * almost always succeed.  In DragonFly, however, there is a good chance
- * that an allocation will fail.  M_NOWAIT should only be used when 
+ * that an allocation will fail.  M_NOWAIT should only be used when
  * allocations can fail without any serious detriment to the system.
  *
  * Note that allocations made from (preempted) interrupts will attempt to
@@ -159,13 +159,6 @@ MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
 #ifdef _KERNEL
 
 #define	MINALLOCSIZE	sizeof(void *)
-
-/*
- * XXX this should be declared in <sys/uio.h>, but that tends to fail
- * because <sys/uio.h> is included in a header before the source file
- * has a chance to include <sys/malloc.h> to get MALLOC_DECLARE() defined.
- */
-MALLOC_DECLARE(M_IOV);
 
 /* XXX struct malloc_type is unused for contig*(). */
 size_t  kmem_lim_size(void);

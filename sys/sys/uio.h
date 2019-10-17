@@ -110,6 +110,8 @@ int	uioread (int, struct uio *, struct vm_object *, int *);
 int	iovec_copyin(const struct iovec *, struct iovec **, struct iovec *,
 			    int, size_t *);
 
+MALLOC_DECLARE(M_IOV);	/* only if <sys/malloc.h> included before! */
+
 /*
  * MPSAFE
  */
