@@ -15,7 +15,8 @@ SRCS=	adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c
 SRCS+=	gzwrite.c infback.c
 SRCS+=	inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c
 
-CFLAGS+= -I${CONTRIBDIR} -I${.CURDIR}
+CFLAGS+=-I${CONTRIBDIR} -I${.CURDIR}
+#CFLAGS+=-DZLIB_DEBUG
 
 INCS=		zconf.h zlib.h
 
