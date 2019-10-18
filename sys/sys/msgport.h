@@ -17,14 +17,6 @@
 #include <sys/spinlock.h>
 #endif
 
-#ifdef _KERNEL
-
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
-#endif
-
-#endif
-
 struct lwkt_msg;
 struct lwkt_port;
 struct lwkt_serialize;
@@ -111,10 +103,6 @@ typedef struct lwkt_msg {
 #define MSG_CMD_VFS	0x00020000
 #define MSG_CMD_SYSCALL	0x00030000
 #define MSG_SUBCMD_MASK	0x0000FFFF
-
-#ifdef _KERNEL
-MALLOC_DECLARE(M_LWKTMSG);
-#endif
 
 /*
  * Notes on port processing requirements:

@@ -31,6 +31,7 @@
  */
 
 #include <sys/sysctl.h>
+#include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/systm.h>
 #include <sys/nlookup.h>

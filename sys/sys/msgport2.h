@@ -11,7 +11,14 @@
 #error "This file should not be included by userland programs."
 #endif
 
+#ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
+#endif
+#ifndef _SYS_MALLOC_H_
+#include <sys/malloc.h>
+#endif
+
+MALLOC_DECLARE(M_LWKTMSG);
 
 /*
  * Initialize a LWKT message structure.  Note that if the message supports
@@ -42,7 +49,7 @@ lwkt_initmsg_abortable(lwkt_msg_t msg, lwkt_port_t rport, int flags,
 static __inline
 void
 lwkt_replymsg(lwkt_msg_t msg, int error)
-{   
+{
     lwkt_port_t port;
 
     msg->ms_error = error;
@@ -54,7 +61,7 @@ lwkt_replymsg(lwkt_msg_t msg, int error)
  * Retrieve the next message from the port's message queue, return NULL
  * if no messages are pending.  The retrieved message will either be a
  * request or a reply based on the MSGF_REPLY bit.
- * 
+ *
  * If the backend port is a thread port, the the calling thread MUST
  * own the port.
  */
