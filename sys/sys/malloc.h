@@ -40,10 +40,6 @@
 #include <machine/types.h>	/* vm_paddr_t and __* types */
 #endif
 
-#ifndef _MACHINE_PARAM_H_
-#include <machine/param.h>	/* for SMP_MAXCPU */
-#endif
-
 /*
  * flags to malloc.
  */
@@ -89,40 +85,9 @@
 
 #define	M_MAGIC		877983977	/* time when first defined :-) */
 
-/*
- * The malloc tracking structure.  Note that per-cpu entries must be
- * aggregated for accurate statistics, they do not actually break the
- * stats down by cpu (e.g. the cpu freeing memory will subtract from
- * its slot, not the originating cpu's slot).
- *
- * SMP_MAXCPU is used so modules which use malloc remain compatible
- * between UP and SMP.
- */
-struct malloc_use {
-	size_t	memuse;
-	size_t	inuse;
-	__int64_t calls;	/* total packets of this type ever allocated */
-
-	/*
-	 * This value will be added to ks_loosememuse and resetted,
-	 * once it goes above certain threshold (ZoneSize).  This
-	 * is intended to reduce frequency of ks_loosememuse (global)
-	 * updates.
-	 */
-	size_t	loosememuse;
-} __cachealign;
-
-struct malloc_type {
-	struct malloc_type *ks_next;	/* next in list */
-	size_t	ks_loosememuse;		/* (inaccurate) aggregate memuse */
-	size_t	ks_limit;	/* most that are allowed to exist */
-	struct malloc_use  ks_use[SMP_MAXCPU];
-	__uint32_t ks_magic;	/* if it's not magic, don't touch it */
-	const char *ks_shortdesc;	/* short description */
-	long	ks_reserved[4];	/* future use (module compatibility) */
-};
-
-typedef struct malloc_type	*malloc_type_t;
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#include <sys/_malloc.h>		/* struct malloc_type */
+#endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)			\
@@ -141,9 +106,6 @@ typedef struct malloc_type	*malloc_type_t;
 	        { 0 } }							\
 	}
 #endif
-
-#define	MALLOC_DECLARE(type) \
-	extern struct malloc_type type[1]
 
 #ifdef _KERNEL
 
