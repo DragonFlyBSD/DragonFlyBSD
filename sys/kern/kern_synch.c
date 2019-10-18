@@ -125,7 +125,7 @@ SYSCTL_INT(_kern, OID_AUTO, pctcpu_decay, CTLFLAG_RW,
 	   &pctcpu_decay, 0, "");
 
 /*
- * kernel uses `FSCALE', userland (SHOULD) use kern.fscale 
+ * kernel uses `FSCALE', userland (SHOULD) use kern.fscale
  */
 __read_mostly int fscale __unused = FSCALE;	/* exported to systat */
 SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
@@ -189,7 +189,7 @@ SYSCTL_PROC(_debug, OID_AUTO, wakeup_umtx, CTLTYPE_UQUAD|CTLFLAG_RW, 0, 0,
  * a 1-second recalc to help out.
  *
  * This code also allows us to store sysclock_t data in the process structure
- * without fear of an overrun, since sysclock_t are guarenteed to hold 
+ * without fear of an overrun, since sysclock_t are guarenteed to hold
  * several seconds worth of count.
  *
  * WARNING!  callouts can preempt normal threads.  However, they will not
@@ -719,7 +719,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		lwkt_switch();
 	}
 
-	/* 
+	/*
 	 * Make sure we haven't switched cpus while we were asleep.  It's
 	 * not supposed to happen.  Cleanup our temporary flags.
 	 */
@@ -764,7 +764,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 
 	/*
 	 * Figure out the correct error return.  If interrupted by a
-	 * signal we want to return EINTR or ERESTART.  
+	 * signal we want to return EINTR or ERESTART.
 	 */
 resume:
 	if (lp) {
@@ -905,7 +905,7 @@ lwkt_sleep(const char *wmesg, int flags)
 			return(EINTR);
 		else
 			return(ERESTART);
-			
+
 	}
 	td->td_flags |= TDF_BLOCKED | TDF_SINTR;
 	td->td_wmesg = wmesg;
@@ -1007,7 +1007,7 @@ _wakeup(void *ident, int domain)
 restart:
 	for (td = TAILQ_FIRST(&qp->queue); td != NULL; td = ntd) {
 		ntd = TAILQ_NEXT(td, td_sleepq);
-		if (td->td_wchan == ident && 
+		if (td->td_wchan == ident &&
 		    td->td_wdomain == (domain & PDOMAIN_MASK)
 		) {
 			KKASSERT(td->td_gd == gd);
@@ -1067,7 +1067,7 @@ restart:
 	 * to continue checking cpus.
 	 *
 	 * It should be noted that this scheme is actually less expensive then
-	 * the old scheme when waking up multiple threads, since we send 
+	 * the old scheme when waking up multiple threads, since we send
 	 * only one IPI message per target candidate which may then schedule
 	 * multiple threads.  Before we could have wound up sending an IPI
 	 * message for each thread on the target cpu (!= current cpu) that
@@ -1314,7 +1314,7 @@ setrunnable(struct lwp *lp)
 
 /*
  * The process is stopped due to some condition, usually because p_stat is
- * set to SSTOP, but also possibly due to being traced.  
+ * set to SSTOP, but also possibly due to being traced.
  *
  * Caller must hold p->p_token
  *

@@ -33,7 +33,6 @@
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
  */
 
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/uio.h>
@@ -213,7 +212,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		/*
 		 * Obtain the buffer cache block.  Figure out the buffer size
 		 * when we are at EOF.  If we are modifying the size of the
-		 * buffer based on an EOF condition we need to hold 
+		 * buffer based on an EOF condition we need to hold
 		 * nfs_rslock() through obtaining the buffer to prevent
 		 * a potential writer-appender from messing with n_size.
 		 * Otherwise we may accidently truncate the buffer and
@@ -388,7 +387,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		 * to EOF.  *BUT* this information is lost if the buffer goes
 		 * away and is reconstituted into a B_CACHE state ( due to
 		 * being VMIO ) later.  So we keep track of the directory eof
-		 * in np->n_direofoffset and chop it off as an extra step 
+		 * in np->n_direofoffset and chop it off as an extra step
 		 * right here.
 		 *
 		 * NOTE: boff could already be beyond EOF.
@@ -698,13 +697,13 @@ again:
 		/*
 		 * If dirtyend exceeds file size, chop it down.  This should
 		 * not normally occur but there is an append race where it
-		 * might occur XXX, so we log it. 
+		 * might occur XXX, so we log it.
 		 *
 		 * If the chopping creates a reverse-indexed or degenerate
 		 * situation with dirtyoff/end, we 0 both of them.
 		 */
 		if (bp->b_dirtyend > bcount) {
-			kprintf("NFS append race @%08llx:%d\n", 
+			kprintf("NFS append race @%08llx:%d\n",
 			    (long long)bp->b_bio2.bio_offset,
 			    bp->b_dirtyend - bcount);
 			bp->b_dirtyend = bcount;
@@ -718,9 +717,9 @@ again:
 		 * area, just update the b_dirtyoff and b_dirtyend,
 		 * otherwise force a write rpc of the old dirty area.
 		 *
-		 * While it is possible to merge discontiguous writes due to 
+		 * While it is possible to merge discontiguous writes due to
 		 * our having a B_CACHE buffer ( and thus valid read data
-		 * for the hole), we don't because it could lead to 
+		 * for the hole), we don't because it could lead to
 		 * significant cache coherency problems with multiple clients,
 		 * especially if locking is implemented later on.
 		 *
@@ -756,7 +755,7 @@ again:
 		}
 
 		/*
-		 * Only update dirtyoff/dirtyend if not a degenerate 
+		 * Only update dirtyoff/dirtyend if not a degenerate
 		 * condition.
 		 *
 		 * The underlying VM pages have been marked valid by
@@ -1091,7 +1090,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	 */
 	bp->b_flags &= ~(B_ERROR | B_INVAL);
 
-	KASSERT(bp->b_cmd != BUF_CMD_DONE, 
+	KASSERT(bp->b_cmd != BUF_CMD_DONE,
 		("nfs_doio: bp %p already marked done!", bp));
 
 	if (bp->b_cmd == BUF_CMD_READ) {
@@ -1157,7 +1156,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	    }
 	    bp->b_resid = uiop->uio_resid;
 	} else {
-	    /* 
+	    /*
 	     * If we only need to commit, try to commit.
 	     *
 	     * NOTE: The I/O has already been staged for the write and

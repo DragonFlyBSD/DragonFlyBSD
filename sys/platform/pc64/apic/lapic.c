@@ -271,7 +271,7 @@ lapic_init(boolean_t bsp)
 	 * mode we use because we leave it masked.
 	 */
 	temp = LAPIC_READ(lvt_lint0);
-	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
+	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK |
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
 	if (bsp) {
 		temp |= APIC_LVT_DM_EXTINT;
@@ -292,7 +292,7 @@ lapic_init(boolean_t bsp)
 	 * Disable LINT1 on the APs.
 	 */
 	temp = LAPIC_READ(lvt_lint1);
-	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
+	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK |
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
 	temp |= APIC_LVT_MASKED | APIC_LVT_DM_NMI;
 	if (bsp && ioapic_enable)
@@ -371,8 +371,8 @@ lapic_init(boolean_t bsp)
 		}
 	}
 
-	/* 
-	 * Enable the LAPIC 
+	/*
+	 * Enable the LAPIC
 	 */
 	temp = LAPIC_READ(svr);
 	temp |= APIC_SVR_ENABLE;	/* enable the LAPIC */
@@ -774,7 +774,7 @@ lapic_timer_fixup_handler(void *arg)
 		 * the local APIC timer dead, so we disable it by reading
 		 * the Interrupt Pending Message register and clearing both
 		 * C1eOnCmpHalt (bit 28) and SmiOnCmpHalt (bit 27).
-		 * 
+		 *
 		 * Reference:
 		 *   "BIOS and Kernel Developer's Guide for AMD NPT
 		 *    Family 0Fh Processors"

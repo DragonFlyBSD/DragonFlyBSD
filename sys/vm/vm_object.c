@@ -796,7 +796,7 @@ vm_object_terminate(vm_object_t object)
 	/*
 	 * Now free any remaining pages. For internal objects, this also
 	 * removes them from paging queues. Don't free wired pages, just
-	 * remove them from the object. 
+	 * remove them from the object.
 	 */
 	info.count = 0;
 	info.object = object;
@@ -933,14 +933,14 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 		return;
 	}
 
-	pagerflags = (flags & (OBJPC_SYNC | OBJPC_INVAL)) ? 
+	pagerflags = (flags & (OBJPC_SYNC | OBJPC_INVAL)) ?
 			VM_PAGER_PUT_SYNC : VM_PAGER_CLUSTER_OK;
 	pagerflags |= (flags & OBJPC_INVAL) ? VM_PAGER_PUT_INVAL : 0;
 
 	vp = object->handle;
 
 	/*
-	 * Interlock other major object operations.  This allows us to 
+	 * Interlock other major object operations.  This allows us to
 	 * temporarily clear OBJ_WRITEABLE and OBJ_MIGHTBEDIRTY.
 	 */
 	vm_object_set_flag(object, OBJ_CLEANING);
@@ -1004,7 +1004,7 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 /*
  * The caller must hold the object.
  */
-static 
+static
 int
 vm_object_page_clean_pass1(struct vm_page *p, void *data)
 {
@@ -1034,7 +1034,7 @@ vm_object_page_clean_pass1(struct vm_page *p, void *data)
 /*
  * The caller must hold the object
  */
-static 
+static
 int
 vm_object_page_clean_pass2(struct vm_page *p, void *data)
 {
@@ -1328,7 +1328,7 @@ relookup:
 				swap_pager_freespace(object, pindex, 1);
 		}
 		vm_page_wakeup(m);
-	}	
+	}
 	vm_object_drop(object);
 }
 
@@ -1367,7 +1367,7 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	/*
 	 * Figure out the actual removal range and whether we are removing
 	 * the entire contents of the object or not.  If removing the entire
-	 * contents, be sure to get all pages, even those that might be 
+	 * contents, be sure to get all pages, even those that might be
 	 * beyond the end of the object.
 	 */
 	info.object = object;

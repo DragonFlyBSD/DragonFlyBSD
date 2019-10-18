@@ -1,16 +1,16 @@
 /*
  * KERN_SLABALLOC.C	- Kernel SLAB memory allocator
- * 
+ *
  * Copyright (c) 2003,2004,2010-2019 The DragonFly Project.
  * All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -20,7 +20,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -185,7 +185,7 @@ static void chunk_mark_free(SLZone *z, void *chunk);
 #endif
 
 /*
- * Misc constants.  Note that allocations that are exact multiples of 
+ * Misc constants.  Note that allocations that are exact multiples of
  * PAGE_SIZE, or exceed the zone limit, fall through to the kmem module.
  */
 #define ZONE_RELS_THRESH	32		/* threshold number of zones */
@@ -195,7 +195,7 @@ static void chunk_mark_free(SLZone *z, void *chunk);
  * The WEIRD_ADDR is used as known text to copy into free objects to
  * try to create deterministic failure cases if the data is accessed after
  * free.
- */    
+ */
 #define WEIRD_ADDR      0xdeadc0de
 #endif
 #define ZERO_LENGTH_PTR	((void *)-8)
@@ -208,7 +208,7 @@ MALLOC_DEFINE(M_CACHE, "cache", "Various Dynamically allocated caches");
 MALLOC_DEFINE(M_DEVBUF, "devbuf", "device driver memory");
 MALLOC_DEFINE(M_TEMP, "temp", "misc temporary data buffers");
 MALLOC_DEFINE(M_DRM, "m_drm", "DRM memory allocations");
- 
+
 MALLOC_DEFINE(M_IP6OPT, "ip6opt", "IPv6 options");
 MALLOC_DEFINE(M_IP6NDP, "ip6ndp", "IPv6 Neighbor Discovery");
 
@@ -217,7 +217,7 @@ MALLOC_DEFINE(M_IP6NDP, "ip6ndp", "IPv6 Neighbor Discovery");
  * on available physical memory.  We choose a zone side which is approximately
  * 1/1024th of our memory, so if we have 128MB of ram we have a zone size of
  * 128K.  The zone size is limited to the bounds set in slaballoc.h
- * (typically 32K min, 128K max). 
+ * (typically 32K min, 128K max).
  */
 static void kmeminit(void *dummy);
 
@@ -350,7 +350,7 @@ malloc_init(void *data)
 
     if (type->ks_magic != M_MAGIC)
 	panic("malloc type lacks magic");
-					   
+
     if (type->ks_limit != 0)
 	return;
 
@@ -391,7 +391,7 @@ malloc_uninit(void *data)
 #ifdef INVARIANTS
     /*
      * memuse is only correct in aggregation.  Due to memory being allocated
-     * on one cpu and freed on another individual array entries may be 
+     * on one cpu and freed on another individual array entries may be
      * negative or positive (canceling each other out).
      */
     for (i = ttl = 0; i < ncpus; ++i)
@@ -499,7 +499,7 @@ zoneindex(unsigned long *bytes, unsigned long *align)
 	    *bytes = n = (n + 63) & ~63;
 	    *align = 64;
 	    return(n / 64 + 23);
-	} 
+	}
 	if (n < 2048) {
 	    *bytes = n = (n + 127) & ~127;
 	    *align = 128;
@@ -1291,7 +1291,7 @@ kfree(void *ptr, struct malloc_type *type)
 
     /*
      * Zone case.  Figure out the zone based on the fact that it is
-     * ZoneSize aligned. 
+     * ZoneSize aligned.
      */
     z = (SLZone *)((uintptr_t)ptr & ZoneMask);
     kup = btokup(z);

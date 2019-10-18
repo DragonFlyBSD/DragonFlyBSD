@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2012 The DragonFly Project.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -14,7 +14,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -27,7 +27,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
  */
 
 #include <sys/param.h>
@@ -109,11 +108,11 @@ get_next_valid_apicid(int curr_apicid)
  * - node : the current node
  * - last_free_node : the last free node in the global array.
  * - cpuid : basicly this are the ids of the leafs
- */ 
+ */
 static void
 build_topology_tree(int *children_no_per_level,
    uint8_t *level_types,
-   int cur_level, 
+   int cur_level,
    cpu_node_t *node,
    cpu_node_t **last_free_node,
    int *apicid)
@@ -133,7 +132,7 @@ build_topology_tree(int *children_no_per_level,
 
 	if (node->parent_node == NULL)
 		root_cpu_node = node;
-	
+
 	for (i = 0; i < node->child_no; i++) {
 		node->child_node[i] = *last_free_node;
 		(*last_free_node)++;
@@ -165,7 +164,7 @@ migrate_elements(cpu_node_t **a, int n, int pos)
 #endif
 
 /* Build CPU topology. The detection is made by comparing the
- * chip, core and logical IDs of each CPU with the IDs of the 
+ * chip, core and logical IDs of each CPU with the IDs of the
  * BSP. When we found a match, at that level the CPUs are siblings.
  */
 static void
@@ -212,7 +211,7 @@ build_cpu_topology(int assumed_ncpus)
 
 	cores_per_chip /= threads_per_core;
 	chips_per_package = assumed_ncpus / (cores_per_chip * threads_per_core);
-	
+
 	kprintf("CPU Topology: cores_per_chip: %d; threads_per_core: %d; "
 		"chips_per_package: %d;\n",
 		cores_per_chip, threads_per_core, chips_per_package);
@@ -228,7 +227,7 @@ build_cpu_topology(int assumed_ncpus)
 		level_types[1] = CHIP_LEVEL;
 		level_types[2] = CORE_LEVEL;
 		level_types[3] = THREAD_LEVEL;
-	
+
 		build_topology_tree(children_no_per_level,
 		    level_types,
 		    0,
@@ -247,7 +246,7 @@ build_cpu_topology(int assumed_ncpus)
 		level_types[0] = PACKAGE_LEVEL;
 		level_types[1] = CHIP_LEVEL;
 		level_types[2] = CORE_LEVEL;
-	
+
 		build_topology_tree(children_no_per_level,
 		    level_types,
 		    0,
@@ -264,7 +263,7 @@ build_cpu_topology(int assumed_ncpus)
 
 		level_types[0] = PACKAGE_LEVEL;
 		level_types[1] = CHIP_LEVEL;
-	
+
 		build_topology_tree(children_no_per_level,
 		    level_types,
 		    0,
@@ -360,7 +359,7 @@ print_cpu_topology_tree_sysctl_helper(cpu_node_t *node,
 		buf[buf_len] = '|';buf_len++;
 		buf[buf_len] = ' ';buf_len++;
 	}
-	
+
 	bsr_member = BSRCPUMASK(node->members);
 
 	if (node->type == PACKAGE_LEVEL) {
@@ -448,7 +447,7 @@ print_cpu_topology_level_description_sysctl(SYSCTL_HANDLER_ARGS)
 
 	sbuf_delete(sb);
 
-	return ret;	
+	return ret;
 }
 
 /* Find a cpu_node_t by a mask */
@@ -626,7 +625,7 @@ build_sysctl_cpu_topology(int assumed_ncpus)
 {
 	int i;
 	struct sbuf sb;
-	
+
 	/* SYSCTL new leaf for "cpu_topology" */
 	sysctl_ctx_init(&cpu_topology_sysctl_ctx);
 	cpu_topology_sysctl_tree = SYSCTL_ADD_NODE(&cpu_topology_sysctl_ctx,
@@ -664,7 +663,7 @@ build_sysctl_cpu_topology(int assumed_ncpus)
 	/* SYSCTL per_cpu info */
 	for (i = 0; i < assumed_ncpus; i++) {
 		/* New leaf : hw.cpu_topology.cpux */
-		sysctl_ctx_init(&pcpu_sysctl[i].sysctl_ctx); 
+		sysctl_ctx_init(&pcpu_sysctl[i].sysctl_ctx);
 		pcpu_sysctl[i].sysctl_tree = SYSCTL_ADD_NODE(&pcpu_sysctl[i].sysctl_ctx,
 		    SYSCTL_CHILDREN(cpu_topology_sysctl_tree),
 		    OID_AUTO,
@@ -701,7 +700,7 @@ build_sysctl_cpu_topology(int assumed_ncpus)
 		    OID_AUTO, "core_id", CTLFLAG_RD,
 		    &pcpu_sysctl[i].core_id, 0,
 		    "Core ID");
-		
+
 		/*Add core siblings */
 		SYSCTL_ADD_STRING(&pcpu_sysctl[i].sysctl_ctx,
 		    SYSCTL_CHILDREN(pcpu_sysctl[i].sysctl_tree),

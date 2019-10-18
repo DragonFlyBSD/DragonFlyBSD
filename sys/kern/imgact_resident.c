@@ -2,14 +2,14 @@
  * (MPSAFE)
  *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -19,7 +19,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -103,7 +103,7 @@ fill_xresident(struct vmresident *vr, struct xresident *in, struct thread *td)
 		error = vget(vrtmp, LK_EXCLUSIVE);
 		if (error)
 			goto done;
-	
+
 		/* retrieve underlying stat information and release vnode */
 		error = vn_stat(vrtmp, &st, td->td_ucred);
 		vput(vrtmp);
@@ -136,7 +136,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 
 	if (exec_res_id == 0)
 	    return error;
-	
+
 	/* client queried for number of resident binaries */
 	if (!req->oldptr)
 	    return SYSCTL_OUT(req, 0, exec_res_id);
@@ -148,7 +148,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 		error = fill_xresident(vmres, &xres, td);
 		if (error != 0)
 			break;
-		
+
 		error = SYSCTL_OUT(req, (void *)&xres,
 				sizeof(struct xresident));
 		if (error != 0)

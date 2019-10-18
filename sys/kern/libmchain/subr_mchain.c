@@ -72,7 +72,7 @@ mb_init(struct mbchain *mbp)
 	struct mbuf *m;
 
 	m = m_gethdr(M_WAITOK, MT_DATA);
-	if (m == NULL) 
+	if (m == NULL)
 		return ENOBUFS;
 	m->m_pkthdr.rcvif = NULL;
 	m->m_len = 0;
@@ -117,7 +117,7 @@ mb_fixhdr(struct mbchain *mbp)
  * Check if object of size 'size' fit to the current position and
  * allocate new mbuf if not. Advance pointers and increase length of mbuf(s).
  * Return pointer to the object placeholder or NULL if any error occured.
- * Note: size should be <= MLEN 
+ * Note: size should be <= MLEN
  */
 caddr_t
 mb_reserve(struct mbchain *mbp, int size)
@@ -312,7 +312,7 @@ md_init(struct mdchain *mdp)
 	struct mbuf *m;
 
 	m = m_gethdr(M_WAITOK, MT_DATA);
-	if (m == NULL) 
+	if (m == NULL)
 		return ENOBUFS;
 	m->m_pkthdr.rcvif = NULL;
 	m->m_len = 0;
@@ -476,7 +476,7 @@ md_get_mem(struct mdchain *mdp, caddr_t target, int size, int type)
 	int error;
 	u_int count;
 	u_char *s;
-	
+
 	while (size > 0) {
 		if (m == NULL) {
 			MBERROR("incomplete copy\n");

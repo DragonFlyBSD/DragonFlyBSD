@@ -466,9 +466,9 @@ ioapic_pin_setup(void *addr, int pin, int vec,
 	 * vector any EOI from pending ints on this pin could be lost and
 	 * IRR might never get reset.
 	 *
-	 * To fix this problem, clear the vector and make sure it is 
+	 * To fix this problem, clear the vector and make sure it is
 	 * programmed as an edge interrupt.  This should theoretically
-	 * clear IRR so we can later, safely program it as a level 
+	 * clear IRR so we can later, safely program it as a level
 	 * interrupt.
 	 */
 	ioapic_pin_prog(addr, pin, vec, INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH,

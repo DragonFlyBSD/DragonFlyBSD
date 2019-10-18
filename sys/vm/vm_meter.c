@@ -30,7 +30,6 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.15 2008/04/28 18:04:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -226,7 +225,7 @@ do_vmmeter(SYSCTL_HANDLER_ARGS)
 			*(u_int *)((char *)&vmm + off) +=
 				*(u_int *)((char *)&gd->gd_cnt + off);
 		}
-		
+
 	}
 	vmm.v_intr += vmm.v_ipi + vmm.v_timer;
 	return (sysctl_handle_opaque(oidp, &vmm, sizeof(vmm), req));
@@ -280,13 +279,13 @@ vcnt_intr(SYSCTL_HANDLER_ARGS)
 #define VMMETEROFF(var)	offsetof(struct vmmeter, var)
 
 SYSCTL_PROC(_vm, OID_AUTO, vmtotal, CTLTYPE_OPAQUE|CTLFLAG_RD,
-    0, sizeof(struct vmtotal), do_vmtotal, "S,vmtotal", 
+    0, sizeof(struct vmtotal), do_vmtotal, "S,vmtotal",
     "System virtual memory aggregate");
 SYSCTL_PROC(_vm, OID_AUTO, vmstats, CTLTYPE_OPAQUE|CTLFLAG_RD,
-    0, sizeof(struct vmstats), do_vmstats, "S,vmstats", 
+    0, sizeof(struct vmstats), do_vmstats, "S,vmstats",
     "System virtual memory statistics");
 SYSCTL_PROC(_vm, OID_AUTO, vmmeter, CTLTYPE_OPAQUE|CTLFLAG_RD,
-    0, sizeof(struct vmmeter), do_vmmeter, "S,vmmeter", 
+    0, sizeof(struct vmmeter), do_vmmeter, "S,vmmeter",
     "System statistics");
 SYSCTL_NODE(_vm, OID_AUTO, stats, CTLFLAG_RW, 0, "VM meter stats");
 SYSCTL_NODE(_vm_stats, OID_AUTO, sys, CTLFLAG_RW, 0, "VM meter sys stats");
@@ -380,7 +379,7 @@ SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
 	v_page_size, CTLFLAG_RD, &vmstats.v_page_size, 0,
 	"Page size in bytes");
 SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
-	v_page_count, CTLFLAG_RD, &vmstats.v_page_count, 0, 
+	v_page_count, CTLFLAG_RD, &vmstats.v_page_count, 0,
 	"Total number of pages in system");
 SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_free_reserved, CTLFLAG_RD, &vmstats.v_free_reserved, 0,
