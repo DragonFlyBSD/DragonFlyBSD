@@ -34,7 +34,8 @@
  * SUCH DAMAGE.
  */
 
-// # gcc -Wall -g -I../../sys/vfs/hammer2 ./destroy.c -o destroy
+// # gcc -Wall -g -I../../sys/vfs/hammer2 -I../hammer2
+// ../../sys/libkern/icrc32.c ../hammer2/subs.c ./destroy.c -o destroy
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,6 +50,8 @@
 #include <assert.h>
 
 #include <vfs/hammer2/hammer2_disk.h>
+
+#include "hammer2_subs.h"
 
 static int modify_blockref(int, const hammer2_volume_data_t *, int,
     hammer2_blockref_t *, hammer2_blockref_t *);
@@ -310,6 +313,8 @@ modify_dirent_embedded(int fd, int bi, hammer2_blockref_t *prev_bref)
 		memset(bscan->check.buf, 0, sizeof(bscan->check.buf));
 		memcpy(bscan->check.buf, dst_dirent, strlen(dst_dirent));
 		bscan->embed.dirent.namlen = strlen(dst_dirent);
+		bscan->key = dirhash((const unsigned char*)dst_dirent,
+		    strlen(dst_dirent));
 		if (write_media(fd, prev_bref, &bscan_media, bytes) == -1)
 			return -1;
 	}
@@ -368,6 +373,8 @@ modify_dirent(int fd, int bi, hammer2_blockref_t *prev_bref,
 		memset(media->buf, 0, sizeof(media->buf));
 		memcpy(media->buf, dst_dirent, strlen(dst_dirent));
 		bscan->embed.dirent.namlen = strlen(dst_dirent);
+		bscan->key = dirhash((const unsigned char*)dst_dirent,
+		    strlen(dst_dirent));
 		if (write_media(fd, bref, media, media_bytes) == -1)
 			return -1;
 		if (write_media(fd, prev_bref, &bscan_media, bytes) == -1) {
