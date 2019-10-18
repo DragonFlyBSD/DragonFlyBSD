@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/nlookup.h,v 1.6 2008/05/09 17:52:18 dillon Exp $
  */
 
 #ifndef _SYS_NLOOKUP_H_
@@ -57,14 +55,14 @@ struct ucred;
  * nlookup component
  */
 struct nlcomponent {
-	char 		*nlc_nameptr;
+	char		*nlc_nameptr;
 	int		nlc_namelen;
 };
 
 /*
  * Encapsulation of nlookup parameters.
  *
- * Note on nl_flags and nl_op: nl_flags supports a simplified subset of 
+ * Note on nl_flags and nl_op: nl_flags supports a simplified subset of
  * namei's original CNP flags.  nl_op (e.g. NAMEI_*) does no in any way
  * effect the state of the returned namecache and is only used to enforce
  * access checks.
@@ -80,7 +78,7 @@ struct nlookupdata {
 	struct nchandle nl_rootnch;	/* root directory */
 	struct nchandle nl_jailnch;	/* jail directory */
 
-	char 		*nl_path;	/* path buffer */
+	char		*nl_path;	/* path buffer */
 	struct thread	*nl_td;		/* thread requesting the nlookup */
 	struct ucred	*nl_cred;	/* credentials for nlookup */
 	struct vnode	*nl_dvp;	/* NLC_REFDVP */
@@ -93,7 +91,7 @@ struct nlookupdata {
 	 * vn_close() a non-NULL vp so if you extract it be sure to NULL out
 	 * nl_open_vp.
 	 */
-	struct  vnode	*nl_open_vp;	
+	struct vnode	*nl_open_vp;
 	int		nl_vp_fmode;
 };
 
@@ -146,22 +144,23 @@ struct nlookupdata {
 
 #ifdef _KERNEL
 
-int nlookup_init(struct nlookupdata *, const char *, enum uio_seg, int);
-int nlookup_init_at(struct nlookupdata *, struct file **, int, const char *, 
-		enum uio_seg, int);
-int nlookup_init_raw(struct nlookupdata *, const char *, enum uio_seg, int, struct ucred *, struct nchandle *);
-int nlookup_init_root(struct nlookupdata *, const char *, enum uio_seg, int, struct ucred *, struct nchandle *, struct nchandle *);
-void nlookup_zero(struct nlookupdata *);
-void nlookup_done(struct nlookupdata *);
-void nlookup_done_at(struct nlookupdata *, struct file *);
-struct nchandle nlookup_simple(const char *str, enum uio_seg seg, 
-				int niflags, int *error);
-int nlookup_mp(struct mount *mp, struct nchandle *nch);
-int nlookup(struct nlookupdata *);
-int nreadsymlink(struct nlookupdata *nd, struct nchandle *nch, 
-				struct nlcomponent *nlc);
-int naccess_va(struct vattr *va, int nflags, struct ucred *cred);
-
+int	naccess_va(struct vattr *va, int nflags, struct ucred *cred);
+int	nlookup(struct nlookupdata *);
+void	nlookup_done(struct nlookupdata *);
+void	nlookup_done_at(struct nlookupdata *, struct file *);
+int	nlookup_init(struct nlookupdata *, const char *, enum uio_seg, int);
+int	nlookup_init_at(struct nlookupdata *, struct file **, int,
+	    const char *, enum uio_seg, int);
+int	nlookup_init_raw(struct nlookupdata *, const char *, enum uio_seg,
+	    int, struct ucred *, struct nchandle *);
+int	nlookup_init_root(struct nlookupdata *, const char *, enum uio_seg,
+	    int, struct ucred *, struct nchandle *, struct nchandle *);
+int	nlookup_mp(struct mount *mp, struct nchandle *nch);
+struct nchandle nlookup_simple(const char *str, enum uio_seg seg,
+	    int niflags, int *error);
+void	nlookup_zero(struct nlookupdata *);
+int	nreadsymlink(struct nlookupdata *nd, struct nchandle *nch,
+	    struct nlcomponent *nlc);
 #endif
 
 #endif /* !_SYS_NAMEI_H_ */
