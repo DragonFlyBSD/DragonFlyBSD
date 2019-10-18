@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rrenumd/parser.y,v 1.1.2.2 2001/07/03 11:02:10 ume Exp $
- * $DragonFly: src/usr.sbin/rrenumd/parser.y,v 1.4 2004/02/10 02:59:43 rob Exp $
  */
 
 %{
@@ -143,7 +142,7 @@ statement:
 debug_statement:
 		DEBUG_CMD flag EOS
 		{
-#ifdef YYDEBUG
+#if YYDEBUG
 			yydebug = $2;
 #endif /* YYDEBUG */
 		}
