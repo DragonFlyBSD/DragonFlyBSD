@@ -58,7 +58,6 @@
 #include <sys/syscall.h>
 #include <sys/sysctl.h>
 #include <sys/sysent.h>
-#include <sys/uio.h>
 #include <sys/vmmeter.h>
 #include <sys/malloc.h>
 #ifdef KTRACE

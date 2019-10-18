@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ktrace.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ktrace/ktrace.c,v 1.12.2.3 2001/07/11 00:29:27 mikeh Exp $
- * $DragonFly: src/usr.bin/ktrace/ktrace.c,v 1.4 2005/06/01 03:05:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -37,7 +36,6 @@
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/errno.h>
-#include <sys/uio.h>
 #include <sys/ktrace.h>
 
 #include <err.h>

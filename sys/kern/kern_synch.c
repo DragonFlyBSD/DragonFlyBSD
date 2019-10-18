@@ -46,7 +46,6 @@
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
-#include <sys/uio.h>
 #include <sys/priv.h>
 #include <sys/kcollect.h>
 #ifdef KTRACE

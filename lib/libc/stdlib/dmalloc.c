@@ -118,7 +118,6 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
-#include <sys/uio.h>
 #include <sys/ktrace.h>
 #include <stdio.h>
 #include <stdint.h>

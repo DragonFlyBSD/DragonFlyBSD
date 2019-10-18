@@ -43,7 +43,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
-#include <sys/uio.h>
 #include <sys/utsname.h>
 #include <sys/ktrace.h>
 #include <sys/resident.h>
