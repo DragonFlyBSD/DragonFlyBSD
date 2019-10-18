@@ -105,6 +105,7 @@ MLINKS=	pcap_datalink_val_to_name.3 pcap_datalink_val_to_description.3 \
 
 CLEANFILES=tokdefs.h version.c pcap_version.h
 CLEANFILES+=${MAN}
+CLEANFILES+=scanner.h
 WARNS?=	2
 
 LFLAGS+=-Ppcap_ --header-file=${.OBJDIR}/scanner.h --nounput
