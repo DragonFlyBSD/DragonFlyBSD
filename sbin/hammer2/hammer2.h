@@ -40,7 +40,6 @@
  * Rollup headers for hammer2 utility
  */
 #include <sys/types.h>
-#include <sys/uio.h>
 #include <sys/queue.h>
 #include <sys/mount.h>
 #include <sys/file.h>

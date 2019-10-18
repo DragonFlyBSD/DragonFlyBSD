@@ -360,6 +360,8 @@ struct dmsg_master_service_info {
 
 typedef struct dmsg_master_service_info dmsg_master_service_info_t;
 
+struct iovec;	/* forward decl for dmsg_crypto_encrypt() prototype */
+
 /*
  * node callbacks
  */
