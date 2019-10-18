@@ -30,7 +30,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/malloc.h> 
+#include <sys/malloc.h>
 #include <sys/unistd.h>
 #include <sys/file.h>
 #include <sys/lock.h>
@@ -59,7 +59,7 @@
 #define EVENT_REGISTER	1
 #define EVENT_PROCESS	2
 
-MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
+static MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 
 struct kevent_copyin_args {
 	struct kevent_args	*ka;
@@ -385,7 +385,7 @@ filt_proc(struct knote *kn, long hint)
 			kn->kn_ptr.p_proc = NULL;
 			PRELE(p);
 		}
-		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT); 
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
 		return (1);
 	}
 
@@ -472,7 +472,7 @@ filt_timerexpire(void *knx)
 
 /*
  * data contains amount of time to sleep, in milliseconds
- */ 
+ */
 static int
 filt_timerattach(struct knote *kn)
 {
@@ -1294,7 +1294,7 @@ again:
 		} else {
 			/*
 			 * The user may change some filter values after the
-			 * initial EV_ADD, but doing so will not reset any 
+			 * initial EV_ADD, but doing so will not reset any
 			 * filter which have already been triggered.
 			 */
 			KKASSERT(kn->kn_status & KN_PROCESSING);

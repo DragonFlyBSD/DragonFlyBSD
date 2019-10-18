@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/event.h,v 1.5.2.6 2003/02/09 15:28:13 nectar Exp $
- *	$DragonFly: src/sys/sys/event.h,v 1.7 2007/01/15 01:26:56 dillon Exp $
  */
 
 #ifndef _SYS_EVENT_H_
@@ -164,10 +163,6 @@ struct kqinfo {
 #endif
 
 #ifdef _KERNEL
-
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_KQUEUE);
-#endif
 
 #define KNOTE(list, hint)	if (!SLIST_EMPTY((list))) knote(list, hint)
 
