@@ -41,6 +41,7 @@
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/sbuf.h>
+#include <sys/malloc.h>
 #include <vfs/procfs/procfs.h>
 
 #include <vm/vm.h>

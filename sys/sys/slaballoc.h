@@ -42,8 +42,8 @@
 #ifndef _SYS_STDINT_H_
 #include <sys/stdint.h>
 #endif
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
+#ifndef _SYS__MALLOC_H_
+#include <sys/_malloc.h>
 #endif
 
 /*

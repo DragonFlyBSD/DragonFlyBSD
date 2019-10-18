@@ -30,6 +30,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/machintr.h>
+#include <sys/malloc.h>
 #include <sys/thread2.h>
 
 #include <machine/pmap.h>

@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/systimer.h>
 #include <sys/sysctl.h>
 #include <sys/signal.h>

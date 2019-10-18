@@ -51,6 +51,7 @@
 #include <sys/sysctl.h>
 #include <sys/lock.h>
 #include <sys/resident.h>
+#include <sys/malloc.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>

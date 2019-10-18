@@ -31,6 +31,7 @@
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/rman.h>
 #include <sys/systimer.h>

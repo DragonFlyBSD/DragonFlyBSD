@@ -48,6 +48,7 @@
 #include <sys/lock.h>
 #include <sys/priv.h>
 #include <sys/kcollect.h>
+#include <sys/malloc.h>
 #ifdef KTRACE
 #include <sys/ktrace.h>
 #endif

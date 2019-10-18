@@ -73,6 +73,7 @@
 #include <sys/file.h>
 #include <sys/lockf.h>
 #include <sys/kern_syscall.h>
+#include <sys/malloc.h>
 
 #include <vm/vm_param.h>
 #include <vm/vm.h>

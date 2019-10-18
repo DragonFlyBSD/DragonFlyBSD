@@ -107,6 +107,7 @@
 #include <sys/globaldata.h>
 #include <sys/sysctl.h>
 #include <sys/ktr.h>
+#include <sys/malloc.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>

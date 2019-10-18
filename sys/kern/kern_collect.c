@@ -45,6 +45,7 @@
 #include <sys/lock.h>
 #include <sys/spinlock.h>
 #include <sys/kcollect.h>
+#include <sys/malloc.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>

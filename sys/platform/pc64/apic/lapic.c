@@ -31,6 +31,7 @@
 #include <sys/ktr.h>
 #include <sys/bus.h>
 #include <sys/machintr.h>
+#include <sys/malloc.h>
 #include <sys/sysctl.h>
 #include <machine/globaldata.h>
 #include <machine/clock.h>

@@ -36,6 +36,7 @@
 #include <sys/proc.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/resource.h>
 #include <sys/vmmeter.h>
 #include <sys/kcollect.h>

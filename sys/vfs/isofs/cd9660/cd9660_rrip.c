@@ -41,6 +41,7 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 
 #include "iso.h"
 #include "cd9660_node.h"
