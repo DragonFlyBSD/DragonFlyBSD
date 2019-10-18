@@ -28,7 +28,7 @@
 .\"	From: @(#)sysctl.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/sbin/sysctl/sysctl.8,v 1.23.2.17 2003/05/19 07:49:34 brueffer Exp $
 .\"
-.Dd May 30, 2019
+.Dd October 18, 2019
 .Dt SYSCTL 8
 .Os
 .Sh NAME
@@ -36,11 +36,11 @@
 .Nd get or set kernel state
 .Sh SYNOPSIS
 .Nm
-.Op Fl bdeiNnoqx
+.Op Fl AbdeiNnoqwxX
 .Ar name Ns Op = Ns Ar value
 .Ar ...
 .Nm
-.Op Fl bdeiNnoqx
+.Op Fl bdeiNnoqwxX
 .Fl a
 .Sh DESCRIPTION
 The
@@ -108,6 +108,8 @@ sixteen bytes of the value.
 .It Fl q
 Exit (exit code N) with no output if the sysctl does not exist.  Each
 failed mib on the command line increments N.
+.It Fl w
+Ignored (for compatibility).
 .It Fl X
 Equivalent to
 .Fl x a
