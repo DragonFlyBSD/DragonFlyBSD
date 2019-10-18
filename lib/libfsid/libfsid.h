@@ -35,7 +35,7 @@
 #ifndef LIBFSID_H
 #define LIBFSID_H
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/uio.h>
 
 #include <err.h>

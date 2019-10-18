@@ -31,7 +31,8 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <sys/types.h>
+
+#include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/uio.h>
 #include <stdlib.h>

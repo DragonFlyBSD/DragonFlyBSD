@@ -30,8 +30,8 @@
  * @(#)calendar.c  8.3 (Berkeley) 3/25/94
  * $FreeBSD: src/usr.bin/calendar/io.c,v 1.21 2007/06/09 05:54:13 grog Exp $
  */
+
 #include <sys/param.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/uio.h>
