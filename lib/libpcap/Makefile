@@ -111,7 +111,7 @@ WARNS?=	2
 LFLAGS+=-Ppcap_ --header-file=${.OBJDIR}/scanner.h --nounput
 YFLAGS+=-p pcap_
 CFLAGS+=-DHAVE_CONFIG_H -I${.CURDIR} -I${.OBJDIR}
-CFLAGS+=-D_U_="__attribute__((unused))" -DYYBISON
+CFLAGS+=-D_U_="__attribute__((unused))"
 CFLAGS+=-DHAVE_STRUCT_ETHER_ADDR -DHAVE_NET_PFVAR_H
 .if !defined(NOINET6)
 CFLAGS+=-DINET6
