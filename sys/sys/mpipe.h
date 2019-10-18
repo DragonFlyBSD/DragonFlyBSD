@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,15 +30,17 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/mpipe.h,v 1.4 2004/07/16 05:51:57 dillon Exp $
  */
 
 #ifndef _SYS_MPIPE_H_
 #define _SYS_MPIPE_H_
 
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
+
+#ifndef _SYS__MALLOC_H_
+#include <sys/_malloc.h>
 #endif
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
@@ -53,7 +55,7 @@
  * in order to allow memory allocations to block while at the same time
  * guarenteeing that no deadlocks will occur.
  *
- * By default new allocations are zero'd out. 
+ * By default new allocations are zero'd out.
  *
  * MPF_NOZERO		If specified the underlying buffers are not zero'd.
  *			Note this also means you have no way of knowing which
@@ -99,7 +101,7 @@ struct malloc_pipe {
     STAILQ_HEAD(, mpipe_callback) queue;
 };
 
-#define MPF_CACHEDATA		0x0001	/* cache old buffers (do not zero) */ 
+#define MPF_CACHEDATA		0x0001	/* cache old buffers (do not zero) */
 #define MPF_NOZERO		0x0002	/* do not zero-out new allocations */
 #define MPF_INT			0x0004	/* use the interrupt memory reserve */
 #define MPF_QUEUEWAIT		0x0008
@@ -111,8 +113,8 @@ typedef struct malloc_pipe *malloc_pipe_t;
 #ifdef _KERNEL
 
 void mpipe_init(malloc_pipe_t mpipe, malloc_type_t type,
-		int bytes, int nnom, int nmax, 
-		int mpflags, 
+		int bytes, int nnom, int nmax,
+		int mpflags,
 		void (*construct)(void *, void *),
 		void (*deconstruct)(void *, void *),
 		void *priv);
@@ -126,5 +128,5 @@ void mpipe_free(malloc_pipe_t mpipe, void *vbuf);
 
 #endif
 
-#endif
+#endif	/* !_SYS_MPIPE_H_ */
 

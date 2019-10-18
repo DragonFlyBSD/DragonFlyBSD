@@ -2,14 +2,14 @@
  * (MPSAFE)
  *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -19,7 +19,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -38,6 +38,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/slaballoc.h>
+#include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/vmmeter.h>
 #include <sys/lock.h>
@@ -64,8 +65,8 @@ static void mpipe_thread(void *arg);
  */
 void
 mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
-	int nnom, int nmax, 
-	int mpflags, 
+	int nnom, int nmax,
+	int mpflags,
 	void (*construct)(void *, void *),
 	void (*deconstruct)(void *, void *),
 	void *priv)
@@ -91,7 +92,7 @@ mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
 	mpipe->mflags |= M_USE_RESERVE | M_USE_INTERRUPT_RESERVE;
     mpipe->ary_count = nnom;
     mpipe->max_count = nmax;
-    mpipe->array = kmalloc(nnom * sizeof(mpipe->array[0]), M_MPIPEARY, 
+    mpipe->array = kmalloc(nnom * sizeof(mpipe->array[0]), M_MPIPEARY,
 			    M_WAITOK | M_ZERO);
 
     while (mpipe->free_count < nnom) {
@@ -222,7 +223,7 @@ _mpipe_alloc_locked(malloc_pipe_t mpipe, int mfailed)
 	 */
 	buf = kmalloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
 	if (buf) {
-	    ++mpipe->total_count; 
+	    ++mpipe->total_count;
 	    if (mpipe->construct)
 	        mpipe->construct(buf, mpipe->priv);
 	}
@@ -343,7 +344,7 @@ mpipe_free(malloc_pipe_t mpipe, void *buf)
 	 */
 	mpipe->array[n] = buf;
 	++mpipe->free_count;
-	if ((mpipe->mpflags & (MPF_CACHEDATA|MPF_NOZERO)) == 0) 
+	if ((mpipe->mpflags & (MPF_CACHEDATA|MPF_NOZERO)) == 0)
 	    bzero(buf, mpipe->bytes);
 	if (mpipe->mpflags & MPF_QUEUEWAIT) {
 		mpipe->mpflags &= ~MPF_QUEUEWAIT;
