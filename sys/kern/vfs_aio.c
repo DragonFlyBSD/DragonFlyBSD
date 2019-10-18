@@ -21,36 +21,8 @@
  */
 
 #include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/buf.h>
 #include <sys/sysproto.h>
-#include <sys/filedesc.h>
-#include <sys/kernel.h>
-#include <sys/fcntl.h>
-#include <sys/file.h>
-#include <sys/lock.h>
-#include <sys/unistd.h>
-#include <sys/proc.h>
-#include <sys/resourcevar.h>
-#include <sys/signalvar.h>
-#include <sys/protosw.h>
-#include <sys/socketvar.h>
-#include <sys/sysctl.h>
-#include <sys/vnode.h>
-#include <sys/conf.h>
 #include <sys/event.h>
-#include <sys/objcache.h>
-
-#include <vm/vm.h>
-#include <vm/vm_extern.h>
-#include <vm/pmap.h>
-#include <vm/vm_map.h>
-#include <sys/aio.h>
-
-#include <sys/file2.h>
-#include <sys/buf2.h>
-
-#include <machine/limits.h>
 
 int
 sys_aio_return(struct aio_return_args *uap)
