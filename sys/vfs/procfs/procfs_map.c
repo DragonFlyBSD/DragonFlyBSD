@@ -33,11 +33,11 @@
  *	@(#)procfs_status.c	8.3 (Berkeley) 2/17/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_map.c,v 1.24.2.1 2001/08/04 13:12:24 rwatson Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_map.c,v 1.7 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/sbuf.h>

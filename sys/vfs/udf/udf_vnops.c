@@ -31,6 +31,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/namei.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
@@ -455,7 +456,7 @@ udf_cmpname(char *cs0string, char *cmpname, int cs0len, int cmplen, struct udf_m
 	int error = 0;
 
 	/* This is overkill, but not worth creating a new zone */
-	
+
 	transname = kmalloc(NAME_MAX * sizeof(unicode_t), M_TEMP,
 			   M_WAITOK | M_ZERO);
 
@@ -808,7 +809,7 @@ udf_strategy(struct vop_strategy_args *ap)
 		 * Files that are embedded in the fentry don't translate well
 		 * to a block number.  Reject.
 		 */
-		if (udf_bmap_internal(node, 
+		if (udf_bmap_internal(node,
 				     bio->bio_offset,
 				     &dblkno, &maxsize)) {
 			clrbuf(bp);

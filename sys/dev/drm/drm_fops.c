@@ -34,6 +34,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <sys/types.h>
+#include <sys/uio.h>	/* must come first to avoid kfree() macros issues */
 #include <drm/drmP.h>
 #include <linux/poll.h>
 #include <linux/slab.h>

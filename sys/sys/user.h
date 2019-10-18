@@ -61,8 +61,11 @@
 #ifndef _SYS_UCRED_H_
 #include <sys/ucred.h>
 #endif
-#ifndef _SYS_UIO_H_
-#include <sys/uio.h>
+#ifndef _SYS__IOVEC_H_
+#include <sys/_iovec.h>
+#endif
+#ifndef _SYS__UIO_H_
+#include <sys/_uio.h>
 #endif
 #ifndef _SYS_PROC_H_
 #include <sys/proc.h>

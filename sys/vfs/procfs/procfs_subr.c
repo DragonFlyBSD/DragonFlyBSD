@@ -38,6 +38,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/sysctl.h>
+#include <sys/uio.h>
 #include <sys/proc.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
@@ -77,7 +78,7 @@ MALLOC_DEFINE(M_PROCFS, "procfs", "procfs v_data");
  * A single lock is kept for the entire list.  this is needed because the
  * getnewvnode() function can block waiting for a vnode to become free,
  * in which case there may be more than one process trying to get the same
- * vnode.  this lock is only taken if we are going to call getnewvnode, 
+ * vnode.  this lock is only taken if we are going to call getnewvnode,
  * since the kernel itself is single-threaded.
  *
  * If an entry is found on the list, then call vget() to take a reference

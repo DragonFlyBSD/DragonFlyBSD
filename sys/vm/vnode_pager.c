@@ -51,6 +51,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
@@ -574,7 +575,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 
 	/*
 	 * Calculate the actual number of bytes read and clean up the
-	 * page list.  
+	 * page list.
 	 */
 	bytecount -= auio.uio_resid;
 
@@ -638,7 +639,7 @@ vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	/*
 	 * Force synchronous operation if we are extremely low on memory
 	 * to prevent a low-memory deadlock.  VOP operations often need to
-	 * allocate more memory to initiate the I/O ( i.e. do a BMAP 
+	 * allocate more memory to initiate the I/O ( i.e. do a BMAP
 	 * operation ).  The swapper handles the case by limiting the amount
 	 * of asynchronous I/O, but that sort of solution doesn't scale well
 	 * for the vnode pager without a lot of work.

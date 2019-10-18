@@ -35,6 +35,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
@@ -367,7 +368,7 @@ ufs_quotawarn(struct ufs_dquot *dq)
 		dqticks = ticks / hz;
 		uprintf("%s: warning, quota file expanded, quotacheck "
 			"was not run!\n",
-			dq->dq_ump->um_mountp->mnt_stat.f_mntfromname); 
+			dq->dq_ump->um_mountp->mnt_stat.f_mntfromname);
 	}
 }
 

@@ -35,9 +35,6 @@
 #ifndef _SYS_NLOOKUP_H_
 #define	_SYS_NLOOKUP_H_
 
-#ifndef _SYS_UIO_H_
-#include <sys/uio.h>
-#endif
 #ifndef _SYS_NAMECACHE_H_
 #include <sys/namecache.h>
 #endif
@@ -143,6 +140,7 @@ struct nlookupdata {
 				 NLC_READ | NLC_WRITE | NLC_EXEC | NLC_OWN)
 
 #ifdef _KERNEL
+#include <sys/_uio.h>
 
 int	naccess_va(struct vattr *va, int nflags, struct ucred *cred);
 int	nlookup(struct nlookupdata *);

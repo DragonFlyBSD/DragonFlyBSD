@@ -20,6 +20,7 @@
 #include "use_snp.h"
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/filio.h>
 #include <sys/malloc.h>
 #include <sys/tty.h>
@@ -474,7 +475,7 @@ snp_detach(struct snoop *snp)
 
 detach_notty:
 	KNOTE(&snp->snp_kq.ki_note, 0);
-	if ((snp->snp_flags & SNOOP_OPEN) == 0) 
+	if ((snp->snp_flags & SNOOP_OPEN) == 0)
 		kfree(snp, M_SNP);
 
 	return (0);

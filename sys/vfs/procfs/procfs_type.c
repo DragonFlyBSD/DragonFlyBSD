@@ -31,11 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_type.c,v 1.6 1999/08/28 00:46:56 peter Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_type.c,v 1.5 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/proc.h>
 #include <sys/sysent.h>
 #include <sys/vnode.h>

@@ -40,6 +40,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/malloc.h>
@@ -728,7 +729,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 		case BIOCGBLEN:
 		case BIOCFLUSH:
 		case BIOCGDLT:
-		case BIOCGDLTLIST: 
+		case BIOCGDLTLIST:
 		case BIOCGETIF:
 		case BIOCGRTIMEOUT:
 		case BIOCGSTATS:
@@ -811,7 +812,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 	 */
 	case BIOCSETF:
 	case BIOCSETWF:
-		error = bpf_setf(d, (struct bpf_program *)ap->a_data, 
+		error = bpf_setf(d, (struct bpf_program *)ap->a_data,
 			ap->a_cmd);
 		break;
 

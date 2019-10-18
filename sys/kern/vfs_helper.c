@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * @(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
- * $DragonFly: src/sys/kern/vfs_helper.c,v 1.5 2008/05/25 18:34:46 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -42,6 +41,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/conf.h>
 #include <sys/kernel.h>
 #include <sys/fcntl.h>

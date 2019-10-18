@@ -57,8 +57,8 @@
 #ifndef _SYS_NAMECACHE_H_
 #include <sys/namecache.h>
 #endif
-#ifndef _SYS_UIO_H_
-#include <sys/uio.h>
+#ifndef _SYS__UIO_H_
+#include <sys/_uio.h>
 #endif
 
 struct stat;

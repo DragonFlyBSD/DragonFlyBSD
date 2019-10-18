@@ -64,6 +64,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/mount.h>

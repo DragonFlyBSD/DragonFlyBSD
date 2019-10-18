@@ -33,7 +33,6 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_rlimit.c,v 1.5 1999/12/08 08:59:37 phk Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_rlimit.c,v 1.7 2007/02/19 01:14:24 corecode Exp $
  */
 
 /*
@@ -44,6 +43,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/resourcevar.h>
@@ -76,7 +76,7 @@ procfs_dorlimit(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 
 		ps += ksprintf(ps, "%s ", rlimit_ident[i]);
 
-		/* 
+		/*
 		 * Replace RLIM_INFINITY with -1 in the string
 		 */
 

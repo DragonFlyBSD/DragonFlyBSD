@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.16 2008/05/09 07:24:45 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -49,6 +47,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/vmmeter.h>

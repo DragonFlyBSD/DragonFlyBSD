@@ -43,6 +43,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/vnode.h>

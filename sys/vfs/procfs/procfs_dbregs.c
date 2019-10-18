@@ -37,10 +37,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_dbregs.c,v 1.4.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_dbregs.c,v 1.10 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
+#include <sys/uio.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/vnode.h>
@@ -56,7 +56,7 @@ procfs_dodbregs(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	int error;
 	struct dbreg r;
 
-	/* Can't trace a process that's currently exec'ing. */ 
+	/* Can't trace a process that's currently exec'ing. */
 	if ((p->p_flags & P_INEXEC) != 0)
 		return EAGAIN;
 	if (!CHECKIO(curp, p) || p_trespass(curp->p_ucred, p->p_ucred))

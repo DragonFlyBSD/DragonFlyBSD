@@ -47,6 +47,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/resourcevar.h>
 #include <sys/kernel.h>
 #include <sys/stat.h>

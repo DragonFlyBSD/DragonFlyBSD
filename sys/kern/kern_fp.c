@@ -45,6 +45,7 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/malloc.h>
 #include <sys/sysproto.h>
 #include <sys/conf.h>

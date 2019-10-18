@@ -44,6 +44,7 @@
 #ifdef _KERNEL
 #include <sys/kernel.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #endif
 #include <sys/conf.h>
 #include <sys/tree.h>

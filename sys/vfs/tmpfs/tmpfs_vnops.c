@@ -37,6 +37,7 @@
 #include <sys/kernel.h>
 #include <sys/kern_syscall.h>
 #include <sys/param.h>
+#include <sys/uio.h>
 #include <sys/fcntl.h>
 #include <sys/lockf.h>
 #include <sys/priv.h>
@@ -1216,7 +1217,7 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 	 */
 	if (fncp->nc_nlen != tncp->nc_nlen ||
 	    bcmp(fncp->nc_name, tncp->nc_name, fncp->nc_nlen) != 0) {
-		newname = kmalloc(tncp->nc_nlen + 1, tmp->tm_name_zone, 
+		newname = kmalloc(tncp->nc_nlen + 1, tmp->tm_name_zone,
 				  M_WAITOK | M_NULLOK);
 		if (newname == NULL) {
 			error = ENOSPC;

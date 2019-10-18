@@ -52,6 +52,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/uio.h>
 #include <sys/resourcevar.h>	/* defines plimit structure in proc struct */
 #include <sys/kernel.h>
 #include <sys/stat.h>
