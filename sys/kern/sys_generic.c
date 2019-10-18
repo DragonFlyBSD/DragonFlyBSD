@@ -48,10 +48,10 @@
 #include <sys/proc.h>
 #include <sys/signalvar.h>
 #include <sys/socketvar.h>
+#include <sys/malloc.h>
 #include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/kern_syscall.h>
-#include <sys/malloc.h>
 #include <sys/mapped_ioctl.h>
 #include <sys/poll.h>
 #include <sys/queue.h>

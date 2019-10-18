@@ -35,10 +35,6 @@
 
 #include <sys/cdefs.h>
 #include <sys/_iovec.h>
-#if defined(_KERNEL)
-#include <sys/_null.h>		/* XXX */
-#include <sys/malloc.h>		/* Needed to inline iovec_free(). */
-#endif
 
 #ifdef __BSD_VISIBLE
 #ifndef _OFF_T_DECLARED
@@ -81,8 +77,12 @@ int	uioread (int, struct uio *, struct vm_object *, int *);
 int	iovec_copyin(const struct iovec *, struct iovec **, struct iovec *,
 			    int, size_t *);
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_IOV);	/* only if <sys/malloc.h> included before! */
+#endif
 
+#ifdef MALLOC_DEFINE
+#include <sys/_null.h>			/* XXX, visibility */
 /*
  * MPSAFE
  */
@@ -94,6 +94,7 @@ iovec_free(struct iovec **kiov, struct iovec *siov)
 		*kiov = NULL;
 	}
 }
+#endif
 #endif /* _KERNEL */
 
 #ifndef _KERNEL
