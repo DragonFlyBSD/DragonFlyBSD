@@ -165,7 +165,7 @@ tprintf_zone(int tab, int i, const hammer2_blockref_t *bref)
 	    (!ScanBest && i == best_zone) ? " (best)" : "");
 }
 
-static void
+static int
 init_root_blockref(int fd, int i, uint8_t type, hammer2_blockref_t *bref)
 {
 	assert(type == HAMMER2_BREF_TYPE_EMPTY ||
@@ -175,7 +175,7 @@ init_root_blockref(int fd, int i, uint8_t type, hammer2_blockref_t *bref)
 	bref->type = type;
 	bref->data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
 
-	lseek(fd, bref->data_off & ~HAMMER2_OFF_MASK_RADIX, SEEK_SET);
+	return lseek(fd, bref->data_off & ~HAMMER2_OFF_MASK_RADIX, SEEK_SET);
 }
 
 static int
@@ -587,7 +587,8 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 
 	if (io_bytes > sizeof(*media))
 		return -1;
-	lseek(fd, io_base, SEEK_SET);
+	if (lseek(fd, io_base, SEEK_SET) == -1)
+		return -2;
 	if (read(fd, media, io_bytes) != (ssize_t)io_bytes)
 		return -2;
 	if (boff)

@@ -81,7 +81,11 @@ destroy_blockref(int fd, uint8_t type)
 		memset(&broot, 0, sizeof(broot));
 		broot.type = type;
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
-		lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX, SEEK_SET);
+		if (lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX,
+		    SEEK_SET) == -1) {
+			perror("lseek");
+			return -1;
+		}
 
 		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
@@ -108,6 +112,7 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 {
 	hammer2_off_t io_off, io_base;
 	size_t bytes, io_bytes, boff;
+	ssize_t ret;
 
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
@@ -134,8 +139,12 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 		perror("lseek");
 		return -1;
 	}
-	if (read(fd, media, io_bytes) != (ssize_t)io_bytes) {
+	ret = read(fd, media, io_bytes);
+	if (ret == -1) {
 		perror("read");
+		return -1;
+	} else if (ret != (ssize_t)io_bytes) {
+		fprintf(stderr, "Failed to read media\n");
 		return -1;
 	}
 	if (boff)
@@ -151,6 +160,7 @@ write_media(int fd, const hammer2_blockref_t *bref,
 	hammer2_off_t io_off, io_base;
 	char buf[HAMMER2_PBUFSIZE];
 	size_t bytes, io_bytes, boff;
+	ssize_t ret;
 
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
@@ -184,8 +194,12 @@ write_media(int fd, const hammer2_blockref_t *bref,
 		perror("lseek");
 		return -1;
 	}
-	if (write(fd, buf, io_bytes) != (ssize_t)io_bytes) {
+	ret = write(fd, buf, io_bytes);
+	if (ret == -1) {
 		perror("write");
+		return -1;
+	} else if (ret != (ssize_t)io_bytes) {
+		fprintf(stderr, "Failed to write media\n");
 		return -1;
 	}
 	if (fsync(fd) == -1) {
