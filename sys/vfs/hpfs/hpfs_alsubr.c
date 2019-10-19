@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_alsubr.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.8 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -250,7 +249,7 @@ hpfs_splitalsec(struct hpfsmount *hpmp, alsec_t *asp, alsec_t **naspp,
  * Try to concatenate two AlSec's
  *
  * Moves all entries from AlSec corresponding (as1p, aanp[1]) into 
- * corresponding aanp[0] one. If not enought space, then return ENOSPC.
+ * corresponding aanp[0] one. If not enough space, then return ENOSPC.
  *
  * WARNING! YOU HAVE TO FIX aanp VALUES YOURSELF LATER:
  * aanp[0].an_nextoff = aanp[1].an_nextoff;
@@ -284,7 +283,7 @@ hpfs_concatalsec(struct hpfsmount *hpmp, alsec_t *as0p, alsec_t *as1p,
 
 		return (0);
 	} else {
-		/* Not enought space to concatenate */
+		/* Not enough space to concatenate */
 		return (ENOSPC);
 	}
 }
@@ -806,7 +805,7 @@ hpfs_truncatealblk(struct hpfsmount *hpmp, alblk_t *abp, lsn_t bn, int *resp)
 					error = hpfs_concatalsec(hpmp,
 							as0p, asp, anp - 1);
 					if (error == ENOSPC) {
-						/* Not enought space */
+						/* Not enough space */
 						brelse (b0p);
 						bdwrite (bp);
 					} else if (error == 0) {

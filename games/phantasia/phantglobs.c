@@ -136,7 +136,7 @@ char	Databuf[SZ_DATABUF];	/* a place to read data into		*/
 const char	Illcmd[] = "Illegal command.\n";
 const char	Illmove[] = "Too far.\n";
 const char	Illspell[] = "Illegal spell.\n";
-const char	Nomana[] = "Not enought mana for that spell.\n";
+const char	Nomana[] = "Not enough mana for that spell.\n";
 const char	Somebetter[] = "But you already have something better.\n";
 const char	Nobetter[] = "That's no better than what you already have.\n";
 
