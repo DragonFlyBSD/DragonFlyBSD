@@ -366,6 +366,8 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 static __inline void
 usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 {
+	MSDOSFS_ASSERT_MP_LOCKED(pmp);
+
 	KASSERT(cn <= pmp->pm_maxcluster, ("cn too large %lu %lu", cn,
 	    pmp->pm_maxcluster));
 	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
@@ -382,6 +384,8 @@ usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 static __inline void
 usemap_free(struct msdosfsmount *pmp, u_long cn)
 {
+	MSDOSFS_ASSERT_MP_LOCKED(pmp);
+
 	KASSERT(cn <= pmp->pm_maxcluster, ("cn too large %lu %lu", cn,
 	    pmp->pm_maxcluster));
 	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
@@ -408,7 +412,9 @@ clusterfree(struct msdosfsmount *pmp, u_long cluster, u_long *oldcnp)
 	 * the count of free clusters, and turn off the "allocated"
 	 * bit in the "in use" cluster bit map.
 	 */
+	MSDOSFS_LOCK_MP(pmp);
 	usemap_free(pmp, cluster);
+	MSDOSFS_UNLOCK_MP(pmp);
 	if (oldcnp)
 		*oldcnp = oldcn;
 	return (0);
@@ -612,6 +618,8 @@ chainlength(struct msdosfsmount *pmp, u_long start, u_long count)
 	u_int map;
 	u_long len;
 
+	MSDOSFS_ASSERT_MP_LOCKED(pmp);
+
 	if (start > pmp->pm_maxcluster)
 		return (0);
 	max_idx = pmp->pm_maxcluster / N_INUSEBITS;
@@ -667,6 +675,7 @@ chainalloc(struct msdosfsmount *pmp, u_long start, u_long count,
 	int error;
 	u_long cl, n;
 
+	MSDOSFS_ASSERT_MP_LOCKED(pmp);
 	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
 	    ("chainalloc on ro msdosfs mount"));
 
@@ -710,7 +719,9 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 {
 	int error;
 
+	MSDOSFS_LOCK_MP(pmp);
 	error = clusteralloc1(pmp, start, count, fillwith, retcluster, got);
+	MSDOSFS_UNLOCK_MP(pmp);
 	return (error);
 }
 
@@ -722,6 +733,8 @@ clusteralloc1(struct msdosfsmount *pmp, u_long start, u_long count,
 	u_long len, newst, foundl, cn, l;
 	u_long foundcn = 0; /* XXX: foundcn could be used unititialized */
 	u_int map;
+
+	MSDOSFS_ASSERT_MP_LOCKED(pmp);
 
 	mprintf("clusteralloc(): find %lu clusters\n",count);
 	if (start) {
@@ -798,6 +811,7 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 	u_long bn, bo, bsize, byteoffset;
 	u_long readcn, lbn = -1;
 
+	MSDOSFS_LOCK_MP(pmp);
 	while (cluster >= CLUST_FIRST && cluster <= pmp->pm_maxcluster) {
 		byteoffset = FATOFS(pmp, cluster);
 		fatblock(pmp, byteoffset, &bn, &bsize, &bo);
@@ -808,6 +822,7 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 				      bsize, &bp);
 			if (error) {
 				brelse(bp);
+				MSDOSFS_UNLOCK_MP(pmp);
 				return (error);
 			}
 			lbn = bn;
@@ -844,6 +859,7 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 	}
 	if (bp)
 		updatefats(pmp, bp, bn);
+	MSDOSFS_UNLOCK_MP(pmp);
 	return (0);
 }
 
@@ -858,6 +874,7 @@ fillinusemap(struct msdosfsmount *pmp)
 	u_long bn, bo, bsize, byteoffset, cn, readcn;
 	int error;
 
+	MSDOSFS_ASSERT_MP_LOCKED(pmp);
 	bp = NULL;
 
 	/*

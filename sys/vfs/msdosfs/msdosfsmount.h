@@ -216,6 +216,10 @@ struct msdosfsmount {
 	 ? roottobn((pmp), (dirofs)) \
 	 : cntobn((pmp), (dirclu)))
 
+#define	MSDOSFS_LOCK_MP(pmp)
+#define	MSDOSFS_UNLOCK_MP(pmp)
+#define	MSDOSFS_ASSERT_MP_LOCKED(pmp)
+
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 #ifdef _KERNEL

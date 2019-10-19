@@ -567,7 +567,10 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	/*
 	 * Have the inuse map filled in.
 	 */
-	if ((error = fillinusemap(pmp)) != 0)
+	MSDOSFS_LOCK_MP(pmp);
+	error = fillinusemap(pmp);
+	MSDOSFS_UNLOCK_MP(pmp);
+	if (error != 0)
 		goto error_exit;
 
 	/*
@@ -726,14 +729,16 @@ msdosfs_fsiflush(struct msdosfsmount *pmp, int waitfor)
 	struct buf *bp;
 	int error;
 
-	if (pmp->pm_fsinfo == 0 || (pmp->pm_flags & MSDOSFS_FSIMOD) == 0)
-		return (0);
-
+	MSDOSFS_LOCK_MP(pmp);
+	if (pmp->pm_fsinfo == 0 || (pmp->pm_flags & MSDOSFS_FSIMOD) == 0) {
+		error = 0;
+		goto unlock;
+	}
 	error = bread(pmp->pm_devvp, de_bn2doff(pmp, pmp->pm_fsinfo),
 	    pmp->pm_BytesPerSec, &bp);
 	if (error != 0) {
 		brelse(bp);
-		return (error);
+		goto unlock;
 	}
 
 	fp = (struct fsinfo *)bp->b_data;
@@ -744,7 +749,8 @@ msdosfs_fsiflush(struct msdosfsmount *pmp, int waitfor)
 		error = bwrite(bp);
 	else
 		bawrite(bp);
-
+unlock:
+	MSDOSFS_UNLOCK_MP(pmp);
 	return (error);
 }
 
