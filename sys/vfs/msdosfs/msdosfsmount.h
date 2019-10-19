@@ -222,14 +222,6 @@ struct msdosfsmount {
 
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
-#ifdef _KERNEL
-
-int msdosfs_init(struct vfsconf *vfsp);
-int msdosfs_uninit(struct vfsconf *vfsp);
-int msdosfs_mountroot(void);
-
-#endif
-
 /*
  *  Arguments to mount MSDOS filesystems.
  */

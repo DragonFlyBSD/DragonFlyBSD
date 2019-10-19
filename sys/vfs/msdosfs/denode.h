@@ -263,6 +263,9 @@ struct defid {
 #endif
 };
 
+int msdosfs_init(struct vfsconf *vfsp);
+int msdosfs_uninit(struct vfsconf *vfsp);
+
 int msdosfs_lookup(struct vop_old_lookup_args *);
 int msdosfs_inactive(struct vop_inactive_args *);
 int msdosfs_reclaim(struct vop_reclaim_args *);
