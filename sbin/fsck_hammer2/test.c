@@ -283,7 +283,7 @@ test_blockref(int fd, uint8_t type)
 }
 
 static int
-test_pfs_blockref(int fd, const char *name)
+test_pfs_blockref(int fd)
 {
 	uint8_t type = HAMMER2_BREF_TYPE_VOLUME;
 	bool failed = false;
@@ -320,7 +320,16 @@ test_pfs_blockref(int fd, const char *name)
 			}
 			TAILQ_FOREACH(p, &blist, entry) {
 				blockref_stats_t bstats;
-				if (name && strcmp(name, p->msg))
+				bool found = false;
+				if (NumPFSNames) {
+					int j;
+					for (j = 0; j < NumPFSNames; j++)
+						if (!strcmp(PFSNames[j],
+						    p->msg))
+							found = true;
+				} else
+					found = true;
+				if (!found)
 					continue;
 				count++;
 				tfprintf(stdout, 1, "%s\n", p->msg);
@@ -333,9 +342,8 @@ test_pfs_blockref(int fd, const char *name)
 				cleanup_blockref_stats(&bstats);
 			}
 			cleanup_pfs_blockref(&blist);
-			if (name && !count) {
-				tfprintf(stderr, 1, "PFS \"%s\" not found\n",
-				    name);
+			if (NumPFSNames && !count) {
+				tfprintf(stderr, 1, "PFS not found\n");
 				failed = true;
 			}
 		} else if (ret == -1) {
@@ -1039,7 +1047,7 @@ test_hammer2(const char *devpath)
 				goto end;
 		}
 	} else {
-		if (test_pfs_blockref(fd, PFSName) == -1) {
+		if (test_pfs_blockref(fd) == -1) {
 			failed = true;
 			if (!ForceOpt)
 				goto end;

@@ -44,7 +44,8 @@ extern int QuietOpt;
 extern int CountEmpty;
 extern int ScanBest;
 extern int ScanPFS;
-extern const char *PFSName;
+extern int NumPFSNames;
+extern char **PFSNames;
 
 int test_hammer2(const char *);
 

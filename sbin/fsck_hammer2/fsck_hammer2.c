@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "fsck_hammer2.h"
 
@@ -47,7 +48,46 @@ int QuietOpt;
 int CountEmpty;
 int ScanBest;
 int ScanPFS;
-const char *PFSName;
+int NumPFSNames;
+char **PFSNames;
+
+static void
+init_pfs_names(const char *names)
+{
+	char *name, *p;
+	int siz = 32;
+
+	PFSNames = calloc(siz, sizeof(char *));
+	p = strdup(names);
+
+	while ((name = p) != NULL) {
+		p = strchr(p, ',');
+		if (p)
+			*p++ = 0;
+		if (NumPFSNames > siz - 1) {
+			siz *= 2;
+			PFSNames = realloc(PFSNames, siz * sizeof(char*));
+		}
+		if (strlen(name))
+			PFSNames[NumPFSNames++] = name;
+	}
+
+	if (DebugOpt) {
+		int i;
+		for (i = 0; i < NumPFSNames; i++)
+			printf("PFSNames[%d]=\"%s\"\n", i, PFSNames[i]);
+	}
+}
+
+static void
+cleanup_pfs_names(void)
+{
+	int i;
+
+	for (i = 0; i < NumPFSNames; i++)
+		free(PFSNames[i]);
+	free(PFSNames);
+}
 
 static void
 usage(void)
@@ -92,7 +132,7 @@ main(int ac, char **av)
 			ScanPFS = 1;
 			break;
 		case 'l':
-			PFSName = optarg;
+			init_pfs_names(optarg);
 			break;
 		default:
 			usage();
@@ -110,6 +150,9 @@ main(int ac, char **av)
 
 	if (test_hammer2(av[0]) == -1)
 		exit(1);
+
+	if (NumPFSNames)
+		cleanup_pfs_names();
 
 	return 0;
 }
