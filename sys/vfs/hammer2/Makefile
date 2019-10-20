@@ -11,7 +11,7 @@
 #	hammer2_zlib_zconf.h directly in order to allow hammer2 to be
 #	specified in conf/files.
 #
-KCFLAGS+= -DINVARIANTS -DSMP
+KCFLAGS+= -DINVARIANTS
 #KCFLAGS+= -DZ_PREFIX -DXXH_NAMESPACE=h2_
 KMOD=	hammer2
 SRCS=	hammer2_vfsops.c hammer2_vnops.c hammer2_xops.c hammer2_inode.c
