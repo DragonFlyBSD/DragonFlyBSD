@@ -32,6 +32,8 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/param.h>
+#include <sys/malloc.h>
 #include <sys/mutex2.h>
 #include <sys/objcache.h>
 #include <sys/callout.h>

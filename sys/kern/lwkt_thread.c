@@ -35,7 +35,7 @@
 /*
  * Each cpu in a system has its own self-contained light weight kernel
  * thread scheduler, which means that generally speaking we only need
- * to use a critical section to avoid problems.  Foreign thread 
+ * to use a critical section to avoid problems.  Foreign thread
  * scheduling is queued via (async) IPIs.
  */
 
@@ -45,6 +45,7 @@
 #include <sys/proc.h>
 #include <sys/rtprio.h>
 #include <sys/kinfo.h>
+#include <sys/malloc.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/kthread.h>
@@ -119,9 +120,9 @@ SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0,
 #ifdef DEBUG_LWKT_THREAD
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0,
     "Number of switched threads");
-SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, 
+SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0,
     "Successful preemption events");
-SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, 
+SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0,
     "Failed preemption events");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0,
     "Number of preempted threads.");
@@ -413,7 +414,7 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
  *
  * All threads start out in a critical section at a priority of
  * TDPRI_KERN_DAEMON.  Higher level code will modify the priority as
- * appropriate.  This function may send an IPI message when the 
+ * appropriate.  This function may send an IPI message when the
  * requested cpu is not the current cpu and consequently gd_tdallq may
  * not be initialized synchronously from the point of view of the originating
  * cpu.
@@ -528,7 +529,7 @@ lwkt_free_thread(thread_t td)
 
 
 /*
- * Switch to the next runnable lwkt.  If no LWKTs are runnable then 
+ * Switch to the next runnable lwkt.  If no LWKTs are runnable then
  * switch to the idlethread.  Switching must occur within a critical
  * section to avoid races with the scheduling queue.
  *
@@ -1410,8 +1411,8 @@ lwkt_acquire(thread_t td)
 
 /*
  * Generic deschedule.  Descheduling threads other then your own should be
- * done only in carefully controlled circumstances.  Descheduling is 
- * asynchronous.  
+ * done only in carefully controlled circumstances.  Descheduling is
+ * asynchronous.
  *
  * This function may block if the cpu has run out of messages.
  */
@@ -1530,7 +1531,7 @@ lwkt_schedulerclock(thread_t td)
 }
 
 /*
- * Migrate the current thread to the specified cpu. 
+ * Migrate the current thread to the specified cpu.
  *
  * This is accomplished by descheduling ourselves from the current cpu
  * and setting td_migrate_gd.  The lwkt_switch() code will detect that the

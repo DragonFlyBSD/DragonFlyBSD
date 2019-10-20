@@ -32,6 +32,8 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/param.h>
+#include <sys/malloc.h>
 #include <dev/disk/dm/dm.h>
 
 MALLOC_DEFINE(M_DMFLAKEY, "dm_flakey", "Device Mapper Target Flakey");

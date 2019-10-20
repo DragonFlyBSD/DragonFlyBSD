@@ -34,7 +34,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/types.h>
+#include <sys/malloc.h>
 #include <sys/lock.h>
 #include <sys/spinlock2.h>
 #include <sys/fcntl.h>

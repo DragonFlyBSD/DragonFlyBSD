@@ -37,7 +37,6 @@
 #include <sys/bus.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
-#include <sys/types.h>
 #include <sys/lock.h>
 #include <sys/file.h>
 #include <sys/msgport.h>

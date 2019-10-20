@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/sysref.h,v 1.4 2007/05/29 17:01:02 dillon Exp $
  */
 /*
  * System resource registration, reference counter, and allocation
@@ -57,16 +55,16 @@
 #ifndef _SYS_OBJCACHE_H_
 #include <sys/objcache.h>
 #endif
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
-#endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#ifndef _SYS__MALLOC_H_
+#include <sys/_malloc.h>
+#endif
 
 /*
  * Register a resource structure type.  Note that the destroy function
  * will be called on 1->0 transitions (really 1->-0x40000000 transitions),
- * and the free function 
+ * and the free function
  * but the free function can be called via an IPI, without the BGL, and
  * must be carefully coded if it does anything more complex then objcache_put
  */
@@ -121,7 +119,7 @@ struct sysref {
 RB_HEAD(sysref_rb_tree, sysref);
 RB_PROTOTYPE2(sysref_rb_tree, sysref, rbnode, rb_sysref_compare, sysid_t);
 
-#endif
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 /*
  * Protocol numbers
@@ -145,4 +143,4 @@ sysid_t allocsysid(void);
 
 #endif
 
-#endif
+#endif	/* !_SYS_SYSREF_H_ */

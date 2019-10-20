@@ -38,6 +38,7 @@
 #include <sys/conf.h>
 #include <sys/cpu_topology.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/sensors.h>
 #include <sys/proc.h>	/* for curthread */
 #include <sys/sched.h>

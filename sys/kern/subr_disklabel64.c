@@ -35,6 +35,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/conf.h>
 #include <sys/disklabel.h>
 #include <sys/disklabel64.h>

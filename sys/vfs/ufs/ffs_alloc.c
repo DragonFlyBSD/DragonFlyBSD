@@ -36,6 +36,7 @@
 #include <sys/systm.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
+#include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>

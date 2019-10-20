@@ -34,7 +34,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/types.h>
+#include <sys/malloc.h>
 #include <machine/limits.h>
 #include <sys/devfs.h>
 
