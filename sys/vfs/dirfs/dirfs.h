@@ -44,9 +44,11 @@
 #include <sys/vnode.h>
 #include <sys/file.h>
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_DIRFS);
 MALLOC_DECLARE(M_DIRFS_NODE);
 MALLOC_DECLARE(M_DIRFS_MISC);
+#endif
 
 #ifndef KTR_DIRFS
 #define KTR_DIRFS KTR_ALL

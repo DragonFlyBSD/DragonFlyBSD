@@ -376,8 +376,10 @@ struct hpfid {
 #define dprintf(a)
 #define ddprintf(a)
 #endif
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_HPFSMNT);
 MALLOC_DECLARE(M_HPFSNO);
+#endif
 #define VFSTOHPFS(mp)	((struct hpfsmount *)((mp)->mnt_data))
 #define	VTOHP(v)	((struct hpfsnode *)((v)->v_data))
 #define	HPTOV(h)	((struct vnode *)((h)->h_vp))

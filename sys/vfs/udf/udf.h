@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf.h,v 1.6 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf.h,v 1.3 2006/09/10 01:26:41 dillon Exp $
  */
 
 #define UDF_HASHTBLSIZE 100
@@ -88,8 +87,10 @@ struct udf_dirstream {
 #define	RDSECTOR(devvp, sector, size, bp) \
 	bread(devvp, (off_t)(sector) << udfmp->bshift, size, bp)
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_UDFFENTRY);
 MALLOC_DECLARE(M_UDFNODE);
+#endif
 
 static __inline int
 udf_readlblks(struct udf_mnt *udfmp, int sector, int size, struct buf **bp)

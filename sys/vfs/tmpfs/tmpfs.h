@@ -56,7 +56,9 @@
 #include <sys/vmmeter.h>
 #include <vm/swap_pager.h>
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_TMPFSMNT);
+#endif
 
 /* --------------------------------------------------------------------- */
 

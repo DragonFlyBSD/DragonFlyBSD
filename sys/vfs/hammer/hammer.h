@@ -74,7 +74,9 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_HAMMER);
+#endif
 
 /*
  * Kernel trace

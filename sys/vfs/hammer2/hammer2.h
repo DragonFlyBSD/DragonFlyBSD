@@ -1323,7 +1323,9 @@ TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
 
 #if defined(_KERNEL)
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_HAMMER2);
+#endif
 
 #define ITOV(ip)	((ip)->vp)
 

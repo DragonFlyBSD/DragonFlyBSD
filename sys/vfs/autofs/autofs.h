@@ -54,7 +54,9 @@
 #define VFSTOAUTOFS(mp)	((struct autofs_mount *)((mp)->mnt_data))
 #define VTOI(vp)	((struct autofs_node *)((vp)->v_data))
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_AUTOFS);
+#endif
 
 extern struct objcache *autofs_request_objcache;
 extern struct objcache *autofs_node_objcache;
