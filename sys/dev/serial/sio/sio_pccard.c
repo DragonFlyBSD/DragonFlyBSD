@@ -31,6 +31,7 @@
 #include <sys/systm.h>
 #include <sys/tty.h>
 #include <sys/proc.h>
+#include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>

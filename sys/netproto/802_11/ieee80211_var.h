@@ -536,7 +536,9 @@ struct ieee80211vap {
 #endif
 	uint64_t		iv_spare[6];
 };
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_80211_VAP);
+#endif
 
 #define	IEEE80211_ADDR_EQ(a1,a2)	(memcmp(a1,a2,IEEE80211_ADDR_LEN) == 0)
 #define	IEEE80211_ADDR_COPY(dst,src)	memcpy(dst,src,IEEE80211_ADDR_LEN)

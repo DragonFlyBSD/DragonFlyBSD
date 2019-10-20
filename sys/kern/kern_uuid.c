@@ -32,6 +32,7 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/kern_syscall.h>
+#include <sys/malloc.h>
 #include <sys/random.h>
 #include <sys/sbuf.h>
 #include <sys/socket.h>

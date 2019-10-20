@@ -303,5 +303,7 @@ extern devclass_t firewire_devclass;
 
 #define CALLOUT_INIT(x) callout_init(x)
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_FW);
 MALLOC_DECLARE(M_FWXFER);
+#endif

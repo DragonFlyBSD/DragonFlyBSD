@@ -36,7 +36,9 @@
 
 /* MALLOC decalation */
 #ifdef NG_SEPARATE_MALLOC
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_NETGRAPH_L2CAP);
+#endif
 #else
 #define M_NETGRAPH_L2CAP M_NETGRAPH
 #endif /* NG_SEPARATE_MALLOC */

@@ -31,13 +31,14 @@ __FBSDID("$FreeBSD$");
 #ifdef	IEEE80211_SUPPORT_SUPERG
 
 #include <sys/param.h>
-#include <sys/systm.h> 
-#include <sys/mbuf.h>   
+#include <sys/systm.h>
+#include <sys/malloc.h>
+#include <sys/mbuf.h>
 #include <sys/kernel.h>
 #include <sys/endian.h>
 
 #include <sys/socket.h>
- 
+
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_llc.h>

@@ -44,10 +44,11 @@
 #include "opt_posix.h"
 
 #include <sys/param.h>
-#include <sys/malloc.h>
 #include <sys/sched.h>
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_P31B);
+#endif
 
 #define p31b_malloc(SIZE) kmalloc((SIZE), M_P31B, M_WAITOK)
 #define p31b_free(P) kfree((P), M_P31B)

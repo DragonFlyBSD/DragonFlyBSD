@@ -104,10 +104,11 @@ struct sockaddr_bt {
 #define BDADDR_ANY	((const bdaddr_t *) "\000\000\000\000\000")
 
 #ifdef _KERNEL
-#include <sys/malloc.h>
 #include <sys/bus.h>
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_BLUETOOTH);
+#endif
 
 /*
  * Bluetooth Protocol API callback methods

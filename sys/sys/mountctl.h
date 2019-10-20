@@ -45,15 +45,10 @@
 #include <sys/queue.h>
 #endif
 
-#ifdef _KERNEL
-
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
-#endif
-
 #endif
 
 /*
@@ -267,8 +262,10 @@ void jrecord_write_uio(struct jrecord *jrec, int16_t rectype, struct uio *uio);
 void jrecord_file_data(struct jrecord *jrec, struct vnode *vp,
 			off_t off, off_t bytes);
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_JOURNAL);
 MALLOC_DECLARE(M_JFIFO);
+#endif
 
 #else
 

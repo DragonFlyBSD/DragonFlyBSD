@@ -38,6 +38,7 @@
 #include <sys/bus.h>
 #include <sys/cpu_topology.h>
 #include <sys/cpuhelper.h>
+#include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/queue.h>
 #include <sys/serialize.h>

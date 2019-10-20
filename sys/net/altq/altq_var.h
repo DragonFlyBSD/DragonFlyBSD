@@ -36,14 +36,13 @@
 #ifndef _SYS_KERNEL_H_
 #include <sys/kernel.h>
 #endif
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
-#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_ALTQ);
+#endif
 
 /*
  * machine dependent clock

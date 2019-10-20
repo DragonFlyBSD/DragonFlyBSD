@@ -38,6 +38,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/malloc.h>
 #include <sys/posix4.h>
 #include <sys/proc.h>
 #include <sys/kernel.h>

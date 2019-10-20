@@ -30,7 +30,6 @@
 #define _AESNI_H_
 
 #include <sys/types.h>
-#include <sys/malloc.h>
 #include <sys/queue.h>
 
 #include <opencrypto/cryptodev.h>

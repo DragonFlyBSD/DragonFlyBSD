@@ -33,14 +33,15 @@
 #ifndef _SYS_SOCKETVAR2_H_
 #define _SYS_SOCKETVAR2_H_
 
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
+
 #ifndef _SYS_SOCKETVAR_H_
 #include <sys/socketvar.h>
 #endif
 #ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
-#endif
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
 #endif
 #include <machine/atomic.h>
 
@@ -53,6 +54,7 @@
  *
  * Returns 0 on success, non-zero if the lock could not be acquired.
  */
+#ifdef MALLOC_DEFINE
 static __inline int
 ssb_lock(struct signalsockbuf *ssb, int wf)
 {
@@ -72,6 +74,7 @@ ssb_lock(struct signalsockbuf *ssb, int wf)
 		}
 	}
 }
+#endif
 
 /*
  * Release a previously acquired lock on a signalsockbuf.

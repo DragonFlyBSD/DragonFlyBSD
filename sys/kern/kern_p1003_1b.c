@@ -39,6 +39,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysent.h>
+#include <sys/malloc.h>
 #include <sys/posix4.h>
 #include <sys/proc.h>
 #include <sys/syslog.h>

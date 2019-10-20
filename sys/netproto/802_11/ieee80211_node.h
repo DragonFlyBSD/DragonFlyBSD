@@ -233,8 +233,10 @@ struct ieee80211_node {
 	void			*ni_rctls;	/* private ratectl state */
 	uint64_t		ni_spare[3];
 };
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_80211_NODE);
 MALLOC_DECLARE(M_80211_NODE_IE);
+#endif
 
 #define	IEEE80211_NODE_ATH	(IEEE80211_NODE_FF | IEEE80211_NODE_TURBOP)
 #define	IEEE80211_NODE_AMPDU \

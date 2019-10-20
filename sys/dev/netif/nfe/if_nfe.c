@@ -59,6 +59,7 @@
 #include <sys/param.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/bus.h>
 #include <sys/interrupt.h>
 #include <sys/proc.h>

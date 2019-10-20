@@ -14,11 +14,10 @@
 #ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
 #endif
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
-#endif
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_LWKTMSG);
+#endif
 
 /*
  * Initialize a LWKT message structure.  Note that if the message supports

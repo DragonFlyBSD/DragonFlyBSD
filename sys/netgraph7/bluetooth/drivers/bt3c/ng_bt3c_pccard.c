@@ -48,6 +48,7 @@
 #include <sys/endian.h>
 #include <sys/interrupt.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/module.h>
 

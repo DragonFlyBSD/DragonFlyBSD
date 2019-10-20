@@ -39,11 +39,12 @@
  * 'mycpu' do not exist for it.
  */
 
+#include <sys/types.h>
 #include <sys/interrupt.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/memrange.h>
 #include <sys/tls.h>
-#include <sys/types.h>
 #include <sys/bus.h>
 #include <sys/thread2.h>
 #include <time.h>

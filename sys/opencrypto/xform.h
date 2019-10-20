@@ -111,8 +111,7 @@ extern struct auth_hash auth_hash_gmac_aes_256;
 
 extern struct comp_algo comp_algo_deflate;
 
-#ifdef _KERNEL
-#include <sys/malloc.h>
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_XDATA);
 #endif
 #endif /* _CRYPTO_XFORM_H_ */

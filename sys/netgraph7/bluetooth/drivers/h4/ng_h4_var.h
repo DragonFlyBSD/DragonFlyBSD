@@ -45,12 +45,14 @@
  */
 
 #ifndef NG_SEPARATE_MALLOC
+#if MALLOC_DECLARE
 MALLOC_DECLARE(M_NETGRAPH_H4);
+#endif
 #else
 #define M_NETGRAPH_H4 M_NETGRAPH
 #endif /* NG_SEPARATE_MALLOC */
 
-/* 
+/*
  * Debug
  */
 

@@ -49,7 +49,6 @@
 #endif
 
 #include <sys/queue.h>
-#include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/mutex2.h>
 #include <netgraph7/ng_message.h>	/* NG_HOOKSIZ, NG_NODESIZ */
@@ -1099,8 +1098,10 @@ MODULE_DEPEND(ng_##typename, netgraph,	NG_ABI_VERSION,			\
 
 /* Special malloc() type for netgraph structs and ctrl messages */
 /* Only these two types should be visible to nodes */
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_NETGRAPH);
 MALLOC_DECLARE(M_NETGRAPH_MSG);
+#endif
 
 /* declare the base of the netgraph sysclt hierarchy */
 /* but only if this file cares about sysctls */

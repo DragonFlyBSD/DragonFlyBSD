@@ -77,6 +77,7 @@
 #include <sys/systm.h>
 #include <sys/uio.h>
 #include <sys/filio.h>
+#include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/tty.h>
@@ -91,7 +92,6 @@
 #include <sys/signalvar.h>
 #include <sys/signal2.h>
 #include <sys/resourcevar.h>
-#include <sys/malloc.h>
 #include <sys/filedesc.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>

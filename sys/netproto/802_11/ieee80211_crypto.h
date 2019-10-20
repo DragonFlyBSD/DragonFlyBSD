@@ -149,7 +149,9 @@ struct ieee80211vap;
 struct ieee80211_node;
 struct mbuf;
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_80211_CRYPTO);
+#endif
 
 void	ieee80211_crypto_attach(struct ieee80211com *);
 void	ieee80211_crypto_detach(struct ieee80211com *);

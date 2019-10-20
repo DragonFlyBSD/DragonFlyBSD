@@ -65,7 +65,9 @@
 #define rmb()	cpu_lfence()
 #define wmb()	cpu_sfence()
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_NETMAP);
+#endif
 
 // XXX linux struct, not used in FreeBSD
 struct net_device_ops {

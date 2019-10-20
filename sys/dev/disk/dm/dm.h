@@ -180,7 +180,9 @@ uint64_t atoi64(const char *);
 char *dm_alloc_string(int len);
 void dm_builtin_init(void *);
 void dm_builtin_uninit(void *);
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_DM);
+#endif
 extern int dm_debug_level;
 
 /* dm_ioctl.c */

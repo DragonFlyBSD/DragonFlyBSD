@@ -46,9 +46,6 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
-#endif
 #ifndef _SYS_MODULE_H_
 #include <sys/module.h>
 #endif
@@ -316,7 +313,9 @@ MODULE_DEPEND(ng_##typename, netgraph,	NG_ABI_VERSION,			\
 	NETGRAPH_INIT_ORDERED(tn, tp, SI_SUB_PSEUDO, SI_ORDER_ANY)
 
 /* Special malloc() type for netgraph structs and ctrl messages */
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_NETGRAPH);
+#endif
 
 /* declare the base of the netgraph sysctl hierarchy */
 /* but only if this file cares about sysctls */

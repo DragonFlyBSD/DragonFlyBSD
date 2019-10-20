@@ -39,6 +39,7 @@
 #include <sys/socket.h>
 #ifdef _KERNEL
 # include <sys/systm.h>
+# include <sys/malloc.h>
 #endif /* _KERNEL */
 #include <sys/mbuf.h>
 

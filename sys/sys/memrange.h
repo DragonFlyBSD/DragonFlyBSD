@@ -15,14 +15,6 @@
 #include <sys/ioccom.h>
 #endif
 
-#ifdef _KERNEL
-
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
-#endif
-
-#endif
-
 /* Memory range attributes */
 #define MDF_UNCACHEABLE		(1<<0)	/* region not cached */
 #define MDF_WRITECOMBINE	(1<<1)	/* region supports "write combine" action */
@@ -63,7 +55,9 @@ struct mem_range_op
 
 #ifdef _KERNEL
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_MEMDESC);
+#endif
 
 struct mem_range_softc;
 struct mem_range_ops
@@ -92,4 +86,4 @@ extern int cpu_set_iopl(void);
 extern int cpu_clr_iopl(void);
 #endif
 
-#endif
+#endif	/* !_SYS_MEMRANGE_H_ */

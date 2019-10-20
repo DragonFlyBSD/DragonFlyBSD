@@ -404,7 +404,9 @@ struct cryptkop {
 #define	CRYPTO_SESID2CAPS(_sid)	(((_sid) >> 32) & 0xff000000)
 #define	CRYPTO_SESID2LID(_sid)	(((u_int32_t) (_sid)) & 0xffffffff)
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_CRYPTO_DATA);
+#endif
 
 extern	int crypto_newsession(u_int64_t *sid, struct cryptoini *cri, int hard);
 extern	int crypto_freesession(u_int64_t sid);

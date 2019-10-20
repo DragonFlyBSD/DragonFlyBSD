@@ -200,7 +200,9 @@ struct pf_addr_wrap {
 
 #ifdef _KERNEL
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_PF);
+#endif
 
 struct pfi_dynaddr {
 	TAILQ_ENTRY(pfi_dynaddr)	 entry;

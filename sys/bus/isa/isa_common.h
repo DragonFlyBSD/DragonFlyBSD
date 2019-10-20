@@ -33,7 +33,9 @@
  * without notice.
  */
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_ISADEV);
+#endif
 
 /*
  * PNP configurations are kept in a tailq.

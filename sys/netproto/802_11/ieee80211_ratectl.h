@@ -61,7 +61,9 @@ void	ieee80211_ratectl_unregister(int);
 void	ieee80211_ratectl_init(struct ieee80211vap *);
 void	ieee80211_ratectl_set(struct ieee80211vap *, int);
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_80211_RATECTL);
+#endif
 
 static __inline void
 ieee80211_ratectl_deinit(struct ieee80211vap *vap)
