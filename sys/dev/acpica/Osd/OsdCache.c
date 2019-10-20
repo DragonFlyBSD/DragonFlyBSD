@@ -30,6 +30,8 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+#include <sys/malloc.h>
 #include <sys/objcache.h>
 
 struct acpicache {

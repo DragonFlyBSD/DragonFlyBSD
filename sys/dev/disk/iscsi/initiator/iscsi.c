@@ -56,6 +56,7 @@
 #include <sys/mutex2.h>
 #include <sys/devfs.h>
 #include <sys/udev.h>
+#include <sys/objcache.h>
 
 #include <bus/cam/cam.h>
 #include <dev/disk/iscsi/initiator/iscsi.h>

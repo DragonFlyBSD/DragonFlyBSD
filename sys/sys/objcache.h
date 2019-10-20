@@ -33,13 +33,14 @@
 #ifndef _SYS_OBJCACHE_H_
 #define _SYS_OBJCACHE_H_
 
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _SYS_MALLOC_H_
-#include <sys/malloc.h>
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#ifndef _SYS__MALLOC_H_
+#include <sys/_malloc.h>
 #endif
 
 #define OC_MFLAGS	0x0000ffff	/* same as malloc flags */
@@ -79,7 +80,7 @@ void	 objcache_populate_linear(struct objcache *oc, void *elts, int nelts,
 __boolean_t objcache_reclaimlist(struct objcache *oc[], int nlist, int ocflags);
 void	 objcache_destroy(struct objcache *oc);
 
-#endif	/* !_KERNEL */
+#endif	/* _KERNEL */
 
 /*
  * Common underlying allocators.
