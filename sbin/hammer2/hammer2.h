@@ -94,6 +94,7 @@
 #define UDEV_DEVICE_PATH	"/dev/udev"
 #endif
 
+#if 0
 struct hammer2_idmap {
 	struct hammer2_idmap *next;
 	uint32_t ran_beg;	/* inclusive */
@@ -112,6 +113,7 @@ struct hammer2_udppkt {
 };
 
 typedef struct hammer2_udppkt hammer2_udppkt_t;
+#endif
 
 extern int DebugOpt;
 extern int ForceOpt;
