@@ -481,28 +481,35 @@ print_blockref_stats(const blockref_stats_t *bstats, bool newline)
 {
 	size_t siz = charsperline();
 	char *buf = calloc(1, siz);
+	char emptybuf[128];
 
 	assert(buf);
+
+	if (CountEmpty)
+		snprintf(emptybuf, sizeof(emptybuf), ", %ju empty",
+		    (uintmax_t)bstats->total_empty);
+	else
+		strlcpy(emptybuf, "", sizeof(emptybuf));
 
 	switch (bstats->type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
 		tsnprintf(buf, siz, 1, "%ju blockref (%ju inode, %ju indirect, "
-		    "%ju data, %ju dirent, %ju empty), %s",
+		    "%ju data, %ju dirent%s), %s",
 		    (uintmax_t)bstats->total_blockref,
 		    (uintmax_t)bstats->volume.total_inode,
 		    (uintmax_t)bstats->volume.total_indirect,
 		    (uintmax_t)bstats->volume.total_data,
 		    (uintmax_t)bstats->volume.total_dirent,
-		    (uintmax_t)bstats->total_empty,
+		    emptybuf,
 		    sizetostr(bstats->total_bytes));
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		tsnprintf(buf, siz, 1, "%ju blockref (%ju node, %ju leaf, "
-		    "%ju empty), %s",
+		tsnprintf(buf, siz, 1, "%ju blockref (%ju node, %ju leaf%s), "
+		    "%s",
 		    (uintmax_t)bstats->total_blockref,
 		    (uintmax_t)bstats->freemap.total_freemap_node,
 		    (uintmax_t)bstats->freemap.total_freemap_leaf,
-		    (uintmax_t)bstats->total_empty,
+		    emptybuf,
 		    sizetostr(bstats->total_bytes));
 		break;
 	default:
@@ -620,7 +627,10 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
-		bstats->total_empty++;
+		if (CountEmpty)
+			bstats->total_empty++;
+		else
+			bstats->total_blockref--;
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		bstats->volume.total_inode++;
@@ -669,6 +679,11 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	if (bref->type != HAMMER2_BREF_TYPE_VOLUME &&
 	    bref->type != HAMMER2_BREF_TYPE_FREEMAP)
 		bstats->total_bytes += bytes;
+
+	if (!CountEmpty && bref->type == HAMMER2_BREF_TYPE_EMPTY) {
+		assert(bytes == 0);
+		bstats->total_bytes -= bytes;
+	}
 
 	if (QuietOpt <= 0 && (bstats->total_blockref % 100) == 0)
 		print_blockref_stats(bstats, false);
