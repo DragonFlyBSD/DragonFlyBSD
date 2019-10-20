@@ -95,7 +95,7 @@ main(int ac, char **av)
 			case 0:
 				break;
 			default:
-				fprintf(stderr, "-m: unrecognized suffix\n");
+				fprintf(stderr, "-m: Unrecognized suffix\n");
 				usage(1);
 				break;
 			}
@@ -204,14 +204,16 @@ main(int ac, char **av)
 	} else if (strcmp(av[0], "destroy") == 0) {
 		if (ac < 2) {
 			fprintf(stderr,
-				"Specify one or more paths to destroy\n");
+				"destroy: specify one or more paths to "
+				"destroy\n");
 			usage(1);
 		}
 		ecode = cmd_destroy_path(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "destroy-inum") == 0) {
 		if (ac < 2) {
 			fprintf(stderr,
-				"Specify one or more inode numbers to destroy\n");
+				"destroy-inum: specify one or more inode "
+				"numbers to destroy\n");
 			usage(1);
 		}
 		ecode = cmd_destroy_inum(sel_path, ac - 1,
@@ -238,7 +240,6 @@ main(int ac, char **av)
 			ecode = cmd_remote_status(sel_path, all_opt);
 		} else {
 			int i;
-
 			for (i = 1; i < ac; ++i)
 				ecode = cmd_remote_status(av[i], all_opt);
 		}
@@ -300,7 +301,7 @@ main(int ac, char **av)
 			flags = HAMMER2_PFSFLAGS_NOSYNC;
 
 		if (ac > 3) {
-			fprintf(stderr, "pfs-snapshot: too many arguments\n");
+			fprintf(stderr, "%s: too many arguments\n", av[0]);
 			usage(1);
 		}
 		switch(ac) {
@@ -440,7 +441,7 @@ main(int ac, char **av)
 			 * path.
 			 */
 			fprintf(stderr,
-				"setcomp: requires compression method and"
+				"setcomp: requires compression method and "
 				"directory/file path\n");
 			usage(1);
 		} else {
@@ -456,7 +457,7 @@ main(int ac, char **av)
 			 * path.
 			 */
 			fprintf(stderr,
-				"setcheck: requires check code method and"
+				"setcheck: requires check code method and "
 				"directory/file path\n");
 			usage(1);
 		} else {
@@ -483,8 +484,7 @@ main(int ac, char **av)
 		}
 	} else if (strcmp(av[0], "bulkfree") == 0) {
 		if (ac != 2) {
-			fprintf(stderr,
-				"bulkfree: requires path to mount\n");
+			fprintf(stderr, "bulkfree: requires path to mount\n");
 			usage(1);
 		} else {
 			ecode = cmd_bulkfree(av[1]);
