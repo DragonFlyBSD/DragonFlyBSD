@@ -219,7 +219,7 @@ tcp_output(struct tcpcb *tp)
 		idle_cwv = TRUE;
 
 	/*
-	 * Calculate whether the transmit stream was previously idle 
+	 * Calculate whether the transmit stream was previously idle
 	 * and adjust TF_LASTIDLE for the next time.
 	 */
 	idle = (tp->t_flags & TF_LASTIDLE) || (tp->snd_max == tp->snd_una);
@@ -1505,7 +1505,7 @@ tcp_output_sched(struct tcpcb *tp)
  * if others segments and ACKs are queued on to the same hardware transmit
  * queue; thus cause unfairness between senders and suppress receiving
  * performance.
- * 
+ *
  * Fairsend should be performed at the places that do not affect segment
  * sending during congestion control, e.g.
  * - User requested output

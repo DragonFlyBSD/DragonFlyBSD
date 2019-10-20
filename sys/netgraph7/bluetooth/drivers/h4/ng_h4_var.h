@@ -29,7 +29,7 @@
  *
  * $Id: ng_h4_var.h,v 1.5 2005/10/31 17:57:43 max Exp $
  * $FreeBSD: head/sys/netgraph/bluetooth/drivers/h4/ng_h4_var.h 171818 2007-08-13 17:19:28Z emax $
- * 
+ *
  * Based on:
  * ---------
  *
@@ -61,8 +61,8 @@ MALLOC_DECLARE(M_NETGRAPH_H4);
 
 #define NG_H4_HIWATER		256	/* High water mark on output */
 
-/* 
- * Per-node private info 
+/*
+ * Per-node private info
  */
 
 typedef struct ng_h4_info {
@@ -71,7 +71,7 @@ typedef struct ng_h4_info {
 
 	ng_h4_node_debug_ep	 debug;	/* Debug level */
 	ng_h4_node_state_ep	 state;	/* State */
-	
+
 	ng_h4_node_stat_ep	 stat;
 #define NG_H4_STAT_PCKTS_SENT(s)	(s).pckts_sent ++
 #define NG_H4_STAT_BYTES_SENT(s, n)	(s).bytes_sent += (n)
@@ -86,7 +86,7 @@ typedef struct ng_h4_info {
 #define	NG_H4_LOCK(sc)		crit_enter();
 #define	NG_H4_UNLOCK(sc)	crit_exit();
 
-#define NG_H4_IBUF_SIZE		1024	/* XXX must be big enough to hold full 
+#define NG_H4_IBUF_SIZE		1024	/* XXX must be big enough to hold full
 					   frame */
 	u_int8_t		 ibuf[NG_H4_IBUF_SIZE];	/* Incoming data */
 	u_int32_t		 got;	/* Number of bytes we have received */

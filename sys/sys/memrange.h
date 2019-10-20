@@ -3,7 +3,6 @@
  * Memory range attribute operations, peformed on /dev/mem
  *
  * $FreeBSD: src/sys/sys/memrange.h,v 1.4.2.2 2002/09/16 21:58:37 dwmalone Exp $
- * $DragonFly: src/sys/sys/memrange.h,v 1.4 2006/12/17 20:07:33 dillon Exp $
  */
 
 #ifndef _SYS_MEMRANGE_H_
@@ -71,12 +70,12 @@ struct mem_range_ops
 {
 	void	(*init)(struct mem_range_softc *sc);
 	int	(*set)(struct mem_range_softc *sc, struct mem_range_desc *mrd, int *arg);
-    	void	(*initAP)(struct mem_range_softc *sc);
+	void	(*initAP)(struct mem_range_softc *sc);
 	void	(*set_iopl)(struct mem_range_softc *sc);
 	void	(*clr_iopl)(struct mem_range_softc *sc);
 };
 
-struct mem_range_softc 
+struct mem_range_softc
 {
 	struct mem_range_ops	*mr_op;
 	int			mr_cap;

@@ -223,7 +223,7 @@ sys_sched_getparam(struct sched_getparam_args *uap)
 	struct lwp *lp;
 	struct sched_param sched_param;
 	int e;
- 
+
 	if ((e = p31b_proc(uap->pid, &targetp)) == 0) {
 		lp = FIRST_LWP_IN_PROC(targetp); /* XXX lwp */
 		if (lp) {
@@ -277,7 +277,7 @@ sys_sched_getscheduler(struct sched_getscheduler_args *uap)
 	struct proc *targetp;
 	struct lwp *lp;
 	int e;
- 
+
 	if ((e = p31b_proc(uap->pid, &targetp)) == 0) {
 		lp = FIRST_LWP_IN_PROC(targetp); /* XXX lwp */
 		if (lp) {

@@ -331,7 +331,7 @@ clockmod_dom_create(cpumask_t mask)
 				ctrl->ctl_value |= 1 << 4;
 
 			if (bootverbose) {
-				kprintf("  0x%04jx %s\n", 
+				kprintf("  0x%04jx %s\n",
 				    (uintmax_t)ctrl->ctl_value,
 				    ctrl->ctl_name);
 			}
@@ -472,7 +472,7 @@ clockmod_select_handler(struct cpuhelper_msg *msg)
 	cpuhelper_replymsg(msg, 0);
 }
 
-static int 
+static int
 clockmod_select(const struct clockmod_softc *sc,
     const struct clockmod_dom_ctrl *ctrl)
 {

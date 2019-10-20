@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/hci_misc.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: src/sys/netbt/hci_misc.c,v 1.2 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: hci_misc.c,v 1.3 2007/09/16 19:59:30 plunky Exp $ */
 

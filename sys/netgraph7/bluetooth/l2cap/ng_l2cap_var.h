@@ -59,16 +59,16 @@ MALLOC_DECLARE(M_NETGRAPH_L2CAP);
 
 /*
  * L2CAP signaling command ident's are assigned relative to the connection,
- * because there is only one signaling channel (cid == 0x01) for every 
- * connection. So up to 254 (0xff - 0x01) L2CAP commands can be pending at the 
+ * because there is only one signaling channel (cid == 0x01) for every
+ * connection. So up to 254 (0xff - 0x01) L2CAP commands can be pending at the
  * same time for the same connection.
  */
 
-#define NG_L2CAP_NULL_IDENT	0x00        /* DO NOT USE THIS IDENT */ 
-#define NG_L2CAP_FIRST_IDENT	0x01        /* dynamically alloc. (start) */ 
-#define NG_L2CAP_LAST_IDENT	0xff        /* dynamically alloc. (end) */ 
+#define NG_L2CAP_NULL_IDENT	0x00        /* DO NOT USE THIS IDENT */
+#define NG_L2CAP_FIRST_IDENT	0x01        /* dynamically alloc. (start) */
+#define NG_L2CAP_LAST_IDENT	0xff        /* dynamically alloc. (end) */
 
-/* 
+/*
  * L2CAP (Node private)
  */
 
@@ -97,7 +97,7 @@ typedef struct ng_l2cap {
 } ng_l2cap_t;
 typedef ng_l2cap_t *			ng_l2cap_p;
 
-/* 
+/*
  * L2CAP connection descriptor
  */
 

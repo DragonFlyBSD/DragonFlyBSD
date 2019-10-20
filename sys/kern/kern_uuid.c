@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_uuid.c,v 1.13 2007/04/23 12:53:00 pjd Exp $
- * $DragonFly: src/sys/kern/kern_uuid.c,v 1.4 2007/06/19 06:07:57 dillon Exp $
  */
 
 #include <sys/param.h>

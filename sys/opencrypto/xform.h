@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/opencrypto/xform.h,v 1.4 2007/05/09 19:37:02 gnn Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/xform.h,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 /*	$OpenBSD: xform.h,v 1.8 2001/08/28 12:20:43 ben Exp $	*/
 
 /*-
@@ -14,7 +13,7 @@
  * Permission to use, copy, and modify this software without fee
  * is hereby granted, provided that this entire notice is included in
  * all source code copies of any software which is or includes a copy or
- * modification of this software. 
+ * modification of this software.
  *
  * THIS SOFTWARE IS BEING PROVIDED "AS IS", WITHOUT ANY EXPRESS OR
  * IMPLIED WARRANTY. IN PARTICULAR, NONE OF THE AUTHORS MAKES ANY
@@ -37,7 +36,7 @@ struct auth_hash {
 	int type;
 	char *name;
 	u_int16_t keysize;
-	u_int16_t hashsize; 
+	u_int16_t hashsize;
 	u_int16_t blocksize;
 	u_int16_t ctxsize;
 	void (*Init) (void *);

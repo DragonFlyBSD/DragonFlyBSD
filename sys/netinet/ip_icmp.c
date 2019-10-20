@@ -99,7 +99,7 @@ SYSCTL_INT(_net_inet_icmp, ICMPCTL_ICMPLIM, icmplim, CTLFLAG_RW,
 static int      icmplim = -1;
 SYSCTL_INT(_net_inet_icmp, ICMPCTL_ICMPLIM, icmplim, CTLFLAG_RD,
 	&icmplim, 0, "ICMP bandwidth limit");
-	
+
 #endif
 
 static int	icmplim_output = 0;

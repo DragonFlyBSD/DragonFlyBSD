@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -569,7 +569,7 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
 }
 
 struct lwkt_port *
-so_pr_ctlport(struct protosw *pr, int cmd, struct sockaddr *arg, 
+so_pr_ctlport(struct protosw *pr, int cmd, struct sockaddr *arg,
     void *extra, int *cpuid)
 {
 	if (pr->pr_ctlport == NULL)
@@ -715,7 +715,7 @@ netmsg_so_notify_doabort(lwkt_msg_t lmsg)
 /*
  * Predicate requests can be aborted.  This function is only called once
  * and will interlock against processing/reply races (since such races
- * occur on the same thread that controls the port where the abort is 
+ * occur on the same thread that controls the port where the abort is
  * requeued).
  *
  * This part of the abort request occurs on the target cpu.  The message

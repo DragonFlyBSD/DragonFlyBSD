@@ -59,7 +59,7 @@ void p31b_setcfg (int, int);
 
 #ifdef _KPOSIX_PRIORITY_SCHEDULING
 
-/* 
+/*
  * KSCHED_OP_RW is a vector of read/write flags for each entry indexed
  * by the enum ksched_op.
  *

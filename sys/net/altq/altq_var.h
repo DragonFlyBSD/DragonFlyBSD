@@ -1,5 +1,4 @@
 /*	$KAME: altq_var.h,v 1.17 2004/04/20 05:09:08 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_var.h,v 1.5 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (C) 1998-2003

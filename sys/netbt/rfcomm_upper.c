@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/rfcomm_upper.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: src/sys/netbt/rfcomm_upper.c,v 1.4 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: rfcomm_upper.c,v 1.10 2007/11/20 20:25:57 plunky Exp $ */
 

@@ -560,9 +560,9 @@ static void
 hci_sdetach(netmsg_t msg)
 {
 	struct socket *so = msg->detach.base.nm_so;
-	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;	
+	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
 	int error;
-	
+
 	if (pcb == NULL) {
 		error = EINVAL;
 	} else {
@@ -583,7 +583,7 @@ static void
 hci_sdisconnect(netmsg_t msg)
 {
 	struct socket *so = msg->disconnect.base.nm_so;
-	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;	
+	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
 	int error;
 
 	if (pcb) {
@@ -751,7 +751,7 @@ hci_ssockaddr(netmsg_t msg)
 	struct sockaddr **nam = msg->sockaddr.nm_nam;
 	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa;
-	
+
 	KKASSERT(nam != NULL);
 	sa = (struct sockaddr_bt *)nam;
 
@@ -872,7 +872,7 @@ hci_ctloutput(netmsg_t msg)
 		case SO_HCI_EVT_FILTER:	/* set event filter */
 			error = soopt_to_kbuf(sopt, &pcb->hp_efilter,
 			    sizeof(struct hci_filter),
-			    sizeof(struct hci_filter)); 
+			    sizeof(struct hci_filter));
 			break;
 
 		case SO_HCI_PKT_FILTER:	/* set packet filter */

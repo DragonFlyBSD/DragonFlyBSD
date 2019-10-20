@@ -69,7 +69,7 @@ SYSCTL_INT(_net_wlan, OID_AUTO, force_swcrypto, CTLFLAG_RW,
 static int	wlan_clone_destroy(struct ifnet *);
 static int	wlan_clone_create(struct if_clone *, int, caddr_t);
 
-static struct if_clone wlan_cloner = 
+static struct if_clone wlan_cloner =
 	IF_CLONE_INITIALIZER("wlan", wlan_clone_create, wlan_clone_destroy,
 	    0, IF_MAXUNIT);
 
@@ -261,7 +261,7 @@ ieee80211_get_rx_params(struct mbuf *m, struct ieee80211_rx_stats *rxs)
 {
 	struct m_tag *mtag;
 	struct ieee80211_rx_params *rx;
- 
+
 	mtag = m_tag_locate(m, MTAG_ABI_NET80211, NET80211_TAG_RECV_PARAMS,
 	    NULL);
 	if (mtag == NULL)
