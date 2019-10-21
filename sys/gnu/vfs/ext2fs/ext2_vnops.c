@@ -123,22 +123,6 @@ static int ext2_symlink (struct vop_old_symlink_args *);
 
 #include "ext2_readwrite.c"
 
-union _qcvt {
-	int64_t qcvt;
-	int32_t val[2];
-};
-#define SETHIGH(q, h) { \
-	union _qcvt tmp; \
-	tmp.qcvt = (q); \
-	tmp.val[_QUAD_HIGHWORD] = (h); \
-	(q) = tmp.qcvt; \
-}
-#define SETLOW(q, l) { \
-	union _qcvt tmp; \
-	tmp.qcvt = (q); \
-	tmp.val[_QUAD_LOWWORD] = (l); \
-	(q) = tmp.qcvt; \
-}
 #define VN_KNOTE(vp, b) \
 	KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, (b))
 
@@ -1866,7 +1850,6 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 {
 	struct inode *ip;
 	struct vnode *vp;
-	struct timeval tv;
 
 	vp = *vpp;
 	ip = VTOI(vp);
@@ -1901,9 +1884,7 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 	/*
 	 * Initialize modrev times
 	 */
-	getmicrouptime(&tv);
-	SETHIGH(ip->i_modrev, tv.tv_sec);
-	SETLOW(ip->i_modrev, tv.tv_usec * 4294);
+	ip->i_modrev = init_va_filerev();
 	*vpp = vp;
 	return (0);
 }

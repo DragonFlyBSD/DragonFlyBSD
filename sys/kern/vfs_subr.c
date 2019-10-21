@@ -2629,3 +2629,34 @@ vfs_inodehashsize(void)
 
 	return hsize;
 }
+
+union _qcvt {
+	quad_t qcvt;
+	int32_t val[2];
+};
+
+#define SETHIGH(q, h) { \
+	union _qcvt tmp; \
+	tmp.qcvt = (q); \
+	tmp.val[_QUAD_HIGHWORD] = (h); \
+	(q) = tmp.qcvt; \
+}
+#define SETLOW(q, l) { \
+	union _qcvt tmp; \
+	tmp.qcvt = (q); \
+	tmp.val[_QUAD_LOWWORD] = (l); \
+	(q) = tmp.qcvt; \
+}
+
+u_quad_t
+init_va_filerev(void)
+{
+	struct timeval tv;
+	u_quad_t ret = 0;
+
+	getmicrouptime(&tv);
+	SETHIGH(ret, tv.tv_sec);
+	SETLOW(ret, tv.tv_usec * 4294);
+
+	return ret;
+}

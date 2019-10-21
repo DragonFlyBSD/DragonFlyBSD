@@ -94,23 +94,6 @@ static struct lwkt_token dehash_token;
 #define	DEHASH(dev, dcl, doff)	(dehashtbl[(minor(dev) + (dcl) + (doff) / \
 				sizeof(struct direntry)) & dehash])
 
-union _qcvt {
-	quad_t qcvt;
-	long val[2];
-};
-#define SETHIGH(q, h) { \
-	union _qcvt tmp; \
-	tmp.qcvt = (q); \
-	tmp.val[_QUAD_HIGHWORD] = (h); \
-	(q) = tmp.qcvt; \
-}
-#define SETLOW(q, l) { \
-	union _qcvt tmp; \
-	tmp.qcvt = (q); \
-	tmp.val[_QUAD_LOWWORD] = (l); \
-	(q) = tmp.qcvt; \
-}
-
 /*ARGSUSED*/
 int
 msdosfs_init(struct vfsconf *vfsp)
@@ -259,7 +242,6 @@ deget(struct msdosfsmount *pmp, u_long dirclust, u_long diroffset,
 	struct denode *ldep;
 	struct vnode *nvp;
 	struct buf *bp;
-	struct timeval tv;
 
 	mprintf("deget(pmp %p, dirclust %lu, diroffset %lx, depp %p)\n",
 	    pmp, dirclust, diroffset, depp);
@@ -431,9 +413,8 @@ again:
 	} else {
 		nvp->v_type = VREG;
 	}
-	getmicrouptime(&tv);
-	SETHIGH(ldep->de_modrev, tv.tv_sec);
-	SETLOW(ldep->de_modrev, tv.tv_usec * 4294);
+
+	ldep->de_modrev = init_va_filerev();
 	ldep->de_devvp = pmp->pm_devvp;
 	vref(ldep->de_devvp);
 	vinitvmio(nvp, ldep->de_FileSize, PAGE_SIZE, -1);

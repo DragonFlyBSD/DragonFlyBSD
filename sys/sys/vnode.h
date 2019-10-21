@@ -579,6 +579,8 @@ void	vn_syncer_thr_stop(struct mount *);
 void	vn_syncer_one(struct mount *);
 long	vn_syncer_count(struct mount *);
 
+u_quad_t init_va_filerev(void);
+
 extern	struct vop_ops default_vnode_vops;
 extern	struct vop_ops dead_vnode_vops;
 
