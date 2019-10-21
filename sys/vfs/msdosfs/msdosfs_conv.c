@@ -1078,21 +1078,3 @@ mbnambuf_flush(struct mbnambuf *nbp, struct dirent *dp)
 	mbnambuf_init(nbp);
 	return (dp->d_name);
 }
-
-/* XXX to be removed */
-char *
-mbnambuf_flush_compat(struct mbnambuf *nbp, char *d_name, uint16_t *d_namlen)
-{
-#if 0 /* XXX needed ? */
-	if (nbp->nb_len > 127) {
-		mbnambuf_init(nbp);
-		return (NULL);
-	}
-#endif
-	memcpy(d_name, &nbp->nb_buf[0], nbp->nb_len);
-	d_name[nbp->nb_len] = '\0';
-	*d_namlen = nbp->nb_len;
-
-	mbnambuf_init(nbp);
-	return (d_name);
-}

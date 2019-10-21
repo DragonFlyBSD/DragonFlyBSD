@@ -1423,16 +1423,12 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	struct denode *dep;
 	struct msdosfsmount *pmp;
 	struct direntry *dentp;
+	struct dirent dirbuf;
 	struct uio *uio = ap->a_uio;
 	off_t *cookies = NULL;
 	int ncookies = 0;
 	off_t offset, off;
 	int chksum = -1;
-	ino_t d_ino;
-	uint16_t d_namlen;
-	uint8_t d_type;
-	char *d_name_storage = NULL;
-	char *d_name = NULL;
 
 	error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
 	if (error)
@@ -1454,6 +1450,11 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		error = ENOTDIR;
 		goto done;
 	}
+
+	/*
+	 * To be safe, initialize dirbuf
+	 */
+	memset(dirbuf.d_name, 0, sizeof(dirbuf.d_name));
 
 	/*
 	 * If the user buffer is smaller than the size of one dos directory
@@ -1478,6 +1479,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 
 	dirsperblk = pmp->pm_BytesPerSec / sizeof(struct direntry);
 
+#define d_fileno d_ino
 	/*
 	 * If they are reading from the root directory then, we simulate
 	 * the . and .. entries since these don't exist in the root
@@ -1487,25 +1489,31 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	 */
 	if (dep->de_StartCluster == MSDOSFSROOT
 	    || (FAT32(pmp) && dep->de_StartCluster == pmp->pm_rootdirblk)) {
+#if 0
+		printf("msdosfs_readdir(): going after . or .. in root dir, offset %d\n",
+		    offset);
+#endif
 		bias = 2 * sizeof(struct direntry);
 		if (offset < bias) {
-			for (n = (int)offset / sizeof(struct direntry); n < 2;
-			     n++) {
-				if (FAT32(pmp))
-					d_ino = cntobn(pmp, pmp->pm_rootdirblk)
-					    * dirsperblk;
-				else
-					d_ino = 1;
-				d_type = DT_DIR;
-				if (n == 0) {
-					d_namlen = 1;
-					d_name = ".";
-				} else if (n == 1) {
-					d_namlen = 2;
-					d_name = "..";
+			for (n = (int)offset / sizeof(struct direntry);
+			     n < 2; n++) {
+				dirbuf.d_fileno = FAT32(pmp) ?
+				    (uint64_t)cntobn(pmp, pmp->pm_rootdirblk) *
+				    dirsperblk : 1;
+				dirbuf.d_type = DT_DIR;
+				switch (n) {
+				case 0:
+					dirbuf.d_namlen = 1;
+					strcpy(dirbuf.d_name, ".");
+					break;
+				case 1:
+					dirbuf.d_namlen = 2;
+					strcpy(dirbuf.d_name, "..");
+					break;
 				}
-				if (vop_write_dirent(&error, uio, d_ino, d_type,
-				    d_namlen, d_name))
+				if (vop_write_dirent(&error, uio,
+				    dirbuf.d_fileno, dirbuf.d_type,
+				    dirbuf.d_namlen, dirbuf.d_name))
 					goto out;
 				if (error)
 					goto out;
@@ -1520,7 +1528,6 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		}
 	}
 
-	d_name_storage = kmalloc(WIN_MAXLEN, M_TEMP, M_WAITOK);
 	mbnambuf_init(&nb);
 	off = offset;
 
@@ -1538,7 +1545,6 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn), blsize, &bp);
 		if (error) {
 			brelse(bp);
-			kfree(d_name_storage, M_TEMP);
 			goto done;
 		}
 		n = min(n, blsize - bp->b_resid);
@@ -1550,8 +1556,10 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		for (dentp = (struct direntry *)(bp->b_data + on);
 		     (char *)dentp < bp->b_data + on + n;
 		     dentp++, offset += sizeof(struct direntry)) {
-			d_name = d_name_storage;
-			d_namlen = 0;
+#if 0
+			printf("rd: dentp %08x prev %08x crnt %08x deName %02x attr %02x\n",
+			    dentp, prev, crnt, dentp->deName[0], dentp->deAttributes);
+#endif
 			/*
 			 * If this is an unused entry, we can stop.
 			 */
@@ -1567,6 +1575,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 				mbnambuf_init(&nb);
 				continue;
 			}
+
 			/*
 			 * Handle Win95 long directory entries
 			 */
@@ -1574,8 +1583,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 				if (pmp->pm_flags & MSDOSFSMNT_SHORTNAME)
 					continue;
 				chksum = win2unixfn(&nb,
-					(struct winentry *)dentp,
-					chksum, pmp);
+				    (struct winentry *)dentp, chksum, pmp);
 				continue;
 			}
 
@@ -1588,41 +1596,43 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 				continue;
 			}
 			/*
-			 * This computation of d_ino must match
+			 * This computation of d_fileno must match
 			 * the computation of va_fileid in
 			 * msdosfs_getattr.
 			 */
 			if (dentp->deAttributes & ATTR_DIRECTORY) {
-				d_ino = getushort(dentp->deStartCluster);
-				if (FAT32(pmp))
-					d_ino |= getushort(dentp->deHighClust) << 16;
-				/* if this is the root directory */
-				if (d_ino != MSDOSFSROOT)
-					d_ino = cntobn(pmp, d_ino) * dirsperblk;
-				else if (FAT32(pmp))
-					d_ino = cntobn(pmp, pmp->pm_rootdirblk)
-					    * dirsperblk;
+				cn = getushort(dentp->deStartCluster);
+				if (FAT32(pmp)) {
+					cn |= getushort(dentp->deHighClust) <<
+					    16;
+					if (cn == MSDOSFSROOT)
+						cn = pmp->pm_rootdirblk;
+				}
+				if (cn == MSDOSFSROOT && !FAT32(pmp))
+					dirbuf.d_fileno = 1;
 				else
-					d_ino = 1;
-				d_type = DT_DIR;
+					dirbuf.d_fileno = cntobn(pmp, cn) *
+					    dirsperblk;
+				dirbuf.d_type = DT_DIR;
 			} else {
-				d_ino = offset / sizeof(struct direntry);
-				d_type = DT_REG;
+				dirbuf.d_fileno = (uoff_t)offset /
+				    sizeof(struct direntry);
+				dirbuf.d_type = DT_REG;
 			}
+
 			if (chksum != winChksum(dentp->deName)) {
-				d_namlen = dos2unixfn(dentp->deName,
-				    (u_char *)d_name,
+				dirbuf.d_namlen = dos2unixfn(dentp->deName,
+				    (u_char *)dirbuf.d_name,
 				    dentp->deLowerCase |
 					((pmp->pm_flags & MSDOSFSMNT_SHORTNAME) ?
 					(LCASE_BASE | LCASE_EXT) : 0),
-					pmp);
+				    pmp);
 				mbnambuf_init(&nb);
-			} else {
-				mbnambuf_flush_compat(&nb, d_name, &d_namlen);
-			}
+			} else
+				mbnambuf_flush(&nb, &dirbuf);
 			chksum = -1;
-			if (vop_write_dirent(&error, uio, d_ino, d_type,
-			    d_namlen, d_name)) {
+			if (vop_write_dirent(&error, uio, dirbuf.d_fileno,
+			    dirbuf.d_type, dirbuf.d_namlen, dirbuf.d_name)) {
 				brelse(bp);
 				goto out;
 			}
@@ -1643,9 +1653,6 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		brelse(bp);
 	}
 out:
-	if (d_name_storage != NULL)
-		kfree(d_name_storage, M_TEMP);
-
 	/* Subtract unused cookies */
 	if (ap->a_ncookies)
 		*ap->a_ncookies -= ncookies;
