@@ -64,12 +64,14 @@ init_pfs_names(const char *names)
 		p = strchr(p, ',');
 		if (p)
 			*p++ = 0;
-		if (NumPFSNames > siz - 1) {
-			siz *= 2;
-			PFSNames = realloc(PFSNames, siz * sizeof(char*));
-		}
-		if (strlen(name))
+		if (strlen(name)) {
+			if (NumPFSNames > siz - 1) {
+				siz *= 2;
+				PFSNames = realloc(PFSNames,
+				    siz * sizeof(char *));
+			}
 			PFSNames[NumPFSNames++] = name;
+		}
 	}
 
 	if (DebugOpt) {
@@ -93,7 +95,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "fsck_hammer2 [-f] [-v] [-q] [-e] [-b] [-p] "
-	    "[-l pfs_name] special\n");
+	    "[-l pfs_names] special\n");
 	exit(1);
 }
 
