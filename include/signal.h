@@ -36,8 +36,12 @@
 
 #include <sys/cdefs.h>
 #include <sys/signal.h>
+#if __BSD_VISIBLE
 #include <sys/time.h>
 #include <sys/types.h>
+#else
+#include <sys/_timespec.h>
+#endif
 
 #if __BSD_VISIBLE
 extern const char * const sys_signame[NSIG];
