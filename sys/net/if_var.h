@@ -792,12 +792,13 @@ IFAREF(struct ifaddr *_ifa)
 	_IFAREF(_ifa, mycpuid);
 }
 
-#include <sys/malloc.h>
 #include <sys/serialize2.h>
 
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_IFADDR);
 MALLOC_DECLARE(M_IFMADDR);
 MALLOC_DECLARE(M_IFNET);
+#endif
 
 void	ifac_free(struct ifaddr_container *, int);
 

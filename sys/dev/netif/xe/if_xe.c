@@ -96,6 +96,7 @@
 #include <sys/param.h>
 #include <sys/errno.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>	/* for M_NOWAIT */
 #include <sys/mbuf.h>
 #include <sys/select.h>
 #include <sys/socket.h>

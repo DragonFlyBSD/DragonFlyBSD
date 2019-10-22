@@ -44,6 +44,7 @@
 #include <sys/module.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/malloc.h>	/* for M_NOWAIT */
 #include <sys/mbuf.h>
 #include <sys/rman.h>
 #include <sys/socket.h>

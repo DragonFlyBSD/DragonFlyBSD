@@ -33,6 +33,7 @@
 
 #include <sys/param.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>	/* for M_NOWAIT */
 #include <sys/mbuf.h>
 #include <sys/proc.h>
 #include <sys/queue.h>

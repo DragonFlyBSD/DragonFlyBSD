@@ -70,6 +70,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>	/* for M_NOWAIT */
 #include <sys/sysctl.h>
 #include <sys/mbuf.h>
 #include <sys/domain.h>

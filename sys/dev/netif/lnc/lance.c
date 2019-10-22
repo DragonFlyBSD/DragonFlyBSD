@@ -77,6 +77,7 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/lock.h>
+#include <sys/malloc.h>	/* for M_NOWAIT */
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
