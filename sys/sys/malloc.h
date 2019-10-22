@@ -53,6 +53,7 @@
 			0x1000	/* can exhaust free list entirely */
 #define	M_POWEROF2	0x2000	/* roundup size to the nearest power of 2 */
 #define	M_CACHEALIGN	0x4000	/* force CPU cache line alignment */
+/* GFP_DMA32 0x10000 reserved for drm layer (not handled by kmalloc) */
 
 /*
  * M_NOWAIT has to be a set of flags for equivalence to prior use.
