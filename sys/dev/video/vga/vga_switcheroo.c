@@ -43,6 +43,7 @@
 #include <sys/module.h>
 #include <sys/proc.h>
 #include <sys/types.h>
+#include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/device.h>
 #include <sys/conf.h>

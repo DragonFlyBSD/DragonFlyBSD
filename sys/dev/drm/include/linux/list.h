@@ -34,23 +34,32 @@
  * Since LIST_HEAD conflicts with the linux definition we must include any
  * FreeBSD header which requires it here so it is resolved with the correct
  * definition prior to the undef.
+ *
+ * However on DragonFly we do not undef LIST_HEAD, no need to prepoison yet.
  */
 #include <linux/types.h>
 #include <linux/stddef.h>
 #include <linux/kernel.h>
 
-#include <sys/param.h>
-#include <sys/kernel.h>
 #include <sys/queue.h>
-#include <sys/jail.h>
+
+#include <sys/param.h>
+#include <sys/conf.h>	/* for struct cdev */
+#include <sys/kernel.h>
 #include <sys/lock.h>
+#include <sys/sysctl.h>
+#include <vm/vm_page.h>
+
 #include <sys/mutex.h>
 #include <sys/proc.h>
-#include <sys/conf.h>
 #include <sys/socket.h>
-#include <sys/mbuf.h>
 
+#if 0
+/* XXX should not be in here */
+#include <sys/jail.h>
+#include <sys/mbuf.h>
 #include <net/bpf.h>
+
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_types.h>
@@ -62,6 +71,7 @@
 
 #include <netinet6/in6_var.h>
 #include <netinet6/nd6.h>
+#endif
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>

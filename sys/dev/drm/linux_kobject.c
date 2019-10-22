@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <linux/gfp.h>
 #include <linux/kobject.h>
 
 extern char *drm_vasprintf(int flags, const char *format, va_list ap);

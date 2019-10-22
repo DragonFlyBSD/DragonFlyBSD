@@ -31,6 +31,7 @@
 #include <linux/mmzone.h>
 #include <linux/stddef.h>
 
+#include <sys/malloc.h>
 #include <vm/vm_page.h>
 #include <machine/bus_dma.h>
 
