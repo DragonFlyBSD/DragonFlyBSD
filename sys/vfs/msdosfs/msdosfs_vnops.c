@@ -1548,6 +1548,11 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 			goto done;
 		}
 		n = min(n, blsize - bp->b_resid);
+		if (n == 0) {
+			brelse(bp);
+			error = EIO;
+			goto done;
+		}
 
 		/*
 		 * Convert from dos directory entries to fs-independent
