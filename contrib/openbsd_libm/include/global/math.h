@@ -17,8 +17,7 @@
 #ifndef _MATH_H_
 #define _MATH_H_
 
-#include <sys/types.h>
-#include <sys/limits.h>
+#include <machine/limits.h>
 
 __BEGIN_DECLS
 /*
