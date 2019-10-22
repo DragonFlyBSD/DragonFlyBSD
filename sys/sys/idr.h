@@ -50,11 +50,6 @@
 
 #include <sys/thread.h>
 
-#ifndef GFP_KERNEL
-#include <sys/malloc.h>
-#define GFP_KERNEL	M_WAITOK
-#endif
-
 struct idr_node {
 	void	*data;
 	int	 allocated;

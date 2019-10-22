@@ -29,7 +29,14 @@
 
 #include <sys/idr.h>
 
+#ifndef GFP_KERNEL
+#include <sys/malloc.h>
+#define	GFP_KERNEL	M_WAITOK
+#endif
+
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_IDR);
+#endif
 
 #define	IDA_CHUNK_SIZE		128	/* 128 bytes per chunk */
 #define	IDA_BITMAP_LONGS	(IDA_CHUNK_SIZE / sizeof(long) - 1)
