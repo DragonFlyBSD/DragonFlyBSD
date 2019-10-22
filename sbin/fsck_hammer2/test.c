@@ -808,12 +808,22 @@ init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
 			bscan = NULL;
 			bcount = 0;
 			if (ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) {
-				struct blockref_msg *p;
-				p = calloc(1, sizeof(*p));
-				assert(p);
-				p->bref = *bref;
-				p->msg = strdup(ipdata.filename);
-				TAILQ_INSERT_TAIL(blist, p, entry);
+				struct blockref_msg *newp, *p;
+				newp = calloc(1, sizeof(*newp));
+				assert(newp);
+				newp->bref = *bref;
+				newp->msg = strdup(ipdata.filename);
+				p = TAILQ_FIRST(blist);
+				while (p) {
+					if (strcmp(newp->msg, p->msg) <= 0) {
+						TAILQ_INSERT_BEFORE(p, newp,
+						    entry);
+						break;
+					}
+					p = TAILQ_NEXT(p, entry);
+				}
+				if (!p)
+					TAILQ_INSERT_TAIL(blist, newp, entry);
 			} else
 				assert(0); /* should only see SUPROOT or PFS */
 		}
