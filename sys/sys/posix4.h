@@ -50,9 +50,6 @@
 MALLOC_DECLARE(M_P31B);
 #endif
 
-#define p31b_malloc(SIZE) kmalloc((SIZE), M_P31B, M_WAITOK)
-#define p31b_free(P) kfree((P), M_P31B)
-
 struct proc;
 struct lwp;
 

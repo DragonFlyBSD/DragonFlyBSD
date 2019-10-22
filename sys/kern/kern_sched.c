@@ -56,7 +56,9 @@ struct ksched {
 int
 ksched_attach(struct ksched **p)
 {
-	struct ksched *ksched= p31b_malloc(sizeof(*ksched));
+	struct ksched *ksched;
+
+	ksched = kmalloc(sizeof(*ksched), M_P31B, M_WAITOK);
 
 	ksched->rr_interval.tv_sec = 0;
 	ksched->rr_interval.tv_nsec = 1000000000L / 10;	/* XXX */
@@ -68,7 +70,7 @@ ksched_attach(struct ksched **p)
 int
 ksched_detach(struct ksched *p)
 {
-	p31b_free(p);
+	kfree(p, M_P31B);
 
 	return 0;
 }
