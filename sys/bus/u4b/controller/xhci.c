@@ -3026,7 +3026,7 @@ xhci_root_intr(struct xhci_softc *sc)
 		    XHCI_PS_OCC | XHCI_PS_WRC |
 		    XHCI_PS_PRC | XHCI_PS_PLC |
 		    XHCI_PS_CEC)) {
-			sc->sc_hub_idata[i / 8] |= 1 << (i % 8);
+			setbit(sc->sc_hub_idata, i);
 			DPRINTF("port %d changed\n", i);
 		}
 	}

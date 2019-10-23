@@ -1293,13 +1293,11 @@ uaudio_configure_msg_sub(struct uaudio_softc *sc,
 
 		for (x = 0; x != 256; x++) {
 			if (dir == PCMDIR_PLAY) {
-				if (!(sc->sc_mixer_clocks.bit_output[x / 8] &
-				    (1 << (x % 8)))) {
+				if (isclr(sc->sc_mixer_clocks.bit_output, x)) {
 					continue;
 				}
 			} else {
-				if (!(sc->sc_mixer_clocks.bit_input[x / 8] &
-				    (1 << (x % 8)))) {
+				if (isclr(sc->sc_mixer_clocks.bit_input, x)) {
 					continue;
 				}
 			}
@@ -1784,13 +1782,11 @@ uaudio_chan_fill_info_sub(struct uaudio_softc *sc, struct usb_device *udev,
 
 			for (x = 0; x != 256; x++) {
 				if (ep_dir == UE_DIR_OUT) {
-					if (!(sc->sc_mixer_clocks.bit_output[x / 8] &
-					    (1 << (x % 8)))) {
+					if (isclr(sc->sc_mixer_clocks.bit_output, x)) {
 						continue;
 					}
 				} else {
-					if (!(sc->sc_mixer_clocks.bit_input[x / 8] &
-					    (1 << (x % 8)))) {
+					if (isclr(sc->sc_mixer_clocks.bit_input, x)) {
 						continue;
 					}
 				}
@@ -4477,7 +4473,7 @@ uaudio_mixer_get_input(const struct uaudio_terminal_node *iot, uint8_t i)
 
 	n = iot->usr.id_max;
 	do {
-		if (iot->usr.bit_input[n / 8] & (1 << (n % 8))) {
+		if (isset(iot->usr.bit_input, n)) {
 			if (!i--)
 				return (root + n);
 		}
@@ -4494,7 +4490,7 @@ uaudio_mixer_get_output(const struct uaudio_terminal_node *iot, uint8_t i)
 
 	n = iot->usr.id_max;
 	do {
-		if (iot->usr.bit_output[n / 8] & (1 << (n % 8))) {
+		if (isset(iot->usr.bit_output, n)) {
 			if (!i--)
 				return (root + n);
 		}
@@ -4847,7 +4843,7 @@ uaudio_mixer_find_outputs_sub(struct uaudio_terminal_node *root, uint8_t id,
 			 * if "j" has "id" on the input, then "id" have "j" on
 			 * the output, because they are connected:
 			 */
-			if ((root + j)->usr.bit_input[id / 8] & (1 << (id % 8))) {
+			if (isset((root + j)->usr.bit_input, id)) {
 				iot->usr.bit_output[j / 8] |= (1 << (j % 8));
 			}
 		}
@@ -5167,10 +5163,10 @@ tr_setup:
 
 				sc->sc_mixer_chan++;
 
-				update = ((mc->update[chan / 8] & (1 << (chan % 8))) &&
-				    (mc->wValue[chan] != -1));
+				update = isset(mc->update, chan) &&
+					  (mc->wValue[chan] != -1);
 
-				mc->update[chan / 8] &= ~(1 << (chan % 8));
+				clrbit(mc->update, chan);
 
 				if (update) {
 

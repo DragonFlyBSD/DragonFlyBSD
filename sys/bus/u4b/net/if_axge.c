@@ -759,7 +759,7 @@ axge_setmulti(struct usb_ether *ue)
 			continue;
 		h = ether_crc32_be(LLADDR((struct sockaddr_dl *)
 		    ifma->ifma_addr), ETHER_ADDR_LEN) >> 26;
-		hashtbl[h / 8] |= 1 << (h % 8);
+		setbit(hashtbl, h);
 	}
 
 	axge_write_mem(sc, AXGE_ACCESS_MAC, 8, AXGE_MFA, (void *)&hashtbl, 8);

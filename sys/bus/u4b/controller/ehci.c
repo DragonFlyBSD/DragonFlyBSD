@@ -2066,7 +2066,7 @@ ehci_root_intr(ehci_softc_t *sc)
 	for (i = 1; i < m; i++) {
 		/* pick out CHANGE bits from the status register */
 		if (EOREAD4(sc, EHCI_PORTSC(i)) & EHCI_PS_CLEAR) {
-			sc->sc_hub_idata[i / 8] |= 1 << (i % 8);
+			setbit(sc->sc_hub_idata, i);
 			DPRINTF("port %d changed\n", i);
 		}
 	}

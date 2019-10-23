@@ -508,7 +508,7 @@ axe_setmulti(struct usb_ether *ue)
 			continue;
 		h = ether_crc32_be(LLADDR((struct sockaddr_dl *)
 		    ifma->ifma_addr), ETHER_ADDR_LEN) >> 26;
-		hashtbl[h / 8] |= 1 << (h % 8);
+		setbit(hashtbl, h);
 	}
 
 	axe_cmd(sc, AXE_CMD_WRITE_MCAST, 0, 0, (void *)&hashtbl);

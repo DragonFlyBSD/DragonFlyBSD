@@ -593,14 +593,14 @@ usb_hw_ep_find_match(struct usb_hw_ep_scratch *ues,
 		}
 		/* check if IN-endpoint is reserved */
 		if (dir_in || pf->is_simplex) {
-			if (ues->bmInAlloc[n / 8] & (1 << (n % 8))) {
+			if (isset(ues->bmInAlloc, n)) {
 				/* mismatch */
 				continue;
 			}
 		}
 		/* check if OUT-endpoint is reserved */
 		if (dir_out || pf->is_simplex) {
-			if (ues->bmOutAlloc[n / 8] & (1 << (n % 8))) {
+			if (isset(ues->bmOutAlloc, n)) {
 				/* mismatch */
 				continue;
 			}

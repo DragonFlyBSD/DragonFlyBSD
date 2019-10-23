@@ -46,12 +46,9 @@ char	*dumpinomap;	/* map of files to be dumped */
 /*
  * Map manipulation macros.
  */
-#define	SETINO(ino, map) \
-	map[(u_int)((ino) - 1) / NBBY] |=  1 << ((u_int)((ino) - 1) % NBBY)
-#define	CLRINO(ino, map) \
-	map[(u_int)((ino) - 1) / NBBY] &=  ~(1 << ((u_int)((ino) - 1) % NBBY))
-#define	TSTINO(ino, map) \
-	(map[(u_int)((ino) - 1) / NBBY] &  (1 << ((u_int)((ino) - 1) % NBBY)))
+#define	SETINO(ino, map)	setbit(map, (u_int)((ino) - 1))
+#define	CLRINO(ino, map)	clrbit(map, (u_int)((ino) - 1))
+#define	TSTINO(ino, map)	isset(map, (u_int)((ino) - 1))
 
 /*
  *	All calculations done in 0.1" units!
