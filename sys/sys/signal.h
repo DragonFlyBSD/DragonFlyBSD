@@ -131,9 +131,9 @@ typedef	__uint32_t	uid_t;
 #define	SIGUSR2		31	/* user defined signal 2 */
 #endif
 #if __BSD_VISIBLE
-#define	SIGTHR          32      /* Thread interrupt (FreeBSD-5 reserved) */
-#define	SIGCKPT         33      /* checkpoint and continue */
-#define	SIGCKPTEXIT     34      /* checkpoint and exit */
+#define	SIGTHR		32	/* Thread interrupt (FreeBSD-5 reserved) */
+#define	SIGCKPT		33	/* checkpoint and continue */
+#define	SIGCKPTEXIT	34	/* checkpoint and exit */
 #endif
 
 #if __POSIX_VISIBLE >= 199309 || __XSI_VISIBLE
