@@ -70,7 +70,7 @@ SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pcm/feeder_eq.c 267992 2014-06-28
 
 #define FEEDEQ_IF2PREAMP(i, f)						\
 	((abs(i) << FEEDEQ_GAIN_SHIFT) |				\
-	(((abs(f) / FEEDEQ_GAIN_STEP) * FEEDEQ_GAIN_STEP) &		\
+	(rounddown(abs(f), FEEDEQ_GAIN_STEP) &				\
 	FEEDEQ_GAIN_FMASK))
 
 #define FEEDEQ_PREAMP_MIN						\
@@ -692,8 +692,7 @@ feeder_eq_initsys(device_t dev)
 	(void)ksnprintf(buf, sizeof(buf), "Bass/Treble Equalizer Preamp "
 	    "(-/+ %d.0dB , %d.%ddB step)",
 	    FEEDEQ_GAIN_MAX, FEEDEQ_GAIN_STEP / FEEDEQ_GAIN_DIV,
-	    FEEDEQ_GAIN_STEP - ((FEEDEQ_GAIN_STEP / FEEDEQ_GAIN_DIV) *
-	    FEEDEQ_GAIN_DIV));
+	    FEEDEQ_GAIN_STEP - rounddown(FEEDEQ_GAIN_STEP, FEEDEQ_GAIN_DIV));
 
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,

@@ -1816,7 +1816,7 @@ tcp_mtudisc(struct inpcb *inp, int mtu)
 		mss &= ~(MCLBYTES - 1);	
 #else
 	if (mss > MCLBYTES)
-		mss = (mss / MCLBYTES) * MCLBYTES;
+		mss = rounddown(mss, MCLBYTES);
 #endif
 
 	if (so->so_snd.ssb_hiwat < mss)

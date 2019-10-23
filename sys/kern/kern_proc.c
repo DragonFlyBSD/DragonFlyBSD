@@ -74,8 +74,7 @@
 #define PIDDOM_COUNT	10	/* 10 pids per domain - reduce array size */
 #define PIDDOM_DELAY	10	/* min 10 seconds after exit before reuse */
 #define PIDDOM_SCALE	10	/* (10,000*SCALE)/sec performance guarantee */
-#define PIDSEL_DOMAINS	(PID_MAX * PIDDOM_SCALE / PIDDOM_COUNT /	\
-			 ALLPROC_HSIZE * ALLPROC_HSIZE)
+#define PIDSEL_DOMAINS	rounddown(PID_MAX * PIDDOM_SCALE / PIDDOM_COUNT, ALLPROC_HSIZE)
 
 /* Used by libkvm */
 int allproc_hsize = ALLPROC_HSIZE;

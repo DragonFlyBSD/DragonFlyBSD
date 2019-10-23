@@ -1442,7 +1442,7 @@ ar5211SetPowerTable(struct ath_hal *ah, PCDACS_EEPROM *pSrcStruct,
 		}
 
 	/* Find the first power level with a pcdac */
-	pwr = (uint16_t)(PWR_STEP * ((minScaledPwr - PWR_MIN + PWR_STEP / 2) / PWR_STEP)  + PWR_MIN);
+	pwr = (uint16_t)(rounddown(minScaledPwr - PWR_MIN + PWR_STEP / 2, PWR_STEP)  + PWR_MIN);
 
 	/* Write all the first pcdac entries based off the pcdacMin */
 	pcdacTableIndex = 0;

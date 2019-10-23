@@ -41,6 +41,7 @@
 	char secret[HEXKEYBYTES + 1];
  */
 
+#include <sys/param.h>
 #include <sys/time.h>
 #include <err.h>
 #include <fcntl.h>
@@ -277,7 +278,7 @@ pk_encode(char *in, char *out, DesData *key)
 
 	memset(&i,0,sizeof(i));
 	memset(buf,0,sizeof(buf));
-	deslen = ((strlen(in) + 7)/8)*8;
+	deslen = rounddown(strlen(in) + 7, 8);
 	DES_key_sched(key, &k);
 	DES_cbc_encrypt(in,buf,deslen, &k,&i,DES_ENCRYPT);
 	for (l=0,op=0;l<deslen;l++) {

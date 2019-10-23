@@ -28,10 +28,11 @@
  *
  * @(#)store.c	5.4 (Berkeley) 5/13/91
  * $FreeBSD: src/games/larn/store.c,v 1.5 1999/11/30 03:49:00 billf Exp $
- * $DragonFly: src/games/larn/store.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $
  */
 
 /* store.c		Larn is copyrighted 1986 by Noah Morgan. */
+#include <sys/param.h>
+
 #include "header.h"
 
 static void dnd_2hed(void);
@@ -547,7 +548,7 @@ ointerest(void)
 		if (c[BANKACCOUNT] > 500000)
 			c[BANKACCOUNT] = 500000;	/* interest limit */
 	}
-	lasttime = (gtime / 100) * 100;
+	lasttime = rounddown(gtime, 100);
 }
 
 static short gemorder[26] = { 0 };	/* the reference to screen location for each */
@@ -569,7 +570,8 @@ obanksub(void)
 		case OSAPPHIRE:
 
 			if (iven[i] == OLARNEYE) {
-				gemvalue[i] = 250000 - ((gtime * 7) / 100) * 100;
+				gemvalue[i] = 250000 -
+				    rounddown(gtime * 7, 100);
 				if (gemvalue[i] < 50000)
 					gemvalue[i] = 50000;
 			} else

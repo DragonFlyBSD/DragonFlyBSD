@@ -372,8 +372,8 @@ main(int argc, char *argv[])
 			printf("Warning: Ending logical block > 2TB, using max value\n");
 			partp->dp_size = 0xFFFFFFFFU;
 		} else {
-			partp->dp_size = (disksecs / dos_cylsecs) *
-					dos_cylsecs - dos_sectors;
+			partp->dp_size =
+			    rounddown(disksecs, dos_cylsecs) - dos_sectors;
 		}
 		dos(partp);
 		if (v_flag)
@@ -571,7 +571,7 @@ struct dos_partition *partp = (struct dos_partition *) (&mboot.parts[3]);
 		printf("Warning: Ending logical block > 2TB, using max value\n");
 		partp->dp_size = 0xFFFFFFFFU;
 	} else {
-		partp->dp_size = (disksecs / dos_cylsecs) * dos_cylsecs - start;
+		partp->dp_size = rounddown(disksecs, dos_cylsecs) - start;
 	}
 
 	dos(partp);
@@ -1254,7 +1254,7 @@ process_partition(CMD *command)
 	 */
 	if (partp->dp_start % dos_sectors != 0)
 	{
-	    prev_head_boundary = partp->dp_start / dos_sectors * dos_sectors;
+	    prev_head_boundary = rounddown(partp->dp_start, dos_sectors);
 	    if (max_end < (uint32_t)dos_sectors ||
 		prev_head_boundary > max_end - dos_sectors)
 	    {
@@ -1280,7 +1280,7 @@ process_partition(CMD *command)
 	 * boundary.
 	 */
 	prev_cyl_boundary =
-	    ((partp->dp_start + partp->dp_size) / dos_cylsecs) * dos_cylsecs;
+	    rounddown(partp->dp_start + partp->dp_size, dos_cylsecs);
 	if (prev_cyl_boundary > partp->dp_start)
 	    adj_size = prev_cyl_boundary - partp->dp_start;
 	else
@@ -1492,7 +1492,7 @@ sanitize_partition(struct dos_partition *partp)
      * Adjust start upwards, if necessary, to fall on an head boundary.
      */
     if (start % dos_sectors != 0) {
-	prev_head_boundary = start / dos_sectors * dos_sectors;
+	prev_head_boundary = rounddown(start, dos_sectors);
 	if (max_end < (uint32_t)dos_sectors ||
 	    prev_head_boundary >= max_end - dos_sectors) {
 	    /*
@@ -1509,7 +1509,7 @@ sanitize_partition(struct dos_partition *partp)
      * Adjust size downwards, if necessary, to fall on a cylinder
      * boundary.
      */
-    prev_cyl_boundary = ((start + size) / dos_cylsecs) * dos_cylsecs;
+    prev_cyl_boundary = rounddown(start + size, dos_cylsecs);
     if (prev_cyl_boundary > start)
 	size = prev_cyl_boundary - start;
     else {

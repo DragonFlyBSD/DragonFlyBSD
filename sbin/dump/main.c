@@ -224,7 +224,7 @@ main(int argc, char **argv)
 	}
 
 	if (blocksperfile)
-		blocksperfile = blocksperfile / ntrec * ntrec; /* round down */
+		blocksperfile = rounddown(blocksperfile, ntrec); /* round down */
 	else if (!unlimited) {
 		/*
 		 * Determine how to default tape size and density

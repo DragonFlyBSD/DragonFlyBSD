@@ -125,7 +125,7 @@ svc_dg_create(int fd, u_int sendsize, u_int recvsize)
 	su = mem_alloc(sizeof (*su));
 	if (su == NULL)
 		goto freedata;
-	su->su_iosz = ((MAX(sendsize, recvsize) + 3) / 4) * 4;
+	su->su_iosz = rounddown(MAX(sendsize, recvsize) + 3, 4);
 	if ((rpc_buffer(xprt) = mem_alloc(su->su_iosz)) == NULL)
 		goto freedata;
 	xdrmem_create(&(su->su_xdrs), rpc_buffer(xprt), su->su_iosz,

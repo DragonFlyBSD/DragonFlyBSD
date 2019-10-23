@@ -1818,7 +1818,7 @@ devfs_spec_strategy(struct vop_strategy_args *ap)
 		chunksize = vp->v_rdev->si_bsize_phys;
 	else
 		chunksize = DEV_BSIZE;
-	chunksize = maxiosize / chunksize * chunksize;
+	chunksize = rounddown(maxiosize, chunksize);
 #if SPEC_CHAIN_DEBUG & 1
 	devfs_debug(DEVFS_DEBUG_DEBUG,
 		    "spec_strategy chained I/O chunksize=%d\n",

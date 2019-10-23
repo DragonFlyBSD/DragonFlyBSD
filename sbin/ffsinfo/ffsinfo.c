@@ -578,7 +578,7 @@ ginode(ino_t inumber, int fsi)
 		iblk = ino_to_fsba(&sblock, inumber);
 		rdfs(fsbtodb(&sblock, iblk), (size_t)sblock.fs_bsize,
 		    &ablk, fsi);
-		startinum = (inumber / INOPB(&sblock)) * INOPB(&sblock);
+		startinum = rounddown(inumber, INOPB(&sblock));
 	}
 
 	DBG_LEAVE;

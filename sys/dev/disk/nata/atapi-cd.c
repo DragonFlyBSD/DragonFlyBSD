@@ -948,7 +948,7 @@ acd_set_ioparm(device_t dev)
     else
 	cdp->iomax = min(MAXPHYS, 65534);
 
-    cdp->cdev->si_iosize_max = (cdp->iomax / cdp->block_size) * cdp->block_size;
+    cdp->cdev->si_iosize_max = rounddown(cdp->iomax, cdp->block_size);
     cdp->cdev->si_bsize_phys = cdp->block_size;
     bzero(&info, sizeof(info));
     info.d_media_blksize = cdp->block_size;

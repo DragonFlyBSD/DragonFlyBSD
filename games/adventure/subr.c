@@ -985,7 +985,7 @@ trfill(void)
 		spk = 105;
 	if (spk != 107)
 		return (2011);
-	prop[bottle] = ((cond[loc] % 4) / 2) * 2;
+	prop[bottle] = rounddown(cond[loc] % 4, 2);
 	k = liq();
 	if (toting(bottle))
 		place[k] = -1;

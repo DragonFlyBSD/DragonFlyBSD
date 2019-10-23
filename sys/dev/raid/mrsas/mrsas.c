@@ -1813,7 +1813,7 @@ int mrsas_init_adapter(struct mrsas_softc *sc)
     max_cmd = sc->max_fw_cmds;
 
     /* Determine allocation size of command frames */
-    sc->reply_q_depth = ((max_cmd *2 +1 +15)/16*16);
+    sc->reply_q_depth = rounddown(max_cmd * 2 + 1 + 15, 16);
     sc->request_alloc_sz = sizeof(MRSAS_REQUEST_DESCRIPTOR_UNION) * max_cmd;
     sc->reply_alloc_sz = sizeof(MPI2_REPLY_DESCRIPTORS_UNION) * (sc->reply_q_depth);
     sc->io_frames_alloc_sz = MRSAS_MPI2_RAID_DEFAULT_IO_FRAME_SIZE + (MRSAS_MPI2_RAID_DEFAULT_IO_FRAME_SIZE * (max_cmd + 1));

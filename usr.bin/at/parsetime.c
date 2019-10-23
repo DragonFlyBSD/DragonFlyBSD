@@ -37,7 +37,7 @@
 
 /* System Headers */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
@@ -413,7 +413,7 @@ assign_date(struct tm *tm, long mday, long mon, long year)
 		lt = localtime(&now);
 
 		/* Convert to tm_year assuming current century */
-		year += (lt->tm_year / 100) * 100;
+		year += rounddown(lt->tm_year, 100);
 
 		if (year == lt->tm_year - 1) year++;
 		else if (year < lt->tm_year)

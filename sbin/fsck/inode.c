@@ -277,7 +277,7 @@ ginode(ufs1_ino_t inumber)
 		if (pbp != 0)
 			pbp->b_flags &= ~B_INUSE;
 		pbp = getdatablk(iblk, sblock.fs_bsize);
-		startinum = (inumber / INOPB(&sblock)) * INOPB(&sblock);
+		startinum = rounddown(inumber, INOPB(&sblock));
 	}
 	return (&pbp->b_un.b_dinode[inumber % INOPB(&sblock)]);
 }

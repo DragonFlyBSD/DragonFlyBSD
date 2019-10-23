@@ -39,7 +39,7 @@
 
 #include "namespace.h"
 #include "reentrant.h"
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/event.h>
 #include <sys/time.h>
 #include <sys/socket.h>
@@ -215,8 +215,8 @@ clnt_dg_create(int fd,			/* open file descriptor */
 	/*
 	 * Should be multiple of 4 for XDR.
 	 */
-	sendsz = ((sendsz + 3) / 4) * 4;
-	recvsz = ((recvsz + 3) / 4) * 4;
+	sendsz = rounddown(sendsz + 3, 4);
+	recvsz = rounddown(recvsz + 3, 4);
 	cu = mem_alloc(sizeof (*cu) + sendsz + recvsz);
 	if (cu == NULL)
 		goto err1;

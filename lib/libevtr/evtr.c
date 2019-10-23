@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/tree.h>
@@ -1872,7 +1873,7 @@ evtr_last_event(evtr_t evtr, evtr_event_t ev)
 		 * location that we are sure contains a header so we can
 		 * pick up the stream.
 		 */
-		last_boundary = (st.st_size / REC_BOUNDARY) * REC_BOUNDARY;
+		last_boundary = rounddown(st.st_size, REC_BOUNDARY);
 		/* XXX: ->bytes should be in query */
 		assert(evtr->bytes == 0);
 		evtr_skip(evtr, last_boundary);

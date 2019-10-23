@@ -35,11 +35,9 @@
  *	Checks for mmap last-page zero fill.
  *
  * $FreeBSD: src/tools/regression/fsx/fsx.c,v 1.2 2003/04/23 23:42:23 jkh Exp $
- * $DragonFly: src/test/stress/fsx/fsx.c,v 1.2 2005/05/02 19:31:56 dillon Exp $
- *
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -233,7 +231,7 @@ logdump(void)
 	for ( ; count > 0; count--) {
 		int opnum;
 
-		opnum = i+1 + (logcount/LOGSIZE)*LOGSIZE;
+		opnum = i+1 + rounddown(logcount, LOGSIZE);
 		prt("%d(%d mod 256): ", opnum, opnum%256);
 		lp = &oplog[i];
 		if ((closeopen = lp->operation < 0))

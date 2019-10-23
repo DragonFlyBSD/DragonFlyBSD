@@ -1815,7 +1815,7 @@ hdaa_channel_setspeed(kobj_t obj, void *data, uint32_t speed)
 	/* First look for equal or multiple frequency. */
 	for (i = 0; ch->pcmrates[i] != 0; i++) {
 		spd = ch->pcmrates[i];
-		if (speed != 0 && spd / speed * speed == spd) {
+		if (speed != 0 && rounddown(spd, speed) == spd) {
 			ch->spd = spd;
 			return (spd);
 		}

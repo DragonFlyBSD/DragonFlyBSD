@@ -181,7 +181,7 @@ typedef unsigned long	       *pUINT32;
 /* Seconds 12 bits (optimized with the assumption of 12 & 12) */
 # define _F_getTID1(w,x,y)    ((*(U16 __FAR__ *)(((U8 __FAR__ *)(&((w)->x)))\
 			       + (I2O_TID_SZ/8)))\
-				>> (I2O_TID_SZ-((I2O_TID_SZ/8)*8)))
+				>> (I2O_TID_SZ-rounddown(I2O_TID_SZ, 8)))
 # define _F_setTID1(w,x,y,z)  ((*((U16 __FAR__ *)(((U8 __FAR__ *)(&((w)->x)))\
 			       + (I2O_TID_SZ/8)))) &= (0xFFFF >> I2O_TID_SZ));\
 			      ((*((U16 __FAR__ *)(((U8 __FAR__ *)(&((w)->x)))\

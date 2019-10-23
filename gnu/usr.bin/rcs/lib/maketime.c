@@ -27,7 +27,6 @@ Report problems and direct all questions to:
 
 /*
  * $FreeBSD: src/gnu/usr.bin/rcs/lib/maketime.c,v 1.7 1999/08/27 23:36:43 peter Exp $
- * $DragonFly: src/gnu/usr.bin/rcs/lib/maketime.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
  */
 
 #if has_conf_h
@@ -39,6 +38,7 @@ Report problems and direct all questions to:
 #		define const
 #		define P(x) ()
 #	endif
+#	include <sys/param.h>
 #	include <stdlib.h>
 #	include <time.h>
 #endif
@@ -277,7 +277,7 @@ maketime(pt, default_time)
 
 	if (TM_DEFINED(pt->ymodulus))
 	    tm.tm_year +=
-		(tm0->tm_year + TM_YEAR_ORIGIN)/pt->ymodulus * pt->ymodulus;
+		rounddown(tm0->tm_year + TM_YEAR_ORIGIN, pt->ymodulus);
 	else if (!TM_DEFINED(tm.tm_year)) {
 	    /* Set default year, month, day from current time.  */
 	    tm.tm_year = tm0->tm_year + TM_YEAR_ORIGIN;

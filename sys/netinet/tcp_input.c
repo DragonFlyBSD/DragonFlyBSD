@@ -3041,7 +3041,7 @@ tcp_rmx_mss(struct tcpcb *tp, struct rtentry *rt, int offer)
 		mss &= ~(MCLBYTES-1);
 #else
 	if (mss > MCLBYTES)
-		mss = mss / MCLBYTES * MCLBYTES;
+		mss = rounddown(mss, MCLBYTES);
 #endif
 	/*
 	 * If there's a pipesize, change the socket buffer

@@ -382,8 +382,7 @@ mouse_cut_start(scr_stat *scp)
 	    /* if the pointer is on trailing blank chars, mark towards eol */
 	    i = skip_spc_left(scp, scp->mouse_pos) + 1;
 	    crit_enter();
-	    scp->mouse_cut_start =
-	        (scp->mouse_pos / scp->xsize) * scp->xsize + i;
+	    scp->mouse_cut_start = rounddown(scp->mouse_pos, scp->xsize) + i;
 	    scp->mouse_cut_end =
 	        (scp->mouse_pos / scp->xsize + 1) * scp->xsize - 1;
 	    crit_exit();
@@ -442,7 +441,7 @@ mouse_cut_word(scr_stat *scp)
 	scp->mouse_cut_end = -1;
 	crit_exit();
 
-	sol = (scp->mouse_pos / scp->xsize) * scp->xsize;
+	sol = rounddown(scp->mouse_pos, scp->xsize);
 	eol = sol + scp->xsize;
 	c = sc_vtb_getc(&scp->vtb, scp->mouse_pos);
 	if (IS_SPACE_CHAR(c)) {
@@ -510,8 +509,7 @@ mouse_cut_line(scr_stat *scp)
 	}
 
 	/* mark the entire line */
-	scp->mouse_cut_start =
-	    (scp->mouse_pos / scp->xsize) * scp->xsize;
+	scp->mouse_cut_start = rounddown(scp->mouse_pos, scp->xsize);
 	scp->mouse_cut_end = scp->mouse_cut_start + scp->xsize - 1;
 	mark_for_update(scp, scp->mouse_cut_start);
 	mark_for_update(scp, scp->mouse_cut_end);

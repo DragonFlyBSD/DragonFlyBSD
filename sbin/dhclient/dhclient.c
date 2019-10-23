@@ -2099,7 +2099,7 @@ check_classless_option(unsigned char *data, int len)
 		if ((addr & mask) != addr) {
 			addr &= mask;
 			data[i - 1] = (unsigned char)(
-				(addr >> (((32 - width)/8)*8)) & 0xFF);
+				(addr >> rounddown(32 - width, 8)) & 0xFF);
 		}
 		i += 4;
 	}

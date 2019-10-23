@@ -154,8 +154,8 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
     /* sanitize arrays total_size % (width * interleave) == 0 */
     if (rdp->type == AR_T_RAID0 || rdp->type == AR_T_RAID01 ||
 	rdp->type == AR_T_RAID5) {
-	rdp->total_sectors = (rdp->total_sectors/(rdp->interleave*rdp->width))*
-			     (rdp->interleave * rdp->width);
+	rdp->total_sectors = rounddown(rdp->total_sectors,
+	    rdp->interleave * rdp->width);
 	ksprintf(buffer, " (stripe %d KB)",
 		(rdp->interleave * DEV_BSIZE) / 1024);
     }

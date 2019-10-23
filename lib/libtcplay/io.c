@@ -315,7 +315,7 @@ write_to_disk(const char *dev, off_t offset, size_t blksz, void *mem,
 	printf("offset: %"PRIu64", internal offset: %"PRIu64"\n",
 	    (uint64_t)offset, (uint64_t)internal_off);
 #endif
-	offset = (offset/blksz) * blksz;
+	offset = rounddown(offset, blksz);
 
 	if ((internal_off + bytes) > blksz) {
 		tc_log(1, "This should never happen: internal_off + bytes > "

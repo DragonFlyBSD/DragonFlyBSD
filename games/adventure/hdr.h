@@ -53,7 +53,7 @@
  */
 
 /* hdr.h: included by c advent files */
-#include <sys/types.h>
+#include <sys/param.h>
 #include <signal.h>
 
 int datfd;			/* message file descriptor */
