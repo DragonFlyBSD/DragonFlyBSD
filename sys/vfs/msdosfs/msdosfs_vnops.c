@@ -239,7 +239,7 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 		fileid = cntobn(pmp, dep->de_dirclust) * dirsperblk;
 		if (dep->de_dirclust == MSDOSFSROOT)
 			fileid = roottobn(pmp, 0) * dirsperblk;
-		fileid += dep->de_diroffset / sizeof(struct direntry);
+		fileid += (uoff_t)dep->de_diroffset / sizeof(struct direntry);
 	}
 	vap->va_fileid = fileid;
 	if ((dep->de_Attributes & ATTR_READONLY) == 0)
@@ -247,7 +247,7 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	else
 		mode = S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH;
 	vap->va_mode = mode &
-		(ap->a_vp->v_type == VDIR ? pmp->pm_dirmask : pmp->pm_mask);
+	    (ap->a_vp->v_type == VDIR ? pmp->pm_dirmask : pmp->pm_mask);
 	vap->va_uid = pmp->pm_uid;
 	vap->va_gid = pmp->pm_gid;
 	vap->va_nlink = 1;
@@ -869,8 +869,8 @@ msdosfs_rename(struct vop_old_rename_args *ap)
 	/*
 	 * Check for cross-device rename.
 	 */
-	if ((fvp->v_mount != tdvp->v_mount) ||
-	    (tvp && (fvp->v_mount != tvp->v_mount))) {
+	if (fvp->v_mount != tdvp->v_mount ||
+	    (tvp && fvp->v_mount != tvp->v_mount)) {
 		error = EXDEV;
 abortit:
 		if (tdvp == tvp)
