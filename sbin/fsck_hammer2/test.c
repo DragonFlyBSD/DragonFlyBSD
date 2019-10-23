@@ -812,7 +812,10 @@ init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
 				newp = calloc(1, sizeof(*newp));
 				assert(newp);
 				newp->bref = *bref;
-				newp->msg = strdup(ipdata.filename);
+				newp->msg = calloc(1,
+				    sizeof(ipdata.filename) + 1);
+				memcpy(newp->msg, ipdata.filename,
+				    sizeof(ipdata.filename));
 				p = TAILQ_FIRST(blist);
 				while (p) {
 					if (strcmp(newp->msg, p->msg) <= 0) {
