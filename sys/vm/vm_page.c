@@ -3502,7 +3502,7 @@ _vm_page_zero_valid(vm_page_t m, int base, int size)
 	 * first block.
 	 */
 
-	if ((frag = base & ~(DEV_BSIZE - 1)) != base &&
+	if ((frag = rounddown2(base, DEV_BSIZE)) != base &&
 	    (m->valid & (1 << (base >> DEV_BSHIFT))) == 0
 	) {
 		pmap_zero_page_area(
@@ -3520,7 +3520,7 @@ _vm_page_zero_valid(vm_page_t m, int base, int size)
 
 	endoff = base + size;
 
-	if ((frag = endoff & ~(DEV_BSIZE - 1)) != endoff &&
+	if ((frag = rounddown2(endoff, DEV_BSIZE)) != endoff &&
 	    (m->valid & (1 << (endoff >> DEV_BSHIFT))) == 0
 	) {
 		pmap_zero_page_area(

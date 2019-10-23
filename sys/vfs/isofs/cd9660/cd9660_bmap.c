@@ -89,7 +89,7 @@ cd9660_bmap(struct vop_bmap_args *ap)
 		else if (nbytes > MAXBSIZE)
 			*ap->a_runp = MAXBSIZE;
 		else
-			*ap->a_runp = (int)nbytes & ~(bsize - 1);
+			*ap->a_runp = rounddown2((int)nbytes, bsize);
 	}
 
 	if (ap->a_runb) {

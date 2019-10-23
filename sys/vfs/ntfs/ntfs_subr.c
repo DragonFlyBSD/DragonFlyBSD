@@ -1688,7 +1688,7 @@ ntfs_readattr(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t attrnum,
 		uup = kmalloc(ntfs_cntob(NTFS_COMPUNIT_CL), M_NTFSDECOMP,
 			      M_WAITOK);
 
-		cn = (ntfs_btocn(roff)) & (~(NTFS_COMPUNIT_CL - 1));
+		cn = rounddown2(ntfs_btocn(roff), NTFS_COMPUNIT_CL);
 		off = roff - ntfs_cntob(cn);
 
 		while (left) {

@@ -645,7 +645,7 @@ start_init(void *dummy, struct trapframe *frame)
 		/*
 		 * Move out the arg pointers.
 		 */
-		uap = (char **)((intptr_t)ucp & ~(sizeof(intptr_t)-1));
+		uap = (char **)(rounddown2((intptr_t)ucp, sizeof(intptr_t)));
 
 		/* terminator */
 		suword64((uint64_t *)(caddr_t)--uap, (uint64_t)0);

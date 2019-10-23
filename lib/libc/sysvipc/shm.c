@@ -245,7 +245,7 @@ sysvipc_shmat(int shmid, const void *shmaddr, int shmflg)
 	flags = MAP_SHARED;
 	if (shmaddr) {
 		if (shmflg & SHM_RND) {
-			addr = (void *)((uintptr_t)shmaddr & ~(SHMLBA-1));
+			addr = (void *)(rounddown2((uintptr_t)shmaddr, SHMLBA));
 		} else if (((uintptr_t)shmaddr & (SHMLBA-1)) == 0) {
 			addr = __DECONST(void *, shmaddr);
 		} else {

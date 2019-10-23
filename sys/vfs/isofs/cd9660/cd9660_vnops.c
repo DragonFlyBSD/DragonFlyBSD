@@ -626,7 +626,7 @@ cd9660_readlink(struct vop_readlink_args *ap)
 	 * Get parents directory record block that this inode included.
 	 */
 	error = bread(imp->im_devvp,
-		      (off_t)ip->i_number & ~((1 << imp->im_bshift) - 1),
+		      rounddown2((off_t)ip->i_number, 1 << imp->im_bshift),
 		      imp->logical_block_size, &bp);
 	if (error) {
 		brelse(bp);

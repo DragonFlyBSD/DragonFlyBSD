@@ -24,10 +24,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/map.c,v 1.6 2005/08/31 01:47:19 marcel Exp $
- * $DragonFly: src/sbin/gpt/map.c,v 1.2 2007/06/17 08:34:59 dillon Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,7 +34,7 @@
 #include "map.h"
 
 #define ROUNDTO 2048	// must be a power of two
-#define ROUNDDOWN(x) ((x-1) & ~(ROUNDTO-1))
+#define ROUNDDOWN(x) rounddown2(x - 1, ROUNDTO)
 #define ROUNDUP(x) (ROUNDDOWN(x) + ROUNDTO)
 
 int lbawidth;

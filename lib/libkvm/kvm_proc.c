@@ -648,7 +648,7 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 	while (argv < kd->argv + narg && *argv != NULL) {
 
 		/* get the address that the current argv string is on */
-		addr = (u_long)*argv & ~(PAGE_SIZE - 1);
+		addr = rounddown2((u_long)*argv, PAGE_SIZE);
 
 		/* is it the same page as the last one? */
 		if (addr != oaddr) {

@@ -450,7 +450,7 @@ morepages(int n)
 			    addr);
 	}
 
-	offset = (long)pagepool_start - ((long)pagepool_start & ~(pagesz - 1));
+	offset = (long)pagepool_start - rounddown2((long)pagepool_start, pagesz);
 
 	if ((pagepool_start = mmap(0, n * pagesz,
 			PROT_READ|PROT_WRITE,

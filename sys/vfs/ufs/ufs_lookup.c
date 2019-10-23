@@ -444,7 +444,7 @@ found:
 	 * in the cache as to where the entry was found.
 	 */
 	if (nameiop == NAMEI_LOOKUP)
-		dp->i_diroff = dp->i_offset &~ (DIRBLKSIZ - 1);
+		dp->i_diroff = rounddown2(dp->i_offset, DIRBLKSIZ);
 
 	/*
 	 * If deleting, and at end of pathname, return
@@ -874,7 +874,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 	if (dp->i_dirhash != NULL)
 		ufsdirhash_checkblock(dp, dirbuf -
 		    (dp->i_offset & (DIRBLKSIZ - 1)),
-		    dp->i_offset & ~(DIRBLKSIZ - 1));
+		    rounddown2(dp->i_offset, DIRBLKSIZ));
 #endif
 
 	if (DOINGSOFTDEP(dvp)) {
@@ -972,7 +972,7 @@ ufs_dirremove(struct vnode *dvp, struct inode *ip, int flags, int isrmdir)
 	if (dp->i_dirhash != NULL)
 		ufsdirhash_checkblock(dp, (char *)ep -
 		    ((dp->i_offset - dp->i_count) & (DIRBLKSIZ - 1)),
-		    dp->i_offset & ~(DIRBLKSIZ - 1));
+		    rounddown2(dp->i_offset, DIRBLKSIZ));
 #endif
 out:
 	if (DOINGSOFTDEP(dvp)) {

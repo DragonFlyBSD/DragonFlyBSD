@@ -159,14 +159,14 @@ cluster_getcache(cluster_cache_t *dummy, struct vnode *vp, off_t loffset)
 	for (i = 0; i < 4; ++i) {
 		if (cc[i].vp != vp)
 			continue;
-		if (((cc[i].v_cstart ^ loffset) & ~(CLUSTER_ZONE - 1)) == 0) {
+		if (rounddown2(cc[i].v_cstart ^ loffset, CLUSTER_ZONE) == 0) {
 			xact = i;
 			break;
 		}
 	}
 	if (xact >= 0 && atomic_swap_int(&cc[xact].locked, 1) == 0) {
 		if (cc[xact].vp == vp &&
-		    ((cc[i].v_cstart ^ loffset) & ~(CLUSTER_ZONE - 1)) == 0) {
+		    rounddown2(cc[i].v_cstart ^ loffset, CLUSTER_ZONE) == 0) {
 			return(&cc[xact]);
 		}
 		atomic_swap_int(&cc[xact].locked, 0);

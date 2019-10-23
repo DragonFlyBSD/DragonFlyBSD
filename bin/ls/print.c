@@ -265,7 +265,7 @@ printcol(const DISPLAY *dp)
 	if (f_type)
 		colwidth += 1;
 
-	colwidth = (colwidth + tabwidth) & ~(tabwidth - 1);
+	colwidth = rounddown2(colwidth + tabwidth, tabwidth);
 	if (termwidth < 2 * colwidth) {
 		printscol(dp);
 		return;
@@ -296,7 +296,7 @@ printcol(const DISPLAY *dp)
 				base += numrows;
 			if (base >= num)
 				break;
-			while ((cnt = ((chcnt + tabwidth) & ~(tabwidth - 1)))
+			while ((cnt = (rounddown2(chcnt + tabwidth, tabwidth)))
 			    <= endcol) {
 				if (f_sortacross && col + 1 >= numcols)
 					break;

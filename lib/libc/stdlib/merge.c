@@ -31,7 +31,6 @@
  *
  * @(#)merge.c	8.2 (Berkeley) 2/14/94
  * $FreeBSD: src/lib/libc/stdlib/merge.c,v 1.8 2007/01/09 00:28:10 imp Exp $
- * $DragonFly: src/lib/libc/stdlib/merge.c,v 1.6 2005/11/20 12:37:48 swildner Exp $
  */
 
 /*
@@ -48,7 +47,7 @@
  * (The default is pairwise merging.)
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 
 #include <errno.h>
 #include <stdlib.h>
@@ -87,7 +86,7 @@ static void insertionsort(u_char *, size_t, size_t,
 /* Assumption: PSIZE is a power of 2. */
 #define EVAL(p) (u_char **)						\
 	((u_char *)0 +							\
-	    (((u_char *)p + PSIZE - 1 - (u_char *) 0) & ~(PSIZE - 1)))
+	    (rounddown2((u_char *)p + PSIZE - 1 - (u_char *)0, PSIZE)))
 
 /*
  * Arguments are as for qsort.

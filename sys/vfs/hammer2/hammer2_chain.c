@@ -4208,8 +4208,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 * Skip keys that are not within the key/radix of the new
 		 * indirect block.  They stay in the parent.
 		 */
-		if ((~(((hammer2_key_t)1 << keybits) - 1) &
-		    (key ^ bref->key)) != 0) {
+		if (rounddown2(key ^ bref->key, (hammer2_key_t)1 << keybits) != 0) {
 			goto next_key_spinlocked;
 		}
 
@@ -4338,8 +4337,7 @@ next_key_spinlocked:
 	/*
 	 * Figure out what to return.
 	 */
-	if (~(((hammer2_key_t)1 << keybits) - 1) &
-		   (create_key ^ key)) {
+	if (rounddown2(create_key ^ key, (hammer2_key_t)1 << keybits)) {
 		/*
 		 * Key being created is outside the key range,
 		 * return the original parent.
@@ -4870,8 +4868,7 @@ hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			nkeybits = bref->keybits;
 		}
 		while (nkeybits < 64 &&
-		       (~(((hammer2_key_t)1 << nkeybits) - 1) &
-		        (key ^ bref->key)) != 0) {
+		       rounddown2(key ^ bref->key, (hammer2_key_t)1 << nkeybits) != 0) {
 			++nkeybits;
 		}
 

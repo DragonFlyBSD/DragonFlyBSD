@@ -307,8 +307,7 @@ again:
 			if (((pqtype == PQ_FREE) || (pqtype == PQ_CACHE)) &&
 			    (phys >= low) && (phys < high) &&
 			    ((phys & (alignment - 1)) == 0) &&
-			    (((phys ^ (phys + size - 1)) & /* bitwise and */
-			     ~(boundary - 1)) == 0) &&
+			    ((rounddown2(phys ^ (phys + size - 1), boundary)) == 0) &&
 			    m->wire_count == 0 && m->hold_count == 0 &&
 			    (m->busy_count &
 			     (PBUSY_LOCKED | PBUSY_MASK)) == 0 &&

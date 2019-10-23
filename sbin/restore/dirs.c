@@ -455,7 +455,7 @@ rst_seekdir(RST_DIR *dirpl, long loc, long base)
 	loc -= base;
 	if (loc < 0)
 		fprintf(stderr, "bad seek pointer to rst_seekdir %ld\n", loc);
-	lseek(dirpl->dd_fd, base + (loc & ~(DIRBLKSIZ - 1)), SEEK_SET);
+	lseek(dirpl->dd_fd, base + rounddown2(loc, DIRBLKSIZ), SEEK_SET);
 	dirpl->dd_loc = loc & (DIRBLKSIZ - 1);
 	if (dirpl->dd_loc != 0)
 		dirpl->dd_size = read(dirpl->dd_fd, dirpl->dd_buf, DIRBLKSIZ);

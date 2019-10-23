@@ -1396,8 +1396,8 @@ netif_init_tap(int tap_unit, in_addr_t *addr, in_addr_t *mask, int s)
 
 		masklen = strtoul(masklen_str, NULL, 10);
 		if (masklen < 32 && masklen > 0) {
-			netmask = htonl(~((1LL << (32 - masklen)) - 1)
-					& 0xffffffff);
+			netmask =
+			    htonl(rounddown2(0xffffffff, 1LL << (32 - masklen)));
 		} else {
 			warnx("Invalid netmask len: %lu", masklen);
 			return -1;

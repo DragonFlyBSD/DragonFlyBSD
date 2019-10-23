@@ -408,7 +408,7 @@ struct mbstat {
  * an object of the specified size at the end of the mbuf, longword aligned.
  */
 #define	M_ALIGN(m, len) do {						\
-	(m)->m_data += (MLEN - (len)) & ~(sizeof(long) - 1);		\
+	(m)->m_data += rounddown2(MLEN - (len), sizeof(long));		\
 } while (0)
 
 /*
@@ -416,7 +416,7 @@ struct mbstat {
  * or initialized by M_COPY_PKTHDR.
  */
 #define	MH_ALIGN(m, len) do {						\
-	(m)->m_data += (MHLEN - (len)) & ~(sizeof(long) - 1);		\
+	(m)->m_data += rounddown2(MHLEN - (len), sizeof(long));		\
 } while (0)
 
 /*

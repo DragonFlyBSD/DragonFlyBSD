@@ -32,7 +32,7 @@
  * @(#)colrm.c	8.2 (Berkeley) 5/4/95
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <err.h>
 #include <errno.h>
 #include <limits.h>
@@ -100,7 +100,7 @@ main(int argc, char *argv[])
 			column = 0;
 			break;
 		case '\t':
-			column = (column + TAB) & ~(TAB - 1);
+			column = rounddown2(column + TAB, TAB);
 			break;
 		default:
 			if ((width = wcwidth(ch)) > 0)

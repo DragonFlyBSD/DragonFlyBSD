@@ -380,7 +380,7 @@ ti_mem(struct ti_softc *sc, uint32_t addr, uint32_t len, caddr_t buf)
 			segsize = cnt;
 		else
 			segsize = TI_WINLEN - (segptr % TI_WINLEN);
-		CSR_WRITE_4(sc, TI_WINBASE, (segptr & ~(TI_WINLEN - 1)));
+		CSR_WRITE_4(sc, TI_WINBASE, rounddown2(segptr, TI_WINLEN));
 		if (buf == NULL)
 			bzero((char *)ti_winbase + (segptr &
 			    (TI_WINLEN - 1)), segsize);

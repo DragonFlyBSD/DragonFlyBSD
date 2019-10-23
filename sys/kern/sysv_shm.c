@@ -331,7 +331,8 @@ again:
 	if (uap->shmaddr) {
 		flags |= MAP_FIXED;
 		if (uap->shmflg & SHM_RND) {
-			attach_va = (vm_offset_t)uap->shmaddr & ~(SHMLBA-1);
+			attach_va =
+			    rounddown2((vm_offset_t)uap->shmaddr, SHMLBA);
 		} else if (((vm_offset_t)uap->shmaddr & (SHMLBA-1)) == 0) {
 			attach_va = (vm_offset_t)uap->shmaddr;
 		} else {

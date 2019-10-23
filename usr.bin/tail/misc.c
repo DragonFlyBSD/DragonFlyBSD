@@ -31,10 +31,9 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/misc.c,v 1.4.8.2 2001/04/18 09:32:08 dwmalone Exp $
- * $DragonFly: src/usr.bin/tail/misc.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <errno.h>
@@ -95,7 +94,7 @@ maparound(struct mapinfo *mip, off_t offset)
 	if (mip->start != NULL && munmap(mip->start, mip->maplen) != 0)
 		return (1);
 
-	mip->mapoff = offset & ~((off_t)TAILMAPLEN - 1);
+	mip->mapoff = rounddown2(offset, (off_t)TAILMAPLEN);
 	mip->maplen = TAILMAPLEN;
 	if (mip->maplen > (uintmax_t)(mip->maxoff - mip->mapoff))
 		mip->maplen = mip->maxoff - mip->mapoff;

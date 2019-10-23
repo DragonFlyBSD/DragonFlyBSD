@@ -225,8 +225,8 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 			continue;
 		}
 		rstart = ulmax(s->r_start, start);
-		rstart = (rstart + ((1ul << RF_ALIGNMENT(flags))) - 1) &
-		    ~((1ul << RF_ALIGNMENT(flags)) - 1);
+		rstart = rounddown2(rstart + (1ul << RF_ALIGNMENT(flags)) - 1,
+		    1ul << RF_ALIGNMENT(flags));
 		rend = ulmin(s->r_end, ulmax(start + count - 1, end));
 		DPRINTF(("truncated region: [%#lx, %#lx]; size %#lx (requested %#lx)\n",
 		       rstart, rend, (rend - rstart + 1), count));

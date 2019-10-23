@@ -34,7 +34,7 @@
  */
 
 #include "namespace.h"
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -255,7 +255,7 @@ abspos:
 	 * copying bytes laboriously.  Using a block boundary also
 	 * ensures that we only read one block, rather than two.
 	 */
-	curoff = target & ~(fp->_blksize - 1);
+	curoff = rounddown2(target, fp->_blksize);
 	if (_sseek(fp, curoff, SEEK_SET) == POS_ERR)
 		goto dumb;
 	fp->pub._r = 0;

@@ -52,7 +52,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/exca/exca.c,v 1.19 2005/01/11 00:32:43 imp Exp $
- * $DragonFly: src/sys/dev/pccard/exca/exca.c,v 1.4 2007/07/05 12:08:54 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -378,7 +377,7 @@ exca_mem_set_offset(struct exca_softc *sc, struct resource *res,
 		    "set_memory_offset: specified resource not active\n");
 		return (ENOENT);
 	}
-	sc->mem[win].cardaddr = cardaddr & ~(EXCA_MEM_PAGESIZE - 1);
+	sc->mem[win].cardaddr = rounddown2(cardaddr, EXCA_MEM_PAGESIZE);
 	delta = cardaddr % EXCA_MEM_PAGESIZE;
 	if (deltap)
 		*deltap = delta;

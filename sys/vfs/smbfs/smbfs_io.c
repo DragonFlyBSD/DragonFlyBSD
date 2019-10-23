@@ -489,8 +489,8 @@ smbfs_getpages(struct vop_getpages_args *ap)
 			m->valid = VM_PAGE_BITS_ALL;
 			m->dirty = 0;
 		} else {
-			int nvalid = ((size + DEV_BSIZE - 1) - toff) &
-				      ~(DEV_BSIZE - 1);
+			int nvalid = rounddown2((size + DEV_BSIZE - 1) - toff,
+			    DEV_BSIZE);
 			vm_page_set_validclean(m, 0, nvalid);
 		}
 		

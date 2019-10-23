@@ -1957,7 +1957,7 @@ m_align(struct mbuf *m, int len)
 		adjust = MHLEN - len;
 	else
 		adjust = MLEN - len;
-	m->m_data += adjust &~ (sizeof(long)-1);
+	m->m_data += rounddown2(adjust, sizeof(long));
 }
 
 /*

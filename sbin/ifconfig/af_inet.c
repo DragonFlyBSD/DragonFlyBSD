@@ -118,8 +118,7 @@ in_getaddr(const char *s, int which)
 				errx(1, "%s: bad value", s);
 			}
 			min->sin_len = sizeof(*min);
-			min->sin_addr.s_addr = htonl(~((1LL << (32 - masklen)) - 1) &
-						     0xffffffff);
+			min->sin_addr.s_addr = htonl(rounddown2(0xffffffff, 1LL << (32 - masklen)));
 		}
 	}
 

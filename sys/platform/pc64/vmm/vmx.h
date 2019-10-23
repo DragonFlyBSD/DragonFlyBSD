@@ -155,7 +155,7 @@ void vmx_vmexit(void);
 #define 	VMX_REGION_SIZE(reg_val)	((reg_val >> 32) & 0x01fff) /* 32:44 */
 #define 	VMX_WIDTH_ADDR(reg_val)		(reg_val >> 48 & 0x1) /* 48 */
 #define		VMXON_REGION_ALIGN_SIZE		4096ULL
-#define		VMXON_REGION_ALIGN(p)		(((unsigned long long)(p) + VMXON_REGION_ALIGN_SIZE) & ~(VMXON_REGION_ALIGN_SIZE - 1))
+#define		VMXON_REGION_ALIGN(p)		rounddown2((unsigned long long)(p) + VMXON_REGION_ALIGN_SIZE, VMXON_REGION_ALIGN_SIZE)
 
 
 

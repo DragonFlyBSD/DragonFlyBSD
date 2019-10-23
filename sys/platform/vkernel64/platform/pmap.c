@@ -1631,7 +1631,9 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		kernel_vm_end = KvaStart;
 		nkpt = 0;
 		while ((*pmap_pde(&kernel_pmap, kernel_vm_end) & VPTE_V) != 0) {
-			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
+			kernel_vm_end =
+			    rounddown2(kernel_vm_end + PAGE_SIZE * NPTEPG,
+				PAGE_SIZE * NPTEPG);
 			nkpt++;
 			if (kernel_vm_end - 1 >= vm_map_max(&kernel_map)) {
 				kernel_vm_end = vm_map_max(&kernel_map);
@@ -1665,8 +1667,9 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			continue; /* try again */
 		}
 		if ((*pde & VPTE_V) != 0) {
-			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
-					~(PAGE_SIZE * NPTEPG - 1);
+			kernel_vm_end =
+			    rounddown2(kernel_vm_end + PAGE_SIZE * NPTEPG,
+				PAGE_SIZE * NPTEPG);
 			if (kernel_vm_end - 1 >= vm_map_max(&kernel_map)) {
 				kernel_vm_end = vm_map_max(&kernel_map);
 				break;
@@ -1694,8 +1697,9 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		atomic_add_long(&kernel_pmap.pm_stats.wired_count, 1);
 		nkpt++;
 
-		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
-				~(PAGE_SIZE * NPTEPG - 1);
+		kernel_vm_end =
+		    rounddown2(kernel_vm_end + PAGE_SIZE * NPTEPG,
+			PAGE_SIZE * NPTEPG);
 		if (kernel_vm_end - 1 >= vm_map_max(&kernel_map)) {
 			kernel_vm_end = vm_map_max(&kernel_map);
 			break;

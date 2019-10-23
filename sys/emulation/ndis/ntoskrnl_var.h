@@ -132,7 +132,7 @@ typedef struct mdl mdl, ndis_buffer;
 	(len) + (PAGE_SIZE - 1)) >> PAGE_SHIFT))
 
 #define PAGE_ALIGN(ptr)						\
-	((void *)((uintptr_t)(ptr) & ~(PAGE_SIZE - 1)))
+	((void *)(rounddown2((uintptr_t)ptr, PAGE_SIZE)))
 
 #define BYTE_OFFSET(ptr)					\
 	((uint32_t)((uintptr_t)(ptr) & (PAGE_SIZE - 1)))

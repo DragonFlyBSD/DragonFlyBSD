@@ -390,7 +390,7 @@
  *     now we retain compatibility and make FMZONEBASE every 1GB
  */
 #define H2FMZONEBASE(key)	((key) & ~HAMMER2_FREEMAP_LEVEL1_MASK)
-#define H2FMBASE(key, radix)	((key) & ~(((hammer2_off_t)1 << (radix)) - 1))
+#define H2FMBASE(key, radix)	rounddown2(key, (hammer2_off_t)1 << (radix))
 
 /*
  * 16KB bitmap granularity (x2 bits per entry).

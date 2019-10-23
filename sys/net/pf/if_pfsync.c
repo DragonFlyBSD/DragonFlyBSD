@@ -1255,7 +1255,7 @@ pfsync_get_mbuf(struct pfsync_softc *sc, u_int8_t action, void **sp)
 			IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
 			return (NULL);
 		}
-		m->m_data += (MCLBYTES - len) &~ (sizeof(long) - 1);
+		m->m_data += rounddown2(MCLBYTES - len, sizeof(long));
 	} else
 		MH_ALIGN(m, len);
 

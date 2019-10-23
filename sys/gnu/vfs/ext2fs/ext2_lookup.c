@@ -544,7 +544,7 @@ found:
 	 * in the cache as to where the entry was found.
 	 */
 	if (nameiop == NAMEI_LOOKUP)
-		dp->i_diroff = dp->i_offset &~ (DIRBLKSIZ - 1);
+		dp->i_diroff = rounddown2(dp->i_offset, DIRBLKSIZ);
 
 	/*
 	 * If deleting, and at end of pathname, return

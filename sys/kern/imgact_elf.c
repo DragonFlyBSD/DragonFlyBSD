@@ -70,7 +70,7 @@
 #include <sys/ckpt.h>
 
 #define OLD_EI_BRAND	8
-#define truncps(va,ps)	((va) & ~(ps - 1))
+#define truncps(va,ps)	rounddown2(va, ps)
 #define aligned(a,t)	(truncps((u_long)(a), sizeof(t)) == (u_long)(a))
 
 static int __elfN(check_header)(const Elf_Ehdr *hdr);

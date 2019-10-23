@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/param.h>
 #include <sys/queue.h>
 #endif
 
@@ -431,8 +432,7 @@ libusb20_me_encode(void *ptr, uint16_t len, const void *pd)
 			break;
 
 		case LIBUSB20_ME_STRUCT:
-			pd_offset = -((-pd_offset) &
-			    ~(LIBUSB20_ME_STRUCT_ALIGN - 1));	/* align */
+			pd_offset = -rounddown2(-pd_offset, LIBUSB20_ME_STRUCT_ALIGN);	/* align */
 			while (pd_count--) {
 				void *src_ptr;
 				uint16_t src_len;
@@ -669,8 +669,7 @@ libusb20_me_decode(const void *ptr, uint16_t len, void *pd)
 			break;
 
 		case LIBUSB20_ME_STRUCT:
-			pd_offset = -((-pd_offset) &
-			    ~(LIBUSB20_ME_STRUCT_ALIGN - 1));	/* align */
+			pd_offset = -rounddown2(-pd_offset, LIBUSB20_ME_STRUCT_ALIGN);	/* align */
 			while (pd_count--) {
 				uint16_t temp;
 				uint16_t dummy;
