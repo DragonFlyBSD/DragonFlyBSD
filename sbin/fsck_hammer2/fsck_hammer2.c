@@ -54,11 +54,12 @@ char **PFSNames;
 static void
 init_pfs_names(const char *names)
 {
-	char *name, *p;
+	char *name, *h, *p;
 	int siz = 32;
 
 	PFSNames = calloc(siz, sizeof(char *));
 	p = strdup(names);
+	h = p;
 
 	while ((name = p) != NULL) {
 		p = strchr(p, ',');
@@ -70,9 +71,10 @@ init_pfs_names(const char *names)
 				PFSNames = realloc(PFSNames,
 				    siz * sizeof(char *));
 			}
-			PFSNames[NumPFSNames++] = name;
+			PFSNames[NumPFSNames++] = strdup(name);
 		}
 	}
+	free(h);
 
 	if (DebugOpt) {
 		int i;
@@ -153,8 +155,7 @@ main(int ac, char **av)
 	if (test_hammer2(av[0]) == -1)
 		exit(1);
 
-	if (NumPFSNames)
-		cleanup_pfs_names();
+	cleanup_pfs_names();
 
 	return 0;
 }
