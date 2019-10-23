@@ -467,6 +467,14 @@ msdosfs_read(struct vop_read_args *ap)
 	if (orig_resid == 0)
 		return (0);
 
+	/*
+	 * The caller is supposed to ensure that
+	 * uio->uio_offset >= 0 and uio->uio_resid >= 0.
+	 * We don't need to check for large offsets as in ffs because
+	 * dep->de_FileSize <= MSDOSFS_FILESIZE_MAX < OFF_MAX, so large
+	 * offsets cannot cause overflow even in theory.
+	 */
+
 	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 
 	isadir = dep->de_Attributes & ATTR_DIRECTORY;
@@ -578,8 +586,20 @@ msdosfs_write(struct vop_write_args *ap)
 	if (uio->uio_offset < 0)
 		return (EFBIG);
 
+	/*
+	 * This is needed (unlike in ffs_write()) because we extend the
+	 * file outside of the loop but we don't want to extend the file
+	 * for writes of 0 bytes.
+	 */
 	if (uio->uio_resid == 0)
 		return (0);
+
+	/*
+	 * The caller is supposed to ensure that
+	 * uio->uio_offset >= 0 and uio->uio_resid >= 0.
+	 */
+	if ((uoff_t)uio->uio_offset + uio->uio_resid > MSDOSFS_FILESIZE_MAX)
+		return (EFBIG);
 
 	/*
 	 * If they've exceeded their filesize limit, tell them about it.
@@ -592,8 +612,6 @@ msdosfs_write(struct vop_write_args *ap)
 	}
 
 	if ((uoff_t)uio->uio_offset > MSDOSFS_FILESIZE_MAX)
-		return (EFBIG);
-	if ((uoff_t)uio->uio_offset + uio->uio_resid > MSDOSFS_FILESIZE_MAX)
 		return (EFBIG);
 
 	/*
