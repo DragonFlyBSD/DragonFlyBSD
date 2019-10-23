@@ -36,7 +36,6 @@
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/namei.h>
-#include <sys/malloc.h>
 #include <sys/objcache.h>
 #include <sys/signal.h>
 #include <sys/fcntl.h>
