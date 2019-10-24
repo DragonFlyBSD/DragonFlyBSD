@@ -852,11 +852,6 @@ msdosfs_link(struct vop_old_link_args *ap)
  *
  * On exit:
  *	all denodes should be released
- *
- * Notes:
- * I'm not sure how the memory containing the pathnames pointed at by the
- * componentname structures is freed, there may be some memory bleeding
- * for each rename done.
  */
 static int
 msdosfs_rename(struct vop_old_rename_args *ap)
