@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #if defined(__DragonFly__)
 #include <sys/diskslice.h>
 #elif defined(__linux__)
