@@ -799,9 +799,7 @@ msdosfs_remove(struct vop_old_remove_args *ap)
 }
 
 /*
- * DOS filesystems don't know what links are. But since we already called
- * msdosfs_lookup() with create and lockparent, the parent is locked so we
- * have to free it before we return the error.
+ * DOS filesystems don't know what links are.
  */
 static int
 msdosfs_link(struct vop_old_link_args *ap)
