@@ -162,20 +162,10 @@ bad:
 	return (error);
 }
 
-static int msdosfs_mkdir(struct vop_old_mkdir_args *);
-
 static int
 msdosfs_mknod(struct vop_old_mknod_args *ap)
 {
-	switch (ap->a_vap->va_type) {
-	case VDIR:
-		return (msdosfs_mkdir((struct vop_old_mkdir_args *)ap));
-	case VREG:
-		return (msdosfs_create((struct vop_old_create_args *)ap));
-	default:
-		return (EINVAL);
-	}
-	/* NOTREACHED */
+	return (EINVAL);
 }
 
 static int
