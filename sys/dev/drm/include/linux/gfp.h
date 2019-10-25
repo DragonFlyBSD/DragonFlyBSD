@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,12 +34,12 @@
 #include <vm/vm_page.h>
 #include <machine/bus_dma.h>
 
-#define GFP_NOWAIT	M_NOWAIT
-#define GFP_ATOMIC	M_NOWAIT
-#define GFP_KERNEL	M_WAITOK
-#define GFP_TEMPORARY	M_WAITOK
-#define GFP_USER	M_WAITOK
-#define GFP_HIGHUSER	M_WAITOK
+#define GFP_NOWAIT	M_NOWAIT | M_CACHEALIGN
+#define GFP_ATOMIC	M_NOWAIT | M_CACHEALIGN
+#define GFP_KERNEL	M_WAITOK | M_CACHEALIGN
+#define GFP_TEMPORARY	GFP_KERNEL
+#define GFP_USER	GFP_KERNEL
+#define GFP_HIGHUSER	GFP_KERNEL
 
 #define __GFP_ZERO	M_ZERO
 
