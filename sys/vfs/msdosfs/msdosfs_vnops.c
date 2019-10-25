@@ -434,6 +434,7 @@ msdosfs_read(struct vop_read_args *ap)
 	u_int n;
 	u_long diff;
 	u_long on;
+	u_long cn;
 	daddr_t lbn;
 	daddr_t rablock;
 	off_t raoffset;
@@ -473,11 +474,8 @@ msdosfs_read(struct vop_read_args *ap)
 		if (uio->uio_offset >= dep->de_FileSize)
 			break;
 
-		/*
-		 * note: lbn is a cluster number, not a device block number.
-		 */
-		lbn = de_off2cn(pmp, uio->uio_offset);
-		loffset = de_cn2doff(pmp, lbn);
+		cn = de_off2cn(pmp, uio->uio_offset);
+		loffset = de_cn2doff(pmp, cn);
 
 		/*
 		 * If we are operating on a directory file then be sure to
@@ -485,11 +483,8 @@ msdosfs_read(struct vop_read_args *ap)
 		 * vnode for the directory.
 		 */
 		if (isadir) {
-			/*
-			 * convert cluster # to block #.  lbn is a
-			 * device block number after this.
-			 */
-			error = pcbmap(dep, lbn, &lbn, NULL, &blsize);
+			/* convert cluster # to block # */
+			error = pcbmap(dep, cn, &lbn, NULL, &blsize);
 			loffset = de_bn2doff(pmp, lbn);
 			if (error == E2BIG) {
 				error = EINVAL;
