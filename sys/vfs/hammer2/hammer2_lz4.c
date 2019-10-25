@@ -105,14 +105,13 @@ Note : this source file requires "hammer2_lz4_encoder.h"
 //**************************************
 // Includes
 //**************************************
-#include <sys/malloc.h> //for malloc macros
 #include "hammer2.h"
 #include "hammer2_lz4.h"
+#include <sys/malloc.h> //for malloc macros, hammer2.h includes sys/param.h
 
 
 //Declaration for kmalloc functions
-MALLOC_DECLARE(C_HASHTABLE);
-MALLOC_DEFINE(C_HASHTABLE, "comphashtable",
+static MALLOC_DEFINE(C_HASHTABLE, "comphashtable",
 	"A hash table used by LZ4 compression function.");
 
 
