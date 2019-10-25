@@ -1047,18 +1047,24 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 					++cn;
 				} else {
 					daddr_t dblkno;
+					u_long findcn;
 
 					bp = getblk(DETOV(dep),
 						    de_cn2doff(pmp, frcn),
 						    pmp->pm_bpcluster, 0, 0);
 					++frcn;
 					/*
+					 * Convert bio1 offset to file relative
+					 * cluster number.
+					 */
+					findcn = de_bn2cn(pmp,
+					    (daddr_t)(bp->b_bio1.bio_offset >>
+					    pmp->pm_bnshift));
+					/*
 					 * Do the bmap now, as in msdosfs_write
 					 */
-					if (pcbmap(dep,
-					    de_bn2cn(pmp, de_off2bn(pmp,
-					    bp->b_bio1.bio_offset)),
-					    &dblkno, NULL, NULL)) {
+					if (pcbmap(dep, findcn, &dblkno, NULL,
+					    NULL)) {
 						bp->b_bio2.bio_offset = NOOFFSET;
 					} else {
 						bp->b_bio2.bio_offset = de_bn2doff(pmp, dblkno);
