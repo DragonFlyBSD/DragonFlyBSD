@@ -597,9 +597,6 @@ msdosfs_write(struct vop_write_args *ap)
 		return (EFBIG);
 	}
 
-	if ((uoff_t)uio->uio_offset > MSDOSFS_FILESIZE_MAX)
-		return (EFBIG);
-
 	/*
 	 * If the offset we are starting the write at is beyond the end of
 	 * the file, then they've done a seek.  Unix filesystems allow
