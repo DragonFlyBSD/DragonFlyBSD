@@ -88,6 +88,9 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #include <sys/_malloc.h>		/* struct malloc_type */
+#ifndef NULL
+#include <sys/_null.h>			/* ensure NULL is defined */
+#endif
 #endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
