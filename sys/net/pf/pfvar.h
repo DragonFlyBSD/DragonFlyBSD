@@ -113,8 +113,8 @@ enum	{ PFTM_TCP_FIRST_PACKET, PFTM_TCP_OPENING, PFTM_TCP_ESTABLISHED,
 /* PFTM default values */
 #define PFTM_TCP_FIRST_PACKET_VAL	120	/* First TCP packet */
 #define PFTM_TCP_OPENING_VAL		30	/* No response yet */
-#define PFTM_TCP_ESTABLISHED_VAL	24*60*60/* Established */
-#define PFTM_TCP_CLOSING_VAL		15 * 60	/* Half closed */
+#define PFTM_TCP_ESTABLISHED_VAL	(24*60*60)/* Established */
+#define PFTM_TCP_CLOSING_VAL		(15 * 60) /* Half closed */
 #define PFTM_TCP_FIN_WAIT_VAL		45	/* Got both FINs */
 #define PFTM_TCP_CLOSED_VAL		90	/* Got a RST */
 #define PFTM_UDP_FIRST_PACKET_VAL	60	/* First UDP packet */

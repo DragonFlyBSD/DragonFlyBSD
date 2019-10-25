@@ -1371,12 +1371,49 @@ pf_state_expires(const struct pf_state *state)
 		end = pf_default_rule.timeout[PFTM_ADAPTIVE_END];
 		states = pf_status.states;
 	}
+
+	/*
+	 * If the number of states exceeds allowed values, adaptively
+	 * timeout the state more quickly.  This can be very dangerous
+	 * to legitimate connections, however, so defray the timeout
+	 * based on the packet count.
+	 *
+	 * Retain from 0-100% based on number of states.
+	 *
+	 * Recover up to 50% of the lost portion if there was
+	 * packet traffic (100 pkts = 50%).
+	 */
 	if (end && states > start && start < end) {
-		if (states < end)
-			return (state->expire + timeout * (end - states) /
-			    (end - start));
+		u_int32_t n;			/* timeout retention 0-100% */
+		u_int64_t pkts;
+#if 0
+		static struct krate boorate = { .freq = 1 };
+#endif
+
+		/*
+		 * Reduce timeout by n% (0-100)
+		 */
+		n = (states - start) * 100 / (end - start);
+		if (n > 100)
+			n = 0;
 		else
-			return (time_second);
+			n = 100 - n;
+
+		/*
+		 * But claw back some of the reduction based on packet
+		 * count associated with the state.
+		 */
+		pkts = state->packets[0] + state->packets[1];
+		if (pkts > 100)
+			pkts = 100;
+#if 0
+		krateprintf(&boorate, "timeout %-4u n=%u pkts=%-3lu -> %lu\n",
+			timeout, n, pkts, n + (100 - n) * pkts / 200);
+#endif
+
+		n += (100 - n) * pkts / 200;	/* recover by up-to 50% */
+		timeout = timeout * n / 100;
+
 	}
 	return (state->expire + timeout);
 }
@@ -4607,6 +4644,9 @@ pf_tcp_track_full(struct pf_state_peer *src, struct pf_state_peer *dst,
 		else if (src->state >= TCPS_CLOSING ||
 		    dst->state >= TCPS_CLOSING)
 			(*state)->timeout = PFTM_TCP_CLOSING;
+		else if ((th->th_flags & TH_SYN) &&
+			 ((*state)->state_flags & PFSTATE_SLOPPY))
+			(*state)->timeout = PFTM_TCP_FIRST_PACKET;
 		else
 			(*state)->timeout = PFTM_TCP_ESTABLISHED;
 
@@ -4809,6 +4849,9 @@ pf_tcp_track_sloppy(struct pf_state_peer *src, struct pf_state_peer *dst,
 	else if (src->state >= TCPS_CLOSING ||
 	    dst->state >= TCPS_CLOSING)
 		(*state)->timeout = PFTM_TCP_CLOSING;
+	else if ((th->th_flags & TH_SYN) &&
+		 ((*state)->state_flags & PFSTATE_SLOPPY))
+		(*state)->timeout = PFTM_TCP_FIRST_PACKET;
 	else
 		(*state)->timeout = PFTM_TCP_ESTABLISHED;
 
