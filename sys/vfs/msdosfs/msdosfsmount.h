@@ -189,9 +189,6 @@ struct msdosfsmount {
 #define	de_cn2doff(pmp, cn) \
 	((off_t)(cn) << (pmp)->pm_cnshift)
 
-#define de_off2cn(pmp, off) \
-	((daddr_t)((off) >> (pmp)->pm_cnshift))
-
 /*
  * Map a cluster number into a filesystem relative block number.
  */

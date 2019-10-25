@@ -474,7 +474,7 @@ msdosfs_read(struct vop_read_args *ap)
 		if (uio->uio_offset >= dep->de_FileSize)
 			break;
 
-		cn = de_off2cn(pmp, uio->uio_offset);
+		cn = de_cluster(pmp, uio->uio_offset);
 		loffset = de_cn2doff(pmp, cn);
 
 		/*
@@ -633,7 +633,7 @@ msdosfs_write(struct vop_write_args *ap)
 		lastcn = de_clcount(pmp, osize) - 1;
 
 	do {
-		if (de_off2cn(pmp, uio->uio_offset) > lastcn) {
+		if (de_cluster(pmp, uio->uio_offset) > lastcn) {
 			error = ENOSPC;
 			break;
 		}
@@ -655,11 +655,11 @@ msdosfs_write(struct vop_write_args *ap)
 		 * to fill in any missing pieces of the buffer since no
 		 * actual overwrite will occur.
 		 */
-		cn = de_off2cn(pmp, uio->uio_offset);
+		cn = de_cluster(pmp, uio->uio_offset);
 		if ((uio->uio_offset & pmp->pm_crbomask) == 0
 		    && uio->uio_segflg != UIO_NOCOPY
-		    && (de_off2cn(pmp, uio->uio_offset + uio->uio_resid)
-		        > de_off2cn(pmp, uio->uio_offset)
+		    && (de_cluster(pmp, uio->uio_offset + uio->uio_resid)
+		        > de_cluster(pmp, uio->uio_offset)
 			|| uio->uio_offset + uio->uio_resid >= dep->de_FileSize)) {
 			bp = getblk(thisvp, de_cn2doff(pmp, cn),
 				    pmp->pm_bpcluster, 0, 0);
@@ -669,10 +669,10 @@ msdosfs_write(struct vop_write_args *ap)
 			 * for the FAT table. (see msdosfs_strategy)
 			 */
 			if (bp->b_bio2.bio_offset == NOOFFSET) {
-				daddr_t lblkno = de_off2cn(pmp, bp->b_loffset);
 				daddr_t dblkno;
 
-				error = pcbmap(dep, lblkno,
+				error = pcbmap(dep,
+					       de_cluster(pmp, bp->b_loffset),
 					       &dblkno, NULL, NULL);
 				if (error || dblkno == (daddr_t)-1) {
 					bp->b_bio2.bio_offset = NOOFFSET;
@@ -1537,7 +1537,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	off = offset;
 
 	while (uio->uio_resid > 0) {
-		lbn = de_off2cn(pmp, offset - bias);
+		lbn = de_cluster(pmp, offset - bias);
 		on = (offset - bias) & pmp->pm_crbomask;
 		n = szmin(pmp->pm_bpcluster - on, uio->uio_resid);
 		diff = dep->de_FileSize - (offset - bias);
@@ -1695,7 +1695,6 @@ msdosfs_bmap(struct vop_bmap_args *ap)
 {
 	struct denode *dep = VTODE(ap->a_vp);
 	struct msdosfsmount *pmp = dep->de_pmp;
-	daddr_t lbn;
 	daddr_t dbn;
 	int error;
 
@@ -1711,8 +1710,7 @@ msdosfs_bmap(struct vop_bmap_args *ap)
 		*ap->a_runb = 0;
 	}
 	KKASSERT(((int)ap->a_loffset & ((1 << pmp->pm_cnshift) - 1)) == 0);
-	lbn = de_off2cn(pmp, ap->a_loffset);
-	error = pcbmap(dep, lbn, &dbn, NULL, NULL);
+	error = pcbmap(dep, de_cluster(pmp, ap->a_loffset), &dbn, NULL, NULL);
 	if (error || dbn == (daddr_t)-1) {
 		*ap->a_doffsetp = NOOFFSET;
 	} else {
@@ -1743,7 +1741,7 @@ msdosfs_strategy(struct vop_strategy_args *ap)
 	 */
 	nbio = push_bio(bio);
 	if (nbio->bio_offset == NOOFFSET) {
-		error = pcbmap(dep, de_off2cn(pmp, bio->bio_offset),
+		error = pcbmap(dep, de_cluster(pmp, bio->bio_offset),
 			       &dblkno, NULL, NULL);
 		if (error) {
 			bp->b_error = error;

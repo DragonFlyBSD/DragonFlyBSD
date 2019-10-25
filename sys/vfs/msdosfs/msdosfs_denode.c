@@ -467,7 +467,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 	int allerror;
 	u_long eofentry;
 	u_long chaintofree;
-	daddr_t bn, cn;
+	daddr_t bn;
 	int boff;
 	int isadir = dep->de_Attributes & ATTR_DIRECTORY;
 	struct buf *bp;
@@ -531,7 +531,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 			error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn),
 				      pmp->pm_bpcluster, &bp);
 		} else {
-			cn = de_cluster(pmp, length);
+			u_long cn = de_cluster(pmp, length);
 			error = bread(DETOV(dep), de_cn2doff(pmp, cn),
 				      pmp->pm_bpcluster, &bp);
 		}
