@@ -30,6 +30,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/param.h>
 #include <sys/malloc.h>
 #include <cpu/atomic.h>
 #include <dev/disk/dm/dm.h>

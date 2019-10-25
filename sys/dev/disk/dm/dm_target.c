@@ -30,6 +30,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/param.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/linker.h>

@@ -79,6 +79,7 @@
  *
  */
 
+#include <sys/param.h>
 #include <sys/device.h>
 #include <sys/malloc.h>
 #include <cpu/atomic.h>

@@ -34,9 +34,9 @@
  * This file implements initial version of device-mapper dklinear target.
  */
 
-#include <sys/malloc.h>
-
 #include <dev/disk/dm/dm.h>
+#include <sys/malloc.h>		/* for malloc macros, dm.h includes sys/param.h */
+
 MALLOC_DEFINE(M_DMLINEAR, "dm_linear", "Device Mapper Target Linear");
 
 typedef struct target_linear_config {
