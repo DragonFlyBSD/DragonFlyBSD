@@ -173,7 +173,7 @@ char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 					    __FILE__, __LINE__);	\
 		if (((flags) & (M_WAITOK|M_NULLOK)) == M_WAITOK ||	\
 		    __predict_true(_malloc_item != NULL)) {		\
-			bzero(_malloc_item, _size);			\
+			__builtin_memset(_malloc_item, 0, _size);	\
 		}							\
 	} else {							\
 	    _malloc_item = kmalloc_debug(_size, type, flags,		\
@@ -204,7 +204,7 @@ void	*kmalloc(unsigned long size, struct malloc_type *type, int flags)
 		_malloc_item = kmalloc(_size, type, (flags) & ~M_ZERO);	\
 		if (((flags) & (M_WAITOK|M_NULLOK)) == M_WAITOK ||	\
 		    __predict_true(_malloc_item != NULL)) {		\
-			bzero(_malloc_item, _size);			\
+			__builtin_memset(_malloc_item, 0, _size);	\
 		}							\
 	} else {							\
 	    _malloc_item = kmalloc(_size, type, flags);			\
