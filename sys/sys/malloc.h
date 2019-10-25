@@ -161,7 +161,7 @@ char	*kstrdup_debug(const char *, struct malloc_type *,
 char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 			const char *file, int line) __malloclike __heedresult;
 #if 1
-#define kmalloc(size, type, flags) ({					\
+#define _kmalloc(size, type, flags) ({					\
 	void *_malloc_item;						\
 	size_t _size = (size);						\
 									\
@@ -181,7 +181,11 @@ char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 	}								\
 	_malloc_item;							\
 })
+#else
+#define _kmalloc(size, type, flags)	\
+	kmalloc_debug(_size, type, flags, __FILE__, __LINE__);
 #endif
+#define kmalloc(size, type, flags)	_kmalloc(size, type, flags)
 #define krealloc(addr, size, type, flags)	\
 	krealloc_debug(addr, size, type, flags, __FILE__, __LINE__)
 #define kstrdup(str, type)			\
@@ -193,25 +197,24 @@ char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 
 void	*kmalloc(unsigned long size, struct malloc_type *type, int flags)
 		 __malloclike __heedresult __alloc_size(1);
+static __inline __always_inline void *
+_kmalloc(size_t _size, struct malloc_type *_type, int _flags)
+{
 #if 1
-#define kmalloc(size, type, flags) ({					\
-	void *_malloc_item;						\
-	size_t _size = (size);						\
-									\
-	if (__builtin_constant_p(size) &&				\
-	    __builtin_constant_p(flags) &&				\
-	    ((flags) & M_ZERO)) {					\
-		_malloc_item = kmalloc(_size, type, (flags) & ~M_ZERO);	\
-		if (((flags) & (M_WAITOK|M_NULLOK)) == M_WAITOK ||	\
-		    __predict_true(_malloc_item != NULL)) {		\
-			__builtin_memset(_malloc_item, 0, _size);	\
-		}							\
-	} else {							\
-	    _malloc_item = kmalloc(_size, type, flags);			\
-	}								\
-	_malloc_item;							\
-})
+	if (__builtin_constant_p(_size) && __builtin_constant_p(_flags) &&
+	    (_flags & M_ZERO)) {
+		void *_malloc_item;
+		_malloc_item = kmalloc(_size, _type, _flags & ~M_ZERO);
+		if ((_flags & (M_WAITOK|M_NULLOK)) == M_WAITOK ||
+		    __predict_true(_malloc_item != NULL)) {
+			__builtin_memset(_malloc_item, 0, _size);
+		}
+		return _malloc_item;
+	}
 #endif
+	return (kmalloc(_size, _type, _flags));
+}
+#define kmalloc(size, type, flags)	_kmalloc((size), (type), (flags))
 void	*krealloc(void *addr, unsigned long size, struct malloc_type *type,
 		  int flags) __heedresult __alloc_size(2);
 char	*kstrdup(const char *, struct malloc_type *)
