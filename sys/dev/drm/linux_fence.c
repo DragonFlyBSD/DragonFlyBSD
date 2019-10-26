@@ -61,7 +61,7 @@ int	linux_fence_trace = 0;
  */
 void
 fence_init(struct fence *fence, const struct fence_ops *ops, struct lock *lock,
-    unsigned context, unsigned seqno)
+    u64 context, unsigned seqno)
 {
 
 	kref_init(&fence->refcount);
@@ -138,12 +138,12 @@ atomic_add_int_nv(volatile uint32_t *target, int32_t delta)
  *	Return the first of a contiguous sequence of unique
  *	identifiers, at least until the system wraps around.
  */
-unsigned
+u64
 fence_context_alloc(unsigned n)
 {
-	static volatile unsigned next_context = 0;
+	static atomic64_t next_context = { 0 };
 
-	return atomic_add_int_nv(&next_context, n) - n;
+	return atomic64_add_return(n, &next_context) - n;
 }
 
 #if 0

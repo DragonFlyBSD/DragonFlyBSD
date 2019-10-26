@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,35 +23,16 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef	_LINUX_TYPES_H_
-#define	_LINUX_TYPES_H_
 
-#include <uapi/linux/types.h>
-#include <linux/compiler.h>
+#ifndef _ASM_ATOMIC64_64_H_
+#define _ASM_ATOMIC64_64_H_
 
-typedef unsigned int gfp_t;
+#include <linux/types.h>
 
-typedef u64 phys_addr_t;
-typedef uint64_t resource_size_t;
-typedef uint64_t dma_addr_t;
-typedef uint64_t loff_t;
+static inline long
+atomic64_add_return(int64_t i, atomic64_t *v)
+{
+	return i + atomic_fetchadd_64(&v->counter, i);
+}
 
-#define DECLARE_BITMAP(n, bits) \
-	unsigned long n[howmany(bits, sizeof(long) * 8)]
-
-#ifndef bool
-typedef _Bool	bool;
-#endif
-
-typedef unsigned short umode_t;
-
-typedef unsigned long pgoff_t;
-
-struct rcu_head {
-};
-
-typedef struct {
-	long counter;
-} atomic64_t;
-
-#endif	/* _LINUX_TYPES_H_ */
+#endif	/* _ASM_ATOMIC64_64_H_ */

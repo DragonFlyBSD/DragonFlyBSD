@@ -37,4 +37,6 @@
 
 #define ATOMIC_INIT(i)	{ (i) }
 
+#include <asm/atomic64_64.h>
+
 #endif	/* _ASM_ATOMIC_H_ */

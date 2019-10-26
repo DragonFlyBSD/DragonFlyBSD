@@ -38,10 +38,6 @@ typedef struct {
 	volatile u_int counter;
 } atomic_t;
 
-typedef struct {
-	volatile u_long counter;
-} atomic64_t;
-
 #define	atomic_add(i, v)		atomic_add_return((i), (v))
 #define	atomic_sub(i, v)		atomic_sub_return((i), (v))
 #define	atomic_inc_return(v)		atomic_add_return(1, (v))

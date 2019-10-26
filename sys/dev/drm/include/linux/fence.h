@@ -47,7 +47,7 @@ struct fence {
 	struct kref		refcount;
 	struct lock		*lock;
 	volatile unsigned long	flags;
-	unsigned		context;
+	u64			context;
 	unsigned		seqno;
 	const struct fence_ops	*ops;
 
@@ -99,13 +99,14 @@ struct fence_cb {
 
 extern int	linux_fence_trace;
 
-void	fence_init(struct fence *, const struct fence_ops *, struct lock*,
-	    unsigned, unsigned);
+void fence_init(struct fence *, const struct fence_ops *,
+		struct lock*, u64 context, unsigned seqno);
+
 void	fence_destroy(struct fence *);
 void	fence_free(struct fence *);
 
-unsigned
-	fence_context_alloc(unsigned);
+u64 fence_context_alloc(unsigned num);
+
 bool	fence_is_later(struct fence *, struct fence *);
 
 struct fence *
@@ -134,7 +135,7 @@ FENCE_TRACE(struct fence *f, const char *fmt, ...)
 
 	if (__predict_false(linux_fence_trace)) {
 		va_start(va, fmt);
-		kprintf("fence %u@%u: ", f->context, f->seqno);
+		kprintf("fence %llu@%u: ", f->context, f->seqno);
 		kvprintf(fmt, va);
 		va_end(va);
 	}
