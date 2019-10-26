@@ -38,7 +38,7 @@ __RCSID("$NetBSD: dr_5.c,v 1.14 2009/03/14 22:52:52 dholland Exp $");
 #endif
 #endif /* not lint */
 
-#include <sys/types.h>
+#include <stddef.h>
 #include "extern.h"
 
 void
@@ -88,7 +88,7 @@ mensent(struct ship *from, struct ship *to, int *crew, struct ship **captured,
 		c1 = men/100 ? crew[0] : 0;
 		c2 = (men%100)/10 ? crew[1] : 0;
 		c3 = men/10 ? crew[2] : 0;
-		c3 = *captured == 0 ? crew[2] : *pc;
+		c3 = *captured == NULL ? crew[2] : *pc;
 	} else
 		c1 = c2 = c3 = 0;
 	return(c1 + c2 + c3);

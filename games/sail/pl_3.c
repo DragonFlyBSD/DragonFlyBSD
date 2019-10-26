@@ -91,7 +91,7 @@ acceptcombat(void)
 		if (mf->struck || !crew[2])
 			goto cant;
 		closest = closestenemy(ms, (r ? 'r' : 'l'), 1);
-		if (closest == 0)
+		if (closest == NULL)
 			goto cant;
 		if (closest->file->struck)
 			goto cant;

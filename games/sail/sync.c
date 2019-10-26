@@ -272,7 +272,7 @@ sync_close(int doremove)
 {
 	const char *sync_file;
 
-	if (sync_fp != 0)
+	if (sync_fp != NULL)
 		fclose(sync_fp);
 	if (doremove) {
 		sync_file = get_sync_file(game);

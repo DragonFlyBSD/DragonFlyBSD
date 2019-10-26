@@ -170,7 +170,7 @@ play(void)
 					eyeball(sp);
 			break;
 		case 'i':
-			if ((sp = closestenemy(ms, 0, 1)) == 0)
+			if ((sp = closestenemy(ms, 0, 1)) == NULL)
 				Msg("No more ships left.");
 			else
 				eyeball(sp);

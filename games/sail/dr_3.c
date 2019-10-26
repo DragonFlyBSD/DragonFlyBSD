@@ -73,7 +73,7 @@ moveall(void)
 			ta = maxturns(sp, &af);
 			ma = maxmove(sp, sp->file->dir, 0);
 			closest = closestenemy(sp, 0, 0);
-			if (closest == 0)
+			if (closest == NULL)
 				*sp->file->movebuf = '\0';
 			else
 				closeon(sp, closest, sp->file->movebuf,
@@ -343,7 +343,7 @@ checksails(void)
 			rig = 0;
 		if (rig && sp->specs->crew3) {
 			close = closestenemy(sp, 0, 0);
-			if (close != 0) {
+			if (close != NULL) {
 				if (range(sp, close) > 9)
 					full = 1;
 				else

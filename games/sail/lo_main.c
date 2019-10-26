@@ -128,7 +128,7 @@ lo_main(void)
 	struct logs log;
 	struct ship *ship;
 
-	if ((fp = fopen(_PATH_LOGFILE, "r")) == 0) {
+	if ((fp = fopen(_PATH_LOGFILE, "r")) == NULL) {
 		err(1, "%s", _PATH_LOGFILE);
 	}
 	switch (fread(&npeople, sizeof npeople, 1, fp)) {

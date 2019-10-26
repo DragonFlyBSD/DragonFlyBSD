@@ -85,7 +85,7 @@ closestenemy(struct ship *from, int side, int anyship)
 	struct ship *sp;
 	char a;
 	int olddist = 30000, dist;
-	struct ship *closest = 0;
+	struct ship *closest = NULL;
 
 	a = capship(from)->nationality;
 	foreachship(sp) {

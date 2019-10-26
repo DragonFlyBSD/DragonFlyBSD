@@ -148,9 +148,9 @@ fightitout(struct ship *from, struct ship *to, int key)
 
 	menfrom = mensent(from, to, crewfrom, &fromcap, &pcfrom, key);
 	mento = mensent(to, from, crewto, &tocap, &pcto, 0);
-	if (fromcap == 0)
+	if (fromcap == NULL)
 		fromcap = from;
-	if (tocap == 0)
+	if (tocap == NULL)
 		tocap = to;
 	if (key) {
 		if (!menfrom) {		 /* if crew surprised */
@@ -313,7 +313,7 @@ compcombat(void)
 			if ((ready & R_LOADED) == 0)
 				continue;
 			closest = closestenemy(sp, r ? 'r' : 'l', 0);
-			if (closest == 0)
+			if (closest == NULL)
 				continue;
 			if (range(closest, sp) >
 			    range(sp, closestenemy(sp, r ? 'r' : 'l', 1)))
@@ -424,7 +424,7 @@ next(void)
 		if (best > 0.0 && bestship) {
 			char *tp = getenv("WOTD");
 			const char *p;
-			if (tp == 0)
+			if (tp == NULL)
 				p = "Driver";
 			else {
 				*tp = toupper((unsigned char)*tp);
