@@ -653,7 +653,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	/* get the process's command name */
 	if (show_fullcmd) {
 		char **comm_full = kvm_getargv(kd, pp, 0);
-		if (comm_full != 0)
+		if (comm_full != NULL)
 			comm = *comm_full;
 		else
 			comm = PP(pp, comm);

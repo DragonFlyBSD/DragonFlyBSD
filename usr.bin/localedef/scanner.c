@@ -544,7 +544,7 @@ get_symbol(void)
 			 */
 			if (category == T_END) {
 				int i;
-				for (i = 0; symwords[i].name != 0; i++) {
+				for (i = 0; symwords[i].name != NULL; i++) {
 					if (strcmp(token, symwords[i].name) ==
 					    0) {
 						last_kw = symwords[i].id;

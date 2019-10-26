@@ -224,7 +224,7 @@ static int grok_mail_headers=0;	/* treat embedded mail headers magically? */
 static int format_troff=0;	/* Format troff? */
 
 static int n_errors=0;		/* Number of failed files. Return on exit. */
-static wchar_t *output_buffer=0;	/* Output line will be built here */
+static wchar_t *output_buffer=NULL;	/* Output line will be built here */
 static size_t x;		/* Horizontal position in output line */
 static size_t x0;		/* Ditto, ignoring leading whitespace */
 static size_t output_buffer_length = 0;

@@ -745,7 +745,7 @@ main(int argc, char **argv)
 	el_set(el, EL_HIST, history, inhistory);
 	el_source(el, NULL);
 	history(inhistory, &ev, H_SETSIZE, 800);
-	if (inhistory == 0)
+	if (inhistory == NULL)
 		err(1, "Could not initialize history");
 
 	if (optind == argc - 2) {

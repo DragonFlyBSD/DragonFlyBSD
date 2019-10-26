@@ -279,7 +279,7 @@ pack_find(const char *name)
 	format = bsearch(name, formats,
 	    sizeof(formats)/sizeof(formats[0]),
 	    sizeof(formats[0]), compare_format);
-	if (format == 0)
+	if (format == NULL)
 		return (NULL);
 	return (format->pack);
 }

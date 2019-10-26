@@ -73,7 +73,7 @@ read_excludes_file(const char *name)
 	struct exclude *e;
 
 	fp = fopen(name, "r");
-	if (fp == 0)
+	if (fp == NULL)
 		err(1, "%s", name);
 
 	while ((line = fparseln(fp, NULL, NULL, NULL,

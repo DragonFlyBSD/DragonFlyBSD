@@ -716,7 +716,7 @@ main(int argc, char *argv[])
     /* get our name */
     if (argc > 0)
     {
-	if ((myname = strrchr(argv[0], '/')) == 0)
+	if ((myname = strrchr(argv[0], '/')) == NULL)
 	{
 	    myname = argv[0];
 	}

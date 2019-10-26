@@ -1794,7 +1794,7 @@ message_clear()
 	display_move(0, y_message);
 	screen_cleareol(message_length);
 	free(message_current);
-	message_current = 0;
+	message_current = NULL;
     }
 
     /* flush all pending messages */

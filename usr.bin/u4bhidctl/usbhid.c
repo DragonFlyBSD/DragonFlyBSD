@@ -443,7 +443,7 @@ int
 main(int argc, char **argv)
 {
 	report_desc_t r;
-	char *table = 0;
+	char *table = NULL;
 	char devnam[100], *dev = NULL;
 	int f;
 	int all = 0;
