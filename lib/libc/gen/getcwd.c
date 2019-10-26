@@ -66,7 +66,7 @@ getwd(char *buf)
 {
 	char *p;
 
-	if ((p = getcwd(buf, MAXPATHLEN)) != 0)
+	if ((p = getcwd(buf, MAXPATHLEN)) != NULL)
 		return(p);
 	strcpy(buf, strerror(errno));
 	return(NULL);
