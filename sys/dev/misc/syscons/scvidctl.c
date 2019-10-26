@@ -73,8 +73,10 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     if (fontsize < 14) {
 	fontsize = 8;
 #ifndef SC_NO_FONT_LOADING
-	if (!(scp->sc->fonts_loaded & FONT_8))
+	if (!(scp->sc->fonts_loaded & FONT_8)) {
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
+	}
 	font = scp->sc->font_8;
 #else
 	font = NULL;
@@ -82,8 +84,10 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     } else if (fontsize >= 16) {
 	fontsize = 16;
 #ifndef SC_NO_FONT_LOADING
-	if (!(scp->sc->fonts_loaded & FONT_16))
+	if (!(scp->sc->fonts_loaded & FONT_16)) {
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
+	}
 	font = scp->sc->font_16;
 #else
 	font = NULL;
@@ -91,8 +95,10 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     } else {
 	fontsize = 14;
 #ifndef SC_NO_FONT_LOADING
-	if (!(scp->sc->fonts_loaded & FONT_14))
+	if (!(scp->sc->fonts_loaded & FONT_14)) {
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
+	}
 	font = scp->sc->font_14;
 #else
 	font = NULL;
