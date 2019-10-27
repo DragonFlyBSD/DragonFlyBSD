@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 jsg <jsg@openbsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,5 +29,10 @@
 #define _LINUX_RATELIMIT_H_
 
 #include <linux/spinlock.h>
+
+#define DEFINE_RATELIMIT_STATE(name, interval_init, burst_init)		\
+	int name __used = 1;
+
+#define __ratelimit(x)	(1)
 
 #endif	/* _LINUX_RATELIMIT_H_ */
