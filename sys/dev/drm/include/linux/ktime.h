@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,67 +31,64 @@
 #include <linux/jiffies.h>
 
 /* time values in nanoseconds */
-union ktime {
-	int64_t tv64;
-};
-
-typedef union ktime ktime_t;
+typedef s64	ktime_t;
 
 static inline ktime_t
 ktime_set(const s64 secs, const unsigned long nsecs)
 {
-	ktime_t kt;
-
-	kt.tv64 = secs * NSEC_PER_SEC + (s64)nsecs;
-	return kt;
+	return (secs * NSEC_PER_SEC) + (s64)nsecs;
 }
 
 static inline s64
 ktime_to_us(const ktime_t kt)
 {
-	return kt.tv64 / NSEC_PER_USEC;
+	return kt / NSEC_PER_USEC;
 }
 
 static inline s64
 ktime_us_delta(const ktime_t later, const ktime_t earlier)
 {
-	return later.tv64 - earlier.tv64;
+	return later - earlier;
 }
 
 static inline int64_t ktime_to_ns(ktime_t kt)
 {
-	return kt.tv64;
+	return kt;
 }
 
 static inline struct timeval ktime_to_timeval(ktime_t kt)
 {
-	return ns_to_timeval(kt.tv64);
+	return ns_to_timeval(kt);
 }
 
 static inline ktime_t ktime_add_ns(ktime_t kt, int64_t ns)
 {
-	ktime_t res;
-
-	res.tv64 = kt.tv64 + ns;
-	return kt;
+	return kt + ns;
 }
 
 static inline ktime_t ktime_sub_ns(ktime_t kt, int64_t ns)
 {
-	ktime_t res;
-
-	res.tv64 = kt.tv64 - ns;
-	return kt;
+	return kt - ns;
 }
 
 static inline ktime_t ktime_get(void)
 {
 	struct timespec ts;
-	ktime_t kt;
 
 	nanouptime(&ts);
-	kt.tv64 = (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
-	return kt;
+	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
+}
+
+static inline ktime_t
+ktime_sub(ktime_t lhs, ktime_t rhs)
+{
+	return lhs - rhs;
+}
+
+static inline ktime_t
+ns_to_ktime(u64 ns)
+{
+	return ns;
 }
 
 #include <linux/timekeeping.h>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -64,7 +64,7 @@ void
 hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 		       u64 range_ns, const enum hrtimer_mode mode)
 {
-	int expire_ticks = tim.tv64 / (NSEC_PER_SEC / hz);
+	int expire_ticks = tim / (NSEC_PER_SEC / hz);
 
 	if (mode == HRTIMER_MODE_ABS)
 		expire_ticks -= ticks;

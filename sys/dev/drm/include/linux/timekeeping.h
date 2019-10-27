@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,10 +43,7 @@ static inline ktime_t ktime_mono_to_real(ktime_t mono)
 
 static inline ktime_t ktime_get_real(void)
 {
-	ktime_t kt;
-
-	kt.tv64 = ktime_get_raw_ns();
-	return kt;
+	return ktime_get_raw_ns();
 }
 
 /* Include time spent in suspend state */
@@ -59,7 +56,7 @@ ktime_get_boottime(void)
 static inline s64
 ktime_ms_delta(const ktime_t later, const ktime_t earlier)
 {
-	return (later.tv64 - earlier.tv64) / NSEC_PER_MSEC;
+	return (later - earlier) / NSEC_PER_MSEC;
 }
 
 static inline void
