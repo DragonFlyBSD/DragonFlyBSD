@@ -34,9 +34,8 @@
  * SUCH DAMAGE.
  */
 
-// # gcc -Wall -g -I../../sys/vfs/hammer2 -I../hammer2
-// ../../sys/libkern/icrc32.c ../../sys/vfs/hammer2/xxhash/xxhash.c
-// ../hammer2/subs.c ./reconstruct.c -o reconstruct
+// # gcc -Wall -g -I../../sys -I../hammer2 ../../sys/vfs/hammer2/xxhash/xxhash.c
+// ../../sys/libkern/icrc32.c ../hammer2/subs.c ./reconstruct.c -o reconstruct
 
 #include <sys/types.h>
 #include <sys/stat.h>

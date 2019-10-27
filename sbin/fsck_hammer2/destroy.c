@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  */
 
-// # gcc -Wall -g -I../../sys/vfs/hammer2 -I../hammer2
+// # gcc -Wall -g -I../../sys -I../hammer2
 // ../../sys/libkern/icrc32.c ../hammer2/subs.c ./destroy.c -o destroy
 
 #include <sys/types.h>
