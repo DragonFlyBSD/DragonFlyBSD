@@ -248,6 +248,9 @@ pkgs:
 	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/distfiles
 
 .for PKG in ${DPORTS_PACKAGES}
+.if make(restartpkgs)
+	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} deinstall"
+.endif
 	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} install"
 .endfor
 .for PKG in ${DPORTS_PACKAGES}
