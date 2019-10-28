@@ -127,8 +127,15 @@ __find_pfs(FILE *fp, const hammer2_blockref_t *bref, const char *pfs, bool *res)
 			bscan = NULL;
 			bcount = 0;
 			if (ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) {
-				if (!strcmp(ipdata.filename, pfs))
-					*res = true;
+				if (memchr(ipdata.filename, 0,
+				    sizeof(ipdata.filename))) {
+					if (!strcmp(ipdata.filename, pfs))
+						*res = true;
+				} else {
+					if (!memcmp(ipdata.filename, pfs,
+					    strlen(pfs)))
+						*res = true;
+				}
 			} else
 				assert(0);
 		}
@@ -216,6 +223,11 @@ __read_label(FILE *fp, char *label, size_t size, const char *devpath)
 		}
 	} else
 		pfs++;
+
+	if (strlen(pfs) > HAMMER2_INODE_MAXNAME) {
+		error = 1;
+		goto done;
+	}
 
 	/* XXX autofs -media mount can't handle multiple mounts */
 	if (__find_pfs(fp, bref, pfs, &res) == 0 && res)
