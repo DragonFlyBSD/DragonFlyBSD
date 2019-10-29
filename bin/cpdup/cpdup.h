@@ -14,6 +14,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 #include <unistd.h>
 #include <utime.h>
@@ -23,18 +24,16 @@
 #include <fnmatch.h>
 #include <assert.h>
 
-/* Solaris needs <strings.h> for bzero(), bcopy() and bcmp(). */
-#include <strings.h>
-
 #ifdef __sun
 #include "compat_sun.h"
 #endif
 
-#ifdef __linux
+#ifdef __linux__
 #define __printflike(a,b)
 #define __printf0like(a,b)
 #define __aligned(x)
 #define __unused
+#define __dead2
 #endif
 
 void logstd(const char *ctl, ...) __printflike(1, 2);
