@@ -613,7 +613,8 @@ checkHLPath(struct stat *st1, const char *spath, const char *dpath)
     char *hpath;
     int error;
 
-    asprintf(&hpath, "%s%s", UseHLPath, dpath + DstBaseLen);
+    if (asprintf(&hpath, "%s%s", UseHLPath, dpath + DstBaseLen) < 0)
+	fatal("out of memory");
 
     /*
      * stat info matches ?
@@ -1647,7 +1648,8 @@ CheckList(List *list, const char *path, const char *name)
     Node *node;
     int hv;
 
-    asprintf(&fpath, "%s/%s", path, name);
+    if (asprintf(&fpath, "%s/%s", path, name) < 0)
+	fatal("out of memory");
 
     /*
      * Scan against wildcards.  Only a node value of 1 can be a wildcard
