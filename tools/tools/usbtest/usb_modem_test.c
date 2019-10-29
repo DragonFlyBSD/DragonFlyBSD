@@ -284,8 +284,8 @@ usb_modem_data_stress_test(struct modem *p, uint32_t duration)
 	uint32_t out_max;
 	uint32_t io_max;
 
-	uint8_t *in_buffer = 0;
-	uint8_t *out_buffer = 0;
+	uint8_t *in_buffer = NULL;
+	uint8_t *out_buffer = NULL;
 
 	gettimeofday(&ref_tv, 0);
 
