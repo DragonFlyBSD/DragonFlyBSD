@@ -101,14 +101,14 @@ doit(struct libusb20_device *dev)
       return;
     }
 
-  uint8_t *data = 0;
+  uint8_t *data = NULL;
   uint16_t actlen;
 
   if ((setup.bmRequestType & 0x80) != 0)
     {
       /* this is an IN request, allocate a buffer */
       data = malloc(setup.wLength);
-      if (data == 0)
+      if (data == NULL)
 	{
 	  fprintf(stderr,
 		  "Out of memory allocating %u bytes of reply buffer\n",

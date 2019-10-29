@@ -1033,7 +1033,7 @@ ucom_dev_read(struct dev_read_args *ap)
 	struct tty *tp;
 	int error;
 
-	sc = 0;
+	sc = NULL;
 
 	tp = dev->si_tty;
 	lwkt_gettoken(&tp->t_token);
