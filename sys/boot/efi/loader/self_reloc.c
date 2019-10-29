@@ -22,14 +22,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/boot/common/self_reloc.c 293724 2016-01-12 02:17:39Z smh $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/boot/common/self_reloc.c 293724 2016-01-12 02:17:39Z smh $");
 
 #include <sys/types.h>
 #include <elf.h>
 #include <bootstrap.h>
+#include <stddef.h>
 
 #if defined(__aarch64__)
 #define	ElfW_Rel	Elf64_Rela
@@ -61,7 +61,7 @@ self_reloc(Elf_Addr baseaddr, ElfW_Dyn *dynamic)
 {
 	Elf_Word relsz, relent;
 	Elf_Addr *newaddr;
-	ElfW_Rel *rel = 0;
+	ElfW_Rel *rel = NULL;
 	ElfW_Dyn *dynp;
 
 	/*
