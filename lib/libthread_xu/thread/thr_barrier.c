@@ -47,20 +47,21 @@ _pthread_barrier_destroy(pthread_barrier_t *barrier)
 	if (bar->b_waiters > 0)
 		return (EBUSY);
 	*barrier = NULL;
-	free(bar);
+	__free(bar);
 	return (0);
 }
 
 int
 _pthread_barrier_init(pthread_barrier_t * __restrict barrier,
-    const pthread_barrierattr_t * __restrict attr __unused, unsigned count)
+		      const pthread_barrierattr_t * __restrict attr __unused,
+		      unsigned count)
 {
 	pthread_barrier_t bar;
 
 	if (barrier == NULL || count == 0 || count > INT_MAX)
 		return (EINVAL);
 
-	bar = malloc(sizeof(struct pthread_barrier));
+	bar = __malloc(sizeof(struct pthread_barrier));
 	if (bar == NULL)
 		return (ENOMEM);
 

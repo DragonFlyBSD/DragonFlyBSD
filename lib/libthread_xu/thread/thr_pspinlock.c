@@ -44,10 +44,12 @@ _pthread_spin_init(pthread_spinlock_t *lock, int pshared)
 
 	if (lock == NULL || pshared != PTHREAD_PROCESS_PRIVATE)
 		return (EINVAL);
-	if ((lck = malloc(sizeof(struct pthread_spinlock))) == NULL)
+	lck = __malloc(sizeof(struct pthread_spinlock));
+	if (lck == NULL)
 		return (ENOMEM);
 	_thr_umtx_init(&lck->s_lock);
 	*lock = lck;
+
 	return (0);
 }
 
@@ -59,10 +61,11 @@ _pthread_spin_destroy(pthread_spinlock_t *lock)
 	if (lock == NULL || *lock == NULL) {
 		ret = EINVAL;
 	} else {
-		free(*lock);
+		__free(*lock);
 		*lock = NULL;
 		ret = 0;
 	}
+
 	return (ret);
 }
 

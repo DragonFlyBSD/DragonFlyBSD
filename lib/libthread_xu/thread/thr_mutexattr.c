@@ -45,12 +45,12 @@ _pthread_mutexattr_init(pthread_mutexattr_t *attr)
 	int ret;
 	pthread_mutexattr_t pattr;
 
-	if ((pattr = (pthread_mutexattr_t)
-	    malloc(sizeof(struct pthread_mutex_attr))) == NULL) {
+	pattr = __malloc(sizeof(struct pthread_mutex_attr));
+	if (pattr == NULL) {
 		ret = ENOMEM;
 	} else {
 		memcpy(pattr, &_pthread_mutexattr_default,
-		    sizeof(struct pthread_mutex_attr));
+		       sizeof(struct pthread_mutex_attr));
 		*attr = pattr;
 		ret = 0;
 	}
@@ -123,7 +123,7 @@ _pthread_mutexattr_destroy(pthread_mutexattr_t *attr)
 	if (attr == NULL || *attr == NULL) {
 		ret = EINVAL;
 	} else {
-		free(*attr);
+		__free(*attr);
 		*attr = NULL;
 		ret = 0;
 	}

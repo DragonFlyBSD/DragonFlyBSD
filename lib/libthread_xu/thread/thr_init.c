@@ -39,6 +39,7 @@
 #include <sys/time.h>
 #include <sys/ttycom.h>
 #include <sys/mman.h>
+#include <stdio.h>
 #include <fcntl.h>
 #include <paths.h>
 #include <pthread.h>
@@ -351,7 +352,8 @@ init_main_thread(struct pthread *thread)
 	thread->magic = THR_MAGIC;
 
 	thread->cancelflags = PTHREAD_CANCEL_ENABLE | PTHREAD_CANCEL_DEFERRED;
-	thread->name = strdup("initial thread");
+	thread->name = __malloc(16);
+	snprintf(thread->name, 16, "initial thread");
 
 	/* Default the priority of the initial thread: */
 	thread->base_priority = THR_DEFAULT_PRIORITY;

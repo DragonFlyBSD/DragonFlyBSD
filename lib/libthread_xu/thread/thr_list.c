@@ -165,7 +165,7 @@ _thr_alloc(struct pthread *curthread)
 		}
 	}
 	if (thread == NULL) {
-		thread = malloc(sizeof(struct pthread));
+		thread = __malloc(sizeof(struct pthread));
 		if (thread == NULL)
 			return (NULL);
 	}
@@ -191,7 +191,7 @@ _thr_free(struct pthread *curthread, struct pthread *thread)
 {
 	DBG_MSG("Freeing thread %p\n", thread);
 	if (thread->name) {
-		free(thread->name);
+		__free(thread->name);
 		thread->name = NULL;
 	}
 	/*
@@ -224,7 +224,7 @@ _thr_free(struct pthread *curthread, struct pthread *thread)
 static void
 thr_destroy(struct pthread *curthread __unused, struct pthread *thread)
 {
-	free(thread);
+	__free(thread);
 }
 
 /*

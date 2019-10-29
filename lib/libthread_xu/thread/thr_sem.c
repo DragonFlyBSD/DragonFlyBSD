@@ -204,7 +204,7 @@ sem_alloc(unsigned int value, int pshared)
 			sem_base = NULL;
 		semid = SEMID_FORK;
 	} else {
-		sem = malloc(sizeof(struct sem));
+		sem = __malloc(sizeof(struct sem));
 		semid = SEMID_LWP;
 	}
 	if (sem == NULL) {
@@ -246,7 +246,7 @@ _sem_destroy(sem_t *sem)
 
 	switch ((*sem)->semid) {
 		case SEMID_LWP:
-			free(*sem);
+			__free(*sem);
 			break;
 		case SEMID_FORK:
 			/* memory is left intact */
@@ -465,7 +465,7 @@ sem_add_mapping(ino_t inode, dev_t dev, sem_t sem, int fd)
 {
 	struct sem_info *ni;
 
-	ni = malloc(sizeof(struct sem_info));
+	ni = __malloc(sizeof(struct sem_info));
 	if (ni == NULL) {
 		errno = ENOSPC;
 		return (SEM_FAILED);
@@ -501,7 +501,7 @@ sem_close_mapping(sem_t *sem)
 		}
 		munmap(ni->sem, getpagesize());
 		__sys_close(ni->fd);
-		free(ni);
+		__free(ni);
 		return (0);
 	}
 }

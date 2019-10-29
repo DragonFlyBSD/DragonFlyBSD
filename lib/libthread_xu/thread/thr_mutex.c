@@ -78,7 +78,7 @@
 
 #define THR_IN_MUTEXQ(thr)	(((thr)->sflags & THR_FLAGS_IN_SYNCQ) != 0)
 #define	MUTEX_DESTROY(m) do {		\
-	free(m);			\
+	__free(m);			\
 } while (0)
 
 umtx_t	_mutex_static_lock;
@@ -201,8 +201,9 @@ mutex_init(pthread_mutex_t *mutex,
 		if (error != 0)
 			return (error);
 	}
-	if ((pmutex = (pthread_mutex_t)
-		malloc(sizeof(struct pthread_mutex))) == NULL)
+
+	pmutex = __malloc(sizeof(struct pthread_mutex));
+	if (pmutex == NULL)
 		return (ENOMEM);
 	mutex_init_body(pmutex, attr, private);
 	*mutex = pmutex;

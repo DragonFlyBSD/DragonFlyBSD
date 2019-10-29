@@ -89,7 +89,8 @@ _pthread_atfork(void (*prepare)(void), void (*parent)(void),
 	struct pthread *curthread;
 	struct pthread_atfork *af;
 
-	if ((af = malloc(sizeof(struct pthread_atfork))) == NULL)
+	af = __malloc(sizeof(struct pthread_atfork));
+	if (af == NULL)
 		return (ENOMEM);
 
 	curthread = tls_get_curthread();
@@ -119,7 +120,7 @@ _thr_atfork_kern(void (*prepare)(void), void (*parent)(void),
 	struct pthread *curthread;
 	struct pthread_atfork *af;
 
-	af = malloc(sizeof(struct pthread_atfork));
+	af = __malloc(sizeof(struct pthread_atfork));
 
 	curthread = tls_get_curthread();
 	af->prepare = prepare;
@@ -143,7 +144,7 @@ __pthread_cxa_finalize(struct dl_phdr_info *phdr_info)
 		    __elf_phdr_match_addr(phdr_info, af->parent) ||
 		    __elf_phdr_match_addr(phdr_info, af->child)) {
 			TAILQ_REMOVE(&_thr_atfork_list, af, qe);
-			free(af);
+			__free(af);
 		}
 	}
 	THR_UMTX_UNLOCK(curthread, &_thr_atfork_lock);

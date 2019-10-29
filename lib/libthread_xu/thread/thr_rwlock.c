@@ -82,21 +82,20 @@ rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr __unused)
 	int ret;
 
 	/* allocate rwlock object */
-	prwlock = (pthread_rwlock_t)malloc(sizeof(struct pthread_rwlock));
-
+	prwlock = __malloc(sizeof(struct pthread_rwlock));
 	if (prwlock == NULL)
 		return (ENOMEM);
 
 	/* initialize the lock */
 	if ((ret = _pthread_mutex_init(&prwlock->lock, NULL)) != 0) {
-		free(prwlock);
+		__free(prwlock);
 	} else {
 		/* initialize the read condition signal */
 		ret = _pthread_cond_init(&prwlock->read_signal, NULL);
 
 		if (ret != 0) {
 			_pthread_mutex_destroy(&prwlock->lock);
-			free(prwlock);
+			__free(prwlock);
 		} else {
 			/* initialize the write condition signal */
 			ret = _pthread_cond_init(&prwlock->write_signal, NULL);
@@ -104,7 +103,7 @@ rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr __unused)
 			if (ret != 0) {
 				_pthread_cond_destroy(&prwlock->read_signal);
 				_pthread_mutex_destroy(&prwlock->lock);
-				free(prwlock);
+				__free(prwlock);
 			} else {
 				/* success */
 				prwlock->state = 0;
@@ -146,7 +145,7 @@ _pthread_rwlock_destroy (pthread_rwlock_t *rwlock)
 		_pthread_mutex_destroy(&prwlock->lock);
 		_pthread_cond_destroy(&prwlock->read_signal);
 		_pthread_cond_destroy(&prwlock->write_signal);
-		free(prwlock);
+		__free(prwlock);
 
 		*rwlock = NULL;
 

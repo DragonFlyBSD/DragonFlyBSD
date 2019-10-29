@@ -794,6 +794,14 @@ _thr_check_init(void)
 struct dl_phdr_info;
 void __pthread_cxa_finalize(struct dl_phdr_info *phdr_info);
 
+/*
+ * Used in low-level init to directly call libc's malloc implementation
+ * instead of a potentially third-party malloc implementation.  Required
+ * for bootstrapping pthreads.
+ */
+void *__malloc(size_t bytes);
+void __free(void *ptr);
+
 __END_DECLS
 
 #endif  /* !_THR_PRIVATE_H */

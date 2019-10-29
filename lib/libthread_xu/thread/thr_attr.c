@@ -50,12 +50,12 @@ _pthread_attr_destroy(pthread_attr_t *attr)
 	int	ret;
 
 	/* Check for invalid arguments: */
-	if (attr == NULL || *attr == NULL)
+	if (attr == NULL || *attr == NULL) {
 		/* Invalid argument: */
 		ret = EINVAL;
-	else {
+	} else {
 		/* Free the memory allocated to the attribute object: */
-		free(*attr);
+		__free(*attr);
 
 		/*
 		 * Leave the attribute pointer NULL now that the memory
@@ -301,10 +301,11 @@ _pthread_attr_init(pthread_attr_t *attr)
 	pthread_attr_t	pattr;
 
 	/* Allocate memory for the attribute object: */
-	if ((pattr = (pthread_attr_t) malloc(sizeof(struct pthread_attr))) == NULL)
+	pattr = __malloc(sizeof(struct pthread_attr));
+	if (pattr == NULL) {
 		/* Insufficient memory: */
 		ret = ENOMEM;
-	else {
+	} else {
 		/* Initialise the attribute object with the defaults: */
 		memcpy(pattr, &_pthread_attr_default,
 		    sizeof(struct pthread_attr));

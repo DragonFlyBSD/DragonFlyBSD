@@ -87,8 +87,8 @@ cond_init(pthread_cond_t *cond, const pthread_condattr_t *cond_attr)
 	pthread_cond_t pcond;
 	int rval = 0;
 
-	if ((pcond = (pthread_cond_t)
-	    malloc(sizeof(struct pthread_cond))) == NULL) {
+	pcond = __malloc(sizeof(struct pthread_cond));
+	if (pcond == NULL) {
 		rval = ENOMEM;
 	} else {
 		/*
@@ -157,11 +157,11 @@ _pthread_cond_destroy(pthread_cond_t *cond)
 	struct pthread		*curthread = tls_get_curthread();
 	int			rval = 0;
 
-	if (cond == NULL)
+	if (cond == NULL) {
 		rval = EINVAL;
-	else if (*cond == NULL)
+	} else if (*cond == NULL) {
 		rval = 0;
-	else {
+	} else {
 		/* Lock the condition variable structure: */
 		THR_LOCK_ACQUIRE(curthread, &(*cond)->c_lock);
 		if (TAILQ_FIRST(&(*cond)->c_waitlist)) {
@@ -185,7 +185,7 @@ _pthread_cond_destroy(pthread_cond_t *cond)
 		 * Free the memory allocated for the condition
 		 * variable structure:
 		 */
-		free(cv);
+		__free(cv);
 
 	}
 	/* Return the completion status: */

@@ -44,13 +44,14 @@ _pthread_rwlockattr_destroy(pthread_rwlockattr_t *rwlockattr)
 	prwlockattr = *rwlockattr;
 	if (prwlockattr == NULL)
 		return (EINVAL);
-	free(prwlockattr);
+	__free(prwlockattr);
 	return (0);
 }
 
 int
-_pthread_rwlockattr_getpshared(const pthread_rwlockattr_t * __restrict rwlockattr,
-    int * __restrict pshared)
+_pthread_rwlockattr_getpshared(
+	const pthread_rwlockattr_t * __restrict rwlockattr,
+	int * __restrict pshared)
 {
 	*pshared = (*rwlockattr)->pshared;
 	return (0);
@@ -64,7 +65,7 @@ _pthread_rwlockattr_init(pthread_rwlockattr_t *rwlockattr)
 	if (rwlockattr == NULL)
 		return (EINVAL);
 
-	prwlockattr = malloc(sizeof(struct pthread_rwlockattr));
+	prwlockattr = __malloc(sizeof(struct pthread_rwlockattr));
 	if (prwlockattr == NULL)
 		return (ENOMEM);
 
