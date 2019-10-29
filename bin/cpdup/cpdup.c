@@ -193,56 +193,31 @@ main(int ac, char **av)
 
     gettimeofday(&start, NULL);
     opterr = 0;
-    while ((opt = getopt(ac, av, ":CdnF:fH:Ii:j:K:klM:mopqRSs:uVvX:x")) != -1) {
+    while ((opt = getopt(ac, av, ":CdF:fH:hIi:j:K:klM:mnoqRSs:uVvX:x")) != -1) {
 	switch (opt) {
-	/* TODO: sort the branches */
 	case 'C':
 	    CompressOpt = 1;
 	    break;
-	case 'v':
-	    ++VerboseOpt;
-	    break;
 	case 'd':
 	    DirShowOpt = 1;
-	    break;
-	case 'n':
-	    NotForRealOpt = 1;
-	    break;
-	case 'l':
-	    setlinebuf(stdout);
-	    setlinebuf(stderr);
-	    break;
-	case 'V':
-	    ++ValidateOpt;
-	    break;
-	case 'I':
-	    SummaryOpt = 1;
-	    break;
-	case 'o':
-	    NoRemoveOpt = 1;
-	    break;
-	case 'x':
-	    UseCpFile = ".cpignore";
-	    break;
-	case 'X':
-	    UseCpFile = optarg;
-	    break;
-	case 'H':
-	    UseHLPath = optarg;
 	    break;
 	case 'F':
 	    if (ssh_argc >= 16)
 		fatal("too many -F options");
 	    ssh_argv[ssh_argc++] = optarg;
 	    break;
-	case 'S':
-	    SlaveOpt = 1;
-	    break;
-	case 'R':
-	    ReadOnlyOpt = 1;
-	    break;
 	case 'f':
 	    ForceOpt = 1;
+	    break;
+	case 'H':
+	    UseHLPath = optarg;
+	    break;
+	case 'h':
+	    fatal(NULL);
+	    /* not reached */
+	    break;
+	case 'I':
+	    SummaryOpt = 1;
 	    break;
 	case 'i':
 	    AskConfirmation = getbool(optarg);
@@ -250,19 +225,17 @@ main(int ac, char **av)
 	case 'j':
 	    DeviceOpt = getbool(optarg);
 	    break;
-	case 's':
-	    SafetyOpt = getbool(optarg);
-	    break;
-	case 'q':
-	    QuietOpt = 1;
+	case 'K':
+	    UseFSMIDOpt = 1;
+	    FSMIDCacheFile = optarg;
 	    break;
 	case 'k':
 	    UseFSMIDOpt = 1;
 	    FSMIDCacheFile = ".FSMID.CHECK";
 	    break;
-	case 'K':
-	    UseFSMIDOpt = 1;
-	    FSMIDCacheFile = optarg;
+	case 'l':
+	    setlinebuf(stdout);
+	    setlinebuf(stderr);
 	    break;
 	case 'M':
 	    UseMD5Opt = 1;
@@ -272,8 +245,38 @@ main(int ac, char **av)
 	    UseMD5Opt = 1;
 	    MD5CacheFile = ".MD5.CHECKSUMS";
 	    break;
+	case 'n':
+	    NotForRealOpt = 1;
+	    break;
+	case 'o':
+	    NoRemoveOpt = 1;
+	    break;
+	case 'q':
+	    QuietOpt = 1;
+	    break;
+	case 'R':
+	    ReadOnlyOpt = 1;
+	    break;
+	case 'S':
+	    SlaveOpt = 1;
+	    break;
+	case 's':
+	    SafetyOpt = getbool(optarg);
+	    break;
 	case 'u':
 	    setvbuf(stdout, NULL, _IOLBF, 0);
+	    break;
+	case 'V':
+	    ++ValidateOpt;
+	    break;
+	case 'v':
+	    ++VerboseOpt;
+	    break;
+	case 'X':
+	    UseCpFile = optarg;
+	    break;
+	case 'x':
+	    UseCpFile = ".cpignore";
 	    break;
 	case ':':
 	    fatal("missing argument for option: -%c\n", optopt);
