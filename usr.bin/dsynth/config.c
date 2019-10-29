@@ -526,27 +526,33 @@ parseProfile(const char *cpath, const char *profile)
 			--len;
 		buf[len] = 0;
 		stripwhite(buf);
+
+		/*
+		 * Allow empty lines, ignore comments.
+		 */
 		len = strlen(buf);
 		if (len == 0)
 			continue;
-
-		/*
-		 * Ignore comments.
-		 */
 		if (buf[0] == ';' || buf[0] == '#')
 			continue;
 
+		/*
+		 * Require env variable name
+		 */
 		bcopy(buf, copy, len + 1);
 		l1 = strtok(copy, "=");
 		if (l1 == NULL) {
 			dfatal("Syntax error in profile line %d: %s\n",
 			       lineno, buf);
 		}
+
+		/*
+		 * Allow empty assignment
+		 */
 		l2 = strtok(NULL, " \t\n");
-		if (l2 == NULL) {
-			dfatal("Syntax error in profile line %d: %s\n",
-			       lineno, buf);
-		}
+		if (l2 == NULL)
+			l2 = l1 + strlen(l1);
+
 		l1 = stripwhite(l1);
 		l2 = stripwhite(l2);
 
