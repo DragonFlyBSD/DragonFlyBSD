@@ -38,6 +38,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <errno.h>
 
 #include "fsck_hammer2.h"
 
@@ -50,6 +52,7 @@ int ScanBest;
 int ScanPFS;
 int NumPFSNames;
 char **PFSNames;
+long BlockrefCacheCount = -1;
 
 static void
 init_pfs_names(const char *names)
@@ -97,7 +100,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "fsck_hammer2 [-f] [-v] [-q] [-e] [-b] [-p] "
-	    "[-l pfs_names] special\n");
+	    "[-l pfs_names] [-c cache_count] special\n");
 	exit(1);
 }
 
@@ -106,7 +109,7 @@ main(int ac, char **av)
 {
 	int ch;
 
-	while ((ch = getopt(ac, av, "dfvqebpl:")) != -1) {
+	while ((ch = getopt(ac, av, "dfvqebpl:c:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
@@ -137,6 +140,16 @@ main(int ac, char **av)
 			break;
 		case 'l':
 			init_pfs_names(optarg);
+			break;
+		case 'c':
+			errno = 0;
+			BlockrefCacheCount = strtol(optarg, NULL, 10);
+			if (errno == ERANGE &&
+			    (BlockrefCacheCount == LONG_MIN ||
+			     BlockrefCacheCount == LONG_MAX)) {
+				perror("strtol");
+				exit(1);
+			}
 			break;
 		default:
 			usage();

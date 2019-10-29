@@ -59,7 +59,7 @@
 struct blockref_msg {
 	TAILQ_ENTRY(blockref_msg) entry;
 	hammer2_blockref_t bref;
-	char *msg;
+	void *msg;
 };
 
 TAILQ_HEAD(blockref_list, blockref_msg);
@@ -91,7 +91,6 @@ typedef struct {
 	uint8_t type; /* HAMMER2_BREF_TYPE_VOLUME or FREEMAP */
 	uint64_t total_blockref;
 	uint64_t total_empty;
-	uint64_t total_invalid;
 	uint64_t total_bytes;
 	union {
 		/* use volume or freemap depending on type value */
@@ -108,15 +107,36 @@ typedef struct {
 	};
 } blockref_stats_t;
 
+typedef struct {
+	uint64_t total_blockref;
+	uint64_t total_empty;
+	uint64_t total_bytes;
+	struct {
+		uint64_t total_inode;
+		uint64_t total_indirect;
+		uint64_t total_data;
+		uint64_t total_dirent;
+	} volume;
+	struct {
+		uint64_t total_freemap_node;
+		uint64_t total_freemap_leaf;
+	} freemap;
+	long count;
+	hammer2_blockref_t bref;
+} delta_stats_t;
+
 static void print_blockref_entry(int, struct blockref_tree *);
 static void init_blockref_stats(blockref_stats_t *, uint8_t);
 static void cleanup_blockref_stats(blockref_stats_t *);
+static void init_delta_root(struct blockref_tree *);
+static void cleanup_delta_root(struct blockref_tree *);
 static void print_blockref_stats(const blockref_stats_t *, bool);
 static int verify_volume_header(const hammer2_volume_data_t *);
 static int read_media(int, const hammer2_blockref_t *, hammer2_media_data_t *,
     size_t *);
 static int verify_blockref(int, const hammer2_volume_data_t *,
-    const hammer2_blockref_t *, bool, blockref_stats_t *);
+    const hammer2_blockref_t *, bool, blockref_stats_t *,
+    struct blockref_tree *, delta_stats_t *);
 static int init_pfs_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, struct blockref_list *);
 static void cleanup_pfs_blockref(struct blockref_list *);
@@ -248,9 +268,11 @@ test_volume_header(int fd)
 static int
 test_blockref(int fd, uint8_t type)
 {
+	struct blockref_tree droot;
 	bool failed = false;
 	int i;
 
+	init_delta_root(&droot);
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		hammer2_volume_data_t voldata;
 		hammer2_blockref_t broot;
@@ -263,32 +285,39 @@ test_blockref(int fd, uint8_t type)
 		if (ret == HAMMER2_PBUFSIZE) {
 			blockref_stats_t bstats;
 			init_blockref_stats(&bstats, type);
+			delta_stats_t ds;
+			memset(&ds, 0, sizeof(ds));
 			tprintf_zone(0, i, &broot);
 			if (verify_blockref(fd, &voldata, &broot, false,
-			    &bstats) == -1)
+			    &bstats, &droot, &ds) == -1)
 				failed = true;
 			print_blockref_stats(&bstats, true);
 			print_blockref_entry(fd, &bstats.root);
 			cleanup_blockref_stats(&bstats);
 		} else if (ret == -1) {
 			perror("read");
-			return -1;
+			failed = true;
+			goto end;
 		} else {
 			tfprintf(stderr, 1, "Failed to read volume header\n");
-			return -1;
+			failed = true;
+			goto end;
 		}
 	}
-
+end:
+	cleanup_delta_root(&droot);
 	return failed ? -1 : 0;
 }
 
 static int
 test_pfs_blockref(int fd)
 {
+	struct blockref_tree droot;
 	uint8_t type = HAMMER2_BREF_TYPE_VOLUME;
 	bool failed = false;
 	int i;
 
+	init_delta_root(&droot);
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		hammer2_volume_data_t voldata;
 		hammer2_blockref_t broot;
@@ -334,8 +363,10 @@ test_pfs_blockref(int fd)
 				count++;
 				tfprintf(stdout, 1, "%s\n", p->msg);
 				init_blockref_stats(&bstats, type);
+				delta_stats_t ds;
+				memset(&ds, 0, sizeof(ds));
 				if (verify_blockref(fd, &voldata, &p->bref,
-				    false, &bstats) == -1)
+				    false, &bstats, &droot, &ds) == -1)
 					failed = true;
 				print_blockref_stats(&bstats, true);
 				print_blockref_entry(fd, &bstats.root);
@@ -348,13 +379,16 @@ test_pfs_blockref(int fd)
 			}
 		} else if (ret == -1) {
 			perror("read");
-			return -1;
+			failed = true;
+			goto end;
 		} else {
 			tfprintf(stderr, 1, "Failed to read volume header\n");
-			return -1;
+			failed = true;
+			goto end;
 		}
 	}
-
+end:
+	cleanup_delta_root(&droot);
 	return failed ? -1 : 0;
 }
 
@@ -404,21 +438,25 @@ cleanup_blockref_entry(struct blockref_tree *root)
 
 static void
 add_blockref_msg(struct blockref_list *head, const hammer2_blockref_t *bref,
-    const char *msg)
+    const void *msg, size_t siz)
 {
 	struct blockref_msg *m;
+	void *p;
 
 	m = calloc(1, sizeof(*m));
 	assert(m);
 	m->bref = *bref;
-	m->msg = strdup(msg);
+	p = calloc(1, siz);
+	assert(p);
+	memcpy(p, msg, siz);
+	m->msg = p;
 
 	TAILQ_INSERT_TAIL(head, m, entry);
 }
 
 static void
 add_blockref_entry(struct blockref_tree *root, const hammer2_blockref_t *bref,
-    const char *msg)
+    const void *msg, size_t siz)
 {
 	struct blockref_entry *e;
 
@@ -430,9 +468,20 @@ add_blockref_entry(struct blockref_tree *root, const hammer2_blockref_t *bref,
 		e->data_off = bref->data_off;
 	}
 
-	add_blockref_msg(&e->head, bref, msg);
+	add_blockref_msg(&e->head, bref, msg, siz);
 
 	RB_INSERT(blockref_tree, root, e);
+}
+
+static void
+print_blockref(FILE *fp, const hammer2_blockref_t *bref, const char *msg)
+{
+	tfprintf(fp, 1, "%016jx %-12s %016jx/%-2d \"%s\"\n",
+	    (uintmax_t)bref->data_off,
+	    hammer2_breftype_to_str(bref->type),
+	    (uintmax_t)bref->key,
+	    bref->keybits,
+	    msg);
 }
 
 static void
@@ -442,16 +491,9 @@ print_blockref_msg(int fd, struct blockref_list *head)
 
 	TAILQ_FOREACH(m, head, entry) {
 		hammer2_blockref_t *bref = &m->bref;
-		hammer2_media_data_t media;
-
-		tfprintf(stderr, 1, "%016jx %-12s %016jx/%-2d \"%s\"\n",
-		    (uintmax_t)bref->data_off,
-		    hammer2_breftype_to_str(bref->type),
-		    (uintmax_t)bref->key,
-		    bref->keybits,
-		    m->msg);
-
+		print_blockref(stderr, bref, m->msg);
 		if (fd != -1 && VerboseOpt > 0) {
+			hammer2_media_data_t media;
 			size_t bytes;
 			if (!read_media(fd, bref, &media, &bytes))
 				print_media(stderr, 2, bref, &media, bytes);
@@ -482,6 +524,18 @@ static void
 cleanup_blockref_stats(blockref_stats_t *bstats)
 {
 	cleanup_blockref_entry(&bstats->root);
+}
+
+static void
+init_delta_root(struct blockref_tree *droot)
+{
+	RB_INIT(droot);
+}
+
+static void
+cleanup_delta_root(struct blockref_tree *droot)
+{
+	cleanup_blockref_entry(droot);
 }
 
 static void
@@ -612,9 +666,54 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 	return 0;
 }
 
+static void
+load_delta_stats(blockref_stats_t *bstats, const delta_stats_t *dstats)
+{
+	bstats->total_blockref += dstats->total_blockref;
+	bstats->total_empty += dstats->total_empty;
+	bstats->total_bytes += dstats->total_bytes;
+
+	switch (bstats->type) {
+	case HAMMER2_BREF_TYPE_VOLUME:
+		bstats->volume.total_inode += dstats->volume.total_inode;
+		bstats->volume.total_indirect += dstats->volume.total_indirect;
+		bstats->volume.total_data += dstats->volume.total_data;
+		bstats->volume.total_dirent += dstats->volume.total_dirent;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		bstats->freemap.total_freemap_node +=
+		    dstats->freemap.total_freemap_node;
+		bstats->freemap.total_freemap_leaf +=
+		    dstats->freemap.total_freemap_leaf;
+		break;
+	default:
+		assert(0);
+		break;
+	}
+}
+
+static void
+accumulate_delta_stats(delta_stats_t *dst, const delta_stats_t *src)
+{
+	dst->total_blockref += src->total_blockref;
+	dst->total_empty += src->total_empty;
+	dst->total_bytes += src->total_bytes;
+
+	dst->volume.total_inode += src->volume.total_inode;
+	dst->volume.total_indirect += src->volume.total_indirect;
+	dst->volume.total_data += src->volume.total_data;
+	dst->volume.total_dirent += src->volume.total_dirent;
+
+	dst->freemap.total_freemap_node += src->freemap.total_freemap_node;
+	dst->freemap.total_freemap_leaf += src->freemap.total_freemap_leaf;
+
+	dst->count += src->count;
+}
+
 static int
 verify_blockref(int fd, const hammer2_volume_data_t *voldata,
-    const hammer2_blockref_t *bref, bool norecurse, blockref_stats_t *bstats)
+    const hammer2_blockref_t *bref, bool norecurse, blockref_stats_t *bstats,
+    struct blockref_tree *droot, delta_stats_t *dstats)
 {
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
@@ -631,88 +730,124 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		uint64_t digest64[SHA256_DIGEST_LENGTH/8];
 	} u;
 
+	if (bref->data_off) {
+		struct blockref_entry *e;
+		e = RB_LOOKUP(blockref_tree, droot, bref->data_off);
+		if (e) {
+			struct blockref_msg *m;
+			TAILQ_FOREACH(m, &e->head, entry) {
+				delta_stats_t *ds = m->msg;
+				if (!memcmp(&ds->bref, bref, sizeof(*bref))) {
+					if (DebugOpt)
+						print_blockref(stdout,
+						    &ds->bref, "cache");
+					load_delta_stats(bstats, ds);
+					return 0;
+				}
+			}
+		}
+	}
+
 	bstats->total_blockref++;
+	dstats->total_blockref++;
 
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
-		if (CountEmpty)
+		if (CountEmpty) {
 			bstats->total_empty++;
-		else
+			dstats->total_empty++;
+		} else {
 			bstats->total_blockref--;
+			dstats->total_blockref--;
+		}
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		bstats->volume.total_inode++;
+		dstats->volume.total_inode++;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		bstats->volume.total_indirect++;
+		dstats->volume.total_indirect++;
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 		bstats->volume.total_data++;
+		dstats->volume.total_data++;
 		break;
 	case HAMMER2_BREF_TYPE_DIRENT:
 		bstats->volume.total_dirent++;
+		dstats->volume.total_dirent++;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		bstats->freemap.total_freemap_node++;
+		dstats->freemap.total_freemap_node++;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		bstats->freemap.total_freemap_leaf++;
+		dstats->freemap.total_freemap_leaf++;
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		bstats->total_blockref--;
+		dstats->total_blockref--;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP:
 		bstats->total_blockref--;
+		dstats->total_blockref--;
 		break;
 	default:
-		bstats->total_invalid++;
 		snprintf(msg, sizeof(msg), "Invalid blockref type %d",
 		    bref->type);
-		add_blockref_entry(&bstats->root, bref, msg);
+		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
 		failed = true;
 		break;
 	}
 
 	switch (read_media(fd, bref, &media, &bytes)) {
 	case -1:
-		add_blockref_entry(&bstats->root, bref, "Bad I/O bytes");
+		strlcpy(msg, "Bad I/O bytes", sizeof(msg));
+		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
 		return -1;
 	case -2:
-		add_blockref_entry(&bstats->root, bref, "Failed to read media");
+		strlcpy(msg, "Failed to read media", sizeof(msg));
+		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
 		return -1;
 	default:
 		break;
 	}
 
 	if (bref->type != HAMMER2_BREF_TYPE_VOLUME &&
-	    bref->type != HAMMER2_BREF_TYPE_FREEMAP)
+	    bref->type != HAMMER2_BREF_TYPE_FREEMAP) {
 		bstats->total_bytes += bytes;
+		dstats->total_bytes += bytes;
+	}
 
 	if (!CountEmpty && bref->type == HAMMER2_BREF_TYPE_EMPTY) {
 		assert(bytes == 0);
 		bstats->total_bytes -= bytes;
+		dstats->total_bytes -= bytes;
 	}
 
-	if (QuietOpt <= 0 && (bstats->total_blockref % 100) == 0)
+	if (!DebugOpt && QuietOpt <= 0 && (bstats->total_blockref % 100) == 0)
 		print_blockref_stats(bstats, false);
 
 	if (!bytes)
-		return 0;
+		goto end;
 
 	switch (HAMMER2_DEC_CHECK(bref->methods)) {
 	case HAMMER2_CHECK_ISCSI32:
 		cv = hammer2_icrc32(&media, bytes);
 		if (bref->check.iscsi32.value != cv) {
-			add_blockref_entry(&bstats->root, bref,
-			    "Bad HAMMER2_CHECK_ISCSI32");
+			strlcpy(msg, "Bad HAMMER2_CHECK_ISCSI32", sizeof(msg));
+			add_blockref_entry(&bstats->root, bref, msg,
+			    strlen(msg) + 1);
 			failed = true;
 		}
 		break;
 	case HAMMER2_CHECK_XXHASH64:
 		cv64 = XXH64(&media, bytes, XXH_HAMMER2_SEED);
 		if (bref->check.xxhash64.value != cv64) {
-			add_blockref_entry(&bstats->root, bref,
-			    "Bad HAMMER2_CHECK_XXHASH64");
+			strlcpy(msg, "Bad HAMMER2_CHECK_XXHASH64", sizeof(msg));
+			add_blockref_entry(&bstats->root, bref, msg,
+			    strlen(msg) + 1);
 			failed = true;
 		}
 		break;
@@ -723,16 +858,18 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		u.digest64[2] ^= u.digest64[3];
 		if (memcmp(u.digest, bref->check.sha192.data,
 		    sizeof(bref->check.sha192.data))) {
-			add_blockref_entry(&bstats->root, bref,
-			    "Bad HAMMER2_CHECK_SHA192");
+			strlcpy(msg, "Bad HAMMER2_CHECK_SHA192", sizeof(msg));
+			add_blockref_entry(&bstats->root, bref, msg,
+			    strlen(msg) + 1);
 			failed = true;
 		}
 		break;
 	case HAMMER2_CHECK_FREEMAP:
 		cv = hammer2_icrc32(&media, bytes);
 		if (bref->check.freemap.icrc32 != cv) {
-			add_blockref_entry(&bstats->root, bref,
-			    "Bad HAMMER2_CHECK_FREEMAP");
+			strlcpy(msg, "Bad HAMMER2_CHECK_FREEMAP", sizeof(msg));
+			add_blockref_entry(&bstats->root, bref, msg,
+			    strlen(msg) + 1);
 			failed = true;
 		}
 		break;
@@ -776,11 +913,28 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	 * If failed, no recurse, but still verify its direct children.
 	 * Beyond that is probably garbage.
 	 */
-	for (i = 0; norecurse == false && i < bcount; ++i)
-		if (verify_blockref(fd, voldata, &bscan[i], failed, bstats)
-		    == -1)
+	for (i = 0; norecurse == false && i < bcount; ++i) {
+		delta_stats_t ds;
+		memset(&ds, 0, sizeof(ds));
+		if (verify_blockref(fd, voldata, &bscan[i], failed, bstats,
+		    droot, &ds) == -1)
 			return -1;
-	return failed ? -1 : 0;
+		if (!failed)
+			accumulate_delta_stats(dstats, &ds);
+	}
+end:
+	if (failed)
+		return -1;
+
+	dstats->count++;
+	if (bref->data_off && BlockrefCacheCount > 0 &&
+	    dstats->count >= BlockrefCacheCount) {
+		assert(bytes);
+		dstats->bref = *bref;
+		add_blockref_entry(droot, bref, dstats, sizeof(*dstats));
+	}
+
+	return 0;
 }
 
 static int
