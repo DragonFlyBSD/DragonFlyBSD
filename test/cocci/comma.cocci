@@ -1,5 +1,6 @@
 //
 //  convert comma to semicolon
+//    needs devel/ocaml-findlib
 //
 // Target: Linux
 // Copyright:  Copyright: 2014 - LIP6/INRIA
