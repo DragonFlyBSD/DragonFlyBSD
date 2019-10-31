@@ -129,7 +129,8 @@ __find_pfs(FILE *fp, const hammer2_blockref_t *bref, const char *pfs, bool *res)
 			if (ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) {
 				if (memchr(ipdata.filename, 0,
 				    sizeof(ipdata.filename))) {
-					if (!strcmp(ipdata.filename, pfs))
+					if (!strcmp(
+					    (const char*)ipdata.filename, pfs))
 						*res = true;
 				} else {
 					if (!memcmp(ipdata.filename, pfs,
