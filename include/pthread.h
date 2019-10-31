@@ -273,7 +273,7 @@ int	pthread_mutex_getprioceiling(const pthread_mutex_t * __restrict,
 int	pthread_mutex_setprioceiling(pthread_mutex_t * __restrict, int,
 	    int * __restrict);
 
-int	pthread_attr_getinheritsched(const pthread_attr_t * __restict,
+int	pthread_attr_getinheritsched(const pthread_attr_t * __restrict,
 	    int * __restrict);
 int	pthread_attr_getschedparam(const pthread_attr_t * __restrict,
 	    struct sched_param * __restrict);
