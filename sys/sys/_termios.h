@@ -140,7 +140,7 @@
 #define	CDTR_IFLOW	0x00040000	/* DTR flow control of input */
 #define	CDSR_OFLOW	0x00080000	/* DSR flow control of output */
 #define	CCAR_OFLOW	0x00100000	/* DCD flow control of output */
-#define	MDMBUF		0x00100000	/* old name for CCAR_OFLOW */
+#define	MDMBUF		CCAR_OFLOW	/* old name for CCAR_OFLOW */
 #endif
 
 
