@@ -14,4 +14,4 @@
 #include <de_DE.UTF-8/calendar.musik>
 #include <de_DE.UTF-8/calendar.wissenschaft>
 
-#endif /* !_de_DE.UTF_8_all_ */
+#endif /* !_de_DE_UTF_8_all_ */

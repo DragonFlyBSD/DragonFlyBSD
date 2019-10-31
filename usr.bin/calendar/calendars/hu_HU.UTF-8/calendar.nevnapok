@@ -351,7 +351,7 @@ LANG=hu_HU.UTF-8
 11/28	Stefánia
 11/29	Taksony
 11/30	András, Andor
-12/01	Elza	
+12/01	Elza
 12/02	Melinda, Vivien
 12/03	Ferenc, Olívia
 12/04	Borbála, Barbara
@@ -381,6 +381,6 @@ LANG=hu_HU.UTF-8
 12/28	Kamilla
 12/29	Tamás, Tamara
 12/30	Dávid
-12/31	Szilveszter	
+12/31	Szilveszter
 
 #endif /*! _hu_HU_UTF_8_nevnapok_ */

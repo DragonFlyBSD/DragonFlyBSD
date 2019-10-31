@@ -23,23 +23,28 @@ CALS=		calendars/calendar.all \
 		calendars/calendar.australia \
 		calendars/calendar.birthday \
 		calendars/calendar.brazilian \
+		calendars/calendar.canada \
 		calendars/calendar.christian \
 		calendars/calendar.computer \
 		calendars/calendar.croatian \
+		calendars/calendar.discord \
 		calendars/calendar.dragonfly \
 		calendars/calendar.dutch \
+		calendars/calendar.fictional \
 		calendars/calendar.french \
 		calendars/calendar.german \
 		calendars/calendar.history \
 		calendars/calendar.holiday \
 		calendars/calendar.hungarian \
 		calendars/calendar.judaic \
-		calendars/calendar.lotr \
 		calendars/calendar.music \
 		calendars/calendar.newzealand \
 		calendars/calendar.russian \
 		calendars/calendar.southafrica \
+		calendars/calendar.space \
+		calendars/calendar.uk \
 		calendars/calendar.ukrainian \
+		calendars/calendar.ushistory \
 		calendars/calendar.usholiday \
 		calendars/calendar.world
 CALSDIR=	${SHAREDIR}/calendar
@@ -73,10 +78,10 @@ CAL_pt_BR.UTF-8=calendar.all \
 
 CAL_ru_RU.UTF-8=calendar.all \
 		calendar.common \
-		calendar.holiday \
-		calendar.military \
+		calendar.history \
 		calendar.orthodox \
-		calendar.pagan
+		calendar.pagan \
+		calendar.primety
 
 CAL_uk_UA.UTF-8=calendar.all \
 		calendar.holiday \

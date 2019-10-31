@@ -11,4 +11,4 @@
 #include <fr_FR.UTF-8/calendar.fetes>
 #include <fr_FR.UTF-8/calendar.proverbes>
 
-#endif /* !_fr_FR.UTF_8_all_ */
+#endif /* !_fr_FR_UTF_8_all_ */

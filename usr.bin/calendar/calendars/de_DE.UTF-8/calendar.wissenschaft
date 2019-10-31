@@ -9,11 +9,11 @@
 
 LANG=de_DE.UTF-8
 
-04/12   Erster Mann im All, Juri Gagarin, 1961
-04/18   Einstein gestorben, 1955
-06/22	Konrad Zuse geboren in Berlin, 1919
-10/04   Sputnik 1, erster Satellit im Weltraum, 1957
-12/18	Konrad Zuse gestorben in Hünfeld,  1995
+04/12	Erster Mann im All, Juri Gagarin, 1961
+04/18	Einstein gestorben, 1955
+06/22	Konrad Zuse geboren in Berlin, 1910
+10/04	Sputnik 1, erster Satellit im Weltraum, 1957
+12/18	Konrad Zuse gestorben in Hünfeld, 1995
 
 
 #endif /* ! _de_DE_UTF_8_wissenschaft_ */

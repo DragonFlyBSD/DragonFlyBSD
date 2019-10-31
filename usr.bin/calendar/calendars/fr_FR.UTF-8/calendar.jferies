@@ -18,7 +18,7 @@ LANG=fr_FR.UTF-8
 
 /* Jours fériés religieux */
 Easter		Pâques
-Easter+1 	Lundi de Pâques
+Easter+1	Lundi de Pâques
 Easter+39	Ascension
 Easter+49	Pentecôte
 Easter+50	Lundi de Pentecôte

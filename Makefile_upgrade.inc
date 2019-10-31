@@ -3870,6 +3870,7 @@ TO_REMOVE+=/usr/share/calendar/pt_BR.ISO8859-1
 TO_REMOVE+=/usr/share/calendar/ru_RU.KOI8-R
 TO_REMOVE+=/usr/share/calendar/uk_UA.KOI8-U
 TO_REMOVE+=/usr/share/calendar/fr_FR.UTF-8/calendar.french
+TO_REMOVE+=/usr/share/calendar/calendar.lotr
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

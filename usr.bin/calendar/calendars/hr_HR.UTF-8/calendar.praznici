@@ -38,7 +38,7 @@ Easter+39	Uzašašće
 12/21*	Početak zime
 
 /* ljetno vrijeme */
-03/NedjeljaLast	Početak ljetnog vremena
-10/NedjeljaLast	Kraj ljetnog vremena
+03/SundayLast	Početak ljetnog vremena
+10/SundayLast	Kraj ljetnog vremena
 
 #endif /* !_hr_HR_UTF_8_praznici_ */

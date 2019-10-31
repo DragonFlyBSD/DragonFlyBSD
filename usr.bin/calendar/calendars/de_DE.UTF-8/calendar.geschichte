@@ -21,7 +21,7 @@
 LANG=de_DE.UTF-8
 
 /* 1800-1933 */
-07/11 	Gründung des Rheinbundes, 1806
+07/11	Gründung des Rheinbundes, 1806
 10/14	Doppelschlacht bei Jena und Auerstedt, 1806
 10/16	Völkerschlacht bei Leipzig, 1813
 06/18	Niederlage Napoleons bei Waterloo, 1815
@@ -57,7 +57,7 @@ LANG=de_DE.UTF-8
 02/21	Schlacht um Verdun, 1916
 03/08	Ausbruch der Revolution in Rußland, Abdankung von Zar Nikolaus II, 1917
 04/06	Kriegserklärung der USA an Deutschland, 1917
-12/15	Waffenstillstand zwisch Rußland und Deutschland, 1917
+12/15	Waffenstillstand zwischen Rußland und Deutschland, 1917
 03/03	Frieden von Brest-Litowsk, 1918
 11/03	Matrosenaufstand in Kiel, 1918
 11/09	Ausrufung der Republik durch Scheidemann (SPD), 1918
@@ -69,6 +69,7 @@ LANG=de_DE.UTF-8
 01/11	Besetzung des Ruhrgebietes durch Frankreich und Belgien, 1923
 09/10	Eintritt Deutschlands in den Völkerbund, 1926
 10/25	Schwarzer Freitag in New York, Beginn der Weltwirtschaftskrise, 1929
+08/06	Europas erste Autobahn eingeweiht, 1932
 
 
 /* II. Weltkrieg */
@@ -100,11 +101,11 @@ LANG=de_DE.UTF-8
 	Mecklenburg, Einmarsch westlicher Truppen in Berlin, 1945
 07/17	Potsdamer Konferenz, 1945
 09/01	Deutscher Überfall auf Polen, Beginn des 2. Weltkrieges, 1939
-10/01	Verkündigung der Urteile im Nürnberger Hauptkriegsverbrecherprozeß, 1946
-02/25	Auflösung der Landes Preußen durch den Kontrollrat, 1947
+10/01	Verkündung der Urteile im Nürnberger Hauptkriegsverbrecherprozeß, 1946
+02/25	Auflösung des Landes Preußen durch den Kontrollrat, 1947
 08/06	Erster Atombombenabwurf auf Hiroshima, 1945
 08/08	Atombombenabwurf auf Nagasaki, 1945
-04/19	Aufstand im Warschauer Ghetto, 1943
+04/19	Warschauer Ghetto Aufstand, 1943
 12/07	Japan bombardiert Pearl Harbor, 1941
 
 /* Deutschland nach dem 2. Weltkrieg */
@@ -119,8 +120,8 @@ LANG=de_DE.UTF-8
 06/20	Währungsreform in den Westzonen, 1948
 06/24	Beginn der Berliner Blockade, 1948
 07/01	Wahl von Heinrich Lübke zum Bundespräsidenten, 1959
-07/01	Wirtschafts- und Währungsunion, 1990
-08/12	Deutsch-sowjetischer Gewaltverzichtsvertrag, Moskau 1970
+07/01	Währungs-, Wirtschafts- und Sozialunion, 1990
+08/12	deutsch-sowjetischer Gewaltverzichtsvertrag, Moskau 1970
 08/14	Wahl zum ersten deutschen Bundestag, 1949
 09/03	Vier-Mächte-Abkommen über Berlin, 1971
 09/05	Entführung und Ermordung von Arbeitgeberpräsident Schleyer,
@@ -131,11 +132,13 @@ LANG=de_DE.UTF-8
 09/17	Bruch der Sozialliberalen Koalition, 1982
 09/18	Aufnahme von Bundesrepublik und DDR in die UNO, 1973
 10/01	Ablösung von Bundeskanzler Schmidt durch Kohl, 1982
+10/13	Entführung der Lufthansa-Maschine "Landshut" nach Mogadischu, 1977
+10/18	Ermordung von Arbeitgeberpräsident Schleyer, 1977
 10/23	Volksabstimmung im Saargebiet, 1955
 12/02	Washingtoner Abkommen über Bi-Zone, 1946
 12/07	Deutsch-polnischer Vertrag, Warschau 1970
 12/10	Friedensnobelpreis für Brandt, 1971
-12/12	Nachrüstungsbeschluß des NATO-Ministerates, 1979
+12/12	Nachrüstungsbeschluß des NATO-Ministerrates, 1979
 12/21	Grundlagenvertrag zwischen DDR und Bundesrepublik, 1972
 
 
@@ -157,12 +160,13 @@ LANG=de_DE.UTF-8
 07/20	Konkordat zwischen Deutschland und dem Vatikan, 1933
 06/30	Röhm-Putsch, Ausschaltung der SA-Führung, 1934
 09/15	Nürnberger Gesetze, 1935
-01/08	Eröffnung der olympischen Spiele in Berlin, 1936
+08/01	Eröffnung der XI. Olympischen Spiele in Berlin, 1936
 01/20	Wannseekonferenz, 1942
 04/30	Selbstmord Hitlers, 1945
 07/29	Mussolini geboren, 1883
 
 /* Sozialismus */
+01/19	Markus Johannes Wolf geboren, 1923
 01/21	Lenin gestorben, 1924
 06	Gründung des Bundes der Kommunisten in London
 	durch Marx und Engels, 1847
@@ -176,22 +180,24 @@ LANG=de_DE.UTF-8
 01/15	Ermordung von Rosa Luxemburg und Karl Liebknecht, 1919
 03/05	Tod Stalins, 1953
 03/18	Erste demokratische Volkskammerwahl, 1990
+03/27	Chruschtschow wird sowjetischer Präsident, 1958
 04/21	Zwangsvereinigung von KPD und SPD zur SED, 1946
-05/14	Gründung der Warschauer Paktes, 1955
+04/25	GAU in Tschernobyl, 1986
+05/14	Gründung des Warschauer Paktes, 1955
 06/17	Arbeiteraufstand am 17. Juni 1953
-06/25	Begin der Korea-Krieges, 1950
+06/25	Beginn des Korea-Krieges, 1950
 08/13	Bau der Berliner Mauer, 1961
 08/21	Einmarsch des Warschauer Pakts in die Tschechoslowakei, 1968
-10/03	Offizielles Ende der DDR :-), 1990
+09/09	Mao Tse-Tung gestorben im Alter von 82 Jahren, 1976
+10/03	Offizielles Ende der DDR, 1990 :-)
 10/07	Gründung der DDR, 1949
+10/09	Markus "Mischa" Wolf gestorben, 2006
 10/09	Massendemonstration in Leipzig, 1989
+10/12	Chruschtschow schlägt während einer Rede in der UNO mit den
+	Schuhen auf den Tisch, 1960
 10/14	Kuba-Krise, 1962
 10/18	Ablösung von Erich Honecker als SED-Generalsekretär, 1989
 11/09	Fall der Berliner Mauer, 1989
-09/09	Mao Tse-Tung gestorben im Alter von 82 Jahren, 1976
 11/10	Sowjetischer Präsident Leonid Breschnew gestorben, Alter 75, 1982
-03/27	Chruschtschow wird sowjetischer Präsident, 1958
-10/12	Chruschtschow schlägt während einer Rede in der UNO mit den
-	Schuhen auf den Tisch, 1960
 
 #endif /* _de_DE_UTF_8_geschichte_ */

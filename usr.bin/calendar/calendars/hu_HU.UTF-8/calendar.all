@@ -10,4 +10,4 @@
 #include <hu_HU.UTF-8/calendar.unnepek>
 #include <hu_HU.UTF-8/calendar.nevnapok>
 
-#endif /* !_hu_HU.UTF_8_all_ */
+#endif /* !_hu_HU_UTF_8_all_ */

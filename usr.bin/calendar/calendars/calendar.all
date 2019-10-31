@@ -8,9 +8,12 @@
 #define _calendar_all_
 
 #include <calendar.world>
+
 #include <calendar.australia>
 #include <calendar.brazilian>
+#include <calendar.canada>
 #include <calendar.croatian>
+#include <calendar.discord>
 #include <calendar.dutch>
 #include <calendar.french>
 #include <calendar.german>
@@ -18,6 +21,7 @@
 #include <calendar.newzealand>
 #include <calendar.russian>
 #include <calendar.southafrica>
+#include <calendar.uk>
 #include <calendar.ukrainian>
 #include <calendar.usholiday>
 

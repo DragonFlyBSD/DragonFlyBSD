@@ -11,10 +11,12 @@
 #include <calendar.christian>
 #include <calendar.computer>
 #include <calendar.dragonfly>
+#include <calendar.fictional>
 #include <calendar.history>
-#include <calendar.lotr>
 #include <calendar.holiday>
 #include <calendar.judaic>
 #include <calendar.music>
+#include <calendar.space>
+#include <calendar.ushistory>
 
 #endif /* !_calendar_world_ */
