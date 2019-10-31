@@ -28,7 +28,6 @@
  *
  * @(#)modes.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/modes.c,v 1.8.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/modes.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -187,10 +186,12 @@ struct modes omodes[] = {
 	{ "-onlcr",	0, ONLCR },
 	{ "ocrnl",	OCRNL, 0 },
 	{ "-ocrnl",	0, OCRNL },
-	{ "tabs",	0, OXTABS },		/* "preserve" tabs */
-	{ "-tabs",	OXTABS, 0 },
-	{ "oxtabs",	OXTABS, 0 },
-	{ "-oxtabs",	0, OXTABS },
+	{ "tabs",	TAB0, TABDLY },		/* "preserve" tabs */
+	{ "-tabs",	TAB3, TABDLY },
+	{ "oxtabs",	TAB3, TABDLY },
+	{ "-oxtabs",	TAB0, TABDLY },
+	{ "tab0",	TAB0, TABDLY },
+	{ "tab3",	TAB3, TABDLY },
 	{ "onocr",	ONOCR, 0 },
 	{ "-onocr",	0, ONOCR },
 	{ "onlret",	ONLRET, 0 },

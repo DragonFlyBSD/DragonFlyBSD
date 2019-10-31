@@ -102,9 +102,12 @@
 #define	OPOST		0x00000001	/* enable following output processing */
 #if __XSI_VISIBLE
 #define	ONLCR		0x00000002	/* map NL to CR-NL (ala CRMOD) */
+#define	TABDLY		0x00000004	/* tab delay mask */
+#define	    TAB0	    0x00000000	    /* no tab delay and expansion */
+#define	    TAB3	    0x00000004	    /* expand tabs to spaces */
 #endif
 #if __BSD_VISIBLE
-#define	OXTABS		0x00000004	/* expand tabs to spaces */
+#define	OXTABS		TAB3
 #define	ONOEOT		0x00000008	/* discard EOT's (^D) on output) */
 #endif  /*__BSD_VISIBLE */
 #if __XSI_VISIBLE

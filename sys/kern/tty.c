@@ -764,10 +764,10 @@ ttyoutput(int c, struct tty *tp)
 		return (-1);
 	}
 	/*
-	 * Do tab expansion if OXTABS is set.  Special case if we external
-	 * processing, we don't do the tab expansion because we'll probably
-	 * get it wrong.  If tab expansion needs to be done, let it happen
-	 * externally.
+	 * Do tab expansion if OXTABS aka TAB3 is set.  Special case if we
+	 * external processing, we don't do the tab expansion because we'll
+	 * probably get it wrong.  If tab expansion needs to be done, let
+	 * it happen externally.
 	 */
 	CLR(c, ~TTY_CHARMASK);
 	if (c == '\t' &&

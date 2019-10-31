@@ -31,7 +31,7 @@
 .\"     @(#)stty.1	8.4 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/stty/stty.1,v 1.13.2.6 2001/12/14 14:22:09 ru Exp $
 .\"
-.Dd August 23, 2016
+.Dd October 31, 2019
 .Dt STTY 1
 .Os
 .Sh NAME
@@ -240,8 +240,20 @@ Map (do not map)
 to
 .Dv NL
 on output.
+.It Cm tab0 tab3
+Select tab expansion policy.
+.Cm tab0
+disables tab expansion, while
+.Cm tab3
+enables it.
 .It Cm oxtabs Pq Fl oxtabs
-Expand (do not expand) tabs to spaces on output.
+.Cm oxtabs
+is an alias for
+.Cm tab3 ,
+while
+.Cm Fl oxtabs
+is an alias for
+.Cm tab0 .
 .It Cm onocr Pq Fl onocr
 Do not (do) output CRs at column zero.
 .It Cm onlret Pq Fl onlret
