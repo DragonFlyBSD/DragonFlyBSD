@@ -122,7 +122,6 @@ typedef struct {
 		uint64_t total_freemap_leaf;
 	} freemap;
 	long count;
-	hammer2_blockref_t bref;
 } delta_stats_t;
 
 static void print_blockref_entry(int, struct blockref_tree *);
@@ -737,10 +736,10 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			struct blockref_msg *m;
 			TAILQ_FOREACH(m, &e->head, entry) {
 				delta_stats_t *ds = m->msg;
-				if (!memcmp(&ds->bref, bref, sizeof(*bref))) {
+				if (!memcmp(&m->bref, bref, sizeof(*bref))) {
 					if (DebugOpt)
-						print_blockref(stdout,
-						    &ds->bref, "cache");
+						print_blockref(stdout, &m->bref,
+						    "cache");
 					load_delta_stats(bstats, ds);
 					return 0;
 				}
@@ -930,7 +929,6 @@ end:
 	if (bref->data_off && BlockrefCacheCount > 0 &&
 	    dstats->count >= BlockrefCacheCount) {
 		assert(bytes);
-		dstats->bref = *bref;
 		add_blockref_entry(droot, bref, dstats, sizeof(*dstats));
 	}
 
