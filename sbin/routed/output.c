@@ -581,7 +581,7 @@ walk_supply(struct radix_node *rn, __unused struct walkarg *argp)
 	 * Notice spare routes with the same metric that we are about to
 	 * advertise, to split the horizon on redundant, inactive paths.
 	 */
-	if (ws.ifp != 0
+	if (ws.ifp != NULL
 	    && !(ws.state & WS_ST_QUERY)
 	    && (ws.state & WS_ST_TO_ON_NET)
 	    && (!(RT->rt_state & RS_IF)
