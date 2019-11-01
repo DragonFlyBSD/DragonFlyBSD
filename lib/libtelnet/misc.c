@@ -66,7 +66,7 @@ auth_encrypt_init(char *local, char *remote, const char *name undef1, int server
 #endif	/* ENCRYPTION */
 	if (UserNameRequested) {
 		free(UserNameRequested);
-		UserNameRequested = 0;
+		UserNameRequested = NULL;
 	}
 }
 
@@ -76,7 +76,7 @@ auth_encrypt_user(char *name)
 {
 	if (UserNameRequested)
 		free(UserNameRequested);
-	UserNameRequested = name ? strdup(name) : 0;
+	UserNameRequested = name ? strdup(name) : NULL;
 }
 
 void
