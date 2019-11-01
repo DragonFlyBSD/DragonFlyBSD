@@ -284,7 +284,7 @@ parse_forward(ipfw_insn **cmd, int *ac, char **av[])
 {
 	ipfw_insn_sa *p = (ipfw_insn_sa *)(*cmd);
 	struct sockaddr_in *sa;
-	char *tok, *end = '\0';
+	char *tok, *end = NULL;
 	char *str;
 	int count, port;
 
