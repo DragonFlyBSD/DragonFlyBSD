@@ -26,7 +26,6 @@ SUBDIR=	alias \
 	calendar \
 	cap_mkdb \
 	chat \
-	checknr \
 	checkpt \
 	chflags \
 	chkey \
