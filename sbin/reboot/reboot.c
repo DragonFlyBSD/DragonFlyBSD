@@ -47,18 +47,18 @@
 #include <unistd.h>
 #include <utmpx.h>
 
-void usage(void) __dead2;
-u_int get_pageins(void);
+static void usage(void) __dead2;
+static u_int get_pageins(void);
 
-int dohalt;
+static int dohalt;
 
 int
 main(int argc, char *argv[])
 {
 	struct passwd *pw;
-	int ch, howto, i, fd, kflag, lflag, nflag, qflag, sverrno;
+	int ch, howto, i, lflag, nflag, qflag, sverrno;
 	u_int pageins;
-	char *kernel = NULL, *p;
+	char *p;
 	const char *user;
 
 	if (strstr((p = strrchr(*argv, '/')) ? p + 1 : *argv, "halt")) {
@@ -66,15 +66,11 @@ main(int argc, char *argv[])
 		howto = RB_HALT;
 	} else
 		howto = 0;
-	kflag = lflag = nflag = qflag = 0;
-	while ((ch = getopt(argc, argv, "dk:lnpq")) != -1)
+	lflag = nflag = qflag = 0;
+	while ((ch = getopt(argc, argv, "dlnpq")) != -1)
 		switch(ch) {
 		case 'd':
 			howto |= RB_DUMP;
-			break;
-		case 'k':
-			kflag = 1;
-			kernel = optarg;
 			break;
 		case 'l':
 			lflag = 1;
@@ -106,17 +102,6 @@ main(int argc, char *argv[])
 	if (qflag) {
 		reboot(howto);
 		err(1, NULL);
-	}
-
-	if (kflag) {
-		fd = open("/boot/nextboot.conf",
-			  O_WRONLY | O_CREAT | O_TRUNC, 0444);
-		if (fd != -1) {
-			write(fd, "kernel=\"", 8L);
-			write(fd, kernel, strlen(kernel));
-			write(fd, "\"\n", 2);
-			close(fd);
-		}
 	}
 
 	/* Log the reboot. */
@@ -196,15 +181,14 @@ restart:
 	/* NOTREACHED */
 }
 
-void
+static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s [-dnpq] [-k kernel]\n",
-	    dohalt ? "halt" : "reboot");
+	fprintf(stderr, "usage: %s [-dnpq]\n", dohalt ? "halt" : "reboot");
 	exit(1);
 }
 
-u_int
+static u_int
 get_pageins(void)
 {
 	u_int pageins;

@@ -29,12 +29,6 @@ root_start()
 		;;
 	esac
 	umount -a >/dev/null 2>&1
-
-	# If we booted a special kernel remove the record
-	# so we will boot the default kernel next time.
-	if [ -e /boot/nextkernel ]; then
-		rm -f /boot/nextkernel
-	fi
 }
 
 load_rc_config $name

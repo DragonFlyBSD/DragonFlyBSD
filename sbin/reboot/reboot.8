@@ -28,7 +28,7 @@
 .\"	@(#)reboot.8	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/sbin/reboot/reboot.8,v 1.10.2.7 2003/02/23 22:42:10 trhodes Exp $
 .\"
-.Dd September 11, 2019
+.Dd November 1, 2019
 .Dt REBOOT 8
 .Os
 .Sh NAME
@@ -40,16 +40,12 @@
 .Sh SYNOPSIS
 .Nm halt
 .Op Fl lnqp
-.Op Fl k Ar kernel
 .Nm
 .Op Fl dlnqp
-.Op Fl k Ar kernel
 .Nm fasthalt
 .Op Fl lnqp
-.Op Fl k Ar kernel
 .Nm fastboot
 .Op Fl dlnqp
-.Op Fl k Ar kernel
 .Sh DESCRIPTION
 The
 .Nm halt
@@ -73,17 +69,6 @@ This option is
 supported only when rebooting, and it has no effect unless a dump
 device has previously been specified with
 .Xr dumpon 8 .
-.It Fl k Ar kernel
-Boot the specified
-.Ar kernel
-on the next system boot.
-If the kernel boots successfully, the
-.Em default
-kernel will be booted on successive boots, this is a one-shot option.
-If the boot fails, the system will continue attempting to boot
-.Ar kernel
-until the boot process is interrupted and a valid kernel booted.
-This may change in the future.
 .It Fl l
 The halt or reboot is
 .Em not
