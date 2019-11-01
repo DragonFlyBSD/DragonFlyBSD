@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)termios.4	8.4 (Berkeley) 4/19/94
-.\" $FreeBSD: src/share/man/man4/termios.4,v 1.12.2.9 2001/12/17 11:30:12 ru Exp $
+.\" $FreeBSD: head/share/man/man4/termios.4 263142 2014-03-14 03:07:51Z eadler $
 .\"
-.Dd October 31, 2019
+.Dd November 1, 2019
 .Dt TERMIOS 4
 .Os
 .Sh NAME
@@ -1096,7 +1096,21 @@ If
 .Dv OCRNL
 is set, carriage returns are translated to newlines.
 .Pp
+The
+.Dv TABDLY
+bits specify the tab delay.
+The
+.Fa c_oflag
+is masked with
+.Dv TABDLY
+and compared with the
+values
+.Dv TAB0
+or
+.Dv TAB3 .
 If
+.Dv TAB3
+or
 .Dv OXTABS
 is set, tabs are expanded to the appropriate number of
 spaces (assuming 8 column tab stops).
@@ -1537,3 +1551,10 @@ after
 is set according to
 the values in the header
 .In sys/ttydefaults.h .
+.Sh SEE ALSO
+.Xr stty 1 ,
+.Xr tcgetsid 3 ,
+.Xr tcsendbreak 3 ,
+.Xr tcsetattr 3 ,
+.Xr tcsetsid 3 ,
+.Xr tty 4
