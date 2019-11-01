@@ -41,31 +41,73 @@ static void h2pfs_check(int fd, hammer2_blockref_t *bref,
 static void info_callback1(const char *, hammer2_blockref_t *, int);
 static void info_callback2(const char *, hammer2_blockref_t *, int);
 
-int
-cmd_info(int ac, const char **av)
-{
-	struct dirent *den;
-	char *devpath;
-	DIR *dir;
-	int i;
+typedef void (*cmd_callback)(const char *, hammer2_blockref_t *, int);
 
-	for (i = 0; i < ac; ++i)
-		h2disk_check(av[i], info_callback1);
-	if (ac == 0 && (dir = opendir("/dev/serno")) != NULL) {
+static
+void
+h2disk_check_serno(cmd_callback fn)
+{
+	DIR *dir;
+
+	if ((dir = opendir("/dev/serno")) != NULL) {
+		struct dirent *den;
+
 		while ((den = readdir(dir)) != NULL) {
 			const char *ptr;
 			int slice;
 			char part;
+			char *devpath;
 
+			if (!strcmp(den->d_name, ".") ||
+			    !strcmp(den->d_name, ".."))
+				continue;
 			ptr = strrchr(den->d_name, '.');
 			if (ptr && sscanf(ptr, ".s%d%c", &slice, &part) == 2) {
 				asprintf(&devpath, "/dev/serno/%s",
 					 den->d_name);
-				h2disk_check(devpath, info_callback1);
+				h2disk_check(devpath, fn);
 				free(devpath);
 			}
 		}
 		closedir(dir);
+	}
+}
+
+static
+void
+h2disk_check_dm(cmd_callback fn)
+{
+	DIR *dir;
+
+	if ((dir = opendir("/dev/mapper")) != NULL) {
+		struct dirent *den;
+
+		while ((den = readdir(dir)) != NULL) {
+			char *devpath;
+
+			if (!strcmp(den->d_name, ".") ||
+			    !strcmp(den->d_name, "..") ||
+			    !strcmp(den->d_name, "control"))
+				continue;
+			asprintf(&devpath, "/dev/mapper/%s",
+				 den->d_name);
+			h2disk_check(devpath, fn);
+			free(devpath);
+		}
+		closedir(dir);
+	}
+}
+
+int
+cmd_info(int ac, const char **av)
+{
+	int i;
+
+	for (i = 0; i < ac; ++i)
+		h2disk_check(av[i], info_callback1);
+	if (ac == 0) {
+		h2disk_check_serno(info_callback1);
+		h2disk_check_dm(info_callback1);
 	}
 	return 0;
 }
@@ -95,29 +137,14 @@ static volatile sig_atomic_t DidAlarm;
 int
 cmd_mountall(int ac, const char **av)
 {
-	struct dirent *den;
-	char *devpath;
-	DIR *dir;
 	int i;
 	pid_t pid;
 
 	for (i = 0; i < ac; ++i)
 		h2disk_check(av[i], mount_callback1);
-	if (ac == 0 && (dir = opendir("/dev/serno")) != NULL) {
-		while ((den = readdir(dir)) != NULL) {
-			const char *ptr;
-			int slice;
-			char part;
-
-			ptr = strrchr(den->d_name, '.');
-			if (ptr && sscanf(ptr, ".s%d%c", &slice, &part) == 2) {
-				asprintf(&devpath, "/dev/serno/%s",
-					 den->d_name);
-				h2disk_check(devpath, mount_callback1);
-				free(devpath);
-			}
-		}
-		closedir(dir);
+	if (ac == 0) {
+		h2disk_check_serno(mount_callback1);
+		h2disk_check_dm(mount_callback1);
 	}
 	signal(SIGALRM, cmd_mountall_alarm);
 	for (;;) {
