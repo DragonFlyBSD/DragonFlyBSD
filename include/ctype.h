@@ -66,7 +66,23 @@
 #define	_CTYPE_SWM	0xe0000000L		/* Mask for screen width data */
 #define	_CTYPE_SWS	30			/* Bits to shift to get width */
 
-/* See comments in <sys/_types.h> about __ct_rune_t. */
+/*
+ * rune_t is declared to be an ``int'' instead of the more natural
+ * ``unsigned long'' or ``long''.  Two things are happening here.  It is not
+ * unsigned so that EOF (-1) can be naturally assigned to it and used.  Also,
+ * it looks like 10646 will be a 31 bit standard.  This means that if your
+ * ints cannot hold 32 bits, you will be in trouble.  The reason an int was
+ * chosen over a long is that the is*() and to*() routines take ints (says
+ * ANSI C), but they use __ct_rune_t instead of int.
+ *
+ * NOTE: rune_t is not covered by ANSI nor other standards, and should not
+ * be instantiated outside of lib/libc/locale.  Use wchar_t.
+ */
+#ifndef ___CT_RUNE_T_DECLARED
+typedef	int	__ct_rune_t;			/* Arg type for ctype funcs */
+#define	___CT_RUNE_T_DECLARED
+#endif
+
 __BEGIN_DECLS
 unsigned long	___runetype(__ct_rune_t) __pure;
 __ct_rune_t	___tolower(__ct_rune_t) __pure;

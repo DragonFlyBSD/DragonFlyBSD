@@ -42,6 +42,12 @@
 #define	_CACHED_RUNES	(1 <<8 )	/* Must be a power of 2 */
 #define	_CRMASK		(~(_CACHED_RUNES - 1))
 
+/* See comments in <ctype.h> about __ct_rune_t. */
+#ifndef ___CT_RUNE_T_DECLARED
+typedef	int		__ct_rune_t;	/* Arg type for ctype funcs */
+#define	___CT_RUNE_T_DECLARED
+#endif
+
 typedef __ct_rune_t	__rune_t;	/* Internal runetype.h type */
 
 /*

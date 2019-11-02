@@ -247,21 +247,4 @@ typedef	__timer_t	timer_t;
 #include <sys/_timeval.h>
 #endif /* __BSD_VISIBLE */
 
-/*
- * rune_t is declared to be an ``int'' instead of the more natural
- * ``unsigned long'' or ``long''.  Two things are happening here.  It is not
- * unsigned so that EOF (-1) can be naturally assigned to it and used.  Also,
- * it looks like 10646 will be a 31 bit standard.  This means that if your
- * ints cannot hold 32 bits, you will be in trouble.  The reason an int was
- * chosen over a long is that the is*() and to*() routines take ints (says
- * ANSI C), but they use __ct_rune_t instead of int.
- *
- * NOTE: rune_t is not covered by ANSI nor other standards, and should not
- * be instantiated outside of lib/libc/locale.  Use wchar_t.  wint_t and
- * rune_t must be the same type.  Also, wint_t should be able to hold all
- * members of the largest character set plus one extra value (WEOF), and
- * must be at least 16 bits.
- */
-typedef	int		__ct_rune_t;	/* arg type for ctype funcs */
-
 #endif /* !_SYS_TYPES_H_ */
