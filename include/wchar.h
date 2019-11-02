@@ -63,11 +63,10 @@
 #include <sys/cdefs.h>
 #include <sys/_null.h>
 #include <sys/types.h>
-#include <machine/limits.h>
-#include <machine/stdarg.h> /* for __va_list */
+#include <machine/stdarg.h>	/* for __va_list */
 #include <machine/wchar_limits.h>
 #include <machine/wchar.h>
-#include <ctype.h>
+#include <ctype.h>		/* for __wcwidth() */
 
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
 #ifndef _VA_LIST_DECLARED
