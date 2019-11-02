@@ -36,6 +36,9 @@
 
 #include <sys/cdefs.h>
 #include <sys/_null.h>
+#ifndef __cplusplus
+#include <machine/wchar.h>		/* for ___wchar_t */
+#endif
 #ifndef _SYS_STDINT_H_
 #include <sys/stdint.h>			/* __rune_t and friends */
 #endif
@@ -53,7 +56,7 @@ typedef	__ptrdiff_t	ptrdiff_t;	/* open group, _GCC_PTRDIFF_T OK */
 #ifndef	__cplusplus
 #ifndef _WCHAR_T_DECLARED
 #define _WCHAR_T_DECLARED
-typedef	__wchar_t	wchar_t;	/* open group, _GCC_WCHAR_T OK */
+typedef	___wchar_t	wchar_t;	/* open group, _GCC_WCHAR_T OK */
 #endif
 #endif
 

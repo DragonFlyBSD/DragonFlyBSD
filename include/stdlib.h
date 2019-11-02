@@ -36,6 +36,9 @@
 #include <sys/cdefs.h>
 #include <sys/_null.h>
 #include <sys/types.h>
+#ifndef __cplusplus
+#include <machine/wchar.h>		/* for ___wchar_t */
+#endif
 
 #ifndef _SIZE_T_DECLARED
 typedef	__size_t	size_t;		/* _GCC_SIZE_T OK */
@@ -44,7 +47,7 @@ typedef	__size_t	size_t;		/* _GCC_SIZE_T OK */
 
 #ifndef	__cplusplus
 #ifndef _WCHAR_T_DECLARED
-typedef	__wchar_t	wchar_t;	/* _GCC_WCHAR_T OK */
+typedef	___wchar_t	wchar_t;	/* _GCC_WCHAR_T OK */
 #define	_WCHAR_T_DECLARED
 #endif
 #endif

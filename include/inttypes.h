@@ -30,12 +30,15 @@
 #define	_INTTYPES_H_
 
 #include <machine/inttypes.h>
+#ifndef __cplusplus
+#include <machine/wchar.h>		/* for ___wchar_t */
+#endif
 #include <stdint.h>
 
 #ifndef __cplusplus
 #ifndef _WCHAR_T_DECLARED
 #define	_WCHAR_T_DECLARED
-typedef __wchar_t	wchar_t;
+typedef ___wchar_t	wchar_t;
 #endif
 #endif
 

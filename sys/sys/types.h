@@ -263,9 +263,5 @@ typedef	__timer_t	timer_t;
  * must be at least 16 bits.
  */
 typedef	int		__ct_rune_t;	/* arg type for ctype funcs */
-#ifndef ___WINT_T_DECLARED
-typedef	__ct_rune_t	__wint_t;	/* wint_t (see above) */
-#define	___WINT_T_DECLARED
-#endif
 
 #endif /* !_SYS_TYPES_H_ */

@@ -42,6 +42,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <machine/atomic.h>
+#include <machine/wchar.h>		/* for __mbstate_t, XXX use mbstate_t here? */
 #include "setlocale.h"
 
 /**

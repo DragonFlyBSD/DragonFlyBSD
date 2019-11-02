@@ -33,6 +33,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
+#include <machine/wchar.h>		/* for __wint_t */
 
 #include <ctype.h>
 

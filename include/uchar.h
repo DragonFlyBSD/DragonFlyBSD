@@ -31,6 +31,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
+#include <machine/wchar.h>	/* for __mbstate_t */
 
 #if !defined(__cplusplus) || __cplusplus < 201103
 typedef	__uint_least16_t	char16_t;

@@ -65,6 +65,7 @@
 #include <sys/types.h>
 #include <machine/limits.h>
 #include <machine/stdarg.h> /* for __va_list */
+#include <machine/wchar.h>
 #include <ctype.h>
 
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
@@ -80,7 +81,7 @@ typedef	__va_list	va_list;
 #ifndef __cplusplus
 #ifndef _WCHAR_T_DECLARED
 #define	_WCHAR_T_DECLARED
-typedef	__wchar_t	wchar_t;
+typedef	___wchar_t	wchar_t;
 #endif
 #endif
 
