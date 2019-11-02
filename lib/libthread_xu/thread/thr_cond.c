@@ -274,7 +274,7 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 
 		if (abstime != NULL) {
 			clock_gettime(cv->c_clockid, &ts);
-			TIMESPEC_SUB(&ts2, abstime, &ts);
+			timespecsub(abstime, &ts, &ts2);
 			tsp = &ts2;
 		} else {
 			tsp = NULL;

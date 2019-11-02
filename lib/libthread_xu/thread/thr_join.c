@@ -107,7 +107,7 @@ join_common(pthread_t pthread, void **thread_return,
 		cpu_ccfence();
 		if (abstime != NULL) {
 			clock_gettime(CLOCK_REALTIME, &ts);
-			TIMESPEC_SUB(&ts2, abstime, &ts);
+			timespecsub(abstime, &ts, &ts2);
 			if (ts2.tv_sec < 0) {
 				ret = ETIMEDOUT;
 				break;

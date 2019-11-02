@@ -93,26 +93,6 @@ void	_thr_log(const char *buf, size_t bytes);
 TAILQ_HEAD(thread_head, pthread)	thread_head;
 TAILQ_HEAD(atfork_head, pthread_atfork)	atfork_head;
 
-#define	TIMESPEC_ADD(dst, src, val)				\
-	do {							\
-		(dst)->tv_sec = (src)->tv_sec + (val)->tv_sec;	\
-		(dst)->tv_nsec = (src)->tv_nsec + (val)->tv_nsec; \
-		if ((dst)->tv_nsec >= 1000000000) {		\
-			(dst)->tv_sec++;			\
-			(dst)->tv_nsec -= 1000000000;		\
-		}						\
-	} while (0)
-
-#define	TIMESPEC_SUB(dst, src, val)				\
-	do {							\
-		(dst)->tv_sec = (src)->tv_sec - (val)->tv_sec;	\
-		(dst)->tv_nsec = (src)->tv_nsec - (val)->tv_nsec; \
-		if ((dst)->tv_nsec < 0) {			\
-			(dst)->tv_sec--;			\
-			(dst)->tv_nsec += 1000000000;		\
-		}						\
-	} while (0)
-
 struct pthread_mutex {
 	/*
 	 * Lock for accesses to this structure.

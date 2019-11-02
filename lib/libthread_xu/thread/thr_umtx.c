@@ -123,7 +123,7 @@ __thr_umtx_timedlock(volatile umtx_t *mtx, int id,
 
 	/* XXX there should have MONO timer! */
 	clock_gettime(CLOCK_REALTIME, &ts);
-	TIMESPEC_ADD(&ts, &ts, timeout);
+	timespecadd(&ts, timeout, &ts);
 	ts2 = *timeout;
 
 	id &= 0x3FFFFFFF;
@@ -140,7 +140,7 @@ __thr_umtx_timedlock(volatile umtx_t *mtx, int id,
 		if (ret != EINTR && ret != ETIMEDOUT)
 			break;
 		clock_gettime(CLOCK_REALTIME, &ts3);
-		TIMESPEC_SUB(&ts2, &ts, &ts3);
+		timespecsub(&ts, &ts3, &ts2);
 		if (ts2.tv_sec < 0 ||
 		    (ts2.tv_sec == 0 && ts2.tv_nsec <= 0)) {
 			ret = ETIMEDOUT;
@@ -196,7 +196,7 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 	return (ETIMEDOUT);
 
 	clock_gettime(clockid, &ts);
-	TIMESPEC_ADD(&ts, &ts, timeout);
+	timespecadd(&ts, timeout, &ts);
 	ts2 = *timeout;
 
 	for (;;) {
@@ -220,7 +220,7 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 		}
 
 		clock_gettime(clockid, &ts3);
-		TIMESPEC_SUB(&ts2, &ts, &ts3);
+		timespecsub(&ts, &ts3, &ts2);
 		if (ts2.tv_sec < 0 || (ts2.tv_sec == 0 && ts2.tv_nsec <= 0)) {
 			ret = ETIMEDOUT;
 			break;

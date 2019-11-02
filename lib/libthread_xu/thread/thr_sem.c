@@ -369,7 +369,7 @@ _sem_timedwait(sem_t * __restrict sem, const struct timespec * __restrict abstim
 			return (-1);
 		}
 		clock_gettime(CLOCK_REALTIME, &ts);
-		TIMESPEC_SUB(&ts2, abstime, &ts);
+		timespecsub(abstime, &ts, &ts2);
 		oldcancel = _thr_cancel_enter(curthread);
 		sem_log("sem_wait %p %d (wait)\n", *sem, val);
 		retval = _thr_umtx_wait(&(*sem)->count, 0, &ts2,

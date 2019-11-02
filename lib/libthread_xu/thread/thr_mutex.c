@@ -431,7 +431,7 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *mutex,
 				ret = EINVAL;
 		} else {
 			clock_gettime(CLOCK_REALTIME, &ts);
-			TIMESPEC_SUB(&ts2, abstime, &ts);
+			timespecsub(abstime, &ts, &ts2);
 			ret = THR_UMTX_TIMEDLOCK(curthread, &m->m_lock, &ts2);
 		}
 		if (ret == 0) {
@@ -586,7 +586,7 @@ mutex_self_lock(pthread_mutex_t m, const struct timespec *abstime)
 	case PTHREAD_MUTEX_ERRORCHECK:
 		if (abstime) {
 			clock_gettime(CLOCK_REALTIME, &ts1);
-			TIMESPEC_SUB(&ts2, abstime, &ts1);
+			timespecsub(abstime, &ts1, &ts2);
 			__sys_nanosleep(&ts2, NULL);
 			ret = ETIMEDOUT;
 		} else {
@@ -606,7 +606,7 @@ mutex_self_lock(pthread_mutex_t m, const struct timespec *abstime)
 		ret = 0;
 		if (abstime) {
 			clock_gettime(CLOCK_REALTIME, &ts1);
-			TIMESPEC_SUB(&ts2, abstime, &ts1);
+			timespecsub(abstime, &ts1, &ts2);
 			__sys_nanosleep(&ts2, NULL);
 			ret = ETIMEDOUT;
 		} else {
