@@ -65,6 +65,7 @@
 #include <sys/types.h>
 #include <machine/limits.h>
 #include <machine/stdarg.h> /* for __va_list */
+#include <machine/wchar_limits.h>
 #include <machine/wchar.h>
 #include <ctype.h>
 
@@ -86,11 +87,11 @@ typedef	___wchar_t	wchar_t;
 #endif
 
 #ifndef WCHAR_MIN
-#define	WCHAR_MIN	INT_MIN
+#define	WCHAR_MIN	__WCHAR_MIN
 #endif
 
 #ifndef WCHAR_MAX
-#define	WCHAR_MAX	INT_MAX
+#define	WCHAR_MAX	__WCHAR_MAX
 #endif
 
 #ifndef _WINT_T_DECLARED

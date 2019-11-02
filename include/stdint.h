@@ -22,8 +22,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/include/stdint.h,v 1.2 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef _STDINT_H_
@@ -78,6 +76,24 @@ typedef __uint_least64_t	uint_least64_t;
 
 #if !defined(__cplusplus) || defined(__STDC_LIMIT_MACROS)
 #include <machine/int_limits.h>
+#include <machine/wchar_limits.h>
+
+/* Also possibly defined in <wchar.h> */
+/* Limits of wchar_t. */
+#ifndef WCHAR_MIN
+#define	WCHAR_MIN	__WCHAR_MIN
+#endif
+#ifndef WCHAR_MAX
+#define	WCHAR_MAX	__WCHAR_MAX
+#endif
+
+/* Limits of wint_t. */
+#ifndef WINT_MIN
+#define	WINT_MIN	__WINT_MIN
+#endif
+#ifndef WINT_MAX
+#define	WINT_MAX	__WINT_MAX
+#endif
 #endif
 
 #if __EXT1_VISIBLE
@@ -86,4 +102,4 @@ typedef __uint_least64_t	uint_least64_t;
 #endif
 #endif /* __EXT1_VISIBLE */
 
-#endif
+#endif /* !_STDINT_H_ */

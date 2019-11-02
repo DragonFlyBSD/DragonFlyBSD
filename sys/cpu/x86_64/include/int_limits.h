@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2001, 2002 Mike Barcroft <mike@FreeBSD.org>
  * Copyright (c) 2001 The NetBSD Foundation, Inc.  All rights reserved.
- * Copyright (c) 1990, 1993 The Regents of the University of California. 
+ * Copyright (c) 1990, 1993 The Regents of the University of California.
  *		All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -82,7 +82,7 @@
  * 7.18.3  Limits of other integer types
  */
 /* Limits of ptrdiff_t. */
-#define	PTRDIFF_MIN	INT64_MIN	
+#define	PTRDIFF_MIN	INT64_MIN
 #define	PTRDIFF_MAX	INT64_MAX
 
 /* Limits of sig_atomic_t. */
@@ -91,24 +91,6 @@
 
 /* Limit of size_t. */
 #define	SIZE_MAX	UINT64_MAX
-
-/* XXX possibly should be removed from here */
-/* Also possibly defined in <wchar.h> */
-/* Limits of wchar_t. */
-#ifndef WCHAR_MIN
-#define	WCHAR_MIN	INT32_MIN
-#endif
-#ifndef WCHAR_MAX
-#define	WCHAR_MAX	INT32_MAX
-#endif
-
-/* Limits of wint_t. */
-#ifndef WINT_MIN
-#define	WINT_MIN	INT32_MIN
-#endif
-#ifndef WINT_MAX
-#define	WINT_MAX	INT32_MAX
-#endif
 
 /*
  * ISO/IEC 9899:1999
