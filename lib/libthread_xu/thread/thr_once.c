@@ -61,6 +61,8 @@ _pthread_once(pthread_once_t *once_control, void (*init_routine) (void))
 {
 	int wakeup = 0;
 
+	_thr_check_init();
+
 	if (once_control->state == ONCE_DONE)
 		return (0);
 	_pthread_mutex_lock(&once_lock);
