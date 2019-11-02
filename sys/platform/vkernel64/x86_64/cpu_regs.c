@@ -96,7 +96,6 @@
 #include <sys/ptrace.h>
 #include <machine/sigframe.h>
 #include <unistd.h>		/* umtx_* functions */
-#include <pthread.h>		/* pthread_yield() */
 
 extern void dblfault_handler (void);
 

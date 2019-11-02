@@ -67,10 +67,6 @@
 #include <sys/spinlock2.h>
 #include <sys/ktr.h>
 
-#ifdef _KERNEL_VIRTUAL
-#include <pthread.h>
-#endif
-
 struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin, "pmap_spin");
 
 /*

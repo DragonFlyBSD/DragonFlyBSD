@@ -67,10 +67,6 @@
 #include <machine/clock.h>
 #include <machine/atomic.h>
 
-#ifdef _KERNEL_VIRTUAL
-#include <pthread.h>
-#endif
-
 struct ipiq_stats {
     int64_t ipiq_count;		/* total calls to lwkt_send_ipiq*() */
     int64_t ipiq_fifofull;	/* number of fifo full conditions detected */
@@ -257,7 +253,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	     */
 #ifdef _KERNEL_VIRTUAL
 	    if (repeating++ > 10)
-		    pthread_yield();
+		    vkernel_yield();
 #else
 	    if (rdtsc() - tsc_base > tsc_frequency) {
 		++repeating;
@@ -488,7 +484,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 		crit_exit();
 #ifdef _KERNEL_VIRTUAL
 		if (repeating++ > 10)
-			pthread_yield();
+			vkernel_yield();
 #endif
 
 		/*
@@ -871,7 +867,7 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 	    lwkt_process_ipiq();
 	    cpu_pause();
 #ifdef _KERNEL_VIRTUAL
-	    pthread_yield();
+	    vkernel_yield();
 #endif
 	}
 	DEBUG_POP_INFO();
@@ -911,7 +907,7 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 	    lwkt_process_ipiq();
 	    cpu_pause();
 #ifdef _KERNEL_VIRTUAL
-	    pthread_yield();
+	    vkernel_yield();
 #endif
 	}
 	DEBUG_POP_INFO();
@@ -960,7 +956,7 @@ lwkt_cpusync_quick(lwkt_cpusync_t cs)
 	    lwkt_process_ipiq();
 	    cpu_pause();
 #ifdef _KERNEL_VIRTUAL
-	    pthread_yield();
+	    vkernel_yield();
 #endif
 	}
 
@@ -1016,7 +1012,7 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 
 	cpu_pause();
 #ifdef _KERNEL_VIRTUAL
-	pthread_yield();
+	vkernel_yield();
 #endif
 	cpu_lfence();
 

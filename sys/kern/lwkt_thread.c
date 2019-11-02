@@ -74,10 +74,6 @@
 #include <machine/smp.h>
 #include <machine/clock.h>
 
-#ifdef _KERNEL_VIRTUAL
-#include <pthread.h>
-#endif
-
 #define LOOPMASK
 
 #if !defined(KTR_CTXSW)
@@ -1385,7 +1381,7 @@ lwkt_acquire(thread_t td)
 	    lwkt_process_ipiq();
 	    cpu_lfence();
 #ifdef _KERNEL_VIRTUAL
-	    pthread_yield();
+	    vkernel_yield();
 #endif
 #ifdef LOOPMASK
 	    if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {

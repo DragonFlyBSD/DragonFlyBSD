@@ -90,7 +90,6 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <pthread.h>
 
 #define PMAP_KEEP_PDIRS
 #ifndef PMAP_SHPGPERPROC
@@ -3334,7 +3333,7 @@ pmap_interlock_wait (struct vmspace *vm)
 		crit_enter();
 		while (pmap->pm_active_lock & CPULOCK_EXCL) {
 			cpu_ccfence();
-			pthread_yield();
+			vkernel_yield();
 		}
 		crit_exit();
 	}

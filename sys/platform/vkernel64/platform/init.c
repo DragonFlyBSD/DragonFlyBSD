@@ -81,6 +81,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <sysexits.h>
+#include <pthread.h>
 
 #define EX_VKERNEL_REBOOT	32
 
@@ -1690,4 +1691,13 @@ vkernel_module_memory_free(vm_offset_t base, size_t bytes)
 	munmap((void *)base, bytes);
 #endif
 #endif
+}
+
+/*
+ * VKERNEL64 implementation functions using ptrheads.
+ */
+void
+vkernel_yield(void)
+{
+	pthread_yield();
 }

@@ -74,7 +74,6 @@
 #include <machine/pmap_inval.h>
 
 #include <unistd.h>
-#include <pthread.h>
 
 #include <vm/vm_page2.h>
 
@@ -166,7 +165,7 @@ guest_sync_addr(struct pmap *pmap, volatile vpte_t *ptep, vpte_t *srcv)
 		}
 		cpu_pause();
 		lwkt_process_ipiq();
-		pthread_yield();
+		vkernel_yield();
 	}
 
 	/*

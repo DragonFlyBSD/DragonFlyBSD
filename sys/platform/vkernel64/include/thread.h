@@ -90,6 +90,8 @@ _get_mycpu(void)
 #define curthread	mycpu->gd_curthread
 #define	curproc		curthread->td_proc
 
+void vkernel_yield(void);
+
 #endif	/* _KERNEL */
 
 #endif	/* !_MACHINE_THREAD_H_ */

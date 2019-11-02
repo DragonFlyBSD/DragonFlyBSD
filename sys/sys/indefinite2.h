@@ -43,9 +43,6 @@
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>
 #endif
-#ifdef _KERNEL_VIRTUAL
-#include <pthread.h>
-#endif
 
 /*
  * Initialize the indefinite state (only if the TSC is supported)
@@ -82,7 +79,7 @@ indefinite_check(indefinite_info_t *info)
 	const char *str;
 
 #ifdef _KERNEL_VIRTUAL
-	pthread_yield();
+	vkernel_yield();
 #else
 	cpu_pause();
 #endif
