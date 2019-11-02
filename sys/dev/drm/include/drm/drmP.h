@@ -1291,15 +1291,6 @@ void drm_init_pdev(device_t dev, struct pci_dev **pdev);
 void drm_fini_pdev(struct pci_dev **pdev);
 void drm_print_pdev(struct pci_dev *pdev);
 
-/* Inline drm_free() helper for area kfree() */
-static __inline__ void
-drm_free(void *pt, struct malloc_type *area)
-{
-	/* kfree is special!!! */
-	if (pt != NULL)
-		(kfree)(pt, area);
-}
-
 struct drm_device *drm_dev_alloc(struct drm_driver *driver,
 				 struct device *parent);
 void drm_dev_ref(struct drm_device *dev);
