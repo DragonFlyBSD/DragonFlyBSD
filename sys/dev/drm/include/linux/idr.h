@@ -29,11 +29,6 @@
 
 #include <sys/idr.h>
 
-#ifndef GFP_KERNEL
-#include <sys/malloc.h>
-#define	GFP_KERNEL	M_WAITOK
-#endif
-
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_IDR);
 #endif
