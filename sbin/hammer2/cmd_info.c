@@ -98,6 +98,37 @@ h2disk_check_dm(cmd_callback fn)
 	}
 }
 
+static
+void
+h2disk_check_misc(cmd_callback fn)
+{
+	DIR *dir;
+
+	if ((dir = opendir("/dev")) != NULL) {
+		struct dirent *den;
+
+		while ((den = readdir(dir)) != NULL) {
+			char *devpath;
+
+			if (!strcmp(den->d_name, ".") ||
+			    !strcmp(den->d_name, ".."))
+				continue;
+			if (strncmp(den->d_name, "ad", 2) &&
+			    strncmp(den->d_name, "vn", 2))
+				continue;
+			if (!strcmp(den->d_name, "vn"))
+				continue;
+			if (!strncmp(den->d_name, "ad", 2) &&
+			    den->d_namlen <= 3)
+				continue;
+			asprintf(&devpath, "/dev/%s", den->d_name);
+			h2disk_check(devpath, fn);
+			free(devpath);
+		}
+		closedir(dir);
+	}
+}
+
 int
 cmd_info(int ac, const char **av)
 {
@@ -108,6 +139,7 @@ cmd_info(int ac, const char **av)
 	if (ac == 0) {
 		h2disk_check_serno(info_callback1);
 		h2disk_check_dm(info_callback1);
+		h2disk_check_misc(info_callback1);
 	}
 	return 0;
 }
@@ -145,6 +177,7 @@ cmd_mountall(int ac, const char **av)
 	if (ac == 0) {
 		h2disk_check_serno(mount_callback1);
 		h2disk_check_dm(mount_callback1);
+		h2disk_check_misc(mount_callback1);
 	}
 	signal(SIGALRM, cmd_mountall_alarm);
 	for (;;) {
