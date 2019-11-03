@@ -160,13 +160,26 @@ main(int argc, char *argv[])
 	}
 
 	if (doall) {
+		if (setgroups(0, NULL) == -1) {
+			err(EXIT_FAILURE, "setgroups");
+		}
 		while ((pw = getpwent()) != NULL) {
-			setegid(pw->pw_gid);
-			initgroups(pw->pw_name, pw->pw_gid);
-			seteuid(pw->pw_uid);
-			if (!chdir(pw->pw_dir))
+			if (setegid(pw->pw_gid) == -1) {
+				warn("%s: setegid", pw->pw_name);
+				continue;
+			}
+			if (initgroups(pw->pw_name, pw->pw_gid) == -1) {
+				warn("%s: initgroups", pw->pw_name);
+				continue;
+			}
+			if (seteuid(pw->pw_uid) == -1) {
+				warn("%s: seteuid", pw->pw_name);
+				continue;
+			}
+			if (chdir(pw->pw_dir) != -1)
 				cal();
-			seteuid(0);
+			if (seteuid(0) == -1)
+				warn("%s: seteuid back to 0", pw->pw_name);
 		}
 	} else {
 		cal();

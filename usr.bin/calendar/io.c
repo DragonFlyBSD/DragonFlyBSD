@@ -36,6 +36,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+#include <assert.h>
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
@@ -74,6 +75,7 @@ static char *extradata[MAXCOUNT];
 
 static FILE	*cal_fopen(const char *file);
 static bool	 cal_parse(FILE *in, FILE *out);
+static void	 changeuser(void);
 static void	 closecal(FILE *fp);
 static FILE	*opencalin(void);
 static FILE	*opencalout(void);
@@ -383,7 +385,6 @@ cal(void)
 	for (i = 0; i < MAXCOUNT; i++)
 		extradata[i] = (char *)calloc(1, 20);
 
-
 	if ((fpin = opencalin()) == NULL)
 		return;
 
@@ -440,7 +441,6 @@ opencalout(void)
 static void
 closecal(FILE *fp)
 {
-	uid_t uid;
 	struct stat sbuf;
 	int nread, pdes[2], status;
 	char buf[1024];
@@ -453,6 +453,7 @@ closecal(FILE *fp)
 		goto done;
 	if (pipe(pdes) < 0)
 		goto done;
+
 	switch (fork()) {
 	case -1:
 		/* error */
@@ -466,19 +467,8 @@ closecal(FILE *fp)
 			close(pdes[0]);
 		}
 		close(pdes[1]);
-		uid = geteuid();
-		if (setuid(getuid()) < 0) {
-			warnx("setuid failed");
-			_exit(1);
-		}
-		if (setgid(getegid()) < 0) {
-			warnx("setgid failed");
-			_exit(1);
-		}
-		if (setuid(uid) < 0) {
-			warnx("setuid failed");
-			_exit(1);
-		}
+		/* become the user properly */
+		changeuser();
 		execl(_PATH_SENDMAIL, "sendmail", "-i", "-t", "-F",
 		    "\"Reminder Service\"", (char *)NULL);
 		warn(_PATH_SENDMAIL);
@@ -504,4 +494,32 @@ done:
 	unlink(path);
 	while (wait(&status) >= 0)
 		;
+}
+
+static void
+changeuser(void)
+{
+	uid_t uid;
+	gid_t gid;
+
+	uid = geteuid();
+	gid = getegid();
+	assert(uid == pw->pw_uid);
+	assert(gid == pw->pw_gid);
+
+	if (seteuid(0) == -1) {
+		err(EXIT_FAILURE, "%s: changing user: cannot reassert uid 0",
+		    pw->pw_name);
+	}
+	if (setgid(gid) == -1) {
+		err(EXIT_FAILURE, "%s: cannot assume gid %d",
+		    pw->pw_name, (int)gid);
+	}
+	if (initgroups(pw->pw_name, gid) == -1) {
+		err(EXIT_FAILURE, "%s: cannot initgroups", pw->pw_name);
+	}
+	if (setuid(uid) == -1) {
+		err(EXIT_FAILURE, "%s: cannot assume uid %d",
+		    pw->pw_name, (int)uid);
+	}
 }
