@@ -66,6 +66,7 @@ static void dophase(worker_t *work, wmsg_t *wmsg,
 static void phaseReapAll(void);
 static void phaseTerminateSignal(int sig);
 static char *buildskipreason(pkglink_t *parent, pkg_t *pkg);
+static int buildskipcount_dueto(pkg_t *pkg, int mode);
 static int mptylogpoll(int ptyfd, int fdlog, wmsg_t *wmsg,
 			time_t *wdog_timep);
 static int copyfile(char *src, char *dst);
@@ -1032,10 +1033,20 @@ workercomplete(worker_t *work)
 			}
 			free(reason);
 		} else {
+			char skipbuf[16];
+			int scount;
+
+			scount = buildskipcount_dueto(pkg, 1);
+			buildskipcount_dueto(pkg, 0);
+			if (scount)
+				snprintf(skipbuf, sizeof(skipbuf), " (%d)", scount);
+			else
+				skipbuf[0] = 0;
+
 			++BuildFailCount;
 			dlog(DLOG_FAIL | DLOG_RED,
-			     "[%03d] FAILURE %s ##%16.16s %02d:%02d:%02d\n",
-			     work->index, pkg->portdir,
+			     "[%03d] FAILURE %s%s ##%16.16s %02d:%02d:%02d\n",
+			     work->index, pkg->portdir, skipbuf,
 			     getphasestr(work->phase),
 			     h, m, s);
 			doHook(pkg, "hook_pkg_failure", HookPkgFailure, 0);
@@ -2512,6 +2523,34 @@ buildskipreason(pkglink_t *parent, pkg_t *pkg)
 		reason[tot] = 0;
 	}
 	return (reason);
+}
+
+/*
+ * Count number of packages that would be skipped due to the
+ * specified package having failed.
+ *
+ * Call with mode 1 to count, and mode 0 to clear the
+ * cumulative rscan flag (used to de-duplicate the count).
+ *
+ * Must be serialized.
+ */
+static int
+buildskipcount_dueto(pkg_t *pkg, int mode)
+{
+	pkglink_t *link;
+	pkg_t *scan;
+	int total;
+
+	total = 0;
+	PKGLIST_FOREACH(link, &pkg->deponi_list) {
+		scan = link->pkg;
+		if (scan == NULL || scan->rscan == mode)
+			continue;
+		scan->rscan = mode;
+		++total;
+		total += buildskipcount_dueto(scan, mode);
+	}
+	return total;
 }
 
 /*

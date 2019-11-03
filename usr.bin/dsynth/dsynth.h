@@ -150,6 +150,7 @@ typedef struct pkg {
 	int depi_depth;		/* tree depth who depends on me		*/
 	int dsynth_install_flg;	/* locked with WorkerMutex	*/
 	int flags;
+	int rscan;		/* recursive scan flag (serialized use) */
 	size_t pkgfile_size;	/* size of pkgfile */
 } pkg_t;
 
