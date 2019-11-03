@@ -108,20 +108,19 @@ wake_up_all(wait_queue_head_t *q)
 									\
 	start_jiffies = ticks;						\
 									\
-	if (!locked)							\
-		lockmgr(&wq.lock, LK_EXCLUSIVE);			\
 	while (1) {							\
+		lockmgr(&wq.lock, LK_EXCLUSIVE);			\
+		if (flags == PCATCH) {					\
+			set_current_state(TASK_INTERRUPTIBLE);		\
+		} else {						\
+			set_current_state(TASK_UNINTERRUPTIBLE);	\
+		}							\
+		lockmgr(&wq.lock, LK_RELEASE);				\
+									\
 		if (condition)						\
 			break;						\
 									\
-		if (flags == PCATCH) {					\
-			__set_current_state(TASK_INTERRUPTIBLE);	\
-		} else {						\
-			__set_current_state(TASK_UNINTERRUPTIBLE);	\
-		}							\
-									\
-		ret = lksleep(&wq, &wq.lock, flags,			\
-					"lwe", timeout_jiffies);	\
+		ret = tsleep(&wq, flags, "lwe", timeout_jiffies);	\
 		if (ret == EINTR || ret == ERESTART) {			\
 			interrupted = true;				\
 			break;						\
@@ -131,8 +130,6 @@ wake_up_all(wait_queue_head_t *q)
 			break;						\
 		}							\
 	}								\
-	if (!locked)							\
-		lockmgr(&wq.lock, LK_RELEASE);				\
 									\
 	elapsed_jiffies = ticks - start_jiffies;			\
 	remaining_jiffies = timeout_jiffies - elapsed_jiffies;		\
@@ -148,7 +145,7 @@ wake_up_all(wait_queue_head_t *q)
 	else								\
 		retval = 1;						\
 									\
-	__set_current_state(TASK_RUNNING);				\
+	set_current_state(TASK_RUNNING);				\
 	retval;								\
 })
 
