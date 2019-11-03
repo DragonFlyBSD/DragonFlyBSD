@@ -884,7 +884,7 @@ devfs_spec_open(struct vop_open_args *ap)
 	if (dev_dflags(dev) & D_QUICK) {
 		vn_unlock(vp);
 		error = dev_dopen(dev, ap->a_mode, S_IFCHR,
-				  ap->a_cred, ap->a_fp);
+				  ap->a_cred, ap->a_fp, vp);
 		vn_lock(vp, LK_SHARED | LK_RETRY);
 		vop_stdopen(ap);
 		goto skip;
@@ -966,7 +966,7 @@ devfs_spec_open(struct vop_open_args *ap)
 	 * Open the underlying device
 	 */
 	vn_unlock(vp);
-	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_cred, ap->a_fp);
+	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_cred, ap->a_fp, vp);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	/*

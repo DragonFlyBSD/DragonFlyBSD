@@ -1088,7 +1088,7 @@ diskopen(struct dev_open_args *ap)
 			pdev->si_iosize_max = dev->si_iosize_max;
 #endif
 		error = dev_dopen(dp->d_rawdev, ap->a_oflags,
-				  ap->a_devtype, ap->a_cred, NULL);
+				  ap->a_devtype, ap->a_cred, NULL, NULL);
 	}
 
 	if (error)

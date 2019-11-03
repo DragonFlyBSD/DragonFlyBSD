@@ -45,6 +45,7 @@
 #include <sys/proc.h>
 #include <sys/dsched.h>
 #include <sys/devfs.h>
+#include <sys/file.h>
 
 #include <machine/stdarg.h>
 
@@ -135,7 +136,7 @@ dev_nokvabio(cdev_t dev)
  */
 int
 dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred,
-	  struct file *fp)
+	  struct file *fp, struct vnode *vp)
 {
 	struct dev_open_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -147,6 +148,12 @@ dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred,
 	ap.a_devtype = devtype;
 	ap.a_cred = cred;
 	ap.a_fp = fp;
+	if (ap.a_fp)
+		ap.a_fp->f_data = vp;
+	/*
+	   vref(vp) is being done in vop_stdopen()
+	   If a non-null vp is passed-in, the caller must also issue a vop_stdopen()
+	*/
 
 	if (needmplock)
 		get_mplock();

@@ -278,7 +278,7 @@ disk_blk_open(struct disk *dp, kdmsg_msg_t *msg)
 			fflags = FREAD;
 		if (msg->any.blk_open.modes & DMSG_BLKOPEN_WR)
 			fflags |= FWRITE;
-		error = dev_dopen(dp->d_rawdev, fflags, S_IFCHR, proc0.p_ucred, NULL);
+		error = dev_dopen(dp->d_rawdev, fflags, S_IFCHR, proc0.p_ucred, NULL, NULL);
 		if (error) {
 			error = DMSG_ERR_IO;
 		} else {

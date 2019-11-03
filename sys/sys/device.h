@@ -50,6 +50,7 @@ struct cdev;
 struct ucred;
 struct devfs_bitmap;
 struct vm_page;
+struct vnode;
 
 /*
  * This structure is at the base of every device args structure
@@ -331,7 +332,8 @@ extern struct dev_ops dead_dev_ops;
 struct disk;
 struct sysmsg;
 
-int dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred, struct file *fp);
+int dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred,
+    struct file *fp, struct vnode *vp);
 int dev_dclose(cdev_t dev, int fflag, int devtype, struct file *fp);
 void dev_dstrategy(cdev_t dev, struct bio *bio);
 void dev_dstrategy_chain(cdev_t dev, struct bio *bio);
