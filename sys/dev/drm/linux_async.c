@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,8 @@
 
 #include <sys/spinlock2.h>
 #include <linux/async.h>
+
+#include <sys/kernel.h>
 
 static async_cookie_t cookie_counter = 1;
 

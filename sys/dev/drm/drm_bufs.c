@@ -35,6 +35,7 @@
 #include <drm/drmP.h>
 #include "drm_legacy.h"
 
+#include <sys/conf.h>
 #include <sys/mman.h>
 #include <vm/vm_map.h>
 

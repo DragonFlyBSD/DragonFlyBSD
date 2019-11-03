@@ -76,7 +76,9 @@
 #include <drm/drm_sarea.h>
 #include <drm/drm_vma_manager.h>
 
+#include <sys/conf.h>
 #include <sys/device.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm_extern.h>
 #include <vm/vm_pager.h>

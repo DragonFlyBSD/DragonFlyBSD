@@ -29,6 +29,8 @@
 
 struct page;
 
+#include <vm/vm_page.h>
+
 static inline vm_paddr_t
 page_to_phys(struct page *page)
 {

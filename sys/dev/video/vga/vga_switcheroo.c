@@ -64,6 +64,8 @@
 #define VGA_SWITCHEROO
 #include <linux/vga_switcheroo.h>
 
+#include <sys/sysctl.h>
+
 /**
  * DOC: Overview
  *

@@ -29,6 +29,8 @@
 #include <linux/wait.h>
 #include <linux/errno.h>
 
+#include <sys/kernel.h>
+
 struct completion {
 	unsigned int done;
 	wait_queue_head_t wait;
