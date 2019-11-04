@@ -85,6 +85,9 @@ main(int ac, char **av)
 		case 'D':
 			WorkerProcFlags |= WORKER_PROC_DEVELOPER;
 			break;
+		case 'P':
+			WorkerProcFlags |= WORKER_PROC_CHECK_PLIST;
+			break;
 		case 'S':
 			UseNCurses = 0;
 			if (++sopt == 2)
@@ -240,6 +243,8 @@ main(int ac, char **av)
 		pkgs = GetFullPackageList();
 		DoStatus(pkgs);
 	} else if (strcmp(av[0], "everything") == 0) {
+		if (WorkerProcFlags & WORKER_PROC_DEVELOPER)
+			WorkerProcFlags |= WORKER_PROC_CHECK_PLIST;
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = GetFullPackageList();
@@ -280,6 +285,7 @@ main(int ac, char **av)
 		DoRebuildRepo(1);
 		DoUpgradePkgs(pkgs, 1);
 	} else if (strcmp(av[0], "test") == 0) {
+		WorkerProcFlags |= WORKER_PROC_CHECK_PLIST;
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1);

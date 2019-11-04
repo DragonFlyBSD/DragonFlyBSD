@@ -419,6 +419,7 @@ typedef enum os_id os_id_t;
  */
 #define WORKER_PROC_DEBUGSTOP	0x0001
 #define WORKER_PROC_DEVELOPER	0x0002
+#define WORKER_PROC_CHECK_PLIST	0x0004
 
 /*
  * Misc
@@ -480,6 +481,7 @@ extern int BuildSkipCount;
 extern int BuildIgnoreCount;
 extern int BuildSuccessCount;
 extern int DynamicMaxWorkers;
+extern int DoCheckPListPhase;
 
 extern buildenv_t *BuildEnv;
 extern int WorkerProcFlags;

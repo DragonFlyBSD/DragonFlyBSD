@@ -1699,7 +1699,7 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
  *	run-depends
  *	stage
  *	test		(skipped)
- *	check-plist
+ *	check-plist	('dsynth test blahblah' or 'dsynth -D everything' only)
  *	package		 e.g. /construction/lang/perl5.28/pkg/perl5-5.28.2.txz
  *	install-mtree	(skipped)
  *	install		(skipped)
@@ -1975,8 +1975,10 @@ WorkerProcess(int ac, char **av)
 		dophase(work, &wmsg,
 			WDOG5, PHASE_TEST, "test");
 #endif
-		dophase(work, &wmsg,
-			WDOG1, PHASE_CHECK_PLIST, "check-plist");
+		if (WorkerProcFlags & WORKER_PROC_CHECK_PLIST) {
+			dophase(work, &wmsg,
+				WDOG1, PHASE_CHECK_PLIST, "check-plist");
+		}
 		dophase(work, &wmsg,
 			WDOG5, PHASE_PACKAGE, "package");
 #if 0
