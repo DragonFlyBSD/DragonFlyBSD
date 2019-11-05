@@ -45,18 +45,16 @@
 
 #include "calendar.h"
 
-#define	UTCOFFSET_NOTSET	100	/* Expected between -24 and +24 */
-#define	LONGITUDE_NOTSET	1000	/* Expected between -360 and +360 */
-
 struct passwd	*pw;
 bool		doall = false;
 bool		debug = false;
 static char	*DEBUG = NULL;
 static time_t	f_time = 0;
-double		UTCOffset = UTCOFFSET_NOTSET;
-int		EastLongitude = LONGITUDE_NOTSET;
+double		UTCOffset;
+double		EastLongitude;
 
 static void	usage(void) __dead2;
+static double	get_utcoffset(void);
 
 int
 main(int argc, char *argv[])
@@ -69,6 +67,8 @@ main(int argc, char *argv[])
 	struct tm tp1, tp2;
 
 	setlocale(LC_ALL, "");
+	UTCOffset = get_utcoffset();
+	EastLongitude = UTCOffset * 15;
 
 	while ((ch = getopt(argc, argv, "-A:aB:D:dF:f:l:t:U:W:")) != -1) {
 		switch (ch) {
@@ -113,7 +113,8 @@ main(int argc, char *argv[])
 			break;
 
 		case 'l': /* Change longitudal position */
-			EastLongitude = strtol(optarg, NULL, 10);
+			EastLongitude = strtod(optarg, NULL);
+			UTCOffset = EastLongitude / 15;
 			break;
 
 		case 't': /* other date, for tests */
@@ -122,6 +123,7 @@ main(int argc, char *argv[])
 
 		case 'U': /* Change UTC offset */
 			UTCOffset = strtod(optarg, NULL);
+			EastLongitude = UTCOffset * 15;
 			break;
 
 		default:
@@ -136,43 +138,7 @@ main(int argc, char *argv[])
 
 	/* use current time */
 	if (f_time <= 0)
-		(void)time(&f_time);
-
-	/* if not set, determine where I could be */
-	{
-		if (UTCOffset == UTCOFFSET_NOTSET &&
-		    EastLongitude == LONGITUDE_NOTSET) {
-			/* Calculate on difference between here and UTC */
-			time_t t;
-			struct tm tm;
-			long utcoffset, hh, mm, ss;
-			double uo;
-
-			time(&t);
-			localtime_r(&t, &tm);
-			utcoffset = tm.tm_gmtoff;
-			/* seconds -> hh:mm:ss */
-			hh = utcoffset / SECSPERHOUR;
-			utcoffset %= SECSPERHOUR;
-			mm = utcoffset / SECSPERMINUTE;
-			utcoffset %= SECSPERMINUTE;
-			ss = utcoffset;
-
-			/* hh:mm:ss -> hh.mmss */
-			uo = mm + (100.0 * (ss / 60.0));
-			uo /=  60.0 / 100.0;
-			uo = hh + uo / 100;
-
-			UTCOffset = uo;
-			EastLongitude = UTCOffset * 15;
-		} else if (UTCOffset == UTCOFFSET_NOTSET) {
-			/* Base on information given */
-			UTCOffset = EastLongitude / 15;
-		} else if (EastLongitude == LONGITUDE_NOTSET) {
-			/* Base on information given */
-			EastLongitude = UTCOffset * 15;
-		}
-	}
+		time(&f_time);
 
 	settimes(f_time, f_dayBefore, f_dayAfter, Friday, &tp1, &tp2);
 	generatedates(&tp1, &tp2);
@@ -219,4 +185,24 @@ usage(void)
 	    "		     [-t dd[.mm[.year]]] [-U utcoffset] [-W days]"
 	    );
 	exit(1);
+}
+
+
+/*
+ * Calculate the timezone difference between here and UTC.
+ *
+ * Return the offset hour from UTC.
+ */
+static double
+get_utcoffset(void)
+{
+	time_t t;
+	struct tm tm;
+	long utcoffset;
+
+	time(&t);
+	localtime_r(&t, &tm);
+	utcoffset = tm.tm_gmtoff;
+
+	return (utcoffset / FSECSPERHOUR);
 }

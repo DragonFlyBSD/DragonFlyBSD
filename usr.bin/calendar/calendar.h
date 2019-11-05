@@ -62,7 +62,7 @@ extern int yrdays;
 extern struct fixs neaster, npaskha, ncny, nfullmoon, nnewmoon;
 extern struct fixs nmarequinox, nsepequinox, njunsolstice, ndecsolstice;
 extern double UTCOffset;
-extern int EastLongitude;
+extern double EastLongitude;
 
 #define isleap(y) ((((y) % 4) == 0 && ((y) % 100) != 0) || ((y) % 400) == 0)
 

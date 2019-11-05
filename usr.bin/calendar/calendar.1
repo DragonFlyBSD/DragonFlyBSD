@@ -28,7 +28,7 @@
 .\"     @(#)calendar.1  8.1 (Berkeley) 6/29/93
 .\" $FreeBSD: head/usr.bin/calendar/calendar.1 314436 2017-02-28 23:42:47Z imp $
 .\"
-.Dd February 17, 2019
+.Dd February 19, 2019
 .Dt CALENDAR 1
 .Os
 .Sh NAME
@@ -93,19 +93,17 @@ as the default calendar file.
 Perform lunar and solar calculations from this longitude.
 If neither longitude nor UTC offset is specified, the calculations will
 be based on the difference between UTC time and localtime.
-If both are specified, UTC offset overrides longitude.
 .It Xo Fl t
 .Sm off
 .Ar dd
 .Op . Ar mm Op . Ar year
 .Sm on
 .Xc
-For test purposes only: set date directly to argument values.
+For test purposes only: set date directly to the argument value.
 .It Fl U Ar UTC-offset
-Perform lunar and solar calculations from this UTC offset.
+Perform lunar and solar calculations from this UTC offset (in hours).
 If neither UTC offset nor longitude is specified, the calculations
 will be based on the difference between UTC time and localtime.
-If both are specified, UTC offset overrides longitude.
 .It Fl W Ar num
 Print lines from today and the next
 .Ar num
@@ -299,7 +297,7 @@ The
 .Nm
 program previously selected lines which had the correct date anywhere
 in the line.
-This is no longer true, the date is only recognized when it occurs
+This is no longer true: the date is only recognized when it occurs
 at the beginning of a line.
 .Sh SEE ALSO
 .Xr at 1 ,
