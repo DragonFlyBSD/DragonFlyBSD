@@ -34,6 +34,8 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 
+#include <stdbool.h>
+
 #define	SECSPERDAY	(24 * 60 * 60)
 #define	SECSPERHOUR	(60 * 60)
 #define	SECSPERMINUTE	(60)
@@ -51,7 +53,9 @@
 /* Not yet categorized */
 
 extern struct passwd *pw;
-extern int doall;
+extern bool doall;
+extern bool debug;		/* show parsing of the input */
+extern int year1, year2;
 extern time_t t1, t2;
 extern const char *calendarFile;
 extern int yrdays;
@@ -109,9 +113,6 @@ extern int EastLongitude;
  */
 #define UTCOFFSET_CNY		8.0
 
-extern int	debug;		/* show parsing of the input */
-extern int	year1, year2;
-
 /* events.c */
 /*
  * Event sorting related functions:
@@ -157,7 +158,7 @@ void	setnsequences(char *);
 /* day.c */
 extern const struct tm tm0;
 extern char dayname[];
-void	settimes(time_t,int before, int after, int friday, struct tm *tp1, struct tm *tp2);
+void	settimes(time_t, int before, int after, int friday, struct tm *tp1, struct tm *tp2);
 time_t	Mktime(char *);
 
 /* parsedata.c */
@@ -166,23 +167,18 @@ void	dodebug(char *type);
 
 /* io.c */
 void	cal(void);
-void	closecal(FILE *);
-FILE	*opencalin(void);
-FILE	*opencalout(void);
 
 /* ostern.c / paskha.c */
 int	paskha(int);
 int	easter(int);
-int	j2g(int);
 
 /* dates.c */
 extern int cumdaytab[][14];
 extern int monthdaytab[][14];
-extern int debug_remember;
 void	generatedates(struct tm *tp1, struct tm *tp2);
 void	dumpdates(void);
-int	remember_ymd(int y, int m, int d);
-int	remember_yd(int y, int d, int *rm, int *rd);
+bool	remember_ymd(int y, int m, int d);
+bool	remember_yd(int y, int d, int *rm, int *rd);
 int	first_dayofweek_of_year(int y);
 int	first_dayofweek_of_month(int y, int m);
 int	walkthrough_dates(struct event **e);
@@ -191,7 +187,7 @@ void	addtodate(struct event *e, int year, int month, int day);
 /* pom.c */
 #define	MAXMOONS	18
 void	pom(int year, double UTCoffset, int *fms, int *nms);
-void	fpom(int year, double utcoffset, double *ffms, double *fnms);
+void	fpom(int year, double UTCoffset, double *ffms, double *fnms);
 
 /* sunpos.c */
 void	equinoxsolstice(int year, double UTCoffset, int *equinoxdays, int *solsticedays);

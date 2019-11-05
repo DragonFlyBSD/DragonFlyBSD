@@ -27,21 +27,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)calendar.c  8.3 (Berkeley) 3/25/94
+ * $FreeBSD: head/usr.bin/calendar/calendar.c 326025 2017-11-20 19:49:47Z pfg $
  */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)calendar.c	8.3 (Berkeley) 3/25/94";
-#endif
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.bin/calendar/calendar.c 326025 2017-11-20 19:49:47Z pfg $");
 
 #include <err.h>
 #include <errno.h>
 #include <locale.h>
 #include <pwd.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,8 +49,8 @@ __FBSDID("$FreeBSD: head/usr.bin/calendar/calendar.c 326025 2017-11-20 19:49:47Z
 #define	LONGITUDE_NOTSET	1000	/* Expected between -360 and +360 */
 
 struct passwd	*pw;
-int		doall = 0;
-int		debug = 0;
+bool		doall = false;
+bool		debug = false;
 static char	*DEBUG = NULL;
 static time_t	f_time = 0;
 double		UTCOffset = UTCOFFSET_NOTSET;
@@ -73,23 +68,22 @@ main(int argc, char *argv[])
 	int ch;
 	struct tm tp1, tp2;
 
-	(void)setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 
-	while ((ch = getopt(argc, argv, "-A:aB:D:dF:f:l:t:U:W:?")) != -1)
+	while ((ch = getopt(argc, argv, "-A:aB:D:dF:f:l:t:U:W:")) != -1) {
 		switch (ch) {
-		case '-':		/* backward contemptible */
+		case '-':		/* backward compatible */
 		case 'a':
 			if (getuid()) {
 				errno = EPERM;
 				err(1, NULL);
 			}
-			doall = 1;
+			doall = true;
 			break;
 
 		case 'W': /* we don't need no steenking Fridays */
 			Friday = -1;
 			/* FALLTHROUGH */
-
 		case 'A': /* days after current date */
 			f_dayAfter = atoi(optarg);
 			if (f_dayAfter < 0)
@@ -107,7 +101,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'd': /* debug output of current date */
-			debug = 1;
+			debug = true;
 			break;
 
 		case 'F': /* Change the time: When does weekend start? */
@@ -130,11 +124,10 @@ main(int argc, char *argv[])
 			UTCOffset = strtod(optarg, NULL);
 			break;
 
-		case '?':
 		default:
 			usage();
 		}
-
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -200,25 +193,26 @@ main(int argc, char *argv[])
 		exit(0);
 	}
 
-	if (doall)
+	if (doall) {
 		while ((pw = getpwent()) != NULL) {
-			(void)setegid(pw->pw_gid);
-			(void)initgroups(pw->pw_name, pw->pw_gid);
-			(void)seteuid(pw->pw_uid);
+			setegid(pw->pw_gid);
+			initgroups(pw->pw_name, pw->pw_gid);
+			seteuid(pw->pw_uid);
 			if (!chdir(pw->pw_dir))
 				cal();
-			(void)seteuid(0);
+			seteuid(0);
 		}
-	else
+	} else {
 		cal();
-	exit(0);
+	}
+
+	return (0);
 }
 
 
 static void __dead2
 usage(void)
 {
-
 	fprintf(stderr, "%s\n%s\n%s\n",
 	    "usage: calendar [-A days] [-a] [-B days] [-D sun|moon] [-d]",
 	    "		     [-F friday] [-f calendarfile] [-l longitude]",

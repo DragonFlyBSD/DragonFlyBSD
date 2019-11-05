@@ -25,10 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: head/usr.bin/calendar/sunpos.c 326276 2017-11-27 15:37:16Z pfg $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.bin/calendar/sunpos.c 326276 2017-11-27 15:37:16Z pfg $");
 
 /*
  * This code is created to match the formulas available at:
@@ -42,6 +40,7 @@ __FBSDID("$FreeBSD: head/usr.bin/calendar/sunpos.c 326276 2017-11-27 15:37:16Z p
 #include <math.h>
 #include <string.h>
 #include <time.h>
+
 #include "calendar.h"
 
 #define D2R(m)	((m) / 180 * M_PI)
@@ -57,7 +56,6 @@ __FBSDID("$FreeBSD: head/usr.bin/calendar/sunpos.c 326276 2017-11-27 15:37:16Z p
 static void
 comp(char *s, double v, double c)
 {
-
 	printf("%-*s %*g %*g %*g\n", 15, s, 15, v, 15, c, 15, v - c);
 }
 
@@ -82,7 +80,6 @@ double expAZ = 67.49;
 static double
 fixup(double *d)
 {
-
 	if (*d < 0) {
 		while (*d < 0)
 			*d += 360;
@@ -139,11 +136,10 @@ sunpos(int inYY, int inMM, int inDD, double UTCOFFSET, int inHOUR, int inMIN,
 	HA = *L - alpha + 180 + 15 * UTHM + eastlongitude;		/* 12 */
 	fixup(&HA);
 	fixup(&latitude);
-#ifdef NOTDEF
+#ifdef DEBUG
 	printf("%02d/%02d %02d:%02d:%02d l:%g d:%g h:%g\n",
 	    inMM, inDD, inHOUR, inMIN, inSEC, latitude, *DEC, HA);
 #endif
-	return;
 
 	/*
 	 * The following calculations are not used, so to save time
@@ -161,9 +157,7 @@ sunpos(int inYY, int inMM, int inDD, double UTCOFFSET, int inHOUR, int inMIN,
 	if (*ALT < -180)
 		*ALT += 360;
 	printf("a:%g a:%g\n", *ALT, *AZ);
-#endif
 
-#ifdef NOTDEF
 	printf("Y:\t\t\t     %d\t\t     %d\t\t      %d\n", Y, expY, Y - expY);
 	comp("ZJ", ZJ, expZJ);
 	comp("UTHM", UTHM, expUTHM);
@@ -184,14 +178,14 @@ sunpos(int inYY, int inMM, int inDD, double UTCOFFSET, int inHOUR, int inMIN,
 }
 
 
-#define	SIGN(a)	(((a) > 180) ? -1 : 1)
-#define ANGLE(a, b) (((a) < (b)) ? 1 : -1)
-#define SHOUR(s) ((s) / 3600)
-#define SMINUTE(s) (((s) % 3600) / 60)
-#define SSEC(s) ((s) % 60)
-#define HOUR(h) ((h) / 4)
-#define MINUTE(h) (15 * ((h) % 4))
-#define SEC(h)	0
+#define	SIGN(a)		(((a) > 180) ? -1 : 1)
+#define	ANGLE(a, b)	(((a) < (b)) ? 1 : -1)
+#define	SHOUR(s)	((s) / 3600)
+#define	SMINUTE(s)	(((s) % 3600) / 60)
+#define	SSEC(s)		((s) % 60)
+#define	HOUR(h)		((h) / 4)
+#define	MINUTE(h)	(15 * ((h) % 4))
+#define	SEC(h)		0
 #define	DEBUG1(y, m, d, hh, mm, pdec, dec) \
 	printf("%4d-%02d-%02d %02d:%02d:00 - %7.7g -> %7.7g\n", \
 	    y, m, d, hh, mm, pdec, dec)
@@ -316,7 +310,7 @@ fequinoxsolstice(int year, double UTCoffset, double *equinoxdays, double *solsti
 			    0.0, 0.0, &L, &dec);
 			angle = ANGLE(prevdec, dec);
 			if (prevangle != angle) {
-#ifdef NOTDEF
+#ifdef DEBUG
 				DEBUG2(year, 6, d, HOUR(h), MINUTE(h),
 				    prevdec, dec, prevangle, angle);
 #endif
@@ -346,7 +340,7 @@ fequinoxsolstice(int year, double UTCoffset, double *equinoxdays, double *solsti
 			    0.0, 0.0, &L, &dec);
 			angle = ANGLE(prevdec, dec);
 			if (prevangle != angle) {
-#ifdef NOTDEF
+#ifdef DEBUG
 				DEBUG2(year, 12, d, HOUR(h), MINUTE(h),
 				    prevdec, dec, prevangle, angle);
 #endif
@@ -398,7 +392,7 @@ printf("%04d-%02d-%02d %02d:%02d - %d %g\n",
 #endif
 					    pichinesemonths++;
 				} else {
-					for (i = 0; i <= 360; i += 30)
+					for (i = 0; i <= 360; i += 30) {
 						if (curL > i && prevL < i) {
 							*pichinesemonths =
 							    cumdays[m] + d;
@@ -410,6 +404,7 @@ printf("%04d-%02d-%02d %02d:%02d - %d %g\n",
 								firstmonth330 = *pichinesemonths;
 							pichinesemonths++;
 						}
+					}
 				}
 				prevL = curL;
 			}

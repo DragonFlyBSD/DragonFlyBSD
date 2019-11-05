@@ -10,4 +10,4 @@
 
 #include <pt_BR.UTF-8/calendar.all>
 
-#endif
+#endif /* !_calendar_brazilian_ */

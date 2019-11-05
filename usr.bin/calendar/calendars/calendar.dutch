@@ -4,6 +4,9 @@
  * Originally submitted by Edwin Groothuis <edwin@FreeBSD.org>
  */
 
+#ifndef _calendar_dutch_
+#define _calendar_dutch_
+
 Easter=Pasen
 
 /*
@@ -76,3 +79,5 @@ sep/06	Prins Claus (1925 - 2002)
 sep/25	Prins Johan Friso (1968 - 2013)
 okt/11	Prins Constantijn (1969)
 dec/07	Kroonprinses Catharina-Amalia (2003)
+
+#endif /* !_calendar_dutch_ */

@@ -29,21 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)pom.c       8.1 (Berkeley) 5/31/93
+ * $FreeBSD: head/usr.bin/calendar/pom.c 326025 2017-11-20 19:49:47Z pfg $
  */
-
-#if 0
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "@(#)pom.c       8.1 (Berkeley) 5/31/93";
-#endif /* not lint */
-#endif
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.bin/calendar/pom.c 326025 2017-11-20 19:49:47Z pfg $");
 
 /*
  * Phase of the Moon.  Calculates the current phase of the moon.
@@ -52,22 +41,17 @@ __FBSDID("$FreeBSD: head/usr.bin/calendar/pom.c 326025 2017-11-20 19:49:47Z pfg 
  * particular piece of code was adapted from.
  *
  * -- Keith E. Brandt  VIII 1984
- *
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include <sysexits.h>
 #include <time.h>
-#include <unistd.h> 
+#include <unistd.h>
 
 #include "calendar.h"
 
-#ifndef	PI
-#define	PI	  3.14159265358979323846
-#endif
 #define	EPOCH	  85
 #define	EPSILONg  279.611371	/* solar ecliptic long at EPOCH */
 #define	RHOg	  282.680403	/* solar ecliptic long of perigee at EPOCH */
@@ -75,10 +59,9 @@ __FBSDID("$FreeBSD: head/usr.bin/calendar/pom.c 326025 2017-11-20 19:49:47Z pfg 
 #define	lzero	  18.251907	/* lunar mean long at EPOCH */
 #define	Pzero	  192.917585	/* lunar mean long of perigee at EPOCH */
 #define	Nzero	  55.204723	/* lunar mean long of node at EPOCH */
-#define isleap(y) ((((y) % 4) == 0 && ((y) % 100) != 0) || ((y) % 400) == 0)
 
-static void	adj360(double *);
-static double	dtor(double);
+static void	adj360(double *deg);
+static double	dtor(double deg);
 static double	potm(double onday);
 static double	potm_minute(double onday, int olddir);
 
@@ -205,11 +188,10 @@ potm_minute(double onday, int olddir) {
 		else
 			p1 -= (period / SECSPERDAY);
 		period /= 2;
-//		printf("newdir:%d - p1:%10.10f - period:%g\n",
-//		    newdir, p1, period);
+//		printf("newdir:%d - p1:%10.10f - period:%g\n", newdir, p1, period);
 	}
 	p1 -= floor(p1);
-	//exit(0);
+
 	return (p1);
 }
 
@@ -227,7 +209,7 @@ potm(double onday)
 	adj360(&N);
 	Msol = N + EPSILONg - RHOg;				/* sec 42 #4 */
 	adj360(&Msol);
-	Ec = 360 / PI * ECCEN * sin(dtor(Msol));		/* sec 42 #5 */
+	Ec = 360 / M_PI * ECCEN * sin(dtor(Msol));		/* sec 42 #5 */
 	LambdaSol = N + Ec + EPSILONg;				/* sec 42 #6 */
 	adj360(&LambdaSol);
 	l = 13.1763966 * onday + lzero;				/* sec 61 #4 */
@@ -246,7 +228,7 @@ potm(double onday)
 	V = 0.6583 * sin(dtor(2 * (lprime - LambdaSol)));	/* sec 61 #13 */
 	ldprime = lprime + V;					/* sec 61 #14 */
 	D = ldprime - LambdaSol;				/* sec 63 #2 */
-	return(50 * (1 - cos(dtor(D))));			/* sec 63 #3 */
+	return (50 * (1 - cos(dtor(D))));			/* sec 63 #3 */
 }
 
 /*
@@ -256,8 +238,7 @@ potm(double onday)
 static double
 dtor(double deg)
 {
-
-	return(deg * PI / 180);
+	return (deg * M_PI / 180);
 }
 
 /*
@@ -267,12 +248,12 @@ dtor(double deg)
 static void
 adj360(double *deg)
 {
-
-	for (;;)
+	for (;;) {
 		if (*deg < 0)
 			*deg += 360;
 		else if (*deg > 360)
 			*deg -= 360;
 		else
 			break;
+	}
 }

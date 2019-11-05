@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -24,11 +24,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
+ * $FreeBSD: head/usr.bin/calendar/events.c 326276 2017-11-27 15:37:16Z pfg $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.bin/calendar/events.c 326276 2017-11-27 15:37:16Z pfg $");
 
 #include <sys/time.h>
 #include <err.h>
@@ -36,12 +34,11 @@ __FBSDID("$FreeBSD: head/usr.bin/calendar/events.c 326276 2017-11-27 15:37:16Z p
 #include <stdlib.h>
 #include <string.h>
 
-#include "pathnames.h"
 #include "calendar.h"
 
 struct event *
 event_add(int year, int month, int day, char *date, int var, char *txt,
-    char *extra)
+	  char *extra)
 {
 	struct event *e;
 
@@ -92,8 +89,6 @@ event_continue(struct event *e, char *txt)
 	if (e->text == NULL)
 		errx(1, "event_continue: cannot allocate memory");
 	free(text);
-
-	return;
 }
 
 void
@@ -112,7 +107,7 @@ event_print_all(FILE *fp)
 		 * dates
 		 */
 		while (e != NULL) {
-			(void)fprintf(fp, "%s%c%s%s%s%s\n", e->date,
+			fprintf(fp, "%s%c%s%s%s%s\n", e->date,
 			    e->var ? '*' : ' ', e->text,
 			    e->extra != NULL ? " (" : "",
 			    e->extra != NULL ? e->extra : "",

@@ -25,10 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: head/usr.bin/calendar/parsedata.c 326276 2017-11-27 15:37:16Z pfg $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.bin/calendar/parsedata.c 326276 2017-11-27 15:37:16Z pfg $");
 
 #include <ctype.h>
 #include <math.h>
@@ -40,7 +38,7 @@ __FBSDID("$FreeBSD: head/usr.bin/calendar/parsedata.c 326276 2017-11-27 15:37:16
 #include "calendar.h"
 
 static char *showflags(int flags);
-static int isonlydigits(char *s, int nostar);
+static bool isonlydigits(char *s, int nostar);
 static const char *getmonthname(int i);
 static int checkmonth(char *s, size_t *len, size_t *offset, const char **month);
 static const char *getdayofweekname(int i);
@@ -49,7 +47,13 @@ static int indextooffset(char *s);
 static int parseoffset(char *s);
 static char *floattoday(int year, double f);
 static char *floattotime(double f);
-static int wdayom (int day, int offset, int month, int year);
+static int wdayom(int day, int offset, int month, int year);
+static int determinestyle(char *date, int *flags, char *month, int *imonth,
+	char *dayofmonth, int *idayofmonth, char *dayofweek, int *idayofweek,
+	char *modifieroffset, char *modifierindex, char *specialday,
+	char *year, int *iyear);
+static void remember(int *rememberindex, int *y, int *m, int *d, char **ed,
+	int yy, int mm, int dd, char *extra);
 
 /*
  * Expected styles:
@@ -302,20 +306,15 @@ determinestyle(char *date, int *flags,
 		goto allfine;
 	}
 
-	/* FALLTHROUGH */
 fail:
 	*p = pold;
 	return (0);
 allfine:
 	*p = pold;
 	return (1);
-
 }
 
-void
-remember(int *rememberindex, int *y, int *m, int *d, char **ed, int yy, int mm,
-    int dd, char *extra);
-void
+static void
 remember(int *rememberindex, int *y, int *m, int *d, char **ed, int yy, int mm,
     int dd, char *extra)
 {
@@ -343,7 +342,6 @@ debug_determinestyle(int dateonly, char *date, int flags, char *month,
     int idayofweek, char *modifieroffset, char *modifierindex, char *specialday,
     char *year, int iyear)
 {
-
 	if (dateonly != 0) {
 		printf("-------\ndate: |%s|\n", date);
 		if (dateonly == 1)
@@ -383,17 +381,16 @@ static struct yearinfo {
  * offset the ordinal number of the weekday in the month.
  */
 static int
-wdayom (int day, int offset, int month, int year)
+wdayom(int day, int offset, int month, int year)
 {
-/* Weekday of first day in month */
-	int wday1;                                /* first day of month */
-/* Weekday of last day in month */
-	int wdayn;
+	int wday1;  /* Weekday of first day in month */
+	int wdayn;  /* Weekday of first day in month */
 	int d;
 
 	wday1 = first_dayofweek_of_month(year, month);
 	if (wday1 < 0)                          /* not set */
 		return (wday1);
+
 	/*
 	 * Date of zeroth or first of our weekday in month, depending on the
 	 * relationship with the first of the month.  The range is -6:6.
@@ -415,8 +412,9 @@ wdayom (int day, int offset, int month, int year)
 			d += offset * 7 - 7;
 		else
 			d += offset * 7;
-	} else
+	} else {
 		warnx ("Invalid offset 0");
+	}
 	return (d);
 }
 
@@ -450,7 +448,6 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 	 * Monthname: Jan .. Dec
 	 * Day:	      1-31
 	 * Weekday:   Mon .. Sun
-	 *
 	 */
 
 	*flags = 0;
@@ -590,9 +587,9 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 		}
 
 		/*
-	         * Every so-manied dayofweek of every month of the year:
-	         * Thu-3
-	         */
+		 * Every so-manied dayofweek of every month of the year:
+		 * Thu-3
+		 */
 		if (lflags == (F_DAYOFWEEK | F_MODIFIERINDEX | F_VARIABLE)) {
 			offset = indextooffset(modifierindex);
 
@@ -609,9 +606,9 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 		}
 
 		/*
-	         * A certain dayofweek of a month
-	         * Jan/Thu-3
-	         */
+		 * A certain dayofweek of a month
+		 * Jan/Thu-3
+		 */
 		if (lflags ==
 		    (F_MONTH | F_DAYOFWEEK | F_MODIFIERINDEX | F_VARIABLE)) {
 			offset = indextooffset(modifierindex);
@@ -668,9 +665,10 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 			if ((lflags & F_MODIFIEROFFSET) != 0)
 				offset = parseoffset(modifieroffset);
 			if (remember_yd(year, yearinfo->ieaster + offset,
-	                        &rm, &rd))
+					&rm, &rd)) {
 				remember(&remindex, yearp, monthp, dayp, edp,
 				    year, rm, rd, NULL);
+			}
 			continue;
 		}
 
@@ -681,9 +679,10 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 			if ((lflags & F_MODIFIEROFFSET) != 0)
 				offset = parseoffset(modifieroffset);
 			if (remember_yd(year, yearinfo->ipaskha + offset,
-	                        &rm, &rd))
+					&rm, &rd)) {
 				remember(&remindex, yearp, monthp, dayp, edp,
 				    year, rm, rd, NULL);
+			}
 			continue;
 		}
 
@@ -694,9 +693,10 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 			if ((lflags & F_MODIFIEROFFSET) != 0)
 				offset = parseoffset(modifieroffset);
 			if (remember_yd(year, yearinfo->firstcnyday + offset,
-	                        &rm, &rd))
+					&rm, &rd)) {
 				remember(&remindex, yearp, monthp, dayp, edp,
 				    year, rm, rd, NULL);
+			}
 			continue;
 		}
 
@@ -710,8 +710,8 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 				offset = parseoffset(modifieroffset);
 			for (i = 0; yearinfo->ffullmoon[i] > 0; i++) {
 				if (remember_yd(year,
-	                                floor(yearinfo->ffullmoon[i]) + offset,
-					&rm, &rd)) {
+				    floor(yearinfo->ffullmoon[i]) + offset,
+				    &rm, &rd)) {
 					ed = floattotime(
 					    yearinfo->ffullmoon[i]);
 					remember(&remindex,
@@ -732,8 +732,8 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 				offset = parseoffset(modifieroffset);
 			for (i = 0; yearinfo->ffullmoon[i] > 0; i++) {
 				if (remember_yd(year,
-					floor(yearinfo->fnewmoon[i]) + offset,
-					&rm, &rd)) {
+				    floor(yearinfo->fnewmoon[i]) + offset,
+				    &rm, &rd)) {
 					ed = floattotime(yearinfo->fnewmoon[i]);
 					remember(&remindex,
 					    yearp, monthp, dayp, edp,
@@ -750,7 +750,7 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 			if ((lflags & F_MODIFIEROFFSET) != 0)
 				offset = parseoffset(modifieroffset);
 			if (remember_yd(year, yearinfo->equinoxdays[0] + offset,
-				&rm, &rd)) {
+					&rm, &rd)) {
 				ed = floattotime(yearinfo->equinoxdays[0]);
 				remember(&remindex, yearp, monthp, dayp, edp,
 				    year, rm, rd, ed);
@@ -763,7 +763,7 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 			if ((lflags & F_MODIFIEROFFSET) != 0)
 				offset = parseoffset(modifieroffset);
 			if (remember_yd(year, yearinfo->equinoxdays[1] + offset,
-			    &rm, &rd)) {
+					&rm, &rd)) {
 				ed = floattotime(yearinfo->equinoxdays[1]);
 				remember(&remindex, yearp, monthp, dayp, edp,
 				    year, rm, rd, ed);
@@ -778,7 +778,7 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 			if ((lflags & F_MODIFIEROFFSET) != 0)
 				offset = parseoffset(modifieroffset);
 			if (remember_yd(year,
-				yearinfo->solsticedays[0] + offset, &rm, &rd)) {
+			    yearinfo->solsticedays[0] + offset, &rm, &rd)) {
 				ed = floattotime(yearinfo->solsticedays[0]);
 				remember(&remindex, yearp, monthp, dayp, edp,
 				    year, rm, rd, ed);
@@ -791,7 +791,7 @@ parsedaymonth(char *date, int *yearp, int *monthp, int *dayp, int *flags,
 			if ((lflags & F_MODIFIEROFFSET) != 0)
 				offset = parseoffset(modifieroffset);
 			if (remember_yd(year,
-				yearinfo->solsticedays[1] + offset, &rm, &rd)) {
+			    yearinfo->solsticedays[1] + offset, &rm, &rd)) {
 				ed = floattotime(yearinfo->solsticedays[1]);
 				remember(&remindex, yearp, monthp, dayp, edp,
 				    year, rm, rd, ed);
@@ -967,17 +967,17 @@ checkdayofweek(char *s, size_t *len, size_t *offset, const char **dow)
 	return (0);
 }
 
-static int
+static bool
 isonlydigits(char *s, int nostar)
 {
 	int i;
 	for (i = 0; s[i] != '\0'; i++) {
 		if (nostar == 0 && s[i] == '*' && s[i + 1] == '\0')
-			return 1;
+			return (true);
 		if (!isdigit((unsigned char)s[i]))
-			return (0);
+			return (false);
 	}
-	return (1);
+	return (true);
 }
 
 static int
@@ -1069,7 +1069,7 @@ dodebug(char *what)
 	int year;
 
 	printf("UTCOffset: %g\n", UTCOffset);
-	printf("eastlongitude: %d\n", EastLongitude);
+	printf("EastLongitude: %g\n", EastLongitude);
 
 	if (strcmp(what, "moon") == 0) {
 		double ffullmoon[MAXMOONS], fnewmoon[MAXMOONS];
@@ -1088,9 +1088,7 @@ dodebug(char *what)
 				    floattoday(year, fnewmoon[i]));
 			}
 			printf("\n");
-
 		}
-
 		return;
 	}
 

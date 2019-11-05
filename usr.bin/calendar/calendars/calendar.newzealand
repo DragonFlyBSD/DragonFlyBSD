@@ -22,4 +22,4 @@ Nov 04	Anniversary Day (Marlborough)
 Nov 15	Anniversary Day (Canterbury)
 Dec 02	Anniversary Day (Chatham Islands)
 
-#endif
+#endif /* !_calendar_newzealand_ */

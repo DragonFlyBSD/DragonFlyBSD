@@ -27,10 +27,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.bin/calendar/locale.c 326025 2017-11-20 19:49:47Z pfg $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.bin/calendar/locale.c 326025 2017-11-20 19:49:47Z pfg $");
 
 #include <ctype.h>
 #include <err.h>
@@ -163,6 +162,4 @@ setnsequences(char *seq)
 	}
 	nsequences[i].name = strdup(nsequences[i].name);
 	nsequences[i].len = strlen(nsequences[i].name);
-
-	return;
 }

@@ -25,11 +25,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: head/usr.bin/calendar/dates.c 326276 2017-11-27 15:37:16Z pfg $
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.bin/calendar/dates.c 326276 2017-11-27 15:37:16Z pfg $");
-
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <err.h>
@@ -66,7 +65,7 @@ struct cal_day {
 	struct event *events;
 };
 
-int debug_remember = 0;
+static bool debug_remember = false;
 static struct cal_year *hyear = NULL;
 
 /* 1-based month, 0-based days, cumulative */
@@ -81,7 +80,7 @@ int	monthdaytab[][14] = {
 	{0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 30},
 };
 
-static struct cal_day *	find_day(int yy, int mm, int dd);
+static struct cal_day *find_day(int yy, int mm, int dd);
 
 static void
 createdate(int y, int m, int d)
@@ -118,10 +117,8 @@ createdate(int y, int m, int d)
 		if (pyp != NULL)
 			pyp->nextyear = py;
 	}
-	if (pyp == NULL) {
-		/* The very very very first one */
-		hyear = py;
-	}
+	if (pyp == NULL)
+		hyear = py;	/* The very very very first one */
 
 	pmp = NULL;
 	pm = py->months;
@@ -258,7 +255,7 @@ dumpdates(void)
 	}
 }
 
-int
+bool
 remember_ymd(int yy, int mm, int dd)
 {
 	struct cal_year *y;
@@ -283,18 +280,18 @@ remember_ymd(int yy, int mm, int dd)
 			d = m->days;
 			while (d != NULL) {
 				if (d->dayofmonth == dd)
-					return (1);
+					return (true);
 				d = d->nextday;
 				continue;
 			}
-			return (0);
+			return (false);
 		}
-		return (0);
+		return (false);
 	}
-	return (0);
+	return (false);
 }
 
-int
+bool
 remember_yd(int yy, int dd, int *rm, int *rd)
 {
 	struct cal_year *y;
@@ -317,15 +314,15 @@ remember_yd(int yy, int dd, int *rm, int *rd)
 				if (d->julianday == dd) {
 					*rm = m->month;
 					*rd = d->dayofmonth;
-					return (1);
+					return (true);
 				}
 				d = d->nextday;
 			}
 			m = m->nextmonth;
 		}
-		return (0);
+		return (false);
 	}
-	return (0);
+	return (false);
 }
 
 int

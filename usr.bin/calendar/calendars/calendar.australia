@@ -67,4 +67,4 @@ Aug/MonFirst	Picnic Day (NT)
 May/MonFirst	Labour Day (QLD)
 Aug/WedSecond	RNA Show Day (Brisbane metro)	/* Second Last Wednesday */
 
-#endif
+#endif /* !_calendar_australia_ */

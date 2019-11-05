@@ -27,20 +27,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)calendar.c  8.3 (Berkeley) 3/25/94
+ * $FreeBSD: head/usr.bin/calendar/io.c 327117 2017-12-23 21:04:32Z eadler $
  */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)calendar.c  8.3 (Berkeley) 3/25/94";
-#endif
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.bin/calendar/io.c 327117 2017-12-23 21:04:32Z eadler $");
 
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
@@ -64,20 +59,27 @@ enum {
 	T_PROCESS,
 };
 
-const char *calendarFile = "calendar";	/* default calendar file */
+struct fixs neaster, npaskha, ncny, nfullmoon, nnewmoon;
+struct fixs nmarequinox, nsepequinox, njunsolstice, ndecsolstice;
+
+const char *calendarFile = "calendar"; /* default calendar file */
 static const char *calendarHomes[] = {".calendar", _PATH_INCLUDE}; /* HOME */
 static const char *calendarNoMail = "nomail";/* don't sent mail if file exist */
 
 static char path[MAXPATHLEN];
 
-struct fixs neaster, npaskha, ncny, nfullmoon, nnewmoon;
-struct fixs nmarequinox, nsepequinox, njunsolstice, ndecsolstice;
-
-static int cal_parse(FILE *in, FILE *out);
-
 static StringList *definitions = NULL;
 static struct event *events[MAXCOUNT];
 static char *extradata[MAXCOUNT];
+
+static FILE	*cal_fopen(const char *file);
+static bool	 cal_parse(FILE *in, FILE *out);
+static void	 closecal(FILE *fp);
+static FILE	*opencalin(void);
+static FILE	*opencalout(void);
+static int	 token(char *line, FILE *out, bool *skip);
+static void	 trimlr(char **buf);
+
 
 static void
 trimlr(char **buf)
@@ -179,7 +181,7 @@ token(char *line, FILE *out, bool *skip)
 		}
 		walk[strlen(walk) - 1] = '\0';
 
-		if (cal_parse(cal_fopen(walk), out))
+		if (!cal_parse(cal_fopen(walk), out))
 			return (T_ERR);
 
 		return (T_OK);
@@ -216,19 +218,9 @@ token(char *line, FILE *out, bool *skip)
 	}
 
 	return (T_PROCESS);
-
 }
 
-#define	REPLACE(string, slen, struct_) \
-		if (strncasecmp(buf, (string), (slen)) == 0 && buf[(slen)]) { \
-			if (struct_.name != NULL)			      \
-				free(struct_.name);			      \
-			if ((struct_.name = strdup(buf + (slen))) == NULL)    \
-				errx(1, "cannot allocate memory");	      \
-			struct_.len = strlen(buf + (slen));		      \
-			continue;					      \
-		}
-static int
+static bool
 cal_parse(FILE *in, FILE *out)
 {
 	char *line = NULL;
@@ -255,14 +247,14 @@ cal_parse(FILE *in, FILE *out)
 	tm.tm_wday = 0;
 
 	if (in == NULL)
-		return (1);
+		return (false);
 
 	while ((linelen = getline(&line, &linecap, in)) > 0) {
 		if (*line == '#') {
 			switch (token(line+1, out, &skip)) {
 			case T_ERR:
 				free(line);
-				return (1);
+				return (false);
 			case T_OK:
 				continue;
 			case T_PROCESS:
@@ -291,6 +283,17 @@ cal_parse(FILE *in, FILE *out)
 			setnnames();
 			continue;
 		}
+
+#define	REPLACE(string, slen, struct_) \
+		if (strncasecmp(buf, (string), (slen)) == 0 && buf[(slen)]) {	\
+			if (struct_.name != NULL)				\
+				free(struct_.name);				\
+			if ((struct_.name = strdup(buf + (slen))) == NULL)	\
+				errx(1, "cannot allocate memory");		\
+			struct_.len = strlen(buf + (slen));			\
+			continue;						\
+		}
+
 		REPLACE("Easter=", 7, neaster);
 		REPLACE("Paskha=", 7, npaskha);
 		REPLACE("ChineseNewYear=", 15, ncny);
@@ -300,6 +303,8 @@ cal_parse(FILE *in, FILE *out)
 		REPLACE("SepEquinox=", 11, nsepequinox);
 		REPLACE("JunSolstice=", 12, njunsolstice);
 		REPLACE("DecSolstice=", 12, ndecsolstice);
+#undef	REPLACE
+
 		if (strncmp(buf, "SEQUENCE=", 9) == 0) {
 			setnsequences(buf + 9);
 			continue;
@@ -353,7 +358,7 @@ cal_parse(FILE *in, FILE *out)
 			tm.tm_mon = month[i] - 1;
 			tm.tm_mday = day[i];
 			tm.tm_year = year[i] - 1900;
-			(void)strftime(dbuf, sizeof(dbuf),
+			strftime(dbuf, sizeof(dbuf),
 			    d_first ? "%e %b" : "%b %e", &tm);
 			if (debug)
 				fprintf(stderr, "got %s\n", pp);
@@ -365,8 +370,7 @@ cal_parse(FILE *in, FILE *out)
 
 	free(line);
 	fclose(in);
-
-	return (0);
+	return (true);
 }
 
 void
@@ -388,14 +392,14 @@ cal(void)
 		return;
 	}
 
-	if (cal_parse(fpin, fpout))
+	if (!cal_parse(fpin, fpout))
 		return;
 
 	event_print_all(fpout);
 	closecal(fpout);
 }
 
-FILE *
+static FILE *
 opencalin(void)
 {
 	struct stat sbuf;
@@ -417,7 +421,7 @@ opencalin(void)
 	return (fpin);
 }
 
-FILE *
+static FILE *
 opencalout(void)
 {
 	int fd;
@@ -433,7 +437,7 @@ opencalout(void)
 	return (fdopen(fd, "w+"));
 }
 
-void
+static void
 closecal(FILE *fp)
 {
 	uid_t uid;
@@ -450,17 +454,18 @@ closecal(FILE *fp)
 	if (pipe(pdes) < 0)
 		goto done;
 	switch (fork()) {
-	case -1:			/* error */
-		(void)close(pdes[0]);
-		(void)close(pdes[1]);
+	case -1:
+		/* error */
+		close(pdes[0]);
+		close(pdes[1]);
 		goto done;
 	case 0:
 		/* child -- set stdin to pipe output */
 		if (pdes[0] != STDIN_FILENO) {
-			(void)dup2(pdes[0], STDIN_FILENO);
-			(void)close(pdes[0]);
+			dup2(pdes[0], STDIN_FILENO);
+			close(pdes[0]);
 		}
-		(void)close(pdes[1]);
+		close(pdes[1]);
 		uid = geteuid();
 		if (setuid(getuid()) < 0) {
 			warnx("setuid failed");
@@ -480,7 +485,7 @@ closecal(FILE *fp)
 		_exit(1);
 	}
 	/* parent -- write to pipe input */
-	(void)close(pdes[0]);
+	close(pdes[0]);
 
 	write(pdes[1], "From: \"Reminder Service\" <", 26);
 	write(pdes[1], pw->pw_name, strlen(pw->pw_name));
@@ -491,9 +496,12 @@ closecal(FILE *fp)
 	write(pdes[1], "'s Calendar\nPrecedence: bulk\n\n", 30);
 
 	while ((nread = read(fileno(fp), buf, sizeof(buf))) > 0)
-		(void)write(pdes[1], buf, nread);
-	(void)close(pdes[1]);
-done:	(void)fclose(fp);
-	(void)unlink(path);
-	while (wait(&status) >= 0);
+		write(pdes[1], buf, nread);
+	close(pdes[1]);
+
+done:
+	fclose(fp);
+	unlink(path);
+	while (wait(&status) >= 0)
+		;
 }

@@ -20,4 +20,4 @@
 12/16	Day of Reconciliation in South Africa
 12/26	Day of Goodwill in South Africa
 
-#endif
+#endif /* !_calendar_southafrica_ */
