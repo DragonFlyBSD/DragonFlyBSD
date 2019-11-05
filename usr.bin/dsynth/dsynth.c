@@ -77,7 +77,7 @@ main(int ac, char **av)
 	 * Process options and make sure the directive is present
 	 */
 	sopt = 0;
-	while ((c = getopt(ac, av, "dhm:vys:DS")) != -1) {
+	while ((c = getopt(ac, av, "dhm:vys:DPS")) != -1) {
 		switch(c) {
 		case 'y':
 			++YesOpt;
@@ -157,6 +157,8 @@ main(int ac, char **av)
 	addbuildenv("PKG_SUFX", UsePkgSufx,
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
 	addbuildenv("PACKAGE_BUILDING", "yes",
+		    BENV_ENVIRONMENT | BENV_PKGLIST);
+	addbuildenv("ARCH", ArchitectureName,
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
 
 #if 0
@@ -392,6 +394,7 @@ usage(int ecode)
     "    -y                   - Automatically answer yes to dsynth questions\n"
     "    -s n                 - Set initial DynamicMaxWorkers\n"
     "    -D                   - Enable DEVELOPER mode\n"
+    "    -P                   - Include the check-plist stage\n"
     "    -S                   - Disable ncurses\n"
     "\n"
     "    init                 - Initialize /etc/dsynth\n"
@@ -406,6 +409,7 @@ usage(int ecode)
     "    purge-distfiles      - Delete obsolete source distribution files\n"
     "    status-everything    - Dry-run of 'everything'\n"
     "    everything           - Build entire dports tree and repo database\n"
+    "				(-D everything infers -P)\n"
     "    version              - Print version info and exit\n"
     "    help                 - Display this screen and exit\n"
     "    status     [ports]   - Dry-run of 'build' with given list\n"
@@ -416,6 +420,7 @@ usage(int ecode)
     "    install    [ports]   - 'build' but upgrades system without asking\n"
     "    force      [ports]   - 'build' but deletes existing packages first\n"
     "    test       [ports]   - 'build' w/DEVELOPER=yes and pre-deletes pkgs\n"
+    "				(also infers -P)\n"
     "    monitor    [datfile] - Monitor a running dsynth\n"
     "\n"
     "    [ports] is a space-delimited list of origins, e.g. editors/joe.  It\n"
