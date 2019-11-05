@@ -286,11 +286,13 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	    (vap->va_blocksize != VNOVAL) || (vap->va_rmajor != VNOVAL) ||
 	    (vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 		mprintf("msdosfs_setattr(): returning EINVAL\n");
-		mprintf("    va_type %u, va_nlink %"PRIx64", va_fsid %x, va_fileid %"PRIx64"\n",
-		    vap->va_type, vap->va_nlink, vap->va_fsid, vap->va_fileid);
-		mprintf("    va_blocksize %lx, va_rmajor %x, va_bytes %"PRIx64", va_gen %"PRIx64"\n",
-		    vap->va_blocksize, vap->va_rmajor, vap->va_bytes,
-		    vap->va_gen);
+		mprintf("    va_type %d, va_nlink %llx, va_fsid %llx, va_fileid %llx\n",
+		    vap->va_type, (unsigned long long)vap->va_nlink,
+		    (unsigned long long)vap->va_fsid,
+		    (unsigned long long)vap->va_fileid);
+		mprintf("    va_blocksize %lx, va_rdev %llx, va_bytes %llx, va_gen %lx\n",
+		    vap->va_blocksize, (unsigned long long)0,
+		    (unsigned long long)vap->va_bytes, vap->va_gen);
 		mprintf("    va_uid %x, va_gid %x\n",
 		    vap->va_uid, vap->va_gid);
 		return (EINVAL);

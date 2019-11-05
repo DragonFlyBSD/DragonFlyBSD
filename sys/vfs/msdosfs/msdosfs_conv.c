@@ -601,7 +601,7 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
 	 */
 	if (!mbnambuf_flush(nbp, &dirbuf) || dirbuf.d_namlen == 0)
 		return -1;
-	mprintf("winChkName(): un=%s:%zd,d_name=%s:%d\n",
+	mprintf("winChkName(): un=%s:%zu,d_name=%s:%d\n",
 		un, unlen, dirbuf.d_name, dirbuf.d_namlen);
 	/*
 	 * Compare the name parts
