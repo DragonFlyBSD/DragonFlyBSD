@@ -1385,13 +1385,10 @@ msdosfs_rmdir(struct vop_old_rmdir_args *ap)
 	error = removede(dp, ip);
 	if (error)
 		goto out;
-	vn_unlock(dvp);
 	/*
 	 * Truncate the directory that is being deleted.
 	 */
 	error = detrunc(ip, (u_long)0, IO_SYNC);
-
-	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 out:
 	return (error);
 }
