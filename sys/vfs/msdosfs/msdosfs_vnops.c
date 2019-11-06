@@ -1385,11 +1385,6 @@ msdosfs_rmdir(struct vop_old_rmdir_args *ap)
 	error = removede(dp, ip);
 	if (error)
 		goto out;
-	/*
-	 * This is where we decrement the link count in the parent
-	 * directory.  Since dos filesystems don't do this we just purge
-	 * the name cache.
-	 */
 	vn_unlock(dvp);
 	/*
 	 * Truncate the directory that is being deleted.
