@@ -28,7 +28,7 @@
 .\"     @(#)calendar.1  8.1 (Berkeley) 6/29/93
 .\" $FreeBSD: head/usr.bin/calendar/calendar.1 314436 2017-02-28 23:42:47Z imp $
 .\"
-.Dd November 2, 2019
+.Dd November 6, 2019
 .Dt CALENDAR 1
 .Os
 .Sh NAME
@@ -43,6 +43,7 @@
 .Op Fl d
 .Op Fl F Ar friday
 .Op Fl f Ar calendarfile
+.Op Fl h
 .Op Fl l Ar longitude
 .Oo
 .Bk -words
@@ -89,6 +90,8 @@ Default is 5.
 Use
 .Pa calendarfile
 as the default calendar file.
+.It Fl h
+Show the utility usage.
 .It Fl l Ar longitude
 Perform lunar and solar calculations from this longitude.
 If neither longitude nor UTC offset is specified, the calculations will

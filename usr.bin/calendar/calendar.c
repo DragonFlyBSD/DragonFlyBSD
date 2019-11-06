@@ -70,7 +70,7 @@ main(int argc, char *argv[])
 	UTCOffset = get_utcoffset();
 	EastLongitude = UTCOffset * 15;
 
-	while ((ch = getopt(argc, argv, "-A:aB:D:dF:f:l:t:U:W:")) != -1) {
+	while ((ch = getopt(argc, argv, "-A:aB:D:dF:f:hl:t:U:W:?")) != -1) {
 		switch (ch) {
 		case '-':		/* backward compatible */
 		case 'a':
@@ -126,6 +126,8 @@ main(int argc, char *argv[])
 			EastLongitude = UTCOffset * 15;
 			break;
 
+		case 'h':
+		case '?':
 		default:
 			usage();
 		}
