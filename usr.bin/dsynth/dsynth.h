@@ -96,8 +96,12 @@ struct pkglink;
  * .tgz - reasonable compression, extremely fast decompression.  Roughly
  *	  1.1x to 2.0x the size of a .txz, but decompresses 10x faster.
  * .tbz - worse than .tgz generally
+ *
+ * NOTE: Decompression speed does effect bulk builds since each slot has
+ *	 to install pre-reqs before building any particular package.  Set
+ *	 the default to .txz to remain close to synth's default.
  */
-#define USE_PKG_SUFX		".tgz"
+#define USE_PKG_SUFX		".txz"
 
 /*
  * Topology linkages
