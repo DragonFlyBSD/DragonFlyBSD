@@ -751,14 +751,13 @@ errexit:
 
 /*
  * Flush the blocks of a file to disk.
- *
- * This function is worthless for vnodes that represent directories. Maybe we
- * could just do a sync if they try an fsync on a directory file.
  */
 static int
 msdosfs_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+	struct vnode *devvp;
+	int allerror, error;
 
 	/*
 	 * Flush all dirty buffers associated with a vnode.
@@ -773,7 +772,30 @@ loop:
 		goto loop;
 	}
 #endif
-	return (deupdat(VTODE(vp), ap->a_waitfor == MNT_WAIT));
+	/*
+	* If the syncing request comes from fsync(2), sync the entire
+	* FAT and any other metadata that happens to be on devvp.  We
+	* need this mainly for the FAT.  We write the FAT sloppily, and
+	* syncing it all now is the best we can easily do to get all
+	* directory entries associated with the file (not just the file)
+	* fully synced.  The other metadata includes critical metadata
+	* for all directory entries, but only in the MNT_ASYNC case.  We
+	* will soon sync all metadata in the file's directory entry.
+	* Non-critical metadata for associated directory entries only
+	* gets synced accidentally, as in most file systems.
+	*/
+	if (ap->a_waitfor == MNT_WAIT) {
+		devvp = VTODE(ap->a_vp)->de_pmp->pm_devvp;
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+		allerror = VOP_FSYNC(devvp, MNT_WAIT, 0);
+		vn_unlock(devvp);
+	} else
+		allerror = 0;
+
+	error = deupdat(VTODE(ap->a_vp), ap->a_waitfor == MNT_WAIT);
+	if (allerror == 0)
+		allerror = error;
+	return (allerror);
 }
 
 static int
