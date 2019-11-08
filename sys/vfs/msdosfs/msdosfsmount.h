@@ -255,4 +255,6 @@ struct msdosfs_args {
 #define mprintf(fmt, ...)
 #endif
 
+#define DOINGASYNC(vp)	(((vp)->v_mount->mnt_kern_flag & MNT_ASYNC) != 0)
+
 #endif /* !_MSDOSFS_MSDOSFSMOUNT_H_ */

@@ -1206,7 +1206,7 @@ abortit:
 		putushort(dotdotp->deStartCluster, pcl);
 		if (FAT32(pmp))
 			putushort(dotdotp->deHighClust, pcl >> 16);
-		if (fvp->v_mount->mnt_flag & MNT_ASYNC)
+		if (DOINGASYNC(fvp))
 			bdwrite(bp);
 		else if ((error = bwrite(bp)) != 0) {
 			/* XXX should really panic here, fs is corrupt */
@@ -1354,7 +1354,7 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 		putushort(denp[1].deHighClust, pcl >> 16);
 	}
 
-	if (ap->a_dvp->v_mount->mnt_flag & MNT_ASYNC)
+	if (DOINGASYNC(ap->a_dvp))
 		bdwrite(bp);
 	else if ((error = bwrite(bp)) != 0)
 		goto bad;
