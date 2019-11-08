@@ -1162,14 +1162,14 @@ abortit:
 		zp->de_fndoffset = from_diroffset;
 		error = removede(zp, ip);
 		if (error) {
-			/* XXX should really panic here, fs is corrupt */
+			/* XXX should downgrade to ro here, fs is corrupt */
 			goto done;
 		}
 		if (!doingdirectory) {
 			error = pcbmap(dp, de_cluster(pmp, to_diroffset),
 				       NULL, &new_dirclust, NULL);
 			if (error) {
-				/* XXX should really panic here, fs is corrupt */
+				/* XXX should downgrade to ro here, fs is corrupt */
 				goto done;
 			}
 			if (new_dirclust == MSDOSFSROOT)
@@ -1195,7 +1195,7 @@ abortit:
 		error = bread(pmp->pm_devvp, de_bn2doff(pmp, bn),
 			      pmp->pm_bpcluster, &bp);
 		if (error) {
-			/* XXX should really panic here, fs is corrupt */
+			/* XXX should downgrade to ro here, fs is corrupt */
 			brelse(bp);
 			goto done;
 		}
@@ -1209,7 +1209,7 @@ abortit:
 		if (DOINGASYNC(fvp))
 			bdwrite(bp);
 		else if ((error = bwrite(bp)) != 0) {
-			/* XXX should really panic here, fs is corrupt */
+			/* XXX should downgrade to ro here, fs is corrupt */
 			goto done;
 		}
 	}
