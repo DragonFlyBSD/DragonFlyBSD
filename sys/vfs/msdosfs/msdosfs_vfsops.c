@@ -397,8 +397,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	}
 
 	if (pmp->pm_RootDirEnts == 0) {
-		if (pmp->pm_Sectors
-		    || pmp->pm_FATsecs
+		if (pmp->pm_FATsecs
 		    || getushort(b710->bpbFSVers)) {
 			error = EINVAL;
 			kprintf("mountmsdosfs(): bad FAT32 filesystem\n");
