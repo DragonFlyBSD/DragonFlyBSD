@@ -42,6 +42,12 @@ extern struct periph_driver **periph_drivers;
 void periphdriver_register(void *);
 
 #include <sys/module.h>
+
+/*
+ * Declare a peripheral type driver (da, cd, etc).  This must be third in
+ * the module order to ensure that peripherals have registered their async
+ * callbacks before hardware drivers probe.
+ */
 #define PERIPHDRIVER_DECLARE(name, driver) \
 	static int name ## _modevent(module_t mod, int type, void *data) \
 	{ \
@@ -62,7 +68,7 @@ void periphdriver_register(void *);
 		name ## _modevent, \
 		(void *)&driver \
 	}; \
-	DECLARE_MODULE(name, name ## _mod, SI_SUB_DRIVERS, SI_ORDER_ANY); \
+	DECLARE_MODULE(name, name ## _mod, SI_SUB_DRIVERS, SI_ORDER_THIRD); \
 	MODULE_DEPEND(name, cam, 1, 1, 1)
 
 typedef void (periph_init_t)(void); /*
