@@ -225,11 +225,14 @@ enum sysinit_sub_id {
  * Some enumerated orders; "ANY" sorts last.
  */
 enum sysinit_elem_order {
-	SI_ORDER_FIRST		= 0x0000000,	/* first*/
-	SI_ORDER_SECOND		= 0x0000001,	/* second*/
-	SI_ORDER_THIRD		= 0x0000002,	/* third*/
+	SI_ORDER_FIRST		= 0x0000000,	/* first */
+	SI_ORDER_SECOND		= 0x0000001,	/* second */
+	SI_ORDER_THIRD		= 0x0000002,	/* third */
+	SI_ORDER_FOURTH		= 0x0000003,	/* fourth */
+	SI_ORDER_EARLIER	= 0x0800000,	/* earlier */
 	SI_ORDER_MIDDLE		= 0x1000000,	/* somewhere in the middle */
-	SI_ORDER_ANY		= 0xfffffff	/* last*/
+	SI_ORDER_LATER		= 0x2000000,	/* later */
+	SI_ORDER_ANY		= 0xfffffff	/* last */
 };
 
 
