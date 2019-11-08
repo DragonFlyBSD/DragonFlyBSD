@@ -1340,7 +1340,12 @@ vtscsi_scsi_cmd_cam_status(struct virtio_scsi_cmd_resp *cmd_resp)
 		status = CAM_REQ_ABORTED;
 		break;
 	case VIRTIO_SCSI_S_BAD_TARGET:
-		status = CAM_SEL_TIMEOUT;
+		/*
+		 * A CAM_SEL_TIMEOUT here will cause the entire device to
+		 * be lost, which is not desirable when scanning LUNs.
+		 * Use CAM_DEV_NOT_THERE instead.
+		 */
+		status = CAM_DEV_NOT_THERE;
 		break;
 	case VIRTIO_SCSI_S_RESET:
 		status = CAM_SCSI_BUS_RESET;
