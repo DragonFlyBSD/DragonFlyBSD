@@ -611,7 +611,9 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 
 		while (--ddep->de_fndcnt >= 0) {
 			if (!(ddep->de_fndoffset & pmp->pm_crbomask)) {
-				if ((error = bwrite(bp)) != 0)
+				if (DETOV(ddep)->v_mount->mnt_flag & MNT_ASYNC)
+					bdwrite(bp);
+				else if ((error = bwrite(bp)) != 0)
 					return error;
 
 				ddep->de_fndoffset -= sizeof(struct direntry);
@@ -640,7 +642,9 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 		}
 	}
 
-	if ((error = bwrite(bp)) != 0)
+	if (DETOV(ddep)->v_mount->mnt_flag & MNT_ASYNC)
+		bdwrite(bp);
+	else if ((error = bwrite(bp)) != 0)
 		return error;
 
 	/*
@@ -928,7 +932,9 @@ removede(struct denode *pdep, struct denode *dep)
 			    || ep->deAttributes != ATTR_WIN95)
 				break;
 		}
-		if ((error = bwrite(bp)) != 0)
+		if (DETOV(pdep)->v_mount->mnt_flag & MNT_ASYNC)
+			bdwrite(bp);
+		else if ((error = bwrite(bp)) != 0)
 			return error;
 	} while (!(pmp->pm_flags & MSDOSFSMNT_NOWIN95)
 	    && !(offset & pmp->pm_crbomask)

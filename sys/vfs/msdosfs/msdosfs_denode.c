@@ -572,7 +572,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 	if (allerror)
 		kprintf("detrunc(): vtruncbuf error %d\n", allerror);
 #endif
-	error = deupdat(dep, 1);
+	error = deupdat(dep, !(DETOV(dep)->v_mount->mnt_flag & MNT_ASYNC));
 	if (error != 0 && allerror == 0)
 		allerror = error;
 	mprintf("detrunc(): allerror %d, eofentry %lu\n",
@@ -644,7 +644,7 @@ deextend(struct denode *dep, u_long length)
 	}
 	dep->de_FileSize = length;
 	dep->de_flag |= DE_UPDATE | DE_MODIFIED;
-	return (deupdat(dep, 1));
+	return (deupdat(dep, !(DETOV(dep)->v_mount->mnt_flag & MNT_ASYNC)));
 }
 
 int

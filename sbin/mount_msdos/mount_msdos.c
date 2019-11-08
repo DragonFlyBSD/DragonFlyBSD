@@ -62,6 +62,7 @@ static struct mntopt mopts[] = {
 	MOPT_STDOPTS,
 	MOPT_FORCE,
 	MOPT_SYNC,
+	MOPT_ASYNC,
 	MOPT_UPDATE,
 	{ "shortnames", 0, MSDOSFSMNT_SHORTNAME, 1 },
 	{ "longnames", 0, MSDOSFSMNT_LONGNAME, 1 },
