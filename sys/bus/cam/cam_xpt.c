@@ -6419,13 +6419,17 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 
 		xpt_reference_device(path->device);
+
 		/*
 		 * Do Domain Validation for lun 0 on devices that claim
 		 * to support Synchronous Transfer modes.
+		 *
+		 * The SID_Sync flag is obsolete or misused in some
+		 * situations (some virtio block devices), ignore it.
 		 */
 		if (softc->action == PROBE_TUR_FOR_NEGOTIATION
 		 && done_ccb->ccb_h.target_lun == 0
-		 && (path->device->inq_data.flags & SID_Sync) != 0
+		 /* && (path->device->inq_data.flags & SID_Sync) != 0 */
                  && (path->device->flags & CAM_DEV_IN_DV) == 0) {
 			CAM_DEBUG(periph->path, CAM_DEBUG_INFO,
 			    ("Begin Domain Validation\n"));
