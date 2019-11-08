@@ -304,5 +304,5 @@ static moduledata_t virtio_mod = {
 	0
 };
 
-DECLARE_MODULE(virtio, virtio_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
+DECLARE_MODULE(virtio, virtio_mod, SI_SUB_DRIVERS, SI_ORDER_EARLIER);
 MODULE_VERSION(virtio, 1);
