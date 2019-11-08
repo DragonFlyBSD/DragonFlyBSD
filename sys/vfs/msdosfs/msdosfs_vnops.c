@@ -1230,7 +1230,7 @@ done:
 	return (error);
 
 	/*
-	 * 'bad' target: xp governs tvp.  tvp and tdvp arel ocked, fdvp and fvp
+	 * 'bad' target: xp governs tvp.  tvp and tdvp are locked, fdvp and fvp
 	 * are not locked.  ip points to fvp's inode which may have DE_RENAME
 	 * set.
 	 */
