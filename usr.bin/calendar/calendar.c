@@ -32,9 +32,12 @@
  * $FreeBSD: head/usr.bin/calendar/calendar.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
+#include <sys/types.h>
+
 #include <err.h>
 #include <errno.h>
 #include <locale.h>
+#include <login_cap.h>
 #include <pwd.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -162,28 +165,35 @@ main(int argc, char *argv[])
 	}
 
 	if (doall) {
-		if (setgroups(0, NULL) == -1) {
-			err(EXIT_FAILURE, "setgroups");
-		}
 		while ((pw = getpwent()) != NULL) {
-			if (setegid(pw->pw_gid) == -1) {
-				warn("%s: setegid", pw->pw_name);
+			pid_t pid;
+
+			if (chdir(pw->pw_dir) == -1)
 				continue;
-			}
-			if (initgroups(pw->pw_name, pw->pw_gid) == -1) {
-				warn("%s: initgroups", pw->pw_name);
-				continue;
-			}
-			if (seteuid(pw->pw_uid) == -1) {
-				warn("%s: seteuid", pw->pw_name);
-				continue;
-			}
-			if (chdir(pw->pw_dir) != -1)
+
+			pid = fork();
+			if (pid < 0)
+				err(1, "fork");
+			if (pid == 0) {
+				login_cap_t *lc;
+
+				lc = login_getpwclass(pw);
+				if (setusercontext(lc, pw, pw->pw_uid,
+						   LOGIN_SETALL) != 0)
+					errx(1, "setusercontext");
+
 				cal();
-			if (seteuid(0) == -1)
-				warn("%s: seteuid back to 0", pw->pw_name);
+				exit(0);
+			}
 		}
 	} else {
+		char *home = getenv("HOME");
+
+		if (home == NULL || *home == '\0')
+			errx(1, "Cannot get home directory");
+		if (chdir(home) != 0)
+			errx(1, "Cannot enter home directory: \"%s\"", home);
+
 		cal();
 	}
 

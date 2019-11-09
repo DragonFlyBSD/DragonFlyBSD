@@ -5,8 +5,8 @@ PROG=	calendar
 SRCS=	calendar.c locale.c events.c dates.c parsedata.c io.c day.c \
 	ostern.c paskha.c pom.c sunpos.c
 
-DPADD=	${LIBM}
-LDADD=	-lm
+DPADD=	${LIBM} ${LIBUTIL}
+LDADD=	-lm -lutil
 
 .if !defined(NO_SHARE)
 INTER=		de_AT.UTF-8 \

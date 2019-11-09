@@ -75,7 +75,6 @@ static char *extradata[MAXCOUNT];
 
 static FILE	*cal_fopen(const char *file);
 static bool	 cal_parse(FILE *in, FILE *out);
-static void	 changeuser(void);
 static void	 closecal(FILE *fp);
 static FILE	*opencalin(void);
 static FILE	*opencalout(void);
@@ -104,31 +103,32 @@ trimlr(char **buf)
 static FILE *
 cal_fopen(const char *file)
 {
-	FILE *fp;
-	char *home = getenv("HOME");
+	FILE *fp = NULL;
+	char *cwd = NULL;
+	char cwdpath[MAXPATHLEN];
 	unsigned int i;
 
-	if (home == NULL || *home == '\0') {
-		warnx("Cannot get home directory");
-		return (NULL);
-	}
-
-	if (chdir(home) != 0) {
-		warnx("Cannot enter home directory");
-		return (NULL);
-	}
+	/* Already in home directory before calling cal() in main() */
+	if (getcwd(cwdpath, sizeof(cwdpath)) != NULL)
+		cwd = cwdpath;
+	else
+		warnx("Cannot get current working directory");
 
 	for (i = 0; i < nitems(calendarHomes); i++) {
 		if (chdir(calendarHomes[i]) != 0)
 			continue;
 
 		if ((fp = fopen(file, "r")) != NULL)
-			return (fp);
+			break;
 	}
 
-	warnx("can't open calendar file \"%s\"", file);
+	if (cwd && chdir(cwdpath) != 0)
+		warnx("Cannot back to original directory: \"%s\"", cwdpath);
 
-	return (NULL);
+	if (fp == NULL)
+		warnx("Cannot open calendar file \"%s\"", file);
+
+	return (fp);
 }
 
 static int
@@ -467,8 +467,6 @@ closecal(FILE *fp)
 			close(pdes[0]);
 		}
 		close(pdes[1]);
-		/* become the user properly */
-		changeuser();
 		execl(_PATH_SENDMAIL, "sendmail", "-i", "-t", "-F",
 		    "\"Reminder Service\"", (char *)NULL);
 		warn(_PATH_SENDMAIL);
@@ -494,32 +492,4 @@ done:
 	unlink(path);
 	while (wait(&status) >= 0)
 		;
-}
-
-static void
-changeuser(void)
-{
-	uid_t uid;
-	gid_t gid;
-
-	uid = geteuid();
-	gid = getegid();
-	assert(uid == pw->pw_uid);
-	assert(gid == pw->pw_gid);
-
-	if (seteuid(0) == -1) {
-		err(EXIT_FAILURE, "%s: changing user: cannot reassert uid 0",
-		    pw->pw_name);
-	}
-	if (setgid(gid) == -1) {
-		err(EXIT_FAILURE, "%s: cannot assume gid %d",
-		    pw->pw_name, (int)gid);
-	}
-	if (initgroups(pw->pw_name, gid) == -1) {
-		err(EXIT_FAILURE, "%s: cannot initgroups", pw->pw_name);
-	}
-	if (setuid(uid) == -1) {
-		err(EXIT_FAILURE, "%s: cannot assume uid %d",
-		    pw->pw_name, (int)uid);
-	}
 }
