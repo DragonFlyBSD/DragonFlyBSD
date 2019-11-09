@@ -496,7 +496,7 @@ msdosfs_read(struct vop_read_args *ap)
 			error = bread(pmp->pm_devvp, loffset, blsize, &bp);
 		} else {
 			blsize = pmp->pm_bpcluster;
-			rablock = lbn + 1;
+			rablock = cn + 1;
 			raoffset = de_cn2doff(pmp, rablock);
 			if (seqcount > 1 &&
 			    raoffset < dep->de_FileSize) {
