@@ -439,7 +439,6 @@ msdosfs_read(struct vop_read_args *ap)
 	u_long cn;
 	daddr_t lbn;
 	daddr_t rablock;
-	off_t raoffset;
 	off_t loffset;
 	int rasize;
 	int seqcount;
@@ -478,6 +477,9 @@ msdosfs_read(struct vop_read_args *ap)
 
 		cn = de_cluster(pmp, uio->uio_offset);
 		loffset = de_cn2doff(pmp, cn);
+		rablock = cn + 1;
+		blsize = pmp->pm_bpcluster;
+		on = uio->uio_offset & pmp->pm_crbomask;
 
 		/*
 		 * If we are operating on a directory file then be sure to
@@ -494,24 +496,20 @@ msdosfs_read(struct vop_read_args *ap)
 			} else if (error)
 				break;
 			error = bread(pmp->pm_devvp, loffset, blsize, &bp);
+		} else if (de_cn2off(pmp, rablock) >= dep->de_FileSize) {
+			error = bread(vp, loffset, blsize, &bp);
+		} else if (seqcount > 1) {
+			off_t raoffset = de_cn2doff(pmp, rablock);
+			rasize = blsize;
+			error = breadn(vp, loffset,
+			    blsize, &raoffset, &rasize, 1, &bp);
 		} else {
-			blsize = pmp->pm_bpcluster;
-			rablock = cn + 1;
-			raoffset = de_cn2doff(pmp, rablock);
-			if (seqcount > 1 &&
-			    raoffset < dep->de_FileSize) {
-				rasize = pmp->pm_bpcluster;
-				error = breadn(vp, loffset, blsize,
-					       &raoffset, &rasize, 1, &bp);
-			} else {
-				error = bread(vp, loffset, blsize, &bp);
-			}
+			error = bread(vp, loffset, blsize, &bp);
 		}
 		if (error) {
 			brelse(bp);
 			break;
 		}
-		on = uio->uio_offset & pmp->pm_crbomask;
 		diff = pmp->pm_bpcluster - on;
 		n = szmin(uio->uio_resid, diff);
 		diff = dep->de_FileSize - uio->uio_offset;
@@ -714,11 +712,12 @@ msdosfs_write(struct vop_write_args *ap)
 		}
 
 		/*
-		 * If they want this synchronous then write it and wait for
-		 * it.  Otherwise, if on a cluster boundary write it
-		 * asynchronously so we can move on to the next block
-		 * without delay.  Otherwise do a delayed write because we
-		 * may want to write somemore into the block later.
+		 * If IO_SYNC, then each buffer is written synchronously.
+		 * Otherwise, if on a
+		 * cluster boundary then write the buffer asynchronously,
+		 * since we don't expect more writes into this
+		 * buffer soon.  Otherwise, do a delayed write because we
+		 * expect more writes into this buffer soon.
 		 */
 		if (ioflag & IO_SYNC)
 			bwrite(bp);
@@ -1709,39 +1708,39 @@ done:
 	return (error);
 }
 
-/*
- * vp  - address of vnode file the file
- * bn  - which cluster we are interested in mapping to a filesystem block number.
- * vpp - returns the vnode for the block special file holding the filesystem
- *	 containing the file of interest
- * bnp - address of where to return the filesystem relative block number
+/*-
+ * a_vp   - pointer to the file's vnode
+ * a_runp - where to return the "run past" a_bn.  This is the count of logical
+ *          blocks whose physical blocks (together with a_bn's physical block)
+ *          are contiguous.
+ * a_runb - where to return the "run before" a_bn.
  */
 static int
 msdosfs_bmap(struct vop_bmap_args *ap)
 {
-	struct denode *dep = VTODE(ap->a_vp);
-	struct msdosfsmount *pmp = dep->de_pmp;
+	struct denode *dep;
+	struct msdosfsmount *pmp;
+	struct vnode *vp;
 	daddr_t dbn;
 	int error;
 
+	vp = ap->a_vp;
+	dep = VTODE(vp);
+	pmp = dep->de_pmp;
+
 	if (ap->a_doffsetp == NULL)
 		return (0);
-	if (ap->a_runp) {
-		/*
-		 * Sequential clusters should be counted here.
-		 */
+	if (ap->a_runp != NULL)
 		*ap->a_runp = 0;
-	}
-	if (ap->a_runb) {
+	if (ap->a_runb != NULL)
 		*ap->a_runb = 0;
-	}
+
 	KKASSERT(((int)ap->a_loffset & ((1 << pmp->pm_cnshift) - 1)) == 0);
 	error = pcbmap(dep, de_cluster(pmp, ap->a_loffset), &dbn, NULL, NULL);
-	if (error || dbn == (daddr_t)-1) {
+	if (error || dbn == (daddr_t)-1)
 		*ap->a_doffsetp = NOOFFSET;
-	} else {
+	else
 		*ap->a_doffsetp = de_bn2doff(pmp, dbn);
-	}
 	return (error);
 }
 
