@@ -42,6 +42,7 @@
 #include <errno.h>
 #include <langinfo.h>
 #include <locale.h>
+#include <paths.h>
 #include <pwd.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -51,7 +52,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "pathnames.h"
 #include "calendar.h"
 
 enum {
@@ -64,8 +64,8 @@ struct fixs neaster, npaskha, ncny, nfullmoon, nnewmoon;
 struct fixs nmarequinox, nsepequinox, njunsolstice, ndecsolstice;
 
 const char *calendarFile = "calendar"; /* default calendar file */
-static const char *calendarHomes[] = {".calendar", _PATH_INCLUDE}; /* HOME */
-static const char *calendarNoMail = "nomail";/* don't sent mail if file exist */
+static const char *calendarHomes[] = {".calendar", "/usr/share/calendar"};
+static const char *calendarNoMail = "nomail"; /* don't sent mail if file exist */
 
 static char path[MAXPATHLEN];
 
