@@ -62,8 +62,8 @@
 
 #include <sys/cdefs.h>
 #include <sys/_null.h>
-#include <sys/types.h>
 #include <machine/stdarg.h>	/* for __va_list */
+#include <machine/stdint.h>
 #include <machine/wchar_limits.h>
 #include <machine/wchar.h>
 #include <ctype.h>		/* for __wcwidth() */

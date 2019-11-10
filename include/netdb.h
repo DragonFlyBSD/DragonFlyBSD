@@ -58,6 +58,7 @@
 #define _NETDB_H_
 
 #include <sys/cdefs.h>
+#include <machine/stdint.h>	/* for __size_t, __socklen_t */
 #include <stdint.h>
 
 #ifndef _IN_ADDR_T_DECLARED

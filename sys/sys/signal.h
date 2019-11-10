@@ -41,7 +41,7 @@
 #include <sys/cdefs.h>
 #include <sys/_pthreadtypes.h>
 #include <sys/_sigset.h>
-#include <sys/stdint.h>		/* for __ types */
+#include <machine/stdint.h>
 
 #ifndef _PID_T_DECLARED
 typedef	__pid_t		pid_t;

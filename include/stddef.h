@@ -36,11 +36,9 @@
 
 #include <sys/cdefs.h>
 #include <sys/_null.h>
+#include <machine/stdint.h>
 #ifndef __cplusplus
 #include <machine/wchar.h>		/* for ___wchar_t */
-#endif
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>			/* __rune_t and friends */
 #endif
 
 #ifndef _SIZE_T_DECLARED

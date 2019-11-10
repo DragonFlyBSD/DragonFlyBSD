@@ -10,12 +10,10 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>		/* TAILQ_* macros */
 #endif
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>
-#endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
+#include <machine/stdint.h>
 
 struct lwkt_msg;
 struct lwkt_port;

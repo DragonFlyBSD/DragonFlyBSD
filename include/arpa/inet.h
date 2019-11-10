@@ -51,7 +51,6 @@
  *	@(#)inet.h	8.1 (Berkeley) 6/2/93
  *	$Id: inet.h,v 1.2.18.1 2005/04/27 05:00:50 sra Exp $
  * $FreeBSD: src/include/arpa/inet.h,v 1.30 2007/08/24 20:25:52 bms Exp $
- * $DragonFly: src/include/arpa/inet.h,v 1.5 2005/07/13 12:49:56 joerg Exp $
  */
 
 #ifndef _ARPA_INET_H_
@@ -60,10 +59,9 @@
 /* External definitions for functions in inet(3) */
 
 #include <sys/cdefs.h>
-#include <stdint.h>
-
-/* Required for byteorder(3) functions. */
-#include <machine/endian.h>
+#include <machine/endian.h>	/* Required for byteorder(3) functions. */
+#include <machine/stdint.h>	/* for __size_t, __socklen_t */
+#include <stdint.h>		/* for uint16_t, uint32_t as per POSIX */
 
 #define	INET_ADDRSTRLEN		16
 #define	INET6_ADDRSTRLEN	46

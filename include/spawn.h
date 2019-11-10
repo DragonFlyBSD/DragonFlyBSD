@@ -30,8 +30,8 @@
 #define _SPAWN_H_
 
 #include <sys/cdefs.h>
-#include <sys/stdint.h>
 #include <sys/_sigset.h>
+#include <machine/stdint.h>
 
 #ifndef _MODE_T_DECLARED
 typedef	__uint16_t	mode_t;

@@ -25,6 +25,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/ipc.h>
+#include <machine/stdint.h>
 
 /*
  * The MSG_NOERROR identifier value, the msqid_ds struct and the msg struct

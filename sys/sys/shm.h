@@ -41,6 +41,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/ipc.h>
+#include <machine/stdint.h>
 
 #define	SHM_RDONLY  010000  /* Attach read-only (else read-write) */
 #define	SHM_RND     020000  /* Round attach address to SHMLBA */

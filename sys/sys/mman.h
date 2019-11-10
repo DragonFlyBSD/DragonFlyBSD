@@ -34,7 +34,7 @@
 #define	_SYS_MMAN_H_
 
 #include <sys/cdefs.h>
-#include <sys/stdint.h>
+#include <machine/stdint.h>
 
 #ifndef _MODE_T_DECLARED
 #define	_MODE_T_DECLARED

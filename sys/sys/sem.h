@@ -12,6 +12,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/ipc.h>
+#include <machine/stdint.h>
 
 #ifndef _PID_T_DECLARED
 typedef	__pid_t		pid_t;

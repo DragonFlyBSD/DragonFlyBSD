@@ -30,7 +30,7 @@
 #define	_UCHAR_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
 #include <machine/wchar.h>	/* for __mbstate_t */
 
 #if !defined(__cplusplus) || __cplusplus < 201103

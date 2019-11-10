@@ -27,7 +27,7 @@
 #ifndef _STDINT_H_
 #define _STDINT_H_
 
-#include <sys/stdint.h>
+#include <machine/stdint.h>
 
 typedef __int8_t	int8_t;
 typedef __int16_t	int16_t;

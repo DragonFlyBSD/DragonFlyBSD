@@ -37,7 +37,7 @@
 #define	_RUNETYPE_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
 
 #define	_CACHED_RUNES	(1 <<8 )	/* Must be a power of 2 */
 #define	_CRMASK		(~(_CACHED_RUNES - 1))

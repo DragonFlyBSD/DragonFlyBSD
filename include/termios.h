@@ -36,7 +36,7 @@
 #include <sys/cdefs.h>
 #include <sys/_termios.h>
 /* Needed by tcgetsid(3). */
-#include <sys/stdint.h>
+#include <machine/stdint.h>
 
 #ifndef _PID_T_DECLARED
 typedef	__pid_t	pid_t;

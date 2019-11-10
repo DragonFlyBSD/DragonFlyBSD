@@ -39,12 +39,10 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>
-#endif
 #ifndef _SYS__MALLOC_H_
 #include <sys/_malloc.h>
 #endif
+#include <machine/stdint.h>
 
 /*
  * Note that any allocations which are exact multiples of PAGE_SIZE, or

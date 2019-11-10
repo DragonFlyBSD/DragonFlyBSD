@@ -22,7 +22,7 @@
 #include <sys/_pthreadtypes.h>
 #include <sys/_timespec.h>
 #include <sys/signal.h>
-#include <sys/stdint.h>
+#include <machine/stdint.h>
 
 #ifndef _OFF_T_DECLARED
 typedef	__off_t		off_t;

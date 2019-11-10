@@ -35,8 +35,8 @@
 #ifndef _LIBC_PRIVATE_H_
 #define _LIBC_PRIVATE_H_
 
-#include <machine/types.h>
 #include <sys/_pthreadtypes.h>
+#include <machine/stdint.h>
 
 /*
  * With this attribute set, do not require a function call for accessing

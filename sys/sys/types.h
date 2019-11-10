@@ -48,9 +48,7 @@
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>
-#endif
+#include <machine/stdint.h>
 #ifndef _SYS__PTHREADTYPES_H_
 #include <sys/_pthreadtypes.h>
 #endif
@@ -108,7 +106,10 @@ typedef	__uint16_t	in_port_t;
 #define	_IN_PORT_T_DECLARED
 #endif
 typedef	__uint64_t	ino_t;		/* inode number */
+#ifndef _KEY_T_DECLARED
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
+#define	_KEY_T_DECLARED
+#endif
 #ifndef _MODE_T_DECLARED
 typedef	__uint16_t	mode_t;		/* permissions */
 #define	_MODE_T_DECLARED

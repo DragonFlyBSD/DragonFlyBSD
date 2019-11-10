@@ -1,7 +1,7 @@
 /*
  * SYS/THREAD.H
  *
- *	Implements the architecture independant portion of the LWKT 
+ *	Implements the architecture independant portion of the LWKT
  *	subsystem.
  *
  * Types which must already be defined when this header is included by
@@ -11,9 +11,6 @@
 #ifndef _SYS_THREAD_H_
 #define _SYS_THREAD_H_
 
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>		/* __int types */
-#endif
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>		/* MAXCOMLEN */
 #endif
@@ -36,6 +33,7 @@
 #include <sys/iosched.h>
 #endif
 #include <machine/thread.h>
+#include <machine/stdint.h>
 
 struct globaldata;
 struct lwp;
@@ -300,7 +298,7 @@ struct thread {
 #define CRIT_DEBUG_ARRAY_MASK   (CRIT_DEBUG_ARRAY_SIZE - 1)
     const char	*td_crit_debug_array[CRIT_DEBUG_ARRAY_SIZE];
     int		td_crit_debug_index;
-    int		td_in_crit_report;	
+    int		td_in_crit_report;
 #endif
     struct md_thread td_mach;
 #ifdef DEBUG_LOCKS

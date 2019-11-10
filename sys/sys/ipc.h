@@ -47,7 +47,27 @@
 #define	_SYS_IPC_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
+
+#ifndef _GID_T_DECLARED
+typedef	__uint32_t	gid_t;	/* group id */
+#define	_GID_T_DECLARED
+#endif
+
+#ifndef _KEY_T_DECLARED
+typedef	long		key_t;	/* IPC key (for Sys V IPC) */
+#define _KEY_T_DECLARED
+#endif
+
+#ifndef _MODE_T_DECLARED
+typedef	__uint16_t	mode_t;	/* permissions */
+#define	_MODE_T_DECLARED
+#endif
+
+#ifndef _UID_T_DECLARED
+typedef	__uint32_t	uid_t;	/* user id */
+#define	_UID_T_DECLARED
+#endif
 
 struct ipc_perm {
 	uid_t		cuid;	/* creator user id */

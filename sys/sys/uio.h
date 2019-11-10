@@ -35,15 +35,16 @@
 
 #include <sys/cdefs.h>
 #include <sys/_iovec.h>
+#include <machine/stdint.h>
 
-#ifdef __BSD_VISIBLE
+#if __BSD_VISIBLE
 #ifndef _OFF_T_DECLARED
 typedef	__off_t		off_t;
 #define	_OFF_T_DECLARED
 #endif
 #endif
 
-/* The size_t and __ types are expected to be provided by <sys/_iovec.h> */
+/* The size_t is expected to be provided by <sys/_iovec.h> */
 
 #ifndef _SSIZE_T_DECLARED
 typedef	__ssize_t	ssize_t;
