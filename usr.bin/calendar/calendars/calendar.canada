@@ -7,6 +7,8 @@
 #ifndef _calendar_canada_
 #define _calendar_canada_
 
+LANG=en_CA.UTF-8
+
 01/01	New Year's Day (Statutory holiday)
 02/02	Groundhog Day
 02/14	St. Valentine's Day

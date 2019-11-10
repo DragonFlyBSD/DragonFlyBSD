@@ -7,6 +7,8 @@
 #ifndef _calendar_uk_
 #define _calendar_uk_
 
+LANG=en_GB.UTF-8
+
 01/01	New Year's Day
 01/02	Bank holiday in Scotland
 01/25	Burns' Night in Scotland

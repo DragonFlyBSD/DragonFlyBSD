@@ -7,6 +7,8 @@
 #ifndef _calendar_ushistory_
 #define _calendar_ushistory_
 
+LANG=en_US.UTF-8
+
 01/01	First Rose Bowl; Michigan 49 - Stanford 0, 1902
 01/02	First military deployment of helicopters (VS-300 by Igor Sikorsky),
 	with a British American convoy, 1944

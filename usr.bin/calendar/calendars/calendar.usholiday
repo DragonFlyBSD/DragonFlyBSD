@@ -7,6 +7,8 @@
 #ifndef _calendar_usholiday_
 #define _calendar_usholiday_
 
+LANG=en_US.UTF-8
+
 01/01	New Year's Day
 01/14	Julian Calendar New Year's Day
 01/MonThird	Martin Luther King Jr. Day (3rd Monday of January)

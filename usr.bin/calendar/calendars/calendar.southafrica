@@ -11,6 +11,8 @@
 #ifndef _calendar_southafrica_
 #define _calendar_southafrica_
 
+LANG=en_ZA.UTF-8
+
 03/01	Human Rights Day in South Africa
 04/27	Freedom Day in South Africa
 05/01	Workers Day in South Africa

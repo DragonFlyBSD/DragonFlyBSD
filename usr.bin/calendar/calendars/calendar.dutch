@@ -7,6 +7,7 @@
 #ifndef _calendar_dutch_
 #define _calendar_dutch_
 
+LANG=nl_NL.UTF-8
 Easter=Pasen
 
 /*
