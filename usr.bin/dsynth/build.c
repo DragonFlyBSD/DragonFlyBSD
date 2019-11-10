@@ -2098,7 +2098,8 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		 *	 with a full line.
 		 *
 		 * TODO: Our handshake probably echos back to the master pty
-		 *	 due to tty echo, and ends up in the log, fix me.
+		 *	 due to tty echo, and ends up in the log, so just
+		 *	 pass through a newline.
 		 */
 		slavefd = open(ptsname(MasterPtyFd), O_RDWR);
 		dassert_errno(slavefd >= 0, "Cannot open slave pty");
@@ -2106,10 +2107,10 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		if (pid == 0) {
 			login_tty(slavefd);
 			/* login_tty() closes slavefd */
-			read(0, ttybuf, 2);
+			read(0, ttybuf, 1);
 		} else {
 			close(slavefd);
-			write(MasterPtyFd, "x\n", 2);
+			write(MasterPtyFd, "\n", 1);
 		}
 	} else {
 		pid = forkpty(&MasterPtyFd, NULL, NULL, NULL);

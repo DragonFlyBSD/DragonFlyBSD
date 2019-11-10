@@ -183,17 +183,11 @@ main(int ac, char **av)
 	DoInitBuild(-1);
 
 	if (strcmp(av[0], "debug") == 0) {
-#if 0
-		DoCleanBuild(1);
-		pkgs = ParsePackageList(ac - 1, av + 1);
-		RemovePackages(pkgs);
-		addbuildenv("DEVELOPER", "yes", BENV_ENVIRONMENT);
-		DoBuild(pkgs);
-#endif
 		WorkerProcFlags |= WORKER_PROC_DEBUGSTOP;
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1);
+		RemovePackages(pkgs);
 		DoBuild(pkgs);
 	} else if (strcmp(av[0], "status") == 0) {
 		OptimizeEnv();
@@ -421,6 +415,7 @@ usage(int ecode)
     "    force      [ports]   - 'build' but deletes existing packages first\n"
     "    test       [ports]   - 'build' w/DEVELOPER=yes and pre-deletes pkgs\n"
     "				(also infers -P)\n"
+    "    debug      [ports]   - like 'test' but leaves mounts intact\n"
     "    monitor    [datfile] - Monitor a running dsynth\n"
     "\n"
     "    [ports] is a space-delimited list of origins, e.g. editors/joe.  It\n"
