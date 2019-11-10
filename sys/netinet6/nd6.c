@@ -1506,6 +1506,34 @@ nd6_ioctl(u_long cmd, caddr_t	data, struct ifnet *ifp)
 		ndi->ndi = *ND_IFINFO(ifp);
 		ndi->ndi.linkmtu = IN6_LINKMTU(ifp);
 		break;
+	case SIOCSIFINFO_IN6:
+		/*
+		 * used to change host variables from userland.
+		 * intented for a use on router to reflect RA configurations.
+		 */
+		/* 0 means 'unspecified' */
+		if (ndi->ndi.linkmtu != 0) {
+			if (ndi->ndi.linkmtu < IPV6_MMTU ||
+			    ndi->ndi.linkmtu > IN6_LINKMTU(ifp)) {
+				error = EINVAL;
+				break;
+			}
+			ND_IFINFO(ifp)->linkmtu = ndi->ndi.linkmtu;
+		}
+
+		if (ndi->ndi.basereachable != 0) {
+			int obasereachable = ND_IFINFO(ifp)->basereachable;
+
+			ND_IFINFO(ifp)->basereachable = ndi->ndi.basereachable;
+			if (ndi->ndi.basereachable != obasereachable)
+				ND_IFINFO(ifp)->reachable =
+				    ND_COMPUTE_RTIME(ndi->ndi.basereachable);
+		}
+		if (ndi->ndi.retrans != 0)
+			ND_IFINFO(ifp)->retrans = ndi->ndi.retrans;
+		if (ndi->ndi.chlim != 0)
+			ND_IFINFO(ifp)->chlim = ndi->ndi.chlim;
+		/* FALLTHROUGH */
 	case SIOCSIFINFO_FLAGS:
 		ND_IFINFO(ifp)->flags = ndi->ndi.flags;
 		break;

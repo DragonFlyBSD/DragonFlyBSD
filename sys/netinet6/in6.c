@@ -427,6 +427,7 @@ in6_control(u_long cmd, caddr_t data, struct ifnet *ifp, struct thread *td)
 	case SIOCSRTRFLUSH_IN6:
 	case SIOCSDEFIFACE_IN6:
 	case SIOCSIFINFO_FLAGS:
+	case SIOCSIFINFO_IN6:
 	case OSIOCGIFINFO_IN6:
 	case SIOCGIFINFO_IN6:
 	case SIOCGDRLST_IN6:
@@ -520,6 +521,7 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCSRTRFLUSH_IN6:
 	case SIOCSDEFIFACE_IN6:
 	case SIOCSIFINFO_FLAGS:
+	case SIOCSIFINFO_IN6:
 		if (!privileged)
 			return (EPERM);
 		/* FALLTHROUGH */
