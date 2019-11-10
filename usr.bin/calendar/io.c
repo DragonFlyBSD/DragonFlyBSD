@@ -34,6 +34,7 @@
 
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
 #include <sys/wait.h>
 
 #include <assert.h>
@@ -53,6 +54,17 @@
 #include <unistd.h>
 
 #include "calendar.h"
+
+struct iovec header[] = {
+	{ __DECONST(char *, "From: "), 6 },
+	{ NULL, 0 },
+	{ __DECONST(char *, " (Reminder Service)\nTo: "), 24 },
+	{ NULL, 0 },
+	{ __DECONST(char *, "\nSubject: "), 10 },
+	{ NULL, 0 },
+	{ __DECONST(char *, "'s Calendar\nPrecedence: bulk\n"),  29 },
+	{ __DECONST(char *, "Auto-Submitted: auto-generated\n\n"), 32 },
+};
 
 enum {
 	T_OK = 0,
@@ -475,14 +487,9 @@ closecal(FILE *fp)
 	/* parent -- write to pipe input */
 	close(pdes[0]);
 
-	write(pdes[1], "From: \"Reminder Service\" <", 26);
-	write(pdes[1], pw->pw_name, strlen(pw->pw_name));
-	write(pdes[1], ">\nTo: <", 7);
-	write(pdes[1], pw->pw_name, strlen(pw->pw_name));
-	write(pdes[1], ">\nSubject: ", 11);
-	write(pdes[1], dayname, strlen(dayname));
-	write(pdes[1], "'s Calendar\nPrecedence: bulk\n\n", 30);
-
+	header[1].iov_base = header[3].iov_base = pw->pw_name;
+	header[1].iov_len = header[3].iov_len = strlen(pw->pw_name);
+	writev(pdes[1], header, 8);
 	while ((nread = read(fileno(fp), buf, sizeof(buf))) > 0)
 		write(pdes[1], buf, nread);
 	close(pdes[1]);

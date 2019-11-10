@@ -65,7 +65,11 @@ settimes(time_t now, int before, int after, int friday,
 	localtime_r(&time2, tp2);
 	year2 = 1900 + tp2->tm_year;
 
-	strftime(dayname, sizeof(dayname) - 1, "%A, %d %B %Y", tp1);
+	setlocale(LC_TIME, "C");
+	header[5].iov_base = dayname;
+	header[5].iov_len = strftime(dayname, sizeof(dayname),
+				     "%A, %d %B %Y", tp1);
+	setlocale(LC_TIME, "");
 
 	setnnames();
 }

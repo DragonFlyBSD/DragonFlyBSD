@@ -166,6 +166,7 @@ int	parsedaymonth(char *, int *, int *, int *, int *, char **);
 void	dodebug(char *type);
 
 /* io.c */
+extern struct iovec header[];
 void	cal(void);
 
 /* ostern.c / paskha.c */
