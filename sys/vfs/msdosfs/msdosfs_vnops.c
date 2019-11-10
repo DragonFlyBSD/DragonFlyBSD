@@ -442,7 +442,7 @@ msdosfs_read(struct vop_read_args *ap)
 	off_t loffset;
 	int rasize;
 	int seqcount;
-	struct buf *bp;
+	struct buf *bp = NULL;
 	struct vnode *vp = ap->a_vp;
 	struct denode *dep = VTODE(vp);
 	struct msdosfsmount *pmp = dep->de_pmp;
@@ -541,7 +541,7 @@ msdosfs_write(struct vop_write_args *ap)
 	int error = 0;
 	u_long count;
 	daddr_t cn, lastcn;
-	struct buf *bp;
+	struct buf *bp = NULL;
 	int ioflag = ap->a_ioflag;
 	struct uio *uio = ap->a_uio;
 	struct thread *td = uio->uio_td;
@@ -887,7 +887,7 @@ msdosfs_rename(struct vop_old_rename_args *ap)
 	daddr_t bn;
 	struct msdosfsmount *pmp;
 	struct direntry *dotdotp;
-	struct buf *bp;
+	struct buf *bp = NULL;
 
 	pmp = VFSTOMSDOSFS(fdvp->v_mount);
 
@@ -1449,7 +1449,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	u_long dirsperblk;
 	long bias = 0;
 	daddr_t bn, lbn;
-	struct buf *bp;
+	struct buf *bp = NULL;
 	struct denode *dep;
 	struct msdosfsmount *pmp;
 	struct direntry *dentp;
