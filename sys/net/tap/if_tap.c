@@ -563,6 +563,7 @@ static int
 tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct tap_softc *sc = ifp->if_softc;
+	struct ifreq *ifr = NULL;
 	struct ifstat *ifs = NULL;
 	struct ifmediareq *ifmr = NULL;
 	int error = 0;
@@ -573,9 +574,14 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCDELMULTI:
 		break;
 
+	case SIOCSIFMTU:
+		ifr = (struct ifreq *)data;
+		ifp->if_mtu = ifr->ifr_mtu;
+		TAPDEBUG(ifp, "mtu set\n");
+		break;
+
 	case SIOCSIFADDR:
 	case SIOCGIFADDR:
-	case SIOCSIFMTU:
 		error = ether_ioctl(ifp, cmd, data);
 		break;
 
