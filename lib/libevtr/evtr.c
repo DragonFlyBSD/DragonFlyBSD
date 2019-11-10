@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2009, 2010 Aggelos Economopoulos.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -14,7 +14,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -35,6 +35,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1030,7 +1031,7 @@ evtr_dump_fmt(evtr_t evtr, uint64_t ts, const evtr_event_t ev)
 
 /*
  * Replace string pointers or string ids in fmtdata
- */ 
+ */
 static
 int
 mangle_string_ptrs(const char *fmt, uint8_t *fmtdata,
@@ -1684,7 +1685,7 @@ int
 evtr_skip_to_record(evtr_t evtr)
 {
 	int skip;
-	
+
 	skip = REC_ALIGN - (evtr->bytes % REC_ALIGN);
 	if (skip > 0) {
 		if (fseek(evtr->f, skip, SEEK_CUR)) {
@@ -1955,7 +1956,7 @@ void
 evtr_query_destroy(struct evtr_query *q)
 {
 	evtr_deregister_filters(q, q->filt, q->nfilt);
-		
+
 	free(q->buf);
 	free(q);
 }

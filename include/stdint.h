@@ -48,11 +48,6 @@ typedef __uintptr_t	uintptr_t;
 typedef __intmax_t	intmax_t;
 typedef __uintmax_t	uintmax_t;
 
-#ifndef _PTRDIFF_T_DECLARED
-#define _PTRDIFF_T_DECLARED
-typedef __ptrdiff_t		ptrdiff_t;            /* ptr1 - ptr2 */
-#endif
-
 typedef __int_fast8_t		int_fast8_t;
 typedef __int_fast16_t		int_fast16_t;
 typedef __int_fast32_t		int_fast32_t;

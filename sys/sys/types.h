@@ -156,6 +156,11 @@ typedef	int	_Bool;
 #endif
 typedef	_Bool	bool;
 #endif /* !__bool_true_false_are_defined && !__cplusplus */
+
+#ifndef _PTRDIFF_T_DECLARED
+typedef	__ptrdiff_t	ptrdiff_t;	/* ptr1 - ptr2 for kernel */
+#define	_PTRDIFF_T_DECLARED
+#endif
 #endif /* _KERNEL */
 
 #endif /* _KERNEL || _KERNEL_STRUCTURES */

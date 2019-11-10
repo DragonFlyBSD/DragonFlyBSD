@@ -40,6 +40,7 @@
 #include <kvm.h>
 #include <limits.h>
 #include <nlist.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -469,12 +470,12 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 	}
 	if (xflag) {
 		if (nflag) {
-		    fprintf(fo, "%p %p ", 
+		    fprintf(fo, "%p %p ",
 			    entry->ktr_caller2, entry->ktr_caller1);
 		} else {
-		    fprintf(fo, "%-25s ", 
+		    fprintf(fo, "%-25s ",
 			    address_to_symbol(entry->ktr_caller2, &symctx));
-		    fprintf(fo, "%-25s ", 
+		    fprintf(fo, "%-25s ",
 			    address_to_symbol(entry->ktr_caller1, &symctx));
 		}
 	}
@@ -627,7 +628,7 @@ mangle_string_ptrs(const char *fmt, uint8_t *fmtdata, int dofree)
 			  char *t = strdup(kvm_string(((char **)fmtdata)[0],
 							  &strctx));
 			  ((const char **)fmtdata)[0] = t;
-					
+
 				skipsize = sizeof(char *);
 			}
 			++ret;
@@ -796,7 +797,7 @@ read_symbols(const char *file)
 		pclose(fp);
 	}
 	if (symend == NULL) {
-		if (sym != NULL) 
+		if (sym != NULL)
 			symend = sym->symaddr;
 		else
 			symend = (char *)-1;
