@@ -85,15 +85,9 @@ typedef	unsigned int	__uintlp_t;
 typedef	__int64_t	__intmax_t;
 typedef	__uint64_t	__uintmax_t;
 
-#ifdef __LP64__
-typedef	__int64_t	__intptr_t;
-typedef	__uint64_t	__uintptr_t;
-typedef	__int64_t	__ptrdiff_t;		/* ptr1 - ptr2 */
-#else
-typedef	__int32_t	__intptr_t;
-typedef	__uint32_t	__uintptr_t;
-typedef	__int32_t	__ptrdiff_t;		/* ptr1 - ptr2 */
-#endif
+typedef	__intlp_t	__intptr_t;
+typedef	__uintlp_t	__uintptr_t;
+typedef	__intlp_t	__ptrdiff_t;	/* ptr1 - ptr2 */
 
 typedef	__int32_t	__int_fast8_t;
 typedef	__int32_t	__int_fast16_t;
@@ -119,28 +113,28 @@ typedef	__uint64_t	__uint_least64_t;
  * do not wish to overly pollute their namespaces.
  */
 
+/* <sys/types.h> */
+typedef	unsigned long	__clock_t;	/* ticks in CLOCKS_PER_SEC */
+typedef	unsigned long	__clockid_t;	/* CLOCK_* identifiers */
+typedef	__int64_t	__off_t;	/* file offset or size */
+typedef	__int32_t	__pid_t;	/* process [group] id */
+typedef	__uintlp_t	__size_t;	/* sizes of objects */
+typedef	__intlp_t	__ssize_t;	/* byte counts or error status */
+typedef	long		__suseconds_t;	/* microseconds (signed) */
+typedef	__intlp_t	__time_t;	/* epoch time */
+typedef	int		__timer_t;	/* POSIX timer identifiers */
+
 #ifdef __LP64__
-typedef __uint64_t	__size_t;
-typedef __int64_t	__ssize_t;
 typedef __int64_t	__register_t;
 typedef __uint64_t	__u_register_t;
 #else
-typedef __uint32_t	__size_t;
-typedef __int32_t	__ssize_t;
 typedef __int32_t	__register_t;
 typedef __uint32_t	__u_register_t;
 #endif
 
-typedef long		__suseconds_t;
-typedef long		__time_t;
-typedef int		__timer_t;
 typedef __int32_t	__sig_atomic_t;	/* XXX */
-typedef unsigned long	__clock_t;
-typedef unsigned long	__clockid_t;
 typedef __uint32_t	__socklen_t;
 typedef volatile int	__atomic_intr_t;
 typedef __int64_t	__rlim_t;
-typedef __int64_t	__off_t;
-typedef __int32_t	__pid_t;
 
 #endif /* _CPU_STDINT_H_ */
