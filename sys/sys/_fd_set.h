@@ -33,6 +33,8 @@
 #ifndef _SYS__FD_SET_H_
 #define	_SYS__FD_SET_H_
 
+#include <sys/cdefs.h>
+
 /*
  * Select uses bit masks of file descriptors in longs.  These macros
  * manipulate such bit fields (the filesystem macros use chars).

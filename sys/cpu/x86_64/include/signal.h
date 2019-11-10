@@ -35,6 +35,8 @@
 #ifndef _CPU_SIGNAL_H_
 #define	_CPU_SIGNAL_H_
 
+#include <sys/cdefs.h>
+
 /*
  * Machine-dependent signal definitions
  */

@@ -32,6 +32,8 @@
 #ifndef _SYS__TERMIOS_H_
 #define	_SYS__TERMIOS_H_
 
+#include <sys/cdefs.h>
+
 /*
  * Special Control Characters
  *

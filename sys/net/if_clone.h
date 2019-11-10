@@ -34,6 +34,8 @@
 #ifndef	_NET_IF_CLONE_H_
 #define	_NET_IF_CLONE_H_
 
+#include <sys/cdefs.h>
+
 #if __BSD_VISIBLE
 /*
  * Structure used to query names of interface cloners.
