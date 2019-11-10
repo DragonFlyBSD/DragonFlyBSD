@@ -300,7 +300,7 @@ cal_parse(FILE *in, FILE *out)
 
 		/* Parse special definitions: LANG, Easter, Paskha etc */
 		if (strncmp(buf, "LANG=", 5) == 0) {
-			(void)setlocale(LC_ALL, buf + 5);
+			setlocale(LC_ALL, buf + 5);
 			d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
 			setnnames();
 			continue;
@@ -389,6 +389,14 @@ cal_parse(FILE *in, FILE *out)
 			    extradata[i]);
 		}
 	}
+
+	/*
+	 * Reset to the default locale, so that one calendar file that changed
+	 * the locale (by defining the "LANG" variable) does not interfere the
+	 * following calendar files without the "LANG" definition.
+	 */
+	setlocale(LC_ALL, "");
+	setnnames();
 
 	free(line);
 	fclose(in);
