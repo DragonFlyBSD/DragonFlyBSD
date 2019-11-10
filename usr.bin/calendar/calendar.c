@@ -187,13 +187,6 @@ main(int argc, char *argv[])
 			}
 		}
 	} else {
-		char *home = getenv("HOME");
-
-		if (home == NULL || *home == '\0')
-			errx(1, "Cannot get home directory");
-		if (chdir(home) != 0)
-			errx(1, "Cannot enter home directory: \"%s\"", home);
-
 		cal();
 	}
 

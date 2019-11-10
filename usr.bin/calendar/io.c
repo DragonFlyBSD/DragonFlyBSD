@@ -117,10 +117,18 @@ cal_fopen(const char *file)
 {
 	FILE *fp = NULL;
 	char *cwd = NULL;
+	char *home;
 	char cwdpath[MAXPATHLEN];
 	unsigned int i;
 
-	/* Already in home directory before calling cal() in main() */
+	if (!doall) {
+		home = getenv("HOME");
+		if (home == NULL || *home == '\0')
+			errx(1, "Cannot get home directory");
+		if (chdir(home) != 0)
+			errx(1, "Cannot enter home directory: \"%s\"", home);
+	}
+
 	if (getcwd(cwdpath, sizeof(cwdpath)) != NULL)
 		cwd = cwdpath;
 	else
@@ -416,7 +424,7 @@ static FILE *
 opencalin(void)
 {
 	struct stat sbuf;
-	FILE *fpin;
+	FILE *fpin = NULL;
 
 	/* open up calendar file */
 	if ((fpin = fopen(calendarFile, "r")) == NULL) {
@@ -431,6 +439,12 @@ opencalin(void)
 			fpin = cal_fopen(calendarFile);
 		}
 	}
+
+	if (fpin == NULL) {
+		errx(1, "No calendar file: \"%s\" or \"~/%s/%s\"",
+				calendarFile, calendarHomes[0], calendarFile);
+	}
+
 	return (fpin);
 }
 
