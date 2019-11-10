@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2001, 2002 Mike Barcroft <mike@FreeBSD.org>
  * Copyright (c) 2001 The NetBSD Foundation, Inc.  All rights reserved.
- * Copyright (c) 1990, 1993 The Regents of the University of California. 
+ * Copyright (c) 1990, 1993 The Regents of the University of California.
  *		All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -66,6 +66,17 @@ __extension__
 typedef	long long	__int64_t;
 __extension__
 typedef	unsigned long long __uint64_t;
+#endif
+
+/*
+ * Basic signed and unsigned LP types.  We support LP64 and ILP32 models only.
+ */
+#ifdef __LP64__
+typedef	long		__intlp_t;
+typedef	unsigned long	__uintlp_t;
+#else
+typedef	int		__intlp_t;
+typedef	unsigned int	__uintlp_t;
 #endif
 
 /*
