@@ -15,7 +15,6 @@
  *    Peter Wemm.
  *
  * $FreeBSD: src/lib/libc/gen/setproctitle.c,v 1.18 2003/07/01 09:45:35 alfred Exp $
- * $DragonFly: src/lib/libc/gen/setproctitle.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -24,9 +23,9 @@
 #include <sys/exec.h>
 #include <sys/sysctl.h>
 
+#include <vm/pmap.h>
 #include <vm/vm.h>
 #include <vm/vm_param.h>
-#include <vm/pmap.h>
 
 #include <stdio.h>
 #include <string.h>

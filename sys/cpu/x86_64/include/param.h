@@ -71,27 +71,27 @@
 #define SMP_MAXCPU	256
 #define MAXCPU		SMP_MAXCPU
 
-/* JG license? from fbsd/src/sys/amd64/include/param.h */
+/* Constants derived from sizeof() that need recalculation. */
 /* level 1 == page table */
 #define	NPTEPGSHIFT	9		/* LOG2(NPTEPG) */
 #define PAGE_SHIFT	12		/* LOG2(PAGE_SIZE) */
 #define PAGE_SIZE	(1<<PAGE_SHIFT)	/* bytes/page */
 #define PAGE_MASK	(PAGE_SIZE-1)
-#define NPTEPG		(PAGE_SIZE/(sizeof (pt_entry_t)))
+#define NPTEPG		(PAGE_SIZE/8LU)	/* PAGE_SIZE/sizeof(pt_entry_t) */
 
 /* level 2 == page directory */
 #define	NPDEPGSHIFT	9		/* LOG2(NPDEPG) */
 #define PDRSHIFT	21		/* LOG2(NBPDR) */
 #define NBPDR		(1<<PDRSHIFT)	/* bytes/page dir */
 #define PDRMASK		(NBPDR-1)
-#define NPDEPG		(PAGE_SIZE/(sizeof (pd_entry_t)))
+#define NPDEPG		(PAGE_SIZE/8LU)	/* PAGE_SIZE/sizeof(pd_entry_t) */
 
 /* level 3 == page directory pointer table */
 #define	NPDPEPGSHIFT	9		/* LOG2(NPDPEPG) */
 #define PDPSHIFT	30		/* LOG2(NBPDP) */
 #define NBPDP		(1<<PDPSHIFT)	/* bytes/page dir ptr table */
 #define PDPMASK		(NBPDP-1)
-#define NPDPEPG		(PAGE_SIZE/(sizeof (pdp_entry_t)))
+#define NPDPEPG		(PAGE_SIZE/8LU)	/* PAGE_SIZE/sizeof(pdp_entry_t) */
 
 /* level 4 */
 #define	NPML4EPGSHIFT	9		/* LOG2(NPML4EPG) */
@@ -99,7 +99,7 @@
 #define NPML4		(1UL<<PML4SHIFT)/* bytes/page map level4 table */
 #define	NBPML4		(1ul<<PML4SHIFT)/* bytes/page map lev4 table */
 #define PML4MASK	(NPML4-1)
-#define NPML4EPG	(PAGE_SIZE/(sizeof (pml4_entry_t)))
+#define NPML4EPG	(PAGE_SIZE/8LU)	/* PAGE_SIZE/sizeof(pml4_entry_t) */
 
 /*
  * Virtual address sign-extension and mask.  If bit 47 is set then

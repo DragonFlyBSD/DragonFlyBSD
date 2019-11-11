@@ -36,6 +36,7 @@
 #include <sys/proc.h>
 #include <sys/systm.h>
 #include <cpu/lwbuf.h>
+#include <cpu/pmap.h>
 #include <vm/vm_page.h>
 #include <vm/vm_extern.h>
 

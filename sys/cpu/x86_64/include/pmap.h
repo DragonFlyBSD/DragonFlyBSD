@@ -45,6 +45,29 @@
 #ifndef _CPU_PMAP_H_
 #define _CPU_PMAP_H_
 
+#ifndef LOCORE
+
+#include <machine/stdint.h>
+
+/*
+ * MMU page tables, keep public for VM_MAX_USER_ADDRESS/PS_STRINGS.
+ */
+typedef	__uint64_t	pml4_entry_t;
+typedef	__uint64_t	pdp_entry_t;
+typedef	__uint64_t	pd_entry_t;
+typedef	__uint64_t	pt_entry_t;
+
+#ifdef _KERNEL
+#if 0 /* unused */
+#define	PML4SIZE	sizeof(pml4_entry_t) /* for assembly files */
+#define	PDPSIZE		sizeof(pdp_entry_t) /* for assembly files */
+#endif
+#define	PDESIZE		sizeof(pd_entry_t) /* for assembly files */
+#define	PTESIZE		sizeof(pt_entry_t) /* for assembly files */
+#endif
+
+#endif /* !LOCORE */
+
 /*
  * Page-directory and page-table entries follow this format, with a few
  * of the fields not present here and there, depending on a lot of things.

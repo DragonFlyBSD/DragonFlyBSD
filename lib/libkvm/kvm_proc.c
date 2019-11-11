@@ -59,6 +59,7 @@
 #include <unistd.h>
 #include <nlist.h>
 
+#include <cpu/pmap.h>
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/swap_pager.h>
