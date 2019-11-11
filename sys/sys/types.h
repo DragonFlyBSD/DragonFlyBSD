@@ -123,6 +123,9 @@ typedef	__off_t		off_t;		/* file offset */
 typedef	__pid_t		pid_t;		/* process id */
 #define	_PID_T_DECLARED
 #endif
+#if __BSD_VISIBLE
+typedef	__register_t	register_t;	/* register-sized type */
+#endif
 #ifndef _RLIM_T_DECLARED
 typedef	__rlim_t	rlim_t;		/* resource limit */
 #define	_RLIM_T_DECLARED

@@ -36,14 +36,6 @@
 
 #include <machine/stdint.h>
 
-#if defined(__x86_64__)
-typedef	__int64_t	register_t;
-typedef	__uint64_t	u_register_t;
-#elif defined(__i386__)
-typedef	__int32_t	register_t;
-typedef	__uint32_t	u_register_t;
-#endif
-
 typedef unsigned long	vm_offset_t;    /* address space bounded offset */
 typedef unsigned long	vm_size_t;      /* address space bounded size */
 

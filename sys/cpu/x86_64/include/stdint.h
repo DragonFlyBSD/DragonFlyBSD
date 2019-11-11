@@ -124,12 +124,11 @@ typedef	long		__suseconds_t;	/* microseconds (signed) */
 typedef	__intlp_t	__time_t;	/* epoch time */
 typedef	int		__timer_t;	/* POSIX timer identifiers */
 
-#ifdef __LP64__
-typedef __int64_t	__register_t;
-typedef __uint64_t	__u_register_t;
+/* misc types */
+#if __GNUC_PREREQ__(2, 7)
+typedef	int		__register_t __attribute__((__mode__(__word__)));
 #else
-typedef __int32_t	__register_t;
-typedef __uint32_t	__u_register_t;
+typedef	__intlp_t	__register_t;
 #endif
 
 typedef __int32_t	__sig_atomic_t;	/* XXX */
