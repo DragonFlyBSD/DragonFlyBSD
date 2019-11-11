@@ -127,7 +127,9 @@ typedef	__pid_t		pid_t;		/* process id */
 typedef	__rlim_t	rlim_t;		/* resource limit */
 #define	_RLIM_T_DECLARED
 #endif
-typedef	__segsz_t	segsz_t;	/* segment size */
+#if __BSD_VISIBLE
+typedef	__intlp_t	segsz_t;	/* segment size */
+#endif
 #ifndef _SUSECONDS_T_DECLARED
 typedef	__suseconds_t	suseconds_t;	/* microseconds (signed) */
 #define	_SUSECONDS_T_DECLARED

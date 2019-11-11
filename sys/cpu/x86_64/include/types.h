@@ -37,11 +37,9 @@
 #include <machine/stdint.h>
 
 #if defined(__x86_64__)
-typedef	__int64_t	__segsz_t;	/* segment size */
 typedef	__int64_t	register_t;
 typedef	__uint64_t	u_register_t;
 #elif defined(__i386__)
-typedef	__int32_t	__segsz_t;	/* segment size */
 typedef	__int32_t	register_t;
 typedef	__uint32_t	u_register_t;
 #endif
