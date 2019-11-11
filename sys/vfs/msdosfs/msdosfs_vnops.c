@@ -72,6 +72,7 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
+#include <vm/vm_page2.h>
 
 #include <sys/buf2.h>
 
@@ -442,7 +443,7 @@ msdosfs_read(struct vop_read_args *ap)
 	off_t loffset;
 	int rasize;
 	int seqcount;
-	struct buf *bp = NULL;
+	struct buf *bp;
 	struct vnode *vp = ap->a_vp;
 	struct denode *dep = VTODE(vp);
 	struct msdosfsmount *pmp = dep->de_pmp;
@@ -486,6 +487,7 @@ msdosfs_read(struct vop_read_args *ap)
 		 * do i/o with the vnode for the filesystem instead of the
 		 * vnode for the directory.
 		 */
+		bp = NULL;
 		if (isadir) {
 			/* convert cluster # to block # */
 			error = pcbmap(dep, cn, &lbn, NULL, &blsize);
@@ -498,6 +500,11 @@ msdosfs_read(struct vop_read_args *ap)
 			error = bread(pmp->pm_devvp, loffset, blsize, &bp);
 		} else if (de_cn2off(pmp, rablock) >= dep->de_FileSize) {
 			error = bread(vp, loffset, blsize, &bp);
+		} else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
+			error = cluster_readx(vp, dep->de_FileSize, loffset,
+			    blsize, B_NOTMETA, on + uio->uio_resid,
+			    seqcount * MAXBSIZE, &bp);
+			bp->b_flags |= B_CLUSTEROK;
 		} else if (seqcount > 1) {
 			off_t raoffset = de_cn2doff(pmp, rablock);
 			rasize = blsize;
@@ -519,7 +526,7 @@ msdosfs_read(struct vop_read_args *ap)
 		if (diff < n)
 			n = diff;
 		error = uiomovebp(bp, bp->b_data + on, (size_t)n, uio);
-		brelse(bp);
+		bqrelse(bp);
 	} while (error == 0 && uio->uio_resid > 0 && n != 0);
 
 	if (!isadir && (error == 0 || uio->uio_resid != orig_resid) &&
@@ -540,6 +547,7 @@ msdosfs_write(struct vop_write_args *ap)
 	u_long osize;
 	int error = 0;
 	u_long count;
+	int seqcount;
 	daddr_t cn, lastcn;
 	struct buf *bp = NULL;
 	int ioflag = ap->a_ioflag;
@@ -629,6 +637,7 @@ msdosfs_write(struct vop_write_args *ap)
 	} else
 		lastcn = de_clcount(pmp, osize) - 1;
 
+	seqcount = ioflag >> IO_SEQSHIFT;
 	do {
 		if (de_cluster(pmp, uio->uio_offset) > lastcn) {
 			error = ENOSPC;
@@ -711,19 +720,31 @@ msdosfs_write(struct vop_write_args *ap)
 			break;
 		}
 
+		/* Prepare for clustered writes in some else clauses. */
+		if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0)
+			bp->b_flags |= B_CLUSTEROK;
+
 		/*
 		 * If IO_SYNC, then each buffer is written synchronously.
-		 * Otherwise, if on a
+		 * Otherwise, if we have a severe page deficiency then
+		 * write the buffer asynchronously.  Otherwise, if on a
 		 * cluster boundary then write the buffer asynchronously,
-		 * since we don't expect more writes into this
+		 * combining it with contiguous clusters if permitted and
+		 * possible, since we don't expect more writes into this
 		 * buffer soon.  Otherwise, do a delayed write because we
 		 * expect more writes into this buffer soon.
 		 */
 		if (ioflag & IO_SYNC)
 			bwrite(bp);
-		else if (n + croffset == pmp->pm_bpcluster)
+		else if (vm_page_count_severe() || buf_dirty_count_severe())
 			bawrite(bp);
-		else
+		else if (n + croffset == pmp->pm_bpcluster) {
+			if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0)
+				cluster_write(bp, dep->de_FileSize,
+				    pmp->pm_bpcluster, seqcount);
+			else
+				bawrite(bp);
+		} else
 			bdwrite(bp);
 		dep->de_flag |= DE_UPDATE;
 	} while (error == 0 && uio->uio_resid > 0);
@@ -1719,10 +1740,12 @@ static int
 msdosfs_bmap(struct vop_bmap_args *ap)
 {
 	struct denode *dep;
+	struct mount *mp;
 	struct msdosfsmount *pmp;
 	struct vnode *vp;
-	daddr_t dbn;
-	int error;
+	daddr_t dbn, runbn;
+	u_long cn;
+	int bnpercn, error, maxio, maxrun, run;
 
 	vp = ap->a_vp;
 	dep = VTODE(vp);
@@ -1741,7 +1764,34 @@ msdosfs_bmap(struct vop_bmap_args *ap)
 		*ap->a_doffsetp = NOOFFSET;
 	else
 		*ap->a_doffsetp = de_bn2doff(pmp, dbn);
-	return (error);
+	if (error != 0 || dbn == (daddr_t)-1 ||
+	    (ap->a_runp == NULL && ap->a_runb == NULL))
+		return (error);
+
+	cn = de_cluster(pmp, ap->a_loffset);
+	mp = vp->v_mount;
+	maxio = mp->mnt_iosize_max / mp->mnt_stat.f_iosize;
+	bnpercn = de_cn2bn(pmp, 1);
+	if (ap->a_runp != NULL) {
+		maxrun = ulmin(maxio - 1, pmp->pm_maxcluster - cn);
+		for (run = 1; run <= maxrun; run++) {
+			if (pcbmap(dep, cn + run, &runbn, NULL, NULL) != 0 ||
+			    runbn != dbn + run * bnpercn)
+				break;
+		}
+		*ap->a_runp = run - 1;
+	}
+	if (ap->a_runb != NULL) {
+		maxrun = ulmin(maxio - 1, cn);
+		for (run = 1; run < maxrun; run++) {
+			if (pcbmap(dep, cn - run, &runbn, NULL, NULL) != 0 ||
+			    runbn != dbn - run * bnpercn)
+				break;
+		}
+		*ap->a_runb = run - 1;
+	}
+
+	return (0);
 }
 
 static int
