@@ -36,8 +36,8 @@
 
 #include <machine/stdint.h>
 
-typedef unsigned long	vm_offset_t;    /* address space bounded offset */
-typedef unsigned long	vm_size_t;      /* address space bounded size */
+typedef __uintlp_t	vm_offset_t;	/* address space bounded offset */
+typedef __uintlp_t	vm_size_t;	/* address space bounded size */
 
 typedef __uint64_t	vm_pindex_t;    /* physical page index */
 typedef __uint64_t	vm_spindex_t;   /* physical page index (signed) */
