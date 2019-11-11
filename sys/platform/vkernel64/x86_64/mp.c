@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  */
 
-
+#include <sys/cpumask.h>
 #include <sys/interrupt.h>
 #include <sys/kernel.h>
 #include <sys/memrange.h>
@@ -50,7 +50,6 @@
 
 #include <machine/cpu.h>
 #include <machine/cpufunc.h>
-#include <machine/cpumask.h>
 #include <machine/globaldata.h>
 #include <machine/md_var.h>
 #include <machine/pmap.h>

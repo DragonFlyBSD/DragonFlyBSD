@@ -80,15 +80,15 @@ void	lapic_x2apic_enter(boolean_t);
 #include <machine/smp.h>
 #endif
 
+#ifndef _SYS_CPUMASK_H_
+#include <sys/cpumask.h>
+#endif
+
 void	selected_apic_ipi(cpumask_t, int, int);
 
 /*
  * Send an IPI INTerrupt containing 'vector' to all CPUs EXCEPT myself
  */
-#ifndef _CPU_CPUMASK_H_
-#include <machine/cpumask.h>
-#endif
-
 static __inline int
 all_but_self_ipi(int vector)
 {

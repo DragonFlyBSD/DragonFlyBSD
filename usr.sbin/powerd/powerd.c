@@ -49,8 +49,8 @@
 #include <sys/soundcard.h>
 #include <sys/sensors.h>
 #include <sys/time.h>
+#include <sys/cpumask.h>
 #include <machine/cpufunc.h>
-#include <machine/cpumask.h>
 #include <err.h>
 #include <signal.h>
 #include <stdio.h>

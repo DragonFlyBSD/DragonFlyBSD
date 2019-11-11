@@ -33,6 +33,7 @@
  *
  */
 
+#include <sys/cpumask.h>
 #include <sys/errno.h>
 #include <sys/globaldata.h>		/* curthread */
 #include <sys/proc.h>
@@ -41,7 +42,6 @@
 #include <sys/systm.h>			/* strcmp() */
 #include <sys/usched.h>
 
-#include <machine/cpumask.h>
 #include <machine/smp.h>
 
 static TAILQ_HEAD(, usched) usched_list = TAILQ_HEAD_INITIALIZER(usched_list);

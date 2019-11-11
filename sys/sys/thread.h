@@ -23,6 +23,9 @@
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>   	/* struct timeval */
 #endif
+#ifndef _SYS_CPUMASK_H_
+#include <sys/cpumask.h>	/* cpumask_t */
+#endif
 #ifndef _SYS_LOCK_H
 #include <sys/lock.h>
 #endif

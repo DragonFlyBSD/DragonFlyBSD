@@ -2,8 +2,6 @@
  * SYS/USCHED.H
  *
  *	Userland scheduler API
- * 
- * $DragonFly: src/sys/sys/usched.h,v 1.15 2008/04/21 15:24:47 dillon Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -13,6 +11,9 @@
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_CPUMASK_H_
+#include <sys/cpumask.h>
 #endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -49,7 +50,7 @@ struct usched {
 
 union usched_data {
     /*
-     * BSD4 scheduler. 
+     * BSD4 scheduler.
      */
     struct {
 	short	priority;	/* lower is better */

@@ -31,7 +31,18 @@
 #ifndef _PTHREAD_NP_H_
 #define _PTHREAD_NP_H_
 
-#include <sched.h>
+#include <sys/cdefs.h>
+#include <sys/types.h>
+#include <sys/cpumask.h>
+#include <sys/_timespec.h>
+#include <time.h>
+
+/* In case <sched.h> has limited visibility. */
+#ifndef _CPU_SET_T_DECLARED
+#define	_CPU_SET_T_DECLARED
+typedef	cpumask_t		cpu_set_t;
+typedef	cpumask_t		cpuset_t;	/* FreeBSD compat */
+#endif
 
 /*
  * Non-POSIX type definitions:
@@ -65,4 +76,4 @@ int pthread_switch_delete_np(pthread_switch_routine_t);
 int pthread_timedjoin_np(pthread_t, void **, const struct timespec *);
 __END_DECLS
 
-#endif
+#endif /* !_PTHREAD_NP_H_ */

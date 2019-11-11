@@ -16,7 +16,7 @@ struct lwp_params {
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
-#include <machine/cpumask.h>
+#include <sys/cpumask.h>
 
 __BEGIN_DECLS
 

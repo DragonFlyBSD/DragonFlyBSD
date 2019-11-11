@@ -3,7 +3,7 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
-#include <machine/cpumask.h>
+#include <sys/cpumask.h>
 
 /* CPU TOPOLOGY DATA AND FUNCTIONS */
 struct cpu_node {

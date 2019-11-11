@@ -56,55 +56,13 @@ struct sched_param
 #include <time.h>		/* Per P1003.4 */
 
 #if __BSD_VISIBLE
-#include <machine/cpumask.h>
+#include <sys/cpumask.h>
 
+#ifndef _CPU_SET_T_DECLARED
+#define	_CPU_SET_T_DECLARED
 typedef	cpumask_t		cpu_set_t;
 typedef	cpumask_t		cpuset_t;	/* FreeBSD compat */
-
-#define	CPU_SETSIZE		((int)(sizeof(cpumask_t) * 8))
-
-#define	CPU_ZERO(set)		CPUMASK_ASSZERO(*set)
-#define	CPU_SET(cpu, set)	CPUMASK_ORBIT(*set, cpu)
-#define	CPU_CLR(cpu, set)	CPUMASK_NANDBIT(*set, cpu)
-#define	CPU_ISSET(cpu, set)	CPUMASK_TESTBIT(*set, cpu)
-
-#define	CPU_COUNT(set)				\
-	(__builtin_popcountl((set)->ary[0]) +	\
-	 __builtin_popcountl((set)->ary[1]) +	\
-	 __builtin_popcountl((set)->ary[2]) +	\
-	 __builtin_popcountl((set)->ary[3]))
-
-#define	CPU_AND(dst, set1, set2)		\
-do {						\
-	if (dst == set1) {			\
-		CPUMASK_ANDMASK(*dst, *set2);	\
-	} else {				\
-		*dst = *set2;			\
-		CPUMASK_ANDMASK(*dst, *set1);	\
-	}					\
-} while (0)
-
-#define	CPU_OR(dst, set1, set2)			\
-do {						\
-	if (dst == set1) {			\
-		CPUMASK_ORMASK(*dst, *set2);	\
-	} else {				\
-		*dst = *set2;			\
-		CPUMASK_ORMASK(*dst, *set1);	\
-	}					\
-} while (0)
-
-#define	CPU_XOR(dst, set1, set2)		\
-do {						\
-	if (dst == set1) {			\
-		CPUMASK_XORMASK(*dst, *set2);	\
-	} else {				\
-		*dst = *set2;			\
-		CPUMASK_XORMASK(*dst, *set1);	\
-	}					\
-} while (0)
-
-#define	CPU_EQUAL(set1, set2)	CPUMASK_CMPMASKEQ(*set1, *set2)
+#endif
 #endif /* __BSD_VISIBLE */
 
 __BEGIN_DECLS
@@ -127,6 +85,6 @@ int sched_getcpu(void);
 #endif
 __END_DECLS
 
-#endif
+#endif /* !_KERNEL */
 
 #endif /* _SCHED_H_ */

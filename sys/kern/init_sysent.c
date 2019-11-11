@@ -9,7 +9,6 @@
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
 #include <sys/statvfs.h>
-#include <machine/cpumask.h>
 
 #define AS(name) ((sizeof(struct name) - sizeof(struct sysmsg)) / sizeof(register_t))
 

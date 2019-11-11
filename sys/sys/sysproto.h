@@ -11,6 +11,7 @@
 #include <sys/select.h>
 #include <sys/signal.h>
 #include <sys/acl.h>
+#include <sys/cpumask.h>
 #include <sys/mqueue.h>
 #include <sys/msgport.h>
 #include <sys/sysmsg.h>

@@ -45,26 +45,4 @@ typedef	__int64_t	vm_ooffset_t;	/* VM object bounded offset */
 typedef __uint64_t	vm_poff_t;	/* physical offset */
 typedef __uint64_t	vm_paddr_t;	/* physical addr (same as vm_poff_t) */
 
-typedef __uint32_t      cpulock_t;      /* count and exclusive lock */
-
-/*
- * cpumask_t - a mask representing a set of cpus and supporting routines.
- *
- * WARNING! It is recommended that this mask NOT be made variably-sized
- *	    because it affects a huge number of system structures.  However,
- *	    kernel code (non-module) can be optimized to not operate on the
- *	    whole mask.
- */
-
-#define _CPUMASK_ELEMENTS	4	/* tested by assembly for #error */
-
-typedef struct {
-	__uint64_t      ary[4];
-} cpumask_t;
-
-#define CPULOCK_EXCLBIT	0		/* exclusive lock bit number */
-#define CPULOCK_EXCL	0x00000001	/* exclusive lock */
-#define CPULOCK_INCR	0x00000002	/* auxillary counter add/sub */
-#define CPULOCK_CNTMASK	0x7FFFFFFE
-
 #endif /* !_CPU_TYPES_H_ */

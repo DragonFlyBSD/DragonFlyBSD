@@ -45,10 +45,10 @@
 #include <sys/rtprio.h>
 #include <sys/mman.h>
 #include <machine/atomic.h>
-#include <machine/cpumask.h>
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
+#include <sys/cpumask.h>
 #include <sys/sched.h>
 #include <stdarg.h>
 #include <unistd.h>

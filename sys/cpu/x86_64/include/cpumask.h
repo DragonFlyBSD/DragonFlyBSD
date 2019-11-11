@@ -35,16 +35,25 @@
 #ifndef _CPU_CPUMASK_H_
 #define	_CPU_CPUMASK_H_
 
-#include <cpu/types.h>
+#include <machine/stdint.h>
 #ifdef _KERNEL
 #include <cpu/atomic.h>
 #endif
 
-#if _CPUMASK_ELEMENTS != 4
-#error "CPUMASK macros incompatible with cpumask_t"
-#endif
+/*
+ * cpumask_t - a mask representing a set of cpus and supporting routines.
+ *
+ * WARNING! It is recommended that this mask NOT be made variably-sized
+ *	    because it affects a huge number of system structures.  However,
+ *	    kernel code (non-module) can be optimized to not operate on the
+ *	    whole mask.
+ */
 
-#define CPUMASK_ELEMENTS	_CPUMASK_ELEMENTS
+typedef struct {
+	__uint64_t	ary[4];
+} __cpumask_t;
+
+#define CPUMASK_ELEMENTS	4
 
 #define CPUMASK_INITIALIZER_ALLONES	{ .ary = { (__uint64_t)-1, \
 					  (__uint64_t)-1, \
@@ -211,6 +220,52 @@
 					(mask).ary[2] ^= -1L;		\
 					(mask).ary[3] ^= -1L;		\
 					} while(0)
+
+#ifndef _KERNEL
+#define	__CPU_SETSIZE		((int)(sizeof(cpumask_t) * 8))
+
+#define	__CPU_COUNT(set)	(					\
+				__builtin_popcountl((set)->ary[0]) +	\
+				__builtin_popcountl((set)->ary[1]) +	\
+				__builtin_popcountl((set)->ary[2]) +	\
+				__builtin_popcountl((set)->ary[3]))
+
+#define	__CPU_CLR(cpu, set)	CPUMASK_NANDBIT(*set, cpu)
+#define	__CPU_EQUAL(set1, set2)	CPUMASK_CMPMASKEQ(*set1, *set2)
+#define	__CPU_ISSET(cpu, set)	CPUMASK_TESTBIT(*set, cpu)
+#define	__CPU_SET(cpu, set)	CPUMASK_ORBIT(*set, cpu)
+#define	__CPU_ZERO(set)		CPUMASK_ASSZERO(*set)
+
+#define	__CPU_AND(dst, set1, set2)					\
+			do {						\
+				if (dst == set1) {			\
+					CPUMASK_ANDMASK(*dst, *set2);	\
+				} else {				\
+					*dst = *set2;			\
+					CPUMASK_ANDMASK(*dst, *set1);	\
+				}					\
+			} while (0)
+
+#define	__CPU_OR(dst, set1, set2)					\
+			do {						\
+				if (dst == set1) {			\
+					CPUMASK_ORMASK(*dst, *set2);	\
+				} else {				\
+					*dst = *set2;			\
+					CPUMASK_ORMASK(*dst, *set1);	\
+				}					\
+			} while (0)
+
+#define	__CPU_XOR(dst, set1, set2)					\
+			do {						\
+				if (dst == set1) {			\
+					CPUMASK_XORMASK(*dst, *set2);	\
+				} else {				\
+					*dst = *set2;			\
+					CPUMASK_XORMASK(*dst, *set1);	\
+				}					\
+			} while (0)
+#endif
 
 #ifdef _KERNEL
 #define ATOMIC_CPUMASK_ORBIT(mask, i)					  \

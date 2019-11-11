@@ -1,7 +1,7 @@
 /*
  * SYS/THREAD2.H
  *
- * Implements inline procedure support for the LWKT subsystem. 
+ * Implements inline procedure support for the LWKT subsystem.
  *
  * Generally speaking these routines only operate on threads associated
  * with the current cpu.  For example, a higher priority thread pending
@@ -25,8 +25,10 @@
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>
 #endif
+#ifndef _SYS_CPUMASK_H_
+#include <sys/cpumask.h>
+#endif
 #include <machine/cpufunc.h>
-#include <machine/cpumask.h>
 
 /*
  * Don't let GCC reorder critical section count adjustments, because it
@@ -303,7 +305,7 @@ lwkt_cpusync_init(lwkt_cpusync_t cs, cpumask_t mask,
 /*
  * IPIQ messaging wrappers.  IPIQ remote functions are passed three arguments:
  * a void * pointer, an integer, and a pointer to the trap frame (or NULL if
- * the trap frame is not known).  However, we wish to provide opaque 
+ * the trap frame is not known).  However, we wish to provide opaque
  * interfaces for simpler callbacks... the basic IPI messaging function as
  * used by the kernel takes a single argument.
  */
@@ -338,7 +340,7 @@ lwkt_send_ipiq_passive(globaldata_t target, ipifunc1_t func, void *arg)
 }
 
 static __inline int
-lwkt_send_ipiq2_passive(globaldata_t target, ipifunc2_t func, 
+lwkt_send_ipiq2_passive(globaldata_t target, ipifunc2_t func,
 		       void *arg1, int arg2)
 {
     return(lwkt_send_ipiq3_passive(target, (ipifunc3_t)func, arg1, arg2));
