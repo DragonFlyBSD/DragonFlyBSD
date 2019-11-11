@@ -75,7 +75,7 @@ struct sembuf {
 union semun {
 	int	val;		/* value for SETVAL */
 	struct	semid_ds *buf;	/* buffer for IPC_STAT & IPC_SET */
-	u_short	*array;		/* array for GETALL & SETALL */
+	unsigned short	*array;	/* array for GETALL & SETALL */
 };
 #endif /* __BSD_VISIBLE */
 
