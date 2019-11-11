@@ -26,6 +26,7 @@
  * $FreeBSD: src/sys/boot/i386/libi386/libi386.h,v 1.16 2003/05/01 03:56:29 peter Exp $
  */
 
+#include <machine/types.h>	/* XXX for vm_offset_t */
 
 /*
  * i386 fully-qualified device descriptor.

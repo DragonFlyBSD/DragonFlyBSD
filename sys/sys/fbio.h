@@ -44,6 +44,7 @@
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
 #endif
+#include <machine/types.h>	/* for vm_offset_t */
 
 /*
  * Frame buffer ioctls (from Sprite, trimmed to essentials for X11).

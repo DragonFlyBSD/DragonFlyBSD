@@ -45,13 +45,7 @@
 #include <stdint.h>
 #endif
 #include <machine/endian.h>
-#ifndef _MACHINE_TYPES_H_
-#include <machine/types.h>
-#endif
 #include <machine/stdint.h>
-#ifndef _SYS__PTHREADTYPES_H_
-#include <sys/_pthreadtypes.h>
-#endif
 
 #if __BSD_VISIBLE
 typedef	unsigned char	u_char;
@@ -253,9 +247,15 @@ typedef	__time_t	time_t;
 typedef	__timer_t	timer_t;
 #endif
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#include <machine/types.h>		/* for vm_offet_t */
+#endif
+
 #if __BSD_VISIBLE
 #include <sys/_fd_set.h>
 #include <sys/_timeval.h>
 #endif /* __BSD_VISIBLE */
+
+#include <sys/_pthreadtypes.h>		/* now POSIX thread types */
 
 #endif /* !_SYS_TYPES_H_ */

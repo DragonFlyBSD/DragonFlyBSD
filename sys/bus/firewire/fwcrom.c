@@ -42,6 +42,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #else
+#include <machine/types.h>	/* XXX for vm_offset_t */
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <stdio.h>

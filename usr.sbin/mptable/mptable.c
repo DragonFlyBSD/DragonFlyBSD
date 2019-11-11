@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mptable/mptable.c,v 1.12.2.3 2000/12/11 01:03:34 obrien Exp $
- * $DragonFly: src/usr.sbin/mptable/mptable.c,v 1.4 2008/04/20 13:44:26 swildner Exp $
  */
 
 /*
@@ -39,6 +38,7 @@
 #define OEM_PROCESSING_READY_NOT
 
 #include <sys/types.h>
+#include <machine/types.h>	/* XXX for vm_offset_t */
 #include <err.h>
 #include <fcntl.h>
 #include <inttypes.h>

@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/linker_set.h>
+#include <machine/types.h>	/* XXX for vm_offset_t */
 
 struct stat;
 

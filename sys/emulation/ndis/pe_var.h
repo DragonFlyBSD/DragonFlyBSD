@@ -35,6 +35,8 @@
 #ifndef _PE_VAR_H_
 #define	_PE_VAR_H_
 
+#include <machine/types.h>	/* XXX for vm_offset_t */
+
 /*
  *  Image Format
  */

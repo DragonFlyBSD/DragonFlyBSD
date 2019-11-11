@@ -15,13 +15,13 @@
 
 /*
  * $FreeBSD: src/sys/boot/i386/btx/lib/btxv86.h,v 1.5 1999/08/28 00:40:08 peter Exp $
- * $DragonFly: src/sys/boot/pc32/btx/lib/btxv86.h,v 1.3 2003/11/10 06:08:35 dillon Exp $
  */
 
 #ifndef _BTXV86_H_
 #define _BTXV86_H_
 
 #include <sys/types.h>
+#include <machine/types.h>	/* XXX for vm_offset_t */
 
 #define V86_ADDR   0x10000	/* Segment:offset address */
 #define V86_CALLF  0x20000	/* Emulate far call */

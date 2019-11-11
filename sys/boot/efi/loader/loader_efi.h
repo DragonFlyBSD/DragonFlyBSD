@@ -32,6 +32,7 @@
 #define	_LOADER_EFI_COPY_H_
 
 #include <stand.h>
+#include <machine/types.h>	/* XXX for vm_offset_t */
 
 int	efi_autoload(void);
 
