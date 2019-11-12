@@ -1558,7 +1558,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     vm_object_reference_locked(&kernel_object);
     vm_map_insert(&kernel_map, &count,
 		  &kernel_object, NULL,
-		  addr, addr, addr + size,
+		  addr, NULL,
+		  addr, addr + size,
 		  VM_MAPTYPE_NORMAL,
 		  VM_SUBSYS_KMALLOC,
 		  VM_PROT_ALL, VM_PROT_ALL, 0);

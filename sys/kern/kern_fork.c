@@ -772,6 +772,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
 	crit_exit();
 	CPUMASK_ANDMASK(lp->lwp_cpumask, usched_mastermask);
 	lwkt_token_init(&lp->lwp_token, "lwp_token");
+	TAILQ_INIT(&lp->lwp_lpmap_backing_list);
 	spin_init(&lp->lwp_spin, "lwptoken");
 
 	/*
@@ -800,21 +801,15 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
 	kqueue_init(&lp->lwp_kqueue, destproc->p_fd);
 
 	/*
-	 * Assign a TID to the lp.  Loop until the insert succeeds (returns
-	 * NULL).
+	 * Use the same TID for the first thread in the new process after
+	 * a fork or vfork.  This is needed to keep pthreads and /dev/lpmap
+	 * sane.  In particular a consequence of implementing the per-thread
+	 * /dev/lpmap map code makes this mandatory.
 	 *
-	 * If we are in a vfork assign the same TID as the lwp that did the
-	 * vfork().  This way if the user program messes around with
-	 * pthread calls inside the vfork(), it will operate like an
-	 * extension of the (blocked) parent.  Also note that since the
-	 * address space is being shared, insofar as pthreads is concerned,
-	 * the code running in the vfork() is part of the original process.
+	 * NOTE: exec*() will reset the TID to 1 to keep things sane in that
+	 *	 department too.
 	 */
-	if (flags & RFPPWAIT) {
-		lp->lwp_tid = origlp->lwp_tid - 1;
-	} else {
-		lp->lwp_tid = destproc->p_lasttid;
-	}
+	lp->lwp_tid = origlp->lwp_tid - 1;
 
 	/*
 	 * Leave 2 bits open so the pthreads library can optimize locks
@@ -836,6 +831,27 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
 	 */
 	pmap_maybethreaded(&destproc->p_vmspace->vm_pmap);
 	destproc->p_flags |= P_MAYBETHREADED;
+
+	/*
+	 * If the original lp had a lpmap and a non-zero blockallsigs
+	 * count, give the lp for the forked process the same count.
+	 *
+	 * This makes the user code and expectations less confusing
+	 * in terms of unwinding locks and also allows userland to start
+	 * the forked process with signals blocked via the blockallsigs()
+	 * mechanism if desired.
+	 *
+	 * XXX future - also inherit the lwp-specific process title ?
+	 */
+	if (origlp->lwp_lpmap &&
+	    (origlp->lwp_lpmap->blockallsigs & 0x7FFFFFFF)) {
+		lwp_usermap(lp, 0);
+		if (lp->lwp_lpmap) {
+			lp->lwp_lpmap->blockallsigs =
+				origlp->lwp_lpmap->blockallsigs;
+		}
+	}
+
 
 	return (lp);
 }

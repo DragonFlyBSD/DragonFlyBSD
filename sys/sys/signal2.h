@@ -75,6 +75,56 @@ lwp_delsig(struct lwp *lp, int sig, int fromproc)
 #define CURSIG_NOBLOCK(lp)		__cursig(lp, 0, 0, NULL)
 
 /*
+ * This inline checks lpmap->blockallsigs, a user r/w accessible
+ * memory-mapped variable that allows a user thread to instantly
+ * mask and unmask all maskable signals without having to issue a
+ * system call.
+ *
+ * On the unmask count reaching 0, userland can check and clear
+ * bit 31 to determine if any signals arrived, then issue a dummy
+ * system call to ensure delivery.
+ */
+static __inline
+void
+__sig_condblockallsigs(sigset_t *mask, struct lwp *lp)
+{
+	struct sys_lpmap *lpmap;
+	uint32_t bas;
+	sigset_t tmp;
+	int trapsig;
+
+	if ((lpmap = lp->lwp_lpmap) == NULL)
+		return;
+
+	bas = lpmap->blockallsigs;
+	while (bas & 0x7FFFFFFFU) {
+		tmp = *mask;			/* check maskable signals */
+		SIG_CANTMASK(tmp);
+		if (SIGISEMPTY(tmp))		/* no unmaskable signals */
+			return;
+
+		/*
+		 * Upon successful update to lpmap->blockallsigs remove
+		 * all maskable signals, leaving only unmaskable signals.
+		 *
+		 * If lwp_sig is non-zero it represents a syncronous 'trap'
+		 * signal which, being a synchronous trap, must be allowed.
+		 */
+		if (atomic_fcmpset_int(&lpmap->blockallsigs, &bas,
+				       bas | 0x80000000U)) {
+			trapsig = lp->lwp_sig;
+			if (trapsig && SIGISMEMBER(*mask, trapsig)) {
+				SIGSETAND(*mask, sigcantmask_mask);
+				SIGADDSET(*mask, trapsig);
+			} else {
+				SIGSETAND(*mask, sigcantmask_mask);
+			}
+			break;
+		}
+	}
+}
+
+/*
  * Determine signal that should be delivered to process p, the current
  * process, 0 if none.  If there is a pending stop signal with default
  * action, the process stops in issignal().
@@ -97,6 +147,7 @@ __cursig(struct lwp *lp, int mayblock, int maytrace, int *ptok)
 
 	tmpset = lwp_sigpend(lp);
 	SIGSETNAND(tmpset, lp->lwp_sigmask);
+	SIG_CONDBLOCKALLSIGS(tmpset, lp);
 
 	/* Nothing interesting happening? */
 	if (SIGISEMPTY(tmpset)) {
@@ -105,7 +156,7 @@ __cursig(struct lwp *lp, int mayblock, int maytrace, int *ptok)
 		 *  a) we may block and
 		 *  b) somebody is tracing us.
 		 */
-		if (!(mayblock && (p->p_flags & P_TRACED)))
+		if (mayblock == 0 || (p->p_flags & P_TRACED) == 0)
 			return (0);
 	}
 

@@ -164,15 +164,15 @@ static void vmspace_drop_notoken(struct vmspace *vm);
 static void vm_map_entry_shadow(vm_map_entry_t entry);
 static vm_map_entry_t vm_map_entry_create(int *);
 static void vm_map_entry_dispose (vm_map_t map, vm_map_entry_t entry, int *);
-static void vm_map_entry_dispose_ba (vm_map_backing_t ba);
+static void vm_map_entry_dispose_ba (vm_map_entry_t entry, vm_map_backing_t ba);
 static void vm_map_backing_replicated(vm_map_t map,
 		vm_map_entry_t entry, int flags);
 static void vm_map_backing_adjust_start(vm_map_entry_t entry,
 		vm_ooffset_t start);
 static void vm_map_backing_adjust_end(vm_map_entry_t entry,
 		vm_ooffset_t end);
-static void vm_map_backing_attach (vm_map_backing_t ba);
-static void vm_map_backing_detach (vm_map_backing_t ba);
+static void vm_map_backing_attach (vm_map_entry_t entry, vm_map_backing_t ba);
+static void vm_map_backing_detach (vm_map_entry_t entry, vm_map_backing_t ba);
 static void _vm_map_clip_end (vm_map_t, vm_map_entry_t, vm_offset_t, int *);
 static void _vm_map_clip_start (vm_map_t, vm_map_entry_t, vm_offset_t, int *);
 static void vm_map_entry_delete (vm_map_t, vm_map_entry_t, int *);
@@ -799,7 +799,7 @@ vm_map_entry_shadow(vm_map_entry_t entry)
 	 *
 	 * SHADOWING IS NOT APPLICABLE TO OBJT_VNODE OBJECTS
 	 */
-	vm_map_backing_detach(&entry->ba);
+	vm_map_backing_detach(entry, &entry->ba);
 	*ba = entry->ba;		/* previous ba */
 	entry->ba.object = result;	/* new ba (at head of entry) */
 	entry->ba.backing_ba = ba;
@@ -809,8 +809,8 @@ vm_map_entry_shadow(vm_map_entry_t entry)
 	/* cpu localization twist */
 	result->pg_color = vm_quickcolor();
 
-	vm_map_backing_attach(&entry->ba);
-	vm_map_backing_attach(ba);
+	vm_map_backing_attach(entry, &entry->ba);
+	vm_map_backing_attach(entry, ba);
 
 	/*
 	 * Adjust the return storage.  Drop the ref on source before
@@ -860,7 +860,7 @@ vm_map_entry_allocate_object(vm_map_entry_t entry)
 					 entry->ba.offset);
 	}
 	entry->ba.object = obj;
-	vm_map_backing_attach(&entry->ba);
+	vm_map_backing_attach(entry, &entry->ba);
 }
 
 /*
@@ -1043,26 +1043,44 @@ vm_map_entry_create(int *countp)
 }
 
 /*
- *
+ * Attach and detach backing store elements
  */
 static void
-vm_map_backing_attach(vm_map_backing_t ba)
+vm_map_backing_attach(vm_map_entry_t entry, vm_map_backing_t ba)
 {
-	vm_object_t obj = ba->object;
+	vm_object_t obj;
 
-	lockmgr(&obj->backing_lk, LK_EXCLUSIVE);
-	TAILQ_INSERT_TAIL(&obj->backing_list, ba, entry);
-	lockmgr(&obj->backing_lk, LK_RELEASE);
+	switch(entry->maptype) {
+	case VM_MAPTYPE_VPAGETABLE:
+	case VM_MAPTYPE_NORMAL:
+		obj = ba->object;
+		lockmgr(&obj->backing_lk, LK_EXCLUSIVE);
+		TAILQ_INSERT_TAIL(&obj->backing_list, ba, entry);
+		lockmgr(&obj->backing_lk, LK_RELEASE);
+		break;
+	case VM_MAPTYPE_UKSMAP:
+		ba->uksmap(ba, UKSMAPOP_ADD, entry->aux.dev, NULL);
+		break;
+	}
 }
 
 static void
-vm_map_backing_detach(vm_map_backing_t ba)
+vm_map_backing_detach(vm_map_entry_t entry, vm_map_backing_t ba)
 {
-	vm_object_t obj = ba->object;
+	vm_object_t obj;
 
-	lockmgr(&obj->backing_lk, LK_EXCLUSIVE);
-	TAILQ_REMOVE(&obj->backing_list, ba, entry);
-	lockmgr(&obj->backing_lk, LK_RELEASE);
+	switch(entry->maptype) {
+	case VM_MAPTYPE_VPAGETABLE:
+	case VM_MAPTYPE_NORMAL:
+		obj = ba->object;
+		lockmgr(&obj->backing_lk, LK_EXCLUSIVE);
+		TAILQ_REMOVE(&obj->backing_list, ba, entry);
+		lockmgr(&obj->backing_lk, LK_RELEASE);
+		break;
+	case VM_MAPTYPE_UKSMAP:
+		ba->uksmap(ba, UKSMAPOP_REM, entry->aux.dev, NULL);
+		break;
+	}
 }
 
 /*
@@ -1072,15 +1090,17 @@ vm_map_backing_detach(vm_map_backing_t ba)
  * We decrement the (possibly shared) element and kfree() on the
  * 1->0 transition.  We only iterate to the next backing_ba when
  * the previous one went through a 1->0 transition.
+ *
+ * These can only be normal vm_object based backings.
  */
 static void
-vm_map_entry_dispose_ba(vm_map_backing_t ba)
+vm_map_entry_dispose_ba(vm_map_entry_t entry, vm_map_backing_t ba)
 {
 	vm_map_backing_t next;
 
 	while (ba) {
-		if (ba->object) {
-			vm_map_backing_detach(ba);
+		if (ba->map_object) {
+			vm_map_backing_detach(entry, ba);
 			vm_object_deallocate(ba->object);
 		}
 		next = ba->backing_ba;
@@ -1105,19 +1125,20 @@ vm_map_entry_dispose(vm_map_t map, vm_map_entry_t entry, int *countp)
 	switch(entry->maptype) {
 	case VM_MAPTYPE_NORMAL:
 	case VM_MAPTYPE_VPAGETABLE:
-		if (entry->ba.object) {
-			vm_map_backing_detach(&entry->ba);
+		if (entry->ba.map_object) {
+			vm_map_backing_detach(entry, &entry->ba);
 			vm_object_deallocate(entry->ba.object);
 		}
 		break;
 	case VM_MAPTYPE_SUBMAP:
+		break;
 	case VM_MAPTYPE_UKSMAP:
-		/* XXX TODO */
+		vm_map_backing_detach(entry, &entry->ba);
 		break;
 	default:
 		break;
 	}
-	vm_map_entry_dispose_ba(entry->ba.backing_ba);
+	vm_map_entry_dispose_ba(entry, entry->ba.backing_ba);
 
 	/*
 	 * Cleanup for safety.
@@ -1220,8 +1241,10 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address, vm_map_entry_t *entry)
  * making call to account for the new entry.  XXX API is a bit messy.
  */
 int
-vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
-	      vm_ooffset_t offset, vm_offset_t start, vm_offset_t end,
+vm_map_insert(vm_map_t map, int *countp,
+	      void *map_object, void *map_aux,
+	      vm_ooffset_t offset, void *aux_info,
+	      vm_offset_t start, vm_offset_t end,
 	      vm_maptype_t maptype, vm_subsys_t id,
 	      vm_prot_t prot, vm_prot_t max, int cow)
 {
@@ -1361,6 +1384,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	new_entry->ba.backing_ba = NULL;
 	new_entry->ba.backing_count = 0;
 	new_entry->ba.offset = offset;
+	new_entry->ba.aux_info = aux_info;
 	new_entry->ba.flags = 0;
 	new_entry->ba.pmap = map->pmap;
 
@@ -1577,13 +1601,22 @@ vm_map_find(vm_map_t map, void *map_object, void *map_aux,
 {
 	vm_offset_t start;
 	vm_object_t object;
+	void *aux_info;
 	int result;
 	int count;
 
-	if (maptype == VM_MAPTYPE_UKSMAP)
+	/*
+	 * UKSMAPs set aux_info to the tid of the calling thread.  This is
+	 * only used by /dev/lpmap (per-thread user/kernel shared page).
+	 */
+	aux_info = NULL;
+	if (maptype == VM_MAPTYPE_UKSMAP) {
 		object = NULL;
-	else
+		if (curthread->td_lwp)
+			aux_info = (void *)(intptr_t)curthread->td_lwp->lwp_tid;
+	} else {
 		object = map_object;
+	}
 
 	start = *addr;
 
@@ -1601,8 +1634,10 @@ vm_map_find(vm_map_t map, void *map_object, void *map_aux,
 		}
 		start = *addr;
 	}
-	result = vm_map_insert(map, &count, map_object, map_aux,
-			       offset, start, start + length,
+	result = vm_map_insert(map, &count,
+			       map_object, map_aux,
+			       offset, aux_info,
+			       start, start + length,
 			       maptype, id, prot, max, cow);
 	if (object)
 		vm_object_drop(object);
@@ -3419,14 +3454,20 @@ vm_map_backing_replicated(vm_map_t map, vm_map_entry_t entry, int flags)
 			    (flags & MAP_BACK_BASEOBJREFD) == 0) {
 				vm_object_reference_quick(object);
 			}
-			vm_map_backing_attach(ba);
+			vm_map_backing_attach(entry, ba);
 			if ((flags & MAP_BACK_CLIPPED) == 0 &&
 			    object->ref_count > 1) {
 				vm_object_clear_flag(object, OBJ_ONEMAPPING);
 			}
+		} else if (entry->maptype == VM_MAPTYPE_UKSMAP) {
+			vm_map_backing_attach(entry, ba);
 		}
 		if (ba->backing_ba == NULL)
 			break;
+
+		/*
+		 * NOTE: The aux_info field is retained.
+		 */
 		nba = kmalloc(sizeof(*nba), M_MAP_BACKING, M_INTWAIT);
 		*nba = *ba->backing_ba;
 		nba->offset += (ba->start - nba->start);  /* += (new - old) */
@@ -3519,11 +3560,15 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 *
 		 * The fault-copy code doesn't work with virtual page
 		 * tables.
+		 *
+		 * NOTE: obj is not actually an object for all MAPTYPEs,
+		 *	 just test against NULL.
 		 */
-		if ((obj = dst_entry->ba.object) != NULL) {
-			vm_map_backing_detach(&dst_entry->ba);
-			dst_entry->ba.object = NULL;
-			vm_map_entry_dispose_ba(dst_entry->ba.backing_ba);
+		if (dst_entry->ba.map_object != NULL) {
+			vm_map_backing_detach(dst_entry, &dst_entry->ba);
+			dst_entry->ba.map_object = NULL;
+			vm_map_entry_dispose_ba(dst_entry,
+						dst_entry->ba.backing_ba);
 			dst_entry->ba.backing_ba = NULL;
 			dst_entry->ba.backing_count = 0;
 		}
@@ -3687,7 +3732,7 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 			ba = old_entry->ba.backing_ba;
 			old_entry->ba.backing_ba = NULL;
 			old_entry->ba.backing_count = 0;
-			vm_map_entry_dispose_ba(ba);
+			vm_map_entry_dispose_ba(old_entry, ba);
 		}
 	}
 	object = NULL;	/* object variable is now invalid */
@@ -3888,8 +3933,10 @@ vm_map_stack (vm_map_t map, vm_offset_t *addrbos, vm_size_t max_ssize,
 	 * eliminate these as input parameters, and just
 	 * pass these values here in the insert call.
 	 */
-	rv = vm_map_insert(map, &count, NULL, NULL,
-			   0, *addrbos + max_ssize - init_ssize,
+	rv = vm_map_insert(map, &count,
+			   NULL, NULL,
+			   0, NULL,
+			   *addrbos + max_ssize - init_ssize,
 	                   *addrbos + max_ssize,
 			   VM_MAPTYPE_NORMAL,
 			   VM_SUBSYS_STACK, prot, max, cow);
@@ -4074,8 +4121,10 @@ Retry:
 		addr = end;
 	}
 
-	rv = vm_map_insert(map, &count, NULL, NULL,
-			   0, addr, stack_entry->ba.start,
+	rv = vm_map_insert(map, &count,
+			   NULL, NULL,
+			   0, NULL,
+			   addr, stack_entry->ba.start,
 			   VM_MAPTYPE_NORMAL,
 			   VM_SUBSYS_STACK, VM_PROT_ALL, VM_PROT_ALL, 0);
 

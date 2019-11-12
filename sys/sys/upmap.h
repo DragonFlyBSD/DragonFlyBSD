@@ -43,9 +43,12 @@
 #endif
 
 #define UPMAP_MAXPROCTITLE	1024
+#define LPMAP_MAXTHREADTITLE	1024
+#define LPMAP_MAPSIZE		65536
 #define UPMAP_MAPSIZE		65536
 #define KPMAP_MAPSIZE		65536
 
+#define LPMAP_VERSION		1
 #define UPMAP_VERSION		1
 #define KPMAP_VERSION		1
 
@@ -73,14 +76,31 @@ typedef struct ukpheader {
 					UKPLEN_16 : UKPLEN_32)
 #define UKPLEN_DECODE(type)	(1 << ((type >> 8) & 0x0F))
 
+/*
+ * Global types - may exist in all three mapping types
+ */
 #define UKPTYPE_VERSION		(0x0001 | UKPLEN_4)	/* always first */
 
+/*
+ * /dev/lpmap - per-thread
+ */
+#define LPTYPE_RESERVEDINT0	(0x4010 | UKPLEN_4)
+#define LPTYPE_RESERVEDINT1	(0x4011 | UKPLEN_4)
+#define LPTYPE_BLOCKALLSIGS	(0x4012 | UKPLEN_4)
+#define LPTYPE_THREAD_TITLE	(0x4013 | UKPLEN_1024)
+
+/*
+ * /dev/upmap - per-process
+ */
 #define UPTYPE_RUNTICKS		(0x0010 | UKPLEN_4)
 #define UPTYPE_FORKID		(0x0011 | UKPLEN_8)
 #define UPTYPE_PID		(0x0012 | UKPLEN_4)
 #define UPTYPE_PROC_TITLE	(0x0013 | UKPLEN_1024)
 #define UPTYPE_INVFORK		(0x0014 | UKPLEN_4)
 
+/*
+ * /dev/kpmap - kernel-wide
+ */
 #define KPTYPE_UPTICKS		(0x8000 | UKPLEN_4)
 #define KPTYPE_TS_UPTIME	(0x8001 | UKPLEN_TS)
 #define KPTYPE_TS_REALTIME	(0x8002 | UKPLEN_TS)
@@ -89,6 +109,36 @@ typedef struct ukpheader {
 #define KPTYPE_FAST_GTOD	(0x8005 | UKPLEN_4)
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+/*
+ * (writable) user per-thread map via /dev/lpmap.
+ *
+ * ABSOLUTE LOCATIONS CAN CHANGE, ITERATE HEADERS FOR THE TYPE YOU DESIRE
+ * UNTIL YOU HIT TYPE 0, THEN CACHE THE RESULTING POINTER.
+ *
+ * If you insist, at least check that the version matches LPMAP_VERSION.
+ *
+ * --
+ *
+ * The current thread can block all blockable signals by (atomically)
+ * incrementing blockallsigs.  If the kernel receives a signal while
+ * the low 31 bits of blockallsigs are non-zero, the received signal
+ * will be made pending but not acted upon and bit 31 of blockallsigs
+ * will be set.  The signal mask is not affected.
+ *
+ * Upon decrementing blockallsigs to 0 (low 31 bits to 0), again atomically,
+ * userland should then check to see if bit 31 is set, clear it, and then
+ * issue any real system call to force the kernel to re-check pending signals
+ * and act upon them.
+ */
+struct sys_lpmap {
+	ukpheader_t	header[64];
+	uint32_t	version;
+	uint32_t	reserved01;
+	uint32_t	reserved02;
+	uint32_t	blockallsigs;
+	char		thread_title[LPMAP_MAXTHREADTITLE];
+};
 
 /*
  * (writable) user per-process map via /dev/upmap.

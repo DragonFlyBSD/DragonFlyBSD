@@ -156,6 +156,10 @@ typedef enum {
 	VM_SUBSYS_LIMIT		/* end of list */
 } vm_subsys_t;
 
+#define UKSMAPOP_ADD		1
+#define UKSMAPOP_REM		2
+#define UKSMAPOP_FAULT		3
+
 /*
  * vm_map backing structure for specifying multiple backings.  This
  * structure is NOT shared across pmaps but may be shared within a pmap.
@@ -168,7 +172,12 @@ struct vm_map_backing {
 	struct pmap	*pmap;		/* for vm_object extents */
 
 	struct vm_map_backing	*backing_ba;	/* backing store */
-	TAILQ_ENTRY(vm_map_backing) entry;	/* for vm_object extents */
+
+	/*
+	 * Keep track of extents, typically via a vm_object but for uksmaps
+	 * this can also be based off of a process or lwp.
+	 */
+	TAILQ_ENTRY(vm_map_backing) entry;
 
 	/*
 	 * A vm_map_entry may reference an object, a submap, a uksmap, or a
@@ -177,11 +186,19 @@ struct vm_map_backing {
 	union {
 		struct vm_object *object;	/* vm_object */
 		struct vm_map	*sub_map;	/* belongs to another map */
-		int		(*uksmap)(struct cdev *dev, vm_page_t fake);
+		int		(*uksmap)(struct vm_map_backing *entry,
+					  int op,
+					  struct cdev *dev,
+					  vm_page_t fake);
 		void		*map_object;	/* generic */
 	};
+	void			*aux_info;
 
-	vm_ooffset_t		offset;		/* absolute offset in obj */
+	/*
+	 * The offset field typically represents the absolute offset in the
+	 * object, but can have other meanings for uksmaps.
+	 */
+	vm_ooffset_t		offset;
 	uint32_t		flags;
 	uint32_t		backing_count;	/* #entries backing us */
 };
@@ -189,6 +206,7 @@ struct vm_map_backing {
 typedef struct vm_map_backing *vm_map_backing_t;
 
 #define VM_MAP_BACK_EXCL_HEUR	0x00000001U
+#define VM_MAP_LWP_LINKED	0x00000002U
 
 /*
  * Address map entries consist of start and end addresses, a VM object
@@ -599,8 +617,10 @@ int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_size_t,
 vm_offset_t vm_map_hint(struct proc *, vm_offset_t, vm_prot_t);
 int vm_map_inherit (vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t);
 void vm_map_init (struct vm_map *, vm_offset_t, vm_offset_t, pmap_t);
-int vm_map_insert (vm_map_t, int *, void *, void *,
-		   vm_ooffset_t, vm_offset_t, vm_offset_t,
+int vm_map_insert (vm_map_t, int *,
+		   void *, void *,
+		   vm_ooffset_t, void *,
+		   vm_offset_t, vm_offset_t,
 		   vm_maptype_t, vm_subsys_t id,
 		   vm_prot_t, vm_prot_t, int);
 int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t,

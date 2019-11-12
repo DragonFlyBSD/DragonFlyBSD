@@ -50,6 +50,7 @@ struct cdev;
 struct ucred;
 struct devfs_bitmap;
 struct vm_page;
+struct vm_map_backing;
 struct vnode;
 
 /*
@@ -250,7 +251,8 @@ struct dev_ops {
 	d_kqfilter_t	*d_kqfilter;
 	d_clone_t	*d_clone;	/* clone from base dev_ops */
 	d_revoke_t	*d_revoke;
-	int (*d_uksmap)(struct cdev *dev, struct vm_page *fake);
+	int (*d_uksmap)(struct vm_map_backing *ba, int op,
+				struct cdev *dev, struct vm_page *fake);
 #define dev_ops_last_field	d_uksmap
 };
 #endif /* _KERNEL */

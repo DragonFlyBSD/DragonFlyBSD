@@ -248,7 +248,8 @@ kmem_alloc3(vm_map_t map, vm_size_t size, vm_subsys_t id, int kmflags)
 	vm_object_reference_locked(&kernel_object);
 	vm_map_insert(map, &count,
 		      &kernel_object, NULL,
-		      addr, addr, addr + size,
+		      addr, NULL,
+		      addr, addr + size,
 		      VM_MAPTYPE_NORMAL, id,
 		      VM_PROT_ALL, VM_PROT_ALL, cow);
 	vm_object_drop(&kernel_object);
@@ -389,7 +390,8 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size, vm_subsys_t id)
 	}
 	vm_map_insert(map, &count,
 		      NULL, NULL,
-		      (vm_offset_t) 0, addr, addr + size,
+		      (vm_offset_t)0, NULL,
+		      addr, addr + size,
 		      VM_MAPTYPE_NORMAL, id,
 		      VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_map_unlock(map);
@@ -429,7 +431,8 @@ kmem_alloc_attr(vm_map_t map, vm_size_t size, vm_subsys_t id,
 	vm_object_reference_locked(&kernel_object);
 	vm_map_insert(map, &count,
 		      &kernel_object, NULL,
-		      offset, addr, addr + size,
+		      offset, NULL,
+		      addr, addr + size,
 		      VM_MAPTYPE_NORMAL, id,
 		      VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_map_unlock(map);
@@ -501,7 +504,8 @@ kmem_init(void)
 		if (addr < virtual2_start) {
 			vm_map_insert(m, &count,
 				      NULL, NULL,
-				      (vm_offset_t) 0, addr, virtual2_start,
+				      (vm_offset_t) 0, NULL,
+				      addr, virtual2_start,
 				      VM_MAPTYPE_NORMAL, VM_SUBSYS_RESERVED,
 				      VM_PROT_ALL, VM_PROT_ALL, 0);
 		}
@@ -510,7 +514,8 @@ kmem_init(void)
 	if (addr < virtual_start) {
 		vm_map_insert(m, &count,
 			      NULL, NULL,
-			      (vm_offset_t) 0, addr, virtual_start,
+			      (vm_offset_t) 0, NULL,
+			      addr, virtual_start,
 			      VM_MAPTYPE_NORMAL, VM_SUBSYS_RESERVED,
 			      VM_PROT_ALL, VM_PROT_ALL, 0);
 	}
@@ -518,7 +523,8 @@ kmem_init(void)
 	if (addr < KvaEnd) {
 		vm_map_insert(m, &count,
 			      NULL, NULL,
-			      (vm_offset_t) 0, addr, KvaEnd,
+			      (vm_offset_t) 0, NULL,
+			      addr, KvaEnd,
 			      VM_MAPTYPE_NORMAL, VM_SUBSYS_RESERVED,
 			      VM_PROT_ALL, VM_PROT_ALL, 0);
 	}

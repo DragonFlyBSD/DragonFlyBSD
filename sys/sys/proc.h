@@ -75,6 +75,7 @@ struct session;
 struct lwp;
 struct uidcount;
 struct procglob;
+struct vm_map_backing;
 
 LIST_HEAD(proclist, proc);
 LIST_HEAD(pgrplist, pgrp);
@@ -226,12 +227,12 @@ struct lwp {
 	struct mdproc	lwp_md;		/* Any machine-dependent fields. */
 
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
-	void		*lwp_unused01;	/* for future fields */
+	struct sys_lpmap *lwp_lpmap;	/* user RW mappable per-thread page */
 	struct kqueue	lwp_kqueue;	/* for select/poll */
 	uint64_t	lwp_kqueue_serial; /* for select/poll */
 	struct lwkt_token lwp_token;	/* per-lwp token for signal/state */
 	struct spinlock lwp_spin;	/* spinlock for signal handling */
-	void		*lwp_reserveds1; /* reserved for lwp_saveusp */
+	TAILQ_HEAD(, vm_map_backing) lwp_lpmap_backing_list;
 	void		*lwp_reserveds2; /* reserved for lwp_saveupc */
 };
 
@@ -345,7 +346,7 @@ struct	proc {
 	void		*p_vmm;
 	cpulock_t	p_vmm_cpulock;	/* count cpus in and kickout lock */
 	cpumask_t	p_vmm_cpumask;	/* cpus entering or in vmm */
-	struct sys_upmap *p_upmap;	/* user RO mappable per-process page */
+	struct sys_upmap *p_upmap;	/* user RW mappable per-process page */
 	forkid_t	p_forkid;	/* unique forkid */
 	struct sysreaper *p_reaper;	/* reaper control */
 	void		*p_reserveds[3]; /* reserved for future */
@@ -598,6 +599,8 @@ void	prelezomb (struct proc *);
 void	pstall (struct proc *, const char *, int);
 void	lwpuserret(struct lwp *);
 void	lwpkthreaddeferred(void);
+void	lwp_usermap(struct lwp *lp, int invfork);
+void	lwp_userunmap(struct lwp *lp);
 void	proc_usermap(struct proc *p, int invfork);
 void	proc_userunmap(struct proc *p);
 void	reaper_hold(struct sysreaper *reap);

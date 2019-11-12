@@ -1186,7 +1186,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	vm_offset_t eaddr;
 	vm_size_t   esize;
 	vm_size_t   align;
-	int (*uksmap)(cdev_t dev, vm_page_t fake);
+	int (*uksmap)(vm_map_backing_t ba, int op, cdev_t dev, vm_page_t fake);
 	struct vnode *vp;
 	struct thread *td = curthread;
 	struct proc *p;
@@ -1324,6 +1324,9 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			 * Device mappings without a VM object, typically
 			 * sharing permanently allocated kernel memory or
 			 * process-context-specific (per-process) data.
+			 *
+			 * The object offset for uksmap represents the
+			 * lwp_tid that did the mapping.
 			 *
 			 * Force them to be shared.
 			 */

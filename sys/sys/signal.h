@@ -411,6 +411,10 @@ struct	sigvec {
  */
 __BEGIN_DECLS
 __sighandler_t *signal(int, __sighandler_t *);
+#if __BSD_VISIBLE
+int sigblockall(void);
+int sigunblockall(void);
+#endif
 __END_DECLS
 
 #endif	/* !_SYS_SIGNAL_H_ */

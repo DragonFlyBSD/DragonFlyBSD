@@ -668,6 +668,12 @@ lwp_exit(int masterexit, void *waddr)
 	p->p_usched->release_curproc(lp);
 
 	/*
+	 * Destroy the per-thread shared page and remove from any pmaps
+	 * it resides in.
+	 */
+	lwp_userunmap(lp);
+
+	/*
 	 * lwp_exit() may be called without setting LWP_MP_WEXIT, so
 	 * make sure it is set here.
 	 */

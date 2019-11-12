@@ -545,7 +545,8 @@ RetryFault:
 		fakem.busy_count = PBUSY_LOCKED;
 		fakem.valid = VM_PAGE_BITS_ALL;
 		fakem.pat_mode = VM_MEMATTR_DEFAULT;
-		if (fs.entry->ba.uksmap(fs.entry->aux.dev, &fakem)) {
+		if (fs.entry->ba.uksmap(&fs.entry->ba, UKSMAPOP_FAULT,
+					fs.entry->aux.dev, &fakem)) {
 			result = KERN_FAILURE;
 			unlock_things(&fs);
 			goto done2;
@@ -1171,7 +1172,8 @@ RetryFault:
 		fakem.busy_count = PBUSY_LOCKED;
 		fakem.valid = VM_PAGE_BITS_ALL;
 		fakem.pat_mode = VM_MEMATTR_DEFAULT;
-		if (fs.entry->ba.uksmap(fs.entry->aux.dev, &fakem)) {
+		if (fs.entry->ba.uksmap(&fs.entry->ba, UKSMAPOP_FAULT,
+					fs.entry->aux.dev, &fakem)) {
 			*errorp = KERN_FAILURE;
 			fs.m = NULL;
 			unlock_things(&fs);
@@ -1850,7 +1852,8 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 					goto readrest;
 				}
 			}
-			fs->first_ba->flags &= ~VM_MAP_BACK_EXCL_HEUR;
+			atomic_clear_int(&fs->first_ba->flags,
+					 VM_MAP_BACK_EXCL_HEUR);
 			break; /* break to PAGE HAS BEEN FOUND */
 		}
 
@@ -1879,7 +1882,8 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 			/*
 			 * Allocating, must be exclusive.
 			 */
-			fs->first_ba->flags |= VM_MAP_BACK_EXCL_HEUR;
+			atomic_set_int(&fs->first_ba->flags,
+				       VM_MAP_BACK_EXCL_HEUR);
 			if (fs->ba == fs->first_ba && fs->first_shared) {
 				fs->first_shared = 0;
 				vm_object_pip_wakeup(fs->first_ba->object);

@@ -86,6 +86,7 @@ MALLOC_DEFINE(M_SESSION, "session", "session header");
 MALLOC_DEFINE(M_PROC, "proc", "Proc structures");
 MALLOC_DEFINE(M_LWP, "lwp", "lwp structures");
 MALLOC_DEFINE(M_SUBPROC, "subproc", "Proc sub-structures");
+MALLOC_DEFINE(M_UPMAP, "upmap", "upmap/kpmap/lpmap structures");
 
 int ps_showallprocs = 1;
 static int ps_showallthreads = 1;
@@ -1215,7 +1216,7 @@ proc_usermap(struct proc *p, int invfork)
 	struct sys_upmap *upmap;
 
 	lwkt_gettoken(&p->p_token);
-	upmap = kmalloc(roundup2(sizeof(*upmap), PAGE_SIZE), M_PROC,
+	upmap = kmalloc(roundup2(sizeof(*upmap), PAGE_SIZE), M_UPMAP,
 			M_WAITOK | M_ZERO);
 	if (p->p_upmap == NULL) {
 		upmap->header[0].type = UKPTYPE_VERSION;
@@ -1237,7 +1238,7 @@ proc_usermap(struct proc *p, int invfork)
 		upmap->invfork = invfork;
 		p->p_upmap = upmap;
 	} else {
-		kfree(upmap, M_PROC);
+		kfree(upmap, M_UPMAP);
 	}
 	lwkt_reltoken(&p->p_token);
 }
@@ -1250,9 +1251,82 @@ proc_userunmap(struct proc *p)
 	lwkt_gettoken(&p->p_token);
 	if ((upmap = p->p_upmap) != NULL) {
 		p->p_upmap = NULL;
-		kfree(upmap, M_PROC);
+		kfree(upmap, M_UPMAP);
 	}
 	lwkt_reltoken(&p->p_token);
+}
+
+/*
+ * Called when the per-thread user/kernel shared page needs to be
+ * allocated.  The function refuses to allocate the page if the
+ * thread is exiting to avoid races against lwp_userunmap().
+ */
+void
+lwp_usermap(struct lwp *lp, int invfork)
+{
+	struct sys_lpmap *lpmap;
+
+	lwkt_gettoken(&lp->lwp_token);
+
+	lpmap = kmalloc(roundup2(sizeof(*lpmap), PAGE_SIZE), M_UPMAP,
+			M_WAITOK | M_ZERO);
+	if (lp->lwp_lpmap == NULL && (lp->lwp_mpflags & LWP_MP_WEXIT) == 0) {
+		lpmap->header[0].type = UKPTYPE_VERSION;
+		lpmap->header[0].offset = offsetof(struct sys_lpmap, version);
+		lpmap->header[1].type = LPTYPE_BLOCKALLSIGS;
+		lpmap->header[1].offset = offsetof(struct sys_lpmap,
+						   blockallsigs);
+		lpmap->header[2].type = LPTYPE_THREAD_TITLE;
+		lpmap->header[2].offset = offsetof(struct sys_lpmap,
+						   thread_title);
+
+		lpmap->version = LPMAP_VERSION;
+		lp->lwp_lpmap = lpmap;
+	} else {
+		kfree(lpmap, M_UPMAP);
+	}
+	lwkt_reltoken(&lp->lwp_token);
+}
+
+/*
+ * Called when a LWP (but not necessarily the whole process) exits.
+ * Called when a process execs (after all other threads have been killed).
+ *
+ * lwp-specific mappings must be removed.  If userland didn't do it, then
+ * we have to.  Otherwise we could end-up disclosing kernel memory due to
+ * the ad-hoc pmap mapping.
+ */
+void
+lwp_userunmap(struct lwp *lp)
+{
+	struct sys_lpmap *lpmap;
+	struct vm_map *map;
+	struct vm_map_backing *ba;
+	struct vm_map_backing copy;
+
+	lwkt_gettoken(&lp->lwp_token);
+	map = &lp->lwp_proc->p_vmspace->vm_map;
+	lpmap = lp->lwp_lpmap;
+	lp->lwp_lpmap = NULL;
+
+	spin_lock(&lp->lwp_spin);
+	while ((ba = TAILQ_FIRST(&lp->lwp_lpmap_backing_list)) != NULL) {
+		TAILQ_REMOVE(&lp->lwp_lpmap_backing_list, ba, entry);
+		atomic_clear_int(&ba->flags, VM_MAP_LWP_LINKED);
+		copy = *ba;
+		spin_unlock(&lp->lwp_spin);
+
+		lwkt_gettoken(&map->token);
+		vm_map_remove(map, copy.start, copy.end);
+		lwkt_reltoken(&map->token);
+
+		spin_lock(&lp->lwp_spin);
+	}
+	spin_unlock(&lp->lwp_spin);
+
+	if (lpmap)
+		kfree(lpmap, M_UPMAP);
+	lwkt_reltoken(&lp->lwp_token);
 }
 
 /*

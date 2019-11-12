@@ -174,6 +174,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	proc0.p_usched = usched_init();
 	CPUMASK_ASSALLONES(lwp0.lwp_cpumask);
 	lwkt_token_init(&lwp0.lwp_token, "lwp_token");
+	TAILQ_INIT(&lwp0.lwp_lpmap_backing_list);
 	spin_init(&lwp0.lwp_spin, "iproc_lwp0");
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;

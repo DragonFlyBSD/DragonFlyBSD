@@ -144,6 +144,12 @@ struct	sigacts {
 			(set1).__bits[__i] &= ~(set2).__bits[__i];	\
 	} while (0)
 
+#define SIGSETOR_CANTMASK(set)						\
+	SIGADDSET(set, SIGKILL), SIGADDSET(set, SIGSTOP)
+
+#define SIG_CONDBLOCKALLSIGS(set, lp)					\
+	__sig_condblockallsigs(&(set), lp)
+
 #define SIG_CANTMASK(set)						\
 	SIGDELSET(set, SIGKILL), SIGDELSET(set, SIGSTOP)
 
@@ -196,6 +202,7 @@ struct proc;
 struct sigio;
 
 extern int sugid_coredump;	/* Sysctl variable kern.sugid_coredump */
+extern sigset_t sigcantmask_mask;
 
 /*
  * Machine-independent functions:

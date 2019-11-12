@@ -220,7 +220,8 @@ efi_create_1t1_map(struct efi_md *map, int ndesc, int descsz)
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(&efi_vmspace->vm_map);
 	result = vm_map_insert(&efi_vmspace->vm_map, &count, efi_obj, NULL,
-			      0, 0, VM_MAX_USER_ADDRESS,
+			      0, NULL,
+			      0, VM_MAX_USER_ADDRESS,
 			      VM_MAPTYPE_NORMAL,
 			      VM_SUBSYS_EFI,
 			      VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE,

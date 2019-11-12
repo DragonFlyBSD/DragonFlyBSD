@@ -204,12 +204,15 @@ static int sigproptbl[NSIG] = {
 
 };
 
+__read_mostly sigset_t sigcantmask_mask;
+
 static __inline int
 sigprop(int sig)
 {
 
 	if (sig > 0 && sig < NSIG)
 		return (sigproptbl[_SIG_IDX(sig)]);
+
 	return (0);
 }
 
@@ -414,9 +417,15 @@ siginit(struct proc *p)
 {
 	int i;
 
-	for (i = 1; i <= NSIG; i++)
+	for (i = 1; i <= NSIG; i++) {
 		if (sigprop(i) & SA_IGNORE && i != SIGCONT)
 			SIGADDSET(p->p_sigignore, i);
+	}
+
+	/*
+	 * Also initialize signal-related global state.
+	 */
+	SIGSETOR_CANTMASK(sigcantmask_mask);
 }
 
 /*
@@ -921,6 +930,8 @@ pgsignal(struct pgrp *pgrp, int sig, int checkctty)
  *
  * These signals may ONLY be delivered to the specified lwp and may never
  * be delivered to the process generically.
+ *
+ * lpmap->blockallsigs is ignored.
  */
 void
 trapsignal(struct lwp *lp, int sig, u_long code)
@@ -1984,6 +1995,8 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 		SIGSETNAND(mask, lp->lwp_sigmask);
 		if (p->p_flags & P_PPWAIT)
 			SIG_STOPSIGMASK(mask);
+		SIG_CONDBLOCKALLSIGS(mask, lp);
+
 		if (SIGISEMPTY(mask)) 		/* no signal to send */
 			return (0);
 

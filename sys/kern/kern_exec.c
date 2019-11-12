@@ -392,6 +392,15 @@ interpret:
 	}
 
 	/*
+	 * Clean up shared pages, the new program will allocate fresh
+	 * copies as needed.  This is also for security purposes and
+	 * to ensure (for example) that things like sys_lpmap->blockallsigs
+	 * state is properly reset on exec.
+	 */
+	lwp_userunmap(lp);
+	proc_userunmap(p);
+
+	/*
 	 * For security and other reasons virtual kernels cannot be
 	 * inherited by an exec.  This also allows a virtual kernel
 	 * to fork/exec unrelated applications.
@@ -774,6 +783,7 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 {
 	struct vmspace *vmspace = imgp->proc->p_vmspace;
 	vm_offset_t stack_addr = USRSTACK - maxssiz;
+	struct lwp *lp;
 	struct proc *p;
 	vm_map_t map;
 	int error;
@@ -788,7 +798,8 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	 * want since another thread is patiently waiting for us to exit
 	 * in that case.
 	 */
-	p = curproc;
+	lp = curthread->td_lwp;
+	p = lp->lwp_proc;
 	imgp->vmspace_destroyed = 1;
 
 	if (curthread->td_proc->p_nthreads > 1) {
@@ -840,6 +851,20 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 		vmspace = imgp->proc->p_vmspace;
 		map = &vmspace->vm_map;
 	}
+
+	/*
+	 * Really make sure lwp-specific and process-specific mappings
+	 * are gone.
+	 *
+	 * Once we've done that, and because we are the only LWP left, with
+	 * no TID-dependent mappings, we can reset the TID to 1 (the RB tree
+	 * will remain consistent since it has only one entry).  This way
+	 * the exec'd program gets a nice deterministic tid of 1.
+	 */
+	lwp_userunmap(lp);
+	proc_userunmap(p);
+	lp->lwp_tid = 1;
+	p->p_lasttid = 1;
 
 	/*
 	 * Allocate a new stack, generally make the stack non-executable

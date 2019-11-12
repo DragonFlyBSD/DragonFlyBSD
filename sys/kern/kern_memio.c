@@ -53,6 +53,7 @@
 #include <sys/memrange.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
+#include <sys/queue.h>
 #include <sys/random.h>
 #include <sys/signalvar.h>
 #include <sys/uio.h>
@@ -60,9 +61,11 @@
 #include <sys/sysctl.h>
 
 #include <sys/signal2.h>
+#include <sys/spinlock2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
+#include <vm/vm_map.h>
 #include <vm/vm_extern.h>
 
 
@@ -75,7 +78,7 @@ static	d_ioctl_t	mmioctl;
 static	d_mmap_t	memmmap;
 #endif
 static	d_kqfilter_t	mmkqfilter;
-static int memuksmap(cdev_t dev, vm_page_t fake);
+static int memuksmap(vm_map_backing_t ba, int op, cdev_t dev, vm_page_t fake);
 
 #define CDEV_MAJOR 2
 static struct dev_ops mem_ops = {
@@ -379,83 +382,94 @@ mmwrite(struct dev_write_args *ap)
 * instead of going through read/write			*
 \*******************************************************/
 
-static int user_kernel_mapping(int num, vm_ooffset_t offset,
-				vm_ooffset_t *resultp);
-
-#if 0
+static int user_kernel_mapping(vm_map_backing_t ba, int num,
+			vm_ooffset_t offset, vm_ooffset_t *resultp);
 
 static int
-memmmap(struct dev_mmap_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	vm_ooffset_t result;
-	int error;
-
-	switch (minor(dev)) {
-	case 0:
-		/* 
-		 * minor device 0 is physical memory 
-		 */
-		ap->a_result = atop(ap->a_offset);
-		error = 0;
-		break;
-	case 1:
-		/*
-		 * minor device 1 is kernel memory 
-		 */
-		ap->a_result = atop(vtophys(ap->a_offset));
-		error = 0;
-		break;
-	case 5:
-	case 6:
-		/*
-		 * minor device 5 is /dev/upmap (see sys/upmap.h)
-		 * minor device 6 is /dev/kpmap (see sys/upmap.h)
-		 */
-		result = 0;
-		error = user_kernel_mapping(minor(dev), ap->a_offset, &result);
-		ap->a_result = atop(result);
-		break;
-	default:
-		error = EINVAL;
-		break;
-	}
-	return error;
-}
-
-#endif
-
-static int
-memuksmap(cdev_t dev, vm_page_t fake)
+memuksmap(vm_map_backing_t ba, int op, cdev_t dev, vm_page_t fake)
 {
 	vm_ooffset_t result;
 	int error;
+	struct proc *p;
+	struct lwp *lp;
 
-	switch (minor(dev)) {
-	case 0:
+	error = 0;
+
+	switch(op) {
+	case UKSMAPOP_ADD:
 		/*
-		 * minor device 0 is physical memory
+		 * /dev/lpmap only (minor 7)
+		 *
+		 * Don't do anything until the page is faulted in.  Clear
+		 * our flags on this possibly replicated ba.  vm_map_entry
+		 * replication can occur before the new process/lwp is
+		 * created, so there's nothing to link into.
 		 */
-		fake->phys_addr = ptoa(fake->pindex);
-		error = 0;
+		if (minor(dev) != 7)
+			break;
+		atomic_clear_int(&ba->flags, VM_MAP_LWP_LINKED);
 		break;
-	case 1:
+	case UKSMAPOP_REM:
 		/*
-		 * minor device 1 is kernel memory
+		 * /dev/lpmap only (minor 7)
+		 *
+		 * The mapping is only on the lwp list after it has been
+		 * faulted in.
 		 */
-		fake->phys_addr = vtophys(ptoa(fake->pindex));
-		error = 0;
+		if (minor(dev) != 7)
+			break;
+		if ((ba->flags & VM_MAP_LWP_LINKED) == 0)
+			break;
+
+		p = curproc;
+		lwkt_gettoken_shared(&p->p_token);
+		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree,
+					   (int)(intptr_t)ba->aux_info);
+		if (lp) {
+			LWPHOLD(lp);
+			lwkt_reltoken(&p->p_token);
+			spin_lock(&lp->lwp_spin);
+			TAILQ_REMOVE(&lp->lwp_lpmap_backing_list, ba, entry);
+			atomic_clear_int(&ba->flags, VM_MAP_LWP_LINKED);
+			spin_unlock(&lp->lwp_spin);
+			LWPRELE(lp);
+		} else {
+			lwkt_reltoken(&p->p_token);
+		}
 		break;
-	case 5:
-	case 6:
-		/*
-		 * minor device 5 is /dev/upmap (see sys/upmap.h)
-		 * minor device 6 is /dev/kpmap (see sys/upmap.h)
-		 */
-		result = 0;
-		error = user_kernel_mapping(minor(dev),
-					    ptoa(fake->pindex), &result);
-		fake->phys_addr = result;
+	case UKSMAPOP_FAULT:
+		switch (minor(dev)) {
+		case 0:
+			/*
+			 * minor device 0 is physical memory
+			 */
+			fake->phys_addr = ptoa(fake->pindex);
+			break;
+		case 1:
+			/*
+			 * minor device 1 is kernel memory
+			 */
+			fake->phys_addr = vtophys(ptoa(fake->pindex));
+			break;
+		case 5:
+		case 6:
+		case 7:
+			/*
+			 * minor device 5 is /dev/upmap (see sys/upmap.h)
+			 * minor device 6 is /dev/kpmap (see sys/upmap.h)
+			 * minor device 7 is /dev/lpmap (see sys/upmap.h)
+			 */
+			result = 0;
+			error = user_kernel_mapping(ba,
+						    minor(dev),
+						    ptoa(fake->pindex),
+						    &result);
+			fake->phys_addr = result;
+			break;
+		default:
+			error = EINVAL;
+			break;
+		}
 		break;
 	default:
 		error = EINVAL;
@@ -700,16 +714,21 @@ iszerodev(cdev_t dev)
 }
 
 /*
- * /dev/upmap and /dev/kpmap.
+ * /dev/lpmap, /dev/upmap, /dev/kpmap.
  */
 static int
-user_kernel_mapping(int num, vm_ooffset_t offset, vm_ooffset_t *resultp)
+user_kernel_mapping(vm_map_backing_t ba, int num, vm_ooffset_t offset,
+		    vm_ooffset_t *resultp)
 {
 	struct proc *p;
+	struct lwp *lp;
 	int error;
 	int invfork;
 
-	if ((p = curproc) == NULL)
+	p = curthread->td_proc;
+	if (p == NULL)
+		return (EINVAL);
+	if (offset < 0)
 		return (EINVAL);
 
 	/*
@@ -763,6 +782,52 @@ user_kernel_mapping(int num, vm_ooffset_t offset, vm_ooffset_t *resultp)
 			error = 0;
 		}
 		break;
+	case 7:
+		/*
+		 * /dev/lpmap - maps RW per-thread shared user-kernel area.
+		 *
+		 * Link the vm_map_backing into the lwp so we can delete
+		 * the mapping when the lwp exits.  Otherwise we would end
+		 * up with a lingering pmap page and the associated kernel
+		 * memory disclosure.
+		 *
+		 * We do the linking on first-fault since the process and/or
+		 * lwp might not exist at the time the map is created (i.e.
+		 * in the case of fork()).
+		 */
+		lwkt_gettoken_shared(&p->p_token);
+		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree,
+					   (int)(intptr_t)ba->aux_info);
+		if (lp == NULL) {
+			lwkt_reltoken(&p->p_token);
+			break;
+		}
+		LWPHOLD(lp);
+		lwkt_reltoken(&p->p_token);
+
+		/*
+		 * Extract address
+		 */
+		if (lp->lwp_lpmap == NULL)
+			lwp_usermap(lp, invfork);
+
+		if ((ba->flags & VM_MAP_LWP_LINKED) == 0) {
+			spin_lock(&lp->lwp_spin);
+			TAILQ_INSERT_TAIL(&lp->lwp_lpmap_backing_list,
+					  ba, entry);
+			atomic_set_int(&ba->flags, VM_MAP_LWP_LINKED);
+			spin_unlock(&lp->lwp_spin);
+		}
+
+		if (lp->lwp_lpmap &&
+		    offset < roundup2(sizeof(*lp->lwp_lpmap), PAGE_SIZE)) {
+			/* only good for current process */
+			*resultp = pmap_kextract((vm_offset_t)lp->lwp_lpmap +
+						 offset);
+			error = 0;
+		}
+		LWPRELE(lp);
+		break;
 	default:
 		break;
 	}
@@ -784,6 +849,7 @@ mem_drvinit(void *unused)
 	make_dev(&mem_ops, 4, UID_ROOT, GID_WHEEL, 0644, "urandom");
 	make_dev(&mem_ops, 5, UID_ROOT, GID_WHEEL, 0666, "upmap");
 	make_dev(&mem_ops, 6, UID_ROOT, GID_WHEEL, 0444, "kpmap");
+	make_dev(&mem_ops, 7, UID_ROOT, GID_WHEEL, 0666, "lpmap");
 	zerodev = make_dev(&mem_ops, 12, UID_ROOT, GID_WHEEL, 0666, "zero");
 	make_dev(&mem_ops_noq, 14, UID_ROOT, GID_WHEEL, 0600, "io");
 }

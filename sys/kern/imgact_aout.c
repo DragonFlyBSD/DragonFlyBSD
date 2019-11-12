@@ -181,7 +181,7 @@ exec_aout_imgact(struct image_params *imgp)
 
 	text_end = virtual_offset + a_out->a_text;
 	error = vm_map_insert(map, &count, object, NULL,
-		file_offset,
+		file_offset, NULL,
 		virtual_offset, text_end,
 		VM_MAPTYPE_NORMAL,
 		VM_SUBSYS_IMGACT,
@@ -200,7 +200,7 @@ exec_aout_imgact(struct image_params *imgp)
 	if (a_out->a_data) {
 		vm_object_reference_locked(object);
 		error = vm_map_insert(map, &count, object, NULL,
-			file_offset + a_out->a_text,
+			file_offset + a_out->a_text, NULL,
 			text_end, data_end,
 			VM_MAPTYPE_NORMAL,
 			VM_SUBSYS_IMGACT,
@@ -218,7 +218,8 @@ exec_aout_imgact(struct image_params *imgp)
 
 	if (bss_size) {
 		error = vm_map_insert(map, &count, NULL, NULL,
-			0, data_end, data_end + bss_size,
+			0, NULL,
+			data_end, data_end + bss_size,
 			VM_MAPTYPE_NORMAL,
 			VM_SUBSYS_IMGACT,
 			VM_PROT_ALL, VM_PROT_ALL,
