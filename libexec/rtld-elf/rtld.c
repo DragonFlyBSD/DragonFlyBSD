@@ -2894,6 +2894,8 @@ search_library_pathfds(const char *name, const char *path, int *fdp)
 	 * Use strtok_r() to walk the FD:FD:FD list.  This requires a local
 	 * copy of the path, as strtok_r rewrites separator tokens
 	 * with '\0'.
+	 *
+	 * NOTE: strtok() uses a __thread static and cannot be used by rtld.
 	 */
 	found = NULL;
 	envcopy = xstrdup(path);

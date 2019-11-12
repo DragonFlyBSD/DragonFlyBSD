@@ -55,10 +55,10 @@ static int			initialized;
 static void	init_spinlock(spinlock_t *lck);
 
 /*
- * These are for compatibility only.  Spinlocks of this type
- * are deprecated.
+ * These functions implement temporary spinlocks as used by libc.
+ * these are not persistent spinlocks, so we use the API for
+ * temporary locks which block all signals for the duration.
  */
-
 void
 _spinunlock(spinlock_t *lck)
 {

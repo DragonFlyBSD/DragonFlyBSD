@@ -486,22 +486,45 @@ struct pthread {
 	(((thrd)->locklevel > 0) ||			\
 	((thrd)->critical_count > 0))
 
+/*
+ * Internal temporary locks without suspend check
+ */
 #define THR_UMTX_TRYLOCK(thrd, lck)			\
-	_thr_umtx_trylock((lck), (thrd)->tid)
+	_thr_umtx_trylock((lck), (thrd)->tid, 1)
 
 #define	THR_UMTX_LOCK(thrd, lck)			\
-	_thr_umtx_lock((lck), (thrd)->tid)
+	_thr_umtx_lock((lck), (thrd)->tid, 1)
 
 #define	THR_UMTX_TIMEDLOCK(thrd, lck, timo)		\
-	_thr_umtx_timedlock((lck), (thrd)->tid, (timo))
+	_thr_umtx_timedlock((lck), (thrd)->tid, (timo), 1)
 
 #define	THR_UMTX_UNLOCK(thrd, lck)			\
-	_thr_umtx_unlock((lck), (thrd)->tid)
+	_thr_umtx_unlock((lck), (thrd)->tid, 1)
 
+/*
+ * Interal locks without suspend check, used when the lock
+ * state needs to persist (i.e. to help implement things
+ * like pthread_mutex_lock()).  Non-temporary.
+ */
+#define THR_UMTX_TRYLOCK_PERSIST(thrd, lck)		\
+	_thr_umtx_trylock((lck), (thrd)->tid, 0)
+
+#define	THR_UMTX_LOCK_PERSIST(thrd, lck)		\
+	_thr_umtx_lock((lck), (thrd)->tid, 0)
+
+#define	THR_UMTX_TIMEDLOCK_PERSIST(thrd, lck, timo)	\
+	_thr_umtx_timedlock((lck), (thrd)->tid, (timo), 0)
+
+#define	THR_UMTX_UNLOCK_PERSIST(thrd, lck)		\
+	_thr_umtx_unlock((lck), (thrd)->tid, 0)
+
+/*
+ * Internal temporary locks with suspend check
+ */
 #define	THR_LOCK_ACQUIRE(thrd, lck)			\
 do {							\
 	(thrd)->locklevel++;				\
-	_thr_umtx_lock((lck), (thrd)->tid);		\
+	_thr_umtx_lock((lck), (thrd)->tid, 1);		\
 } while (0)
 
 #ifdef	_PTHREADS_INVARIANTS
@@ -517,7 +540,7 @@ do {							\
 #define	THR_LOCK_RELEASE(thrd, lck)			\
 do {							\
 	THR_ASSERT_LOCKLEVEL(thrd);			\
-	_thr_umtx_unlock((lck), (thrd)->tid);		\
+	_thr_umtx_unlock((lck), (thrd)->tid, 1);	\
 	(thrd)->locklevel--;				\
 	_thr_ast(thrd);					\
 } while (0)

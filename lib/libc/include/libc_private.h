@@ -39,6 +39,19 @@
 #include <sys/_pthreadtypes.h>
 
 /*
+ * With this attribute set, do not require a function call for accessing
+ * this variable when the code is compiled -fPIC.  Use in combination
+ * with __thread.
+ *
+ * Must be empty for libc_rtld.
+ */
+#ifdef __LIBC_RTLD
+#define TLS_ATTRIBUTE
+#else
+#define TLS_ATTRIBUTE __attribute__ ((tls_model ("initial-exec")))
+#endif
+
+/*
  * This global flag is non-zero when a process has created one
  * or more threads. It is used to avoid calling locking functions
  * when they are not required.
@@ -100,7 +113,9 @@ extern void (*__cleanup)(void);
 
 /* execve() with PATH processing to implement posix_spawnp() */
 int _execvpe(const char *, char * const *, char * const *);
+void _libc_thr_init(void);
 void _nmalloc_thr_init(void);
+void _upmap_thr_init(void);
 void _nmalloc_thr_prepfork(void);
 void _nmalloc_thr_parentfork(void);
 void _nmalloc_thr_childfork(void);

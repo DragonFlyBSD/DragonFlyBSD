@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014,2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -49,11 +49,22 @@
 #include "libc_private.h"
 #include "upmap.h"
 
+/*
+ * kpmap - Global user/kernel shared map (RO)
+ * upmap - Per-process user/kernel shared map (RW)
+ * lpmap - Per-thread user/kernel shared map (RW)
+ */
 static pthread_mutex_t ukpmap_lock;
-static ukpheader_t *kpmap_headers;
-static ukpheader_t *upmap_headers;
+static ukpheader_t *__kpmap_headers;
+static ukpheader_t *__upmap_headers;
+__thread ukpheader_t *__lpmap_headers TLS_ATTRIBUTE;
+__thread uint32_t *__lpmap_blockallsigs TLS_ATTRIBUTE;
+
+static __thread int lpmap_ok;
 static int kpmap_ok;
 static int upmap_ok;
+static pthread_once_t upmap_once = PTHREAD_ONCE_INIT;
+
 
 /*
  * Map the requested data item from the user-kernel global shared mmap
@@ -80,11 +91,11 @@ __kpmap_map(void *datap, int *state, uint16_t type)
 			kpmap_ok = -1;
 			goto failed;
 		}
-		kpmap_headers = mmap(NULL, KPMAP_MAPSIZE,
-				     PROT_READ, MAP_SHARED,
-				     fd, 0);
+		__kpmap_headers = mmap(NULL, KPMAP_MAPSIZE,
+				       PROT_READ, MAP_SHARED | MAP_FILE,
+				       fd, 0);
 		_close(fd);
-		if ((void *)kpmap_headers == MAP_FAILED) {
+		if ((void *)__kpmap_headers == MAP_FAILED) {
 			kpmap_ok = -1;
 			goto failed;
 		}
@@ -105,9 +116,10 @@ __kpmap_map(void *datap, int *state, uint16_t type)
 	/*
 	 * Look for type.
 	 */
-	for (head = kpmap_headers; head->type; ++head) {
+	for (head = __kpmap_headers; head->type; ++head) {
 		if (head->type == type) {
-			*(void **)datap = (char *)kpmap_headers + head->offset;
+			*(void **)datap = (char *)__kpmap_headers +
+					  head->offset;
 			if (__isthreaded)
 				_pthread_mutex_unlock(&ukpmap_lock);
 			return;
@@ -144,11 +156,12 @@ __upmap_map(void *datap, int *state, uint16_t type)
 			upmap_ok = -1;
 			goto failed;
 		}
-		upmap_headers = mmap(NULL, UPMAP_MAPSIZE,
-				     PROT_READ | PROT_WRITE, MAP_SHARED,
-				     fd, 0);
+		__upmap_headers = mmap(NULL, UPMAP_MAPSIZE,
+				       PROT_READ | PROT_WRITE,
+				       MAP_SHARED | MAP_FILE,
+				       fd, 0);
 		_close(fd);
-		if ((void *)upmap_headers == MAP_FAILED) {
+		if ((void *)__upmap_headers == MAP_FAILED) {
 			upmap_ok = -1;
 			goto failed;
 		}
@@ -169,9 +182,10 @@ __upmap_map(void *datap, int *state, uint16_t type)
 	/*
 	 * Look for type.
 	 */
-	for (head = upmap_headers; head->type; ++head) {
+	for (head = __upmap_headers; head->type; ++head) {
 		if (head->type == type) {
-			*(void **)datap = (char *)upmap_headers + head->offset;
+			*(void **)datap = (char *)__upmap_headers +
+					  head->offset;
 			if (__isthreaded)
 				_pthread_mutex_unlock(&ukpmap_lock);
 			return;
@@ -181,4 +195,114 @@ failed:
 	*state = -1;
 	if (__isthreaded)
 		_pthread_mutex_unlock(&ukpmap_lock);
+}
+
+/*
+ * Map the requested data item from the user-kernel per-thread shared mmap
+ *
+ * *state is set to -1 on failure, else it is left alone.
+ * *datap is set to a pointer to the item on success, else it is left alone.
+ * If type == 0 this function finalizes state, setting it to 1 if it is 0.
+ *
+ * WARNING!  This code is used all over pthreads and must NOT make any
+ *	     reentrant pthreads calls until after the mapping has been
+ *	     set up.
+ */
+static pthread_key_t lpmap_key;
+
+static void lpmap_unmap(void **datap);
+
+void
+__lpmap_map(void *datap, int *state, uint16_t type)
+{
+	ukpheader_t *head;
+
+	if (lpmap_ok <= 0) {
+		int fd;
+
+		if (lpmap_ok < 0)
+			goto failed;
+		fd = _open("/dev/lpmap", O_RDWR);
+		if (fd < 0) {
+			lpmap_ok = -1;
+			goto failed;
+		}
+		__lpmap_headers = mmap(NULL, LPMAP_MAPSIZE,
+				       PROT_READ | PROT_WRITE,
+				       MAP_SHARED | MAP_FILE,
+				       fd, 0);
+		_close(fd);
+		if ((void *)__lpmap_headers == MAP_FAILED) {
+			lpmap_ok = -1;
+			goto failed;
+		}
+		lpmap_ok = 1;
+		_pthread_setspecific(lpmap_key, &__lpmap_headers);
+	}
+
+	/*
+	 * Special case to finalize state
+	 */
+	if (type == 0) {
+		if (*state == 0)
+			*state = 1;
+		return;
+	}
+
+	/*
+	 * Look for type.
+	 */
+	for (head = __lpmap_headers; head->type; ++head) {
+		if (head->type == type) {
+			*(void **)datap = (char *)__lpmap_headers +
+					  head->offset;
+			return;
+		}
+	}
+failed:
+	*state = -1;
+}
+
+/*
+ * Cleanup thread state
+ */
+static void
+lpmap_unmap(void **datap)
+{
+	ukpheader_t *lpmap = *datap;
+
+	lpmap_ok = -1;
+	if (lpmap) {
+		__lpmap_blockallsigs = NULL;
+		*datap = NULL;
+		munmap(lpmap, LPMAP_MAPSIZE);
+	}
+}
+
+/*
+ * upmap initialization code, _upmap_thr_init() is called for the initial
+ * main thread by libc or pthreads, and on every thread create.  We need
+ * the __lpmap_blockallsigs pointer ASAP because it is used everywhere in
+ * pthreads.
+ *
+ * If pthreads is not linked in, _pthread_once() still runs via a stub in
+ * libc, and _pthread_key_create() is a NOP.
+ *
+ * NOTE: These pthreads calls are stubs when pthreads is not linked in.
+ *	 The once routine will still be run once regardless.
+ */
+static
+void
+_upmap_init_once(void)
+{
+	_pthread_key_create(&lpmap_key, (void (*)(void *))lpmap_unmap);
+}
+
+void
+_upmap_thr_init(void)
+{
+	int dummy_state = 0;
+
+        _pthread_once(&upmap_once, _upmap_init_once);
+	__lpmap_map(&__lpmap_blockallsigs, &dummy_state, LPTYPE_BLOCKALLSIGS);
 }

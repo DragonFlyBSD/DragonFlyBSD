@@ -77,7 +77,7 @@ _pthread_spin_trylock(pthread_spinlock_t *lock)
 
 	if (lock == NULL || (lck = *lock) == NULL)
 		return (EINVAL);
-	return (THR_UMTX_TRYLOCK(curthread, &lck->s_lock));
+	return (THR_UMTX_TRYLOCK_PERSIST(curthread, &lck->s_lock));
 }
 
 int
@@ -92,7 +92,7 @@ _pthread_spin_lock(pthread_spinlock_t *lock)
 
 	curthread = tls_get_curthread();
 	count = SPIN_COUNT;
-	while (THR_UMTX_TRYLOCK(curthread, &lck->s_lock) != 0) {
+	while (THR_UMTX_TRYLOCK_PERSIST(curthread, &lck->s_lock) != 0) {
 		while (lck->s_lock) {
 			CPU_SPINWAIT;	/* tell cpu we are spinning */
 			if (--count <= 0) {
@@ -113,7 +113,7 @@ _pthread_spin_unlock(pthread_spinlock_t *lock)
 	if (lock == NULL || (lck = *lock) == NULL)
 		return (EINVAL);
 	/* XXX: shouldn't return status? */
-	THR_UMTX_UNLOCK(curthread, &lck->s_lock);
+	THR_UMTX_UNLOCK_PERSIST(curthread, &lck->s_lock);
 	return (0);
 }
 

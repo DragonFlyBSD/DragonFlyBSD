@@ -194,6 +194,7 @@ void
 _thread_init(void)
 {
 	_libpthread_init(NULL);
+	_libc_thr_init();
 }
 
 void	_thread_uninit(void) __attribute__ ((destructor));

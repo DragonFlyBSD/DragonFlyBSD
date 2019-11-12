@@ -1,5 +1,13 @@
+DF508.0 {
+	sigblockall;
+	sigunblockall;
+};
+
 DFprivate_1.0 {
 	__kpmap_map;
 	__upmap_map;
+	__lpmap_map;
+	__lpmap_headers;
+	__lpmap_blockallsigs;
 	__ukp_spt;
 };

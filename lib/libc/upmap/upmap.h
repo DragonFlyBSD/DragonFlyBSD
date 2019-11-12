@@ -38,10 +38,15 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_UPMAP_H_
+#include <sys/upmap.h>
+#endif
 
 void __kpmap_map(void *datap, int *state, uint16_t type);
 void __upmap_map(void *datap, int *state, uint16_t type);
+void __lpmap_map(void *datap, int *state, uint16_t type);
 int __ukp_spt(const char *fmt, va_list ap);
-
+extern __thread ukpheader_t *__lpmap_headers TLS_ATTRIBUTE;
+extern __thread uint32_t *__lpmap_blockallsigs TLS_ATTRIBUTE;
 
 #endif

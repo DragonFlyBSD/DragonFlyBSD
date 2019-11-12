@@ -49,8 +49,10 @@ _thr_umtx_init(volatile umtx_t *mtx)
 }
 
 static inline int
-_thr_umtx_trylock(volatile umtx_t *mtx, int id)
+_thr_umtx_trylock(volatile umtx_t *mtx, int id, int temporary)
 {
+	if (temporary)
+		sigblockall();
 	if (atomic_cmpset_acq_int(mtx, 0, id))
 		return (0);
 	cpu_pause();
@@ -59,35 +61,53 @@ _thr_umtx_trylock(volatile umtx_t *mtx, int id)
 	cpu_pause();
 	if (atomic_cmpset_acq_int(mtx, 0, id))
 		return (0);
+	if (temporary)
+		sigunblockall();
 	return (EBUSY);
 }
 
 static inline int
-_thr_umtx_lock(volatile umtx_t *mtx, int id)
+_thr_umtx_lock(volatile umtx_t *mtx, int id, int temporary)
 {
+	int res;
+
+	if (temporary)
+		sigblockall();
 	if (atomic_cmpset_acq_int(mtx, 0, id))
 		return (0);
-	return (__thr_umtx_lock(mtx, id, 0));
+	res = __thr_umtx_lock(mtx, id, 0);
+	if (res && temporary)
+		sigunblockall();
+	return res;
 }
 
 static inline int
 _thr_umtx_timedlock(volatile umtx_t *mtx, int id,
-    const struct timespec *timeout)
+    const struct timespec *timeout, int temporary)
 {
+	int res;
+
+	if (temporary)
+		sigblockall();
 	if (atomic_cmpset_acq_int(mtx, 0, id)) {
 		return (0);
 	}
-	return (__thr_umtx_timedlock(mtx, id, timeout));
+	res = __thr_umtx_timedlock(mtx, id, timeout);
+	if (res && temporary)
+		sigunblockall();
+	return res;
 }
 
 static inline void
-_thr_umtx_unlock(volatile umtx_t *mtx, int id)
+_thr_umtx_unlock(volatile umtx_t *mtx, int id, int temporary)
 {
 	int v;
 
 	v = atomic_swap_int(mtx, 0);
 	if (v != id)
 		__thr_umtx_unlock(mtx, v, id);
+	if (temporary)
+		sigunblockall();
 }
 
 int _thr_umtx_wait(volatile umtx_t *mtx, umtx_t exp,

@@ -246,10 +246,26 @@ typedef struct slglobaldata {
 
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
 
-#define MASSERT(exp)	do { if (__predict_false(!(exp)))	\
-				_mpanic("assertion: %s in %s",	\
-				#exp, __func__);		\
-			    } while (0)
+/*
+ * The assertion macros try to pretty-print assertion failures
+ * which can be caused by corruption.  If a lock is held, we
+ * provide a macro that attempts to release it before asserting
+ * in order to prevent (e.g.) a reentrant SIGABRT calling malloc
+ * and deadlocking, resulting in the program freezing up.
+ */
+#define MASSERT(exp)				\
+	do { if (__predict_false(!(exp)))	\
+	    _mpanic("assertion: %s in %s",	\
+		    #exp, __func__);		\
+	} while (0)
+
+#define MASSERT_WTHUNLK(exp, unlk)		\
+	do { if (__predict_false(!(exp))) {	\
+	    unlk;				\
+	    _mpanic("assertion: %s in %s",	\
+		    #exp, __func__);		\
+	  }					\
+	} while (0)
 
 /*
  * Magazines
@@ -315,18 +331,6 @@ typedef struct thr_mags {
 	struct magazine	*newmag;
 	int		init;
 } thr_mags;
-
-/*
- * With this attribute set, do not require a function call for accessing
- * this variable when the code is compiled -fPIC.
- *
- * Must be empty for libc_rtld (similar to __thread).
- */
-#ifdef __LIBC_RTLD
-#define TLS_ATTRIBUTE
-#else
-#define TLS_ATTRIBUTE __attribute__ ((tls_model ("initial-exec")))
-#endif
 
 static __thread thr_mags thread_mags TLS_ATTRIBUTE;
 static pthread_key_t thread_mags_key;
@@ -421,7 +425,6 @@ malloc_init(void)
 void
 _nmalloc_thr_init(void)
 {
-	static int init_once;
 	thr_mags *tp;
 
 	/*
@@ -431,10 +434,7 @@ _nmalloc_thr_init(void)
 	tp = &thread_mags;
 	tp->init = -1;
 
-	if (init_once == 0) {
-		init_once = 1;
-		_pthread_once(&thread_mags_once, mtmagazine_init);
-	}
+	_pthread_once(&thread_mags_once, mtmagazine_init);
 	_pthread_setspecific(thread_mags_key, tp);
 	tp->init = 1;
 }
@@ -467,6 +467,28 @@ _nmalloc_thr_childfork(void)
 }
 
 /*
+ * Handle signal reentrancy safely whether we are threaded or not.
+ * This improves the stability for mono and will probably improve
+ * stability for other high-level languages which are becoming increasingly
+ * sophisticated.
+ *
+ * The sigblockall()/sigunblockall() implementation uses a counter on
+ * a per-thread shared user/kernel page, avoids system calls, and is thus
+ *  very fast.
+ */
+static __inline void
+nmalloc_sigblockall(void)
+{
+	sigblockall();
+}
+
+static __inline void
+nmalloc_sigunblockall(void)
+{
+	sigunblockall();
+}
+
+/*
  * Thread locks.
  */
 static __inline void
@@ -474,6 +496,8 @@ slgd_lock(slglobaldata_t slgd)
 {
 	if (__isthreaded)
 		_SPINLOCK(&slgd->Spinlock);
+	else
+		sigblockall();
 }
 
 static __inline void
@@ -481,6 +505,8 @@ slgd_unlock(slglobaldata_t slgd)
 {
 	if (__isthreaded)
 		_SPINUNLOCK(&slgd->Spinlock);
+	else
+		sigunblockall();
 }
 
 static __inline void
@@ -488,6 +514,8 @@ depot_lock(magazine_depot *dp __unused)
 {
 	if (__isthreaded)
 		_SPINLOCK(&depot_spinlock);
+	else
+		sigblockall();
 #if 0
 	if (__isthreaded)
 		_SPINLOCK(&dp->lock);
@@ -499,6 +527,8 @@ depot_unlock(magazine_depot *dp __unused)
 {
 	if (__isthreaded)
 		_SPINUNLOCK(&depot_spinlock);
+	else
+		sigunblockall();
 #if 0
 	if (__isthreaded)
 		_SPINUNLOCK(&dp->lock);
@@ -510,6 +540,8 @@ zone_magazine_lock(void)
 {
 	if (__isthreaded)
 		_SPINLOCK(&zone_mag_lock);
+	else
+		sigblockall();
 }
 
 static __inline void
@@ -517,6 +549,8 @@ zone_magazine_unlock(void)
 {
 	if (__isthreaded)
 		_SPINUNLOCK(&zone_mag_lock);
+	else
+		sigunblockall();
 }
 
 static __inline void
@@ -666,8 +700,10 @@ handle_excess_big(void)
 			_SPINLOCK(&bigspin_array[i & BIGXMASK]);
 		for (big = *bigp; big; big = big->next) {
 			if (big->active < big->bytes) {
-				MASSERT((big->active & PAGE_MASK) == 0);
-				MASSERT((big->bytes & PAGE_MASK) == 0);
+				MASSERT_WTHUNLK((big->active & PAGE_MASK) == 0,
+				    _SPINUNLOCK(&bigspin_array[i & BIGXMASK]));
+				MASSERT_WTHUNLK((big->bytes & PAGE_MASK) == 0,
+				    _SPINUNLOCK(&bigspin_array[i & BIGXMASK]));
 				munmap((char *)big->base + big->active,
 				       big->bytes - big->active);
 				atomic_add_long(&excess_alloc,
@@ -767,11 +803,14 @@ __malloc(size_t size)
 {
 	void *ptr;
 
+	nmalloc_sigblockall();
 	ptr = _slaballoc(size, 0);
 	if (ptr == NULL)
 		errno = ENOMEM;
 	else
 		UTRACE(0, size, ptr);
+	nmalloc_sigunblockall();
+
 	return(ptr);
 }
 
@@ -791,11 +830,14 @@ __calloc(size_t number, size_t size)
 		return(NULL);
 	}
 
+	nmalloc_sigblockall();
 	ptr = _slaballoc(number * size, SAFLAG_ZERO);
 	if (ptr == NULL)
 		errno = ENOMEM;
 	else
 		UTRACE(0, number * size, ptr);
+	nmalloc_sigunblockall();
+
 	return(ptr);
 }
 
@@ -810,11 +852,15 @@ void *
 __realloc(void *ptr, size_t size)
 {
 	void *ret;
+
+	nmalloc_sigblockall();
 	ret = _slabrealloc(ptr, size);
 	if (ret == NULL)
 		errno = ENOMEM;
 	else
 		UTRACE(ptr, size, ret);
+	nmalloc_sigunblockall();
+
 	return(ret);
 }
 
@@ -829,10 +875,12 @@ __aligned_alloc(size_t alignment, size_t size)
 	void *ptr;
 	int rc;
 
+	nmalloc_sigblockall();
 	ptr = NULL;
 	rc = _slabmemalign(&ptr, alignment, size);
 	if (rc)
 		errno = rc;
+	nmalloc_sigunblockall();
 
 	return (ptr);
 }
@@ -856,7 +904,9 @@ __posix_memalign(void **memptr, size_t alignment, size_t size)
 		return(EINVAL);
 	}
 
+	nmalloc_sigblockall();
 	rc = _slabmemalign(memptr, alignment, size);
+	nmalloc_sigunblockall();
 
 	return (rc);
 }
@@ -1006,7 +1056,9 @@ void
 __free(void *ptr)
 {
 	UTRACE(ptr, 0, 0);
+	nmalloc_sigblockall();
 	_slabfree(ptr, 0, NULL);
+	nmalloc_sigunblockall();
 }
 
 /*
@@ -1209,7 +1261,7 @@ _slaballoc(size_t size, int flags)
 	 *
 	 * Remove us from the ZoneAry[] when we become empty
 	 */
-	MASSERT(z->z_NFree > 0);
+	MASSERT_WTHUNLK(z->z_NFree > 0, slgd_unlock(slgd));
 
 	if (--z->z_NFree == 0) {
 		slgd->ZoneAry[zi] = z->z_Next;
@@ -1223,7 +1275,10 @@ _slaballoc(size_t size, int flags)
 	 */
 	while (z->z_FirstFreePg < ZonePageCount) {
 		if ((chunk = z->z_PageAry[z->z_FirstFreePg]) != NULL) {
-			MASSERT((uintptr_t)chunk & ZoneMask);
+			if (((uintptr_t)chunk & ZoneMask) == 0) {
+				slgd_unlock(slgd);
+				_mpanic("assertion: corrupt malloc zone");
+			}
 			z->z_PageAry[z->z_FirstFreePg] = chunk->c_Next;
 			goto done;
 		}
@@ -1352,7 +1407,9 @@ _slabrealloc(void *ptr, size_t size)
 
 						return(ptr);
 					}
-					MASSERT((void *)addr == MAP_FAILED);
+					MASSERT_WTHUNLK(
+						(void *)addr == MAP_FAILED,
+						bigalloc_unlock(ptr));
 				}
 
 				/*
@@ -1614,6 +1671,7 @@ mtmagazine_alloc(int zi)
 	/*
 	 * Primary per-thread allocation loop
 	 */
+	nmalloc_sigblockall();
 	for (;;) {
 		/*
 		 * If the loaded magazine has rounds, allocate and return
@@ -1652,13 +1710,14 @@ mtmagazine_alloc(int zi)
 		tp->mags[zi].loaded = mp;
 		if (mp) {
 			SLIST_REMOVE_HEAD(&d->full, nextmagazine);
-			MASSERT(MAGAZINE_NOTEMPTY(mp));
 			depot_unlock(d);
+			MASSERT(MAGAZINE_NOTEMPTY(mp));
 			continue;
 		}
 		depot_unlock(d);
 		break;
 	}
+	nmalloc_sigunblockall();
 
 	return (obj);
 }
@@ -1682,6 +1741,7 @@ mtmagazine_free(int zi, void *ptr)
 	/*
 	 * Primary per-thread freeing loop
 	 */
+	nmalloc_sigblockall();
 	for (;;) {
 		/*
 		 * Make sure a new magazine is available in case we have
@@ -1737,6 +1797,7 @@ mtmagazine_free(int zi, void *ptr)
 		if (mp) {
 			tp->mags[zi].loaded = mp;
 			SLIST_REMOVE_HEAD(&d->empty, nextmagazine);
+			depot_unlock(d);
 			MASSERT(MAGAZINE_NOTFULL(mp));
 		} else {
 			mp = tp->newmag;
@@ -1745,9 +1806,10 @@ mtmagazine_free(int zi, void *ptr)
 			mp->rounds = 0;
 			mp->flags = 0;
 			tp->mags[zi].loaded = mp;
+			depot_unlock(d);
 		}
-		depot_unlock(d);
 	}
+	nmalloc_sigunblockall();
 
 	return rc;
 }
@@ -1852,7 +1914,7 @@ zone_alloc(int flags)
 			for (i = 1; i < burst; i++) {
 				j = magazine_free(&zone_magazine,
 						  (char *) z + (ZoneSize * i));
-				MASSERT(j == 0);
+				MASSERT_WTHUNLK(j == 0, zone_magazine_unlock());
 			}
 		}
 		zone_magazine_unlock();
@@ -1895,7 +1957,8 @@ zone_free(void *z)
 		j = zone_magazine.rounds - zone_magazine.low_factor;
 		for (i = 0; i < j; i++) {
 			excess[i] = magazine_alloc(&zone_magazine, NULL);
-			MASSERT(excess[i] !=  NULL);
+			MASSERT_WTHUNLK(excess[i] !=  NULL,
+					zone_magazine_unlock());
 		}
 
 		zone_magazine_unlock();
@@ -1922,39 +1985,52 @@ zone_free(void *z)
 static void *
 _vmem_alloc(size_t size, size_t align, int flags)
 {
+	static char *addr_hint;
+	static int reset_hint = 16;
 	char *addr;
 	char *save;
-	size_t excess;
+
+	if (--reset_hint <= 0) {
+		addr_hint = NULL;
+		reset_hint = 16;
+	}
 
 	/*
 	 * Map anonymous private memory.
 	 */
-	addr = mmap(NULL, size, PROT_READ|PROT_WRITE,
+	save = mmap(addr_hint, size, PROT_READ|PROT_WRITE,
 		    MAP_PRIVATE|MAP_ANON, -1, 0);
-	if (addr == MAP_FAILED)
-		return(NULL);
+	if (save == MAP_FAILED)
+		goto worst_case;
+	if (((uintptr_t)save & (align - 1)) == 0)
+		return((void *)save);
 
-	/*
-	 * Check alignment.  The misaligned offset is also the excess
-	 * amount.  If misaligned unmap the excess so we have a chance of
-	 * mapping at the next alignment point and recursively try again.
-	 *
-	 * BBBBBBBBBBB BBBBBBBBBBB BBBBBBBBBBB	block alignment
-	 *   aaaaaaaaa aaaaaaaaaaa aa		mis-aligned allocation
-	 *   xxxxxxxxx				final excess calculation
-	 *   ^ returned address
-	 */
-	excess = (uintptr_t)addr & (align - 1);
+	addr_hint = (char *)(((size_t)save + (align - 1)) & ~(align - 1));
+	munmap(save, size);
 
-	if (excess) {
-		excess = align - excess;
-		save = addr;
+	save = mmap(addr_hint, size, PROT_READ|PROT_WRITE,
+		    MAP_PRIVATE|MAP_ANON, -1, 0);
+	if (save == MAP_FAILED)
+		goto worst_case;
+	if (((size_t)save & (align - 1)) == 0)
+		return((void *)save);
+	munmap(save, size);
 
-		munmap(save + excess, size - excess);
-		addr = _vmem_alloc(size, align, flags);
-		munmap(save, excess);
-	}
-	return((void *)addr);
+worst_case:
+	save = mmap(NULL, size + align, PROT_READ|PROT_WRITE,
+		    MAP_PRIVATE|MAP_ANON, -1, 0);
+	if (save == MAP_FAILED)
+		return NULL;
+
+	addr = (char *)(((size_t)save + (align - 1)) & ~(align - 1));
+	if (save != addr)
+		munmap(save, addr - save);
+	if (addr + size != save + size + align)
+		munmap(addr + size, save + align - addr);
+
+	addr_hint = addr + size;
+
+	return ((void *)addr);
 }
 
 /*

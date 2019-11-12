@@ -27,16 +27,45 @@
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
+#include "libc_private.h"
 
 void	_thread_init_stub(void);
+void	_nmalloc_thr_init(void);
+void	_upmap_thr_init(void);
 
 int	_thread_autoinit_dummy_decl_stub = 0;
+
+/*
+ * This stub is overridden when libpthreads is linked in.  However,
+ * we can apply the constructor to the weak reference.  Instead the
+ * constructor is applied to the stub and we do a run-time check to
+ * see if the stub has been overridden by pthreads.
+ */
+void _thread_init_stub(void) __attribute__ ((constructor));
+__weak_reference(_thread_init_stub, _thread_init);
 
 void
 _thread_init_stub(void)
 {
-	/* This is just a stub; there is nothing to do. */
+	/*
+	 * Only run libc related pthreads initialization from here
+	 * if pthreads did not override the weak reference.  Otherwise
+	 * pthreads will do it after setting up a real thread context.
+	 */
+	if (_thread_init == _thread_init_stub) {
+		_libc_thr_init();
+	}
 }
 
-__weak_reference(_thread_init_stub, _thread_init);
+/*
+ * Pre-initialization prior to thread startup to avoid certain
+ * chicken-and-egg issues with low-level allocations.
+ */
+void
+_libc_thr_init(void)
+{
+	_nmalloc_thr_init();
+	_upmap_thr_init();
+}
+
 __weak_reference(_thread_autoinit_dummy_decl_stub, _thread_autoinit_dummy_decl);

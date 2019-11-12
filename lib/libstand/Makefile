@@ -20,6 +20,8 @@ LIBSTAND_SRC?=	${.CURDIR}
 LIBSTAND_ARCH?=	${MACHINE_ARCH}
 LIBC_SRC=	${LIBSTAND_SRC}/../libc
 
+CFLAGS+=-D_LIBSTAND_
+
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding
 

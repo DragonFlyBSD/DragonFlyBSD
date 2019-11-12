@@ -302,7 +302,7 @@ _pthread_mutex_destroy(pthread_mutex_t *mutex)
 		 * Try to lock the mutex structure, we only need to
 		 * try once, if failed, the mutex is in use.
 		 */
-		ret = THR_UMTX_TRYLOCK(curthread, &(*mutex)->m_lock);
+		ret = THR_UMTX_TRYLOCK_PERSIST(curthread, &(*mutex)->m_lock);
 		if (ret)
 			return (ret);
 
@@ -314,7 +314,7 @@ _pthread_mutex_destroy(pthread_mutex_t *mutex)
 		if (((*mutex)->m_owner != NULL) ||
 		    (TAILQ_FIRST(&(*mutex)->m_queue) != NULL) ||
 		    ((*mutex)->m_refcount != 0)) {
-			THR_UMTX_UNLOCK(curthread, &(*mutex)->m_lock);
+			THR_UMTX_UNLOCK_PERSIST(curthread, &(*mutex)->m_lock);
 			ret = EBUSY;
 		} else {
 			/*
@@ -325,7 +325,7 @@ _pthread_mutex_destroy(pthread_mutex_t *mutex)
 			*mutex = NULL;
 
 			/* Unlock the mutex structure: */
-			THR_UMTX_UNLOCK(curthread, &m->m_lock);
+			THR_UMTX_UNLOCK_PERSIST(curthread, &m->m_lock);
 
 			/*
 			 * Free the memory allocated for the mutex
@@ -348,7 +348,7 @@ mutex_trylock_common(struct pthread *curthread, pthread_mutex_t *mutex)
 
 	m = *mutex;
 	mutex_log("mutex_lock_trylock_common %p\n", m);
-	ret = THR_UMTX_TRYLOCK(curthread, &m->m_lock);
+	ret = THR_UMTX_TRYLOCK_PERSIST(curthread, &m->m_lock);
 	if (ret == 0) {
 		mutex_log2(curthread, m, 1);
 		m->m_owner = curthread;
@@ -412,7 +412,7 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *mutex,
 
 	m = *mutex;
 	mutex_log("mutex_lock_common %p\n", m);
-	ret = THR_UMTX_TRYLOCK(curthread, &m->m_lock);
+	ret = THR_UMTX_TRYLOCK_PERSIST(curthread, &m->m_lock);
 	if (ret == 0) {
 		mutex_log2(curthread, m, 3);
 		m->m_owner = curthread;
@@ -423,7 +423,7 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *mutex,
 		ret = mutex_self_lock(m, abstime);
 	} else {
 		if (abstime == NULL) {
-			THR_UMTX_LOCK(curthread, &m->m_lock);
+			THR_UMTX_LOCK_PERSIST(curthread, &m->m_lock);
 			ret = 0;
 		} else if (__predict_false(
 			abstime->tv_sec < 0 || abstime->tv_nsec < 0 ||
@@ -432,7 +432,8 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *mutex,
 		} else {
 			clock_gettime(CLOCK_REALTIME, &ts);
 			timespecsub(abstime, &ts, &ts2);
-			ret = THR_UMTX_TIMEDLOCK(curthread, &m->m_lock, &ts2);
+			ret = THR_UMTX_TIMEDLOCK_PERSIST(curthread,
+							 &m->m_lock, &ts2);
 		}
 		if (ret == 0) {
 			mutex_log2(curthread, m, 4);
@@ -677,7 +678,7 @@ mutex_unlock_common(pthread_mutex_t *mutex)
 		 */
 		mutex_log("mutex_unlock_common %p (returns 0) lock %d\n",
 			  m, m->m_lock);
-		THR_UMTX_UNLOCK(curthread, &m->m_lock);
+		THR_UMTX_UNLOCK_PERSIST(curthread, &m->m_lock);
 		mutex_log2(tls_get_curthread(), m, 37);
 		mutex_log2(curthread, m, 255);
 	}
@@ -750,7 +751,7 @@ _mutex_cv_unlock(pthread_mutex_t *mutex, int *count)
 	MUTEX_ASSERT_IS_OWNED(m);
 	TAILQ_REMOVE(&curthread->mutexq, m, m_qe);
 	MUTEX_INIT_LINK(m);
-	THR_UMTX_UNLOCK(curthread, &m->m_lock);
+	THR_UMTX_UNLOCK_PERSIST(curthread, &m->m_lock);
 	mutex_log2(curthread, m, 250);
 	return (0);
 }
