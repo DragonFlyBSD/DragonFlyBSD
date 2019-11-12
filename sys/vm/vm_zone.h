@@ -12,11 +12,15 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.h,v 1.13.2.2 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.h,v 1.10 2008/01/21 20:21:19 nth Exp $
  */
 
 #ifndef _VM_VM_ZONE_H_
 #define _VM_VM_ZONE_H_
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#include <sys/spinlock.h>
+#include <sys/thread.h>
 
 #define ZONE_INTERRUPT 0x0001	/* If you need to allocate at int time */
 #define ZONE_PANICFAIL 0x0002	/* panic if the zalloc fails */
@@ -26,9 +30,6 @@
 #define ZONE_DESTROYABLE 0x0040 /* can be zdestroy()'ed */
 
 #define ZONE_MAXPGLOAD	32	/* max VM pages burst in zget() */
-
-#include <sys/spinlock.h>
-#include <sys/thread.h>
 
 /*
  * Zone allocator.
@@ -74,7 +75,7 @@ typedef struct vm_zone {
 	long		zkmmax;		/* # of slots in zkmvec */
 } *vm_zone_t;
 
-
+#ifdef _KERNEL
 void		zerror (int) __dead2;
 vm_zone_t	zinit (char *name, size_t size, long nentries, uint32_t flags);
 int		zinitna (vm_zone_t z, char *name,
@@ -84,5 +85,8 @@ void		zfree (vm_zone_t z, void *item);
 void		zbootinit (vm_zone_t z, char *name, size_t size, void *item,
 			       long nitems);
 void		zdestroy(vm_zone_t z);
+#endif	/* _KERNEL */
+
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 #endif	/* _VM_VM_ZONE_H_ */
