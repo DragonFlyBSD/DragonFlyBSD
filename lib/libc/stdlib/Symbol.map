@@ -1,8 +1,8 @@
 DF404.0 {
     __cxa_atexit;
     __cxa_finalize;
+    _nmalloc_thr_init;
     _Exit;
-    _libc_thr_init;
     _nmalloc_thr_prepfork;
     _nmalloc_thr_parentfork;
     _nmalloc_thr_childfork;
@@ -126,9 +126,10 @@ DF506.0 {
 };
 
 DF508.0 {
-    	abort_handler_s;
-	ignore_handler_s;
-	set_constraint_handler_s;
+    abort_handler_s;
+    ignore_handler_s;
+    _libc_thr_init;
+    set_constraint_handler_s;
 };
 
 /*
