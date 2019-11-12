@@ -1,15 +1,15 @@
 /*
  * SYS/SYSTIMER.H
- * 
+ *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -19,7 +19,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -32,8 +32,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.13 2007/04/30 06:57:36 dillon Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -46,12 +44,6 @@
 #endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
-#endif
-
-/* XXX fix sys/kinfo.h */
-#ifndef __BOOLEAN_T_DEFINED__
-#define __BOOLEAN_T_DEFINED__
-typedef	__boolean_t	boolean_t;
 #endif
 
 struct intrframe;
@@ -81,6 +73,7 @@ typedef struct systimer {
 #define SYSTF_100KHZSYNC	0x0010		/* 100Khz coincident sync */
 #define SYSTF_FIRST		0x0020		/* order first if coincident */
 
+#ifdef _KERNEL
 void systimer_intr_enable(void);
 void systimer_intr(sysclock_t *, int, struct intrframe *);
 void systimer_add(systimer_t);
@@ -95,7 +88,7 @@ void systimer_adjust_periodic(systimer_t, int);
 void systimer_init_oneshot(systimer_t, systimer_func_t, void *, int);
 
 /*
- * The cputimer interface.  This provides a free-running (non-interrupt) 
+ * The cputimer interface.  This provides a free-running (non-interrupt)
  * and monotonically increasing timebase for the system.
  *
  * The cputimer structure holds the fixed cputimer frequency, determining
@@ -315,6 +308,7 @@ struct cpucounter {
 void cpucounter_register(struct cpucounter *);
 const struct cpucounter *cpucounter_find_pcpu(void);
 const struct cpucounter *cpucounter_find(void);
+#endif	/* _KERNEL */
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
