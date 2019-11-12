@@ -41,6 +41,13 @@
 #endif
 #include <string.h>
 
+#ifdef _LIBSTAND_
+#define TLS_ATTRIBUTE
+#define __thread
+#else
+#include "libc_private.h"
+#endif
+
 char	*__strtok_r(char *, const char *, char **);
 
 char *
@@ -92,10 +99,16 @@ cont:
 
 __weak_reference(__strtok_r, strtok_r);
 
+/*
+ * Even though strtok() is documented as not being thread-safe,
+ * programs are getting so complex these days that more and more
+ * code assumes thread-safety throughout libc.  So make strtok()
+ * thread-safe as well.
+ */
 char *
 strtok(char *s, const char *delim)
 {
-	static char *last;
+	static __thread char *last TLS_ATTRIBUTE;
 
 	return (__strtok_r(s, delim, &last));
 }
