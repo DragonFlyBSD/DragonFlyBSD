@@ -431,6 +431,12 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 
 	/* XXX lwp */
 	lp = FIRST_LWP_IN_PROC(p);
+	if (lp == NULL) {
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
+		return EINVAL;
+	}
+
 #ifdef FIX_SSTEP
 	/*
 	 * Single step fixup ala procfs

@@ -367,8 +367,15 @@ procfs_rw(struct vop_read_args *ap)
 		rtval = EACCES;
 		goto out;
 	}
-	/* XXX lwp */
+
+	/*
+	 * XXX lwp
+	 */
 	lp = FIRST_LWP_IN_PROC(p);
+	if (lp == NULL) {
+		rtval = EINVAL;
+		goto out;
+	}
 	LWPHOLD(lp);
 
 	lockmgr(&pfs->pfs_lock, LK_EXCLUSIVE);

@@ -818,6 +818,8 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 			break;
 		/* XXX lwp */
 		lp = FIRST_LWP_IN_PROC(p);
+		if (lp == NULL)
+			break;
 
 		if (!PRISON_CHECK(ap->a_cnp->cn_cred, p->p_ucred))
 			break;
@@ -940,6 +942,10 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 	}
 	/* XXX lwp, not MPSAFE */
 	lp = FIRST_LWP_IN_PROC(p);
+	if (lp == NULL) {
+		error = EINVAL;
+		goto done;
+	}
 
 	error = 0;
 	i = (int)uio->uio_offset;
