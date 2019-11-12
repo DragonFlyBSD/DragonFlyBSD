@@ -1606,14 +1606,35 @@ vm_map_find(vm_map_t map, void *map_object, void *map_aux,
 	int count;
 
 	/*
-	 * UKSMAPs set aux_info to the tid of the calling thread.  This is
-	 * only used by /dev/lpmap (per-thread user/kernel shared page).
+	 * Certain UKSMAPs may need aux_info.
+	 *
+	 * (map_object is the callback function, aux_info is the process
+	 *  or thread, if necessary).
 	 */
 	aux_info = NULL;
 	if (maptype == VM_MAPTYPE_UKSMAP) {
+		KKASSERT(map_aux != NULL && map_object != NULL);
+
+		switch(minor(((struct cdev *)map_aux))) {
+		case 5:
+			/*
+			 * /dev/upmap
+			 */
+			aux_info = curproc;
+			break;
+		case 6:
+			/*
+			 * /dev/kpmap
+			 */
+			break;
+		case 7:
+			/*
+			 * /dev/lpmap
+			 */
+			aux_info = curthread->td_lwp;
+			break;
+		}
 		object = NULL;
-		if (curthread->td_lwp)
-			aux_info = (void *)(intptr_t)curthread->td_lwp->lwp_tid;
 	} else {
 		object = map_object;
 	}
@@ -3445,22 +3466,30 @@ vm_map_backing_replicated(vm_map_t map, vm_map_entry_t entry, int flags)
 
 	ba = &entry->ba;
 	for (;;) {
-		object = ba->object;
 		ba->pmap = map->pmap;
-		if (object &&
-		    (entry->maptype == VM_MAPTYPE_VPAGETABLE ||
-		     entry->maptype == VM_MAPTYPE_NORMAL)) {
-			if (ba != &entry->ba ||
-			    (flags & MAP_BACK_BASEOBJREFD) == 0) {
-				vm_object_reference_quick(object);
+
+		if (ba->map_object) {
+			switch(entry->maptype) {
+			case VM_MAPTYPE_VPAGETABLE:
+			case VM_MAPTYPE_NORMAL:
+				object = ba->object;
+				if (ba != &entry->ba ||
+				    (flags & MAP_BACK_BASEOBJREFD) == 0) {
+					vm_object_reference_quick(object);
+				}
+				vm_map_backing_attach(entry, ba);
+				if ((flags & MAP_BACK_CLIPPED) == 0 &&
+				    object->ref_count > 1) {
+					vm_object_clear_flag(object,
+							     OBJ_ONEMAPPING);
+				}
+				break;
+			case VM_MAPTYPE_UKSMAP:
+				vm_map_backing_attach(entry, ba);
+				break;
+			default:
+				break;
 			}
-			vm_map_backing_attach(entry, ba);
-			if ((flags & MAP_BACK_CLIPPED) == 0 &&
-			    object->ref_count > 1) {
-				vm_object_clear_flag(object, OBJ_ONEMAPPING);
-			}
-		} else if (entry->maptype == VM_MAPTYPE_UKSMAP) {
-			vm_map_backing_attach(entry, ba);
 		}
 		if (ba->backing_ba == NULL)
 			break;
@@ -3629,11 +3658,12 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
  */
 static void vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 			  vm_map_entry_t old_entry, int *countp);
-static void vmspace_fork_uksmap_entry(vm_map_t old_map, vm_map_t new_map,
+static void vmspace_fork_uksmap_entry(struct proc *p2, struct lwp *lp2,
+			  vm_map_t old_map, vm_map_t new_map,
 			  vm_map_entry_t old_entry, int *countp);
 
 struct vmspace *
-vmspace_fork(struct vmspace *vm1)
+vmspace_fork(struct vmspace *vm1, struct proc *p2, struct lwp *lp2)
 {
 	struct vmspace *vm2;
 	vm_map_t old_map = &vm1->vm_map;
@@ -3667,7 +3697,8 @@ vmspace_fork(struct vmspace *vm1)
 			panic("vm_map_fork: encountered a submap");
 			break;
 		case VM_MAPTYPE_UKSMAP:
-			vmspace_fork_uksmap_entry(old_map, new_map,
+			vmspace_fork_uksmap_entry(p2, lp2,
+						  old_map, new_map,
 						  old_entry, &count);
 			break;
 		case VM_MAPTYPE_NORMAL:
@@ -3830,10 +3861,36 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
  */
 static
 void
-vmspace_fork_uksmap_entry(vm_map_t old_map, vm_map_t new_map,
+vmspace_fork_uksmap_entry(struct proc *p2, struct lwp *lp2,
+			  vm_map_t old_map, vm_map_t new_map,
 			  vm_map_entry_t old_entry, int *countp)
 {
 	vm_map_entry_t new_entry;
+
+	/*
+	 * Do not fork lpmap entries whos TIDs do not match lp2's tid.
+	 *
+	 * XXX if p2 is NULL and lp2 is non-NULL, we retain the lpmap entry
+	 * (this is for e.g. resident'ing vmspace's) but set the field
+	 * to NULL.  Upon restore it should be restored. XXX NOT IMPL YET
+	 */
+	if (old_entry->aux.dev) {
+		switch(minor(old_entry->aux.dev)) {
+		case 5:
+			break;
+		case 6:
+			break;
+		case 7:
+			if (lp2 == NULL)
+				return;
+			if (old_entry->ba.aux_info == NULL)
+				return;
+			if (((struct lwp *)old_entry->ba.aux_info)->lwp_tid !=
+			    lp2->lwp_tid)
+				return;
+			break;
+		}
+	}
 
 	new_entry = vm_map_entry_create(countp);
 	*new_entry = *old_entry;
@@ -3841,6 +3898,32 @@ vmspace_fork_uksmap_entry(vm_map_t old_map, vm_map_t new_map,
 	new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
 	new_entry->wired_count = 0;
 	KKASSERT(new_entry->ba.backing_ba == NULL);
+
+	if (new_entry->aux.dev) {
+		switch(minor(new_entry->aux.dev)) {
+		case 5:
+			/*
+			 * upmap
+			 */
+			new_entry->ba.aux_info = p2;
+			break;
+		case 6:
+			/*
+			 * kpmap
+			 */
+			new_entry->ba.aux_info = NULL;
+			break;
+		case 7:
+			/*
+			 * lpmap
+			 */
+			new_entry->ba.aux_info = lp2;
+			break;
+		}
+	} else {
+		new_entry->ba.aux_info = NULL;
+	}
+
 	vm_map_backing_replicated(new_map, new_entry, 0);
 
 	vm_map_entry_link(new_map, new_entry);
@@ -4182,7 +4265,7 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 	 */
 	lwkt_gettoken(&oldvmspace->vm_map.token);
 	if (vmcopy)  {
-		newvmspace = vmspace_fork(vmcopy);
+		newvmspace = vmspace_fork(vmcopy, NULL, NULL);
 		lwkt_gettoken(&newvmspace->vm_map.token);
 	} else {
 		newvmspace = vmspace_alloc(vm_map_min(map), vm_map_max(map));
@@ -4219,7 +4302,7 @@ vmspace_unshare(struct proc *p)
 		lwkt_reltoken(&oldvmspace->vm_map.token);
 		return;
 	}
-	newvmspace = vmspace_fork(oldvmspace);
+	newvmspace = vmspace_fork(oldvmspace, NULL, NULL);
 	lwkt_gettoken(&newvmspace->vm_map.token);
 	pmap_pinit2(vmspace_pmap(newvmspace));
 	pmap_replacevm(p, newvmspace, 0);

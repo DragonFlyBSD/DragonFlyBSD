@@ -737,7 +737,7 @@ vmx_vminit_master(struct vmm_guest_options *options)
 	struct vmm_proc *p_vmm;
 
 	oldvmspace = curthread->td_lwp->lwp_vmspace;
-	newvmspace = vmspace_fork(oldvmspace);
+	newvmspace = vmspace_fork(oldvmspace, NULL, NULL);
 
 	vmx_ept_pmap_pinit(vmspace_pmap(newvmspace));
 	bzero(vmspace_pmap(newvmspace)->pm_pml4, PAGE_SIZE);

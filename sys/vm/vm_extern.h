@@ -89,7 +89,7 @@ void vm_fault_copy_entry(struct vm_map *, struct vm_map *,
 			struct vm_map_entry *, struct vm_map_entry *);
 void vm_fault_unwire(struct vm_map *, struct vm_map_entry *);
 int vm_fault_wire(struct vm_map *, struct vm_map_entry *, boolean_t, int);
-void vm_fork(struct proc *, struct proc *, int);
+void vm_fork(struct proc *, struct proc *, struct lwp *, int);
 int vm_test_nominal(void);
 void vm_wait_nominal(void);
 void vm_init_limits(struct proc *);
@@ -113,7 +113,8 @@ void *kmem_alloc_swapbacked(kmem_anon_desc_t *kp, vm_size_t size,
 			vm_subsys_t id);
 void kmem_free_swapbacked(kmem_anon_desc_t *kp);
 
-struct vmspace *vmspace_fork(struct vmspace *);
+struct vmspace *vmspace_fork(struct vmspace *origvm,
+			struct proc *p2, struct lwp *lp2);
 void vmspace_exec(struct proc *, struct vmspace *);
 void vmspace_unshare(struct proc *);
 void vslock(caddr_t, u_int);

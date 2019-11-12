@@ -1311,8 +1311,6 @@ lwp_userunmap(struct lwp *lp)
 
 	spin_lock(&lp->lwp_spin);
 	while ((ba = TAILQ_FIRST(&lp->lwp_lpmap_backing_list)) != NULL) {
-		TAILQ_REMOVE(&lp->lwp_lpmap_backing_list, ba, entry);
-		atomic_clear_int(&ba->flags, VM_MAP_LWP_LINKED);
 		copy = *ba;
 		spin_unlock(&lp->lwp_spin);
 

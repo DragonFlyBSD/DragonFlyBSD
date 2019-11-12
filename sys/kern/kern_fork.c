@@ -337,7 +337,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 			goto done;
 		}
 
-		vm_fork(p1, 0, flags);
+		vm_fork(p1, NULL, NULL, flags);
 		if ((flags & RFMEM) == 0)
 			wake_umtx_threads(p1);
 
@@ -665,7 +665,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	PHOLD(p1);
 
 	lp2 = lwp_fork1(lp1, p2, flags, NULL);
-	vm_fork(p1, p2, flags);
+	vm_fork(p1, p2, lp2, flags);
 	if ((flags & RFMEM) == 0)
 		wake_umtx_threads(p1);
 

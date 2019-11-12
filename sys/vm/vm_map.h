@@ -206,7 +206,6 @@ struct vm_map_backing {
 typedef struct vm_map_backing *vm_map_backing_t;
 
 #define VM_MAP_BACK_EXCL_HEUR	0x00000001U
-#define VM_MAP_LWP_LINKED	0x00000002U
 
 /*
  * Address map entries consist of start and end addresses, a VM object

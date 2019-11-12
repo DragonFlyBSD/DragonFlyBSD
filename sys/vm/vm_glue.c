@@ -209,17 +209,28 @@ vsunlock(caddr_t addr, u_int len)
 }
 
 /*
- * Implement fork's actions on an address space.
- * Here we arrange for the address space to be copied or referenced,
- * allocate a user struct (pcb and kernel stack), then call the
- * machine-dependent layer to fill those in and make the new process
- * ready to run.  The new process is set up so that it returns directly
- * to user mode to avoid stack copying and relocation problems.
+ * Implement fork's actions on an address space.  Here we arrange for the
+ * address space to be copied or referenced, allocate a user struct (pcb
+ * and kernel stack), then call the machine-dependent layer to fill those
+ * in and make the new process ready to run.  The new process is set up
+ * so that it returns directly to user mode to avoid stack copying and
+ * relocation problems.
+ *
+ * If p2 is NULL and RFPROC is 0 we are just divorcing parts of the process
+ * from itself.
+ *
+ * Otherwise if p2 is NULL the new vmspace is not to be associated with any
+ * process or thread (so things like /dev/upmap and /dev/lpmap are not
+ * retained).
+ *
+ * Otherwise if p2 is not NULL then process specific mappings will be forked.
+ * If lp2 is not NULL only the thread-specific mappings for lp2 are forked,
+ * otherwise no thread-specific mappings are forked.
  *
  * No requirements.
  */
 void
-vm_fork(struct proc *p1, struct proc *p2, int flags)
+vm_fork(struct proc *p1, struct proc *p2, struct lwp *lp2, int flags)
 {
 	if ((flags & RFPROC) == 0) {
 		/*
@@ -246,7 +257,7 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 	}
 
 	if ((flags & RFMEM) == 0) {
-		p2->p_vmspace = vmspace_fork(p1->p_vmspace);
+		p2->p_vmspace = vmspace_fork(p1->p_vmspace, p2, lp2);
 
 		pmap_pinit2(vmspace_pmap(p2->p_vmspace));
 

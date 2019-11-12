@@ -390,7 +390,6 @@ memuksmap(vm_map_backing_t ba, int op, cdev_t dev, vm_page_t fake)
 {
 	vm_ooffset_t result;
 	int error;
-	struct proc *p;
 	struct lwp *lp;
 
 	error = 0;
@@ -398,43 +397,29 @@ memuksmap(vm_map_backing_t ba, int op, cdev_t dev, vm_page_t fake)
 	switch(op) {
 	case UKSMAPOP_ADD:
 		/*
-		 * /dev/lpmap only (minor 7)
-		 *
-		 * Don't do anything until the page is faulted in.  Clear
-		 * our flags on this possibly replicated ba.  vm_map_entry
-		 * replication can occur before the new process/lwp is
-		 * created, so there's nothing to link into.
+		 * We only need to track mappings for /dev/lpmap, all process
+		 * mappings will be deleted when the process exits and we
+		 * do not need to track kernel mappings.
 		 */
-		if (minor(dev) != 7)
-			break;
-		atomic_clear_int(&ba->flags, VM_MAP_LWP_LINKED);
+		if (minor(dev) == 7) {
+			lp = ba->aux_info;
+			spin_lock(&lp->lwp_spin);
+			TAILQ_INSERT_TAIL(&lp->lwp_lpmap_backing_list,
+					  ba, entry);
+			spin_unlock(&lp->lwp_spin);
+		}
 		break;
 	case UKSMAPOP_REM:
 		/*
-		 * /dev/lpmap only (minor 7)
-		 *
-		 * The mapping is only on the lwp list after it has been
-		 * faulted in.
+		 * We only need to track mappings for /dev/lpmap, all process
+		 * mappings will be deleted when the process exits and we
+		 * do not need to track kernel mappings.
 		 */
-		if (minor(dev) != 7)
-			break;
-		if ((ba->flags & VM_MAP_LWP_LINKED) == 0)
-			break;
-
-		p = curproc;
-		lwkt_gettoken_shared(&p->p_token);
-		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree,
-					   (int)(intptr_t)ba->aux_info);
-		if (lp) {
-			LWPHOLD(lp);
-			lwkt_reltoken(&p->p_token);
+		if (minor(dev) == 7) {
+			lp = ba->aux_info;
 			spin_lock(&lp->lwp_spin);
 			TAILQ_REMOVE(&lp->lwp_lpmap_backing_list, ba, entry);
-			atomic_clear_int(&ba->flags, VM_MAP_LWP_LINKED);
 			spin_unlock(&lp->lwp_spin);
-			LWPRELE(lp);
-		} else {
-			lwkt_reltoken(&p->p_token);
 		}
 		break;
 	case UKSMAPOP_FAULT:
@@ -725,31 +710,8 @@ user_kernel_mapping(vm_map_backing_t ba, int num, vm_ooffset_t offset,
 	int error;
 	int invfork;
 
-	p = curthread->td_proc;
-	if (p == NULL)
-		return (EINVAL);
 	if (offset < 0)
 		return (EINVAL);
-
-	/*
-	 * If this is a child currently in vfork the pmap is shared with
-	 * the parent!  We need to actually set-up the parent's p_upmap,
-	 * not the child's, and we need to set the invfork flag.  Userland
-	 * will probably adjust its static state so it must be consistent
-	 * with the parent or userland will be really badly confused.
-	 *
-	 * (this situation can happen when user code in vfork() calls
-	 *  libc's getpid() or some other function which then decides
-	 *  it wants the upmap).
-	 */
-	if (p->p_flags & P_PPWAIT) {
-		p = p->p_pptr;
-		if (p == NULL)
-			return (EINVAL);
-		invfork = 1;
-	} else {
-		invfork = 0;
-	}
 
 	error = EINVAL;
 
@@ -758,11 +720,43 @@ user_kernel_mapping(vm_map_backing_t ba, int num, vm_ooffset_t offset,
 		/*
 		 * /dev/upmap - maps RW per-process shared user-kernel area.
 		 */
+
+		/*
+		 * If this is a child currently in vfork the pmap is shared
+		 * with the parent!  We need to actually set-up the parent's
+		 * p_upmap, not the child's, and we need to set the invfork
+		 * flag.  Userland will probably adjust its static state so
+		 * it must be consistent with the parent or userland will be
+		 * really badly confused.
+		 *
+		 * (this situation can happen when user code in vfork() calls
+		 *  libc's getpid() or some other function which then decides
+		 *  it wants the upmap).
+		 */
+		p = ba->aux_info;
+		if (p == NULL)
+			break;
+		if (p->p_flags & P_PPWAIT) {
+			p = p->p_pptr;
+			if (p == NULL)
+				return (EINVAL);
+			invfork = 1;
+		} else {
+			invfork = 0;
+		}
+
+		/*
+		 * Create the kernel structure as required, set the invfork
+		 * flag if we are faulting in on a vfork().
+		 */
 		if (p->p_upmap == NULL)
 			proc_usermap(p, invfork);
-		else if (invfork)
+		if (p->p_upmap && invfork)
 			p->p_upmap->invfork = invfork;
 
+		/*
+		 * Extract address for pmap
+		 */
 		if (p->p_upmap &&
 		    offset < roundup2(sizeof(*p->p_upmap), PAGE_SIZE)) {
 			/* only good for current process */
@@ -774,51 +768,32 @@ user_kernel_mapping(vm_map_backing_t ba, int num, vm_ooffset_t offset,
 	case 6:
 		/*
 		 * /dev/kpmap - maps RO shared kernel global page
+		 *
+		 * Extract address for pmap
 		 */
 		if (kpmap &&
 		    offset < roundup2(sizeof(*kpmap), PAGE_SIZE)) {
-			*resultp = pmap_kextract((vm_offset_t)kpmap +
-						 offset);
+			*resultp = pmap_kextract((vm_offset_t)kpmap + offset);
 			error = 0;
 		}
 		break;
 	case 7:
 		/*
 		 * /dev/lpmap - maps RW per-thread shared user-kernel area.
-		 *
-		 * Link the vm_map_backing into the lwp so we can delete
-		 * the mapping when the lwp exits.  Otherwise we would end
-		 * up with a lingering pmap page and the associated kernel
-		 * memory disclosure.
-		 *
-		 * We do the linking on first-fault since the process and/or
-		 * lwp might not exist at the time the map is created (i.e.
-		 * in the case of fork()).
 		 */
-		lwkt_gettoken_shared(&p->p_token);
-		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree,
-					   (int)(intptr_t)ba->aux_info);
-		if (lp == NULL) {
-			lwkt_reltoken(&p->p_token);
+		lp = ba->aux_info;
+		if (lp == NULL)
 			break;
-		}
-		LWPHOLD(lp);
-		lwkt_reltoken(&p->p_token);
 
 		/*
-		 * Extract address
+		 * Create the kernel structure as required
 		 */
 		if (lp->lwp_lpmap == NULL)
-			lwp_usermap(lp, invfork);
+			lwp_usermap(lp, -1);	/* second arg not yet XXX */
 
-		if ((ba->flags & VM_MAP_LWP_LINKED) == 0) {
-			spin_lock(&lp->lwp_spin);
-			TAILQ_INSERT_TAIL(&lp->lwp_lpmap_backing_list,
-					  ba, entry);
-			atomic_set_int(&ba->flags, VM_MAP_LWP_LINKED);
-			spin_unlock(&lp->lwp_spin);
-		}
-
+		/*
+		 * Extract address for pmap
+		 */
 		if (lp->lwp_lpmap &&
 		    offset < roundup2(sizeof(*lp->lwp_lpmap), PAGE_SIZE)) {
 			/* only good for current process */
@@ -826,7 +801,6 @@ user_kernel_mapping(vm_map_backing_t ba, int num, vm_ooffset_t offset,
 						 offset);
 			error = 0;
 		}
-		LWPRELE(lp);
 		break;
 	default:
 		break;
