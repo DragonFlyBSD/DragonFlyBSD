@@ -1,0 +1,123 @@
+.\" Copyright (c) 2019 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd November 12, 2019
+.Dt SIGBLOCKALL 3
+.Os
+.Sh NAME
+.Nm sigblockall ,
+.Nm sigunblockall
+.Nd Quickly block and unblock all maskable signals
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In signal.h
+.Ft int
+.Fn sigblockall "void"
+.Ft int
+.Fn sigunblockall "void"
+.Sh DESCRIPTION
+These functions operate on a per-thread basis and temporarily prevent
+signal posts to the calling thread, protecting the function from
+potential reentrancy issues due to signal interruption.
+The signal mask is not modified in any way and synchronous signals
+caused by traps (such as SIGSEGV) will still be immediately posted.
+.Pp
+These functions operate via the /dev/lpmap per-thread shared page facility
+and, once primed, will operate without having to issue any system calls.
+They are designed to be very fast, typically sub-10nS.
+.Pp
+The
+.Fn sigblockall
+procedure temporarily blocks the posting of any maskable signal.  SIGSTOP
+and SIGKILL are not maskable and will still be delivered, as will any
+signals caused by synchronous traps.  This facility does not prevent
+signals from being delivered to the thread, it simply prevents the signals
+from being posted to (interrupting) the thread.
+.Pp
+Callers must pair all calls to
+.Fn sigblockall
+with calls to
+.Fn sigunblockall .
+These functions may be used recursively.
+.Pp
+The
+.Fn sigunblockall
+procedure unwinds the operation.  On the last transition, any blocked
+signals not otherwise masked through the normal signal mask will be
+immediately posted prior to the function returning.
+.Sh RETURN VALUES
+Both procedures return the recursive blocking count's value after
+the operation.
+Thus the first call to
+.Fn sigblockall
+will generally return the value 1 and the last call to
+.Fn sigunblockall
+will generally return the value 0.
+.Pp
+The returned value may have bit 31 set, resulting in a negative number.
+Bit 31 set indicates that one or more signals may have been blocked from
+being posted and represents cumulative state until the last call to
+.Fn sigunblockall .
+.Pp
+If bit 31 is set in the value returned by the last call to
+.Fn sigunblockall ,
+it is an indication that signals were previously blocked and have now
+been posted.  Bit 31 will be cleared in libc's internal state
+for the calling thread on the last call.
+.Sh WARNINGS
+Any blocking count for the current thread present as-of any
+.Xr fork 2
+or
+.Xr vfork 2
+will be inherited by the child and must be unwound in both parent and
+child.  This also allows programs to conveniently prevent signal delivery
+in a new child process until they are ready to deal with it, if desired.
+.Pp
+Care must be taken if coupling the use of these functions with the
+longjmp and ucontext facilities.  The blocking count is associated
+with the thread, NOT the context.
+.Sh ERRORS
+These functions return -1 on error, which can only occur if the
+.Pa /dev/lpmap
+facility is not available.  However, generally speaking, because these
+procedures are meant to be used in critical code paths, callers are not
+expected to check for this failure condition in critical code paths.
+Detecting support can be done at the start of the program, if desired,
+simply by issuing the function pair and retaining the result.
+.Sh SEE ALSO
+.Xr sigprocmask 2
+.Sh HISTORY
+The
+.Fn sigblockall
+familiy of functions first appeared in
+.Dx 5.7 .
