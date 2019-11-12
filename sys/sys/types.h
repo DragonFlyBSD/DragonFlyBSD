@@ -41,9 +41,6 @@
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
 #endif
-#ifndef _STDINT_H_
-#include <stdint.h>
-#endif
 #include <machine/endian.h>
 #include <machine/stdint.h>
 
@@ -137,64 +134,26 @@ typedef	__uint32_t	uid_t;		/* user id */
 #endif
 typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
 
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-typedef	u_int64_t	uoff_t;
-#endif
-
-#ifdef _KERNEL
-#ifndef __BOOLEAN_T_DEFINED__
-#define	__BOOLEAN_T_DEFINED__
-typedef	__boolean_t	boolean_t;
-#endif
-
-#if !defined(__bool_true_false_are_defined) && !defined(__cplusplus)
-#define	__bool_true_false_are_defined	1
-#define	false	0
-#define	true	1
-#if __STDC_VERSION__ < 199901L && __GNUC__ < 3
-typedef	int	_Bool;
-#endif
-typedef	_Bool	bool;
-#endif /* !__bool_true_false_are_defined && !__cplusplus */
-
-#ifndef _PTRDIFF_T_DECLARED
-typedef	__ptrdiff_t	ptrdiff_t;	/* ptr1 - ptr2 for kernel */
-#define	_PTRDIFF_T_DECLARED
-#endif
-#endif /* _KERNEL */
-
-/*
- * XXX cdev_t has different meanings for userland vs kernel compiles.  What
- * do we do for _KERNEL_STRUCTURES ?  For the moment stick with the userland
- * meaning as being the more compatible solution.
- */
-
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-
-struct cdev;
-
-typedef	u_int32_t	udev_t;		/* device number */
-typedef	struct cdev	*cdev_t;
-
-#endif
-
 /*
  * The kernel now uses only udev_t or cdev_t.  Userland uses dev_t.
- * Virtual kernel builds needs dev_t in order to include userland header
- * files.
+ * Virtual kernel builds needs dev_t in order to include userland headers.
  */
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+struct cdev;
+typedef	struct cdev	*cdev_t;
+typedef	u_int32_t	udev_t;		/* device number */
+typedef	u_int64_t	uoff_t;		/* uio offset */
+#endif /* _KERNEL) || _KERNEL_STRUCTURES */
+
 #ifdef _KERNEL
-
-#define	offsetof(type, field) __offsetof(type, field)
 typedef	udev_t		dev_t;		/* device number */
+#endif /* _KERNEL */
 
-#else
-
+#ifndef _KERNEL
 typedef	u_int32_t	dev_t;		/* device number */
 #define	udev_t dev_t
 
 #if __BSD_VISIBLE
-
 /*
  * minor() gives a cookie instead of an index since we don't want to
  * change the meanings of bits 0-15 or waste time and space shifting
@@ -203,9 +162,7 @@ typedef	u_int32_t	dev_t;		/* device number */
 #define	major(x)	((int)(((u_int)(x) >> 8)&0xff)) /* major number */
 #define	minor(x)	((int)((x)&0xffff00ff))         /* minor number */
 #define	makedev(x,y)	((dev_t)(((x) << 8) | (y)))     /* create dev_t */
-
 #endif /* __BSD_VISIBLE */
-
 #endif /* !_KERNEL */
 
 #ifndef _CLOCK_T_DECLARED
@@ -245,7 +202,14 @@ typedef	__time_t	time_t;
 typedef	__timer_t	timer_t;
 #endif
 
+#ifndef _STDINT_H_
+#include <stdint.h>			/* XXX */
+#endif
+
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>			/* kernel int types */
+#endif
 #include <machine/types.h>		/* for vm_offet_t */
 #endif
 
