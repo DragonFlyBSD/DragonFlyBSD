@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)msgs.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/msgs/msgs.c,v 1.15.2.2 2003/02/11 21:31:56 mike Exp $
- * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.7 2007/11/25 18:10:07 swildner Exp $
  */
 
 /*
@@ -72,6 +71,7 @@
 #include <termcap.h>
 #include <termios.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,8 +80,8 @@
 #include "pathnames.h"
 
 #define	CMODE	0644		/* bounds file creation	mode */
-#define NO	0
-#define YES	1
+#define NO	false
+#define YES	true
 #define SUPERUSER	0	/* superuser uid */
 #define DAEMON		1	/* daemon uid */
 #define NLINES	24		/* default number of lines/crt screen */
@@ -92,8 +92,6 @@
 #define NEXT	"Next message? [yq]"
 #define MORE	"More? [ynq]"
 #define NOMORE	"(No more) [q] ?"
-
-typedef	char	bool;
 
 FILE	*msgsrc;
 FILE	*newmsg;

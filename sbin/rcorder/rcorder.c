@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 
 #include <err.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,12 +73,9 @@ static int exit_code;
 static int file_count;
 static char **file_list;
 
-typedef int bool;
-#define TRUE 1
-#define FALSE 0
 typedef bool flag;
-#define SET TRUE
-#define RESET FALSE
+#define SET true
+#define RESET false
 
 static Hash_Table provide_hash_s, *provide_hash;
 

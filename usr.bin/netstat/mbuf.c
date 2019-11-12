@@ -28,7 +28,6 @@
  *
  * @(#)mbuf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/mbuf.c,v 1.17.2.3 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/mbuf.c,v 1.7 2006/10/09 22:30:48 hsu Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -39,12 +38,12 @@
 #include <sys/sysctl.h>
 
 #include <err.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "netstat.h"
 
-#define	YES	1
-typedef int bool;
+#define	YES	true
 
 static struct mbtypenames {
 	int	mt_type;
