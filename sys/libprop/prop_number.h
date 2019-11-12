@@ -32,9 +32,7 @@
 #ifndef _PROPLIB_PROP_NUMBER_H_
 #define	_PROPLIB_PROP_NUMBER_H_
 
-#if !defined(_KERNEL) && !defined(_STANDALONE)
-#include <stdint.h>
-#endif
+#include <sys/stdint.h>
 #include <libprop/prop_object.h>
 
 typedef struct _prop_number *prop_number_t;

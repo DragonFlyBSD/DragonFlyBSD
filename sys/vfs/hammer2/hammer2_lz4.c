@@ -119,7 +119,7 @@ static MALLOC_DEFINE(C_HASHTABLE, "comphashtable",
 // Basic Types
 //**************************************
 #if defined (__STDC_VERSION__) && __STDC_VERSION__ >= 199901L   // C99
-# include <stdint.h>
+# include <sys/stdint.h>
   typedef uint8_t  BYTE;
   typedef uint16_t U16;
   typedef uint32_t U32;

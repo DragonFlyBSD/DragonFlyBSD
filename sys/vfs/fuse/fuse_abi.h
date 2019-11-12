@@ -127,7 +127,9 @@
 #ifndef _LINUX_FUSE_H
 #define _LINUX_FUSE_H
 
-#ifdef __KERNEL__
+#if defined(_KERNEL)
+#include <sys/stdint.h>
+#elif defined(__KERNEL__)
 #include <linux/types.h>
 #else
 #include <stdint.h>

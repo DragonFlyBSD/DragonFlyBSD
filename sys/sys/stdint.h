@@ -27,7 +27,9 @@
 #ifndef _SYS_STDINT_H_
 #define	_SYS_STDINT_H_
 
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
 #include <machine/stdint.h>
 
 /*
@@ -38,6 +40,8 @@
  */
 
 #ifdef _KERNEL
+#include <machine/int_limits.h>
+
 typedef	__boolean_t	boolean_t;		/* kernel only */
 
 #if !defined(__bool_true_false_are_defined) && !defined(__cplusplus)
@@ -56,6 +60,31 @@ typedef	_Bool	bool;
 typedef	__ptrdiff_t	ptrdiff_t;	/* ptr1 - ptr2 for kernel */
 #define	_PTRDIFF_T_DECLARED
 #endif
+
+typedef	__int8_t	int8_t;
+typedef	__int16_t	int16_t;
+typedef	__int32_t	int32_t;
+typedef	__int64_t	int64_t;
+
+typedef	__uint8_t	uint8_t;
+typedef	__uint16_t	uint16_t;
+typedef	__uint32_t	uint32_t;
+typedef	__uint64_t	uint64_t;
+
+#ifndef _INTPTR_T_DECLARED
+typedef	__intptr_t	intptr_t;	/* VKERNEL uses <unistd.h> */
+#define	_INTPTR_T_DECLARED
+#endif
+typedef	__uintptr_t	uintptr_t;
+
+typedef	__intmax_t	intmax_t;
+typedef	__uintmax_t	uintmax_t;
 #endif /* _KERNEL */
+
+#ifndef _KERNEL
+#ifndef _STDINT_H_
+#include <stdint.h>			/* in case we still need it */
+#endif
+#endif /* !_KERNEL */
 
 #endif /* !_SYS_STDINT_H_ */

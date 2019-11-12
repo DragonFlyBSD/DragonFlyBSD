@@ -61,7 +61,9 @@
 #include <sys/cdefs.h>
 #include <machine/endian.h>	/* Required for byteorder(3) functions. */
 #include <machine/stdint.h>	/* for __size_t, __socklen_t */
+#ifndef _KERNEL
 #include <stdint.h>		/* for uint16_t, uint32_t as per POSIX */
+#endif
 
 #define	INET_ADDRSTRLEN		16
 #define	INET6_ADDRSTRLEN	46

@@ -42,7 +42,9 @@
 #ifndef _CPU_NPX_H_
 #define	_CPU_NPX_H_
 
-#include <stdint.h>
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>
+#endif
 
 /* Environment information of floating point unit */
 struct	env87 {

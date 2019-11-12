@@ -202,9 +202,11 @@ typedef	__time_t	time_t;
 typedef	__timer_t	timer_t;
 #endif
 
+#ifndef _KERNEL
 #ifndef _STDINT_H_
 #include <stdint.h>			/* XXX */
 #endif
+#endif /* !_KERNEL */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #ifndef _SYS_STDINT_H_
