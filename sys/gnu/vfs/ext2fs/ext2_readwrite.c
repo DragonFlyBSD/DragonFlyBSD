@@ -58,7 +58,7 @@ ext2_read(struct vop_read_args *ap)
 	off_t bytesinfile;
 	long size, xfersize, blkoffset;
 	int error, orig_resid;
-	int seqcount = ap->a_ioflag >> 16;
+	int seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
@@ -102,7 +102,7 @@ ext2_read(struct vop_read_args *ap)
 			error = cluster_read(vp, (off_t)ip->i_size,
 					     lblktodoff(fs, lbn), size,
 					     uio->uio_resid,
-					     (ap->a_ioflag >> 16) * MAXBSIZE,
+					     (ap->a_ioflag >> IO_SEQSHIFT) * MAXBSIZE,
 					     &bp);
 		} else if (seqcount > 1) {
 			int nextsize = BLKSIZE(fs, ip, nextlbn);
@@ -166,7 +166,7 @@ ext2_write(struct vop_write_args *ap)
 	int blkoffset, error, flags, ioflag, resid, size, xfersize;
 
 	ioflag = ap->a_ioflag;
-	seqcount = ap->a_ioflag >> 16;
+	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 	uio = ap->a_uio;
 	vp = ap->a_vp;
 	ip = VTOI(vp);
