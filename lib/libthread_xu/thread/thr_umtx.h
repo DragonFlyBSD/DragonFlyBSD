@@ -30,9 +30,6 @@
 
 #include <unistd.h>
 
-#define UMTX_LOCKED	1
-#define UMTX_CONTESTED	2
-
 #define	cpu_pause()	__asm __volatile("pause":::"memory")
 
 typedef int umtx_t;

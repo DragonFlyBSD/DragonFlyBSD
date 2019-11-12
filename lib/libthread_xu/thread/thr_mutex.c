@@ -278,12 +278,12 @@ _mutex_reinit(pthread_mutex_t *mutexp)
 #endif
 
 void
-_mutex_fork(struct pthread *curthread)
+_mutex_fork(struct pthread *curthread, lwpid_t tid)
 {
 	struct pthread_mutex *m;
 
 	TAILQ_FOREACH(m, &curthread->mutexq, m_qe)
-		m->m_lock = UMTX_LOCKED;
+		m->m_lock = tid;
 }
 
 int

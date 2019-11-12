@@ -660,7 +660,7 @@ int	_thr_setthreaded(int);
 int	_mutex_cv_lock(pthread_mutex_t *, int count);
 int	_mutex_cv_unlock(pthread_mutex_t *, int *count);
 void	_mutex_notify_priochange(struct pthread *, struct pthread *, int);
-void	_mutex_fork(struct pthread *curthread);
+void	_mutex_fork(struct pthread *curthread, lwpid_t tid);
 void	_mutex_unlock_private(struct pthread *);
 
 #if 0

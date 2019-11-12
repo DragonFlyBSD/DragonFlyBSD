@@ -264,7 +264,7 @@ _fork(void)
 #ifdef _PTHREADS_DEBUGGING
 		_thr_log("fork-child\n", 11);
 #endif
-		_mutex_fork(curthread);
+		_mutex_fork(curthread, curthread->tid);
 
 		/* reinitalize library. */
 		_libpthread_init(curthread);

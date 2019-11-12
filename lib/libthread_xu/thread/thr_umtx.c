@@ -38,9 +38,6 @@
 
 /*
  * This function is used to acquire a contested lock.
- *
- * A *mtx value of 1 indicates locked normally.
- * A *mtx value of 2 indicates locked and contested.
  */
 int
 __thr_umtx_lock(volatile umtx_t *mtx, int id, int timo)
