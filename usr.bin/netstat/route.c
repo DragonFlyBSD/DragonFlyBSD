@@ -30,6 +30,7 @@
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -37,7 +38,7 @@
 
 #include <net/ethernet.h>
 #include <net/if.h>
-#include <net/if_var.h>
+#include <net/if_var.h>		/* for struct ifnet */
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/route.h>

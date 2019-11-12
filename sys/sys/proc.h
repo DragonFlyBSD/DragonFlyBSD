@@ -55,6 +55,7 @@
 #include <sys/ucred.h>
 #include <sys/event.h>			/* For struct klist */
 #include <sys/eventvar.h>
+#include <sys/proc_common.h>		/* For struct proc enums */
 #include <sys/sysent.h>			/* For struct sysentvec */
 #include <sys/thread.h>
 #include <sys/varsym.h>
@@ -152,20 +153,6 @@ struct vkernel_lwp;
 struct vmspace_entry;
 struct ktrace_node;
 struct sem_undo;
-
-enum lwpstat {
-	LSRUN = 1,
-	LSSTOP = 2,
-	LSSLEEP = 3,
-};
-
-enum procstat {
-	SIDL = 1,
-	SACTIVE = 2,
-	SSTOP = 3,
-	SZOMB = 4,
-	SCORE = 5,
-};
 
 struct lwp {
 	TAILQ_ENTRY(lwp) lwp_procq;	/* run/sleep queue. */
