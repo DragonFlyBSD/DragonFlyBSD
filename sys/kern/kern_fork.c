@@ -82,8 +82,10 @@ struct forklist {
 TAILQ_HEAD(forklist_head, forklist);
 static struct forklist_head fork_list = TAILQ_HEAD_INITIALIZER(fork_list);
 
-static struct lwp	*lwp_fork(struct lwp *, struct proc *, int flags,
+static struct lwp	*lwp_fork1(struct lwp *, struct proc *, int flags,
 			    const cpumask_t *mask);
+static void		lwp_fork2(struct lwp *lp1, struct proc *destproc,
+			    struct lwp *lp2, int flags);
 static int		lwp_create1(struct lwp_params *params,
 			    const cpumask_t *mask);
 static struct lock reaper_lock = LOCK_INITIALIZER("reapgl", 0, 0);
@@ -231,7 +233,8 @@ lwp_create1(struct lwp_params *uprm, const cpumask_t *umask)
 
 	lwkt_gettoken(&p->p_token);
 	plimit_lwp_fork(p);	/* force exclusive access */
-	lp = lwp_fork(curthread->td_lwp, p, RFPROC | RFMEM, mask);
+	lp = lwp_fork1(curthread->td_lwp, p, RFPROC | RFMEM, mask);
+	lwp_fork2(curthread->td_lwp, p, lp, RFPROC | RFMEM);
 	error = cpu_prepare_lwp(lp, &params);
 	if (error)
 		goto fail;
@@ -304,6 +307,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	struct proc *pptr;
 	struct pgrp *p1grp;
 	struct pgrp *plkgrp;
+	struct lwp  *lp2;
 	struct sysreaper *reap;
 	uid_t uid;
 	int ok, error;
@@ -660,6 +664,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 */
 	PHOLD(p1);
 
+	lp2 = lwp_fork1(lp1, p2, flags, NULL);
 	vm_fork(p1, p2, flags);
 	if ((flags & RFMEM) == 0)
 		wake_umtx_threads(p1);
@@ -670,7 +675,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * into userland, after it was put on the runq by
 	 * start_forked_proc().
 	 */
-	lwp_fork(lp1, p2, flags, NULL);
+	lwp_fork2(lp1, p2, lp2, flags);
 
 	if (flags == (RFFDG | RFPROC | RFPGLOCK)) {
 		mycpu->gd_cnt.v_forks++;
@@ -728,77 +733,23 @@ done:
 }
 
 static struct lwp *
-lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
+lwp_fork1(struct lwp *lp1, struct proc *destproc, int flags,
 	 const cpumask_t *mask)
 {
-	globaldata_t gd = mycpu;
-	struct lwp *lp;
-	struct thread *td;
+	struct lwp *lp2;
 
-	lp = kmalloc(sizeof(struct lwp), M_LWP, M_WAITOK|M_ZERO);
-
-	lp->lwp_proc = destproc;
-	lp->lwp_vmspace = destproc->p_vmspace;
-	lp->lwp_stat = LSRUN;
-	bcopy(&origlp->lwp_startcopy, &lp->lwp_startcopy,
-	    (unsigned) ((caddr_t)&lp->lwp_endcopy -
-			(caddr_t)&lp->lwp_startcopy));
+	lp2 = kmalloc(sizeof(struct lwp), M_LWP, M_WAITOK|M_ZERO);
+	lp2->lwp_proc = destproc;
+	lp2->lwp_stat = LSRUN;
+	bcopy(&lp1->lwp_startcopy, &lp2->lwp_startcopy,
+	    (unsigned) ((caddr_t)&lp2->lwp_endcopy -
+			(caddr_t)&lp2->lwp_startcopy));
 	if (mask != NULL)
-		lp->lwp_cpumask = *mask;
+		lp2->lwp_cpumask = *mask;
 
-	/*
-	 * Reset the sigaltstack if memory is shared, otherwise inherit
-	 * it.
-	 */
-	if (flags & RFMEM) {
-		lp->lwp_sigstk.ss_flags = SS_DISABLE;
-		lp->lwp_sigstk.ss_size = 0;
-		lp->lwp_sigstk.ss_sp = NULL;
-		lp->lwp_flags &= ~LWP_ALTSTACK;
-	} else {
-		lp->lwp_flags |= origlp->lwp_flags & LWP_ALTSTACK;
-	}
-
-	/*
-	 * Set cpbase to the last timeout that occured (not the upcoming
-	 * timeout).
-	 *
-	 * A critical section is required since a timer IPI can update
-	 * scheduler specific data.
-	 */
-	crit_enter();
-	lp->lwp_cpbase = gd->gd_schedclock.time - gd->gd_schedclock.periodic;
-	destproc->p_usched->heuristic_forking(origlp, lp);
-	crit_exit();
-	CPUMASK_ANDMASK(lp->lwp_cpumask, usched_mastermask);
-	lwkt_token_init(&lp->lwp_token, "lwp_token");
-	TAILQ_INIT(&lp->lwp_lpmap_backing_list);
-	spin_init(&lp->lwp_spin, "lwptoken");
-
-	/*
-	 * Assign the thread to the current cpu to begin with so we
-	 * can manipulate it.
-	 */
-	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, gd->gd_cpuid, 0);
-	lp->lwp_thread = td;
-	td->td_wakefromcpu = gd->gd_cpuid;
-	td->td_ucred = crhold(destproc->p_ucred);
-	td->td_proc = destproc;
-	td->td_lwp = lp;
-	td->td_switch = cpu_heavy_switch;
-#ifdef NO_LWKT_SPLIT_USERPRI
-	lwkt_setpri(td, TDPRI_USER_NORM);
-#else
-	lwkt_setpri(td, TDPRI_KERN_USER);
-#endif
-	lwkt_set_comm(td, "%s", destproc->p_comm);
-
-	/*
-	 * cpu_fork will copy and update the pcb, set up the kernel stack,
-	 * and make the child ready to run.
-	 */
-	cpu_fork(origlp, lp, flags);
-	kqueue_init(&lp->lwp_kqueue, destproc->p_fd);
+	lwkt_token_init(&lp2->lwp_token, "lwp_token");
+	TAILQ_INIT(&lp2->lwp_lpmap_backing_list);
+	spin_init(&lp2->lwp_spin, "lwptoken");
 
 	/*
 	 * Use the same TID for the first thread in the new process after
@@ -809,21 +760,83 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
 	 * NOTE: exec*() will reset the TID to 1 to keep things sane in that
 	 *	 department too.
 	 */
-	lp->lwp_tid = origlp->lwp_tid - 1;
+	lp2->lwp_tid = lp1->lwp_tid - 1;
 
 	/*
 	 * Leave 2 bits open so the pthreads library can optimize locks
 	 * by combining the TID with a few LOck-related flags.
 	 */
 	do {
-		if (lp->lwp_tid == 0 || lp->lwp_tid == 0x3FFFFFFF)
-			lp->lwp_tid = 1;
+		if (lp2->lwp_tid == 0 || lp2->lwp_tid == 0x3FFFFFFF)
+			lp2->lwp_tid = 1;
 		else
-			++lp->lwp_tid;
-	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp) != NULL);
+			++lp2->lwp_tid;
+	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp2) != NULL);
 
-	destproc->p_lasttid = lp->lwp_tid;
+	destproc->p_lasttid = lp2->lwp_tid;
 	destproc->p_nthreads++;
+
+	return lp2;
+}
+
+static void
+lwp_fork2(struct lwp *lp1, struct proc *destproc, struct lwp *lp2, int flags)
+{
+	globaldata_t gd = mycpu;
+	struct thread *td2;
+
+	lp2->lwp_vmspace = destproc->p_vmspace;
+
+	/*
+	 * Reset the sigaltstack if memory is shared, otherwise inherit
+	 * it.
+	 */
+	if (flags & RFMEM) {
+		lp2->lwp_sigstk.ss_flags = SS_DISABLE;
+		lp2->lwp_sigstk.ss_size = 0;
+		lp2->lwp_sigstk.ss_sp = NULL;
+		lp2->lwp_flags &= ~LWP_ALTSTACK;
+	} else {
+		lp2->lwp_flags |= lp1->lwp_flags & LWP_ALTSTACK;
+	}
+
+	/*
+	 * Set cpbase to the last timeout that occured (not the upcoming
+	 * timeout).
+	 *
+	 * A critical section is required since a timer IPI can update
+	 * scheduler specific data.
+	 */
+	crit_enter();
+	lp2->lwp_cpbase = gd->gd_schedclock.time - gd->gd_schedclock.periodic;
+	destproc->p_usched->heuristic_forking(lp1, lp2);
+	crit_exit();
+	CPUMASK_ANDMASK(lp2->lwp_cpumask, usched_mastermask);
+
+	/*
+	 * Assign the thread to the current cpu to begin with so we
+	 * can manipulate it.
+	 */
+	td2 = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, gd->gd_cpuid, 0);
+	lp2->lwp_thread = td2;
+	td2->td_wakefromcpu = gd->gd_cpuid;
+	td2->td_ucred = crhold(destproc->p_ucred);
+	td2->td_proc = destproc;
+	td2->td_lwp = lp2;
+	td2->td_switch = cpu_heavy_switch;
+#ifdef NO_LWKT_SPLIT_USERPRI
+	lwkt_setpri(td2, TDPRI_USER_NORM);
+#else
+	lwkt_setpri(td2, TDPRI_KERN_USER);
+#endif
+	lwkt_set_comm(td2, "%s", destproc->p_comm);
+
+	/*
+	 * cpu_fork will copy and update the pcb, set up the kernel stack,
+	 * and make the child ready to run.
+	 */
+	cpu_fork(lp1, lp2, flags);
+	kqueue_init(&lp2->lwp_kqueue, destproc->p_fd);
 
 	/*
 	 * This flag is set and never cleared.  It means that the process
@@ -843,17 +856,14 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
 	 *
 	 * XXX future - also inherit the lwp-specific process title ?
 	 */
-	if (origlp->lwp_lpmap &&
-	    (origlp->lwp_lpmap->blockallsigs & 0x7FFFFFFF)) {
-		lwp_usermap(lp, 0);
-		if (lp->lwp_lpmap) {
-			lp->lwp_lpmap->blockallsigs =
-				origlp->lwp_lpmap->blockallsigs;
+	if (lp1->lwp_lpmap &&
+	    (lp1->lwp_lpmap->blockallsigs & 0x7FFFFFFF)) {
+		lwp_usermap(lp2, 0);
+		if (lp2->lwp_lpmap) {
+			lp2->lwp_lpmap->blockallsigs =
+				lp1->lwp_lpmap->blockallsigs;
 		}
 	}
-
-
-	return (lp);
 }
 
 /*
