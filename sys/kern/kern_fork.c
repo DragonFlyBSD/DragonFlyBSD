@@ -658,9 +658,14 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	/*
 	 * This begins the section where we must prevent the parent
-	 * from being swapped.
+	 * from being messed with too heavily while we run through the
+	 * fork operation.
 	 *
 	 * Gets PRELE'd in the caller in start_forked_proc().
+	 *
+	 * Create the first lwp associated with the new proc.  It will
+	 * return via a different execution path later, directly into
+	 * userland, after it was put on the runq by start_forked_proc().
 	 */
 	PHOLD(p1);
 
@@ -668,13 +673,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	vm_fork(p1, p2, lp2, flags);
 	if ((flags & RFMEM) == 0)
 		wake_umtx_threads(p1);
-
-	/*
-	 * Create the first lwp associated with the new proc.
-	 * It will return via a different execution path later, directly
-	 * into userland, after it was put on the runq by
-	 * start_forked_proc().
-	 */
 	lwp_fork2(lp1, p2, lp2, flags);
 
 	if (flags == (RFFDG | RFPROC | RFPGLOCK)) {
@@ -732,6 +730,10 @@ done:
 	return (error);
 }
 
+/*
+ * The first part of lwp_fork*() allocates enough of the new lwp that
+ * vm_fork() can use it to deal with /dev/lpmap mappings.
+ */
 static struct lwp *
 lwp_fork1(struct lwp *lp1, struct proc *destproc, int flags,
 	 const cpumask_t *mask)
@@ -759,26 +761,20 @@ lwp_fork1(struct lwp *lp1, struct proc *destproc, int flags,
 	 *
 	 * NOTE: exec*() will reset the TID to 1 to keep things sane in that
 	 *	 department too.
+	 *
+	 * NOTE: In the case of lwp_create(), this TID represents a conflict
+	 *	 which will be resolved in lwp_fork2(), but in the case of
+	 *	 a fork(), the TID has to be correct or vm_fork() will not
+	 *	 keep the correct lpmap.
 	 */
-	lp2->lwp_tid = lp1->lwp_tid - 1;
-
-	/*
-	 * Leave 2 bits open so the pthreads library can optimize locks
-	 * by combining the TID with a few LOck-related flags.
-	 */
-	do {
-		if (lp2->lwp_tid == 0 || lp2->lwp_tid == 0x3FFFFFFF)
-			lp2->lwp_tid = 1;
-		else
-			++lp2->lwp_tid;
-	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp2) != NULL);
-
-	destproc->p_lasttid = lp2->lwp_tid;
-	destproc->p_nthreads++;
+	lp2->lwp_tid = lp1->lwp_tid;
 
 	return lp2;
 }
 
+/*
+ * The second part of lwp_fork*()
+ */
 static void
 lwp_fork2(struct lwp *lp1, struct proc *destproc, struct lwp *lp2, int flags)
 {
@@ -839,6 +835,24 @@ lwp_fork2(struct lwp *lp1, struct proc *destproc, struct lwp *lp2, int flags)
 	kqueue_init(&lp2->lwp_kqueue, destproc->p_fd);
 
 	/*
+	 * Associate the new thread with destproc, after we've set most of
+	 * it up and gotten its related td2 installed.  Otherwise we can
+	 * race other random kernel code that iterates LWPs and expects the
+	 * thread to be assigned.
+	 *
+	 * Leave 2 bits open so the pthreads library can optimize locks
+	 * by combining the TID with a few Lock-related flags.
+	 */
+	while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp2) != NULL) {
+		++lp2->lwp_tid;
+		if (lp2->lwp_tid == 0 || lp2->lwp_tid == 0x3FFFFFFF)
+			lp2->lwp_tid = 1;
+	}
+
+	destproc->p_lasttid = lp2->lwp_tid;
+	destproc->p_nthreads++;
+
+	/*
 	 * This flag is set and never cleared.  It means that the process
 	 * was threaded at some point.  Used to improve exit performance.
 	 */
@@ -853,8 +867,6 @@ lwp_fork2(struct lwp *lp1, struct proc *destproc, struct lwp *lp2, int flags)
 	 * in terms of unwinding locks and also allows userland to start
 	 * the forked process with signals blocked via the blockallsigs()
 	 * mechanism if desired.
-	 *
-	 * XXX future - also inherit the lwp-specific process title ?
 	 */
 	if (lp1->lwp_lpmap &&
 	    (lp1->lwp_lpmap->blockallsigs & 0x7FFFFFFF)) {
