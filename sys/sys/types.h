@@ -138,15 +138,15 @@ typedef	__uint32_t	uid_t;		/* user id */
 typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+typedef	u_int64_t	uoff_t;
+#endif
 
+#ifdef _KERNEL
 #ifndef __BOOLEAN_T_DEFINED__
 #define	__BOOLEAN_T_DEFINED__
 typedef	__boolean_t	boolean_t;
 #endif
 
-typedef	u_int64_t	uoff_t;
-
-#ifdef _KERNEL
 #if !defined(__bool_true_false_are_defined) && !defined(__cplusplus)
 #define	__bool_true_false_are_defined	1
 #define	false	0
@@ -162,8 +162,6 @@ typedef	__ptrdiff_t	ptrdiff_t;	/* ptr1 - ptr2 for kernel */
 #define	_PTRDIFF_T_DECLARED
 #endif
 #endif /* _KERNEL */
-
-#endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 /*
  * XXX cdev_t has different meanings for userland vs kernel compiles.  What

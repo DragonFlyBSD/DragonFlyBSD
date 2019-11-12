@@ -52,6 +52,7 @@
 #include <vm/vm_object.h>
 #endif
 
+#ifdef _KERNEL
 TAILQ_HEAD(pagerlst, vm_object);
 
 struct buf;
@@ -63,6 +64,7 @@ struct pagerops {
 	void (*pgo_putpages) (vm_object_t, vm_page_t *, int, int, int *);
 	boolean_t (*pgo_haspage) (vm_object_t, vm_pindex_t);
 };
+#endif	/* _KERNEL */
 
 /*
  * get/put return values
@@ -162,8 +164,8 @@ vm_pager_put_pages(
 static __inline boolean_t
 vm_pager_has_page(vm_object_t object, vm_pindex_t offset)
 {
-        return ((*pagertab[object->type]->pgo_haspage)(object, offset));
-} 
+	return ((*pagertab[object->type]->pgo_haspage)(object, offset));
+}
 
 struct cdev_pager_ops {
 	int (*cdev_pg_fault)(vm_object_t vm_obj, vm_ooffset_t offset,
@@ -179,6 +181,6 @@ vm_object_t cdev_pager_allocate(void *handle, enum obj_type tp,
 vm_object_t cdev_pager_lookup(void *handle);
 void cdev_pager_free_page(vm_object_t object, vm_page_t m);
 
-#endif
+#endif	/* _KERNEL */
 
-#endif				/* _VM_VM_PAGER_H_ */
+#endif	/* _VM_VM_PAGER_H_ */
