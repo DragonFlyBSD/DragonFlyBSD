@@ -342,7 +342,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	 */
 	blksize = hammer_blocksize(uio->uio_offset);
 	seqcount = howmany(uio->uio_resid, MAXBSIZE);
-	ioseqcount = (ap->a_ioflag >> 16);
+	ioseqcount = ap->a_ioflag >> IO_SEQSHIFT;
 	if (seqcount < ioseqcount)
 		seqcount = ioseqcount;
 
@@ -516,7 +516,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	hmp = ip->hmp;
 	error = 0;
 	kflags = 0;
-	seqcount = ap->a_ioflag >> 16;
+	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);

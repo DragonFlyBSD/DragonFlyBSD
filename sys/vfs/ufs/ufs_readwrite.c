@@ -70,7 +70,7 @@ ffs_read(struct vop_read_args *ap)
 	int ioflag;
 
 	vp = ap->a_vp;
-	seqcount = ap->a_ioflag >> 16;
+	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 	ip = VTOI(vp);
 	uio = ap->a_uio;
 	ioflag = ap->a_ioflag;
@@ -221,7 +221,7 @@ ffs_write(struct vop_write_args *ap)
 	struct thread *td;
 
 	extended = 0;
-	seqcount = ap->a_ioflag >> 16;
+	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 	ioflag = ap->a_ioflag;
 	uio = ap->a_uio;
 	vp = ap->a_vp;

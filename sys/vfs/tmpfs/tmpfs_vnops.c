@@ -501,7 +501,7 @@ tmpfs_read(struct vop_read_args *ap)
 	 */
 	node = VP_TO_TMPFS_NODE(vp);
         resid = uio->uio_resid;
-	seqcount = ap->a_ioflag >> 16;
+	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
         error = vop_helper_read_shortcut(ap);
         if (error)
                 return error;
@@ -621,7 +621,7 @@ tmpfs_write(struct vop_write_args *ap)
 
 	if (vp->v_type != VREG)
 		return (EINVAL);
-	seqcount = ap->a_ioflag >> 16;
+	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 
 	TMPFS_NODE_LOCK(node);
 

@@ -756,7 +756,7 @@ hammer2_vop_read(struct vop_read_args *ap)
 	uio = ap->a_uio;
 	error = 0;
 
-	seqcount = ap->a_ioflag >> 16;
+	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 	bigread = (uio->uio_resid > 100 * 1024 * 1024);
 
 	error = hammer2_read_file(ip, uio, seqcount);
@@ -801,7 +801,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 		break;
 	}
 
-	seqcount = ioflag >> 16;
+	seqcount = ioflag >> IO_SEQSHIFT;
 
 	/*
 	 * Check resource limit

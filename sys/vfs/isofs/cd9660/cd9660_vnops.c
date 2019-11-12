@@ -242,7 +242,7 @@ cd9660_read(struct vop_read_args *ap)
 	int seqcount;
 	long size, n, on;
 
-	seqcount = ap->a_ioflag >> 16;
+	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 
 	if (uio->uio_resid == 0)
 		return (0);
@@ -269,7 +269,7 @@ cd9660_read(struct vop_read_args *ap)
 				error = cluster_read(vp, (off_t)ip->i_size,
 						     loffset, size,
 						     uio->uio_resid,
-						     (ap->a_ioflag >> 16) *
+						     (ap->a_ioflag >> IO_SEQSHIFT) *
 						      MAXBSIZE,
 						     &bp);
 			} else {
