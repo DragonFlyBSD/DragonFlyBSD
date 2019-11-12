@@ -88,6 +88,7 @@ typedef struct ukpheader {
 #define LPTYPE_RESERVEDINT1	(0x4011 | UKPLEN_4)
 #define LPTYPE_BLOCKALLSIGS	(0x4012 | UKPLEN_4)
 #define LPTYPE_THREAD_TITLE	(0x4013 | UKPLEN_1024)
+#define LPTYPE_THREAD_TID	(0x4014 | UKPLEN_4)
 
 /*
  * /dev/upmap - per-process
@@ -134,7 +135,7 @@ typedef struct ukpheader {
 struct sys_lpmap {
 	ukpheader_t	header[64];
 	uint32_t	version;
-	uint32_t	reserved01;
+	uint32_t	tid;
 	uint32_t	reserved02;
 	uint32_t	blockallsigs;
 	char		thread_title[LPMAP_MAXTHREADTITLE];

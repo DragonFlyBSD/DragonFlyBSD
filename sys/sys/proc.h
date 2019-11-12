@@ -536,6 +536,7 @@ extern	u_long ps_arg_cache_limit;
 extern	int ps_argsopen;
 extern	int ps_showallprocs;
 
+struct lwp *lwpfind (struct proc *, lwpid_t);	/* Find thread in process */
 struct proc *pfind (pid_t);	/* Find process by id w/ref */
 struct proc *pfindn (pid_t);	/* Find process by id wo/ref */
 struct pgrp *pgfind (pid_t);	/* Find process group by id w/ref */

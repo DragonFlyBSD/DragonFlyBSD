@@ -202,13 +202,31 @@ procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	 * don't fall back on p->p_comm or return an error: the authentic
 	 * Linux behaviour is to return zero-length in this case.
 	 */
-	if (p->p_upmap != NULL && p->p_upmap->proc_title[0] &&
+	if (lp->lwp_lpmap != NULL && lp->lwp_lpmap->thread_title[0] &&
 	    (ps_argsopen || (CHECKIO(curp, p) &&
 			     (p->p_flags & P_INEXEC) == 0 &&
 			     !p_trespass(curp->p_ucred, p->p_ucred))
 	    )) {
 		/*
+		 * Args set via writable thread mmap.
+		 *
+		 * We must calculate the string length manually
+		 * because the user data can change at any time.
+		 */
+		bp = lp->lwp_lpmap->thread_title;
+		for (buflen = 0; buflen < UPMAP_MAXPROCTITLE - 1; ++buflen) {
+			if (bp[buflen] == 0)
+				break;
+		}
+		buf = NULL;
+	} else if (p->p_upmap != NULL && p->p_upmap->proc_title[0] &&
+		   (ps_argsopen || (CHECKIO(curp, p) &&
+			     (p->p_flags & P_INEXEC) == 0 &&
+			     !p_trespass(curp->p_ucred, p->p_ucred))
+	    )) {
+		/*
 		 * Args set via writable user process mmap.
+		 *
 		 * We must calculate the string length manually
 		 * because the user data can change at any time.
 		 */

@@ -579,6 +579,21 @@ zpfind(pid_t pid)
 	return (NULL);
 }
 
+/*
+ * Caller must hold the process token shared or exclusive.
+ * The returned lwp, if not NULL, will be held.  Caller must
+ * LWPRELE() it when done.
+ */
+struct lwp *
+lwpfind(struct proc *p, lwpid_t tid)
+{
+	struct lwp *lp;
+
+	lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, tid);
+	if (lp)
+		LWPHOLD(lp);
+	return lp;
+}
 
 void
 pgref(struct pgrp *pgrp)
@@ -1218,7 +1233,7 @@ proc_usermap(struct proc *p, int invfork)
 	lwkt_gettoken(&p->p_token);
 	upmap = kmalloc(roundup2(sizeof(*upmap), PAGE_SIZE), M_UPMAP,
 			M_WAITOK | M_ZERO);
-	if (p->p_upmap == NULL) {
+	if (p->p_upmap == NULL && (p->p_flags & P_POSTEXIT) == 0) {
 		upmap->header[0].type = UKPTYPE_VERSION;
 		upmap->header[0].offset = offsetof(struct sys_upmap, version);
 		upmap->header[1].type = UPTYPE_RUNTICKS;
@@ -1279,8 +1294,11 @@ lwp_usermap(struct lwp *lp, int invfork)
 		lpmap->header[2].type = LPTYPE_THREAD_TITLE;
 		lpmap->header[2].offset = offsetof(struct sys_lpmap,
 						   thread_title);
+		lpmap->header[3].type = LPTYPE_THREAD_TID;
+		lpmap->header[3].offset = offsetof(struct sys_lpmap, tid);
 
 		lpmap->version = LPMAP_VERSION;
+		lpmap->tid = lp->lwp_tid;
 		lp->lwp_lpmap = lpmap;
 	} else {
 		kfree(lpmap, M_UPMAP);
@@ -1809,19 +1827,32 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 {
 	int *name = (int*) arg1;
 	u_int namelen = arg2;
+	size_t n;
 	struct proc *p;
+	struct lwp *lp;
+#if 0
 	struct pargs *opa;
+#endif
 	struct pargs *pa;
 	int error = 0;
 	struct ucred *cr1 = curproc->p_ucred;
 
-	if (namelen != 1) 
+	if (namelen != 1 && namelen != 2)
 		return (EINVAL);
 
+	lp = NULL;
 	p = pfind((pid_t)name[0]);
 	if (p == NULL)
 		goto done;
 	lwkt_gettoken(&p->p_token);
+
+	if (namelen == 2) {
+		lp = lwpfind(p, (lwpid_t)name[1]);
+		if (lp)
+			lwkt_gettoken(&lp->lwp_token);
+	} else {
+		lp = NULL;
+	}
 
 	if ((!ps_argsopen) && p_trespass(cr1, p->p_ucred))
 		goto done;
@@ -1831,9 +1862,31 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		goto done;
 	}
 	if (req->oldptr) {
-		if (p->p_upmap != NULL && p->p_upmap->proc_title[0]) {
+		if (lp && lp->lwp_lpmap != NULL &&
+		    lp->lwp_lpmap->thread_title[0]) {
 			/*
-			 * Args set via writable user process mmap.
+			 * Args set via writable user thread mmap or
+			 * sysctl().
+			 *
+			 * We must calculate the string length manually
+			 * because the user data can change at any time.
+			 */
+			size_t n;
+			char *base;
+
+			base = lp->lwp_lpmap->thread_title;
+			for (n = 0; n < LPMAP_MAXTHREADTITLE - 1; ++n) {
+				if (base[n] == 0)
+					break;
+			}
+			error = SYSCTL_OUT(req, base, n);
+			if (error == 0)
+				error = SYSCTL_OUT(req, "", 1);
+		} else if (p->p_upmap != NULL && p->p_upmap->proc_title[0]) {
+			/*
+			 * Args set via writable user process mmap or
+			 * sysctl().
+			 *
 			 * We must calculate the string length manually
 			 * because the user data can change at any time.
 			 */
@@ -1850,7 +1903,7 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 				error = SYSCTL_OUT(req, "", 1);
 		} else if ((pa = p->p_args) != NULL) {
 			/*
-			 * Args set by setproctitle() sysctl.
+			 * Default/original arguments.
 			 */
 			refcount_acquire(&pa->ar_ref);
 			error = SYSCTL_OUT(req, pa->ar_args, pa->ar_length);
@@ -1865,7 +1918,11 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		goto done;
 	}
 
-	pa = kmalloc(sizeof(struct pargs) + req->newlen, M_PARGS, M_WAITOK);
+	/*
+	 * Get the new process or thread title from userland
+	 */
+	pa = kmalloc(sizeof(struct pargs) + req->newlen,
+		     M_PARGS, M_WAITOK);
 	refcount_init(&pa->ar_ref, 1);
 	pa->ar_length = req->newlen;
 	error = SYSCTL_IN(req, pa->ar_args, req->newlen);
@@ -1874,22 +1931,57 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		goto done;
 	}
 
-
-	/*
-	 * Replace p_args with the new pa.  p_args may have previously
-	 * been NULL.
-	 */
-	opa = p->p_args;
-	p->p_args = pa;
-
-	if (opa) {
-		KKASSERT(opa->ar_ref > 0);
-		if (refcount_release(&opa->ar_ref)) {
-			kfree(opa, M_PARGS);
-			/* opa = NULL; */
+	if (lp) {
+		/*
+		 * Update thread title
+		 */
+		if (lp->lwp_lpmap == NULL)
+			lwp_usermap(lp, -1);
+		if (lp->lwp_lpmap) {
+			n = req->newlen;
+			if (n >= sizeof(lp->lwp_lpmap->thread_title))
+				n = sizeof(lp->lwp_lpmap->thread_title) - 1;
+			lp->lwp_lpmap->thread_title[n] = 0;
+			bcopy(pa->ar_args, lp->lwp_lpmap->thread_title, n);
 		}
+	} else {
+		/*
+		 * Update process title
+		 */
+		if (p->p_upmap == NULL)
+			proc_usermap(p, -1);
+		if (p->p_upmap) {
+			n = req->newlen;
+			if (n >= sizeof(lp->lwp_lpmap->thread_title))
+				n = sizeof(lp->lwp_lpmap->thread_title) - 1;
+			p->p_upmap->proc_title[n] = 0;
+			bcopy(pa->ar_args, p->p_upmap->proc_title, n);
+		}
+
+#if 0
+		/*
+		 * XXX delete this code, keep original args intact for
+		 * the setproctitle("") case.
+		 * Scrap p->p_args, p->p_upmap->proc_title[] overrides it.
+		 */
+		opa = p->p_args;
+		p->p_args = NULL;
+		if (opa) {
+			KKASSERT(opa->ar_ref > 0);
+			if (refcount_release(&opa->ar_ref)) {
+				kfree(opa, M_PARGS);
+				/* opa = NULL; */
+			}
+		}
+#endif
 	}
+	kfree(pa, M_PARGS);
+
 done:
+	if (lp) {
+		lwkt_reltoken(&lp->lwp_token);
+		LWPRELE(lp);
+	}
 	if (p) {
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);

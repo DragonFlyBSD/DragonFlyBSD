@@ -234,37 +234,42 @@ int
 sys_lwp_setname(struct lwp_setname_args *uap)
 {
 	struct proc *p = curproc;
-	char comm0[MAXCOMLEN + 1];
-	const char *comm = NULL;
 	struct lwp *lp;
+	char buf[LPMAP_MAXTHREADTITLE];
 	int error;
+	size_t len;
 
 	if (uap->name != NULL) {
-		error = copyinstr(uap->name, comm0, sizeof(comm0), NULL);
+		error = copyinstr(uap->name, buf, sizeof(buf), &len);
 		if (error) {
 			if (error != ENAMETOOLONG)
 				return error;
-			/* Truncate */
-			comm0[MAXCOMLEN] = '\0';
+			buf[sizeof(buf)-1] = 0;
+			len = sizeof(buf) - 1;
 		}
-		comm = comm0;
 	} else {
-		/* Restore to the default name, i.e. process name. */
-		comm = p->p_comm;
+		buf[0] = 0;
+		len = 1;
 	}
 
 	lwkt_gettoken(&p->p_token);
 
-	lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, uap->tid);
-	if (lp != NULL) {
-		strlcpy(lp->lwp_thread->td_comm, comm,
-		    sizeof(lp->lwp_thread->td_comm));
+	lp = lwpfind(p, uap->tid);
+	if (lp) {
+		lwkt_gettoken(&lp->lwp_token);
+		if (lp->lwp_lpmap == NULL)
+			lwp_usermap(lp, -1);
+		if (lp->lwp_lpmap)
+			bcopy(buf, lp->lwp_lpmap->thread_title, len);
+		lwkt_reltoken(&lp->lwp_token);
+		LWPRELE(lp);
 		error = 0;
 	} else {
 		error = ESRCH;
 	}
 
 	lwkt_reltoken(&p->p_token);
+
 	return error;
 }
 

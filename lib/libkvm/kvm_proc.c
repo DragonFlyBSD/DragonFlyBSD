@@ -825,7 +825,7 @@ kvm_doargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr,
 char **
 kvm_getargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 {
-	int oid[4];
+	int oid[8];
 	int i;
 	size_t bufsz;
 	static unsigned long buflen;
@@ -842,7 +842,7 @@ kvm_getargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 	if (!buflen) {
 		bufsz = sizeof(buflen);
 		i = sysctlbyname("kern.ps_arg_cache_limit",
-		    &buflen, &bufsz, NULL, 0);
+				 &buflen, &bufsz, NULL, 0);
 		if (i == -1) {
 			buflen = 0;
 		} else {
@@ -858,8 +858,23 @@ kvm_getargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 		oid[1] = KERN_PROC;
 		oid[2] = KERN_PROC_ARGS;
 		oid[3] = kp->kp_pid;
-		bufsz = buflen;
-		i = sysctl(oid, 4, buf, &bufsz, 0, 0);
+		oid[4] = kp->kp_lwp.kl_tid;
+
+		/*
+		 * sysctl can take a pid in 5.7 or earlier.  In late
+		 * 5.7 the sysctl can take a pid (4 args) or pid + tid
+		 * (5 args).
+		 */
+		i = -1;
+		if (kp->kp_lwp.kl_tid > 0) {
+			bufsz = buflen;
+			i = sysctl(oid, 5, buf, &bufsz, 0, 0);
+		}
+		if (i < 0) {
+			bufsz = buflen;
+			i = sysctl(oid, 4, buf, &bufsz, 0, 0);
+		}
+
 		if (i == 0 && bufsz > 0) {
 			i = 0;
 			p = buf;
