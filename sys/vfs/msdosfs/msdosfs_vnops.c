@@ -213,7 +213,7 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	mode_t mode;
 	struct timespec ts;
 	u_long dirsperblk = pmp->pm_BytesPerSec / sizeof(struct direntry);
-	u_long fileid;
+	uint64_t fileid;
 
 	vfs_timestamp(&ts);
 	DETIMES(dep, &ts, &ts, &ts);
@@ -224,13 +224,15 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	 * doesn't work.
 	 */
 	if (dep->de_Attributes & ATTR_DIRECTORY) {
-		fileid = cntobn(pmp, dep->de_StartCluster) * dirsperblk;
+		fileid = (uint64_t)cntobn(pmp, dep->de_StartCluster) *
+		    dirsperblk;
 		if (dep->de_StartCluster == MSDOSFSROOT)
 			fileid = 1;
 	} else {
-		fileid = cntobn(pmp, dep->de_dirclust) * dirsperblk;
+		fileid = (uint64_t)cntobn(pmp, dep->de_dirclust) *
+		    dirsperblk;
 		if (dep->de_dirclust == MSDOSFSROOT)
-			fileid = roottobn(pmp, 0) * dirsperblk;
+			fileid = (uint64_t)roottobn(pmp, 0) * dirsperblk;
 		fileid += (uoff_t)dep->de_diroffset / sizeof(struct direntry);
 	}
 	vap->va_fileid = fileid;
