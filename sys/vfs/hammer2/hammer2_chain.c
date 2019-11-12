@@ -1041,7 +1041,6 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 				return EAGAIN;
 			}
 		}
-		++curthread->td_tracker;
 	} else {
 		/*
 		 * Get the appropriate lock.  If LOCKAGAIN is flagged with
@@ -1060,7 +1059,6 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		} else {
 			hammer2_mtx_ex(&chain->lock);
 		}
-		++curthread->td_tracker;
 	}
 
 	/*
@@ -1370,8 +1368,6 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	hammer2_io_t *dio;
 	u_int lockcnt;
 	int iter = 0;
-
-	--curthread->td_tracker;
 
 	/*
 	 * If multiple locks are present (or being attempted) on this
@@ -3410,7 +3406,6 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 		chain->lockcnt = 1;
 		hammer2_mtx_ex(&chain->lock);
 		allocated = 1;
-		++curthread->td_tracker;
 
 		/*
 		 * Set INITIAL to optimize I/O.  The flag will generally be

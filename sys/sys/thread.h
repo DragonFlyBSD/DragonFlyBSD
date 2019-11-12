@@ -278,7 +278,7 @@ struct thread {
     int		td_wakefromcpu;	/* who woke me up? */
     int		td_upri;	/* user priority (sub-priority under td_pri) */
     int		td_type;	/* thread type, TD_TYPE_ */
-    int		td_tracker;	/* for callers to debug lock counts */
+    int		td_tracker;	/* misc use (base value 0), recursion count */
     int		td_fdcache_lru;
     int		td_unused03[3];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
