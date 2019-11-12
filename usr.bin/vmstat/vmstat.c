@@ -935,7 +935,7 @@ dointr(void)
 		(long long)inttotal, (long long)(inttotal / uptime));
 }
 
-#define	MAX_KMSTATS	1024
+#define	MAX_KMSTATS	16384
 
 enum ksuse { KSINUSE, KSMEMUSE, KSCALLS };
 
