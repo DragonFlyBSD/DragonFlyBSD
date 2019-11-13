@@ -1670,7 +1670,7 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
  * UNAME_p=x86_64		(example)
  * UNAME_m=x86_64		(example)
  * UNAME_r=5.7-SYNTH		(example)
- * NO_DEPENDS=yes		(exec_phase)
+ * STRICT_DEPENDS=yes		(exec_phase)
  * DISTDIR=/distfiles
  * WRKDIRPREFIX=/construction
  * BATCH=yes
@@ -1809,7 +1809,7 @@ WorkerProcess(int ac, char **av)
 	setenv("UNAME_m", MachineName, 1);
 	setenv("UNAME_r", ReleaseName, 1);
 
-	addbuildenv("NO_DEPENDS", "yes", BENV_MAKECONF);
+	addbuildenv("STRICT_DEPENDS", "yes", BENV_MAKECONF);
 	addbuildenv("DISTDIR", "/distfiles", BENV_MAKECONF);
 	addbuildenv("WRKDIRPREFIX", "/construction", BENV_MAKECONF);
 	addbuildenv("BATCH", "yes", BENV_MAKECONF);
