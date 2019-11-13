@@ -328,7 +328,7 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 				((uint8_t *)bpn->b_data)[3] |= 0x80;
 			else if (cleanfat == 32)
 				((uint8_t *)bpn->b_data)[7] |= 0x08;
-			if (pmp->pm_flags & MSDOSFSMNT_WAITONFAT)
+			if (pmp->pm_mountp->mnt_flag & MNT_SYNCHRONOUS)
 				bwrite(bpn);
 			else
 				bdwrite(bpn);
@@ -338,7 +338,7 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 	/*
 	 * Write out the first (or current) FAT last.
 	 */
-	if (pmp->pm_flags & MSDOSFSMNT_WAITONFAT)
+	if (pmp->pm_mountp->mnt_flag & MNT_SYNCHRONOUS)
 		bwrite(bp);
 	else
 		bdwrite(bp);
