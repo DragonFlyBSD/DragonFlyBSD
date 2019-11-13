@@ -3,13 +3,10 @@
  *
  *	Implements the architecture independant portion of the LWKT
  *	subsystem.
- *
- * Types which must already be defined when this header is included by
- * userland:	struct md_thread
  */
 
 #ifndef _SYS_THREAD_H_
-#define _SYS_THREAD_H_
+#define	_SYS_THREAD_H_
 
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>		/* MAXCOMLEN */
@@ -23,9 +20,6 @@
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>   	/* struct timeval */
 #endif
-#ifndef _SYS_CPUMASK_H_
-#include <sys/cpumask.h>	/* cpumask_t */
-#endif
 #ifndef _SYS_LOCK_H
 #include <sys/lock.h>
 #endif
@@ -35,7 +29,7 @@
 #ifndef _SYS_IOSCHED_H_
 #include <sys/iosched.h>
 #endif
-#include <machine/thread.h>
+#include <machine/thread.h>	/* md_thread */
 #include <machine/stdint.h>
 
 struct globaldata;
@@ -46,8 +40,10 @@ struct lwkt_queue;
 struct lwkt_token;
 struct lwkt_tokref;
 struct lwkt_ipiq;
+#if 0
 struct lwkt_cpu_msg;
 struct lwkt_cpu_port;
+#endif
 struct lwkt_cpusync;
 struct fdnode;
 union sysunion;
@@ -55,8 +51,10 @@ union sysunion;
 typedef struct lwkt_queue	*lwkt_queue_t;
 typedef struct lwkt_token	*lwkt_token_t;
 typedef struct lwkt_tokref	*lwkt_tokref_t;
+#if 0
 typedef struct lwkt_cpu_msg	*lwkt_cpu_msg_t;
 typedef struct lwkt_cpu_port	*lwkt_cpu_port_t;
+#endif
 typedef struct lwkt_ipiq	*lwkt_ipiq_t;
 typedef struct lwkt_cpusync	*lwkt_cpusync_t;
 typedef struct thread 		*thread_t;
@@ -71,6 +69,9 @@ typedef TAILQ_HEAD(lwkt_queue, thread) lwkt_queue;
  * kernel nor the user version.
  */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#ifndef _SYS_CPUMASK_H_
+#include <sys/cpumask.h>	/* cpumask_t */
+#endif
 #ifndef _CPU_FRAME_H_
 #include <machine/frame.h>
 #endif
@@ -170,6 +171,7 @@ struct lwkt_tokref {
 #define MAXCPUFIFO_MASK	(MAXCPUFIFO - 1)
 #define LWKT_MAXTOKENS	32	/* max tokens beneficially held by thread */
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 /*
  * Always cast to ipifunc_t when registering an ipi.  The actual ipi function
  * is called with both the data and an interrupt frame, but the ipi function
@@ -193,8 +195,8 @@ struct lwkt_ipiq {
 };
 
 /*
- * CPU Synchronization structure.  See lwkt_cpusync_start() and
- * lwkt_cpusync_finish() for more information.
+ * CPU Synchronization structure.  See lwkt_cpusync_init() and
+ * lwkt_cpusync_interlock() for more information.
  */
 typedef void (*cpusync_func_t)(void *arg);
 
@@ -204,6 +206,7 @@ struct lwkt_cpusync {
     cpusync_func_t cs_func;		/* function to execute */
     void	*cs_data;		/* function data */
 };
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 /*
  * The standard message and queue structure used for communications between
@@ -211,12 +214,14 @@ struct lwkt_cpusync {
  * FIFO matrix allowing any cpu to send a message to any other cpu without
  * blocking.
  */
+#if 0
 typedef struct lwkt_cpu_msg {
     void	(*cm_func)(lwkt_cpu_msg_t msg);	/* primary dispatch function */
     int		cm_code;		/* request code if applicable */
     int		cm_cpu;			/* reply to cpu */
     thread_t	cm_originator;		/* originating thread for wakeup */
 } lwkt_cpu_msg;
+#endif
 
 /*
  * per-thread file descriptor cache
@@ -514,7 +519,7 @@ extern int  lwkt_create (void (*func)(void *), void *, struct thread **,
 extern void lwkt_exit (void) __dead2;
 extern void lwkt_remove_tdallq (struct thread *);
 
-#endif
+#endif /* _KERNEL */
 
-#endif
+#endif /* !_SYS_THREAD_H_ */
 
