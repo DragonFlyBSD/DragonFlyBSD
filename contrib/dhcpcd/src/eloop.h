@@ -29,8 +29,6 @@
 #ifndef ELOOP_H
 #define ELOOP_H
 
-#include <sys/signal.h>
-
 #include <time.h>
 
 /* Some systems don't define timespec macros */
@@ -107,6 +105,7 @@ int eloop_signal_mask(struct eloop *, sigset_t *oldset);
 
 struct eloop * eloop_new(void);
 int eloop_requeue(struct eloop *);
+void eloop_clear(struct eloop *);
 void eloop_free(struct eloop *);
 void eloop_exit(struct eloop *, int);
 int eloop_start(struct eloop *, sigset_t *);
