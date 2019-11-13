@@ -78,11 +78,11 @@
 
 #include <machine/inttypes.h>
 
-#include "bpb.h"
-#include "direntry.h"
-#include "denode.h"
-#include "msdosfsmount.h"
-#include "fat.h"
+#include <vfs/msdosfs/bpb.h>
+#include <vfs/msdosfs/direntry.h>
+#include <vfs/msdosfs/denode.h>
+#include <vfs/msdosfs/fat.h>
+#include <vfs/msdosfs/msdosfsmount.h>
 
 /*
  * Some general notes:

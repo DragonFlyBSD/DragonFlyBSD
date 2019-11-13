@@ -66,11 +66,11 @@
 
 #include <sys/buf2.h>
 
-#include "bpb.h"
-#include "msdosfsmount.h"
-#include "direntry.h"
-#include "denode.h"
-#include "fat.h"
+#include <vfs/msdosfs/bpb.h>
+#include <vfs/msdosfs/direntry.h>
+#include <vfs/msdosfs/denode.h>
+#include <vfs/msdosfs/fat.h>
+#include <vfs/msdosfs/msdosfsmount.h>
 
 static MALLOC_DEFINE(M_MSDOSFSNODE, "MSDOSFS node", "MSDOSFS vnode private part");
 

@@ -67,12 +67,12 @@
 
 #include <sys/buf2.h>
 
-#include "bpb.h"
-#include "bootsect.h"
-#include "direntry.h"
-#include "denode.h"
-#include "msdosfsmount.h"
-#include "fat.h"
+#include <vfs/msdosfs/bootsect.h>
+#include <vfs/msdosfs/bpb.h>
+#include <vfs/msdosfs/direntry.h>
+#include <vfs/msdosfs/denode.h>
+#include <vfs/msdosfs/fat.h>
+#include <vfs/msdosfs/msdosfsmount.h>
 
 extern struct vop_ops msdosfs_vnode_vops;
 struct iconv_functions *msdosfs_iconv;

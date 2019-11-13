@@ -58,9 +58,9 @@
 #include <sys/iconv.h>
 #include <sys/mount.h>
 
-#include "bpb.h"
-#include "msdosfsmount.h"
-#include "direntry.h"
+#include <vfs/msdosfs/bpb.h>
+#include <vfs/msdosfs/direntry.h>
+#include <vfs/msdosfs/msdosfsmount.h>
 
 extern struct iconv_functions *msdos_iconv;
 
