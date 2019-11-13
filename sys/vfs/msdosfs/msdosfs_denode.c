@@ -461,6 +461,8 @@ deupdat(struct denode *dep, int waitfor)
 		}
 	} else
 		*dirp = dir;
+	if ((DETOV(dep)->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0)
+		bp->b_flags |= B_CLUSTEROK;
 	if (waitfor)
 		error = bwrite(bp);
 	else if (vm_page_count_severe() || buf_dirty_count_severe())
