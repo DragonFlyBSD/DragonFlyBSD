@@ -1,7 +1,6 @@
 DF404.0 {
     __cxa_atexit;
     __cxa_finalize;
-    _nmalloc_thr_init;
     _Exit;
     _nmalloc_thr_prepfork;
     _nmalloc_thr_parentfork;
