@@ -4,10 +4,10 @@ DHCPCD
 Original source can be downloaded from:
 https://roy.marples.name/downloads/dhcpcd/
 
-file   = dhcpcd-8.1.0.tar.xz
-date   = 2019 October 11
-size   = 225716
-SHA256 = 0ef8bc9aab04f046e71af3a8b9edc342fedbf7eb18f5b4645e05c4a28d32668b
+file   = dhcpcd-8.1.2.tar.xz
+date   = 2019 November 13
+size   = 228736
+SHA256 = cbd3e7ab1584a5a3a49d863376fa138e5fa388397a3e27d2b35bb81a2e8c35ad
 
 The source is imported via a Makefile target rather than by hand.
 There is no README.DELETED for this import as it's all automated.
