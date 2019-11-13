@@ -49,6 +49,7 @@
 #include <machine/specialreg.h>
 
 static d_open_t cpuctl_open;
+static d_close_t cpuctl_close;
 static d_ioctl_t cpuctl_ioctl;
 
 #define	CPUCTL_VERSION 1
@@ -76,6 +77,7 @@ static struct lock cpuctl_lock = LOCK_INITIALIZER("cpuctl", 0, 0);
 static struct dev_ops cpuctl_cdevsw = {
         .head = { .name = "cpuctl", .flags = D_MPSAFE },
         .d_open =       cpuctl_open,
+	.d_close =	cpuctl_close,
         .d_ioctl =      cpuctl_ioctl,
 };
 
@@ -442,14 +444,20 @@ cpuctl_open(struct dev_open_args *ap)
 	int cpu;
 
 	cpu = dev2unit(ap->a_head.a_dev);
-	if (cpu >= ncpus) {
-		DPRINTF("[cpuctl,%d]: incorrect cpu number %d\n", __LINE__,
-		    cpu);
+	if (cpu < 0 || cpu >= ncpus) {
+		DPRINTF("[cpuctl,%d]: incorrect cpu number %d\n",
+			__LINE__, cpu);
 		return (ENXIO);
 	}
 	if (ap->a_oflags & FWRITE)
 		ret = securelevel > 0 ? EPERM : 0;
 	return (ret);
+}
+
+static int
+cpuctl_close(struct dev_close_args *ap)
+{
+	return 0;
 }
 
 static int
