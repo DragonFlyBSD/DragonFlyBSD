@@ -420,7 +420,7 @@ foundroot:
 		 * Don't allow deleting the root.
 		 */
 		if (blkoff == MSDOSFSROOT_OFS)
-			return EROFS;	/* really? XXX */
+			return (EBUSY);
 
 		/*
 		 * Write access to directory required to delete files.
@@ -457,7 +457,7 @@ foundroot:
 	 */
 	if (nameiop == NAMEI_RENAME && wantparent) {
 		if (blkoff == MSDOSFSROOT_OFS)
-			return EROFS;			/* really? XXX */
+			return (EBUSY);
 
 		error = VOP_EACCESS(vdp, VWRITE, cnp->cn_cred);
 		if (error)
