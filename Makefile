@@ -83,6 +83,7 @@ TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	libraries lint maninstall \
 	manlint mk obj objlink regress rerelease tags \
 	backupworld restoreworld restoreworld-auto \
+	build-all install-all \
 	backup-clean backup-auto-clean \
 	_obj _includes _libraries _depend _worldtmp \
 	_bootstrap-tools _build-tools _cross-tools
@@ -107,6 +108,7 @@ BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}
 .ORDER: quickkernel reinstallkernel
 .ORDER: realquickkernel installkernel
 .ORDER: realquickkernel reinstallkernel
+.ORDER: build-all install-all
 
 PATH=	/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/pkg/bin
 MAKE=	PATH=${PATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
@@ -166,7 +168,6 @@ world:
 	@printf ">>> make world completed on `LC_ALL=C date`\n                        (started ${STARTTIME})\n"
 	@echo "--------------------------------------------------------------"
 
-#
 # kernel
 #
 # Short hand for `make buildkernel installkernel'

@@ -463,6 +463,36 @@ realquickworld: _qwinit _mtreetmp _obj _includes _libraries everything _qwdone
 
 crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 
+GENLOGDIR=	/usr/obj/${.CURDIR}
+.ORDER: build-all install-all
+
+# build-all
+#
+# build
+build-all:
+	@echo "Building world, log file in ${GENLOGDIR}/bw.out"
+	@mkdir -p ${GENLOGDIR}
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildworld > ${GENLOGDIR}/bw.out 2>&1)
+	@sync
+	@echo "Building kernel, log file in ${GENLOGDIR}/bk.out"
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildkernel > ${GENLOGDIR}/bk.out 2>&1)
+	@echo "build-all completed ok"
+	@sync
+
+install-all:
+	@echo "Installing kernel, log file in ${GENLOGDIR}/bk.out"
+	@mkdir -p ${GENLOGDIR}
+	@(cd ${.CURDIR}; ${MAKE} -j 1 installkernel >> ${GENLOGDIR}/bk.out 2>&1)
+	@sync
+	@echo "Installing world, log file in ${GENLOGDIR}/bw.out"
+	@(cd ${.CURDIR}; ${MAKE} -j 1 installworld >> ${GENLOGDIR}/bw.out 2>&1)
+	@sync
+	echo "Upgrading world"
+	@(cd ${.CURDIR}; ${MAKE} -j 1 upgrade >> ${GENLOGDIR}/bw.out 2>&1)
+	@sync
+	@echo "install-all completed ok.  reboot recommended and after that, "
+	@echo "if doing a major upgrade, pkg upgrade -f"
+
 .ORDER: _bwinit ${WMAKE_TGTS} _bwdone
 .ORDER: _obj _includes
 .ORDER: _qwinit _mtreetmp _obj
