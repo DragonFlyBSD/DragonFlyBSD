@@ -137,6 +137,7 @@ MLINKS+= \
 	pthread_schedparam.3 pthread_getschedparam.3 \
 	pthread_schedparam.3 pthread_setschedparam.3 \
 	pthread_setaffinity_np.3 pthread_getaffinity_np.3 \
+	pthread_set_name_np.3 pthread_get_name_np.3 \
 	pthread_spin_init.3 pthread_spin_destroy.3 \
 	pthread_spin_lock.3 pthread_spin_trylock.3 \
 	pthread_spin_lock.3 pthread_spin_unlock.3 \

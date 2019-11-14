@@ -139,6 +139,7 @@ global:
 	_pthread_rwlockattr_init;
 	_pthread_rwlockattr_setpshared;
 	_pthread_self;
+	_pthread_get_name_np;
 	_pthread_set_name_np;
 	_pthread_setaffinity_np;
 	_pthread_setcancelstate;
@@ -301,6 +302,7 @@ global:
 	pthread_rwlockattr_init;
 	pthread_rwlockattr_setpshared;
 	pthread_self;
+	pthread_get_name_np;
 	pthread_set_name_np;
 	pthread_setaffinity_np;
 	pthread_setcancelstate;

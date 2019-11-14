@@ -35,13 +35,16 @@
 .Os
 .Sh NAME
 .Nm lwp_setname
-.Nd Change lwp name
+.Nm lwp_getname
+.Nd Set or retrieve the lwp name that shows up in ps.
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In sys/lwp.h
 .Ft int
 .Fn lwp_setname "lwpid_t tid" "const char *name"
+.Ft int
+.Fn lwp_getname "lwpid_t tid" "char *name" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn lwp_setname
@@ -60,6 +63,12 @@ The
 will be truncated,
 if it is longer than
 .Dv MAXCOMLEN .
+.Pp
+The
+.Fn lwp_getname
+system call gets the lwp name, storing it in the supplied
+buffer up to (len - 1) characters plus the terminator.
+The buffer will always be terminated.
 .Sh RETURN VALUES
 This system call returns \-1 on error and
 0 upon successful completion.

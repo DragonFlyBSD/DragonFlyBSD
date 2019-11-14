@@ -54,6 +54,7 @@ int pthread_mutexattr_getkind_np(pthread_mutexattr_t);
 int pthread_mutexattr_setkind_np(pthread_mutexattr_t *, int);
 void pthread_resume_all_np(void);
 int pthread_resume_np(pthread_t);
+void pthread_get_name_np(pthread_t, char *, size_t);
 void pthread_set_name_np(pthread_t, const char *);
 int pthread_setaffinity_np(pthread_t, size_t, const cpu_set_t *);
 int pthread_single_np(void);

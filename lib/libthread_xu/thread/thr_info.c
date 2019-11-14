@@ -59,4 +59,29 @@ _pthread_set_name_np(pthread_t thread, const char *name)
 	}
 }
 
+/* Set the thread name for debug. */
+void
+_pthread_get_name_np(pthread_t thread, char *name, size_t len)
+{
+	struct pthread *curthread = tls_get_curthread();
+
+	if (curthread == thread) {
+		lwp_getname(thread->tid, name, len);
+	} else {
+		if (_thr_ref_add(curthread, thread, 0) == 0) {
+			THR_THREAD_LOCK(curthread, thread);
+			if (thread->state != PS_DEAD)
+				lwp_getname(thread->tid, name, len);
+			else if (len)
+				name[0] = 0;
+			THR_THREAD_UNLOCK(curthread, thread);
+			_thr_ref_delete(curthread, thread);
+		} else if (len) {
+			errno = EINVAL;
+			name[0] = 0;
+		}
+	}
+}
+
+__strong_reference(_pthread_get_name_np, pthread_get_name_np);
 __strong_reference(_pthread_set_name_np, pthread_set_name_np);

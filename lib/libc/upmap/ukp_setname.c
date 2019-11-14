@@ -50,6 +50,7 @@
 #include "upmap.h"
 
 extern int __sys_lwp_setname(lwpid_t tid, const char *name);
+extern int __sys_lwp_getname(lwpid_t tid, char *name, size_t len);
 int __lwp_setname(lwpid_t tid, const char *name);
 
 static int fast_setname_count;
@@ -86,3 +87,27 @@ __lwp_setname(lwpid_t tid, const char *name)
 }
 
 __weak_reference(__lwp_setname, lwp_setname);
+
+/*
+ * Optimize lwp_getname() the same way, and as with lwp_setname() the
+ * optimization is only applicable for the current thread.
+ */
+int
+__lwp_getname(lwpid_t tid, char *name, size_t len)
+{
+	if (fast_setname_state == 0 && fast_setname_count++ >= 10) {
+		__lpmap_map(&thread_title, &fast_setname_state,
+			    LPTYPE_THREAD_TITLE);
+		__lpmap_map(&thread_tid, &fast_setname_state,
+			    LPTYPE_THREAD_TID);
+		__lpmap_map(NULL, &fast_setname_state, 0);
+	}
+	if (fast_setname_state > 0 && tid == *thread_tid) {
+		snprintf(name, len, "%s", thread_title);
+		return 0;
+	} else {
+		return __sys_lwp_getname(tid, name, len);
+	}
+}
+
+__weak_reference(__lwp_getname, lwp_getname);

@@ -160,6 +160,7 @@
 #undef		pthread_rwlockattr_init
 #undef		pthread_rwlockattr_setpshared
 #undef		pthread_self
+#undef		pthread_get_name_np
 #undef		pthread_set_name_np
 #undef		pthread_setaffinity_np
 #undef		pthread_setcancelstate

@@ -179,6 +179,7 @@
 #define		pthread_rwlockattr_init		_pthread_rwlockattr_init
 #define		pthread_rwlockattr_setpshared	_pthread_rwlockattr_setpshared
 #define		pthread_self			_pthread_self
+#define		pthread_get_name_np		_pthread_get_name_np
 #define		pthread_set_name_np		_pthread_set_name_np
 #define		pthread_setaffinity_np		_pthread_setaffinity_np
 #define		pthread_setcancelstate		_pthread_setcancelstate

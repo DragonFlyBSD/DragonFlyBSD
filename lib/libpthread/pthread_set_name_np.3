@@ -29,7 +29,8 @@
 .Os
 .Sh NAME
 .Nm pthread_set_name_np
-.Nd set the thread name
+.Nm pthread_get_name_np
+.Nd set and get the thread name
 .Sh LIBRARY
 .Lb libpthread
 .Sh SYNOPSIS
@@ -37,6 +38,8 @@
 .In pthread_np.h
 .Ft void
 .Fn pthread_set_name_np "pthread_t tid" "const char *name"
+.Ft void
+.Fn pthread_get_name_np "pthread_t tid" "char *name" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn pthread_set_name_np
@@ -45,8 +48,16 @@ function sets the internal name of the thread specified by the
 argument to the string value specified by the
 .Fa name
 argument.
+.Pp
+The
+.Fn pthread_get_name_np
+function gets the internal name of the thread specified by the
+.Fa tid
+argument and stores it in the buffer.
+If the thread does not exist, the buffer is written as an empty line.
 .Sh ERRORS
 All errors that may appear inside are silently ignored.
+However, errno may still be set.
 .Sh AUTHORS
 This manual page was written by
 .An Alexey Zelkin Aq Mt phantom@FreeBSD.org .

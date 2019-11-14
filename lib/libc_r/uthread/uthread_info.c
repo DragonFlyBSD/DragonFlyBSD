@@ -287,4 +287,17 @@ _pthread_set_name_np(pthread_t thread, const char *name)
 	}
 }
 
+void
+_pthread_get_name_np(pthread_t thread, char *name, size_t len)
+{
+	/* Check if the caller has specified a valid thread: */
+	if (thread != NULL && thread->magic == PTHREAD_MAGIC && len) {
+		if (thread->name)
+			snprintf(name, len, "%s", thread->name);
+		else
+			name[0] = 0;
+	}
+}
+
+__strong_reference(_pthread_get_name_np, pthread_get_name_np);
 __strong_reference(_pthread_set_name_np, pthread_set_name_np);
