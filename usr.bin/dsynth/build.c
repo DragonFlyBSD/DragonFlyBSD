@@ -1655,7 +1655,7 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
  * HOME=/root
  * LANG=C
  * SSL_NO_VERIFY_PEER=1
- * USE_PACKAGE_DEPENDS_ONLY=1	(exec_phase_depends)
+ * USE_PACKAGE_DEPENDS_ONLY=1
  * PORTSDIR=/xports
  * PORT_DBDIR=/options		For ports options
  * PACKAGE_BUILDING=yes		Don't build packages that aren't legally
@@ -1670,7 +1670,7 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
  * UNAME_p=x86_64		(example)
  * UNAME_m=x86_64		(example)
  * UNAME_r=5.7-SYNTH		(example)
- * STRICT_DEPENDS=yes		(exec_phase)
+ * NO_DEPENDS=yes		(conditional based on phase)
  * DISTDIR=/distfiles
  * WRKDIRPREFIX=/construction
  * BATCH=yes
@@ -1809,7 +1809,6 @@ WorkerProcess(int ac, char **av)
 	setenv("UNAME_m", MachineName, 1);
 	setenv("UNAME_r", ReleaseName, 1);
 
-	addbuildenv("STRICT_DEPENDS", "yes", BENV_MAKECONF);
 	addbuildenv("DISTDIR", "/distfiles", BENV_MAKECONF);
 	addbuildenv("WRKDIRPREFIX", "/construction", BENV_MAKECONF);
 	addbuildenv("BATCH", "yes", BENV_MAKECONF);
@@ -2138,6 +2137,40 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 			}
 		} else {
 			printf("tcgetattr failed: %s\n", strerror(errno));
+		}
+
+		/*
+		 * Additional phase-specific environment variables
+		 *
+		 * - Do not try to process missing depends outside of the
+		 *   depends phases.  Also relies on USE_PACKAGE_DEPENDS_ONLY
+		 *   in the make.conf.
+		 */
+		switch(phaseid) {
+		case PHASE_CHECK_SANITY:
+		case PHASE_FETCH:
+		case PHASE_CHECKSUM:
+		case PHASE_EXTRACT:
+		case PHASE_PATCH:
+		case PHASE_CONFIGURE:
+		case PHASE_STAGE:
+		case PHASE_TEST:
+		case PHASE_CHECK_PLIST:
+		case PHASE_INSTALL_MTREE:
+		case PHASE_INSTALL:
+		case PHASE_DEINSTALL:
+			break;
+		case PHASE_PKG_DEPENDS:
+		case PHASE_FETCH_DEPENDS:
+		case PHASE_EXTRACT_DEPENDS:
+		case PHASE_PATCH_DEPENDS:
+		case PHASE_BUILD_DEPENDS:
+		case PHASE_LIB_DEPENDS:
+		case PHASE_RUN_DEPENDS:
+			break;
+		default:
+			setenv("NO_DEPENDS", "1", 1);
+			break;
 		}
 
 		/*
