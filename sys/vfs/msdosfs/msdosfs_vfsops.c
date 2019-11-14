@@ -62,7 +62,7 @@
 #include <sys/buf.h>
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
-#include <sys/stat.h>				/* defines ALLPERMS */
+#include <sys/stat.h>
 #include <vm/vm_zone.h>
 
 #include <sys/buf2.h>
@@ -867,7 +867,6 @@ msdosfs_vptofh(struct vnode *vp, struct fid *fhp)
 
 static struct vfsops msdosfs_vfsops = {
 	.vfs_mount =		msdosfs_mount,
-	.vfs_unmount =		msdosfs_unmount,
 	.vfs_root =		msdosfs_root,
 	.vfs_statfs =		msdosfs_statfs,
 	.vfs_sync =		msdosfs_sync,
@@ -875,7 +874,8 @@ static struct vfsops msdosfs_vfsops = {
 	.vfs_checkexp =		msdosfs_checkexp,
 	.vfs_vptofh =		msdosfs_vptofh,
 	.vfs_init =		msdosfs_init,
-	.vfs_uninit =		msdosfs_uninit
+	.vfs_uninit =		msdosfs_uninit,
+	.vfs_unmount =		msdosfs_unmount,
 };
 
 VFS_SET(msdosfs_vfsops, msdos, 0);

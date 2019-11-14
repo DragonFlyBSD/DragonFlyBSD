@@ -959,8 +959,7 @@ uniqdosname(struct denode *dep, struct componentname *cnp, u_char *cp)
 
 	if (pmp->pm_flags & MSDOSFSMNT_SHORTNAME)
 		return (unix2dosfn((const u_char *)cnp->cn_nameptr, cp,
-		    cnp->cn_namelen, 0, pmp) ?
-		    0 : EINVAL);
+		    cnp->cn_namelen, 0, pmp) ? 0 : EINVAL);
 
 	for (gen = 1;; gen++) {
 		/*

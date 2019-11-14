@@ -355,7 +355,6 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		switch (vp->v_type) {
 		case VDIR:
 			return (EISDIR);
-			/* NOT REACHED */
 		case VREG:
 			/*
 			 * Truncation is only supported for regular files,
@@ -1909,7 +1908,8 @@ struct vop_ops msdosfs_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_access =		msdosfs_access,
 	.vop_bmap =		msdosfs_bmap,
-	.vop_old_lookup =	msdosfs_lookup,
+	.vop_getpages =		vop_stdgetpages,
+	.vop_putpages =		vop_stdputpages,
 	.vop_open =		msdosfs_open,
 	.vop_close =		msdosfs_close,
 	.vop_old_create =	msdosfs_create,
@@ -1917,6 +1917,7 @@ struct vop_ops msdosfs_vnode_vops = {
 	.vop_getattr =		msdosfs_getattr,
 	.vop_inactive =		msdosfs_inactive,
 	.vop_old_link =		msdosfs_link,
+	.vop_old_lookup =	msdosfs_lookup,
 	.vop_old_mkdir =	msdosfs_mkdir,
 	.vop_old_mknod =	msdosfs_mknod,
 	.vop_pathconf =		msdosfs_pathconf,
@@ -1931,6 +1932,4 @@ struct vop_ops msdosfs_vnode_vops = {
 	.vop_strategy =		msdosfs_strategy,
 	.vop_old_symlink =	msdosfs_symlink,
 	.vop_write =		msdosfs_write,
-	.vop_getpages =		vop_stdgetpages,
-	.vop_putpages =		vop_stdputpages
 };

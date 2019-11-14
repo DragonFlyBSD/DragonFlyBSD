@@ -411,9 +411,8 @@ again:
 			} else
 				kprintf("deget(): pcbmap returned %d\n", error);
 		}
-	} else {
+	} else
 		nvp->v_type = VREG;
-	}
 
 	ldep->de_modrev = init_va_filerev();
 	ldep->de_devvp = pmp->pm_devvp;

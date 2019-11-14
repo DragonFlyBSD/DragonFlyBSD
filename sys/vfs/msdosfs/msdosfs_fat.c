@@ -53,8 +53,8 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
-#include <sys/mount.h>		/* to define statfs structure */
-#include <sys/vnode.h>		/* to define vattr structure */
+#include <sys/mount.h>
+#include <sys/vnode.h>
 
 #include <sys/buf2.h>
 
@@ -66,10 +66,11 @@
 
 #define	FULL_RUN	((u_int)0xffffffff)
 
-static void fc_lookup(struct denode *dep, u_long findcn, u_long *frcnp,
-    u_long *fsrcnp);
-static int clusteralloc1(struct msdosfsmount *pmp, u_long start,
-    u_long count, u_long fillwith, u_long *retcluster, u_long *got);
+static void	fc_lookup(struct denode *dep, u_long findcn, u_long *frcnp,
+		    u_long *fsrcnp);
+static int	clusteralloc1(struct msdosfsmount *pmp, u_long start,
+		    u_long count, u_long fillwith, u_long *retcluster,
+		    u_long *got);
 
 /*
  * Given a byte offset `ofs` within FAT, return block number in backing device,
