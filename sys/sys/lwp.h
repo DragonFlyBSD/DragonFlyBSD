@@ -29,6 +29,7 @@ lwpid_t	lwp_gettid(void);
 #define _LWP_GETTID_DECLARED
 #endif
 #ifndef _LWP_SETNAME_DECLARED
+int	lwp_getname(lwpid_t, char *, size_t);
 int	lwp_setname(lwpid_t, const char *);
 #define _LWP_SETNAME_DECLARED
 #endif

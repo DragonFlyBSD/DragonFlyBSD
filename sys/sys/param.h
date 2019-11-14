@@ -212,9 +212,10 @@
  *	    timespecadd() and timespecsub() macros in <sys/time.h>
  * 500707 - libradius/libtacplus removal
  * 500708 - Handle SIOCSIFMTU directly in tap(4) to support MTU > 1500
+ * 500709 - Implement lwp_getname() and signal safety
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500708	/* propagated to newvers */
+#define __DragonFly_version 500709	/* propagated to newvers */
 
 #include <sys/_null.h>
 

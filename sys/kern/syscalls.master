@@ -734,3 +734,4 @@
 547	STD	{ int getcpuclockid(pid_t pid, lwpid_t lwp_id, clockid_t *clock_id); }
 548	STD	{ int wait6(idtype_t idtype, id_t id, int *status, int options, \
 				struct __wrusage *wrusage, siginfo_t *info); }
+549	STD	{ int lwp_getname(lwpid_t tid, char *name, size_t len); }

@@ -383,4 +383,5 @@
 #define	SYS_lwp_create2	546
 #define	SYS_getcpuclockid	547
 #define	SYS_wait6	548
-#define	SYS_MAXSYSCALL	549
+#define	SYS_lwp_getname	549
+#define	SYS_MAXSYSCALL	550

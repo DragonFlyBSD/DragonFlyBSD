@@ -230,6 +230,9 @@ sys_getgroups(struct getgroups_args *uap)
 	return (error);
 }
 
+/*
+ * Set the per-thread title for ps
+ */
 int
 sys_lwp_setname(struct lwp_setname_args *uap)
 {
@@ -269,6 +272,52 @@ sys_lwp_setname(struct lwp_setname_args *uap)
 	}
 
 	lwkt_reltoken(&p->p_token);
+
+	return error;
+}
+
+/*
+ * Retrieve the per-thread title for ps
+ */
+int
+sys_lwp_getname(struct lwp_getname_args *uap)
+{
+	struct proc *p = curproc;
+	struct lwp *lp;
+	char buf[LPMAP_MAXTHREADTITLE];
+	int error;
+	size_t len;
+	char c;
+
+	len = 0;
+	lwkt_gettoken(&p->p_token);
+
+	lp = lwpfind(p, uap->tid);
+	if (lp) {
+		lwkt_gettoken(&lp->lwp_token);
+		if (lp->lwp_lpmap == NULL)
+			lwp_usermap(lp, -1);
+		if (lp->lwp_lpmap) {
+			for (len = 0; len < LPMAP_MAXTHREADTITLE - 1 &&
+				      len < uap->len - 1; ++len) {
+				c = lp->lwp_lpmap->thread_title[len];
+				if (c == 0)
+					break;
+				buf[len] = c;
+			}
+		}
+		lwkt_reltoken(&lp->lwp_token);
+		LWPRELE(lp);
+		error = 0;
+	} else {
+		error = ESRCH;
+	}
+
+	buf[len++] = 0;
+	lwkt_reltoken(&p->p_token);
+
+	if (uap->len)
+	    error = copyout(buf, uap->name, len);
 
 	return error;
 }

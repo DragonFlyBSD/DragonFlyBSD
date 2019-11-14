@@ -555,4 +555,5 @@ const char *syscallnames[] = {
 	"lwp_create2",			/* 546 = lwp_create2 */
 	"getcpuclockid",			/* 547 = getcpuclockid */
 	"wait6",			/* 548 = wait6 */
+	"lwp_getname",			/* 549 = lwp_getname */
 };

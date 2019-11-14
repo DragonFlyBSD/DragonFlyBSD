@@ -2345,6 +2345,14 @@ struct	wait6_args {
 	struct __wrusage *	wrusage;	char wrusage_[PAD_(struct __wrusage *)];
 	siginfo_t *	info;	char info_[PAD_(siginfo_t *)];
 };
+struct	lwp_getname_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	lwpid_t	tid;	char tid_[PAD_(lwpid_t)];
+	char *	name;	char name_[PAD_(char *)];
+	size_t	len;	char len_[PAD_(size_t)];
+};
 
 #ifdef _KERNEL
 
@@ -2662,6 +2670,7 @@ int	sys_lwp_getaffinity (struct lwp_getaffinity_args *);
 int	sys_lwp_create2 (struct lwp_create2_args *);
 int	sys_getcpuclockid (struct getcpuclockid_args *);
 int	sys_wait6 (struct wait6_args *);
+int	sys_lwp_getname (struct lwp_getname_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

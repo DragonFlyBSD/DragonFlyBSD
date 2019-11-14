@@ -317,4 +317,5 @@ union sysunion {
 	struct	lwp_create2_args lwp_create2;
 	struct	getcpuclockid_args getcpuclockid;
 	struct	wait6_args wait6;
+	struct	lwp_getname_args lwp_getname;
 };
