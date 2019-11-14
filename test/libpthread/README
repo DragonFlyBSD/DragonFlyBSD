@@ -1,13 +1,8 @@
 $FreeBSD: src/lib/libc_r/test/README,v 1.1.2.1 2000/07/17 22:18:32 jasone Exp $
-$DragonFly: src/lib/libc_r/test/README,v 1.2 2003/06/17 04:26:48 dillon Exp $
 
 This test suite is meant to test general functionality of pthreads, as well as
 provide a simple framework for regression tests.  In general, this test suite
-can be used with any pthreads library, but in reality there are a number of
-libc_r-specific aspects to this test suite which would require some effort to
-get around if testing another pthreads library.
-
-This test suite assumes that libc_r is installed.
+can be used with any pthreads library.
 
 There are two forms of test that the 'verify' script understands.  The simpler
 form is the diff format, where the output of the test program is diff'ed with

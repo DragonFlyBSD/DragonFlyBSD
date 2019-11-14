@@ -37,17 +37,15 @@
 #include <sys/ioctl.h>
 #include <assert.h>
 #include <errno.h>
-#include "pthread.h"
+#include <pthread.h>
+#include <pthread_np.h>
 #include <sys/sched.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <sysexits.h>
-
-#if defined(_LIBC_R_)
-#include <pthread_np.h>
-#endif
+#include <sys/time.h>
 
 #ifndef NELEMENTS
 #define NELEMENTS(arr)	(sizeof (arr) / sizeof (arr[0]))
@@ -61,7 +59,7 @@
 
 static void log_error(const char *, ...) __printflike(1, 2);
 static void log_trace (const char *, ...) __printflike(1, 2);
-static void log (const char *, ...) __printflike(1, 2);
+static void log_info (const char *, ...) __printflike(1, 2);
 
 /*------------------------------------------------------------
  * Types
@@ -231,7 +229,7 @@ log_trace (const char *fmt, ...)
 
 
 static void
-log (const char *fmt, ...)
+log_info (const char *fmt, ...)
 {
 	va_list ap;
 
@@ -302,7 +300,7 @@ check_run_order (char *order)
 	if (errors == 0)
 		log_pass ();
 	else
-		log_error ("%d threads ran out of order", errors);
+		log_error ("%d threads ran out of order\n", errors);
 }
 
 
@@ -465,8 +463,8 @@ waiter (void *arg)
 		pthread_mutex_unlock (&waiter_mutex);
 	}
 
-	log_trace ("Thread %d: Exiting thread 0x%x\n", (int) statep->id,
-	    (int) pthread_self());
+	log_trace ("Thread %d: Exiting thread 0x%p\n", (int) statep->id,
+	    pthread_self());
 	pthread_exit (arg);
 	return (NULL);
 }
@@ -512,8 +510,8 @@ lock_twice (void *arg)
 	if (statep->ret == 0)
 		pthread_mutex_unlock (statep->cmd.mutex);
 
-	log_trace ("Thread %d: Exiting thread 0x%x\n", (int) statep->id,
-	    (int) pthread_self());
+	log_trace ("Thread %d: Exiting thread 0x%p\n", (int) statep->id,
+	    pthread_self());
 	pthread_exit (arg);
 	return (NULL);
 }
@@ -522,8 +520,8 @@ lock_twice (void *arg)
 static void
 sighandler (int signo)
 {
-	log ("Signal handler caught signal %d, thread id 0x%x\n",
-	    signo, (int) pthread_self());
+	log_info ("Signal handler caught signal %d, thread id 0x%p\n",
+	    signo, pthread_self());
 
 	if (signo == SIGINT)
 		done = 1;
@@ -596,8 +594,8 @@ mutex_init_test (void)
 	 *
 	 * pthread_mutex_init not tested for: EAGAIN ENOMEM EPERM EBUSY
 	 */
-	log ("Testing pthread_mutex_init\n");
-	log ("--------------------------\n");
+	log_info ("Testing pthread_mutex_init\n");
+	log_info ("--------------------------\n");
 
 	for (mproto = 0; mproto < NELEMENTS(protocols); mproto++) {
 		for (mkind = M_POSIX; mkind <= M_SS2_RECURSIVE; mkind++) {
@@ -615,7 +613,7 @@ mutex_init_test (void)
 				    mutex_types[mkind]) == 0);
 			}
 
-			log ("  Protocol %s, Type %s - ",
+			log_info ("  Protocol %s, Type %s - ",
 			    protocol_strs[mproto], mutextype_strs[mkind]);
 			ret = pthread_mutex_init (&mutex, &mattr);
 			check_result (/* expected */ 0, ret);
@@ -647,7 +645,9 @@ mutex_destroy_test (void)
 	pthread_attr_t pattr;
 	int mproto, ret;
 	mutex_kind_t mkind;
+#if 0
 	thread_state_t state;
+#endif
 
 	/*
 	 * Destroy a mutex.
@@ -658,13 +658,15 @@ mutex_destroy_test (void)
 	 *
 	 * pthread_mutex_destroy not tested for: 
 	 */
-	log ("Testing pthread_mutex_destroy\n");
-	log ("-----------------------------\n");
+	log_info ("Testing pthread_mutex_destroy\n");
+	log_info ("-----------------------------\n");
 
 	assert (pthread_attr_init (&pattr) == 0);
 	assert (pthread_attr_setdetachstate (&pattr,
 	    PTHREAD_CREATE_DETACHED) == 0);
+#if 0
 	state.flags = 0;	/* No flags yet. */
+#endif
 
 	for (mproto = 0; mproto < NELEMENTS(protocols); mproto++) {
 		for (mkind = M_POSIX; mkind <= M_SS2_RECURSIVE; mkind++) {
@@ -685,15 +687,15 @@ mutex_destroy_test (void)
 			/* Create the mutex. */
 			assert (pthread_mutex_init (&mutex, &mattr) == 0);
 
-			log ("  Protocol %s, Type %s\n",
+			log_info ("  Protocol %s, Type %s\n",
 			    protocol_strs[mproto], mutextype_strs[mkind]);
 
-			log ("    Destruction of unused mutex - ");
+			log_info ("    Destruction of unused mutex - ");
 			assert (pthread_mutex_init (&mutex, &mattr) == 0);
 			ret = pthread_mutex_destroy (&mutex);
 			check_result (/* expected */ 0, ret);
 
-			log ("    Destruction of mutex locked by self - ");
+			log_info ("    Destruction of mutex locked by self - ");
 			assert (pthread_mutex_init (&mutex, &mattr) == 0);
 			assert (pthread_mutex_lock (&mutex) == 0);
 			ret = pthread_mutex_destroy (&mutex);
@@ -701,7 +703,7 @@ mutex_destroy_test (void)
 			assert (pthread_mutex_unlock (&mutex) == 0);
 			assert (pthread_mutex_destroy (&mutex) == 0);
 
-			log ("    Destruction of mutex locked by another "
+			log_info ("    Destruction of mutex locked by another "
 			    "thread - ");
 			assert (pthread_mutex_init (&mutex, &mattr) == 0);
 			send_mutex_cmd (0, CMD_TAKE_MUTEX, &mutex);
@@ -712,7 +714,7 @@ mutex_destroy_test (void)
 			sleep (1);
 			assert (pthread_mutex_destroy (&mutex) == 0);
 
-			log ("    Destruction of mutex while being used in "
+			log_info ("    Destruction of mutex while being used in "
 			    "cond_wait - ");
 			assert (pthread_mutex_init (&mutex, &mattr) == 0);
 			assert (pthread_condattr_init (&cattr) == 0);
@@ -744,8 +746,8 @@ mutex_lock_test (void)
 	 *
 	 * pthread_lock not tested for: 
 	 */
-	log ("Testing pthread_mutex_lock\n");
-	log ("--------------------------\n");
+	log_info ("Testing pthread_mutex_lock\n");
+	log_info ("--------------------------\n");
 
 	assert (pthread_attr_init (&pattr) == 0);
 	assert (pthread_attr_setdetachstate (&pattr,
@@ -771,19 +773,19 @@ mutex_lock_test (void)
 			/* Create the mutex. */
 			assert (pthread_mutex_init (&mutex, &mattr) == 0);
 
-			log ("  Protocol %s, Type %s\n",
+			log_info ("  Protocol %s, Type %s\n",
 			    protocol_strs[mproto], mutextype_strs[mkind]);
 
-			log ("    Lock on unlocked mutex - ");
+			log_info ("    Lock on unlocked mutex - ");
 			ret = pthread_mutex_lock (&mutex);
 			check_result (/* expected */ 0, ret);
 			pthread_mutex_unlock (&mutex);
 
-			log ("    Lock on invalid mutex - ");
+			log_info ("    Lock on invalid mutex - ");
 			ret = pthread_mutex_lock (NULL);
 			check_result (/* expected */ EINVAL, ret);
 
-			log ("    Lock on mutex held by self - ");
+			log_info ("    Lock on mutex held by self - ");
 			assert (pthread_create (&state.tid, &pattr, lock_twice,
 			    (void *) &state) == 0);
 			/* Let the thread start. */
@@ -838,8 +840,8 @@ mutex_unlock_test (void)
 	 *
 	 * pthread_unlock not tested for: 
 	 */
-	log ("Testing pthread_mutex_unlock\n");
-	log ("----------------------------\n");
+	log_info ("Testing pthread_mutex_unlock\n");
+	log_info ("----------------------------\n");
 
 	for (mproto = 0; mproto < NELEMENTS(protocols); mproto++) {
 		for (mkind = M_POSIX; mkind <= M_SS2_RECURSIVE; mkind++) {
@@ -860,19 +862,19 @@ mutex_unlock_test (void)
 			/* Create the mutex. */
 			assert (pthread_mutex_init (&mutex, &mattr) == 0);
 
-			log ("  Protocol %s, Type %s\n",
+			log_info ("  Protocol %s, Type %s\n",
 			    protocol_strs[mproto], mutextype_strs[mkind]);
 
-			log ("    Unlock on mutex held by self - ");
+			log_info ("    Unlock on mutex held by self - ");
 			assert (pthread_mutex_lock (&mutex) == 0);
 			ret = pthread_mutex_unlock (&mutex);
 			check_result (/* expected */ 0, ret);
 
-			log ("    Unlock on invalid mutex - ");
+			log_info ("    Unlock on invalid mutex - ");
 			ret = pthread_mutex_unlock (NULL);
 			check_result (/* expected */ EINVAL, ret);
 
-			log ("    Unlock on mutex locked by another thread - ");
+			log_info ("    Unlock on mutex locked by another thread - ");
 			send_mutex_cmd (test_thread_id, CMD_TAKE_MUTEX, &mutex);
 			sleep (1);
 			ret = pthread_mutex_unlock (&mutex);
@@ -916,8 +918,8 @@ queueing_order_test (void)
 {
 	int i;
 
-	log ("Testing queueing order\n");
-	log ("----------------------\n");
+	log_info ("Testing queueing order\n");
+	log_info ("----------------------\n");
 	assert (pthread_mutex_lock (&waiter_mutex) == 0);
 	/*
 	 * Tell the threads to report when they take the waiters mutex.
@@ -939,7 +941,7 @@ queueing_order_test (void)
 	assert (pthread_mutex_unlock (&waiter_mutex) == 0);
 	sleep (1);
 
-	log ("  Queueing order on a mutex - ");
+	log_info ("  Queueing order on a mutex - ");
 	check_run_order ("9,8,7,6,5,4,3,2,1,0");
 	for (i = 0; i < NUM_THREADS; i = i + 1) {
 		/* Tell the threads to report when they've been signaled. */
@@ -953,7 +955,7 @@ queueing_order_test (void)
 	assert (pthread_mutex_lock (&waiter_mutex) == 0);
 
 
-	log ("  Queueing order on a condition variable - ");
+	log_info ("  Queueing order on a condition variable - ");
 	/*
 	 * Signal one thread to run and see that the highest priority
 	 * thread executes.
@@ -996,11 +998,11 @@ mutex_prioceiling_test (void)
 	mutex_kind_t	mkind;
 	int		i, ret, policy, my_prio, old_ceiling;
 
-	log ("Testing priority ceilings\n");
-	log ("-------------------------\n");
+	log_info ("Testing priority ceilings\n");
+	log_info ("-------------------------\n");
 	for (mkind = M_POSIX; mkind <= M_SS2_RECURSIVE; mkind++) {
 
-		log ("  Protype PTHREAD_PRIO_PROTECT, Type %s\n",
+		log_info ("  Protype PTHREAD_PRIO_PROTECT, Type %s\n",
 		    mutextype_strs[mkind]);
 
 		/*
@@ -1047,7 +1049,7 @@ mutex_prioceiling_test (void)
 		 * Check that if we attempt to take a mutex whose priority
 		 * ceiling is lower than our priority, we get an error.
 		 */
-		log ("    Lock with ceiling priority < thread priority - ");
+		log_info ("    Lock with ceiling priority < thread priority - ");
 		ret = pthread_mutex_lock (&m[0]);
 		check_result (/* expected */ EINVAL, ret);
 		if (ret == 0)
@@ -1057,7 +1059,7 @@ mutex_prioceiling_test (void)
 		 * Check that we can take a mutex whose priority ceiling
 		 * is equal to our priority.
 		 */
-		log ("    Lock with ceiling priority = thread priority - ");
+		log_info ("    Lock with ceiling priority = thread priority - ");
 		ret = pthread_mutex_lock (&m[1]);
 		check_result (/* expected */ 0, ret);
 		if (ret == 0)
@@ -1067,7 +1069,7 @@ mutex_prioceiling_test (void)
 		 * Check that we can take a mutex whose priority ceiling
 		 * is higher than our priority.
 		 */
-		log ("    Lock with ceiling priority > thread priority - ");
+		log_info ("    Lock with ceiling priority > thread priority - ");
 		ret = pthread_mutex_lock (&m[2]);
 		check_result (/* expected */ 0, ret);
 		if (ret == 0)
@@ -1079,7 +1081,7 @@ mutex_prioceiling_test (void)
 		 * priority ceiling of mutex 0 and the priority of the test
 		 * thread are both less than the priority of this thread).
 		 */
-		log ("    Preemption with ceiling priority < thread "
+		log_info ("    Preemption with ceiling priority < thread "
 		    "priority - ");
 		/* Have the test thread take mutex 0. */
 		send_mutex_cmd (test_thread_id, CMD_TAKE_MUTEX, &m[0]);
@@ -1115,7 +1117,7 @@ mutex_prioceiling_test (void)
 		 * as its time quantum should expire before the 5 seconds
 		 * are up.
 		 */
-		log ("    Preemption with ceiling priority = thread "
+		log_info ("    Preemption with ceiling priority = thread "
 		    "priority - ");
 
 		/* Have the test thread take mutex 1. */
@@ -1153,7 +1155,7 @@ mutex_prioceiling_test (void)
 		 * test thread should run to completion once it is switched
 		 * in.
 		 */
-		log ("    SCHED_FIFO scheduling and ceiling priority = "
+		log_info ("    SCHED_FIFO scheduling and ceiling priority = "
 		    "thread priority - ");
 		param.sched_priority = states[test_thread_id].priority;
 		assert (pthread_setschedparam (states[test_thread_id].tid,
@@ -1194,7 +1196,7 @@ mutex_prioceiling_test (void)
 		 * and block this thread because its active priority is
 		 * higher.
 		 */
-		log ("    SCHED_FIFO scheduling and ceiling priority > "
+		log_info ("    SCHED_FIFO scheduling and ceiling priority > "
 		    "thread priority - ");
 		/* Have the test thread take mutex 2. */
 		send_mutex_cmd (test_thread_id, CMD_TAKE_MUTEX, &m[2]);
@@ -1243,11 +1245,11 @@ mutex_prioinherit_test (void)
 	log_trace ("Current scheduling policy %d, priority %d\n",
 	    policy, my_prio);
 
-	log ("Testing priority inheritance\n");
-	log ("----------------------------\n");
+	log_info ("Testing priority inheritance\n");
+	log_info ("----------------------------\n");
 	for (mkind = M_POSIX; mkind <= M_SS2_RECURSIVE; mkind++) {
 
-		log ("  Protype PTHREAD_PRIO_INHERIT, Type %s\n",
+		log_info ("  Protype PTHREAD_PRIO_INHERIT, Type %s\n",
 		    mutextype_strs[mkind]);
 
 		/*
@@ -1287,7 +1289,7 @@ mutex_prioinherit_test (void)
 		 * Expected results:
 		 *   Threads complete in order 4, 6, 5, 3, 2
 		 */
-		log ("    Simple inheritance test - ");
+		log_info ("    Simple inheritance test - ");
 
 		/*
 		 * Command thread 4 to take mutexes 0 and 1.
@@ -1363,7 +1365,7 @@ mutex_prioinherit_test (void)
 		 *   policy is SCHED_FIFO).
 		 *   
 		 */
-		log ("    Inheritance test with change of priority - ");
+		log_info ("    Inheritance test with change of priority - ");
 
 		/*
 		 * Change threads 2 and 4 scheduling policies to be
@@ -1437,6 +1439,7 @@ int main (int argc, char *argv[])
 	sigset_t	mask;
 	struct sigaction act;
 	struct sched_param param;
+	char buf[30];
 
 	logfile = stdout;
  
@@ -1497,37 +1500,31 @@ int main (int argc, char *argv[])
 		states[i].priority = param.sched_priority;
 		assert (pthread_setschedparam (states[i].tid, SCHED_OTHER,
 		    &param) == 0);
-#if defined(_LIBC_R_)
-		{
-			char buf[30];
-
-			snprintf (buf, sizeof(buf), "waiter_%d", i);
-			pthread_set_name_np (states[i].tid, buf);
-		}
-#endif
+		snprintf (buf, sizeof(buf), "waiter_%d", i);
+		pthread_set_name_np (states[i].tid, buf);
 	}
 
 	/* Allow the threads to start. */
 	sleep (1);
 	log_trace ("Done creating threads.\n");
 
-	log ("\n");
+	log_info ("\n");
 	mutex_init_test ();
-	log ("\n");
+	log_info ("\n");
 	mutex_destroy_test ();
-	log ("\n");
+	log_info ("\n");
 	mutex_lock_test ();
-	log ("\n");
+	log_info ("\n");
 	mutex_unlock_test ();
-	log ("\n");
+	log_info ("\n");
 	queueing_order_test ();
-	log ("\n");
+	log_info ("\n");
 	mutex_prioinherit_test ();
-	log ("\n");
+	log_info ("\n");
 	mutex_prioceiling_test ();
-	log ("\n");
+	log_info ("\n");
 
-	log ("Total tests %d, passed %d, failed %d\n",
+	log_info ("Total tests %d, passed %d, failed %d\n",
 	    total, pass_count, error_count);
 
 	/* Set the done flag and signal the threads to exit. */

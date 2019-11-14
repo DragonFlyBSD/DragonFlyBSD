@@ -30,20 +30,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/test/sigwait_d.c,v 1.1.2.2 2001/06/22 21:44:27 jasone Exp $
- * $DragonFly: src/lib/libc_r/test/sigwait_d.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #include <stdlib.h>
 #include <unistd.h>
 
 #include <errno.h>
 #include <pthread.h>
+#include <pthread_np.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
-
-#if defined(_LIBC_R_)
-#include <pthread_np.h>
-#endif
 
 static int		sigcounts[NSIG + 1];
 static sigset_t		wait_mask;
@@ -178,9 +174,7 @@ int main (int argc, char *argv[])
 		fprintf (stderr, "Unable to create thread.\n");
 		exit (1);
 	}
-#if defined(_LIBC_R_)
 	pthread_set_name_np (tid, "sigwaiter");
-#endif
 
 	/*
 	 * Verify that an ignored signal doesn't cause a wakeup.

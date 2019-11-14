@@ -1,6 +1,5 @@
 #
 # $FreeBSD: src/lib/libc_r/test/Makefile,v 1.4.2.2 2001/06/22 21:44:27 jasone Exp $
-# $DragonFly: src/lib/libc_r/test/Makefile,v 1.2 2003/06/17 04:26:48 dillon Exp $
 #
 # Automated test suite for libc_r (pthreads).
 #
@@ -22,12 +21,12 @@ PTESTS := propagate_s.pl
 CTESTS := $(CTESTS:R)
 BTESTS := $(BTESTS:R)
 
-CPPFLAGS := -D_LIBC_R_ -D_REENTRANT
+CPPFLAGS := -D_REENTRANT
 CFLAGS := -Wall -pipe -g3
 LDFLAGS_A := -static
 LDFLAGS_P := -pg
 LDFLAGS_S :=
-LIBS := -lc_r
+LIBS := -lpthread
 
 # Flags passed to verify.  "-v" or "-u" may be useful.
 VFLAGS :=

@@ -30,20 +30,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/test/sigsuspend_d.c,v 1.1.2.1 2000/07/17 22:18:32 jasone Exp $
- * $DragonFly: src/lib/libc_r/test/sigsuspend_d.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #include <stdlib.h>
 #include <unistd.h>
 
 #include <errno.h>
 #include <pthread.h>
+#include <pthread_np.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
-
-#if defined(_LIBC_R_)
-#include <pthread_np.h>
-#endif
 
 static int	sigcounts[NSIG + 1];
 static int	sigfifo[NSIG + 1];
@@ -55,7 +51,7 @@ static pthread_t suspender_tid;
 static void *
 sigsuspender (void *arg)
 {
-	int save_count, status, i;
+	int status, i;
 	sigset_t run_mask;
 
 	/* Run with all signals blocked. */
@@ -72,8 +68,6 @@ sigsuspender (void *arg)
 	sigdelset (&suspender_mask, SIGUSR2);	/* terminate		*/
 
 	while (sigcounts[SIGINT] == 0) {
-		save_count = sigcounts[SIGUSR2];
-
 		status = sigsuspend (&suspender_mask);
 		if ((status == 0) || (errno != EINTR)) {
 			fprintf (stderr, "Unable to suspend for signals, "
@@ -220,9 +214,7 @@ int main (int argc, char *argv[])
 		fprintf (stderr, "Unable to create thread, errno %d.\n", errno);
 		exit (1);
 	}
-#if defined(_LIBC_R)
 	pthread_set_name_np (suspender_tid, "sigsuspender");
-#endif
 
 	/*
 	 * Verify that an ignored signal doesn't cause a wakeup.
