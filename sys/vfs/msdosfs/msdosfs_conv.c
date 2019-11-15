@@ -789,7 +789,6 @@ mbsadjpos(const char **instr, size_t inlen, size_t outlen, int weight, int flag,
 {
 	char *outp, outstr[outlen * weight + 1];
 
-	memset(outstr, 0, outlen*weight+1); /* XXX needed ? */
 	if (flag & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		outp = outstr;
 		outlen *= weight;
@@ -816,6 +815,7 @@ dos2unixchr(u_char *outbuf, const u_char **instr, size_t *ilen, int lower,
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		olen = len = 2;
 		outp = outbuf;
+
 		if (lower & (LCASE_BASE | LCASE_EXT))
 			msdosfs_iconv->convchr_case(pmp->pm_d2u,
 						    (const char **)instr, ilen,
@@ -825,6 +825,7 @@ dos2unixchr(u_char *outbuf, const u_char **instr, size_t *ilen, int lower,
 					       (const char **)instr,
 					       ilen, &outp, &olen);
 		len -= olen;
+
 		/*
 		 * return '?' if failed to convert
 		 */
@@ -876,6 +877,7 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
 			(*instr)++;
 			return (0);
 		}
+
 		/*
 		 * return magic number for ascii char
 		 */
@@ -887,17 +889,20 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
 					return (c);
 			}
 		}
+
 		/*
 		 * now convert using libiconv
 		 */
 		*instr -= unixlen;
 		*ilen = len;
+
 		olen = len = 2;
 		outp = outbuf;
 		msdosfs_iconv->convchr_case(pmp->pm_u2d, (const char **)instr,
 					    ilen, &outp, &olen,
 					    KICONV_FROM_UPPER);
 		len -= olen;
+
 		/*
 		 * cannot be converted, but has unicode char, should return magic number
 		 */
@@ -906,11 +911,13 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
 			(*instr) += unixlen;
 			return (1);
 		}
+
 		wc = 0;
 		while(len--)
 			wc |= (*(outp - len - 1) & 0xff) << (len << 3);
 		return (wc);
 	}
+
 	(*ilen)--;
 	c = *(*instr)++;
 	c = l2u[c];
@@ -970,6 +977,7 @@ unix2winchr(const u_char **instr, size_t *ilen, int lower,
 
 	if (*ilen == 0)
 		return (0);
+
 	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdosfs_iconv) {
 		outp = outbuf;
 		olen = 2;
@@ -987,9 +995,11 @@ unix2winchr(const u_char **instr, size_t *ilen, int lower,
 		 */
 		if (olen == 2)
 			return (0);
+
 		wc = (outbuf[0]<<8) | outbuf[1];
 		return (wc);
 	}
+
 	(*ilen)--;
 	wc = (*instr)[0];
 	if (lower & (LCASE_BASE | LCASE_EXT))
@@ -1044,6 +1054,7 @@ mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
 		if ((id * WIN_CHARS + count + nbp->nb_len) >
 		    sizeof(nbp->nb_buf))
 			return (ENAMETOOLONG);
+
 		memmove(slot + count, slot + WIN_CHARS, nbp->nb_len);
 	}
 
@@ -1065,12 +1076,10 @@ mbnambuf_write(struct mbnambuf *nbp, char *name, int id)
 char *
 mbnambuf_flush(struct mbnambuf *nbp, struct dirent *dp)
 {
-#if 0 /* XXX needed ? */
 	if (nbp->nb_len > sizeof(dp->d_name) - 1) {
 		mbnambuf_init(nbp);
 		return (NULL);
 	}
-#endif
 	memcpy(dp->d_name, &nbp->nb_buf[0], nbp->nb_len);
 	dp->d_name[nbp->nb_len] = '\0';
 	dp->d_namlen = nbp->nb_len;
