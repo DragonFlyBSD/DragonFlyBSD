@@ -53,10 +53,10 @@
 #include <vfs/ufs/inode.h>
 #include <sys/mount.h>
 #include <sys/namecache.h>
-#include <nfs/nfsproto.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsnode.h>
+#include <vfs/nfs/nfsproto.h>
+#include <vfs/nfs/rpcv2.h>
+#include <vfs/nfs/nfs.h>
+#include <vfs/nfs/nfsnode.h>
 #include <sys/devfs.h>
 
 #include <vm/vm.h>

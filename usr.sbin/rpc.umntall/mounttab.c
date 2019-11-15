@@ -24,13 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.umntall/mounttab.c,v 1.2.2.1 2001/12/13 01:27:20 iedowse Exp $
- * $DragonFly: src/usr.sbin/rpc.umntall/mounttab.c,v 1.4 2008/11/12 21:44:59 swildner Exp $
  */
 
 #include <sys/syslog.h>
 
 #include <rpc/rpc.h>
-#include <nfs/rpcv2.h>
+#include <vfs/nfs/rpcv2.h>
 
 #include <err.h>
 #include <errno.h>

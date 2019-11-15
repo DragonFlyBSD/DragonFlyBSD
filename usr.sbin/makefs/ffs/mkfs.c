@@ -56,8 +56,8 @@
 #include "makefs.h"
 #include "ffs.h"
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 
 #include "ffs/ufs_bswap.h"
 #include "ffs/ufs_inode.h"

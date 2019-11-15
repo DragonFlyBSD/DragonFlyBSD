@@ -95,9 +95,9 @@
 #include <sys/statvfs.h>
 #endif
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/fs.h>
 
 
 #include "ffs/ufs_bswap.h"

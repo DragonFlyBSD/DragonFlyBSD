@@ -46,7 +46,7 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 
-#include <isofs/cd9660/cd9660_node.h>
+#include <vfs/isofs/cd9660/cd9660_node.h>
 
 #include <kvm.h>
 #include <stdio.h>

@@ -44,10 +44,10 @@
 #include <sys/uio.h>
 #include <sys/namei.h>
 #include <sys/stat.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsnode.h>
+#include <vfs/nfs/rpcv2.h>
+#include <vfs/nfs/nfsproto.h>
+#include <vfs/nfs/nfs.h>
+#include <vfs/nfs/nfsnode.h>
 #include <sys/ioctl.h>
 #include <sys/tty.h>
 #include <sys/conf.h>

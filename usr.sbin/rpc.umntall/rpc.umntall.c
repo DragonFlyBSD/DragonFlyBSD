@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.13 2005/05/27 00:05:16 mux Exp $
- * $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.7 2008/11/12 21:44:59 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -33,7 +32,7 @@
 
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
-#include <nfs/rpcv2.h>
+#include <vfs/nfs/rpcv2.h>
 
 #include <err.h>
 #include <netdb.h>

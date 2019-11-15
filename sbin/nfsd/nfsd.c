@@ -46,9 +46,9 @@
 
 #include <netdb.h>
 #include <arpa/inet.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
+#include <vfs/nfs/rpcv2.h>
+#include <vfs/nfs/nfsproto.h>
+#include <vfs/nfs/nfs.h>
 
 #include <err.h>
 #include <errno.h>

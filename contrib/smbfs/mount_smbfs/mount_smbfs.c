@@ -52,7 +52,7 @@
 #include <netsmb/smb_conn.h>
 #include <netsmb/smb_lib.h>
 
-#include <fs/smbfs/smbfs.h>
+#include <vfs/smbfs/smbfs.h>
 
 #include <mntopts.h>
 

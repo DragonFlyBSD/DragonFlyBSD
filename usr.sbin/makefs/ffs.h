@@ -42,8 +42,8 @@
 #ifndef _FFS_H
 #define _FFS_H
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 
 typedef struct {
 	char	label[MAXVOLLEN];	/* volume name/label */

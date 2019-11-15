@@ -37,7 +37,7 @@
 
 #include <netdb.h>
 #include <rpc/rpc.h>
-#include <nfs/rpcv2.h>
+#include <vfs/nfs/rpcv2.h>
 
 #include <err.h>
 #include <fstab.h>

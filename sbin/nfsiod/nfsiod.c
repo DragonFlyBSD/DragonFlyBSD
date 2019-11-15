@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)nfsiod.c	8.4 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/nfsiod/nfsiod.c,v 1.9 1999/08/28 00:13:55 peter Exp $
- * $DragonFly: src/sbin/nfsiod/nfsiod.c,v 1.5 2004/11/14 20:07:25 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -40,8 +39,8 @@
 #include <sys/wait.h>
 #include <sys/mount.h>
 
-#include <nfs/rpcv2.h>
-#include <nfs/nfs.h>
+#include <vfs/nfs/rpcv2.h>
+#include <vfs/nfs/nfs.h>
 
 #include <err.h>
 #include <stdio.h>

@@ -37,8 +37,8 @@
 #include <sys/param.h>
 #include <sys/types.h>
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 #include "ffs/ffs_extern.h"
 #include "ffs/ufs_bswap.h"
 

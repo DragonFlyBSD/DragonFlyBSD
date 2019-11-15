@@ -38,9 +38,9 @@
 #include <sys/mount.h>
 #include <sys/time.h>
 #include <sys/sysctl.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
+#include <vfs/nfs/rpcv2.h>
+#include <vfs/nfs/nfsproto.h>
+#include <vfs/nfs/nfs.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <ctype.h>

@@ -36,8 +36,8 @@
  */
 
 #include <sys/param.h>
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
 
 #include <stand.h>
 #include <string.h>
