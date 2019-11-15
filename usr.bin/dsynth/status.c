@@ -157,13 +157,13 @@ status_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			continue;
 		}
 		if (scan->flags & PKGF_ERROR) {
-			ddprintf(0, "ERROR - OK (propogate failure upward)\n");
+			ddprintf(0, "ERROR - OK (propagate failure upward)\n");
 			*app |= PKGF_NOBUILD_S;
 			continue;
 		}
 		if (scan->flags & PKGF_NOBUILD) {
 			ddprintf(0, "NOBUILD - OK "
-				    "(propogate failure upward)\n");
+				    "(propagate failure upward)\n");
 			*app |= PKGF_NOBUILD_S;
 			continue;
 		}

@@ -485,7 +485,6 @@ extern int BuildSkipCount;
 extern int BuildIgnoreCount;
 extern int BuildSuccessCount;
 extern int DynamicMaxWorkers;
-extern int DoCheckPListPhase;
 
 extern buildenv_t *BuildEnv;
 extern int WorkerProcFlags;
@@ -523,7 +522,6 @@ extern const char *ConfigBase2;
 extern const char *ConfigBase;
 extern const char *DPortsPath;
 extern const char *CCachePath;
-extern const char *SynthConfig;
 extern const char *PackagesPath;
 extern const char *RepositoryPath;
 extern const char *OptionsPath;
