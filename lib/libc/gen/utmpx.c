@@ -392,13 +392,13 @@ _updwtmpx(const char *file, const struct utmpx *utx)
 	}
 	if (write(fd, utx, sizeof(*utx)) == -1)
 		goto failclose;
-	if (close(fd) == -1)
+	if (_close(fd) == -1)
 		return -1;
 	return 0;
 
 failclose:
 	saved_errno = errno;
-	(void) close(fd);
+	(void) _close(fd);
 	errno = saved_errno;
 fail:
 	return -1;

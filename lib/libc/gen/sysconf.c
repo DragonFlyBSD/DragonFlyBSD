@@ -33,6 +33,7 @@
  * $FreeBSD: src/lib/libc/gen/sysconf.c,v 1.26 2008/02/27 05:56:57 wollman Exp $
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/sysctl.h>
@@ -46,6 +47,7 @@
 #include <semaphore.h>
 #include <time.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #include "../stdlib/atexit.h"
 #include "../stdtime/tzfile.h"
@@ -611,10 +613,10 @@ yesno:
 	case _SC_IPV6:
 #if _POSIX_IPV6 == 0
 		sverrno = errno;
-		value = socket(PF_INET6, SOCK_DGRAM, 0);
+		value = _socket(PF_INET6, SOCK_DGRAM, 0);
 		errno = sverrno;
 		if (value >= 0) {
-			close(value);
+			_close(value);
 			return (200112L);
 		} else
 			return (0);

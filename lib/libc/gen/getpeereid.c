@@ -24,9 +24,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getpeereid.c,v 1.4.2.2 2002/12/23 10:25:36 maxim Exp $
- * $DragonFly: src/lib/libc/gen/getpeereid.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/ucred.h>
@@ -34,6 +34,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 int
 getpeereid(int s, uid_t *euid, gid_t *egid)
@@ -43,7 +44,7 @@ getpeereid(int s, uid_t *euid, gid_t *egid)
 	int error;
 
 	xuclen = sizeof(xuc);
-	error = getsockopt(s, 0, LOCAL_PEERCRED, &xuc, &xuclen);
+	error = _getsockopt(s, 0, LOCAL_PEERCRED, &xuc, &xuclen);
 	if (error != 0)
 		return (error);
 	if (xuc.cr_version != XUCRED_VERSION)

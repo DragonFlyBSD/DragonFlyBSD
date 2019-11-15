@@ -27,11 +27,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/devname.c,v 1.2.2.2 2001/07/31 20:10:19 tmm Exp $
- * $DragonFly: src/lib/libc/gen/devname.c,v 1.6 2005/04/26 16:59:56 joerg Exp $
  *
  * @(#)devname.c	8.2 (Berkeley) 4/29/95
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "un-namespace.h"
 
 #define DEVNAME_DEVFS_COMPAT 1
 
@@ -61,7 +62,7 @@ xdevname(dev_t dev, mode_t type)
 
 	if (!db && !failure &&
 	    !(db = dbopen(_PATH_DEVDB, O_RDONLY, 0, DB_HASH, NULL))) {
-		warn("warning: %s", _PATH_DEVDB);
+		_warn("warning: %s", _PATH_DEVDB);
 		failure = 1;
 	}
 	if (failure)

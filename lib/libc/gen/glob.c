@@ -73,6 +73,7 @@
  * 3. State-dependent encodings are not currently supported.
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/stat.h>
 
@@ -90,6 +91,7 @@
 #include <wchar.h>
 
 #include "collate.h"
+#include "un-namespace.h"
 
 /*
  * glob(3) expansion limits. Stop the expansion if any of these limits
@@ -423,7 +425,7 @@ globtilde(const Char *pattern, Char *patbuf, size_t patbuf_len, glob_t *pglob)
 		 */
 		if (issetugid() != 0 ||
 		    (h = getenv("HOME")) == NULL) {
-			if (((h = getlogin()) != NULL &&
+			if (((h = _getlogin()) != NULL &&
 			     (pwd = getpwnam(h)) != NULL) ||
 			    (pwd = getpwuid(getuid())) != NULL)
 				h = pwd->pw_dir;

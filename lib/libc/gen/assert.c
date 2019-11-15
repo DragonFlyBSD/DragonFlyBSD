@@ -28,13 +28,14 @@
  *
  * @(#)assert.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/assert.c,v 1.8 2007/01/09 00:27:53 imp Exp $
- * $DragonFly: src/lib/libc/gen/assert.c,v 1.5 2005/04/26 10:41:57 joerg Exp $
  */
 
+#include "namespace.h"
 #include <sys/syslog.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "un-namespace.h"
 
 void
 __assert(const char *func, const char *file, int line, const char *failedexpr)
@@ -99,7 +100,7 @@ __diagassert(const char *file, int line, const char *function,
 		 "assertion \"%s\" failed: file \"%s\", line %d, function \"%s\"",
 		 failedexpr, file, line, function);
 	if (diagassert_flags & DIAGASSERT_STDERR)
-		fprintf(stderr, "%s: %s\n", getprogname(), buf);
+		fprintf(stderr, "%s: %s\n", _getprogname(), buf);
 	if (diagassert_flags & DIAGASSERT_SYSLOG)
 		syslog(LOG_DEBUG | LOG_USER, "%s", buf);
 	if (diagassert_flags & DIAGASSERT_ABORT)

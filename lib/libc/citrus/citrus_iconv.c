@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  */
 
+#include "namespace.h"
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/queue.h>
@@ -55,6 +56,7 @@
 #include "citrus_lookup.h"
 #include "citrus_hash.h"
 #include "citrus_iconv.h"
+#include "un-namespace.h"
 
 #define _CITRUS_ICONV_DIR	"iconv.dir"
 #define _CITRUS_ICONV_ALIAS	"iconv.alias"

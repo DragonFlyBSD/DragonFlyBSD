@@ -28,6 +28,6 @@
 #include <pthread.h>
 
 #define WLOCK(lock)	if (__isthreaded)		\
-			    pthread_rwlock_wrlock(lock);
+			    _pthread_rwlock_wrlock(lock);
 #define UNLOCK(lock)	if (__isthreaded)		\
-			    pthread_rwlock_unlock(lock);
+			    _pthread_rwlock_unlock(lock);

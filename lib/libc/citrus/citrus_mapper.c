@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  */
 
+#include "namespace.h"
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,6 +50,7 @@
 #include "citrus_module.h"
 #include "citrus_hash.h"
 #include "citrus_mapper.h"
+#include "un-namespace.h"
 
 #define _CITRUS_MAPPER_DIR	"mapper.dir"
 

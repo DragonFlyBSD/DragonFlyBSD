@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  */
 
+#include "namespace.h"
 #include <sys/cdefs.h>
 #include <sys/endian.h>
 #include <sys/types.h>
@@ -55,6 +56,7 @@
 #include "citrus_db.h"
 #include "citrus_db_hash.h"
 #include "citrus_lookup.h"
+#include "un-namespace.h"
 
 static struct _citrus_mapper_area	*maparea = NULL;
 

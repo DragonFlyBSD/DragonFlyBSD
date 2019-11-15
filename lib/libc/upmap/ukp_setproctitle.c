@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  */
 
+#include "namespace.h"
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
@@ -43,9 +44,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-/*#include "un-namespace.h"*/
+
 #include "libc_private.h"
 #include "upmap.h"
+#include "un-namespace.h"
 
 static int fast_spt_state;
 static int fast_spt_count;
@@ -66,7 +68,7 @@ __ukp_spt(const char *fmt, va_list ap)
 	}
 	if (fast_spt_state > 0) {
 		t = UKPLEN_DECODE(UPTYPE_PROC_TITLE);
-		n = snprintf(sptbuf, t, "%s: ", getprogname());
+		n = snprintf(sptbuf, t, "%s: ", _getprogname());
 		vsnprintf(sptbuf + n, t - n, fmt, ap);
 		return 0;
 	} else {

@@ -28,7 +28,6 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rcmdsh.c,v 1.5 2003/02/27 13:40:00 nectar Exp $
- * $DragonFly: src/lib/libc/net/rcmdsh.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -36,6 +35,7 @@
  * Chris Siebenmann <cks@utcc.utoronto.ca>.
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -48,6 +48,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #ifndef _PATH_RSH
 #define	_PATH_RSH	"/usr/bin/rsh"
@@ -102,7 +103,7 @@ rcmdsh(char **ahost, int rport, const char *locuser, const char *remuser,
 	}
 
 	/* Get a socketpair we'll use for stdin and stdout. */
-	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, sp) == -1) {
+	if (_socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, sp) == -1) {
 		perror("rcmdsh: socketpair");
 		return (-1);
 	}
@@ -115,8 +116,8 @@ rcmdsh(char **ahost, int rport, const char *locuser, const char *remuser,
 		/*
 		 * Child.  We use sp[1] to be stdin/stdout, and close sp[0].
 		 */
-		close(sp[0]);
-		if (dup2(sp[1], 0) == -1 || dup2(0, 1) == -1) {
+		_close(sp[0]);
+		if (_dup2(sp[1], 0) == -1 || _dup2(0, 1) == -1) {
 			perror("rcmdsh: dup2 failed");
 			_exit(255);
 		}
@@ -158,9 +159,9 @@ rcmdsh(char **ahost, int rport, const char *locuser, const char *remuser,
 		_exit(255);
 	} else {
 		/* Parent. close sp[1], return sp[0]. */
-		close(sp[1]);
+		_close(sp[1]);
 		/* Reap child. */
-		waitpid(cpid, NULL, 0);
+		_waitpid(cpid, NULL, 0);
 		return (sp[0]);
 	}
 	/* NOTREACHED */
