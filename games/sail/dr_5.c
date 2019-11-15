@@ -87,7 +87,9 @@ mensent(struct ship *from, struct ship *to, int *crew, struct ship **captured,
 	if (men) {
 		c1 = men/100 ? crew[0] : 0;
 		c2 = (men%100)/10 ? crew[1] : 0;
+#if 0 /* double assignment */
 		c3 = men/10 ? crew[2] : 0;
+#endif
 		c3 = *captured == NULL ? crew[2] : *pc;
 	} else
 		c1 = c2 = c3 = 0;
