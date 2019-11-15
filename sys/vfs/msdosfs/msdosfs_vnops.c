@@ -300,6 +300,18 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		    vap->va_uid, vap->va_gid);
 		return (EINVAL);
 	}
+
+	/*
+	 * We don't allow setting attributes on the root directory.
+	 * The special case for the root directory is because before
+	 * FAT32, the root directory didn't have an entry for itself
+	 * (and was otherwise special).  With FAT32, the root
+	 * directory is not so special, but still doesn't have an
+	 * entry for itself.
+	 */
+	if (vp->v_flag & VROOT)
+		return (EINVAL);
+
 	if (vap->va_flags != VNOVAL) {
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
