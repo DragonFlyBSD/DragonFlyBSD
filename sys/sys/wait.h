@@ -139,6 +139,7 @@ typedef	enum
 #endif
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
+#include <sys/_siginfo.h>
 
 #ifndef _PID_T_DECLARED
 typedef	__pid_t		pid_t;		/* process id */
@@ -146,11 +147,10 @@ typedef	__pid_t		pid_t;		/* process id */
 #endif
 
 __BEGIN_DECLS
-struct __siginfo;
 pid_t	wait(int *);
 pid_t	waitpid(pid_t, int *, int);
 #if __POSIX_VISIBLE >= 200112
-int	waitid(idtype_t, id_t, struct __siginfo *, int);
+int	waitid(idtype_t, id_t, siginfo_t *, int);
 #endif
 #if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
 struct rusage;
@@ -162,7 +162,7 @@ pid_t	wait3(int *, int, struct rusage *);
 #if __BSD_VISIBLE
 pid_t	wait4(pid_t, int *, int, struct rusage *);
 pid_t	wait6(idtype_t, id_t, int *, int, struct __wrusage *,
-		struct __siginfo *);
+	    siginfo_t *);
 #endif
 __END_DECLS
 #endif
