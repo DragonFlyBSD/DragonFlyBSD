@@ -139,7 +139,6 @@ typedef	enum
 #endif
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
-#include <machine/stdint.h>
 
 #ifndef _PID_T_DECLARED
 typedef	__pid_t		pid_t;		/* process id */
