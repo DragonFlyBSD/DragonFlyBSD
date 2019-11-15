@@ -200,10 +200,8 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 .endif
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
-	rm -f ${DESTDIR}/usr/include/sys/ata.h
 	${LN} -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
 	${LN} -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
-	${LN} -s nata.h ${DESTDIR}/usr/include/sys/ata.h
 .if exists(${DESTDIR}/usr/lib/gcc2)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
 .endif

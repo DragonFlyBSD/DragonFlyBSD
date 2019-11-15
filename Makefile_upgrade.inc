@@ -3873,6 +3873,17 @@ TO_REMOVE+=/usr/share/calendar/uk_UA.KOI8-U
 TO_REMOVE+=/usr/lib/thread/libc_r.a
 TO_REMOVE+=/usr/lib/thread/libc_r.so
 TO_REMOVE+=/usr/lib/thread/libc_r.so.5
+TO_REMOVE+=/usr/include/cam
+TO_REMOVE+=/usr/include/fs
+TO_REMOVE+=/usr/include/isofs
+TO_REMOVE+=/usr/include/mfs
+TO_REMOVE+=/usr/include/msdosfs
+TO_REMOVE+=/usr/include/nfs
+TO_REMOVE+=/usr/include/ntfs
+TO_REMOVE+=/usr/include/pccard
+TO_REMOVE+=/usr/include/ufs
+TO_REMOVE+=/usr/include/vfs/ffs
+TO_REMOVE+=/usr/include/sys/ata.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

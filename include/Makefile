@@ -124,19 +124,8 @@ INCSLINKS+=	sys/$i ${INCLUDEDIR}/$i
 .for i in ${MHDRS}
 INCSLINKS+=	machine/$i ${INCLUDEDIR}/$i
 .endfor
-INCSLINKS+=	bus/cam ${INCLUDEDIR}/cam
-INCSLINKS+=	vfs/msdosfs ${INCLUDEDIR}/msdosfs
-INCSLINKS+=	vfs/isofs ${INCLUDEDIR}/isofs
-INCSLINKS+=	vfs/mfs ${INCLUDEDIR}/mfs
-INCSLINKS+=	vfs/nfs ${INCLUDEDIR}/nfs
-INCSLINKS+=	vfs/ntfs ${INCLUDEDIR}/ntfs
-INCSLINKS+=	vfs ${INCLUDEDIR}/fs
-# this is for <ufs/ufs/...> and <ufs/ffs/...> paths used by ports
-# It is hopefully a temporary hack until we have environments working.
-INCSLINKS+=	vfs ${INCLUDEDIR}/ufs
-INCSLINKS+=	ufs ${INCLUDEDIR}/vfs/ffs
+# For smbfs contrib.
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
-INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
 # Some 3rd party software looks for <floatingpoint.h>
 INCSLINKS+=	ieeefp.h ${INCLUDEDIR}/floatingpoint.h
 
