@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/share/examples/scsi_target/scsi_target.c,v 1.5.2.5 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/share/examples/scsi_target/scsi_target.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -46,10 +45,10 @@
 #include <sys/queue.h>
 #include <sys/event.h>
 #include <sys/param.h>
-#include <cam/cam_queue.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_targetio.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/cam_queue.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_targetio.h>
+#include <bus/cam/scsi/scsi_message.h>
 #include "scsi_target.h"
 
 /* Maximum amount to transfer per CTIO */

@@ -40,7 +40,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 #include "mfiutil.h"
 
 MFI_TABLE(top, drive);

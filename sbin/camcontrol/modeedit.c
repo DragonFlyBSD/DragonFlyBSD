@@ -41,9 +41,9 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
 #include <camlib.h>
 #include "camcontrol.h"
 

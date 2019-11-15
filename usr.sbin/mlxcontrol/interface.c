@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
 #include <dev/raid/mlx/mlxio.h>
 #include <dev/raid/mlx/mlxreg.h>

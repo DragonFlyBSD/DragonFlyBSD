@@ -43,7 +43,7 @@
 #include <unistd.h>
 
 #include <camlib.h>
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
 #include "mptutil.h"
 

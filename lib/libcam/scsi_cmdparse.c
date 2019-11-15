@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  * From: scsi.c,v 1.8 1997/02/22 15:07:54 peter Exp $
  * $FreeBSD: src/lib/libcam/scsi_cmdparse.c,v 1.3.2.1 2000/08/14 05:42:30 kbyanc Exp $
- * $DragonFly: src/lib/libcam/scsi_cmdparse.c,v 1.3 2007/11/24 01:53:50 pavalos Exp $
  */
 #include <stdlib.h>
 #include <stdio.h>
@@ -43,9 +42,9 @@
 #include <stdarg.h>
 #include <fcntl.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/scsi/scsi_message.h>
 #include "camlib.h"
 
 /*

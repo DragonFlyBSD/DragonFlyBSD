@@ -39,8 +39,8 @@
 #include <string.h>
 
 #include <camlib.h>
-#include <cam/scsi/scsi_message.h>
-#include <cam/scsi/scsi_pass.h>
+#include <bus/cam/scsi/scsi_message.h>
+#include <bus/cam/scsi/scsi_pass.h>
 
 #include "mptutil.h"
 

@@ -47,7 +47,7 @@ BEGIN {
 	print "#include <netinet6/nd6.h>"
 	print "#include <netinet6/ip6_mroute.h>"
 	print "#include <stdio.h>"
-	print "#include <cam/cam.h>"
+	print "#include <bus/cam/cam.h>"
 	print "#define ACPI_DEBUG_OUTPUT"
 	print "#define ACPI_APPLICATION"
 	print "#include <contrib/dev/acpica/source/include/acpi.h>"

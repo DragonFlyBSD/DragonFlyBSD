@@ -35,10 +35,10 @@
 #include <errno.h>
 #include <ctype.h>
 
-#include <cam/cam.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/cam_ccb.h>
-#include <cam/scsi/scsi_pass.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/scsi/scsi_pass.h>
 #include "camlib.h"
 
 struct cam_devequiv {

@@ -1,7 +1,6 @@
 # $NetBSD: $
 # $OpenBSD: $
 # $FreeBSD: src/share/examples/ses/Makefile.inc,v 1.1 2000/02/29 05:44:06 mjacob Exp $
-# $DragonFly: src/share/examples/ses/Makefile.inc,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 # Copyright (c) 2000 by Matthew Jacob
 # All rights reserved.
@@ -29,7 +28,7 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
+#
 # Matthew Jacob
 # Feral Software
 # mjacob@feral.com
@@ -42,7 +41,7 @@ COPTS	+=	-I/usr/include/scsi -DSESINC="<ses.h>"
 .elif	${SYS} == NetBSD
 COPTS	+=	-I/usr/include/dev/scsipi -DSESINC="<ses.h>"
 .else
-COPTS	+=	-I/usr/include/cam/scsi -DSESINC="<scsi_ses.h>"
+COPTS	+=	-I/usr/include/bus/cam/scsi -DSESINC="<scsi_ses.h>"
 .endif
 BINDIR	?=	${DESTDIR}/usr/sbin
 

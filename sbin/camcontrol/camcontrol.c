@@ -39,13 +39,13 @@
 #include <err.h>
 #include <libutil.h>
 
-#include <cam/cam.h>
-#include <cam/cam_debug.h>
-#include <cam/cam_ccb.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_da.h>
-#include <cam/scsi/scsi_pass.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_da.h>
+#include <bus/cam/scsi/scsi_pass.h>
+#include <bus/cam/scsi/scsi_message.h>
 #include <sys/nata.h>
 #include <camlib.h>
 #include "camcontrol.h"

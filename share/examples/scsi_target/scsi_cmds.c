@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/share/examples/scsi_target/scsi_cmds.c,v 1.2.2.1 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/share/examples/scsi_target/scsi_cmds.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
  */
 
 #include <stdio.h>
@@ -38,10 +37,10 @@
 #include <assert.h>
 #include <sys/types.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_targetio.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_targetio.h>
 #include "scsi_target.h"
 
 typedef int targ_start_func(struct ccb_accept_tio *, struct ccb_scsiio *);
