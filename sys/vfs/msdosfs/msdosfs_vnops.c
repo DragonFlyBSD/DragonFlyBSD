@@ -1882,7 +1882,7 @@ msdosfs_pathconf(struct vop_pathconf_args *ap)
 
 	switch (ap->a_name) {
 	case _PC_FILESIZEBITS:
-		*ap->a_retval = FAT12(pmp) ? 32 : 33;
+		*ap->a_retval = 32;
 		return (0);
 	case _PC_LINK_MAX:
 		*ap->a_retval = 1;
