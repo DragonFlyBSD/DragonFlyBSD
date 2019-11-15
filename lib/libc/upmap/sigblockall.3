@@ -36,7 +36,7 @@
 .Sh NAME
 .Nm sigblockall ,
 .Nm sigunblockall
-.Nd Quickly block and unblock all maskable signals
+.Nd quickly block and unblock all maskable signals
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -50,7 +50,9 @@ These functions operate on a per-thread basis and temporarily prevent
 signal posts to the calling thread, protecting the function from
 potential reentrancy issues due to signal interruption.
 The signal mask is not modified in any way and synchronous signals
-caused by traps (such as SIGSEGV) will still be immediately posted.
+caused by traps (such as
+.Dv SIGSEGV )
+will still be immediately posted.
 .Pp
 These functions operate via the /dev/lpmap per-thread shared page facility
 and, once primed, will operate without having to issue any system calls.
@@ -58,9 +60,13 @@ They are designed to be very fast, typically sub-10nS.
 .Pp
 The
 .Fn sigblockall
-procedure temporarily blocks the posting of any maskable signal.  SIGSTOP
-and SIGKILL are not maskable and will still be delivered, as will any
-signals caused by synchronous traps.  This facility does not prevent
+procedure temporarily blocks the posting of any maskable signal.
+.Dv SIGSTOP
+and
+.Dv SIGKILL
+are not maskable and will still be delivered, as will any
+signals caused by synchronous traps.
+This facility does not prevent
 signals from being delivered to the thread, it simply prevents the signals
 from being posted to (interrupting) the thread.
 .Pp
@@ -72,7 +78,8 @@ These functions may be used recursively.
 .Pp
 The
 .Fn sigunblockall
-procedure unwinds the operation.  On the last transition, any blocked
+procedure unwinds the operation.
+On the last transition, any blocked
 signals not otherwise masked through the normal signal mask will be
 immediately posted prior to the function returning.
 .Sh RETURN VALUES
@@ -92,24 +99,26 @@ being posted and represents cumulative state until the last call to
 If bit 31 is set in the value returned by the last call to
 .Fn sigunblockall ,
 it is an indication that signals were previously blocked and have now
-been posted.  Bit 31 will be cleared in libc's internal state
+been posted.
+Bit 31 will be cleared in libc's internal state
 for the calling thread on the last call.
 .Sh WARNINGS
 Any blocking count for the current thread present as-of any
 .Xr fork 2
 or
 .Xr vfork 2
-will be inherited by the child and must be unwound in both parent and
-child.  This also allows programs to conveniently prevent signal delivery
+will be inherited by the child and must be unwound in both parent and child.
+This also allows programs to conveniently prevent signal delivery
 in a new child process until they are ready to deal with it, if desired.
 .Pp
 Care must be taken if coupling the use of these functions with the
-longjmp and ucontext facilities.  The blocking count is associated
-with the thread, NOT the context.
+longjmp and ucontext facilities.
+The blocking count is associated with the thread, NOT the context.
 .Sh ERRORS
 These functions return -1 on error, which can only occur if the
 .Pa /dev/lpmap
-facility is not available.  However, generally speaking, because these
+facility is not available.
+However, generally speaking, because these
 procedures are meant to be used in critical code paths, callers are not
 expected to check for this failure condition in critical code paths.
 Detecting support can be done at the start of the program, if desired,
