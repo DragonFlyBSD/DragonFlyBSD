@@ -59,7 +59,7 @@ libmagic.3: ${CONTRIBDIR}/../doc/libmagic.man
 		-e s@__MAGIC__@${MAGIC}@g ${.ALLSRC} > ${.TARGET}
 
 magic: ${MAGFILES}
-	cat ${.ALLSRC} > ${.TARGET}
+	cat ${.ALLSRC:O} > ${.TARGET}
 
 magic.mgc: magic encoding.c magic.c
 	${.OBJDIR}/../mkmagic/mkmagic.nx ${.OBJDIR}/magic
