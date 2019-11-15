@@ -58,7 +58,6 @@ extern bool debug;		/* show parsing of the input */
 extern int year1, year2;
 extern time_t t1, t2;
 extern const char *calendarFile;
-extern int yrdays;
 extern struct fixs neaster, npaskha, ncny, nfullmoon, nnewmoon;
 extern struct fixs nmarequinox, nsepequinox, njunsolstice, ndecsolstice;
 extern double UTCOffset;
