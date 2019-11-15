@@ -3870,6 +3870,9 @@ TO_REMOVE+=/usr/share/calendar/hu_HU.ISO8859-2
 TO_REMOVE+=/usr/share/calendar/pt_BR.ISO8859-1
 TO_REMOVE+=/usr/share/calendar/ru_RU.KOI8-R
 TO_REMOVE+=/usr/share/calendar/uk_UA.KOI8-U
+TO_REMOVE+=/usr/lib/thread/libc_r.a
+TO_REMOVE+=/usr/lib/thread/libc_r.so
+TO_REMOVE+=/usr/lib/thread/libc_r.so.5
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

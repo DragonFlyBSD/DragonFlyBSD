@@ -30,7 +30,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread.3,v 1.33 2009/04/01 08:08:25 trhodes Exp $
 .\"
-.Dd March 3, 2018
+.Dd November 15, 2019
 .Dt PTHREAD 3
 .Os
 .Sh NAME
@@ -646,9 +646,6 @@ The current
 POSIX thread implementation is built in the library
 .Sy libthread_xu
 which contains both thread-safe libc functions and the thread functions.
-Another thread library,
-.Sy libc_r ,
-is available for testing purposes.
 .Pp
 In
 .Dx ,
@@ -706,22 +703,12 @@ At execution time,
 will resolve all these references to the strong symbols from the thread
 library.
 .Pp
-By default,
-.Sy libc_r
-is built as part of a 'make buildworld'.
-To disable the build of
-.Fa libc_r
-you must supply the '-DNO_LIBC_R' option to
-.Xr make 1
-(or set it in
-.Xr make.conf 5 ) .
-.Pp
-Another
-.Xr make.conf 5
-option,
-.Va THREAD_LIB ,
-can be used to override the system's default threading library.
-.Pp
+.\"
+.\".Xr make.conf 5
+.\"option,
+.\".Va THREAD_LIB ,
+.\"can be used to override the system's default threading library.
+.\".Pp
 A
 .Dx
 specific option exists in

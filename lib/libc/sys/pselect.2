@@ -26,7 +26,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 24, 2007
+.Dd November 15, 2019
 .Dt PSELECT 2
 .Os
 .Sh NAME
@@ -120,17 +120,3 @@ for
 .Fx
 and later modified for
 .Dx .
-.Sh BUGS
-The
-.Fn pselect
-implementation in libc_r (user multi-threading) does not mask signals, calls
-.Fn select ,
-and restores the original signal mask atomically.  A calling user thread
-using
-.Fn pselect
-to block until either a signal occurs or some descriptor changes may therefore
-block forever.
-The
-.Fn pselect
-implementations in libthread_xu (kernel multi-threading) and libc
-(single-threading) operate atomically and are therefore race-free.

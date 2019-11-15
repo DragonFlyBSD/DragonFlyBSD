@@ -30,12 +30,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/_spinlock_stub.c,v 1.4 1999/08/27 23:58:27 peter Exp $
- *
  */
 
 #include <stdio.h>
 
-/* Don't build these stubs into libc_r: */
 #include "spinlock.h"
 
 long	_atomic_lock_stub(volatile long *);

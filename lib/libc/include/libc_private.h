@@ -28,8 +28,7 @@
  *
  * $FreeBSD: head/lib/libc/include/libc_private.h 213153 2010-09-25 01:57:47Z davidxu $
  *
- * Private definitions for libc, libc_r and libpthread.
- *
+ * Private definitions for libc and libpthread.
  */
 
 #ifndef _LIBC_PRIVATE_H_

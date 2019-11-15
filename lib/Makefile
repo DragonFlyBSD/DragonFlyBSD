@@ -5,7 +5,7 @@
 # built are visible:
 #
 # [Handled by /usr/src/Makefile.inc1, before this Makefile triggers]
-#    libthread_xu|libc_r must be built before libpthread.
+#    libthread_xu must be built before libpthread.
 #    libprop must be built before libdevattr
 #
 # libcrypt must be built before libfetch, libarchive.
@@ -21,7 +21,6 @@
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
 SUBDIR_ORDERED= \
-	${_libc_r} \
 	librecrypto \
 	libressl \
 	libcrypt \
@@ -98,10 +97,6 @@ _libdmsg=	libdmsg
 
 SUBDIR+=	libldns \
 		libtcplay
-
-.if !defined(NO_LIBC_R)
-_libc_r=	libc_r
-.endif
 
 .if defined(WANT_NETGRAPH7) 
 _libnetgraph=	libnetgraph7

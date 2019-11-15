@@ -143,11 +143,6 @@ TARGET_PLATFORM= pc64
 .endif
 
 THREAD_LIB?=	thread_xu
-.if ${THREAD_LIB} == "c_r"
-.if defined(NO_LIBC_R)
-.error libc_r is chosen as the default thread library, but NO_LIBC_R is defined
-.endif
-.endif
 
 # BTOOLS	(Natively built) All non-cross-development tools that the
 #		main build needs.  This includes things like 'mkdir' and 'rm'.

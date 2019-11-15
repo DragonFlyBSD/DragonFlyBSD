@@ -46,7 +46,7 @@
 
 /*
  * Prototypes for syscalls/functions that need to be overridden
- * in libc_r/libpthread.
+ * in libpthread.
  */
 #define		accept				_accept
 #define		bind				_bind
@@ -235,7 +235,7 @@
 
 
 /*
- * Other hidden syscalls/functions that libc_r needs to override
+ * Other hidden syscalls/functions that libpthread needs to override
  * but are not used internally by libc.
  *
  * XXX - When modifying libc to use one of the following, remove

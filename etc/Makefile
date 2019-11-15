@@ -239,7 +239,7 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 		f=${DESTDIR}/usr/lib/libpthread.$$ext; \
 		dest=$$(readlink "$$f"); \
 		case "$$dest" in \
-		libthread_xu.*|libc_r.*) \
+		libthread_xu.*) \
 			ln -fs thread/$$dest $$f ;; \
 		esac; \
 	done
