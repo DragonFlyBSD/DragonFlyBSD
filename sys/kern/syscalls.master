@@ -409,7 +409,7 @@
 294	UNIMPL	nosys
 295	UNIMPL	nosys
 296	UNIMPL	nosys
-; XXX 297 is 300 in NetBSD 
+; XXX 297 is 300 in NetBSD
 297	STD	{ int fhstatfs(const struct fhandle *u_fhp, struct statfs *buf); }
 298	STD	{ int fhopen(const struct fhandle *u_fhp, int flags); }
 299	UNIMPL	nosys
@@ -631,7 +631,7 @@
 483	STD	{ int extconnect(int s, int flags, caddr_t name, int namelen); }
 484	OBSOL	syslink
 485	STD	{ int mcontrol(void *addr, size_t len, int behav, off_t value); }
-486	STD	{ int vmspace_create(void *id, int type, void *data); } 
+486	STD	{ int vmspace_create(void *id, int type, void *data); }
 487	STD	{ int vmspace_destroy(void *id); }
 488	STD	{ int vmspace_ctl(void *id, int cmd, 		\
 					  struct trapframe *tframe,	\
@@ -642,7 +642,7 @@
 490	STD	{ int vmspace_munmap(void *id, void *addr,	\
 					  size_t len); }
 491	STD	{ int vmspace_mcontrol(void *id, void *addr, 	\
-					  size_t len, int behav, off_t value); } 
+					  size_t len, int behav, off_t value); }
 492	STD	{ ssize_t vmspace_pread(void *id, void *buf, \
 			    size_t nbyte, int flags, off_t offset); }
 493	STD	{ ssize_t vmspace_pwrite(void *id, const void *buf, \
