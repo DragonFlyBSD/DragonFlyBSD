@@ -273,7 +273,8 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	error = update_mp(mp, &args);
 	if (error) {
-		msdosfs_unmount(mp, MNT_FORCE);
+		if ((mp->mnt_flag & MNT_UPDATE) == 0)
+			msdosfs_unmount(mp, MNT_FORCE);
 		return error;
 	}
 
