@@ -199,13 +199,15 @@ typedef	struct __sigset	sigset_t;
 #include <machine/signal.h>     /* sig_atomic_t; trap codes; sigcontext */
 
 #if __POSIX_VISIBLE
+struct __siginfo;
+
 /*
  * Signal vector "template" used in sigaction call.
  */
 struct	sigaction {
 	union {
 		void    (*__sa_handler) (int);
-		void    (*__sa_sigaction) (int, siginfo_t *, void *);
+		void    (*__sa_sigaction) (int, struct __siginfo *, void *);
 	} __sigaction_u;		/* signal handler */
 	int	sa_flags;		/* see signal options below */
 	sigset_t sa_mask;		/* signal mask to apply */
