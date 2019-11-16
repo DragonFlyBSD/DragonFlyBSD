@@ -255,6 +255,9 @@ struct msdosfs_args {
 #define mprintf(fmt, ...)
 #endif
 
+#define ASSERT_VOP_ELOCKED(vp, str)	KASSERT(vn_islocked(vp), (str))
+#define ASSERT_VOP_LOCKED(vp, str)	KASSERT(vn_islocked(vp), (str))
+
 #define DOINGASYNC(vp)	(((vp)->v_mount->mnt_kern_flag & MNT_ASYNC) != 0)
 
 #endif /* !_MSDOSFS_MSDOSFSMOUNT_H_ */
