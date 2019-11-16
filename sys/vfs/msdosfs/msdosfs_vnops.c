@@ -952,7 +952,7 @@ abortit:
 	}
 
 	/*
-	 * fvp, fdvp are unlocked, tvp, tdvp are locked.  Lock fvp and note
+	 * fvp is unlocked, fdvp, tvp, tdvp are locked.  Lock fvp and note
 	 * that we have to unlock it to use the abortit target.
 	 */
 	error = vn_lock(fvp, LK_EXCLUSIVE | LK_FAILRECLAIM);
