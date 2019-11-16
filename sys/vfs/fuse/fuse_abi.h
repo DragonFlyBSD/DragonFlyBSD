@@ -34,6 +34,9 @@
 */
 
 /*
+ * XXX Note: Don't edit this file. Keep it unchanged from Linux kernel.
+ */
+/*
  * This file defines the kernel interface of FUSE
  *
  * Protocol changelog:
