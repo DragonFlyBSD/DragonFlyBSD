@@ -35,7 +35,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/_null.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
 
 /*
  * Prototype functions which were historically defined in <string.h>, but
@@ -43,6 +43,11 @@
  */
 #if __BSD_VISIBLE
 #include <strings.h>
+
+#ifndef _MODE_T_DECLARED
+typedef	__uint16_t	mode_t;
+#define	_MODE_T_DECLARED
+#endif
 #endif
 
 #ifndef _SIZE_T_DECLARED
@@ -51,7 +56,7 @@ typedef	__size_t	size_t;
 #endif
 
 __BEGIN_DECLS
-#if __XSI_VISIBLE >= 600
+#if __XSI_VISIBLE
 void	*memccpy(void * __restrict, const void * __restrict, int, size_t);
 #endif
 void	*memchr(const void *, int, size_t) __pure;
