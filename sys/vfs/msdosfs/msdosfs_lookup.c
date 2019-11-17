@@ -116,7 +116,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 	int unlen;
 
 	int wincnt = 1;
-	int chksum = -1;
+	int chksum = -1, chksum_ok;
 	int olddos = 1;
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 
@@ -275,7 +275,8 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 				/*
 				 * Check for a checksum or name match
 				 */
-				if (chksum != winChksum(dep->deName)
+				chksum_ok = (chksum == winChksum(dep->deName));
+				if (!chksum_ok
 				    && (!olddos || memcmp(dosfilename,
 				    dep->deName, 11))) {
 					chksum = -1;
@@ -289,7 +290,21 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 				 * this lookup.
 				 */
 				dp->de_fndoffset = diroff;
-				dp->de_fndcnt = wincnt - 1;
+				if (chksum_ok && nameiop == NAMEI_RENAME) {
+					/*
+					 * Target had correct long name
+					 * directory entries, reuse them
+					 * as needed.
+					 */
+					dp->de_fndcnt = wincnt - 1;
+				} else {
+					/*
+					 * Long name directory entries
+					 * not present or corrupt, can only
+					 * reuse dos directory entry.
+					 */
+					dp->de_fndcnt = 0;
+				}
 
 				goto found;
 			}
