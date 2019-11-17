@@ -2716,7 +2716,7 @@ static void i9xx_update_primary_plane(struct drm_plane *primary,
 		intel_crtc->dspaddr_offset = linear_offset;
 	}
 
-	if (rotation == BIT(DRM_ROTATE_180)) {
+	if (rotation == DRM_ROTATE_180) {
 		dspcntr |= DISPPLANE_ROTATE_180;
 
 		x += (crtc_state->pipe_src_w - 1);
@@ -2819,7 +2819,7 @@ static void ironlake_update_primary_plane(struct drm_plane *primary,
 		intel_compute_tile_offset(&x, &y, fb, 0,
 					  fb->pitches[0], rotation);
 	linear_offset -= intel_crtc->dspaddr_offset;
-	if (rotation == BIT(DRM_ROTATE_180)) {
+	if (rotation == DRM_ROTATE_180) {
 		dspcntr |= DISPPLANE_ROTATE_180;
 
 		if (!IS_HASWELL(dev) && !IS_BROADWELL(dev)) {
@@ -2980,17 +2980,17 @@ u32 skl_plane_ctl_tiling(uint64_t fb_modifier)
 u32 skl_plane_ctl_rotation(unsigned int rotation)
 {
 	switch (rotation) {
-	case BIT(DRM_ROTATE_0):
+	case DRM_ROTATE_0:
 		break;
 	/*
 	 * DRM_ROTATE_ is counter clockwise to stay compatible with Xrandr
 	 * while i915 HW rotation is clockwise, thats why this swapping.
 	 */
-	case BIT(DRM_ROTATE_90):
+	case DRM_ROTATE_90:
 		return PLANE_CTL_ROTATE_270;
-	case BIT(DRM_ROTATE_180):
+	case DRM_ROTATE_180:
 		return PLANE_CTL_ROTATE_180;
-	case BIT(DRM_ROTATE_270):
+	case DRM_ROTATE_270:
 		return PLANE_CTL_ROTATE_90;
 	default:
 		MISSING_CASE(rotation);
@@ -4278,11 +4278,12 @@ int skl_update_scaler_crtc(struct intel_crtc_state *state)
 	struct intel_crtc *intel_crtc = to_intel_crtc(state->base.crtc);
 	const struct drm_display_mode *adjusted_mode = &state->base.adjusted_mode;
 
-	DRM_DEBUG_KMS("Updating scaler for [CRTC:%i] scaler_user index %u.%u\n",
-		      intel_crtc->base.base.id, intel_crtc->pipe, SKL_CRTC_INDEX);
+	DRM_DEBUG_KMS("Updating scaler for [CRTC:%d:%s] scaler_user index %u.%u\n",
+		      intel_crtc->base.base.id, intel_crtc->base.name,
+		      intel_crtc->pipe, SKL_CRTC_INDEX);
 
 	return skl_update_scaler(state, !state->base.active, SKL_CRTC_INDEX,
-		&state->scaler_state.scaler_id, BIT(DRM_ROTATE_0),
+		&state->scaler_state.scaler_id, DRM_ROTATE_0,
 		state->pipe_src_w, state->pipe_src_h,
 		adjusted_mode->crtc_hdisplay, adjusted_mode->crtc_vdisplay);
 }
@@ -10170,7 +10171,7 @@ static void i9xx_update_cursor(struct drm_crtc *crtc, u32 base,
 		if (HAS_DDI(dev))
 			cntl |= CURSOR_PIPE_CSC_ENABLE;
 
-		if (plane_state->base.rotation == BIT(DRM_ROTATE_180))
+		if (plane_state->base.rotation == DRM_ROTATE_180)
 			cntl |= CURSOR_ROTATE_180;
 	}
 
@@ -10216,7 +10217,7 @@ static void intel_crtc_update_cursor(struct drm_crtc *crtc,
 
 		/* ILK+ do this automagically */
 		if (HAS_GMCH_DISPLAY(dev) &&
-		    plane_state->base.rotation == BIT(DRM_ROTATE_180)) {
+		    plane_state->base.rotation == DRM_ROTATE_180) {
 			base += (plane_state->base.crtc_h *
 				 plane_state->base.crtc_w - 1) * 4;
 		}
@@ -13617,7 +13618,7 @@ static int intel_atomic_commit(struct drm_device *dev,
 		return ret;
 	}
 
-	drm_atomic_helper_swap_state(dev, state);
+	drm_atomic_helper_swap_state(state, true);
 	dev_priv->wm.config = intel_state->wm_config;
 	intel_shared_dpll_commit(state);
 
@@ -13993,6 +13994,7 @@ intel_check_primary_plane(struct drm_plane *plane,
 
 	return drm_plane_helper_check_update(plane, crtc, fb, &state->src,
 					     &state->dst, &state->clip,
+					     state->base.rotation,
 					     min_scale, max_scale,
 					     can_position, true,
 					     &state->visible);
@@ -14139,11 +14141,11 @@ fail:
 void intel_create_rotation_property(struct drm_device *dev, struct intel_plane *plane)
 {
 	if (!dev->mode_config.rotation_property) {
-		unsigned long flags = BIT(DRM_ROTATE_0) |
-			BIT(DRM_ROTATE_180);
+		unsigned long flags = DRM_ROTATE_0 |
+			DRM_ROTATE_180;
 
 		if (INTEL_INFO(dev)->gen >= 9)
-			flags |= BIT(DRM_ROTATE_90) | BIT(DRM_ROTATE_270);
+			flags |= DRM_ROTATE_90 | DRM_ROTATE_270;
 
 		dev->mode_config.rotation_property =
 			drm_mode_create_rotation_property(dev, flags);
@@ -14168,6 +14170,7 @@ intel_check_cursor_plane(struct drm_plane *plane,
 
 	ret = drm_plane_helper_check_update(plane, crtc, fb, &state->src,
 					    &state->dst, &state->clip,
+					    state->base.rotation,
 					    DRM_PLANE_HELPER_NO_SCALING,
 					    DRM_PLANE_HELPER_NO_SCALING,
 					    true, true, &state->visible);
@@ -14276,7 +14279,8 @@ static struct drm_plane *intel_cursor_plane_create(struct drm_device *dev,
 				       &intel_plane_funcs,
 				       intel_cursor_formats,
 				       ARRAY_SIZE(intel_cursor_formats),
-				       DRM_PLANE_TYPE_CURSOR, NULL);
+				       DRM_PLANE_TYPE_CURSOR,
+				       "cursor %c", pipe_name(pipe));
 	if (ret)
 		goto fail;
 
@@ -14284,8 +14288,8 @@ static struct drm_plane *intel_cursor_plane_create(struct drm_device *dev,
 		if (!dev->mode_config.rotation_property)
 			dev->mode_config.rotation_property =
 				drm_mode_create_rotation_property(dev,
-							BIT(DRM_ROTATE_0) |
-							BIT(DRM_ROTATE_180));
+							DRM_ROTATE_0 |
+							DRM_ROTATE_180);
 		if (dev->mode_config.rotation_property)
 			drm_object_attach_property(&cursor->base.base,
 				dev->mode_config.rotation_property,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,5 +39,7 @@ power_supply_is_system_supplied(void)
 {
 	return (power_profile_get_state() == POWER_PROFILE_PERFORMANCE);
 }
+
+struct device_node;
 
 #endif	/* _LINUX_POWER_SUPPLY_H_ */

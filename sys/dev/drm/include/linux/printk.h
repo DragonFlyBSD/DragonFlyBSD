@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,7 @@ struct va_format {
 	va_list *va;
 };
 
-#define printk(X...)	kprintf(X)
+#define printk(...)	kprintf(__VA_ARGS__)
 
 #define KERN_CONT	""
 #define KERN_EMERG	"<0>"

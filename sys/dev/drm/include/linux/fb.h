@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,8 +41,23 @@
 
 #define	KHZ2PICOS(a)	(1000000000UL/(a))
 
+struct apertures_struct {
+	unsigned int count;
+	struct aperture {
+		resource_size_t base;
+		resource_size_t size;
+	} ranges[0];
+};
+
+extern int remove_conflicting_framebuffers(struct apertures_struct *a,
+					   const char *name, bool primary);
+
+extern void fb_set_suspend(struct fb_info *info, int state);
+
 extern int fb_get_options(const char *name, char **option);
 
 #define FBINFO_STATE_RUNNING	0
+
+struct device_node;
 
 #endif	/* _LINUX_FB_H_ */

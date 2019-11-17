@@ -146,7 +146,6 @@ fence_context_alloc(unsigned n)
 	return atomic64_add_return(n, &next_context) - n;
 }
 
-#if 0
 /*
  * fence_is_later(a, b)
  *
@@ -161,13 +160,13 @@ fence_context_alloc(unsigned n)
 bool
 fence_is_later(struct fence *a, struct fence *b)
 {
-
+#if 0
 	KASSERTMSG(a->context == b->context, "incommensurate fences"
 	    ": %u @ %p =/= %u @ %p", a->context, a, b->context, b);
+#endif
 
 	return a->seqno - b->seqno < INT_MAX;
 }
-#endif
 
 /*
  * fence_get(fence)
@@ -299,7 +298,7 @@ fence_add_callback(struct fence *fence, struct fence_cb *fcb, fence_func_t fn)
 		goto out1;
 
 	/* Insert the callback.  */
-	fcb->fcb_func = fn;
+	fcb->func = fn;
 	TAILQ_INSERT_TAIL(&fence->f_callbacks, fcb, fcb_entry);
 	fcb->fcb_onqueue = true;
 
@@ -451,7 +450,7 @@ fence_signal_locked(struct fence *fence)
 	TAILQ_FOREACH_MUTABLE(fcb, &fence->f_callbacks, fcb_entry, next) {
 		TAILQ_REMOVE(&fence->f_callbacks, fcb, fcb_entry);
 		fcb->fcb_onqueue = false;
-		(*fcb->fcb_func)(fence, fcb);
+		(*fcb->func)(fence, fcb);
 	}
 
 	/* Success! */

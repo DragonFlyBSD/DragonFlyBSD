@@ -230,7 +230,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	 * This also validates that any existing fb inherited from the
 	 * BIOS is suitable for own access.
 	 */
-	ret = intel_pin_and_fence_fb_obj(&ifbdev->fb->base, BIT(DRM_ROTATE_0));
+	ret = intel_pin_and_fence_fb_obj(&ifbdev->fb->base, DRM_ROTATE_0);
 	if (ret)
 		goto out_unlock;
 
@@ -741,8 +741,6 @@ int intel_fbdev_init(struct drm_device *dev)
 		kfree(ifbdev);
 		return ret;
 	}
-
-	ifbdev->helper.atomic = true;
 
 	dev_priv->fbdev = ifbdev;
 	INIT_WORK(&dev_priv->fbdev_suspend_work, intel_fbdev_suspend_worker);

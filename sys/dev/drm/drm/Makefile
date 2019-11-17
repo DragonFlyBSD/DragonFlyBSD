@@ -2,9 +2,15 @@
 KMOD	= drm
 SRCS	= \
 	ati_pcigart.c \
+	drm_atomic.c \
+	drm_atomic_helper.c \
 	drm_auth.c \
+	drm_blend.c \
+	drm_bridge.c \
 	drm_bufs.c \
 	drm_cache.c \
+	drm_color_mgmt.c \
+	drm_connector.c \
 	drm_context.c \
 	drm_crtc.c \
 	drm_crtc_helper.c \
@@ -17,9 +23,12 @@ SRCS	= \
 	drm_drv.c \
 	drm_edid.c \
 	drm_edid_load.c \
+	drm_encoder.c \
 	drm_encoder_slave.c \
 	drm_fb_helper.c \
 	drm_fops.c \
+	drm_fourcc.c \
+	drm_framebuffer.c \
 	drm_gem.c \
 	drm_global.c \
 	drm_hashtab.c \
@@ -29,16 +38,17 @@ SRCS	= \
 	drm_memory.c \
 	drm_mipi_dsi.c \
 	drm_mm.c \
+	drm_mode_object.c \
 	drm_modes.c \
 	drm_modeset_lock.c \
-	drm_atomic.c \
-	drm_bridge.c \
-	drm_atomic_helper.c \
+	drm_modeset_helper.c \
 	drm_panel.c \
 	drm_pci.c \
+	drm_plane.c \
 	drm_plane_helper.c \
 	drm_prime.c \
 	drm_probe_helper.c \
+	drm_property.c \
 	drm_rect.c \
 	drm_scatter.c \
 	drm_sysctl.c \

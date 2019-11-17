@@ -151,8 +151,8 @@ kstrtouint(const char *s, unsigned int base, unsigned int *res)
 	return 0;
 }
 
-#define kvasprintf drm_vasprintf
-#define kasprintf drm_asprintf
+char *kvasprintf(int flags, const char *format, va_list ap);
+char *kasprintf(int flags, const char *format, ...);
 
 static inline void __user *
 u64_to_user_ptr(u64 address)

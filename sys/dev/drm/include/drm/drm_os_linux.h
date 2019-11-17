@@ -61,6 +61,32 @@ static inline void writeq(u64 val, void __iomem *reg)
 /** Write a qword into a MMIO region */
 #define DRM_WRITE64(map, offset, val)	writeq(val, ((void __iomem *)(map)->handle) + (offset))
 
+#if 0
+#define DRM_WAIT_ON( ret, queue, timeout, condition )		\
+do {								\
+	DECLARE_WAITQUEUE(entry, current);			\
+	unsigned long end = jiffies + (timeout);		\
+	add_wait_queue(&(queue), &entry);			\
+								\
+	for (;;) {						\
+		__set_current_state(TASK_INTERRUPTIBLE);	\
+		if (condition)					\
+			break;					\
+		if (time_after_eq(jiffies, end)) {		\
+			ret = -EBUSY;				\
+			break;					\
+		}						\
+		schedule_timeout((HZ/100 > 1) ? HZ/100 : 1);	\
+		if (signal_pending(current)) {			\
+			ret = -EINTR;				\
+			break;					\
+		}						\
+	}							\
+	__set_current_state(TASK_RUNNING);			\
+	remove_wait_queue(&(queue), &entry);			\
+} while (0)
+#endif
+
 #define DRM_WAIT_ON( ret, queue, timeout, condition )		\
 for ( ret = 0 ; !ret && !(condition) ; ) {			\
 	lwkt_serialize_enter(&dev->irq_lock);			\

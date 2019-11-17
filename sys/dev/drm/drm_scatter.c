@@ -50,7 +50,7 @@ static void drm_sg_cleanup(struct drm_sg_mem * entry)
 void drm_legacy_sg_cleanup(struct drm_device *dev)
 {
 	if (drm_core_check_feature(dev, DRIVER_SG) && dev->sg &&
-	    !drm_core_check_feature(dev, DRIVER_MODESET)) {
+	    drm_core_check_feature(dev, DRIVER_LEGACY)) {
 		drm_sg_cleanup(dev->sg);
 		dev->sg = NULL;
 	}
@@ -63,6 +63,11 @@ int drm_legacy_sg_alloc(struct drm_device *dev, void *data,
 	struct drm_sg_mem *entry;
 	vm_size_t size;
 	vm_pindex_t pindex;
+
+	DRM_DEBUG("\n");
+
+	if (!drm_core_check_feature(dev, DRIVER_LEGACY))
+		return -EINVAL;
 
 	if (dev->sg)
 		return -EINVAL;
@@ -114,17 +119,21 @@ int drm_legacy_sg_free(struct drm_device *dev, void *data,
 	struct drm_scatter_gather *request = data;
 	struct drm_sg_mem *entry;
 
-	DRM_LOCK(dev);
+	if (!drm_core_check_feature(dev, DRIVER_LEGACY))
+		return -EINVAL;
+
+	if (!drm_core_check_feature(dev, DRIVER_SG))
+		return -EINVAL;
+
 	entry = dev->sg;
 	dev->sg = NULL;
-	DRM_UNLOCK(dev);
 
 	if (!entry || entry->vaddr != request->handle)
-		return (-EINVAL);
+		return -EINVAL;
 
 	DRM_DEBUG("free 0x%jx\n", (uintmax_t)entry->vaddr);
 
 	drm_sg_cleanup(entry);
 
-	return (0);
+	return 0;
 }

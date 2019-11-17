@@ -32,10 +32,25 @@
 static struct lock i2c_lock;
 LOCK_SYSINIT(i2c_lock, &i2c_lock, "i2cl", LK_CANRECURSE);
 
+static void i2c_default_lock_bus(struct i2c_adapter *, unsigned int);
+static int i2c_default_trylock_bus(struct i2c_adapter *, unsigned int);
+static void i2c_default_unlock_bus(struct i2c_adapter *, unsigned int);
+
+static const struct i2c_lock_operations i2c_default_lock_ops = {
+	.lock_bus =    i2c_default_lock_bus,
+	.trylock_bus = i2c_default_trylock_bus,
+	.unlock_bus =  i2c_default_unlock_bus,
+};
+
 int
 i2c_add_adapter(struct i2c_adapter *adapter)
 {
 	/* Linux registers a unique bus number here */
+
+	/* Setup default locking functions */
+	if (!adapter->lock_ops)
+		adapter->lock_ops = &i2c_default_lock_ops;
+
 	return 0;
 }
 
@@ -63,7 +78,7 @@ i2c_transfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int num)
 	if (adapter->algo->master_xfer == NULL)
 		return -EOPNOTSUPP;
 
-	lockmgr(&i2c_lock, LK_EXCLUSIVE);
+	adapter->lock_ops->lock_bus(adapter, I2C_LOCK_SEGMENT);
 	start_ticks = ticks;
 	do {
 		ret = adapter->algo->master_xfer(adapter, msgs, num);
@@ -73,7 +88,7 @@ i2c_transfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int num)
 			break;
 		tries++;
 	} while (tries < adapter->retries);
-	lockmgr(&i2c_lock, LK_RELEASE);
+	adapter->lock_ops->unlock_bus(adapter, I2C_LOCK_SEGMENT);
 
 	return ret;
 }
@@ -124,4 +139,24 @@ i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info)
 
 done:
 	return client;
+}
+
+/* Default locking functions */
+
+static void
+i2c_default_lock_bus(struct i2c_adapter *adapter, unsigned int flags)
+{
+	lockmgr(&i2c_lock, LK_EXCLUSIVE);
+}
+
+static int
+i2c_default_trylock_bus(struct i2c_adapter *adapter, unsigned int flags)
+{
+	return mutex_trylock(&i2c_lock);
+}
+
+static void
+i2c_default_unlock_bus(struct i2c_adapter *adapter, unsigned int flags)
+{
+	lockmgr(&i2c_lock, LK_RELEASE);
 }

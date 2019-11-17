@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2016-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2016-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,5 +55,7 @@
 	SYSINIT(fname, SI_SUB_DRIVERS, SI_ORDER_FIRST, fname, NULL);
 #define module_exit(fname)	\
 	SYSUNINIT(fname, SI_SUB_DRIVERS, SI_ORDER_SECOND, fname, NULL);
+
+#define MODULE_DEVICE_TABLE(type, name)
 
 #endif	/* _LINUX_MODULE_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 François Tigeot
+ * Copyright (c) 2016-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,11 @@
 
 #ifndef _LINUX_BITMAP_H_
 #define _LINUX_BITMAP_H_
+
+#include <linux/types.h>
+#include <linux/bitops.h>
+#include <linux/string.h>
+#include <linux/kernel.h>
 
 static inline void
 bitmap_or(unsigned long *dst, const unsigned long *src1,

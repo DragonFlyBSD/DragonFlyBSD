@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,5 +32,20 @@
 #include <linux/wait.h>
 #include <linux/timer.h>
 #include <linux/completion.h>
+
+struct dev_pm_domain {
+};
+
+struct dev_pm_ops {
+	int (*suspend)(struct device *dev);
+	int (*resume)(struct device *dev);
+	int (*freeze)(struct device *dev);
+	int (*thaw)(struct device *dev);
+	int (*poweroff)(struct device *dev);
+	int (*restore)(struct device *dev);
+	int (*runtime_suspend)(struct device *dev);
+	int (*runtime_resume)(struct device *dev);
+	int (*runtime_idle)(struct device *dev);
+};
 
 #endif	/* _LINUX_PM_H_ */

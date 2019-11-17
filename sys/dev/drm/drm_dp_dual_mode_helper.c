@@ -23,9 +23,9 @@
 #include <linux/errno.h>
 #include <linux/export.h>
 #include <linux/i2c.h>
-#include <drm/drmP.h>
 #include <linux/string.h>
 #include <drm/drm_dp_dual_mode_helper.h>
+#include <drm/drmP.h>
 
 /**
  * DOC: dp dual mode helpers
@@ -107,17 +107,17 @@ ssize_t drm_dp_dual_mode_write(struct i2c_adapter *adapter,
 		.len = 1 + size,
 		.buf = NULL,
 	};
-	void *data;
+	uint8_t *data;
 	int ret;
 
-	data = kmalloc(msg.len, M_DRM, M_WAITOK);
+	data = kmalloc(msg.len, M_DRM, GFP_TEMPORARY);
 	if (!data)
 		return -ENOMEM;
 
 	msg.buf = data;
 
 	memcpy(data, &offset, 1);
-	memcpy((char *)data + 1, buffer, size);
+	memcpy(data + 1, buffer, size);
 
 	ret = i2c_transfer(adapter, &msg, 1);
 

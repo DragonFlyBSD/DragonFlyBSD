@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,9 +34,9 @@ MALLOC_DECLARE(M_DRM);
 
 #define kzalloc(size, flags)	kmalloc(size, M_DRM, flags | M_ZERO)
 
-#define kfree(ptr)	do {		\
-	if (ptr != NULL)		\
-		kfree(ptr, M_DRM);	\
+#define kfree(ptr)	do {			\
+	if (ptr != NULL)			\
+		kfree((void *)ptr, M_DRM);	\
 } while (0)
 
 #define kcalloc(n, size, flags)	kzalloc((n) * (size), flags)
@@ -46,5 +46,9 @@ kmalloc_array(size_t n, size_t size, gfp_t flags)
 {
 	return kmalloc(n * size, M_DRM, flags);
 }
+
+#include <linux/kasan.h>
+
+#define kmem_cache_free(slab, ptr)     kfree(ptr)
 
 #endif	/* _LINUX_SLAB_H_ */

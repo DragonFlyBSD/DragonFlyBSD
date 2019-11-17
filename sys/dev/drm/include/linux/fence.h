@@ -53,7 +53,7 @@ struct fence {
 
 	TAILQ_HEAD(, fence_cb)	f_callbacks;
 	struct cv		f_cv;
-	struct rcu_head		f_rcu;
+	struct rcu_head		rcu;
 };
 
 #define	FENCE_FLAG_ENABLE_SIGNAL_BIT	0
@@ -72,7 +72,8 @@ struct fence_ops {
 typedef void (*fence_func_t)(struct fence *, struct fence_cb *);
 
 struct fence_cb {
-	fence_func_t		fcb_func;
+	struct list_head node;
+	fence_func_t		func;
 	TAILQ_ENTRY(fence_cb)	fcb_entry;
 	bool			fcb_onqueue;
 };

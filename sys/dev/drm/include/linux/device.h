@@ -47,7 +47,10 @@ struct device {
 };
 
 struct device_driver {
+	const struct dev_pm_ops *pm;
 };
+
+struct device_node;
 
 #define	dev_dbg(dev, fmt, ...)						\
 	device_printf((dev)->bsddev, "debug: " fmt, ## __VA_ARGS__)

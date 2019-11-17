@@ -64,7 +64,7 @@ fb_get_options(const char *connector_name, char **option)
  * M_DRM and kvsnprintf(). Since it is unclear what string size is
  * optimal thus use of an actual length.
  */
-char *drm_vasprintf(int flags, const char *format, va_list ap)
+char *kvasprintf(int flags, const char *format, va_list ap)
 {
 	char *str;
 	size_t size;
@@ -84,13 +84,13 @@ char *drm_vasprintf(int flags, const char *format, va_list ap)
 }
 
 /* mimic ksnprintf(), return pointer to char* and match drm api */
-char *drm_asprintf(int flags, const char *format, ...)
+char *kasprintf(int flags, const char *format, ...)
 {
 	char *str;
 	va_list ap;
 
 	va_start(ap, format);
-	str = drm_vasprintf(flags, format, ap);
+	str = kvasprintf(flags, format, ap);
 	va_end(ap);
 
 	return str;
@@ -177,7 +177,7 @@ static int drm_alloc_resource(struct drm_device *dev, int resource)
 	struct resource *res;
 	int rid;
 
-	DRM_LOCK_ASSERT(dev);
+	KKASSERT(lockstatus(&dev->struct_mutex, curthread) != 0);
 
 	if (resource >= DRM_MAX_PCI_RESOURCE) {
 		DRM_ERROR("Resource %d too large\n", resource);
@@ -222,4 +222,49 @@ unsigned long drm_get_resource_len(struct drm_device *dev,
 		return 0;
 
 	return rman_get_size(dev->pcir[resource]);
+}
+
+/* Former drm_release() in the legacy DragonFly BSD drm codebase */
+int drm_device_detach(device_t kdev)
+{
+	struct drm_device *dev = device_get_softc(kdev);
+
+	drm_sysctl_cleanup(dev);
+	if (dev->devnode != NULL)
+		destroy_dev(dev->devnode);
+
+#ifdef __DragonFly__
+	/* Clean up PCI resources allocated by drm_bufs.c.  We're not really
+	 * worried about resource consumption while the DRM is inactive (between
+	 * lastclose and firstopen or unload) because these aren't actually
+	 * taking up KVA, just keeping the PCI resource allocated.
+	 */
+	for (int i = 0; i < DRM_MAX_PCI_RESOURCE; i++) {
+		if (dev->pcir[i] == NULL)
+			continue;
+		bus_release_resource(dev->dev->bsddev, SYS_RES_MEMORY,
+		    dev->pcirid[i], dev->pcir[i]);
+		dev->pcir[i] = NULL;
+	}
+
+	if (dev->agp) {
+		kfree(dev->agp);
+		dev->agp = NULL;
+	}
+
+	if (dev->driver->unload != NULL) {
+		DRM_LOCK(dev);
+		dev->driver->unload(dev);
+		DRM_UNLOCK(dev);
+	}
+
+	if (pci_disable_busmaster(dev->dev->bsddev))
+		DRM_ERROR("Request to disable bus-master failed.\n");
+
+	lockuninit(&dev->vbl_lock);
+	lockuninit(&dev->event_lock);
+	lockuninit(&dev->struct_mutex);
+#endif
+
+	return 0;
 }

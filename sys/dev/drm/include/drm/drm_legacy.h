@@ -1,6 +1,8 @@
 #ifndef __DRM_DRM_LEGACY_H__
 #define __DRM_DRM_LEGACY_H__
 
+#include <drm/drm_auth.h>
+
 /*
  * Legacy driver interfaces for the Direct Rendering Manager
  *
@@ -156,6 +158,8 @@ int drm_legacy_addmap(struct drm_device *d, resource_size_t offset,
 		      enum drm_map_flags flags, struct drm_local_map **map_p);
 void drm_legacy_rmmap(struct drm_device *d, struct drm_local_map *map);
 int drm_legacy_rmmap_locked(struct drm_device *d, struct drm_local_map *map);
+void drm_legacy_master_rmmaps(struct drm_device *dev,
+			      struct drm_master *master);
 struct drm_local_map *drm_legacy_getsarea(struct drm_device *dev);
 
 int drm_legacy_addbufs_agp(struct drm_device *d, struct drm_buf_desc *req);

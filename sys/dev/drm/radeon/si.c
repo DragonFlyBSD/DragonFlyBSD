@@ -49,6 +49,7 @@ MODULE_FIRMWARE("radeon/tahiti_ce.bin");
 MODULE_FIRMWARE("radeon/tahiti_mc.bin");
 MODULE_FIRMWARE("radeon/tahiti_rlc.bin");
 MODULE_FIRMWARE("radeon/tahiti_smc.bin");
+MODULE_FIRMWARE("radeon/tahiti_k_smc.bin");
 
 MODULE_FIRMWARE("radeon/PITCAIRN_pfp.bin");
 MODULE_FIRMWARE("radeon/PITCAIRN_me.bin");
@@ -64,6 +65,7 @@ MODULE_FIRMWARE("radeon/pitcairn_ce.bin");
 MODULE_FIRMWARE("radeon/pitcairn_mc.bin");
 MODULE_FIRMWARE("radeon/pitcairn_rlc.bin");
 MODULE_FIRMWARE("radeon/pitcairn_smc.bin");
+MODULE_FIRMWARE("radeon/pitcairn_k_smc.bin");
 
 MODULE_FIRMWARE("radeon/VERDE_pfp.bin");
 MODULE_FIRMWARE("radeon/VERDE_me.bin");
@@ -79,6 +81,7 @@ MODULE_FIRMWARE("radeon/verde_ce.bin");
 MODULE_FIRMWARE("radeon/verde_mc.bin");
 MODULE_FIRMWARE("radeon/verde_rlc.bin");
 MODULE_FIRMWARE("radeon/verde_smc.bin");
+MODULE_FIRMWARE("radeon/verde_k_smc.bin");
 
 MODULE_FIRMWARE("radeon/OLAND_pfp.bin");
 MODULE_FIRMWARE("radeon/OLAND_me.bin");
@@ -94,6 +97,7 @@ MODULE_FIRMWARE("radeon/oland_ce.bin");
 MODULE_FIRMWARE("radeon/oland_mc.bin");
 MODULE_FIRMWARE("radeon/oland_rlc.bin");
 MODULE_FIRMWARE("radeon/oland_smc.bin");
+MODULE_FIRMWARE("radeon/oland_k_smc.bin");
 
 MODULE_FIRMWARE("radeon/HAINAN_pfp.bin");
 MODULE_FIRMWARE("radeon/HAINAN_me.bin");
@@ -109,6 +113,7 @@ MODULE_FIRMWARE("radeon/hainan_ce.bin");
 MODULE_FIRMWARE("radeon/hainan_mc.bin");
 MODULE_FIRMWARE("radeon/hainan_rlc.bin");
 MODULE_FIRMWARE("radeon/hainan_smc.bin");
+MODULE_FIRMWARE("radeon/hainan_k_smc.bin");
 
 static u32 si_get_cu_active_bitmap(struct radeon_device *rdev, u32 se, u32 sh);
 static void si_pcie_gen3_enable(struct radeon_device *rdev);
@@ -1531,7 +1536,7 @@ int si_mc_load_microcode(struct radeon_device *rdev)
 {
 	const __be32 *fw_data = NULL;
 	const __le32 *new_fw_data = NULL;
-	u32 running, blackout = 0;
+	u32 running;
 	u32 *io_mc_regs = NULL;
 	const __le32 *new_io_mc_regs = NULL;
 	int i, regs_size, ucode_size;
@@ -1582,11 +1587,6 @@ int si_mc_load_microcode(struct radeon_device *rdev)
 	running = RREG32(MC_SEQ_SUP_CNTL) & RUN_MASK;
 
 	if (running == 0) {
-		if (running) {
-			blackout = RREG32(MC_SHARED_BLACKOUT_CNTL);
-			WREG32(MC_SHARED_BLACKOUT_CNTL, blackout | 1);
-		}
-
 		/* reset the engine and set to writable */
 		WREG32(MC_SEQ_SUP_CNTL, 0x00000008);
 		WREG32(MC_SEQ_SUP_CNTL, 0x00000010);
@@ -1625,9 +1625,6 @@ int si_mc_load_microcode(struct radeon_device *rdev)
 				break;
 			udelay(1);
 		}
-
-		if (running)
-			WREG32(MC_SHARED_BLACKOUT_CNTL, blackout);
 	}
 
 	return 0;
@@ -1642,12 +1639,16 @@ static int si_init_microcode(struct radeon_device *rdev)
 	char fw_name[30];
 	int err;
 	int new_fw = 0;
+	bool new_smc = false;
 
 	DRM_DEBUG("\n");
 
 	switch (rdev->family) {
 	case CHIP_TAHITI:
 		chip_name = "TAHITI";
+		/* XXX: figure out which Tahitis need the new ucode */
+		if (0)
+			new_smc = true;
 		new_chip_name = "tahiti";
 		pfp_req_size = SI_PFP_UCODE_SIZE * 4;
 		me_req_size = SI_PM4_UCODE_SIZE * 4;
@@ -1659,6 +1660,13 @@ static int si_init_microcode(struct radeon_device *rdev)
 		break;
 	case CHIP_PITCAIRN:
 		chip_name = "PITCAIRN";
+		if ((rdev->pdev->revision == 0x81) ||
+		    (rdev->pdev->device == 0x6810) ||
+		    (rdev->pdev->device == 0x6811) ||
+		    (rdev->pdev->device == 0x6816) ||
+		    (rdev->pdev->device == 0x6817) ||
+		    (rdev->pdev->device == 0x6806))
+			new_smc = true;
 		new_chip_name = "pitcairn";
 		pfp_req_size = SI_PFP_UCODE_SIZE * 4;
 		me_req_size = SI_PM4_UCODE_SIZE * 4;
@@ -1670,6 +1678,16 @@ static int si_init_microcode(struct radeon_device *rdev)
 		break;
 	case CHIP_VERDE:
 		chip_name = "VERDE";
+		if ((rdev->pdev->revision == 0x81) ||
+		    (rdev->pdev->revision == 0x83) ||
+		    (rdev->pdev->revision == 0x87) ||
+		    (rdev->pdev->device == 0x6820) ||
+		    (rdev->pdev->device == 0x6821) ||
+		    (rdev->pdev->device == 0x6822) ||
+		    (rdev->pdev->device == 0x6823) ||
+		    (rdev->pdev->device == 0x682A) ||
+		    (rdev->pdev->device == 0x682B))
+			new_smc = true;
 		new_chip_name = "verde";
 		pfp_req_size = SI_PFP_UCODE_SIZE * 4;
 		me_req_size = SI_PM4_UCODE_SIZE * 4;
@@ -1681,6 +1699,13 @@ static int si_init_microcode(struct radeon_device *rdev)
 		break;
 	case CHIP_OLAND:
 		chip_name = "OLAND";
+		if ((rdev->pdev->revision == 0xC7) ||
+		    (rdev->pdev->revision == 0x80) ||
+		    (rdev->pdev->revision == 0x81) ||
+		    (rdev->pdev->revision == 0x83) ||
+		    (rdev->pdev->device == 0x6604) ||
+		    (rdev->pdev->device == 0x6605))
+			new_smc = true;
 		new_chip_name = "oland";
 		pfp_req_size = SI_PFP_UCODE_SIZE * 4;
 		me_req_size = SI_PM4_UCODE_SIZE * 4;
@@ -1691,6 +1716,13 @@ static int si_init_microcode(struct radeon_device *rdev)
 		break;
 	case CHIP_HAINAN:
 		chip_name = "HAINAN";
+		if ((rdev->pdev->revision == 0x81) ||
+		    (rdev->pdev->revision == 0x83) ||
+		    (rdev->pdev->revision == 0xC3) ||
+		    (rdev->pdev->device == 0x6664) ||
+		    (rdev->pdev->device == 0x6665) ||
+		    (rdev->pdev->device == 0x6667))
+			new_smc = true;
 		new_chip_name = "hainan";
 		pfp_req_size = SI_PFP_UCODE_SIZE * 4;
 		me_req_size = SI_PM4_UCODE_SIZE * 4;
@@ -1836,7 +1868,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 		}
 	}
 
-	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", new_chip_name);
+	if (new_smc)
+		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_k_smc", new_chip_name);
+	else
+		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", new_chip_name);
 	err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", chip_name);
@@ -4409,6 +4444,7 @@ static bool si_vm_reg_valid(u32 reg)
 	case SPI_CONFIG_CNTL:
 	case SPI_CONFIG_CNTL_1:
 	case TA_CNTL_AUX:
+	case TA_CS_BC_BASE_ADDR:
 		return true;
 	default:
 		DRM_ERROR("Invalid register 0x%x in CS\n", reg);
@@ -6898,7 +6934,7 @@ static void si_uvd_resume(struct radeon_device *rdev)
 		return;
 
 	ring = &rdev->ring[R600_RING_TYPE_UVD_INDEX];
-	r = radeon_ring_init(rdev, ring, ring->ring_size, 0, RADEON_CP_PACKET2);
+	r = radeon_ring_init(rdev, ring, ring->ring_size, 0, PACKET0(UVD_NO_OP, 0));
 	if (r) {
 		dev_err(rdev->dev, "failed initializing UVD ring (%d).\n", r);
 		return;

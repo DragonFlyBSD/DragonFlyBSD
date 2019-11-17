@@ -31,12 +31,15 @@
 #include <linux/device.h>	/* for struct device */
 #include <linux/sched.h>	/* for completion */
 #include <linux/mutex.h>
+#include <linux/of.h>		/* for struct device_node */
 #include <uapi/linux/i2c.h>
 
 #include <bus/iicbus/iic.h>
 
 #define I2C_M_RD	IIC_M_RD
 #define I2C_M_NOSTART	IIC_M_NOSTART
+
+struct i2c_lock_operations;
 
 struct i2c_adapter {
 	const struct i2c_algorithm *algo;
@@ -48,6 +51,8 @@ struct i2c_adapter {
 	void *private_data;
 
 	char name[48];
+
+	const struct i2c_lock_operations *lock_ops;
 };
 
 struct i2c_client {
@@ -89,5 +94,13 @@ struct i2c_board_info {
 
 struct i2c_client *
 i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info);
+
+#define I2C_LOCK_SEGMENT      BIT(1)
+
+struct i2c_lock_operations {
+	void (*lock_bus)(struct i2c_adapter *, unsigned int flags);
+	int (*trylock_bus)(struct i2c_adapter *, unsigned int flags);
+	void (*unlock_bus)(struct i2c_adapter *, unsigned int flags);
+};
 
 #endif	/* _LINUX_I2C_H_ */

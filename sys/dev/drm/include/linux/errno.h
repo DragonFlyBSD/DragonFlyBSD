@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2019 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@
 
 #if defined(_KERNEL)
 #define ERESTARTSYS	512	/* Restart syscall. MUST be positive. */
+#define EPROBE_DEFER	517
 #endif
 
 #define ECHRNG		EDOM

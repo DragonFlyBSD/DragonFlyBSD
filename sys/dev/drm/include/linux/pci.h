@@ -50,6 +50,7 @@
 #define PCI_ANY_ID	(~0u)
 
 struct pci_bus;
+struct device_node;
 
 struct pci_device_id {
 	uint32_t vendor;
@@ -92,6 +93,10 @@ struct pci_bus {
 };
 
 struct pci_driver {
+	const char *name;
+	const struct pci_device_id *id_table;
+	int (*probe)(struct pci_dev *dev, const struct pci_device_id *id);
+	void (*remove)(struct pci_dev *dev);
 };
 
 #define PCI_DMA_BIDIRECTIONAL	0
@@ -337,7 +342,14 @@ pci_set_drvdata(struct pci_dev *pdev, void *data)
 static inline int
 pci_register_driver(struct pci_driver *drv)
 {
+	/* pci_register_driver not implemented */
 	return 0;
+}
+
+static inline void
+pci_unregister_driver(struct pci_driver *dev)
+{
+	/* pci_unregister_driver not implemented */
 }
 
 static inline void

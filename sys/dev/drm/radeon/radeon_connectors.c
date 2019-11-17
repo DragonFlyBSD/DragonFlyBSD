@@ -191,12 +191,12 @@ int radeon_get_monitor_bpc(struct drm_connector *connector)
 		}
 
 		/* Any defined maximum tmds clock limit we must not exceed? */
-		if (connector->max_tmds_clock > 0) {
+		if (connector->display_info.max_tmds_clock > 0) {
 			/* mode_clock is clock in kHz for mode to be modeset on this connector */
 			mode_clock = radeon_connector->pixelclock_for_modeset;
 
 			/* Maximum allowable input clock in kHz */
-			max_tmds_clock = connector->max_tmds_clock * 1000;
+			max_tmds_clock = connector->display_info.max_tmds_clock;
 
 			DRM_DEBUG("%s: hdmi mode dotclock %d kHz, max tmds input clock %d kHz.\n",
 					  connector->name, mode_clock, max_tmds_clock);
@@ -924,6 +924,16 @@ radeon_lvds_detect(struct drm_connector *connector, bool force)
 	return ret;
 }
 
+static void radeon_connector_unregister(struct drm_connector *connector)
+{
+	struct radeon_connector *radeon_connector = to_radeon_connector(connector);
+
+	if (radeon_connector->ddc_bus && radeon_connector->ddc_bus->has_aux) {
+		drm_dp_aux_unregister(&radeon_connector->ddc_bus->aux);
+		radeon_connector->ddc_bus->has_aux = false;
+	}
+}
+
 static void radeon_connector_destroy(struct drm_connector *connector)
 {
 	struct radeon_connector *radeon_connector = to_radeon_connector(connector);
@@ -981,6 +991,7 @@ static const struct drm_connector_funcs radeon_lvds_connector_funcs = {
 	.dpms = drm_helper_connector_dpms,
 	.detect = radeon_lvds_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
+	.early_unregister = radeon_connector_unregister,
 	.destroy = radeon_connector_destroy,
 	.set_property = radeon_lvds_set_property,
 };
@@ -1112,6 +1123,7 @@ static const struct drm_connector_funcs radeon_vga_connector_funcs = {
 	.dpms = drm_helper_connector_dpms,
 	.detect = radeon_vga_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
+	.early_unregister = radeon_connector_unregister,
 	.destroy = radeon_connector_destroy,
 	.set_property = radeon_connector_set_property,
 };
@@ -1195,6 +1207,7 @@ static const struct drm_connector_funcs radeon_tv_connector_funcs = {
 	.dpms = drm_helper_connector_dpms,
 	.detect = radeon_tv_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
+	.early_unregister = radeon_connector_unregister,
 	.destroy = radeon_connector_destroy,
 	.set_property = radeon_connector_set_property,
 };
@@ -1530,6 +1543,7 @@ static const struct drm_connector_funcs radeon_dvi_connector_funcs = {
 	.detect = radeon_dvi_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.set_property = radeon_connector_set_property,
+	.early_unregister = radeon_connector_unregister,
 	.destroy = radeon_connector_destroy,
 	.force = radeon_dvi_force,
 };
@@ -1847,6 +1861,7 @@ static const struct drm_connector_funcs radeon_dp_connector_funcs = {
 	.detect = radeon_dp_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.set_property = radeon_connector_set_property,
+	.early_unregister = radeon_connector_unregister,
 	.destroy = radeon_connector_destroy,
 	.force = radeon_dvi_force,
 };
@@ -1856,6 +1871,7 @@ static const struct drm_connector_funcs radeon_edp_connector_funcs = {
 	.detect = radeon_dp_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.set_property = radeon_lvds_set_property,
+	.early_unregister = radeon_connector_unregister,
 	.destroy = radeon_connector_destroy,
 	.force = radeon_dvi_force,
 };

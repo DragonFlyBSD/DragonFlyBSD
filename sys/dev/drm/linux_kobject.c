@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,6 @@
 #include <linux/gfp.h>
 #include <linux/kobject.h>
 
-extern char *drm_vasprintf(int flags, const char *format, va_list ap);
-
 int kobject_init_and_add(struct kobject *kobj, struct kobj_type *ktype,
 			 struct kobject *parent, const char *fmt, ...)
 {
@@ -38,7 +36,7 @@ int kobject_init_and_add(struct kobject *kobj, struct kobj_type *ktype,
 	kref_init(&kobj->kref);
 
 	va_start(ap, fmt);
-	kobj->name = drm_vasprintf(M_WAITOK, fmt, ap);
+	kobj->name = kvasprintf(M_WAITOK, fmt, ap);
 	va_end(ap);
 
 	return 0;

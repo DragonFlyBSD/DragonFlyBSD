@@ -281,14 +281,13 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 	DRM_UNLOCK(dev);
 
 	DRM_SYSCTL_PRINT(
-	    "\na dev            pid   uid      magic     ioctls\n");
+	    "\na dev            pid      magic     ioctls\n");
 	for (i = 0; i < privcount; i++) {
 		priv = &tempprivs[i];
-		DRM_SYSCTL_PRINT("%c %-12s %5d %5d %10u %10lu\n",
+		DRM_SYSCTL_PRINT("%c %-12s %5d %10u %10lu\n",
 			       priv->authenticated ? 'y' : 'n',
 			       devtoname(priv->dev->devnode),
 			       priv->pid,
-			       priv->uid,
 			       priv->magic,
 			       priv->ioctl_count);
 	}

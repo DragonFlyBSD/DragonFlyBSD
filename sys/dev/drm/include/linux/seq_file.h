@@ -28,7 +28,10 @@
 #define _LINUX_SEQ_FILE_H_
 
 #include <linux/types.h>
+#include <linux/string.h>
 #include <linux/bug.h>
+#include <linux/mutex.h>
+#include <linux/cpumask.h>
 
 struct seq_file {
 	char	*buf;

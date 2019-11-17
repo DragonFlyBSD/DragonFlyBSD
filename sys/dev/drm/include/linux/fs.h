@@ -42,14 +42,28 @@
 #include <linux/lockdep.h>
 
 #include <sys/file.h>	/* for struct file */
+#include <sys/vnode.h>	/* for struct vnode */
 
 struct address_space;
 
 struct poll_table_struct;
 struct vm_area_struct;
 
-struct inode {
-};
+struct inode;
+
+static inline unsigned imajor(const struct inode *inode)
+{
+	const struct vnode *vp = (const void *)inode;
+
+	return vp->v_umajor;
+}
+
+static inline unsigned iminor(const struct inode *inode)
+{
+	const struct vnode *vp = (const void *)inode;
+
+	return vp->v_uminor;
+}
 
 struct file_operations {
 	struct module *owner;

@@ -62,6 +62,8 @@
 #include <sys/sched.h>
 #include <sys/signal2.h>
 
+struct seq_file;
+
 #define	TASK_RUNNING		0
 #define	TASK_INTERRUPTIBLE	1
 #define	TASK_UNINTERRUPTIBLE	2

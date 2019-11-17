@@ -14,3 +14,10 @@
 #define CONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT	1
 
 // CONFIG_GENERIC_ATOMIC64 is not set on x86
+
+/*
+   This is perhaps not the best place, but prevents lots of further
+   compilation problems in imported Linux code
+*/
+#pragma GCC diagnostic ignored "-Wcast-qual"
+#pragma GCC diagnostic ignored "-Wpointer-arith"

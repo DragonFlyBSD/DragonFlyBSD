@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,5 +29,10 @@
 
 #include <linux/err.h>
 #include <linux/sched.h>
+
+#include <sys/kthread.h>
+
+/* From OpenBSD */
+#define kthread_should_stop()	0
 
 #endif	/* _LINUX_KTHREAD_H_ */
