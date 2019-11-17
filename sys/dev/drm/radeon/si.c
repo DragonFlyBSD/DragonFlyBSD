@@ -7340,7 +7340,15 @@ int si_init(struct radeon_device *rdev)
 	if (r)
 		return r;
 
+#ifdef __DragonFly__
+	/*
+	   Some glx operations (xfce 4.14) hang on si hardware,
+	   tell userland acceleration is not working properly
+	*/
+	rdev->accel_working = false;
+#else
 	rdev->accel_working = true;
+#endif
 	r = si_startup(rdev);
 	if (r) {
 		dev_err(rdev->dev, "disabling GPU acceleration\n");
