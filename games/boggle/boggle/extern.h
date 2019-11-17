@@ -33,6 +33,7 @@
  */
 
 #include <setjmp.h>
+#include <time.h>
 
 extern int tlimit;
 extern time_t start_t;
