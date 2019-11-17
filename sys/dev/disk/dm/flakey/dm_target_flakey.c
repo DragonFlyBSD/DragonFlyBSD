@@ -2,7 +2,7 @@
  * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Tomohiro Kusumi <kusumi.tomohiro@gmail.com>
+ * by Tomohiro Kusumi <tkusumi@netbsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
