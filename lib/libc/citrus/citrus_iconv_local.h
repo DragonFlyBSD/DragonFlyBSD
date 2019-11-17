@@ -30,6 +30,7 @@
 #ifndef _CITRUS_ICONV_LOCAL_H_
 #define _CITRUS_ICONV_LOCAL_H_
 
+#include <sys/types.h>
 #include <iconv.h>
 #include <stdbool.h>
 
