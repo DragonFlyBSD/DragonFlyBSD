@@ -2240,7 +2240,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		}
 
 		if (new_smc)
-			ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_k_smc", new_chip_name);
+			ksnprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_k_smc", new_chip_name);
 		else
 			ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", new_chip_name);
 		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
