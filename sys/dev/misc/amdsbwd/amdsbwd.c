@@ -59,36 +59,12 @@
 #include <bus/isa/isavar.h>
 #include <bus/pci/pcivar.h>
 
-/* SB7xx RRG 2.3.3.1.1. */
-#define	AMDSB_PMIO_INDEX		0xcd6
-#define	AMDSB_PMIO_DATA			(PMIO_INDEX + 1)
-#define	AMDSB_PMIO_WIDTH		2
-/* SB7xx RRG 2.3.3.2. */
-#define	AMDSB_PM_RESET_STATUS0		0x44
-#define	AMDSB_PM_RESET_STATUS1		0x45
-#define		AMDSB_WD_RST_STS	0x02
-/* SB7xx RRG 2.3.3.2, RPR 2.36. */
-#define	AMDSB_PM_WDT_CTRL		0x69
-#define		AMDSB_WDT_DISABLE	0x01
-#define		AMDSB_WDT_RES_MASK	(0x02 | 0x04)
-#define		AMDSB_WDT_RES_32US	0x00
-#define		AMDSB_WDT_RES_10MS	0x02
-#define		AMDSB_WDT_RES_100MS	0x04
-#define		AMDSB_WDT_RES_1S	0x06
-#define	AMDSB_PM_WDT_BASE_LSB		0x6c
-#define	AMDSB_PM_WDT_BASE_MSB		0x6f
-/* SB8xx RRG 2.3.3. */
-#define	AMDSB8_PM_WDT_EN		0x48
-#define		AMDSB8_WDT_DEC_EN	0x01
-#define		AMDSB8_WDT_DISABLE	0x02
-#define	AMDSB8_PM_WDT_CTRL		0x4c
-#define		AMDSB8_WDT_32KHZ	0x00
-#define		AMDSB8_WDT_1HZ		0x03
-#define		AMDSB8_WDT_RES_MASK	0x03
-#define	AMDSB8_PM_RESET_STATUS0		0xC0
-#define	AMDSB8_PM_RESET_STATUS1		0xC1
-#define		AMDSB8_WD_RST_STS	0x20
-/* SB7xx RRG 2.3.4, WDRT. */
+#include "amd_chipset.h"
+
+/*
+ * Registers in the Watchdog IO space.
+ * See SB7xx RRG 2.3.4, WDRT.
+ */
 #define	AMDSB_WD_CTRL			0x00
 #define		AMDSB_WD_RUN		0x01
 #define		AMDSB_WD_FIRED		0x02
@@ -99,11 +75,6 @@
 #define	AMDSB_WD_COUNT			0x04
 #define		AMDSB_WD_COUNT_MASK	0xffff
 #define	AMDSB_WDIO_REG_WIDTH		4
-/* WDRT */
-#define	MAXCOUNT_MIN_VALUE		511
-/* SB7xx RRG 2.3.1.1, SB600 RRG 2.3.1.1, SB8xx RRG 2.3.1.  */
-#define	AMDSB_SMBUS_DEVID		0x43851002
-#define	AMDSB8_SMBUS_REVID		0x40
 
 #define	amdsbwd_verbose_printf(dev, ...)	\
 	do {						\
@@ -113,6 +84,7 @@
 
 struct amdsbwd_softc {
 	device_t		dev;
+	struct watchdog		wdog;
 	struct resource		*res_ctrl;
 	struct resource		*res_count;
 	int			rid_ctrl;
@@ -122,18 +94,21 @@ struct amdsbwd_softc {
 	int			active;
 	unsigned int		timeout;
 };
-static struct amdsbwd_softc amdsbwd_sc;
 
 static void	amdsbwd_identify(driver_t *driver, device_t parent);
 static int	amdsbwd_probe(device_t dev);
 static int	amdsbwd_attach(device_t dev);
 static int	amdsbwd_detach(device_t dev);
+static int	amdsbwd_suspend(device_t dev);
+static int	amdsbwd_resume(device_t dev);
 
 static device_method_t amdsbwd_methods[] = {
 	DEVMETHOD(device_identify,	amdsbwd_identify),
 	DEVMETHOD(device_probe,		amdsbwd_probe),
 	DEVMETHOD(device_attach,	amdsbwd_attach),
 	DEVMETHOD(device_detach,	amdsbwd_detach),
+	DEVMETHOD(device_suspend,	amdsbwd_suspend),
+	DEVMETHOD(device_resume,	amdsbwd_resume),
 #if 0
 	DEVMETHOD(device_shutdown,	amdsbwd_detach),
 #endif
@@ -144,7 +119,7 @@ static devclass_t	amdsbwd_devclass;
 static driver_t		amdsbwd_driver = {
 	"amdsbwd",
 	amdsbwd_methods,
-	0
+	sizeof(struct amdsbwd_softc)
 };
 
 DRIVER_MODULE(amdsbwd, isa, amdsbwd_driver, amdsbwd_devclass, NULL, NULL);
@@ -234,12 +209,11 @@ amdsbwd_tmr_set(struct amdsbwd_softc *sc, uint16_t timeout)
 }
 
 static int
-amdsb_watchdog(void *unused, int period)
+amdsb_watchdog(void *arg, int period)
 {
 	unsigned int timeout;
-	struct amdsbwd_softc *sc;
+	struct amdsbwd_softc *sc = arg;
 
-	sc = &amdsbwd_sc;
 	timeout = (period * 1000) / sc->ms_per_tick;
 	if (timeout > sc->max_ticks)
 		timeout = sc->max_ticks;
@@ -271,10 +245,14 @@ amdsbwd_identify(driver_t *driver, device_t parent)
 	smb_dev = pci_find_bsf(0, 20, 0);
 	if (smb_dev == NULL)
 		return;
-	if (pci_get_devid(smb_dev) != AMDSB_SMBUS_DEVID)
+	if (pci_get_devid(smb_dev) != AMDSB_SMBUS_DEVID &&
+	    pci_get_devid(smb_dev) != AMDFCH_SMBUS_DEVID &&
+	    pci_get_devid(smb_dev) != AMDCZ_SMBUS_DEVID) {
 		return;
+	}
 
-	child = BUS_ADD_CHILD(parent, parent, 0, "amdsbwd", 0);
+	child = BUS_ADD_CHILD(parent, parent, ISA_ORDER_SPECULATIVE,
+			      "amdsbwd", -1);
 	if (child == NULL)
 		device_printf(parent, "add amdsbwd child failed\n");
 }
@@ -283,8 +261,8 @@ amdsbwd_identify(driver_t *driver, device_t parent)
 static void
 amdsbwd_probe_sb7xx(device_t dev, struct resource *pmres, uint32_t *addr)
 {
-	uint32_t	val;
-	int		i;
+	uint8_t	val;
+	int	i;
 
 	/* Report cause of previous reset for user's convenience. */
 	val = pmio_read(pmres, AMDSB_PM_RESET_STATUS0);
@@ -301,10 +279,12 @@ amdsbwd_probe_sb7xx(device_t dev, struct resource *pmres, uint32_t *addr)
 		*addr <<= 8;
 		*addr |= pmio_read(pmres, AMDSB_PM_WDT_BASE_MSB - i);
 	}
+	*addr &= ~0x07U;
+
 	/* Set watchdog timer tick to 1s. */
 	val = pmio_read(pmres, AMDSB_PM_WDT_CTRL);
 	val &= ~AMDSB_WDT_RES_MASK;
-	val |= AMDSB_WDT_RES_10MS;
+	val |= AMDSB_WDT_RES_1S;
 	pmio_write(pmres, AMDSB_PM_WDT_CTRL, val);
 
 	/* Enable watchdog device (in stopped state). */
@@ -326,12 +306,19 @@ amdsbwd_probe_sb8xx(device_t dev, struct resource *pmres, uint32_t *addr)
 	int		i;
 
 	/* Report cause of previous reset for user's convenience. */
-	val = pmio_read(pmres, AMDSB8_PM_RESET_STATUS0);
+
+	val = pmio_read(pmres, AMDSB8_PM_RESET_CTRL);
+	if ((val & AMDSB8_RST_STS_DIS) != 0) {
+		val &= ~AMDSB8_RST_STS_DIS;
+		pmio_write(pmres, AMDSB8_PM_RESET_CTRL, val);
+	}
+	val = 0;
+	for (i = 3; i >= 0; i--) {
+		val <<= 8;
+		val |= pmio_read(pmres, AMDSB8_PM_RESET_STATUS + i);
+	}
 	if (val != 0)
-		amdsbwd_verbose_printf(dev, "ResetStatus0 = %#04x\n", val);
-	val = pmio_read(pmres, AMDSB8_PM_RESET_STATUS1);
-	if (val != 0)
-		amdsbwd_verbose_printf(dev, "ResetStatus1 = %#04x\n", val);
+		amdsbwd_verbose_printf(dev, "ResetStatus = 0x%08x\n", val);
 	if ((val & AMDSB8_WD_RST_STS) != 0)
 		device_printf(dev, "Previous Reset was caused by Watchdog\n");
 
@@ -349,7 +336,7 @@ amdsbwd_probe_sb8xx(device_t dev, struct resource *pmres, uint32_t *addr)
 	pmio_write(pmres, AMDSB8_PM_WDT_CTRL, val);
 #ifdef AMDSBWD_DEBUG
 	val = pmio_read(pmres, AMDSB8_PM_WDT_CTRL);
-	amdsbwd_verbose_printf(dev, "AMDSB8_PM_WDT_CTRL value = %#02x\n", val);
+	amdsbwd_verbose_printf(dev, "AMDSB8_PM_WDT_CTRL value = %#04x\n", val);
 #endif
 
 	/*
@@ -364,7 +351,52 @@ amdsbwd_probe_sb8xx(device_t dev, struct resource *pmres, uint32_t *addr)
 	val = pmio_read(pmres, AMDSB8_PM_WDT_EN);
 	device_printf(dev, "AMDSB8_PM_WDT_EN value = %#02x\n", val);
 #endif
-	device_set_desc(dev, "AMD SB8xx Watchdog Timer");
+	device_set_desc(dev, "AMD SB8xx/SB9xx/Axx Watchdog Timer");
+}
+
+static void
+amdsbwd_probe_fch41(device_t dev, struct resource *pmres, uint32_t *addr)
+{
+	uint8_t val;
+
+	val = pmio_read(pmres, AMDFCH41_PM_ISA_CTRL);
+	if ((val & AMDFCH41_MMIO_EN) != 0) {
+		/* Fixed offset for the watchdog within ACPI MMIO range. */
+		amdsbwd_verbose_printf(dev, "ACPI MMIO range is enabled\n");
+		*addr = AMDFCH41_MMIO_ADDR + AMDFCH41_MMIO_WDT_OFF;
+	} else {
+		/*
+		 * Enable decoding of watchdog MMIO address.
+		 */
+		val = pmio_read(pmres, AMDFCH41_PM_DECODE_EN0);
+		val |= AMDFCH41_WDT_EN;
+		pmio_write(pmres, AMDFCH41_PM_DECODE_EN0, val);
+#ifdef AMDSBWD_DEBUG
+		val = pmio_read(pmres, AMDFCH41_PM_DECODE_EN0);
+		device_printf(dev, "AMDFCH41_PM_DECODE_EN0 value = %#04x\n",
+		    val);
+#endif
+
+		/* Special fixed MMIO range for the watchdog. */
+		*addr = AMDFCH41_WDT_FIXED_ADDR;
+	}
+
+	/*
+	 * Set watchdog timer tick to 1s and
+	 * enable the watchdog device (in stopped state).
+	 */
+	val = pmio_read(pmres, AMDFCH41_PM_DECODE_EN3);
+	val &= ~AMDFCH41_WDT_RES_MASK;
+	val |= AMDFCH41_WDT_RES_1S;
+	val &= ~AMDFCH41_WDT_EN_MASK;
+	val |= AMDFCH41_WDT_ENABLE;
+	pmio_write(pmres, AMDFCH41_PM_DECODE_EN3, val);
+#ifdef AMDSBWD_DEBUG
+	val = pmio_read(pmres, AMDFCH41_PM_DECODE_EN3);
+	amdsbwd_verbose_printf(dev, "AMDFCH41_PM_DECODE_EN3 value = %#04x\n",
+	    val);
+#endif
+	device_set_desc(dev, "AMD FCH Rev 41h+ Watchdog Timer");
 }
 
 static int
@@ -375,13 +407,15 @@ amdsbwd_probe(device_t dev)
 	uint32_t		addr;
 	int			rid;
 	int			rc;
+	uint32_t		devid;
+	uint8_t			revid;
 
 	/* Do not claim some ISA PnP device by accident. */
 	if (isa_get_logicalid(dev) != 0)
 		return (ENXIO);
 
 	rc = bus_set_resource(dev, SYS_RES_IOPORT, 0, AMDSB_PMIO_INDEX,
-	    AMDSB_PMIO_WIDTH, -1);
+			      AMDSB_PMIO_WIDTH, -1);
 	if (rc != 0) {
 		device_printf(dev, "bus_set_resource for IO failed\n");
 		return (ENXIO);
@@ -396,23 +430,30 @@ amdsbwd_probe(device_t dev)
 
 	smb_dev = pci_find_bsf(0, 20, 0);
 	KASSERT(smb_dev != NULL, ("can't find SMBus PCI device\n"));
-	if (pci_get_revid(smb_dev) < AMDSB8_SMBUS_REVID)
+	devid = pci_get_devid(smb_dev);
+	revid = pci_get_revid(smb_dev);
+	if (devid == AMDSB_SMBUS_DEVID && revid < AMDSB8_SMBUS_REVID) {
 		amdsbwd_probe_sb7xx(dev, res, &addr);
-	else
+	} else if (devid == AMDSB_SMBUS_DEVID ||
+	     (devid == AMDFCH_SMBUS_DEVID && revid < AMDFCH41_SMBUS_REVID) ||
+	     (devid == AMDCZ_SMBUS_DEVID  && revid < AMDCZ49_SMBUS_REVID)) {
 		amdsbwd_probe_sb8xx(dev, res, &addr);
+	} else {
+		amdsbwd_probe_fch41(dev, res, &addr);
+	}
 
 	bus_release_resource(dev, SYS_RES_IOPORT, rid, res);
 	bus_delete_resource(dev, SYS_RES_IOPORT, rid);
 
 	amdsbwd_verbose_printf(dev, "memory base address = %#010x\n", addr);
 	rc = bus_set_resource(dev, SYS_RES_MEMORY, 0, addr + AMDSB_WD_CTRL,
-	    AMDSB_WDIO_REG_WIDTH, -1);
+			      AMDSB_WDIO_REG_WIDTH, -1);
 	if (rc != 0) {
 		device_printf(dev, "bus_set_resource for control failed\n");
 		return (ENXIO);
 	}
 	rc = bus_set_resource(dev, SYS_RES_MEMORY, 1, addr + AMDSB_WD_COUNT,
-	    AMDSB_WDIO_REG_WIDTH, -1);
+			      AMDSB_WDIO_REG_WIDTH, -1);
 	if (rc != 0) {
 		device_printf(dev, "bus_set_resource for count failed\n");
 		return (ENXIO);
@@ -424,18 +465,11 @@ amdsbwd_probe(device_t dev)
 static int
 amdsbwd_attach_sb(device_t dev, struct amdsbwd_softc *sc)
 {
-	device_t	smb_dev;
-
 	sc->max_ticks = UINT16_MAX;
 	sc->rid_ctrl = 0;
 	sc->rid_count = 1;
 
-	smb_dev = pci_find_bsf(0, 20, 0);
-	KASSERT(smb_dev != NULL, ("can't find SMBus PCI device\n"));
-	if (pci_get_revid(smb_dev) < AMDSB8_SMBUS_REVID)
-		sc->ms_per_tick = 10;
-	else
-		sc->ms_per_tick = 1000;
+	sc->ms_per_tick = 1000;
 
 	sc->res_ctrl = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
 	    &sc->rid_ctrl, RF_ACTIVE);
@@ -452,20 +486,13 @@ amdsbwd_attach_sb(device_t dev, struct amdsbwd_softc *sc)
 	return (0);
 }
 
-static struct watchdog amdsb_wdog = {
-	.name		=	"AMD southbridge",
-	.wdog_fn	=	amdsb_watchdog,
-	.arg		=	NULL,
-	.period_max	=	(UINT16_MAX*1000) / 10,
-};
-
 static int
 amdsbwd_attach(device_t dev)
 {
 	struct amdsbwd_softc	*sc;
 	int			rc;
 
-	sc = &amdsbwd_sc;
+	sc = device_get_softc(dev);
 	sc->dev = dev;
 
 	rc = amdsbwd_attach_sb(dev, sc);
@@ -485,7 +512,11 @@ amdsbwd_attach(device_t dev)
 		goto fail;
 	}
 
-	wdog_register(&amdsb_wdog);
+	sc->wdog.name = "AMD southbridge";
+	sc->wdog.wdog_fn = amdsb_watchdog;
+	sc->wdog.arg = sc;
+	sc->wdog.period_max = (UINT16_MAX*1000) / 10;
+	wdog_register(&sc->wdog);
 
 	return (0);
 
@@ -499,8 +530,9 @@ amdsbwd_detach(device_t dev)
 {
 	struct amdsbwd_softc *sc;
 
-	sc = &amdsbwd_sc;
-	wdog_unregister(&amdsb_wdog);
+	sc = device_get_softc(dev);
+	if (sc->wdog.name)
+		wdog_unregister(&sc->wdog);
 
 	if (sc->active)
 		amdsbwd_tmr_disable(sc);
@@ -513,5 +545,33 @@ amdsbwd_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->rid_count,
 		    sc->res_count);
 
+	return (0);
+}
+
+static int
+amdsbwd_suspend(device_t dev)
+{
+	struct amdsbwd_softc *sc;
+	uint32_t val;
+
+	sc = device_get_softc(dev);
+	val = wdctrl_read(sc);
+	val &= ~AMDSB_WD_RUN;
+	wdctrl_write(sc, val);
+	return (0);
+}
+
+static int
+amdsbwd_resume(device_t dev)
+{
+	struct amdsbwd_softc *sc;
+
+	sc = device_get_softc(dev);
+	wdctrl_write(sc, AMDSB_WD_FIRED);
+	if (sc->active) {
+		amdsbwd_tmr_set(sc, sc->timeout);
+		amdsbwd_tmr_enable(sc);
+		amdsbwd_tmr_reload(sc);
+	}
 	return (0);
 }
