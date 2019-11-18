@@ -128,7 +128,15 @@ void iounmap(void __iomem *ptr);
 
 #define mmiowb cpu_sfence
 
-extern int arch_io_reserve_memtype_wc(resource_size_t start, resource_size_t size);
-extern void arch_io_free_memtype_wc(resource_size_t start, resource_size_t size);
+static inline int
+arch_io_reserve_memtype_wc(resource_size_t start, resource_size_t size)
+{
+	return 0;
+}
+
+static inline void
+arch_io_free_memtype_wc(resource_size_t start, resource_size_t size)
+{
+}
 
 #endif	/* _ASM_IO_H_ */
