@@ -74,6 +74,9 @@ static char *ig4iic_ids[] = {
 	"INT3433",
 	"80860F41",
 	"808622C1",
+	"AMDI0510",
+	"AMDI0010",
+	"APMC0D0F",
 	NULL
 };
 
@@ -86,7 +89,7 @@ ig4iic_acpi_probe(device_t dev)
             ACPI_ID_PROBE(device_get_parent(dev), dev, ig4iic_ids) == NULL)
                 return (ENXIO);
 
-	device_set_desc(dev, "Intel SoC I2C Controller");
+	device_set_desc(dev, "Designware I2C Controller");
 
 	return (BUS_PROBE_DEFAULT);
 }
@@ -107,7 +110,7 @@ ig4iic_acpi_attach(device_t dev)
 	sc->regs_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
 					  &sc->regs_rid, RF_ACTIVE);
 	if (sc->regs_res == NULL) {
-		device_printf(dev, "unable to map registers");
+		device_printf(dev, "unable to map registers\n");
 		ig4iic_acpi_detach(dev);
 		return (ENXIO);
 	}
@@ -115,7 +118,7 @@ ig4iic_acpi_attach(device_t dev)
 	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
 					  &sc->intr_rid, RF_ACTIVE);
 	if (sc->intr_res == NULL) {
-		device_printf(dev, "unable to map interrupt");
+		device_printf(dev, "unable to map interrupt\n");
 		ig4iic_acpi_detach(dev);
 		return (ENXIO);
 	}

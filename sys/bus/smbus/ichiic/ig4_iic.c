@@ -496,6 +496,7 @@ ig4iic_attach(ig4iic_softc_t *sc)
 	int error;
 	uint32_t v;
 
+	device_printf(sc->dev, "version %d ", sc->version);
 	if (sc->version == IG4_ATOM) {
 		v = reg_read(sc, IG4_REG_COMP_TYPE);
 		kprintf("type %08x", v);
@@ -523,7 +524,7 @@ ig4iic_attach(ig4iic_softc_t *sc)
 		kprintf(" swltr %08x", v);
 		v = reg_read(sc, IG4_REG_AUTO_LTR_VALUE);
 		kprintf(" autoltr %08x", v);
-	} else if (sc->version == IG4_SKYLAKE) {
+	} else if (sc->version >= IG4_SKYLAKE) {
 		v = reg_read(sc, IG4_REG_ACTIVE_LTR_VALUE);
 		kprintf(" activeltr %08x", v);
 		v = reg_read(sc, IG4_REG_IDLE_LTR_VALUE);
@@ -532,24 +533,29 @@ ig4iic_attach(ig4iic_softc_t *sc)
 
 	if (sc->version == IG4_HASWELL || sc->version == IG4_ATOM) {
 		v = reg_read(sc, IG4_REG_COMP_VER);
-		kprintf(" version %08x\n", v);
-		if (v != IG4_COMP_VER) {
+		kprintf(" comp_version %08x\n", v);
+		if (v < IG4_COMP_VER) {
+			device_printf(sc->dev, "Compat version too low\n");
 			error = ENXIO;
 			goto done;
 		}
+	} else {
+		kprintf("\n");
+	}
+	if (bootverbose) {
+		device_printf(sc->dev, "debug -");
+		v = reg_read(sc, IG4_REG_SS_SCL_HCNT);
+		kprintf(" SS_SCL_HCNT=%08x", v);
+		v = reg_read(sc, IG4_REG_SS_SCL_LCNT);
+		kprintf(" LCNT=%08x", v);
+		v = reg_read(sc, IG4_REG_FS_SCL_HCNT);
+		kprintf(" FS_SCL_HCNT=%08x", v);
+		v = reg_read(sc, IG4_REG_FS_SCL_LCNT);
+		kprintf(" LCNT=%08x", v);
+		v = reg_read(sc, IG4_REG_SDA_HOLD);
+		kprintf(" HOLD=%08x\n", v);
 	}
 #if 1
-	v = reg_read(sc, IG4_REG_SS_SCL_HCNT);
-	kprintf("SS_SCL_HCNT=%08x", v);
-	v = reg_read(sc, IG4_REG_SS_SCL_LCNT);
-	kprintf(" LCNT=%08x", v);
-	v = reg_read(sc, IG4_REG_FS_SCL_HCNT);
-	kprintf(" FS_SCL_HCNT=%08x", v);
-	v = reg_read(sc, IG4_REG_FS_SCL_LCNT);
-	kprintf(" LCNT=%08x\n", v);
-	v = reg_read(sc, IG4_REG_SDA_HOLD);
-	kprintf("HOLD        %08x\n", v);
-
 	v = reg_read(sc, IG4_REG_SS_SCL_HCNT);
 	reg_write(sc, IG4_REG_FS_SCL_HCNT, v);
 	v = reg_read(sc, IG4_REG_SS_SCL_LCNT);
@@ -614,7 +620,7 @@ ig4iic_attach(ig4iic_softc_t *sc)
 	if (sc->version == IG4_HASWELL || sc->version == IG4_ATOM) {
 		reg_write(sc, IG4_REG_RESETS_HSW, IG4_RESETS_ASSERT_HSW);
 		reg_write(sc, IG4_REG_RESETS_HSW, IG4_RESETS_DEASSERT_HSW);
-	} else if (sc->version == IG4_SKYLAKE) {
+	} else if (sc->version >= IG4_SKYLAKE) {
 		reg_write(sc, IG4_REG_RESETS_SKL, IG4_RESETS_ASSERT_SKL);
 		reg_write(sc, IG4_REG_RESETS_SKL, IG4_RESETS_DEASSERT_SKL);
 	}
@@ -1041,7 +1047,7 @@ ig4iic_dump(ig4iic_softc_t *sc)
 	if (sc->version == IG4_HASWELL) {
 		REGDUMP(sc, IG4_REG_SW_LTR_VALUE);
 		REGDUMP(sc, IG4_REG_AUTO_LTR_VALUE);
-	} else if (sc->version == IG4_SKYLAKE) {
+	} else if (sc->version >= IG4_SKYLAKE) {
 		REGDUMP(sc, IG4_REG_ACTIVE_LTR_VALUE);
 		REGDUMP(sc, IG4_REG_IDLE_LTR_VALUE);
 	}

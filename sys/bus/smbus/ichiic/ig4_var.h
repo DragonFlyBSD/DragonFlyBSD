@@ -50,6 +50,8 @@ enum ig4_vers {
 	IG4_HASWELL = 0,
 	IG4_ATOM,	/* Bay Trail, Braswell, Cherryview */
 	IG4_SKYLAKE,	/* Skylake-U/Y and Kaby Lake-U/Y */
+	IG4_APL,
+	IG4_CANNONLAKE
 };
 
 struct ig4iic_softc {
