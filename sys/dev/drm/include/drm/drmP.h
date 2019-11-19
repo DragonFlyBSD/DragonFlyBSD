@@ -165,6 +165,8 @@ struct dma_buf_attachment;
 extern __printflike(2, 3)
 void drm_ut_debug_printk(const char *function_name,
 			 const char *format, ...);
+extern __printflike(2, 3)
+void drm_err(const char *func, const char *format, ...);
 
 extern __printf(6, 7)
 void drm_dev_printk(const struct device *dev, const char *level,
@@ -228,7 +230,7 @@ void drm_printk(const char *level, unsigned int category,
 	drm_dev_printk(dev, KERN_ERR, DRM_UT_NONE, __func__, " *ERROR*",\
 		       fmt, ##__VA_ARGS__)
 #define DRM_ERROR(fmt, ...)						\
-	drm_printk(KERN_ERR, DRM_UT_NONE, fmt,	##__VA_ARGS__)
+	drm_err(__func__, fmt, ##__VA_ARGS__)
 
 /**
  * Rate limited error output.  Like DRM_ERROR() but won't flood the log.
@@ -236,6 +238,14 @@ void drm_printk(const char *level, unsigned int category,
  * \param fmt printf() like format string.
  * \param arg arguments
  */
+#define DRM_ERROR_RATELIMITED(fmt, ...)					\
+({									\
+	static struct krate krate_derr = { .freq = 1, .count = -16 };	\
+									\
+	krateprintf(&krate_derr, "error: [" DRM_NAME ":%s] *ERROR* "	\
+	    fmt, __func__, ##__VA_ARGS__);				\
+})
+
 #define DRM_DEV_ERROR_RATELIMITED(dev, fmt, ...)			\
 ({									\
 	static DEFINE_RATELIMIT_STATE(_rs,				\
@@ -245,8 +255,6 @@ void drm_printk(const char *level, unsigned int category,
 	if (__ratelimit(&_rs))						\
 		DRM_DEV_ERROR(dev, fmt, ##__VA_ARGS__);			\
 })
-#define DRM_ERROR_RATELIMITED(fmt, ...)					\
-	DRM_DEV_ERROR_RATELIMITED(NULL, fmt, ##__VA_ARGS__)
 
 #define DRM_DEV_INFO(dev, fmt, ...)					\
 	drm_dev_printk(dev, KERN_INFO, DRM_UT_NONE, __func__, "", fmt,	\
@@ -270,41 +278,57 @@ void drm_printk(const char *level, unsigned int category,
 #define DRM_DEV_DEBUG(dev, fmt, args...)				\
 	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_CORE, __func__, "", fmt,	\
 		       ##args)
-#define DRM_DEBUG(fmt, ...)						\
-	drm_printk(KERN_DEBUG, DRM_UT_CORE, fmt, ##__VA_ARGS__)
+#define DRM_DEBUG(fmt, args...)						\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_CORE))			\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
 
 #define DRM_DEV_DEBUG_DRIVER(dev, fmt, args...)				\
 	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_DRIVER, __func__, "",	\
 		       fmt, ##args)
-#define DRM_DEBUG_DRIVER(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_DRIVER, fmt, ##__VA_ARGS__)
+#define DRM_DEBUG_DRIVER(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_DRIVER))		\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
 
 #define DRM_DEV_DEBUG_KMS(dev, fmt, args...)				\
 	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_KMS, __func__, "", fmt,	\
 		       ##args)
-#define DRM_DEBUG_KMS(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_KMS, fmt, ##__VA_ARGS__)
+#define DRM_DEBUG_KMS(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_KMS))			\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
 
 #define DRM_DEV_DEBUG_PRIME(dev, fmt, args...)				\
 	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_PRIME, __func__, "",	\
 		       fmt, ##args)
-#define DRM_DEBUG_PRIME(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_PRIME, fmt, ##__VA_ARGS__)
+
+#define DRM_DEBUG_PRIME(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_PRIME))			\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
 
 #define DRM_DEV_DEBUG_ATOMIC(dev, fmt, args...)				\
 	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_ATOMIC, __func__, "",	\
 		       fmt, ##args)
-#define DRM_DEBUG_ATOMIC(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_ATOMIC, fmt, ##__VA_ARGS__)
+#define DRM_DEBUG_ATOMIC(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_ATOMIC))		\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
 
 #define DRM_DEV_DEBUG_VBL(dev, fmt, args...)				\
 	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_VBL, __func__, "", fmt,	\
 		       ##args)
-#define DRM_DEBUG_VBL(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_VBL, fmt, ##__VA_ARGS__)
-
-#define DRM_DEBUG_VBLANK(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_VBL, fmt, ##__VA_ARGS__)
+#define DRM_DEBUG_VBL(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_VBL))			\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
 
 #ifdef __DragonFly__
 #define DRM_DEBUG_FIOCTL(fmt, args...)					\
@@ -312,13 +336,13 @@ void drm_printk(const char *level, unsigned int category,
 		if (unlikely(drm_debug & DRM_UT_FIOCTL))		\
 			drm_ut_debug_printk(__func__, fmt, ##args);	\
 	} while (0)
-
 #define DRM_DEBUG_IOCTL(fmt, args...)					\
 	do {								\
 		if (unlikely(drm_debug & DRM_UT_IOCTL))			\
 			drm_ut_debug_printk(__func__, fmt, ##args);	\
 	} while (0)
-#endif
+#define DRM_DEBUG_VBLANK	DRM_DEBUG_VBL
+#endif	/* __DragonFly__ */
 
 #define _DRM_DEV_DEFINE_DEBUG_RATELIMITED(dev, level, fmt, args...)	\
 ({									\

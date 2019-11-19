@@ -73,6 +73,17 @@ static struct idr drm_minors_idr;
 static struct dentry *drm_debugfs_root;
 #endif
 
+void drm_err(const char *func, const char *format, ...)
+{
+	va_list args;
+
+	kprintf("error: [" DRM_NAME ":pid%d:%s] *ERROR* ", DRM_CURRENTPID, func);
+
+	va_start(args, format);
+	kvprintf(format, args);
+	va_end(args);
+}
+
 void drm_ut_debug_printk(const char *function_name, const char *format, ...)
 {
 	va_list args;
