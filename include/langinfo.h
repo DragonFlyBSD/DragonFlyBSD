@@ -30,7 +30,6 @@
 #define	_LANGINFO_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
 
 #ifndef _NL_ITEM_DECLARED
 typedef	int	nl_item;
@@ -112,7 +111,6 @@ typedef	int	nl_item;
 
 #if __BSD_VISIBLE
 #define	D_MD_ORDER	57	/* month/day order (local extension) */
-#endif
 
 /* standalone months forms for %OB */
 #define	ALTMON_1	58
@@ -127,6 +125,7 @@ typedef	int	nl_item;
 #define	ALTMON_10	67
 #define	ALTMON_11	68
 #define	ALTMON_12	69
+#endif /* __BSD_VISIBLE */
 
 __BEGIN_DECLS
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
