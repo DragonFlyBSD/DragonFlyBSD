@@ -1,6 +1,5 @@
 # $NetBSD: Makefile,v 1.2 2007/05/28 12:06:21 tls Exp $
 # $FreeBSD: src/lib/libsdp/Makefile,v 1.4 2005/07/22 17:19:03 kensmith Exp $
-# $DragonFly: src/lib/libsdp/Makefile,v 1.2 2008/03/01 23:58:00 swildner Exp $
 
 SYSDIR= ${.CURDIR}/../../sys/
 

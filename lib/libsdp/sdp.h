@@ -1,5 +1,4 @@
 /* $NetBSD: sdp.h,v 1.2 2006/08/17 20:13:31 plunky Exp $ */
-/* $DragonFly: src/lib/libsdp/sdp.h,v 1.2 2008/09/30 16:57:05 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -65,7 +64,9 @@
 #ifndef _SDP_H_
 #define _SDP_H_
 
+#include <stdint.h>
 #include <string.h>
+#include <netbt/bluetooth.h>
 
 __BEGIN_DECLS
 
