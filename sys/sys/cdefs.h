@@ -86,7 +86,7 @@
  * If needed, this value can be TUNED.  Suitable values for this macro
  * are 32, 64 and 128 bytes.  The unit of measurement for this macro is
  * bytes.
- * 
+ *
  * XXX: This macro and related macros will eventually move to a MD
  * header, but currently, we do need such a hierarchy.
  */
@@ -407,7 +407,7 @@
  * Handy GCC based macros:
  *
  * 	__cachealign:
- * 	
+ *
  * 	The __cachealign macro can be used for cache line aligning structures
  * 	of small to medium size.  It aligns the particular structure or
  * 	storage type to a system default cache line alignment, thus giving us
@@ -415,7 +415,7 @@
  * 	its best burst speeds.
  *
  * 	__usereg:
- * 	
+ *
  * 	The __usereg macro can/should be used when a function contains
  * 	arguments not more than 3.  It can be very useful to us due to the
  * 	message-passing nature of the kernel.
@@ -483,15 +483,15 @@
 #endif
 
 #ifndef	__DECONST
-#define	__DECONST(type, var)	((type)(uintptr_t)(const void *)(var))
+#define	__DECONST(type, var)	((type)(__uintptr_t)(const void *)(var))
 #endif
 
 #ifndef	__DEVOLATILE
-#define	__DEVOLATILE(type, var)	((type)(uintptr_t)(volatile void *)(var))
+#define	__DEVOLATILE(type, var)	((type)(__uintptr_t)(volatile void *)(var))
 #endif
 
 #ifndef	__DEQUALIFY
-#define	__DEQUALIFY(type, var)	((type)(uintptr_t)(const volatile void *)(var))
+#define	__DEQUALIFY(type, var)	((type)(__uintptr_t)(const volatile void *)(var))
 #endif
 
 /*
