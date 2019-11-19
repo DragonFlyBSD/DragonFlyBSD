@@ -58,7 +58,7 @@ struct gpt_hdr {
 	uint32_t	padding;
 };
 
-#define GPT_MIN_HDR_SIZE	offsetof(struct gpt_hdr, padding)
+#define GPT_MIN_HDR_SIZE	__offsetof(struct gpt_hdr, padding)
 #ifdef CTASSERT
 CTASSERT(GPT_MIN_HDR_SIZE == 92);
 #endif
