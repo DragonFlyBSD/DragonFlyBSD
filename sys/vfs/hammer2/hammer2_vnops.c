@@ -1129,8 +1129,8 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	 */
 	if (error && new_eof != old_eof) {
 		hammer2_mtx_unlock(&ip->truncate_lock);
-		hammer2_mtx_ex(&ip->lock);
-		hammer2_mtx_ex(&ip->truncate_lock);
+		hammer2_mtx_ex(&ip->lock);		/* note lock order */
+		hammer2_mtx_ex(&ip->truncate_lock);	/* note lock order */
 		hammer2_truncate_file(ip, old_eof);
 		if (ip->flags & HAMMER2_INODE_MODIFIED)
 			hammer2_inode_chain_sync(ip);
@@ -1235,6 +1235,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	hammer2_key_t osize;
 	int oblksize;
 	int nblksize;
+	int error;
 
 	KKASSERT((ip->flags & HAMMER2_INODE_RESIZED) == 0);
 	hammer2_inode_modify(ip);
@@ -1248,12 +1249,31 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 * state.  This is not perfect because we are doing it outside of
 	 * a sync/fsync operation, so it might not be fully synchronized
 	 * with the meta-data topology flush.
+	 *
+	 * We must retain and re-dirty the buffer cache buffer containing
+	 * the direct data so it can be written to a real block.  It should
+	 * not be possible for a bread error to occur since the original data
+	 * is extracted from the inode structure directly.
 	 */
 	if (osize <= HAMMER2_EMBEDDED_BYTES && nsize > HAMMER2_EMBEDDED_BYTES) {
-		atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
-		hammer2_inode_chain_sync(ip);
-	}
+		if (osize) {
+			struct buf *bp;
 
+			oblksize = hammer2_calc_logical(ip, 0, NULL, NULL);
+			error = bread_kvabio(ip->vp, 0, oblksize, &bp);
+			atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
+			hammer2_inode_chain_sync(ip);
+			if (error == 0) {
+				bheavy(bp);
+				bdwrite(bp);
+			} else {
+				brelse(bp);
+			}
+		} else {
+			atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
+			hammer2_inode_chain_sync(ip);
+		}
+	}
 	hammer2_mtx_unlock(&ip->lock);
 	if (ip->vp) {
 		oblksize = hammer2_calc_logical(ip, osize, &lbase, NULL);
