@@ -13,6 +13,7 @@ CFLAGS+=	-fno-stack-protector
 .if ${MACHINE_ARCH} != "i386"
 CFLAGS+=	-fPIC -mno-red-zone
 CFLAGS+=	-ffreestanding
+CFLAGS+=	-D_STANDALONE
 .endif
 
 .if ${MACHINE_ARCH} == "x86_64"

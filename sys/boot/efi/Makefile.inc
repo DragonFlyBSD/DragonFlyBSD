@@ -5,6 +5,7 @@ BINDIR?=	/boot
 # Options used when building app-specific efi components
 # See conf/kern.mk for the correct set of these
 CFLAGS+=	-O
+CFLAGS+=	-D_STANDALONE
 CFLAGS+=	-ffreestanding -Wformat
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
 LDFLAGS+=	-nostdlib
