@@ -40,7 +40,7 @@
 
 #include <sys/cdefs.h>
 
-#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
+#if (!defined(_KERNEL) || defined(_KERNEL_VIRTUAL)) && !defined(_STANDALONE)
 __BEGIN_DECLS
 extern __thread int	errno;
 

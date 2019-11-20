@@ -41,7 +41,7 @@
 #endif
 #include <string.h>
 
-#ifdef _LIBSTAND_
+#ifdef _STANDALONE
 #define TLS_ATTRIBUTE
 #define __thread
 #else
