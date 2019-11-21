@@ -394,7 +394,6 @@ off_t	 lseek(int, off_t, int);
 long	 pathconf(const char *, int);
 int	 pause(void);
 int	 pipe(int *);
-int	 pipe2(int *, int);
 ssize_t	 read(int, void *, size_t);
 int	 rmdir(const char *);
 int	 setgid(gid_t);
@@ -572,6 +571,7 @@ char	*mktemp(char *);
 #define	_MKTEMP_DECLARED
 #endif
 int	 nfssvc(int, void *);
+int	 pipe2(int *, int);
 int	 profil(char *, size_t, unsigned long, unsigned int);
 int	 rcmd(char **, int, const char *, const char *, const char *, int *);
 int	 rcmd_af(char **, int, const char *, const char *, const char *, int *,
