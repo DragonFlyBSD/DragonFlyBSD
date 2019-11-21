@@ -1027,7 +1027,6 @@ struct drm_device {
 	int		  pci_bus;
 	int		  pci_slot;
 	int		  pci_func;
-	drm_pci_id_list_t *id_entry;	/* PCI ID, name, and chipset private */
 	char busid_str[128];
 	int modesetting;
 	void             *mm_private;

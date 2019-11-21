@@ -974,13 +974,6 @@ int i915_resume_switcheroo(struct drm_device *dev)
 	return i915_drm_resume(dev);
 }
 
-/* XXX Hack for the old *BSD drm code base
- * The device id field is set at probe time */
-static drm_pci_id_list_t i915_attach_list[] = {
-	{0x8086, 0, 0, "Intel i915 GPU"},
-	{0, 0, 0, NULL}
-};
-
 struct intel_device_info *
 i915_get_device_id(int device)
 {
@@ -1103,28 +1096,6 @@ error:
 	atomic_or(I915_WEDGED, &error->reset_counter);
 	mutex_unlock(&dev->struct_mutex);
 	return ret;
-}
-
-static int i915_pci_probe(device_t kdev)
-{
-	int device, i = 0;
-
-	if (pci_get_class(kdev) != PCIC_DISPLAY)
-		return ENXIO;
-
-	if (pci_get_vendor(kdev) != PCI_VENDOR_INTEL)
-		return ENXIO;
-
-	device = pci_get_device(kdev);
-
-	for (i = 0; pciidlist[i].device != 0; i++) {
-		if (pciidlist[i].device == device) {
-			i915_attach_list[0].device = device;
-			return 0;
-		}
-	}
-
-	return ENXIO;
 }
 
 #if 0
@@ -1844,24 +1815,86 @@ static struct drm_driver driver = {
 	.patchlevel = DRIVER_PATCHLEVEL,
 };
 
-static int __init i915_init(void);
+static int i915_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+{
+	struct intel_device_info *intel_info =
+		(struct intel_device_info *) ent->driver_data;
+
+	if (IS_PRELIMINARY_HW(intel_info) && !i915.preliminary_hw_support) {
+		DRM_INFO("This hardware requires preliminary hardware support.\n"
+			 "See CONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT, and/or modparam preliminary_hw_support\n");
+		return -ENODEV;
+	}
+
+	/* Only bind to function 0 of the device. Early generations
+	 * used function 1 as a placeholder for multi-head. This causes
+	 * us confusion instead, especially on the systems where both
+	 * functions have the same PCI-ID!
+	 */
+	if (PCI_FUNC(pdev->devfn))
+		return -ENODEV;
+
+	/*
+	 * apple-gmux is needed on dual GPU MacBook Pro
+	 * to probe the panel if we're the inactive GPU.
+	 */
+#if 0
+	if (IS_ENABLED(CONFIG_VGA_ARB) && IS_ENABLED(CONFIG_VGA_SWITCHEROO) &&
+	    apple_gmux_present() && pdev != vga_default_device() &&
+	    !vga_switcheroo_handler_flags())
+		return -EPROBE_DEFER;
+#endif
+
+	return drm_get_pci_dev(pdev, ent, &driver);
+}
 
 static int
-i915_attach(device_t kdev)
+i915_pci_probe_dfly(device_t kdev)
 {
-	struct drm_device *dev = device_get_softc(kdev);
-	int error;
+	int device, i = 0;
+	const struct pci_device_id *ent;
+	static struct pci_dev *pdev = NULL;
+	static device_t bsddev;
 
-	dev->driver = &driver;
-	error = drm_attach(kdev, i915_attach_list);
+	if (pci_get_class(kdev) != PCIC_DISPLAY)
+		return ENXIO;
 
-	return error;
+	if (pci_get_vendor(kdev) != PCI_VENDOR_ID_INTEL)
+		return ENXIO;
+
+	device = pci_get_device(kdev);
+
+	for (i = 0; pciidlist[i].device != 0; i++) {
+		if (pciidlist[i].device == device) {
+			ent = &pciidlist[i];
+			goto found;
+		}
+	}
+
+	return ENXIO;
+found:
+	if (!strcmp(device_get_name(kdev), "drmsub"))
+		bsddev = device_get_parent(kdev);
+	else
+		bsddev = kdev;
+
+	drm_init_pdev(bsddev, &pdev);
+
+	/* Print the contents of pdev struct. */
+	drm_print_pdev(pdev);
+
+	return i915_pci_probe(pdev, ent);
+}
+
+static int i915_driver_attach(device_t kdev)
+{
+	return 0;
 }
 
 static device_method_t i915_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		i915_pci_probe),
-	DEVMETHOD(device_attach,	i915_attach),
+	DEVMETHOD(device_probe,		i915_pci_probe_dfly),
+	DEVMETHOD(device_attach,	i915_driver_attach),
 	DEVMETHOD(device_suspend,	i915_suspend_switcheroo),
 	DEVMETHOD(device_resume,	i915_resume_switcheroo),
 	DEVMETHOD(device_detach,	drm_release),

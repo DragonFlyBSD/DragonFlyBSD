@@ -89,8 +89,6 @@ DEFINE_MUTEX(drm_global_mutex);
  *     };
  */
 
-extern drm_pci_id_list_t *drm_find_description(int vendor, int device,
-    drm_pci_id_list_t *idlist);
 extern devclass_t drm_devclass;
 
 static int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,

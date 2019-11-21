@@ -29,6 +29,8 @@
 
 #include <linux/types.h>
 
+#include <cpu/x86_64/include/atomic.h>
+
 static inline long
 atomic64_add_return(int64_t i, atomic64_t *v)
 {

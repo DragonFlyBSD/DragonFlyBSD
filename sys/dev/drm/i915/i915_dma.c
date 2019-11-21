@@ -1032,11 +1032,6 @@ static int i915_driver_init_early(struct drm_i915_private *dev_priv,
 	struct intel_device_info *device_info;
 	int ret = 0;
 
-#ifdef __DragonFly__
-	/* XXX: struct pci_dev */
-	info = i915_get_device_id(dev->pdev->device);
-#endif
-
 	if (i915_inject_load_failure())
 		return -ENODEV;
 

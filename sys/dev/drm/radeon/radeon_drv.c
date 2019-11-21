@@ -332,9 +332,11 @@ TUNABLE_INT("drm.radeon.vce", &radeon_vce);
 MODULE_PARM_DESC(vce, "vce enable/disable vce support (1 = enable, 0 = disable)");
 module_param_named(vce, radeon_vce, int, 0444);
 
-static drm_pci_id_list_t pciidlist[] = {
+static struct pci_device_id pciidlist[] = {
 	radeon_PCI_IDS
 };
+
+MODULE_DEVICE_TABLE(pci, pciidlist);
 
 static struct drm_driver kms_driver;
 
@@ -361,10 +363,12 @@ static int radeon_kick_out_firmware_fb(struct pci_dev *pdev)
 
 	return 0;
 }
+#endif	/* DUMBBELL_WIP */
 
 static int radeon_pci_probe(struct pci_dev *pdev,
 			    const struct pci_device_id *ent)
 {
+#if 0
 	int ret;
 
 	/*
@@ -382,10 +386,12 @@ static int radeon_pci_probe(struct pci_dev *pdev,
 	ret = radeon_kick_out_firmware_fb(pdev);
 	if (ret)
 		return ret;
+#endif
 
 	return drm_get_pci_dev(pdev, ent, &kms_driver);
 }
 
+#ifdef DUMBBELL_WIP
 static void
 radeon_pci_remove(struct pci_dev *pdev)
 {
@@ -663,16 +669,8 @@ static int __init radeon_init(void)
 		radeon_register_atpx_handler();
 
 	} else {
-#ifdef CONFIG_DRM_RADEON_UMS
-		DRM_INFO("radeon userspace modesetting enabled.\n");
-		driver = &driver_old;
-		pdriver = &radeon_pci_driver;
-		driver->driver_features &= ~DRIVER_MODESET;
-		driver->num_ioctls = radeon_max_ioctl;
-#else
 		DRM_ERROR("No UMS support in radeon module!\n");
 		return -EINVAL;
-#endif
 	}
 
 	/* let modprobe override vga console setting */
@@ -691,25 +689,46 @@ static void __exit radeon_exit(void)
 /* =================================================================== */
 
 static int
-radeon_probe(device_t kdev)
+radeon_pci_probe_dfly(device_t kdev)
 {
+	int device, i = 0;
+	const struct pci_device_id *ent;
+	static struct pci_dev *pdev = NULL;
+	static device_t bsddev;
 
-	return drm_probe(kdev, pciidlist);
+	if (pci_get_class(kdev) != PCIC_DISPLAY)
+		return ENXIO;
+
+	if (pci_get_vendor(kdev) != PCI_VENDOR_ID_ATI)
+		return ENXIO;
+
+	device = pci_get_device(kdev);
+
+	for (i = 0; pciidlist[i].device != 0; i++) {
+		if (pciidlist[i].device == device) {
+			ent = &pciidlist[i];
+			goto found;
+		}
+	}
+
+	return ENXIO;
+found:
+	if (!strcmp(device_get_name(kdev), "drmsub"))
+		bsddev = device_get_parent(kdev);
+	else
+		bsddev = kdev;
+
+	drm_init_pdev(bsddev, &pdev);
+
+	/* Print the contents of pdev struct. */
+	drm_print_pdev(pdev);
+
+	return radeon_pci_probe(pdev, ent);
 }
 
-static int
-radeon_attach(device_t kdev)
+static int radeon_driver_attach(device_t kdev)
 {
-	struct drm_device *dev;
-
-	dev = device_get_softc(kdev);
-	if (radeon_modeset == 1) {
-		kms_driver.driver_features |= DRIVER_MODESET;
-		kms_driver.num_ioctls = radeon_max_kms_ioctl;
-		radeon_register_atpx_handler();
-	}
-	dev->driver = &kms_driver;
-	return (drm_attach(kdev, pciidlist));
+	return 0;
 }
 
 static int
@@ -738,8 +757,8 @@ radeon_resume(device_t kdev)
 
 static device_method_t radeon_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		radeon_probe),
-	DEVMETHOD(device_attach,	radeon_attach),
+	DEVMETHOD(device_probe,		radeon_pci_probe_dfly),
+	DEVMETHOD(device_attach,	radeon_driver_attach),
 	DEVMETHOD(device_suspend,	radeon_suspend),
 	DEVMETHOD(device_resume,	radeon_resume),
 	DEVMETHOD(device_detach,	drm_device_detach),

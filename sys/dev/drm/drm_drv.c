@@ -267,7 +267,11 @@ static int drm_minor_register(struct drm_device *dev, unsigned int type)
 		DRM_ERROR("DRM: Failed to initialize /sys/kernel/debug/dri.\n");
 		return ret;
 	}
+#endif
 
+#ifdef __DragonFly__
+	/* XXX /dev entries should be created here with make_dev */
+#else
 	ret = device_add(minor->kdev);
 	if (ret)
 		goto err_debugfs;
@@ -577,6 +581,12 @@ int drm_dev_init(struct drm_device *dev,
 	}
 #else
 	dev->anon_inode = NULL;
+	dev->pci_domain = pci_get_domain(dev->dev->bsddev);
+	dev->pci_bus = pci_get_bus(dev->dev->bsddev);
+	dev->pci_slot = pci_get_slot(dev->dev->bsddev);
+	dev->pci_func = pci_get_function(dev->dev->bsddev);
+	lwkt_serialize_init(&dev->irq_lock);
+	drm_sysctl_init(dev);
 #endif
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
@@ -636,6 +646,9 @@ err_minors:
 err_free:
 #endif
 	mutex_destroy(&dev->master_mutex);
+#ifdef __DragonFly__
+	drm_sysctl_cleanup(dev);
+#endif
 	return ret;
 }
 EXPORT_SYMBOL(drm_dev_init);
@@ -668,7 +681,12 @@ struct drm_device *drm_dev_alloc(struct drm_driver *driver,
 	struct drm_device *dev;
 	int ret;
 
+#ifdef __DragonFly__
+	dev = device_get_softc(parent->bsddev);
+	bzero(dev, sizeof(struct drm_device));
+#else
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+#endif
 	if (!dev)
 		return ERR_PTR(-ENOMEM);
 
@@ -785,6 +803,12 @@ int drm_dev_register(struct drm_device *dev, unsigned long flags)
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
 		drm_modeset_register_all(dev);
+
+#ifdef __DragonFly__
+	ret = drm_create_cdevs(dev->dev->bsddev);
+	if (ret)
+		goto err_minors;
+#endif
 
 	ret = 0;
 	goto out_unlock;
@@ -960,13 +984,6 @@ module_exit(drm_core_exit);
 #include <linux/dmi.h>
 #include <drm/drmP.h>
 
-static int drm_load(struct drm_device *dev);
-drm_pci_id_list_t *drm_find_description(int vendor, int device,
-    drm_pci_id_list_t *idlist);
-
-#define DRIVER_SOFTC(unit) \
-	((struct drm_device *)devclass_get_softc(drm_devclass, unit))
-
 static int
 drm_modevent(module_t mod, int type, void *data)
 {
@@ -1011,73 +1028,6 @@ SYSCTL_NODE(_hw, OID_AUTO, drm, CTLFLAG_RW, NULL, "DRM device");
 SYSCTL_INT(_hw_drm, OID_AUTO, debug, CTLFLAG_RW, &drm_debug, 0,
     "DRM debugging");
 
-int drm_probe(device_t kdev, drm_pci_id_list_t *idlist)
-{
-	drm_pci_id_list_t *id_entry;
-	int vendor, device;
-
-	vendor = pci_get_vendor(kdev);
-	device = pci_get_device(kdev);
-
-	if (pci_get_class(kdev) != PCIC_DISPLAY)
-		return ENXIO;
-
-	id_entry = drm_find_description(vendor, device, idlist);
-	if (id_entry != NULL) {
-		if (!device_get_desc(kdev)) {
-			device_set_desc(kdev, id_entry->name);
-			DRM_DEBUG("desc : %s\n", device_get_desc(kdev));
-		}
-		return 0;
-	}
-
-	return ENXIO;
-}
-
-int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
-{
-	struct drm_device *dev;
-	drm_pci_id_list_t *id_entry;
-	int unit, error;
-
-	unit = device_get_unit(kdev);
-	dev = device_get_softc(kdev);
-
-	/* Initialize Linux struct device */
-	dev->dev = kzalloc(sizeof(struct device), GFP_KERNEL);
-
-	if (!strcmp(device_get_name(kdev), "drmsub"))
-		dev->dev->bsddev = device_get_parent(kdev);
-	else
-		dev->dev->bsddev = kdev;
-
-	dev->pci_domain = pci_get_domain(dev->dev->bsddev);
-	dev->pci_bus = pci_get_bus(dev->dev->bsddev);
-	dev->pci_slot = pci_get_slot(dev->dev->bsddev);
-	dev->pci_func = pci_get_function(dev->dev->bsddev);
-	drm_init_pdev(dev->dev->bsddev, &dev->pdev);
-
-	id_entry = drm_find_description(dev->pdev->vendor,
-	    dev->pdev->device, idlist);
-	dev->id_entry = id_entry;
-
-	/* Print the contents of pdev struct. */
-	drm_print_pdev(dev->pdev);
-
-	lwkt_serialize_init(&dev->irq_lock);
-	lockinit(&dev->event_lock, "drmev", 0, LK_CANRECURSE);
-	lockinit(&dev->struct_mutex, "drmslk", 0, LK_CANRECURSE);
-
-	error = drm_load(dev);
-	if (error)
-		goto error;
-
-	error = drm_create_cdevs(kdev);
-
-error:
-	return (error);
-}
-
 int
 drm_create_cdevs(device_t kdev)
 {
@@ -1100,85 +1050,6 @@ drm_create_cdevs(device_t kdev)
 #endif
 
 devclass_t drm_devclass;
-
-drm_pci_id_list_t *drm_find_description(int vendor, int device,
-    drm_pci_id_list_t *idlist)
-{
-	int i = 0;
-
-	for (i = 0; idlist[i].vendor != 0; i++) {
-		if ((idlist[i].vendor == vendor) &&
-		    ((idlist[i].device == device) ||
-		    (idlist[i].device == 0))) {
-			return &idlist[i];
-		}
-	}
-	return NULL;
-}
-
-static int drm_load(struct drm_device *dev)
-{
-	int retcode;
-
-	DRM_DEBUG("\n");
-
-	INIT_LIST_HEAD(&dev->maplist);
-
-	drm_sysctl_init(dev);
-	INIT_LIST_HEAD(&dev->filelist);
-
-	INIT_LIST_HEAD(&dev->vblank_event_list);
-
-	if (drm_core_check_feature(dev, DRIVER_USE_AGP)) {
-		if (drm_pci_device_is_agp(dev))
-			dev->agp = drm_agp_init(dev);
-	}
-
-	if (dev->driver->driver_features & DRIVER_GEM) {
-		retcode = drm_gem_init(dev);
-		if (retcode != 0) {
-			DRM_ERROR("Cannot initialize graphics execution "
-				  "manager (GEM)\n");
-			goto error1;
-		}
-	}
-
-	if (dev->driver->load != NULL) {
-		DRM_LOCK(dev);
-		/* Shared code returns -errno. */
-		retcode = -dev->driver->load(dev,
-		    dev->id_entry->driver_private);
-		if (pci_enable_busmaster(dev->dev->bsddev))
-			DRM_ERROR("Request to enable bus-master failed.\n");
-		DRM_UNLOCK(dev);
-		if (retcode != 0)
-			goto error1;
-	}
-
-	DRM_INFO("Initialized %s %d.%d.%d %s\n",
-	    dev->driver->name,
-	    dev->driver->major,
-	    dev->driver->minor,
-	    dev->driver->patchlevel,
-	    dev->driver->date);
-
-	return 0;
-
-error1:
-	drm_gem_destroy(dev);
-	drm_sysctl_cleanup(dev);
-	DRM_LOCK(dev);
-	drm_lastclose(dev);
-	DRM_UNLOCK(dev);
-	if (dev->devnode != NULL)
-		destroy_dev(dev->devnode);
-
-	lockuninit(&dev->vbl_lock);
-	lockuninit(&dev->event_lock);
-	lockuninit(&dev->struct_mutex);
-
-	return retcode;
-}
 
 /*
  * Stub is needed for devfs
