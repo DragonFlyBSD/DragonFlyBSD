@@ -423,6 +423,9 @@ extern int optind, opterr, optopt;
 
 /* ISO/IEC 9945-1: 1996 */
 #if __POSIX_VISIBLE >= 199506 || __XSI_VISIBLE
+#if 0 /* XXX missing */
+int	 fdatasync(int);
+#endif
 int	 fsync(int);
 
 /*
@@ -471,7 +474,7 @@ int	 truncate(const char *, off_t);
 #if __POSIX_VISIBLE >= 200809
 int	faccessat(int, const char *, int, int);
 int	fchownat(int, const char *, uid_t, gid_t, int);
-#if 0
+#if 0 /* XXX missing */
 int	fexecve(int, char *const [], char *const []);
 #endif
 int	linkat(int, const char *, int, const char *, int);
