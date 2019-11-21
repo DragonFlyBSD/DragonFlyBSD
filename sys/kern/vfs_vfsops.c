@@ -90,7 +90,7 @@ vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	VFS_MPLOCK(mp);
 	error = (mp->mnt_op->vfs_mount)(mp, path, data, cred);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 
 	return (error);
 }
@@ -111,7 +111,7 @@ vfs_start(struct mount *mp, int flags)
 		if ((mp->mnt_flag & MNT_UPDATE) == 0)
 			VFS_ACINIT(mp,error);
 	}
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	if (error == EMOUNTEXIT)
 		error = 0;
 	return (error);
@@ -133,7 +133,7 @@ vfs_unmount(struct mount *mp, int mntflags)
 	error = (mp->mnt_op->vfs_unmount)(mp, mntflags);
 	if (error == 0)
 		vn_syncer_thr_stop(mp);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -148,7 +148,7 @@ vfs_root(struct mount *mp, struct vnode **vpp)
 
 	VFS_MPLOCK(mp);
 	error = (mp->mnt_op->vfs_root)(mp, vpp);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -164,7 +164,7 @@ vfs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 
 	VFS_MPLOCK(mp);
 	error = (mp->mnt_op->vfs_quotactl)(mp, cmds, uid, arg, cred);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -179,7 +179,7 @@ vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 
 	VFS_MPLOCK(mp);
 	error = (mp->mnt_op->vfs_statfs)(mp, sbp, cred);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -194,7 +194,7 @@ vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 
 	VFS_MPLOCK(mp);
 	error = (mp->mnt_op->vfs_statvfs)(mp, sbp, cred);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -209,7 +209,7 @@ vfs_sync(struct mount *mp, int waitfor)
 
 	VFS_MPLOCK(mp);
 	error = (mp->mnt_op->vfs_sync)(mp, waitfor);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -224,7 +224,7 @@ vfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 
 	VFS_MPLOCK(mp);
 	error = (mp->mnt_op->vfs_vget)(mp, dvp, ino, vpp);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -240,7 +240,7 @@ vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 
 	VFS_MPLOCK(mp);
 	error = (mp->mnt_op->vfs_fhtovp)(mp, rootvp, fhp, vpp);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -256,7 +256,7 @@ vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 
 	VFS_MPLOCK(mp);
 	error = (mp->mnt_op->vfs_checkexp)(mp, nam, extflagsp, credanonp);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -271,7 +271,7 @@ vfs_vptofh(struct vnode *vp, struct fid *fhp)
 
 	VFS_MPLOCK(vp->v_mount);
 	error = (vp->v_mount->mnt_op->vfs_vptofh)(vp, fhp);
-	VFS_MPUNLOCK(vp->v_mount);
+	VFS_MPUNLOCK();
 	return (error);
 }
 
@@ -316,6 +316,6 @@ vfs_extattrctl(struct mount *mp, int cmd, struct vnode *vp,
 	error = (mp->mnt_op->vfs_extattrctl)(mp, cmd, vp,
 					     attrnamespace, attrname,
 					     cred);
-	VFS_MPUNLOCK(mp);
+	VFS_MPUNLOCK();
 	return (error);
 }

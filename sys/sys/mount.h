@@ -391,26 +391,29 @@ struct mount {
 
 /*
  * VFS MPLOCK helper.
+ *
+ * We have to cache the supplied mp because in certain situations
+ * the related vnode might go away across the use case (vop_strategy()).
  */
-#define VFS_MPLOCK_DECLARE	int xlock_mpsafe
+#define VFS_MPLOCK_DECLARE	struct mount *xlock_mp
 
 #define VFS_MPLOCK(mp)		VFS_MPLOCK_FLAG(mp, MNTK_MPSAFE)
 
 #define VFS_MPLOCK_FLAG(mp, flag)					\
 		do {							\
 			if (mp->mnt_kern_flag & flag) {			\
-				xlock_mpsafe = 1;			\
+				xlock_mp = NULL;			\
 			} else {					\
+				xlock_mp = (mp);			\
 				get_mplock();	/* TEMPORARY */		\
-				lwkt_gettoken(&mp->mnt_token);		\
-				xlock_mpsafe = 0;			\
+				lwkt_gettoken(&xlock_mp->mnt_token);	\
 			}						\
 		} while(0)
 
-#define VFS_MPUNLOCK(mp)						\
+#define VFS_MPUNLOCK()						\
 		do {							\
-			if (xlock_mpsafe == 0) {			\
-				lwkt_reltoken(&mp->mnt_token);		\
+			if (xlock_mp) {					\
+				lwkt_reltoken(&xlock_mp->mnt_token);	\
 				rel_mplock();	/* TEMPORARY */		\
 			}						\
 		} while(0)
