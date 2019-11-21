@@ -837,7 +837,19 @@ lwkt_reltoken(lwkt_token_t tok)
 	 * the token passed in.  Tokens must be released in reverse order.
 	 */
 	ref = td->td_toks_stop - 1;
-	KKASSERT(ref >= &td->td_toks_base && ref->tr_tok == tok);
+	if (__predict_false(ref < &td->td_toks_base || ref->tr_tok != tok)) {
+		kprintf("LWKT_RELTOKEN ASSERTION td %p tok %p ref %p/%p\n",
+			td, tok, &td->td_toks_base, ref);
+		kprintf("REF CONTENT: tok=%p count=%016lx owner=%p\n",
+			ref->tr_tok, ref->tr_count, ref->tr_owner);
+		if (ref < &td->td_toks_base) {
+			kprintf("lwkt_reltoken: no tokens to release\n");
+		} else {
+			kprintf("lwkt_reltoken: release wants %s and got %s\n",
+				tok->t_desc, ref->tr_tok->t_desc);
+		}
+		panic("lwkt_reltoken: illegal release");
+	}
 	_lwkt_reltokref(ref, td);
 	cpu_sfence();
 	td->td_toks_stop = ref;
