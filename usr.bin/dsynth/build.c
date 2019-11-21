@@ -2080,7 +2080,6 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	fflush(stderr);
 	if (MasterPtyFd >= 0) {
 		int slavefd;
-		char ttybuf[2];
 
 		/*
 		 * NOTE: We can't open the slave in the child because the
@@ -2090,7 +2089,8 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		 *	 parent process) and deadlock.
 		 *
 		 *	 Solve this by hand-shaking the slave tty to give
-		 *	 the master time to close its slavefd.
+		 *	 the master time to close its slavefd (after this
+		 *	 section).
 		 *
 		 *	 Leave the tty defaults intact, which also likely
 		 *	 means it will be in line-buffered mode, so handshake
@@ -2102,22 +2102,37 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		 */
 		slavefd = open(ptsname(MasterPtyFd), O_RDWR);
 		dassert_errno(slavefd >= 0, "Cannot open slave pty");
+
+		/*
+		 * Now do the fork.
+		 */
 		pid = fork();
 		if (pid == 0) {
 			login_tty(slavefd);
 			/* login_tty() closes slavefd */
-			read(0, ttybuf, 1);
 		} else {
 			close(slavefd);
-			write(MasterPtyFd, "\n", 1);
 		}
 	} else {
+		/*
+		 * Initial MasterPtyFd for the slot, just use forkpty().
+		 */
 		pid = forkpty(&MasterPtyFd, NULL, NULL, NULL);
 	}
 
+	/*
+	 * The slave must make sure the master has time to close slavefd
+	 * in the re-use case before going its merry way.  The master needs
+	 * to set terminal modes and the window as well.
+	 */
 	if (pid == 0) {
-		struct termios tio;
+		/*
+		 * Slave waits for handshake
+		 */
+		char ttybuf[2];
 
+		read(0, ttybuf, 1);
+	} else {
 		/*
 		 * We are going through a pty, so set the tty modes to
 		 * Set tty modes so we do not get ^M's in the log files.
@@ -2126,19 +2141,42 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		 * our output goes through the pty to the management
 		 * process which will log it.
 		 */
-		if (tcgetattr(1, &tio) == 0) {
+		struct termios tio;
+		struct winsize win;
+
+		if (tcgetattr(MasterPtyFd, &tio) == 0) {
 			tio.c_oflag |= OPOST | ONOCR;
 			tio.c_oflag &= ~(OCRNL | ONLCR);
 			tio.c_iflag |= ICRNL;
-			tio.c_iflag &= ~(INLCR|IGNCR);
-			if (tcsetattr(1, TCSANOW, &tio)) {
+			tio.c_iflag &= ~(INLCR | IGNCR);
+			if (tcsetattr(MasterPtyFd, TCSANOW, &tio)) {
 				printf("tcsetattr failed: %s\n",
 				       strerror(errno));
 			}
+
+			/*
+			 * Give the tty a non-zero columns field.
+			 * This fixes at least one port (textproc/po4a)
+			 */
+			if (ioctl(MasterPtyFd, TIOCGWINSZ, &win) == 0) {
+				win.ws_col = 80;
+				ioctl(MasterPtyFd, TIOCSWINSZ, &win);
+			} else {
+				printf("TIOCGWINSZ failed: %s\n",
+				       strerror(errno));
+			}
+
 		} else {
 			printf("tcgetattr failed: %s\n", strerror(errno));
 		}
 
+		/*
+		 * Master issues handshake
+		 */
+		write(MasterPtyFd, "\n", 1);
+	}
+
+	if (pid == 0) {
 		/*
 		 * Additional phase-specific environment variables
 		 *
