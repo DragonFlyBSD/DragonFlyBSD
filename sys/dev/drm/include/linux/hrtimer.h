@@ -62,4 +62,16 @@ extern int hrtimer_cancel(struct hrtimer *timer);
 
 extern bool hrtimer_active(const struct hrtimer *timer);
 
+static inline void
+hrtimer_start(struct hrtimer *timer, ktime_t tim, const enum hrtimer_mode mode)
+{
+	hrtimer_start_range_ns(timer, tim, 0, mode);
+}
+
+static inline void
+hrtimer_set_expires(struct hrtimer *timer, ktime_t time)
+{
+	/* XXX: hrtimer_set_expires() not implemented */
+}
+
 #endif /* _LINUX_HRTIMER_H_ */
