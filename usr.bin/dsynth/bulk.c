@@ -82,7 +82,8 @@ initbulk(void (*func)(bulk_t *bulk), int jobs)
 	BulkFunc = func;
 	BulkScanJob = 0;
 
-	addbuildenv("__MAKE_CONF", "/dev/null", BENV_ENVIRONMENT);
+	addbuildenv("__MAKE_CONF", "/dev/null",
+		    BENV_ENVIRONMENT | BENV_PKGLIST);
 
 	pthread_mutex_init(&BulkMutex, NULL);
 	pthread_cond_init(&BulkResponseCond, NULL);
