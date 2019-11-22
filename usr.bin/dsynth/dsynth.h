@@ -177,6 +177,8 @@ typedef struct pkg {
 #define PKGF_NOTREADY	0x00010000	/* build_find_leaves() only */
 #define PKGF_MANUALSEL	0x00020000	/* manually specified */
 #define PKGF_META	0x00040000	/* USES contains 'metaport' */
+#define PKGF_DEBUGSTOP	0x00080000	/* freeze slot on completion */
+
 #define PKGF_ERROR	(PKGF_PLACEHOLD | PKGF_CORRUPT | PKGF_NOTFOUND | \
 			 PKGF_FAILURE)
 #define PKGF_NOBUILD	(PKGF_NOBUILD_D | PKGF_NOBUILD_S | PKGF_NOBUILD_F | \
@@ -570,7 +572,7 @@ int dexec_close(FILE *fp, pid_t pid);
 const char *getphasestr(worker_phase_t phase);
 
 void ParseConfiguration(int isworker);
-pkg_t *ParsePackageList(int ac, char **av);
+pkg_t *ParsePackageList(int ac, char **av, int debugstop);
 void FreePackageList(pkg_t *pkgs);
 pkg_t *GetLocalPackageList(void);
 pkg_t *GetFullPackageList(void);

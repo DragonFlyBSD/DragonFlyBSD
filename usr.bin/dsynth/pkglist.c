@@ -40,7 +40,7 @@
 #define PKG_HSIZE	32768
 #define PKG_HMASK	32767
 
-static int parsepkglist_file(const char *path);
+static int parsepkglist_file(const char *path, int debugstop);
 static void childGetPackageInfo(bulk_t *bulk);
 static void childGetBinaryDistInfo(bulk_t *bulk);
 static void childOptimizeEnv(bulk_t *bulk);
@@ -148,7 +148,7 @@ pkg_find(const char *match)
  * Parse a specific list of ports via origin name (portdir/subdir)
  */
 pkg_t *
-ParsePackageList(int n, char **ary)
+ParsePackageList(int n, char **ary, int debugstop)
 {
 	pkg_t *list;
 	int i;
@@ -158,8 +158,8 @@ ParsePackageList(int n, char **ary)
 	initbulk(childGetPackageInfo, MaxBulk);
 
 	/*
-	 * Always include ports-mgmt/pkg.  A non-null s4 field just tells
-	 * the processing code that this isn't a manual selection.
+	 * Always include ports-mgmt/pkg.  s4 is "x" meaning not a manual
+	 * selection, "d" meaning DEBUGSTOP mode, or NULL.
 	 */
 	queuebulk("ports-mgmt", "pkg", NULL, "x");
 
@@ -171,7 +171,7 @@ ParsePackageList(int n, char **ary)
 
 		l1 = strdup(ary[i]);
 		if (stat(l1, &st) == 0 && S_ISREG(st.st_mode)) {
-			total += parsepkglist_file(l1);
+			total += parsepkglist_file(l1, debugstop);
 			continue;
 		}
 
@@ -185,7 +185,7 @@ ParsePackageList(int n, char **ary)
 		l3 = strchr(l2, '@');
 		if (l3)
 			*l3++ = 0;
-		queuebulk(l1, l2, l3, NULL);
+		queuebulk(l1, l2, l3, (debugstop ? "d" : NULL));
 		++total;
 		free(l1);
 	}
@@ -198,7 +198,7 @@ ParsePackageList(int n, char **ary)
 
 static
 int
-parsepkglist_file(const char *path)
+parsepkglist_file(const char *path, int debugstop)
 {
 	FILE *fp;
 	char *base;
@@ -234,7 +234,7 @@ parsepkglist_file(const char *path)
 		l3 = strchr(l2, '@');
 		if (l3)
 			*l3++ = 0;
-		queuebulk(l1, l2, l3, NULL);
+		queuebulk(l1, l2, l3, (debugstop ? "d" : NULL));
 		++total;
 	}
 	fclose(fp);
@@ -263,8 +263,8 @@ GetLocalPackageList(void)
 	fp = popen("pkg info -a -o", "r");
 
 	/*
-	 * Always include ports-mgmt/pkg.  A non-null s4 field just tells
-	 * the processing code that this isn't a manual selection.
+	 * Always include ports-mgmt/pkg.  s4 is "x" meaning not a manual
+	 * selection, "d" meaning DEBUGSTOP mode, or NULL.
 	 */
 	queuebulk("ports-mgmt", "pkg", NULL, "x");
 
@@ -346,7 +346,7 @@ processPackageListBulk(int total)
 			*list_tail = bulk->list;
 			bulk->list = NULL;
 			while ((scan = *list_tail) != NULL) {
-				if (bulk->s4 == NULL)
+				if (bulk->s4 == NULL || bulk->s4[0] != 'x')
 					scan->flags |= PKGF_MANUALSEL;
 				pkg_enter(scan);
 				list_tail = &scan->bnext;
@@ -829,6 +829,12 @@ again:
 		pkg->flags |= PKGF_CORRUPT;
 	}
 	ddassert(bulk->s1);
+
+	/*
+	 * DEBUGSTOP mode
+	 */
+	if (bulk->s4 && bulk->s4[0] == 'd')
+		pkg->flags |= PKGF_DEBUGSTOP;
 
 	/*
 	 * Generate flavors

@@ -189,16 +189,15 @@ main(int ac, char **av)
 	DoInitBuild(-1);
 
 	if (strcmp(av[0], "debug") == 0) {
-		WorkerProcFlags |= WORKER_PROC_DEBUGSTOP;
 		DoCleanBuild(1);
 		OptimizeEnv();
-		pkgs = ParsePackageList(ac - 1, av + 1);
+		pkgs = ParsePackageList(ac - 1, av + 1, 1);
 		RemovePackages(pkgs);
 		DoBuild(pkgs);
 	} else if (strcmp(av[0], "status") == 0) {
 		OptimizeEnv();
 		if (ac - 1)
-			pkgs = ParsePackageList(ac - 1, av + 1);
+			pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		else
 			pkgs = GetLocalPackageList();
 		DoStatus(pkgs);
@@ -258,26 +257,26 @@ main(int ac, char **av)
 	} else if (strcmp(av[0], "build") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
-		pkgs = ParsePackageList(ac - 1, av + 1);
+		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		DoBuild(pkgs);
 		DoRebuildRepo(1);
 		DoUpgradePkgs(pkgs, 1);
 	} else if (strcmp(av[0], "just-build") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
-		pkgs = ParsePackageList(ac - 1, av + 1);
+		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		DoBuild(pkgs);
 	} else if (strcmp(av[0], "install") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
-		pkgs = ParsePackageList(ac - 1, av + 1);
+		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		DoBuild(pkgs);
 		DoRebuildRepo(0);
 		DoUpgradePkgs(pkgs, 0);
 	} else if (strcmp(av[0], "force") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
-		pkgs = ParsePackageList(ac - 1, av + 1);
+		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		RemovePackages(pkgs);
 		DoBuild(pkgs);
 		DoRebuildRepo(1);
@@ -286,7 +285,7 @@ main(int ac, char **av)
 		WorkerProcFlags |= WORKER_PROC_CHECK_PLIST;
 		DoCleanBuild(1);
 		OptimizeEnv();
-		pkgs = ParsePackageList(ac - 1, av + 1);
+		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		RemovePackages(pkgs);
 		WorkerProcFlags |= WORKER_PROC_DEVELOPER;
 		DoBuild(pkgs);

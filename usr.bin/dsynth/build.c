@@ -1275,6 +1275,7 @@ childBuilderThread(void *arg)
 	pkg_t *pkg;
 	pid_t pid;
 	int status;
+	int flags;
 	volatile int dowait;
 	char slotbuf[8];
 	char fdbuf[8];
@@ -1305,12 +1306,20 @@ childBuilderThread(void *arg)
 				       PF_UNSPEC, work->fds)) {
 				dfatal_errno("socketpair() during worker fork");
 			}
-			snprintf(slotbuf, sizeof(slotbuf),
-				 "%d", work->index);
-			snprintf(fdbuf, sizeof(fdbuf),
-				 "3");
-			snprintf(flagsbuf, sizeof(flagsbuf),
-				 "%d", WorkerProcFlags);
+			snprintf(slotbuf, sizeof(slotbuf), "%d", work->index);
+			snprintf(fdbuf, sizeof(fdbuf), "3");
+
+			/*
+			 * Pass global flags and add-in the DEBUGSTOP if
+			 * the package is flagged for debugging.
+			 */
+			flags = WorkerProcFlags;
+			if (work->pkg->flags & PKGF_DEBUGSTOP) {
+				flags |= WORKER_PROC_DEBUGSTOP;
+			} else {
+				flags &= ~WORKER_PROC_DEBUGSTOP;
+			}
+			snprintf(flagsbuf, sizeof(flagsbuf), "%d", flags);
 
 			/*
 			 * fds[0] - master
@@ -1431,8 +1440,15 @@ childBuilderThread(void *arg)
 			 * does something about it.
 			 */
 			break;
+		case WORKER_FROZEN:
+			/*
+			 * A worker getting frozen is debug-related.  We
+			 * just sit in this state (likely forever).
+			 */
+			break;
 		default:
-			dfatal("worker: [%03d] Unexpected state %d for worker %d",
+			dfatal("worker: [%03d] Unexpected state %d "
+			       "for worker %d",
 			       work->index, work->state, work->index);
 			/* NOT REACHED */
 			break;
