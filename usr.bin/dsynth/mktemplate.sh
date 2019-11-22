@@ -35,6 +35,17 @@ foreach i ( `(cd $sysbase; find /var -type d)` )
 	mkdir -p $template/$i
 end
 
+mkdir -p $template/var/mail
+chown root:mail $template/var/mail
+chmod 775 $template/var/mail
+
+mkdir -p $template/var/games
+chown root:games $template/var/games
+chmod 775 $template/var/games
+
+mkdir -p $template/var/msgs
+chown daemon:wheel $template/var/msgs
+
 # Delete sensitive data from /etc
 #
 #
