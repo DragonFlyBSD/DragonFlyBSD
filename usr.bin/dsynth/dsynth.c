@@ -131,6 +131,12 @@ main(int ac, char **av)
 	if (strcmp(av[0], "init") == 0) {
 		DoInit();
 		exit(0);
+		/* NOT REACHED */
+	}
+	if (strcmp(av[0], "help") == 0) {
+		usage(0);
+		exit(0);
+		/* NOT REACHED */
 	}
 
 	if (strcmp(av[0], "WORKER") == 0) {
@@ -248,10 +254,6 @@ main(int ac, char **av)
 		DoRebuildRepo(1);
 	} else if (strcmp(av[0], "version") == 0) {
 		printf("dsynth %s\n", DSYNTH_VERSION);
-		exit(0);
-	} else if (strcmp(av[0], "help") == 0) {
-		usage(0);
-		/* NOT REACHED */
 		exit(0);
 	} else if (strcmp(av[0], "build") == 0) {
 		DoCleanBuild(1);

@@ -40,6 +40,7 @@
 #define PKG_HSIZE	32768
 #define PKG_HMASK	32767
 
+static int parsepkglist_file(const char *path);
 static void childGetPackageInfo(bulk_t *bulk);
 static void childGetBinaryDistInfo(bulk_t *bulk);
 static void childOptimizeEnv(bulk_t *bulk);
@@ -165,16 +166,27 @@ ParsePackageList(int n, char **ary)
 	for (i = 0; i < n; ++i) {
 		char *l1;
 		char *l2;
+		char *l3;
+		struct stat st;
 
 		l1 = strdup(ary[i]);
-		l2 = strchr(l1, '/');
-		if (l2) {
-			*l2++ = 0;
-			queuebulk(l1, l2, NULL, NULL);
-			++total;
-		} else {
-			printf("Bad portdir specification: %s\n", l1);
+		if (stat(l1, &st) == 0 && S_ISREG(st.st_mode)) {
+			total += parsepkglist_file(l1);
+			continue;
 		}
+
+		l2 = strchr(l1, '/');
+		if (l2 == NULL) {
+			printf("Bad portdir specification: %s\n", l1);
+			free(l1);
+			continue;
+		}
+		*l2++ = 0;
+		l3 = strchr(l2, '@');
+		if (l3)
+			*l3++ = 0;
+		queuebulk(l1, l2, l3, NULL);
+		++total;
 		free(l1);
 	}
 	printf("Processing %d ports\n", total);
@@ -182,6 +194,52 @@ ParsePackageList(int n, char **ary)
 	list = processPackageListBulk(total);
 
 	return list;
+}
+
+static
+int
+parsepkglist_file(const char *path)
+{
+	FILE *fp;
+	char *base;
+	char *l1;
+	char *l2;
+	char *l3;
+	size_t len;
+	int total;
+
+	if ((fp = fopen(path, "r")) == NULL) {
+		dpanic_errno("Cannot read %s\n", path);
+		/* NOT REACHED */
+		return 0;
+	}
+
+	total = 0;
+
+	while ((base = fgetln(fp, &len)) != NULL) {
+		if (len == 0 || base[len-1] != '\n')
+			continue;
+		base[--len] = 0;
+		l1 = strtok(base, " \t\r\n");
+		if (l1 == NULL) {
+			printf("Badly formatted pkg info line: %s\n", base);
+			continue;
+		}
+		l2 = strchr(l1, '/');
+		if (l2 == NULL) {
+			printf("Badly formatted specification: %s\n", l1);
+			continue;
+		}
+		*l2++ = 0;
+		l3 = strchr(l2, '@');
+		if (l3)
+			*l3++ = 0;
+		queuebulk(l1, l2, l3, NULL);
+		++total;
+	}
+	fclose(fp);
+
+	return total;
 }
 
 /*
@@ -195,6 +253,7 @@ GetLocalPackageList(void)
 	char *base;
 	char *l1;
 	char *l2;
+	char *l3;
 	int total;
 	size_t len;
 
@@ -224,13 +283,16 @@ GetLocalPackageList(void)
 		}
 
 		l2 = strchr(l1, '/');
-		if (l2) {
-			*l2++ = 0;
-			queuebulk(l1, l2, NULL, NULL);
-			++total;
-		} else {
+		if (l2 == NULL) {
 			printf("Badly formatted specification: %s\n", l1);
+			continue;
 		}
+		*l2++ = 0;
+		l3 = strchr(l2, '@');
+		if (l3)
+			*l3++ = 0;
+		queuebulk(l1, l2, l3, NULL);
+		++total;
 	}
 	pclose(fp);
 
