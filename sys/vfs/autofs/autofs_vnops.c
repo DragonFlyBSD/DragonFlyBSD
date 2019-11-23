@@ -302,7 +302,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 	struct autofs_node *child;
 	struct uio *uio = ap->a_uio;
 	ssize_t initial_resid = ap->a_uio->uio_resid;
-	size_t reclens = 0;
+	size_t reclens;
 	int error;
 
 	KASSERT(vp->v_type == VDIR, ("!VDIR"));
@@ -346,7 +346,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 		if (uio->uio_offset != reclens)
 			return (EINVAL);
 		error = autofs_write_dirent(uio, "..",
-		    (anp->an_parent ? anp->an_parent->an_ino : anp->an_ino));
+		    anp->an_parent ? anp->an_parent->an_ino : anp->an_ino);
 		if (error)
 			goto out;
 	}
