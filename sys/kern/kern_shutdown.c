@@ -498,6 +498,7 @@ shutdown_halt(void *junk, int howto)
 		cpu_halt();
 #else
 		kprintf("Please press any key to reboot.\n\n");
+		cnpoll(TRUE);
 		switch (cngetc()) {
 		case -1:		/* No console, just die */
 			cpu_halt();
