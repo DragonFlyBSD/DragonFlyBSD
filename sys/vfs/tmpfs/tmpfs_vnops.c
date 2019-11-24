@@ -1991,10 +1991,13 @@ tmpfs_move_pages(vm_object_t src, vm_object_t dst)
 	info.object = src;
 	info.dest_object = dst;
 	do {
+		if (src->paging_in_progress)
+			vm_object_pip_wait(src, "objtfs");
 		info.error = 1;
 		vm_page_rb_tree_RB_SCAN(&src->rb_memq, NULL,
 					tmpfs_move_pages_callback, &info);
-	} while (info.error < 0);
+	} while (info.error < 0 || !RB_EMPTY(&src->rb_memq) ||
+		 src->paging_in_progress);
 	vm_object_drop(dst);
 	vm_object_drop(src);
 }
