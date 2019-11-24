@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd September 24, 2019
+.Dd November 24, 2019
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -190,16 +190,12 @@ standard C include files
 .Bl -tag -width ".Pa protocols/" -compact
 .It Pa arpa/
 C include files for Internet service protocols
+.It Pa bus/
+C include files for programming various
+.Dx
+buses
 .It Pa c++/
 C++ include files
-.It Pa cam/
-C include files for the Common Access Methods Layer
-.Pp
-.Bl -tag -width ".Pa scsi/" -compact
-.It Pa scsi/
-The SCSI device on top of CAM
-.El
-.Pp
 .It Pa compat/
 C include files for compatibility with code ported from other
 operating systems
@@ -207,28 +203,10 @@ operating systems
 C include files for programming various
 .Dx
 devices
-.It Pa fs/
-.Pp
-.Bl -tag -width ".Pa autofs/" -compact
-.It Pa autofs/
-automounter filesystem
-.It Pa smbfs/
-SMB/CIFS filesystem
-.El
-.Pp
-.It Pa isofs/
-.Pp
-.Bl -tag -width ".Pa cd9660/" -compact
-.It Pa cd9660/
-iso9660 filesystem
-.El
-.Pp
 .It Pa libprop/
 C include files for libprop
 .It Pa machine/
 machine-specific C include files
-.It Pa msdosfs/
-MS-DOS file system
 .It Pa net/
 misc network C include files
 .It Pa netinet/
@@ -241,14 +219,10 @@ see
 .Xr inet6 4
 .It Pa netsmb/
 SMB/CIFS requester
-.It Pa nfs/
-C include files for NFS (Network File System)
 .It Pa pcap/
 Packet Capture (libpcap) headers;
 see
 .Xr pcap 3
-.It Pa pccard/
-PC-CARD controllers
 .It Pa protocols/
 C include files for Berkeley service protocols
 .It Pa readline/
@@ -267,20 +241,8 @@ PAM; see
 .Xr pam 3
 .It Pa sys/
 system C include files (kernel data structures)
-.It Pa ufs/
-C include files for UFS (The U-word File System)
-.Pp
-.Bl -tag -width ".Pa ffs/" -compact
-.It Pa ffs/
-Fast filesystem
-.It Pa mfs/
-memory file system;
-see
-.Xr mount_mfs 8
-.It Pa ufs/
-UFS filesystem
-.El
-.Pp
+.It Pa vfs/
+C include files for various file systems
 .It Pa vm/
 virtual memory;
 see
