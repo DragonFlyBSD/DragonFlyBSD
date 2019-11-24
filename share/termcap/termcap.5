@@ -65,7 +65,7 @@ is a data base describing terminals,
 used,
 for example,
 by
-.Xr \&vi 1
+.Xr vi 1
 and
 .Xr ncurses 3 .
 Terminals are described in
@@ -841,14 +841,14 @@ the description of a similar terminal in
 .Nm
 and to build up a description gradually, using partial descriptions
 with
-.Xr \&vi 1
+.Xr vi 1
 to check that they are correct.
 Be aware that a very unusual terminal may expose deficiencies in
 the ability of the
 .Nm
 file to describe it
 or bugs in
-.Xr \&vi 1 .
+.Xr vi 1 .
 To easily test a new terminal description you are working on
 you can put it in your home directory in a file called
 .Pa .termcap
@@ -871,7 +871,7 @@ to avoid reading files when starting up a program.
 To get the padding for insert-line right
 (if the terminal manufacturer did not document it),
 a severe test is to use
-.Xr \&vi 1
+.Xr vi 1
 to edit
 .Pa /etc/passwd
 at 9600 baud, delete roughly 16 lines from the middle of the screen,
@@ -2141,7 +2141,7 @@ Most programs now use the kernel information primarily; the information
 in this file is used only if the kernel does not have any information.
 .Pp
 The
-.Xr \&vi 1
+.Xr vi 1
 program allows only 256 characters for string capabilities, and the routines
 in
 .Xr termlib 3
