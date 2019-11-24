@@ -1435,9 +1435,9 @@ static int
 kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
             struct knote *marker, int closedcounter)
 {
-        struct knote *kn, local_marker;
+	struct knote *kn, local_marker;
 	thread_t td = curthread;
-        int total;
+	int total;
 
 	total = 0;
 	local_marker.kn_filter = EVFILT_MARKER;
