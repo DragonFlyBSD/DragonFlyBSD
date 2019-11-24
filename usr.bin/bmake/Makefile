@@ -61,9 +61,6 @@ COPTS.var.c=	-Wno-format-nonliteral
 WARNS=	1
 .endif
 
-DPADD=		${LIBUTIL}
-LDADD=		-lutil
-
 .PATH:	${srcdir}
 .PATH:	${srcdir}/lst.lib
 
