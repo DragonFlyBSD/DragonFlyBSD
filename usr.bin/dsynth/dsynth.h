@@ -509,7 +509,7 @@ extern int UseTmpfsBase;
 extern int UseNCurses;
 extern int LeveragePrebuilt;
 extern char *DSynthExecPath;
-
+extern char *ProfileOverrideOpt;
 
 extern const char *OperatingSystemName;
 extern const char *ArchitectureName;

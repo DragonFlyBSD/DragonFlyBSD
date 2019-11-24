@@ -1336,6 +1336,7 @@ childBuilderThread(void *arg)
 				closefrom(4);
 				fcntl(3, F_SETFD, 0);
 				execle(DSynthExecPath, DSynthExecPath,
+				       "-p", Profile,
 				       "WORKER", slotbuf, fdbuf,
 				       work->pkg->portdir, work->pkg->pkgfile,
 				       flagsbuf,
@@ -1516,6 +1517,19 @@ childInstallPkgDeps(worker_t *work)
 	return 1;
 }
 
+/*
+ * Recursive child install dependencies.
+ *
+ * first_one_only is only specified if the pkg the list comes from
+ * is a generic unflavored package that has flavors, telling us to
+ * dive the first flavor only.
+ *
+ * However, in nearly all cases this flag will now be zero because
+ * this code now dives the first flavor when encountering a dummy node
+ * and clears nfirst on success.  Hence if you are asking why 'nfirst'
+ * is set to 1, and then zero, instead of just being removed entirely,
+ * it is because there might still be an edge case here.
+ */
 static size_t
 childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
 			    int depth, int first_one_only)
@@ -1553,6 +1567,34 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
 			continue;
 		}
 
+		/*
+		 * If this is a dummy node with no package, the originator
+		 * is requesting a flavored package.  We select the default
+		 * flavor which we presume is the first one.
+		 */
+		if (pkg->pkgfile == NULL && (pkg->flags & PKGF_DUMMY)) {
+			pkg_t *spkg = pkg->idepon_list.next->pkg;
+
+			if (spkg) {
+				if (fp) {
+					fprintf(fp,
+						"echo 'UNFLAVORED %s -> use "
+						"%s'\n",
+						pkg->portdir,
+						spkg->portdir);
+				}
+				pkg = spkg;
+				nfirst = 0;
+			} else {
+				if (fp) {
+					fprintf(fp,
+						"echo 'CANNOT FIND DEFAULT "
+						"FLAVOR FOR %s'\n",
+						pkg->portdir);
+				}
+			}
+		}
+
 		if (undoit) {
 			if (pkg->dsynth_install_flg == 1) {
 				pkg->dsynth_install_flg = 0;
@@ -1565,6 +1607,7 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
 				break;
 			continue;
 		}
+
 		if (pkg->dsynth_install_flg) {
 			if (DebugOpt >= 2 && pkg->pkgfile && fp) {
 				fprintf(fp, "echo 'AlreadyHave %s'\n",
@@ -1583,31 +1626,6 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
 			continue;
 		}
 		pkg->dsynth_install_flg = 1;
-
-		/*
-		 * If this is a dummy node with no package, the originator
-		 * is requesting a flavored package.  We select the default
-		 * flavor which we presume is the first one.
-		 */
-		if (pkg->pkgfile == NULL && (pkg->flags & PKGF_DUMMY)) {
-			pkg_t *spkg = pkg->idepon_list.next->pkg;
-
-			if (spkg) {
-				pkg = spkg;
-				if (fp) {
-					fprintf(fp,
-						"echo 'DUMMY use %s (%p)'\n",
-						pkg->portdir, pkg->pkgfile);
-				}
-			} else {
-				if (fp) {
-					fprintf(fp,
-						"echo 'CANNOT FIND DEFAULT "
-						"FLAVOR FOR %s'\n",
-						pkg->portdir);
-				}
-			}
-		}
 
 		/*
 		 * Generate package installation command

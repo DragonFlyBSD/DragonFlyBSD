@@ -47,6 +47,7 @@ int NullStdinOpt = 1;
 int SlowStartOpt = 1;
 long PkgDepMemoryTarget;
 char *DSynthExecPath;
+char *ProfileOverrideOpt;
 
 int
 main(int ac, char **av)
@@ -74,10 +75,16 @@ main(int ac, char **av)
 	}
 
 	/*
+	 * Override profile in dsynth.ini (can be further overridden
+	 * with the -p profile option).
+	 */
+	ProfileOverrideOpt = getenv("DSYNTH_PROFILE");
+
+	/*
 	 * Process options and make sure the directive is present
 	 */
 	sopt = 0;
-	while ((c = getopt(ac, av, "dhm:vys:DPS")) != -1) {
+	while ((c = getopt(ac, av, "dhm:p:vys:DPS")) != -1) {
 		switch(c) {
 		case 'y':
 			++YesOpt;
@@ -111,6 +118,9 @@ main(int ac, char **av)
 		case 'm':
 			PkgDepMemoryTarget = strtoul(optarg, NULL, 0);
 			PkgDepMemoryTarget *= ONEGB;
+			break;
+		case 'p':
+			ProfileOverrideOpt = optarg;
 			break;
 		default:
 			fprintf(stderr, "Unknown option: %c\n", c);
@@ -186,6 +196,29 @@ main(int ac, char **av)
 		exit(0);
 	}
 
+	/*
+	 * Front-end exec (not a WORKER exec), normal startup.  We have
+	 * the configuration so the first thing we need to do is check
+	 * the lock file.
+	 */
+	{
+		char *lkpath;
+		int fd;
+
+		asprintf(&lkpath, "%s/.lock", BuildBase);
+		fd = open(lkpath, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+		if (fd < 0)
+			dfatal_errno("Unable to create %s", lkpath);
+		if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
+			dfatal("Another dsynth is using %s, exiting",
+			       BuildBase);
+		}
+		/* leave descriptor open */
+	}
+
+	/*
+	 * Build initialization and directive handling
+	 */
 	DoInitBuild(-1);
 
 	if (strcmp(av[0], "debug") == 0) {
@@ -385,9 +418,10 @@ usage(int ecode)
     "    -d                   - Debug verbosity (-dd disables ncurses)\n"
     "    -h                   - Display this screen and exit\n"
     "    -m gb                - Load management based on pkgdep memory\n"
+    "    -p profile           - Override profile selected in dsynth.ini\n"
+    "    -s n                 - Set initial DynamicMaxWorkers\n"
     "    -v                   - Print version info and exit\n"
     "    -y                   - Automatically answer yes to dsynth questions\n"
-    "    -s n                 - Set initial DynamicMaxWorkers\n"
     "    -D                   - Enable DEVELOPER mode\n"
     "    -P                   - Include the check-plist stage\n"
     "    -S                   - Disable ncurses\n"

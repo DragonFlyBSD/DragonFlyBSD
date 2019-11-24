@@ -329,6 +329,12 @@ parseConfigFile(const char *path)
 	if (DebugOpt >= 2)
 		ddprintf(0, "ParseConfig %s\n", path);
 
+	if (ProfileOverrideOpt) {
+		Profile = strdup(ProfileOverrideOpt);
+		asprintf(&l2, "[%s]", Profile);
+		ProfileLabel = l2;
+	}
+
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		++lineno;
 		len = strlen(buf);
@@ -381,9 +387,11 @@ parseConfigFile(const char *path)
 			 * Global Configuration
 			 */
 			if (strcmp(l1, "profile_selected") == 0) {
-				Profile = strdup(l2);
-				asprintf(&l2, "[%s]", l2);
-				ProfileLabel = l2;
+				if (ProfileOverrideOpt == NULL) {
+					Profile = strdup(l2);
+					asprintf(&l2, "[%s]", l2);
+					ProfileLabel = l2;
+				}
 			} else {
 				dfatal("Unknown directive in config "
 				       "line %d: %s\n", lineno, buf);
