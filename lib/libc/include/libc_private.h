@@ -99,6 +99,7 @@ int _yp_check(char **);
  * by getprogname() and setprogname().
  */
 extern const char *__progname;
+extern int	__isexiting;
 
 /*
  * Notify libc that thread is exiting and its TLS destructors can be called.

@@ -674,6 +674,7 @@ DFprivate_1.0 {
     __fdnlist;
     __fdopendir2;
     __isthreaded;
+    __isexiting;
     __opendir2;
     __pause;
     __pw_scan;

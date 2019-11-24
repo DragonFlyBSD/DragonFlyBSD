@@ -50,6 +50,12 @@ void (*__cleanup)(void);
 int	__isthreaded	= 0;
 
 /*
+ * Allows code to test if the whole process is exiting, to avoid
+ * unnecessary overhead such as freeing zones in nmalloc.
+ */
+int	__isexiting	= 0;
+
+/*
  * Exit, flushing stdio buffers if necessary.
  */
 void
@@ -58,6 +64,7 @@ exit(int status)
 	/* Ensure that the auto-initialization routine is linked in: */
 	extern int _thread_autoinit_dummy_decl;
 
+	__isexiting = 1;
 	_thread_autoinit_dummy_decl = 1;
 
 	/* Call TLS destructors, if any. */

@@ -237,8 +237,11 @@ typedef struct slglobaldata {
 #define BIGCACHE_LIMIT	(1024 * 1024)		/* size limit */
 #define BIGCACHE_EXCESS	(16 * 1024 * 1024)	/* garbage collect */
 
+#define CACHE_CHUNKS	32
+
 #define SAFLAG_ZERO	0x0001
 #define SAFLAG_PASSIVE	0x0002
+#define SAFLAG_MAGS	0x0004
 
 /*
  * Thread control
@@ -348,7 +351,7 @@ static const int ZoneMask = ZALLOC_ZONE_SIZE - 1;
 static int opt_madvise = 0;
 static int opt_utrace = 0;
 static int g_malloc_flags = 0;
-static struct slglobaldata	SLGlobalData;
+static struct slglobaldata SLGlobalData;
 static bigalloc_t bigalloc_array[BIGHSIZE];
 static spinlock_t bigspin_array[BIGXSIZE];
 static volatile void *bigcache_array[BIGCACHE];		/* atomic swap */
@@ -365,7 +368,7 @@ static void *_vmem_alloc(size_t bytes, size_t align, int flags);
 static void _vmem_free(void *ptr, size_t bytes);
 static void *magazine_alloc(struct magazine *, int *);
 static int magazine_free(struct magazine *, void *);
-static void *mtmagazine_alloc(int zi);
+static void *mtmagazine_alloc(int zi, int flags);
 static int mtmagazine_free(int zi, void *);
 static void mtmagazine_init(void);
 static void mtmagazine_destructor(void *);
@@ -1075,6 +1078,9 @@ _slaballoc(size_t size, int flags)
 	slchunk_t chunk;
 	slglobaldata_t slgd;
 	size_t chunking;
+	thr_mags *tp;
+	struct magazine *mp;
+	int count;
 	int zi;
 	int off;
 	void *obj;
@@ -1180,21 +1186,21 @@ _slaballoc(size_t size, int flags)
 	zi = zoneindex(&size, &chunking);
 	MASSERT(zi < NZONES);
 
-	obj = mtmagazine_alloc(zi);
+	obj = mtmagazine_alloc(zi, flags);
 	if (obj != NULL) {
 		if (flags & SAFLAG_ZERO)
 			bzero(obj, size);
 		return (obj);
 	}
 
-	slgd = &SLGlobalData;
-	slgd_lock(slgd);
-
 	/*
-	 * Attempt to allocate out of an existing zone.  If all zones are
-	 * exhausted pull one off the free list or allocate a new one.
+	 * Attempt to allocate out of an existing global zone.  If all zones
+	 * are exhausted pull one off the free list or allocate a new one.
 	 */
-	if ((z = slgd->ZoneAry[zi]) == NULL) {
+	slgd = &SLGlobalData;
+
+again:
+	if (slgd->ZoneAry[zi] == NULL) {
 		z = zone_alloc(flags);
 		if (z == NULL)
 			goto fail;
@@ -1240,8 +1246,6 @@ _slaballoc(size_t size, int flags)
 		z->z_UIndex = z->z_UEndIndex = 0;
 		z->z_ChunkSize = size;
 		z->z_FirstFreePg = ZonePageCount;
-		z->z_Next = slgd->ZoneAry[zi];
-		slgd->ZoneAry[zi] = z;
 		if ((z->z_Flags & SLZF_UNOTZEROD) == 0) {
 			flags &= ~SAFLAG_ZERO;	/* already zero'd */
 			flags |= SAFLAG_PASSIVE;
@@ -1252,20 +1256,38 @@ _slaballoc(size_t size, int flags)
 		 * next zone we create so we do not over-weight the lower
 		 * part of the cpu memory caches.
 		 */
+		slgd_lock(slgd);
+		z->z_Next = slgd->ZoneAry[zi];
+		slgd->ZoneAry[zi] = z;
 		slgd->JunkIndex = (slgd->JunkIndex + ZALLOC_SLAB_SLIDE)
 					& (ZALLOC_MAX_ZONE_SIZE - 1);
+	} else {
+		slgd_lock(slgd);
+		z = slgd->ZoneAry[zi];
+		if (z == NULL) {
+			slgd_unlock(slgd);
+			goto again;
+		}
 	}
 
 	/*
 	 * Ok, we have a zone from which at least one chunk is available.
-	 *
-	 * Remove us from the ZoneAry[] when we become empty
 	 */
 	MASSERT_WTHUNLK(z->z_NFree > 0, slgd_unlock(slgd));
 
-	if (--z->z_NFree == 0) {
-		slgd->ZoneAry[zi] = z->z_Next;
-		z->z_Next = NULL;
+	/*
+	 * Try to cache <count> chunks, up to CACHE_CHUNKS (32 typ)
+	 * to avoid unnecessary global lock contention.
+	 */
+	tp = &thread_mags;
+	mp = tp->mags[zi].loaded;
+	count = 0;
+	if (mp && tp->init >= 0) {
+		count = mp->capacity - mp->rounds;
+		if (count >= z->z_NFree)
+			count = z->z_NFree - 1;
+		if (count > CACHE_CHUNKS)
+			count = CACHE_CHUNKS;
 	}
 
 	/*
@@ -1280,7 +1302,13 @@ _slaballoc(size_t size, int flags)
 				_mpanic("assertion: corrupt malloc zone");
 			}
 			z->z_PageAry[z->z_FirstFreePg] = chunk->c_Next;
-			goto done;
+			--z->z_NFree;
+
+			if (count == 0)
+				goto done;
+			mp->objects[mp->rounds++] = chunk;
+			--count;
+			continue;
 		}
 		++z->z_FirstFreePg;
 	}
@@ -1292,13 +1320,21 @@ _slaballoc(size_t size, int flags)
 	 * serious if our zone got corrupted so we use an explicit
 	 * panic rather then a KASSERT.
 	 */
-	chunk = (slchunk_t)(z->z_BasePtr + z->z_UIndex * size);
-
-	if (++z->z_UIndex == z->z_NMax)
-		z->z_UIndex = 0;
-	if (z->z_UIndex == z->z_UEndIndex) {
-		if (z->z_NFree != 0)
-			_mpanic("slaballoc: corrupted zone");
+	for (;;) {
+		chunk = (slchunk_t)(z->z_BasePtr + z->z_UIndex * size);
+		--z->z_NFree;
+		if (++z->z_UIndex == z->z_NMax)
+			z->z_UIndex = 0;
+		if (z->z_UIndex == z->z_UEndIndex) {
+			if (z->z_NFree != 0) {
+				slgd_unlock(slgd);
+				_mpanic("slaballoc: corrupted zone");
+			}
+		}
+		if (count == 0)
+			break;
+		mp->objects[mp->rounds++] = chunk;
+		--count;
 	}
 
 	if ((z->z_Flags & SLZF_UNOTZEROD) == 0) {
@@ -1307,12 +1343,19 @@ _slaballoc(size_t size, int flags)
 	}
 
 done:
+	/*
+	 * Remove us from the ZoneAry[] when we become empty
+	 */
+	if (z->z_NFree == 0) {
+		slgd->ZoneAry[zi] = z->z_Next;
+		z->z_Next = NULL;
+	}
 	slgd_unlock(slgd);
 	if (flags & SAFLAG_ZERO)
 		bzero(chunk, size);
+
 	return(chunk);
 fail:
-	slgd_unlock(slgd);
 	return(NULL);
 }
 
@@ -1566,13 +1609,14 @@ fastslabrealloc:
 
 	pgno = ((char *)ptr - (char *)z) >> PAGE_SHIFT;
 	chunk = ptr;
-	slgd = &SLGlobalData;
-	slgd_lock(slgd);
 
 	/*
 	 * Add this free non-zero'd chunk to a linked list for reuse, adjust
 	 * z_FirstFreePg.
 	 */
+	slgd = &SLGlobalData;
+	slgd_lock(slgd);
+
 	chunk->c_Next = z->z_PageAry[pgno];
 	z->z_PageAry[pgno] = chunk;
 	if (z->z_FirstFreePg > pgno)
@@ -1588,7 +1632,7 @@ fastslabrealloc:
 	}
 
 	/*
-	 * If the zone becomes totally free then release it.
+	 * If the zone becomes totally free we get rid of it.
 	 */
 	if (z->z_NFree == z->z_NMax) {
 		slzone_t *pz;
@@ -1599,11 +1643,11 @@ fastslabrealloc:
 		*pz = z->z_Next;
 		z->z_Magic = -1;
 		z->z_Next = NULL;
+		slgd_unlock(slgd);
 		zone_free(z);
-		/* slgd lock released */
-		return;
+	} else {
+		slgd_unlock(slgd);
 	}
-	slgd_unlock(slgd);
 }
 
 /*
@@ -1653,7 +1697,7 @@ magazine_free(struct magazine *mp, void *p)
 }
 
 static void *
-mtmagazine_alloc(int zi)
+mtmagazine_alloc(int zi, int flags)
 {
 	thr_mags *tp;
 	struct magazine *mp, *emptymag;
@@ -1674,6 +1718,23 @@ mtmagazine_alloc(int zi)
 	nmalloc_sigblockall();
 	for (;;) {
 		/*
+		 * Make sure we have a magazine available for use.
+		 */
+		if (tp->newmag == NULL && (flags & SAFLAG_MAGS) == 0) {
+			mp = _slaballoc(sizeof(struct magazine),
+					SAFLAG_ZERO | SAFLAG_MAGS);
+			if (mp == NULL) {
+				obj = NULL;
+				break;
+			}
+			if (tp->newmag) {
+				_slabfree(mp, 0, NULL);
+			} else {
+				tp->newmag = mp;
+			}
+		}
+
+		/*
 		 * If the loaded magazine has rounds, allocate and return
 		 */
 		mp = tp->mags[zi].loaded;
@@ -1682,8 +1743,9 @@ mtmagazine_alloc(int zi)
 			break;
 
 		/*
-		 * If the prev magazine is full, swap with the loaded
-		 * magazine and retry.
+		 * The prev magazine can only be completely empty or completely
+		 * full.  If it is full, swap it with the loaded magazine
+		 * and retry.
 		 */
 		mp = tp->mags[zi].prev;
 		if (mp && MAGAZINE_FULL(mp)) {
@@ -1693,29 +1755,44 @@ mtmagazine_alloc(int zi)
 		}
 
 		/*
-		 * Try to get a full magazine from the depot.  Cycle
-		 * through depot(full)->loaded->prev->depot(empty).
-		 * Retry if a full magazine was available from the depot.
-		 *
-		 * Return NULL (caller will fall through) if no magazines
-		 * can be found anywhere.
+		 * If the depot has no loaded magazines ensure that tp->loaded
+		 * is not NULL and return NULL.  This will allow _slaballoc()
+		 * to cache referals to SLGlobalData in a magazine.
 		 */
 		d = &depots[zi];
+		if (SLIST_EMPTY(&d->full)) {	/* UNLOCKED TEST IS SAFE */
+			mp = tp->mags[zi].loaded;
+			if (mp == NULL && tp->newmag) {
+				mp = tp->newmag;
+				tp->newmag = NULL;
+				mp->capacity = M_MAX_ROUNDS;
+				mp->rounds = 0;
+				mp->flags = 0;
+				tp->mags[zi].loaded = mp;
+			}
+			break;
+		}
+
+		/*
+		 * Cycle: depot(loaded) -> loaded -> prev -> depot(empty)
+		 *
+		 * If we race and the depot has no full magazines, retry.
+		 */
 		depot_lock(d);
-		emptymag = tp->mags[zi].prev;
-		if (emptymag)
-			SLIST_INSERT_HEAD(&d->empty, emptymag, nextmagazine);
-		tp->mags[zi].prev = tp->mags[zi].loaded;
-		mp = SLIST_FIRST(&d->full);	/* loaded magazine */
-		tp->mags[zi].loaded = mp;
+		mp = SLIST_FIRST(&d->full);
 		if (mp) {
 			SLIST_REMOVE_HEAD(&d->full, nextmagazine);
-			depot_unlock(d);
+			emptymag = tp->mags[zi].prev;
+			if (emptymag) {
+				SLIST_INSERT_HEAD(&d->empty, emptymag,
+						  nextmagazine);
+			}
+			tp->mags[zi].prev = tp->mags[zi].loaded;
+			tp->mags[zi].loaded = mp;
 			MASSERT(MAGAZINE_NOTEMPTY(mp));
-			continue;
 		}
 		depot_unlock(d);
-		break;
+		continue;
 	}
 	nmalloc_sigunblockall();
 
@@ -1754,10 +1831,8 @@ mtmagazine_free(int zi, void *ptr)
 		 * would be used to allocate the new magazine.
 		 */
 		if (tp->newmag == NULL) {
-			tp->init = -1;
 			tp->newmag = _slaballoc(sizeof(struct magazine),
 						SAFLAG_ZERO);
-			tp->init = 1;
 			if (tp->newmag == NULL) {
 				rc = -1;
 				break;
@@ -1772,8 +1847,9 @@ mtmagazine_free(int zi, void *ptr)
 			break;
 
 		/*
-		 * If the prev magazine is empty, swap with the loaded
-		 * magazine and retry.
+		 * The prev magazine can only be completely empty or completely
+		 * full.  If it is empty, swap it with the loaded magazine
+		 * and retry.
 		 */
 		mp = tp->mags[zi].prev;
 		if (mp && MAGAZINE_EMPTY(mp)) {
@@ -1855,6 +1931,9 @@ mtmagazine_destructor(void *thrp)
 	struct magazine *mp;
 	int i;
 
+	if (__isexiting)
+		return;
+
 	/*
 	 * Prevent further use of mtmagazines while we are destructing
 	 * them, as well as for any destructors which are run after us
@@ -1896,13 +1975,11 @@ mtmagazine_destructor(void *thrp)
 static slzone_t
 zone_alloc(int flags)
 {
-	slglobaldata_t slgd = &SLGlobalData;
 	int burst = 1;
 	int i, j;
 	slzone_t z;
 
 	zone_magazine_lock();
-	slgd_unlock(slgd);
 
 	z = magazine_alloc(&zone_magazine, &burst);
 	if (z == NULL && burst == 1) {
@@ -1922,24 +1999,20 @@ zone_alloc(int flags)
 		z->z_Flags |= SLZF_UNOTZEROD;
 		zone_magazine_unlock();
 	}
-	slgd_lock(slgd);
+
 	return z;
 }
 
 /*
- * zone_free()
- *
- * Release a zone and unlock the slgd lock.
+ * Free a zone.
  */
 static void
 zone_free(void *z)
 {
-	slglobaldata_t slgd = &SLGlobalData;
 	void *excess[M_ZONE_ROUNDS - M_LOW_ROUNDS] = {};
 	int i, j;
 
 	zone_magazine_lock();
-	slgd_unlock(slgd);
 
 	bzero(z, sizeof(struct slzone));
 
