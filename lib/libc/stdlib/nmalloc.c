@@ -1,7 +1,8 @@
 /*
  * NMALLOC.C	- New Malloc (ported from kernel slab allocator)
  *
- * Copyright (c) 2003,2004,2009,2010 The DragonFly Project. All rights reserved.
+ * Copyright (c) 2003,2004,2009,2010-2019 The DragonFly Project,
+ * All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com> and by
@@ -487,8 +488,6 @@ slgd_lock(slglobaldata_t slgd)
 {
 	if (__isthreaded)
 		_SPINLOCK(&slgd->Spinlock);
-	else
-		sigblockall();
 }
 
 static __inline void
@@ -496,8 +495,6 @@ slgd_unlock(slglobaldata_t slgd)
 {
 	if (__isthreaded)
 		_SPINUNLOCK(&slgd->Spinlock);
-	else
-		sigunblockall();
 }
 
 static __inline void
@@ -505,12 +502,6 @@ depot_lock(magazine_depot *dp __unused)
 {
 	if (__isthreaded)
 		_SPINLOCK(&depot_spinlock);
-	else
-		sigblockall();
-#if 0
-	if (__isthreaded)
-		_SPINLOCK(&dp->lock);
-#endif
 }
 
 static __inline void
@@ -518,12 +509,6 @@ depot_unlock(magazine_depot *dp __unused)
 {
 	if (__isthreaded)
 		_SPINUNLOCK(&depot_spinlock);
-	else
-		sigunblockall();
-#if 0
-	if (__isthreaded)
-		_SPINUNLOCK(&dp->lock);
-#endif
 }
 
 static __inline void
@@ -531,8 +516,6 @@ zone_magazine_lock(void)
 {
 	if (__isthreaded)
 		_SPINLOCK(&zone_mag_lock);
-	else
-		sigblockall();
 }
 
 static __inline void
@@ -540,8 +523,6 @@ zone_magazine_unlock(void)
 {
 	if (__isthreaded)
 		_SPINUNLOCK(&zone_mag_lock);
-	else
-		sigunblockall();
 }
 
 static __inline void
@@ -1062,6 +1043,7 @@ void
 __free(void *ptr)
 {
 	UTRACE(ptr, 0, 0);
+
 	nmalloc_sigblockall();
 	_slabfree(ptr, 0, NULL);
 	nmalloc_sigunblockall();
@@ -1704,7 +1686,6 @@ mtmagazine_alloc(int zi, int flags)
 	/*
 	 * Primary per-thread allocation loop
 	 */
-	nmalloc_sigblockall();
 	for (;;) {
 		/*
 		 * Make sure we have a magazine available for use.
@@ -1783,7 +1764,6 @@ mtmagazine_alloc(int zi, int flags)
 		depot_unlock(d);
 		continue;
 	}
-	nmalloc_sigunblockall();
 
 	return (obj);
 }
@@ -1807,7 +1787,6 @@ mtmagazine_free(int zi, void *ptr)
 	/*
 	 * Primary per-thread freeing loop
 	 */
-	nmalloc_sigblockall();
 	for (;;) {
 		/*
 		 * Make sure a new magazine is available in case we have
@@ -1874,7 +1853,6 @@ mtmagazine_free(int zi, void *ptr)
 			depot_unlock(d);
 		}
 	}
-	nmalloc_sigunblockall();
 
 	return rc;
 }
@@ -1897,10 +1875,12 @@ mtmagazine_drain(struct magazine *mp)
 {
 	void *obj;
 
+	nmalloc_sigblockall();
 	while (MAGAZINE_NOTEMPTY(mp)) {
 		obj = magazine_alloc(mp);
 		_slabfree(obj, 0, NULL);
 	}
+	nmalloc_sigunblockall();
 }
 
 /*
@@ -1930,6 +1910,7 @@ mtmagazine_destructor(void *thrp)
 	 */
 	tp->init = -1;
 
+	nmalloc_sigblockall();
 	for (i = 0; i < NZONES; i++) {
 		mp = tp->mags[i].loaded;
 		tp->mags[i].loaded = NULL;
@@ -1947,12 +1928,12 @@ mtmagazine_destructor(void *thrp)
 			_slabfree(mp, 0, NULL);
 		}
 	}
-
 	if (tp->newmag) {
 		mp = tp->newmag;
 		tp->newmag = NULL;
 		_slabfree(mp, 0, NULL);
 	}
+	nmalloc_sigunblockall();
 }
 
 /*
