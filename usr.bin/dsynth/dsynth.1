@@ -41,6 +41,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl dhvyDS
+.Op Fl p Ar profile
 .Op Fl s Ar n
 .Op Fl m Ar gb
 .Ar directive
@@ -170,6 +171,18 @@ periods of time.
 Quickly output the version and exit.
 .It Fl y
 Automatically answer 'y'es to any questions.
+.It Fl p Ar profile
+Override the global profile default in
+.Pa /etc/dsynth/dsynth.ini ,
+allowing you to trivially run whatever profile you like without having to
+edit the configuration file when switching.
+In addition, you can now run any number of dsynth's concurrently on the same
+machine without having to use a jail, each with a different profile,
+as long as the packages, repository, buildbase, and logs directories
+are different.
+.Pp
+Note that the distfiles directory can be shared and will not conflict
+or get confused with concurrent fetches.
 .It Fl s Ar n
 .Nm
 usually slow-starts the worker slots, beginning with one slot and increasing
@@ -276,12 +289,12 @@ Dependencies are not deleted unless they are out of date.
 .El
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
-.It Pa /etc/dsynth/synth.ini
+.It Pa /etc/dsynth/dsynth.ini
 The primary configuration file.
 If not found,
 .Nm
 will also look in
-.Pa /usr/local/etc/dsynth/synth.ini .
+.Pa /usr/local/etc/dsynth/dsynth.ini .
 .Pp
 .It Pa /etc/dsynth/LiveSystem-make.conf
 Typically contains the environment variables that will be set in
