@@ -138,6 +138,9 @@ main(int ac, char **av)
 		/* NOT REACHED */
 	}
 
+	/*
+	 * Directives which do not require a working configuration
+	 */
 	if (strcmp(av[0], "init") == 0) {
 		DoInit();
 		exit(0);
@@ -148,16 +151,21 @@ main(int ac, char **av)
 		exit(0);
 		/* NOT REACHED */
 	}
+	if (strcmp(av[0], "version") == 0) {
+		printf("dsynth %s\n", DSYNTH_VERSION);
+		exit(0);
+		/* NOT REACHED */
+	}
 
+	/*
+	 * Preconfiguration.
+	 */
 	if (strcmp(av[0], "WORKER") == 0) {
 		isworker = 1;
 	} else {
 		isworker = 0;
 	}
 
-	/*
-	 * Preconfiguration.
-	 */
 	signal(SIGPIPE, SIG_IGN);
 	ParseConfiguration(isworker);
 
@@ -197,6 +205,32 @@ main(int ac, char **av)
 	}
 
 	/*
+	 * Build initialization and directive handling
+	 */
+	DoInitBuild(-1);
+
+	/*
+	 * Directives that use the configuration but are not interlocked
+	 * against a running dsynth.
+	 */
+	if (strcmp(av[0], "monitor") == 0) {
+		char *spath;
+		char *lpath;
+
+		if (ac == 1) {
+			asprintf(&spath, "%s/%s", StatsBase, STATS_FILE);
+			asprintf(&lpath, "%s/%s", StatsBase, STATS_LOCKFILE);
+			MonitorDirective(spath, lpath);
+			free(spath);
+			free(lpath);
+		} else {
+			MonitorDirective(av[1], NULL);
+		}
+		exit(0);
+		/* NOT REACHED */
+	}
+
+	/*
 	 * Front-end exec (not a WORKER exec), normal startup.  We have
 	 * the configuration so the first thing we need to do is check
 	 * the lock file.
@@ -216,11 +250,6 @@ main(int ac, char **av)
 		/* leave descriptor open */
 	}
 
-	/*
-	 * Build initialization and directive handling
-	 */
-	DoInitBuild(-1);
-
 	if (strcmp(av[0], "debug") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
@@ -234,19 +263,6 @@ main(int ac, char **av)
 		else
 			pkgs = GetLocalPackageList();
 		DoStatus(pkgs);
-	} else if (strcmp(av[0], "monitor") == 0) {
-		char *spath;
-		char *lpath;
-
-		if (ac == 1) {
-			asprintf(&spath, "%s/%s", StatsBase, STATS_FILE);
-			asprintf(&lpath, "%s/%s", StatsBase, STATS_LOCKFILE);
-			MonitorDirective(spath, lpath);
-			free(spath);
-			free(lpath);
-		} else {
-			MonitorDirective(av[1], NULL);
-		}
 	} else if (strcmp(av[0], "cleanup") == 0) {
 		DoCleanBuild(0);
 	} else if (strcmp(av[0], "configure") == 0) {
@@ -284,9 +300,6 @@ main(int ac, char **av)
 		pkgs = GetFullPackageList();
 		DoBuild(pkgs);
 		DoRebuildRepo(1);
-	} else if (strcmp(av[0], "version") == 0) {
-		printf("dsynth %s\n", DSYNTH_VERSION);
-		exit(0);
 	} else if (strcmp(av[0], "build") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
@@ -326,7 +339,6 @@ main(int ac, char **av)
 		fprintf(stderr, "Unknown directive '%s'\n", av[0]);
 		usage(2);
 	}
-
 	return 0;
 }
 
