@@ -143,7 +143,7 @@ struct cdev;
 typedef	struct cdev	*cdev_t;
 typedef	u_int32_t	udev_t;		/* device number */
 typedef	u_int64_t	uoff_t;		/* uio offset */
-#endif /* _KERNEL) || _KERNEL_STRUCTURES */
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 #ifdef _KERNEL
 typedef	udev_t		dev_t;		/* device number */
