@@ -435,7 +435,6 @@ void	trigger_syncer (struct mount *mp);
 int	vaccess(enum vtype, mode_t, uid_t, gid_t, mode_t, struct ucred *);
 void	vattr_null (struct vattr *vap);
 int	vcount (struct vnode *vp);
-int	vfinddev (cdev_t dev, enum vtype type, struct vnode **vpp);
 void	vfs_nadd_vnodeops_sysinit (void *);
 void	vfs_nrm_vnodeops_sysinit (void *);
 void	vfs_add_vnodeops(struct mount *, struct vop_ops *, struct vop_ops **);

@@ -1554,30 +1554,6 @@ vgone_vxlocked(struct vnode *vp)
 }
 
 /*
- * Lookup a vnode by device number.
- *
- * Returns non-zero and *vpp set to a vref'd vnode on success.
- * Returns zero on failure.
- */
-int
-vfinddev(cdev_t dev, enum vtype type, struct vnode **vpp)
-{
-	struct vnode *vp;
-
-	lwkt_gettoken(&spechash_token);
-	SLIST_FOREACH(vp, &dev->si_hlist, v_cdevnext) {
-		if (type == vp->v_type) {
-			*vpp = vp;
-			vref(vp);
-			lwkt_reltoken(&spechash_token);
-			return (1);
-		}
-	}
-	lwkt_reltoken(&spechash_token);
-	return (0);
-}
-
-/*
  * Calculate the total number of references to a special device.  This
  * routine may only be called for VBLK and VCHR vnodes since v_rdev is
  * an overloaded field.  Since udev2dev can now return NULL, we have
