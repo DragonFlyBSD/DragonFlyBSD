@@ -7346,6 +7346,7 @@ int si_init(struct radeon_device *rdev)
 	   tell userland acceleration is not working properly
 	*/
 	rdev->accel_working = false;
+	DRM_ERROR("GPU acceleration disabled for now on DragonFly\n");
 #else
 	rdev->accel_working = true;
 #endif

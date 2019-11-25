@@ -5848,6 +5848,7 @@ int evergreen_init(struct radeon_device *rdev)
 	   Bug report: https://bugs.dragonflybsd.org/issues/3198
 	*/
 	rdev->accel_working = false;
+	DRM_ERROR("GPU acceleration disabled for now on DragonFly\n");
 #else
 	rdev->accel_working = true;
 #endif
