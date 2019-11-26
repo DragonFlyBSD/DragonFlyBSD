@@ -22,6 +22,7 @@ endif
 
 set sysbase = $argv[1]
 set template = $argv[2]
+set nonomatch
 
 echo "Creating template from $sysbase to $template"
 
