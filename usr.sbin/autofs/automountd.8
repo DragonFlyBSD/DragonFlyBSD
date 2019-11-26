@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD$
 .\"
-.Dd April 14, 2016
+.Dd November 27, 2019
 .Dt AUTOMOUNTD 8
 .Os
 .Sh NAME
@@ -81,6 +81,9 @@ Debug mode: increase verbosity and do not daemonize.
 Specify mount options.
 Options specified here will be overridden by options entered in maps or
 .Xr auto_master 5 .
+.It Fl T
+Increase verbosity.
+For compatibility with other implementations, such as OS X.
 .It Fl v
 Increase verbosity.
 .El
