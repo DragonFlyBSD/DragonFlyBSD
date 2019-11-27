@@ -66,25 +66,28 @@ struct ctlname {
 	int	ctl_type;	/* type of name */
 };
 
-#define CTLTYPE		0xf	/* Mask for the type */
-#define	CTLTYPE_NODE	1	/* name is a node */
-#define	CTLTYPE_INT	2	/* name describes an integer */
-#define	CTLTYPE_STRING	3	/* name describes a string */
-#define	CTLTYPE_S64	4	/* name describes a signed 64-bit number */
+#define CTLTYPE		0x1f	/* Mask for the type */
+#define	CTLTYPE_NODE	0x01	/* name is a node */
+#define	CTLTYPE_INT	0x02	/* name describes an integer */
+#define	CTLTYPE_STRING	0x03	/* name describes a string */
+#define	CTLTYPE_S64	0x04	/* name describes a signed 64-bit number */
 #define	CTLTYPE_QUAD	CTLTYPE_S64 /* name describes a signed 64-bit number */
-#define	CTLTYPE_OPAQUE	5	/* name describes a structure */
+#define	CTLTYPE_OPAQUE	0x05	/* name describes a structure */
 #define	CTLTYPE_STRUCT	CTLTYPE_OPAQUE	/* name describes a structure */
-#define	CTLTYPE_UINT	6	/* name describes an unsigned integer */
-#define	CTLTYPE_LONG	7	/* name describes a long */
-#define	CTLTYPE_ULONG	8	/* name describes an unsigned long */
-#define	CTLTYPE_U64	9	/* name describes an unsigned 64-bit number */
-#define	CTLTYPE_UQUAD	CTLTYPE_U64 /* name describes an unsigned 64-bit number */
-#define	CTLTYPE_U8	0xa	/* name describes an unsigned 8-bit number */
-#define	CTLTYPE_U16	0xb	/* name describes an unsigned 16-bit number */
-#define	CTLTYPE_S8	0xc	/* name describes a signed 8-bit number */
-#define	CTLTYPE_S16	0xd	/* name describes a signed 16-bit number */
-#define	CTLTYPE_S32	0xe	/* name describes a signed 32-bit number */
-#define	CTLTYPE_U32	0xf	/* name describes an unsigned 32-bit number */
+#define	CTLTYPE_UINT	0x06	/* name describes an unsigned integer */
+#define	CTLTYPE_LONG	0x07	/* name describes a long */
+#define	CTLTYPE_ULONG	0x08	/* name describes an unsigned long */
+#define	CTLTYPE_U64	0x09	/* name describes an unsigned 64-bit number */
+#define	CTLTYPE_UQUAD	CTLTYPE_U64 /* name describes an unsgn 64-bit number */
+#define	CTLTYPE_U8	0x0a	/* name describes an unsigned 8-bit number */
+#define	CTLTYPE_U16	0x0b	/* name describes an unsigned 16-bit number */
+#define	CTLTYPE_S8	0x0c	/* name describes a signed 8-bit number */
+#define	CTLTYPE_S16	0x0d	/* name describes a signed 16-bit number */
+#define	CTLTYPE_S32	0x0e	/* name describes a signed 32-bit number */
+#define	CTLTYPE_U32	0x0f	/* name describes an unsigned 32-bit number */
+
+#define CTLTYPE_BIT32(n) (0x10 | ((n) << CTLSHIFT_BITFLD))
+#define CTLTYPE_BIT64(n) (0x11 | ((n) << CTLSHIFT_BITFLD))
 
 #define	CTLFLAG_RD	0x80000000	/* Allow reads of variable */
 #define	CTLFLAG_WR	0x40000000	/* Allow writes to the variable */
@@ -99,7 +102,13 @@ struct ctlname {
 #define CTLFLAG_SHLOCK	0x00008000	/* shlock on write (def is exlock) */
 #define CTLFLAG_EXLOCK	0x00004000	/* exlock on read (def is shlock) */
 #define CTLFLAG_NOLOCK	0x00002000	/* no lock required */
-#define CTLMASK_TYPE	0x0000000F	/* type field */
+#define CTLFLAG_RSV12	0x00001000
+#define CTLMASK_BITFLD	0x00000FC0	/* bitfield extension */
+#define CTLFLAG_RSV5	0x00000020
+#define CTLMASK_TYPE	0x0000001F	/* type field */
+
+#define CTLSHIFT_BITFLD	6
+#define CTLINFO_MAXBITN	64
 
 /*
  * USE THIS instead of a hardwired number from the categories below
@@ -172,6 +181,8 @@ int sysctl_handle_64(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_int(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_long(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_quad(SYSCTL_HANDLER_ARGS);
+int sysctl_handle_bit32(SYSCTL_HANDLER_ARGS);
+int sysctl_handle_bit64(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_intptr(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_string(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_opaque(SYSCTL_HANDLER_ARGS);
@@ -400,6 +411,20 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define SYSCTL_ADD_U64(ctx, parent, nbr, name, access, ptr, descr)	\
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_U64|(access),	\
 	ptr, 0, sysctl_handle_64, "QU", descr)
+
+/* Oid for a bit in a uint32_t.  If ptr is NULL, val is returned. */
+/* API passes and returns an integer */
+#define	SYSCTL_BIT32(parent, nbr, name, access, ptr, val, bit, descr)	\
+	SYSCTL_OID(parent, nbr, name,					\
+		CTLTYPE_BIT32(bit)|CTLFLAG_NOLOCK|(access),		\
+		ptr, val, sysctl_handle_bit32, "I", descr)
+
+/* Oid for a bit in a uint64_t.  If ptr is NULL, val is returned. */
+/* API passes and returns an integer */
+#define	SYSCTL_BIT64(parent, nbr, name, access, ptr, val, bit, descr)	\
+	SYSCTL_OID(parent, nbr, name,					\
+		CTLTYPE_BIT64(bit)|CTLFLAG_NOLOCK|(access),		\
+		ptr, val, sysctl_handle_bit64, "I", descr)
 
 /* Oid for an opaque object.  Specified by a pointer and a length. */
 #define SYSCTL_OPAQUE(parent, nbr, name, access, ptr, len, fmt, descr)	\

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003, 2005, 2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Hiten Pandya <hmp@backplane.com>.
@@ -46,7 +46,7 @@
  * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
-*
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -74,8 +74,18 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/sysctl.h>
 
 #include <ddb/ddb.h>
+
+static uint32_t	debug_32bit;
+static uint32_t	debug_64bit;
+
+SYSCTL_BIT32(_debug, OID_AUTO, b32_0, CTLFLAG_RW, &debug_32bit, 0, 0, "");
+SYSCTL_BIT32(_debug, OID_AUTO, b32_31, CTLFLAG_RW, &debug_32bit, 0, 31, "");
+SYSCTL_BIT64(_debug, OID_AUTO, b64_0, CTLFLAG_RW, &debug_64bit, 0, 0, "");
+SYSCTL_BIT64(_debug, OID_AUTO, b64_63, CTLFLAG_RW, &debug_64bit, 0, 63, "");
+
 
 /*
  * Simple DDB stack trace funtionality.

@@ -571,28 +571,64 @@ sysctl_sysctl_debug_dump_node(struct sysctl_oid_list *l, int i)
 			kprintf(" *Handler");
 
 		switch (oidp->oid_kind & CTLTYPE) {
-			case CTLTYPE_NODE:
-				kprintf(" Node\n");
-				if (!oidp->oid_handler) {
-					sysctl_sysctl_debug_dump_node(
-						oidp->oid_arg1, i+2);
-				}
-				break;
-			case CTLTYPE_INT:    kprintf(" Int\n"); break;
-			case CTLTYPE_UINT:   kprintf(" u_int\n"); break;
-			case CTLTYPE_LONG:   kprintf(" Long\n"); break;
-			case CTLTYPE_ULONG:  kprintf(" u_long\n"); break;
-			case CTLTYPE_STRING: kprintf(" String\n"); break;
-			case CTLTYPE_S8:     kprintf(" int8_t\n"); break;
-			case CTLTYPE_S16:    kprintf(" int16_t\n"); break;
-			case CTLTYPE_S32:    kprintf(" int32_t\n"); break;
-			case CTLTYPE_S64:    kprintf(" int64_t\n"); break;
-			case CTLTYPE_U8:     kprintf(" uint8_t\n"); break;
-			case CTLTYPE_U16:    kprintf(" uint16_t\n"); break;
-			case CTLTYPE_U32:    kprintf(" uint32_t\n"); break;
-			case CTLTYPE_U64:    kprintf(" uint64_t\n"); break;
-			case CTLTYPE_OPAQUE: kprintf(" Opaque/struct\n"); break;
-			default:	     kprintf("\n");
+		case CTLTYPE_NODE:
+			kprintf(" Node\n");
+			if (!oidp->oid_handler) {
+				sysctl_sysctl_debug_dump_node(
+					oidp->oid_arg1, i+2);
+			}
+			break;
+		case CTLTYPE_INT:
+			kprintf(" Int\n");
+			break;
+		case CTLTYPE_UINT:
+			kprintf(" u_int\n");
+			break;
+		case CTLTYPE_LONG:
+			kprintf(" Long\n");
+			break;
+		case CTLTYPE_ULONG:
+			kprintf(" u_long\n");
+			break;
+		case CTLTYPE_STRING:
+			kprintf(" String\n");
+			break;
+		case CTLTYPE_S8:
+			kprintf(" int8_t\n");
+			break;
+		case CTLTYPE_S16:
+			kprintf(" int16_t\n");
+			break;
+		case CTLTYPE_S32:
+			kprintf(" int32_t\n");
+			break;
+		case CTLTYPE_S64:
+			kprintf(" int64_t\n");
+			break;
+		case CTLTYPE_U8:
+			kprintf(" uint8_t\n");
+			break;
+		case CTLTYPE_U16:
+			kprintf(" uint16_t\n");
+			break;
+		case CTLTYPE_U32:
+			kprintf(" uint32_t\n");
+			break;
+		case CTLTYPE_U64:
+			kprintf(" uint64_t\n");
+			break;
+		case CTLTYPE_BIT32(0):
+			kprintf(" Int\n");
+			break;
+		case CTLTYPE_BIT64(0):
+			kprintf(" Int\n");
+			break;
+		case CTLTYPE_OPAQUE:
+			kprintf(" Opaque/struct\n");
+			break;
+		default:
+			kprintf("\n");
+			break;
 		}
 
 	}
@@ -1036,6 +1072,80 @@ sysctl_handle_quad(SYSCTL_HANDLER_ARGS)
 		return (error);
 
 	error = SYSCTL_IN(req, arg1, sizeof(quad_t));
+	return (error);
+}
+
+/*
+ * Handle an bit in a 32-bit field, pass and return an 'int'
+ * Two cases:
+ *     a variable:  point arg1 at it.
+ *     a constant:  pass it in arg2.
+ */
+
+int
+sysctl_handle_bit32(SYSCTL_HANDLER_ARGS)
+{
+	int error = 0;
+	uint32_t mask;
+	int v;
+	int bit;
+
+	bit = (oidp->oid_kind & CTLMASK_BITFLD) >> CTLSHIFT_BITFLD;
+	mask = arg1 ? *(uint32_t *)arg1 : (uint32_t)arg2;
+	v = (mask & (1U << bit)) ? 1 : 0;
+	error = SYSCTL_OUT(req, &v, sizeof(int));
+
+	if (error || !req->newptr)
+		return (error);
+
+	if (!arg1) {
+		error = EPERM;
+	} else {
+		error = SYSCTL_IN(req, &v, sizeof(int));
+		if (error == 0) {
+			if (v)
+				atomic_set_int((uint32_t *)arg1, 1U << bit);
+			else
+				atomic_clear_int((uint32_t *)arg1, 1U << bit);
+		}
+	}
+	return (error);
+}
+
+/*
+ * Handle an bit in a 64-bit field, pass and return an 'int'
+ * Two cases:
+ *     a variable:  point arg1 at it.
+ *     a constant:  pass it in arg2.  (NOTE: arg2 is only 32bits)
+ */
+
+int
+sysctl_handle_bit64(SYSCTL_HANDLER_ARGS)
+{
+	int error = 0;
+	uint64_t mask;
+	int v;
+	int bit;
+
+	bit = (oidp->oid_kind & CTLMASK_BITFLD) >> CTLSHIFT_BITFLD;
+	mask = arg1 ? *(uint64_t *)arg1 : (uint64_t)(uint32_t)arg2;
+	v = (mask & (1LU << bit)) ? 1 : 0;
+	error = SYSCTL_OUT(req, &v, sizeof(int));
+
+	if (error || !req->newptr)
+		return (error);
+
+	if (!arg1) {
+		error = EPERM;
+	} else {
+		error = SYSCTL_IN(req, &v, sizeof(int));
+		if (error == 0) {
+			if (v)
+				atomic_set_long((uint64_t *)arg1, 1LU << bit);
+			else
+				atomic_clear_long((uint64_t *)arg1, 1LU << bit);
+		}
+	}
 	return (error);
 }
 
