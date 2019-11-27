@@ -227,12 +227,15 @@ parse(const char *string)
 	
 		switch (kind & CTLTYPE) {
 			case CTLTYPE_INT:
+			case CTLTYPE_BIT32(0):
+			case CTLTYPE_BIT64(0):
 				if (!(strcmp(fmt, "IK") == 0)) {
 					if (!set_IK(newval, &intval))
 						errx(1, "invalid value '%s'",
 						    (char *)newval);
-				} else
+				} else {
 					intval = (int) strtol(newval, NULL, 0);
+				}
 				newval = &intval;
 				newsize = sizeof(intval);
 				break;
