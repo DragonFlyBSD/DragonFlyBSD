@@ -85,8 +85,6 @@ typedef	__clockid_t	clockid_t;
 #define	_TIMER_T_DECLARED
 typedef	__timer_t	timer_t;
 #endif
-#elif __ISO_C_VISIBLE >= 2011
-#include <sys/_timespec.h>
 #endif /* __POSIX_VISIBLE >= 199309 */
 
 #if __POSIX_VISIBLE >= 200112
@@ -129,11 +127,6 @@ typedef	__pid_t		lwpid_t;	/* light weight process id */
 #endif
 #define	TIMER_ABSTIME	0x1	/* absolute timer */
 #endif /* !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 199309 */
-
-#if __ISO_C_VISIBLE >= 2011
-/* for timespec_get() */
-#define	TIME_UTC	1
-#endif
 
 struct tm {
 	int	tm_sec;		/* seconds after the minute [0-60] */
@@ -222,7 +215,9 @@ time_t timeoff(struct tm * const, const long);
 #include <xlocale/_time.h>
 #endif
 
-#if __ISO_C_VISIBLE >= 2011
+#if __ISO_C_VISIBLE >= 2011 || (defined(__cplusplus) && __cplusplus >= 201703)
+#include <sys/_timespec.h>
+#define	TIME_UTC	1
 int timespec_get(struct timespec *ts, int base);
 #endif
 __END_DECLS
