@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/i386-fbsd.c,v 1.7.2.2 2001/10/29 20:12:56 des Exp $
- * $DragonFly: src/usr.bin/truss/i386-fbsd.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -180,7 +179,7 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
   if (sc) {
     fsc.nargs = sc->nargs;
   } else {
-#if DEBUG
+#ifdef DEBUG
     fprintf(trussinfo->trussinfo->outfile, "unknown syscall %s -- setting args to %d\n",
 	   fsc.name, nargs);
 #endif
@@ -201,11 +200,11 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
 
   if (fsc.name) {
 
-#if DEBUG
+#ifdef DEBUG
     fprintf(stderr, "syscall %s(", fsc.name);
 #endif
     for (i = 0; i < fsc.nargs; i++) {
-#if DEBUG
+#ifdef DEBUG
       fprintf(stderr, "0x%x%s",
 	     sc
 	     ? fsc.args[sc->args[i].offset]
@@ -216,12 +215,12 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
 	fsc.s_args[i] = print_arg(Procfd, &sc->args[i], fsc.args);
       }
     }
-#if DEBUG
+#ifdef DEBUG
     fprintf(stderr, ")\n");
 #endif
   }
 
-#if DEBUG
+#ifdef DEBUG
   fprintf(trussinfo->trussinfo->outfile, "\n");
 #endif
 
