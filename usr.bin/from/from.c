@@ -29,10 +29,9 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/from/from.c,v 1.8.2.1 2000/10/06 08:19:19 ru Exp $
- * $DragonFly: src/usr.bin/from/from.c,v 1.5 2005/04/22 15:36:39 liamfoy Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 
 #include <ctype.h>
 #include <err.h>
