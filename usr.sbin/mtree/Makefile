@@ -9,6 +9,7 @@ SRCS=	compare.c crc.c create.c excludes.c misc.c mtree.c spec.c verify.c
 SRCS+=	specspec.c getid.c only.c
 
 SRCS+=	pack_dev.c stat_flags.c
+CFLAGS+=-DHAVE_NETDB_H
 
 DPADD+=	${LIBUTIL}
 LDADD+=	-lutil

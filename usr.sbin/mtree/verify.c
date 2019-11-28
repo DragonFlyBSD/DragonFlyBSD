@@ -30,17 +30,10 @@
  * SUCH DAMAGE.
  */
 
-#if HAVE_NBTOOL_CONFIG_H
-#include "nbtool_config.h"
-#endif
-
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#if ! HAVE_NBTOOL_CONFIG_H
 #include <dirent.h>
-#endif
-
 #include <errno.h>
 #include <fnmatch.h>
 #include <stdio.h>

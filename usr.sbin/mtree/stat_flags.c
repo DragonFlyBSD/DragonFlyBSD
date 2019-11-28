@@ -30,11 +30,7 @@
  * SUCH DAMAGE.
  */
 
-#if HAVE_NBTOOL_CONFIG_H
-#include "nbtool_config.h"
-#else
 #define HAVE_STRUCT_STAT_ST_FLAGS 1
-#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>

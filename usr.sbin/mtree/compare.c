@@ -30,10 +30,6 @@
  * SUCH DAMAGE.
  */
 
-#if HAVE_NBTOOL_CONFIG_H
-#include "nbtool_config.h"
-#endif
-
 #include <sys/param.h>
 #include <sys/stat.h>
 
@@ -314,7 +310,7 @@ typeerr:		LABEL;
 		struct stat *ps = p->fts_statp;
 		time_t smtime = s->st_mtimespec.tv_sec;
 
-#if defined(BSD4_4) && !defined(HAVE_NBTOOL_CONFIG_H)
+#if defined(BSD4_4)
 		time_t pmtime = ps->st_mtimespec.tv_sec;
 
 		TIMESPEC_TO_TIMEVAL(&tv[0], &s->st_mtimespec);

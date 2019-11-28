@@ -26,10 +26,6 @@
  * SUCH DAMAGE.
  */
 
-#if HAVE_NBTOOL_CONFIG_H
-#include "nbtool_config.h"
-#endif
-
 #include <err.h>
 #include <grp.h>
 #include <pwd.h>
