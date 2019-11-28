@@ -48,7 +48,7 @@
 
 #include "ldconfig.h"
 
-#if DEBUG
+#ifdef DEBUG
 /* test */
 #undef _PATH_ELF_HINTS
 #define _PATH_ELF_HINTS		"./ld-elf.so.hints"
