@@ -30,10 +30,6 @@
  * NetBSD: src/common/lib/libc/stdlib/strtoul.c,v 1.3 2008/08/20 19:58:34 oster Exp
  */
 
-#if HAVE_NBTOOL_CONFIG_H
-#include "nbtool_config.h"
-#endif
-
 #ifdef _LIBC
 #include "namespace.h"
 #endif
