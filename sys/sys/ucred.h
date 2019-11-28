@@ -103,7 +103,6 @@ struct ucred	*cratom_proc (struct proc *p);
 struct ucred	*crcopy (struct ucred *cr);
 struct ucred	*crdup (struct ucred *cr);
 void		crfree (struct ucred *cr);
-void		crinit (struct ucred *cr);
 struct ucred	*crget (void);
 struct ucred    *crhold (struct ucred *cr);
 void		cru2x (struct ucred *cr, struct xucred *xcr);

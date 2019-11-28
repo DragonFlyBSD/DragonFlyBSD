@@ -1025,19 +1025,6 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 	return (EPERM);
 }
 
-static __inline void
-_crinit(struct ucred *cr)
-{
-	cr->cr_ref = 1;
-}
-
-void
-crinit(struct ucred *cr)
-{
-	bzero(cr, sizeof(*cr));
-	_crinit(cr);
-}
-
 /*
  * Allocate a zeroed cred structure.
  */
@@ -1047,7 +1034,8 @@ crget(void)
 	struct ucred *cr;
 
 	cr = kmalloc(sizeof(*cr), M_CRED, M_WAITOK|M_ZERO);
-	_crinit(cr);
+	atomic_add_long(&cr->cr_ref, 1);
+
 	return (cr);
 }
 
