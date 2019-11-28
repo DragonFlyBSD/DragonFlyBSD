@@ -7,7 +7,7 @@ SRCS=		xinstall.c getid.c
 MAN=		install.1
 
 .PATH:          ${.CURDIR}/../../usr.sbin/mtree
-CFLAGS+=        -I${.CURDIR}/../../usr.sbin/mtree
+CFLAGS+=        -DHAVE_NETDB_H -I${.CURDIR}/../../usr.sbin/mtree
 
 .if defined(BOOTSTRAPPING)
 .if ${WORLD_VERSION} < 500302 # pwcache(3) upgrades came in about here
