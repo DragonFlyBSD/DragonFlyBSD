@@ -364,7 +364,7 @@ rtrav(void)
 		/* end of entry */
 		if ((locc = rnum()) != oldloc && oldloc >= 0) {
 			t->next = 0;	/* terminate the old entry */
-#if DEBUG
+#ifdef DEBUG
 			printf("%d:%d entries\n", oldloc, entries);
 			twrite(oldloc);
 #endif
