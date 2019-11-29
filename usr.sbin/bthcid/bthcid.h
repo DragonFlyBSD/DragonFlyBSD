@@ -1,5 +1,4 @@
 /* $NetBSD: bthcid.h,v 1.3 2006/09/26 19:18:19 plunky Exp $ */
-/* $DragonFly: src/usr.sbin/bthcid/bthcid.h,v 1.1 2008/01/30 14:10:19 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -74,7 +73,7 @@ typedef struct link_key *	link_key_p;
 extern const char		*config_file;
 extern int			hci_kq;
 
-#if __config_debug__
+#ifdef __config_debug__
 void		dump_config	(void);
 #endif
 

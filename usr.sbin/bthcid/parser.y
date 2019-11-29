@@ -28,7 +28,6 @@
  *
  * $Id: parser.y,v 1.5 2003/06/07 21:22:30 max Exp $
  * $FreeBSD: src/usr.sbin/bluetooth/hcsecd/parser.y,v 1.4 2004/09/14 20:04:33 emax Exp $
- * $DragonFly: src/usr.sbin/bthcid/parser.y,v 1.1 2008/01/30 14:10:19 hasso Exp $
  */
 
 #include <sys/fcntl.h>
@@ -218,7 +217,7 @@ read_config_file(void)
 	fclose(yyin);
 	yyin = NULL;
 
-#if __config_debug__
+#ifdef __config_debug__
 	dump_config();
 #endif
 }
@@ -254,7 +253,7 @@ get_key(bdaddr_p bdaddr, int exact_match)
 	return ((lkey != NULL)? lkey : defkey);
 }
 
-#if __config_debug__
+#ifdef __config_debug__
 /* Dump config */
 void
 dump_config(void)
