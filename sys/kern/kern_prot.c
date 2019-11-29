@@ -1034,7 +1034,7 @@ crget(void)
 	struct ucred *cr;
 
 	cr = kmalloc(sizeof(*cr), M_CRED, M_WAITOK|M_ZERO);
-	atomic_add_long(&cr->cr_ref, 1);
+	cr->cr_ref = 1;
 
 	return (cr);
 }
