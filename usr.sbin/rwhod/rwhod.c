@@ -357,7 +357,7 @@ handleread(int sock)
 		syslog(LOG_WARNING, "%s: %m", path);
 		return;
 	}
-#if ENDIAN != BIG_ENDIAN
+#if _BYTE_ORDER != _BIG_ENDIAN
 	{
 		int i, n = (cc - WHDRSIZE)/sizeof(struct whoent);
 		struct whoent *we;
