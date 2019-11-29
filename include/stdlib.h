@@ -165,7 +165,7 @@ void	 _Exit(int) __dead2;
 /*
  * C11 functions.
  */
-#if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L
+#if __ISO_C_VISIBLE >= 2011 || (defined(__cplusplus) && __cplusplus >= 201103L)
 void	*aligned_alloc(size_t, size_t) __malloclike __heedresult
 	    __alloc_align(1) __alloc_size(2);
 int	at_quick_exit(void (*)(void));	/* extra extern case for __cplusplus? */
