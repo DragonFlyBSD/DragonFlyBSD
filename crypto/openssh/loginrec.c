@@ -188,7 +188,7 @@
  ** prototypes for helper functions in this file
  **/
 
-#if HAVE_UTMP_H
+#ifdef HAVE_UTMP_H
 void set_utmp_time(struct logininfo *li, struct utmp *ut);
 void construct_utmp(struct logininfo *li, struct utmp *ut);
 #endif
