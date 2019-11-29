@@ -79,7 +79,7 @@
 #include <ddb/ddb.h>
 
 static uint32_t	debug_32bit;
-static uint32_t	debug_64bit;
+static uint64_t	debug_64bit;
 
 SYSCTL_BIT32(_debug, OID_AUTO, b32_0, CTLFLAG_RW, &debug_32bit, 0, 0, "");
 SYSCTL_BIT32(_debug, OID_AUTO, b32_31, CTLFLAG_RW, &debug_32bit, 0, 31, "");
