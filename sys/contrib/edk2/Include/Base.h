@@ -247,7 +247,7 @@ VERIFY_SIZE_OF (__VERIFY_UINT32_ENUM_SIZE, 4);
 ///
 #define ASM_PFX(name) _CONCATENATE (__USER_LABEL_PREFIX__, name)
 
-#if __APPLE__
+#ifdef __APPLE__
   //
   // Apple extension that is used by the linker to optimize code size
   // with assembly functions. Put at the end of your .S files
