@@ -59,7 +59,7 @@ extern void BZ2_bz__AssertH__fail ( int errcode );
 #define AssertH(cond,errcode) \
    { if (!(cond)) BZ2_bz__AssertH__fail ( errcode ); }
 
-#if BZ_DEBUG
+#ifdef BZ_DEBUG
 #define AssertD(cond,msg) \
    { if (!(cond)) {       \
       fprintf ( stderr,   \

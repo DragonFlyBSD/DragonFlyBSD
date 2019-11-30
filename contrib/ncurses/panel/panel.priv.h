@@ -32,9 +32,7 @@
 #define NCURSES_PANEL_PRIV_H 1
 /* *INDENT-OFF* */
 
-#if HAVE_CONFIG_H
-#  include <ncurses_cfg.h>
-#endif
+#include <ncurses_cfg.h>
 
 #include <stdlib.h>
 #include <string.h>

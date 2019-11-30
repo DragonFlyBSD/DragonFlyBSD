@@ -66,7 +66,7 @@ extern "C" {
 /*
  * For flagging arguments as format strings in MSVC.
  */
-#if _MSC_VER >= 1400
+#if defined(_MSC_VER) && _MSC_VER >= 1400
  #include <sal.h>
  #if _MSC_VER > 1400
   #define FORMAT_STRING(p) _Printf_format_string_ p
