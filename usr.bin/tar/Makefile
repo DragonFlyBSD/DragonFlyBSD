@@ -7,7 +7,8 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/tar
 .PATH: ${CONTRIBDIR} ${CONTRIBDIR}/../libarchive_fe
-CFLAGS+=	-DHAVE_CONFIG_H -I${.CURDIR}/../../lib/libarchive
+CFLAGS+=	-DHAVE_CONFIG_H -DHAVE_DIRENT_D_NAMLEN
+CFLAGS+=	-I${.CURDIR}/../../lib/libarchive
 CFLAGS+=	-I${CONTRIBDIR}
 CFLAGS+=	-I${CONTRIBDIR}/../libarchive  -I${CONTRIBDIR}/../libarchive_fe
 
