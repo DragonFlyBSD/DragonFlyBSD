@@ -1,6 +1,5 @@
 /*	create.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/create.c,v 1.4 1999/11/16 02:57:20 billf Exp $ */
-/* $DragonFly: src/games/larn/create.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $ */
 #include "header.h"
 
 static void makemaze(int);
@@ -83,7 +82,7 @@ newcavelevel(int x)
 	beenhere[x] = 1;
 	sethp(1);
 
-#if WIZID
+#ifdef WIZID
 	if (wizard || x == 0)
 #else
 	if (x == 0)
@@ -285,7 +284,7 @@ cannedlevel(int k)
 			mitem[j][i] = mit;
 			hitp[j][i] = marg;
 
-#if WIZID
+#ifdef WIZID
 			know[j][i] = (wizard) ? 1 : 0;
 #else
 			know[j][i] = 0;

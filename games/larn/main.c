@@ -790,7 +790,7 @@ parse(void)
 				lprcat("\nNo traps are visible");
 			return;
 
-#if WIZID
+#ifdef WIZID
 		case '_':	/* this is the fudge player password for wizard mode */
 			yrepcount = 0;
 			cursors();
@@ -905,7 +905,7 @@ parse(void)
 			nomove = 1;
 			return;	/* look */
 
-#if WIZID
+#ifdef WIZID
 #ifdef EXTRA
 		case 'A':
 			yrepcount = 0;

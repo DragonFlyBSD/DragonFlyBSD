@@ -356,7 +356,7 @@ restoregame(char *fname)
 static void
 greedy(void)
 {
-#if WIZID
+#ifdef WIZID
 	if (wizard)
 		return;
 #endif
@@ -390,7 +390,7 @@ fsorry(void)
 static void
 fcheat(void)
 {
-#if WIZID
+#ifdef WIZID
 	if (wizard)
 		return;
 #endif
