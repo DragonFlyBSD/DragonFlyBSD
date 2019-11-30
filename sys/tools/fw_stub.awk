@@ -127,13 +127,13 @@ ctmpfilename = cfilename ".tmp";
 modname = opt_m;
 gsub(/[-\.]/, "_", modname);
 
-printc("#include <sys/param.h>\
-#include <sys/errno.h>\
-#include <sys/kernel.h>\
-#include <sys/module.h>\
-#include <sys/linker.h>\
-#include <sys/firmware.h>\
-#include <sys/systm.h>\n");
+printc("#include <sys/param.h>\n"\
+    "#include <sys/errno.h>\n"\
+    "#include <sys/kernel.h>\n"\
+    "#include <sys/module.h>\n"\
+    "#include <sys/linker.h>\n"\
+    "#include <sys/firmware.h>\n"\
+    "#include <sys/systm.h>\n");
 
 if (opt_l) {
 	printc("static long " opt_l "_license_ack = 0;");
@@ -146,26 +146,28 @@ for (file_i = 0; file_i < num_files; file_i++) {
 	printc("extern char _binary_" symb "_start[], _binary_" symb "_end[];");
 }
 
-printc("\nstatic int\n"\
-modname "_fw_modevent(module_t mod, int type, void *unused)\
-{\
-	const struct firmware *fp;");
+printc("");
+printc("static int\n"\
+	modname "_fw_modevent(module_t mod, int type, void *unused)\n"\
+	"{\n"\
+	"	const struct firmware *fp;");
 
 if (num_files > 1)
 	printc("\tconst struct firmware *parent;");
 
-printc("\tint error;\
-	switch (type) {\
-	case MOD_LOAD:\n");
+printc("	int error;\n"\
+	"\n"\
+	"	switch (type) {\n"\
+	"	case MOD_LOAD:\n");
 
 if (opt_l) {
-		printc("\
-		TUNABLE_LONG_FETCH(\"legal." opt_l ".license_ack\", &" opt_l "_license_ack);\
-		if (!" opt_l "_license_ack) {\
-			kprintf(\"" opt_m ": You need to read the LICENSE file in /usr/share/doc/legal/" opt_l "/.\\n\");\
-			kprintf(\"" opt_m ": If you agree with the license, set legal." opt_l ".license_ack=1 in /boot/loader.conf.\\n\");\
-			return(EPERM);\
-		}\n");
+	printc("");
+	printc("\tTUNABLE_LONG_FETCH(\"legal." opt_l ".license_ack\", &" opt_l "_license_ack);\n"\
+	    "\tif (!" opt_l "_license_ack) {\n"\
+	    "\t	kprintf(\"" opt_m ": You need to read the LICENSE file in /usr/share/doc/legal/" opt_l "/.\\n\");\n"\
+	    "\t	kprintf(\"" opt_m ": If you agree with the license, set legal." opt_l ".license_ack=1 in /boot/loader.conf.\\n\");\n"\
+	    "\t	return(EPERM);\n"\
+	    "\t}\n");
 }
 
 for (file_i = 0; file_i < num_files; file_i++) {
@@ -213,20 +215,19 @@ for (file_i = 1; file_i < num_files; file_i++) {
 
 printc("\t\terror = firmware_unregister(\"" shortnames[0] "\");");
 
-printc("\t\treturn (error);\
-	}\
-	return (EINVAL);\
-}\
-\
-static moduledata_t " modname "_fw_mod = {\
-        \"" modname "_fw\",\
-        " modname "_fw_modevent,\
-        0\
-};\
-DECLARE_MODULE(" modname "_fw, " modname "_fw_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);\
-MODULE_VERSION(" modname "_fw, 1);\
-MODULE_DEPEND(" modname "_fw, firmware, 1, 1, 1);\
-");
+printc("\t\treturn (error);\n"\
+    "	}\n"\
+    "	return (EINVAL);\n"\
+    "}\n"\
+    "\n"\
+    "static moduledata_t " modname "_fw_mod = {\n"\
+    "        \"" modname "_fw\",\n"\
+    "        " modname "_fw_modevent,\n"\
+    "        0\n"\
+    "};\n"\
+    "DECLARE_MODULE(" modname "_fw, " modname "_fw_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);\n"\
+    "MODULE_VERSION(" modname "_fw, 1);\n"\
+    "MODULE_DEPEND(" modname "_fw, firmware, 1, 1, 1);\n");
 
 if (opt_c)
 	if ((rc = system("mv -f " ctmpfilename " " cfilename))) {
