@@ -46,7 +46,7 @@
 #define	THREAD_LOCK()	if (__isthreaded) _pthread_mutex_lock(&logname_mutex)
 #define	THREAD_UNLOCK()	if (__isthreaded) _pthread_mutex_unlock(&logname_mutex)
 
-extern int		_getlogin(char *, int);
+extern int		_getlogin(char *, size_t);
  
 int			_logname_valid;		/* known to setlogin() */
 static pthread_mutex_t	logname_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -80,10 +80,10 @@ getlogin(void)
 }
 
 int
-getlogin_r(char *logname, int namelen)
+getlogin_r(char *logname, size_t namelen)
 {
 	char	*result;
-	int	len;
+	size_t	len;
 	int	status;
 	
 	THREAD_LOCK();

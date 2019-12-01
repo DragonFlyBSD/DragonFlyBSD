@@ -99,7 +99,7 @@
 46	OBSOL	freebsd3_sigaction
 47	STD	{ gid_t getgid(void); }
 48	OBSOL	freebsd3_sigprocmask
-49	STD	{ int getlogin(char *namebuf, u_int namelen); }
+49	STD	{ int getlogin(char *namebuf, size_t namelen); }
 50	STD	{ int setlogin(char *namebuf); }
 51	STD	{ int acct(char *path); }
 52	OBSOL	freebsd3_sigpending

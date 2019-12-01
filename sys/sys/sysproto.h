@@ -326,7 +326,7 @@ struct	getlogin_args {
 	struct sysmsg sysmsg;
 #endif
 	char *	namebuf;	char namebuf_[PAD_(char *)];
-	u_int	namelen;	char namelen_[PAD_(u_int)];
+	size_t	namelen;	char namelen_[PAD_(size_t)];
 };
 struct	setlogin_args {
 #ifdef _KERNEL

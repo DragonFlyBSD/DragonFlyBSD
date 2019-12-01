@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)getlogin.2	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/sys/getlogin.2,v 1.14.2.6 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getlogin.2,v 1.5 2007/07/30 22:11:33 swildner Exp $
 .\"
-.Dd June 9, 1993
+.Dd December 1, 2019
 .Dt GETLOGIN 2
 .Os
 .Sh NAME
@@ -45,7 +44,7 @@
 .Fn getlogin void
 .In sys/param.h
 .Ft int
-.Fn getlogin_r "char *name" "int len"
+.Fn getlogin_r "char *name" "size_t len"
 .Ft int
 .Fn setlogin "const char *name"
 .Sh DESCRIPTION
