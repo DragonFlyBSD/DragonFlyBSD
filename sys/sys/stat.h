@@ -179,11 +179,14 @@ struct stat {
 
 /*
  * The value of `buf' is a pointer to a `stat' data structure. Since we don't
- * implement message queues as distinct file types, the following macro
- * evaluates to zero.
- * XXX: What about semaphores and shared memory objects ?
+ * implement message queues, semaphores, and shared memory objects as distinct
+ * file types, the following macros evaluate to zero.
+ *
+ * XXX: Add S_TYPEISTMO() once we grow support for POSIX typed memory objects.
  */
 #define	S_TYPEISMQ(buf)		(0)	/* message queue */
+#define	S_TYPEISSEM(buf)	(0)	/* semaphore */
+#define	S_TYPEISSHM(buf)	(0)	/* shared memory object */
 
 #if __BSD_VISIBLE
 #define	ACCESSPERMS	(S_IRWXU|S_IRWXG|S_IRWXO)	/* 0777 */
