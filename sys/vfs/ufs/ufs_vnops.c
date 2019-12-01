@@ -321,7 +321,7 @@ ufs_getattr(struct vop_getattr_args *ap)
 	/*
 	 * Copy from inode table
 	 */
-	vap->va_fsid = dev2udev(ip->i_dev);
+	vap->va_fsid = devid_from_dev(ip->i_dev);
 	vap->va_fileid = ip->i_number;
 	vap->va_mode = ip->i_mode & ~IFMT;
 	vap->va_nlink = VFSTOUFS(vp->v_mount)->um_i_effnlink_valid ?

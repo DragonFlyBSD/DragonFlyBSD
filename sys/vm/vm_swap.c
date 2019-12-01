@@ -352,7 +352,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	}
 
 	sp->sw_vp = vp;
-	sp->sw_dev = dev2udev(dev);
+	sp->sw_dev = devid_from_dev(dev);
 	sp->sw_device = dev;
 	sp->sw_flags = SW_FREED;
 	sp->sw_nused = 0;

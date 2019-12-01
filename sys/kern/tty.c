@@ -2905,7 +2905,7 @@ sysctl_kern_ttys(SYSCTL_HANDLER_ARGS)
 			continue;
 		t = *tp;
 		if (t.t_dev)
-			t.t_dev = (cdev_t)(uintptr_t)dev2udev(t.t_dev);
+			t.t_dev = (cdev_t)(uintptr_t)devid_from_dev(t.t_dev);
 		error = SYSCTL_OUT(req, (caddr_t)&t, sizeof(t));
 		if (error)
 			break;

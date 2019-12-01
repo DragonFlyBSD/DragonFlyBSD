@@ -449,7 +449,7 @@ hpfs_getattr(struct vop_getattr_args *ap)
 	dprintf(("hpfs_getattr(0x%x):\n", hp->h_no));
 
 #if defined(__DragonFly__)
-	vap->va_fsid = dev2udev(hp->h_dev);
+	vap->va_fsid = devid_from_dev(hp->h_dev);
 #else /* defined(__NetBSD__) */
 	vap->va_fsid = ip->i_dev;
 #endif

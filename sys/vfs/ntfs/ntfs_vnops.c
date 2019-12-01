@@ -178,7 +178,7 @@ ntfs_getattr(struct vop_getattr_args *ap)
 	dprintf(("ntfs_getattr: %ju, flags: %d\n", (uintmax_t)ip->i_number,
 		ip->i_flag));
 
-	vap->va_fsid = dev2udev(ip->i_dev);
+	vap->va_fsid = devid_from_dev(ip->i_dev);
 	vap->va_fileid = ip->i_number;
 	vap->va_mode = ip->i_mp->ntm_mode;
 	vap->va_nlink = ip->i_nlink;

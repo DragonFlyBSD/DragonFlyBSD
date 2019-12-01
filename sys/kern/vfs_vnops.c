@@ -827,7 +827,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		sb->st_nlink = vap->va_nlink;
 	sb->st_uid = vap->va_uid;
 	sb->st_gid = vap->va_gid;
-	sb->st_rdev = dev2udev(vp->v_rdev);
+	sb->st_rdev = devid_from_dev(vp->v_rdev);
 	sb->st_size = vap->va_size;
 	sb->st_atimespec = vap->va_atime;
 	sb->st_mtimespec = vap->va_mtime;

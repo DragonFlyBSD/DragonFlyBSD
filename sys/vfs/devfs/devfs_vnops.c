@@ -1410,7 +1410,7 @@ devfs_fo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 
 	sb->st_uid = vap->va_uid;
 	sb->st_gid = vap->va_gid;
-	sb->st_rdev = dev2udev(DEVFS_NODE(vp)->d_dev);
+	sb->st_rdev = devid_from_dev(DEVFS_NODE(vp)->d_dev);
 	sb->st_size = vap->va_bytes;
 	sb->st_atimespec = vap->va_atime;
 	sb->st_mtimespec = vap->va_mtime;

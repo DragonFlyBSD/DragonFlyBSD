@@ -217,7 +217,7 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 
 	vfs_timestamp(&ts);
 	DETIMES(dep, &ts, &ts, &ts);
-	vap->va_fsid = dev2udev(dep->de_dev);
+	vap->va_fsid = devid_from_dev(dep->de_dev);
 	/*
 	 * The following computation of the fileid must be the same as that
 	 * used in msdosfs_readdir() to compute d_fileno. If not, pwd

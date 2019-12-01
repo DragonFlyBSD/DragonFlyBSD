@@ -718,10 +718,10 @@ sysctl_kern_dumpdev(SYSCTL_HANDLER_ARGS)
 	int error;
 	dev_t ndumpdev;
 
-	ndumpdev = dev2udev(dumpdev);
+	ndumpdev = devid_from_dev(dumpdev);
 	error = sysctl_handle_opaque(oidp, &ndumpdev, sizeof ndumpdev, req);
 	if (error == 0 && req->newptr != NULL)
-		error = setdumpdev(udev2dev(ndumpdev, 0));
+		error = setdumpdev(dev_from_devid(ndumpdev, 0));
 	return (error);
 }
 

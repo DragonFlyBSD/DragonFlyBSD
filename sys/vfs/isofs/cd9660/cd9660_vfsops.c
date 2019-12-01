@@ -436,7 +436,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 	pribp = NULL;
 
 	mp->mnt_data = (qaddr_t)isomp;
-	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
+	mp->mnt_stat.f_fsid.val[0] = devid_from_dev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 	mp->mnt_maxsymlinklen = 0;
 	mp->mnt_flag |= MNT_LOCAL;

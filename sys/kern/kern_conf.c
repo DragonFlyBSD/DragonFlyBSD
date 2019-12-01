@@ -97,7 +97,7 @@ lminor(cdev_t dev)
  * to an old style dev_t.
  */
 dev_t
-dev2udev(cdev_t dev)
+devid_from_dev(cdev_t dev)
 {
 	if (dev == NULL)
 		return NOUDEV;
@@ -115,12 +115,12 @@ dev2udev(cdev_t dev)
  * has not been registered.
  */
 cdev_t
-udev2dev(dev_t x, int b)
+dev_from_devid(dev_t x, int b)
 {
 	if (x == NOUDEV || b != 0)
 		return(NULL);
 
-	return devfs_find_device_by_udev(x);
+	return devfs_find_device_by_devid(x);
 }
 
 int

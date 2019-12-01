@@ -125,7 +125,7 @@ static void devfs_msg_autofree_reply(lwkt_port_t, lwkt_msg_t);
 static void devfs_msg_core(void *);
 
 static int devfs_find_device_by_name_worker(devfs_msg_t);
-static int devfs_find_device_by_udev_worker(devfs_msg_t);
+static int devfs_find_device_by_devid_worker(devfs_msg_t);
 
 static int devfs_apply_reset_rules_caller(char *, int);
 
@@ -939,24 +939,24 @@ devfs_find_device_by_name(const char *fmt, ...)
 }
 
 /*
- * devfs_find_device_by_udev is the synchronous entry point to find a
+ * devfs_find_device_by_devid is the synchronous entry point to find a
  * device given its udev number.  It sends a synchronous message with
  * the relevant details to the devfs core and returns the answer.
  */
 cdev_t
-devfs_find_device_by_udev(dev_t udev)
+devfs_find_device_by_devid(dev_t udev)
 {
 	cdev_t found = NULL;
 	devfs_msg_t msg;
 
 	msg = devfs_msg_get();
 	msg->mdv_udev = udev;
-	devfs_msg_send_sync(DEVFS_FIND_DEVICE_BY_UDEV, msg);
+	devfs_msg_send_sync(DEVFS_FIND_DEVICE_BY_DEVID, msg);
 	found = msg->mdv_cdev;
 	devfs_msg_put(msg);
 
 	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "devfs_find_device_by_udev found? %s  -end:3-\n",
+		    "devfs_find_device_by_devid found? %s  -end:3-\n",
 		    ((found) ? found->si_name:"NO"));
 	return found;
 }
@@ -1349,8 +1349,8 @@ devfs_msg_exec(devfs_msg_t msg)
 	case DEVFS_FIND_DEVICE_BY_NAME:
 		devfs_find_device_by_name_worker(msg);
 		break;
-	case DEVFS_FIND_DEVICE_BY_UDEV:
-		devfs_find_device_by_udev_worker(msg);
+	case DEVFS_FIND_DEVICE_BY_DEVID:
+		devfs_find_device_by_devid_worker(msg);
 		break;
 	case DEVFS_MAKE_ALIAS:
 		devfs_make_alias_worker((struct devfs_alias *)msg->mdv_load);
@@ -1662,7 +1662,7 @@ devfs_find_device_by_name_worker(devfs_msg_t devfs_msg)
  * the answer is returned to the caller.
  */
 static int
-devfs_find_device_by_udev_worker(devfs_msg_t devfs_msg)
+devfs_find_device_by_devid_worker(devfs_msg_t devfs_msg)
 {
 	cdev_t dev, dev1;
 	cdev_t found = NULL;
@@ -2781,7 +2781,7 @@ devfs_sysctl_devname_helper(SYSCTL_HANDLER_ARGS)
 	if (udev == NOUDEV)
 		return(EINVAL);
 
-	if ((found = devfs_find_device_by_udev(udev)) == NULL)
+	if ((found = devfs_find_device_by_devid(udev)) == NULL)
 		return(ENOENT);
 
 	return(SYSCTL_OUT(req, found->si_name, strlen(found->si_name) + 1));

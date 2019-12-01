@@ -1556,8 +1556,8 @@ vgone_vxlocked(struct vnode *vp)
 /*
  * Calculate the total number of references to a special device.  This
  * routine may only be called for VBLK and VCHR vnodes since v_rdev is
- * an overloaded field.  Since udev2dev can now return NULL, we have
- * to check for a NULL v_rdev.
+ * an overloaded field.  Since dev_from_devid() can now return NULL, we
+ * have to check for a NULL v_rdev.
  */
 int
 count_dev(cdev_t dev)

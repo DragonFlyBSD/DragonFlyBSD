@@ -293,7 +293,7 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 #define DEVFS_DESTROY_DEV_BY_OPS	0x08
 #define DEVFS_CHANDLER_ADD		0x09
 #define DEVFS_CHANDLER_DEL		0x0A
-#define DEVFS_FIND_DEVICE_BY_UDEV	0x0B
+#define DEVFS_FIND_DEVICE_BY_DEVID	0x0B
 #define DEVFS_FIND_DEVICE_BY_NAME	0x0C
 #define DEVFS_MAKE_ALIAS		0x0D
 #define DEVFS_DESTROY_ALIAS		0x0E
@@ -412,7 +412,7 @@ cdev_t devfs_new_cdev(struct dev_ops *, int, struct dev_ops *);
 void devfs_assume_knotes(cdev_t dev, struct kqinfo *kqi);
 
 cdev_t devfs_find_device_by_name(const char *, ...) __printf0like(1, 2);
-cdev_t devfs_find_device_by_udev(dev_t);
+cdev_t devfs_find_device_by_devid(dev_t);
 
 struct vnode *devfs_inode_to_vnode(struct mount *, ino_t);
 

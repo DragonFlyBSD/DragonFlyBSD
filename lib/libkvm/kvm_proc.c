@@ -73,7 +73,7 @@
 #include "kvm.h"
 #include "kvm_private.h"
 
-dev_t	dev2udev(cdev_t dev);
+dev_t	devid_from_dev(cdev_t dev);
 
 #define KREAD(kd, addr, obj) \
 	(kvm_read(kd, addr, (char *)(obj), sizeof(*obj)) != sizeof(*obj))
@@ -106,7 +106,7 @@ kinfo_resize_proc(kvm_t *kd, struct kinfo_proc *bp)
  * compiled by userland.
  */
 dev_t
-dev2udev(cdev_t dev)
+devid_from_dev(cdev_t dev)
 {
 	if (dev == NULL)
 		return NOUDEV;
@@ -339,7 +339,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 
 		case KERN_PROC_TTY:
 			if ((proc.p_flags & P_CONTROLT) == 0 ||
-			    dev2udev(proc.p_pgrp->pg_session->s_ttyp->t_dev)
+			    devid_from_dev(proc.p_pgrp->pg_session->s_ttyp->t_dev)
 					!= (dev_t)arg)
 				continue;
 			break;

@@ -1702,7 +1702,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 				if ((p->p_flags & P_CONTROLT) == 0 ||
 				    p->p_session == NULL ||
 				    p->p_session->s_ttyp == NULL ||
-				    dev2udev(p->p_session->s_ttyp->t_dev) != 
+				    devid_from_dev(p->p_session->s_ttyp->t_dev) !=
 					(dev_t)name[0])
 					continue;
 				break;

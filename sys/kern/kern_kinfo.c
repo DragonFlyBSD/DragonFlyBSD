@@ -54,7 +54,7 @@
 #else
 #include <string.h>
 
-dev_t dev2udev(cdev_t dev);	/* kvm_proc.c */
+dev_t devid_from_dev(cdev_t dev);	/* kvm_proc.c */
 #endif
 
 
@@ -175,7 +175,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 			kp->kp_auxflags |= KI_SLEADER;
 	}
 	if (sess && (p->p_flags & P_CONTROLT) != 0 && sess->s_ttyp != NULL) {
-		kp->kp_tdev = dev2udev(sess->s_ttyp->t_dev);
+		kp->kp_tdev = devid_from_dev(sess->s_ttyp->t_dev);
 		if (sess->s_ttyp->t_pgrp != NULL)
 			kp->kp_tpgid = sess->s_ttyp->t_pgrp->pg_id;
 		else

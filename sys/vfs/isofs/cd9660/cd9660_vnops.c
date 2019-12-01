@@ -143,7 +143,7 @@ cd9660_getattr(struct vop_getattr_args *ap)
 	struct vattr *vap = ap->a_vap;
 	struct iso_node *ip = VTOI(vp);
 
-	vap->va_fsid	= dev2udev(ip->i_dev);
+	vap->va_fsid	= devid_from_dev(ip->i_dev);
 	vap->va_fileid	= ip->i_number;
 
 	vap->va_mode	= ip->inode.iso_mode;
