@@ -56,25 +56,25 @@
  * NOTE: st_fsmid removed in DragonFly 2.5.x.
  */
 struct stat {
-	ino_t	  st_ino;		/* inode's number */
-	nlink_t	  st_nlink;		/* number of hard links */
-	dev_t	  st_dev;		/* inode's device */
-	mode_t	  st_mode;		/* inode protection mode */
-	uint16_t  st_padding1;
-	uid_t	  st_uid;		/* user ID of the file's owner */
-	gid_t	  st_gid;		/* group ID of the file's group */
-	dev_t	  st_rdev;		/* device type */
-	struct	timespec st_atim;	/* time of last access */
-	struct	timespec st_mtim;	/* time of last data modification */
-	struct	timespec st_ctim;	/* time of last file status change */
-	off_t	  st_size;		/* file size, in bytes */
-	blkcnt_t  st_blocks;		/* blocks allocated for file */
-	u_int32_t __old_st_blksize;	/* old ABI compatibility only */
-	u_int32_t st_flags;		/* user defined flags for file */
-	u_int32_t st_gen;		/* file generation number */
-	int32_t	  st_lspare;
-	blksize_t st_blksize;		/* optimal blocksize for I/O */
-	int64_t	  st_qspare2;
+	ino_t		st_ino;		/* inode's number */
+	nlink_t		st_nlink;	/* number of hard links */
+	dev_t		st_dev;		/* inode's device */
+	mode_t		st_mode;	/* inode protection mode */
+	uint16_t	st_padding1;
+	uid_t		st_uid;		/* user ID of the file's owner */
+	gid_t		st_gid;		/* group ID of the file's group */
+	dev_t		st_rdev;		/* device type */
+	struct timespec	st_atim;	/* time of last access */
+	struct timespec	st_mtim;	/* time of last data modification */
+	struct timespec	st_ctim;	/* time of last file status change */
+	off_t		st_size;	/* file size, in bytes */
+	blkcnt_t	st_blocks;	/* blocks allocated for file */
+	u_int32_t	__old_st_blksize; /* old ABI compatibility only */
+	u_int32_t	st_flags;	/* user defined flags for file */
+	u_int32_t	st_gen;		/* file generation number */
+	int32_t		st_lspare;
+	blksize_t	st_blksize;	/* optimal blocksize for I/O */
+	int64_t		st_qspare2;
 };
 
 /*#define _ST_FSMID_PRESENT_*/
