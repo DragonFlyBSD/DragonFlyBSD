@@ -538,7 +538,7 @@ snpioctl(struct dev_ioctl_args *ap)
 
 	switch (ap->a_cmd) {
 	case SNPSTTY:
-		tdev = udev2dev(*((udev_t *)ap->a_data), 0);
+		tdev = udev2dev(*((dev_t *)ap->a_data), 0);
 		if (tdev == NULL) {
 			lwkt_reltoken(&snp_token);
 			ret = snp_down(snp);

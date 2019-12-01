@@ -187,7 +187,7 @@ typedef struct devfs_msg {
 			void *resp;
 		} __m_resp;
 		struct {
-			udev_t	udev;
+			dev_t	udev;
 		} __m_udev;
 		struct {
 			cdev_t	cdev;
@@ -412,7 +412,7 @@ cdev_t devfs_new_cdev(struct dev_ops *, int, struct dev_ops *);
 void devfs_assume_knotes(cdev_t dev, struct kqinfo *kqi);
 
 cdev_t devfs_find_device_by_name(const char *, ...) __printf0like(1, 2);
-cdev_t devfs_find_device_by_udev(udev_t);
+cdev_t devfs_find_device_by_udev(dev_t);
 
 struct vnode *devfs_inode_to_vnode(struct mount *, ino_t);
 

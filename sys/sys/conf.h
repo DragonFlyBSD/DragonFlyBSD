@@ -176,7 +176,7 @@ void ldisc_deregister (int);
  * Swap device table
  */
 struct swdevt {
-	udev_t	sw_dev;			/* For quasibogus swapdev reporting */
+	dev_t	sw_dev;			/* For quasibogus swapdev reporting */
 	int	sw_flags;
 	int	sw_nblks;		/* Number of swap blocks on device */
 	int	sw_nused;		/* swap blocks used on device */

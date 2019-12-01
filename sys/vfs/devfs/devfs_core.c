@@ -944,7 +944,7 @@ devfs_find_device_by_name(const char *fmt, ...)
  * the relevant details to the devfs core and returns the answer.
  */
 cdev_t
-devfs_find_device_by_udev(udev_t udev)
+devfs_find_device_by_udev(dev_t udev)
 {
 	cdev_t found = NULL;
 	devfs_msg_t msg;
@@ -1668,7 +1668,7 @@ devfs_find_device_by_udev_worker(devfs_msg_t devfs_msg)
 	cdev_t found = NULL;
 
 	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		if (((udev_t)dev->si_inode) == devfs_msg->mdv_udev) {
+		if (((dev_t)dev->si_inode) == devfs_msg->mdv_udev) {
 			found = dev;
 			break;
 		}
@@ -2768,11 +2768,11 @@ devfs_uninit(void)
 static int
 devfs_sysctl_devname_helper(SYSCTL_HANDLER_ARGS)
 {
-	udev_t 	udev;
+	dev_t 	udev;
 	cdev_t	found;
 	int		error;
 
-	if ((error = SYSCTL_IN(req, &udev, sizeof(udev_t))))
+	if ((error = SYSCTL_IN(req, &udev, sizeof(dev_t))))
 		return (error);
 
 	devfs_debug(DEVFS_DEBUG_DEBUG,

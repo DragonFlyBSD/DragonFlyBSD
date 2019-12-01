@@ -1600,7 +1600,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	struct nlookupdata nd;
 	int error = 0, len, tsize, dirfor_ret = 1, diraft_ret = 1;
-	udev_t rdev = NOUDEV;
+	dev_t rdev = NOUDEV;
 	caddr_t cp;
 	int how, exclusive_flag = 0;
 	struct vnode *dirp;

@@ -97,7 +97,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 {
 	struct tmpfs_node *nnode;
 	struct timespec ts;
-	udev_t rdev;
+	dev_t rdev;
 
 	KKASSERT(IFF(type == VLNK, target != NULL));
 	KKASSERT(IFF(type == VBLK || type == VCHR, rmajor != VNOVAL));

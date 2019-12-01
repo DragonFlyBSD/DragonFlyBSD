@@ -78,8 +78,8 @@ extern kvm_t *kd;
 extern int vflg;
 extern int Pid;
 
-udev_t fstat_dev2udev(void *);
-udev_t makeudev(int, int);
+dev_t fstat_dev2udev(cdev_t);
+dev_t makeudev(int, int);
 
 /* Additional filesystem types */
 int ext2fs_filestat(struct vnode *, struct filestat *);

@@ -1128,12 +1128,12 @@ hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2)
 	      (intmax_t)file_offset1, (intmax_t)file_offset2);
 }
 
-udev_t
+dev_t
 hammer_fsid_to_udev(hammer_uuid_t *uuid)
 {
 	uint32_t crc;
 
 	crc = crc32(uuid, sizeof(*uuid));
-	return((udev_t)crc);
+	return((dev_t)crc);
 }
 

@@ -716,7 +716,7 @@ static int
 sysctl_kern_dumpdev(SYSCTL_HANDLER_ARGS)
 {
 	int error;
-	udev_t ndumpdev;
+	dev_t ndumpdev;
 
 	ndumpdev = dev2udev(dumpdev);
 	error = sysctl_handle_opaque(oidp, &ndumpdev, sizeof ndumpdev, req);

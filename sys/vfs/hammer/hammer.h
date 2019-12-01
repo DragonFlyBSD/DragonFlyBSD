@@ -238,7 +238,7 @@ typedef struct hammer_pseudofs_inmem {
 	uint32_t		localization;
 	hammer_tid_t		create_tid;
 	int			flags;
-	udev_t			fsid_udev;
+	dev_t			fsid_udev;
 	struct hammer_pseudofs_data pfsd;
 } *hammer_pseudofs_inmem_t;
 
@@ -1393,7 +1393,7 @@ int hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t rootvol);
 void hammer_recover_flush_buffers(hammer_mount_t hmp,
 			hammer_volume_t root_volume, int final);
 
-udev_t hammer_fsid_to_udev(hammer_uuid_t *uuid);
+dev_t hammer_fsid_to_udev(hammer_uuid_t *uuid);
 
 
 int hammer_blocksize(int64_t file_offset);

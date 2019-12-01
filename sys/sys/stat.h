@@ -50,12 +50,6 @@
 #include <sys/_timespec.h>
 #endif
 
-#ifdef _KERNEL
-#define	__dev_t	udev_t
-#else
-#define	__dev_t	dev_t
-#endif
-
 /*
  * stat structure notes:
  *
@@ -64,12 +58,12 @@
 struct stat {
 	ino_t	  st_ino;		/* inode's number */
 	nlink_t	  st_nlink;		/* number of hard links */
-	__dev_t	  st_dev;		/* inode's device */
+	dev_t	  st_dev;		/* inode's device */
 	mode_t	  st_mode;		/* inode protection mode */
 	uint16_t  st_padding1;
 	uid_t	  st_uid;		/* user ID of the file's owner */
 	gid_t	  st_gid;		/* group ID of the file's group */
-	__dev_t	  st_rdev;		/* device type */
+	dev_t	  st_rdev;		/* device type */
 	struct	timespec st_atim;	/* time of last access */
 	struct	timespec st_mtim;	/* time of last data modification */
 	struct	timespec st_ctim;	/* time of last file status change */
@@ -85,8 +79,6 @@ struct stat {
 
 /*#define _ST_FSMID_PRESENT_*/
 #define	_ST_FLAGS_PRESENT_
-
-#undef __dev_t
 
 #define	st_atime st_atim.tv_sec
 #define	st_mtime st_mtim.tv_sec

@@ -419,11 +419,11 @@ void	wakeup_end_delayed(void);
 
 int major(cdev_t x);
 int minor(cdev_t x);
-udev_t dev2udev(cdev_t x);
-cdev_t udev2dev(udev_t x, int b);
-int uminor(udev_t dev);
-int umajor(udev_t dev);
-udev_t makeudev(int x, int y);
+dev_t dev2udev(cdev_t x);
+cdev_t udev2dev(dev_t x, int b);
+int uminor(dev_t dev);
+int umajor(dev_t dev);
+dev_t makeudev(int x, int y);
 
 /*
  * Unit number allocation API. (kern/subr_unit.c)

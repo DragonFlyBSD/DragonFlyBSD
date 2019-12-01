@@ -72,6 +72,10 @@ typedef	volatile char *	v_caddr_t;	/* core address, pointer to volatile */
 typedef	__int32_t	daddr_t;	/* disk address */
 typedef	__uint32_t	u_daddr_t;	/* unsigned disk address */
 typedef	__uint32_t	fixpt_t;	/* fixed point number */
+#ifndef _DEV_T_DECLARED
+typedef	__uint32_t	dev_t;		/* device number */
+#define	_DEV_T_DECLARED
+#endif
 #ifndef _FSBLKCNT_T_DECLARED
 typedef	__uint64_t	fsblkcnt_t;	/* filesystem block count */
 #define	_FSBLKCNT_T_DECLARED
@@ -135,25 +139,16 @@ typedef	__uint32_t	uid_t;		/* user id */
 typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
 
 /*
- * The kernel now uses only udev_t or cdev_t.  Userland uses dev_t.
+ * The kernel uses dev_t or cdev_t.  Userland uses dev_t.
  * Virtual kernel builds needs dev_t in order to include userland headers.
  */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 struct cdev;
 typedef	struct cdev	*cdev_t;
-typedef	u_int32_t	udev_t;		/* device number */
 typedef	u_int64_t	uoff_t;		/* uio offset */
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
-#ifdef _KERNEL
-typedef	udev_t		dev_t;		/* device number */
-#endif /* _KERNEL */
-
-#ifndef _KERNEL
-typedef	u_int32_t	dev_t;		/* device number */
-#define	udev_t dev_t
-
-#if __BSD_VISIBLE
+#if __BSD_VISIBLE && !defined(_KERNEL)
 /*
  * minor() gives a cookie instead of an index since we don't want to
  * change the meanings of bits 0-15 or waste time and space shifting
@@ -162,8 +157,7 @@ typedef	u_int32_t	dev_t;		/* device number */
 #define	major(x)	((int)(((u_int)(x) >> 8)&0xff)) /* major number */
 #define	minor(x)	((int)((x)&0xffff00ff))         /* minor number */
 #define	makedev(x,y)	((dev_t)(((x) << 8) | (y)))     /* create dev_t */
-#endif /* __BSD_VISIBLE */
-#endif /* !_KERNEL */
+#endif /* __BSD_VISIBLE && !_KERNEL */
 
 #ifndef _CLOCK_T_DECLARED
 #define	_CLOCK_T_DECLARED

@@ -287,7 +287,7 @@
 
 #define CMASK	022		/* default file mask: S_IWGRP|S_IWOTH */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#define NOUDEV	(udev_t)(-1)	/* non-existent device */
+#define NOUDEV	(dev_t)(-1)	/* non-existent device */
 #define NOMAJ	256		/* non-existent device */
 #endif
 

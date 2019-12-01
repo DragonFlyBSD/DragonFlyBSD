@@ -1302,7 +1302,7 @@ jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat)
     if (vat->va_flags != VNOVAL)
 	jrecord_leaf(jrec, JLEAF_FLAGS, &vat->va_flags, sizeof(vat->va_flags));
     if (vat->va_rmajor != VNOVAL) {
-	udev_t rdev = makeudev(vat->va_rmajor, vat->va_rminor);
+	dev_t rdev = makeudev(vat->va_rmajor, vat->va_rminor);
 	jrecord_leaf(jrec, JLEAF_UDEV, &rdev, sizeof(rdev));
 	jrecord_leaf(jrec, JLEAF_UMAJOR, &vat->va_rmajor, sizeof(vat->va_rmajor));
 	jrecord_leaf(jrec, JLEAF_UMINOR, &vat->va_rminor, sizeof(vat->va_rminor));

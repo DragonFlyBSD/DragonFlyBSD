@@ -75,7 +75,7 @@ minor(cdev_t dev)
 }
 
 /*
- * Compatibility function with old udev_t format to convert the
+ * Compatibility function with old dev_t format to convert the
  * non-consecutive minor space into a consecutive minor space.
  */
 int
@@ -94,15 +94,15 @@ lminor(cdev_t dev)
 /*
  * Convert a device pointer to an old style device number.  Return NOUDEV
  * if the device is invalid or if the device (maj,min) cannot be converted
- * to an old style udev_t.
+ * to an old style dev_t.
  */
-udev_t
+dev_t
 dev2udev(cdev_t dev)
 {
 	if (dev == NULL)
 		return NOUDEV;
 
-	return (udev_t)dev->si_inode;
+	return (dev_t)dev->si_inode;
 }
 
 /*
@@ -115,7 +115,7 @@ dev2udev(cdev_t dev)
  * has not been registered.
  */
 cdev_t
-udev2dev(udev_t x, int b)
+udev2dev(dev_t x, int b)
 {
 	if (x == NOUDEV || b != 0)
 		return(NULL);
@@ -135,7 +135,7 @@ dev_is_good(cdev_t dev)
  * Various user device number extraction and conversion routines
  */
 int
-uminor(udev_t dev)
+uminor(dev_t dev)
 {
 	if (dev == NOUDEV)
 		return(-1);
@@ -143,14 +143,14 @@ uminor(udev_t dev)
 }
 
 int
-umajor(udev_t dev)
+umajor(dev_t dev)
 {
 	if (dev == NOUDEV)
 		return(-1);
 	return((dev & 0xff00) >> 8);
 }
 
-udev_t
+dev_t
 makeudev(int x, int y)
 {
 	if ((x & 0xffffff00) || (y & 0x0000ff00))

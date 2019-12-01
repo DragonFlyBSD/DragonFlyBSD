@@ -700,7 +700,7 @@ jrecord_undo_file(struct jrecord *jrec, struct vnode *vp, int jrflags,
 	if ((jrflags & JRUNDO_FLAGS) && attr.va_flags != VNOVAL)
 	    jrecord_leaf(jrec, JLEAF_FLAGS, &attr.va_flags, sizeof(attr.va_flags));
 	if ((jrflags & JRUNDO_UDEV) && attr.va_rmajor != VNOVAL) {
-	    udev_t rdev = makeudev(attr.va_rmajor, attr.va_rminor);
+	    dev_t rdev = makeudev(attr.va_rmajor, attr.va_rminor);
 	    jrecord_leaf(jrec, JLEAF_UDEV, &rdev, sizeof(rdev));
 	    jrecord_leaf(jrec, JLEAF_UMAJOR, &attr.va_rmajor, sizeof(attr.va_rmajor));
 	    jrecord_leaf(jrec, JLEAF_UMINOR, &attr.va_rminor, sizeof(attr.va_rminor));

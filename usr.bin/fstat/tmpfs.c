@@ -29,6 +29,8 @@
  * SUCH DAMAGE.
  */
 
+#define _KERNEL_STRUCTURES
+
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -36,10 +38,8 @@
 #include <kvm.h>
 #include <stdio.h>
 
-#define _KERNEL_STRUCTURES
 #include <sys/vnode.h>
 #include <vfs/tmpfs/tmpfs.h>
-#undef _KERNEL_STRUCTURES
 
 #include "fstat.h"
 

@@ -1703,7 +1703,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 				    p->p_session == NULL ||
 				    p->p_session->s_ttyp == NULL ||
 				    dev2udev(p->p_session->s_ttyp->t_dev) != 
-					(udev_t)name[0])
+					(dev_t)name[0])
 					continue;
 				break;
 

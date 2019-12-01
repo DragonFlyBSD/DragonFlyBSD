@@ -662,7 +662,7 @@ nfs_loadattrcache(struct vnode *vp, struct mbuf **mdp, caddr_t *dposp,
 	caddr_t cp2;
 	int error = 0;
 	int rmajor, rminor;
-	udev_t rdev;
+	dev_t rdev;
 	struct mbuf *md;
 	enum vtype vtyp;
 	u_short vmode;
@@ -712,7 +712,7 @@ nfs_loadattrcache(struct vnode *vp, struct mbuf **mdp, caddr_t *dposp,
 		/*
 		 * Really ugly NFSv2 kludge.
 		 */
-		if (vtyp == VCHR && rdev == (udev_t)0xffffffff)
+		if (vtyp == VCHR && rdev == (dev_t)0xffffffff)
 			vtyp = VFIFO;
 	}
 

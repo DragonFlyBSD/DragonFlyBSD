@@ -26,18 +26,8 @@
  * If ever type or  unit set to -1,snoop device
  * detached from its current tty.
  */
-
-#ifdef _KERNEL
-
-#define SNPSTTY       _IOW('T', 90, udev_t)
-#define SNPGTTY       _IOR('T', 89, udev_t)
-
-#else
-
 #define SNPSTTY       _IOW('T', 90, dev_t)
 #define SNPGTTY       _IOR('T', 89, dev_t)
-
-#endif
 
 /*
  * These values would be returned by FIONREAD ioctl
