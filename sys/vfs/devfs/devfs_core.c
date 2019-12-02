@@ -2636,6 +2636,9 @@ devfs_reference_ops(struct dev_ops *ops)
 	return unit;
 }
 
+/*
+ * devfs must be locked
+ */
 static void
 devfs_release_ops(struct dev_ops *ops)
 {
@@ -2655,7 +2658,9 @@ devfs_release_ops(struct dev_ops *ops)
 
 	if (found->ref_count == 0) {
 		TAILQ_REMOVE(&devfs_dev_ops_list, found, link);
+		lockmgr(&devfs_lock, LK_RELEASE);
 		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(ops_id), found->id);
+		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 		kfree(found, M_DEVFS);
 	}
 }
