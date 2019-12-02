@@ -224,12 +224,30 @@ vm_set_page_size(void)
  * Must be called in a critical section.
  */
 static void
-vm_add_new_page(vm_paddr_t pa)
+vm_add_new_page(vm_paddr_t pa, int *badcountp)
 {
 	struct vpgqueues *vpq;
 	vm_page_t m;
 
 	m = PHYS_TO_VM_PAGE(pa);
+
+	/*
+	 * Make sure it isn't a duplicate (due to BIOS page range overlaps,
+	 * which we consider bugs... but don't crash).  Note that m->phys_addr
+	 * is pre-initialized, so use m->queue as a check.
+	 */
+	if (m->queue) {
+		if (*badcountp < 10) {
+			kprintf("vm_add_new_page: duplicate pa %016jx\n",
+				(intmax_t)pa);
+			++*badcountp;
+		} else if (*badcountp == 10) {
+			kprintf("vm_add_new_page: duplicate pa (many more)\n");
+			++*badcountp;
+		}
+		return;
+	}
+
 	m->phys_addr = pa;
 	m->flags = 0;
 	m->pat_mode = PAT_WRITE_BACK;
@@ -308,8 +326,10 @@ vm_page_startup(void)
 	vm_paddr_t biggestone, biggestsize;
 	vm_paddr_t total;
 	vm_page_t m;
+	int badcount;
 
 	total = 0;
+	badcount = 0;
 	biggestsize = 0;
 	biggestone = 0;
 	vaddr = round_page(vaddr);
@@ -460,7 +480,7 @@ vm_page_startup(void)
 		else
 			last_pa = phys_avail[i].phys_end;
 		while (pa < last_pa && npages-- > 0) {
-			vm_add_new_page(pa);
+			vm_add_new_page(pa, &badcount);
 			pa += PAGE_SIZE;
 		}
 	}
