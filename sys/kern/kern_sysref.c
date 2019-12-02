@@ -322,6 +322,7 @@ _sysref_put(struct sysref *sr)
 			sr->srclass->ops.lock(data);
 			if (atomic_cmpset_int(&sr->refcnt, count, -0x40000000)) {
 				sr->srclass->ops.terminate(data);
+				/* callback unlocks */
 				break;
 			}
 			sr->srclass->ops.unlock(data);

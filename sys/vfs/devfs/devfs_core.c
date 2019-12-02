@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2009-2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Alex Hornung <ahornung@gmail.com>
@@ -109,6 +109,8 @@ static int	devfs_debug_enable;
 static int	devfs_run;
 
 static ino_t devfs_fetch_ino(void);
+static int devfs_reference_ops(struct dev_ops *ops);
+static void devfs_release_ops(struct dev_ops *ops);
 static int devfs_create_all_dev_worker(struct devfs_node *);
 static int devfs_create_dev_worker(cdev_t, uid_t, gid_t, int);
 static int devfs_destroy_dev_worker(cdev_t);
@@ -449,15 +451,6 @@ devfs_freep(struct devfs_node *node)
 		} else {
 			kprintf("devfs: race avoided node '%s' (%p)\n",
 				node->d_dir.d_name, node);
-#if 0
-			if (lockstatus(&devfs_lock, curthread) == LK_EXCLUSIVE) {
-				lockmgr(&devfs_lock, LK_RELEASE);
-				Debugger("devfs1");
-				lockmgr(&devfs_lock, LK_EXCLUSIVE);
-			} else {
-				Debugger("devfs2");
-			}
-#endif
 		}
 		return;
 	}
@@ -2477,9 +2470,9 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 	}
 
 	/* If there is a backing device, we reference its ops */
-	dev->si_inode = makeudev(
-		    devfs_reference_ops((bops)?(bops):(ops)),
-		    minor );
+	if (bops == NULL)
+		bops = ops;
+	dev->si_inode = makeudev(devfs_reference_ops(bops), minor);
 	dev->si_umajor = umajor(dev->si_inode);
 
 	return dev;
@@ -2488,14 +2481,6 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 static void
 devfs_cdev_terminate(cdev_t dev)
 {
-	int locked = 0;
-
-	/* Check if it is locked already. if not, we acquire the devfs lock */
-	if ((lockstatus(&devfs_lock, curthread)) != LK_EXCLUSIVE) {
-		lockmgr(&devfs_lock, LK_EXCLUSIVE);
-		locked = 1;
-	}
-
 	/*
 	 * Make sure the node isn't linked anymore. Otherwise we've screwed
 	 * up somewhere, since normal devs are unlinked on the call to
@@ -2506,12 +2491,11 @@ devfs_cdev_terminate(cdev_t dev)
 	 */
 	KKASSERT((dev->si_flags & SI_DEVFS_LINKED) == 0);
 
-	/* If we acquired the lock, we also get rid of it */
-	if (locked)
-		lockmgr(&devfs_lock, LK_RELEASE);
-
 	/* If there is a backing device, we release the backing device's ops */
 	devfs_release_ops((dev->si_bops)?(dev->si_bops):(dev->si_ops));
+
+	/* devfs_cdev_unlock() is not called, unlock ourselves */
+	lockmgr(&devfs_lock, LK_RELEASE);
 
 	/* Finally destroy the device */
 	sysref_put(&dev->si_sysref);
@@ -2523,11 +2507,13 @@ devfs_cdev_terminate(cdev_t dev)
 static void
 devfs_cdev_lock(cdev_t dev)
 {
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 }
 
 static void
 devfs_cdev_unlock(cdev_t dev)
 {
+	lockmgr(&devfs_lock, LK_RELEASE);
 }
 
 static int
@@ -2612,7 +2598,7 @@ devfs_node_is_accessible(struct devfs_node *node)
 		return 0;
 }
 
-int
+static int
 devfs_reference_ops(struct dev_ops *ops)
 {
 	int unit;
@@ -2640,7 +2626,8 @@ devfs_reference_ops(struct dev_ops *ops)
 		if (found->id == -1) {
 			/* Ran out of unique ids */
 			devfs_debug(DEVFS_DEBUG_WARNING,
-					"devfs_reference_ops: WARNING: ran out of unique ids\n");
+				    "devfs_reference_ops: WARNING: ran "
+				    "out of unique ids\n");
 		}
 	}
 	unit = found->id;
@@ -2649,7 +2636,7 @@ devfs_reference_ops(struct dev_ops *ops)
 	return unit;
 }
 
-void
+static void
 devfs_release_ops(struct dev_ops *ops)
 {
 	struct devfs_dev_ops *found = NULL;
@@ -2724,7 +2711,7 @@ devfs_init(void)
 	lwkt_initport_replyonly(&devfs_dispose_port, devfs_msg_autofree_reply);
 
 	/* Initialize *THE* devfs lock */
-	lockinit(&devfs_lock, "devfs_core lock", 0, 0);
+	lockinit(&devfs_lock, "devfs_core lock", 0, LK_CANRECURSE);
 	lwkt_token_init(&devfs_token, "devfs_core");
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);

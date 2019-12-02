@@ -436,9 +436,6 @@ int devfs_clr_related_flag(cdev_t, uint32_t);
 int devfs_destroy_related_without_flag(cdev_t, uint32_t);
 int devfs_node_is_accessible(struct devfs_node *);
 
-int devfs_reference_ops(struct dev_ops *);
-void devfs_release_ops(struct dev_ops *);
-
 void devfs_config(void);
 
 void *devfs_iterate_topology(struct devfs_node *node,
