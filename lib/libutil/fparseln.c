@@ -1,4 +1,4 @@
-/*	$NetBSD: fparseln.c,v 1.9 1999/09/20 04:48:06 lukem Exp $	*/
+/*	$NetBSD: fparseln.c,v 1.10 2009/10/21 01:07:45 snj Exp $	*/
 
 /*
  * Copyright (c) 1997 Christos Zoulas.  All rights reserved.
@@ -11,11 +11,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by Christos Zoulas.
- * 4. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -27,8 +22,6 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/lib/libutil/fparseln.c 121193 2003-10-18 10:04:16Z markm $
  */
 
 #include <sys/types.h>
@@ -58,7 +51,7 @@ isescaped(const char *sp, const char *p, int esc)
 
 	/* No escape character */
 	if (esc == '\0')
-		return 1;
+		return 0;
 
 	/* Count the number of escape characters that precede ours */
 	for (ne = 0, cp = p; --cp >= sp && *cp == esc; ne++)
@@ -134,13 +127,19 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 			cp = &ptr[s - 1];
 
 			if (*cp == con && !isescaped(ptr, cp, esc)) {
-				s--;	/* forget escape */
+				s--;	/* forget continuation char */
 				cnt = 1;
 			}
 		}
 
-		if (s == 0 && buf != NULL)
-			continue;
+		if (s == 0) {
+			/*
+			 * nothing to add, skip realloc except in case
+			 * we need a minimal buf to return an empty line
+			 */
+			if (cnt || buf != NULL)
+				continue;
+		}
 
 		if ((cp = realloc(buf, len + s + 1)) == NULL) {
 			free(buf);
