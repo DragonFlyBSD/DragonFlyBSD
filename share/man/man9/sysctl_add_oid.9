@@ -25,9 +25,8 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man9/sysctl_add_oid.9,v 1.21 2006/04/28 10:45:27 rwatson Exp $
 .\"
-.Dd October 6, 2018
+.Dd December 2, 2019
 .Dt SYSCTL_ADD_OID 9
 .Os
 .Sh NAME
@@ -38,6 +37,8 @@
 .Nm SYSCTL_ADD_OID ,
 .Nm SYSCTL_ADD_NODE ,
 .Nm SYSCTL_ADD_STRING ,
+.Nm SYSCTL_ADD_BIT32 ,
+.Nm SYSCTL_ADD_BIT64 ,
 .Nm SYSCTL_ADD_INT ,
 .Nm SYSCTL_ADD_U32 ,
 .Nm SYSCTL_ADD_UINT ,
@@ -154,6 +155,30 @@
 .Fa "int access"
 .Fa "char *arg"
 .Fa "int len"
+.Fa "const char *descr"
+.Fc
+.Ft struct sysctl_oid *
+.Fo SYSCTL_ADD_BIT32
+.Fa "struct sysctl_ctx_list *ctx"
+.Fa "struct sysctl_oid_list *parent"
+.Fa "int number"
+.Fa "const char *name"
+.Fa "int access"
+.Fa "uint32_t *arg"
+.Fa "uint32_t val"
+.Fa "int bit"
+.Fa "const char *descr"
+.Fc
+.Ft struct sysctl_oid *
+.Fo SYSCTL_ADD_BIT64
+.Fa "struct sysctl_ctx_list *ctx"
+.Fa "struct sysctl_oid_list *parent"
+.Fa "int number"
+.Fa "const char *name"
+.Fa "int access"
+.Fa "uint64_t *arg"
+.Fa "uint32_t val"
+.Fa "int bit"
 .Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
@@ -542,6 +567,14 @@ creates an oid that handles an
 variable.
 .It Fn SYSCTL_ADD_STRING
 creates an oid that handles a zero-terminated character string.
+.It Fn SYSCTL_ADD_BIT32
+creates an oid that can flip individual bits of an
+.Li uint32_t
+variable.
+.It Fn SYSCTL_ADD_BIT64
+creates an oid that can flip individual bits of an
+.Li uint64_t
+variable.
 .It Fn SYSCTL_ADD_INT
 creates an oid that handles an
 .Li int
