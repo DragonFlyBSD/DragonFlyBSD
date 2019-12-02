@@ -1393,11 +1393,13 @@ ext2_setattr(struct vop_setattr_args *ap)
 			return (error);
 		/*
 		 * Note that a root chflags becomes a user chflags when
-		 * we are jailed, unless the jail.chflags_allowed sysctl
+		 * we are jailed, unless the jail vfs_chflags sysctl
 		 * is set.
 		 */
 		if (cred->cr_uid == 0 &&
-		    (!jailed(cred) || jail_chflags_allowed)) {
+		    (!jailed(cred) ||
+			PRISON_CAP_ISSET(cred->cr_prison->pr_caps,
+			    PRISON_CAP_VFS_CHFLAGS))) {
 			if ((ip->i_flags
 			    & (SF_NOUNLINK | SF_IMMUTABLE | SF_APPEND)) &&
 			    securelevel > 0)

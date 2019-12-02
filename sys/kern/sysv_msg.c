@@ -216,7 +216,7 @@ sys_msgctl(struct msgctl_args *uap)
 	kprintf("call to msgctl(%d, %d, 0x%x)\n", msqid, cmd, user_msqptr);
 #endif
 
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	lwkt_gettoken(&msg_token);
@@ -355,7 +355,7 @@ sys_msgget(struct msgget_args *uap)
 #ifdef MSG_DEBUG_OK
 	kprintf("msgget(0x%x, 0%o)\n", key, msgflg);
 #endif
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	eval = 0;
@@ -471,7 +471,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 	    msgflg);
 #endif
 
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	lwkt_gettoken(&msg_token);
@@ -805,7 +805,7 @@ sys_msgrcv(struct msgrcv_args *uap)
 	    msgsz, msgtyp, msgflg);
 #endif
 
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	lwkt_gettoken(&msg_token);

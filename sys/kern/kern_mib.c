@@ -172,13 +172,14 @@ sysctl_hostname(SYSCTL_HANDLER_ARGS)
 	if (p)
 		pr = p->p_ucred->cr_prison;
 	if (p && pr) {
-		if (!pr->pr_set_hostname_allowed && req->newptr)
+		if (!PRISON_CAP_ISSET(pr->pr_caps,
+			PRISON_CAP_SYS_SET_HOSTNAME) && req->newptr)
 			return(EPERM);
-		error = sysctl_handle_string(oidp, 
+		error = sysctl_handle_string(oidp,
 		    p->p_ucred->cr_prison->pr_host,
 		    sizeof p->p_ucred->cr_prison->pr_host, req);
 	} else {
-		error = sysctl_handle_string(oidp, 
+		error = sysctl_handle_string(oidp,
 		    hostname, sizeof hostname, req);
 	}
 	if (req->newptr) {
@@ -188,7 +189,7 @@ sysctl_hostname(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_PROC(_kern, KERN_HOSTNAME, hostname, 
+SYSCTL_PROC(_kern, KERN_HOSTNAME, hostname,
        CTLTYPE_STRING | CTLFLAG_RW | CTLFLAG_PRISON | CTLFLAG_NOLOCK,
        0, 0, sysctl_hostname, "A", "Hostname");
 

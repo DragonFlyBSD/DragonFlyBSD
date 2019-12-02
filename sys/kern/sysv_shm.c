@@ -229,7 +229,7 @@ sys_shmdt(struct shmdt_args *uap)
 	long i;
 	int error;
 
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	lwkt_gettoken(&shm_token);
@@ -273,7 +273,7 @@ sys_shmat(struct shmat_args *uap)
 	vm_size_t align;
 	int rv;
 
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	lwkt_gettoken(&shm_token);
@@ -406,7 +406,7 @@ sys_shmctl(struct shmctl_args *uap)
 	struct shmid_ds inbuf;
 	struct shmid_ds *shmseg;
 
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	lwkt_gettoken(&shm_token);
@@ -612,7 +612,7 @@ sys_shmget(struct shmget_args *uap)
 	struct prison *pr = p->p_ucred->cr_prison;
 	int segnum, mode, error;
 
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	mode = uap->shmflg & ACCESSPERMS;

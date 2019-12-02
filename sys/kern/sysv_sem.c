@@ -356,7 +356,7 @@ sys___semctl(struct __semctl_args *uap)
 	kprintf("call to semctl(%d, %d, %d, 0x%x)\n", semid, semnum, cmd, arg);
 #endif
 
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	semid = IPCID_TO_IX(semid);
@@ -578,7 +578,7 @@ sys_semget(struct semget_args *uap)
 	kprintf("semget(0x%x, %d, 0%o)\n", key, nsems, semflg);
 #endif
 
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	eval = 0;
@@ -735,7 +735,7 @@ sys_semop(struct semop_args *uap)
 #ifdef SEM_DEBUG
 	kprintf("call to semop(%d, 0x%x, %u)\n", semid, sops, nsops);
 #endif
-	if (pr && !pr->pr_sysvipc_allowed)
+	if (pr && !PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_SYS_SYSVIPC))
 		return (ENOSYS);
 
 	semid = IPCID_TO_IX(semid);	/* Convert back to zero origin */

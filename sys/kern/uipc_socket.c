@@ -217,7 +217,7 @@ socreate(int dom, struct socket **aso, int type,
 	if (prp == NULL || prp->pr_usrreqs->pru_attach == 0)
 		return (EPROTONOSUPPORT);
 
-	if (pr && pr->pr_socket_unixiproute_only &&
+	if (pr && PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_NET_UNIXIPROUTE) &&
 	    prp->pr_domain->dom_family != PF_LOCAL &&
 	    prp->pr_domain->dom_family != PF_INET &&
 	    prp->pr_domain->dom_family != PF_INET6 &&
