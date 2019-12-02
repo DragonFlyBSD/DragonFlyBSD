@@ -419,12 +419,22 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 		CTLTYPE_BIT32(bit)|CTLFLAG_NOLOCK|(access),		\
 		ptr, val, sysctl_handle_bit32, "I", descr)
 
+#define SYSCTL_ADD_BIT32(ctx, parent, nbr, name, access, ptr, val, bit, descr) \
+	sysctl_add_oid(ctx, parent, nbr, name,				\
+	    CTLTYPE_BIT32(bit)|CTLFLAG_NOLOCK|(access),			\
+	    ptr, val, sysctl_handle_bit32, "I", descr)
+
 /* Oid for a bit in a uint64_t.  If ptr is NULL, val is returned. */
 /* API passes and returns an integer */
 #define	SYSCTL_BIT64(parent, nbr, name, access, ptr, val, bit, descr)	\
 	SYSCTL_OID(parent, nbr, name,					\
 		CTLTYPE_BIT64(bit)|CTLFLAG_NOLOCK|(access),		\
 		ptr, val, sysctl_handle_bit64, "I", descr)
+
+#define SYSCTL_ADD_BIT64(ctx, parent, nbr, name, access, ptr, val, bit, descr) \
+	sysctl_add_oid(ctx, parent, nbr, name,				\
+	    CTLTYPE_BIT64(bit)|CTLFLAG_NOLOCK|(access),			\
+	    ptr, val, sysctl_handle_bit64, "I", descr)
 
 /* Oid for an opaque object.  Specified by a pointer and a length. */
 #define SYSCTL_OPAQUE(parent, nbr, name, access, ptr, len, fmt, descr)	\
