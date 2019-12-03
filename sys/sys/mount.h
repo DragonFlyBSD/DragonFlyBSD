@@ -233,7 +233,7 @@ struct mount {
 
 	/*
 	 * ops vectors have a fixed stacking order.  All primary calls run
-	 * through mnt_vn_ops.  This field is typically assigned to 
+	 * through mnt_vn_ops.  This field is typically assigned to
 	 * mnt_vn_norm_ops.  If journaling has been enabled this field is
 	 * usually assigned to mnt_vn_journal_ops.
 	 */
@@ -246,7 +246,8 @@ struct mount {
 	struct vop_ops	*mnt_vn_fifo_ops;	/* for use by the VFS */
 	struct nchandle mnt_ncmountpt;		/* mount point */
 	struct nchandle mnt_ncmounton;		/* mounted on */
-	char		mnt_pad[24];		/* (try to cache-align refs) */
+	char		mnt_pad[16];		/* (try to cache-align refs) */
+	struct ucred	*mnt_cred;		/* for cr_prison */
 	int		mnt_refs;		/* nchandle references */
 	int		mnt_hold;		/* prevent kfree */
 	struct lwkt_token mnt_token;		/* token lock if not MPSAFE */
