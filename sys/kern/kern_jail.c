@@ -92,6 +92,14 @@ SYSCTL_BIT64(_jail_defaults, OID_AUTO, allow_raw_sockets, CTLFLAG_RW,
     &prison_default_caps, 0, PRISON_CAP_NET_RAW_SOCKETS,
     "Process in jail can create raw sockets");
 
+SYSCTL_BIT64(_jail_defaults, OID_AUTO, vfs_mount_nullfs, CTLFLAG_RW,
+    &prison_default_caps, 0, PRISON_CAP_VFS_MOUNT_NULLFS,
+    "Process in jail can mount nullfs(5) filesystems");
+
+SYSCTL_BIT64(_jail_defaults, OID_AUTO, vfs_mount_tmpfs, CTLFLAG_RW,
+    &prison_default_caps, 0, PRISON_CAP_VFS_MOUNT_TMPFS,
+    "Process in jail can mount tmpfs(5) filesystems");
+
 int	lastprid = 0;
 int	prisoncount = 0;
 
@@ -791,6 +799,21 @@ prison_priv_check(struct ucred *cred, int priv)
 	case PRIV_VFS_MKNOD_BAD:
 	case PRIV_VFS_MKNOD_WHT:
 	case PRIV_VFS_MKNOD_DIR:
+		return (0);
+
+	case PRIV_VFS_MOUNT_NULLFS:
+		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_VFS_MOUNT_NULLFS))
+			return (0);
+		else
+			return (EPERM);
+	case PRIV_VFS_MOUNT_DEVFS:
+		return (EPERM);
+	case PRIV_VFS_MOUNT_TMPFS:
+		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_VFS_MOUNT_TMPFS))
+			return (0);
+		else
+			return (EPERM);
+
 	case PRIV_VFS_SETATTR:
 	case PRIV_VFS_SETGID:
 
@@ -891,6 +914,16 @@ prison_sysctl_create(struct prison *pr)
 	    OID_AUTO, "vfs_chflags", CTLFLAG_RW,
 	    &pr->pr_caps, 0, PRISON_CAP_VFS_CHFLAGS,
 	    "Processes in jail can alter system file flags");
+
+	SYSCTL_ADD_BIT64(pr->pr_sysctl_ctx, SYSCTL_CHILDREN(pr->pr_sysctl_tree),
+	    OID_AUTO, "vfs_mount_nullfs", CTLFLAG_RW,
+	    &pr->pr_caps, 0, PRISON_CAP_VFS_MOUNT_NULLFS,
+	    "Processes in jail can mount nullfs(5) filesystems");
+
+	SYSCTL_ADD_BIT64(pr->pr_sysctl_ctx, SYSCTL_CHILDREN(pr->pr_sysctl_tree),
+	    OID_AUTO, "vfs_mount_tmpfs", CTLFLAG_RW,
+	    &pr->pr_caps, 0, PRISON_CAP_VFS_MOUNT_TMPFS,
+	    "Processes in jail can mount tmpfs(5) filesystems");
 
 	return 0;
 }

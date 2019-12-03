@@ -89,6 +89,8 @@ vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	int error;
 
 	VFS_MPLOCK(mp);
+	if (!mp->mnt_cred)
+		mp->mnt_cred = crhold(cred);	/* For cr_prison */
 	error = (mp->mnt_op->vfs_mount)(mp, path, data, cred);
 	VFS_MPUNLOCK();
 

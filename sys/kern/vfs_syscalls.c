@@ -80,6 +80,7 @@ static void mount_warning(struct mount *mp, const char *ctl, ...)
 static int mount_path(struct proc *p, struct mount *mp, char **rb, char **fb);
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
+static int get_fspriv(const char *);
 static int chroot_refuse_vdir_fds (thread_t td, struct filedesc *fdp);
 static int chroot_visible_mnt(struct mount *mp, struct proc *p);
 static int getutimes (struct timeval *, struct timespec *);
@@ -118,31 +119,47 @@ sys_mount(struct mount_args *uap)
 	struct vfsconf *vfsp;
 	int error, flag = 0, flag2 = 0;
 	int hasmount;
+	int priv = 0;
 	struct vattr va;
 	struct nlookupdata nd;
 	char fstypename[MFSNAMELEN];
 	struct ucred *cred;
 
 	cred = td->td_ucred;
-	if (jailed(cred)) {
+
+	/* We do not allow user mounts inside a jail for now */
+	if (usermount && jailed(cred)) {
 		error = EPERM;
 		goto done;
 	}
-	if (usermount == 0 && (error = priv_check(td, PRIV_ROOT)))
+
+	/*
+	 * Extract the file system type. We need to know this early, to take
+	 * appropriate actions for jails and nullfs mounts.
+	 */
+        if ((error = copyinstr(uap->type, fstypename, MFSNAMELEN, NULL)) != 0)
+		goto done;
+
+	/*
+	 * Select the correct priv according to the file system type.
+	 */
+	priv = get_fspriv(fstypename);
+
+	if (usermount == 0 && (error = priv_check(td, priv)))
 		goto done;
 
 	/*
 	 * Do not allow NFS export by non-root users.
 	 */
 	if (uap->flags & MNT_EXPORTED) {
-		error = priv_check(td, PRIV_ROOT);
+		error = priv_check(td, priv);
 		if (error)
 			goto done;
 	}
 	/*
 	 * Silently enforce MNT_NOSUID and MNT_NODEV for non-root users
 	 */
-	if (priv_check(td, PRIV_ROOT)) 
+	if (priv_check(td, priv))
 		uap->flags |= MNT_NOSUID | MNT_NODEV;
 
 	/*
@@ -195,16 +212,6 @@ sys_mount(struct mount_args *uap)
 	cache_unlock(&nch);
 
 	/*
-	 * Extract the file system type. We need to know this early, to take
-	 * appropriate actions if we are dealing with a nullfs.
-	 */
-        if ((error = copyinstr(uap->type, fstypename, MFSNAMELEN, NULL)) != 0) {
-                cache_drop(&nch);
-                vput(vp);
-		goto done;
-        }
-
-	/*
 	 * Now we have an unlocked ref'd nch and a locked ref'd vp
 	 */
 	if (uap->flags & MNT_UPDATE) {
@@ -240,7 +247,7 @@ sys_mount(struct mount_args *uap)
 		 * permitted to update it.
 		 */
 		if (mp->mnt_stat.f_owner != cred->cr_uid &&
-		    (error = priv_check(td, PRIV_ROOT))) {
+		    (error = priv_check(td, priv))) {
 			cache_drop(&nch);
 			vput(vp);
 			goto done;
@@ -272,7 +279,7 @@ sys_mount(struct mount_args *uap)
 	 */
 	if ((error = VOP_GETATTR(vp, &va)) ||
 	    (va.va_uid != cred->cr_uid &&
-	     (error = priv_check(td, PRIV_ROOT)))) {
+	     (error = priv_check(td, priv)))) {
 		cache_drop(&nch);
 		vput(vp);
 		goto done;
@@ -378,7 +385,7 @@ update:
 	/*
 	 * Mount the filesystem.
 	 * XXX The final recipients of VFS_MOUNT just overwrite the ndp they
-	 * get. 
+	 * get.
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
 		error = VFS_MOUNT(mp, uap->path, uap->data, cred);
@@ -445,6 +452,10 @@ update:
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
+		if (mp->mnt_cred) {
+			crfree(mp->mnt_cred);
+			mp->mnt_cred = NULL;
+		}
 		mp->mnt_vfc->vfc_refcount--;
 		lwkt_reltoken(&mp->mnt_token);
 		vfs_unbusy(mp);
@@ -597,15 +608,20 @@ sys_unmount(struct unmount_args *uap)
 	struct proc *p __debugvar = td->td_proc;
 	struct mount *mp = NULL;
 	struct nlookupdata nd;
+	char fstypename[MFSNAMELEN];
+	int priv = 0;
 	int error;
+	struct ucred *cred;
+
+	cred = td->td_ucred;
 
 	KKASSERT(p);
-	if (td->td_ucred->cr_prison != NULL) {
+
+	/* We do not allow user umounts inside a jail for now */
+	if (usermount && jailed(cred)) {
 		error = EPERM;
 		goto done;
 	}
-	if (usermount == 0 && (error = priv_check(td, PRIV_ROOT)))
-		goto done;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE,
 			     NLC_FOLLOW | NLC_IGNBADDIR);
@@ -616,12 +632,21 @@ sys_unmount(struct unmount_args *uap)
 
 	mp = nd.nl_nch.mount;
 
+	/* Figure out the fsname in order to select proper privs */
+	ksnprintf(fstypename, MFSNAMELEN, "%s", mp->mnt_vfc->vfc_name);
+	priv = get_fspriv(fstypename);
+
+	if (usermount == 0 && (error = priv_check(td, priv))) {
+		nlookup_done(&nd);
+		goto done;
+	}
+
 	/*
 	 * Only root, or the user that did the original mount is
 	 * permitted to unmount this filesystem.
 	 */
 	if ((mp->mnt_stat.f_owner != td->td_ucred->cr_uid) &&
-	    (error = priv_check(td, PRIV_ROOT)))
+	    (error = priv_check(td, priv)))
 		goto out;
 
 	/*
@@ -637,6 +662,15 @@ sys_unmount(struct unmount_args *uap)
 	 */
 	if (nd.nl_nch.ncp != mp->mnt_ncmountpt.ncp) {
 		error = EINVAL;
+		goto out;
+	}
+
+	/* Check if this mount belongs to this prison */
+	if (jailed(cred) && mp->mnt_cred && (!mp->mnt_cred->cr_prison ||
+		mp->mnt_cred->cr_prison != cred->cr_prison)) {
+		kprintf("mountpoint %s does not belong to this jail\n",
+		    uap->path);
+		error = EPERM;
 		goto out;
 	}
 
@@ -936,6 +970,11 @@ dounmount(struct mount *mp, int flags, int halting)
 		cache_zero(&mp->mnt_ncmounton);
 		cache_clrmountpt(&nch);
 		cache_drop(&nch);
+	}
+
+	if (mp->mnt_cred) {
+		crfree(mp->mnt_cred);
+		mp->mnt_cred = NULL;
 	}
 
 	mp->mnt_vfc->vfc_refcount--;
@@ -5160,3 +5199,16 @@ chroot_visible_mnt(struct mount *mp, struct proc *p)
 	return(0);
 }
 
+/* Sets priv to PRIV_ROOT in case no matching fs */
+static int
+get_fspriv(const char *fsname)
+{
+
+	if (strncmp("null", fsname, 5) == 0) {
+		return PRIV_VFS_MOUNT_NULLFS;
+	} else if (strncmp(fsname, "tmpfs", 6) == 0) {
+		return PRIV_VFS_MOUNT_TMPFS;
+	}
+
+	return PRIV_ROOT;
+}
