@@ -880,7 +880,7 @@ prison_sysctl_create(struct prison *pr)
 	ksnprintf(id_str, 6, "%d", pr->pr_id);
 
 	pr->pr_sysctl_ctx = (struct sysctl_ctx_list *) kmalloc(
-		sizeof(struct sysctl_ctx_list), M_TEMP, M_WAITOK | M_ZERO);
+		sizeof(struct sysctl_ctx_list), M_PRISON, M_WAITOK | M_ZERO);
 
 	sysctl_ctx_init(pr->pr_sysctl_ctx);
 
@@ -933,7 +933,7 @@ prison_sysctl_done(struct prison *pr)
 {
 	if (pr->pr_sysctl_tree) {
 		sysctl_ctx_free(pr->pr_sysctl_ctx);
-		kfree(pr->pr_sysctl_ctx, M_TEMP);
+		kfree(pr->pr_sysctl_ctx, M_PRISON);
 		pr->pr_sysctl_tree = NULL;
 	}
 
