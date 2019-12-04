@@ -123,6 +123,7 @@ childRebuildRepo(bulk_t *bulk)
 	pid_t pid;
 	const char *cav[MAXCAC];
 	int cac;
+	int repackage_needed = 1;
 
 	cac = 0;
 	cav[cac++] = PKG_BINARY;
@@ -145,16 +146,38 @@ childRebuildRepo(bulk_t *bulk)
 	fp = dexec_open(cav, cac, &pid, NULL, 1, 0);
 	while ((ptr = fgetln(fp, &len)) != NULL)
 		fwrite(ptr, 1, len, stdout);
-	if (dexec_close(fp, pid) == 0) {
+	if (dexec_close(fp, pid) == 0)
 		bulk->r1 = strdup("");
+
+	/*
+	 * Check package version.  Pkg version 1.12 and later generates
+	 * the proper repo compression format.  Prior to that version
+	 * the repo directive always generated .txz files.
+	 */
+	cac = 0;
+	cav[cac++] = PKG_BINARY;
+	cav[cac++] = "-v";
+	fp = dexec_open(cav, cac, &pid, NULL, 1, 0);
+	if ((ptr = fgetln(fp, &len)) != NULL && len > 0) {
+		int v1;
+		int v2;
+
+		ptr[len-1] = 0;
+		if (sscanf(ptr, "%d.%d", &v1, &v2) == 2) {
+			if (v1 > 1 || (v1 == 1 && v2 >= 12))
+				repackage_needed = 0;
+		}
 	}
+	dexec_close(fp, pid);
 
 	/*
 	 * Repackage the .txz files created by pkg repo if necessary
 	 */
-	if (strcmp(UsePkgSufx, ".txz") != 0) {
+	if (repackage_needed && strcmp(UsePkgSufx, ".txz") != 0) {
 		const char *comp;
 		const char *decomp;
+
+		printf("pkg repo - version requires repackaging\n");
 
 		if (strcmp(UsePkgSufx, ".tar") == 0) {
 			decomp = "unxz";
@@ -174,6 +197,8 @@ childRebuildRepo(bulk_t *bulk)
 			  comp, decomp);
 		repackage(PackagesPath, "packagesite", UsePkgSufx,
 			  comp, decomp);
+	} else if (strcmp(UsePkgSufx, ".txz") != 0) {
+		printf("pkg repo - version does not require repackaging\n");
 	}
 }
 
