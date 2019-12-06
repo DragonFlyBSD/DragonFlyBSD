@@ -52,6 +52,7 @@
 extern int __sys_lwp_setname(lwpid_t tid, const char *name);
 extern int __sys_lwp_getname(lwpid_t tid, char *name, size_t len);
 int __lwp_setname(lwpid_t tid, const char *name);
+int __lwp_getname(lwpid_t tid, char *name, size_t len);
 
 static int fast_setname_count;
 static __thread int fast_setname_state TLS_ATTRIBUTE;

@@ -31,6 +31,11 @@
 
 #include <sys/param.h>
 
+void past_setutent(void);
+void *past_getutent(void);
+void past_endutent(void);
+int past_utmpname(const char *);
+
 __sym_compat(setutent, past_setutent, DF404.0);
 void
 past_setutent(void)

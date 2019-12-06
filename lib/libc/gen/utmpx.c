@@ -58,6 +58,9 @@ static const char vers[] = "utmpx-2.00";
 static utx_db_t dbtype = UTX_DB_UTMPX;
 DB *lastlogx_db = NULL;
 
+void past_getutmp(void *, void *);
+void past_getutmpx(void *, void *);
+
 static int
 _open_db(const char *fname)
 {

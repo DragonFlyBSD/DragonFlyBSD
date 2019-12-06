@@ -31,6 +31,8 @@
 
 #include <sys/cdefs.h>
 
+int past_ttyslot(void);
+
 __sym_compat(ttyslot, past_ttyslot, DF404.0);
 int
 past_ttyslot(void)
