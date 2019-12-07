@@ -1478,14 +1478,6 @@ getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
 	if (error) {
 		kfree(sa, M_SONAME);
 	} else {
-#if BYTE_ORDER != BIG_ENDIAN
-		/*
-		 * The bind(), connect(), and sendto() syscalls were not
-		 * versioned for COMPAT_43.  Thus, this check must stay.
-		 */
-		if (sa->sa_family == 0 && sa->sa_len < AF_MAX)
-			sa->sa_family = sa->sa_len;
-#endif
 		sa->sa_len = len;
 		*namp = sa;
 	}
