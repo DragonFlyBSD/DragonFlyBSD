@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2016-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,10 @@ page_to_pfn(struct page *page)
 	return OFF_TO_IDX(VM_PAGE_TO_PHYS(p));
 }
 
-#define pfn_to_page(pfn)	(PHYS_TO_VM_PAGE((pfn) << PAGE_SHIFT))
+static inline struct page *
+pfn_to_page(unsigned long pfn)
+{
+	return (struct page *)PHYS_TO_VM_PAGE(pfn << PAGE_SHIFT);
+}
 
 #endif	/* _ASM_MEMORY_MODEL_H_ */
