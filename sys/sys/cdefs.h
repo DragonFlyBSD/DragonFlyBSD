@@ -693,6 +693,13 @@
 #endif
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
+#ifndef __BSD_VISIBLE
+#define	__BSD_VISIBLE		0
+#endif
+#ifndef __EXT1_VISIBLE
+#define	__EXT1_VISIBLE		0
+#endif
+
 /*
  * GLOBL macro exists to preserve __start_set_* and __stop_set_* sections
  * of kernel modules which are discarded from binutils 2.17.50+ otherwise.
