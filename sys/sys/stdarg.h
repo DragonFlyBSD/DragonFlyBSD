@@ -39,7 +39,9 @@ typedef	__va_list	va_list;
 #define va_start(ap, last)	__va_start(ap, last)
 #define va_arg(ap, type)	__va_arg(ap, type)
 /* __STRICT_ANSI__ case is for compatibility with other implementations */
-#if defined(_KERNEL) || __ISO_C_VISIBLE >= 1999 || __cplusplus >= 201103L || !defined(__STRICT_ANSI__)
+#if defined(_KERNEL) || __ISO_C_VISIBLE >= 1999 || \
+    (defined(__cplusplus) && __cplusplus >= 201103L) || \
+    !defined(__STRICT_ANSI__)
 #define va_copy(dest, src)	__va_copy(dest, src)
 #endif
 #define va_end(ap)		__va_end(ap)
