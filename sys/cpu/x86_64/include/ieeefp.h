@@ -38,16 +38,14 @@
 #ifndef _CPU_IEEEFP_H_
 #define _CPU_IEEEFP_H_
 
+#include <sys/cdefs.h>
+
 /*
  * Deprecated historical FPU control interface
  *
  * IEEE floating point type, constant and function definitions.
  * XXX: {FP,SSE}*FLD and {FP,SSE}*OFF are undocumented pollution.
  */
-
-#ifndef _SYS_CDEFS_H_
-#error this file needs sys/cdefs.h as a prerequisite
-#endif
 
 /*
  * Rounding modes.
