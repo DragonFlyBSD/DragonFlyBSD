@@ -479,4 +479,16 @@ pcie_capability_reg_implemented(struct pci_dev *dev, int pos)
 	}
 }
 
+static inline void __iomem __must_check *
+pci_map_rom(struct pci_dev *pdev, size_t *size)
+{
+	return vga_pci_map_bios(device_get_parent(pdev->dev.bsddev), size);
+}
+
+static inline void
+pci_unmap_rom(struct pci_dev *pdev, void __iomem *rom)
+{
+	vga_pci_unmap_bios(device_get_parent(pdev->dev.bsddev), rom);
+}
+
 #endif /* LINUX_PCI_H */
