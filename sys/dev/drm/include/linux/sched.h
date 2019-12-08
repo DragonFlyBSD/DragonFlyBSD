@@ -41,6 +41,7 @@
 
 #include <asm/page.h>
 
+#include <linux/smp.h>
 #include <linux/compiler.h>
 #include <linux/completion.h>
 #include <linux/pid.h>

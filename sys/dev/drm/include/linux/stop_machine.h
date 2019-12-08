@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
 #define _LINUX_STOP_MACHINE_H_
 
 #include <linux/cpumask.h>
+#include <linux/smp.h>
 #include <linux/list.h>
 
 #endif	/* _LINUX_STOP_MACHINE_H_ */

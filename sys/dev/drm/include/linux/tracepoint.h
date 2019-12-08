@@ -27,6 +27,7 @@
 #ifndef _LINUX_TRACEPOINT_H_
 #define _LINUX_TRACEPOINT_H_
 
+#include <linux/smp.h>
 #include <linux/errno.h>
 #include <linux/types.h>
 #include <linux/rcupdate.h>

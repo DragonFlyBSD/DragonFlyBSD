@@ -24,18 +24,30 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_REBOOT_H_
-#define _LINUX_REBOOT_H_
+#ifndef _LINUX_SMP_H_
+#define _LINUX_SMP_H_
 
-#include <linux/smp.h>
-#include <linux/linkage.h>
-#include <linux/cache.h>
-#include <linux/spinlock.h>
-#include <linux/cpumask.h>
-#include <linux/gfp.h>
-#include <linux/irqreturn.h>
 #include <linux/errno.h>
-#include <linux/wait.h>
-#include <linux/io.h>
+#include <linux/types.h>
+#include <linux/list.h>
+#include <linux/cpumask.h>
+#include <linux/init.h>
 
-#endif	/* _LINUX_REBOOT_H_ */
+#include <linux/preempt.h>
+
+static inline uint32_t smp_processor_id(void)
+{
+	return mycpuid;
+}
+
+static inline uint32_t get_cpu(void)
+{
+	preempt_disable();
+
+	/* Regular DragonFly kernel threads always run on the same CPU */
+	return 0;
+}
+
+#define put_cpu()	preempt_enable()
+
+#endif	/* _LINUX_SMP_H_ */
