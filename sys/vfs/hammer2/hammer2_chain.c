@@ -2691,6 +2691,41 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 again:
 	if (--maxloops == 0)
 		panic("hammer2_chain_lookup: maxloops");
+
+	/*
+	 * MATCHIND case that does not require parent->data (do prior to
+	 * parent->error check).
+	 */
+	switch(parent->bref.type) {
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		if (flags & HAMMER2_LOOKUP_MATCHIND) {
+			scan_beg = parent->bref.key;
+			scan_end = scan_beg +
+			       ((hammer2_key_t)1 << parent->bref.keybits) - 1;
+			if (key_beg == scan_beg && key_end == scan_end) {
+				chain = parent;
+				hammer2_chain_ref(chain);
+				hammer2_chain_lock(chain, how_maybe);
+				*key_nextp = scan_end + 1;
+				goto done;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+	/*
+	 * No lookup is possible if the parent is errored.  We delayed
+	 * this check as long as we could to ensure that the parent backup,
+	 * embedded data, and MATCHIND code could still execute.
+	 */
+	if (parent->error) {
+		*errorp = parent->error;
+		return NULL;
+	}
+
 	/*
 	 * Locate the blockref array.  Currently we do a fully associative
 	 * search through the array.
@@ -2728,30 +2763,18 @@ again:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		/*
-		 * Handle MATCHIND on the parent
-		 */
-		if (flags & HAMMER2_LOOKUP_MATCHIND) {
-			scan_beg = parent->bref.key;
-			scan_end = scan_beg +
-			       ((hammer2_key_t)1 << parent->bref.keybits) - 1;
-			if (key_beg == scan_beg && key_end == scan_end) {
-				chain = parent;
-				hammer2_chain_ref(chain);
-				hammer2_chain_lock(chain, how_maybe);
-				*key_nextp = scan_end + 1;
-				goto done;
-			}
-		}
-
-		/*
 		 * Optimize indirect blocks in the INITIAL state to avoid
 		 * I/O.
+		 *
+		 * Debugging: Enter permanent wait state instead of
+		 * panicing on unexpectedly NULL data for the moment.
 		 */
 		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 			base = NULL;
 		} else {
 			if (parent->data == NULL) {
-				kprintf("parent->data is NULL %p\n", parent);
+				kprintf("hammer2: unexpected NULL data "
+					"on %p\n", parent);
 				while (1)
 					tsleep(parent, 0, "xxx", 0);
 			}
@@ -2778,16 +2801,6 @@ again:
 		      parent->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
-	}
-
-	/*
-	 * No lookup is possible if the parent is errored.  We delayed
-	 * this check as long as we could to ensure that the parent backup,
-	 * embedded data, and MATCHIND code could still execute.
-	 */
-	if (parent->error) {
-		*errorp = parent->error;
-		return NULL;
 	}
 
 	/*
