@@ -197,7 +197,6 @@ MLINKS+=getttyent.3 endttyent.3 \
 MLINKS+=getusershell.3 endusershell.3 \
 	getusershell.3 setusershell.3
 MLINKS+=getvfsent.3 endvfsent.3 \
-	getvfsent.3 getvfsbytype.3 \
 	getvfsent.3 setvfsent.3 \
 	getvfsent.3 vfsisloadable.3 \
 	getvfsent.3 vfsload.3

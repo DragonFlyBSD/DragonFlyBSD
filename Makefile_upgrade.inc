@@ -3884,6 +3884,7 @@ TO_REMOVE+=/usr/include/pccard
 TO_REMOVE+=/usr/include/ufs
 TO_REMOVE+=/usr/include/vfs/ffs
 TO_REMOVE+=/usr/include/sys/ata.h
+TO_REMOVE+=/usr/share/man/man3/getvfsbytype.3.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
