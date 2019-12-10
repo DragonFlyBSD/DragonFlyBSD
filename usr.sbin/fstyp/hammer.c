@@ -90,6 +90,7 @@ fstyp_hammer(FILE *fp, char *label, size_t size, const char *devpath)
 {
 	hammer_volume_ondisk_t ondisk;
 	int error = 1;
+	const char *p;
 
 	ondisk = read_ondisk(fp);
 	if (ondisk->vol_no != HAMMER_ROOT_VOLNO)
@@ -99,7 +100,12 @@ fstyp_hammer(FILE *fp, char *label, size_t size, const char *devpath)
 	if (test_ondisk(ondisk))
 		goto done;
 
-	strlcpy(label, ondisk->vol_label, size);
+	/* Add device name to help support multiple autofs -media mounts. */
+	p = strrchr(devpath, '/');
+	if (p && *(p + 1) != 0)
+		snprintf(label, size, "%s_%s", ondisk->vol_label, p + 1);
+	else
+		strlcpy(label, ondisk->vol_label, size);
 	error = 0;
 done:
 	free(ondisk);
