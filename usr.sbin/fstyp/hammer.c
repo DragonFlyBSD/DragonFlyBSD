@@ -102,10 +102,14 @@ fstyp_hammer(FILE *fp, char *label, size_t size, const char *devpath)
 
 	/* Add device name to help support multiple autofs -media mounts. */
 	p = strrchr(devpath, '/');
-	if (p && *(p + 1) != 0)
-		snprintf(label, size, "%s_%s", ondisk->vol_label, p + 1);
-	else
-		strlcpy(label, ondisk->vol_label, size);
+	if (p) {
+		p++;
+		if (*p == 0)
+			strlcpy(label, ondisk->vol_label, size);
+		else
+			snprintf(label, size, "%s_%s", ondisk->vol_label, p);
+	} else
+		snprintf(label, size, "%s_%s", ondisk->vol_label, devpath);
 	error = 0;
 done:
 	free(ondisk);

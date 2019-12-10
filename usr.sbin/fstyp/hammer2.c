@@ -164,6 +164,31 @@ find_pfs(FILE *fp, const hammer2_blockref_t *bref, const char *pfs, bool *res)
 	return (0);
 }
 
+static char*
+extract_device_name(const char *devpath)
+{
+	char *p = strdup(devpath);
+	char *head = p;
+
+	p = strchr(p, '@');
+	if (p)
+		*p = 0;
+
+	p = strrchr(head, '/');
+	if (p) {
+		p++;
+		if (*p == 0) {
+			free(head);
+			return NULL;
+		}
+		p = strdup(p);
+		free(head);
+		return p;
+	}
+
+	return head;
+}
+
 static int
 read_label(FILE *fp, char *label, size_t size, const char *devpath)
 {
@@ -173,6 +198,7 @@ read_label(FILE *fp, char *label, size_t size, const char *devpath)
 	bool res = false;
 	int i, best_i, error = 0;
 	const char *pfs;
+	char *devname;
 
 	best_i = -1;
 	memset(&best, 0, sizeof(best));
@@ -230,11 +256,23 @@ read_label(FILE *fp, char *label, size_t size, const char *devpath)
 		goto done;
 	}
 
-	/* XXX autofs -media mount can't handle multiple mounts */
-	if (find_pfs(fp, bref, pfs, &res) == 0 && res)
-		strlcpy(label, pfs, size);
-	else
-		strlcpy(label, (char*)media->ipdata.filename, size);
+	devname = extract_device_name(devpath);
+
+	/* Add device name to help support multiple autofs -media mounts. */
+	if (find_pfs(fp, bref, pfs, &res) == 0 && res) {
+		if (devname)
+			snprintf(label, size, "%s_%s", pfs, devname);
+		else
+			strlcpy(label, pfs, size);
+	} else {
+		if (devname)
+			snprintf(label, size, "%s_%s",
+			    (char*)media->ipdata.filename, devname);
+		else
+			strlcpy(label, (char*)media->ipdata.filename, size);
+	}
+	if (devname)
+		free(devname);
 	free(media);
 done:
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++)
