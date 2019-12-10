@@ -24,7 +24,6 @@
  *     David Airlie
  */
 
-#include <drm/drmP.h>
 #include <linux/async.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -32,8 +31,11 @@
 #include <linux/errno.h>
 #include <linux/string.h>
 #include <linux/mm.h>
+#include <linux/tty.h>
+#include <linux/sysrq.h>
 #include <linux/delay.h>
 #include <linux/fb.h>
+#include <linux/init.h>
 #include <linux/vga_switcheroo.h>
 
 #include <drm/drmP.h>
@@ -158,10 +160,10 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 	if (size * 2 < ggtt->stolen_usable_size)
 		obj = i915_gem_object_create_stolen(dev, size);
 	if (obj == NULL)
-		obj = i915_gem_alloc_object(dev, size);
-	if (!obj) {
+		obj = i915_gem_object_create(dev, size);
+	if (IS_ERR(obj)) {
 		DRM_ERROR("failed to allocate framebuffer\n");
-		ret = -ENOMEM;
+		ret = PTR_ERR(obj);
 		goto out;
 	}
 
@@ -191,12 +193,15 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	struct intel_framebuffer *intel_fb = ifbdev->fb;
 	struct drm_device *dev = helper->dev;
 	struct drm_i915_private *dev_priv = to_i915(dev);
+	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	struct fb_info *info;
 	struct drm_framebuffer *fb;
+	struct i915_vma *vma;
 	struct drm_i915_gem_object *obj;
-	device_t vga_dev;
-	int size, ret;
 	bool prealloc = false;
+	void *vaddr;
+	int ret;
+	device_t vga_dev;
 
 	if (intel_fb &&
 	    (sizes->fb_width > intel_fb->base.width ||
@@ -222,7 +227,6 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	}
 
 	obj = intel_fb->obj;
-	size = obj->base.size;
 
 	mutex_lock(&dev->struct_mutex);
 
@@ -253,33 +257,40 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	info->height = sizes->fb_height;
 	info->stride = fb->pitches[0];
 	info->depth = sizes->surface_bpp;
-	info->paddr = dev_priv->ggtt.mappable_base + i915_gem_obj_ggtt_offset(obj);
+	info->paddr = ggtt->mappable_base + i915_gem_obj_ggtt_offset(obj);
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
-	info->vaddr = (vm_offset_t)pmap_mapdev_attr(info->paddr, size,
-		VM_MEMATTR_WRITE_COMBINING);
 	info->fbops = intelfb_ops;
-#else
+#endif
+
+#if 0
 	strcpy(info->fix.id, "inteldrmfb");
 
 	info->flags = FBINFO_DEFAULT | FBINFO_CAN_FORCE_OUTPUT;
 	info->fbops = &intelfb_ops;
+#endif
+
+	vma = i915_gem_obj_to_ggtt(obj);
 
 	/* setup aperture base/size for vesafb takeover */
+#ifndef __DragonFly__
 	info->apertures->ranges[0].base = dev->mode_config.fb_base;
 	info->apertures->ranges[0].size = ggtt->mappable_end;
 
-	info->fix.smem_start = dev->mode_config.fb_base + i915_gem_obj_ggtt_offset(obj);
-	info->fix.smem_len = size;
+	info->fix.smem_start = dev->mode_config.fb_base + vma->node.start;
+	info->fix.smem_len = vma->node.size;
+#endif
 
-	info->screen_base =
-		ioremap_wc(ggtt->mappable_base + i915_gem_obj_ggtt_offset(obj),
-			   size);
-	if (!info->screen_base) {
+	vaddr = i915_vma_pin_iomap(vma);
+	if (IS_ERR(vaddr)) {
 		DRM_ERROR("Failed to remap framebuffer into virtual memory\n");
-		ret = -ENOSPC;
+		ret = PTR_ERR(vaddr);
 		goto out_destroy_fbi;
 	}
-	info->screen_size = size;
+#ifdef __DragonFly__
+	info->vaddr = (vm_offset_t)vaddr;
+#else
+	info->screen_base = vaddr;
+	info->screen_size = vma->node.size;
 
 	/* This driver doesn't need a VT switch to restore the mode on resume */
 	info->skip_vt_switch = true;
@@ -302,17 +313,13 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		      i915_gem_obj_ggtt_offset(obj), obj);
 
 	mutex_unlock(&dev->struct_mutex);
-#if 0
 	vga_switcheroo_client_fb_set(dev->pdev, info);
-#endif
 	return 0;
 
-#if 0
 out_destroy_fbi:
 	drm_fb_helper_release_fbi(helper);
-#endif
 out_unpin:
-	i915_gem_object_ggtt_unpin(obj);
+	intel_unpin_fb_obj(&ifbdev->fb->base, BIT(DRM_ROTATE_0));
 out_unlock:
 	mutex_unlock(&dev->struct_mutex);
 	return ret;
@@ -393,12 +400,12 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 	uint64_t conn_configured = 0, mask;
 	int pass = 0;
 
-	save_enabled = kcalloc(fb_helper->connector_count, sizeof(bool),
+	save_enabled = kcalloc(dev->mode_config.num_connector, sizeof(bool),
 			       GFP_KERNEL);
 	if (!save_enabled)
 		return false;
 
-	memcpy(save_enabled, enabled, fb_helper->connector_count);
+	memcpy(save_enabled, enabled, dev->mode_config.num_connector);
 	mask = (1 << fb_helper->connector_count) - 1;
 retry:
 	for (i = 0; i < fb_helper->connector_count; i++) {
@@ -513,10 +520,10 @@ retry:
 		}
 		crtcs[i] = new_crtc;
 
-		DRM_DEBUG_KMS("connector %s on pipe %c [CRTC:%d]: %dx%d%s\n",
+		DRM_DEBUG_KMS("connector %s on [CRTC:%d:%s]: %dx%d%s\n",
 			      connector->name,
-			      pipe_name(to_intel_crtc(connector->state->crtc)->pipe),
 			      connector->state->crtc->base.id,
+			      connector->state->crtc->name,
 			      modes[i]->hdisplay, modes[i]->vdisplay,
 			      modes[i]->flags & DRM_MODE_FLAG_INTERLACE ? "i" :"");
 
@@ -545,7 +552,7 @@ retry:
 	if (fallback) {
 bail:
 		DRM_DEBUG_KMS("Not using firmware configuration\n");
-		memcpy(enabled, save_enabled, fb_helper->connector_count);
+		memcpy(enabled, save_enabled, dev->mode_config.num_connector);
 		kfree(save_enabled);
 		return false;
 	}
@@ -561,8 +568,7 @@ static const struct drm_fb_helper_funcs intel_fb_helper_funcs = {
 	.fb_probe = intelfb_create,
 };
 
-static void intel_fbdev_destroy(struct drm_device *dev,
-				struct intel_fbdev *ifbdev)
+static void intel_fbdev_destroy(struct intel_fbdev *ifbdev)
 {
 	/* We rely on the object-free to release the VMA pinning for
 	 * the info->screen_base mmaping. Leaking the VMA is simpler than
@@ -575,9 +581,14 @@ static void intel_fbdev_destroy(struct drm_device *dev,
 	drm_fb_helper_fini(&ifbdev->helper);
 
 	if (ifbdev->fb) {
-		drm_framebuffer_unregister_private(&ifbdev->fb->base);
+		mutex_lock(&ifbdev->helper.dev->struct_mutex);
+		intel_unpin_fb_obj(&ifbdev->fb->base, BIT(DRM_ROTATE_0));
+		mutex_unlock(&ifbdev->helper.dev->struct_mutex);
+
 		drm_framebuffer_remove(&ifbdev->fb->base);
 	}
+
+	kfree(ifbdev);
 }
 
 /*
@@ -742,6 +753,10 @@ int intel_fbdev_init(struct drm_device *dev)
 		return ret;
 	}
 
+#if 0
+	ifbdev->helper.atomic = true;
+#endif
+
 	dev_priv->fbdev = ifbdev;
 	INIT_WORK(&dev_priv->fbdev_suspend_work, intel_fbdev_suspend_worker);
 
@@ -752,34 +767,47 @@ int intel_fbdev_init(struct drm_device *dev)
 
 static void intel_fbdev_initial_config(void *data, async_cookie_t cookie)
 {
-	struct drm_i915_private *dev_priv = data;
-	struct intel_fbdev *ifbdev = dev_priv->fbdev;
+	struct intel_fbdev *ifbdev = data;
 
 	/* Due to peculiar init order wrt to hpd handling this is separate. */
 	if (drm_fb_helper_initial_config(&ifbdev->helper,
 					 ifbdev->preferred_bpp))
-		intel_fbdev_fini(dev_priv->dev);
+		intel_fbdev_fini(ifbdev->helper.dev);
 }
 
 void intel_fbdev_initial_config_async(struct drm_device *dev)
 {
-	async_schedule(intel_fbdev_initial_config, to_i915(dev));
+	struct intel_fbdev *ifbdev = to_i915(dev)->fbdev;
+
+	ifbdev->cookie = async_schedule(intel_fbdev_initial_config, ifbdev);
+}
+
+static void intel_fbdev_sync(struct intel_fbdev *ifbdev)
+{
+	if (!ifbdev->cookie)
+		return;
+
+	/* Only serialises with all preceding async calls, hence +1 */
+	async_synchronize_cookie(ifbdev->cookie + 1);
+	ifbdev->cookie = 0;
 }
 
 void intel_fbdev_fini(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	if (!dev_priv->fbdev)
+	struct intel_fbdev *ifbdev = dev_priv->fbdev;
+
+	if (!ifbdev)
 		return;
 
-#if 0
 	flush_work(&dev_priv->fbdev_suspend_work);
 
+#if 0
 	if (!current_is_async())
 #endif
-		async_synchronize_full();
-	intel_fbdev_destroy(dev, dev_priv->fbdev);
-	kfree(dev_priv->fbdev);
+		intel_fbdev_sync(ifbdev);
+
+	intel_fbdev_destroy(ifbdev);
 	dev_priv->fbdev = NULL;
 }
 
@@ -851,13 +879,17 @@ void intel_fbdev_restore_mode(struct drm_device *dev)
 	if (!ifbdev)
 		return;
 
+	intel_fbdev_sync(ifbdev);
+
 	fb_helper = &ifbdev->helper;
 
+#ifdef __DragonFly__
 	/* XXX: avoid dead-locking the Xorg on exit */
 	if (mutex_is_locked(&dev->mode_config.mutex)) {
 		DRM_ERROR("fubar while trying to restore kms_console\n");
 		return; /* drm_modeset_unlock_all(dev) ? */
 	}
+#endif
 
 	ret = drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
 	if (ret) {

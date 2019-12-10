@@ -26,6 +26,7 @@
  *	Eric Anholt <eric@anholt.net>
  */
 #include <linux/i2c.h>
+#include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/export.h>
 #include <drm/drmP.h>
@@ -434,7 +435,7 @@ static void intel_sdvo_debug_write(struct intel_sdvo *intel_sdvo, u8 cmd,
 
 
 	for (i = 0; i < args_len; i++) {
-		BUF_PRINT("%02X ", ((const u8 *)args)[i]);
+		BUF_PRINT("%02X ", ((u8 *)args)[i]);
 	}
 	for (; i < 8; i++) {
 		BUF_PRINT("   ");
@@ -491,7 +492,7 @@ static bool intel_sdvo_write_cmd(struct intel_sdvo *intel_sdvo, u8 cmd,
 		msgs[i].len = 2;
 		msgs[i].buf = buf + 2 *i;
 		buf[2*i + 0] = SDVO_I2C_ARG_0 - i;
-		buf[2*i + 1] = ((const u8*)args)[i];
+		buf[2*i + 1] = ((u8*)args)[i];
 	}
 	msgs[i].addr = intel_sdvo->slave_addr;
 	msgs[i].flags = 0;
@@ -2190,7 +2191,6 @@ static const struct drm_connector_funcs intel_sdvo_connector_funcs = {
 static const struct drm_connector_helper_funcs intel_sdvo_connector_helper_funcs = {
 	.get_modes = intel_sdvo_get_modes,
 	.mode_valid = intel_sdvo_mode_valid,
-	.best_encoder = intel_best_encoder,
 };
 
 static void intel_sdvo_enc_destroy(struct drm_encoder *encoder)
@@ -2208,6 +2208,23 @@ static void intel_sdvo_enc_destroy(struct drm_encoder *encoder)
 static const struct drm_encoder_funcs intel_sdvo_enc_funcs = {
 	.destroy = intel_sdvo_enc_destroy,
 };
+
+#if 0
+static int
+intel_sdvo_connector_register(struct drm_connector *connector)
+{
+	struct intel_sdvo *sdvo = intel_attached_sdvo(connector);
+	int ret;
+
+	ret = intel_connector_register(connector);
+	if (ret)
+		return ret;
+
+	return sysfs_create_link(&connector->kdev->kobj,
+				 &sdvo->ddc.dev.kobj,
+				 sdvo->ddc.dev.kobj.name);
+}
+#endif
 
 static void
 intel_sdvo_guess_ddc_bus(struct intel_sdvo *sdvo)
@@ -2345,6 +2362,7 @@ intel_sdvo_get_slave_addr(struct drm_device *dev, struct intel_sdvo *sdvo)
 		return 0x72;
 }
 
+#if 0
 static void
 intel_sdvo_connector_unregister(struct intel_connector *intel_connector)
 {
@@ -2354,12 +2372,11 @@ intel_sdvo_connector_unregister(struct intel_connector *intel_connector)
 	drm_connector = &intel_connector->base;
 	sdvo_encoder = intel_attached_sdvo(&intel_connector->base);
 
-#if 0
 	sysfs_remove_link(&drm_connector->kdev->kobj,
 			  sdvo_encoder->ddc.dev.kobj.name);
-#endif
-	intel_connector_unregister(intel_connector);
+	intel_connector_unregister(drm_connector);
 }
+#endif
 
 static int
 intel_sdvo_connector_init(struct intel_sdvo_connector *connector,
@@ -2383,7 +2400,6 @@ intel_sdvo_connector_init(struct intel_sdvo_connector *connector,
 	connector->base.base.doublescan_allowed = 0;
 	connector->base.base.display_info.subpixel_order = SubPixelHorizontalRGB;
 	connector->base.get_hw_state = intel_sdvo_connector_get_hw_state;
-	connector->base.unregister = intel_sdvo_connector_unregister;
 
 	intel_connector_attach_encoder(&connector->base, &encoder->base);
 	ret = drm_connector_register(drm_connector);
@@ -2532,7 +2548,6 @@ intel_sdvo_tv_init(struct intel_sdvo *intel_sdvo, int type)
 	return true;
 
 err:
-	drm_connector_unregister(connector);
 	intel_sdvo_destroy(connector);
 	return false;
 }
@@ -2611,7 +2626,6 @@ intel_sdvo_lvds_init(struct intel_sdvo *intel_sdvo, int device)
 	return true;
 
 err:
-	drm_connector_unregister(connector);
 	intel_sdvo_destroy(connector);
 	return false;
 }
@@ -2986,7 +3000,7 @@ bool intel_sdvo_init(struct drm_device *dev,
 	intel_encoder = &intel_sdvo->base;
 	intel_encoder->type = INTEL_OUTPUT_SDVO;
 	drm_encoder_init(dev, &intel_encoder->base, &intel_sdvo_enc_funcs, 0,
-			 NULL);
+			 "SDVO %c", port_name(port));
 
 	/* Read the regs to test if we can talk to the device */
 	for (i = 0; i < 0x40; i++) {

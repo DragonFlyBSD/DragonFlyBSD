@@ -2,7 +2,7 @@
  * Copyright (c) 2000 Doug Rabson
  * Copyright (c) 2000 Ruslan Ermilov
  * Copyright (c) 2011 The FreeBSD Foundation
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Portions of this software were developed by Konstantin Belousov
@@ -1401,6 +1401,14 @@ agp_intel_gtt_insert_pages(device_t dev, u_int first_entry, u_int num_entries,
 		    VM_PAGE_TO_PHYS(pages[i]), flags);
 	}
 	sc->match->driver->sync_gtt_pte(dev, first_entry + num_entries - 1);
+}
+
+void
+intel_gtt_insert_page(dma_addr_t addr, unsigned int pg, unsigned int flags)
+{
+	struct agp_i810_softc *sc = device_get_softc(intel_agp);
+
+	sc->match->driver->install_gtt_pte(intel_agp, addr, pg, flags);
 }
 
 void

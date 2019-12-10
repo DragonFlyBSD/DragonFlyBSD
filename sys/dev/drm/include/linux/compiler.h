@@ -62,7 +62,7 @@
 #define	unlikely(x)			__builtin_expect(!!(x), 0)
 #define typeof(x)			__typeof(x)
 
-/*#define __read_mostly REMOVED - defined by DFly now */
+#define __maybe_unused			__unused
 #define __always_unused			__unused
 #define __malloc
 #define __must_check			__heedresult
@@ -152,6 +152,8 @@ __volatile_write(volatile void *var, int size, void *value)
 })
 
 #define __rcu
+
+
 
 #endif	/* __KERNEL__ */
 

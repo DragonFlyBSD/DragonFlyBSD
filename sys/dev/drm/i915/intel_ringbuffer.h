@@ -62,18 +62,6 @@ struct  intel_hw_status_page {
 	(i915_gem_obj_ggtt_offset(dev_priv->semaphore_obj) + \
 	 GEN8_SEMAPHORE_OFFSET(from, (__ring)->id))
 
-#define GEN8_RING_SEMAPHORE_INIT(e) do { \
-	if (!dev_priv->semaphore_obj) { \
-		break; \
-	} \
-	(e)->semaphore.signal_ggtt[RCS] = GEN8_SIGNAL_OFFSET((e), RCS); \
-	(e)->semaphore.signal_ggtt[VCS] = GEN8_SIGNAL_OFFSET((e), VCS); \
-	(e)->semaphore.signal_ggtt[BCS] = GEN8_SIGNAL_OFFSET((e), BCS); \
-	(e)->semaphore.signal_ggtt[VECS] = GEN8_SIGNAL_OFFSET((e), VECS); \
-	(e)->semaphore.signal_ggtt[VCS2] = GEN8_SIGNAL_OFFSET((e), VCS2); \
-	(e)->semaphore.signal_ggtt[(e)->id] = MI_SEMAPHORE_SYNC_INVALID; \
-	} while(0)
-
 enum intel_ring_hangcheck_action {
 	HANGCHECK_IDLE = 0,
 	HANGCHECK_WAIT,
@@ -107,7 +95,6 @@ struct intel_ringbuffer {
 	int space;
 	int size;
 	int effective_size;
-	int reserved_size;
 
 	/** We track the position of the requests in the ring buffer, and
 	 * when each is retired we increment last_retired_head as the GPU
@@ -120,7 +107,7 @@ struct intel_ringbuffer {
 	u32 last_retired_head;
 };
 
-struct	intel_context;
+struct i915_gem_context;
 struct drm_i915_reg_table;
 
 /*
@@ -142,7 +129,8 @@ struct  i915_ctx_workarounds {
 	struct drm_i915_gem_object *obj;
 };
 
-struct  intel_engine_cs {
+struct intel_engine_cs {
+	struct drm_i915_private *i915;
 	const char	*name;
 	enum intel_engine_id {
 		RCS = 0,
@@ -157,7 +145,6 @@ struct  intel_engine_cs {
 	unsigned int hw_id;
 	unsigned int guc_id; /* XXX same as hw_id? */
 	u32		mmio_base;
-	struct		drm_device *dev;
 	struct intel_ringbuffer *buffer;
 	struct list_head buffers;
 
@@ -268,7 +255,6 @@ struct  intel_engine_cs {
 	struct tasklet_struct irq_tasklet;
 	struct lock execlist_lock;	/* used inside tasklet, use spin_lock_bh */
 	struct list_head execlist_queue;
-	struct list_head execlist_retired_req_list;
 	unsigned int fw_domains;
 	unsigned int next_context_status_buffer;
 	unsigned int idle_lite_restore_wa;
@@ -312,7 +298,7 @@ struct  intel_engine_cs {
 
 	wait_queue_head_t irq_queue;
 
-	struct intel_context *last_context;
+	struct i915_gem_context *last_context;
 
 	struct intel_ring_hangcheck hangcheck;
 
@@ -352,7 +338,7 @@ struct  intel_engine_cs {
 static inline bool
 intel_engine_initialized(struct intel_engine_cs *engine)
 {
-	return engine->dev != NULL;
+	return engine->i915 != NULL;
 }
 
 static inline unsigned
@@ -427,7 +413,7 @@ intel_write_status_page(struct intel_engine_cs *engine,
 
 struct intel_ringbuffer *
 intel_engine_create_ringbuffer(struct intel_engine_cs *engine, int size);
-int intel_pin_and_map_ringbuffer_obj(struct drm_device *dev,
+int intel_pin_and_map_ringbuffer_obj(struct drm_i915_private *dev_priv,
 				     struct intel_ringbuffer *ringbuf);
 void intel_unpin_ringbuffer_obj(struct intel_ringbuffer *ringbuf);
 void intel_ringbuffer_free(struct intel_ringbuffer *ring);
@@ -486,26 +472,15 @@ static inline u32 intel_ring_get_tail(struct intel_ringbuffer *ringbuf)
 /*
  * Arbitrary size for largest possible 'add request' sequence. The code paths
  * are complex and variable. Empirical measurement shows that the worst case
- * is ILK at 136 words. Reserving too much is better than reserving too little
- * as that allows for corner cases that might have been missed. So the figure
- * has been rounded up to 160 words.
+ * is BDW at 192 bytes (6 + 6 + 36 dwords), then ILK at 136 bytes. However,
+ * we need to allocate double the largest single packet within that emission
+ * to account for tail wraparound (so 6 + 6 + 72 dwords for BDW).
  */
-#define MIN_SPACE_FOR_ADD_REQUEST	160
+#define MIN_SPACE_FOR_ADD_REQUEST 336
 
-/*
- * Reserve space in the ring to guarantee that the i915_add_request() call
- * will always have sufficient room to do its stuff. The request creation
- * code calls this automatically.
- */
-void intel_ring_reserved_space_reserve(struct intel_ringbuffer *ringbuf, int size);
-/* Cancel the reservation, e.g. because the request is being discarded. */
-void intel_ring_reserved_space_cancel(struct intel_ringbuffer *ringbuf);
-/* Use the reserved space - for use by i915_add_request() only. */
-void intel_ring_reserved_space_use(struct intel_ringbuffer *ringbuf);
-/* Finish with the reserved space - for use by i915_add_request() only. */
-void intel_ring_reserved_space_end(struct intel_ringbuffer *ringbuf);
-
-/* Legacy ringbuffer specific portion of reservation code: */
-int intel_ring_reserve_space(struct drm_i915_gem_request *request);
+static inline u32 intel_hws_seqno_address(struct intel_engine_cs *engine)
+{
+	return engine->status_page.gfx_addr + I915_GEM_HWS_INDEX_ADDR;
+}
 
 #endif /* _INTEL_RINGBUFFER_H_ */

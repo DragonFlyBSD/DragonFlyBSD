@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,8 +28,10 @@
 #define _LINUX_IOMAPPING_H_
 
 #include <linux/types.h>
+#include <linux/slab.h>
 #include <linux/bug.h>
 #include <linux/io.h>
+#include <asm/page.h>
 
 struct io_mapping {
 	resource_size_t base;
@@ -70,9 +72,11 @@ io_mapping_map_atomic_wc(struct io_mapping *mapping, unsigned long offset)
 }
 
 static inline void *
-io_mapping_map_wc(struct io_mapping *mapping, unsigned long offset)
+io_mapping_map_wc(struct io_mapping *mapping,
+		  unsigned long offset,
+		  unsigned long size)
 {
-	return io_mapping_map_atomic_wc(mapping, offset);
+	return (void *)PHYS_TO_DMAP(mapping->base + offset);
 }
 
 static inline void

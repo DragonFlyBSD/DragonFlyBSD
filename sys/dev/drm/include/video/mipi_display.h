@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -69,5 +69,12 @@
 #define MIPI_DSI_PACKED_PIXEL_STREAM_18		0x1e
 #define MIPI_DSI_PIXEL_STREAM_3BYTE_18		0x2e
 #define MIPI_DSI_PACKED_PIXEL_STREAM_24		0x3e
+
+#define MIPI_DCS_NOP				0x00
+#define MIPI_DCS_SET_DISPLAY_BRIGHTNESS		0x51
+#define MIPI_DCS_GET_DISPLAY_BRIGHTNESS		0x52
+#define MIPI_DCS_WRITE_CONTROL_DISPLAY		0x53
+#define MIPI_DCS_GET_CONTROL_DISPLAY		0x54
+#define MIPI_DCS_WRITE_POWER_SAVE		0x55
 
 #endif /* __VIDEO_MIPI_DISPLAY_H__ */

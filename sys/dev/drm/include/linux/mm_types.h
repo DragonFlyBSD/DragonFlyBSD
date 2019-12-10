@@ -51,12 +51,6 @@ struct mm_struct {
 	struct lock mmap_sem;
 };
 
-struct task_struct {
-	struct thread *dfly_td;
-	volatile long state;
-	struct mm_struct *mm;	/* mirror copy in p->p_linux_mm */
-};
-
 struct proc_struct {
 	struct mm_struct *mm;
 };

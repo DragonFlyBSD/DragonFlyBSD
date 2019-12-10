@@ -73,6 +73,13 @@ struct seq_file;
 
 #define MAX_SCHEDULE_TIMEOUT    LONG_MAX
 
+struct task_struct {
+	struct thread *dfly_td;
+	volatile long state;
+	struct mm_struct *mm;	/* mirror copy in p->p_linux_mm */
+	int prio;
+};
+
 /*
  * schedule_timeout: puts the current thread to sleep until timeout
  * if its state allows it to.

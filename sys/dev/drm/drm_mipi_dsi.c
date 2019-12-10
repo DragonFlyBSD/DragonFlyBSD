@@ -25,11 +25,11 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <drm/drmP.h>
 #include <drm/drm_mipi_dsi.h>
 
 #include <linux/device.h>
 #include <linux/module.h>
+#include <linux/pm_runtime.h>
 #include <linux/slab.h>
 
 #include <video/mipi_display.h>
@@ -680,7 +680,6 @@ ssize_t mipi_dsi_dcs_write_buffer(struct mipi_dsi_device *dsi,
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_write_buffer);
 
-#if 0
 /**
  * mipi_dsi_dcs_write() - send DCS write command
  * @dsi: DSI peripheral device
@@ -704,7 +703,7 @@ ssize_t mipi_dsi_dcs_write(struct mipi_dsi_device *dsi, u8 cmd,
 	if (len > 0) {
 		size = 1 + len;
 
-		tx = kmalloc(size, GFP_KERNEL);
+		tx = kmalloc(size, M_DRM, GFP_KERNEL);
 		if (!tx)
 			return -ENOMEM;
 
@@ -724,7 +723,6 @@ ssize_t mipi_dsi_dcs_write(struct mipi_dsi_device *dsi, u8 cmd,
 	return err;
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_write);
-#endif
 
 /**
  * mipi_dsi_dcs_read() - send DCS read request command
@@ -751,7 +749,6 @@ ssize_t mipi_dsi_dcs_read(struct mipi_dsi_device *dsi, u8 cmd, void *data,
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_read);
 
-#if 0
 /**
  * mipi_dsi_dcs_nop() - send DCS nop packet
  * @dsi: DSI peripheral device
@@ -770,6 +767,7 @@ int mipi_dsi_dcs_nop(struct mipi_dsi_device *dsi)
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_nop);
 
+#if 0
 /**
  * mipi_dsi_dcs_soft_reset() - perform a software reset of the display module
  * @dsi: DSI peripheral device

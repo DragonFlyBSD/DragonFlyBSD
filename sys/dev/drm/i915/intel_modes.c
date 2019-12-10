@@ -23,6 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/fb.h>
 #include <drm/drm_edid.h>

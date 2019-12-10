@@ -71,7 +71,7 @@ static u32 _get_blocksize(const u8 *block_base)
 /* Get BDB block size give a pointer to data after Block ID and Block Size. */
 static u32 get_blocksize(const void *block_data)
 {
-	return _get_blocksize((const char*)block_data - 3);
+	return _get_blocksize(block_data - 3);
 }
 
 static const void *
@@ -170,9 +170,9 @@ get_lvds_dvo_timing(const struct bdb_lvds_lfp_data *lvds_lfp_data,
 	int dvo_timing_offset =
 		lvds_lfp_data_ptrs->ptr[0].dvo_timing_offset -
 		lvds_lfp_data_ptrs->ptr[0].fp_timing_offset;
-	const char *entry = (const char *)lvds_lfp_data->data + lfp_data_size * index;
+	char *entry = (char *)lvds_lfp_data->data + lfp_data_size * index;
 
-	return (const struct lvds_dvo_timing *)(entry + dvo_timing_offset);
+	return (struct lvds_dvo_timing *)(entry + dvo_timing_offset);
 }
 
 /* get lvds_fp_timing entry
@@ -218,7 +218,7 @@ parse_lfp_panel_data(struct drm_i915_private *dev_priv,
 
 	dev_priv->vbt.lvds_dither = lvds_options->pixel_dither;
 
-	ret = intel_opregion_get_panel_type(dev_priv->dev);
+	ret = intel_opregion_get_panel_type(dev_priv);
 	if (ret >= 0) {
 		WARN_ON(ret > 0xf);
 		panel_type = ret;
@@ -321,6 +321,15 @@ parse_lfp_backlight(struct drm_i915_private *dev_priv,
 		DRM_DEBUG_KMS("PWM backlight not present in VBT (type %u)\n",
 			      entry->type);
 		return;
+	}
+
+	dev_priv->vbt.backlight.type = INTEL_BACKLIGHT_DISPLAY_DDI;
+	if (bdb->version >= 191 &&
+	    get_blocksize(backlight_data) >= sizeof(*backlight_data)) {
+		const struct bdb_lfp_backlight_control_method *method;
+
+		method = &backlight_data->backlight_control[panel_type];
+		dev_priv->vbt.backlight.type = method->type;
 	}
 
 	dev_priv->vbt.backlight.pwm_freq_hz = entry->pwm_freq_hz;
@@ -766,6 +775,16 @@ parse_mipi_config(struct drm_i915_private *dev_priv,
 	if (!dev_priv->vbt.dsi.pps) {
 		kfree(dev_priv->vbt.dsi.config);
 		return;
+	}
+
+	/*
+	 * These fields are introduced from the VBT version 197 onwards,
+	 * so making sure that these bits are set zero in the previous
+	 * versions.
+	 */
+	if (dev_priv->vbt.dsi.config->dual_link && bdb->version < 197) {
+		dev_priv->vbt.dsi.config->dl_dcs_cabc_ports = 0;
+		dev_priv->vbt.dsi.config->dl_dcs_backlight_ports = 0;
 	}
 
 	/* We have mandatory mipi config blocks. Initialize as generic panel */
@@ -1326,9 +1345,9 @@ init_vbt_defaults(struct drm_i915_private *dev_priv)
 
 static const struct bdb_header *get_bdb_header(const struct vbt_header *vbt)
 {
-	const char *_vbt = (const char *)vbt;
+	const void *_vbt = vbt;
 
-	return (const struct bdb_header *)(_vbt + vbt->bdb_offset);
+	return _vbt + vbt->bdb_offset;
 }
 
 /**
@@ -1385,7 +1404,7 @@ static const struct vbt_header *find_vbt(void __iomem *bios, size_t size)
 		 * This is the one place where we explicitly discard the address
 		 * space (__iomem) of the BIOS/VBT.
 		 */
-		vbt = (char __force *) bios + i;
+		vbt = (void __force *) bios + i;
 		if (intel_bios_is_valid_vbt(vbt, size - i))
 			return vbt;
 
@@ -1407,9 +1426,7 @@ static const struct vbt_header *find_vbt(void __iomem *bios, size_t size)
 int
 intel_bios_init(struct drm_i915_private *dev_priv)
 {
-#if 0
 	struct pci_dev *pdev = dev_priv->dev->pdev;
-#endif
 	const struct vbt_header *vbt = dev_priv->opregion.vbt;
 	const struct bdb_header *bdb;
 	u8 __iomem *bios = NULL;
@@ -1422,17 +1439,13 @@ intel_bios_init(struct drm_i915_private *dev_priv)
 	if (!vbt) {
 		size_t size;
 
-#if 0
 		bios = pci_map_rom(pdev, &size);
 		if (!bios)
-#endif
 			return -1;
 
 		vbt = find_vbt(bios, size);
 		if (!vbt) {
-#if 0
 			pci_unmap_rom(pdev, bios);
-#endif
 			return -1;
 		}
 
@@ -1459,10 +1472,8 @@ intel_bios_init(struct drm_i915_private *dev_priv)
 	parse_mipi_sequence(dev_priv, bdb);
 	parse_ddi_ports(dev_priv, bdb);
 
-#if 0
 	if (bios)
 		pci_unmap_rom(pdev, bios);
-#endif
 
 	return 0;
 }

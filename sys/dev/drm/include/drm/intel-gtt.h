@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011 The FreeBSD Foundation
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * This software was developed by Konstantin Belousov under sponsorship from
@@ -94,5 +94,9 @@ static inline void intel_gmch_remove(void)
 }
 
 bool intel_enable_gtt(void);
+
+void intel_gtt_insert_page(dma_addr_t addr,
+			   unsigned int pg,
+			   unsigned int flags);
 
 #endif		/* _AGP_INTEL_GTT_H_ */

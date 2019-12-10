@@ -51,7 +51,7 @@ static struct sg_table *i915_gem_map_dma_buf(struct dma_buf_attachment *attachme
 	i915_gem_object_pin_pages(obj);
 
 	/* Copy sg so that we make an independent mapping */
-	st = kmalloc(sizeof(struct sg_table), M_DRM, M_WAITOK);
+	st = kmalloc(sizeof(struct sg_table), M_DRM, GFP_KERNEL);
 	if (st == NULL) {
 		ret = -ENOMEM;
 		goto err_unpin;

@@ -4,6 +4,7 @@ KMOD	= i915
 SRCS =	i915_drv.c \
 	i915_irq.c \
 	i915_params.c \
+	i915_pci.c \
 	i915_suspend.c \
 	i915_sysfs.c \
 	intel_csr.c \
@@ -50,6 +51,7 @@ SRCS += \
 	intel_bios.c \
 	intel_color.c \
 	intel_display.c \
+	intel_dpio_phy.c \
 	intel_dpll_mgr.c \
 	intel_fbc.c \
 	intel_fifo_underrun.c \
@@ -73,10 +75,12 @@ SRCS += \
 	dvo_tfp410.c \
 	intel_crt.c \
 	intel_ddi.c \
+	intel_dp_aux_backlight.c \
 	intel_dp_link_training.c \
 	intel_dp_mst.c \
 	intel_dp.c \
 	intel_dsi.c \
+	intel_dsi_dcs_backlight.c \
 	intel_dsi_panel_vbt.c \
 	intel_dsi_pll.c \
 	intel_dvo.c \
@@ -90,8 +94,8 @@ SRCS += \
 # virtual gpu code
 SRCS += i915_vgpu.c
 
-# legacy horrors
-SRCS += i915_dma.c
+# CONFIG_DRM_I915_GVT
+#SRCS += intel_gvt.c
 
 SRCS   += acpi_if.h device_if.h bus_if.h pci_if.h \
 	  opt_acpi.h opt_drm.h
