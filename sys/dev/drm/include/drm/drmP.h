@@ -1291,6 +1291,10 @@ static __inline__ bool drm_can_sleep(void)
 #define for_each_if(condition) if (!(condition)) {} else
 
 #ifdef __DragonFly__
+struct drm_softc {
+	void *drm_driver_data;
+};
+
 /* sysctl support (drm_sysctl.h) */
 extern int drm_sysctl_init(struct drm_device *dev);
 extern int drm_sysctl_cleanup(struct drm_device *dev);

@@ -126,7 +126,12 @@ static int drm_setup(struct drm_device * dev)
 }
 
 #define DRIVER_SOFTC(unit) \
-	((struct drm_device *)devclass_get_softc(drm_devclass, unit))
+	((struct drm_softc*)devclass_get_softc(drm_devclass, unit))
+
+static inline int dev_minor(cdev_t x)
+{
+	return minor(x);
+}
 
 /**
  * drm_open - open method for DRM file
@@ -155,16 +160,17 @@ int drm_open(struct dev_open_args *ap)
 	struct thread *p = curthread;
 	int retcode;
 	int need_setup = 0;
+#ifdef __DragonFly__
+	struct drm_softc *softc = DRIVER_SOFTC(dev_minor(kdev));
+
+	dev = softc->drm_driver_data;
+#endif
 
 	minor = drm_minor_acquire(iminor(inode));
-
-	dev = DRIVER_SOFTC(iminor(inode));
 	if (dev == NULL)
 		return (ENXIO);
 	if (!dev->open_count++)
 		need_setup = 1;
-
-	DRM_DEBUG("open_count = %d\n", dev->open_count);
 
 	/* share address_space across all char-devs of a single device */
 #if 0
@@ -403,6 +409,11 @@ int drm_release(struct inode *inode, struct file *filp)
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_minor *minor = file_priv->minor;
 	struct drm_device *dev = minor->dev;
+
+#ifdef __DragonFly__
+	/* dev is not correctly set yet */
+	return 0;
+#endif
 
 	mutex_lock(&drm_global_mutex);
 

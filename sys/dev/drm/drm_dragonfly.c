@@ -227,7 +227,8 @@ unsigned long drm_get_resource_len(struct drm_device *dev,
 /* Former drm_release() in the legacy DragonFly BSD drm codebase */
 int drm_device_detach(device_t kdev)
 {
-	struct drm_device *dev = device_get_softc(kdev);
+	struct drm_softc *softc = device_get_softc(kdev);
+	struct drm_device *dev = softc->drm_driver_data;
 
 	drm_sysctl_cleanup(dev);
 	if (dev->devnode != NULL)

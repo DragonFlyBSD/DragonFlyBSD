@@ -554,6 +554,11 @@ int drm_dev_init(struct drm_device *dev,
 		 struct device *parent)
 {
 	int ret;
+#ifdef __DragonFly__
+	struct drm_softc *softc = device_get_softc(parent->bsddev);
+
+	softc->drm_driver_data = dev;
+#endif
 
 	kref_init(&dev->ref);
 	dev->dev = parent;
@@ -681,12 +686,7 @@ struct drm_device *drm_dev_alloc(struct drm_driver *driver,
 	struct drm_device *dev;
 	int ret;
 
-#ifdef __DragonFly__
-	dev = device_get_softc(parent->bsddev);
-	bzero(dev, sizeof(struct drm_device));
-#else
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-#endif
 	if (!dev)
 		return ERR_PTR(-ENOMEM);
 
@@ -1033,9 +1033,12 @@ drm_create_cdevs(device_t kdev)
 {
 	struct drm_device *dev;
 	int error, unit;
+#ifdef __DragonFly__
+	struct drm_softc *softc = device_get_softc(kdev);
 
+	dev = softc->drm_driver_data;
+#endif
 	unit = device_get_unit(kdev);
-	dev = device_get_softc(kdev);
 
 	dev->devnode = make_dev(&drm_cdevsw, unit, DRM_DEV_UID, DRM_DEV_GID,
 				DRM_DEV_MODE, "dri/card%d", unit);

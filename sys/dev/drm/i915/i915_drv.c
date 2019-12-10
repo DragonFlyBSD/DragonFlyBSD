@@ -768,7 +768,8 @@ out:
 
 int i915_suspend_switcheroo(device_t kdev)
 {
-	struct drm_device *dev = device_get_softc(kdev);
+	struct drm_softc *softc = device_get_softc(kdev);
+	struct drm_device *dev = softc->drm_driver_data;
 	int error;
 
 	if (!dev || !dev->dev_private) {
@@ -1904,7 +1905,7 @@ static device_method_t i915_methods[] = {
 static driver_t i915_driver = {
 	"drm",
 	i915_methods,
-	sizeof(struct drm_device)
+	sizeof(struct drm_softc)
 };
 
 static int __init i915_init(void)

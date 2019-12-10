@@ -734,25 +734,19 @@ static int radeon_driver_attach(device_t kdev)
 static int
 radeon_suspend(device_t kdev)
 {
-	struct drm_device *dev;
-	int ret;
+	struct drm_softc *softc = device_get_softc(kdev);
+	struct drm_device *dev = softc->drm_driver_data;
 
-	dev = device_get_softc(kdev);
-	ret = radeon_suspend_kms(dev, true, true, false);
-
-	return (-ret);
+	return  -radeon_suspend_kms(dev, true, true, false);
 }
 
 static int
 radeon_resume(device_t kdev)
 {
-	struct drm_device *dev;
-	int ret;
+	struct drm_softc *softc = device_get_softc(kdev);
+	struct drm_device *dev = softc->drm_driver_data;
 
-	dev = device_get_softc(kdev);
-	ret = radeon_resume_kms(dev, true, true);
-
-	return (-ret);
+	return -radeon_resume_kms(dev, true, true);
 }
 
 static device_method_t radeon_methods[] = {
@@ -768,7 +762,7 @@ static device_method_t radeon_methods[] = {
 static driver_t radeon_driver = {
 	"drm",
 	radeon_methods,
-	sizeof(struct drm_device)
+	sizeof(struct drm_softc)
 };
 
 module_init(radeon_init);
