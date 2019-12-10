@@ -44,6 +44,8 @@ struct device {
 	struct kobject kobj;
 
 	device_t	bsddev;
+
+	void		*driver_data;	/* for dev_set and get_drvdata */
 };
 
 struct device_driver {
@@ -69,10 +71,16 @@ dev_name(const struct device *dev)
 	return("dev_name");
 }
 
+static inline void
+dev_set_drvdata(struct device *dev, void *data)
+{
+	dev->driver_data = data;
+}
+
 static inline void *
 dev_get_drvdata(const struct device *dev)
 {
-	return device_get_softc(dev->bsddev);
+	return dev->driver_data;
 }
 
 static inline int
