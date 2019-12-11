@@ -6203,7 +6203,7 @@ enable_elantech(struct psm_softc *sc, enum probearg arg)
 {
 	static const int ic2hw[] =
 	/*IC: 0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f */
-	    { 0, 0, 2, 0, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0 };
+	    { 0, 0, 2, 0, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 };
 	elantechhw_t elanhw;
 	int icversion, hwversion, dptracex, dptracey, id, resp[3], dpix, dpiy;
 	KBDC kbdc = sc->kbdc;
