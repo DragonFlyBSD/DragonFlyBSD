@@ -111,8 +111,9 @@ DoRebuildRepo(int ask)
 }
 
 static void
-repackage(const char *basepath, const char *basefile, const char *sufx,
-	  const char *comp, const char *decomp);
+repackage(const char *basepath, const char *basefile,
+	  const char *decomp_suffix, const char *comp_suffix,
+	  const char *decomp, const char *comp);
 
 static void
 childRebuildRepo(bulk_t *bulk)
@@ -123,7 +124,7 @@ childRebuildRepo(bulk_t *bulk)
 	pid_t pid;
 	const char *cav[MAXCAC];
 	int cac;
-	int repackage_needed = 1;
+	int repackage_mode = 0;
 
 	cac = 0;
 	cav[cac++] = PKG_BINARY;
@@ -165,7 +166,7 @@ childRebuildRepo(bulk_t *bulk)
 		ptr[len-1] = 0;
 		if (sscanf(ptr, "%d.%d", &v1, &v2) == 2) {
 			if (v1 > 1 || (v1 == 1 && v2 >= 12))
-				repackage_needed = 0;
+				repackage_mode = 1;
 		}
 	}
 	dexec_close(fp, pid);
@@ -173,11 +174,11 @@ childRebuildRepo(bulk_t *bulk)
 	/*
 	 * Repackage the .txz files created by pkg repo if necessary
 	 */
-	if (repackage_needed && strcmp(UsePkgSufx, ".txz") != 0) {
+	if (repackage_mode == 0 && strcmp(UsePkgSufx, ".txz") != 0) {
 		const char *comp;
 		const char *decomp;
 
-		printf("pkg repo - version requires repackaging\n");
+		printf("pkg repo - recompressing digests and packagesite\n");
 
 		if (strcmp(UsePkgSufx, ".tar") == 0) {
 			decomp = "unxz";
@@ -189,28 +190,55 @@ childRebuildRepo(bulk_t *bulk)
 			decomp = "unxz";
 			comp = "bzip";
 		} else {
-			dfatal("repackaging as %s not supported", UsePkgSufx);
+			dfatal("recompressing as %s not supported",
+			       UsePkgSufx);
 			decomp = "unxz";
 			comp = "cat";
 		}
-		repackage(PackagesPath, "digests", UsePkgSufx,
-			  comp, decomp);
-		repackage(PackagesPath, "packagesite", UsePkgSufx,
-			  comp, decomp);
-	} else if (strcmp(UsePkgSufx, ".txz") != 0) {
-		printf("pkg repo - version does not require repackaging\n");
+		repackage(PackagesPath, "digests",
+			  ".txz", UsePkgSufx,
+			  decomp, comp);
+		repackage(PackagesPath, "packagesite",
+			  ".txz", UsePkgSufx,
+			  decomp, comp);
+	} else if (repackage_mode == 1 && strcmp(UsePkgSufx, ".txz") != 0) {
+		const char *comp;
+		const char *decomp;
+
+		printf("pkg repo - recompressing meta\n");
+
+		if (strcmp(UsePkgSufx, ".tar") == 0) {
+			decomp = "cat";
+			comp = "xz";
+		} else if (strcmp(UsePkgSufx, ".tgz") == 0) {
+			decomp = "gunzip";
+			comp = "xz";
+		} else if (strcmp(UsePkgSufx, ".tbz") == 0) {
+			decomp = "bunzip2";
+			comp = "xz";
+		} else {
+			dfatal("recompressing from %s not supported",
+			       UsePkgSufx);
+			decomp = "cat";
+			comp = "cat";
+		}
+		repackage(PackagesPath, "meta",
+			  UsePkgSufx, ".txz",
+			  decomp, comp);
 	}
 }
 
 static
 void
-repackage(const char *basepath, const char *basefile, const char *sufx,
-	  const char *comp, const char *decomp)
+repackage(const char *basepath, const char *basefile,
+	  const char *decomp_suffix, const char *comp_suffix,
+	  const char *decomp, const char *comp)
 {
 	char *buf;
 
-	asprintf(&buf, "%s < %s/%s.txz | %s > %s/%s%s",
-		decomp, basepath, basefile, comp, basepath, basefile, sufx);
+	asprintf(&buf, "%s < %s/%s%s | %s > %s/%s%s",
+		decomp, basepath, basefile, decomp_suffix,
+		comp, basepath, basefile, comp_suffix);
 	if (system(buf) != 0) {
 		dfatal("command failed: %s", buf);
 	}
