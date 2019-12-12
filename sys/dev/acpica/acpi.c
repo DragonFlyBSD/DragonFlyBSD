@@ -167,6 +167,10 @@ static int	acpi_child_pnpinfo_str_method(device_t acdev, device_t child,
 					      char *buf, size_t buflen);
 static void	acpi_enable_pcie(void);
 static void	acpi_reset_interfaces(device_t dev);
+static void	acpi_call_fixup_pointers(ACPI_OBJECT *p, UINT8 *orig);
+static int	acpi_call_ioctl(caddr_t addr);
+static ACPI_OBJECT_LIST *acpi_copyin_object_list(ACPI_OBJECT_LIST *src);
+static void	acpi_free_object_list(ACPI_OBJECT_LIST *list);
 
 static device_method_t acpi_methods[] = {
     /* Device interface */
@@ -3230,6 +3234,130 @@ acpiclose(struct dev_close_args *ap)
     return (0);
 }
 
+static void
+acpi_free_object_list(ACPI_OBJECT_LIST *list)
+{
+    for (int i = 0; i < list->Count; i++) {
+	switch (list->Pointer[i].Type) {
+	case ACPI_TYPE_STRING:
+	    AcpiOsFree(list->Pointer[i].String.Pointer);
+	    break;
+	case ACPI_TYPE_BUFFER:
+	    AcpiOsFree(list->Pointer[i].Buffer.Pointer);
+	    break;
+	default:
+	    break;
+	}
+    }
+    AcpiOsFree(list);
+}
+
+static ACPI_OBJECT_LIST *
+acpi_copyin_object_list(ACPI_OBJECT_LIST *src)
+{
+    ACPI_OBJECT_LIST	*dest;
+    BOOLEAN		failed;
+
+    if (src->Count > 7)
+	return NULL;
+
+    dest = AcpiOsAllocate(sizeof(ACPI_OBJECT_LIST) + sizeof(ACPI_OBJECT) * src->Count);
+    if (!dest)
+	return NULL;
+
+    dest->Count = src->Count;
+    dest->Pointer = (ACPI_OBJECT *)(dest + 1);
+    if (copyin(src->Pointer, dest->Pointer, sizeof(ACPI_OBJECT) * dest->Count)) {
+	AcpiOsFree(dest);
+	return NULL;
+    }
+
+    failed = FALSE;
+
+    for (int i = 0; i < dest->Count; i++) {
+	switch (dest->Pointer[i].Type) {
+	case ACPI_TYPE_INTEGER:
+	    break;
+	case ACPI_TYPE_STRING: {
+	    void *v = AcpiOsAllocate(dest->Pointer[i].String.Length);
+	    if (!v || copyin(dest->Pointer[i].String.Pointer, v, dest->Pointer[i].String.Length))
+		failed = TRUE;
+	    dest->Pointer[i].String.Pointer = v;
+	    break;
+	}
+	case ACPI_TYPE_BUFFER: {
+	    void *v = AcpiOsAllocate(dest->Pointer[i].Buffer.Length);
+	    if (!v || copyin(dest->Pointer[i].Buffer.Pointer, v, dest->Pointer[i].Buffer.Length))
+		failed = TRUE;
+	    dest->Pointer[i].String.Pointer = v;
+	    break;
+	}
+	default:
+	    failed = TRUE;
+	    break;
+	}
+    }
+
+    if (failed) {
+	acpi_free_object_list(dest);
+	dest = NULL;
+    }
+
+    return dest;
+}
+
+static int
+acpi_call_ioctl(caddr_t addr)
+{
+    struct acpi_mcall_ioctl_arg *params;
+    ACPI_OBJECT_LIST	*args;
+    ACPI_BUFFER		result;
+    char		path[256];
+
+    result.Length = ACPI_ALLOCATE_BUFFER;
+    result.Pointer = NULL;
+
+    params = (struct acpi_mcall_ioctl_arg *)addr;
+    args = acpi_copyin_object_list(&params->args);
+    if (!args)
+	return EINVAL;
+    if (copyinstr(params->path, path, sizeof(path), NULL))
+	return EINVAL;
+    params->retval = AcpiEvaluateObject(NULL, path, args, &result);
+    if (ACPI_SUCCESS(params->retval)) {
+	if (result.Pointer != NULL) {
+	    if (params->result.Pointer != NULL) {	
+		params->result.Length = min(params->result.Length,
+		    result.Length);
+		if (result.Length >= sizeof(ACPI_OBJECT)) {
+		    acpi_call_fixup_pointers((ACPI_OBJECT *)result.Pointer,
+			params->result.Pointer);
+		}
+		copyout(result.Pointer, params->result.Pointer,
+		    params->result.Length);
+		params->reslen = result.Length;
+	    }
+	    AcpiOsFree(result.Pointer);
+	}
+    }
+    acpi_free_object_list(args);
+
+    return (0);
+}
+
+void
+acpi_call_fixup_pointers(ACPI_OBJECT *p, UINT8 *dest)
+{
+    switch (p->Type) {
+    case ACPI_TYPE_STRING:
+	p->String.Pointer += dest - (UINT8 *)p;
+	break;
+    case ACPI_TYPE_BUFFER:
+	p->Buffer.Pointer += dest - (UINT8 *)p;
+	break;
+    }
+}
+
 static int
 acpiioctl(struct dev_ioctl_args *ap)
 {
@@ -3297,44 +3425,11 @@ acpiioctl(struct dev_ioctl_args *ap)
 	break;
     case ACPIIO_DO_MCALL:
 	if (acpi_allow_mcall == 1) {
-	    struct acpi_mcall_ioctl_arg *params;
-	    ACPI_BUFFER result = { ACPI_ALLOCATE_BUFFER, NULL };
-	    ACPI_OBJECT *resobj;
-
-	    error = EINVAL;
-	    params = (struct acpi_mcall_ioctl_arg *)ap->a_data;
-	    params->retval = AcpiEvaluateObject(NULL, params->path,
-		&params->args, &result);
-	    if (ACPI_SUCCESS(params->retval) && result.Pointer != NULL &&
-		params->result.Pointer != NULL) {
-		params->result.Length = min(params->result.Length,
-		    result.Length);
-		copyout(result.Pointer, params->result.Pointer,
-		    params->result.Length);
-		params->reslen = result.Length;
-		if (result.Length >= sizeof(ACPI_OBJECT)) {
-		    resobj = (ACPI_OBJECT *)params->result.Pointer;
-		    switch (resobj->Type) {
-		    case ACPI_TYPE_STRING:
-			resobj->String.Pointer = (char *)
-			    ((UINT8 *)(resobj->String.Pointer) -
-				(UINT8 *)result.Pointer +
-				(UINT8 *)resobj);
-			break;
-		    case ACPI_TYPE_BUFFER:
-			resobj->Buffer.Pointer -= (UINT8 *)result.Pointer -
-			    (UINT8 *)resobj;
-			break;
-		    }
-		}
-		error = 0;
-	    }
-	    if (result.Pointer != NULL)
-		AcpiOsFree(result.Pointer);
+	    error = acpi_call_ioctl(ap->a_data);
 	} else {
-		device_printf(sc->acpi_dev,
-		    "debug.acpi.allow_method_calls must be set\n");
-		error = ENXIO;
+	    device_printf(sc->acpi_dev,
+		"debug.acpi.allow_method_calls must be set\n");
+	    error = ENXIO;
 	}
 	break;
     default:
