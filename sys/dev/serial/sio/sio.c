@@ -257,7 +257,6 @@ int	comconsole = -1;
 static	volatile speed_t	comdefaultrate = CONSPEED;
 static	u_long			comdefaultrclk = DEFAULT_RCLK;
 SYSCTL_ULONG(_machdep, OID_AUTO, conrclk, CTLFLAG_RW, &comdefaultrclk, 0, "");
-static	u_int	com_events;	/* input chars + weighted output completions */
 static	Port_t	siocniobase;
 static	int	siocnunit;
 static	Port_t	siogdbiobase;
@@ -1668,76 +1667,41 @@ siodtrwakeup(void *chan)
  *
  *	 Must be called with com_lock
  */
+#define SIOCOPYSIZE	64
+
 static void
 sioinput(struct com_s *com)
 {
-	u_char		*buf;
-	int		incc;
 	u_char		line_status;
 	int		recv_data;
+	int		incc;
+	int		i;
 	struct tty	*tp;
+	uint8_t		buf[SIOCOPYSIZE];
 
-	buf = com->ibuf;
+	/*
+	 * Process a block of data queued by siointr1() and shift the buffer
+	 * in order to allow the interrupt to continue to pipeline data as
+	 * we process each block.  This is a retrofit of old code, otherwise
+	 * I'd just use a rollover FIFO.
+	 */
 	tp = com->tp;
+again:
 	if (!(tp->t_state & TS_ISOPEN) || !(tp->t_cflag & CREAD)) {
-		com_events -= (com->iptr - com->ibuf);
 		com->iptr = com->ibuf;
 		return;
 	}
-	if (tp->t_state & TS_CAN_BYPASS_L_RINT) {
-		/*
-		 * Avoid the grotesquely inefficient lineswitch routine
-		 * (ttyinput) in "raw" mode.  It usually takes about 450
-		 * instructions (that's without canonical processing or echo!).
-		 * slinput is reasonably fast (usually 40 instructions plus
-		 * call overhead).
-		 */
-		do {
-			com_unlock();
-			incc = com->iptr - buf;
-			if (tp->t_rawq.c_cc + incc > tp->t_ihiwat
-			    && (com->state & CS_RTS_IFLOW
-				|| tp->t_iflag & IXOFF)
-			    && !(tp->t_state & TS_TBLOCK))
-				ttyblock(tp);
-			com->delta_error_counts[CE_TTY_BUF_OVERFLOW]
-				+= clist_btoq((char *)buf, incc, &tp->t_rawq);
-			buf += incc;
-			tk_nin += incc;
-			tk_rawcc += incc;
-			tp->t_rawcc += incc;
-			ttwakeup(tp);
-			if (tp->t_state & TS_TTSTOP
-			    && (tp->t_iflag & IXANY
-				|| tp->t_cc[VSTART] == tp->t_cc[VSTOP])) {
-				tp->t_state &= ~TS_TTSTOP;
-				tp->t_lflag &= ~FLUSHO;
-				comstart(tp);
-			}
-			com_lock();
-		} while (buf < com->iptr);
+	incc = com->iptr - com->ibuf;
+	if (incc > SIOCOPYSIZE) {
+		bcopy(com->ibuf, buf, SIOCOPYSIZE);
+		bcopy(com->ibuf + SIOCOPYSIZE, com->ibuf, incc - SIOCOPYSIZE);
+		com->iptr = com->ibuf + incc - SIOCOPYSIZE;
+		incc = SIOCOPYSIZE;
 	} else {
-		do {
-			com_unlock();
-			line_status = buf[com->ierroff];
-			recv_data = *buf++;
-			if (line_status
-			    & (LSR_BI | LSR_FE | LSR_OE | LSR_PE)) {
-				if (line_status & LSR_BI)
-					recv_data |= TTY_BI;
-				if (line_status & LSR_FE)
-					recv_data |= TTY_FE;
-				if (line_status & LSR_OE)
-					recv_data |= TTY_OE;
-				if (line_status & LSR_PE)
-					recv_data |= TTY_PE;
-			}
-			(*linesw[tp->t_line].l_rint)(recv_data, tp);
-			com_lock();
-		} while (buf < com->iptr);
+		bcopy(com->ibuf, buf, incc);
+		com->iptr = com->ibuf;
 	}
-	com_events -= (com->iptr - com->ibuf);
-	com->iptr = com->ibuf;
+	line_status = com->iptr[com->ierroff];
 
 	/*
 	 * There is now room for another low-level buffer full of input,
@@ -1745,8 +1709,34 @@ sioinput(struct com_s *com)
 	 * high-level buffer.
 	 */
 	if ((com->state & CS_RTS_IFLOW) && !(com->mcr_image & MCR_RTS) &&
-	    !(tp->t_state & TS_TBLOCK))
+	    !(tp->t_state & TS_TBLOCK)) {
 		outb(com->modem_ctl_port, com->mcr_image |= MCR_RTS);
+	}
+	com_unlock();
+
+	/*
+	 * Process the input block
+	 */
+	for (i = 0; i < incc; ++i) {
+		recv_data = buf[i];
+		if (line_status
+		    & (LSR_BI | LSR_FE | LSR_OE | LSR_PE)) {
+			if (line_status & LSR_BI)
+				recv_data |= TTY_BI;
+			if (line_status & LSR_FE)
+				recv_data |= TTY_FE;
+			if (line_status & LSR_OE)
+				recv_data |= TTY_OE;
+			if (line_status & LSR_PE)
+				recv_data |= TTY_PE;
+		}
+		(*linesw[tp->t_line].l_rint)(recv_data, tp);
+		line_status = 0;
+	}
+	com_lock();
+
+	if (com->iptr != com->ibuf)
+		goto again;
 }
 
 static void
@@ -1900,12 +1890,11 @@ siointr1(struct com_s *com)
 			if (com->hotchar != 0 && recv_data == com->hotchar)
 				setsofttty();
 			ioptr = com->iptr;
-			if (ioptr >= com->ibufend)
+			if (ioptr >= com->ibufend) {
 				CE_RECORD(com, CE_INTERRUPT_BUF_OVERFLOW);
-			else {
+			} else {
 				if (com->do_timestamp)
 					microtime(&com->timestamp);
-				++com_events;
 				schedsofttty();
 #if 0 /* for testing input latency vs efficiency */
 if (com->iptr - com->ibuf == 8)
@@ -1945,7 +1934,6 @@ cont:
 			 */
 			com->last_modem_status = modem_status;
 			if (!(com->state & CS_CHECKMSR)) {
-				com_events += LOTS_OF_EVENTS;
 				com->state |= CS_CHECKMSR;
 				setsofttty();
 			}
@@ -1999,7 +1987,6 @@ cont:
 					com->state &= ~CS_BUSY;
 				}
 				if (!(com->state & CS_ODONE)) {
-					com_events += LOTS_OF_EVENTS;
 					com->state |= CS_ODONE;
 					setsofttty();	/* handle at high level ASAP */
 				}
@@ -2181,15 +2168,12 @@ sioioctl(struct dev_ioctl_args *ap)
 static void
 siopoll(void *dummy, void *frame)
 {
-	int		unit;
+	int	unit;
+	int	any;
 
 	lwkt_gettoken(&tty_token);
-	if (com_events == 0) {
-		lwkt_reltoken(&tty_token);
-		return;
-	}
-
 repeat:
+	any = 0;
 	for (unit = 0; unit < sio_numunits; ++unit) {
 		struct com_s	*com;
 		int		incc;
@@ -2211,7 +2195,6 @@ repeat:
 				incc += LOTS_OF_EVENTS;
 				com->state &= ~CS_CHECKMSR;
 			}
-			com_events -= incc;
 			com_unlock();
 			continue;
 		}
@@ -2219,6 +2202,7 @@ repeat:
 			com_lock();
 			sioinput(com);
 			com_unlock();
+			any = 1;
 		}
 		if (com->state & CS_CHECKMSR) {
 			u_char	delta_modem_status;
@@ -2227,16 +2211,17 @@ repeat:
 			delta_modem_status = com->last_modem_status
 					     ^ com->prev_modem_status;
 			com->prev_modem_status = com->last_modem_status;
-			com_events -= LOTS_OF_EVENTS;
 			com->state &= ~CS_CHECKMSR;
 			com_unlock();
-			if (delta_modem_status & MSR_DCD)
+			if (delta_modem_status)
+				any = 1;
+			if (delta_modem_status & MSR_DCD) {
 				(*linesw[tp->t_line].l_modem)
 					(tp, com->prev_modem_status & MSR_DCD);
+			}
 		}
 		if (com->state & CS_ODONE) {
 			com_lock();
-			com_events -= LOTS_OF_EVENTS;
 			com->state &= ~CS_ODONE;
 			com_unlock();
 			if (!(com->state & CS_BUSY)
@@ -2247,10 +2232,8 @@ repeat:
 			}
 			(*linesw[tp->t_line].l_start)(tp);
 		}
-		if (com_events == 0)
-			break;
 	}
-	if (com_events >= LOTS_OF_EVENTS)
+	if (any)
 		goto repeat;
 	lwkt_reltoken(&tty_token);
 }
@@ -2627,8 +2610,6 @@ comstop(struct tty *tp, int rw)
 				   FIFO_XMT_RST | com->fifo_image);
 		com->obufs[0].l_queued = FALSE;
 		com->obufs[1].l_queued = FALSE;
-		if (com->state & CS_ODONE)
-			com_events -= LOTS_OF_EVENTS;
 		com->state &= ~(CS_ODONE | CS_BUSY);
 		com->tp->t_state &= ~TS_BUSY;
 	}
@@ -2640,7 +2621,6 @@ comstop(struct tty *tp, int rw)
 #endif
 			sio_setreg(com, com_fifo,
 				   FIFO_RCV_RST | com->fifo_image);
-		com_events -= (com->iptr - com->ibuf);
 		com->iptr = com->ibuf;
 	}
 	com_unlock();
