@@ -180,6 +180,10 @@ Empty by default.
 Additional flags passed to the
 .Xr powerd 8
 program.
+.Pp
+If you are running a serial port at 115200 baud we recommend setting
+the flags to "-l 1500" as lower frequencies will cause characters to
+drop.
 .It Va sensorsd_enable
 .Pq Vt bool
 Set to

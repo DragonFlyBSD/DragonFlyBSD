@@ -73,6 +73,10 @@ than the specified limit (unit: MHz).
 NOTE: This option is ignored if powerd is in temperature management.
 Temperature management will lower the frequency in excess of this value
 if necessary (but usually doesn't have to).
+.Pp
+NOTE: If you are using a serial port at 115200 baud, it is recommended
+you not allow the frequency to drop below 1500 Mhz or you might lose
+characters.
 .It Fl p Ar hysteresis
 Percent of the upper limit to subtract as an hysteresis value to scale
 down to the min performance.
