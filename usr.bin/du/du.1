@@ -43,6 +43,7 @@
 .Op Fl c
 .Op Fl h | k
 .Op Fl x
+.Op Fl t
 .Op Ar
 .Sh DESCRIPTION
 The
@@ -87,6 +88,16 @@ This option exists solely for conformance with
 Display an entry for each specified file.
 (Equivalent to
 .Fl d Li 0 )
+.It Fl t
+Calculate the apparent size based on the file size (st_size) instead
+of the actual media space used based on st_blkcnt.  This is meant to
+give the caller an idea of how much data is present in actual transmittable
+bytes if it were to be copied or sent elsewhere.
+.Pp
+To make this calculation
+.Nm
+uses st_size and assumes a media blocking granularity of 512 bytes.
+Any holes present in the file are counted as transmittable data.
 .It Fl d Ar depth
 Display an entry for all files and directories
 .Ar depth

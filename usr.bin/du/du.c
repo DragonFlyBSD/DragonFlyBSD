@@ -53,6 +53,8 @@
 #define	HASHSIZE	256		/* power of 2 only */
 #define HASHMASK	(HASHSIZE - 1)
 
+#define STBLOCKS(statp)	_stblocks(tflag, statp)
+
 SLIST_HEAD(ignhead, ignentry) ignores;
 struct ignentry {
 	char			*mask;
@@ -70,6 +72,15 @@ static char period[] = ".";
 
 typedef long long	du_number_t;
 
+static blkcnt_t
+_stblocks(int tflag, struct stat *st)
+{
+	if (tflag)
+		return (st->st_size + 511) / 512;
+	else
+		return st->st_blocks;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -80,17 +91,20 @@ main(int argc, char **argv)
 	int		ftsoptions;
 	int		listall;
 	int		depth;
-	int		Hflag, Lflag, Pflag, aflag, sflag, dflag, cflag, hflag, ch, notused, rval;
+	int		Hflag, Lflag, Pflag;
+	int		aflag, sflag, dflag, cflag, hflag, tflag;
+	int		ch, notused, rval;
 	char 		**save;
 
-	Hflag = Lflag = Pflag = aflag = sflag = dflag = cflag = hflag = 0;
+	Hflag = Lflag = Pflag = 0;
+	aflag = sflag = dflag = cflag = hflag = tflag = 0;
 	
 	save = argv;
 	ftsoptions = 0;
 	depth = INT_MAX;
 	SLIST_INIT(&ignores);
 	
-	while ((ch = getopt(argc, argv, "HI:LPasd:chkrx")) != -1)
+	while ((ch = getopt(argc, argv, "HI:LPastd:chkrx")) != -1)
 		switch (ch) {
 			case 'H':
 				Hflag = 1;
@@ -113,6 +127,9 @@ main(int argc, char **argv)
 				break;
 			case 's':
 				sflag = 1;
+				break;
+			case 't':
+				tflag = 1;
 				break;
 			case 'd':
 				dflag = 1;
@@ -217,13 +234,13 @@ main(int argc, char **argv)
 					p->fts_pointer = malloc(sizeof(du_number_t));
 					*(du_number_t *)p->fts_pointer = 0;
 				}
-				*(du_number_t *)p->fts_pointer += p->fts_statp->st_blocks;
+				*(du_number_t *)p->fts_pointer += STBLOCKS(p->fts_statp);
 
 				if (p->fts_parent->fts_pointer == NULL) {
 					p->fts_parent->fts_pointer = malloc(sizeof(du_number_t));
 					*(du_number_t *)p->fts_parent->fts_pointer = 0;
 				}
-				*(du_number_t *)p->fts_parent->fts_pointer += *(du_number_t *)p->fts_pointer += p->fts_statp->st_blocks;
+				*(du_number_t *)p->fts_parent->fts_pointer += *(du_number_t *)p->fts_pointer += STBLOCKS(p->fts_statp);
 				
 				if (p->fts_level <= depth) {
 					if (hflag) {
@@ -257,12 +274,12 @@ main(int argc, char **argv)
 				
 				if (listall || p->fts_level == 0) {
 					if (hflag) {
-						(void) prthumanval(howmany(p->fts_statp->st_blocks,
+						(void) prthumanval(howmany(STBLOCKS(p->fts_statp),
 							blocksize));
 						(void) printf("\t%s\n", p->fts_path);
 					} else {
 						(void) printf("%lld\t%s\n",
-							howmany((long long)p->fts_statp->st_blocks, blocksize),
+							howmany((long long)STBLOCKS(p->fts_statp), blocksize),
 							p->fts_path);
 					}
 				}
@@ -270,7 +287,7 @@ main(int argc, char **argv)
 					p->fts_parent->fts_pointer = malloc(sizeof(du_number_t));
 					*(du_number_t *)p->fts_parent->fts_pointer = 0;
 				}
-				*(du_number_t *)p->fts_parent->fts_pointer += p->fts_statp->st_blocks;
+				*(du_number_t *)p->fts_parent->fts_pointer += STBLOCKS(p->fts_statp);
 		}
 		if (p->fts_parent->fts_pointer)
 			savednumber = *(du_number_t *)p->fts_parent->fts_pointer;
