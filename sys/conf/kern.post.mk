@@ -43,17 +43,11 @@ ${mfile:T:S/.m$/.h/}: ${mfile}
 .endfor
 
 kernel-clean:
-	rm -f *.o *.so *.So *.ko *.s eddep errs \
+	rm -f *.o *.so *.So *.ko *.s errs \
 	      ${KERNEL} ${KERNEL}.debug ${KERNEL}.nodebug ${KERNEL}.stripped \
-	      linterrs setdef[01].c setdefs.h tags vers.c \
+	      tags vers.c \
 	      ${MFILES:T:S/.m$/.c/} ${MFILES:T:S/.m$/.h/} \
 	      ${CLEAN}
-
-#lint: /tmp
-#	@lint -hbxn -DGENERIC -Dvolatile= ${COPTS} \
-#	  $S/platform/$P/$M/Locore.c ${CFILES} ioconf.c | \
-#	    grep -v 'struct/union .* never defined' | \
-#	    grep -v 'possible pointer alignment problem'
 
 locore.o: $S/platform/$P/$M/locore.s assym.s
 	${NORMAL_S}

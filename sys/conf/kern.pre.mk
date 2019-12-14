@@ -52,17 +52,11 @@ COPTFLAGS+= ${_CPUCFLAGS}
 #	  the platform to trivially override the cpu header files.
 #
 INCLUDES= -nostdinc -I. -Iinclude -I$S
-# This hack is to allow kernel compiles to succeed on machines w/out srcdist
-.if exists($S/../include)
-INCLUDES+= -I$S/../include
-.else
-INCLUDES+= -I/usr/include
-.endif
 
 # This hack lets us use the Intel ACPICA code without spamming a new
 # include path into 100+ source files.
 .include "$S/conf/acpi.mk"
-INCLUDES+= -I${.OBJDIR} -I"$S/${OSACPI_MI_DIR}" -I"$S/${ACPICA_DIR}/include"
+INCLUDES+= -I${.OBJDIR} -I$S/${OSACPI_MI_DIR} -I$S/${ACPICA_DIR}/include
 
 # ... and the same for Atheros HAL
 INCLUDES+= -I$S/dev/netif/ath/ath_hal -I$S/contrib/dev/ath/ath_hal
