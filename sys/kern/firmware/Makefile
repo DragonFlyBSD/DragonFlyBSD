@@ -3,6 +3,6 @@
 .PATH: ${.CURDIR}/..
 
 KMOD=	firmware
-SRCS=	subr_firmware.c #vnode_if.h
+SRCS=	subr_firmware.c
 
 .include <bsd.kmod.mk>

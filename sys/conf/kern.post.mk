@@ -45,8 +45,7 @@ ${mfile:T:S/.m$/.h/}: ${mfile}
 kernel-clean:
 	rm -f *.o *.so *.So *.ko *.s eddep errs \
 	      ${KERNEL} ${KERNEL}.debug ${KERNEL}.nodebug ${KERNEL}.stripped \
-	      linterrs setdef[01].c setdefs.h tags \
-	      vers.c vnode_if.c vnode_if.h \
+	      linterrs setdef[01].c setdefs.h tags vers.c \
 	      ${MFILES:T:S/.m$/.c/} ${MFILES:T:S/.m$/.h/} \
 	      ${CLEAN}
 

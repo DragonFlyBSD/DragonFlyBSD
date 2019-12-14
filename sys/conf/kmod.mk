@@ -357,17 +357,6 @@ ${_src}: @/tools/makeobjops.awk @/${_srcsrc}
 .endfor # _ext
 .endfor # _srcsrc
 
-#.for _ext in c h
-#.if ${SRCS:Mvnode_if.${_ext}} != ""
-#CLEANFILES+=	vnode_if.${_ext}
-#vnode_if.${_ext}: @
-#.if exists(@)
-#vnode_if.${_ext}: @/tools/vnode_if.awk @/kern/vnode_if.src
-#.endif
-#	awk -f @/tools/vnode_if.awk -- -${_ext} @/kern/vnode_if.src
-#.endif
-#.endfor
-
 .if !empty(SRCS:Mmiidevs.h)
 CLEANFILES+=	miidevs.h
 .if !exists(@)
