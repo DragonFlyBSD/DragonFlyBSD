@@ -27,6 +27,10 @@
  *
  */
 
+#ifdef __DragonFly__
+#include "opt_drm.h"	/* for VGA_SWITCHEROO */
+#endif
+
 #include <linux/acpi.h>
 #include <linux/device.h>
 #include <linux/module.h>
