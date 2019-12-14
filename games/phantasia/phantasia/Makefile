@@ -15,7 +15,7 @@ DATAFILES=	characs gold lastdead mess motd scoreboard void
 CLEANFILES=	${DATAFILES} map monsters
 
 FILES=		monsters
-FILESMODE=	640
+FILESMODE=	660
 FILESGRP=	${BINGRP}
 FILESDIR=	/var/games/phantasia
 
