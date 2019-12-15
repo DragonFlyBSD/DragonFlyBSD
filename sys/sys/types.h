@@ -64,8 +64,14 @@ typedef	__uint64_t	u_quad_t;	/* quads */
 typedef	__int64_t	quad_t;
 typedef	quad_t *	qaddr_t;
 
+#ifndef _BLKCNT_T_DECLARED
 typedef	__int64_t	blkcnt_t;	/* file block count */
+#define	_BLKCNT_T_DECLARED
+#endif
+#ifndef _BLKSIZE_T_DECLARED
 typedef	__int64_t	blksize_t;	/* block size */
+#define	_BLKSIZE_T_DECLARED
+#endif
 typedef	char *		caddr_t;	/* core address */
 typedef	const char *	c_caddr_t;	/* core address, pointer to const */
 typedef	volatile char *	v_caddr_t;	/* core address, pointer to volatile */
@@ -100,7 +106,10 @@ typedef	__uint32_t	in_addr_t;	/* base type for internet address */
 typedef	__uint16_t	in_port_t;
 #define	_IN_PORT_T_DECLARED
 #endif
+#ifndef _INO_T_DECLARED
 typedef	__uint64_t	ino_t;		/* inode number */
+#define	_INO_T_DECLARED
+#endif
 #ifndef _KEY_T_DECLARED
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
 #define	_KEY_T_DECLARED
@@ -109,7 +118,10 @@ typedef	long		key_t;		/* IPC key (for Sys V IPC) */
 typedef	__uint16_t	mode_t;		/* permissions */
 #define	_MODE_T_DECLARED
 #endif
+#ifndef _NLINK_T_DECLARED
 typedef	__uint32_t	nlink_t;	/* link count */
+#define	_NLINK_T_DECLARED
+#endif
 #ifndef _OFF_T_DECLARED
 typedef	__off_t		off_t;		/* file offset */
 #define	_OFF_T_DECLARED
