@@ -226,6 +226,7 @@ vm_offset_t virtual_end;	/* VA of last avail page (end of kernel AS) */
 vm_offset_t KvaStart;		/* VA start of KVA space */
 vm_offset_t KvaEnd;		/* VA end of KVA space (non-inclusive) */
 vm_offset_t KvaSize;		/* max size of kernel virtual address space */
+vm_offset_t DMapMaxAddress;
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 //static int pgeflag;		/* PG_G or-in */
 uint64_t PatMsr;
@@ -235,7 +236,7 @@ static vm_paddr_t dmaplimit;
 vm_offset_t kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
 
 static pt_entry_t pat_pte_index[PAT_INDEX_SIZE];	/* PAT -> PG_ bits */
-/*static pt_entry_t pat_pde_index[PAT_INDEX_SIZE];*/	/* PAT -> PG_ bits */
+static pt_entry_t pat_pde_index[PAT_INDEX_SIZE];	/* PAT -> PG_ bits */
 
 static uint64_t KPTbase;
 static uint64_t KPTphys;
@@ -873,6 +874,8 @@ create_pagetables(vm_paddr_t *firstaddr)
 	if (ndmpdp < 4)		/* Minimum 4GB of dirmap */
 		ndmpdp = 4;
 	KKASSERT(ndmpdp <= NDMPML4E * NPML4EPG);
+	DMapMaxAddress = DMAP_MIN_ADDRESS +
+			 ((ndmpdp * NPDEPG) << PDRSHIFT);
 
 	/*
 	 * Starting at KERNBASE - map all 2G worth of page table pages.
@@ -931,11 +934,17 @@ create_pagetables(vm_paddr_t *firstaddr)
 	KPDbase = allocpages(firstaddr, NPDPEPG - KPDPI);
 
 	/*
-	 * Stuff for our DMAP
+	 * Stuff for our DMAP.  Use 2MB pages even when 1GB pages
+	 * are available in order to allow APU code to adjust page
+	 * attributes on a fixed grain (see pmap_change_attr()).
 	 */
 	DMPDPphys = allocpages(firstaddr, NDMPML4E);
+#if 1
+	DMPDphys = allocpages(firstaddr, ndmpdp);
+#else
 	if ((amd_feature & AMDID_PAGE1GB) == 0)
 		DMPDphys = allocpages(firstaddr, ndmpdp);
+#endif
 	dmaplimit = (vm_paddr_t)ndmpdp << PDPSHIFT;
 
 	/*
@@ -1021,8 +1030,15 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 *
 	 * When filling in entries in the PD pages make sure any excess
 	 * entries are set to zero as we allocated enough PD pages
+	 *
+	 * Stuff for our DMAP.  Use 2MB pages even when 1GB pages
+	 * are available in order to allow APU code to adjust page
+	 * attributes on a fixed grain (see pmap_change_attr()).
 	 */
-	if ((amd_feature & AMDID_PAGE1GB) == 0) {
+#if 0
+	if ((amd_feature & AMDID_PAGE1GB) == 0)
+#endif
+	{
 		/*
 		 * Use 2MB pages
 		 */
@@ -1045,9 +1061,12 @@ create_pagetables(vm_paddr_t *firstaddr)
 							(i << PAGE_SHIFT);
 			((pdp_entry_t *)DMPDPphys)[i] |=
 			    pmap_bits_default[PG_RW_IDX] |
-			    pmap_bits_default[PG_V_IDX];
+			    pmap_bits_default[PG_V_IDX] |
+			    pmap_bits_default[PG_A_IDX];
 		}
-	} else {
+	}
+#if 0
+	else {
 		/*
 		 * 1GB pages
 		 */
@@ -1063,6 +1082,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 			    pmap_bits_default[PG_A_IDX];
 		}
 	}
+#endif
 
 	/* And recursively map PML4 to itself in order to get PTmap */
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] = KPML4phys;
@@ -1219,6 +1239,7 @@ pmap_init_pat(void)
 {
 	uint64_t pat_msr;
 	u_long cr0, cr4;
+	int i;
 
 	/*
 	 * Default values mapping PATi,PCD,PWT bits at system reset.
@@ -1281,6 +1302,17 @@ pmap_init_pat(void)
 		load_cr0(cr0);
 		load_cr4(cr4);
 		PatMsr = pat_msr;
+	}
+
+	for (i = 0; i < 8; ++i) {
+		pt_entry_t pte;
+
+		pte = pat_pte_index[i];
+		if (pte & X86_PG_PTE_PAT) {
+			pte &= ~X86_PG_PTE_PAT;
+			pte |= X86_PG_PDE_PAT;
+		}
+		pat_pde_index[i] = pte;
 	}
 }
 
@@ -2057,7 +2089,7 @@ _pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count, int doinval)
 		pte = VM_PAGE_TO_PHYS(*m) |
 			kernel_pmap.pmap_bits[PG_RW_IDX] |
 			kernel_pmap.pmap_bits[PG_V_IDX] |
-			kernel_pmap.pmap_cache_bits[(*m)->pat_mode];
+			kernel_pmap.pmap_cache_bits_pte[(*m)->pat_mode];
 //		pgeflag;
 		atomic_swap_long(ptep, pte);
 		m++;
@@ -2178,9 +2210,12 @@ pmap_pinit_defaults(struct pmap *pmap)
 	      sizeof(pmap_bits_default));
 	bcopy(protection_codes, pmap->protection_codes,
 	      sizeof(protection_codes));
-	bcopy(pat_pte_index, pmap->pmap_cache_bits,
+	bcopy(pat_pte_index, pmap->pmap_cache_bits_pte,
 	      sizeof(pat_pte_index));
-	pmap->pmap_cache_mask = X86_PG_NC_PWT | X86_PG_NC_PCD | X86_PG_PTE_PAT;
+	bcopy(pat_pde_index, pmap->pmap_cache_bits_pde,
+	      sizeof(pat_pte_index));
+	pmap->pmap_cache_mask_pte = X86_PG_NC_PWT | X86_PG_NC_PCD | X86_PG_PTE_PAT;
+	pmap->pmap_cache_mask_pde = X86_PG_NC_PWT | X86_PG_NC_PCD | X86_PG_PDE_PAT;
 	pmap->copyinstr = std_copyinstr;
 	pmap->copyin = std_copyin;
 	pmap->copyout = std_copyout;
@@ -4899,7 +4934,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		newpte |= pmap->pmap_bits[PG_MANAGED_IDX];
 //	if (pmap == &kernel_pmap)
 //		newpte |= pgeflag;
-	newpte |= pmap->pmap_cache_bits[m->pat_mode];
+	newpte |= pmap->pmap_cache_bits_pte[m->pat_mode];
 
 	/*
 	 * It is possible for multiple faults to occur in threaded
@@ -5803,7 +5838,7 @@ pmap_mapdev_attr(vm_paddr_t pa, vm_size_t size, int mode)
 		*pte = pa |
 		    kernel_pmap.pmap_bits[PG_RW_IDX] |
 		    kernel_pmap.pmap_bits[PG_V_IDX] | /* pgeflag | */
-		    kernel_pmap.pmap_cache_bits[mode];
+		    kernel_pmap.pmap_cache_bits_pte[mode];
 		tmpsize -= PAGE_SIZE;
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;
@@ -5848,6 +5883,10 @@ pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma)
  * Change the PAT attribute on an existing kernel memory map.  Caller
  * must ensure that the virtual memory in question is not accessed
  * during the adjustment.
+ *
+ * If the va is within the DMAP we cannot use vtopte() because the DMAP
+ * utilizes 2MB or 1GB pages.  2MB is forced atm so calculate the pd_entry
+ * pointer based on that.
  */
 void
 pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
@@ -5860,12 +5899,30 @@ pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
 		panic("pmap_change_attr: va is NULL");
 	base = trunc_page(va);
 
-	while (count) {
-		pte = vtopte(va);
-		*pte = (*pte & ~(pt_entry_t)(kernel_pmap.pmap_cache_mask)) |
-		       kernel_pmap.pmap_cache_bits[mode];
-		--count;
-		va += PAGE_SIZE;
+	if (va >= DMAP_MIN_ADDRESS && va < DMAP_MAX_ADDRESS) {
+		pd_entry_t *pd;
+
+		KKASSERT(va < DMapMaxAddress);
+		pd = (pd_entry_t *)PHYS_TO_DMAP(DMPDphys);
+		pd += (va - DMAP_MIN_ADDRESS) >> PDRSHIFT;
+
+		while ((long)count > 0) {
+			*pd =
+			   (*pd & ~(pd_entry_t)(kernel_pmap.pmap_cache_mask_pde)) |
+			   kernel_pmap.pmap_cache_bits_pde[mode];
+			count -= NBPDR / PAGE_SIZE;
+			va += NBPDR;
+			++pd;
+		}
+	} else {
+		while (count) {
+			pte = vtopte(va);
+			*pte =
+			   (*pte & ~(pt_entry_t)(kernel_pmap.pmap_cache_mask_pte)) |
+			   kernel_pmap.pmap_cache_bits_pte[mode];
+			--count;
+			va += PAGE_SIZE;
+		}
 	}
 
 	changed = 1;	/* XXX: not optimal */

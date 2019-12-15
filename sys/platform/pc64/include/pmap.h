@@ -303,8 +303,10 @@ struct pmap {
 	long			pm_invgen;
 	uint64_t		pmap_bits[PG_BITS_SIZE];
 	uint64_t		protection_codes[PROTECTION_CODES_SIZE];
-	pt_entry_t		pmap_cache_bits[PAT_INDEX_SIZE];
-	pt_entry_t		pmap_cache_mask;
+	pt_entry_t		pmap_cache_bits_pte[PAT_INDEX_SIZE];
+	pt_entry_t		pmap_cache_bits_pde[PAT_INDEX_SIZE];
+	pt_entry_t		pmap_cache_mask_pte;
+	pt_entry_t		pmap_cache_mask_pde;
 	int (*copyinstr)(const void *, void *, size_t, size_t *);
 	int (*copyin)(const void *, void *, size_t);
 	int (*copyout)(const void *, void *, size_t);

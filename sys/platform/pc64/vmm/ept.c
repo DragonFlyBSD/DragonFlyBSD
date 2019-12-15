@@ -587,9 +587,12 @@ vmx_ept_pmap_pinit(pmap_t pmap)
 	bcopy(pmap_bits_ept, pmap->pmap_bits, sizeof(pmap_bits_ept));
 	bcopy(ept_protection_codes, pmap->protection_codes,
 	      sizeof(ept_protection_codes));
-	bcopy(pmap_cache_bits_ept, pmap->pmap_cache_bits,
+	bcopy(pmap_cache_bits_ept, pmap->pmap_cache_bits_pte,
 	      sizeof(pmap_cache_bits_ept));
-	pmap->pmap_cache_mask = pmap_cache_mask_ept;
+	bcopy(pmap_cache_bits_ept, pmap->pmap_cache_bits_pde,
+	      sizeof(pmap_cache_bits_ept));
+	pmap->pmap_cache_mask_pte = pmap_cache_mask_ept;
+	pmap->pmap_cache_mask_pde = pmap_cache_mask_ept;
 	pmap->copyinstr = ept_copyinstr;
 	pmap->copyin = ept_copyin;
 	pmap->copyout = ept_copyout;
