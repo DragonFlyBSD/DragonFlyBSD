@@ -66,27 +66,31 @@ static inline void io_mapping_free(struct io_mapping *mapping)
 }
 
 static inline void *
-io_mapping_map_atomic_wc(struct io_mapping *mapping, unsigned long offset)
-{
-	return (void *)PHYS_TO_DMAP(mapping->base + offset);
-}
-
-static inline void *
 io_mapping_map_wc(struct io_mapping *mapping,
 		  unsigned long offset,
 		  unsigned long size)
 {
-	return (void *)PHYS_TO_DMAP(mapping->base + offset);
+	BUG_ON(offset >= mapping->size);
+
+	return ioremap_wc(mapping->base + offset, size);
+}
+
+static inline void *
+io_mapping_map_atomic_wc(struct io_mapping *mapping, unsigned long offset)
+{
+	return ioremap_wc(mapping->base + offset, PAGE_SIZE);
 }
 
 static inline void
 io_mapping_unmap(void *vaddr)
 {
+	iounmap(vaddr);
 }
 
 static inline void
 io_mapping_unmap_atomic(void *vaddr)
 {
+	iounmap(vaddr);
 }
 
 #endif	/* _LINUX_IOMAPPING_H_ */
