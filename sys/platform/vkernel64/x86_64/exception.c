@@ -81,13 +81,13 @@ ipisig(int nada, siginfo_t *info, void *ctxp)
 
 	save = errno;
 	if (td->td_critcount == 0) {
-		crit_enter_raw(td);
+		crit_enter_quick(td);
 		++gd->gd_cnt.v_ipi;
 		++gd->gd_intr_nesting_level;
 		atomic_swap_int(&gd->gd_npoll, 0);
 		lwkt_process_ipiq();
 		--gd->gd_intr_nesting_level;
-		crit_exit_raw(td);
+		crit_exit_quick(td);
 	} else {
 		need_ipiq();
 	}
@@ -125,13 +125,13 @@ stopsig(int nada, siginfo_t *info, void *ctxp)
 	sigaddset(&ss, SIGTERM);
 	sigaddset(&ss, SIGWINCH);
 
-	crit_enter_raw(td);
+	crit_enter_quick(td);
 	++gd->gd_intr_nesting_level;
 	while (CPUMASK_TESTMASK(stopped_cpus, gd->gd_cpumask)) {
 		sigsuspend(&ss);
 	}
 	--gd->gd_intr_nesting_level;
-	crit_exit_raw(td);
+	crit_exit_quick(td);
 
 	errno = save;
 }
@@ -149,13 +149,13 @@ kqueuesig(int nada, siginfo_t *info, void *ctxp)
 
 	save = errno;
 	if (td->td_critcount == 0) {
-		crit_enter_raw(td);
+		crit_enter_quick(td);
 		++gd->gd_intr_nesting_level;
 		cpu_ccfence();
 		kqueue_intr(NULL);
 		cpu_ccfence();
 		--gd->gd_intr_nesting_level;
-		crit_exit_raw(td);
+		crit_exit_quick(td);
 	} else {
 		need_kqueue();
 	}
@@ -172,13 +172,13 @@ timersig(int nada, siginfo_t *info, void *ctxp)
 
 	save = errno;
 	if (td->td_critcount == 0) {
-		crit_enter_raw(td);
+		crit_enter_quick(td);
 		++gd->gd_intr_nesting_level;
 		cpu_ccfence();
 		vktimer_intr(NULL);
 		cpu_ccfence();
 		--gd->gd_intr_nesting_level;
-		crit_exit_raw(td);
+		crit_exit_quick(td);
 	} else {
 		need_timer();
 	}

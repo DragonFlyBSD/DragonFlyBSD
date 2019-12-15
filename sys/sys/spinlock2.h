@@ -171,7 +171,7 @@ spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
 #endif
 	cpu_ccfence();
 	--gd->gd_spinlocks;
-	crit_exit_raw(gd->gd_curthread);
+	crit_exit_quick(gd->gd_curthread);
 }
 
 static __inline void
@@ -258,7 +258,7 @@ spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
 #endif
 	cpu_ccfence();
 	--gd->gd_spinlocks;
-	crit_exit_raw(gd->gd_curthread);
+	crit_exit_quick(gd->gd_curthread);
 }
 
 static __inline void

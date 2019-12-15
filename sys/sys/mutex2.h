@@ -222,7 +222,7 @@ mtx_spinlock(mtx_t *mtx)
 	/*
 	 * Predispose a hard critical section
 	 */
-	crit_enter_raw(gd->gd_curthread);
+	crit_enter_quick(gd->gd_curthread);
 	++gd->gd_spinlocks;
 	cpu_ccfence();
 
@@ -246,7 +246,7 @@ mtx_spinlock_try(mtx_t *mtx)
 	/*
 	 * Predispose a hard critical section
 	 */
-	crit_enter_raw(gd->gd_curthread);
+	crit_enter_quick(gd->gd_curthread);
 	++gd->gd_spinlocks;
 	cpu_ccfence();
 
@@ -395,7 +395,7 @@ mtx_spinunlock(mtx_t *mtx)
 
 	cpu_ccfence();
 	--gd->gd_spinlocks;
-	crit_exit_raw(gd->gd_curthread);
+	crit_exit_quick(gd->gd_curthread);
 }
 
 /*
