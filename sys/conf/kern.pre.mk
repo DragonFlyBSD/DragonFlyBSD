@@ -52,9 +52,7 @@ COPTFLAGS+= ${_CPUCFLAGS}
 #	  the platform to trivially override the cpu header files.
 #
 INCLUDES= -nostdinc -I. -Iinclude -I$S
-# This hack is to allow kernel compiles to succeed on machines w/out srcdist
-# Real kernel builds do not need /usr/include, but vkernel
-# builds do.
+# Real kernel builds do not need /usr/include, but vkernel builds do.
 #
 .if ${MACHINE_PLATFORM} == "vkernel64"
 .if exists($S/../include)
