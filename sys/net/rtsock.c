@@ -989,6 +989,8 @@ rt_msg_buffer(int type, struct rt_addrinfo *rtinfo, void *buf, int msglen)
 	char *cp;
 	int dlen, i;
 
+	bzero(buf, msglen);
+
 	rtm = (struct rt_msghdr *) buf;
 	rtm->rtm_version = RTM_VERSION;
 	rtm->rtm_type = type;
