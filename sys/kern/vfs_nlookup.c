@@ -590,7 +590,7 @@ nlookup_start:
 	 * allow the code to bypass the naccess() call.
 	 */
 	dflags = 0;
-	if (*nptr == '/')
+	if (*nptr == '/' || (saveflag & NLC_MODIFYING_MASK) == 0)
 	    error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, NULL);
 	else
 	    error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags);

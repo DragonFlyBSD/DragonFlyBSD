@@ -139,6 +139,9 @@ struct nlookupdata {
 				 NLC_OPEN | NLC_TRUNCATE | NLC_RENAME_SRC | \
 				 NLC_READ | NLC_WRITE | NLC_EXEC | NLC_OWN)
 
+#define NLC_MODIFYING_MASK	(NLC_CREATE | NLC_DELETE | NLC_RENAME_DST | \
+				 NLC_RENAME_SRC)
+
 #ifdef _KERNEL
 #include <sys/_uio.h>
 
