@@ -30,11 +30,27 @@
 
 int drm_sysfs_connector_add(struct drm_connector *connector)
 {
+	struct drm_device *dev = connector->dev;
+
+	if (connector->kdev)
+		return 0;
+
+	/* Linux uses device_create_with_groups() here */
+	connector->kdev = kzalloc(sizeof(struct device), M_WAITOK);
+	connector->kdev->kobj.name = kasprintf(GFP_KERNEL, "card%d-%s",
+					       dev->primary->index,
+					       connector->name);
+	DRM_DEBUG("adding \"%s\" to sysfs\n", connector->name);
+
 	return 0;
 }
 
 void drm_sysfs_connector_remove(struct drm_connector *connector)
 {
+	DRM_DEBUG("removing \"%s\" from sysfs\n", connector->name);
+
+	if (connector->kdev)
+		kfree(connector->kdev);
 }
 
 void drm_sysfs_hotplug_event(struct drm_device *dev)
