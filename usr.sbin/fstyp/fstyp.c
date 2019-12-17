@@ -45,7 +45,7 @@
 
 #include "fstyp.h"
 
-#define	LABEL_LEN	256
+#define	LABEL_LEN	512
 
 typedef int (*fstyp_function)(FILE *, char *, size_t, const char *);
 typedef int (*fsvtyp_function)(const char *, char *, size_t);
