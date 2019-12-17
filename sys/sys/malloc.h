@@ -96,8 +96,8 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)			\
 	struct malloc_type type[1] = {					\
-	    { NULL, 0, 0, { { 0, 0, 0, 0 } }, M_MAGIC, shortdesc,	\
-		{ 0 } }							\
+	    { NULL, 0, 0, 0, 0, M_MAGIC, shortdesc, 0,			\
+	      &type[0].ks_use0, { 0, 0, 0, 0 } }			\
 	};								\
 	SYSINIT(type##_init, SI_BOOT1_KMALLOC, SI_ORDER_ANY,		\
 	    malloc_init, type);						\
@@ -106,8 +106,8 @@
 #else
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)			\
 	struct malloc_type type[1] = {					\
-	    { NULL, 0, 0, { { 0, 0, 0, 0 } }, M_MAGIC, shortdesc,	\
-	        { 0 } }							\
+	    { NULL, 0, 0, 0, 0, M_MAGIC, shortdesc, 0,			\
+	      &type[0].ks_use0, { 0, 0, 0, 0 } 				\
 	}
 #endif
 
@@ -136,6 +136,7 @@ void	*contigmalloc(unsigned long size, struct malloc_type *type, int flags,
 		      __alloc_size(1) __alloc_align(6);
 void	malloc_init(void *);
 void	malloc_uninit(void *);
+void	malloc_reinit_ncpus(void);
 void	kmalloc_raise_limit(struct malloc_type *type, size_t bytes);
 void	kmalloc_set_unlimited(struct malloc_type *type);
 void	kmalloc_create(struct malloc_type **typep, const char *descr);

@@ -166,6 +166,8 @@ mp_start(void)
         ncpus_fit = 1 << shift;
         ncpus_fit_mask = ncpus_fit - 1;
 
+	malloc_reinit_ncpus();
+
 	/*
 	 * cpu0 initialization
 	 */

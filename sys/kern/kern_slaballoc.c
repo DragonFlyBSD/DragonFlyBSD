@@ -347,6 +347,7 @@ void
 malloc_init(void *data)
 {
     struct malloc_type *type = data;
+    struct kmalloc_use *use;
     size_t limsize;
 
     if (type->ks_magic != M_MAGIC)
@@ -361,8 +362,14 @@ malloc_init(void *data)
     limsize = kmem_lim_size() * (1024 * 1024);
     type->ks_limit = limsize / 10;
 
+    if (ncpus == 1)
+	use = &type->ks_use0;
+    else
+	use = kmalloc(ncpus * sizeof(*use), M_TEMP, M_WAITOK | M_ZERO);
+
     spin_lock(&kmemstat_spin);
     type->ks_next = kmemstatistics;
+    type->ks_use = use;
     kmemstatistics = type;
     spin_unlock(&kmemstat_spin);
 }
@@ -416,6 +423,38 @@ malloc_uninit(void *data)
     type->ks_next = NULL;
     type->ks_limit = 0;
     spin_unlock(&kmemstat_spin);
+
+    if (type->ks_use != &type->ks_use0) {
+	kfree(type->ks_use, M_TEMP);
+	type->ks_use = NULL;
+    }
+}
+
+/*
+ * Reinitialize all installed malloc regions after ncpus has been
+ * determined.  type->ks_use0 is initially set to &type->ks_use0,
+ * this function will dynamically allocate it as appropriate for ncpus.
+ */
+void
+malloc_reinit_ncpus(void)
+{
+    struct malloc_type *t;
+    struct kmalloc_use *use;
+
+    /*
+     * If only one cpu we can leave ks_use set to ks_use0
+     */
+    if (ncpus <= 1)
+	return;
+
+    /*
+     * Expand ks_use for all kmalloc blocks
+     */
+    for (t = kmemstatistics; t->ks_next; t = t->ks_next) {
+	KKASSERT(t->ks_use == &t->ks_use0);
+	t->ks_use = kmalloc(sizeof(*use) * ncpus, M_TEMP, M_WAITOK|M_ZERO);
+	t->ks_use[0] = t->ks_use0;
+    }
 }
 
 /*
@@ -425,8 +464,7 @@ malloc_uninit(void *data)
 void
 kmalloc_raise_limit(struct malloc_type *type, size_t bytes)
 {
-    if (type->ks_limit == 0)
-	malloc_init(type);
+    KKASSERT(type->ks_limit != 0);
     if (bytes == 0)
 	bytes = KvaSize;
     if (type->ks_limit < bytes)
@@ -673,11 +711,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
     /*
      * XXX silly to have this in the critical path.
      */
-    if (type->ks_limit == 0) {
-	crit_enter();
-	malloc_init(type);
-	crit_exit();
-    }
+    KKASSERT(type->ks_limit != 0);
     ++type->ks_use[gd->gd_cpuid].calls;
 
     /*
@@ -1096,12 +1130,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 long
 kmalloc_limit(struct malloc_type *type)
 {
-    if (type->ks_limit == 0) {
-	crit_enter();
-	if (type->ks_limit == 0)
-	    malloc_init(type);
-	crit_exit();
-    }
+    KKASSERT(type->ks_limit != 0);
     return(type->ks_limit);
 }
 

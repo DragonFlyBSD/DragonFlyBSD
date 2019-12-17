@@ -48,6 +48,9 @@
  *
  * SMP_MAXCPU is used so modules which use malloc remain compatible
  * between UP and SMP.
+ *
+ * Warning: __cachealign typically represents 64 byte alignment, so
+ * this structure may be larger than expected.
  */
 struct kmalloc_use {
 	__size_t	memuse;
@@ -67,16 +70,20 @@ struct malloc_type {
 	struct malloc_type *ks_next;	/* next in list */
 	__size_t	ks_loosememuse;	/* (inaccurate) aggregate memuse */
 	__size_t	ks_limit;	/* most that are allowed to exist */
-	struct kmalloc_use ks_use[SMP_MAXCPU];
+	__uint64_t	ks_mtflags;	/* MTF_x flags */
+
+	__uint32_t	ks_unused1;
 	__uint32_t	ks_magic;	/* if it's not magic, don't touch it */
 	const char	*ks_shortdesc;	/* short description */
-	__ssize_t	ks_reserved[4];	/* future use (module compatibility) */
+	__uint64_t	ks_unused2;
+	struct kmalloc_use *ks_use;
+	struct kmalloc_use ks_use0;	/* dummy prior to SMP startup */
 };
 
 typedef	struct malloc_type	*malloc_type_t;
 
-#define	MALLOC_DECLARE(type) \
-	extern struct malloc_type type[1]	/* placed here for portability */
+#define	MALLOC_DECLARE(type)		\
+	extern struct malloc_type type[1]	/* ref as ptr */
 
 #endif
 
