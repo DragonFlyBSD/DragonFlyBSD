@@ -265,11 +265,13 @@ read_label(FILE *fp, char *label, size_t size, const char *devpath)
 		else
 			strlcpy(label, pfs, size);
 	} else {
-		if (devname)
-			snprintf(label, size, "%s_%s",
-			    (char*)media->ipdata.filename, devname);
-		else
-			strlcpy(label, (char*)media->ipdata.filename, size);
+		memset(label, 0, size);
+		memcpy(label, media->ipdata.filename,
+		    sizeof(media->ipdata.filename));
+		if (devname) {
+			strlcat(label, "_", size);
+			strlcat(label, devname, size);
+		}
 	}
 	if (devname)
 		free(devname);
