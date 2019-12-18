@@ -89,11 +89,18 @@ main(int argc, char **argv)
 	minutes = hours % 100;
 	hours /= 100;
 
-	if (minutes < 0 || minutes > 59)
+	/*
+	 * NOTE: Allows minutes specifications > 59 for +now usages,
+	 *	 just like microwaves have for decades. -Matt
+	 */
+	if (minutes < 0)
 		usage();
-	if (plusnow)
+
+	if (plusnow) {
 		secs = hours * 60 * 60 + minutes * 60;
-	else {
+	} else {
+		if (minutes > 59)
+			usage();
 		(void)time(&now);
 		t = localtime(&now);
 
