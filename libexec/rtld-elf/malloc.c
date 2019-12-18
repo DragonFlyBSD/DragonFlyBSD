@@ -134,10 +134,10 @@ botch(char *s)
 void *
 malloc(size_t nbytes)
 {
-	register union overhead *op;
-	register int bucket;
-	register long n;
-	register size_t amt;
+	union overhead *op;
+	int bucket;
+	long n;
+	size_t amt;
 
 	/*
 	 * First time malloc is called, setup page size and
@@ -235,10 +235,10 @@ calloc(size_t num, size_t size)
 static void
 morecore(int bucket)
 {
-	register union overhead *op;
-	register size_t sz;		/* size of desired block */
-	size_t amt;			/* amount to allocate */
-	int nblks;			/* how many blocks we get */
+	union overhead *op;
+	size_t sz;		/* size of desired block */
+	size_t amt;		/* amount to allocate */
+	int nblks;		/* how many blocks we get */
 
 	/*
 	 * sbrk_size <= 0 only for big, FLUFFY, requests (about
@@ -278,8 +278,8 @@ morecore(int bucket)
 void
 free(void *cp)
 {
-	register int size;
-	register union overhead *op;
+	int size;
+	union overhead *op;
 
 	if (cp == NULL)
 		return;
@@ -319,8 +319,8 @@ int realloc_srchlen = 4;	/* 4 should be plenty, -1 =>'s whole list */
 void *
 realloc(void *cp, size_t nbytes)
 {
-	register size_t onb;
-	register int i;
+	size_t onb;
+	int i;
 	union overhead *op;
 	char *res;
 	int was_alloced = 0;
@@ -388,8 +388,8 @@ realloc(void *cp, size_t nbytes)
 static int
 findbucket(union overhead *freep, int srchlen)
 {
-	register union overhead *p;
-	register int i, j;
+	union overhead *p;
+	int i, j;
 
 	for (i = 0; i < NBUCKETS; i++) {
 		j = 0;
@@ -413,8 +413,8 @@ findbucket(union overhead *freep, int srchlen)
 void
 mstats(char *s)
 {
-	register int i, j;
-	register union overhead *p;
+	int i, j;
+	union overhead *p;
 	size_t totfree, totused;
 
 	totfree = 0;
