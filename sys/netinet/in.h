@@ -309,6 +309,8 @@ struct in_addr {
 
 #define	IN_LOOPBACKNET		127			/* official! */
 
+#define	IN_RFC3021_MASK		(uint32_t)0xfffffffe
+
 /*
  * Socket address, internet style.
  */
