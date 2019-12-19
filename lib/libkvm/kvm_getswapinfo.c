@@ -298,7 +298,7 @@ scanradix(
 
 		if (meta.u.bmu_bitmap) {
 			for (iu = 0; iu < BLIST_BMAP_RADIX; ++iu) {
-				if (meta.u.bmu_bitmap & (1 << iu))
+				if (meta.u.bmu_bitmap & (1LU << iu))
 					++*availp;
 			}
 		}
