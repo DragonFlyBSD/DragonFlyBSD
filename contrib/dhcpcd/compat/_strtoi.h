@@ -35,6 +35,9 @@
  * NetBSD: src/common/lib/libc/stdlib/_strtoul.h,v 1.7 2013/05/17 12:55:56 joerg Exp
  */
 
+#ifndef _STRTOI_H
+#define	_STRTOI_H
+
 /*
  * function template for strtoi and strtou
  *
@@ -91,3 +94,4 @@ _FUNCNAME(const char * __restrict nptr, char ** __restrict endptr, int base,
 
 	return im;
 }
+#endif
