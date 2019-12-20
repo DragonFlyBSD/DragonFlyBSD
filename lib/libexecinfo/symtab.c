@@ -108,7 +108,8 @@ symtab_create(int fd, int bind, int type)
 		size_t ns;
 		struct symbol *s;
 
-		gelf_getshdr(scn, &shdr);
+		if (gelf_getshdr(scn, &shdr) == NULL)
+			goto out;	/* XXX prevent use of uninitialized */
 		if(shdr.sh_type != SHT_SYMTAB)
 			continue;
 
@@ -123,7 +124,8 @@ symtab_create(int fd, int bind, int type)
 
 		for (size_t i = 0; i < ns; i++) {
 			GElf_Sym sym;
-                        gelf_getsym(edata, (int)i, &sym);
+			if (gelf_getsym(edata, (int)i, &sym) == NULL)
+				goto out;	/* XXX prevent uninitialized */
 
 			if (bind != -1 &&
 			    (unsigned)bind != ELF_ST_BIND(sym.st_info))
