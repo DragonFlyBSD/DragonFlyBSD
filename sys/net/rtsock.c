@@ -484,6 +484,9 @@ reallocbuf_nofree(void *ptr, size_t len, size_t olen)
 	if (newptr == NULL)
 		return NULL;
 	bcopy(ptr, newptr, olen);
+	if (olen < len)
+		bzero((char *)newptr + olen, len - olen);
+
 	return (newptr);
 }
 
@@ -981,6 +984,9 @@ rt_msgsize(int type, const struct rt_addrinfo *rtinfo)
  * This side-effect can be avoided if we reorder the addrs bitmask field in all
  * the route messages to line up so we can set it here instead of back in the
  * calling routine.
+ *
+ * NOTE! The buffer may already contain a partially filled-out rtm via
+ *	 _fillrtmsg().
  */
 static void
 rt_msg_buffer(int type, struct rt_addrinfo *rtinfo, void *buf, int msglen)
@@ -988,8 +994,6 @@ rt_msg_buffer(int type, struct rt_addrinfo *rtinfo, void *buf, int msglen)
 	struct rt_msghdr *rtm;
 	char *cp;
 	int dlen, i;
-
-	bzero(buf, msglen);
 
 	rtm = (struct rt_msghdr *) buf;
 	rtm->rtm_version = RTM_VERSION;
@@ -1354,6 +1358,8 @@ resizewalkarg(struct walkarg *w, int len)
 		kfree(w->w_tmem, M_RTABLE);
 	w->w_tmem = newptr;
 	w->w_tmemsize = len;
+	bzero(newptr, len);
+
 	return (0);
 }
 
