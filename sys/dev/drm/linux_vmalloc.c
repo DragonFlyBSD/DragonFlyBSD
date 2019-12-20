@@ -37,6 +37,8 @@ struct vmap {
 	SLIST_ENTRY(vmap) vm_vmaps;
 };
 
+struct lock vmap_lock = LOCK_INITIALIZER("dlvml", 0, LK_CANRECURSE);
+
 SLIST_HEAD(vmap_list_head, vmap) vmap_list = SLIST_HEAD_INITIALIZER(vmap_list);
 
 /* vmap: map an array of pages into virtually contiguous space */
@@ -59,7 +61,9 @@ vmap(struct page **pages, unsigned int count,
 	vmp->addr = (void *)off;
 	vmp->npages = count;
 	pmap_qenter(off, (struct vm_page **)pages, count);
+	lockmgr(&vmap_lock, LK_EXCLUSIVE);
 	SLIST_INSERT_HEAD(&vmap_list, vmp, vm_vmaps);
+	lockmgr(&vmap_lock, LK_RELEASE);
 
 	return (void *)off;
 }
@@ -81,7 +85,9 @@ vunmap(const void *addr)
 	}
 
 found:
+	lockmgr(&vmap_lock, LK_EXCLUSIVE);
 	SLIST_REMOVE(&vmap_list, vmp, vmap, vm_vmaps);
+	lockmgr(&vmap_lock, LK_RELEASE);
 	kfree(vmp);
 }
 
