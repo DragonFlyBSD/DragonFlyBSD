@@ -12,6 +12,7 @@ MLINKS+=	backtrace.3 backtrace_symbols_fmt.3
 MLINKS+=	backtrace.3 backtrace_symbols_fd.3
 MLINKS+=	backtrace.3 backtrace_symbols_fd_fmt.3
 
+.if 0
 CONLIBS=	${.OBJDIR}/../libelf/libelf.a
 DPADD=		${CONLIBS:.a=_pic.a}
 LDADD=		${CONLIBS:.a=_pic.a}
@@ -58,5 +59,6 @@ script_p.ar:
 GENFILES=	script.ar script_p.ar
 CLEANFILES=	${GENFILES}
 beforedepend:	${GENFILES}
+.endif
 
 .include <bsd.lib.mk>

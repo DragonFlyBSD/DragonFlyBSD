@@ -36,8 +36,12 @@
 #include <err.h>
 #include <dlfcn.h>
 
+#if 1
+#include "private_libelf.h"
+#else
 #include <libelf.h>
 #include <gelf.h>
+#endif
 #ifndef ELF_ST_BIND
 #define ELF_ST_BIND(x)          ((x) >> 4)
 #endif
