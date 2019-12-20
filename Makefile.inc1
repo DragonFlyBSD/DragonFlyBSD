@@ -1069,7 +1069,6 @@ lib/libc__L: lib/csu__L
 _prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
 _prebuild_libs+=	lib/libutil
 
-_prebuild_libs+=	lib/libelf
 _prebuild_libs+=	lib/libpcap
 
 _generic_libs=	gnu/lib
