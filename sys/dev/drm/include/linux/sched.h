@@ -63,6 +63,8 @@
 #include <sys/sched.h>
 #include <sys/signal2.h>
 
+#include <machine/cpu.h>
+
 struct seq_file;
 
 #define	TASK_RUNNING		0
@@ -131,6 +133,12 @@ done:
 
 	current->state = TASK_RUNNING;
 	return ret;
+}
+
+static inline void
+schedule(void)
+{
+	(void)schedule_timeout(MAX_SCHEDULE_TIMEOUT);
 }
 
 static inline long
@@ -233,6 +241,20 @@ set_need_resched(void)
 {
 	/* do nothing for now */
 	/* used on ttm_bo_reserve failures */
+}
+
+static inline bool
+need_resched(void)
+{
+	return any_resched_wanted();
+}
+
+static inline int
+sched_setscheduler_nocheck(struct task_struct *ts,
+			   int policy, const struct sched_param *param)
+{
+	/* We do not allow different thread scheduling policies */
+	return 0;
 }
 
 #endif	/* _LINUX_SCHED_H_ */
