@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016 François Tigeot
+ * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,8 @@
 #include <asm/page.h>
 #include <asm/io.h>
 
+struct lock iomap_lock = LOCK_INITIALIZER("dlioml", 0, LK_CANRECURSE);
+
 SLIST_HEAD(iomap_list_head, iomap) iomap_list = SLIST_HEAD_INITIALIZER(iomap_list);
 
 void __iomem *
@@ -49,7 +51,9 @@ __ioremap_common(unsigned long phys_addr, unsigned long size, int cache_mode)
 	imp->paddr = phys_addr;
 	imp->npages = size / PAGE_SIZE;
 	imp->pmap_addr = pmap_mapdev_attr(phys_addr, size, cache_mode);
+	lockmgr(&iomap_lock, LK_EXCLUSIVE);
 	SLIST_INSERT_HEAD(&iomap_list, imp, im_iomaps);
+	lockmgr(&iomap_lock, LK_RELEASE);
 
 	return imp->pmap_addr;
 }
@@ -91,6 +95,9 @@ void iounmap(void __iomem *ptr)
 
 	pmap_unmapdev((vm_offset_t)imp->pmap_addr, imp->npages * PAGE_SIZE);
 
+	lockmgr(&iomap_lock, LK_EXCLUSIVE);
 	SLIST_REMOVE(&iomap_list, imp, iomap, im_iomaps);
+	lockmgr(&iomap_lock, LK_RELEASE);
+
 	kfree(imp);
 }
