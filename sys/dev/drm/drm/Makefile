@@ -58,6 +58,7 @@ SRCS	= \
 	linux_sched.c \
 	linux_async.c \
 	linux_compat.c \
+	linux_completion.c \
 	linux_dma.c \
 	linux_dma-buf.c \
 	linux_dmi.c \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -124,6 +124,8 @@ wait_for_completion_timeout(struct completion *c, unsigned long timeout)
 {
 	return __wait_for_completion_generic(c, timeout, 0);
 }
+
+void wait_for_completion(struct completion *c);
 
 /*
  * try_wait_for_completion: try to decrement a completion without blocking
