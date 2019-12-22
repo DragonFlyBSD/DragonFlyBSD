@@ -346,10 +346,8 @@ distribution:
 	    COPYRIGHT ${DESTDIR}/
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
-	rm -f ${DESTDIR}/usr/include/sys/ata.h
 	${LN} -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
 	${LN} -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
-	${LN} -s nata.h ${DESTDIR}/usr/include/sys/ata.h
 .if !defined(NOMAN)
 	cd ${.CURDIR}/../share/man; ${MAKE} makedb
 .endif
