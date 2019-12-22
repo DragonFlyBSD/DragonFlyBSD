@@ -61,7 +61,6 @@ static void dm_doinit(void);
 
 static int dm_cmd_to_fun(prop_dictionary_t);
 static int disk_ioctl_switch(cdev_t, u_long, void *);
-static int dm_ioctl_switch(u_long);
 
 static struct dev_ops dmctl_ops = {
 	{ "dm", 0, D_MPSAFE },
@@ -255,8 +254,14 @@ dmioctl(struct dev_ioctl_args *ap)
 	if ((r = disk_ioctl_switch(dev, cmd, data)) != ENOTTY)
 		return r;  /* Handled disk ioctl */
 
-	if ((r = dm_ioctl_switch(cmd)) != 0)
-		return r;  /* Not NETBSD_DM_IOCTL */
+	switch(cmd) {
+	case NETBSD_DM_IOCTL:
+		dmdebug("NETBSD_DM_IOCTL called\n");
+		break;
+	default:
+		dmdebug("Unknown ioctl %lu called\n", cmd);
+		return ENOTTY;
+	}
 
 	pref = (struct plistref *)data;  /* data is for libprop */
 	if ((r = prop_dictionary_copyin_ioctl(pref, cmd, &dm_dict_in)) != 0)
@@ -306,26 +311,6 @@ dm_cmd_to_fun(prop_dictionary_t dm_dict)
 		return 0;  /* No handler required */
 
 	return p->fn(dm_dict);
-}
-
-/*
- * Call apropriate ioctl handler function.
- */
-static int
-dm_ioctl_switch(u_long cmd)
-{
-
-	switch(cmd) {
-	case NETBSD_DM_IOCTL:
-		dmdebug("NETBSD_DM_IOCTL called\n");
-		break;
-	default:
-		dmdebug("Unknown ioctl %lu called\n", cmd);
-		return ENOTTY;
-		break; /* NOT REACHED */
-	}
-
-	return 0;
 }
 
 /*
