@@ -157,7 +157,7 @@ int intel_sanitize_enable_ppgtt(struct drm_i915_private *dev_priv,
 #endif
 
 	/* Early VLV doesn't have this */
-	if (IS_VALLEYVIEW(dev_priv) && dev_priv->dev->pdev->revision < 0xb) {
+	if (IS_VALLEYVIEW(dev_priv) && dev_priv->drm.pdev->revision < 0xb) {
 		DRM_DEBUG_DRIVER("disabling PPGTT on pre-B3 step VLV\n");
 		return 0;
 	}
@@ -1687,17 +1687,6 @@ static int hsw_mm_switch(struct i915_hw_ppgtt *ppgtt,
 	return 0;
 }
 
-static int vgpu_mm_switch(struct i915_hw_ppgtt *ppgtt,
-			  struct drm_i915_gem_request *req)
-{
-	struct intel_engine_cs *engine = req->engine;
-	struct drm_i915_private *dev_priv = to_i915(ppgtt->base.dev);
-
-	I915_WRITE(RING_PP_DIR_DCLV(engine), PP_DIR_DCLV_2G);
-	I915_WRITE(RING_PP_DIR_BASE(engine), get_pd_offset(ppgtt));
-	return 0;
-}
-
 static int gen7_mm_switch(struct i915_hw_ppgtt *ppgtt,
 			  struct drm_i915_gem_request *req)
 {
@@ -1735,21 +1724,16 @@ static int gen6_mm_switch(struct i915_hw_ppgtt *ppgtt,
 			  struct drm_i915_gem_request *req)
 {
 	struct intel_engine_cs *engine = req->engine;
-	struct drm_device *dev = ppgtt->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-
+	struct drm_i915_private *dev_priv = req->i915;
 
 	I915_WRITE(RING_PP_DIR_DCLV(engine), PP_DIR_DCLV_2G);
 	I915_WRITE(RING_PP_DIR_BASE(engine), get_pd_offset(ppgtt));
-
-	POSTING_READ(RING_PP_DIR_DCLV(engine));
-
 	return 0;
 }
 
 static void gen8_ppgtt_enable(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_engine_cs *engine;
 
 	for_each_engine(engine, dev_priv) {
@@ -1761,7 +1745,7 @@ static void gen8_ppgtt_enable(struct drm_device *dev)
 
 static void gen7_ppgtt_enable(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_engine_cs *engine;
 	uint32_t ecochk, ecobits;
 
@@ -1786,7 +1770,7 @@ static void gen7_ppgtt_enable(struct drm_device *dev)
 
 static void gen6_ppgtt_enable(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	uint32_t ecochk, gab_ctl, ecobits;
 
 	ecobits = I915_READ(GAC_ECO_BITS);
@@ -2078,17 +2062,14 @@ static int gen6_ppgtt_init(struct i915_hw_ppgtt *ppgtt)
 	int ret;
 
 	ppgtt->base.pte_encode = ggtt->base.pte_encode;
-	if (IS_GEN6(dev)) {
+	if (intel_vgpu_active(dev_priv) || IS_GEN6(dev))
 		ppgtt->switch_mm = gen6_mm_switch;
-	} else if (IS_HASWELL(dev)) {
+	else if (IS_HASWELL(dev))
 		ppgtt->switch_mm = hsw_mm_switch;
-	} else if (IS_GEN7(dev)) {
+	else if (IS_GEN7(dev))
 		ppgtt->switch_mm = gen7_mm_switch;
-	} else
+	else
 		BUG();
-
-	if (intel_vgpu_active(dev_priv))
-		ppgtt->switch_mm = vgpu_mm_switch;
 
 	ret = gen6_ppgtt_alloc(ppgtt);
 	if (ret)
@@ -2138,7 +2119,7 @@ static void i915_address_space_init(struct i915_address_space *vm,
 				    struct drm_i915_private *dev_priv)
 {
 	drm_mm_init(&vm->mm, vm->start, vm->total);
-	vm->dev = dev_priv->dev;
+	vm->dev = &dev_priv->drm;
 	INIT_LIST_HEAD(&vm->active_list);
 	INIT_LIST_HEAD(&vm->inactive_list);
 	list_add_tail(&vm->global_link, &dev_priv->vm_list);
@@ -2146,7 +2127,7 @@ static void i915_address_space_init(struct i915_address_space *vm,
 
 static void gtt_write_workarounds(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 
 	/* This function is for gtt related workarounds. This function is
 	 * called on driver load and after a GPU reset, so you can place
@@ -2165,7 +2146,7 @@ static void gtt_write_workarounds(struct drm_device *dev)
 
 static int i915_ppgtt_init(struct drm_device *dev, struct i915_hw_ppgtt *ppgtt)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	int ret = 0;
 
 	ret = __hw_ppgtt_init(dev, ppgtt);
@@ -2623,7 +2604,7 @@ static void i915_ggtt_insert_entries(struct i915_address_space *vm,
 				     uint64_t start,
 				     enum i915_cache_level cache_level, u32 unused)
 {
-	struct drm_i915_private *dev_priv = vm->dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(vm->dev);
 	unsigned int flags = (cache_level == I915_CACHE_NONE) ?
 		AGP_USER_MEMORY : AGP_USER_CACHED_MEMORY;
 	int rpm_atomic_seq;
@@ -2641,7 +2622,7 @@ static void i915_ggtt_clear_range(struct i915_address_space *vm,
 				  uint64_t length,
 				  bool unused)
 {
-	struct drm_i915_private *dev_priv = vm->dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(vm->dev);
 	unsigned first_entry = start >> PAGE_SHIFT;
 	unsigned num_entries = length >> PAGE_SHIFT;
 	int rpm_atomic_seq;
@@ -2722,7 +2703,7 @@ static int aliasing_gtt_bind_vma(struct i915_vma *vma,
 static void ggtt_unbind_vma(struct i915_vma *vma)
 {
 	struct drm_device *dev = vma->vm->dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_i915_gem_object *obj = vma->obj;
 	const uint64_t size = min_t(uint64_t,
 				    obj->base.size,
@@ -2748,7 +2729,7 @@ static void ggtt_unbind_vma(struct i915_vma *vma)
 void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj)
 {
 	struct drm_device *dev = obj->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	bool interruptible;
 
 	interruptible = do_idling(dev_priv);
@@ -3164,7 +3145,7 @@ static int gen8_gmch_probe(struct i915_ggtt *ggtt)
 	ggtt->base.unbind_vma = ggtt_unbind_vma;
 	ggtt->base.insert_page = gen8_ggtt_insert_page;
 	ggtt->base.clear_range = nop_clear_range;
-	if (!USES_FULL_PPGTT(dev_priv))
+	if (!USES_FULL_PPGTT(dev_priv) || intel_scanout_needs_vtd_wa(dev_priv))
 		ggtt->base.clear_range = gen8_ggtt_clear_range;
 
 	ggtt->base.insert_entries = gen8_ggtt_insert_entries;
@@ -3227,7 +3208,7 @@ static int i915_gmch_probe(struct i915_ggtt *ggtt)
 #if 0
 	int ret;
 
-	ret = intel_gmch_probe(dev_priv->bridge_dev, dev_priv->dev->pdev, NULL);
+	ret = intel_gmch_probe(dev_priv->bridge_dev, dev_priv->drm.pdev, NULL);
 	if (!ret) {
 		DRM_ERROR("failed to set up gmch\n");
 		return -EIO;
@@ -3237,7 +3218,7 @@ static int i915_gmch_probe(struct i915_ggtt *ggtt)
 	intel_gtt_get(&ggtt->base.total, &ggtt->stolen_size,
 		      &ggtt->mappable_base, &ggtt->mappable_end);
 
-	ggtt->do_idle_maps = needs_idle_maps(dev_priv->dev);
+	ggtt->do_idle_maps = needs_idle_maps(&dev_priv->drm);
 	ggtt->base.insert_page = i915_ggtt_insert_page;
 	ggtt->base.insert_entries = i915_ggtt_insert_entries;
 	ggtt->base.clear_range = i915_ggtt_clear_range;

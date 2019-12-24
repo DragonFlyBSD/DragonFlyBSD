@@ -135,7 +135,7 @@ enum intel_output_type {
 	INTEL_OUTPUT_LVDS = 4,
 	INTEL_OUTPUT_TVOUT = 5,
 	INTEL_OUTPUT_HDMI = 6,
-	INTEL_OUTPUT_DISPLAYPORT = 7,
+	INTEL_OUTPUT_DP = 7,
 	INTEL_OUTPUT_EDP = 8,
 	INTEL_OUTPUT_DSI = 9,
 	INTEL_OUTPUT_UNKNOWN = 10,
@@ -498,12 +498,10 @@ struct intel_crtc_state {
 	 */
 	bool limited_color_range;
 
-	/* DP has a bunch of special case unfortunately, so mark the pipe
-	 * accordingly. */
-	bool has_dp_encoder;
-
-	/* DSI has special cases */
-	bool has_dsi_encoder;
+	/* Bitmask of encoder types (enum intel_output_type)
+	 * driven by the pipe.
+	 */
+	unsigned int output_types;
 
 	/* Whether we should send NULL infoframes. Required for audio. */
 	bool has_hdmi_sink;
@@ -963,14 +961,14 @@ vlv_pipe_to_channel(enum i915_pipe pipe)
 static inline struct drm_crtc *
 intel_get_crtc_for_pipe(struct drm_device *dev, int pipe)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	return dev_priv->pipe_to_crtc_mapping[pipe];
 }
 
 static inline struct drm_crtc *
 intel_get_crtc_for_plane(struct drm_device *dev, int plane)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	return dev_priv->plane_to_crtc_mapping[plane];
 }
 
@@ -1080,7 +1078,6 @@ void gen8_irq_power_well_pre_disable(struct drm_i915_private *dev_priv,
 
 /* intel_crt.c */
 void intel_crt_init(struct drm_device *dev);
-void intel_crt_reset(struct drm_encoder *encoder);
 
 /* intel_ddi.c */
 void intel_ddi_clk_select(struct intel_encoder *encoder,
@@ -1163,7 +1160,20 @@ int intel_get_pipe_from_crtc_id(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
 enum transcoder intel_pipe_to_cpu_transcoder(struct drm_i915_private *dev_priv,
 					     enum i915_pipe pipe);
-bool intel_pipe_has_type(struct intel_crtc *crtc, enum intel_output_type type);
+static inline bool
+intel_crtc_has_type(const struct intel_crtc_state *crtc_state,
+		    enum intel_output_type type)
+{
+	return crtc_state->output_types & (1 << type);
+}
+static inline bool
+intel_crtc_has_dp_encoder(const struct intel_crtc_state *crtc_state)
+{
+	return crtc_state->output_types &
+		((1 << INTEL_OUTPUT_DP) |
+		 (1 << INTEL_OUTPUT_DP_MST) |
+		 (1 << INTEL_OUTPUT_EDP));
+}
 static inline void
 intel_wait_for_vblank(struct drm_device *dev, int pipe)
 {

@@ -1299,9 +1299,11 @@ static void intel_uncore_fw_domains_init(struct drm_i915_private *dev_priv)
 		fw_domain_init(dev_priv, FW_DOMAIN_ID_RENDER,
 			       FORCEWAKE_MT, FORCEWAKE_MT_ACK);
 
+		spin_lock_irq(&dev_priv->uncore.lock);
 		fw_domains_get_with_thread_status(dev_priv, FORCEWAKE_ALL);
 		ecobus = __raw_i915_read32(dev_priv, ECOBUS);
 		fw_domains_put_with_fifo(dev_priv, FORCEWAKE_ALL);
+		spin_unlock_irq(&dev_priv->uncore.lock);
 
 		if (!(ecobus & FORCEWAKE_MT_ENABLE)) {
 			DRM_INFO("No MT forcewake available on Ivybridge, this can result in issues\n");
@@ -1469,7 +1471,7 @@ static int i915_reset_complete(struct pci_dev *pdev)
 
 static int i915_do_reset(struct drm_i915_private *dev_priv, unsigned engine_mask)
 {
-	struct pci_dev *pdev = dev_priv->dev->pdev;
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 
 	/* assert reset for at least 20 usec */
 	pci_write_config_byte(pdev, I915_GDRST, GRDOM_RESET_ENABLE);
@@ -1488,14 +1490,14 @@ static int g4x_reset_complete(struct pci_dev *pdev)
 
 static int g33_do_reset(struct drm_i915_private *dev_priv, unsigned engine_mask)
 {
-	struct pci_dev *pdev = dev_priv->dev->pdev;
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	pci_write_config_byte(pdev, I915_GDRST, GRDOM_RESET_ENABLE);
 	return wait_for(g4x_reset_complete(pdev), 500);
 }
 
 static int g4x_do_reset(struct drm_i915_private *dev_priv, unsigned engine_mask)
 {
-	struct pci_dev *pdev = dev_priv->dev->pdev;
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	int ret;
 
 	pci_write_config_byte(pdev, I915_GDRST,

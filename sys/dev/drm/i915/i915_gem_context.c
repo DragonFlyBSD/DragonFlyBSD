@@ -154,7 +154,7 @@ void i915_gem_context_free(struct kref *ctx_ref)
 	struct i915_gem_context *ctx = container_of(ctx_ref, typeof(*ctx), ref);
 	int i;
 
-	lockdep_assert_held(&ctx->i915->dev->struct_mutex);
+	lockdep_assert_held(&ctx->i915->drm.struct_mutex);
 	trace_i915_context_free(ctx);
 
 	/*
@@ -250,7 +250,7 @@ static struct i915_gem_context *
 __create_hw_context(struct drm_device *dev,
 		    struct drm_i915_file_private *file_priv)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct i915_gem_context *ctx;
 	int ret;
 
@@ -396,7 +396,7 @@ static void i915_gem_context_unpin(struct i915_gem_context *ctx,
 
 void i915_gem_context_reset(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 
 	lockdep_assert_held(&dev->struct_mutex);
 
@@ -412,7 +412,7 @@ void i915_gem_context_reset(struct drm_device *dev)
 
 int i915_gem_context_init(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct i915_gem_context *ctx;
 
 	/* Init should only be called once per module load. Eventually the
@@ -465,7 +465,7 @@ void i915_gem_context_lost(struct drm_i915_private *dev_priv)
 {
 	struct intel_engine_cs *engine;
 
-	lockdep_assert_held(&dev_priv->dev->struct_mutex);
+	lockdep_assert_held(&dev_priv->drm.struct_mutex);
 
 	for_each_engine(engine, dev_priv) {
 		if (engine->last_context) {
@@ -499,7 +499,7 @@ void i915_gem_context_lost(struct drm_i915_private *dev_priv)
 
 void i915_gem_context_fini(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct i915_gem_context *dctx = dev_priv->kernel_context;
 
 	lockdep_assert_held(&dev->struct_mutex);
@@ -895,7 +895,7 @@ int i915_switch_context(struct drm_i915_gem_request *req)
 	struct intel_engine_cs *engine = req->engine;
 
 	WARN_ON(i915.enable_execlists);
-	lockdep_assert_held(&req->i915->dev->struct_mutex);
+	lockdep_assert_held(&req->i915->drm.struct_mutex);
 
 	if (!req->ctx->engine[engine->id].state) {
 		struct i915_gem_context *to = req->ctx;
@@ -1026,6 +1026,9 @@ int i915_gem_context_getparam_ioctl(struct drm_device *dev, void *data,
 		else
 			args->value = to_i915(dev)->ggtt.base.total;
 		break;
+	case I915_CONTEXT_PARAM_NO_ERROR_CAPTURE:
+		args->value = !!(ctx->flags & CONTEXT_NO_ERROR_CAPTURE);
+		break;
 	default:
 		ret = -EINVAL;
 		break;
@@ -1071,6 +1074,16 @@ int i915_gem_context_setparam_ioctl(struct drm_device *dev, void *data,
 			ctx->flags |= args->value ? CONTEXT_NO_ZEROMAP : 0;
 		}
 		break;
+	case I915_CONTEXT_PARAM_NO_ERROR_CAPTURE:
+		if (args->size) {
+			ret = -EINVAL;
+		} else {
+			if (args->value)
+				ctx->flags |= CONTEXT_NO_ERROR_CAPTURE;
+			else
+				ctx->flags &= ~CONTEXT_NO_ERROR_CAPTURE;
+		}
+		break;
 	default:
 		ret = -EINVAL;
 		break;
@@ -1083,7 +1096,7 @@ int i915_gem_context_setparam_ioctl(struct drm_device *dev, void *data,
 int i915_gem_context_reset_stats_ioctl(struct drm_device *dev,
 				       void *data, struct drm_file *file)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_i915_reset_stats *args = data;
 	struct i915_ctx_hang_stats *hs;
 	struct i915_gem_context *ctx;

@@ -789,9 +789,6 @@ intel_logical_ring_advance_and_submit(struct drm_i915_gem_request *request)
 	intel_logical_ring_emit(ringbuf, MI_NOOP);
 	intel_logical_ring_advance(ringbuf);
 
-	if (intel_engine_stopped(engine))
-		return 0;
-
 	/* We keep the previous context alive until we retire the following
 	 * request. This ensures that any the context object is still pinned
 	 * for any residual writes the HW makes into it on the context switch
@@ -826,7 +823,7 @@ int intel_execlists_submission(struct i915_execbuffer_params *params,
 {
 	struct drm_device       *dev = params->dev;
 	struct intel_engine_cs *engine = params->engine;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_ringbuffer *ringbuf = params->ctx->engine[engine->id].ringbuf;
 	u64 exec_start;
 	int instp_mode;
@@ -902,7 +899,7 @@ void intel_execlists_cancel_requests(struct intel_engine_cs *engine)
 	struct drm_i915_gem_request *req, *tmp;
 	LINUX_LIST_HEAD(cancel_list);
 
-	WARN_ON(!mutex_is_locked(&engine->i915->dev->struct_mutex));
+	WARN_ON(!mutex_is_locked(&engine->i915->drm.struct_mutex));
 
 	spin_lock_bh(&engine->execlist_lock);
 	list_replace_init(&engine->execlist_queue, &cancel_list);
@@ -964,7 +961,7 @@ static int intel_lr_context_pin(struct i915_gem_context *ctx,
 	u32 *lrc_reg_state;
 	int ret;
 
-	lockdep_assert_held(&ctx->i915->dev->struct_mutex);
+	lockdep_assert_held(&ctx->i915->drm.struct_mutex);
 
 	if (ce->pin_count++)
 		return 0;
@@ -1014,7 +1011,7 @@ void intel_lr_context_unpin(struct i915_gem_context *ctx,
 {
 	struct intel_context *ce = &ctx->engine[engine->id];
 
-	lockdep_assert_held(&ctx->i915->dev->struct_mutex);
+	lockdep_assert_held(&ctx->i915->drm.struct_mutex);
 	GEM_BUG_ON(ce->pin_count == 0);
 
 	if (--ce->pin_count)
@@ -1299,6 +1296,31 @@ static int gen9_init_indirectctx_bb(struct intel_engine_cs *engine,
 		wa_ctx_emit(batch, index, 0);
 		wa_ctx_emit(batch, index, 0);
 	}
+
+	/* WaMediaPoolStateCmdInWABB:bxt */
+	if (HAS_POOLED_EU(engine->i915)) {
+		/*
+		 * EU pool configuration is setup along with golden context
+		 * during context initialization. This value depends on
+		 * device type (2x6 or 3x6) and needs to be updated based
+		 * on which subslice is disabled especially for 2x6
+		 * devices, however it is safe to load default
+		 * configuration of 3x6 device instead of masking off
+		 * corresponding bits because HW ignores bits of a disabled
+		 * subslice and drops down to appropriate config. Please
+		 * see render_state_setup() in i915_gem_render_state.c for
+		 * possible configurations, to avoid duplication they are
+		 * not shown here again.
+		 */
+		u32 eu_pool_config = 0x00777000;
+		wa_ctx_emit(batch, index, GEN9_MEDIA_POOL_STATE);
+		wa_ctx_emit(batch, index, GEN9_MEDIA_POOL_ENABLE);
+		wa_ctx_emit(batch, index, eu_pool_config);
+		wa_ctx_emit(batch, index, 0);
+		wa_ctx_emit(batch, index, 0);
+		wa_ctx_emit(batch, index, 0);
+	}
+
 	/* Pad to end of cacheline */
 	while (index % CACHELINE_DWORDS)
 		wa_ctx_emit(batch, index, MI_NOOP);
@@ -1356,8 +1378,8 @@ static int lrc_setup_wa_ctx_obj(struct intel_engine_cs *engine, u32 size)
 {
 	int ret;
 
-	engine->wa_ctx.obj = i915_gem_object_create(engine->i915->dev,
-						   PAGE_ALIGN(size));
+	engine->wa_ctx.obj = i915_gem_object_create(&engine->i915->drm,
+						    PAGE_ALIGN(size));
 	if (IS_ERR(engine->wa_ctx.obj)) {
 		DRM_DEBUG_DRIVER("alloc LRC WA ctx backing obj failed.\n");
 		ret = PTR_ERR(engine->wa_ctx.obj);
@@ -1617,36 +1639,18 @@ static int gen8_emit_bb_start(struct drm_i915_gem_request *req,
 	return 0;
 }
 
-static bool gen8_logical_ring_get_irq(struct intel_engine_cs *engine)
+static void gen8_logical_ring_enable_irq(struct intel_engine_cs *engine)
 {
 	struct drm_i915_private *dev_priv = engine->i915;
-	unsigned long flags;
-
-	if (WARN_ON(!intel_irqs_enabled(dev_priv)))
-		return false;
-
-	spin_lock_irqsave(&dev_priv->irq_lock, flags);
-	if (engine->irq_refcount++ == 0) {
-		I915_WRITE_IMR(engine,
-			       ~(engine->irq_enable_mask | engine->irq_keep_mask));
-		POSTING_READ(RING_IMR(engine->mmio_base));
-	}
-	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
-
-	return true;
+	I915_WRITE_IMR(engine,
+		       ~(engine->irq_enable_mask | engine->irq_keep_mask));
+	POSTING_READ_FW(RING_IMR(engine->mmio_base));
 }
 
-static void gen8_logical_ring_put_irq(struct intel_engine_cs *engine)
+static void gen8_logical_ring_disable_irq(struct intel_engine_cs *engine)
 {
 	struct drm_i915_private *dev_priv = engine->i915;
-	unsigned long flags;
-
-	spin_lock_irqsave(&dev_priv->irq_lock, flags);
-	if (--engine->irq_refcount == 0) {
-		I915_WRITE_IMR(engine, ~engine->irq_keep_mask);
-		POSTING_READ(RING_IMR(engine->mmio_base));
-	}
-	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
+	I915_WRITE_IMR(engine, ~engine->irq_keep_mask);
 }
 
 static int gen8_emit_flush(struct drm_i915_gem_request *request,
@@ -1783,16 +1787,6 @@ static int gen8_emit_flush_render(struct drm_i915_gem_request *request,
 	return 0;
 }
 
-static u32 gen8_get_seqno(struct intel_engine_cs *engine)
-{
-	return intel_read_status_page(engine, I915_GEM_HWS_INDEX);
-}
-
-static void gen8_set_seqno(struct intel_engine_cs *engine, u32 seqno)
-{
-	intel_write_status_page(engine, I915_GEM_HWS_INDEX, seqno);
-}
-
 static void bxt_a_seqno_barrier(struct intel_engine_cs *engine)
 {
 	/*
@@ -1805,14 +1799,6 @@ static void bxt_a_seqno_barrier(struct intel_engine_cs *engine)
 	 * bxt_a_set_seqno(), where we also do a clflush after the write. So
 	 * this clflush in practice becomes an invalidate operation.
 	 */
-	intel_flush_status_page(engine, I915_GEM_HWS_INDEX);
-}
-
-static void bxt_a_set_seqno(struct intel_engine_cs *engine, u32 seqno)
-{
-	intel_write_status_page(engine, I915_GEM_HWS_INDEX, seqno);
-
-	/* See bxt_a_get_seqno() explaining the reason for the clflush. */
 	intel_flush_status_page(engine, I915_GEM_HWS_INDEX);
 }
 
@@ -1841,7 +1827,7 @@ static int gen8_emit_request(struct drm_i915_gem_request *request)
 				intel_hws_seqno_address(request->engine) |
 				MI_FLUSH_DW_USE_GTT);
 	intel_logical_ring_emit(ringbuf, 0);
-	intel_logical_ring_emit(ringbuf, i915_gem_request_get_seqno(request));
+	intel_logical_ring_emit(ringbuf, request->seqno);
 	intel_logical_ring_emit(ringbuf, MI_USER_INTERRUPT);
 	intel_logical_ring_emit(ringbuf, MI_NOOP);
 	return intel_logical_ring_advance_and_submit(request);
@@ -1961,6 +1947,8 @@ void intel_logical_ring_cleanup(struct intel_engine_cs *engine)
 	i915_cmd_parser_fini_ring(engine);
 	i915_gem_batch_pool_fini(&engine->batch_pool);
 
+	intel_engine_fini_breadcrumbs(engine);
+
 	if (engine->status_page.obj) {
 		i915_gem_object_unpin_map(engine->status_page.obj);
 		engine->status_page.obj = NULL;
@@ -1982,15 +1970,11 @@ logical_ring_default_vfuncs(struct intel_engine_cs *engine)
 	engine->init_hw = gen8_init_common_ring;
 	engine->emit_request = gen8_emit_request;
 	engine->emit_flush = gen8_emit_flush;
-	engine->irq_get = gen8_logical_ring_get_irq;
-	engine->irq_put = gen8_logical_ring_put_irq;
+	engine->irq_enable = gen8_logical_ring_enable_irq;
+	engine->irq_disable = gen8_logical_ring_disable_irq;
 	engine->emit_bb_start = gen8_emit_bb_start;
-	engine->get_seqno = gen8_get_seqno;
-	engine->set_seqno = gen8_set_seqno;
-	if (IS_BXT_REVID(engine->i915, 0, BXT_REVID_A1)) {
+	if (IS_BXT_REVID(engine->i915, 0, BXT_REVID_A1))
 		engine->irq_seqno_barrier = bxt_a_seqno_barrier;
-		engine->set_seqno = bxt_a_set_seqno;
-	}
 }
 
 static inline void
@@ -1998,7 +1982,6 @@ logical_ring_default_irqs(struct intel_engine_cs *engine, unsigned shift)
 {
 	engine->irq_enable_mask = GT_RENDER_USER_INTERRUPT << shift;
 	engine->irq_keep_mask = GT_CONTEXT_SWITCH_INTERRUPT << shift;
-	init_waitqueue_head(&engine->irq_queue);
 }
 
 static int
@@ -2024,6 +2007,10 @@ logical_ring_init(struct intel_engine_cs *engine)
 {
 	struct i915_gem_context *dctx = engine->i915->kernel_context;
 	int ret;
+
+	ret = intel_engine_init_breadcrumbs(engine);
+	if (ret)
+		goto error;
 
 	ret = i915_cmd_parser_init_ring(engine);
 	if (ret)
@@ -2073,7 +2060,7 @@ static int logical_render_ring_init(struct intel_engine_cs *engine)
 	engine->emit_flush = gen8_emit_flush_render;
 	engine->emit_request = gen8_emit_request_render;
 
-	ret = intel_init_pipe_control(engine);
+	ret = intel_init_pipe_control(engine, 4096);
 	if (ret)
 		return ret;
 
@@ -2192,7 +2179,7 @@ logical_ring_setup(struct drm_i915_private *dev_priv, enum intel_engine_id id)
 	logical_ring_default_irqs(engine, info->irq_shift);
 
 	intel_engine_init_hangcheck(engine);
-	i915_gem_batch_pool_init(dev_priv->dev, &engine->batch_pool);
+	i915_gem_batch_pool_init(&dev_priv->drm, &engine->batch_pool);
 
 	return engine;
 }
@@ -2210,7 +2197,7 @@ logical_ring_setup(struct drm_i915_private *dev_priv, enum intel_engine_id id)
  */
 int intel_logical_rings_init(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	unsigned int mask = 0;
 	unsigned int i;
 	int ret;
@@ -2524,7 +2511,7 @@ static int execlists_context_deferred_alloc(struct i915_gem_context *ctx,
 	/* One extra page as the sharing data between driver and GuC */
 	context_size += PAGE_SIZE * LRC_PPHWSP_PN;
 
-	ctx_obj = i915_gem_object_create(ctx->i915->dev, context_size);
+	ctx_obj = i915_gem_object_create(&ctx->i915->drm, context_size);
 	if (IS_ERR(ctx_obj)) {
 		DRM_DEBUG_DRIVER("Alloc LRC backing obj failed.\n");
 		return PTR_ERR(ctx_obj);

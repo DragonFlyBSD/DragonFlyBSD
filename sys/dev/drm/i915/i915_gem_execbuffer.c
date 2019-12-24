@@ -1144,7 +1144,7 @@ i915_reset_gen7_sol_offsets(struct drm_device *dev,
 			    struct drm_i915_gem_request *req)
 {
 	struct intel_engine_cs *engine = req->engine;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	int ret, i;
 
 	if (!IS_GEN7(dev) || engine != &dev_priv->engine[RCS]) {
@@ -1227,7 +1227,7 @@ i915_gem_ringbuffer_submission(struct i915_execbuffer_params *params,
 {
 	struct drm_device *dev = params->dev;
 	struct intel_engine_cs *engine = params->engine;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	u64 exec_start, exec_len;
 	int instp_mode;
 	u32 instp_mask;
@@ -1330,10 +1330,10 @@ gen8_dispatch_bsd_ring(struct drm_i915_private *dev_priv, struct drm_file *file)
 	/* Check whether the file_priv has already selected one ring. */
 	if ((int)file_priv->bsd_ring < 0) {
 		/* If not, use the ping-pong mechanism to select one. */
-		mutex_lock(&dev_priv->dev->struct_mutex);
+		mutex_lock(&dev_priv->drm.struct_mutex);
 		file_priv->bsd_ring = dev_priv->mm.bsd_ring_dispatch_index;
 		dev_priv->mm.bsd_ring_dispatch_index ^= 1;
-		mutex_unlock(&dev_priv->dev->struct_mutex);
+		mutex_unlock(&dev_priv->drm.struct_mutex);
 	}
 
 	return file_priv->bsd_ring;
@@ -1476,6 +1476,12 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 		dispatch_flags |= I915_DISPATCH_RS;
 	}
 
+	/* Take a local wakeref for preparing to dispatch the execbuf as
+	 * we expect to access the hardware fairly frequently in the
+	 * process. Upon first dispatch, we acquire another prolonged
+	 * wakeref that we hold until the GPU has been idle for at least
+	 * 100ms.
+	 */
 	intel_runtime_pm_get(dev_priv);
 
 	ret = i915_mutex_lock_interruptible(dev);

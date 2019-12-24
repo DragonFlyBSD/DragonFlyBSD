@@ -318,7 +318,7 @@ static void chv_set_memory_pm5(struct drm_i915_private *dev_priv, bool enable)
 
 void intel_set_memory_cxsr(struct drm_i915_private *dev_priv, bool enable)
 {
-	struct drm_device *dev = dev_priv->dev;
+	struct drm_device *dev = &dev_priv->drm;
 	u32 val;
 
 	if (IS_VALLEYVIEW(dev) || IS_CHERRYVIEW(dev)) {
@@ -2235,7 +2235,7 @@ static void intel_print_wm_latency(struct drm_device *dev,
 static bool ilk_increase_wm_latency(struct drm_i915_private *dev_priv,
 				    uint16_t wm[5], uint16_t min)
 {
-	int level, max_level = ilk_wm_max_level(dev_priv->dev);
+	int level, max_level = ilk_wm_max_level(&dev_priv->drm);
 
 	if (wm[0] >= min)
 		return false;
@@ -2764,7 +2764,7 @@ static bool _ilk_disable_lp_wm(struct drm_i915_private *dev_priv,
 static void ilk_write_wm_values(struct drm_i915_private *dev_priv,
 				struct ilk_wm_values *results)
 {
-	struct drm_device *dev = dev_priv->dev;
+	struct drm_device *dev = &dev_priv->drm;
 	struct ilk_wm_values *previous = &dev_priv->wm.hw;
 	unsigned int dirty;
 	uint32_t val;
@@ -3497,7 +3497,6 @@ skl_compute_wm_level(const struct drm_i915_private *dev_priv,
 		     int level,
 		     struct skl_wm_level *result)
 {
-	struct drm_device *dev = dev_priv->dev;
 	struct drm_atomic_state *state = cstate->base.state;
 	struct intel_crtc *intel_crtc = to_intel_crtc(cstate->base.crtc);
 	struct drm_plane *plane;
@@ -3513,7 +3512,9 @@ skl_compute_wm_level(const struct drm_i915_private *dev_priv,
 	 */
 	memset(result, 0, sizeof(*result));
 
-	for_each_intel_plane_mask(dev, intel_plane, cstate->base.plane_mask) {
+	for_each_intel_plane_mask(&dev_priv->drm,
+				  intel_plane,
+				  cstate->base.plane_mask) {
 		int i = skl_wm_plane_id(intel_plane);
 
 		plane = &intel_plane->base;
@@ -3681,7 +3682,7 @@ static void skl_ddb_entry_write(struct drm_i915_private *dev_priv,
 static void skl_write_wm_values(struct drm_i915_private *dev_priv,
 				const struct skl_wm_values *new)
 {
-	struct drm_device *dev = dev_priv->dev;
+	struct drm_device *dev = &dev_priv->drm;
 	struct intel_crtc *crtc;
 
 	for_each_intel_crtc(dev, crtc) {
@@ -3778,7 +3779,7 @@ skl_ddb_allocation_included(const struct skl_ddb_allocation *old,
 static void skl_flush_wm_values(struct drm_i915_private *dev_priv,
 				struct skl_wm_values *new_values)
 {
-	struct drm_device *dev = dev_priv->dev;
+	struct drm_device *dev = &dev_priv->drm;
 	struct skl_ddb_allocation *cur_ddb, *new_ddb;
 	bool reallocated[I915_MAX_PIPES] = {};
 	struct intel_crtc *crtc;
@@ -4055,7 +4056,7 @@ static void ilk_compute_wm_config(struct drm_device *dev,
 
 static void ilk_program_watermarks(struct drm_i915_private *dev_priv)
 {
-	struct drm_device *dev = dev_priv->dev;
+	struct drm_device *dev = &dev_priv->drm;
 	struct intel_pipe_wm lp_wm_1_2 = {}, lp_wm_5_6 = {}, *best_lp_wm;
 	struct ilk_wm_maximums max;
 	struct intel_wm_config config = {};
@@ -4667,19 +4668,23 @@ static void gen6_set_rps_thresholds(struct drm_i915_private *dev_priv, u8 val)
 	new_power = dev_priv->rps.power;
 	switch (dev_priv->rps.power) {
 	case LOW_POWER:
-		if (val > dev_priv->rps.efficient_freq + 1 && val > dev_priv->rps.cur_freq)
+		if (val > dev_priv->rps.efficient_freq + 1 &&
+		    val > dev_priv->rps.cur_freq)
 			new_power = BETWEEN;
 		break;
 
 	case BETWEEN:
-		if (val <= dev_priv->rps.efficient_freq && val < dev_priv->rps.cur_freq)
+		if (val <= dev_priv->rps.efficient_freq &&
+		    val < dev_priv->rps.cur_freq)
 			new_power = LOW_POWER;
-		else if (val >= dev_priv->rps.rp0_freq && val > dev_priv->rps.cur_freq)
+		else if (val >= dev_priv->rps.rp0_freq &&
+			 val > dev_priv->rps.cur_freq)
 			new_power = HIGH_POWER;
 		break;
 
 	case HIGH_POWER:
-		if (val < (dev_priv->rps.rp1_freq + dev_priv->rps.rp0_freq) >> 1 && val < dev_priv->rps.cur_freq)
+		if (val < (dev_priv->rps.rp1_freq + dev_priv->rps.rp0_freq) >> 1 &&
+		    val < dev_priv->rps.cur_freq)
 			new_power = BETWEEN;
 		break;
 	}
@@ -4725,22 +4730,24 @@ static void gen6_set_rps_thresholds(struct drm_i915_private *dev_priv, u8 val)
 	}
 
 	I915_WRITE(GEN6_RP_UP_EI,
-		GT_INTERVAL_FROM_US(dev_priv, ei_up));
+		   GT_INTERVAL_FROM_US(dev_priv, ei_up));
 	I915_WRITE(GEN6_RP_UP_THRESHOLD,
-		GT_INTERVAL_FROM_US(dev_priv, (ei_up * threshold_up / 100)));
+		   GT_INTERVAL_FROM_US(dev_priv,
+				       ei_up * threshold_up / 100));
 
 	I915_WRITE(GEN6_RP_DOWN_EI,
-		GT_INTERVAL_FROM_US(dev_priv, ei_down));
+		   GT_INTERVAL_FROM_US(dev_priv, ei_down));
 	I915_WRITE(GEN6_RP_DOWN_THRESHOLD,
-		GT_INTERVAL_FROM_US(dev_priv, (ei_down * threshold_down / 100)));
+		   GT_INTERVAL_FROM_US(dev_priv,
+				       ei_down * threshold_down / 100));
 
-	 I915_WRITE(GEN6_RP_CONTROL,
-		    GEN6_RP_MEDIA_TURBO |
-		    GEN6_RP_MEDIA_HW_NORMAL_MODE |
-		    GEN6_RP_MEDIA_IS_GFX |
-		    GEN6_RP_ENABLE |
-		    GEN6_RP_UP_BUSY_AVG |
-		    GEN6_RP_DOWN_IDLE_AVG);
+	I915_WRITE(GEN6_RP_CONTROL,
+		   GEN6_RP_MEDIA_TURBO |
+		   GEN6_RP_MEDIA_HW_NORMAL_MODE |
+		   GEN6_RP_MEDIA_IS_GFX |
+		   GEN6_RP_ENABLE |
+		   GEN6_RP_UP_BUSY_AVG |
+		   GEN6_RP_DOWN_IDLE_AVG);
 
 	dev_priv->rps.power = new_power;
 	dev_priv->rps.up_threshold = threshold_up;
@@ -4858,6 +4865,8 @@ void gen6_rps_busy(struct drm_i915_private *dev_priv)
 		I915_WRITE(GEN6_PMINTRMSK,
 			   gen6_rps_pm_mask(dev_priv, dev_priv->rps.cur_freq));
 
+		gen6_enable_rps_interrupts(dev_priv);
+
 		/* Ensure we start at the user's desired frequency */
 		intel_set_rps(dev_priv,
 			      clamp(dev_priv->rps.cur_freq,
@@ -4869,6 +4878,13 @@ void gen6_rps_busy(struct drm_i915_private *dev_priv)
 
 void gen6_rps_idle(struct drm_i915_private *dev_priv)
 {
+	/* Flush our bottom-half so that it does not race with us
+	 * setting the idle frequency and so that it is bounded by
+	 * our rpm wakeref. And then disable the interrupts to stop any
+	 * futher RPS reclocking whilst we are asleep.
+	 */
+	gen6_disable_rps_interrupts(dev_priv);
+
 	mutex_lock(&dev_priv->rps.hw_lock);
 	if (dev_priv->rps.enabled) {
 		if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv))
@@ -4894,7 +4910,7 @@ void gen6_rps_boost(struct drm_i915_private *dev_priv,
 	/* This is intentionally racy! We peek at the state here, then
 	 * validate inside the RPS worker.
 	 */
-	if (!(dev_priv->mm.busy &&
+	if (!(dev_priv->gt.awake &&
 	      dev_priv->rps.enabled &&
 	      dev_priv->rps.cur_freq < dev_priv->rps.max_freq_softlimit))
 		return;
@@ -4910,7 +4926,7 @@ void gen6_rps_boost(struct drm_i915_private *dev_priv,
 		spin_lock_irq(&dev_priv->irq_lock);
 		if (dev_priv->rps.interrupts_enabled) {
 			dev_priv->rps.client_boost = true;
-			queue_work(dev_priv->wq, &dev_priv->rps.work);
+			schedule_work(&dev_priv->rps.work);
 		}
 		spin_unlock_irq(&dev_priv->irq_lock);
 
@@ -5692,7 +5708,7 @@ static void valleyview_setup_pctx(struct drm_i915_private *dev_priv)
 	u32 pcbr;
 	int pctx_size = 24*1024;
 
-	mutex_lock(&dev_priv->dev->struct_mutex);
+	mutex_lock(&dev_priv->drm.struct_mutex);
 
 	pcbr = I915_READ(VLV_PCBR);
 	if (pcbr) {
@@ -5700,7 +5716,7 @@ static void valleyview_setup_pctx(struct drm_i915_private *dev_priv)
 		int pcbr_offset;
 
 		pcbr_offset = (pcbr & (~4095)) - dev_priv->mm.stolen_base;
-		pctx = i915_gem_object_create_stolen_for_preallocated(dev_priv->dev,
+		pctx = i915_gem_object_create_stolen_for_preallocated(&dev_priv->drm,
 								      pcbr_offset,
 								      I915_GTT_OFFSET_NONE,
 								      pctx_size);
@@ -5717,7 +5733,7 @@ static void valleyview_setup_pctx(struct drm_i915_private *dev_priv)
 	 * overlap with other ranges, such as the frame buffer, protected
 	 * memory, or any other relevant ranges.
 	 */
-	pctx = i915_gem_object_create_stolen(dev_priv->dev, pctx_size);
+	pctx = i915_gem_object_create_stolen(&dev_priv->drm, pctx_size);
 	if (!pctx) {
 		DRM_DEBUG("not enough stolen space for PCTX, disabling\n");
 		goto out;
@@ -5729,7 +5745,7 @@ static void valleyview_setup_pctx(struct drm_i915_private *dev_priv)
 out:
 	DRM_DEBUG_DRIVER("PCBR: 0x%08x\n", I915_READ(VLV_PCBR));
 	dev_priv->vlv_pctx = pctx;
-	mutex_unlock(&dev_priv->dev->struct_mutex);
+	mutex_unlock(&dev_priv->drm.struct_mutex);
 }
 
 static void valleyview_cleanup_pctx(struct drm_i915_private *dev_priv)
@@ -6669,9 +6685,9 @@ void intel_enable_gt_powersave(struct drm_i915_private *dev_priv)
 
 	if (IS_IRONLAKE_M(dev_priv)) {
 		ironlake_enable_drps(dev_priv);
-		mutex_lock(&dev_priv->dev->struct_mutex);
+		mutex_lock(&dev_priv->drm.struct_mutex);
 		intel_init_emon(dev_priv);
-		mutex_unlock(&dev_priv->dev->struct_mutex);
+		mutex_unlock(&dev_priv->drm.struct_mutex);
 	} else if (INTEL_INFO(dev_priv)->gen >= 6) {
 		/*
 		 * PCU communication is slow and this doesn't need to be
@@ -7771,7 +7787,7 @@ static void __intel_rps_boost_work(struct work_struct *work)
 	struct request_boost *boost = container_of(work, struct request_boost, work);
 	struct drm_i915_gem_request *req = boost->req;
 
-	if (!i915_gem_request_completed(req, true))
+	if (!i915_gem_request_completed(req))
 		gen6_rps_boost(req->i915, NULL, req->emitted_jiffies);
 
 	i915_gem_request_unreference(req);
@@ -7785,7 +7801,7 @@ void intel_queue_rps_boost_for_request(struct drm_i915_gem_request *req)
 	if (req == NULL || INTEL_GEN(req->i915) < 6)
 		return;
 
-	if (i915_gem_request_completed(req, true))
+	if (i915_gem_request_completed(req))
 		return;
 
 	boost = kmalloc(sizeof(*boost), M_DRM, GFP_ATOMIC);

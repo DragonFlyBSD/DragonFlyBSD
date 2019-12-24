@@ -68,7 +68,7 @@
 
 #define DRIVER_NAME		"i915"
 #define DRIVER_DESC		"Intel Graphics"
-#define DRIVER_DATE		"20160620"
+#define DRIVER_DATE		"20160711"
 
 #undef WARN_ON
 /* Many gcc seem to no see through this and fall over :( */
@@ -319,15 +319,16 @@ struct i915_hotplug {
 		for_each_if ((__ports_mask) & (1 << (__port)))
 
 #define for_each_crtc(dev, crtc) \
-	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head)
+	list_for_each_entry(crtc, &(dev)->mode_config.crtc_list, head)
 
 #define for_each_intel_plane(dev, intel_plane) \
 	list_for_each_entry(intel_plane,			\
-			    &dev->mode_config.plane_list,	\
+			    &(dev)->mode_config.plane_list,	\
 			    base.head)
 
 #define for_each_intel_plane_mask(dev, intel_plane, plane_mask)		\
-	list_for_each_entry(intel_plane, &dev->mode_config.plane_list,	\
+	list_for_each_entry(intel_plane,				\
+			    &(dev)->mode_config.plane_list,		\
 			    base.head)					\
 		for_each_if ((plane_mask) &				\
 			     (1 << drm_plane_index(&intel_plane->base)))
@@ -338,11 +339,15 @@ struct i915_hotplug {
 			    base.head)					\
 		for_each_if ((intel_plane)->pipe == (intel_crtc)->pipe)
 
-#define for_each_intel_crtc(dev, intel_crtc) \
-	list_for_each_entry(intel_crtc, &dev->mode_config.crtc_list, base.head)
+#define for_each_intel_crtc(dev, intel_crtc)				\
+	list_for_each_entry(intel_crtc,					\
+			    &(dev)->mode_config.crtc_list,		\
+			    base.head)
 
-#define for_each_intel_crtc_mask(dev, intel_crtc, crtc_mask) \
-	list_for_each_entry(intel_crtc, &dev->mode_config.crtc_list, base.head) \
+#define for_each_intel_crtc_mask(dev, intel_crtc, crtc_mask)		\
+	list_for_each_entry(intel_crtc,					\
+			    &(dev)->mode_config.crtc_list,		\
+			    base.head)					\
 		for_each_if ((crtc_mask) & (1 << drm_crtc_index(&intel_crtc->base)))
 
 #define for_each_intel_encoder(dev, intel_encoder)		\
@@ -352,7 +357,7 @@ struct i915_hotplug {
 
 #define for_each_intel_connector(dev, intel_connector)		\
 	list_for_each_entry(intel_connector,			\
-			    &dev->mode_config.connector_list,	\
+			    &(dev)->mode_config.connector_list,	\
 			    base.head)
 
 #define for_each_encoder_on_crtc(dev, __crtc, intel_encoder) \
@@ -474,6 +479,7 @@ struct drm_i915_error_state {
 	struct timeval time;
 
 	char error_msg[128];
+	bool simulated;
 	int iommu;
 	u32 reset_count;
 	u32 suspend_count;
@@ -505,6 +511,7 @@ struct drm_i915_error_state {
 		bool valid;
 		/* Software tracked state */
 		bool waiting;
+		int num_waiters;
 		int hangcheck_score;
 		enum intel_ring_hangcheck_action hangcheck_action;
 		int num_requests;
@@ -549,6 +556,12 @@ struct drm_i915_error_state {
 			u32 seqno;
 			u32 tail;
 		} *requests;
+
+		struct drm_i915_error_waiter {
+			char comm[TASK_COMM_LEN];
+			pid_t pid;
+			u32 seqno;
+		} *waiters;
 
 		struct {
 			u32 gfx_mode;
@@ -867,9 +880,10 @@ struct i915_gem_context {
 
 	/* Unique identifier for this context, used by the hw for tracking */
 	unsigned long flags;
+#define CONTEXT_NO_ZEROMAP		BIT(0)
+#define CONTEXT_NO_ERROR_CAPTURE	BIT(1)
 	unsigned hw_id;
 	u32 user_handle;
-#define CONTEXT_NO_ZEROMAP		(1<<0)
 
 	u32 ggtt_alignment;
 
@@ -1307,36 +1321,10 @@ struct i915_gem_mm {
 	struct list_head fence_list;
 
 	/**
-	 * We leave the user IRQ off as much as possible,
-	 * but this means that requests will finish and never
-	 * be retired once the system goes idle. Set a timer to
-	 * fire periodically while the ring is running. When it
-	 * fires, go retire requests.
-	 */
-	struct delayed_work retire_work;
-
-	/**
-	 * When we detect an idle GPU, we want to turn on
-	 * powersaving features. So once we see that there
-	 * are no more requests outstanding and no more
-	 * arrive within a small period of time, we fire
-	 * off the idle_work.
-	 */
-	struct delayed_work idle_work;
-
-	/**
 	 * Are we in a non-interruptible section of code like
 	 * modesetting?
 	 */
 	bool interruptible;
-
-	/**
-	 * Is the GPU currently considered idle, or busy executing userspace
-	 * requests?  Whilst idle, we attempt to power down the hardware and
-	 * display clocks. In order to reduce the effect on performance, there
-	 * is a slight delay before we do so.
-	 */
-	bool busy;
 
 	/* the indicator for dispatch video commands on two BSD rings */
 	unsigned int bsd_ring_dispatch_index;
@@ -1421,15 +1409,8 @@ struct i915_gpu_error {
 	 */
 	wait_queue_head_t reset_queue;
 
-	/* Userspace knobs for gpu hang simulation;
-	 * combines both a ring mask, and extra flags
-	 */
-	u32 stop_rings;
-#define I915_STOP_RING_ALLOW_BAN       (1 << 31)
-#define I915_STOP_RING_ALLOW_WARN      (1 << 30)
-
 	/* For missed irq/seqno simulation. */
-	unsigned int test_irq_rings;
+	unsigned long test_irq_rings;
 };
 
 enum modeset_restore {
@@ -1742,7 +1723,6 @@ struct intel_wm_config {
 struct drm_i915_private {
 	struct drm_device drm;
 
-	struct drm_device *dev;
 	struct kmem_cache *objects;
 	struct kmem_cache *vmas;
 	struct kmem_cache *requests;
@@ -2041,6 +2021,34 @@ struct drm_i915_private {
 		int (*init_engines)(struct drm_device *dev);
 		void (*cleanup_engine)(struct intel_engine_cs *engine);
 		void (*stop_engine)(struct intel_engine_cs *engine);
+
+		/**
+		 * Is the GPU currently considered idle, or busy executing
+		 * userspace requests? Whilst idle, we allow runtime power
+		 * management to power down the hardware and display clocks.
+		 * In order to reduce the effect on performance, there
+		 * is a slight delay before we do so.
+		 */
+		unsigned int active_engines;
+		bool awake;
+
+		/**
+		 * We leave the user IRQ off as much as possible,
+		 * but this means that requests will finish and never
+		 * be retired once the system goes idle. Set a timer to
+		 * fire periodically while the ring is running. When it
+		 * fires, go retire requests.
+		 */
+		struct delayed_work retire_work;
+
+		/**
+		 * When we detect an idle GPU, we want to turn on
+		 * powersaving features. So once we see that there
+		 * are no more requests outstanding and no more
+		 * arrive within a small period of time, we fire
+		 * off the idle_work.
+		 */
+		struct delayed_work idle_work;
 	} gt;
 
 	/* perform PHY state sanity checks? */
@@ -2376,6 +2384,7 @@ struct drm_i915_gem_request {
 	/** On Which ring this request was generated */
 	struct drm_i915_private *i915;
 	struct intel_engine_cs *engine;
+	struct intel_signal_node signaling;
 
 	 /** GEM sequence number associated with the previous request,
 	  * when the HWS breadcrumb is equal to this the GPU is processing
@@ -2755,29 +2764,20 @@ struct drm_i915_cmd_table {
 #define IS_KBL_REVID(p, since, until) \
 	(IS_KABYLAKE(p) && IS_REVID(p, since, until))
 
-#define KBL_REVID_A0		0x0
-#define KBL_REVID_B0		0x1
-#define KBL_REVID_C0		0x2
-#define KBL_REVID_D0		0x3
-#define KBL_REVID_E0		0x4
-
-#define IS_KBL_REVID(p, since, until) \
-	(IS_KABYLAKE(p) && IS_REVID(p, since, until))
-
 /*
  * The genX designation typically refers to the render engine, so render
  * capability related checks should use IS_GEN, while display and other checks
  * have their own (e.g. HAS_PCH_SPLIT for ILK+ display, IS_foo for particular
  * chips, etc.).
  */
-#define IS_GEN2(dev)	(INTEL_INFO(dev)->gen_mask & BIT(1))
-#define IS_GEN3(dev)	(INTEL_INFO(dev)->gen_mask & BIT(2))
-#define IS_GEN4(dev)	(INTEL_INFO(dev)->gen_mask & BIT(3))
-#define IS_GEN5(dev)	(INTEL_INFO(dev)->gen_mask & BIT(4))
-#define IS_GEN6(dev)	(INTEL_INFO(dev)->gen_mask & BIT(5))
-#define IS_GEN7(dev)	(INTEL_INFO(dev)->gen_mask & BIT(6))
-#define IS_GEN8(dev)	(INTEL_INFO(dev)->gen_mask & BIT(7))
-#define IS_GEN9(dev)	(INTEL_INFO(dev)->gen_mask & BIT(8))
+#define IS_GEN2(dev)	(!!(INTEL_INFO(dev)->gen_mask & BIT(1)))
+#define IS_GEN3(dev)	(!!(INTEL_INFO(dev)->gen_mask & BIT(2)))
+#define IS_GEN4(dev)	(!!(INTEL_INFO(dev)->gen_mask & BIT(3)))
+#define IS_GEN5(dev)	(!!(INTEL_INFO(dev)->gen_mask & BIT(4)))
+#define IS_GEN6(dev)	(!!(INTEL_INFO(dev)->gen_mask & BIT(5)))
+#define IS_GEN7(dev)	(!!(INTEL_INFO(dev)->gen_mask & BIT(6)))
+#define IS_GEN8(dev)	(!!(INTEL_INFO(dev)->gen_mask & BIT(7)))
+#define IS_GEN9(dev)	(!!(INTEL_INFO(dev)->gen_mask & BIT(8)))
 
 #define ENGINE_MASK(id)	BIT(id)
 #define RENDER_RING	ENGINE_MASK(RCS)
@@ -2788,7 +2788,7 @@ struct drm_i915_cmd_table {
 #define ALL_ENGINES	(~0)
 
 #define HAS_ENGINE(dev_priv, id) \
-	(INTEL_INFO(dev_priv)->ring_mask & ENGINE_MASK(id))
+	(!!(INTEL_INFO(dev_priv)->ring_mask & ENGINE_MASK(id)))
 
 #define HAS_BSD(dev_priv)	HAS_ENGINE(dev_priv, VCS)
 #define HAS_BSD2(dev_priv)	HAS_ENGINE(dev_priv, VCS2)
@@ -2797,7 +2797,7 @@ struct drm_i915_cmd_table {
 
 #define HAS_LLC(dev)		(INTEL_INFO(dev)->has_llc)
 #define HAS_SNOOP(dev)		(INTEL_INFO(dev)->has_snoop)
-#define HAS_EDRAM(dev)		(__I915__(dev)->edram_cap & EDRAM_ENABLED)
+#define HAS_EDRAM(dev)		(!!(__I915__(dev)->edram_cap & EDRAM_ENABLED))
 #define HAS_WT(dev)		((IS_HASWELL(dev) || IS_BROADWELL(dev)) && \
 				 HAS_EDRAM(dev))
 #define I915_NEED_GFX_HWS(dev)	(INTEL_INFO(dev)->need_gfx_hws)
@@ -2914,6 +2914,15 @@ struct drm_i915_cmd_table {
 
 #include "i915_trace.h"
 
+static inline bool intel_scanout_needs_vtd_wa(struct drm_i915_private *dev_priv)
+{
+#ifdef CONFIG_INTEL_IOMMU
+	if (INTEL_GEN(dev_priv) >= 6 && intel_iommu_gfx_mapped)
+		return true;
+#endif
+	return false;
+}
+
 extern int i915_suspend_switcheroo(device_t kdev);
 extern int i915_resume_switcheroo(struct drm_device *dev);
 
@@ -2950,8 +2959,6 @@ void intel_hpd_init(struct drm_i915_private *dev_priv);
 void intel_hpd_init_work(struct drm_i915_private *dev_priv);
 void intel_hpd_cancel_work(struct drm_i915_private *dev_priv);
 bool intel_hpd_pin_to_port(enum hpd_pin pin, enum port *port);
-bool intel_hpd_disable(struct drm_i915_private *dev_priv, enum hpd_pin pin);
-void intel_hpd_enable(struct drm_i915_private *dev_priv, enum hpd_pin pin);
 
 /* i915_irq.c */
 static inline void i915_queue_hangcheck(struct drm_i915_private *dev_priv)
@@ -3079,7 +3086,6 @@ ibx_disable_display_interrupt(struct drm_i915_private *dev_priv, uint32_t bits)
 {
 	ibx_display_interrupt_update(dev_priv, bits, 0);
 }
-
 
 /* i915_gem.c */
 int i915_gem_create_ioctl(struct drm_device *dev, void *data,
@@ -3297,22 +3303,25 @@ i915_seqno_passed(uint32_t seq1, uint32_t seq2)
 	return (int32_t)(seq1 - seq2) >= 0;
 }
 
-static inline bool i915_gem_request_started(struct drm_i915_gem_request *req,
-					   bool lazy_coherency)
+static inline bool i915_gem_request_started(const struct drm_i915_gem_request *req)
 {
-	if (!lazy_coherency && req->engine->irq_seqno_barrier)
-		req->engine->irq_seqno_barrier(req->engine);
-	return i915_seqno_passed(req->engine->get_seqno(req->engine),
+	return i915_seqno_passed(intel_engine_get_seqno(req->engine),
 				 req->previous_seqno);
 }
 
-static inline bool i915_gem_request_completed(struct drm_i915_gem_request *req,
-					      bool lazy_coherency)
+static inline bool i915_gem_request_completed(const struct drm_i915_gem_request *req)
 {
-	if (!lazy_coherency && req->engine->irq_seqno_barrier)
-		req->engine->irq_seqno_barrier(req->engine);
-	return i915_seqno_passed(req->engine->get_seqno(req->engine),
+	return i915_seqno_passed(intel_engine_get_seqno(req->engine),
 				 req->seqno);
+}
+
+bool __i915_spin_request(const struct drm_i915_gem_request *request,
+			 int state, unsigned long timeout_us);
+static inline bool i915_spin_request(const struct drm_i915_gem_request *request,
+				     int state, unsigned long timeout_us)
+{
+	return (i915_gem_request_started(request) &&
+		__i915_spin_request(request, state, timeout_us));
 }
 
 int __must_check i915_gem_get_seqno(struct drm_i915_private *dev_priv, u32 *seqno);
@@ -3321,7 +3330,7 @@ int __must_check i915_gem_set_seqno(struct drm_device *dev, u32 seqno);
 struct drm_i915_gem_request *
 i915_gem_find_active_request(struct intel_engine_cs *engine);
 
-bool i915_gem_retire_requests(struct drm_i915_private *dev_priv);
+void i915_gem_retire_requests(struct drm_i915_private *dev_priv);
 void i915_gem_retire_requests_ring(struct intel_engine_cs *engine);
 
 static inline u32 i915_reset_counter(struct i915_gpu_error *error)
@@ -3362,18 +3371,6 @@ static inline bool i915_terminally_wedged(struct i915_gpu_error *error)
 static inline u32 i915_reset_count(struct i915_gpu_error *error)
 {
 	return ((i915_reset_counter(error) & ~I915_WEDGED) + 1) / 2;
-}
-
-static inline bool i915_stop_ring_allow_ban(struct drm_i915_private *dev_priv)
-{
-	return dev_priv->gpu_error.stop_rings == 0 ||
-		dev_priv->gpu_error.stop_rings & I915_STOP_RING_ALLOW_BAN;
-}
-
-static inline bool i915_stop_ring_allow_warn(struct drm_i915_private *dev_priv)
-{
-	return dev_priv->gpu_error.stop_rings == 0 ||
-		dev_priv->gpu_error.stop_rings & I915_STOP_RING_ALLOW_WARN;
 }
 
 void i915_gem_reset(struct drm_device *dev);
@@ -3771,6 +3768,16 @@ static inline void intel_register_dsm_handler(void) { return; }
 static inline void intel_unregister_dsm_handler(void) { return; }
 #endif /* CONFIG_ACPI */
 
+/* intel_device_info.c */
+static inline struct intel_device_info *
+mkwrite_device_info(struct drm_i915_private *dev_priv)
+{
+	return (struct intel_device_info *)&dev_priv->info;
+}
+
+void intel_device_info_runtime_init(struct drm_i915_private *dev_priv);
+void intel_device_info_dump(struct drm_i915_private *dev_priv);
+
 /* modesetting */
 extern void intel_modeset_init_hw(struct drm_device *dev);
 extern void intel_modeset_init(struct drm_device *dev);
@@ -3937,11 +3944,6 @@ static inline i915_reg_t i915_vgacntrl_reg(struct drm_device *dev)
 		return VGACNTRL;
 }
 
-static inline void __user *to_user_ptr(u64 address)
-{
-	return (void __user *)(uintptr_t)address;
-}
-
 static inline unsigned long msecs_to_jiffies_timeout(const unsigned int m)
 {
 	unsigned long j = msecs_to_jiffies(m);
@@ -3992,12 +3994,80 @@ wait_remaining_ms_from_jiffies(unsigned long timestamp_jiffies, int to_wait_ms)
 #endif
 	}
 }
-
-static inline void i915_trace_irq_get(struct intel_engine_cs *engine,
-				      struct drm_i915_gem_request *req)
+static inline bool __i915_request_irq_complete(struct drm_i915_gem_request *req)
 {
-	if (engine->trace_irq_req == NULL && engine->irq_get(engine))
-		i915_gem_request_assign(&engine->trace_irq_req, req);
+	struct intel_engine_cs *engine = req->engine;
+
+	/* Before we do the heavier coherent read of the seqno,
+	 * check the value (hopefully) in the CPU cacheline.
+	 */
+	if (i915_gem_request_completed(req))
+		return true;
+
+	/* Ensure our read of the seqno is coherent so that we
+	 * do not "miss an interrupt" (i.e. if this is the last
+	 * request and the seqno write from the GPU is not visible
+	 * by the time the interrupt fires, we will see that the
+	 * request is incomplete and go back to sleep awaiting
+	 * another interrupt that will never come.)
+	 *
+	 * Strictly, we only need to do this once after an interrupt,
+	 * but it is easier and safer to do it every time the waiter
+	 * is woken.
+	 */
+	if (engine->irq_seqno_barrier &&
+	    READ_ONCE(engine->breadcrumbs.irq_seqno_bh) == current &&
+	    cmpxchg_relaxed(&engine->breadcrumbs.irq_posted, 1, 0)) {
+		struct task_struct *tsk;
+
+		/* The ordering of irq_posted versus applying the barrier
+		 * is crucial. The clearing of the current irq_posted must
+		 * be visible before we perform the barrier operation,
+		 * such that if a subsequent interrupt arrives, irq_posted
+		 * is reasserted and our task rewoken (which causes us to
+		 * do another __i915_request_irq_complete() immediately
+		 * and reapply the barrier). Conversely, if the clear
+		 * occurs after the barrier, then an interrupt that arrived
+		 * whilst we waited on the barrier would not trigger a
+		 * barrier on the next pass, and the read may not see the
+		 * seqno update.
+		 */
+		engine->irq_seqno_barrier(engine);
+
+		/* If we consume the irq, but we are no longer the bottom-half,
+		 * the real bottom-half may not have serialised their own
+		 * seqno check with the irq-barrier (i.e. may have inspected
+		 * the seqno before we believe it coherent since they see
+		 * irq_posted == false but we are still running).
+		 */
+		rcu_read_lock();
+		tsk = READ_ONCE(engine->breadcrumbs.irq_seqno_bh);
+		if (tsk && tsk != current)
+			/* Note that if the bottom-half is changed as we
+			 * are sending the wake-up, the new bottom-half will
+			 * be woken by whomever made the change. We only have
+			 * to worry about when we steal the irq-posted for
+			 * ourself.
+			 */
+			wake_up_process(tsk);
+		rcu_read_unlock();
+
+		if (i915_gem_request_completed(req))
+			return true;
+	}
+
+	/* We need to check whether any gpu reset happened in between
+	 * the request being submitted and now. If a reset has occurred,
+	 * the seqno will have been advance past ours and our request
+	 * is complete. If we are in the process of handling a reset,
+	 * the request is effectively complete as the rendering will
+	 * be discarded, but we need to return in order to drop the
+	 * struct_mutex.
+	 */
+	if (i915_reset_in_progress(&req->i915->gpu_error))
+		return true;
+
+	return false;
 }
 
 #endif

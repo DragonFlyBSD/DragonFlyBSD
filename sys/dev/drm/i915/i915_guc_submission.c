@@ -97,8 +97,14 @@ static int host2guc_action(struct intel_guc *guc, u32 *data, u32 len)
 
 	I915_WRITE(HOST2GUC_INTERRUPT, HOST2GUC_TRIGGER);
 
-	/* No HOST2GUC command should take longer than 10ms */
-	ret = wait_for_atomic(host2guc_action_response(dev_priv, &status), 10);
+	/*
+	 * Fast commands should complete in less than 10us, so sample quickly
+	 * up to that length of time, then switch to a slower sleep-wait loop.
+	 * No HOST2GUC command should ever take longer than 10ms.
+	 */
+	ret = wait_for_us(host2guc_action_response(dev_priv, &status), 10);
+	if (ret)
+		ret = wait_for(host2guc_action_response(dev_priv, &status), 10);
 	if (status != GUC2HOST_STATUS_SUCCESS) {
 		/*
 		 * Either the GuC explicitly returned an error (which
@@ -622,7 +628,7 @@ gem_allocate_guc_obj(struct drm_i915_private *dev_priv, u32 size)
 {
 	struct drm_i915_gem_object *obj;
 
-	obj = i915_gem_object_create(dev_priv->dev, size);
+	obj = i915_gem_object_create(&dev_priv->drm, size);
 	if (IS_ERR(obj))
 		return NULL;
 
@@ -1033,7 +1039,7 @@ void i915_guc_submission_fini(struct drm_i915_private *dev_priv)
  */
 int intel_guc_suspend(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_guc *guc = &dev_priv->guc;
 	struct i915_gem_context *ctx;
 	u32 data[3];
@@ -1059,7 +1065,7 @@ int intel_guc_suspend(struct drm_device *dev)
  */
 int intel_guc_resume(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_guc *guc = &dev_priv->guc;
 	struct i915_gem_context *ctx;
 	u32 data[3];

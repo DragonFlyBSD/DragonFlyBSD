@@ -8,6 +8,7 @@ SRCS =	i915_drv.c \
 	i915_suspend.c \
 	i915_sysfs.c \
 	intel_csr.c \
+	intel_device_info.c \
 	intel_pm.c \
 	intel_runtime_pm.c
 
@@ -27,6 +28,7 @@ SRCS +=	i915_cmd_parser.c \
 	i915_gem_tiling.c \
 	i915_gem_userptr.c \
 	i915_gpu_error.c \
+	intel_breadcrumbs.c \
 	intel_lrc.c \
 	intel_mocs.c \
 	intel_ringbuffer.c \

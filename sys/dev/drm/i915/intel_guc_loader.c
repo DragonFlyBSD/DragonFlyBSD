@@ -65,6 +65,9 @@ MODULE_FIRMWARE(I915_SKL_GUC_UCODE);
 #define I915_BXT_GUC_UCODE "i915/bxt_guc_ver8_7.bin"
 MODULE_FIRMWARE(I915_BXT_GUC_UCODE);
 
+#define I915_KBL_GUC_UCODE "i915/kbl_guc_ver9_14.bin"
+MODULE_FIRMWARE(I915_KBL_GUC_UCODE);
+
 /* User-friendly representation of an enum */
 const char *intel_guc_fw_status_repr(enum intel_guc_fw_status status)
 {
@@ -311,7 +314,7 @@ static u32 guc_wopcm_size(struct drm_i915_private *dev_priv)
 static int guc_ucode_xfer(struct drm_i915_private *dev_priv)
 {
 	struct intel_guc_fw *guc_fw = &dev_priv->guc.guc_fw;
-	struct drm_device *dev = dev_priv->dev;
+	struct drm_device *dev = &dev_priv->drm;
 	int ret;
 
 	ret = i915_gem_object_set_to_gtt_domain(guc_fw->guc_fw_obj, false);
@@ -605,7 +608,7 @@ static void guc_fw_fetch(struct drm_device *dev, struct intel_guc_fw *guc_fw)
 
 	/* Header and uCode will be loaded to WOPCM. Size of the two. */
 	size = guc_fw->header_size + guc_fw->ucode_size;
-	if (size > guc_wopcm_size(dev->dev_private)) {
+	if (size > guc_wopcm_size(to_i915(dev))) {
 		DRM_ERROR("Firmware is too large to fit in WOPCM\n");
 		goto fail;
 	}
@@ -698,6 +701,10 @@ void intel_guc_init(struct drm_device *dev)
 		fw_path = I915_BXT_GUC_UCODE;
 		guc_fw->guc_fw_major_wanted = 8;
 		guc_fw->guc_fw_minor_wanted = 7;
+	} else if (IS_KABYLAKE(dev)) {
+		fw_path = I915_KBL_GUC_UCODE;
+		guc_fw->guc_fw_major_wanted = 9;
+		guc_fw->guc_fw_minor_wanted = 14;
 	} else {
 		fw_path = "";	/* unknown device */
 	}
