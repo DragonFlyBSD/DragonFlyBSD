@@ -70,6 +70,7 @@ SRCS	= \
 	linux_iomapping.c \
 	linux_irq.c \
 	linux_kobject.c \
+	linux_kthread.c \
 	linux_list_sort.c \
 	linux_reservation.c \
 	linux_scatterlist.c \

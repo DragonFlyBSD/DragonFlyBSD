@@ -22,8 +22,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,9 +42,9 @@ static struct lwkt_token kpsus_token = LWKT_TOKEN_INITIALIZER(kpsus_token);
 /*
  * Create a new lightweight kernel thread.
  */
-static int __printflike(5, 0)
+static int __printflike(6, 0)
 _kthread_create(void (*func)(void *), void *arg,
-    struct thread **tdp, int cpu, const char *fmt, __va_list ap)
+    struct thread **tdp, int cpu, bool schedule_now, const char *fmt, __va_list ap)
 {
     thread_t td;
     int flags = 0;
@@ -66,9 +64,25 @@ _kthread_create(void (*func)(void *), void *arg,
     /*
      * Schedule the thread to run
      */
-    lwkt_schedule(td);
+    if (schedule_now)
+	lwkt_schedule(td);
 
     return 0;
+}
+
+/* Create a new lightweight kernel thread and do not schedule it */
+int
+kthread_alloc(void (*func)(void *), void *arg,
+	      struct thread **tdp, const char *fmt, ...)
+{
+	__va_list ap;
+	int ret;
+
+	__va_start(ap, fmt);
+	ret = _kthread_create(func, arg, tdp, -1, false, fmt, ap);
+	__va_end(ap);
+
+	return ret;
 }
 
 /*
@@ -82,7 +96,7 @@ kthread_create(void (*func)(void *), void *arg,
 	int ret;
 
 	__va_start(ap, fmt);
-	ret = _kthread_create(func, arg, tdp, -1, fmt, ap);
+	ret = _kthread_create(func, arg, tdp, -1, true, fmt, ap);
 	__va_end(ap);
 
 	return ret;
@@ -100,7 +114,7 @@ kthread_create_cpu(void (*func)(void *), void *arg,
 	int ret;
 
 	__va_start(ap, fmt);
-	ret = _kthread_create(func, arg, tdp, cpu, fmt, ap);
+	ret = _kthread_create(func, arg, tdp, cpu, true, fmt, ap);
 	__va_end(ap);
 
 	return ret;

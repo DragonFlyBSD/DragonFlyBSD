@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,17 +24,72 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_KTHREAD_H_
-#define _LINUX_KTHREAD_H_
-
-#include <linux/err.h>
+#include <linux/kthread.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
+
+#include <sys/kthread.h>
+
+/*
+   All Linux threads/processes have an associated task_struct
+   a kthread is a pure kernel thread without userland context
+*/
+
+static void
+linux_ktfn_wrapper(void *arg)
+{
+	struct task_struct *task = arg;
+
+	task->kt_exitvalue = task->kt_fn(task->kt_fndata);
+}
 
 struct task_struct *
-kthread_run(int (*fn)(void *lfnarg), void *data, const char *namefmt, ...);
+kthread_run(int (*lfn)(void *), void *data, const char *namefmt, ...)
+{
+	struct task_struct *task;
+	struct thread *td;
+	__va_list args;
+	int ret;
 
-int kthread_stop(struct task_struct *k);
+	task = kzalloc(sizeof(*task), GFP_KERNEL);
 
-bool kthread_should_stop(void);
+	__va_start(args, namefmt);
+	ret = kthread_alloc(linux_ktfn_wrapper, task, &td, namefmt, args);
+	__va_end(args);
+	if (ret) {
+		kfree(task);
+		return ERR_PTR(-ENOMEM);
+	}
 
-#endif	/* _LINUX_KTHREAD_H_ */
+	task->dfly_td = td;
+	td->td_linux_task = task;
+
+	task->mm = NULL;	/* kthreads have no userland address space */
+
+	task->kt_fn = lfn;
+	task->kt_fndata = data;
+
+	/* Start the thread here */
+	lwkt_schedule(td);
+
+	return task;
+}
+
+#define KTHREAD_SHOULD_STOP 1
+
+bool
+kthread_should_stop(void)
+{
+	return test_bit(KTHREAD_SHOULD_STOP, &current->kt_flags);
+}
+
+int
+kthread_stop(struct task_struct *ts)
+{
+	set_bit(KTHREAD_SHOULD_STOP, &ts->kt_flags);
+
+	wake_up_process(ts);
+	wait_for_completion(&ts->kt_exited);
+
+	return ts->kt_exitvalue;
+}

@@ -22,9 +22,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/sys/kthread.h,v 1.2 2000/01/07 08:36:44 luoqi Exp $
- * $DragonFly: src/sys/sys/kthread.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_KTHREAD_H_
@@ -59,6 +56,8 @@ int	suspend_kproc (struct thread *, int);
 int	resume_kproc (struct thread *);
 void	kproc_suspend_loop (void);
 void	shutdown_kproc (void *, int);
+int	kthread_alloc (void (*)(void *), void *, struct thread **,
+	    const char *, ...) __printflike(4, 5);
 int	kthread_create (void (*)(void *), void *, struct thread **,
 	    const char *, ...) __printflike(4, 5);
 int	kthread_create_cpu (void (*)(void *), void *, struct thread **,

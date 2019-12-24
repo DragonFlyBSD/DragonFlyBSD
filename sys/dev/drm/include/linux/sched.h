@@ -80,6 +80,13 @@ struct task_struct {
 	volatile long state;
 	struct mm_struct *mm;	/* mirror copy in p->p_linux_mm */
 	int prio;
+
+	/* kthread-specific data */
+	unsigned long		kt_flags;
+	struct completion	kt_exited;
+	int			(*kt_fn)(void *data);
+	void			*kt_fndata;
+	int			kt_exitvalue;
 };
 
 /*
