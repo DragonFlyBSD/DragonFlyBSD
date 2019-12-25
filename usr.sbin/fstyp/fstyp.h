@@ -37,6 +37,7 @@ void	*read_buf(FILE *fp, off_t off, size_t len);
 char	*checked_strdup(const char *s);
 void	rtrim(char *label, size_t size);
 
+int	fstyp_apfs(FILE *fp, char *label, size_t size, const char *devpath);
 int	fstyp_cd9660(FILE *fp, char *label, size_t size, const char *devpath);
 int	fstyp_exfat(FILE *fp, char *label, size_t size, const char *devpath);
 int	fstyp_ext2fs(FILE *fp, char *label, size_t size, const char *devpath);

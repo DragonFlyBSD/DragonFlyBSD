@@ -55,6 +55,7 @@ static struct {
 	fstyp_function	function;
 	bool		unmountable;
 } fstypes[] = {
+	{ "apfs", &fstyp_apfs, true },
 	{ "cd9660", &fstyp_cd9660, false },
 	{ "exfat", &fstyp_exfat, false },
 	{ "ext2fs", &fstyp_ext2fs, false },
