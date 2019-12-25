@@ -50,10 +50,6 @@
 #define ACPI_INTERNAL_XFACE
 #define ACPI_INTERNAL_VAR_XFACE
 
-/* Asm macros */
-
-#define ACPI_ASM_MACROS
-#define BREAKPOINT3
 #define ACPI_DISABLE_IRQS() cpu_disable_intr()
 #define ACPI_ENABLE_IRQS()  cpu_enable_intr()
 
