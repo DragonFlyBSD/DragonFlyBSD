@@ -415,6 +415,9 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			continue;
 		}
 
+		if (dfirst_one_only)
+			goto skip_to_flavor;
+
 		/*
 		 * ERROR includes FAILURE, which is set in numerous situations
 		 * including when NOBUILD state is processed.  So check for
@@ -456,6 +459,7 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			*app |= PKGF_NOTREADY;
 		}
 
+skip_to_flavor:
 		/*
 		 * Reduce search complexity, if we have already processed
 		 * scan in the traversal it will either already be on the
