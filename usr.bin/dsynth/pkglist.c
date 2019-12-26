@@ -45,6 +45,7 @@ static void childGetPackageInfo(bulk_t *bulk);
 static void childGetBinaryDistInfo(bulk_t *bulk);
 static void childOptimizeEnv(bulk_t *bulk);
 static pkg_t *resolveDeps(pkg_t *dep_list, pkg_t ***list_tailp, int gentopo);
+static void resolveFlavors(pkg_t *pkg, char *flavors, int gentopo);
 static void resolveDepString(pkg_t *pkg, char *depstr,
 			int gentopo, int dep_type);
 static pkg_t *processPackageListBulk(int total);
@@ -102,7 +103,10 @@ pkg_enter(pkg_t *pkg)
 				break;
 			pkgp = &scan->hnext1;
 		}
+		ddassert(scan == NULL || (scan->flags & PKGF_PLACEHOLD));
 		if (scan && (scan->flags & PKGF_PLACEHOLD)) {
+			ddassert(scan->idepon_list.next == &scan->idepon_list);
+			ddassert(scan->deponi_list.next == &scan->deponi_list);
 			*pkgp = pkg;
 			pkg->hnext1 = scan->hnext1;
 			free(scan->portdir);
@@ -473,33 +477,42 @@ OptimizeEnv(void)
 
 /*
  * Run through the list resolving dependencies and constructing the topology
- * linkages.   This may append packages to the list.
+ * linkages.   This may append packages to the list.  Dependencies to dummy
+ * nodes which do not specify a flavor do not need special handling, the
+ * search code in build.c will properly follow the first flavor.
  */
 static pkg_t *
 resolveDeps(pkg_t *list, pkg_t ***list_tailp, int gentopo)
 {
-	pkg_t *scan;
 	pkg_t *ret_list = NULL;
+	pkg_t *scan;
+	pkg_t *use;
 	bulk_t *bulk;
 
 	for (scan = list; scan; scan = scan->bnext) {
-		resolveDepString(scan, scan->fetch_deps,
+		use = pkg_find(scan->portdir);
+		resolveFlavors(use, scan->flavors, gentopo);
+		resolveDepString(use, scan->fetch_deps,
 				 gentopo, DEP_TYPE_FETCH);
-		resolveDepString(scan, scan->ext_deps,
+		resolveDepString(use, scan->ext_deps,
 				 gentopo, DEP_TYPE_EXT);
-		resolveDepString(scan, scan->patch_deps,
+		resolveDepString(use, scan->patch_deps,
 				 gentopo, DEP_TYPE_PATCH);
-		resolveDepString(scan, scan->build_deps,
+		resolveDepString(use, scan->build_deps,
 				 gentopo, DEP_TYPE_BUILD);
-		resolveDepString(scan, scan->lib_deps,
+		resolveDepString(use, scan->lib_deps,
 				 gentopo, DEP_TYPE_LIB);
-		resolveDepString(scan, scan->run_deps,
+		resolveDepString(use, scan->run_deps,
 				 gentopo, DEP_TYPE_RUN);
 	}
 
 	/*
 	 * No bulk ops are queued when doing the final topology
 	 * generation.
+	 *
+	 * Avoid entering duplicate results from the bulk ops.  Duplicate
+	 * results are mostly filtered out, but not always.  A dummy node
+	 * representing multiple flavors will parse-out the flavors
 	 */
 	if (gentopo)
 		return NULL;
@@ -509,14 +522,95 @@ resolveDeps(pkg_t *list, pkg_t ***list_tailp, int gentopo)
 				ret_list = bulk->list;
 			**list_tailp = bulk->list;
 			bulk->list = NULL;
-			while (**list_tailp) {
-				pkg_enter(**list_tailp);
-				*list_tailp = &(**list_tailp)->bnext;
+			while ((scan = **list_tailp) != NULL) {
+				pkg_enter(scan);
+				*list_tailp = &scan->bnext;
 			}
 		}
 		freebulk(bulk);
 	}
 	return (ret_list);
+}
+
+/*
+ * Resolve a generic node that has flavors, queue to retrieve info for
+ * each flavor and setup linkages as appropriate.
+ */
+static void
+resolveFlavors(pkg_t *pkg, char *flavors, int gentopo)
+{
+	char *flavor_base;
+	char *flavor_scan;
+	char *flavor;
+	char *portdir;
+	char *s1;
+	char *s2;
+	pkg_t *dpkg;
+	pkglink_t *link;
+
+	if ((pkg->flags & PKGF_DUMMY) == 0)
+		return;
+	if (pkg->flavors == NULL || pkg->flavors[0] == 0)
+		return;
+	flavor_base = strdup(flavors);
+	flavor_scan = flavor_base;
+
+	for (;;) {
+		do {
+			flavor = strsep(&flavor_scan, " \t");
+		} while (flavor && *flavor == 0);
+		if (flavor == NULL)
+			break;
+
+		/*
+		 * Iterate each flavor generating "s1/s2@flavor".
+		 *
+		 * queuebulk() info for each flavor, and set-up the
+		 * linkages in the topology generation pass.
+		 */
+		asprintf(&portdir, "%s@%s", pkg->portdir, flavor);
+		s1 = strdup(pkg->portdir);
+		s2 = strchr(s1, '/');
+		*s2++ = 0;
+
+		dpkg = pkg_find(portdir);
+		if (dpkg && gentopo) {
+			/*
+			 * Setup linkages
+			 */
+			free(portdir);
+
+			link = calloc(1, sizeof(*link));
+			link->pkg = dpkg;
+			link->next = &pkg->idepon_list;
+			link->prev = pkg->idepon_list.prev;
+			link->next->prev = link;
+			link->prev->next = link;
+			link->dep_type = DEP_TYPE_BUILD;
+
+			link = calloc(1, sizeof(*link));
+			link->pkg = pkg;
+			link->next = &dpkg->deponi_list;
+			link->prev = dpkg->deponi_list.prev;
+			link->next->prev = link;
+			link->prev->next = link;
+			link->dep_type = DEP_TYPE_BUILD;
+			++dpkg->depi_count;
+		} else if (gentopo == 0 && dpkg == NULL) {
+			/*
+			 * Use a place-holder to prevent duplicate
+			 * dependencies from being processed.  The placeholder
+			 * will be replaced by the actual dependency.
+			 */
+			dpkg = allocpkg();
+			dpkg->portdir = portdir;
+			dpkg->flags = PKGF_PLACEHOLD;
+			pkg_enter(dpkg);
+			queuebulk(s1, s2, flavor, NULL);
+		}
+		free(s1);
+	}
+	free(flavor_base);
 }
 
 static void
@@ -640,7 +734,6 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 		else
 			flavor = strrchr(sep, '@');
 #endif
-
 		if (flavor)
 			*flavor++ = 0;
 
@@ -685,10 +778,6 @@ static void
 childGetPackageInfo(bulk_t *bulk)
 {
 	pkg_t *pkg;
-	pkg_t *dummy_node;
-	pkg_t **list_tail;
-	char *flavors_save;
-	char *flavors;
 	char *flavor;
 	char *ptr;
 	FILE *fp;
@@ -706,13 +795,9 @@ childGetPackageInfo(bulk_t *bulk)
 	 * only process the passed-in flavor.
 	 */
 	flavor = bulk->s3;	/* usually NULL */
-	flavors = NULL;
-	flavors_save = NULL;
-	dummy_node = NULL;
 
 	bulk->list = NULL;
-	list_tail = &bulk->list;
-again:
+
 	asprintf(&portpath, "%s/%s/%s", DPortsPath, bulk->s1, bulk->s2);
 	if (flavor)
 		asprintf(&flavarg, "FLAVOR=%s", flavor);
@@ -843,93 +928,30 @@ again:
 		pkg->flags |= PKGF_DEBUGSTOP;
 
 	/*
-	 * Generate flavors
+	 * Mark as a dummy node, the front-end will iterate the flavors
+	 * and create sub-nodes for us.
+	 *
+	 * Get rid of elements returned that are for the first flavor.
+	 * We are creating a dummy node here, not the node for the first
+	 * flavor.
 	 */
-	if (flavor == NULL) {
-		/*
-		 * If there are flavors add the current unflavored pkg
-		 * as a dummy node so dependencies can attach to it,
-		 * then iterate the first flavor and loop.
-		 *
-		 * We must NULL out pkgfile because it will have the
-		 * default flavor and conflict with the actual flavored
-		 * pkg.
-		 */
-		if (pkg->flavors && pkg->flavors[0]) {
-			dummy_node = pkg;
-
-			pkg->flags |= PKGF_DUMMY;
-
-			freestrp(&pkg->fetch_deps);
-			freestrp(&pkg->ext_deps);
-			freestrp(&pkg->patch_deps);
-			freestrp(&pkg->build_deps);
-			freestrp(&pkg->lib_deps);
-			freestrp(&pkg->run_deps);
-
-			freestrp(&pkg->pkgfile);
-			*list_tail = pkg;
-			while (*list_tail)
-				list_tail = &(*list_tail)->bnext;
-
-			flavors_save = strdup(pkg->flavors);
-			flavors = flavors_save;
-			do {
-				flavor = strsep(&flavors, " \t");
-			} while (flavor && *flavor == 0);
-			goto again;
-		}
-
-		/*
-		 * No flavors, add the current unflavored pkg as a real
-		 * node.
-		 */
-		*list_tail = pkg;
-		while (*list_tail)
-			list_tail = &(*list_tail)->bnext;
-	} else {
-		/*
-		 * Add flavored package and iterate.
-		 */
-		*list_tail = pkg;
-		while (*list_tail)
-			list_tail = &(*list_tail)->bnext;
-
-		/*
-		 * Flavor iteration under dummy node, add dependency
-		 */
-		if (dummy_node) {
-			pkglink_t *link;
-
-			ddprintf(0, "Add Dependency %s -> %s (flavor rollup)\n",
-				dummy_node->portdir, pkg->portdir);
-			link = calloc(1, sizeof(*link));
-			link->pkg = pkg;
-			link->next = &dummy_node->idepon_list;
-			link->prev = dummy_node->idepon_list.prev;
-			link->next->prev = link;
-			link->prev->next = link;
-			link->dep_type = DEP_TYPE_BUILD;
-
-			link = calloc(1, sizeof(*link));
-			link->pkg = dummy_node;
-			link->next = &pkg->deponi_list;
-			link->prev = pkg->deponi_list.prev;
-			link->next->prev = link;
-			link->prev->next = link;
-			link->dep_type = DEP_TYPE_BUILD;
-			++pkg->depi_count;
-		}
-
-		if (flavors) {
-			do {
-				flavor = strsep(&flavors, " \t");
-			} while (flavor && *flavor == 0);
-			if (flavor)
-				goto again;
-			free(flavors);
-		}
+	if (flavor == NULL && pkg->flavors && pkg->flavors[0]) {
+		pkg->flags |= PKGF_DUMMY;
+		freestrp(&pkg->fetch_deps);
+		freestrp(&pkg->ext_deps);
+		freestrp(&pkg->patch_deps);
+		freestrp(&pkg->build_deps);
+		freestrp(&pkg->lib_deps);
+		freestrp(&pkg->run_deps);
+		freestrp(&pkg->pkgfile);
 	}
+
+	/*
+	 * Only one pkg is put on the return list now.  This code no
+	 * longer creates pseudo-nodes for flavors (the frontend requests
+	 * each flavor instead).
+	 */
+	bulk->list = pkg;
 }
 
 /*
