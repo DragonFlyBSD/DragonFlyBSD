@@ -89,6 +89,14 @@ struct task_struct {
 	int			kt_exitvalue;
 };
 
+#define __set_current_state(state_value)	current->state = (state_value);
+
+#define set_current_state(state_value)		\
+do {						\
+	__set_current_state(state_value);	\
+	mb();					\
+} while (0)
+
 /*
  * schedule_timeout: puts the current thread to sleep until timeout
  * if its state allows it to.
@@ -148,6 +156,13 @@ schedule(void)
 	(void)schedule_timeout(MAX_SCHEDULE_TIMEOUT);
 }
 
+static inline signed long
+schedule_timeout_uninterruptible(signed long timeout)
+{
+	__set_current_state(TASK_UNINTERRUPTIBLE);
+	return schedule_timeout(timeout);
+}
+
 static inline long
 io_schedule_timeout(signed long timeout)
 {
@@ -173,14 +188,6 @@ yield(void)
 {
 	lwkt_yield();
 }
-
-#define __set_current_state(state_value)	current->state = (state_value);
-
-#define set_current_state(state_value)		\
-do {						\
-	__set_current_state(state_value);	\
-	mb();					\
-} while (0)
 
 static inline int
 wake_up_process(struct task_struct *tsk)
