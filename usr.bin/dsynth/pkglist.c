@@ -630,10 +630,16 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 		}
 		*sep++ = 0;
 
+		/*
+		 * The flavor hangs off the separator, not the tag
+		 */
+		flavor = strrchr(sep, '@');
+#if 0
 		if (tag)
 			flavor = strrchr(tag, '@');
 		else
 			flavor = strrchr(sep, '@');
+#endif
 
 		if (flavor)
 			*flavor++ = 0;
