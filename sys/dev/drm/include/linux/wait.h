@@ -201,14 +201,17 @@ finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
 }
 
 static inline void
-add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
-{
-}
-
-static inline void
 __add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
 {
 	list_add(&new->task_list, &head->task_list);
+}
+
+static inline void
+add_wait_queue(wait_queue_head_t *head, wait_queue_t *wq)
+{
+	lockmgr(&head->lock, LK_EXCLUSIVE);
+	__add_wait_queue(head, wq);
+	lockmgr(&head->lock, LK_RELEASE);
 }
 
 #define DECLARE_WAIT_QUEUE_HEAD(name)					\
@@ -221,6 +224,14 @@ static inline void
 __remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
 {
 	list_del(&old->task_list);
+}
+
+static inline void
+remove_wait_queue(wait_queue_head_t *head, wait_queue_t *wq)
+{
+	lockmgr(&head->lock, LK_EXCLUSIVE);
+	__remove_wait_queue(head, wq);
+	lockmgr(&head->lock, LK_RELEASE);
 }
 
 #endif	/* _LINUX_WAIT_H_ */
