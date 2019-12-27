@@ -392,23 +392,24 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 				    bool *enabled, int width, int height)
 {
 	struct drm_device *dev = fb_helper->dev;
+	unsigned long conn_configured, mask;
+	unsigned int count = min(fb_helper->connector_count, BITS_PER_LONG);
 	int i, j;
 	bool *save_enabled;
 	bool fallback = true;
 	int num_connectors_enabled = 0;
 	int num_connectors_detected = 0;
-	uint64_t conn_configured = 0, mask;
 	int pass = 0;
 
-	save_enabled = kcalloc(dev->mode_config.num_connector, sizeof(bool),
-			       GFP_KERNEL);
+	save_enabled = kcalloc(count, sizeof(bool), GFP_KERNEL);
 	if (!save_enabled)
 		return false;
 
-	memcpy(save_enabled, enabled, dev->mode_config.num_connector);
-	mask = (1 << fb_helper->connector_count) - 1;
+	memcpy(save_enabled, enabled, count);
+	mask = BIT(count) - 1;
+	conn_configured = 0;
 retry:
-	for (i = 0; i < fb_helper->connector_count; i++) {
+	for (i = 0; i < count; i++) {
 		struct drm_fb_helper_connector *fb_conn;
 		struct drm_connector *connector;
 		struct drm_encoder *encoder;
@@ -418,7 +419,7 @@ retry:
 		fb_conn = fb_helper->connector_info[i];
 		connector = fb_conn->connector;
 
-		if (conn_configured & (1 << i))
+		if (conn_configured & BIT(i))
 			continue;
 
 		if (pass == 0 && !connector->has_tile)
@@ -430,7 +431,7 @@ retry:
 		if (!enabled[i]) {
 			DRM_DEBUG_KMS("connector %s not enabled, skipping\n",
 				      connector->name);
-			conn_configured |= (1 << i);
+			conn_configured |= BIT(i);
 			continue;
 		}
 
@@ -449,7 +450,7 @@ retry:
 			DRM_DEBUG_KMS("connector %s has no encoder or crtc, skipping\n",
 				      connector->name);
 			enabled[i] = false;
-			conn_configured |= (1 << i);
+			conn_configured |= BIT(i);
 			continue;
 		}
 
@@ -462,14 +463,15 @@ retry:
 			intel_crtc->lut_b[j] = j;
 		}
 
-		new_crtc = intel_fb_helper_crtc(fb_helper, connector->state->crtc);
+		new_crtc = intel_fb_helper_crtc(fb_helper,
+						connector->state->crtc);
 
 		/*
 		 * Make sure we're not trying to drive multiple connectors
 		 * with a single CRTC, since our cloning support may not
 		 * match the BIOS.
 		 */
-		for (j = 0; j < fb_helper->connector_count; j++) {
+		for (j = 0; j < count; j++) {
 			if (crtcs[j] == new_crtc) {
 				DRM_DEBUG_KMS("fallback: cloned configuration\n");
 				goto bail;
@@ -528,7 +530,7 @@ retry:
 			      modes[i]->flags & DRM_MODE_FLAG_INTERLACE ? "i" :"");
 
 		fallback = false;
-		conn_configured |= (1 << i);
+		conn_configured |= BIT(i);
 	}
 
 	if ((conn_configured & mask) != mask) {
@@ -552,7 +554,7 @@ retry:
 	if (fallback) {
 bail:
 		DRM_DEBUG_KMS("Not using firmware configuration\n");
-		memcpy(enabled, save_enabled, dev->mode_config.num_connector);
+		memcpy(enabled, save_enabled, count);
 		kfree(save_enabled);
 		return false;
 	}
@@ -731,7 +733,7 @@ static void intel_fbdev_suspend_worker(struct work_struct *work)
 int intel_fbdev_init(struct drm_device *dev)
 {
 	struct intel_fbdev *ifbdev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	int ret;
 
 	if (WARN_ON(INTEL_INFO(dev)->num_pipes == 0))
@@ -752,10 +754,6 @@ int intel_fbdev_init(struct drm_device *dev)
 		kfree(ifbdev);
 		return ret;
 	}
-
-#if 0
-	ifbdev->helper.atomic = true;
-#endif
 
 	dev_priv->fbdev = ifbdev;
 	INIT_WORK(&dev_priv->fbdev_suspend_work, intel_fbdev_suspend_worker);
@@ -794,14 +792,13 @@ static void intel_fbdev_sync(struct intel_fbdev *ifbdev)
 
 void intel_fbdev_fini(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_fbdev *ifbdev = dev_priv->fbdev;
 
 	if (!ifbdev)
 		return;
 
 	flush_work(&dev_priv->fbdev_suspend_work);
-
 #if 0
 	if (!current_is_async())
 #endif
@@ -814,11 +811,11 @@ void intel_fbdev_fini(struct drm_device *dev)
 void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous)
 {
 #if 0
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_fbdev *ifbdev = dev_priv->fbdev;
 	struct fb_info *info;
 
-	if (!ifbdev)
+	if (!ifbdev || !ifbdev->fb)
 		return;
 
 	info = ifbdev->helper.fbdev;
@@ -864,24 +861,22 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
 
 void intel_fbdev_output_poll_changed(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	if (dev_priv->fbdev)
-		drm_fb_helper_hotplug_event(&dev_priv->fbdev->helper);
+	struct intel_fbdev *ifbdev = to_i915(dev)->fbdev;
+
+	if (ifbdev && ifbdev->fb)
+		drm_fb_helper_hotplug_event(&ifbdev->helper);
 }
 
 void intel_fbdev_restore_mode(struct drm_device *dev)
 {
-	int ret;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct intel_fbdev *ifbdev = dev_priv->fbdev;
-	struct drm_fb_helper *fb_helper;
+	struct intel_fbdev *ifbdev = to_i915(dev)->fbdev;
 
 	if (!ifbdev)
 		return;
 
 	intel_fbdev_sync(ifbdev);
-
-	fb_helper = &ifbdev->helper;
+	if (!ifbdev->fb)
+		return;
 
 #ifdef __DragonFly__
 	/* XXX: avoid dead-locking the Xorg on exit */
@@ -891,12 +886,11 @@ void intel_fbdev_restore_mode(struct drm_device *dev)
 	}
 #endif
 
-	ret = drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
-	if (ret) {
+	if (drm_fb_helper_restore_fbdev_mode_unlocked(&ifbdev->helper)) {
 		DRM_DEBUG("failed to restore crtc mode\n");
 	} else {
-		mutex_lock(&fb_helper->dev->struct_mutex);
+		mutex_lock(&dev->struct_mutex);
 		intel_fb_obj_invalidate(ifbdev->fb->obj, ORIGIN_GTT);
-		mutex_unlock(&fb_helper->dev->struct_mutex);
+		mutex_unlock(&dev->struct_mutex);
 	}
 }

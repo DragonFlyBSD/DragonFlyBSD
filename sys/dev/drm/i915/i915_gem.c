@@ -177,7 +177,7 @@ i915_gem_get_aperture_ioctl(struct drm_device *dev, void *data,
 static int
 i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 {
-	struct address_space *mapping = file_inode(obj->base.filp)->i_mapping;
+	struct address_space *mapping = obj->base.filp->f_mapping;
 	char *vaddr = obj->phys_handle->vaddr;
 	struct sg_table *st;
 	struct scatterlist *sg;
@@ -244,7 +244,7 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj)
 		obj->dirty = 0;
 
 	if (obj->dirty) {
-		struct address_space *mapping = file_inode(obj->base.filp)->i_mapping;
+		struct address_space *mapping = obj->base.filp->f_mapping;
 		char *vaddr = obj->phys_handle->vaddr;
 		int i;
 
@@ -279,13 +279,15 @@ i915_gem_object_release_phys(struct drm_i915_gem_object *obj)
 {
 	drm_pci_free(obj->base.dev, obj->phys_handle);
 }
+#endif
 
 static const struct drm_i915_gem_object_ops i915_gem_phys_ops = {
+#if 0
 	.get_pages = i915_gem_object_get_pages_phys,
 	.put_pages = i915_gem_object_put_pages_phys,
 	.release = i915_gem_object_release_phys,
-};
 #endif
+};
 
 static int
 drop_pages(struct drm_i915_gem_object *obj)
@@ -334,9 +336,7 @@ i915_gem_object_attach_phys(struct drm_i915_gem_object *obj,
 		return -ENOMEM;
 
 	obj->phys_handle = phys;
-#if 0
 	obj->ops = &i915_gem_phys_ops;
-#endif
 
 	return i915_gem_object_get_pages(obj);
 }
@@ -887,9 +887,12 @@ i915_gem_pread_ioctl(struct drm_device *dev, void *data,
 	ret = i915_gem_shmem_pread(dev, obj, args, file);
 
 	/* pread for non shmem backed objects */
-	if (ret == -EFAULT || ret == -ENODEV)
+	if (ret == -EFAULT || ret == -ENODEV) {
+		intel_runtime_pm_get(to_i915(dev));
 		ret = i915_gem_gtt_pread(dev, obj, args->size,
 					args->offset, args->data_ptr);
+		intel_runtime_pm_put(to_i915(dev));
+	}
 
 out:
 	drm_gem_object_unreference(&obj->base);
@@ -1321,7 +1324,7 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 		 * textures). Fallback to the shmem path in that case. */
 	}
 
-	if (ret == -EFAULT) {
+	if (ret == -EFAULT || ret == -ENOSPC) {
 		if (obj->phys_handle)
 			ret = i915_gem_phys_pwrite(obj, args, file);
 		else if (i915_gem_object_has_struct_page(obj))
@@ -1496,10 +1499,8 @@ int __i915_wait_request(struct drm_i915_gem_request *req,
 		gen6_rps_boost(req->i915, rps, req->emitted_jiffies);
 
 	/* Optimistic spin for the next ~jiffie before touching IRQs */
-#if 0
 	if (i915_spin_request(req, state, 5))
 		goto complete;
-#endif
 
 	set_current_state(state);
 	add_wait_queue(&req->i915->gpu_error.wait_queue, &reset);
@@ -1542,16 +1543,11 @@ wakeup:
 		if (i915_spin_request(req, state, 2))
 			break;
 	}
-#if 0
-//	list_del(&old->task_list);
 	remove_wait_queue(&req->i915->gpu_error.wait_queue, &reset);
-#endif
 
 	intel_engine_remove_wait(req->engine, &wait);
 	__set_current_state(TASK_RUNNING);
-#if 0
 complete:
-#endif
 	trace_i915_gem_request_wait_end(req);
 
 	if (timeout) {
@@ -2188,9 +2184,7 @@ retry:
 		}
 		goto have_page;
 	}
-	/*
-	 * END FREEBSD MAGIC
-	 */
+	/* END FREEBSD MAGIC */
 
 	obj->fault_mappable = true;
 
@@ -2548,13 +2542,20 @@ i915_gem_mmap_gtt_ioctl(struct drm_device *dev, void *data,
 static void
 i915_gem_object_truncate(struct drm_i915_gem_object *obj)
 {
-	vm_object_t vm_obj;
+	vm_object_t vm_obj = obj->base.filp;
 
-	vm_obj = obj->base.filp;
+	if (obj->base.filp == NULL)
+		return;
+
 	VM_OBJECT_LOCK(vm_obj);
 	vm_object_page_remove(vm_obj, 0, 0, false);
 	VM_OBJECT_UNLOCK(vm_obj);
 
+	/* Our goal here is to return as much of the memory as
+	 * is possible back to the system as we are called from OOM.
+	 * To do this we must instruct the shmfs to drop all of its
+	 * backing pages, *now*.
+	 */
 	obj->madv = __I915_MADV_PURGED;
 }
 
@@ -2577,7 +2578,7 @@ i915_gem_object_invalidate(struct drm_i915_gem_object *obj)
 		return;
 
 #if 0
-	mapping = file_inode(obj->base.filp)->i_mapping,
+	mapping = obj->base.filp->f_mapping,
 #endif
 	invalidate_mapping_pages(obj->base.filp, 0, (loff_t)-1);
 }
@@ -2717,7 +2718,7 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 			page = shmem_read_mapping_page(vm_obj, i);
 			if (IS_ERR(page)) {
 				ret = PTR_ERR(page);
-				goto err_pages;
+				goto err_sg;
 			}
 		}
 #ifdef CONFIG_SWIOTLB
@@ -2760,8 +2761,9 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 
 	return 0;
 
-err_pages:
+err_sg:
 	sg_mark_end(sg);
+err_pages:
 	for_each_sgt_page(page, sgt_iter, st)
 	{
 		struct vm_page *vmp = (struct vm_page *)page;
@@ -2963,7 +2965,8 @@ i915_gem_init_seqno(struct drm_i915_private *dev_priv, u32 seqno)
 
 	/* If the seqno wraps around, we need to clear the breadcrumb rbtree */
 	if (!i915_seqno_passed(seqno, dev_priv->next_seqno)) {
-		while (intel_kick_waiters(dev_priv))
+		while (intel_kick_waiters(dev_priv) ||
+		       intel_kick_signalers(dev_priv))
 			yield();
 	}
 
@@ -3354,6 +3357,8 @@ static void i915_gem_reset_engine_cleanup(struct intel_engine_cs *engine)
 	}
 
 	intel_ring_init_seqno(engine, engine->last_submitted_seqno);
+
+	engine->i915->gt.active_engines &= ~intel_engine_flag(engine);
 }
 
 void i915_gem_reset(struct drm_device *dev)
@@ -3371,6 +3376,7 @@ void i915_gem_reset(struct drm_device *dev)
 
 	for_each_engine(engine, dev_priv)
 		i915_gem_reset_engine_cleanup(engine);
+	mod_delayed_work(dev_priv->wq, &dev_priv->gt.idle_work, 0);
 
 	i915_gem_context_reset(dev);
 
@@ -4983,7 +4989,7 @@ struct drm_i915_gem_object *i915_gem_object_create(struct drm_device *dev,
 		mask |= __GFP_DMA32;
 	}
 
-	mapping = file_inode(obj->base.filp)->i_mapping;
+	mapping = obj->base.filp->f_mapping;
 	mapping_set_gfp_mask(mapping, mask);
 #endif
 

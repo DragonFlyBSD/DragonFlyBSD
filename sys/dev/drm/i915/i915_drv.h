@@ -283,6 +283,9 @@ struct i915_hotplug {
 	u32 short_port_mask;
 	struct work_struct dig_port_work;
 
+	struct work_struct poll_init_work;
+	bool poll_enabled;
+
 	/*
 	 * if we get a HPD irq from DP and a HPD irq from non-DP
 	 * the non-DP HPD could block the workqueue on a mode config
@@ -627,6 +630,8 @@ struct drm_i915_display_funcs {
 				  struct intel_crtc_state *crtc_state);
 	void (*crtc_enable)(struct drm_crtc *crtc);
 	void (*crtc_disable)(struct drm_crtc *crtc);
+	void (*update_crtcs)(struct drm_atomic_state *state,
+			     unsigned int *crtc_vblank_mask);
 	void (*audio_codec_enable)(struct drm_connector *connector,
 				   struct intel_encoder *encoder,
 				   const struct drm_display_mode *adjusted_mode);
@@ -878,11 +883,12 @@ struct i915_gem_context {
 
 	struct i915_ctx_hang_stats hang_stats;
 
-	/* Unique identifier for this context, used by the hw for tracking */
 	unsigned long flags;
 #define CONTEXT_NO_ZEROMAP		BIT(0)
 #define CONTEXT_NO_ERROR_CAPTURE	BIT(1)
-	unsigned hw_id;
+
+	/* Unique identifier for this context, used by the hw for tracking */
+	unsigned int hw_id;
 	u32 user_handle;
 
 	u32 ggtt_alignment;
@@ -1851,6 +1857,7 @@ struct drm_i915_private {
 	enum modeset_restore modeset_restore;
 	struct lock modeset_restore_lock;
 	struct drm_atomic_state *modeset_restore_state;
+	struct drm_modeset_acquire_ctx reset_ctx;
 
 	struct list_head vm_list; /* Global list of all address spaces */
 	struct i915_ggtt ggtt; /* VM representing the global address space */
@@ -1958,6 +1965,13 @@ struct drm_i915_private {
 	bool suspended_to_idle;
 	struct i915_suspend_saved_registers regfile;
 	struct vlv_s0ix_state vlv_s0ix_state;
+
+	enum {
+		I915_SAGV_UNKNOWN = 0,
+		I915_SAGV_DISABLED,
+		I915_SAGV_ENABLED,
+		I915_SAGV_NOT_CONTROLLED
+	} sagv_status;
 
 	struct {
 		/*
@@ -2270,21 +2284,19 @@ struct drm_i915_gem_object {
 	/** Record of address bit 17 of each page at last unbind. */
 	unsigned long *bit_17;
 
-	union {
-		/** for phy allocated objects */
-		struct drm_dma_handle *phys_handle;
-
-		struct i915_gem_userptr {
-			uintptr_t ptr;
-			unsigned read_only :1;
-			unsigned workers :4;
+	struct i915_gem_userptr {
+		uintptr_t ptr;
+		unsigned read_only :1;
+		unsigned workers :4;
 #define I915_GEM_USERPTR_MAX_WORKERS 15
 
-			struct i915_mm_struct *mm;
-			struct i915_mmu_object *mmu_object;
-			struct work_struct *work;
-		} userptr;
-	};
+		struct i915_mm_struct *mm;
+		struct i915_mmu_object *mmu_object;
+		struct work_struct *work;
+	} userptr;
+
+	/** for phys allocated objects */
+	struct drm_dma_handle *phys_handle;
 };
 #define to_intel_bo(x) container_of(x, struct drm_i915_gem_object, base)
 
@@ -2865,7 +2877,7 @@ struct drm_i915_cmd_table {
  * command submission once loaded. But these are logically independent
  * properties, so we have separate macros to test them.
  */
-#define HAS_GUC(dev)		(IS_GEN9(dev) && !IS_KABYLAKE(dev))
+#define HAS_GUC(dev)		(IS_GEN9(dev))
 #define HAS_GUC_UCODE(dev)	(HAS_GUC(dev))
 #define HAS_GUC_SCHED(dev)	(HAS_GUC(dev))
 
@@ -2959,6 +2971,8 @@ void intel_hpd_init(struct drm_i915_private *dev_priv);
 void intel_hpd_init_work(struct drm_i915_private *dev_priv);
 void intel_hpd_cancel_work(struct drm_i915_private *dev_priv);
 bool intel_hpd_pin_to_port(enum hpd_pin pin, enum port *port);
+bool intel_hpd_disable(struct drm_i915_private *dev_priv, enum hpd_pin pin);
+void intel_hpd_enable(struct drm_i915_private *dev_priv, enum hpd_pin pin);
 
 /* i915_irq.c */
 static inline void i915_queue_hangcheck(struct drm_i915_private *dev_priv)
@@ -3585,6 +3599,7 @@ int i915_gem_evict_vm(struct i915_address_space *vm, bool do_idle);
 /* belongs in i915_gem_gtt.h */
 static inline void i915_gem_chipset_flush(struct drm_i915_private *dev_priv)
 {
+	wmb();
 	if (INTEL_GEN(dev_priv) < 6)
 		intel_gtt_chipset_flush();
 }
@@ -3646,8 +3661,8 @@ void i915_debugfs_unregister(struct drm_i915_private *dev_priv);
 int i915_debugfs_connector_add(struct drm_connector *connector);
 void intel_display_crc_init(struct drm_device *dev);
 #else
-static inline int i915_debugfs_register(struct drm_i915_private *unused) {return 0;}
-static inline void i915_debugfs_unregister(struct drm_i915_private *unused) {}
+static inline int i915_debugfs_register(struct drm_i915_private *dev_priv) {return 0;}
+static inline void i915_debugfs_unregister(struct drm_i915_private *dev_priv) {}
 static inline int i915_debugfs_connector_add(struct drm_connector *connector)
 { return 0; }
 static inline void intel_display_crc_init(struct drm_device *dev) {}
@@ -3985,13 +4000,9 @@ wait_remaining_ms_from_jiffies(unsigned long timestamp_jiffies, int to_wait_ms)
 
 	if (time_after(target_jiffies, tmp_jiffies)) {
 		remaining_jiffies = target_jiffies - tmp_jiffies;
-#if 0
 		while (remaining_jiffies)
 			remaining_jiffies =
 			    schedule_timeout_uninterruptible(remaining_jiffies);
-#else
-		msleep(jiffies_to_msecs(remaining_jiffies));
-#endif
 	}
 }
 static inline bool __i915_request_irq_complete(struct drm_i915_gem_request *req)

@@ -294,7 +294,7 @@ vlv_power_sequencer_kick(struct intel_dp *intel_dp)
 {
 	struct intel_digital_port *intel_dig_port = dp_to_dig_port(intel_dp);
 	struct drm_device *dev = intel_dig_port->base.base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	enum i915_pipe pipe = intel_dp->pps_pipe;
 	bool pll_enabled, release_cl_override = false;
 	enum dpio_phy phy = DPIO_PHY(pipe);
@@ -1093,6 +1093,44 @@ intel_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg)
 	return ret;
 }
 
+static enum port intel_aux_port(struct drm_i915_private *dev_priv,
+				enum port port)
+{
+	const struct ddi_vbt_port_info *info =
+		&dev_priv->vbt.ddi_port_info[port];
+	enum port aux_port;
+
+	if (!info->alternate_aux_channel) {
+		DRM_DEBUG_KMS("using AUX %c for port %c (platform default)\n",
+			      port_name(port), port_name(port));
+		return port;
+	}
+
+	switch (info->alternate_aux_channel) {
+	case DP_AUX_A:
+		aux_port = PORT_A;
+		break;
+	case DP_AUX_B:
+		aux_port = PORT_B;
+		break;
+	case DP_AUX_C:
+		aux_port = PORT_C;
+		break;
+	case DP_AUX_D:
+		aux_port = PORT_D;
+		break;
+	default:
+		MISSING_CASE(info->alternate_aux_channel);
+		aux_port = PORT_A;
+		break;
+	}
+
+	DRM_DEBUG_KMS("using AUX %c for port %c (VBT)\n",
+		      port_name(aux_port), port_name(port));
+
+	return aux_port;
+}
+
 static i915_reg_t g4x_aux_ctl_reg(struct drm_i915_private *dev_priv,
 				       enum port port)
 {
@@ -1153,36 +1191,9 @@ static i915_reg_t ilk_aux_data_reg(struct drm_i915_private *dev_priv,
 	}
 }
 
-/*
- * On SKL we don't have Aux for port E so we rely
- * on VBT to set a proper alternate aux channel.
- */
-static enum port skl_porte_aux_port(struct drm_i915_private *dev_priv)
-{
-	const struct ddi_vbt_port_info *info =
-		&dev_priv->vbt.ddi_port_info[PORT_E];
-
-	switch (info->alternate_aux_channel) {
-	case DP_AUX_A:
-		return PORT_A;
-	case DP_AUX_B:
-		return PORT_B;
-	case DP_AUX_C:
-		return PORT_C;
-	case DP_AUX_D:
-		return PORT_D;
-	default:
-		MISSING_CASE(info->alternate_aux_channel);
-		return PORT_A;
-	}
-}
-
 static i915_reg_t skl_aux_ctl_reg(struct drm_i915_private *dev_priv,
 				       enum port port)
 {
-	if (port == PORT_E)
-		port = skl_porte_aux_port(dev_priv);
-
 	switch (port) {
 	case PORT_A:
 	case PORT_B:
@@ -1198,9 +1209,6 @@ static i915_reg_t skl_aux_ctl_reg(struct drm_i915_private *dev_priv,
 static i915_reg_t skl_aux_data_reg(struct drm_i915_private *dev_priv,
 					enum port port, int index)
 {
-	if (port == PORT_E)
-		port = skl_porte_aux_port(dev_priv);
-
 	switch (port) {
 	case PORT_A:
 	case PORT_B:
@@ -1238,7 +1246,8 @@ static i915_reg_t intel_aux_data_reg(struct drm_i915_private *dev_priv,
 static void intel_aux_reg_init(struct intel_dp *intel_dp)
 {
 	struct drm_i915_private *dev_priv = to_i915(intel_dp_to_dev(intel_dp));
-	enum port port = dp_to_dig_port(intel_dp)->port;
+	enum port port = intel_aux_port(dev_priv,
+					dp_to_dig_port(intel_dp)->port);
 	int i;
 
 	intel_dp->aux_ch_ctl_reg = intel_aux_ctl_reg(dev_priv, port);
@@ -2729,7 +2738,7 @@ static void g4x_pre_enable_dp(struct intel_encoder *encoder)
 static void vlv_detach_power_sequencer(struct intel_dp *intel_dp)
 {
 	struct intel_digital_port *intel_dig_port = dp_to_dig_port(intel_dp);
-	struct drm_i915_private *dev_priv = intel_dig_port->base.base.dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(intel_dig_port->base.base.dev);
 	enum i915_pipe pipe = intel_dp->pps_pipe;
 	i915_reg_t pp_on_reg = VLV_PIPE_PP_ON_DELAYS(pipe);
 
@@ -4151,7 +4160,7 @@ static bool bxt_digital_port_connected(struct drm_i915_private *dev_priv,
  *
  * Return %true if @port is connected, %false otherwise.
  */
-bool intel_digital_port_connected(struct drm_i915_private *dev_priv,
+static bool intel_digital_port_connected(struct drm_i915_private *dev_priv,
 					 struct intel_digital_port *port)
 {
 	if (HAS_PCH_IBX(dev_priv))
@@ -4210,7 +4219,7 @@ intel_dp_unset_edid(struct intel_dp *intel_dp)
 	intel_dp->has_audio = false;
 }
 
-static void
+static enum drm_connector_status
 intel_dp_long_pulse(struct intel_connector *intel_connector)
 {
 	struct drm_connector *connector = &intel_connector->base;
@@ -4235,7 +4244,7 @@ intel_dp_long_pulse(struct intel_connector *intel_connector)
 	else
 		status = connector_status_disconnected;
 
-	if (status != connector_status_connected) {
+	if (status == connector_status_disconnected) {
 		intel_dp->compliance_test_active = 0;
 		intel_dp->compliance_test_type = 0;
 		intel_dp->compliance_test_data = 0;
@@ -4287,8 +4296,8 @@ intel_dp_long_pulse(struct intel_connector *intel_connector)
 	intel_dp->aux.i2c_defer_count = 0;
 
 	intel_dp_set_edid(intel_dp);
-
-	status = connector_status_connected;
+	if (is_edp(intel_dp) || intel_connector->detect_edid)
+		status = connector_status_connected;
 	intel_dp->detect_done = true;
 
 	/* Try to read the source of the interrupt */
@@ -4306,43 +4315,29 @@ intel_dp_long_pulse(struct intel_connector *intel_connector)
 	}
 
 out:
-	if ((status != connector_status_connected) &&
-	    (intel_dp->is_mst == false))
+	if (status != connector_status_connected && !intel_dp->is_mst)
 		intel_dp_unset_edid(intel_dp);
 
 	intel_display_power_put(to_i915(dev), power_domain);
-	return;
+	return status;
 }
 
 static enum drm_connector_status
 intel_dp_detect(struct drm_connector *connector, bool force)
 {
 	struct intel_dp *intel_dp = intel_attached_dp(connector);
-	struct intel_digital_port *intel_dig_port = dp_to_dig_port(intel_dp);
-	struct intel_encoder *intel_encoder = &intel_dig_port->base;
-	struct intel_connector *intel_connector = to_intel_connector(connector);
+	enum drm_connector_status status = connector->status;
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
 		      connector->base.id, connector->name);
 
-	if (intel_dp->is_mst) {
-		/* MST devices are disconnected from a monitor POV */
-		intel_dp_unset_edid(intel_dp);
-		if (intel_encoder->type != INTEL_OUTPUT_EDP)
-			intel_encoder->type = INTEL_OUTPUT_DP;
-		return connector_status_disconnected;
-	}
-
 	/* If full detect is not performed yet, do a full detect */
 	if (!intel_dp->detect_done)
-		intel_dp_long_pulse(intel_dp->attached_connector);
+		status = intel_dp_long_pulse(intel_dp->attached_connector);
 
 	intel_dp->detect_done = false;
 
-	if (intel_connector->detect_edid)
-		return connector_status_connected;
-	else
-		return connector_status_disconnected;
+	return status;
 }
 
 static void
@@ -4701,36 +4696,34 @@ intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port, bool long_hpd)
 		      port_name(intel_dig_port->port),
 		      long_hpd ? "long" : "short");
 
+	if (long_hpd) {
+		intel_dp->detect_done = false;
+		return IRQ_NONE;
+	}
+
 	power_domain = intel_display_port_aux_power_domain(intel_encoder);
 	intel_display_power_get(dev_priv, power_domain);
 
-	if (long_hpd) {
-		intel_dp_long_pulse(intel_dp->attached_connector);
-		if (intel_dp->is_mst)
-			ret = IRQ_HANDLED;
-		goto put_power;
-
-	} else {
-		if (intel_dp->is_mst) {
-			if (intel_dp_check_mst_status(intel_dp) == -EINVAL) {
-				/*
-				 * If we were in MST mode, and device is not
-				 * there, get out of MST mode
-				 */
-				DRM_DEBUG_KMS("MST device may have disappeared %d vs %d\n",
-					      intel_dp->is_mst, intel_dp->mst_mgr.mst_state);
-				intel_dp->is_mst = false;
-				drm_dp_mst_topology_mgr_set_mst(&intel_dp->mst_mgr,
-								intel_dp->is_mst);
-				goto put_power;
-			}
+	if (intel_dp->is_mst) {
+		if (intel_dp_check_mst_status(intel_dp) == -EINVAL) {
+			/*
+			 * If we were in MST mode, and device is not
+			 * there, get out of MST mode
+			 */
+			DRM_DEBUG_KMS("MST device may have disappeared %d vs %d\n",
+				      intel_dp->is_mst, intel_dp->mst_mgr.mst_state);
+			intel_dp->is_mst = false;
+			drm_dp_mst_topology_mgr_set_mst(&intel_dp->mst_mgr,
+							intel_dp->is_mst);
+			intel_dp->detect_done = false;
+			goto put_power;
 		}
+	}
 
-		if (!intel_dp->is_mst) {
-			if (!intel_dp_short_pulse(intel_dp)) {
-				intel_dp_long_pulse(intel_dp->attached_connector);
-				goto put_power;
-			}
+	if (!intel_dp->is_mst) {
+		if (!intel_dp_short_pulse(intel_dp)) {
+			intel_dp->detect_done = false;
+			goto put_power;
 		}
 	}
 

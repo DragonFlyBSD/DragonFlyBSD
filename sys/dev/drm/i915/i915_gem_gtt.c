@@ -32,8 +32,6 @@
 #include "i915_trace.h"
 #include "intel_drv.h"
 
-#include <linux/bitmap.h>
-
 #include <sys/mplock2.h>
 
 /**
@@ -126,8 +124,11 @@ int intel_sanitize_enable_ppgtt(struct drm_i915_private *dev_priv,
 	has_full_48bit_ppgtt =
 	       	IS_BROADWELL(dev_priv) || INTEL_GEN(dev_priv) >= 9;
 
-	if (intel_vgpu_active(dev_priv))
-		has_full_ppgtt = false; /* emulation is too hard */
+	if (intel_vgpu_active(dev_priv)) {
+		/* emulation is too hard */
+		has_full_ppgtt = false;
+		has_full_48bit_ppgtt = false;
+	}
 
 	if (!has_aliasing_ppgtt)
 		return 0;
@@ -162,7 +163,7 @@ int intel_sanitize_enable_ppgtt(struct drm_i915_private *dev_priv,
 		return 0;
 	}
 
-	if (INTEL_GEN(dev_priv) >= 8 && i915.enable_execlists)
+	if (INTEL_GEN(dev_priv) >= 8 && i915.enable_execlists && has_full_ppgtt)
 		return has_full_48bit_ppgtt ? 3 : 2;
 	else
 		return has_aliasing_ppgtt ? 1 : 0;
@@ -2777,10 +2778,9 @@ static int i915_gem_setup_global_gtt(struct drm_device *dev,
 	struct drm_i915_gem_object *obj;
 	unsigned long hole_start, hole_end;
 	int ret;
-	unsigned long mappable;
+	unsigned long mappable = min(end, mappable_end) - start;
 	int error;
 
-	mappable = min(end, mappable_end) - start;
 	BUG_ON(mappable_end > end);
 
 	ggtt->base.start = start;
@@ -3467,6 +3467,7 @@ static struct sg_table *
 intel_rotate_fb_obj_pages(struct intel_rotation_info *rot_info,
 			  struct drm_i915_gem_object *obj)
 {
+	const size_t n_pages = obj->base.size / PAGE_SIZE;
 	unsigned int size_pages = rot_info->plane[0].width * rot_info->plane[0].height;
 	unsigned int size_pages_uv;
 	struct sgt_iter sgt_iter;
@@ -3479,8 +3480,9 @@ intel_rotate_fb_obj_pages(struct intel_rotation_info *rot_info,
 	int ret = -ENOMEM;
 
 	/* Allocate a temporary list of source pages for random access. */
-	page_addr_list = drm_malloc_ab(obj->base.size / PAGE_SIZE,
-				       sizeof(dma_addr_t));
+	page_addr_list = drm_malloc_gfp(n_pages,
+					sizeof(dma_addr_t),
+					GFP_TEMPORARY);
 	if (!page_addr_list)
 		return ERR_PTR(ret);
 
@@ -3491,7 +3493,7 @@ intel_rotate_fb_obj_pages(struct intel_rotation_info *rot_info,
 		size_pages_uv = 0;
 
 	/* Allocate target SG list. */
-	st = kmalloc(sizeof(*st), M_DRM, M_WAITOK);
+	st = kmalloc(sizeof(*st), M_DRM, GFP_KERNEL);
 	if (!st)
 		goto err_st_alloc;
 
@@ -3560,7 +3562,7 @@ intel_partial_pages(const struct i915_ggtt_view *view,
 	struct sg_page_iter obj_sg_iter;
 	int ret = -ENOMEM;
 
-	st = kmalloc(sizeof(*st), M_DRM, M_WAITOK);
+	st = kmalloc(sizeof(*st), M_DRM, GFP_KERNEL);
 	if (!st)
 		goto err_st_alloc;
 

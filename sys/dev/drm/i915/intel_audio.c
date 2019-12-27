@@ -22,6 +22,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/component.h>
 #include <drm/i915_component.h>
 #include "intel_drv.h"
 
@@ -316,7 +317,7 @@ static void hsw_audio_codec_enable(struct drm_connector *connector,
 	/* Up to 84 bytes of hw ELD buffer */
 	len = min(drm_eld_size(eld), 84);
 	for (i = 0; i < len / 4; i++)
-		I915_WRITE(HSW_AUD_EDID_DATA(pipe), *((const uint32_t *)eld + i));
+		I915_WRITE(HSW_AUD_EDID_DATA(pipe), *((uint32_t *)eld + i));
 
 	/* ELD valid */
 	tmp = I915_READ(HSW_AUD_PIN_ELD_CP_VLD);
@@ -734,9 +735,7 @@ static int i915_audio_component_get_eld(struct device *dev, int port,
 	mutex_unlock(&dev_priv->av_mutex);
 	return ret;
 }
-#endif
 
-#if 0 /* unused */
 static const struct i915_audio_component_ops i915_audio_component_ops = {
 	.owner		= THIS_MODULE,
 	.get_power	= i915_audio_component_get_power,
@@ -833,7 +832,7 @@ void i915_audio_component_cleanup(struct drm_i915_private *dev_priv)
 		return;
 
 #if 0
-	component_del(dev_priv->dev->dev, &i915_audio_component_bind_ops);
+	component_del(dev_priv->drm.dev, &i915_audio_component_bind_ops);
 #endif
 	dev_priv->audio_component_registered = false;
 }

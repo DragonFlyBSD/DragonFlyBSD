@@ -796,10 +796,9 @@ __unclaimed_reg_debug(struct drm_i915_private *dev_priv,
 		      const bool read,
 		      const bool before)
 {
-	if (WARN(check_for_unclaimed_mmio(dev_priv),
-		 "Unclaimed register detected %s %s register 0x%x\n",
-		 before ? "before" : "after",
-		 read ? "reading" : "writing to",
+	if (WARN(check_for_unclaimed_mmio(dev_priv) && !before,
+		 "Unclaimed %s register 0x%x\n",
+		 read ? "read from" : "write to",
 		 i915_mmio_reg_offset(reg)))
 		i915.mmio_debug--; /* Only report the first N failures */
 }
@@ -1409,7 +1408,7 @@ static const struct register_whitelist {
 int i915_reg_read_ioctl(struct drm_device *dev,
 			void *data, struct drm_file *file)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_i915_reg_read *reg = data;
 	struct register_whitelist const *entry = whitelist;
 	unsigned size;

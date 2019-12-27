@@ -69,39 +69,63 @@
 })
 
 #define wait_for(COND, MS)	  	_wait_for((COND), (MS) * 1000, 1000)
-#define wait_for_us(COND, US)	  	_wait_for((COND), (US), 1)
 
 /* If CONFIG_PREEMPT_COUNT is disabled, in_atomic() always reports false. */
 #if defined(CONFIG_DRM_I915_DEBUG) && defined(CONFIG_PREEMPT_COUNT)
-# define _WAIT_FOR_ATOMIC_CHECK WARN_ON_ONCE(!in_atomic())
+# define _WAIT_FOR_ATOMIC_CHECK(ATOMIC) WARN_ON_ONCE((ATOMIC) && !in_atomic())
 #else
-# define _WAIT_FOR_ATOMIC_CHECK do { } while (0)
+# define _WAIT_FOR_ATOMIC_CHECK(ATOMIC) do { } while (0)
 #endif
 
-#define _wait_for_atomic(COND, US) ({ \
-	unsigned long end__; \
-	int ret__ = 0; \
-	_WAIT_FOR_ATOMIC_CHECK; \
+#define _wait_for_atomic(COND, US, ATOMIC) \
+({ \
+	int cpu, ret, timeout = (US) * 1000; \
+	u64 base; \
+	_WAIT_FOR_ATOMIC_CHECK(ATOMIC); \
 	BUILD_BUG_ON((US) > 50000); \
-	end__ = (local_clock() >> 10) + (US) + 1; \
-	while (!(COND)) { \
-		if (time_after((unsigned long)(local_clock() >> 10), end__)) { \
-			/* Unlike the regular wait_for(), this atomic variant \
-			 * cannot be preempted (and we'll just ignore the issue\
-			 * of irq interruptions) and so we know that no time \
-			 * has passed since the last check of COND and can \
-			 * immediately report the timeout. \
-			 */ \
-			ret__ = -ETIMEDOUT; \
+	if (!(ATOMIC)) { \
+		preempt_disable(); \
+		cpu = smp_processor_id(); \
+	} \
+	base = local_clock(); \
+	for (;;) { \
+		u64 now = local_clock(); \
+		if (!(ATOMIC)) \
+			preempt_enable(); \
+		if (COND) { \
+			ret = 0; \
+			break; \
+		} \
+		if (now - base >= timeout) { \
+			ret = -ETIMEDOUT; \
 			break; \
 		} \
 		cpu_relax(); \
+		if (!(ATOMIC)) { \
+			preempt_disable(); \
+			if (unlikely(cpu != smp_processor_id())) { \
+				timeout -= now - base; \
+				cpu = smp_processor_id(); \
+				base = local_clock(); \
+			} \
+		} \
 	} \
+	ret; \
+})
+
+#define wait_for_us(COND, US) \
+({ \
+	int ret__; \
+	BUILD_BUG_ON(!__builtin_constant_p(US)); \
+	if ((US) > 10) \
+		ret__ = _wait_for((COND), (US), 10); \
+	else \
+		ret__ = _wait_for_atomic((COND), (US), 0); \
 	ret__; \
 })
 
-#define wait_for_atomic(COND, MS)	_wait_for_atomic((COND), (MS) * 1000)
-#define wait_for_atomic_us(COND, US)	_wait_for_atomic((COND), (US))
+#define wait_for_atomic(COND, MS)	_wait_for_atomic((COND), (MS) * 1000, 1)
+#define wait_for_atomic_us(COND, US)	_wait_for_atomic((COND), (US), 1)
 
 #define KHz(x) (1000 * (x))
 #define MHz(x) KHz(1000 * (x))
@@ -212,6 +236,7 @@ struct intel_panel {
 		bool enabled;
 		bool combination_mode;	/* gen 2/4 only */
 		bool active_low_pwm;
+		bool alternate_pwm_increment;	/* lpt+ */
 
 		/* PWM chip */
 		bool util_pin_active_low;	/* bxt+ */
@@ -1078,6 +1103,7 @@ void gen8_irq_power_well_pre_disable(struct drm_i915_private *dev_priv,
 
 /* intel_crt.c */
 void intel_crt_init(struct drm_device *dev);
+void intel_crt_reset(struct drm_encoder *encoder);
 
 /* intel_ddi.c */
 void intel_ddi_clk_select(struct intel_encoder *encoder,
@@ -1362,8 +1388,6 @@ void intel_edp_drrs_disable(struct intel_dp *intel_dp);
 void intel_edp_drrs_invalidate(struct drm_device *dev,
 		unsigned frontbuffer_bits);
 void intel_edp_drrs_flush(struct drm_device *dev, unsigned frontbuffer_bits);
-bool intel_digital_port_connected(struct drm_i915_private *dev_priv,
-					 struct intel_digital_port *port);
 
 void
 intel_dp_program_link_training_pattern(struct intel_dp *intel_dp,
@@ -1400,6 +1424,8 @@ int intel_dsi_dcs_init_backlight_funcs(struct intel_connector *intel_connector);
 
 /* intel_dvo.c */
 void intel_dvo_init(struct drm_device *dev);
+/* intel_hotplug.c */
+void intel_hpd_poll_init(struct drm_i915_private *dev_priv);
 
 
 /* legacy fbdev emulation in intel_fbdev.c */
@@ -1689,6 +1715,21 @@ void ilk_wm_get_hw_state(struct drm_device *dev);
 void skl_wm_get_hw_state(struct drm_device *dev);
 void skl_ddb_get_hw_state(struct drm_i915_private *dev_priv,
 			  struct skl_ddb_allocation *ddb /* out */);
+bool intel_can_enable_sagv(struct drm_atomic_state *state);
+int intel_enable_sagv(struct drm_i915_private *dev_priv);
+int intel_disable_sagv(struct drm_i915_private *dev_priv);
+bool skl_ddb_allocation_equals(const struct skl_ddb_allocation *old,
+			       const struct skl_ddb_allocation *new,
+			       enum i915_pipe pipe);
+bool skl_ddb_allocation_overlaps(struct drm_atomic_state *state,
+				 const struct skl_ddb_allocation *old,
+				 const struct skl_ddb_allocation *new,
+				 enum i915_pipe pipe);
+void skl_write_cursor_wm(struct intel_crtc *intel_crtc,
+			 const struct skl_wm_values *wm);
+void skl_write_plane_wm(struct intel_crtc *intel_crtc,
+			const struct skl_wm_values *wm,
+			int plane);
 uint32_t ilk_pipe_pixel_rate(const struct intel_crtc_state *pipe_config);
 bool ilk_disable_lp_wm(struct drm_device *dev);
 int sanitize_rc6_option(struct drm_i915_private *dev_priv, int enable_rc6);
@@ -1703,6 +1744,8 @@ bool intel_sdvo_init(struct drm_device *dev,
 
 
 /* intel_sprite.c */
+int intel_usecs_to_scanlines(const struct drm_display_mode *adjusted_mode,
+			     int usecs);
 int intel_plane_init(struct drm_device *dev, enum i915_pipe pipe, int plane);
 int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv);

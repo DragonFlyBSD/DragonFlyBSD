@@ -28,6 +28,8 @@
  *      Chris Wilson <chris@chris-wilson.co.uk>
  */
 
+#define KBUILD_MODNAME	"i915"
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/kernel.h>
 #include <linux/moduleparam.h>
@@ -376,7 +378,7 @@ out:
 enum drm_connector_status
 intel_panel_detect(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 
 	/* Assume that the BIOS does not lie through the OpRegion... */
 	if (!i915.panel_ignore_lid && dev_priv->opregion.lid_state) {
@@ -842,13 +844,29 @@ static void lpt_enable_backlight(struct intel_connector *connector)
 {
 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
 	struct intel_panel *panel = &connector->panel;
-	u32 pch_ctl1, pch_ctl2;
+	u32 pch_ctl1, pch_ctl2, schicken;
 
 	pch_ctl1 = I915_READ(BLC_PWM_PCH_CTL1);
 	if (pch_ctl1 & BLM_PCH_PWM_ENABLE) {
 		DRM_DEBUG_KMS("pch backlight already enabled\n");
 		pch_ctl1 &= ~BLM_PCH_PWM_ENABLE;
 		I915_WRITE(BLC_PWM_PCH_CTL1, pch_ctl1);
+	}
+
+	if (HAS_PCH_LPT(dev_priv)) {
+		schicken = I915_READ(SOUTH_CHICKEN2);
+		if (panel->backlight.alternate_pwm_increment)
+			schicken |= LPT_PWM_GRANULARITY;
+		else
+			schicken &= ~LPT_PWM_GRANULARITY;
+		I915_WRITE(SOUTH_CHICKEN2, schicken);
+	} else {
+		schicken = I915_READ(SOUTH_CHICKEN1);
+		if (panel->backlight.alternate_pwm_increment)
+			schicken |= SPT_PWM_GRANULARITY;
+		else
+			schicken &= ~SPT_PWM_GRANULARITY;
+		I915_WRITE(SOUTH_CHICKEN1, schicken);
 	}
 
 	pch_ctl2 = panel->backlight.max << 16;
@@ -1110,7 +1128,6 @@ void intel_panel_enable_backlight(struct intel_connector *connector)
 #if 0 /* unused */
 static int intel_backlight_device_update_status(struct backlight_device *bd)
 {
-#if 0
 	struct intel_connector *connector = bl_get_data(bd);
 	struct intel_panel *panel = &connector->panel;
 	struct drm_device *dev = connector->base.dev;
@@ -1138,16 +1155,14 @@ static int intel_backlight_device_update_status(struct backlight_device *bd)
 	}
 
 	drm_modeset_unlock(&dev->mode_config.connection_mutex);
-#endif
 	return 0;
 }
 
 static int intel_backlight_device_get_brightness(struct backlight_device *bd)
 {
-#if 0
 	struct intel_connector *connector = bl_get_data(bd);
 	struct drm_device *dev = connector->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	u32 hw_level;
 	int ret;
 
@@ -1161,8 +1176,6 @@ static int intel_backlight_device_get_brightness(struct backlight_device *bd)
 	intel_runtime_pm_put(dev_priv);
 
 	return ret;
-#endif
-	return 0;
 }
 
 static const struct backlight_ops intel_backlight_device_ops = {
@@ -1254,10 +1267,10 @@ static u32 bxt_hz_to_pwm(struct intel_connector *connector, u32 pwm_freq_hz)
  */
 static u32 spt_hz_to_pwm(struct intel_connector *connector, u32 pwm_freq_hz)
 {
-	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
+	struct intel_panel *panel = &connector->panel;
 	u32 mul;
 
-	if (I915_READ(SOUTH_CHICKEN1) & SPT_PWM_GRANULARITY)
+	if (panel->backlight.alternate_pwm_increment)
 		mul = 128;
 	else
 		mul = 16;
@@ -1273,9 +1286,10 @@ static u32 spt_hz_to_pwm(struct intel_connector *connector, u32 pwm_freq_hz)
 static u32 lpt_hz_to_pwm(struct intel_connector *connector, u32 pwm_freq_hz)
 {
 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
+	struct intel_panel *panel = &connector->panel;
 	u32 mul, clock;
 
-	if (I915_READ(SOUTH_CHICKEN2) & LPT_PWM_GRANULARITY)
+	if (panel->backlight.alternate_pwm_increment)
 		mul = 16;
 	else
 		mul = 128;
@@ -1328,7 +1342,7 @@ static u32 i9xx_hz_to_pwm(struct intel_connector *connector, u32 pwm_freq_hz)
 static u32 i965_hz_to_pwm(struct intel_connector *connector, u32 pwm_freq_hz)
 {
 	struct drm_device *dev = connector->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	int clock;
 
 	if (IS_G4X(dev_priv))
@@ -1426,6 +1440,13 @@ static int lpt_setup_backlight(struct intel_connector *connector, enum i915_pipe
 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
 	struct intel_panel *panel = &connector->panel;
 	u32 pch_ctl1, pch_ctl2, val;
+	bool alt;
+
+	if (HAS_PCH_LPT(dev_priv))
+		alt = I915_READ(SOUTH_CHICKEN2) & LPT_PWM_GRANULARITY;
+	else
+		alt = I915_READ(SOUTH_CHICKEN1) & SPT_PWM_GRANULARITY;
+	panel->backlight.alternate_pwm_increment = alt;
 
 	pch_ctl1 = I915_READ(BLC_PWM_PCH_CTL1);
 	panel->backlight.active_low_pwm = pch_ctl1 & BLM_PCH_POLARITY;
@@ -1582,62 +1603,6 @@ static int vlv_setup_backlight(struct intel_connector *connector, enum i915_pipe
 	return 0;
 }
 
-#ifdef __DragonFly__
-/*
- * Read max backlight level
- */
-static int
-sysctl_backlight_max(SYSCTL_HANDLER_ARGS)
-{
-	int err, val;
-	struct intel_connector *connector = arg1;
-	struct drm_device *dev = connector->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct intel_panel *panel = &connector->panel;
-
-	mutex_lock(&dev_priv->backlight_lock);
-	val = panel->backlight.max;
-	mutex_unlock(&dev_priv->backlight_lock);
-
-	err = sysctl_handle_int(oidp, &val, 0, req);
-	return(err);
-}
-
-/*
- * Read/write backlight level
- */
-static int
-sysctl_backlight_handler(SYSCTL_HANDLER_ARGS)
-{
-	struct intel_connector *connector = arg1;
-	struct drm_device *dev = connector->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct intel_panel *panel = &connector->panel;
-	int err, val;
-	u32 user_level, max_brightness;
-
-	mutex_lock(&dev_priv->backlight_lock);
-	max_brightness = panel->backlight.max;
-	user_level = scale_hw_to_user(connector, panel->backlight.level,
-	    max_brightness);
-	mutex_unlock(&dev_priv->backlight_lock);
-
-	val = user_level;
-	err = sysctl_handle_int(oidp, &val, 0, req);
-	if (err != 0 || req->newptr == NULL) {
-		return(err);
-	}
-
-	if (val != user_level && val >= 0 && val <= max_brightness) {
-		drm_modeset_lock(&dev->mode_config.connection_mutex, NULL);
-		intel_panel_set_backlight(arg1, val, max_brightness);
-		drm_modeset_unlock(&dev->mode_config.connection_mutex);
-	}
-
-	return(err);
-}
-#endif /* __DragonFly__ */
-
 static int
 bxt_setup_backlight(struct intel_connector *connector, enum i915_pipe unused)
 {
@@ -1724,6 +1689,62 @@ static int pwm_setup_backlight(struct intel_connector *connector,
 
 	return 0;
 }
+
+#ifdef __DragonFly__
+/*
+ * Read max backlight level
+ */
+static int
+sysctl_backlight_max(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+	struct intel_connector *connector = arg1;
+	struct drm_device *dev = connector->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_panel *panel = &connector->panel;
+
+	mutex_lock(&dev_priv->backlight_lock);
+	val = panel->backlight.max;
+	mutex_unlock(&dev_priv->backlight_lock);
+
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	return(err);
+}
+
+/*
+ * Read/write backlight level
+ */
+static int
+sysctl_backlight_handler(SYSCTL_HANDLER_ARGS)
+{
+	struct intel_connector *connector = arg1;
+	struct drm_device *dev = connector->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_panel *panel = &connector->panel;
+	int err, val;
+	u32 user_level, max_brightness;
+
+	mutex_lock(&dev_priv->backlight_lock);
+	max_brightness = panel->backlight.max;
+	user_level = scale_hw_to_user(connector, panel->backlight.level,
+	    max_brightness);
+	mutex_unlock(&dev_priv->backlight_lock);
+
+	val = user_level;
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL) {
+		return(err);
+	}
+
+	if (val != user_level && val >= 0 && val <= max_brightness) {
+		drm_modeset_lock(&dev->mode_config.connection_mutex, NULL);
+		intel_panel_set_backlight(arg1, val, max_brightness);
+		drm_modeset_unlock(&dev->mode_config.connection_mutex);
+	}
+
+	return(err);
+}
+#endif /* __DragonFly__ */
 
 int intel_panel_setup_backlight(struct drm_connector *connector, enum i915_pipe pipe)
 {

@@ -23,8 +23,10 @@
  */
 
 #include <linux/shmem_fs.h>
+#include <linux/slab.h>
 #include <linux/swap.h>
 #include <linux/pci.h>
+#include <linux/dma-buf.h>
 #include <linux/vmalloc.h>
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>

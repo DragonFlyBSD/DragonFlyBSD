@@ -31,7 +31,8 @@
 #include "i915_drv.h"
 #include "i915_trace.h"
 #include "intel_drv.h"
-#include <linux/pagemap.h>
+#include <linux/dma_remapping.h>
+#include <linux/uaccess.h>
 #include <asm/cpufeature.h>
 
 #define  __EXEC_OBJECT_HAS_PIN (1<<31)
@@ -943,8 +944,6 @@ i915_gem_execbuffer_move_to_gpu(struct drm_i915_gem_request *req,
 {
 	const unsigned other_rings = ~intel_engine_flag(req->engine);
 	struct i915_vma *vma;
-	uint32_t flush_domains = 0;
-	bool flush_chipset = false;
 	int ret;
 
 	list_for_each_entry(vma, vmas, exec_list) {
@@ -957,16 +956,11 @@ i915_gem_execbuffer_move_to_gpu(struct drm_i915_gem_request *req,
 		}
 
 		if (obj->base.write_domain & I915_GEM_DOMAIN_CPU)
-			flush_chipset |= i915_gem_clflush_object(obj, false);
-
-		flush_domains |= obj->base.write_domain;
+			i915_gem_clflush_object(obj, false);
 	}
 
-	if (flush_chipset)
-		i915_gem_chipset_flush(req->engine->i915);
-
-	if (flush_domains & I915_GEM_DOMAIN_GTT)
-		wmb();
+	/* Unconditionally flush any chipset caches (for streaming writes). */
+	i915_gem_chipset_flush(req->engine->i915);
 
 	/* Unconditionally invalidate gpu caches and ensure that we do flush
 	 * any residual writes from the previous batch.
@@ -1448,6 +1442,11 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 
 	dispatch_flags = 0;
 	if (args->flags & I915_EXEC_SECURE) {
+#if 0
+		if (!drm_is_current_master(file) || !capable(CAP_SYS_ADMIN))
+		    return -EPERM;
+#endif
+
 		dispatch_flags |= I915_DISPATCH_SECURE;
 	}
 	if (args->flags & I915_EXEC_IS_PINNED)

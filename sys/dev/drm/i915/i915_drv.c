@@ -53,8 +53,6 @@
 
 static struct drm_driver driver;
 
-#define PCI_VENDOR_INTEL	0x8086
-
 static unsigned int i915_load_fail_count;
 
 bool __i915_inject_load_failure(const char *func, int line)
@@ -149,7 +147,7 @@ static enum intel_pch intel_virt_detect_pch(struct drm_device *dev)
 
 static void intel_detect_pch(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	device_t pch = NULL;
 	struct pci_devinfo *di = NULL;
 
@@ -177,7 +175,7 @@ static void intel_detect_pch(struct drm_device *dev)
 	 * of only checking the first one.
 	 */
 	while ((pch = pci_iterate_class(&di, PCIC_BRIDGE, PCIS_BRIDGE_ISA))) {
-		if (pci_get_vendor(pch) == PCI_VENDOR_INTEL) {
+		if (pci_get_vendor(pch) == PCI_VENDOR_ID_INTEL) {
 			unsigned short id = pci_get_device(pch) & INTEL_PCH_DEVICE_ID_MASK;
 			dev_priv->pch_id = id;
 
@@ -204,10 +202,6 @@ static void intel_detect_pch(struct drm_device *dev)
 				DRM_DEBUG_KMS("Found LynxPoint LP PCH\n");
 				WARN_ON(!IS_HASWELL(dev) && !IS_BROADWELL(dev));
 				WARN_ON(!IS_HSW_ULT(dev) && !IS_BDW_ULT(dev));
-			} else if (id == INTEL_PCH_KBP_DEVICE_ID_TYPE) {
-				dev_priv->pch_type = PCH_KBP;
-				DRM_DEBUG_KMS("Found KabyPoint PCH\n");
-				WARN_ON(!IS_KABYLAKE(dev));
 			} else if (id == INTEL_PCH_SPT_DEVICE_ID_TYPE) {
 				dev_priv->pch_type = PCH_SPT;
 				DRM_DEBUG_KMS("Found SunrisePoint PCH\n");
@@ -392,7 +386,7 @@ static int i915_getparam(struct drm_device *dev, void *data,
 
 static int i915_get_bridge_dev(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	static struct pci_dev i915_bridge_dev;
 
 	i915_bridge_dev.dev.bsddev = pci_find_dbsf(0, 0, 0, 0);
@@ -409,7 +403,7 @@ static int i915_get_bridge_dev(struct drm_device *dev)
 static int
 intel_alloc_mchbar_resource(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	int reg = INTEL_INFO(dev)->gen >= 4 ? MCHBAR_I965 : MCHBAR_I915;
 	u32 temp_lo, temp_hi = 0;
 	u64 mchbar_addr;
@@ -451,7 +445,7 @@ intel_alloc_mchbar_resource(struct drm_device *dev)
 static void
 intel_setup_mchbar(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	int mchbar_reg = INTEL_INFO(dev)->gen >= 4 ? MCHBAR_I965 : MCHBAR_I915;
 	u32 temp;
 	bool enabled;
@@ -491,7 +485,7 @@ intel_setup_mchbar(struct drm_device *dev)
 static void
 intel_teardown_mchbar(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	int mchbar_reg = INTEL_INFO(dev)->gen >= 4 ? MCHBAR_I965 : MCHBAR_I915;
 	device_t vga;
 
@@ -617,7 +611,7 @@ static void i915_gem_fini(struct drm_device *dev)
 
 static int i915_load_modeset_init(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	int ret;
 
 	if (i915_inject_load_failure())
@@ -1332,6 +1326,11 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	intel_runtime_pm_enable(dev_priv);
 
+	/* Everything is in place, we can now relax! */
+	DRM_INFO("Initialized %s %d.%d.%d %s for %s on minor %d\n",
+		 driver.name, driver.major, driver.minor, driver.patchlevel,
+		 driver.date, pci_name(pdev), dev_priv->drm.primary->index);
+
 	intel_runtime_pm_put(dev_priv);
 
 	return 0;
@@ -1488,7 +1487,7 @@ static bool suspend_to_idle(struct drm_i915_private *dev_priv)
 
 static int i915_drm_suspend(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	pci_power_t opregion_target_state;
 	int error;
 
@@ -1547,8 +1546,6 @@ static int i915_drm_suspend(struct drm_device *dev)
 
 	dev_priv->suspend_count++;
 
-	intel_display_set_init_power(dev_priv, false);
-
 	intel_csr_ucode_suspend(dev_priv);
 
 out:
@@ -1559,11 +1556,13 @@ out:
 
 static int i915_drm_suspend_late(struct drm_device *drm_dev, bool hibernation)
 {
-	struct drm_i915_private *dev_priv = drm_dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(drm_dev);
 	bool fw_csr;
 	int ret;
 
 	disable_rpm_wakeref_asserts(dev_priv);
+
+	intel_display_set_init_power(dev_priv, false);
 
 	fw_csr = !IS_BROXTON(dev_priv) &&
 		suspend_to_idle(dev_priv) && dev_priv->csr.dmc_payload;
@@ -1729,7 +1728,7 @@ static int i915_drm_resume(struct drm_device *dev)
 
 static int i915_drm_resume_early(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	int ret = 0;
 
 	/*
@@ -1826,12 +1825,6 @@ int i915_resume_switcheroo(struct drm_device *dev)
 		return ret;
 
 	return i915_drm_resume(dev);
-}
-
-static int i915_sysctl_init(struct drm_device *dev, struct sysctl_ctx_list *ctx,
-			    struct sysctl_oid *top)
-{
-       return drm_add_busid_modesetting(dev, ctx, top);
 }
 
 /**
@@ -2494,6 +2487,9 @@ static int intel_runtime_suspend(struct device *device)
 
 	assert_forcewakes_inactive(dev_priv);
 
+	if (!IS_VALLEYVIEW(dev_priv) || !IS_CHERRYVIEW(dev_priv))
+		intel_hpd_poll_init(dev_priv);
+
 	DRM_DEBUG_KMS("Device suspended\n");
 	return 0;
 }
@@ -2608,6 +2604,12 @@ static const struct vm_operations_struct i915_gem_vm_ops = {
 };
 #endif
 
+static struct cdev_pager_ops i915_gem_vm_ops = {
+	.cdev_pg_fault	= i915_gem_fault,
+	.cdev_pg_ctor	= i915_gem_pager_ctor,
+	.cdev_pg_dtor	= i915_gem_pager_dtor
+};
+
 static const struct file_operations i915_driver_fops = {
 	.owner = THIS_MODULE,
 #if 0
@@ -2622,12 +2624,6 @@ static const struct file_operations i915_driver_fops = {
 #endif
 	.llseek = noop_llseek,
 #endif
-};
-
-static struct cdev_pager_ops i915_gem_vm_ops = {
-	.cdev_pg_fault	= i915_gem_fault,
-	.cdev_pg_ctor	= i915_gem_pager_ctor,
-	.cdev_pg_dtor	= i915_gem_pager_dtor
 };
 
 static int
@@ -2693,6 +2689,12 @@ static const struct drm_ioctl_desc i915_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(I915_GEM_CONTEXT_GETPARAM, i915_gem_context_getparam_ioctl, DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(I915_GEM_CONTEXT_SETPARAM, i915_gem_context_setparam_ioctl, DRM_RENDER_ALLOW),
 };
+
+static int i915_sysctl_init(struct drm_device *dev, struct sysctl_ctx_list *ctx,
+			    struct sysctl_oid *top)
+{
+       return drm_add_busid_modesetting(dev, ctx, top);
+}
 
 static struct drm_driver driver = {
 	/* Don't use MTRRs here; the Xserver or userspace app should

@@ -426,7 +426,7 @@ static void cherryview_load_luts(struct drm_crtc_state *state)
 {
 	struct drm_crtc *crtc = state->crtc;
 	struct drm_device *dev = crtc->dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	enum i915_pipe pipe = to_intel_crtc(crtc)->pipe;
 	struct drm_color_lut *lut;
 	uint32_t i, lut_size;
