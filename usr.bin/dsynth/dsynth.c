@@ -42,6 +42,7 @@ static void usage(int ecode) __dead2;
 
 int YesOpt;
 int DebugOpt;
+int MaskProbeAbort;
 int ColorOpt = 1;
 int NullStdinOpt = 1;
 int SlowStartOpt = 1;
@@ -295,6 +296,7 @@ main(int ac, char **av)
 	} else if (strcmp(av[0], "everything") == 0) {
 		if (WorkerProcFlags & WORKER_PROC_DEVELOPER)
 			WorkerProcFlags |= WORKER_PROC_CHECK_PLIST;
+		MaskProbeAbort = 1;
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = GetFullPackageList();

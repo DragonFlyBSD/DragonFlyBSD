@@ -491,6 +491,7 @@ extern int DynamicMaxWorkers;
 extern buildenv_t *BuildEnv;
 extern int WorkerProcFlags;
 extern int DebugOpt;
+extern int MaskProbeAbort;
 extern int ColorOpt;
 extern int SlowStartOpt;
 extern int YesOpt;

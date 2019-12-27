@@ -334,6 +334,7 @@ processPackageListBulk(int total)
 	pkg_t *dep_list;
 	pkg_t **list_tail;
 	int count;
+	int stop_fail;
 
 	list = NULL;
 	list_tail = &list;
@@ -385,14 +386,49 @@ processPackageListBulk(int total)
 
 	/*
 	 * Do a final count, ignore place holders.
+	 *
+	 * Also set stop_fail if appropriate.  Check for direct specifications
+	 * which fail to probe and any direct dependencies of those
+	 * specifications, but don't recurse (for now)... don't check indirect
+	 * dependencies (i.e. A -> B -> C where A is directly specified, B
+	 * is adirect dependency, and C fails to probe).
 	 */
 	count = 0;
+	stop_fail = 0;
 	for (scan = list; scan; scan = scan->bnext) {
 		if ((scan->flags & PKGF_ERROR) == 0) {
 			++count;
 		}
+		if ((scan->flags & PKGF_MANUALSEL) && MaskProbeAbort == 0) {
+			pkglink_t *link;
+
+			/*
+			 * Directly specified package failed to probe
+			 */
+			if (scan->flags & PKGF_CORRUPT)
+				++stop_fail;
+
+			/*
+			 * Directly specified package had a direct dependency
+			 * that failed to probe (don't go further).
+			 */
+			PKGLIST_FOREACH(link, &scan->idepon_list) {
+				if (link->pkg &&
+				    (link->pkg->flags & PKGF_CORRUPT)) {
+					++stop_fail;
+				}
+			}
+		}
 	}
 	printf("Total Returned %d\n", count);
+
+	/*
+	 * Check to see if any PKGF_MANUALSEL packages
+	 */
+	if (stop_fail) {
+		printf("Aborting, %d packages failed to probe\n", stop_fail);
+		exit(1);
+	}
 
 	/*
 	 * Scan our binary distributions and related dependencies looking
