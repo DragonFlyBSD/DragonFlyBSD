@@ -193,15 +193,19 @@ SYSCTL_LONG(_vm, OID_AUTO, swap_cache_use,
         CTLFLAG_RD, &vm_swap_cache_use, 0, "");
 SYSCTL_LONG(_vm, OID_AUTO, swap_anon_use,
         CTLFLAG_RD, &vm_swap_anon_use, 0, "");
-SYSCTL_LONG(_vm, OID_AUTO, swap_size,
+SYSCTL_LONG(_vm, OID_AUTO, swap_free,
         CTLFLAG_RD, &vm_swap_size, 0, "");
+SYSCTL_LONG(_vm, OID_AUTO, swap_size,
+        CTLFLAG_RD, &vm_swap_max, 0, "");
 #else
 SYSCTL_INT(_vm, OID_AUTO, swap_cache_use,
         CTLFLAG_RD, &vm_swap_cache_use, 0, "");
 SYSCTL_INT(_vm, OID_AUTO, swap_anon_use,
         CTLFLAG_RD, &vm_swap_anon_use, 0, "");
-SYSCTL_INT(_vm, OID_AUTO, swap_size,
+SYSCTL_INT(_vm, OID_AUTO, swap_free,
         CTLFLAG_RD, &vm_swap_size, 0, "");
+SYSCTL_INT(_vm, OID_AUTO, swap_size,
+        CTLFLAG_RD, &vm_swap_max, 0, "");
 #endif
 SYSCTL_INT(_vm, OID_AUTO, report_swap_allocs,
         CTLFLAG_RW, &vm_report_swap_allocs, 0, "");
