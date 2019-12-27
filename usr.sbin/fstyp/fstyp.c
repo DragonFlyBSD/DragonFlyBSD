@@ -66,7 +66,7 @@ static struct {
 	{ "ext2fs", &fstyp_ext2fs, false, NULL },
 	{ "hfs+", &fstyp_hfsp, false, NULL },
 	{ "msdosfs", &fstyp_msdosfs, false, NULL },
-	{ "ntfs", &fstyp_ntfs, false, NULL },
+	{ "ntfs", &fstyp_ntfs, false, NTFS_ENC },
 	{ "ufs", &fstyp_ufs, false, NULL },
 	{ "hammer", &fstyp_hammer, false, NULL },
 	{ "hammer2", &fstyp_hammer2, false, NULL },
