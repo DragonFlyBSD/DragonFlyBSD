@@ -35,6 +35,8 @@
 #include <sys/stat.h>
 #include <err.h>
 #include <errno.h>
+#include <iconv.h>
+#include <locale.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -47,6 +49,8 @@
 
 #define	LABEL_LEN	512
 
+bool show_label = false;
+
 typedef int (*fstyp_function)(FILE *, char *, size_t, const char *);
 typedef int (*fsvtyp_function)(const char *, char *, size_t);
 
@@ -54,18 +58,19 @@ static struct {
 	const char	*name;
 	fstyp_function	function;
 	bool		unmountable;
+	char		*precache_encoding;
 } fstypes[] = {
-	{ "apfs", &fstyp_apfs, true },
-	{ "cd9660", &fstyp_cd9660, false },
-	{ "exfat", &fstyp_exfat, false },
-	{ "ext2fs", &fstyp_ext2fs, false },
-	{ "hfs+", &fstyp_hfsp, false },
-	{ "msdosfs", &fstyp_msdosfs, false },
-	{ "ntfs", &fstyp_ntfs, false },
-	{ "ufs", &fstyp_ufs, false },
-	{ "hammer", &fstyp_hammer, false },
-	{ "hammer2", &fstyp_hammer2, false },
-	{ NULL, NULL, NULL }
+	{ "apfs", &fstyp_apfs, true, NULL },
+	{ "cd9660", &fstyp_cd9660, false, NULL },
+	{ "exfat", &fstyp_exfat, false, EXFAT_ENC },
+	{ "ext2fs", &fstyp_ext2fs, false, NULL },
+	{ "hfs+", &fstyp_hfsp, false, NULL },
+	{ "msdosfs", &fstyp_msdosfs, false, NULL },
+	{ "ntfs", &fstyp_ntfs, false, NULL },
+	{ "ufs", &fstyp_ufs, false, NULL },
+	{ "hammer", &fstyp_hammer, false, NULL },
+	{ "hammer2", &fstyp_hammer2, false, NULL },
+	{ NULL, NULL, NULL, NULL }
 };
 
 static struct {
@@ -167,7 +172,7 @@ int
 main(int argc, char **argv)
 {
 	int ch, error, i, nbytes;
-	bool ignore_type = false, show_label = false, show_unmountable = false;
+	bool ignore_type = false, show_unmountable = false;
 	char label[LABEL_LEN + 1], strvised[LABEL_LEN * 4 + 1];
 	char fdpath[MAXPATHLEN];
 	char *p;
@@ -199,6 +204,25 @@ main(int argc, char **argv)
 		usage();
 
 	path = argv[0];
+
+	if (setlocale(LC_CTYPE, "") == NULL)
+		err(1, "setlocale");
+
+	/* Cache iconv conversion data before entering capability mode. */
+	if (show_label) {
+		for (i = 0; i < nitems(fstypes); i++) {
+			iconv_t cd;
+
+			if (fstypes[i].precache_encoding == NULL)
+				continue;
+			cd = iconv_open("", fstypes[i].precache_encoding);
+			if (cd == (iconv_t)-1)
+				err(1, "%s: iconv_open %s", fstypes[i].name,
+				    fstypes[i].precache_encoding);
+			/* Iconv keeps a small cache of unused encodings. */
+			iconv_close(cd);
+		}
+	}
 
 	/*
 	 * DragonFly: Filesystems may have syntax to decorate path.
