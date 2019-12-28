@@ -58,7 +58,7 @@ static struct {
 	const char	*name;
 	fstyp_function	function;
 	bool		unmountable;
-	char		*precache_encoding;
+	const char	*precache_encoding;
 } fstypes[] = {
 	{ "apfs", &fstyp_apfs, true, NULL },
 	{ "cd9660", &fstyp_cd9660, false, NULL },
