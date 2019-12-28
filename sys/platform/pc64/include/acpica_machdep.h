@@ -33,27 +33,13 @@
  *
  *****************************************************************************/
 
-#ifndef _MACHINE_ACPICA_MACHDEP_H__
-#define _MACHINE_ACPICA_MACHDEP_H__
+#ifndef _MACHINE_ACPICA_MACHDEP_H_
+#define	_MACHINE_ACPICA_MACHDEP_H_
 
 #ifdef _KERNEL
-/*
- * Calling conventions:
- *
- * ACPI_SYSTEM_XFACE        - Interfaces to host OS (handlers, threads)
- * ACPI_EXTERNAL_XFACE      - External ACPI interfaces 
- * ACPI_INTERNAL_XFACE      - Internal ACPI interfaces
- * ACPI_INTERNAL_VAR_XFACE  - Internal variable-parameter list interfaces
- */
-#define ACPI_SYSTEM_XFACE
-#define ACPI_EXTERNAL_XFACE
-#define ACPI_INTERNAL_XFACE
-#define ACPI_INTERNAL_VAR_XFACE
-
-#define ACPI_DISABLE_IRQS() cpu_disable_intr()
-#define ACPI_ENABLE_IRQS()  cpu_enable_intr()
-
-#define ACPI_FLUSH_CPU_CACHE()	wbinvd()
+#define	ACPI_DISABLE_IRQS()	cpu_disable_intr()
+#define	ACPI_ENABLE_IRQS()	cpu_enable_intr()
+#define	ACPI_FLUSH_CPU_CACHE()	wbinvd()
 
 /* Section 5.2.9.1:  global lock acquire/release functions */
 extern int	acpi_acquire_global_lock(uint32_t *lock);
@@ -62,7 +48,6 @@ extern int	acpi_release_global_lock(uint32_t *lock);
 		((Acq) = acpi_acquire_global_lock(&(FACSptr)->GlobalLock))
 #define ACPI_RELEASE_GLOBAL_LOCK(FACSptr, Acq) \
 		((Acq) = acpi_release_global_lock(&(FACSptr)->GlobalLock))
-
 #endif /* _KERNEL */
 
-#endif /* _MACHINE_ACPICA_MACHDEP_H__ */
+#endif /* _MACHINE_ACPICA_MACHDEP_H_ */
