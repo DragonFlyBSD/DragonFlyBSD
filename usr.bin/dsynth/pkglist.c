@@ -155,10 +155,12 @@ pkg_t *
 ParsePackageList(int n, char **ary, int debugstop)
 {
 	pkg_t *list;
-	int i;
 	int total;
+	int fail;
+	int i;
 
 	total = 0;
+	fail = 0;
 	initbulk(childGetPackageInfo, MaxBulk);
 
 	/*
@@ -183,6 +185,7 @@ ParsePackageList(int n, char **ary, int debugstop)
 		if (l2 == NULL) {
 			printf("Bad portdir specification: %s\n", l1);
 			free(l1);
+			fail = 1;
 			continue;
 		}
 		*l2++ = 0;
@@ -196,6 +199,10 @@ ParsePackageList(int n, char **ary, int debugstop)
 	printf("Processing %d ports\n", total);
 
 	list = processPackageListBulk(total);
+	if (fail) {
+		dfatal("Bad specifications, exiting");
+		exit(1);
+	}
 
 	return list;
 }
