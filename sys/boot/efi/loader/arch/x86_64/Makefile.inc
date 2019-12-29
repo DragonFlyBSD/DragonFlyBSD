@@ -16,3 +16,7 @@ CFLAGS+=	-fPIC
 CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/Include
 CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/Include/X64
 LDFLAGS+=	-Wl,-znocombreloc
+
+FLAGS_GROUPS=	inttypes
+inttypes_FLAGS=	-DACPI_USE_SYSTEM_INTTYPES
+inttypes_FLAGS_FILES=elf64_freebsd.c
