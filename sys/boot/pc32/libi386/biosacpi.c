@@ -32,11 +32,7 @@
 #include <btxv86.h>
 #include "libi386.h"
 
-#include "platform/acdragonfly.h"
-#include "acconfig.h"
-#define ACPI_SYSTEM_XFACE
-#include "actypes.h"
-#include "actbl.h"
+#include "acpi.h"
 
 /*
  * Detect ACPI and export information about the ACPI BIOS into the

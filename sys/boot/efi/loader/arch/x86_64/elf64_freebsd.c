@@ -23,10 +23,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/boot/efi/loader/arch/amd64/elf64_freebsd.c 293724 2016-01-12 02:17:39Z smh $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/boot/efi/loader/arch/amd64/elf64_freebsd.c 293724 2016-01-12 02:17:39Z smh $");
 
 #define __ELF_WORD_SIZE 64
 #include <sys/param.h>
@@ -41,11 +40,7 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/loader/arch/amd64/elf64_freebsd.c 293724 2
 
 #include "bootstrap.h"
 
-#include "platform/acdragonfly.h"
-#include "acconfig.h"
-#define ACPI_SYSTEM_XFACE
-#include "actypes.h"
-#include "actbl.h"
+#include "acpi.h"
 
 #include "loader_efi.h"
 
