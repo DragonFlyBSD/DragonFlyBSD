@@ -226,7 +226,9 @@ struct acpicache;
 
 #else /* !_KERNEL */
 
+#ifndef _STANDALONE
 #define ACPI_USE_STANDARD_HEADERS
+#endif
 
 #define ACPI_CAST_PTHREAD_T(pthread)    ((ACPI_THREAD_ID) ACPI_TO_INTEGER (pthread))
 #define ACPI_FLUSH_CPU_CACHE()
