@@ -77,10 +77,11 @@ static struct {
 	const char	*name;
 	fsvtyp_function	function;
 	bool		unmountable;
+	const char	*precache_encoding;
 } fsvtypes[] = {
-	{ "hammer", &fsvtyp_hammer, false }, /* Must be before partial */
-	{ "hammer(partial)", &fsvtyp_hammer_partial, true },
-	{ NULL, NULL, NULL }
+	{ "hammer", &fsvtyp_hammer, false, NULL }, /* Must be before partial */
+	{ "hammer(partial)", &fsvtyp_hammer_partial, true, NULL },
+	{ NULL, NULL, NULL, NULL }
 };
 
 void *
