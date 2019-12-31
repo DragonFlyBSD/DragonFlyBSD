@@ -6,7 +6,7 @@
 
 # PROVIDE: NETWORKING NETWORK
 # REQUIRE: netif routing network_ipv6 ppp
-# REQUIRE: routed mrouted route6d mroute6d
+# REQUIRE: routed route6d
 
 #	This is a dummy dependency, for services which require networking
 #	to be operational before starting.

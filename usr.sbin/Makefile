@@ -66,7 +66,6 @@ SUBDIR= 802_11 \
 	moused \
 	mpsutil \
 	mptutil \
-	mrouted \
 	mtest \
 	mtree \
 	ndiscvt \

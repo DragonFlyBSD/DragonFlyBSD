@@ -3885,6 +3885,16 @@ TO_REMOVE+=/usr/include/ufs
 TO_REMOVE+=/usr/include/vfs/ffs
 TO_REMOVE+=/usr/include/sys/ata.h
 TO_REMOVE+=/usr/share/man/man3/getvfsbytype.3.gz
+TO_REMOVE+=/etc/rc.d/mrouted
+TO_REMOVE+=/etc/rc.d/mroute6d
+TO_REMOVE+=/usr/sbin/map-mbone
+TO_REMOVE+=/usr/sbin/mrinfo
+TO_REMOVE+=/usr/sbin/mrouted
+TO_REMOVE+=/usr/sbin/mtrace
+TO_REMOVE+=/usr/share/man/man8/map-mbone.8.gz
+TO_REMOVE+=/usr/share/man/man8/mrinfo.8.gz
+TO_REMOVE+=/usr/share/man/man8/mrouted.8.gz
+TO_REMOVE+=/usr/share/man/man8/mtrace.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

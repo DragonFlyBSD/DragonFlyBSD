@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd September 28, 2019
+.Dd December 31, 2019
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1622,52 +1622,6 @@ these are the flags to pass to the routing daemon.
 .Pq Vt str
 The IPv6 equivalent of
 .Va router_flags .
-.It Va mrouted_enable
-.Pq Vt bool
-If set to
-.Dq Li YES ,
-run the multicast routing daemon,
-.Xr mrouted 8 .
-.It Va mroute6d_enable
-.Pq Vt bool
-The IPv6 equivalent of
-.Va mrouted_enable .
-If set to
-.Dq Li YES ,
-run the IPv6 multicast routing daemon.
-Note that no IPv6 multicast routing daemon is included in the
-.Dx
-base system but
-.Xr pim6dd 8
-can be installed from the
-.Xr dports 7
-collection
-.Pa ( net/mcast-tools ) .
-.It Va mrouted_flags
-.Pq Vt str
-If
-.Va mrouted_enable
-is set to
-.Dq Li YES ,
-these are the flags to pass to the
-.Xr mrouted 8
-daemon.
-.It Va mroute6d_flags
-.Pq Vt str
-The IPv6 equivalent of
-.Va mrouted_flags .
-If
-.Va mroute6d_enable
-is set to
-.Dq Li YES ,
-these are the flags passed to the IPv6 multicast routing daemon.
-.It Va mroute6d_program
-.Pq Vt str
-If
-.Va mroute6d_enable
-is set to
-.Dq Li YES ,
-this is the path to the IPv6 multicast routing daemon.
 .It Va rtadvd_enable
 .Pq Vt bool
 If set to
@@ -2760,7 +2714,6 @@ By default no flags are passed.
 .Xr mixer 8 ,
 .Xr mountd 8 ,
 .Xr moused 8 ,
-.Xr mrouted 8 ,
 .Xr nfsd 8 ,
 .Xr pcnfsd 8 ,
 .Xr pfctl 8 ,

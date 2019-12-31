@@ -329,7 +329,7 @@ pseudo-device	stf			#6to4 IPv6 over IPv4 encapsulation
 # Internet family options:
 #
 # MROUTING enables the kernel multicast packet forwarder, which works
-# with mrouted(8).
+# with mrouted(8) (from dports).
 #
 # PIM enables Protocol Independent Multicast in the kernel.
 # Requires MROUTING enabled.
