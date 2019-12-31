@@ -65,6 +65,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *****************************************************************************/
+
+/* $FreeBSD$ */
+
 #ifndef __IF_IWN_NOTIF_WAIT_H__
 #define __IF_IWN_NOTIF_WAIT_H__
 

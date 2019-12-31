@@ -89,6 +89,7 @@
 
 #include <sys/param.h>
 #include <sys/bus.h>
+#include <sys/conf.h>
 #include <sys/endian.h>
 #include <sys/firmware.h>
 #include <sys/kernel.h>
@@ -100,17 +101,13 @@
 
 #include <machine/endian.h>
 
-#include <bus/pci/pcivar.h>
-#include <bus/pci/pcireg.h>
-
-#include <net/bpf.h>
-
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
+#include <net/bpf.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -124,6 +121,7 @@
 
 #include "if_iwmreg.h"
 #include "if_iwmvar.h"
+#include "if_iwm_config.h"
 #include "if_iwm_debug.h"
 #include "if_iwm_util.h"
 #include "if_iwm_sf.h"
@@ -185,7 +183,7 @@ sf_full_timeout[IWM_SF_NUM_SCENARIO][IWM_SF_NUM_TIMEOUT_TYPES] = {
 };
 
 static void
-iwm_mvm_fill_sf_command(struct iwm_softc *sc, struct iwm_sf_cfg_cmd *sf_cmd,
+iwm_fill_sf_command(struct iwm_softc *sc, struct iwm_sf_cfg_cmd *sf_cmd,
 	struct ieee80211_node *ni)
 {
 	int i, j, watermark;
@@ -233,7 +231,7 @@ iwm_mvm_fill_sf_command(struct iwm_softc *sc, struct iwm_sf_cfg_cmd *sf_cmd,
 }
 
 static int
-iwm_mvm_sf_config(struct iwm_softc *sc, struct ieee80211_node *ni,
+iwm_sf_config(struct iwm_softc *sc, struct ieee80211_node *ni,
 	enum iwm_sf_state new_state)
 {
 	struct iwm_sf_cfg_cmd sf_cmd = {
@@ -255,13 +253,13 @@ iwm_mvm_sf_config(struct iwm_softc *sc, struct ieee80211_node *ni,
 
 	switch (new_state) {
 	case IWM_SF_UNINIT:
-		iwm_mvm_fill_sf_command(sc, &sf_cmd, NULL);
+		iwm_fill_sf_command(sc, &sf_cmd, NULL);
 		break;
 	case IWM_SF_FULL_ON:
-		iwm_mvm_fill_sf_command(sc, &sf_cmd, ni);
+		iwm_fill_sf_command(sc, &sf_cmd, ni);
 		break;
 	case IWM_SF_INIT_OFF:
-		iwm_mvm_fill_sf_command(sc, &sf_cmd, NULL);
+		iwm_fill_sf_command(sc, &sf_cmd, NULL);
 		break;
 	default:
 		device_printf(sc->sc_dev,
@@ -270,7 +268,7 @@ iwm_mvm_sf_config(struct iwm_softc *sc, struct ieee80211_node *ni,
 		return EINVAL;
 	}
 
-	ret = iwm_mvm_send_cmd_pdu(sc, IWM_REPLY_SF_CFG_CMD, IWM_CMD_ASYNC,
+	ret = iwm_send_cmd_pdu(sc, IWM_REPLY_SF_CFG_CMD, IWM_CMD_ASYNC,
 				   sizeof(sf_cmd), &sf_cmd);
 	if (!ret)
 		sc->sf_state = new_state;
@@ -284,7 +282,7 @@ iwm_mvm_sf_config(struct iwm_softc *sc, struct ieee80211_node *ni,
  * and set new state accordingly.
  */
 int
-iwm_mvm_sf_update(struct iwm_softc *sc, struct ieee80211vap *changed_vif,
+iwm_sf_update(struct iwm_softc *sc, struct ieee80211vap *changed_vif,
 	boolean_t remove_vif)
 {
 	enum iwm_sf_state new_state;
@@ -315,5 +313,5 @@ iwm_mvm_sf_update(struct iwm_softc *sc, struct ieee80211vap *changed_vif,
 		/* If there are multiple active macs - change to SF_UNINIT */
 		new_state = IWM_SF_UNINIT;
 	}
-	return iwm_mvm_sf_config(sc, ni, new_state);
+	return iwm_sf_config(sc, ni, new_state);
 }

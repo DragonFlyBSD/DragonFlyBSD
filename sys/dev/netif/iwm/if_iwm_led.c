@@ -86,9 +86,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/endian.h>
@@ -102,9 +99,6 @@ __FBSDID("$FreeBSD$");
 
 #include <machine/endian.h>
 
-#include <bus/pci/pcivar.h>
-#include <bus/pci/pcireg.h>
-
 #include <net/bpf.h>
 
 #include <net/if.h>
@@ -114,7 +108,6 @@ __FBSDID("$FreeBSD$");
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <net/ifq_var.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -134,20 +127,20 @@ __FBSDID("$FreeBSD$");
 
 /* Set led register on */
 void
-iwm_mvm_led_enable(struct iwm_softc *sc)
+iwm_led_enable(struct iwm_softc *sc)
 {
 	IWM_WRITE(sc, IWM_CSR_LED_REG, IWM_CSR_LED_REG_TURN_ON);
 }
 
 /* Set led register off */
 void
-iwm_mvm_led_disable(struct iwm_softc *sc)
+iwm_led_disable(struct iwm_softc *sc)
 {
 	IWM_WRITE(sc, IWM_CSR_LED_REG, IWM_CSR_LED_REG_TURN_OFF);
 }
 
 static int
-iwm_mvm_led_is_enabled(struct iwm_softc *sc)
+iwm_led_is_enabled(struct iwm_softc *sc)
 {
 	return (IWM_READ(sc, IWM_CSR_LED_REG) == IWM_CSR_LED_REG_TURN_ON);
 }
@@ -160,10 +153,10 @@ iwm_led_blink_timeout(void *arg)
 	if (sc->sc_attached == 0)
 		return;
 
-	if (iwm_mvm_led_is_enabled(sc))
-		iwm_mvm_led_disable(sc);
+	if (iwm_led_is_enabled(sc))
+		iwm_led_disable(sc);
 	else
-		iwm_mvm_led_enable(sc);
+		iwm_led_enable(sc);
 
 	callout_reset(&sc->sc_led_blink_to, (200 * hz) / 1000,
 	    iwm_led_blink_timeout, sc);
@@ -178,6 +171,6 @@ iwm_led_blink_start(struct iwm_softc *sc)
 void
 iwm_led_blink_stop(struct iwm_softc *sc)
 {
-	callout_drain(&sc->sc_led_blink_to);
-	iwm_mvm_led_disable(sc);
+	callout_stop(&sc->sc_led_blink_to);
+	iwm_led_disable(sc);
 }

@@ -65,18 +65,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *****************************************************************************/
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
-#include <sys/malloc.h>
 #include <sys/lock.h>
+#include <sys/malloc.h>
 #include <sys/queue.h>
 
 #include "if_iwm_notif_wait.h"
 
+#define	IWM_WAIT_LOCK_INIT(_n, _s) \
+	lockinit(&(_n)->lk_lk, (_s), 0, 0)
+#define	IWM_WAIT_LOCK(_n)		lockmgr(&(_n)->lk_lk, LK_EXCLUSIVE)
+#define	IWM_WAIT_UNLOCK(_n)		lockmgr(&(_n)->lk_lk, LK_RELEASE)
+#define	IWM_WAIT_LOCK_DESTROY(_n)	lockuninit(&(_n)->lk_lk)
+
 struct iwm_notif_wait_data {
-	struct lock lk;
+	struct lock lk_lk;
+	char lk_buf[32];
 	STAILQ_HEAD(, iwm_notification_wait) list;
 	struct iwm_softc *sc;
 };
@@ -86,9 +94,10 @@ iwm_notification_wait_init(struct iwm_softc *sc)
 {
 	struct iwm_notif_wait_data *data;
 
-	data = kmalloc(sizeof(*data), M_DEVBUF, M_WAITOK | M_ZERO);
+	data = kmalloc(sizeof(*data), M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (data != NULL) {
-		lockinit(&data->lk, "iwm_notif", 0, 0);
+		ksnprintf(data->lk_buf, 32, "iwm wait_notif");
+		IWM_WAIT_LOCK_INIT(data, data->lk_buf);
 		STAILQ_INIT(&data->list);
 		data->sc = sc;
 	}
@@ -99,8 +108,8 @@ iwm_notification_wait_init(struct iwm_softc *sc)
 void
 iwm_notification_wait_free(struct iwm_notif_wait_data *notif_data)
 {
-	KKASSERT(STAILQ_EMPTY(&notif_data->list));
-	lockuninit(&notif_data->lk);
+	KASSERT(STAILQ_EMPTY(&notif_data->list), ("notif list isn't empty"));
+	IWM_WAIT_LOCK_DESTROY(notif_data);
 	kfree(notif_data, M_DEVBUF);
 }
 
@@ -111,7 +120,7 @@ iwm_notification_wait_notify(struct iwm_notif_wait_data *notif_data,
 {
 	struct iwm_notification_wait *wait_entry;
 
-	lockmgr(&notif_data->lk, LK_EXCLUSIVE);
+	IWM_WAIT_LOCK(notif_data);
 	STAILQ_FOREACH(wait_entry, &notif_data->list, entry) {
 		int found = FALSE;
 		int i;
@@ -140,7 +149,7 @@ iwm_notification_wait_notify(struct iwm_notif_wait_data *notif_data,
 			wakeup(wait_entry);
 		}
 	}
-	lockmgr(&notif_data->lk, LK_RELEASE);
+	IWM_WAIT_UNLOCK(notif_data);
 }
 
 void
@@ -148,12 +157,12 @@ iwm_abort_notification_waits(struct iwm_notif_wait_data *notif_data)
 {
 	struct iwm_notification_wait *wait_entry;
 
-	lockmgr(&notif_data->lk, LK_EXCLUSIVE);
+	IWM_WAIT_LOCK(notif_data);
 	STAILQ_FOREACH(wait_entry, &notif_data->list, entry) {
 		wait_entry->aborted = 1;
 		wakeup(wait_entry);
 	}
-	lockmgr(&notif_data->lk, LK_RELEASE);
+	IWM_WAIT_UNLOCK(notif_data);
 }
 
 void
@@ -162,7 +171,8 @@ iwm_init_notification_wait(struct iwm_notif_wait_data *notif_data,
     int (*fn)(struct iwm_softc *sc, struct iwm_rx_packet *pkt, void *data),
     void *fn_data)
 {
-	KKASSERT(n_cmds <= IWM_MAX_NOTIF_CMDS);
+	KASSERT(n_cmds <= IWM_MAX_NOTIF_CMDS,
+	    ("n_cmds %d is too large", n_cmds));
 	wait_entry->fn = fn;
 	wait_entry->fn_data = fn_data;
 	wait_entry->n_cmds = n_cmds;
@@ -170,9 +180,9 @@ iwm_init_notification_wait(struct iwm_notif_wait_data *notif_data,
 	wait_entry->triggered = 0;
 	wait_entry->aborted = 0;
 
-	lockmgr(&notif_data->lk, LK_EXCLUSIVE);
+	IWM_WAIT_LOCK(notif_data);
 	STAILQ_INSERT_TAIL(&notif_data->list, wait_entry, entry);
-	lockmgr(&notif_data->lk, LK_RELEASE);
+	IWM_WAIT_UNLOCK(notif_data);
 }
 
 int
@@ -181,14 +191,14 @@ iwm_wait_notification(struct iwm_notif_wait_data *notif_data,
 {
 	int ret = 0;
 
-	lockmgr(&notif_data->lk, LK_EXCLUSIVE);
+	IWM_WAIT_LOCK(notif_data);
 	if (!wait_entry->triggered && !wait_entry->aborted) {
-		ret = lksleep(wait_entry, &notif_data->lk, 0, "iwm_notif",
+		ret = lksleep(wait_entry, &notif_data->lk_lk, 0, "iwm_notif",
 		    timeout);
 	}
 	STAILQ_REMOVE(&notif_data->list, wait_entry, iwm_notification_wait,
 	    entry);
-	lockmgr(&notif_data->lk, LK_RELEASE);
+	IWM_WAIT_UNLOCK(notif_data);
 
 	return ret;
 }
@@ -197,8 +207,8 @@ void
 iwm_remove_notification(struct iwm_notif_wait_data *notif_data,
     struct iwm_notification_wait *wait_entry)
 {
-	lockmgr(&notif_data->lk, LK_EXCLUSIVE);
+	IWM_WAIT_LOCK(notif_data);
 	STAILQ_REMOVE(&notif_data->list, wait_entry, iwm_notification_wait,
 	    entry);
-	lockmgr(&notif_data->lk, LK_RELEASE);
+	IWM_WAIT_UNLOCK(notif_data);
 }

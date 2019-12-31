@@ -88,6 +88,7 @@
 
 #include <sys/param.h>
 #include <sys/bus.h>
+#include <sys/conf.h>
 #include <sys/endian.h>
 #include <sys/firmware.h>
 #include <sys/kernel.h>
@@ -124,25 +125,29 @@
 #include "if_iwmreg.h"
 #include "if_iwmvar.h"
 #include "if_iwm_debug.h"
-#include "if_iwm_sf.h"
 #include "if_iwm_util.h"
 #include "if_iwm_binding.h"
+#include "if_iwm_sf.h"
 
-struct iwm_mvm_iface_iterator_data {
+/*
+ * BEGIN iwlwifi/mvm/binding.c
+ */
+
+struct iwm_iface_iterator_data {
 	int idx;
 
-	struct iwm_mvm_phy_ctxt *phyctxt;
+	struct iwm_phy_ctxt *phyctxt;
 
 	uint16_t ids[IWM_MAX_MACS_IN_BINDING];
 	int16_t colors[IWM_MAX_MACS_IN_BINDING];
 };
 
 static int
-iwm_mvm_binding_cmd(struct iwm_softc *sc, uint32_t action,
-	struct iwm_mvm_iface_iterator_data *data)
+iwm_binding_cmd(struct iwm_softc *sc, uint32_t action,
+	struct iwm_iface_iterator_data *data)
 {
 	struct iwm_binding_cmd cmd;
-	struct iwm_mvm_phy_ctxt *phyctxt = data->phyctxt;
+	struct iwm_phy_ctxt *phyctxt = data->phyctxt;
 	int i, ret;
 	uint32_t status;
 
@@ -160,7 +165,7 @@ iwm_mvm_binding_cmd(struct iwm_softc *sc, uint32_t action,
 							      data->colors[i]));
 
 	status = 0;
-	ret = iwm_mvm_send_cmd_pdu_status(sc, IWM_BINDING_CONTEXT_CMD,
+	ret = iwm_send_cmd_pdu_status(sc, IWM_BINDING_CONTEXT_CMD,
 	    sizeof(cmd), &cmd, &status);
 	if (ret) {
 		device_printf(sc->sc_dev,
@@ -178,10 +183,10 @@ iwm_mvm_binding_cmd(struct iwm_softc *sc, uint32_t action,
 }
 
 static int
-iwm_mvm_binding_update(struct iwm_softc *sc, struct iwm_vap *ivp,
-	struct iwm_mvm_phy_ctxt *phyctxt, boolean_t add)
+iwm_binding_update(struct iwm_softc *sc, struct iwm_vap *ivp,
+	struct iwm_phy_ctxt *phyctxt, boolean_t add)
 {
-	struct iwm_mvm_iface_iterator_data data = {
+	struct iwm_iface_iterator_data data = {
 		.phyctxt = phyctxt,
 	};
 	uint32_t action;
@@ -197,11 +202,11 @@ iwm_mvm_binding_update(struct iwm_softc *sc, struct iwm_vap *ivp,
 		data.idx++;
 	}
 
-	return iwm_mvm_binding_cmd(sc, action, &data);
+	return iwm_binding_cmd(sc, action, &data);
 }
 
 int
-iwm_mvm_binding_add_vif(struct iwm_softc *sc, struct iwm_vap *ivp)
+iwm_binding_add_vif(struct iwm_softc *sc, struct iwm_vap *ivp)
 {
 	if (!ivp->phy_ctxt)
 		return EINVAL;
@@ -210,24 +215,24 @@ iwm_mvm_binding_add_vif(struct iwm_softc *sc, struct iwm_vap *ivp)
 	 * Update SF - Disable if needed. if this fails, SF might still be on
 	 * while many macs are bound, which is forbidden - so fail the binding.
 	 */
-	if (iwm_mvm_sf_update(sc, &ivp->iv_vap, FALSE))
+	if (iwm_sf_update(sc, &ivp->iv_vap, FALSE))
 		return EINVAL;
 
-	return iwm_mvm_binding_update(sc, ivp, ivp->phy_ctxt, TRUE);
+	return iwm_binding_update(sc, ivp, ivp->phy_ctxt, TRUE);
 }
 
 int
-iwm_mvm_binding_remove_vif(struct iwm_softc *sc, struct iwm_vap *ivp)
+iwm_binding_remove_vif(struct iwm_softc *sc, struct iwm_vap *ivp)
 {
 	int ret;
 
 	if (!ivp->phy_ctxt)
 		return EINVAL;
 
-	ret = iwm_mvm_binding_update(sc, ivp, ivp->phy_ctxt, FALSE);
+	ret = iwm_binding_update(sc, ivp, ivp->phy_ctxt, FALSE);
 
 	if (!ret) {
-		if (iwm_mvm_sf_update(sc, &ivp->iv_vap, TRUE))
+		if (iwm_sf_update(sc, &ivp->iv_vap, TRUE))
 			device_printf(sc->sc_dev,
 			    "Failed to update SF state\n");
 	}

@@ -72,6 +72,7 @@
 
 #include <sys/param.h>
 #include <sys/bus.h>
+#include <sys/conf.h>
 #include <sys/endian.h>
 #include <sys/firmware.h>
 #include <sys/kernel.h>
@@ -91,11 +92,9 @@
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_arp.h>
-#include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <net/ifq_var.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -156,7 +155,7 @@ iwm_fill_paging_mem(struct iwm_softc *sc, const struct iwm_fw_img *image)
 	 * If paging is enabled there should be at least 2 more sections left
 	 * (one for CSS and one for Paging data)
 	 */
-	if (sec_idx >= NELEM(image->sec) - 1) {
+	if (sec_idx >= nitems(image->sec) - 1) {
 		device_printf(sc->sc_dev,
 		    "Paging: Missing CSS and/or paging sections\n");
 		iwm_free_fw_paging(sc);
@@ -324,7 +323,7 @@ iwm_send_paging_cmd(struct iwm_softc *sc, const struct iwm_fw_img *fw)
 		    BUS_DMASYNC_PREWRITE | BUS_DMASYNC_PREREAD);
 	}
 
-	return iwm_mvm_send_cmd_pdu(sc, iwm_cmd_id(IWM_FW_PAGING_BLOCK_CMD,
+	return iwm_send_cmd_pdu(sc, iwm_cmd_id(IWM_FW_PAGING_BLOCK_CMD,
 						   IWM_ALWAYS_LONG_GROUP, 0),
 				    0, sizeof(fw_paging_cmd), &fw_paging_cmd);
 }

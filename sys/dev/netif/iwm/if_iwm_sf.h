@@ -69,11 +69,13 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD$
  */
 #ifndef	__IF_IWM_SF_H__
 #define	__IF_IWM_SF_H__
 
-extern	int iwm_mvm_sf_update(struct iwm_softc *sc,
+extern	int iwm_sf_update(struct iwm_softc *sc,
 			      struct ieee80211vap *changed_vif,
 			      boolean_t remove_vif);
 
