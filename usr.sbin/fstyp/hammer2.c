@@ -131,7 +131,8 @@ find_pfs(FILE *fp, const hammer2_blockref_t *bref, const char *pfs, bool *res)
 					    (const char*)ipdata.filename, pfs))
 						*res = true;
 				} else {
-					if (!memcmp(ipdata.filename, pfs,
+					if (strlen(pfs) > 0 &&
+					    !memcmp(ipdata.filename, pfs,
 					    strlen(pfs)))
 						*res = true;
 				}
@@ -165,8 +166,13 @@ find_pfs(FILE *fp, const hammer2_blockref_t *bref, const char *pfs, bool *res)
 static char*
 extract_device_name(const char *devpath)
 {
-	char *p = strdup(devpath);
-	char *head = p;
+	char *p, *head;
+
+	if (!devpath)
+		return NULL;
+
+	p = strdup(devpath);
+	head = p;
 
 	p = strchr(p, '@');
 	if (p)
@@ -232,6 +238,11 @@ read_label(FILE *fp, char *label, size_t size, const char *devpath)
 		goto done;
 	}
 
+	/*
+	 * fstyp_function in DragonFly takes an additional devpath argument
+	 * which doesn't exist in FreeBSD and NetBSD.
+	 */
+#ifdef HAS_DEVPATH
 	pfs = strchr(devpath, '@');
 	if (!pfs) {
 		assert(strlen(devpath));
@@ -253,8 +264,12 @@ read_label(FILE *fp, char *label, size_t size, const char *devpath)
 		error = 1;
 		goto done;
 	}
-
 	devname = extract_device_name(devpath);
+#else
+	pfs = "";
+	devname = extract_device_name(NULL);
+	assert(!devname);
+#endif
 
 	/* Add device name to help support multiple autofs -media mounts. */
 	if (find_pfs(fp, bref, pfs, &res) == 0 && res) {

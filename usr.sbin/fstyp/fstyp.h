@@ -35,6 +35,9 @@
 
 #include <stdbool.h>
 
+/* Undefine this on FreeBSD and NetBSD. */
+#define HAS_DEVPATH
+
 /* The spec doesn't seem to permit UTF-16 surrogates; definitely LE. */
 #define	EXFAT_ENC	"UCS-2LE"
 /*
