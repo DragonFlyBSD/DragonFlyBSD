@@ -132,12 +132,10 @@ typedef	__pid_t		pid_t;		/* process id */
 #endif
 #if __BSD_VISIBLE
 typedef	__register_t	register_t;	/* register-sized type */
-#endif
 #ifndef _RLIM_T_DECLARED
 typedef	__rlim_t	rlim_t;		/* resource limit */
 #define	_RLIM_T_DECLARED
 #endif
-#if __BSD_VISIBLE
 typedef	__intlp_t	segsz_t;	/* segment size */
 #endif
 #ifndef _SUSECONDS_T_DECLARED

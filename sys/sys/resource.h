@@ -48,13 +48,13 @@ typedef	__int64_t	id_t;	/* general id, can hold gid/pid/uid_t */
 typedef	__rlim_t	rlim_t;	/* resource limit */
 #endif
 
+#if __BSD_VISIBLE
 /*
  * Process priority specifications to get/setpriority.
  */
 #define	PRIO_MIN	-20
 #define	PRIO_MAX	20
 
-#if __BSD_VISIBLE
 #define	IOPRIO_MIN	1
 #define	IOPRIO_MAX	10
 #endif
@@ -105,16 +105,22 @@ struct __wrusage {
 #define	RLIMIT_DATA	2		/* data size */
 #define	RLIMIT_STACK	3		/* stack size */
 #define	RLIMIT_CORE	4		/* core file size */
+#if __BSD_VISIBLE
 #define	RLIMIT_RSS	5		/* resident set size */
 #define	RLIMIT_MEMLOCK	6		/* locked-in-memory address space */
 #define	RLIMIT_NPROC	7		/* number of processes */
+#endif
 #define	RLIMIT_NOFILE	8		/* number of open files */
+#if __BSD_VISIBLE
 #define	RLIMIT_SBSIZE	9		/* maximum size of all socket buffers */
-#define	RLIMIT_VMEM	10		/* virtual process size (inclusive of mmap) */
-#define	RLIMIT_AS       RLIMIT_VMEM     /* standard name for address space size */
+#endif
+#define	RLIMIT_AS	10		/* standard name for address space size */
+#if __BSD_VISIBLE
+#define	RLIMIT_VMEM	RLIMIT_AS	/* virtual process size (inclusive of mmap) */
 #define	RLIMIT_POSIXLOCKS 11		/* maximum number of POSIX locks per user */
 
 #define	RLIM_NLIMITS	12		/* number of resource limits */
+#endif
 
 #define	RLIM_INFINITY	((rlim_t)(((__uint64_t)1 << 63) - 1))	/* no limit */
 #define	RLIM_SAVED_MAX	RLIM_INFINITY	/* unrepresentable hard limit */
@@ -146,11 +152,6 @@ struct rlimit {
 };
 
 #if __BSD_VISIBLE
-struct orlimit {
-	__int32_t rlim_cur;		/* current (soft) limit */
-	__int32_t rlim_max;		/* maximum value for rlim_cur */
-};
-
 struct loadavg {
 	__uint64_t ldavg[3];		/* 64-bits to avoid overflow */
 	long	fscale;
