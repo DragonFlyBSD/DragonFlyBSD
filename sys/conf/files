@@ -668,6 +668,8 @@ dev/netif/iwm/if_iwm_time_event.c	optional iwm
 dev/netif/iwm/if_iwm_util.c		optional iwm
 dev/netif/iwm/if_iwm_7000.c		optional iwm
 dev/netif/iwm/if_iwm_8000.c		optional iwm
+dev/netif/iwm/if_iwm_9000.c		optional iwm
+dev/netif/iwm/if_iwm_9260.c		optional iwm
 iwm3160fw.c				optional iwmfw			\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwm3160.fw:iwm3160fw -m iwm3160fw -c ${.TARGET}" \
 	no-implicit-rule before-depend local				\
@@ -766,6 +768,34 @@ iwm8265.fw				optional iwmfw			\
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwm8265.fw"
+iwm9000fw.c				optional iwmfw			\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwm9000.fw:iwm9000fw -m iwm9000fw -c ${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"iwm9000fw.c"
+iwm9000fw.fwo				optional iwmfw			\
+	dependency	"iwm9000.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"iwm9000fw.fwo"
+iwm9000.fw				optional iwmfw			\
+	dependency	"$S/contrib/dev/iwm/iwm-9000-34.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"iwm9000.fw"
+iwm9260fw.c				optional iwmfw			\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwm9260.fw:iwm9260fw -m iwm9260fw -c ${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"iwm9260fw.c"
+iwm9260fw.fwo				optional iwmfw			\
+	dependency	"iwm9260.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"iwm9260fw.fwo"
+iwm9260.fw				optional iwmfw			\
+	dependency	"$S/contrib/dev/iwm/iwm-9260-34.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"iwm9260.fw"
 dev/netif/iwn/if_iwn.c	optional iwn
 iwn1000fw.c			optional iwnfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwn1000.fw:iwn1000fw -m iwn1000fw -c ${.TARGET}" \
