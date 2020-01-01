@@ -156,6 +156,7 @@ __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 	dup = strdup(blkdevs);
 	p = dup;
 
+	volpath = NULL;
 	while (p) {
 		volpath = p;
 		if ((p = strchr(p, ':')) != NULL)
@@ -165,6 +166,8 @@ __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 		x[volno]++;
 	}
 
+	if (!volpath)
+		err(1, "invalid path %s", blkdevs);
 	if ((fp = fopen(volpath, "r")) == NULL)
 		err(1, "failed to open %s", volpath);
 	ondisk = read_ondisk(fp);
