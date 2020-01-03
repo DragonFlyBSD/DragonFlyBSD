@@ -49,6 +49,7 @@ int UseTmpfsBase = 1;
 int UseNCurses = -1;		/* indicates default operation (enabled) */
 int LeveragePrebuilt = 0;
 int WorkerProcFlags = 0;
+int DeleteObsoletePkgs;
 long PhysMem;
 const char *OperatingSystemName = "Unknown";	/* e.g. "DragonFly" */
 const char *ArchitectureName = "unknown";	/* e.g. "x86_64" */

@@ -297,6 +297,7 @@ main(int ac, char **av)
 		if (WorkerProcFlags & WORKER_PROC_DEVELOPER)
 			WorkerProcFlags |= WORKER_PROC_CHECK_PLIST;
 		MaskProbeAbort = 1;
+		DeleteObsoletePkgs = 1;
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = GetFullPackageList();

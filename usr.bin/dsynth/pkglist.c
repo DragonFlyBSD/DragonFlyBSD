@@ -320,7 +320,6 @@ GetFullPackageList(void)
 	int total;
 
 	initbulk(childGetPackageInfo, MaxBulk);
-
 	total = scan_and_queue_dir(DPortsPath, NULL, 1);
 	printf("Scanning %d ports\n", total);
 
@@ -1015,6 +1014,7 @@ childGetBinaryDistInfo(bulk_t *bulk)
 	char buf[1024];
 	pid_t pid;
 	int cac;
+	int deleteme;
 
 	asprintf(&repopath, "%s/%s", RepositoryPath, bulk->s1);
 
@@ -1026,6 +1026,7 @@ childGetBinaryDistInfo(bulk_t *bulk)
 	cav[cac++] = "%n-%v";
 
 	fp = dexec_open(cav, cac, &pid, NULL, 1, 0);
+	deleteme = DeleteObsoletePkgs;
 
 	while ((ptr = fgetln(fp, &len)) != NULL) {
 		if (len == 0 || ptr[len-1] != '\n')
@@ -1036,6 +1037,7 @@ childGetBinaryDistInfo(bulk_t *bulk)
 		pkg = pkg_find(buf);
 		if (pkg) {
 			pkg->flags |= PKGF_PACKAGED;
+			deleteme = 0;
 		} else {
 			ddprintf(0, "Note: package scan, not in list, "
 				    "skipping %s\n", buf);
@@ -1043,6 +1045,11 @@ childGetBinaryDistInfo(bulk_t *bulk)
 	}
 	if (dexec_close(fp, pid)) {
 		printf("pkg query command failed for %s\n", repopath);
+	}
+	if (deleteme) {
+		dlog(DLOG_ALL | DLOG_STDOUT,
+		     "Deleting obsolete package %s\n", repopath);
+		remove(repopath);
 	}
 	free(repopath);
 }

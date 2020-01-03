@@ -496,6 +496,7 @@ extern int ColorOpt;
 extern int SlowStartOpt;
 extern int YesOpt;
 extern int NullStdinOpt;
+extern int DeleteObsoletePkgs;
 extern int UseCCache;
 extern int UseUsrSrc;
 extern int UseTmpfs;
