@@ -491,4 +491,6 @@ pci_unmap_rom(struct pci_dev *pdev, void __iomem *rom)
 	vga_pci_unmap_bios(device_get_parent(pdev->dev.bsddev), rom);
 }
 
+#include <linux/pci-dma-compat.h>
+
 #endif /* LINUX_PCI_H */
