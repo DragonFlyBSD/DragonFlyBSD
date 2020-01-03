@@ -147,7 +147,7 @@ fail:
 static int
 __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 {
-	hammer_volume_ondisk_t ondisk;
+	hammer_volume_ondisk_t ondisk = NULL;
 	FILE *fp;
 	char *dup, *p, *volpath, x[HAMMER_MAX_VOLUMES];
 	int i, volno, error = 1;
