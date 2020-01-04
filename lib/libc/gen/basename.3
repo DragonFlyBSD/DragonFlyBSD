@@ -26,9 +26,8 @@
 .\"
 .\" $OpenBSD: basename.3,v 1.12 2000/04/18 03:01:25 aaron Exp $
 .\" $FreeBSD: src/lib/libc/gen/basename.3,v 1.1.2.5 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/basename.3,v 1.3 2007/08/18 20:48:47 swildner Exp $
 .\"
-.Dd August 17, 1997
+.Dd January 4, 2020
 .Dt BASENAME 3
 .Os
 .Sh NAME
@@ -39,7 +38,7 @@
 .Sh SYNOPSIS
 .In libgen.h
 .Ft char *
-.Fn basename "const char *path"
+.Fn basename "char *path"
 .Sh DESCRIPTION
 The
 .Fn basename
@@ -80,12 +79,6 @@ The following error codes may be set in
 The path component to be returned was larger than
 .Dv MAXPATHLEN .
 .El
-.Sh WARNINGS
-The
-.Fn basename
-function
-returns a pointer to internal static storage space that will be overwritten
-by subsequent calls.
 .Sh SEE ALSO
 .Xr basename 1 ,
 .Xr dirname 1 ,

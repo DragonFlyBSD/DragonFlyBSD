@@ -27,7 +27,7 @@
 .\" $OpenBSD: dirname.3,v 1.9 2000/04/18 03:01:25 aaron Exp $
 .\" $FreeBSD: src/lib/libc/gen/dirname.3,v 1.1.2.6 2003/03/15 15:11:05 trhodes Exp $
 .\"
-.Dd August 17, 1997
+.Dd January 4, 2020
 .Dt DIRNAME 3
 .Os
 .Sh NAME
@@ -38,7 +38,7 @@
 .Sh SYNOPSIS
 .In libgen.h
 .Ft char *
-.Fn dirname "const char *path"
+.Fn dirname "char *path"
 .Sh DESCRIPTION
 The
 .Fn dirname
@@ -80,12 +80,6 @@ The path component to be returned was larger than
 .Dv MAXPATHLEN .
 .El
 .Sh WARNINGS
-The
-.Fn dirname
-function
-returns a pointer to internal static storage space that will be overwritten
-by subsequent calls (each function has its own separate storage).
-.Pp
 Other vendor implementations of
 .Fn dirname
 may modify the contents of the string passed to
