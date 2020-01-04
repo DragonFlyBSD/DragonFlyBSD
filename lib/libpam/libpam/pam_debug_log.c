@@ -45,10 +45,11 @@ _pam_verbose_error(pam_handle_t *pamh, int flags,
     const char *file, const char *function, const char *format, ...)
 {
 	va_list ap;
-	char *fmtbuf, *modname, *period;
+	char *fmtbuf, *tmpbuf, *modname, *period;
 
 	if (!(flags & PAM_SILENT) && !openpam_get_option(pamh, "no_warn")) {
-		modname = basename(file);
+		tmpbuf = strdup(file);
+		modname = basename(tmpbuf);
 		period = strchr(modname, '.');
 		if (period == NULL)
 			period = strchr(modname, '\0');
@@ -58,5 +59,6 @@ _pam_verbose_error(pam_handle_t *pamh, int flags,
 		pam_verror(pamh, fmtbuf, ap);
 		free(fmtbuf);
 		va_end(ap);
+		free(tmpbuf);
 	}
 }

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
- * All rights reserved.
+ * Copyright (c) 2015-2016 Nuxi, https://nuxi.nl/
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,25 +9,19 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
- * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $OpenBSD: basename.c,v 1.4 1999/05/30 17:10:30 espie Exp $
- * $FreeBSD: src/lib/libc/gen/basename.c,v 1.6 2002/12/21 07:12:35 bbraun Exp $
- * $DragonFly: src/lib/libc/gen/basename.c,v 1.8 2005/09/18 16:09:45 asmodai Exp $
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
-
 #include <errno.h>
 #include <libgen.h>
 #include <stdlib.h>
@@ -36,42 +29,19 @@
 #include <sys/param.h>
 
 char *
-basename(const char *path)
+basename(char *path)
 {
-	static char *bname = NULL;
-	const char *endp, *startp;
+	char *ptr;
 
-	if (bname == NULL) {
-		bname = (char *)malloc(MAXPATHLEN);
-		if (bname == NULL)
-			return(NULL);
-	}
+	if (path == NULL || *path == 0)
+		return (__DECONST(char *, "."));
 
-	/* Empty or NULL string gets treated as "." */
-	if (path == NULL || *path == '\0') {
-		strlcpy(bname, ".", MAXPATHLEN);
-		return(bname);
-	}
+	ptr = path + strlen(path);
+	while (ptr > path + 1 && ptr[-1] == '/')
+		--ptr;
+	*ptr-- = 0;
 
-	/* Strip trailing slashes */
-	endp = path + strlen(path) - 1;
-	while (endp > path && *endp == '/')
-		endp--;
-
-	/* All slashes becomes "/" */
-	if (endp == path && *endp == '/') {
-		strlcpy(bname, "/", MAXPATHLEN);
-		return(bname);
-	}
-
-	/* Find the start of the base */
-	startp = endp;
-	while (startp > path && *(startp - 1) != '/')
-		startp--;
-
-	if (strlcpy(bname, startp, (endp - startp) + 2) >= MAXPATHLEN) {
-		errno = ENAMETOOLONG;
-		return(NULL);
-	}
-	return(bname);
+	while (ptr > path && ptr[-1] != '/')
+		--ptr;
+	return ptr;
 }

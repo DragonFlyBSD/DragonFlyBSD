@@ -102,6 +102,7 @@ static int
 create_lock(const char *file, pid_t pid, int uucpstyle, int debug)
 {
 	char buf[BUFSIZE], tmpf[PATH_MAX];
+	char *tmpbuf;
 	char *dir;
 	int fd, ret;
 
@@ -109,12 +110,14 @@ create_lock(const char *file, pid_t pid, int uucpstyle, int debug)
 	if (ret >= (int)sizeof(buf) || ret == -1)
 		err(1, "snprintf() failed"); /* Must not happen. */
 
-	if ((dir = dirname(file)) == NULL)
+	tmpbuf = strdup(file);
+	if ((dir = dirname(tmpbuf)) == NULL)
 		err(1, "dirname() failed");
 
 	ret = snprintf(tmpf, sizeof(tmpf), "%s/shlock%ld", dir, (long)getpid());
 	if (ret >= (int)sizeof(tmpf) || ret == -1)
 		err(1, "snprintf failed");
+	free(tmpbuf);
 
 	if (debug) {
 		printf("%s: trying lock file %s for process %ld\n",

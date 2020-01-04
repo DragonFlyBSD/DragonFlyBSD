@@ -96,6 +96,7 @@ getlink(const char *path)
 int
 getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
+	char *tmpbuf;
 	int fd;
 
 	clrpfs(pfs, NULL, -1);
@@ -103,9 +104,12 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	/*
 	 * Extract the PFS id.
 	 * dirname(path) is supposed to be a directory in root PFS.
+	 *
+	 * strips trailing / first if any.
 	 */
+	tmpbuf = strdup(path);
 	if (scanpfsid(pfs, path) == 0)
-		path = dirname(path); /* strips trailing / first if any */
+		path = dirname(tmpbuf);
 
 	/*
 	 * Open the path regardless of scanpfsid() result, since some
@@ -127,6 +131,8 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 		/* not reached */
 	}
 
+	free(tmpbuf);
+
 	return(fd);
 }
 
@@ -138,6 +144,7 @@ int
 scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
 	char *linkpath;
+	char *tmpbuf;
 	char buf[64];
 	uintmax_t dummy_tid;
 	struct stat st;
@@ -171,8 +178,9 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	 * One could also directly use the PFS and results the same.
 	 * Get rid of it before we extract the PFS id.
 	 */
+	tmpbuf = strdup(path);
 	if (strchr(path, '/')) {
-		path = basename(path); /* strips trailing / first if any */
+		path = basename(tmpbuf); /* strips trailing / first if any */
 		if (path == NULL) {
 			err(1, "basename");
 			/* not reached */
@@ -185,9 +193,11 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	 * and "@@0x%016jx:%05d" format for slave PFS.
 	 */
 	if (sscanf(path, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
+		free(tmpbuf);
 		assert(pfs->pfs_id > 0);
 		return(0);
 	}
+	free(tmpbuf);
 
 	return(-1);
 }
@@ -248,6 +258,7 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	struct hammer_pseudofs_data pfsd;
 	struct stat st;
 	const char *path;
+	char *tmpbuf;
 	char *dirpath;
 	char *linkpath;
 	int pfs_id;
@@ -270,7 +281,8 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	 * Figure out the directory prefix, taking care of degenerate
 	 * cases.
 	 */
-	dirpath = dirname(path);
+	tmpbuf = strdup(path);
+	dirpath = dirname(tmpbuf);
 	fd = open(dirpath, O_RDONLY);
 	if (fd < 0) {
 		err(1, "Cannot open directory %s", dirpath);
@@ -334,7 +346,8 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 			hammer_cmd_pseudofs_update(av, ac);
 		}
 	}
-	free(dirpath);
+	free(tmpbuf);
+
 	close(fd);
 }
 

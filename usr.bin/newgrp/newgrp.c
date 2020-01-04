@@ -294,7 +294,7 @@ loginshell(void)
 		if (setenv("KRBTKFILE", ticket, 1) == -1)
 			err(EXIT_FAILURE, "setenv failed");
 
-	if (asprintf(args, "-%s", basename(shell)) < 0)
+	if (asprintf(args, "-%s", basename(strdup(shell))) < 0)
 		err(1, "asprintf");
 	args[1] = NULL;
 
@@ -310,6 +310,6 @@ doshell(void)
 	shell = pwd->pw_shell;
 	if (*shell == '\0')
 		shell = _PATH_BSHELL;
-	execl(shell, basename(shell), NULL);
+	execl(shell, basename(strdup(shell)), NULL);
 	err(1, "%s", shell);
 }

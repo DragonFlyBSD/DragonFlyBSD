@@ -1031,20 +1031,25 @@ cmd_show(int argc, char **argv)
 		err(1, "Can't initialize query\n");
 	while(!evtr_query_next(q, &ev)) {
 		char buf[1024];
+		char *tmpbuf;
 
 		if (!last_ts)
 			last_ts = ev.ts;
+
+		tmpbuf = strdup(ev.file);
+
 		if (freq < 0.0) {
 			printf("%s\t%ju cycles\t[%.3d]\t%s:%d",
 			       ev.td ? ev.td->comm : "unknown",
 			       (uintmax_t)(ev.ts - last_ts), ev.cpu,
-			       basename(ev.file), ev.line);
+			       basename(tmpbuf), ev.line);
 		} else {
 			printf("%s\t%.3lf usecs\t[%.3d]\t%s:%d",
 			       ev.td ? ev.td->comm : "unknown",
 			       (ev.ts - last_ts) / freq, ev.cpu,
-			       basename(ev.file), ev.line);
+			       basename(tmpbuf), ev.line);
 		}
+		free(tmpbuf);
 		if (ev.fmt) {
 			evtr_event_data(&ev, buf, sizeof(buf));
 			printf(" !\t%s\n", buf);

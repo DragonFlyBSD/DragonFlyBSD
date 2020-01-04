@@ -903,7 +903,7 @@ int main(int argc, char *argv[])
 			err(1, "could not stat specified configuration file %s", config_name);
 
 		if (config_name[0] == '/')
-			chdir(dirname(config_name));
+			chdir(dirname(strdup(config_name)));
 
 		read_config(config_name, RULES_FILE);
 	}
