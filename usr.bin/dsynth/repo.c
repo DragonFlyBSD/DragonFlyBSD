@@ -318,7 +318,9 @@ PurgeDistfiles(pkg_t *pkgs)
 			++delcount;
 		}
 	}
-	if (askyn("Delete %d of %d items? ", delcount, count)) {
+	if (delcount == 0) {
+		printf("No obsolete source files out of %d found\n", count);
+	} else if (askyn("Delete %d of %d items? ", delcount, count)) {
 		printf("Deleting %d/%d obsolete source distfiles\n",
 		       delcount, count);
 		for (i = 0; i < count; ++i) {
