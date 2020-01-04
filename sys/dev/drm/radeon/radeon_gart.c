@@ -24,8 +24,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_gart.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #include <drm/drmP.h>
 #include "drm/drm_legacy.h"		/* for drm_dma_handle_t */
@@ -67,23 +65,21 @@
  */
 int radeon_gart_table_ram_alloc(struct radeon_device *rdev)
 {
-	drm_dma_handle_t *dmah;
+	void *ptr;
 
-	dmah = drm_pci_alloc(rdev->ddev, rdev->gart.table_size,
-	    PAGE_SIZE);
-	if (dmah == NULL) {
+	ptr = pci_alloc_consistent(rdev->pdev, rdev->gart.table_size,
+				   &rdev->gart.table_addr);
+	if (ptr == NULL) {
 		return -ENOMEM;
 	}
-	rdev->gart.dmah = dmah;
-	rdev->gart.ptr = dmah->vaddr;
-#if defined(__i386) || defined(__amd64)
+#ifdef CONFIG_X86
 	if (rdev->family == CHIP_RS400 || rdev->family == CHIP_RS480 ||
 	    rdev->family == CHIP_RS690 || rdev->family == CHIP_RS740) {
-		pmap_change_attr((vm_offset_t)rdev->gart.ptr,
-		    rdev->gart.table_size >> PAGE_SHIFT, PAT_UNCACHED);
+		set_memory_uc((unsigned long)ptr,
+			      rdev->gart.table_size >> PAGE_SHIFT);
 	}
 #endif
-	rdev->gart.table_addr = dmah->busaddr;
+	rdev->gart.ptr = ptr;
 	memset((void *)rdev->gart.ptr, 0, rdev->gart.table_size);
 	return 0;
 }
