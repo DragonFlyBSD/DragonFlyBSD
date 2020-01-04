@@ -89,17 +89,15 @@ do {									\
 
 #define	schedule_work(work)						\
 do {									\
-	(work)->taskqueue = taskqueue_thread[mycpuid];				\
-	taskqueue_enqueue(taskqueue_thread[mycpuid], &(work)->work_task);	\
+	taskqueue_enqueue_optq(taskqueue_thread[mycpuid], &(work)->taskqueue, &(work)->work_task);	\
 } while (0)
 
 #define	flush_scheduled_work()	flush_taskqueue(taskqueue_thread[mycpuid])
 
 static inline int queue_work(struct workqueue_struct *q, struct work_struct *work)
 {
-	(work)->taskqueue = (q)->taskqueue;
 	/* Return opposite val to align with Linux logic */
-	return !taskqueue_enqueue((q)->taskqueue, &(work)->work_task);
+	return !taskqueue_enqueue_optq((q)->taskqueue, &(work)->taskqueue, &(work)->work_task);
 }
 
 static inline void
@@ -108,7 +106,7 @@ _delayed_work_fn(void *arg)
 	struct delayed_work *work;
 
 	work = arg;
-	taskqueue_enqueue(work->work.taskqueue, &work->work.work_task);
+	taskqueue_enqueue_optq(work->work.taskqueue, &work->work.taskqueue, &work->work.work_task);
 }
 
 static inline int
@@ -132,6 +130,7 @@ static inline bool schedule_delayed_work(struct delayed_work *dwork,
                                          unsigned long delay)
 {
         struct workqueue_struct wq;
+
         wq.taskqueue = taskqueue_thread[mycpuid];
         return queue_delayed_work(&wq, dwork, delay);
 }
@@ -172,9 +171,8 @@ flush_taskqueue(struct taskqueue *tq)
 static inline int
 cancel_work_sync(struct work_struct *work)
 {
-	if (work->taskqueue &&
-	    taskqueue_cancel(work->taskqueue, &work->work_task, NULL))
-		taskqueue_drain(work->taskqueue, &work->work_task);
+	if (taskqueue_cancel_simple(&work->work_task))
+		taskqueue_drain_simple(&work->work_task);
 	return 0;
 }
 
@@ -184,21 +182,16 @@ cancel_work_sync(struct work_struct *work)
 static inline int
 cancel_delayed_work(struct delayed_work *work)
 {
-
 	callout_stop(&work->timer);
-	if (work->work.taskqueue)
-		return (taskqueue_cancel(work->work.taskqueue,
-		    &work->work.work_task, NULL) == 0);
-	return 0;
+	return (taskqueue_cancel_simple(&work->work.work_task) == 0);
 }
 
 static inline int
 cancel_delayed_work_sync(struct delayed_work *work)
 {
 	callout_cancel(&work->timer);
-	if (work->work.taskqueue &&
-	    taskqueue_cancel(work->work.taskqueue, &work->work.work_task, NULL))
-		taskqueue_drain(work->work.taskqueue, &work->work.work_task);
+	if (taskqueue_cancel_simple(&work->work.work_task))
+		taskqueue_drain_simple(&work->work.work_task);
 	return 0;
 }
 
@@ -214,8 +207,8 @@ mod_delayed_work(struct workqueue_struct *wq, struct delayed_work *dwork,
 static inline bool
 flush_work(struct work_struct *work)
 {
-	if (work->taskqueue != NULL)
-		taskqueue_drain(work->taskqueue, &work->work_task);
+	taskqueue_drain_simple(&work->work_task);
+
 	return true;
 }
 
