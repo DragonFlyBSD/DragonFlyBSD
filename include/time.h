@@ -197,7 +197,7 @@ int timer_settime(timer_t, int, const struct itimerspec *__restrict,
 extern int daylight;
 extern long timezone;
 char *strptime(const char * __restrict, const char * __restrict,
-    struct tm * __restrict);
+    struct tm * __restrict) __strftimelike(2, 0);
 #endif
 
 #if __BSD_VISIBLE

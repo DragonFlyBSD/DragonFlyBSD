@@ -52,7 +52,7 @@ size_t	 strftime_l(char * __restrict, size_t, const char * __restrict,
 #define _XLOCALE_LOCALE2_H
 
 char	*strptime_l(const char * __restrict, const char * __restrict,
-           struct tm * __restrict, locale_t);
+           struct tm * __restrict, locale_t) __strftimelike(2, 0);
 
 #endif /* _XLOCALE_LOCALE2_H */
 #endif /* _XLOCALE_H_ */
