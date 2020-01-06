@@ -854,7 +854,7 @@ childGetPackageInfo(bulk_t *bulk)
 		cav[cac++] = flavarg;
 	cav[cac++] = "-VPKGVERSION";
 	cav[cac++] = "-VPKGFILE:T";
-	cav[cac++] = "-VDISTFILES";
+	cav[cac++] = "-VALLFILES";
 	cav[cac++] = "-VDIST_SUBDIR";
 	cav[cac++] = "-VMAKE_JOBS_NUMBER";
 	cav[cac++] = "-VIGNORE";
@@ -895,7 +895,7 @@ childGetPackageInfo(bulk_t *bulk)
 		case 2:		/* PKGFILE */
 			asprintf(&pkg->pkgfile, "%s", ptr);
 			break;
-		case 3:		/* DISTFILES */
+		case 3:		/* ALLFILES (aka DISTFILES + patch files) */
 			asprintf(&pkg->distfiles, "%s", ptr);
 			break;
 		case 4:		/* DIST_SUBDIR */
