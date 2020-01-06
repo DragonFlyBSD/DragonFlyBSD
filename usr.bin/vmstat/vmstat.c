@@ -115,6 +115,7 @@ int	nflag = 0;
 int	verbose = 0;
 int	unformatted_opt = 0;
 int	brief_opt = 0;
+int	ncpus;
 
 kvm_t *kd;
 
@@ -159,6 +160,12 @@ main(int argc, char **argv)
 	int reps;
 	char *memf, *nlistf;
 	char errbuf[_POSIX2_LINE_MAX];
+	size_t ncpus_size = sizeof(ncpus);
+
+	if (sysctlbyname("hw.ncpu", &ncpus, &ncpus_size, NULL, 0) < 0) {
+		perror("sysctl hw.ncpu");
+		exit(1);
+	}
 
 	memf = nlistf = NULL;
 	interval = reps = todo = 0;
@@ -949,15 +956,15 @@ cpuagg(struct malloc_type *ks, enum ksuse use)
 
     switch(use) {
     case KSINUSE:
-	for (i = 0; i < SMP_MAXCPU; ++i)
+	for (i = 0; i < ncpus; ++i)
 	    ttl += ks->ks_use[i].inuse;
 	break;
     case KSMEMUSE:
-	for (i = 0; i < SMP_MAXCPU; ++i)
+	for (i = 0; i < ncpus; ++i)
 	    ttl += ks->ks_use[i].memuse;
 	break;
     case KSCALLS:
-	for (i = 0; i < SMP_MAXCPU; ++i)
+	for (i = 0; i < ncpus; ++i)
 	    ttl += ks->ks_use[i].calls;
     	break;
     }
@@ -985,6 +992,18 @@ domem(void)
 			    kmemstats[nkms].ks_shortdesc);
 		buf[sizeof(buf) - 1] = '\0';
 		kmemstats[nkms].ks_shortdesc = strdup(buf);
+		if (kmemstats[nkms].ks_use) {
+			size_t usebytes;
+			void *use;
+
+			usebytes = ncpus * sizeof(kmemstats[nkms].ks_use[0]);
+			use = malloc(usebytes);
+			if (kvm_read(kd, (u_long)kmemstats[nkms].ks_use,
+				     use, usebytes) != (ssize_t)usebytes) {
+				err(1, "kvm_read(%p)", kmemstats[nkms].ks_use);
+			}
+			kmemstats[nkms].ks_use = use;
+		}
 		kmsp = kmemstats[nkms].ks_next;
 	}
 	if (kmsp != NULL)
@@ -1089,14 +1108,14 @@ again:
 		}
 		zfreecnt_prev = save[i].zfreecnt;
 		znalloc_prev = save[i].znalloc;
-		for (n = 0; n < SMP_MAXCPU; ++n) {
+		for (n = 0; n < ncpus; ++n) {
 			zfreecnt_prev += save[i].zpcpu[n].zfreecnt;
 			znalloc_prev += save[i].zpcpu[n].znalloc;
 		}
 
 		zfreecnt_next = zone.zfreecnt;
 		znalloc_next = zone.znalloc;
-		for (n = 0; n < SMP_MAXCPU; ++n) {
+		for (n = 0; n < ncpus; ++n) {
 			zfreecnt_next += zone.zpcpu[n].zfreecnt;
 			znalloc_next += zone.zpcpu[n].znalloc;
 		}
