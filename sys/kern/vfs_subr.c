@@ -201,10 +201,13 @@ vfs_subr_init(void)
  *   1 = seconds and nanoseconds, accurate within 1/HZ.
  *   2 = seconds and nanoseconds, truncated to microseconds.
  * >=3 = seconds and nanoseconds, maximum precision.
+ *
+ * Note that utimes() precision is microseconds because it takes a timeval
+ * structure, so its probably best to default to USEC and not NSEC.
  */
 enum { TSP_SEC, TSP_HZ, TSP_USEC, TSP_NSEC };
 
-__read_mostly static int timestamp_precision = TSP_SEC;
+__read_mostly static int timestamp_precision = TSP_USEC;
 SYSCTL_INT(_vfs, OID_AUTO, timestamp_precision, CTLFLAG_RW,
 		&timestamp_precision, 0, "Precision of file timestamps");
 
