@@ -135,6 +135,7 @@ static int xrmdir(struct HostConf *host, const char *path);
 static int DoCopy(copy_info_t info, struct stat *stat1, int depth);
 static int ScanDir(List *list, struct HostConf *host, const char *path,
 	int64_t *CountReadBytes, int n);
+static int mtimecmp(struct stat *st1, struct stat *st2);
 
 int AskConfirmation = 1;
 int SafetyOpt = 1;
@@ -621,7 +622,7 @@ checkHLPath(struct stat *st1, const char *spath, const char *dpath)
      */
     if (hc_stat(&DstHost, hpath, &sthl) < 0 ||
 	st1->st_size != sthl.st_size ||
-	st1->st_mtime != sthl.st_mtime ||
+	mtimecmp(st1, &sthl) != 0 ||
 	!OwnerMatch(st1, &sthl) ||
 	!FlagsMatch(st1, &sthl)
     ) {
@@ -840,7 +841,7 @@ relink:
 	} else {
 	    if (ForceOpt == 0 &&
 		stat1->st_size == st2.st_size &&
-		(ValidateOpt == 2 || stat1->st_mtime == st2.st_mtime) &&
+		(ValidateOpt == 2 || mtimecmp(stat1, &st2) == 0) &&
 		OwnerMatch(stat1, &st2)
 #ifndef NOMD5
 		&& (UseMD5Opt == 0 || !S_ISREG(stat1->st_mode) ||
@@ -1074,10 +1075,14 @@ relink:
 	    if (!FlagsMatch(stat1, &st2))
 		hc_chflags(&DstHost, dpath, stat1->st_flags);
 #endif
-	    if (ForceOpt || stat1->st_mtime != st2.st_mtime) {
+	    if (ForceOpt || mtimecmp(stat1, &st2) != 0) {
 		bzero(tv, sizeof(tv));
 		tv[0].tv_sec = stat1->st_mtime;
 		tv[1].tv_sec = stat1->st_mtime;
+#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
+		tv[0].tv_usec = stat1->st_mtimespec.tv_nsec / 1000;
+		tv[1].tv_usec = stat1->st_mtimespec.tv_nsec / 1000;
+#endif
 		hc_utimes(&DstHost, dpath, tv);
 	    }
 	}
@@ -1183,6 +1188,10 @@ relink:
 		    bzero(tv, sizeof(tv));
 		    tv[0].tv_sec = stat1->st_mtime;
 		    tv[1].tv_sec = stat1->st_mtime;
+#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
+		    tv[0].tv_usec = stat1->st_mtimespec.tv_nsec / 1000;
+		    tv[1].tv_usec = stat1->st_mtimespec.tv_nsec / 1000;
+#endif
 
 		    if (DstRootPrivs || ChgrpAllowed(stat1->st_gid))
 			hc_chown(&DstHost, path, stat1->st_uid, stat1->st_gid);
@@ -1789,4 +1798,24 @@ xrmdir(struct HostConf *host, const char *path)
     }
 #endif
     return(res);
+}
+
+/*
+ * Compare mtimes.  By default cpdup only compares the seconds field
+ * because different operating systems and filesystems will store time
+ * fields with varying amounts of precision.
+ *
+ * This subroutine can be adjusted to also compare to microseconds or
+ * nanoseconds precision.  However, since cpdup() uses utimes() to
+ * set a file's timestamp and utimes() only takes timeval's (usec precision),
+ * I strongly recommend only comparing down to usec precision at best.
+ */
+static int
+mtimecmp(struct stat *st1, struct stat *st2)
+{
+	if (st1->st_mtime < st2->st_mtime)
+		return -1;
+	if (st1->st_mtime == st2->st_mtime)
+		return 0;
+	return 1;
 }

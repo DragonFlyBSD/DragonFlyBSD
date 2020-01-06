@@ -7,7 +7,7 @@
 #ifndef _HCPROTO_H_
 #define _HCPROTO_H_
 
-#define HCPROTO_VERSION		4
+#define HCPROTO_VERSION		5
 #define HCPROTO_VERSION_COMPAT	2
 
 #define HC_HELLO	0x0001
@@ -67,6 +67,9 @@
 #define LC_BLKSIZE	(0x0027|LCF_INT32)
 #define LC_VERSION	(0x0028|LCF_INT32)
 #define LC_COUNT	(0x0029|LCF_INT32)
+#define LC_ATIMENSEC	(0x002A|LCF_INT32)
+#define LC_MTIMENSEC	(0x002B|LCF_INT32)
+#define LC_CTIMENSEC	(0x002C|LCF_INT32)
 
 #define XO_NATIVEMASK	3		/* passed through directly */
 #define XO_CREAT	0x00010000

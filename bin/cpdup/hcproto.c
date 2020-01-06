@@ -179,8 +179,9 @@ hc_hello(struct HostConf *hc)
 		hc->host);
 	error = -1;
     } else if (hc->version < HCPROTO_VERSION && QuietOpt == 0) {
-	fprintf(stderr, "WARNING: Remote cpdup at %s has a lower version, "
-		"expect reduced speed\n", hc->host);
+	fprintf(stderr,
+		"WARNING: Remote cpdup at %s has a lower version,\n"
+		"expect reduced speed and/or functionality\n", hc->host);
     }
     if (error < 0)
 	fprintf(stderr, "Handshake failed with %s\n", hc->host);
@@ -293,6 +294,17 @@ hc_decode_stat_item(struct stat *st, struct HCLeaf *item)
     case LC_CTIME:
 	st->st_ctime = (time_t)HCC_INT64(item);
 	break;
+#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
+    case LC_ATIMENSEC:
+	st->st_atimespec.tv_nsec = HCC_INT32(item);
+	break;
+    case LC_MTIMENSEC:
+	st->st_mtimespec.tv_nsec = HCC_INT32(item);
+	break;
+    case LC_CTIMENSEC:
+	st->st_ctimespec.tv_nsec = HCC_INT32(item);
+	break;
+#endif
     case LC_FILESIZE:
 	st->st_size = HCC_INT64(item);
 	break;
@@ -372,6 +384,11 @@ rc_encode_stat(hctransaction_t trans, struct stat *st)
     hcc_leaf_int64(trans, LC_ATIME, st->st_atime);
     hcc_leaf_int64(trans, LC_MTIME, st->st_mtime);
     hcc_leaf_int64(trans, LC_CTIME, st->st_ctime);
+#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
+    hcc_leaf_int32(trans, LC_ATIMENSEC, st->st_atimespec.tv_nsec);
+    hcc_leaf_int32(trans, LC_MTIMENSEC, st->st_mtimespec.tv_nsec);
+    hcc_leaf_int32(trans, LC_CTIMENSEC, st->st_ctimespec.tv_nsec);
+#endif
     hcc_leaf_int64(trans, LC_FILESIZE, st->st_size);
     hcc_leaf_int64(trans, LC_FILEBLKS, st->st_blocks);
     hcc_leaf_int32(trans, LC_BLKSIZE, st->st_blksize);
@@ -1787,6 +1804,10 @@ hc_utimes(struct HostConf *hc, const char *path, const struct timeval *times)
     hcc_leaf_string(trans, LC_PATH1, path);
     hcc_leaf_int64(trans, LC_ATIME, times[0].tv_sec);
     hcc_leaf_int64(trans, LC_MTIME, times[1].tv_sec);
+#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
+    hcc_leaf_int32(trans, LC_ATIMENSEC, times[0].tv_usec * 1000);
+    hcc_leaf_int32(trans, LC_MTIMENSEC, times[1].tv_usec * 1000);
+#endif
     if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
@@ -1815,6 +1836,14 @@ rc_utimes(hctransaction_t trans, struct HCHead *head)
 	case LC_MTIME:
 	    times[1].tv_sec = HCC_INT64(item);
 	    break;
+#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
+	case LC_ATIMENSEC:
+	    times[0].tv_usec = HCC_INT32(item) / 1000;
+	    break;
+	case LC_MTIMENSEC:
+	    times[1].tv_usec = HCC_INT32(item) / 1000;
+	    break;
+#endif
 	}
     }
     if (ReadOnlyOpt) {
