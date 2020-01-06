@@ -297,6 +297,7 @@ _kvm_minidump_vatop(kvm_t *kd, u_long va, off_t *pa)
 
 	vm = kd->vmst;
 	offset = va & (PAGE_SIZE - 1);
+	va -= offset;			/* put va on page boundary */
 
 	if (va >= vm->kernbase) {
 		switch (vm->pgtable) {
@@ -333,9 +334,11 @@ _kvm_minidump_vatop(kvm_t *kd, u_long va, off_t *pa)
 				goto invalid;
 			}
 			if (pte & X86_PG_PS) {		/* 1GB pages */
-				pte += va & (1024 * 1024 * 1024 - 1);
-				goto shortcut;
+				a = (pte & PG_PS_FRAME) +
+				    (va & (1024 * 1024 * 1024 - 1));
+				break;
 			}
+							/* PD page */
 			ofs = hpt_find(kd, pte & PG_FRAME);
 			if (ofs == -1) {
 				_kvm_err(kd, kd->program,
@@ -359,8 +362,9 @@ _kvm_minidump_vatop(kvm_t *kd, u_long va, off_t *pa)
 				goto invalid;
 			}
 			if (pte & X86_PG_PS) {		/* 2MB pages */
-				pte += va & (2048 * 1024 - 1);
-				goto shortcut;
+				a = (pte & PG_PS_FRAME) +
+				    (va & (2048 * 1024 - 1));
+				break;
 			}
 			ofs = hpt_find(kd, pte & PG_FRAME);
 			if (ofs == -1) {
@@ -383,7 +387,6 @@ _kvm_minidump_vatop(kvm_t *kd, u_long va, off_t *pa)
 			/*
 			 * Calculate end page
 			 */
-shortcut:
 			a = pte & PG_FRAME;
 			break;
 		default:
