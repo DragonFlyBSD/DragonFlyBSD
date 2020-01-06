@@ -450,7 +450,7 @@ malloc_reinit_ncpus(void)
     /*
      * Expand ks_use for all kmalloc blocks
      */
-    for (t = kmemstatistics; t->ks_next; t = t->ks_next) {
+    for (t = kmemstatistics; t; t = t->ks_next) {
 	KKASSERT(t->ks_use == &t->ks_use0);
 	t->ks_use = kmalloc(sizeof(*use) * ncpus, M_TEMP, M_WAITOK|M_ZERO);
 	t->ks_use[0] = t->ks_use0;
