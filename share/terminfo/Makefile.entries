@@ -2,7 +2,8 @@
 LEVEL1=	1 2 3 4 5 6 7 8 9 A E L M N P Q X a b c d e f g h i j k l m n o \
 	p q r s t u v w x z
 
-ENTRY=	1/1178 \
+TERMINFO_ENTRIES=	\
+        1/1178 \
 	1/1730-lm \
 	2/2621 \
 	2/2621-wl \

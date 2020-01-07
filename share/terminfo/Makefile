@@ -49,7 +49,7 @@ terminfo: run_tic.sh terminfo.tmp
 	sh run_tic.sh
 
 install:
-	for ITEM in ${ENTRY}; do \
+	for ITEM in ${TERMINFO_ENTRIES}; do \
 		${INSTALL} -m 644 -o ${BINOWN} -g ${BINGRP}  \
 		terminfo/$${ITEM} ${DESTDIR}${TINFODIR}/$${ITEM}; \
 	done
