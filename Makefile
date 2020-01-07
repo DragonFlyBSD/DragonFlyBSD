@@ -110,8 +110,8 @@ BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}
 .ORDER: realquickkernel reinstallkernel
 .ORDER: build-all install-all
 
-PATH=	/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/pkg/bin
-MAKE=	PATH=${PATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
+_HOSTPATH=	/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/pkg/bin
+MAKE=	PATH=${_HOSTPATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
 
 #
 # Handle the user-driven targets, using the source relative mk files.
