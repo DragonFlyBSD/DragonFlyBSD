@@ -155,7 +155,7 @@ CFLAGS+=	-fno-omit-frame-pointer
 .include <bsd.patch.mk>
 
 .if defined(FIRMWS)
-AWK=/usr/bin/awk
+#AWK=/usr/bin/awk
 .if !exists(@)
 ${KMOD:S/$/.c/}: @
 .else
