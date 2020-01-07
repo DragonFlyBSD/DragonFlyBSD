@@ -25,11 +25,13 @@ HOST_CCVER?= ${_CCVER}
 HOST_CCVER?= ${_DEFAULT_CCVER}
 .endif
 
+.if !defined(HOST_BINUTILSVER)
 .if exists(/usr/libexec/${_DEFAULT_BINUTILSVER}/elf/as)
 HOST_BINUTILSVER?=	${_DEFAULT_BINUTILSVER}
 .else
 _NEXTAS!=		find -s /usr/libexec/binutils* -name as -print0 -quit
 HOST_BINUTILSVER?=	${_NEXTAS:H:H:T}
+.endif
 .endif
 
 .if defined(FORCE_CPUTYPE)
