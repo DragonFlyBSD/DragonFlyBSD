@@ -1018,7 +1018,7 @@ domem(void)
 		long ks_calls;
 
 		ks_calls = cpuagg(ks, KSCALLS);
-		if (ks_calls == 0)
+		if (ks_calls == 0 && verbose == 0)
 			continue;
 
 		ks_inuse = cpuagg(ks, KSINUSE);
