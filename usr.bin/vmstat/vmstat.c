@@ -68,24 +68,26 @@ static struct nlist namelist[] = {
 	{ "_boottime",	0, 0, 0, 0 },
 #define X_NCHSTATS	1
 	{ "_nchstats",	0, 0, 0, 0 },
-#define	X_KMEMSTATISTICS	2
+#define	X_KMEMSTATISTICS 2
 	{ "_kmemstatistics",	0, 0, 0, 0 },
-#define	X_ZLIST		3
+#define	X_NCPUS		3
+	{ "_ncpus",	0, 0, 0, 0 },
+#define	X_ZLIST		4
 	{ "_zlist",	0, 0, 0, 0 },
 #ifdef notyet
-#define	X_DEFICIT	4
+#define	X_DEFICIT	5
 	{ "_deficit",	0, 0, 0, 0 },
-#define	X_FORKSTAT	5
+#define	X_FORKSTAT	6
 	{ "_forkstat",	0, 0, 0, 0 },
-#define X_REC		6
+#define X_REC		7
 	{ "_rectime",	0, 0, 0, 0 },
-#define X_PGIN		7
+#define X_PGIN		8
 	{ "_pgintime",	0, 0, 0, 0 },
-#define	X_XSTATS	8
+#define	X_XSTATS	9
 	{ "_xstats",	0, 0, 0, 0 },
-#define X_END		9
+#define X_END		10
 #else
-#define X_END		4
+#define X_END		5
 #endif
 	{ "", 0, 0, 0, 0 },
 };
@@ -160,12 +162,6 @@ main(int argc, char **argv)
 	int reps;
 	char *memf, *nlistf;
 	char errbuf[_POSIX2_LINE_MAX];
-	size_t ncpus_size = sizeof(ncpus);
-
-	if (sysctlbyname("hw.ncpu", &ncpus, &ncpus_size, NULL, 0) < 0) {
-		perror("sysctl hw.ncpu");
-		exit(1);
-	}
 
 	memf = nlistf = NULL;
 	interval = reps = todo = 0;
@@ -271,6 +267,8 @@ main(int argc, char **argv)
 			warnx("kvm_nlist: %s", kvm_geterr(kd));
 		exit(1);
 	}
+
+	kread(X_NCPUS, &ncpus, sizeof(ncpus));
 
 	if (todo & VMSTAT) {
 		struct winsize winsize;
