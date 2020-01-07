@@ -49,8 +49,11 @@ chown daemon:wheel $template/var/msgs
 
 # Delete sensitive data from /etc
 #
+# Delete timezone translation so all packages are built in
+# GMT.  Fixes at least one package build.
 #
 rm -f $template/etc/ssh/*key*
+rm -f $template/etc/localtime
 
 if ( -f $template/etc/master.passwd ) then
 	cat $sysbase/etc/master.passwd | \
