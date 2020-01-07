@@ -208,7 +208,8 @@ srcs:
 .else
 	( cd ${SRCDIR} && \
 		tar --exclude .git -s '/^\./src/' -cf - \
-			./Makefile ./Makefile.inc1 ./sys | \
+			./Makefile ./Makefile.inc1 ./sys \
+			./share/syscons/fonts | \
 			bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2 )
 .endif
 .endif
