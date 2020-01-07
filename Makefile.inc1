@@ -405,7 +405,9 @@ _initrd:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> stage 5: building rescue and initrd"
 	@echo "--------------------------------------------------------------"
+.if !defined(NO_INITRD)
 	cd ${.CURDIR}/initrd; ${WMAKEENV} make all
+.endif
 _bwdone:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> buildworld target complete"
@@ -546,7 +548,9 @@ installworld: installcheck
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc \
 	    ${DESTDIR}/etc/upgrade/
 	cd ${.CURDIR}; ${IMAKE} -DWORLDINSTALL os-release
+.if !defined(NO_INITRD)
 	cd ${.CURDIR}; ${IMAKE} -DWORLDINSTALL initrd
+.endif
 	sync
 	@echo "--------------------------------------------------------------"
 	@echo ">>> installworld target complete"
@@ -600,7 +604,9 @@ installworld-force:
 	sleep 5
 	(cd ${.CURDIR}; ${MAKE} installworld OVERRIDE_CHECKS=TRUE)
 	(cd ${.CURDIR}; ${MAKE} upgrade OVERRIDE_CHECKS=TRUE)
+.if !defined(NO_INITRD)
 	(cd ${.CURDIR}; ${MAKE} initrd)
+.endif
 
 # reinstall
 #
