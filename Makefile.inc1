@@ -909,7 +909,7 @@ BSTRAPDIRS2= \
 	usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
 	usr.bin/gencat usr.bin/chflags \
 	usr.bin/uuencode usr.bin/cap_mkdb usr.bin/true usr.bin/false \
-	usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
+	usr.bin/cmp usr.bin/xargs usr.bin/env usr.bin/dirname \
 	usr.bin/tail usr.bin/unifdef \
 	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
 	usr.sbin/zic usr.sbin/pwd_mkdb \
