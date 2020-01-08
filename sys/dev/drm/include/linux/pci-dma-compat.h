@@ -38,4 +38,11 @@ pci_alloc_consistent(struct pci_dev *pdev, size_t size, dma_addr_t *dma_handle)
 	return dma_alloc_coherent(&pdev->dev, size, dma_handle, GFP_ATOMIC);
 }
 
+static inline void
+pci_free_consistent(struct pci_dev *pdev,
+		    size_t size, void *vaddr, dma_addr_t dma_handle)
+{
+	dma_free_coherent(&pdev->dev, size, vaddr, dma_handle);
+}
+
 #endif	/* _LINUX_PCI_DMA_COMPAT_H */
