@@ -25,7 +25,6 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
-
 #ifndef __RADEON_H__
 #define __RADEON_H__
 
@@ -513,7 +512,7 @@ struct radeon_bo {
 	pid_t				pid;
 
 	struct radeon_mn		*mn;
-	struct interval_tree_node	mn_it;
+	struct list_head		mn_list;
 };
 #define gem_to_radeon_bo(gobj) container_of((gobj), struct radeon_bo, gem_base)
 
@@ -2370,8 +2369,7 @@ struct radeon_device {
 	struct spinlock didt_idx_lock;
 	/* protects concurrent ENDPOINT (audio) register access */
 	struct spinlock end_idx_lock;
-	int				rmmio_rid;
-	struct resource			*rmmio;
+	void __iomem			*rmmio;
 	radeon_rreg_t			mc_rreg;
 	radeon_wreg_t			mc_wreg;
 	radeon_rreg_t			pll_rreg;
@@ -2482,8 +2480,8 @@ struct radeon_device {
 	/* amdkfd interface */
 	struct kfd_dev		*kfd;
 
- 	struct lock	mn_lock;
- 	DECLARE_HASHTABLE(mn_hash, 7);
+	struct lock	mn_lock;
+	DECLARE_HASHTABLE(mn_hash, 7);
 };
 
 bool radeon_is_px(struct drm_device *dev);
@@ -2503,7 +2501,7 @@ static inline uint32_t r100_mm_rreg(struct radeon_device *rdev, uint32_t reg,
 {
 	/* The mmio size is 64kb at minimum. Allows the if to be optimized out. */
 	if ((reg < rdev->rmmio_size || reg < RADEON_MIN_MMIO_SIZE) && !always_indirect)
-		return bus_read_4(rdev->rmmio, reg);
+		return readl(((void __iomem *)rdev->rmmio) + reg);
 	else
 		return r100_mm_rreg_slow(rdev, reg);
 }
@@ -2511,7 +2509,7 @@ static inline void r100_mm_wreg(struct radeon_device *rdev, uint32_t reg, uint32
 				bool always_indirect)
 {
 	if ((reg < rdev->rmmio_size || reg < RADEON_MIN_MMIO_SIZE) && !always_indirect)
-		bus_write_4(rdev->rmmio, reg, v);
+		writel(v, ((void __iomem *)rdev->rmmio) + reg);
 	else
 		r100_mm_wreg_slow(rdev, reg, v);
 }
@@ -2540,10 +2538,10 @@ static inline struct radeon_fence *to_radeon_fence(struct fence *f)
 /*
  * Registers read & write functions.
  */
-#define RREG8(reg) bus_read_1((rdev->rmmio), (reg))
-#define WREG8(reg, v) bus_write_1((rdev->rmmio), (reg), v)
-#define RREG16(reg) bus_read_2((rdev->rmmio), (reg))
-#define WREG16(reg, v) bus_write_2((rdev->rmmio), (reg), v)
+#define RREG8(reg) readb((rdev->rmmio) + (reg))
+#define WREG8(reg, v) writeb(v, (rdev->rmmio) + (reg))
+#define RREG16(reg) readw((rdev->rmmio) + (reg))
+#define WREG16(reg, v) writew(v, (rdev->rmmio) + (reg))
 #define RREG32(reg) r100_mm_rreg(rdev, (reg), false)
 #define RREG32_IDX(reg) r100_mm_rreg(rdev, (reg), true)
 #define DREG32(reg) DRM_INFO("REGISTER: " #reg " : 0x%08X\n", r100_mm_rreg(rdev, (reg)))
@@ -2959,6 +2957,7 @@ extern int ni_mc_load_microcode(struct radeon_device *rdev);
 extern void ni_fini_microcode(struct radeon_device *rdev);
 
 /* radeon_acpi.c */
+#if defined(CONFIG_ACPI)
 extern int radeon_acpi_init(struct radeon_device *rdev);
 extern void radeon_acpi_fini(struct radeon_device *rdev);
 extern bool radeon_acpi_is_pcie_performance_request_supported(struct radeon_device *rdev);
@@ -2994,6 +2993,10 @@ void	radeon_ttm_fini(struct radeon_device *rdev);
 /* r600.c */
 int r600_ih_ring_alloc(struct radeon_device *rdev);
 void r600_ih_ring_fini(struct radeon_device *rdev);
+#else
+static inline int radeon_acpi_init(struct radeon_device *rdev) { return 0; }
+static inline void radeon_acpi_fini(struct radeon_device *rdev) { }
+#endif
 
 int radeon_cs_packet_parse(struct radeon_cs_parser *p,
 			   struct radeon_cs_packet *pkt,

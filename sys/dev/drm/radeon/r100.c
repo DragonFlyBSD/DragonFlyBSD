@@ -4131,8 +4131,8 @@ uint32_t r100_mm_rreg_slow(struct radeon_device *rdev, uint32_t reg)
 	uint32_t ret;
 
 	spin_lock(&rdev->mmio_idx_lock);
-	bus_write_4(rdev->rmmio, RADEON_MM_INDEX, reg);
-	ret = bus_read_4(rdev->rmmio, RADEON_MM_DATA);
+	writel(reg, ((void __iomem *)rdev->rmmio) + RADEON_MM_INDEX);
+	ret = readl(((void __iomem *)rdev->rmmio) + RADEON_MM_DATA);
 	spin_unlock(&rdev->mmio_idx_lock);
 	return ret;
 }
@@ -4140,8 +4140,8 @@ uint32_t r100_mm_rreg_slow(struct radeon_device *rdev, uint32_t reg)
 void r100_mm_wreg_slow(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
 	spin_lock(&rdev->mmio_idx_lock);
-	bus_write_4(rdev->rmmio, RADEON_MM_INDEX, reg);
-	bus_write_4(rdev->rmmio, RADEON_MM_DATA, v);
+	writel(reg, ((void __iomem *)rdev->rmmio) + RADEON_MM_INDEX);
+	writel(v, ((void __iomem *)rdev->rmmio) + RADEON_MM_DATA);
 	spin_unlock(&rdev->mmio_idx_lock);
 }
 
@@ -4150,7 +4150,6 @@ u32 r100_io_rreg(struct radeon_device *rdev, u32 reg)
 	if (reg < rdev->rio_mem_size)
 		return bus_read_4(rdev->rio_mem, reg);
 	else {
-		/* XXX No locking? -- dumbbell@ */
 		bus_write_4(rdev->rio_mem, RADEON_MM_INDEX, reg);
 		return bus_read_4(rdev->rio_mem, RADEON_MM_DATA);
 	}
