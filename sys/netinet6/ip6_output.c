@@ -2952,23 +2952,37 @@ ip6_setpktoptions(struct mbuf *control, struct ip6_pktopts *opt,
 	if (control->m_next)
 		return (EINVAL);
 
-	for (; control->m_len; control->m_data += CMSG_ALIGN(cm->cmsg_len),
-	    control->m_len -= CMSG_ALIGN(cm->cmsg_len)) {
+	for (;;) {
 		int error;
 
-		if (control->m_len < CMSG_LEN(0))
-			return (EINVAL);
+		if (control->m_len == 0)
+			break;
+		if (control->m_len < sizeof(*cm))
+			return EINVAL;
 
 		cm = mtod(control, struct cmsghdr *);
 		if (cm->cmsg_len == 0 || cm->cmsg_len > control->m_len)
 			return (EINVAL);
-		if (cm->cmsg_level != IPPROTO_IPV6)
-			continue;
+		if (cm->cmsg_level == IPPROTO_IPV6) {
+			error = ip6_setpktoption(cm->cmsg_type, CMSG_DATA(cm),
+						 cm->cmsg_len - CMSG_LEN(0),
+						 opt, 0, 1, uproto, priv);
+			if (error)
+				return (error);
+		}
 
-		error = ip6_setpktoption(cm->cmsg_type, CMSG_DATA(cm),
-		    cm->cmsg_len - CMSG_LEN(0), opt, 0, 1, uproto, priv);
-		if (error)
-			return (error);
+		/*
+		 * The cmsg fit, but the aligned step for the next one might
+		 * not.  Check the case and terminate normally (allows the
+		 * cmsg_len to not be aligned).
+		 */
+		if (CMSG_ALIGN(cm->cmsg_len) >= control->m_len) {
+			control->m_data += control->m_len;
+			control->m_len = 0;
+			break;
+		}
+		control->m_data += CMSG_ALIGN(cm->cmsg_len);
+		control->m_len -= CMSG_ALIGN(cm->cmsg_len);
 	}
 
 	return (0);
