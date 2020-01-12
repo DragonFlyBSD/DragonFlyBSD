@@ -15,7 +15,7 @@ SRCS+=	base64.c ether_addr.c eui64.c \
 	getservent.c \
 	if_indextoname.c if_nameindex.c if_nametoindex.c \
 	ip6opt.c linkaddr.c map_v4v6.c name6.c \
-	nsdispatch.c nslexer.c nsparser.y nss_compat.c ntoh.c \
+	nsdispatch.c nslexer.l nsparser.y nss_compat.c ntoh.c \
 	rcmd.c rcmdsh.c recv.c \
 	rthdr.c sockatmark.c send.c vars.c
 
@@ -28,13 +28,9 @@ CFLAGS+=-DINET6 -I${.OBJDIR} -I${.CURDIR}/../libc/resolv
 YFLAGS+=-p_nsyy
 LFLAGS+=-P_nsyy
 
-CLEANFILES+=nslexer.c nslexer.c.*
-
-nslexer.c: nslexer.l
-	${LEX} ${LFLAGS} -o${.TARGET}.tmp1 ${.IMPSRC}
-	sed -e '/YY_BUF_SIZE/s/16384/1024/' ${.TARGET}.tmp1 >${.TARGET}.tmp2
-	rm -f ${.TARGET}.tmp1
-	mv -f ${.TARGET}.tmp2 ${.TARGET}
+FLAGS_GROUPS=	yy_buf
+yy_buf_FLAGS=	-DYY_BUF_SIZE=1024
+yy_buf_FLAGS_FILES=nslexer.c
 
 .if ${LIB} == "c"
 MAN+=	byteorder.3 ethers.3 eui64.3 \
