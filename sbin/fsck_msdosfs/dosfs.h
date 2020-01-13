@@ -74,7 +74,7 @@ struct bootblock {
 	uint32_t NumSectors;		/* how many sectors are there */
 	uint32_t FATsecs;		/* how many sectors are in FAT */
 	uint32_t NumFatEntries;		/* how many entries really are there */
-	u_int	ClusterOffset;		/* at what sector would sector 0 start */
+	u_int	FirstCluster;		/* at what sector is Cluster CLUST_FIRST */
 	u_int	ClusterSize;		/* Cluster size in bytes */
 
 	/* Now some statistics: */
