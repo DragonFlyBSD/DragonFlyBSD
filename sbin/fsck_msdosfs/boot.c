@@ -331,7 +331,7 @@ writefsinfo(int dosfs, struct bootblock *boot)
 	 * support for FAT32) doesn't maintain the FSINFO block
 	 * correctly, it has to be fixed pretty often.
 	 *
-	 * Therefor, we handle the FSINFO block only informally,
+	 * Therefore, we handle the FSINFO block only informally,
 	 * fixing it if necessary, but otherwise ignoring the
 	 * fact that it was incorrect.
 	 */
