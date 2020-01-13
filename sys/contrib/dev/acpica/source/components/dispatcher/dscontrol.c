@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -235,7 +235,7 @@ AcpiDsExecBeginControlOp (
         ControlState->Control.Opcode =
             Op->Common.AmlOpcode;
         ControlState->Control.LoopTimeout = AcpiOsGetTimer () +
-           (UINT64) (AcpiGbl_MaxLoopIterations * ACPI_100NSEC_PER_SEC);
+           ((UINT64) AcpiGbl_MaxLoopIterations * ACPI_100NSEC_PER_SEC);
 
         /* Push the control state on this walk's control stack */
 

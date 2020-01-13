@@ -9,7 +9,7 @@ NoEcho('
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -202,7 +202,7 @@ AddressKeyword
     ;
 
 AddressSpaceKeyword
-    : ByteConst                             {$$ = UtCheckIntegerRange ($1, 0x0A, 0xFF);}
+    : ByteConst                             {$$ = UtCheckIntegerRange ($1, ACPI_NUM_PREDEFINED_REGIONS, 0xFF);}
     | RegionSpaceKeyword                    {}
     ;
 

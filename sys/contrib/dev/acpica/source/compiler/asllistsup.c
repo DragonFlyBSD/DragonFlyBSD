@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -241,7 +241,7 @@ LsDumpAsciiInComment (
             {
                 /* Insert a space to break the sequence */
 
-                FlPrintFile (FileId, ".", BufChar);
+                FlPrintFile (FileId, " ");
             }
 
             FlPrintFile (FileId, "%c", BufChar);

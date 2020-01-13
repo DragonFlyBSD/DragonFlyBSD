@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -302,8 +302,6 @@ AcpiEvGpeInitialize (
              * GPE0 and GPE1 do not have to be contiguous in the GPE number
              * space. However, GPE0 always starts at GPE number zero.
              */
-            GpeNumberMax = AcpiGbl_FADT.Gpe1Base +
-                ((RegisterCount1 * ACPI_GPE_REGISTER_WIDTH) - 1);
         }
     }
 
@@ -315,7 +313,6 @@ AcpiEvGpeInitialize (
 
         ACPI_DEBUG_PRINT ((ACPI_DB_INIT,
             "There are no GPE blocks defined in the FADT\n"));
-        Status = AE_OK;
         goto Cleanup;
     }
 

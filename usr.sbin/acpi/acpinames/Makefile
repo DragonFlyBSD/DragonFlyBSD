@@ -19,34 +19,69 @@ SRCS=	\
 
 SRCS+=	\
 	cmfsize.c \
+	dscontrol.c \
+	dsdebug.c \
 	dsfield.c \
 	dsinit.c \
+	dsmethod.c \
 	dsmthdat.c \
 	dsobject.c \
+	dsopcode.c \
 	dspkginit.c \
 	dsutils.c \
+	dswexec.c \
 	dswload.c \
 	dswload2.c \
 	dswscope.c \
 	dswstate.c \
+	evhandler.c \
+	evmisc.c \
+	evregion.c \
+	evrgnini.c \
+	evxfregn.c \
+	exconcat.c \
+	exconfig.c \
+	exconvrt.c \
 	excreate.c \
 	exdump.c \
+	exfield.c \
+	exfldio.c \
+	exmisc.c \
 	exmutex.c \
 	exnames.c \
+	exoparg1.c \
+	exoparg2.c \
+	exoparg3.c \
+	exoparg6.c \
 	exprep.c \
+	exregion.c \
 	exresnte.c \
 	exresolv.c \
+	exresop.c \
+	exserial.c \
+	exstore.c \
+	exstoren.c \
+	exstorob.c \
 	exsystem.c \
 	exutils.c \
 	getopt.c \
+	hwpci.c \
+	hwvalid.c \
 	nsaccess.c \
 	nsalloc.c \
+	nsarguments.c \
+	nsconvert.c \
 	nsdump.c \
+	nseval.c \
 	nsinit.c \
 	nsload.c \
 	nsnames.c \
 	nsobject.c \
 	nsparse.c \
+	nspredef.c \
+	nsprepkg.c \
+	nsrepair.c \
+	nsrepair2.c \
 	nssearch.c \
 	nsutils.c \
 	nswalk.c \
@@ -79,6 +114,7 @@ SRCS+=	\
 	utascii.c \
 	utbuffer.c \
 	utcache.c \
+	utcopy.c \
 	utdebug.c \
 	utdecode.c \
 	utdelete.c \
@@ -97,8 +133,12 @@ SRCS+=	\
 	utobject.c \
 	utosi.c \
 	utownerid.c \
+	utpredef.c \
+	utresrc.c \
 	utstate.c \
 	utstring.c \
+	utstrsuppt.c \
+	utstrtoul64.c \
 	utxface.c \
 	utxferror.c \
 	utxfinit.c

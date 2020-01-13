@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -746,7 +746,6 @@ AdDoExternalFileList (
             {
                 ExternalFileList = ExternalFileList->Next;
                 GlobalStatus = AE_TYPE;
-                Status = AE_OK;
                 continue;
             }
 

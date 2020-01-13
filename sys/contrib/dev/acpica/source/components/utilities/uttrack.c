@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -864,7 +864,7 @@ AcpiUtDumpAllocations (
 
                     case ACPI_DESC_TYPE_PARSER:
 
-                        AcpiOsPrintf ("AmlOpcode 0x%04hX\n",
+                        AcpiOsPrintf ("AmlOpcode 0x%04X\n",
                             Descriptor->Op.Asl.AmlOpcode);
                         break;
 

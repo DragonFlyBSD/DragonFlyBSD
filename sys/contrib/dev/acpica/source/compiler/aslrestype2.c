@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -487,10 +487,7 @@ RsDoInterruptDescriptor (
 
     if (StringLength && ResSourceString)
     {
-
         strcpy ((char *) Rover, (char *) ResSourceString);
-        Rover = ACPI_ADD_PTR (
-                    AML_RESOURCE, &(Rover->ByteItem), StringLength);
 
         Descriptor->ExtendedIrq.ResourceLength = (UINT16)
             (Descriptor->ExtendedIrq.ResourceLength + StringLength);

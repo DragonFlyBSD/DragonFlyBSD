@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -264,7 +264,6 @@ AsRemoveConditionalCompile (
 
 
     KeywordLength = strlen (Keyword);
-    SubBuffer = Buffer;
     SubString = Buffer;
 
     while (SubString)
@@ -401,7 +400,7 @@ AsRemoveConditionalCompile (
 
         /* Remove the lines */
 
-        SubBuffer = AsRemoveData (SubString, SubBuffer);
+        (void) AsRemoveData (SubString, SubBuffer);
     }
 }
 
@@ -591,7 +590,7 @@ AsReduceTypedefs (
                 /* Remove the typedef itself */
 
                 SubBuffer = SubString + strlen ("typedef") + 1;
-                SubBuffer = AsRemoveData (SubString, SubBuffer);
+                (void) AsRemoveData (SubString, SubBuffer);
 
                 /* Find the opening brace of the struct or union */
 

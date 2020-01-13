@@ -1,6 +1,7 @@
+%{
 /******************************************************************************
  *
- * Name: acmsvcex.h - Extra VC specific defines, etc.
+ * Module Name: dtcompilerparser.y - Bison input file for table compiler parser
  *
  *****************************************************************************/
 
@@ -8,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -149,57 +150,136 @@
  *
  *****************************************************************************/
 
-#ifndef __ACMSVCEX_H__
-#define __ACMSVCEX_H__
+#include "aslcompiler.h"
 
-/* va_arg implementation can be compiler specific */
 
-#ifdef ACPI_USE_STANDARD_HEADERS
+#define _COMPONENT          DT_COMPILER
+        ACPI_MODULE_NAME    ("dtcompilerparser")
 
-#include <stdarg.h>
+void *                      AslLocalAllocate (unsigned int Size);
 
-#endif /* ACPI_USE_STANDARD_HEADERS */
+/* Bison/yacc configuration */
 
-/* Debug support. */
+#undef alloca
+#define alloca              AslLocalAllocate
 
-#ifdef _DEBUG
-#define _CRTDBG_MAP_ALLOC /* Enables specific file/lineno for leaks */
-#include <crtdbg.h>
-#endif
+int                         DtCompilerParserlex (void);
+int                         DtCompilerParserparse (void);
+void                        DtCompilerParsererror (char const *msg);
+extern char                 *DtCompilerParsertext;
+extern DT_FIELD             *AslGbl_CurrentField;
 
-/* End standard headers */
+extern int                  DtLabelByteOffset;
+extern UINT64               DtCompilerParserResult; /* Expression return value */
+extern UINT64               DtCompilerParserlineno; /* Current line number */
 
-#pragma warning(pop)
+extern UINT32               DtTokenFirstLine;
+extern UINT32               DtTokenFirstColumn;
 
-#ifndef ACPI_USE_SYSTEM_CLIBRARY
+/* Bison/yacc configuration */
 
+#define yytname             DtCompilerParsername
+#define YYDEBUG             1               /* Enable debug output */
+#define YYERROR_VERBOSE     1               /* Verbose error messages */
+#define YYFLAG              -32768
+
+/* Define YYMALLOC/YYFREE to prevent redefinition errors  */
+
+#define YYMALLOC            malloc
+#define YYFREE              free
+
+%}
+
+
+%union {
+    char                *s;
+    DT_FIELD            *f;
+    DT_TABLE_UNIT       *u;
+}
+
+
+%type  <f> Table
+%token <u> DT_PARSEOP_DATA
+%token <u> DT_PARSEOP_LABEL
+%token <u> DT_PARSEOP_STRING_DATA
+%token <u> DT_PARSEOP_LINE_CONTINUATION
+%type  <u> Data
+%type  <u> Datum
+%type  <u> MultiLineData
+%type  <u> MultiLineDataList
+
+
+%%
+
+Table
+    :
+    FieldList { }
+    ;
+
+FieldList
+    : Field FieldList
+    | Field
+    ;
+
+Field
+    : DT_PARSEOP_LABEL ':' Data { DtCreateField ($1, $3, DtLabelByteOffset); }
+    ;
+
+Data
+    : MultiLineDataList        { $$ = $1; }
+    | Datum                    { $$ = $1; }
+    | Datum MultiLineDataList  { $$ = $1; } /* combine the string with strcat */
+    ;
+
+MultiLineDataList
+    : MultiLineDataList MultiLineData { $$ = DtCreateTableUnit (AcpiUtStrcat(AcpiUtStrcat($1->Value, " "), $2->Value), $1->Line, $1->Column); } /* combine the strings with strcat */
+    | MultiLineData                   { $$ = $1; }
+    ;
+
+MultiLineData
+    : DT_PARSEOP_LINE_CONTINUATION Datum { DbgPrint (ASL_PARSE_OUTPUT, "line continuation detected\n"); $$ = $2; }
+    ;
+
+Datum
+    : DT_PARSEOP_DATA        {
+                                 DbgPrint (ASL_PARSE_OUTPUT, "parser        data: [%s]\n", DtCompilerParserlval.s);
+                                 $$ = DtCreateTableUnit (AcpiUtStrdup(DtCompilerParserlval.s), DtTokenFirstLine, DtTokenFirstColumn);
+                             }
+    | DT_PARSEOP_STRING_DATA {
+                                 DbgPrint (ASL_PARSE_OUTPUT, "parser string data: [%s]\n", DtCompilerParserlval.s);
+                                 $$ = DtCreateTableUnit (AcpiUtStrdup(DtCompilerParserlval.s), DtTokenFirstLine, DtTokenFirstColumn);
+                             }
+    ;
+
+
+%%
+
+
+/*
+ * Local support functions, including parser entry point
+ */
 /******************************************************************************
  *
- * Not using native C library, use local implementations
+ * FUNCTION:    DtCompilerParsererror
+ *
+ * PARAMETERS:  Message             - Parser-generated error message
+ *
+ * RETURN:      None
+ *
+ * DESCRIPTION: Handler for parser errors
  *
  *****************************************************************************/
 
-#ifndef va_arg
+void
+DtCompilerParsererror (
+    char const              *Message)
+{
+    DtError (ASL_ERROR, ASL_MSG_SYNTAX,
+        AslGbl_CurrentField, (char *) Message);
+}
 
-#ifndef _VALIST
-#define _VALIST
-typedef char *va_list;
-#endif /* _VALIST */
-
-/* Storage alignment properties */
-
-#define  _AUPBND                (sizeof (ACPI_NATIVE_INT) - 1)
-#define  _ADNBND                (sizeof (ACPI_NATIVE_INT) - 1)
-
-/* Variable argument list macro definitions */
-
-#define _Bnd(X, bnd)            (((sizeof (X)) + (bnd)) & (~(bnd)))
-#define va_arg(ap, T)           (*(T *)(((ap) += (_Bnd (T, _AUPBND))) - (_Bnd (T,_ADNBND))))
-#define va_end(ap)              (ap = (va_list) NULL)
-#define va_start(ap, A)         (void) ((ap) = (((char *) &(A)) + (_Bnd (A,_AUPBND))))
-
-#endif /* va_arg */
-
-#endif /* !ACPI_USE_SYSTEM_CLIBRARY */
-
-#endif /* __ACMSVCEX_H__ */
+int
+DtCompilerParserwrap(void)
+{
+  return (1);
+}

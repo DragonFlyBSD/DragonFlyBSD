@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -239,7 +239,7 @@ UtDumpIntegerOp (
     case 8: /* Dword */
 
         DbgPrint (ASL_TREE_OUTPUT,
-            "%*.*X", IntegerLength, IntegerLength, Op->Asl.Value.Integer);
+            "%*.*X", IntegerLength, IntegerLength, (UINT32) Op->Asl.Value.Integer);
         break;
 
     case 16: /* Qword and Integer */

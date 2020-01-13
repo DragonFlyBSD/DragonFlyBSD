@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -285,7 +285,7 @@ AcpiDbDisplayHistory (
     {
         if (AcpiGbl_HistoryBuffer[HistoryIndex].Command)
         {
-            AcpiOsPrintf ("%3ld  %s\n",
+            AcpiOsPrintf ("%3u  %s\n",
                 AcpiGbl_HistoryBuffer[HistoryIndex].CmdNum,
                 AcpiGbl_HistoryBuffer[HistoryIndex].Command);
         }

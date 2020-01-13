@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -1037,11 +1037,11 @@ AcpiEvOrphanEcRegMethod (
     Objects[1].Type = ACPI_TYPE_INTEGER;
     Objects[1].Integer.Value = ACPI_REG_CONNECT;
 
-    Status = AcpiEvaluateObject (RegMethod, NULL, &Args, NULL);
+    (void) AcpiEvaluateObject (RegMethod, NULL, &Args, NULL);
 
 Exit:
     /* We ignore all errors from above, don't care */
 
-    Status = AcpiUtAcquireMutex (ACPI_MTX_NAMESPACE);
+    (void) AcpiUtAcquireMutex (ACPI_MTX_NAMESPACE);
     return_VOID;
 }

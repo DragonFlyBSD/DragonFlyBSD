@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -569,7 +569,7 @@ ApCheckForGpeNameConflict (
 
     /* Need a null-terminated string version of NameSeg */
 
-    ACPI_MOVE_32_TO_32 (Name, &Op->Asl.NameSeg);
+    ACPI_MOVE_32_TO_32 (Name, Op->Asl.NameSeg);
     Name[ACPI_NAMESEG_SIZE] = 0;
 
     /*

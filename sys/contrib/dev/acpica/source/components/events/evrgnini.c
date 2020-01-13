@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -363,7 +363,6 @@ AcpiEvPciConfigRegionSetup (
                          * root bridge. Still need to return a context object
                          * for the new PCI_Config operation region, however.
                          */
-                        Status = AE_OK;
                     }
                     else
                     {

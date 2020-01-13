@@ -15,6 +15,9 @@ SRCS=	\
 	aslcompilerlex.c \
 	aslcompilerparse.c \
 	aslmessages.c \
+	dtcompilerparser.y.h \
+	dtcompilerparserlex.c \
+	dtcompilerparserparse.c \
 	dtparser.y.h \
 	dtparserlex.c \
 	dtparserparse.c \
@@ -228,6 +231,7 @@ CFLAGS+= \
 	-I${.CURDIR}
 
 LFLAGS=	-i -s
+DLFLAGS=-i
 YFLAGS=	-d
 
 ASLPARSER_M4INC = \
@@ -253,8 +257,17 @@ aslcompilerparse.c: aslcompiler.y
 aslcompiler.y.h: aslcompilerparse.c
 	mv -f aslcompilerparse.h ${.TARGET}
 
+dtcompilerparserlex.c: dtcompilerparser.l
+	${LEX} ${DLFLAGS} -PDtCompilerParser -o${.TARGET} ${.ALLSRC}
+
+dtcompilerparserparse.c: dtcompilerparser.y
+	${YACC} ${YFLAGS} -pDtCompilerParser -o${.TARGET} ${.ALLSRC}
+
+dtcompilerparser.y.h: dtcompilerparserparse.c
+	mv -f dtcompilerparserparse.h ${.TARGET}
+
 dtparserlex.c: dtparser.l
-	${LEX} ${LFLAGS} -PDtParser -o${.TARGET} ${.ALLSRC}
+	${LEX} ${DLFLAGS} -PDtParser -o${.TARGET} ${.ALLSRC}
 
 dtparserparse.c: dtparser.y
 	${YACC} ${YFLAGS} -pDtParser -o${.TARGET} ${.ALLSRC}
@@ -277,6 +290,10 @@ CLEANFILES+=	\
 		aslcompilerparse.c \
 		aslcompilerparse.h \
 		aslcompiler.y.h \
+		dtcompilerparserlex.c \
+		dtcompilerparserparse.c \
+		dtcompilerparserparse.h \
+		dtcompilerparser.y.h \
 		dtparserlex.c \
 		dtparserparse.c \
 		dtparserparse.h \

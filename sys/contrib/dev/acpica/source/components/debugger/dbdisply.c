@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -715,7 +715,6 @@ AcpiDbDisplayResults (
         return;
     }
 
-    ObjDesc = WalkState->MethodDesc;
     Node  = WalkState->MethodNode;
 
     if (WalkState->Results)
@@ -775,7 +774,6 @@ AcpiDbDisplayCallingTree (
         return;
     }
 
-    Node = WalkState->MethodNode;
     AcpiOsPrintf ("Current Control Method Call Tree\n");
 
     while (WalkState)

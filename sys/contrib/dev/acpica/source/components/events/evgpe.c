@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -847,6 +847,15 @@ AcpiEvDetectGpe (
 
 
     Flags = AcpiOsAcquireLock (AcpiGbl_GpeLock);
+
+    if (!GpeEventInfo)
+    {
+        GpeEventInfo = AcpiEvGetGpeEventInfo (GpeDevice, GpeNumber);
+        if (!GpeEventInfo)
+        {
+            goto ErrorExit;
+        }
+    }
 
     /* Get the info block for the entire GPE register */
 

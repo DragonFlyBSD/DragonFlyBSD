@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -532,7 +532,7 @@ AcpiOsGetLine (
                  * Ignore the various keys like insert/delete/home/end, etc.
                  * But we must eat the final character of the ESC sequence.
                  */
-                InputChar = getchar ();
+                (void) getchar ();
                 continue;
 
             default:

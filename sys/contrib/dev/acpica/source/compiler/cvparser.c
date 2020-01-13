@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -912,7 +912,6 @@ CvCaptureCommentsOnly (
 
                     /* Not a valid comment option. Revert the AML */
 
-                    Aml -= 2;
                     goto DefBlock;
 
             } /* End switch statement */

@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -618,8 +618,8 @@ CgWriteTableHeader (
         Op->Asl.AmlSubtreeLength +=
             strlen (AslGbl_ParseTreeRoot->Asl.Filename) + 3;
 
-        CvDbgPrint ("     Length: %lu\n",
-            strlen (AslGbl_ParseTreeRoot->Asl.Filename) + 3);
+        CvDbgPrint ("     Length: %u\n",
+            (UINT32) strlen (AslGbl_ParseTreeRoot->Asl.Filename) + 3);
 
         if (Op->Asl.CommentList)
         {

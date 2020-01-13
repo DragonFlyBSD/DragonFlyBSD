@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -273,16 +273,15 @@ LdLoadFieldElements (
     ACPI_PARSE_OBJECT       *SourceRegion;
     ACPI_NAMESPACE_NODE     *Node;
     ACPI_STATUS             Status;
-
+    char                    *ExternalPath;
 
 
     SourceRegion = UtGetArg (Op, 0);
     if (SourceRegion)
     {
         Status = AcpiNsLookup (WalkState->ScopeInfo,
-            SourceRegion->Asl.Value.String,
-            AmlType, ACPI_IMODE_EXECUTE,
-            ACPI_NS_DONT_OPEN_SCOPE, NULL, &Node);
+            SourceRegion->Asl.Value.String, AmlType, ACPI_IMODE_EXECUTE,
+            ACPI_NS_SEARCH_PARENT | ACPI_NS_DONT_OPEN_SCOPE, NULL, &Node);
         if (Status == AE_NOT_FOUND)
         {
             /*
@@ -358,9 +357,16 @@ LdLoadFieldElements (
                      * The name already exists in this scope
                      * But continue processing the elements
                      */
-                    AslDualParseOpError (ASL_WARNING, ASL_MSG_NAME_EXISTS, Child,
-                        Child->Asl.Value.String, ASL_MSG_FOUND_HERE, Node->Op,
-                        Node->Op->Asl.ExternalName);
+                    ExternalPath = AcpiNsGetNormalizedPathname (Node, TRUE);
+
+                    AslDualParseOpError (ASL_ERROR, ASL_MSG_NAME_EXISTS, Child,
+                        ExternalPath, ASL_MSG_FOUND_HERE, Node->Op,
+                        ExternalPath);
+
+                    if (ExternalPath)
+                    {
+                        ACPI_FREE (ExternalPath);
+                    }
                 }
             }
             else
@@ -404,6 +410,7 @@ LdLoadResourceElements (
     ACPI_PARSE_OBJECT       *InitializerOp = NULL;
     ACPI_NAMESPACE_NODE     *Node;
     ACPI_STATUS             Status;
+    char                    *ExternalPath;
 
 
     /*
@@ -420,10 +427,17 @@ LdLoadResourceElements (
         {
             /* Actual node causing the error was saved in ParentMethod */
 
+            ExternalPath = AcpiNsGetNormalizedPathname (Node, TRUE);
+
             AslDualParseOpError (ASL_ERROR, ASL_MSG_NAME_EXISTS,
                 (ACPI_PARSE_OBJECT *) Op->Asl.ParentMethod,
-                Op->Asl.Namepath, ASL_MSG_FOUND_HERE, Node->Op,
-                Node->Op->Asl.ExternalName);
+                ExternalPath, ASL_MSG_FOUND_HERE, Node->Op,
+                ExternalPath);
+
+            if (ExternalPath)
+            {
+                ACPI_FREE (ExternalPath);
+            }
             return (AE_OK);
         }
         return (Status);
@@ -500,6 +514,7 @@ LdNamespace1Begin (
     BOOLEAN                 ForceNewScope = FALSE;
     const ACPI_OPCODE_INFO  *OpInfo;
     ACPI_PARSE_OBJECT       *ParentOp;
+    char                    *ExternalPath;
 
 
     ACPI_FUNCTION_NAME (LdNamespace1Begin);
@@ -527,13 +542,12 @@ LdNamespace1Begin (
 
     case AML_INT_CONNECTION_OP:
 
-
         if (Op->Asl.Child->Asl.AmlOpcode != AML_INT_NAMEPATH_OP)
         {
             break;
         }
-        Arg = Op->Asl.Child;
 
+        Arg = Op->Asl.Child;
         Status = AcpiNsLookup (WalkState->ScopeInfo, Arg->Asl.ExternalName,
             ACPI_TYPE_ANY, ACPI_IMODE_EXECUTE, ACPI_NS_SEARCH_PARENT,
             WalkState, &Node);
@@ -542,15 +556,6 @@ LdNamespace1Begin (
             break;
         }
 
-        if (Node->Type == ACPI_TYPE_BUFFER)
-        {
-            Arg->Asl.Node = Node;
-
-            Arg = Node->Op->Asl.Child;  /* Get namepath */
-            Arg = Arg->Asl.Next;        /* Get actual buffer */
-            Arg = Arg->Asl.Child;       /* Buffer length */
-            Arg = Arg->Asl.Next;        /* RAW_DATA buffer */
-        }
         break;
 
     default:
@@ -577,7 +582,6 @@ LdNamespace1Begin (
          * These opcodes are guaranteed to have a parent.
          * Examine the parent opcode.
          */
-        Status = AE_OK;
         ParentOp = Op->Asl.Parent;
         OpInfo = AcpiPsGetOpcodeInfo (ParentOp->Asl.AmlOpcode);
 
@@ -951,9 +955,16 @@ LdNamespace1Begin (
             {
                 /* Valid error, object already exists */
 
+                ExternalPath = AcpiNsGetNormalizedPathname (Node, TRUE);
+
                 AslDualParseOpError (ASL_ERROR, ASL_MSG_NAME_EXISTS, Op,
-                    Op->Asl.ExternalName, ASL_MSG_FOUND_HERE, Node->Op,
-                    Node->Op->Asl.ExternalName);
+                    ExternalPath, ASL_MSG_FOUND_HERE, Node->Op,
+                    ExternalPath);
+
+                if (ExternalPath)
+                {
+                    ACPI_FREE (ExternalPath);
+                }
                 return_ACPI_STATUS (AE_OK);
             }
         }
@@ -998,12 +1009,19 @@ FinishNode:
     Op->Asl.Node = Node;
     Node->Op = Op;
 
-    /* Set the actual data type if appropriate (EXTERNAL term only) */
-
+    /*
+     * Set the actual data type if appropriate (EXTERNAL term only)
+     * As of 11/19/2019, ASL External() does not support parameter
+     * counts. When an External method is loaded, the parameter count is
+     * unknown setting Node->Value to ASL_EXTERNAL_METHOD_UNKNOWN_PARAMS
+     * indicates that the parameter count for this method is unknown.
+     * This information is used in ASL cross reference to help determine the
+     * parameter count through method calls.
+     */
     if (ActualObjectType != ACPI_TYPE_ANY)
     {
         Node->Type = (UINT8) ActualObjectType;
-        Node->Value = ASL_EXTERNAL_METHOD;
+        Node->Value = ASL_EXTERNAL_METHOD_UNKNOWN_PARAMS;
     }
 
     if (Op->Asl.ParseOpcode == PARSEOP_METHOD)
@@ -1031,7 +1049,8 @@ FinishNode:
  * DESCRIPTION: Check if certain named objects are declared in the incorrect
  *              scope. Special named objects are listed in
  *              AslGbl_SpecialNamedObjects and can only be declared at the root
- *              scope.
+ *              scope. _UID inside of a processor declaration must not be a
+ *              string.
  *
  ******************************************************************************/
 
@@ -1051,6 +1070,13 @@ LdCheckSpecialNames (
             AslError (ASL_ERROR, ASL_MSG_INVALID_SPECIAL_NAME, Op, Op->Asl.ExternalName);
             return;
         }
+    }
+
+    if (ACPI_COMPARE_NAMESEG (Node->Name.Ascii, "_UID") &&
+        Node->Parent->Type == ACPI_TYPE_PROCESSOR &&
+        Node->Type == ACPI_TYPE_STRING)
+    {
+        AslError (ASL_ERROR, ASL_MSG_INVALID_PROCESSOR_UID , Op, "found a string");
     }
 }
 

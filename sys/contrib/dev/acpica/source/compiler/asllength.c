@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -479,12 +479,13 @@ CgGenerateAmlLengths (
         Op->Asl.AmlLength = strlen (Buffer);
 
         /*
-         * Check for single backslash reference to root,
-         * make it a null terminated string in the AML
+         * Check for single backslash reference to root or reference to a name
+         * consisting of only prefix (^) characters. Make it a null terminated
+         * string in the AML.
          */
-        if (Op->Asl.AmlLength == 1)
+        if (Op->Asl.AmlLength == 1 || UtNameContainsAllPrefix(Op))
         {
-            Op->Asl.AmlLength = 2;
+            Op->Asl.AmlLength++;
         }
         break;
 

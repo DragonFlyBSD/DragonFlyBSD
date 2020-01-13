@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -833,8 +833,12 @@ AcpiGetTagPathname (
 
     /* Internalize the namepath to AML format */
 
-    AcpiNsInternalizeName (Pathname, &InternalPath);
+    Status = AcpiNsInternalizeName (Pathname, &InternalPath);
     ACPI_FREE (Pathname);
+    if (ACPI_FAILURE (Status))
+    {
+        return (NULL);
+    }
 
     /* Update the Op with the symbol */
 

@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -202,6 +202,10 @@
 #endif /* DEBUGGER_THREADING */
 
 #define DEBUGGER_THREADING  0   /* integrated with DDB */
+
+#ifdef INVARIANTS
+#define ACPI_MUTEX_DEBUG
+#endif
 
 #else /* _KERNEL */
 

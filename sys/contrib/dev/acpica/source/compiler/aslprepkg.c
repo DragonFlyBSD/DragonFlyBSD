@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2019, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -458,7 +458,7 @@ ApCheckPackage (
 
         for (i = 0; i < Package->RetInfo4.Count1; ++i)
         {
-            Status = ApCheckObjectType (Predefined->Info.Name, Op,
+            ApCheckObjectType (Predefined->Info.Name, Op,
                 Package->RetInfo4.ObjectType1, i);
             Op = Op->Asl.Next;
         }
