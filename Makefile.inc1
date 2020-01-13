@@ -484,7 +484,7 @@ install-all:
 	@echo "Installing world, log file in ${GENLOGDIR}/bw.out"
 	@(cd ${.CURDIR}; ${MAKE} -j 1 installworld >> ${GENLOGDIR}/bw.out 2>&1)
 	@sync
-	echo "Upgrading world"
+	@echo "Upgrading world"
 	@(cd ${.CURDIR}; ${MAKE} -j 1 upgrade >> ${GENLOGDIR}/bw.out 2>&1)
 	@sync
 	@echo "install-all completed ok.  reboot recommended and after that, "
