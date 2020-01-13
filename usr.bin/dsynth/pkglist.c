@@ -55,6 +55,8 @@ static int scan_binary_repo(const char *path);
 static void pkgfree(pkg_t *pkg);
 #endif
 
+static int PrepareSystemFlag;
+
 pkg_t *PkgHash1[PKG_HSIZE];	/* by portdir */
 pkg_t *PkgHash2[PKG_HSIZE];	/* by pkgfile */
 
@@ -262,16 +264,23 @@ GetLocalPackageList(void)
 	pkg_t *list;
 	FILE *fp;
 	char *base;
+	char *data;
 	char *l1;
 	char *l2;
 	char *l3;
 	int total;
+	int state;
 	size_t len;
 
+	PrepareSystemFlag = 1;
 	initbulk(childGetPackageInfo, MaxBulk);
 	total = 0;
+	state = 0;
+	l1 = NULL;
+	l2 = NULL;
+	l3 = NULL;
 
-	fp = popen("pkg info -a -o", "r");
+	fp = popen("pkg info -a -o -A", "r");
 
 	/*
 	 * Always include ports-mgmt/pkg.  s4 is "x" meaning not a manual
@@ -283,28 +292,66 @@ GetLocalPackageList(void)
 		if (len == 0 || base[len-1] != '\n')
 			continue;
 		base[--len] = 0;
-		if (strtok(base, " \t") == NULL) {
-			printf("Badly formatted pkg info line: %s\n", base);
-			continue;
-		}
-		l1 = strtok(NULL, " \t");
-		if (l1 == NULL) {
-			printf("Badly formatted pkg info line: %s\n", base);
-			continue;
-		}
 
-		l2 = strchr(l1, '/');
-		if (l2 == NULL) {
-			printf("Badly formatted specification: %s\n", l1);
+		data = strchr(base, ':');
+		if (data == NULL)
+			continue;
+		*data++ = 0;
+
+		base = strtok(base, " \t\r");
+		data = strtok(data, " \t\r");
+
+		if (base == NULL || data == NULL)
+			continue;
+
+		if (strcmp(base, "Origin") == 0) {
+			if (state == 1) {
+				queuebulk(l1, l2, NULL, NULL);
+				state = 0;
+				++total;
+			}
+
+			if (strchr(data, '/') == NULL) {
+				printf("Badly formatted origin: %s\n", l1);
+			}
+			if (l1)
+				free(l1);
+			if (l3)
+				free(l3);
+			l1 = strdup(data);
+			l2 = strchr(l1, '/');
+			*l2++ = 0;
+			l3 = strchr(l2, '@');	/* typically NULL */
+			if (l3) {
+				*l3++ = 0;
+				l3 = strdup(l3);
+			}
+
+			/*
+			 * Don't queue ports-mgmt/pkg twice, we already
+			 * queued it manually.
+			 */
+			if (strcmp(l1, "ports-mgmt") != 0 ||
+			    strcmp(l2, "pkg") != 0) {
+				state = 1;
+			}
 			continue;
 		}
-		*l2++ = 0;
-		l3 = strchr(l2, '@');
-		if (l3)
-			*l3++ = 0;
-		queuebulk(l1, l2, l3, NULL);
-		++total;
+		if (state == 1 && strcmp(base, "flavor") == 0) {
+			queuebulk(l1, l2, data, NULL);
+			state = 0;
+			++total;
+		}
 	}
+	if (state == 1) {
+		queuebulk(l1, l2, NULL, NULL);
+		/*state = 0; not needed */
+	}
+	if (l1)
+		free(l1);
+	if (l3)
+		free(l3);
+
 	pclose(fp);
 
 	printf("Processing %d ports\n", total);
@@ -341,10 +388,13 @@ processPackageListBulk(int total)
 	pkg_t **list_tail;
 	int count;
 	int stop_fail;
+	int stop_base_list;
+	int remove_corrupt;
 
 	list = NULL;
 	list_tail = &list;
 	count = 0;
+	remove_corrupt = 0;
 
 	while ((bulk = getbulk()) != NULL) {
 		++count;
@@ -401,6 +451,7 @@ processPackageListBulk(int total)
 	 */
 	count = 0;
 	stop_fail = 0;
+	stop_base_list = 0;
 	for (scan = list; scan; scan = scan->bnext) {
 		if ((scan->flags & PKGF_ERROR) == 0) {
 			++count;
@@ -411,8 +462,10 @@ processPackageListBulk(int total)
 			/*
 			 * Directly specified package failed to probe
 			 */
-			if (scan->flags & PKGF_CORRUPT)
+			if (scan->flags & PKGF_CORRUPT) {
 				++stop_fail;
+				++stop_base_list;
+			}
 
 			/*
 			 * Directly specified package had a direct dependency
@@ -432,8 +485,37 @@ processPackageListBulk(int total)
 	 * Check to see if any PKGF_MANUALSEL packages
 	 */
 	if (stop_fail) {
-		printf("Aborting, %d packages failed to probe\n", stop_fail);
-		exit(1);
+		printf("%d packages failed to probe\n", stop_fail);
+		if (PrepareSystemFlag) {
+			if (stop_fail == stop_base_list) {
+				printf(
+  "prepare-system: Some of your installed packages no longer exist in\n"
+  "dports, do you wish to continue rebuilding what does exist?\n");
+			        if (askyn("Continue anyway? "))
+					remove_corrupt = 1;
+			} else {
+				printf(
+  "prepare-system: Some of your installed packages have dependencies\n"
+  "which could not be found in dports, cannot continue, aborting\n");
+			}
+		} else {
+			printf("unable to continue, aborting\n");
+		}
+		if (remove_corrupt == 0)
+			exit(1);
+	}
+
+	/*
+	 * Remove corrupt packages before continuing
+	 */
+	if (remove_corrupt) {
+		list_tail = &list;
+		while ((scan = *list_tail) != NULL) {
+			if (scan->flags & PKGF_CORRUPT)
+				*list_tail = scan->bnext;
+			else
+				list_tail = &scan->bnext;
+		}
 	}
 
 	/*
