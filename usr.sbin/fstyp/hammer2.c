@@ -219,10 +219,6 @@ read_label(FILE *fp, char *label, size_t size, const char *devpath)
 			best = broot;
 		}
 	}
-	if (best_i == -1) {
-		warnx("failed to find best zone");
-		goto fail;
-	}
 
 	bref = &vols[best_i]->voldata.sroot_blockset.blockref[0];
 	if (bref->type != HAMMER2_BREF_TYPE_INODE) {
