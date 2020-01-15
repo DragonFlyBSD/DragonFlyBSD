@@ -1533,15 +1533,27 @@ acpi_pst_eval_ppc(struct acpi_pst_softc *sc, int *sstart)
 		obj = (ACPI_OBJECT *)buf.Pointer;
 		if (obj->Type == ACPI_TYPE_INTEGER) {
 			if (obj->Integer.Value >= acpi_npstates) {
-				device_printf(sc->pst_dev,
-				    "Invalid _PPC value\n");
-				AcpiOsFree(obj);
-				return ENXIO;
-			}
-			*sstart = obj->Integer.Value;
-			if (bootverbose) {
-				device_printf(sc->pst_dev, "_PPC %d\n",
-				    *sstart);
+				/*
+				 * Some broken BIOSes can set this
+				 * to any values; let's simply start
+				 * from the first P-state, which
+				 * should be the highest frequency
+				 * available.
+				 */
+				if (bootverbose) {
+					device_printf(sc->pst_dev,
+					    "Invalid _PPC value %ju, "
+					    "npstates %d\n",
+					    (uintmax_t)obj->Integer.Value,
+					    acpi_npstates);
+				}
+				*sstart = 0;
+			} else {
+				*sstart = obj->Integer.Value;
+				if (bootverbose) {
+					device_printf(sc->pst_dev, "_PPC %d\n",
+					    *sstart);
+				}
 			}
 		} else {
 			device_printf(sc->pst_dev, "Invalid _PPC object\n");
