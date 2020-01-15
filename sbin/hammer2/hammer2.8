@@ -418,17 +418,25 @@ The
 .Sq autozero
 compression mode detects blocks of all-zeros
 and writes them as holes.
-However, HAMMER2 will rewrite data in-place if the compression mode is set to
-.Sq none
-and the check code is set to
-.Sq  disabled .
-Formal snapshots will still snapshot such files.
-However, de-duplication will no longer function on the data blocks.
 .\" ==== setcheck ====
 .It Cm setcheck Ar check Ar path...
 Set the check code as specified for any newly created elements at or under
 the path if not overridden by deeper elements.
 Available codes are default, disabled, crc32, xxhash64, or sha192.
+.Pp
+Normally HAMMER2 does not overwrite data blocks on the media in order
+to ensure snapshot integrity.  Replacement data blocks will be reallocated.
+However, if the compression mode is set to
+.Sq none
+and the check code is set to
+.Sq disabled
+HAMMER2 will overwrite data on the media in-place.
+In this mode of operation,
+snapshots will not be able to snapshot the data against later changes
+made to the file, and de-duplication will no longer function on any
+data related to the file.
+However, you can still recover the most recent data from previously
+taken snapshots if you accidently remove the file.
 .\" ==== clrcheck ====
 .It Cm clrcheck Op path...
 Clear the check code override for the specified paths.
