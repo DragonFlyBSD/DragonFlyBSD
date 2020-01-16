@@ -2492,6 +2492,7 @@ psmintr(void *arg)
 		timevaladd(&sc->inputtimeout, &now);
 
 		pb->ipacket[pb->inputbytes++] = c;
+		KKASSERT(pb->inputbytes <= sizeof(pb->ipacket));
 
 		if (pb->inputbytes < sc->mode.packetsize)
 			continue;
@@ -2536,9 +2537,14 @@ psmintr(void *arg)
 				 * validation period, reinitialize the mouse
 				 * in hopes of returning it to the expected
 				 * mode.
+				 *
+				 * reset inputbytes in case reinitialize()
+				 * fails to prevent it from incrementing
+				 * forever.
 				 */
 				VLOG(3, (LOG_DEBUG,
 				    "psmintr: reset the mouse.\n"));
+				pb->inputbytes = 0;
 				reinitialize(sc, TRUE);
 			} else if (sc->syncerrors == sc->mode.packetsize) {
 				/*
@@ -4327,61 +4333,64 @@ psmsoftintr(void *arg)
 			break;
 		}
 
-	/* scale values */
-	if (sc->mode.accelfactor >= 1) {
-		if (x != 0) {
-			x = x * x / sc->mode.accelfactor;
-			if (x == 0)
-				x = 1;
-			if (c & MOUSE_PS2_XNEG)
-				x = -x;
+		/* scale values */
+		if (sc->mode.accelfactor >= 1) {
+			if (x != 0) {
+				x = x * x / sc->mode.accelfactor;
+				if (x == 0)
+					x = 1;
+				if (c & MOUSE_PS2_XNEG)
+					x = -x;
+			}
+			if (y != 0) {
+				y = y * y / sc->mode.accelfactor;
+				if (y == 0)
+					y = 1;
+				if (c & MOUSE_PS2_YNEG)
+					y = -y;
+			}
 		}
-		if (y != 0) {
-			y = y * y / sc->mode.accelfactor;
-			if (y == 0)
-				y = 1;
-			if (c & MOUSE_PS2_YNEG)
-				y = -y;
+		/*
+		 * Store last packet for reinjection if it has not been
+		 * set already
+		 */
+		if (timevalisset(&sc->idletimeout) &&
+		    sc->idlepacket.inputbytes == 0)
+			sc->idlepacket = *pb;
+
+		ms.dx = x;
+		ms.dy = y;
+		ms.dz = z;
+		ms.flags = ((x || y || z) ? MOUSE_POSCHANGED : 0) |
+			   (ms.obutton ^ ms.button);
+
+		pb->inputbytes = tame_mouse(sc, pb, &ms, pb->ipacket);
+
+		sc->status.flags |= ms.flags;
+		sc->status.dx += ms.dx;
+		sc->status.dy += ms.dy;
+		sc->status.dz += ms.dz;
+		sc->status.button = ms.button;
+		sc->button = ms.button;
+
+		sc->watchdog = FALSE;
+
+		/* queue data */
+		if (sc->queue.count + pb->inputbytes < sizeof(sc->queue.buf)) {
+			l = imin(pb->inputbytes,
+			    sizeof(sc->queue.buf) - sc->queue.tail);
+			bcopy(&pb->ipacket[0], &sc->queue.buf[sc->queue.tail], l);
+			if (pb->inputbytes > l)
+				bcopy(&pb->ipacket[l], &sc->queue.buf[0],
+				    pb->inputbytes - l);
+			sc->queue.tail = (sc->queue.tail + pb->inputbytes) %
+			    sizeof(sc->queue.buf);
+			sc->queue.count += pb->inputbytes;
 		}
-	}
-	/* Store last packet for reinjection if it has not been set already */
-	if (timevalisset(&sc->idletimeout) && sc->idlepacket.inputbytes == 0)
-		sc->idlepacket = *pb;
-
-	ms.dx = x;
-	ms.dy = y;
-	ms.dz = z;
-	ms.flags = ((x || y || z) ? MOUSE_POSCHANGED : 0) |
-	    (ms.obutton ^ ms.button);
-
-	pb->inputbytes = tame_mouse(sc, pb, &ms, pb->ipacket);
-
-	sc->status.flags |= ms.flags;
-	sc->status.dx += ms.dx;
-	sc->status.dy += ms.dy;
-	sc->status.dz += ms.dz;
-	sc->status.button = ms.button;
-	sc->button = ms.button;
-
-	sc->watchdog = FALSE;
-
-	/* queue data */
-	if (sc->queue.count + pb->inputbytes < sizeof(sc->queue.buf)) {
-		l = imin(pb->inputbytes,
-		    sizeof(sc->queue.buf) - sc->queue.tail);
-		bcopy(&pb->ipacket[0], &sc->queue.buf[sc->queue.tail], l);
-		if (pb->inputbytes > l)
-			bcopy(&pb->ipacket[l], &sc->queue.buf[0],
-			    pb->inputbytes - l);
-		sc->queue.tail = (sc->queue.tail + pb->inputbytes) %
-		    sizeof(sc->queue.buf);
-		sc->queue.count += pb->inputbytes;
-	}
-	pb->inputbytes = 0;
-
 next:
-	if (++sc->pqueue_start >= PSM_PACKETQUEUE)
-		sc->pqueue_start = 0;
+		pb->inputbytes = 0;
+		if (++sc->pqueue_start >= PSM_PACKETQUEUE)
+			sc->pqueue_start = 0;
 	} while (sc->pqueue_start != sc->pqueue_end);
 
 	if (sc->state & PSM_ASLP) {
