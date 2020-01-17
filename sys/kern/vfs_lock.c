@@ -249,38 +249,6 @@ _vinactive(struct vnode *vp)
 	atomic_add_int(&mycpu->gd_inactivevnodes, 1);
 }
 
-static __inline
-void
-_vinactive_tail(struct vnode *vp)
-{
-	struct vnode_index *vi = &vnode_list_hash[VLIST_HASH(vp)];
-
-	spin_lock(&vi->spin);
-
-	/*
-	 * Remove from active list if it is sitting on it
-	 */
-	switch(vp->v_state) {
-	case VS_ACTIVE:
-		TAILQ_REMOVE(&vi->active_list, vp, v_list);
-		atomic_add_int(&mycpu->gd_activevnodes, -1);
-		break;
-	case VS_INACTIVE:
-		spin_unlock(&vi->spin);
-		panic("_vinactive_tail: already inactive");
-		/* NOT REACHED */
-		return;
-	case VS_CACHED:
-	case VS_DYING:
-		break;
-	}
-
-	TAILQ_INSERT_TAIL(&vi->inactive_list, vp, v_list);
-	vp->v_state = VS_INACTIVE;
-	spin_unlock(&vi->spin);
-	atomic_add_int(&mycpu->gd_inactivevnodes, 1);
-}
-
 /*
  * Add a ref to an active vnode.  This function should never be called
  * with an inactive vnode (use vget() instead), but might be called
@@ -1017,12 +985,10 @@ allocvnode(int lktimeout, int lkflags)
 		if (vp->v_auxrefs ||
 		    (vp->v_refcnt & ~VREF_FINALIZE) != VREF_TERMINATE + 1) {
 			if (vp->v_state == VS_INACTIVE) {
-				if (vp->v_state == VS_INACTIVE) {
-					TAILQ_REMOVE(&vi->inactive_list,
-						     vp, v_list);
-					TAILQ_INSERT_TAIL(&vi->inactive_list,
-							  vp, v_list);
-				}
+				TAILQ_REMOVE(&vi->inactive_list,
+					     vp, v_list);
+				TAILQ_INSERT_TAIL(&vi->inactive_list,
+						  vp, v_list);
 			}
 			spin_unlock(&vi->spin);
 			vx_put(vp);

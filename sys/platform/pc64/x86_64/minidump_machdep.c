@@ -274,10 +274,8 @@ minidumpsys(struct dumperinfo *di)
 					dump_add_page(pa);
 				pa += PAGE_SIZE;
 			}
-			continue;
-		}
-		if ((pd[j] & kernel_pmap.pmap_bits[PG_V_IDX]) ==
-		    kernel_pmap.pmap_bits[PG_V_IDX]) {
+		} else if ((pd[j] & kernel_pmap.pmap_bits[PG_V_IDX]) ==
+			   kernel_pmap.pmap_bits[PG_V_IDX]) {
 			/*
 			 * Add the PT page from the PD to the dump (it is no
 			 * longer included in the ptemap.
