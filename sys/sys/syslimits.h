@@ -34,7 +34,8 @@
 #define _SYS_SYSLIMITS_H_
 
 #if !defined(_KERNEL) && !defined(_LIMITS_H_) && !defined(_SYS_PARAM_H_)
-#if __GNUC__ >= 3
+#include <sys/cdefs.h>
+#if __GNUC_PREREQ__(3, 0)
 #warning "No user-serviceable parts inside."
 #endif
 #endif
