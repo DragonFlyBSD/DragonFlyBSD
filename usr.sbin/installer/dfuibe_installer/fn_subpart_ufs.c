@@ -284,9 +284,15 @@ default_capacity(struct storage *s, const char *mtpt)
 
 	boot = 1024;
 
-	build = (capacity - swap - boot) / 3;
+	build = (capacity - swap - boot) / 4;
+#if 0
+	/*
+	 * No longer cap the size of /build, the assumption didn't hold
+	 * well particularly with /var/crash being placed on /build now.
+	 */
 	if (build > BUILD_MAX)
 		build = BUILD_MAX;
+#endif
 
 	for (;;) {
 		root = (capacity - swap - boot - build);
@@ -313,12 +319,26 @@ default_capacity(struct storage *s, const char *mtpt)
 
 	/*
 	 * Finalize.  If build is too small do not supply a /build,
-	 * and if swap is too small do not supply swap.
+	 * and if swap is too small do not supply swap.  Cascade the
+	 * released space to swap and root.
 	 */
-	if (build < BUILD_MIN)
+	if (build < BUILD_MIN) {
+		if (swap < SWAP_MIN && build >= SWAP_MIN - swap) {
+			build -= SWAP_MIN - swap;
+			swap = SWAP_MIN;
+		}
+		if (swap < 2 * mem && build >= 2 * mem - swap) {
+			build -= 2 * mem - swap;
+			swap = 2 * mem;
+		}
+		root += build;
 		build = 0;
-	if (swap < SWAP_MIN)
+	}
+	if (swap < SWAP_MIN) {
+		root += swap;
 		swap = 0;
+	}
+
 	if (build == 0)
 		root = -1;	/* no /build, root is the last part */
 	else
