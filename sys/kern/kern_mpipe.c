@@ -1,7 +1,5 @@
 /*
- * (MPSAFE)
- *
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2020 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -163,6 +161,10 @@ mpipe_done(malloc_pipe_t mpipe)
 /*
  * mpipe support thread for request failures when mpipe_alloc_callback()
  * is called.
+ *
+ * Only set MPF_QUEUEWAIT if entries are pending in the queue.  If no entries
+ * are pending and a new entry is added, other code will set MPF_QUEUEWAIT
+ * for us.
  */
 static void
 mpipe_thread(void *arg)
@@ -178,12 +180,13 @@ mpipe_thread(void *arg)
 		mcb->func(mcb->arg1, mcb->arg2);
 		kfree(mcb, M_MPIPEARY);
 	}
-	mpipe->mpflags |= MPF_QUEUEWAIT;
+	if (STAILQ_FIRST(&mpipe->queue))
+		mpipe->mpflags |= MPF_QUEUEWAIT;
 	tsleep(&mpipe->queue, 0, "wait", 0);
     }
     mpipe->thread = NULL;
-    wakeup(mpipe);
     lwkt_reltoken(&mpipe->token);
+    wakeup(mpipe);
 }
 
 
@@ -271,6 +274,7 @@ mpipe_alloc_callback(malloc_pipe_t mpipe, void (*func)(void *arg1, void *arg2),
 	    mcb->arg1 = arg1;
 	    mcb->arg2 = arg2;
 	    STAILQ_INSERT_TAIL(&mpipe->queue, mcb, entry);
+	    mpipe->mpflags |= MPF_QUEUEWAIT;	/* for mpipe_thread() */
 	} else {
 	    kfree(mcb, M_MPIPEARY);
 	}
