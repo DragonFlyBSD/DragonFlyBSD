@@ -175,7 +175,7 @@ usermove(void)
 			continue;
 		}
 		n = p - cards;
-		if (userhand[n] <= 3) {
+		if (userhand[n] <= 3 && userhand[n]) {
 			userasked[n] = 1;
 			return(n);
 		}
