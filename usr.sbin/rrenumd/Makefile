@@ -11,11 +11,11 @@
 # AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, WITHOUT
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
+#
 # $FreeBSD: src/usr.sbin/rrenumd/Makefile,v 1.1.2.3 2001/04/25 12:10:47 ru Exp $
 
 PROG=	rrenumd
-SRCS=	rrenumd.c  parser.y lexer.l
-YFLAGS+=	-d
+SRCS=	rrenumd.c  parser.y lexer.l y.tab.h
 WARNS?=	2
 
 CFLAGS+=-DINET6 -I. -I${.CURDIR}
@@ -24,14 +24,10 @@ DPADD=	${LIBL}
 
 MAN=	rrenumd.conf.5 rrenumd.8
 
-SRCS+=y.tab.h
-y.tab.h: parser.y
-
 .if defined(YACCDEBUG)
 CFLAGS+= -DYYDEBUG
 YFLAGS+= -t -v
+CLEANFILES=y.output
 .endif
 
 .include <bsd.prog.mk>
-
-CLEANFILES+=	y.tab.h
