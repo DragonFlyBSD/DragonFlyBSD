@@ -52,6 +52,7 @@
 #include <cpu/atomic.h>
 
 #include <sys/ktr.h>
+#include <sys/spinlock2.h>
 
 #include <dev/disk/dm/dm.h>
 MALLOC_DEFINE(M_DMCRYPT, "dm_crypt", "Device Mapper Target Crypt");
@@ -101,12 +102,21 @@ struct iv_generator {
 	ivgen_t		*gen_iv;
 };
 
+struct essiv_ivgen_data {
+	struct essiv_ivgen_data *next;
+	void		*ivpriv;
+	void		*opaque;
+	struct cryptop	crp;
+	struct cryptodesc crd;
+};
+
 struct essiv_ivgen_priv {
 	struct cryptoini	crypto_session;
-	struct objcache	*crp_crd_cache;
-	u_int64_t	crypto_sid;
-	size_t		keyhash_len;
-	u_int8_t	crypto_keyhash[SHA512_DIGEST_LENGTH];
+	struct spinlock		ivdata_spin;
+	struct essiv_ivgen_data	*ivdata_base;
+	u_int64_t		crypto_sid;
+	size_t			keyhash_len;
+	u_int8_t		crypto_keyhash[SHA512_DIGEST_LENGTH];
 };
 
 typedef struct target_crypt_config {
@@ -153,11 +163,11 @@ struct dmtc_dump_helper {
 };
 
 #define DMTC_BUF_SIZE_WRITE \
-    MAXPHYS + sizeof(struct dmtc_helper) + \
-    MAXPHYS/DEV_BSIZE*(sizeof(struct cryptop) + sizeof(struct cryptodesc))
+    (MAXPHYS + sizeof(struct dmtc_helper) + \
+     MAXPHYS/DEV_BSIZE*(sizeof(struct cryptop) + sizeof(struct cryptodesc)))
 #define DMTC_BUF_SIZE_READ \
-    sizeof(struct dmtc_helper) + \
-    MAXPHYS/DEV_BSIZE*(sizeof(struct cryptop) + sizeof(struct cryptodesc))
+    (sizeof(struct dmtc_helper) + \
+     MAXPHYS/DEV_BSIZE*(sizeof(struct cryptop) + sizeof(struct cryptodesc)))
 
 static void dmtc_crypto_dispatch(void *arg);
 static void dmtc_crypto_dump_start(dm_target_crypt_config_t *priv,
@@ -186,26 +196,44 @@ static struct iv_generator ivgens[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-struct objcache_malloc_args essiv_ivgen_malloc_args = {
-		2*sizeof(void *) + (sizeof(struct cryptodesc) +
-		sizeof(struct cryptop)), M_DMCRYPT };
+/*
+ * Number of crypto buffers.  All crypto buffers will be preallocated
+ * in order to avoid kmalloc() deadlocks in critical low-memory paging
+ * paths.
+ */
+static __inline int
+dmtc_get_nmax(void)
+{
+	int nmax;
 
+	nmax = (physmem * 2 / 1000 * PAGE_SIZE) /
+	       (DMTC_BUF_SIZE_WRITE + DMTC_BUF_SIZE_READ) + 1;
+
+	if (nmax < 2)
+		nmax = 2;
+	if (nmax > 8 + ncpus * 2)
+		nmax = 8 + ncpus * 2;
+
+	return nmax;
+}
+
+/*
+ * Initialize the crypto buffer mpipe.  Preallocate all crypto buffers
+ * to avoid making any kmalloc()s in the critical path.
+ */
 static void
 dmtc_init_mpipe(struct target_crypt_config *priv)
 {
 	int nmax;
 
-	nmax = (physmem*2/1000*PAGE_SIZE)/(DMTC_BUF_SIZE_WRITE + DMTC_BUF_SIZE_READ) + 1;
+	nmax = dmtc_get_nmax();
 
-	if (nmax < 2)
-		nmax = 2;
-
-	kprintf("dm_target_crypt: Setting min/max mpipe buffers: %d/%d\n", 2, nmax);
+	kprintf("dm_target_crypt: Setting %d mpipe buffers\n", nmax);
 
 	mpipe_init(&priv->write_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_WRITE,
-		   2, nmax, MPF_NOZERO | MPF_CALLBACK, NULL, NULL, NULL);
+		   nmax, nmax, MPF_NOZERO | MPF_CALLBACK, NULL, NULL, NULL);
 	mpipe_init(&priv->read_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_READ,
-		   2, nmax, MPF_NOZERO | MPF_CALLBACK, NULL, NULL, NULL);
+		   nmax, nmax, MPF_NOZERO | MPF_CALLBACK, NULL, NULL, NULL);
 }
 
 static void
@@ -235,6 +263,7 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 	u_int8_t crypto_keyhash[SHA512_DIGEST_LENGTH];
 	unsigned int klen, hashlen;
 	int error;
+	int nmax;
 
 	klen = (priv->crypto_klen >> 3);
 
@@ -292,7 +321,7 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 	hashlen <<= 3;
 
 	ivpriv = kmalloc(sizeof(struct essiv_ivgen_priv), M_DMCRYPT,
-	    M_WAITOK | M_ZERO);
+			 M_WAITOK | M_ZERO);
 	memcpy(ivpriv->crypto_keyhash, crypto_keyhash, sizeof(crypto_keyhash));
 	ivpriv->keyhash_len = sizeof(crypto_keyhash);
 	dmtc_crypto_clear(crypto_keyhash, sizeof(crypto_keyhash));
@@ -320,14 +349,24 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 		return ENOTSUP;
 	}
 
-	ivpriv->crp_crd_cache = objcache_create(
-	    "dmcrypt-essiv-cache", 0, 0,
-	    NULL, NULL, NULL,
-	    objcache_malloc_alloc,
-	    objcache_malloc_free,
-	    &essiv_ivgen_malloc_args );
+	/*
+	 * mpipe for 512-byte ivgen elements, make sure there are enough
+	 * to cover all in-flight read and write buffers.
+	 */
+	nmax = dmtc_get_nmax() * (int)(MAXPHYS / DEV_BSIZE) * 2;
 
+	spin_init(&ivpriv->ivdata_spin, "ivdata");
+
+	while (nmax) {
+		struct essiv_ivgen_data *ivdata;
+
+		ivdata = kmalloc(sizeof(*ivdata), M_DMCRYPT, M_WAITOK|M_ZERO);
+		ivdata->next = ivpriv->ivdata_base;
+		ivpriv->ivdata_base = ivdata;
+		--nmax;
+	}
 	*p_ivpriv = ivpriv;
+
 	return 0;
 }
 
@@ -335,13 +374,18 @@ static int
 essiv_ivgen_dtor(struct target_crypt_config *priv, void *arg)
 {
 	struct essiv_ivgen_priv *ivpriv;
+	struct essiv_ivgen_data *ivdata;
 
 	ivpriv = (struct essiv_ivgen_priv *)arg;
 	KKASSERT(ivpriv != NULL);
 
 	crypto_freesession(ivpriv->crypto_sid);
 
-	objcache_destroy(ivpriv->crp_crd_cache);
+	while ((ivdata = ivpriv->ivdata_base) != NULL) {
+		ivpriv->ivdata_base = ivdata->next;
+		kfree(ivdata, M_DMCRYPT);
+	}
+	spin_uninit(&ivpriv->ivdata_spin);
 
 	dmtc_crypto_clear(ivpriv->crypto_keyhash, ivpriv->keyhash_len);
 	kfree(ivpriv, M_DMCRYPT);
@@ -353,7 +397,7 @@ static int
 essiv_ivgen_done(struct cryptop *crp)
 {
 	struct essiv_ivgen_priv *ivpriv;
-	void *free_addr;
+	struct essiv_ivgen_data *ivdata;
 	void *opaque;
 
 
@@ -365,18 +409,23 @@ essiv_ivgen_done(struct cryptop *crp)
 			"crp->crp_etype = %d\n", crp->crp_etype);
 	}
 
-	free_addr = crp->crp_opaque;
+	ivdata = (void *)crp->crp_opaque;
+
 	/*
 	 * In-memory structure is:
 	 * |  ivpriv  |  opaque  |     crp     |      crd      |
 	 * | (void *) | (void *) |   (cryptop) |  (cryptodesc) |
 	 */
-	ivpriv = *((struct essiv_ivgen_priv **)crp->crp_opaque);
-	crp->crp_opaque += sizeof(void *);
-	opaque = *((void **)crp->crp_opaque);
+	ivpriv = ivdata->ivpriv;
+	opaque = ivdata->opaque;
 
-	objcache_put(ivpriv->crp_crd_cache, free_addr);
+	spin_lock(&ivpriv->ivdata_spin);
+	ivdata->next = ivpriv->ivdata_base;
+	ivpriv->ivdata_base = ivdata;
+	spin_unlock(&ivpriv->ivdata_spin);
+
 	dmtc_crypto_dispatch(opaque);
+
 	return 0;
 }
 
@@ -385,27 +434,29 @@ essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
 	    size_t iv_len, off_t sector, void *opaque)
 {
 	struct essiv_ivgen_priv *ivpriv;
+	struct essiv_ivgen_data *ivdata;
 	struct cryptodesc *crd;
 	struct cryptop *crp;
-	caddr_t space, alloc_addr;
 	int error;
 
 	ivpriv = priv->ivgen_priv;
 	KKASSERT(ivpriv != NULL);
 
 	/*
-	 * In-memory structure is:
-	 * |  ivpriv  |  opaque  |     crp     |      crd      |
-	 * | (void *) | (void *) |   (cryptop) |  (cryptodesc) |
+	 * We preallocated all necessary ivdata's, so pull one off and use
+	 * it.
 	 */
-	alloc_addr = space = objcache_get(ivpriv->crp_crd_cache, M_WAITOK);
-	*((struct essiv_ivgen_priv **)space) = ivpriv;
-	space += sizeof(void *);
-	*((void **)space) = opaque;
-	space += sizeof(void *);
-	crp = (struct cryptop *)space;
-	space += sizeof(struct cryptop);
-	crd = (struct cryptodesc *)space;
+	spin_lock(&ivpriv->ivdata_spin);
+	ivdata = ivpriv->ivdata_base;
+	ivpriv->ivdata_base = ivdata->next;
+	spin_unlock(&ivpriv->ivdata_spin);
+
+	KKASSERT(ivdata != NULL);
+
+	ivdata->ivpriv = ivpriv;
+	ivdata->opaque = opaque;
+	crp = &ivdata->crp;
+	crd = &ivdata->crd;
 
 	bzero(iv, iv_len);
 	bzero(crd, sizeof(struct cryptodesc));
@@ -416,7 +467,7 @@ essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
 	crp->crp_sid = ivpriv->crypto_sid;
 	crp->crp_ilen = crp->crp_olen = iv_len;
 
-	crp->crp_opaque = alloc_addr;
+	crp->crp_opaque =  (caddr_t)ivdata;
 
 	crp->crp_callback = essiv_ivgen_done;
 
