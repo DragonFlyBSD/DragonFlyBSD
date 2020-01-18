@@ -232,7 +232,6 @@ CFLAGS+= \
 
 LFLAGS=	-i -s
 DLFLAGS=-i
-YFLAGS=	-d
 
 ASLPARSER_M4INC = \
 	aslcstyle.y \
