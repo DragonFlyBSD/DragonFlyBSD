@@ -1,5 +1,5 @@
 CONTRIBDIR=	${.CURDIR}/../../../contrib/flex
-.PATH:		${CONTRIBDIR}
+.PATH:		${CONTRIBDIR}/src
 
 LIB=    l
 SRCS=   libmain.c libyywrap.c
