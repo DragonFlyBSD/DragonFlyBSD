@@ -79,7 +79,6 @@ void  log_pcap_stats(void);
 int   flush_buffer(FILE *);
 int   if_exists(char *);
 int   init_pcap(void);
-void  logmsg(int, const char *, ...) __printflike(2, 3);
 void  purge_buffer(void);
 int   reset_dump(int);
 int   scan_dump(FILE *, off_t);
