@@ -5,7 +5,6 @@
  * Written by Steve Deering, Stanford University, February 1989.
  *
  * $FreeBSD: src/usr.sbin/mtest/mtest.c,v 1.4.6.1 2001/07/19 05:09:25 kris Exp $
- * $DragonFly: src/usr.sbin/mtest/mtest.c,v 1.3 2008/11/12 21:44:59 swildner Exp $
  */
 
 #include <err.h>
@@ -20,7 +19,7 @@
 #include <netinet/in.h>
 
 int
-main(int argc, char **argv)
+main(void)
   {
     int so;
     char line[80];
