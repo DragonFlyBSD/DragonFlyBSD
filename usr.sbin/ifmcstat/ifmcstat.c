@@ -114,7 +114,7 @@ inet6_n2a(struct in6_addr *p)
 int
 main(int argc __unused, char **argv __unused)
 {
-	char	buf[_POSIX2_LINE_MAX], ifname[IFNAMSIZ];
+	char	buf[_POSIX2_LINE_MAX], ifnamebuf[IFNAMSIZ];
 	struct	ifnet	*ifp, *nifp, ifnet;
 
 	if ((kvmd = kvm_openfiles(NULL, NULL, NULL, O_RDONLY, buf)) == NULL) {
@@ -135,7 +135,7 @@ main(int argc __unused, char **argv __unused)
 		struct ifaddr_container ifac, *ifacp = NULL;
 
 		KREAD(ifp, &ifnet, struct ifnet);
-		printf("%s:\n", if_indextoname(ifnet.if_index, ifname));
+		printf("%s:\n", if_indextoname(ifnet.if_index, ifnamebuf));
 
 		KREAD(ifnet.if_addrheads, &head, struct ifaddrhead);
 		if (TAILQ_FIRST(&head) != NULL) {
