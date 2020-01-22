@@ -371,8 +371,8 @@ gr_equal(const struct group *gr1, const struct group *gr2)
 		for (i = 0; gr1->gr_mem[i] != NULL; i++) {
 			if (strcmp(gr1->gr_mem[i], gr2->gr_mem[i]) != 0)
 			return (false);
-				}
 		}
+	}
 	/* Count number of members in both structs */
 	gr2_ndx = 0;
 	if (gr2->gr_mem != NULL)
@@ -423,7 +423,7 @@ gr_make(const struct group *gr)
 			p = stpcpy(p, gr->gr_mem[ndx]);
 			sep = ",";
 		}
-		}
+	}
 
 	return (line);
 }
@@ -545,13 +545,13 @@ grmemlen(const struct group *gr, const char *name, int *num_mem)
 		for (; gr->gr_mem[i] != NULL; i++) {
 			len += strlen(gr->gr_mem[i]) + 1;
 			len += sizeof(*gr->gr_mem);
-	}
+		}
 	}
 	if (name != NULL) {
 		i++;
 		len += strlen(name) + 1;
 		len += sizeof(*gr->gr_mem);
-		}
+	}
 	/* Allow for NULL pointer */
 	if (i != 0)
 		len += sizeof(*gr->gr_mem);
