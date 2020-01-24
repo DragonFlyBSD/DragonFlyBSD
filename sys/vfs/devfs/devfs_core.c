@@ -2443,6 +2443,8 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 	reference_dev(dev);
 	bzero(dev, offsetof(struct cdev, si_sysref));
 
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
+
 	dev->si_uid = 0;
 	dev->si_gid = 0;
 	dev->si_perms = 0;
@@ -2474,6 +2476,8 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 		bops = ops;
 	dev->si_inode = makeudev(devfs_reference_ops(bops), minor);
 	dev->si_umajor = umajor(dev->si_inode);
+
+	lockmgr(&devfs_lock, LK_RELEASE);
 
 	return dev;
 }
@@ -2598,6 +2602,9 @@ devfs_node_is_accessible(struct devfs_node *node)
 		return 0;
 }
 
+/*
+ * devfs must be locked
+ */
 static int
 devfs_reference_ops(struct dev_ops *ops)
 {
@@ -2613,7 +2620,8 @@ devfs_reference_ops(struct dev_ops *ops)
 	}
 
 	if (!found) {
-		found = kmalloc(sizeof(struct devfs_dev_ops), M_DEVFS, M_WAITOK);
+		found = kmalloc(sizeof(struct devfs_dev_ops),
+				M_DEVFS, M_WAITOK);
 		found->ops = ops;
 		found->ref_count = 0;
 		TAILQ_INSERT_TAIL(&devfs_dev_ops_list, found, link);
@@ -2622,7 +2630,8 @@ devfs_reference_ops(struct dev_ops *ops)
 	KKASSERT(found);
 
 	if (found->ref_count == 0) {
-		found->id = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(ops_id), 255);
+		found->id =
+		    devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(ops_id), 255);
 		if (found->id == -1) {
 			/* Ran out of unique ids */
 			devfs_debug(DEVFS_DEBUG_WARNING,
