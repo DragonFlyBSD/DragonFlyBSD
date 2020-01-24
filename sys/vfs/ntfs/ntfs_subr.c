@@ -388,7 +388,7 @@ ntfs_ntlookup(struct ntfsmount *ntmp, ino_t ino, struct ntnode **ipp)
 	vref(ip->i_devvp);
 
 	/* init lock and lock the newborn ntnode */
-	lockinit(&ip->i_lock, "ntnode", 0, LK_EXCLUSIVE);
+	lockinit(&ip->i_lock, "ntnode", 0, 0);
 	spin_init(&ip->i_interlock, "ntfsntlookup");
 	ntfs_ntget(ip);
 
