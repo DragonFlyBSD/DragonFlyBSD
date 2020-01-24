@@ -168,19 +168,19 @@ u32 cik_didt_rreg(struct radeon_device *rdev, u32 reg)
 {
 	u32 r;
 
-	spin_lock(&rdev->didt_idx_lock);
+	lockmgr(&rdev->didt_idx_lock, LK_EXCLUSIVE);
 	WREG32(CIK_DIDT_IND_INDEX, (reg));
 	r = RREG32(CIK_DIDT_IND_DATA);
-	spin_unlock(&rdev->didt_idx_lock);
+	lockmgr(&rdev->didt_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void cik_didt_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	spin_lock(&rdev->didt_idx_lock);
+	lockmgr(&rdev->didt_idx_lock, LK_EXCLUSIVE);
 	WREG32(CIK_DIDT_IND_INDEX, (reg));
 	WREG32(CIK_DIDT_IND_DATA, (v));
-	spin_unlock(&rdev->didt_idx_lock);
+	lockmgr(&rdev->didt_idx_lock, LK_RELEASE);
 }
 
 /* get temperature in millidegrees */
@@ -227,22 +227,22 @@ u32 cik_pciep_rreg(struct radeon_device *rdev, u32 reg)
 {
 	u32 r;
 
-	spin_lock(&rdev->pciep_idx_lock);
+	lockmgr(&rdev->pciep_idx_lock, LK_EXCLUSIVE);
 	WREG32(PCIE_INDEX, reg);
 	(void)RREG32(PCIE_INDEX);
 	r = RREG32(PCIE_DATA);
-	spin_unlock(&rdev->pciep_idx_lock);
+	lockmgr(&rdev->pciep_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void cik_pciep_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	spin_lock(&rdev->pciep_idx_lock);
+	lockmgr(&rdev->pciep_idx_lock, LK_EXCLUSIVE);
 	WREG32(PCIE_INDEX, reg);
 	(void)RREG32(PCIE_INDEX);
 	WREG32(PCIE_DATA, v);
 	(void)RREG32(PCIE_DATA);
-	spin_unlock(&rdev->pciep_idx_lock);
+	lockmgr(&rdev->pciep_idx_lock, LK_RELEASE);
 }
 
 static const u32 spectre_rlc_save_restore_register_list[] =

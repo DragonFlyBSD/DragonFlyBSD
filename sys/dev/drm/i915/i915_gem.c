@@ -89,19 +89,19 @@ remove_mappable_node(struct drm_mm_node *node)
 static void i915_gem_info_add_obj(struct drm_i915_private *dev_priv,
 				  size_t size)
 {
-	spin_lock(&dev_priv->mm.object_stat_lock);
+	lockmgr(&dev_priv->mm.object_stat_lock, LK_EXCLUSIVE);
 	dev_priv->mm.object_count++;
 	dev_priv->mm.object_memory += size;
-	spin_unlock(&dev_priv->mm.object_stat_lock);
+	lockmgr(&dev_priv->mm.object_stat_lock, LK_RELEASE);
 }
 
 static void i915_gem_info_remove_obj(struct drm_i915_private *dev_priv,
 				     size_t size)
 {
-	spin_lock(&dev_priv->mm.object_stat_lock);
+	lockmgr(&dev_priv->mm.object_stat_lock, LK_EXCLUSIVE);
 	dev_priv->mm.object_count--;
 	dev_priv->mm.object_memory -= size;
-	spin_unlock(&dev_priv->mm.object_stat_lock);
+	lockmgr(&dev_priv->mm.object_stat_lock, LK_RELEASE);
 }
 
 static int
@@ -1600,10 +1600,10 @@ int i915_gem_request_add_to_client(struct drm_i915_gem_request *req,
 
 	file_priv = file->driver_priv;
 
-	spin_lock(&file_priv->mm.lock);
+	lockmgr(&file_priv->mm.lock, LK_EXCLUSIVE);
 	req->file_priv = file_priv;
 	list_add_tail(&req->client_list, &file_priv->mm.request_list);
-	spin_unlock(&file_priv->mm.lock);
+	lockmgr(&file_priv->mm.lock, LK_RELEASE);
 
 	req->pid = curproc->p_pid;
 
@@ -1618,10 +1618,10 @@ i915_gem_request_remove_from_client(struct drm_i915_gem_request *request)
 	if (!file_priv)
 		return;
 
-	spin_lock(&file_priv->mm.lock);
+	lockmgr(&file_priv->mm.lock, LK_EXCLUSIVE);
 	list_del(&request->client_list);
 	request->file_priv = NULL;
-	spin_unlock(&file_priv->mm.lock);
+	lockmgr(&file_priv->mm.lock, LK_RELEASE);
 
 #if 0
 	put_pid(request->pid);
@@ -4640,7 +4640,7 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 	if (i915_terminally_wedged(&dev_priv->gpu_error))
 		return -EIO;
 
-	spin_lock(&file_priv->mm.lock);
+	lockmgr(&file_priv->mm.lock, LK_EXCLUSIVE);
 	list_for_each_entry(request, &file_priv->mm.request_list, client_list) {
 		if (time_after_eq(request->emitted_jiffies, recent_enough))
 			break;
@@ -4656,7 +4656,7 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 	}
 	if (target)
 		i915_gem_request_reference(target);
-	spin_unlock(&file_priv->mm.lock);
+	lockmgr(&file_priv->mm.lock, LK_RELEASE);
 
 	if (target == NULL)
 		return 0;
@@ -5545,7 +5545,7 @@ void i915_gem_release(struct drm_device *dev, struct drm_file *file)
 	 * later retire_requests won't dereference our soon-to-be-gone
 	 * file_priv.
 	 */
-	spin_lock(&file_priv->mm.lock);
+	lockmgr(&file_priv->mm.lock, LK_EXCLUSIVE);
 	while (!list_empty(&file_priv->mm.request_list)) {
 		struct drm_i915_gem_request *request;
 
@@ -5555,7 +5555,7 @@ void i915_gem_release(struct drm_device *dev, struct drm_file *file)
 		list_del(&request->client_list);
 		request->file_priv = NULL;
 	}
-	spin_unlock(&file_priv->mm.lock);
+	lockmgr(&file_priv->mm.lock, LK_RELEASE);
 
 	if (!list_empty(&file_priv->rps.link)) {
 		lockmgr(&to_i915(dev)->rps.client_lock, LK_EXCLUSIVE);
@@ -5604,7 +5604,7 @@ int i915_gem_open(struct drm_device *dev, struct drm_file *file)
 	file_priv->file = file;
 	INIT_LIST_HEAD(&file_priv->rps.link);
 
-	spin_init(&file_priv->mm.lock, "i915_priv");
+	lockinit(&file_priv->mm.lock, "i915_priv", 0, LK_EXCLUSIVE);
 	INIT_LIST_HEAD(&file_priv->mm.request_list);
 
 	file_priv->bsd_ring = -1;

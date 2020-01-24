@@ -287,7 +287,7 @@ struct ttm_mem_type_manager {
 	struct lock io_reserve_mutex;
 	bool use_io_reserve_lru;
 	bool io_reserve_fastpath;
-	struct spinlock move_lock;
+	spinlock_t move_lock;
 
 	/*
 	 * Protected by @io_reserve_mutex:

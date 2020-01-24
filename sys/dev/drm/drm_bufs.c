@@ -748,13 +748,13 @@ int drm_legacy_addbufs_agp(struct drm_device *dev,
 		return -EINVAL;
 	}
 #endif
-	spin_lock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_EXCLUSIVE);
 	if (dev->buf_use) {
-		spin_unlock(&dev->buf_lock);
+		lockmgr(&dev->buf_lock, LK_RELEASE);
 		return -EBUSY;
 	}
 	atomic_inc(&dev->buf_alloc);
-	spin_unlock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_RELEASE);
 
 	mutex_lock(&dev->struct_mutex);
 	entry = &dma->bufs[order];
@@ -898,13 +898,13 @@ int drm_legacy_addbufs_pci(struct drm_device *dev,
 	page_order = order - PAGE_SHIFT > 0 ? order - PAGE_SHIFT : 0;
 	total = PAGE_SIZE << page_order;
 
-	spin_lock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_EXCLUSIVE);
 	if (dev->buf_use) {
-		spin_unlock(&dev->buf_lock);
+		lockmgr(&dev->buf_lock, LK_RELEASE);
 		return -EBUSY;
 	}
 	atomic_inc(&dev->buf_alloc);
-	spin_unlock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_RELEASE);
 
 	mutex_lock(&dev->struct_mutex);
 	entry = &dma->bufs[order];
@@ -1110,13 +1110,13 @@ static int drm_legacy_addbufs_sg(struct drm_device *dev,
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return -EINVAL;
 
-	spin_lock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_EXCLUSIVE);
 	if (dev->buf_use) {
-		spin_unlock(&dev->buf_lock);
+		lockmgr(&dev->buf_lock, LK_RELEASE);
 		return -EBUSY;
 	}
 	atomic_inc(&dev->buf_alloc);
-	spin_unlock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_RELEASE);
 
 	mutex_lock(&dev->struct_mutex);
 	entry = &dma->bufs[order];
@@ -1289,13 +1289,13 @@ int drm_legacy_infobufs(struct drm_device *dev, void *data,
 	if (!dma)
 		return -EINVAL;
 
-	spin_lock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_EXCLUSIVE);
 	if (atomic_read(&dev->buf_alloc)) {
-		spin_unlock(&dev->buf_lock);
+		lockmgr(&dev->buf_lock, LK_RELEASE);
 		return -EBUSY;
 	}
 	++dev->buf_use;		/* Can't allocate more after this call */
-	spin_unlock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_RELEASE);
 
 	for (i = 0, count = 0; i < DRM_MAX_ORDER + 1; i++) {
 		if (dma->bufs[i].buf_count)
@@ -1474,13 +1474,13 @@ int drm_legacy_mapbufs(struct drm_device *dev, void *data,
 	if (!dma)
 		return -EINVAL;
 
-	spin_lock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_EXCLUSIVE);
 	if (atomic_read(&dev->buf_alloc)) {
-		spin_unlock(&dev->buf_lock);
+		lockmgr(&dev->buf_lock, LK_RELEASE);
 		return -EBUSY;
 	}
 	dev->buf_use++;		/* Can't allocate more after this call */
-	spin_unlock(&dev->buf_lock);
+	lockmgr(&dev->buf_lock, LK_RELEASE);
 
 	if (request->count >= dma->buf_count) {
 		if ((dev->agp && (dma->flags & _DRM_DMA_USE_AGP))

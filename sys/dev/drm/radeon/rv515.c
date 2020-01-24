@@ -208,22 +208,22 @@ uint32_t rv515_mc_rreg(struct radeon_device *rdev, uint32_t reg)
 {
 	uint32_t r;
 
-	spin_lock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
 	WREG32(MC_IND_INDEX, 0x7f0000 | (reg & 0xffff));
 	r = RREG32(MC_IND_DATA);
 	WREG32(MC_IND_INDEX, 0);
-	spin_unlock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
 
 	return r;
 }
 
 void rv515_mc_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	spin_lock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
 	WREG32(MC_IND_INDEX, 0xff0000 | ((reg) & 0xffff));
 	WREG32(MC_IND_DATA, (v));
 	WREG32(MC_IND_INDEX, 0);
-	spin_unlock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
 }
 
 #if defined(CONFIG_DEBUG_FS)

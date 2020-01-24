@@ -110,38 +110,38 @@ u32 r600_rcu_rreg(struct radeon_device *rdev, u32 reg)
 {
 	u32 r;
 
-	spin_lock(&rdev->rcu_idx_lock);
+	lockmgr(&rdev->rcu_idx_lock, LK_EXCLUSIVE);
 	WREG32(R600_RCU_INDEX, ((reg) & 0x1fff));
 	r = RREG32(R600_RCU_DATA);
-	spin_unlock(&rdev->rcu_idx_lock);
+	lockmgr(&rdev->rcu_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void r600_rcu_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	spin_lock(&rdev->rcu_idx_lock);
+	lockmgr(&rdev->rcu_idx_lock, LK_EXCLUSIVE);
 	WREG32(R600_RCU_INDEX, ((reg) & 0x1fff));
 	WREG32(R600_RCU_DATA, (v));
-	spin_unlock(&rdev->rcu_idx_lock);
+	lockmgr(&rdev->rcu_idx_lock, LK_RELEASE);
 }
 
 u32 r600_uvd_ctx_rreg(struct radeon_device *rdev, u32 reg)
 {
 	u32 r;
 
-	spin_lock(&rdev->uvd_idx_lock);
+	lockmgr(&rdev->uvd_idx_lock, LK_EXCLUSIVE);
 	WREG32(R600_UVD_CTX_INDEX, ((reg) & 0x1ff));
 	r = RREG32(R600_UVD_CTX_DATA);
-	spin_unlock(&rdev->uvd_idx_lock);
+	lockmgr(&rdev->uvd_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void r600_uvd_ctx_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	spin_lock(&rdev->uvd_idx_lock);
+	lockmgr(&rdev->uvd_idx_lock, LK_EXCLUSIVE);
 	WREG32(R600_UVD_CTX_INDEX, ((reg) & 0x1ff));
 	WREG32(R600_UVD_CTX_DATA, (v));
-	spin_unlock(&rdev->uvd_idx_lock);
+	lockmgr(&rdev->uvd_idx_lock, LK_RELEASE);
 }
 
 /**
@@ -1262,22 +1262,22 @@ uint32_t rs780_mc_rreg(struct radeon_device *rdev, uint32_t reg)
 {
 	uint32_t r;
 
-	spin_lock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
 	WREG32(R_0028F8_MC_INDEX, S_0028F8_MC_IND_ADDR(reg));
 	r = RREG32(R_0028FC_MC_DATA);
 	WREG32(R_0028F8_MC_INDEX, ~C_0028F8_MC_IND_ADDR);
-	spin_unlock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void rs780_mc_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	spin_lock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
 	WREG32(R_0028F8_MC_INDEX, S_0028F8_MC_IND_ADDR(reg) |
 		S_0028F8_MC_IND_WR_EN(1));
 	WREG32(R_0028FC_MC_DATA, v);
 	WREG32(R_0028F8_MC_INDEX, 0x7F);
-	spin_unlock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
 }
 
 static void r600_mc_program(struct radeon_device *rdev)
@@ -2378,22 +2378,22 @@ u32 r600_pciep_rreg(struct radeon_device *rdev, u32 reg)
 {
 	u32 r;
 
-	spin_lock(&rdev->pciep_idx_lock);
+	lockmgr(&rdev->pciep_idx_lock, LK_EXCLUSIVE);
 	WREG32(PCIE_PORT_INDEX, ((reg) & 0xff));
 	(void)RREG32(PCIE_PORT_INDEX);
 	r = RREG32(PCIE_PORT_DATA);
-	spin_unlock(&rdev->pciep_idx_lock);
+	lockmgr(&rdev->pciep_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void r600_pciep_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	spin_lock(&rdev->pciep_idx_lock);
+	lockmgr(&rdev->pciep_idx_lock, LK_EXCLUSIVE);
 	WREG32(PCIE_PORT_INDEX, ((reg) & 0xff));
 	(void)RREG32(PCIE_PORT_INDEX);
 	WREG32(PCIE_PORT_DATA, (v));
 	(void)RREG32(PCIE_PORT_DATA);
-	spin_unlock(&rdev->pciep_idx_lock);
+	lockmgr(&rdev->pciep_idx_lock, LK_RELEASE);
 }
 
 /*

@@ -43,6 +43,8 @@
 
 #define assert_spin_locked(x)	KKASSERT(lockinuse(x))
 
+typedef struct lock spinlock_t;
+
 /*
  * The spin_lock_irq() family of functions stop hardware interrupts
  * from being delivered to the local CPU.
@@ -77,6 +79,6 @@ spin_unlock_bh(struct lock *lock)
 }
 
 #define DEFINE_SPINLOCK(x) \
-	struct spinlock x = SPINLOCK_INITIALIZER(x, "ds##x")
+	struct lock x = LOCK_INITIALIZER(x, "ds##x")
 
 #endif	/* _LINUX_SPINLOCK_H_ */

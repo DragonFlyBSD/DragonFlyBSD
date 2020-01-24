@@ -670,7 +670,7 @@ struct drm_crtc {
 	 *
 	 * Spinlock to protect @commit_list.
 	 */
-	struct spinlock commit_lock;
+	spinlock_t commit_lock;
 
 	/**
 	 * @acquire_ctx:

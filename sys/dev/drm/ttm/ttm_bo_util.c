@@ -760,12 +760,12 @@ int ttm_bo_pipeline_move(struct ttm_buffer_object *bo,
 		 * this eviction and free up the allocation
 		 */
 
-		spin_lock(&from->move_lock);
+		lockmgr(&from->move_lock, LK_EXCLUSIVE);
 		if (!from->move || fence_is_later(fence, from->move)) {
 			fence_put(from->move);
 			from->move = fence_get(fence);
 		}
-		spin_unlock(&from->move_lock);
+		lockmgr(&from->move_lock, LK_RELEASE);
 
 		ttm_bo_free_old_node(bo);
 

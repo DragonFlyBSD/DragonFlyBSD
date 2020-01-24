@@ -507,20 +507,20 @@ int radeon_vm_bo_set_addr(struct radeon_device *rdev,
 		tmp->bo = radeon_bo_ref(bo_va->bo);
 
 		interval_tree_remove(&bo_va->it, &vm->va);
-		spin_lock(&vm->status_lock);
+		lockmgr(&vm->status_lock, LK_EXCLUSIVE);
 		bo_va->it.start = 0;
 		bo_va->it.last = 0;
 		list_del_init(&bo_va->vm_status);
 		list_add(&tmp->vm_status, &vm->freed);
-		spin_unlock(&vm->status_lock);
+		lockmgr(&vm->status_lock, LK_RELEASE);
 	}
 
 	if (soffset || eoffset) {
-		spin_lock(&vm->status_lock);
+		lockmgr(&vm->status_lock, LK_EXCLUSIVE);
 		bo_va->it.start = soffset;
 		bo_va->it.last = eoffset;
 		list_add(&bo_va->vm_status, &vm->cleared);
-		spin_unlock(&vm->status_lock);
+		lockmgr(&vm->status_lock, LK_RELEASE);
 		interval_tree_insert(&bo_va->it, &vm->va);
 	}
 
@@ -925,10 +925,10 @@ int radeon_vm_bo_update(struct radeon_device *rdev,
 		return -EINVAL;
 	}
 
-	spin_lock(&vm->status_lock);
+	lockmgr(&vm->status_lock, LK_EXCLUSIVE);
 	if (mem) {
 		if (list_empty(&bo_va->vm_status)) {
-			spin_unlock(&vm->status_lock);
+			lockmgr(&vm->status_lock, LK_RELEASE);
 			return 0;
 		}
 		list_del_init(&bo_va->vm_status);
@@ -936,7 +936,7 @@ int radeon_vm_bo_update(struct radeon_device *rdev,
 		list_del(&bo_va->vm_status);
 		list_add(&bo_va->vm_status, &vm->cleared);
 	}
-	spin_unlock(&vm->status_lock);
+	lockmgr(&vm->status_lock, LK_RELEASE);
 
 	bo_va->flags &= ~RADEON_VM_PAGE_VALID;
 	bo_va->flags &= ~RADEON_VM_PAGE_SYSTEM;
@@ -1050,23 +1050,23 @@ int radeon_vm_clear_freed(struct radeon_device *rdev,
 	struct radeon_bo_va *bo_va;
 	int r = 0;
 
-	spin_lock(&vm->status_lock);
+	lockmgr(&vm->status_lock, LK_EXCLUSIVE);
 	while (!list_empty(&vm->freed)) {
 		bo_va = list_first_entry(&vm->freed,
 			struct radeon_bo_va, vm_status);
-		spin_unlock(&vm->status_lock);
+		lockmgr(&vm->status_lock, LK_RELEASE);
 
 		r = radeon_vm_bo_update(rdev, bo_va, NULL);
 		radeon_bo_unref(&bo_va->bo);
 		radeon_fence_unref(&bo_va->last_pt_update);
-		spin_lock(&vm->status_lock);
+		lockmgr(&vm->status_lock, LK_EXCLUSIVE);
 		list_del(&bo_va->vm_status);
 		kfree(bo_va);
 		if (r)
 			break;
 
 	}
-	spin_unlock(&vm->status_lock);
+	lockmgr(&vm->status_lock, LK_RELEASE);
 	return r;
 
 }
@@ -1088,19 +1088,19 @@ int radeon_vm_clear_invalids(struct radeon_device *rdev,
 	struct radeon_bo_va *bo_va;
 	int r;
 
-	spin_lock(&vm->status_lock);
+	lockmgr(&vm->status_lock, LK_EXCLUSIVE);
 	while (!list_empty(&vm->invalidated)) {
 		bo_va = list_first_entry(&vm->invalidated,
 			struct radeon_bo_va, vm_status);
-		spin_unlock(&vm->status_lock);
+		lockmgr(&vm->status_lock, LK_RELEASE);
 
 		r = radeon_vm_bo_update(rdev, bo_va, NULL);
 		if (r)
 			return r;
 
-		spin_lock(&vm->status_lock);
+		lockmgr(&vm->status_lock, LK_EXCLUSIVE);
 	}
-	spin_unlock(&vm->status_lock);
+	lockmgr(&vm->status_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -1126,7 +1126,7 @@ void radeon_vm_bo_rmv(struct radeon_device *rdev,
 	if (bo_va->it.start || bo_va->it.last)
 		interval_tree_remove(&bo_va->it, &vm->va);
 
-	spin_lock(&vm->status_lock);
+	lockmgr(&vm->status_lock, LK_EXCLUSIVE);
 	list_del(&bo_va->vm_status);
 	if (bo_va->it.start || bo_va->it.last) {
 		bo_va->bo = radeon_bo_ref(bo_va->bo);
@@ -1135,7 +1135,7 @@ void radeon_vm_bo_rmv(struct radeon_device *rdev,
 		radeon_fence_unref(&bo_va->last_pt_update);
 		kfree(bo_va);
 	}
-	spin_unlock(&vm->status_lock);
+	lockmgr(&vm->status_lock, LK_RELEASE);
 
 	mutex_unlock(&vm->mutex);
 }
@@ -1155,11 +1155,11 @@ void radeon_vm_bo_invalidate(struct radeon_device *rdev,
 	struct radeon_bo_va *bo_va;
 
 	list_for_each_entry(bo_va, &bo->va, bo_list) {
-		spin_lock(&bo_va->vm->status_lock);
+		lockmgr(&bo_va->vm->status_lock, LK_EXCLUSIVE);
 		if (list_empty(&bo_va->vm_status) &&
 		    (bo_va->it.start || bo_va->it.last))
 			list_add(&bo_va->vm_status, &bo_va->vm->invalidated);
-		spin_unlock(&bo_va->vm->status_lock);
+		lockmgr(&bo_va->vm->status_lock, LK_RELEASE);
 	}
 }
 
@@ -1186,7 +1186,7 @@ int radeon_vm_init(struct radeon_device *rdev, struct radeon_vm *vm)
 	}
 	lockinit(&vm->mutex, "rvmmtx", 0, LK_CANRECURSE);
 	vm->va = LINUX_RB_ROOT;
-	spin_init(&vm->status_lock, "rvsl");
+	lockinit(&vm->status_lock, "rdnvsl", 0, LK_EXCLUSIVE);
 	INIT_LIST_HEAD(&vm->invalidated);
 	INIT_LIST_HEAD(&vm->freed);
 	INIT_LIST_HEAD(&vm->cleared);

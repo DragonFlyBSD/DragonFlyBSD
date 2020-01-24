@@ -102,7 +102,7 @@ static struct drm_master *drm_master_create(struct drm_device *dev)
 		return NULL;
 
 	kref_init(&master->refcount);
-	spin_init(&master->lock.spinlock, "drmmls");
+	lockinit(&master->lock.spinlock, "drmmls", 0, LK_EXCLUSIVE);
 	init_waitqueue_head(&master->lock.lock_queue);
 	idr_init(&master->magic_map);
 	master->dev = dev;

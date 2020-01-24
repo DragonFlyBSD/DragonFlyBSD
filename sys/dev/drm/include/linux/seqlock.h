@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -51,14 +51,14 @@
 
 typedef struct {
 	unsigned sequence;
-	struct spinlock lock;
+	struct lock lock;
 } seqlock_t;
 
 static inline void
 seqlock_init(seqlock_t *sl)
 {
 	sl->sequence = 0;
-	spin_init(&sl->lock, "lsql");
+	lockinit(&sl->lock, "lsql", 0, LK_EXCLUSIVE);
 }
 
 /*
@@ -69,7 +69,7 @@ seqlock_init(seqlock_t *sl)
 static inline void
 write_seqlock(seqlock_t *sl)
 {
-	spin_lock(&sl->lock);
+	lockmgr(&sl->lock, LK_EXCLUSIVE);
 	sl->sequence++;
 	cpu_sfence();
 }
@@ -78,7 +78,7 @@ static inline void
 write_sequnlock(seqlock_t *sl)
 {
 	sl->sequence--;
-	spin_unlock(&sl->lock);
+	lockmgr(&sl->lock, LK_RELEASE);
 	cpu_sfence();
 }
 

@@ -1342,7 +1342,7 @@ static int stall_checks(struct drm_crtc *crtc, bool nonblock)
 	int i;
 	long ret = 0;
 
-	spin_lock(&crtc->commit_lock);
+	lockmgr(&crtc->commit_lock, LK_EXCLUSIVE);
 	i = 0;
 	list_for_each_entry(commit, &crtc->commit_list, commit_entry) {
 		if (i == 0) {
@@ -1350,7 +1350,7 @@ static int stall_checks(struct drm_crtc *crtc, bool nonblock)
 			/* Userspace is not allowed to get ahead of the previous
 			 * commit with nonblocking ones. */
 			if (!completed && nonblock) {
-				spin_unlock(&crtc->commit_lock);
+				lockmgr(&crtc->commit_lock, LK_RELEASE);
 				return -EBUSY;
 			}
 		} else if (i == 1) {
@@ -1361,7 +1361,7 @@ static int stall_checks(struct drm_crtc *crtc, bool nonblock)
 
 		i++;
 	}
-	spin_unlock(&crtc->commit_lock);
+	lockmgr(&crtc->commit_lock, LK_RELEASE);
 
 	if (!stall_commit)
 		return 0;
@@ -1516,11 +1516,11 @@ void drm_atomic_helper_wait_for_dependencies(struct drm_atomic_state *state)
 	long ret;
 
 	for_each_crtc_in_state(state, crtc, crtc_state, i) {
-		spin_lock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_EXCLUSIVE);
 		commit = preceeding_commit(crtc);
 		if (commit)
 			drm_crtc_commit_get(commit);
-		spin_unlock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_RELEASE);
 
 		if (!commit)
 			continue;
@@ -1573,9 +1573,9 @@ void drm_atomic_helper_commit_hw_done(struct drm_atomic_state *state)
 
 		/* backend must have consumed any event by now */
 		WARN_ON(crtc->state->event);
-		spin_lock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_EXCLUSIVE);
 		complete_all(&commit->hw_done);
-		spin_unlock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_RELEASE);
 	}
 }
 EXPORT_SYMBOL(drm_atomic_helper_commit_hw_done);
@@ -1604,7 +1604,7 @@ void drm_atomic_helper_commit_cleanup_done(struct drm_atomic_state *state)
 		if (WARN_ON(!commit))
 			continue;
 
-		spin_lock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_EXCLUSIVE);
 		complete_all(&commit->cleanup_done);
 		WARN_ON(!try_wait_for_completion(&commit->hw_done));
 
@@ -1614,7 +1614,7 @@ void drm_atomic_helper_commit_cleanup_done(struct drm_atomic_state *state)
 		if (try_wait_for_completion(&commit->flip_done))
 			goto del_commit;
 
-		spin_unlock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_RELEASE);
 
 		/* We must wait for the vblank event to signal our completion
 		 * before releasing our reference, since the vblank work does
@@ -1625,10 +1625,10 @@ void drm_atomic_helper_commit_cleanup_done(struct drm_atomic_state *state)
 			DRM_ERROR("[CRTC:%d:%s] flip_done timed out\n",
 				  crtc->base.id, crtc->name);
 
-		spin_lock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_EXCLUSIVE);
 del_commit:
 		list_del(&commit->commit_entry);
-		spin_unlock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_RELEASE);
 	}
 }
 EXPORT_SYMBOL(drm_atomic_helper_commit_cleanup_done);
@@ -2001,12 +2001,12 @@ void drm_atomic_helper_swap_state(struct drm_atomic_state *state,
 
 	if (stall) {
 		for_each_crtc_in_state(state, crtc, crtc_state, i) {
-			spin_lock(&crtc->commit_lock);
+			lockmgr(&crtc->commit_lock, LK_EXCLUSIVE);
 			commit = list_first_entry_or_null(&crtc->commit_list,
 					struct drm_crtc_commit, commit_entry);
 			if (commit)
 				drm_crtc_commit_get(commit);
-			spin_unlock(&crtc->commit_lock);
+			lockmgr(&crtc->commit_lock, LK_RELEASE);
 
 			if (!commit)
 				continue;
@@ -2032,10 +2032,10 @@ void drm_atomic_helper_swap_state(struct drm_atomic_state *state,
 		crtc->state->state = NULL;
 
 		if (state->crtcs[i].commit) {
-			spin_lock(&crtc->commit_lock);
+			lockmgr(&crtc->commit_lock, LK_EXCLUSIVE);
 			list_add(&state->crtcs[i].commit->commit_entry,
 				 &crtc->commit_list);
-			spin_unlock(&crtc->commit_lock);
+			lockmgr(&crtc->commit_lock, LK_RELEASE);
 
 			state->crtcs[i].commit->event = NULL;
 		}

@@ -44,8 +44,6 @@
 #include <sys/errno.h>
 #include <sys/types.h>
 #include <machine/atomic.h>
-#include <sys/spinlock.h>
-#include <sys/spinlock2.h>
 
 struct ww_class {
 	volatile u_long		stamp;

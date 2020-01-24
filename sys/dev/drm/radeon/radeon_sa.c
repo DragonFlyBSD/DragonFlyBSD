@@ -402,7 +402,7 @@ void radeon_sa_bo_dump_debug_info(struct radeon_sa_manager *sa_manager,
 {
 	struct radeon_sa_bo *i;
 
-	spin_lock(&sa_manager->wq.lock);
+	lockmgr(&sa_manager->wq.lock, LK_EXCLUSIVE);
 	list_for_each_entry(i, &sa_manager->olist, olist) {
 		uint64_t soffset = i->soffset + sa_manager->gpu_addr;
 		uint64_t eoffset = i->eoffset + sa_manager->gpu_addr;
@@ -419,6 +419,6 @@ void radeon_sa_bo_dump_debug_info(struct radeon_sa_manager *sa_manager,
 		}
 		seq_printf(m, "\n");
 	}
-	spin_unlock(&sa_manager->wq.lock);
+	lockmgr(&sa_manager->wq.lock, LK_RELEASE);
 }
 #endif

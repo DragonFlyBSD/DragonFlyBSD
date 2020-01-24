@@ -872,8 +872,8 @@ static int i915_driver_init_early(struct drm_i915_private *dev_priv,
 	lockinit(&dev_priv->gpu_error.lock, "915err", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->backlight_lock, "i915bl", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->uncore.lock, "915gt", 0, LK_CANRECURSE);
-	spin_init(&dev_priv->mm.object_stat_lock, "i915osl");
-	spin_init(&dev_priv->mmio_flip_lock, "i915mfl");
+	lockinit(&dev_priv->mm.object_stat_lock, "i915osl", 0, LK_EXCLUSIVE);
+	lockinit(&dev_priv->mmio_flip_lock, "i915mfl", 0, LK_EXCLUSIVE);
 	lockinit(&dev_priv->sb_lock, "i915sbl", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->modeset_restore_lock, "i915mrl", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->av_mutex, "i915am", 0, LK_CANRECURSE);

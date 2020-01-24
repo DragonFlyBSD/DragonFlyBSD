@@ -160,20 +160,20 @@ u32 r420_mc_rreg(struct radeon_device *rdev, u32 reg)
 {
 	u32 r;
 
-	spin_lock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
 	WREG32(R_0001F8_MC_IND_INDEX, S_0001F8_MC_IND_ADDR(reg));
 	r = RREG32(R_0001FC_MC_IND_DATA);
-	spin_unlock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void r420_mc_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	spin_lock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
 	WREG32(R_0001F8_MC_IND_INDEX, S_0001F8_MC_IND_ADDR(reg) |
 		S_0001F8_MC_IND_WR_EN(1));
 	WREG32(R_0001FC_MC_IND_DATA, v);
-	spin_unlock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
 }
 
 static void r420_debugfs(struct radeon_device *rdev)

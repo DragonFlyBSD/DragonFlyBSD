@@ -55,19 +55,19 @@ uint32_t rv370_pcie_rreg(struct radeon_device *rdev, uint32_t reg)
 {
 	uint32_t r;
 
-	spin_lock(&rdev->pcie_idx_lock);
+	lockmgr(&rdev->pcie_idx_lock, LK_EXCLUSIVE);
 	WREG32(RADEON_PCIE_INDEX, ((reg) & rdev->pcie_reg_mask));
 	r = RREG32(RADEON_PCIE_DATA);
-	spin_unlock(&rdev->pcie_idx_lock);
+	lockmgr(&rdev->pcie_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void rv370_pcie_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	spin_lock(&rdev->pcie_idx_lock);
+	lockmgr(&rdev->pcie_idx_lock, LK_EXCLUSIVE);
 	WREG32(RADEON_PCIE_INDEX, ((reg) & rdev->pcie_reg_mask));
 	WREG32(RADEON_PCIE_DATA, (v));
-	spin_unlock(&rdev->pcie_idx_lock);
+	lockmgr(&rdev->pcie_idx_lock, LK_RELEASE);
 }
 
 /*

@@ -1427,18 +1427,18 @@ int radeon_device_init(struct radeon_device *rdev,
 
 	/* Registers mapping */
 	/* TODO: block userspace mapping of io register */
-	spin_init(&rdev->mmio_idx_lock,  "radeon_mpio");
-	spin_init(&rdev->smc_idx_lock,   "radeon_smc");
-	spin_init(&rdev->pll_idx_lock,   "radeon_pll");
-	spin_init(&rdev->mc_idx_lock,    "radeon_mc");
-	spin_init(&rdev->pcie_idx_lock,  "radeon_pcie");
-	spin_init(&rdev->pciep_idx_lock, "radeon_pciep");
-	spin_init(&rdev->pif_idx_lock,   "radeon_pif");
-	spin_init(&rdev->cg_idx_lock,    "radeon_cg");
-	spin_init(&rdev->uvd_idx_lock,   "radeon_uvd");
-	spin_init(&rdev->rcu_idx_lock,   "radeon_rcu");
-	spin_init(&rdev->didt_idx_lock,  "radeon_didt");
-	spin_init(&rdev->end_idx_lock,   "radeon_end");
+	lockinit(&rdev->mmio_idx_lock, "rdnmidl", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->smc_idx_lock, "rdnsil", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->pll_idx_lock, "rdnpll", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->mc_idx_lock, "rdnmcil", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->pcie_idx_lock, "rdnpil", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->pciep_idx_lock, "rdnppil", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->pif_idx_lock, "rdnpif", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->cg_idx_lock, "rdncgil", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->uvd_idx_lock, "rdnuvd", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->rcu_idx_lock, "rdnrcu", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->didt_idx_lock, "rdndidt", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->end_idx_lock, "rdneil", 0, LK_EXCLUSIVE);
 	if (rdev->family >= CHIP_BONAIRE) {
 		rdev->rmmio_base = pci_resource_start(rdev->pdev, 5);
 		rdev->rmmio_size = pci_resource_len(rdev->pdev, 5);

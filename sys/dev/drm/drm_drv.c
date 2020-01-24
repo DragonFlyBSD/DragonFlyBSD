@@ -570,7 +570,7 @@ int drm_dev_init(struct drm_device *dev,
 	INIT_LIST_HEAD(&dev->maplist);
 	INIT_LIST_HEAD(&dev->vblank_event_list);
 
-	spin_init(&dev->buf_lock, "drmdbl");
+	lockinit(&dev->buf_lock, "drmdbl", 0, LK_EXCLUSIVE);
 	lockinit(&dev->event_lock, "drmev", 0, LK_CANRECURSE);
 	lockinit(&dev->struct_mutex, "drmslk", 0, LK_CANRECURSE);
 	lockinit(&dev->filelist_mutex, "drmflm", 0, LK_CANRECURSE);

@@ -42,19 +42,19 @@ u32 tn_smc_rreg(struct radeon_device *rdev, u32 reg)
 {
 	u32 r;
 
-	spin_lock(&rdev->smc_idx_lock);
+	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
 	WREG32(TN_SMC_IND_INDEX_0, (reg));
 	r = RREG32(TN_SMC_IND_DATA_0);
-	spin_unlock(&rdev->smc_idx_lock);
+	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void tn_smc_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	spin_lock(&rdev->smc_idx_lock);
+	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
 	WREG32(TN_SMC_IND_INDEX_0, (reg));
 	WREG32(TN_SMC_IND_DATA_0, (v));
-	spin_unlock(&rdev->smc_idx_lock);
+	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
 }
 
 static const u32 tn_rlc_save_restore_register_list[] =

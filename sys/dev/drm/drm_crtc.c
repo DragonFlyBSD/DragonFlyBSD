@@ -176,7 +176,7 @@ int drm_crtc_init_with_planes(struct drm_device *dev, struct drm_crtc *crtc,
 	crtc->funcs = funcs;
 
 	INIT_LIST_HEAD(&crtc->commit_list);
-	spin_init(&crtc->commit_lock, "dccl");
+	lockinit(&crtc->commit_lock, "dccl", 0, LK_EXCLUSIVE);
 
 	drm_modeset_lock_init(&crtc->mutex);
 	ret = drm_mode_object_get(dev, &crtc->base, DRM_MODE_OBJECT_CRTC);

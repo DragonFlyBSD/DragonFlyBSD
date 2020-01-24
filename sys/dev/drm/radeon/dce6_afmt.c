@@ -46,10 +46,10 @@ u32 dce6_endpoint_rreg(struct radeon_device *rdev,
 {
 	u32 r;
 
-	spin_lock(&rdev->end_idx_lock);
+	lockmgr(&rdev->end_idx_lock, LK_EXCLUSIVE);
 	WREG32(AZ_F0_CODEC_ENDPOINT_INDEX + block_offset, reg);
 	r = RREG32(AZ_F0_CODEC_ENDPOINT_DATA + block_offset);
-	spin_unlock(&rdev->end_idx_lock);
+	lockmgr(&rdev->end_idx_lock, LK_RELEASE);
 
 	return r;
 }
@@ -57,14 +57,14 @@ u32 dce6_endpoint_rreg(struct radeon_device *rdev,
 void dce6_endpoint_wreg(struct radeon_device *rdev,
 			       u32 block_offset, u32 reg, u32 v)
 {
-	spin_lock(&rdev->end_idx_lock);
+	lockmgr(&rdev->end_idx_lock, LK_EXCLUSIVE);
 	if (ASIC_IS_DCE8(rdev))
 		WREG32(AZ_F0_CODEC_ENDPOINT_INDEX + block_offset, reg);
 	else
 		WREG32(AZ_F0_CODEC_ENDPOINT_INDEX + block_offset,
 		       AZ_ENDPOINT_REG_WRITE_EN | AZ_ENDPOINT_REG_INDEX(reg));
 	WREG32(AZ_F0_CODEC_ENDPOINT_DATA + block_offset, v);
-	spin_unlock(&rdev->end_idx_lock);
+	lockmgr(&rdev->end_idx_lock, LK_RELEASE);
 }
 
 static void dce6_afmt_get_connected_pins(struct radeon_device *rdev)

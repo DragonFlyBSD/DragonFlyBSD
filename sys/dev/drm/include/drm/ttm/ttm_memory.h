@@ -79,7 +79,7 @@ struct ttm_mem_global {
 	struct ttm_mem_shrink *shrink;
 	struct taskqueue *swap_queue;
 	struct task work;
-	struct spinlock lock;
+	spinlock_t lock;
 	struct ttm_mem_zone *zones[TTM_MEM_MAX_ZONES];
 	unsigned int num_zones;
 	struct ttm_mem_zone *zone_kernel;
@@ -116,13 +116,13 @@ static inline void ttm_mem_init_shrink(struct ttm_mem_shrink *shrink,
 static inline int ttm_mem_register_shrink(struct ttm_mem_global *glob,
 					  struct ttm_mem_shrink *shrink)
 {
-	spin_lock(&glob->lock);
+	lockmgr(&glob->lock, LK_EXCLUSIVE);
 	if (glob->shrink != NULL) {
-		spin_unlock(&glob->lock);
+		lockmgr(&glob->lock, LK_RELEASE);
 		return -EBUSY;
 	}
 	glob->shrink = shrink;
-	spin_unlock(&glob->lock);
+	lockmgr(&glob->lock, LK_RELEASE);
 	return 0;
 }
 
@@ -137,10 +137,10 @@ static inline int ttm_mem_register_shrink(struct ttm_mem_global *glob,
 static inline void ttm_mem_unregister_shrink(struct ttm_mem_global *glob,
 					     struct ttm_mem_shrink *shrink)
 {
-	spin_lock(&glob->lock);
+	lockmgr(&glob->lock, LK_EXCLUSIVE);
 	BUG_ON(glob->shrink != shrink);
 	glob->shrink = NULL;
-	spin_unlock(&glob->lock);
+	lockmgr(&glob->lock, LK_RELEASE);
 }
 
 extern int ttm_mem_global_init(struct ttm_mem_global *glob);

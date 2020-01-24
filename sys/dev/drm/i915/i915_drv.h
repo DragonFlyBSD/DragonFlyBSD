@@ -384,7 +384,7 @@ struct drm_i915_file_private {
 	struct drm_file *file;
 
 	struct {
-		struct spinlock lock;
+		spinlock_t lock;
 		struct list_head request_list;
 /* 20ms is a fairly arbitrary limit (greater than the average frame time)
  * chosen to prevent the CPU getting more than a frame ahead of the GPU
@@ -700,7 +700,7 @@ struct intel_uncore_funcs {
 };
 
 struct intel_uncore {
-	struct lock lock; /** lock is also taken in irq contexts. */
+	spinlock_t lock; /** lock is also taken in irq contexts. */
 
 	struct intel_uncore_funcs funcs;
 
@@ -1187,7 +1187,7 @@ struct intel_gen6_power_mgmt {
 	int last_adj;
 	enum { LOW_POWER, BETWEEN, HIGH_POWER } power;
 
-	struct lock client_lock;
+	spinlock_t client_lock;
 	struct list_head clients;
 	bool client_boost;
 
@@ -1210,7 +1210,7 @@ struct intel_gen6_power_mgmt {
 };
 
 /* defined intel_pm.c */
-extern struct lock mchdev_lock;
+extern spinlock_t mchdev_lock;
 
 struct intel_ilk_power_mgmt {
 	u8 cur_delay;
@@ -1341,7 +1341,7 @@ struct i915_gem_mm {
 	uint32_t bit_6_swizzle_y;
 
 	/* accounting, useful for userland debugging */
-	struct spinlock object_stat_lock;
+	spinlock_t object_stat_lock;
 	size_t object_memory;
 	u32 object_count;
 };
@@ -1371,7 +1371,7 @@ struct i915_gpu_error {
 	struct delayed_work hangcheck_work;
 
 	/* For reset and error_state handling. */
-	struct lock lock;
+	spinlock_t lock;
 	/* Protected by the above dev->gpu_error.lock. */
 	struct drm_i915_error_state *first_error;
 
@@ -1663,7 +1663,7 @@ struct intel_pipe_crc_entry {
 
 #define INTEL_PIPE_CRC_ENTRIES_NR	128
 struct intel_pipe_crc {
-	struct spinlock lock;
+	spinlock_t lock;
 	bool opened;		/* exclusive access to the result file */
 	struct intel_pipe_crc_entry *entries;
 	enum intel_pipe_crc_source source;
@@ -1672,7 +1672,7 @@ struct intel_pipe_crc {
 };
 
 struct i915_frontbuffer_tracking {
-	struct lock lock;
+	spinlock_t lock;
 
 	/*
 	 * Tracking bits for delayed frontbuffer flushing du to gpu activity or
@@ -1778,10 +1778,10 @@ struct drm_i915_private {
 	int mch_res_rid;
 
 	/* protects the irq masks */
-	struct lock irq_lock;
+	spinlock_t irq_lock;
 
 	/* protects the mmio flip data */
-	struct spinlock mmio_flip_lock;
+	spinlock_t mmio_flip_lock;
 
 	bool display_irqs_enabled;
 

@@ -919,21 +919,21 @@ uint32_t rs600_mc_rreg(struct radeon_device *rdev, uint32_t reg)
 {
 	u32 r;
 
-	spin_lock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
 	WREG32(R_000070_MC_IND_INDEX, S_000070_MC_IND_ADDR(reg) |
 		S_000070_MC_IND_CITF_ARB0(1));
 	r = RREG32(R_000074_MC_IND_DATA);
-	spin_unlock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
 	return r;
 }
 
 void rs600_mc_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	spin_lock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
 	WREG32(R_000070_MC_IND_INDEX, S_000070_MC_IND_ADDR(reg) |
 		S_000070_MC_IND_CITF_ARB0(1) | S_000070_MC_IND_WR_EN(1));
 	WREG32(R_000074_MC_IND_DATA, v);
-	spin_unlock(&rdev->mc_idx_lock);
+	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
 }
 
 static void rs600_debugfs(struct radeon_device *rdev)

@@ -796,9 +796,9 @@ static int ttm_bo_add_move_fence(struct ttm_buffer_object *bo,
 	struct fence *fence;
 	int ret;
 
-	spin_lock(&man->move_lock);
+	lockmgr(&man->move_lock, LK_EXCLUSIVE);
 	fence = fence_get(man->move);
-	spin_unlock(&man->move_lock);
+	lockmgr(&man->move_lock, LK_RELEASE);
 
 	if (fence) {
 		reservation_object_add_shared_fence(bo->resv, fence);
@@ -1309,9 +1309,9 @@ static int ttm_bo_force_list_clean(struct ttm_bo_device *bdev,
 	}
 	lockmgr(&glob->lru_lock, LK_RELEASE);
 
-	spin_lock(&man->move_lock);
+	lockmgr(&man->move_lock, LK_EXCLUSIVE);
 	fence = fence_get(man->move);
-	spin_unlock(&man->move_lock);
+	lockmgr(&man->move_lock, LK_RELEASE);
 
 	if (fence) {
 		ret = fence_wait(fence, false);
@@ -1390,7 +1390,7 @@ int ttm_bo_init_mm(struct ttm_bo_device *bdev, unsigned type,
 	man->io_reserve_fastpath = true;
 	man->use_io_reserve_lru = false;
 	lockinit(&man->io_reserve_mutex, "ttmior", 0, 0);
-	spin_init(&man->move_lock, "ttmml");
+	lockinit(&man->move_lock, "ttmml", 0, LK_EXCLUSIVE);
 	INIT_LIST_HEAD(&man->io_reserve_lru);
 
 	ret = bdev->driver->init_mem_type(bdev, type, man);

@@ -2894,23 +2894,23 @@ uint32_t r100_pll_rreg(struct radeon_device *rdev, uint32_t reg)
 {
 	uint32_t data;
 
-	spin_lock(&rdev->pll_idx_lock);
+	lockmgr(&rdev->pll_idx_lock, LK_EXCLUSIVE);
 	WREG8(RADEON_CLOCK_CNTL_INDEX, reg & 0x3f);
 	r100_pll_errata_after_index(rdev);
 	data = RREG32(RADEON_CLOCK_CNTL_DATA);
 	r100_pll_errata_after_data(rdev);
-	spin_unlock(&rdev->pll_idx_lock);
+	lockmgr(&rdev->pll_idx_lock, LK_RELEASE);
 	return data;
 }
 
 void r100_pll_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	spin_lock(&rdev->pll_idx_lock);
+	lockmgr(&rdev->pll_idx_lock, LK_EXCLUSIVE);
 	WREG8(RADEON_CLOCK_CNTL_INDEX, ((reg & 0x3f) | RADEON_PLL_WR_EN));
 	r100_pll_errata_after_index(rdev);
 	WREG32(RADEON_CLOCK_CNTL_DATA, v);
 	r100_pll_errata_after_data(rdev);
-	spin_unlock(&rdev->pll_idx_lock);
+	lockmgr(&rdev->pll_idx_lock, LK_RELEASE);
 }
 
 static void r100_set_safe_registers(struct radeon_device *rdev)
@@ -4130,19 +4130,19 @@ uint32_t r100_mm_rreg_slow(struct radeon_device *rdev, uint32_t reg)
 {
 	uint32_t ret;
 
-	spin_lock(&rdev->mmio_idx_lock);
+	lockmgr(&rdev->mmio_idx_lock, LK_EXCLUSIVE);
 	writel(reg, ((void __iomem *)rdev->rmmio) + RADEON_MM_INDEX);
 	ret = readl(((void __iomem *)rdev->rmmio) + RADEON_MM_DATA);
-	spin_unlock(&rdev->mmio_idx_lock);
+	lockmgr(&rdev->mmio_idx_lock, LK_RELEASE);
 	return ret;
 }
 
 void r100_mm_wreg_slow(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	spin_lock(&rdev->mmio_idx_lock);
+	lockmgr(&rdev->mmio_idx_lock, LK_EXCLUSIVE);
 	writel(reg, ((void __iomem *)rdev->rmmio) + RADEON_MM_INDEX);
 	writel(v, ((void __iomem *)rdev->rmmio) + RADEON_MM_DATA);
-	spin_unlock(&rdev->mmio_idx_lock);
+	lockmgr(&rdev->mmio_idx_lock, LK_RELEASE);
 }
 
 u32 r100_io_rreg(struct radeon_device *rdev, u32 reg)

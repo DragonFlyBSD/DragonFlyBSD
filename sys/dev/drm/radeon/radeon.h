@@ -941,7 +941,7 @@ struct radeon_vm {
 	struct rb_root		va;
 
 	/* protecting invalidated and freed */
-	struct spinlock		status_lock;
+	spinlock_t		status_lock;
 
 	/* BOs moved, but not yet updated in the PT */
 	struct list_head	invalidated;
@@ -2346,29 +2346,29 @@ struct radeon_device {
 	resource_size_t			rmmio_base;
 	resource_size_t			rmmio_size;
 	/* protects concurrent MM_INDEX/DATA based register access */
-	struct spinlock mmio_idx_lock;
+	spinlock_t mmio_idx_lock;
 	/* protects concurrent SMC based register access */
-	struct spinlock smc_idx_lock;
+	spinlock_t smc_idx_lock;
 	/* protects concurrent PLL register access */
-	struct spinlock pll_idx_lock;
+	spinlock_t pll_idx_lock;
 	/* protects concurrent MC register access */
-	struct spinlock mc_idx_lock;
+	spinlock_t mc_idx_lock;
 	/* protects concurrent PCIE register access */
-	struct spinlock pcie_idx_lock;
+	spinlock_t pcie_idx_lock;
 	/* protects concurrent PCIE_PORT register access */
-	struct spinlock pciep_idx_lock;
+	spinlock_t pciep_idx_lock;
 	/* protects concurrent PIF register access */
-	struct spinlock pif_idx_lock;
+	spinlock_t pif_idx_lock;
 	/* protects concurrent CG register access */
-	struct spinlock cg_idx_lock;
+	spinlock_t cg_idx_lock;
 	/* protects concurrent UVD register access */
-	struct spinlock uvd_idx_lock;
+	spinlock_t uvd_idx_lock;
 	/* protects concurrent RCU register access */
-	struct spinlock rcu_idx_lock;
+	spinlock_t rcu_idx_lock;
 	/* protects concurrent DIDT register access */
-	struct spinlock didt_idx_lock;
+	spinlock_t didt_idx_lock;
 	/* protects concurrent ENDPOINT (audio) register access */
-	struct spinlock end_idx_lock;
+	spinlock_t end_idx_lock;
 	void __iomem			*rmmio;
 	radeon_rreg_t			mc_rreg;
 	radeon_wreg_t			mc_wreg;
