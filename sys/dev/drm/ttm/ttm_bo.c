@@ -1390,7 +1390,7 @@ int ttm_bo_init_mm(struct ttm_bo_device *bdev, unsigned type,
 	man->io_reserve_fastpath = true;
 	man->use_io_reserve_lru = false;
 	lockinit(&man->io_reserve_mutex, "ttmior", 0, 0);
-	lockinit(&man->move_lock, "ttmml", 0, LK_EXCLUSIVE);
+	lockinit(&man->move_lock, "ttmml", 0, 0);
 	INIT_LIST_HEAD(&man->io_reserve_lru);
 
 	ret = bdev->driver->init_mem_type(bdev, type, man);

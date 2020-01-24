@@ -5604,7 +5604,7 @@ int i915_gem_open(struct drm_device *dev, struct drm_file *file)
 	file_priv->file = file;
 	INIT_LIST_HEAD(&file_priv->rps.link);
 
-	lockinit(&file_priv->mm.lock, "i915_priv", 0, LK_EXCLUSIVE);
+	lockinit(&file_priv->mm.lock, "i915_priv", 0, 0);
 	INIT_LIST_HEAD(&file_priv->mm.request_list);
 
 	file_priv->bsd_ring = -1;

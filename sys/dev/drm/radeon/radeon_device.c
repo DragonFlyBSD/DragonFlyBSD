@@ -1427,18 +1427,18 @@ int radeon_device_init(struct radeon_device *rdev,
 
 	/* Registers mapping */
 	/* TODO: block userspace mapping of io register */
-	lockinit(&rdev->mmio_idx_lock, "rdnmidl", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->smc_idx_lock, "rdnsil", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->pll_idx_lock, "rdnpll", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->mc_idx_lock, "rdnmcil", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->pcie_idx_lock, "rdnpil", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->pciep_idx_lock, "rdnppil", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->pif_idx_lock, "rdnpif", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->cg_idx_lock, "rdncgil", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->uvd_idx_lock, "rdnuvd", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->rcu_idx_lock, "rdnrcu", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->didt_idx_lock, "rdndidt", 0, LK_EXCLUSIVE);
-	lockinit(&rdev->end_idx_lock, "rdneil", 0, LK_EXCLUSIVE);
+	lockinit(&rdev->mmio_idx_lock, "rdnmidl", 0, 0);
+	lockinit(&rdev->smc_idx_lock, "rdnsil", 0, 0);
+	lockinit(&rdev->pll_idx_lock, "rdnpll", 0, 0);
+	lockinit(&rdev->mc_idx_lock, "rdnmcil", 0, 0);
+	lockinit(&rdev->pcie_idx_lock, "rdnpil", 0, 0);
+	lockinit(&rdev->pciep_idx_lock, "rdnppil", 0, 0);
+	lockinit(&rdev->pif_idx_lock, "rdnpif", 0, 0);
+	lockinit(&rdev->cg_idx_lock, "rdncgil", 0, 0);
+	lockinit(&rdev->uvd_idx_lock, "rdnuvd", 0, 0);
+	lockinit(&rdev->rcu_idx_lock, "rdnrcu", 0, 0);
+	lockinit(&rdev->didt_idx_lock, "rdndidt", 0, 0);
+	lockinit(&rdev->end_idx_lock, "rdneil", 0, 0);
 	if (rdev->family >= CHIP_BONAIRE) {
 		rdev->rmmio_base = pci_resource_start(rdev->pdev, 5);
 		rdev->rmmio_size = pci_resource_len(rdev->pdev, 5);

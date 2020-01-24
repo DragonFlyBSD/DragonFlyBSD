@@ -314,7 +314,7 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	int i;
 	struct ttm_mem_zone *zone;
 
-	lockinit(&glob->lock, "ttmemglob", 0, LK_EXCLUSIVE);
+	lockinit(&glob->lock, "ttmemglob", 0, 0);
 	glob->swap_queue = taskqueue_create("ttm_swap", M_WAITOK,
 	    taskqueue_thread_enqueue, &glob->swap_queue);
 	taskqueue_start_threads(&glob->swap_queue, 1, TDPRI_KERN_DAEMON,

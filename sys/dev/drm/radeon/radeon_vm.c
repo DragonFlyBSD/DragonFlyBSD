@@ -1186,7 +1186,7 @@ int radeon_vm_init(struct radeon_device *rdev, struct radeon_vm *vm)
 	}
 	lockinit(&vm->mutex, "rvmmtx", 0, LK_CANRECURSE);
 	vm->va = LINUX_RB_ROOT;
-	lockinit(&vm->status_lock, "rdnvsl", 0, LK_EXCLUSIVE);
+	lockinit(&vm->status_lock, "rdnvsl", 0, 0);
 	INIT_LIST_HEAD(&vm->invalidated);
 	INIT_LIST_HEAD(&vm->freed);
 	INIT_LIST_HEAD(&vm->cleared);

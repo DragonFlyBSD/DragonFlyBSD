@@ -58,7 +58,7 @@ static inline void
 seqlock_init(seqlock_t *sl)
 {
 	sl->sequence = 0;
-	lockinit(&sl->lock, "lsql", 0, LK_EXCLUSIVE);
+	lockinit(&sl->lock, "lsql", 0, 0);
 }
 
 /*
