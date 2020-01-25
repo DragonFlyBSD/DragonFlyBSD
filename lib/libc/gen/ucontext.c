@@ -67,7 +67,10 @@ _swapcontext(ucontext_t *oucp, const ucontext_t *ucp)
 	int ret;
 
 	if (getcontext(oucp) == 0) {
-		ret = sigreturn(__DECONST(ucontext_t *, ucp));
+		if (ucp->uc_mcontext.mc_len == 0)
+			ret = -1;
+		else
+			ret = sigreturn(__DECONST(ucontext_t *, ucp));
 	} else {
 		ret = 0;
 	}
@@ -88,7 +91,15 @@ _setcontext(const ucontext_t *ucp)
 {
 	int ret;
 
-	/* XXX: shouldn't sigreturn() take const? or does it modify ucp? */
+	/*
+	 * Return failure if the context is invalid
+	 */
+	if (ucp->uc_mcontext.mc_len == 0)
+		return -1;
+
+	/*
+	 * XXX: shouldn't sigreturn() take const? or does it modify ucp?
+	 */
 	ret = sigreturn(__DECONST(ucontext_t *, ucp));
 
 	return(ret);
