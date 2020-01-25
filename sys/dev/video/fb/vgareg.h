@@ -49,8 +49,8 @@
 
 /* I/O port addresses */
 #define CRTC		(IO_CGA + 0x04)		/* crt controller base */
-#define MISC		(IO_VGA + 0x02)		/* misc output register */
 #define ATC		(IO_VGA + 0x00)		/* attribute controller */
+#define MISC		(IO_VGA + 0x02)		/* misc output register */
 #define TSIDX		(IO_VGA + 0x04)		/* timing sequencer idx */
 #define TSREG		(IO_VGA + 0x05)		/* timing sequencer data */
 #define PIXMASK		(IO_VGA + 0x06)		/* pixel write mask */
