@@ -22,6 +22,7 @@ LDFLAGS+=       ${PRIVATELIB_LDFLAGS}
 LDADD+=		-lprivate_ncurses
 LDADD+=		-lprivate_crypto
 DPADD+=		${LIBNCURSES}
+DPADD+=		${LIBCRYPTO}
 
 LDADD+=		-lm
 DPADD+=		${LIBM}
