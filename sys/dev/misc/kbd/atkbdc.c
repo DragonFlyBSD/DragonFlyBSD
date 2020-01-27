@@ -52,11 +52,6 @@
 
 #include <bus/isa/isareg.h>
 
-#if 0
-#define lwkt_gettoken(x)
-#define lwkt_reltoken(x)
-#endif
-
 /* constants */
 
 #define MAXKBDC		MAX(NATKBDC, 1)		/* XXX */
