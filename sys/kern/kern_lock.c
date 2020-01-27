@@ -940,8 +940,8 @@ lockmgr_release(struct lock *lkp, u_int flags)
 }
 
 /*
- * Start canceling blocked requesters or later requestors.
- * Only blocked requesters using CANCELABLE can be canceled.
+ * Start canceling blocked or future requesters.  Only blocked/future
+ * requesters who pass the CANCELABLE flag can be canceled.
  *
  * This is intended to then allow other requesters (usually the
  * caller) to obtain a non-cancelable lock.
@@ -971,10 +971,11 @@ lockmgr_cancel_beg(struct lock *lkp, u_int flags)
 		/*
 		 * Wakeup any waiters.
 		 *
-		 * NOTE: EXREQ2 only matters when EXREQ is set, so don't
-		 *	 bother checking EXREQ2.
+		 * NOTE: EXREQ2 must be checked in addition to standard
+		 *	 wait sources, it is possible for EXREQ2 to be
+		 *	 set when EXREQ is clear.
 		 */
-		if (count & (LKC_EXREQ | LKC_SMASK | LKC_UPREQ)) {
+		if (count & (LKC_EXREQ | LKC_EXREQ2 | LKC_SMASK | LKC_UPREQ)) {
 			wakeup(lkp);
 		}
 		break;
