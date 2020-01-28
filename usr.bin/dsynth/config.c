@@ -680,9 +680,17 @@ getElfInfo(const char *path)
 		       note.osname1, OperatingSystemName);
 	}
 	free(cmd);
-	asprintf(&cmd, "%d.%d",
-		note.version / 100000,
-		(note.version % 100000) / 100);
+	if (note.version) {
+		asprintf(&cmd, "%d.%d",
+			note.version / 100000,
+			(note.version % 100000) / 100);
+	} else if (note.zero) {
+		asprintf(&cmd, "%d.%d",
+			note.zero / 100000,
+			(note.zero % 100000) / 100);
+	} else {
+		dfatal("%s ELF, cannot extract version info", path);
+	}
 	ReleaseName = cmd;
 }
 
