@@ -403,6 +403,9 @@ lockmgr_exclusive(struct lock *lkp, u_int flags)
 		/*
 		 * Waiting for EXREQ to be granted to us.
 		 *
+		 * The granting thread will handle the count for us, but we
+		 * still have to set lk_lockholder.
+		 *
 		 * NOTE! If we try to trivially get the exclusive lock
 		 *	 (basically by racing undo_shreq()) and succeed,
 		 *	 we must still wakeup(lkp) for another exclusive
@@ -467,6 +470,9 @@ lockmgr_exclusive(struct lock *lkp, u_int flags)
 		/*
 		 * Reload after sleep, shortcut grant case.
 		 * Then set the interlock and loop.
+		 *
+		 * The granting thread will handle the count for us, but we
+		 * still have to set lk_lockholder.
 		 */
 		count = lkp->lk_count;
 		cpu_ccfence();
@@ -557,6 +563,14 @@ lockmgr_downgrade(struct lock *lkp, u_int flags)
  * else is in front of us, we release the shared lock and acquire the
  * exclusive lock normally.  If a failure occurs, the shared lock is
  * released.
+ *
+ * The way this works is that if we cannot instantly upgrade the
+ * shared lock due to various conditions, but we can acquire UPREQ,
+ * we then set UPREQ and wait for the thread blocking us to grant
+ * our upgrade.  The other thread grants our upgrade by incrementing
+ * the excl count (to 1) and clearing UPREQ, but it doesn't know 'who'
+ * requested the upgrade so it can't set lk_lockholder.  Our thread notices
+ * that LK_UPREQ is now clear and finishes up by setting lk_lockholder.
  */
 int
 lockmgr_upgrade(struct lock *lkp, u_int flags)
@@ -658,6 +672,9 @@ lockmgr_upgrade(struct lock *lkp, u_int flags)
 		/*
 		 * We were granted our upgrade.  No other UPREQ can be
 		 * made pending because we are now exclusive.
+		 *
+		 * The granting thread will handle the count for us, but we
+		 * still have to set lk_lockholder.
 		 */
 		if ((count & LKC_UPREQ) == 0) {
 			KKASSERT((count & LKC_XMASK) == 1);
@@ -698,6 +715,9 @@ lockmgr_upgrade(struct lock *lkp, u_int flags)
 		/*
 		 * Reload the lock, short-cut the UPGRANT code before
 		 * taking the time to interlock and loop.
+		 *
+		 * The granting thread will handle the count for us, but we
+		 * still have to set lk_lockholder.
 		 */
 		count = lkp->lk_count;
 		if ((count & LKC_UPREQ) == 0) {
@@ -800,6 +820,9 @@ lockmgr_release(struct lock *lkp, u_int flags)
 				 * the upgrade request.  Transfer count to
 				 * grant.
 				 *
+				 * The owner of LK_UPREQ is still responsible
+				 * for setting lk_lockholder.
+				 *
 				 * EXREQ cannot be set while an exclusive
 				 * holder exists, so do not clear EXREQ2.
 				 */
@@ -890,6 +913,9 @@ lockmgr_release(struct lock *lkp, u_int flags)
 				 * an upgrade request is present, automatically
 				 * grant an exclusive state to the owner of
 				 * the upgrade request and transfer the count.
+				 *
+				 * The owner of the upgrade request is still
+				 * responsible for setting lk_lockholder.
 				 */
 				ncount = (count - LKC_SCOUNT + 1) &
 					 ~(LKC_UPREQ | LKC_CANCEL | LKC_SHARED);
@@ -1020,6 +1046,13 @@ undo_shreq(struct lock *lkp)
 	while ((count & (LKC_EXREQ | LKC_UPREQ | LKC_CANCEL)) &&
 	       (count & (LKC_SMASK | LKC_XMASK)) == 0) {
 		/*
+		 * Grant any UPREQ here.  This is handled in two parts.
+		 * We grant the UPREQ by incrementing the excl count and
+		 * clearing UPREQ and SHARED (and also CANCEL).
+		 *
+		 * The owner of UPREQ is still responsible for setting
+		 * lockholder.
+		 *
 		 * Note that UPREQ must have priority over EXREQ, and EXREQ
 		 * over CANCEL, so if the atomic op fails we have to loop up.
 		 */
@@ -1031,7 +1064,7 @@ undo_shreq(struct lock *lkp)
 				/* count = ncount; NOT USED */
 				break;
 			}
-			wakeup(lkp);
+			wakeup(lkp);	/* XXX probably not needed */
 			continue;
 		}
 		if (count & LKC_EXREQ) {
@@ -1042,7 +1075,7 @@ undo_shreq(struct lock *lkp)
 				/* count = ncount; NOT USED */
 				break;
 			}
-			wakeup(lkp);
+			wakeup(lkp);	/* XXX probably not needed */
 			continue;
 		}
 		if (count & LKC_CANCEL) {
