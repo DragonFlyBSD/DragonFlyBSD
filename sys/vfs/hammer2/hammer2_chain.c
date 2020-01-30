@@ -593,7 +593,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 			atomic_add_long(&hammer2_count_modified_chains, -1);
 			if (chain->pmp)
-				hammer2_pfs_memory_wakeup(chain->pmp);
+				hammer2_pfs_memory_wakeup(chain->pmp, -1);
 		}
 		/* spinlock still held */
 	}
@@ -1850,8 +1850,10 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 						 HAMMER2_CHAIN_MODIFIED);
 				atomic_add_long(&hammer2_count_modified_chains,
 						-1);
-				if (chain->pmp)
-					hammer2_pfs_memory_wakeup(chain->pmp);
+				if (chain->pmp) {
+					hammer2_pfs_memory_wakeup(
+						chain->pmp, -1);
+				}
 				hammer2_freemap_adjust(hmp, &chain->bref,
 						HAMMER2_FREEMAP_DORECOVER);
 				atomic_set_int(&chain->flags,
@@ -1905,7 +1907,7 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 			atomic_add_long(&hammer2_count_modified_chains, -1);
 			if (chain->pmp)
-				hammer2_pfs_memory_wakeup(chain->pmp);
+				hammer2_pfs_memory_wakeup(chain->pmp, -1);
 		}
 		if (setupdate) {
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);

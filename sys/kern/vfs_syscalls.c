@@ -2859,6 +2859,8 @@ kern_access(struct nlookupdata *nd, int amode, int flags)
 	nd->nl_flags |= NLC_SHAREDLOCK;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
+	if ((amode & W_OK) && (error = ncp_writechk(&nd->nl_nch)) != 0)
+		return (error);
 retry:
 	error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_SHARED, &vp);
 	if (error)
@@ -2874,8 +2876,9 @@ retry:
 		if (amode & X_OK)
 			mode |= VEXEC;
 		if ((mode & VWRITE) == 0 || 
-		    (error = vn_writechk(vp, &nd->nl_nch)) == 0)
+		    (error = vn_writechk(vp)) == 0) {
 			error = VOP_ACCESS_FLAGS(vp, mode, flags, nd->nl_cred);
+		}
 
 		/*
 		 * If the file handle is stale we have to re-resolve the
@@ -3852,7 +3855,7 @@ kern_utimensat(struct nlookupdata *nd, const struct timespec *ts, int flags)
 		return (error);
 	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
 		return (error);
-	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
+	if ((error = vn_writechk(vp)) == 0) {
 		error = vget(vp, LK_EXCLUSIVE);
 		if (error == 0) {
 			error = setutimes(vp, &vattr, newts, nullflag);
@@ -3928,7 +3931,7 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 		old_size = vattr.va_size;
 	}
 
-	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
+	if ((error = vn_writechk(vp)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, nd->nl_cred);
@@ -4003,7 +4006,7 @@ kern_ftruncate(int fd, off_t length)
 		old_size = vattr.va_size;
 	}
 
-	if ((error = vn_writechk(vp, NULL)) == 0) {
+	if ((error = vn_writechk(vp)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
 		error = VOP_SETATTR_FP(vp, &vattr, fp->f_cred, fp);
@@ -4709,7 +4712,7 @@ sys_fhopen(struct fhopen_args *uap)
 			error = EISDIR;
 			goto bad;
 		}
-		error = vn_writechk(vp, NULL);
+		error = vn_writechk(vp);
 		if (error)
 			goto bad;
 		mode |= VWRITE;

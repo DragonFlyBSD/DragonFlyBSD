@@ -381,7 +381,6 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		return (ENOSPC);
 	}
 
-	/*hammer2_pfs_memory_wait(ip->pmp);*/
 	hammer2_trans_init(ip->pmp, 0);
 	hammer2_inode_lock(ip, 0);
 	error = 0;
@@ -824,7 +823,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 	if (uio->uio_segflg == UIO_NOCOPY) {
 		hammer2_trans_init(ip->pmp, HAMMER2_TRANS_BUFCACHE);
 	} else {
-		/*hammer2_pfs_memory_wait(ip->pmp);*/
 		hammer2_trans_init(ip->pmp, 0);
 	}
 	error = hammer2_write_file(ip, uio, ioflag, seqcount);
@@ -1406,7 +1404,6 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	/*hammer2_pfs_memory_wait(dip->pmp);*/
 	hammer2_trans_init(dip->pmp, 0);
 
 	inum = hammer2_trans_newinum(dip->pmp);
@@ -1542,7 +1539,6 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	ip = VTOI(ap->a_vp);
 	KASSERT(ip->pmp, ("ip->pmp is NULL %p %p", ip, ip->pmp));
-	/*hammer2_pfs_memory_wait(ip->pmp);*/
 	hammer2_trans_init(ip->pmp, 0);
 
 	/*
@@ -1618,7 +1614,6 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
-	/*hammer2_pfs_memory_wait(dip->pmp);*/
 	hammer2_trans_init(dip->pmp, 0);
 
 	inum = hammer2_trans_newinum(dip->pmp);
@@ -1701,7 +1696,6 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
-	/*hammer2_pfs_memory_wait(dip->pmp);*/
 	hammer2_trans_init(dip->pmp, 0);
 
 	/*
@@ -1779,7 +1773,6 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
-	/*hammer2_pfs_memory_wait(dip->pmp);*/
 	hammer2_trans_init(dip->pmp, 0);
 
 	ap->a_vap->va_type = VLNK;	/* enforce type */
@@ -1902,7 +1895,6 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		}
 	}
 
-	/*hammer2_pfs_memory_wait(dip->pmp);*/
 	hammer2_trans_init(dip->pmp, 0);
 	hammer2_inode_lock(dip, 0);
 
@@ -2002,7 +1994,6 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		return (ENOSPC);
 #endif
 
-	/*hammer2_pfs_memory_wait(dip->pmp);*/
 	hammer2_trans_init(dip->pmp, 0);
 	hammer2_inode_lock(dip, 0);
 
@@ -2100,7 +2091,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	tname = tncp->nc_name;
 	tname_len = tncp->nc_nlen;
 
-	/*hammer2_pfs_memory_wait(tdip->pmp);*/
 	hammer2_trans_init(tdip->pmp, 0);
 
 	update_tdip = 0;

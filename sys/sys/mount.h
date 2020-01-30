@@ -572,7 +572,7 @@ typedef void vfs_account_t(struct mount *mp,
 			uid_t uid, gid_t gid, int64_t delta);
 typedef void vfs_ncpgen_set_t(struct mount *mp, struct namecache *ncp);
 typedef int vfs_ncpgen_test_t(struct mount *mp, struct namecache *ncp);
-typedef void vfs_modifying_t(struct mount *mp);
+typedef int vfs_modifying_t(struct mount *mp);
 
 int vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred);
 int vfs_start(struct mount *mp, int flags);

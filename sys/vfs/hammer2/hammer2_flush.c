@@ -727,7 +727,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 * be retired.
 		 */
 		if (chain->pmp)
-			hammer2_pfs_memory_wakeup(chain->pmp);
+			hammer2_pfs_memory_wakeup(chain->pmp, -1);
 
 #if 0
 		if ((chain->flags & HAMMER2_CHAIN_UPDATE) == 0 &&

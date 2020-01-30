@@ -394,6 +394,20 @@ nullfs_ncpgen_test(struct mount *mp, struct namecache *ncp)
 	return VFS_NCPGEN_TEST(xmp->nullm_vfs, ncp);
 }
 
+static int
+nullfs_modifying(struct mount *mp)
+{
+	struct null_mount *xmp = MOUNTTONULLMOUNT(mp);
+	int error;
+
+	if (mp->mnt_flag & MNT_RDONLY)
+		error = EROFS;
+	else if (xmp->nullm_vfs)
+		error = VFS_MODIFYING(xmp->nullm_vfs);
+	else
+		error = 0;
+	return error;
+}
 
 static struct vfsops null_vfsops = {
 	.vfs_mount =   	 	nullfs_mount,
@@ -406,7 +420,8 @@ static struct vfsops null_vfsops = {
 	.vfs_vptofh =		nullfs_vptofh,
 	.vfs_ncpgen_set =	nullfs_ncpgen_set,
 	.vfs_ncpgen_test =	nullfs_ncpgen_test,
-	.vfs_checkexp =  	nullfs_checkexp
+	.vfs_checkexp =  	nullfs_checkexp,
+	.vfs_modifying =	nullfs_modifying
 };
 
 VFS_SET(null_vfsops, null, VFCF_LOOPBACK | VFCF_MPSAFE);

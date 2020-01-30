@@ -224,7 +224,7 @@ static int hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 static int hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp);
 static int hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 				int *exflagsp, struct ucred **credanonp);
-static void hammer2_vfs_modifying(struct mount *mp);
+static int hammer2_vfs_modifying(struct mount *mp);
 
 static int hammer2_install_volume_header(hammer2_dev_t *hmp);
 #if 0
@@ -1852,7 +1852,7 @@ again:
 	if (hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) {
 		atomic_add_long(&hammer2_count_modified_chains, -1);
 		atomic_clear_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
-		hammer2_pfs_memory_wakeup(hmp->vchain.pmp);
+		hammer2_pfs_memory_wakeup(hmp->vchain.pmp, -1);
 	}
 	if (hmp->vchain.flags & HAMMER2_CHAIN_UPDATE) {
 		atomic_clear_int(&hmp->vchain.flags, HAMMER2_CHAIN_UPDATE);
@@ -1861,7 +1861,7 @@ again:
 	if (hmp->fchain.flags & HAMMER2_CHAIN_MODIFIED) {
 		atomic_add_long(&hammer2_count_modified_chains, -1);
 		atomic_clear_int(&hmp->fchain.flags, HAMMER2_CHAIN_MODIFIED);
-		hammer2_pfs_memory_wakeup(hmp->fchain.pmp);
+		hammer2_pfs_memory_wakeup(hmp->fchain.pmp, -1);
 	}
 	if (hmp->fchain.flags & HAMMER2_CHAIN_UPDATE) {
 		atomic_clear_int(&hmp->fchain.flags, HAMMER2_CHAIN_UPDATE);
@@ -2471,6 +2471,7 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	struct vnode *vp;
 	uint32_t pass2;
 	int error;
+	int wakecount;
 	int dorestart;
 
 	mp = pmp->mp;
@@ -2516,6 +2517,7 @@ restart:
 	 */
 	hammer2_spin_ex(&pmp->list_spin);
 	depend_next = TAILQ_FIRST(&pmp->depq);
+	wakecount = 0;
 
 	while ((depend = depend_next) != NULL) {
 		depend_next = TAILQ_NEXT(depend, entry);
@@ -2527,8 +2529,12 @@ restart:
 			atomic_clear_int(&ip->flags, HAMMER2_INODE_SIDEQ);
 			ip->depend = NULL;
 		}
+
+		/*
+		 * NOTE: pmp->sideq_count includes both sideq and syncq
+		 */
 		TAILQ_CONCAT(&pmp->syncq, &depend->sideq, entry);
-		pmp->sideq_count -= depend->count;
+
 		depend->count = 0;
 		depend->pass2 = 0;
 		TAILQ_REMOVE(&pmp->depq, depend, entry);
@@ -2543,8 +2549,7 @@ restart:
 	 * sideq_count may have dropped enough to allow us to unstall
 	 * the frontend.
 	 */
-	hammer2_pfs_memory_inc(pmp);
-	hammer2_pfs_memory_wakeup(pmp);
+	hammer2_pfs_memory_wakeup(pmp, 0);
 
 	/*
 	 * Now run through all inodes on syncq.
@@ -2571,9 +2576,19 @@ restart:
 			continue;
 		}
 		TAILQ_REMOVE(&pmp->syncq, ip, entry);
+		--pmp->sideq_count;
 		hammer2_spin_unex(&pmp->list_spin);
+
+		/*
+		 * Tickle anyone waiting on ip->flags or the hysteresis
+		 * on the dirty inode count.
+		 */
 		if (pass2 & HAMMER2_INODE_SYNCQ_WAKEUP)
 			wakeup(&ip->flags);
+		if (++wakecount >= hammer2_limit_dirty_inodes / 20 + 1) {
+			wakecount = 0;
+			hammer2_pfs_memory_wakeup(pmp, 0);
+		}
 
 		/*
 		 * Relock the inode, and we inherit a ref from the above.
@@ -2737,6 +2752,8 @@ restart:
 		hammer2_spin_ex(&pmp->list_spin);
 	}
 	hammer2_spin_unex(&pmp->list_spin);
+	hammer2_pfs_memory_wakeup(pmp, 0);
+
 	if (dorestart || (pmp->trans.flags & HAMMER2_TRANS_RESCAN)) {
 #ifdef HAMMER2_DEBUG_SYNC
 		kprintf("FILESYSTEM SYNC STAGE 1 RESTART\n");
@@ -3071,15 +3088,17 @@ hammer2_lwinprog_wait(hammer2_pfs_t *pmp, int flush_pipe)
  * If the level continues to build up, we stall, waiting for it to drop,
  * with some hysteresis.
  *
- * We limit the stall to two seconds per call.
- *
  * This relies on the kernel calling hammer2_vfs_modifying() prior to
  * obtaining any vnode locks before making a modifying VOP call.
  */
-static void
+static int
 hammer2_vfs_modifying(struct mount *mp)
 {
+	if (mp->mnt_flag & MNT_RDONLY)
+		return EROFS;
 	hammer2_pfs_memory_wait(MPTOPMP(mp));
+
+	return 0;
 }
 
 /*
@@ -3090,12 +3109,13 @@ void
 hammer2_pfs_memory_wait(hammer2_pfs_t *pmp)
 {
 	uint32_t waiting;
-	int loops;
+	int pcatch;
+	int error;
 
 	if (pmp == NULL || pmp->mp == NULL)
 		return;
 
-	for (loops = 0; loops < 2; ++loops) {
+	for (;;) {
 		waiting = pmp->inmem_dirty_chains & HAMMER2_DIRTYCHAIN_MASK;
 		cpu_ccfence();
 
@@ -3116,7 +3136,10 @@ hammer2_pfs_memory_wait(hammer2_pfs_t *pmp)
 		    pmp->sideq_count < hammer2_limit_dirty_inodes) {
 			break;
 		}
-		tsleep_interlock(&pmp->inmem_dirty_chains, 0);
+
+		pcatch = curthread->td_proc ? PCATCH : 0;
+
+		tsleep_interlock(&pmp->inmem_dirty_chains, pcatch);
 		atomic_set_int(&pmp->inmem_dirty_chains,
 			       HAMMER2_DIRTYCHAIN_WAITING);
 		if (waiting < hammer2_limit_dirty_chains &&
@@ -3124,32 +3147,24 @@ hammer2_pfs_memory_wait(hammer2_pfs_t *pmp)
 			break;
 		}
 		trigger_syncer(pmp->mp);
-		tsleep(&pmp->inmem_dirty_chains, PINTERLOCKED, "h2memw", hz);
-#if 0
-		limit = pmp->mp->mnt_nvnodelistsize / 10;
-		if (limit < hammer2_limit_dirty_chains)
-			limit = hammer2_limit_dirty_chains;
-		if (limit < 1000)
-			limit = 1000;
-#endif
+		error = tsleep(&pmp->inmem_dirty_chains, PINTERLOCKED | pcatch,
+			       "h2memw", hz);
+		if (error == ERESTART)
+			break;
 	}
 }
 
+/*
+ * Wake up any stalled frontend ops waiting, with hysteresis, using
+ * 2/3 of the limit.
+ */
 void
-hammer2_pfs_memory_inc(hammer2_pfs_t *pmp)
-{
-	if (pmp) {
-		atomic_add_int(&pmp->inmem_dirty_chains, 1);
-	}
-}
-
-void
-hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp)
+hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp, int count)
 {
 	uint32_t waiting;
 
 	if (pmp) {
-		waiting = atomic_fetchadd_int(&pmp->inmem_dirty_chains, -1);
+		waiting = atomic_fetchadd_int(&pmp->inmem_dirty_chains, count);
 		/* don't need --waiting to test flag */
 
 		if ((waiting & HAMMER2_DIRTYCHAIN_WAITING) &&
@@ -3160,6 +3175,14 @@ hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp)
 					 HAMMER2_DIRTYCHAIN_WAITING);
 			wakeup(&pmp->inmem_dirty_chains);
 		}
+	}
+}
+
+void
+hammer2_pfs_memory_inc(hammer2_pfs_t *pmp)
+{
+	if (pmp) {
+		atomic_add_int(&pmp->inmem_dirty_chains, 1);
 	}
 }
 

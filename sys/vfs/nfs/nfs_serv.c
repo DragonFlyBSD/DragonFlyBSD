@@ -3966,7 +3966,8 @@ nfsmout:
 /*
  * Perform access checking for vnodes obtained from file handles that would
  * refer to files already opened by a Unix client. You cannot just use
- * vn_writechk() and VOP_ACCESS() for two reasons.
+ * vn_writechk() and VOP_ACCESS() for two reasons:
+ *
  * 1 - You must check for exported rdonly as well as MNT_RDONLY for the write case
  * 2 - The owner is to be given access irrespective of mode bits for some
  *     operations, so that processes that chmod after opening a file don't

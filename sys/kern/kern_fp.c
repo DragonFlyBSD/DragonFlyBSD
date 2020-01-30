@@ -156,7 +156,7 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
 	    error = EISDIR;
 	    goto bad2;
 	}
-	error = vn_writechk(vp, NULL);
+	error = vn_writechk(vp);
 	if (error)
 	    goto bad2;
 	vmode |= VWRITE;

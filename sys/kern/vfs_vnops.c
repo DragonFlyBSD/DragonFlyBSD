@@ -161,12 +161,23 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	/*
 	 * split case to allow us to re-resolve and retry the ncp in case
 	 * we get ESTALE.
+	 *
+	 * (error is 0 on entry / retry)
 	 */
 again:
+	/*
+	 * Checks for (likely) filesystem-modifying cases and allows
+	 * the filesystem to stall the front-end.
+	 */
+	if ((fmode & (FWRITE | O_TRUNC)) ||
+	    ((fmode & O_CREAT) && nd->nl_nch.ncp->nc_vp == NULL)) {
+		error = ncp_writechk(&nd->nl_nch);
+		if (error)
+			return error;
+	}
+
 	if (fmode & O_CREAT) {
 		if (nd->nl_nch.ncp->nc_vp == NULL) {
-			if ((error = ncp_writechk(&nd->nl_nch)) != 0)
-				return (error);
 			VATTR_NULL(vap);
 			vap->va_type = VREG;
 			vap->va_mode = cmode;
@@ -223,7 +234,12 @@ again:
 				error = EISDIR;
 				goto bad;
 			}
-			error = vn_writechk(vp, &nd->nl_nch);
+
+			/*
+			 * Additional checks on vnode (does not substitute
+			 * for ncp_writechk()).
+			 */
+			error = vn_writechk(vp);
 			if (error) {
 				/*
 				 * Special stale handling, re-resolve the
@@ -367,10 +383,15 @@ vn_opendisk(const char *devname, int fmode, struct vnode **vpp)
 }
 
 /*
- * Check for write permissions on the specified vnode.  nch may be NULL.
+ * Checks for special conditions on the vnode which might prevent writing
+ * after the vnode has (likely) been locked.  The vnode might or might not
+ * be locked as of this call, but will be at least referenced.
+ *
+ * Also re-checks the mount RDONLY flag that ncp_writechk() checked prior
+ * to the vnode being locked.
  */
 int
-vn_writechk(struct vnode *vp, struct nchandle *nch)
+vn_writechk(struct vnode *vp)
 {
 	/*
 	 * If there's shared text associated with
@@ -379,18 +400,9 @@ vn_writechk(struct vnode *vp, struct nchandle *nch)
 	 */
 	if (vp->v_flag & VTEXT)
 		return (ETXTBSY);
-
-	/*
-	 * If the vnode represents a regular file, check the mount
-	 * point via the nch.  This may be a different mount point
-	 * then the one embedded in the vnode (e.g. nullfs).
-	 *
-	 * We can still write to non-regular files (e.g. devices)
-	 * via read-only mounts.
-	 */
-	if (nch && nch->ncp && vp->v_type == VREG)
-		return (ncp_writechk(nch));
-	return (0);
+	if (vp->v_mount && (vp->v_mount->mnt_flag & MNT_RDONLY))
+		return (EROFS);
+	return 0;
 }
 
 /*
@@ -398,6 +410,8 @@ vn_writechk(struct vnode *vp, struct nchandle *nch)
  * referenced by the namecache may be different from the mount point
  * used by the underlying vnode in the case of NULLFS, so a separate
  * check is needed.
+ *
+ * Must be called PRIOR to any vnodes being locked.
  */
 int
 ncp_writechk(struct nchandle *nch)

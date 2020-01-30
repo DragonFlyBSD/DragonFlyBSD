@@ -1662,7 +1662,7 @@ int hammer2_chain_dirent_test(hammer2_chain_t *chain, const char *name,
 
 void hammer2_pfs_memory_wait(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_inc(hammer2_pfs_t *pmp);
-void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp);
+void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp, int count);
 
 void hammer2_base_delete(hammer2_chain_t *parent,
 				hammer2_blockref_t *base, int count,

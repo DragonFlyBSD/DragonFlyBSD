@@ -1488,9 +1488,11 @@ vfs_stdncpgen_test(struct mount *mp, struct namecache *ncp)
 	return 0;
 }
 
-void
+int
 vfs_stdmodifying(struct mount *mp)
 {
-	/* do nothing */
+	if (mp->mnt_flag & MNT_RDONLY)
+		return EROFS;
+	return 0;
 }
 /* end of vfs default ops */
