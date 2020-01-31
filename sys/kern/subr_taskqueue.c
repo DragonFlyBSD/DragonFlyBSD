@@ -669,4 +669,4 @@ taskqueue_init(void)
 	}
 }
 
-SYSINIT(taskqueueinit, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, taskqueue_init, NULL);
+SYSINIT(taskqueueinit, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, taskqueue_init, NULL);
