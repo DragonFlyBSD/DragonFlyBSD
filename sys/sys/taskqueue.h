@@ -153,8 +153,8 @@ struct __hack
 
 #define	TASKQUEUE_DEFINE_THREAD(name)					\
 TASKQUEUE_DEFINE(name, taskqueue_thread_enqueue, &taskqueue_##name,	\
-	taskqueue_start_threads(&taskqueue_##name, 1, prio,		\
-	"%s taskq", #name))
+	taskqueue_start_threads(&taskqueue_##name, 1,			\
+	TDPRI_KERN_DAEMON, -1, "%s taskq", #name))
 /*
  * This queue is serviced by a software interrupt handler.  To enqueue
  * a task, call taskqueue_enqueue(taskqueue_swi, &task).
