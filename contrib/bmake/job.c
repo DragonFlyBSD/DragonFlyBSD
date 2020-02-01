@@ -373,7 +373,11 @@ static void JobSigLock(sigset_t *);
 static void JobSigUnlock(sigset_t *);
 static void JobSigReset(void);
 
+#ifdef __OpenBSD__
+const char *malloc_options="S";
+#else
 const char *malloc_options="A";
+#endif
 
 static void
 job_table_dump(const char *where)
