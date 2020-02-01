@@ -30,7 +30,7 @@ CFLAGS+=	-DDEFAULT_LD_Z_RELRO=0
 
 LDADD_IBERTY=	${OBJTOP}/block1/libiberty/libiberty.a
 LDADD_GOLD=	${OBJTOP}/block2/libgold/libgold.a
-STD_LDADD=	${LDADD_GOLD} ${LDADD_IBERTY} -lz
+STD_LDADD=	${LDADD_GOLD} ${LDADD_IBERTY} -lz ${CROSS_LIBDL}
 
 # source files common to both ld.gold and incremental-dump
 

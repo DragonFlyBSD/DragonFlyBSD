@@ -75,7 +75,7 @@ elf64-gen.c elf64-x86-64.c: elf64-target.h
 cache.c elf32-i386.c elf64-x86-64.c: bfd_stdint.h
 
 bfd_stdint.h:
-	touch ${.TARGET}
+	echo "#include <stdint.h>" > ${.TARGET}
 
 targmatch.h: config.bfd targmatch.sed
 	sed -f ${CONTRIBDIR}/targmatch.sed < ${CONTRIBDIR}/config.bfd \

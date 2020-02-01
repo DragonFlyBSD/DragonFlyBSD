@@ -26,7 +26,7 @@ LDADD_BFD=	${OBJTOP}/block1/libbfd/libbfd.a
 LDADD_IBERTY=	${OBJTOP}/block1/libiberty/libiberty.a
 LDADD_OPCODE=	${OBJTOP}/block1/libopcodes/libopcodes.a
 
-STD_LDADD=	${LDADD_BU} ${LDADD_BFD} ${LDADD_IBERTY}
+STD_LDADD=	${LDADD_BU} ${LDADD_BFD} ${LDADD_IBERTY} ${CROSS_LIBDL}
 
 bfd_stdint.h:
-	touch ${.TARGET}
+	echo "#include <stdint.h>" > ${.TARGET}

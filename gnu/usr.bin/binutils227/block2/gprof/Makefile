@@ -7,7 +7,7 @@ PROG=	gprof
 SRCS=   ${gprof_SOURCES}
 MFILE=	gprof${MANPAGEVER}.1
 MAN=	${MFILE}
-LDADD=	${LDADD_BFD} ${LDADD_IBERTY} -lz
+LDADD=	${LDADD_BFD} ${LDADD_IBERTY} -lz ${CROSS_LIBDL}
 
 #verbatim from gprof/Makefile
 sources = basic_blocks.c call_graph.c cg_arcs.c cg_dfn.c \
