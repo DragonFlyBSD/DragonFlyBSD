@@ -36,6 +36,7 @@
  */
 
 #include <ctype.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <wchar.h>
 #include <string.h>

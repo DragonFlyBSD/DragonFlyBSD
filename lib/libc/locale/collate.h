@@ -47,9 +47,9 @@
  * Work around buildworld bootstrapping from older systems whose limits.h
  * sets COLL_WEIGHTS_MAX to 0.
  */
-#if COLL_WEIGHTS_MAX == 0
+#ifdef BOOTSTRAPPING
 #undef COLL_WEIGHTS_MAX
-#define COLL_WEIGHTS_MAX 10
+#define COLL_WEIGHTS_MAX 10	/* keep in sync with <limits.h> */
 #endif
 
 #define	COLLATE_STR_LEN		24		/* should be 64-bit multiple */
