@@ -7,6 +7,10 @@ SRCS=	args.c conv.c conv_tab.c dd.c misc.c position.c
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
+.if defined(BOOTSTRAPPING)
+CFLAGS+= -DBOOTSTRAPPING
+.endif
+
 #
 # Test the character conversion functions.  We have to be explicit about
 # which LC_LANG we use because the definition of upper and lower case

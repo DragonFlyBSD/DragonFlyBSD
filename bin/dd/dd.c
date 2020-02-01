@@ -38,9 +38,11 @@
 
 #include <sys/param.h>
 #include <sys/stat.h>
+#ifndef BOOTSTRAPPING
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/filio.h>
+#endif
 
 #include <ctype.h>
 #include <err.h>
@@ -56,6 +58,10 @@
 
 #include "dd.h"
 #include "extern.h"
+
+#ifndef SIGINFO
+#define	SIGINFO	SIGUSR1
+#endif
 
 static void dd_close(void);
 static void dd_in(void);
@@ -254,13 +260,18 @@ static void
 getfdtype(IO *io)
 {
 	struct stat sb;
+#ifndef BOOTSTRAPPING
 	int type;
+#endif
 
 	if (fstat(io->fd, &sb) == -1)
 		err(1, "%s", io->name);
 	if (S_ISREG(sb.st_mode))
 		io->flags |= ISTRUNC;
-	if (S_ISCHR(sb.st_mode) || S_ISBLK(sb.st_mode)) { 
+	if (S_ISCHR(sb.st_mode) || S_ISBLK(sb.st_mode)) {
+#ifdef BOOTSTRAPPING
+		io->flags |= ISSEEK;	/* assume D_DISK|D_MEM in btools */
+#else
 		if (ioctl(io->fd, FIODTYPE, &type) == -1) {
 			err(1, "%s", io->name);
 		} else {
@@ -271,6 +282,7 @@ getfdtype(IO *io)
 			if (S_ISCHR(sb.st_mode) && (type & D_TAPE) == 0)
 				io->flags |= ISCHR;
 		}
+#endif
 		return;
 	}
 	errno = 0;
