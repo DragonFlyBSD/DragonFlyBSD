@@ -57,7 +57,7 @@ main(int argc, char **argv)
 
 	altpath = NULL;
 	want_clear = 0;
-	while ((ch = getopt(argc, argv, "-iP:S:u:v")) != -1)
+	while ((ch = getopt(argc, argv, "iP:S:u:v-")) != -1)
 		switch(ch) {
 		case '-':
 		case 'i':
