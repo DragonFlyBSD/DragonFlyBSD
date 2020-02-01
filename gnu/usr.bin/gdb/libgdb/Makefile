@@ -208,7 +208,7 @@ observer.inc: observer.sh doc/observer.texi
 	sh ${CONTRIBDIR}/observer.sh inc ${CONTRIBDIR}/doc/observer.texi ${.TARGET}
 
 gdb_stdint.h:
-	touch ${.TARGET}
+	echo "#include <stdint.h>" > ${.TARGET}
 
 CLEANFILES+=	observer.h observer.inc gdb_stdint.h \
 		init.c xml-builtin.c common-agent.c
