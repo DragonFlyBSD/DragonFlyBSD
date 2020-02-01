@@ -2,6 +2,7 @@
 
 # Hint HOST_CCVER handling.
 __USE_HOST_CCVER=
+NO_WERROR=
 
 # prefer .s to a .c, add .po, remove stuff not used in the BSD libraries
 # .So used for PIC object files

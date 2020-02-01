@@ -2,6 +2,7 @@
 
 # Hint HOST_CCVER handling.
 __USE_HOST_CCVER=
+NO_WERROR=
 
 .SUFFIXES: .out .nx .no .c .cc .cpp .cxx .C .m .y .l .s .S
 

@@ -98,8 +98,8 @@ LFLAGS		?=
 LD		?=	ld
 NXLD		?=	${NXENV} ${LD}
 LDFLAGS		?=
-NXCFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*:N-flto}
-NXCXXFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*:N-flto:N-std=*}
+NXCFLAGS	?=	${CROSS_CFLAGS} ${CFLAGS:N-mtune*:N-mcpu*:N-march*:N-flto}
+NXCXXFLAGS	?=	${CROSS_CFLAGS} ${CFLAGS:N-mtune*:N-mcpu*:N-march*:N-flto:N-std=*}
 NXLDLIBS	?=	${LDLIBS}
 NXLDFLAGS	?=	-static ${LDFLAGS}
 
