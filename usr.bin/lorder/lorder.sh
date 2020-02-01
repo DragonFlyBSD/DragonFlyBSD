@@ -76,7 +76,7 @@ ${NM} -go $* | sed "
 
 # sort symbols and references on the first field (the symbol)
 # join on that field, and print out the file names.
-sort +1 $R -o $R
-sort +1 $S -o $S
+sort -s -k2,2 -o $R $R
+sort -s -k2,2 -o $S $S
 join -j 2 -o 1.1 2.1 $R $S
 rm -f $R $S
