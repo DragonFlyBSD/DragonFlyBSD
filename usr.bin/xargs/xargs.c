@@ -103,6 +103,10 @@ main(int argc, char *argv[])
 	nargs = 5000;
 	if ((arg_max = sysconf(_SC_ARG_MAX)) == -1)
 		errx(1, "sysconf(_SC_ARG_MAX) failed");
+	if (arg_max > INT32_MAX) {
+		/* cap arg_max to int32_t */
+		arg_max = INT32_MAX;
+	}
 	nline = arg_max - 4 * 1024;
 	while (*ep != NULL) {
 		/* 1 byte for each '\0' */
