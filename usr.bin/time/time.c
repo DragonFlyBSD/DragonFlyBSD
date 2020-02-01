@@ -29,14 +29,12 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.11 2005/03/04 16:54:37 liamfoy Exp $
  */
 
 #include <sys/user.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
-#include <sys/sysctl.h>
 #include <sys/wait.h>
 
 #include <err.h>
@@ -48,6 +46,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 static void humantime(FILE *, long, long);
@@ -121,14 +120,16 @@ main(int argc, char **argv)
 	}
 	/* parent */
 	if (signal(SIGINT, SIG_IGN) == SIG_ERR)
-		err(1, "signal failed");	
+		err(1, "signal failed");
 	if (signal(SIGQUIT, SIG_IGN) == SIG_ERR)
 		err(1, "signal failed");
 	siginfo_recvd = 0;
+#ifdef SIGINFO
 	if (signal(SIGINFO, siginfo) == SIG_ERR)
-		err(1, "signal failed"); 
+		err(1, "signal failed");
 	siginterrupt(SIGINFO,1 );
-	while (wait4(pid, &status, 0, &ru) != pid){ 
+#endif
+	while (wait4(pid, &status, 0, &ru) != pid){
 		if (siginfo_recvd) {
 			siginfo_recvd = 0;
 			if (clock_gettime(CLOCK_MONOTONIC, &after) == -1)
