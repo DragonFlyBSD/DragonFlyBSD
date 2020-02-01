@@ -34,6 +34,7 @@
 /* $FreeBSD: head/usr.bin/fortune/strfile/strfile.h 203926 2010-02-15 15:10:21Z uqs $ */
 
 #include <sys/types.h>
+#include <stdint.h>
 
 #define	STR_ENDSTRING(line,tbl) \
 	(((unsigned char)(line)[0]) == (tbl).str_delim && (line)[1] == '\n')
