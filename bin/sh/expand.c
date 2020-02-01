@@ -1246,7 +1246,11 @@ expmeta(char *enddir, char *name)
 		if (dp->d_name[0] == '.' && ! matchdot)
 			continue;
 		if (patmatch(start, dp->d_name, 0)) {
+#ifdef _DIRENT_HAVE_D_NAMLEN
 			namlen = dp->d_namlen;
+#else
+			namlen = strlen(dp->d_name);
+#endif
 			if (enddir + namlen + 1 > expdir_end)
 				continue;
 			memcpy(enddir, dp->d_name, namlen + 1);
