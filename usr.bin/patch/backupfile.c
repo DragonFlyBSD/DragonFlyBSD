@@ -110,7 +110,11 @@ max_backup_version(const char *file, const char *dir)
 	file_name_length = strlen(file);
 
 	while ((dp = readdir(dirp)) != NULL) {
+#ifdef _DIRENT_HAVE_D_NAMLEN
 		if (dp->d_namlen <= file_name_length)
+#else
+		if (strlen(dp->d_name) <= file_name_length)
+#endif
 			continue;
 
 		this_version = version_number(file, dp->d_name, file_name_length);
