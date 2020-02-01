@@ -39,7 +39,9 @@
 
 #include <err.h>
 #include <errno.h>
+#ifndef BOOTSTRAPPING
 #include <kinfo.h>
+#endif
 #include <locale.h>
 #include <signal.h>
 #include <stdio.h>
@@ -85,7 +87,9 @@ main(int argc, char **argv)
 			hflag = 1;
 			break;
 		case 'l':
+#ifndef BOOTSTRAPPING
 			lflag = 1;
+#endif
 			break;
 		case 'o':
 			ofn = optarg;
@@ -144,6 +148,7 @@ main(int argc, char **argv)
 		warnx("command terminated abnormally");
 	exit_on_sig = WIFSIGNALED(status) ? WTERMSIG(status) : 0;
 	showtime(out, &before_ts, &after, &ru);
+#ifndef BOOTSTRAPPING
 	if (lflag) {
 		int hz;
 		u_long ticks;
@@ -189,6 +194,7 @@ main(int argc, char **argv)
 		fprintf(out, "%10ld  %s\n",
 			ru.ru_nivcsw, "involuntary context switches");
 	}
+#endif
 	/*
 	 * If the child has exited on a signal, exit on the same
 	 * signal, too, in order to reproduce the child's exit
