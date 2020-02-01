@@ -10,6 +10,10 @@ INTERNALLIB=	YES
 CFLAGS+=	-Duchar="unsigned char"
 CXXFLAGS+=	${NOEXCEPTION_FLAGS}
 
+.if defined(BOOTSTRAPPING)
+CFLAGS+=	-DBOOTSTRAPPING
+.endif
+
 CXX_BUILD=	charset.c \
 		directives-only.c \
 		directives.c \

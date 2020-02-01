@@ -177,7 +177,9 @@
 #define HAVE_GETC_UNLOCKED 1
 
 /* Define if you have the iconv() function. */
+#ifndef BOOTSTRAPPING
 #define HAVE_ICONV 1
+#endif
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1

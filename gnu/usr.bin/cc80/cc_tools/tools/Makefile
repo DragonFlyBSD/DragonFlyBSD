@@ -4,6 +4,8 @@
 .include "../Makefile.inc"
 .include "../../Makefile.langs"
 
+NO_WERROR=
+
 NXCXXFLAGS+=		-DGENERATOR_FILE -I${.OBJDIR}
 BUILD_LIBS=		../libiberty/libiberty.na
 BUILD_LIBS_genmatch=	../libcpp/libcpp.na
