@@ -4,4 +4,8 @@
 PROG=	xargs
 SRCS=	xargs.c strnsubst.c
 
+.if defined(BOOTSTRAPPING)
+CFLAGS+= -DBOOTSTRAPPING
+.endif
+
 .include <bsd.prog.mk>

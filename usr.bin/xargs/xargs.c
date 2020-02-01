@@ -43,9 +43,11 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <langinfo.h>
+#include <limits.h>
 #include <locale.h>
 #include <paths.h>
 #include <regex.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,7 +57,9 @@
 
 static void	parse_input(int, char *[]);
 static void	prerun(int, char *[]);
+#ifndef BOOTSTRAPPING
 static int	prompt(void);
+#endif
 static void	run(char **);
 static void	usage(void);
 void		strnsubst(char **, const char *, const char *, size_t);
@@ -144,7 +148,9 @@ main(int argc, char *argv[])
 			oflag = 1;
 			break;
 		case 'p':
+#ifndef BOOTSTRAPPING
 			pflag = 1;
+#endif
 			break;
 		case 'P':
 			if ((maxprocs = atoi(optarg)) <= 0)
@@ -492,6 +498,7 @@ run(char **argv)
 		/*
 		 * If the user has asked to be prompted, do so.
 		 */
+#ifndef BOOTSTRAPPING
 		if (pflag)
 			/*
 			 * If they asked not to exec, return without execution
@@ -507,10 +514,13 @@ run(char **argv)
 			case 2:
 				break;
 			}
+#endif
 		(void)fprintf(stderr, "\n");
 		(void)fflush(stderr);
 	}
+#ifndef BOOTSTRAPPING
 exec:
+#endif
 	childerr = 0;
 	switch(pid = vfork()) {
 	case -1:
@@ -567,6 +577,7 @@ waitchildren(const char *name, int waitall)
 /*
  * Prompt the user about running a command.
  */
+#ifndef BOOTSTRAPPING
 static int
 prompt(void)
 {
@@ -592,6 +603,7 @@ prompt(void)
 	regfree(&cre);
 	return (match == 0);
 }
+#endif
 
 static void
 usage(void)
