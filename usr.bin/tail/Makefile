@@ -4,4 +4,8 @@
 PROG=	tail
 SRCS=	forward.c misc.c read.c reverse.c tail.c
 
+.if defined(BOOTSTRAPPING)
+CFLAGS+= -DBOOTSTRAPPING
+.endif
+
 .include <bsd.prog.mk>

@@ -47,7 +47,9 @@
 int Fflag, fflag, qflag, rflag, rval, no_files;
 const char *fname;
 
+#ifndef BOOTSTRAPPING
 file_info_t *files;
+#endif
 
 static void obsolete(char **);
 static void usage(void);
@@ -62,14 +64,18 @@ main(int argc, char **argv)
 	enum STYLE style;
 	int style_set;
 	int i, ch;
+#ifndef BOOTSTRAPPING
 	file_info_t *file;
+#endif
 
 	obsolete(argv);
 	style_set = 0;
 	while ((ch = getopt(argc, argv, "Fb:c:fn:qr")) != -1)
 		switch(ch) {
 		case 'F':	/* -F is superset of (and implies) -f */
+#ifndef BOOTSTRAPPING
 			Fflag = fflag = 1;
+#endif
 			break;
 		case 'b':
 			getarg(512, FBYTES, RBYTES, &style, &style_set, &off);
@@ -78,7 +84,9 @@ main(int argc, char **argv)
 			getarg(1, FBYTES, RBYTES, &style, &style_set, &off);
 			break;
 		case 'f':
+#ifndef BOOTSTRAPPING
 			fflag = 1;
+#endif
 			break;
 		case 'n':
 			getarg(1, FLINES, RLINES, &style, &style_set, &off);
@@ -125,6 +133,7 @@ main(int argc, char **argv)
 		}
 	}
 
+#ifndef BOOTSTRAPPING
 	if (*argv && fflag) {
 		files = malloc(no_files * sizeof(struct file_info));
 		if (files == NULL)
@@ -145,7 +154,9 @@ main(int argc, char **argv)
 		for (i = 0, file = files; i < no_files; i++, file++)
 			free(file->file_name);
 		free(files);
-	} else if (*argv) {
+	} else
+#endif
+	if (*argv) {
 		for (i = 0; (fname = *argv++) != NULL; ++i) {
 			if ((fp = fopen(fname, "r")) == NULL ||
 			    fstat(fileno(fp), &sb)) {

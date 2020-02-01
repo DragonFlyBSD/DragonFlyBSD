@@ -31,7 +31,6 @@
  *
  * @(#)reverse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/reverse.c,v 1.9.2.3 2001/12/19 20:29:31 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/reverse.c,v 1.5 2006/08/13 02:12:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +40,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

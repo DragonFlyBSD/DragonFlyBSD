@@ -37,7 +37,9 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/mman.h>
+#ifndef BOOTSTRAPPING
 #include <sys/event.h>
+#endif
 
 #include <limits.h>
 #include <fcntl.h>
@@ -53,10 +55,12 @@ static void rlines(FILE *, off_t, struct stat *);
 
 /* defines for inner loop actions */
 #define USE_SLEEP	0
+#ifndef BOOTSTRAPPING
 #define USE_KQUEUE	1
 #define ADD_EVENTS	2
 
 struct kevent *ev;
+#endif
 int action = USE_SLEEP;
 int kq;
 
@@ -228,7 +232,7 @@ rlines(FILE *fp, off_t off, struct stat *sbp)
 /*
  * follow -- display the file, from an offset, forward.
  */
-
+#ifndef BOOTSTRAPPING
 static void
 show(file_info_t *file, int at_index)
 {
@@ -251,6 +255,7 @@ show(file_info_t *file, int at_index)
 		clearerr(file->fp);
 	}
 }
+#endif
 
 void
 showfilename(int at_index, const char *filename)
@@ -269,6 +274,7 @@ showfilename(int at_index, const char *filename)
 	last_index = at_index;
 }
 
+#ifndef BOOTSTRAPPING
 static void
 set_events(file_info_t *files)
 {
@@ -393,3 +399,4 @@ follow(file_info_t *files, enum STYLE style, off_t off)
 		}
 	}
 }
+#endif
