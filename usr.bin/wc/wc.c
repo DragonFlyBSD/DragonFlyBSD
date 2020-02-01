@@ -56,18 +56,20 @@ static void	show_cnt(const char *file, uintmax_t linect, uintmax_t wordct,
 static int	cnt(const char *);
 static void	usage(void);
 
+#ifdef SIGINFO
 static void
 siginfo_handler(int sig __unused)
 {
-
 	siginfo = 1;
 }
+#endif
 
 static void
 reset_siginfo(void)
 {
-
+#ifdef SIGINFO
 	signal(SIGINFO, SIG_DFL);
+#endif
 	siginfo = 0;
 }
 
@@ -105,7 +107,9 @@ main(int argc, char *argv[])
 	argv += optind;
 	argc -= optind;
 
+#ifdef SIGINFO
 	signal(SIGINFO, siginfo_handler);
+#endif
 
 	/* Wc's flags are on by default. */
 	if (doline + doword + dochar + domulti + dolongline == 0)
