@@ -109,7 +109,7 @@ osreldate.h:	${.CURDIR}/../sys/conf/newvers.sh \
 		${.CURDIR}/../sys/sys/param.h
 	@${ECHO} creating osreldate.h from newvers.sh
 	setvar PARAMFILE ${.CURDIR}/../sys/sys/param.h; \
-	. ${.CURDIR}/../sys/conf/newvers.sh;			\
+	. ${.CURDIR}/../sys/conf/newvers.sh "${.CURDIR}/.." ;	\
 	echo "$$COPYRIGHT" > osreldate.h;			\
 	echo "#ifdef _KERNEL" >> osreldate.h;			\
 	echo '#error "osreldate.h must not be used in the kernel, use sys/param.h"' >> osreldate.h; \
