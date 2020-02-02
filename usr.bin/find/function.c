@@ -377,11 +377,13 @@ f_delete(PLAN *plan __unused, FTSENT *entry)
 			entry->fts_accpath);
 
 	/* Turn off user immutable bits if running as root */
+#ifdef _ST_FLAGS_PRESENT_
 	if ((entry->fts_statp->st_flags & (UF_APPEND|UF_IMMUTABLE)) &&
 	    !(entry->fts_statp->st_flags & (SF_APPEND|SF_IMMUTABLE)) &&
 	    geteuid() == 0)
 		lchflags(entry->fts_accpath,
 		       entry->fts_statp->st_flags &= ~(UF_APPEND|UF_IMMUTABLE));
+#endif
 
 	/* rmdir directories, unlink everything else */
 	if (S_ISDIR(entry->fts_statp->st_mode)) {
@@ -733,7 +735,11 @@ f_flags(PLAN *plan, FTSENT *entry)
 {
 	u_long flags;
 
+#ifdef _ST_FLAGS_PRESENT_
 	flags = entry->fts_statp->st_flags;
+#else
+	flags = 0;
+#endif
 	if (plan->flags & F_ATLEAST)
 		return (flags | plan->fl_flags) == flags &&
 		    !(flags & plan->fl_notflags);
@@ -750,7 +756,7 @@ c_flags(OPTION *option, char ***argvp)
 {
 	char *flags_str;
 	PLAN *new;
-	u_long flags, notflags;
+	u_long flags = 0, notflags = 0;
 
 	flags_str = nextarg(option, argvp);
 	ftsoptions &= ~FTS_NOSTAT;
@@ -764,8 +770,10 @@ c_flags(OPTION *option, char ***argvp)
 		new->flags |= F_ANY;
 		flags_str++;
 	}
+#ifdef _ST_FLAGS_PRESENT_
 	if (strtofflags(&flags_str, &flags, &notflags) == 1)
 		errx(1, "%s: %s: illegal flags string", option->name, flags_str);
+#endif
 
 	new->fl_flags = flags;
 	new->fl_notflags = notflags;
@@ -1515,7 +1523,7 @@ c_type(OPTION *option, char ***argvp)
 	case 's':
 		mask = S_IFSOCK;
 		break;
-#ifdef FTS_WHITEOUT
+#if defined(S_IFWHT) && defined(FTS_WHITEOUT)
 	case 'w':
 		mask = S_IFWHT;
 		ftsoptions |= FTS_WHITEOUT;
