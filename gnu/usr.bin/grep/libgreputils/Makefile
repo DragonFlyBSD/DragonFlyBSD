@@ -10,6 +10,10 @@ CONTRIBDIR=	${BASEDIR}/lib
 CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
 
+.if defined(BOOTSTRAPPING)
+CFLAGS+=	-DBOOTSTRAPPING
+.endif
+
 SRCS=		argmatch.c \
 		c-strcasecmp.c \
 		c-strncasecmp.c \

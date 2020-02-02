@@ -48,7 +48,9 @@ enum { EXIT_TROUBLE = 2 };
 # define initialize_main(argcp, argvp)
 #endif
 
+#ifndef BOOTSTRAPPING
 #include "unlocked-io.h"
+#endif
 
 _GL_INLINE_HEADER_BEGIN
 #ifndef SYSTEM_INLINE

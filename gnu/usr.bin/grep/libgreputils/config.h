@@ -412,7 +412,11 @@
 
 /* Define to 1 if you have the declaration of `ferror_unlocked', and to 0 if
    you don't. */
+#ifdef BOOTSTRAPPING
+#define HAVE_DECL_FERROR_UNLOCKED 0
+#else
 #define HAVE_DECL_FERROR_UNLOCKED 1
+#endif
 
 /* Define to 1 if you have the declaration of `fflush_unlocked', and to 0 if
    you don't. */
@@ -619,10 +623,14 @@
 #define HAVE_GETTIMEOFDAY 1
 
 /* Define if you have the iconv() function and it works. */
+#ifndef BOOTSTRAPPING
 #define HAVE_ICONV 1
+#endif
 
 /* Define to 1 if you have the <iconv.h> header file. */
+#ifndef BOOTSTRAPPING
 #define HAVE_ICONV_H 1
+#endif
 
 /* Define to 1 if the compiler supports one of the keywords 'inline',
    '__inline__', '__inline' and effectively inlines functions marked as such.
@@ -1731,7 +1739,9 @@
 /* Define to 1 if you want getc etc. to use unlocked I/O if available.
    Unlocked I/O can improve performance in unithreaded apps, but it is not
    safe for multithreaded apps. */
+#ifndef BOOTSTRAPPING
 #define USE_UNLOCKED_IO 1
+#endif
 
 /* Define if the native Windows multithreading API can be used. */
 /* #undef USE_WINDOWS_THREADS */
