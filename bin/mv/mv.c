@@ -64,7 +64,9 @@ static int	copy(const char *, const char *);
 static int	do_move(const char *, const char *);
 static int	fastcopy(const char *, const char *, struct stat *);
 static void	usage(void);
+#ifdef SIGINFO
 static void	siginfo(int);
+#endif
 
 int
 main(int argc, char *argv[])
@@ -102,7 +104,9 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
+#ifdef SIGINFO
 	signal(SIGINFO, siginfo);
+#endif
 
 	if (argc < 2)
 		usage();
@@ -445,8 +449,10 @@ usage(void)
 	exit(EX_USAGE);
 }
 
+#ifdef SIGINFO
 static void
 siginfo(int notused __unused)
 {
 	info = 1;
 }
+#endif
