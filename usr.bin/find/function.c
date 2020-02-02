@@ -850,7 +850,9 @@ f_fstype(PLAN *plan, FTSENT *entry)
 		 * always copy both of them.
 		 */
 		val_flags = sb.f_flags;
+#ifndef BOOTSTRAPPING
 		val_type = sb.f_type;
+#endif
 	}
 	switch (plan->flags & F_MTMASK) {
 	case F_MTFLAG:
@@ -867,7 +869,9 @@ c_fstype(OPTION *option, char ***argvp)
 {
 	char *fsname;
 	PLAN *new;
+#ifndef BOOTSTRAPPING
 	struct vfsconf vfc;
+#endif
 
 	fsname = nextarg(option, argvp);
 	ftsoptions &= ~FTS_NOSTAT;
@@ -877,11 +881,13 @@ c_fstype(OPTION *option, char ***argvp)
 	/*
 	 * Check first for a filesystem name.
 	 */
+#ifndef BOOTSTRAPPING
 	if (getvfsbyname(fsname, &vfc) == 0) {
 		new->flags |= F_MTTYPE;
 		new->mt_data = vfc.vfc_typenum;
 		return new;
 	}
+#endif
 
 	switch (*fsname) {
 	case 'l':
