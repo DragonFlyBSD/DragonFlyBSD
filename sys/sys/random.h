@@ -61,6 +61,13 @@
 #define	MEM_RETURNIRQ	_IOR('r', 3, u_int16_t)	/* obsolete */
 #define	MEM_FINDIRQ	_IOWR('r', 4, u_int16_t) /* next interrupt */
 
+/*
+ * getrandom()
+ */
+#define GRND_RANDOM	0x0001
+#define GRND_NONBLOCK	0x0002
+#define GRND_INSECURE	0x0004
+
 #ifdef _KERNEL
 
 /*
@@ -85,13 +92,6 @@ struct random_softc {
 	int		sc_intr;
 	int		sc_enabled;
 };
-
-/*
- * getrandom()
- */
-#define GRND_RANDOM	0x0001
-#define GRND_NONBLOCK	0x0002
-#define GRND_INSECURE	0x0004
 
 /* Exported functions */
 
