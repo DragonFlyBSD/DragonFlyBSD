@@ -82,8 +82,12 @@ printtime(time_t ftime)
 	const char *format;
 	static int d_first = -1;
 
+#ifdef D_MD_ORDER
 	if (d_first < 0)
 		d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
+#else
+	d_first = 0;
+#endif
 	if (lnow == 0)
 		lnow = time(NULL);
 

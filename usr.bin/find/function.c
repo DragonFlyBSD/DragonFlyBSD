@@ -1134,11 +1134,15 @@ c_newer(OPTION *option, char ***argvp)
 	new = palloc(option);
 	/* compare against what */
 	if (option->flags & F_TIME2_T) {
+#ifdef BOOTSTRAPPING
+		err(1, "disabled in BTOOLS");
+#else
 		new->t_data.tv_sec = get_date(fn_or_tspec);
 		if (new->t_data.tv_sec == (time_t) -1)
 			errx(1, "Can't parse date/time: %s", fn_or_tspec);
 		/* Use the seconds only in the comparison. */
 		new->t_data.tv_nsec = 999999999;
+#endif
 	} else {
 		if (stat(fn_or_tspec, &sb))
 			err(1, "%s", fn_or_tspec);
