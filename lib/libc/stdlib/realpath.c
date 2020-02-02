@@ -34,6 +34,7 @@
 #include <sys/stat.h>
 
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -75,8 +76,11 @@ realpath(const char * __restrict path, char * __restrict resolved)
 
 	if (getosreldate() >= 500710) {
 		if (__realpath(path, resolved, PATH_MAX) < 0) {
-			if (m)
+			if (m) {
 				free(resolved);
+			} else {
+				snprintf(resolved, PATH_MAX, "%s", path);
+			}
 			return (NULL);
 		}
 		return resolved;
