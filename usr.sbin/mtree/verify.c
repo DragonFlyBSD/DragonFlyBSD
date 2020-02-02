@@ -163,7 +163,9 @@ miss(NODE *p, char *tail)
 	int create;
 	char *tp;
 	const char *type;
+#if HAVE_STRUCT_STAT_ST_FLAGS
 	u_int32_t flags;
+#endif
 
 	for (; p; p = p->next) {
 		if (p->flags & F_OPT && !(p->flags & F_VISIT))

@@ -33,9 +33,11 @@
 
 #include "mtree.h"
 
+#ifdef __DragonFly__
 #define HAVE_STRUCT_STAT_ST_FLAGS 1
- 
-#include <err.h> 
+#endif
+
+#include <err.h>
 #include <fts.h>
 #include <libutil.h>
 #include <stdbool.h>
