@@ -85,9 +85,12 @@
 #define RAND_SRC_UBSEC		0x0008
 #define RAND_SRC_SAFE		0x0009
 #define RAND_SRC_VIRTIO		0x000a
-#define RAND_SRC_THREAD		0x000b
+#define RAND_SRC_THREAD1	0x000b
+#define RAND_SRC_THREAD2	0x000c
+#define RAND_SRC_THREAD3	0x000d
 
 #define RAND_SRC_MASK		0x00FF
+
 #define RAND_SRCF_PCPU		0x0100
 
 /* Type of the cookie passed to add_interrupt_randomness. */

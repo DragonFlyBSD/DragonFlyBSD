@@ -37,6 +37,7 @@ struct csprng_state {
 	struct callout	reseed_callout;
 	uint32_t	failed_reseeds;
 	int		callout_based_reseed;
+	uint8_t		inject_counter[256];
 	long		nrandevents;
 	long		nrandseed;
 	struct timeval  last_reseed;

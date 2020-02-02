@@ -487,6 +487,7 @@ rand_initialize(void)
 {
 	struct csprng_state *state;
 	struct timespec	now;
+	globaldata_t rgd;
 	char buf[64];
 	int i;
 	int n;
@@ -500,6 +501,7 @@ rand_initialize(void)
 
 	for (n = 0; n < ncpus; ++n) {
 		state = &csprng_pcpu[n];
+		rgd = globaldata_find(n);
 
 		/* CSPRNG */
 		csprng_init(state);
@@ -514,16 +516,31 @@ rand_initialize(void)
 
 		for (i = 0; i < (SIZE / 2); ++i) {
 			nanotime(&now);
+			state->inject_counter[RAND_SRC_TIMING] = 0;
 			add_buffer_randomness_state(state,
 						(const uint8_t *)&now.tv_nsec,
 						sizeof(now.tv_nsec),
 						RAND_SRC_TIMING);
+
 			nanouptime(&now);
+			state->inject_counter[RAND_SRC_TIMING] = 0;
 			add_buffer_randomness_state(state,
 						(const uint8_t *)&now.tv_nsec,
 						sizeof(now.tv_nsec),
 						RAND_SRC_TIMING);
 		}
+
+		/*
+		 * In the second call the globaldata structure has enough
+		 * differentiation to give us decent initial divergence
+		 * between cpus.  It isn't really all that random but its
+		 * better than nothing.
+		 */
+		state->inject_counter[RAND_SRC_THREAD2] = 0;
+		add_buffer_randomness_state(state,
+					    (void *)rgd,
+					    sizeof(*rgd),
+					    RAND_SRC_THREAD2);
 
 		/*
 		 * Warm up the generator to get rid of weak initial states.
@@ -535,6 +552,7 @@ rand_initialize(void)
 		 * Chain to next cpu to create as much divergence as
 		 * possible.
 		 */
+		state->inject_counter[RAND_SRC_TIMING] = 0;
 		add_buffer_randomness_state(state, buf, sizeof(buf),
 					    RAND_SRC_TIMING);
 		read_random(buf, sizeof(buf), 1);
@@ -579,18 +597,34 @@ add_interrupt_randomness(int intr)
 	++rand_thread_value;				/* ~1 bit */
 }
 
+/*
+ * Add entropy to our rng.  Half the time we add the entropy to both
+ * csprngs and the other half of the time we add the entropy to one
+ * or the other (so both don't get generated from the same entropy).
+ */
 static int
 add_buffer_randomness_state(struct csprng_state *state,
 			    const char *buf, int bytes, int srcid)
 {
+	uint8_t ic;
+
 	if (state) {
 		spin_lock(&state->spin);
-		L15_Vector(&state->l15, (const LByteType *)buf, bytes);
-		IBAA_Vector(&state->ibaa, buf, bytes);
+		ic = ++state->inject_counter[srcid & 255];
+		if (ic & 1) {
+			L15_Vector(&state->l15, (const LByteType *)buf, bytes);
+			IBAA_Vector(&state->ibaa, buf, bytes);
+			csprng_add_entropy(state, srcid & RAND_SRC_MASK,
+					   (const uint8_t *)buf, bytes, 0);
+		} else if (ic & 2) {
+			L15_Vector(&state->l15, (const LByteType *)buf, bytes);
+			IBAA_Vector(&state->ibaa, buf, bytes);
+		} else {
+			csprng_add_entropy(state, srcid & RAND_SRC_MASK,
+					   (const uint8_t *)buf, bytes, 0);
+		}
 		++state->nrandevents;
 		state->nrandseed += bytes;
-		csprng_add_entropy(state, srcid & RAND_SRC_MASK,
-				   (const uint8_t *)buf, bytes, 0);
 		spin_unlock(&state->spin);
 		wakeup(state);
 	}
@@ -662,23 +696,21 @@ read_random(void *buf, u_int nbytes, int unlimited)
 	}
 	state = &csprng_pcpu[mycpu->gd_cpuid];
 
+	spin_lock(&state->spin);
 	if (rand_mode == 0) {
 		/* Only use CSPRNG */
 		i = csprng_get_random(state, buf, nbytes, 0, unlimited);
 	} else if (rand_mode == 1) {
 		/* Only use IBAA */
-		spin_lock(&state->spin);
 		for (i = 0; i < nbytes; i++)
 			((u_char *)buf)[i] = IBAA_Byte(&state->ibaa);
-		spin_unlock(&state->spin);
 	} else {
 		/* Mix both CSPRNG and IBAA */
 		i = csprng_get_random(state, buf, nbytes, 0, unlimited);
-		spin_lock(&state->spin);
 		for (j = 0; j < i; j++)
 			((u_char *)buf)[j] ^= IBAA_Byte(&state->ibaa);
-		spin_unlock(&state->spin);
 	}
+	spin_unlock(&state->spin);
 	add_interrupt_randomness(0);
 
 	return (i > 0) ? i : 0;
@@ -851,15 +883,15 @@ rand_thread_loop(void *dummy)
 		 */
 		add_buffer_randomness_state(state,
 					    buf, sizeof(buf),
-					    RAND_SRC_THREAD);
+					    RAND_SRC_THREAD1);
 		add_buffer_randomness_state(state,
 					    (void *)&rgd->gd_cnt,
 					    sizeof(rgd->gd_cnt),
-					    RAND_SRC_THREAD);
+					    RAND_SRC_THREAD2);
 		add_buffer_randomness_state(state,
 					    (void *)&rgd->gd_vmtotal,
 					    sizeof(rgd->gd_vmtotal),
-					    RAND_SRC_THREAD);
+					    RAND_SRC_THREAD3);
 
 		read_random(buf, sizeof(buf), 1);
 
@@ -924,7 +956,6 @@ NANOUP_EVENT(struct timespec *last, struct csprng_state *state)
 	/* 
 	 * Ok.
 	 */
-
 	add_buffer_randomness_state(state,
 				    (const uint8_t *)&nsec, sizeof(nsec),
 				    RAND_SRC_INTR);
