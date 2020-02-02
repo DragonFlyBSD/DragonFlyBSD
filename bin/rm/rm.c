@@ -245,12 +245,14 @@ rm_tree(char **argv)
 				fts_set(fts, p, FTS_SKIP);
 				p->fts_number = SKIPPED;
 			}
+#ifdef _ST_FLAGS_PRESENT_
 			else if (!uid &&
 				 (p->fts_statp->st_flags & (UF_APPEND|UF_IMMUTABLE)) &&
 				 !(p->fts_statp->st_flags & (SF_APPEND|SF_IMMUTABLE)) &&
 				 lchflags(p->fts_accpath,
 					 p->fts_statp->st_flags &= ~(UF_APPEND|UF_IMMUTABLE)) < 0)
 				goto err;
+#endif
 			continue;
 		case FTS_DP:
 			/* Post-order: see if user skipped. */
@@ -269,11 +271,13 @@ rm_tree(char **argv)
 		}
 
 		rval = 0;
+#ifdef _ST_FLAGS_PRESENT_
 		if (!uid &&
 		    (p->fts_statp->st_flags & (UF_APPEND|UF_IMMUTABLE)) &&
 		    !(p->fts_statp->st_flags & (SF_APPEND|SF_IMMUTABLE)))
 			rval = lchflags(p->fts_accpath,
 				       p->fts_statp->st_flags &= ~(UF_APPEND|UF_IMMUTABLE));
+#endif
 
 		if (rval == 0) {
 			/*
@@ -324,7 +328,9 @@ rm_tree(char **argv)
 				}
 			}
 		}
+#ifdef _ST_FLAGS_PRESENT_
 err:
+#endif
 		warn("%s", p->fts_path);
 		eval = 1;
 	}
@@ -377,10 +383,12 @@ rm_file(char **argv)
 		if (!fflag && !S_ISWHT(sb.st_mode) && !check(f, f, &sb))
 			continue;
 		rval = 0;
+#ifdef _ST_FLAGS_PRESENT_
 		if (!uid && !S_ISWHT(sb.st_mode) &&
 		    (sb.st_flags & (UF_APPEND|UF_IMMUTABLE)) &&
 		    !(sb.st_flags & (SF_APPEND|SF_IMMUTABLE)))
 			rval = lchflags(f, sb.st_flags & ~(UF_APPEND|UF_IMMUTABLE));
+#endif
 		if (rval == 0) {
 #ifdef S_IFWHT
 			if (S_ISWHT(sb.st_mode))
@@ -494,7 +502,7 @@ check(const char *path, const char *name, struct stat *sp)
 		{ 'v', "never" , 0, 1 },
 		{ 0, NULL, 0, 0 }
 	};
-	char modep[15], *flagsp;
+	char modep[15], *flagsp = NULL;
 
 	if (perm_answer != -1)
 		return (perm_answer);
@@ -513,13 +521,18 @@ check(const char *path, const char *name, struct stat *sp)
 	         * barf later.
 		 */
 		if (!stdin_ok || S_ISLNK(sp->st_mode) || Pflag ||
-		    (!access(name, W_OK) &&
-		    !(sp->st_flags & (SF_APPEND|SF_IMMUTABLE)) &&
-		    (!(sp->st_flags & (UF_APPEND|UF_IMMUTABLE)) || !uid)))
+		    (!access(name, W_OK)
+#ifdef _ST_FLAGS_PRESENT_
+		    && !(sp->st_flags & (SF_APPEND|SF_IMMUTABLE)) &&
+		    (!(sp->st_flags & (UF_APPEND|UF_IMMUTABLE)) || !uid)
+#endif
+		    ))
 			return (1);
 		strmode(sp->st_mode, modep);
+#ifdef _ST_FLAGS_PRESENT_
 		if ((flagsp = fflagstostr(sp->st_flags)) == NULL)
 			err(1, NULL);
+#endif
 		fprintf(stderr, "override %s%s%s/%s %s%sfor %s? ",
 		    modep + 1, modep[9] == ' ' ? "" : " ",
 		    user_from_uid(sp->st_uid, 0),
