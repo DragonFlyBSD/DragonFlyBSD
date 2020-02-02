@@ -46,16 +46,20 @@
 
 #include "find.h"
 
-static int find_compare(const FTSENT * const *s1, const FTSENT * const *s2);
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+#define	FTS_CONST const
+#else
+#define	FTS_CONST
+#endif
 
 /*
  * find_compare --
- *	tell fts_open() how to order the traversal of the hierarchy. 
+ *	tell fts_open() how to order the traversal of the hierarchy.
  *	This variant gives lexicographical order, i.e., alphabetical
  *	order within each directory.
  */
 static int
-find_compare(const FTSENT * const *s1, const FTSENT * const *s2)
+find_compare(const FTSENT *FTS_CONST *s1, const FTSENT *FTS_CONST *s2)
 {
 
 	return (strcoll((*s1)->fts_name, (*s2)->fts_name));
