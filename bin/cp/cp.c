@@ -65,6 +65,12 @@
                 *--(p).p_end = 0;					\
 }
 
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+#define	FTS_CONST const
+#else
+#define	FTS_CONST
+#endif
+
 static char emptystring[] = "";
 
 PATH_T to = { to.p_path, emptystring, "" };
@@ -76,7 +82,7 @@ volatile sig_atomic_t info;
 enum op { FILE_TO_FILE, FILE_TO_DIR, DIR_TO_DNE };
 
 static int copy(char *[], enum op, int);
-static int mastercmp (const FTSENT * const *, const FTSENT * const *);
+static int mastercmp (const FTSENT *FTS_CONST *, const FTSENT *FTS_CONST *);
 #ifdef SIGINFO
 static void siginfo (int);
 #endif
@@ -486,7 +492,7 @@ copy(char *argv[], enum op type, int fts_options)
  *	files first reduces seeking.
  */
 static int
-mastercmp(const FTSENT * const *a, const FTSENT * const *b)
+mastercmp(const FTSENT *FTS_CONST *a, const FTSENT *FTS_CONST *b)
 {
 	int a_info, b_info;
 
