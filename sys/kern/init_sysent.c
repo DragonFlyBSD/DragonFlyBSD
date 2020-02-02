@@ -564,4 +564,6 @@ struct sysent sysent[] = {
 	{ AS(getcpuclockid_args), (sy_call_t *)sys_getcpuclockid },	/* 547 = getcpuclockid */
 	{ AS(wait6_args), (sy_call_t *)sys_wait6 },	/* 548 = wait6 */
 	{ AS(lwp_getname_args), (sy_call_t *)sys_lwp_getname },	/* 549 = lwp_getname */
+	{ AS(getrandom_args), (sy_call_t *)sys_getrandom },	/* 550 = getrandom */
+	{ AS(__realpath_args), (sy_call_t *)sys___realpath },	/* 551 = __realpath */
 };

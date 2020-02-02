@@ -141,12 +141,14 @@
 #include <sys/proc.h>
 #include <sys/lock.h>
 #include <sys/sysctl.h>
+#include <sys/sysproto.h>
 #include <sys/spinlock.h>
 #include <sys/csprng.h>
 #include <machine/atomic.h>
 #include <machine/clock.h>
 
 #include <sys/spinlock2.h>
+#include <sys/signal2.h>
 
 struct csprng_state csprng_state;
 
@@ -621,7 +623,7 @@ static
 int
 sysctl_kern_random(SYSCTL_HANDLER_ARGS)
 {
-	char buf[64];
+	char buf[256];
 	size_t n;
 	size_t r;
 	int error = 0;
@@ -639,6 +641,48 @@ sysctl_kern_random(SYSCTL_HANDLER_ARGS)
 		n -= r;
 	}
 	return(error);
+}
+
+int
+sys_getrandom(struct getrandom_args *uap)
+{
+	char buf[256];
+	ssize_t bytes;
+	ssize_t r;
+	ssize_t n;
+	int error;
+	int sigcnt;
+
+	bytes = (ssize_t)uap->len;
+	if (bytes < 0)
+		return EINVAL;
+
+	r = 0;
+	error = 0;
+	sigcnt = 0;
+
+	while (r < bytes) {
+		n = (ssize_t)sizeof(buf);
+		if (n > bytes - r)
+			n = bytes - r;
+		read_random_unlimited(buf, n);
+		error = copyout(buf, (char *)uap->buf + r, n);
+		if (error)
+			break;
+		r += n;
+		lwkt_user_yield();
+		if (++sigcnt == 128) {
+			sigcnt = 0;
+			if (CURSIG_NOBLOCK(curthread->td_lwp) != 0) {
+				error = EINTR;
+				break;
+			}
+		}
+	}
+	if (error == 0)
+		uap->sysmsg_szresult = r;
+
+	return error;
 }
 
 /*

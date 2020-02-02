@@ -556,4 +556,6 @@ const char *syscallnames[] = {
 	"getcpuclockid",			/* 547 = getcpuclockid */
 	"wait6",			/* 548 = wait6 */
 	"lwp_getname",			/* 549 = lwp_getname */
+	"getrandom",			/* 550 = getrandom */
+	"__realpath",			/* 551 = __realpath */
 };

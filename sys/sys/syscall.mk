@@ -313,4 +313,6 @@ MIASM =  \
 	lwp_create2.o \
 	getcpuclockid.o \
 	wait6.o \
-	lwp_getname.o
+	lwp_getname.o \
+	getrandom.o \
+	__realpath.o

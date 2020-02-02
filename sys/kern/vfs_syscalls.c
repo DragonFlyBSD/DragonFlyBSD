@@ -5215,3 +5215,70 @@ get_fspriv(const char *fsname)
 
 	return PRIV_ROOT;
 }
+
+int
+sys___realpath(struct __realpath_args *uap)
+{
+	struct nlookupdata nd;
+	char *rbuf;
+	char *fbuf;
+	ssize_t rlen;
+	int error;
+
+	/*
+	 * Invalid length if less than 0.  0 is allowed
+	 */
+	if ((ssize_t)uap->len < 0)
+		return EINVAL;
+
+	rbuf = NULL;
+	fbuf = NULL;
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error)
+		goto done;
+
+	nd.nl_flags |= NLC_SHAREDLOCK;
+	error = nlookup(&nd);
+	if (error)
+		goto done;
+
+	if (nd.nl_nch.ncp->nc_vp == NULL) {
+		error = ENOENT;
+		goto done;
+	}
+
+	/*
+	 * Shortcut test for existence.
+	 */
+	if (uap->len == 0) {
+		error = ENAMETOOLONG;
+		goto done;
+	}
+
+	/*
+	 * Obtain the path relative to the process root.  The nch must not
+	 * be locked for the cache_fullpath() call.
+	 */
+	if (nd.nl_flags & NLC_NCPISLOCKED) {
+		nd.nl_flags &= ~NLC_NCPISLOCKED;
+		cache_unlock(&nd.nl_nch);
+	}
+	error = cache_fullpath(curproc, &nd.nl_nch, NULL, &rbuf, &fbuf, 0);
+	if (error)
+		goto done;
+
+	rlen = (ssize_t)strlen(rbuf);
+	if (rlen >= uap->len) {
+		error = ENAMETOOLONG;
+		goto done;
+	}
+	error = copyout(rbuf, uap->buf, rlen + 1);
+	if (error == 0)
+		uap->sysmsg_szresult = rlen;
+done:
+	nlookup_done(&nd);
+	if (fbuf)
+		kfree(fbuf, M_TEMP);
+
+	return error;
+}

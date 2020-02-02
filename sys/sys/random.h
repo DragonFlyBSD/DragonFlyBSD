@@ -86,6 +86,12 @@ struct random_softc {
 	int		sc_enabled;
 };
 
+/*
+ * getrandom()
+ */
+#define GRND_RANDOM	0x0001
+#define GRND_NONBLOCK	0x0002
+
 /* Exported functions */
 
 void rand_initialize(void);
@@ -100,5 +106,7 @@ struct knote;
 int random_filter_read(struct knote *kn, long hint);
 
 #endif /* _KERNEL */
+
+ssize_t getrandom(void *buf, size_t buflen, unsigned int flags);
 
 #endif /* !_SYS_RANDOM_H_ */

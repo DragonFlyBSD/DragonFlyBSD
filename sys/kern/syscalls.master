@@ -734,3 +734,5 @@
 548	STD	{ int wait6(idtype_t idtype, id_t id, int *status, int options, \
 				struct __wrusage *wrusage, siginfo_t *info); }
 549	STD	{ int lwp_getname(lwpid_t tid, char *name, size_t len); }
+550	STD	{ ssize_t getrandom(void *buf, size_t len, unsigned flags); }
+551	STD	{ ssize_t __realpath(const char *path, char *buf, size_t len); }

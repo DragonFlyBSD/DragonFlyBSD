@@ -2354,6 +2354,22 @@ struct	lwp_getname_args {
 	char *	name;	char name_[PAD_(char *)];
 	size_t	len;	char len_[PAD_(size_t)];
 };
+struct	getrandom_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	void *	buf;	char buf_[PAD_(void *)];
+	size_t	len;	char len_[PAD_(size_t)];
+	unsigned	flags;	char flags_[PAD_(unsigned)];
+};
+struct	__realpath_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	const char *	path;	char path_[PAD_(const char *)];
+	char *	buf;	char buf_[PAD_(char *)];
+	size_t	len;	char len_[PAD_(size_t)];
+};
 
 #ifdef _KERNEL
 
@@ -2672,6 +2688,8 @@ int	sys_lwp_create2 (struct lwp_create2_args *);
 int	sys_getcpuclockid (struct getcpuclockid_args *);
 int	sys_wait6 (struct wait6_args *);
 int	sys_lwp_getname (struct lwp_getname_args *);
+int	sys_getrandom (struct getrandom_args *);
+int	sys___realpath (struct __realpath_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

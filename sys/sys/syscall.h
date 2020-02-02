@@ -384,4 +384,6 @@
 #define	SYS_getcpuclockid	547
 #define	SYS_wait6	548
 #define	SYS_lwp_getname	549
-#define	SYS_MAXSYSCALL	550
+#define	SYS_getrandom	550
+#define	SYS___realpath	551
+#define	SYS_MAXSYSCALL	552
