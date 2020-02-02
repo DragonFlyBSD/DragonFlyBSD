@@ -31,7 +31,7 @@
 #include <stddef.h>
 
 /*
- * This header is for compatibility only.
+ * This header is for compatibility only.  Keep __GNUC__ >= 2 for ports tests.
  */
 
 __BEGIN_DECLS
