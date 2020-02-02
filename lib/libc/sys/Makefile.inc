@@ -87,7 +87,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 bind.2 \
 	pathconf.2 pipe.2 poll.2 procctl.2 profil.2 pselect.2 ptrace.2 \
 	quotactl.2 \
 	read.2 readlink.2 reboot.2 recv.2 rename.2 revoke.2 rfork.2 rmdir.2 \
-	rtprio.2 \
+	rtprio.2 __realpath.2 \
 	sbrk.2 sched_getcpu.2 sched_get_priority_max.2 sched_setaffinity.2 \
 	sched_setparam.2 sched_setscheduler.2 sched_yield.2 \
 	select.2 semctl.2 semget.2 semop.2 send.2 sendfile.2 \

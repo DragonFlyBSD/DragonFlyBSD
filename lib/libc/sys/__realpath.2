@@ -1,0 +1,113 @@
+.\" Copyright (c) 2020 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.Dd February 2, 2020
+.Dt __REALPATH 2
+.Os
+.Sh NAME
+.Nm __realpath
+.Nd resolves the canonicalized absolute pathname
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.Ft "int"
+.Fn __realpath "const char * restrict pathname" "char * restrict resolved_path" "size_t len"
+.Sh DESCRIPTION
+The
+.Fn __realpath
+system call is used to support the libc
+.Fn realpath
+library call.
+It basically does the same thing but with a lower-level system-call
+compatible API.
+The system call differs from the libc function as follows:
+It requires that the target buffer and the size of the target
+buffer be supplied, it does not (obviously) allocate a target buffer if NULL
+is supplied, and it returns the string length of the target buffer (not
+including the terminator) or -1.
+If a failure occurs, the target buffer will not be modified (whereas it is
+in the libc function).
+.Pp
+The system call will resolves all symbolic links, extra
+.Dq /
+characters and references to
+.Pa /./
+and
+.Pa /../
+in
+.Fa pathname ,
+and copies the resulting absolute pathname into
+the memory pointed to by
+.Fa resolved_path .
+The
+.Fa resolved_path
+argument
+.Em must
+point to a buffer capable of storing at least
+.Dv len
+characters, and may not be
+.Dv NULL .
+.Pp
+The
+.Fn __realpath
+function will resolve both absolute and relative paths
+and return the absolute pathname corresponding to
+.Fa pathname .
+All components of
+.Fa pathname
+must exist when
+.Fn __realpath
+is called, and all but the last component must name either directories or
+symlinks pointing to the directories.
+.Sh "RETURN VALUES"
+The
+.Fn realpath
+function returns
+the string length of the path stored in the target buffer, not including
+the terminator, or -1 on failure.
+.Sh ERRORS
+The function
+may fail and set the external variable
+.Va errno
+for any of the errors specified for the library function
+.Xr realpath 3 .
+.Sh SEE ALSO
+.Xr realpath 3
+.Sh HISTORY
+The
+.Fn __realpath
+function first appeared in
+.Dx 5.7 .
+.Sh CAVEATS
+This is the system call version of the libc
+.Fn realpath
+function, but is not a replacement for the libc function due to
+necessary API differences.
