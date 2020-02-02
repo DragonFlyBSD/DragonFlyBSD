@@ -260,7 +260,7 @@ killdiv(void)
 		}
 }
 
-extern char *__progname;
+extern const char *__progname;
 
 void
 m4errx(int evaluation, const char *fmt, ...)
