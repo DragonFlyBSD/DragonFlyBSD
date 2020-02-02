@@ -6,13 +6,17 @@
 PROG=	mtree
 MAN=	mtree.8
 SRCS=	compare.c crc.c create.c excludes.c misc.c mtree.c spec.c verify.c
-SRCS+=	specspec.c getid.c only.c
+SRCS+=	specspec.c only.c
 
 SRCS+=	pack_dev.c stat_flags.c
 CFLAGS+=-DHAVE_NETDB_H
 
 DPADD+=	${LIBUTIL}
 LDADD+=	-lutil
+
+.if !defined(BOOTSTRAPPING)
+SRCS+= getid.c
+.endif
 
 .if !defined(BOOTSTRAPPING) && !defined(RESCUE)
 SRCS+= hash.c
@@ -22,12 +26,10 @@ LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .else
 CFLAGS+=-DNO_MD5 -DNO_SHA -DNO_RMD160
+CFLAGS+=-DBOOTSTRAPPING
 .if ${WORLD_VERSION} < 500302 # pwcache(3)/vis(3) upgrades came in about here
 .PATH: ${.CURDIR}/../../lib/libc/gen
-SRCS+=	pwcache.c vis.c
-CFLAGS+=-I${.CURDIR}/../../lib/libc/include
-CFLAGS+=-include ${.CURDIR}/../../include/grp.h
-CFLAGS+=-include ${.CURDIR}/../../include/pwd.h
+SRCS+=	vis.c
 CFLAGS+=-include ${.CURDIR}/../../include/vis.h
 .endif
 .endif
