@@ -140,8 +140,10 @@ main(int argc, char *argv[])
 			dodir = 1;
 			break;
 		case 'f':
+#ifdef _ST_FLAGS_PRESENT_
 			haveopt_f = 1;
 			fflags = optarg;
+#endif
 			break;
 		case 'g':
 			haveopt_g = 1;
@@ -265,11 +267,13 @@ main(int argc, char *argv[])
 	} else
 		uid = (uid_t)-1;
 
+#ifdef _ST_FLAGS_PRESENT_
 	if (fflags != NULL && !dounpriv) {
 		if (strtofflags(&fflags, &fset, &fclr))
 			errx(EX_USAGE, "%s: invalid flag", fflags);
 		iflags |= SETFLAGS;
 	}
+#endif
 
 	if (dodir) {
 		for (; *argv != NULL; ++argv)
@@ -384,9 +388,11 @@ do_link(const char *from_name, const char *to_name,
 				unlink(tmpl);
 				err(EX_OSERR, "%s", to_name);
 			}
+#ifdef _ST_FLAGS_PRESENT_
 			if (target_sb->st_flags & NOCHANGEBITS)
 				(void)chflags(to_name, target_sb->st_flags &
 				     ~NOCHANGEBITS);
+#endif
 			if (verbose)
 				printf("install: link %s -> %s\n",
 				    from_name, to_name);
@@ -430,9 +436,11 @@ do_symlink(const char *from_name, const char *to_name,
 			(void)unlink(tmpl);
 			err(EX_OSERR, "%s", to_name);
 		}
+#ifdef _ST_FLAGS_PRESENT_
 		if (target_sb->st_flags & NOCHANGEBITS)
 			(void)chflags(to_name, target_sb->st_flags &
 			     ~NOCHANGEBITS);
+#endif
 		if (verbose)
 			printf("install: symlink %s -> %s\n",
 			    from_name, to_name);
@@ -586,7 +594,9 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	struct utimbuf utb;
 	int devnull, files_match, from_fd, serrno, target;
 	int tempcopy, temp_fd, to_fd;
+#ifdef _ST_FLAGS_PRESENT_
 	u_long nfset;
+#endif
 	char backup[MAXPATHLEN], *p, pathbuf[MAXPATHLEN], tempfile[MAXPATHLEN];
 
 	files_match = 0;
@@ -622,9 +632,11 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 		if (target && !safecopy) {
 			if (to_sb.st_mode & S_IFDIR && rmdir(to_name) == -1)
 				err(EX_OSERR, "%s", to_name);
+#ifdef _ST_FLAGS_PRESENT_
 			if (to_sb.st_flags & NOCHANGEBITS)
 				(void)chflags(to_name,
 				    to_sb.st_flags & ~NOCHANGEBITS);
+#endif
 			unlink(to_name);
 		}
 		makelink(from_name, to_name, target ? &to_sb : NULL);
@@ -732,9 +744,11 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	 * and the files are different (or just not compared).
 	 */
 	if (tempcopy && !files_match) {
+#ifdef _ST_FLAGS_PRESENT_
 		/* Try to turn off the immutable bits. */
 		if (to_sb.st_flags & NOCHANGEBITS)
 			(void)chflags(to_name, to_sb.st_flags & ~NOCHANGEBITS);
+#endif
 		if (dobackup) {
 			if ((size_t)snprintf(backup, MAXPATHLEN, "%s%s", to_name,
 			    suffix) != strlen(to_name) + strlen(suffix)) {
@@ -788,6 +802,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	 * Set owner, group, mode for target; do the chown first,
 	 * chown may lose the setuid bits.
 	 */
+#ifdef _ST_FLAGS_PRESENT_
 	if (!dounpriv && ((gid != (gid_t)-1 && gid != to_sb.st_gid) ||
 	    (uid != (uid_t)-1 && uid != to_sb.st_uid) ||
 	    (mode != to_sb.st_mode))) {
@@ -795,6 +810,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 		if (to_sb.st_flags & NOCHANGEBITS)
 			(void)fchflags(to_fd, to_sb.st_flags & ~NOCHANGEBITS);
 	}
+#endif
 
 	if (!dounpriv && (
 	    (gid != (gid_t)-1 && gid != to_sb.st_gid) ||
@@ -823,6 +839,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	 * the target was created (which is inherited from the target's
 	 * parent directory) is retained.
 	 */
+#ifdef _ST_FLAGS_PRESENT_
 	if (flags & SETFLAGS) {
 		nfset = (to_sb.st_flags | fset) & ~fclr;
 	} else {
@@ -847,6 +864,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 			}
 		}
 	}
+#endif
 
 	(void)close(to_fd);
 	if (!devnull)
@@ -954,8 +972,10 @@ create_newfile(const char *path, int target, struct stat *sbp)
 		 * off the append/immutable bits -- if we fail, go ahead,
 		 * it might work.
 		 */
+#ifdef _ST_FLAGS_PRESENT_
 		if (sbp->st_flags & NOCHANGEBITS)
 			(void)chflags(path, sbp->st_flags & ~NOCHANGEBITS);
+#endif
 
 		if (dobackup) {
 			if ((size_t)snprintf(backup, MAXPATHLEN, "%s%s",
