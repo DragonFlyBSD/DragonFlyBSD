@@ -31,16 +31,6 @@
  * $FreeBSD: head/usr.bin/stat/stat.c 265893 2014-05-11 18:49:18Z thomas $
  */
 
-#if HAVE_CONFIG_H
-#include "config.h" 
-#else  /* HAVE_CONFIG_H */
-#define HAVE_STRUCT_STAT_ST_FLAGS 1
-#define HAVE_STRUCT_STAT_ST_GEN 1
-#define HAVE_STRUCT_STAT_ST_BIRTHTIME 0
-#define HAVE_STRUCT_STAT_ST_ATIM 1
-#define HAVE_DEVNAME 1
-#endif /* HAVE_CONFIG_H */
-
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -58,6 +48,20 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#ifdef BOOTSTRAPPING
+#define HAVE_DEVNAME 0
+#define HAVE_STRUCT_STAT_ST_FLAGS 0
+#define HAVE_STRUCT_STAT_ST_GEN 0
+#define HAVE_STRUCT_STAT_ST_BIRTHTIME 0
+#define HAVE_STRUCT_STAT_ST_ATIM 1
+#else
+#define HAVE_DEVNAME 1
+#define HAVE_STRUCT_STAT_ST_FLAGS 1
+#define HAVE_STRUCT_STAT_ST_GEN 1
+#define HAVE_STRUCT_STAT_ST_BIRTHTIME 0
+#define HAVE_STRUCT_STAT_ST_ATIM 1
+#endif
 
 #if HAVE_STRUCT_STAT_ST_FLAGS
 #define DEF_F "%#Xf "
@@ -180,7 +184,9 @@ static int	format1(const struct stat *,	/* stat info */
 		    char *, size_t,		/* a place to put the output */
 		    int, int, int, int,		/* the parsed format */
 		    int, int);
+#if HAVE_DEVNAME
 static int	hex2byte(const char [2]);
+#endif
 #if HAVE_STRUCT_STAT_ST_FLAGS
 static char	*xfflagstostr(unsigned long);
 #endif
@@ -201,8 +207,10 @@ main(int argc, char *argv[])
 	int ch, rc, errs, am_readlink;
 	int lsF, fmtchar, usestat, nfs_handle, fn, nonl, quiet;
 	const char *statfmt, *options, *synopsis;
+#if HAVE_DEVNAME
 	char dname[sizeof _PATH_DEV + MNAMELEN] = _PATH_DEV;
 	fhandle_t fhnd;
+#endif
 	const char *file;
 
 	am_readlink = 0;
@@ -314,17 +322,20 @@ main(int argc, char *argv[])
 	errs = 0;
 	do {
 		if (argc == 0) {
+#if HAVE_DEVNAME
 			if (fdevname_r(STDIN_FILENO, dname +
 			    sizeof _PATH_DEV - 1, MNAMELEN) == 0)
 				file = dname;
 			else
+#endif
 				file = "(stdin)";
 			rc = fstat(STDIN_FILENO, &st);
 		} else {
-			int j;
-
 			file = argv[0];
 			if (nfs_handle) {
+#if HAVE_DEVNAME
+				int j;
+
 				rc = 0;
 				bzero(&fhnd, sizeof(fhnd));
 				j = MIN(2 * sizeof(fhnd), strlen(file));
@@ -343,7 +354,9 @@ main(int argc, char *argv[])
 					errno = EINVAL;
 				else
 					rc = fhstat(&fhnd, &st);
-
+#else
+				err(1, "-H is disabled in btools");
+#endif
 			} else if (usestat) {
 				/*
 				 * Try stat() and if it fails, fall back to
@@ -634,13 +647,15 @@ format1(const struct stat *st,
 #if HAVE_DEVNAME
 		sdata = (what == SHOW_st_dev) ?
 		    devname(st->st_dev, S_IFBLK) :
-		    devname(st->st_rdev, 
+		    devname(st->st_rdev,
 		    S_ISCHR(st->st_mode) ? S_IFCHR :
 		    S_ISBLK(st->st_mode) ? S_IFBLK :
 		    0U);
+#else
+		sdata = NULL;
+#endif /* HAVE_DEVNAME */
 		if (sdata == NULL)
 			sdata = "???";
-#endif /* HAVE_DEVNAME */
 		if (hilo == HIGH_PIECE) {
 			data = major(data);
 			hilo = 0;
@@ -1082,7 +1097,7 @@ format1(const struct stat *st,
 	return (snprintf(buf, blen, lfmt, data));
 }
 
-
+#if HAVE_DEVNAME
 #define hex2nibble(c) (c <= '9' ? c - '0' : toupper(c) - 'A' + 10)
 static int
 hex2byte(const char c[2]) {
@@ -1090,3 +1105,4 @@ hex2byte(const char c[2]) {
 		return -1;
 	return (hex2nibble(c[0]) << 4) + hex2nibble(c[1]);
 }
+#endif
