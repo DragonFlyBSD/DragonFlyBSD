@@ -3,7 +3,6 @@ LIB=	tic
 
 # keep at low warns, hostlib
 WARNS=	1
-NO_WERROR=
 
 ZTIC=	yes
 CFLAGS+=	-DDRAGONFLY_NATIVE
