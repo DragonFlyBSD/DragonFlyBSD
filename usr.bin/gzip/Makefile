@@ -4,6 +4,10 @@
 PROG=		gzip
 MAN=		gzip.1 gzexe.1 zdiff.1 zforce.1 zgrep.1 zmore.1 znew.1
 
+.if defined(BOOTSTRAPPING) && exists(${_SHLIBDIRPREFIX}/usr/lib/libz.a)
+LDFLAGS+=	-L${_SHLIBDIRPREFIX}/usr/lib
+.endif
+
 DPADD=		${LIBZ}
 LDADD=		-lz
 

@@ -1,11 +1,14 @@
 #	$OpenBSD: Makefile,v 1.10 2002/04/26 13:13:41 espie Exp $
 # $FreeBSD: src/usr.bin/m4/Makefile,v 1.14 2013/01/01 18:26:42 svnexp Exp $
 
-# -DEXTENDED 
+# -DEXTENDED
 # 	if you want the paste & spaste macros.
 
 PROG=	m4
 CFLAGS+=-DEXTENDED -I${.CURDIR} -I${.CURDIR}/lib -I.
+.if defined(BOOTSTRAPPING) && exists(${_SHLIBDIRPREFIX}/usr/lib/libl.a)
+LDFLAGS+=	-L${_SHLIBDIRPREFIX}/usr/lib
+.endif
 DPADD=	${LIBY} ${LIBL} ${LIBM}
 LDADD=	-ly -ll -lm
 

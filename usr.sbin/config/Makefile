@@ -9,6 +9,10 @@ MAN=	config.8
 DPADD=	${LIBL}
 LDADD=	-ll
 
+.if defined(BOOTSTRAPPING) && exists(${_SHLIBDIRPREFIX}/usr/lib/libl.a)
+LDFLAGS+=	-L${_SHLIBDIRPREFIX}/usr/lib
+.endif
+
 # XXX: for now do not let the use of -flto, gcc80
 .if ${CFLAGS:M-flto}
 CFLAGS+=	-fno-lto
