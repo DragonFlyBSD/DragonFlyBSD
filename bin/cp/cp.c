@@ -77,7 +77,9 @@ enum op { FILE_TO_FILE, FILE_TO_DIR, DIR_TO_DNE };
 
 static int copy(char *[], enum op, int);
 static int mastercmp (const FTSENT * const *, const FTSENT * const *);
+#ifdef SIGINFO
 static void siginfo (int);
+#endif
 
 int
 main(int argc, char *argv[])
@@ -165,7 +167,9 @@ main(int argc, char *argv[])
 		fts_options &= ~FTS_PHYSICAL;
 		fts_options |= FTS_LOGICAL | FTS_COMFOLLOW;
 	}
+#ifdef SIGINFO
 	signal(SIGINFO, siginfo);
+#endif
 
 	/* Save the target base in "to". */
 	target = argv[--argc];
@@ -499,9 +503,10 @@ mastercmp(const FTSENT * const *a, const FTSENT * const *b)
 	return (0);
 }
 
+#ifdef SIGINFO
 static void
 siginfo(int sig __unused)
 {
-
 	info = 1;
 }
+#endif
