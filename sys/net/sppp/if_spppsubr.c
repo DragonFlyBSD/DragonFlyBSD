@@ -4261,7 +4261,7 @@ sppp_chap_scr(struct sppp *sp)
 
 	/* Compute random challenge. */
 	ch = (u_long *)sp->myauth.challenge;
-	read_random(&seed, sizeof seed);
+	read_random(&seed, sizeof(seed), 0);
 	ch[0] = seed ^ krandom();
 	ch[1] = seed ^ krandom();
 	ch[2] = seed ^ krandom();

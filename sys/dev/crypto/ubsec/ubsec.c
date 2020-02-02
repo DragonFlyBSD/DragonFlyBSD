@@ -952,7 +952,7 @@ ubsec_newsession(device_t dev, u_int32_t *sidp, struct cryptoini *cri)
 	bzero(ses, sizeof(struct ubsec_session));
 	ses->ses_used = 1;
 	if (encini) {
-		read_random(ses->ses_iv, sizeof(ses->ses_iv));
+		read_random(ses->ses_iv, sizeof(ses->ses_iv), 0);
 		if (encini->cri_key != NULL) {
 			ubsec_setup_enckey(ses, encini->cri_alg,
 			    encini->cri_key);

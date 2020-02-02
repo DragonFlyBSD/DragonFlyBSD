@@ -74,17 +74,21 @@
  * XXX: consider only statically allocating some, and allocating
  *      most others dynamically.
  */
-#define RAND_SRC_UNKNOWN	0x00
-#define RAND_SRC_SEEDING	0x01
-#define RAND_SRC_TIMING		0x02
-#define RAND_SRC_INTR		0x03
-#define RAND_SRC_RDRAND		0x04
-#define RAND_SRC_PADLOCK	0x05
-#define RAND_SRC_GLXSB		0x06
-#define RAND_SRC_HIFN		0x07
-#define RAND_SRC_UBSEC		0x08
-#define RAND_SRC_SAFE		0x09
-#define RAND_SRC_VIRTIO		0x0a
+#define RAND_SRC_UNKNOWN	0x0000
+#define RAND_SRC_SEEDING	0x0001
+#define RAND_SRC_TIMING		0x0002
+#define RAND_SRC_INTR		0x0003
+#define RAND_SRC_RDRAND		0x0004
+#define RAND_SRC_PADLOCK	0x0005
+#define RAND_SRC_GLXSB		0x0006
+#define RAND_SRC_HIFN		0x0007
+#define RAND_SRC_UBSEC		0x0008
+#define RAND_SRC_SAFE		0x0009
+#define RAND_SRC_VIRTIO		0x000a
+#define RAND_SRC_THREAD		0x000b
+
+#define RAND_SRC_MASK		0x00FF
+#define RAND_SRCF_PCPU		0x0100
 
 /* Type of the cookie passed to add_interrupt_randomness. */
 
@@ -101,8 +105,7 @@ void add_interrupt_randomness(int intr);
 int add_buffer_randomness(const char *, int);
 int add_buffer_randomness_src(const char *, int, int srcid);
 
-u_int read_random(void *buf, u_int size);
-u_int read_random_unlimited(void *buf, u_int size);
+u_int read_random(void *buf, u_int size, int unlimited);
 struct knote;
 int random_filter_read(struct knote *kn, long hint);
 

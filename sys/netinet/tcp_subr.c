@@ -1670,7 +1670,7 @@ tcp_new_isn(struct tcpcb *tp)
 	if ((isn_last_reseed == 0) || ((tcp_isn_reseed_interval > 0) &&
 	     (((u_int)isn_last_reseed + (u_int)tcp_isn_reseed_interval*hz)
 		< (u_int)ticks))) {
-		read_random_unlimited(&isn_secret, sizeof isn_secret);
+		read_random(&isn_secret, sizeof isn_secret, 1);
 		isn_last_reseed = ticks;
 	}
 

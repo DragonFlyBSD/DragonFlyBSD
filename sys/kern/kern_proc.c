@@ -1007,7 +1007,7 @@ proc_add_allproc(struct proc *p)
 	int random_offset;
 
 	if ((random_offset = randompid) != 0) {
-		read_random(&random_offset, sizeof(random_offset));
+		read_random(&random_offset, sizeof(random_offset), 1);
 		random_offset = (random_offset & 0x7FFFFFFF) % randompid;
 	}
 	proc_makepid(p, random_offset);

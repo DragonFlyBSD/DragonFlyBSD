@@ -58,7 +58,7 @@ arc4_randomstir(struct arc4_data *d)
 	 * XXX read_random() returns unsafe numbers if the entropy
 	 * device is not loaded -- MarkM.
 	 */
-	r = read_random_unlimited(key, ARC4_KEYBYTES);
+	r = read_random(key, ARC4_KEYBYTES, 1);
 	/* If r == 0 || -1, just use what was on the stack. */
 	if (r > 0) {
 		for (n = r; n < sizeof(key); n++)

@@ -248,7 +248,7 @@ sbsh_attach(device_t dev)
 	init_card(sc);
 	/* generate ethernet MAC address */
 	*(u_int32_t *)sc->arpcom.ac_enaddr = htonl(0x00ff0192);
-	read_random_unlimited(sc->arpcom.ac_enaddr + 4, 2);
+	read_random(sc->arpcom.ac_enaddr + 4, 2, 1);
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;

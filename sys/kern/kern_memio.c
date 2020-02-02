@@ -295,7 +295,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 					error = EPERM;
 				}
 			} else {
-				poolsize = read_random(buf, c);
+				poolsize = read_random(buf, c, 0);
 				if (poolsize == 0) {
 					if (buf)
 						kfree(buf, M_TEMP);
@@ -328,7 +328,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			}
 			if (buf == NULL)
 				buf = kmalloc(PAGE_SIZE, M_TEMP, M_WAITOK);
-			poolsize = read_random_unlimited(buf, c);
+			poolsize = read_random(buf, c, 1);
 			c = min(c, poolsize);
 			error = uiomove(buf, (int)c, uio);
 			continue;

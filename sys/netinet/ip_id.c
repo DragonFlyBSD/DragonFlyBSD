@@ -119,7 +119,7 @@ ip_randomid(void)
 	 */
 	if (info->randidx == 0) {
 		info->randidx = IPRANDCOUNT;
-		read_random_unlimited(info->randdata, sizeof(info->randdata));
+		read_random(info->randdata, sizeof(info->randdata), 1);
 	}
 
 	/*

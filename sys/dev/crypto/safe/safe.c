@@ -790,7 +790,7 @@ safe_newsession(device_t dev, u_int32_t *sidp, struct cryptoini *cri)
 	if (encini) {
 		/* get an IV */
 		/* XXX may read fewer than requested */
-		read_random(ses->ses_iv, sizeof(ses->ses_iv));
+		read_random(ses->ses_iv, sizeof(ses->ses_iv), 0);
 
 		ses->ses_klen = encini->cri_klen;
 		if (encini->cri_key != NULL)

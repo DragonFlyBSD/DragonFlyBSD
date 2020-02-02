@@ -128,6 +128,25 @@
  *
  * For a proper changelog, refer to the version control history of this
  * file.
+ *
+ * January 2020:
+ *
+ * o Made the random number generator per-cpu.
+ *
+ * o Certain entropy sources, such as RDRAND, are per-cpu.
+ *
+ * o Fixed sources such as entropy saved across reboots is split across
+ *   available cpus.  Interrupt and generic sources are dribbled across
+ *   available cpus.
+ *
+ * o In addition, we chain random generator data into the buffer randomness
+ *   from cpu to cpu to force the cpus to diverge quickly from initial states.
+ *   This ensures that no cpu is starved.  This is done at early-init and also
+ *   at regular intervals by rand_thread_loop().
+ *
+ *   The chaining forces the cpus to diverge quickly and also ensures that
+ *   all entropy data ultimately affects all cpus regardless of which cpu
+ *   the entropy was injected into.  The combination should be pretty killer.
  */
 
 #include <sys/types.h>
@@ -144,13 +163,34 @@
 #include <sys/sysproto.h>
 #include <sys/spinlock.h>
 #include <sys/csprng.h>
+#include <sys/malloc.h>
 #include <machine/atomic.h>
 #include <machine/clock.h>
 
 #include <sys/spinlock2.h>
 #include <sys/signal2.h>
 
-struct csprng_state csprng_state;
+static struct csprng_state *csprng_pcpu;
+static struct csprng_state csprng_boot;
+
+static MALLOC_DEFINE(M_NRANDOM, "nrandom", "csprng");
+
+static int add_buffer_randomness_state(struct csprng_state *state,
+			    const char *buf, int bytes, int srcid);
+
+static
+struct csprng_state *
+iterate_csprng_state(int bytes __unused)
+{
+	static unsigned int csprng_iterator;
+	unsigned int n;
+
+	if (csprng_pcpu) {
+		n = csprng_iterator++ % ncpus;
+		return &csprng_pcpu[n];
+	}
+	return NULL;
+}
 
 /*
  * Portability note: The u_char/unsigned char type is used where
@@ -172,19 +212,8 @@ struct csprng_state csprng_state;
  *           http://www.burtleburtle.net/bob/rand/isaac.html
  */
 
-/*
- * ^ means XOR, & means bitwise AND, a<<b means shift a by b.
- * barrel(a) shifts a 19 bits to the left, and bits wrap around
- * ind(x) is (x AND 255), or (x mod 256)
- */
 typedef	u_int32_t	u4;   /* unsigned four bytes, 32 bits */
 
-#define	ALPHA		(8)
-#define	SIZE		(1 << ALPHA)
-#define MASK		(SIZE - 1)
-#define	ind(x)		((x) & (SIZE - 1))
-#define	barrel(a)	(((a) << 20) ^ ((a) >> 12))  /* beta=32,shift=20 */
- 
 static void IBAA
 (
 	u4 *m,		/* Memory: array of SIZE ALPHA-bit terms */
@@ -210,45 +239,40 @@ static void IBAA
 
 /*-------------------------- IBAA CSPRNG -------------------------------*/
 
-
-static u4	IBAA_memory[SIZE];
-static u4	IBAA_results[SIZE];
-static u4	IBAA_aa;
-static u4	IBAA_bb;
-static u4	IBAA_counter;
-
-static volatile int IBAA_byte_index;
-
-
-static void	IBAA_Init(void);
-static void	IBAA_Call(void);
-static void	IBAA_Seed(const u_int32_t val);
-static u_char	IBAA_Byte(void);
+static void	IBAA_Init(struct ibaa_state *ibaa);
+static void	IBAA_Call(struct ibaa_state *ibaa);
+static void	IBAA_Seed(struct ibaa_state *ibaa, u_int32_t val);
+static u_char	IBAA_Byte(struct ibaa_state *ibaa);
 
 /*
  * Initialize IBAA. 
  */
 static void
-IBAA_Init(void)
+IBAA_Init(struct ibaa_state *ibaa)
 {
 	size_t	i;
 
 	for (i = 0; i < SIZE; ++i) {
-		IBAA_memory[i] = i;
+		ibaa->IBAA_memory[i] = i;
 	}
-	IBAA_aa = IBAA_bb = 0;
-	IBAA_counter = 0;
-	IBAA_byte_index = sizeof(IBAA_results);	/* force IBAA_Call() */
+	ibaa->memIndex = 0;
+	ibaa->IBAA_aa = 0;
+	ibaa->IBAA_bb = 0;
+	ibaa->IBAA_counter = 0;
+	/* force IBAA_Call() */
+	ibaa->IBAA_byte_index = sizeof(ibaa->IBAA_results);
 }
 
 /*
  * PRIVATE: Call IBAA to produce 256 32-bit u4 results.
  */
 static void
-IBAA_Call (void)
+IBAA_Call (struct ibaa_state *ibaa)
 {
-	IBAA(IBAA_memory, IBAA_results, &IBAA_aa, &IBAA_bb, &IBAA_counter);
-	IBAA_byte_index = 0;
+	IBAA(ibaa->IBAA_memory, ibaa->IBAA_results,
+	     &ibaa->IBAA_aa, &ibaa->IBAA_bb,
+	     &ibaa->IBAA_counter);
+	ibaa->IBAA_byte_index = 0;
 }
 
 /*
@@ -257,23 +281,22 @@ IBAA_Call (void)
  * attack.
  */
 static void
-IBAA_Seed (const u_int32_t val)
+IBAA_Seed (struct ibaa_state *ibaa, const u_int32_t val)
 {
-	static int memIndex;
 	u4 *iptr;
 
-	iptr = &IBAA_memory[memIndex & MASK];
-	*iptr = ((*iptr << 3) | (*iptr >> 29)) + (val ^ (IBAA_Byte() & 15));
-	++memIndex;
+	iptr = &ibaa->IBAA_memory[ibaa->memIndex & MASK];
+	*iptr = ((*iptr << 3) | (*iptr >> 29)) + (val ^ (IBAA_Byte(ibaa) & 15));
+	++ibaa->memIndex;
 }
 
 static void
-IBAA_Vector (const char *buf, int bytes)
+IBAA_Vector (struct ibaa_state *ibaa, const char *buf, int bytes)
 {
 	int i;
 
 	while (bytes >= sizeof(int)) {
-		IBAA_Seed(*(const int *)buf);
+		IBAA_Seed(ibaa, *(const int *)buf);
 		buf += sizeof(int);
 		bytes -= sizeof(int);
 	}
@@ -282,7 +305,7 @@ IBAA_Vector (const char *buf, int bytes)
 	 * Warm up the generator to get rid of weak initial states.
 	 */
 	for (i = 0; i < 10; ++i)
-		IBAA_Call();
+		IBAA_Call(ibaa);
 }
 
 /*
@@ -292,18 +315,19 @@ IBAA_Vector (const char *buf, int bytes)
  * IBAA_byte_index out of bounds.
  */
 static u_char
-IBAA_Byte(void)
+IBAA_Byte(struct ibaa_state *ibaa)
 {
 	u_char result;
 	int index;
 
-	index = IBAA_byte_index;
-	if (index == sizeof(IBAA_results)) {
-		IBAA_Call();
+	index = ibaa->IBAA_byte_index;
+	if (index == sizeof(ibaa->IBAA_results)) {
+		IBAA_Call(ibaa);
 		index = 0;
 	}
-	result = ((u_char *)IBAA_results)[index];
-	IBAA_byte_index = index + 1;
+	result = ((u_char *)ibaa->IBAA_results)[index];
+	ibaa->IBAA_byte_index = index + 1;
+
 	return result;
 }
 
@@ -318,58 +342,59 @@ IBAA_Byte(void)
  */
 typedef unsigned char	LByteType;
 
-#define	L15_STATE_SIZE	256
-
-static LByteType	L15_x, L15_y;
-static LByteType	L15_start_x;
-static LByteType	L15_state[L15_STATE_SIZE];
-
 /*
  * PRIVATE FUNCS:
  */
 
-static void		L15_Swap(const LByteType pos1, const LByteType pos2);
-static void		L15_InitState(void);
-static void		L15_KSA(const LByteType * const key,
+static void		L15_Swap(struct l15_state *l15,const LByteType pos1, const LByteType pos2);
+static void		L15_InitState(struct l15_state *l15);
+static void		L15_KSA(struct l15_state *l15,
+				const LByteType * const key,
 				const size_t keyLen);
-static void		L15_Discard(const LByteType numCalls);
+static void		L15_Discard(struct l15_state *l15,
+				const LByteType numCalls);
 
 /*
  * PUBLIC INTERFACE:
  */
-static void		L15(const LByteType * const key, const size_t keyLen);
-static LByteType	L15_Byte(void);
-static void		L15_Vector(const LByteType * const key,
+static void		L15_Init(struct l15_state *l15,
+				const LByteType * const key,
+				const size_t keyLen);
+static LByteType	L15_Byte(struct l15_state *l15);
+static void		L15_Vector(struct l15_state *l15,
+				const LByteType * const key,
 				const size_t keyLen);
 
 static __inline void
-L15_Swap(const LByteType pos1, const LByteType pos2)
+L15_Swap(struct l15_state *l15, const LByteType pos1, const LByteType pos2)
 {
-	const LByteType	save1 = L15_state[pos1];
+	LByteType save1;
 
-	L15_state[pos1] = L15_state[pos2];
-	L15_state[pos2] = save1;
+	save1 = l15->L15_state[pos1];
+	l15->L15_state[pos1] = l15->L15_state[pos2];
+	l15->L15_state[pos2] = save1;
 }
 
 static void
-L15_InitState (void)
+L15_InitState (struct l15_state *l15)
 {
-	size_t i;
+	int i;
+
 	for (i = 0; i < L15_STATE_SIZE; ++i)
-		L15_state[i] = i;
+		l15->L15_state[i] = i;
 }
 
 #define  L_SCHEDULE(xx)						\
 								\
 for (i = 0; i < L15_STATE_SIZE; ++i) {				\
-    L15_Swap(i, (stateIndex += (L15_state[i] + (xx))));		\
+    L15_Swap(l15, i, (l15->stateIndex += (l15->L15_state[i] + (xx))));	\
 }
 
 static void
-L15_KSA (const LByteType * const key, const size_t keyLen)
+L15_KSA (struct l15_state *l15, const LByteType * const key,
+	 const size_t keyLen)
 {
 	size_t	i, keyIndex;
-	static LByteType stateIndex = 0;
 
 	for (keyIndex = 0; keyIndex < keyLen; ++keyIndex) {
 		L_SCHEDULE(key[keyIndex]);
@@ -378,11 +403,11 @@ L15_KSA (const LByteType * const key, const size_t keyLen)
 }
 
 static void
-L15_Discard(const LByteType numCalls)
+L15_Discard(struct l15_state *l15, const LByteType numCalls)
 {
 	LByteType i;
 	for (i = 0; i < numCalls; ++i) {
-		(void)L15_Byte();
+		(void)L15_Byte(l15);
 	}
 }
 
@@ -391,32 +416,36 @@ L15_Discard(const LByteType numCalls)
  * PUBLIC INTERFACE:
  */
 static void
-L15(const LByteType * const key, const size_t keyLen)
+L15_Init(struct l15_state *l15, const LByteType *key,
+	 const size_t keyLen)
 {
-	L15_x = L15_start_x = 0;
-	L15_y = L15_STATE_SIZE - 1;
-	L15_InitState();
-	L15_KSA(key, keyLen);
-	L15_Discard(L15_Byte());
+	l15->stateIndex = 0;
+	l15->L15_x = 0;
+	l15->L15_start_x = 0;
+	l15->L15_y = L15_STATE_SIZE - 1;
+	L15_InitState(l15);
+	L15_KSA(l15, key, keyLen);
+	L15_Discard(l15, L15_Byte(l15));
 }
 
 static LByteType
-L15_Byte(void)
+L15_Byte(struct l15_state *l15)
 {
 	LByteType z;
 
-	L15_Swap(L15_state[L15_x], L15_y);
-	z = (L15_state [L15_x++] + L15_state[L15_y--]);
-	if (L15_x == L15_start_x) {
-		--L15_y;
+	L15_Swap(l15, l15->L15_state[l15->L15_x], l15->L15_y);
+	z = (l15->L15_state [l15->L15_x++] + l15->L15_state[l15->L15_y--]);
+	if (l15->L15_x == l15->L15_start_x) {
+		--l15->L15_y;
 	}
-	return (L15_state[z]);
+	return (l15->L15_state[z]);
 }
 
 static void
-L15_Vector (const LByteType * const key, const size_t keyLen)
+L15_Vector(struct l15_state *l15, const LByteType * const key,
+	   const size_t keyLen)
 {
-	L15_KSA(key, keyLen);
+	L15_KSA(l15, key, keyLen);
 }
 
 /*------------------------------- L15 ----------------------------------*/
@@ -429,19 +458,16 @@ L15_Vector (const LByteType * const key, const size_t keyLen)
  */
 
 static int rand_thread_value;
-static void NANOUP_EVENT(void);
+static void NANOUP_EVENT(struct timespec *last, struct csprng_state *state);
 static thread_t rand_td;
-static struct spinlock rand_spin;
 
 static int sysctl_kern_random(SYSCTL_HANDLER_ARGS);
 
-static int nrandevents;
 static int rand_mode = 2;
 static struct systimer systimer_rand;
 
 static int sysctl_kern_rand_mode(SYSCTL_HANDLER_ARGS);
 
-SYSCTL_INT(_kern, OID_AUTO, nrandevents, CTLFLAG_RD, &nrandevents, 0, "");
 SYSCTL_PROC(_kern, OID_AUTO, random, CTLFLAG_RD | CTLFLAG_ANYBODY, 0, 0,
 		sysctl_kern_random, "I", "Acquire random data");
 SYSCTL_PROC(_kern, OID_AUTO, rand_mode, CTLTYPE_STRING | CTLFLAG_RW, NULL, 0,
@@ -449,48 +475,73 @@ SYSCTL_PROC(_kern, OID_AUTO, rand_mode, CTLTYPE_STRING | CTLFLAG_RW, NULL, 0,
 
 
 /*
- * Called from early boot (pre-SMP)
+ * Called twice.  Once very early on when ncpus is still 1 (before
+ * kmalloc or much of anything else is available), and then again later
+ * after SMP has been heated up.
+ *
+ * The early initialization is needed so various subsystems early in the
+ * boot have some source of pseudo random bytes.
  */
 void
 rand_initialize(void)
 {
+	struct csprng_state *state;
 	struct timespec	now;
+	char buf[64];
 	int i;
+	int n;
 
-	csprng_init(&csprng_state);
-#if 0
-	/*
-	 * XXX: we do the reseeding when someone uses the RNG instead
-	 * of regularly using init_reseed (which initializes a callout)
-	 * to avoid unnecessary and regular reseeding.
-	 */
-	csprng_init_reseed(&csprng_state);
-#endif
-
-
-	spin_init(&rand_spin, "randinit");
-
-	/* Initialize IBAA. */
-	IBAA_Init();
-
-	/* Initialize L15. */
-	nanouptime(&now);
-	L15((const LByteType *)&now.tv_nsec, sizeof(now.tv_nsec));
-	for (i = 0; i < (SIZE / 2); ++i) {
-		nanotime(&now);
-		add_buffer_randomness_src((const uint8_t *)&now.tv_nsec,
-		    sizeof(now.tv_nsec), RAND_SRC_TIMING);
-		nanouptime(&now);
-		add_buffer_randomness_src((const uint8_t *)&now.tv_nsec,
-		    sizeof(now.tv_nsec), RAND_SRC_TIMING);
+	if (ncpus == 1) {
+		csprng_pcpu = &csprng_boot;
+	} else {
+		csprng_pcpu = kmalloc(ncpus * sizeof(*csprng_pcpu),
+				      M_NRANDOM, M_WAITOK | M_ZERO);
 	}
 
-	/*
-	 * Warm up the generator to get rid of weak initial states.
-	 */
-	for (i = 0; i < 10; ++i)
-		IBAA_Call();
+	for (n = 0; n < ncpus; ++n) {
+		state = &csprng_pcpu[n];
+
+		/* CSPRNG */
+		csprng_init(state);
+
+		/* Initialize IBAA. */
+		IBAA_Init(&state->ibaa);
+
+		/* Initialize L15. */
+		nanouptime(&now);
+		L15_Init(&state->l15,
+		    (const LByteType *)&now.tv_nsec, sizeof(now.tv_nsec));
+
+		for (i = 0; i < (SIZE / 2); ++i) {
+			nanotime(&now);
+			add_buffer_randomness_state(state,
+						(const uint8_t *)&now.tv_nsec,
+						sizeof(now.tv_nsec),
+						RAND_SRC_TIMING);
+			nanouptime(&now);
+			add_buffer_randomness_state(state,
+						(const uint8_t *)&now.tv_nsec,
+						sizeof(now.tv_nsec),
+						RAND_SRC_TIMING);
+		}
+
+		/*
+		 * Warm up the generator to get rid of weak initial states.
+		 */
+		for (i = 0; i < 10; ++i)
+			IBAA_Call(&state->ibaa);
+
+		/*
+		 * Chain to next cpu to create as much divergence as
+		 * possible.
+		 */
+		add_buffer_randomness_state(state, buf, sizeof(buf),
+					    RAND_SRC_TIMING);
+		read_random(buf, sizeof(buf), 1);
+	}
 }
+
+SYSINIT(rand1, SI_BOOT2_POST_SMP, SI_ORDER_SECOND, rand_initialize, 0);
 
 /*
  * Keyboard events
@@ -498,10 +549,18 @@ rand_initialize(void)
 void
 add_keyboard_randomness(u_char scancode)
 {
-	spin_lock(&rand_spin);
-	L15_Vector((const LByteType *) &scancode, sizeof (scancode));
-	spin_unlock(&rand_spin);
-	add_interrupt_randomness(0);
+	struct csprng_state *state;
+
+	state = iterate_csprng_state(1);
+	if (state) {
+		spin_lock(&state->spin);
+		L15_Vector(&state->l15,
+			   (const LByteType *)&scancode, sizeof (scancode));
+		++state->nrandevents;
+		++state->nrandseed;
+		spin_unlock(&state->spin);
+		add_interrupt_randomness(0);
+	}
 }
 
 /*
@@ -520,42 +579,61 @@ add_interrupt_randomness(int intr)
 	++rand_thread_value;				/* ~1 bit */
 }
 
+static int
+add_buffer_randomness_state(struct csprng_state *state,
+			    const char *buf, int bytes, int srcid)
+{
+	if (state) {
+		spin_lock(&state->spin);
+		L15_Vector(&state->l15, (const LByteType *)buf, bytes);
+		IBAA_Vector(&state->ibaa, buf, bytes);
+		++state->nrandevents;
+		state->nrandseed += bytes;
+		csprng_add_entropy(state, srcid & RAND_SRC_MASK,
+				   (const uint8_t *)buf, bytes, 0);
+		spin_unlock(&state->spin);
+		wakeup(state);
+	}
+
+	return 0;
+}
+
+
+
 /*
- * True random number source
+ * Add buffer randomness from miscellaneous sources.  Large amounts of
+ * generic random data will be split across available cpus.
  */
 int
 add_buffer_randomness(const char *buf, int bytes)
 {
-	spin_lock(&rand_spin);
-	L15_Vector((const LByteType *)buf, bytes);
-	IBAA_Vector(buf, bytes);
-	spin_unlock(&rand_spin);
+	struct csprng_state *state;
 
-	atomic_add_int(&nrandevents, 1);
-
-	csprng_add_entropy(&csprng_state, RAND_SRC_UNKNOWN,
-	    (const uint8_t *)buf, bytes, 0);
-
-	return 0;
+	state = iterate_csprng_state(bytes);
+	return add_buffer_randomness_state(state, buf, bytes, RAND_SRC_UNKNOWN);
 }
-
 
 int
 add_buffer_randomness_src(const char *buf, int bytes, int srcid)
 {
-	spin_lock(&rand_spin);
-	L15_Vector((const LByteType *)buf, bytes);
-	IBAA_Vector(buf, bytes);
-	spin_unlock(&rand_spin);
+	struct csprng_state *state;
+	int n;
 
-	atomic_add_int(&nrandevents, 1);
-
-	csprng_add_entropy(&csprng_state, srcid & 0xff,
-	    (const uint8_t *)buf, bytes, 0);
-
+	while (csprng_pcpu && bytes) {
+		n = bytes;
+		if (srcid & RAND_SRCF_PCPU) {
+			state = &csprng_pcpu[mycpu->gd_cpuid];
+		} else {
+			state = iterate_csprng_state(bytes);
+			if (n > 61)
+				n = 61;
+		}
+		add_buffer_randomness_state(state, buf, bytes, srcid);
+		bytes -= n;
+		buf += n;
+	}
 	return 0;
 }
-
 
 /*
  * Kqueue filter (always succeeds)
@@ -573,47 +651,37 @@ random_filter_read(struct knote *kn, long hint)
  * Instead of stopping early,
  */
 u_int
-read_random(void *buf, u_int nbytes)
+read_random(void *buf, u_int nbytes, int unlimited)
 {
+	struct csprng_state *state;
 	int i, j;
+
+	if (csprng_pcpu == NULL) {
+		kprintf("read_random: csprng not yet ready\n");
+		return 0;
+	}
+	state = &csprng_pcpu[mycpu->gd_cpuid];
 
 	if (rand_mode == 0) {
 		/* Only use CSPRNG */
-		i = csprng_get_random(&csprng_state, buf, nbytes, 0);
+		i = csprng_get_random(state, buf, nbytes, 0, unlimited);
 	} else if (rand_mode == 1) {
 		/* Only use IBAA */
-		spin_lock(&rand_spin);
+		spin_lock(&state->spin);
 		for (i = 0; i < nbytes; i++)
-			((u_char *)buf)[i] = IBAA_Byte();
-		spin_unlock(&rand_spin);
+			((u_char *)buf)[i] = IBAA_Byte(&state->ibaa);
+		spin_unlock(&state->spin);
 	} else {
 		/* Mix both CSPRNG and IBAA */
-		i = csprng_get_random(&csprng_state, buf, nbytes, 0);
-		spin_lock(&rand_spin);
+		i = csprng_get_random(state, buf, nbytes, 0, unlimited);
+		spin_lock(&state->spin);
 		for (j = 0; j < i; j++)
-			((u_char *)buf)[j] ^= IBAA_Byte();
-		spin_unlock(&rand_spin);
+			((u_char *)buf)[j] ^= IBAA_Byte(&state->ibaa);
+		spin_unlock(&state->spin);
 	}
-
 	add_interrupt_randomness(0);
+
 	return (i > 0) ? i : 0;
-}
-
-/*
- * Heavy weight random number generator.  Must return the requested
- * number of bytes.
- */
-u_int
-read_random_unlimited(void *buf, u_int nbytes)
-{
-	u_int i;
-
-	spin_lock(&rand_spin);
-	for (i = 0; i < nbytes; ++i)
-		((u_char *)buf)[i] = IBAA_Byte();
-	spin_unlock(&rand_spin);
-	add_interrupt_randomness(0);
-	return (i);
 }
 
 /*
@@ -634,7 +702,7 @@ sysctl_kern_random(SYSCTL_HANDLER_ARGS)
 	while (n > 0) {
 		if ((r = n) > sizeof(buf))
 			r = sizeof(buf);
-		read_random_unlimited(buf, r);
+		read_random(buf, r, 1);
 		error = SYSCTL_OUT(req, buf, r);
 		if (error)
 			break;
@@ -665,7 +733,7 @@ sys_getrandom(struct getrandom_args *uap)
 		n = (ssize_t)sizeof(buf);
 		if (n > bytes - r)
 			n = bytes - r;
-		read_random_unlimited(buf, n);
+		read_random(buf, n, 1);
 		error = copyout(buf, (char *)uap->buf + r, n);
 		if (error)
 			break;
@@ -735,21 +803,35 @@ sysctl_kern_rand_mode(SYSCTL_HANDLER_ARGS)
  * This is a time-buffered loop, with a randomizing delay.  Note that interrupt
  * entropy does not cause the thread to wakeup any faster, but does improve the
  * quality of the entropy produced.
+ *
+ * In addition, we pull statistics from available cpus.
  */
 static
 void
 rand_thread_loop(void *dummy)
 {
+	struct csprng_state *state;
+	globaldata_t rgd;
 	int64_t count;
+	char buf[32];
+	uint32_t wcpu;
+	struct timespec	last;
+
+	wcpu = 0;
+	bzero(&last, sizeof(last));
 
 	for (;;) {
 		/*
 		 * Generate entropy.
 		 */
-		NANOUP_EVENT();
-		spin_lock(&rand_spin);
-		count = (uint8_t)L15_Byte();
-		spin_unlock(&rand_spin);
+		wcpu = (wcpu + 1) % ncpus;
+		state = &csprng_pcpu[wcpu];
+		rgd = globaldata_find(wcpu);
+
+		NANOUP_EVENT(&last, state);
+		spin_lock(&state->spin);
+		count = (uint8_t)L15_Byte(&state->l15);
+		spin_unlock(&state->spin);
 
 		/*
 		 * Calculate 1/10 of a second to 2/10 of a second, fine-grained
@@ -762,6 +844,24 @@ rand_thread_loop(void *dummy)
 		if (time_uptime < 120)
 			count = count / 10 + 1;
 		systimer_rand.periodic = count;
+
+		/*
+		 * Force cpus to diverge.  Chained state and per-cpu state
+		 * is thrown in.
+		 */
+		add_buffer_randomness_state(state,
+					    buf, sizeof(buf),
+					    RAND_SRC_THREAD);
+		add_buffer_randomness_state(state,
+					    (void *)&rgd->gd_cnt,
+					    sizeof(rgd->gd_cnt),
+					    RAND_SRC_THREAD);
+		add_buffer_randomness_state(state,
+					    (void *)&rgd->gd_vmtotal,
+					    sizeof(rgd->gd_vmtotal),
+					    RAND_SRC_THREAD);
+
+		read_random(buf, sizeof(buf), 1);
 
 		tsleep(rand_td, 0, "rwait", 0);
 	}
@@ -785,7 +885,7 @@ rand_thread_init(void)
 	lwkt_create(rand_thread_loop, NULL, &rand_td, NULL, 0, 0, "random");
 }
 
-SYSINIT(rand, SI_SUB_HELPER_THREADS, SI_ORDER_ANY, rand_thread_init, 0);
+SYSINIT(rand2, SI_SUB_HELPER_THREADS, SI_ORDER_ANY, rand_thread_init, 0);
 
 /*
  * Caller is time-buffered.  Incorporate any accumulated interrupt randomness
@@ -793,12 +893,12 @@ SYSINIT(rand, SI_SUB_HELPER_THREADS, SI_ORDER_ANY, rand_thread_init, 0);
  *
  * A delta nanoseconds value is used to remove absolute time from the generated
  * entropy.  Even though we are pushing 32 bits, this entropy is probably only
- * good for one or two bits without any interrupt sources, and possibly 8 bits with.
+ * good for one or two bits without any interrupt sources, and possibly
+ * 8 bits with.
  */
 static void
-NANOUP_EVENT(void)
+NANOUP_EVENT(struct timespec *last, struct csprng_state *state)
 {
-	static struct timespec	last;
 	struct timespec		now;
 	int			nsec;
 
@@ -806,8 +906,8 @@ NANOUP_EVENT(void)
 	 * Delta nanoseconds since last event
 	 */
 	nanouptime(&now);
-	nsec = now.tv_nsec - last.tv_nsec;
-	last = now;
+	nsec = now.tv_nsec - last->tv_nsec;
+	*last = now;
 
 	/*
 	 * Interrupt randomness.
@@ -825,6 +925,8 @@ NANOUP_EVENT(void)
 	 * Ok.
 	 */
 
-	add_buffer_randomness_src((const uint8_t *)&nsec, sizeof(nsec), RAND_SRC_INTR);
+	add_buffer_randomness_state(state,
+				    (const uint8_t *)&nsec, sizeof(nsec),
+				    RAND_SRC_INTR);
 }
 

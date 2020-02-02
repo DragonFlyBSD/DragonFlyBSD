@@ -2440,8 +2440,9 @@ hifn_newsession(device_t dev, u_int32_t *sidp, struct cryptoini *cri)
 		case CRYPTO_AES_CBC:
 			/* XXX this may read fewer, does it matter? */
 			read_random(ses->hs_iv,
-				c->cri_alg == CRYPTO_AES_CBC ?
-					HIFN_AES_IV_LENGTH : HIFN_IV_LENGTH);
+				(c->cri_alg == CRYPTO_AES_CBC ?
+					HIFN_AES_IV_LENGTH : HIFN_IV_LENGTH),
+				0);
 			/*FALLTHROUGH*/
 		case CRYPTO_ARC4:
 			if (cry)
