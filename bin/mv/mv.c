@@ -224,7 +224,6 @@ do_move(const char *from, const char *to)
 	}
 
 	if (errno == EXDEV) {
-		struct statfs sfs;
 		char path[PATH_MAX];
 		int target_is_file = 0;
 
@@ -249,11 +248,14 @@ do_move(const char *from, const char *to)
 				warn("cannot resolve %s: %s", from, path);
 				return (1);
 			}
+#ifdef MNAMELEN
+			struct statfs sfs;
 			if (!statfs(path, &sfs) &&
 			    !strcmp(path, sfs.f_mntonname)) {
 				warnx("cannot rename a mount point");
 				return (1);
 			}
+#endif
 		}
 	} else {
 		warn("rename %s to %s", from, to);
@@ -336,9 +338,11 @@ err:		if (unlink(to))
 	 * on a file that we copied, i.e., that we didn't create.)
 	 */
 	errno = 0;
+#ifdef _ST_FLAGS_PRESENT_
 	if (fchflags(to_fd, sbp->st_flags))
 		if (errno != EOPNOTSUPP || sbp->st_flags != 0)
 			warn("%s: set flags (was: 0%07o)", to, sbp->st_flags);
+#endif
 
 	tval[0].tv_sec = sbp->st_atime;
 	tval[1].tv_sec = sbp->st_mtime;
