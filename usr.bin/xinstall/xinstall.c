@@ -52,7 +52,9 @@
 #include <utime.h>
 #include <vis.h>
 
+#ifndef BOOTSTRAPPING
 #include "mtree.h"
+#endif
 
 /* Bootstrap aid - this doesn't exist in most older releases */
 #ifndef MAP_FAILED
@@ -189,9 +191,13 @@ main(int argc, char *argv[])
 			warnx("Option -L is deprecated, use -N instead");
 			/* FALLTHROUGH */
 		case 'N':
+#ifdef BOOTSTRAPPING
+			err(1, "-N disabled in btools");
+#else
 			if (!setup_getid(optarg))
 				err(EX_OSERR, "Unable to use user and group "
 				    "databases in `%s'", optarg);
+#endif
 			break;
 		case 'o':
 			haveopt_o = 1;
