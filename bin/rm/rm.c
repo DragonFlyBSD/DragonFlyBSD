@@ -44,6 +44,7 @@
 #include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
@@ -60,7 +61,9 @@ static void	checkdot(char **);
 static void	rm_file(char **);
 static int	rm_overwrite(const char *, struct stat *);
 static void	rm_tree(char **);
+#ifdef SIGINFO
 static void 	siginfo(int);
+#endif
 static void	usage(void);
 
 /*
@@ -153,8 +156,10 @@ main(int argc, char *argv[])
 
 	checkdot(argv);
 	uid = geteuid();
-	
+
+#ifdef SIGINFO
 	signal(SIGINFO, siginfo);
+#endif
 
 	if (*argv) {
 		stdin_ok = isatty(STDIN_FILENO);
@@ -630,8 +635,10 @@ usage(void)
 	exit(EX_USAGE);
 }
 
+#ifdef SIGINFO
 static void
 siginfo(int notused __unused)
 {
 	info = 1;
 }
+#endif
