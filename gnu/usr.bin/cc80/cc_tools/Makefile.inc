@@ -6,6 +6,7 @@ __<cctools80.Makefile.inc>__:
 
 # Hint HOST_CCVER handling.
 __USE_HOST_CCVER=
+NO_WERROR=
 
 TOP_PREFIX=	../
 GCC_NO_LIBS=	# yes
