@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1989, 1993
+ * Copyright (c) 1989, 1993, 2020
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,8 @@
 
 #include <unistd.h>
 
+static int save_osreldate;
+
 int
 getosreldate(void)
 {
@@ -42,10 +44,15 @@ getosreldate(void)
 	size_t size;
 	int value;
 
+	if (save_osreldate)
+		return save_osreldate;
+
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_OSRELDATE;
 	size = sizeof value;
 	if (sysctl(mib, 2, &value, &size, NULL, 0) == -1)
 		return (-1);
+	save_osreldate = value;
+
 	return (value);
 }

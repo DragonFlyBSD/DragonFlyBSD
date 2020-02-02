@@ -39,6 +39,8 @@
 #include <unistd.h>
 #include "un-namespace.h"
 
+int     __realpath(const char *path, char *rbuf, size_t len);
+
 /*
  * Find the real name of path, by removing all ".", ".." and symlink
  * components.  Returns (resolved) on success, or (NULL) on failure,
@@ -67,8 +69,19 @@ realpath(const char * __restrict path, char * __restrict resolved)
 		if (resolved == NULL)
 			return (NULL);
 		m = 1;
-	} else
+	} else {
 		m = 0;
+	}
+
+	if (getosreldate() >= 500710) {
+		if (__realpath(path, resolved, PATH_MAX) < 0) {
+			if (m)
+				free(resolved);
+			return (NULL);
+		}
+		return resolved;
+	}
+
 	symlinks = 0;
 	if (path[0] == '/') {
 		resolved[0] = '/';
@@ -79,9 +92,9 @@ realpath(const char * __restrict path, char * __restrict resolved)
 		left_len = strlcpy(left, path + 1, sizeof(left));
 	} else {
 		if (getcwd(resolved, PATH_MAX) == NULL) {
-			if (m)
+			if (m) {
 				free(resolved);
-			else {
+			} else {
 				resolved[0] = '.';
 				resolved[1] = '\0';
 			}

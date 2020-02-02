@@ -19,6 +19,7 @@ DF404.0 {
     __acl_set_fd;
     __acl_set_file;
     __getcwd;
+    __realpath;
     __semctl;
     __syscall;
     __sysctl;
@@ -105,6 +106,7 @@ DF404.0 {
     getpid;
     getppid;
     getpriority;
+    getrandom;
     getresgid;
     getresuid;
     getrlimit;
@@ -342,6 +344,7 @@ DFprivate_1.0 {
     __sys___acl_set_fd;
     __sys___acl_set_file;
     __sys___getcwd;
+    __sys___realpath;
     __sys___semctl;
     __sys___syscall;
     __sys___sysctl;
@@ -429,6 +432,7 @@ DFprivate_1.0 {
     __sys_getpid;
     __sys_getppid;
     __sys_getpriority;
+    __sys_getrandom;
     __sys_getresgid;
     __sys_getresuid;
     __sys_getrlimit;
@@ -643,6 +647,7 @@ DFprivate_1.0 {
     ___acl_set_fd;
     ___acl_set_file;
     ___getcwd;
+    ___realpath;
     ___semctl;
     ___syscall;
     ___sysctl;
@@ -730,6 +735,7 @@ DFprivate_1.0 {
     _getpid;
     _getppid;
     _getpriority;
+    _getrandom;
     _getresgid;
     _getresuid;
     _getrlimit;
