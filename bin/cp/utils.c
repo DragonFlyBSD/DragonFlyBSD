@@ -325,6 +325,7 @@ setfile(struct stat *fs, int fd)
 			rval = 1;
 		}
 
+#ifdef _ST_FLAGS_PRESENT_
 	if (!gotstat || fs->st_flags != ts.st_flags)
 		if (fdval ?
 		    fchflags(fd, fs->st_flags) :
@@ -333,6 +334,7 @@ setfile(struct stat *fs, int fd)
 			warn("chflags: %s", to.p_path);
 			rval = 1;
 		}
+#endif
 
 	return (rval);
 }
