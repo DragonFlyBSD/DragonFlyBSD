@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/pxe.h,v 1.6 2002/09/23 18:54:26 alfred Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/pxe.h,v 1.3 2003/11/10 06:08:36 dillon Exp $
  */
 
 /*
@@ -49,7 +48,7 @@
  * structures passed into PXE
  * Question: does this really work for PXE's expected ABI?
  */
-#define	PACKED		__attribute__((__packed__))
+#define	PACKED		__packed
 
 #define	S_SIZE(s)	s, sizeof(s) - 1
 
@@ -157,7 +156,7 @@ typedef struct {
 	PXENV_STATUS_t	Status;
 	ADDR32_t	ProtocolIni;	/* Phys addr of a copy of the driver module */
 	uint8_t		reserved[8];
-} PACKED t_PXENV_UNDI_INITALIZE;
+} PACKED t_PXENV_UNDI_INITIALIZE;
 
 
 #define	MAXNUM_MCADDR		8
@@ -236,7 +235,7 @@ typedef struct {
 #define	PXENV_UNDI_SET_STATION_ADDRESS	0x000A
 typedef struct {
 	PXENV_STATUS_t	Status;
-	MAC_ADDR	StationAddress;		/* Temp MAC addres to use */
+	MAC_ADDR	StationAddress;		/* Temp MAC address to use */
 } PACKED t_PXENV_UNDI_SET_STATION_ADDR;
 
 #define	PXENV_UNDI_SET_PACKET_FILTER	0x000B
@@ -340,7 +339,7 @@ typedef struct {
 	PXENV_STATUS_t	Status;
 	uint16_t	FuncFlag;		/* PXENV_UNDI_ISR_OUT_xxx */
 	uint16_t	BufferLength;		/* Length of Frame */
-	uint16_t	FrameLength;		/* Total length of reciever frame */
+	uint16_t	FrameLength;		/* Total length of receiver frame */
 	uint16_t	FrameHeaderLength;	/* Length of the media header in Frame */
 	SEGOFF16_t	Frame;			/* receive buffer */
 	uint8_t		ProtType;		/* Protocol type */
@@ -354,12 +353,12 @@ typedef struct {
 #	define PXENV_UNDI_ISR_OUT_NOT_OUTS	1
 
 	/*
-	 * one of these will bre returnd for PXEND_UNDI_ISR_IN_PROCESS
+	 * one of these will be returned for PXEND_UNDI_ISR_IN_PROCESS
 	 * and PXENV_UNDI_ISR_IN_GET_NEXT
 	 */
 #	define PXENV_UNDI_ISR_OUT_DONE		0
 #	define PXENV_UNDI_ISR_OUT_TRANSMIT	2
-#	define PXENV_UNDI_ISR_OUT_RECIEVE	3
+#	define PXENV_UNDI_ISR_OUT_RECEIVE	3
 #	define PXENV_UNDI_ISR_OUT_BUSY		4
 } PACKED t_PXENV_UNDI_ISR;
 
