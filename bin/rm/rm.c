@@ -136,7 +136,9 @@ main(int argc, char *argv[])
 			vflag = 1;
 			break;
 		case 'W':
+#ifdef S_IFWHT
 			Wflag = 1;
+#endif
 			break;
 		case 'x':
 			xflag = 1;
@@ -201,8 +203,10 @@ rm_tree(char **argv)
 	flags = FTS_PHYSICAL;
 	if (!needstat)
 		flags |= FTS_NOSTAT;
+#ifdef S_IFWHT
 	if (Wflag)
 		flags |= FTS_WHITEOUT;
+#endif
 	if (xflag)
 		flags |= FTS_XDEV;
 	if ((fts = fts_open(argv, flags, NULL)) == NULL) {
@@ -288,7 +292,7 @@ rm_tree(char **argv)
 					continue;
 				}
 				break;
-
+#ifdef S_IFWHT
 			case FTS_W:
 				rval = undelete(p->fts_accpath);
 				if (rval == 0 && (fflag && errno == ENOENT)) {
@@ -298,7 +302,7 @@ rm_tree(char **argv)
 					continue;
 				}
 				break;
-
+#endif
 			case FTS_NS:
 			/*
 			 * Assume that since fts_read() couldn't stat
@@ -349,7 +353,9 @@ rm_file(char **argv)
 		/* Assume if can't stat the file, can't unlink it. */
 		if (lstat(f, &sb)) {
 			if (Wflag) {
+#ifdef S_IFWHT
 				sb.st_mode = S_IFWHT|S_IWUSR|S_IRUSR;
+#endif
 			} else {
 				if (!fflag || errno != ENOENT) {
 					warn("%s", f);
@@ -376,9 +382,12 @@ rm_file(char **argv)
 		    !(sb.st_flags & (SF_APPEND|SF_IMMUTABLE)))
 			rval = lchflags(f, sb.st_flags & ~(UF_APPEND|UF_IMMUTABLE));
 		if (rval == 0) {
+#ifdef S_IFWHT
 			if (S_ISWHT(sb.st_mode))
 				rval = undelete(f);
-			else if (S_ISDIR(sb.st_mode))
+			else
+#endif
+			if (S_ISDIR(sb.st_mode))
 				rval = rmdir(f);
 			else {
 				if (Pflag)
