@@ -47,7 +47,7 @@ The
 .Fa flags
 argument may include zero or more of the following:
 .Bl -tag -width _GRND_NONBLOCK_
-.It Ql GRND_NONBLOCK
+.It Dv GRND_NONBLOCK
 Return
 .Er EAGAIN
 instead of blocking, if the
@@ -56,14 +56,14 @@ device has not yet been seeded.
 By default,
 .Fn getrandom
 will block until the device is seeded.
-.It Ql GRND_RANDOM
+.It Dv GRND_RANDOM
 This flag does nothing on
 .Dx .
 .Pa /dev/random
 and
 .Pa /dev/urandom
 are identical.
-.It Ql GRND_INSECURE
+.It Dv GRND_INSECURE
 This flag is treated as an alternative name for
 .Dv GRND_NONBLOCK .
 It is provided solely for API compatibility with Linux.
@@ -88,9 +88,9 @@ operation returns the following errors:
 .Bl -tag -width Er
 .It Bq Er EAGAIN
 The
-.Ql GRND_NONBLOCK
+.Dv GRND_NONBLOCK
 (or
-.Ql GRND_INSECURE )
+.Dv GRND_INSECURE )
 flag was set and the
 .Xr random 4
 device was not yet seeded.
