@@ -35,6 +35,7 @@
 #include <sys/cpumask.h>
 #include <sys/interrupt.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/memrange.h>
 #include <sys/tls.h>
 #include <sys/types.h>
