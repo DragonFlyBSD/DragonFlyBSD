@@ -1,0 +1,27 @@
+.if defined(NO_CROSSTOOLS) && defined(BOOTSTRAPPING)
+
+SCRIPTS=	${GENTOOLS}
+GENTOOLS=	ar.sh as.sh elfedit.sh ld.bfd.sh ld.gold.sh \
+		nm.sh ranlib.sh objcopy.sh strip.sh
+NOMAN=
+BINDIR?=	${REALBINUTILS}
+
+REALBINUTILS=	/usr/libexec/binutils234/elf
+
+.for _tool in ${GENTOOLS}
+${_tool}:
+	echo "#!/bin/sh" > ${.TARGET}
+	echo "" >> ${.TARGET}
+	echo "exec ${REALBINUTILS}/${.TARGET:T:R}" '"$$@"' >> ${.TARGET}
+.endfor
+
+.if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
+.error "refusing to install wrappers to base"
+.endif
+
+CLEANFILES= ${GENTOOLS}
+
+.else
+# dummy
+.endif
+.include <bsd.prog.mk>
