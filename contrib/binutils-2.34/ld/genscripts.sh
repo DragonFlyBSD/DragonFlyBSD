@@ -129,13 +129,13 @@ TOOL_LIB=$2
 
 source_sh()
 {
-  if test -n "${DEPDIR}"; then
+  if test -d "${DEPDIR}"; then
     echo $1 >> ${DEPDIR}/e${EMULATION_NAME}.Tc
   fi
   . $1
 }
 
-if test -n "${DEPDIR}"; then
+if test -d "${DEPDIR}"; then
   rm -f ${DEPDIR}/e${EMULATION_NAME}.Tc
 fi
 
@@ -622,7 +622,7 @@ fi
 > e${EMULATION_NAME}.c
 source_em ${srcdir}/emultempl/${TEMPLATE_NAME-generic}.em
 
-if test -n "${DEPDIR}"; then
+if test -d "${DEPDIR}"; then
   ecdeps=
   for dep in `cat ${DEPDIR}/e${EMULATION_NAME}.Tc`; do
     case " $ecdeps " in

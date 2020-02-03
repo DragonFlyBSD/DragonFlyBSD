@@ -1,0 +1,28 @@
+GNU BINUTILS
+============
+Original source can be downloaded from:
+http://ftp.gnu.org/gnu/binutils
+
+file = binutils-2.34.tar.bz2
+date = 1 February 2020
+size = 21637796
+sha1 = 78f7ba4c0775ae75f5b906dc9af03d70b39b0785
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied to following files:
+	bfd/config.bfd (x86_64_pei_vec)
+	bfd/bfdver.h (new)
+	bfd/elfxx-x86.c (linker path)
+	bfd/plugin.c (plugin dir path)
+	bfd/sysdep.h (offsetof)
+	gold/x86_64.cc (linker path)
+	ld/genscripts.sh (fix .deps checks)
+	ld/ldlex.l (sysdep.h)
+
+Configured with:
+configure --with-system-zlib --with-lib-path=/lib:/usr/lib \
+  --enable-deterministic-archives --disable-nls \
+  --enable-gold=default --enable-plugins \
+  --enable-targets="x86_64-pc-dragonfly" \
+  --disable-gdb --disable-threads

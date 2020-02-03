@@ -372,7 +372,7 @@ load_plugin (bfd *abfd)
      when configuring binutils using --libdir.  Search in the proper
      path first, then the old one for backwards compatibility.  */
   static const char *path[]
-    = { LIBDIR "/bfd-plugins", BINDIR "/../lib/bfd-plugins" };
+    = { PLUGINLIBDIR "/bfd-plugins", BINDIR RELPLUGINDIR};
   struct stat last_st;
   int found = 0;
   unsigned int i;
