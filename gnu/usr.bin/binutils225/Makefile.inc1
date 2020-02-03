@@ -1,3 +1,0 @@
-BINDIR?=	/usr/libexec/binutils225/elf
-BUVERSION=	binutils225
-.include "../Makefile.buo"
