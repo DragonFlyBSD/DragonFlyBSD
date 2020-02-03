@@ -11,6 +11,6 @@ SRCS	+= device_if.h bus_if.h pci_if.h opt_iwm.h
 
 SUBDIR	= fw
 
-KCFLAGS += -DIWM_DEBUG
+#KCFLAGS += -DIWM_DEBUG
 
 .include <bsd.kmod.mk>

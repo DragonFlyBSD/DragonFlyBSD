@@ -19,6 +19,8 @@
 #ifndef	__IF_IWM_DEBUG_H__
 #define	__IF_IWM_DEBUG_H__
 
+#include "opt_iwm.h"
+
 #ifdef	IWM_DEBUG
 enum {
 	IWM_DEBUG_XMIT		= 0x00000001,	/* basic xmit operation */
