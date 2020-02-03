@@ -26,7 +26,6 @@ LINKS+=	${BINDIR}/objformat ${BINDIR}/as
 LINKS+=	${BINDIR}/objformat ${BINDIR}/c++filt
 LINKS+=	${BINDIR}/objformat ${BINDIR}/elfedit
 LINKS+=	${BINDIR}/objformat ${BINDIR}/gprof
-LINKS+=	${BINDIR}/objformat ${BINDIR}/incremental-dump
 LINKS+=	${BINDIR}/objformat ${BINDIR}/ld
 LINKS+=	${BINDIR}/objformat ${BINDIR}/ld.bfd
 LINKS+=	${BINDIR}/objformat ${BINDIR}/ld.gold

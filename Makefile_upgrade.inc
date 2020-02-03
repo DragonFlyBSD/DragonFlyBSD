@@ -3896,6 +3896,7 @@ TO_REMOVE+=/usr/share/man/man8/mrinfo.8.gz
 TO_REMOVE+=/usr/share/man/man8/mrouted.8.gz
 TO_REMOVE+=/usr/share/man/man8/mtrace.8.gz
 TO_REMOVE+=/usr/libexec/binutils225
+TO_REMOVE+=/usr/bin/incremental-dump
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

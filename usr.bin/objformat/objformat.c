@@ -90,7 +90,6 @@ static struct command commands[] = {
 	{"size",		BINUTILS},
 	{"strings",		BINUTILS},
 	{"strip",		BINUTILS},
-	{"incremental-dump",	BINUTILS},
 	{"objformat",		OBJFORMAT},
 	{"",			-1}
 };
