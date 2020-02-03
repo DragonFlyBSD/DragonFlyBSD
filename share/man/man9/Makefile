@@ -918,7 +918,9 @@ MLINKS+=store.9 casu32.9 \
 	store.9 suword32.9 \
 	store.9 suword64.9
 MLINKS+=syscall.9 syscalls.master.5
-MLINKS+=sysctl.9 SYSCTL_DECL.9 \
+MLINKS+=sysctl.9 SYSCTL_BIT32.9 \
+	sysctl.9 SYSCTL_BIT64.9 \
+	sysctl.9 SYSCTL_DECL.9 \
 	sysctl.9 SYSCTL_INT.9 \
 	sysctl.9 SYSCTL_LONG.9 \
 	sysctl.9 SYSCTL_NODE.9 \
@@ -938,7 +940,9 @@ MLINKS+=sysctl.9 SYSCTL_DECL.9 \
 	sysctl.9 SYSCTL_UINT.9 \
 	sysctl.9 SYSCTL_ULONG.9 \
 	sysctl.9 SYSCTL_UQUAD.9
-MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_INT.9 \
+MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_BIT32.9 \
+	sysctl_add_oid.9 SYSCTL_ADD_BIT64.9 \
+	sysctl_add_oid.9 SYSCTL_ADD_INT.9 \
 	sysctl_add_oid.9 SYSCTL_ADD_LONG.9 \
 	sysctl_add_oid.9 SYSCTL_ADD_NODE.9 \
 	sysctl_add_oid.9 SYSCTL_ADD_OID.9 \
