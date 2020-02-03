@@ -659,8 +659,8 @@ add_buffer_randomness_src(const char *buf, int bytes, int srcid)
 			state = &csprng_pcpu[mycpu->gd_cpuid];
 		} else {
 			state = iterate_csprng_state(bytes);
-			if (n > 61)
-				n = 61;
+			if (n > 256)
+				n = 256;
 		}
 		add_buffer_randomness_state(state, buf, bytes, srcid);
 		bytes -= n;
