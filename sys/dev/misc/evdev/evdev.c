@@ -107,13 +107,11 @@ evdev_alloc(void)
 void
 evdev_free(struct evdev_dev *evdev)
 {
-
-	if (evdev != NULL && evdev->ev_cdev != NULL &&
-	    evdev->ev_cdev->si_drv1 != NULL) {
-		evdev_unregister(evdev);
+	if (evdev) {
+		if (evdev->ev_cdev != NULL && evdev->ev_cdev->si_drv1 != NULL)
+			evdev_unregister(evdev);
+		kfree(evdev, M_EVDEV);
 	}
-
-	kfree(evdev, M_EVDEV);
 }
 
 static struct input_absinfo *
