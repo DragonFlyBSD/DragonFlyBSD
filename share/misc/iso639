@@ -90,7 +90,7 @@ bh	bih	bih	Bihari languages
 	bin	bin	Bini; Edo
 bi	bis	bis	Bislama
 	bla	bla	Siksika
-	bnt	bnt	Bantu (Other)
+	bnt	bnt	Bantu languages
 bs	bos	bos	Bosnian
 	bra	bra	Braj
 br	bre	bre	Breton
@@ -359,7 +359,7 @@ ny	nya	nya	Chichewa; Chewa; Nyanja
 	nyn	nyn	Nyankole
 	nyo	nyo	Nyoro
 	nzi	nzi	Nzima
-oc	oci	oci	Occitan (post 1500); Provençal
+oc	oci	oci	Occitan (post 1500)
 oj	oji	oji	Ojibwa
 or	ori	ori	Oriya
 om	orm	orm	Oromo
@@ -383,7 +383,7 @@ pl	pol	pol	Polish
 	pon	pon	Pohnpeian
 pt	por	por	Portuguese
 	pra	pra	Prakrit languages
-	pro	pro	Provençal, Old (to 1500)
+	pro	pro	Provençal, Old (to 1500); Occitan, Old (to 1500)
 ps	pus	pus	Pushto; Pashto
 	qaa-qtz	qaa-qtz	Reserved for local use
 qu	que	que	Quechua
@@ -400,7 +400,7 @@ ru	rus	rus	Russian
 	sad	sad	Sandawe
 sg	sag	sag	Sango
 	sah	sah	Yakut
-	sai	sai	South American Indian (Other)
+	sai	sai	South American Indian languages
 	sal	sal	Salishan languages
 	sam	sam	Samaritan Aramaic
 sa	san	san	Sanskrit
@@ -496,7 +496,7 @@ vi	vie	vie	Vietnamese
 vo	vol	vol	Volapük
 	vot	vot	Votic
 	wak	wak	Wakashan languages
-	wal	wal	Walamo
+	wal	wal	Wolaitta; Wolaytta
 	war	war	Waray
 	was	was	Washo
 cy	wel	cym	Welsh
