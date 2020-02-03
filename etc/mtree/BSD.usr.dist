@@ -96,6 +96,14 @@
             elf
             ..
         ..
+        binutils234
+            bfd-plugins
+            ..
+            ldscripts
+            ..
+            elf
+            ..
+        ..
         custom
         ..
         dhcpcd-hooks
