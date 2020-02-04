@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Synth</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.12/js/jquery.dataTables.min.js" type="text/javascript" charset="utf-8"></script>
+    <link href="https://cdn.datatables.net/1.10.12/css/jquery.dataTables.min.css" rel="stylesheet" type="text/css">
+    <link href="progress.css" type="text/css" rel="stylesheet" />
+    <script src="progress.js" type="text/javascript"></script>
+
+    <link rel="icon" type="image/png" href="favicon.png">
+  </head>
+  <body>
+    <div id="header">
+        <table class="layout">
+          <tr>
+            <td>
+              <div id="logo">
+                <img src="dsynth.png" alt="logo" />
+              </div>
+            </td>
+            <td>
+              <div id="build_info">
+                <table>
+                  <tr>
+                    <th>Profile:</th>
+                    <td id="profile"></td>
+                  </tr>
+                  <tr>
+                    <th>Polling:</th>
+                    <td id="polling"></td>
+                  </tr>
+                  <tr>
+                    <th>Kickoff:</th>
+                    <td id="kickoff"></td>
+                  </tr>
+                </table>
+              </div>
+            </td>
+            <td>
+              <div id="stats">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Total</th>
+                      <th>Built</th>
+                      <th>Failed</th>
+                      <th>Ignored</th>
+                      <th>Skipped</th>
+                      <th>Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="stats_queued" class="queued" onclick="filter('')" title="Clear search filter"></td>
+                      <td id="stats_built" class="built" onclick="filter('built')" title="Click to filter for built packages"></td>
+                      <td id="stats_failed" class="failed" onclick="filter('failed')" title="Click to filter for build failures"></td>
+                      <td id="stats_ignored" class="ignored" onclick="filter('ignored')" title="Click to filter for ignored ports"></td>
+                      <td id="stats_skipped" class="skipped" onclick="filter('skipped')" title="Click to filter for skipped ports"></td>
+                      <td id="stats_remains" class="remains"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div id="stress">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Load</th>
+                      <th>Swapinfo</th>
+                      <th>Elapsed</th>
+                      <th>Pkg/hour</th>
+                      <th title="Packages build rate over last 500 seconds" id="impulse_label">Impulse</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="stats_load"></td>
+                      <td id="stats_swapinfo"></td>
+                      <td id="stats_elapsed"></td>
+                      <td id="stats_pkghour"></td>
+                      <td id="stats_impulse"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </td>
+          </tr>
+        </table>
+    </div><!-- #header -->
+    <div id="main">
+      <div id="builders_zone_2">
+        <table class="builders_table" id="builders_body">
+          <thead class="builders">
+            <tr>
+              <td>ID</td>
+              <td>Duration</td>
+              <td>Build Phase</td>
+              <td>Origin</td>
+              <td>Lines</td>
+            </tr>
+          </thead>
+          <tbody class="builders"></tbody>
+        </table>
+      </div>
+
+      <div id="report">
+        <table id="report_table">
+          <thead>
+            <tr>
+              <th title="Click on number to search on origin">No.</th>
+              <th>Elapsed</th>
+              <th>ID</th>
+              <th>Result</th>
+              <th>Origin</th>
+              <th>Information</th>
+              <th>Skip</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody id="report_body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="footer">
+      <div id="nav">
+        Progress
+      </div>
+      <div id="progress">
+        <canvas id="progressbar" width=952 height=22></canvas>
+      </div>
+    </div>
+  </body>
+</html>

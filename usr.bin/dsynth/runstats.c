@@ -92,7 +92,7 @@ RunStatsUpdate(worker_t *work, const char *portdir)
 }
 
 void
-RunStatsUpdateTop(void)
+RunStatsUpdateTop(int active)
 {
 	static int rate_history[RHISTSIZE];
 	static u_int last_ti;
@@ -109,6 +109,7 @@ RunStatsUpdateTop(void)
 	info.s = t % 60;
 	info.m = t / 60 % 60;
 	info.h = t / 60 / 60;
+	info.active = active;
 
 	/*
 	 * Easy fields
@@ -187,4 +188,16 @@ RunStatsSync(void)
 
 	for (rs = RSBase; rs; rs = rs->next)
 		rs->sync();
+}
+
+void
+RunStatsUpdateCompletion(worker_t *work, int logid, pkg_t *pkg,
+			 const char *reason)
+{
+	runstats_t *rs;
+
+	for (rs = RSBase; rs; rs = rs->next) {
+		if (rs->updateCompletion)
+			rs->updateCompletion(work, logid, pkg, reason);
+	}
 }

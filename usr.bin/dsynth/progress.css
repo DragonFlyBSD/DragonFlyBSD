@@ -1,0 +1,354 @@
+body {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10pt;
+        margin: 0;
+        background: #8282B0;
+}
+
+a {	text-decoration: none}
+
+table {
+	border-collapse: collapse;
+	border: 2px solid black;
+	margin-top: 5px;
+	font-size: 10pt;
+}
+th, td { border: 1px solid black; }
+
+.layout,
+.layout th,
+.layout td {
+	border: 0;
+	margin: 0;
+}
+.built {
+        background-color: #339966;
+        color: #CCFFCC;
+}
+.failed {
+        background-color: #CC0033;
+        color: #FFFF99;
+}
+.skipped {
+        background-color: #CC6633;
+        color: #F0F0F0;
+}
+.ignored {
+        background-color: #FFCC33;
+        color: #202020;
+}
+.timehack {
+	color: #CC0033;
+	font-weight: 400;
+}
+.remains {
+	background-color: #D8D8D8;
+}
+.queued {
+	background-color: #D8D8D8;
+}
+.new {	display: none; }
+#header {
+	top: 0;
+	height: 95px;
+}
+
+#header, #footer {
+	background-color: #EEEEEE;
+	z-index: 2;
+	left: 0;
+	width: 1030px;
+}
+#footer {
+	position: fixed;
+	bottom: 0;
+	height: 22px;
+	border-top: 1px solid black;
+}
+
+#header table {
+	font-size: 10pt;
+	text-align: center;
+}
+
+#main {
+	width: 1030px;
+	padding: 0;
+	background-color: #FFF;
+}
+
+#stats_load,
+#stats_swapinfo,
+#stats_elapsed,
+#stats_pkghour,
+#stats_impulse{
+	background-color: #D8D8D8;
+}
+
+.entry,
+#stats_queued,
+#stats_built,
+#stats_failed,
+#stats_ignored,
+#stats_skipped,
+#impulse_label {
+	cursor: pointer;
+}
+
+#left {
+	width: 350px;
+	float: left;
+}
+#right {
+	float: left;
+	width: 650px;
+	margin-left: 8px;
+	margin-right: 0px;
+}
+
+#nav {
+	float: left;
+	margin-left: 8px;
+	margin-top: 4px;
+}
+#nav a {
+	margin: 0px 8px;
+	cursor: hand;
+}
+#logo {
+	float: left;
+        padding: 11px 10px 0}
+
+#stats table {
+	width: 514px;
+	border: 0;
+	margin: 0px 10px;
+	border-collapse: separate;
+	border-spacing: 2px;
+}
+#stats table td {
+	width: 16.66%;
+	padding: 2px 1px 1px;
+}
+#stress table {
+	width: 428px;
+	border: 0;
+	margin: 2px 52px;
+	border-collapse: separate;
+	border-spacing: 2px;
+}
+#stress table td {
+	width: 20%;
+	padding: 2px 1px 1px;
+}
+
+#progress {
+	left: 66px;
+	position: absolute;
+}
+
+#build_info {
+	margin: 1px 10px;
+}
+#build_info table {
+	border: 0;
+	margin: 0;
+}
+
+#build_info th:nth-child(1) {
+	width: 60px;
+	padding: 1px 1px 2px 0px;
+	text-align: right;
+}
+#build_info td:nth-child(2) {
+	width: 200px;
+	padding: 1px 0px 2px 7px;
+	text-align: left;
+	color: #03C;
+}
+
+#builders_zone_2 {
+	background: #000;
+	width: 100%;
+	margin: 0;
+	padding: 0 0 4px;
+}
+
+.builders_table {
+        font-family:Monospace;
+        font-size: 11pt;
+	border-collapse: separate;
+	border-spacing: 0;
+	border: 0;
+	width: 1030px;
+	margin: 0px;
+}
+
+.builders_table td {
+	border: 0;
+	padding: 1px 4px;
+}
+
+.builders_table thead td {
+	background-color: #009;
+	color: #D8D8D8;
+	font-size: 12pt;
+	font-weight: bold;
+	padding: 2px 4px;
+}
+
+.builders_table td:nth-child(1) {
+        width: 50px;
+	text-align: center;
+}
+.builders_table td:nth-child(2) {
+	width: 90px;
+}
+.builders_table td:nth-child(3) {
+	width: 170px;
+}
+.builders_table td:nth-child(4) {
+	width: 530px;
+}
+.builders_table td:nth-child(5) {
+	width: 160px;
+	text-align: right;
+	padding-right: 15px;
+}
+
+.builders_table tbody td:nth-child(1) {
+	cursor: pointer;
+}
+.builders_table tbody td:nth-child(2) {
+	color: #CCC;
+}
+.builders_table tbody td:nth-child(3) {
+	color: #FF0;
+}
+.builders_table tbody td:nth-child(4) {
+	color: #6FF;
+}
+.builders_table tbody td:nth-child(5) {
+	color: #CCC;
+}
+
+.b01, .b33 {color : #FFF}
+.b02, .b34 {color : #9F9}
+.b03, .b35 {color : #FF9}
+.b04, .b36 {color : #F9F}
+.b05, .b37 {color : #F99}
+.b06, .b38 {color : #06F}
+.b07, .b39 {color : #0FF}
+.b08, .b40 {color : #808080}
+.b09, .b41 {color : #CCC}
+.b10, .b42 {color : #0C6}
+.b11, .b43 {color : #C96}
+.b12, .b44 {color : #C0C}
+.b13, .b45 {color : #C00}
+.b14, .b46 {color : #06F}
+.b15, .b47 {color : #099}
+.b16, .b48 {color : #adad85}
+
+.b17, .b49 {color : #FFF; text-decoration: underline}
+.b18, .b50 {color : #9F9; text-decoration: underline}
+.b19, .b51 {color : #FF9; text-decoration: underline}
+.b20, .b52 {color : #F9F; text-decoration: underline}
+.b21, .b53 {color : #F99; text-decoration: underline}
+.b22, .b54 {color : #06F; text-decoration: underline}
+.b23, .b55 {color : #0FF; text-decoration: underline}
+.b24, .b56 {color : #808080; text-decoration: underline}
+.b25, .b57 {color : #CCC; text-decoration: underline}
+.b26, .b58 {color : #0C6; text-decoration: underline}
+.b27, .b59 {color : #C96; text-decoration: underline}
+.b28, .b60 {color : #C0C; text-decoration: underline}
+.b29, .b61 {color : #C00; text-decoration: underline}
+.b30, .b62 {color : #06F; text-decoration: underline}
+.b31, .b63 {color : #099; text-decoration: underline}
+.b32, .b64 {color : #adad85; text-decoration: underline}
+
+#report {
+	width: 1000px;
+	margin: 0 15px 12px;
+	padding: 18px 0 800px;
+}
+
+#report_table {
+	border-collapse: separate;
+	border-spacing: 0;
+	border: 0;
+	margin: 0;
+}
+
+#report_table th {
+	text-align: center;
+	padding: 4px 10px 3px 4px;
+	background-color: #CCC;
+	color: #404066;
+	border: 0;
+}
+
+#report_table td {
+	text-align: center;
+	padding: 2px;
+	border-color: #D0D0D0;
+}
+
+#report_table .odd {
+	background-color: #F9F9F9;
+}
+
+#report_table th:nth-child(1) {
+	width: 5%;
+}
+
+#report_table th:nth-child(2) {
+	width: 6%;
+}
+
+#report_table th:nth-child(3) {
+	width: 3%;
+}
+
+#report_table th:nth-child(4) {
+	width: 5%;
+}
+
+#report_table th:nth-child(5) {
+	width:30.5%;
+	text-align: left;
+}
+
+#report_table th:nth-child(6) {
+        width: 30.5%;
+	text-align: left;
+}
+#report_table th:nth-child(7) {
+	width: 4%;
+}
+#report_table th:nth-child(8) {
+	width: 6%;
+}
+
+#report_table td:nth-child(5),
+#report_table td:nth-child(6) {
+	text-align: left;
+	padding-left: 4px;
+}
+
+.result {
+	width: 50px;
+	padding: 1px 0px;
+	margin: 0 auto;
+}
+
+br.clear {
+	clear: both;
+	height: 0;
+	overflow: hidden;
+}
+:target { color: #FF0000; }
+
+.dataTables_empty {
+	background-color: #FFC;
+	border: 0;
+}

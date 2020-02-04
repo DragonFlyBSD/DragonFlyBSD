@@ -69,7 +69,6 @@ static char *buildskipreason(pkglink_t *parent, pkg_t *pkg);
 static int buildskipcount_dueto(pkg_t *pkg, int mode);
 static int mptylogpoll(int ptyfd, int fdlog, wmsg_t *wmsg,
 			time_t *wdog_timep);
-static int copyfile(char *src, char *dst);
 static void doHook(pkg_t *pkg, const char *id, const char *path, int waitfor);
 static void childHookRun(bulk_t *bulk);
 
@@ -304,7 +303,7 @@ DoBuild(pkg_t *pkgs)
 	}
 	pthread_mutex_unlock(&WorkerMutex);
 
-	RunStatsUpdateTop();
+	RunStatsUpdateTop(0);
 	RunStatsUpdateLogs();
 	RunStatsSync();
 	RunStatsDone();
@@ -593,6 +592,7 @@ skip_to_flavor:
 		} else {
 			dlog(DLOG_SUCC, "[XXX] %s meta-node complete\n",
 			     pkg->portdir);
+			RunStatsUpdateCompletion(NULL, DLOG_SUCC, pkg, "");
 		}
 	} else if (pkg->flags & PKGF_PACKAGED) {
 		/*
@@ -808,12 +808,16 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 				++BuildIgnoreCount;
 				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
 				     ipkg->portdir, reason);
+				RunStatsUpdateCompletion(NULL, DLOG_IGN,
+							 ipkg, reason);
 				doHook(ipkg, "hook_pkg_ignored",
 				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
 				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
 				     ipkg->portdir, reason);
+				RunStatsUpdateCompletion(NULL, DLOG_SKIP,
+							 ipkg, reason);
 				doHook(ipkg, "hook_pkg_skipped",
 				       HookPkgSkipped, 0);
 			}
@@ -832,12 +836,16 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 				++BuildIgnoreCount;
 				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
 				     pkgi->portdir, reason);
+				RunStatsUpdateCompletion(NULL, DLOG_IGN,
+							 pkgi, reason);
 				doHook(pkgi, "hook_pkg_ignored",
 				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
 				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
 				     pkgi->portdir, reason);
+				RunStatsUpdateCompletion(NULL, DLOG_SKIP,
+							 pkgi, reason);
 				doHook(pkgi, "hook_pkg_skipped",
 				       HookPkgSkipped, 0);
 			}
@@ -1026,12 +1034,16 @@ workercomplete(worker_t *work)
 				++BuildIgnoreCount;
 				dlog(DLOG_SKIP, "[%03d] IGNORD %s - %s\n",
 				     work->index, pkg->portdir, reason);
+				RunStatsUpdateCompletion(work, DLOG_SKIP,
+							 pkg, reason);
 				doHook(pkg, "hook_pkg_ignored",
 				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
 				dlog(DLOG_SKIP, "[%03d] SKIPPD %s - %s\n",
 				     work->index, pkg->portdir, reason);
+				RunStatsUpdateCompletion(work, DLOG_SKIP,
+							 pkg, reason);
 				doHook(pkg, "hook_pkg_skipped",
 				       HookPkgSkipped, 0);
 			}
@@ -1053,6 +1065,7 @@ workercomplete(worker_t *work)
 			     work->index, pkg->portdir, skipbuf,
 			     getphasestr(work->phase),
 			     h, m, s);
+			RunStatsUpdateCompletion(work, DLOG_FAIL, pkg, skipbuf);
 			doHook(pkg, "hook_pkg_failure", HookPkgFailure, 0);
 		}
 	} else {
@@ -1061,6 +1074,7 @@ workercomplete(worker_t *work)
 		dlog(DLOG_SUCC | DLOG_GRN,
 		     "[%03d] SUCCESS %s ##%02d:%02d:%02d\n",
 		     work->index, pkg->portdir, h, m, s);
+		RunStatsUpdateCompletion(work, DLOG_SUCC, pkg, "");
 		doHook(pkg, "hook_pkg_success", HookPkgSuccess, 0);
 	}
 	++BuildCount;
@@ -1111,7 +1125,7 @@ waitbuild(int whilematch, int dynamicmax)
 			}
 			RunStatsUpdate(work, NULL);
 		}
-		RunStatsUpdateTop();
+		RunStatsUpdateTop(1);
 		RunStatsUpdateLogs();
 		RunStatsSync();
 		if (RunningWorkers == whilematch) {
@@ -2716,7 +2730,7 @@ mptylogpoll(int ptyfd, int fdlog, wmsg_t *wmsg, time_t *wdog_timep)
  */
 #define COPYBLKSIZE	32768
 
-static int
+int
 copyfile(char *src, char *dst)
 {
 	char *tmp;

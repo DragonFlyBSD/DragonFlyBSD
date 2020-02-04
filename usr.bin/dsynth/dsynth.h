@@ -56,6 +56,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <termios.h>
+#include <time.h>
 #include <ctype.h>
 
 /*
@@ -438,6 +439,7 @@ typedef enum os_id os_id_t;
  * RunStats satellite modules
  */
 typedef struct topinfo {
+	int active;
 	int pkgimpulse;
 	int pkgrate;
 	int noswap;
@@ -463,6 +465,8 @@ typedef struct runstats {
 	void (*update)(worker_t *work, const char *portdir);
 	void (*updateTop)(topinfo_t *info);
 	void (*updateLogs)(void);
+	void (*updateCompletion)(worker_t *work, int dlogid,
+				 pkg_t *pkg, const char *reason);
 	void (*sync)(void);
 } runstats_t;
 
@@ -601,10 +605,13 @@ void RunStatsInit(void);
 void RunStatsDone(void);
 void RunStatsReset(void);
 void RunStatsUpdate(worker_t *work, const char *portdir);
-void RunStatsUpdateTop(void);
+void RunStatsUpdateTop(int active);
 void RunStatsUpdateLogs(void);
 void RunStatsSync(void);
+void RunStatsUpdateCompletion(worker_t *work, int logid,
+			pkg_t *pkg, const char *reason);
 
+int copyfile(char *src, char *dst);
 int ipcreadmsg(int fd, wmsg_t *msg);
 int ipcwritemsg(int fd, wmsg_t *msg);
 extern void MonitorDirective(const char *datfile, const char *lkfile);
