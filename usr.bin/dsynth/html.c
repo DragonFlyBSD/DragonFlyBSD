@@ -391,7 +391,9 @@ HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg, const char *reason)
 	int s, m, h;
 	int slot;
 	const char *result;
+	char *mreason;
 
+	mreason = NULL;
 	if (work) {
 		t = time(NULL) - work->start_time;
 		s = t % 60;
@@ -410,9 +412,19 @@ HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg, const char *reason)
 		break;
 	case DLOG_FAIL:
 		result = "failed";
+		if (work) {
+			asprintf(&mreason, "%s:%s",
+				 getphasestr(work->phase),
+				 reason);
+		} else {
+			asprintf(&mreason, "unknown:%s", reason);
+		}
+		reason = mreason;
 		break;
 	case DLOG_IGN:
 		result = "ignored";
+		asprintf(&mreason, "%s:|:0", reason);
+		reason = mreason;
 		break;
 	case DLOG_SKIP:
 		result = "skipped";
@@ -458,7 +470,7 @@ HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg, const char *reason)
 			"   ,\"ID\":\"%02d\"\n"
 			"   ,\"result\":\"%s\"\n"
 			"   ,\"origin\":\"%s\"\n"
-			"   ,\"info\":\"%s%s%s\"\n"
+			"   ,\"info\":\"%s\"\n"
 			"   ,\"duration\":\"%s\"\n"
 			"  }\n"
 			"]\n",
@@ -468,8 +480,6 @@ HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg, const char *reason)
 			slot,
 			result,
 			pkg->portdir,
-			(work ? getphasestr(work->phase) : ""),
-			(work ? ":" : ""),
 			dequote(reason),
 			elapsed_buf
 		);
@@ -478,6 +488,8 @@ HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg, const char *reason)
 
 	}
 	free(path);
+	if (mreason)
+		free(mreason);
 }
 
 static void
