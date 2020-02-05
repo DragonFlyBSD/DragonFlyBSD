@@ -39,6 +39,7 @@ int alwaysno;		/* assume "no" for all questions */
 int alwaysyes;		/* assume "yes" for all questions */
 int preen;		/* set when preening */
 int rdonly;		/* device is opened read only (supersedes above) */
+int allow_mmap;		/* Allow the use of mmap(), if possible */
 
 static void usage(void) __dead2;
 
@@ -54,7 +55,8 @@ main(int argc, char **argv)
 	int ret = 0, erg;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "fFnpy")) != -1) {
+	allow_mmap = 1;
+	while ((ch = getopt(argc, argv, "CfFnpyM")) != -1) {
 		switch (ch) {
 		case 'f':
 			/*
@@ -83,6 +85,10 @@ main(int argc, char **argv)
 
 		case 'p':
 			preen = 1;
+			break;
+
+		case 'M':
+			allow_mmap = 0;
 			break;
 
 		default:
