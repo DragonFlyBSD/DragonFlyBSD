@@ -102,7 +102,6 @@ linux_task_drop(struct thread *td)
 		atomic_add_long(&mm->refs, -1);	/* proc ref always remains */
 		task->mm = NULL;
 	}
-	kprintf("FREE TASK %p\n", task);
 	kfree(task);
 }
 
@@ -127,6 +126,5 @@ linux_mm_drop(struct mm_struct *mm)
 	if (refs == 1) {
 		lockuninit(&mm->mmap_sem);
 		kfree(mm);
-		kprintf("FREE MM %p\n", mm);
 	}
 }
