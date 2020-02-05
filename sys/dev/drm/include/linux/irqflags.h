@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2020 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,5 +34,15 @@
  */
 #define local_irq_disable()	crit_enter()
 #define local_irq_enable()	crit_exit()
+
+static inline void local_irq_save(unsigned long flags) {}
+static inline void local_irq_restore(unsigned long flags) {}
+
+static inline bool
+irqs_disabled(void)
+{
+	/* Do not prevent drm code from sleeping */
+	return false;
+}
 
 #endif	/* _LINUX_IRQFLAGS_H_ */

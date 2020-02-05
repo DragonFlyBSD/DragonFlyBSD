@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,16 +24,21 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_PREEMPT_H_
-#define _LINUX_PREEMPT_H_
+#ifndef _LINUX_KGDB_H_
+#define _LINUX_KGDB_H_
 
 #include <linux/linkage.h>
-#include <linux/list.h>
+#include <linux/init.h>
+#include <linux/atomic.h>
 
-#define preempt_disable()		cpu_ccfence()
+#include <ddb/ddb.h>
 
-#define preempt_enable()		cpu_ccfence()
+#include "opt_ddb.h"
 
-#define in_atomic()	(curthread->td_flags & TDF_NOFAULT)
+#ifdef DDB
+#define in_dbg_master()	db_active
+#else
+#define in_dbg_master()	0
+#endif
 
-#endif	/* _LINUX_PREEMPT_H_ */
+#endif	/* _LINUX_KGDB_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #ifndef _LINUX_FB_H_
 #define _LINUX_FB_H_
 
+#include <linux/kgdb.h>
 #include <uapi/linux/fb.h>
 
 #include <linux/fs.h>
