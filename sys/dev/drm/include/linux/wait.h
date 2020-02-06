@@ -188,6 +188,7 @@ waitqueue_active(wait_queue_head_t *q)
 	wait_queue_t name = {					\
 		.private = current,				\
 		.task_list = LIST_HEAD_INIT((name).task_list),	\
+		.func = autoremove_wake_function,		\
 	}
 
 static inline void
