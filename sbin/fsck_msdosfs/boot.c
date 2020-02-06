@@ -259,10 +259,11 @@ readboot(int dosfs, struct bootblock *boot)
 	}
 
 	/*
-	 * The number of clusters is derived from available data sectors, divided
-	 * by sectors per cluster.
+	 * The number of clusters is derived from available data sectors,
+	 * divided by sectors per cluster.
 	 */
-	boot->NumClusters = (boot->NumSectors - boot->FirstCluster) / boot->bpbSecPerClust;
+	boot->NumClusters =
+	    (boot->NumSectors - boot->FirstCluster) / boot->bpbSecPerClust;
 
 	if (boot->flags & FAT32) {
 		if (boot->NumClusters > (CLUST_RSRVD & CLUST32_MASK)) {
@@ -312,8 +313,8 @@ readboot(int dosfs, struct bootblock *boot)
 	}
 
 	/*
-	 * There are two reserved clusters.  To avoid adding CLUST_FIRST every time
-	 * when we perform boundary checks, we increment the NumClusters by 2,
+	 * There are two reserved clusters. To avoid adding CLUST_FIRST every
+	 * time we perform boundary checks, we increment the NumClusters by 2,
 	 * which is CLUST_FIRST to denote the first out-of-range cluster number.
 	 */
 	boot->NumClusters += CLUST_FIRST;
