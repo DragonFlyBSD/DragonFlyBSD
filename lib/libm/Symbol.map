@@ -316,3 +316,9 @@ DF404.0 {
 	casinhl;
 	cacoshl;
 };
+
+DF508.0 {
+	sincos;
+	sincosf;
+	sincosl;
+};
