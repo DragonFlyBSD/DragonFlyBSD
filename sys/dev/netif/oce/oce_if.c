@@ -470,7 +470,9 @@ oce_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCGPRIVATE_0:
-		rc = oce_handle_passthrough(ifp, data);
+		rc = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
+		if (rc == 0)
+			rc = oce_handle_passthrough(ifp, data);
 		break;
 	default:
 		rc = ether_ioctl(ifp, command, data);
