@@ -99,8 +99,14 @@ SRCS += i915_vgpu.c
 # CONFIG_DRM_I915_GVT
 #SRCS += intel_gvt.c
 
-SRCS   += acpi_if.h device_if.h bus_if.h pci_if.h \
-	  opt_acpi.h opt_drm.h
+SRCS += \
+	opt_acpi.h \
+	opt_ddb.h \
+	opt_drm.h \
+	acpi_if.h \
+	bus_if.h \
+	device_if.h \
+	pci_if.h
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/uapi

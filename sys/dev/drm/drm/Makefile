@@ -93,8 +93,13 @@ SRCS	= \
 # if CONFIG_AGP is set
 #SRCS+=	drm_agpsupport.c \
 
-SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h \
-	  opt_vm.h
+SRCS	+= \
+	opt_ddb.h \
+	opt_drm.h \
+	opt_vm.h \
+	bus_if.h \
+	device_if.h \
+	pci_if.h
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/drm

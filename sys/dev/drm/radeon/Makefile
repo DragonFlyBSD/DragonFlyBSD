@@ -135,6 +135,7 @@ SRCS	+=								\
 
 SRCS	+=								\
 	opt_acpi.h							\
+	opt_ddb.h							\
 	opt_drm.h							\
 	acpi_if.h							\
 	bus_if.h							\
