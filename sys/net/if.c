@@ -1268,7 +1268,8 @@ if_getgroups(struct ifgroupreq *ifgr, struct ifnet *ifp)
 	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next) {
 		if (len < sizeof(struct ifg_req)) {
 			ifgroup_lockmgr(LK_RELEASE);
-			return (EINVAL);
+			error = EINVAL;
+			goto failed;
 		}
 
 		strlcpy(p->ifgrq_group, ifgl->ifgl_group->ifg_group,
@@ -1279,11 +1280,9 @@ if_getgroups(struct ifgroupreq *ifgr, struct ifnet *ifp)
 	ifgroup_lockmgr(LK_RELEASE);
 
 	error = copyout(ifgrq, ifgr->ifgr_groups, ifgr->ifgr_len);
+failed:
 	kfree(ifgrq, M_TEMP);
-	if (error)
-		return (error);
-
-	return (0);
+	return error;
 }
 
 /*
@@ -1330,7 +1329,8 @@ if_getgroupmembers(struct ifgroupreq *ifgr)
 	TAILQ_FOREACH(ifgm, &ifg->ifg_members, ifgm_next) {
 		if (len < sizeof(struct ifg_req)) {
 			ifgroup_lockmgr(LK_RELEASE);
-			return (EINVAL);
+			error = EINVAL;
+			goto failed;
 		}
 
 		strlcpy(p->ifgrq_member, ifgm->ifgm_ifp->if_xname,
@@ -1341,11 +1341,9 @@ if_getgroupmembers(struct ifgroupreq *ifgr)
 	ifgroup_lockmgr(LK_RELEASE);
 
 	error = copyout(ifgrq, ifgr->ifgr_groups, ifgr->ifgr_len);
+failed:
 	kfree(ifgrq, M_TEMP);
-	if (error)
-		return (error);
-
-	return (0);
+	return error;
 }
 
 /*

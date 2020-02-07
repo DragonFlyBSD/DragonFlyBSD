@@ -210,6 +210,7 @@ if_clone_list(struct if_clonereq *ifcr)
 	for (ifc = LIST_FIRST(&if_cloners);
 	     ifc != NULL && count != 0;
 	     ifc = LIST_NEXT(ifc, ifc_list), count--, dst += IFNAMSIZ) {
+		bzero(outbuf, IFNAMSIZ);	/* sanitize */
 		strlcpy(outbuf, ifc->ifc_name, IFNAMSIZ);
 		error = copyout(outbuf, dst, IFNAMSIZ);
 		if (error)
