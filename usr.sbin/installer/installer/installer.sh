@@ -37,7 +37,7 @@ background_backend()
 is_serial()
 {
 	# Detect if we are currently connected via a serial console
-	if [ "X`/usr/bin/kenv console`" == "Xcomconsole" ]; then
+	if [ "X`/usr/bin/kenv -q console`" == "Xcomconsole" ]; then
 		return 0 # return success
 	fi
 	return 1
