@@ -433,7 +433,7 @@ rtmask_purelookup(struct sockaddr *_mask)
 
 void	rt_print(struct rt_addrinfo *, struct rtentry *);
 void	rt_addrinfo_print(int cmd, struct rt_addrinfo *);
-void	sockaddr_print(struct sockaddr *);
+void	sockaddr_print(const struct sockaddr *);
 
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>

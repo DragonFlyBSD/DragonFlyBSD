@@ -1440,10 +1440,10 @@ rt_addrinfo_print(int cmd, struct rt_addrinfo *rti)
 }
 
 void
-sockaddr_print(struct sockaddr *sa)
+sockaddr_print(const struct sockaddr *sa)
 {
-	struct sockaddr_in *sa4;
-	struct sockaddr_in6 *sa6;
+	const struct sockaddr_in *sa4;
+	const struct sockaddr_in6 *sa6;
 	int len;
 	int i;
 
@@ -1460,7 +1460,7 @@ sockaddr_print(struct sockaddr *sa)
 	default:
 		switch(sa->sa_family) {
 		case AF_INET:
-			sa4 = (struct sockaddr_in *)sa;
+			sa4 = (const struct sockaddr_in *)sa;
 			kprintf("INET %d %d.%d.%d.%d",
 				ntohs(sa4->sin_port),
 				(ntohl(sa4->sin_addr.s_addr) >> 24) & 255,
@@ -1470,7 +1470,7 @@ sockaddr_print(struct sockaddr *sa)
 			);
 			break;
 		case AF_INET6:
-			sa6 = (struct sockaddr_in6 *)sa;
+			sa6 = (const struct sockaddr_in6 *)sa;
 			kprintf("INET6 %d %04x:%04x%04x:%04x:%04x:%04x:%04x:%04x",
 				ntohs(sa6->sin6_port),
 				sa6->sin6_addr.s6_addr16[0],
