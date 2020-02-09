@@ -542,6 +542,7 @@ nd6_timer_dispatch(netmsg_t nmsg)
 				nd6_ns_output(ifp, &dst->sin6_addr,
 					       &dst->sin6_addr, ln, 0);
 			} else {
+				rt_rtmsg(RTM_MISS, rt, rt->rt_ifp, 0);
 				next = nd6_free(rt);
 			}
 			break;
