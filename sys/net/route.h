@@ -254,6 +254,9 @@ struct rt_msghdr {
  */
 #define	ROUTE_MSGFILTER	1	/* bitmask of which rtm_type to send to client */
 #define	ROUTE_FILTER(m)	(1U << (m))
+#define	RO_MISSFILTER	2	/* array of sockaddrs to match miss dst */
+
+#define	RO_FILTSA_MAX	30	/* maximum number of sockaddrs per filter */
 
 /*
  * Bitmask values for rtm_inits and rmx_locks.

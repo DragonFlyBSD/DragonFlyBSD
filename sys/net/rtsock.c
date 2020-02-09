@@ -133,6 +133,8 @@ struct netmsg_rttable_walk {
 struct routecb {
 	struct rawcb	rocb_rcb;
 	unsigned int	rocb_msgfilter;
+	char		*rocb_missfilter;
+	size_t		rocb_missfilterlen;
 };
 #define	sotoroutecb(so)	((struct routecb *)(so)->so_pcb)
 
@@ -177,7 +179,7 @@ rts_filter(struct mbuf *m, const struct sockproto *proto,
 		return ENOPROTOOPT;
 
 	/* If no filter set, just return. */
-	if (rop->rocb_msgfilter == 0)
+	if (rop->rocb_msgfilter == 0 && rop->rocb_missfilterlen == 0)
 		return 0;
 
 	/* Ensure we can access rtm_type */
@@ -187,8 +189,41 @@ rts_filter(struct mbuf *m, const struct sockproto *proto,
 
 	rtm = mtod(m, const struct rt_msghdr *);
 	/* If the rtm type is filtered out, return a positive. */
-	if (!(rop->rocb_msgfilter & ROUTE_FILTER(rtm->rtm_type)))
+	if (rop->rocb_msgfilter != 0 &&
+	    !(rop->rocb_msgfilter & ROUTE_FILTER(rtm->rtm_type)))
 		return EEXIST;
+
+	if (rop->rocb_missfilterlen != 0 && rtm->rtm_type == RTM_MISS) {
+		CTASSERT(RTAX_DST == 0);
+		struct sockaddr *sa;
+		struct sockaddr_storage ss;
+		struct sockaddr *dst = (struct sockaddr *)&ss;
+		char *cp = rop->rocb_missfilter;
+		char *ep = cp + rop->rocb_missfilterlen;
+
+		/* Ensure we can access sa_len */
+		if (m->m_pkthdr.len < sizeof(*rtm) +
+		    offsetof(struct sockaddr, sa_len) + sizeof(dst->sa_len))
+			return EINVAL;
+		m_copydata(m, sizeof(*rtm) + offsetof(struct sockaddr, sa_len),
+		    sizeof(ss.ss_len), (caddr_t)&ss);
+		if (m->m_pkthdr.len < sizeof(*rtm) + ss.ss_len)
+			return EINVAL;
+		/* Copy out the destination sockaddr */
+		m_copydata(m, sizeof(*rtm), ss.ss_len, (caddr_t)&ss);
+
+		/* Find a matching sockaddr in the filter */
+		while (cp < ep) {
+			sa = (struct sockaddr *)cp;
+			if (sa->sa_len == dst->sa_len &&
+			    memcmp(sa, dst, sa->sa_len) == 0)
+				break;
+			}
+			cp += RT_ROUNDUP(sa->sa_len);
+		}
+		if (cp == ep)
+			return EEXIST;
+	}
 
 	/* Passed the filter. */
 	return 0;
@@ -276,8 +311,11 @@ rts_detach(netmsg_t msg)
 {
 	struct socket *so = msg->base.nm_so;
 	struct rawcb *rp = sotorawcb(so);
+	struct routecb *rop = (struct routecb *)rp;
 
 	crit_enter();
+	if (rop->rocb_missfilterlen != 0)
+		kfree(rop->rocb_missfilter, M_PCB);
 	if (rp != NULL) {
 		switch(rp->rcb_proto.sp_protocol) {
 		case AF_INET:
@@ -436,6 +474,9 @@ route_ctloutput(netmsg_t msg)
 	struct routecb *rop = sotoroutecb(so);
 	int error;
 	unsigned int msgfilter;
+	unsigned char *cp, *ep;
+	size_t len;
+	struct sockaddr *sa;
 
 	if (sopt->sopt_level != AF_ROUTE) {
 		error = EINVAL;
@@ -453,6 +494,46 @@ route_ctloutput(netmsg_t msg)
 			if (error == 0)
 				rop->rocb_msgfilter = msgfilter;
 			break;
+		case RO_MISSFILTER:
+			/* Validate the data */
+			len = 0;
+			cp = sopt->sopt_val;
+			ep = cp + sopt->sopt_valsize;
+			while (cp < ep) {
+				if (ep - cp <
+				    offsetof(struct sockaddr, sa_len) +
+				    sizeof(sa->sa_len))
+					break;
+				if (++len > RO_FILTSA_MAX) {
+					error = ENOBUFS;
+					break;
+				}
+				sa = (struct sockaddr *)cp;
+				cp += RT_ROUNDUP(sa->sa_len);
+			}
+			if (cp != ep) {
+				if (error == 0)
+					error = EINVAL;
+				break;
+			}
+			if (rop->rocb_missfilterlen != 0)
+				kfree(rop->rocb_missfilter, M_PCB);
+			if (sopt->sopt_valsize != 0) {
+				rop->rocb_missfilter =
+				    kmalloc(sopt->sopt_valsize,
+				            M_PCB, M_WAITOK | M_NULLOK);
+				if (rop->rocb_missfilter == NULL) {
+					rop->rocb_missfilterlen = 0;
+					error = ENOBUFS;
+					break;
+				}
+			} else
+				rop->rocb_missfilter = NULL;
+			rop->rocb_missfilterlen = sopt->sopt_valsize;
+			if (rop->rocb_missfilterlen != 0)
+				memcpy(rop->rocb_missfilter, sopt->sopt_val,
+				    rop->rocb_missfilterlen);
+			break;
 		default:
 			error = ENOPROTOOPT;
 			break;
@@ -463,6 +544,10 @@ route_ctloutput(netmsg_t msg)
 		case ROUTE_MSGFILTER:
 			msgfilter = rop->rocb_msgfilter;
 			soopt_from_kbuf(sopt, &msgfilter, sizeof(msgfilter));
+			break;
+		case RO_MISSFILTER:
+			soopt_from_kbuf(sopt, rop->rocb_missfilter,
+			    rop->rocb_missfilterlen);
 			break;
 		default:
 			error = ENOPROTOOPT;
