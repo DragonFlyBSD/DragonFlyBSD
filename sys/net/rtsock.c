@@ -218,7 +218,6 @@ rts_filter(struct mbuf *m, const struct sockproto *proto,
 			if (sa->sa_len == dst->sa_len &&
 			    memcmp(sa, dst, sa->sa_len) == 0)
 				break;
-			}
 			cp += RT_ROUNDUP(sa->sa_len);
 		}
 		if (cp == ep)
