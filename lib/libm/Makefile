@@ -335,6 +335,8 @@ MLINKS+=scalbn.3 scalbln.3 \
 	scalbn.3 scalbnl.3
 MLINKS+=sin.3 sinf.3 \
 	sin.3 sinl.3
+MLINKS+=sincos.3 sincosf.3 \
+	sincos.3 sincosl.3
 MLINKS+=sinh.3 sinhf.3 \
 	sinh.3 sinhl.3
 MLINKS+=sqrt.3 cbrt.3 \
