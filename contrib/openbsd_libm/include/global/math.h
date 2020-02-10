@@ -24,11 +24,11 @@ __BEGIN_DECLS
  * ANSI/POSIX
  */
 extern char __infinity[];
-#if __GNUC_PREREQ__(3, 3) && !defined(__vax__)
+#if __GNUC_PREREQ__(3, 3)
 #define HUGE_VAL	__builtin_huge_val()
-#else /* __GNUC_PREREQ__(3, 3) && !__vax__ */
+#else /* __GNUC_PREREQ__(3, 3) */
 #define HUGE_VAL	(*(double *)(void *)__infinity)
-#endif /* __GNUC_PREREQ__(3, 3) && !__vax__ */
+#endif /* __GNUC_PREREQ__(3, 3) */
 
 /*
  * C99
@@ -37,25 +37,18 @@ extern char __infinity[];
 typedef	double	double_t;
 typedef	float	float_t;
 
-#if __GNUC_PREREQ__(3, 3) && !defined(__vax__)
+#if __GNUC_PREREQ__(3, 3)
 #define	HUGE_VALF	__builtin_huge_valf()
 #define	HUGE_VALL	__builtin_huge_vall()
 #define	INFINITY	__builtin_inff()
 #define	NAN		__builtin_nanf("")
-#else /* __GNUC_PREREQ__(3, 3) && !__vax__ */
-#ifdef __vax__
-extern char __infinityf[];
-#define	HUGE_VALF	(*(float *)(void *)__infinityf)
-#else /* __vax__ */
+#else /* __GNUC_PREREQ__(3, 3) */
 #define	HUGE_VALF	((float)HUGE_VAL)
-#endif /* __vax__ */
 #define	HUGE_VALL	((long double)HUGE_VAL)
 #define	INFINITY	HUGE_VALF
-#ifndef __vax__
 extern char __nan[];
 #define	NAN		(*(float *)(void *)__nan)
-#endif /* !__vax__ */
-#endif /* __GNUC_PREREQ__(3, 3) && !__vax__ */
+#endif /* __GNUC_PREREQ__(3, 3) */
 
 #define	FP_INFINITE	0x01
 #define	FP_NAN		0x02
@@ -66,17 +59,21 @@ extern char __nan[];
 #define FP_ILOGB0	(-INT_MAX)
 #define FP_ILOGBNAN	INT_MAX
 
-/*
-martynas@openbsd believes only F version is true.  This matches
-FreeBSD's math lib as well, so don't define D/L versions for now.
-#define FP_FAST_FMA	1
-#define FP_FAST_FMAL	1
-*/
-#define FP_FAST_FMAF	1
+#ifdef	__FP_FAST_FMA
+#define	FP_FAST_FMA	1
+#endif	/* __FP_FAST_FMA */
 
-#define MATH_ERRNO	1
-#define MATH_ERREXCEPT	2
-#define math_errhandling	MATH_ERREXCEPT
+#ifdef	__FP_FAST_FMAF
+#define	FP_FAST_FMAF	1
+#endif	/* __FP_FAST_FMAF */
+
+#ifdef	__FP_FAST_FMAL
+#define	FP_FAST_FMAL	1
+#endif	/* __FP_FAST_FMAL */
+
+#define	MATH_ERRNO	1
+#define	MATH_ERREXCEPT	2
+#define	math_errhandling	MATH_ERREXCEPT
 
 #define fpclassify(x) \
 	((sizeof (x) == sizeof (float)) ? \
@@ -143,11 +140,7 @@ FreeBSD's math lib as well, so don't define D/L versions for now.
 #define	M_SQRT2		((double)1.41421356237309504880) /* sqrt(2) */
 #define	M_SQRT1_2	((double)0.70710678118654752440) /* 1/sqrt(2) */
 
-#ifdef __vax__
-#define	MAXFLOAT	((float)1.70141173319264430e+38)
-#else
 #define	MAXFLOAT	((float)3.40282346638528860e+38)
-#endif /* __vax__ */
 
 extern int signgam;
 #endif /* __BSD_VISIBLE || __XSI_VISIBLE */
@@ -501,10 +494,6 @@ int __isnormall(long double);
 int __signbit(double);
 int __signbitf(float);
 int __signbitl(long double);
-
-#if __BSD_VISIBLE && defined(__vax__)
-double infnan(int);
-#endif /* __BSD_VISIBLE && defined(__vax__) */
 __END_DECLS
 
 #endif /* !_MATH_H_ */
