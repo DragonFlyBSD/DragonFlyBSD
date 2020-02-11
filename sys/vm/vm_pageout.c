@@ -1,4 +1,36 @@
 /*
+ * Copyright (c) 2003-2020 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
  * Copyright (c) 1991 Regents of the University of California.
  * All rights reserved.
  * Copyright (c) 1994 John S. Dyson
@@ -60,12 +92,10 @@
  *
  * any improvements or extensions that they make and grant Carnegie the
  * rights to redistribute these changes.
- *
- * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
  */
 
 /*
- *	The proverbial page-out daemon.
+ * The proverbial page-out daemon, rewritten many times over the decades.
  */
 
 #include "opt_vm.h"
@@ -2262,6 +2292,22 @@ skip_setup:
 					++qq;
 				if (avail_shortage - delta <= 0)
 					break;
+
+				/*
+				 * It is possible for avail_shortage to be
+				 * very large.  If a large program exits or
+				 * frees a ton of memory all at once, we do
+				 * not have to continue deactivations.
+				 *
+				 * (We will still run the active->inactive
+				 * target, however).
+				 */
+				if (!vm_page_count_target() &&
+				    !vm_page_count_min(
+						vm_page_free_hysteresis)) {
+					avail_shortage = 0;
+					break;
+				}
 			}
 			avail_shortage -= delta;
 			q1iterator = qq;
@@ -2340,6 +2386,18 @@ skip_setup:
 				    avail_shortage - delta <= 0) {
 					break;
 				}
+
+				/*
+				 * inactive_shortage can be a very large
+				 * number.  This is intended to break out
+				 * early if our inactive_target has been
+				 * reached due to other system activity.
+				 */
+				if (vmstats.v_inactive_count >
+				    vmstats.v_inactive_target) {
+					inactive_shortage = 0;
+					break;
+				}
 			}
 			inactive_shortage -= delta;
 			avail_shortage -= delta;
@@ -2360,10 +2418,17 @@ skip_setup:
 				      vnodes_skipped, recycle_count);
 
 		/*
-		 * Wait for more work.
+		 * This is a bit sophisticated because we do not necessarily
+		 * want to force paging until our targets are reached if we
+		 * were able to successfully retire the shortage we calculated.
 		 */
 		if (avail_shortage > 0) {
+			/*
+			 * If we did not retire enough pages continue the
+			 * pageout operation until we are able to.
+			 */
 			++pass;
+
 			if (pass < 10 && vm_pages_needed > 1) {
 				/*
 				 * Normal operation, additional processes
@@ -2377,19 +2442,18 @@ skip_setup:
 				} /* else immediate retry */
 			} else if (pass < 10) {
 				/*
-				 * Normal operation, fewer processes.  Delay
-				 * a bit but allow wakeups.  vm_pages_needed
-				 * is only adjusted against the primary
-				 * pagedaemon here.
+				 * Do a short sleep for the first 10 passes,
+				 * allow the sleep to be woken up by resetting
+				 * vm_pages_needed to 1 (NOTE: we are still
+				 * active paging!).
 				 */
 				if (isep == 0)
-					vm_pages_needed = 0;
-				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
-				if (isep == 0)
 					vm_pages_needed = 1;
+				tsleep(&vm_pages_needed, 0, "pdelay", 2);
 			} else if (swap_pager_full == 0) {
 				/*
-				 * We've taken too many passes, forced delay.
+				 * We've taken too many passes, force a
+				 * longer delay.
 				 */
 				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
 			} else {
@@ -2401,18 +2465,37 @@ skip_setup:
 			}
 		} else if (vm_pages_needed) {
 			/*
-			 * Interlocked wakeup of waiters (non-optional).
+			 * We retired our calculated shortage but we may have
+			 * to continue paging if threads drain memory too far
+			 * below our target.
 			 *
-			 * Similar to vm_page_free_wakeup() in vm_page.c,
-			 * wake
+			 * Similar to vm_page_free_wakeup() in vm_page.c.
 			 */
 			pass = 0;
-			if (!vm_page_count_min(vm_page_free_hysteresis) ||
-			    !vm_page_count_target()) {
+			if (!vm_paging_needed(0)) {
+				/* still more than half-way to our target */
 				vm_pages_needed = 0;
 				wakeup(&vmstats.v_free_count);
+			} else
+			if (!vm_page_count_min(vm_page_free_hysteresis)) {
+				/*
+				 * Continue operations with wakeup
+				 * (set variable to avoid overflow)
+				 */
+				vm_pages_needed = 2;
+				wakeup(&vmstats.v_free_count);
+			} else {
+				/*
+				 * No wakeup() needed, continue operations.
+				 * (set variable to avoid overflow)
+				 */
+				vm_pages_needed = 2;
 			}
 		} else {
+			/*
+			 * Turn paging back on immediately if we are under
+			 * minimum.
+			 */
 			pass = 0;
 		}
 	}
@@ -2452,11 +2535,12 @@ void
 pagedaemon_wakeup(void)
 {
 	if (vm_paging_needed(0) && curthread != pagethread) {
-		if (vm_pages_needed == 0) {
-			vm_pages_needed = 1;	/* SMP race ok */
-			wakeup(&vm_pages_needed);
+		if (vm_pages_needed <= 1) {
+			vm_pages_needed = 1;		/* SMP race ok */
+			wakeup(&vm_pages_needed);	/* tickle pageout */
 		} else if (vm_page_count_min(0)) {
-			++vm_pages_needed;	/* SMP race ok */
+			++vm_pages_needed;		/* SMP race ok */
+			/* a wakeup() would be wasted here */
 		}
 	}
 }

@@ -2631,8 +2631,8 @@ vm_wait(int timo)
 		 * allocation priority.
 		 */
 		if (vm_page_count_target()) {
-			if (vm_pages_needed == 0) {
-				vm_pages_needed = 1;
+			if (vm_pages_needed <= 1) {
+				++vm_pages_needed;
 				wakeup(&vm_pages_needed);
 			}
 			++vm_pages_waiting;	/* SMP race ok */
@@ -2666,8 +2666,8 @@ vm_wait_pfault(void)
 			if (vm_page_count_target()) {
 				thread_t td;
 
-				if (vm_pages_needed == 0) {
-					vm_pages_needed = 1;
+				if (vm_pages_needed <= 1) {
+					++vm_pages_needed;
 					wakeup(&vm_pages_needed);
 				}
 				++vm_pages_waiting;	/* SMP race ok */
