@@ -354,7 +354,7 @@ printcpuinfo(void)
 				"\034PTSC"	/* Performance TSC */
 				"\035PCX_L2I"	/* L2I Performance Counter */
 		       	        "\036MWAITX"	/* MONITORX/MWAITX instructions */
-				"\037<b30>"
+				"\037ADMSKX"
 				"\040<b31>"
 				, amd_feature2);
 			}
