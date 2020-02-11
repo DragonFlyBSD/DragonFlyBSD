@@ -42,6 +42,9 @@
 #include <sys/socket.h>
 #include <sys/mount.h>
 #include <sys/procctl.h>
+#if defined(__DragonFly__)
+#include <sys/vmmeter.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>

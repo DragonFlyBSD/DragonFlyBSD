@@ -71,6 +71,7 @@ static int mptylogpoll(int ptyfd, int fdlog, wmsg_t *wmsg,
 			time_t *wdog_timep);
 static void doHook(pkg_t *pkg, const char *id, const char *path, int waitfor);
 static void childHookRun(bulk_t *bulk);
+static void adjloadavg(double *dload);
 
 static worker_t *SigWork;
 static int MasterPtyFd = -1;
@@ -1159,7 +1160,7 @@ waitbuild(int whilematch, int dynamicmax)
 		if (dynamicmax && (wblast_time == 0 ||
 				   (unsigned)(t - wblast_time) >= 5)) {
 			double min_load = 1.5 * NumCores;
-			double max_load = 5.0 * NumCores;
+			double max_load = 4.0 * NumCores;
 			double min_swap = 0.10;
 			double max_swap = 0.40;
 			double dload[3];
@@ -1176,6 +1177,7 @@ waitbuild(int whilematch, int dynamicmax)
 			 * Cap based on load.  This is back-loaded.
 			 */
 			getloadavg(dload, 3);
+			adjloadavg(dload);
 			if (dload[0] < min_load) {
 				max1 = MaxWorkers;
 			} else if (dload[0] <= max_load) {
@@ -2374,6 +2376,7 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 			 * Watchdog scaling
 			 */
 			getloadavg(dload, 3);
+			adjloadavg(dload);
 			dv = dload[2] / NumCores;
 			if (dv < (double)NumCores) {
 				wdog_scaled = wdog;
@@ -2946,4 +2949,25 @@ childHookRun(bulk_t *bulk)
 		     "[XXX] %s SCRIPT %s (%s)\n",
 		     bulk->s1, bulk->s2, bulk->s3);
 	}
+}
+
+/*
+ * Adjusts dload[0] by adding in t_pw (processes waiting on page-fault).
+ * We don't want load reductions due to e.g. thrashing to cause dsynth
+ * to increase the dynamic limit because it thinks the load is low.
+ */
+static void
+adjloadavg(double *dload)
+{
+#if defined(__DragonFly__)
+	struct vmtotal total;
+	size_t size;
+
+	size = sizeof(total);
+	if (sysctlbyname("vm.vmtotal", &total, &size, NULL, 0) == 0) {
+		dload[0] += (double)total.t_pw;
+	}
+#else
+	dload[0] += 0.0;	/* just avoid compiler 'unused' warnings */
+#endif
 }
