@@ -767,10 +767,12 @@ tmpfs_write(struct vop_write_args *ap)
 			bp->b_flags |= B_AGE | B_RELBUF;
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */
 			cluster_awrite(bp);
-		} else if (vm_page_count_target()) {
+		} else if (vm_pages_needed) {
 			/*
-			 * Normal (userland) write but we are low on memory,
-			 * run the buffer the buffer cache.
+			 * If the pageout daemon is running we cycle the
+			 * write through the buffer cache normally to
+			 * pipeline the flush, thus avoiding adding any
+			 * more memory pressure to the pageout daemon.
 			 */
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */
 			bdwrite(bp);
