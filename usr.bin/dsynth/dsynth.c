@@ -45,7 +45,7 @@ int DebugOpt;
 int MaskProbeAbort;
 int ColorOpt = 1;
 int NullStdinOpt = 1;
-int SlowStartOpt = 1;
+int SlowStartOpt = -1;
 long PkgDepMemoryTarget;
 char *DSynthExecPath;
 char *ProfileOverrideOpt;
@@ -114,6 +114,11 @@ main(int ac, char **av)
 			printf("dsynth %s\n", DSYNTH_VERSION);
 			exit(0);
 		case 's':
+			/*
+			 * Start with N jobs, increasing to the configured
+			 * maximum slowly.  0 to disable (starts with the
+			 * full count).
+			 */
 			SlowStartOpt = strtol(optarg, NULL, 0);
 			break;
 		case 'm':
@@ -195,6 +200,22 @@ main(int ac, char **av)
 	addbuildenv("MACHTYPE", MachineName,
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
 #endif
+	/*
+	 * SlowStart auto adjust.  We nominally start with 1 job and increase
+	 * it to the maximum every 5 seconds to give various dynamic management
+	 * parameters time to stabilize.
+	 *
+	 * This can take a while on a many-core box with a high jobs setting,
+	 * so increase the initial jobs in such cases.
+	 */
+	if (SlowStartOpt > MaxWorkers)
+		SlowStartOpt = MaxWorkers;
+	if (SlowStartOpt < 0) {
+		if (MaxWorkers < 16)
+			SlowStartOpt = 1;
+		else
+			SlowStartOpt = MaxWorkers / 4;
+	}
 
 	/*
 	 * Special directive for when dsynth execs itself to manage
