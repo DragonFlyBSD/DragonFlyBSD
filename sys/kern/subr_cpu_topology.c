@@ -186,8 +186,8 @@ build_cpu_topology(int assumed_ncpus)
 
 	/*
 	 * Assume that the topology is uniform.
-	 * Find the number of siblings within chip
-	 * and witin core to build up the topology.
+	 * Find the number of siblings within the chip
+	 * and within the core to build up the topology.
 	 */
 	for (i = 0; i < assumed_ncpus; i++) {
 		cpumask_t mask;
@@ -292,6 +292,7 @@ build_cpu_topology(int assumed_ncpus)
 				visited[i] = 1;
 				leaf = get_cpu_node_by_cpuid(i);
 
+				KASSERT(leaf != NULL, ("cpu %d NULL node", i));
 				if (leaf->type == CORE_LEVEL) {
 					parent = leaf->parent_node;
 

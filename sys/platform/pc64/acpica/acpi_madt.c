@@ -292,6 +292,10 @@ madt_lapic_pass2_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 
 		if (lapic_ent->Id == arg->bsp_apic_id) {
 			cpu = 0;
+			if (arg->bsp_found) {
+				kprintf("cpu id %d, duplicate BSP found\n",
+					arg->cpu);
+			}
 			arg->bsp_found = 1;
 		} else {
 			cpu = arg->cpu;
@@ -299,6 +303,14 @@ madt_lapic_pass2_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 		}
 		MADT_VPRINTF("cpu id %d, acpi id %d, apic id %d\n",
 		    cpu, lapic_ent->ProcessorId, lapic_ent->Id);
+		if (lapic_ent->Id >= 255) {
+			kprintf("cpu id %d, WARNING acpi id %d\n",
+				cpu, lapic_ent->Id);
+		}
+		if (lapic_ent->ProcessorId >= 255) {
+			kprintf("cpu id %d, WARNING acpi processorid %d\n",
+				cpu, lapic_ent->ProcessorId);
+		}
 		lapic_set_cpuid(cpu, lapic_ent->Id);
 		CPUID_TO_ACPIID(cpu) = lapic_ent->ProcessorId;
 	}
@@ -362,6 +374,7 @@ madt_lapic_pass2(int bsp_apic_id)
 
 	KKASSERT(arg.bsp_found);
 	naps = arg.cpu - 1; /* exclude BSP */
+	kprintf("ACPI CPUS = %d\n", arg.cpu);
 
 	sdt_sdth_unmap(&madt->Header);
 
@@ -439,6 +452,8 @@ madt_lapic_probe(struct lapic_enumerator *e)
 
 	error = madt_iterate_entries(madt, madt_lapic_probe_callback, &arg);
 	if (!error) {
+		kprintf("madt_lapic_probe: lapic_count=%d x2apic_count=%d\n",
+			arg.lapic_count, arg.x2apic_count);
 		if (arg.lapic_count == 0 && arg.x2apic_count == 0) {
 			kprintf("madt_lapic_probe: no CPU is found\n");
 			error = EOPNOTSUPP;
