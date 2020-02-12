@@ -68,12 +68,28 @@
 #include "tmpfs.h"
 
 static void tmpfs_strategy_done(struct bio *bio);
-static void tmpfs_move_pages(vm_object_t src, vm_object_t dst);
+static void tmpfs_move_pages(vm_object_t src, vm_object_t dst, int movflags);
 
-static int tmpfs_cluster_enable = 1;
+/*
+ * bufcache_mode:
+ *	0	Normal page queue operation on flush.  Try to keep in memory.
+ *	1	Try to cache on flush to swap (default).
+ *	2	Always page to swap (not recommended).
+ */
+__read_mostly static int tmpfs_cluster_rd_enable = 1;
+__read_mostly static int tmpfs_cluster_wr_enable = 1;
+__read_mostly static int tmpfs_bufcache_mode = 1;
 SYSCTL_NODE(_vfs, OID_AUTO, tmpfs, CTLFLAG_RW, 0, "TMPFS filesystem");
-SYSCTL_INT(_vfs_tmpfs, OID_AUTO, cluster_enable, CTLFLAG_RW,
-		&tmpfs_cluster_enable, 0, "");
+SYSCTL_INT(_vfs_tmpfs, OID_AUTO, cluster_rd_enable, CTLFLAG_RW,
+		&tmpfs_cluster_rd_enable, 0, "");
+SYSCTL_INT(_vfs_tmpfs, OID_AUTO, cluster_wr_enable, CTLFLAG_RW,
+		&tmpfs_cluster_wr_enable, 0, "");
+SYSCTL_INT(_vfs_tmpfs, OID_AUTO, bufcache_mode, CTLFLAG_RW,
+		&tmpfs_bufcache_mode, 0, "");
+
+#define TMPFS_MOVF_FROMBACKING	0x0001
+#define TMPFS_MOVF_DEACTIVATE	0x0002
+
 
 static __inline
 void
@@ -248,7 +264,8 @@ tmpfs_open(struct vop_open_args *ap)
 			TMPFS_NODE_LOCK(node);
 			if (node->tn_reg.tn_pages_in_aobj) {
 				tmpfs_move_pages(node->tn_reg.tn_aobj,
-						 vp->v_object);
+						 vp->v_object,
+						 TMPFS_MOVF_FROMBACKING);
 				node->tn_reg.tn_pages_in_aobj = 0;
 			}
 			TMPFS_NODE_UNLOCK(node);
@@ -395,7 +412,9 @@ tmpfs_setattr(struct vop_setattr_args *ap)
 	if (error == 0 && (vap->va_size != VNOVAL)) {
 		/* restore any saved pages before proceeding */
 		if (node->tn_reg.tn_pages_in_aobj) {
-			tmpfs_move_pages(node->tn_reg.tn_aobj, vp->v_object);
+			tmpfs_move_pages(node->tn_reg.tn_aobj, vp->v_object,
+					 TMPFS_MOVF_FROMBACKING |
+					 TMPFS_MOVF_DEACTIVATE);
 			node->tn_reg.tn_pages_in_aobj = 0;
 		}
 		if (vap->va_size > node->tn_size)
@@ -517,7 +536,8 @@ tmpfs_read(struct vop_read_args *ap)
 	if (node->tn_reg.tn_pages_in_aobj) {
 		TMPFS_NODE_LOCK(node);
 		if (node->tn_reg.tn_pages_in_aobj) {
-			tmpfs_move_pages(node->tn_reg.tn_aobj, vp->v_object);
+			tmpfs_move_pages(node->tn_reg.tn_aobj, vp->v_object,
+					 TMPFS_MOVF_FROMBACKING);
 			node->tn_reg.tn_pages_in_aobj = 0;
 		}
 		TMPFS_NODE_UNLOCK(node);
@@ -534,7 +554,7 @@ tmpfs_read(struct vop_read_args *ap)
 		base_offset = (off_t)uio->uio_offset - offset;
 		bp = getcacheblk(vp, base_offset, TMPFS_BLKSIZE, GETBLK_KVABIO);
 		if (bp == NULL) {
-			if (tmpfs_cluster_enable) {
+			if (tmpfs_cluster_rd_enable) {
 				error = cluster_readx(vp, node->tn_size,
 						     base_offset,
 						     TMPFS_BLKSIZE,
@@ -629,7 +649,8 @@ tmpfs_write(struct vop_write_args *ap)
 	 * restore any saved pages before proceeding
 	 */
 	if (node->tn_reg.tn_pages_in_aobj) {
-		tmpfs_move_pages(node->tn_reg.tn_aobj, vp->v_object);
+		tmpfs_move_pages(node->tn_reg.tn_aobj, vp->v_object,
+				 TMPFS_MOVF_FROMBACKING);
 		node->tn_reg.tn_pages_in_aobj = 0;
 	}
 
@@ -767,7 +788,8 @@ tmpfs_write(struct vop_write_args *ap)
 			bp->b_flags |= B_AGE | B_RELBUF;
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */
 			cluster_awrite(bp);
-		} else if (vm_pages_needed) {
+		} else if (vm_pages_needed || vm_paging_needed(0) ||
+			   tmpfs_bufcache_mode >= 2) {
 			/*
 			 * If the pageout daemon is running we cycle the
 			 * write through the buffer cache normally to
@@ -775,11 +797,17 @@ tmpfs_write(struct vop_write_args *ap)
 			 * more memory pressure to the pageout daemon.
 			 */
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */
-			bdwrite(bp);
+			if (tmpfs_cluster_wr_enable) {
+				cluster_write(bp, node->tn_size,
+					      TMPFS_BLKSIZE, seqcount);
+			} else {
+				bdwrite(bp);
+			}
 		} else {
 			/*
 			 * Otherwise run the buffer directly through to the
-			 * backing VM store.
+			 * backing VM store, leaving the buffer clean so
+			 * buffer limits do not force early flushes to swap.
 			 */
 			buwrite(bp);
 			/*vm_wait_nominal();*/
@@ -895,6 +923,14 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 		bp->b_error = 0;
 		biodone(bio);
 	} else {
+		/*
+		 * Tell the buffer cache to try to recycle the pages
+		 * to PQ_CACHE on release.
+		 */
+		if (tmpfs_bufcache_mode >= 2 ||
+		    (tmpfs_bufcache_mode == 1 && vm_paging_needed(0))) {
+			bp->b_flags |= B_TTC;
+		}
 		nbio = push_bio(bio);
 		nbio->bio_done = tmpfs_strategy_done;
 		nbio->bio_offset = bio->bio_offset;
@@ -1678,7 +1714,8 @@ tmpfs_inactive(struct vop_inactive_args *ap)
 			vinvalbuf(vp, V_SAVE, 0, 0);
 			KKASSERT(RB_EMPTY(&vp->v_rbdirty_tree));
 			KKASSERT(RB_EMPTY(&vp->v_rbclean_tree));
-			tmpfs_move_pages(vp->v_object, node->tn_reg.tn_aobj);
+			tmpfs_move_pages(vp->v_object, node->tn_reg.tn_aobj,
+					 TMPFS_MOVF_DEACTIVATE);
 			node->tn_reg.tn_pages_in_aobj = 1;
 		}
 
@@ -1974,17 +2011,54 @@ tmpfs_move_pages_callback(vm_page_t p, void *data)
 		info->error = -1;
 		return -1;
 	}
-	vm_page_rename(p, info->dest_object, pindex);
-	vm_page_clear_commit(p);
-	vm_page_wakeup(p);
-	/* page automaticaly made dirty */
+
+	if ((info->pagerflags & TMPFS_MOVF_FROMBACKING) &&
+	    (p->flags & PG_SWAPPED) &&
+	    (p->flags & PG_NEED_COMMIT) == 0 &&
+	    p->dirty == 0) {
+		/*
+		 * If the page in the backing aobj was paged out to swap
+		 * it will be clean and it is better to free it rather
+		 * than re-dirty it.  We will assume that the page was
+		 * paged out to swap for a reason!
+		 *
+		 * This helps avoid unnecessary swap thrashing on the page.
+		 */
+		vm_page_free(p);
+	} else if ((info->pagerflags & TMPFS_MOVF_FROMBACKING) == 0 &&
+		   (p->flags & PG_NEED_COMMIT) == 0 &&
+		   p->dirty == 0) {
+		/*
+		 * If the page associated with the vnode was cleaned via
+		 * a tmpfs_strategy() call, it exists as a swap block in
+		 * aobj and it is again better to free it rather than
+		 * re-dirty it.  We will assume that the page was
+		 * paged out to swap for a reason!
+		 *
+		 * This helps avoid unnecessary swap thrashing on the page.
+		 */
+		vm_page_free(p);
+	} else {
+		/*
+		 * Rename the page, which will also ensure that it is flagged
+		 * as dirty and check whether a swap block association exists
+		 * in the target object or not, setting appropriate flags if
+		 * it does.
+		 */
+		vm_page_rename(p, info->dest_object, pindex);
+		vm_page_clear_commit(p);
+		if (info->pagerflags & TMPFS_MOVF_DEACTIVATE)
+			vm_page_deactivate(p);
+		vm_page_wakeup(p);
+		/* page automaticaly made dirty */
+	}
 
 	return 0;
 }
 
 static
 void
-tmpfs_move_pages(vm_object_t src, vm_object_t dst)
+tmpfs_move_pages(vm_object_t src, vm_object_t dst, int movflags)
 {
 	struct rb_vm_page_scan_info info;
 
@@ -1992,6 +2066,7 @@ tmpfs_move_pages(vm_object_t src, vm_object_t dst)
 	vm_object_hold(dst);
 	info.object = src;
 	info.dest_object = dst;
+	info.pagerflags = movflags;
 	do {
 		if (src->paging_in_progress)
 			vm_object_pip_wait(src, "objtfs");
