@@ -908,7 +908,7 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	}
 	if ((obj->flags & OBJ_DEAD) ||
 	    m->valid != VM_PAGE_BITS_ALL ||
-	    m->queue - m->pc == PQ_CACHE ||
+	    m->queue - m->pc != PQ_ACTIVE ||
 	    (m->flags & PG_SWAPPED)) {
 		vm_page_sbusy_drop(m);
 #ifdef VM_FAULT_QUICK_DEBUG
