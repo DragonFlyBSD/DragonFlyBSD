@@ -183,7 +183,7 @@ __read_mostly static int vm_swap_idle_enabled=0;
 #endif
 
 /* 0-disable, 1-passive, 2-active swp*/
-__read_mostly int vm_pageout_memuse_mode=1;
+__read_mostly int vm_pageout_memuse_mode=2;
 
 SYSCTL_UINT(_vm, VM_PAGEOUT_ALGORITHM, anonmem_decline,
 	CTLFLAG_RW, &vm_anonmem_decline, 0, "active->inactive anon memory");
@@ -850,6 +850,10 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 	/*
 	 * Inactive queue scan.
 	 *
+	 * We pick off approximately 1/10 of each queue.  Each queue is
+	 * effectively organized LRU so scanning the entire queue would
+	 * improperly pick up pages that might still be in regular use.
+	 *
 	 * NOTE: The vm_page must be spinlocked before the queue to avoid
 	 *	 deadlocks, so it is easiest to simply iterate the loop
 	 *	 with the queue unlocked at the top.
@@ -858,7 +862,7 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 
 	vm_page_queues_spin_lock(PQ_INACTIVE + q);
 	TAILQ_INSERT_HEAD(&vm_page_queues[PQ_INACTIVE + q].pl, &marker, pageq);
-	maxscan = vm_page_queues[PQ_INACTIVE + q].lcnt;
+	maxscan = vm_page_queues[PQ_INACTIVE + q].lcnt / 10 + 1;
 
 	/*
 	 * Queue locked at top of loop to avoid stack marker issues.
@@ -949,6 +953,8 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 		 * pass.  Otherwise the pages can wind up just cycling in
 		 * the inactive queue, getting flushed over and over again.
 		 */
+		if (vm_pageout_memuse_mode >= 2)
+			vm_page_flag_set(m, PG_WINATCFLS);
 		if (m->flags & PG_WINATCFLS)
 			vmflush_flags = VM_PAGER_TRY_TO_CACHE;
 		else
@@ -1381,7 +1387,7 @@ vm_pageout_scan_active(int pass, int q,
 
 	vm_page_queues_spin_lock(PQ_ACTIVE + q);
 	TAILQ_INSERT_HEAD(&vm_page_queues[PQ_ACTIVE + q].pl, &marker, pageq);
-	maxscan = vm_page_queues[PQ_ACTIVE + q].lcnt;
+	maxscan = vm_page_queues[PQ_ACTIVE + q].lcnt / 10 + 1;
 
 	/*
 	 * Queue locked at top of loop to avoid stack marker issues.
