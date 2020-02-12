@@ -1812,7 +1812,7 @@ vfs_vmio_release(struct buf *bp)
 				 */
 				vm_page_wakeup(m);
 				vm_page_try_to_free(m);
-			} else if ((bp->b_flags & B_NOTMETA) ||
+			} else if ((bp->b_flags & (B_NOTMETA | B_TTC)) ||
 				   vm_page_count_min(0)) {
 				/*
 				 * Attempt to move the page to PQ_CACHE
@@ -1860,7 +1860,7 @@ vfs_vmio_release(struct buf *bp)
 		bufspacewakeup();
 	}
 	bp->b_xio.xio_npages = 0;
-	bp->b_flags &= ~B_VMIO;
+	bp->b_flags &= ~(B_VMIO | B_TTC);
 	KKASSERT (LIST_FIRST(&bp->b_dep) == NULL);
 	if (bp->b_vp)
 		brelvp(bp);
