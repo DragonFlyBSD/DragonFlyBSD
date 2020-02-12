@@ -73,7 +73,7 @@ static monitorlog_t nclog;
 #define DURATION_COL	5
 #define BUILD_PHASE_COL	15
 #define ORIGIN_COL	32
-#define LINES_COL	73
+#define LINES_COL	72
 
 /*
  * The row that the worker list starts on, and the row that the log starts
@@ -132,8 +132,8 @@ NCursesReset(void)
 		mvwprintw(CWin, WORKER_START + i, ID_COL, "%02d", i);
 		mvwprintw(CWin, WORKER_START + i, DURATION_COL, "--:--:--");
 		mvwprintw(CWin, WORKER_START + i, BUILD_PHASE_COL, "Idle");
-		mvwprintw(CWin, WORKER_START + i, ORIGIN_COL, "%39.39s", "");
-		mvwprintw(CWin, WORKER_START + i, LINES_COL, "%6.6s", "");
+		mvwprintw(CWin, WORKER_START + i, ORIGIN_COL, "%38.38s", "");
+		mvwprintw(CWin, WORKER_START + i, LINES_COL, "%7.7s", "");
 	}
 	mvwprintw(CWin, WORKER_START + MaxWorkers, 0, "%s", LineB);
 	wrefresh(CWin);
@@ -278,9 +278,9 @@ NCursesUpdate(worker_t *work, const char *portdir)
 		mvwprintw(CWin, WORKER_START + i, BUILD_PHASE_COL,
 			  "%-16.16s", phase);
 		mvwprintw(CWin, WORKER_START + i, ORIGIN_COL,
-			  "%-39.39s", "");
+			  "%-38.38s", "");
 		mvwprintw(CWin, WORKER_START + i, LINES_COL,
-			  "%-6.6s", "");
+			  "%-7.7s", "");
 		return;
 	case WORKER_PENDING:
 		phase = "Pending";
@@ -322,9 +322,14 @@ NCursesUpdate(worker_t *work, const char *portdir)
 	mvwprintw(CWin, WORKER_START + i, BUILD_PHASE_COL,
 		  "%-16.16s", phase);
 	mvwprintw(CWin, WORKER_START + i, ORIGIN_COL,
-		  "%-39.39s", origin);
-	mvwprintw(CWin, WORKER_START + i, LINES_COL,
-		  "%6d", work->lines);
+		  "%-38.38s", origin);
+	if (work->lines > 9999999) {
+		mvwprintw(CWin, WORKER_START + i, LINES_COL,
+			  "%7s", "*MANY*%d", work->lines % 10);
+	} else {
+		mvwprintw(CWin, WORKER_START + i, LINES_COL,
+			  "%7d", work->lines);
+	}
 }
 
 static void
