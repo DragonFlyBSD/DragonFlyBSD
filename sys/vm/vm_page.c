@@ -3075,10 +3075,14 @@ vm_page_try_to_cache(vm_page_t m)
 
 	/*
 	 * Page busied by us and no longer spinlocked.  Dirty pages cannot
-	 * be moved to the cache.
+	 * be moved to the cache, but can be deactivated.  However, users
+	 * of this function want to move pages closer to the cache so we
+	 * only deactivate it if it is in PQ_ACTIVE.  We do not re-deactivate.
 	 */
 	vm_page_test_dirty(m);
 	if (m->dirty || (m->flags & PG_NEED_COMMIT)) {
+		if (m->queue - m->pc == PQ_ACTIVE)
+			vm_page_deactivate(m);
 		vm_page_wakeup(m);
 		return(0);
 	}
