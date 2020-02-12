@@ -488,11 +488,33 @@ dovmstat(u_int interval, int reps)
 			perror("sysctlbyname: vm.vmtotal");
 			exit(1);
 		}
+
+		/*
+		 * Be a little inventive so we can squeeze everything into
+		 * 80 columns.  These days the run queue can trivially be
+		 * into the three digits and under heavy paging loads the
+		 * blocked (d+p) count can as well.
+		 */
 		if (dooutput) {
-			printf("%3ld %2ld %2ld",
-			       total.t_rq - 1,
-			       total.t_dw + total.t_pw,
-			       total.t_sw);
+			char b1[4];
+			char b2[4];
+			char b3[2];
+
+			strcpy(b1, "***");
+			strcpy(b2, "***");
+			strcpy(b3, "*");
+			if (total.t_rq - 1 < 1000) {
+				snprintf(b1, sizeof(b1),
+					 "%3ld", total.t_rq - 1);
+			}
+			if (total.t_dw + total.t_pw < 1000) {
+				snprintf(b2, sizeof(b2),
+					 "%3ld", total.t_dw + total.t_pw);
+			}
+			if (total.t_sw < 10) {
+				snprintf(b3, sizeof(b3), "%ld", total.t_sw);
+			}
+			printf("%s %s %s", b1, b2, b3);
 		}
 
 #define rate(x)		\
@@ -662,7 +684,7 @@ printhdr(void)
 	else if (num_shown == 1)
 		printf("disk");
 	printf(" -----faults------ ---cpu---\n");
-	printf("  r  b  w   fre   flt   re   pi   po   fr ");
+	printf("  r   b w   fre   flt   re   pi   po   fr ");
 	for (i = 0; i < num_devices; i++)
 		if ((dev_select[i].selected)
 		 && (dev_select[i].selected <= maxshowdevs))
