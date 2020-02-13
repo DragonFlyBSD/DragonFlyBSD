@@ -738,9 +738,12 @@ tmpfs_write(struct vop_write_args *ap)
 		kflags |= NOTE_WRITE;
 
 		/*
-		 * Always try to flush the page in the UIO_NOCOPY case.  This
-		 * can come from the pageout daemon or during vnode eviction.
-		 * It is not necessarily going to be marked IO_ASYNC/IO_SYNC.
+		 * UIO_NOCOPY is a sensitive state due to potentially being
+		 * issued from the pageout daemon while in a low-memory
+		 * situation.  However, in order to cluster the I/O nicely
+		 * (e.g. 64KB+ writes instead of 16KB writes), we still try
+		 * to follow the same semantics that any other filesystem
+		 * might use.
 		 *
 		 * For the normal case we buwrite(), dirtying the underlying
 		 * VM pages instead of dirtying the buffer and releasing the
@@ -780,14 +783,28 @@ tmpfs_write(struct vop_write_args *ap)
 			 *     unintended side-effects (e.g. setting
 			 *     PG_NOTMETA on the VM page).
 			 *
+			 * (c) For the pageout->putpages->generic_putpages->
+			 *     UIO_NOCOPY-write (here), issuing an immediate
+			 *     write prevents any real clustering from
+			 *     happening because the buffers probably aren't
+			 *     (yet) marked dirty, or lost due to prior use
+			 *     of buwrite().  Try to use the normal
+			 *     cluster_write() mechanism for performance.
+			 *
 			 * Hopefully this will unblock the VM system more
 			 * quickly under extreme tmpfs write load.
 			 */
 			if (vm_page_count_min(vm_page_free_hysteresis))
 				bp->b_flags |= B_DIRECT;
-			bp->b_flags |= B_AGE | B_RELBUF;
+			bp->b_flags |= B_AGE | B_RELBUF | B_TTC;
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */
-			cluster_awrite(bp);
+			if (tmpfs_cluster_wr_enable &&
+			    (ap->a_ioflag & (IO_SYNC | IO_DIRECT)) == 0) {
+				cluster_write(bp, node->tn_size,
+					      TMPFS_BLKSIZE, seqcount);
+			} else {
+				cluster_awrite(bp);
+			}
 		} else if (vm_pages_needed || vm_paging_needed(0) ||
 			   tmpfs_bufcache_mode >= 2) {
 			/*
@@ -974,15 +991,23 @@ tmpfs_strategy_done(struct bio *bio)
 	biodone(bio);
 }
 
+/*
+ * To make write clustering work well make the backing store look
+ * contiguous to the cluster_*() code.  The swap_strategy() function
+ * will take it from there.
+ *
+ * Use MAXBSIZE-sized chunks as a micro-optimization to make random
+ * flushes leave full-sized gaps.
+ */
 static int
 tmpfs_bmap(struct vop_bmap_args *ap)
 {
 	if (ap->a_doffsetp != NULL)
 		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
-		*ap->a_runp = 0;
+		*ap->a_runp = MAXBSIZE - (ap->a_loffset & (MAXBSIZE - 1));
 	if (ap->a_runb != NULL)
-		*ap->a_runb = 0;
+		*ap->a_runb = ap->a_loffset & (MAXBSIZE - 1);
 
 	return 0;
 }

@@ -284,6 +284,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* new vsyncscan semantics */
 	mp->mnt_kern_flag |= MNTK_QUICKHALT;	/* no teardown needed on halt */
 	mp->mnt_data = (qaddr_t)tmp;
+	mp->mnt_iosize_max = MAXBSIZE;
 	vfs_getnewfsid(mp);
 
 	vfs_add_vnodeops(mp, &tmpfs_vnode_vops, &mp->mnt_vn_norm_ops);
