@@ -50,13 +50,17 @@ CFLAGS+=	-fPIC
 LDFLAGS+=	-Wl,-znocombreloc
 .endif
 
+.if exists(${.OBJDIR}/../../../../lib/libstand/libstand.a)
+LIBSTAND=	${.OBJDIR}/../../../../lib/libstand/libstand.a
+.endif
+
 #
 # Add libstand for the runtime functions used by the compiler - for example
 # __aeabi_* (arm) or __divdi3 (i386).
 # as well as required string and memory functions for all platforms.
 #
 DPADD+=		${LIBSTAND}
-LDADD+=		-lstand
+LDADD+=		${LIBSTAND}
 
 DPADD+=		${LDSCRIPT}
 

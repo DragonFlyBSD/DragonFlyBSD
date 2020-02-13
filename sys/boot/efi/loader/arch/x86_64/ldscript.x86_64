@@ -1,5 +1,5 @@
 /* $FreeBSD: head/sys/boot/efi/loader/arch/amd64/ldscript.amd64 280950 2015-04-01 08:30:40Z andrew $ */
-OUTPUT_FORMAT("elf64-x86-64-freebsd", "elf64-x86-64-freebsd", "elf64-x86-64-freebsd")
+OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
 OUTPUT_ARCH(i386:x86-64)
 ENTRY(_start)
 SECTIONS
@@ -19,7 +19,7 @@ SECTIONS
     /* .gnu.warning sections are handled specially by elf32.em. */
     *(.gnu.warning)
     *(.plt)
-  } =0x00300000010070000002000001000400
+  } =0xCCCCCCCC
   . = ALIGN(4096);
   .data		: {
     *(.rodata .rodata.* .gnu.linkonce.r.*)
