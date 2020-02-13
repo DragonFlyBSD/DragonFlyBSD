@@ -531,22 +531,27 @@ dovmstat(u_int interval, int reps)
 					      ovmm.v_vm_faults),
 					 5, 1));
 			printf("%s ",
-			       formatnum(rate(vmm.v_reactivated -
-					      ovmm.v_reactivated),
-					 4, 0));
+			       formatnum(rate((vmm.v_reactivated -
+					      ovmm.v_reactivated) *
+					      vms.v_page_size),
+					 4, 1));
 			printf("%s ",
-			       formatnum(rate(vmm.v_swapin + vmm.v_vnodein -
-					      (ovmm.v_swapin +
-					       ovmm.v_vnodein)),
-					 4, 0));
+			       formatnum(rate((vmm.v_swappgsin +
+					       vmm.v_vnodepgsin -
+					       ovmm.v_swappgsin -
+					       ovmm.v_vnodepgsin) *
+					      vms.v_page_size),
+					 4, 1));
 			printf("%s ",
-			       formatnum(rate(vmm.v_swapout + vmm.v_vnodeout -
-					      (ovmm.v_swapout +
-					       ovmm.v_vnodeout)),
-					 4, 0));
+			       formatnum(rate((vmm.v_swappgsout +
+					       vmm.v_vnodepgsout -
+					       ovmm.v_swappgsout -
+					       ovmm.v_vnodepgsout) *
+					      vms.v_page_size),
+					 4, 1));
 			printf("%s ",
-			       formatnum(rate(vmm.v_tfree - ovmm.v_tfree),
-					 4, 0));
+			       formatnum(rate((vmm.v_tfree - ovmm.v_tfree) *
+					      vms.v_page_size), 4, 1));
 		}
 		devstats(dooutput);
 		if (dooutput) {
