@@ -339,7 +339,7 @@ To avoid hanging indefinitely in such a case these functions
 return -1 with
 .Va errno
 set to
-.Dv EINVAL .
+.Er EINVAL .
 .Pp
 If
 .Fa rusage
@@ -382,7 +382,8 @@ Child exited with an exit code.
 .It Dv CLD_KILLED
 Child terminated abnormally with a signal.
 .It Dv CLD_DUMPED
-Child terminated abnormally and dumped (not implemented by DragonFly).
+Child terminated abnormally and dumped (not implemented by
+.Dx ) .
 .It Dv CLD_TRAPPED
 Traced child has trapped.
 .It Dv CLD_STOPPED
@@ -618,8 +619,9 @@ must be checked against zero to determine if a process reported status.
 .Pp
 .Fn wait
 called with -1 to wait for any child process will ignore a child that is
-referenced by a process descriptor (see
-.Xr pdfork 2 ) .
+referenced by a process descriptor.
+.\"(see
+.\".Xr pdfork 2 )
 Specific processes can still be waited on by specifying the process ID.
 .Sh ERRORS
 The
@@ -663,8 +665,8 @@ do not specify a valid set of processes.
 .Xr _exit 2 ,
 .Xr ptrace 2 ,
 .Xr sigaction 2 ,
-.Xr exit 3 ,
-.Xr siginfo 3
+.Xr exit 3
+.\".Xr siginfo 3
 .Sh STANDARDS
 The
 .Fn wait ,
