@@ -3,6 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,4 +51,18 @@ kmemdup(const void *src, size_t len, gfp_t gfp)
 	if (dst)
 		memcpy(dst, src, len);
 	return (dst);
+}
+
+#include <linux/fb.h>
+
+struct fb_info *
+framebuffer_alloc(size_t size, struct device *dev)
+{
+	return kzalloc(sizeof(struct fb_info), GFP_KERNEL);
+}
+
+void
+framebuffer_release(struct fb_info *info)
+{
+	kfree(info);
 }

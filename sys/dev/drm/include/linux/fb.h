@@ -61,4 +61,7 @@ extern int fb_get_options(const char *name, char **option);
 
 struct device_node;
 
+struct fb_info * framebuffer_alloc(size_t size, struct device *dev);
+void framebuffer_release(struct fb_info *info);
+
 #endif	/* _LINUX_FB_H_ */

@@ -786,13 +786,10 @@ EXPORT_SYMBOL(drm_fb_helper_init);
  */
 struct fb_info *drm_fb_helper_alloc_fbi(struct drm_fb_helper *fb_helper)
 {
+	struct device *dev = fb_helper->dev->dev;
 	struct fb_info *info;
 
-#ifdef __DragonFly__
-	info = kzalloc(sizeof(struct fb_info), GFP_KERNEL);
-#else
 	info = framebuffer_alloc(0, dev);
-#endif
 	if (!info)
 		return ERR_PTR(-ENOMEM);
 
@@ -849,13 +846,11 @@ void drm_fb_helper_release_fbi(struct drm_fb_helper *fb_helper)
 		struct fb_info *info = fb_helper->fbdev;
 
 		if (info) {
-#ifdef __DragonFly__
-			kfree(info);
-#else
+#if 0
 			if (info->cmap.len)
 				fb_dealloc_cmap(&info->cmap);
-			framebuffer_release(info);
 #endif
+			framebuffer_release(info);
 		}
 
 		fb_helper->fbdev = NULL;
