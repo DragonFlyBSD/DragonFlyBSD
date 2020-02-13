@@ -93,6 +93,7 @@ elf_reloc_internal(linker_file_t lf, Elf_Addr relocbase, const void *data,
 		/* Addend is 32 bit on 32 bit relocs */
 		switch (rtype) {
 		case R_X86_64_PC32:
+		case R_X86_64_PLT32:
 		case R_X86_64_32:
 		case R_X86_64_32S:
 			addend = *(Elf32_Addr *)where;
@@ -127,6 +128,7 @@ elf_reloc_internal(linker_file_t lf, Elf_Addr relocbase, const void *data,
 			break;
 
 		case R_X86_64_PC32:	/* S + A - P */
+		case R_X86_64_PLT32:	/* XXX assume PLT as S too */
 			if (lookup(lf, symidx, 1, &addr))
 				return -1;
 			where32 = (Elf32_Addr *)where;
