@@ -15717,9 +15717,9 @@ static void i915_disable_vga(struct drm_device *dev)
 
 	/* WaEnableVGAAccessThroughIOPort:ctg,elk,ilk,snb,ivb,vlv,hsw */
 	vga_get_uninterruptible(dev->pdev, VGA_RSRC_LEGACY_IO);
-	outb(VGA_SR_INDEX, SR01);
+	outb(SR01, VGA_SR_INDEX);
 	sr1 = inb(VGA_SR_DATA);
-	outb(VGA_SR_DATA, sr1 | 1 << 5);
+	outb(sr1 | 1<<5, VGA_SR_DATA);
 	vga_put(dev->pdev, VGA_RSRC_LEGACY_IO);
 	udelay(300);
 

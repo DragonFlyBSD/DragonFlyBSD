@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020 François Tigeot
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -159,6 +159,13 @@ arch_io_reserve_memtype_wc(resource_size_t start, resource_size_t size)
 static inline void
 arch_io_free_memtype_wc(resource_size_t start, resource_size_t size)
 {
+}
+
+#undef outb
+static inline void
+outb(u8 value, u_int port)
+{
+	outbv(port, value);
 }
 
 #endif	/* _ASM_IO_H_ */

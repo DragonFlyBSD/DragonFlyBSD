@@ -300,9 +300,7 @@ static void hsw_power_well_post_enable(struct drm_i915_private *dev_priv)
 	 * and error messages.
 	 */
 	vga_get_uninterruptible(dev->pdev, VGA_RSRC_LEGACY_IO);
-#if 0
 	outb(inb(VGA_MSR_READ), VGA_MSR_WRITE);
-#endif
 	vga_put(dev->pdev, VGA_RSRC_LEGACY_IO);
 
 	if (IS_BROADWELL(dev))
@@ -334,9 +332,7 @@ static void skl_power_well_post_enable(struct drm_i915_private *dev_priv,
 	 */
 	if (power_well->data == SKL_DISP_PW_2) {
 		vga_get_uninterruptible(dev->pdev, VGA_RSRC_LEGACY_IO);
-#if 0
 		outb(inb(VGA_MSR_READ), VGA_MSR_WRITE);
-#endif
 		vga_put(dev->pdev, VGA_RSRC_LEGACY_IO);
 
 		gen8_irq_power_well_post_enable(dev_priv,
