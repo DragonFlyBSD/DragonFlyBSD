@@ -184,6 +184,7 @@ __read_mostly static int vm_swap_idle_enabled=0;
 
 /* 0-disable, 1-passive, 2-active swp*/
 __read_mostly int vm_pageout_memuse_mode=2;
+__read_mostly int vm_pageout_allow_active=1;
 
 SYSCTL_UINT(_vm, VM_PAGEOUT_ALGORITHM, anonmem_decline,
 	CTLFLAG_RW, &vm_anonmem_decline, 0, "active->inactive anon memory");
@@ -213,6 +214,8 @@ SYSCTL_INT(_vm, OID_AUTO, pageout_stats_free_max,
 	CTLFLAG_RW, &vm_pageout_stats_free_max, 0, "Not implemented");
 SYSCTL_INT(_vm, OID_AUTO, pageout_memuse_mode,
 	CTLFLAG_RW, &vm_pageout_memuse_mode, 0, "memoryuse resource mode");
+SYSCTL_INT(_vm, OID_AUTO, pageout_allow_active,
+	CTLFLAG_RW, &vm_pageout_allow_active, 0, "allow inactive+active");
 SYSCTL_INT(_vm, OID_AUTO, pageout_debug,
 	CTLFLAG_RW, &vm_pageout_debug, 0, "debug pageout pages (count)");
 
@@ -476,7 +479,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 	 * of our soft-busy.
 	 */
 	if (dodebug)
-		kprintf("pageout: ");
+		kprintf("pageout(%d): ", count);
 	for (i = 0; i < count; i++) {
 		if (vmflush_flags & VM_PAGER_TRY_TO_CACHE)
 			vm_page_protect(mc[i], VM_PROT_NONE);
@@ -574,7 +577,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 		}
 	}
 	if (dodebug)
-		kprintf("\n");
+		kprintf("(%d paged out)\n", numpagedout);
 	return numpagedout;
 }
 
@@ -949,16 +952,19 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 
 		/*
 		 * Try to pageout the page and perhaps other nearby pages.
-		 * We want to get the pages into the cache on the second
-		 * pass.  Otherwise the pages can wind up just cycling in
-		 * the inactive queue, getting flushed over and over again.
+		 * We want to get the pages into the cache eventually (
+		 * first or second pass).  Otherwise the pages can wind up
+		 * just cycling in the inactive queue, getting flushed over
+		 * and over again.
 		 */
 		if (vm_pageout_memuse_mode >= 2)
 			vm_page_flag_set(m, PG_WINATCFLS);
+
+		vmflush_flags = 0;
+		if (vm_pageout_allow_active)
+			vmflush_flags |= VM_PAGER_ALLOW_ACTIVE;
 		if (m->flags & PG_WINATCFLS)
-			vmflush_flags = VM_PAGER_TRY_TO_CACHE;
-		else
-			vmflush_flags = 0;
+			vmflush_flags |= VM_PAGER_TRY_TO_CACHE;
 		count = vm_pageout_page(m, &max_launder, vnodes_skipped,
 					&vpfailed, pass, vmflush_flags);
 		delta += count;
