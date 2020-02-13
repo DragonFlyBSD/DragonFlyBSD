@@ -184,13 +184,15 @@ pass-instances.def: ${GCCDIR}/gcc/passes.def $(PASSES_EXTRA)
 		${.ALLSRC} > ${.TARGET}
 
 # XXX plain cpp(1) safe? also /usr/bin/awk?
+# XXX^2 cpp(1) as clang-cpp in traditional-cpp mode does not expand "FOO (blah)"
+NXCCCPP?=	${NXCC} -E -P
 params.list: ${GCCDIR}/gcc/params-list.h ${GCCDIR}/gcc/params.def
-	cpp ${GCCDIR}/gcc/params-list.h | sed 's/^#.*//;/^$$/d' \
+	${NXCCCPP} ${GCCDIR}/gcc/params-list.h | sed 's/^#.*//;/^$$/d' \
 	> tmp-params.list
 	${MIC} tmp-params.list params.list
 
 params.options: ${GCCDIR}/gcc/params-options.h ${GCCDIR}/gcc/params.def
-	cpp ${GCCDIR}/gcc/params-options.h | sed 's/^#.*//;/^$$/d' \
+	${NXCCCPP} ${GCCDIR}/gcc/params-options.h | sed 's/^#.*//;/^$$/d' \
 	> tmp-params.options
 	${MIC} tmp-params.options params.options
 
