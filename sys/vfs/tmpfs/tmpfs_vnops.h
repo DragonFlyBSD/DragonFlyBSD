@@ -43,6 +43,7 @@
 
 extern struct vop_ops tmpfs_vnode_vops;
 extern struct vop_ops tmpfs_fifo_vops;
+extern int tmpfs_bufcache_mode __read_mostly;
 
 /*
  * Declarations for tmpfs_vnops.c.

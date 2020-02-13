@@ -348,6 +348,12 @@ extern	int		vttoif_tab[];
 	SYSUNINIT(f##uninit, SI_SUB_VFS, SI_ORDER_SECOND,vfs_nrm_vnodeops_sysinit, &f)
 
 /*
+ * nvextendbuf() flags
+ */
+#define NVEXTF_TRIVIAL	0x0001
+#define NVEXTF_BUWRITE	0x0002
+
+/*
  * Global vnode data.
  */
 struct objcache;
@@ -463,10 +469,10 @@ int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, off_t length, int blksize);
 void	vnode_pager_setsize (struct vnode *, vm_ooffset_t);
 int	nvtruncbuf (struct vnode *vp, off_t length, int blksize, int boff,
-		int trivial);
+		int flags);
 int	nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
 		int oblksize, int nblksize,
-		int oboff, int nboff, int trivial);
+		int oboff, int nboff, int flags);
 void	nvnode_pager_setsize (struct vnode *vp, off_t length,
 		int blksize, int boff);
 int	vfsync(struct vnode *vp, int waitfor, int passes,
