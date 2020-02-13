@@ -106,10 +106,13 @@ tmpfs_node_dtor(void *obj, void *privdata)
 static void *
 tmpfs_node_init(void *args, int flags)
 {
-	struct tmpfs_node *node = objcache_malloc_alloc(args, flags);
+	struct tmpfs_node *node;
+
+	node = objcache_malloc_alloc(args, flags);
 	if (node == NULL)
 		return (NULL);
 	node->tn_id = 0;
+	node->tn_blksize = PAGE_SIZE;	/* start small */
 
 	lockinit(&node->tn_interlock, "tmpfs node interlock", 0, LK_CANRECURSE);
 	node->tn_gen = karc4random();

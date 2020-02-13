@@ -78,7 +78,7 @@ static void tmpfs_move_pages(vm_object_t src, vm_object_t dst, int movflags);
  */
 __read_mostly static int tmpfs_cluster_rd_enable = 1;
 __read_mostly static int tmpfs_cluster_wr_enable = 1;
-__read_mostly static int tmpfs_bufcache_mode = 1;
+__read_mostly int tmpfs_bufcache_mode = 1;
 SYSCTL_NODE(_vfs, OID_AUTO, tmpfs, CTLFLAG_RW, 0, "TMPFS filesystem");
 SYSCTL_INT(_vfs_tmpfs, OID_AUTO, cluster_rd_enable, CTLFLAG_RW,
 		&tmpfs_cluster_rd_enable, 0, "");
@@ -552,19 +552,20 @@ tmpfs_read(struct vop_read_args *ap)
 		 */
 		offset = (size_t)uio->uio_offset & TMPFS_BLKMASK64;
 		base_offset = (off_t)uio->uio_offset - offset;
-		bp = getcacheblk(vp, base_offset, TMPFS_BLKSIZE, GETBLK_KVABIO);
+		bp = getcacheblk(vp, base_offset,
+				 node->tn_blksize, GETBLK_KVABIO);
 		if (bp == NULL) {
 			if (tmpfs_cluster_rd_enable) {
 				error = cluster_readx(vp, node->tn_size,
 						     base_offset,
-						     TMPFS_BLKSIZE,
+						     node->tn_blksize,
 						     B_NOTMETA | B_KVABIO,
 						     uio->uio_resid,
 						     seqcount * MAXBSIZE,
 						     &bp);
 			} else {
 				error = bread_kvabio(vp, base_offset,
-						     TMPFS_BLKSIZE, &bp);
+						     node->tn_blksize, &bp);
 			}
 			if (error) {
 				brelse(bp);
@@ -590,7 +591,7 @@ tmpfs_read(struct vop_read_args *ap)
 		/*
 		 * Figure out how many bytes we can actually copy this loop.
 		 */
-		len = TMPFS_BLKSIZE - offset;
+		len = node->tn_blksize - offset;
 		if (len > uio->uio_resid)
 			len = uio->uio_resid;
 		if (len > node->tn_size - uio->uio_offset)
@@ -693,17 +694,20 @@ tmpfs_write(struct vop_write_args *ap)
 		 */
 		if (uio->uio_segflg == UIO_NOCOPY &&
 		    (ap->a_ioflag & IO_RECURSE) == 0) {
-			bwillwrite(TMPFS_BLKSIZE);
+			bwillwrite(node->tn_blksize);
 		}
 
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
+		 *
+		 * Calculate the maximum bytes we can write to the buffer at
+		 * this offset (after resizing).
 		 */
 		offset = (size_t)uio->uio_offset & TMPFS_BLKMASK64;
 		base_offset = (off_t)uio->uio_offset - offset;
-		len = TMPFS_BLKSIZE - offset;
-		if (len > uio->uio_resid)
-			len = uio->uio_resid;
+		len = uio->uio_resid;
+		if (len > TMPFS_BLKSIZE - offset)
+			len = TMPFS_BLKSIZE - offset;
 
 		if ((uio->uio_offset + len) > node->tn_size) {
 			trivial = (uio->uio_offset <= node->tn_size);
@@ -722,7 +726,7 @@ tmpfs_write(struct vop_write_args *ap)
 		 *
 		 * So just use bread() to do the right thing.
 		 */
-		error = bread_kvabio(vp, base_offset, TMPFS_BLKSIZE, &bp);
+		error = bread_kvabio(vp, base_offset, node->tn_blksize, &bp);
 		bkvasync(bp);
 		error = uiomovebp(bp, (char *)bp->b_data + offset, len, uio);
 		if (error) {
@@ -801,7 +805,7 @@ tmpfs_write(struct vop_write_args *ap)
 			if (tmpfs_cluster_wr_enable &&
 			    (ap->a_ioflag & (IO_SYNC | IO_DIRECT)) == 0) {
 				cluster_write(bp, node->tn_size,
-					      TMPFS_BLKSIZE, seqcount);
+					      node->tn_blksize, seqcount);
 			} else {
 				cluster_awrite(bp);
 			}
@@ -816,7 +820,7 @@ tmpfs_write(struct vop_write_args *ap)
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */
 			if (tmpfs_cluster_wr_enable) {
 				cluster_write(bp, node->tn_size,
-					      TMPFS_BLKSIZE, seqcount);
+					      node->tn_blksize, seqcount);
 			} else {
 				bdwrite(bp);
 			}

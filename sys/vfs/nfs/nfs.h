@@ -789,7 +789,7 @@ void	nfsrv_rcv_upcall (struct socket *so, void *arg, int waitflag);
 void	nfsrv_slpderef (struct nfssvc_sock *slp);
 void	nfsrv_slpref (struct nfssvc_sock *slp);
 int	nfs_meta_setsize (struct vnode *vp, struct thread *td,
-			off_t nbase, int trivial);
+			off_t nbase, int nvextflags);
 int	nfs_clientd(struct nfsmount *nmp, struct ucred *cred,
 			struct nfsd_cargs *ncd, int flag, caddr_t argp,
 			struct thread *td);

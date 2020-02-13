@@ -664,7 +664,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			if (uio->uio_offset > ip->ino_data.size)
 				trivial = 0;
 			else
-				trivial = 1;
+				trivial = NVEXTF_TRIVIAL;
 			nvextendbuf(ap->a_vp,
 				    ip->ino_data.size,
 				    nsize,

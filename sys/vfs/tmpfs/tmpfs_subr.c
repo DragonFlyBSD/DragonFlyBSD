@@ -49,6 +49,8 @@
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
+#include <vm/vm_pageout.h>
+#include <vm/vm_page2.h>
 
 #include <vfs/tmpfs/tmpfs.h>
 #include <vfs/tmpfs/tmpfs_vnops.h>
@@ -480,7 +482,7 @@ loop:
 		 * for its tmpfs_strategy().
 		 */
 		vsetflags(vp, VKVABIO);
-		vinitvmio(vp, node->tn_size, TMPFS_BLKSIZE, -1);
+		vinitvmio(vp, node->tn_size, node->tn_blksize, -1);
 		break;
 	case VLNK:
 		break;
@@ -924,7 +926,7 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
  * the size newsize.  'vp' must point to a vnode that represents a regular
  * file.  'newsize' must be positive.
  *
- * pass trivial as 1 when buf content will be overwritten, otherwise set 0
+ * pass NVEXTF_TRIVIAL when buf content will be overwritten, otherwise set 0
  * to be zero filled.
  *
  * Returns zero on success or an appropriate error code on failure.
@@ -939,6 +941,7 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
 	off_t oldsize;
+	int nvextflags;
 
 #ifdef INVARIANTS
 	KKASSERT(vp->v_type == VREG);
@@ -971,6 +974,17 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 		atomic_add_long(&tmp->tm_pages_used, (newpages - oldpages));
 
 	/*
+	 * nvextflags to pass along for bdwrite() vs buwrite()
+	 */
+	if (vm_pages_needed || vm_paging_needed(0) ||
+	    tmpfs_bufcache_mode >= 2) {
+		nvextflags = 0;
+	} else {
+		nvextflags = NVEXTF_BUWRITE;
+	}
+
+
+	/*
 	 * When adjusting the vnode filesize and its VM object we must
 	 * also adjust our backing VM object (aobj).  The blocksize
 	 * used must match the block sized we use for the buffer cache.
@@ -978,13 +992,20 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	 * The backing VM object may contain VM pages as well as swap
 	 * assignments if we previously renamed main object pages into
 	 * it during deactivation.
+	 *
+	 * To make things easier tmpfs uses a blksize in multiples of
+	 * PAGE_SIZE, and will only increase the blksize as a small file
+	 * increases in size.  Once a file has exceeded TMPFS_BLKSIZE (16KB),
+	 * the blksize is maxed out.  Truncating the file does not reduce
+	 * the blksize.
 	 */
 	if (newsize < oldsize) {
 		vm_pindex_t osize;
 		vm_pindex_t nsize;
 		vm_object_t aobj;
 
-		error = nvtruncbuf(vp, newsize, TMPFS_BLKSIZE, -1, 0);
+		error = nvtruncbuf(vp, newsize, node->tn_blksize,
+				   -1, nvextflags);
 		aobj = node->tn_reg.tn_aobj;
 		if (aobj) {
 			osize = aobj->size;
@@ -999,10 +1020,25 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 		}
 	} else {
 		vm_object_t aobj;
+		int nblksize;
+
+		/*
+		 * The first (and only the first) buffer in the file is resized
+		 * in multiples of PAGE_SIZE, up to TMPFS_BLKSIZE.
+		 */
+		nblksize = node->tn_blksize;
+		while (nblksize < TMPFS_BLKSIZE &&
+		       nblksize < newsize) {
+			nblksize += PAGE_SIZE;
+		}
+
+		if (trivial)
+			nvextflags |= NVEXTF_TRIVIAL;
 
 		error = nvextendbuf(vp, oldsize, newsize,
-				    TMPFS_BLKSIZE, TMPFS_BLKSIZE,
-				    -1, -1, trivial);
+				    node->tn_blksize, nblksize,
+				    -1, -1, nvextflags);
+		node->tn_blksize = nblksize;
 		aobj = node->tn_reg.tn_aobj;
 		if (aobj)
 			aobj->size = vp->v_object->size;

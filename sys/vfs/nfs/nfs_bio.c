@@ -634,7 +634,8 @@ again:
 		if (uio->uio_offset + bytes > np->n_size) {
 			np->n_flag |= NLMODIFIED;
 			trivial = (uio->uio_segflg != UIO_NOCOPY &&
-				   uio->uio_offset <= np->n_size);
+				   uio->uio_offset <= np->n_size) ?
+				  NVEXTF_TRIVIAL : 0;
 			nfs_meta_setsize(vp, td, uio->uio_offset + bytes,
 					 trivial);
 			kflags |= NOTE_EXTEND;
@@ -1293,7 +1294,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
  * still mapped into the buffer straddling EOF are not invalidated.
  */
 int
-nfs_meta_setsize(struct vnode *vp, struct thread *td, off_t nsize, int trivial)
+nfs_meta_setsize(struct vnode *vp, struct thread *td, off_t nsize, int flags)
 {
 	struct nfsnode *np = VTONFS(vp);
 	off_t osize;
@@ -1304,11 +1305,10 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, off_t nsize, int trivial)
 	np->n_size = nsize;
 
 	if (nsize < osize) {
-		error = nvtruncbuf(vp, nsize, biosize, -1, 0);
+		error = nvtruncbuf(vp, nsize, biosize, -1, flags);
 	} else {
 		error = nvextendbuf(vp, osize, nsize,
-				    biosize, biosize, -1, -1,
-				    trivial);
+				    biosize, biosize, -1, -1, flags);
 	}
 	return(error);
 }

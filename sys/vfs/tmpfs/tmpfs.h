@@ -164,6 +164,7 @@ struct tmpfs_node {
 	/* Node's internal status.  This is used by several file system
 	 * operations to do modifications to the node in a delayed
 	 * fashion. */
+	int			tn_blksize;	/* small file optimization */
 	int			tn_status;
 #define	TMPFS_NODE_ACCESSED	(1 << 1)
 #define	TMPFS_NODE_MODIFIED	(1 << 2)
