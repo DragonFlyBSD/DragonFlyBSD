@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,4 +58,22 @@ __wake_up_core(wait_queue_head_t *q, int num_to_wake_up)
 		if (num_to_wake_up == 0)
 			break;
 	}
+}
+
+void
+__wait_event_prefix(wait_queue_head_t *wq, int flags)
+{
+	lockmgr(&wq->lock, LK_EXCLUSIVE);
+	if (flags & PCATCH) {
+		set_current_state(TASK_INTERRUPTIBLE);
+	} else {
+		set_current_state(TASK_UNINTERRUPTIBLE);
+	}
+	lockmgr(&wq->lock, LK_RELEASE);
+}
+
+void
+finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
+{
+	set_current_state(TASK_RUNNING);
 }

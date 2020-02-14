@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014 Imre Vadász
- * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -84,6 +84,9 @@ wake_up_all(wait_queue_head_t *q)
 #define wake_up_interruptible(eq)	wake_up(eq)
 #define wake_up_interruptible_all(eq)	wake_up_all(eq)
 
+void __wait_event_prefix(wait_queue_head_t *wq, int flags);
+void finish_wait(wait_queue_head_t *q, wait_queue_t *wait);
+
 /*
  * wait_event_interruptible_timeout:
  * - The process is put to sleep until the condition evaluates to true.
@@ -105,17 +108,12 @@ wake_up_all(wait_queue_head_t *q)
 	bool timeout_expired = false;					\
 	bool interrupted = false;					\
 	long retval;							\
+	wait_queue_t tmp_wq;						\
 									\
 	start_jiffies = ticks;						\
 									\
 	while (1) {							\
-		lockmgr(&wq.lock, LK_EXCLUSIVE);			\
-		if (flags == PCATCH) {					\
-			set_current_state(TASK_INTERRUPTIBLE);		\
-		} else {						\
-			set_current_state(TASK_UNINTERRUPTIBLE);	\
-		}							\
-		lockmgr(&wq.lock, LK_RELEASE);				\
+		__wait_event_prefix(&wq, flags);			\
 									\
 		if (condition)						\
 			break;						\
@@ -145,7 +143,7 @@ wake_up_all(wait_queue_head_t *q)
 	else								\
 		retval = 1;						\
 									\
-	set_current_state(TASK_RUNNING);				\
+	finish_wait(&wq, &tmp_wq);					\
 	retval;								\
 })
 
@@ -193,11 +191,6 @@ waitqueue_active(wait_queue_head_t *q)
 
 static inline void
 prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
-{
-}
-
-static inline void
-finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
 {
 }
 
