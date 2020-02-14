@@ -43,10 +43,10 @@
 #define	DOSMAGIC	0xAA55
 
 /*
- * NOTE: DragonFlyBSD had been using 0xA5 forever but after many years
+ * NOTE: DragonFly BSD had been using 0xA5 forever but after many years
  *	 we're finally shifting to our own as A5 causes conflicts in grub.
  */
-#define	DOSPTYP_DFLYBSD	0x6c	/* DragonFlyBSD partition type */
+#define	DOSPTYP_DFLYBSD	0x6c	/* DragonFly BSD partition type */
 #define	DOSPTYP_386BSD	0xa5	/* 386BSD partition type */
 #define	DOSPTYP_OPENBSD	0xa6	/* OpenBSD partition type */
 #define	DOSPTYP_NETBSD	0xa9	/* NetBSD partition type */

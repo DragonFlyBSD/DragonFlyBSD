@@ -24,7 +24,6 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
- * $_DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.9 2004/07/08 17:50:46 cpressey Exp $
  */
 
 /*
@@ -91,6 +90,7 @@ static struct part_type
 	,{0x63, "ISC UNIX, other System V/386, GNU HURD or Mach"}
 	,{0x64, "Novell Netware 2.xx"}
 	,{0x65, "Novell Netware 3.xx"}
+	,{0x6C, "DragonFly BSD"}
 	,{0x70, "DiskSecure Multi-Boot"}
 	,{0x75, "PCIX"}
 	,{0x77, "QNX4.x"}
