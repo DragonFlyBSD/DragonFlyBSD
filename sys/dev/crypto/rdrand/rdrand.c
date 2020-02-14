@@ -45,11 +45,28 @@
  * The RDRAND instruction is a very slow instruction, burning approximately
  * 0.79uS per 64-bit word on a modern ryzen cpu.  Intel cpu's run this
  * instruction far more quickly.  The quality of the results are unknown
- * either way.  The add_buffer_randomness() call is also not cheap.
+ * either way.
+ *
+ * However, possibly an even bigger problem is the cost of calling
+ * add_buffer_randomness(), which takes an enormous amount of time
+ * when handed a large buffer.
  *
  * Our code harvests at a 10hz rate on every single core, and also chains
  * some entropy from core to core so honestly it doesn't take much to really
  * mix things up.  Use a decent size (16 or 32 bytes should be good).
+ *
+ * On a TR3990 going from 512 to 16 gave userland almost 10% additional
+ * performance... a very stark difference.  A simple test loop:
+ *
+ * BEFORE: (RDRAND_SIZE 512)
+ *	7.258u 0.000s 0:07.69 94.2%     2+70k 2+0io 0pf+0w
+ *	7.222u 0.000s 0:07.67 94.1%     2+70k 0+0io 0pf+0w
+ *	7.239u 0.000s 0:07.69 94.0%     2+70k 0+0io 0pf+0w
+ *
+ * AFTER: (RDRAND_SIZE 16)		(9.3% faster)
+ *	7.019u 0.000s 0:07.02 99.8%     2+66k 0+0io 0pf+0w
+ *	7.019u 0.000s 0:07.02 99.8%     2+66k 0+0io 0pf+0w
+ *	7.028u 0.000s 0:07.02 100.0%    2+66k 0+0io 0pf+0w
  */
 #define	RDRAND_ALIGN(p)	(void *)(roundup2((uintptr_t)(p), 16))
 #define RDRAND_SIZE	16
