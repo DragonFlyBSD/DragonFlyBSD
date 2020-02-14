@@ -258,6 +258,10 @@ read_symbols(const char *file)
 		else
 			file = buf;
 	}
+
+	symend = NULL;
+	symbegin = (void *)(intptr_t)-1;
+
 	snprintf(cmd, sizeof(cmd), "nm -n %s", file);
 	if ((fp = popen(cmd, "r")) != NULL) {
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
@@ -269,10 +273,12 @@ read_symbols(const char *file)
 			sym->symaddr = (char *)strtoul(s1, NULL, 16);
 			sym->symtype = s2[0];
 			sym->symname = strdup(s3);
-			if (strcmp(s3, "kernbase") == 0)
-				symbegin = sym->symaddr;
-			if (strcmp(s3, "end") == 0)
-				symend = sym->symaddr;
+			if (s2[0] == 't' || s2[0] == 'T') {
+				if (symbegin > sym->symaddr)
+					symbegin = sym->symaddr;
+				if (symend < sym->symaddr)
+					symend = sym->symaddr;
+			}
 			TAILQ_INSERT_TAIL(&symlist, sym, link);
 		    }
 		}
