@@ -106,8 +106,8 @@ struct vm_page_hash_elm {
 	int		unused01;
 };
 
-#define VM_PAGE_HASH_SET	4		/* power of 2, set-assoc */
-#define VM_PAGE_HASH_MAX	(1024 * 1024)	/* power of 2, max size */
+#define VM_PAGE_HASH_SET	4		    /* power of 2, set-assoc */
+#define VM_PAGE_HASH_MAX	(16 * 1024 * 1024)  /* power of 2, max size */
 
 /*
  * SET - Minimum required set associative size, must be a power of 2.  We
@@ -1642,7 +1642,7 @@ vm_page_hash_enter(vm_page_t m)
 		return;
 
 	/*
-	 *
+	 * Find best entry
 	 */
 	mp = vm_page_hash_hash(m->object, m->pindex);
 	best = mp;
@@ -1653,10 +1653,13 @@ vm_page_hash_enter(vm_page_t m)
 		}
 
 		/*
-		 * The best choice is the oldest entry
+		 * The best choice is the oldest entry.
+		 *
+		 * Also check for a field overflow, using -1 instead of 0
+		 * to deal with SMP races on accessing the 'ticks' global.
 		 */
 		if ((ticks - best->ticks) < (ticks - mp[i].ticks) ||
-		    (int)(ticks - mp[i].ticks) < 0) {
+		    (int)(ticks - mp[i].ticks) < -1) {
 			best = &mp[i];
 		}
 	}
