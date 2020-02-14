@@ -61,10 +61,12 @@ static inline void writeq(u64 val, void __iomem *reg)
 /** Write a qword into a MMIO region */
 #define DRM_WRITE64(map, offset, val)	writeq(val, ((void __iomem *)(map)->handle) + (offset))
 
-#if 0
 #define DRM_WAIT_ON( ret, queue, timeout, condition )		\
 do {								\
-	DECLARE_WAITQUEUE(entry, current);			\
+	wait_queue_t entry = {					\
+		.private	= current,			\
+		.func		= default_wake_function,	\
+	};							\
 	unsigned long end = jiffies + (timeout);		\
 	add_wait_queue(&(queue), &entry);			\
 								\
@@ -85,20 +87,6 @@ do {								\
 	__set_current_state(TASK_RUNNING);			\
 	remove_wait_queue(&(queue), &entry);			\
 } while (0)
-#endif
-
-#define DRM_WAIT_ON( ret, queue, timeout, condition )		\
-for ( ret = 0 ; !ret && !(condition) ; ) {			\
-	lwkt_serialize_enter(&dev->irq_lock);			\
-	if (!(condition)) {					\
-		tsleep_interlock(&(queue), PCATCH);		\
-		lwkt_serialize_exit(&dev->irq_lock);		\
-		ret = -tsleep(&(queue), PCATCH | PINTERLOCKED,	\
-			  "drmwtq", (timeout));			\
-	} else {						\
-		lwkt_serialize_exit(&dev->irq_lock);		\
-	}							\
-}
 
 /* include code to override EDID blocks from external firmware modules */
 #define CONFIG_DRM_LOAD_EDID_FIRMWARE
