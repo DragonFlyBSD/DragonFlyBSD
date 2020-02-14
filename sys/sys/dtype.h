@@ -102,8 +102,14 @@ static const char *dktypenames[] = {
 #define FS_HAMMER	22
 #define FS_HAMMER2	23
 #define FS_UDF		24
+#define FS_RESERVED25	25
 #define FS_EFS		26
 #define FS_ZFS		27
+#define FS_RESERVED28	28
+#define FS_RESERVED29	29
+#define FS_NANDFS	30
+#define FS_ENCRYPTED	31		/* generic encrypted */
+#define FS_UNSPECIFIED	32		/* generic unspecified */
 
 #ifdef	DKTYPENAMES
 
@@ -136,6 +142,11 @@ static const char *fstypenames[] = {
 	"?",			/* 25	*/
 	"EFS",			/* 26	*/
 	"ZFS",			/* 27	*/
+	"?",			/* 28	*/
+	"?",			/* 29	*/
+	"nandfs",		/* 30	*/
+	"encrypted",		/* 31 - encrypted (generic) */
+	"unspecified",		/* 32 - unspecified */
 	NULL
 };
 
@@ -166,8 +177,13 @@ static const char *fstype_to_vfsname[] = {
 	"hammer2",		/* 23	*/
 	"udf",			/* 24	*/
 	NULL,			/* 25	*/
-	NULL,			/* 26	*/
-	NULL,			/* 27	*/
+	"efs",			/* 26	*/
+	"zfs",			/* 27	*/
+	NULL,			/* 28	*/
+	NULL,			/* 29	*/
+	"nandfs",		/* 30	*/
+	"encrypted",		/* 31	*/
+	"unspec",		/* 32	*/
 	NULL
 };
 
