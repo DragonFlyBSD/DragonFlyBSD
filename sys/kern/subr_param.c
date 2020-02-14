@@ -198,7 +198,8 @@ init_param1(void)
 {
 	hz = HZ_DEFAULT;
 	TUNABLE_INT_FETCH("kern.hz", &hz);
-	stathz = hz * 128 / 100;
+	stathz = hz + 1;
+	TUNABLE_INT_FETCH("kern.stathz", &stathz);
 	profhz = stathz;
 	ustick = 1000000 / hz;
 	nstick = 1000000000 / hz;
