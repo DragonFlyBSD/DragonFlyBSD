@@ -624,7 +624,7 @@ int vm_map_insert (vm_map_t, int *,
 		   vm_prot_t, vm_prot_t, int);
 int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t,
 		vm_map_entry_t *, struct vm_map_backing **,
-		vm_pindex_t *, vm_prot_t *, int *);
+		vm_pindex_t *, vm_pindex_t *, vm_prot_t *, int *);
 void vm_map_lookup_done (vm_map_t, vm_map_entry_t, int);
 boolean_t vm_map_lookup_entry (vm_map_t, vm_offset_t, vm_map_entry_t *);
 int vm_map_wire (vm_map_t, vm_offset_t, vm_offset_t, int);

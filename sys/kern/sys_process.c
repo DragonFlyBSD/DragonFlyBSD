@@ -68,6 +68,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval)
 	vm_prot_t	out_prot;
 	int		wflags;
 	vm_pindex_t	pindex;
+	vm_pindex_t	pcount;
 
 	/* Map page into kernel space */
 
@@ -78,7 +79,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval)
 
 	tmap = map;
 	rv = vm_map_lookup(&tmap, pageno, VM_PROT_READ, &out_entry,
-			   &ba, &pindex, &out_prot, &wflags);
+			   &ba, &pindex, &pcount, &out_prot, &wflags);
 	if (ba)
 		object = ba->object;
 	else
@@ -126,6 +127,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum)
 	vm_prot_t	out_prot;
 	int		wflags;
 	vm_pindex_t	pindex;
+	vm_pindex_t	pcount;
 	boolean_t	fix_prot = 0;
 
 	/* Map page into kernel space */
@@ -162,7 +164,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum)
 
 	tmap = map;
 	rv = vm_map_lookup(&tmap, pageno, VM_PROT_WRITE, &out_entry,
-			   &ba, &pindex, &out_prot, &wflags);
+			   &ba, &pindex, &pcount, &out_prot, &wflags);
 	if (ba)
 		object = ba->object;
 	else

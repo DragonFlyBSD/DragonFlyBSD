@@ -4381,6 +4381,7 @@ vm_map_lookup(vm_map_t *var_map,		/* IN/OUT */
 	      vm_map_entry_t *out_entry,	/* OUT */
 	      struct vm_map_backing **bap,	/* OUT */
 	      vm_pindex_t *pindex,		/* OUT */
+	      vm_pindex_t *pcount,		/* OUT */
 	      vm_prot_t *out_prot,		/* OUT */
 	      int *wflags)			/* OUT */
 {
@@ -4593,6 +4594,7 @@ RetryLookup:
 
 skip:
 	*pindex = OFF_TO_IDX((vaddr - entry->ba.start) + entry->ba.offset);
+	*pcount = OFF_TO_IDX(entry->ba.end - trunc_page(vaddr));
 
 	/*
 	 * Return whether this is the only map sharing this data.  On
