@@ -129,7 +129,7 @@ ParseConfiguration(int isworker)
 	if (sysctlbyname("hw.physmem", &PhysMem, &len, NULL, 0) < 0)
 		dfatal_errno("Cannot get hw.physmem");
 	if (PkgDepMemoryTarget == 0)
-		PkgDepMemoryTarget = PhysMem / 2;
+		PkgDepMemoryTarget = PhysMem / 3;
 
 	/*
 	 * Calculate nominal defaults.

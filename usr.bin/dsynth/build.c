@@ -1160,7 +1160,7 @@ waitbuild(int whilematch, int dynamicmax)
 		if (dynamicmax && (wblast_time == 0 ||
 				   (unsigned)(t - wblast_time) >= 5)) {
 			double min_load = 1.5 * NumCores;
-			double max_load = 4.0 * NumCores;
+			double max_load = 5.0 * NumCores;
 			double min_swap = 0.10;
 			double max_swap = 0.40;
 			double dload[3];
@@ -2955,6 +2955,13 @@ childHookRun(bulk_t *bulk)
  * Adjusts dload[0] by adding in t_pw (processes waiting on page-fault).
  * We don't want load reductions due to e.g. thrashing to cause dsynth
  * to increase the dynamic limit because it thinks the load is low.
+ *
+ * This has a desirable property.  If the system pager cannot keep up
+ * with process demand t_pw will spike while loadavg will only drop
+ * slowly, resulting in a high adjusted load calculation that causes
+ * dsynth to quickly clamp-down the limit.  If the condition alleviates,
+ * the limit will then rise slowly again, possibly even before existing
+ * jobs are retired to meet the clamp-down from the original spike.
  */
 static void
 adjloadavg(double *dload)
