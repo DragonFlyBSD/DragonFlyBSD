@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/migrate.c,v 1.16 2005/09/01 02:42:52 marcel Exp $
- * $DragonFly: src/sbin/gpt/migrate.c,v 1.3 2007/06/18 05:13:39 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -250,6 +249,11 @@ migrate(int fd)
 		switch (mbr->mbr_part[i].part_typ) {
 		case 0:
 			continue;
+#if 0
+		case 108:
+			/* TODO: Port to DragonFly and test */
+			continue;
+#endif
 		case 165: {	/* FreeBSD */
 			if (slice) {
 				uuid_t freebsd = GPT_ENT_TYPE_FREEBSD;

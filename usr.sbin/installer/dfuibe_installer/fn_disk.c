@@ -710,7 +710,7 @@ format_slice(struct i_fn_args *a)
 		return 0;
 
 	/*
-	 * Set the slice's sysid to 165.
+	 * Set the slice's sysid to 108.
 	 */
 	disk_get_geometry(storage_get_selected_disk(a->s), &cyl, &hd, &sec);
 	command_add(cmds, "%s%s 'g c%d h%d s%d' >%snew.fdisk",
@@ -720,7 +720,7 @@ format_slice(struct i_fn_args *a)
 	command_add(cmds, "%s%s 'p %d %d %lu %lu' >>%snew.fdisk",
 	    a->os_root, cmd_name(a, "ECHO"),
 	    slice_get_number(storage_get_selected_slice(a->s)),
-	    165,
+	    108,
 	    slice_get_start(storage_get_selected_slice(a->s)),
 	    slice_get_size(storage_get_selected_slice(a->s)),
 	    a->tmp);

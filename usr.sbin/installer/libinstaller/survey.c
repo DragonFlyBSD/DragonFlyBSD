@@ -115,7 +115,7 @@ parse_slice_info(char *line, int *slice,
 
 	/*
 	 * Part        Start        Size Type Flags
-	 *    1:          63     2128833 0xa5 0x80
+	 *    1:          63     2128833 0x6c 0x80
 	 */
 	if ((word = strtok(line, " \t")) == NULL)	/* 1: */
 		return(0);
@@ -126,7 +126,7 @@ parse_slice_info(char *line, int *slice,
 	if ((word = strtok(NULL, " \t")) == NULL)	/* 2128833 */
 		return(0);
 	*size = strtoul(word, NULL, 10);
-	if ((word = strtok(NULL, " \t")) == NULL)	/* 0xa5 */
+	if ((word = strtok(NULL, " \t")) == NULL)	/* 0x6c */
 		return(0);
 	if (!hex_to_int(word, type))
 		return(0);
@@ -321,7 +321,7 @@ survey_storage(struct i_fn_args *a)
 			/*
 			 * /dev/ad3: 2112 cyl 16 hd 63 sec
 			 * Part        Start        Size Type Flags
-			 *    1:          63     2128833 0xa5 0x80
+			 *    1:          63     2128833 0x6c 0x80
 			 */
 			while (d != NULL && strcmp(line, "@END") != 0 && fgets_chomp(line, 255, f)) {
 				if (strncmp(line, "/dev/", 5) == 0) {

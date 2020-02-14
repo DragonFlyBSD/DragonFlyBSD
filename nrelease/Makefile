@@ -357,7 +357,7 @@ mkimg:
 	awk '(NR==1){printf("g c%s h%s s%s\n", $$2, $$4, $$6);}' \
 	    ${ISODIR}/fdisk.dat >${ISODIR}/fdisk.conf
 	echo "p 1 239 63 257985" >>${ISODIR}/fdisk.conf
-	awk '($$1=="1:"){printf("p 2 165 258048 %lu\n", $$3 - 258528);}' \
+	awk '($$1=="1:"){printf("p 2 108 258048 %lu\n", $$3 - 258528);}' \
 	    ${ISODIR}/fdisk.dat >>${ISODIR}/fdisk.conf
 	echo "a 2" >>${ISODIR}/fdisk.conf
 	fdisk -iv -f ${ISODIR}/fdisk.conf `cat ${ISODIR}/vn.which`

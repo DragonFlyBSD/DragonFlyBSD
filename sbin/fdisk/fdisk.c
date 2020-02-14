@@ -175,7 +175,7 @@ struct part_type
 	,{0x63, "ISC UNIX, other System V/386, GNU HURD or Mach"}
 	,{0x64, "Novell Netware 2.xx"}
 	,{0x65, "Novell Netware 3.xx"}
-	,{0x6C, "DragonFlyBSD"}
+	,{0x6C, "DragonFly BSD"}
 	,{0x70, "DiskSecure Multi-Boot"}
 	,{0x75, "PCIX"}
 	,{0x77, "QNX4.x"}
@@ -598,7 +598,7 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 	}
 
 	do {
-		Decimal("sysid (165=DragonFly)", partp->dp_typ, tmp);
+		Decimal("sysid (108=DragonFly)", partp->dp_typ, tmp);
 		Decimal("start", partp->dp_start, tmp);
 		Decimal("size", partp->dp_size, tmp);
 		if (!sanitize_partition(partp)) {
