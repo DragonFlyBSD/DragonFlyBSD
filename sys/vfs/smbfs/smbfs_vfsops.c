@@ -84,6 +84,7 @@ static int smbfs_init(struct vfsconf *vfsp);
 static int smbfs_uninit(struct vfsconf *vfsp);
 
 static struct vfsops smbfs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =    	smbfs_mount,
 	.vfs_unmount =    	smbfs_unmount,
 	.vfs_root =    		smbfs_root,

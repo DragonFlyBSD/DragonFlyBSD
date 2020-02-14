@@ -69,6 +69,7 @@ static int	ffs_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int	ffs_init (struct vfsconf *);
 
 static struct vfsops ufs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =    	ffs_mount,
 	.vfs_unmount =    	ffs_unmount,
 	.vfs_root =    		ufs_root,

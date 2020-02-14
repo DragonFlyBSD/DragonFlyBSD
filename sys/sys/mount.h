@@ -368,6 +368,7 @@ struct mount {
 #define MNTSCAN_FORWARD		0x0001
 #define MNTSCAN_REVERSE		0x0002
 #define MNTSCAN_NOBUSY		0x0004
+#define MNTSCAN_NOUNLOCK	0x0008
 
 #define MNTINS_FIRST		0x0001
 #define MNTINS_LAST		0x0002
@@ -598,6 +599,7 @@ int vfs_extattrctl(struct mount *mp, int cmd, struct vnode *vp,
 int vfs_modifying(struct mount *mp);
 
 struct vfsops {
+	long		vfs_flags;
 	vfs_mount_t 	*vfs_mount;
 	vfs_start_t 	*vfs_start;
 	vfs_unmount_t 	*vfs_unmount;
@@ -620,6 +622,8 @@ struct vfsops {
 	vfs_ncpgen_test_t	*vfs_ncpgen_test;
 	vfs_modifying_t	*vfs_modifying;
 };
+
+#define VFSOPSF_NOSYNCERTHR	0x00000001
 
 #define VFS_MOUNT(MP, PATH, DATA, CRED)		\
 	vfs_mount(MP, PATH, DATA, CRED)

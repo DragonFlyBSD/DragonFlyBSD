@@ -242,6 +242,7 @@ static int hammer2_fixup_pfses(hammer2_dev_t *hmp);
  * HAMMER2 vfs operations.
  */
 static struct vfsops hammer2_vfsops = {
+	.vfs_flags	= 0,
 	.vfs_init	= hammer2_vfs_init,
 	.vfs_uninit	= hammer2_vfs_uninit,
 	.vfs_sync	= hammer2_vfs_sync,

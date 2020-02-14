@@ -145,6 +145,7 @@ procfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 }
 
 static struct vfsops procfs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =    	procfs_mount,
 	.vfs_unmount =    	procfs_unmount,
 	.vfs_root =    		procfs_root,

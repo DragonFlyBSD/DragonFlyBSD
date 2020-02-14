@@ -551,6 +551,7 @@ hpfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 }
 
 static struct vfsops hpfs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =    	hpfs_mount,
 	.vfs_unmount =  	hpfs_unmount,
 	.vfs_root =     	hpfs_root,

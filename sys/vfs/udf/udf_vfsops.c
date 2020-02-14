@@ -112,6 +112,7 @@ static int udf_vptofh(struct vnode *, struct fid *);
 static int udf_find_partmaps(struct udf_mnt *, struct logvol_desc *);
 
 static struct vfsops udf_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =    	udf_mount,
 	.vfs_unmount =    	udf_unmount,
 	.vfs_root =    		udf_root,

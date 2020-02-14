@@ -343,6 +343,7 @@ dirfs_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp,
 }
 
 static struct vfsops dirfs_vfsops = {
+	.vfs_flags =			0,
 	.vfs_mount =			dirfs_mount,
 	.vfs_unmount =			dirfs_unmount,
 	.vfs_root =			dirfs_root,

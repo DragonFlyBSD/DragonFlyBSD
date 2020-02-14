@@ -127,6 +127,7 @@ static int	nfs_sync ( struct mount *mp, int waitfor);
  * nfs vfs operations.
  */
 static struct vfsops nfs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =    	nfs_mount,
 	.vfs_unmount =  	nfs_unmount,
 	.vfs_root =     	nfs_root,

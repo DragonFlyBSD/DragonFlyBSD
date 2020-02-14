@@ -867,6 +867,7 @@ msdosfs_vptofh(struct vnode *vp, struct fid *fhp)
 }
 
 static struct vfsops msdosfs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =		msdosfs_mount,
 	.vfs_root =		msdosfs_root,
 	.vfs_statfs =		msdosfs_statfs,

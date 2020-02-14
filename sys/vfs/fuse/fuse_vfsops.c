@@ -391,6 +391,7 @@ fuse_uninit(struct vfsconf *vfsp)
 }
 
 static struct vfsops fuse_vfsops = {
+	.vfs_flags = 0,
 	.vfs_init = fuse_init,
 	.vfs_uninit = fuse_uninit,
 	.vfs_mount = fuse_mount,

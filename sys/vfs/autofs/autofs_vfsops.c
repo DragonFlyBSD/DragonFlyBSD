@@ -305,6 +305,7 @@ autofs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 }
 
 static struct vfsops autofs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =		autofs_mount,
 	.vfs_unmount =		autofs_unmount,
 	.vfs_root =		autofs_root,

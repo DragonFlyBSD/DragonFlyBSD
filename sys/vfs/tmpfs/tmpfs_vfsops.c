@@ -590,6 +590,7 @@ tmpfs_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp,
  */
 
 static struct vfsops tmpfs_vfsops = {
+	.vfs_flags =			0,
 	.vfs_mount =			tmpfs_mount,
 	.vfs_unmount =			tmpfs_unmount,
 	.vfs_root =			tmpfs_root,

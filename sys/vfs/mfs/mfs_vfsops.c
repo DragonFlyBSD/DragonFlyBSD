@@ -98,6 +98,7 @@ static struct dev_ops mfs_ops = {
  * mfs vfs operations.
  */
 static struct vfsops mfs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =     	mfs_mount,
 	.vfs_start =    	mfs_start,
 	.vfs_unmount =   	ffs_unmount,

@@ -82,6 +82,7 @@ static int cd9660_checkexp(struct mount *, struct sockaddr *,
 static int cd9660_vptofh (struct vnode *, struct fid *);
 
 static struct vfsops cd9660_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =		cd9660_mount,
 	.vfs_unmount =		cd9660_unmount,
 	.vfs_root =		cd9660_root,

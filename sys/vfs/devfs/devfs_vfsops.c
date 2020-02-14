@@ -268,6 +268,7 @@ devfs_vfs_ncpgen_test(struct mount *mp, struct namecache *ncp)
 }
 
 static struct vfsops devfs_vfsops = {
+	.vfs_flags	= 0,
 	.vfs_mount 	= devfs_vfs_mount,
 	.vfs_unmount	= devfs_vfs_unmount,
 	.vfs_root 	= devfs_vfs_root,

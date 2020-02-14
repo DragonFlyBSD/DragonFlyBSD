@@ -422,6 +422,7 @@ struct uio;
 struct vattr;
 struct vnode;
 struct syncer_ctx;
+struct vfsops;
 
 struct vnode *getsynthvnode(const char *devname);
 void	addaliasu (struct vnode *vp, int x, int y);
@@ -572,7 +573,7 @@ void	debug_vput (struct vnode *vp, const char *filename, int line);
 void	vfs_subr_init(void);
 void	vfs_mount_init(void);
 void	vfs_lock_init(void);
-void	mount_init(struct mount *mp);
+void	mount_init(struct mount *mp, struct vfsops *ops);
 void	synchronizevnodecount(void);
 int	countcachedvnodes(void);
 int	countcachedandinactivevnodes(void);

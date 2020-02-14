@@ -797,6 +797,7 @@ ntfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 }
 
 static struct vfsops ntfs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =    	ntfs_mount,
 	.vfs_unmount =   	ntfs_unmount,
 	.vfs_root =     	ntfs_root,

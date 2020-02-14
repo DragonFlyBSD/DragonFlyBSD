@@ -160,7 +160,7 @@ vfs_mount_init(void)
 	lwkt_token_init(&mountlist_token, "mntlist");
 	lwkt_token_init(&mntid_token, "mntid");
 	TAILQ_INIT(&mountscan_list);
-	mount_init(&dummymount);
+	mount_init(&dummymount, NULL);
 	dummymount.mnt_flag |= MNT_RDONLY;
 	dummymount.mnt_kern_flag |= MNTK_ALL_MPSAFE;
 }
@@ -343,12 +343,11 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	if (vfsp == NULL)
 		return (ENODEV);
 	mp = kmalloc(sizeof(struct mount), M_MOUNT, M_WAITOK | M_ZERO);
-	mount_init(mp);
+	mount_init(mp, vfsp->vfc_vfsops);
 	lockinit(&mp->mnt_lock, "vfslock", VLKTIMEOUT, 0);
 
 	vfs_busy(mp, 0);
 	mp->mnt_vfc = vfsp;
-	mp->mnt_op = vfsp->vfc_vfsops;
 	mp->mnt_pbuf_count = nswbuf_kva / NSWBUF_SPLIT;
 	vfsp->vfc_refcount++;
 	mp->mnt_stat.f_type = vfsp->vfc_typenum;
@@ -372,7 +371,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
  * Basic mount structure initialization
  */
 void
-mount_init(struct mount *mp)
+mount_init(struct mount *mp, struct vfsops *ops)
 {
 	lockinit(&mp->mnt_lock, "vfslock", hz*5, 0);
 	lwkt_token_init(&mp->mnt_token, "permnt");
@@ -385,7 +384,9 @@ mount_init(struct mount *mp)
 	mp->mnt_flag = 0;
 	mp->mnt_hold = 1;		/* hold for umount last drop */
 	mp->mnt_iosize_max = MAXPHYS;
-	vn_syncer_thr_create(mp);
+	mp->mnt_op = ops;
+	if (ops == NULL || (ops->vfs_flags & VFSOPSF_NOSYNCERTHR) == 0)
+		vn_syncer_thr_create(mp);
 }
 
 void
@@ -720,6 +721,7 @@ mountlist_exists(struct mount *mp)
  * MNTSCAN_REVERSE	- the mountlist is scanned in reverse
  * MNTSCAN_NOBUSY	- the scanner will make the callback without busying
  *			  the mount node.
+ * MNTSCAN_NOUNLOCK	- Do not unlock mountlist_token across callback
  *
  * NOTE: mountlist_token is not held across the callback.
  */
@@ -730,6 +732,7 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 	struct mount *mp;
 	int count;
 	int res;
+	int dounlock = ((how & MNTSCAN_NOUNLOCK) == 0);
 
 	lwkt_gettoken(&mountlist_token);
 	info.msi_how = how;
@@ -745,13 +748,17 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 		while ((mp = info.msi_node) != NULL) {
 			mount_hold(mp);
 			if (how & MNTSCAN_NOBUSY) {
-				lwkt_reltoken(&mountlist_token);
+				if (dounlock)
+					lwkt_reltoken(&mountlist_token);
 				count = callback(mp, data);
-				lwkt_gettoken_shared(&mountlist_token);
+				if (dounlock)
+					lwkt_gettoken_shared(&mountlist_token);
 			} else if (vfs_busy(mp, LK_NOWAIT) == 0) {
-				lwkt_reltoken(&mountlist_token);
+				if (dounlock)
+					lwkt_reltoken(&mountlist_token);
 				count = callback(mp, data);
-				lwkt_gettoken_shared(&mountlist_token);
+				if (dounlock)
+					lwkt_gettoken_shared(&mountlist_token);
 				if (mp == info.msi_node)
 					vfs_unbusy(mp);
 			} else {
@@ -769,13 +776,17 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 		while ((mp = info.msi_node) != NULL) {
 			mount_hold(mp);
 			if (how & MNTSCAN_NOBUSY) {
-				lwkt_reltoken(&mountlist_token);
+				if (dounlock)
+					lwkt_reltoken(&mountlist_token);
 				count = callback(mp, data);
-				lwkt_gettoken_shared(&mountlist_token);
+				if (dounlock)
+					lwkt_gettoken_shared(&mountlist_token);
 			} else if (vfs_busy(mp, LK_NOWAIT) == 0) {
-				lwkt_reltoken(&mountlist_token);
+				if (dounlock)
+					lwkt_reltoken(&mountlist_token);
 				count = callback(mp, data);
-				lwkt_gettoken_shared(&mountlist_token);
+				if (dounlock)
+					lwkt_gettoken_shared(&mountlist_token);
 				if (mp == info.msi_node)
 					vfs_unbusy(mp);
 			} else {

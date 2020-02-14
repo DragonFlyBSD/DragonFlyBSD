@@ -343,8 +343,12 @@ vn_syncer_thr_stop(struct mount *mp)
 	wakeup(ctx);
 	
 	/* Wait till syncer process exits */
-	while ((ctx->sc_flags & SC_FLAG_DONE) == 0) 
-		tsleep(&ctx->sc_flags, 0, "syncexit", hz);
+	while ((ctx->sc_flags & SC_FLAG_DONE) == 0) {
+		tsleep_interlock(&ctx->sc_flags, 0);
+		lwkt_reltoken(&ctx->sc_token);
+		tsleep(&ctx->sc_flags, PINTERLOCKED, "syncexit", hz);
+		lwkt_gettoken(&ctx->sc_token);
+	}
 
 	mp->mnt_syncer_ctx = NULL;
 	lwkt_reltoken(&ctx->sc_token);
@@ -478,7 +482,8 @@ syncer_thread(void *_ctx)
 		    ctx->syncer_trigger == 0) {
 			tsleep_interlock(ctx, 0);
 			if (time_uptime == starttime &&
-			    ctx->syncer_trigger == 0) {
+			    ctx->syncer_trigger == 0 &&
+			    (ctx->sc_flags & SC_FLAG_EXIT) == 0) {
 				tsleep(ctx, PINTERLOCKED, "syncer", hz);
 			}
 		}

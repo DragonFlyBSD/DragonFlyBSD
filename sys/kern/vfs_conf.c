@@ -303,9 +303,8 @@ vfs_mountroot_devfs(void)
 	 * Allocate and initialize the filesystem.
 	 */
 	mp = kmalloc(sizeof(struct mount), M_MOUNT, M_ZERO|M_WAITOK);
-	mount_init(mp);
+	mount_init(mp, vfsp->vfc_vfsops);
 	vfs_busy(mp, LK_NOWAIT);
-	mp->mnt_op = vfsp->vfc_vfsops;
 	mp->mnt_vfc = vfsp;
 	mp->mnt_pbuf_count = nswbuf_kva / NSWBUF_SPLIT;
 	vfsp->vfc_refcount++;

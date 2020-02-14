@@ -89,6 +89,7 @@ static MALLOC_DEFINE(M_EXT2NODE, "EXT2 node", "EXT2 vnode private part");
 MALLOC_DEFINE(M_EXT2MNT, "EXT2 mount", "EXT2 mount structure");
 
 static struct vfsops ext2fs_vfsops = {
+	.vfs_flags =		0,
 	.vfs_mount =    	ext2_mount,
 	.vfs_unmount =   	ext2_unmount,
 	.vfs_root =     	ext2_root,	/* root inode via vget */
