@@ -417,11 +417,14 @@ initclocks_other(void *dummy)
 		 *
 		 * Install statclock before hardclock to prevent statclock
 		 * from misinterpreting gd_flags for tick assignment when
-		 * they overlap.
+		 * they overlap.  Also offset the statclock by half of
+		 * its interval to try to avoid being coincident with
+		 * callouts.
 		 */
 		systimer_init_periodic_flags(&gd->gd_statclock, statclock,
 					  NULL, stathz,
-					  SYSTF_MSSYNC | SYSTF_FIRST);
+					  SYSTF_MSSYNC | SYSTF_FIRST |
+					  SYSTF_OFFSET50);
 		systimer_init_periodic_flags(&gd->gd_hardclock, hardclock,
 					  NULL, hz, SYSTF_MSSYNC);
 	}

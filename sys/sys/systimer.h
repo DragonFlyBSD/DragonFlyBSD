@@ -72,6 +72,7 @@ typedef struct systimer {
 #define SYSTF_MSSYNC		0x0008		/* 1Khz coincident sync */
 #define SYSTF_100KHZSYNC	0x0010		/* 100Khz coincident sync */
 #define SYSTF_FIRST		0x0020		/* order first if coincident */
+#define SYSTF_OFFSET50		0x0040		/* add 1/2 interval offset */
 
 #ifdef _KERNEL
 void systimer_intr_enable(void);
