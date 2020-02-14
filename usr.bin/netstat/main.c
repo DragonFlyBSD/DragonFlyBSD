@@ -32,7 +32,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/file.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
@@ -44,6 +43,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <kvm.h>
 #include <limits.h>
 #include <netdb.h>

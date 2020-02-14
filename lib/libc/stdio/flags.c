@@ -31,13 +31,12 @@
  *
  * @(#)flags.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/flags.c,v 1.10 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/flags.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  */
 
 #include <sys/types.h>
-#include <sys/file.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "local.h"
 

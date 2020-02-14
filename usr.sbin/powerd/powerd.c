@@ -44,7 +44,6 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <sys/kinfo.h>
-#include <sys/file.h>
 #include <sys/queue.h>
 #include <sys/soundcard.h>
 #include <sys/sensors.h>
@@ -52,6 +51,7 @@
 #include <sys/cpumask.h>
 #include <machine/cpufunc.h>
 #include <err.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>

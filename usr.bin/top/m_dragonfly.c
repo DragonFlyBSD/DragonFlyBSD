@@ -30,6 +30,7 @@
 
 #include "os.h"
 #include <err.h>
+#include <fcntl.h>
 #include <kvm.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -37,7 +38,6 @@
 #include <pwd.h>
 #include <sys/errno.h>
 #include <sys/sysctl.h>
-#include <sys/file.h>
 #include <sys/vmmeter.h>
 #include <sys/resource.h>
 #include <sys/rtprio.h>

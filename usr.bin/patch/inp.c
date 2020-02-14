@@ -28,11 +28,11 @@
  */
 
 #include <sys/types.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 
 #include <ctype.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <limits.h>
 #include <stddef.h>

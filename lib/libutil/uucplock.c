@@ -32,10 +32,10 @@
  */
 
 #include <sys/types.h>
-#include <sys/file.h>
 #include <dirent.h>
 #include <limits.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <paths.h>
 #include <signal.h>
 #include <stdio.h>

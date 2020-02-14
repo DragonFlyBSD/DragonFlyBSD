@@ -33,11 +33,11 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/param.h>
 #include <ctype.h>
 #include <err.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <dirent.h>
 #include <sysexits.h>

@@ -36,7 +36,6 @@
 #include <sys/queue.h>
 #include <sys/tree.h>
 #include <sys/endian.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/dmsg.h>
@@ -49,6 +48,7 @@
 #include <arpa/inet.h>
 
 #include <assert.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <libutil.h>
 

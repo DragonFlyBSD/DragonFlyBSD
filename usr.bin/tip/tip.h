@@ -38,13 +38,13 @@
 
 #include <sys/types.h>
 #include <machine/endian.h>
-#include <sys/file.h>
 #include <sys/time.h>
 #include <limits.h>
 
 #include <sys/ioctl.h>         /* for TIOCHPCL */
 #include <sys/filio.h>    /* for FIONREAD */
 
+#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>

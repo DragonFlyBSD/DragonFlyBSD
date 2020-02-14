@@ -36,7 +36,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/file.h>
 #include <sys/mtio.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -45,6 +44,7 @@
 #include <protocols/dumprestore.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <paths.h>
 #include <setjmp.h>
 #include <stdio.h>

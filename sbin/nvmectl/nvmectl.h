@@ -33,7 +33,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <dev/disk/nvme/nvme_fw.h>
 #include <dev/disk/nvme/nvme_log.h>
@@ -41,6 +40,7 @@
 #include <dev/disk/nvme/nvme_ns.h>
 #include <dev/disk/nvme/nvme_chipset.h>
 #include <dev/disk/nvme/nvme_ioctl.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

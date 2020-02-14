@@ -33,12 +33,12 @@
 
 #include <sys/param.h>
 #include <sys/stat.h>
-#include <sys/file.h>
 #include <sys/time.h>
 #include <sys/errno.h>
 #include <sys/ktrace.h>
 
 #include <err.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

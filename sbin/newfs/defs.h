@@ -22,8 +22,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/newfs/defs.h,v 1.3 2007/05/20 23:21:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,10 +33,10 @@
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/dir.h>
 #include <vfs/ufs/fs.h>
-#include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <err.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <string.h>
 #include <stdio.h>

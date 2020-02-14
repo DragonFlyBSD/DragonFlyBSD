@@ -22,12 +22,12 @@
 
 #include <sys/cdio.h>
 #include <sys/cdrio.h>
-#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <histedit.h>
 #include <limits.h>
 #include <paths.h>

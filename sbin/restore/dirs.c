@@ -36,7 +36,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
@@ -46,6 +45,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>

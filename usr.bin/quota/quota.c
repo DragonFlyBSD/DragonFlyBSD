@@ -40,7 +40,6 @@
 
 #include <sys/param.h>
 #include <sys/types.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
@@ -52,6 +51,7 @@
 #include <vfs/ufs/quota.h>
 
 #include <ctype.h>
+#include <fcntl.h>
 #include <err.h>
 #include <fstab.h>
 #include <grp.h>

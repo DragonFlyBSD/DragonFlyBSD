@@ -4,19 +4,18 @@
  * There is no copyright, you can use it as you want.
  *
  * $FreeBSD: src/libexec/rpc.rquotad/rquotad.c,v 1.3.2.1 2001/07/02 23:46:27 mikeh Exp $
- * $DragonFly: src/libexec/rpc.rquotad/rquotad.c,v 1.6 2008/11/19 18:41:30 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/mount.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <signal.h>
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <fstab.h>
 #include <grp.h>
 #include <pwd.h>

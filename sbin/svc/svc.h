@@ -36,7 +36,6 @@
 #include <sys/param.h>
 #include <sys/procctl.h>
 #include <sys/stat.h>
-#include <sys/file.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -45,6 +44,7 @@
 #include <sys/devfs.h>
 #include <sys/mount.h>
 #include <sys/jail.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>

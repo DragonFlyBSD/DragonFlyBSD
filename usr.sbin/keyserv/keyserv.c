@@ -43,6 +43,7 @@
  */
 
 #include <err.h>
+#include <fcntl.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +53,6 @@
 #include <sys/types.h>
 #include <rpc/rpc.h>
 #include <sys/param.h>
-#include <sys/file.h>
 #include <rpc/des_crypt.h>
 #include <rpc/des.h>
 #include <rpc/key_prot.h>

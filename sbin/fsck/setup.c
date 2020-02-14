@@ -34,7 +34,6 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/diskslice.h>
-#include <sys/file.h>
 
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
@@ -42,6 +41,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <string.h>
 
 #include "fsck.h"

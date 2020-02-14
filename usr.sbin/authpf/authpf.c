@@ -20,7 +20,6 @@
 
 #include <sys/param.h>
 #include <sys/types.h>
-#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -33,6 +32,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <login_cap.h>
 #include <pwd.h>
 #include <signal.h>

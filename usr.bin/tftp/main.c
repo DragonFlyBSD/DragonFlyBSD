@@ -39,7 +39,6 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/file.h>
 
 #include <netinet/in.h>
 
@@ -47,6 +46,7 @@
 
 #include <ctype.h>
 #include <err.h>
+#include <fcntl.h>
 #include <histedit.h>
 #include <netdb.h>
 #include <setjmp.h>

@@ -68,7 +68,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #define DKTYPENAMES
@@ -78,6 +77,7 @@
 #include <sys/dtype.h>
 #include <sys/sysctl.h>
 #include <disktab.h>
+#include <fcntl.h>
 #include <fstab.h>
 
 #include <vfs/ufs/dinode.h>

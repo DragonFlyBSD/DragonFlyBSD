@@ -32,12 +32,12 @@
  */
 
 #include <sys/param.h>
-#include <sys/file.h>
 
 #include <protocols/rwhod.h>
 
 #include <dirent.h>
 #include <err.h>
+#include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>
 #include <stdio.h>

@@ -59,7 +59,6 @@
 
 #include <sys/param.h>
 #include <sys/socket.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <syslog.h>
 #include <netdb.h>
@@ -69,6 +68,7 @@
 #include <net/slip.h>
 #include <net/if.h>
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>

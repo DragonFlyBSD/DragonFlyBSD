@@ -39,7 +39,6 @@
  */
 
 #include <sys/cdio.h>
-#include <sys/file.h>
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/iconv.h>
@@ -49,6 +48,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <mntopts.h>
 #include <stdlib.h>
 #include <stdio.h>

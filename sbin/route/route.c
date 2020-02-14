@@ -32,7 +32,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/file.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
@@ -52,6 +51,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <paths.h>
 #include <stdio.h>

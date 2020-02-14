@@ -51,8 +51,8 @@
 #include <sys/globaldata.h>
 #include <sys/ioctl.h>
 #include <sys/tty.h>
-#include <sys/file.h>
 #include <sys/jail.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>

@@ -88,9 +88,9 @@
 
 #include <stdio.h>
 #include <sys/types.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <pwd.h>
 #include <time.h>
 
