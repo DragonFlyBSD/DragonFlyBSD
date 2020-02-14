@@ -37,7 +37,7 @@ ENTRY(rdrand_rng)
 	shrq	$3,	%rcx	/* Divide by 8 to get 64-bit word count */
 
 	xorq	%r11, 	%r11
-loop:
+1:
 	/*
 	 * rdx: (output)	entropy
 	 */
@@ -49,7 +49,7 @@ loop:
 	 *
 	 * CF = 0: Random value not available at time of execution.
 	 */
-	jae	out
+	jae	2f
 
 	/*
 	 * The operation was successful, so store the random data
@@ -69,8 +69,8 @@ loop:
 	 * loop again.
 	 */
 	cmpq	%rcx, 	%r11
-	jl	loop
-out:
+	jl	1b
+2:
 	/* return the number of stored random bytes (random words * 8) */
 	shlq	$3,	%r11
 	movq	%r11, 	%rax

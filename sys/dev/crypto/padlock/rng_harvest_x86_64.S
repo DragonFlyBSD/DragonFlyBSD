@@ -37,7 +37,7 @@ ENTRY(padlock_rng)
 
 	movq	$3,	%rdx
 	xorq	%r11, 	%r11
-loop:
+1:
 	/*
 	 * edx: (input)		quality factor of rng entropy
 	 * rdi: (input)		buffer for random data
@@ -54,7 +54,7 @@ loop:
 	 * available, so we finish up.
 	 */
 	andq	$0x1f, 	%rax
-	jz	out
+	jz	2f
 
 	/*
 	 * Increment the count of stored random bytes. The buffer pointer
@@ -67,8 +67,8 @@ loop:
 	 * loop again.
 	 */
 	cmpq	%rcx, 	%r11
-	jl	loop
-out:
+	jl	1b
+2:
 	/* return the number of stored random bytes. */
 	movq	%r11, 	%rax
 	ret

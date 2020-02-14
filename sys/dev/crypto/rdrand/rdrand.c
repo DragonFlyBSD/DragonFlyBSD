@@ -39,8 +39,20 @@
 
 #include <machine/specialreg.h>
 
+/*
+ * WARNING!
+ *
+ * The RDRAND instruction is a very slow instruction, burning approximately
+ * 0.79uS per 64-bit word on a modern ryzen cpu.  Intel cpu's run this
+ * instruction far more quickly.  The quality of the results are unknown
+ * either way.  The add_buffer_randomness() call is also not cheap.
+ *
+ * Our code harvests at a 10hz rate on every single core, and also chains
+ * some entropy from core to core so honestly it doesn't take much to really
+ * mix things up.  Use a decent size (16 or 32 bytes should be good).
+ */
 #define	RDRAND_ALIGN(p)	(void *)(roundup2((uintptr_t)(p), 16))
-#define RDRAND_SIZE	512
+#define RDRAND_SIZE	16
 
 static int rdrand_debug;
 SYSCTL_INT(_debug, OID_AUTO, rdrand, CTLFLAG_RW, &rdrand_debug, 0,
