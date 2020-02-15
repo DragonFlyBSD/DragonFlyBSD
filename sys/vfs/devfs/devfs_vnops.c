@@ -635,8 +635,6 @@ devfs_vop_setattr(struct vop_setattr_args *ap)
 		return ENOENT;
 	node_sync_dev_get(node);
 
-	lockmgr(&devfs_lock, LK_EXCLUSIVE);
-
 	vap = ap->a_vap;
 
 	if ((vap->va_uid != (uid_t)VNOVAL) || (vap->va_gid != (gid_t)VNOVAL)) {
@@ -667,7 +665,6 @@ devfs_vop_setattr(struct vop_setattr_args *ap)
 out:
 	node_sync_dev_set(node);
 	nanotime(&node->ctime);
-	lockmgr(&devfs_lock, LK_RELEASE);
 
 	return error;
 }
@@ -898,12 +895,14 @@ devfs_spec_open(struct vop_open_args *ap)
 		int exists;
 
 		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open: -1.1-\n");
-		lockmgr(&devfs_lock, LK_EXCLUSIVE);
+		lockmgr(&devfs_lock, LK_SHARED);
 
 		ndev = devfs_clone(dev, node->d_dir.d_name,
 				   node->d_dir.d_namlen,
 				   ap->a_mode, ap->a_cred);
 		if (ndev != NULL) {
+			lockmgr(&devfs_lock, LK_RELEASE);
+			lockmgr(&devfs_lock, LK_EXCLUSIVE);
 			newnode = devfs_create_device_node(
 					DEVFS_MNTDATA(vp->v_mount)->root_node,
 					ndev, &exists, NULL, NULL);
