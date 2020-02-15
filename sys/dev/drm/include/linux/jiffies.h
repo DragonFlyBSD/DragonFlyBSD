@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -93,6 +93,12 @@ static inline
 unsigned int jiffies_to_usecs(const unsigned long j)
 {
 	return j * (USEC_PER_SEC / HZ);
+}
+
+static inline u64
+jiffies_to_nsecs(const unsigned long j)
+{
+	return j * (NSEC_PER_SEC / HZ);
 }
 
 #endif	/* _LINUX_JIFFIES_H_ */
