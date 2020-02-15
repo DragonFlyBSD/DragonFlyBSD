@@ -342,10 +342,11 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 						maxprot |= VM_PROT_WRITE;
 
 						/*
-						 * SHARED+RW file mmap()
+						 * SHARED+RW regular file mmap()
 						 * updates v_lastwrite_ts.
 						 */
 						if ((prot & PROT_WRITE) &&
+						    vp->v_type == VREG &&
 						    vn_lock(vp, LK_EXCLUSIVE | LK_RETRY) == 0) {
 							vfs_timestamp(&vp->v_lastwrite_ts);
 							vsetflags(vp, VLASTWRITETS);
