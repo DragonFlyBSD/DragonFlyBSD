@@ -1601,7 +1601,12 @@ vm_page_hash_get(vm_object_t object, vm_pindex_t pindex)
 		if (vm_page_sbusy_try(m))
 			continue;
 		if (m->object == object && m->pindex == pindex) {
-			mp[i].ticks = ticks;
+			/*
+			 * On-match optimization - do not update ticks
+			 * unless we have to (reduce cache coherency traffic)
+			 */
+			if (mp[i].ticks != ticks)
+				mp[i].ticks = ticks;
 			return m;
 		}
 		vm_page_sbusy_drop(m);
@@ -1650,7 +1655,12 @@ vm_page_hash_enter(vm_page_t m)
 	best = mp;
 	for (i = 0; i < VM_PAGE_HASH_SET; ++i) {
 		if (mp[i].m == m) {
-			mp[i].ticks = ticks;
+			/*
+			 * On-match optimization - do not update ticks
+			 * unless we have to (reduce cache coherency traffic)
+			 */
+			if (mp[i].ticks != ticks)
+				mp[i].ticks = ticks;
 			return;
 		}
 
