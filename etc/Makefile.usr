@@ -7,7 +7,7 @@ GITURL_SRC?=git://git.dragonflybsd.org/dragonfly.git
 # Branch to be fetched & checked out
 # * master - latest development branch
 # * DragonFly_RELEASE_x_y - stable release branch x.y
-BRANCH?=master
+BRANCH?=DragonFly_RELEASE_5_8
 
 # DPorts source repository
 GITURL_DPORTS?=git://mirror-master.dragonflybsd.org/dports.git

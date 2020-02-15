@@ -214,9 +214,10 @@
  * 500708 - Handle SIOCSIFMTU directly in tap(4) to support MTU > 1500
  * 500709 - Implement lwp_getname() and signal safety
  * 500710 - Implement getrandom() and __realpath() system calls
+ * 500800 - 5.8 release
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500710	/* propagated to newvers */
+#define __DragonFly_version 500800	/* propagated to newvers */
 
 #include <sys/_null.h>
 
