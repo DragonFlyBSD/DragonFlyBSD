@@ -1049,6 +1049,13 @@ loop:
 	waitgen = atomic_fetchadd_long(&q->p_waitgen, 0x80000000);
 	LIST_FOREACH(p, &q->p_children, p_sibling) {
 		/*
+		 * Skip children that another thread is already uninterruptably
+		 * reaping.
+		 */
+		if (PWAITRES_PENDING(p))
+			continue;
+
+		/*
 		 * Filter, (p) will be held on fall-through.  Try to optimize
 		 * this to avoid the atomic op until we are pretty sure we
 		 * want this process.
@@ -1126,6 +1133,12 @@ loop:
 			 *
 			 * Only this routine can remove a process from
 			 * the zombie list and destroy it.
+			 *
+			 * This function will fail after sleeping if another
+			 * thread owns the zombie lock.  This function will
+			 * fail immediately or after sleeping if another
+			 * thread owns or obtains ownership of the reap via
+			 * WAITRES.
 			 */
 			if (PHOLDZOMB(p)) {
 				PRELE(p);
@@ -1138,6 +1151,12 @@ loop:
 				PRELEZOMB(p);
 				goto loop;
 			}
+
+			/*
+			 * We are the reaper, from this point on the reap
+			 * cannot be aborted.
+			 */
+			PWAITRES_SET(p);
 			while (p->p_nthreads > 0) {
 				tsleep(&p->p_nthreads, 0, "lwpzomb", hz);
 			}
