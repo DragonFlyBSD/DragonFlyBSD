@@ -51,6 +51,13 @@ static void irq_enable(struct intel_engine_cs *engine)
 	 */
 	engine->breadcrumbs.irq_posted = true;
 
+	/* Make sure the current hangcheck doesn't falsely accuse a just
+	 * started irq handler from missing an interrupt (because the
+	 * interrupt count still matches the stale value from when
+	 * the irq handler was disabled, many hangchecks ago).
+	 */
+	engine->breadcrumbs.irq_wakeups++;
+
 	spin_lock_irq(&engine->i915->irq_lock);
 	engine->irq_enable(engine);
 	spin_unlock_irq(&engine->i915->irq_lock);
@@ -436,6 +443,7 @@ static int intel_breadcrumbs_signaler(void *arg)
 			 */
 			intel_engine_remove_wait(engine,
 						 &request->signaling.wait);
+			fence_signal(&request->fence);
 
 			/* Find the next oldest signal. Note that as we have
 			 * not been holding the lock, another client may
@@ -452,7 +460,7 @@ static int intel_breadcrumbs_signaler(void *arg)
 			rb_erase(&request->signaling.node, &b->signals);
 			lockmgr(&b->lock, LK_RELEASE);
 
-			i915_gem_request_unreference(request);
+			i915_gem_request_put(request);
 		} else {
 			if (kthread_should_stop())
 				break;
@@ -482,8 +490,8 @@ void intel_engine_enable_signaling(struct drm_i915_gem_request *request)
 	}
 
 	request->signaling.wait.tsk = b->signaler;
-	request->signaling.wait.seqno = request->seqno;
-	i915_gem_request_reference(request);
+	request->signaling.wait.seqno = request->fence.seqno;
+	i915_gem_request_get(request);
 
 	/* First add ourselves into the list of waiters, but register our
 	 * bottom-half as the signaller thread. As per usual, only the oldest
@@ -504,8 +512,8 @@ void intel_engine_enable_signaling(struct drm_i915_gem_request *request)
 	p = &b->signals.rb_node;
 	while (*p) {
 		parent = *p;
-		if (i915_seqno_passed(request->seqno,
-				      to_signaler(parent)->seqno)) {
+		if (i915_seqno_passed(request->fence.seqno,
+				      to_signaler(parent)->fence.seqno)) {
 			p = &parent->rb_right;
 			first = false;
 		} else {

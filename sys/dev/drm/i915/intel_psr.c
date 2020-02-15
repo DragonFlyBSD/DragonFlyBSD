@@ -255,14 +255,14 @@ static void hsw_psr_enable_source(struct intel_dp *intel_dp)
 	struct drm_i915_private *dev_priv = to_i915(dev);
 
 	uint32_t max_sleep_time = 0x1f;
-	/*
-	 * Let's respect VBT in case VBT asks a higher idle_frame value.
-	 * Let's use 6 as the minimum to cover all known cases including
-	 * the off-by-one issue that HW has in some cases. Also there are
-	 * cases where sink should be able to train
-	 * with the 5 or 6 idle patterns.
+	/* Lately it was identified that depending on panel idle frame count
+	 * calculated at HW can be off by 1. So let's use what came
+	 * from VBT + 1.
+	 * There are also other cases where panel demands at least 4
+	 * but VBT is not being set. To cover these 2 cases lets use
+	 * at least 5 when VBT isn't set to be on the safest side.
 	 */
-	uint32_t idle_frames = max(6, dev_priv->vbt.psr.idle_frames);
+	uint32_t idle_frames = dev_priv->vbt.psr.idle_frames + 1;
 	uint32_t val = EDP_PSR_ENABLE;
 
 	val |= max_sleep_time << EDP_PSR_MAX_SLEEP_TIME_SHIFT;
@@ -327,9 +327,6 @@ static bool intel_psr_match_conditions(struct intel_dp *intel_dp)
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_crtc *crtc = dig_port->base.base.crtc;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
-	const struct drm_display_mode *adjusted_mode =
-		&intel_crtc->config->base.adjusted_mode;
-	int psr_setup_time;
 
 	lockdep_assert_held(&dev_priv->psr.lock);
 	WARN_ON(!drm_modeset_is_locked(&dev->mode_config.connection_mutex));
@@ -368,22 +365,8 @@ static bool intel_psr_match_conditions(struct intel_dp *intel_dp)
 	}
 
 	if (IS_HASWELL(dev) &&
-	    adjusted_mode->flags & DRM_MODE_FLAG_INTERLACE) {
+	    intel_crtc->config->base.adjusted_mode.flags & DRM_MODE_FLAG_INTERLACE) {
 		DRM_DEBUG_KMS("PSR condition failed: Interlaced is Enabled\n");
-		return false;
-	}
-
-	psr_setup_time = drm_dp_psr_setup_time(intel_dp->psr_dpcd);
-	if (psr_setup_time < 0) {
-		DRM_DEBUG_KMS("PSR condition failed: Invalid PSR setup time (0x%02x)\n",
-			      intel_dp->psr_dpcd[1]);
-		return false;
-	}
-
-	if (intel_usecs_to_scanlines(adjusted_mode, psr_setup_time) >
-	    adjusted_mode->crtc_vtotal - adjusted_mode->crtc_vdisplay - 1) {
-		DRM_DEBUG_KMS("PSR condition failed: PSR setup time (%d us) too long\n",
-			      psr_setup_time);
 		return false;
 	}
 

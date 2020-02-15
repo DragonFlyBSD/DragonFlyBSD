@@ -292,8 +292,7 @@ struct drm_gem_object *i915_gem_prime_import(struct drm_device *dev,
 			 * Importing dmabuf exported from out own gem increases
 			 * refcount on gem itself instead of f_count of dmabuf.
 			 */
-			drm_gem_object_reference(&obj->base);
-			return &obj->base;
+			return &i915_gem_object_get(obj)->base;
 		}
 	}
 
@@ -315,6 +314,16 @@ struct drm_gem_object *i915_gem_prime_import(struct drm_device *dev,
 	drm_gem_private_object_init(dev, &obj->base, dma_buf->size);
 	i915_gem_object_init(obj, &i915_gem_object_dmabuf_ops);
 	obj->base.import_attach = attach;
+
+	/* We use GTT as shorthand for a coherent domain, one that is
+	 * neither in the GPU cache nor in the CPU cache, where all
+	 * writes are immediately visible in memory. (That's not strictly
+	 * true, but it's close! There are internal buffers such as the
+	 * write-combined buffer or a delay through the chipset for GTT
+	 * writes that do require us to treat GTT as a separate cache domain.)
+	 */
+	obj->base.read_domains = I915_GEM_DOMAIN_GTT;
+	obj->base.write_domain = 0;
 
 	return &obj->base;
 

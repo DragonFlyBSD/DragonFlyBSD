@@ -176,7 +176,7 @@ void i915_gem_context_free(struct kref *ctx_ref)
 		if (ce->ringbuf)
 			intel_ringbuffer_free(ce->ringbuf);
 
-		drm_gem_object_unreference(&ce->state->base);
+		i915_gem_object_put(ce->state);
 	}
 
 	list_del(&ctx->link);
@@ -216,7 +216,7 @@ i915_gem_alloc_context_obj(struct drm_device *dev, size_t size)
 		ret = i915_gem_object_set_cache_level(obj, I915_CACHE_L3_LLC);
 		/* Failure shouldn't ever happen this early */
 		if (WARN_ON(ret)) {
-			drm_gem_object_unreference(&obj->base);
+			i915_gem_object_put(obj);
 			return ERR_PTR(ret);
 		}
 	}
@@ -305,7 +305,7 @@ __create_hw_context(struct drm_device *dev,
 	return ctx;
 
 err_out:
-	i915_gem_context_unreference(ctx);
+	i915_gem_context_put(ctx);
 	return ERR_PTR(ret);
 }
 
@@ -333,7 +333,7 @@ i915_gem_create_context(struct drm_device *dev,
 			DRM_DEBUG_DRIVER("PPGTT setup failed (%ld)\n",
 					 PTR_ERR(ppgtt));
 			idr_remove(&file_priv->context_idr, ctx->user_handle);
-			i915_gem_context_unreference(ctx);
+			i915_gem_context_put(ctx);
 			return ERR_CAST(ppgtt);
 		}
 
@@ -390,7 +390,7 @@ static void i915_gem_context_unpin(struct i915_gem_context *ctx,
 		if (ce->state)
 			i915_gem_object_ggtt_unpin(ce->state);
 
-		i915_gem_context_unreference(ctx);
+		i915_gem_context_put(ctx);
 	}
 }
 
@@ -504,7 +504,7 @@ void i915_gem_context_fini(struct drm_device *dev)
 
 	lockdep_assert_held(&dev->struct_mutex);
 
-	i915_gem_context_unreference(dctx);
+	i915_gem_context_put(dctx);
 	dev_priv->kernel_context = NULL;
 
 	ida_destroy(&dev_priv->context_hw_ida);
@@ -515,7 +515,7 @@ static int context_idr_cleanup(int id, void *p, void *data)
 	struct i915_gem_context *ctx = p;
 
 	ctx->file_priv = ERR_PTR(-EBADF);
-	i915_gem_context_unreference(ctx);
+	i915_gem_context_put(ctx);
 	return 0;
 }
 
@@ -556,7 +556,7 @@ mi_set_context(struct drm_i915_gem_request *req, u32 hw_flags)
 	u32 flags = hw_flags | MI_MM_SPACE_GTT;
 	const int num_rings =
 		/* Use an extended w/a on ivb+ if signalling from other rings */
-		i915_semaphore_is_enabled(dev_priv) ?
+		i915.semaphores ?
 		hweight32(INTEL_INFO(dev_priv)->ring_mask) - 1 :
 		0;
 	int len, ret;
@@ -827,10 +827,9 @@ static int do_rcs_switch(struct drm_i915_gem_request *req)
 
 		/* obj is kept alive until the next request by its active ref */
 		i915_gem_object_ggtt_unpin(from->engine[RCS].state);
-		i915_gem_context_unreference(from);
+		i915_gem_context_put(from);
 	}
-	i915_gem_context_reference(to);
-	engine->last_context = to;
+	engine->last_context = i915_gem_context_get(to);
 
 	/* GEN8 does *not* require an explicit reload if the PDPs have been
 	 * setup, and we do not wish to move them.
@@ -914,16 +913,44 @@ int i915_switch_context(struct drm_i915_gem_request *req)
 		}
 
 		if (to != engine->last_context) {
-			i915_gem_context_reference(to);
 			if (engine->last_context)
-				i915_gem_context_unreference(engine->last_context);
-			engine->last_context = to;
+				i915_gem_context_put(engine->last_context);
+			engine->last_context = i915_gem_context_get(to);
 		}
 
 		return 0;
 	}
 
 	return do_rcs_switch(req);
+}
+
+int i915_gem_switch_to_kernel_context(struct drm_i915_private *dev_priv)
+{
+	struct intel_engine_cs *engine;
+
+	for_each_engine(engine, dev_priv) {
+		struct drm_i915_gem_request *req;
+		int ret;
+
+		if (engine->last_context == NULL)
+			continue;
+
+		if (engine->last_context == dev_priv->kernel_context)
+			continue;
+
+		req = i915_gem_request_alloc(engine, dev_priv->kernel_context);
+		if (IS_ERR(req))
+			return PTR_ERR(req);
+
+		ret = 0;
+		if (!i915.enable_execlists)
+			ret = i915_switch_context(req);
+		i915_add_request_no_flush(req);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
 }
 
 static bool contexts_enabled(struct drm_device *dev)
@@ -985,7 +1012,7 @@ int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
 	}
 
 	idr_remove(&file_priv->context_idr, ctx->user_handle);
-	i915_gem_context_unreference(ctx);
+	i915_gem_context_put(ctx);
 	mutex_unlock(&dev->struct_mutex);
 
 	DRM_DEBUG_DRIVER("HW context %d destroyed\n", args->ctx_id);

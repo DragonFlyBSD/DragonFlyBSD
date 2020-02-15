@@ -191,7 +191,7 @@ i915_gem_shrink(struct drm_i915_private *dev_priv,
 			if (!can_release_pages(obj))
 				continue;
 
-			drm_gem_object_reference(&obj->base);
+			i915_gem_object_get(obj);
 
 			/* For the unbound phase, this should be a no-op! */
 			list_for_each_entry_safe(vma, v,
@@ -202,7 +202,7 @@ i915_gem_shrink(struct drm_i915_private *dev_priv,
 			if (i915_gem_object_put_pages(obj) == 0)
 				count += obj->base.size >> PAGE_SHIFT;
 
-			drm_gem_object_unreference(&obj->base);
+			i915_gem_object_put(obj);
 		}
 		list_splice(&still_in_list, phase->list);
 	}

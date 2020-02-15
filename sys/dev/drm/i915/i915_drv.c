@@ -235,27 +235,6 @@ static void intel_detect_pch(struct drm_device *dev)
 #endif
 }
 
-bool i915_semaphore_is_enabled(struct drm_i915_private *dev_priv)
-{
-	if (INTEL_GEN(dev_priv) < 6)
-		return false;
-
-	if (i915.semaphores >= 0)
-		return i915.semaphores;
-
-	/* TODO: make semaphores and Execlists play nicely together */
-	if (i915.enable_execlists)
-		return false;
-
-#ifdef CONFIG_INTEL_IOMMU
-	/* Enable semaphores on SNB when IO remapping is off */
-	if (IS_GEN6(dev_priv) && intel_iommu_gfx_mapped)
-		return false;
-#endif
-
-	return true;
-}
-
 static int i915_getparam(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
 {
@@ -331,7 +310,7 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		value = 1;
 		break;
 	case I915_PARAM_HAS_SEMAPHORES:
-		value = i915_semaphore_is_enabled(dev_priv);
+		value = i915.semaphores;
 		break;
 	case I915_PARAM_HAS_PINNED_BATCHES:
 		value = 1;
@@ -1035,6 +1014,9 @@ static void intel_sanitize_options(struct drm_i915_private *dev_priv)
 	i915.enable_ppgtt =
 		intel_sanitize_enable_ppgtt(dev_priv, i915.enable_ppgtt);
 	DRM_DEBUG_DRIVER("ppgtt mode: %i\n", i915.enable_ppgtt);
+
+	i915.semaphores = intel_sanitize_semaphores(dev_priv, i915.semaphores);
+	DRM_DEBUG_DRIVER("use GPU sempahores? %s\n", yesno(i915.semaphores));
 }
 
 /**
@@ -1398,7 +1380,7 @@ void i915_driver_unload(struct drm_device *dev)
 	i915_destroy_error_state(dev);
 
 	/* Flush any outstanding unpin_work. */
-	flush_workqueue(dev_priv->wq);
+	drain_workqueue(dev_priv->wq);
 
 	intel_guc_fini(dev);
 	i915_gem_fini(dev);
@@ -1516,8 +1498,6 @@ static int i915_drm_suspend(struct drm_device *dev)
 	}
 
 	intel_guc_suspend(dev);
-
-	intel_suspend_gt_powersave(dev_priv);
 
 	intel_display_suspend(dev);
 
@@ -1659,9 +1639,7 @@ static int i915_drm_resume(struct drm_device *dev)
 
 	intel_csr_ucode_resume(dev_priv);
 
-	mutex_lock(&dev->struct_mutex);
-	i915_gem_restore_gtt_mappings(dev);
-	mutex_unlock(&dev->struct_mutex);
+	i915_gem_resume(dev);
 
 	i915_restore_state(dev);
 	intel_opregion_setup(dev_priv);
@@ -1719,6 +1697,7 @@ static int i915_drm_resume(struct drm_device *dev)
 
 	intel_opregion_notify_adapter(dev_priv, PCI_D0);
 
+	intel_autoenable_gt_powersave(dev_priv);
 	drm_kms_helper_poll_enable(dev);
 
 	enable_rpm_wakeref_asserts(dev_priv);
@@ -1849,8 +1828,6 @@ int i915_reset(struct drm_i915_private *dev_priv)
 	unsigned reset_counter;
 	int ret;
 
-	intel_reset_gt_powersave(dev_priv);
-
 	mutex_lock(&dev->struct_mutex);
 
 	/* Clear any previous failed attempts at recovery. Time to try again. */
@@ -1906,8 +1883,7 @@ int i915_reset(struct drm_i915_private *dev_priv)
 	 * previous concerns that it doesn't respond well to some forms
 	 * of re-init after reset.
 	 */
-	if (INTEL_INFO(dev)->gen > 5)
-		intel_enable_gt_powersave(dev_priv);
+	intel_autoenable_gt_powersave(dev_priv);
 
 	return 0;
 
@@ -2536,7 +2512,6 @@ static int intel_runtime_resume(struct device *device)
 	 * we can do is to hope that things will still work (and disable RPM).
 	 */
 	i915_gem_init_swizzling(dev);
-	gen6_update_ring_freq(dev_priv);
 
 	intel_runtime_pm_enable_interrupts(dev_priv);
 

@@ -288,7 +288,6 @@ logical_ring_init_platform_invariants(struct intel_engine_cs *engine)
 /**
  * intel_lr_context_descriptor_update() - calculate & cache the descriptor
  * 					  descriptor for a pinned context
- *
  * @ctx: Context to work on
  * @engine: Engine the descriptor will be used with
  *
@@ -297,12 +296,13 @@ logical_ring_init_platform_invariants(struct intel_engine_cs *engine)
  * expensive to calculate, we'll just do it once and cache the result,
  * which remains valid until the context is unpinned.
  *
- * This is what a descriptor looks like, from LSB to MSB:
- *    bits  0-11:    flags, GEN8_CTX_* (cached in ctx_desc_template)
- *    bits 12-31:    LRCA, GTT address of (the HWSP of) this context
- *    bits 32-52:    ctx ID, a globally unique tag
- *    bits 53-54:    mbz, reserved for use by hardware
- *    bits 55-63:    group ID, currently unused and set to 0
+ * This is what a descriptor looks like, from LSB to MSB::
+ *
+ *      bits  0-11:    flags, GEN8_CTX_* (cached in ctx_desc_template)
+ *      bits 12-31:    LRCA, GTT address of (the HWSP of) this context
+ *      bits 32-52:    ctx ID, a globally unique tag
+ *      bits 53-54:    mbz, reserved for use by hardware
+ *      bits 55-63:    group ID, currently unused and set to 0
  */
 static void
 intel_lr_context_descriptor_update(struct i915_gem_context *ctx,
@@ -441,7 +441,7 @@ static void execlists_context_unqueue(struct intel_engine_cs *engine)
 			 * will update tail past first request's workload */
 			cursor->elsp_submitted = req0->elsp_submitted;
 			list_del(&req0->execlist_link);
-			i915_gem_request_unreference(req0);
+			i915_gem_request_put(req0);
 			req0 = cursor;
 		} else {
 			if (IS_ENABLED(CONFIG_DRM_I915_GVT)) {
@@ -514,7 +514,7 @@ execlists_check_remove_request(struct intel_engine_cs *engine, u32 ctx_id)
 	execlists_context_status_change(head_req, INTEL_CONTEXT_SCHEDULE_OUT);
 
 	list_del(&head_req->execlist_link);
-	i915_gem_request_unreference(head_req);
+	i915_gem_request_put(head_req);
 
 	return 1;
 }
@@ -539,10 +539,7 @@ get_context_status(struct intel_engine_cs *engine, unsigned int read_pointer,
 	return status;
 }
 
-/**
- * intel_lrc_irq_handler() - handle Context Switch interrupts
- * @data: tasklet handler passed in unsigned long
- *
+/*
  * Check the unread Context Status Buffers and manage the submission of new
  * contexts to the ELSP accordingly.
  */
@@ -635,11 +632,11 @@ static void execlists_context_queue(struct drm_i915_gem_request *request)
 			WARN(tail_req->elsp_submitted != 0,
 				"More than 2 already-submitted reqs queued\n");
 			list_del(&tail_req->execlist_link);
-			i915_gem_request_unreference(tail_req);
+			i915_gem_request_put(tail_req);
 		}
 	}
 
-	i915_gem_request_reference(request);
+	i915_gem_request_get(request);
 	list_add_tail(&request->execlist_link, &engine->execlist_queue);
 	request->ctx_hw_id = request->ctx->hw_id;
 	if (num_elements == 0)
@@ -807,7 +804,7 @@ intel_logical_ring_advance_and_submit(struct drm_i915_gem_request *request)
 }
 
 /**
- * execlists_submission() - submit a batchbuffer for execution, Execlists style
+ * intel_execlists_submission() - submit a batchbuffer for execution, Execlists style
  * @params: execbuffer call parameters.
  * @args: execbuffer call arguments.
  * @vmas: list of vmas.
@@ -907,7 +904,7 @@ void intel_execlists_cancel_requests(struct intel_engine_cs *engine)
 
 	list_for_each_entry_safe(req, tmp, &cancel_list, execlist_link) {
 		list_del(&req->execlist_link);
-		i915_gem_request_unreference(req);
+		i915_gem_request_put(req);
 	}
 }
 
@@ -983,7 +980,6 @@ static int intel_lr_context_pin(struct i915_gem_context *ctx,
 	if (ret)
 		goto unpin_map;
 
-	i915_gem_context_reference(ctx);
 	ce->lrc_vma = i915_gem_obj_to_ggtt(ce->state);
 	intel_lr_context_descriptor_update(ctx, engine);
 
@@ -995,6 +991,7 @@ static int intel_lr_context_pin(struct i915_gem_context *ctx,
 	if (i915.enable_guc_submission)
 		I915_WRITE(GEN8_GTCR, GEN8_GTCR_INVALIDATE);
 
+	i915_gem_context_get(ctx);
 	return 0;
 
 unpin_map:
@@ -1026,7 +1023,7 @@ void intel_lr_context_unpin(struct i915_gem_context *ctx,
 	ce->lrc_desc = 0;
 	ce->lrc_reg_state = NULL;
 
-	i915_gem_context_unreference(ctx);
+	i915_gem_context_put(ctx);
 }
 
 static int intel_logical_ring_workarounds_emit(struct drm_i915_gem_request *req)
@@ -1094,7 +1091,7 @@ static int intel_logical_ring_workarounds_emit(struct drm_i915_gem_request *req)
  * code duplication.
  */
 static inline int gen8_emit_flush_coherentl3_wa(struct intel_engine_cs *engine,
-						uint32_t *const batch,
+						uint32_t *batch,
 						uint32_t index)
 {
 	struct drm_i915_private *dev_priv = engine->i915;
@@ -1156,37 +1153,24 @@ static inline int wa_ctx_end(struct i915_wa_ctx_bb *wa_ctx,
 	return 0;
 }
 
-/**
- * gen8_init_indirectctx_bb() - initialize indirect ctx batch with WA
+/*
+ * Typically we only have one indirect_ctx and per_ctx batch buffer which are
+ * initialized at the beginning and shared across all contexts but this field
+ * helps us to have multiple batches at different offsets and select them based
+ * on a criteria. At the moment this batch always start at the beginning of the page
+ * and at this point we don't have multiple wa_ctx batch buffers.
  *
- * @engine: only applicable for RCS
- * @wa_ctx: structure representing wa_ctx
- *  offset: specifies start of the batch, should be cache-aligned. This is updated
- *    with the offset value received as input.
- *  size: size of the batch in DWORDS but HW expects in terms of cachelines
- * @batch: page in which WA are loaded
- * @offset: This field specifies the start of the batch, it should be
- *  cache-aligned otherwise it is adjusted accordingly.
- *  Typically we only have one indirect_ctx and per_ctx batch buffer which are
- *  initialized at the beginning and shared across all contexts but this field
- *  helps us to have multiple batches at different offsets and select them based
- *  on a criteria. At the moment this batch always start at the beginning of the page
- *  and at this point we don't have multiple wa_ctx batch buffers.
+ * The number of WA applied are not known at the beginning; we use this field
+ * to return the no of DWORDS written.
  *
- *  The number of WA applied are not known at the beginning; we use this field
- *  to return the no of DWORDS written.
- *
- *  It is to be noted that this batch does not contain MI_BATCH_BUFFER_END
- *  so it adds NOOPs as padding to make it cacheline aligned.
- *  MI_BATCH_BUFFER_END will be added to perctx batch and both of them together
- *  makes a complete batch buffer.
- *
- * Return: non-zero if we exceed the PAGE_SIZE limit.
+ * It is to be noted that this batch does not contain MI_BATCH_BUFFER_END
+ * so it adds NOOPs as padding to make it cacheline aligned.
+ * MI_BATCH_BUFFER_END will be added to perctx batch and both of them together
+ * makes a complete batch buffer.
  */
-
 static int gen8_init_indirectctx_bb(struct intel_engine_cs *engine,
 				    struct i915_wa_ctx_bb *wa_ctx,
-				    uint32_t *const batch,
+				    uint32_t *batch,
 				    uint32_t *offset)
 {
 	uint32_t scratch_addr;
@@ -1230,26 +1214,18 @@ static int gen8_init_indirectctx_bb(struct intel_engine_cs *engine,
 	return wa_ctx_end(wa_ctx, *offset = index, CACHELINE_DWORDS);
 }
 
-/**
- * gen8_init_perctx_bb() - initialize per ctx batch with WA
+/*
+ *  This batch is started immediately after indirect_ctx batch. Since we ensure
+ *  that indirect_ctx ends on a cacheline this batch is aligned automatically.
  *
- * @engine: only applicable for RCS
- * @wa_ctx: structure representing wa_ctx
- *  offset: specifies start of the batch, should be cache-aligned.
- *  size: size of the batch in DWORDS but HW expects in terms of cachelines
- * @batch: page in which WA are loaded
- * @offset: This field specifies the start of this batch.
- *   This batch is started immediately after indirect_ctx batch. Since we ensure
- *   that indirect_ctx ends on a cacheline this batch is aligned automatically.
- *
- *   The number of DWORDS written are returned using this field.
+ *  The number of DWORDS written are returned using this field.
  *
  *  This batch is terminated with MI_BATCH_BUFFER_END and so we need not add padding
  *  to align it with cacheline as padding after MI_BATCH_BUFFER_END is redundant.
  */
 static int gen8_init_perctx_bb(struct intel_engine_cs *engine,
 			       struct i915_wa_ctx_bb *wa_ctx,
-			       uint32_t *const batch,
+			       uint32_t *batch,
 			       uint32_t *offset)
 {
 	uint32_t index = wa_ctx_start(wa_ctx, *offset, CACHELINE_DWORDS);
@@ -1264,7 +1240,7 @@ static int gen8_init_perctx_bb(struct intel_engine_cs *engine,
 
 static int gen9_init_indirectctx_bb(struct intel_engine_cs *engine,
 				    struct i915_wa_ctx_bb *wa_ctx,
-				    uint32_t *const batch,
+				    uint32_t *batch,
 				    uint32_t *offset)
 {
 	int ret;
@@ -1281,6 +1257,13 @@ static int gen9_init_indirectctx_bb(struct intel_engine_cs *engine,
 	if (ret < 0)
 		return ret;
 	index = ret;
+
+	/* WaDisableGatherAtSetShaderCommonSlice:skl,bxt,kbl */
+	wa_ctx_emit(batch, index, MI_LOAD_REGISTER_IMM(1));
+	wa_ctx_emit_reg(batch, index, COMMON_SLICE_CHICKEN2);
+	wa_ctx_emit(batch, index, _MASKED_BIT_DISABLE(
+			    GEN9_DISABLE_GATHER_AT_SET_SHADER_COMMON_SLICE));
+	wa_ctx_emit(batch, index, MI_NOOP);
 
 	/* WaClearSlmSpaceAtContextSwitch:kbl */
 	/* Actual scratch location is at 128 bytes offset */
@@ -1332,7 +1315,7 @@ static int gen9_init_indirectctx_bb(struct intel_engine_cs *engine,
 
 static int gen9_init_perctx_bb(struct intel_engine_cs *engine,
 			       struct i915_wa_ctx_bb *wa_ctx,
-			       uint32_t *const batch,
+			       uint32_t *batch,
 			       uint32_t *offset)
 {
 	uint32_t index = wa_ctx_start(wa_ctx, *offset, CACHELINE_DWORDS);
@@ -1393,7 +1376,7 @@ static int lrc_setup_wa_ctx_obj(struct intel_engine_cs *engine, u32 size)
 	if (ret) {
 		DRM_DEBUG_DRIVER("pin LRC WA ctx backing obj failed: %d\n",
 				 ret);
-		drm_gem_object_unreference(&engine->wa_ctx.obj->base);
+		i915_gem_object_put(engine->wa_ctx.obj);
 		return ret;
 	}
 
@@ -1404,7 +1387,7 @@ static void lrc_destroy_wa_ctx_obj(struct intel_engine_cs *engine)
 {
 	if (engine->wa_ctx.obj) {
 		i915_gem_object_ggtt_unpin(engine->wa_ctx.obj);
-		drm_gem_object_unreference(&engine->wa_ctx.obj->base);
+		i915_gem_object_put(engine->wa_ctx.obj);
 		engine->wa_ctx.obj = NULL;
 	}
 }
@@ -1829,7 +1812,7 @@ static int gen8_emit_request(struct drm_i915_gem_request *request)
 				intel_hws_seqno_address(request->engine) |
 				MI_FLUSH_DW_USE_GTT);
 	intel_logical_ring_emit(ringbuf, 0);
-	intel_logical_ring_emit(ringbuf, request->seqno);
+	intel_logical_ring_emit(ringbuf, request->fence.seqno);
 	intel_logical_ring_emit(ringbuf, MI_USER_INTERRUPT);
 	intel_logical_ring_emit(ringbuf, MI_NOOP);
 	return intel_logical_ring_advance_and_submit(request);
@@ -1918,9 +1901,7 @@ static int gen8_init_rcs_context(struct drm_i915_gem_request *req)
 
 /**
  * intel_logical_ring_cleanup() - deallocate the Engine Command Streamer
- *
  * @engine: Engine Command Streamer.
- *
  */
 void intel_logical_ring_cleanup(struct intel_engine_cs *engine)
 {
@@ -1980,8 +1961,9 @@ logical_ring_default_vfuncs(struct intel_engine_cs *engine)
 }
 
 static inline void
-logical_ring_default_irqs(struct intel_engine_cs *engine, unsigned shift)
+logical_ring_default_irqs(struct intel_engine_cs *engine)
 {
+	unsigned shift = engine->irq_shift;
 	engine->irq_enable_mask = GT_RENDER_USER_INTERRUPT << shift;
 	engine->irq_keep_mask = GT_CONTEXT_SWITCH_INTERRUPT << shift;
 }
@@ -2004,17 +1986,46 @@ lrc_setup_hws(struct intel_engine_cs *engine,
 	return 0;
 }
 
+static void
+logical_ring_setup(struct intel_engine_cs *engine)
+{
+	struct drm_i915_private *dev_priv = engine->i915;
+	enum forcewake_domains fw_domains;
+
+	intel_engine_setup_common(engine);
+
+	/* Intentionally left blank. */
+	engine->buffer = NULL;
+
+	fw_domains = intel_uncore_forcewake_for_reg(dev_priv,
+						    RING_ELSP(engine),
+						    FW_REG_WRITE);
+
+	fw_domains |= intel_uncore_forcewake_for_reg(dev_priv,
+						     RING_CONTEXT_STATUS_PTR(engine),
+						     FW_REG_READ | FW_REG_WRITE);
+
+	fw_domains |= intel_uncore_forcewake_for_reg(dev_priv,
+						     RING_CONTEXT_STATUS_BUF_BASE(engine),
+						     FW_REG_READ);
+
+	engine->fw_domains = fw_domains;
+
+	tasklet_init(&engine->irq_tasklet,
+		     intel_lrc_irq_handler, (unsigned long)engine);
+
+	logical_ring_init_platform_invariants(engine);
+	logical_ring_default_vfuncs(engine);
+	logical_ring_default_irqs(engine);
+}
+
 static int
 logical_ring_init(struct intel_engine_cs *engine)
 {
 	struct i915_gem_context *dctx = engine->i915->kernel_context;
 	int ret;
 
-	ret = intel_engine_init_breadcrumbs(engine);
-	if (ret)
-		goto error;
-
-	ret = i915_cmd_parser_init_ring(engine);
+	ret = intel_engine_init_common(engine);
 	if (ret)
 		goto error;
 
@@ -2044,10 +2055,12 @@ error:
 	return ret;
 }
 
-static int logical_render_ring_init(struct intel_engine_cs *engine)
+int logical_render_ring_init(struct intel_engine_cs *engine)
 {
 	struct drm_i915_private *dev_priv = engine->i915;
 	int ret;
+
+	logical_ring_setup(engine);
 
 	if (HAS_L3_DPF(dev_priv))
 		engine->irq_keep_mask |= GT_RENDER_L3_PARITY_ERROR_INTERRUPT;
@@ -2085,160 +2098,11 @@ static int logical_render_ring_init(struct intel_engine_cs *engine)
 	return ret;
 }
 
-static const struct logical_ring_info {
-	const char *name;
-	unsigned exec_id;
-	unsigned guc_id;
-	u32 mmio_base;
-	unsigned irq_shift;
-	int (*init)(struct intel_engine_cs *engine);
-} logical_rings[] = {
-	[RCS] = {
-		.name = "render ring",
-		.exec_id = I915_EXEC_RENDER,
-		.guc_id = GUC_RENDER_ENGINE,
-		.mmio_base = RENDER_RING_BASE,
-		.irq_shift = GEN8_RCS_IRQ_SHIFT,
-		.init = logical_render_ring_init,
-	},
-	[BCS] = {
-		.name = "blitter ring",
-		.exec_id = I915_EXEC_BLT,
-		.guc_id = GUC_BLITTER_ENGINE,
-		.mmio_base = BLT_RING_BASE,
-		.irq_shift = GEN8_BCS_IRQ_SHIFT,
-		.init = logical_ring_init,
-	},
-	[VCS] = {
-		.name = "bsd ring",
-		.exec_id = I915_EXEC_BSD,
-		.guc_id = GUC_VIDEO_ENGINE,
-		.mmio_base = GEN6_BSD_RING_BASE,
-		.irq_shift = GEN8_VCS1_IRQ_SHIFT,
-		.init = logical_ring_init,
-	},
-	[VCS2] = {
-		.name = "bsd2 ring",
-		.exec_id = I915_EXEC_BSD,
-		.guc_id = GUC_VIDEO_ENGINE2,
-		.mmio_base = GEN8_BSD2_RING_BASE,
-		.irq_shift = GEN8_VCS2_IRQ_SHIFT,
-		.init = logical_ring_init,
-	},
-	[VECS] = {
-		.name = "video enhancement ring",
-		.exec_id = I915_EXEC_VEBOX,
-		.guc_id = GUC_VIDEOENHANCE_ENGINE,
-		.mmio_base = VEBOX_RING_BASE,
-		.irq_shift = GEN8_VECS_IRQ_SHIFT,
-		.init = logical_ring_init,
-	},
-};
-
-static struct intel_engine_cs *
-logical_ring_setup(struct drm_i915_private *dev_priv, enum intel_engine_id id)
+int logical_xcs_ring_init(struct intel_engine_cs *engine)
 {
-	const struct logical_ring_info *info = &logical_rings[id];
-	struct intel_engine_cs *engine = &dev_priv->engine[id];
-	enum forcewake_domains fw_domains;
+	logical_ring_setup(engine);
 
-	engine->id = id;
-	engine->name = info->name;
-	engine->exec_id = info->exec_id;
-	engine->guc_id = info->guc_id;
-	engine->mmio_base = info->mmio_base;
-
-	engine->i915 = dev_priv;
-
-	/* Intentionally left blank. */
-	engine->buffer = NULL;
-
-	fw_domains = intel_uncore_forcewake_for_reg(dev_priv,
-						    RING_ELSP(engine),
-						    FW_REG_WRITE);
-
-	fw_domains |= intel_uncore_forcewake_for_reg(dev_priv,
-						     RING_CONTEXT_STATUS_PTR(engine),
-						     FW_REG_READ | FW_REG_WRITE);
-
-	fw_domains |= intel_uncore_forcewake_for_reg(dev_priv,
-						     RING_CONTEXT_STATUS_BUF_BASE(engine),
-						     FW_REG_READ);
-
-	engine->fw_domains = fw_domains;
-
-	INIT_LIST_HEAD(&engine->active_list);
-	INIT_LIST_HEAD(&engine->request_list);
-	INIT_LIST_HEAD(&engine->buffers);
-	INIT_LIST_HEAD(&engine->execlist_queue);
-	lockinit(&engine->execlist_lock, "i915el", 0, LK_CANRECURSE);
-
-	tasklet_init(&engine->irq_tasklet,
-		     intel_lrc_irq_handler, (unsigned long)engine);
-
-	logical_ring_init_platform_invariants(engine);
-	logical_ring_default_vfuncs(engine);
-	logical_ring_default_irqs(engine, info->irq_shift);
-
-	intel_engine_init_hangcheck(engine);
-	i915_gem_batch_pool_init(&dev_priv->drm, &engine->batch_pool);
-
-	return engine;
-}
-
-/**
- * intel_logical_rings_init() - allocate, populate and init the Engine Command Streamers
- * @dev: DRM device.
- *
- * This function inits the engines for an Execlists submission style (the
- * equivalent in the legacy ringbuffer submission world would be
- * i915_gem_init_engines). It does it only for those engines that are present in
- * the hardware.
- *
- * Return: non-zero if the initialization failed.
- */
-int intel_logical_rings_init(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = to_i915(dev);
-	unsigned int mask = 0;
-	unsigned int i;
-	int ret;
-
-	WARN_ON(INTEL_INFO(dev_priv)->ring_mask &
-		GENMASK(sizeof(mask) * BITS_PER_BYTE - 1, I915_NUM_ENGINES));
-
-	for (i = 0; i < ARRAY_SIZE(logical_rings); i++) {
-		if (!HAS_ENGINE(dev_priv, i))
-			continue;
-
-		if (!logical_rings[i].init)
-			continue;
-
-		ret = logical_rings[i].init(logical_ring_setup(dev_priv, i));
-		if (ret)
-			goto cleanup;
-
-		mask |= ENGINE_MASK(i);
-	}
-
-	/*
-	 * Catch failures to update logical_rings table when the new engines
-	 * are added to the driver by a warning and disabling the forgotten
-	 * engines.
-	 */
-	if (WARN_ON(mask != INTEL_INFO(dev_priv)->ring_mask)) {
-		struct intel_device_info *info =
-			(struct intel_device_info *)&dev_priv->info;
-		info->ring_mask = mask;
-	}
-
-	return 0;
-
-cleanup:
-	for (i = 0; i < I915_NUM_ENGINES; i++)
-		intel_logical_ring_cleanup(&dev_priv->engine[i]);
-
-	return ret;
+	return logical_ring_init(engine);
 }
 
 static u32
@@ -2484,19 +2348,6 @@ uint32_t intel_lr_context_size(struct intel_engine_cs *engine)
 	return ret;
 }
 
-/**
- * execlists_context_deferred_alloc() - create the LRC specific bits of a context
- * @ctx: LR context to create.
- * @engine: engine to be used with the context.
- *
- * This function can be called more than once, with different engines, if we plan
- * to use the context with them. The context backing objects and the ringbuffers
- * (specially the ringbuffer backing objects) suck a lot of memory up, and that's why
- * the creation is a deferred call: it's better to make sure first that we need to use
- * a given ring with the context.
- *
- * Return: non-zero on error.
- */
 static int execlists_context_deferred_alloc(struct i915_gem_context *ctx,
 					    struct intel_engine_cs *engine)
 {
@@ -2540,7 +2391,7 @@ static int execlists_context_deferred_alloc(struct i915_gem_context *ctx,
 error_ringbuf:
 	intel_ringbuffer_free(ringbuf);
 error_deref_obj:
-	drm_gem_object_unreference(&ctx_obj->base);
+	i915_gem_object_put(ctx_obj);
 	ce->ringbuf = NULL;
 	ce->state = NULL;
 	return ret;

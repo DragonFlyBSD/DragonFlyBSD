@@ -48,8 +48,6 @@
 #include <asm/pgtable.h>
 #include <asm/processor.h>
 
-struct vm_operations_struct;
-
 static inline struct page *
 nth_page(struct page *page, int n)
 {

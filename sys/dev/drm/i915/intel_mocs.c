@@ -97,7 +97,8 @@ struct drm_i915_mocs_table {
  *       end.
  */
 static const struct drm_i915_mocs_entry skylake_mocs_table[] = {
-	{ /* 0x00000009 */
+	[I915_MOCS_UNCACHED] = {
+	  /* 0x00000009 */
 	  .control_value = LE_CACHEABILITY(LE_UC) |
 			   LE_TGT_CACHE(LE_TC_LLC_ELLC) |
 			   LE_LRUM(0) | LE_AOM(0) | LE_RSC(0) | LE_SCC(0) |
@@ -106,7 +107,7 @@ static const struct drm_i915_mocs_entry skylake_mocs_table[] = {
 	  /* 0x0010 */
 	  .l3cc_value =    L3_ESC(0) | L3_SCC(0) | L3_CACHEABILITY(L3_UC),
 	},
-	{
+	[I915_MOCS_PTE] = {
 	  /* 0x00000038 */
 	  .control_value = LE_CACHEABILITY(LE_PAGETABLE) |
 			   LE_TGT_CACHE(LE_TC_LLC_ELLC) |
@@ -115,7 +116,7 @@ static const struct drm_i915_mocs_entry skylake_mocs_table[] = {
 	  /* 0x0030 */
 	  .l3cc_value =    L3_ESC(0) | L3_SCC(0) | L3_CACHEABILITY(L3_WB),
 	},
-	{
+	[I915_MOCS_CACHED] = {
 	  /* 0x0000003b */
 	  .control_value = LE_CACHEABILITY(LE_WB) |
 			   LE_TGT_CACHE(LE_TC_LLC_ELLC) |
@@ -128,7 +129,7 @@ static const struct drm_i915_mocs_entry skylake_mocs_table[] = {
 
 /* NOTE: the LE_TGT_CACHE is not used on Broxton */
 static const struct drm_i915_mocs_entry broxton_mocs_table[] = {
-	{
+	[I915_MOCS_UNCACHED] = {
 	  /* 0x00000009 */
 	  .control_value = LE_CACHEABILITY(LE_UC) |
 			   LE_TGT_CACHE(LE_TC_LLC_ELLC) |
@@ -138,7 +139,7 @@ static const struct drm_i915_mocs_entry broxton_mocs_table[] = {
 	  /* 0x0010 */
 	  .l3cc_value =    L3_ESC(0) | L3_SCC(0) | L3_CACHEABILITY(L3_UC),
 	},
-	{
+	[I915_MOCS_PTE] = {
 	  /* 0x00000038 */
 	  .control_value = LE_CACHEABILITY(LE_PAGETABLE) |
 			   LE_TGT_CACHE(LE_TC_LLC_ELLC) |
@@ -148,7 +149,7 @@ static const struct drm_i915_mocs_entry broxton_mocs_table[] = {
 	  /* 0x0030 */
 	  .l3cc_value =    L3_ESC(0) | L3_SCC(0) | L3_CACHEABILITY(L3_WB),
 	},
-	{
+	[I915_MOCS_CACHED] = {
 	  /* 0x00000039 */
 	  .control_value = LE_CACHEABILITY(LE_UC) |
 			   LE_TGT_CACHE(LE_TC_LLC_ELLC) |
@@ -203,9 +204,9 @@ static bool get_mocs_settings(struct drm_i915_private *dev_priv,
 	return result;
 }
 
-static i915_reg_t mocs_register(enum intel_engine_id ring, int index)
+static i915_reg_t mocs_register(enum intel_engine_id engine_id, int index)
 {
-	switch (ring) {
+	switch (engine_id) {
 	case RCS:
 		return GEN9_GFX_MOCS(index);
 	case VCS:
@@ -217,7 +218,7 @@ static i915_reg_t mocs_register(enum intel_engine_id ring, int index)
 	case VCS2:
 		return GEN9_MFX1_MOCS(index);
 	default:
-		MISSING_CASE(ring);
+		MISSING_CASE(engine_id);
 		return INVALID_MMIO_REG;
 	}
 }

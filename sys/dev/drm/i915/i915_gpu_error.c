@@ -867,7 +867,7 @@ static void gen8_record_semaphore_state(struct drm_i915_private *dev_priv,
 	struct intel_engine_cs *to;
 	enum intel_engine_id id;
 
-	if (!i915_semaphore_is_enabled(dev_priv))
+	if (!i915.semaphores)
 		return;
 
 	if (!error->semaphore_obj)
@@ -1190,7 +1190,7 @@ static void i915_gem_record_rings(struct drm_i915_private *dev_priv,
 			}
 
 			erq = &error->ring[i].requests[count++];
-			erq->seqno = request->seqno;
+			erq->seqno = request->fence.seqno;
 			erq->jiffies = request->emitted_jiffies;
 			erq->tail = request->postfix;
 		}

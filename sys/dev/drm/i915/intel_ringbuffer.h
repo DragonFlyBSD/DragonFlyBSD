@@ -31,23 +31,23 @@ struct  intel_hw_status_page {
 	struct		drm_i915_gem_object *obj;
 };
 
-#define I915_READ_TAIL(ring) I915_READ(RING_TAIL((ring)->mmio_base))
-#define I915_WRITE_TAIL(ring, val) I915_WRITE(RING_TAIL((ring)->mmio_base), val)
+#define I915_READ_TAIL(engine) I915_READ(RING_TAIL((engine)->mmio_base))
+#define I915_WRITE_TAIL(engine, val) I915_WRITE(RING_TAIL((engine)->mmio_base), val)
 
-#define I915_READ_START(ring) I915_READ(RING_START((ring)->mmio_base))
-#define I915_WRITE_START(ring, val) I915_WRITE(RING_START((ring)->mmio_base), val)
+#define I915_READ_START(engine) I915_READ(RING_START((engine)->mmio_base))
+#define I915_WRITE_START(engine, val) I915_WRITE(RING_START((engine)->mmio_base), val)
 
-#define I915_READ_HEAD(ring)  I915_READ(RING_HEAD((ring)->mmio_base))
-#define I915_WRITE_HEAD(ring, val) I915_WRITE(RING_HEAD((ring)->mmio_base), val)
+#define I915_READ_HEAD(engine)  I915_READ(RING_HEAD((engine)->mmio_base))
+#define I915_WRITE_HEAD(engine, val) I915_WRITE(RING_HEAD((engine)->mmio_base), val)
 
-#define I915_READ_CTL(ring) I915_READ(RING_CTL((ring)->mmio_base))
-#define I915_WRITE_CTL(ring, val) I915_WRITE(RING_CTL((ring)->mmio_base), val)
+#define I915_READ_CTL(engine) I915_READ(RING_CTL((engine)->mmio_base))
+#define I915_WRITE_CTL(engine, val) I915_WRITE(RING_CTL((engine)->mmio_base), val)
 
-#define I915_READ_IMR(ring) I915_READ(RING_IMR((ring)->mmio_base))
-#define I915_WRITE_IMR(ring, val) I915_WRITE(RING_IMR((ring)->mmio_base), val)
+#define I915_READ_IMR(engine) I915_READ(RING_IMR((engine)->mmio_base))
+#define I915_WRITE_IMR(engine, val) I915_WRITE(RING_IMR((engine)->mmio_base), val)
 
-#define I915_READ_MODE(ring) I915_READ(RING_MI_MODE((ring)->mmio_base))
-#define I915_WRITE_MODE(ring, val) I915_WRITE(RING_MI_MODE((ring)->mmio_base), val)
+#define I915_READ_MODE(engine) I915_READ(RING_MI_MODE((engine)->mmio_base))
+#define I915_WRITE_MODE(engine, val) I915_WRITE(RING_MI_MODE((engine)->mmio_base), val)
 
 /* seqno size is actually only a uint32, but since we plan to use MI_FLUSH_DW to
  * do the writes, and that must have qw aligned offsets, simply pretend it's 8b.
@@ -84,7 +84,7 @@ struct intel_ring_hangcheck {
 
 struct intel_ringbuffer {
 	struct drm_i915_gem_object *obj;
-	void __iomem *virtual_start;
+	void *vaddr;
 	struct i915_vma *vma;
 
 	struct intel_engine_cs *engine;
@@ -146,7 +146,9 @@ struct intel_engine_cs {
 	unsigned int exec_id;
 	unsigned int hw_id;
 	unsigned int guc_id; /* XXX same as hw_id? */
+	u64 fence_context;
 	u32		mmio_base;
+	unsigned int irq_shift;
 	struct intel_ringbuffer *buffer;
 	struct list_head buffers;
 
@@ -195,14 +197,14 @@ struct intel_engine_cs {
 
 	u32             irq_keep_mask; /* always keep these interrupts */
 	u32		irq_enable_mask; /* bitmask to enable ring interrupt */
-	void		(*irq_enable)(struct intel_engine_cs *ring);
-	void		(*irq_disable)(struct intel_engine_cs *ring);
+	void		(*irq_enable)(struct intel_engine_cs *engine);
+	void		(*irq_disable)(struct intel_engine_cs *engine);
 
-	int		(*init_hw)(struct intel_engine_cs *ring);
+	int		(*init_hw)(struct intel_engine_cs *engine);
 
 	int		(*init_context)(struct drm_i915_gem_request *req);
 
-	void		(*write_tail)(struct intel_engine_cs *ring,
+	void		(*write_tail)(struct intel_engine_cs *engine,
 				      u32 value);
 	int __must_check (*flush)(struct drm_i915_gem_request *req,
 				  u32	invalidate_domains,
@@ -214,14 +216,14 @@ struct intel_engine_cs {
 	 * seen value is good enough. Note that the seqno will always be
 	 * monotonic, even if not coherent.
 	 */
-	void		(*irq_seqno_barrier)(struct intel_engine_cs *ring);
+	void		(*irq_seqno_barrier)(struct intel_engine_cs *engine);
 	int		(*dispatch_execbuffer)(struct drm_i915_gem_request *req,
 					       u64 offset, u32 length,
 					       unsigned dispatch_flags);
 #define I915_DISPATCH_SECURE 0x1
 #define I915_DISPATCH_PINNED 0x2
 #define I915_DISPATCH_RS     0x4
-	void		(*cleanup)(struct intel_engine_cs *ring);
+	void		(*cleanup)(struct intel_engine_cs *engine);
 
 	/* GEN8 signal/wait table - never trust comments!
 	 *	  signal to	signal to    signal to   signal to      signal to
@@ -451,23 +453,35 @@ int intel_ring_alloc_request_extras(struct drm_i915_gem_request *request);
 
 int __must_check intel_ring_begin(struct drm_i915_gem_request *req, int n);
 int __must_check intel_ring_cacheline_align(struct drm_i915_gem_request *req);
-static inline void intel_ring_emit(struct intel_engine_cs *engine,
-				   u32 data)
+
+static inline void __intel_ringbuffer_emit(struct intel_ringbuffer *rb,
+					   u32 data)
 {
-	struct intel_ringbuffer *ringbuf = engine->buffer;
-	iowrite32(data, ringbuf->virtual_start + ringbuf->tail);
-	ringbuf->tail += 4;
+	*(uint32_t *)(rb->vaddr + rb->tail) = data;
+	rb->tail += 4;
 }
+
+static inline void __intel_ringbuffer_advance(struct intel_ringbuffer *rb)
+{
+	rb->tail &= rb->size - 1;
+}
+
+static inline void intel_ring_emit(struct intel_engine_cs *engine, u32 data)
+{
+	__intel_ringbuffer_emit(engine->buffer, data);
+}
+
 static inline void intel_ring_emit_reg(struct intel_engine_cs *engine,
 				       i915_reg_t reg)
 {
 	intel_ring_emit(engine, i915_mmio_reg_offset(reg));
 }
+
 static inline void intel_ring_advance(struct intel_engine_cs *engine)
 {
-	struct intel_ringbuffer *ringbuf = engine->buffer;
-	ringbuf->tail &= ringbuf->size - 1;
+	__intel_ringbuffer_advance(engine->buffer);
 }
+
 int __intel_ring_space(int head, int tail, int size);
 void intel_ring_update_space(struct intel_ringbuffer *ringbuf);
 
@@ -479,11 +493,14 @@ int intel_ring_invalidate_all_caches(struct drm_i915_gem_request *req);
 int intel_init_pipe_control(struct intel_engine_cs *engine, int size);
 void intel_fini_pipe_control(struct intel_engine_cs *engine);
 
-int intel_init_render_ring_buffer(struct drm_device *dev);
-int intel_init_bsd_ring_buffer(struct drm_device *dev);
-int intel_init_bsd2_ring_buffer(struct drm_device *dev);
-int intel_init_blt_ring_buffer(struct drm_device *dev);
-int intel_init_vebox_ring_buffer(struct drm_device *dev);
+void intel_engine_setup_common(struct intel_engine_cs *engine);
+int intel_engine_init_common(struct intel_engine_cs *engine);
+
+int intel_init_render_ring_buffer(struct intel_engine_cs *engine);
+int intel_init_bsd_ring_buffer(struct intel_engine_cs *engine);
+int intel_init_bsd2_ring_buffer(struct intel_engine_cs *engine);
+int intel_init_blt_ring_buffer(struct intel_engine_cs *engine);
+int intel_init_vebox_ring_buffer(struct intel_engine_cs *engine);
 
 u64 intel_ring_get_active_head(struct intel_engine_cs *engine);
 static inline u32 intel_engine_get_seqno(struct intel_engine_cs *engine)

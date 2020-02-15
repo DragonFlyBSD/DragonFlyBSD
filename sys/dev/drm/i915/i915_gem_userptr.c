@@ -77,7 +77,7 @@ static void wait_rendering(struct drm_i915_gem_object *obj)
 		if (req == NULL)
 			continue;
 
-		requests[n++] = i915_gem_request_reference(req);
+		requests[n++] = i915_gem_request_get(req);
 	}
 
 	mutex_unlock(&dev->struct_mutex);
@@ -88,7 +88,7 @@ static void wait_rendering(struct drm_i915_gem_object *obj)
 	mutex_lock(&dev->struct_mutex);
 
 	for (i = 0; i < n; i++)
-		i915_gem_request_unreference(requests[i]);
+		i915_gem_request_put(requests[i]);
 }
 
 static void cancel_userptr(struct work_struct *work)
@@ -118,7 +118,7 @@ static void cancel_userptr(struct work_struct *work)
 		dev_priv->mm.interruptible = was_interruptible;
 	}
 
-	drm_gem_object_unreference(&obj->base);
+	i915_gem_object_put(obj);
 	mutex_unlock(&dev->struct_mutex);
 }
 
@@ -585,7 +585,7 @@ __i915_gem_userptr_get_pages_worker(struct work_struct *_work)
 	}
 
 	obj->userptr.workers--;
-	drm_gem_object_unreference(&obj->base);
+	i915_gem_object_put(obj);
 	mutex_unlock(&dev->struct_mutex);
 
 	release_pages(pvec, pinned, 0);
@@ -630,8 +630,7 @@ __i915_gem_userptr_get_pages_schedule(struct drm_i915_gem_object *obj,
 	obj->userptr.work = &work->work;
 	obj->userptr.workers++;
 
-	work->obj = obj;
-	drm_gem_object_reference(&obj->base);
+	work->obj = i915_gem_object_get(obj);
 
 	work->task = current;
 	get_task_struct(work->task);
@@ -863,7 +862,7 @@ i915_gem_userptr_ioctl(struct drm_device *dev, void *data, struct drm_file *file
 		ret = drm_gem_handle_create(file, &obj->base, &handle);
 
 	/* drop reference from allocate - handle holds it now */
-	drm_gem_object_unreference_unlocked(&obj->base);
+	i915_gem_object_put_unlocked(obj);
 	if (ret)
 		return ret;
 

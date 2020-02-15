@@ -53,8 +53,8 @@ format_is_yuv(uint32_t format)
 	}
 }
 
-int intel_usecs_to_scanlines(const struct drm_display_mode *adjusted_mode,
-			     int usecs)
+static int usecs_to_scanlines(const struct drm_display_mode *adjusted_mode,
+			      int usecs)
 {
 	/* paranoia */
 	if (!adjusted_mode->crtc_htotal)
@@ -91,7 +91,7 @@ void intel_pipe_update_start(struct intel_crtc *crtc)
 		vblank_start = DIV_ROUND_UP(vblank_start, 2);
 
 	/* FIXME needs to be calibrated sensibly */
-	min = vblank_start - intel_usecs_to_scanlines(adjusted_mode, 100);
+	min = vblank_start - usecs_to_scanlines(adjusted_mode, 100);
 	max = vblank_start - 1;
 
 	local_irq_disable();
@@ -203,9 +203,6 @@ skl_update_plane(struct drm_plane *drm_plane,
 	struct intel_plane *intel_plane = to_intel_plane(drm_plane);
 	struct drm_framebuffer *fb = plane_state->base.fb;
 	struct drm_i915_gem_object *obj = intel_fb_obj(fb);
-	const struct skl_wm_values *wm = &dev_priv->wm.skl_results;
-	struct drm_crtc *crtc = crtc_state->base.crtc;
-	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 	const int pipe = intel_plane->pipe;
 	const int plane = intel_plane->plane + 1;
 	u32 plane_ctl, stride_div, stride;
@@ -240,9 +237,6 @@ skl_update_plane(struct drm_plane *drm_plane,
 	src_h--;
 	crtc_w--;
 	crtc_h--;
-
-	if (wm->dirty_pipes & drm_crtc_mask(crtc))
-		skl_write_plane_wm(intel_crtc, wm, plane);
 
 	if (key->flags) {
 		I915_WRITE(PLANE_KEYVAL(pipe, plane), key->min_value);
@@ -313,14 +307,6 @@ skl_disable_plane(struct drm_plane *dplane, struct drm_crtc *crtc)
 	struct intel_plane *intel_plane = to_intel_plane(dplane);
 	const int pipe = intel_plane->pipe;
 	const int plane = intel_plane->plane + 1;
-
-	/*
-	 * We only populate skl_results on watermark updates, and if the
-	 * plane's visiblity isn't actually changing neither is its watermarks.
-	 */
-	if (!to_intel_plane_state(dplane->state)->visible)
-		skl_write_plane_wm(to_intel_crtc(crtc),
-				   &dev_priv->wm.skl_results, plane);
 
 	I915_WRITE(PLANE_CTL(pipe, plane), 0);
 
@@ -458,7 +444,7 @@ vlv_update_plane(struct drm_plane *dplane,
 						   fb->pitches[0], rotation);
 	linear_offset -= sprsurf_offset;
 
-	if (rotation == DRM_ROTATE_180) {
+	if (rotation == BIT(DRM_ROTATE_180)) {
 		sprctl |= SP_ROTATE_180;
 
 		x += src_w;
@@ -591,7 +577,7 @@ ivb_update_plane(struct drm_plane *plane,
 						   fb->pitches[0], rotation);
 	linear_offset -= sprsurf_offset;
 
-	if (rotation == DRM_ROTATE_180) {
+	if (rotation == BIT(DRM_ROTATE_180)) {
 		sprctl |= SPRITE_ROTATE_180;
 
 		/* HSW and BDW does this automagically in hardware */
@@ -728,7 +714,7 @@ ilk_update_plane(struct drm_plane *plane,
 						   fb->pitches[0], rotation);
 	linear_offset -= dvssurf_offset;
 
-	if (rotation == DRM_ROTATE_180) {
+	if (rotation == BIT(DRM_ROTATE_180)) {
 		dvscntr |= DVS_ROTATE_180;
 
 		x += src_w;

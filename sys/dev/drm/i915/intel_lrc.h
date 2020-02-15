@@ -29,17 +29,17 @@
 #define GEN8_LR_CONTEXT_ALIGN 4096
 
 /* Execlists regs */
-#define RING_ELSP(ring)				_MMIO((ring)->mmio_base + 0x230)
-#define RING_EXECLIST_STATUS_LO(ring)		_MMIO((ring)->mmio_base + 0x234)
-#define RING_EXECLIST_STATUS_HI(ring)		_MMIO((ring)->mmio_base + 0x234 + 4)
-#define RING_CONTEXT_CONTROL(ring)		_MMIO((ring)->mmio_base + 0x244)
+#define RING_ELSP(engine)			_MMIO((engine)->mmio_base + 0x230)
+#define RING_EXECLIST_STATUS_LO(engine)		_MMIO((engine)->mmio_base + 0x234)
+#define RING_EXECLIST_STATUS_HI(engine)		_MMIO((engine)->mmio_base + 0x234 + 4)
+#define RING_CONTEXT_CONTROL(engine)		_MMIO((engine)->mmio_base + 0x244)
 #define	  CTX_CTRL_INHIBIT_SYN_CTX_SWITCH	(1 << 3)
 #define	  CTX_CTRL_ENGINE_CTX_RESTORE_INHIBIT	(1 << 0)
 #define   CTX_CTRL_RS_CTX_ENABLE                (1 << 1)
-#define RING_CONTEXT_STATUS_BUF_BASE(ring)	_MMIO((ring)->mmio_base + 0x370)
-#define RING_CONTEXT_STATUS_BUF_LO(ring, i)	_MMIO((ring)->mmio_base + 0x370 + (i) * 8)
-#define RING_CONTEXT_STATUS_BUF_HI(ring, i)	_MMIO((ring)->mmio_base + 0x370 + (i) * 8 + 4)
-#define RING_CONTEXT_STATUS_PTR(ring)		_MMIO((ring)->mmio_base + 0x3a0)
+#define RING_CONTEXT_STATUS_BUF_BASE(engine)	_MMIO((engine)->mmio_base + 0x370)
+#define RING_CONTEXT_STATUS_BUF_LO(engine, i)	_MMIO((engine)->mmio_base + 0x370 + (i) * 8)
+#define RING_CONTEXT_STATUS_BUF_HI(engine, i)	_MMIO((engine)->mmio_base + 0x370 + (i) * 8 + 4)
+#define RING_CONTEXT_STATUS_PTR(engine)		_MMIO((engine)->mmio_base + 0x3a0)
 
 /* The docs specify that the write pointer wraps around after 5h, "After status
  * is written out to the last available status QW at offset 5h, this pointer
@@ -67,7 +67,10 @@ int intel_logical_ring_alloc_request_extras(struct drm_i915_gem_request *request
 int intel_logical_ring_reserve_space(struct drm_i915_gem_request *request);
 void intel_logical_ring_stop(struct intel_engine_cs *engine);
 void intel_logical_ring_cleanup(struct intel_engine_cs *engine);
-int intel_logical_rings_init(struct drm_device *dev);
+int logical_render_ring_init(struct intel_engine_cs *engine);
+int logical_xcs_ring_init(struct intel_engine_cs *engine);
+
+int intel_engines_init(struct drm_device *dev);
 
 int logical_ring_flush_all_caches(struct drm_i915_gem_request *req);
 /**
@@ -78,8 +81,9 @@ int logical_ring_flush_all_caches(struct drm_i915_gem_request *req);
  */
 static inline void intel_logical_ring_advance(struct intel_ringbuffer *ringbuf)
 {
-	ringbuf->tail &= ringbuf->size - 1;
+	__intel_ringbuffer_advance(ringbuf);
 }
+
 /**
  * intel_logical_ring_emit() - write a DWORD to the ringbuffer.
  * @ringbuf: Ringbuffer to write to.
@@ -88,8 +92,7 @@ static inline void intel_logical_ring_advance(struct intel_ringbuffer *ringbuf)
 static inline void intel_logical_ring_emit(struct intel_ringbuffer *ringbuf,
 					   u32 data)
 {
-	iowrite32(data, ringbuf->virtual_start + ringbuf->tail);
-	ringbuf->tail += 4;
+	__intel_ringbuffer_emit(ringbuf, data);
 }
 static inline void intel_logical_ring_emit_reg(struct intel_ringbuffer *ringbuf,
 					       i915_reg_t reg)

@@ -23,12 +23,14 @@ SRCS +=	i915_cmd_parser.c \
 	i915_gem_gtt.c \
 	i915_gem.c \
 	i915_gem_render_state.c \
+	i915_gem_request.c \
 	i915_gem_shrinker.c \
 	i915_gem_stolen.c \
 	i915_gem_tiling.c \
 	i915_gem_userptr.c \
 	i915_gpu_error.c \
 	intel_breadcrumbs.c \
+	intel_engine_cs.c \
 	intel_lrc.c \
 	intel_mocs.c \
 	intel_ringbuffer.c \

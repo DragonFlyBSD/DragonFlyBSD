@@ -506,7 +506,7 @@ static void guc_add_workqueue_item(struct i915_guc_client *gc,
 							     rq->engine);
 
 	wqi->ring_tail = tail << WQ_RING_TAIL_SHIFT;
-	wqi->fence_id = rq->seqno;
+	wqi->fence_id = rq->fence.seqno;
 
 	kunmap_atomic(base);
 }
@@ -601,7 +601,7 @@ int i915_guc_submit(struct drm_i915_gem_request *rq)
 		client->b_fail += 1;
 
 	guc->submissions[engine_id] += 1;
-	guc->last_seqno[engine_id] = rq->seqno;
+	guc->last_seqno[engine_id] = rq->fence.seqno;
 
 	return b_ret;
 }
@@ -633,13 +633,13 @@ gem_allocate_guc_obj(struct drm_i915_private *dev_priv, u32 size)
 		return NULL;
 
 	if (i915_gem_object_get_pages(obj)) {
-		drm_gem_object_unreference(&obj->base);
+		i915_gem_object_put(obj);
 		return NULL;
 	}
 
 	if (i915_gem_obj_ggtt_pin(obj, PAGE_SIZE,
 			PIN_OFFSET_BIAS | GUC_WOPCM_TOP)) {
-		drm_gem_object_unreference(&obj->base);
+		i915_gem_object_put(obj);
 		return NULL;
 	}
 
@@ -661,7 +661,7 @@ static void gem_release_guc_obj(struct drm_i915_gem_object *obj)
 	if (i915_gem_obj_is_pinned(obj))
 		i915_gem_object_ggtt_unpin(obj);
 
-	drm_gem_object_unreference(&obj->base);
+	i915_gem_object_put(obj);
 }
 
 static void

@@ -33,37 +33,6 @@
 #include "intel_drv.h"
 #include "i915_trace.h"
 
-static int switch_to_pinned_context(struct drm_i915_private *dev_priv)
-{
-	struct intel_engine_cs *engine;
-
-	if (i915.enable_execlists)
-		return 0;
-
-	for_each_engine(engine, dev_priv) {
-		struct drm_i915_gem_request *req;
-		int ret;
-
-		if (engine->last_context == NULL)
-			continue;
-
-		if (engine->last_context == dev_priv->kernel_context)
-			continue;
-
-		req = i915_gem_request_alloc(engine, dev_priv->kernel_context);
-		if (IS_ERR(req))
-			return PTR_ERR(req);
-
-		ret = i915_switch_context(req);
-		i915_add_request_no_flush(req);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
-}
-
-
 static bool
 mark_free(struct i915_vma *vma, struct list_head *unwind)
 {
@@ -184,7 +153,7 @@ none:
 		struct drm_i915_private *dev_priv = to_i915(dev);
 
 		if (i915_is_ggtt(vm)) {
-			ret = switch_to_pinned_context(dev_priv);
+			ret = i915_gem_switch_to_kernel_context(dev_priv);
 			if (ret)
 				return ret;
 		}
@@ -214,7 +183,7 @@ found:
 				       exec_list);
 		if (drm_mm_scan_remove_block(&vma->node)) {
 			list_move(&vma->exec_list, &eviction_list);
-			drm_gem_object_reference(&vma->obj->base);
+			i915_gem_object_get(vma->obj);
 			continue;
 		}
 		list_del_init(&vma->exec_list);
@@ -222,17 +191,18 @@ found:
 
 	/* Unbinding will emit any required flushes */
 	while (!list_empty(&eviction_list)) {
-		struct drm_gem_object *obj;
+		struct drm_i915_gem_object *obj;
+
 		vma = list_first_entry(&eviction_list,
 				       struct i915_vma,
 				       exec_list);
 
-		obj =  &vma->obj->base;
+		obj =  vma->obj;
 		list_del_init(&vma->exec_list);
 		if (ret == 0)
 			ret = i915_vma_unbind(vma);
 
-		drm_gem_object_unreference(obj);
+		i915_gem_object_put(obj);
 	}
 
 	return ret;
@@ -303,7 +273,7 @@ int i915_gem_evict_vm(struct i915_address_space *vm, bool do_idle)
 		struct drm_i915_private *dev_priv = to_i915(vm->dev);
 
 		if (i915_is_ggtt(vm)) {
-			ret = switch_to_pinned_context(dev_priv);
+			ret = i915_gem_switch_to_kernel_context(dev_priv);
 			if (ret)
 				return ret;
 		}
