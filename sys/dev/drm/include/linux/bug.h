@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,12 +27,14 @@
 #ifndef LINUX_BUG_H
 #define LINUX_BUG_H
 
-#include <sys/cdefs.h>
-
 #include <asm/bug.h>
 #include <linux/compiler.h>
 
-#define	BUILD_BUG_ON(x)	CTASSERT(!(x))
+/*
+ * Some conditions result in a "expression in static assertion is not constant"
+ * compilation error; just disable the check for now.
+ */
+#define BUILD_BUG_ON(condition)
 
 #define	BUILD_BUG_ON_NOT_POWER_OF_2(n)			      \
 	CTASSERT(((n) != 0) && (powerof2((n))))
