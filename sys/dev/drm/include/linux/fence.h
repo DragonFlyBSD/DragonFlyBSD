@@ -67,6 +67,8 @@ struct fence_ops {
 	bool		(*signaled)(struct fence *);
 	long		(*wait)(struct fence *, bool, long);
 	void		(*release)(struct fence *);
+	void	(*fence_value_str)(struct fence *fence, char *str, int size);
+	void	(*timeline_value_str)(struct fence *fence, char *str, int size);
 };
 
 typedef void (*fence_func_t)(struct fence *, struct fence_cb *);
