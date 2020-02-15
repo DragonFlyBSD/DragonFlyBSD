@@ -102,6 +102,7 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	struct vattr vat;
 	struct vattr *vap = &vat;
 	int error;
+	int vpexcl;
 	u_int flags;
 	uint64_t osize;
 	struct mount *mp;
@@ -176,6 +177,7 @@ again:
 			return error;
 	}
 
+	vpexcl = 1;
 	if (fmode & O_CREAT) {
 		if (nd->nl_nch.ncp->nc_vp == NULL) {
 			VATTR_NULL(vap);
@@ -202,8 +204,22 @@ again:
 			fmode &= ~O_CREAT;
 		}
 	} else {
-		if (nd->nl_flags & NLC_SHAREDLOCK) {
+		/*
+		 * In most other cases a shared lock on the vnode is
+		 * sufficient.  However, the O_RDWR case needs an
+		 * exclusive lock if the vnode is executable.  The
+		 * NLC_EXCLLOCK_IFEXEC and NCF_NOTX flags help resolve
+		 * this.
+		 *
+		 * NOTE: If NCF_NOTX is not set, we do not know the
+		 *	 the state of the 'x' bits and have to get
+		 *	 an exclusive lock for the EXCLLOCK_IFEXEC case.
+		 */
+		if ((nd->nl_flags & NLC_SHAREDLOCK) &&
+		    ((nd->nl_flags & NLC_EXCLLOCK_IFEXEC) == 0 ||
+		     nd->nl_nch.ncp->nc_flag & NCF_NOTX)) {
 			error = cache_vget(&nd->nl_nch, cred, LK_SHARED, &vp);
+			vpexcl = 0;
 		} else {
 			error = cache_vget(&nd->nl_nch, cred,
 					   LK_EXCLUSIVE, &vp);
@@ -248,7 +264,7 @@ again:
 				if (error == ESTALE) {
 					vput(vp);
 					vp = NULL;
-					if (nd->nl_flags & NLC_SHAREDLOCK) {
+					if (vpexcl == 0) {
 						cache_unlock(&nd->nl_nch);
 						cache_lock(&nd->nl_nch);
 					}

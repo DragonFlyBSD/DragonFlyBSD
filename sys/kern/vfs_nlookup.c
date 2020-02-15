@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004-2020 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -434,6 +434,9 @@ islastelement(const char *ptr)
  * the last element of the namecache lookup will be locked
  * exclusively.
  *
+ * O_CREAT or O_TRUNC need the last element to be locked exlcusively.
+ * Intermediate elements are always locked shared.
+ *
  * NOTE: Even if we return on-zero, an unresolved namecache record
  *	 will always be locked exclusively.
  */
@@ -443,7 +446,7 @@ wantsexcllock(struct nlookupdata *nd, const char *ptr)
 {
 	if ((nd->nl_flags & NLC_SHAREDLOCK) == 0)
 		return(islastelement(ptr));
-	return(0);
+	return 0;
 }
 
 
@@ -1169,6 +1172,7 @@ fail:
  */
 
 #define S_WXOK_MASK	(S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH)
+#define S_XOK_MASK	(S_IXUSR|S_IXGRP|S_IXOTH)
 
 static int
 naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
@@ -1325,6 +1329,8 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		    (va.va_mode & S_WXOK_MASK) == S_WXOK_MASK) {
 			cflags |= NCF_WXOK;
 		}
+		if ((va.va_mode & S_XOK_MASK) == 0)
+			cflags |= NCF_NOTX;
 
 		/*
 		 * Track swapcache management flags in the namecache.
@@ -1359,7 +1365,7 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		atomic_clear_short(&ncp->nc_flag,
 				   (NCF_SF_NOCACHE | NCF_UF_CACHE |
 				   NCF_SF_PNOCACHE | NCF_UF_PCACHE |
-				   NCF_WXOK) & ~cflags);
+				   NCF_WXOK | NCF_NOTX) & ~cflags);
 		atomic_set_short(&ncp->nc_flag, cflags);
 
 		/*

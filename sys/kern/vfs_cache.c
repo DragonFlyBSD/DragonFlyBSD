@@ -1980,8 +1980,8 @@ cache_inval_wxok(struct vnode *vp)
 
 	spin_lock(&vp->v_spin);
 	TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-		if (ncp->nc_flag & NCF_WXOK)
-			atomic_clear_short(&ncp->nc_flag, NCF_WXOK);
+		if (ncp->nc_flag & (NCF_WXOK | NCF_NOTX))
+			atomic_clear_short(&ncp->nc_flag, NCF_WXOK | NCF_NOTX);
 	}
 	spin_unlock(&vp->v_spin);
 }

@@ -116,6 +116,7 @@ struct nlookupdata {
 #define NLC_NFS_RDONLY		0x00010000	/* set by nfs_namei() only */
 #define NLC_NFS_NOSOFTLINKTRAV	0x00020000	/* do not traverse softlnks */
 #define NLC_REFDVP		0x00040000	/* set ref'd/unlocked nl_dvp */
+#define NLC_EXCLLOCK_IFEXEC	0x00080000	/* use excl lock if 'x' */
 
 #define NLC_APPEND		0x00100000	/* open check: append */
 #define NLC_NCDIR		0x00200000	/* nd->nl_nch is ncdir */

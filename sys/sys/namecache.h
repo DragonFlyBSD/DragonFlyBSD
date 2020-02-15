@@ -146,7 +146,7 @@ struct nchandle {
 /*
  * Flags in namecache.nc_flag (u_short)
  */
-#define NCF_UNUSED01	0x0001
+#define NCF_NOTX	0x0001	/* 'x' bit not set in user, group, or world */
 #define NCF_WHITEOUT	0x0002	/* negative entry corresponds to whiteout */
 #define NCF_UNRESOLVED	0x0004	/* invalid or unresolved entry */
 #define NCF_ISMOUNTPT	0x0008	/* someone may have mounted on us here */
