@@ -121,7 +121,7 @@
 #define NCHHASH(hash)		(&nchashtbl[(hash) & nchash])
 #define MINNEG			1024
 #define MINPOS			1024
-#define NCMOUNT_NUMCACHE	16301	/* prime number */
+#define NCMOUNT_NUMCACHE	32768	/* power of 2 */
 
 MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
@@ -142,6 +142,7 @@ struct ncmount_cache {
 	struct namecache *ncp;
 	struct mount *mp;
 	int isneg;		/* if != 0 mp is originator and not target */
+	int ticks;
 } __cachealign;
 
 struct pcpu_ncache {
@@ -1664,7 +1665,8 @@ cache_clrmountpt(struct nchandle *nch)
 	int count;
 
 	count = mountlist_scan(cache_clrmountpt_callback, nch,
-			       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
+			       MNTSCAN_FORWARD | MNTSCAN_NOBUSY |
+			       MNTSCAN_NOUNLOCK);
 	if (count == 0)
 		nch->ncp->nc_flag &= ~NCF_ISMOUNTPT;
 }
@@ -3428,6 +3430,9 @@ failed:
  * which we have to do because the mountlist scan needs an exclusive
  * lock around its ripout info list.  Not to mention that there might
  * be a lot of mounts.
+ *
+ * The hash table is 4-way set-associative and will either return the
+ * matching slot or the best slot to reuse.
  */
 struct findmount_info {
 	struct mount *result;
@@ -3437,15 +3442,65 @@ struct findmount_info {
 
 static
 struct ncmount_cache *
-ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
+ncmount_cache_lookup4(struct mount *mp, struct namecache *ncp)
 {
 	uintptr_t hash;
 
-	hash = (uintptr_t)mp + ((uintptr_t)mp >> 18);
-	hash += (uintptr_t)ncp + ((uintptr_t)ncp >> 16);
-	hash = (hash >> 1) % NCMOUNT_NUMCACHE;
+	hash = ((uintptr_t)mp / sizeof(*mp)) *
+		((uintptr_t)ncp / sizeof(*ncp));
+	hash ^= (uintptr_t)ncp >> 12;
+	hash ^= (uintptr_t)mp >> 12;
+	hash = hash & ((NCMOUNT_NUMCACHE - 1) & ~3);
 
 	return (&ncmount_cache[hash]);
+}
+
+static
+struct ncmount_cache *
+ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
+{
+	struct ncmount_cache *ncc;
+	struct ncmount_cache *best;
+	uintptr_t hash;
+	int delta;
+	int best_delta;
+	int i;
+
+	hash = ((uintptr_t)mp / sizeof(*mp)) *
+		((uintptr_t)ncp / sizeof(*ncp));
+	hash ^= (uintptr_t)ncp >> 12;
+	hash ^= (uintptr_t)mp >> 12;
+	hash = hash & ((NCMOUNT_NUMCACHE - 1) & ~3);
+
+	ncc = &ncmount_cache[hash];
+
+	/*
+	 * NOTE: When checking for a ticks overflow implement a slop of
+	 *	 2 ticks just to be safe, because ticks is accessed
+	 *	 non-atomically one CPU can increment it while another
+	 *	 is still using the old value.
+	 */
+	if (ncc->mp == mp && ncc->ncp == ncp)	/* 0 */
+		return ncc;
+	delta = (int)(ticks - ncc->ticks);	/* beware GCC opts */
+	if (delta < -2)				/* overflow reset */
+		ncc->ticks = ticks;
+	best = ncc;
+	best_delta = delta;
+
+	for (i = 1; i < 4; ++i) {		/* 1, 2, 3 */
+		++ncc;
+		if (ncc->mp == mp && ncc->ncp == ncp)
+			return ncc;
+		delta = (int)(ticks - ncc->ticks);
+		if (delta < -2)
+			ncc->ticks = ticks;
+		if (delta > best_delta) {
+			best_delta = delta;
+			best = ncc;
+		}
+	}
+	return best;
 }
 
 static
@@ -3467,6 +3522,9 @@ cache_findmount_callback(struct mount *mp, void *data)
 	return(0);
 }
 
+/*
+ * Find the recursive mountpoint (mp, ncp) -> mtpt
+ */
 struct mount *
 cache_findmount(struct nchandle *nch)
 {
@@ -3491,6 +3549,7 @@ cache_findmount(struct nchandle *nch)
 				/*
 				 * Cache hit (positive)
 				 */
+				ncc->ticks = (int)ticks;
 				_cache_mntref(mp);
 				spin_unlock_shared(&ncc->spin);
 				return(mp);
@@ -3502,6 +3561,7 @@ cache_findmount(struct nchandle *nch)
 			/*
 			 * Cache hit (negative)
 			 */
+			ncc->ticks = (int)ticks;
 			spin_unlock_shared(&ncc->spin);
 			return(NULL);
 		}
@@ -3516,7 +3576,7 @@ skip:
 	info.nch_mount = nch->mount;
 	info.nch_ncp = nch->ncp;
 	mountlist_scan(cache_findmount_callback, &info,
-		       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
+		       MNTSCAN_FORWARD | MNTSCAN_NOBUSY | MNTSCAN_NOUNLOCK);
 
 	/*
 	 * Cache the result.
@@ -3541,6 +3601,7 @@ skip:
 			ncc->ncp = nch->ncp;
 			ncc->mp = nch->mount;
 			ncc->isneg = 1;
+			ncc->ticks = (int)ticks;
 			spin_unlock(&ncc->spin);
 		} else if ((info.result->mnt_kern_flag & MNTK_UNMOUNT) == 0) {
 			if (ncc->isneg == 0 && ncc->mp)
@@ -3549,6 +3610,7 @@ skip:
 			ncc->ncp = nch->ncp;
 			ncc->mp = info.result;
 			ncc->isneg = 0;
+			ncc->ticks = (int)ticks;
 			spin_unlock(&ncc->spin);
 		} else {
 			spin_unlock(&ncc->spin);
@@ -3568,17 +3630,22 @@ cache_ismounting(struct mount *mp)
 {
 	struct nchandle *nch = &mp->mnt_ncmounton;
 	struct ncmount_cache *ncc;
+	int i;
 
-	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
-	if (ncc->isneg &&
-	    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
-		spin_lock(&ncc->spin);
+	ncc = ncmount_cache_lookup4(nch->mount, nch->ncp);
+	for (i = 0; i < 4; ++i) {
 		if (ncc->isneg &&
 		    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
-			ncc->ncp = NULL;
-			ncc->mp = NULL;
+			spin_lock(&ncc->spin);
+			if (ncc->isneg &&
+			    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
+				ncc->ncp = NULL;
+				ncc->mp = NULL;
+				ncc->ticks = (int)ticks - hz * 120;
+			}
+			spin_unlock(&ncc->spin);
 		}
-		spin_unlock(&ncc->spin);
+		++ncc;
 	}
 }
 
@@ -3587,18 +3654,23 @@ cache_unmounting(struct mount *mp)
 {
 	struct nchandle *nch = &mp->mnt_ncmounton;
 	struct ncmount_cache *ncc;
+	int i;
 
-	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
-	if (ncc->isneg == 0 &&
-	    ncc->ncp == nch->ncp && ncc->mp == mp) {
-		spin_lock(&ncc->spin);
+	ncc = ncmount_cache_lookup4(nch->mount, nch->ncp);
+	for (i = 0; i < 4; ++i) {
 		if (ncc->isneg == 0 &&
 		    ncc->ncp == nch->ncp && ncc->mp == mp) {
-			_cache_mntrel(mp);
-			ncc->ncp = NULL;
-			ncc->mp = NULL;
+			spin_lock(&ncc->spin);
+			if (ncc->isneg == 0 &&
+			    ncc->ncp == nch->ncp && ncc->mp == mp) {
+				_cache_mntrel(mp);
+				ncc->ncp = NULL;
+				ncc->mp = NULL;
+				ncc->ticks = (int)ticks - hz * 120;
+			}
+			spin_unlock(&ncc->spin);
 		}
-		spin_unlock(&ncc->spin);
+		++ncc;
 	}
 }
 
