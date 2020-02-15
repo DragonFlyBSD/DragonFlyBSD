@@ -42,7 +42,7 @@ drm_clflush_page(struct page *page)
 {
 	uint8_t *page_virtual;
 	unsigned int i;
-	const int size = cpu_clflush_line_size;
+	const int size = boot_cpu_data.x86_clflush_size;
 
 	if (unlikely(page == NULL))
 		return;

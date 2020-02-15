@@ -66,3 +66,17 @@ framebuffer_release(struct fb_info *info)
 {
 	kfree(info);
 }
+
+#include <asm/processor.h>
+
+struct cpuinfo_x86 boot_cpu_data;
+
+static int
+init_boot_cpu_data(void *arg)
+{
+	boot_cpu_data.x86_clflush_size = cpu_clflush_line_size;
+
+	return 0;
+}
+
+SYSINIT(boot_cpu_data_init, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, init_boot_cpu_data, NULL);

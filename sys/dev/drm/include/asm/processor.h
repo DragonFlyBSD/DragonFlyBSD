@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,5 +43,11 @@
 #include <machine/cpufunc.h>
 
 #define cpu_relax()	cpu_pause()
+
+struct cpuinfo_x86 {
+	u16		x86_clflush_size;
+};
+
+extern struct cpuinfo_x86	boot_cpu_data;
 
 #endif	/* _ASM_PROCESSOR_H_ */
