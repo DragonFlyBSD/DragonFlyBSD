@@ -40,6 +40,8 @@
 
 struct workqueue_struct {
 	struct taskqueue	*taskqueue;
+	struct lock		flags_lock;
+	bool			is_draining;
 };
 
 struct work_struct {
@@ -231,5 +233,7 @@ work_busy(struct work_struct *work)
 }
 
 bool flush_delayed_work(struct delayed_work *dwork);
+
+void drain_workqueue(struct workqueue_struct *wq);
 
 #endif	/* _LINUX_WORKQUEUE_H_ */

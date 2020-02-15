@@ -82,3 +82,17 @@ flush_delayed_work(struct delayed_work *dwork)
 	callout_drain(&dwork->timer);
 	return flush_work(&dwork->work);
 }
+
+void
+drain_workqueue(struct workqueue_struct *wq)
+{
+	lockmgr(&wq->flags_lock, LK_EXCLUSIVE);
+	wq->is_draining = true;
+	lockmgr(&wq->flags_lock, LK_RELEASE);
+
+	flush_taskqueue(wq->taskqueue);
+
+	lockmgr(&wq->flags_lock, LK_EXCLUSIVE);
+	wq->is_draining = false;
+	lockmgr(&wq->flags_lock, LK_RELEASE);
+}
