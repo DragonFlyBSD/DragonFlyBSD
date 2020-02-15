@@ -170,9 +170,9 @@ NCursesUpdateTop(topinfo_t *info)
 	if (LastReduce != info->dynmaxworkers) {
 		LastReduce = info->dynmaxworkers;
 		if (MaxWorkers == LastReduce)
-			mvwprintw(CWin, 0, REDUCE_COL, "        ");
+			mvwprintw(CWin, 0, REDUCE_COL, "       ");
 		else
-			mvwprintw(CWin, 0, REDUCE_COL, "Limit %-2d",
+			mvwprintw(CWin, 0, REDUCE_COL, "Lim %-3d",
 				  LastReduce);
 	}
 
