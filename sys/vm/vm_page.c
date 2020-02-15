@@ -119,7 +119,9 @@ __read_mostly static int set_assoc_mask = 16 - 1;
 static void vm_page_queue_init(void);
 static void vm_page_free_wakeup(void);
 static vm_page_t vm_page_select_cache(u_short pg_color);
-static vm_page_t _vm_page_list_find2(int basequeue, int index, int *lastp);
+static vm_page_t _vm_page_list_find_wide(int basequeue, int index, int *lastp);
+static vm_page_t _vm_page_list_find2_wide(int bq1, int bq2, int index,
+			int *lastp1, int *lastp);
 static void _vm_page_deactivate_locked(vm_page_t m, int athead);
 static void vm_numa_add_topology_mem(cpu_node_t *cpup, int physid, long bytes);
 
@@ -1966,32 +1968,23 @@ _vm_page_list_find(int basequeue, int index)
 			if (spin_trylock(&m->spin) == 0)
 				continue;
 			KKASSERT(m->queue == basequeue + index);
-			_vm_page_rem_queue_spinlocked(m);
 			pq->lastq = -1;
 			return(m);
 		}
 		spin_unlock(&pq->spin);
 	}
 
-	/*
-	 * If we are unable to get a page, do a more involved NUMA-aware
-	 * search.  However, to avoid re-searching empty queues over and
-	 * over again skip to pq->last if appropriate.
-	 */
-	if (pq->lastq >= 0)
-		index = pq->lastq;
-
-	m = _vm_page_list_find2(basequeue, index, &pq->lastq);
+	m = _vm_page_list_find_wide(basequeue, index, &pq->lastq);
 
 	return(m);
 }
 
 /*
  * If we could not find the page in the desired queue try to find it in
- * a nearby (NUMA-aware) queue.
+ * a nearby (NUMA-aware) queue, spreading out as we go.
  */
 static vm_page_t
-_vm_page_list_find2(int basequeue, int index, int *lastp)
+_vm_page_list_find_wide(int basequeue, int index, int *lastp)
 {
 	struct vpgqueues *pq;
 	vm_page_t m = NULL;
@@ -2001,6 +1994,13 @@ _vm_page_list_find2(int basequeue, int index, int *lastp)
 	int skip_start;
 	int skip_next;
 	int count;
+
+	/*
+	 * Avoid re-searching empty queues over and over again skip to
+	 * pq->last if appropriate.
+	 */
+	if (*lastp >= 0)
+		index = *lastp;
 
 	index &= PQ_L2_MASK;
 	pq = &vm_page_queues[basequeue];
@@ -2036,7 +2036,6 @@ _vm_page_list_find2(int basequeue, int index, int *lastp)
 					if (spin_trylock(&m->spin) == 0)
 						continue;
 					KKASSERT(m->queue == basequeue + pqi);
-					_vm_page_rem_queue_spinlocked(m);
 
 					/*
 					 * If we had to wander too far, set
@@ -2059,17 +2058,190 @@ _vm_page_list_find2(int basequeue, int index, int *lastp)
 	return(m);
 }
 
+static __inline
+vm_page_t
+_vm_page_list_find2(int bq1, int bq2, int index)
+{
+	struct vpgqueues *pq1;
+	struct vpgqueues *pq2;
+	vm_page_t m;
+
+	index &= PQ_L2_MASK;
+	pq1 = &vm_page_queues[bq1 + index];
+	pq2 = &vm_page_queues[bq2 + index];
+
+	/*
+	 * Try this cpu's colored queue first.  Test for a page unlocked,
+	 * then lock the queue and locate a page.  Note that the lock order
+	 * is reversed, but we do not want to dwadle on the page spinlock
+	 * anyway as it is held significantly longer than the queue spinlock.
+	 */
+	if (TAILQ_FIRST(&pq1->pl)) {
+		spin_lock(&pq1->spin);
+		TAILQ_FOREACH(m, &pq1->pl, pageq) {
+			if (spin_trylock(&m->spin) == 0)
+				continue;
+			KKASSERT(m->queue == bq1 + index);
+			pq1->lastq = -1;
+			pq2->lastq = -1;
+			return(m);
+		}
+		spin_unlock(&pq1->spin);
+	}
+
+	m = _vm_page_list_find2_wide(bq1, bq2, index, &pq1->lastq, &pq2->lastq);
+
+	return(m);
+}
+
+
+/*
+ * This version checks two queues at the same time, widening its search
+ * as we progress.  prefering basequeue1
+ * and starting on basequeue2 after exhausting the first set.  The idea
+ * is to try to stay localized to the cpu.
+ */
+static vm_page_t
+_vm_page_list_find2_wide(int basequeue1, int basequeue2, int index,
+			 int *lastp1, int *lastp2)
+{
+	struct vpgqueues *pq1;
+	struct vpgqueues *pq2;
+	vm_page_t m = NULL;
+	int pqmask1, pqmask2;
+	int pqi;
+	int range;
+	int skip_start1, skip_start2;
+	int skip_next1, skip_next2;
+	int count1, count2;
+
+	/*
+	 * Avoid re-searching empty queues over and over again skip to
+	 * pq->last if appropriate.
+	 */
+	if (*lastp1 >= 0)
+		index = *lastp1;
+
+	index &= PQ_L2_MASK;
+
+	pqmask1 = set_assoc_mask >> 1;
+	pq1 = &vm_page_queues[basequeue1];
+	count1 = 0;
+	skip_start1 = -1;
+	skip_next1 = -1;
+
+	pqmask2 = set_assoc_mask >> 1;
+	pq2 = &vm_page_queues[basequeue2];
+	count2 = 0;
+	skip_start2 = -1;
+	skip_next2 = -1;
+
+	/*
+	 * Run local sets of 16, 32, 64, 128, up to the entire queue if all
+	 * else fails (PQ_L2_MASK).
+	 *
+	 * pqmask is a mask, 15, 31, 63, etc.
+	 *
+	 * Test each queue unlocked first, then lock the queue and locate
+	 * a page.  Note that the lock order is reversed, but we do not want
+	 * to dwadle on the page spinlock anyway as it is held significantly
+	 * longer than the queue spinlock.
+	 */
+	do {
+		if (pqmask1 == PQ_L2_MASK)
+			goto skip2;
+
+		pqmask1 = (pqmask1 << 1) | 1;
+		pqi = index;
+		range = pqmask1 + 1;
+
+		while (range > 0) {
+			if (pqi >= skip_start1 && pqi < skip_next1) {
+				range -= skip_next1 - pqi;
+				pqi = (pqi & ~pqmask1) | (skip_next1 & pqmask1);
+			}
+			if (range > 0 && TAILQ_FIRST(&pq1[pqi].pl)) {
+				spin_lock(&pq1[pqi].spin);
+				TAILQ_FOREACH(m, &pq1[pqi].pl, pageq) {
+					if (spin_trylock(&m->spin) == 0)
+						continue;
+					KKASSERT(m->queue == basequeue1 + pqi);
+
+					/*
+					 * If we had to wander too far, set
+					 * *lastp to skip past empty queues.
+					 */
+					if (count1 >= 8)
+						*lastp1 = pqi & PQ_L2_MASK;
+					return(m);
+				}
+				spin_unlock(&pq1[pqi].spin);
+			}
+			--range;
+			++count1;
+			pqi = (pqi & ~pqmask1) | ((pqi + 1) & pqmask1);
+		}
+		skip_start1 = pqi & ~pqmask1;
+		skip_next1 = (pqi | pqmask1) + 1;
+skip2:
+		if (pqmask1 < ((set_assoc_mask << 1) | 1))
+			continue;
+
+		pqmask2 = (pqmask2 << 1) | 1;
+		pqi = index;
+		range = pqmask2 + 1;
+
+		while (range > 0) {
+			if (pqi >= skip_start2 && pqi < skip_next2) {
+				range -= skip_next2 - pqi;
+				pqi = (pqi & ~pqmask2) | (skip_next2 & pqmask2);
+			}
+			if (range > 0 && TAILQ_FIRST(&pq2[pqi].pl)) {
+				spin_lock(&pq2[pqi].spin);
+				TAILQ_FOREACH(m, &pq2[pqi].pl, pageq) {
+					if (spin_trylock(&m->spin) == 0)
+						continue;
+					KKASSERT(m->queue == basequeue2 + pqi);
+
+					/*
+					 * If we had to wander too far, set
+					 * *lastp to skip past empty queues.
+					 */
+					if (count2 >= 8)
+						*lastp2 = pqi & PQ_L2_MASK;
+					return(m);
+				}
+				spin_unlock(&pq2[pqi].spin);
+			}
+			--range;
+			++count2;
+			pqi = (pqi & ~pqmask2) | ((pqi + 1) & pqmask2);
+		}
+		skip_start2 = pqi & ~pqmask2;
+		skip_next2 = (pqi | pqmask2) + 1;
+	} while (pqmask1 != PQ_L2_MASK && pqmask2 != PQ_L2_MASK);
+
+	return(m);
+}
+
 /*
  * Returns a vm_page candidate for allocation.  The page is not busied so
  * it can move around.  The caller must busy the page (and typically
  * deactivate it if it cannot be busied!)
  *
  * Returns a spinlocked vm_page that has been removed from its queue.
+ * (note that _vm_page_list_find() does not remove the page from its
+ *  queue).
  */
 vm_page_t
 vm_page_list_find(int basequeue, int index)
 {
-	return(_vm_page_list_find(basequeue, index));
+	vm_page_t m;
+
+	m = _vm_page_list_find(basequeue, index);
+	if (m)
+		_vm_page_rem_queue_spinlocked(m);
+	return m;
 }
 
 /*
@@ -2092,8 +2264,9 @@ vm_page_select_cache(u_short pg_color)
 		if (m == NULL)
 			break;
 		/*
-		 * (m) has been removed from its queue and spinlocked
+		 * (m) has been spinlocked
 		 */
+		_vm_page_rem_queue_spinlocked(m);
 		if (vm_page_busy_try(m, TRUE)) {
 			_vm_page_deactivate_locked(m, 0);
 			vm_page_spin_unlock(m);
@@ -2142,6 +2315,7 @@ vm_page_select_free(u_short pg_color)
 		m = _vm_page_list_find(PQ_FREE, pg_color);
 		if (m == NULL)
 			break;
+		_vm_page_rem_queue_spinlocked(m);
 		if (vm_page_busy_try(m, TRUE)) {
 			/*
 			 * Various mechanisms such as a pmap_collect can
@@ -2191,6 +2365,69 @@ vm_page_select_free(u_short pg_color)
 	return(m);
 }
 
+static __inline vm_page_t
+vm_page_select_free_or_cache(u_short pg_color, int *fromcachep)
+{
+	vm_page_t m;
+
+	*fromcachep = 0;
+	for (;;) {
+		m = _vm_page_list_find2(PQ_FREE, PQ_CACHE, pg_color);
+		if (m == NULL)
+			break;
+		if (vm_page_busy_try(m, TRUE)) {
+			_vm_page_rem_queue_spinlocked(m);
+			_vm_page_deactivate_locked(m, 0);
+			vm_page_spin_unlock(m);
+		} else if (m->queue - m->pc == PQ_FREE) {
+			/*
+			 * We successfully busied the page, PQ_FREE case
+			 */
+			_vm_page_rem_queue_spinlocked(m);
+			KKASSERT((m->flags & (PG_UNQUEUED |
+					      PG_NEED_COMMIT)) == 0);
+			KASSERT(m->hold_count == 0,
+				("m->hold_count is not zero "
+				 "pg %p q=%d flags=%08x hold=%d wire=%d",
+				 m, m->queue, m->flags,
+				 m->hold_count, m->wire_count));
+			KKASSERT(m->wire_count == 0);
+			vm_page_spin_unlock(m);
+			pagedaemon_wakeup();
+
+			/* return busied and removed page */
+			return(m);
+		} else {
+			/*
+			 * We successfully busied the page, PQ_CACHE case
+			 */
+			_vm_page_rem_queue_spinlocked(m);
+			if ((m->flags & PG_NEED_COMMIT) == 0 &&
+			    m->hold_count == 0 &&
+			    m->wire_count == 0 &&
+			    (m->dirty & m->valid) == 0) {
+				vm_page_spin_unlock(m);
+				KKASSERT((m->flags & PG_UNQUEUED) == 0);
+				pagedaemon_wakeup();
+				*fromcachep = 1;
+				return(m);
+			}
+
+			/*
+			 * The page cannot be recycled, deactivate it.
+			 */
+			_vm_page_deactivate_locked(m, 0);
+			if (_vm_page_wakeup(m)) {
+				vm_page_spin_unlock(m);
+				wakeup(m);
+			} else {
+				vm_page_spin_unlock(m);
+			}
+		}
+	}
+	return(m);
+}
+
 /*
  * vm_page_alloc()
  *
@@ -2228,6 +2465,7 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	vm_page_t m;
 	u_short pg_color;
 	int cpuid_local;
+	int fromcache;
 
 #if 0
 	/*
@@ -2290,13 +2528,24 @@ loop:
 	     gd->gd_vmstats.v_free_count > 0) ||
 	    ((page_req & VM_ALLOC_SYSTEM) &&
 	     gd->gd_vmstats.v_cache_count == 0 &&
-		gd->gd_vmstats.v_free_count >
-		gd->gd_vmstats.v_interrupt_free_min)
+	     gd->gd_vmstats.v_free_count >
+	     gd->gd_vmstats.v_interrupt_free_min)
 	) {
 		/*
 		 * The free queue has sufficient free pages to take one out.
+		 *
+		 * However, if the free queue is strained the scan may widen
+		 * to the entire queue and cause a great deal of SMP
+		 * contention, so we use a double-queue-scan if we can
+		 * to avoid this.
 		 */
-		m = vm_page_select_free(pg_color);
+		if (page_req & VM_ALLOC_NORMAL) {
+			m = vm_page_select_free_or_cache(pg_color, &fromcache);
+			if (m && fromcache)
+				goto found_cache;
+		} else {
+			m = vm_page_select_free(pg_color);
+		}
 	} else if (page_req & VM_ALLOC_NORMAL) {
 		/*
 		 * Allocatable from the cache (non-interrupt only).  On
@@ -2323,6 +2572,7 @@ loop:
 		 * deadlock.
 		 */
 		if (m != NULL) {
+found_cache:
 			KASSERT(m->dirty == 0,
 				("Found dirty cache page %p", m));
 			if ((obj = m->object) != NULL) {

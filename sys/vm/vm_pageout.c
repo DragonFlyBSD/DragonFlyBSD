@@ -1653,11 +1653,11 @@ vm_pageout_scan_cache(long avail_shortage, int pass,
 		m = vm_page_list_find(PQ_CACHE, cache_rover[isep] & PQ_L2_MASK);
 		if (m == NULL)
 			break;
-
 		/*
+		 * page is returned removed from its queue and spinlocked
+		 *
 		 * If the busy attempt fails we can still deactivate the page.
 		 */
-		/* page is returned removed from its queue and spinlocked */
 		if (vm_page_busy_try(m, TRUE)) {
 			vm_page_deactivate_locked(m);
 			vm_page_spin_unlock(m);
