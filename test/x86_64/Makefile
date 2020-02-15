@@ -149,7 +149,7 @@ quickkernel64: checkq
 #       have a dependency on mount.
 #
 root64:	check
-	vnconfig -c -T -S ${ROOTSIZE} -s labels \
+	vnconfig -c -T -S ${ROOTSIZE} \
 	    `cat ${QEMUDIR}/vn.which` ${QEMUDIR}/root.img
 	dd if=/dev/zero of=/dev/`cat ${QEMUDIR}/vn.which` bs=32k count=4
 	fdisk -IB `cat ${QEMUDIR}/vn.which`
@@ -163,7 +163,7 @@ root64:	check
 	vnconfig -u `cat ${QEMUDIR}/vn.which` > /dev/null 2>&1
 
 mount: check
-	vnconfig -c -s labels `cat ${QEMUDIR}/vn.which` ${QEMUDIR}/root.img
+	vnconfig -c `cat ${QEMUDIR}/vn.which` ${QEMUDIR}/root.img
 	fsck -p /dev/`cat ${QEMUDIR}/vn.which`s1a
 	mount /dev/`cat ${QEMUDIR}/vn.which`s1a ${QEMUDIR}/root
 	@echo "Mounted ${QEMUDIR}/root"

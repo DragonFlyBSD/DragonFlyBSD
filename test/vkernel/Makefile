@@ -96,8 +96,7 @@ quickkernel: checkq
 #       have a dependency on mount.
 #
 root:	check
-	vnconfig -c -T -S ${ROOTSIZE} -s labels \
-	    `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
+	vnconfig -c -T -S ${ROOTSIZE} `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
 	dd if=/dev/zero of=/dev/`cat ${VKDIR}/vn.which` bs=32k count=4
 	fdisk -IB `cat ${VKDIR}/vn.which`
 	disklabel -r -w `cat ${VKDIR}/vn.which`s1 auto
@@ -114,7 +113,7 @@ root:	check
 	vnconfig -u `cat ${VKDIR}/vn.which` > /dev/null 2>&1
 
 mount: check
-	vnconfig -c -s labels `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
+	vnconfig -c `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
 .	if ${FSTYPE} == "ufs"
 		fsck -p /dev/`cat ${VKDIR}/vn.which`s1a
 .	endif
@@ -124,7 +123,7 @@ mount: check
 umount: check
 
 fsck: check
-	vnconfig -c -s labels `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
+	vnconfig -c `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
 	fsck -y /dev/`cat ${VKDIR}/vn.which`s1a
 	make umount
 
