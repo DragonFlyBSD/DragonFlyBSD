@@ -3897,6 +3897,21 @@ TO_REMOVE+=/usr/share/man/man8/mrouted.8.gz
 TO_REMOVE+=/usr/share/man/man8/mtrace.8.gz
 TO_REMOVE+=/usr/libexec/binutils225
 TO_REMOVE+=/usr/bin/incremental-dump
+TO_REMOVE+=/usr/share/man/man1/addr2line225.1.gz
+TO_REMOVE+=/usr/share/man/man1/ar225.1.gz
+TO_REMOVE+=/usr/share/man/man1/as225.1.gz
+TO_REMOVE+=/usr/share/man/man1/c++filt225.1.gz
+TO_REMOVE+=/usr/share/man/man1/elfedit225.1.gz
+TO_REMOVE+=/usr/share/man/man1/gprof225.1.gz
+TO_REMOVE+=/usr/share/man/man1/ld225.1.gz
+TO_REMOVE+=/usr/share/man/man1/nm225.1.gz
+TO_REMOVE+=/usr/share/man/man1/objcopy225.1.gz
+TO_REMOVE+=/usr/share/man/man1/objdump225.1.gz
+TO_REMOVE+=/usr/share/man/man1/ranlib225.1.gz
+TO_REMOVE+=/usr/share/man/man1/readelf225.1.gz
+TO_REMOVE+=/usr/share/man/man1/size225.1.gz
+TO_REMOVE+=/usr/share/man/man1/strings225.1.gz
+TO_REMOVE+=/usr/share/man/man1/strip225.1.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
