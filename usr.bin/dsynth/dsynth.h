@@ -377,7 +377,8 @@ typedef enum os_id os_id_t;
 #define DLOG_SKIP	4	/* skipped_list.log		*/
 #define DLOG_ABN	5	/* abnormal_command_output	*/
 #define DLOG_OBS	6	/* obsolete_packages.log	*/
-#define DLOG_COUNT	7	/* total number of DLOGs	*/
+#define DLOG_DEBUG	7	/* debug.log 			*/
+#define DLOG_COUNT	8	/* total number of DLOGs	*/
 #define DLOG_MASK	0x0FF
 
 #define DLOG_FILTER	0x100	/* Filter out of stdout in non-curses mode  */
@@ -393,6 +394,9 @@ typedef enum os_id os_id_t;
 
 #define dassert_errno(exp, fmt, ...)	\
 	if (!(exp)) dpanic_errno(fmt, ## __VA_ARGS__)
+
+#define dlog_tab(which, tab, fmt, ...)	\
+	_dlog(which, "%*.*s" fmt, (int)tab, (int)tab, "", ## __VA_ARGS__)
 
 #define dlog(which, fmt, ...)		\
 	_dlog(which, fmt, ## __VA_ARGS__)
@@ -413,7 +417,10 @@ typedef enum os_id os_id_t;
 	_dfatal(__FILE__, __LINE__, __func__, 3, fmt, ## __VA_ARGS__)
 
 #define ddprintf(tab, fmt, ...)		\
-	do { if (DebugOpt >= 2) _ddprintf(tab, fmt, ## __VA_ARGS__); } while(0)
+	do {				\
+	  if (DebugOpt == 1) dlog_tab(DLOG_DEBUG, tab, fmt, ## __VA_ARGS__); \
+	     if (DebugOpt > 1) _ddprintf(tab, fmt, ## __VA_ARGS__);	     \
+	} while(0)
 
 /*
  * addbuildenv() types

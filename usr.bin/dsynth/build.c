@@ -392,12 +392,19 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 		 * only on the default flavor which is only the first node
 		 * under this one, not all of them.
 		 *
+		 * DUMMY nodes can be marked SUCCESS so the build skips past
+		 * them, but this doesn't mean that their sub-nodes succeeded.
+		 * We have to check, so recurse even if it is marked
+		 * successful.
+		 *
 		 * NOTE: The depth is not being for complex dependency type
 		 *	 tests like it is in childInstallPkgDeps_recurse(),
 		 *	 so we don't have to hicup it like we do in that
 		 *	 procedure.
 		 */
 		dfirst_one_only = (scan->flags & PKGF_DUMMY) ? 1 : 0;
+		if (dfirst_one_only)
+			goto skip_to_flavor;
 
 		/*
 		 * When accounting for a successful build, just bump
@@ -414,9 +421,6 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 				break;
 			continue;
 		}
-
-		if (dfirst_one_only)
-			goto skip_to_flavor;
 
 		/*
 		 * ERROR includes FAILURE, which is set in numerous situations
@@ -589,17 +593,21 @@ skip_to_flavor:
 		 * to the default flavor without checking error/nobuild
 		 * flags.
 		 */
-		ddprintf(depth, "} (DUMMY/META - SUCCESS)\n");
-		pkg->flags |= PKGF_SUCCESS;
-		*hasworkp = 1;
-		if (first) {
-			dlog(DLOG_ALL | DLOG_FILTER,
-			     "[XXX] %s META-ALREADY-BUILT\n",
-			     pkg->portdir);
+		if (pkg->flags & PKGF_NOBUILD) {
+			ddprintf(depth, "} (DUMMY/META - IGNORED)\n");
 		} else {
-			dlog(DLOG_SUCC, "[XXX] %s meta-node complete\n",
-			     pkg->portdir);
-			RunStatsUpdateCompletion(NULL, DLOG_SUCC, pkg, "");
+			ddprintf(depth, "} (DUMMY/META - SUCCESS)\n");
+			pkg->flags |= PKGF_SUCCESS;
+			*hasworkp = 1;
+			if (first) {
+				dlog(DLOG_ALL | DLOG_FILTER,
+				     "[XXX] %s META-ALREADY-BUILT\n",
+				     pkg->portdir);
+			} else {
+				dlog(DLOG_SUCC, "[XXX] %s meta-node complete\n",
+				     pkg->portdir);
+				RunStatsUpdateCompletion(NULL, DLOG_SUCC, pkg, "");
+			}
 		}
 	} else if (pkg->flags & PKGF_PACKAGED) {
 		/*
@@ -1659,7 +1667,7 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
 		if (fp && pkg->pkgfile) {
 			fprintf(fp, "echo 'Installing /packages/All/%s'\n",
 				pkg->pkgfile);
-			fprintf(fp, "pkg install -q -y /packages/All/%s "
+			fprintf(fp, "pkg install -q -U -y /packages/All/%s "
 				"|| exit 1\n",
 				pkg->pkgfile);
 		} else if (fp) {

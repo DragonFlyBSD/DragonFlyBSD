@@ -89,7 +89,8 @@ static const char *DLogNames[] = {
 	"03_ignored_list.log",
 	"04_skipped_list.log",
 	"05_abnormal_command_output.log",
-	"06_obsolete_packages.log"
+	"06_obsolete_packages.log",
+	"07_debug.log",
 };
 
 static int DLogFd[DLOG_COUNT];
