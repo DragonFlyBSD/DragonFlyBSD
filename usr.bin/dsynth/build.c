@@ -463,7 +463,6 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 			*app |= PKGF_NOTREADY;
 		}
 
-skip_to_flavor:
 		/*
 		 * Reduce search complexity, if we have already processed
 		 * scan in the traversal it will either already be on the
@@ -477,6 +476,7 @@ skip_to_flavor:
 				break;
 			continue;
 		}
+skip_to_flavor:
 
 		/*
 		 * Assert on dependency loop
@@ -586,6 +586,12 @@ skip_to_flavor:
 		 * sub-depends (flavors) complete successfully.  Note that
 		 * dummy packages are not counted in the total, so do not
 		 * decrement BuildTotal.
+		 *
+		 * Do not propagate *app up for the dummy node.  If there
+		 * is a generic dependency (i.e. no flavor specified), the
+		 * upper recursion detects PKGF_DUMMY and traverses through
+		 * to the default flavor without checking error/nobuild
+		 * flags.
 		 */
 		if (pkg->flags & PKGF_NOBUILD) {
 			ddprintf(depth, "} (DUMMY/META - IGNORED)\n");
