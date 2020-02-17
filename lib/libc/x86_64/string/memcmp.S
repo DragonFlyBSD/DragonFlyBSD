@@ -8,40 +8,17 @@
  */
 
 #include <machine/asm.h>
+#include <machine/asm_mjgmacros.h>
 
-#ifdef BCMP
+	.text
+
+#ifdef DO_BCMP
 ENTRY(bcmp)
 #else
 ENTRY(memcmp)
 #endif
-	cld				/* set compare direction forward */
-	movq	%rdx,%rcx		/* compare by longs */
-	shrq	$3,%rcx
-	repe
-	cmpsq
-	jne	L5			/* do we match so far? */
-
-	movq	%rdx,%rcx		/* compare remainder by bytes */
-	andq	$7,%rcx
-	repe
-	cmpsb
-	jne	L6			/* do we match? */
-
-	xorl	%eax,%eax		/* we match, return zero	*/
-	ret
-
-L5:	movl	$8,%ecx			/* We know that one of the next	*/
-	subq	%rcx,%rdi		/* eight pairs of bytes do not	*/
-	subq	%rcx,%rsi		/* match.			*/
-	repe
-	cmpsb
-L6:	xorl	%eax,%eax		/* Perform unsigned comparison	*/
-	movb	-1(%rdi),%al
-	xorl	%edx,%edx
-	movb	-1(%rsi),%dl
-	subl	%edx,%eax
-	ret
-#ifdef BCMP
+	MEMCMP	end=ret
+#ifdef DO_BCMP
 END(bcmp)
 #else
 END(memcmp)

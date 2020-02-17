@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 1993 The Regents of the University of California.
  * Copyright (c) 2003 Peter Wemm.
- * Copyright (c) 2008 The DragonFly Project.
+ * Copyright (c) 2008-2020 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,21 +29,15 @@
  * SUCH DAMAGE.
  */
 #include <machine/asm.h>
+#include <machine/asm_mjgmacros.h>
 
+/*
+ * bzero(ptr:%rdi, bytes:%rsi)
+ */
 ENTRY(bzero)
-	movq    %rsi,%rcx
-	xorl    %eax,%eax
-	shrq    $3,%rcx
-	cld
-	rep
-	stosq
-	movq    %rsi,%rcx
-	andq    $7,%rcx
-	jnz     1f
-	ret
-1:      rep
-	stosb
-	ret
+	subq	%r10,%r10
+	movq	%rsi,%rdx
+	MEMSET	erms=0 end=ret
 END(bzero)
 
 	.section .note.GNU-stack,"",%progbits

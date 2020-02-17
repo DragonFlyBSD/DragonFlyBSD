@@ -32,43 +32,16 @@
  * SUCH DAMAGE.
  */
 #include <machine/asm.h>
+#include <machine/asm_mjgmacros.h>
 
 /*
  * %rdi:ptr %rsi:data %rdx:bytes
  */
 ENTRY(memset)
-	movq	%rdi,%r8	/* Save base pointer for return */
-	movq    %rdx,%rcx	/* Setup count in %rcx */
-	movq	%rsi,%rax	/* Setup data in %rax for byte store */
-	cld
-	cmpq	$15,%rdx	/* trivial case */
-	jle	2f
-	testq	%rax,%rax	/* trivial case (0) */
-	jz	1f
-
-	andq	$0xFF,%rax	/* shift 0:7 to all bytes in %rax */
-	movq	%rax,%rsi
-	salq	$8,%rax
-	orq	%rsi,%rax
-	orq	%rax,%rsi
-	salq	$16,%rsi
-	orq	%rsi,%rax
-	orq	%rax,%rsi
-	salq	$32,%rsi
-	orq	%rsi,%rax
-1:
-	shrq    $3,%rcx
-	rep
-	stosq
-	movq    %rdx,%rcx
-	andq    $7,%rcx
-	jnz     2f
-	movq	%r8,%rax
-	ret
-2:      rep
-	stosb
-	movq	%r8,%rax
-	ret
+	movzbq	%sil,%r8
+	movabs	$0x0101010101010101,%r10
+	imulq	%r8,%r10
+	MEMSET	erms=0 end=ret
 END(memset)
 
 	.section .note.GNU-stack,"",%progbits

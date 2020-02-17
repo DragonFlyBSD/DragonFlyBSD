@@ -64,6 +64,10 @@
 #define	PIC_GOT(x)	x
 #endif
 
+#define ALIGN_DATA	.p2align 3      /* 8 byte alignment, zero filled */
+#define ALIGN_TEXT	.p2align 4,0x90 /* 16-byte alignment, nop filled */
+#define SUPERALIGN_TEXT	.p2align 4,0x90 /* 16-byte alignment, nop filled */
+
 /*
  * CNAME and HIDENAME manage the relationship between symbol names in C
  * and the equivalent assembly language names.  CNAME is given a name as

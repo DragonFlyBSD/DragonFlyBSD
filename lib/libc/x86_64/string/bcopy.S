@@ -29,66 +29,38 @@
  * SUCH DAMAGE.
  */
 #include <machine/asm.h>
+#include <machine/asm_mjgmacros.h>
 
 /*
- * bcopy(src:%rdi, dst:%rsi, cnt:%rdx)
+ * memcpy(dst:%rdi, src:%rsi, cnt:%rdx)		overlap not supported
+ * memmove(dst:%rdi, src:%rsi, cnt:%rdx)	w/overlap
+ * bcopy(src:%rdi, dst:%rsi, cnt:%rdx)		w/overlap
  */
-#ifdef MEMCOPY
+#ifdef DO_MEMCOPY
 ENTRY(memcpy)
 #else
-#ifdef MEMMOVE
+#ifdef DO_MEMMOVE
 ENTRY(memmove)
 #else
 ENTRY(bcopy)
 #endif
 #endif
-#if defined(MEMCOPY) || defined(MEMMOVE)
+
+#if defined(DO_MEMCOPY)
 	movq	%rdi,%rax	/* return dst */
+	MEMMOVE	erms=0 overlap=0 end=ret
+#elif defined(DO_MEMMOVE)
+	movq	%rdi,%rax	/* return dst */
+	MEMMOVE	erms=0 overlap=1 end=ret
 #else
 	xchgq	%rdi,%rsi
+	MEMMOVE	erms=0 overlap=1 end=ret
 #endif
-        movq    %rdx,%rcx
 
-        movq    %rdi,%r11
-        subq    %rsi,%r11
-        cmpq    %rcx,%r11                       /* overlapping && src < dst? */
-        jb      2f
-
-        cld                                     /* nope, copy forwards */
-        shrq    $3,%rcx                         /* copy by 64-bit words */
-        rep
-        movsq
-        movq    %rdx,%rcx
-        andq    $7,%rcx                         /* any bytes left? */
-        jnz     1f
-        ret
-1:      rep
-        movsb
-        ret
-
-	.align	4
-2:
-        addq    %rcx,%rdi                       /* copy backwards */
-        addq    %rcx,%rsi
-        std
-        decq    %rdi
-        decq    %rsi
-        andq    $7,%rcx                         /* any fractional bytes? */
-        jz      3f
-        rep
-        movsb
-3:      movq    %rdx,%rcx                       /* copy by 32-bit words */
-        shrq    $3,%rcx
-        subq    $7,%rsi
-        subq    $7,%rdi
-        rep
-        movsq
-        cld
-        ret
-#ifdef MEMCOPY
+#ifdef DO_MEMCOPY
 END(memcpy)
 #else
-#ifdef MEMMOVE
+#ifdef DO_MEMMOVE
 END(memmove)
 #else
 END(bcopy)

@@ -2,6 +2,7 @@
  * Copyright (c) 1993 The Regents of the University of California.
  * Copyright (c) 2003 Peter Wemm.
  * Copyright (c) 2008 The DragonFly Project.
+ * Copyright (c) 2008-2020 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +33,7 @@
  */
 
 #include <machine/asmacros.h>
+#include <machine/asm_mjgmacros.h>
 #include <machine/pmap.h>
 
 #include "assym.s"
@@ -50,18 +52,9 @@
  * intent.
  */
 ENTRY(bzero)
-	movq	%rsi,%rcx
-	xorl	%eax,%eax
-	shrq	$3,%rcx
-	rep
-	stosq
-	movq	%rsi,%rcx
-	andq	$7,%rcx
-	jnz	1f
-	ret
-1:	rep
-	stosb
-	ret
+	subq	%r10,%r10
+	movq	%rsi,%rdx
+	MEMSET erms=0 end=ret
 END(bzero)
 
 	.weak	_bzero
@@ -75,23 +68,9 @@ END(bzero)
  */
 ENTRY(memset)
 	movzbq	%sil,%r8
-	movabs  $0x0101010101010101,%rax
-	imulq   %r8,%rax
-
-	movq	%rdi,%r9
-	movq	%rdx,%rcx
-	shrq	$3,%rcx
-	rep
-	stosq
-	movq	%rdx,%rcx
-	andq	$7,%rcx
-	jnz	1f
-	movq	%r9,%rax
-	ret
-1:	rep
-	stosb
-	movq	%r9,%rax
-	ret
+	movabs  $0x0101010101010101,%r10
+	imulq   %r8,%r10
+	MEMSET erms=0 end=ret
 END(memset)
 
 	.weak	_memset
@@ -116,7 +95,7 @@ ENTRY(pagezero)
 	ret
 END(pagezero)
 
-#endif
+#else
 
 ENTRY(pagezero)
 	addq	$4096,%rdi
@@ -124,10 +103,13 @@ ENTRY(pagezero)
 	ALIGN_TEXT
 1:
 	movq	$0,(%rdi,%rax,1)
-	addq	$8,%rax
+	movq	$0,8(%rdi,%rax,1)
+	addq	$16,%rax
 	jne	1b
 	ret
 END(pagezero)
+
+#endif
 
 /*
  * bcopy(src:%rdi, dst:%rsi, cnt:%rdx)
@@ -136,43 +118,7 @@ END(pagezero)
  */
 ENTRY(bcopy)
 	xchgq	%rsi,%rdi
-	movq	%rdx,%rcx
-
-	movq	%rdi,%rax
-	subq	%rsi,%rax
-	cmpq	%rcx,%rax			/* overlapping && src < dst? */
-	jb	2f
-
-	shrq	$3,%rcx				/* copy by 64-bit words */
-	rep
-	movsq
-	movq	%rdx,%rcx
-	andq	$7,%rcx				/* any bytes left? */
-	jnz	1f
-	ret
-1:	rep
-	movsb
-	ret
-
-	ALIGN_TEXT
-2:
-	addq	%rcx,%rdi			/* copy backwards */
-	addq	%rcx,%rsi
-	std
-	decq	%rdi
-	decq	%rsi
-	andq	$7,%rcx				/* any fractional bytes? */
-	jz	3f
-	rep
-	movsb
-3:	movq	%rdx,%rcx			/* copy by 32-bit words */
-	shrq	$3,%rcx
-	subq	$7,%rsi
-	subq	$7,%rdi
-	rep
-	movsq
-	cld
-	ret
+	MEMMOVE	erms=0 overlap=1 end=ret
 END(bcopy)
 
 	/*
@@ -186,47 +132,11 @@ END(bcopy)
 	 * (same as bcopy but without the xchgq, and must return (dst)).
 	 *
 	 * NOTE: gcc builtin backs-off to memmove() call
-	 *
-	 * NOTE: We leave %rdi in %rax for the return value.
+	 * NOTE: returns dst
 	 */
 ENTRY(memmove)
-	movq	%rdx,%rcx
-	movq	%rdi,%rax			/* return value */
-	movq	%rdi,%r8
-	subq	%rsi,%r8
-	cmpq	%rcx,%r8			/* overlapping && src < dst? */
-	jb	2f
-
-	shrq	$3,%rcx				/* copy by 64-bit words */
-	rep
-	movsq
-	movq	%rdx,%rcx
-	andq	$7,%rcx				/* any bytes left? */
-	jnz	1f
-	ret
-1:	rep
-	movsb
-	ret
-
-	ALIGN_TEXT
-2:
-	addq	%rcx,%rdi			/* copy backwards */
-	addq	%rcx,%rsi
-	std
-	decq	%rdi
-	decq	%rsi
-	andq	$7,%rcx				/* any fractional bytes? */
-	jz	3f
-	rep
-	movsb
-3:	movq	%rdx,%rcx			/* copy by 32-bit words */
-	shrq	$3,%rcx
-	subq	$7,%rsi
-	subq	$7,%rdi
-	rep
-	movsq
-	cld
-	ret
+	movq	%rdi,%rax
+	MEMMOVE erms=0 overlap=1 end=ret
 END(memmove)
 
 	.weak	_memmove
@@ -251,20 +161,8 @@ END(reset_dbregs)
  * NOTE: returns dst
  */
 ENTRY(memcpy)
-	movq	%rdi,%r8
-	movq	%rdx,%rcx
-	shrq	$3,%rcx				/* copy by 64-bit words */
-	rep
-	movsq
-	movq	%rdx,%rcx
-	andq	$7,%rcx				/* any bytes left? */
-	jnz	1f
-	movq	%r8,%rax
-	ret
-1:	rep
-	movsb
-	movq	%r8,%rax
-	ret
+	movq	%rdi,%rax
+	MEMMOVE erms=0 overlap=0 end=ret
 END(memcpy)
 
 	.weak	_memcpy
@@ -319,6 +217,11 @@ kreadmem64fault:
 	ret
 END(kreadmem64)
 
+.macro COPYOUT_END
+	jmp	done_copyout
+	nop
+.endm
+
 /*
  * std_copyout(from_kernel, to_user, len)  - MP SAFE
  *         %rdi,        %rsi,    %rdx
@@ -356,18 +259,7 @@ ENTRY(std_copyout)
 	ja	copyout_fault
 
 	xchgq	%rdi,%rsi
-	/* bcopy(%rsi, %rdi, %rdx) */
-	movq	%rdx,%rcx
-
-	shrq	$3,%rcx
-	jz	1f
-	rep
-	movsq
-1:	movq	%rdx,%rcx
-	andq	$7,%rcx
-	jz	done_copyout
-	rep
-	movsb
+	MEMMOVE erms=0 overlap=0 end=COPYOUT_END
 
 done_copyout:
 	SMAP_CLOSE
@@ -386,6 +278,11 @@ copyout_fault:
 	movq	$EFAULT,%rax
 	ret
 END(std_copyout)
+
+.macro COPYIN_END
+	jmp	done_copyin
+	nop
+.endm
 
 /*
  * std_copyin(from_user, to_kernel, len) - MP SAFE
@@ -411,16 +308,7 @@ ENTRY(std_copyin)
 	ja	copyin_fault
 
 	xchgq	%rdi,%rsi
-	movq	%rdx,%rcx
-	shrq	$3,%rcx				/* copy longword-wise */
-	jz	1f
-	rep
-	movsq
-1:	movq	%rdx,%rcx
-	andq	$7,%rcx				/* copy remaining bytes */
-	jz	done_copyin
-	rep
-	movsb
+	MEMMOVE erms=0 overlap=0 end=COPYIN_END
 
 done_copyin:
 	SMAP_CLOSE
