@@ -29,6 +29,7 @@
 #include "intel_drv.h"
 #include <linux/mmu_context.h>
 #include <linux/mmu_notifier.h>
+#include <linux/mempolicy.h>
 #include <linux/swap.h>
 
 struct i915_mm_struct {
