@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,5 +30,19 @@
 #include <linux/cpumask.h>
 #include <linux/smp.h>
 #include <linux/list.h>
+
+#include <sys/mplock2.h>
+
+typedef int (*cpu_stop_fn_t)(void *arg);
+
+static inline int
+stop_machine(cpu_stop_fn_t fn, void *data, const struct cpumask *cpus)
+{
+	/* XXX: is this enough ?
+	 * See Linux commit 5bab6f60cb4d1417ad7c599166bcfec87529c1a2 */
+       get_mplock();
+       return (*fn)(data);
+       rel_mplock();
+}
 
 #endif	/* _LINUX_STOP_MACHINE_H_ */

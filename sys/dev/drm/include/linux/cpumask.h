@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,5 +31,7 @@
 #include <linux/threads.h>
 #include <linux/bitmap.h>
 #include <linux/bug.h>
+
+struct cpumask {};
 
 #endif	/* _LINUX_CPUMASK_H_ */
