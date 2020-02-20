@@ -2430,15 +2430,7 @@ static void gen8_ggtt_insert_entries__BKL(struct i915_address_space *vm,
 					  u32 flags)
 {
 	struct insert_entries arg = { vm, st, start, level, flags };
-#ifndef __DragonFly__
 	stop_machine(gen8_ggtt_insert_entries__cb, &arg, NULL);
-#else
-	/* XXX: is this enough ?
-	 * See Linux commit 5bab6f60cb4d1417ad7c599166bcfec87529c1a2 */
-	get_mplock();
-	gen8_ggtt_insert_entries__cb(&arg);
-	rel_mplock();
-#endif
 }
 
 static void gen6_ggtt_insert_page(struct i915_address_space *vm,
