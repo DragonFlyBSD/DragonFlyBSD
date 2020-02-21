@@ -30,9 +30,8 @@
 .\"
 .\"	@(#)quotactl.2	8.2 (Berkeley) 3/10/95
 .\" $FreeBSD: src/lib/libc/sys/quotactl.2,v 1.12.2.7 2002/05/20 09:06:37 roam Exp $
-.\" $DragonFly: src/lib/libc/sys/quotactl.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"
-.Dd March 5, 1999
+.Dd February 21, 2020
 .Dt QUOTACTL 2
 .Os
 .Sh NAME
@@ -42,7 +41,7 @@
 .Lb libc
 .Sh SYNOPSIS
 .In sys/types.h
-.In ufs/ufs/quota.h
+.In vfs/ufs/quota.h
 .Ft int
 .Fn quotactl "const char *path" "int cmd" "int id" "void *addr"
 .Sh DESCRIPTION

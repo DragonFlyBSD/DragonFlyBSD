@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)nfssvc.2	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/sys/nfssvc.2,v 1.8.2.6 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/nfssvc.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd June 9, 1993
+.Dd February 21, 2020
 .Dt NFSSVC 2
 .Os
 .Sh NAME
@@ -41,8 +40,8 @@
 .In sys/param.h
 .In sys/mount.h
 .In sys/time.h
-.In nfs/rpcv2.h
-.In nfs/nfs.h
+.In vfs/nfs/rpcv2.h
+.In vfs/nfs/nfs.h
 .In unistd.h
 .Ft int
 .Fn nfssvc "int flags" "void *argstructp"
