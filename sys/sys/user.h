@@ -33,13 +33,17 @@
 #ifndef _SYS_USER_H_
 #define _SYS_USER_H_
 
+#ifdef _KERNEL
+#error "This file should only be included by userland programs."
+#endif
+
 /*
  * stuff that *used* to be included by user.h, or is now needed.  The
  * expectation here is that the user program wants to mess with kernel
  * structures.  To be sure we get kernel structures we have to define
  * _KERNEL_STRUCTURES.  Otherwise we might get the user version.
  *
- * This is a really aweful hack.  Fortunately nobody includes sys/user.h
+ * This is a really awful hack.  Fortunately nobody includes sys/user.h
  * unless they really, really, really need kinfo_proc.
  */
 #ifndef _KERNEL_STRUCTURES
