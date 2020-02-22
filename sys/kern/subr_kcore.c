@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/subr_kcore.c,v 1.2 2006/05/24 03:23:31 dillon Exp $
  */
 
 /*
@@ -50,7 +48,6 @@
 #  include <sys/systm.h>
 #  include <sys/proc.h>
 #else
-#  include <sys/user.h>
 #  include <string.h>
 #endif
 

@@ -58,8 +58,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/user.h>
-
 #include <err.h>
 #include <devstat.h>
 #include <kinfo.h>

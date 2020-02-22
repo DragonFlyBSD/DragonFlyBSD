@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/iostat/iostat.c,v 1.17.2.2 2001/07/19 04:15:42 kris Exp $
- * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.7 2005/09/01 19:08:38 swildner Exp $
  */
 /*
  * Parts of this program are derived from the original FreeBSD iostat
@@ -96,7 +95,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/errno.h>
 #include <sys/ttycom.h>

@@ -31,7 +31,6 @@
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
  */
 
-#include <sys/user.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/signal.h>

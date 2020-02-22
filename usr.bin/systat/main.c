@@ -31,7 +31,6 @@
  * $FreeBSD: src/usr.bin/systat/main.c,v 1.11.2.1 2001/06/06 20:26:01 tmm Exp $
  */
 
-#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
 

@@ -29,7 +29,6 @@
  * $FreeBSD: src/usr.bin/sockstat/sockstat.c,v 1.12 2004/12/06 09:28:05 ru Exp $
  */
 
-#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>

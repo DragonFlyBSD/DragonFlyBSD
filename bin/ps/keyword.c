@@ -30,7 +30,6 @@
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
  */
 
-#include <sys/user.h>
 #include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/time.h>

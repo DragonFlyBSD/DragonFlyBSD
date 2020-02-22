@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/param.h>
 #include <sys/sysctl.h>
 

@@ -33,8 +33,6 @@
  * $FreeBSD: src/usr.sbin/lastlogin/lastlogin.c,v 1.2.2.2 2001/07/19 05:02:46 kris Exp $
  */
 
-#include <sys/user.h>
-
 #include <err.h>
 #include <pwd.h>
 #include <stdio.h>
