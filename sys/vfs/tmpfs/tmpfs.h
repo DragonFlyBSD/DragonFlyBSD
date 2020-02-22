@@ -425,6 +425,10 @@ void	tmpfs_itimes(struct vnode *, const struct timespec *,
 void	tmpfs_update(struct vnode *);
 int	tmpfs_truncate(struct vnode *, off_t);
 boolean_t tmpfs_node_ctor(void *obj, void *privdata, int flags);
+void	tmpfs_lock4(struct tmpfs_node *node1, struct tmpfs_node *node2,
+		struct tmpfs_node *node3, struct tmpfs_node *node4);
+void	tmpfs_unlock4(struct tmpfs_node *node1, struct tmpfs_node *node2,
+		struct tmpfs_node *node3, struct tmpfs_node *node4);
 
 /* --------------------------------------------------------------------- */
 

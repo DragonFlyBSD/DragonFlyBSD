@@ -1348,3 +1348,30 @@ tmpfs_dirtree_compare_cookie(struct tmpfs_dirent *a, struct tmpfs_dirent *b)
 		return(1);
 	return 0;
 }
+
+/*
+ * Lock for rename.  The namecache entries are already locked so
+ * theoretically we should be able to lock the directories in any
+ * order.  Underlying files must be locked after the related directory.
+ */
+void
+tmpfs_lock4(struct tmpfs_node *node1, struct tmpfs_node *node2,
+	    struct tmpfs_node *node3, struct tmpfs_node *node4)
+{
+	TMPFS_NODE_LOCK(node1);		/* fdir */
+	TMPFS_NODE_LOCK(node3);		/* ffile */
+	TMPFS_NODE_LOCK(node2);		/* tdir */
+	if (node4)
+		TMPFS_NODE_LOCK(node4);	/* tfile */
+}
+
+void
+tmpfs_unlock4(struct tmpfs_node *node1, struct tmpfs_node *node2,
+	      struct tmpfs_node *node3, struct tmpfs_node *node4)
+{
+	TMPFS_NODE_UNLOCK(node1);
+	TMPFS_NODE_UNLOCK(node2);
+	TMPFS_NODE_UNLOCK(node3);
+	if (node4)
+		TMPFS_NODE_UNLOCK(node4);
+}

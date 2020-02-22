@@ -1183,9 +1183,9 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 	struct tmpfs_dirent *de, *tde;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *fdnode;
+	struct tmpfs_node *tdnode;
 	struct tmpfs_node *fnode;
 	struct tmpfs_node *tnode;
-	struct tmpfs_node *tdnode;
 	char *newname;
 	char *oldname;
 	int error;
@@ -1224,9 +1224,10 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 
 	fdnode = VP_TO_TMPFS_DIR(fdvp);
 	fnode = VP_TO_TMPFS_NODE(fvp);
-	TMPFS_NODE_LOCK(fdnode);
+
+	tmpfs_lock4(fdnode, tdnode, fnode, tnode);
+
 	de = tmpfs_dir_lookup(fdnode, fnode, fncp);
-	TMPFS_NODE_UNLOCK(fdnode);	/* XXX depend on namecache lock */
 
 	/* Avoid manipulating '.' and '..' entries. */
 	if (de == NULL) {
@@ -1301,12 +1302,10 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 		tmpfs_dir_detach(fdnode, de);
 	} else {
 		/* XXX depend on namecache lock */
-		TMPFS_NODE_LOCK(fdnode);
 		KKASSERT(de == tmpfs_dir_lookup(fdnode, fnode, fncp));
 		RB_REMOVE(tmpfs_dirtree, &fdnode->tn_dir.tn_dirtree, de);
 		RB_REMOVE(tmpfs_dirtree_cookie,
 			  &fdnode->tn_dir.tn_cookietree, de);
-		TMPFS_NODE_UNLOCK(fdnode);
 	}
 
 	/*
@@ -1314,11 +1313,6 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 	 * deallocate it at the end.
 	 */
 	if (newname != NULL) {
-#if 0
-		TMPFS_NODE_LOCK(fnode);
-		fnode->tn_status |= TMPFS_NODE_CHANGED;
-		TMPFS_NODE_UNLOCK(fnode);
-#endif
 		oldname = de->td_name;
 		de->td_name = newname;
 		de->td_namelen = (uint16_t)tncp->nc_nlen;
@@ -1331,10 +1325,8 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 	 */
 	if (tvp != NULL) {
 		/* Remove the old entry from the target directory. */
-		TMPFS_NODE_LOCK(tdnode);
 		tde = tmpfs_dir_lookup(tdnode, tnode, tncp);
 		tmpfs_dir_detach(tdnode, tde);
-		TMPFS_NODE_UNLOCK(tdnode);
 		tmpfs_knote(tdnode->tn_vnode, NOTE_DELETE);
 
 		/*
@@ -1357,13 +1349,12 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 		}
 		tmpfs_dir_attach(tdnode, de);
 	} else {
-		TMPFS_NODE_LOCK(tdnode);
 		tdnode->tn_status |= TMPFS_NODE_MODIFIED;
 		RB_INSERT(tmpfs_dirtree, &tdnode->tn_dir.tn_dirtree, de);
 		RB_INSERT(tmpfs_dirtree_cookie,
 			  &tdnode->tn_dir.tn_cookietree, de);
-		TMPFS_NODE_UNLOCK(tdnode);
 	}
+	tmpfs_unlock4(fdnode, tdnode, fnode, tnode);
 
 	/*
 	 * Finish up
@@ -1377,10 +1368,12 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 	tmpfs_knote(ap->a_tdvp, NOTE_WRITE);
 	if (fnode->tn_vnode)
 		tmpfs_knote(fnode->tn_vnode, NOTE_RENAME);
-	error = 0;
+	if (tvp)
+		vrele(tvp);
+	return 0;
 
 out_locked:
-	;
+	tmpfs_unlock4(fdnode, tdnode, fnode, tnode);
 out:
 	if (tvp)
 		vrele(tvp);
@@ -1450,17 +1443,23 @@ tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 	node = VP_TO_TMPFS_DIR(vp);
 
 	/*
+	 *
+	 */
+	TMPFS_NODE_LOCK(dnode);
+	TMPFS_NODE_LOCK(node);
+
+	/*
 	 * Only empty directories can be removed.
 	 */
 	if (node->tn_size > 0) {
 		error = ENOTEMPTY;
-		goto out;
+		goto out_locked;
 	}
 
 	if ((dnode->tn_flags & APPEND)
 	    || (node->tn_flags & (NOUNLINK | IMMUTABLE | APPEND))) {
 		error = EPERM;
-		goto out;
+		goto out_locked;
 	}
 
 	/*
@@ -1470,10 +1469,8 @@ tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 	KKASSERT(node->tn_dir.tn_parent == dnode);
 
 	/*
-	 * Get the directory entry associated with node (vp).  This
-	 * was filled by tmpfs_lookup while looking up the entry.
+	 * Get the directory entry associated with node (vp)
 	 */
-	TMPFS_NODE_LOCK(dnode);
 	de = tmpfs_dir_lookup(dnode, node, ncp);
 	KKASSERT(TMPFS_DIRENT_MATCHES(de, ncp->nc_name, ncp->nc_nlen));
 
@@ -1481,19 +1478,11 @@ tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 	if ((dnode->tn_flags & APPEND) ||
 	    node->tn_flags & (NOUNLINK | IMMUTABLE | APPEND)) {
 		error = EPERM;
-		TMPFS_NODE_UNLOCK(dnode);
-		goto out;
+		goto out_locked;
 	}
 
 	/* Detach the directory entry from the directory (dnode). */
 	tmpfs_dir_detach(dnode, de);
-	TMPFS_NODE_UNLOCK(dnode);
-
-	/* No vnode should be allocated for this entry from this point */
-	TMPFS_NODE_LOCK(dnode);
-	TMPFS_ASSERT_ELOCKED(dnode);
-	TMPFS_NODE_LOCK(node);
-	TMPFS_ASSERT_ELOCKED(node);
 
 	/*
 	 * Must set parent linkage to NULL (tested by ncreate to disallow
@@ -1504,9 +1493,6 @@ tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
 
-	TMPFS_NODE_UNLOCK(node);
-	TMPFS_NODE_UNLOCK(dnode);
-
 	/* Free the directory entry we just deleted.  Note that the node
 	 * referred by it will not be removed until the vnode is really
 	 * reclaimed. */
@@ -1515,14 +1501,20 @@ tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 	/* Release the deleted vnode (will destroy the node, notify
 	 * interested parties and clean it from the cache). */
 
-	TMPFS_NODE_LOCK(dnode);
 	dnode->tn_status |= TMPFS_NODE_CHANGED;
-	TMPFS_NODE_UNLOCK(dnode);
-	tmpfs_update(dvp);
 
+	TMPFS_NODE_UNLOCK(node);
+	TMPFS_NODE_UNLOCK(dnode);
+
+	tmpfs_update(dvp);
 	cache_unlink(ap->a_nch);
 	tmpfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
-	error = 0;
+	vrele(vp);
+	return 0;
+
+out_locked:
+	TMPFS_NODE_UNLOCK(node);
+	TMPFS_NODE_UNLOCK(dnode);
 
 out:
 	vrele(vp);
