@@ -138,6 +138,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	case VDIR:
 		RB_INIT(&nnode->tn_dir.tn_dirtree);
 		RB_INIT(&nnode->tn_dir.tn_cookietree);
+		nnode->tn_dir.tn_parent = NULL;
 		nnode->tn_size = 0;
 		break;
 
@@ -210,7 +211,6 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 #ifdef INVARIANTS
 	TMPFS_ASSERT_ELOCKED(node);
 	KKASSERT(node->tn_vnode == NULL);
-	KKASSERT((node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0);
 #endif
 
 	TMPFS_LOCK(tmp);
@@ -378,13 +378,27 @@ tmpfs_alloc_vp(struct mount *mp,
 	struct vnode *vp;
 
 loop:
+	vp = NULL;
+	if (node->tn_vnode == NULL) {
+		error = getnewvnode(VT_TMPFS, mp, &vp,
+				    VLKTIMEOUT, LK_CANRECURSE);
+		if (error)
+			goto out;
+	}
+
 	/*
 	 * Interlocked extraction from node.  This can race many things.
 	 * We have to get a soft reference on the vnode while we hold
 	 * the node locked, then acquire it properly and check for races.
 	 */
 	TMPFS_NODE_LOCK(node);
-	if ((vp = node->tn_vnode) != NULL) {
+	if (node->tn_vnode) {
+		if (vp) {
+			vp->v_type = VBAD;
+			vx_put(vp);
+		}
+		vp = node->tn_vnode;
+
 		KKASSERT((node->tn_vpstate & TMPFS_VNODE_DOOMED) == 0);
 		vhold(vp);
 		TMPFS_NODE_UNLOCK(node);
@@ -426,40 +440,24 @@ loop:
 		vdrop(vp);
 		goto out;
 	}
-	/* vp is NULL */
+
+	/*
+	 * We need to assign node->tn_vnode.  If vp is NULL, loop up to
+	 * allocate the vp.  This can happen due to SMP races.
+	 */
+	if (vp == NULL)
+		goto loop;
 
 	/*
 	 * This should never happen.
 	 */
 	if (node->tn_vpstate & TMPFS_VNODE_DOOMED) {
 		TMPFS_NODE_UNLOCK(node);
+		vp->v_type = VBAD;
+		vx_put(vp);
 		error = ENOENT;
 		goto out;
 	}
-
-	/*
-	 * Interlock against other calls to tmpfs_alloc_vp() trying to
-	 * allocate and assign a vp to node.
-	 */
-	if (node->tn_vpstate & TMPFS_VNODE_ALLOCATING) {
-		node->tn_vpstate |= TMPFS_VNODE_WANT;
-		error = tsleep(&node->tn_vpstate, PINTERLOCKED | PCATCH,
-			       "tmpfs_alloc_vp", 0);
-		TMPFS_NODE_UNLOCK(node);
-		if (error)
-			return error;
-		goto loop;
-	}
-	node->tn_vpstate |= TMPFS_VNODE_ALLOCATING;
-	TMPFS_NODE_UNLOCK(node);
-
-	/*
-	 * Allocate a new vnode (may block).  The ALLOCATING flag should
-	 * prevent a race against someone else assigning node->tn_vnode.
-	 */
-	error = getnewvnode(VT_TMPFS, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);
-	if (error != 0)
-		goto unlock;
 
 	KKASSERT(node->tn_vnode == NULL);
 	KKASSERT(vp != NULL);
@@ -494,21 +492,8 @@ loop:
 		panic("tmpfs_alloc_vp: type %p %d", node, (int)node->tn_type);
 	}
 
-
-unlock:
-	TMPFS_NODE_LOCK(node);
-
-	KKASSERT(node->tn_vpstate & TMPFS_VNODE_ALLOCATING);
-	node->tn_vpstate &= ~TMPFS_VNODE_ALLOCATING;
 	node->tn_vnode = vp;
-
-	if (node->tn_vpstate & TMPFS_VNODE_WANT) {
-		node->tn_vpstate &= ~TMPFS_VNODE_WANT;
-		TMPFS_NODE_UNLOCK(node);
-		wakeup(&node->tn_vpstate);
-	} else {
-		TMPFS_NODE_UNLOCK(node);
-	}
+	TMPFS_NODE_UNLOCK(node);
 
 out:
 	*vpp = vp;

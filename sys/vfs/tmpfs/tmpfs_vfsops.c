@@ -89,7 +89,7 @@ tmpfs_node_ctor(void *obj, void *privdata, int flags)
 	node->tn_flags = 0;
 	node->tn_links = 0;
 	node->tn_vnode = NULL;
-	node->tn_vpstate = TMPFS_VNODE_WANT;
+	node->tn_vpstate = 0;
 	bzero(&node->tn_spec, sizeof(node->tn_spec));
 
 	return (TRUE);

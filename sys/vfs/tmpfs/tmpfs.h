@@ -204,11 +204,11 @@ struct tmpfs_node {
 	 * allocated for it or it has been reclaimed). */
 	struct vnode *		tn_vnode;
 
-	/* interlock to protect tn_vpstate */
+	/* interlock to protect structure */
 	struct lock		tn_interlock;
 
-	/* Identify if current node has vnode assiocate with
-	 * or allocating vnode.
+	/*
+	 * tmpfs vnode state, may specify an allocation in-progress.
 	 */
 	int		tn_vpstate;
 
@@ -296,9 +296,7 @@ LIST_HEAD(tmpfs_node_list, tmpfs_node);
 #define TMPFS_ASSERT_ELOCKED(node) (void)0
 #endif  /* INVARIANTS */
 
-#define TMPFS_VNODE_ALLOCATING	1
-#define TMPFS_VNODE_WANT	2
-#define TMPFS_VNODE_DOOMED	4
+#define TMPFS_VNODE_DOOMED	0x0001
 /* --------------------------------------------------------------------- */
 
 /*

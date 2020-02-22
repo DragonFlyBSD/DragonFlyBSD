@@ -1450,8 +1450,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 	node = VP_TO_TMPFS_DIR(vp);
 
 	/*
-	 * Directories with more than two entries ('.' and '..') cannot
-	 * be removed.
+	 * Only empty directories can be removed.
 	 */
 	if (node->tn_size > 0) {
 		error = ENOTEMPTY;
@@ -1713,9 +1712,7 @@ tmpfs_inactive(struct vop_inactive_args *ap)
 	 * path from flushing the data for the removed file to disk.
 	 */
 	TMPFS_NODE_LOCK(node);
-	if ((node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0 &&
-	    node->tn_links == 0)
-	{
+	if (node->tn_links == 0) {
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;
 		TMPFS_NODE_UNLOCK(node);
 		if (node->tn_type == VREG)
@@ -1780,8 +1777,7 @@ tmpfs_reclaim(struct vop_reclaim_args *ap)
 	 *
 	 * Directories have an extra link ref.
 	 */
-	if ((node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0 &&
-	    node->tn_links == 0) {
+	if (node->tn_links == 0) {
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;
 		tmpfs_free_node(tmp, node);
 		/* eats the lock */
