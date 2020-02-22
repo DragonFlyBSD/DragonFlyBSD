@@ -42,7 +42,6 @@
  * Engineering group at Lawrence Berkeley Laboratory under DARPA
  * contract BG 91-66 and contributed to Berkeley.
  */
-#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -52,6 +51,7 @@
 #include <machine/vmparam.h>
 
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <kvm.h>
 #include <limits.h>
