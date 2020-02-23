@@ -658,12 +658,6 @@ static void i915_enable_asle_pipestat(struct drm_i915_private *dev_priv)
  *   of horizontal active on the first line of vertical active
  */
 
-static u32 i8xx_get_vblank_counter(struct drm_device *dev, unsigned int pipe)
-{
-	/* Gen2 doesn't have a hardware frame counter */
-	return 0;
-}
-
 /* Called from drm generic code, passed a 'crtc', which
  * we use as a pipe index
  */
@@ -2807,13 +2801,6 @@ static void gen8_disable_vblank(struct drm_device *dev, unsigned int pipe)
 }
 
 static bool
-ring_idle(struct intel_engine_cs *engine, u32 seqno)
-{
-	return i915_seqno_passed(seqno,
-				 READ_ONCE(engine->last_submitted_seqno));
-}
-
-static bool
 ipehr_is_semaphore_wait(struct intel_engine_cs *engine, u32 ipehr)
 {
 	if (INTEL_GEN(engine->i915) >= 8) {
@@ -2995,7 +2982,7 @@ static bool subunits_stuck(struct intel_engine_cs *engine)
 	return stuck;
 }
 
-static enum intel_ring_hangcheck_action
+static enum intel_engine_hangcheck_action
 head_stuck(struct intel_engine_cs *engine, u64 acthd)
 {
 	if (acthd != engine->hangcheck.acthd) {
@@ -3013,11 +3000,11 @@ head_stuck(struct intel_engine_cs *engine, u64 acthd)
 	return HANGCHECK_HUNG;
 }
 
-static enum intel_ring_hangcheck_action
-ring_stuck(struct intel_engine_cs *engine, u64 acthd)
+static enum intel_engine_hangcheck_action
+engine_stuck(struct intel_engine_cs *engine, u64 acthd)
 {
 	struct drm_i915_private *dev_priv = engine->i915;
-	enum intel_ring_hangcheck_action ha;
+	enum intel_engine_hangcheck_action ha;
 	u32 tmp;
 
 	ha = head_stuck(engine, acthd);
@@ -3126,14 +3113,14 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 		if (engine->irq_seqno_barrier)
 			engine->irq_seqno_barrier(engine);
 
-		acthd = intel_ring_get_active_head(engine);
+		acthd = intel_engine_get_active_head(engine);
 		seqno = intel_engine_get_seqno(engine);
 
 		/* Reset stuck interrupts between batch advances */
 		user_interrupts = 0;
 
 		if (engine->hangcheck.seqno == seqno) {
-			if (ring_idle(engine, seqno)) {
+			if (!intel_engine_is_active(engine)) {
 				engine->hangcheck.action = HANGCHECK_IDLE;
 				if (busy) {
 					/* Safeguard against driver failure */
@@ -3142,13 +3129,13 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 				}
 			} else {
 				/* We always increment the hangcheck score
-				 * if the ring is busy and still processing
+				 * if the engine is busy and still processing
 				 * the same request, so that no single request
 				 * can run indefinitely (such as a chain of
 				 * batches). The only time we do not increment
 				 * the hangcheck score on this ring, if this
-				 * ring is in a legitimate wait for another
-				 * ring. In that case the waiting ring is a
+				 * engine is in a legitimate wait for another
+				 * engine. In that case the waiting engine is a
 				 * victim and we want to be sure we catch the
 				 * right culprit. Then every time we do kick
 				 * the ring, add a small increment to the
@@ -3156,8 +3143,8 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 				 * being repeatedly kicked and so responsible
 				 * for stalling the machine.
 				 */
-				engine->hangcheck.action = ring_stuck(engine,
-								      acthd);
+				engine->hangcheck.action =
+					engine_stuck(engine, acthd);
 
 				switch (engine->hangcheck.action) {
 				case HANGCHECK_IDLE:
@@ -4547,8 +4534,9 @@ void intel_irq_init(struct drm_i915_private *dev_priv)
 			  i915_hangcheck_elapsed);
 
 	if (IS_GEN2(dev_priv)) {
+		/* Gen2 doesn't have a hardware frame counter */
 		dev->max_vblank_count = 0;
-		dev->driver->get_vblank_counter = i8xx_get_vblank_counter;
+		dev->driver->get_vblank_counter = drm_vblank_no_hw_counter;
 	} else if (IS_G4X(dev_priv) || INTEL_INFO(dev_priv)->gen >= 5) {
 		dev->max_vblank_count = 0xffffffff; /* full 32 bit counter */
 		dev->driver->get_vblank_counter = g4x_get_vblank_counter;

@@ -63,33 +63,12 @@ struct i915_mmu_object {
 
 static void wait_rendering(struct drm_i915_gem_object *obj)
 {
-	struct drm_device *dev = obj->base.dev;
-	struct drm_i915_gem_request *requests[I915_NUM_ENGINES];
-	int i, n;
+	unsigned long active = __I915_BO_ACTIVE(obj);
+	int idx;
 
-	if (!obj->active)
-		return;
-
-	n = 0;
-	for (i = 0; i < I915_NUM_ENGINES; i++) {
-		struct drm_i915_gem_request *req;
-
-		req = obj->last_read_req[i];
-		if (req == NULL)
-			continue;
-
-		requests[n++] = i915_gem_request_get(req);
-	}
-
-	mutex_unlock(&dev->struct_mutex);
-
-	for (i = 0; i < n; i++)
-		__i915_wait_request(requests[i], false, NULL, NULL);
-
-	mutex_lock(&dev->struct_mutex);
-
-	for (i = 0; i < n; i++)
-		i915_gem_request_put(requests[i]);
+	for_each_active(active, idx)
+		i915_gem_active_wait_unlocked(&obj->last_read[idx],
+					      false, NULL, NULL);
 }
 
 static void cancel_userptr(struct work_struct *work)
@@ -98,25 +77,16 @@ static void cancel_userptr(struct work_struct *work)
 	struct drm_i915_gem_object *obj = mo->obj;
 	struct drm_device *dev = obj->base.dev;
 
+	wait_rendering(obj);
+
 	mutex_lock(&dev->struct_mutex);
 	/* Cancel any active worker and force us to re-evaluate gup */
 	obj->userptr.work = NULL;
 
 	if (obj->pages != NULL) {
-		struct drm_i915_private *dev_priv = to_i915(dev);
-		struct i915_vma *vma, *tmp;
-		bool was_interruptible;
-
-		wait_rendering(obj);
-
-		was_interruptible = dev_priv->mm.interruptible;
-		dev_priv->mm.interruptible = false;
-
-		list_for_each_entry_safe(vma, tmp, &obj->vma_list, obj_link)
-			WARN_ON(i915_vma_unbind(vma));
+		/* We are inside a kthread context and can't be interrupted */
+		WARN_ON(i915_gem_object_unbind(obj));
 		WARN_ON(i915_gem_object_put_pages(obj));
-
-		dev_priv->mm.interruptible = was_interruptible;
 	}
 
 	i915_gem_object_put(obj);

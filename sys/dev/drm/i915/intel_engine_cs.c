@@ -114,6 +114,7 @@ int intel_engines_init(struct drm_device *dev)
 	unsigned int i;
 	int ret;
 
+	WARN_ON(INTEL_INFO(dev_priv)->ring_mask == 0);
 	WARN_ON(INTEL_INFO(dev_priv)->ring_mask &
 		GENMASK(sizeof(mask) * BITS_PER_BYTE - 1, I915_NUM_ENGINES));
 
@@ -154,7 +155,7 @@ cleanup:
 		if (i915.enable_execlists)
 			intel_logical_ring_cleanup(&dev_priv->engine[i]);
 		else
-			intel_cleanup_engine(&dev_priv->engine[i]);
+			intel_engine_cleanup(&dev_priv->engine[i]);
 	}
 
 	return ret;
@@ -163,6 +164,12 @@ cleanup:
 void intel_engine_init_hangcheck(struct intel_engine_cs *engine)
 {
 	memset(&engine->hangcheck, 0, sizeof(engine->hangcheck));
+}
+
+static void intel_engine_init_requests(struct intel_engine_cs *engine)
+{
+	init_request_active(&engine->last_request, NULL);
+	INIT_LIST_HEAD(&engine->request_list);
 }
 
 /**
@@ -176,16 +183,15 @@ void intel_engine_init_hangcheck(struct intel_engine_cs *engine)
  */
 void intel_engine_setup_common(struct intel_engine_cs *engine)
 {
-	INIT_LIST_HEAD(&engine->active_list);
-	INIT_LIST_HEAD(&engine->request_list);
 	INIT_LIST_HEAD(&engine->buffers);
 	INIT_LIST_HEAD(&engine->execlist_queue);
 	lockinit(&engine->execlist_lock, "i915el", 0, LK_CANRECURSE);
 
 	engine->fence_context = fence_context_alloc(1);
 
+	intel_engine_init_requests(engine);
 	intel_engine_init_hangcheck(engine);
-	i915_gem_batch_pool_init(&engine->i915->drm, &engine->batch_pool);
+	i915_gem_batch_pool_init(engine, &engine->batch_pool);
 }
 
 /**
@@ -207,5 +213,19 @@ int intel_engine_init_common(struct intel_engine_cs *engine)
 	if (ret)
 		return ret;
 
-	return i915_cmd_parser_init_ring(engine);
+	return intel_engine_init_cmd_parser(engine);
+}
+
+/**
+ * intel_engines_cleanup_common - cleans up the engine state created by
+ *                                the common initiailizers.
+ * @engine: Engine to cleanup.
+ *
+ * This cleans up everything created by the common helpers.
+ */
+void intel_engine_cleanup_common(struct intel_engine_cs *engine)
+{
+	intel_engine_cleanup_cmd_parser(engine);
+	intel_engine_fini_breadcrumbs(engine);
+	i915_gem_batch_pool_fini(&engine->batch_pool);
 }

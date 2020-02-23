@@ -554,6 +554,7 @@ void intel_dvo_init(struct drm_device *dev)
 		return;
 	}
 
+	drm_encoder_cleanup(&intel_encoder->base);
 	kfree(intel_dvo);
 	kfree(intel_connector);
 }

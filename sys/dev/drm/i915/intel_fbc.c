@@ -104,10 +104,8 @@ static int intel_fbc_calculate_cfb_size(struct drm_i915_private *dev_priv,
 	int lines;
 
 	intel_fbc_get_plane_source_size(cache, NULL, &lines);
-	if (INTEL_GEN(dev_priv) == 7)
+	if (INTEL_INFO(dev_priv)->gen >= 7)
 		lines = min(lines, 2048);
-	else if (INTEL_GEN(dev_priv) >= 8)
-		lines = min(lines, 2560);
 
 	/* Hardware needs the full buffer stride, not just the active area. */
 	return lines * cache->fb.stride;
@@ -743,7 +741,7 @@ static void intel_fbc_update_state_cache(struct intel_crtc *crtc,
 	cache->fb.pixel_format = fb->pixel_format;
 	cache->fb.stride = fb->pitches[0];
 	cache->fb.fence_reg = obj->fence_reg;
-	cache->fb.tiling_mode = obj->tiling_mode;
+	cache->fb.tiling_mode = i915_gem_object_get_tiling(obj);
 }
 
 static bool intel_fbc_can_activate(struct intel_crtc *crtc)
@@ -1167,11 +1165,8 @@ void intel_fbc_disable(struct intel_crtc *crtc)
 		return;
 
 	mutex_lock(&fbc->lock);
-	if (fbc->crtc == crtc) {
-		WARN_ON(!fbc->enabled);
-		WARN_ON(fbc->active);
+	if (fbc->crtc == crtc)
 		__intel_fbc_disable(dev_priv);
-	}
 	mutex_unlock(&fbc->lock);
 
 	cancel_work_sync(&fbc->work.work);

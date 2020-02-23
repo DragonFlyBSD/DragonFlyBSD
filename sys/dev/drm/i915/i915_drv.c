@@ -33,13 +33,16 @@
 
 #include <linux/acpi.h>
 #include <linux/device.h>
+#include <linux/oom.h>
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
+#include <linux/pnp.h>
 #include <linux/slab.h>
 #include <linux/vgaarb.h>
 #include <linux/vga_switcheroo.h>
+#include <linux/vt.h>
 #include <acpi/video.h>
 
 #include <drm/drmP.h>
@@ -96,9 +99,7 @@ __i915_printk(struct drm_i915_private *dev_priv, const char *level,
 		   __builtin_return_address(0), &vaf);
 
 	if (is_error && !shown_bug_once) {
-#if 0
 		dev_notice(dev, "%s", FDO_BUG_MSG);
-#endif
 		shown_bug_once = true;
 	}
 
@@ -847,10 +848,10 @@ static int i915_driver_init_early(struct drm_i915_private *dev_priv,
 	BUG_ON(device_info->gen > sizeof(device_info->gen_mask) * BITS_PER_BYTE);
 	device_info->gen_mask = BIT(device_info->gen - 1);
 
-	lockinit(&dev_priv->irq_lock, "userirq", 0, LK_CANRECURSE);
-	lockinit(&dev_priv->gpu_error.lock, "915err", 0, LK_CANRECURSE);
+	lockinit(&dev_priv->irq_lock, "userirq", 0, 0);
+	lockinit(&dev_priv->gpu_error.lock, "915err", 0, 0);
 	lockinit(&dev_priv->backlight_lock, "i915bl", 0, LK_CANRECURSE);
-	lockinit(&dev_priv->uncore.lock, "915gt", 0, LK_CANRECURSE);
+	lockinit(&dev_priv->uncore.lock, "915gt", 0, 0);
 	lockinit(&dev_priv->mm.object_stat_lock, "i915osl", 0, 0);
 	lockinit(&dev_priv->mmio_flip_lock, "i915mfl", 0, 0);
 	lockinit(&dev_priv->sb_lock, "i915sbl", 0, LK_CANRECURSE);
@@ -1029,8 +1030,6 @@ static void intel_sanitize_options(struct drm_i915_private *dev_priv)
 static int i915_driver_init_hw(struct drm_i915_private *dev_priv)
 {
 	struct drm_device *dev = &dev_priv->drm;
-	struct i915_ggtt *ggtt = &dev_priv->ggtt;
-	uint32_t aperture_size;
 	int ret;
 
 	if (i915_inject_load_failure())
@@ -1040,15 +1039,9 @@ static int i915_driver_init_hw(struct drm_i915_private *dev_priv)
 
 	intel_sanitize_options(dev_priv);
 
-	ret = i915_ggtt_init_hw(dev);
+	ret = i915_ggtt_probe_hw(dev_priv);
 	if (ret)
 		return ret;
-
-	ret = i915_ggtt_enable_hw(dev);
-	if (ret) {
-		DRM_ERROR("failed to enable GGTT\n");
-		goto out_ggtt;
-	}
 
 	/* WARNING: Apparently we must kick fbdev drivers before vgacon,
 	 * otherwise the vga fbdev driver falls over. */
@@ -1064,9 +1057,19 @@ static int i915_driver_init_hw(struct drm_i915_private *dev_priv)
 		goto out_ggtt;
 	}
 
-#if 0
+	ret = i915_ggtt_init_hw(dev_priv);
+	if (ret)
+		return ret;
+
+	ret = i915_ggtt_enable_hw(dev_priv);
+	if (ret) {
+		DRM_ERROR("failed to enable GGTT\n");
+		goto out_ggtt;
+	}
+
 	pci_set_master(dev->pdev);
 
+#if 0
 	/* overlay on gen2 is broken and can't address above 1G */
 	if (IS_GEN2(dev)) {
 		ret = dma_set_coherent_mask(&dev->pdev->dev, DMA_BIT_MASK(30));
@@ -1076,7 +1079,6 @@ static int i915_driver_init_hw(struct drm_i915_private *dev_priv)
 			goto out_ggtt;
 		}
 	}
-
 
 	/* 965GM sometimes incorrectly writes to hardware status page (HWS)
 	 * using 32bit addressing, overwriting memory if HWS is located
@@ -1096,19 +1098,6 @@ static int i915_driver_init_hw(struct drm_i915_private *dev_priv)
 		}
 	}
 #endif
-
-	aperture_size = ggtt->mappable_end;
-
-	ggtt->mappable =
-		io_mapping_create_wc(ggtt->mappable_base,
-				     aperture_size);
-	if (!ggtt->mappable) {
-		ret = -EIO;
-		goto out_ggtt;
-	}
-
-	ggtt->mtrr = arch_phys_wc_add(ggtt->mappable_base,
-					      aperture_size);
 
 	pm_qos_add_request(&dev_priv->pm_qos, PM_QOS_CPU_DMA_LATENCY,
 			   PM_QOS_DEFAULT_VALUE);
@@ -1140,7 +1129,7 @@ static int i915_driver_init_hw(struct drm_i915_private *dev_priv)
 	return 0;
 
 out_ggtt:
-	i915_ggtt_cleanup_hw(dev);
+	i915_ggtt_cleanup_hw(dev_priv);
 
 	return ret;
 }
@@ -1151,18 +1140,15 @@ out_ggtt:
  */
 static void i915_driver_cleanup_hw(struct drm_i915_private *dev_priv)
 {
-	struct drm_device *dev = &dev_priv->drm;
-	struct i915_ggtt *ggtt = &dev_priv->ggtt;
-
 #if 0
+	struct drm_device *dev = &dev_priv->drm;
+
 	if (dev->pdev->msi_enabled)
 		pci_disable_msi(dev->pdev);
 #endif
 
 	pm_qos_remove_request(&dev_priv->pm_qos);
-	arch_phys_wc_del(ggtt->mtrr);
-	io_mapping_free(ggtt->mappable);
-	i915_ggtt_cleanup_hw(dev);
+	i915_ggtt_cleanup_hw(dev_priv);
 }
 
 /**
@@ -1308,12 +1294,12 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	intel_runtime_pm_enable(dev_priv);
 
+	intel_runtime_pm_put(dev_priv);
+
 	/* Everything is in place, we can now relax! */
 	DRM_INFO("Initialized %s %d.%d.%d %s for %s on minor %d\n",
 		 driver.name, driver.major, driver.minor, driver.patchlevel,
 		 driver.date, pci_name(pdev), dev_priv->drm.primary->index);
-
-	intel_runtime_pm_put(dev_priv);
 
 	return 0;
 
@@ -1489,7 +1475,6 @@ static int i915_drm_suspend(struct drm_device *dev)
 #if 0
 	pci_save_state(dev->pdev);
 #endif
-
 	error = i915_gem_suspend(dev);
 	if (error) {
 		dev_err(&dev->pdev->dev,
@@ -1526,6 +1511,8 @@ static int i915_drm_suspend(struct drm_device *dev)
 
 	dev_priv->suspend_count++;
 
+	intel_display_set_init_power(dev_priv, false);
+
 	intel_csr_ucode_suspend(dev_priv);
 
 out:
@@ -1541,8 +1528,6 @@ static int i915_drm_suspend_late(struct drm_device *drm_dev, bool hibernation)
 	int ret;
 
 	disable_rpm_wakeref_asserts(dev_priv);
-
-	intel_display_set_init_power(dev_priv, false);
 
 	fw_csr = !IS_BROXTON(dev_priv) &&
 		suspend_to_idle(dev_priv) && dev_priv->csr.dmc_payload;
@@ -1633,7 +1618,7 @@ static int i915_drm_resume(struct drm_device *dev)
 
 	disable_rpm_wakeref_asserts(dev_priv);
 
-	ret = i915_ggtt_enable_hw(dev);
+	ret = i915_ggtt_enable_hw(dev_priv);
 	if (ret)
 		DRM_ERROR("failed to re-enable GGTT\n");
 
@@ -1754,9 +1739,9 @@ static int i915_drm_resume_early(struct drm_device *dev)
 		ret = -EIO;
 		goto out;
 	}
+#endif
 
 	pci_set_master(dev->pdev);
-#endif
 
 	disable_rpm_wakeref_asserts(dev_priv);
 
@@ -2684,6 +2669,7 @@ static struct drm_driver driver = {
 	.postclose = i915_driver_postclose,
 	.set_busid = drm_pci_set_busid,
 
+	.gem_close_object = i915_gem_close_object,
 	.gem_free_object = i915_gem_free_object,
 	.gem_vm_ops = &i915_gem_vm_ops,
 

@@ -22,6 +22,8 @@
  *
  */
 
+#include <linux/prefetch.h>
+
 #include "i915_drv.h"
 
 static const char *i915_fence_get_driver_name(struct fence *fence)
@@ -68,9 +70,9 @@ static signed long i915_fence_wait(struct fence *fence,
 		timeout = NULL;
 	}
 
-	ret = __i915_wait_request(to_request(fence),
-				  interruptible, timeout,
-				  NO_WAITBOOST);
+	ret = i915_wait_request(to_request(fence),
+				interruptible, timeout,
+				NO_WAITBOOST);
 	if (ret == -ETIME)
 		return 0;
 
@@ -161,10 +163,18 @@ i915_gem_request_remove_from_client(struct drm_i915_gem_request *request)
 #endif
 }
 
+void i915_gem_retire_noop(struct i915_gem_active *active,
+			  struct drm_i915_gem_request *request)
+{
+	/* Space left intentionally blank */
+}
+
 static void i915_gem_request_retire(struct drm_i915_gem_request *request)
 {
+	struct i915_gem_active *active, *next;
+
 	trace_i915_gem_request_retire(request);
-	list_del_init(&request->list);
+	list_del(&request->link);
 
 	/* We know the GPU must have read the request to have
 	 * sent us the seqno + interrupt, so use the position
@@ -174,7 +184,35 @@ static void i915_gem_request_retire(struct drm_i915_gem_request *request)
 	 * Note this requires that we are always called in request
 	 * completion order.
 	 */
-	request->ringbuf->last_retired_head = request->postfix;
+	list_del(&request->ring_link);
+	request->ring->last_retired_head = request->postfix;
+
+	/* Walk through the active list, calling retire on each. This allows
+	 * objects to track their GPU activity and mark themselves as idle
+	 * when their *last* active request is completed (updating state
+	 * tracking lists for eviction, active references for GEM, etc).
+	 *
+	 * As the ->retire() may free the node, we decouple it first and
+	 * pass along the auxiliary information (to avoid dereferencing
+	 * the node after the callback).
+	 */
+	list_for_each_entry_safe(active, next, &request->active_list, link) {
+		/* In microbenchmarks or focusing upon time inside the kernel,
+		 * we may spend an inordinate amount of time simply handling
+		 * the retirement of requests and processing their callbacks.
+		 * Of which, this loop itself is particularly hot due to the
+		 * cache misses when jumping around the list of i915_gem_active.
+		 * So we try to keep this loop as streamlined as possible and
+		 * also prefetch the next i915_gem_active to try and hide
+		 * the likely cache miss.
+		 */
+		prefetchw(next);
+
+		INIT_LIST_HEAD(&active->link);
+		RCU_INIT_POINTER(active->request, NULL);
+
+		active->retire(active, request);
+	}
 
 	i915_gem_request_remove_from_client(request);
 
@@ -194,18 +232,14 @@ void i915_gem_request_retire_upto(struct drm_i915_gem_request *req)
 	struct drm_i915_gem_request *tmp;
 
 	lockdep_assert_held(&req->i915->drm.struct_mutex);
-
-	if (list_empty(&req->list))
-		return;
+	GEM_BUG_ON(list_empty(&req->link));
 
 	do {
 		tmp = list_first_entry(&engine->request_list,
-				       typeof(*tmp), list);
+				       typeof(*tmp), link);
 
 		i915_gem_request_retire(tmp);
 	} while (tmp != req);
-
-	WARN_ON(i915_verify_lists(engine->dev));
 }
 
 static int i915_gem_check_wedge(unsigned int reset_counter, bool interruptible)
@@ -233,7 +267,7 @@ static int i915_gem_init_seqno(struct drm_i915_private *dev_priv, u32 seqno)
 
 	/* Carefully retire all requests without writing to the rings */
 	for_each_engine(engine, dev_priv) {
-		ret = intel_engine_idle(engine);
+		ret = intel_engine_idle(engine, true);
 		if (ret)
 			return ret;
 	}
@@ -248,7 +282,7 @@ static int i915_gem_init_seqno(struct drm_i915_private *dev_priv, u32 seqno)
 
 	/* Finally reset hw state */
 	for_each_engine(engine, dev_priv)
-		intel_ring_init_seqno(engine, seqno);
+		intel_engine_init_seqno(engine, seqno);
 
 	return 0;
 }
@@ -268,14 +302,7 @@ int i915_gem_set_seqno(struct drm_device *dev, u32 seqno)
 	if (ret)
 		return ret;
 
-	/* Carefully set the last_seqno value so that wrap
-	 * detection still works
-	 */
 	dev_priv->next_seqno = seqno;
-	dev_priv->last_seqno = seqno - 1;
-	if (dev_priv->last_seqno == 0)
-		dev_priv->last_seqno--;
-
 	return 0;
 }
 
@@ -292,85 +319,8 @@ static int i915_gem_get_seqno(struct drm_i915_private *dev_priv, u32 *seqno)
 		dev_priv->next_seqno = 1;
 	}
 
-	*seqno = dev_priv->last_seqno = dev_priv->next_seqno++;
+	*seqno = dev_priv->next_seqno++;
 	return 0;
-}
-
-static inline int
-__i915_gem_request_alloc(struct intel_engine_cs *engine,
-			 struct i915_gem_context *ctx,
-			 struct drm_i915_gem_request **req_out)
-{
-	struct drm_i915_private *dev_priv = engine->i915;
-	unsigned int reset_counter = i915_reset_counter(&dev_priv->gpu_error);
-	struct drm_i915_gem_request *req;
-	u32 seqno;
-	int ret;
-
-	if (!req_out)
-		return -EINVAL;
-
-	*req_out = NULL;
-
-	/* ABI: Before userspace accesses the GPU (e.g. execbuffer), report
-	 * EIO if the GPU is already wedged, or EAGAIN to drop the struct_mutex
-	 * and restart.
-	 */
-	ret = i915_gem_check_wedge(reset_counter, dev_priv->mm.interruptible);
-	if (ret)
-		return ret;
-
-	/* Move the oldest request to the slab-cache (if not in use!) */
-	if (!list_empty(&engine->request_list)) {
-		req = list_first_entry(&engine->request_list,
-				       typeof(*req), list);
-		if (i915_gem_request_completed(req))
-			i915_gem_request_retire(req);
-	}
-
-	req = kzalloc(sizeof(*req), GFP_KERNEL);
-	if (!req)
-		return -ENOMEM;
-
-	ret = i915_gem_get_seqno(dev_priv, &seqno);
-	if (ret)
-		goto err;
-
-	lockinit(&req->lock, "i915_rl", 0, LK_CANRECURSE);
-	fence_init(&req->fence,
-		   &i915_fence_ops,
-		   &req->lock,
-		   engine->fence_context,
-		   seqno);
-
-	req->i915 = dev_priv;
-	req->engine = engine;
-	req->ctx = i915_gem_context_get(ctx);
-
-	/*
-	 * Reserve space in the ring buffer for all the commands required to
-	 * eventually emit this request. This is to guarantee that the
-	 * i915_add_request() call can't fail. Note that the reserve may need
-	 * to be redone if the request is not actually submitted straight
-	 * away, e.g. because a GPU scheduler has deferred it.
-	 */
-	req->reserved_space = MIN_SPACE_FOR_ADD_REQUEST;
-
-	if (i915.enable_execlists)
-		ret = intel_logical_ring_alloc_request_extras(req);
-	else
-		ret = intel_ring_alloc_request_extras(req);
-	if (ret)
-		goto err_ctx;
-
-	*req_out = req;
-	return 0;
-
-err_ctx:
-	i915_gem_context_put(ctx);
-err:
-	kmem_cache_free(dev_priv->requests, req);
-	return ret;
 }
 
 /**
@@ -389,13 +339,104 @@ struct drm_i915_gem_request *
 i915_gem_request_alloc(struct intel_engine_cs *engine,
 		       struct i915_gem_context *ctx)
 {
+	struct drm_i915_private *dev_priv = engine->i915;
+	unsigned int reset_counter = i915_reset_counter(&dev_priv->gpu_error);
 	struct drm_i915_gem_request *req;
-	int err;
+	u32 seqno;
+	int ret;
 
-	if (!ctx)
-		ctx = engine->i915->kernel_context;
-	err = __i915_gem_request_alloc(engine, ctx, &req);
-	return err ? ERR_PTR(err) : req;
+	/* ABI: Before userspace accesses the GPU (e.g. execbuffer), report
+	 * EIO if the GPU is already wedged, or EAGAIN to drop the struct_mutex
+	 * and restart.
+	 */
+	ret = i915_gem_check_wedge(reset_counter, dev_priv->mm.interruptible);
+	if (ret)
+		return ERR_PTR(ret);
+
+	/* Move the oldest request to the slab-cache (if not in use!) */
+	req = list_first_entry_or_null(&engine->request_list,
+				       typeof(*req), link);
+	if (req && i915_gem_request_completed(req))
+		i915_gem_request_retire(req);
+
+	/* Beware: Dragons be flying overhead.
+	 *
+	 * We use RCU to look up requests in flight. The lookups may
+	 * race with the request being allocated from the slab freelist.
+	 * That is the request we are writing to here, may be in the process
+	 * of being read by __i915_gem_active_get_request_rcu(). As such,
+	 * we have to be very careful when overwriting the contents. During
+	 * the RCU lookup, we change chase the request->engine pointer,
+	 * read the request->fence.seqno and increment the reference count.
+	 *
+	 * The reference count is incremented atomically. If it is zero,
+	 * the lookup knows the request is unallocated and complete. Otherwise,
+	 * it is either still in use, or has been reallocated and reset
+	 * with fence_init(). This increment is safe for release as we check
+	 * that the request we have a reference to and matches the active
+	 * request.
+	 *
+	 * Before we increment the refcount, we chase the request->engine
+	 * pointer. We must not call kmem_cache_zalloc() or else we set
+	 * that pointer to NULL and cause a crash during the lookup. If
+	 * we see the request is completed (based on the value of the
+	 * old engine and seqno), the lookup is complete and reports NULL.
+	 * If we decide the request is not completed (new engine or seqno),
+	 * then we grab a reference and double check that it is still the
+	 * active request - which it won't be and restart the lookup.
+	 *
+	 * Do not use kmem_cache_zalloc() here!
+	 */
+	req = kzalloc(sizeof(*req), GFP_KERNEL);
+	if (!req)
+		return ERR_PTR(-ENOMEM);
+
+	ret = i915_gem_get_seqno(dev_priv, &seqno);
+	if (ret)
+		goto err;
+
+	lockinit(&req->lock, "i915_rl", 0, 0);
+	fence_init(&req->fence,
+		   &i915_fence_ops,
+		   &req->lock,
+		   engine->fence_context,
+		   seqno);
+
+	INIT_LIST_HEAD(&req->active_list);
+	req->i915 = dev_priv;
+	req->engine = engine;
+	req->ctx = i915_gem_context_get(ctx);
+
+	/* No zalloc, must clear what we need by hand */
+	req->previous_context = NULL;
+	req->file_priv = NULL;
+	req->batch_obj = NULL;
+	req->pid = 0;
+	req->elsp_submitted = 0;
+
+	/*
+	 * Reserve space in the ring buffer for all the commands required to
+	 * eventually emit this request. This is to guarantee that the
+	 * i915_add_request() call can't fail. Note that the reserve may need
+	 * to be redone if the request is not actually submitted straight
+	 * away, e.g. because a GPU scheduler has deferred it.
+	 */
+	req->reserved_space = MIN_SPACE_FOR_ADD_REQUEST;
+
+	if (i915.enable_execlists)
+		ret = intel_logical_ring_alloc_request_extras(req);
+	else
+		ret = intel_ring_alloc_request_extras(req);
+	if (ret)
+		goto err_ctx;
+
+	return req;
+
+err_ctx:
+	i915_gem_context_put(ctx);
+err:
+	kmem_cache_free(dev_priv->requests, req);
+	return ERR_PTR(ret);
 }
 
 static void i915_gem_mark_busy(const struct intel_engine_cs *engine)
@@ -429,7 +470,7 @@ void __i915_add_request(struct drm_i915_gem_request *request,
 			bool flush_caches)
 {
 	struct intel_engine_cs *engine;
-	struct intel_ringbuffer *ringbuf;
+	struct intel_ring *ring;
 	u32 request_start;
 	u32 reserved_tail;
 	int ret;
@@ -438,14 +479,14 @@ void __i915_add_request(struct drm_i915_gem_request *request,
 		return;
 
 	engine = request->engine;
-	ringbuf = request->ringbuf;
+	ring = request->ring;
 
 	/*
 	 * To ensure that this call will not fail, space for its emissions
 	 * should already have been reserved in the ring buffer. Let the ring
 	 * know that it is time to use that space up.
 	 */
-	request_start = intel_ring_get_tail(ringbuf);
+	request_start = ring->tail;
 	reserved_tail = request->reserved_space;
 	request->reserved_space = 0;
 
@@ -457,12 +498,10 @@ void __i915_add_request(struct drm_i915_gem_request *request,
 	 * what.
 	 */
 	if (flush_caches) {
-		if (i915.enable_execlists)
-			ret = logical_ring_flush_all_caches(request);
-		else
-			ret = intel_ring_flush_all_caches(request);
+		ret = engine->emit_flush(request, EMIT_FLUSH);
+
 		/* Not allowed to fail! */
-		WARN(ret, "*_ring_flush_all_caches failed: %d!\n", ret);
+		WARN(ret, "engine->emit_flush() failed: %d!\n", ret);
 	}
 
 	trace_i915_gem_request_add(request);
@@ -484,35 +523,33 @@ void __i915_add_request(struct drm_i915_gem_request *request,
 	 */
 	request->emitted_jiffies = jiffies;
 	request->previous_seqno = engine->last_submitted_seqno;
-	smp_store_mb(engine->last_submitted_seqno, request->fence.seqno);
-	list_add_tail(&request->list, &engine->request_list);
+	engine->last_submitted_seqno = request->fence.seqno;
+	i915_gem_active_set(&engine->last_request, request);
+	list_add_tail(&request->link, &engine->request_list);
+	list_add_tail(&request->ring_link, &ring->request_list);
 
 	/* Record the position of the start of the request so that
 	 * should we detect the updated seqno part-way through the
 	 * GPU processing the request, we never over-estimate the
 	 * position of the head.
 	 */
-	request->postfix = intel_ring_get_tail(ringbuf);
+	request->postfix = ring->tail;
 
-	if (i915.enable_execlists) {
-		ret = engine->emit_request(request);
-	} else {
-		ret = engine->add_request(request);
-
-		request->tail = intel_ring_get_tail(ringbuf);
-	}
 	/* Not allowed to fail! */
-	WARN(ret, "emit|add_request failed: %d!\n", ret);
+	ret = engine->emit_request(request);
+	WARN(ret, "(%s)->emit_request failed: %d!\n", engine->name, ret);
+
 	/* Sanity check that the reserved size was large enough. */
-	ret = intel_ring_get_tail(ringbuf) - request_start;
+	ret = ring->tail - request_start;
 	if (ret < 0)
-		ret += ringbuf->size;
+		ret += ring->size;
 	WARN_ONCE(ret > reserved_tail,
 		  "Not enough space reserved (%d bytes) "
 		  "for adding the request (%d bytes)\n",
 		  reserved_tail, ret);
 
 	i915_gem_mark_busy(engine);
+	engine->submit_request(request);
 }
 
 static unsigned long local_clock_us(unsigned int *cpu)
@@ -580,7 +617,7 @@ bool __i915_spin_request(const struct drm_i915_gem_request *req,
 }
 
 /**
- * __i915_wait_request - wait until execution of request has finished
+ * i915_wait_request - wait until execution of request has finished
  * @req: duh!
  * @interruptible: do an interruptible wait (normally yes)
  * @timeout: in - how long to wait (NULL forever); out - how much time remaining
@@ -596,10 +633,10 @@ bool __i915_spin_request(const struct drm_i915_gem_request *req,
  * Returns 0 if the request was found within the alloted time. Else returns the
  * errno with remaining time filled in timeout argument.
  */
-int __i915_wait_request(struct drm_i915_gem_request *req,
-			bool interruptible,
-			s64 *timeout,
-			struct intel_rps_client *rps)
+int i915_wait_request(struct drm_i915_gem_request *req,
+		      bool interruptible,
+		      s64 *timeout,
+		      struct intel_rps_client *rps)
 {
 	int state = interruptible ? TASK_INTERRUPTIBLE : TASK_UNINTERRUPTIBLE;
 	DEFINE_WAIT(reset);
@@ -608,9 +645,6 @@ int __i915_wait_request(struct drm_i915_gem_request *req,
 	int ret = 0;
 
 	might_sleep();
-
-	if (list_empty(&req->list))
-		return 0;
 
 	if (i915_gem_request_completed(req))
 		return 0;
@@ -648,7 +682,7 @@ int __i915_wait_request(struct drm_i915_gem_request *req,
 	if (IS_RPS_CLIENT(rps) && INTEL_GEN(req->i915) >= 6)
 		gen6_rps_boost(req->i915, rps, req->emitted_jiffies);
 
-	/* Optimistic spin for the next ~jiffie before touching IRQs */
+	/* Optimistic short spin before touching IRQs */
 	if (i915_spin_request(req, state, 5))
 		goto complete;
 
@@ -736,24 +770,37 @@ complete:
 	return ret;
 }
 
-/**
- * Waits for a request to be signaled, and cleans up the
- * request and object lists appropriately for that event.
- */
-int i915_wait_request(struct drm_i915_gem_request *req)
+static void engine_retire_requests(struct intel_engine_cs *engine)
 {
-	int ret;
+	struct drm_i915_gem_request *request, *next;
 
-	GEM_BUG_ON(!req);
-	lockdep_assert_held(&req->i915->drm.struct_mutex);
+	list_for_each_entry_safe(request, next, &engine->request_list, link) {
+		if (!i915_gem_request_completed(request))
+			break;
 
-	ret = __i915_wait_request(req, req->i915->mm.interruptible, NULL, NULL);
-	if (ret)
-		return ret;
+		i915_gem_request_retire(request);
+	}
+}
 
-	/* If the GPU hung, we want to keep the requests to find the guilty. */
-	if (!i915_reset_in_progress(&req->i915->gpu_error))
-		i915_gem_request_retire_upto(req);
+void i915_gem_retire_requests(struct drm_i915_private *dev_priv)
+{
+	struct intel_engine_cs *engine;
 
-	return 0;
+	lockdep_assert_held(&dev_priv->drm.struct_mutex);
+
+	if (dev_priv->gt.active_engines == 0)
+		return;
+
+	GEM_BUG_ON(!dev_priv->gt.awake);
+
+	for_each_engine(engine, dev_priv) {
+		engine_retire_requests(engine);
+		if (!intel_engine_is_active(engine))
+			dev_priv->gt.active_engines &= ~intel_engine_flag(engine);
+	}
+
+	if (dev_priv->gt.active_engines == 0)
+		queue_delayed_work(dev_priv->wq,
+				   &dev_priv->gt.idle_work,
+				   msecs_to_jiffies(100));
 }
