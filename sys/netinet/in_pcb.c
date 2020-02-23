@@ -884,23 +884,32 @@ in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
 			rtalloc(ro);
 			alloc_route = 1;
 		}
+
 		/*
-		 * If we found a route, use the address
-		 * corresponding to the outgoing interface
-		 * unless it is the loopback (in case a route
-		 * to our address on another net goes to loopback).
+		 * If we found a route, use the address corresponding
+		 * to the outgoing interface.
+		 *
+		 * If jailed, the the route must match a jailed IP
+		 * to be valid.
 		 */
-		if (ro->ro_rt &&
-		    !(ro->ro_rt->rt_ifp->if_flags & IFF_LOOPBACK)) {
+		if (ro->ro_rt) {
 			if (jailed) {
 				if (jailed_ip(cred->cr_prison, 
-				    ro->ro_rt->rt_ifa->ifa_addr)) {
+					      ro->ro_rt->rt_ifa->ifa_addr)) {
 					ia = ifatoia(ro->ro_rt->rt_ifa);
 				}
 			} else {
 				ia = ifatoia(ro->ro_rt->rt_ifa);
 			}
 		}
+
+		/*
+		 * If the route didn't work or there was no route,
+		 * fall-back to the first address in in_ifaddrheads[].
+		 *
+		 * If jailed and this address is not available for
+		 * the jail, leave ia set to NULL.
+		 */
 		if (ia == NULL) {
 			u_short fport = sin->sin_port;
 
@@ -925,6 +934,7 @@ in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
 			if (!jailed && ia == NULL)
 				goto fail;
 		}
+
 		/*
 		 * If the destination address is multicast and an outgoing
 		 * interface has been set as a multicast option, use the
@@ -951,7 +961,12 @@ in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
 					goto fail;
 			}
 		}
+
 		/*
+		 * If we still don't have a local address, and are jailed,
+		 * use the jail's first non-localhost IP.  If there isn't
+		 * one, use the jail's first localhost IP.
+		 *
 		 * Don't do pcblookup call here; return interface in plocal_sin
 		 * and exit to caller, that will do the lookup.
 		 */
@@ -965,8 +980,10 @@ in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
 				/* IPv6 only Jail */
 				goto fail;
 			}
-		} else {
+		} else if (ia) {
 			*plocal_sin = &ia->ia_addr;
+		} else {
+			goto fail;
 		}
 	}
 	return (0);
