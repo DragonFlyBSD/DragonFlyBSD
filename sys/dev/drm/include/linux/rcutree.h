@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,70 +24,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_RCUPDATE_H_
-#define _LINUX_RCUPDATE_H_
+#ifndef	_LINUX_RCUTREE_H_
+#define	_LINUX_RCUTREE_H_
 
-#include <linux/types.h>
-#include <linux/cache.h>
-#include <linux/spinlock.h>
-#include <linux/threads.h>
-#include <linux/cpumask.h>
-#include <linux/seqlock.h>
-#include <linux/lockdep.h>
-#include <linux/completion.h>
-#include <linux/bug.h>
-#include <linux/compiler.h>
-#include <linux/ktime.h>
-
-#include <asm/barrier.h>
-
-#include <linux/rcutree.h>
+static inline void rcu_barrier(void) {}
 
 static inline void
-call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *))
+synchronize_rcu_expedited(void)
 {
-	func(head);
+	cpu_mfence();
 }
 
-static inline void
-rcu_read_lock(void)
-{
-	preempt_disable();
-}
-
-static inline void
-rcu_read_unlock(void)
-{
-	preempt_enable();
-}
-
-#define rcu_dereference_protected(p, condition)	\
-	((typeof(*p) *)(p))
-
-#define rcu_dereference(p)					\
-({								\
-	typeof(*(p)) *__rcu_dereference_tmp = READ_ONCE(p);	\
-	__rcu_dereference_tmp;					\
-})
-
-#define rcu_assign_pointer(p, v)	\
-do {					\
-	cpu_mfence();			\
-	WRITE_ONCE((p), (v));		\
-} while (0)
-
-#define RCU_INIT_POINTER(p, v)		\
-do {					\
-	p = v;				\
-} while (0)
-
-#define kfree_rcu(ptr, rcu_head)	\
-do {					\
-	kfree(ptr);			\
-} while (0)
-
-#define rcu_access_pointer(p)	((typeof(*p) *)READ_ONCE(p))
-
-#define rcu_pointer_handoff(p)	(p)
-
-#endif  /* _LINUX_RCUPDATE_H_ */
+#endif	/* _LINUX_RCUTREE_H_ */
