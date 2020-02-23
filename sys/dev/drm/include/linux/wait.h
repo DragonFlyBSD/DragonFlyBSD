@@ -85,6 +85,7 @@ wake_up_all(wait_queue_head_t *q)
 #define wake_up_interruptible_all(eq)	wake_up_all(eq)
 
 void __wait_event_prefix(wait_queue_head_t *wq, int flags);
+void prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state);
 void finish_wait(wait_queue_head_t *q, wait_queue_t *wait);
 
 /*
@@ -111,6 +112,7 @@ void finish_wait(wait_queue_head_t *q, wait_queue_t *wait);
 	wait_queue_t tmp_wq;						\
 									\
 	start_jiffies = ticks;						\
+	INIT_LIST_HEAD(&tmp_wq.task_list);				\
 									\
 	while (1) {							\
 		__wait_event_prefix(&wq, flags);			\
@@ -188,11 +190,6 @@ waitqueue_active(wait_queue_head_t *q)
 		.task_list = LIST_HEAD_INIT((name).task_list),	\
 		.func = autoremove_wake_function,		\
 	}
-
-static inline void
-prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
-{
-}
 
 static inline void
 __add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)

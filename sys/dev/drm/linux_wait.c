@@ -73,7 +73,22 @@ __wait_event_prefix(wait_queue_head_t *wq, int flags)
 }
 
 void
+prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
+{
+	lockmgr(&q->lock, LK_EXCLUSIVE);
+	if (list_empty(&wait->task_list))
+		__add_wait_queue(q, wait);
+	set_current_state(state);
+	lockmgr(&q->lock, LK_RELEASE);
+}
+
+void
 finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
 {
 	set_current_state(TASK_RUNNING);
+
+	lockmgr(&q->lock, LK_EXCLUSIVE);
+	if (!list_empty(&wait->task_list))
+		list_del_init(&wait->task_list);
+	lockmgr(&q->lock, LK_RELEASE);
 }
