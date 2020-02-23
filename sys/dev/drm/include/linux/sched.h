@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * Copyright (c) 2019 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
@@ -269,6 +269,12 @@ sched_setscheduler_nocheck(struct task_struct *ts,
 {
 	/* We do not allow different thread scheduling policies */
 	return 0;
+}
+
+static inline int
+pagefault_disabled(void)
+{
+	return (curthread->td_flags & TDF_NOFAULT);
 }
 
 #endif	/* _LINUX_SCHED_H_ */
