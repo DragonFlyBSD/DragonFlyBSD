@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,8 @@
 #include <linux/wait.h>
 #include <linux/timer.h>
 #include <linux/completion.h>
+
+struct device;
 
 struct dev_pm_domain {
 };
