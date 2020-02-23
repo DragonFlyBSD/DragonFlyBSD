@@ -103,8 +103,7 @@
 #define INP_LOCALGROUP_SIZMAX	256
 
 static struct inpcb *in_pcblookup_local(struct inpcbporthead *porthash,
-		struct in_addr laddr, u_int lport_arg, int wild_okay,
-		struct ucred *cred);
+		struct in_addr laddr, u_int lport_arg, int wild_okay);
 
 struct in_addr zeroin_addr;
 
@@ -354,8 +353,7 @@ in_pcbporthash_update(struct inpcbportinfo *portinfo,
 	porthash = in_pcbporthash_head(portinfo, lport);
 	GET_PORTHASH_TOKEN(porthash);
 
-	if (in_pcblookup_local(porthash, inp->inp_laddr, lport,
-	    wild, cred) != NULL) {
+	if (in_pcblookup_local(porthash, inp->inp_laddr, lport, wild) != NULL) {
 		REL_PORTHASH_TOKEN(porthash);
 		return FALSE;
 	}
@@ -557,7 +555,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
 			t = in_pcblookup_local(porthash, sin->sin_addr, lport,
-					       INPLOOKUP_WILDCARD, cred);
+					       INPLOOKUP_WILDCARD);
 			if (t &&
 			    (so->so_cred->cr_uid !=
 			     t->inp_socket->so_cred->cr_uid)) {
@@ -578,8 +576,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		 * This means that there is no longer any specific socket
 		 * bound or bound for listening.
 		 */
-		t = in_pcblookup_local(porthash, sin->sin_addr, lport,
-				       wild, cred);
+		t = in_pcblookup_local(porthash, sin->sin_addr, lport, wild);
 		if (t &&
 		    (reuseport & t->inp_socket->so_options) == 0 &&
 		    (t->inp_socket->so_state & SS_ACCEPTMECH) == 0) {
@@ -608,7 +605,7 @@ done:
 
 static struct inpcb *
 in_pcblookup_localremote(struct inpcbporthead *porthash, struct in_addr laddr,
-    u_short lport, struct in_addr faddr, u_short fport, struct ucred *cred)
+			 u_short lport, struct in_addr faddr, u_short fport)
 {
 	struct inpcb *inp;
 	struct inpcbport *phd;
@@ -647,21 +644,16 @@ in_pcblookup_localremote(struct inpcbporthead *porthash, struct in_addr laddr,
 			if (inp->inp_fport != 0 && inp->inp_fport != fport)
 				continue;
 
-			if (cred == NULL ||
-			    cred->cr_prison ==
-			    inp->inp_socket->so_cred->cr_prison) {
-				match = inp;
-				break;
-			}
+			match = inp;
+			break;
 		}
 	}
 	return (match);
 }
 
 static boolean_t
-in_pcbporthash_update4(struct inpcbportinfo *portinfo,
-    struct inpcb *inp, u_short lport, const struct sockaddr_in *sin,
-    struct ucred *cred)
+in_pcbporthash_update4(struct inpcbportinfo *portinfo, struct inpcb *inp,
+		       u_short lport, const struct sockaddr_in *sin)
 {
 	struct inpcbporthead *porthash;
 
@@ -672,8 +664,8 @@ in_pcbporthash_update4(struct inpcbportinfo *portinfo,
 	porthash = in_pcbporthash_head(portinfo, lport);
 	GET_PORTHASH_TOKEN(porthash);
 
-	if (in_pcblookup_localremote(porthash, inp->inp_laddr,
-	    lport, sin->sin_addr, sin->sin_port, cred) != NULL) {
+	if (in_pcblookup_localremote(porthash, inp->inp_laddr, lport,
+				     sin->sin_addr, sin->sin_port) != NULL) {
 		REL_PORTHASH_TOKEN(porthash);
 		return FALSE;
 	}
@@ -792,8 +784,8 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 		}
 
 		if (in_pcbporthash_update4(
-		    &pcbinfo->portinfo[lport % pcbinfo->portinfo_cnt],
-		    inp, lport_no, sin, cred)) {
+			    &pcbinfo->portinfo[lport % pcbinfo->portinfo_cnt],
+			    inp, lport_no, sin)) {
 			error = 0;
 			break;
 		}
@@ -1309,7 +1301,7 @@ in_rtchange(struct inpcb *inp, int err)
  */
 static struct inpcb *
 in_pcblookup_local(struct inpcbporthead *porthash, struct in_addr laddr,
-		   u_int lport_arg, int wild_okay, struct ucred *cred)
+		   u_int lport_arg, int wild_okay)
 {
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
@@ -1357,15 +1349,11 @@ in_pcblookup_local(struct inpcbporthead *porthash, struct in_addr laddr,
 			}
 			if (wildcard && !wild_okay)
 				continue;
-			if (wildcard < matchwild &&
-			    (cred == NULL ||
-			     cred->cr_prison == 
-					inp->inp_socket->so_cred->cr_prison)) {
+			if (wildcard < matchwild) {
 				match = inp;
 				matchwild = wildcard;
-				if (matchwild == 0) {
+				if (matchwild == 0)
 					break;
-				}
 			}
 		}
 	}
