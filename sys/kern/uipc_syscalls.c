@@ -57,6 +57,7 @@
 #include <sys/vnode.h>
 #include <sys/lock.h>
 #include <sys/mount.h>
+#include <sys/jail.h>
 #ifdef KTRACE
 #include <sys/ktrace.h>
 #endif
@@ -440,11 +441,13 @@ sys_accept(struct accept_args *uap)
 		error = kern_accept(uap->s, 0, &sa, &sa_len,
 				    &uap->sysmsg_iresult, 0);
 
-		if (error == 0)
+		if (error == 0) {
+			prison_local_ip(curthread, sa);
 			error = copyout(sa, uap->name, sa_len);
+		}
 		if (error == 0) {
 			error = copyout(&sa_len, uap->anamelen,
-			    sizeof(*uap->anamelen));
+					sizeof(*uap->anamelen));
 		}
 		if (sa)
 			kfree(sa, M_SONAME);
@@ -1369,6 +1372,7 @@ sys_getsockname(struct getsockname_args *uap)
 
 	if (error == 0) {
 		if (sa) {
+			prison_local_ip(curthread, sa);
 			error = copyout(sa, uap->asa, sa_len_out);
 		} else {
 			/*
@@ -1453,8 +1457,10 @@ sys_getpeername(struct getpeername_args *uap)
 
 	error = kern_getpeername(uap->fdes, &sa, &sa_len);
 
-	if (error == 0)
+	if (error == 0) {
+		prison_local_ip(curthread, sa);
 		error = copyout(sa, uap->asa, sa_len);
+	}
 	if (error == 0)
 		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
 	if (sa)

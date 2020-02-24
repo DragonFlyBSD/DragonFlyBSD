@@ -2430,8 +2430,7 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 			if (space <= sizeof ifr)
 				break;
 			sa = ifa->ifa_addr;
-			if (cred->cr_prison &&
-			    prison_if(cred, sa))
+			if (cred->cr_prison && prison_if(cred, sa))
 				continue;
 			addrs++;
 			/*
