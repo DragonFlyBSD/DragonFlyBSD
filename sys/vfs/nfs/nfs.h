@@ -652,6 +652,8 @@ extern struct lwkt_token nfs_token;
 u_quad_t nfs_curusec (void);
 int	nfs_init (struct vfsconf *vfsp);
 int	nfs_uninit (struct vfsconf *vfsp);
+struct ucred *nfs_crhold(struct ucred *cred);
+int	nfs_crsame(struct ucred *cr1, struct ucred *cr2);
 int	nfs_reply (struct nfsmount *nmp, struct nfsreq *);
 int	nfs_getreq (struct nfsrv_descript *,struct nfsd *,int);
 int	nfs_send (struct socket *, struct sockaddr *, struct mbuf *, 
