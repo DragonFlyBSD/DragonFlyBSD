@@ -56,6 +56,7 @@
 #include <sys/sysproto.h>
 #include <sys/conf.h>
 #include <sys/objcache.h>
+#include <sys/jail.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -1527,3 +1528,45 @@ nfsrv_setcred(struct ucred *incred, struct ucred *outcred)
 	nfsrvw_sort(outcred->cr_groups, outcred->cr_ngroups);
 }
 #endif /* NFS_NOSERVER */
+
+/*
+ * Hold a ucred in nfs_node.  Discard prison information, otherwise
+ * prisons might stick around indefinitely due to NFS node caching.
+ */
+struct ucred *
+nfs_crhold(struct ucred *cred)
+{
+	if (cred) {
+		if (cred->cr_prison) {
+			cred = crdup(cred);
+			prison_free(cred->cr_prison);
+			cred->cr_prison = NULL;
+		} else {
+			cred = crhold(cred);
+		}
+	}
+	return cred;
+}
+
+/*
+ * Return whether two ucreds are the same insofar as NFS cares about.
+ */
+int
+nfs_crsame(struct ucred *cr1, struct ucred *cr2)
+{
+	if (cr1 != cr2) {
+		if (cr1 == NULL || cr2 == NULL)
+			return (cr1 == cr2);
+		if (cr1->cr_uid != cr2->cr_uid ||
+		    cr1->cr_ruid != cr2->cr_ruid ||
+		    cr1->cr_rgid != cr2->cr_rgid ||
+		    cr1->cr_ngroups != cr2->cr_ngroups) {
+			return 0;
+		}
+		if (bcmp(cr1->cr_groups, cr2->cr_groups,
+			 cr1->cr_ngroups * sizeof(cr1->cr_groups[0])) != 0) {
+			return 0;
+		}
+	}
+	return 1;
+}

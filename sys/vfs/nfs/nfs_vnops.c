@@ -307,6 +307,8 @@ static int
 nfs_access(struct vop_access_args *ap)
 {
 	struct ucred *cred;
+	struct ucred *ncred;
+	struct ucred *ocred;
 	struct vnode *vp = ap->a_vp;
 	thread_t td = curthread;
 	int error = 0;
@@ -464,17 +466,21 @@ nfs_access(struct vop_access_args *ap)
 	 * for execute requests.
 	 */
 	if (error == 0) {
-		if ((ap->a_mode & (VREAD|VEXEC)) && cred != np->n_rucred) {
-			crhold(cred);
-			if (np->n_rucred)
-				crfree(np->n_rucred);
-			np->n_rucred = cred;
+		if ((ap->a_mode & (VREAD|VEXEC)) &&
+		    !nfs_crsame(cred, np->n_rucred)) {
+			ncred = nfs_crhold(cred);
+			ocred = np->n_rucred;
+			np->n_rucred = ncred;
+			if (ocred)
+				crfree(ocred);
 		}
-		if ((ap->a_mode & VWRITE) && cred != np->n_wucred) {
-			crhold(cred);
-			if (np->n_wucred)
-				crfree(np->n_wucred);
-			np->n_wucred = cred;
+		if ((ap->a_mode & VWRITE) &&
+		    !nfs_crsame(cred, np->n_wucred)) {
+			ncred = nfs_crhold(cred);
+			ocred = np->n_wucred;
+			np->n_wucred = ncred;
+			if (ocred)
+				crfree(ocred);
 		}
 	}
 	lwkt_reltoken(&nmp->nm_token);
@@ -501,6 +507,8 @@ nfs_open(struct vop_open_args *ap)
 	struct nfsnode *np = VTONFS(vp);
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct vattr vattr;
+	struct ucred *ncred;
+	struct ucred *ocred;
 	int error;
 
 	lwkt_gettoken(&nmp->nm_token);
@@ -516,17 +524,19 @@ nfs_open(struct vop_open_args *ap)
 	/*
 	 * Save valid creds for reading and writing for later RPCs.
 	 */
-	if ((ap->a_mode & FREAD) && ap->a_cred != np->n_rucred) {
-		crhold(ap->a_cred);
-		if (np->n_rucred)
-			crfree(np->n_rucred);
-		np->n_rucred = ap->a_cred;
+	if ((ap->a_mode & FREAD) && !nfs_crsame(ap->a_cred, np->n_rucred)) {
+		ncred = nfs_crhold(ap->a_cred);
+		ocred = np->n_rucred;
+		np->n_rucred = ncred;
+		if (ocred)
+			crfree(ocred);
 	}
-	if ((ap->a_mode & FWRITE) && ap->a_cred != np->n_wucred) {
-		crhold(ap->a_cred);
-		if (np->n_wucred)
-			crfree(np->n_wucred);
-		np->n_wucred = ap->a_cred;
+	if ((ap->a_mode & FWRITE) && !nfs_crsame(ap->a_cred, np->n_wucred)) {
+		ncred = nfs_crhold(ap->a_cred);
+		ocred = np->n_wucred;
+		np->n_wucred = ncred;
+		if (ocred)
+			crfree(ocred);
 	}
 
 	/*
@@ -1804,9 +1814,9 @@ nfsmout:
 		 */
 		np = VTONFS(newvp);
 		if (np->n_rucred == NULL)
-			np->n_rucred = crhold(cnp->cn_cred);
+			np->n_rucred = nfs_crhold(cnp->cn_cred);
 		if (np->n_wucred == NULL)
-			np->n_wucred = crhold(cnp->cn_cred);
+			np->n_wucred = nfs_crhold(cnp->cn_cred);
 		*ap->a_vpp = newvp;
 		nfs_knote(dvp, NOTE_WRITE);
 	} else if (newvp) {
