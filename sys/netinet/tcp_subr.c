@@ -193,7 +193,14 @@ static int icmp_may_rst = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, icmp_may_rst, CTLFLAG_RW, &icmp_may_rst, 0,
     "Certain ICMP unreachable messages may abort connections in SYN_SENT");
 
-static int tcp_isn_reseed_interval = 0;
+/*
+ * Recommend 20 (6 times in two minutes)
+ *
+ * Lower values may cause the sequence space to cycle too quickly and lose
+ * its signed monotonically-increasing nature within the 2-minute TIMEDWAIT
+ * window.
+ */
+static int tcp_isn_reseed_interval = 20;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, isn_reseed_interval, CTLFLAG_RW,
     &tcp_isn_reseed_interval, 0, "Seconds between reseeding of ISN secret");
 
@@ -1643,59 +1650,85 @@ out:
  *
  * Implementation details:
  *
- * Time is based off the system timer, and is corrected so that it
- * increases by one megabyte per second.  This allows for proper
- * recycling on high speed LANs while still leaving over an hour
- * before rollover.
- *
  * net.inet.tcp.isn_reseed_interval controls the number of seconds
- * between seeding of isn_secret.  This is normally set to zero,
- * as reseeding should not be necessary.
- *
+ * between the seeding of isn_secret.  On every reseed we jump the
+ * ISN by a lot.
  */
+struct tcp_isn {
+	u_char	secret[16];
+	MD5_CTX ctx;
+	int	last_reseed;
+	int	last_offset;
+} __cachealign;
 
-#define	ISN_BYTES_PER_SECOND 1048576
-
-u_char isn_secret[32];
-int isn_last_reseed;
-MD5_CTX isn_ctx;
+struct tcp_isn tcp_isn_ary[MAXCPU];
 
 tcp_seq
 tcp_new_isn(struct tcpcb *tp)
 {
-	u_int32_t md5_buffer[4];
+	struct tcp_isn *isn;
 	tcp_seq new_isn;
+	tcp_seq digest[16 / sizeof(tcp_seq)];
+	int n;
 
-	/* Seed if this is the first use, reseed if requested. */
-	if ((isn_last_reseed == 0) || ((tcp_isn_reseed_interval > 0) &&
-	     (((u_int)isn_last_reseed + (u_int)tcp_isn_reseed_interval*hz)
-		< (u_int)ticks))) {
-		read_random(&isn_secret, sizeof isn_secret, 1);
-		isn_last_reseed = ticks;
+	isn = &tcp_isn_ary[mycpuid];
+
+	/*
+	 * Reseed every 20 seconds.  6 reseeds per 2-minute interval in
+	 * order to retain our monotonic offset.
+	 *
+	 * The initial seed randomizes last_offset with all 32 bits.
+	 *
+	 * Note that the md5 digest is masked with 0x0FFFFFFF, so we must
+	 * add 1/16 of our full range (1/8 of our signed range) to ensure
+	 * monotonic operation.
+	 */
+	if (isn->last_reseed == 0 ||
+	    (u_int)(ticks - isn->last_reseed) > tcp_isn_reseed_interval * hz) {
+		if (isn->last_reseed == 0) {
+			read_random(&isn->last_offset,
+				    sizeof(isn->last_offset), 1);
+		}
+		read_random(&isn->secret, sizeof(isn->secret), 1);
+		isn->last_reseed = ticks;
+		isn->last_offset += 0x10000000;
 	}
 
-	/* Compute the md5 hash and return the ISN. */
-	MD5Init(&isn_ctx);
-	MD5Update(&isn_ctx, (u_char *)&tp->t_inpcb->inp_fport, sizeof(u_short));
-	MD5Update(&isn_ctx, (u_char *)&tp->t_inpcb->inp_lport, sizeof(u_short));
+	/*
+	 * Compute the md5 hash, giving us a deterministic result for the
+	 * port/address pair for any given secret.
+	 */
+	MD5Init(&isn->ctx);
+	MD5Update(&isn->ctx, isn->secret, sizeof(isn->secret));
+	MD5Update(&isn->ctx, (u_char *)&tp->t_inpcb->inp_fport, 2);
+	MD5Update(&isn->ctx, (u_char *)&tp->t_inpcb->inp_lport, 2);
 #ifdef INET6
 	if (INP_ISIPV6(tp->t_inpcb)) {
-		MD5Update(&isn_ctx, (u_char *) &tp->t_inpcb->in6p_faddr,
+		MD5Update(&isn->ctx, (u_char *)&tp->t_inpcb->in6p_faddr,
 			  sizeof(struct in6_addr));
-		MD5Update(&isn_ctx, (u_char *) &tp->t_inpcb->in6p_laddr,
+		MD5Update(&isn->ctx, (u_char *)&tp->t_inpcb->in6p_laddr,
 			  sizeof(struct in6_addr));
 	} else
 #endif
 	{
-		MD5Update(&isn_ctx, (u_char *) &tp->t_inpcb->inp_faddr,
+		MD5Update(&isn->ctx, (u_char *)&tp->t_inpcb->inp_faddr,
 			  sizeof(struct in_addr));
-		MD5Update(&isn_ctx, (u_char *) &tp->t_inpcb->inp_laddr,
+		MD5Update(&isn->ctx, (u_char *)&tp->t_inpcb->inp_laddr,
 			  sizeof(struct in_addr));
 	}
-	MD5Update(&isn_ctx, (u_char *) &isn_secret, sizeof(isn_secret));
-	MD5Final((u_char *) &md5_buffer, &isn_ctx);
-	new_isn = (tcp_seq) md5_buffer[0];
-	new_isn += ticks * (ISN_BYTES_PER_SECOND / hz);
+	MD5Final((char *)digest, &isn->ctx);
+
+	/*
+	 * Add a random component 0-1048575 plus advance by 1048576.
+	 *
+	 * The sequence space is simply too small, in modern times we also
+	 * must depend on the receive-side being a bit smarter when recycling
+	 * ports in TIME_WAIT.
+	 */
+	read_random(&n, sizeof(n), 1);
+	isn->last_offset += (n & 0x000FFFFF) + 0x00100000;
+	new_isn = (digest[0] & 0x0FFFFFFF) + isn->last_offset;
+
 	return (new_isn);
 }
 
