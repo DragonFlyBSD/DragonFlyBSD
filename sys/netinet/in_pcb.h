@@ -133,7 +133,7 @@ struct inp_localgroup {
 	LIST_ENTRY(inp_localgroup) il_list;
 	uint16_t	il_lport;
 	u_char		il_af;		/* AF_INET or AF_INET6 */
-	u_char		il_pad;
+	u_char		il_jailed;	/* jailed lport, else not */
 	uint32_t	il_pad2;
 	union in_dependaddr il_dependladdr;
 #define il_laddr	il_dependladdr.id46_addr.ia46_addr4

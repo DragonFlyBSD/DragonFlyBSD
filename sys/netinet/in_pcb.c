@@ -103,7 +103,8 @@
 #define INP_LOCALGROUP_SIZMAX	256
 
 static struct inpcb *in_pcblookup_local(struct inpcbporthead *porthash,
-		struct in_addr laddr, u_int lport_arg, int wild_okay);
+		struct in_addr laddr, u_int lport_arg, int wild_okay,
+		struct ucred *cred);
 
 struct in_addr zeroin_addr;
 
@@ -353,7 +354,7 @@ in_pcbporthash_update(struct inpcbportinfo *portinfo,
 	porthash = in_pcbporthash_head(portinfo, lport);
 	GET_PORTHASH_TOKEN(porthash);
 
-	if (in_pcblookup_local(porthash, inp->inp_laddr, lport, wild) != NULL) {
+	if (in_pcblookup_local(porthash, inp->inp_laddr, lport, wild, cred)) {
 		REL_PORTHASH_TOKEN(porthash);
 		return FALSE;
 	}
@@ -555,7 +556,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
 			t = in_pcblookup_local(porthash, sin->sin_addr, lport,
-					       INPLOOKUP_WILDCARD);
+					       INPLOOKUP_WILDCARD, cred);
 			if (t &&
 			    (so->so_cred->cr_uid !=
 			     t->inp_socket->so_cred->cr_uid)) {
@@ -576,7 +577,8 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		 * This means that there is no longer any specific socket
 		 * bound or bound for listening.
 		 */
-		t = in_pcblookup_local(porthash, sin->sin_addr, lport, wild);
+		t = in_pcblookup_local(porthash, sin->sin_addr, lport,
+				       wild, cred);
 		if (t &&
 		    (reuseport & t->inp_socket->so_options) == 0 &&
 		    (t->inp_socket->so_state & SS_ACCEPTMECH) == 0) {
@@ -603,13 +605,21 @@ done:
 	}
 }
 
+/*
+ * Lookup a PCB based on the local and remote address and port.
+ *
+ * This function is only used when scanning for a free port.
+ */
 static struct inpcb *
 in_pcblookup_localremote(struct inpcbporthead *porthash, struct in_addr laddr,
-			 u_short lport, struct in_addr faddr, u_short fport)
+			 u_short lport, struct in_addr faddr, u_short fport,
+			 struct ucred *cred)
 {
 	struct inpcb *inp;
 	struct inpcbport *phd;
 	struct inpcb *match = NULL;
+	struct prison *pscan;
+	struct prison *pr;
 
 	/*
 	 * If the porthashbase is shared across several cpus, it must
@@ -628,14 +638,24 @@ in_pcblookup_localremote(struct inpcbporthead *porthash, struct in_addr laddr,
 			break;
 	}
 	if (phd != NULL) {
+		pr = cred ? cred->cr_prison : NULL;
+
 		LIST_FOREACH(inp, &phd->phd_pcblist, inp_portlist) {
 #ifdef INET6
 			if (!INP_ISIPV4(inp))
 				continue;
 #endif
-			if (inp->inp_laddr.s_addr != INADDR_ANY &&
-			    inp->inp_laddr.s_addr != laddr.s_addr)
-				continue;
+			if (inp->inp_laddr.s_addr == INADDR_ANY) {
+				if (inp->inp_socket && inp->inp_socket->so_cred)
+					pscan = inp->inp_socket->so_cred->cr_prison;
+				else
+					pscan = NULL;
+				if (pr != pscan)
+					continue;
+			} else {
+				if (inp->inp_laddr.s_addr != laddr.s_addr)
+					continue;
+			}
 
 			if (inp->inp_faddr.s_addr != INADDR_ANY &&
 			    inp->inp_faddr.s_addr != faddr.s_addr)
@@ -653,7 +673,8 @@ in_pcblookup_localremote(struct inpcbporthead *porthash, struct in_addr laddr,
 
 static boolean_t
 in_pcbporthash_update4(struct inpcbportinfo *portinfo, struct inpcb *inp,
-		       u_short lport, const struct sockaddr_in *sin)
+		       u_short lport, const struct sockaddr_in *sin,
+		       struct ucred *cred)
 {
 	struct inpcbporthead *porthash;
 
@@ -665,7 +686,7 @@ in_pcbporthash_update4(struct inpcbportinfo *portinfo, struct inpcb *inp,
 	GET_PORTHASH_TOKEN(porthash);
 
 	if (in_pcblookup_localremote(porthash, inp->inp_laddr, lport,
-				     sin->sin_addr, sin->sin_port) != NULL) {
+				     sin->sin_addr, sin->sin_port, cred)) {
 		REL_PORTHASH_TOKEN(porthash);
 		return FALSE;
 	}
@@ -785,7 +806,7 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 
 		if (in_pcbporthash_update4(
 			    &pcbinfo->portinfo[lport % pcbinfo->portinfo_cnt],
-			    inp, lport_no, sin)) {
+			    inp, lport_no, sin, cred)) {
 			error = 0;
 			break;
 		}
@@ -1298,11 +1319,15 @@ in_rtchange(struct inpcb *inp, int err)
 
 /*
  * Lookup a PCB based on the local address and port.
+ *
+ * This function is only used when scanning for a free port.
  */
 static struct inpcb *
 in_pcblookup_local(struct inpcbporthead *porthash, struct in_addr laddr,
-		   u_int lport_arg, int wild_okay)
+		   u_int lport_arg, int wild_okay, struct ucred *cred)
 {
+	struct prison *pscan;
+	struct prison *pr;
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
 	u_short lport = lport_arg;
@@ -1326,9 +1351,17 @@ in_pcblookup_local(struct inpcbporthead *porthash, struct in_addr laddr,
 			break;
 	}
 	if (phd != NULL) {
+		pr = cred ? cred->cr_prison : NULL;
+
 		/*
 		 * Port is in use by one or more PCBs. Look for best
 		 * fit.
+		 *
+		 * If in a prison we may wish to allow the jail to override
+		 * a wildcard listen on the host.  Since the jail forces its
+		 * own wildcard listens to a specific set of jail IPs, this
+		 * override allows most services on the host to remain as
+		 * they were and still be 'jail friendly'.
 		 */
 		LIST_FOREACH(inp, &phd->phd_pcblist, inp_portlist) {
 			wildcard = 0;
@@ -1338,14 +1371,31 @@ in_pcblookup_local(struct inpcbporthead *porthash, struct in_addr laddr,
 #endif
 			if (inp->inp_faddr.s_addr != INADDR_ANY)
 				wildcard++;
-			if (inp->inp_laddr.s_addr != INADDR_ANY) {
+
+			/*
+			 * Prison are independent of each other in terms
+			 * of allowing bindings.  This can result in multiple
+			 * overloaded bindings which in_pcblookup_pkthash()
+			 * will have to sort out.
+			 *
+			 * Allow wildcarded entries to co-exist with specific
+			 * entries.  Specific entries override wildcarded
+			 * entries.
+			 */
+			if (inp->inp_socket && inp->inp_socket->so_cred)
+				pscan = inp->inp_socket->so_cred->cr_prison;
+			else
+				pscan = NULL;
+			if (pr != pscan)
+				continue;
+			if (inp->inp_laddr.s_addr == INADDR_ANY) {
+				if (laddr.s_addr != INADDR_ANY)
+					wildcard++;
+			} else {
 				if (laddr.s_addr == INADDR_ANY)
 					wildcard++;
 				else if (inp->inp_laddr.s_addr != laddr.s_addr)
 					continue;
-			} else {
-				if (laddr.s_addr != INADDR_ANY)
-					wildcard++;
 			}
 			if (wildcard && !wild_okay)
 				continue;
@@ -1410,9 +1460,18 @@ static struct inpcb *
 inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
     struct in_addr laddr, uint16_t lport, uint32_t pkt_hash)
 {
-	struct inpcb *local_wild = NULL;
+	struct inpcb *local_wild;
+	struct inpcb *jinp;
+	struct inpcb *jinp_wild;
+	struct inpcb *inp;
 	const struct inp_localgrphead *hdr;
 	const struct inp_localgroup *grp;
+	struct sockaddr_in jsin;
+	struct prison *pr;
+	struct ucred *cred;
+	int idx;
+	int net_listen_ov_local;
+	int net_listen_ov_wild;
 
 	ASSERT_PCBINFO_TOKEN_HELD(pcbinfo);
 
@@ -1426,33 +1485,80 @@ inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
 	 *
 	 * NOTE: Local group does not contain jailed sockets
 	 */
+	jsin.sin_family = AF_INET;
+	jsin.sin_addr.s_addr = laddr.s_addr;
+
+	jinp = NULL;
+	jinp_wild = NULL;
+	local_wild = NULL;
+	net_listen_ov_local = 0;
+	net_listen_ov_wild = 0;
+
 	LIST_FOREACH(grp, hdr, il_list) {
 #ifdef INET6
 		if (grp->il_af != AF_INET)
 			continue;
 #endif
-		if (grp->il_lport == lport) {
-			int idx;
+		if (grp->il_lport != lport)
+			continue;
 
-			/*
-			 * Modulo-N is used here, which greatly reduces
-			 * completion queue token contention, thus more
-			 * cpu time is saved.
-			 */
-			idx = netisr_hashlsb(pkt_hash) % grp->il_inpcnt;
-			if (grp->il_laddr.s_addr == laddr.s_addr)
-				return grp->il_inp[idx];
-			else if (grp->il_laddr.s_addr == INADDR_ANY)
-				local_wild = grp->il_inp[idx];
+		/*
+		 * look for a match
+		 */
+		idx = netisr_hashlsb(pkt_hash) % grp->il_inpcnt;
+		inp = grp->il_inp[idx];
+
+		/*
+		 * Modulo-N is used here, which greatly reduces
+		 * completion queue token contention, thus more
+		 * cpu time is saved.
+		 */
+		if (grp->il_jailed) {
+			if (inp->inp_socket == NULL)
+				continue;
+			cred = inp->inp_socket->so_cred;
+			if (cred == NULL)
+				continue;
+			pr = cred->cr_prison;
+			if (pr == NULL)
+				continue;
+			if (!jailed_ip(pr, (struct sockaddr *)&jsin))
+				continue;
+			if (grp->il_laddr.s_addr == laddr.s_addr) {
+				jinp = inp;
+				if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_NET_LISTEN_OVERRIDE))
+					net_listen_ov_local = 1;
+
+			} else if (grp->il_laddr.s_addr == INADDR_ANY &&
+				   jinp_wild == NULL) {
+				jinp_wild = inp;
+				if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_NET_LISTEN_OVERRIDE))
+					net_listen_ov_wild = 1;
+			}
+		} else {
+			if (grp->il_laddr.s_addr == laddr.s_addr) {
+				return inp;
+			} else if (grp->il_laddr.s_addr == INADDR_ANY) {
+				local_wild = inp;
+			}
 		}
 	}
-	if (local_wild != NULL)
-		return local_wild;
-	return NULL;
+
+	if (net_listen_ov_local)
+		return jinp;
+	if (net_listen_ov_wild)
+		return jinp_wild;
+	if (local_wild)
+		return (local_wild);
+	if (jinp)
+		return (jinp);
+	return (jinp_wild);
 }
 
 /*
  * Lookup PCB in hash list.
+ *
+ * This is used to match incoming packets to a pcb
  */
 struct inpcb *
 in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
@@ -1467,7 +1573,8 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 	 * First look for an exact match.
 	 */
 	head = &pcbinfo->hashbase[INP_PCBCONNHASH(faddr.s_addr, fport,
-	    laddr.s_addr, lport, pcbinfo->hashmask)];
+						  laddr.s_addr, lport,
+						  pcbinfo->hashmask)];
 	LIST_FOREACH(inp, head, inp_hash) {
 #ifdef INET6
 		if (!INP_ISIPV4(inp))
@@ -1476,19 +1583,26 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 		if (in_hosteq(inp->inp_faddr, faddr) &&
 		    in_hosteq(inp->inp_laddr, laddr) &&
 		    inp->inp_fport == fport && inp->inp_lport == lport) {
-			/* found */
+			/*
+			 * Found specific address, host overrides jailed
+			 * inpcb.
+			 */
 			if (inp->inp_socket == NULL ||
 			    inp->inp_socket->so_cred->cr_prison == NULL) {
 				return (inp);
-			} else {
-				if  (jinp == NULL)
-					jinp = inp;
 			}
+			if (jinp == NULL)
+				jinp = inp;
 		}
 	}
 	if (jinp != NULL)
 		return (jinp);
 
+	/*
+	 * We generally get here for connections to wildcarded listeners.
+	 * Any wildcarded listeners in jails must be restricted to the
+	 * jailed IPs only.
+	 */
 	if (wildcard) {
 		struct inpcb *local_wild = NULL;
 		struct inpcb *jinp_wild = NULL;
@@ -1496,16 +1610,21 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 		struct inpcontainerhead *chead;
 		struct sockaddr_in jsin;
 		struct ucred *cred;
+		struct prison *pr;
+		int net_listen_ov_local = 0;
+		int net_listen_ov_wild = 0;
 
 		GET_PCBINFO_TOKEN(pcbinfo);
 
 		/*
-		 * Check local group first
+		 * Check local group first.  When present, the localgroup
+		 * hash utilizes the same non-jailed-vs/jailed priortization
+		 * that the normal wildcardhash does.
 		 */
 		if (pcbinfo->localgrphashbase != NULL &&
 		    m != NULL && (m->m_flags & M_HASH)) {
-			inp = inp_localgroup_lookup(pcbinfo,
-			    laddr, lport, m->m_pkthdr.hash);
+			inp = inp_localgroup_lookup(pcbinfo, laddr, lport,
+						    m->m_pkthdr.hash);
 			if (inp != NULL) {
 				REL_PCBINFO_TOKEN(pcbinfo);
 				return inp;
@@ -1514,59 +1633,89 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 
 		/*
 		 * Order of socket selection:
+		 *
 		 * 1. non-jailed, non-wild.
-		 * 2. non-jailed, wild.
+		 * 2. non-jailed, wild.		(allow_listen_override on)
 		 * 3. jailed, non-wild.
 		 * 4. jailed, wild.
+		 * 5. non-jailed, wild.		(allow_listen_override off)
+		 *
+		 * NOTE: jailed wildcards are still restricted to the jail
+		 *	 IPs.
+		 *
+		 * NOTE: (1) and (3) already handled above.
 		 */
 		jsin.sin_family = AF_INET;
 		chead = &pcbinfo->wildcardhashbase[
 		    INP_PCBWILDCARDHASH(lport, pcbinfo->wildcardhashmask)];
+
 		LIST_FOREACH(ic, chead, ic_list) {
 			inp = ic->ic_inp;
 			if (inp->inp_flags & INP_PLACEMARKER)
 				continue;
 
-			jsin.sin_addr.s_addr = laddr.s_addr;
+			/*
+			 * Basic validation
+			 */
 #ifdef INET6
 			if (!INP_ISIPV4(inp))
 				continue;
 #endif
-			if (inp->inp_socket != NULL)
+			if (inp->inp_lport != lport)
+				continue;
+
+			/*
+			 * Calculate prison, setup jsin for jailed_ip()
+			 * check.
+			 */
+			jsin.sin_addr.s_addr = laddr.s_addr;
+			pr = NULL;
+			cred = NULL;
+			if (inp->inp_socket) {
 				cred = inp->inp_socket->so_cred;
-			else
-				cred = NULL;
-			if (cred != NULL && jailed(cred)) {
-				if (jinp != NULL)
-					continue;
-				else
-					if (!jailed_ip(cred->cr_prison,
-					    (struct sockaddr *)&jsin))
-						continue;
+				if (cred)
+					pr = cred->cr_prison;
 			}
-			if (inp->inp_lport == lport) {
+
+			/*
+			 * Assign jinp, jinp_wild, and local_wild as
+			 * appropriate, track whether the jail supports
+			 * listen overrides.
+			 */
+			if (pr) {
+				if (!jailed_ip(pr, (struct sockaddr *)&jsin))
+					continue;
+				if (inp->inp_laddr.s_addr == laddr.s_addr &&
+				    jinp == NULL) {
+					jinp = inp;
+					if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_NET_LISTEN_OVERRIDE))
+						net_listen_ov_local = 1;
+				}
+				if (inp->inp_laddr.s_addr == INADDR_ANY &&
+				    jinp_wild == NULL) {
+					jinp_wild = inp;
+					if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_NET_LISTEN_OVERRIDE))
+						net_listen_ov_wild = 1;
+				}
+			} else {
 				if (inp->inp_laddr.s_addr == laddr.s_addr) {
-					if (cred != NULL && jailed(cred)) {
-						jinp = inp;
-					} else {
-						REL_PCBINFO_TOKEN(pcbinfo);
-						return (inp);
-					}
+					REL_PCBINFO_TOKEN(pcbinfo);
+					return (inp);
 				}
-				if (inp->inp_laddr.s_addr == INADDR_ANY) {
-					if (cred != NULL && jailed(cred))
-						jinp_wild = inp;
-					else
-						local_wild = inp;
-				}
+				if (inp->inp_laddr.s_addr == INADDR_ANY)
+					local_wild = inp;
 			}
 		}
 
 		REL_PCBINFO_TOKEN(pcbinfo);
 
-		if (local_wild != NULL)
+		if (net_listen_ov_local)
+			return jinp;
+		if (net_listen_ov_wild)
+			return jinp_wild;
+		if (local_wild)
 			return (local_wild);
-		if (jinp != NULL)
+		if (jinp)
 			return (jinp);
 		return (jinp_wild);
 	}
@@ -1742,7 +1891,7 @@ inp_localgroup_alloc(u_char af, uint16_t port,
 	struct inp_localgroup *grp;
 
 	grp = kmalloc(__offsetof(struct inp_localgroup, il_inp[size]),
-	    M_TEMP, M_INTWAIT | M_ZERO);
+		      M_TEMP, M_INTWAIT | M_ZERO);
 	grp->il_af = af;
 	grp->il_lport = port;
 	grp->il_dependladdr = *addr;
@@ -1766,7 +1915,7 @@ inp_localgroup_destroy(struct inp_localgroup *grp)
 
 static void
 inp_localgroup_copy(struct inp_localgroup *grp,
-    const struct inp_localgroup *old_grp)
+		    const struct inp_localgroup *old_grp)
 {
 	int i;
 
@@ -1783,7 +1932,7 @@ in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 {
 	struct inp_localgrphead *hdr;
 	struct inp_localgroup *grp, *grp_alloc = NULL;
-	struct ucred *cred;
+	u_char isjailed;
 	int i, idx;
 
 	ASSERT_PCBINFO_TOKEN_HELD(pcbinfo);
@@ -1792,14 +1941,19 @@ in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 		return;
 
 	/*
-	 * XXX don't allow jailed socket to join local group
+	 * Further separate groups by whether the inp is jailed or not.
+	 * This allows the inp_localgroup_lookup() code to manage port
+	 * overloading between jails and non-jails.
+	 *
+	 * XXX all jails are collected into one group, which works fine
+	 *     as we expect the jails to be listening on different addresses.
+	 *     If this changes in the future we may have to break the groups
+	 *     up by prison pointer as well.
 	 */
-	if (inp->inp_socket != NULL)
-		cred = inp->inp_socket->so_cred;
+	if (inp->inp_socket && inp->inp_socket->so_cred)
+		isjailed = jailed(inp->inp_socket->so_cred);
 	else
-		cred = NULL;
-	if (cred != NULL && jailed(cred))
-		return;
+		isjailed = 0;
 
 	hdr = &pcbinfo->localgrphashbase[
 	    INP_PCBLOCALGRPHASH(inp->inp_lport, pcbinfo->localgrphashmask)];
@@ -1808,9 +1962,10 @@ again:
 	LIST_FOREACH(grp, hdr, il_list) {
 		if (grp->il_af == inp->inp_af &&
 		    grp->il_lport == inp->inp_lport &&
+		    grp->il_jailed == isjailed &&
 		    memcmp(&grp->il_dependladdr,
-		        &inp->inp_inc.inc_ie.ie_dependladdr,
-		        sizeof(grp->il_dependladdr)) == 0) {
+			   &inp->inp_inc.inc_ie.ie_dependladdr,
+			   sizeof(grp->il_dependladdr)) == 0) {
 			break;
 		}
 	}
@@ -1832,10 +1987,17 @@ again:
 		} else {
 			/* Local group has been allocated; link it */
 			grp = grp_alloc;
+			grp->il_jailed = isjailed;
 			grp_alloc = NULL;
 			LIST_INSERT_HEAD(hdr, grp, il_list);
 		}
 	} else if (grp->il_inpcnt == grp->il_inpsiz) {
+#if 0
+		/*
+		 * REMOVED - Ensure that all entries are placed in the
+		 *	     localgroup so jail operations can be
+		 *	     deterministic on a il_lport basis.
+		 */
 		if (grp->il_inpsiz >= INP_LOCALGROUP_SIZMAX) {
 			static int limit_logged = 0;
 
@@ -1854,6 +2016,7 @@ again:
 			}
 			return;
 		}
+#endif
 
 		/*
 		 * Expand this local group
@@ -1883,6 +2046,7 @@ again:
 		inp_localgroup_destroy(grp);
 
 		grp = grp_alloc;
+		grp->il_jailed = isjailed;
 		grp_alloc = NULL;
 	} else {
 		/*

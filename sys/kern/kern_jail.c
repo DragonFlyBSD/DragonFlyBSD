@@ -62,7 +62,7 @@
 static struct prison	*prison_find(int);
 static void		prison_ipcache_init(struct prison *);
 
-static prison_cap_t	prison_default_caps;
+__read_mostly static prison_cap_t	prison_default_caps;
 
 MALLOC_DEFINE(M_PRISON, "prison", "Prison structures");
 
@@ -71,6 +71,13 @@ SYSCTL_NODE(, OID_AUTO, jail, CTLFLAG_RW, 0,
 
 SYSCTL_NODE(_jail, OID_AUTO, defaults, CTLFLAG_RW, 0,
     "Default options for jails");
+
+/*#define PRISON_DEBUG*/
+#ifdef PRISON_DEBUG
+__read_mostly static int prison_debug;
+SYSCTL_INT(_jail, OID_AUTO, debug, CTLFLAG_RW, &prison_debug, 0,
+    "Debug prison refs");
+#endif
 
 SYSCTL_BIT64(_jail_defaults, OID_AUTO, set_hostname_allowed, CTLFLAG_RW,
     &prison_default_caps, 1, PRISON_CAP_SYS_SET_HOSTNAME,
@@ -91,6 +98,10 @@ SYSCTL_BIT64(_jail_defaults, OID_AUTO, chflags_allowed, CTLFLAG_RW,
 SYSCTL_BIT64(_jail_defaults, OID_AUTO, allow_raw_sockets, CTLFLAG_RW,
     &prison_default_caps, 0, PRISON_CAP_NET_RAW_SOCKETS,
     "Process in jail can create raw sockets");
+
+SYSCTL_BIT64(_jail_defaults, OID_AUTO, allow_listen_override, CTLFLAG_RW,
+    &prison_default_caps, 0, PRISON_CAP_NET_LISTEN_OVERRIDE,
+    "Process in jail can override host wildcard listen");
 
 SYSCTL_BIT64(_jail_defaults, OID_AUTO, vfs_mount_nullfs, CTLFLAG_RW,
     &prison_default_caps, 0, PRISON_CAP_VFS_MOUNT_NULLFS,
@@ -430,6 +441,9 @@ prison_replace_wildcards(struct thread *td, struct sockaddr *ip)
 	return(0);
 }
 
+/*
+ * Convert the localhost IP to the actual jail IP
+ */
 int
 prison_remote_ip(struct thread *td, struct sockaddr *ip)
 {
@@ -450,6 +464,42 @@ prison_remote_ip(struct thread *td, struct sockaddr *ip)
 			return(0);
 		else
 			return(1);
+	}
+	return(1);
+}
+
+/*
+ * Convert the jail IP back to localhost
+ *
+ * Used by getsockname() and getpeername() to convert the in-jail loopback
+ * address back to LOCALHOST.  For example, 127.0.0.2 -> 127.0.0.1.  The
+ * idea is that programs running inside the jail should be unaware that they
+ * are using a different loopback IP than the host.
+ */
+__read_mostly static struct in6_addr sin6_localhost = IN6ADDR_LOOPBACK_INIT;
+
+int
+prison_local_ip(struct thread *td, struct sockaddr *ip)
+{
+	struct sockaddr_in *ip4 = (struct sockaddr_in *)ip;
+	struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)ip;
+	struct prison *pr;
+
+	if (td == NULL || td->td_proc == NULL || td->td_ucred == NULL)
+		return(1);
+	if ((pr = td->td_ucred->cr_prison) == NULL)
+		return(1);
+	if (ip->sa_family == AF_INET && pr->local_ip4 &&
+	    pr->local_ip4->sin_addr.s_addr == ip4->sin_addr.s_addr &&
+	    pr->local_ip4->sin_addr.s_addr != htonl(INADDR_LOOPBACK)) {
+		ip4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		return(0);
+	}
+	if (ip->sa_family == AF_INET6 && pr->local_ip6 &&
+	    bcmp(&pr->local_ip6->sin6_addr, &ip6->sin6_addr,
+		 sizeof(ip6->sin6_addr)) == 0) {
+		bcopy(&sin6_localhost, &ip6->sin6_addr, sizeof(ip6->sin6_addr));
+		return(0);
 	}
 	return(1);
 }
@@ -718,6 +768,12 @@ void
 prison_hold(struct prison *pr)
 {
 	atomic_add_int(&pr->pr_ref, 1);
+#ifdef PRISON_DEBUG
+	if (prison_debug > 0) {
+		--prison_debug;
+		print_backtrace(-1);
+	}
+#endif
 }
 
 /*
@@ -728,12 +784,18 @@ prison_free(struct prison *pr)
 {
 	struct jail_ip_storage *jls;
 
+#ifdef PRISON_DEBUG
+	if (prison_debug > 0) {
+		--prison_debug;
+		print_backtrace(-1);
+	}
+#endif
 	KKASSERT(pr->pr_ref > 0);
 	if (atomic_fetchadd_int(&pr->pr_ref, -1) != 1)
 		return;
 
 	/*
-	 * The MP lock is needed on the last ref to adjust
+	 * The global jail lock is needed on the last ref to adjust
 	 * the list.
 	 */
 	lockmgr(&jail_lock, LK_EXCLUSIVE);
@@ -911,9 +973,14 @@ prison_sysctl_create(struct prison *pr)
 	    "Process in jail can create raw sockets");
 
 	SYSCTL_ADD_BIT64(pr->pr_sysctl_ctx, SYSCTL_CHILDREN(pr->pr_sysctl_tree),
+	    OID_AUTO, "allow_listen_override", CTLFLAG_RW,
+	    &pr->pr_caps, 0, PRISON_CAP_NET_LISTEN_OVERRIDE,
+	    "Process in jail can create raw sockets");
+
+	SYSCTL_ADD_BIT64(pr->pr_sysctl_ctx, SYSCTL_CHILDREN(pr->pr_sysctl_tree),
 	    OID_AUTO, "vfs_chflags", CTLFLAG_RW,
 	    &pr->pr_caps, 0, PRISON_CAP_VFS_CHFLAGS,
-	    "Processes in jail can alter system file flags");
+	    "Process in jail can override host wildcard listen");
 
 	SYSCTL_ADD_BIT64(pr->pr_sysctl_ctx, SYSCTL_CHILDREN(pr->pr_sysctl_tree),
 	    OID_AUTO, "vfs_mount_nullfs", CTLFLAG_RW,

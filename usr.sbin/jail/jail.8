@@ -134,66 +134,44 @@ For consistency, we will refer to the parent box as the
 .Dq "host environment" ,
 and to the jailed virtual machine as the
 .Dq "jail environment" .
-Because jail is implemented using IP aliases, one of the first things to do
-is to disable IP services on the host system that listen on all local
-IP addresses for a service.
-This means changing
-.Xr inetd 8
-to only listen on the
-appropriate IP address, and so forth.
-Add the following to
-.Pa /etc/rc.conf
-in the host environment:
-.Bd -literal -offset indent
-sendmail_enable="NO"
-inetd_flags="-wW -a 192.168.11.23"
-rpcbind_enable="NO"
-.Ed
+Generally speaking making a system jail-friendly does not require much
+work if you have
+.Va jail.defaults.allow_listen_override
+set to 1.
+This will allow all listen sockets inside the jail to overload
+and override wildcard listen sockets on the host.
+This methodology works extremely well as long as you restrict the IPs you
+pass into the jail to avoid any security concerns, which typically means
+making at least two IP aliases for each jail that you create (an external
+IP and a localhost IP).
 .Pp
-.Li 192.168.11.23
-is the native IP address for the host system, in this example.
-Daemons that run out of
-.Xr inetd 8
-can be easily set to use only the specified host IP address.
-Other daemons
-will need to be manually configured\(emfor some this is possible through
-the
-.Xr rc.conf 5
-flags entries, for others it is not possible without munging
-the per-application configuration files, or even recompiling.
-For those
-applications that cannot specify the IP they run on, it is better to disable
-them, if possible.
+If you do not want to allow listener socket overloading, you must modify
+services you intend to leave running on the host system to listen only on
+specific IPs and not all IPs, or generally only run services inside your
+jails that do not conflict with services on the host system.
+This can be difficult and is not recommended.
 .Pp
-A number of daemons ship with the base system that may have problems when
-run from outside of a jail in a jail-centric environment.
-This includes
+Common services include:
+.Xr inetd 8 ,
 .Xr sendmail 8 ,
 .Xr named 8 ,
+.Xr rpcbind 8 ,
+.Xr mountd 8 ,
+.Xr nfsd 8 ,
+.Xr sendmail 1 ,
 and
-.Xr rpcbind 8 .
-While
-.Xr sendmail 8
-and
-.Xr named 8
-can be configured to listen only on a specific
-IP using their configuration files, in most cases it is easier to simply
-run the daemons in jails only, and not in the host environment.
-Attempting to serve
-NFS from the host environment may also cause confusion, and cannot be
-easily reconfigured to use only specific IPs, as some NFS services are
-hosted directly from the kernel.
-Any third party network software running
-in the host environment should also be checked and configured so that it
-does not bind all IP addresses, which would result in those services also
-appearing to be offered by the jail environments.
+.Xr named 8 .
 .Pp
-Once
-these daemons have been disabled or fixed in the host environment, it is
-best to reboot so that all daemons are in a known state, to reduce the
-potential for confusion later (such as finding that when you send mail
-to a jail, and its sendmail is down, the mail is delivered to the host,
-etc.)
+For the purposes of our examples below,
+.Li 192.168.11.1
+is the host IP and we create aliases
+.Li 192.168.11.X
+for each jail.
+In addition, we leave
+.Li 127.0.0.1
+on the host only and create aliases
+.Li 127.0.0.X
+for each jail.
 .Pp
 Start any jails for the first time without configuring the network
 interface so that you can clean it up a little and set up accounts.
@@ -201,9 +179,45 @@ As
 with any machine (virtual or not) you will need to set a root password, time
 zone, etc.
 .Pp
+To set the jail up for real you need to ifconfig some interface aliases.
+and set jail defaults.  Here is an example:
+.Pp
+.Dl "sysctl jail.defaults.net_raw_sockets=1"
+.Dl "sysctl jail.defaults.allow_listen_override=1"
+.Dl "ifconfig lo0 127.0.0.2 alias"
+.Dl "ifconfig em0 192.168.11.100 netmask 255.255.255.0 alias"
+.Pp
+From within your jail you can generally run services normally. Just use
+'localhost' normally.  Do not inform services that localhost is 127.0.0.2.
+The kernel will automatically remap 'localhost' (e.g. 127.0.0.1) to the
+localhost IP you specify for the jail.  The kernel will also map the jail's
+localhost IP back to 127.0.0.1 in the
+.Xr accept 2 ,
+.Xr getsockname 2 ,
+and
+.Xr getpeername 2
+system calls.
+.Pp
+Listen sockets can be overloaded between jails and between the host and its
+jails.  You can continue to use services that listen on the wildcard *.*
+socket normally on both the host and its jails if you set the
+.Va allow_listen_override
+flag to 1, and jailed listen sockets will override any host listen sockets
+listening on the wildcard address for the allowed jail IPs.
+.Pp
+.Dx
+also allows you to overload specific ports, but the jailed service will
+not receive any connections if the host is also specifically listening
+on the addr/port pair that the jail is using.  If multiple jails are listening
+on the same addr/port pair (as specified by the jail's IP list), and the
+host is not, then only one jail will receive connections on that pair.
+.Pp
+In otherwords, it is still a good idea to give each jail its own local
+and non-local IP address rather than have jails share.
+.Pp
 Now start the jail:
 .Pp
-.Dl "jail /data/jail/192.168.11.100 testhostname 127.0.0.1,192.168.11.100 /bin/sh"
+.Dl "jail /data/jail/192.168.11.100 testhostname 127.0.0.2,192.168.11.100 /bin/sh"
 .Pp
 You will end up with a shell prompt, assuming no errors, within the jail.
 You can now do the post-install configuration to set various configuration
@@ -263,9 +277,12 @@ Please see the management reasons why this is a good idea.
 If you do decide to set this variable,
 it must be set before starting any jails, and once each boot.
 .Bd -literal -offset indent
-ifconfig ed0 inet alias 192.168.11.100/32
+sysctl jail.defaults.net_raw_sockets=1
+sysctl jail.defaults.allow_listen_override=1
+ifconfig em0 inet alias 192.168.11.100/32
+ifconfig lo0 inet alias 127.0.0.2
 mount -t procfs proc /data/jail/192.168.11.100/proc
-jail /data/jail/192.168.11.100 testhostname 127.0.0.1,192.168.11.100 \\
+jail /data/jail/192.168.11.100 testhostname 127.0.0.2,192.168.11.100 \\
 	/bin/sh /etc/rc
 .Ed
 .Pp
@@ -400,6 +417,14 @@ information in
 .Pa /proc .
 As such, this should be disabled in environments where privileged access to
 jails is given out to untrusted parties.
+.It Va jail.defaults.allow_listen_override
+This feature allows both the host and your jails to overload services on
+the same ports.
+If enabled, the services in the jails will override wildcarded services on
+the host for the jail's IP list.
+As a safety mechanism, any services the host specifically binds to an IP
+will not be overridden.  The host has visibility to all jail IPs but
+jails only have visibility to their specific IPs.
 .It Va jail.defaults.socket_unixiproute_only
 The jail functionality binds IPv4 and IPv6 addresses to each jail, and limits
 access to other network addresses in the IPv4 and IPv6 space that may be available
@@ -456,7 +481,7 @@ Support for multiple IPs and IPv6 appeared in
 1.7.
 .Sh AUTHORS
 .An -nosplit
-The jail feature was written by
+The jail feature was originally written by
 .An Poul-Henning Kamp
 for R&D Associates
 .Pa http://www.rndassociates.com/
@@ -471,6 +496,9 @@ a few new features, and cleaned up the userland jail environment.
 wrote the support for multiple IPs and IPv6. Multiple IPs support
 is based on work done by
 .An Pawel Jakub Dawidek .
+.Pp
+.An Matthew Dillon
+added port overloading to make configuration easier.
 .Sh BUGS
 Jail currently lacks strong management functionality, such as the ability
 to deliver signals to all processes in a jail, and to allow access to

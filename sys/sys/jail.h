@@ -76,6 +76,7 @@ MALLOC_DECLARE(M_PRISON);
 #define PRISON_CAP_NET_UNIXIPROUTE	20   /* Restrict to UNIX/IPv[46]/route
                                                 sockets only */
 #define PRISON_CAP_NET_RAW_SOCKETS	21   /* Can use raw sockets */
+#define PRISON_CAP_NET_LISTEN_OVERRIDE	22   /* Can override wildcard on host */
 
 /* VFS specific capabilities */
 #define PRISON_CAP_VFS_CHFLAGS		40   /* Can manipulate system file
@@ -141,6 +142,7 @@ struct sockaddr *
 	prison_get_nonlocal(struct prison *pr, sa_family_t, struct sockaddr *);
 int	prison_priv_check(struct ucred *cred, int priv);
 int	prison_remote_ip(struct thread *td, struct sockaddr *ip);
+int	prison_local_ip(struct thread *td, struct sockaddr *ip);
 int	prison_replace_wildcards(struct thread *td, struct sockaddr *ip);
 int	prison_sysctl_create(struct prison *);
 int	prison_sysctl_done(struct prison *);

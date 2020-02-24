@@ -215,8 +215,9 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
-			t = in6_pcblookup_local(porthash,
-			    &sin6->sin6_addr, lport, INPLOOKUP_WILDCARD, cred);
+			t = in6_pcblookup_local(porthash, &sin6->sin6_addr,
+						lport, INPLOOKUP_WILDCARD,
+						cred);
 			if (t &&
 			    (so->so_cred->cr_uid !=
 			     t->inp_socket->so_cred->cr_uid)) {
@@ -232,7 +233,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			goto done;
 		}
 		t = in6_pcblookup_local(porthash, &sin6->sin6_addr, lport,
-		    wild, cred);
+					wild, cred);
 		if (t && (reuseport & t->inp_socket->so_options) == 0) {
 			inp->in6p_laddr = kin6addr_any;
 			error = EADDRINUSE;
@@ -615,6 +616,8 @@ in6_pcblookup_local(struct inpcbporthead *porthash,
     const struct in6_addr *laddr, u_int lport_arg, int wild_okay,
     struct ucred *cred)
 {
+	struct prison *pscan;
+	struct prison *pr;
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
 	u_short lport = lport_arg;
@@ -639,6 +642,8 @@ in6_pcblookup_local(struct inpcbporthead *porthash,
 	}
 
 	if (phd != NULL) {
+		pr = cred ? cred->cr_prison : NULL;
+
 		/*
 		 * Port is in use by one or more PCBs. Look for best
 		 * fit.
@@ -649,28 +654,31 @@ in6_pcblookup_local(struct inpcbporthead *porthash,
 				continue;
 			if (!IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr))
 				wildcard++;
-			if (!IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)) {
+
+			if (inp->inp_socket && inp->inp_socket->so_cred)
+				pscan = inp->inp_socket->so_cred->cr_prison;
+			else
+				pscan = NULL;
+			if (pr != pscan)
+				continue;
+
+			if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)) {
+				if (!IN6_IS_ADDR_UNSPECIFIED(laddr))
+					wildcard++;
+			} else {
 				if (IN6_IS_ADDR_UNSPECIFIED(laddr))
 					wildcard++;
 				else if (!IN6_ARE_ADDR_EQUAL(
-					&inp->in6p_laddr, laddr))
+						    &inp->in6p_laddr, laddr))
 					continue;
-			} else {
-				if (!IN6_IS_ADDR_UNSPECIFIED(laddr))
-					wildcard++;
 			}
 			if (wildcard && !wild_okay)
 				continue;
-			if (wildcard < matchwild &&
-			    (cred == NULL ||
-			     cred->cr_prison == 
-					inp->inp_socket->so_cred->cr_prison)) {
+			if (wildcard < matchwild) {
 				match = inp;
 				matchwild = wildcard;
 				if (wildcard == 0)
 					break;
-				else
-					matchwild = wildcard;
 			}
 		}
 	}
@@ -830,31 +838,39 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 			 * Found.
 			 */
 			if (inp->inp_socket == NULL ||
-			inp->inp_socket->so_cred->cr_prison == NULL) {
+			    inp->inp_socket->so_cred->cr_prison == NULL) {
 				return (inp);
-			} else {
-				if  (jinp == NULL)
-					jinp = inp;
 			}
+			if  (jinp == NULL)
+				jinp = inp;
 		}
 	}
 	if (jinp != NULL)
 		return(jinp);
 
 	if (wildcard) {
-		struct inpcontainerhead *chead;
-		struct inpcontainer *ic;
 		struct inpcb *local_wild = NULL;
 		struct inpcb *jinp_wild = NULL;
+		struct inpcontainer *ic;
+		struct inpcontainerhead *chead;
 		struct sockaddr_in6 jsin6;
 		struct ucred *cred;
+		struct prison *pr;
+		int net_listen_ov_local = 0;
+		int net_listen_ov_wild = 0;
 
 		/*
 		 * Order of socket selection:
 		 * 1. non-jailed, non-wild.
-		 * 2. non-jailed, wild.
+		 * 2. non-jailed, wild.		(allow_listen_override on)
 		 * 3. jailed, non-wild.
 		 * 4. jailed, wild.
+		 * 5. non-jailed, wild.		(allow_listen_override off)
+		 *
+		 * NOTE: jailed wildcards are still restricted to the jail
+		 *	 IPs.
+		 *
+		 * NOTE: (1) and (3) already handled above.
 		 */
 		jsin6.sin6_family = AF_INET6;
 		chead = &pcbinfo->wildcardhashbase[INP_PCBWILDCARDHASH(lport,
@@ -866,47 +882,66 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 			if (inp->inp_flags & INP_PLACEMARKER)
 				continue;
 
+			/*
+			 * Basdic validation
+			 */
 			if (!INP_ISIPV6(inp))
 				continue;
-			if (inp->inp_socket != NULL)
-				cred = inp->inp_socket->so_cred;
-			else
-				cred = NULL;
+			if (inp->inp_lport != lport)
+				continue;
 
-			if (cred != NULL && jailed(cred)) {
-				if (jinp != NULL) {
-					continue;
-				} else {
-		                        jsin6.sin6_addr = *laddr;
-					if (!jailed_ip(cred->cr_prison,
-					    (struct sockaddr *)&jsin6))
-						continue;
-				}
+			/*
+			 * Calculate prison, setup jsin for jailed_ip()
+			 * check.
+			 */
+			jsin6.sin6_addr = *laddr;
+			pr = NULL;
+			cred = NULL;
+			if (inp->inp_socket) {
+				cred = inp->inp_socket->so_cred;
+				if (cred)
+					pr = cred->cr_prison;
 			}
-			if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr) &&
-			    inp->inp_lport == lport) {
-				if (IN6_ARE_ADDR_EQUAL(&inp->in6p_laddr,
-						       laddr)) {
-					if (cred != NULL && jailed(cred)) {
-						jinp = inp;
-					} else {
-						REL_PCBINFO_TOKEN(pcbinfo);
-						return (inp);
-					}
-				} else if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)) {
-					if (cred != NULL && jailed(cred))
-						jinp_wild = inp;
-					else
-						local_wild = inp;
+
+			/*
+			 * Assign jinp, jinp_wild, and local_wild as
+			 * appropriate, track whether the jail supports
+			 * listen overrides.
+			 */
+			if (pr) {
+				if (!jailed_ip(pr, (struct sockaddr *)&jsin6))
+					continue;
+				if (IN6_ARE_ADDR_EQUAL(&inp->in6p_laddr, laddr)
+				    && jinp == NULL) {
+					jinp = inp;
+					if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_NET_LISTEN_OVERRIDE))
+						net_listen_ov_local = 1;
 				}
+				if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr) &&
+				    jinp_wild == NULL) {
+					jinp_wild = inp;
+					if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_NET_LISTEN_OVERRIDE))
+						net_listen_ov_wild = 1;
+				}
+			} else {
+				if (IN6_ARE_ADDR_EQUAL(&inp->in6p_laddr, laddr)) {
+					REL_PCBINFO_TOKEN(pcbinfo);
+					return (inp);
+				}
+				if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr))
+					local_wild = inp;
 			}
 		}
 		REL_PCBINFO_TOKEN(pcbinfo);
 
-		if (local_wild != NULL)
-			return (local_wild);
-		if (jinp != NULL)
-			return (jinp);
+		if (net_listen_ov_local)
+			return jinp;
+		if (net_listen_ov_wild)
+			return jinp_wild;
+		if (local_wild)
+			return local_wild;
+		if (jinp)
+			return jinp;
 		return (jinp_wild);
 	}
 
