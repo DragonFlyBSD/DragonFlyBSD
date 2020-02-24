@@ -941,10 +941,6 @@ udp_send(netmsg_t msg)
 			goto release;
 		}
 		sin = (struct sockaddr_in *)dstaddr;
-		if (!prison_remote_ip(td, (struct sockaddr *)&sin)) {
-			error = EAFNOSUPPORT; /* IPv6 only jail */
-			goto release;
-		}
 	} else {
 		if (inp->inp_faddr.s_addr == INADDR_ANY) {
 			/* no destination specified and not already connected */
@@ -1493,10 +1489,6 @@ udp_connect(netmsg_t msg)
 	error = in_pcbladdr(inp, nam, &if_sin, td);
 	if (error)
 		goto out;
-	if (!prison_remote_ip(td, nam)) {
-		error = EAFNOSUPPORT; /* IPv6 only jail */
-		goto out;
-	}
 
 	hash = udp_addrhash(sin->sin_addr.s_addr, sin->sin_port,
 	    inp->inp_laddr.s_addr != INADDR_ANY ?

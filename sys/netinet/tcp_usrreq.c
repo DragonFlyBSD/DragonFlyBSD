@@ -600,12 +600,6 @@ tcp_usr_connect(netmsg_t msg)
 		error = EAFNOSUPPORT;
 		goto out;
 	}
-
-	if (!prison_remote_ip(td, (struct sockaddr*)sinp)) {
-		error = EAFNOSUPPORT; /* IPv6 only jail */
-		goto out;
-	}
-
 	tcp_connect(msg);
 	/* msg is invalid now */
 	return;
@@ -651,7 +645,7 @@ tcp6_usr_connect(netmsg_t msg)
 	}
 
 	if (!prison_remote_ip(td, nam)) {
-		error = EAFNOSUPPORT; /* IPv4 only jail */
+		error = EAFNOSUPPORT;	/* Illegal jail IP */
 		goto out;
 	}
 

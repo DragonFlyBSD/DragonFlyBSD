@@ -176,6 +176,10 @@ sys_bind(struct bind_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
+	if (!prison_remote_ip(curthread, sa)) {
+		kfree(sa, M_SONAME);
+		return EAFNOSUPPORT;
+	}
 	error = kern_bind(uap->s, sa);
 	kfree(sa, M_SONAME);
 
@@ -479,8 +483,10 @@ sys_extaccept(struct extaccept_args *uap)
 		error = kern_accept(uap->s, fflags, &sa, &sa_len,
 				    &uap->sysmsg_iresult, 0);
 
-		if (error == 0)
+		if (error == 0) {
+			prison_local_ip(curthread, sa);
 			error = copyout(sa, uap->name, sa_len);
+		}
 		if (error == 0) {
 			error = copyout(&sa_len, uap->anamelen,
 			    sizeof(*uap->anamelen));
@@ -627,6 +633,10 @@ sys_connect(struct connect_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
+	if (!prison_remote_ip(curthread, sa)) {
+		kfree(sa, M_SONAME);
+		return EAFNOSUPPORT;
+	}
 	error = kern_connect(uap->s, 0, sa);
 	kfree(sa, M_SONAME);
 
@@ -648,6 +658,10 @@ sys_extconnect(struct extconnect_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
+	if (!prison_remote_ip(curthread, sa)) {
+		kfree(sa, M_SONAME);
+		return EAFNOSUPPORT;
+	}
 	error = kern_connect(uap->s, fflags, sa);
 	kfree(sa, M_SONAME);
 
@@ -827,6 +841,10 @@ sys_sendto(struct sendto_args *uap)
 		error = getsockaddr(&sa, uap->to, uap->tolen);
 		if (error)
 			return (error);
+		if (!prison_remote_ip(curthread, sa)) {
+			kfree(sa, M_SONAME);
+			return EAFNOSUPPORT;
+		}
 	}
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->len;
@@ -873,6 +891,10 @@ sys_sendmsg(struct sendmsg_args *uap)
 		error = getsockaddr(&sa, msg.msg_name, msg.msg_namelen);
 		if (error)
 			return (error);
+		if (!prison_remote_ip(curthread, sa)) {
+			kfree(sa, M_SONAME);
+			return EAFNOSUPPORT;
+		}
 	}
 
 	/*
@@ -1033,6 +1055,7 @@ sys_recvfrom(struct recvfrom_args *uap)
 		/* note: sa may still be NULL */
 		if (sa) {
 			fromlen = MIN(fromlen, sa->sa_len);
+			prison_local_ip(curthread, sa);
 			error = copyout(sa, uap->from, fromlen);
 		} else {
 			fromlen = 0;
@@ -1113,6 +1136,7 @@ sys_recvmsg(struct recvmsg_args *uap)
 		/* note: sa may still be NULL */
 		if (sa != NULL) {
 			fromlen = MIN(msg.msg_namelen, sa->sa_len);
+			prison_local_ip(curthread, sa);
 			error = copyout(sa, msg.msg_name, fromlen);
 		} else {
 			fromlen = 0;
