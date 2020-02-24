@@ -604,10 +604,6 @@ udp6_connect(netmsg_t msg)
 	}
 	if (inp->inp_flags & INP_WILDCARD)
 		in_pcbremwildcardhash(inp);
-	if (!prison_remote_ip(td, nam)) {
-		error = EAFNOSUPPORT; /* IPv4 only jail */
-		goto out;
-	}
 	error = in6_pcbconnect(inp, nam, td);
 	if (error == 0) {
 		soisconnected(so);

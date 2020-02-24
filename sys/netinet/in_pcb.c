@@ -433,7 +433,7 @@ loop:
 		}
 
 		if (in_pcbporthash_update(portinfo, inp, htons(lport),
-		    cred, wild)) {
+					  cred, wild)) {
 			error = 0;
 			break;
 		}
@@ -820,25 +820,21 @@ next:
 }
 
 /*
- *   Transform old in_pcbconnect() into an inner subroutine for new
- *   in_pcbconnect(): Do some validity-checking on the remote
- *   address (in mbuf 'nam') and then determine local host address
- *   (i.e., which interface) to use to access that remote host.
- *
- *   This preserves definition of in_pcbconnect(), while supporting a
- *   slightly different version for T/TCP.  (This is more than
- *   a bit of a kludge, but cleaning up the internal interfaces would
- *   have forced minor changes in every protocol).
+ * Figure out the local interface address to pair against the requested
+ * target address, as well as validate the target address.
  */
 int
 in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
-    struct sockaddr_in **plocal_sin, struct thread *td, int find)
+		 struct sockaddr_in **plocal_sin, struct thread *td, int find)
 {
+	struct in_ifaddr_container *iac;
 	struct in_ifaddr *ia;
 	struct ucred *cred = NULL;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 	struct sockaddr *jsin;
-	int jailed = 0, alloc_route = 0;
+	struct prison *pr;
+	struct route *ro;
+	int alloc_route = 0;
 
 	if (nam->sa_len != sizeof *sin)
 		return (EINVAL);
@@ -846,158 +842,190 @@ in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
 		return (EAFNOSUPPORT);
 	if (sin->sin_port == 0)
 		return (EADDRNOTAVAIL);
+
+	/*
+	 * Are we in a jail?
+	 */
+	pr = NULL;
 	if (td && td->td_proc && td->td_proc->p_ucred)
 		cred = td->td_proc->p_ucred;
-	if (cred && cred->cr_prison)
-		jailed = 1;
-	if (!TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) {
-		ia = TAILQ_FIRST(&in_ifaddrheads[mycpuid])->ia;
-		/*
-		 * If the destination address is INADDR_ANY,
-		 * use the primary local address.
-		 * If the supplied address is INADDR_BROADCAST,
-		 * and the primary interface supports broadcast,
-		 * choose the broadcast address for that interface.
-		 */
-		if (sin->sin_addr.s_addr == INADDR_ANY)
-			sin->sin_addr = IA_SIN(ia)->sin_addr;
-		else if (sin->sin_addr.s_addr == (u_long)INADDR_BROADCAST &&
-		    (ia->ia_ifp->if_flags & IFF_BROADCAST))
-			sin->sin_addr = satosin(&ia->ia_broadaddr)->sin_addr;
+	if (cred)
+		pr = cred->cr_prison;
+
+	/*
+	 * If the destination address is INADDR_ANY then use the primary
+	 * local address.
+	 *
+	 * If the supplied address is INADDR_BROADCAST, and the primary
+	 * interface supports broadcast, choose the broadcast address for
+	 * that interface.
+	 *
+	 * If jailed, locate an interface address acceptable to the jail.
+	 */
+	if (sin->sin_addr.s_addr == INADDR_ANY) {
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			ia = iac->ia;
+			if (pr == NULL ||
+			    jailed_ip(pr, sintosa(&ia->ia_addr))) {
+				sin->sin_addr = IA_SIN(ia)->sin_addr;
+				break;
+			}
+		}
+	} else if (sin->sin_addr.s_addr == (u_long)INADDR_BROADCAST) {
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			ia = iac->ia;
+			if ((pr == NULL ||
+			     jailed_ip(pr, sintosa(&ia->ia_addr))) &&
+			    (iac->ia->ia_ifp->if_flags & IFF_BROADCAST)) {
+				sin->sin_addr =
+				    satosin(&ia->ia_broadaddr)->sin_addr;
+				break;
+			}
+		}
 	}
-	if (find) {
-		struct route *ro;
 
+	/*
+	 * If asked to do a search, use the cached route or do a route table
+	 * lookup to try to find an acceptable local interface IP.
+	 */
+	if (find == 0)
+		return 0;
+
+	ia = NULL;
+
+	/*
+	 * If we have a cached route, check to see if it is acceptable.
+	 * If not, free it.
+	 */
+	ro = &inp->inp_route;
+	if (ro->ro_rt &&
+	    (!(ro->ro_rt->rt_flags & RTF_UP) ||
+	     ro->ro_dst.sa_family != AF_INET ||
+	     satosin(&ro->ro_dst)->sin_addr.s_addr !=
+			      sin->sin_addr.s_addr ||
+	     inp->inp_socket->so_options & SO_DONTROUTE)) {
+		RTFREE(ro->ro_rt);
+		ro->ro_rt = NULL;
+	}
+
+	/*
+	 * If we do not have a route, construct one and do a lookup,
+	 * unless we are forbidden to do so.
+	 *
+	 * Note that we should check the address family of the cached
+	 * destination, in case of sharing the cache with IPv6.
+	 */
+	if (!(inp->inp_socket->so_options & SO_DONTROUTE) && /*XXX*/
+	    (ro->ro_rt == NULL || ro->ro_rt->rt_ifp == NULL)) {
+		bzero(&ro->ro_dst, sizeof(struct sockaddr_in));
+		ro->ro_dst.sa_family = AF_INET;
+		ro->ro_dst.sa_len = sizeof(struct sockaddr_in);
+		((struct sockaddr_in *)&ro->ro_dst)->sin_addr = sin->sin_addr;
+		rtalloc(ro);
+		alloc_route = 1;
+	}
+
+	/*
+	 * If we found a route, use the address corresponding to the
+	 * outgoing interface.
+	 *
+	 * If jailed, try to find a compatible address on the outgoing
+	 * interface.
+	 */
+	if (ro->ro_rt) {
+		ia = ifatoia(ro->ro_rt->rt_ifa);
+		if (pr == NULL)
+			goto skip;
+		if (jailed_ip(pr, sintosa(&ia->ia_addr)))
+			goto skip;
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			if (iac->ia->ia_ifp != ia->ia_ifp)
+				continue;
+			ia = iac->ia;
+			if (jailed_ip(pr, sintosa(&ia->ia_addr)))
+				goto skip;
+		}
 		ia = NULL;
-		/*
-		 * If route is known or can be allocated now,
-		 * our src addr is taken from the i/f, else punt.
-		 * Note that we should check the address family of the cached
-		 * destination, in case of sharing the cache with IPv6.
-		 */
-		ro = &inp->inp_route;
-		if (ro->ro_rt &&
-		    (!(ro->ro_rt->rt_flags & RTF_UP) ||
-		     ro->ro_dst.sa_family != AF_INET ||
-		     satosin(&ro->ro_dst)->sin_addr.s_addr !=
-				      sin->sin_addr.s_addr ||
-		     inp->inp_socket->so_options & SO_DONTROUTE)) {
-			RTFREE(ro->ro_rt);
-			ro->ro_rt = NULL;
-		}
-		if (!(inp->inp_socket->so_options & SO_DONTROUTE) && /*XXX*/
-		    (ro->ro_rt == NULL ||
-		    ro->ro_rt->rt_ifp == NULL)) {
-			/* No route yet, so try to acquire one */
-			bzero(&ro->ro_dst, sizeof(struct sockaddr_in));
-			ro->ro_dst.sa_family = AF_INET;
-			ro->ro_dst.sa_len = sizeof(struct sockaddr_in);
-			((struct sockaddr_in *) &ro->ro_dst)->sin_addr =
-				sin->sin_addr;
-			rtalloc(ro);
-			alloc_route = 1;
-		}
+	}
+skip:
 
-		/*
-		 * If we found a route, use the address corresponding
-		 * to the outgoing interface.
-		 *
-		 * If jailed, the the route must match a jailed IP
-		 * to be valid.
-		 */
-		if (ro->ro_rt) {
-			if (jailed) {
-				if (jailed_ip(cred->cr_prison, 
-					      ro->ro_rt->rt_ifa->ifa_addr)) {
-					ia = ifatoia(ro->ro_rt->rt_ifa);
-				}
-			} else {
-				ia = ifatoia(ro->ro_rt->rt_ifa);
-			}
-		}
+	/*
+	 * If the route didn't work or there was no route,
+	 * fall-back to the first address in in_ifaddrheads[].
+	 *
+	 * If jailed and this address is not available for
+	 * the jail, leave ia set to NULL.
+	 */
+	if (ia == NULL) {
+		u_short fport = sin->sin_port;
 
-		/*
-		 * If the route didn't work or there was no route,
-		 * fall-back to the first address in in_ifaddrheads[].
-		 *
-		 * If jailed and this address is not available for
-		 * the jail, leave ia set to NULL.
-		 */
-		if (ia == NULL) {
-			u_short fport = sin->sin_port;
+		sin->sin_port = 0;
+		ia = ifatoia(ifa_ifwithdstaddr(sintosa(sin)));
+		if (ia && pr && !jailed_ip(pr, sintosa(&ia->ia_addr)))
+			ia = NULL;
 
-			sin->sin_port = 0;
-			ia = ifatoia(ifa_ifwithdstaddr(sintosa(sin)));
-			if (ia && jailed && !jailed_ip(cred->cr_prison,
-			    sintosa(&ia->ia_addr)))
-				ia = NULL;
-			if (ia == NULL)
-				ia = ifatoia(ifa_ifwithnet(sintosa(sin)));
-			if (ia && jailed && !jailed_ip(cred->cr_prison,
-			    sintosa(&ia->ia_addr)))
-				ia = NULL;
-			sin->sin_port = fport;
-			if (ia == NULL &&
-			    !TAILQ_EMPTY(&in_ifaddrheads[mycpuid]))
-				ia = TAILQ_FIRST(&in_ifaddrheads[mycpuid])->ia;
-			if (ia && jailed && !jailed_ip(cred->cr_prison,
-			    sintosa(&ia->ia_addr)))
-				ia = NULL;
+		if (ia == NULL)
+			ia = ifatoia(ifa_ifwithnet(sintosa(sin)));
+		if (ia && pr && !jailed_ip(pr, sintosa(&ia->ia_addr)))
+			ia = NULL;
 
-			if (!jailed && ia == NULL)
-				goto fail;
-		}
+		sin->sin_port = fport;
+		if (ia == NULL && !TAILQ_EMPTY(&in_ifaddrheads[mycpuid]))
+			ia = TAILQ_FIRST(&in_ifaddrheads[mycpuid])->ia;
 
-		/*
-		 * If the destination address is multicast and an outgoing
-		 * interface has been set as a multicast option, use the
-		 * address of that interface as our source address.
-		 */
-		if (!jailed && IN_MULTICAST(ntohl(sin->sin_addr.s_addr)) &&
-		    inp->inp_moptions != NULL) {
-			struct ip_moptions *imo;
-			struct ifnet *ifp;
+		if (ia && pr && !jailed_ip(pr, sintosa(&ia->ia_addr)))
+			ia = NULL;
 
-			imo = inp->inp_moptions;
-			if ((ifp = imo->imo_multicast_ifp) != NULL) {
-				struct in_ifaddr_container *iac;
-
-				ia = NULL;
-				TAILQ_FOREACH(iac,
-				&in_ifaddrheads[mycpuid], ia_link) {
-					if (iac->ia->ia_ifp == ifp) {
-						ia = iac->ia;
-						break;
-					}
-				}
-				if (ia == NULL)
-					goto fail;
-			}
-		}
-
-		/*
-		 * If we still don't have a local address, and are jailed,
-		 * use the jail's first non-localhost IP.  If there isn't
-		 * one, use the jail's first localhost IP.
-		 *
-		 * Don't do pcblookup call here; return interface in plocal_sin
-		 * and exit to caller, that will do the lookup.
-		 */
-		if (ia == NULL && jailed) {
-			if ((jsin = prison_get_nonlocal(
-				cred->cr_prison, AF_INET, NULL)) != NULL ||
-			    (jsin = prison_get_local(
-				cred->cr_prison, AF_INET, NULL)) != NULL) {
-				*plocal_sin = satosin(jsin);
-			} else {
-				/* IPv6 only Jail */
-				goto fail;
-			}
-		} else if (ia) {
-			*plocal_sin = &ia->ia_addr;
-		} else {
+		if (pr == NULL && ia == NULL)
 			goto fail;
+	}
+
+	/*
+	 * If the destination address is multicast and an outgoing
+	 * interface has been set as a multicast option, use the
+	 * address of that interface as our source address.
+	 */
+	if (pr == NULL && IN_MULTICAST(ntohl(sin->sin_addr.s_addr)) &&
+	    inp->inp_moptions != NULL) {
+		struct ip_moptions *imo;
+		struct ifnet *ifp;
+
+		imo = inp->inp_moptions;
+		if ((ifp = imo->imo_multicast_ifp) != NULL) {
+			struct in_ifaddr_container *iac;
+
+			ia = NULL;
+			TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+				if (iac->ia->ia_ifp == ifp) {
+					ia = iac->ia;
+					break;
+				}
+			}
+			if (ia == NULL)
+				goto fail;
 		}
+	}
+
+	/*
+	 * If we still don't have a local address, and are jailed,
+	 * use the jail's first non-localhost IP.  If there isn't
+	 * one, use the jail's first localhost IP.
+	 *
+	 * Don't do pcblookup call here; return interface in plocal_sin
+	 * and exit to caller, that will do the lookup.
+	 */
+	if (ia == NULL && pr) {
+		jsin = prison_get_nonlocal(cred->cr_prison, AF_INET, NULL);
+		if (jsin == NULL)
+			jsin = prison_get_local(cred->cr_prison, AF_INET, NULL);
+		if (jsin)
+			*plocal_sin = satosin(jsin);
+		else
+			goto fail;
+	} else if (ia) {
+		*plocal_sin = &ia->ia_addr;
+	} else {
+		goto fail;
 	}
 	return (0);
 fail:
@@ -1008,10 +1036,10 @@ fail:
 
 int
 in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
-    struct sockaddr_in **plocal_sin, struct thread *td)
+	    struct sockaddr_in **plocal_sin, struct thread *td)
 {
 	return in_pcbladdr_find(inp, nam, plocal_sin, td,
-	    (inp->inp_laddr.s_addr == INADDR_ANY));
+				(inp->inp_laddr.s_addr == INADDR_ANY));
 }
 
 /*
