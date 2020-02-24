@@ -519,11 +519,13 @@ sys_accept4(struct accept4_args *uap)
 		error = kern_accept(uap->s, 0, &sa, &sa_len,
 				    &uap->sysmsg_iresult, sockflags);
 
-		if (error == 0)
+		if (error == 0) {
+			prison_local_ip(curthread, sa);
 			error = copyout(sa, uap->name, sa_len);
+		}
 		if (error == 0) {
 			error = copyout(&sa_len, uap->anamelen,
-			    sizeof(*uap->anamelen));
+					sizeof(*uap->anamelen));
 		}
 		if (sa)
 			kfree(sa, M_SONAME);
