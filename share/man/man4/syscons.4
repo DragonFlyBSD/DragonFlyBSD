@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/syscons.4,v 1.10.2.14 2003/04/25 21:21:36 brueffer Exp $
 .\"
-.Dd June 4, 2018
+.Dd February 24, 2020
 .Dt SYSCONS 4
 .Os
 .Sh NAME
@@ -277,6 +277,13 @@ tries to find a more or less pleasant looking default.
 Setting
 .Va kern.kms_columns
 to a negative value turns off scaling.
+Please note that
+.Pa ttyv0
+is restricted to 160 columns and any setting of
+.Va kern.kms_columns
+resulting in a higher number of columns will be ignored for
+.Pa ttyv0 ,
+but applied to other virtual terminals.
 .El
 .Ss Sysctl Variables
 The following
