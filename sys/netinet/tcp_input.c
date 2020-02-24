@@ -859,10 +859,10 @@ findpcb:
 		} else {
 			cpu = mycpu->gd_cpuid;
 			inp = in_pcblookup_pkthash(&tcbinfo[cpu],
-			    ip->ip_src, th->th_sport,
-			    ip->ip_dst, th->th_dport,
-			    1, m->m_pkthdr.rcvif,
-			    tcp_reuseport_ext ? m : NULL);
+					    ip->ip_src, th->th_sport,
+					    ip->ip_dst, th->th_dport,
+					    1, m->m_pkthdr.rcvif,
+					    tcp_reuseport_ext ? m : NULL);
 		}
 	}
 
@@ -1616,7 +1616,10 @@ after_listen:
 	case TCPS_LAST_ACK:
 	case TCPS_CLOSING:
 	case TCPS_TIME_WAIT:
-		break;  /* continue normal processing */
+		/*
+		 * Continue normal processing
+		 */
+		break;
 	}
 
 	/*
@@ -1705,6 +1708,18 @@ after_listen:
 			}
 		}
 		goto drop;
+	}
+
+	/*
+	 * Allow a new connection to replace an existing connection that is
+	 * in the TIME_WAIT state if the new connection's SYN seq is different
+	 * from tp->irs.
+	 */
+	if ((thflags & TH_SYN) &&
+	    tp->t_state == TCPS_TIME_WAIT &&
+	    th->th_seq != tp->irs) {
+		tp = tcp_close(tp);
+		goto findpcb;
 	}
 
 	/*
@@ -1859,18 +1874,7 @@ after_listen:
 		tcpstat.tcps_rcvpackafterwin++;
 		if (todrop >= tlen) {
 			tcpstat.tcps_rcvbyteafterwin += tlen;
-			/*
-			 * If a new connection request is received
-			 * while in TIME_WAIT, drop the old connection
-			 * and start over if the sequence numbers
-			 * are above the previous ones.
-			 */
-			if (thflags & TH_SYN &&
-			    tp->t_state == TCPS_TIME_WAIT &&
-			    SEQ_GT(th->th_seq, tp->rcv_nxt)) {
-				tp = tcp_close(tp);
-				goto findpcb;
-			}
+
 			/*
 			 * If window is closed can only take segments at
 			 * window edge, and have to drop data and PUSH from
