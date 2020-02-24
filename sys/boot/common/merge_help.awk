@@ -1,7 +1,6 @@
 #!/usr/bin/awk -f
 #
-# $FreeBSD: src/sys/boot/common/merge_help.awk,v 1.5 2001/11/07 17:53:25 fenner Exp $
-# $DragonFly: src/sys/boot/common/merge_help.awk,v 1.3 2003/11/10 06:08:31 dillon Exp $
+# $FreeBSD: head/stand/common/merge_help.awk 162742 2006-09-28 19:06:20Z jhb $
 #
 # Merge two boot loader help files for FreeBSD 3.0
 # Joe Abley <jabley@patho.gen.nz>
@@ -26,9 +25,12 @@ BEGIN \
   match($0, " T[[:graph:]]+");
   T = substr($0, RSTART + 2, RLENGTH - 2);
   match($0, " S[[:graph:]]+");
+  SSTART = RSTART;
   S = (RLENGTH == -1) ? "" : substr($0, RSTART + 2, RLENGTH - 2);
   match($0, " D[[:graph:]][[:print:]]*$");
   D = substr($0, RSTART + 2);
+  if (SSTART > RSTART)
+    S = "";
 
   # find a suitable place to store this one...
   ind++;
