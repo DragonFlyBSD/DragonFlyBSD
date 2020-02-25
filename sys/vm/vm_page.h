@@ -182,10 +182,14 @@ struct vm_page {
 	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list 	*/
 	RB_ENTRY(vm_page) rb_entry;	/* Red-Black tree based at object */
 	struct spinlock	spin;
+	struct md_page md;		/* machine dependant stuff */
+	uint32_t wire_count;		/* wired down maps refs (P) */
+	uint32_t busy_count;		/* soft-busy and hard-busy */
+	int 	hold_count;		/* page hold count */
+	int	ku_pagecnt;		/* help kmalloc() w/oversized allocs */
 	struct vm_object *object;	/* which object am I in */
 	vm_pindex_t pindex;		/* offset into object */
 	vm_paddr_t phys_addr;		/* physical address of page */
-	struct md_page md;		/* machine dependant stuff */
 	uint16_t queue;			/* page queue index */
 	uint16_t pc;			/* page color */
 	uint8_t	act_count;		/* page usage count */
@@ -193,10 +197,6 @@ struct vm_page {
 	uint8_t	valid;			/* map of valid DEV_BSIZE chunks */
 	uint8_t	dirty;			/* map of dirty DEV_BSIZE chunks */
 	uint32_t flags;			/* see below */
-	uint32_t wire_count;		/* wired down maps refs (P) */
-	uint32_t busy_count;		/* soft-busy and hard-busy */
-	int 	hold_count;		/* page hold count */
-	int	ku_pagecnt;		/* help kmalloc() w/oversized allocs */
 	int	unused01;		/* available */
 	/* 128 bytes */
 #ifdef VM_PAGE_DEBUG

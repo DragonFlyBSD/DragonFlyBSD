@@ -328,9 +328,12 @@ countcachedandinactivevnodes(void)
 void
 vrele(struct vnode *vp)
 {
+	int count;
+
+	count = vp->v_refcnt;
+	cpu_ccfence();
+
 	for (;;) {
-		int count = vp->v_refcnt;
-		cpu_ccfence();
 		KKASSERT((count & VREF_MASK) > 0);
 		KKASSERT(vp->v_state == VS_ACTIVE ||
 			 vp->v_state == VS_INACTIVE);
@@ -339,8 +342,10 @@ vrele(struct vnode *vp)
 		 * 2+ case
 		 */
 		if ((count & VREF_MASK) > 1) {
-			if (atomic_cmpset_int(&vp->v_refcnt, count, count - 1))
+			if (atomic_fcmpset_int(&vp->v_refcnt,
+					       &count, count - 1)) {
 				break;
+			}
 			continue;
 		}
 
@@ -357,18 +362,19 @@ vrele(struct vnode *vp)
 		 */
 		if (count & VREF_FINALIZE) {
 			vx_lock(vp);
-			if (atomic_cmpset_int(&vp->v_refcnt,
-					      count, VREF_TERMINATE)) {
+			if (atomic_fcmpset_int(&vp->v_refcnt,
+					      &count, VREF_TERMINATE)) {
 				vnode_terminate(vp);
 				break;
 			}
 			vx_unlock(vp);
 		} else {
-			if (atomic_cmpset_int(&vp->v_refcnt, count, 0)) {
+			if (atomic_fcmpset_int(&vp->v_refcnt, &count, 0)) {
 				atomic_add_int(&mycpu->gd_cachedvnodes, 1);
 				break;
 			}
 		}
+		cpu_pause();
 		/* retry */
 	}
 }

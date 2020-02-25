@@ -86,7 +86,7 @@ static int pipe_stat (struct file *fp, struct stat *sb, struct ucred *cred);
 static int pipe_ioctl (struct file *fp, u_long cmd, caddr_t data,
 		struct ucred *cred, struct sysmsg *msg);
 
-static struct fileops pipeops = {
+__read_mostly static struct fileops pipeops = {
 	.fo_read = pipe_read, 
 	.fo_write = pipe_write,
 	.fo_ioctl = pipe_ioctl,
@@ -100,17 +100,17 @@ static void	filt_pipedetach(struct knote *kn);
 static int	filt_piperead(struct knote *kn, long hint);
 static int	filt_pipewrite(struct knote *kn, long hint);
 
-static struct filterops pipe_rfiltops =
+__read_mostly static struct filterops pipe_rfiltops =
 	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_pipedetach, filt_piperead };
-static struct filterops pipe_wfiltops =
+__read_mostly static struct filterops pipe_wfiltops =
 	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_pipedetach, filt_pipewrite };
 
 MALLOC_DEFINE(M_PIPE, "pipe", "pipe structures");
 
 #define PIPEQ_MAX_CACHE 16      /* per-cpu pipe structure cache */
 
-static int pipe_maxcache = PIPEQ_MAX_CACHE;
-static struct pipegdlock *pipe_gdlocks;
+__read_mostly static int pipe_maxcache = PIPEQ_MAX_CACHE;
+__read_mostly static struct pipegdlock *pipe_gdlocks;
 
 SYSCTL_NODE(_kern, OID_AUTO, pipe, CTLFLAG_RW, 0, "Pipe operation");
 SYSCTL_INT(_kern_pipe, OID_AUTO, maxcache,
@@ -121,7 +121,7 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, maxcache,
  * are affected.  Note that due to cpu cache effects, you do not want
  * to make this value too large.
  */
-static int pipe_size = 32768;
+__read_mostly static int pipe_size = 32768;
 SYSCTL_INT(_kern_pipe, OID_AUTO, size,
         CTLFLAG_RW, &pipe_size, 0, "Pipe buffer size (16384 minimum)");
 
@@ -136,7 +136,7 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, size,
  * This defaults to 4uS.
  */
 #ifdef _RDTSC_SUPPORTED_
-static int pipe_delay = 4000;	/* 4uS default */
+__read_mostly static int pipe_delay = 4000;	/* 4uS default */
 SYSCTL_INT(_kern_pipe, OID_AUTO, delay,
         CTLFLAG_RW, &pipe_delay, 0, "SMP delay optimization in ns");
 #endif

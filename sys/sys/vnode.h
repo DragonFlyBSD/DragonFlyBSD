@@ -147,15 +147,17 @@ RB_HEAD(buf_rb_tree, buf);
 RB_HEAD(buf_rb_hash, buf);
 
 struct vnode {
-	struct spinlock v_spin;
-	int	v_flag;				/* vnode flags (see below) */
-	int	v_writecount;
-	int	v_opencount;			/* number of explicit opens */
+	struct lock	v_lock;			/* file/dir ops lock */
+	struct lwkt_token v_token;		/* (see above) */
+	struct spinlock	v_spin;
 	int	v_auxrefs;			/* auxiliary references */
 	int	v_refcnt;
 	int	v_pbuf_count;			/* (device nodes only) */
+	int	v_writecount;
 	struct bio_track v_track_read;		/* track I/O's in progress */
 	struct bio_track v_track_write;		/* track I/O's in progress */
+	int	v_opencount;			/* number of explicit opens */
+	int	v_flag;				/* vnode flags (see below) */
 	struct mount *v_mount;			/* ptr to vfs we are in */
 	struct vop_ops **v_ops;			/* vnode operations vector */
 	TAILQ_ENTRY(vnode) v_list;		/* vnode act/inact/cache/free */
@@ -164,7 +166,7 @@ struct vnode {
 	struct buf_rb_tree v_rbclean_tree;	/* RB tree of clean bufs */
 	struct buf_rb_tree v_rbdirty_tree;	/* RB tree of dirty bufs */
 	struct buf_rb_hash v_rbhash_tree;	/* RB tree general lookup */
-	enum	vtype v_type;			/* vnode type */
+	enum vtype	v_type;			/* vnode type */
 	int16_t		v_act;			/* use heuristic */
 	int16_t		v_state;		/* active/free/cached */
 	union {
@@ -180,8 +182,6 @@ struct vnode {
 	off_t	v_filesize;			/* file EOF or NOOFFSET */
 	off_t	v_lazyw;			/* lazy write iterator */
 	struct vm_object *v_object;		/* Place to store VM object */
-	struct	lock v_lock;			/* file/dir ops lock */
-	struct	lwkt_token v_token;		/* (see above) */
 	enum	vtagtype v_tag;			/* type of underlying data */
 	void	*v_data;			/* private data for fs */
 	struct namecache_list v_namecache;	/* (S) associated nc entries */

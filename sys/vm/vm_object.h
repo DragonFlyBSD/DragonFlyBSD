@@ -307,7 +307,7 @@ vm_object_token(vm_object_t obj)
 
 vm_object_t vm_object_allocate (objtype_t, vm_pindex_t);
 vm_object_t vm_object_allocate_hold (objtype_t, vm_pindex_t);
-void _vm_object_allocate (objtype_t, vm_pindex_t, vm_object_t);
+void _vm_object_allocate (objtype_t, vm_pindex_t, vm_object_t, const char *);
 boolean_t vm_object_coalesce (vm_object_t, vm_pindex_t, vm_size_t, vm_size_t);
 vm_object_t vm_object_collapse (vm_object_t, vm_object_t);
 void vm_object_terminate (vm_object_t);
