@@ -470,11 +470,11 @@ MALLOC_DECLARE(M_PARGS);
  * STOPEVENT
  */
 extern void stopevent(struct proc*, unsigned int, unsigned int);
-#define	STOPEVENT(p,e,v)			\
-	do {					\
-		if ((p)->p_stops & (e)) {	\
-			stopevent(p,e,v);	\
-		}				\
+#define	STOPEVENT(p,e,v)					\
+	do {							\
+		if (__predict_false((p)->p_stops & (e))) {	\
+			stopevent(p,e,v);			\
+		}						\
 	} while (0)
 
 /*

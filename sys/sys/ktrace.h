@@ -87,10 +87,18 @@ struct ktr_header {
 /*
  * Test for kernel trace point (MP SAFE)
  */
-#define KTRPOINT(td, type)	\
-	((td)->td_proc && ((td)->td_proc->p_traceflag & (1<<(type))) && \
-	(((td)->td_proc->p_traceflag | (td)->td_lwp->lwp_traceflag) & \
-	  KTRFAC_ACTIVE) == 0)
+#define KTRPOINT(td, type)						\
+			((td)->td_proc &&				\
+			 ((td)->td_proc->p_traceflag & (1<<(type))) &&	\
+			(((td)->td_proc->p_traceflag |			\
+			  (td)->td_lwp->lwp_traceflag) &		\
+		         KTRFAC_ACTIVE) == 0)
+
+#define KTRPOINTP(p, td, type)						\
+	__predict_false((((p)->p_traceflag & (1<<(type))) &&		\
+			((p->p_traceflag |				\
+			  (td)->td_lwp->lwp_traceflag) &		\
+		         KTRFAC_ACTIVE) == 0))
 
 
 /*

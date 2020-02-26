@@ -147,12 +147,6 @@ SYSCTL_INT(_machdep, OID_AUTO, ddb_on_nmi, CTLFLAG_RW,
 static int panic_on_nmi = 1;
 SYSCTL_INT(_machdep, OID_AUTO, panic_on_nmi, CTLFLAG_RW,
 	&panic_on_nmi, 0, "Panic on NMI");
-static int fast_release;
-SYSCTL_INT(_machdep, OID_AUTO, fast_release, CTLFLAG_RW,
-	&fast_release, 0, "Passive Release was optimal");
-static int slow_release;
-SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
-	&slow_release, 0, "Passive Release was nonoptimal");
 
 /*
  * Passively intercepts the thread switch function to increase

@@ -144,19 +144,19 @@ static struct vm_map_entry map_entry_init[MAX_MAPENT];
 static struct vm_map_entry cpu_map_entry_init_bsp[MAPENTRYBSP_CACHE];
 static struct vm_map_entry cpu_map_entry_init_ap[MAXCPU][MAPENTRYAP_CACHE];
 
-static int randomize_mmap;
+__read_mostly static int randomize_mmap;
 SYSCTL_INT(_vm, OID_AUTO, randomize_mmap, CTLFLAG_RW, &randomize_mmap, 0,
     "Randomize mmap offsets");
-static int vm_map_relock_enable = 1;
+__read_mostly static int vm_map_relock_enable = 1;
 SYSCTL_INT(_vm, OID_AUTO, map_relock_enable, CTLFLAG_RW,
 	   &vm_map_relock_enable, 0, "insert pop pgtable optimization");
-static int vm_map_partition_enable = 1;
+__read_mostly static int vm_map_partition_enable = 1;
 SYSCTL_INT(_vm, OID_AUTO, map_partition_enable, CTLFLAG_RW,
 	   &vm_map_partition_enable, 0, "Break up larger vm_map_entry's");
-static int vm_map_backing_limit = 5;
+__read_mostly static int vm_map_backing_limit = 5;
 SYSCTL_INT(_vm, OID_AUTO, map_backing_limit, CTLFLAG_RW,
 	   &vm_map_backing_limit, 0, "ba.backing_ba link depth");
-static int vm_map_backing_shadow_test = 1;
+__read_mostly static int vm_map_backing_shadow_test = 1;
 SYSCTL_INT(_vm, OID_AUTO, map_backing_shadow_test, CTLFLAG_RW,
 	   &vm_map_backing_shadow_test, 0, "ba.object shadow test");
 

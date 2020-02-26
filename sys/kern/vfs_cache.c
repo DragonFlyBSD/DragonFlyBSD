@@ -3547,9 +3547,11 @@ cache_findmount(struct nchandle *nch)
 			if (mp->mnt_ncmounton.mount == nch->mount &&
 			    mp->mnt_ncmounton.ncp == nch->ncp) {
 				/*
-				 * Cache hit (positive)
+				 * Cache hit (positive) (avoid dirtying
+				 * the cache line if possible)
 				 */
-				ncc->ticks = (int)ticks;
+				if (ncc->ticks != (int)ticks)
+					ncc->ticks = (int)ticks;
 				_cache_mntref(mp);
 				spin_unlock_shared(&ncc->spin);
 				return(mp);
@@ -3559,9 +3561,11 @@ cache_findmount(struct nchandle *nch)
 		if (ncc->isneg &&
 		    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
 			/*
-			 * Cache hit (negative)
+			 * Cache hit (negative) (avoid dirtying
+			 * the cache line if possible)
 			 */
-			ncc->ticks = (int)ticks;
+			if (ncc->ticks != (int)ticks)
+				ncc->ticks = (int)ticks;
 			spin_unlock_shared(&ncc->spin);
 			return(NULL);
 		}

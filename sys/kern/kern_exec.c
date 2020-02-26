@@ -80,32 +80,32 @@ MALLOC_DEFINE(M_EXECARGS, "exec-args", "Exec arguments");
 static register_t *exec_copyout_strings (struct image_params *);
 
 /* XXX This should be vm_size_t. */
-static u_long ps_strings = PS_STRINGS;
+__read_mostly static u_long ps_strings = PS_STRINGS;
 SYSCTL_ULONG(_kern, KERN_PS_STRINGS, ps_strings, CTLFLAG_RD, &ps_strings, 0, "");
 
 /* XXX This should be vm_size_t. */
-static u_long usrstack = USRSTACK;
+__read_mostly static u_long usrstack = USRSTACK;
 SYSCTL_ULONG(_kern, KERN_USRSTACK, usrstack, CTLFLAG_RD, &usrstack, 0, "");
 
-u_long ps_arg_cache_limit = PAGE_SIZE / 16;
+__read_mostly u_long ps_arg_cache_limit = PAGE_SIZE / 16;
 SYSCTL_LONG(_kern, OID_AUTO, ps_arg_cache_limit, CTLFLAG_RW, 
     &ps_arg_cache_limit, 0, "");
 
-int ps_argsopen = 1;
+__read_mostly int ps_argsopen = 1;
 SYSCTL_INT(_kern, OID_AUTO, ps_argsopen, CTLFLAG_RW, &ps_argsopen, 0, "");
 
-static int ktrace_suid = 0;
+__read_mostly static int ktrace_suid = 0;
 SYSCTL_INT(_kern, OID_AUTO, ktrace_suid, CTLFLAG_RW, &ktrace_suid, 0, "");
 
 void print_execve_args(struct image_args *args);
-int debug_execve_args = 0;
+__read_mostly int debug_execve_args = 0;
 SYSCTL_INT(_kern, OID_AUTO, debug_execve_args, CTLFLAG_RW, &debug_execve_args,
     0, "");
 
 /*
  * Exec arguments object cache
  */
-static struct objcache *exec_objcache;
+__read_mostly static struct objcache *exec_objcache;
 
 static
 void
@@ -138,7 +138,8 @@ SYSINIT(exec_objcache, SI_BOOT2_MACHDEP, SI_ORDER_ANY, exec_objcache_init, 0);
  * to it.  It must be a power of 2.  If non-zero, the stack gap will be 
  * calculated as: ALIGN(karc4random() & (stackgap_random - 1)).
  */
-static int stackgap_random = 1024;
+__read_mostly static int stackgap_random = 1024;
+
 static int
 sysctl_kern_stackgap(SYSCTL_HANDLER_ARGS)
 {
@@ -179,7 +180,7 @@ print_execve_args(struct image_args *args)
  * Each of the items is a pointer to a `const struct execsw', hence the
  * double pointer here.
  */
-static const struct execsw **execsw;
+__read_mostly static const struct execsw **execsw;
 
 /*
  * Replace current vmspace with a new binary.

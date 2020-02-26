@@ -227,9 +227,9 @@ SYSCTL_PROC(_kern, OID_AUTO, cp_times, (CTLTYPE_LONG|CTLFLAG_RD), 0, 0,
  *          time_second, time_uptime is not a "real" time_t (seconds
  *          since the Epoch) but seconds since booting.
  */
-struct timespec boottime;	/* boot time (realtime) for reference only */
-time_t time_second;		/* read-only 'passive' realtime in seconds */
-time_t time_uptime;		/* read-only 'passive' uptime in seconds */
+__read_mostly struct timespec boottime;	/* boot time (realtime) for ref only */
+__read_mostly time_t time_second;	/* read-only 'passive' rt in seconds */
+__read_mostly time_t time_uptime;	/* read-only 'passive' ut in seconds */
 
 /*
  * basetime is used to calculate the compensated real time of day.  The
@@ -283,11 +283,15 @@ static void statclock(systimer_t info, int, struct intrframe *frame);
 static void schedclock(systimer_t info, int, struct intrframe *frame);
 static void getnanotime_nbt(struct timespec *nbt, struct timespec *tsp);
 
-int	ticks;			/* system master ticks at hz */
-int	clocks_running;		/* tsleep/timeout clocks operational */
+/*
+ * Use __read_mostly for ticks and sched_ticks because these variables are
+ * used all over the kernel and only updated once per tick.
+ */
+__read_mostly int ticks;		/* system master ticks at hz */
+__read_mostly int sched_ticks;		/* global schedule clock ticks */
+__read_mostly int clocks_running;	/* tsleep/timeout clocks operational */
 int64_t	nsec_adj;		/* ntpd per-tick adjustment in nsec << 32 */
 int64_t	nsec_acc;		/* accumulator */
-int	sched_ticks;		/* global schedule clock ticks */
 
 /* NTPD time correction fields */
 int64_t	ntp_tick_permanent;	/* per-tick adjustment in nsec << 32 */
