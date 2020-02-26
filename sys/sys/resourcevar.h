@@ -118,21 +118,26 @@ struct uidcount {
 
 /*
  * Per uid resource consumption
+ *
+ * There typically aren't too many uidinfo's, so shove the ref count
+ * out of the way with a __cachealign.
  */
 struct uidinfo {
 	/*
 	 * Protects access to ui_sbsize, ui_proccnt, ui_posixlocks
 	 */
-	struct spinlock ui_lock;	/* not currently used (FUTURE) */
 	LIST_ENTRY(uidinfo) ui_hash;
 	rlim_t	ui_sbsize;		/* socket buffer space consumed */
 	long	ui_proccnt;		/* number of processes */
 	uid_t	ui_uid;			/* uid */
-	int	ui_ref;			/* reference count */
 	int	ui_posixlocks;		/* (rollup) number of POSIX locks */
 	int	ui_openfiles;		/* (rollup) number of open files */
 	struct varsymset ui_varsymset;	/* variant symlinks */
 	struct uidcount *ui_pcpu;
+	struct {
+		struct spinlock ui_lock;/* not currently used (FUTURE) */
+		int	ui_ref;		/* reference count */
+	} __cachealign;
 };
 
 #endif
