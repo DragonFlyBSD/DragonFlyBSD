@@ -163,16 +163,11 @@ KTR_INFO(KTR_MEMORY, memory, free_end, 10, "free end");
 /*
  * Fixed globals (not per-cpu)
  */
-static int ZoneSize;
-static int ZoneLimit;
-static int ZonePageCount;
-static uintptr_t ZoneMask;
-static int ZoneBigAlloc;		/* in KB */
-static int ZoneGenAlloc;		/* in KB */
-struct malloc_type *kmemstatistics;	/* exported to vmstat */
-#ifdef INVARIANTS
-static int32_t weirdary[16];
-#endif
+__read_frequently static int ZoneSize;
+__read_frequently static int ZoneLimit;
+__read_frequently static int ZonePageCount;
+__read_frequently static uintptr_t ZoneMask;
+__read_frequently struct malloc_type *kmemstatistics;	/* exported to vmstat */
 
 static void *kmem_slab_alloc(vm_size_t bytes, vm_offset_t align, int flags);
 static void kmem_slab_free(void *ptr, vm_size_t bytes);
@@ -230,25 +225,20 @@ SYSINIT(kmem, SI_BOOT1_ALLOCATOR, SI_ORDER_FIRST, kmeminit, NULL);
 /*
  * If enabled any memory allocated without M_ZERO is initialized to -1.
  */
-static int  use_malloc_pattern;
+__read_frequently static int  use_malloc_pattern;
 SYSCTL_INT(_debug, OID_AUTO, use_malloc_pattern, CTLFLAG_RW,
     &use_malloc_pattern, 0,
     "Initialize memory to -1 if M_ZERO not specified");
+
+__read_frequently static int32_t weirdary[16];
+__read_frequently static int  use_weird_array;
+SYSCTL_INT(_debug, OID_AUTO, use_weird_array, CTLFLAG_RW,
+    &use_weird_array, 0,
+    "Initialize memory to weird values on kfree()");
 #endif
 
-static int ZoneRelsThresh = ZONE_RELS_THRESH;
-SYSCTL_INT(_kern, OID_AUTO, zone_big_alloc, CTLFLAG_RD, &ZoneBigAlloc, 0, "");
-SYSCTL_INT(_kern, OID_AUTO, zone_gen_alloc, CTLFLAG_RD, &ZoneGenAlloc, 0, "");
+__read_frequently static int ZoneRelsThresh = ZONE_RELS_THRESH;
 SYSCTL_INT(_kern, OID_AUTO, zone_cache, CTLFLAG_RW, &ZoneRelsThresh, 0, "");
-static long SlabsAllocated;
-static long SlabsFreed;
-SYSCTL_LONG(_kern, OID_AUTO, slabs_allocated, CTLFLAG_RD,
-	    &SlabsAllocated, 0, "");
-SYSCTL_LONG(_kern, OID_AUTO, slabs_freed, CTLFLAG_RD,
-	    &SlabsFreed, 0, "");
-static int SlabFreeToTail;
-SYSCTL_INT(_kern, OID_AUTO, slab_freetotail, CTLFLAG_RW,
-	    &SlabFreeToTail, 0, "");
 
 static struct spinlock kmemstat_spin =
 			SPINLOCK_INITIALIZER(&kmemstat_spin, "malinit");
@@ -295,6 +285,12 @@ kmeminit(void *dummy)
 	    if (limsize >= 7 * 1024)
 		    ZoneRelsThresh *= 2;
 	    if (limsize >= 15 * 1024)
+		    ZoneRelsThresh *= 2;
+	    if (limsize >= 31 * 1024)
+		    ZoneRelsThresh *= 2;
+	    if (limsize >= 63 * 1024)
+		    ZoneRelsThresh *= 2;
+	    if (limsize >= 127 * 1024)
 		    ZoneRelsThresh *= 2;
     }
 
@@ -790,7 +786,6 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    kup = btokup(z);
 	    *kup = 0;
 	    kmem_slab_free(z, ZoneSize);	/* may block */
-	    atomic_add_int(&ZoneGenAlloc, -ZoneSize / 1024);
 	}
 	crit_exit();
     }
@@ -807,7 +802,6 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    TAILQ_REMOVE(&slgd->FreeOvZones, z, z_Entry);
 	    tsize = z->z_ChunkSize;
 	    kmem_slab_free(z, tsize);	/* may block */
-	    atomic_add_int(&ZoneBigAlloc, -(int)tsize / 1024);
 	}
 	crit_exit();
     }
@@ -829,7 +823,6 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    logmemory(malloc_end, NULL, type, size, flags);
 	    return(NULL);
 	}
-	atomic_add_int(&ZoneBigAlloc, (int)size / 1024);
 	flags &= ~M_ZERO;	/* result already zero'd if M_ZERO was set */
 	flags |= M_PASSIVE_ZERO;
 	kup = btokup(chunk);
@@ -952,7 +945,6 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    z = kmem_slab_alloc(ZoneSize, ZoneSize, flags|M_ZERO);
 	    if (z == NULL)
 		goto fail;
-	    atomic_add_int(&ZoneGenAlloc, ZoneSize / 1024);
 	}
 
 	/*
@@ -1284,8 +1276,10 @@ kfree(void *ptr, struct malloc_type *type)
 	size = *kup << PAGE_SHIFT;
 	*kup = 0;
 #ifdef INVARIANTS
-	KKASSERT(sizeof(weirdary) <= size);
-	bcopy(weirdary, ptr, sizeof(weirdary));
+	if (use_weird_array) {
+		KKASSERT(sizeof(weirdary) <= size);
+		bcopy(weirdary, ptr, sizeof(weirdary));
+	}
 #endif
 	/*
 	 * NOTE: For oversized allocations we do not record the
@@ -1313,7 +1307,6 @@ kfree(void *ptr, struct malloc_type *type)
 	    crit_exit();
 	    logmemory(free_ovsz, ptr, type, size, 0);
 	    kmem_slab_free(ptr, size);	/* may block */
-	    atomic_add_int(&ZoneBigAlloc, -(int)size / 1024);
 	}
 	logmemory_quick(free_end);
 	return;
@@ -1415,10 +1408,12 @@ kfree(void *ptr, struct malloc_type *type)
      * and so forth.  XXX needs more work, see the old malloc code.
      */
 #ifdef INVARIANTS
-    if (z->z_ChunkSize < sizeof(weirdary))
-	bcopy(weirdary, chunk, z->z_ChunkSize);
-    else
-	bcopy(weirdary, chunk, sizeof(weirdary));
+    if (use_weird_array) {
+	    if (z->z_ChunkSize < sizeof(weirdary))
+		bcopy(weirdary, chunk, z->z_ChunkSize);
+	    else
+		bcopy(weirdary, chunk, sizeof(weirdary));
+    }
 #endif
 
     /*
@@ -1448,12 +1443,8 @@ kfree(void *ptr, struct malloc_type *type)
      * entries even while other allocations are going on and making the zone
      * freeable.
      */
-    if (z->z_NFree++ == 0) {
-	if (SlabFreeToTail)
-	    TAILQ_INSERT_TAIL(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
-	else
+    if (z->z_NFree++ == 0)
 	    TAILQ_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
-    }
 
     --type->ks_use[gd->gd_cpuid].inuse;
     type->ks_use[gd->gd_cpuid].memuse -= z->z_ChunkSize;
@@ -1712,7 +1703,6 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     }
     smp_invltlb();
     vm_map_entry_release(count);
-    atomic_add_long(&SlabsAllocated, 1);
     return((void *)addr);
 }
 
@@ -1724,6 +1714,5 @@ kmem_slab_free(void *ptr, vm_size_t size)
 {
     crit_enter();
     vm_map_remove(&kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
-    atomic_add_long(&SlabsFreed, 1);
     crit_exit();
 }
