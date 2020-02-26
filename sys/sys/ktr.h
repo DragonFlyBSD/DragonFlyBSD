@@ -207,8 +207,8 @@ SYSCTL_DECL(_debug_ktr);
 		    (ktr_ ## name ## _mask &				\
 		     *ktr_info_ ## name .kf_master_enable))) {		\
 			struct ktr_entry *entry;			\
-			entry = ktr_begin_write_entry(&ktr_info_ ## name,
-						__FILE__, __LINE__);	\
+			entry = ktr_begin_write_entry(			\
+				&ktr_info_ ## name, __FILE__, __LINE__); \
 			if (!entry)					\
 				break;					\
 			*(struct ktr_info_  ## name ## _args *)&entry->ktr_data[0] = \
