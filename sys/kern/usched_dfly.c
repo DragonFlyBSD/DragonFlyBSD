@@ -377,6 +377,7 @@ __read_mostly static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
 __read_mostly static int usched_dfly_decay = 8;
 __read_mostly static int usched_dfly_ipc_smt = -1;  /* IPC auto smt pair */
 __read_mostly static int usched_dfly_ipc_same = -1; /* IPC auto same log cpu */
+__read_mostly static int usched_dfly_poll_ticks = 0; /* helper polling ticks */
 __read_mostly static long usched_dfly_node_mem;
 
 /* KTR debug printings */
@@ -2526,7 +2527,8 @@ dfly_helper_thread(void *dummy)
 	 * for us if interrupts and such are pending.
 	 */
 	crit_exit_gd(gd);
-	tsleep(dd->helper_thread, PINTERLOCKED, "schslp", 0);
+	tsleep(dd->helper_thread, PINTERLOCKED, "schslp",
+	       usched_dfly_poll_ticks);
     }
 }
 
@@ -2688,6 +2690,10 @@ usched_dfly_cpu_init(void)
 		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
 		       OID_AUTO, "ipc_same", CTLFLAG_RW,
 		       &usched_dfly_ipc_same, 0, "Pair IPC on same thread");
+	SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
+		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
+		       OID_AUTO, "poll_ticks", CTLFLAG_RW,
+		       &usched_dfly_poll_ticks, 0, "Poll for work (0 ok)");
 
 	/* Add enable/disable option for SMT scheduling if supported */
 	if (smt_not_supported) {
