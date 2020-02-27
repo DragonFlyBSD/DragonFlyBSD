@@ -52,16 +52,24 @@
 #include "symbols.h"
 
 struct symdata {
-	TAILQ_ENTRY(symdata) link;
+	RB_ENTRY(symdata) node;
 	const char *symname;
-	char *symaddr;
+	char *symaddr_beg;
+	char *symaddr_end;
 	char symtype;
 };
 
-static TAILQ_HEAD(symlist, symdata) symlist;
-static struct symdata *symcache;
+static int symdata_cmp(struct symdata *s1, struct symdata *s2);
+
+RB_HEAD(symdata_rbtree, symdata);
+RB_PROTOTYPE3(symdata_rbtree, symdata, node, symdata_cmp, char *);
+RB_GENERATE3(symdata_rbtree, symdata, node, symdata_cmp, char *,
+		symaddr_beg, symaddr_end);
+
+static struct symdata_rbtree symroot = RB_INITIALIZER(symroot);
 static char *symbegin = (void *)(intptr_t)0;
 static char *symend = (void *)(intptr_t)-1;
+
 
 void
 read_symbols(const char *file)
@@ -70,12 +78,13 @@ read_symbols(const char *file)
 	char cmd[256];
 	size_t buflen = sizeof(buf);
 	FILE *fp;
+	struct symdata *lsym;
 	struct symdata *sym;
 	char *s1;
 	char *s2;
 	char *s3;
 
-	TAILQ_INIT(&symlist);
+	RB_INIT(&symroot);
 
 	if (file == NULL) {
 		if (sysctlbyname("kern.bootfile", buf, &buflen, NULL, 0) < 0)
@@ -85,49 +94,54 @@ read_symbols(const char *file)
 	}
 	snprintf(cmd, sizeof(cmd), "nm -n %s", file);
 	if ((fp = popen(cmd, "r")) != NULL) {
+		lsym = NULL;
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
 		    s1 = strtok(buf, " \t\n");
 		    s2 = strtok(NULL, " \t\n");
 		    s3 = strtok(NULL, " \t\n");
 		    if (s1 && s2 && s3) {
 			sym = malloc(sizeof(struct symdata));
-			sym->symaddr = (char *)strtoul(s1, NULL, 16);
+			sym->symaddr_beg = (char *)strtoul(s1, NULL, 16);
+			sym->symaddr_end = sym->symaddr_beg;
+			if (lsym)
+				lsym->symaddr_end = sym->symaddr_beg - 1;
 			sym->symtype = s2[0];
 			sym->symname = strdup(s3);
 			if (strcmp(s3, "kernbase") == 0)
-				symbegin = sym->symaddr;
+				symbegin = sym->symaddr_beg;
 			if (strcmp(s3, "end") == 0)
-				symend = sym->symaddr;
-			TAILQ_INSERT_TAIL(&symlist, sym, link);
+				symend = sym->symaddr_beg;
+			RB_INSERT(symdata_rbtree, &symroot, sym);
+			lsym = sym;
 		    }
 		}
 		pclose(fp);
 	}
-	symcache = TAILQ_FIRST(&symlist);
 }
 
 const char *
 address_to_symbol(void *kptr, struct save_ctx *ctx)
 {
+	static struct symdata *sym;
 	char *buf = ctx->save_buf;
 	int size = sizeof(ctx->save_buf);
 
-	if (symcache == NULL ||
-	   (char *)kptr < symbegin || (char *)kptr >= symend
-	) {
+	sym = RB_RLOOKUP(symdata_rbtree, &symroot, (char *)kptr);
+	if (sym) {
+		snprintf(buf, size, "%s+%d", sym->symname,
+			(int)((char *)kptr - sym->symaddr_beg));
+	} else {
 		snprintf(buf, size, "%p", kptr);
-		return(buf);
 	}
-	while ((char *)symcache->symaddr < (char *)kptr) {
-		if (TAILQ_NEXT(symcache, link) == NULL)
-			break;
-		symcache = TAILQ_NEXT(symcache, link);
-	}
-	while ((char *)symcache->symaddr > (char *)kptr) {
-		if (symcache != TAILQ_FIRST(&symlist))
-			symcache = TAILQ_PREV(symcache, symlist, link);
-	}
-	snprintf(buf, size, "%s+%d", symcache->symname,
-		(int)((char *)kptr - symcache->symaddr));
 	return(buf);
+}
+
+static int
+symdata_cmp(struct symdata *s1, struct symdata *s2)
+{
+	if (s1->symaddr_beg < s2->symaddr_beg)
+		return -1;
+	if (s1->symaddr_beg > s2->symaddr_beg)
+		return 1;
+	return 0;
 }

@@ -126,10 +126,14 @@ rdrand_attach(device_t dev)
 	sc->sc_rng_co = kmalloc(ncpus * sizeof(*sc->sc_rng_co),
 				M_TEMP, M_WAITOK | M_ZERO);
 
+	/*
+	 * Set an initial offset so we don't pound all cores simultaneously
+	 * for no good reason.
+	 */
 	for (i = 0; i < ncpus; ++i) {
 		callout_init_mp(&sc->sc_rng_co[i]);
-		callout_reset_bycpu(&sc->sc_rng_co[i], sc->sc_rng_ticks,
-				    rdrand_rng_harvest, sc, i);
+		callout_reset_bycpu(&sc->sc_rng_co[i],
+				    i, rdrand_rng_harvest, sc, i);
 	}
 
 	return 0;

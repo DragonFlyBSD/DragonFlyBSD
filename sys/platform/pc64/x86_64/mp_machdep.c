@@ -1090,6 +1090,9 @@ smp_invlpg(cpumask_t *cmdmask)
 	smp_inval_intr();
 }
 
+/*
+ * Issue rip/rsp sniffs
+ */
 void
 smp_sniff(void)
 {

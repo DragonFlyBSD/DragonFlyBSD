@@ -60,6 +60,7 @@ SUBDIR=	alias \
 	file2c \
 	find \
 	finger \
+	flame_graph \
 	flex \
 	fmt \
 	fold \

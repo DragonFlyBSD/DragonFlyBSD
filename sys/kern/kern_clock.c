@@ -428,9 +428,10 @@ initclocks_other(void *dummy)
 		systimer_init_periodic_flags(&gd->gd_statclock, statclock,
 					  NULL, stathz,
 					  SYSTF_MSSYNC | SYSTF_FIRST |
-					  SYSTF_OFFSET50);
+					  SYSTF_OFFSET50 | SYSTF_OFFSETCPU);
 		systimer_init_periodic_flags(&gd->gd_hardclock, hardclock,
-					  NULL, hz, SYSTF_MSSYNC);
+					  NULL, hz,
+					  SYSTF_MSSYNC | SYSTF_OFFSETCPU);
 	}
 	lwkt_setcpu_self(ogd);
 

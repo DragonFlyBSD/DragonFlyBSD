@@ -65,6 +65,8 @@ __BEGIN_DECLS
 
 #include <machine/lock.h>		/* XXX */
 
+struct trapframe;
+
 static __inline void
 breakpoint(void)
 {
@@ -689,6 +691,7 @@ cpu_invltlb(void)
 extern void smp_invltlb(void);
 extern void smp_sniff(void);
 extern void cpu_sniff(int dcpu);
+extern void hard_sniff(struct trapframe *tf);
 
 static __inline u_short
 rfs(void)

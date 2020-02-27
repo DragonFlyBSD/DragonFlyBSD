@@ -275,10 +275,11 @@ _systimer_init_periodic(systimer_t info, systimer_func_t func, void *data,
     base_count = sys_cputimer->count();
     base_count = base_count -
 		 (base_count - sys_cputimer->sync_base) % info->periodic;
+    info->time = base_count + info->periodic;
+    if (flags & SYSTF_OFFSETCPU)
+	    info->time += mycpu->gd_cpuid * info->periodic / ncpus;
     if (flags & SYSTF_OFFSET50)
-	    info->time = base_count + info->periodic / 2;
-    else
-	    info->time = base_count + info->periodic;
+	    info->time += info->periodic / 2;
     info->func = func;
     info->data = data;
     info->freq = freq;

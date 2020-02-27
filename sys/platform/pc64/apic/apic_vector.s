@@ -217,10 +217,8 @@ Xsniff:
 	callq	*%rax			/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	incl    PCPU(cnt) + V_IPI
-	movq	TF_RIP(%rsp),%rax
-	movq	%rax,PCPU(sample_pc)
-	movq	TF_RSP(%rsp),%rax
-	movq	%rax,PCPU(sample_sp)
+	movq	%rsp,%rdi
+	call	CNAME(hard_sniff)	/* systat -pv and flame sniff */
 	MEXITCOUNT
 	APIC_POP_FRAME(jmp doreti_iret)
 
