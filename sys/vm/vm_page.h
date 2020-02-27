@@ -318,6 +318,9 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  *		     via a page fault (aka pmap_enter()), but must be cleared
  *		     manually.
  *
+ * PG_MAPPEDMULTI  - Possibly mapped to multiple pmaps or to multiple locations
+ *		     ine one pmap.
+ *
  * PG_WRITEABLE    - Indicates that the page MIGHT be writeable via a pte.
  *		     If not set, guarantees that the page is not writeable.
  *
@@ -371,7 +374,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define	PG_FICTITIOUS	0x00000008	/* No reverse-map or tracking */
 #define	PG_WRITEABLE	0x00000010	/* page may be writeable */
 #define PG_MAPPED	0x00000020	/* page may be mapped (managed) */
-#define	PG_UNUSED0040	0x00000040
+#define	PG_MAPPEDMULTI	0x00000040	/* multiple mappings */
 #define PG_REFERENCED	0x00000080	/* page has been referenced */
 #define PG_CLEANCHK	0x00000100	/* page will be checked for cleaning */
 #define PG_UNUSED0200	0x00000200

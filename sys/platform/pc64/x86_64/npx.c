@@ -88,7 +88,7 @@ static struct krate badfprate = { 1 };
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
 
-uint32_t npx_mxcsr_mask = 0xFFBF;	/* this is the default */
+__read_mostly uint32_t npx_mxcsr_mask = 0xFFBF;	/* this is the default */
 
 /*
  * Probe the npx_mxcsr_mask as described in the intel document

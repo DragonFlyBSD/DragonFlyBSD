@@ -100,14 +100,20 @@
 #include <vm/vm_page2.h>
 #include <sys/spinlock2.h>
 
+/*
+ * Cache necessary elements in the hash table itself to avoid indirecting
+ * through random vm_page's when doing a lookup.  The hash table is
+ * heuristical and it is ok for races to mess up any or all fields.
+ */
 struct vm_page_hash_elm {
 	vm_page_t	m;
+	vm_object_t	object;	/* heuristical */
+	uint32_t	pindex;	/* heuristical 32-bit field */
 	int		ticks;
-	int		unused01;
 };
 
 #define VM_PAGE_HASH_SET	4		    /* power of 2, set-assoc */
-#define VM_PAGE_HASH_MAX	(16 * 1024 * 1024)  /* power of 2, max size */
+#define VM_PAGE_HASH_MAX	(8 * 1024 * 1024)   /* power of 2, max size */
 
 /*
  * SET - Minimum required set associative size, must be a power of 2.  We
@@ -1556,7 +1562,8 @@ vm_page_remove(vm_page_t m)
 }
 
 /*
- * Calculate the hash position for the vm_page hash heuristic.
+ * Calculate the hash position for the vm_page hash heuristic.  Generally
+ * speaking we want to localize sequential lookups to reduce memory stalls.
  *
  * Mask by ~3 to offer 4-way set-assoc
  */
@@ -1566,12 +1573,18 @@ vm_page_hash_hash(vm_object_t object, vm_pindex_t pindex)
 {
 	size_t hi;
 
+	hi = iscsi_crc32(&object, sizeof(object)) << 2;
+	hi ^= hi >> (23 - 2);
+	hi += pindex * VM_PAGE_HASH_SET;
+#if 0
 	/* mix it up */
 	hi = (intptr_t)object ^ object->pg_color ^ pindex;
 	hi += object->pg_color * pindex;
 	hi = hi ^ (hi >> 20);
+#endif
 	hi &= vm_page_hash_size - 1;		/* bounds */
 	hi &= ~(VM_PAGE_HASH_SET - 1);		/* set-assoc */
+
 	return (&vm_page_hash[hi]);
 }
 
@@ -1592,6 +1605,8 @@ vm_page_hash_get(vm_object_t object, vm_pindex_t pindex)
 		return NULL;
 	mp = vm_page_hash_hash(object, pindex);
 	for (i = 0; i < VM_PAGE_HASH_SET; ++i) {
+		if (mp[i].object != object || mp[i].pindex != (uint32_t)pindex)
+			continue;
 		m = mp[i].m;
 		cpu_ccfence();
 		if (m == NULL)
@@ -1629,11 +1644,14 @@ vm_page_hash_enter(vm_page_t m)
 	/*
 	 * Only enter type-stable vm_pages with well-shared objects.
 	 */
-	if (vm_page_hash == NULL ||
-	    m < &vm_page_array[0] ||
-	    m >= &vm_page_array[vm_page_array_size])
+	if ((m->flags & PG_MAPPEDMULTI) == 0)
 		return;
-	if (m->object == NULL)
+	if (__predict_false(vm_page_hash == NULL ||
+			    m < &vm_page_array[0] ||
+			    m >= &vm_page_array[vm_page_array_size])) {
+		return;
+	}
+	if (__predict_false(m->object == NULL))
 		return;
 #if 0
 	/*
@@ -1654,7 +1672,9 @@ vm_page_hash_enter(vm_page_t m)
 	mp = vm_page_hash_hash(m->object, m->pindex);
 	best = mp;
 	for (i = 0; i < VM_PAGE_HASH_SET; ++i) {
-		if (mp[i].m == m) {
+		if (mp[i].m == m &&
+		    mp[i].object == m->object &&
+		    mp[i].pindex == (uint32_t)m->pindex) {
 			/*
 			 * On-match optimization - do not update ticks
 			 * unless we have to (reduce cache coherency traffic)
@@ -1675,7 +1695,14 @@ vm_page_hash_enter(vm_page_t m)
 			best = &mp[i];
 		}
 	}
+
+	/*
+	 * Load the entry.  Copy a few elements to the hash entry itself
+	 * to reduce memory stalls due to memory indirects on lookups.
+	 */
 	best->m = m;
+	best->object = m->object;
+	best->pindex = (uint32_t)m->pindex;
 	best->ticks = ticks;
 }
 
@@ -3083,6 +3110,10 @@ vm_page_free_wakeup(void)
 void
 vm_page_free_toq(vm_page_t m)
 {
+	/*
+	 * The page must not be mapped when freed, but we may have to call
+	 * pmap_mapped_sync() to validate this.
+	 */
 	mycpu->gd_cnt.v_tfree++;
 	if (m->flags & (PG_MAPPED | PG_WRITEABLE))
 		pmap_mapped_sync(m);
@@ -3428,8 +3459,6 @@ vm_page_cache(vm_page_t m)
 	 * Already in the cache (and thus not mapped)
 	 */
 	if ((m->queue - m->pc) == PQ_CACHE) {
-		if (m->flags & (PG_MAPPED | PG_WRITEABLE))
-			pmap_mapped_sync(m);
 		KKASSERT((m->flags & PG_MAPPED) == 0);
 		vm_page_wakeup(m);
 		return;
@@ -3456,8 +3485,10 @@ vm_page_cache(vm_page_t m)
 	 * have blocked (especially w/ VM_PROT_NONE), so recheck
 	 * everything.
 	 */
-	vm_page_protect(m, VM_PROT_NONE);
-	pmap_mapped_sync(m);
+	if (m->flags & (PG_MAPPED | PG_WRITEABLE)) {
+		vm_page_protect(m, VM_PROT_NONE);
+		pmap_mapped_sync(m);
+	}
 	if ((m->flags & (PG_UNQUEUED | PG_MAPPED)) ||
 	    (m->busy_count & PBUSY_MASK) ||
 	    m->wire_count || m->hold_count) {

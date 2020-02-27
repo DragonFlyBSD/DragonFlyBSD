@@ -163,10 +163,10 @@ __read_mostly int vm_shared_fault = 1;
 TUNABLE_INT("vm.shared_fault", &vm_shared_fault);
 SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW,
 		&vm_shared_fault, 0, "Allow shared token on vm_object");
-__read_mostly static int vm_fault_quick_count = 1;
-TUNABLE_INT("vm.fault_quick", &vm_fault_quick_count);
-SYSCTL_INT(_vm, OID_AUTO, fault_quick, CTLFLAG_RW,
-		&vm_fault_quick_count, 0, "Allow fast vm_fault shortcut");
+__read_mostly static int vm_fault_bypass_count = 1;
+TUNABLE_INT("vm.fault_bypass", &vm_fault_bypass_count);
+SYSCTL_INT(_vm, OID_AUTO, fault_bypass, CTLFLAG_RW,
+		&vm_fault_bypass_count, 0, "Allow fast vm_fault shortcut");
 
 /*
  * Define here for debugging ioctls.  Note that these are globals, so
@@ -175,24 +175,24 @@ SYSCTL_INT(_vm, OID_AUTO, fault_quick, CTLFLAG_RW,
  */
 /*#define VM_FAULT_QUICK_DEBUG */
 #ifdef VM_FAULT_QUICK_DEBUG
-static long vm_fault_quick_success_count = 0;
-SYSCTL_LONG(_vm, OID_AUTO, fault_quick_success_count, CTLFLAG_RW,
-		&vm_fault_quick_success_count, 0, "");
-static long vm_fault_quick_failure_count1 = 0;
-SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count1, CTLFLAG_RW,
-		&vm_fault_quick_failure_count1, 0, "");
-static long vm_fault_quick_failure_count2 = 0;
-SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count2, CTLFLAG_RW,
-		&vm_fault_quick_failure_count2, 0, "");
-static long vm_fault_quick_failure_count3 = 0;
-SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count3, CTLFLAG_RW,
-		&vm_fault_quick_failure_count3, 0, "");
-static long vm_fault_quick_failure_count4 = 0;
-SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count4, CTLFLAG_RW,
-		&vm_fault_quick_failure_count4, 0, "");
+static long vm_fault_bypass_success_count = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_bypass_success_count, CTLFLAG_RW,
+		&vm_fault_bypass_success_count, 0, "");
+static long vm_fault_bypass_failure_count1 = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_bypass_failure_count1, CTLFLAG_RW,
+		&vm_fault_bypass_failure_count1, 0, "");
+static long vm_fault_bypass_failure_count2 = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_bypass_failure_count2, CTLFLAG_RW,
+		&vm_fault_bypass_failure_count2, 0, "");
+static long vm_fault_bypass_failure_count3 = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_bypass_failure_count3, CTLFLAG_RW,
+		&vm_fault_bypass_failure_count3, 0, "");
+static long vm_fault_bypass_failure_count4 = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_bypass_failure_count4, CTLFLAG_RW,
+		&vm_fault_bypass_failure_count4, 0, "");
 #endif
 
-static int vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
+static int vm_fault_bypass(struct faultstate *fs, vm_pindex_t first_pindex,
 			vm_pindex_t first_count, int *mextcountp,
 			vm_prot_t fault_type);
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t, int);
@@ -422,7 +422,7 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 
 RetryFault:
 	/*
-	 * vm_fault_quick() can shortcut us.
+	 * vm_fault_bypass() can shortcut us.
 	 */
 	fs.msoftonly = 0;
 	fs.first_ba_held = 0;
@@ -637,8 +637,8 @@ RetryFault:
 	 * Try to shortcut the entire mess and run the fault lockless.
 	 * This will burst in multiple pages via fs->mary[].
 	 */
-	if (vm_fault_quick_count &&
-	    vm_fault_quick(&fs, first_pindex, first_count,
+	if (vm_fault_bypass_count &&
+	    vm_fault_bypass(&fs, first_pindex, first_count,
 			   &mextcount, fault_type) == KERN_SUCCESS) {
 		didilock = 0;
 		fault_flags &= ~VM_FAULT_BURST;
@@ -878,7 +878,7 @@ done2:
  */
 static
 int
-vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
+vm_fault_bypass(struct faultstate *fs, vm_pindex_t first_pindex,
 	       vm_pindex_t first_count, int *mextcountp,
 	       vm_prot_t fault_type)
 {
@@ -908,7 +908,7 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	 */
 	if (fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 #ifdef VM_FAULT_QUICK_DEBUG
-		++vm_fault_quick_failure_count1;
+		++vm_fault_bypass_failure_count1;
 #endif
 		return KERN_FAILURE;
 	}
@@ -920,7 +920,7 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	m = vm_page_hash_get(obj, first_pindex);
 	if (m == NULL) {
 #ifdef VM_FAULT_QUICK_DEBUG
-		++vm_fault_quick_failure_count2;
+		++vm_fault_bypass_failure_count2;
 #endif
 		return KERN_FAILURE;
 	}
@@ -930,7 +930,7 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	    (m->flags & PG_SWAPPED)) {
 		vm_page_sbusy_drop(m);
 #ifdef VM_FAULT_QUICK_DEBUG
-		++vm_fault_quick_failure_count3;
+		++vm_fault_bypass_failure_count3;
 #endif
 		return KERN_FAILURE;
 	}
@@ -959,7 +959,7 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 		    m->dirty != VM_PAGE_BITS_ALL) {
 			vm_page_sbusy_drop(m);
 #ifdef VM_FAULT_QUICK_DEBUG
-			++vm_fault_quick_failure_count4;
+			++vm_fault_bypass_failure_count4;
 #endif
 			return KERN_FAILURE;
 		}
@@ -980,8 +980,8 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	fs->mary[0] = m;
 	vm_page_soft_activate(m);
 
-	if (vm_fault_quick_count > 1) {
-		nlim = vm_fault_quick_count;
+	if (vm_fault_bypass_count > 1) {
+		nlim = vm_fault_bypass_count;
 		if (nlim > VM_FAULT_MAX_QUICK)		/* array limit(+1) */
 			nlim = VM_FAULT_MAX_QUICK;
 		if (nlim > first_count)			/* user limit */
@@ -1013,7 +1013,7 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	}
 
 #ifdef VM_FAULT_QUICK_DEBUG
-	++vm_fault_quick_success_count;
+	++vm_fault_bypass_success_count;
 #endif
 
 	return KERN_SUCCESS;

@@ -857,6 +857,15 @@ vm_object_terminate(vm_object_t object)
 
 /*
  * The caller must hold the object.
+ *
+ * NOTE: In PMAP_ADVANCED mode it is possible for vm_page's to remain flagged
+ *	 PG_MAPPED or PG_MAPPED|PG_WRITEABLE, even after pmap_mapped_sync()
+ *	 is called, due to normal pmap operations.  This is because only
+ *	 global pmap operations on the vm_page can clear the bits and not
+ *	 just local operations on individual pmaps.
+ *
+ *	 Most interactions that necessitate the clearing of these bits
+ *	 proactively call vm_page_protect(), and we must do so here as well.
  */
 static int
 vm_object_terminate_callback(vm_page_t p, void *data)
@@ -881,6 +890,8 @@ vm_object_terminate_callback(vm_page_t p, void *data)
 		/*
 		 * NOTE: p->dirty and PG_NEED_COMMIT are ignored.
 		 */
+		if (pmap_mapped_sync(p) & (PG_MAPPED | PG_WRITEABLE))
+			vm_page_protect(p, VM_PROT_NONE);
 		vm_page_free(p);
 		mycpu->gd_cnt.v_pfree++;
 	} else {
@@ -892,6 +903,8 @@ vm_object_terminate_callback(vm_page_t p, void *data)
 				print_backtrace(10);
 			}
 		}
+		if (pmap_mapped_sync(p) & (PG_MAPPED | PG_WRITEABLE))
+			vm_page_protect(p, VM_PROT_NONE);
 		vm_page_remove(p);
 		vm_page_wakeup(p);
 	}

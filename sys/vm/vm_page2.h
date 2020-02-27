@@ -334,7 +334,7 @@ vm_page_protect(vm_page_t m, int prot)
 {
 	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if (prot == VM_PROT_NONE) {
-		if (pmap_mapped_sync(m)) {
+		if (pmap_mapped_sync(m) & (PG_MAPPED | PG_WRITEABLE)) {
 			pmap_page_protect(m, VM_PROT_NONE);
 			/* PG_WRITEABLE & PG_MAPPED cleared by call */
 		}
