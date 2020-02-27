@@ -419,13 +419,12 @@ _cache_lock(struct namecache *ncp)
 	begticks = 0;
 	td = curthread;
 
+	count = ncp->nc_lockstatus;
+	cpu_ccfence();
 	for (;;) {
-		count = ncp->nc_lockstatus;
-		cpu_ccfence();
-
 		if ((count & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ)) == 0) {
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-					      count, count + 1)) {
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+					       &count, count + 1)) {
 				/*
 				 * The vp associated with a locked ncp must
 				 * be held to prevent it from being recycled.
@@ -450,16 +449,16 @@ _cache_lock(struct namecache *ncp)
 		}
 		if (ncp->nc_locktd == td) {
 			KKASSERT((count & NC_SHLOCK_FLAG) == 0);
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-					      count, count + 1)) {
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+					       &count, count + 1)) {
 				break;
 			}
 			/* cmpset failed */
 			continue;
 		}
 		tsleep_interlock(&ncp->nc_locktd, 0);
-		if (atomic_cmpset_int(&ncp->nc_lockstatus, count,
-				      count | NC_EXLOCK_REQ) == 0) {
+		if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+				       &count, count | NC_EXLOCK_REQ) == 0) {
 			/* cmpset failed */
 			continue;
 		}
@@ -510,14 +509,13 @@ _cache_lock_shared(struct namecache *ncp)
 	KKASSERT(ncp->nc_refs != 0);
 	didwarn = 0;
 
+	count = ncp->nc_lockstatus;
+	cpu_ccfence();
 	for (;;) {
-		count = ncp->nc_lockstatus;
-		cpu_ccfence();
-
 		if ((count & ~NC_SHLOCK_REQ) == 0) {
 			crit_enter();
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-				      count,
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+				      &count,
 				      (count + 1) | NC_SHLOCK_FLAG |
 						    NC_SHLOCK_VHOLD)) {
 				/*
@@ -560,8 +558,8 @@ _cache_lock_shared(struct namecache *ncp)
 			KKASSERT((count & ~(NC_EXLOCK_REQ |
 					    NC_SHLOCK_REQ |
 					    NC_SHLOCK_FLAG)) > 0);
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-					      count, count + 1)) {
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+					       &count, count + 1)) {
 				while (ncp->nc_lockstatus & NC_SHLOCK_VHOLD)
 					cpu_pause();
 				break;
@@ -569,7 +567,7 @@ _cache_lock_shared(struct namecache *ncp)
 			continue;
 		}
 		tsleep_interlock(ncp, 0);
-		if (atomic_cmpset_int(&ncp->nc_lockstatus, count,
+		if (atomic_fcmpset_int(&ncp->nc_lockstatus, &count,
 				      count | NC_SHLOCK_REQ) == 0) {
 			/* cmpset failed */
 			continue;
@@ -613,12 +611,12 @@ _cache_lock_nonblock(struct namecache *ncp)
 
 	td = curthread;
 
+	count = ncp->nc_lockstatus;
+	cpu_ccfence();
 	for (;;) {
-		count = ncp->nc_lockstatus;
-
 		if ((count & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ)) == 0) {
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-					      count, count + 1)) {
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+					       &count, count + 1)) {
 				/*
 				 * The vp associated with a locked ncp must
 				 * be held to prevent it from being recycled.
@@ -642,8 +640,8 @@ _cache_lock_nonblock(struct namecache *ncp)
 			continue;
 		}
 		if (ncp->nc_locktd == td) {
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-					      count, count + 1)) {
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+					       &count, count + 1)) {
 				break;
 			}
 			/* cmpset failed */
@@ -669,13 +667,13 @@ _cache_lock_shared_nonblock(struct namecache *ncp)
 {
 	u_int count;
 
+	count = ncp->nc_lockstatus;
+	cpu_ccfence();
 	for (;;) {
-		count = ncp->nc_lockstatus;
-
 		if ((count & ~NC_SHLOCK_REQ) == 0) {
 			crit_enter();
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-				      count,
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+				      &count,
 				      (count + 1) | NC_SHLOCK_FLAG |
 						    NC_SHLOCK_VHOLD)) {
 				/*
@@ -718,8 +716,8 @@ _cache_lock_shared_nonblock(struct namecache *ncp)
 			KKASSERT((count & ~(NC_EXLOCK_REQ |
 					    NC_SHLOCK_REQ |
 					    NC_SHLOCK_FLAG)) > 0);
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-					      count, count + 1)) {
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+					       &count, count + 1)) {
 				while (ncp->nc_lockstatus & NC_SHLOCK_VHOLD)
 					cpu_pause();
 				break;
@@ -770,8 +768,8 @@ _cache_unlock(struct namecache *ncp)
 			else
 				ncount = 0;
 
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-					      count, ncount)) {
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+					       &count, ncount)) {
 				if (count & NC_EXLOCK_REQ)
 					wakeup(&ncp->nc_locktd);
 				else if (count & NC_SHLOCK_REQ)
@@ -784,13 +782,11 @@ _cache_unlock(struct namecache *ncp)
 			KKASSERT((count & ~(NC_EXLOCK_REQ |
 					    NC_SHLOCK_REQ |
 					    NC_SHLOCK_FLAG)) > 1);
-			if (atomic_cmpset_int(&ncp->nc_lockstatus,
-					      count, count - 1)) {
+			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
+					       &count, count - 1)) {
 				break;
 			}
 		}
-		count = ncp->nc_lockstatus;
-		cpu_ccfence();
 	}
 
 	/*
@@ -854,29 +850,33 @@ _cache_drop(struct namecache *ncp)
 {
 	int refs;
 
+	KKASSERT(ncp->nc_refs > 0);
+	refs = ncp->nc_refs;
+	cpu_ccfence();
 	while (ncp) {
-		KKASSERT(ncp->nc_refs > 0);
-		refs = ncp->nc_refs;
-
 		if (refs == 1) {
 			if (_cache_lock_nonblock(ncp) == 0) {
 				ncp->nc_flag &= ~NCF_DEFEREDZAP;
 				if ((ncp->nc_flag & NCF_UNRESOLVED) &&
 				    TAILQ_EMPTY(&ncp->nc_list)) {
 					ncp = cache_zap(ncp, 1);
+					if (ncp) {
+						refs = ncp->nc_refs;
+						cpu_ccfence();
+					}
 					continue;
 				}
-				if (atomic_cmpset_int(&ncp->nc_refs, 1, 0)) {
+				if (atomic_fcmpset_int(&ncp->nc_refs,
+						       &refs, 0)) {
 					_cache_unlock(ncp);
 					break;
 				}
 				_cache_unlock(ncp);
 			}
 		} else {
-			if (atomic_cmpset_int(&ncp->nc_refs, refs, refs - 1))
+			if (atomic_fcmpset_int(&ncp->nc_refs, &refs, refs - 1))
 				break;
 		}
-		cpu_pause();
 	}
 }
 
@@ -2761,20 +2761,20 @@ cache_zap(struct namecache *ncp, int nonblock)
 	nchpp = NULL;
 	if ((par = ncp->nc_parent) != NULL) {
 		if (nonblock) {
+			refs = ncp->nc_refs;
+			cpu_ccfence();
 			for (;;) {
 				if (_cache_lock_nonblock(par) == 0)
 					break;
-				refs = ncp->nc_refs;
 				ncp->nc_flag |= NCF_DEFEREDZAP;
 				atomic_add_long(
 				    &pcpu_ncache[mycpu->gd_cpuid].numdefered,
 				    1);
-				if (atomic_cmpset_int(&ncp->nc_refs,
-						      refs, refs - 1)) {
+				if (atomic_fcmpset_int(&ncp->nc_refs,
+						       &refs, refs - 1)) {
 					_cache_unlock(ncp);
 					return(NULL);
 				}
-				cpu_pause();
 			}
 			_cache_hold(par);
 		} else {
@@ -2795,12 +2795,12 @@ cache_zap(struct namecache *ncp, int nonblock)
 	 * further list operation is protected by the spinlocks
 	 * we have acquired but other transitions are not.
 	 */
+	refs = ncp->nc_refs;
+	cpu_ccfence();
 	for (;;) {
-		refs = ncp->nc_refs;
-		cpu_ccfence();
 		if (refs == 1 && TAILQ_EMPTY(&ncp->nc_list))
 			break;
-		if (atomic_cmpset_int(&ncp->nc_refs, refs, refs - 1)) {
+		if (atomic_fcmpset_int(&ncp->nc_refs, &refs, refs - 1)) {
 			if (par) {
 				spin_unlock(&nchpp->spin);
 				_cache_put(par);
@@ -2808,7 +2808,6 @@ cache_zap(struct namecache *ncp, int nonblock)
 			_cache_unlock(ncp);
 			return(NULL);
 		}
-		cpu_pause();
 	}
 
 	/*
