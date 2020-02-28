@@ -2385,6 +2385,9 @@ vfs_msync(struct mount *mp, int flags)
  * scan1 is a fast pre-check.  There could be hundreds of thousands of
  * vnodes, we cannot afford to do anything heavy weight until we have a
  * fairly good indication that there is work to do.
+ *
+ * The new namecache holds the vnode for each v_namecache association
+ * so allow these refs.
  */
 static
 int
@@ -2393,8 +2396,8 @@ vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	int flags = (int)(intptr_t)data;
 
 	if ((vp->v_flag & VRECLAIMED) == 0) {
-		if (vp->v_auxrefs == 0 && VREFCNT(vp) <= 0 &&
-		    vp->v_object) {
+		if (vp->v_auxrefs == vp->v_namecache_count &&
+		    VREFCNT(vp) <= 0 && vp->v_object) {
 			return(0);	/* call scan2 */
 		}
 		if ((mp->mnt_flag & MNT_RDONLY) == 0 &&

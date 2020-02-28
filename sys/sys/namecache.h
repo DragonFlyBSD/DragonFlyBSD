@@ -134,7 +134,6 @@ struct namecache {
     } __cachealign;
     struct {
 	    struct lock nc_lock;
-	    uint32_t	nc_vprefs;
     } __cachealign;
 };
 

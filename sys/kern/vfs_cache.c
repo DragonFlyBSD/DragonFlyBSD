@@ -422,10 +422,6 @@ void
 _cache_lock(struct namecache *ncp)
 {
 	lockmgr(&ncp->nc_lock, LK_EXCLUSIVE);
-	if (atomic_fetchadd_int(&ncp->nc_vprefs, 1) == 0) {
-		if (ncp->nc_vp)
-			vhold(ncp->nc_vp);
-	}
 }
 
 /*
@@ -438,35 +434,6 @@ static __inline
 void
 _cache_unlock(struct namecache *ncp)
 {
-	uint32_t vprefs;
-
-	vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, -1);
-	--vprefs;
-	if (lockmgr_anyexcl(&ncp->nc_lock)) {
-		/*
-		 * We currently don't bother setting bit 31 in nc_vprefs for
-		 * exclusive locks, always drop vprefs on the last lock.
-		 */
-		if (vprefs == 0 && ncp->nc_vp)
-			vdrop(ncp->nc_vp);
-	} else {
-		/*
-		 * When releasing a shared lock we need to drop the vp ref
-		 * on the last shared lock, but the operation could race
-		 * a new shared lock so we have to use fcmpset to detect the
-		 * race.  On the locking side, _cache_lock_shared() will
-		 * detect that bit 31 is still set and not generate a duplicate
-		 * ref.
-		 */
-		while (__predict_false((vprefs & 0xFFFFFFFF) == 0x80000000U)) {
-			KKASSERT((vprefs & 0x40000000) == 0);	/* underflow */
-			if (atomic_fcmpset_int(&ncp->nc_vprefs, &vprefs, 0)) {
-				if (ncp->nc_vp)
-					vdrop(ncp->nc_vp);
-				break;
-			}
-		}
-	}
 	lockmgr(&ncp->nc_lock, LK_RELEASE);
 }
 
@@ -482,10 +449,6 @@ _cache_lock_nonblock(struct namecache *ncp)
 	error = lockmgr(&ncp->nc_lock, LK_EXCLUSIVE | LK_NOWAIT);
 	if (__predict_false(error != 0)) {
 		return(EWOULDBLOCK);
-	}
-	if (atomic_fetchadd_int(&ncp->nc_vprefs, 1) == 0) {
-		if (ncp->nc_vp)
-			vhold(ncp->nc_vp);
 	}
 	return 0;
 }
@@ -530,36 +493,7 @@ static __inline
 void
 _cache_lock_shared(struct namecache *ncp)
 {
-	uint32_t vprefs;
-
 	lockmgr(&ncp->nc_lock, LK_SHARED);
-	vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, 1);
-	if (vprefs == 0) {
-		/*
-		 * On the 0->1 transition we are the only ones able to ref
-		 * the vp, concurrent shared locks will wait for us to set
-		 * bit 31.
-		 */
-		if (ncp->nc_vp)
-			vhold(ncp->nc_vp);
-		if (atomic_fetchadd_int(&ncp->nc_vprefs, 0x80000000U) != 1)
-			wakeup(&ncp->nc_vprefs);
-	} else {
-		/*
-		 * On other transitions we must wait until bit 31 gets set.
-		 *
-		 * Adjust for actual value after fetchadd.
-		 */
-		++vprefs;
-		while (__predict_false((vprefs & 0x80000000U) == 0)) {
-			tsleep_interlock(&ncp->nc_vprefs, 0);
-			vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, 0);
-			if ((vprefs & 0x80000000U) == 0) {
-				tsleep(&ncp->nc_vprefs, PINTERLOCKED,
-				       "ncpshvr", hz*5);
-			}
-		}
-	}
 }
 
 #if 0
@@ -588,49 +522,11 @@ static __inline
 int
 _cache_lock_shared_nonblock(struct namecache *ncp)
 {
-	uint32_t vprefs;
 	int error;
 
 	error = lockmgr(&ncp->nc_lock, LK_SHARED | LK_NOWAIT);
 	if (__predict_false(error != 0)) {
 		return(EWOULDBLOCK);
-	}
-	vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, 1);
-	if (vprefs == 0) {
-		/*
-		 * On the 0->1 transition we are the only ones able to ref
-		 * the vp, concurrent shared locks will wait for us to set
-		 * bit 31.
-		 */
-		if (ncp->nc_vp)
-			vhold(ncp->nc_vp);
-		if ((atomic_fetchadd_int(&ncp->nc_vprefs, 0x80000000U) &
-		     0x7FFFFFFF) > 1) {
-			wakeup(&ncp->nc_vprefs);
-		}
-	} else {
-		/*
-		 * On other transitions we must wait until bit 31 gets set.
-		 * However, because this is a non-blocking call, we just
-		 * release the lock instead.
-		 *
-		 * Adjust for actual value after fetchadd (not needed)
-		 */
-		/*++vprefs; not needed */
-		if (__predict_false((vprefs & 0x80000000U) == 0)) {
-			_cache_unlock(ncp);
-			return(EWOULDBLOCK);
-		}
-#if 0
-		while (__predict_false((vprefs & 0x80000000U) == 0)) {
-			tsleep_interlock(&ncp->nc_vprefs, 0);
-			vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, 0);
-			if ((vprefs & 0x80000000U) == 0) {
-				tsleep(&ncp->nc_vprefs, PINTERLOCKED,
-				       "ncpshvr", hz*5);
-			}
-		}
-#endif
 	}
 	return 0;
 }
@@ -890,7 +786,6 @@ cache_alloc(int nlen)
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
 	ncp->nc_refs = 1;
-	ncp->nc_vprefs = 1;
 	TAILQ_INIT(&ncp->nc_list);
 	lockinit(&ncp->nc_lock, "ncplk", hz, LK_CANRECURSE);
 	lockmgr(&ncp->nc_lock, LK_EXCLUSIVE);
@@ -1273,9 +1168,10 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		spin_lock(&vp->v_spin);
 		ncp->nc_vp = vp;
 		TAILQ_INSERT_HEAD(&vp->v_namecache, ncp, nc_vnode);
+		++vp->v_namecache_count;
 		_cache_hold(ncp);		/* v_namecache assoc */
 		spin_unlock(&vp->v_spin);
-		vhold(vp);			/* nc_vp w/lock */
+		vhold(vp);			/* nc_vp */
 
 		/*
 		 * Set auxiliary flags
@@ -1375,18 +1271,18 @@ _cache_setunresolved(struct namecache *ncp)
 			spin_lock(&vp->v_spin);
 			ncp->nc_vp = NULL;
 			TAILQ_REMOVE(&vp->v_namecache, ncp, nc_vnode);
+			--vp->v_namecache_count;
 			spin_unlock(&vp->v_spin);
 
 			/*
 			 * Any vp associated with an ncp with children is
-			 * held by that ncp.  Any vp associated with a locked
-			 * ncp is held by that ncp.  These conditions must be
+			 * held by that ncp.  Any vp associated with  ncp
+			 * is held by that ncp.  These conditions must be
 			 * undone when the vp is cleared out from the ncp.
 			 */
 			if (!TAILQ_EMPTY(&ncp->nc_list))
 				vdrop(vp);
-			if (_cache_lockstatus(ncp) == LK_EXCLUSIVE)
-				vdrop(vp);
+			vdrop(vp);
 		} else {
 			struct pcpu_ncache *pn;
 

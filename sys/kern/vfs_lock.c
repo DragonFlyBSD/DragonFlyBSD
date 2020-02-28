@@ -825,7 +825,7 @@ skip:
 		 * ref on it.  This can occur if a filesystem temporarily
 		 * releases the vnode lock during VOP_RECLAIM.
 		 */
-		if (vp->v_auxrefs ||
+		if (vp->v_auxrefs != vp->v_namecache_count ||
 		    (vp->v_refcnt & ~VREF_FINALIZE) != VREF_TERMINATE + 1) {
 failed:
 			if (vp->v_state == VS_INACTIVE) {
@@ -848,6 +848,12 @@ failed:
 		 * changed while we hold the vx lock.
 		 *
 		 * Try to reclaim the vnode.
+		 *
+		 * The cache_inval_vp() can fail if any of the namecache
+		 * elements are actively locked, preventing the vnode from
+		 * bring reclaimed.  This is desired operation as it gives
+		 * the namecache code certain guarantees just by holding
+		 * a ncp.
 		 */
 		KKASSERT(vp->v_flag & VINACTIVE);
 		KKASSERT(vp->v_refcnt & VREF_TERMINATE);

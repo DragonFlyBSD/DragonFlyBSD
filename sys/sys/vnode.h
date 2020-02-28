@@ -185,6 +185,8 @@ struct vnode {
 	enum	vtagtype v_tag;			/* type of underlying data */
 	void	*v_data;			/* private data for fs */
 	struct namecache_list v_namecache;	/* (S) associated nc entries */
+	int	v_namecache_count;		/* (S) count of entries */
+	int	v_unused01;
 	struct	{
 		struct	kqinfo vpi_kqinfo;	/* identity of poller(s) */
 	} v_pollinfo;
