@@ -120,18 +120,22 @@ struct namecache {
     struct nchash_head	*nc_head;
     struct namecache	*nc_parent;	/* namecache entry for parent */
     struct vnode	*nc_vp;		/* vnode representing name or NULL */
-    int			nc_refs;	/* ref count prevents deletion */
     u_short		nc_flag;
     u_char		nc_nlen;	/* The length of the name, 255 max */
     u_char		nc_unused;
     char		*nc_name;	/* Separately allocated seg name */
     int			nc_error;
     int			nc_timeout;	/* compared against ticks, or 0 */
-    u_int		nc_lockstatus;	/* namespace locking */
     int			nc_negcpu;	/* which ncneg list are we on? */
-    struct thread	*nc_locktd;	/* namespace locking */
-    u_int		nc_namecache_gen; /* mount generation (autoclear) */
-    u_int		nc_generation;	/* rename/unlink generation */
+    struct {
+	    u_int	nc_namecache_gen; /* mount generation (autoclear) */
+	    u_int	nc_generation;	/* rename/unlink generation */
+	    int		nc_refs;	/* ref count prevents deletion */
+    } __cachealign;
+    struct {
+	    struct lock nc_lock;
+	    uint32_t	nc_vprefs;
+    } __cachealign;
 };
 
 /*
@@ -160,11 +164,6 @@ struct nchandle {
 #define NCF_DEFEREDZAP	0x0800	/* zap defered due to lock unavailability */
 #define NCF_WXOK	0x1000	/* world-searchable (nlookup shortcut) */
 #define NCF_DUMMY	0x2000	/* dummy ncp, iterations ignore it */
-
-#define NC_EXLOCK_REQ	0x80000000	/* nc_lockstatus state flag */
-#define NC_SHLOCK_REQ	0x40000000	/* nc_lockstatus state flag */
-#define NC_SHLOCK_FLAG	0x20000000	/* nc_lockstatus state flag */
-#define NC_SHLOCK_VHOLD	0x10000000	/* nc_lockstatus state flag */
 
 /*
  * cache_inval[_vp]() flags

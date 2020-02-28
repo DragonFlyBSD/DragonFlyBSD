@@ -310,6 +310,30 @@ lockmgr_try(struct lock *lkp, u_int flags)
 	return (lockmgr(lkp, flags | LK_NOWAIT) == 0);
 }
 
+/*
+ * Returns true if the lock is exclusively held by anyone
+ */
+static __inline
+boolean_t
+lockmgr_anyexcl(struct lock *lkp)
+{
+	return ((lkp->lk_count & LKC_XMASK) != 0);
+}
+
+static __inline
+boolean_t
+lockmgr_oneexcl(struct lock *lkp)
+{
+	return ((lkp->lk_count & LKC_XMASK) == 1);
+}
+
+static __inline
+boolean_t
+lockmgr_exclpending(struct lock *lkp)
+{
+	return ((lkp->lk_count & (LKC_EXREQ | LKC_EXREQ2)) != 0);
+}
+
 #endif /* _KERNEL */
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 #endif /* _SYS_LOCK_H_ */

@@ -228,7 +228,6 @@ SYSCTL_INT(_debug, OID_AUTO, ncmount_cache_enable, CTLFLAG_RW,
 static __inline void _cache_drop(struct namecache *ncp);
 static int cache_resolve_mp(struct mount *mp);
 static struct vnode *cache_dvpref(struct namecache *ncp);
-static void _cache_lock(struct namecache *ncp);
 static void _cache_setunresolved(struct namecache *ncp);
 static void _cache_cleanneg(long count);
 static void _cache_cleanpos(long count);
@@ -390,7 +389,6 @@ cache_clearmntcache(void)
 	}
 }
 
-
 /*
  * Namespace locking.  The caller must already hold a reference to the
  * namecache structure in order to lock/unlock it.  The controlling entity
@@ -419,188 +417,160 @@ cache_clearmntcache(void)
  *	     unconditional call to cache_validate() or cache_resolve()
  *	     after cache_lock() returns.
  */
-static
+static __inline
 void
 _cache_lock(struct namecache *ncp)
 {
-	thread_t td;
-	int didwarn;
-	int begticks;
-	int error;
-	u_int count;
-
-	KKASSERT(ncp->nc_refs > 0);
-	didwarn = 0;
-	begticks = 0;
-	td = curthread;
-
-	count = ncp->nc_lockstatus;
-	cpu_ccfence();
-	for (;;) {
-		if ((count & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ)) == 0) {
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-					       &count, count + 1)) {
-				/*
-				 * The vp associated with a locked ncp must
-				 * be held to prevent it from being recycled.
-				 *
-				 * WARNING!  If VRECLAIMED is set the vnode
-				 * could already be in the middle of a recycle.
-				 * Callers must use cache_vref() or
-				 * cache_vget() on the locked ncp to
-				 * validate the vp or set the cache entry
-				 * to unresolved.
-				 *
-				 * NOTE! vhold() is allowed if we hold a
-				 *	 lock on the ncp (which we do).
-				 */
-				ncp->nc_locktd = td;
-				if (ncp->nc_vp)
-					vhold(ncp->nc_vp);
-				break;
-			}
-			/* cmpset failed */
-			continue;
-		}
-		if (ncp->nc_locktd == td) {
-			KKASSERT((count & NC_SHLOCK_FLAG) == 0);
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-					       &count, count + 1)) {
-				break;
-			}
-			/* cmpset failed */
-			continue;
-		}
-		tsleep_interlock(&ncp->nc_locktd, 0);
-		if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-				       &count, count | NC_EXLOCK_REQ) == 0) {
-			/* cmpset failed */
-			continue;
-		}
-		if (begticks == 0)
-			begticks = ticks;
-		error = tsleep(&ncp->nc_locktd, PINTERLOCKED,
-			       "clock", nclockwarn);
-		if (error == EWOULDBLOCK) {
-			if (didwarn == 0) {
-				didwarn = ticks;
-				kprintf("[diagnostic] cache_lock: "
-					"%s blocked on %p %08x",
-					td->td_comm, ncp, count);
-				kprintf(" \"%*.*s\"\n",
-					ncp->nc_nlen, ncp->nc_nlen,
-					ncp->nc_name);
-			}
-		}
-		/* loop */
-	}
-	if (didwarn) {
-		kprintf("[diagnostic] cache_lock: %s unblocked %*.*s after "
-			"%d secs\n",
-			td->td_comm,
-			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name,
-			(int)(ticks + (hz / 2) - begticks) / hz);
+	lockmgr(&ncp->nc_lock, LK_EXCLUSIVE);
+	if (atomic_fetchadd_int(&ncp->nc_vprefs, 1) == 0) {
+		if (ncp->nc_vp)
+			vhold(ncp->nc_vp);
 	}
 }
 
 /*
- * The shared lock works similarly to the exclusive lock except
- * nc_locktd is left NULL and we need an interlock (VHOLD) to
- * prevent vhold() races, since the moment our cmpset_int succeeds
- * another cpu can come in and get its own shared lock.
+ * Release a previously acquired lock.
  *
- * A critical section is needed to prevent interruption during the
- * VHOLD interlock.
+ * A concurrent shared-lock acquisition or acquisition/release can
+ * race bit 31 so only drop the ncp if bit 31 was set.
  */
-static
+static __inline
+void
+_cache_unlock(struct namecache *ncp)
+{
+	uint32_t vprefs;
+
+	vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, -1);
+	--vprefs;
+	if (lockmgr_anyexcl(&ncp->nc_lock)) {
+		/*
+		 * We currently don't bother setting bit 31 in nc_vprefs for
+		 * exclusive locks, always drop vprefs on the last lock.
+		 */
+		if (vprefs == 0 && ncp->nc_vp)
+			vdrop(ncp->nc_vp);
+	} else {
+		/*
+		 * When releasing a shared lock we need to drop the vp ref
+		 * on the last shared lock, but the operation could race
+		 * a new shared lock so we have to use fcmpset to detect the
+		 * race.  On the locking side, _cache_lock_shared() will
+		 * detect that bit 31 is still set and not generate a duplicate
+		 * ref.
+		 */
+		while (__predict_false((vprefs & 0xFFFFFFFF) == 0x80000000U)) {
+			KKASSERT((vprefs & 0x40000000) == 0);	/* underflow */
+			if (atomic_fcmpset_int(&ncp->nc_vprefs, &vprefs, 0)) {
+				if (ncp->nc_vp)
+					vdrop(ncp->nc_vp);
+				break;
+			}
+		}
+	}
+	lockmgr(&ncp->nc_lock, LK_RELEASE);
+}
+
+/*
+ * Lock ncp exclusively, non-blocking.  Return 0 on success.
+ */
+static __inline
+int
+_cache_lock_nonblock(struct namecache *ncp)
+{
+	int error;
+
+	error = lockmgr(&ncp->nc_lock, LK_EXCLUSIVE | LK_NOWAIT);
+	if (__predict_false(error != 0)) {
+		return(EWOULDBLOCK);
+	}
+	if (atomic_fetchadd_int(&ncp->nc_vprefs, 1) == 0) {
+		if (ncp->nc_vp)
+			vhold(ncp->nc_vp);
+	}
+	return 0;
+}
+
+/*
+ * This is a special form of _cache_lock() which only succeeds if
+ * it can get a pristine, non-recursive lock.  The caller must have
+ * already ref'd the ncp.
+ *
+ * On success the ncp will be locked, on failure it will not.  The
+ * ref count does not change either way.
+ *
+ * We want _cache_lock_special() (on success) to return a definitively
+ * usable vnode or a definitively unresolved ncp.
+ */
+static __inline
+int
+_cache_lock_special(struct namecache *ncp)
+{
+	if (_cache_lock_nonblock(ncp) == 0) {
+		if (lockmgr_oneexcl(&ncp->nc_lock)) {
+			if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
+				_cache_setunresolved(ncp);
+			return 0;
+		}
+		_cache_unlock(ncp);
+	}
+	return EWOULDBLOCK;
+}
+
+/*
+ * Shared lock, guarantees vp held
+ *
+ * The shared lock holds vp on the 0->1 transition.  It is possible to race
+ * another shared lock release, preventing the other release from dropping
+ * the vnode and clearing bit 31.
+ *
+ * If it is not set then we are responsible for setting it, and this
+ * responsibility does not race with anyone else.
+ */
+static __inline
 void
 _cache_lock_shared(struct namecache *ncp)
 {
-	int didwarn;
-	int error;
-	u_int count;
-	u_int optreq = NC_EXLOCK_REQ;
+	uint32_t vprefs;
 
-	KKASSERT(ncp->nc_refs > 0);
-	didwarn = 0;
-
-	count = ncp->nc_lockstatus;
-	cpu_ccfence();
-	for (;;) {
-		if ((count & ~NC_SHLOCK_REQ) == 0) {
-			crit_enter();
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-				      &count,
-				      (count + 1) | NC_SHLOCK_FLAG |
-						    NC_SHLOCK_VHOLD)) {
-				/*
-				 * The vp associated with a locked ncp must
-				 * be held to prevent it from being recycled.
-				 *
-				 * WARNING!  If VRECLAIMED is set the vnode
-				 * could already be in the middle of a recycle.
-				 * Callers must use cache_vref() or
-				 * cache_vget() on the locked ncp to
-				 * validate the vp or set the cache entry
-				 * to unresolved.
-				 *
-				 * NOTE! vhold() is allowed if we hold a
-				 *	 lock on the ncp (which we do).
-				 */
-				if (ncp->nc_vp)
-					vhold(ncp->nc_vp);
-				atomic_clear_int(&ncp->nc_lockstatus,
-						 NC_SHLOCK_VHOLD);
-				crit_exit();
-				break;
-			}
-			/* cmpset failed */
-			crit_exit();
-			continue;
-		}
-
+	lockmgr(&ncp->nc_lock, LK_SHARED);
+	vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, 1);
+	if (vprefs == 0) {
 		/*
-		 * If already held shared we can just bump the count, but
-		 * only allow this if nobody is trying to get the lock
-		 * exclusively.  If we are blocking too long ignore excl
-		 * requests (which can race/deadlock us).
-		 *
-		 * VHOLD is a bit of a hack.  Even though we successfully
-		 * added another shared ref, the cpu that got the first
-		 * shared ref might not yet have held the vnode.
+		 * On the 0->1 transition we are the only ones able to ref
+		 * the vp, concurrent shared locks will wait for us to set
+		 * bit 31.
 		 */
-		if ((count & (optreq|NC_SHLOCK_FLAG)) == NC_SHLOCK_FLAG) {
-			KKASSERT((count & ~(NC_EXLOCK_REQ |
-					    NC_SHLOCK_REQ |
-					    NC_SHLOCK_FLAG)) > 0);
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-					       &count, count + 1)) {
-				while (ncp->nc_lockstatus & NC_SHLOCK_VHOLD)
-					cpu_pause();
-				break;
-			}
-			continue;
-		}
-		tsleep_interlock(ncp, 0);
-		if (atomic_fcmpset_int(&ncp->nc_lockstatus, &count,
-				      count | NC_SHLOCK_REQ) == 0) {
-			/* cmpset failed */
-			continue;
-		}
-		error = tsleep(ncp, PINTERLOCKED, "clocksh", nclockwarn);
-		if (error == EWOULDBLOCK) {
-			optreq = 0;
-			if (didwarn == 0) {
-				didwarn = ticks - nclockwarn;
-				kprintf("[diagnostic] cache_lock_shared: "
-					"%s blocked on %p %08x "
-					"\"%*.*s\"\n",
-					curthread->td_comm, ncp, count,
-					ncp->nc_nlen, ncp->nc_nlen,
-					ncp->nc_name);
+		if (ncp->nc_vp)
+			vhold(ncp->nc_vp);
+		if (atomic_fetchadd_int(&ncp->nc_vprefs, 0x80000000U) != 1)
+			wakeup(&ncp->nc_vprefs);
+	} else {
+		/*
+		 * On other transitions we must wait until bit 31 gets set.
+		 *
+		 * Adjust for actual value after fetchadd.
+		 */
+		++vprefs;
+		while (__predict_false((vprefs & 0x80000000U) == 0)) {
+			tsleep_interlock(&ncp->nc_vprefs, 0);
+			vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, 0);
+			if ((vprefs & 0x80000000U) == 0) {
+				tsleep(&ncp->nc_vprefs, PINTERLOCKED,
+				       "ncpshvr", hz*5);
 			}
 		}
-		/* loop */
+	}
+}
+
+#if 0
+	if (didwarn == 0) {
+		didwarn = ticks - nclockwarn;
+		kprintf("[diagnostic] cache_lock_shared: "
+			"%s blocked on %p %08x "
+			"\"%*.*s\"\n",
+			curthread->td_comm, ncp, count,
+			ncp->nc_nlen, ncp->nc_nlen,
+			ncp->nc_name);
 	}
 	if (didwarn) {
 		kprintf("[diagnostic] cache_lock_shared: "
@@ -609,213 +579,120 @@ _cache_lock_shared(struct namecache *ncp)
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name,
 			(int)(ticks - didwarn) / hz);
 	}
-}
+#endif
 
 /*
- * Lock ncp exclusively, return 0 on success.
+ * Shared lock, guarantees vp held.  Non-blocking.  Returns 0 on success
  */
-static
-int
-_cache_lock_nonblock(struct namecache *ncp)
-{
-	thread_t td;
-	u_int count;
-
-	td = curthread;
-
-	KKASSERT(ncp->nc_refs > 0);
-	count = ncp->nc_lockstatus;
-	cpu_ccfence();
-	for (;;) {
-		if ((count & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ)) == 0) {
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-					       &count, count + 1)) {
-				/*
-				 * The vp associated with a locked ncp must
-				 * be held to prevent it from being recycled.
-				 *
-				 * WARNING!  If VRECLAIMED is set the vnode
-				 * could already be in the middle of a recycle.
-				 * Callers must use cache_vref() or
-				 * cache_vget() on the locked ncp to
-				 * validate the vp or set the cache entry
-				 * to unresolved.
-				 *
-				 * NOTE! vhold() is allowed if we hold a
-				 *	 lock on the ncp (which we do).
-				 */
-				ncp->nc_locktd = td;
-				if (ncp->nc_vp)
-					vhold(ncp->nc_vp);
-				break;
-			}
-			/* cmpset failed */
-			continue;
-		}
-		if (ncp->nc_locktd == td) {
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-					       &count, count + 1)) {
-				break;
-			}
-			/* cmpset failed */
-			continue;
-		}
-		return(EWOULDBLOCK);
-	}
-	return(0);
-}
-
-/*
- * The shared lock works similarly to the exclusive lock except
- * nc_locktd is left NULL and we need an interlock (VHOLD) to
- * prevent vhold() races, since the moment our cmpset_int succeeds
- * another cpu can come in and get its own shared lock.
- *
- * A critical section is needed to prevent interruption during the
- * VHOLD interlock.
- */
-static
+static __inline
 int
 _cache_lock_shared_nonblock(struct namecache *ncp)
 {
-	u_int count;
+	uint32_t vprefs;
+	int error;
 
-	KKASSERT(ncp->nc_refs > 0);
-	count = ncp->nc_lockstatus;
-	cpu_ccfence();
-	for (;;) {
-		if ((count & ~NC_SHLOCK_REQ) == 0) {
-			crit_enter();
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-				      &count,
-				      (count + 1) | NC_SHLOCK_FLAG |
-						    NC_SHLOCK_VHOLD)) {
-				/*
-				 * The vp associated with a locked ncp must
-				 * be held to prevent it from being recycled.
-				 *
-				 * WARNING!  If VRECLAIMED is set the vnode
-				 * could already be in the middle of a recycle.
-				 * Callers must use cache_vref() or
-				 * cache_vget() on the locked ncp to
-				 * validate the vp or set the cache entry
-				 * to unresolved.
-				 *
-				 * NOTE! vhold() is allowed if we hold a
-				 *	 lock on the ncp (which we do).
-				 */
-				if (ncp->nc_vp)
-					vhold(ncp->nc_vp);
-				atomic_clear_int(&ncp->nc_lockstatus,
-						 NC_SHLOCK_VHOLD);
-				crit_exit();
-				break;
-			}
-			/* cmpset failed */
-			crit_exit();
-			continue;
-		}
-
-		/*
-		 * If already held shared we can just bump the count, but
-		 * only allow this if nobody is trying to get the lock
-		 * exclusively.
-		 *
-		 * VHOLD is a bit of a hack.  Even though we successfully
-		 * added another shared ref, the cpu that got the first
-		 * shared ref might not yet have held the vnode.
-		 */
-		if ((count & (NC_EXLOCK_REQ|NC_SHLOCK_FLAG)) ==
-		    NC_SHLOCK_FLAG) {
-			KKASSERT((count & ~(NC_EXLOCK_REQ |
-					    NC_SHLOCK_REQ |
-					    NC_SHLOCK_FLAG)) > 0);
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-					       &count, count + 1)) {
-				while (ncp->nc_lockstatus & NC_SHLOCK_VHOLD)
-					cpu_pause();
-				break;
-			}
-			continue;
-		}
+	error = lockmgr(&ncp->nc_lock, LK_SHARED | LK_NOWAIT);
+	if (__predict_false(error != 0)) {
 		return(EWOULDBLOCK);
 	}
-	return(0);
+	vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, 1);
+	if (vprefs == 0) {
+		/*
+		 * On the 0->1 transition we are the only ones able to ref
+		 * the vp, concurrent shared locks will wait for us to set
+		 * bit 31.
+		 */
+		if (ncp->nc_vp)
+			vhold(ncp->nc_vp);
+		if ((atomic_fetchadd_int(&ncp->nc_vprefs, 0x80000000U) &
+		     0x7FFFFFFF) > 1) {
+			wakeup(&ncp->nc_vprefs);
+		}
+	} else {
+		/*
+		 * On other transitions we must wait until bit 31 gets set.
+		 * However, because this is a non-blocking call, we just
+		 * release the lock instead.
+		 *
+		 * Adjust for actual value after fetchadd (not needed)
+		 */
+		/*++vprefs; not needed */
+		if (__predict_false((vprefs & 0x80000000U) == 0)) {
+			_cache_unlock(ncp);
+			return(EWOULDBLOCK);
+		}
+#if 0
+		while (__predict_false((vprefs & 0x80000000U) == 0)) {
+			tsleep_interlock(&ncp->nc_vprefs, 0);
+			vprefs = atomic_fetchadd_int(&ncp->nc_vprefs, 0);
+			if ((vprefs & 0x80000000U) == 0) {
+				tsleep(&ncp->nc_vprefs, PINTERLOCKED,
+				       "ncpshvr", hz*5);
+			}
+		}
+#endif
+	}
+	return 0;
 }
 
 /*
- * Release a previously acquired lock.
+ * This function tries to get a shared lock but will back-off to an exclusive
+ * lock if:
+ *
+ * (1) Some other thread is trying to obtain an exclusive lock
+ *     (to prevent the exclusive requester from getting livelocked out
+ *     by many shared locks).
+ *
+ * (2) The current thread already owns an exclusive lock (to avoid
+ *     deadlocking).
+ *
+ * WARNING! On machines with lots of cores we really want to try hard to
+ *	    get a shared lock or concurrent path lookups can chain-react
+ *	    into a very high-latency exclusive lock.
  */
-static
-void
-_cache_unlock(struct namecache *ncp)
+static __inline
+int
+_cache_lock_shared_special(struct namecache *ncp)
 {
-	thread_t td __debugvar = curthread;
-	u_int count;
-	u_int ncount;
-	struct vnode *dropvp;
-
-	KKASSERT(ncp->nc_refs > 0);
-	KKASSERT((ncp->nc_lockstatus & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ)) > 0);
-	KKASSERT((ncp->nc_lockstatus & NC_SHLOCK_FLAG) || ncp->nc_locktd == td);
-
-	count = ncp->nc_lockstatus;
-	cpu_ccfence();
-
 	/*
-	 * Clear nc_locktd prior to the atomic op (excl lock only)
+	 * Only honor a successful shared lock (returning 0) if there is
+	 * no exclusive request pending and the vnode, if present, is not
+	 * in a reclaimed state.
 	 */
-	if ((count & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ)) == 1)
-		ncp->nc_locktd = NULL;
-	dropvp = NULL;
-
-	for (;;) {
-		if ((count &
-		     ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ|NC_SHLOCK_FLAG)) == 1) {
-			dropvp = ncp->nc_vp;
-			if (count & NC_EXLOCK_REQ)
-				ncount = count & NC_SHLOCK_REQ; /* cnt->0 */
-			else
-				ncount = 0;
-
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-					       &count, ncount)) {
-				if (count & NC_EXLOCK_REQ)
-					wakeup(&ncp->nc_locktd);
-				else if (count & NC_SHLOCK_REQ)
-					wakeup(ncp);
-				break;
-			}
-			dropvp = NULL;
-		} else {
-			KKASSERT((count & NC_SHLOCK_VHOLD) == 0);
-			KKASSERT((count & ~(NC_EXLOCK_REQ |
-					    NC_SHLOCK_REQ |
-					    NC_SHLOCK_FLAG)) > 1);
-			if (atomic_fcmpset_int(&ncp->nc_lockstatus,
-					       &count, count - 1)) {
-				break;
+	if (_cache_lock_shared_nonblock(ncp) == 0) {
+		if (__predict_true(!lockmgr_exclpending(&ncp->nc_lock))) {
+			if (ncp->nc_vp == NULL ||
+			    (ncp->nc_vp->v_flag & VRECLAIMED) == 0) {
+				return(0);
 			}
 		}
+		_cache_unlock(ncp);
+		return(EWOULDBLOCK);
 	}
 
 	/*
-	 * Don't actually drop the vp until we successfully clean out
-	 * the lock, otherwise we may race another shared lock.
+	 * Non-blocking shared lock failed.  If we already own the exclusive
+	 * lock just acquire another exclusive lock (instead of deadlocking).
+	 * Otherwise acquire a shared lock.
 	 */
-	if (dropvp)
-		vdrop(dropvp);
+	if (lockstatus(&ncp->nc_lock, curthread) == LK_EXCLUSIVE) {
+		_cache_lock(ncp);
+		return(0);
+	}
+	_cache_lock_shared(ncp);
+	return(0);
 }
 
-static
+static __inline
 int
 _cache_lockstatus(struct namecache *ncp)
 {
-	if (ncp->nc_locktd == curthread)
-		return(LK_EXCLUSIVE);
-	if (ncp->nc_lockstatus & NC_SHLOCK_FLAG)
-		return(LK_SHARED);
-	return(-1);
+	int status;
+
+	status = lockstatus(&ncp->nc_lock, curthread);
+	if (status == 0 || status == LK_EXCLOTHER)
+		status = -1;
+	return status;
 }
 
 /*
@@ -864,8 +741,9 @@ void
 _cache_drop(struct namecache *ncp)
 {
 	if (atomic_fetchadd_int(&ncp->nc_refs, -1) == 1) {
-		KKASSERT((ncp->nc_lockstatus &
-			  ~(NC_EXLOCK_REQ | NC_SHLOCK_REQ)) == 0);
+		/*
+		 * Executed unlocked (no need to lock on last drop)
+		 */
 		_cache_setunresolved(ncp);
 
 		/*
@@ -1012,9 +890,10 @@ cache_alloc(int nlen)
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
 	ncp->nc_refs = 1;
+	ncp->nc_vprefs = 1;
 	TAILQ_INIT(&ncp->nc_list);
-	ncp->nc_lockstatus = 1;		/* inline the (optimized) lock */
-	ncp->nc_locktd = curthread;
+	lockinit(&ncp->nc_lock, "ncplk", hz, LK_CANRECURSE);
+	lockmgr(&ncp->nc_lock, LK_EXCLUSIVE);
 
 	return(ncp);
 }
@@ -1026,7 +905,7 @@ cache_alloc(int nlen)
 static void
 _cache_free(struct namecache *ncp)
 {
-	KKASSERT(ncp->nc_refs == 1 && ncp->nc_lockstatus == 1);
+	KKASSERT(ncp->nc_refs == 1);
 	if (ncp->nc_name)
 		kfree(ncp->nc_name, M_VFSCACHE);
 	kfree(ncp, M_VFSCACHE);
@@ -1330,80 +1209,6 @@ _cache_get_maybe_shared(struct namecache *ncp, int excl)
 }
 
 /*
- * This is a special form of _cache_lock() which only succeeds if
- * it can get a pristine, non-recursive lock.  The caller must have
- * already ref'd the ncp.
- *
- * On success the ncp will be locked, on failure it will not.  The
- * ref count does not change either way.
- *
- * We want _cache_lock_special() (on success) to return a definitively
- * usable vnode or a definitively unresolved ncp.
- */
-static int
-_cache_lock_special(struct namecache *ncp)
-{
-	if (_cache_lock_nonblock(ncp) == 0) {
-		if ((ncp->nc_lockstatus &
-		     ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ)) == 1) {
-			if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-				_cache_setunresolved(ncp);
-			return(0);
-		}
-		_cache_unlock(ncp);
-	}
-	return(EWOULDBLOCK);
-}
-
-/*
- * This function tries to get a shared lock but will back-off to an exclusive
- * lock if:
- *
- * (1) Some other thread is trying to obtain an exclusive lock
- *     (to prevent the exclusive requester from getting livelocked out
- *     by many shared locks).
- *
- * (2) The current thread already owns an exclusive lock (to avoid
- *     deadlocking).
- *
- * WARNING! On machines with lots of cores we really want to try hard to
- *	    get a shared lock or concurrent path lookups can chain-react
- *	    into a very high-latency exclusive lock.
- */
-static int
-_cache_lock_shared_special(struct namecache *ncp)
-{
-	/*
-	 * Only honor a successful shared lock (returning 0) if there is
-	 * no exclusive request pending and the vnode, if present, is not
-	 * in a reclaimed state.
-	 */
-	if (_cache_lock_shared_nonblock(ncp) == 0) {
-		if ((ncp->nc_lockstatus & NC_EXLOCK_REQ) == 0) {
-			if (ncp->nc_vp == NULL ||
-			    (ncp->nc_vp->v_flag & VRECLAIMED) == 0) {
-				return(0);
-			}
-		}
-		_cache_unlock(ncp);
-		return(EWOULDBLOCK);
-	}
-
-	/*
-	 * Non-blocking shared lock failed.  If we already own the exclusive
-	 * lock just acquire another exclusive lock (instead of deadlocking).
-	 * Otherwise acquire a shared lock.
-	 */
-	if (ncp->nc_locktd == curthread) {
-		_cache_lock(ncp);
-		return(0);
-	}
-	_cache_lock_shared(ncp);
-	return(0);
-}
-
-
-/*
  * NOTE: The same nchandle can be passed for both arguments.
  */
 void
@@ -1470,8 +1275,7 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		TAILQ_INSERT_HEAD(&vp->v_namecache, ncp, nc_vnode);
 		_cache_hold(ncp);		/* v_namecache assoc */
 		spin_unlock(&vp->v_spin);
-		if (ncp->nc_lockstatus & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ))
-			vhold(vp);
+		vhold(vp);			/* nc_vp w/lock */
 
 		/*
 		 * Set auxiliary flags
@@ -1581,7 +1385,7 @@ _cache_setunresolved(struct namecache *ncp)
 			 */
 			if (!TAILQ_EMPTY(&ncp->nc_list))
 				vdrop(vp);
-			if (ncp->nc_lockstatus & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ))
+			if (_cache_lockstatus(ncp) == LK_EXCLUSIVE)
 				vdrop(vp);
 		} else {
 			struct pcpu_ncache *pn;
@@ -2822,6 +2626,9 @@ again:
 	 * With the parent and nchpp locked, and the vnode removed
 	 * (no vp->v_namecache), we expect 1 or 2 refs.  If there are
 	 * more someone else has a ref and we cannot zap the entry.
+	 *
+	 * one for our hold
+	 * one for our parent link (parent also has one from the linkage)
 	 */
 	if (par)
 		refcmp = 2;
