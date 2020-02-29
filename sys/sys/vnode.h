@@ -150,8 +150,6 @@ struct vnode {
 	struct lock	v_lock;			/* file/dir ops lock */
 	struct lwkt_token v_token;		/* (see above) */
 	struct spinlock	v_spin;
-	int	v_auxrefs;			/* auxiliary references */
-	int	v_refcnt;
 	int	v_pbuf_count;			/* (device nodes only) */
 	int	v_writecount;
 	struct bio_track v_track_read;		/* track I/O's in progress */
@@ -186,7 +184,8 @@ struct vnode {
 	void	*v_data;			/* private data for fs */
 	struct namecache_list v_namecache;	/* (S) associated nc entries */
 	int	v_namecache_count;		/* (S) count of entries */
-	int	v_unused01;
+	int	v_auxrefs;			/* vhold/vdrop refs */
+	int	v_refcnt;			/* vget/vput refs */
 	struct	{
 		struct	kqinfo vpi_kqinfo;	/* identity of poller(s) */
 	} v_pollinfo;
