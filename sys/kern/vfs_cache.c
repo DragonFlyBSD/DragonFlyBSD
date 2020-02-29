@@ -233,9 +233,6 @@ static void _cache_cleanneg(long count);
 static void _cache_cleanpos(long count);
 static void _cache_cleandefered(void);
 static void _cache_unlink(struct namecache *ncp);
-#if 0
-static void vfscache_rollup_all(void);
-#endif
 
 /*
  * The new name cache statistics (these are rolled up globals and not
@@ -366,6 +363,7 @@ cache_clearmntcache(void)
 					atomic_add_int(&mp->mnt_refs, -1);
 			}
 		}
+
 		if (cache->ncp1) {
 			ncp = atomic_swap_ptr((void *)&cache->ncp1, NULL);
 			if (ncp)
@@ -532,8 +530,8 @@ _cache_lock_shared_nonblock(struct namecache *ncp)
 }
 
 /*
- * This function tries to get a shared lock but will back-off to an exclusive
- * lock if:
+ * This function tries to get a shared lock but will back-off to an
+ * exclusive lock if:
  *
  * (1) Some other thread is trying to obtain an exclusive lock
  *     (to prevent the exclusive requester from getting livelocked out
@@ -545,6 +543,8 @@ _cache_lock_shared_nonblock(struct namecache *ncp)
  * WARNING! On machines with lots of cores we really want to try hard to
  *	    get a shared lock or concurrent path lookups can chain-react
  *	    into a very high-latency exclusive lock.
+ *
+ *	    This is very evident in dsynth's initial scans.
  */
 static __inline
 int
@@ -841,12 +841,14 @@ cache_hold(struct nchandle *nch)
 void
 cache_copy(struct nchandle *nch, struct nchandle *target)
 {
-	struct mntcache *cache = &pcpu_mntcache[mycpu->gd_cpuid];
+	struct mntcache *cache;
 	struct namecache *ncp;
 
 	*target = *nch;
 	_cache_mntref(target->mount);
 	ncp = target->ncp;
+
+	cache = &pcpu_mntcache[mycpu->gd_cpuid];
 	if (ncp) {
 		if (ncp == cache->ncp1) {
 			if (atomic_cmpset_ptr((void *)&cache->ncp1, ncp, NULL))
@@ -874,9 +876,11 @@ cache_copy(struct nchandle *nch, struct nchandle *target)
 void
 cache_copy_ncdir(struct proc *p, struct nchandle *target)
 {
-	struct mntcache *cache = &pcpu_mntcache[mycpu->gd_cpuid];
+	struct mntcache *cache;
 
 	*target = p->p_fd->fd_ncdir;
+
+	cache = &pcpu_mntcache[mycpu->gd_cpuid];
 	if (target->ncp == cache->ncdir.ncp &&
 	    target->mount == cache->ncdir.mount) {
 		if (atomic_cmpset_ptr((void *)&cache->ncdir.ncp,
@@ -918,10 +922,12 @@ cache_drop(struct nchandle *nch)
 void
 cache_drop_and_cache(struct nchandle *nch)
 {
-	struct mntcache *cache = &pcpu_mntcache[mycpu->gd_cpuid];
+	struct mntcache *cache;
 	struct namecache *ncp;
 
 	_cache_mntrel(nch->mount);
+
+	cache = &pcpu_mntcache[mycpu->gd_cpuid];
 	ncp = nch->ncp;
 	if (cache->ncp1 == NULL) {
 		ncp = atomic_swap_ptr((void *)&cache->ncp1, ncp);
@@ -952,10 +958,12 @@ done:
 void
 cache_drop_ncdir(struct nchandle *nch)
 {
-	struct mntcache *cache = &pcpu_mntcache[mycpu->gd_cpuid];
+	struct mntcache *cache;
 
+	cache = &pcpu_mntcache[mycpu->gd_cpuid];
 	nch->ncp = atomic_swap_ptr((void *)&cache->ncdir.ncp, nch->ncp);
 	nch->mount = atomic_swap_ptr((void *)&cache->ncdir.mount, nch->mount);
+
 	if (nch->ncp)
 		_cache_drop(nch->ncp);
 	if (nch->mount)
@@ -2942,7 +2950,8 @@ found:
 
 /*
  * Attempt to lookup a namecache entry and return with a shared namecache
- * lock.
+ * lock.  This operates non-blocking.  EWOULDBLOCK is returned if excl is
+ * set or we are unable to lock.
  */
 int
 cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
@@ -2992,6 +3001,7 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
 		) {
 			_cache_hold(ncp);
 			spin_unlock_shared(&nchpp->spin);
+
 			if (_cache_lock_shared_special(ncp) == 0) {
 				if (ncp->nc_parent == par_nch->ncp &&
 				    ncp->nc_nlen == nlc->nlc_namelen &&
@@ -3005,8 +3015,7 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
 				_cache_unlock(ncp);
 			}
 			_cache_drop(ncp);
-			spin_lock_shared(&nchpp->spin);
-			break;
+			return(EWOULDBLOCK);
 		}
 	}
 
@@ -4203,7 +4212,7 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 		 * We can only safely access nc_parent with ncp held locked.
 		 */
 		while ((nch.ncp = ncp->nc_parent) != NULL) {
-			_cache_lock(ncp);
+			_cache_lock_shared(ncp);
 			if (nch.ncp != ncp->nc_parent) {
 				_cache_unlock(ncp);
 				continue;
@@ -4304,14 +4313,3 @@ vfscache_rollup_cpu(struct globaldata *gd)
 		atomic_add_long(&numdefered, count);
 	}
 }
-
-#if 0
-static void
-vfscache_rollup_all(void)
-{
-	int n;
-
-	for (n = 0; n < ncpus; ++n)
-		vfscache_rollup_cpu(globaldata_find(n));
-}
-#endif
