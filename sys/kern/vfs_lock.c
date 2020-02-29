@@ -330,6 +330,7 @@ vrele(struct vnode *vp)
 {
 	int count;
 
+#if 1
 	count = vp->v_refcnt;
 	cpu_ccfence();
 
@@ -377,6 +378,38 @@ vrele(struct vnode *vp)
 		cpu_pause();
 		/* retry */
 	}
+#else
+	/*
+	 * XXX NOT YET WORKING!  Multiple threads can reference the vnode
+	 * after dropping their count, racing destruction, because this
+	 * code is not directly transitioning from 1->VREF_FINALIZE.
+	 */
+        /*
+         * Drop the ref-count.  On the 1->0 transition we check VREF_FINALIZE
+         * and attempt to acquire VREF_TERMINATE if set.  It is possible for
+         * concurrent vref/vrele to race and bounce 0->1, 1->0, etc, but
+         * only one will be able to transition the vnode into the
+         * VREF_TERMINATE state.
+         *
+         * NOTE: VREF_TERMINATE is *in* VREF_MASK, so the vnode may only enter
+         *       this state once.
+         */
+        count = atomic_fetchadd_int(&vp->v_refcnt, -1);
+        if ((count & VREF_MASK) == 1) {
+                atomic_add_int(&mycpu->gd_cachedvnodes, 1);
+                --count;
+                while ((count & (VREF_MASK | VREF_FINALIZE)) == VREF_FINALIZE) {
+                        vx_lock(vp);
+                        if (atomic_fcmpset_int(&vp->v_refcnt,
+                                               &count, VREF_TERMINATE)) {
+                                atomic_add_int(&mycpu->gd_cachedvnodes, -1);
+                                vnode_terminate(vp);
+                                break;
+                        }
+                        vx_unlock(vp);
+                }
+        }
+#endif
 }
 
 /*
@@ -540,12 +573,16 @@ vget(struct vnode *vp, int flags)
 		 * NOTE! Multiple threads may clear VINACTIVE if this is
 		 *	 shared lock.  This race is allowed.
 		 */
-		_vclrflags(vp, VINACTIVE);	/* SMP race ok */
-		vp->v_act += VACT_INC;
-		if (vp->v_act > VACT_MAX)	/* SMP race ok */
-			vp->v_act = VACT_MAX;
+		if (vp->v_flag & VINACTIVE)
+			_vclrflags(vp, VINACTIVE);	/* SMP race ok */
+		if (vp->v_act < VACT_MAX) {
+			vp->v_act += VACT_INC;
+			if (vp->v_act > VACT_MAX)	/* SMP race ok */
+				vp->v_act = VACT_MAX;
+		}
 		error = 0;
-		atomic_clear_int(&vp->v_refcnt, VREF_TERMINATE);
+		if (vp->v_refcnt & VREF_TERMINATE)	/* SMP race ok */
+			atomic_clear_int(&vp->v_refcnt, VREF_TERMINATE);
 	} else {
 		/*
 		 * If the vnode is not VS_ACTIVE it must be reactivated
