@@ -4376,7 +4376,7 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 		 * We can only safely access nc_parent with ncp held locked.
 		 */
 		while ((nch.ncp = ncp->nc_parent) != NULL) {
-			_cache_lock(ncp);
+			_cache_lock_shared(ncp);
 			if (nch.ncp != ncp->nc_parent) {
 				_cache_unlock(ncp);
 				continue;
