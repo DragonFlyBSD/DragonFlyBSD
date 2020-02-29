@@ -82,6 +82,7 @@ struct nlookupdata {
 
 	int		nl_flags;	/* operations flags */
 	int		nl_loopcnt;	/* symlinks encountered */
+	int		nl_rootopt;	/* start at nl_path + nl_startidx */
 
 	/*
 	 * These fields are populated by vn_open().  nlookup_done() will

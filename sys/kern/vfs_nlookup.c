@@ -119,6 +119,7 @@ nlookup_init(struct nlookupdata *nd,
     bzero(nd, sizeof(struct nlookupdata));
     nd->nl_path = objcache_get(namei_oc, M_WAITOK);
     nd->nl_flags |= NLC_HASBUF;
+    nd->nl_rootopt = 0;
     if (seg == UIO_SYSSPACE) 
 	error = copystr(path, nd->nl_path, MAXPATHLEN, &pathlen);
     else
@@ -133,12 +134,22 @@ nlookup_init(struct nlookupdata *nd,
 
     if (error == 0) {
 	if (p && p->p_fd) {
-	    cache_copy_ncdir(p, &nd->nl_nch);
-	    cache_copy(&p->p_fd->fd_nrdir, &nd->nl_rootnch);
-	    if (p->p_fd->fd_njdir.ncp)
-		cache_copy(&p->p_fd->fd_njdir, &nd->nl_jailnch);
-	    nd->nl_cred = td->td_ucred;
-	    nd->nl_flags |= NLC_BORROWCRED | NLC_NCDIR;
+	    if (nd->nl_path[0] == '/') {
+		    nd->nl_rootopt = 1;
+		    cache_copy(&p->p_fd->fd_nrdir, &nd->nl_nch);
+		    cache_copy(&p->p_fd->fd_nrdir, &nd->nl_rootnch);
+		    if (p->p_fd->fd_njdir.ncp)
+			cache_copy(&p->p_fd->fd_njdir, &nd->nl_jailnch);
+		    nd->nl_cred = td->td_ucred;
+		    nd->nl_flags |= NLC_BORROWCRED;
+	    } else {
+		    cache_copy_ncdir(p, &nd->nl_nch);
+		    cache_copy(&p->p_fd->fd_nrdir, &nd->nl_rootnch);
+		    if (p->p_fd->fd_njdir.ncp)
+			cache_copy(&p->p_fd->fd_njdir, &nd->nl_jailnch);
+		    nd->nl_cred = td->td_ucred;
+		    nd->nl_flags |= NLC_BORROWCRED | NLC_NCDIR;
+	    }
 	} else {
 	    cache_copy(&rootnch, &nd->nl_nch);
 	    cache_copy(&nd->nl_nch, &nd->nl_rootnch);
@@ -492,7 +503,6 @@ nlookup(struct nlookupdata *nd)
     struct nchandle par;
     struct nchandle nctmp;
     struct mount *mp;
-    struct vnode *hvp;		/* hold to prevent recyclement */
     int wasdotordotdot;
     char *ptr;
     char *nptr;
@@ -547,16 +557,20 @@ nlookup_start:
 	    do {
 		++ptr;
 	    } while (*ptr == '/');
-	    cache_unlock(&nd->nl_nch);
-	    cache_get_maybe_shared(&nd->nl_rootnch, &nch,
-				   wantsexcllock(nd, ptr));
-	    if (nd->nl_flags & NLC_NCDIR) {
-		    cache_drop_ncdir(&nd->nl_nch);
-		    nd->nl_flags &= ~NLC_NCDIR;
+	    if (nd->nl_rootopt) {
+		nd->nl_rootopt = 0;
 	    } else {
-		    cache_drop(&nd->nl_nch);
+		cache_unlock(&nd->nl_nch);
+		cache_get_maybe_shared(&nd->nl_rootnch, &nch,
+				       wantsexcllock(nd, ptr));
+		if (nd->nl_flags & NLC_NCDIR) {
+			cache_drop_ncdir(&nd->nl_nch);
+			nd->nl_flags &= ~NLC_NCDIR;
+		} else {
+			cache_drop(&nd->nl_nch);
+		}
+		nd->nl_nch = nch;		/* remains locked */
 	    }
-	    nd->nl_nch = nch;		/* remains locked */
 
 	    /*
 	     * Fast-track termination.  There is no parent directory of
@@ -698,46 +712,48 @@ nlookup_start:
 	    wasdotordotdot = 2;
 	} else {
 	    /*
-	     * Must unlock nl_nch when traversing down the path.  However,
-	     * the child ncp has not yet been found/created and the parent's
-	     * child list might be empty.  Thus releasing the lock can
-	     * allow a race whereby the parent ncp's vnode is recycled.
-	     * This case can occur especially when maxvnodes is set very low.
+	     * Currently downward traversals are in reverse-lock-order,
+	     * requiring that we release the parent ncp before looking up
+	     * and locking the child.  However, the parent must remain resolved
+	     * so for now we also have to vhold() its vnode.
 	     *
-	     * We need the parent's ncp to remain resolved for all normal
-	     * filesystem activities, so we vhold() the vp during the lookup
-	     * to prevent recyclement due to vnlru / maxvnodes.
+	     * Releasing the lock without holding the vnode allows a race
+	     * whereby the parent ncp's vnode is recycled.  This case can
+	     * especially occur when maxvnodes is set very low.
 	     *
 	     * If we race an unlink or rename the ncp might be marked
 	     * DESTROYED after resolution, requiring a retry.
 	     */
+	    struct vnode *hvp;	/* prevent recyclement */
+
 	    if ((hvp = nd->nl_nch.ncp->nc_vp) != NULL)
 		vhold(hvp);
 	    cache_unlock(&nd->nl_nch);
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
+
 	    error = cache_nlookup_maybe_shared(&nd->nl_nch, &nlc,
 					       wantsexcllock(nd, ptr), &nch);
 	    if (error == EWOULDBLOCK) {
-		    nch = cache_nlookup(&nd->nl_nch, &nlc);
-		    if (nch.ncp->nc_flag & NCF_UNRESOLVED)
-			hit = 0;
-		    for (;;) {
-			error = cache_resolve(&nch, nd->nl_cred);
-			if (error != EAGAIN &&
-			    (nch.ncp->nc_flag & NCF_DESTROYED) == 0) {
-				if (error == ESTALE) {
-				    if (!inretry)
-					error = ENOENT;
-				    doretry = TRUE;
-				}
-				break;
-			}
-			kprintf("[diagnostic] nlookup: relookup %*.*s\n",
-				nch.ncp->nc_nlen, nch.ncp->nc_nlen,
-				nch.ncp->nc_name);
-			cache_put(&nch);
-			nch = cache_nlookup(&nd->nl_nch, &nlc);
+		nch = cache_nlookup(&nd->nl_nch, &nlc);
+		if (nch.ncp->nc_flag & NCF_UNRESOLVED)
+		    hit = 0;
+		for (;;) {
+		    error = cache_resolve(&nch, nd->nl_cred);
+		    if (error != EAGAIN &&
+			(nch.ncp->nc_flag & NCF_DESTROYED) == 0) {
+			    if (error == ESTALE) {
+				if (!inretry)
+				    error = ENOENT;
+				doretry = TRUE;
+			    }
+			    break;
 		    }
+		    kprintf("[diagnostic] nlookup: relookup %*.*s\n",
+			    nch.ncp->nc_nlen, nch.ncp->nc_nlen,
+			    nch.ncp->nc_name);
+		    cache_put(&nch);
+		    nch = cache_nlookup(&nd->nl_nch, &nlc);
+		}
 	    }
 	    if (hvp)
 		vdrop(hvp);
