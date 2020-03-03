@@ -680,7 +680,7 @@ tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
 
 	de = RB_FIND(tmpfs_dirtree, &node->tn_dir.tn_dirtree, &wanted);
 
-	KKASSERT(f == NULL || f == de->td_node);
+	KKASSERT(f == NULL || de == NULL || f == de->td_node);
 
 	return de;
 }

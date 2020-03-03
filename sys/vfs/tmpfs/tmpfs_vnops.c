@@ -1054,9 +1054,11 @@ tmpfs_nremove(struct vop_nremove_args *ap)
 	tmp = VFS_TO_TMPFS(vp->v_mount);
 
 	TMPFS_NODE_LOCK(dnode);
+	TMPFS_NODE_LOCK(node);
 	de = tmpfs_dir_lookup(dnode, node, ncp);
 	if (de == NULL) {
 		error = ENOENT;
+		TMPFS_NODE_UNLOCK(node);
 		TMPFS_NODE_UNLOCK(dnode);
 		goto out;
 	}
@@ -1065,6 +1067,7 @@ tmpfs_nremove(struct vop_nremove_args *ap)
 	if ((node->tn_flags & (IMMUTABLE | APPEND | NOUNLINK)) ||
 	    (dnode->tn_flags & APPEND)) {
 		error = EPERM;
+		TMPFS_NODE_UNLOCK(node);
 		TMPFS_NODE_UNLOCK(dnode);
 		goto out;
 	}
@@ -1079,11 +1082,9 @@ tmpfs_nremove(struct vop_nremove_args *ap)
 	 * reclaimed. */
 	tmpfs_free_dirent(tmp, de);
 
-	if (node->tn_links > 0) {
-	        TMPFS_NODE_LOCK(node);
+	if (node->tn_links > 0)
 		node->tn_status |= TMPFS_NODE_CHANGED;
-	        TMPFS_NODE_UNLOCK(node);
-	}
+	TMPFS_NODE_UNLOCK(node);
 
 	cache_unlink(ap->a_nch);
 	tmpfs_knote(vp, NOTE_DELETE);
