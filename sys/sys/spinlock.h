@@ -46,8 +46,8 @@
  * __func__ if the lock cannot be instantly obtained.
  */
 struct spinlock {
-	int counta;
-	int countb;
+	int lock;		/* main spinlock */
+	int update;		/* udpdate counter */
 };
 
 #define SPINLOCK_INITIALIZER(head, d)	{ 0, 0 }

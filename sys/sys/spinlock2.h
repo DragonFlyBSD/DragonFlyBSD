@@ -72,7 +72,7 @@ spin_trylock(struct spinlock *spin)
 	crit_enter_raw(gd->gd_curthread);
 	++gd->gd_spinlocks;
 	cpu_ccfence();
-	if (atomic_cmpset_int(&spin->counta, 0, 1) == 0)
+	if (atomic_cmpset_int(&spin->lock, 0, 1) == 0)
 		return (spin_trylock_contested(spin));
 #ifdef DEBUG_LOCKS
 	int i;
@@ -95,7 +95,7 @@ spin_trylock(struct spinlock *spin)
 static __inline int
 spin_held(struct spinlock *spin)
 {
-	return((spin->counta & ~SPINLOCK_SHARED) != 0);
+	return((spin->lock & ~SPINLOCK_SHARED) != 0);
 }
 
 /*
@@ -112,7 +112,7 @@ _spin_lock_quick(globaldata_t gd, struct spinlock *spin, const char *ident)
 	++gd->gd_spinlocks;
 	cpu_ccfence();
 
-	count = atomic_fetchadd_int(&spin->counta, 1);
+	count = atomic_fetchadd_int(&spin->lock, 1);
 	if (__predict_false(count != 0)) {
 		_spin_lock_contested(spin, ident, count);
 	}
@@ -161,13 +161,13 @@ spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
 #endif
 	/*
 	 * Don't use a locked instruction here.  To reduce latency we avoid
-	 * reading spin->counta prior to writing to it.
+	 * reading spin->lock prior to writing to it.
 	 */
 #ifdef DEBUG_LOCKS
-	KKASSERT(spin->counta != 0);
+	KKASSERT(spin->lock != 0);
 #endif
 	cpu_sfence();
-	atomic_add_int(&spin->counta, -1);
+	atomic_add_int(&spin->lock, -1);
 	cpu_sfence();
 #ifdef DEBUG_LOCKS
 	KKASSERT(gd->gd_spinlocks > 0);
@@ -203,16 +203,16 @@ static __inline void
 _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
 			const char *ident)
 {
-	int counta;
+	int lock;
 
 	crit_enter_raw(gd->gd_curthread);
 	++gd->gd_spinlocks;
 	cpu_ccfence();
 
-	counta = atomic_fetchadd_int(&spin->counta, 1);
-	if (__predict_false((counta & SPINLOCK_SHARED) == 0)) {
-		if (counta != 0 ||
-		    !atomic_cmpset_int(&spin->counta, 1, SPINLOCK_SHARED | 1)) {
+	lock = atomic_fetchadd_int(&spin->lock, 1);
+	if (__predict_false((lock & SPINLOCK_SHARED) == 0)) {
+		if (lock != 0 ||
+		    !atomic_cmpset_int(&spin->lock, 1, SPINLOCK_SHARED | 1)) {
 			_spin_lock_shared_contested(spin, ident);
 		}
 	}
@@ -257,10 +257,10 @@ spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
 	}
 #endif
 #ifdef DEBUG_LOCKS
-	KKASSERT(spin->counta != 0);
+	KKASSERT(spin->lock != 0);
 #endif
 	cpu_sfence();
-	atomic_add_int(&spin->counta, -1);
+	atomic_add_int(&spin->lock, -1);
 
 #ifdef DEBUG_LOCKS
 	KKASSERT(gd->gd_spinlocks > 0);
@@ -289,7 +289,7 @@ spin_unlock_shared(struct spinlock *spin)
 static __inline int
 spin_lock_upgrade_try(struct spinlock *spin)
 {
-	if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED|1, 1))
+	if (atomic_cmpset_int(&spin->lock, SPINLOCK_SHARED|1, 1))
 		return 1;
 	else
 		return 0;
@@ -298,8 +298,8 @@ spin_lock_upgrade_try(struct spinlock *spin)
 static __inline void
 spin_init(struct spinlock *spin, const char *descr __unused)
 {
-	spin->counta = 0;
-	spin->countb = 0;
+	spin->lock = 0;
+	spin->update = 0;
 #if 0
 	spin->descr  = descr;
 #endif
@@ -309,6 +309,54 @@ static __inline void
 spin_uninit(struct spinlock *spin)
 {
 	/* unused */
+}
+
+/*
+ * SMP friendly update counter support.  Allows protected structures to
+ * be accessed and retried without dirtying the cache line.  Retries if
+ * modified, gains shared spin-lock if modification is underway.
+ *
+ * The returned value from spin_update_start() must be passed into
+ * spin_update_end().
+ */
+static __inline int
+spin_update_start(struct spinlock *spin)
+{
+	int v;
+
+	v = *(volatile int *)&spin->update;
+	cpu_lfence();
+	if (__predict_false(v & 1))
+		spin_lock_shared(spin);
+	return v;
+}
+
+static __inline int
+spin_update_end(struct spinlock *spin, int v)
+{
+	if (__predict_false(v & 1)) {
+		spin_unlock_shared(spin);
+		return 0;
+	}
+	cpu_lfence();
+	return(*(volatile int *)&spin->update != v);
+}
+
+static __inline void
+spin_lock_update(struct spinlock *spin)
+{
+	spin_lock(spin);
+	atomic_add_int_nonlocked(&spin->update, 1);
+	cpu_sfence();
+	KKASSERT(spin->update & 1);
+}
+
+static __inline void
+spin_unlock_update(struct spinlock *spin)
+{
+	cpu_sfence();
+	atomic_add_int_nonlocked(&spin->update, 1);
+	spin_unlock(spin);
 }
 
 #endif	/* _SYS_SPINLOCK2_H_ */
