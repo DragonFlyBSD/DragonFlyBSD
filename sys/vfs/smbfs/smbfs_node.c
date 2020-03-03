@@ -264,6 +264,7 @@ loop:
 	/*
 	 * Return a locked and refd vnode
 	 */
+	vx_downgrade(vp);
 	*vpp = vp;
 	return 0;
 }

@@ -785,6 +785,7 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 		ip->vp = vp;
 		hammer2_inode_ref(ip);		/* vp association */
 		hammer2_inode_lock_downgrade(ip, wasexclusive);
+		vx_downgrade(vp);
 		break;
 	}
 

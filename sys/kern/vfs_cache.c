@@ -162,7 +162,8 @@ struct ncmount_cache {
 	struct mount *mp_target;
 	int isneg;
 	int ticks;
-	long updating;
+	int updating;
+	int unused01;
 };
 
 struct pcpu_ncache {
@@ -1955,6 +1956,14 @@ again:
  * NOTE: The passed-in ncp must be locked exclusively if it is initially
  *	 unresolved.  If a reclaim race occurs the passed-in ncp will be
  *	 relocked exclusively before being re-resolved.
+ *
+ * NOTE: At the moment we have to issue a vget() on the vnode, even though
+ *	 we are going to immediately release the lock, in order to resolve
+ *	 potential reclamation races.  Once we have a solid vnode ref that
+ *	 was (at some point) interlocked via a vget(), the vnode will not
+ *	 be reclaimed.
+ *
+ * NOTE: vhold counts (v_auxrefs) do not prevent reclamation.
  */
 int
 cache_vref(struct nchandle *nch, struct ucred *cred, struct vnode **vpp)
@@ -3380,7 +3389,7 @@ cache_findmount(struct nchandle *nch)
 	struct mount *target;
 	struct pcpu_ncache *pcpu;
 	struct spinlock *spinlk;
-	long update;
+	int update;
 
 	pcpu = pcpu_ncache;
 	if (ncmount_cache_enable == 0 || pcpu == NULL) {
@@ -3479,7 +3488,7 @@ skip:
 	if ((info.result == NULL ||
 	    (info.result->mnt_kern_flag & MNTK_UNMOUNT) == 0)) {
 		spin_lock(&ncc->spin);
-		++ncc->updating;
+		atomic_add_int_nonlocked(&ncc->updating, 1);
 		cpu_sfence();
 		KKASSERT(ncc->updating & 1);
 		if (ncc->mp != nch->mount) {
@@ -3507,7 +3516,7 @@ skip:
 			}
 		}
 		cpu_sfence();
-		++ncc->updating;
+		atomic_add_int_nonlocked(&ncc->updating, 1);
 		spin_unlock(&ncc->spin);
 	}
 	return(info.result);
@@ -3561,7 +3570,7 @@ cache_ismounting(struct mount *mp)
 			continue;
 		}
 		spin_lock(&ncc->spin);
-		++ncc->updating;
+		atomic_add_int_nonlocked(&ncc->updating, 1);
 		cpu_sfence();
 		KKASSERT(ncc->updating & 1);
 		if (ncc->mp != mp->mnt_ncmounton.mount ||
@@ -3583,7 +3592,7 @@ cache_ismounting(struct mount *mp)
 		ncc->ticks = (int)ticks - hz * 120;
 
 		cpu_sfence();
-		++ncc->updating;
+		atomic_add_int_nonlocked(&ncc->updating, 1);
 		spin_unlock(&ncc->spin);
 	}
 
@@ -3594,7 +3603,7 @@ cache_ismounting(struct mount *mp)
 				   mp->mnt_ncmounton.ncp);
 
 	spin_lock(&ncc->spin);
-	++ncc->updating;
+	atomic_add_int_nonlocked(&ncc->updating, 1);
 	cpu_sfence();
 	KKASSERT(ncc->updating & 1);
 
@@ -3612,8 +3621,8 @@ cache_ismounting(struct mount *mp)
 		ncc->mp_target = mp;
 		atomic_add_int(&mp->mnt_refs, 1);
 	}
-	++ncc->updating;
 	cpu_sfence();
+	atomic_add_int_nonlocked(&ncc->updating, 1);
 	spin_unlock(&ncc->spin);
 }
 
@@ -3644,11 +3653,11 @@ cache_unmounting(struct mount *mp)
 		if (ncc->mp != mp && ncc->mp_target != mp)
 			continue;
 		spin_lock(&ncc->spin);
-		++ncc->updating;
+		atomic_add_int_nonlocked(&ncc->updating, 1);
 		cpu_sfence();
 
 		if (ncc->mp != mp && ncc->mp_target != mp) {
-			++ncc->updating;
+			atomic_add_int_nonlocked(&ncc->updating, 1);
 			cpu_sfence();
 			spin_unlock(&ncc->spin);
 			continue;
@@ -3664,8 +3673,8 @@ cache_unmounting(struct mount *mp)
 			atomic_add_int(&ncc_mp->mnt_refs, -1);
 		ncc->ticks = (int)ticks - hz * 120;
 
-		++ncc->updating;
 		cpu_sfence();
+		atomic_add_int_nonlocked(&ncc->updating, 1);
 		spin_unlock(&ncc->spin);
 	}
 

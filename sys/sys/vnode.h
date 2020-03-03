@@ -463,7 +463,6 @@ void	vsetobjdirty(struct vnode *vp);
 
 void	insmntque(struct vnode *vp, struct mount *mp);
 
-void	vclean_vxlocked (struct vnode *vp, int flags);
 void	vclean_unlocked (struct vnode *vp);
 void	vgone_vxlocked (struct vnode *vp);
 int	vrevoke (struct vnode *vp, struct ucred *cred);
@@ -494,6 +493,7 @@ int	vn_islocked_unlock (struct vnode *vp);
 void	vn_islocked_relock (struct vnode *vp, int vpls);
 int	vn_lock (struct vnode *vp, int flags);
 void	vn_unlock (struct vnode *vp);
+int	vn_relock (struct vnode *vp, int flags);
 
 /*#define DEBUG_VN_UNLOCK*/
 #ifdef DEBUG_VN_UNLOCK
@@ -523,6 +523,7 @@ int	vn_writechk (struct vnode *vp);
 int	ncp_writechk(struct nchandle *nch);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
+int	vop_stdgetattr_quick (struct vop_getattr_args *ap);
 int	vop_stdmountctl(struct vop_mountctl_args *ap);
 int	vop_stdgetpages(struct vop_getpages_args *ap);
 int	vop_stdputpages(struct vop_putpages_args *ap);
@@ -551,6 +552,7 @@ int	vop_compat_nremove(struct vop_nremove_args *ap);
 int	vop_compat_nrmdir(struct vop_nrmdir_args *ap);
 int	vop_compat_nrename(struct vop_nrename_args *ap);
 
+void	vx_downgrade (struct vnode *vp);
 void	vx_lock (struct vnode *vp);
 void	vx_unlock (struct vnode *vp);
 void	vx_get (struct vnode *vp);

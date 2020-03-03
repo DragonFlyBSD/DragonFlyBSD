@@ -178,7 +178,7 @@ udf_allocv(struct mount *mp, struct vnode **vpp)
 		kprintf("udf_allocv: failed to allocate new vnode\n");
 		return(error);
 	}
-
+	vx_downgrade(vp);
 	*vpp = vp;
 	return(0);
 }

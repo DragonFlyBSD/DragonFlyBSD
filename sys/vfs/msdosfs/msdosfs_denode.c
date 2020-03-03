@@ -422,6 +422,7 @@ again:
 	 * Leave nvp locked and refd so the returned inode is effectively
 	 * locked and refd.
 	 */
+	vx_downgrade(nvp);
 	*depp = ldep;
 	return (0);
 }

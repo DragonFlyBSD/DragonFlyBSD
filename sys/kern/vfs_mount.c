@@ -190,7 +190,9 @@ vremovevnodemnt(struct vnode *vp)
  *
  * A VX locked and refd vnode is returned.  The caller should setup the
  * remaining fields and vx_put() or, if he wishes to leave a vref,
- * vx_unlock() the vnode.
+ * vx_unlock() the vnode.  Or if he wishes to return a normal locked
+ * vnode, call vx_downgrade(vp); to downgrade the VX lock to a normal
+ * VN lock.
  */
 int
 getnewvnode(enum vtagtype tag, struct mount *mp,

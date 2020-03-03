@@ -1415,7 +1415,11 @@ again:
 	    cache_lock_maybe_shared(nch, 0);
 	    nchislocked = 2;
 	}
+#if 1
 	error = cache_vget(nch, cred, LK_SHARED, &vp);
+#else
+	error = cache_vref(nch, cred, &vp);
+#endif
 	if (error == ENOENT) {
 	    /*
 	     * Silently zero-out ENOENT if creating or renaming
@@ -1436,7 +1440,7 @@ again:
 	     *
 	     * XXX cache the va in the namecache or in the vnode
 	     */
-	    error = VOP_GETATTR(vp, &va);
+	    error = VOP_GETATTR_QUICK(vp, &va);
 	    if (error == 0 && (nflags & NLC_TRUNCATE)) {
 		switch(va.va_type) {
 		case VREG:
@@ -1467,7 +1471,11 @@ again:
 		    break;
 		}
 	    }
+#if 1
 	    vput(vp);
+#else
+	    vrele(vp);
+#endif
 
 	    /*
 	     * Check permissions based on file attributes.  The passed

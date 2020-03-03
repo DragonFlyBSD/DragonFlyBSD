@@ -97,6 +97,7 @@ VNODEOP_DESC_INIT(open);
 VNODEOP_DESC_INIT(close);
 VNODEOP_DESC_INIT(access);
 VNODEOP_DESC_INIT(getattr);
+VNODEOP_DESC_INIT(getattr_quick);
 VNODEOP_DESC_INIT(setattr);
 VNODEOP_DESC_INIT(read);
 VNODEOP_DESC_INIT(write);
@@ -363,6 +364,29 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 
 	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_GA_MPSAFE);
 	DO_OPS(ops, error, &ap, vop_getattr);
+	VFS_MPUNLOCK();
+
+	return(error);
+}
+
+/*
+ * MPSAFE
+ */
+int
+vop_getattr_quick(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
+{
+	struct vop_getattr_args ap;
+	VFS_MPLOCK_DECLARE;
+	int error;
+
+	ap.a_head.a_desc = &vop_getattr_quick_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_vp = vp;
+	ap.a_vap = vap;
+	ap.a_fp = NULL;
+
+	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_GA_MPSAFE);
+	DO_OPS(ops, error, &ap, vop_getattr_quick);
 	VFS_MPUNLOCK();
 
 	return(error);
@@ -1762,6 +1786,15 @@ vop_getattr_ap(struct vop_getattr_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_getattr);
+	return(error);
+}
+
+int
+vop_getattr_quick_ap(struct vop_getattr_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_getattr_quick);
 	return(error);
 }
 

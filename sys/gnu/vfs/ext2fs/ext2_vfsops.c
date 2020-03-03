@@ -1117,7 +1117,9 @@ kprintf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 	/*
 	 * Return the locked and refd vnode.
 	 */
+	vx_downgrade(vp);	/* downgrade VX lock to VN lock */
 	*vpp = vp;
+
 	return (0);
 }
 

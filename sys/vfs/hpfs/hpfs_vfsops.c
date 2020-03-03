@@ -545,6 +545,7 @@ hpfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	hp->h_flag &= ~H_INVAL;
 
 	/* Return the locked and refd vnode */
+	vx_downgrade(vp);
 	*vpp = vp;
 
 	return (0);

@@ -277,6 +277,8 @@ dirfs_alloc_vp(struct mount *mp, struct vnode **vpp, int lkflags,
 					/* NOT REACHED */
 					break;
 				}
+				/* downgrade VX lock to VN lock */
+				vx_downgrade(vp);
 				break;	/* success */
 			}
 			vp->v_type = VBAD;

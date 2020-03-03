@@ -362,7 +362,6 @@ tmpfs_getattr(struct vop_getattr_args *ap)
 
 	tmpfs_update(vp);
 
-	TMPFS_NODE_LOCK_SH(node);
 	vap->va_type = vp->v_type;
 	vap->va_mode = node->tn_mode;
 	vap->va_nlink = node->tn_links;
@@ -386,10 +385,44 @@ tmpfs_getattr(struct vop_getattr_args *ap)
 	}
 	vap->va_bytes = round_page(node->tn_size);
 	vap->va_filerev = 0;
-	TMPFS_NODE_UNLOCK(node);
 
 	return 0;
 }
+
+/* --------------------------------------------------------------------- */
+
+int
+tmpfs_getattr_quick(struct vop_getattr_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct vattr *vap = ap->a_vap;
+	struct tmpfs_node *node;
+
+	node = VP_TO_TMPFS_NODE(vp);
+
+	tmpfs_update(vp);
+
+	vap->va_type = vp->v_type;
+	vap->va_mode = node->tn_mode;
+	vap->va_nlink = node->tn_links;
+	vap->va_uid = node->tn_uid;
+	vap->va_gid = node->tn_gid;
+	vap->va_fsid = vp->v_mount->mnt_stat.f_fsid.val[0];
+	vap->va_fileid = node->tn_id;
+	vap->va_size = node->tn_size;
+	vap->va_blocksize = PAGE_SIZE;
+	vap->va_gen = node->tn_gen;
+	vap->va_flags = node->tn_flags;
+	if (vp->v_type == VBLK || vp->v_type == VCHR) {
+		vap->va_rmajor = umajor(node->tn_rdev);
+		vap->va_rminor = uminor(node->tn_rdev);
+	}
+	vap->va_bytes = -1;
+	vap->va_filerev = 0;
+
+	return 0;
+}
+
 
 /* --------------------------------------------------------------------- */
 
@@ -2114,6 +2147,7 @@ struct vop_ops tmpfs_vnode_vops = {
 	.vop_close =			tmpfs_close,
 	.vop_access =			tmpfs_access,
 	.vop_getattr =			tmpfs_getattr,
+	.vop_getattr_quick =		tmpfs_getattr_quick,
 	.vop_setattr =			tmpfs_setattr,
 	.vop_read =			tmpfs_read,
 	.vop_write =			tmpfs_write,

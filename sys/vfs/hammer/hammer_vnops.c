@@ -278,14 +278,14 @@ skip:
 		int dorelock;
 
 		if ((ap->a_vp->v_flag & VRECLAIMED) == 0) {
-			vx_unlock(ap->a_vp);
+			vn_unlock(ap->a_vp);
 			dorelock = 1;
 		} else {
 			dorelock = 0;
 		}
 		hammer_wait_inode(ip);
 		if (dorelock)
-			vx_lock(ap->a_vp);
+			vn_relock(ap->a_vp, LK_EXCLUSIVE);
 	}
 	if (ip->vp && (ip->flags & HAMMER_INODE_MODMASK) == 0)
 		vclrisdirty(ip->vp);

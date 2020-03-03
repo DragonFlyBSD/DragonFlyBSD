@@ -308,6 +308,7 @@ retry:
 		KKASSERT(0);
 	}
 
+	vx_downgrade(vp);
 	KKASSERT(vn_islocked(vp) == LK_EXCLUSIVE);
 	KASSERT(!fnp->vp, ("lost race"));
 	fnp->vp = vp;

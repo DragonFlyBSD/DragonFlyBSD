@@ -587,6 +587,7 @@ retry:
 
 	KASSERT(anp->an_vnode == NULL, ("lost race"));
 	anp->an_vnode = vp;
+	vx_downgrade(vp);	/* downgrade VX lock to VN lock */
 	*vpp = vp;
 
 	return (0);

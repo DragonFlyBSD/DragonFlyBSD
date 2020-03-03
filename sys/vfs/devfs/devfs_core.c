@@ -383,6 +383,7 @@ try_again:
 	default:
 		panic("devfs_allocv: unknown node type");
 	}
+	vx_downgrade(vp);	/* downgrade VX lock to VN lock */
 
 out:
 	return error;

@@ -1192,7 +1192,9 @@ retry:
 	 * return a VX locked and refd vnode (VX == same as normal vget()
 	 * vnode so we are ok)
 	 */
+	vx_downgrade(vp);
 	*vpp = vp;
+
 	return (0);
 }
 

@@ -889,6 +889,7 @@ again:
 	/*
 	 * Return the locked and refd vp
 	 */
+	vx_downgrade(vp);
 	*vpp = vp;
 	return (0);
 }

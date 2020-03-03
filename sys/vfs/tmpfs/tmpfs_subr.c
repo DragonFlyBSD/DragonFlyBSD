@@ -497,6 +497,7 @@ loop:
 	node->tn_vnode = vp;
 	TMPFS_NODE_UNLOCK(node);
 
+	vx_downgrade(vp);
 out:
 	*vpp = vp;
 	KKASSERT(IFF(error == 0, *vpp != NULL && vn_islocked(*vpp)));

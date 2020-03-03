@@ -356,6 +356,7 @@ hammer_get_vnode(hammer_inode_t ip, struct vnode **vpp)
 					  hammer_blocksize(ip->ino_data.size),
 					  hammer_blockoff(ip->ino_data.size));
 			}
+			vx_downgrade(vp);
 			break;
 		}
 
@@ -1181,7 +1182,7 @@ hammer_unload_pseudofs_callback(hammer_inode_t ip, void *data)
 		 * Don't allow any subdirectories or files to be open.
 		 */
 		if (hammer_isactive(&ip->lock) == 2 && ip->vp)
-			vclean_unlocked(ip->vp);
+			vclean_unlocked(ip->vp);	/* might not succeed */
 		if (hammer_isactive(&ip->lock) == 1 && ip->vp == NULL)
 			res = 0;
 		else

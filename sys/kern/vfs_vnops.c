@@ -1052,6 +1052,20 @@ vn_lock(struct vnode *vp, int flags)
 	return (error);
 }
 
+int
+vn_relock(struct vnode *vp, int flags)
+{
+	int error;
+
+	do {
+		error = lockmgr(&vp->v_lock, flags);
+		if (error == 0)
+			break;
+	} while (flags & LK_RETRY);
+
+	return error;
+}
+
 #ifdef DEBUG_VN_UNLOCK
 
 void

@@ -761,7 +761,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	}
 
 	error = getnewvnode(VT_NTFS, ntmp->ntm_mountp, &vp, VLKTIMEOUT, 0);
-	if(error) {
+	if (error) {
 		ntfs_frele(fp);
 		ntfs_ntput(ip);
 		return (error);
@@ -785,6 +785,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 
 	KKASSERT(lkflags & LK_TYPE_MASK);
 	/* XXX leave vnode locked exclusively from getnewvnode */
+	vx_downgrade(vp);
 	*vpp = vp;
 	return (0);
 }

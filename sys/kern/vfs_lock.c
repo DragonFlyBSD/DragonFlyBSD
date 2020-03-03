@@ -49,7 +49,7 @@
  *	 the vnode lock is allowed to be SHARED.
  *
  *	 Switching into a CACHED or DYING state requires an exclusive vnode
- *	 lock or vx_lock (which is almost the same thing).
+ *	 lock or vx_lock (which is almost the same thing but not quite).
  */
 
 #include <sys/param.h>
@@ -494,12 +494,26 @@ void
 vx_lock(struct vnode *vp)
 {
 	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
+	spin_lock_update_only(&vp->v_spin);
 }
 
 void
 vx_unlock(struct vnode *vp)
 {
+	spin_unlock_update_only(&vp->v_spin);
 	lockmgr(&vp->v_lock, LK_RELEASE);
+}
+
+/*
+ * Downgrades a VX lock to a normal VN lock.  The lock remains EXCLUSIVE.
+ *
+ * Generally required after calling getnewvnode() if the intention is
+ * to return a normal locked vnode to the caller.
+ */
+void
+vx_downgrade(struct vnode *vp)
+{
+	spin_unlock_update_only(&vp->v_spin);
 }
 
 /****************************************************************
@@ -685,6 +699,7 @@ vx_get(struct vnode *vp)
 	if ((atomic_fetchadd_int(&vp->v_refcnt, 1) & VREF_MASK) == 0)
 		atomic_add_int(&mycpu->gd_cachedvnodes, -1);
 	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
+	spin_lock_update_only(&vp->v_spin);
 }
 
 int
@@ -696,6 +711,7 @@ vx_get_nonblock(struct vnode *vp)
 		return(EBUSY);
 	error = lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT);
 	if (error == 0) {
+		spin_lock_update_only(&vp->v_spin);
 		if ((atomic_fetchadd_int(&vp->v_refcnt, 1) & VREF_MASK) == 0)
 			atomic_add_int(&mycpu->gd_cachedvnodes, -1);
 	}
@@ -714,6 +730,7 @@ vx_put(struct vnode *vp)
 {
 	if (vp->v_type == VNON || vp->v_type == VBAD)
 		atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+	spin_unlock_update_only(&vp->v_spin);
 	lockmgr(&vp->v_lock, LK_RELEASE);
 	vrele(vp);
 }
@@ -727,6 +744,7 @@ vx_put(struct vnode *vp)
  * periods of extreme vnode use.
  *
  * NOTE: The returned vnode is not completely initialized.
+ *	 The returned vnode will be VX locked.
  */
 static
 struct vnode *
@@ -1090,6 +1108,7 @@ allocvnode(int lktimeout, int lkflags)
 		atomic_clear_int(&vp->v_refcnt, VREF_TERMINATE|VREF_FINALIZE);
 		KASSERT(vp->v_refcnt == 1,
 			("vp %p badrefs %08x", vp, vp->v_refcnt));
+		vx_unlock(vp);		/* safety: keep the API clean */
 		bzero(vp, sizeof(*vp));
 	} else {
 		spin_unlock(&vi->spin);
@@ -1106,7 +1125,7 @@ slower:
 	RB_INIT(&vp->v_rbhash_tree);
 	spin_init(&vp->v_spin, "allocvnode");
 
-	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
+	vx_lock(vp);
 	vp->v_refcnt = 1;
 	vp->v_flag = VAGE0 | VAGE1;
 	vp->v_pbuf_count = nswbuf_kva / NSWBUF_SPLIT;

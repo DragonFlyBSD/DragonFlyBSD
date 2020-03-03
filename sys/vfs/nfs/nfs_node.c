@@ -219,6 +219,7 @@ loop:
 	*npp = np;
 	lockmgr(&nfsnhash_lock, LK_RELEASE);
 	lwkt_reltoken(&nfsnhash_token);
+	vx_downgrade(vp);
 
 	return (0);
 }
@@ -369,6 +370,7 @@ loop:
 	*npp = np;
 	error = 0;
 	lockmgr(&nfsnhash_lock, LK_RELEASE);
+	vx_downgrade(vp);
 fail:
 	lwkt_reltoken(&nfsnhash_token);
 	return (error);

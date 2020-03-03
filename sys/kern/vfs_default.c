@@ -79,6 +79,7 @@ struct vop_ops default_vnode_vops = {
 	.vop_old_lookup		= vop_nolookup,
 	.vop_open		= vop_stdopen,
 	.vop_close		= vop_stdclose,
+	.vop_getattr_quick	= vop_stdgetattr_quick,
 	.vop_pathconf		= vop_stdpathconf,
 	.vop_readlink		= (void *)vop_einval,
 	.vop_reallocblks	= (void *)vop_eopnotsupp,
@@ -1211,6 +1212,17 @@ vop_stdclose(struct vop_close_args *ap)
 	}
 	atomic_add_int(&vp->v_opencount, -1);
 	return (0);
+}
+
+/*
+ * Standard getattr_quick
+ *
+ * Just calls getattr
+ */
+int
+vop_stdgetattr_quick(struct vop_getattr_args *ap)
+{
+	return VOP_GETATTR(ap->a_vp, ap->a_vap);
 }
 
 /*

@@ -348,7 +348,7 @@ spin_lock_update(struct spinlock *spin)
 	spin_lock(spin);
 	atomic_add_int_nonlocked(&spin->update, 1);
 	cpu_sfence();
-	KKASSERT(spin->update & 1);
+	KKASSERT_UNSPIN((spin->update & 1), spin);
 }
 
 static __inline void
@@ -356,7 +356,27 @@ spin_unlock_update(struct spinlock *spin)
 {
 	cpu_sfence();
 	atomic_add_int_nonlocked(&spin->update, 1);
+	KKASSERT_UNSPIN(((spin->update & 1) == 0), spin);
 	spin_unlock(spin);
+}
+
+/*
+ * API that doesn't integrate the acquisition of the spin-lock
+ */
+static __inline void
+spin_lock_update_only(struct spinlock *spin)
+{
+	atomic_add_int_nonlocked(&spin->update, 1);
+	cpu_sfence();
+	KKASSERT(spin->update & 1);
+}
+
+static __inline void
+spin_unlock_update_only(struct spinlock *spin)
+{
+	cpu_sfence();
+	atomic_add_int_nonlocked(&spin->update, 1);
+	KKASSERT((spin->update & 1) == 0);
 }
 
 #endif	/* _SYS_SPINLOCK2_H_ */

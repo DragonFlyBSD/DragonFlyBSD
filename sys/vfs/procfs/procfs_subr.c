@@ -237,6 +237,7 @@ loop:
 	pfs->pfs_next = ph->first;
 	ph->first = pfs;
 	spin_unlock(&ph->spin);
+	vx_downgrade(vp);
 
 out:
 	lockmgr(&procfslk, LK_RELEASE);

@@ -127,6 +127,7 @@ static int	vfs_free_netcred (struct radix_node *rn, void *w);
 static void	vfs_free_addrlist_af (struct radix_node_head **prnh);
 static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
 	            const struct export_args *argp);
+static void vclean_vxlocked(struct vnode *vp, int flags);
 
 __read_mostly int prtactive = 0; /* 1 => print out reclaim of active vnodes */
 
@@ -1216,6 +1217,8 @@ addaliasu(struct vnode *nvp, int x, int y)
  *
  * May only be called if the vnode is in a known state (i.e. being prevented
  * from being deallocated by some other condition such as a vfs inode hold).
+ *
+ * This call might not succeed.
  */
 void
 vclean_unlocked(struct vnode *vp)
@@ -1234,7 +1237,7 @@ vclean_unlocked(struct vnode *vp)
  * there are active references, the vnode is being ripped out and we have
  * to call VOP_CLOSE() as appropriate before we can reclaim it.
  */
-void
+static void
 vclean_vxlocked(struct vnode *vp, int flags)
 {
 	int active;
