@@ -79,13 +79,12 @@ END(memset)
 /*
  * pagezero(ptr:%rdi)
  *
- * Using rep stosq is nearly as fast as using %xmm0 on a modern intel cpu,
- * and about 70% faster than a %rax loop.
- *
- * Do not use non-termportal instructions here as we do not know the caller's
- * intent.
+ * Modern intel and AMD cpus do a good job with rep stosq on page-sized
+ * blocks.  The cross-point on intel is at the 256 byte mark and on AMD
+ * it is around the 1024 byte mark.  With large counts, rep stosq will
+ * internally use non-termporal instructions and a cache sync at the end.
  */
-#if 0
+#if 1
 
 ENTRY(pagezero)
 	movq	$PAGE_SIZE>>3,%rcx
