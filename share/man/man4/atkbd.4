@@ -136,13 +136,7 @@ changing key assignment.
 .Ss Driver Flags
 The
 .Nm
-driver accepts the following driver flags.  They can be set either in the
-kernel configuration file
-(see
-.Xr config 8 ) ,
-or else in the User Configuration Menu at boot time
-(see
-.Xr boot 8 ) .
+driver accepts the following driver flags in the kernel configuration file.
 .Bl -tag -width FAIL
 .It bit 0 (FAIL_IF_NO_KBD)
 By default the
@@ -187,8 +181,7 @@ to
 .Xr atkbdc 4 ,
 .Xr psm 4 ,
 .Xr syscons 4 ,
-.Xr boot 8 ,
-.Xr config 8
+.Xr boot 8
 .Sh HISTORY
 The
 .Nm

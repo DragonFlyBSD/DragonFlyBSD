@@ -36,7 +36,7 @@
 .\"
 .\" $FreeBSD: src/sbin/reboot/boot_i386.8,v 1.23.2.11 2002/04/24 17:47:58 rnordier Exp $
 .\"
-.Dd May 20, 2019
+.Dd March 3, 2020
 .Dt BOOT 8
 .Os
 .Sh NAME
@@ -207,7 +207,10 @@ pause after each attached device during the device probing phase.
 use the statically configured default for the device containing the
 root file system
 (see
-.Xr config 8 ) .
+.Sq options ROOTDEVNAME
+in the
+.Pa LINT64
+kernel configuration file).
 Normally, the root file system is on the device
 that the kernel was loaded from.
 .It Fl s
@@ -285,7 +288,6 @@ requirement has not been adhered to.
 .Xr ddb 4 ,
 .Xr ttys 5 ,
 .Xr boot0cfg 8 ,
-.Xr config 8 ,
 .Xr disklabel 8 ,
 .Xr halt 8 ,
 .Xr loader 8 ,
