@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 7, 2018
+.Dd March 3, 2020
 .Dt DEVELOPMENT 7
 .Os
 .Sh NAME
@@ -164,19 +164,19 @@ Especially test suites that are not used by the
 .Dx
 build are good candidates for being stripped away.
 These instructions assume that you have already extracted
-the source package into its final directory and that they are
-trimmed appropriately.
+the source package into its final directory and trimmed the source
+files appropriately.
 .Pp
 .Em \&Do not change the vendor sources before importing them
 on the vendor branch!
-Necessary changes to the vendor sources can be applied to
+Necessary changes to the vendor sources should be applied to the
 .Pa master
-after the import.
+branch after the import.
 .Pp
-For the following commands, we will import the imaginary package
+For the following example, we will import the imaginary package
 .Nm foo-2.3
 into
-.Pa /usr/src/contrib/foo .
+.Pa contrib/foo .
 If this is the first import of
 .Nm foo ,
 you will have to choose the name of the vendor branch.
@@ -185,43 +185,39 @@ Customarily, this will be
 However, if you intend to maintain multiple vendor sources for the
 same package
 .Em concurrently ,
-you should choose a branch name which includes part of the version,
-i.e.\&
+you should choose a branch name that includes part of the version, e.g.,
 .Pa vendor/FOO2 .
 .Pp
-As a first step, we trick git to work on the vendor branch instead of on
-.Pa master .
-Be careful, since after issuing this command all your commits will go to the
-vendor branch, but you will commit
-.Em the whole working tree
-and not just the vendor sources!
-Thus you have to specify the exact directory for
-.Li git commit .
-In order to commit, you will have to add the new sources first.
-.Pp
-If the vendor branch already exists, make sure that you have a local vendor
-branch which is up to date.
-To this end, run:
+First, we need to create an orphan branch (i.e., a new branch with no
+history) as the vendor branch:
 .Bd -literal -offset 4n
-git update-ref refs/heads/vendor/FOO origin/vendor/FOO
+git checkout --orphan vendor/FOO
 .Ed
 .Pp
-The next commands perform the actual import.
+Then we remove the previous content because the vendor branch will only
+contain the vendor sources to be imported:
 .Bd -literal -offset 4n
-git symbolic-ref HEAD refs/heads/vendor/FOO
+git rm -rf .
+.Ed
+.Pp
+Next, move the prepared vendor sources to the destination, i.e.,
+.Pa contrib/foo .
+Then we perform the import:
+.Bd -literal -offset 4n
 git add contrib/foo
-git commit -m "Import foo-2.3" contrib/foo
+git commit -m "Import foo-2.3 on the vendor branch"
 .Ed
 .Pp
-With these commands we have imported the vendor sources on their own branch.
-In the next step, we merge the vendor branch into master.
+Next, we merge the vendor branch into
+.Pa master :
 .Bd -literal -offset 4n
 git checkout master
-git merge vendor/FOO
+git merge --allow-unrelated-histories vendor/FOO
 .Ed
 .Pp
-Now you are free to change the sources in contrib/foo, since you are
-back on the
+Now you are free to change the sources in
+.Pa contrib/foo ,
+since you are back to the
 .Pa master
 branch.
 The first thing to do is to add
@@ -229,7 +225,7 @@ The first thing to do is to add
 and
 .Pa README.DELETED .
 The former documents how the imported sources can be obtained, including
-a checksum of the tarball.
+basic information (e.g., version, date, checksum) of the source package.
 The latter lists all files and directories that have been removed from the
 source package.
 You should use the
@@ -237,13 +233,16 @@ You should use the
 shell script to generate this file.
 Commit the
 .Pa README Ns s
-first, then commit your local changes to the sources:
+first:
 .Bd -literal -offset 4n
 git add contrib/foo/README.D*
 git commit -m "foo: add our READMEs"
 .Ed
 .Pp
-Finally, push master and the vendor branch to crater:
+And then commit your local changes to the sources.
+Finally, push
+.Pa master
+and the vendor branch to the upstream:
 .Bd -literal -offset 4n
 git push crater master vendor/FOO
 .Ed
