@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,9 @@
 static inline struct page *
 kmap_to_page(void *addr)
 {
+	if (addr == NULL)
+		return NULL;
+
 	return (struct page *)PHYS_TO_VM_PAGE(vtophys(addr));
 }
 
