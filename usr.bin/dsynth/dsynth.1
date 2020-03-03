@@ -286,6 +286,9 @@ to
 .Sq yes
 and pre-deletes specified packages.
 Dependencies are not deleted unless they are out of date.
+.It Cm debug Op Ar ports
+This is the same as 'build' but leaves the chroot mounts intact
+upon completion.
 .El
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
