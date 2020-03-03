@@ -18,7 +18,7 @@ ISODIR?=	/usr/obj/release
 ISOROOT?=	${ISODIR}/root
 GITURL_SRC?=	git://git.dragonflybsd.org/dragonfly.git
 GITURL_DPORTS?=	git://mirror-master.dragonflybsd.org/dports.git
-MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
+NREL_MAKE_JOBS?= $$(sysctl -n hw.ncpu)
 .if !defined(NOFSCHG)
 MTREE_FSCHG=	-i
 .endif
@@ -157,13 +157,13 @@ check:
 buildworld1 buildworld2:
 	( cd ${SRCDIR}; \
 		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-			make -j ${MAKE_JOBS} -DWANT_INSTALLER \
+			make -j ${NREL_MAKE_JOBS} -DWANT_INSTALLER \
 			${.TARGET:C/build(.*)2/quick\1/:C/1//} )
 
 buildkernel1 buildkernel2:
 	( cd ${SRCDIR}; \
 		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-			make -j ${MAKE_JOBS} \
+			make -j ${NREL_MAKE_JOBS} \
 			${.TARGET:C/build(.*)2/quick\1/:C/1//} )
 
 # Unconditionally clean out ${ISOROOT} so a previous img build
@@ -437,7 +437,7 @@ help all:
 	@echo "  GITURL_SRC: override the Git URL to source repository"
 	@echo "  GITURL_DPORTS: override the Git URL to dports repository"
 	@echo "  IMGSIZE: override the size of .img (in 512-byte sectors)"
-	@echo "  MAKE_JOBS: override the default value (sysctl hw.ncpu)"
+	@echo "  NREL_MAKE_JOBS: override the default value (sysctl hw.ncpu)"
 	@echo "  PKG_<port>: specify the package name for port <port>"
 	@echo "  WITHOUT_SRCS: do not package source code if set"
 	@echo ""
