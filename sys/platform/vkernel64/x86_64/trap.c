@@ -1104,7 +1104,7 @@ syscall2(struct trapframe *frame)
 	else
 		callp = &p->p_sysent->sv_table[code];
 
-	narg = callp->sy_narg & SYF_ARGMASK;
+	narg = callp->sy_narg;
 
 	/*
 	 * On x86_64 we get up to six arguments in registers. The rest are

@@ -47,8 +47,6 @@ struct sysent {		/* system call table */
 	sy_call_t *sy_abort;	/* abort function (only if start was async) */
 };
 
-#define SYF_ARGMASK	0x0000FFFF
-
 #define SCARG(p,k)	((p)->k)	/* get arg from args pointer */
   /* placeholder till we integrate rest of lite2 syscallargs changes XXX */
 

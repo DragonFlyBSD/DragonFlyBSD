@@ -150,7 +150,7 @@ struct usched_dfly_pcpu {
 
 typedef struct usched_dfly_pcpu	*dfly_pcpu_t;
 
-static void dfly_acquire_curproc(struct lwp *lp);
+/*static void dfly_acquire_curproc(struct lwp *lp); see sys/usched.h */
 static void dfly_release_curproc(struct lwp *lp);
 static void dfly_select_curproc(globaldata_t gd);
 static void dfly_setrunqueue(struct lwp *lp);
@@ -407,7 +407,7 @@ KTR_INFO(KTR_USCHED_DFLY, usched, chooseproc, 0,
  * TO ANOTHER CPU!  Because most of the kernel assumes that no migration will
  * occur, this function is called only under very controlled circumstances.
  */
-static void
+void
 dfly_acquire_curproc(struct lwp *lp)
 {
 	globaldata_t gd;
@@ -416,17 +416,26 @@ dfly_acquire_curproc(struct lwp *lp)
 	thread_t td;
 	int force_resched;
 
+	td = lp->lwp_thread;
+	gd = mycpu;
+	dd = &dfly_pcpu[gd->gd_cpuid];
+
+	/*
+	 * Quickly return if possible.
+	 */
+	if (__predict_true((td->td_flags & TDF_TSLEEPQ) == 0 &&
+			   !any_action_wanted_gd(gd) &&
+			   dd->uschedcp == lp)) {
+		return;
+	}
+
 	/*
 	 * Make sure we aren't sitting on a tsleep queue.
 	 */
-	td = lp->lwp_thread;
 	crit_enter_quick(td);
 	if (td->td_flags & TDF_TSLEEPQ)
 		tsleep_remove(td);
 	dfly_recalculate_estcpu(lp);
-
-	gd = mycpu;
-	dd = &dfly_pcpu[gd->gd_cpuid];
 
 	/*
 	 * Process any pending interrupts/ipi's, then handle reschedule
@@ -434,11 +443,6 @@ dfly_acquire_curproc(struct lwp *lp)
 	 * uschedcp that isn't us and otherwise NULL it out.
 	 */
 	force_resched = 0;
-	if ((td->td_mpflags & TDF_MP_BATCH_DEMARC) &&
-	    lp->lwp_rrcount >= usched_dfly_rrinterval / 2) {
-		force_resched = 1;
-	}
-
 	if (user_resched_wanted()) {
 		if (dd->uschedcp == lp)
 			force_resched = 1;
@@ -968,6 +972,10 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 		 */
 		if (++lp->lwp_rrcount >= usched_dfly_rrinterval)
 			need_user_resched();
+		if ((lp->lwp_thread->td_mpflags & TDF_MP_BATCH_DEMARC) &&
+		    lp->lwp_rrcount >= usched_dfly_rrinterval / 2) {
+			need_user_resched();
+		}
 
 		/*
 		 * Adjust estcpu upward using a real time equivalent

@@ -99,6 +99,11 @@
 #define	any_resched_wanted()	\
     (mycpu->gd_reqflags & (RQF_AST_LWKT_RESCHED|RQF_AST_USER_RESCHED))
 
+#define any_action_wanted_gd(gd)			\
+    ((gd)->gd_reqflags & (RQF_AST_LWKT_RESCHED |	\
+			  RQF_AST_USER_RESCHED |	\
+			  RQF_IDLECHECK_MASK))
+
 /*
  * CTL_MACHDEP definitions.
  */

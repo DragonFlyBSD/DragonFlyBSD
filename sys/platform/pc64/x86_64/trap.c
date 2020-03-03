@@ -357,8 +357,13 @@ userexit(struct lwp *lp)
 	/*
 	 * Become the current user scheduled process if we aren't already,
 	 * and deal with reschedule requests and other factors.
+	 *
+	 * Do a silly hack to avoid RETPOLINE nonsense.
 	 */
-	lp->lwp_proc->p_usched->acquire_curproc(lp);
+	if (lp->lwp_proc->p_usched == &usched_dfly)
+		dfly_acquire_curproc(lp);
+	else
+		lp->lwp_proc->p_usched->acquire_curproc(lp);
 }
 
 /*
@@ -1231,7 +1236,7 @@ syscall2(struct trapframe *frame)
 		("Frame mismatch %p %p", lp->lwp_md.md_regs, frame));
 	code = (u_int)frame->tf_rax;
 
-	if (code == SYS_syscall || code == SYS___syscall) {
+	if (__predict_false(code == SYS_syscall || code == SYS___syscall)) {
 		code = frame->tf_rdi;
 		regcnt--;
 		argp = &frame->tf_rdi + 1;
@@ -1243,8 +1248,6 @@ syscall2(struct trapframe *frame)
 		callp = &p->p_sysent->sv_table[0];
 	else
 		callp = &p->p_sysent->sv_table[code];
-
-	narg = callp->sy_narg & SYF_ARGMASK;
 
 	/*
 	 * On x86_64 we get up to six arguments in registers. The rest are
@@ -1264,6 +1267,7 @@ syscall2(struct trapframe *frame)
 	 * Any arguments beyond available argument-passing registers must
 	 * be copyin()'d from the user stack.
 	 */
+	narg = callp->sy_narg;
 	if (__predict_false(narg > regcnt)) {
 		caddr_t params;
 
@@ -1328,8 +1332,7 @@ out:
 	 * MP SAFE (we may or may not have the MP lock at this point)
 	 */
 	//kprintf("SYSMSG %d ", error);
-	switch (error) {
-	case 0:
+	if (__predict_true(error == 0)) {
 		/*
 		 * Reinitialize proc pointer `p' as it may be different
 		 * if this is a child returning from fork syscall.
@@ -1339,8 +1342,7 @@ out:
 		frame->tf_rax = args.sysmsg_fds[0];
 		frame->tf_rdx = args.sysmsg_fds[1];
 		frame->tf_rflags &= ~PSL_C;
-		break;
-	case ERESTART:
+	} else if (error == ERESTART) {
 		/*
 		 * Reconstruct pc, we know that 'syscall' is 2 bytes.
 		 * We have to do a full context restore so that %r10
@@ -1352,12 +1354,11 @@ out:
 				td->td_comm, lp->lwp_proc->p_pid, frame->tf_err);
 		frame->tf_rip -= frame->tf_err;
 		frame->tf_r10 = frame->tf_rcx;
-		break;
-	case EJUSTRETURN:
-		break;
-	case EASYNC:
+	} else if (error == EJUSTRETURN) {
+		/* do nothing */
+	} else if (error == EASYNC) {
 		panic("Unexpected EASYNC return value (for now)");
-	default:
+	} else {
 bad:
 		if (p->p_sysent->sv_errsize) {
 			if (error >= p->p_sysent->sv_errsize)
@@ -1367,13 +1368,12 @@ bad:
 		}
 		frame->tf_rax = error;
 		frame->tf_rflags |= PSL_C;
-		break;
 	}
 
 	/*
 	 * Traced syscall.  trapsignal() should now be MP aware
 	 */
-	if (orig_tf_rflags & PSL_T) {
+	if (__predict_false(orig_tf_rflags & PSL_T)) {
 		frame->tf_rflags &= ~PSL_T;
 		trapsignal(lp, SIGTRAP, TRAP_TRACE);
 	}
