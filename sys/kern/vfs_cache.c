@@ -88,7 +88,9 @@
 
 /*
  * Random lookups in the cache are accomplished with a hash table using
- * a hash key of (nc_src_vp, name).  Each hash chain has its own spin lock.
+ * a hash key of (nc_src_vp, name).  Each hash chain has its own spin lock,
+ * but we use the ncp->update counter trick to avoid acquiring any
+ * contestable spin-locks during a lookup.
  *
  * Negative entries may exist and correspond to resolved namecache
  * structures where nc_vp is NULL.  In a negative entry, NCF_WHITEOUT
@@ -136,7 +138,8 @@
 #define NCHHASH(hash)		(&nchashtbl[(hash) & nchash])
 #define MINNEG			1024
 #define MINPOS			1024
-#define NCMOUNT_NUMCACHE	32768	/* power of 2 */
+#define NCMOUNT_NUMCACHE	(16384)	/* power of 2 */
+#define NCMOUNT_SET		(8)	/* power of 2 */
 
 MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
@@ -156,11 +159,14 @@ struct ncmount_cache {
 	struct spinlock	spin;
 	struct namecache *ncp;
 	struct mount *mp;
-	int isneg;		/* if != 0 mp is originator and not target */
+	struct mount *mp_target;
+	int isneg;
 	int ticks;
-} __cachealign;
+	long updating;
+};
 
 struct pcpu_ncache {
+	struct spinlock		umount_spin;	/* cache_findmount/interlock */
 	struct spinlock		neg_spin;	/* for neg_list and neg_count */
 	struct namecache_list	neg_list;
 	long			neg_count;
@@ -227,7 +233,7 @@ SYSCTL_INT(_debug, OID_AUTO, ncmount_cache_enable, CTLFLAG_RW,
 
 static __inline void _cache_drop(struct namecache *ncp);
 static int cache_resolve_mp(struct mount *mp);
-static struct vnode *cache_dvpref(struct namecache *ncp);
+static int cache_findmount_callback(struct mount *mp, void *data);
 static void _cache_setunresolved(struct namecache *ncp);
 static void _cache_cleanneg(long count);
 static void _cache_cleanpos(long count);
@@ -290,31 +296,53 @@ static void cache_zap(struct namecache *ncp);
  *
  * Try to keep the pcpu structure within one cache line (~64 bytes).
  */
-#define MNTCACHE_COUNT      5
+#define MNTCACHE_COUNT	32	/* power of 2, multiple of SET */
+#define MNTCACHE_SET	8	/* set associativity */
+
+struct mntcache_elm {
+	struct namecache *ncp;
+	struct mount	 *mp;
+	int	ticks;
+	int	unused01;
+};
 
 struct mntcache {
-	struct mount	*mntary[MNTCACHE_COUNT];
-	struct namecache *ncp1;
-	struct namecache *ncp2;
-	struct nchandle  ncdir;
-	int		iter;
-	int		unused01;
+	struct mntcache_elm array[MNTCACHE_COUNT];
 } __cachealign;
 
 static struct mntcache	pcpu_mntcache[MAXCPU];
+
+static __inline
+struct mntcache_elm *
+_cache_mntcache_hash(void *ptr)
+{
+	struct mntcache_elm *elm;
+	int hv;
+
+	hv = iscsi_crc32(&ptr, sizeof(ptr)) & (MNTCACHE_COUNT - 1);
+	elm = &pcpu_mntcache[mycpu->gd_cpuid].array[hv & ~(MNTCACHE_SET - 1)];
+
+	return elm;
+}
 
 static
 void
 _cache_mntref(struct mount *mp)
 {
-	struct mntcache *cache = &pcpu_mntcache[mycpu->gd_cpuid];
+	struct mntcache_elm *elm;
+	struct mount *mpr;
 	int i;
 
-	for (i = 0; i < MNTCACHE_COUNT; ++i) {
-		if (cache->mntary[i] != mp)
-			continue;
-		if (atomic_cmpset_ptr((void *)&cache->mntary[i], mp, NULL))
-			return;
+	elm = _cache_mntcache_hash(mp);
+	for (i = 0; i < MNTCACHE_SET; ++i) {
+		if (elm->mp == mp) {
+			mpr = atomic_swap_ptr((void *)&elm->mp, NULL);
+			if (__predict_true(mpr == mp))
+				return;
+			if (mpr)
+				atomic_add_int(&mpr->mnt_refs, -1);
+		}
+		++elm;
 	}
 	atomic_add_int(&mp->mnt_refs, 1);
 }
@@ -323,20 +351,34 @@ static
 void
 _cache_mntrel(struct mount *mp)
 {
-	struct mntcache *cache = &pcpu_mntcache[mycpu->gd_cpuid];
+	struct mntcache_elm *elm;
+	struct mntcache_elm *best;
+	struct mount *mpr;
+	int delta1;
+	int delta2;
 	int i;
 
-	for (i = 0; i < MNTCACHE_COUNT; ++i) {
-		if (cache->mntary[i] == NULL) {
-			mp = atomic_swap_ptr((void *)&cache->mntary[i], mp);
-			if (mp == NULL)
-				return;
+	elm = _cache_mntcache_hash(mp);
+	best = elm;
+	for (i = 0; i < MNTCACHE_SET; ++i) {
+		if (elm->mp == NULL) {
+			mpr = atomic_swap_ptr((void *)&elm->mp, mp);
+			if (__predict_false(mpr != NULL)) {
+				atomic_add_int(&mpr->mnt_refs, -1);
+			}
+			elm->ticks = ticks;
+			return;
 		}
+		delta1 = ticks - best->ticks;
+		delta2 = ticks - elm->ticks;
+		if (delta2 > delta1 || delta1 < -1 || delta2 < -1)
+			best = elm;
+		++elm;
 	}
-	i = (int)((uint32_t)++cache->iter % (uint32_t)MNTCACHE_COUNT);
-	mp = atomic_swap_ptr((void *)&cache->mntary[i], mp);
-	if (mp)
-		atomic_add_int(&mp->mnt_refs, -1);
+	mpr = atomic_swap_ptr((void *)&best->mp, mp);
+	best->ticks = ticks;
+	if (mpr)
+		atomic_add_int(&mpr->mnt_refs, -1);
 }
 
 /*
@@ -345,44 +387,29 @@ _cache_mntrel(struct mount *mp)
  * unmount.
  */
 void
-cache_clearmntcache(void)
+cache_clearmntcache(struct mount *target __unused)
 {
 	int n;
 
 	for (n = 0; n < ncpus; ++n) {
 		struct mntcache *cache = &pcpu_mntcache[n];
+		struct mntcache_elm *elm;
 		struct namecache *ncp;
 		struct mount *mp;
 		int i;
 
 		for (i = 0; i < MNTCACHE_COUNT; ++i) {
-			if (cache->mntary[i]) {
-				mp = atomic_swap_ptr(
-					(void *)&cache->mntary[i], NULL);
+			elm = &cache->array[i];
+			if (elm->mp) {
+				mp = atomic_swap_ptr((void *)&elm->mp, NULL);
 				if (mp)
 					atomic_add_int(&mp->mnt_refs, -1);
 			}
-		}
-
-		if (cache->ncp1) {
-			ncp = atomic_swap_ptr((void *)&cache->ncp1, NULL);
-			if (ncp)
-				_cache_drop(ncp);
-		}
-		if (cache->ncp2) {
-			ncp = atomic_swap_ptr((void *)&cache->ncp2, NULL);
-			if (ncp)
-				_cache_drop(ncp);
-		}
-		if (cache->ncdir.ncp) {
-			ncp = atomic_swap_ptr((void *)&cache->ncdir.ncp, NULL);
-			if (ncp)
-				_cache_drop(ncp);
-		}
-		if (cache->ncdir.mount) {
-			mp = atomic_swap_ptr((void *)&cache->ncdir.mount, NULL);
-			if (mp)
-				atomic_add_int(&mp->mnt_refs, -1);
+			if (elm->ncp) {
+				ncp = atomic_swap_ptr((void *)&elm->ncp, NULL);
+				if (ncp)
+					_cache_drop(ncp);
+			}
 		}
 	}
 }
@@ -419,7 +446,29 @@ static __inline
 void
 _cache_lock(struct namecache *ncp)
 {
-	lockmgr(&ncp->nc_lock, LK_EXCLUSIVE);
+	int didwarn = 0;
+	int error;
+
+	error = lockmgr(&ncp->nc_lock, LK_EXCLUSIVE);
+	while (__predict_false(error == EWOULDBLOCK)) {
+		if (didwarn == 0) {
+			didwarn = ticks - nclockwarn;
+			kprintf("[diagnostic] cache_lock: "
+				"%s blocked on %p "
+				"\"%*.*s\"\n",
+				curthread->td_comm, ncp,
+				ncp->nc_nlen, ncp->nc_nlen,
+				ncp->nc_name);
+		}
+		error = lockmgr(&ncp->nc_lock, LK_EXCLUSIVE | LK_TIMELOCK);
+	}
+	if (__predict_false(didwarn)) {
+		kprintf("[diagnostic] cache_lock: "
+			"%s unblocked %*.*s after %d secs\n",
+			curthread->td_comm,
+			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name,
+			(int)(ticks - didwarn) / hz);
+	}
 }
 
 /*
@@ -491,27 +540,30 @@ static __inline
 void
 _cache_lock_shared(struct namecache *ncp)
 {
-	lockmgr(&ncp->nc_lock, LK_SHARED);
-}
+	int didwarn = 0;
+	int error;
 
-#if 0
-	if (didwarn == 0) {
-		didwarn = ticks - nclockwarn;
-		kprintf("[diagnostic] cache_lock_shared: "
-			"%s blocked on %p %08x "
-			"\"%*.*s\"\n",
-			curthread->td_comm, ncp, count,
-			ncp->nc_nlen, ncp->nc_nlen,
-			ncp->nc_name);
+	error = lockmgr(&ncp->nc_lock, LK_SHARED | LK_TIMELOCK);
+	while (__predict_false(error == EWOULDBLOCK)) {
+		if (didwarn == 0) {
+			didwarn = ticks - nclockwarn;
+			kprintf("[diagnostic] cache_lock_shared: "
+				"%s blocked on %p "
+				"\"%*.*s\"\n",
+				curthread->td_comm, ncp,
+				ncp->nc_nlen, ncp->nc_nlen,
+				ncp->nc_name);
+		}
+		error = lockmgr(&ncp->nc_lock, LK_SHARED | LK_TIMELOCK);
 	}
-	if (didwarn) {
+	if (__predict_false(didwarn)) {
 		kprintf("[diagnostic] cache_lock_shared: "
 			"%s unblocked %*.*s after %d secs\n",
 			curthread->td_comm,
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name,
 			(int)(ticks - didwarn) / hz);
 	}
-#endif
+}
 
 /*
  * Shared lock, guarantees vp held.  Non-blocking.  Returns 0 on success
@@ -841,61 +893,87 @@ cache_hold(struct nchandle *nch)
 void
 cache_copy(struct nchandle *nch, struct nchandle *target)
 {
-	struct mntcache *cache;
 	struct namecache *ncp;
+	struct mount *mp;
+	struct mntcache_elm *elm;
+	struct namecache *ncpr;
+	int i;
 
-	*target = *nch;
-	_cache_mntref(target->mount);
-	ncp = target->ncp;
+	ncp = nch->ncp;
+	mp = nch->mount;
+	target->ncp = ncp;
+	target->mount = mp;
 
-	cache = &pcpu_mntcache[mycpu->gd_cpuid];
-	if (ncp) {
-		if (ncp == cache->ncp1) {
-			if (atomic_cmpset_ptr((void *)&cache->ncp1, ncp, NULL))
+	elm = _cache_mntcache_hash(ncp);
+	for (i = 0; i < MNTCACHE_SET; ++i) {
+		if (elm->ncp == ncp) {
+			ncpr = atomic_swap_ptr((void *)&elm->ncp, NULL);
+			if (ncpr == ncp) {
+				_cache_mntref(mp);
 				return;
+			}
+			if (ncpr)
+				_cache_drop(ncpr);
 		}
-		if (ncp == cache->ncp2) {
-			if (atomic_cmpset_ptr((void *)&cache->ncp2, ncp, NULL))
-				return;
-		}
-		_cache_hold(ncp);
+		++elm;
 	}
+	if (ncp)
+		_cache_hold(ncp);
+	_cache_mntref(mp);
 }
 
 /*
- * Caller wants to copy the current directory, copy it out from our
- * pcpu cache if possible (the entire critical path is just two localized
- * cmpset ops).  If the pcpu cache has a snapshot at all it will be a
- * valid one, so we don't have to lock p->p_fd even though we are loading
- * two fields.
- *
- * This has a limited effect since nlookup must still ref and shlock the
- * vnode to check perms.  We do avoid the per-proc spin-lock though, which
- * can aid threaded programs.
+ * Drop the nchandle, but try to cache the ref to avoid global atomic
+ * ops.  This is typically done on the system root and jail root nchandles.
  */
 void
-cache_copy_ncdir(struct proc *p, struct nchandle *target)
+cache_drop_and_cache(struct nchandle *nch, int elmno)
 {
-	struct mntcache *cache;
+	struct mntcache_elm *elm;
+	struct mntcache_elm *best;
+	struct namecache *ncpr;
+	int delta1;
+	int delta2;
+	int i;
 
-	*target = p->p_fd->fd_ncdir;
-
-	cache = &pcpu_mntcache[mycpu->gd_cpuid];
-	if (target->ncp == cache->ncdir.ncp &&
-	    target->mount == cache->ncdir.mount) {
-		if (atomic_cmpset_ptr((void *)&cache->ncdir.ncp,
-				      target->ncp, NULL)) {
-			if (atomic_cmpset_ptr((void *)&cache->ncdir.mount,
-					      target->mount, NULL)) {
-				/* CRITICAL PATH */
-				return;
-			}
-			_cache_drop(target->ncp);
+	if (elmno > 4) {
+		if (nch->ncp) {
+			_cache_drop(nch->ncp);
+			nch->ncp = NULL;
 		}
+		if (nch->mount) {
+			_cache_mntrel(nch->mount);
+			nch->mount = NULL;
+		}
+		return;
 	}
-	spin_lock_shared(&p->p_fd->fd_spin);
-	cache_copy(&p->p_fd->fd_ncdir, target);
-	spin_unlock_shared(&p->p_fd->fd_spin);
+
+	elm = _cache_mntcache_hash(nch->ncp);
+	best = elm;
+	for (i = 0; i < MNTCACHE_SET; ++i) {
+		if (elm->ncp == NULL) {
+			ncpr = atomic_swap_ptr((void *)&elm->ncp, nch->ncp);
+			_cache_mntrel(nch->mount);
+			elm->ticks = ticks;
+			nch->mount = NULL;
+			nch->ncp = NULL;
+			if (ncpr)
+				_cache_drop(ncpr);
+			return;
+		}
+		delta1 = ticks - best->ticks;
+		delta2 = ticks - elm->ticks;
+		if (delta2 > delta1 || delta1 < -1 || delta2 < -1)
+			best = elm;
+		++elm;
+	}
+	ncpr = atomic_swap_ptr((void *)&best->ncp, nch->ncp);
+	_cache_mntrel(nch->mount);
+	best->ticks = ticks;
+	nch->mount = NULL;
+	nch->ncp = NULL;
+	if (ncpr)
+		_cache_drop(ncpr);
 }
 
 void
@@ -911,63 +989,6 @@ cache_drop(struct nchandle *nch)
 {
 	_cache_mntrel(nch->mount);
 	_cache_drop(nch->ncp);
-	nch->ncp = NULL;
-	nch->mount = NULL;
-}
-
-/*
- * Drop the nchandle, but try to cache the ref to avoid global atomic
- * ops.  This is typically done on the system root and jail root nchandles.
- */
-void
-cache_drop_and_cache(struct nchandle *nch)
-{
-	struct mntcache *cache;
-	struct namecache *ncp;
-
-	_cache_mntrel(nch->mount);
-
-	cache = &pcpu_mntcache[mycpu->gd_cpuid];
-	ncp = nch->ncp;
-	if (cache->ncp1 == NULL) {
-		ncp = atomic_swap_ptr((void *)&cache->ncp1, ncp);
-		if (ncp == NULL)
-			goto done;
-	}
-	if (cache->ncp2 == NULL) {
-		ncp = atomic_swap_ptr((void *)&cache->ncp2, ncp);
-		if (ncp == NULL)
-			goto done;
-	}
-	if (++cache->iter & 1)
-		ncp = atomic_swap_ptr((void *)&cache->ncp2, ncp);
-	else
-		ncp = atomic_swap_ptr((void *)&cache->ncp1, ncp);
-	if (ncp)
-		_cache_drop(ncp);
-done:
-	nch->ncp = NULL;
-	nch->mount = NULL;
-}
-
-/*
- * We are dropping what the caller believes is the current directory,
- * unconditionally store it in our pcpu cache.  Anything already in
- * the cache will be discarded.
- */
-void
-cache_drop_ncdir(struct nchandle *nch)
-{
-	struct mntcache *cache;
-
-	cache = &pcpu_mntcache[mycpu->gd_cpuid];
-	nch->ncp = atomic_swap_ptr((void *)&cache->ncdir.ncp, nch->ncp);
-	nch->mount = atomic_swap_ptr((void *)&cache->ncdir.mount, nch->mount);
-
-	if (nch->ncp)
-		_cache_drop(nch->ncp);
-	if (nch->mount)
-		_cache_mntrel(nch->mount);
 	nch->ncp = NULL;
 	nch->mount = NULL;
 }
@@ -2000,7 +2021,7 @@ again:
  * NOTE: vhold() is allowed when dvp has 0 refs if we hold a
  *	 lock on the ncp in question..
  */
-static struct vnode *
+struct vnode *
 cache_dvpref(struct namecache *ncp)
 {
 	struct namecache *par;
@@ -2807,7 +2828,8 @@ restart:
 		 *
 		 * We may be able to reuse DESTROYED entries that we come
 		 * across, even if the name does not match, as long as
-		 * nc_nlen is correct.
+		 * nc_nlen is correct and the only hold ref is from the nchpp
+		 * list itself.
 		 */
 		if (ncp->nc_parent == par_nch->ncp &&
 		    ncp->nc_nlen == nlc->nlc_namelen) {
@@ -2954,7 +2976,8 @@ found:
  * set or we are unable to lock.
  */
 int
-cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
+cache_nlookup_maybe_shared(struct nchandle *par_nch,
+			   struct nlcomponent *nlc,
 			   int excl, struct nchandle *res_nch)
 {
 	struct namecache *ncp;
@@ -3183,6 +3206,75 @@ failed:
 }
 
 /*
+ * This version is non-locking.  The caller must validate the result
+ * for parent-to-child continuity.
+ *
+ * It can fail for any reason and will return nch.ncp == NULL in that case.
+ */
+struct nchandle
+cache_nlookup_nonlocked(struct nchandle *par_nch, struct nlcomponent *nlc)
+{
+	struct nchandle nch;
+	struct namecache *ncp;
+	struct nchash_head *nchpp;
+	struct mount *mp;
+	u_int32_t hash;
+	globaldata_t gd;
+
+	gd = mycpu;
+	mp = par_nch->mount;
+
+	/*
+	 * Try to locate an existing entry
+	 */
+	hash = fnv_32_buf(nlc->nlc_nameptr, nlc->nlc_namelen, FNV1_32_INIT);
+	hash = fnv_32_buf(&par_nch->ncp, sizeof(par_nch->ncp), hash);
+	nchpp = NCHHASH(hash);
+
+	spin_lock_shared(&nchpp->spin);
+	TAILQ_FOREACH(ncp, &nchpp->list, nc_hash) {
+		/*
+		 * Break out if we find a matching entry.  Note that
+		 * UNRESOLVED entries may match, but DESTROYED entries
+		 * do not.
+		 *
+		 * Resolved NFS entries which have timed out fail so the
+		 * caller can rerun with normal locking.
+		 */
+		if (ncp->nc_parent == par_nch->ncp &&
+		    ncp->nc_nlen == nlc->nlc_namelen &&
+		    bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen) == 0 &&
+		    (ncp->nc_flag & NCF_DESTROYED) == 0
+		) {
+			if (_cache_auto_unresolve_test(par_nch->mount, ncp))
+				break;
+			_cache_hold(ncp);
+			spin_unlock_shared(&nchpp->spin);
+			goto found;
+		}
+	}
+	spin_unlock_shared(&nchpp->spin);
+	nch.mount = NULL;
+	nch.ncp = NULL;
+	return nch;
+found:
+	/*
+	 * stats and namecache size management
+	 */
+	if (ncp->nc_flag & NCF_UNRESOLVED)
+		++gd->gd_nchstats->ncs_miss;
+	else if (ncp->nc_vp)
+		++gd->gd_nchstats->ncs_goodhits;
+	else
+		++gd->gd_nchstats->ncs_neghits;
+	nch.mount = mp;
+	nch.ncp = ncp;
+	_cache_mntref(nch.mount);
+
+	return(nch);
+}
+
+/*
  * The namecache entry is marked as being used as a mount point. 
  * Locate the mount if it is visible to the caller.  The DragonFly
  * mount system allows arbitrary loops in the topology and disentangles
@@ -3195,8 +3287,11 @@ failed:
  * lock around its ripout info list.  Not to mention that there might
  * be a lot of mounts.
  *
- * The hash table is 4-way set-associative and will either return the
- * matching slot or the best slot to reuse.
+ * Because all mounts can potentially be accessed by all cpus, break the cpu's
+ * down a bit to allow some contention rather than making the cache
+ * excessively huge.
+ *
+ * The hash table is split into per-cpu areas, is 4-way set-associative.
  */
 struct findmount_info {
 	struct mount *result;
@@ -3204,17 +3299,16 @@ struct findmount_info {
 	struct namecache *nch_ncp;
 };
 
-static
+static __inline
 struct ncmount_cache *
 ncmount_cache_lookup4(struct mount *mp, struct namecache *ncp)
 {
-	uintptr_t hash;
+	uint32_t hash;
 
-	hash = ((uintptr_t)mp / sizeof(*mp)) *
-		((uintptr_t)ncp / sizeof(*ncp));
-	hash ^= (uintptr_t)ncp >> 12;
-	hash ^= (uintptr_t)mp >> 12;
-	hash = hash & ((NCMOUNT_NUMCACHE - 1) & ~3);
+	hash = iscsi_crc32(&mp, sizeof(mp));
+	hash = iscsi_crc32_ext(&ncp, sizeof(ncp), hash);
+	hash ^= hash >> 16;
+	hash = hash & ((NCMOUNT_NUMCACHE - 1) & ~(NCMOUNT_SET - 1));
 
 	return (&ncmount_cache[hash]);
 }
@@ -3225,18 +3319,11 @@ ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
 {
 	struct ncmount_cache *ncc;
 	struct ncmount_cache *best;
-	uintptr_t hash;
 	int delta;
 	int best_delta;
 	int i;
 
-	hash = ((uintptr_t)mp / sizeof(*mp)) *
-		((uintptr_t)ncp / sizeof(*ncp));
-	hash ^= (uintptr_t)ncp >> 12;
-	hash ^= (uintptr_t)mp >> 12;
-	hash = hash & ((NCMOUNT_NUMCACHE - 1) & ~3);
-
-	ncc = &ncmount_cache[hash];
+	ncc = ncmount_cache_lookup4(mp, ncp);
 
 	/*
 	 * NOTE: When checking for a ticks overflow implement a slop of
@@ -3244,7 +3331,7 @@ ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
 	 *	 non-atomically one CPU can increment it while another
 	 *	 is still using the old value.
 	 */
-	if (ncc->mp == mp && ncc->ncp == ncp)	/* 0 */
+	if (ncc->ncp == ncp && ncc->mp == mp)	/* 0 */
 		return ncc;
 	delta = (int)(ticks - ncc->ticks);	/* beware GCC opts */
 	if (delta < -2)				/* overflow reset */
@@ -3252,9 +3339,9 @@ ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
 	best = ncc;
 	best_delta = delta;
 
-	for (i = 1; i < 4; ++i) {		/* 1, 2, 3 */
+	for (i = 1; i < NCMOUNT_SET; ++i) {	/* 1, 2, 3 */
 		++ncc;
-		if (ncc->mp == mp && ncc->ncp == ncp)
+		if (ncc->ncp == ncp && ncc->mp == mp)
 			return ncc;
 		delta = (int)(ticks - ncc->ticks);
 		if (delta < -2)
@@ -3265,6 +3352,165 @@ ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
 		}
 	}
 	return best;
+}
+
+/*
+ * pcpu-optimized mount search.  Locate the recursive mountpoint, avoid
+ * doing an expensive mountlist_scan*() if possible.
+ *
+ * (mp, ncp) -> mountonpt.k
+ *
+ * Returns a referenced mount pointer or NULL
+ *
+ * General SMP operation uses a per-cpu umount_spin to interlock unmount
+ * operations (that is, where the mp_target can be freed out from under us).
+ *
+ * Lookups use the ncc->updating counter to validate the contents in order
+ * to avoid having to obtain the per cache-element spin-lock.  In addition,
+ * the ticks field is only updated when it changes.  However, if our per-cpu
+ * lock fails due to an unmount-in-progress, we fall-back to the
+ * cache-element's spin-lock.
+ */
+struct mount *
+cache_findmount(struct nchandle *nch)
+{
+	struct findmount_info info;
+	struct ncmount_cache *ncc;
+	struct ncmount_cache ncc_copy;
+	struct mount *target;
+	struct pcpu_ncache *pcpu;
+	struct spinlock *spinlk;
+	long update;
+
+	pcpu = pcpu_ncache;
+	if (ncmount_cache_enable == 0 || pcpu == NULL) {
+		ncc = NULL;
+		goto skip;
+	}
+	pcpu += mycpu->gd_cpuid;
+
+again:
+	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
+	if (ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
+found:
+		/*
+		 * This is a bit messy for now because we do not yet have
+		 * safe disposal of mount structures.  We have to ref
+		 * ncc->mp_target but the 'update' counter only tell us
+		 * whether the cache has changed after the fact.
+		 *
+		 * For now get a per-cpu spinlock that will only contend
+		 * against umount's.  This is the best path.  If it fails,
+		 * instead of waiting on the umount we fall-back to a
+		 * shared ncc->spin lock, which will generally only cost a
+		 * cache ping-pong.
+		 */
+		update = ncc->updating;
+		if (__predict_true(spin_trylock(&pcpu->umount_spin))) {
+			spinlk = &pcpu->umount_spin;
+		} else {
+			spinlk = &ncc->spin;
+			spin_lock_shared(spinlk);
+		}
+		if (update & 1) {		/* update in progress */
+			spin_unlock_any(spinlk);
+			goto skip;
+		}
+		ncc_copy = *ncc;
+		cpu_lfence();
+		if (ncc->updating != update) {	/* content changed */
+			spin_unlock_any(spinlk);
+			goto again;
+		}
+		if (ncc_copy.ncp != nch->ncp || ncc_copy.mp != nch->mount) {
+			spin_unlock_any(spinlk);
+			goto again;
+		}
+		if (ncc_copy.isneg == 0) {
+			target = ncc_copy.mp_target;
+			if (target->mnt_ncmounton.mount == nch->mount &&
+			    target->mnt_ncmounton.ncp == nch->ncp) {
+				/*
+				 * Cache hit (positive) (avoid dirtying
+				 * the cache line if possible)
+				 */
+				if (ncc->ticks != (int)ticks)
+					ncc->ticks = (int)ticks;
+				_cache_mntref(target);
+			}
+		} else {
+			/*
+			 * Cache hit (negative) (avoid dirtying
+			 * the cache line if possible)
+			 */
+			if (ncc->ticks != (int)ticks)
+				ncc->ticks = (int)ticks;
+			target = NULL;
+		}
+		spin_unlock_any(spinlk);
+
+		return target;
+	}
+skip:
+
+	/*
+	 * Slow
+	 */
+	info.result = NULL;
+	info.nch_mount = nch->mount;
+	info.nch_ncp = nch->ncp;
+	mountlist_scan(cache_findmount_callback, &info,
+		       MNTSCAN_FORWARD | MNTSCAN_NOBUSY | MNTSCAN_NOUNLOCK);
+
+	/*
+	 * To reduce multi-re-entry on the cache, relookup in the cache.
+	 * This can still race, obviously, but that's ok.
+	 */
+	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
+	if (ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
+		if (info.result)
+			atomic_add_int(&info.result->mnt_refs, -1);
+		goto found;
+	}
+
+	/*
+	 * Cache the result.
+	 */
+	if ((info.result == NULL ||
+	    (info.result->mnt_kern_flag & MNTK_UNMOUNT) == 0)) {
+		spin_lock(&ncc->spin);
+		++ncc->updating;
+		cpu_sfence();
+		KKASSERT(ncc->updating & 1);
+		if (ncc->mp != nch->mount) {
+			if (ncc->mp)
+				atomic_add_int(&ncc->mp->mnt_refs, -1);
+			atomic_add_int(&nch->mount->mnt_refs, 1);
+			ncc->mp = nch->mount;
+		}
+		ncc->ncp = nch->ncp;	/* ptr compares only, not refd*/
+		ncc->ticks = (int)ticks;
+
+		if (info.result) {
+			ncc->isneg = 0;
+			if (ncc->mp_target != info.result) {
+				if (ncc->mp_target)
+					atomic_add_int(&ncc->mp_target->mnt_refs, -1);
+				ncc->mp_target = info.result;
+				atomic_add_int(&info.result->mnt_refs, 1);
+			}
+		} else {
+			ncc->isneg = 1;
+			if (ncc->mp_target) {
+				atomic_add_int(&ncc->mp_target->mnt_refs, -1);
+				ncc->mp_target = NULL;
+			}
+		}
+		cpu_sfence();
+		++ncc->updating;
+		spin_unlock(&ncc->spin);
+	}
+	return(info.result);
 }
 
 static
@@ -3286,160 +3532,145 @@ cache_findmount_callback(struct mount *mp, void *data)
 	return(0);
 }
 
-/*
- * Find the recursive mountpoint (mp, ncp) -> mtpt
- */
-struct mount *
-cache_findmount(struct nchandle *nch)
-{
-	struct findmount_info info;
-	struct ncmount_cache *ncc;
-	struct mount *mp;
-
-	/*
-	 * Fast
-	 */
-	if (ncmount_cache_enable == 0) {
-		ncc = NULL;
-		goto skip;
-	}
-	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
-	if (ncc->ncp == nch->ncp) {
-		spin_lock_shared(&ncc->spin);
-		if (ncc->isneg == 0 &&
-		    ncc->ncp == nch->ncp && (mp = ncc->mp) != NULL) {
-			if (mp->mnt_ncmounton.mount == nch->mount &&
-			    mp->mnt_ncmounton.ncp == nch->ncp) {
-				/*
-				 * Cache hit (positive) (avoid dirtying
-				 * the cache line if possible)
-				 */
-				if (ncc->ticks != (int)ticks)
-					ncc->ticks = (int)ticks;
-				_cache_mntref(mp);
-				spin_unlock_shared(&ncc->spin);
-				return(mp);
-			}
-			/* else cache miss */
-		}
-		if (ncc->isneg &&
-		    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
-			/*
-			 * Cache hit (negative) (avoid dirtying
-			 * the cache line if possible)
-			 */
-			if (ncc->ticks != (int)ticks)
-				ncc->ticks = (int)ticks;
-			spin_unlock_shared(&ncc->spin);
-			return(NULL);
-		}
-		spin_unlock_shared(&ncc->spin);
-	}
-skip:
-
-	/*
-	 * Slow
-	 */
-	info.result = NULL;
-	info.nch_mount = nch->mount;
-	info.nch_ncp = nch->ncp;
-	mountlist_scan(cache_findmount_callback, &info,
-		       MNTSCAN_FORWARD | MNTSCAN_NOBUSY | MNTSCAN_NOUNLOCK);
-
-	/*
-	 * Cache the result.
-	 *
-	 * Negative lookups: We cache the originating {ncp,mp}. (mp) is
-	 *		     only used for pointer comparisons and is not
-	 *		     referenced (otherwise there would be dangling
-	 *		     refs).
-	 *
-	 * Positive lookups: We cache the originating {ncp} and the target
-	 *		     (mp).  (mp) is referenced.
-	 *
-	 * Indeterminant:    If the match is undergoing an unmount we do
-	 *		     not cache it to avoid racing cache_unmounting(),
-	 *		     but still return the match.
-	 */
-	if (ncc) {
-		spin_lock(&ncc->spin);
-		if (info.result == NULL) {
-			if (ncc->isneg == 0 && ncc->mp)
-				_cache_mntrel(ncc->mp);
-			ncc->ncp = nch->ncp;
-			ncc->mp = nch->mount;
-			ncc->isneg = 1;
-			ncc->ticks = (int)ticks;
-			spin_unlock(&ncc->spin);
-		} else if ((info.result->mnt_kern_flag & MNTK_UNMOUNT) == 0) {
-			if (ncc->isneg == 0 && ncc->mp)
-				_cache_mntrel(ncc->mp);
-			_cache_mntref(info.result);
-			ncc->ncp = nch->ncp;
-			ncc->mp = info.result;
-			ncc->isneg = 0;
-			ncc->ticks = (int)ticks;
-			spin_unlock(&ncc->spin);
-		} else {
-			spin_unlock(&ncc->spin);
-		}
-	}
-	return(info.result);
-}
-
 void
 cache_dropmount(struct mount *mp)
 {
 	_cache_mntrel(mp);
 }
 
+/*
+ * mp is being mounted, scrap entries matching mp->mnt_ncmounton (positive
+ * or negative).
+ *
+ * A full scan is not required, but for now just do it anyway.
+ */
 void
 cache_ismounting(struct mount *mp)
 {
-	struct nchandle *nch = &mp->mnt_ncmounton;
 	struct ncmount_cache *ncc;
+	struct mount *ncc_mp;
 	int i;
 
-	ncc = ncmount_cache_lookup4(nch->mount, nch->ncp);
-	for (i = 0; i < 4; ++i) {
-		if (ncc->isneg &&
-		    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
-			spin_lock(&ncc->spin);
-			if (ncc->isneg &&
-			    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
-				ncc->ncp = NULL;
-				ncc->mp = NULL;
-				ncc->ticks = (int)ticks - hz * 120;
-			}
-			spin_unlock(&ncc->spin);
+	if (pcpu_ncache == NULL)
+		return;
+
+	for (i = 0; i < NCMOUNT_NUMCACHE; ++i) {
+		ncc = &ncmount_cache[i];
+		if (ncc->mp != mp->mnt_ncmounton.mount ||
+		    ncc->ncp != mp->mnt_ncmounton.ncp) {
+			continue;
 		}
-		++ncc;
+		spin_lock(&ncc->spin);
+		++ncc->updating;
+		cpu_sfence();
+		KKASSERT(ncc->updating & 1);
+		if (ncc->mp != mp->mnt_ncmounton.mount ||
+		    ncc->ncp != mp->mnt_ncmounton.ncp) {
+			cpu_sfence();
+			++ncc->updating;
+			spin_unlock(&ncc->spin);
+			continue;
+		}
+		ncc_mp = ncc->mp;
+		ncc->ncp = NULL;
+		ncc->mp = NULL;
+		if (ncc_mp)
+			atomic_add_int(&ncc_mp->mnt_refs, -1);
+		ncc_mp = ncc->mp_target;
+		ncc->mp_target = NULL;
+		if (ncc_mp)
+			atomic_add_int(&ncc_mp->mnt_refs, -1);
+		ncc->ticks = (int)ticks - hz * 120;
+
+		cpu_sfence();
+		++ncc->updating;
+		spin_unlock(&ncc->spin);
 	}
+
+	/*
+	 * Pre-cache the mount point
+	 */
+	ncc = ncmount_cache_lookup(mp->mnt_ncmounton.mount,
+				   mp->mnt_ncmounton.ncp);
+
+	spin_lock(&ncc->spin);
+	++ncc->updating;
+	cpu_sfence();
+	KKASSERT(ncc->updating & 1);
+
+	if (ncc->mp)
+		atomic_add_int(&ncc->mp->mnt_refs, -1);
+	atomic_add_int(&mp->mnt_ncmounton.mount->mnt_refs, 1);
+	ncc->mp = mp->mnt_ncmounton.mount;
+	ncc->ncp = mp->mnt_ncmounton.ncp;	/* ptr compares only */
+	ncc->ticks = (int)ticks;
+
+	ncc->isneg = 0;
+	if (ncc->mp_target != mp) {
+		if (ncc->mp_target)
+			atomic_add_int(&ncc->mp_target->mnt_refs, -1);
+		ncc->mp_target = mp;
+		atomic_add_int(&mp->mnt_refs, 1);
+	}
+	++ncc->updating;
+	cpu_sfence();
+	spin_unlock(&ncc->spin);
 }
 
+/*
+ * Scrap any ncmount_cache entries related to mp.  Not only do we need to
+ * scrap entries matching mp->mnt_ncmounton, but we also need to scrap any
+ * negative hits involving (mp, <any>).
+ *
+ * A full scan is required.
+ */
 void
 cache_unmounting(struct mount *mp)
 {
-	struct nchandle *nch = &mp->mnt_ncmounton;
 	struct ncmount_cache *ncc;
+	struct pcpu_ncache *pcpu;
+	struct mount *ncc_mp;
 	int i;
 
-	ncc = ncmount_cache_lookup4(nch->mount, nch->ncp);
-	for (i = 0; i < 4; ++i) {
-		if (ncc->isneg == 0 &&
-		    ncc->ncp == nch->ncp && ncc->mp == mp) {
-			spin_lock(&ncc->spin);
-			if (ncc->isneg == 0 &&
-			    ncc->ncp == nch->ncp && ncc->mp == mp) {
-				_cache_mntrel(mp);
-				ncc->ncp = NULL;
-				ncc->mp = NULL;
-				ncc->ticks = (int)ticks - hz * 120;
-			}
+	pcpu = pcpu_ncache;
+	if (pcpu == NULL)
+		return;
+
+	for (i = 0; i < ncpus; ++i)
+		spin_lock(&pcpu[i].umount_spin);
+
+	for (i = 0; i < NCMOUNT_NUMCACHE; ++i) {
+		ncc = &ncmount_cache[i];
+		if (ncc->mp != mp && ncc->mp_target != mp)
+			continue;
+		spin_lock(&ncc->spin);
+		++ncc->updating;
+		cpu_sfence();
+
+		if (ncc->mp != mp && ncc->mp_target != mp) {
+			++ncc->updating;
+			cpu_sfence();
 			spin_unlock(&ncc->spin);
+			continue;
 		}
-		++ncc;
+		ncc_mp = ncc->mp;
+		ncc->ncp = NULL;
+		ncc->mp = NULL;
+		if (ncc_mp)
+			atomic_add_int(&ncc_mp->mnt_refs, -1);
+		ncc_mp = ncc->mp_target;
+		ncc->mp_target = NULL;
+		if (ncc_mp)
+			atomic_add_int(&ncc_mp->mnt_refs, -1);
+		ncc->ticks = (int)ticks - hz * 120;
+
+		++ncc->updating;
+		cpu_sfence();
+		spin_unlock(&ncc->spin);
 	}
+
+	for (i = 0; i < ncpus; ++i)
+		spin_unlock(&pcpu[i].umount_spin);
 }
 
 /*
@@ -3572,7 +3803,8 @@ restart:
 		if (par == nch->mount->mnt_ncmountpt.ncp) {
 			cache_resolve_mp(nch->mount);
 		} else if ((dvp = cache_dvpref(par)) == NULL) {
-			kprintf("[diagnostic] cache_resolve: raced on %*.*s\n", par->nc_nlen, par->nc_nlen, par->nc_name);
+			kprintf("[diagnostic] cache_resolve: raced on %*.*s\n",
+				par->nc_nlen, par->nc_nlen, par->nc_name);
 			_cache_put(par);
 			continue;
 		} else {
@@ -3876,6 +4108,7 @@ nchinit(void)
 		pn = &pcpu_ncache[i];
 		TAILQ_INIT(&pn->neg_list);
 		spin_init(&pn->neg_spin, "ncneg");
+		spin_init(&pn->umount_spin, "ncumm");
 	}
 
 	/*

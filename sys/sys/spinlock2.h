@@ -140,6 +140,9 @@ _spin_lock(struct spinlock *spin, const char *ident)
  * Release an exclusive spinlock.  We can just do this passively, only
  * ensuring that our spinlock count is left intact until the mutex is
  * cleared.
+ *
+ * NOTE: Actually works for shared OR exclusive spinlocks.  spin_unlock_any()
+ *	 assumes this too.
  */
 static __inline void
 spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
@@ -176,6 +179,12 @@ spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
 
 static __inline void
 spin_unlock(struct spinlock *spin)
+{
+	spin_unlock_quick(mycpu, spin);
+}
+
+static __inline void
+spin_unlock_any(struct spinlock *spin)
 {
 	spin_unlock_quick(mycpu, spin);
 }

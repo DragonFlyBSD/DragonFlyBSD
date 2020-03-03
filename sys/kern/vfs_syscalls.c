@@ -836,7 +836,7 @@ dounmount(struct mount *mp, int flags, int halting)
 		 */
 		cache_unmounting(mp);
 		if (mp->mnt_refs != 1)
-			cache_clearmntcache();
+			cache_clearmntcache(mp);
 
 		/*
 		 * Break out if we are good.  Don't count ncp refs if the
@@ -1006,18 +1006,18 @@ dounmount(struct mount *mp, int flags, int halting)
 	 */
 	if (freeok) {
 		if (mp->mnt_refs > 0)
-			cache_clearmntcache();
+			cache_clearmntcache(mp);
 		while (mp->mnt_refs > 0) {
 			cache_unmounting(mp);
 			wakeup(mp);
 			tsleep(&mp->mnt_refs, 0, "umntrwait", hz / 10 + 1);
-			cache_clearmntcache();
+			cache_clearmntcache(mp);
 		}
 		lwkt_reltoken(&mp->mnt_token);
 		mount_drop(mp);
 		mp = NULL;
 	} else {
-		cache_clearmntcache();
+		cache_clearmntcache(mp);
 	}
 	error = 0;
 	KNOTE(&fs_klist, VQ_UNMOUNT);
@@ -2303,6 +2303,8 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 		return (error);
 	if (nd->nl_nch.ncp->nc_vp)
 		return (EEXIST);
+	if (nd->nl_dvp == NULL)
+		return (EINVAL);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
 
@@ -2377,6 +2379,8 @@ kern_mkfifo(struct nlookupdata *nd, int mode)
 		return (error);
 	if (nd->nl_nch.ncp->nc_vp)
 		return (EEXIST);
+	if (nd->nl_dvp == NULL)
+		return (EINVAL);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
 
@@ -2526,6 +2530,10 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 		vrele(vp);
 		return (EEXIST);
 	}
+	if (linknd->nl_dvp == NULL) {
+		vrele(vp);
+		return (EINVAL);
+	}
 	VFS_MODIFYING(vp->v_mount);
 	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
 	if (error) {
@@ -2608,6 +2616,8 @@ kern_symlink(struct nlookupdata *nd, char *path, int mode)
 		return (error);
 	if (nd->nl_nch.ncp->nc_vp)
 		return (EEXIST);
+	if (nd->nl_dvp == NULL)
+		return (EINVAL);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
 	dvp = nd->nl_dvp;
@@ -2694,6 +2704,8 @@ sys_undelete(struct undelete_args *uap)
 	nd.nl_flags |= NLC_DELETE | NLC_REFDVP;
 	if (error == 0)
 		error = nlookup(&nd);
+	if (error == 0 && nd.nl_dvp == NULL)
+		error = EINVAL;
 	if (error == 0)
 		error = ncp_writechk(&nd.nl_nch);
 	if (error == 0) {
@@ -2713,6 +2725,8 @@ kern_unlink(struct nlookupdata *nd)
 	nd->nl_flags |= NLC_DELETE | NLC_REFDVP;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
+	if (nd->nl_dvp == NULL)
+		return EINVAL;
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
 	error = VOP_NREMOVE(&nd->nl_nch, nd->nl_dvp, nd->nl_cred);
@@ -4352,6 +4366,8 @@ kern_mkdir(struct nlookupdata *nd, int mode)
 
 	if (nd->nl_nch.ncp->nc_vp)
 		return (EEXIST);
+	if (nd->nl_dvp == NULL)
+		return (EINVAL);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
 	VATTR_NULL(&vattr);
@@ -4420,6 +4436,8 @@ kern_rmdir(struct nlookupdata *nd)
 	 */
 	if (nd->nl_nch.ncp->nc_flag & (NCF_ISMOUNTPT))
 		return (EBUSY);
+	if (nd->nl_dvp == NULL)
+		return (EINVAL);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
 	error = VOP_NRMDIR(&nd->nl_nch, nd->nl_dvp, nd->nl_cred);
