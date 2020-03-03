@@ -33,11 +33,12 @@
 .Nm psm
 .Nd PS/2 mouse style pointing device driver
 .Sh SYNOPSIS
+.Cd "device psm0 at atkbdc? irq 12"
+.Pp
 .Cd "options KBD_RESETDELAY=N"
 .Cd "options KBD_MAXWAIT=N"
 .Cd "options PSM_DEBUG=N"
 .Cd "options KBDIO_DEBUG=N"
-.Cd "device psm0 at atkbdc? irq 12"
 .Sh DESCRIPTION
 The
 .Nm
@@ -174,12 +175,9 @@ Its value can be modified via the driver flag
 or via an ioctl call.
 .Sh DRIVER CONFIGURATION
 .Ss Kernel Configuration Options
-There are following kernel configuration options to control the
+The following kernel configuration options can be used to control the
 .Nm
 driver.
-They may be set in the kernel configuration file
-(see
-.Xr config 8 ) .
 .Bl -tag -width MOUSE
 .It Em KBD_RESETDELAY=X , KBD_MAXWAIT=Y
 The
@@ -213,12 +211,7 @@ for debug logging.
 .Ss Driver Flags
 The
 .Nm
-driver accepts the following driver flags.
-Set them in the
-kernel configuration file or in the User Configuration Menu at
-the boot time
-(see
-.Xr boot 8 ) .
+driver accepts the following driver flags in the kernel configuration file.
 .Bl -tag -width MOUSE
 .It bit 0..3 RESOLUTION
 This flag specifies the resolution of the pointing device.

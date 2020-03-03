@@ -26,39 +26,36 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/vga.4,v 1.7.2.10 2002/12/20 18:03:05 trhodes Exp $
 .\"
-.Dd August 14, 2015
+.Dd March 3, 2020
 .Dt VGA 4
 .Os
 .Sh NAME
 .Nm vga
 .Nd generic video card interface
 .Sh SYNOPSIS
+.Cd "device vga0 at isa? port ?"
+.Pp
 .Cd "options VGA_KEEP_POWERON_MODE"
 .Cd "options VGA_NO_FONT_LOADING"
 .Cd "options VGA_NO_MODE_CHANGE"
 .Cd "options VGA_DEBUG=N"
 .Cd "options VGA_WIDTH90"
-.Cd "device vga0 at isa? port ?"
 .Sh DESCRIPTION
 The
 .Nm
 driver is a generic video card driver which provides access to
 video cards.
-This driver is required for the console driver
-.Xr syscons 4 .
-The console driver will call the
+This driver is required for the
+.Xr syscons 4
+console driver which will call the
 .Nm
-driver to manipulate video hardware (changing video modes, loading font, etc).
+driver to manipulate video hardware (changing video modes, loading fonts, etc).
 .Pp
 The
 .Nm
 driver supports the standard VGA video cards.
 .Sh DRIVER CONFIGURATION
-.Ss Kernel Configuration Options
-The following kernel configuration options
-(see
-.Xr config 8 )
-can be used to control the
+The following kernel configuration options can be used to control the
 .Nm
 driver.
 These options provide compatibility with certain VGA cards.
@@ -77,7 +74,7 @@ These modes are not always supported by the video card and the display.
 It is highly likely that LCD display cannot work with these modes.
 .El
 .Pp
-The following options will remove some features from the
+The following option will remove some features from the
 .Nm
 driver and save kernel memory.
 .Bl -tag -width ".Dv VGA_KEEP_POWERON_MODE"
@@ -92,16 +89,9 @@ See
 .It Dv VGA_NO_MODE_CHANGE
 This option prevents the driver from changing video modes.
 .El
-.Sh EXAMPLES
-Your kernel configuration should normally have:
-.Pp
-.D1 Cd "device vga0 at isa? port ?"
 .Sh SEE ALSO
 .Xr vgl 3 ,
-.Xr syscons 4 ,
-.Xr config 8 ,
-.Xr kldload 8 ,
-.Xr kldunload 8
+.Xr syscons 4
 .Sh STANDARDS
 .Rs
 .%A "Apple, IBM, Motorola"
