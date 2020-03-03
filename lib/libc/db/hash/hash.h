@@ -118,6 +118,7 @@ typedef struct htab	 {		/* Memory resident data structure */
 /*
  * Constants
  */
+#define	NOM_BSIZE		16384		/* a reasonable blksize */
 #define	MAX_BSIZE		32768		/* 2^15 but should be 65536 */
 #define MIN_BUFFERS		6
 #define MINHDRSIZE		512

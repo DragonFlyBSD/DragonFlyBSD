@@ -251,9 +251,13 @@ __bt_open(const char *fname, int flags, mode_t mode, const BTREEINFO *openinfo,
 		/*
 		 * Set the page size to the best value for I/O to this file.
 		 * Don't overflow the page offset type.
+		 *
+		 * Stop using st_blksize, its meaningless on a modern system
+		 * and can cause db to operate inefficiently.  Instead we
+		 * use NOMPSIZE.
 		 */
 		if (b.psize == 0) {
-			b.psize = sb.st_blksize;
+			b.psize = NOMPSIZE;
 			if (b.psize < MINPSIZE)
 				b.psize = MINPSIZE;
 			if (b.psize > MAX_PAGE_OFFSET + 1)

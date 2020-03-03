@@ -43,6 +43,7 @@
 #define	DEFMINKEYPAGE	(2)		/* Minimum keys per page */
 #define	MINCACHE	(5)		/* Minimum cached pages */
 #define	MINPSIZE	(512)		/* Minimum page size */
+#define NOMPSIZE	16384		/* Nominal page size */
 
 /*
  * Page 0 of a btree file contains a copy of the meta-data.  This page is also
