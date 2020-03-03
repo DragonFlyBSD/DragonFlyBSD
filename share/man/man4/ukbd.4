@@ -55,8 +55,8 @@ or
 .Xr ohci 4
 must be configured in the kernel as well.
 .Sh CONFIGURATION
-By default, the keyboard subsystem does not create the appropriate devices yet.
-Make sure you reconfigure your kernel with the following option in the kernel
+By default, the keyboard subsystem will create the appropriate devices.
+To disable this, remove or comment out the following option in the kernel
 config file:
 .Pp
 .Dl Cd "options KBD_INSTALL_CDEV"
