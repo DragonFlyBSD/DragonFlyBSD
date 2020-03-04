@@ -34,6 +34,7 @@
 #include <linux/types.h>
 #include <linux/jiffies.h>
 #include <linux/rbtree.h>
+#include <linux/thread_info.h>
 #include <linux/cpumask.h>
 #include <linux/errno.h>
 #include <linux/mm_types.h>

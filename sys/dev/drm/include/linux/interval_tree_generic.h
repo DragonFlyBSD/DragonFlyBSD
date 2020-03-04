@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,33 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_SMP_H_
-#define _LINUX_SMP_H_
+#ifndef _LINUX_INTERVAL_TREE_GENERIC_H_
+#define _LINUX_INTERVAL_TREE_GENERIC_H_
 
-#include <linux/errno.h>
-#include <linux/types.h>
-#include <linux/list.h>
-#include <linux/cpumask.h>
-#include <linux/init.h>
-
-#include <linux/preempt.h>
-#include <linux/kernel.h>
-#include <linux/compiler.h>
-#include <linux/thread_info.h>
-
-static inline uint32_t smp_processor_id(void)
-{
-	return mycpuid;
-}
-
-static inline uint32_t get_cpu(void)
-{
-	preempt_disable();
-
-	/* Regular DragonFly kernel threads always run on the same CPU */
-	return 0;
-}
-
-#define put_cpu()	preempt_enable()
-
-#endif	/* _LINUX_SMP_H_ */
+#endif	/* _LINUX_INTERVAL_TREE_GENERIC_H_ */
