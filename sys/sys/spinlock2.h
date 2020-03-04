@@ -363,6 +363,30 @@ spin_unlock_update(struct spinlock *spin)
 /*
  * API that doesn't integrate the acquisition of the spin-lock
  */
+static __inline int
+spin_update_start_only(struct spinlock *spin)
+{
+	int v;
+
+	v = *(volatile int *)&spin->update;
+	cpu_lfence();
+
+	return v;
+}
+
+static __inline int
+spin_update_check_inprog(int v)
+{
+	return (v & 1);
+}
+
+static __inline int
+spin_update_end_only(struct spinlock *spin, int v)
+{
+	cpu_lfence();
+	return(*(volatile int *)&spin->update != v);
+}
+
 static __inline void
 spin_lock_update_only(struct spinlock *spin)
 {
