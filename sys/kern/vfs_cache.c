@@ -1994,11 +1994,11 @@ again:
 		 * the update-counter mechanism, and VRECLAIMED is found to
 		 * not be set after that, we should be good.
 		 */
-		v = spin_update_start_only(&vp->v_spin);
-		if (__predict_true(spin_update_check_inprog(v) == 0)) {
+		v = spin_access_start_only(&vp->v_spin);
+		if (__predict_true(spin_access_check_inprog(v) == 0)) {
 			vref_special(vp);
 			if (__predict_false(
-				    spin_update_end_only(&vp->v_spin, v))) {
+				    spin_access_end_only(&vp->v_spin, v))) {
 				vrele(vp);
 				kprintf("CACHE_VREF: RACED %p\n", vp);
 				continue;

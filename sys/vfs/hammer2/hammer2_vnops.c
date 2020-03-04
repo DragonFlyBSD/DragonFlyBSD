@@ -285,7 +285,7 @@ hammer2_vop_access(struct vop_access_args *ap)
 	int update;
 
 retry:
-	update = spin_update_start(&ip->cluster_spin);
+	update = spin_access_start(&ip->cluster_spin);
 
 	/*hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);*/
 	uid = hammer2_to_unix_xid(&ip->meta.uid);
@@ -294,7 +294,7 @@ retry:
 	uflags = ip->meta.uflags;
 	/*hammer2_inode_unlock(ip);*/
 
-	if (__predict_false(spin_update_end(&ip->cluster_spin, update)))
+	if (__predict_false(spin_access_end(&ip->cluster_spin, update)))
 		goto retry;
 
 	error = vop_helper_access(ap, uid, gid, mode, uflags);
@@ -321,7 +321,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	pmp = ip->pmp;
 
 retry:
-	update = spin_update_start(&ip->cluster_spin);
+	update = spin_access_start(&ip->cluster_spin);
 
 	vap->va_fsid = pmp->mp->mnt_stat.f_fsid.val[0];
 	vap->va_fileid = ip->meta.inum;
@@ -363,7 +363,7 @@ retry:
 	vap->va_vaflags = VA_UID_UUID_VALID | VA_GID_UUID_VALID |
 			  VA_FSID_UUID_VALID;
 
-	if (__predict_false(spin_update_end(&ip->cluster_spin, update)))
+	if (__predict_false(spin_access_end(&ip->cluster_spin, update)))
 		goto retry;
 
 	return (0);
@@ -386,7 +386,7 @@ hammer2_vop_getattr_quick(struct vop_getattr_args *ap)
 	pmp = ip->pmp;
 
 retry:
-	update = spin_update_start(&ip->cluster_spin);
+	update = spin_access_start(&ip->cluster_spin);
 
 	vap->va_fsid = pmp->mp->mnt_stat.f_fsid.val[0];
 	vap->va_fileid = ip->meta.inum;
@@ -406,7 +406,7 @@ retry:
 	vap->va_vaflags = VA_UID_UUID_VALID | VA_GID_UUID_VALID |
 			  VA_FSID_UUID_VALID;
 
-	if (__predict_false(spin_update_end(&ip->cluster_spin, update)))
+	if (__predict_false(spin_access_end(&ip->cluster_spin, update)))
 		goto retry;
 
 	return (0);

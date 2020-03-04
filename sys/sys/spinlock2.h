@@ -316,11 +316,11 @@ spin_uninit(struct spinlock *spin)
  * be accessed and retried without dirtying the cache line.  Retries if
  * modified, gains shared spin-lock if modification is underway.
  *
- * The returned value from spin_update_start() must be passed into
- * spin_update_end().
+ * The returned value from spin_access_start() must be passed into
+ * spin_access_end().
  */
 static __inline int
-spin_update_start(struct spinlock *spin)
+spin_access_start(struct spinlock *spin)
 {
 	int v;
 
@@ -332,7 +332,7 @@ spin_update_start(struct spinlock *spin)
 }
 
 static __inline int
-spin_update_end(struct spinlock *spin, int v)
+spin_access_end(struct spinlock *spin, int v)
 {
 	if (__predict_false(v & 1)) {
 		spin_unlock_shared(spin);
@@ -364,7 +364,7 @@ spin_unlock_update(struct spinlock *spin)
  * API that doesn't integrate the acquisition of the spin-lock
  */
 static __inline int
-spin_update_start_only(struct spinlock *spin)
+spin_access_start_only(struct spinlock *spin)
 {
 	int v;
 
@@ -375,13 +375,13 @@ spin_update_start_only(struct spinlock *spin)
 }
 
 static __inline int
-spin_update_check_inprog(int v)
+spin_access_check_inprog(int v)
 {
 	return (v & 1);
 }
 
 static __inline int
-spin_update_end_only(struct spinlock *spin, int v)
+spin_access_end_only(struct spinlock *spin, int v)
 {
 	cpu_lfence();
 	return(*(volatile int *)&spin->update != v);

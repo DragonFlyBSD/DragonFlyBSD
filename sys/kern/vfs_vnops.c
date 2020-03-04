@@ -797,6 +797,9 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	u_short mode;
 	cdev_t dev;
 
+	/*
+	 * vp already has a ref and is validated, can call unlocked.
+	 */
 	vap = &vattr;
 	error = VOP_GETATTR(vp, vap);
 	if (error)
