@@ -234,7 +234,8 @@ vm_offset_t KvaStart;		/* VA start of KVA space */
 vm_offset_t KvaEnd;		/* VA end of KVA space (non-inclusive) */
 vm_offset_t KvaSize;		/* max size of kernel virtual address space */
 vm_offset_t DMapMaxAddress;
-static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
+/* Has pmap_init completed? */
+__read_frequently static boolean_t pmap_initialized = FALSE;
 //static int pgeflag;		/* PG_G or-in */
 uint64_t PatMsr;
 
@@ -275,7 +276,7 @@ struct msgbuf *msgbufp=NULL;
  * PMAP default PG_* bits. Needed to be able to add
  * EPT/NPT pagetable pmap_bits for the VMM module
  */
-uint64_t pmap_bits_default[] = {
+__read_frequently uint64_t pmap_bits_default[] = {
 		REGULAR_PMAP,			/* TYPE_IDX		0 */
 		X86_PG_V,			/* PG_V_IDX		1 */
 		X86_PG_RW,			/* PG_RW_IDX		2 */
@@ -290,6 +291,7 @@ uint64_t pmap_bits_default[] = {
 		X86_PG_NC_PWT | X86_PG_NC_PCD,	/* PG_N_IDX		11 */
 		X86_PG_NX,			/* PG_NX_IDX		12 */
 };
+
 /*
  * Crashdump maps.
  */
@@ -4708,7 +4710,7 @@ pmap_remove_all(vm_page_t m)
 #endif
 	int retry;
 
-	if (!pmap_initialized)
+	if (__predict_false(!pmap_initialized))
 		return;
 
 	/*
@@ -4818,7 +4820,7 @@ again:
 void
 pmap_remove_specific(pmap_t pmap_match, vm_page_t m)
 {
-	if (!pmap_initialized)
+	if (__predict_false(!pmap_initialized))
 		return;
 
 	/*
@@ -5033,7 +5035,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 *	 the degenerate case where the entry already exists and
 	 *	 matches.
 	 */
-	if (pmap_initialized == FALSE) {
+	if (__predict_false(pmap_initialized == FALSE)) {
 		pte_pv = NULL;
 		pt_pv = NULL;
 		pte_placemark = NULL;
@@ -5115,6 +5117,9 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * calls (particularly on the kernel_map).
 	 *
 	 * If non-advanced mode we track the mapping count for similar effect.
+	 *
+	 * Avoid modifying the vm_page as much as possible, conditionalize
+	 * updates to reduce cache line ping-ponging.
 	 */
 #if defined(PMAP_ADVANCED)
 	flags = m->flags;
@@ -5125,6 +5130,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			nflags |= PG_WRITEABLE;
 		if (flags & PG_MAPPED)
 			nflags |= PG_MAPPEDMULTI;
+		if (flags == (flags | nflags))
+			break;
 		if (atomic_fcmpset_int(&m->flags, &flags, flags | nflags))
 			break;
 	}
@@ -5652,7 +5659,7 @@ pmap_testbit(vm_page_t m, int bit)
 {
 	int res = FALSE;
 
-	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
+	if (__predict_false(!pmap_initialized || (m->flags & PG_FICTITIOUS)))
 		return FALSE;
 	/*
 	 * Nothing to do if all the mappings are already read-only.
@@ -5716,7 +5723,7 @@ pmap_clearbit(vm_page_t m, int bit_index)
 	/*
 	 * Too early in the boot
 	 */
-	if (!pmap_initialized) {
+	if (__predict_false(!pmap_initialized)) {
 		if (bit_index == PG_RW_IDX)
 			vm_page_flag_clear(m, PG_WRITEABLE);
 		return;
@@ -5914,7 +5921,7 @@ pmap_ts_referenced(vm_page_t m)
 	int rval = 0;
 	pt_entry_t npte;
 
-	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
+	if (__predict_false(!pmap_initialized || (m->flags & PG_FICTITIOUS)))
 		return rval;
 	PMAP_PAGE_BACKING_SCAN(m, NULL, ipmap, iptep, ipte, iva) {
 		if (ipte & ipmap->pmap_bits[PG_A_IDX]) {
