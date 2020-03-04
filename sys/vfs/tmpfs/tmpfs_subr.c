@@ -445,8 +445,10 @@ loop:
 	 * We need to assign node->tn_vnode.  If vp is NULL, loop up to
 	 * allocate the vp.  This can happen due to SMP races.
 	 */
-	if (vp == NULL)
+	if (vp == NULL) {
+		TMPFS_NODE_UNLOCK(node);
 		goto loop;
+	}
 
 	/*
 	 * This should never happen.
