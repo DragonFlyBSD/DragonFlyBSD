@@ -1415,7 +1415,7 @@ again:
 	    cache_lock_maybe_shared(nch, 0);
 	    nchislocked = 2;
 	}
-#if 1
+#if 0
 	error = cache_vget(nch, cred, LK_SHARED, &vp);
 #else
 	error = cache_vref(nch, cred, &vp);
@@ -1471,7 +1471,7 @@ again:
 		    break;
 		}
 	    }
-#if 1
+#if 0
 	    vput(vp);
 #else
 	    vrele(vp);

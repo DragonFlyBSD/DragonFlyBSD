@@ -1951,7 +1951,10 @@ again:
 }
 
 /*
- * Similar to cache_vget() but only acquires a ref on the vnode.
+ * Similar to cache_vget() but only acquires a ref on the vnode.  The vnode
+ * is already held by virtuue of the ncp being locked, but it might not be
+ * referenced and while it is not referenced it can transition into the
+ * VRECLAIMED state.
  *
  * NOTE: The passed-in ncp must be locked exclusively if it is initially
  *	 unresolved.  If a reclaim race occurs the passed-in ncp will be
@@ -1971,6 +1974,7 @@ cache_vref(struct nchandle *nch, struct ucred *cred, struct vnode **vpp)
 	struct namecache *ncp;
 	struct vnode *vp;
 	int error;
+	int v;
 
 	ncp = nch->ncp;
 again:
@@ -1980,7 +1984,35 @@ again:
 	else
 		error = 0;
 
-	if (error == 0 && (vp = ncp->nc_vp) != NULL) {
+	while (error == 0 && (vp = ncp->nc_vp) != NULL) {
+		/*
+		 * Try a lockless ref of the vnode.  VRECLAIMED transitions
+		 * use the vx_lock state and update-counter mechanism so we
+		 * can detect if one is in-progress or occurred.
+		 *
+		 * If we can successfully ref the vnode and interlock against
+		 * the update-counter mechanism, and VRECLAIMED is found to
+		 * not be set after that, we should be good.
+		 */
+		v = spin_update_start_only(&vp->v_spin);
+		if (__predict_true(spin_update_check_inprog(v) == 0)) {
+			vref_special(vp);
+			if (__predict_false(
+				    spin_update_end_only(&vp->v_spin, v))) {
+				vrele(vp);
+				kprintf("CACHE_VREF: RACED %p\n", vp);
+				continue;
+			}
+			if (__predict_true((vp->v_flag & VRECLAIMED) == 0)) {
+				break;
+			}
+			vrele(vp);
+			kprintf("CACHE_VREF: IN-RECLAIM\n");
+		}
+
+		/*
+		 * Do it the slow way
+		 */
 		error = vget(vp, LK_SHARED);
 		if (error) {
 			/*
@@ -2007,10 +2039,12 @@ again:
 			/* caller does not want a lock */
 			vn_unlock(vp);
 		}
+		break;
 	}
 	if (error == 0 && vp == NULL)
 		error = ENOENT;
 	*vpp = vp;
+
 	return(error);
 }
 

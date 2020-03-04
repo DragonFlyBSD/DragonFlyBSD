@@ -2990,7 +2990,12 @@ again:
 	if ((vp = nd->nl_nch.ncp->nc_vp) == NULL)
 		return (ENOENT);
 
-	if ((error = vget(vp, LK_SHARED)) != 0)
+#if 1
+	error = cache_vref(&nd->nl_nch, NULL, &vp);
+#else
+	error = vget(vp, LK_SHARED);
+#endif
+	if (error)
 		return (error);
 	error = vn_stat(vp, st, nd->nl_cred);
 
@@ -3000,7 +3005,11 @@ again:
 	 * at the moment.
 	 */
 	if (error == ESTALE) {
+#if 1
+		vrele(vp);
+#else
 		vput(vp);
+#endif
 		cache_unlock(&nd->nl_nch);
 		cache_lock(&nd->nl_nch);
 		cache_setunresolved(&nd->nl_nch);
@@ -3008,7 +3017,11 @@ again:
 		if (error == 0)
 			goto again;
 	} else {
+#if 1
+		vrele(vp);
+#else
 		vput(vp);
+#endif
 	}
 	return (error);
 }

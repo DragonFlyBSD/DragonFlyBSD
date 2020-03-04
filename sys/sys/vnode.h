@@ -563,6 +563,7 @@ void	vput (struct vnode *vp);
 void	vhold (struct vnode *);
 void	vdrop (struct vnode *);
 void	vref (struct vnode *vp);
+void	vref_special (struct vnode *vp);
 void	vrele (struct vnode *vp);
 void	vsetflags (struct vnode *vp, int flags);
 void	vclrflags (struct vnode *vp, int flags);

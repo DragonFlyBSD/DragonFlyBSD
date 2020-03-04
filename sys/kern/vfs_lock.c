@@ -263,6 +263,13 @@ vref(struct vnode *vp)
 }
 
 void
+vref_special(struct vnode *vp)
+{
+	if ((atomic_fetchadd_int(&vp->v_refcnt, 1) & VREF_MASK) == 0)
+		atomic_add_int(&mycpu->gd_cachedvnodes, -1);
+}
+
+void
 synchronizevnodecount(void)
 {
 	int nca = 0;
