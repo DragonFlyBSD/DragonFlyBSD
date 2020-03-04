@@ -136,8 +136,8 @@ static int vm_pageout_page(vm_page_t m, long *max_launderp,
 static int vm_pageout_clean_helper (vm_page_t, int);
 static void vm_pageout_free_page_calc (vm_size_t count);
 static void vm_pageout_page_free(vm_page_t m) ;
-struct thread *emergpager;
-struct thread *pagethread;
+__read_frequently struct thread *emergpager;
+__read_frequently struct thread *pagethread;
 static int sequence_emerg_pager;
 
 #if !defined(NO_SWAPPING)
@@ -153,11 +153,11 @@ static struct kproc_desc vm_kp = {
 SYSINIT(vmdaemon, SI_SUB_KTHREAD_VM, SI_ORDER_FIRST, kproc_start, &vm_kp);
 #endif
 
-int vm_pages_needed = 0;	/* Event on which pageout daemon sleeps */
-int vm_pageout_deficit = 0;	/* Estimated number of pages deficit */
-int vm_pageout_pages_needed = 0;/* pageout daemon needs pages */
-int vm_page_free_hysteresis = 16;
-static int vm_pagedaemon_time;
+__read_mostly int vm_pages_needed = 0;	/* pageout daemon tsleep event */
+__read_mostly int vm_pageout_deficit = 0;/* Estimated number of pages deficit */
+__read_mostly int vm_pageout_pages_needed = 0;/* pageout daemon needs pages */
+__read_mostly int vm_page_free_hysteresis = 16;
+__read_mostly static int vm_pagedaemon_time;
 
 #if !defined(NO_SWAPPING)
 static int vm_pageout_req_swapout;

@@ -59,8 +59,10 @@ struct per_cpu_sysctl_info {
 };
 typedef struct per_cpu_sysctl_info per_cpu_sysctl_info_t;
 
-static cpu_node_t cpu_topology_nodes[MAXCPU];	/* Memory for topology */
-static cpu_node_t *cpu_root_node;		/* Root node pointer */
+/* Memory for topology */
+__read_frequently static cpu_node_t cpu_topology_nodes[MAXCPU];
+/* Root node pointer */
+__read_frequently static cpu_node_t *cpu_root_node;
 
 static struct sysctl_ctx_list cpu_topology_sysctl_ctx;
 static struct sysctl_oid *cpu_topology_sysctl_tree;
@@ -68,11 +70,11 @@ static char cpu_topology_members[8*MAXCPU];
 static per_cpu_sysctl_info_t *pcpu_sysctl;
 static void sbuf_print_cpuset(struct sbuf *sb, cpumask_t *mask);
 
-int cpu_topology_levels_number = 1;
-int cpu_topology_ht_ids;
-int cpu_topology_core_ids;
-int cpu_topology_phys_ids;
-cpu_node_t *root_cpu_node;
+__read_frequently int cpu_topology_levels_number = 1;
+__read_frequently int cpu_topology_ht_ids;
+__read_frequently int cpu_topology_core_ids;
+__read_frequently int cpu_topology_phys_ids;
+__read_frequently cpu_node_t *root_cpu_node;
 
 MALLOC_DEFINE(M_PCPUSYS, "pcpusys", "pcpu sysctl topology");
 
