@@ -108,8 +108,9 @@
 struct vm_page_hash_elm {
 	vm_page_t	m;
 	vm_object_t	object;	/* heuristical */
-	uint32_t	pindex;	/* heuristical 32-bit field */
+	vm_pindex_t	pindex;	/* heuristical */
 	int		ticks;
+	int		unused;
 };
 
 #define VM_PAGE_HASH_SET	4		    /* power of 2, set-assoc */
@@ -854,9 +855,10 @@ vm_page_startup_finish(void *dummy __unused)
 	 * hash table for vm_page_lookup_quick()
 	 */
 	mp = (void *)kmem_alloc3(&kernel_map,
-				 vm_page_hash_size * sizeof(*vm_page_hash),
+				 (vm_page_hash_size + VM_PAGE_HASH_SET) *
+				  sizeof(*vm_page_hash),
 				 VM_SUBSYS_VMPGHASH, KM_CPU(0));
-	bzero(mp, vm_page_hash_size * sizeof(*mp));
+	bzero(mp, (vm_page_hash_size + VM_PAGE_HASH_SET) * sizeof(*mp));
 	cpu_sfence();
 	vm_page_hash = mp;
 }
@@ -1583,7 +1585,6 @@ vm_page_hash_hash(vm_object_t object, vm_pindex_t pindex)
 	hi = hi ^ (hi >> 20);
 #endif
 	hi &= vm_page_hash_size - 1;		/* bounds */
-	hi &= ~(VM_PAGE_HASH_SET - 1);		/* set-assoc */
 
 	return (&vm_page_hash[hi]);
 }
@@ -1601,13 +1602,15 @@ vm_page_hash_get(vm_object_t object, vm_pindex_t pindex)
 	vm_page_t m;
 	int i;
 
-	if (vm_page_hash == NULL)
+	if (__predict_false(vm_page_hash == NULL))
 		return NULL;
 	mp = vm_page_hash_hash(object, pindex);
-	for (i = 0; i < VM_PAGE_HASH_SET; ++i) {
-		if (mp[i].object != object || mp[i].pindex != (uint32_t)pindex)
+	for (i = 0; i < VM_PAGE_HASH_SET; ++i, ++mp) {
+		if (mp->object != object ||
+		    mp->pindex != pindex) {
 			continue;
-		m = mp[i].m;
+		}
+		m = mp->m;
 		cpu_ccfence();
 		if (m == NULL)
 			continue;
@@ -1620,8 +1623,8 @@ vm_page_hash_get(vm_object_t object, vm_pindex_t pindex)
 			 * On-match optimization - do not update ticks
 			 * unless we have to (reduce cache coherency traffic)
 			 */
-			if (mp[i].ticks != ticks)
-				mp[i].ticks = ticks;
+			if (mp->ticks != ticks)
+				mp->ticks = ticks;
 			return m;
 		}
 		vm_page_sbusy_drop(m);
@@ -1639,6 +1642,10 @@ vm_page_hash_enter(vm_page_t m)
 {
 	struct vm_page_hash_elm *mp;
 	struct vm_page_hash_elm *best;
+	vm_object_t object;
+	vm_pindex_t pindex;
+	int best_delta;
+	int delta;
 	int i;
 
 	/*
@@ -1669,18 +1676,23 @@ vm_page_hash_enter(vm_page_t m)
 	/*
 	 * Find best entry
 	 */
-	mp = vm_page_hash_hash(m->object, m->pindex);
+	object = m->object;
+	pindex = m->pindex;
+
+	mp = vm_page_hash_hash(object, pindex);
 	best = mp;
-	for (i = 0; i < VM_PAGE_HASH_SET; ++i) {
-		if (mp[i].m == m &&
-		    mp[i].object == m->object &&
-		    mp[i].pindex == (uint32_t)m->pindex) {
+	best_delta = ticks - best->ticks;
+
+	for (i = 0; i < VM_PAGE_HASH_SET; ++i, ++mp) {
+		if (mp->m == m &&
+		    mp->object == object &&
+		    mp->pindex == pindex) {
 			/*
 			 * On-match optimization - do not update ticks
 			 * unless we have to (reduce cache coherency traffic)
 			 */
-			if (mp[i].ticks != ticks)
-				mp[i].ticks = ticks;
+			if (mp->ticks != ticks)
+				mp->ticks = ticks;
 			return;
 		}
 
@@ -1690,10 +1702,11 @@ vm_page_hash_enter(vm_page_t m)
 		 * Also check for a field overflow, using -1 instead of 0
 		 * to deal with SMP races on accessing the 'ticks' global.
 		 */
-		if ((ticks - best->ticks) < (ticks - mp[i].ticks) ||
-		    (int)(ticks - mp[i].ticks) < -1) {
-			best = &mp[i];
-		}
+		delta = ticks - mp->ticks;
+		if (delta < -1)
+			best = mp;
+		if (best_delta < delta)
+			best = mp;
 	}
 
 	/*
@@ -1701,8 +1714,8 @@ vm_page_hash_enter(vm_page_t m)
 	 * to reduce memory stalls due to memory indirects on lookups.
 	 */
 	best->m = m;
-	best->object = m->object;
-	best->pindex = (uint32_t)m->pindex;
+	best->object = object;
+	best->pindex = pindex;
 	best->ticks = ticks;
 }
 
@@ -2612,7 +2625,10 @@ loop:
 found_cache:
 			KASSERT(m->dirty == 0,
 				("Found dirty cache page %p", m));
-			if ((obj = m->object) != NULL) {
+			if (__predict_true((m->flags &
+					    (PG_MAPPED|PG_WRITEABLE)) == 0)) {
+				vm_page_free(m);
+			} else if ((obj = m->object) != NULL) {
 				if (vm_object_hold_try(obj)) {
 					vm_page_protect(m, VM_PROT_NONE);
 					vm_page_free(m);
