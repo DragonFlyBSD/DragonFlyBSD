@@ -179,7 +179,7 @@ struct tmpfs_node {
 	gid_t			tn_gid;
 	mode_t			tn_mode;
 	u_int			tn_flags;
-	nlink_t			tn_links;
+	nlink_t			tn_links;	/* atomic ops req */
 	long			tn_atime;
 	long			tn_atimensec;
 	long			tn_mtime;

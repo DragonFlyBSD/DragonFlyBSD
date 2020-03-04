@@ -314,9 +314,7 @@ tmpfs_alloc_dirent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 
 	nde->td_node = node;
 
-	TMPFS_NODE_LOCK(node);
-	++node->tn_links;
-	TMPFS_NODE_UNLOCK(node);
+	atomic_add_int(&node->tn_links, 1);
 
 	*de = nde;
 
@@ -341,11 +339,8 @@ tmpfs_free_dirent(struct tmpfs_mount *tmp, struct tmpfs_dirent *de)
 
 	node = de->td_node;
 
-	TMPFS_NODE_LOCK(node);
-	TMPFS_ASSERT_ELOCKED(node);
 	KKASSERT(node->tn_links > 0);
-	node->tn_links--;
-	TMPFS_NODE_UNLOCK(node);
+	atomic_add_int(&node->tn_links, -1);
 
 	kfree(de->td_name, tmp->tm_name_zone);
 	de->td_namelen = 0;
@@ -447,8 +442,10 @@ loop:
 	 * We need to assign node->tn_vnode.  If vp is NULL, loop up to
 	 * allocate the vp.  This can happen due to SMP races.
 	 */
-	if (vp == NULL)
+	if (vp == NULL) {
+		TMPFS_NODE_LOCK(node);
 		goto loop;
+	}
 
 	/*
 	 * This should never happen.
@@ -597,10 +594,10 @@ tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 	TMPFS_NODE_LOCK(dnode);
 	if (node && node->tn_type == VDIR) {
 		TMPFS_NODE_LOCK(node);
-		++node->tn_links;
+		atomic_add_int(&node->tn_links, 1);
 		node->tn_status |= TMPFS_NODE_CHANGED;
 		node->tn_dir.tn_parent = dnode;
-		++dnode->tn_links;
+		atomic_add_int(&dnode->tn_links, 1);
 		TMPFS_NODE_UNLOCK(node);
 	}
 	RB_INSERT(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
@@ -646,8 +643,8 @@ tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 		TMPFS_NODE_LOCK(dnode);
 		TMPFS_NODE_LOCK(node);
 		KKASSERT(node->tn_dir.tn_parent == dnode);
-		dnode->tn_links--;
-		node->tn_links--;
+		atomic_add_int(&dnode->tn_links, -1);
+		atomic_add_int(&node->tn_links, -1);
 		node->tn_dir.tn_parent = NULL;
 		TMPFS_NODE_UNLOCK(node);
 		TMPFS_NODE_UNLOCK(dnode);
@@ -1278,8 +1275,9 @@ tmpfs_itimes(struct vnode *vp, const struct timespec *acc,
 	node = VP_TO_TMPFS_NODE(vp);
 
 	if ((node->tn_status & (TMPFS_NODE_ACCESSED | TMPFS_NODE_MODIFIED |
-	    TMPFS_NODE_CHANGED)) == 0)
+	    TMPFS_NODE_CHANGED)) == 0) {
 		return;
+	}
 
 	vfs_timestamp(&now);
 
@@ -1406,9 +1404,9 @@ void
 tmpfs_unlock4(struct tmpfs_node *node1, struct tmpfs_node *node2,
 	      struct tmpfs_node *node3, struct tmpfs_node *node4)
 {
-	TMPFS_NODE_UNLOCK(node1);
-	TMPFS_NODE_UNLOCK(node2);
-	TMPFS_NODE_UNLOCK(node3);
 	if (node4)
 		TMPFS_NODE_UNLOCK(node4);
+	TMPFS_NODE_UNLOCK(node2);
+	TMPFS_NODE_UNLOCK(node3);
+	TMPFS_NODE_UNLOCK(node1);
 }
