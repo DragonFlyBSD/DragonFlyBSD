@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013-2016 Mellanox Technologies, Ltd.
- * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -215,5 +215,7 @@ kstrtol(const char *cp, unsigned int base, long *res)
 		return (-EINVAL);
 	return (0);
 }
+
+#define oops_in_progress	(panicstr != NULL)
 
 #endif	/* _LINUX_KERNEL_H_ */
