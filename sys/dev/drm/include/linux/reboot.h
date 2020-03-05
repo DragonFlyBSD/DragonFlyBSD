@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,5 +28,17 @@
 #define _LINUX_REBOOT_H_
 
 #include <linux/notifier.h>
+
+static inline int
+register_reboot_notifier(struct notifier_block *unused)
+{
+	return 0;
+}
+
+static inline int
+unregister_reboot_notifier(struct notifier_block *unused)
+{
+	return 0;
+}
 
 #endif	/* _LINUX_REBOOT_H_ */
