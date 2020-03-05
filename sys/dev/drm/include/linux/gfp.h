@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,12 @@
 
 #define __GFP_ZERO	M_ZERO
 
-#define GFP_DMA32	0x10000	/* XXX: MUST NOT collide with the M_XXX definitions */
+#define __GFP_HIGHMEM		0u	/* No particular meaning on DragonFly */
+#define __GFP_RECLAIMABLE	0u
+#define __GFP_NOWARN		0u
+
+#define __GFP_DMA32	0x10000u	/* XXX: MUST NOT collide with the M_XXX definitions */
+#define GFP_DMA32	__GFP_DMA32
 
 static inline void __free_page(struct page *page)
 {
@@ -61,6 +66,12 @@ static inline struct page * alloc_page(int flags)
 	return (struct page *)vm_page_alloc_contig(0LLU, ~0LLU,
 			PAGE_SIZE, PAGE_SIZE, PAGE_SIZE,
 			VM_MEMATTR_DEFAULT);
+}
+
+static inline bool
+gfpflags_allow_blocking(const gfp_t flags)
+{
+	return (flags & M_WAITOK);
 }
 
 #endif	/* _LINUX_GFP_H_ */
