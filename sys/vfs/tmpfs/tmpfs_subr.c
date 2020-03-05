@@ -443,7 +443,7 @@ loop:
 	 * allocate the vp.  This can happen due to SMP races.
 	 */
 	if (vp == NULL) {
-		TMPFS_NODE_LOCK(node);
+		TMPFS_NODE_UNLOCK(node);
 		goto loop;
 	}
 
