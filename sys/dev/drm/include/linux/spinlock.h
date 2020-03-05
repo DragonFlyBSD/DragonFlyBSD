@@ -83,4 +83,7 @@ spin_unlock_bh(struct lock *lock)
 
 #define DEFINE_SPINLOCK(x)	struct lock x = LOCK_INITIALIZER("ds##x", 0, 0)
 
+#define spin_lock_irqsave_nested(lock, flags, subclass)	\
+	    spin_lock_irqsave(lock, flags)
+
 #endif	/* _LINUX_SPINLOCK_H_ */
