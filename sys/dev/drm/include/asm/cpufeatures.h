@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,8 @@
 #define _ASM_CPUFEATURES_H_
 
 #define X86_FEATURE_CLFLUSH	( 0*32+19) /* CLFLUSH instruction */
+
+#define X86_FEATURE_XMM4_1	( 4*32+19) /* SSE 4.1, first appeared in 2007 */
 
 #define X86_FEATURE_HYPERVISOR	( 4*32+31) /* Running on a hypervisor */
 
