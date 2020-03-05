@@ -2625,12 +2625,10 @@ loop:
 found_cache:
 			KASSERT(m->dirty == 0,
 				("Found dirty cache page %p", m));
-			if (__predict_true((m->flags &
-					    (PG_MAPPED|PG_WRITEABLE)) == 0)) {
-				vm_page_free(m);
-			} else if ((obj = m->object) != NULL) {
+			if ((obj = m->object) != NULL) {
 				if (vm_object_hold_try(obj)) {
-					vm_page_protect(m, VM_PROT_NONE);
+					if (__predict_false((m->flags & (PG_MAPPED|PG_WRITEABLE)) != 0))
+						vm_page_protect(m, VM_PROT_NONE);
 					vm_page_free(m);
 					/* m->object NULL here */
 					vm_object_drop(obj);
@@ -2639,7 +2637,8 @@ found_cache:
 					vm_page_wakeup(m);
 				}
 			} else {
-				vm_page_protect(m, VM_PROT_NONE);
+				if (__predict_false((m->flags & (PG_MAPPED|PG_WRITEABLE)) != 0))
+					vm_page_protect(m, VM_PROT_NONE);
 				vm_page_free(m);
 			}
 			goto loop;
