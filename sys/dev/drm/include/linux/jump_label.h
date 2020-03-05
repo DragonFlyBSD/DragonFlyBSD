@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 François Tigeot
+ * Copyright (c) 2016-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,5 +30,19 @@
 #include <linux/types.h>
 #include <linux/compiler.h>
 #include <linux/bug.h>
+
+#define DEFINE_STATIC_KEY_FALSE(key)	bool key = false
+
+static inline void
+static_branch_enable(bool *flag)
+{
+	*flag = true;
+}
+
+static inline bool
+static_branch_likely(bool *flag)
+{
+	return *flag;
+}
 
 #endif	/* _LINUX_JUMP_LABEL_H_ */
