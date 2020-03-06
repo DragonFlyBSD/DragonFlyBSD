@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013-2016 Mellanox Technologies, Ltd.
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -150,6 +150,10 @@ list_del_init(struct list_head *entry)
 	for (p = list_entry((h)->next, typeof(*p), field), 		\
 	    n = list_entry(p->field.next, typeof(*p), field); &p->field != (h);\
 	    p = n, n = list_entry(n->field.next, typeof(*n), field))
+
+#define list_for_each_entry_from(p, h, field) \
+	for ( ; &(p)->field != (h); \
+	    p = list_entry((p)->field.next, typeof(*p), field))
 
 #define list_for_each_entry_continue(p, h, field)			\
 	for (p = list_next_entry((p), field); &p->field != (h);		\
