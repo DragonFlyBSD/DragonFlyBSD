@@ -79,6 +79,8 @@ wake_up_all(wait_queue_head_t *q)
 	wakeup(q);
 }
 
+void wake_up_bit(void *, int);
+
 #define wake_up_all_locked(eq)		__wake_up_core(eq, 0)
 
 #define wake_up_interruptible(eq)	wake_up(eq)
@@ -230,5 +232,8 @@ __add_wait_queue_tail(wait_queue_head_t *wqh, wait_queue_t *wq)
 {
 	list_add_tail(&wq->task_list, &wqh->task_list);
 }
+
+int wait_on_bit_timeout(unsigned long *word, int bit,
+			unsigned mode, unsigned long timeout);
 
 #endif	/* _LINUX_WAIT_H_ */
