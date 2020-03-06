@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2014-2018 François Tigeot
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -61,6 +61,11 @@ do {									\
 
 #define setup_timer_on_stack(t, f,d)	setup_timer(t, f, d)
 
+#define __setup_timer(timer, func, data, flags)				\
+do {									\
+	setup_timer(timer, func, data);					\
+} while (0)
+
 #define	init_timer(timer)						\
 do {									\
 	(timer)->function = NULL;					\
@@ -116,5 +121,7 @@ round_jiffies_up_relative(unsigned long j)
 }
 
 #define destroy_timer_on_stack(timer)
+
+#define TIMER_IRQSAFE	0x00200000
 
 #endif /* _LINUX_TIMER_H_ */
