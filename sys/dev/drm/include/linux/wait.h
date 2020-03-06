@@ -225,4 +225,10 @@ remove_wait_queue(wait_queue_head_t *head, wait_queue_t *wq)
 	lockmgr(&head->lock, LK_RELEASE);
 }
 
+static inline void
+__add_wait_queue_tail(wait_queue_head_t *wqh, wait_queue_t *wq)
+{
+	list_add_tail(&wq->task_list, &wqh->task_list);
+}
+
 #endif	/* _LINUX_WAIT_H_ */
