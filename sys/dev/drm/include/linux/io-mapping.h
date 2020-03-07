@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,8 @@
 #include <linux/bug.h>
 #include <linux/io.h>
 #include <asm/page.h>
+
+#include <asm/iomap.h>
 
 struct io_mapping {
 	resource_size_t base;
@@ -91,6 +93,25 @@ static inline void
 io_mapping_unmap_atomic(void *vaddr)
 {
 	iounmap(vaddr);
+}
+
+static inline struct io_mapping *
+io_mapping_init_wc(struct io_mapping *iomap,
+		   resource_size_t base,
+		   unsigned long size)
+{
+	iomap->base = base;
+	iomap->size = size;
+	iomap->vaddr = ioremap_wc(base, size);
+	iomap->prot = pgprot_writecombine(PAGE_KERNEL_IO);
+
+	return iomap;
+}
+
+static inline void
+io_mapping_fini(struct io_mapping *mapping)
+{
+	iounmap(mapping->vaddr);
 }
 
 #endif	/* _LINUX_IOMAPPING_H_ */

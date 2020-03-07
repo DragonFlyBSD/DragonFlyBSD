@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,35 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _ASM_PGTABLE_TYPES_H_
-#define _ASM_PGTABLE_TYPES_H_
+#ifndef _ASM_IOMAP_H_
+#define _ASM_IOMAP_H_
 
-#include <cpu/pmap.h>
+#include <linux/fs.h>
+#include <linux/mm.h>
+#include <linux/uaccess.h>
+#include <asm/cacheflush.h>
+#include <asm/pgtable.h>
 
-#define _PAGE_PRESENT	X86_PG_V
-#define _PAGE_RW	X86_PG_RW
-#define _PAGE_PWT	X86_PG_NC_PWT
-#define _PAGE_PCD	X86_PG_NC_PCD
-#define _PAGE_ACCESSED	X86_PG_A
-#define _PAGE_DIRTY	X86_PG_M
-#define _PAGE_PAT	X86_PG_PTE_PAT
-#define _PAGE_GLOBAL	X86_PG_G
-#define _PAGE_NX	X86_PG_NX
-
-#define _PAGE_CACHE_WC		_PAGE_PWT
-#define _PAGE_CACHE_UC_MINUS	_PAGE_PCD
-
-#define __PAGE_KERNEL_EXEC						\
-	(_PAGE_PRESENT | _PAGE_RW | _PAGE_DIRTY | _PAGE_ACCESSED | _PAGE_GLOBAL)
-#define __PAGE_KERNEL	(__PAGE_KERNEL_EXEC | _PAGE_NX)
-
-#define PAGE_KERNEL	__PAGE_KERNEL
-#define PAGE_KERNEL_IO	__PAGE_KERNEL
-
-static inline pgprot_t
-pgprot_writecombine(pgprot_t prot)
-{
-	return (prot | VM_MEMATTR_WRITE_COMBINING);
-}
-
-#endif	/* _ASM_PGTABLE_TYPES_H_ */
+#endif	/* _ASM_IOMAP_H_ */
