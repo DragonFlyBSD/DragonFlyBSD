@@ -76,6 +76,7 @@ typedef void * (*path_enum_proc) (const char *path, size_t len, void *arg);
 /*
  * Function declarations.
  */
+static int __getstatictlsextra(void);
 static const char *_getenv_ld(const char *id);
 static void die(void) __dead2;
 static void digest_dynamic1(Obj_Entry *, int, const Elf_Dyn **,
@@ -617,7 +618,22 @@ resident_skip1:
 	allocate_tls_offset(entry->obj);
     }
 
-    tls_static_space = tls_last_offset + RTLD_STATIC_TLS_EXTRA;
+    /*
+     * Calculate the size of the TLS static segment.  This is allocated
+     * for every thread.  Generally make it page-aligned for efficiency,
+     * but take into account the fact that the actual allocation also
+     * includes room for the struct tls_tcb header.
+     */
+    {
+	ssize_t space;
+	ssize_t extra;
+
+	extra = __getstatictlsextra();
+	space = tls_last_offset + extra + sizeof(struct tls_tcb);
+	space = (space + PAGE_SIZE - 1) & ~((ssize_t)PAGE_SIZE - 1);
+
+	tls_static_space = (size_t)space - sizeof(struct tls_tcb);
+    }
 
     /*
      * Do not try to allocate the TLS here, let libc do it itself.
@@ -5012,6 +5028,31 @@ __getosreldate(void)
 	return (osreldate);
 }
 #endif
+
+/*
+ * Ask the kernel for the extra tls space to allocate after calculating
+ * base tls requirements in rtld-elf.  5.9 or later.
+ */
+static int
+__getstatictlsextra(void)
+{
+	size_t len;
+	int oid[2];
+	int error;
+	int tls_extra;
+
+	oid[0] = CTL_KERN;
+	oid[1] = KERN_STATIC_TLS_EXTRA;
+	len = sizeof(tls_extra);
+	error = sysctl(oid, 2, &tls_extra, &len, NULL, 0);
+	if (error || len != sizeof(tls_extra))
+		tls_extra = RTLD_STATIC_TLS_EXTRA_DEFAULT;
+	if (tls_extra < RTLD_STATIC_TLS_EXTRA_MIN)
+		tls_extra = RTLD_STATIC_TLS_EXTRA_MIN;
+	if (tls_extra > RTLD_STATIC_TLS_EXTRA_MAX)
+		tls_extra = RTLD_STATIC_TLS_EXTRA_MAX;
+	return tls_extra;
+}
 
 /*
  * No unresolved symbols for rtld.
