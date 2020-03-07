@@ -65,10 +65,18 @@ struct tls_dtv {
 	void *dtv_offset[__ARRAY_ZERO];
 };
 
+/*
+ * NOTE: RTLD_STATIC_TLS_EXTRA_DEFAULT is set as the kernel's kern.tls_extra
+ *	 default, generally made large enough to accomodate modern libraries
+ *	 that desire to use static TLS sections.  Make it roughly 2048 bytes
+ *	 smaller than a multiple of an aligned page for allocation efficiency.
+ */
 #define	RTLD_TCB_HAS_SELF_POINTER
 #define	RTLD_STATIC_TLS_ALIGN           16
 #define	RTLD_STATIC_TLS_ALIGN_MASK      (RTLD_STATIC_TLS_ALIGN - 1)
-#define	RTLD_STATIC_TLS_EXTRA		1280
+#define RTLD_STATIC_TLS_EXTRA_MIN	2048
+#define RTLD_STATIC_TLS_EXTRA_MAX	(1*1024*1024*1024)
+#define RTLD_STATIC_TLS_EXTRA_DEFAULT	6144	/* sysctl kern.tls_extra */
 #define RTLD_STATIC_TLS_VARIANT_II
 
 /* Get the current TCB. */

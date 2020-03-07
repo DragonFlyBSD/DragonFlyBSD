@@ -545,7 +545,8 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	KERN_LOGSIGEXIT		34	/* int: do we log sigexit procs? */
 #define	KERN_IOV_MAX		35	/* int: value of UIO_MAXIOV */
 #define KERN_MAXPOSIXLOCKSPERUID 36	/* int: max POSIX locks per uid */
-#define KERN_MAXID		37      /* number of valid kern ids */
+#define KERN_STATIC_TLS_EXTRA	37	/* int: extra tls space for rtld */
+#define KERN_MAXID		38      /* number of valid kern ids */
 
 #define CTL_KERN_NAMES { \
 	{ 0, 0 }, \

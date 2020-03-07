@@ -44,6 +44,7 @@
 #include <sys/lockf.h>
 #include <sys/jail.h>
 #include <sys/unistd.h>
+#include <machine/tls.h>
 #include <machine/smp.h>
 
 SYSCTL_NODE(, 0,	  sysctl, CTLFLAG_RW, 0,
@@ -93,6 +94,10 @@ SYSCTL_STRING(_kern, KERN_OSTYPE, ostype, CTLFLAG_RD | CTLFLAG_NOLOCK,
 
 SYSCTL_INT(_kern, KERN_OSRELDATE, osreldate, CTLFLAG_RD,
     &osreldate, 0, "Operating system release date");
+
+static int tls_extra = RTLD_STATIC_TLS_EXTRA_DEFAULT;
+SYSCTL_INT(_kern, KERN_STATIC_TLS_EXTRA, tls_extra, CTLFLAG_RW | CTLFLAG_NOLOCK,
+    &tls_extra, 0, "Operating system release date");
 
 SYSCTL_INT(_kern, KERN_MAXPROC, maxproc, CTLFLAG_RD, 
     &maxproc, 0, "Maximum number of processes");
