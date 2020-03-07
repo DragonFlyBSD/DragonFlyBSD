@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005,2008 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2005,2008,2020 The DragonFly Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -68,7 +68,7 @@ struct tls_dtv {
 #define	RTLD_TCB_HAS_SELF_POINTER
 #define	RTLD_STATIC_TLS_ALIGN           16
 #define	RTLD_STATIC_TLS_ALIGN_MASK      (RTLD_STATIC_TLS_ALIGN - 1)
-#define	RTLD_STATIC_TLS_EXTRA		1280
+#define	RTLD_STATIC_TLS_EXTRA		6144
 #define RTLD_STATIC_TLS_VARIANT_II
 
 /* Get the current TCB. */
