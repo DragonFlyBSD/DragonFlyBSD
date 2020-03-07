@@ -200,6 +200,18 @@ atomic_set_release(atomic_t *v, int i)
 	atomic_store_rel_int(&v->counter, i);
 }
 
+/* Returns the old value of v->counter */
+static inline int
+atomic_fetch_xor(int i, atomic_t *v)
+{
+	int val = READ_ONCE(v->counter);
+
+	while (atomic_cmpxchg_int(&v->counter, val, val ^ i) == 0) {
+	}
+
+	return val;
+}
+
 #include <asm-generic/atomic-long.h>
 
 #endif	/* _LINUX_ATOMIC_H_ */
