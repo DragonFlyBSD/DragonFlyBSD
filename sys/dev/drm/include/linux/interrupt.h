@@ -107,4 +107,7 @@ int request_irq(unsigned int irq, irq_handler_t handler,
 
 void free_irq(unsigned int irq, void *dev_id);
 
+void disable_irq(unsigned int irq);
+void enable_irq(unsigned int irq);
+
 #endif	/* _LINUX_INTERRUPT_H_ */

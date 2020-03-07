@@ -131,3 +131,43 @@ free_irq(unsigned int irq, void *dev_id)
 	lockmgr(&irqdata_lock, LK_RELEASE);
 	kfree(irq_entry);
 }
+
+void
+disable_irq(unsigned int irq)
+{
+	struct irq_data *irq_entry;
+	struct drm_device *ddev;
+	device_t bsddev;
+
+	SLIST_FOREACH(irq_entry, &irq_list, id_irq_entries) {
+		if (irq_entry->irq == irq)
+			break;
+	}
+
+	kprintf("disabling irq %d\n", irq);
+
+	ddev = irq_entry->dev_id;
+	bsddev = ddev->dev->bsddev;
+	bus_teardown_intr(bsddev, irq_entry->resource, irq_entry->cookiep);
+}
+
+void
+enable_irq(unsigned int irq)
+{
+	struct irq_data *irq_entry;
+	struct drm_device *ddev;
+	device_t bsddev;
+
+	SLIST_FOREACH(irq_entry, &irq_list, id_irq_entries) {
+		if (irq_entry->irq == irq)
+			break;
+	}
+
+	kprintf("enabling irq %d\n", irq);
+
+	ddev = irq_entry->dev_id;
+	bsddev = ddev->dev->bsddev;
+	bus_setup_intr(bsddev, irq_entry->resource, INTR_MPSAFE,
+	    linux_irq_handler, irq_entry, &irq_entry->cookiep,
+	    &irq_entry->irq_lock);
+}
