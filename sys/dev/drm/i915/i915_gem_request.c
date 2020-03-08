@@ -155,8 +155,8 @@ i915_gem_request_remove_from_client(struct drm_i915_gem_request *request)
 	request->file_priv = NULL;
 	lockmgr(&file_priv->mm.lock, LK_RELEASE);
 
-#if 0
 	put_pid(request->pid);
+#if 0
 	request->pid = NULL;
 #else
 	request->pid = 0;

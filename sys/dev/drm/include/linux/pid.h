@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,5 +33,11 @@ enum pid_type
 {
 	PIDTYPE_PID,
 };
+
+static inline void
+put_pid(pid_t  pid)
+{
+	/* Linux decrements a reference counter here */
+}
 
 #endif	/* _LINUX_PID_H_ */

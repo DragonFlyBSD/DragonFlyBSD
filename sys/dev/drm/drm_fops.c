@@ -461,9 +461,7 @@ int drm_release(struct inode *inode, struct file *filp)
 
 	WARN_ON(!list_empty(&file_priv->event_list));
 
-#if 0	/* XXX: put_pid() not implemented */
 	put_pid(file_priv->pid);
-#endif
 	kfree(file_priv);
 
 	/* ========================================================
