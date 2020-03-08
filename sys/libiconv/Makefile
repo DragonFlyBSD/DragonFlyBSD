@@ -4,7 +4,7 @@
 
 KMOD=	libiconv
 SRCS=	iconv.c iconv_ucs.c iconv_xlat.c iconv_xlat16.c
-SRCS+=	iconv_converter_if.c iconv_converter_if.h
+SRCS+=	iconv_converter_if.h
 
 EXPORT_SYMS=	iconv_add	\
 		iconv_open	\

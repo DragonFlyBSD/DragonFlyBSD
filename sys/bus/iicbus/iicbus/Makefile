@@ -2,7 +2,7 @@
 
 .PATH:		${.CURDIR}/..
 KMOD		= iicbus
-SRCS		= device_if.h bus_if.h iicbus_if.h iicbus_if.c \
+SRCS		= device_if.h bus_if.h iicbus_if.h \
 		  iiconf.c iicbus.c
 
 .include <bsd.kmod.mk>

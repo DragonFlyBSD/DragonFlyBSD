@@ -2,7 +2,7 @@
 
 .PATH:		${.CURDIR}/..
 KMOD		= smbus
-SRCS		= device_if.h bus_if.h smbus_if.h smbus_if.c \
+SRCS		= device_if.h bus_if.h smbus_if.h \
 		  smbconf.c smbus.c
 
 .include <bsd.kmod.mk>

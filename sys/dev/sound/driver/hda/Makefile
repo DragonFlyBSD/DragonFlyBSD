@@ -5,7 +5,7 @@
 
 KMOD=	snd_hda
 SRCS=	device_if.h bus_if.h pci_if.h channel_if.h mixer_if.h hdac_if.h
-SRCS+=	hdaa.c hdaa_patches.c hdac.c hdac_if.h hdac_if.c
+SRCS+=	hdaa.c hdaa_patches.c hdac.c hdac_if.h
 SRCS+=	hdacc.c
 SRCS+=	hda_acer_c720_patch.c
 
