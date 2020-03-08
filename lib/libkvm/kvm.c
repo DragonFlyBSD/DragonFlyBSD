@@ -36,7 +36,6 @@
 
 #include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/param.h>
-#include <sys/proc.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>

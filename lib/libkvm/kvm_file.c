@@ -36,7 +36,6 @@
 
 #include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/param.h>
-#include <sys/proc.h>
 #define _KERNEL
 #include <sys/file.h>
 #undef _KERNEL
