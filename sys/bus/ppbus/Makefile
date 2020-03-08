@@ -2,7 +2,7 @@
 
 .PATH:	${.CURDIR}/..
 KMOD=	ppbus
-SRCS=	bus_if.h device_if.h ppbus_if.h \
+SRCS=	bus_if.h device_if.h ppbus_if.h ppbus_if.c \
 	opt_ppb_1284.h \
 	ppb_1284.c ppb_base.c ppb_msq.c ppbconf.c
 
