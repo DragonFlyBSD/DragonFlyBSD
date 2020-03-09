@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,60 +45,13 @@ struct tasklet_struct {
 	unsigned long state;
 	void (*func)(unsigned long);
 	unsigned long data;
-	struct lock lock;
 };
 
 enum {
 	TASKLET_STATE_SCHED,
-	TASKLET_STATE_RUN
+	TASKLET_STATE_RUN,
+	TASKLET_IS_DYING
 };
-
-/*
- * TODO: verify these points:
- * - tasklets that have the same type cannot be run on multiple processors at the same time
- * - tasklets always run on the processor from which they were originally
- *   submitted
- * - when a tasklet is scheduled, its state is set to TASKLET_STATE_SCHED, and the tasklet
- *   added to a queue
- * - during the execution of its function, the tasklet state is set to TASKLET_STATE_RUN
- *   and the TASKLET_STATE_SCHED state is removed
- */
-
-/* XXX scheduling and execution should be handled separately */
-static inline void
-tasklet_schedule(struct tasklet_struct *t)
-{
-	set_bit(TASKLET_STATE_SCHED, &t->state);
-
-	lockmgr(&t->lock, LK_EXCLUSIVE);
-	clear_bit(TASKLET_STATE_SCHED, &t->state);
-
-	set_bit(TASKLET_STATE_RUN, &t->state);
-	if (t->func)
-		t->func(t->data);
-	clear_bit(TASKLET_STATE_RUN, &t->state);
-
-	lockmgr(&t->lock, LK_RELEASE);
-}
-
-/* This function ensures that the tasklet is not scheduled to run again */
-/* XXX this doesn't kill anything */
-static inline void
-tasklet_kill(struct tasklet_struct *t)
-{
-	lockmgr(&t->lock, LK_EXCLUSIVE);
-	clear_bit(TASKLET_STATE_SCHED, &t->state);
-	lockmgr(&t->lock, LK_RELEASE);
-}
-
-static inline void
-tasklet_init(struct tasklet_struct *t, void (*func)(unsigned long), unsigned long data)
-{
-	lockinit(&t->lock, "ltasklet", 0, LK_CANRECURSE);
-	t->state = 0;
-	t->func = func;
-	t->data = data;
-}
 
 typedef irqreturn_t (*irq_handler_t)(int, void *);
 
@@ -109,5 +62,11 @@ void free_irq(unsigned int irq, void *dev_id);
 
 void disable_irq(unsigned int irq);
 void enable_irq(unsigned int irq);
+
+void tasklet_init(struct tasklet_struct *t,
+		  void (*func)(unsigned long), unsigned long data);
+void tasklet_schedule(struct tasklet_struct *t);
+void tasklet_hi_schedule(struct tasklet_struct *t);
+void tasklet_kill(struct tasklet_struct *t);
 
 #endif	/* _LINUX_INTERRUPT_H_ */

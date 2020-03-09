@@ -55,7 +55,6 @@ SRCS	= \
 	drm_sysfs.c \
 	drm_vm.c \
 	drm_vma_manager.c \
-	linux_sched.c \
 	linux_async.c \
 	linux_compat.c \
 	linux_completion.c \
@@ -74,8 +73,10 @@ SRCS	= \
 	linux_list_sort.c \
 	linux_reservation.c \
 	linux_scatterlist.c \
+	linux_sched.c \
 	linux_shmem.c \
 	linux_sort.c \
+	linux_tasklet.c \
 	linux_vmalloc.c \
 	linux_wait.c \
 	linux_workqueue.c \
