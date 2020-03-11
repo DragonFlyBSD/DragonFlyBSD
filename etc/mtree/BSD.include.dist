@@ -174,16 +174,16 @@
         ..
     ..
     compat
-	asm
-	..
+        asm
+        ..
         linux
         ..
-	uapi
-	    asm-generic
-	    ..
-	    linux
-	    ..
-	..
+        uapi
+            asm-generic
+            ..
+            linux
+            ..
+        ..
     ..
     cpu
     ..
