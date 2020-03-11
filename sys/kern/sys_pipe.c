@@ -646,8 +646,10 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	/*
 	 * Uptime last access time
 	 */
-	if (error == 0 && nread)
+	if (error == 0 && nread && rpb->lticks != ticks) {
 		vfs_timestamp(&rpb->atime);
+		rpb->lticks = ticks;
+	}
 
 	/*
 	 * If we drained the FIFO more then half way then handle
@@ -951,8 +953,10 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		error = 0;
 	}
 
-	if (error == 0)
+	if (error == 0 && wpb->lticks != ticks) {
 		vfs_timestamp(&wpb->mtime);
+		wpb->lticks = ticks;
+	}
 
 	/*
 	 * We have something to offer,

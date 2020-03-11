@@ -258,7 +258,7 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	node->parent = parent;
 
 	/* Initialize *time members */
-	nanotime(&node->atime);
+	vfs_timestamp(&node->atime);
 	node->mtime = node->ctime = node->atime;
 
 	/*
@@ -2120,7 +2120,7 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 	}
 
 	node = devfs_allocp(Ndev, name, parent, parent->mp, dev);
-	nanotime(&parent->mtime);
+	vfs_timestamp(&parent->mtime);
 
 	/*
 	 * Ugly unix98 pty magic, to hide pty master (ptm) devices and their
@@ -2256,7 +2256,7 @@ devfs_destroy_node(struct devfs_node *root, char *target)
 	node = devfs_find_device_node_by_name(parent, name);
 
 	if (node) {
-		nanotime(&node->parent->mtime);
+		vfs_timestamp(&node->parent->mtime);
 		devfs_gc(node);
 	}
 

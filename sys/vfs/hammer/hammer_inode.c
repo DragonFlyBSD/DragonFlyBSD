@@ -1699,7 +1699,7 @@ hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
 int
 hammer_update_atime_quick(hammer_inode_t ip)
 {
-	struct timeval tv;
+	struct timespec ts;
 	int res = -1;
 
 	if ((ip->flags & HAMMER_INODE_RO) ||
@@ -1714,11 +1714,12 @@ hammer_update_atime_quick(hammer_inode_t ip)
 		 * is only safe if all we need to do is update
 		 * ino_data.atime.
 		 */
-		getmicrotime(&tv);
+		vfs_timestamp(&ts);
 		hammer_lock_ex(&ip->lock);
 		if (ip->flags & HAMMER_INODE_ATIME) {
 			ip->ino_data.atime =
-			    (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
+			    (unsigned long)ts.tv_sec * 1000000ULL +
+			    ts.tv_nsec / 1000;
 			res = 0;
 		}
 		hammer_unlock(&ip->lock);

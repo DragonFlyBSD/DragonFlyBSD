@@ -365,10 +365,10 @@ hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase)
 void
 hammer2_update_time(uint64_t *timep)
 {
-	struct timeval tv;
+	struct timespec ts;
 
-	getmicrotime(&tv);
-	*timep = (unsigned long)tv.tv_sec * 1000000 + tv.tv_usec;
+	vfs_timestamp(&ts);
+	*timep = (unsigned long)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }
 
 void

@@ -71,6 +71,7 @@ struct pipebuf {
 	struct kqinfo	kq;		/* for compat with select/poll/kq */
 	struct sigio	*sigio;		/* information for async I/O */
 	uint32_t	state;		/* pipe status info */
+	int		lticks;		/* vfs_timstamp optimization */
 } __cachealign;
 
 /*

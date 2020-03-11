@@ -360,7 +360,7 @@ devfs_vop_readdir(struct vop_readdir_args *ap)
 		cookie_index = 0;
 	}
 
-	nanotime(&dnode->atime);
+	vfs_timestamp(&dnode->atime);
 
 	if (saveoff == 0) {
 		r = vop_write_dirent(&error, ap->a_uio, dnode->d_dir.d_ino,
@@ -664,7 +664,7 @@ devfs_vop_setattr(struct vop_setattr_args *ap)
 
 out:
 	node_sync_dev_set(node);
-	nanotime(&node->ctime);
+	vfs_timestamp(&node->ctime);
 
 	return error;
 }
@@ -1035,7 +1035,7 @@ devfs_spec_open(struct vop_open_args *ap)
 	vop_stdopen(ap);
 #if 0
 	if (node)
-		nanotime(&node->atime);
+		vfs_timestamp(&node->atime);
 #endif
 	/*
 	 * If we replaced the vp the vop_stdopen() call will have loaded
@@ -1274,7 +1274,7 @@ devfs_fo_read(struct file *fp, struct uio *uio,
 
 	release_dev(dev);
 	if (node)
-		nanotime(&node->atime);
+		vfs_timestamp(&node->atime);
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
@@ -1347,8 +1347,8 @@ devfs_fo_write(struct file *fp, struct uio *uio,
 
 	release_dev(dev);
 	if (node) {
-		nanotime(&node->atime);
-		nanotime(&node->mtime);
+		vfs_timestamp(&node->atime);
+		vfs_timestamp(&node->mtime);
 	}
 
 	if ((flags & O_FOFFSET) == 0)
@@ -1550,8 +1550,8 @@ devfs_fo_ioctl(struct file *fp, u_long com, caddr_t data,
 
 #if 0
 	if (node) {
-		nanotime(&node->atime);
-		nanotime(&node->mtime);
+		vfs_timestamp(&node->atime);
+		vfs_timestamp(&node->mtime);
 	}
 #endif
 	if (com == TIOCSCTTY) {
@@ -1637,7 +1637,7 @@ devfs_spec_read(struct vop_read_args *ap)
 	vn_lock(vp, LK_SHARED | LK_RETRY);
 
 	if (node)
-		nanotime(&node->atime);
+		vfs_timestamp(&node->atime);
 
 	return (error);
 }
@@ -1672,8 +1672,8 @@ devfs_spec_write(struct vop_write_args *ap)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	if (node) {
-		nanotime(&node->atime);
-		nanotime(&node->mtime);
+		vfs_timestamp(&node->atime);
+		vfs_timestamp(&node->mtime);
 	}
 
 	return (error);
@@ -1700,8 +1700,8 @@ devfs_spec_ioctl(struct vop_ioctl_args *ap)
 	node = DEVFS_NODE(vp);
 
 	if (node) {
-		nanotime(&node->atime);
-		nanotime(&node->mtime);
+		vfs_timestamp(&node->atime);
+		vfs_timestamp(&node->mtime);
 	}
 #endif
 
@@ -1728,7 +1728,7 @@ devfs_spec_kqfilter(struct vop_kqfilter_args *ap)
 	node = DEVFS_NODE(vp);
 
 	if (node)
-		nanotime(&node->atime);
+		vfs_timestamp(&node->atime);
 #endif
 
 	return (dev_dkqfilter(dev, ap->a_kn, NULL));
@@ -1837,8 +1837,8 @@ devfs_spec_strategy(struct vop_strategy_args *ap)
 	dev_dstrategy(vp->v_rdev, &nbp->b_bio1);
 
 	if (DEVFS_NODE(vp)) {
-		nanotime(&DEVFS_NODE(vp)->atime);
-		nanotime(&DEVFS_NODE(vp)->mtime);
+		vfs_timestamp(&DEVFS_NODE(vp)->atime);
+		vfs_timestamp(&DEVFS_NODE(vp)->mtime);
 	}
 
 	return (0);
@@ -2192,7 +2192,7 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 	 */
 	relpbuf(bp, NULL);
 	if (DEVFS_NODE(ap->a_vp))
-		nanotime(&DEVFS_NODE(ap->a_vp)->mtime);
+		vfs_timestamp(&DEVFS_NODE(ap->a_vp)->mtime);
 	return VM_PAGER_OK;
 }
 

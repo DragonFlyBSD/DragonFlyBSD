@@ -206,7 +206,8 @@ vfs_subr_init(void)
  * Note that utimes() precision is microseconds because it takes a timeval
  * structure, so its probably best to default to USEC and not NSEC.
  */
-enum { TSP_SEC, TSP_HZ, TSP_USEC, TSP_NSEC };
+enum { TSP_SEC, TSP_HZ, TSP_USEC, TSP_NSEC,
+       TSP_USEC_PRECISE, TSP_NSEC_PRECISE };
 
 __read_mostly static int timestamp_precision = TSP_USEC;
 SYSCTL_INT(_vfs, OID_AUTO, timestamp_precision, CTLFLAG_RW,
@@ -220,22 +221,28 @@ SYSCTL_INT(_vfs, OID_AUTO, timestamp_precision, CTLFLAG_RW,
 void
 vfs_timestamp(struct timespec *tsp)
 {
-	struct timeval tv;
-
 	switch (timestamp_precision) {
-	case TSP_SEC:
-		tsp->tv_sec = time_second;
+	case TSP_SEC:		/* seconds precision */
+		getnanotime(tsp);
 		tsp->tv_nsec = 0;
 		break;
-	case TSP_HZ:
+	default:
+	case TSP_HZ:		/* ticks precision (limit to microseconds) */
+		getnanotime(tsp);
+		tsp->tv_nsec -= tsp->tv_nsec % 1000;
+		break;
+	case TSP_USEC:		/* microseconds (ticks precision) */
+		getnanotime(tsp);
+		tsp->tv_nsec -= tsp->tv_nsec % 1000;
+		break;
+	case TSP_NSEC:		/* nanoseconds (ticks precision) */
 		getnanotime(tsp);
 		break;
-	case TSP_USEC:
-		microtime(&tv);
-		TIMEVAL_TO_TIMESPEC(&tv, tsp);
+	case TSP_USEC_PRECISE:	/* microseconds (high preceision) */
+		nanotime(tsp);
+		tsp->tv_nsec -= tsp->tv_nsec % 1000;
 		break;
-	case TSP_NSEC:
-	default:
+	case TSP_NSEC_PRECISE:	/* nanoseconds (high precision) */
 		nanotime(tsp);
 		break;
 	}

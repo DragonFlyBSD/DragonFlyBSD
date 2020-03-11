@@ -561,7 +561,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 	 * p_stat structure is not addressible if u. gets
 	 * swapped out for that process.
 	 */
-	nanotime(&vap->va_ctime);
+	vfs_timestamp(&vap->va_ctime);
 	vap->va_atime = vap->va_mtime = vap->va_ctime;
 
 	/*

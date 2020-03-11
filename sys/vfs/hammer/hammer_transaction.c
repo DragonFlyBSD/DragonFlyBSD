@@ -45,7 +45,7 @@ static uint32_t ocp_allocbit(hammer_objid_cache_t ocp, uint32_t n);
 void
 hammer_start_transaction(hammer_transaction_t trans, hammer_mount_t hmp)
 {
-	struct timeval tv;
+	struct timespec ts;
 	int error;
 
 	trans->type = HAMMER_TRANS_STD;
@@ -56,9 +56,10 @@ hammer_start_transaction(hammer_transaction_t trans, hammer_mount_t hmp)
 	trans->sync_lock_refs = 0;
 	trans->flags = 0;
 
-	getmicrotime(&tv);
-	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
-	trans->time32 = (uint32_t)tv.tv_sec;
+	vfs_timestamp(&ts);
+	trans->time = (unsigned long)ts.tv_sec * 1000000ULL +
+		      ts.tv_nsec / 1000;
+	trans->time32 = (uint32_t)ts.tv_sec;
 }
 
 /*
@@ -69,7 +70,7 @@ hammer_start_transaction(hammer_transaction_t trans, hammer_mount_t hmp)
 void
 hammer_simple_transaction(hammer_transaction_t trans, hammer_mount_t hmp)
 {
-	struct timeval tv;
+	struct timespec ts;
 	int error;
 
 	trans->type = HAMMER_TRANS_RO;
@@ -80,9 +81,10 @@ hammer_simple_transaction(hammer_transaction_t trans, hammer_mount_t hmp)
 	trans->sync_lock_refs = 0;
 	trans->flags = 0;
 
-	getmicrotime(&tv);
-	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
-	trans->time32 = (uint32_t)tv.tv_sec;
+	vfs_timestamp(&ts);
+	trans->time = (unsigned long)ts.tv_sec * 1000000ULL +
+		      ts.tv_nsec / 1000;
+	trans->time32 = (uint32_t)ts.tv_sec;
 }
 
 /*
@@ -96,7 +98,7 @@ hammer_simple_transaction(hammer_transaction_t trans, hammer_mount_t hmp)
 void
 hammer_start_transaction_fls(hammer_transaction_t trans, hammer_mount_t hmp)
 {
-	struct timeval tv;
+	struct timespec ts;
 	int error;
 
 	bzero(trans, sizeof(*trans));
@@ -109,9 +111,10 @@ hammer_start_transaction_fls(hammer_transaction_t trans, hammer_mount_t hmp)
 	trans->sync_lock_refs = 1;
 	trans->flags = 0;
 
-	getmicrotime(&tv);
-	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
-	trans->time32 = (uint32_t)tv.tv_sec;
+	vfs_timestamp(&ts);
+	trans->time = (unsigned long)ts.tv_sec * 1000000ULL +
+		      ts.tv_nsec / 1000;
+	trans->time32 = (uint32_t)ts.tv_sec;
 }
 
 /*
