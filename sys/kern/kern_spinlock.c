@@ -111,6 +111,11 @@ SYSCTL_LONG(_debug, OID_AUTO, spin_window_shift, CTLFLAG_RW,
     &spin_window_shift, 0,
     "Spinlock TSC windowing");
 
+__read_frequently int indefinite_uses_rdtsc = 1;
+SYSCTL_INT(_debug, OID_AUTO, indefinite_uses_rdtsc, CTLFLAG_RW,
+    &indefinite_uses_rdtsc, 0,
+    "Indefinite code uses RDTSC");
+
 /*
  * We contested due to another exclusive lock holder.  We lose.
  *
@@ -181,6 +186,8 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 	/* ++value; value not used after this */
 	info.type = 0;		/* avoid improper gcc warning */
 	info.ident = NULL;	/* avoid improper gcc warning */
+	info.secs = 0;		/* avoid improper gcc warning */
+	info.base = 0;		/* avoid improper gcc warning */
 	expbackoff = 0;
 
 	/*
@@ -206,9 +213,11 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 		expbackoff = (expbackoff + 1) * 3 / 2;
 		if (expbackoff == 6)		/* 1, 3, 6, 10, ... */
 			indefinite_init(&info, ident, 0, 'S');
-		if ((rdtsc() >> spin_window_shift) % ncpus != mycpuid)  {
-			for (loop = expbackoff; loop; --loop)
-				cpu_pause();
+		if (indefinite_uses_rdtsc) {
+			if ((rdtsc() >> spin_window_shift) % ncpus != mycpuid)  {
+				for (loop = expbackoff; loop; --loop)
+					cpu_pause();
+			}
 		}
 		/*cpu_lfence();*/
 
@@ -306,7 +315,8 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 		/*
 		 * Ignore the EXCLWAIT bits if we are inside our window.
 		 */
-		if ((ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0 &&
+		if (indefinite_uses_rdtsc &&
+		    (ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0 &&
 		    (rdtsc() >> spin_window_shift) % ncpus == mycpuid)  {
 			if (atomic_fcmpset_int(&spin->lock, &ovalue,
 					       ovalue | SPINLOCK_SHARED | 1)) {
@@ -351,6 +361,18 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 	}
 	indefinite_done(&info);
 }
+
+/*
+ * Automatically avoid use of rdtsc when running in a VM
+ */
+static void
+spinlock_sysinit(void *dummy __unused)
+{
+	if (vmm_guest)
+		indefinite_uses_rdtsc = 0;
+}
+SYSINIT(spinsysinit, SI_BOOT2_PROC0, SI_ORDER_FIRST, spinlock_sysinit, NULL);
+
 
 /*
  * If INVARIANTS is enabled various spinlock timing tests can be run

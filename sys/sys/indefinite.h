@@ -42,6 +42,8 @@
 #endif
 
 extern int lock_test_mode;
+extern int indefinite_uses_rdtsc;
+
 
 struct indefinite_info {
 	tsc_uclock_t	base;

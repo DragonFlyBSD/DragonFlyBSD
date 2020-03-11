@@ -77,6 +77,7 @@ indefinite_check(indefinite_info_t *info)
 {
 	tsc_uclock_t delta;
 	const char *str;
+	int doreport;
 
 #ifdef _KERNEL_VIRTUAL
 	vkernel_yield();
@@ -86,7 +87,10 @@ indefinite_check(indefinite_info_t *info)
 	if (info->type == 0)
 		return FALSE;
 	if (info->count == INDEF_INFO_START) {	/* start recording time */
-		info->base = rdtsc();
+		if (indefinite_uses_rdtsc)
+			info->base = rdtsc();
+		else
+			info->base = ticks;
 		if (info->reported == 0 && info->ident) {
 			mycpu->gd_cnt.v_lock_name[0] = info->type;
 			strncpy(mycpu->gd_cnt.v_lock_name + 1, info->ident,
@@ -97,7 +101,10 @@ indefinite_check(indefinite_info_t *info)
 	if ((++info->count & 127) != 127)
 		return FALSE;
 	info->count = 128;
-	delta = rdtsc() - info->base;
+	if (indefinite_uses_rdtsc)
+		delta = rdtsc() - info->base;
+	else
+		delta = ticks - info->base;
 
 #if defined(INVARIANTS)
 	if (lock_test_mode > 0) {
@@ -110,11 +117,23 @@ indefinite_check(indefinite_info_t *info)
 	 * Ignore minor one-second interval error accumulation in
 	 * favor of ensuring that info->base is fully synchronized.
 	 */
-	if (delta >= tsc_frequency) {
-		info->secs += delta / tsc_frequency;
-		info->base += delta;
-		mycpu->gd_cnt.v_lock_colls += delta / tsc_frequency * 1000000U;
-
+	doreport = 0;
+	if (indefinite_uses_rdtsc) {
+		if (delta >= tsc_frequency) {
+			info->secs += delta / tsc_frequency;
+			info->base += delta;
+			mycpu->gd_cnt.v_lock_colls += 1000000U;
+			doreport = 1;
+		}
+	} else {
+		if (delta >= hz) {
+			info->secs += delta / hz;
+			info->base += delta;
+			mycpu->gd_cnt.v_lock_colls += 1000000U;
+			doreport = 1;
+		}
+	}
+	if (doreport) {
 		switch(info->type) {
 		case 's':
 			str = "spin_lock_sh";
@@ -178,9 +197,15 @@ indefinite_done(indefinite_info_t *info)
 
 	if (info->type && info->count > INDEF_INFO_START) {
 		gd = mycpu;
-		delta = rdtsc() - info->base;
-		delta = delta * 1000000U / tsc_frequency;
-		gd->gd_cnt.v_lock_colls += delta;
+		if (indefinite_uses_rdtsc) {
+			delta = rdtsc() - info->base;
+			delta = delta * 1000000U / tsc_frequency;
+			gd->gd_cnt.v_lock_colls += delta;
+		} else {
+			delta = ticks - info->base;
+			delta = delta * 1000000U / hz;
+			gd->gd_cnt.v_lock_colls += delta;
+		}
 	}
 	info->type = 0;
 }
