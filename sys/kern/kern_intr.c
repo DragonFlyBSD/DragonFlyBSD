@@ -345,10 +345,12 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	info->i_mplock_required = 1;
 	kprintf("interrupt uses mplock: %s\n", name);
     }
-    if (intr_flags & INTR_CLOCK)
+    if (intr_flags & INTR_CLOCK) {
+	atomic_set_int(&info->i_thread->td_flags, TDF_CLKTHREAD);
 	++info->i_fast;
-    else
+    } else {
 	++info->i_slow;
+    }
 
     info->i_flags |= (intr_flags & INTR_EXCL);
     if (info->i_slow + info->i_fast == 1 && (intr_flags & INTR_HIFREQ)) {

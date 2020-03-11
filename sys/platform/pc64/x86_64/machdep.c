@@ -163,7 +163,9 @@ int64_t tsc_offsets[MAXCPU];
 cpumask_t smp_idleinvl_mask;
 cpumask_t smp_idleinvl_reqs;
 
-static int cpu_mwait_halt_global; /* MWAIT hint (EAX) or CPU_MWAIT_HINT_ */
+ /* MWAIT hint (EAX) or CPU_MWAIT_HINT_ */
+__read_mostly static int cpu_mwait_halt_global;
+__read_mostly static int clock_debug1;
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
@@ -172,6 +174,8 @@ SYSCTL_INT(_debug, OID_AUTO, swtch_optim_stats,
 SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
+SYSCTL_INT(_debug, OID_AUTO, clock_debug1,
+	CTLFLAG_RW, &clock_debug1, 0, "");
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
 	CTLFLAG_RD, &cpu_mwait_halt_global, 0, "");
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_spin,
@@ -3518,5 +3522,39 @@ cpu_implement_smap(void)
 		(*scan)[0] = 0x0F;
 		(*scan)[1] = 0x01;
 		(*scan)[2] = 0xCA;
+	}
+}
+
+/*
+ * From a hard interrupt
+ */
+int
+cpu_interrupt_running(struct thread *td)
+{
+	struct mdglobaldata *gd = mdcpu;
+
+	if (clock_debug1 > 0) {
+		--clock_debug1;
+		kprintf("%d %016lx %016lx %016lx\n",
+			((td->td_flags & TDF_INTTHREAD) != 0),
+			gd->gd_ipending[0],
+			gd->gd_ipending[1],
+			gd->gd_ipending[2]);
+		if (td->td_flags & TDF_CLKTHREAD) {
+			kprintf("CLKTD %s PREEMPT %s\n",
+				td->td_comm,
+				(td->td_preempted ?
+				 td->td_preempted->td_comm : ""));
+		} else {
+			kprintf("NORTD %s\n", td->td_comm);
+		}
+	}
+	if ((td->td_flags & TDF_INTTHREAD) ||
+	    gd->gd_ipending[0] ||
+	    gd->gd_ipending[1] ||
+	    gd->gd_ipending[2]) {
+		return 1;
+	} else {
+		return 0;
 	}
 }

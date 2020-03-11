@@ -214,3 +214,16 @@ cpu_unmask_all_signals(void)
 {
 	sigsetmask(0);
 }
+
+int
+cpu_interrupt_running(struct thread *td)
+{
+	struct mdglobaldata *gd = mdcpu;
+
+	if ((td->td_flags & TDF_INTTHREAD) ||
+	    gd->gd_fpending ||
+	    gd->gd_spending) {
+		return 1;
+	}
+	return 0;
+}

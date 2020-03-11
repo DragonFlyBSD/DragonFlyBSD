@@ -377,6 +377,7 @@ struct thread {
 #define TDF_FIXEDCPU		0x04000000	/* running cpu is fixed */
 #define TDF_USERMODE		0x08000000	/* in or entering user mode */
 #define TDF_NOFAULT		0x10000000	/* force onfault on fault */
+#define TDF_CLKTHREAD		0x20000000	/* detect INTTHREAD clock */
 
 #define TDF_MP_STOPREQ		0x00000001	/* suspend_kproc */
 #define TDF_MP_WAKEREQ		0x00000002	/* resume_kproc */

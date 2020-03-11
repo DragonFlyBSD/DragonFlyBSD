@@ -567,6 +567,7 @@ void	sleep_gdinit (struct globaldata *);
 thread_t cpu_heavy_switch (struct thread *);
 thread_t cpu_lwkt_switch (struct thread *);
 
+int	cpu_interrupt_running(struct thread *);
 void	cpu_lwp_exit (void) __dead2;
 void	cpu_thread_exit (void) __dead2;
 void	lwp_exit (int masterexit, void *waddr) __dead2;

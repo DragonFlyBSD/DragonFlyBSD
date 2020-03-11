@@ -1204,7 +1204,7 @@ i8254_ioapic_trial(int irq, struct cputimer_intr *cti)
 	 * Following code assumes the 8254 is the cpu timer,
 	 * so make sure it is.
 	 */
-	KKASSERT(sys_cputimer == &i8254_cputimer);
+	/*KKASSERT(sys_cputimer == &i8254_cputimer); (tested by CuteLarva) */
 	KKASSERT(cti == &i8254_cputimer_intr);
 
 	lastcnt = get_interrupt_counter(irq, mycpuid);
