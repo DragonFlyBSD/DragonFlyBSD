@@ -155,9 +155,12 @@ void i915_gem_context_free(struct kref *ctx_ref)
 		if (ce->ring)
 			intel_ring_free(ce->ring);
 
-		i915_gem_object_put(ce->state);
+		i915_vma_put(ce->state);
 	}
 
+#if 0
+	put_pid(ctx->pid);
+#endif
 	list_del(&ctx->link);
 
 	ida_simple_remove(&ctx->i915->context_hw_ida, ctx->hw_id);
@@ -191,7 +194,7 @@ i915_gem_alloc_context_obj(struct drm_device *dev, size_t size)
 	 * This is only applicable for Ivy Bridge devices since
 	 * later platforms don't have L3 control bits in the PTE.
 	 */
-	if (IS_IVYBRIDGE(dev)) {
+	if (IS_IVYBRIDGE(to_i915(dev))) {
 		ret = i915_gem_object_set_cache_level(obj, I915_CACHE_L3_LLC);
 		/* Failure shouldn't ever happen this early */
 		if (WARN_ON(ret)) {
@@ -281,13 +284,24 @@ __create_hw_context(struct drm_device *dev,
 	ctx->ggtt_alignment = get_context_alignment(dev_priv);
 
 	if (dev_priv->hw_context_size) {
-		struct drm_i915_gem_object *obj =
-				i915_gem_alloc_context_obj(dev, dev_priv->hw_context_size);
+		struct drm_i915_gem_object *obj;
+		struct i915_vma *vma;
+
+		obj = i915_gem_alloc_context_obj(dev,
+						 dev_priv->hw_context_size);
 		if (IS_ERR(obj)) {
 			ret = PTR_ERR(obj);
 			goto err_out;
 		}
-		ctx->engine[RCS].state = obj;
+
+		vma = i915_vma_create(obj, &dev_priv->ggtt.base, NULL);
+		if (IS_ERR(vma)) {
+			i915_gem_object_put(obj);
+			ret = PTR_ERR(vma);
+			goto err_out;
+		}
+
+		ctx->engine[RCS].state = vma;
 	}
 
 	/* Default context will never have a file_priv */
@@ -300,6 +314,13 @@ __create_hw_context(struct drm_device *dev,
 		ret = DEFAULT_CONTEXT_HANDLE;
 
 	ctx->file_priv = file_priv;
+	if (file_priv)
+#ifndef __DragonFly__
+		ctx->pid = get_task_pid(current, PIDTYPE_PID);
+#else
+		ctx->pid = DRM_CURRENTPID;
+#endif
+
 	ctx->user_handle = ret;
 	/* NB: Mark all slices as needing a remap so that when the context first
 	 * loads it will restore whatever remap state already exists. If there
@@ -399,26 +420,10 @@ static void i915_gem_context_unpin(struct i915_gem_context *ctx,
 		struct intel_context *ce = &ctx->engine[engine->id];
 
 		if (ce->state)
-			i915_gem_object_ggtt_unpin(ce->state);
+			i915_vma_unpin(ce->state);
 
 		i915_gem_context_put(ctx);
 	}
-}
-
-void i915_gem_context_reset(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = to_i915(dev);
-
-	lockdep_assert_held(&dev->struct_mutex);
-
-	if (i915.enable_execlists) {
-		struct i915_gem_context *ctx;
-
-		list_for_each_entry(ctx, &dev_priv->context_list, link)
-			intel_lr_context_reset(dev_priv, ctx);
-	}
-
-	i915_gem_context_lost(dev_priv);
 }
 
 int i915_gem_context_init(struct drm_device *dev)
@@ -475,10 +480,11 @@ int i915_gem_context_init(struct drm_device *dev)
 void i915_gem_context_lost(struct drm_i915_private *dev_priv)
 {
 	struct intel_engine_cs *engine;
+	enum intel_engine_id id;
 
 	lockdep_assert_held(&dev_priv->drm.struct_mutex);
 
-	for_each_engine(engine, dev_priv) {
+	for_each_engine(engine, dev_priv, id) {
 		if (engine->last_context) {
 			i915_gem_context_unpin(engine->last_context, engine);
 			engine->last_context = NULL;
@@ -493,13 +499,13 @@ void i915_gem_context_lost(struct drm_i915_private *dev_priv)
 			if (!i915_gem_context_is_default(ctx))
 				continue;
 
-			for_each_engine(engine, dev_priv)
+			for_each_engine(engine, dev_priv, id)
 				ctx->engine[engine->id].initialised = false;
 
 			ctx->remap_slice = ALL_L3_SLICES(dev_priv);
 		}
 
-		for_each_engine(engine, dev_priv) {
+		for_each_engine(engine, dev_priv, id) {
 			struct intel_context *kce =
 				&dev_priv->kernel_context->engine[engine->id];
 
@@ -564,11 +570,12 @@ mi_set_context(struct drm_i915_gem_request *req, u32 hw_flags)
 	struct drm_i915_private *dev_priv = req->i915;
 	struct intel_ring *ring = req->ring;
 	struct intel_engine_cs *engine = req->engine;
+	enum intel_engine_id id;
 	u32 flags = hw_flags | MI_MM_SPACE_GTT;
 	const int num_rings =
 		/* Use an extended w/a on ivb+ if signalling from other rings */
 		i915.semaphores ?
-		hweight32(INTEL_INFO(dev_priv)->ring_mask) - 1 :
+		INTEL_INFO(dev_priv)->num_rings - 1 :
 		0;
 	int len, ret;
 
@@ -606,7 +613,7 @@ mi_set_context(struct drm_i915_gem_request *req, u32 hw_flags)
 
 			intel_ring_emit(ring,
 					MI_LOAD_REGISTER_IMM(num_rings));
-			for_each_engine(signaller, dev_priv) {
+			for_each_engine(signaller, dev_priv, id) {
 				if (signaller == engine)
 					continue;
 
@@ -621,8 +628,7 @@ mi_set_context(struct drm_i915_gem_request *req, u32 hw_flags)
 	intel_ring_emit(ring, MI_NOOP);
 	intel_ring_emit(ring, MI_SET_CONTEXT);
 	intel_ring_emit(ring,
-			i915_gem_obj_ggtt_offset(req->ctx->engine[RCS].state) |
-			flags);
+			i915_ggtt_offset(req->ctx->engine[RCS].state) | flags);
 	/*
 	 * w/a: MI_SET_CONTEXT must always be followed by MI_NOOP
 	 * WaMiSetContext_Hang:snb,ivb,vlv
@@ -636,7 +642,7 @@ mi_set_context(struct drm_i915_gem_request *req, u32 hw_flags)
 
 			intel_ring_emit(ring,
 					MI_LOAD_REGISTER_IMM(num_rings));
-			for_each_engine(signaller, dev_priv) {
+			for_each_engine(signaller, dev_priv, id) {
 				if (signaller == engine)
 					continue;
 
@@ -651,7 +657,8 @@ mi_set_context(struct drm_i915_gem_request *req, u32 hw_flags)
 					MI_STORE_REGISTER_MEM |
 					MI_SRM_LRM_GLOBAL_GTT);
 			intel_ring_emit_reg(ring, last_reg);
-			intel_ring_emit(ring, engine->scratch.gtt_offset);
+			intel_ring_emit(ring,
+					i915_ggtt_offset(engine->scratch));
 			intel_ring_emit(ring, MI_NOOP);
 		}
 		intel_ring_emit(ring, MI_ARB_ON_OFF | MI_ARB_ENABLE);
@@ -755,6 +762,7 @@ static int do_rcs_switch(struct drm_i915_gem_request *req)
 	struct i915_gem_context *to = req->ctx;
 	struct intel_engine_cs *engine = req->engine;
 	struct i915_hw_ppgtt *ppgtt = to->ppgtt ?: req->i915->mm.aliasing_ppgtt;
+	struct i915_vma *vma = to->engine[RCS].state;
 	struct i915_gem_context *from;
 	u32 hw_flags;
 	int ret, i;
@@ -762,9 +770,15 @@ static int do_rcs_switch(struct drm_i915_gem_request *req)
 	if (skip_rcs_switch(ppgtt, engine, to))
 		return 0;
 
+	/* Clear this page out of any CPU caches for coherent swap-in/out. */
+	if (!(vma->flags & I915_VMA_GLOBAL_BIND)) {
+		ret = i915_gem_object_set_to_gtt_domain(vma->obj, false);
+		if (ret)
+			return ret;
+	}
+
 	/* Trying to pin first makes error handling easier. */
-	ret = i915_gem_object_ggtt_pin(to->engine[RCS].state, NULL, 0,
-				       to->ggtt_alignment, 0);
+	ret = i915_vma_pin(vma, 0, to->ggtt_alignment, PIN_GLOBAL);
 	if (ret)
 		return ret;
 
@@ -777,18 +791,6 @@ static int do_rcs_switch(struct drm_i915_gem_request *req)
 	 */
 	from = engine->last_context;
 
-	/*
-	 * Clear this page out of any CPU caches for coherent swap-in/out. Note
-	 * that thanks to write = false in this call and us not setting any gpu
-	 * write domains when putting a context object onto the active list
-	 * (when switching away from it), this won't block.
-	 *
-	 * XXX: We need a real interface to do this instead of trickery.
-	 */
-	ret = i915_gem_object_set_to_gtt_domain(to->engine[RCS].state, false);
-	if (ret)
-		goto unpin_out;
-
 	if (needs_pd_load_pre(ppgtt, engine, to)) {
 		/* Older GENs and non render rings still want the load first,
 		 * "PP_DCLV followed by PP_DIR_BASE register through Load
@@ -797,7 +799,7 @@ static int do_rcs_switch(struct drm_i915_gem_request *req)
 		trace_switch_mm(engine, to);
 		ret = ppgtt->switch_mm(ppgtt, req);
 		if (ret)
-			goto unpin_out;
+			goto err;
 	}
 
 	if (!to->engine[RCS].initialised || i915_gem_context_is_default(to))
@@ -814,7 +816,7 @@ static int do_rcs_switch(struct drm_i915_gem_request *req)
 	if (to != from || (hw_flags & MI_FORCE_RESTORE)) {
 		ret = mi_set_context(req, hw_flags);
 		if (ret)
-			goto unpin_out;
+			goto err;
 	}
 
 	/* The backing object for the context is done after switching to the
@@ -824,8 +826,6 @@ static int do_rcs_switch(struct drm_i915_gem_request *req)
 	 * MI_SET_CONTEXT instead of when the next seqno has completed.
 	 */
 	if (from != NULL) {
-		struct drm_i915_gem_object *obj = from->engine[RCS].state;
-
 		/* As long as MI_SET_CONTEXT is serializing, ie. it flushes the
 		 * whole damn pipeline, we don't need to explicitly mark the
 		 * object dirty. The only exception is that the context must be
@@ -833,11 +833,9 @@ static int do_rcs_switch(struct drm_i915_gem_request *req)
 		 * able to defer doing this until we know the object would be
 		 * swapped, but there is no way to do that yet.
 		 */
-		obj->base.read_domains = I915_GEM_DOMAIN_INSTRUCTION;
-		i915_vma_move_to_active(i915_gem_obj_to_ggtt(obj), req, 0);
-
-		/* obj is kept alive until the next request by its active ref */
-		i915_gem_object_ggtt_unpin(obj);
+		i915_vma_move_to_active(from->engine[RCS].state, req, 0);
+		/* state is kept alive until the next request */
+		i915_vma_unpin(from->engine[RCS].state);
 		i915_gem_context_put(from);
 	}
 	engine->last_context = i915_gem_context_get(to);
@@ -882,8 +880,8 @@ static int do_rcs_switch(struct drm_i915_gem_request *req)
 
 	return 0;
 
-unpin_out:
-	i915_gem_object_ggtt_unpin(to->engine[RCS].state);
+err:
+	i915_vma_unpin(vma);
 	return ret;
 }
 
@@ -939,8 +937,9 @@ int i915_switch_context(struct drm_i915_gem_request *req)
 int i915_gem_switch_to_kernel_context(struct drm_i915_private *dev_priv)
 {
 	struct intel_engine_cs *engine;
+	enum intel_engine_id id;
 
-	for_each_engine(engine, dev_priv) {
+	for_each_engine(engine, dev_priv, id) {
 		struct drm_i915_gem_request *req;
 		int ret;
 

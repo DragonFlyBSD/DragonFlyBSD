@@ -27,9 +27,13 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+
+#ifdef __DragonFly__
 #include "opt_drm.h"
+#endif
 
 #include <linux/kernel.h>
+#include <linux/slab.h>
 #include <linux/hdmi.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
@@ -37,7 +41,6 @@
 #include <drm/drmP.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_displayid.h>
-#include <linux/string.h>
 
 #define version_greater(edid, maj, min) \
 	(((edid)->version > (maj)) || \
@@ -1166,9 +1169,8 @@ bad:
 			printk(KERN_ERR "EDID block is all zeroes\n");
 		} else {
 			printk(KERN_ERR "Raw EDID:\n");
-			print_hex_dump(KERN_NOTICE,
-				       " \t", DUMP_PREFIX_NONE, 16, 1,
-				       raw_edid, EDID_LENGTH, false);
+			print_hex_dump(KERN_ERR, " \t", DUMP_PREFIX_NONE, 16, 1,
+			       raw_edid, EDID_LENGTH, false);
 		}
 	}
 	return false;
@@ -1288,7 +1290,7 @@ struct edid *drm_do_get_edid(struct drm_connector *connector,
 	u8 *block, *new;
 	bool print_bad_edid = !connector->bad_edid_counter || (drm_debug & DRM_UT_KMS);
 
-	if ((block = kmalloc(EDID_LENGTH, M_DRM, M_WAITOK)) == NULL)
+	if ((block = kmalloc(EDID_LENGTH, M_DRM, GFP_KERNEL)) == NULL)
 		return NULL;
 
 	/* base block fetch */
@@ -1310,7 +1312,8 @@ struct edid *drm_do_get_edid(struct drm_connector *connector,
 	if (block[0x7e] == 0)
 		return (struct edid *)block;
 
-	new = krealloc(block, (block[0x7e] + 1) * EDID_LENGTH, M_DRM, M_WAITOK);
+	new = krealloc(block, (block[0x7e] + 1) * EDID_LENGTH, M_DRM,
+		       GFP_KERNEL);
 	if (!new)
 		goto out;
 	block = new;
@@ -1342,7 +1345,8 @@ struct edid *drm_do_get_edid(struct drm_connector *connector,
 	if (valid_extensions != block[0x7e]) {
 		block[EDID_LENGTH-1] += block[0x7e] - valid_extensions;
 		block[0x7e] = valid_extensions;
-		new = krealloc(block, (valid_extensions + 1) * EDID_LENGTH, M_DRM, M_WAITOK);
+		new = krealloc(block, (valid_extensions + 1) * EDID_LENGTH,
+			       M_DRM, GFP_KERNEL);
 		if (!new)
 			goto out;
 		block = new;
@@ -2083,7 +2087,7 @@ mode_in_range(const struct drm_display_mode *mode, struct edid *edid,
 static bool valid_inferred_mode(const struct drm_connector *connector,
 				const struct drm_display_mode *mode)
 {
-	struct drm_display_mode *m;
+	const struct drm_display_mode *m;
 	bool ok = false;
 
 	list_for_each_entry(m, &connector->probed_modes, head) {
@@ -2888,7 +2892,7 @@ stereo_match_mandatory(const struct drm_display_mode *mode,
 static int add_hdmi_mandatory_stereo_modes(struct drm_connector *connector)
 {
 	struct drm_device *dev = connector->dev;
-	struct drm_display_mode *mode;
+	const struct drm_display_mode *mode;
 	struct list_head stereo_modes;
 	int modes = 0, i;
 
@@ -3450,7 +3454,7 @@ int drm_edid_to_sad(struct edid *edid, struct cea_sad **sads)
 
 	if (cea_revision(cea) < 3) {
 		DRM_DEBUG_KMS("SAD: wrong CEA revision\n");
-		return -EOPNOTSUPP;
+		return -ENOTSUPP;
 	}
 
 	if (cea_db_offsets(cea, &start, &end)) {

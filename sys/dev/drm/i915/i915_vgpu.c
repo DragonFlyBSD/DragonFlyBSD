@@ -65,9 +65,6 @@ void i915_check_vgpu(struct drm_i915_private *dev_priv)
 
 	BUILD_BUG_ON(sizeof(struct vgt_if) != VGT_PVINFO_SIZE);
 
-	if (!IS_HASWELL(dev_priv))
-		return;
-
 	magic = __raw_i915_read64(dev_priv, vgtif_reg(magic));
 	if (magic != VGT_MAGIC)
 		return;
@@ -156,27 +153,27 @@ static int vgt_balloon_space(struct drm_mm *mm,
  * host point of view, the graphic address space is partitioned by multiple
  * vGPUs in different VMs. ::
  *
- *                        vGPU1 view         Host view
- *             0 ------> +-----------+     +-----------+
- *               ^       |###########|     |   vGPU3   |
- *               |       |###########|     +-----------+
- *               |       |###########|     |   vGPU2   |
- *               |       +-----------+     +-----------+
- *        mappable GM    | available | ==> |   vGPU1   |
- *               |       +-----------+     +-----------+
- *               |       |###########|     |           |
- *               v       |###########|     |   Host    |
- *               +=======+===========+     +===========+
- *               ^       |###########|     |   vGPU3   |
- *               |       |###########|     +-----------+
- *               |       |###########|     |   vGPU2   |
- *               |       +-----------+     +-----------+
- *      unmappable GM    | available | ==> |   vGPU1   |
- *               |       +-----------+     +-----------+
- *               |       |###########|     |           |
- *               |       |###########|     |   Host    |
- *               v       |###########|     |           |
- * total GM size ------> +-----------+     +-----------+
+ *                         vGPU1 view         Host view
+ *              0 ------> +-----------+     +-----------+
+ *                ^       |###########|     |   vGPU3   |
+ *                |       |###########|     +-----------+
+ *                |       |###########|     |   vGPU2   |
+ *                |       +-----------+     +-----------+
+ *         mappable GM    | available | ==> |   vGPU1   |
+ *                |       +-----------+     +-----------+
+ *                |       |###########|     |           |
+ *                v       |###########|     |   Host    |
+ *                +=======+===========+     +===========+
+ *                ^       |###########|     |   vGPU3   |
+ *                |       |###########|     +-----------+
+ *                |       |###########|     |   vGPU2   |
+ *                |       +-----------+     +-----------+
+ *       unmappable GM    | available | ==> |   vGPU1   |
+ *                |       +-----------+     +-----------+
+ *                |       |###########|     |           |
+ *                |       |###########|     |   Host    |
+ *                v       |###########|     |           |
+ *  total GM size ------> +-----------+     +-----------+
  *
  * Returns:
  * zero on success, non-zero if configuration invalid or ballooning failed

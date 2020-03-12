@@ -594,6 +594,10 @@ drm_atomic_helper_check_planes(struct drm_device *dev,
 	struct drm_plane_state *plane_state;
 	int i, ret = 0;
 
+	ret = drm_atomic_normalize_zpos(dev, state);
+	if (ret)
+		return ret;
+
 	for_each_plane_in_state(state, plane, plane_state, i) {
 		const struct drm_plane_helper_funcs *funcs;
 
@@ -1689,7 +1693,7 @@ fail:
 }
 EXPORT_SYMBOL(drm_atomic_helper_prepare_planes);
 
-static bool plane_crtc_active(struct drm_plane_state *state)
+static bool plane_crtc_active(const struct drm_plane_state *state)
 {
 	return state->crtc && state->crtc->state->active;
 }
@@ -3035,7 +3039,7 @@ drm_atomic_helper_crtc_duplicate_state(struct drm_crtc *crtc)
 	if (WARN_ON(!crtc->state))
 		return NULL;
 
-	state = kmalloc(sizeof(*state), M_DRM, M_WAITOK);
+	state = kmalloc(sizeof(*state), M_DRM, GFP_KERNEL);
 	if (state)
 		__drm_atomic_helper_crtc_duplicate_state(crtc, state);
 
@@ -3131,7 +3135,7 @@ drm_atomic_helper_plane_duplicate_state(struct drm_plane *plane)
 	if (WARN_ON(!plane->state))
 		return NULL;
 
-	state = kmalloc(sizeof(*state), M_DRM, M_WAITOK);
+	state = kmalloc(sizeof(*state), M_DRM, GFP_KERNEL);
 	if (state)
 		__drm_atomic_helper_plane_duplicate_state(plane, state);
 
@@ -3246,7 +3250,7 @@ drm_atomic_helper_connector_duplicate_state(struct drm_connector *connector)
 	if (WARN_ON(!connector->state))
 		return NULL;
 
-	state = kmalloc(sizeof(*state), M_DRM, M_WAITOK);
+	state = kmalloc(sizeof(*state), M_DRM, GFP_KERNEL);
 	if (state)
 		__drm_atomic_helper_connector_duplicate_state(connector, state);
 

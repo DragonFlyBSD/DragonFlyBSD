@@ -3,9 +3,12 @@ KMOD	= i915
 # core driver code
 SRCS =	i915_drv.c \
 	i915_irq.c \
+	i915_memcpy.c \
+	i915_mm.c \
 	i915_params.c \
 	i915_pci.c \
 	i915_suspend.c \
+	i915_sw_fence.c \
 	i915_sysfs.c \
 	intel_csr.c \
 	intel_device_info.c \
@@ -28,7 +31,6 @@ SRCS +=	i915_cmd_parser.c \
 	i915_gem_stolen.c \
 	i915_gem_tiling.c \
 	i915_gem_userptr.c \
-	i915_gpu_error.c \
 	intel_breadcrumbs.c \
 	intel_engine_cs.c \
 	intel_lrc.c \
@@ -90,10 +92,14 @@ SRCS += \
 	intel_dvo.c \
 	intel_hdmi.c \
 	intel_i2c.c \
+	intel_lspcon.c \
 	intel_lvds.c \
 	intel_panel.c \
 	intel_sdvo.c \
 	intel_tv.c
+
+# Post-mortem debug and GPU hang state capture
+#i915-$(CONFIG_DRM_I915_CAPTURE_ERROR) += i915_gpu_error.o
 
 # virtual gpu code
 SRCS += i915_vgpu.c

@@ -34,7 +34,6 @@
 #include <linux/tty.h>
 #include <linux/sysrq.h>
 #include <linux/delay.h>
-#include <linux/fb.h>
 #include <linux/init.h>
 #include <linux/vga_switcheroo.h>
 
@@ -194,11 +193,11 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	struct intel_framebuffer *intel_fb = ifbdev->fb;
 	struct drm_device *dev = helper->dev;
 	struct drm_i915_private *dev_priv = to_i915(dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	struct fb_info *info;
 	struct drm_framebuffer *fb;
 	struct i915_vma *vma;
-	struct drm_i915_gem_object *obj;
 	bool prealloc = false;
 	void __iomem *vaddr;
 	int ret;
@@ -227,17 +226,17 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		sizes->fb_height = intel_fb->base.height;
 	}
 
-	obj = intel_fb->obj;
-
 	mutex_lock(&dev->struct_mutex);
 
 	/* Pin the GGTT vma for our access via info->screen_base.
 	 * This also validates that any existing fb inherited from the
 	 * BIOS is suitable for own access.
 	 */
-	ret = intel_pin_and_fence_fb_obj(&ifbdev->fb->base, DRM_ROTATE_0);
-	if (ret)
+	vma = intel_pin_and_fence_fb_obj(&ifbdev->fb->base, DRM_ROTATE_0);
+	if (IS_ERR(vma)) {
+		ret = PTR_ERR(vma);
 		goto out_unlock;
+	}
 
 	info = drm_fb_helper_alloc_fbi(helper);
 	if (IS_ERR(info)) {
@@ -258,7 +257,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	info->height = sizes->fb_height;
 	info->stride = fb->pitches[0];
 	info->depth = sizes->surface_bpp;
-	info->paddr = ggtt->mappable_base + i915_gem_obj_ggtt_offset(obj);
+	info->paddr = ggtt->mappable_base + vma->node.start;
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
 	info->fbops = intelfb_ops;
 #endif
@@ -270,14 +269,12 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	info->fbops = &intelfb_ops;
 #endif
 
-	vma = i915_gem_obj_to_ggtt(obj);
-
 	/* setup aperture base/size for vesafb takeover */
 #ifndef __DragonFly__
 	info->apertures->ranges[0].base = dev->mode_config.fb_base;
 	info->apertures->ranges[0].size = ggtt->mappable_end;
 
-	info->fix.smem_start = dev->mode_config.fb_base + vma->node.start;
+	info->fix.smem_start = dev->mode_config.fb_base + i915_ggtt_offset(vma);
 	info->fix.smem_len = vma->node.size;
 #endif
 
@@ -303,24 +300,24 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	 * If the object is stolen however, it will be full of whatever
 	 * garbage was left in there.
 	 */
-	if (ifbdev->fb->obj->stolen && !prealloc)
+	if (intel_fb->obj->stolen && !prealloc)
 		memset_io(info->screen_base, 0, info->screen_size);
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
 #endif
 
-	DRM_DEBUG_KMS("allocated %dx%d fb: 0x%08llx, bo %p\n",
-		      fb->width, fb->height,
-		      i915_gem_obj_ggtt_offset(obj), obj);
+	DRM_DEBUG_KMS("allocated %dx%d fb: 0x%08x\n",
+		      fb->width, fb->height, i915_ggtt_offset(vma));
+	ifbdev->vma = vma;
 
 	mutex_unlock(&dev->struct_mutex);
-	vga_switcheroo_client_fb_set(dev->pdev, info);
+	vga_switcheroo_client_fb_set(pdev, info);
 	return 0;
 
 out_destroy_fbi:
 	drm_fb_helper_release_fbi(helper);
 out_unpin:
-	intel_unpin_fb_obj(&ifbdev->fb->base, BIT(DRM_ROTATE_0));
+	intel_unpin_fb_obj(&ifbdev->fb->base, DRM_ROTATE_0);
 out_unlock:
 	mutex_unlock(&dev->struct_mutex);
 	return ret;
@@ -585,7 +582,7 @@ static void intel_fbdev_destroy(struct intel_fbdev *ifbdev)
 
 	if (ifbdev->fb) {
 		mutex_lock(&ifbdev->helper.dev->struct_mutex);
-		intel_unpin_fb_obj(&ifbdev->fb->base, BIT(DRM_ROTATE_0));
+		intel_unpin_fb_obj(&ifbdev->fb->base, DRM_ROTATE_0);
 		mutex_unlock(&ifbdev->helper.dev->struct_mutex);
 
 		drm_framebuffer_remove(&ifbdev->fb->base);

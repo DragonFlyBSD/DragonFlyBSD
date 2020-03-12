@@ -183,8 +183,9 @@ i915_gem_shrink(struct drm_i915_private *dev_priv,
 			    !is_vmalloc_addr(obj->mapping))
 				continue;
 
-			if ((flags & I915_SHRINK_ACTIVE) == 0 &&
-			    i915_gem_object_is_active(obj))
+			if (!(flags & I915_SHRINK_ACTIVE) &&
+			    (i915_gem_object_is_active(obj) ||
+			     obj->framebuffer_references))
 				continue;
 
 			if (!can_release_pages(obj))
@@ -333,7 +334,7 @@ i915_gem_shrinker_lock_uninterruptible(struct drm_i915_private *dev_priv,
 	unsigned long timeout = jiffies + msecs_to_jiffies_timeout(timeout_ms);
 
 	do {
-		if (i915_gem_wait_for_idle(dev_priv, false) == 0 &&
+		if (i915_gem_wait_for_idle(dev_priv, 0) == 0 &&
 		    i915_gem_shrinker_lock(&dev_priv->drm, &slu->unlock))
 			break;
 
@@ -424,7 +425,7 @@ i915_gem_shrinker_vmap(struct notifier_block *nb, unsigned long event, void *ptr
 		return NOTIFY_DONE;
 
 	/* Force everything onto the inactive lists */
-	ret = i915_gem_wait_for_idle(dev_priv, false);
+	ret = i915_gem_wait_for_idle(dev_priv, I915_WAIT_LOCKED);
 	if (ret)
 		goto out;
 

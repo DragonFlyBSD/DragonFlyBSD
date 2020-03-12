@@ -27,13 +27,14 @@
 
 #include <linux/device.h>
 #include <linux/fs.h>
-#include <drm/drmP.h>
 #include <linux/slab.h>
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <drm/drm_dp_helper.h>
 #include <drm/drm_crtc.h>
+#include <drm/drmP.h>
 
 #include "drm_crtc_helper_internal.h"
 
@@ -364,4 +365,4 @@ void drm_dp_aux_dev_exit(void)
 	unregister_chrdev(drm_dev_major, "aux");
 	class_destroy(drm_dp_aux_dev_class);
 }
-#endif
+#endif	/* 0 */

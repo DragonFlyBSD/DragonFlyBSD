@@ -125,6 +125,14 @@ module_param_named_unsafe(reset, i915.reset, bool, 0600);
 TUNABLE_INT("drm.i915.reset", &i915.reset);
 MODULE_PARM_DESC(reset, "Attempt GPU resets (default: true)");
 
+#if IS_ENABLED(CONFIG_DRM_I915_CAPTURE_ERROR)
+module_param_named(error_capture, i915.error_capture, bool, 0600);
+MODULE_PARM_DESC(error_capture,
+	"Record the GPU state following a hang. "
+	"This information in /sys/class/drm/card<N>/error is vital for "
+	"triaging and debugging hangs.");
+#endif
+
 module_param_named_unsafe(enable_hangcheck, i915.enable_hangcheck, bool, 0644);
 MODULE_PARM_DESC(enable_hangcheck,
 	"Periodically check GPU activity for detecting hangs. "

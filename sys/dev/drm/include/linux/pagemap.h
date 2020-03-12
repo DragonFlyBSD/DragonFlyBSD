@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,7 +38,7 @@
 #include <linux/hardirq.h>
 
 static inline int
-fault_in_multipages_writeable(char __user *uaddr, int size)
+fault_in_pages_writeable(char __user *uaddr, int size)
 {
 	int ret = 0;
 	char __user *end = uaddr + size - 1;
@@ -66,7 +66,7 @@ fault_in_multipages_writeable(char __user *uaddr, int size)
 }
 
 static inline int
-fault_in_multipages_readable(const char __user *uaddr, int size)
+fault_in_pages_readable(const char __user *uaddr, int size)
 {
 	char c;
 	int ret = 0;

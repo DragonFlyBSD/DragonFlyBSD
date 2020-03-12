@@ -87,6 +87,3 @@ do {								\
 	__set_current_state(TASK_RUNNING);			\
 	remove_wait_queue(&(queue), &entry);			\
 } while (0)
-
-/* include code to override EDID blocks from external firmware modules */
-#define CONFIG_DRM_LOAD_EDID_FIRMWARE

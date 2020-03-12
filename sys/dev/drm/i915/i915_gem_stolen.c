@@ -55,9 +55,10 @@ int i915_gem_stolen_insert_node_in_range(struct drm_i915_private *dev_priv,
 		return -ENODEV;
 
 	/* See the comment at the drm_mm_init() call for more about this check.
-	 * WaSkipStolenMemoryFirstPage:bdw+ (incomplete)
+	 * WaSkipStolenMemoryFirstPage:bdw,chv,kbl (incomplete)
 	 */
-	if (start < 4096 && INTEL_GEN(dev_priv) >= 8)
+	if (start < 4096 && (IS_GEN8(dev_priv) ||
+			     IS_KBL_REVID(dev_priv, 0, KBL_REVID_A0)))
 		start = 4096;
 
 	mutex_lock(&dev_priv->mm.stolen_lock);
@@ -91,6 +92,7 @@ void i915_gem_stolen_remove_node(struct drm_i915_private *dev_priv,
 static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	u32 base;
 
@@ -109,15 +111,15 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 	if (INTEL_INFO(dev)->gen >= 3) {
 		u32 bsm;
 
-		pci_read_config_dword(dev->pdev, INTEL_BSM, &bsm);
+		pci_read_config_dword(pdev, INTEL_BSM, &bsm);
 
 		base = bsm & INTEL_BSM_MASK;
-	} else if (IS_I865G(dev)) {
+	} else if (IS_I865G(dev_priv)) {
 		u32 tseg_size = 0;
 		u16 toud = 0;
 		u8 tmp;
 
-		pci_bus_read_config_byte(dev->pdev->bus, PCI_DEVFN(0, 0),
+		pci_bus_read_config_byte(pdev->bus, PCI_DEVFN(0, 0),
 					 I845_ESMRAMC, &tmp);
 
 		if (tmp & TSEG_ENABLE) {
@@ -131,7 +133,7 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 			}
 		}
 
-		pci_bus_read_config_word(dev->pdev->bus, PCI_DEVFN(0, 0),
+		pci_bus_read_config_word(pdev->bus, PCI_DEVFN(0, 0),
 					 I865_TOUD, &toud);
 
 		base = (toud << 16) + tseg_size;
@@ -140,23 +142,23 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 		u32 tom;
 		u8 tmp;
 
-		pci_bus_read_config_byte(dev->pdev->bus, PCI_DEVFN(0, 0),
+		pci_bus_read_config_byte(pdev->bus, PCI_DEVFN(0, 0),
 					 I85X_ESMRAMC, &tmp);
 
 		if (tmp & TSEG_ENABLE)
 			tseg_size = MB(1);
 
-		pci_bus_read_config_byte(dev->pdev->bus, PCI_DEVFN(0, 1),
+		pci_bus_read_config_byte(pdev->bus, PCI_DEVFN(0, 1),
 					 I85X_DRB3, &tmp);
 		tom = tmp * MB(32);
 
 		base = tom - tseg_size - ggtt->stolen_size;
-	} else if (IS_845G(dev)) {
+	} else if (IS_845G(dev_priv)) {
 		u32 tseg_size = 0;
 		u32 tom;
 		u8 tmp;
 
-		pci_bus_read_config_byte(dev->pdev->bus, PCI_DEVFN(0, 0),
+		pci_bus_read_config_byte(pdev->bus, PCI_DEVFN(0, 0),
 					 I845_ESMRAMC, &tmp);
 
 		if (tmp & TSEG_ENABLE) {
@@ -170,17 +172,17 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 			}
 		}
 
-		pci_bus_read_config_byte(dev->pdev->bus, PCI_DEVFN(0, 0),
+		pci_bus_read_config_byte(pdev->bus, PCI_DEVFN(0, 0),
 					 I830_DRB3, &tmp);
 		tom = tmp * MB(32);
 
 		base = tom - tseg_size - ggtt->stolen_size;
-	} else if (IS_I830(dev)) {
+	} else if (IS_I830(dev_priv)) {
 		u32 tseg_size = 0;
 		u32 tom;
 		u8 tmp;
 
-		pci_bus_read_config_byte(dev->pdev->bus, PCI_DEVFN(0, 0),
+		pci_bus_read_config_byte(pdev->bus, PCI_DEVFN(0, 0),
 					 I830_ESMRAMC, &tmp);
 
 		if (tmp & TSEG_ENABLE) {
@@ -190,7 +192,7 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 				tseg_size = KB(512);
 		}
 
-		pci_bus_read_config_byte(dev->pdev->bus, PCI_DEVFN(0, 0),
+		pci_bus_read_config_byte(pdev->bus, PCI_DEVFN(0, 0),
 					 I830_DRB3, &tmp);
 		tom = tmp * MB(32);
 
@@ -201,7 +203,8 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 		return 0;
 
 	/* make sure we don't clobber the GTT if it's within stolen memory */
-	if (INTEL_INFO(dev)->gen <= 4 && !IS_G33(dev) && !IS_G4X(dev)) {
+	if (INTEL_GEN(dev_priv) <= 4 && !IS_G33(dev_priv) &&
+	    !IS_G4X(dev_priv)) {
 		struct {
 			u32 start, end;
 		} stolen[2] = {
@@ -211,7 +214,7 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 		u64 ggtt_start, ggtt_end;
 
 		ggtt_start = I915_READ(PGTBL_CTL);
-		if (IS_GEN4(dev))
+		if (IS_GEN4(dev_priv))
 			ggtt_start = (ggtt_start & PGTBL_ADDRESS_LO_MASK) |
 				     (ggtt_start & PGTBL_ADDRESS_HI_MASK) << 28;
 		else
@@ -268,7 +271,7 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 		 * GEN3 firmware likes to smash pci bridges into the stolen
 		 * range. Apparently this works.
 		 */
-		if (r == NULL && !IS_GEN3(dev)) {
+		if (r == NULL && !IS_GEN3(dev_priv)) {
 			DRM_ERROR("conflict detected with stolen region: [0x%08x - 0x%08x]\n",
 				  base, base + (uint32_t)ggtt->stolen_size);
 			base = 0;
@@ -440,7 +443,7 @@ int i915_gem_init_stolen(struct drm_device *dev)
 	case 3:
 		break;
 	case 4:
-		if (IS_G4X(dev))
+		if (IS_G4X(dev_priv))
 			g4x_get_stolen_reserved(dev_priv, &reserved_base,
 						&reserved_size);
 		break;
@@ -459,7 +462,7 @@ int i915_gem_init_stolen(struct drm_device *dev)
 		break;
 	default:
 		if (IS_BROADWELL(dev_priv) ||
-		    IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev))
+		    IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
 			bdw_get_stolen_reserved(dev_priv, &reserved_base,
 						&reserved_size);
 		else
@@ -529,7 +532,7 @@ i915_pages_create_for_stolen(struct drm_device *dev,
 	 * dma mapping in a single scatterlist.
 	 */
 
-	st = kmalloc(sizeof(*st), M_DRM, M_WAITOK);
+	st = kmalloc(sizeof(*st), M_DRM, GFP_KERNEL);
 	if (st == NULL)
 		return NULL;
 
@@ -700,7 +703,7 @@ i915_gem_object_create_stolen_for_preallocated(struct drm_device *dev,
 	if (gtt_offset == I915_GTT_OFFSET_NONE)
 		return obj;
 
-	vma = i915_gem_obj_lookup_or_create_vma(obj, &ggtt->base);
+	vma = i915_gem_obj_lookup_or_create_vma(obj, &ggtt->base, NULL);
 	if (IS_ERR(vma)) {
 		ret = PTR_ERR(vma);
 		goto err;
@@ -720,6 +723,7 @@ i915_gem_object_create_stolen_for_preallocated(struct drm_device *dev,
 		goto err;
 	}
 
+	vma->pages = obj->pages;
 	vma->flags |= I915_VMA_GLOBAL_BIND;
 	__i915_vma_set_map_and_fenceable(vma);
 	list_move_tail(&vma->vm_link, &ggtt->base.inactive_list);

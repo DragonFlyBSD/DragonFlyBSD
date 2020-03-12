@@ -38,7 +38,13 @@
 
 #include "i915_gem_request.h"
 
+#define I915_FENCE_REG_NONE -1
+#define I915_MAX_NUM_FENCES 32
+/* 32 fences + sign bit for FENCE_REG_NONE */
+#define I915_MAX_NUM_FENCE_BITS 6
+
 struct drm_i915_file_private;
+struct drm_i915_fence_reg;
 
 typedef uint32_t gen6_pte_t;
 typedef uint64_t gen8_pte_t;
@@ -142,12 +148,9 @@ enum i915_ggtt_view_type {
 };
 
 struct intel_rotation_info {
-	unsigned int uv_offset;
-	uint32_t pixel_format;
-	unsigned int uv_start_page;
 	struct {
 		/* tiles */
-		unsigned int width, height;
+		unsigned int width, height, stride, offset;
 	} plane[2];
 };
 
@@ -161,8 +164,6 @@ struct i915_ggtt_view {
 		} partial;
 		struct intel_rotation_info rotated;
 	} params;
-
-	struct sg_table *pages;
 };
 
 extern const struct i915_ggtt_view i915_ggtt_view_normal;
@@ -182,8 +183,11 @@ struct i915_vma {
 	struct drm_mm_node node;
 	struct drm_i915_gem_object *obj;
 	struct i915_address_space *vm;
+	struct drm_i915_fence_reg *fence;
+	struct sg_table *pages;
 	void __iomem *iomap;
 	u64 size;
+	u64 display_alignment;
 
 	unsigned int flags;
 	/**
@@ -204,11 +208,13 @@ struct i915_vma {
 #define I915_VMA_LOCAL_BIND	BIT(7)
 #define I915_VMA_BIND_MASK (I915_VMA_GLOBAL_BIND | I915_VMA_LOCAL_BIND | I915_VMA_PIN_OVERFLOW)
 
-#define I915_VMA_GGTT	BIT(8)
-#define I915_VMA_CLOSED BIT(9)
+#define I915_VMA_GGTT		BIT(8)
+#define I915_VMA_CAN_FENCE	BIT(9)
+#define I915_VMA_CLOSED		BIT(10)
 
 	unsigned int active;
 	struct i915_gem_active last_read[I915_NUM_ENGINES];
+	struct i915_gem_active last_fence;
 
 	/**
 	 * Support different GGTT views into the same object.
@@ -235,9 +241,20 @@ struct i915_vma {
 	struct drm_i915_gem_exec_object2 *exec_entry;
 };
 
+struct i915_vma *
+i915_vma_create(struct drm_i915_gem_object *obj,
+		struct i915_address_space *vm,
+		const struct i915_ggtt_view *view);
+void i915_vma_unpin_and_release(struct i915_vma **p_vma);
+
 static inline bool i915_vma_is_ggtt(const struct i915_vma *vma)
 {
 	return vma->flags & I915_VMA_GGTT;
+}
+
+static inline bool i915_vma_is_map_and_fenceable(const struct i915_vma *vma)
+{
+	return vma->flags & I915_VMA_CAN_FENCE;
 }
 
 static inline bool i915_vma_is_closed(const struct i915_vma *vma)
@@ -273,6 +290,15 @@ static inline bool i915_vma_has_active_engine(const struct i915_vma *vma,
 	return vma->active & BIT(engine);
 }
 
+static inline u32 i915_ggtt_offset(const struct i915_vma *vma)
+{
+	GEM_BUG_ON(!i915_vma_is_ggtt(vma));
+	GEM_BUG_ON(!vma->node.allocated);
+	GEM_BUG_ON(upper_32_bits(vma->node.start));
+	GEM_BUG_ON(upper_32_bits(vma->node.start + vma->node.size - 1));
+	return lower_32_bits(vma->node.start);
+}
+
 struct i915_page_dma {
 	struct page *page;
 	union {
@@ -288,10 +314,6 @@ struct i915_page_dma {
 #define px_base(px) (&(px)->base)
 #define px_page(px) (px_base(px)->page)
 #define px_dma(px) (px_base(px)->daddr)
-
-struct i915_page_scratch {
-	struct i915_page_dma base;
-};
 
 struct i915_page_table {
 	struct i915_page_dma base;
@@ -338,7 +360,7 @@ struct i915_address_space {
 
 	bool closed;
 
-	struct i915_page_scratch *scratch_page;
+	struct i915_page_dma scratch_page;
 	struct i915_page_table *scratch_pt;
 	struct i915_page_directory *scratch_pd;
 	struct i915_page_directory_pointer *scratch_pdp; /* GEN8+ & 48b PPGTT */
@@ -376,7 +398,7 @@ struct i915_address_space {
 	/* FIXME: Need a more generic return type */
 	gen6_pte_t (*pte_encode)(dma_addr_t addr,
 				 enum i915_cache_level level,
-				 bool valid, u32 flags); /* Create a valid PTE */
+				 u32 flags); /* Create a valid PTE */
 	/* flags for pte_encode */
 #define PTE_READ_ONLY	(1<<0)
 	int (*allocate_va_range)(struct i915_address_space *vm,
@@ -384,8 +406,7 @@ struct i915_address_space {
 				 uint64_t length);
 	void (*clear_range)(struct i915_address_space *vm,
 			    uint64_t start,
-			    uint64_t length,
-			    bool use_scratch);
+			    uint64_t length);
 	void (*insert_page)(struct i915_address_space *vm,
 			    dma_addr_t addr,
 			    uint64_t offset,
@@ -416,13 +437,13 @@ struct i915_address_space {
  */
 struct i915_ggtt {
 	struct i915_address_space base;
+	struct io_mapping mappable;	/* Mapping to our CPU mappable region */
 
 	size_t stolen_size;		/* Total size of stolen memory */
 	size_t stolen_usable_size;	/* Total size minus BIOS reserved */
 	size_t stolen_reserved_base;
 	size_t stolen_reserved_size;
 	u64 mappable_end;		/* End offset that we can CPU map */
-	struct io_mapping *mappable;	/* Mapping to our CPU mappable region */
 	phys_addr_t mappable_base;	/* PA of our GMADR */
 
 	/** "Graphics Stolen Memory" holds the global PTEs */
@@ -431,6 +452,8 @@ struct i915_ggtt {
 	bool do_idle_maps;
 
 	int mtrr;
+
+	struct drm_mm_node error_capture;
 };
 
 struct i915_hw_ppgtt {
@@ -576,7 +599,7 @@ static inline size_t gen8_pte_count(uint64_t address, uint64_t length)
 }
 
 static inline dma_addr_t
-i915_page_dir_dma_addr(struct i915_hw_ppgtt *ppgtt, const unsigned n)
+i915_page_dir_dma_addr(const struct i915_hw_ppgtt *ppgtt, const unsigned n)
 {
 	return test_bit(n, ppgtt->pdp.used_pdpes) ?
 		px_dma(ppgtt->pdp.page_directory[n]) :
@@ -611,24 +634,11 @@ void i915_gem_restore_gtt_mappings(struct drm_device *dev);
 int __must_check i915_gem_gtt_prepare_object(struct drm_i915_gem_object *obj);
 void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj);
 
-static inline bool
-i915_ggtt_view_equal(const struct i915_ggtt_view *a,
-                     const struct i915_ggtt_view *b)
-{
-	if (WARN_ON(!a || !b))
-		return false;
-
-	if (a->type != b->type)
-		return false;
-	if (a->type != I915_GGTT_VIEW_NORMAL)
-		return !memcmp(&a->params, &b->params, sizeof(a->params));
-	return true;
-}
-
 /* Flags used by pin/bind&friends. */
 #define PIN_NONBLOCK		BIT(0)
 #define PIN_MAPPABLE		BIT(1)
 #define PIN_ZONE_4G		BIT(2)
+#define PIN_NONFAULT		BIT(3)
 
 #define PIN_MBZ			BIT(5) /* I915_VMA_PIN_OVERFLOW */
 #define PIN_GLOBAL		BIT(6) /* I915_VMA_GLOBAL_BIND */
@@ -716,6 +726,12 @@ static inline void i915_vma_unpin_iomap(struct i915_vma *vma)
 	lockdep_assert_held(&vma->vm->dev->struct_mutex);
 	GEM_BUG_ON(vma->iomap == NULL);
 	i915_vma_unpin(vma);
+}
+
+static inline struct page *i915_vma_first_page(struct i915_vma *vma)
+{
+	GEM_BUG_ON(!vma->pages);
+	return sg_page(vma->pages->sgl);
 }
 
 #endif

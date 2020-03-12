@@ -31,12 +31,12 @@
  */
 #include <linux/ctype.h>
 #include <linux/list.h>
+#include <linux/slab.h>
 #include <linux/export.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_fourcc.h>
-#include <linux/slab.h>
 #include <drm/drm_modeset_lock.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_auth.h>

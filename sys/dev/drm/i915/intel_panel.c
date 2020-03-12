@@ -1463,10 +1463,11 @@ static int lpt_setup_backlight(struct intel_connector *connector, enum i915_pipe
 	panel->backlight.min = get_backlight_min_vbt(connector);
 
 	val = lpt_get_backlight(connector);
-	panel->backlight.level = intel_panel_compute_brightness(connector, val);
+	val = intel_panel_compute_brightness(connector, val);
+	panel->backlight.level = clamp(val, panel->backlight.min,
+				       panel->backlight.max);
 
-	panel->backlight.enabled = (pch_ctl1 & BLM_PCH_PWM_ENABLE) &&
-		panel->backlight.level != 0;
+	panel->backlight.enabled = pch_ctl1 & BLM_PCH_PWM_ENABLE;
 
 	return 0;
 }
@@ -1492,11 +1493,13 @@ static int pch_setup_backlight(struct intel_connector *connector, enum i915_pipe
 	panel->backlight.min = get_backlight_min_vbt(connector);
 
 	val = pch_get_backlight(connector);
-	panel->backlight.level = intel_panel_compute_brightness(connector, val);
+	val = intel_panel_compute_brightness(connector, val);
+	panel->backlight.level = clamp(val, panel->backlight.min,
+				       panel->backlight.max);
 
 	cpu_ctl2 = I915_READ(BLC_PWM_CPU_CTL2);
 	panel->backlight.enabled = (cpu_ctl2 & BLM_PWM_ENABLE) &&
-		(pch_ctl1 & BLM_PCH_PWM_ENABLE) && panel->backlight.level != 0;
+		(pch_ctl1 & BLM_PCH_PWM_ENABLE);
 
 	return 0;
 }
@@ -1531,9 +1534,11 @@ static int i9xx_setup_backlight(struct intel_connector *connector, enum i915_pip
 	panel->backlight.min = get_backlight_min_vbt(connector);
 
 	val = i9xx_get_backlight(connector);
-	panel->backlight.level = intel_panel_compute_brightness(connector, val);
+	val = intel_panel_compute_brightness(connector, val);
+	panel->backlight.level = clamp(val, panel->backlight.min,
+				       panel->backlight.max);
 
-	panel->backlight.enabled = panel->backlight.level != 0;
+	panel->backlight.enabled = val != 0;
 
 	return 0;
 }
@@ -1563,10 +1568,11 @@ static int i965_setup_backlight(struct intel_connector *connector, enum i915_pip
 	panel->backlight.min = get_backlight_min_vbt(connector);
 
 	val = i9xx_get_backlight(connector);
-	panel->backlight.level = intel_panel_compute_brightness(connector, val);
+	val = intel_panel_compute_brightness(connector, val);
+	panel->backlight.level = clamp(val, panel->backlight.min,
+				       panel->backlight.max);
 
-	panel->backlight.enabled = (ctl2 & BLM_PWM_ENABLE) &&
-		panel->backlight.level != 0;
+	panel->backlight.enabled = ctl2 & BLM_PWM_ENABLE;
 
 	return 0;
 }
@@ -1595,10 +1601,11 @@ static int vlv_setup_backlight(struct intel_connector *connector, enum i915_pipe
 	panel->backlight.min = get_backlight_min_vbt(connector);
 
 	val = _vlv_get_backlight(dev_priv, pipe);
-	panel->backlight.level = intel_panel_compute_brightness(connector, val);
+	val = intel_panel_compute_brightness(connector, val);
+	panel->backlight.level = clamp(val, panel->backlight.min,
+				       panel->backlight.max);
 
-	panel->backlight.enabled = (ctl2 & BLM_PWM_ENABLE) &&
-		panel->backlight.level != 0;
+	panel->backlight.enabled = ctl2 & BLM_PWM_ENABLE;
 
 	return 0;
 }
@@ -1640,10 +1647,11 @@ bxt_setup_backlight(struct intel_connector *connector, enum i915_pipe unused)
 		return -ENODEV;
 
 	val = bxt_get_backlight(connector);
-	panel->backlight.level = intel_panel_compute_brightness(connector, val);
+	val = intel_panel_compute_brightness(connector, val);
+	panel->backlight.level = clamp(val, panel->backlight.min,
+				       panel->backlight.max);
 
-	panel->backlight.enabled = (pwm_ctl & BXT_BLC_PWM_ENABLE) &&
-		panel->backlight.level != 0;
+	panel->backlight.enabled = pwm_ctl & BXT_BLC_PWM_ENABLE;
 
 	return 0;
 }

@@ -29,6 +29,11 @@
 
 #define GVT_MAX_VGPU 8
 
+static inline struct intel_gvt *to_gvt(struct drm_i915_private *i915)
+{
+	return i915->gvt;
+}
+
 enum {
 	INTEL_GVT_HYPERVISOR_XEN = 0,
 	INTEL_GVT_HYPERVISOR_KVM,

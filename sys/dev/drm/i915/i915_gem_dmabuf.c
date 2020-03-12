@@ -119,7 +119,7 @@ static void *i915_gem_dmabuf_vmap(struct dma_buf *dma_buf)
 	if (ret)
 		return ERR_PTR(ret);
 
-	addr = i915_gem_object_pin_map(obj);
+	addr = i915_gem_object_pin_map(obj, I915_MAP_WB);
 	mutex_unlock(&dev->struct_mutex);
 
 	return addr;
@@ -214,9 +214,7 @@ static int i915_gem_end_cpu_access(struct dma_buf *dma_buf, enum dma_data_direct
 static const struct dma_buf_ops i915_dmabuf_ops =  {
 	.map_dma_buf = i915_gem_map_dma_buf,
 	.unmap_dma_buf = i915_gem_unmap_dma_buf,
-#if 0
 	.release = drm_gem_dmabuf_release,
-#endif
 	.kmap = i915_gem_dmabuf_kmap,
 	.kmap_atomic = i915_gem_dmabuf_kmap_atomic,
 	.kunmap = i915_gem_dmabuf_kunmap,
@@ -228,7 +226,6 @@ static const struct dma_buf_ops i915_dmabuf_ops =  {
 	.end_cpu_access = i915_gem_end_cpu_access,
 };
 
-#if 0
 static void export_fences(struct drm_i915_gem_object *obj,
 			  struct dma_buf *dma_buf)
 {
@@ -271,12 +268,10 @@ static void export_fences(struct drm_i915_gem_object *obj,
 	ww_mutex_unlock(&resv->lock);
 	mutex_unlock(&obj->base.dev->struct_mutex);
 }
-#endif
 
 struct dma_buf *i915_gem_prime_export(struct drm_device *dev,
 				      struct drm_gem_object *gem_obj, int flags)
 {
-#if 0
 	struct drm_i915_gem_object *obj = to_intel_bo(gem_obj);
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
 	struct dma_buf *dma_buf;
@@ -285,7 +280,6 @@ struct dma_buf *i915_gem_prime_export(struct drm_device *dev,
 	exp_info.size = gem_obj->size;
 	exp_info.flags = flags;
 	exp_info.priv = gem_obj;
-
 
 	if (obj->ops->dmabuf_export) {
 		int ret = obj->ops->dmabuf_export(obj);
@@ -299,9 +293,6 @@ struct dma_buf *i915_gem_prime_export(struct drm_device *dev,
 
 	export_fences(obj, dma_buf);
 	return dma_buf;
-#else
-	return NULL;
-#endif
 }
 
 static int i915_gem_object_get_pages_dmabuf(struct drm_i915_gem_object *obj)

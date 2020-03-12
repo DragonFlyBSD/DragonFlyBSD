@@ -40,6 +40,8 @@
 
 #include <machine/framebuffer.h>
 
+struct videomode;
+
 #define	KHZ2PICOS(a)	(1000000000UL/(a))
 
 struct apertures_struct {

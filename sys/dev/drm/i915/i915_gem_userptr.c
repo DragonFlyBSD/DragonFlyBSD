@@ -29,7 +29,6 @@
 #include "intel_drv.h"
 #include <linux/mmu_context.h>
 #include <linux/mmu_notifier.h>
-#include <linux/mempolicy.h>
 #include <linux/swap.h>
 
 struct i915_mm_struct {
@@ -68,7 +67,7 @@ static void wait_rendering(struct drm_i915_gem_object *obj)
 
 	for_each_active(active, idx)
 		i915_gem_active_wait_unlocked(&obj->last_read[idx],
-					      false, NULL, NULL);
+					      0, NULL, NULL);
 }
 
 static void cancel_userptr(struct work_struct *work)
@@ -128,7 +127,7 @@ static void i915_gem_userptr_mn_invalidate_range_start(struct mmu_notifier *_mn,
 	/* interval ranges are inclusive, but invalidate range is exclusive */
 	end--;
 
-	spin_lock(&mn->lock);
+	lockmgr(&mn->lock, LK_EXCLUSIVE);
 	it = interval_tree_iter_first(&mn->objects, start, end);
 	while (it) {
 		/* The mmu_object is released late when destroying the
@@ -149,7 +148,7 @@ static void i915_gem_userptr_mn_invalidate_range_start(struct mmu_notifier *_mn,
 	}
 	list_for_each_entry(mo, &cancelled, link)
 		del_object(mo);
-	spin_unlock(&mn->lock);
+	lockmgr(&mn->lock, LK_RELEASE);
 
 	flush_workqueue(mn->wq);
 }
@@ -197,9 +196,9 @@ i915_gem_userptr_release__mmu_notifier(struct drm_i915_gem_object *obj)
 	if (mo == NULL)
 		return;
 
-	spin_lock(&mo->mn->lock);
+	lockmgr(&mo->mn->lock, LK_EXCLUSIVE);
 	del_object(mo);
-	spin_unlock(&mo->mn->lock);
+	lockmgr(&mo->mn->lock, LK_RELEASE);
 	kfree(mo);
 
 	obj->userptr.mmu_object = NULL;
@@ -484,7 +483,7 @@ __i915_gem_userptr_set_active(struct drm_i915_gem_object *obj,
 	if (obj->userptr.mmu_object == NULL)
 		return 0;
 
-	spin_lock(&obj->userptr.mmu_object->mn->lock);
+	lockmgr(&obj->userptr.mmu_object->mn->lock, LK_EXCLUSIVE);
 	/* In order to serialise get_pages with an outstanding
 	 * cancel_userptr, we must drop the struct_mutex and try again.
 	 */
@@ -494,7 +493,7 @@ __i915_gem_userptr_set_active(struct drm_i915_gem_object *obj,
 		add_object(obj->userptr.mmu_object);
 	else
 		ret = -EAGAIN;
-	spin_unlock(&obj->userptr.mmu_object->mn->lock);
+	lockmgr(&obj->userptr.mmu_object->mn->lock, LK_RELEASE);
 #endif
 
 	return ret;
@@ -551,8 +550,6 @@ __i915_gem_userptr_get_pages_worker(struct work_struct *_work)
 			}
 		}
 		obj->userptr.work = ERR_PTR(ret);
-		if (ret)
-			__i915_gem_userptr_set_active(obj, false);
 	}
 
 	obj->userptr.workers--;
@@ -639,15 +636,14 @@ i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 	 * to the vma (discard or cloning) which should prevent the more
 	 * egregious cases from causing harm.
 	 */
-	if (IS_ERR(obj->userptr.work)) {
-		/* active flag will have been dropped already by the worker */
-		ret = PTR_ERR(obj->userptr.work);
-		obj->userptr.work = NULL;
-		return ret;
-	}
-	if (obj->userptr.work)
+
+	if (obj->userptr.work) {
 		/* active flag should still be held for the pending work */
-		return -EAGAIN;
+		if (IS_ERR(obj->userptr.work))
+			return PTR_ERR(obj->userptr.work);
+		else
+			return -EAGAIN;
+	}
 
 	/* Let the mmu-notifier know that we have begun and need cancellation */
 	ret = __i915_gem_userptr_set_active(obj, true);

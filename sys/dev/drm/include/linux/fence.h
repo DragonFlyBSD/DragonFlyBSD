@@ -32,14 +32,19 @@
 #ifndef _LINUX_FENCE_H_
 #define _LINUX_FENCE_H_
 
+#include <linux/err.h>
+#include <linux/wait.h>
+#include <linux/list.h>
+#include <linux/bitops.h>
+#include <linux/kref.h>
+#include <linux/sched.h>
+#include <linux/printk.h>
+#include <linux/rcupdate.h>
+
 #include <sys/types.h>
 #include <sys/condvar.h>
 #include <sys/kernel.h>
 #include <sys/queue.h>
-
-#include <linux/kref.h>
-#include <linux/rcupdate.h>
-#include <linux/spinlock.h>
 
 struct fence_cb;
 

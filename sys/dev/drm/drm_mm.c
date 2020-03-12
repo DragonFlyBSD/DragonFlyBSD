@@ -150,7 +150,6 @@ static void drm_mm_insert_helper(struct drm_mm_node *hole_node,
 	node->color = color;
 	node->allocated = 1;
 
-	INIT_LIST_HEAD(&node->hole_stack);
 	list_add(&node->node_list, &hole_node->node_list);
 
 	BUG_ON(node->start + node->size > adj_end);
@@ -188,6 +187,9 @@ int drm_mm_reserve_node(struct drm_mm *mm, struct drm_mm_node *node)
 	if (WARN_ON(node->size == 0))
 		return -EINVAL;
 
+	if (WARN_ON(node->size == 0))
+		return -EINVAL;
+
 	end = node->start + node->size;
 
 	/* Find the relevant hole to add our node to */
@@ -198,7 +200,6 @@ int drm_mm_reserve_node(struct drm_mm *mm, struct drm_mm_node *node)
 		node->mm = mm;
 		node->allocated = 1;
 
-		INIT_LIST_HEAD(&node->hole_stack);
 		list_add(&node->node_list, &hole->node_list);
 
 		if (node->start == hole_start) {
@@ -241,6 +242,9 @@ int drm_mm_insert_node_generic(struct drm_mm *mm, struct drm_mm_node *node,
 			       enum drm_mm_allocator_flags aflags)
 {
 	struct drm_mm_node *hole_node;
+
+	if (WARN_ON(size == 0))
+		return -EINVAL;
 
 	if (WARN_ON(size == 0))
 		return -EINVAL;
@@ -305,7 +309,6 @@ static void drm_mm_insert_helper_range(struct drm_mm_node *hole_node,
 	node->color = color;
 	node->allocated = 1;
 
-	INIT_LIST_HEAD(&node->hole_stack);
 	list_add(&node->node_list, &hole_node->node_list);
 
 	BUG_ON(node->start < start);
@@ -345,6 +348,9 @@ int drm_mm_insert_node_in_range_generic(struct drm_mm *mm, struct drm_mm_node *n
 					enum drm_mm_allocator_flags aflags)
 {
 	struct drm_mm_node *hole_node;
+
+	if (WARN_ON(size == 0))
+		return -EINVAL;
 
 	if (WARN_ON(size == 0))
 		return -EINVAL;
@@ -757,7 +763,6 @@ void drm_mm_init(struct drm_mm * mm, u64 start, u64 size)
 
 	/* Clever trick to avoid a special case in the free hole tracking. */
 	INIT_LIST_HEAD(&mm->head_node.node_list);
-	INIT_LIST_HEAD(&mm->head_node.hole_stack);
 	mm->head_node.hole_follows = 1;
 	mm->head_node.scanned_block = 0;
 	mm->head_node.scanned_prev_free = 0;

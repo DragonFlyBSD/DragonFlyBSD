@@ -255,20 +255,20 @@ static void hsw_psr_enable_source(struct intel_dp *intel_dp)
 	struct drm_i915_private *dev_priv = to_i915(dev);
 
 	uint32_t max_sleep_time = 0x1f;
-	/* Lately it was identified that depending on panel idle frame count
-	 * calculated at HW can be off by 1. So let's use what came
-	 * from VBT + 1.
-	 * There are also other cases where panel demands at least 4
-	 * but VBT is not being set. To cover these 2 cases lets use
-	 * at least 5 when VBT isn't set to be on the safest side.
+	/*
+	 * Let's respect VBT in case VBT asks a higher idle_frame value.
+	 * Let's use 6 as the minimum to cover all known cases including
+	 * the off-by-one issue that HW has in some cases. Also there are
+	 * cases where sink should be able to train
+	 * with the 5 or 6 idle patterns.
 	 */
-	uint32_t idle_frames = dev_priv->vbt.psr.idle_frames + 1;
+	uint32_t idle_frames = max(6, dev_priv->vbt.psr.idle_frames);
 	uint32_t val = EDP_PSR_ENABLE;
 
 	val |= max_sleep_time << EDP_PSR_MAX_SLEEP_TIME_SHIFT;
 	val |= idle_frames << EDP_PSR_IDLE_FRAME_SHIFT;
 
-	if (IS_HASWELL(dev))
+	if (IS_HASWELL(dev_priv))
 		val |= EDP_PSR_MIN_LINK_ENTRY_TIME_8_LINES;
 
 	if (dev_priv->psr.link_standby)
@@ -327,6 +327,9 @@ static bool intel_psr_match_conditions(struct intel_dp *intel_dp)
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_crtc *crtc = dig_port->base.base.crtc;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+	const struct drm_display_mode *adjusted_mode =
+		&intel_crtc->config->base.adjusted_mode;
+	int psr_setup_time;
 
 	lockdep_assert_held(&dev_priv->psr.lock);
 	WARN_ON(!drm_modeset_is_locked(&dev->mode_config.connection_mutex));
@@ -341,7 +344,7 @@ static bool intel_psr_match_conditions(struct intel_dp *intel_dp)
 	 * ones. Since by Display design transcoder EDP is tied to port A
 	 * we can safely escape based on the port A.
 	 */
-	if (HAS_DDI(dev) && dig_port->port != PORT_A) {
+	if (HAS_DDI(dev_priv) && dig_port->port != PORT_A) {
 		DRM_DEBUG_KMS("PSR condition failed: Port not supported\n");
 		return false;
 	}
@@ -351,22 +354,36 @@ static bool intel_psr_match_conditions(struct intel_dp *intel_dp)
 		return false;
 	}
 
-	if ((IS_VALLEYVIEW(dev) || IS_CHERRYVIEW(dev)) &&
+	if ((IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv)) &&
 	    !dev_priv->psr.link_standby) {
 		DRM_ERROR("PSR condition failed: Link off requested but not supported on this platform\n");
 		return false;
 	}
 
-	if (IS_HASWELL(dev) &&
+	if (IS_HASWELL(dev_priv) &&
 	    I915_READ(HSW_STEREO_3D_CTL(intel_crtc->config->cpu_transcoder)) &
 		      S3D_ENABLE) {
 		DRM_DEBUG_KMS("PSR condition failed: Stereo 3D is Enabled\n");
 		return false;
 	}
 
-	if (IS_HASWELL(dev) &&
-	    intel_crtc->config->base.adjusted_mode.flags & DRM_MODE_FLAG_INTERLACE) {
+	if (IS_HASWELL(dev_priv) &&
+	    adjusted_mode->flags & DRM_MODE_FLAG_INTERLACE) {
 		DRM_DEBUG_KMS("PSR condition failed: Interlaced is Enabled\n");
+		return false;
+	}
+
+	psr_setup_time = drm_dp_psr_setup_time(intel_dp->psr_dpcd);
+	if (psr_setup_time < 0) {
+		DRM_DEBUG_KMS("PSR condition failed: Invalid PSR setup time (0x%02x)\n",
+			      intel_dp->psr_dpcd[1]);
+		return false;
+	}
+
+	if (intel_usecs_to_scanlines(adjusted_mode, psr_setup_time) >
+	    adjusted_mode->crtc_vtotal - adjusted_mode->crtc_vdisplay - 1) {
+		DRM_DEBUG_KMS("PSR condition failed: PSR setup time (%d us) too long\n",
+			      psr_setup_time);
 		return false;
 	}
 
@@ -385,7 +402,7 @@ static void intel_psr_activate(struct intel_dp *intel_dp)
 	lockdep_assert_held(&dev_priv->psr.lock);
 
 	/* Enable/Re-enable PSR on the host */
-	if (HAS_DDI(dev))
+	if (HAS_DDI(dev_priv))
 		/* On HSW+ after we enable PSR on source it will activate it
 		 * as soon as it match configure idle_frame count. So
 		 * we just actually enable it here on activation time.
@@ -431,7 +448,7 @@ void intel_psr_enable(struct intel_dp *intel_dp)
 
 	dev_priv->psr.busy_frontbuffer_bits = 0;
 
-	if (HAS_DDI(dev)) {
+	if (HAS_DDI(dev_priv)) {
 		hsw_psr_setup_vsc(intel_dp);
 
 		if (dev_priv->psr.psr2_support) {
@@ -563,7 +580,7 @@ void intel_psr_disable(struct intel_dp *intel_dp)
 	}
 
 	/* Disable PSR on Source */
-	if (HAS_DDI(dev))
+	if (HAS_DDI(dev_priv))
 		hsw_psr_disable(intel_dp);
 	else
 		vlv_psr_disable(intel_dp);
@@ -810,17 +827,17 @@ void intel_psr_init(struct drm_device *dev)
 
 	/* Per platform default */
 	if (i915.enable_psr == -1) {
-		if (IS_HASWELL(dev) || IS_BROADWELL(dev))
+		if (IS_HASWELL(dev_priv) || IS_BROADWELL(dev_priv))
 			i915.enable_psr = 1;
 		else
 			i915.enable_psr = 0;
 	}
 
 	/* Set link_standby x link_off defaults */
-	if (IS_HASWELL(dev) || IS_BROADWELL(dev))
+	if (IS_HASWELL(dev_priv) || IS_BROADWELL(dev_priv))
 		/* HSW and BDW require workarounds that we don't implement. */
 		dev_priv->psr.link_standby = false;
-	else if (IS_VALLEYVIEW(dev) || IS_CHERRYVIEW(dev))
+	else if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv))
 		/* On VLV and CHV only standby mode is supported. */
 		dev_priv->psr.link_standby = true;
 	else

@@ -37,8 +37,9 @@ static bool
 gpu_is_idle(struct drm_i915_private *dev_priv)
 {
 	struct intel_engine_cs *engine;
+	enum intel_engine_id id;
 
-	for_each_engine(engine, dev_priv) {
+	for_each_engine(engine, dev_priv, id) {
 		if (intel_engine_is_active(engine))
 			return false;
 	}
@@ -47,12 +48,15 @@ gpu_is_idle(struct drm_i915_private *dev_priv)
 }
 
 static bool
-mark_free(struct i915_vma *vma, struct list_head *unwind)
+mark_free(struct i915_vma *vma, unsigned int flags, struct list_head *unwind)
 {
 	if (i915_vma_is_pinned(vma))
 		return false;
 
 	if (WARN_ON(!list_empty(&vma->exec_list)))
+		return false;
+
+	if (flags & PIN_NONFAULT && vma->obj->fault_mappable)
 		return false;
 
 	list_add(&vma->exec_list, unwind);
@@ -129,7 +133,7 @@ search_again:
 	phase = phases;
 	do {
 		list_for_each_entry(vma, *phase, vm_link)
-			if (mark_free(vma, &eviction_list))
+			if (mark_free(vma, flags, &eviction_list))
 				goto found;
 	} while (*++phase);
 
@@ -167,7 +171,9 @@ search_again:
 	if (ret)
 		return ret;
 
-	ret = i915_gem_wait_for_idle(dev_priv, true);
+	ret = i915_gem_wait_for_idle(dev_priv,
+				     I915_WAIT_INTERRUPTIBLE |
+				     I915_WAIT_LOCKED);
 	if (ret)
 		return ret;
 
@@ -272,7 +278,9 @@ int i915_gem_evict_vm(struct i915_address_space *vm, bool do_idle)
 				return ret;
 		}
 
-		ret = i915_gem_wait_for_idle(dev_priv, true);
+		ret = i915_gem_wait_for_idle(dev_priv,
+					     I915_WAIT_INTERRUPTIBLE |
+					     I915_WAIT_LOCKED);
 		if (ret)
 			return ret;
 
