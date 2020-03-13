@@ -112,10 +112,11 @@ int msgbuftrigger;
 static int      log_console_output = 1;
 TUNABLE_INT("kern.log_console_output", &log_console_output);
 SYSCTL_INT(_kern, OID_AUTO, log_console_output, CTLFLAG_RW,
-    &log_console_output, 0, "");
+    &log_console_output, 0, "Duplicate console output to the syslog");
 static int	kprintf_logging = TOLOG | TOCONS;
+TUNABLE_INT("kern.kprintf_logging", &kprintf_logging);
 SYSCTL_INT(_kern, OID_AUTO, kprintf_logging, CTLFLAG_RW,
-    &kprintf_logging, 0, "");
+    &kprintf_logging, 0, "kprintf() target bitmask: 0x1=console 0x4=dmesg");
 
 static int ptr_restrict = 0;
 TUNABLE_INT("security.ptr_restrict", &ptr_restrict);
@@ -123,6 +124,7 @@ SYSCTL_INT(_security, OID_AUTO, ptr_restrict, CTLFLAG_RW, &ptr_restrict, 0,
     "Prevent leaking the kernel pointers back to userland");
 
 static int unprivileged_read_msgbuf = 1;
+TUNABLE_INT("security.unprivileged_read_msgbuf", &unprivileged_read_msgbuf);
 SYSCTL_INT(_security, OID_AUTO, unprivileged_read_msgbuf, CTLFLAG_RW,
     &unprivileged_read_msgbuf, 0,
     "Unprivileged processes may read the kernel message buffer");
