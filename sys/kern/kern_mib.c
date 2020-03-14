@@ -97,7 +97,7 @@ SYSCTL_INT(_kern, KERN_OSRELDATE, osreldate, CTLFLAG_RD,
 
 static int tls_extra = RTLD_STATIC_TLS_EXTRA_DEFAULT;
 SYSCTL_INT(_kern, KERN_STATIC_TLS_EXTRA, tls_extra, CTLFLAG_RW | CTLFLAG_NOLOCK,
-    &tls_extra, 0, "Operating system release date");
+    &tls_extra, 0, "Extra static tls space for libraries");
 
 SYSCTL_INT(_kern, KERN_MAXPROC, maxproc, CTLFLAG_RD, 
     &maxproc, 0, "Maximum number of processes");
