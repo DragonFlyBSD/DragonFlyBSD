@@ -217,13 +217,10 @@ int	count_dev (cdev_t dev);
 void	destroy_dev (cdev_t dev);
 void	release_dev (cdev_t dev);
 cdev_t	reference_dev (cdev_t dev);
-struct dev_ops *devsw (cdev_t dev);
 const char *devtoname (cdev_t dev);
-void	freedev (cdev_t dev);
 int	iszerodev (cdev_t dev);
 
 int	lminor (cdev_t dev);
-void	setconf (void);
 cdev_t	kgetdiskbyname(const char *name);
 int	dev_is_good(cdev_t dev);
 
