@@ -1851,10 +1851,7 @@ vfs_mountedon(struct vnode *vp)
 {
 	cdev_t dev;
 
-	if ((dev = vp->v_rdev) == NULL) {
-/*		if (vp->v_type != VBLK)
-			dev = get_dev(vp->v_uminor, vp->v_umajor); */
-	}
+	dev = vp->v_rdev;
 	if (dev != NULL && dev->si_mountpoint)
 		return (EBUSY);
 	return (0);

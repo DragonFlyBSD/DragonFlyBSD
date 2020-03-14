@@ -216,7 +216,6 @@ DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 int	count_dev (cdev_t dev);
 void	destroy_dev (cdev_t dev);
 void	release_dev (cdev_t dev);
-cdev_t	get_dev (int x, int y);
 cdev_t	reference_dev (cdev_t dev);
 struct dev_ops *devsw (cdev_t dev);
 const char *devtoname (cdev_t dev);
