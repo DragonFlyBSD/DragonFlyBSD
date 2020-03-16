@@ -73,6 +73,7 @@ typedef struct vm_zone {
  	vm_offset_t	*zkmvec;	/* krealloc()'ed array */
 	long		zkmcur;		/* next free slot in zkmvec */
 	long		zkmmax;		/* # of slots in zkmvec */
+	struct lock	zgetlk;		/* special zget interlock */
 } *vm_zone_t;
 
 #ifdef _KERNEL

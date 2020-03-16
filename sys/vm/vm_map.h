@@ -269,7 +269,7 @@ typedef struct vm_map_entry *vm_map_entry_t;
  * single-insertion operations, including any necessary clipping.
  */
 #define MAP_RESERVE_COUNT	4
-#define MAP_RESERVE_SLOP	64
+#define MAP_RESERVE_SLOP	512
 #define MAP_RESERVE_HYST	(MAP_RESERVE_SLOP - MAP_RESERVE_SLOP / 8)
 
 /*
