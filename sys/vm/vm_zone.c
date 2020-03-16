@@ -77,7 +77,7 @@ static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 
 long zone_burst = 128;
 
-static void *zget(vm_zone_t z);
+static void *zget(vm_zone_t z, int *tryagainp);
 
 /*
  * Return an item from the specified zone.   This function is non-blocking for
@@ -91,6 +91,7 @@ zalloc(vm_zone_t z)
 	globaldata_t gd = mycpu;
 	vm_zpcpu_t *zpcpu;
 	void *item;
+	int tryagain;
 	long n;
 
 #ifdef INVARIANTS
@@ -147,7 +148,11 @@ retry:
 		goto retry;
 	} else {
 		spin_unlock(&z->zspin);
-		item = zget(z);
+		tryagain = 0;
+		item = zget(z, &tryagain);
+		if (tryagain)
+			goto retry;
+
 		/*
 		 * PANICFAIL allows the caller to assume that the zalloc()
 		 * will always succeed.  If it doesn't, we panic here.
@@ -293,6 +298,8 @@ zinitna(vm_zone_t z, char *name, size_t size, long nentries, uint32_t flags)
 	if ((z->zflags & ZONE_BOOT) == 0) {
 		z->zsize = roundup2(size, ZONE_ROUNDING);
 		spin_init(&z->zspin, "zinitna");
+		lockinit(&z->zgetlk, "zgetlk", 0, LK_CANRECURSE);
+
 		z->zfreecnt = 0;
 		z->ztotal = 0;
 		z->zmax = 0;
@@ -372,7 +379,7 @@ zinitna(vm_zone_t z, char *name, size_t size, long nentries, uint32_t flags)
 	if (z->zflags & ZONE_INTERRUPT) {
 		void *buf;
 
-		buf = zget(z);
+		buf = zget(z, NULL);
 		if (buf)
 			zfree(z, buf);
 	}
@@ -422,6 +429,7 @@ zbootinit(vm_zone_t z, char *name, size_t size, void *item, long nitems)
 	long i;
 
 	spin_init(&z->zspin, "zbootinit");
+	lockinit(&z->zgetlk, "zgetlk", 0, LK_CANRECURSE);
 	bzero(z->zpcpu, sizeof(z->zpcpu));
 	z->zname = name;
 	z->zsize = size;
@@ -505,7 +513,7 @@ zdestroy(vm_zone_t z)
  * No requirements.
  */
 static void *
-zget(vm_zone_t z)
+zget(vm_zone_t z, int *tryagainp)
 {
 	vm_page_t pgs[ZONE_MAXPGLOAD];
 	vm_page_t m;
@@ -520,6 +528,21 @@ zget(vm_zone_t z)
 
 	if (z == NULL)
 		panic("zget: null zone");
+
+	/*
+	 * We need an encompassing per-zone lock for zget() refills.
+	 *
+	 * Without this we wind up locking on the vm_map inside kmem_alloc*()
+	 * prior to any entries actually being added to the zone, potentially
+	 * exhausting the per-cpu cache of vm_map_entry's when multiple threads
+	 * are blocked on the same lock on the same cpu.
+	 */
+	if ((z->zflags & ZONE_INTERRUPT) == 0) {
+		if (lockmgr(&z->zgetlk, LK_EXCLUSIVE | LK_SLEEPFAIL)) {
+			*tryagainp = 1;
+			return NULL;
+		}
+	}
 
 	if (z->zflags & ZONE_INTERRUPT) {
 		/*
@@ -719,6 +742,16 @@ zget(vm_zone_t z)
 		item = NULL;
 	}
 	spin_unlock(&z->zspin);
+
+	/*
+	 * Release the per-zone global lock after the items have been
+	 * added.  Any other threads blocked in zget()'s zgetlk will
+	 * then retry rather than potentially exhaust the per-cpu cache
+	 * of vm_map_entry structures doing their own kmem_alloc() calls,
+	 * or allocating excessive amounts of space unnecessarily.
+	 */
+	if ((z->zflags & ZONE_INTERRUPT) == 0)
+		lockmgr(&z->zgetlk, LK_RELEASE);
 
 	return item;
 }
