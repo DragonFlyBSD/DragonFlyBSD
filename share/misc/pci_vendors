@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2020.02.12
-#	Date:    2020-02-12 03:15:01
+#	Version: 2020.03.07
+#	Date:    2020-03-07 03:15:01
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at https://pci-ids.ucw.cz/.
@@ -67,6 +67,7 @@
 # 018a is not LevelOne but there is a board misprogrammed
 018a  LevelOne
 	0106  FPC-0106TX misprogrammed [RTL81xx]
+01de  Oxide Computer Company
 # 021b is not Compaq but there is a board misprogrammed
 021b  Compaq Computer Corporation
 	8139  HNE-300 (RealTek RTL8139c) [iPaq Networking]
@@ -436,6 +437,8 @@
 		1028 1fd1  PERC H730P MX
 		17aa 1052  ThinkServer RAID 720i
 		17aa 1053  ThinkServer RAID 720ix
+		1bd4 0014  12G SAS3108 2G
+		1bd4 0015  12G SAS3108 4G
 		1d49 0600  ThinkSystem RAID 730-8i 1GB Cache PCIe 12Gb Adapter
 		1d49 0608  ThinkSystem RAID 730-8i 2GB Flash PCIe 12Gb Adapter
 		1d49 0609  ThinkSystem RAID 730-8i 4GB Flash PCIe 12Gb Adapter
@@ -509,6 +512,10 @@
 		1028 1f22  PERC H200 Internal Tape Adapter
 # Fujitsu D2607 SAS2008 HBA controller
 		1734 1177  HBA Ctrl SAS 6G 0/1 [D2607]
+		1bd4 000d  6G SAS2008IT
+		1bd4 000e  6G SAS2008IR
+		1bd4 000f  6G SAS2008IT SA5248
+		1bd4 0010  6G SAS2008IR SA5248
 		8086 350f  RMS2LL040 RAID Controller
 		8086 3700  SSD 910 Series
 	0073  MegaRAID SAS 2008 [Falcon]
@@ -617,6 +624,8 @@
 		1590 0041  H220i
 		1590 0042  H221 / 9207-8e
 		1590 0044  H220i
+		1bd4 0009  6G SAS2308IR
+		1bd4 000a  6G SAS2308IT
 		8086 3000  RS25GB008 RAID Controller
 		8086 3060  RS25FB044 RAID Controller
 		8086 3516  RMS25JB080 RAID Controller
@@ -648,6 +657,10 @@
 		1bd4 000b  12G SAS3008IR
 		1bd4 000c  12G SAS3008IT
 		1bd4 0011  Inspur 12Gb 8i-3008 IT SAS HBA
+		1bd4 0012  12Gb SAS3008IR UDM
+		1bd4 0026  12G SAS3008IT RACK
+		1bd4 0027  12G SAS3008IMR RACK
+		1bd4 0028  12G SAS3008IR RACK
 	00ab  SAS3516 Fusion-MPT Tri-Mode RAID On Chip (ROC)
 # 8 Internal and 8 External port channel 9400 HBA
 		1000 3040  HBA 9400-8i8e
@@ -915,11 +928,13 @@
 	1561  Anubis
 	15d8  Picasso
 		103c 8615  Pavilion Laptop 15-cw1xxx
+		17aa 5124  ThinkPad E595
 	15dd  Raven Ridge [Radeon Vega Series / Radeon Vega Mobile Series]
 		103c 83c6  Radeon Vega 8 Mobile
 		1458 d000  Radeon RX Vega 11
 	15de  Raven/Raven2/Fenghuang HDMI/DP Audio Controller
 		103c 8615  Pavilion Laptop 15-cw1xxx
+		17aa 5124  ThinkPad E595
 	15df  Raven/Raven2/Fenghuang/Renoir Cryptographic Coprocessor
 		103c 8615  Pavilion Laptop 15-cw1xxx
 	15ff  Fenghuang [Zhongshan Subor Z+]
@@ -1864,8 +1879,9 @@
 		1642 3c81  Radeon HD 8670
 		1642 3c91  Radeon HD 8670
 		1642 3f09  Radeon R7 350
-	6611  Oland [Radeon HD 8570 / R7 240/340 OEM]
+	6611  Oland [Radeon HD 8570 / R7 240/340 / Radeon 520 OEM]
 		1028 210b  Radeon R5 240 OEM
+		1642 1869  Radeon 520 OEM
 		174b 4248  Radeon R7 240 OEM
 		174b a240  Radeon R7 240 OEM
 		174b d340  Radeon R7 340 OEM
@@ -4679,13 +4695,18 @@
 	15dc  Raven/Raven2 Internal PCIe GPP Bridge 0 to Bus B
 	15de  Raven/Raven2/FireFlight HD Audio Controller
 	15df  Family 17h (Models 10h-1fh) Platform Security Processor
+		17aa 5124  ThinkPad E595
 	15e0  Raven USB 3.1
 		103c 8615  Pavilion Laptop 15-cw1xxx
+		17aa 5124  ThinkPad E595
 	15e1  Raven USB 3.1
 		103c 8615  Pavilion Laptop 15-cw1xxx
+		17aa 5124  ThinkPad E595
 	15e2  Raven/Raven2/FireFlight/Renoir Audio Processor
+		17aa 5124  ThinkPad E595
 	15e3  Family 17h (Models 10h-1fh) HD Audio Controller
 		103c 8615  Pavilion Laptop 15-cw1xxx
+		17aa 5124  ThinkPad E595
 	15e4  Raven/Raven2/Renoir Sensor Fusion Hub
 	15e5  Raven2 USB 3.1
 	15e6  Raven/Raven2/Renoir Non-Sensor Fusion Hub KMDF driver
@@ -4953,9 +4974,11 @@
 	790b  FCH SMBus Controller
 		103c 8615  Pavilion Laptop 15-cw1xxx
 		1462 7c37  X570-A PRO motherboard
+		17aa 5124  ThinkPad E595
 	790e  FCH LPC Bridge
 		103c 8615  Pavilion Laptop 15-cw1xxx
 		1462 7c37  X570-A PRO motherboard
+		17aa 5124  ThinkPad E595
 	790f  FCH PCI Bridge
 	7914  FCH USB XHCI Controller
 	9600  RS780 Host Bridge
@@ -10959,6 +10982,7 @@
 	0fb9  GP107GL High Definition Audio Controller
 	0fba  GM206 High Definition Audio Controller
 	0fbb  GM204 High Definition Audio Controller
+	0fbc  GM107 High Definition Audio Controller [GeForce 940MX]
 	0fc0  GK107 [GeForce GT 640 OEM]
 	0fc1  GK107 [GeForce GT 640]
 	0fc2  GK107 [GeForce GT 630 OEM]
@@ -11757,6 +11781,7 @@
 	174e  GM108M [GeForce MX110]
 	1789  GM107GL [GRID M3-3020]
 	179c  GM107 [GeForce 940MX]
+		1025 1094  Acer Aspire E5-575G
 	17c2  GM200 [GeForce GTX TITAN X]
 	17c8  GM200 [GeForce GTX 980 Ti]
 	17f0  GM200GL [Quadro M6000]
@@ -11854,6 +11879,7 @@
 	1c91  GP107M [GeForce GTX 1050 3 GB Max-Q]
 	1c92  GP107M [GeForce GTX 1050 Mobile]
 	1c94  GP107M [GeForce MX350]
+	1c96  GP107 [GeForce MX350]
 	1ca7  GP107GL
 	1ca8  GP107GL
 	1caa  GP107GL
@@ -11946,8 +11972,10 @@
 	1f06  TU106 [GeForce RTX 2060 SUPER]
 	1f07  TU106 [GeForce RTX 2070 Rev. A]
 	1f08  TU106 [GeForce RTX 2060 Rev. A]
+	1f09  TU106 [GeForce GTX 1660 SUPER]
 	1f10  TU106M [GeForce RTX 2070 Mobile]
 	1f11  TU106M [GeForce RTX 2060 Mobile]
+	1f12  TU106 [GeForce RTX 2060]
 	1f2e  TU106M
 	1f36  TU106GLM [Quadro RTX 3000 Mobile / Max-Q]
 	1f42  TU106 [GeForce RTX 2060 SUPER]
@@ -12186,6 +12214,7 @@
 	522a  RTS522A PCI Express Card Reader
 		103c 8079  EliteBook 840 G3
 		103c 825b  OMEN-17-w001nv
+		17aa 5124  ThinkPad E595
 	5249  RTS5249 PCI Express Card Reader
 		103c 1909  ZBook 15
 	524a  RTS524A PCI Express Card Reader
@@ -12197,6 +12226,7 @@
 	5260  RTS5260 PCI Express Card Reader
 	5286  RTS5286 PCI Express Card Reader
 	5287  RTL8411B PCI Express Card Reader
+		1025 1094  Acer Aspire E5-575G
 	5288  RTS5288 PCI Express Card Reader
 	5289  RTL8411 PCI Express Card Reader
 		1043 1457  K55A Laptop
@@ -12279,6 +12309,7 @@
 		1462 236c  945P Neo3-F motherboard
 	8168  RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
 		1019 8168  RTL8111/8168 PCI Express Gigabit Ethernet controller
+		1025 1094  Acer Aspire E5-575G
 		1028 0283  Vostro 220
 		1028 04b2  Vostro 3350
 		1028 04da  Vostro 3750
@@ -12308,6 +12339,7 @@
 		1462 7c37  X570-A PRO motherboard
 		1775 11cc  CC11/CL11
 		17aa 3814  Z50-75
+		17aa 5124  ThinkPad E595
 		1849 8168  Motherboard (one of many)
 		7470 3468  TG-3468 Gigabit PCI Express Network Adapter
 		8086 2055  NUC Kit DN2820FYKH
@@ -12361,6 +12393,8 @@
 		17aa b736  Z50-75
 	b822  RTL8822BE 802.11a/b/g/n/ac WiFi adapter
 		103c 831b  Realtek RTL8822BE 802.11ac 2 × 2 Wi-Fi + Bluetooth 4.2 Combo Adapter (MU-MIMO supported)
+		17aa 5124  ThinkPad E595
+		17aa b023  ThinkPad E595
 	c821  RTL8821CE 802.11ac PCIe Wireless Network Adapter
 	c822  RTL8822CE 802.11ac PCIe Wireless Network Adapter
 	d723  RTL8723DE 802.11b/g/n PCIe Adapter
@@ -12511,7 +12545,11 @@
 		1102 0021  X-Fi Platinum
 		1102 002c  X-Fi XtremeGamer FATAL1TY PRO
 		1102 1003  X-Fi XtremeMusic
-	0006  EMU10k1X [SB Live! Value/OEM Series]
+# This chip is also known as CA0103 on Sound Blaster 5.1 SB0680 card.
+	0006  EMU10k1X / CA0103 [SB Live! OEM / SB 5.1 / Ectiva 5.1]
+		1102 1001  SB0680 Sound Blaster 5.1
+		1102 1003  SB0203 SB Live! 5.1 (Dell)
+		1102 1004  TP0033 Ectiva Audio 5.1
 	0007  CA0106/CA0111 [SB Live!/Audigy/X-Fi Series]
 		1102 0007  SBLive! 24bit
 		1102 1001  SB0310 Audigy LS
@@ -19909,6 +19947,7 @@
 	1978  MT42822 Family [BlueField-2 SoC PCIe Bridge]
 	4117  MT27712A0-FDCF-AE
 		1bd4 0039  SN10XMP2P25
+		1bd4 003a  25G SFP28 SP EO251FM9 Adapter
 		1bd4 004d  SN10XMP2P25,YZPC-01191-101
 	5274  MT21108 InfiniBridge
 	5a44  MT23108 InfiniHost
@@ -20535,6 +20574,7 @@
 	0040  QCA9980/9990 802.11ac Wireless Network Adapter
 	0041  QCA6164 802.11ac Wireless Network Adapter
 	0042  QCA9377 802.11ac Wireless Network Adapter
+		11ad 08a6  Qualcomm Atheros QCA9377 802.11ac Wireless Network Adapter
 	0046  QCA9984 802.11ac Wave 2 Wireless Network Adapter
 	0050  QCA9887 802.11ac Wireless Network Adapter
 	0207  AR5210 Wireless Network Adapter [AR5000 802.11a]
@@ -21928,6 +21968,7 @@
 		19e5 3036  NVMe SSD ES3600C V3 3200GB HHHL AIC
 	0200  Hi1822 Family (2*100GE)
 		19e5 d139  Hi1822 SP572 (2*100GE)
+		19e5 d13d  Hi1822 SC371 (2*100GE)
 	0202  Hi1822 Family (2*32G FC)
 		19e5 d302  Hi1822 SP521 (2*32G FC)
 		19e5 d304  Hi1822 SP526 (2*32G FC)
@@ -21938,11 +21979,13 @@
 		19e5 df27  Hi1822 MZ731 MEZZ (2*100GE)
 	0206  Hi1822 Family (2*25GE)
 		19e5 d138  Hi1822 SP582 (2*25GE)
+		19e5 d13a  Hi1822 SC381 (2*25GE)
 	0210  Hi1822 Family (4*25GE)
 		19e5 df2e  Hi1822 MZ532 MEZZ (4*25GE)
 	0211  Hi1822 Family (4*25GE)
 		19e5 d12f  Hi1822 SP571 (4*25GE)
 		19e5 d137  Hi1822 SP581 (4*25GE)
+		19e5 d142  Hi1822 SP583 (4*25GE)
 	0212  Hi1822 Family (2*8G FC)
 		19e5 d303  Hi1822 SP522 (2*8G FC)
 		19e5 d306  Hi1822 SP523 (2*8G FC)
@@ -21951,6 +21994,7 @@
 	1822  Hi1822 Family (4*25GE)
 		19e5 d129  Hi1822 SP570 (4*25GE)
 		19e5 d136  Hi1822 SP580 (4*25GE)
+		19e5 d141  Hi1822 SP583 (4*25GE)
 	371e  Hi1822 Family Virtual Bridge
 	375e  Hi1822 Family Virtual Function
 	379e  Hi1822 Family Virtual Function
@@ -22503,6 +22547,7 @@
 	1283  PC300 NVMe Solid State Drive 256GB
 	1284  PC300 NVMe Solid State Drive 512GB
 	1285  PC300 NVMe Solid State Drive 1TB
+	1327  BC501 NVMe Solid State Drive 512GB
 	1504  SC300 512GB M.2 2280 SATA Solid State Drive
 1c5f  Beijing Memblaze Technology Co. Ltd.
 	000d  PBlaze5 520/526 AIC
@@ -22844,6 +22889,8 @@
 # JungleCat VU35P Module
 	1635  JCM35
 1e26  Fujitsu Client Computing Limited
+1e36  Shanghai Enflame Technology Co. Ltd
+	0001  T10 [CloudBlazer]
 # nee Thinci, Inc
 1e38  Blaize, Inc
 1e3d  Burlywood, Inc
@@ -22859,6 +22906,8 @@
 1e89  ID Quantique SA
 	0002  Quantis-PCIe-40M
 	0003  Quantis-PCIe-240M
+# aka SED Systems
+1e94  Calian SED
 # nee Tumsan Oy
 1fc0  Ascom (Finland) Oy
 	0300  E2200 Dual E1/Rawpipe Card
@@ -24736,6 +24785,7 @@
 		1014 0549  Thinkpad
 		1179 0001  PRO/1000 MT Mobile Connection
 		8086 101e  PRO/1000 MT Mobile Connection
+	101f  Ethernet Controller V710 for 5GBASE-T
 	1026  82545GM Gigabit Ethernet Controller
 		1028 0168  Precision Workstation 670 Mainboard
 		1028 0169  Precision 470
@@ -25479,6 +25529,7 @@
 		108e 7b15  Sun Dual Port 10 GbE PCIe 2.0 Low Profile Adapter, Base-T
 		1137 00bf  Ethernet Converged Network Adapter X540-T2
 		1170 0052  Ethernet Controller 10-Gigabit X540-AT2
+		15d9 0734  AOC-STG-I2T
 		17aa 1073  ThinkServer X540-T2 AnyFabric
 		17aa 4006  Ethernet Controller 10-Gigabit X540-AT2
 		1bd4 001a  10G base-T DP ER102Ti3 Rack Adapter
@@ -30161,6 +30212,7 @@
 	5901  Xeon E3-1200 v6/7th Gen Core Processor PCIe Controller (x16)
 	5902  HD Graphics 610
 	5904  Xeon E3-1200 v6/7th Gen Core Processor Host Bridge/DRAM Registers
+		1025 115f  Aspire E5-575G
 		17aa 2247  ThinkPad T570
 		17aa 224f  ThinkPad X1 Carbon 5th Gen
 	5905  Xeon E3-1200 v6/7th Gen Core Processor PCIe Controller (x8)
@@ -30174,6 +30226,7 @@
 	5914  Xeon E3-1200 v6/7th Gen Core Processor Host Bridge/DRAM Registers
 		17aa 225d  ThinkPad T480
 	5916  HD Graphics 620
+		1025 1094  Aspire E5-575G
 		17aa 2248  ThinkPad T570
 		17aa 224f  ThinkPad X1 Carbon 5th Gen
 	5917  UHD Graphics 620
@@ -30910,6 +30963,7 @@
 	9ce5  Wildcat Point-LP Serial IO GSPI Controller #0
 	9ce6  Wildcat Point-LP Serial IO GSPI Controller #1
 	9d03  Sunrise Point-LP SATA Controller [AHCI mode]
+		1025 115f  Acer Aspire E5-575G
 		1028 06dc  Latitude E7470
 		1028 06f3  Latitude 3570
 		103c 8079  EliteBook 840 G3
@@ -30930,6 +30984,7 @@
 	9d19  Sunrise Point-LP PCI Express Root Port #10
 	9d1a  Sunrise Point-LP PCI Express Root Port #11
 	9d21  Sunrise Point-LP PMC
+		1025 115f  Acer Aspire E5-575G
 		1028 06dc  Latitude E7470
 		1028 06f3  Latitude 3570
 		103c 8079  EliteBook 840 G3
@@ -30937,6 +30992,7 @@
 		17aa 225d  ThinkPad T480
 		17aa 382a  B51-80 Laptop
 	9d23  Sunrise Point-LP SMBus
+		1025 115f  Acer Aspire E5-575G
 		1028 06dc  Latitude E7470
 		1028 06f3  Latitude 3570
 		103c 8079  EliteBook 840 G3
@@ -30950,6 +31006,7 @@
 	9d2a  Sunrise Point-LP Serial IO SPI Controller #1
 	9d2d  Sunrise Point-LP Secure Digital IO Controller
 	9d2f  Sunrise Point-LP USB 3.0 xHCI Controller
+		1025 115f  Acer Aspire E5-575G
 		1028 06dc  Latitude E7470
 		1028 06f3  Latitude 3570
 		103c 8079  EliteBook 840 G3
@@ -30957,6 +31014,7 @@
 		17aa 225d  ThinkPad T480
 		17aa 382a  B51-80 Laptop
 	9d31  Sunrise Point-LP Thermal subsystem
+		1025 115f  Acer Aspire E5-575G
 		1028 06dc  Latitude E7470
 		1028 06f3  Latitude 3570
 		103c 8079  EliteBook 840 G3
@@ -30966,6 +31024,7 @@
 		17aa 382a  B51-80 Laptop
 	9d35  Sunrise Point-LP Integrated Sensor Hub
 	9d3a  Sunrise Point-LP CSME HECI #1
+		1025 115f  Acer Aspire E5-575G
 		1028 06dc  Latitude E7470
 		1028 06f3  Latitude 3570
 		103c 8079  EliteBook 840 G3
@@ -30986,9 +31045,11 @@
 	9d50  Sunrise Point LPC Controller
 	9d56  Sunrise Point-LP LPC Controller
 	9d58  Sunrise Point-LP LPC Controller
+		1025 115f  Acer Aspire E5-575G
 		17aa 2247  ThinkPad T570
 		17aa 224f  ThinkPad X1 Carbon 5th Gen
 	9d60  Sunrise Point-LP Serial IO I2C Controller #0
+		1025 115f  Acer Aspire E5-575G
 		1028 06f3  Latitude 3570
 		103c 8079  EliteBook 840 G3
 		17aa 225d  ThinkPad T480
@@ -31005,6 +31066,7 @@
 		103c 8079  EliteBook 840 G3
 		17aa 382a  B51-80 Laptop
 	9d71  Sunrise Point-LP HD Audio
+		1025 1094  Acer Aspire E5-575G
 		17aa 224f  ThinkPad X1 Carbon 5th Gen
 		17aa 225d  ThinkPad T480
 	9d84  Cannon Point-LP LPC Controller
@@ -31370,6 +31432,7 @@
 	d158  Core Processor Miscellaneous Registers
 	f1a5  SSD 600P Series
 	f1a6  SSD Pro 7600p/760p/E 6100p Series
+		8086 390b  Intel Corporation SSD Pro 7600p/760p/E 6100p Series [NVM Express]
 	f1a8  SSD 660P Series
 8088  Beijing Wangxun Technology Co., Ltd.
 	0101  WX1860A2 Gigabit Ethernet Controller
