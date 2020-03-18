@@ -1461,16 +1461,20 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 
 			switch (kevp[i].filter) {
 			case EVFILT_READ:
-#if 0
 				/*
 				 * NODATA on the read side can indicate a
 				 * half-closed situation and not necessarily
 				 * a disconnect, so depend on the user
 				 * issuing a read() and getting 0 bytes back.
+				 *
+				 * If EV_HUP is set the peer completely
+				 * disconnected and we can set POLLHUP
+				 * once data is exhausted.
 				 */
-				if (kevp[i].flags & EV_NODATA)
-					pfd->revents |= POLLHUP;
-#endif
+				if (kevp[i].flags & EV_NODATA) {
+					if (kevp[i].flags & EV_HUP)
+						pfd->revents |= POLLHUP;
+				}
 				if ((kevp[i].flags & EV_EOF) &&
 				    kevp[i].fflags != 0)
 					pfd->revents |= POLLERR;

@@ -82,10 +82,11 @@ struct kevent {
 #define EV_RECEIPT	0x0040		/* force EV_ERROR on success, data=0 */
 #define EV_DISPATCH	0x0080		/* disable event after reporting */
 
-#define EV_SYSFLAGS	0xF000		/* reserved by system */
+#define EV_SYSFLAGS	0xF800		/* reserved by system */
 #define EV_FLAG1	0x2000		/* filter-specific flag */
 
 /* returned values */
+#define EV_HUP		0x0800		/* complete peer disconnect */
 #define EV_EOF		0x8000		/* EOF detected */
 #define EV_ERROR	0x4000		/* error, data contains errno */
 #define EV_NODATA	0x1000		/* EOF and no more data */
