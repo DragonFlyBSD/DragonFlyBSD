@@ -67,7 +67,8 @@ dequote(const char *reason)
 	int i;
 
 	for (i = 0; reason[i]; ++i) {
-		if (reason[i] == '\"' || reason[i] == '\n') {
+		if (reason[i] == '\"' || reason[i] == '\n' ||
+		    reason[i] == '\\') {
 			if (reason != buf) {
 				snprintf(buf, sizeof(buf), "%s", reason);
 				reason = buf;
