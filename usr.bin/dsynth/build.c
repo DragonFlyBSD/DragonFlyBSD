@@ -1069,10 +1069,12 @@ workercomplete(worker_t *work)
 
 			scount = buildskipcount_dueto(pkg, 1);
 			buildskipcount_dueto(pkg, 0);
-			if (scount)
-				snprintf(skipbuf, sizeof(skipbuf), " (%d)", scount);
-			else
+			if (scount) {
+				snprintf(skipbuf, sizeof(skipbuf), " %d",
+					 scount);
+			} else {
 				skipbuf[0] = 0;
+			}
 
 			++BuildFailCount;
 			dlog(DLOG_FAIL | DLOG_RED,
