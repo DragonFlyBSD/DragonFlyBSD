@@ -63,14 +63,16 @@ time_t HtmlLast;
 static const char *
 dequote(const char *reason)
 {
-	char buf[256];
+	static char *buf;
 	int i;
 
 	for (i = 0; reason[i]; ++i) {
 		if (reason[i] == '\"' || reason[i] == '\n' ||
 		    reason[i] == '\\') {
 			if (reason != buf) {
-				snprintf(buf, sizeof(buf), "%s", reason);
+				if (buf)
+					free(buf);
+				buf = strdup(reason);
 				reason = buf;
 			}
 			buf[i] = ' ';
