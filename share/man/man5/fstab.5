@@ -28,7 +28,7 @@
 .\"     @(#)fstab.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/fstab.5,v 1.11.2.8 2003/02/10 12:21:08 des Exp $
 .\"
-.Dd September 13, 2009
+.Dd March 20, 2020
 .Dt FSTAB 5
 .Os
 .Sh NAME
@@ -108,11 +108,13 @@ currently be demand-loaded.)  Some people still prefer to statically
 compile other file systems as well.
 .Pp
 The most common file system types are:
-.Bl -tag -width indent -offset indent
+.Bl -tag -width ".Em HAMMER2" -offset indent
 .It Em HAMMER
 a local
 .Xr HAMMER 5
 file system
+.It Em HAMMER2
+a local HAMMER2 file system
 .It Em ufs
 a local
 .Xr ffs 5
@@ -185,7 +187,8 @@ by the
 startup scripts.
 .Pp
 Swap partitions may specify the option ``crypt'' to automatically encrypt
-the swap partition with a random key.  Note that you will not be able to
+the swap partition with a random key.
+Note that you will not be able to
 recover any kernel core dumps if you use this option.
 .Pp
 The type of the mount is extracted from the
@@ -282,6 +285,7 @@ resides in
 .Xr getfsent 3 ,
 .Xr getvfsbyname 3 ,
 .Xr HAMMER 5 ,
+.\".Xr HAMMER2 5 ,
 .Xr dump 8 ,
 .Xr fsck 8 ,
 .Xr mount 8 ,
