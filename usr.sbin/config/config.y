@@ -115,8 +115,8 @@ Many_specs:
 		;
 
 Spec:
-	Device_spec SEMICOLON
-	      = { newdev(&cur); } |
+	Device_spec SEMICOLON { newdev(&cur); }
+		|
 	Config_spec SEMICOLON
 		|
 	SEMICOLON
@@ -125,32 +125,28 @@ Spec:
 		;
 
 Config_spec:
-	CONFIG_PLATFORM Save_id
-	    = {
+	CONFIG_PLATFORM Save_id {
 		if (platformname != NULL) {
 		    errx(1, "%d: only one platform directive is allowed",
 			yyline);
 		}
 		platformname = $2;
 	      } |
-	CONFIG_MACHINE Save_id
-	    = {
+	CONFIG_MACHINE Save_id {
 		if (machinename != NULL) {
 		    errx(1, "%d: only one machine directive is allowed",
 			yyline);
 		}
 		machinename = $2;
 	      } |
-	CONFIG_MACHINE_ARCH Save_id
-	      = {
+	CONFIG_MACHINE_ARCH Save_id {
 		if (machinearchname != NULL) {
 		    errx(1, "%d: only one machine_arch directive is allowed",
 			yyline);
 		}
 		machinearchname = $2;
 	      } |
-	CPU Save_id
-	      = {
+	CPU Save_id {
 		struct cputype *cp;
 
 		cp = malloc(sizeof(struct cputype));
@@ -163,23 +159,22 @@ Config_spec:
 		|
 	MAKEOPTIONS Mkopt_list
 		|
-	IDENT ID
-	      = { ident = $2; } |
+	IDENT ID { ident = $2; }
+		|
 	System_spec
 		|
-	MAXUSERS NUMBER
-	      = { maxusers = $2; };
+	MAXUSERS NUMBER { maxusers = $2; };
 
 System_spec:
-	CONFIG System_id System_parameter_list
-	  = { errx(1,"line %d: root/dump/swap specifications obsolete", yyline);}
-	  |
+	CONFIG System_id System_parameter_list {
+		errx(1,"line %d: root/dump/swap specifications obsolete",
+		    yyline);
+	      } |
 	CONFIG System_id
-	  ;
+		;
 
 System_id:
-	Save_id
-	      = {
+	Save_id {
 		struct opt *op;
 
 		op = malloc(sizeof(struct opt));
@@ -198,26 +193,22 @@ System_parameter_list:
 	;
 
 device_name:
-	  Save_id
-		= { $$ = $1; }
-	| Save_id NUMBER
-		= {
+	  Save_id { $$ = $1; }
+	| Save_id NUMBER {
 			char buf[80];
 
 			snprintf(buf, sizeof(buf), "%s%d", $1, $2);
 			$$ = strdup(buf);
 			free($1);
 		}
-	| Save_id NUMBER ID
-		= {
+	| Save_id NUMBER ID {
 			char buf[80];
 
 			snprintf(buf, sizeof(buf), "%s%d%s", $1, $2, $3);
 			$$ = strdup(buf);
 			free($1);
 		}
-	| Save_id NUMBER ID NUMBER
-		= {
+	| Save_id NUMBER ID NUMBER {
 			char buf[80];
 
 			snprintf(buf, sizeof(buf), "%s%d%s%d",
@@ -225,8 +216,7 @@ device_name:
 			$$ = strdup(buf);
 			free($1);
 		}
-	| Save_id NUMBER ID NUMBER ID
-		= {
+	| Save_id NUMBER ID NUMBER ID {
 			char buf[80];
 
 			snprintf(buf, sizeof(buf), "%s%d%s%d%s",
@@ -243,8 +233,7 @@ Opt_list:
 		;
 
 Option:
-	Save_id
-	      = {
+	Save_id {
 		struct opt *op;
 		
 		op = malloc(sizeof(struct opt));
@@ -261,8 +250,7 @@ Option:
 		if (strchr(op->op_name, '=') != NULL)
 			errx(1, "line %d: The `=' in options should not be quoted", yyline);
 	      } |
-	Save_id EQUALS Opt_value
-	      = {
+	Save_id EQUALS Opt_value {
 		struct opt *op;
 
 		op = malloc(sizeof(struct opt));
@@ -275,10 +263,8 @@ Option:
 	      } ;
 
 Opt_value:
-	ID
-		= { $$ = $1; } |
-	NUMBER
-		= {
+	ID	{ $$ = $1; } |
+	NUMBER	{
 			char buf[80];
 
 			snprintf(buf, sizeof(buf), "%d", $1);
@@ -286,8 +272,7 @@ Opt_value:
 		} ;
 
 Save_id:
-	ID
-	      = { $$ = $1; }
+	ID	{ $$ = $1; }
 	;
 
 Mkopt_list:
@@ -297,8 +282,7 @@ Mkopt_list:
 		;
 
 Mkoption:
-	Save_id EQUALS Opt_value
-	      = {
+	Save_id EQUALS Opt_value {
 		struct opt *op;
 
 		op = malloc(sizeof(struct opt));
@@ -312,40 +296,34 @@ Mkoption:
 	      } ;
 
 Dev:
-	ID
-	      = { $$ = $1; }
+	ID	{ $$ = $1; }
 	;
 
 Device_spec:
-	DEVICE Dev_spec
-	      = { cur.d_type = DEVICE; } |
-	PSEUDO_DEVICE Init_dev Dev
-	      = {
+	DEVICE Dev_spec { cur.d_type = DEVICE; }
+		|
+	PSEUDO_DEVICE Init_dev Dev {
 		cur.d_name = $3;
 		cur.d_type = PSEUDO_DEVICE;
-		} |
-	PSEUDO_DEVICE Init_dev Dev NUMBER
-	      = {
+	      } |
+	PSEUDO_DEVICE Init_dev Dev NUMBER {
 		cur.d_name = $3;
 		cur.d_type = PSEUDO_DEVICE;
 		cur.d_count = $4;
-		} ;
+	      } ;
 
 Dev_spec:
-	Init_dev Dev
-	      = {
+	Init_dev Dev {
 		cur.d_name = $2;
 		cur.d_unit = UNKNOWN;
-		} |
-	Init_dev Dev NUMBER Dev_info
-	      = {
+	      } |
+	Init_dev Dev NUMBER Dev_info {
 		cur.d_name = $2;
 		cur.d_unit = $3;
-		};
+	      } ;
 
 Init_dev:
-	/* lambda */
-	      = { init_dev(&cur); };
+	/* lambda */ { init_dev(&cur); };
 
 Dev_info:
 	Con_info Info_list
@@ -354,17 +332,15 @@ Dev_info:
 		;
 
 Con_info:
-	AT Dev NUMBER
-	      = {
+	AT Dev NUMBER {
 		connect($2, $3);
 		cur.d_conn = $2;
 		cur.d_connunit = $3;
-		} |
-	AT NEXUS NUMBER
-	      = {
+	      } |
+	AT NEXUS NUMBER {
 	        cur.d_conn = "nexus";
 	        cur.d_connunit = 0;
-	        };
+	      } ;
     
 Info_list:
 	Info_list Info
@@ -373,30 +349,29 @@ Info_list:
 		;
 
 Info:
-	BUS NUMBER	/* device scbus1 at ahc0 bus 1 - twin channel */
-	      = { cur.d_bus = $2; } |
-	TARGET NUMBER
-	      = { cur.d_target = $2; } |
-	UNIT NUMBER
-	      = { cur.d_lun = $2; } |
-	DRIVE NUMBER
-	      = { cur.d_drive = $2; } |
-	IRQ NUMBER
-	      = { cur.d_irq = $2; } |
-	DRQ NUMBER
-	      = { cur.d_drq = $2; } |
-	IOMEM NUMBER
-	      = { cur.d_maddr = $2; } |
-	IOSIZ NUMBER
-	      = { cur.d_msize = $2; } |
-	PORT device_name
-	      = { cur.d_port = $2; } |
-	PORT NUMBER
-	      = { cur.d_portn = $2; } |
-	FLAGS NUMBER
-	      = { cur.d_flags = $2; } |
-	DISABLE	
-	      = { cur.d_disabled = 1; }
+	BUS NUMBER	{ cur.d_bus = $2; }
+		|
+	TARGET NUMBER	{ cur.d_target = $2; }
+		|
+	UNIT NUMBER	{ cur.d_lun = $2; }
+		|
+	DRIVE NUMBER	{ cur.d_drive = $2; }
+		|
+	IRQ NUMBER	{ cur.d_irq = $2; }
+		|
+	DRQ NUMBER	{ cur.d_drq = $2; }
+		|
+	IOMEM NUMBER	{ cur.d_maddr = $2; }
+		|
+	IOSIZ NUMBER	{ cur.d_msize = $2; }
+		|
+	PORT device_name { cur.d_port = $2; }
+		|
+	PORT NUMBER	{ cur.d_portn = $2; }
+		|
+	FLAGS NUMBER	{ cur.d_flags = $2; }
+		|
+	DISABLE		{ cur.d_disabled = 1; }
 
 %%
 
