@@ -261,7 +261,7 @@ populate_new_ids() {
   fi
   if [ -z "$NEW_IDS" ] ; then
     printf '\n%s: WARNING: All keys were skipped because they already exist on the remote system.\n' "$0" >&2
-    printf '\t\t(if you think this is a mistake, you may want to use -f option)\n\n' "$0" >&2
+    printf '\t\t(if you think this is a mistake, you may want to use -f option)\n\n' >&2
     exit 0
   fi
   printf '%s: INFO: %d key(s) remain to be installed -- if you are prompted now it is to install the new keys\n' "$0" "$(printf '%s\n' "$NEW_IDS" | wc -l)" >&2
