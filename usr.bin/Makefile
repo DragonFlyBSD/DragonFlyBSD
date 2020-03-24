@@ -181,6 +181,7 @@ SUBDIR=	alias \
 	ssh \
 	ssh-add \
 	ssh-agent \
+	ssh-copy-id \
 	ssh-keygen \
 	ssh-keyscan \
 	stat \
