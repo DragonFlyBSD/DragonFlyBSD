@@ -3,6 +3,7 @@
 
   Copyright (c) 2014 Hewlett-Packard Development Company, L.P.<BR>
   Copyright (c) 2011 - 2018, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2020, ARM Ltd. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -12,7 +13,7 @@
 #include <IndustryStandard/Acpi40.h>
 
 //
-// Define for Desriptor
+// Define for Descriptor
 //
 #define ACPI_SMALL_FIXED_DMA_DESCRIPTOR_NAME                         0x0A
 #define ACPI_LARGE_GPIO_CONNECTION_DESCRIPTOR_NAME                   0x0C
@@ -1201,7 +1202,7 @@ typedef struct {
   ///
   UINT64                                          ExitBootServicesEntry;
   ///
-  /// Timer value logged at the point just prior towhen the OS loader gaining
+  /// Timer value logged at the point just prior to when the OS loader gaining
   /// control back from calls the ExitBootServices function for UEFI compatible firmware.
   /// For non-UEFI compatible boots, this field must be zero.
   ///
@@ -2058,12 +2059,17 @@ typedef struct {
 #define EFI_ACPI_5_0_DATA_MANAGEMENT_TABLE_SIGNATURE  SIGNATURE_32('M', 'S', 'D', 'M')
 
 ///
+/// "PCCT" Platform Communications Channel Table
+///
+#define EFI_ACPI_5_0_PLATFORM_COMMUNICATIONS_CHANNEL_TABLE_SIGNATURE  SIGNATURE_32('P', 'C', 'C', 'T')
+
+///
 /// "SLIC" MS Software Licensing Table Specification
 ///
 #define EFI_ACPI_5_0_SOFTWARE_LICENSING_TABLE_SIGNATURE  SIGNATURE_32('S', 'L', 'I', 'C')
 
 ///
-/// "SPCR" Serial Port Concole Redirection Table
+/// "SPCR" Serial Port Console Redirection Table
 ///
 #define EFI_ACPI_5_0_SERIAL_PORT_CONSOLE_REDIRECTION_TABLE_SIGNATURE  SIGNATURE_32('S', 'P', 'C', 'R')
 

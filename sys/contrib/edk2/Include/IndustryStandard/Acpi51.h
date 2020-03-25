@@ -4,6 +4,7 @@
   Copyright (c) 2014 Hewlett-Packard Development Company, L.P.<BR>
   Copyright (c) 2014 - 2018, Intel Corporation. All rights reserved.<BR>
   (C) Copyright 2015 Hewlett Packard Enterprise Development LP<BR>
+  Copyright (c) 2020, ARM Ltd. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -1154,7 +1155,7 @@ typedef struct {
   ///
   UINT64                                          ExitBootServicesEntry;
   ///
-  /// Timer value logged at the point just prior towhen the OS loader gaining
+  /// Timer value logged at the point just prior to when the OS loader gaining
   /// control back from calls the ExitBootServices function for UEFI compatible firmware.
   /// For non-UEFI compatible boots, this field must be zero.
   ///
@@ -2079,12 +2080,17 @@ typedef struct {
 #define EFI_ACPI_5_1_DATA_MANAGEMENT_TABLE_SIGNATURE  SIGNATURE_32('M', 'S', 'D', 'M')
 
 ///
+/// "PCCT" Platform Communications Channel Table
+///
+#define EFI_ACPI_5_1_PLATFORM_COMMUNICATIONS_CHANNEL_TABLE_SIGNATURE  SIGNATURE_32('P', 'C', 'C', 'T')
+
+///
 /// "SLIC" MS Software Licensing Table Specification
 ///
 #define EFI_ACPI_5_1_SOFTWARE_LICENSING_TABLE_SIGNATURE  SIGNATURE_32('S', 'L', 'I', 'C')
 
 ///
-/// "SPCR" Serial Port Concole Redirection Table
+/// "SPCR" Serial Port Console Redirection Table
 ///
 #define EFI_ACPI_5_1_SERIAL_PORT_CONSOLE_REDIRECTION_TABLE_SIGNATURE  SIGNATURE_32('S', 'P', 'C', 'R')
 
