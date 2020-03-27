@@ -639,19 +639,16 @@ AcpiDbGetNextToken (
         return (NULL);
     }
 
-    /* Remove any spaces at the beginning */
+    /* Remove any spaces at the beginning, ignore blank lines */
 
-    if (*String == ' ')
+    while (*String && isspace (*String))
     {
-        while (*String && (*String == ' '))
-        {
-            String++;
-        }
+        String++;
+    }
 
-        if (!(*String))
-        {
-            return (NULL);
-        }
+    if (!(*String))
+    {
+        return (NULL);
     }
 
     switch (*String)
@@ -756,7 +753,7 @@ AcpiDbGetNextToken (
 
         /* Find end of token */
 
-        while (*String && (*String != ' '))
+        while (*String && !isspace (*String))
         {
             String++;
         }
