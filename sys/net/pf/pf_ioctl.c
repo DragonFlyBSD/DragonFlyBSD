@@ -88,7 +88,6 @@
 
 #include <machine/limits.h>
 #include <net/pfil.h>
-#include <sys/mutex.h>
 
 u_int rt_numfibs = RT_NUMFIBS;
 

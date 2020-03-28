@@ -43,7 +43,6 @@ __FBSDID("$FreeBSD$");
 #include <sys/module.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/errno.h>
 
 #if defined(__DragonFly__)

@@ -57,7 +57,6 @@ __FBSDID("$FreeBSD: head/sys/dev/sound/midi/sequencer.c 274035 2014-11-03 11:11:
 #include <sys/rman.h>
 #include <sys/mman.h>
 #include <sys/poll.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/kthread.h>
 #include <sys/unistd.h>

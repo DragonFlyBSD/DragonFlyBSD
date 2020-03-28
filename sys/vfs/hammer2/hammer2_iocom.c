@@ -52,8 +52,6 @@
 #include <sys/dirent.h>
 #include <sys/uio.h>
 
-#include <sys/mutex.h>
-
 #include "hammer2.h"
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"

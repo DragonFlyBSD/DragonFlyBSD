@@ -32,7 +32,6 @@ __FBSDID("$FreeBSD: head/sys/dev/sound/midi/mpu401.c 193979 2009-06-11 09:06:09Z
 #include <sys/queue.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/proc.h>
 #include <sys/systm.h>
 #include <sys/kobj.h>

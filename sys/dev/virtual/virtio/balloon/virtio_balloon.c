@@ -75,7 +75,6 @@
 #include <sys/sglist.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/queue.h>
 
 #include <vm/vm.h>

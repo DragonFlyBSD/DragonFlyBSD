@@ -33,7 +33,6 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/module.h>
-#include <sys/mutex.h>
 #include <sys/rman.h>
 #include <sys/machintr.h>
 #include <bus/smbus/smbconf.h>
