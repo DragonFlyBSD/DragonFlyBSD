@@ -35,6 +35,7 @@
 #include <sys/malloc.h>
 #include <sys/namei.h>
 #include <sys/nlookup.h>
+#include <sys/proc.h>
 
 #include <dev/disk/dm/dm.h>
 
