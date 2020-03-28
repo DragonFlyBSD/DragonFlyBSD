@@ -33,6 +33,7 @@
 #ifndef _SYS_MOUNT_H_
 #define _SYS_MOUNT_H_
 
+#include <sys/mplock2.h>
 #include <sys/queue.h>
 #include <sys/tree.h>
 #include <sys/ucred.h>
