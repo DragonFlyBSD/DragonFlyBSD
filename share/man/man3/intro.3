@@ -28,7 +28,7 @@
 .\"     @(#)intro.3	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man3/intro.3,v 1.9.2.4 2001/08/17 13:08:36 ru Exp $
 .\"
-.Dd May 29, 2010
+.Dd March 28, 2020
 .Dt INTRO 3
 .Os
 .Sh NAME
@@ -104,13 +104,6 @@ The library for
 .It Em libm Pq Fl l Ns Ar m
 The math library,
 .Em libm .
-The math library is loaded as needed by the Pascal compiler,
-.\" .Xr pc 1 ,
-but not by the C compiler which requires the
-.Fl l Ns Ar m
-flag.
-(See
-.Xr math 3 . )
 .It Em libmp Pq Fl l Ns Ar mp
 .\" .It Em libom
 .\" Old math library.
@@ -150,7 +143,6 @@ the math library compiled for profiling
 .Xr ld 1 ,
 .Xr nm 1 ,
 .Xr intro 2 ,
-.Xr math 3 ,
 .Xr stdio 3
 .\" .Sh LIST OF FUNCTIONS
 .\" .Bl -column "strncasecmpxxx" "system"
