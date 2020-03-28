@@ -45,7 +45,6 @@
 #include <sys/pcpu.h>
 #endif
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #if defined(__DragonFly__)
 /* empty */
 #else

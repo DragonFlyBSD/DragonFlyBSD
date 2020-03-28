@@ -53,7 +53,6 @@
 #include <sys/eventhandler.h>
 #include <sys/socketops.h>
 
-#include <sys/mutex2.h>
 #include <sys/mplock2.h>
 
 #include <bus/cam/cam.h>

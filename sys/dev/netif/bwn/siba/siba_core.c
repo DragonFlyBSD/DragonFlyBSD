@@ -44,7 +44,6 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_core.c 299541 2016-05-12 16:14:16Z ad
 #include <sys/endian.h>
 #include <sys/errno.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #if !defined(__DragonFly__)
 #include <machine/bus.h>
 #include <machine/resource.h>

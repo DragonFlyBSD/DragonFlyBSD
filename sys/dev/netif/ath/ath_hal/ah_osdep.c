@@ -47,7 +47,6 @@
 #include <sys/pcpu.h>
 #endif
 #include <sys/lock.h>
-#include <sys/mutex.h>
 
 #include <machine/stdarg.h>
 

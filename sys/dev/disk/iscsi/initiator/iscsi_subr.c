@@ -51,8 +51,6 @@
 #include <bus/cam/scsi/scsi_message.h>
 #include <sys/eventhandler.h>
 
-#include <sys/mutex2.h>
-
 #include <dev/disk/iscsi/initiator/iscsi.h>
 #include <dev/disk/iscsi/initiator/iscsivar.h>
 

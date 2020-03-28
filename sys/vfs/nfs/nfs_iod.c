@@ -55,7 +55,6 @@
 #include <sys/signalvar.h>
 
 #include <sys/signal2.h>
-#include <sys/mutex2.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>

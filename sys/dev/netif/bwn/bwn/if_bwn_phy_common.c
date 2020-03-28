@@ -43,7 +43,6 @@
 #include <sys/errno.h>
 #include <sys/firmware.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #if !defined(__DragonFly__)
 #include <machine/bus.h>
 #include <machine/resource.h>

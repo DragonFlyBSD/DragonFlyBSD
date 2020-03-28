@@ -43,7 +43,6 @@
 #include <sys/malloc.h>
 #include <sys/mpipe.h>
 #include <sys/md5.h>
-#include <sys/mutex2.h>
 #include <crypto/sha1.h>
 #include <crypto/sha2/sha2.h>
 #include <opencrypto/cryptodev.h>

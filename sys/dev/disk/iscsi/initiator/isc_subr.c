@@ -52,7 +52,6 @@
 #include <sys/mbuf.h>
 #include <sys/libkern.h>
 #include <sys/eventhandler.h>
-#include <sys/mutex2.h>
 
 #include <bus/cam/cam.h>
 

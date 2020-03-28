@@ -53,7 +53,6 @@
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
 #include <sys/eventhandler.h>
-#include <sys/mutex2.h>
 #include <sys/devfs.h>
 #include <sys/udev.h>
 #include <sys/objcache.h>

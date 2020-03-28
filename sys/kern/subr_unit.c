@@ -79,7 +79,6 @@
 #include <sys/systm.h>
 #include <sys/limits.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/proc.h>
 
 /*

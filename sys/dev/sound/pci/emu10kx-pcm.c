@@ -35,7 +35,6 @@
 #include <sys/sbuf.h>
 #include <sys/queue.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 
 #ifdef HAVE_KERNEL_OPTION_HEADERS
 #include "opt_snd.h"
