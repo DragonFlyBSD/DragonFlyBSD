@@ -35,7 +35,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/nlookup.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/fcntl.h>
@@ -45,9 +44,7 @@
 #include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <sys/objcache.h>
-
 #include <sys/proc.h>
-#include <sys/namei.h>
 #include <sys/mountctl.h>
 #include <sys/dirent.h>
 #include <sys/uio.h>

@@ -34,7 +34,6 @@
 #include <sys/module.h>
 #include <sys/stat.h>
 #include <sys/dirent.h>
-#include <sys/namei.h>
 #include <sys/nlookup.h>
 #include <sys/mountctl.h>
 

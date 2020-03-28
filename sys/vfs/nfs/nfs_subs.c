@@ -46,7 +46,6 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/nlookup.h>
-#include <sys/namei.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/stat.h>

@@ -36,7 +36,6 @@
 
 #include <sys/kernel.h>
 #include <sys/param.h>
-#include <sys/namei.h>
 #include <sys/priv.h>
 #include <sys/proc.h>
 #include <sys/stat.h>

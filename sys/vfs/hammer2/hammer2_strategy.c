@@ -49,7 +49,6 @@
 #include <sys/fcntl.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/mountctl.h>

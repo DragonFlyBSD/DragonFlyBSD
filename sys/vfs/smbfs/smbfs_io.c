@@ -40,7 +40,6 @@
 #include <sys/proc.h>
 #include <sys/fcntl.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
 #include <sys/vnode.h>
 #include <sys/dirent.h>
 #include <sys/signalvar.h>

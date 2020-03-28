@@ -48,7 +48,6 @@
 #include <sys/endian.h>
 #include <sys/proc.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
 #include <sys/linker.h>
 #include <sys/firmware.h>
 #include <sys/taskqueue.h>

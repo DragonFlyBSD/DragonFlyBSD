@@ -47,7 +47,6 @@
 #include <sys/objcache.h>
 
 #include <sys/proc.h>
-#include <sys/namei.h>
 #include <sys/mountctl.h>
 #include <sys/dirent.h>
 #include <sys/uio.h>

@@ -73,7 +73,6 @@
 #include <sys/sysproto.h>
 #include <sys/spinlock.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
 #include <sys/nlookup.h>
 #include <sys/filedesc.h>
 #include <sys/fnv_hash.h>

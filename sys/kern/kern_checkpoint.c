@@ -52,7 +52,6 @@
 #include <sys/malloc.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
-#include <sys/namei.h>
 #include <sys/vnode.h>
 #include <machine/inttypes.h>
 #include <machine/limits.h>

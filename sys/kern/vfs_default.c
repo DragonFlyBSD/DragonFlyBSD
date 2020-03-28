@@ -49,7 +49,6 @@
 #include <sys/unistd.h>
 #include <sys/vnode.h>
 #include <sys/namei.h>
-#include <sys/nlookup.h>
 #include <sys/mountctl.h>
 #include <sys/vfs_quota.h>
 

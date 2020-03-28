@@ -36,7 +36,6 @@
 #include <sys/malloc.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
 #include <sys/pioctl.h>
 #include <sys/signalvar.h>
 #include <sys/stat.h>

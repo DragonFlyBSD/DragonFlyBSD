@@ -53,7 +53,6 @@
 #include <sys/mbuf.h>
 #include <sys/mount.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
 #include <sys/reboot.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
