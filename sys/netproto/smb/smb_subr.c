@@ -48,7 +48,6 @@
 #include <sys/unistd.h>
 
 #include <sys/signal2.h>
-#include <sys/mplock2.h>
 
 #include <machine/stdarg.h>
 

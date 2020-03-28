@@ -52,7 +52,6 @@
 #include <sys/kthread.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
-#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>

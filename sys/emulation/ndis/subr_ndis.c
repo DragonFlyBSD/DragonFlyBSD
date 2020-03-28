@@ -81,7 +81,6 @@
 
 #include <sys/bus.h>
 #include <sys/rman.h>
-#include <sys/mplock2.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_ioctl.h>

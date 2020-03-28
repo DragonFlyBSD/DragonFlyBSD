@@ -47,8 +47,6 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 
-#include <sys/mplock2.h>
-
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/if_clone.h>

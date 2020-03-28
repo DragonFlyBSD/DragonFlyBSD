@@ -44,7 +44,6 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <sys/vkernel.h>
-#include <sys/mplock2.h>
 #include <ddb/ddb.h>
 
 #include <cpu/cpu.h>

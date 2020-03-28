@@ -41,7 +41,6 @@
 #include <sys/priv.h>
 #include <sys/flame_graph.h>
 
-#include <sys/mplock2.h>
 #include <sys/thread2.h>
 
 #include <machine/atomic.h>

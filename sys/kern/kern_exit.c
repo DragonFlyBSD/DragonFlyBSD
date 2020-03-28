@@ -71,7 +71,6 @@
 
 #include <sys/refcount.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 #include <machine/vmm.h>
 

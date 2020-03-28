@@ -50,7 +50,6 @@
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
 #include <sys/kthread.h>
-#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/route.h>

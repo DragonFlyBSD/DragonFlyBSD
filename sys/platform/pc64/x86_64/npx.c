@@ -50,7 +50,6 @@
 #include <sys/signalvar.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #include <machine/cputypes.h>
 #include <machine/frame.h>

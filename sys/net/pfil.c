@@ -1,5 +1,4 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.14 2008/09/20 06:08:13 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -44,7 +43,6 @@
 #include <net/pfil.h>
 #include <net/netmsg2.h>
 #include <net/netisr2.h>
-#include <sys/mplock2.h>
 
 #define PFIL_CFGPORT	netisr_cpuport(0)
 

@@ -81,7 +81,6 @@
 #include <vm/vm_zone.h>
 
 #include <sys/buf2.h>
-#include <sys/mplock2.h>
 #include <vm/vm_page2.h>
 
 #include <netinet/in.h>
