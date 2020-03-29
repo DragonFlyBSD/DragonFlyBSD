@@ -15,7 +15,7 @@ if [ ! -d $_dir ]; then
 fi
 
 echo $_dir | sed -E 's/\/+$//'
-find ${_dir}/ | sort | awk '
+find -s ${_dir}/ | awk '
 BEGIN {
         FS = "/";
         i = 0;
