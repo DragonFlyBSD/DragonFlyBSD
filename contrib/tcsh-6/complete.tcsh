@@ -1,5 +1,4 @@
 #
-# $tcsh: complete.tcsh,v 1.55 2014/09/27 07:08:45 kim Exp $
 # example file using the new completion code
 #
 # Debian GNU/Linux
@@ -1009,7 +1008,7 @@ complete ln		c/--/"(backup directory force no-dereference \
 		    c/-/"(b d F f i n S s V v -)"/ \
 		    n/{-S,--suffix}/x:'<suffix>'/ \
 		    n/{-V,--version-control}/"(t numbered nil existing \
-		    never simple)"/ n/-/f/ N/-/x:'<link_name>'/ \
+		    never simple)"/ n/-*/f/ N/-*/x:'<link_name>'/ \
 		    p/1/f/ p/2/x:'<link_name>'/
 complete touch	c/--/"(date reference time help version)"/ \
 		    c/-/"(a c d f m r t -)"/ \

@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/ed.screen.c,v 3.81 2014/03/15 21:25:11 christos Exp $ */
 /*
  * ed.screen.c: Editor/termcap-curses interface
  */
@@ -31,9 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: ed.screen.c,v 3.81 2014/03/15 21:25:11 christos Exp $")
-
 #include "ed.h"
 #include "tc.h"
 #include "ed.defns.h"
@@ -1564,13 +1560,13 @@ GetSize(int *lins, int *cols)
 #endif /* SIG_WINDOW */
 
 #ifdef KNOWsize
-static void
+static int
 UpdateVal(const Char *tag, int value, Char *termcap, Char *backup)
 {
     Char *ptr, *p;
     if ((ptr = Strstr(termcap, tag)) == NULL) {
 	(void)Strcpy(backup, termcap);
-	return;
+	return 0;
     } else {
 	size_t len = (ptr - termcap) + Strlen(tag);
 	(void)Strncpy(backup, termcap, len);
@@ -1581,6 +1577,7 @@ UpdateVal(const Char *tag, int value, Char *termcap, Char *backup)
 	ptr = Strchr(ptr, ':');
 	if (ptr)
 	    (void) Strcat(backup, ptr);
+	return 1;
     }
 }
 #endif
@@ -1626,20 +1623,23 @@ ChangeSize(int lins, int cols)
 	if ((tptr = getenv("TERMCAP")) != NULL) {
 	    /* Leave 64 characters slop in case we enlarge the termcap string */
 	    Char    termcap[TC_BUFSIZE+64], backup[TC_BUFSIZE+64], *ptr;
+	    int changed;
 
 	    ptr = str2short(tptr);
 	    (void) Strncpy(termcap, ptr, TC_BUFSIZE);
 	    termcap[TC_BUFSIZE-1] = '\0';
 
-	    UpdateVal(STRco, Val(T_co), termcap, backup);
-	    UpdateVal(STRli, Val(T_li), termcap, backup);
+	    changed = UpdateVal(STRco, Val(T_co), termcap, backup);
+	    changed |= UpdateVal(STRli, Val(T_li), termcap, backup);
 
-	    /*
-	     * Chop the termcap string at TC_BUFSIZE-1 characters to avoid
-	     * core-dumps in the termcap routines
-	     */
-	    termcap[TC_BUFSIZE - 1] = '\0';
-	    tsetenv(STRTERMCAP, termcap);
+	    if (changed) {
+		/*
+		 * Chop the termcap string at TC_BUFSIZE-1 characters to avoid
+		 * core-dumps in the termcap routines
+		 */
+		termcap[TC_BUFSIZE - 1] = '\0';
+		tsetenv(STRTERMCAP, termcap);
+	    }
 	}
     }
 #endif /* KNOWsize */

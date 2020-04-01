@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/ed.chared.c,v 3.99 2014/03/09 00:20:26 christos Exp $ */
 /*
  * ed.chared.c: Character editing functions.
  */
@@ -71,9 +70,6 @@
  */
 
 #include "sh.h"
-
-RCSID("$tcsh: ed.chared.c,v 3.99 2014/03/09 00:20:26 christos Exp $")
-
 #include "ed.h"
 #include "tw.h"
 #include "ed.defns.h"
@@ -93,7 +89,7 @@ RCSID("$tcsh: ed.chared.c,v 3.99 2014/03/09 00:20:26 christos Exp $")
  * from: Gert-Jan Vons <vons@cesar.crbca1.sinet.slb.com>
  */
 #define C_CLASS_WHITE	1
-#define C_CLASS_ALNUM	2
+#define C_CLASS_WORD	2
 #define C_CLASS_OTHER	3
 
 static Char *InsertPos = InputBuf; /* Where insertion starts */
@@ -290,7 +286,7 @@ c_preword(Char *p, Char *low, int n, Char *delim)
 /*
  * c_to_class() returns the class of the given character.
  *
- * This is used to make the c_prev_word() and c_next_word() functions
+ * This is used to make the c_prev_word(), c_next_word() and c_eword() functions
  * work like vi's, which classify characters. A word is a sequence of
  * characters belonging to the same class, classes being defined as
  * follows:
@@ -305,8 +301,8 @@ c_to_class(Char ch)
     if (Isspace(ch))
         return C_CLASS_WHITE;
 
-    if (Isdigit(ch) || Isalpha(ch) || ch == '_')
-        return C_CLASS_ALNUM;
+    if (isword(ch))
+        return C_CLASS_WORD;
 
     return C_CLASS_OTHER;
 }
@@ -750,7 +746,7 @@ c_substitute(void)
     /*
      * If we found a history character, go expand it.
      */
-    if (HIST != '\0' && *p == HIST)
+    if (p >= InputBuf && HIST != '\0' && *p == HIST)
 	nr_exp = c_excl(p);
     else
         nr_exp = 0;
@@ -828,15 +824,24 @@ c_eword(Char *p, Char *high, int n)
     p++;
 
     while (n--) {
-	while ((p < high) && Isspace(*p)) 
-	    p++;
+        int  c_class;
 
-	if (isword(*p))
-	    while ((p < high) && isword(*p)) 
-		p++;
-	else
-	    while ((p < high) && !(Isspace(*p) || isword(*p)))
-		p++;
+        if (p >= high)
+            break;
+
+        /* scan until end of current word (may be all whitespace!) */
+        c_class = c_to_class(*p);
+        while ((p < high) && c_class == c_to_class(*p))
+            p++;
+
+        /* if this was a non_whitespace word, we're ready */
+        if (c_class != C_CLASS_WHITE)
+            continue;
+
+        /* otherwise, move to the end of the word just found */
+        c_class = c_to_class(*p);
+        while ((p < high) && c_class == c_to_class(*p))
+            p++;
     }
 
     p--;
@@ -1096,8 +1101,7 @@ e_inc_search(int dir)
 	if (GetNextChar(&ch) != 1)
 	    return(e_send_eof(0));
 
-	switch (ch > NT_NUM_KEYS
-		? F_INSERT : CurrentKeyMap[(unsigned char) ch]) {
+	switch (GetCmdChar(ch)) {
 	case F_INSERT:
 	case F_DIGIT:
 	case F_MAGIC_SPACE:
@@ -3025,7 +3029,7 @@ e_uppercase(Char c)
 
 /*ARGSUSED*/
 CCRETVAL
-e_capitolcase(Char c)
+e_capitalcase(Char c)
 {
     Char   *cp, *end;
 
@@ -3387,7 +3391,7 @@ e_stuff_char(Char c)
          (void) Cookedmode();
 
      (void) xwrite(SHIN, "\n", 1);
-     len = one_wctomb(buf, c & CHAR);
+     len = one_wctomb(buf, c);
      for (i = 0; i < len; i++)
 	 (void) ioctl(SHIN, TIOCSTI, (ioctl_t) &buf[i]);
 

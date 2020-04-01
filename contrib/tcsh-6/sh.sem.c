@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.sem.c,v 3.88 2014/09/08 18:52:15 christos Exp $ */
 /*
  * sh.sem.c: I/O redirections and job forking. A touchy issue!
  *	     Most stuff with builtins is incorrect
@@ -32,9 +31,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: sh.sem.c,v 3.88 2014/09/08 18:52:15 christos Exp $")
-
 #include "tc.h"
 #include "tw.h"
 #ifdef WINNT_NATIVE
@@ -212,8 +208,14 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	 * If noexec then this is all we do.
 	 */
 	if (t->t_dflg & F_READ) {
+	    int old_pintr_disabled;
+
 	    xclose(0);
+	    if (setintr)
+		pintr_push_enable(&old_pintr_disabled);
 	    heredoc(t->t_dlef);
+	    if (setintr)
+		cleanup_until(&old_pintr_disabled);
 	    if (noexec)
 		xclose(0);
 	}
@@ -909,7 +911,7 @@ doio(struct command *t, int *pipein, int *pipeout)
 	else
 	    fd = 0;
 	if ((flags & F_APPEND) == 0 || fd == -1) {
-	    if (!(flags & F_OVERWRITE) && adrof(STRnoclobber)) {
+	    if (!(flags & F_OVERWRITE) && no_clobber) {
 		if (flags & F_APPEND)
 		    stderror(ERR_SYSTEM, tmp, strerror(errno));
 		chkclob(tmp);
@@ -981,5 +983,13 @@ chkclob(const char *cp)
 	return;
     if (S_ISCHR(stb.st_mode))
 	return;
+    if (no_clobber & NOCLOBBER_NOTEMPTY && stb.st_size == 0)
+	return;
+    if (no_clobber & NOCLOBBER_ASK) {
+	if (getYN(CGETS(22, 15,
+	    "Do you really want to overwrite an existing file? [N/y] ")))
+	    return;
+    }
+
     stderror(ERR_EXISTS, cp);
 }

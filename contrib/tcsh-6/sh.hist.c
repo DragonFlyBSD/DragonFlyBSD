@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.hist.c,v 3.60 2015/02/22 21:59:00 christos Exp $ */
 /*
  * sh.hist.c: Shell history expansions and substitutions
  */
@@ -31,9 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: sh.hist.c,v 3.60 2015/02/22 21:59:00 christos Exp $")
-
 #include <stdio.h>	/* for rename(2), grr. */
 #include <assert.h>
 #include "tc.h"
@@ -1199,7 +1195,7 @@ fmthist(int fmt, ptr_t ptr)
 	    buf = xmalloc(Strlen(istr) * MB_LEN_MAX + 1);
 
 	    for (p = buf, ip = istr; *ip != '\0'; ip++)
-		p += one_wctomb(p, CHAR & *ip);
+		p += one_wctomb(p, *ip);
 
 	    *p = '\0';
 	    xfree(istr);
@@ -1285,6 +1281,7 @@ rechist(Char *fname, int ref)
 	}
 
 	if (merge) {
+	    jmp_buf_t osetexit;
 	    if (lock) {
 #ifndef WINNT_NATIVE
 		char *lockpath = strsave(short2str(fname));
@@ -1294,7 +1291,10 @@ rechist(Char *fname, int ref)
 		    cleanup_push(lockpath, dotlock_cleanup);
 #endif
 	    }
-	    loadhist(fname, 1);
+	    getexit(osetexit);
+	    if (setexit())
+		loadhist(fname, 1);
+	    resexit(osetexit);
 	}
     }
     rs = randsuf();
@@ -1323,7 +1323,11 @@ rechist(Char *fname, int ref)
     xclose(fp);
     SHOUT = ftmp;
     didfds = oldidfds;
+#ifndef WINNT_NATIVE
     (void)rename(path, short2str(fname));
+#else
+    (void)ReplaceFile( short2str(fname),path,NULL,0,NULL,NULL);
+#endif
     cleanup_until(fname);
 }
 
