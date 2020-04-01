@@ -53,7 +53,7 @@
 #define HAVE_GETPWENT 1
 
 /* Define to 1 if you have the `getutent' function. */
-#define HAVE_GETUTENT 1
+/* #undef HAVE_GETUTENT */
 
 /* Define to 1 if you have the `getutxent' function. */
 #define HAVE_GETUTXENT 1
@@ -69,6 +69,9 @@
 
 /* Define to 1 if you have the `mallinfo' function. */
 /* #undef HAVE_MALLINFO */
+
+/* Define to 1 if you have the `mblen' function. */
+#define HAVE_MBLEN 1
 
 /* Define to 1 if mbrtowc and mbstate_t are properly declared. */
 #define HAVE_MBRTOWC 1
@@ -206,13 +209,13 @@
 #define NLS_CATALOGS 1
 
 /* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "http://bugs.gw.com/"
+#define PACKAGE_BUGREPORT "https://bugs.astron.com/"
 
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "tcsh"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "tcsh 6.19.00"
+#define PACKAGE_STRING "tcsh 6.22.02"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "tcsh"
@@ -221,7 +224,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "6.19.00"
+#define PACKAGE_VERSION "6.22.02"
 
 /* Define to 1 if the `setpgrp' function takes no argument. */
 /* #undef SETPGRP_VOID */

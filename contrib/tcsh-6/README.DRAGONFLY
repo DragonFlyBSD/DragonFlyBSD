@@ -2,21 +2,24 @@ TCSH
 ====
 
 Original source is availale from:
-ftp://ftp.astron.com/pub/tcsh/
+https://ftp.astron.com/pub/tcsh/
 
-file = tcsh-6.19.00.tar.gz
-date = 21 May 2015
-size = 947135
-sha1 = cdb1abe319fab5d3caff101c393293e5b3607f0c
+file = tcsh-6.22.02.tar.gz
+date = December 4, 2019
+size = 1006405
+sha1 = d3c916c82eec7e20c49dedf660edd51a7971f8ab
 
 A list of files removed is in README.DELETED
 
 Local modifications applied to following files:
+	config/bsd4.4
 	ed.init.c
 	ed.term.c
 	ed.term.h
 	sh.c
 	sh.decls.h
+	sh.err.c
 	sh.func.c
 	sh.init.c
 	sh.set.c
+	tc.const.c

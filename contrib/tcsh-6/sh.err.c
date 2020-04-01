@@ -202,7 +202,7 @@ errinit(void)
 
     for (i = 0; i < NO_ERRORS; i++)
 	xfree((char *)(intptr_t)elst[i]);
-#  if defined(__FreeBSD__) || defined(hpux) || defined(__MidnightBSD__)
+#  if defined(__DragonFly__) || defined(hpux) || defined(__MidnightBSD__)
 #  define NLS_MAXSET 30
     for (i = 1; i <= NLS_MAXSET; i++)
 	CGETS(i, 1, "" );

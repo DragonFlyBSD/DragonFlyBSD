@@ -180,7 +180,7 @@ Char STRLANGBIG5[]	= { 'z', 'h', '_', 'T', 'W', '.', 'B', 'i', 'g', '5',
 			    '\0' };
 Char STRLANGEUCZH[]	= { '\0' };
 Char STRLANGEUCZHB[]	= { '\0' };
-#  elif (defined(__FreeBSD__) || defined(__NetBSD__)) || defined(__MidnightBSD__)
+#  elif (defined(__DragonFly__) || defined(__NetBSD__)) || defined(__MidnightBSD__)
 Char STRLANGEUCJP[]	= { 'j', 'a', '_', 'J', 'P', '.', 'e', 'u', 'c', 'J',
 			    'P', '\0' };
 Char STRLANGEUCJPB[]	= { 'j', 'a', '_', 'J', 'P', '.', 'E', 'U', 'C', '\0' };
