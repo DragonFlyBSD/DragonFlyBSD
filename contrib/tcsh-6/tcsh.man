@@ -77,7 +77,7 @@
 .\"   used here if you can. In particular, please don't use nroff commands
 .\"   which aren't already used herein.
 .\" 
-.TH TCSH 1 "21 May 2015" "Astron 6.19.00"
+.TH TCSH 1 "4 Dec 2019" "Astron 6.22.02"
 .SH NAME
 tcsh \- C shell with file name completion and command line editing
 .SH SYNOPSIS
@@ -206,7 +206,7 @@ A login shell begins by executing commands from the system files
 It then executes commands from files in the user's \fBhome\fR directory:
 first \fI~/.tcshrc\fR (+)
 or, if \fI~/.tcshrc\fR is not found, \fI~/.cshrc\fR,
-then \fI~/.history\fR (or the value of the \fBhistfile\fR shell variable),
+then the contents of \fI~/.history\fR (or the value of the \fBhistfile\fR shell variable) are loaded into memory,
 then \fI~/.login\fR,
 and finally \fI~/.cshdirs\fR (or the value of the \fBdirsfile\fR shell variable) (+).
 The shell may read \fI/etc/csh.login\fR before instead of after
@@ -256,13 +256,13 @@ Finally, \fBEditor commands\fR lists and describes
 the editor commands specific to the shell and their default bindings.
 .SS "The command-line editor (+)"
 Command-line input can be edited using key sequences much like those used in
-GNU Emacs or \fIvi\fR(1).
+\fIemacs\fR(1) or \fIvi\fR(1).
 The editor is active only when the \fBedit\fR shell variable is set, which
 it is by default in interactive shells.
 The \fIbindkey\fR builtin can display and change key bindings.
-Emacs-style key bindings are used by default
+\fIemacs\fR(1)\-style key bindings are used by default
 (unless the shell was compiled otherwise; see the \fBversion\fR shell variable),
-but \fIbindkey\fR can change the key bindings to \fIvi\fR-style bindings en masse.
+but \fIbindkey\fR can change the key bindings to \fIvi\fR(1)\-style bindings en masse.
 .PP
 The shell always binds the arrow keys (as defined in the \fBTERMCAP\fR
 environment variable) to
@@ -289,10 +289,12 @@ One can set the arrow key escape sequences to the empty string with \fIsettc\fR
 to prevent these bindings.
 The ANSI/VT100 sequences for arrow keys are always bound.
 .PP
-Other key bindings are, for the most part, what Emacs and \fIvi\fR(1)
+Other key bindings are, for the most part, what \fIemacs\fR(1) and \fIvi\fR(1)
 users would expect and can easily be displayed by \fIbindkey\fR, so there
 is no need to list them here.  Likewise, \fIbindkey\fR can list the editor
 commands with a short description of each.
+Certain key bindings have different behavior depending if \fIemacs\fR(1) or \fIvi\fR(1)
+style bindings are being used; see \fBvimode\fR for more information.
 .PP
 Note that editor commands do not have the same notion of a ``word'' as does the
 shell.  The editor delimits words with any non-alphanumeric characters not in
@@ -553,6 +555,26 @@ on terminals without a meta key.  Case counts, but commands that are bound
 to letters by default are bound to both lower- and uppercase letters for
 convenience.
 .TP 8
+.B backward-char \fR(^B, left)
+Move back a character.
+Cursor behavior modified by \fBvimode\fR.
+.TP 8
+.B backward-delete-word \fR(M-^H, M-^?)
+Cut from beginning of current word to cursor \- saved in cut buffer.
+Word boundary behavior modified by \fBvimode\fR.
+.TP 8
+.B backward-word \fR(M-b, M-B)
+Move to beginning of current word.
+Word boundary and cursor behavior modified by \fBvimode\fR.
+.TP 8
+.B beginning-of-line \fR(^A, home)
+Move to beginning of line.
+Cursor behavior modified by \fBvimode\fR.
+.TP 8
+.B capitalize-word \fR(M-c, M-C)
+Capitalize the characters from cursor to end of current word.
+Word boundary behavior modified by \fBvimode\fR.
+.TP 8
 .B complete-word \fR(tab)
 Completes a word as described under \fBCompletion and listing\fR.
 .TP 8
@@ -570,6 +592,7 @@ Like \fIcomplete-word\fR, but ignores user-defined completions.
 .B copy-prev-word \fR(M-^_)
 Copies the previous word in the current line into the input buffer.
 See also \fIinsert-last-word\fR.
+Word boundary behavior modified by \fBvimode\fR.
 .TP 8
 .B dabbrev-expand \fR(M-/)
 Expands the current word to the most recent preceding one for which
@@ -582,11 +605,13 @@ much like \fIhistory-search-backward\fR does.
 .B delete-char \fR(not bound)
 Deletes the character under the cursor.
 See also \fIdelete-char-or-list-or-eof\fR.
+Cursor behavior modified by \fBvimode\fR.
 .TP 8
 .B delete-char-or-eof \fR(not bound)
 Does \fIdelete-char\fR if there is a character under the cursor
 or \fIend-of-file\fR on an empty line.
 See also \fIdelete-char-or-list-or-eof\fR.
+Cursor behavior modified by \fBvimode\fR.
 .TP 8
 .B delete-char-or-list \fR(not bound)
 Does \fIdelete-char\fR if there is a character under the cursor
@@ -601,13 +626,25 @@ See also those three commands, each of which does only a single action, and
 \fIdelete-char-or-eof\fR, \fIdelete-char-or-list\fR and \fIlist-or-eof\fR,
 each of which does a different two out of the three.
 .TP 8
+.B delete-word \fR(M-d, M-D)
+Cut from cursor to end of current word \- save in cut buffer.
+Word boundary behavior modified by \fBvimode\fR.
+.TP 8
 .B down-history \fR(down-arrow, ^N)
 Like \fIup-history\fR, but steps down, stopping at the original input line.
+.TP 8
+.B downcase-word \fR(M-l, M-L)
+Lowercase the characters from cursor to end of current word.
+Word boundary behavior modified by \fBvimode\fR.
 .TP 8
 .B end-of-file \fR(not bound)
 Signals an end of file, causing the shell to exit unless the \fBignoreeof\fR
 shell variable (q.v.) is set to prevent this.
 See also \fIdelete-char-or-list-or-eof\fR.
+.TP 8
+.B end-of-line \fR(^E, end)
+Move cursor to end of line.
+Cursor behavior modified by \fBvimode\fR.
 .TP 8
 .B expand-history \fR(M-space)
 Expands history substitutions in the current word.
@@ -626,6 +663,14 @@ expands history substitutions in each word in the input buffer.
 .B expand-variables \fR(^X-$)
 Expands the variable to the left of the cursor.
 See \fBVariable substitution\fR.
+.TP 8
+.B forward-char \fR(^F, right)
+Move forward one character.
+Cursor behavior modified by \fBvimode\fR.
+.TP 8
+.B forward-word \fR(M-f, M-F)
+Move forward to end of current word.
+Word boundary and cursor behavior modified by \fBvimode\fR.
 .TP 8
 .B history-search-backward \fR(M-p, M-P)
 Searches backwards through the history list for a command beginning with
@@ -675,12 +720,13 @@ Any other character not bound to \fIself-insert-command\fR terminates the
 search, leaving the current line in the input buffer, and
 is then interpreted as normal input.  In particular, a carriage return
 causes the current line to be executed.
-Emacs mode only.
 See also \fIi-search-fwd\fR and \fIhistory-search-backward\fR.
+Word boundary behavior modified by \fBvimode\fR.
 .RE
 .TP 8
 .B i-search-fwd \fR(not bound)
 Like \fIi-search-back\fR, but searches forward.
+Word boundary behavior modified by \fBvimode\fR.
 .TP 8
 .B insert-last-word \fR(M-_)
 Inserts the last word of the previous input line (`!$') into the input buffer.
@@ -723,9 +769,13 @@ Toggles between input and overwrite modes.
 .TP 8
 .B run-fg-editor \fR(M-^Z)
 Saves the current input line and
-looks for a stopped job with a name equal to the last component of the
-file name part of the \fBEDITOR\fR or \fBVISUAL\fR environment variables,
-or, if neither is set, `ed' or `vi'.
+looks for a stopped job where the file name portion of its first word
+is found in the \fBeditors\fR shell variable.
+If \fBeditors\fR is not set, then the file name portion of the
+\fBEDITOR\fR environment variable (`ed' if unset)
+and the
+\fBVISUAL\fR environment variable (`vi' if unset)
+will be used.
 If such a job is found, it is restarted as if `fg %\fIjob\fR' had been
 typed.  This is used to toggle back and forth between an editor and
 the shell easily.  Some people bind this command to `^Z' so they
@@ -781,6 +831,18 @@ Beeps.
 Copies the previous entry in the history list into the input buffer.
 If \fBhistlit\fR is set, uses the literal form of the entry.
 May be repeated to step up through the history list, stopping at the top.
+.TP 8
+.B upcase-word \fR(M-u, M-U)
+Uppercase the characters from cursor to end of current word.
+Word boundary behavior modified by \fBvimode\fR.
+.TP 8
+.B vi-beginning-of-next-word \fR(not bound)
+Vi goto the beginning of next word.
+Word boundary and cursor behavior modified by \fBvimode\fR.
+.TP 8
+.B vi-eword \fR(not bound)
+Vi move to the end of the current word.
+Word boundary behavior modified by \fBvimode\fR.
 .TP 8
 .B vi-search-back \fR(?)
 Prompts with `?' for a search string (which may be a glob-pattern, as with
@@ -1574,6 +1636,9 @@ If the shell variable \fBnoclobber\fR is set, then the file must not exist or be
 character special file (e.g., a terminal or `/dev/null') or an error results.
 This helps prevent accidental destruction of files.  In this case the `!' forms
 can be used to suppress this check.
+If \fBnotempty\fR is given in \fBnoclobber\fR, `>' is allowed on empty files;
+if \fBask\fR is set, an interacive confirmation is presented, rather than an
+error.
 .PP
 The forms involving `&' route the diagnostic output into the specified file as
 well as the standard output.  \fIname\fR is expanded in the same way as `<'
@@ -2175,17 +2240,20 @@ Options include:
 Lists all editor commands and a short description of each.
 .TP 4
 .B \-d
-Binds all keys to the standard bindings for the default editor.
+Binds all keys to the standard bindings for the default editor,
+as per \fB-e\fR and \fB-v\fR below.
 .TP 4
 .B \-e
-Binds all keys to the standard GNU Emacs-like bindings.
+Binds all keys to \fIemacs\fR(1)\-style bindings.
+Unsets \fBvimode\fR.
 .TP 4
 .B \-v
-Binds all keys to the standard \fIvi\fR(1)-like bindings.
+Binds all keys to \fIvi\fR(1)\-style bindings.
+Sets \fBvimode\fR.
 .TP 4
 .B \-a
 Lists or changes key-bindings in the alternative key map.
-This is the key map used in \fIvi\fR command mode.
+This is the key map used in \fBvimode\fR command mode.
 .TP 4
 .B \-b
 \fIkey\fR is interpreted as
@@ -3741,7 +3809,7 @@ periods, hyphens and underscores (`.', `\-' and `_') as word
 separators.
 If set to `Enhance', completion matches uppercase and underscore
 characters explicitly and matches lowercase and hyphens in a
-case-insensivite manner; it will treat periods, hypens and underscores
+case-insensitive manner; it will treat periods, hyphens and underscores
 as word separators.
 .TP 8
 .B continue \fR(+)
@@ -3883,6 +3951,11 @@ systems.
 .B edit \fR(+)
 If set, the command-line editor is used.  Set by default in interactive
 shells.
+.TP 8
+.B editors \fR(+)
+A list of command names for the \fIrun-fg-editor\fR editor command to match.
+If not set, the \fBEDITOR\fR (`ed' if unset) and \fBVISUAL\fR (`vi' if unset)
+environment variables will be used instead.
 .TP 8
 .B ellipsis \fR(+)
 If set, the `%c'/`%.' and `%C' prompt sequences (see the \fBprompt\fR
@@ -4666,7 +4739,7 @@ nd
 `.' is omitted from \fBpath\fR for security
 .TP 6
 vi
-\fIvi\fR-style editing is the default rather than \fIemacs\fR
+\fIvi\fR(1)\-style editing is the default rather than \fIemacs\fR(1)\-style
 .TP 6
 dtr
 Login shells drop DTR when exiting
@@ -4702,6 +4775,23 @@ authentication fails.  The \fBafsuser\fR shell variable or the
 .PP
 An administrator may enter additional strings to indicate differences
 in the local version.
+.RE
+.TP 8
+.B vimode \fR(+)
+.RS +8
+If unset, various key bindings change behavior to be more \fBemacs\fR(1)\-style:
+word boundaries are determined by \fBwordchars\fR versus other characters.
+.PP
+If set, various key bindings change behavior to be more \fBvi\fR(1)\-style:
+word boundaries are determined by \fBwordchars\fR versus whitespace
+versus other characters;
+cursor behavior depends upon current vi mode (command, delete, insert, replace).
+.PP
+This variable is unset by \fIbindkey\fR \fB-e\fR and
+set by \fIbindkey\fR \fB-v\fR.
+.B vimode
+may be explicitly set or unset by the user after those \fIbindkey\fR
+operations if required.
 .RE
 .TP 8
 .B visiblebell \fR(+)
@@ -4768,7 +4858,9 @@ which don't store the remote hostname.
 .B wordchars \fR(+)
 A list of non-alphanumeric characters to be considered part of a word by the
 \fIforward-word\fR, \fIbackward-word\fR etc., editor commands.
-If unset, `*?_\-.[]~=' is used.
+If unset, the default value is determined based on the state of \fBvimode\fR:
+if \fBvimode\fR is unset, `*?_\-.[]~=' is used as the default;
+if \fBvimode\fR is set, `_' is used as the default.
 .SH ENVIRONMENT
 .TP 8
 .B AFSUSER \fR(+)
@@ -4783,8 +4875,9 @@ If set, the shell does not set \fBautologout\fR (q.v.).
 .TP 8
 .B EDITOR
 The pathname to a default editor.
-See also the \fBVISUAL\fR environment variable
-and the \fIrun-fg-editor\fR editor command.
+Used by the \fIrun-fg-editor\fR editor command if the
+the \fBeditors\fR shell variable is unset.
+See also the \fBVISUAL\fR environment variable.
 .TP 8
 .B GROUP \fR(+)
 Equivalent to the \fBgroup\fR shell variable.
@@ -5020,8 +5113,9 @@ The vendor, as determined at compile time.
 .TP 8
 .B VISUAL
 The pathname to a default full-screen editor.
-See also the \fBEDITOR\fR environment variable
-and the \fIrun-fg-editor\fR editor command.
+Used by the \fIrun-fg-editor\fR editor command if the
+the \fBeditors\fR shell variable is unset.
+See also the \fBEDITOR\fR environment variable.
 .SH FILES
 .PD 0
 .TP 16
@@ -5089,8 +5183,9 @@ This manual describes \fItcsh\fR as a single entity,
 but experienced \fIcsh\fR(1) users will want to pay special attention to
 \fItcsh\fR's new features.
 .PP
-A command-line editor, which supports GNU Emacs or \fIvi\fR(1)-style
-key bindings.  See \fBThe command-line editor\fR and \fBEditor commands\fR.
+A command-line editor, which supports \fIemacs\fR(1)\-style
+or \fIvi\fR(1)\-style key bindings.
+See \fBThe command-line editor\fR and \fBEditor commands\fR.
 .PP
 Programmable, interactive word completion and listing.
 See \fBCompletion and listing\fR and the \fIcomplete\fR and \fIuncomplete\fR
@@ -5196,9 +5291,9 @@ interrupted.
 Command substitution supports multiple commands and conditions, but not
 cycles or backward \fIgoto\fRs.
 .PP
-Report bugs at http://bugs.gw.com/, preferably with fixes.  If you want to
-help maintain and test tcsh, send mail to tcsh-request@mx.gw.com with the
-text `subscribe tcsh' on a line by itself in the body.
+Report bugs at https://bugs.astron.com/, preferably with fixes.  If you want to
+help maintain and test tcsh, add yourself to the mailing list in
+https://mailman.astron.com/.
 .SH THE T IN TCSH
 In 1964, DEC produced the PDP-6.  The PDP-10 was a later re-implementation.  It
 was re-christened the DECsystem-10 in 1970 or so when DEC brought out the
@@ -5243,7 +5338,7 @@ pipe(2), setrlimit(2), sigvec(2), stat(2), umask(2), vfork(2), wait(2),
 malloc(3), setlocale(3), tty(4), a.out(5), termcap(5), environ(7),
 termio(7), Introduction to the C Shell
 .SH VERSION
-This manual documents tcsh 6.19.00 (Astron) 2015-05-21.
+This manual documents tcsh 6.22.02 (Astron) 2019-12-04.
 .SH AUTHORS
 .PD 0
 .TP 2

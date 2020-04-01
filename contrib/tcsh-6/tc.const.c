@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/tc.const.c,v 3.104 2014/10/28 18:40:46 christos Exp $ */
 /*
  * sh.const.c: String constants for tcsh.
  */
@@ -31,8 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: tc.const.c,v 3.104 2014/10/28 18:40:46 christos Exp $")
 
 Char STRlogout[]	= { 'l', 'o', 'g', 'o', 'u', 't', '\0' };
 Char STRautologout[]	= { 'a', 'u', 't', 'o', 'l', 'o', 'g', 'o', 'u', 't', 
@@ -86,6 +83,7 @@ Char STRMACHTYPE[]	= { 'M', 'A', 'C', 'H', 'T', 'Y', 'P', 'E', '\0' };
 Char STROSTYPE[]	= { 'O', 'S', 'T', 'Y', 'P', 'E', '\0' };
 Char STRedit[]		= { 'e', 'd', 'i', 't', '\0' };
 Char STReditors[]	= { 'e', 'd', 'i', 't', 'o', 'r', 's', '\0' };
+Char STRvimode[]	= { 'v', 'i', 'm', 'o', 'd', 'e', '\0' };
 Char STRaddsuffix[]	= { 'a', 'd', 'd', 's', 'u', 'f', 'f', 'i', 'x',
 			    '\0' };
 Char STRcsubstnonl[]	= { 'c', 's', 'u', 'b', 's', 't', 'n', 'o', 'n', 'l',
@@ -255,10 +253,10 @@ Char STRnormal[]	= { 'n', 'o', 'r', 'm', 'a', 'l', '\0' };
 Char STRsldtlogout[]	= { '/', '.', 'l', 'o', 'g', 'o', 'u', 't', '\0' };
 Char STRjobs[]		= { 'j', 'o', 'b', 's', '\0' };
 Char STRdefprompt[]	= { '%', '#', ' ', '\0' };
-Char STRmquestion[]	= { '%', 'R', '?' | QUOTE, ' ', '\0' };
+Char STRmquestion[]	= { '%', 'R', (Char)('?' | QUOTE), ' ', '\0' };
 Char STRKCORRECT[]	= { 'C', 'O', 'R', 'R', 'E', 'C', 'T', '>', '%', 'R', 
 			    ' ', '(', 'y', '|', 'n', '|', 'e', '|', 'a', ')', 
-			    '?' | QUOTE, ' ', '\0' };
+			    (Char)('?' | QUOTE), ' ', '\0' };
 Char STRunalias[]	= { 'u', 'n', 'a', 'l', 'i', 'a', 's', '\0' };
 Char STRalias[]		= { 'a', 'l', 'i', 'a', 's', '\0' };
 Char STRprecmd[]	= { 'p', 'r', 'e', 'c', 'm', 'd', '\0' };
@@ -371,6 +369,8 @@ Char STRsldotcshrc[]	= { '/', '.', 'c', 's', 'h', 'r', 'c', '\0' };
 Char STRsldotlogin[]	= { '/', '.', 'l', 'o', 'g', 'i', 'n', '\0' };
 Char STRignoreeof[]	= { 'i', 'g', 'n', 'o', 'r', 'e', 'e', 'o', 'f', '\0' };
 Char STRnoclobber[]	= { 'n', 'o', 'c', 'l', 'o', 'b', 'b', 'e', 'r', '\0' };
+Char STRnotempty[]	= { 'n', 'o', 't', 'e', 'm', 'p', 't', 'y', '\0' };
+Char STRask[]		= { 'a', 's', 'k', '\0' };
 Char STRhelpcommand[]	= { 'h', 'e', 'l', 'p', 'c', 'o', 'm', 'm', 'a', 'n', 
 			    'd', '\0' };
 Char STRfignore[]	= { 'f', 'i', 'g', 'n', 'o', 'r', 'e', '\0' };
@@ -380,7 +380,7 @@ Char STRlistmaxrows[]	= { 'l', 'i', 's', 't', 'm', 'a', 'x', 'r', 'o', 'w',
 Char STRlistmax[]	= { 'l', 'i', 's', 't', 'm', 'a', 'x', '\0' };
 Char STRlistlinks[]	= { 'l', 'i', 's', 't', 'l', 'i', 'n', 'k', 's', '\0' };
 Char STRDING[]		= { 'D', 'I', 'N', 'G', '!', '\0' };
-Char STRQNULL[]		= { '\0' | QUOTE, '\0' };
+Char STRQNULL[]		= { (Char)('\0' | QUOTE), '\0' };
 Char STRcorrect[]	= { 'c', 'o', 'r', 'r', 'e', 'c', 't', '\0' };
 Char STRcmd[]		= { 'c', 'm', 'd', '\0' };
 Char STRall[]		= { 'a', 'l', 'l', '\0' };
@@ -453,7 +453,7 @@ Char STRLC_MONETARY[]	= { 'L', 'C', '_', 'M', 'O', 'N', 'E', 'T', 'A',
 			    'R', 'Y', '\0' };
 Char STRNOREBIND[] 	= { 'N', 'O', 'R', 'E', 'B', 'I', 'N', 'D', '\0' };
 
-#if defined(SIG_WINDOW) || defined(SIGWINCH) || defined(SIGWINDOW) || defined (_VMS_POSIX)	 
+#if defined(SIG_WINDOW) || defined(SIGWINCH) || defined(SIGWINDOW) || defined (_VMS_POSIX) || defined(_SIGWINCH)
 /* atp - problem with declaration of str{lines,columns} in sh.func.c (1277) */
 Char STRLINES[]		= { 'L', 'I', 'N', 'E', 'S', '\0'};
 Char STRCOLUMNS[]	= { 'C', 'O', 'L', 'U', 'M', 'N', 'S', '\0'};

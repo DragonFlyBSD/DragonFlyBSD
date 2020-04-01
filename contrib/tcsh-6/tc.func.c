@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/tc.func.c,v 3.153 2014/10/11 21:52:26 christos Exp $ */
 /*
  * tc.func.c: New tcsh builtins.
  */
@@ -31,9 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: tc.func.c,v 3.153 2014/10/11 21:52:26 christos Exp $")
-
 #include "ed.h"
 #include "ed.defns.h"		/* for the function names */
 #include "tw.h"
@@ -57,7 +53,7 @@ extern time_t t_period;
 extern int just_signaled;
 static int precmd_active = 0;
 static int jobcmd_active = 0; /* GrP */
-static int postcmd_active = 0;
+int postcmd_active = 0;
 static int periodic_active = 0;
 static int cwdcmd_active = 0;	/* PWP: for cwd_cmd */
 static int beepcmd_active = 0;
@@ -120,11 +116,17 @@ expand_lex(const struct wordent *sp0, int from, int to)
 		if ((*s & QUOTE)
 		    && (((*s & TRIM) == HIST && HIST != '\0') ||
 			(((*s & TRIM) == '\'') && (prev_c != '\\')) ||
-			(((*s & TRIM) == '\"') && (prev_c != '\\')) ||
-			(((*s & TRIM) == '\\') && (prev_c != '\\')))) {
+			(((*s & TRIM) == '\"') && (prev_c != '\\')))) {
 		    Strbuf_append1(&buf, '\\');
 		}
+#if INVALID_BYTE != 0
+		if ((*s & INVALID_BYTE) != INVALID_BYTE) /* *s < INVALID_BYTE */
+		    Strbuf_append1(&buf, *s & TRIM);
+		else
+		    Strbuf_append1(&buf, *s);
+#else
 		Strbuf_append1(&buf, *s & TRIM);
+#endif
 		prev_c = *s;
 	    }
 	    Strbuf_append1(&buf, ' ');
@@ -506,31 +508,12 @@ struct process *
 find_stop_ed(void)
 {
     struct process *pp, *retp;
-    const char *ep, *vp;
+    const char *ep = NULL, *vp = NULL;
     char *cp, *p;
-    size_t epl, vpl;
+    size_t epl = 0, vpl = 0;
     int pstatus;
     struct varent *varp;
     Char **vv;
-
-    if ((ep = getenv("EDITOR")) != NULL) {	/* if we have a value */
-	if ((p = strrchr(ep, '/')) != NULL) 	/* if it has a path */
-	    ep = p + 1;		/* then we want only the last part */
-    }
-    else 
-	ep = "ed";
-
-    if ((vp = getenv("VISUAL")) != NULL) {	/* if we have a value */
-	if ((p = strrchr(vp, '/')) != NULL) 	/* and it has a path */
-	    vp = p + 1;		/* then we want only the last part */
-    }
-    else 
-	vp = "vi";
-
-    for (vpl = 0; vp[vpl] && !isspace((unsigned char)vp[vpl]); vpl++)
-	continue;
-    for (epl = 0; ep[epl] && !isspace((unsigned char)ep[epl]); epl++)
-	continue;
 
     if (pcurrent == NULL)	/* see if we have any jobs */
 	return NULL;		/* nope */
@@ -539,6 +522,27 @@ find_stop_ed(void)
 	vv = varp->vec;
     else
 	vv = NULL;
+
+    if (! vv) {
+	if ((ep = getenv("EDITOR")) != NULL) {	/* if we have a value */
+	    if ((p = strrchr(ep, '/')) != NULL) 	/* if it has a path */
+		ep = p + 1;		/* then we want only the last part */
+	}
+	else
+	    ep = "ed";
+
+	if ((vp = getenv("VISUAL")) != NULL) {	/* if we have a value */
+	    if ((p = strrchr(vp, '/')) != NULL) 	/* and it has a path */
+		vp = p + 1;		/* then we want only the last part */
+	}
+	else
+	    vp = "vi";
+
+	for (vpl = 0; vp[vpl] && !isspace((unsigned char)vp[vpl]); vpl++)
+	    continue;
+	for (epl = 0; ep[epl] && !isspace((unsigned char)ep[epl]); epl++)
+	    continue;
+    }
 
     retp = NULL;
     for (pp = proclist.p_next; pp; pp = pp->p_next)
@@ -565,10 +569,13 @@ find_stop_ed(void)
 	    else
 		cp = p;			/* else we get all of it */
 
-	    /* if we find either in the current name, fg it */
-	    if (strncmp(ep, cp, epl) == 0 ||
-		strncmp(vp, cp, vpl) == 0 || findvv(vv, cp)) {
-
+	    /*
+	     * If we find the current name in the $editors array (if set)
+	     * or as $EDITOR or $VISUAL (if $editors not set), fg it.
+	     */
+	    if ((vv && findvv(vv, cp)) ||
+	        (epl && strncmp(ep, cp, epl) == 0 && cp[epl] == '\0') ||
+		(vpl && strncmp(vp, cp, vpl) == 0 && cp[vpl] == '\0')) {
 		/*
 		 * If there is a choice, then choose the current process if
 		 * available, or the previous process otherwise, or else
@@ -893,12 +900,12 @@ beep_cmd(void)
     if (beepcmd_active) {	/* an error must have been caught */
 	aliasrun(2, STRunalias, STRbeepcmd);
 	xprintf("%s", CGETS(22, 5, "Faulty alias 'beepcmd' removed.\n"));
+	goto leave;
     }
-    else {
-	beepcmd_active = 1;
-	if (!whyles && adrof1(STRbeepcmd, &aliases))
-	    aliasrun(1, STRbeepcmd, NULL);
-    }
+    beepcmd_active = 1;
+    if (!whyles && adrof1(STRbeepcmd, &aliases))
+	aliasrun(1, STRbeepcmd, NULL);
+leave:
     beepcmd_active = 0;
     cleanup_until(&pintr_disabled);
 }
@@ -915,6 +922,8 @@ period_cmd(void)
     Char *vp;
     time_t  t, interval;
 
+    if (whyles)
+	return;
     pintr_disabled++;
     cleanup_push(&pintr_disabled, disabled_cleanup);
     if (periodic_active) {	/* an error must have been caught */
@@ -953,6 +962,8 @@ leave:
 void
 job_cmd(Char *args)
 {
+    if (whyles)
+	return;
     pintr_disabled++;
     cleanup_push(&pintr_disabled, disabled_cleanup);
     if (jobcmd_active) {	/* an error must have been caught */
@@ -1133,7 +1144,6 @@ rmstar(struct wordent *cp)
     Char   *tag;
 #endif /* RMDEBUG */
     Char   *charac;
-    char    c;
     int     ask, doit, star = 0, silent = 0, opintr_disabled;
 
     if (!adrof(STRrmstar))
@@ -1147,11 +1157,14 @@ rmstar(struct wordent *cp)
     opintr_disabled = pintr_disabled;
     pintr_disabled = 0;
     while (we != cp) {
+	Char *cmd = we->word;
+	if (cmd[0] == STRQNULL[0])
+	    cmd++;
 #ifdef RMDEBUG
 	if (*tag)
-	    xprintf(CGETS(22, 7, "parsing command line\n"));
+	    xprintf(CGETS(22, 7, "parsing command line [%S]\n"), cmd);
 #endif /* RMDEBUG */
-	if (!Strcmp(we->word, STRrm)) {
+	if (!StrQcmp(cmd, STRrm)) {
 	    args = we->next;
 	    ask = (*args->word != '-');
 	    while (*args->word == '-' && !silent) {	/* check options */
@@ -1166,17 +1179,8 @@ rmstar(struct wordent *cp)
 		    if (!Strcmp(args->word, STRstar))
 			star = 1;
 		if (ask && star) {
-		    xprintf("%s", CGETS(22, 8,
-			    "Do you really want to delete all files? [n/y] "));
-		    flush();
-		    (void) force_read(SHIN, &c, 1);
-		    /* 
-		     * Perhaps we should use the yesexpr from the
-		     * actual locale
-		     */
-		    doit = (strchr(CGETS(22, 14, "Yy"), c) != NULL);
-		    while (c != '\n' && force_read(SHIN, &c, 1) == 1)
-			continue;
+		    doit = getYN(CGETS(22, 8,
+			"Do you really want to delete all files? [N/y] "));
 		    if (!doit) {
 			/* remove the command instead */
 #ifdef RMDEBUG
@@ -1219,7 +1223,7 @@ rmstar(struct wordent *cp)
     if (*tag) {
 	xprintf(CGETS(22, 10, "command line now is:\n"));
 	for (we = cp->next; we != cp; we = we->next)
-	    xprintf("%S ", we->word);
+	    xprintf("[%S] ", we->word);
     }
 #endif /* RMDEBUG */
     pintr_disabled = opintr_disabled;

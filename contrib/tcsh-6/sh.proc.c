@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.proc.c,v 3.127 2015/02/22 21:40:14 christos Exp $ */
 /*
  * sh.proc.c: Job manipulations
  */
@@ -31,9 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: sh.proc.c,v 3.127 2015/02/22 21:40:14 christos Exp $")
-
 #include "ed.h"
 #include "tc.h"
 #include "tc.wait.h"
@@ -47,11 +43,9 @@ RCSID("$tcsh: sh.proc.c,v 3.127 2015/02/22 21:40:14 christos Exp $")
 # define HZ 16
 #endif /* aiws */
 
-#if defined(_BSD) || (defined(IRIS4D) && __STDC__) || defined(__lucid) || defined(__linux__) || defined(__GNU__) || defined(__GLIBC__)
-# if !defined(__ANDROID__)
-#  define BSDWAIT
-# endif
-#endif /* _BSD || (IRIS4D && __STDC__) || __lucid || glibc */
+#if defined(_BSD) || (defined(IRIS4D) && __STDC__) || defined(__lucid)
+# define BSDWAIT
+#endif /* _BSD || (IRIS4D && __STDC__) || __lucid */
 #ifndef WTERMSIG
 # define WTERMSIG(w)	(((union wait *) &(w))->w_termsig)
 # ifndef BSDWAIT
@@ -191,8 +185,13 @@ loop:
 #   else
     /* both a wait3 and rusage */
 #    if !defined(BSDWAIT) || defined(NeXT) || defined(MACH) || defined(__linux__) || defined(__GNU__) || defined(__GLIBC__) || (defined(IRIS4D) && SYSVREL <= 3) || defined(__lucid) || defined(__osf__)
+#ifdef __ANDROID__ /* no wait3, only wait4 */
+    pid = wait4(-1, &w,
+       (setintr && (intty || insource) ? WNOHANG | WUNTRACED : WNOHANG), &ru);
+#else
     pid = wait3(&w,
        (setintr && (intty || insource) ? WNOHANG | WUNTRACED : WNOHANG), &ru);
+#endif /* __ANDROID__ */
 #    else /* BSDWAIT */
     pid = wait3(&w.w_status,
        (setintr && (intty || insource) ? WNOHANG | WUNTRACED : WNOHANG), &ru);
@@ -988,6 +987,7 @@ pprint(struct process *pp, int flag)
     struct process *tp;
     int     jobflags, pstatus, pcond;
     const char *format;
+    int ohaderr;
 
 #ifdef BACKPIPE
     struct process *pipehead = NULL, *pipetail = NULL, *pmarker = NULL;
@@ -1003,7 +1003,9 @@ pprint(struct process *pp, int flag)
     tp = pp;
     status = reason = -1;
     jobflags = 0;
-    haderr = 1;	/* Print statuc to stderr */
+    ohaderr = haderr;
+    /* Print status to stderr, except for jobs built-in */
+    haderr = !(flag & JOBLIST);
     do {
 #ifdef BACKPIPE
 	/*
@@ -1212,7 +1214,7 @@ prcomd:
 	    xprintf("       ");
 	ptprint(tp);
     }
-    haderr = 0;
+    haderr = ohaderr;
     return (jobflags);
 }
 
@@ -1311,7 +1313,7 @@ void
 dojobs(Char **v, struct command *c)
 {
     struct process *pp;
-    int flag = NUMBER | NAME | REASON;
+    int flag = NUMBER | NAME | REASON | JOBLIST;
     int     i;
 
     USE(c);

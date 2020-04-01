@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.exp.c,v 3.61 2012/11/28 13:45:11 christos Exp $ */
 /*
  * sh.exp.c: Expression evaluations
  */
@@ -31,9 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: sh.exp.c,v 3.61 2012/11/28 13:45:11 christos Exp $")
-
 #include "tw.h"
 
 /*
@@ -955,8 +951,7 @@ evalav(Char **v)
     struct wordent *wdp = hp;
 
     setcopy(STRstatus, STR0, VAR_READWRITE);
-    hp->prev = hp->next = hp;
-    hp->word = STRNULL;
+    initlex(hp);
     while (*v) {
 	struct wordent *new = xcalloc(1, sizeof *wdp);
 

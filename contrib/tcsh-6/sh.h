@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.h,v 3.174 2015/05/10 13:29:28 christos Exp $ */
 /*
  * sh.h: Catch it all globals and includes file!
  */
@@ -192,6 +191,11 @@ static __inline void tcsh_ignore(intptr_t a)
 #  define ECHO_STYLE BSD_ECHO
 # endif /* SYSVREL */
 #endif /* ECHO_STYLE */
+
+/* values for noclobber */
+#define NOCLOBBER_DEFAULT  1
+#define NOCLOBBER_NOTEMPTY 2
+#define NOCLOBBER_ASK      4
 
 /*
  * The shell moves std in/out/diag and the old std input away from units
@@ -577,6 +581,7 @@ EXTERN int    arun IZERO;	/* Currently running multi-line-aliases */
 EXTERN int    implicit_cd IZERO;/* implicit cd enabled?(1=enabled,2=verbose) */
 EXTERN int    cdtohome IZERO;	/* cd without args goes home */
 EXTERN int    inheredoc IZERO;	/* Currently parsing a heredoc */
+EXTERN int    no_clobber IZERO;	/* no clobber enabled? 1=yes 2=notempty, 4=ask*/
 /* We received a window change event */
 EXTERN volatile sig_atomic_t windowchg IZERO;
 #if defined(KANJI) && defined(SHORT_STRINGS) && defined(DSPMBYTE)
@@ -625,8 +630,10 @@ EXTERN time_t seconds0;
 /*
  * Miscellany
  */
+EXTERN pid_t   mainpid;		/* pid of the main shell ($$) */
 EXTERN Char   *doldol;		/* Character pid for $$ */
 EXTERN pid_t   backpid;		/* pid of the last background job */
+
 
 /*
  * Ideally these should be uid_t, gid_t, pid_t. I cannot do that right now
@@ -675,13 +682,23 @@ EXTERN int   OLDSTD IZERO;	/* Old standard input (def for cmds) */
  */
 
 #ifdef SIGSETJMP
-   typedef struct { sigjmp_buf j; } jmp_buf_t;
-# define setexit()  sigsetjmp(reslab.j, 1)
-# define _reset()    siglongjmp(reslab.j, 1)
+   typedef struct { const char *f; size_t l; sigjmp_buf j; } jmp_buf_t;
+# define tcsh_setjmp() sigsetjmp(reslab.j, 1)
+# define tcsh_longjmp()   siglongjmp(reslab.j, 1)
 #else
-   typedef struct { jmp_buf j; } jmp_buf_t;
-# define setexit()  setjmp(reslab.j)
-# define _reset()    longjmp(reslab.j, 1)
+   typedef struct { const char *f; size_t l; jmp_buf j; } jmp_buf_t;
+# define tcsh_setjmp() setjmp(reslab.j)
+# define tcsh_longjmp()   longjmp(reslab.j, 1)
+#endif
+
+#define setexit()  (reslab.f = __func__, \
+		    reslab.l = __LINE__, \
+		    tcsh_setjmp())
+#ifdef SETJMP_DEBUG
+# define _reset()   xprintf("reset %s %zu\n", reslab.f, reslab.l), \
+		    flush(), tcsh_longjmp()
+#else
+# define _reset()   tcsh_longjmp()
 #endif
 
 #define getexit(a) (void) ((a) = reslab)
@@ -707,14 +724,21 @@ extern struct sigaction parterm;	/* Parents terminate catch */
 #define		ASCII		0177
 #ifdef WIDE_STRINGS		/* Implies SHORT_STRINGS */
 /* 31st char bit used for 'ing (not 32nd, we want all values nonnegative) */
-# define	QUOTE		0x40000000
-# define	TRIM		0x3FFFFFFF /* Mask to strip quote bit */
+/*
+ * Notice
+ *
+ * By fix for handling unicode name file, 32nd bit is used.
+ * We need use '&' instead of '> or <' when comparing with INVALID_BYTE etc..
+ * Cast to uChar is not recommended,
+ *  becase Char is 4bytes but uChar is 8bytes on I32LP64. */
+# define	QUOTE		0x80000000
+# define	TRIM		0x7FFFFFFF /* Mask to strip quote bit */
 # define	UNDER		0x08000000 /* Underline flag */
 # define	BOLD		0x04000000 /* Bold flag */
 # define	STANDOUT	0x02000000 /* Standout flag */
 # define	LITERAL		0x01000000 /* Literal character flag */
 # define	ATTRIBUTES	0x0F000000 /* The bits used for attributes */
-# define	INVALID_BYTE	0x00800000 /* Invalid character on input */
+# define	INVALID_BYTE	0xF0000000 /* Invalid character on input */
 # ifdef SOLARIS2
 #  define	CHAR		0x30FFFFFF /* Mask to mask out the character */
 # else
@@ -742,6 +766,8 @@ extern struct sigaction parterm;	/* Parents terminate catch */
 # define	CHAR		0000177	/* Mask to mask out the character */
 #endif
 #define		CHAR_DBWIDTH	(LITERAL|(LITERAL-1))
+
+# define 	MAX_UTF32	0x7FFFFFFF	/* max UTF32 is U+7FFFFFFF */
 
 EXTERN int     AsciiOnly;	/* If set only 7 bits expected in characters */
 
@@ -1152,12 +1178,14 @@ extern struct mesg {
     const char *pname;		/* print name */
 } mesg[];
 
-/* word_chars is set by default to WORD_CHARS but can be overridden by
-   the worchars variable--if unset, reverts to WORD_CHARS */
+/* word_chars is set by default to WORD_CHARS (or WORD_CHARS_VI) but can
+   be overridden by the wordchars variable--if unset, reverts to
+   WORD_CHARS (or WORD_CHARS_VI) */
 
 EXTERN Char   *word_chars;
 
 #define WORD_CHARS "*?_-.[]~="	/* default chars besides alnums in words */
+#define WORD_CHARS_VI "_"	/* default chars besides alnums in words */
 
 EXTERN Char   *STR_SHELLPATH;
 
@@ -1165,6 +1193,7 @@ EXTERN Char   *STR_SHELLPATH;
 EXTERN Char   *STR_BSHELL;
 #endif 
 EXTERN Char   *STR_WORD_CHARS;
+EXTERN Char   *STR_WORD_CHARS_VI;
 EXTERN Char  **STR_environ IZERO;
 
 extern int     dont_free;	/* Tell free that we are in danger if we free */

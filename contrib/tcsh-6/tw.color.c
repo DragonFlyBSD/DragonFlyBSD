@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/tw.color.c,v 1.32 2014/07/07 19:53:51 christos Exp $ */
 /*
  * tw.color.c: builtin color ls-F
  */
@@ -31,9 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: tw.color.c,v 1.32 2014/07/07 19:53:51 christos Exp $")
-
 #include "tw.h"
 #include "ed.h"
 #include "tc.h"
@@ -241,14 +237,11 @@ init(size_t colorlen, size_t extnum)
 static int
 color(Char x)
 {
-    int c;
     static const char ccolors[] = "abcdefghx";
     char *p;
     if (Isupper(x)) {
 	x = Tolower(x);
-	c |= TCSH_BOLD;
-    } else
-	c = 0;
+    }
 
     if (x == '\0' || (p = strchr(ccolors, x)) == NULL)
 	return -1;

@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.set.c,v 3.86 2014/10/28 18:40:46 christos Exp $ */
 /*
  * sh.set.c: Setting and Clearing of variables
  */
@@ -31,9 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: sh.set.c,v 3.86 2014/10/28 18:40:46 christos Exp $")
-
 #include "ed.h"
 #include "tw.h"
 
@@ -54,6 +50,7 @@ static	void	 	 putn1		(tcsh_number_t);
 static	struct varent	*madrof		(Char *, struct varent *);
 static	void		 unsetv1	(struct varent *);
 static	void		 balance	(struct varent *, int, int);
+static	int		 set_noclobber  (Char **);
 
 /*
  * C Shell
@@ -70,6 +67,13 @@ update_vars(Char *vp)
 	    exportpath(p->vec);
 	    dohash(NULL, NULL);
 	}
+    }
+    else if (eq(vp, STRnoclobber)) {
+	struct varent *p = adrof(STRnoclobber);
+	if (p == NULL)
+	    stderror(ERR_NAME | ERR_UNDVAR);
+	else
+	    no_clobber = set_noclobber(p->vec);
     }
     else if (eq(vp, STRhistchars)) {
 	Char *pn = varval(vp);
@@ -163,6 +167,10 @@ update_vars(Char *vp)
 	editing = 1;
 	noediting = 0;
 	/* PWP: add more stuff in here later */
+    }
+    else if (eq(vp, STRvimode)) {
+	VImode = 1;
+	update_wordchars();
     }
     else if (eq(vp, STRshlvl)) {
 	tsetenv(STRKSHLVL, varval(vp));
@@ -767,6 +775,8 @@ unset(Char **v, struct command *c)
 	PRCH = tcsh ? '>' : '%';
 	PRCHROOT = '#';
     }
+    if (adrof(STRnoclobber) == 0)
+	no_clobber = 0;
     if (adrof(STRhistlit) == 0)
 	HistLit = 0;
     if (adrof(STRloginsh) == 0)
@@ -791,6 +801,8 @@ unset(Char **v, struct command *c)
 	SetKillRing(0);
     if (did_edit && noediting && adrof(STRedit) == 0)
 	noediting = 0;
+    if (adrof(STRvimode) == 0)
+	VImode = 0;
     if (did_roe && adrof(STRrecognize_only_executables) == 0)
 	tw_cmd_free();
     if (adrof(STRhistory) == 0)
@@ -802,6 +814,7 @@ unset(Char **v, struct command *c)
 #if defined(KANJI) && defined(SHORT_STRINGS) && defined(DSPMBYTE)
     update_dspmbyte_vars();
 #endif
+    update_wordchars();
 #ifdef NLS_CATALOGS
     nlsclose();
     nlsinit();
@@ -927,6 +940,28 @@ exportpath(Char **val)
     cleanup_push(exppath, xfree);
     tsetenv(STRKPATH, exppath);
     cleanup_until(exppath);
+}
+
+static int
+set_noclobber(Char **val)
+{
+    Char *option;
+    int nc = NOCLOBBER_DEFAULT;
+
+    if (val == NULL)
+	return nc;
+    while (*val) {
+	if (*val == 0 || eq(*val, STRRparen))
+	    return nc;
+
+	option = *val++;
+
+	if (eq(option, STRnotempty))
+	    nc |= NOCLOBBER_NOTEMPTY;
+	else if (eq(option, STRask))
+	    nc |= NOCLOBBER_ASK;
+    }
+    return nc;
 }
 
 #ifndef lint
@@ -1310,3 +1345,11 @@ autoset_kanji(void)
 }
 #endif
 #endif
+
+void
+update_wordchars(void)
+{
+    if ((word_chars == STR_WORD_CHARS) || (word_chars == STR_WORD_CHARS_VI)) {
+	word_chars = (VImode ? STR_WORD_CHARS_VI : STR_WORD_CHARS);
+    }
+}

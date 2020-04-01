@@ -1,4 +1,3 @@
-$ $tcsh: set9,v 1.2 2006/03/02 18:46:47 christos Exp $
 $ ed.xmap.c
 $set 9
 1 AddXkey: tasto esteso nullo non ammesso.\n
@@ -8,5 +7,5 @@ $set 9
 5 Alcuni tasti estesi sono troppo grandi per il buffer interno di stampa
 6 Enumerate: BACO!! ho ricevuto un puntatore nullo\n!
 7 niente in ingresso
-8 Qualcosa deve seguire: %c\n
+8 Qualcosa deve seguire: '%c'\n
 9 Costante ottale non adeguata per un char.\n

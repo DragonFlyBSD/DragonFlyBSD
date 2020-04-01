@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/config_f.h,v 3.50 2015/02/22 16:31:54 christos Exp $ */
 /*
  * config_f.h -- configure various defines for tcsh
  *
@@ -37,6 +36,10 @@
  */
 #ifndef _h_config_f
 #define _h_config_f
+
+#ifdef HAVE_FEATURES_H
+#include <features.h>		/* for __GLIBC__ */
+#endif
 
 /*
  * SHORT_STRINGS Use at least 16 bit characters instead of 8 bit chars
@@ -135,7 +138,7 @@
  *		This can be much slower and no memory statistics will be
  *		provided.
  */
-#if defined(__MACHTEN__) || defined(PURIFY) || defined(MALLOC_TRACE) || defined(_OSD_POSIX) || defined(__MVS__) || defined (__CYGWIN__) || defined(__GLIBC__) || defined(__OpenBSD__) || defined(__APPLE__)
+#if defined(__MACHTEN__) || defined(PURIFY) || defined(MALLOC_TRACE) || defined(_OSD_POSIX) || defined(__MVS__) || defined (__CYGWIN__) || defined(__GLIBC__) || defined(__OpenBSD__) || defined(__APPLE__) || defined (__ANDROID__)
 # define SYSMALLOC
 #else
 # undef SYSMALLOC
@@ -172,20 +175,6 @@
  * FILEC    support for old style file completion
  */
 #define FILEC
-
-/*
- * RCSID	This defines if we want rcs strings in the binary or not
- *
- */
-#if !defined(lint) && !defined(SABER) && !defined(__CLCC__)
-# ifndef __GNUC__
-#  define RCSID(id) static char *rcsid = (id);
-# else
-#  define RCSID(id) static const char rcsid[] __attribute__((__used__)) = (id);
-# endif /* !__GNUC__ */
-#else
-# define RCSID(id)	/* Nothing */
-#endif /* !lint && !SABER */
 
 /* Consistency checks */
 #ifdef WIDE_STRINGS

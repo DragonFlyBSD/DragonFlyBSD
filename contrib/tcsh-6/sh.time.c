@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.time.c,v 3.36 2013/03/18 21:00:46 christos Exp $ */
 /*
  * sh.time.c: Shell time keeping and printing.
  */
@@ -31,9 +30,6 @@
  * SUCH	DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: sh.time.c,v 3.36 2013/03/18 21:00:46 christos Exp $")
-
 #ifdef SUNOS4
 # include <machine/param.h>
 #endif /* SUNOS4 */
@@ -293,6 +289,7 @@ prusage(struct tms *bs, struct tms *es, clock_t e, clock_t b)
 # endif	/* _SEQUENT_ */
 #endif /* BSDTIMES */
 {
+    int ohaderr = haderr;
 #ifdef BSDTIMES
     time_t t =
     (r1->ru_utime.tv_sec - r0->ru_utime.tv_sec)	* 100 +
@@ -334,12 +331,14 @@ prusage(struct tms *bs, struct tms *es, clock_t e, clock_t b)
     ((e->tv_sec	- b->tv_sec) * 100 + (e->tv_usec - b->tv_usec) / 10000);
 
     cp = "%Uu %Ss %E %P	%X+%Dk %I+%Oio %Fpf+%Ww";
+    haderr = 0;
 #else /* !BSDTIMES */
 # ifdef	_SEQUENT_
     int	    ms = (int)
     ((e->tv_sec	- b->tv_sec) * 100 + (e->tv_usec - b->tv_usec) / 10000);
 
     cp = "%Uu %Ss %E %P	%I+%Oio	%Fpf+%Ww";
+    haderr = 0;
 # else /* !_SEQUENT_ */
 #  ifndef POSIX
     time_t ms = ((time_t)((e - b) / HZ) * 100) +
@@ -350,6 +349,7 @@ prusage(struct tms *bs, struct tms *es, clock_t e, clock_t b)
 #  endif /* POSIX */
 
     cp = "%Uu %Ss %E %P";
+    haderr = 0;
 
     /*
      * the tms stuff is	not very precise, so we	fudge it.
@@ -678,6 +678,7 @@ prusage(struct tms *bs, struct tms *es, clock_t e, clock_t b)
 		break;
 	    }
     xputchar('\n');
+    haderr = ohaderr;
 }
 
 #if defined(BSDTIMES) || defined(_SEQUENT_)

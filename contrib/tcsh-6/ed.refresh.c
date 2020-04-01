@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/ed.refresh.c,v 3.50 2015/05/04 15:31:13 christos Exp $ */
 /*
  * ed.refresh.c: Lower level screen refreshing functions
  */
@@ -31,9 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: ed.refresh.c,v 3.50 2015/05/04 15:31:13 christos Exp $")
-
 #include "ed.h"
 /* #define DEBUG_UPDATE */
 /* #define DEBUG_REFRESH */
@@ -46,7 +42,7 @@ static int vcursor_h, vcursor_v;
 static int rprompt_h, rprompt_v;
 
 static	int	MakeLiteral		(Char *, int, Char);
-static	int	Draw 			(Char *, int);
+static	int	Draw 			(Char *, int, int);
 static	void	Vdraw 			(Char, int);
 static	void	RefreshPromptpart	(Char *);
 static	void	update_line 		(Char *, Char *, int);
@@ -159,15 +155,44 @@ static int MakeLiteral(Char *str, int len, Char addlit)
     return i | LITERAL;
 }
 
+/* draw char at cp, expand tabs, ctl chars */
 static int
-Draw(Char *cp, int nocomb)	/* draw char at cp, expand tabs, ctl chars */
+Draw(Char *cp, int nocomb, int drawPrompt)
 {
     int w, i, lv, lh;
     Char c, attr;
 
+#ifdef WIDE_STRINGS
+    if (!drawPrompt) {			/* draw command-line */
+	attr = 0;
+	c = *cp;
+    } else {				/* draw prompt */
+	/* prompt with attributes(UNDER,BOLD,STANDOUT) */
+	if (*cp & (UNDER | BOLD | STANDOUT)) {		/* *cp >= STANDOUT */
+
+	    /* example)
+	     * We can't distinguish whether (*cp=)0x02ffffff is
+	     * U+02FFFFFF or U+00FFFFFF|STANDOUT.
+	     * We handle as U+00FFFFFF|STANDOUT, only when drawing prompt. */
+	    attr = (*cp & ATTRIBUTES);
+	    /* ~(UNDER | BOLD | STANDOUT) = 0xf1ffffff */
+	    c = *cp & ~(UNDER | BOLD | STANDOUT);
+
+	    /* if c is ctrl code, we handle *cp as havnig no attributes */
+	    if ((c < 0x20 && c >= 0) || c == 0x7f) {
+		attr = 0;
+		c = *cp;
+	    }
+	} else {			/* prompt without attributes */
+	    attr = 0;
+	    c = *cp;
+	}
+    }
+#else
     attr = *cp & ~CHAR;
     c = *cp & CHAR;
-    w = NLSClassify(c, nocomb);
+#endif
+    w = NLSClassify(c, nocomb, drawPrompt);
     switch (w) {
 	case NLSCLASS_NL:
 	    Vdraw('\0', 0);		/* assure end of line	 */
@@ -201,10 +226,11 @@ Draw(Char *cp, int nocomb)	/* draw char at cp, expand tabs, ctl chars */
 	case NLSCLASS_ILLEGAL2:
 	case NLSCLASS_ILLEGAL3:
 	case NLSCLASS_ILLEGAL4:
-	    Vdraw('\\' | attr, 1);
-	    Vdraw('U' | attr, 1);
-	    Vdraw('+' | attr, 1);
-	    for (i = 8 * NLSCLASS_ILLEGAL_SIZE(w) - 4; i >= 0; i -= 4)
+	case NLSCLASS_ILLEGAL5:
+	    Vdraw('\\', 1);
+	    Vdraw('U', 1);
+	    Vdraw('+', 1);
+	    for (i = 16 + 4 * (-w-5); i >= 0; i -= 4)
 		Vdraw("0123456789ABCDEF"[(c >> i) & 15] | attr, 1);
 	    break;
 	case 0:
@@ -302,7 +328,7 @@ RefreshPromptpart(Char *buf)
 	    }
 	}
 	else
-	    cp += Draw(cp, cp == buf);
+	    cp += Draw(cp, cp == buf, 1);
     }
 }
 
@@ -354,7 +380,7 @@ Refresh(void)
 	    cur_v = vcursor_v;
 	    Cursor = cp;
 	}
-	cp += Draw(cp, cp == InputBuf);
+	cp += Draw(cp, cp == InputBuf, 0);
     }
 
     if (cur_h == -1) {		/* if I haven't been set yet, I'm at the end */
@@ -1126,7 +1152,7 @@ RefCursor(void)
 	    cp++;
 	    continue;
 	}
-	w = NLSClassify(*cp & CHAR, cp == Prompt);
+	w = NLSClassify(*cp & CHAR, cp == Prompt, 0);
 	cp++;
 	switch(w) {
 	    case NLSCLASS_NL:
@@ -1158,7 +1184,7 @@ RefCursor(void)
     }
 
     for (cp = InputBuf; cp < Cursor;) {	/* do input buffer to Cursor */
-	w = NLSClassify(*cp & CHAR, cp == InputBuf);
+	w = NLSClassify(*cp & CHAR, cp == InputBuf, 0);
 	cp++;
 	switch(w) {
 	    case NLSCLASS_NL:
@@ -1251,7 +1277,7 @@ RefPlusOne(int l)
     }
     cp = Cursor - l;
     c = *cp & CHAR;
-    w = NLSClassify(c, cp == InputBuf);
+    w = NLSClassify(c, cp == InputBuf, 0);
     switch(w) {
 	case NLSCLASS_CTRL:
 	    PutPlusOne('^', 1);

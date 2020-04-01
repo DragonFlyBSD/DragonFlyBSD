@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/tw.parse.c,v 3.136 2015/05/04 15:31:13 christos Exp $ */
 /*
  * tw.parse.c: Everyone has taken a shot in this futile effort to
  *	       lexically analyze a csh line... Well we cannot good
@@ -34,9 +33,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: tw.parse.c,v 3.136 2015/05/04 15:31:13 christos Exp $")
-
 #include "tw.h"
 #include "ed.h"
 #include "tc.h"
@@ -618,7 +614,11 @@ insert_meta(const Char *cp, const Char *cpend, const Char *word,
 	    break;
 
 	wq = w & QUOTE;
-	w &= ~QUOTE;
+#if INVALID_BYTE != 0
+	/* add checking INVALID_BYTE for FIX UTF32 */
+	if ((w & INVALID_BYTE) != INVALID_BYTE)		/* w < INVALID_BYTE */
+#endif
+	    w &= ~QUOTE;
 
 	if (cmap(w, _ESC | _QF))
 	    wq = QUOTE;		/* quotes are always quoted */

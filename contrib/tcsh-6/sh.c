@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.c,v 3.185 2015/05/10 13:28:54 christos Exp $ */
 /*
  * sh.c: Main shell routines
  */
@@ -38,8 +37,6 @@ char    copyright[] =
 "@(#) Copyright (c) 1991 The Regents of the University of California.\n\
  All rights reserved.\n";
 #endif /* not lint */
-
-RCSID("$tcsh: sh.c,v 3.185 2015/05/10 13:28:54 christos Exp $")
 
 #include "tc.h"
 #include "ed.h"
@@ -240,6 +237,7 @@ main(int argc, char **argv)
     int nofile = 0;
     volatile int nverbose = 0;
     volatile int rdirs = 0;
+    volatile int exitcode = 0;
     int quitit = 0;
     Char *cp;
 #ifdef AUTOLOGOUT
@@ -248,6 +246,7 @@ main(int argc, char **argv)
     char *tcp, *ttyn;
     int f, reenter;
     char **tempv;
+    static const char *targinp = NULL;
     int osetintr;
     struct sigaction oparintr;
 
@@ -274,6 +273,7 @@ main(int argc, char **argv)
 #endif
 
     nlsinit();
+    initlex(&paraml);
 
 #ifdef MALLOC_TRACE
     mal_setstatsfile(fdopen(dmove(xopen("/tmp/tcsh.trace", 
@@ -345,6 +345,7 @@ main(int argc, char **argv)
 # endif
 #endif
     STR_WORD_CHARS = SAVE(WORD_CHARS);
+    STR_WORD_CHARS_VI = SAVE(WORD_CHARS_VI);
 
     HIST = '!';
     HISTSUB = '^';
@@ -595,19 +596,22 @@ main(int argc, char **argv)
      */
     shlvl(1);
 
+#ifdef __ANDROID__
+    /* On Android, $HOME either isn't set or set to /data, a R/O location.
+       Check for the environment variable EXTERNAL_STORAGE, which contains
+       the mount point of the external storage (SD card, mostly).  If
+       EXTERNAL_STORAGE isn't set fall back to "/sdcard".  Eventually
+       override $HOME so the environment is on the same page. */
+    if (((tcp = getenv("HOME")) != NULL && strcmp (tcp, "/data") != 0)
+	|| (tcp = getenv("EXTERNAL_STORAGE")) != NULL) {
+	cp = quote(SAVE(tcp));
+    } else
+	cp = quote(SAVE("/sdcard"));
+    tsetenv(STRKHOME, cp);
+#else
     if ((tcp = getenv("HOME")) != NULL)
 	cp = quote(SAVE(tcp));
     else
-#ifdef __ANDROID__
-	/* On Android, $HOME usually isn't set, so we can't load user RC files.
-	   Check for the environment variable EXTERNAL_STORAGE, which contains
-	   the mount point of the external storage (SD card, mostly).  If
-	   EXTERNAL_STORAGE isn't set fall back to "/sdcard". */
-    if ((tcp = getenv("EXTERNAL_STORAGE")) != NULL)
-	cp = quote(SAVE(tcp));
-    else
-	cp = quote(SAVE("/sdcard"));
-#else
 	cp = NULL;
 #endif
 
@@ -812,7 +816,8 @@ main(int argc, char **argv)
 	parseLSCOLORS(str2short(tcp));
 #endif /* COLOR_LS_F */
 
-    doldol = putn((tcsh_number_t)getpid());	/* For $$ */
+    mainpid = getpid();
+    doldol = putn((tcsh_number_t)mainpid);	/* For $$ */
 #ifdef WINNT_NATIVE
     {
 	char *tmp;
@@ -935,30 +940,7 @@ main(int argc, char **argv)
 		      *p &= ASCII;
 		  }
 #endif
-		arginp = SAVE(tempv[0]);
-
-		/*
-		 * we put the command into a variable
-		 */
-		if (arginp != NULL)
-		    setv(STRcommand, quote(Strsave(arginp)), VAR_READWRITE);
-
-		/*
-		 * * Give an error on -c arguments that end in * backslash to
-		 * ensure that you don't make * nonportable csh scripts.
-		 */
-		{
-		    int count;
-
-		    cp = Strend(arginp);
-		    count = 0;
-		    while (cp > arginp && *--cp == '\\')
-			++count;
-		    if ((count & 1) != 0) {
-			exiterr = 1;
-			stderror(ERR_ARGC);
-		    }
-		}
+		targinp = tempv[0];
 		prompt = 0;
 		nofile = 1;
 		break;
@@ -1203,7 +1185,7 @@ main(int argc, char **argv)
 	    sigset_interrupting(SIGXFSZ, queue_phup);
 #endif
 
-	if (quitit == 0 && arginp == 0) {
+	if (quitit == 0 && targinp == 0) {
 #ifdef SIGTSTP
 	    (void) signal(SIGTSTP, SIG_IGN);
 #endif
@@ -1321,7 +1303,7 @@ main(int argc, char **argv)
  */
     sigset_interrupting(SIGCHLD, queue_pchild);
 
-    if (intty && !arginp) 	
+    if (intty && !targinp) 	
 	(void) ed_Setup(editing);/* Get the tty state, and set defaults */
 				 /* Only alter the tty state if editing */
     
@@ -1356,7 +1338,7 @@ main(int argc, char **argv)
 #ifdef _PATH_DOTCSHRC
 	    (void) srcfile(_PATH_DOTCSHRC, 0, 0, NULL);
 #endif
-	    if (!arginp && !onelflg && !havhash)
+	    if (!targinp && !onelflg && !havhash)
 		dohash(NULL,NULL);
 #ifndef LOGINFIRST
 #ifdef _PATH_DOTLOGIN
@@ -1376,7 +1358,7 @@ main(int argc, char **argv)
 	if (!srccat(varval(STRhome), STRsldottcshrc))
 	    (void) srccat(varval(STRhome), STRsldotcshrc);
 
-	if (!arginp && !onelflg && !havhash)
+	if (!targinp && !onelflg && !havhash)
 	    dohash(NULL,NULL);
 
 	/*
@@ -1396,7 +1378,7 @@ main(int argc, char **argv)
     exitset--;
 
     /* Initing AFTER .cshrc is the Right Way */
-    if (intty && !arginp) {	/* PWP setup stuff */
+    if (intty && !targinp) {	/* PWP setup stuff */
 	ed_Init();		/* init the new line editor */
 #ifdef SIG_WINDOW
 	check_window_size(1);	/* mung environment */
@@ -1411,6 +1393,38 @@ main(int argc, char **argv)
     if (nexececho)
 	setNS(STRecho);
     
+
+    if (targinp) {
+	/* If this -c command caused an error before, skip processing */
+	if (reenter && arginp) {
+	    exitcode = 1;
+	    goto done;
+	}
+
+	arginp = SAVE(targinp);
+	/*
+	 * we put the command into a variable
+	 */
+	if (arginp != NULL)
+	    setv(STRcommand, quote(Strsave(arginp)), VAR_READWRITE);
+
+	/*
+	 * * Give an error on -c arguments that end in * backslash to
+	 * ensure that you don't make * nonportable csh scripts.
+	 */
+	{
+	    int count;
+
+	    cp = Strend(arginp);
+	    count = 0;
+	    while (cp > arginp && *--cp == '\\')
+		++count;
+	    if ((count & 1) != 0) {
+		exiterr = 1;
+		stderror(ERR_ARGC);
+	    }
+	}
+    }
     /*
      * All the rest of the world is inside this call. The argument to process
      * indicates whether it should catch "error unwinds".  Thus if we are a
@@ -1419,6 +1433,7 @@ main(int argc, char **argv)
      */
     process(setintr);
 
+done:
     /*
      * Mop-up.
      */
@@ -1440,7 +1455,7 @@ main(int argc, char **argv)
     }
     record();
     exitstat();
-    return (0);
+    return exitcode;
 }
 
 void
@@ -2052,6 +2067,7 @@ process(int catch)
 	 */
 	if (setintr)
 	    pintr_push_enable(&old_pintr_disabled);
+	freelex(&paraml);
 	hadhist = lex(&paraml);
 	if (setintr)
 	    cleanup_until(&old_pintr_disabled);

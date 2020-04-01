@@ -1,4 +1,4 @@
-/*	$NetBSD: dotlock.c,v 1.11 2009/10/21 01:07:46 snj Exp $	*/
+/*	NetBSD: dotlock.c,v 1.11 2009/10/21 01:07:46 snj Exp	*/
 
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "sh.h"
-RCSID("$tcsh: dotlock.c,v 3.3 2014/03/09 00:11:54 christos Exp $");
 
 #include <stdio.h>
 #ifndef O_SYNC

@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.misc.c,v 3.49 2015/05/04 15:31:13 christos Exp $ */
 /*
  * sh.misc.c: Miscelaneous functions
  */
@@ -31,8 +30,6 @@
  * SUCH DAMAGE.
  */
 #include "sh.h"
-
-RCSID("$tcsh: sh.misc.c,v 3.49 2015/05/04 15:31:13 christos Exp $")
 
 static	int	renum	(int, int);
 static  Char  **blkend	(Char **);
@@ -257,6 +254,9 @@ void
 closem(void)
 {
     int f, num_files;
+#ifdef S_ISSOCK
+    struct stat st;
+#endif /*S_ISSOCK*/
 
 #ifdef NLS_BUGS
 #ifdef NLS_CATALOGS
@@ -274,6 +274,16 @@ closem(void)
 #ifdef MALLOC_TRACE
 	    && f != 25
 #endif /* MALLOC_TRACE */
+#ifdef S_ISSOCK
+	    /* NSS modules (e.g. Linux nss_ldap) might keep sockets open.
+	     * If we close such a socket, both the NSS module and tcsh think
+	     * they "own" the descriptor.
+	     *
+	     * Not closing sockets does not make the cleanup use of closem()
+	     * less reliable because tcsh never creates sockets.
+	     */
+	    && fstat(f, &st) == 0 && !S_ISSOCK(st.st_mode)	
+#endif
 	    )
 	  {
 	    xclose(f);
@@ -450,8 +460,13 @@ strip(Char *cp)
 
     if (!cp)
 	return (cp);
-    while ((*dp++ &= TRIM) != '\0')
-	continue;
+    while (*dp != '\0') {
+#if INVALID_BYTE != 0
+	if ((*dp & INVALID_BYTE) != INVALID_BYTE)    /* *dp < INVALID_BYTE */
+#endif
+		*dp &= TRIM;
+	dp++;
+    }
     return (cp);
 }
 
@@ -462,8 +477,17 @@ quote(Char *cp)
 
     if (!cp)
 	return (cp);
-    while (*dp != '\0')
-	*dp++ |= QUOTE;
+    while (*dp != '\0') {
+#ifdef WIDE_STRINGS
+	if ((*dp & 0xffffff80) == 0)	/* *dp < 0x80 */
+#elif defined SHORT_STRINGS
+	if ((*dp & 0xff80) == 0)	/* *dp < 0x80 */
+#else
+	if ((*dp & 0x80) == 0)		/* *dp < 0x80 */
+#endif
+	    *dp |= QUOTE;
+	dp++;
+    }
     return (cp);
 }
 
@@ -640,7 +664,7 @@ xopen(const char *path, int oflag, ...)
 ssize_t
 xread(int fildes, void *buf, size_t nbyte)
 {
-    ssize_t res;
+    ssize_t res = -1;
 
     /* This is where we will be blocked most of the time, so handle signals
        that didn't interrupt any system call. */
@@ -668,7 +692,7 @@ xtcsetattr(int fildes, int optional_actions, const struct termios *termios_p)
 ssize_t
 xwrite(int fildes, const void *buf, size_t nbyte)
 {
-    ssize_t res;
+    ssize_t res = -1;
 
     /* This is where we will be blocked most of the time, so handle signals
        that didn't interrupt any system call. */

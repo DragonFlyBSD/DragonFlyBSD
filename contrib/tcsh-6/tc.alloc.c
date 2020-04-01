@@ -1,4 +1,3 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/tc.alloc.c,v 3.53 2015/02/22 16:31:54 christos Exp $ */
 /*
  * tc.alloc.c (Caltech) 2/21/82
  * Chris Kingsley, kingsley@cit-20.
@@ -45,8 +44,6 @@
 #if defined(HAVE_SBRK) && !defined(__APPLE__)
 #define USE_SBRK
 #endif
-
-RCSID("$tcsh: tc.alloc.c,v 3.53 2015/02/22 16:31:54 christos Exp $")
 
 #define RCHECK
 #define DEBUG
@@ -134,7 +131,11 @@ union overhead {
 #endif
 
 
+#ifdef _LP64
+#define ROUNDUP	15
+#else
 #define ROUNDUP	7
+#endif
 
 /*
  * nextf[i] is the pointer to the next free block of size 2^(i+3).  The
@@ -230,7 +231,7 @@ malloc(size_t nbytes)
     /*
      * Record allocated size of block and bound space with magic numbers.
      */
-    p->ov_size = (p->ov_index <= 13) ? nbytes - 1 : 0;
+    p->ov_size = (p->ov_index <= 13) ? (U_short)nbytes - 1 : 0;
     p->ov_rmagic = RMAGIC;
     *((U_int *) (((caddr_t) p) + nbytes - RSLOP)) = RMAGIC;
 #endif
@@ -348,15 +349,13 @@ calloc(size_t i, size_t j)
 {
 #ifndef lint
     char *cp;
+    volatile size_t k;
 
     i *= j;
     cp = xmalloc(i);
-    /*
-     * DO NOT USE memset(), it will cause gcc-5 to mis-optimize the
-     * malloc+memset sequence into a call to calloc, which will implode
-     * tcsh.  This is really a GCC bug honestly.
-     */
-    bzero(cp, i);
+    /* Stop gcc 5.x from optimizing malloc+memset = calloc */
+    k = i;
+    memset(cp, 0, k);
 
     return ((memalign_t) cp);
 #else
@@ -424,7 +423,7 @@ realloc(ptr_t cp, size_t nbytes)
 	nbytes = MEMALIGN(MEMALIGN(sizeof(union overhead))+nbytes+RSLOP);
 	*((U_int *) (((caddr_t) op) + nbytes - RSLOP)) = RMAGIC;
 	op->ov_rmagic = RMAGIC;
-	op->ov_size = (op->ov_index <= 13) ? nbytes - 1 : 0;
+	op->ov_size = (op->ov_index <= 13) ? (U_short)nbytes - 1 : 0;
 #endif
 	return ((memalign_t) cp);
     }
