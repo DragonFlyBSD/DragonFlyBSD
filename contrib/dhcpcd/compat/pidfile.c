@@ -208,7 +208,7 @@ pidfile_lock(const char *path)
 			goto return_pid;
 #ifndef O_CLOEXEC
 		if ((opts = fcntl(fd, F_GETFD)) == -1 ||
-		    fctnl(fd, F_SETFL, opts | FD_CLOEXEC) == -1)
+		    fcntl(fd, F_SETFL, opts | FD_CLOEXEC) == -1)
 		{
 			int error = errno;
 

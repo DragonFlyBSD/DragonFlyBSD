@@ -1,4 +1,4 @@
-/*	$NetBSD: strtou.c,v 1.2 2015/05/01 14:17:56 christos Exp $	*/
+/*	$NetBSD: strtou.c,v 1.3 2019/11/28 12:33:23 roy Exp $	*/
 
 /*-
  * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
@@ -30,7 +30,7 @@
  * NetBSD: src/common/lib/libc/stdlib/strtoul.c,v 1.3 2008/08/20 19:58:34 oster Exp
  */
 
-#if HAVE_NBTOOL_CONFIG_H
+#if defined(HAVE_NBTOOL_CONFIG_H) && HAVE_NBTOOL_CONFIG_H
 #include "nbtool_config.h"
 #endif
 

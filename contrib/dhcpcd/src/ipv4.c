@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd - DHCP client daemon
- * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2020 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,7 @@
 #include "common.h"
 #include "dhcpcd.h"
 #include "dhcp.h"
+#include "eloop.h"
 #include "if.h"
 #include "if-options.h"
 #include "ipv4.h"
@@ -429,7 +430,10 @@ inet_routerhostroute(rb_tree_t *routes, struct interface *ifp)
 		in.s_addr = INADDR_ANY;
 		sa_in_init(&rth->rt_gateway, &in);
 		rth->rt_mtu = dhcp_get_mtu(ifp);
-		sa_in_init(&rth->rt_ifa, &state->addr->addr);
+		if (state->addr != NULL)
+			sa_in_init(&rth->rt_ifa, &state->addr->addr);
+		else
+			rth->rt_ifa.sa_family = AF_UNSPEC;
 
 		/* We need to insert the host route just before the router. */
 		while ((rtp = RB_TREE_MAX(routes)) != NULL) {
