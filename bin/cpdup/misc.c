@@ -208,7 +208,7 @@ fatal(const char *ctl, ...)
 	     "                patch if the exclusion file is specified via\n"
 	     "                an absolute path.\n"
 	     "\n"
-	     "Version 1.20 by Matt Dillon, Dima Ruban, & Oliver Fromme.\n"
+	     "Version " VERSION " by " AUTHORS "\n"
 	);
 	exit(0);
     } else {
