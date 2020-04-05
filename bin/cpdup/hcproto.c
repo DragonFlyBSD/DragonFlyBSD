@@ -294,15 +294,15 @@ hc_decode_stat_item(struct stat *st, struct HCLeaf *item)
     case LC_CTIME:
 	st->st_ctime = (time_t)HCC_INT64(item);
 	break;
-#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
+#if defined(st_atime)  /* A macro, so very likely on modern POSIX */
     case LC_ATIMENSEC:
-	st->st_atimespec.tv_nsec = HCC_INT32(item);
+	st->st_atim.tv_nsec = HCC_INT32(item);
 	break;
     case LC_MTIMENSEC:
-	st->st_mtimespec.tv_nsec = HCC_INT32(item);
+	st->st_mtim.tv_nsec = HCC_INT32(item);
 	break;
     case LC_CTIMENSEC:
-	st->st_ctimespec.tv_nsec = HCC_INT32(item);
+	st->st_ctim.tv_nsec = HCC_INT32(item);
 	break;
 #endif
     case LC_FILESIZE:
@@ -384,10 +384,10 @@ rc_encode_stat(hctransaction_t trans, struct stat *st)
     hcc_leaf_int64(trans, LC_ATIME, st->st_atime);
     hcc_leaf_int64(trans, LC_MTIME, st->st_mtime);
     hcc_leaf_int64(trans, LC_CTIME, st->st_ctime);
-#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
-    hcc_leaf_int32(trans, LC_ATIMENSEC, st->st_atimespec.tv_nsec);
-    hcc_leaf_int32(trans, LC_MTIMENSEC, st->st_mtimespec.tv_nsec);
-    hcc_leaf_int32(trans, LC_CTIMENSEC, st->st_ctimespec.tv_nsec);
+#if defined(st_atime)
+    hcc_leaf_int32(trans, LC_ATIMENSEC, st->st_atim.tv_nsec);
+    hcc_leaf_int32(trans, LC_MTIMENSEC, st->st_mtim.tv_nsec);
+    hcc_leaf_int32(trans, LC_CTIMENSEC, st->st_ctim.tv_nsec);
 #endif
     hcc_leaf_int64(trans, LC_FILESIZE, st->st_size);
     hcc_leaf_int64(trans, LC_FILEBLKS, st->st_blocks);
@@ -1804,7 +1804,7 @@ hc_utimes(struct HostConf *hc, const char *path, const struct timeval *times)
     hcc_leaf_string(trans, LC_PATH1, path);
     hcc_leaf_int64(trans, LC_ATIME, times[0].tv_sec);
     hcc_leaf_int64(trans, LC_MTIME, times[1].tv_sec);
-#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
+#if defined(st_atime)
     hcc_leaf_int32(trans, LC_ATIMENSEC, times[0].tv_usec * 1000);
     hcc_leaf_int32(trans, LC_MTIMENSEC, times[1].tv_usec * 1000);
 #endif

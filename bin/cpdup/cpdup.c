@@ -1079,9 +1079,9 @@ relink:
 		bzero(tv, sizeof(tv));
 		tv[0].tv_sec = stat1->st_mtime;
 		tv[1].tv_sec = stat1->st_mtime;
-#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
-		tv[0].tv_usec = stat1->st_mtimespec.tv_nsec / 1000;
-		tv[1].tv_usec = stat1->st_mtimespec.tv_nsec / 1000;
+#if defined(st_mtime)  /* A macro, so very likely on modern POSIX */
+		tv[0].tv_usec = stat1->st_mtim.tv_nsec / 1000;
+		tv[1].tv_usec = stat1->st_mtim.tv_nsec / 1000;
 #endif
 		hc_utimes(&DstHost, dpath, tv);
 	    }
@@ -1188,9 +1188,9 @@ relink:
 		    bzero(tv, sizeof(tv));
 		    tv[0].tv_sec = stat1->st_mtime;
 		    tv[1].tv_sec = stat1->st_mtime;
-#if defined(st_atimespec) || defined(_STATBUF_ST_NSEC)
-		    tv[0].tv_usec = stat1->st_mtimespec.tv_nsec / 1000;
-		    tv[1].tv_usec = stat1->st_mtimespec.tv_nsec / 1000;
+#if defined(st_mtime)
+		    tv[0].tv_usec = stat1->st_mtim.tv_nsec / 1000;
+		    tv[1].tv_usec = stat1->st_mtim.tv_nsec / 1000;
 #endif
 
 		    if (DstRootPrivs || ChgrpAllowed(stat1->st_gid))
