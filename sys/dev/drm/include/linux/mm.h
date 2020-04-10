@@ -193,4 +193,12 @@ vmalloc_to_page(const void *addr)
 	return (struct page *)(PHYS_TO_VM_PAGE(paddr));
 }
 
+static inline void
+put_page(struct page *page)
+{
+	vm_page_busy_wait((struct vm_page *)page, FALSE, "i915gem");
+	vm_page_unwire((struct vm_page *)page, 1);
+	vm_page_wakeup((struct vm_page *)page);
+}
+
 #endif	/* _LINUX_MM_H_ */
