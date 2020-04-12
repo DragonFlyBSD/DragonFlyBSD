@@ -82,12 +82,14 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <langinfo.h>
+#include <locale.h>
+#include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdarg.h>
-#include <stddef.h>		/* NB: for offsetof */
 
 #include "ifconfig.h"
 #include "regdomain.h"
@@ -4971,16 +4973,21 @@ print_string(const u_int8_t *buf, int len)
 {
 	int i;
 	int hasspc;
+	int utf8;
 
 	i = 0;
 	hasspc = 0;
+
+	setlocale(LC_CTYPE, "");
+	utf8 = strncmp("UTF-8", nl_langinfo(CODESET), 5) == 0;
+
 	for (; i < len; i++) {
-		if (!isprint(buf[i]) && buf[i] != '\0')
+		if (!isprint(buf[i]) && buf[i] != '\0' && !utf8)
 			break;
 		if (isspace(buf[i]))
 			hasspc++;
 	}
-	if (i == len) {
+	if (i == len || utf8) {
 		if (hasspc || len == 0 || buf[0] == '\0')
 			printf("\"%.*s\"", len, buf);
 		else
