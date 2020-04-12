@@ -32,6 +32,7 @@
  *              from syscons.
  */
 #include "opt_syscons.h"
+#include "opt_evdev.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -47,6 +48,11 @@
 
 #include <machine/console.h>
 #include <sys/mouse.h>
+
+#ifdef EVDEV_SUPPORT
+#include <dev/misc/evdev/input.h>
+#include <dev/misc/evdev/evdev.h>
+#endif
 
 #include "syscons.h"
 
@@ -99,6 +105,72 @@ static void	smfilter_detach(struct knote *);
 static int	smfilter(struct knote *, long);
 static void	smget(struct sysmouse_state *sc, mouse_info_t *info);
 static void	smpop(struct sysmouse_state *sc);
+
+#ifdef EVDEV_SUPPORT
+static struct evdev_dev	*sysmouse_evdev;
+
+static void
+smdev_evdev_init(void)
+{
+	int i;
+
+	sysmouse_evdev = evdev_alloc();
+	evdev_set_name(sysmouse_evdev, "System mouse");
+	evdev_set_phys(sysmouse_evdev, "sysmouse");
+	evdev_set_id(sysmouse_evdev, BUS_VIRTUAL, 0, 0, 0);
+	evdev_support_prop(sysmouse_evdev, INPUT_PROP_POINTER);
+	evdev_support_event(sysmouse_evdev, EV_SYN);
+	evdev_support_event(sysmouse_evdev, EV_REL);
+	evdev_support_event(sysmouse_evdev, EV_KEY);
+	evdev_support_rel(sysmouse_evdev, REL_X);
+	evdev_support_rel(sysmouse_evdev, REL_Y);
+	evdev_support_rel(sysmouse_evdev, REL_WHEEL);
+	evdev_support_rel(sysmouse_evdev, REL_HWHEEL);
+	for (i = 0; i < 8; i++)
+		evdev_support_key(sysmouse_evdev, BTN_MOUSE + i);
+	if (evdev_register(sysmouse_evdev)) {
+		evdev_free(sysmouse_evdev);
+		sysmouse_evdev = NULL;
+	}
+}
+
+static void
+smdev_evdev_write(int x, int y, int z, int buttons)
+{
+
+	if (sysmouse_evdev == NULL || !(evdev_rcpt_mask & EVDEV_RCPT_SYSMOUSE))
+		return;
+
+	evdev_push_event(sysmouse_evdev, EV_REL, REL_X, x);
+	evdev_push_event(sysmouse_evdev, EV_REL, REL_Y, y);
+	switch (evdev_sysmouse_t_axis) {
+	case EVDEV_SYSMOUSE_T_AXIS_PSM:
+		switch (z) {
+		case 1:
+		case -1:
+			evdev_push_rel(sysmouse_evdev, REL_WHEEL, -z);
+			break;
+		case 2:
+		case -2:
+			evdev_push_rel(sysmouse_evdev, REL_HWHEEL, z / 2);
+			break;
+		}
+		break;
+	case EVDEV_SYSMOUSE_T_AXIS_UMS:
+		if (buttons & (1 << 6))
+			evdev_push_rel(sysmouse_evdev, REL_HWHEEL, 1);
+		else if (buttons & (1 << 5))
+			evdev_push_rel(sysmouse_evdev, REL_HWHEEL, -1);
+		buttons &= ~((1 << 5)|(1 << 6));
+		/* PASSTHROUGH */
+	case EVDEV_SYSMOUSE_T_AXIS_NONE:
+	default:
+		evdev_push_rel(sysmouse_evdev, REL_WHEEL, -z);
+	}
+	evdev_push_mouse_btn(sysmouse_evdev, buttons);
+	evdev_sync(sysmouse_evdev);
+}
+#endif
 
 static int
 pktlen(struct sysmouse_state *sc)
@@ -426,6 +498,9 @@ sm_attach_mouse(void *unused)
 	sc->fifo = NULL;
 
 	dev = make_dev(&sm_ops, 0, UID_ROOT, GID_WHEEL, 0600, "sysmouse");
+#ifdef EVDEV_SUPPORT
+	smdev_evdev_init();
+#endif
 }
 
 SYSINIT(sysmouse, SI_SUB_DRIVERS, SI_ORDER_ANY, sm_attach_mouse, NULL);
@@ -462,6 +537,10 @@ sysmouse_updatestatus(mousestatus_t *status, mouse_info_t *info)
 	status->dz += z;
 	status->flags |= ((x || y || z) ? MOUSE_POSCHANGED : 0)
 			 | (status->obutton ^ status->button);
+
+#ifdef EVDEV_SUPPORT
+	smdev_evdev_write(x, y, z, status->button);
+#endif
 
 	return 1;
 }
