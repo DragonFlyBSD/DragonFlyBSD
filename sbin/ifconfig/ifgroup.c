@@ -109,9 +109,9 @@ getifgroups(int s)
 		len -= sizeof(struct ifg_req);
 		if (strcmp(ifg->ifgrq_group, "all") != 0) {
 			if (cnt == 0)
-				printf("\tgroups: ");
+				printf("\tgroups:");
 			cnt++;
-			printf("%s ", ifg->ifgrq_group);
+			printf(" %s", ifg->ifgrq_group);
 		}
 	}
 	if (cnt)
