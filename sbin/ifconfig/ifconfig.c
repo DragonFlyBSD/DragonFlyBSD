@@ -82,6 +82,7 @@ int	noload;
 int	supmedia = 0;
 int	printkeys = 0;		/* Print keying material for interfaces. */
 int	printifname = 0;	/* Print the name of the created interface. */
+int	exit_code = 0;
 
 static	int ifconfig(int argc, char *const *argv, int iscreate,
 		     const struct afswtch *afp);
@@ -258,7 +259,7 @@ main(int argc, char *argv[])
 					errx(1, "%s: cloning name too long",
 					    ifname);
 				ifconfig(argc, argv, 1, NULL);
-				return (0);
+				exit(exit_code);
 			}
 			errx(1, "interface %s does not exist", ifname);
 		} else {
@@ -389,7 +390,7 @@ retry:
 	if (namesonly && need_nl > 0)
 		putchar('\n');
 
-	return (0);
+	return (exit_code);
 }
 
 static struct afswtch *afs = NULL;
