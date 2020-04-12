@@ -261,6 +261,18 @@ main(int argc, char *argv[])
 				return (0);
 			}
 			errx(1, "interface %s does not exist", ifname);
+		} else {
+			/*
+			 * Do not allow to use `create` command as hostname
+			 * if address family is not specified.
+			 */
+			if (argc > 0 && (strcmp(argv[0], "create") == 0 ||
+			    strcmp(argv[0], "plumb") == 0)) {
+				if (argc == 1)
+					errx(1, "interface %s alreay exists",
+					    ifname);
+				argc--, argv++;
+			}
 		}
 	}
 
