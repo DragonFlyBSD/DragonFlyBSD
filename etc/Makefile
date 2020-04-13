@@ -122,7 +122,11 @@ preupgrade:
 	(pw -V ${DESTDIR}/etc usershow _dhcp -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc useradd _dhcp -u 77 \
 		   -c "DHCP programs" \
-		   -d /var/empty -s /sbin/nologin
+		   -d /var/chroot/dhcp -s /sbin/nologin
+	if [ `pw -V ${DESTDIR}/etc usershow _dhcp | cut -d: -f9` = /var/empty ]; then \
+		pw -V ${DESTDIR}/etc usermod _dhcp -d /var/chroot/dhcp; \
+		mkdir -p ${DESTDIR}/var/chroot/dhcp; \
+	fi
 	(pw -V ${DESTDIR}/etc groupshow input -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd input -g 43
 	(pw -V ${DESTDIR}/etc groupshow video -q > /dev/null) || \
