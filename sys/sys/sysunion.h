@@ -116,9 +116,6 @@ union sysunion {
 	struct	statfs_args statfs;
 	struct	fstatfs_args fstatfs;
 	struct	getfh_args getfh;
-	struct	getdomainname_args getdomainname;
-	struct	setdomainname_args setdomainname;
-	struct	uname_args uname;
 	struct	sysarch_args sysarch;
 	struct	rtprio_args rtprio;
 	struct	extpread_args extpread;

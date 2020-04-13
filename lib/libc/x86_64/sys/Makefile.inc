@@ -7,9 +7,9 @@ MDASM=	vfork.S cerror.S exect.S getcontext.S pipe.S pipe2.S ptrace.S \
 	reboot.S fake_sbrk.S setlogin.S sigreturn.S
 
 # Don't generate default code for these syscalls:
-NOASM=	exit.o ftruncate.o getdomainname.o getlogin.o \
+NOASM=	exit.o ftruncate.o getlogin.o \
 	lseek.o mmap.o openbsd_poll.o pread.o \
-	pwrite.o setdomainname.o sstk.o truncate.o uname.o vfork.o yield.o \
+	pwrite.o sstk.o truncate.o vfork.o yield.o \
 	fork.o
 
 PSEUDO=	_getlogin.o _exit.o

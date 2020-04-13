@@ -1408,7 +1408,6 @@ kern/kern_time.c	standard
 kern/kern_timeout.c	standard
 kern/kern_wdog.c	standard
 kern/kern_xio.c		standard
-kern/kern_xxx.c		standard
 kern/md5c.c		standard
 kern/subr_autoconf.c	standard
 kern/subr_bus.c		standard

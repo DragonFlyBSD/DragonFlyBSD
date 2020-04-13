@@ -794,26 +794,6 @@ struct	getfh_args {
 	char *	fname;	char fname_[PAD_(char *)];
 	struct fhandle *	fhp;	char fhp_[PAD_(struct fhandle *)];
 };
-struct	getdomainname_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	char *	domainname;	char domainname_[PAD_(char *)];
-	int	len;	char len_[PAD_(int)];
-};
-struct	setdomainname_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	char *	domainname;	char domainname_[PAD_(char *)];
-	int	len;	char len_[PAD_(int)];
-};
-struct	uname_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	struct utsname *	name;	char name_[PAD_(struct utsname *)];
-};
 struct	sysarch_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2485,9 +2465,6 @@ int	sys_nfssvc (struct nfssvc_args *);
 int	sys_statfs (struct statfs_args *);
 int	sys_fstatfs (struct fstatfs_args *);
 int	sys_getfh (struct getfh_args *);
-int	sys_getdomainname (struct getdomainname_args *);
-int	sys_setdomainname (struct setdomainname_args *);
-int	sys_uname (struct uname_args *);
 int	sys_sysarch (struct sysarch_args *);
 int	sys_rtprio (struct rtprio_args *);
 int	sys_extpread (struct extpread_args *);

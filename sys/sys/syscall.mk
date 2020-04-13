@@ -109,9 +109,6 @@ MIASM =  \
 	statfs.o \
 	fstatfs.o \
 	getfh.o \
-	getdomainname.o \
-	setdomainname.o \
-	uname.o \
 	sysarch.o \
 	rtprio.o \
 	extpread.o \

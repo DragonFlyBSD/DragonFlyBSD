@@ -234,9 +234,9 @@
 160	UNIMPL	nosys
 ; 161 is initialized by the NFS code, if present.
 161	STD	{ int getfh(char *fname, struct fhandle *fhp); }
-162	STD	{ int getdomainname(char *domainname, int len); }
-163	STD	{ int setdomainname(char *domainname, int len); }
-164	STD	{ int uname(struct utsname *name); }
+162	OBSOL	getdomainname
+163	OBSOL	setdomainname
+164	OBSOL	uname
 165	STD	{ int sysarch(int op, char *parms); }
 166	STD	{ int rtprio(int function, pid_t pid, \
 			    struct rtprio *rtp); }

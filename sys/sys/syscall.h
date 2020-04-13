@@ -158,9 +158,9 @@
 #define	SYS_statfs	157
 #define	SYS_fstatfs	158
 #define	SYS_getfh	161
-#define	SYS_getdomainname	162
-#define	SYS_setdomainname	163
-#define	SYS_uname	164
+				/* 162 is obsolete getdomainname */
+				/* 163 is obsolete setdomainname */
+				/* 164 is obsolete uname */
 #define	SYS_sysarch	165
 #define	SYS_rtprio	166
 				/* 169 is obsolete semsys */
