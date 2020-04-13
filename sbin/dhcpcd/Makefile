@@ -27,6 +27,11 @@ SRCS+=		ipv6.c ipv6nd.c
 CFLAGS+=	-DDHCP6
 SRCS+=		dhcp6.c
 
+CFLAGS+=	-DPRIVSEP -DPRIVSEP_USER='"_dhcp"'
+SRCS+=		privsep.c privsep-root.c privsep-inet.c
+SRCS+=		privsep-bpf.c
+SRCS+=		privsep-bsd.c
+
 .PATH:		${DISTDIR}/compat
 SRCS+=		pidfile.c rb.c strtoi.c strtou.c
 .PATH:		${DISTDIR}/compat/crypt
@@ -49,7 +54,7 @@ _SYSCONFDIR=	/etc
 _LIBDIR=	/usr/lib
 _LIBEXECDIR=	/usr/libexec
 _DBDIR=		/var/db/dhcpcd
-_RUNDIR=	/var/run
+_RUNDIR=	/var/run/dhcpcd
 CFLAGS+=	-DSYSCONFDIR='"${_SYSCONFDIR}"' \
 		-DSBINDIR='"${BINDIR}"' \
 		-DLIBDIR='"${_LIBDIR}"' \
@@ -94,7 +99,7 @@ SCRIPTS=	dhcpcd-run-hooks
 SCRIPTSDIR=	${_LIBEXECDIR}
 MAN+=		dhcpcd-run-hooks.8
 
-FILES=		01-test 02-dump 20-resolv.conf 30-hostname
+FILES=		01-test 20-resolv.conf 30-hostname
 FILESDIR=	${_HOOKDIR}
 
 # Example hooks that should not be installed by default
@@ -103,7 +108,7 @@ FILES+=		${f}
 FILESDIR_${f}=	${_DATADIR}/dhcpcd/hooks
 .endfor
 
-.for f in dhcpcd-run-hooks dhcpcd-run-hooks.8 50-ypbind
+.for f in dhcpcd-run-hooks dhcpcd-run-hooks.8 30-hostname 50-ypbind
 CLEANFILES+=	${f}
 ${f}: ${f}.in
 	sed ${_SED_CMDS} ${HOOKSRC}/${f}.in > $@

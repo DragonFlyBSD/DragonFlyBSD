@@ -5,7 +5,7 @@
 #define	LIBDIR			"/lib"
 #define	LIBEXECDIR		"/usr/libexec"
 #define	DBDIR			"/var/db/dhcpcd"
-#define	RUNDIR			"/var/run"
+#define	RUNDIR			"/var/run/dhcpcd"
 #endif
 #define	HAVE_IFAM_ADDRFLAGS
 #define	HAVE_IFADDRS_ADDRFLAGS
