@@ -3912,6 +3912,7 @@ TO_REMOVE+=/usr/share/man/man1/readelf225.1.gz
 TO_REMOVE+=/usr/share/man/man1/size225.1.gz
 TO_REMOVE+=/usr/share/man/man1/strings225.1.gz
 TO_REMOVE+=/usr/share/man/man1/strip225.1.gz
+TO_REMOVE+=/usr/libexec/dhcpcd-hooks/02-dump
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
