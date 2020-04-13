@@ -27,10 +27,17 @@
         ..
     ..
 /set mode=0755
+    chroot
+        dhcp
+	    var
+	        run
+		..
+	    ..
+	..
+    ..
+/set mode=0755
     db
         entropy         uname=operator gname=operator mode=0700
-        ..
-        dhcpcd
         ..
     ..
     empty               mode=0555 flags=schg
