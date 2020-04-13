@@ -1,4 +1,4 @@
-/*	$NetBSD: strtoi.c,v 1.2 2015/05/01 14:17:56 christos Exp $	*/
+/*	$NetBSD: strtoi.c,v 1.3 2019/11/28 12:33:23 roy Exp $	*/
 
 /*-
  * Copyright (c) 2005 The DragonFly Project.  All rights reserved.

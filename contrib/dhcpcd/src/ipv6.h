@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * dhcpcd - DHCP client daemon
- * Copyright (c) 2006-2019 Roy Marples <roy@marples.name>
+ * Copyright (c) 2006-2020 Roy Marples <roy@marples.name>
  * All rights reserved
 
  * Redistribution and use in source and binary forms, with or without
@@ -59,13 +59,16 @@
 #define TEMP_PREFERRED_LIFETIME	86400	/* 1 day */
 #define REGEN_ADVANCE		5	/* seconds */
 #define MAX_DESYNC_FACTOR	600	/* 10 minutes */
-
 #define TEMP_IDGEN_RETRIES	3
-#define GEN_TEMPID_RETRY_MAX	5
 
 /* RFC7217 constants */
 #define IDGEN_RETRIES	3
 #define IDGEN_DELAY	1 /* second */
+
+/* Interface identifier length. Prefix + this == 128 for autoconf */
+#define ipv6_ifidlen(ifp)	64
+#define	IA6_CANAUTOCONF(ia)	\
+	((ia)->prefix_len + ipv6_ifidlen((ia)->iface) == 128)
 
 #ifndef IN6_ARE_MASKED_ADDR_EQUAL
 #define IN6_ARE_MASKED_ADDR_EQUAL(d, a, m)	(	\
@@ -103,6 +106,11 @@
 #if (defined(__DragonFly_version) && __DragonFly_version >= 500704) || \
     (defined(__NetBSD_Version__) && __NetBSD_Version__ >= 699002000)
 #  undef IPV6_POLLADDRFLAG
+#endif
+
+/* Of course OpenBSD has their own special name. */
+#if !defined(IN6_IFF_TEMPORARY) && defined(IN6_IFF_PRIVACY)
+#define	IN6_IFF_TEMPORARY IN6_IFF_PRIVACY
 #endif
 
 #ifdef __sun
@@ -234,10 +242,7 @@ struct ipv6_state {
 	struct ll_callback_head ll_callbacks;
 
 #ifdef IPV6_MANAGETEMPADDR
-	time_t desync_factor;
-	uint8_t randomseed0[8]; /* upper 64 bits of MD5 digest */
-	uint8_t randomseed1[8]; /* lower 64 bits */
-	uint8_t randomid[8];
+	uint32_t desync_factor;
 #endif
 };
 
@@ -249,11 +254,10 @@ struct ipv6_state {
 
 
 int ipv6_init(struct dhcpcd_ctx *);
-int ipv6_makestableprivate(struct in6_addr *addr,
-    const struct in6_addr *prefix, int prefix_len,
-    const struct interface *ifp, int *dad_counter);
+int ipv6_makestableprivate(struct in6_addr *,
+    const struct in6_addr *, int, const struct interface *, int *);
 int ipv6_makeaddr(struct in6_addr *, struct interface *,
-    const struct in6_addr *, int);
+    const struct in6_addr *, int, unsigned int);
 int ipv6_mask(struct in6_addr *, int);
 uint8_t ipv6_prefixlen(const struct in6_addr *);
 int ipv6_userprefix( const struct in6_addr *, short prefix_len,
@@ -291,14 +295,11 @@ void ipv6_freedrop(struct interface *, int);
 #define ipv6_drop(ifp) ipv6_freedrop((ifp), 2)
 
 #ifdef IPV6_MANAGETEMPADDR
-void ipv6_gentempifid(struct interface *);
 struct ipv6_addr *ipv6_createtempaddr(struct ipv6_addr *,
     const struct timespec *);
 struct ipv6_addr *ipv6_settemptime(struct ipv6_addr *, int);
 void ipv6_addtempaddrs(struct interface *, const struct timespec *);
-#else
-#define ipv6_gentempifid(a) {}
-#define ipv6_settempstale(a) {}
+void ipv6_regentempaddrs(void *);
 #endif
 
 int ipv6_start(struct interface *);
