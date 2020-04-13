@@ -21,6 +21,6 @@ uucp:*:66:66::0:0:UUCP pseudo-user:/var/spool/uucppublic:/usr/libexec/uucp/uucic
 xten:*:67:67::0:0:X-10 daemon:/usr/local/xten:/sbin/nologin
 pop:*:68:6::0:0:Post Office Owner:/nonexistent:/sbin/nologin
 _sdpd:*:70:70::0:0:sdpd privsep user:/var/empty:/sbin/nologin
-_dhcp:*:77:77::0:0:DHCP programs:/var/empty:/sbin/nologin
+_dhcp:*:77:77::0:0:DHCP programs:/var/chroot/dhcp:/sbin/nologin
 www:*:80:80::0:0:World Wide Web Owner:/nonexistent:/sbin/nologin
 nobody:*:65534:65534::0:0:Unprivileged user:/nonexistent:/sbin/nologin
