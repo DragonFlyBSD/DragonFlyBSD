@@ -475,8 +475,8 @@ typedef struct runstats {
 	void (*update)(worker_t *work, const char *portdir);
 	void (*updateTop)(topinfo_t *info);
 	void (*updateLogs)(void);
-	void (*updateCompletion)(worker_t *work, int dlogid,
-				 pkg_t *pkg, const char *reason);
+	void (*updateCompletion)(worker_t *work, int dlogid, pkg_t *pkg,
+				const char *reason, const char *skipbuf);
 	void (*sync)(void);
 } runstats_t;
 
@@ -618,8 +618,8 @@ void RunStatsUpdate(worker_t *work, const char *portdir);
 void RunStatsUpdateTop(int active);
 void RunStatsUpdateLogs(void);
 void RunStatsSync(void);
-void RunStatsUpdateCompletion(worker_t *work, int logid,
-			pkg_t *pkg, const char *reason);
+void RunStatsUpdateCompletion(worker_t *work, int logid, pkg_t *pkg,
+			const char *reason, const char *skipbuf);
 
 int copyfile(char *src, char *dst);
 int ipcreadmsg(int fd, wmsg_t *msg);

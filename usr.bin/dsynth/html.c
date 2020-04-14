@@ -384,7 +384,8 @@ HtmlUpdateLogs(void)
 }
 
 static void
-HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg, const char *reason)
+HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg,
+		     const char *reason, const char *skipbuf)
 {
 	FILE *fp;
 	char *path;
@@ -395,6 +396,11 @@ HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg, const char *reason)
 	int slot;
 	const char *result;
 	char *mreason;
+
+	if (skipbuf[0] == 0)
+		skipbuf = "0";
+	else if (skipbuf[0] == ' ')
+		++skipbuf;
 
 	mreason = NULL;
 	if (work) {
@@ -426,7 +432,7 @@ HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg, const char *reason)
 		break;
 	case DLOG_IGN:
 		result = "ignored";
-		asprintf(&mreason, "%s:|:0", reason);
+		asprintf(&mreason, "%s:|:%s", reason, skipbuf);
 		reason = mreason;
 		break;
 	case DLOG_SKIP:
