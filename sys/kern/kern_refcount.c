@@ -49,11 +49,7 @@
 #include <machine/cpufunc.h>
 
 /*
- * Helper function to wait for a reference count to become zero.
- * We set REFCNTF_WAITING and sleep if the reference count is not zero.
- *
- * In the case where REFCNTF_WAITING is already set the atomic op validates
- * that it is still set after the tsleep_interlock() call.
+ * Interlocked wait against a decrement-to-0 (sans the REFCNTF_WAITING flag).
  *
  * Users of this waiting API must use refcount_release_wakeup() to release
  * refs instead of refcount_release().  refcount_release() will not wake
@@ -65,57 +61,17 @@ _refcount_wait(volatile u_int *countp, const char *wstr)
 	u_int n;
 	int base_ticks = ticks;
 
+	n = *countp;
 	for (;;) {
-		n = *countp;
 		cpu_ccfence();
-		if (n == 0)
+		if ((n & ~REFCNTF_WAITING) == 0)
 			break;
 		if ((int)(ticks - base_ticks) >= hz*60 - 1) {
-			kprintf("warning: refcount_wait %s: long wait\n",
-				wstr);
+			kprintf("warning: refcount_wait %s: long wait\n", wstr);
 			base_ticks = ticks;
 		}
-		KKASSERT(n != REFCNTF_WAITING);	/* impossible state */
 		tsleep_interlock(countp, 0);
-		if (atomic_cmpset_int(countp, n, n | REFCNTF_WAITING))
+		if (atomic_fcmpset_int(countp, &n, n | REFCNTF_WAITING))
 			tsleep(countp, PINTERLOCKED, wstr, hz*10);
 	}
-}
-
-/*
- * This helper function implements the release-with-wakeup API.  It is
- * executed for the non-trivial case or if the atomic op races.
- *
- * On the i->0 transition is REFCNTF_WAITING is set it will be cleared
- * and a wakeup() will be issued.
- *
- * On any other transition we simply subtract (i) and leave the
- * REFCNTF_WAITING flag intact.
- *
- * This function returns TRUE(1) on the last release, whether a wakeup
- * occured or not, and FALSE(0) otherwise.
- *
- * NOTE!  (i) cannot be 0
- */
-int
-_refcount_release_wakeup_n(volatile u_int *countp, u_int i)
-{
-	u_int n;
-
-	for (;;) {
-		n = *countp;
-		cpu_ccfence();
-		if (n == (REFCNTF_WAITING | i)) {
-			if (atomic_cmpset_int(countp, n, 0)) {
-				wakeup(countp);
-				n = i;
-				break;
-			}
-		} else {
-			KKASSERT(n != REFCNTF_WAITING); /* illegal state */
-			if (atomic_cmpset_int(countp, n, n - i))
-				break;
-		}
-	}
-	return (n == i);
 }

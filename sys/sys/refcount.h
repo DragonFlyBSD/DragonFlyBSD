@@ -32,12 +32,12 @@
 #ifndef _SYS_REFCOUNT_H_
 #define _SYS_REFCOUNT_H_
 
+#include <sys/systm.h>		/* wakeup() */
 #include <machine/atomic.h>
 
 #define REFCNTF_WAITING	0x40000000
 
 void _refcount_wait(volatile u_int *countp, const char *wstr);
-int _refcount_release_wakeup_n(volatile u_int *countp, u_int i);
 
 static __inline void
 refcount_init(volatile u_int *countp, u_int value)
@@ -60,13 +60,13 @@ refcount_acquire_n(volatile u_int *countp, u_int i)
 static __inline int
 refcount_release(volatile u_int *countp)
 {
-	return (atomic_fetchadd_int(countp, -1) == 1);
+	return ((atomic_fetchadd_int(countp, -1) & ~REFCNTF_WAITING) == 1);
 }
 
 static __inline int
 refcount_release_n(volatile u_int *countp, u_int i)
 {
-	return (atomic_fetchadd_int(countp, -i) == i);
+	return ((atomic_fetchadd_int(countp, -i) & ~REFCNTF_WAITING) == i);
 }
 
 /*
@@ -79,23 +79,36 @@ refcount_release_n(volatile u_int *countp, u_int i)
  * This function returns TRUE(1) on the last release and FALSE(0) otherwise.
  *
  * NOTE: (i) must be non-zero.
+ *
+ * NOTE: Presence of waiters clears the WAITING bit asynchronously from the
+ *	 1->0 transition.
  */
 static __inline int
 refcount_release_wakeup(volatile u_int *countp)
 {
-	u_int n = *countp & ~REFCNTF_WAITING;
-	if (!atomic_cmpset_int(countp, n, n - 1))
-		return(_refcount_release_wakeup_n(countp, 1));
-	return(n == 1);
+	u_int n;
+
+	n = atomic_fetchadd_int(countp, -1);
+	if (n == (REFCNTF_WAITING | 1)) {
+		atomic_clear_int(countp, REFCNTF_WAITING);
+		wakeup(countp);
+		n &= ~REFCNTF_WAITING;
+	}
+	return (n == 1);
 }
 
 static __inline int
 refcount_release_wakeup_n(volatile u_int *countp, u_int i)
 {
-	u_int n = *countp & ~REFCNTF_WAITING;
-	if (!atomic_cmpset_int(countp, n, n - i))
-		return(_refcount_release_wakeup_n(countp, i));
-	return(n == i);
+	u_int n;
+
+	n = atomic_fetchadd_int(countp, -i);
+	if (n == (REFCNTF_WAITING | i)) {
+		atomic_clear_int(countp, REFCNTF_WAITING);
+		wakeup(countp);
+		n &= ~REFCNTF_WAITING;
+	}
+	return (n == i);
 }
 
 /*
