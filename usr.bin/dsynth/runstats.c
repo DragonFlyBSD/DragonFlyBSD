@@ -192,12 +192,12 @@ RunStatsSync(void)
 
 void
 RunStatsUpdateCompletion(worker_t *work, int logid, pkg_t *pkg,
-			 const char *reason)
+			 const char *reason, const char *skipbuf)
 {
 	runstats_t *rs;
 
 	for (rs = RSBase; rs; rs = rs->next) {
 		if (rs->updateCompletion)
-			rs->updateCompletion(work, logid, pkg, reason);
+			rs->updateCompletion(work, logid, pkg, reason, skipbuf);
 	}
 }

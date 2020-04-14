@@ -606,7 +606,8 @@ skip_to_flavor:
 			} else {
 				dlog(DLOG_SUCC, "[XXX] %s meta-node complete\n",
 				     pkg->portdir);
-				RunStatsUpdateCompletion(NULL, DLOG_SUCC, pkg, "");
+				RunStatsUpdateCompletion(NULL, DLOG_SUCC, pkg,
+							 "", "");
 			}
 		}
 	} else if (pkg->flags & PKGF_PACKAGED) {
@@ -814,6 +815,17 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 		 */
 		if (ipkg->flags & PKGF_NOBUILD) {
 			char *reason;
+			char skipbuf[16];
+			int scount;
+
+			scount = buildskipcount_dueto(ipkg, 1);
+			buildskipcount_dueto(ipkg, 0);
+			if (scount) {
+				snprintf(skipbuf, sizeof(skipbuf), " %d",
+					 scount);
+			} else {
+				skipbuf[0] = 0;
+			}
 
 			ipkg->flags |= PKGF_FAILURE;
 			ipkg->flags &= ~PKGF_BUILDLIST;
@@ -821,18 +833,20 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 			reason = buildskipreason(NULL, ipkg);
 			if (ipkg->flags & PKGF_NOBUILD_I) {
 				++BuildIgnoreCount;
-				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
-				     ipkg->portdir, reason);
-				RunStatsUpdateCompletion(NULL, DLOG_IGN,
-							 ipkg, reason);
+				dlog(DLOG_IGN,
+				     "[XXX] %s%s ignored due to %s\n",
+				     ipkg->portdir, skipbuf, reason);
+				RunStatsUpdateCompletion(NULL, DLOG_IGN, ipkg,
+							 reason, skipbuf);
 				doHook(ipkg, "hook_pkg_ignored",
 				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
-				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
-				     ipkg->portdir, reason);
-				RunStatsUpdateCompletion(NULL, DLOG_SKIP,
-							 ipkg, reason);
+				dlog(DLOG_SKIP,
+				     "[XXX] %s%s skipped due to %s\n",
+				     ipkg->portdir, skipbuf, reason);
+				RunStatsUpdateCompletion(NULL, DLOG_SKIP, ipkg,
+							 reason, skipbuf);
 				doHook(ipkg, "hook_pkg_skipped",
 				       HookPkgSkipped, 0);
 			}
@@ -842,6 +856,17 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 		}
 		if (pkgi->flags & PKGF_NOBUILD) {
 			char *reason;
+			char skipbuf[16];
+			int scount;
+
+			scount = buildskipcount_dueto(pkgi, 1);
+			buildskipcount_dueto(pkgi, 0);
+			if (scount) {
+				snprintf(skipbuf, sizeof(skipbuf), " %d",
+					 scount);
+			} else {
+				skipbuf[0] = 0;
+			}
 
 			pkgi->flags |= PKGF_FAILURE;
 			pkgi->flags &= ~PKGF_BUILDLIST;
@@ -849,18 +874,19 @@ startbuild(pkg_t **build_listp, pkg_t ***build_tailp)
 			reason = buildskipreason(NULL, pkgi);
 			if (pkgi->flags & PKGF_NOBUILD_I) {
 				++BuildIgnoreCount;
-				dlog(DLOG_IGN, "[XXX] %s ignored due to %s\n",
-				     pkgi->portdir, reason);
-				RunStatsUpdateCompletion(NULL, DLOG_IGN,
-							 pkgi, reason);
+				dlog(DLOG_IGN, "[XXX] %s%s ignored due to %s\n",
+				     pkgi->portdir, skipbuf, reason);
+				RunStatsUpdateCompletion(NULL, DLOG_IGN, pkgi,
+							 reason, skipbuf);
 				doHook(pkgi, "hook_pkg_ignored",
 				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
-				dlog(DLOG_SKIP, "[XXX] %s skipped due to %s\n",
-				     pkgi->portdir, reason);
-				RunStatsUpdateCompletion(NULL, DLOG_SKIP,
-							 pkgi, reason);
+				dlog(DLOG_SKIP,
+				     "[XXX] %s%s skipped due to %s\n",
+				     pkgi->portdir, skipbuf, reason);
+				RunStatsUpdateCompletion(NULL, DLOG_SKIP, pkgi,
+							 reason, skipbuf);
 				doHook(pkgi, "hook_pkg_skipped",
 				       HookPkgSkipped, 0);
 			}
@@ -1035,7 +1061,19 @@ workercomplete(worker_t *work)
 	 */
 	pkg = work->pkg;
 	if (pkg->flags & (PKGF_ERROR|PKGF_NOBUILD)) {
+		char skipbuf[16];
+		int scount;
+
 		pkg->flags |= PKGF_FAILURE;
+
+		scount = buildskipcount_dueto(pkg, 1);
+		buildskipcount_dueto(pkg, 0);
+		if (scount) {
+			snprintf(skipbuf, sizeof(skipbuf), " %d",
+				 scount);
+		} else {
+			skipbuf[0] = 0;
+		}
 
 		/*
 		 * This NOBUILD condition XXX can occur if the package is
@@ -1047,42 +1085,33 @@ workercomplete(worker_t *work)
 			reason = buildskipreason(NULL, pkg);
 			if (pkg->flags & PKGF_NOBUILD_I) {
 				++BuildIgnoreCount;
-				dlog(DLOG_SKIP, "[%03d] IGNORD %s - %s\n",
-				     work->index, pkg->portdir, reason);
-				RunStatsUpdateCompletion(work, DLOG_SKIP,
-							 pkg, reason);
+				dlog(DLOG_SKIP, "[%03d] IGNORD %s%s - %s\n",
+				     work->index, pkg->portdir,
+				     skipbuf, reason);
+				RunStatsUpdateCompletion(work, DLOG_SKIP, pkg,
+							 reason, skipbuf);
 				doHook(pkg, "hook_pkg_ignored",
 				       HookPkgIgnored, 0);
 			} else {
 				++BuildSkipCount;
-				dlog(DLOG_SKIP, "[%03d] SKIPPD %s - %s\n",
-				     work->index, pkg->portdir, reason);
-				RunStatsUpdateCompletion(work, DLOG_SKIP,
-							 pkg, reason);
+				dlog(DLOG_SKIP, "[%03d] SKIPPD %s%s - %s\n",
+				     work->index, pkg->portdir,
+				     skipbuf, reason);
+				RunStatsUpdateCompletion(work, DLOG_SKIP, pkg,
+							 reason, skipbuf);
 				doHook(pkg, "hook_pkg_skipped",
 				       HookPkgSkipped, 0);
 			}
 			free(reason);
 		} else {
-			char skipbuf[16];
-			int scount;
-
-			scount = buildskipcount_dueto(pkg, 1);
-			buildskipcount_dueto(pkg, 0);
-			if (scount) {
-				snprintf(skipbuf, sizeof(skipbuf), " %d",
-					 scount);
-			} else {
-				skipbuf[0] = 0;
-			}
-
 			++BuildFailCount;
 			dlog(DLOG_FAIL | DLOG_RED,
 			     "[%03d] FAILURE %s%s ##%16.16s %02d:%02d:%02d\n",
 			     work->index, pkg->portdir, skipbuf,
 			     getphasestr(work->phase),
 			     h, m, s);
-			RunStatsUpdateCompletion(work, DLOG_FAIL, pkg, skipbuf);
+			RunStatsUpdateCompletion(work, DLOG_FAIL, pkg,
+						 skipbuf, "");
 			doHook(pkg, "hook_pkg_failure", HookPkgFailure, 0);
 		}
 	} else {
@@ -1091,7 +1120,7 @@ workercomplete(worker_t *work)
 		dlog(DLOG_SUCC | DLOG_GRN,
 		     "[%03d] SUCCESS %s ##%02d:%02d:%02d\n",
 		     work->index, pkg->portdir, h, m, s);
-		RunStatsUpdateCompletion(work, DLOG_SUCC, pkg, "");
+		RunStatsUpdateCompletion(work, DLOG_SUCC, pkg, "", "");
 		doHook(pkg, "hook_pkg_success", HookPkgSuccess, 0);
 	}
 	++BuildCount;
