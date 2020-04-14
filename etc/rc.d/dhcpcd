@@ -2,8 +2,8 @@
 
 # PROVIDE: dhcpcd
 # REQUIRE: mountcritlocal cleanvar
+# BEFORE: mountcritremote
 # KEYWORD: chrootdir nojail
-# BEFORE:  NETWORKING netif
 
 . /etc/rc.subr
 . /etc/network.subr
