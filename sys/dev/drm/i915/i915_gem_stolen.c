@@ -89,11 +89,35 @@ void i915_gem_stolen_remove_node(struct drm_i915_private *dev_priv,
 	mutex_unlock(&dev_priv->mm.stolen_lock);
 }
 
+#ifdef __DragonFly__
+static
+struct resource * devm_request_mem_region(struct device *dev,
+    resource_size_t start, resource_size_t n, const char *name)
+{
+	static struct rman stolen_rman;
+	struct resource *res;
+
+	stolen_rman.rm_start = start;
+	stolen_rman.rm_end = start + n;
+	stolen_rman.rm_type = RMAN_ARRAY;
+	stolen_rman.rm_descr = name;
+	if (rman_init(&stolen_rman, -1))
+		return NULL;
+
+	if (rman_manage_region(&stolen_rman, stolen_rman.rm_start, stolen_rman.rm_end))
+		return NULL;
+
+	res = kmalloc(sizeof(*res), M_DRM, GFP_KERNEL);
+	return res;
+}
+#endif	/* __DragonFly__ */
+
 static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
+	struct resource *r;
 	u32 base;
 
 	/* Almost universally we can find the Graphics Base of Stolen Memory
@@ -252,7 +276,6 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 	 * kernel. So if the region is already marked as busy, something
 	 * is seriously wrong.
 	 */
-#if 0
 	r = devm_request_mem_region(dev->dev, base, ggtt->stolen_size,
 				    "Graphics Stolen Memory");
 	if (r == NULL) {
@@ -277,7 +300,6 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 			base = 0;
 		}
 	}
-#endif
 
 	return base;
 }
@@ -417,10 +439,6 @@ int i915_gem_init_stolen(struct drm_device *dev)
 	unsigned long stolen_top;
 
 	lockinit(&dev_priv->mm.stolen_lock, "i915msl", 0, LK_CANRECURSE);
-#ifdef __DragonFly__
-	/* Stolen memory support is still incomplete */
-	return 0;
-#endif
 
 #ifdef CONFIG_INTEL_IOMMU
 	if (intel_iommu_gfx_mapped && INTEL_INFO(dev)->gen < 8) {
