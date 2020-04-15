@@ -260,6 +260,18 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 		echo "	make install"; \
 	fi
 
+# Move the dhcpcd duid, secret and lease files to the chroot
+# to ensure users get the same address upon restarting.
+	DHCPCD_CHROOT=`pw -V ${DESTDIR}/etc usershow _dhcp | cut -d: -f9`; \
+	DHCPCD_CHROOT_DB="${DESTDIR}$$DHCPCD_CHROOT/var/db/dhcpcd"; \
+	if [ -f "${DESTDIR}/var/db/dhcpcd/duid" ] && \
+	   [ ! -f "$$DHCPCD_CHROOT_DB/duid" ]; then \
+		mkdir -p "$$DHCPCD_CHROOT_DB" && \
+		mv "${DESTDIR}/var/db/dhcpcd/"* "$$DHCPCD_CHROOT_DB"; \
+		chown -R _dhcp:_dhcp "$$DHCPCD_CHROOT"; \
+		rmdir "${DESTDIR}/var/db/dhcpcd"; \
+	fi
+
 upgrade_etc:	upgrade_base remove-deprecated-files
 	@echo "Upgrade was successful"
 
