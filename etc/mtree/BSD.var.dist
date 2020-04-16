@@ -29,11 +29,11 @@
 /set mode=0755
     chroot
         dhcp
-	    var
-	        run
-		..
-	    ..
-	..
+            var
+                run
+                ..
+            ..
+        ..
     ..
 /set mode=0755
     db
