@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd December 31, 2019
+.Dd April 16, 2020
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -324,6 +324,21 @@ The default value is
 i.e., tell
 .Xr dhcpcd 8
 to go to background immediately.
+.It Sy dhcpcd_chrootdir
+.Pq Vt str
+If non-blank and
+.Sy dhcpcd_enable
+is true, run
+.Xr dhcpcd 8
+as the unprivileged user and group
+.Sq _dhcp ,
+.Xr chroot 2 Ns ed
+to
+.Sy dhcpcd_chrootdir .
+.Li \&${dhcpcd_chrootdir} Ns Pa /var/run/log
+will be added to the list of log sockets that
+.Xr syslogd 8
+listens to.
 .It Va pf_enable
 .Pq Vt bool
 Set to
