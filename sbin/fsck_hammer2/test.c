@@ -740,6 +740,8 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 					if (DebugOpt)
 						print_blockref(stdout, &m->bref,
 						    "cache");
+					/* delta contains cached delta */
+					accumulate_delta_stats(dstats, ds);
 					load_delta_stats(bstats, ds);
 					return 0;
 				}
