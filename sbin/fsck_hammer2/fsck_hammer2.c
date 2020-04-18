@@ -112,7 +112,7 @@ main(int ac, char **av)
 	while ((ch = getopt(ac, av, "dfvqebpl:c:")) != -1) {
 		switch(ch) {
 		case 'd':
-			DebugOpt = 1;
+			DebugOpt++;
 			break;
 		case 'f':
 			ForceOpt = 1;

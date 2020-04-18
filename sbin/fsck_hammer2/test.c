@@ -135,7 +135,7 @@ static int read_media(int, const hammer2_blockref_t *, hammer2_media_data_t *,
     size_t *);
 static int verify_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, bool, blockref_stats_t *,
-    struct blockref_tree *, delta_stats_t *);
+    struct blockref_tree *, delta_stats_t *, int, int);
 static int init_pfs_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, struct blockref_list *);
 static void cleanup_pfs_blockref(struct blockref_list *);
@@ -288,7 +288,7 @@ test_blockref(int fd, uint8_t type)
 			memset(&ds, 0, sizeof(ds));
 			tprintf_zone(0, i, &broot);
 			if (verify_blockref(fd, &voldata, &broot, false,
-			    &bstats, &droot, &ds) == -1)
+			    &bstats, &droot, &ds, 0, 0) == -1)
 				failed = true;
 			print_blockref_stats(&bstats, true);
 			print_blockref_entry(fd, &bstats.root);
@@ -365,7 +365,7 @@ test_pfs_blockref(int fd)
 				delta_stats_t ds;
 				memset(&ds, 0, sizeof(ds));
 				if (verify_blockref(fd, &voldata, &p->bref,
-				    false, &bstats, &droot, &ds) == -1)
+				    false, &bstats, &droot, &ds, 0, 0) == -1)
 					failed = true;
 				print_blockref_stats(&bstats, true);
 				print_blockref_entry(fd, &bstats.root);
@@ -472,15 +472,41 @@ add_blockref_entry(struct blockref_tree *root, const hammer2_blockref_t *bref,
 	RB_INSERT(blockref_tree, root, e);
 }
 
-static void
-print_blockref(FILE *fp, const hammer2_blockref_t *bref, const char *msg)
+static __inline void
+__print_blockref(FILE *fp, int tab, const hammer2_blockref_t *bref,
+    const char *msg)
 {
-	tfprintf(fp, 1, "%016jx %-12s %016jx/%-2d %s\n",
+	tfprintf(fp, tab, "%016jx %-12s %016jx/%-2d%s%s\n",
 	    (uintmax_t)bref->data_off,
 	    hammer2_breftype_to_str(bref->type),
 	    (uintmax_t)bref->key,
 	    bref->keybits,
-	    msg);
+	    msg ? " " : "",
+	    msg ? msg : "");
+}
+
+static void
+print_blockref(FILE *fp, const hammer2_blockref_t *bref, const char *msg)
+{
+	__print_blockref(fp, 1, bref, msg);
+}
+
+static void
+print_blockref_verbose(FILE *fp, int depth, int index,
+    const hammer2_blockref_t *bref, const char *msg)
+{
+	if (DebugOpt > 1) {
+		char buf[256];
+		int i;
+
+		memset(buf, 0, sizeof(buf));
+		for (i = 0; i < depth * 2; i++)
+			strlcat(buf, " ", sizeof(buf));
+		tfprintf(fp, 1, buf);
+		fprintf(fp, "%-2d %-3d ", depth, index);
+		__print_blockref(fp, 0, bref, msg);
+	} else
+		print_blockref(fp, bref, msg);
 }
 
 static void
@@ -712,7 +738,7 @@ accumulate_delta_stats(delta_stats_t *dst, const delta_stats_t *src)
 static int
 verify_blockref(int fd, const hammer2_volume_data_t *voldata,
     const hammer2_blockref_t *bref, bool norecurse, blockref_stats_t *bstats,
-    struct blockref_tree *droot, delta_stats_t *dstats)
+    struct blockref_tree *droot, delta_stats_t *dstats, int depth, int index)
 {
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
@@ -729,6 +755,9 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		uint64_t digest64[SHA256_DIGEST_LENGTH/8];
 	} u;
 
+	if (DebugOpt > 1)
+		print_blockref_verbose(stdout, depth, index, bref, NULL);
+
 	if (bref->data_off) {
 		struct blockref_entry *e;
 		e = RB_LOOKUP(blockref_tree, droot, bref->data_off);
@@ -738,7 +767,8 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 				delta_stats_t *ds = m->msg;
 				if (!memcmp(&m->bref, bref, sizeof(*bref))) {
 					if (DebugOpt)
-						print_blockref(stdout, &m->bref,
+						print_blockref_verbose(stdout,
+						    depth, index, &m->bref,
 						    "cache-hit");
 					/* delta contains cached delta */
 					accumulate_delta_stats(dstats, ds);
@@ -918,7 +948,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		delta_stats_t ds;
 		memset(&ds, 0, sizeof(ds));
 		if (verify_blockref(fd, voldata, &bscan[i], failed, bstats,
-		    droot, &ds) == -1)
+		    droot, &ds, depth + 1, i) == -1)
 			return -1;
 		if (!failed)
 			accumulate_delta_stats(dstats, &ds);
@@ -932,7 +962,8 @@ end:
 	    dstats->count >= BlockrefCacheCount) {
 		assert(bytes);
 		if (DebugOpt)
-			print_blockref(stdout, bref, "cache-add");
+			print_blockref_verbose(stdout, depth, index, bref,
+			    "cache-add");
 		add_blockref_entry(droot, bref, dstats, sizeof(*dstats));
 	}
 
