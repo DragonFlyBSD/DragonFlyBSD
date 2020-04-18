@@ -475,7 +475,7 @@ add_blockref_entry(struct blockref_tree *root, const hammer2_blockref_t *bref,
 static void
 print_blockref(FILE *fp, const hammer2_blockref_t *bref, const char *msg)
 {
-	tfprintf(fp, 1, "%016jx %-12s %016jx/%-2d \"%s\"\n",
+	tfprintf(fp, 1, "%016jx %-12s %016jx/%-2d %s\n",
 	    (uintmax_t)bref->data_off,
 	    hammer2_breftype_to_str(bref->type),
 	    (uintmax_t)bref->key,
@@ -739,7 +739,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 				if (!memcmp(&m->bref, bref, sizeof(*bref))) {
 					if (DebugOpt)
 						print_blockref(stdout, &m->bref,
-						    "cache");
+						    "cache-hit");
 					/* delta contains cached delta */
 					accumulate_delta_stats(dstats, ds);
 					load_delta_stats(bstats, ds);
@@ -931,6 +931,8 @@ end:
 	if (bref->data_off && BlockrefCacheCount > 0 &&
 	    dstats->count >= BlockrefCacheCount) {
 		assert(bytes);
+		if (DebugOpt)
+			print_blockref(stdout, bref, "cache-add");
 		add_blockref_entry(droot, bref, dstats, sizeof(*dstats));
 	}
 
