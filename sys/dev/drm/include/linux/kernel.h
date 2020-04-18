@@ -218,4 +218,16 @@ kstrtol(const char *cp, unsigned int base, long *res)
 
 #define oops_in_progress	(panicstr != NULL)
 
+enum lockdep_ok {
+	LOCKDEP_STILL_OK,
+	LOCKDEP_NOW_UNRELIABLE
+};
+
+#define TAINT_MACHINE_CHECK	4
+
+static inline void
+add_taint(unsigned flag, enum lockdep_ok lo)
+{
+}
+
 #endif	/* _LINUX_KERNEL_H_ */
