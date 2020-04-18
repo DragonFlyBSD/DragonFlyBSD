@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020 François Tigeot
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,8 +41,7 @@ static inline void local_irq_restore(unsigned long flags) {}
 static inline bool
 irqs_disabled(void)
 {
-	/* Do not prevent drm code from sleeping */
-	return false;
+	return !(read_rflags() & 0x200UL);
 }
 
 #endif	/* _LINUX_IRQFLAGS_H_ */
