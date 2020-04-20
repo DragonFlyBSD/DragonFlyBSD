@@ -766,13 +766,13 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			TAILQ_FOREACH(m, &e->head, entry) {
 				delta_stats_t *ds = m->msg;
 				if (!memcmp(&m->bref, bref, sizeof(*bref))) {
+					/* delta contains cached delta */
+					accumulate_delta_stats(dstats, ds);
+					load_delta_stats(bstats, ds);
 					if (DebugOpt)
 						print_blockref_verbose(stdout,
 						    depth, index, &m->bref,
 						    "cache-hit");
-					/* delta contains cached delta */
-					accumulate_delta_stats(dstats, ds);
-					load_delta_stats(bstats, ds);
 					return 0;
 				}
 			}
@@ -828,6 +828,8 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		snprintf(msg, sizeof(msg), "Invalid blockref type %d",
 		    bref->type);
 		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
+		if (DebugOpt)
+			print_blockref_verbose(stdout, depth, index, bref, msg);
 		failed = true;
 		break;
 	}
@@ -836,10 +838,14 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	case -1:
 		strlcpy(msg, "Bad I/O bytes", sizeof(msg));
 		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
+		if (DebugOpt)
+			print_blockref_verbose(stdout, depth, index, bref, msg);
 		return -1;
 	case -2:
 		strlcpy(msg, "Failed to read media", sizeof(msg));
 		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
+		if (DebugOpt)
+			print_blockref_verbose(stdout, depth, index, bref, msg);
 		return -1;
 	default:
 		break;
@@ -870,6 +876,9 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			strlcpy(msg, "Bad HAMMER2_CHECK_ISCSI32", sizeof(msg));
 			add_blockref_entry(&bstats->root, bref, msg,
 			    strlen(msg) + 1);
+			if (DebugOpt)
+				print_blockref_verbose(stdout, depth, index,
+				    bref, msg);
 			failed = true;
 		}
 		break;
@@ -879,6 +888,9 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			strlcpy(msg, "Bad HAMMER2_CHECK_XXHASH64", sizeof(msg));
 			add_blockref_entry(&bstats->root, bref, msg,
 			    strlen(msg) + 1);
+			if (DebugOpt)
+				print_blockref_verbose(stdout, depth, index,
+				    bref, msg);
 			failed = true;
 		}
 		break;
@@ -892,6 +904,9 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			strlcpy(msg, "Bad HAMMER2_CHECK_SHA192", sizeof(msg));
 			add_blockref_entry(&bstats->root, bref, msg,
 			    strlen(msg) + 1);
+			if (DebugOpt)
+				print_blockref_verbose(stdout, depth, index,
+				    bref, msg);
 			failed = true;
 		}
 		break;
@@ -901,6 +916,9 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			strlcpy(msg, "Bad HAMMER2_CHECK_FREEMAP", sizeof(msg));
 			add_blockref_entry(&bstats->root, bref, msg,
 			    strlen(msg) + 1);
+			if (DebugOpt)
+				print_blockref_verbose(stdout, depth, index,
+				    bref, msg);
 			failed = true;
 		}
 		break;
@@ -961,10 +979,10 @@ end:
 	if (bref->data_off && BlockrefCacheCount > 0 &&
 	    dstats->count >= BlockrefCacheCount) {
 		assert(bytes);
+		add_blockref_entry(droot, bref, dstats, sizeof(*dstats));
 		if (DebugOpt)
 			print_blockref_verbose(stdout, depth, index, bref,
 			    "cache-add");
-		add_blockref_entry(droot, bref, dstats, sizeof(*dstats));
 	}
 
 	return 0;
