@@ -1,6 +1,6 @@
 /*
  * OS specific functions for UNIX/POSIX systems
- * Copyright (c) 2005-2009, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2005-2019, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -9,12 +9,19 @@
 #include "includes.h"
 
 #include <time.h>
+#include <sys/wait.h>
 
 #ifdef ANDROID
 #include <sys/capability.h>
-#include <linux/prctl.h>
+#include <sys/prctl.h>
 #include <private/android_filesystem_config.h>
 #endif /* ANDROID */
+
+#ifdef __MACH__
+#include <CoreServices/CoreServices.h>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#endif /* __MACH__ */
 
 #include "os.h"
 #include "common.h"
@@ -25,7 +32,7 @@
 #include "trace.h"
 #include "list.h"
 
-static struct dl_list alloc_list;
+static struct dl_list alloc_list = DL_LIST_HEAD_INIT(alloc_list);
 
 #define ALLOC_MAGIC 0xa84ef1b2
 #define FREED_MAGIC 0x67fd487a
@@ -35,7 +42,7 @@ struct os_alloc_trace {
 	struct dl_list list;
 	size_t len;
 	WPA_TRACE_INFO
-};
+} __attribute__((aligned(16)));
 
 #endif /* WPA_TRACE */
 
@@ -62,6 +69,7 @@ int os_get_time(struct os_time *t)
 
 int os_get_reltime(struct os_reltime *t)
 {
+#ifndef __MACH__
 #if defined(CLOCK_BOOTTIME)
 	static clockid_t clock_id = CLOCK_BOOTTIME;
 #elif defined(CLOCK_MONOTONIC)
@@ -71,6 +79,9 @@ int os_get_reltime(struct os_reltime *t)
 #endif
 	struct timespec ts;
 	int res;
+
+	if (TEST_FAIL())
+		return -1;
 
 	while (1) {
 		res = clock_gettime(clock_id, &ts);
@@ -94,6 +105,23 @@ int os_get_reltime(struct os_reltime *t)
 			return -1;
 		}
 	}
+#else /* __MACH__ */
+	uint64_t abstime, nano;
+	static mach_timebase_info_data_t info = { 0, 0 };
+
+	if (!info.denom) {
+		if (mach_timebase_info(&info) != KERN_SUCCESS)
+			return -1;
+	}
+
+	abstime = mach_absolute_time();
+	nano = (abstime * info.numer) / info.denom;
+
+	t->sec = nano / NSEC_PER_SEC;
+	t->usec = (nano - (((uint64_t) t->sec) * NSEC_PER_SEC)) / NSEC_PER_USEC;
+
+	return 0;
+#endif /* __MACH__ */
 }
 
 
@@ -222,8 +250,18 @@ void os_daemonize_terminate(const char *pid_file)
 
 int os_get_random(unsigned char *buf, size_t len)
 {
+#ifdef TEST_FUZZ
+	size_t i;
+
+	for (i = 0; i < len; i++)
+		buf[i] = i & 0xff;
+	return 0;
+#else /* TEST_FUZZ */
 	FILE *f;
 	size_t rc;
+
+	if (TEST_FAIL())
+		return -1;
 
 	f = fopen("/dev/urandom", "rb");
 	if (f == NULL) {
@@ -235,6 +273,7 @@ int os_get_random(unsigned char *buf, size_t len)
 	fclose(f);
 
 	return rc != len ? -1 : 0;
+#endif /* TEST_FUZZ */
 }
 
 
@@ -320,9 +359,6 @@ int os_program_init(void)
 	capset(&header, &cap);
 #endif /* ANDROID */
 
-#ifdef WPA_TRACE
-	dl_list_init(&alloc_list);
-#endif /* WPA_TRACE */
 	return 0;
 }
 
@@ -347,6 +383,7 @@ void os_program_deinit(void)
 	if (total)
 		wpa_printf(MSG_INFO, "MEMLEAK: total %lu bytes",
 			   (unsigned long) total);
+	wpa_trace_deinit();
 #endif /* WPA_TRACE */
 }
 
@@ -407,6 +444,31 @@ char * os_readfile(const char *name, size_t *len)
 }
 
 
+int os_file_exists(const char *fname)
+{
+	return access(fname, F_OK) == 0;
+}
+
+
+int os_fdatasync(FILE *stream)
+{
+	if (!fflush(stream)) {
+#ifdef __linux__
+		return fdatasync(fileno(stream));
+#else /* !__linux__ */
+#ifdef F_FULLFSYNC
+		/* OS X does not implement fdatasync(). */
+		return fcntl(fileno(stream), F_FULLFSYNC);
+#else /* F_FULLFSYNC */
+		return fsync(fileno(stream));
+#endif /* F_FULLFSYNC */
+#endif /* __linux__ */
+	}
+
+	return -1;
+}
+
+
 #ifndef WPA_TRACE
 void * os_zalloc(size_t size)
 {
@@ -440,11 +502,205 @@ size_t os_strlcpy(char *dest, const char *src, size_t siz)
 }
 
 
+int os_memcmp_const(const void *a, const void *b, size_t len)
+{
+	const u8 *aa = a;
+	const u8 *bb = b;
+	size_t i;
+	u8 res;
+
+	for (res = 0, i = 0; i < len; i++)
+		res |= aa[i] ^ bb[i];
+
+	return res;
+}
+
+
+void * os_memdup(const void *src, size_t len)
+{
+	void *r = os_malloc(len);
+
+	if (r && src)
+		os_memcpy(r, src, len);
+	return r;
+}
+
+
 #ifdef WPA_TRACE
+
+#if defined(WPA_TRACE_BFD) && defined(CONFIG_TESTING_OPTIONS)
+char wpa_trace_fail_func[256] = { 0 };
+unsigned int wpa_trace_fail_after;
+
+static int testing_fail_alloc(void)
+{
+	const char *func[WPA_TRACE_LEN];
+	size_t i, res, len;
+	char *pos, *next;
+	int match;
+
+	if (!wpa_trace_fail_after)
+		return 0;
+
+	res = wpa_trace_calling_func(func, WPA_TRACE_LEN);
+	i = 0;
+	if (i < res && os_strcmp(func[i], __func__) == 0)
+		i++;
+	if (i < res && os_strcmp(func[i], "os_malloc") == 0)
+		i++;
+	if (i < res && os_strcmp(func[i], "os_zalloc") == 0)
+		i++;
+	if (i < res && os_strcmp(func[i], "os_calloc") == 0)
+		i++;
+	if (i < res && os_strcmp(func[i], "os_realloc") == 0)
+		i++;
+	if (i < res && os_strcmp(func[i], "os_realloc_array") == 0)
+		i++;
+	if (i < res && os_strcmp(func[i], "os_strdup") == 0)
+		i++;
+	if (i < res && os_strcmp(func[i], "os_memdup") == 0)
+		i++;
+
+	pos = wpa_trace_fail_func;
+
+	match = 0;
+	while (i < res) {
+		int allow_skip = 1;
+		int maybe = 0;
+
+		if (*pos == '=') {
+			allow_skip = 0;
+			pos++;
+		} else if (*pos == '?') {
+			maybe = 1;
+			pos++;
+		}
+		next = os_strchr(pos, ';');
+		if (next)
+			len = next - pos;
+		else
+			len = os_strlen(pos);
+		if (os_memcmp(pos, func[i], len) != 0) {
+			if (maybe && next) {
+				pos = next + 1;
+				continue;
+			}
+			if (allow_skip) {
+				i++;
+				continue;
+			}
+			return 0;
+		}
+		if (!next) {
+			match = 1;
+			break;
+		}
+		pos = next + 1;
+		i++;
+	}
+	if (!match)
+		return 0;
+
+	wpa_trace_fail_after--;
+	if (wpa_trace_fail_after == 0) {
+		wpa_printf(MSG_INFO, "TESTING: fail allocation at %s",
+			   wpa_trace_fail_func);
+		for (i = 0; i < res; i++)
+			wpa_printf(MSG_INFO, "backtrace[%d] = %s",
+				   (int) i, func[i]);
+		return 1;
+	}
+
+	return 0;
+}
+
+
+char wpa_trace_test_fail_func[256] = { 0 };
+unsigned int wpa_trace_test_fail_after;
+
+int testing_test_fail(void)
+{
+	const char *func[WPA_TRACE_LEN];
+	size_t i, res, len;
+	char *pos, *next;
+	int match;
+
+	if (!wpa_trace_test_fail_after)
+		return 0;
+
+	res = wpa_trace_calling_func(func, WPA_TRACE_LEN);
+	i = 0;
+	if (i < res && os_strcmp(func[i], __func__) == 0)
+		i++;
+
+	pos = wpa_trace_test_fail_func;
+
+	match = 0;
+	while (i < res) {
+		int allow_skip = 1;
+		int maybe = 0;
+
+		if (*pos == '=') {
+			allow_skip = 0;
+			pos++;
+		} else if (*pos == '?') {
+			maybe = 1;
+			pos++;
+		}
+		next = os_strchr(pos, ';');
+		if (next)
+			len = next - pos;
+		else
+			len = os_strlen(pos);
+		if (os_memcmp(pos, func[i], len) != 0) {
+			if (maybe && next) {
+				pos = next + 1;
+				continue;
+			}
+			if (allow_skip) {
+				i++;
+				continue;
+			}
+			return 0;
+		}
+		if (!next) {
+			match = 1;
+			break;
+		}
+		pos = next + 1;
+		i++;
+	}
+	if (!match)
+		return 0;
+
+	wpa_trace_test_fail_after--;
+	if (wpa_trace_test_fail_after == 0) {
+		wpa_printf(MSG_INFO, "TESTING: fail at %s",
+			   wpa_trace_test_fail_func);
+		for (i = 0; i < res; i++)
+			wpa_printf(MSG_INFO, "backtrace[%d] = %s",
+				   (int) i, func[i]);
+		return 1;
+	}
+
+	return 0;
+}
+
+#else
+
+static inline int testing_fail_alloc(void)
+{
+	return 0;
+}
+#endif
 
 void * os_malloc(size_t size)
 {
 	struct os_alloc_trace *a;
+
+	if (testing_fail_alloc())
+		return NULL;
+
 	a = malloc(sizeof(*a) + size);
 	if (a == NULL)
 		return NULL;
@@ -530,3 +786,57 @@ char * os_strdup(const char *s)
 }
 
 #endif /* WPA_TRACE */
+
+
+int os_exec(const char *program, const char *arg, int wait_completion)
+{
+	pid_t pid;
+	int pid_status;
+
+	pid = fork();
+	if (pid < 0) {
+		perror("fork");
+		return -1;
+	}
+
+	if (pid == 0) {
+		/* run the external command in the child process */
+		const int MAX_ARG = 30;
+		char *_program, *_arg, *pos;
+		char *argv[MAX_ARG + 1];
+		int i;
+
+		_program = os_strdup(program);
+		_arg = os_strdup(arg);
+
+		argv[0] = _program;
+
+		i = 1;
+		pos = _arg;
+		while (i < MAX_ARG && pos && *pos) {
+			while (*pos == ' ')
+				pos++;
+			if (*pos == '\0')
+				break;
+			argv[i++] = pos;
+			pos = os_strchr(pos, ' ');
+			if (pos)
+				*pos++ = '\0';
+		}
+		argv[i] = NULL;
+
+		execv(program, argv);
+		perror("execv");
+		os_free(_program);
+		os_free(_arg);
+		exit(0);
+		return -1;
+	}
+
+	if (wait_completion) {
+		/* wait for the child process to complete in the parent */
+		waitpid(pid, &pid_status, 0);
+	}
+
+	return 0;
+}

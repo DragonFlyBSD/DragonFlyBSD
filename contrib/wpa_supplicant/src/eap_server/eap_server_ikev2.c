@@ -103,10 +103,9 @@ static void * eap_ikev2_init(struct eap_sm *sm)
 	data->ikev2.proposal.encr = ENCR_AES_CBC;
 	data->ikev2.proposal.dh = DH_GROUP2_1024BIT_MODP;
 
-	data->ikev2.IDi = os_malloc(sm->server_id_len);
+	data->ikev2.IDi = os_memdup(sm->server_id, sm->server_id_len);
 	if (data->ikev2.IDi == NULL)
 		goto failed;
-	os_memcpy(data->ikev2.IDi, sm->server_id, sm->server_id_len);
 	data->ikev2.IDi_len = sm->server_id_len;
 
 	data->ikev2.get_shared_secret = eap_ikev2_get_shared_secret;
@@ -127,7 +126,7 @@ static void eap_ikev2_reset(struct eap_sm *sm, void *priv)
 	wpabuf_free(data->in_buf);
 	wpabuf_free(data->out_buf);
 	ikev2_initiator_deinit(&data->ikev2);
-	os_free(data);
+	bin_clear_free(data, sizeof(*data));
 }
 
 
@@ -224,7 +223,7 @@ static struct wpabuf * eap_ikev2_buildReq(struct eap_sm *sm, void *priv, u8 id)
 			}
 			data->out_used = 0;
 		}
-		/* pass through */
+		/* fall through */
 	case WAIT_FRAG_ACK:
 		return eap_ikev2_build_msg(data, id);
 	case FRAG_ACK:
@@ -256,7 +255,8 @@ static Boolean eap_ikev2_check(struct eap_sm *sm, void *priv,
 
 static int eap_ikev2_process_icv(struct eap_ikev2_data *data,
 				 const struct wpabuf *respData,
-				 u8 flags, const u8 *pos, const u8 **end)
+				 u8 flags, const u8 *pos, const u8 **end,
+				 int frag_ack)
 {
 	if (flags & IKEV2_FLAGS_ICV_INCLUDED) {
 		int icv_len = eap_ikev2_validate_icv(
@@ -266,7 +266,7 @@ static int eap_ikev2_process_icv(struct eap_ikev2_data *data,
 			return -1;
 		/* Hide Integrity Checksum Data from further processing */
 		*end -= icv_len;
-	} else if (data->keys_ready) {
+	} else if (data->keys_ready && !frag_ack) {
 		wpa_printf(MSG_INFO, "EAP-IKEV2: The message should have "
 			   "included integrity checksum");
 		return -1;
@@ -308,6 +308,12 @@ static int eap_ikev2_process_fragment(struct eap_ikev2_data *data,
 
 	if (data->in_buf == NULL) {
 		/* First fragment of the message */
+		if (message_length > 50000) {
+			/* Limit maximum memory allocation */
+			wpa_printf(MSG_DEBUG,
+				   "EAP-IKEV2: Ignore too long message");
+			return -1;
+		}
 		data->in_buf = wpabuf_alloc(message_length);
 		if (data->in_buf == NULL) {
 			wpa_printf(MSG_DEBUG, "EAP-IKEV2: No memory for "
@@ -365,7 +371,9 @@ static void eap_ikev2_process(struct eap_sm *sm, void *priv,
 	} else
 		flags = *pos++;
 
-	if (eap_ikev2_process_icv(data, respData, flags, pos, &end) < 0) {
+	if (eap_ikev2_process_icv(data, respData, flags, pos, &end,
+				  data->state == WAIT_FRAG_ACK && len == 0) < 0)
+	{
 		eap_ikev2_state(data, FAIL);
 		return;
 	}
@@ -508,10 +516,39 @@ static u8 * eap_ikev2_get_emsk(struct eap_sm *sm, void *priv, size_t *len)
 }
 
 
+static u8 * eap_ikev2_get_session_id(struct eap_sm *sm, void *priv, size_t *len)
+{
+	struct eap_ikev2_data *data = priv;
+	u8 *sid;
+	size_t sid_len;
+	size_t offset;
+
+	if (data->state != DONE || !data->keymat_ok)
+		return NULL;
+
+	sid_len = 1 + data->ikev2.i_nonce_len + data->ikev2.r_nonce_len;
+	sid = os_malloc(sid_len);
+	if (sid) {
+		offset = 0;
+		sid[offset] = EAP_TYPE_IKEV2;
+		offset++;
+		os_memcpy(sid + offset, data->ikev2.i_nonce,
+			  data->ikev2.i_nonce_len);
+		offset += data->ikev2.i_nonce_len;
+		os_memcpy(sid + offset, data->ikev2.r_nonce,
+			  data->ikev2.r_nonce_len);
+		*len = sid_len;
+		wpa_hexdump(MSG_DEBUG, "EAP-IKEV2: Derived Session-Id",
+			    sid, sid_len);
+	}
+
+	return sid;
+}
+
+
 int eap_server_ikev2_register(void)
 {
 	struct eap_method *eap;
-	int ret;
 
 	eap = eap_server_method_alloc(EAP_SERVER_METHOD_INTERFACE_VERSION,
 				      EAP_VENDOR_IETF, EAP_TYPE_IKEV2,
@@ -528,9 +565,7 @@ int eap_server_ikev2_register(void)
 	eap->getKey = eap_ikev2_getKey;
 	eap->isSuccess = eap_ikev2_isSuccess;
 	eap->get_emsk = eap_ikev2_get_emsk;
+	eap->getSessionId = eap_ikev2_get_session_id;
 
-	ret = eap_server_method_register(eap);
-	if (ret)
-		eap_server_method_free(eap);
-	return ret;
+	return eap_server_method_register(eap);
 }

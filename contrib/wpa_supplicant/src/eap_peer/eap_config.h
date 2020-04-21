@@ -46,6 +46,9 @@ struct eap_peer_config {
 	 */
 	size_t anonymous_identity_len;
 
+	u8 *imsi_identity;
+	size_t imsi_identity_len;
+
 	/**
 	 * password - Password string for EAP
 	 *
@@ -98,7 +101,7 @@ struct eap_peer_config {
 	 * certificate store (My user account) is used, whereas computer store
 	 * (Computer account) is used when running wpasvc as a service.
 	 */
-	u8 *ca_cert;
+	char *ca_cert;
 
 	/**
 	 * ca_path - Directory path for CA certificate files (PEM)
@@ -109,7 +112,7 @@ struct eap_peer_config {
 	 * these certificates are added to the list of trusted CAs. ca_cert
 	 * may also be included in that case, but it is not required.
 	 */
-	u8 *ca_path;
+	char *ca_path;
 
 	/**
 	 * client_cert - File path to client certificate file (PEM/DER)
@@ -123,7 +126,7 @@ struct eap_peer_config {
 	 * Alternatively, a named configuration blob can be used by setting
 	 * this to blob://blob_name.
 	 */
-	u8 *client_cert;
+	char *client_cert;
 
 	/**
 	 * private_key - File path to client private key file (PEM/DER/PFX)
@@ -150,14 +153,14 @@ struct eap_peer_config {
 	 * Alternatively, a named configuration blob can be used by setting
 	 * this to blob://blob_name.
 	 */
-	u8 *private_key;
+	char *private_key;
 
 	/**
 	 * private_key_passwd - Password for private key file
 	 *
 	 * If left out, this will be asked through control interface.
 	 */
-	u8 *private_key_passwd;
+	char *private_key_passwd;
 
 	/**
 	 * dh_file - File path to DH/DSA parameters file (in PEM format)
@@ -175,26 +178,72 @@ struct eap_peer_config {
 	 * Alternatively, a named configuration blob can be used by setting
 	 * this to blob://blob_name.
 	 */
-	u8 *dh_file;
+	char *dh_file;
 
 	/**
 	 * subject_match - Constraint for server certificate subject
 	 *
 	 * This substring is matched against the subject of the authentication
-	 * server certificate. If this string is set, the server sertificate is
+	 * server certificate. If this string is set, the server certificate is
 	 * only accepted if it contains this string in the subject. The subject
 	 * string is in following format:
 	 *
 	 * /C=US/ST=CA/L=San Francisco/CN=Test AS/emailAddress=as@n.example.com
+	 *
+	 * Note: Since this is a substring match, this cannot be used securely
+	 * to do a suffix match against a possible domain name in the CN entry.
+	 * For such a use case, domain_suffix_match should be used instead.
 	 */
-	u8 *subject_match;
+	char *subject_match;
+
+	/**
+	 * check_cert_subject - Constraint for server certificate subject fields
+	 *
+	 * If check_cert_subject is set, the value of every field will be
+	 * checked against the DN of the subject in the authentication server
+	 * certificate. If the values do not match, the certificate verification
+	 * will fail, rejecting the server. This option allows wpa_supplicant to
+	 * match every individual field in the right order against the DN of the
+	 * subject in the server certificate.
+	 *
+	 * For example, check_cert_subject=C=US/O=XX/OU=ABC/OU=XYZ/CN=1234 will
+	 * check every individual DN field of the subject in the server
+	 * certificate. If OU=XYZ comes first in terms of the order in the
+	 * server certificate (DN field of server certificate
+	 * C=US/O=XX/OU=XYZ/OU=ABC/CN=1234), wpa_supplicant will reject the
+	 * server because the order of 'OU' is not matching the specified string
+	 * in check_cert_subject.
+	 *
+	 * This option also allows '*' as a wildcard. This option has some
+	 * limitation.
+	 * It can only be used as per the following example.
+	 *
+	 * For example, check_cert_subject=C=US/O=XX/OU=Production* and we have
+	 * two servers and DN of the subject in the first server certificate is
+	 * (C=US/O=XX/OU=Production Unit) and DN of the subject in the second
+	 * server is (C=US/O=XX/OU=Production Factory). In this case,
+	 * wpa_supplicant will allow both servers because the value of 'OU'
+	 * field in both server certificates matches 'OU' value in
+	 * 'check_cert_subject' up to 'wildcard'.
+	 *
+	 * (Allow all servers, e.g., check_cert_subject=*)
+	 */
+	char *check_cert_subject;
+
+	/**
+	 * check_cert_subject2 - Constraint for server certificate subject fields
+	 *
+	 * This field is like check_cert_subject, but used for phase 2 (inside
+	 * EAP-TTLS/PEAP/FAST tunnel) authentication.
+	 */
+	char *check_cert_subject2;
 
 	/**
 	 * altsubject_match - Constraint for server certificate alt. subject
 	 *
 	 * Semicolon separated string of entries to be matched against the
 	 * alternative subject name of the authentication server certificate.
-	 * If this string is set, the server sertificate is only accepted if it
+	 * If this string is set, the server certificate is only accepted if it
 	 * contains one of the entries in an alternative subject name
 	 * extension.
 	 *
@@ -205,25 +254,49 @@ struct eap_peer_config {
 	 *
 	 * Following types are supported: EMAIL, DNS, URI
 	 */
-	u8 *altsubject_match;
+	char *altsubject_match;
 
 	/**
 	 * domain_suffix_match - Constraint for server domain name
 	 *
-	 * If set, this FQDN is used as a suffix match requirement for the
-	 * server certificate in SubjectAltName dNSName element(s). If a
-	 * matching dNSName is found, this constraint is met. If no dNSName
-	 * values are present, this constraint is matched against SubjetName CN
-	 * using same suffix match comparison. Suffix match here means that the
-	 * host/domain name is compared one label at a time starting from the
-	 * top-level domain and all the labels in domain_suffix_match shall be
-	 * included in the certificate. The certificate may include additional
-	 * sub-level labels in addition to the required labels.
+	 * If set, this semicolon deliminated list of FQDNs is used as suffix
+	 * match requirements for the server certificate in SubjectAltName
+	 * dNSName element(s). If a matching dNSName is found against any of the
+	 * specified values, this constraint is met. If no dNSName values are
+	 * present, this constraint is matched against SubjectName CN using same
+	 * suffix match comparison. Suffix match here means that the host/domain
+	 * name is compared case-insentively one label at a time starting from
+	 * the top-level domain and all the labels in domain_suffix_match shall
+	 * be included in the certificate. The certificate may include
+	 * additional sub-level labels in addition to the required labels.
 	 *
 	 * For example, domain_suffix_match=example.com would match
-	 * test.example.com but would not match test-example.com.
+	 * test.example.com but would not match test-example.com. Multiple
+	 * match options can be specified in following manner:
+	 * example.org;example.com.
 	 */
 	char *domain_suffix_match;
+
+	/**
+	 * domain_match - Constraint for server domain name
+	 *
+	 * If set, this FQDN is used as a full match requirement for the
+	 * server certificate in SubjectAltName dNSName element(s). If a
+	 * matching dNSName is found, this constraint is met. If no dNSName
+	 * values are present, this constraint is matched against SubjectName CN
+	 * using same full match comparison. This behavior is similar to
+	 * domain_suffix_match, but has the requirement of a full match, i.e.,
+	 * no subdomains or wildcard matches are allowed. Case-insensitive
+	 * comparison is used, so "Example.com" matches "example.com", but would
+	 * not match "test.Example.com".
+	 *
+	 * More than one match string can be provided by using semicolons to
+	 * separate the strings (e.g., example.org;example.com). When multiple
+	 * strings are specified, a match with any one of the values is
+	 * considered a sufficient match for the certificate, i.e., the
+	 * conditions are ORed together.
+	 */
+	char *domain_match;
 
 	/**
 	 * ca_cert2 - File path to CA certificate file (PEM/DER) (Phase 2)
@@ -241,7 +314,7 @@ struct eap_peer_config {
 	 * Alternatively, a named configuration blob can be used by setting
 	 * this to blob://blob_name.
 	 */
-	u8 *ca_cert2;
+	char *ca_cert2;
 
 	/**
 	 * ca_path2 - Directory path for CA certificate files (PEM) (Phase 2)
@@ -255,7 +328,7 @@ struct eap_peer_config {
 	 * This field is like ca_path, but used for phase 2 (inside
 	 * EAP-TTLS/PEAP/FAST tunnel) authentication.
 	 */
-	u8 *ca_path2;
+	char *ca_path2;
 
 	/**
 	 * client_cert2 - File path to client certificate file
@@ -268,7 +341,7 @@ struct eap_peer_config {
 	 * Alternatively, a named configuration blob can be used by setting
 	 * this to blob://blob_name.
 	 */
-	u8 *client_cert2;
+	char *client_cert2;
 
 	/**
 	 * private_key2 - File path to client private key file
@@ -281,7 +354,7 @@ struct eap_peer_config {
 	 * Alternatively, a named configuration blob can be used by setting
 	 * this to blob://blob_name.
 	 */
-	u8 *private_key2;
+	char *private_key2;
 
 	/**
 	 * private_key2_passwd -  Password for private key file
@@ -289,7 +362,7 @@ struct eap_peer_config {
 	 * This field is like private_key_passwd, but used for phase 2 (inside
 	 * EAP-TTLS/PEAP/FAST tunnel) authentication.
 	 */
-	u8 *private_key2_passwd;
+	char *private_key2_passwd;
 
 	/**
 	 * dh_file2 - File path to DH/DSA parameters file (in PEM format)
@@ -302,7 +375,7 @@ struct eap_peer_config {
 	 * Alternatively, a named configuration blob can be used by setting
 	 * this to blob://blob_name.
 	 */
-	u8 *dh_file2;
+	char *dh_file2;
 
 	/**
 	 * subject_match2 - Constraint for server certificate subject
@@ -310,7 +383,7 @@ struct eap_peer_config {
 	 * This field is like subject_match, but used for phase 2 (inside
 	 * EAP-TTLS/PEAP/FAST tunnel) authentication.
 	 */
-	u8 *subject_match2;
+	char *subject_match2;
 
 	/**
 	 * altsubject_match2 - Constraint for server certificate alt. subject
@@ -318,7 +391,7 @@ struct eap_peer_config {
 	 * This field is like altsubject_match, but used for phase 2 (inside
 	 * EAP-TTLS/PEAP/FAST tunnel) authentication.
 	 */
-	u8 *altsubject_match2;
+	char *altsubject_match2;
 
 	/**
 	 * domain_suffix_match2 - Constraint for server domain name
@@ -327,6 +400,14 @@ struct eap_peer_config {
 	 * EAP-TTLS/PEAP/FAST tunnel) authentication.
 	 */
 	char *domain_suffix_match2;
+
+	/**
+	 * domain_match2 - Constraint for server domain name
+	 *
+	 * This field is like domain_match, but used for phase 2 (inside
+	 * EAP-TTLS/PEAP/FAST tunnel) authentication.
+	 */
+	char *domain_match2;
 
 	/**
 	 * eap_methods - Allowed EAP methods
@@ -391,6 +472,16 @@ struct eap_peer_config {
 	 *
 	 * EAP-WSC (WPS) uses following options: pin=Device_Password and
 	 * uuid=Device_UUID
+	 *
+	 * For wired IEEE 802.1X authentication, "allow_canned_success=1" can be
+	 * used to configure a mode that allows EAP-Success (and EAP-Failure)
+	 * without going through authentication step. Some switches use such
+	 * sequence when forcing the port to be authorized/unauthorized or as a
+	 * fallback option if the authentication server is unreachable. By
+	 * default, wpa_supplicant discards such frames to protect against
+	 * potential attacks by rogue devices, but this option can be used to
+	 * disable that protection for cases where the server/authenticator does
+	 * not need to be authenticated.
 	 */
 	char *phase1;
 
@@ -398,7 +489,9 @@ struct eap_peer_config {
 	 * phase2 - Phase2 (inner authentication with TLS tunnel) parameters
 	 *
 	 * String with field-value pairs, e.g., "auth=MSCHAPV2" for EAP-PEAP or
-	 * "autheap=MSCHAPV2 autheap=MD5" for EAP-TTLS.
+	 * "autheap=MSCHAPV2 autheap=MD5" for EAP-TTLS. "mschapv2_retry=0" can
+	 * be used to disable MSCHAPv2 password retry in authentication failure
+	 * cases.
 	 */
 	char *phase2;
 
@@ -589,6 +682,15 @@ struct eap_peer_config {
 	int pending_req_passphrase;
 
 	/**
+	 * pending_req_sim - Pending SIM request
+	 *
+	 * This field should not be set in configuration step. It is only used
+	 * internally when control interface is used to request needed
+	 * information.
+	 */
+	int pending_req_sim;
+
+	/**
 	 * pending_req_otp - Whether there is a pending OTP request
 	 *
 	 * This field should not be set in configuration step. It is only used
@@ -678,6 +780,44 @@ struct eap_peer_config {
 	 * SIM/USIM processing.
 	 */
 	char *external_sim_resp;
+
+	/**
+	 * sim_num - User selected SIM identifier
+	 *
+	 * This variable is used for identifying which SIM is used if the system
+	 * has more than one.
+	 */
+	int sim_num;
+
+	/**
+	 * openssl_ciphers - OpenSSL cipher string
+	 *
+	 * This is an OpenSSL specific configuration option for configuring the
+	 * ciphers for this connection. If not set, the default cipher suite
+	 * list is used.
+	 */
+	char *openssl_ciphers;
+
+	/**
+	 * erp - Whether EAP Re-authentication Protocol (ERP) is enabled
+	 */
+	int erp;
+
+	/**
+	 * pending_ext_cert_check - External server certificate check status
+	 *
+	 * This field should not be set in configuration step. It is only used
+	 * internally when control interface is used to request external
+	 * validation of server certificate chain.
+	 */
+	enum {
+		NO_CHECK = 0,
+		PENDING_CHECK,
+		EXT_CERT_CHECK_GOOD,
+		EXT_CERT_CHECK_BAD,
+	} pending_ext_cert_check;
+
+	int teap_anon_dh;
 };
 
 

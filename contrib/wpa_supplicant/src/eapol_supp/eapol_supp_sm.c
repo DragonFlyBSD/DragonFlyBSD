@@ -16,6 +16,7 @@
 #include "crypto/md5.h"
 #include "common/eapol_common.h"
 #include "eap_peer/eap.h"
+#include "eap_peer/eap_config.h"
 #include "eap_peer/eap_proxy.h"
 #include "eapol_supp_sm.h"
 
@@ -95,7 +96,7 @@ struct eapol_sm {
 		SUPP_BE_RECEIVE = 4,
 		SUPP_BE_RESPONSE = 5,
 		SUPP_BE_FAIL = 6,
-		SUPP_BE_TIMEOUT = 7, 
+		SUPP_BE_TIMEOUT = 7,
 		SUPP_BE_SUCCESS = 8
 	} SUPP_BE_state; /* dot1xSuppBackendPaeState */
 	/* Variables */
@@ -128,6 +129,7 @@ struct eapol_sm {
 	struct wpabuf *eapReqData; /* for EAP */
 	Boolean altAccept; /* for EAP */
 	Boolean altReject; /* for EAP */
+	Boolean eapTriggerStart;
 	Boolean replay_counter_valid;
 	u8 last_replay_counter[16];
 	struct eapol_config conf;
@@ -187,8 +189,9 @@ static void eapol_port_timers_tick(void *eloop_ctx, void *timeout_ctx)
 	}
 
 	if (sm->authWhile | sm->heldWhile | sm->startWhen | sm->idleWhile) {
-		eloop_register_timeout(1, 0, eapol_port_timers_tick, eloop_ctx,
-				       sm);
+		if (eloop_register_timeout(1, 0, eapol_port_timers_tick,
+					   eloop_ctx, sm) < 0)
+			sm->timer_tick_enabled = 0;
 	} else {
 		wpa_printf(MSG_DEBUG, "EAPOL: disable timer tick");
 		sm->timer_tick_enabled = 0;
@@ -202,9 +205,9 @@ static void eapol_enable_timer_tick(struct eapol_sm *sm)
 	if (sm->timer_tick_enabled)
 		return;
 	wpa_printf(MSG_DEBUG, "EAPOL: enable timer tick");
-	sm->timer_tick_enabled = 1;
 	eloop_cancel_timeout(eapol_port_timers_tick, NULL, sm);
-	eloop_register_timeout(1, 0, eapol_port_timers_tick, NULL, sm);
+	if (eloop_register_timeout(1, 0, eapol_port_timers_tick, NULL, sm) == 0)
+		sm->timer_tick_enabled = 1;
 }
 
 
@@ -222,6 +225,7 @@ SM_STATE(SUPP_PAE, DISCONNECTED)
 	SM_ENTRY(SUPP_PAE, DISCONNECTED);
 	sm->sPortMode = Auto;
 	sm->startCount = 0;
+	sm->eapTriggerStart = FALSE;
 	sm->logoffSent = FALSE;
 	eapol_sm_set_port_unauthorized(sm);
 	sm->suppAbort = TRUE;
@@ -242,8 +246,16 @@ SM_STATE(SUPP_PAE, DISCONNECTED)
 
 SM_STATE(SUPP_PAE, CONNECTING)
 {
-	int send_start = sm->SUPP_PAE_state == SUPP_PAE_CONNECTING;
+	int send_start = sm->SUPP_PAE_state == SUPP_PAE_CONNECTING ||
+		sm->SUPP_PAE_state == SUPP_PAE_HELD;
 	SM_ENTRY(SUPP_PAE, CONNECTING);
+
+	if (sm->eapTriggerStart)
+		send_start = 1;
+	if (sm->ctx->preauth)
+		send_start = 1;
+	sm->eapTriggerStart = FALSE;
+
 	if (send_start) {
 		sm->startWhen = sm->startPeriod;
 		sm->startCount++;
@@ -255,12 +267,14 @@ SM_STATE(SUPP_PAE, CONNECTING)
 		 * delay authentication. Use a short timeout to send the first
 		 * EAPOL-Start if Authenticator does not start authentication.
 		 */
-#ifdef CONFIG_WPS
-		/* Reduce latency on starting WPS negotiation. */
-		sm->startWhen = 1;
-#else /* CONFIG_WPS */
-		sm->startWhen = 3;
-#endif /* CONFIG_WPS */
+		if (sm->conf.wps && !(sm->conf.wps & EAPOL_PEER_IS_WPS20_AP)) {
+			/* Reduce latency on starting WPS negotiation. */
+			wpa_printf(MSG_DEBUG,
+				   "EAPOL: Using shorter startWhen for WPS");
+			sm->startWhen = 1;
+		} else {
+			sm->startWhen = 2;
+		}
 	}
 	eapol_enable_timer_tick(sm);
 	sm->eapolEap = FALSE;
@@ -304,6 +318,16 @@ SM_STATE(SUPP_PAE, RESTART)
 {
 	SM_ENTRY(SUPP_PAE, RESTART);
 	sm->eapRestart = TRUE;
+	if (sm->altAccept) {
+		/*
+		 * Prevent EAP peer state machine from failing due to prior
+		 * external EAP success notification (altSuccess=TRUE in the
+		 * IDLE state could result in a transition to the FAILURE state.
+		 */
+		wpa_printf(MSG_DEBUG, "EAPOL: Clearing prior altAccept TRUE");
+		sm->eapSuccess = FALSE;
+		sm->altAccept = FALSE;
+	}
 }
 
 
@@ -383,6 +407,8 @@ SM_STEP(SUPP_PAE)
 		else if (sm->eapFail || (sm->keyDone && !sm->portValid))
 			SM_ENTER(SUPP_PAE, HELD);
 		else if (sm->suppTimeout)
+			SM_ENTER(SUPP_PAE, CONNECTING);
+		else if (sm->eapTriggerStart)
 			SM_ENTER(SUPP_PAE, CONNECTING);
 		break;
 	case SUPP_PAE_HELD:
@@ -468,9 +494,24 @@ SM_STATE(SUPP_BE, SUCCESS)
 #ifdef CONFIG_EAP_PROXY
 	if (sm->use_eap_proxy) {
 		if (eap_proxy_key_available(sm->eap_proxy)) {
+			u8 *session_id, *emsk;
+			size_t session_id_len, emsk_len;
+
 			/* New key received - clear IEEE 802.1X EAPOL-Key replay
 			 * counter */
 			sm->replay_counter_valid = FALSE;
+
+			session_id = eap_proxy_get_eap_session_id(
+				sm->eap_proxy, &session_id_len);
+			emsk = eap_proxy_get_emsk(sm->eap_proxy, &emsk_len);
+			if (sm->config->erp && session_id && emsk) {
+				eap_peer_erp_init(sm->eap, session_id,
+						  session_id_len, emsk,
+						  emsk_len);
+			} else {
+				os_free(session_id);
+				bin_clear_free(emsk, emsk_len);
+			}
 		}
 		return;
 	}
@@ -642,7 +683,9 @@ static void eapol_sm_processKey(struct eapol_sm *sm)
 	struct ieee802_1x_eapol_key *key;
 	struct eap_key_data keydata;
 	u8 orig_key_sign[IEEE8021X_KEY_SIGN_LEN], datakey[32];
+#ifndef CONFIG_NO_RC4
 	u8 ekey[IEEE8021X_KEY_IV_LEN + IEEE8021X_ENCR_KEY_LEN];
+#endif /* CONFIG_NO_RC4 */
 	int key_len, res, sign_key_len, encr_key_len;
 	u16 rx_key_length;
 	size_t plen;
@@ -719,8 +762,8 @@ static void eapol_sm_processKey(struct eapol_sm *sm)
 	hmac_md5(keydata.sign_key, sign_key_len,
 		 sm->last_rx_key, sizeof(*hdr) + be_to_host16(hdr->length),
 		 key->key_signature);
-	if (os_memcmp(orig_key_sign, key->key_signature,
-		      IEEE8021X_KEY_SIGN_LEN) != 0) {
+	if (os_memcmp_const(orig_key_sign, key->key_signature,
+			    IEEE8021X_KEY_SIGN_LEN) != 0) {
 		wpa_printf(MSG_DEBUG, "EAPOL: Invalid key signature in "
 			   "EAPOL-Key packet");
 		os_memcpy(key->key_signature, orig_key_sign,
@@ -736,6 +779,13 @@ static void eapol_sm_processKey(struct eapol_sm *sm)
 		return;
 	}
 	if (key_len == rx_key_length) {
+#ifdef CONFIG_NO_RC4
+		if (encr_key_len) {
+			/* otherwise unused */
+		}
+		wpa_printf(MSG_ERROR, "EAPOL: RC4 not supported in the build");
+		return;
+#else /* CONFIG_NO_RC4 */
 		os_memcpy(ekey, key->key_iv, IEEE8021X_KEY_IV_LEN);
 		os_memcpy(ekey + IEEE8021X_KEY_IV_LEN, keydata.encr_key,
 			  encr_key_len);
@@ -744,6 +794,7 @@ static void eapol_sm_processKey(struct eapol_sm *sm)
 			 datakey, key_len);
 		wpa_hexdump_key(MSG_DEBUG, "EAPOL: Decrypted(RC4) key",
 				datakey, key_len);
+#endif /* CONFIG_NO_RC4 */
 	} else if (key_len == 0) {
 		/*
 		 * IEEE 802.1X-2004 specifies that least significant Key Length
@@ -865,6 +916,9 @@ static void eapol_sm_abortSupp(struct eapol_sm *sm)
 	wpabuf_free(sm->eapReqData);
 	sm->eapReqData = NULL;
 	eap_sm_abort(sm->eap);
+#ifdef CONFIG_EAP_PROXY
+	eap_proxy_sm_abort(sm->eap_proxy);
+#endif /* CONFIG_EAP_PROXY */
 }
 
 
@@ -1097,7 +1151,7 @@ int eapol_sm_get_status(struct eapol_sm *sm, char *buf, size_t buflen,
 			  "suppPortStatus=%s\n",
 			  eapol_supp_pae_state(sm->SUPP_PAE_state),
 			  eapol_port_status(sm->suppPortStatus));
-	if (len < 0 || (size_t) len >= buflen)
+	if (os_snprintf_error(buflen, len))
 		return 0;
 
 	if (verbose) {
@@ -1114,7 +1168,7 @@ int eapol_sm_get_status(struct eapol_sm *sm, char *buf, size_t buflen,
 				  sm->maxStart,
 				  eapol_port_control(sm->portControl),
 				  eapol_supp_be_state(sm->SUPP_BE_state));
-		if (ret < 0 || (size_t) ret >= buflen - len)
+		if (os_snprintf_error(buflen - len, ret))
 			return len;
 		len += ret;
 	}
@@ -1168,7 +1222,7 @@ int eapol_sm_get_mib(struct eapol_sm *sm, char *buf, size_t buflen)
 			  "Authorized" : "Unauthorized",
 			  sm->SUPP_BE_state);
 
-	if (ret < 0 || (size_t) ret >= buflen)
+	if (os_snprintf_error(buflen, ret))
 		return 0;
 	len = ret;
 
@@ -1196,7 +1250,7 @@ int eapol_sm_get_mib(struct eapol_sm *sm, char *buf, size_t buflen)
 			  sm->dot1xSuppLastEapolFrameVersion,
 			  MAC2STR(sm->dot1xSuppLastEapolFrameSource));
 
-	if (ret < 0 || (size_t) ret >= buflen - len)
+	if (os_snprintf_error(buflen - len, ret))
 		return len;
 	len += ret;
 
@@ -1242,7 +1296,7 @@ int eapol_sm_rx_eapol(struct eapol_sm *sm, const u8 *src, const u8 *buf,
 		return 0;
 	}
 #ifdef CONFIG_WPS
-	if (sm->conf.workaround &&
+	if (sm->conf.wps && sm->conf.workaround &&
 	    plen < len - sizeof(*hdr) &&
 	    hdr->type == IEEE802_1X_TYPE_EAP_PACKET &&
 	    len - sizeof(*hdr) > sizeof(struct eap_hdr)) {
@@ -1345,6 +1399,13 @@ int eapol_sm_rx_eapol(struct eapol_sm *sm, const u8 *src, const u8 *buf,
 			eapol_sm_step(sm);
 		}
 		break;
+#ifdef CONFIG_MACSEC
+	case IEEE802_1X_TYPE_EAPOL_MKA:
+		wpa_printf(MSG_EXCESSIVE,
+			   "EAPOL type %d will be handled by MKA",
+			   hdr->type);
+		break;
+#endif /* CONFIG_MACSEC */
 	default:
 		wpa_printf(MSG_DEBUG, "EAPOL: Received unknown EAPOL type %d",
 			   hdr->type);
@@ -1484,6 +1545,7 @@ void eapol_sm_notify_config(struct eapol_sm *sm,
 	sm->conf.required_keys = conf->required_keys;
 	sm->conf.fast_reauth = conf->fast_reauth;
 	sm->conf.workaround = conf->workaround;
+	sm->conf.wps = conf->wps;
 #ifdef CONFIG_EAP_PROXY
 	if (sm->use_eap_proxy) {
 		/* Using EAP Proxy, so skip EAP state machine update */
@@ -1516,7 +1578,7 @@ int eapol_sm_get_key(struct eapol_sm *sm, u8 *key, size_t len)
 	size_t eap_len;
 
 #ifdef CONFIG_EAP_PROXY
-	if (sm->use_eap_proxy) {
+	if (sm && sm->use_eap_proxy) {
 		/* Get key from EAP proxy */
 		if (sm == NULL || !eap_proxy_key_available(sm->eap_proxy)) {
 			wpa_printf(MSG_DEBUG, "EAPOL: EAP key not available");
@@ -1553,6 +1615,24 @@ key_fetched:
 	wpa_printf(MSG_DEBUG, "EAPOL: Successfully fetched key (len=%lu)",
 		   (unsigned long) len);
 	return 0;
+}
+
+
+/**
+ * eapol_sm_get_session_id - Get EAP Session-Id
+ * @sm: Pointer to EAPOL state machine allocated with eapol_sm_init()
+ * @len: Pointer to variable that will be set to number of bytes in the session
+ * Returns: Pointer to the EAP Session-Id or %NULL on failure
+ *
+ * The Session-Id is available only after a successful authentication.
+ */
+const u8 * eapol_sm_get_session_id(struct eapol_sm *sm, size_t *len)
+{
+	if (sm == NULL || !eap_key_available(sm->eap)) {
+		wpa_printf(MSG_DEBUG, "EAPOL: EAP Session-Id not available");
+		return NULL;
+	}
+	return eap_get_eapSessionId(sm->eap, len);
 }
 
 
@@ -1597,21 +1677,15 @@ void eapol_sm_notify_cached(struct eapol_sm *sm)
 /**
  * eapol_sm_notify_pmkid_attempt - Notification of PMKSA caching
  * @sm: Pointer to EAPOL state machine allocated with eapol_sm_init()
- * @attempt: Whether PMKSA caching is tried
  *
- * Notify EAPOL state machines whether PMKSA caching is used.
+ * Notify EAPOL state machines if PMKSA caching is used.
  */
-void eapol_sm_notify_pmkid_attempt(struct eapol_sm *sm, int attempt)
+void eapol_sm_notify_pmkid_attempt(struct eapol_sm *sm)
 {
 	if (sm == NULL)
 		return;
-	if (attempt) {
-		wpa_printf(MSG_DEBUG, "RSN: Trying to use cached PMKSA");
-		sm->cached_pmk = TRUE;
-	} else {
-		wpa_printf(MSG_DEBUG, "RSN: Do not try to use cached PMKSA");
-		sm->cached_pmk = FALSE;
-	}
+	wpa_printf(MSG_DEBUG, "RSN: Trying to use cached PMKSA");
+	sm->cached_pmk = TRUE;
 }
 
 
@@ -1794,6 +1868,8 @@ static Boolean eapol_sm_get_bool(void *ctx, enum eapol_bool_var variable)
 		return sm->altAccept;
 	case EAPOL_altReject:
 		return sm->altReject;
+	case EAPOL_eapTriggerStart:
+		return sm->eapTriggerStart;
 	}
 	return FALSE;
 }
@@ -1832,6 +1908,9 @@ static void eapol_sm_set_bool(void *ctx, enum eapol_bool_var variable,
 		break;
 	case EAPOL_altReject:
 		sm->altReject = value;
+		break;
+	case EAPOL_eapTriggerStart:
+		sm->eapTriggerStart = value;
 		break;
 	}
 }
@@ -1919,14 +1998,12 @@ static void eapol_sm_eap_param_needed(void *ctx, enum wpa_ctrl_req_type field,
 #define eapol_sm_eap_param_needed NULL
 #endif /* CONFIG_CTRL_IFACE || !CONFIG_NO_STDOUT_DEBUG */
 
-static void eapol_sm_notify_cert(void *ctx, int depth, const char *subject,
-				 const char *cert_hash,
-				 const struct wpabuf *cert)
+static void eapol_sm_notify_cert(void *ctx, struct tls_cert_data *cert,
+				 const char *cert_hash)
 {
 	struct eapol_sm *sm = ctx;
 	if (sm->ctx->cert_cb)
-		sm->ctx->cert_cb(sm->ctx->ctx, depth, subject,
-				 cert_hash, cert);
+		sm->ctx->cert_cb(sm->ctx->ctx, cert, cert_hash);
 }
 
 
@@ -1940,6 +2017,39 @@ static void eapol_sm_notify_status(void *ctx, const char *status,
 }
 
 
+static void eapol_sm_notify_eap_error(void *ctx, int error_code)
+{
+	struct eapol_sm *sm = ctx;
+
+	if (sm->ctx->eap_error_cb)
+		sm->ctx->eap_error_cb(sm->ctx->ctx, error_code);
+}
+
+
+#ifdef CONFIG_EAP_PROXY
+
+static void eapol_sm_eap_proxy_cb(void *ctx)
+{
+	struct eapol_sm *sm = ctx;
+
+	if (sm->ctx->eap_proxy_cb)
+		sm->ctx->eap_proxy_cb(sm->ctx->ctx);
+}
+
+
+static void
+eapol_sm_eap_proxy_notify_sim_status(void *ctx,
+				     enum eap_proxy_sim_state sim_state)
+{
+	struct eapol_sm *sm = ctx;
+
+	if (sm->ctx->eap_proxy_notify_sim_status)
+		sm->ctx->eap_proxy_notify_sim_status(sm->ctx->ctx, sim_state);
+}
+
+#endif /* CONFIG_EAP_PROXY */
+
+
 static void eapol_sm_set_anon_id(void *ctx, const u8 *id, size_t len)
 {
 	struct eapol_sm *sm = ctx;
@@ -1949,7 +2059,7 @@ static void eapol_sm_set_anon_id(void *ctx, const u8 *id, size_t len)
 }
 
 
-static struct eapol_callbacks eapol_cb =
+static const struct eapol_callbacks eapol_cb =
 {
 	eapol_sm_get_config,
 	eapol_sm_get_bool,
@@ -1963,6 +2073,12 @@ static struct eapol_callbacks eapol_cb =
 	eapol_sm_eap_param_needed,
 	eapol_sm_notify_cert,
 	eapol_sm_notify_status,
+	eapol_sm_notify_eap_error,
+#ifdef CONFIG_EAP_PROXY
+	eapol_sm_eap_proxy_cb,
+	eapol_sm_eap_proxy_notify_sim_status,
+	eapol_sm_get_eap_proxy_imsi,
+#endif /* CONFIG_EAP_PROXY */
 	eapol_sm_set_anon_id
 };
 
@@ -1998,6 +2114,7 @@ struct eapol_sm *eapol_sm_init(struct eapol_ctx *ctx)
 	conf.opensc_engine_path = ctx->opensc_engine_path;
 	conf.pkcs11_engine_path = ctx->pkcs11_engine_path;
 	conf.pkcs11_module_path = ctx->pkcs11_module_path;
+	conf.openssl_ciphers = ctx->openssl_ciphers;
 	conf.wps = ctx->wps;
 	conf.cert_in_cb = ctx->cert_in_cb;
 
@@ -2022,8 +2139,8 @@ struct eapol_sm *eapol_sm_init(struct eapol_ctx *ctx)
 	sm->initialize = FALSE;
 	eapol_sm_step(sm);
 
-	sm->timer_tick_enabled = 1;
-	eloop_register_timeout(1, 0, eapol_port_timers_tick, NULL, sm);
+	if (eloop_register_timeout(1, 0, eapol_port_timers_tick, NULL, sm) == 0)
+		sm->timer_tick_enabled = 1;
 
 	return sm;
 }
@@ -2068,13 +2185,73 @@ int eapol_sm_failed(struct eapol_sm *sm)
 }
 
 
-int eapol_sm_get_eap_proxy_imsi(struct eapol_sm *sm, char *imsi, size_t *len)
-{
 #ifdef CONFIG_EAP_PROXY
+int eapol_sm_get_eap_proxy_imsi(void *ctx, int sim_num, char *imsi, size_t *len)
+{
+	struct eapol_sm *sm = ctx;
+
 	if (sm->eap_proxy == NULL)
 		return -1;
-	return eap_proxy_get_imsi(sm->eap_proxy, imsi, len);
-#else /* CONFIG_EAP_PROXY */
-	return -1;
+	return eap_proxy_get_imsi(sm->eap_proxy, sim_num, imsi, len);
+}
 #endif /* CONFIG_EAP_PROXY */
+
+
+void eapol_sm_erp_flush(struct eapol_sm *sm)
+{
+	if (sm)
+		eap_peer_erp_free_keys(sm->eap);
+}
+
+
+struct wpabuf * eapol_sm_build_erp_reauth_start(struct eapol_sm *sm)
+{
+#ifdef CONFIG_ERP
+	if (!sm)
+		return NULL;
+	return eap_peer_build_erp_reauth_start(sm->eap, 0);
+#else /* CONFIG_ERP */
+	return NULL;
+#endif /* CONFIG_ERP */
+}
+
+
+void eapol_sm_process_erp_finish(struct eapol_sm *sm, const u8 *buf,
+				 size_t len)
+{
+#ifdef CONFIG_ERP
+	if (!sm)
+		return;
+	eap_peer_finish(sm->eap, (const struct eap_hdr *) buf, len);
+#endif /* CONFIG_ERP */
+}
+
+
+int eapol_sm_update_erp_next_seq_num(struct eapol_sm *sm, u16 next_seq_num)
+{
+#ifdef CONFIG_ERP
+	if (!sm)
+		return -1;
+	return eap_peer_update_erp_next_seq_num(sm->eap, next_seq_num);
+#else /* CONFIG_ERP */
+	return -1;
+#endif /* CONFIG_ERP */
+}
+
+
+int eapol_sm_get_erp_info(struct eapol_sm *sm, struct eap_peer_config *config,
+			  const u8 **username, size_t *username_len,
+			  const u8 **realm, size_t *realm_len,
+			  u16 *erp_next_seq_num, const u8 **rrk,
+			  size_t *rrk_len)
+{
+#ifdef CONFIG_ERP
+	if (!sm)
+		return -1;
+	return eap_peer_get_erp_info(sm->eap, config, username, username_len,
+				     realm, realm_len, erp_next_seq_num, rrk,
+				     rrk_len);
+#else /* CONFIG_ERP */
+	return -1;
+#endif /* CONFIG_ERP */
 }

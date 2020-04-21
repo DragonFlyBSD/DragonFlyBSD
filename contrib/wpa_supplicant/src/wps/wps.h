@@ -1,6 +1,6 @@
 /*
  * Wi-Fi Protected Setup
- * Copyright (c) 2007-2013, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2007-2016, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -9,6 +9,7 @@
 #ifndef WPS_H
 #define WPS_H
 
+#include "common/ieee802_11_defs.h"
 #include "wps_defs.h"
 
 /**
@@ -42,10 +43,9 @@ struct wps_parse_attr;
  * @cred_attr: Unparsed Credential attribute data (used only in cred_cb());
  *	this may be %NULL, if not used
  * @cred_attr_len: Length of cred_attr in octets
- * @ap_channel: AP channel
  */
 struct wps_credential {
-	u8 ssid[32];
+	u8 ssid[SSID_MAX_LEN];
 	size_t ssid_len;
 	u16 auth_type;
 	u16 encr_type;
@@ -55,7 +55,6 @@ struct wps_credential {
 	u8 mac_addr[ETH_ALEN];
 	const u8 *cred_attr;
 	size_t cred_attr_len;
-	u16 ap_channel;
 };
 
 #define WPS_DEV_TYPE_LEN 8
@@ -80,7 +79,7 @@ struct wps_credential {
  * @sec_dev_type: Array of secondary device types
  * @num_sec_dev_type: Number of secondary device types
  * @os_version: OS Version
- * @rf_bands: RF bands (WPS_RF_24GHZ, WPS_RF_50GHZ flags)
+ * @rf_bands: RF bands (WPS_RF_24GHZ, WPS_RF_50GHZ, WPS_RF_60GHZ flags)
  * @p2p: Whether the device is a P2P device
  */
 struct wps_device_data {
@@ -101,6 +100,7 @@ struct wps_device_data {
 	struct wpabuf *vendor_ext[MAX_WPS_VENDOR_EXTENSIONS];
 
 	int p2p;
+	u8 multi_ap_ext;
 };
 
 /**
@@ -188,6 +188,12 @@ struct wps_config {
 	 * peer_pubkey_hash - Peer public key hash or %NULL if not known
 	 */
 	const u8 *peer_pubkey_hash;
+
+	/**
+	 * multi_ap_backhaul_sta - Whether this is a Multi-AP backhaul STA
+	 * enrollee
+	 */
+	int multi_ap_backhaul_sta;
 };
 
 struct wps_data * wps_init(const struct wps_config *cfg);
@@ -396,6 +402,37 @@ struct wps_registrar_config {
 	 * PSK is set for a network.
 	 */
 	int force_per_enrollee_psk;
+
+	/**
+	 * multi_ap_backhaul_ssid - SSID to supply to a Multi-AP backhaul
+	 * enrollee
+	 *
+	 * This SSID is used by the Registrar to fill in information for
+	 * Credentials when the enrollee advertises it is a Multi-AP backhaul
+	 * STA.
+	 */
+	const u8 *multi_ap_backhaul_ssid;
+
+	/**
+	 * multi_ap_backhaul_ssid_len - Length of multi_ap_backhaul_ssid in
+	 * octets
+	 */
+	size_t multi_ap_backhaul_ssid_len;
+
+	/**
+	 * multi_ap_backhaul_network_key - The Network Key (PSK) for the
+	 * Multi-AP backhaul enrollee.
+	 *
+	 * This key can be either the ASCII passphrase (8..63 characters) or the
+	 * 32-octet PSK (64 hex characters).
+	 */
+	const u8 *multi_ap_backhaul_network_key;
+
+	/**
+	 * multi_ap_backhaul_network_key_len - Length of
+	 * multi_ap_backhaul_network_key in octets
+	 */
+	size_t multi_ap_backhaul_network_key_len;
 };
 
 
@@ -625,7 +662,7 @@ struct wps_context {
 	 * Credentials. In addition, AP uses it when acting as an Enrollee to
 	 * notify Registrar of the current configuration.
 	 */
-	u8 ssid[32];
+	u8 ssid[SSID_MAX_LEN];
 
 	/**
 	 * ssid_len - Length of ssid in octets
@@ -665,9 +702,29 @@ struct wps_context {
 	u16 encr_types;
 
 	/**
+	 * encr_types_rsn - Enabled encryption types for RSN (WPS_ENCR_*)
+	 */
+	u16 encr_types_rsn;
+
+	/**
+	 * encr_types_wpa - Enabled encryption types for WPA (WPS_ENCR_*)
+	 */
+	u16 encr_types_wpa;
+
+	/**
 	 * auth_types - Authentication types (bit field of WPS_AUTH_*)
 	 */
 	u16 auth_types;
+
+	/**
+	 * encr_types - Current AP encryption type (WPS_ENCR_*)
+	 */
+	u16 ap_encr_type;
+
+	/**
+	 * ap_auth_type - Current AP authentication types (WPS_AUTH_*)
+	 */
+	u16 ap_auth_type;
 
 	/**
 	 * network_key - The current Network Key (PSK) or %NULL to generate new
@@ -676,7 +733,7 @@ struct wps_context {
 	 * uses this when acting as an Enrollee to notify Registrar of the
 	 * current configuration.
 	 *
-	 * When using WPA/WPA2-Person, this key can be either the ASCII
+	 * When using WPA/WPA2-Personal, this key can be either the ASCII
 	 * passphrase (8..63 characters) or the 32-octet PSK (64 hex
 	 * characters). When this is set to the ASCII passphrase, the PSK can
 	 * be provided in the psk buffer and used per-Enrollee to control which
@@ -811,13 +868,14 @@ int wps_registrar_add_nfc_pw_token(struct wps_registrar *reg,
 int wps_registrar_add_nfc_password_token(struct wps_registrar *reg,
 					 const u8 *oob_dev_pw,
 					 size_t oob_dev_pw_len);
+void wps_registrar_flush(struct wps_registrar *reg);
 
 int wps_build_credential_wrap(struct wpabuf *msg,
 			      const struct wps_credential *cred);
 
 unsigned int wps_pin_checksum(unsigned int pin);
 unsigned int wps_pin_valid(unsigned int pin);
-unsigned int wps_generate_pin(void);
+int wps_generate_pin(unsigned int *pin);
 int wps_pin_str_valid(const char *pin);
 void wps_free_pending_msgs(struct upnp_pending_message *msgs);
 

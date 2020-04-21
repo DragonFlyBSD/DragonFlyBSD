@@ -34,11 +34,7 @@
 #include "utils/includes.h"
 #include <net/if.h>
 #include <sys/ioctl.h>
-#ifdef USE_KERNEL_HEADERS
-#include <linux/if_packet.h>
-#else /* USE_KERNEL_HEADERS */
 #include <netpacket/packet.h>
-#endif /* USE_KERNEL_HEADERS */
 
 #include "utils/common.h"
 #include "utils/eloop.h"
@@ -242,14 +238,10 @@ static void iapp_send_layer2_update(struct iapp_data *iapp, u8 *addr)
  */
 void iapp_new_station(struct iapp_data *iapp, struct sta_info *sta)
 {
-	struct ieee80211_mgmt *assoc;
-	u16 seq;
+	u16 seq = 0; /* TODO */
 
 	if (iapp == NULL)
 		return;
-
-	assoc = sta->last_assoc_req;
-	seq = assoc ? WLAN_GET_SEQ_SEQ(le_to_host16(assoc->seq_ctrl)) : 0;
 
 	/* IAPP-ADD.request(MAC Address, Sequence Number, Timeout) */
 	hostapd_logger(iapp->hapd, sta->addr, HOSTAPD_MODULE_IAPP,
@@ -257,14 +249,11 @@ void iapp_new_station(struct iapp_data *iapp, struct sta_info *sta)
 	iapp_send_layer2_update(iapp, sta->addr);
 	iapp_send_add(iapp, sta->addr, seq);
 
-	if (assoc && WLAN_FC_GET_STYPE(le_to_host16(assoc->frame_control)) ==
-	    WLAN_FC_STYPE_REASSOC_REQ) {
-		/* IAPP-MOVE.request(MAC Address, Sequence Number, Old AP,
-		 *                   Context Block, Timeout)
-		 */
-		/* TODO: Send IAPP-MOVE to the old AP; Map Old AP BSSID to
-		 * IP address */
-	}
+	/* TODO: If this was reassociation:
+	 * IAPP-MOVE.request(MAC Address, Sequence Number, Old AP,
+	 *                   Context Block, Timeout)
+	 * TODO: Send IAPP-MOVE to the old AP; Map Old AP BSSID to
+	 * IP address */
 }
 
 
@@ -368,7 +357,7 @@ static void iapp_receive_udp(int sock, void *eloop_ctx, void *sock_ctx)
 
 	switch (hdr->command) {
 	case IAPP_CMD_ADD_notify:
-		iapp_process_add_notify(iapp, &from, hdr, hlen - sizeof(*hdr));
+		iapp_process_add_notify(iapp, &from, hdr, len - sizeof(*hdr));
 		break;
 	case IAPP_CMD_MOVE_notify:
 		/* TODO: MOVE is using TCP; so move this to TCP handler once it
@@ -392,6 +381,7 @@ struct iapp_data * iapp_init(struct hostapd_data *hapd, const char *iface)
 	struct sockaddr_in *paddr, uaddr;
 	struct iapp_data *iapp;
 	struct ip_mreqn mreq;
+	int reuseaddr = 1;
 
 	iapp = os_zalloc(sizeof(*iapp));
 	if (iapp == NULL)
@@ -454,6 +444,18 @@ struct iapp_data * iapp_init(struct hostapd_data *hapd, const char *iface)
 	os_memset(&uaddr, 0, sizeof(uaddr));
 	uaddr.sin_family = AF_INET;
 	uaddr.sin_port = htons(IAPP_UDP_PORT);
+
+	if (setsockopt(iapp->udp_sock, SOL_SOCKET, SO_REUSEADDR, &reuseaddr,
+		       sizeof(reuseaddr)) < 0) {
+		wpa_printf(MSG_INFO,
+			   "iapp_init - setsockopt[UDP,SO_REUSEADDR]: %s",
+			   strerror(errno));
+		/*
+		 * Ignore this and try to continue. This is fine for single
+		 * BSS cases, but may fail if multiple BSSes enable IAPP.
+		 */
+	}
+
 	if (bind(iapp->udp_sock, (struct sockaddr *) &uaddr,
 		 sizeof(uaddr)) < 0) {
 		wpa_printf(MSG_INFO, "iapp_init - bind[UDP]: %s",

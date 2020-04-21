@@ -12,7 +12,22 @@
 #include "utils/list.h"
 #include "p2p.h"
 
+#define P2P_GO_NEG_CNF_MAX_RETRY_COUNT 1
+
+/*
+ * A threshold (in seconds) to prefer a direct Probe Response frame from a P2P
+ * Device over the P2P Client Info received from a GO.
+ */
+#define P2P_DEV_GROUP_CLIENT_RESP_THRESHOLD 1
+
 enum p2p_role_indication;
+
+/*
+ * To force Service Instances to fit within a single P2P Tag, MAX_SVC_ADV_LEN
+ * must equal 248 or less. Must have a minimum size of 19.
+ */
+#define MAX_SVC_ADV_LEN	600
+#define MAX_SVC_ADV_IE_LEN (9 + MAX_SVC_ADV_LEN + (5 * (MAX_SVC_ADV_LEN / 240)))
 
 enum p2p_go_state {
 	UNKNOWN_GO,
@@ -38,6 +53,9 @@ struct p2p_device {
 	 * from Beacon/Probe Response), the interface address is stored here.
 	 * p2p_device_addr must still be set in such a case to the unique
 	 * identifier for the P2P Device.
+	 *
+	 * This field is also used during P2PS PD to store the intended GO
+	 * address of the peer.
 	 */
 	u8 interface_addr[ETH_ALEN];
 
@@ -62,7 +80,7 @@ struct p2p_device {
 	char country[3];
 	struct p2p_channels channels;
 	int oper_freq;
-	u8 oper_ssid[32];
+	u8 oper_ssid[SSID_MAX_LEN];
 	size_t oper_ssid_len;
 
 	/**
@@ -81,8 +99,6 @@ struct p2p_device {
 #define P2P_DEV_PROBE_REQ_ONLY BIT(0)
 #define P2P_DEV_REPORTED BIT(1)
 #define P2P_DEV_NOT_YET_READY BIT(2)
-#define P2P_DEV_SD_INFO BIT(3)
-#define P2P_DEV_SD_SCHEDULE BIT(4)
 #define P2P_DEV_PD_PEER_DISPLAY BIT(5)
 #define P2P_DEV_PD_PEER_KEYPAD BIT(6)
 #define P2P_DEV_USER_REJECTED BIT(7)
@@ -97,18 +113,41 @@ struct p2p_device {
 #define P2P_DEV_PREFER_PERSISTENT_RECONN BIT(16)
 #define P2P_DEV_PD_BEFORE_GO_NEG BIT(17)
 #define P2P_DEV_NO_PREF_CHAN BIT(18)
+#define P2P_DEV_WAIT_INV_REQ_ACK BIT(19)
+#define P2P_DEV_P2PS_REPORTED BIT(20)
+#define P2P_DEV_PD_PEER_P2PS BIT(21)
+#define P2P_DEV_LAST_SEEN_AS_GROUP_CLIENT BIT(22)
+
 	unsigned int flags;
 
 	int status; /* enum p2p_status_code */
 	unsigned int wait_count;
 	unsigned int connect_reqs;
 	unsigned int invitation_reqs;
+	unsigned int sd_reqs;
 
 	u16 ext_listen_period;
 	u16 ext_listen_interval;
 
 	u8 go_timeout;
 	u8 client_timeout;
+
+	/**
+	 * go_neg_conf_sent - Number of GO Negotiation Confirmation retries
+	 */
+	u8 go_neg_conf_sent;
+
+	/**
+	 * freq - Frquency on which the GO Negotiation Confirmation is sent
+	 */
+	int go_neg_conf_freq;
+
+	/**
+	 * go_neg_conf - GO Negotiation Confirmation frame
+	 */
+	struct wpabuf *go_neg_conf;
+
+	int sd_pending_bcast_queries;
 };
 
 struct p2p_sd_query {
@@ -117,16 +156,6 @@ struct p2p_sd_query {
 	int for_all_peers;
 	int wsd; /* Wi-Fi Display Service Discovery Request */
 	struct wpabuf *tlvs;
-};
-
-struct p2p_pending_action_tx {
-	unsigned int freq;
-	u8 dst[ETH_ALEN];
-	u8 src[ETH_ALEN];
-	u8 bssid[ETH_ALEN];
-	size_t len;
-	unsigned int wait_time;
-	/* Followed by len octets of the frame */
 };
 
 /**
@@ -241,9 +270,17 @@ struct p2p_data {
 	 */
 	struct p2p_device *invite_peer;
 
+	/**
+	 * last_p2p_find_oper - Pointer to last pre-find operation peer
+	 */
+	struct p2p_device *last_p2p_find_oper;
+
 	const u8 *invite_go_dev_addr;
 	u8 invite_go_dev_addr_buf[ETH_ALEN];
 	int invite_dev_pw_id;
+
+	unsigned int retry_invite_req:1;
+	unsigned int retry_invite_req_sent:1;
 
 	/**
 	 * sd_peer - Pointer to Service Discovery peer
@@ -254,6 +291,24 @@ struct p2p_data {
 	 * sd_query - Pointer to Service Discovery query
 	 */
 	struct p2p_sd_query *sd_query;
+
+	/**
+	 * num_p2p_sd_queries - Total number of broadcast SD queries present in
+	 * the list
+	 */
+	int num_p2p_sd_queries;
+
+	/**
+	 * sd_query_no_ack - The first peer (Dev Addr) that did not ACK SD Query
+	 *
+	 * This is used to track the first peer that did not ACK an SD Query
+	 * within a single P2P Search iteration. All zeros address means no such
+	 * peer was yet seen. This information is used to allow a new Listen and
+	 * Search phases to be once every pending SD Query has been sent once to
+	 * each peer instead of looping all pending attempts continuously until
+	 * running out of retry maximums.
+	 */
+	u8 sd_query_no_ack[ETH_ALEN];
 
 	/* GO Negotiation data */
 
@@ -280,7 +335,7 @@ struct p2p_data {
 	/**
 	 * ssid - Selected SSID for GO Negotiation (if local end will be GO)
 	 */
-	u8 ssid[32];
+	u8 ssid[SSID_MAX_LEN];
 
 	/**
 	 * ssid_len - ssid length in octets
@@ -321,6 +376,7 @@ struct p2p_data {
 		P2P_PENDING_GO_NEG_CONFIRM,
 		P2P_PENDING_SD,
 		P2P_PENDING_PD,
+		P2P_PENDING_PD_RESPONSE,
 		P2P_PENDING_INVITATION_REQUEST,
 		P2P_PENDING_INVITATION_RESPONSE,
 		P2P_PENDING_DEV_DISC_REQUEST,
@@ -360,7 +416,7 @@ struct p2p_data {
 	enum p2p_invite_role inv_role;
 	u8 inv_bssid[ETH_ALEN];
 	int inv_bssid_set;
-	u8 inv_ssid[32];
+	u8 inv_ssid[SSID_MAX_LEN];
 	size_t inv_ssid_len;
 	u8 inv_sa[ETH_ALEN];
 	u8 inv_group_bssid[ETH_ALEN];
@@ -371,9 +427,11 @@ struct p2p_data {
 	int inv_persistent;
 
 	enum p2p_discovery_type find_type;
+	int find_specified_freq;
 	unsigned int last_p2p_find_timeout;
 	u8 last_prog_scan_class;
 	u8 last_prog_scan_chan;
+	unsigned int find_pending_full:1;
 	int p2p_scan_running;
 	enum p2p_after_scan {
 		P2P_AFTER_SCAN_NOTHING,
@@ -381,8 +439,7 @@ struct p2p_data {
 		P2P_AFTER_SCAN_CONNECT
 	} start_after_scan;
 	u8 after_scan_peer[ETH_ALEN];
-	struct p2p_pending_action_tx *after_scan_tx;
-	unsigned int after_scan_tx_in_progress:1;
+	unsigned int send_action_in_progress:1;
 
 	/* Requested device types for find/search */
 	unsigned int num_req_dev_types;
@@ -454,6 +511,18 @@ struct p2p_data {
 	unsigned int search_delay;
 	int in_search_delay;
 
+	u8 pending_reg_class;
+	u8 pending_channel;
+	u8 pending_channel_forced;
+
+	/* ASP Support */
+	struct p2ps_advertisement *p2ps_adv_list;
+	struct p2ps_provision *p2ps_prov;
+	u8 wild_card_hash[P2PS_HASH_LEN];
+	u8 p2ps_seek;
+	u8 p2ps_seek_hash[P2P_MAX_QUERY_HASH * P2PS_HASH_LEN];
+	u8 p2ps_seek_count;
+
 #ifdef CONFIG_WIFI_DISPLAY
 	struct wpabuf *wfd_ie_beacon;
 	struct wpabuf *wfd_ie_probe_req;
@@ -466,9 +535,19 @@ struct p2p_data {
 	struct wpabuf *wfd_dev_info;
 	struct wpabuf *wfd_assoc_bssid;
 	struct wpabuf *wfd_coupled_sink_info;
+	struct wpabuf *wfd_r2_dev_info;
 #endif /* CONFIG_WIFI_DISPLAY */
 
 	u16 authorized_oob_dev_pw_id;
+
+	struct wpabuf **vendor_elem;
+
+	unsigned int pref_freq_list[P2P_MAX_PREF_CHANNELS];
+	unsigned int num_pref_freq;
+
+	/* Override option for preferred operating channel in GO Negotiation */
+	u8 override_pref_op_class;
+	u8 override_pref_channel;
 };
 
 /**
@@ -518,7 +597,7 @@ struct p2p_message {
 	const u8 *p2p_device_addr;
 	const u8 *pri_dev_type;
 	u8 num_sec_dev_types;
-	char device_name[33];
+	char device_name[WPS_DEV_NAME_MAX_LEN + 1];
 	u16 config_methods;
 
 	/* WPS IE */
@@ -546,6 +625,34 @@ struct p2p_message {
 
 	/* SSID IE */
 	const u8 *ssid;
+
+	/* P2PS */
+	u8 service_hash_count;
+	const u8 *service_hash;
+
+	const u8 *session_info;
+	size_t session_info_len;
+
+	const u8 *conn_cap;
+
+	const u8 *adv_id;
+	const u8 *adv_mac;
+
+	const u8 *adv_service_instance;
+	size_t adv_service_instance_len;
+
+	const u8 *session_id;
+	const u8 *session_mac;
+
+	const u8 *feature_cap;
+	size_t feature_cap_len;
+
+	const u8 *persistent_dev;
+	const u8 *persistent_ssid;
+	size_t persistent_ssid_len;
+
+	const u8 *pref_freq_list;
+	size_t pref_freq_list_len;
 };
 
 
@@ -574,6 +681,8 @@ int p2p_freq_to_channel(unsigned int freq, u8 *op_class, u8 *channel);
 void p2p_channels_intersect(const struct p2p_channels *a,
 			    const struct p2p_channels *b,
 			    struct p2p_channels *res);
+void p2p_channels_union_inplace(struct p2p_channels *res,
+				const struct p2p_channels *b);
 void p2p_channels_union(const struct p2p_channels *a,
 			const struct p2p_channels *b,
 			struct p2p_channels *res);
@@ -585,8 +694,14 @@ void p2p_channels_dump(struct p2p_data *p2p, const char *title,
 		       const struct p2p_channels *chan);
 int p2p_channel_select(struct p2p_channels *chans, const int *classes,
 		       u8 *op_class, u8 *op_channel);
+int p2p_channel_random_social(struct p2p_channels *chans, u8 *op_class,
+			      u8 *op_channel,
+			      struct wpa_freq_range_list *avoid_list,
+			      struct wpa_freq_range_list *disallow_list);
 
 /* p2p_parse.c */
+void p2p_copy_filter_devname(char *dst, size_t dst_len,
+			     const void *src, size_t src_len);
 int p2p_parse_p2p_ie(const struct wpabuf *buf, struct p2p_message *msg);
 int p2p_parse_ies(const u8 *data, size_t len, struct p2p_message *msg);
 int p2p_parse(const u8 *data, size_t len, struct p2p_message *msg);
@@ -654,8 +769,22 @@ void p2p_buf_add_p2p_interface(struct wpabuf *buf, struct p2p_data *p2p);
 void p2p_buf_add_oob_go_neg_channel(struct wpabuf *buf, const char *country,
 				    u8 oper_class, u8 channel,
 				    enum p2p_role_indication role);
+void p2p_buf_add_service_hash(struct wpabuf *buf, struct p2p_data *p2p);
+void p2p_buf_add_session_info(struct wpabuf *buf, const char *info);
+void p2p_buf_add_connection_capability(struct wpabuf *buf, u8 connection_cap);
+void p2p_buf_add_advertisement_id(struct wpabuf *buf, u32 id, const u8 *mac);
+void p2p_buf_add_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
+				  u8 count, const u8 *hash,
+				  struct p2ps_advertisement *adv_list);
+void p2p_buf_add_session_id(struct wpabuf *buf, u32 id, const u8 *mac);
+void p2p_buf_add_feature_capability(struct wpabuf *buf, u16 len,
+				    const u8 *mask);
+void p2p_buf_add_persistent_group_info(struct wpabuf *buf, const u8 *dev_addr,
+				       const u8 *ssid, size_t ssid_len);
 int p2p_build_wps_ie(struct p2p_data *p2p, struct wpabuf *buf, int pw_id,
 		     int all_attr);
+void p2p_buf_add_pref_channel_list(struct wpabuf *buf,
+				   const u32 *preferred_freq_list, u32 size);
 
 /* p2p_sd.c */
 struct p2p_sd_query * p2p_pending_sd_req(struct p2p_data *p2p,
@@ -685,6 +814,8 @@ int p2p_connect_send(struct p2p_data *p2p, struct p2p_device *dev);
 u16 p2p_wps_method_pw_id(enum p2p_wps_method wps_method);
 void p2p_reselect_channel(struct p2p_data *p2p,
 			  struct p2p_channels *intersection);
+void p2p_check_pref_chan(struct p2p_data *p2p, int go,
+			 struct p2p_device *dev, struct p2p_message *msg);
 
 /* p2p_pd.c */
 void p2p_process_prov_disc_req(struct p2p_data *p2p, const u8 *sa,
@@ -694,6 +825,7 @@ void p2p_process_prov_disc_resp(struct p2p_data *p2p, const u8 *sa,
 int p2p_send_prov_disc_req(struct p2p_data *p2p, struct p2p_device *dev,
 			   int join, int force_freq);
 void p2p_reset_pending_pd(struct p2p_data *p2p);
+void p2ps_prov_free(struct p2p_data *p2p);
 
 /* p2p_invitation.c */
 void p2p_process_invitation_req(struct p2p_data *p2p, const u8 *sa,
@@ -734,13 +866,14 @@ int p2p_add_device(struct p2p_data *p2p, const u8 *addr, int freq,
 struct p2p_device * p2p_get_device(struct p2p_data *p2p, const u8 *addr);
 struct p2p_device * p2p_get_device_interface(struct p2p_data *p2p,
 					     const u8 *addr);
-void p2p_go_neg_failed(struct p2p_data *p2p, struct p2p_device *peer,
-		       int status);
+void p2p_go_neg_failed(struct p2p_data *p2p, int status);
 void p2p_go_complete(struct p2p_data *p2p, struct p2p_device *peer);
 int p2p_match_dev_type(struct p2p_data *p2p, struct wpabuf *wps);
 int dev_type_list_match(const u8 *dev_type, const u8 *req_dev_type[],
 			size_t num_req_dev_type);
-struct wpabuf * p2p_build_probe_resp_ies(struct p2p_data *p2p);
+struct wpabuf * p2p_build_probe_resp_ies(struct p2p_data *p2p,
+					 const u8 *query_hash,
+					 u8 query_count);
 void p2p_build_ssid(struct p2p_data *p2p, u8 *ssid, size_t *ssid_len);
 int p2p_send_action(struct p2p_data *p2p, unsigned int freq, const u8 *dst,
 		    const u8 *src, const u8 *bssid, const u8 *buf,
@@ -749,6 +882,9 @@ void p2p_stop_listen_for_freq(struct p2p_data *p2p, int freq);
 int p2p_prepare_channel(struct p2p_data *p2p, struct p2p_device *dev,
 			unsigned int force_freq, unsigned int pref_freq,
 			int go);
+void p2p_go_neg_wait_timeout(void *eloop_ctx, void *timeout_ctx);
+int p2p_go_select_channel(struct p2p_data *p2p, struct p2p_device *dev,
+			  u8 *status);
 void p2p_dbg(struct p2p_data *p2p, const char *fmt, ...)
 PRINTF_FORMAT(2, 3);
 void p2p_info(struct p2p_data *p2p, const char *fmt, ...)

@@ -1,6 +1,6 @@
 /*
  * Wi-Fi Protected Setup - Registrar
- * Copyright (c) 2008-2013, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2008-2016, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -42,7 +42,7 @@ struct wps_nfc_pw_token {
 static void wps_remove_nfc_pw_token(struct wps_nfc_pw_token *token)
 {
 	dl_list_del(&token->list);
-	os_free(token);
+	bin_clear_free(token, sizeof(*token));
 }
 
 
@@ -91,7 +91,7 @@ struct wps_uuid_pin {
 
 static void wps_free_pin(struct wps_uuid_pin *pin)
 {
-	os_free(pin->pin);
+	bin_clear_free(pin->pin, pin->pin_len);
 	os_free(pin);
 }
 
@@ -188,6 +188,37 @@ struct wps_registrar {
 #ifdef WPS_WORKAROUNDS
 	struct os_reltime pbc_ignore_start;
 #endif /* WPS_WORKAROUNDS */
+
+	/**
+	 * multi_ap_backhaul_ssid - SSID to supply to a Multi-AP backhaul
+	 * enrollee
+	 *
+	 * This SSID is used by the Registrar to fill in information for
+	 * Credentials when the enrollee advertises it is a Multi-AP backhaul
+	 * STA.
+	 */
+	u8 multi_ap_backhaul_ssid[SSID_MAX_LEN];
+
+	/**
+	 * multi_ap_backhaul_ssid_len - Length of multi_ap_backhaul_ssid in
+	 * octets
+	 */
+	size_t multi_ap_backhaul_ssid_len;
+
+	/**
+	 * multi_ap_backhaul_network_key - The Network Key (PSK) for the
+	 * Multi-AP backhaul enrollee.
+	 *
+	 * This key can be either the ASCII passphrase (8..63 characters) or the
+	 * 32-octet PSK (64 hex characters).
+	 */
+	u8 *multi_ap_backhaul_network_key;
+
+	/**
+	 * multi_ap_backhaul_network_key_len - Length of
+	 * multi_ap_backhaul_network_key in octets
+	 */
+	size_t multi_ap_backhaul_network_key_len;
 };
 
 
@@ -538,7 +569,6 @@ static int wps_build_sel_pbc_reg_uuid_e(struct wps_registrar *reg,
 static void wps_set_pushbutton(u16 *methods, u16 conf_methods)
 {
 	*methods |= WPS_CONFIG_PUSHBUTTON;
-#ifdef CONFIG_WPS2
 	if ((conf_methods & WPS_CONFIG_VIRT_PUSHBUTTON) ==
 	    WPS_CONFIG_VIRT_PUSHBUTTON)
 		*methods |= WPS_CONFIG_VIRT_PUSHBUTTON;
@@ -556,7 +586,6 @@ static void wps_set_pushbutton(u16 *methods, u16 conf_methods)
 		 */
 		*methods |= WPS_CONFIG_PHY_PUSHBUTTON;
 	}
-#endif /* CONFIG_WPS2 */
 }
 
 
@@ -568,10 +597,8 @@ static int wps_build_sel_reg_config_methods(struct wps_registrar *reg,
 		return 0;
 	methods = reg->wps->config_methods;
 	methods &= ~WPS_CONFIG_PUSHBUTTON;
-#ifdef CONFIG_WPS2
 	methods &= ~(WPS_CONFIG_VIRT_PUSHBUTTON |
 		     WPS_CONFIG_PHY_PUSHBUTTON);
-#endif /* CONFIG_WPS2 */
 	if (reg->pbc)
 		wps_set_pushbutton(&methods, reg->wps->config_methods);
 	if (reg->sel_reg_config_methods_override >= 0)
@@ -594,10 +621,8 @@ static int wps_build_probe_config_methods(struct wps_registrar *reg,
 	 * external Registrars.
 	 */
 	methods = reg->wps->config_methods & ~WPS_CONFIG_PUSHBUTTON;
-#ifdef CONFIG_WPS2
 	methods &= ~(WPS_CONFIG_VIRT_PUSHBUTTON |
 		     WPS_CONFIG_PHY_PUSHBUTTON);
-#endif /* CONFIG_WPS2 */
 	wpa_printf(MSG_DEBUG, "WPS:  * Config Methods (%x)", methods);
 	wpabuf_put_be16(msg, ATTR_CONFIG_METHODS);
 	wpabuf_put_be16(msg, 2);
@@ -617,13 +642,11 @@ const u8 * wps_authorized_macs(struct wps_registrar *reg, size_t *count)
 {
 	*count = 0;
 
-#ifdef CONFIG_WPS2
 	while (*count < WPS_MAX_AUTHORIZED_MACS) {
 		if (is_zero_ether_addr(reg->authorized_macs_union[*count]))
 			break;
 		(*count)++;
 	}
-#endif /* CONFIG_WPS2 */
 
 	return (const u8 *) reg->authorized_macs_union;
 }
@@ -675,12 +698,44 @@ wps_registrar_init(struct wps_context *wps,
 	reg->dualband = cfg->dualband;
 	reg->force_per_enrollee_psk = cfg->force_per_enrollee_psk;
 
+	if (cfg->multi_ap_backhaul_ssid) {
+		os_memcpy(reg->multi_ap_backhaul_ssid,
+			  cfg->multi_ap_backhaul_ssid,
+			  cfg->multi_ap_backhaul_ssid_len);
+		reg->multi_ap_backhaul_ssid_len =
+			cfg->multi_ap_backhaul_ssid_len;
+	}
+	if (cfg->multi_ap_backhaul_network_key) {
+		reg->multi_ap_backhaul_network_key =
+			os_memdup(cfg->multi_ap_backhaul_network_key,
+				  cfg->multi_ap_backhaul_network_key_len);
+		if (reg->multi_ap_backhaul_network_key)
+			reg->multi_ap_backhaul_network_key_len =
+				cfg->multi_ap_backhaul_network_key_len;
+	}
+
 	if (wps_set_ie(reg)) {
 		wps_registrar_deinit(reg);
 		return NULL;
 	}
 
 	return reg;
+}
+
+
+void wps_registrar_flush(struct wps_registrar *reg)
+{
+	if (reg == NULL)
+		return;
+	wps_free_pins(&reg->pins);
+	wps_free_nfc_pw_tokens(&reg->nfc_pw_tokens, 0);
+	wps_free_pbc_sessions(reg->pbc_sessions);
+	reg->pbc_sessions = NULL;
+	wps_free_devices(reg->devices);
+	reg->devices = NULL;
+#ifdef WPS_WORKAROUNDS
+	reg->pbc_ignore_start.sec = 0;
+#endif /* WPS_WORKAROUNDS */
 }
 
 
@@ -694,11 +749,10 @@ void wps_registrar_deinit(struct wps_registrar *reg)
 		return;
 	eloop_cancel_timeout(wps_registrar_pbc_timeout, reg, NULL);
 	eloop_cancel_timeout(wps_registrar_set_selected_timeout, reg, NULL);
-	wps_free_pins(&reg->pins);
-	wps_free_nfc_pw_tokens(&reg->nfc_pw_tokens, 0);
-	wps_free_pbc_sessions(reg->pbc_sessions);
-	wpabuf_free(reg->extra_cred);
-	wps_free_devices(reg->devices);
+	wps_registrar_flush(reg);
+	wpabuf_clear_free(reg->extra_cred);
+	bin_clear_free(reg->multi_ap_backhaul_network_key,
+		       reg->multi_ap_backhaul_network_key_len);
 	os_free(reg);
 }
 
@@ -743,12 +797,11 @@ int wps_registrar_add_pin(struct wps_registrar *reg, const u8 *addr,
 		p->wildcard_uuid = 1;
 	else
 		os_memcpy(p->uuid, uuid, WPS_UUID_LEN);
-	p->pin = os_malloc(pin_len);
+	p->pin = os_memdup(pin, pin_len);
 	if (p->pin == NULL) {
 		os_free(p);
 		return -1;
 	}
-	os_memcpy(p->pin, pin, pin_len);
 	p->pin_len = pin_len;
 
 	if (timeout) {
@@ -834,7 +887,7 @@ static int wps_registrar_invalidate_wildcard_pin(struct wps_registrar *reg,
 	{
 		if (dev_pw && pin->pin &&
 		    (dev_pw_len != pin->pin_len ||
-		     os_memcmp(dev_pw, pin->pin, dev_pw_len) != 0))
+		     os_memcmp_const(dev_pw, pin->pin, dev_pw_len) != 0))
 			continue; /* different PIN */
 		if (pin->wildcard_uuid) {
 			wpa_hexdump(MSG_DEBUG, "WPS: Invalidated PIN for UUID",
@@ -876,6 +929,7 @@ static const u8 * wps_registrar_get_pin(struct wps_registrar *reg,
 					const u8 *uuid, size_t *pin_len)
 {
 	struct wps_uuid_pin *pin, *found = NULL;
+	int wildcard = 0;
 
 	wps_registrar_expire_pins(reg);
 
@@ -895,7 +949,7 @@ static const u8 * wps_registrar_get_pin(struct wps_registrar *reg,
 			    pin->wildcard_uuid == 2) {
 				wpa_printf(MSG_DEBUG, "WPS: Found a wildcard "
 					   "PIN. Assigned it for this UUID-E");
-				pin->wildcard_uuid++;
+				wildcard = 1;
 				os_memcpy(pin->uuid, uuid, WPS_UUID_LEN);
 				found = pin;
 				break;
@@ -917,6 +971,8 @@ static const u8 * wps_registrar_get_pin(struct wps_registrar *reg,
 	}
 	*pin_len = found->pin_len;
 	found->flags |= PIN_LOCKED;
+	if (wildcard)
+		found->wildcard_uuid++;
 	return found->pin;
 }
 
@@ -1170,8 +1226,8 @@ void wps_registrar_probe_req_rx(struct wps_registrar *reg, const u8 *addr,
 }
 
 
-static int wps_cb_new_psk(struct wps_registrar *reg, const u8 *mac_addr,
-			  const u8 *p2p_dev_addr, const u8 *psk, size_t psk_len)
+int wps_cb_new_psk(struct wps_registrar *reg, const u8 *mac_addr,
+		   const u8 *p2p_dev_addr, const u8 *psk, size_t psk_len)
 {
 	if (reg->new_psk_cb == NULL)
 		return 0;
@@ -1217,10 +1273,8 @@ static void wps_cb_set_sel_reg(struct wps_registrar *reg)
 
 	if (reg->selected_registrar) {
 		methods = reg->wps->config_methods & ~WPS_CONFIG_PUSHBUTTON;
-#ifdef CONFIG_WPS2
 		methods &= ~(WPS_CONFIG_VIRT_PUSHBUTTON |
 			     WPS_CONFIG_PHY_PUSHBUTTON);
-#endif /* CONFIG_WPS2 */
 		if (reg->pbc)
 			wps_set_pushbutton(&methods, reg->wps->config_methods);
 	}
@@ -1276,7 +1330,7 @@ static int wps_set_ie(struct wps_registrar *reg)
 	    wps_build_sel_reg_config_methods(reg, beacon) ||
 	    wps_build_sel_pbc_reg_uuid_e(reg, beacon) ||
 	    (reg->dualband && wps_build_rf_bands(&reg->wps->dev, beacon, 0)) ||
-	    wps_build_wfa_ext(beacon, 0, auth_macs, count) ||
+	    wps_build_wfa_ext(beacon, 0, auth_macs, count, 0) ||
 	    wps_build_vendor_ext(&reg->wps->dev, beacon)) {
 		wpabuf_free(beacon);
 		wpabuf_free(probe);
@@ -1306,7 +1360,7 @@ static int wps_set_ie(struct wps_registrar *reg)
 	    wps_build_device_attrs(&reg->wps->dev, probe) ||
 	    wps_build_probe_config_methods(reg, probe) ||
 	    (reg->dualband && wps_build_rf_bands(&reg->wps->dev, probe, 0)) ||
-	    wps_build_wfa_ext(probe, 0, auth_macs, count) ||
+	    wps_build_wfa_ext(probe, 0, auth_macs, count, 0) ||
 	    wps_build_vendor_ext(&reg->wps->dev, probe)) {
 		wpabuf_free(beacon);
 		wpabuf_free(probe);
@@ -1353,7 +1407,7 @@ static int wps_get_dev_password(struct wps_data *wps)
 	const u8 *pin;
 	size_t pin_len = 0;
 
-	os_free(wps->dev_password);
+	bin_clear_free(wps->dev_password, wps->dev_password_len);
 	wps->dev_password = NULL;
 
 	if (wps->pbc) {
@@ -1401,10 +1455,9 @@ static int wps_get_dev_password(struct wps_data *wps)
 		return -1;
 	}
 
-	wps->dev_password = os_malloc(pin_len);
+	wps->dev_password = os_memdup(pin, pin_len);
 	if (wps->dev_password == NULL)
 		return -1;
-	os_memcpy(wps->dev_password, pin, pin_len);
 	wps->dev_password_len = pin_len;
 
 	return 0;
@@ -1574,13 +1627,13 @@ int wps_build_credential_wrap(struct wpabuf *msg,
 	if (wbuf == NULL)
 		return -1;
 	if (wps_build_credential(wbuf, cred)) {
-		wpabuf_free(wbuf);
+		wpabuf_clear_free(wbuf);
 		return -1;
 	}
 	wpabuf_put_be16(msg, ATTR_CRED);
 	wpabuf_put_be16(msg, wpabuf_len(wbuf));
 	wpabuf_put_buf(msg, wbuf);
-	wpabuf_free(wbuf);
+	wpabuf_clear_free(wbuf);
 	return 0;
 }
 
@@ -1588,6 +1641,7 @@ int wps_build_credential_wrap(struct wpabuf *msg,
 int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
 {
 	struct wpabuf *cred;
+	struct wps_registrar *reg = wps->wps->registrar;
 
 	if (wps->wps->registrar->skip_cred_build)
 		goto skip_cred_build;
@@ -1599,18 +1653,42 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
 	}
 	os_memset(&wps->cred, 0, sizeof(wps->cred));
 
+	if (wps->peer_dev.multi_ap_ext == MULTI_AP_BACKHAUL_STA &&
+	    reg->multi_ap_backhaul_ssid_len) {
+		wpa_printf(MSG_DEBUG, "WPS: Use backhaul STA credentials");
+		os_memcpy(wps->cred.ssid, reg->multi_ap_backhaul_ssid,
+			  reg->multi_ap_backhaul_ssid_len);
+		wps->cred.ssid_len = reg->multi_ap_backhaul_ssid_len;
+		/* Backhaul is always WPA2PSK */
+		wps->cred.auth_type = WPS_AUTH_WPA2PSK;
+		wps->cred.encr_type = WPS_ENCR_AES;
+		/* Set MAC address in the Credential to be the Enrollee's MAC
+		 * address
+		 */
+		os_memcpy(wps->cred.mac_addr, wps->mac_addr_e, ETH_ALEN);
+		if (reg->multi_ap_backhaul_network_key) {
+			os_memcpy(wps->cred.key,
+				  reg->multi_ap_backhaul_network_key,
+				  reg->multi_ap_backhaul_network_key_len);
+			wps->cred.key_len =
+				reg->multi_ap_backhaul_network_key_len;
+		}
+		goto use_provided;
+	}
+
 	os_memcpy(wps->cred.ssid, wps->wps->ssid, wps->wps->ssid_len);
 	wps->cred.ssid_len = wps->wps->ssid_len;
 
 	/* Select the best authentication and encryption type */
+	wpa_printf(MSG_DEBUG,
+		   "WPS: Own auth types 0x%x - masked Enrollee auth types 0x%x",
+		   wps->wps->auth_types, wps->auth_type);
 	if (wps->auth_type & WPS_AUTH_WPA2PSK)
 		wps->auth_type = WPS_AUTH_WPA2PSK;
 	else if (wps->auth_type & WPS_AUTH_WPAPSK)
 		wps->auth_type = WPS_AUTH_WPAPSK;
 	else if (wps->auth_type & WPS_AUTH_OPEN)
 		wps->auth_type = WPS_AUTH_OPEN;
-	else if (wps->auth_type & WPS_AUTH_SHARED)
-		wps->auth_type = WPS_AUTH_SHARED;
 	else {
 		wpa_printf(MSG_DEBUG, "WPS: Unsupported auth_type 0x%x",
 			   wps->auth_type);
@@ -1618,6 +1696,14 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
 	}
 	wps->cred.auth_type = wps->auth_type;
 
+	wpa_printf(MSG_DEBUG,
+		   "WPS: Own encr types 0x%x (rsn: 0x%x, wpa: 0x%x) - masked Enrollee encr types 0x%x",
+		   wps->wps->encr_types, wps->wps->encr_types_rsn,
+		   wps->wps->encr_types_wpa, wps->encr_type);
+	if (wps->wps->ap && wps->auth_type == WPS_AUTH_WPA2PSK)
+		wps->encr_type &= wps->wps->encr_types_rsn;
+	else if (wps->wps->ap && wps->auth_type == WPS_AUTH_WPAPSK)
+		wps->encr_type &= wps->wps->encr_types_wpa;
 	if (wps->auth_type == WPS_AUTH_WPA2PSK ||
 	    wps->auth_type == WPS_AUTH_WPAPSK) {
 		if (wps->encr_type & WPS_ENCR_AES)
@@ -1630,10 +1716,12 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
 			return -1;
 		}
 	} else {
-		if (wps->encr_type & WPS_ENCR_WEP)
-			wps->encr_type = WPS_ENCR_WEP;
-		else if (wps->encr_type & WPS_ENCR_NONE)
+		if (wps->encr_type & WPS_ENCR_NONE)
 			wps->encr_type = WPS_ENCR_NONE;
+#ifdef CONFIG_TESTING_OPTIONS
+		else if (wps->encr_type & WPS_ENCR_WEP)
+			wps->encr_type = WPS_ENCR_WEP;
+#endif /* CONFIG_TESTING_OPTIONS */
 		else {
 			wpa_printf(MSG_DEBUG, "WPS: No suitable encryption "
 				   "type for non-WPA/WPA2 mode");
@@ -1650,8 +1738,12 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
 	    !wps->wps->registrar->disable_auto_conf) {
 		u8 r[16];
 		/* Generate a random passphrase */
-		if (random_get_bytes(r, sizeof(r)) < 0)
+		if (random_pool_ready() != 1 ||
+		    random_get_bytes(r, sizeof(r)) < 0) {
+			wpa_printf(MSG_INFO,
+				   "WPS: Could not generate random PSK");
 			return -1;
+		}
 		os_free(wps->new_psk);
 		wps->new_psk = base64_encode(r, sizeof(r), &wps->new_psk_len);
 		if (wps->new_psk == NULL)
@@ -1684,7 +1776,10 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
 		wps->new_psk = os_malloc(wps->new_psk_len);
 		if (wps->new_psk == NULL)
 			return -1;
-		if (random_get_bytes(wps->new_psk, wps->new_psk_len) < 0) {
+		if (random_pool_ready() != 1 ||
+		    random_get_bytes(wps->new_psk, wps->new_psk_len) < 0) {
+			wpa_printf(MSG_INFO,
+				   "WPS: Could not generate random PSK");
 			os_free(wps->new_psk);
 			wps->new_psk = NULL;
 			return -1;
@@ -1730,14 +1825,14 @@ use_provided:
 		return -1;
 
 	if (wps_build_credential(cred, &wps->cred)) {
-		wpabuf_free(cred);
+		wpabuf_clear_free(cred);
 		return -1;
 	}
 
 	wpabuf_put_be16(msg, ATTR_CRED);
 	wpabuf_put_be16(msg, wpabuf_len(cred));
 	wpabuf_put_buf(msg, cred);
-	wpabuf_free(cred);
+	wpabuf_clear_free(cred);
 
 skip_cred_build:
 	if (wps->wps->registrar->extra_cred) {
@@ -1775,7 +1870,7 @@ static struct wpabuf * wps_build_ap_cred(struct wps_data *wps)
 	}
 
 	if (wps_build_ap_settings(wps, plain)) {
-		wpabuf_free(plain);
+		wpabuf_clear_free(plain);
 		wpabuf_free(msg);
 		return NULL;
 	}
@@ -1783,7 +1878,7 @@ static struct wpabuf * wps_build_ap_cred(struct wps_data *wps)
 	wpabuf_put_be16(msg, ATTR_CRED);
 	wpabuf_put_be16(msg, wpabuf_len(plain));
 	wpabuf_put_buf(msg, plain);
-	wpabuf_free(plain);
+	wpabuf_clear_free(plain);
 
 	return msg;
 }
@@ -1823,7 +1918,7 @@ static struct wpabuf * wps_build_m2(struct wps_data *wps)
 	    wps_build_config_error(msg, WPS_CFG_NO_ERROR) ||
 	    wps_build_dev_password_id(msg, wps->dev_pw_id) ||
 	    wps_build_os_version(&wps->wps->dev, msg) ||
-	    wps_build_wfa_ext(msg, 0, NULL, 0)) {
+	    wps_build_wfa_ext(msg, 0, NULL, 0, 0)) {
 		wpabuf_free(msg);
 		return NULL;
 	}
@@ -1843,10 +1938,10 @@ static struct wpabuf * wps_build_m2(struct wps_data *wps)
 		    wps_build_key_wrap_auth(wps, plain) ||
 		    wps_build_encr_settings(wps, msg, plain)) {
 			wpabuf_free(msg);
-			wpabuf_free(plain);
+			wpabuf_clear_free(plain);
 			return NULL;
 		}
-		wpabuf_free(plain);
+		wpabuf_clear_free(plain);
 		config_in_m2 = 1;
 	}
 #endif /* CONFIG_WPS_NFC */
@@ -1891,7 +1986,7 @@ static struct wpabuf * wps_build_m2d(struct wps_data *wps)
 	    wps_build_assoc_state(wps, msg) ||
 	    wps_build_config_error(msg, err) ||
 	    wps_build_os_version(&wps->wps->dev, msg) ||
-	    wps_build_wfa_ext(msg, 0, NULL, 0)) {
+	    wps_build_wfa_ext(msg, 0, NULL, 0, 0)) {
 		wpabuf_free(msg);
 		return NULL;
 	}
@@ -1907,7 +2002,8 @@ static struct wpabuf * wps_build_m4(struct wps_data *wps)
 
 	wpa_printf(MSG_DEBUG, "WPS: Building Message M4");
 
-	wps_derive_psk(wps, wps->dev_password, wps->dev_password_len);
+	if (wps_derive_psk(wps, wps->dev_password, wps->dev_password_len) < 0)
+		return NULL;
 
 	plain = wpabuf_alloc(200);
 	if (plain == NULL)
@@ -1926,13 +2022,13 @@ static struct wpabuf * wps_build_m4(struct wps_data *wps)
 	    wps_build_r_snonce1(wps, plain) ||
 	    wps_build_key_wrap_auth(wps, plain) ||
 	    wps_build_encr_settings(wps, msg, plain) ||
-	    wps_build_wfa_ext(msg, 0, NULL, 0) ||
+	    wps_build_wfa_ext(msg, 0, NULL, 0, 0) ||
 	    wps_build_authenticator(wps, msg)) {
-		wpabuf_free(plain);
+		wpabuf_clear_free(plain);
 		wpabuf_free(msg);
 		return NULL;
 	}
-	wpabuf_free(plain);
+	wpabuf_clear_free(plain);
 
 	wps->state = RECV_M5;
 	return msg;
@@ -1961,13 +2057,13 @@ static struct wpabuf * wps_build_m6(struct wps_data *wps)
 	    wps_build_r_snonce2(wps, plain) ||
 	    wps_build_key_wrap_auth(wps, plain) ||
 	    wps_build_encr_settings(wps, msg, plain) ||
-	    wps_build_wfa_ext(msg, 0, NULL, 0) ||
+	    wps_build_wfa_ext(msg, 0, NULL, 0, 0) ||
 	    wps_build_authenticator(wps, msg)) {
-		wpabuf_free(plain);
+		wpabuf_clear_free(plain);
 		wpabuf_free(msg);
 		return NULL;
 	}
-	wpabuf_free(plain);
+	wpabuf_clear_free(plain);
 
 	wps->wps_pin_revealed = 1;
 	wps->state = RECV_M7;
@@ -1998,13 +2094,13 @@ static struct wpabuf * wps_build_m8(struct wps_data *wps)
 	    (!wps->wps->ap && !wps->er && wps_build_ap_settings(wps, plain)) ||
 	    wps_build_key_wrap_auth(wps, plain) ||
 	    wps_build_encr_settings(wps, msg, plain) ||
-	    wps_build_wfa_ext(msg, 0, NULL, 0) ||
+	    wps_build_wfa_ext(msg, 0, NULL, 0, 0) ||
 	    wps_build_authenticator(wps, msg)) {
-		wpabuf_free(plain);
-		wpabuf_free(msg);
+		wpabuf_clear_free(plain);
+		wpabuf_clear_free(msg);
 		return NULL;
 	}
-	wpabuf_free(plain);
+	wpabuf_clear_free(plain);
 
 	wps->state = RECV_DONE;
 	return msg;
@@ -2221,7 +2317,7 @@ static int wps_process_e_snonce1(struct wps_data *wps, const u8 *e_snonce1)
 	len[3] = wpabuf_len(wps->dh_pubkey_r);
 	hmac_sha256_vector(wps->authkey, WPS_AUTHKEY_LEN, 4, addr, len, hash);
 
-	if (os_memcmp(wps->peer_hash1, hash, WPS_HASH_LEN) != 0) {
+	if (os_memcmp_const(wps->peer_hash1, hash, WPS_HASH_LEN) != 0) {
 		wpa_printf(MSG_DEBUG, "WPS: E-Hash1 derived from E-S1 does "
 			   "not match with the pre-committed value");
 		wps->config_error = WPS_CFG_DEV_PASSWORD_AUTH_FAILURE;
@@ -2261,7 +2357,7 @@ static int wps_process_e_snonce2(struct wps_data *wps, const u8 *e_snonce2)
 	len[3] = wpabuf_len(wps->dh_pubkey_r);
 	hmac_sha256_vector(wps->authkey, WPS_AUTHKEY_LEN, 4, addr, len, hash);
 
-	if (os_memcmp(wps->peer_hash2, hash, WPS_HASH_LEN) != 0) {
+	if (os_memcmp_const(wps->peer_hash2, hash, WPS_HASH_LEN) != 0) {
 		wpa_printf(MSG_DEBUG, "WPS: E-Hash2 derived from E-S2 does "
 			   "not match with the pre-committed value");
 		wps_registrar_invalidate_pin(wps->wps->registrar, wps->uuid_e);
@@ -2333,6 +2429,23 @@ static int wps_process_auth_type_flags(struct wps_data *wps, const u8 *auth)
 
 	wpa_printf(MSG_DEBUG, "WPS: Enrollee Authentication Type flags 0x%x",
 		   auth_types);
+#ifdef WPS_WORKAROUNDS
+	/*
+	 * Some deployed implementations seem to advertise incorrect information
+	 * in this attribute. A value of 0x1b (WPA2 + WPA + WPAPSK + OPEN, but
+	 * no WPA2PSK) has been reported to be used. Add WPA2PSK to the list to
+	 * avoid issues with building Credentials that do not use the strongest
+	 * actually supported authentication option (that device does support
+	 * WPA2PSK even when it does not claim it here).
+	 */
+	if ((auth_types &
+	     (WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK)) ==
+	    (WPS_AUTH_WPA2 | WPS_AUTH_WPAPSK)) {
+		wpa_printf(MSG_DEBUG,
+			   "WPS: Workaround - assume Enrollee supports WPA2PSK based on claimed WPA2 support");
+		auth_types |= WPS_AUTH_WPA2PSK;
+	}
+#endif /* WPS_WORKAROUNDS */
 	wps->auth_type = wps->wps->auth_types & auth_types;
 	if (wps->auth_type == 0) {
 		wpa_printf(MSG_DEBUG, "WPS: No match in supported "
@@ -2568,6 +2681,7 @@ static enum wps_process_res wps_process_m1(struct wps_data *wps,
 
 	if (wps->dev_pw_id < 0x10 &&
 	    wps->dev_pw_id != DEV_PW_DEFAULT &&
+	    wps->dev_pw_id != DEV_PW_P2PS_DEFAULT &&
 	    wps->dev_pw_id != DEV_PW_USER_SPECIFIED &&
 	    wps->dev_pw_id != DEV_PW_MACHINE_SPECIFIED &&
 	    wps->dev_pw_id != DEV_PW_REGISTRAR_SPECIFIED &&
@@ -2594,15 +2708,19 @@ static enum wps_process_res wps_process_m1(struct wps_data *wps,
 		token = wps_get_nfc_pw_token(
 			&wps->wps->registrar->nfc_pw_tokens, wps->dev_pw_id);
 		if (token && token->peer_pk_hash_known) {
+			size_t len;
+
 			wpa_printf(MSG_DEBUG, "WPS: Found matching NFC "
 				   "Password Token");
 			dl_list_del(&token->list);
 			wps->nfc_pw_token = token;
 
 			addr[0] = attr->public_key;
-			sha256_vector(1, addr, &attr->public_key_len, hash);
-			if (os_memcmp(hash, wps->nfc_pw_token->pubkey_hash,
-				      WPS_OOB_PUBKEY_HASH_LEN) != 0) {
+			len = attr->public_key_len;
+			sha256_vector(1, addr, &len, hash);
+			if (os_memcmp_const(hash,
+					    wps->nfc_pw_token->pubkey_hash,
+					    WPS_OOB_PUBKEY_HASH_LEN) != 0) {
 				wpa_printf(MSG_ERROR, "WPS: Public Key hash "
 					   "mismatch");
 				wps->state = SEND_M2D;
@@ -2660,6 +2778,7 @@ static enum wps_process_res wps_process_m1(struct wps_data *wps,
 		wps->use_psk_key = 1;
 	}
 #endif /* WPS_WORKAROUNDS */
+	wps_process_vendor_ext_m1(&wps->peer_dev, attr->multi_ap_ext);
 
 	wps->state = SEND_M2;
 	return WPS_CONTINUE;
@@ -2742,7 +2861,7 @@ static enum wps_process_res wps_process_m5(struct wps_data *wps,
 	}
 
 	if (wps_validate_m5_encr(decrypted, attr->version2 != NULL) < 0) {
-		wpabuf_free(decrypted);
+		wpabuf_clear_free(decrypted);
 		wps->state = SEND_WSC_NACK;
 		return WPS_CONTINUE;
 	}
@@ -2752,11 +2871,11 @@ static enum wps_process_res wps_process_m5(struct wps_data *wps,
 	if (wps_parse_msg(decrypted, &eattr) < 0 ||
 	    wps_process_key_wrap_auth(wps, decrypted, eattr.key_wrap_auth) ||
 	    wps_process_e_snonce1(wps, eattr.e_snonce1)) {
-		wpabuf_free(decrypted);
+		wpabuf_clear_free(decrypted);
 		wps->state = SEND_WSC_NACK;
 		return WPS_CONTINUE;
 	}
-	wpabuf_free(decrypted);
+	wpabuf_clear_free(decrypted);
 
 	wps->state = SEND_M6;
 	return WPS_CONTINUE;
@@ -2894,7 +3013,7 @@ static enum wps_process_res wps_process_m7(struct wps_data *wps,
 
 	if (wps_validate_m7_encr(decrypted, wps->wps->ap || wps->er,
 				 attr->version2 != NULL) < 0) {
-		wpabuf_free(decrypted);
+		wpabuf_clear_free(decrypted);
 		wps->state = SEND_WSC_NACK;
 		return WPS_CONTINUE;
 	}
@@ -2905,12 +3024,12 @@ static enum wps_process_res wps_process_m7(struct wps_data *wps,
 	    wps_process_key_wrap_auth(wps, decrypted, eattr.key_wrap_auth) ||
 	    wps_process_e_snonce2(wps, eattr.e_snonce2) ||
 	    wps_process_ap_settings_r(wps, &eattr)) {
-		wpabuf_free(decrypted);
+		wpabuf_clear_free(decrypted);
 		wps->state = SEND_WSC_NACK;
 		return WPS_CONTINUE;
 	}
 
-	wpabuf_free(decrypted);
+	wpabuf_clear_free(decrypted);
 
 	wps->state = SEND_M8;
 	return WPS_CONTINUE;
@@ -3214,8 +3333,13 @@ static enum wps_process_res wps_process_wsc_done(struct wps_data *wps,
 		os_memset(&cred, 0, sizeof(cred));
 		os_memcpy(cred.ssid, wps->wps->ssid, wps->wps->ssid_len);
 		cred.ssid_len = wps->wps->ssid_len;
-		cred.auth_type = WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK;
-		cred.encr_type = WPS_ENCR_TKIP | WPS_ENCR_AES;
+		if (wps->wps->rf_band_cb(wps->wps->cb_ctx) == WPS_RF_60GHZ) {
+			cred.auth_type = WPS_AUTH_WPA2PSK;
+			cred.encr_type = WPS_ENCR_AES;
+		} else {
+			cred.auth_type = WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK;
+			cred.encr_type = WPS_ENCR_TKIP | WPS_ENCR_AES;
+		}
 		os_memcpy(cred.key, wps->new_psk, wps->new_psk_len);
 		cred.key_len = wps->new_psk_len;
 
@@ -3446,10 +3570,8 @@ void wps_registrar_selected_registrar_changed(struct wps_registrar *reg,
 		u16 methods;
 
 		methods = reg->wps->config_methods & ~WPS_CONFIG_PUSHBUTTON;
-#ifdef CONFIG_WPS2
 		methods &= ~(WPS_CONFIG_VIRT_PUSHBUTTON |
 			     WPS_CONFIG_PHY_PUSHBUTTON);
-#endif /* CONFIG_WPS2 */
 		if (reg->pbc) {
 			reg->sel_reg_dev_password_id_override =
 				DEV_PW_PUSHBUTTON;
@@ -3499,7 +3621,7 @@ int wps_registrar_get_info(struct wps_registrar *reg, const u8 *addr,
 			  d->dev.model_name ? d->dev.model_name : "",
 			  d->dev.model_number ? d->dev.model_number : "",
 			  d->dev.serial_number ? d->dev.serial_number : "");
-	if (ret < 0 || (size_t) ret >= buflen - len)
+	if (os_snprintf_error(buflen - len, ret))
 		return len;
 	len += ret;
 
@@ -3510,7 +3632,6 @@ int wps_registrar_get_info(struct wps_registrar *reg, const u8 *addr,
 int wps_registrar_config_ap(struct wps_registrar *reg,
 			    struct wps_credential *cred)
 {
-#ifdef CONFIG_WPS2
 	wpa_printf(MSG_DEBUG, "WPS: encr_type=0x%x", cred->encr_type);
 	if (!(cred->encr_type & (WPS_ENCR_NONE | WPS_ENCR_TKIP |
 				 WPS_ENCR_AES))) {
@@ -3538,7 +3659,6 @@ int wps_registrar_config_ap(struct wps_registrar *reg,
 			   "WPAPSK+WPA2PSK");
 		cred->auth_type |= WPS_AUTH_WPA2PSK;
 	}
-#endif /* CONFIG_WPS2 */
 
 	if (reg->wps->cred_cb)
 		return reg->wps->cred_cb(reg->wps->cb_ctx, cred);
