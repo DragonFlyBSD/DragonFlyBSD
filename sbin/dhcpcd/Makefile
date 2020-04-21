@@ -75,6 +75,7 @@ _SED_CMDS=	-e 's:@SYSCONFDIR@:${_SYSCONFDIR}:g' \
 		-e 's:@SERVICECMD@::g' \
 		-e 's:@SERVICESTATUS@::g' \
 		-e 's:@STATUSARG@::g' \
+		-e 's:@DEFAULT_HOSTNAME@::g' \
 		-e 's:@YPDOMAIN_DIR@::g' \
 		-e 's:@YPDOMAIN_SUFFIX@::g'
 
