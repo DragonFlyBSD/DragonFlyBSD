@@ -200,7 +200,7 @@ autofs_unmount(struct mount *mp, int mntflags)
 		flags |= FORCECLOSE;
 	error = vflush(mp, 0, flags);
 	if (error) {
-		AUTOFS_WARN("vflush failed with error %d", error);
+		AUTOFS_DEBUG("vflush failed with error %d", error);
 		return (error);
 	}
 
