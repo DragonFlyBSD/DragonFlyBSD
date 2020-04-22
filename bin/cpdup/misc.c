@@ -205,7 +205,7 @@ fatal(const char *ctl, ...)
 	     "    -VV         same as -V but ignore mtime entirely\n"
 	     "    -x          use .cpignore as exclusion file\n"
 	     "    -X file     specify exclusion file (can match full source\n"
-	     "                patch if the exclusion file is specified via\n"
+	     "                path if the exclusion file is specified via\n"
 	     "                an absolute path.\n"
 	     "\n"
 	     "Version " VERSION " by " AUTHORS "\n"
