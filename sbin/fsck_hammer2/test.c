@@ -39,6 +39,7 @@
 #include <sys/tree.h>
 #include <sys/queue.h>
 #include <sys/ttycom.h>
+#include <sys/diskslice.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -142,6 +143,7 @@ static void cleanup_pfs_blockref(struct blockref_list *);
 static void print_media(FILE *, int, const hammer2_blockref_t *,
     hammer2_media_data_t *, size_t);
 
+static hammer2_off_t volume_size;
 static int best_zone = -1;
 
 #define TAB 8
@@ -210,6 +212,10 @@ find_best_zone(int fd)
 		hammer2_blockref_t broot;
 		ssize_t ret;
 
+		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
+			tfprintf(stderr, 1, "zone.%d exceeds volume size\n", i);
+			break;
+		}
 		init_root_blockref(fd, i, HAMMER2_BREF_TYPE_EMPTY, &broot);
 		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
@@ -246,6 +252,10 @@ test_volume_header(int fd)
 
 		if (ScanBest && i != best_zone)
 			continue;
+		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
+			tfprintf(stderr, 1, "zone.%d exceeds volume size\n", i);
+			break;
+		}
 		init_root_blockref(fd, i, HAMMER2_BREF_TYPE_EMPTY, &broot);
 		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
@@ -279,6 +289,10 @@ test_blockref(int fd, uint8_t type)
 
 		if (ScanBest && i != best_zone)
 			continue;
+		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
+			tfprintf(stderr, 1, "zone.%d exceeds volume size\n", i);
+			break;
+		}
 		init_root_blockref(fd, i, type, &broot);
 		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
@@ -324,6 +338,10 @@ test_pfs_blockref(int fd)
 
 		if (ScanBest && i != best_zone)
 			continue;
+		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
+			tfprintf(stderr, 1, "zone.%d exceeds volume size\n", i);
+			break;
+		}
 		init_root_blockref(fd, i, type, &broot);
 		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
@@ -1216,6 +1234,41 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 		free(str);
 }
 
+static hammer2_off_t
+check_volume(int fd)
+{
+	struct partinfo pinfo;
+	hammer2_off_t size;
+
+	if (ioctl(fd, DIOCGPART, &pinfo) < 0) {
+		struct stat st;
+		if (fstat(fd, &st) < 0) {
+			perror("fstat");
+			return -1;
+		}
+		if (!S_ISREG(st.st_mode)) {
+			fprintf(stderr, "Unsupported file type\n");
+			return -1;
+		}
+		assert(0); /* XXX not reached */
+		size = st.st_size;
+	} else {
+		if (pinfo.reserved_blocks) {
+			fprintf(stderr, "HAMMER2 cannot be placed in a "
+			    "partition which overlaps the disklabel or MBR\n");
+			return -1;
+		}
+		if (pinfo.media_blksize > HAMMER2_PBUFSIZE ||
+		    HAMMER2_PBUFSIZE % pinfo.media_blksize) {
+			fprintf(stderr, "A media sector size of %d is not "
+			    "supported\n", pinfo.media_blksize);
+			return -1;
+		}
+		size = pinfo.media_size;
+	}
+	return size;
+}
+
 int
 test_hammer2(const char *devpath)
 {
@@ -1239,6 +1292,14 @@ test_hammer2(const char *devpath)
 		failed = true;
 		goto end;
 	}
+
+	volume_size = check_volume(fd);
+	if (volume_size == (hammer2_off_t)-1) {
+		fprintf(stderr, "Failed to find volume size\n");
+		failed = true;
+		goto end;
+	}
+	volume_size &= ~HAMMER2_VOLUME_ALIGNMASK64;
 
 	best_zone = find_best_zone(fd);
 	if (best_zone == -1)
