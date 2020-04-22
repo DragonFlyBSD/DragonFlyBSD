@@ -85,6 +85,15 @@ initbulk(void (*func)(bulk_t *bulk), int jobs)
 	addbuildenv("__MAKE_CONF", "/dev/null",
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
 
+	/*
+	 * CCache is a horrible unreliable hack but... leave the
+	 * mechanism in-place in case someone has a death wish.
+	 */
+	if (UseCCache) {
+		addbuildenv("WITH_CCACHE_BUILD", "yes", BENV_MAKECONF);
+		addbuildenv("CCACHE_DIR", CCachePath, BENV_MAKECONF);
+	}
+
 	pthread_mutex_init(&BulkMutex, NULL);
 	pthread_cond_init(&BulkResponseCond, NULL);
 
@@ -138,6 +147,10 @@ donebulk(void)
 
 	bzero(JobsAry, sizeof(JobsAry));
 
+	if (UseCCache) {
+		delbuildenv("WITH_CCACHE_BUILD");
+		delbuildenv("CCACHE_DIR");
+	}
 	delbuildenv("__MAKE_CONF");
 }
 

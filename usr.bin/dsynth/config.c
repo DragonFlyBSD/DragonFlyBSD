@@ -188,9 +188,8 @@ ParseConfiguration(int isworker)
 	 * Not supported for the moment
 	 */
 	if (strcmp(CCachePath, "disabled") != 0) {
-		dfatal("Directory_ccache is not supported, please\n"
-		       " set to 'disabled'\n");
-		/* NOT REACHED */
+		/* dfatal("Directory_ccache is not supported, please\n"
+		       " set to 'disabled'\n"); */
 		UseCCache = 1;
 	}
 	asprintf(&buf, "%s/usr/src/sys/Makefile", SystemPath);
