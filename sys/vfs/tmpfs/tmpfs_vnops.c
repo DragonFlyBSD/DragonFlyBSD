@@ -72,8 +72,13 @@ static void tmpfs_move_pages(vm_object_t src, vm_object_t dst, int movflags);
 
 /*
  * bufcache_mode:
- *	0	Normal page queue operation on flush.  Try to keep in memory.
- *	1	Try to cache on flush to swap (default).
+ *	0	Normal page queue operation on flush.  Try to keep in memory,
+ *		but run through the buffer cache if the system is under memory
+ *		pressure.
+ *
+ *	1	Be a bit more aggressive running writes through the buffer
+ *		cache when the system is under memory pressure.
+ *
  *	2	Always page to swap (not recommended).
  */
 __read_mostly static int tmpfs_cluster_rd_enable = 1;
@@ -804,21 +809,26 @@ tmpfs_write(struct vop_write_args *ap)
 		bp->b_flags |= B_CLUSTEROK;
 		if (uio->uio_segflg == UIO_NOCOPY) {
 			/*
-			 * Flush from the pageout daemon, deal with
-			 * potentially very heavy tmpfs write activity
-			 * causing long stalls in the pageout daemon
-			 * before pages get to free/cache.
+			 * Flush from the pageout daemon, deal with potentially
+			 * very heavy tmpfs write activity causing long stalls
+			 * in the pageout daemon before pages get to free/cache.
+			 *
+			 * We have to be careful not to bypass the page queues
+			 * entirely or we can cause write-read thrashing and
+			 * delay the paging of data that is more pageable then
+			 * our current data.
 			 *
 			 * (a) Under severe pressure setting B_DIRECT will
 			 *     cause a buffer release to try to free the
 			 *     underlying pages.
 			 *
-			 * (b) Under modest memory pressure the B_RELBUF
-			 *     alone is sufficient to get the pages moved
-			 *     to the cache.  We could also force this by
-			 *     setting B_NOTMETA but that might have other
-			 *     unintended side-effects (e.g. setting
-			 *     PG_NOTMETA on the VM page).
+			 * (b) Under modest memory pressure the B_AGE flag
+			 *     we retire the buffer and its underlying pages
+			 *     more quickly than normal.
+			 *
+			 *     We could also force this by setting B_NOTMETA
+			 *     but that might have other unintended side-
+			 *     effects (e.g. setting PG_NOTMETA on the VM page).
 			 *
 			 * (c) For the pageout->putpages->generic_putpages->
 			 *     UIO_NOCOPY-write (here), issuing an immediate
@@ -831,9 +841,12 @@ tmpfs_write(struct vop_write_args *ap)
 			 * Hopefully this will unblock the VM system more
 			 * quickly under extreme tmpfs write load.
 			 */
-			if (vm_page_count_min(vm_page_free_hysteresis))
-				bp->b_flags |= B_DIRECT;
-			bp->b_flags |= B_AGE | B_RELBUF | B_TTC;
+			if (tmpfs_bufcache_mode >= 1) {
+				if (vm_page_count_min(vm_page_free_hysteresis))
+					bp->b_flags |= B_DIRECT | B_TTC;
+				if (vm_pages_needed || vm_paging_needed(0))
+					bp->b_flags |= B_AGE;
+			}
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */
 			if (tmpfs_cluster_wr_enable &&
 			    (ap->a_ioflag & (IO_SYNC | IO_DIRECT)) == 0) {
@@ -977,7 +990,13 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 		bp->b_error = 0;
 		biodone(bio);
 	} else {
+#if 0
 		/*
+		 * XXX removed, this does not work well because under heavy
+		 * filesystem loads it often
+		 * forces the data to be read right back in again after
+		 * being written due to bypassing normal LRU operation.
+		 *
 		 * Tell the buffer cache to try to recycle the pages
 		 * to PQ_CACHE on release.
 		 */
@@ -985,6 +1004,7 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 		    (tmpfs_bufcache_mode == 1 && vm_paging_needed(0))) {
 			bp->b_flags |= B_TTC;
 		}
+#endif
 		nbio = push_bio(bio);
 		nbio->bio_done = tmpfs_strategy_done;
 		nbio->bio_offset = bio->bio_offset;
