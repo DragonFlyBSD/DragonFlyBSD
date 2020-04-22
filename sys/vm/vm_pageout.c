@@ -182,7 +182,7 @@ __read_mostly static int vm_swap_enabled=1;
 __read_mostly static int vm_swap_idle_enabled=0;
 #endif
 
-/* 0-disable, 1-passive, 2-active swp*/
+/* 0-disable, 1-passive, 2-active swp, 3-acive swp + single-queue dirty pages*/
 __read_mostly int vm_pageout_memuse_mode=2;
 __read_mostly int vm_pageout_allow_active=1;
 
@@ -958,8 +958,13 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 		 * first or second pass).  Otherwise the pages can wind up
 		 * just cycling in the inactive queue, getting flushed over
 		 * and over again.
+		 *
+		 * Generally speaking we recycle dirty pages within PQ_INACTIVE
+		 * twice (double LRU) before paging them out.  If the
+		 * memuse_mode is >= 3 we run them single-LRU like we do clean
+		 * pages.
 		 */
-		if (vm_pageout_memuse_mode >= 2)
+		if (vm_pageout_memuse_mode >= 3)
 			vm_page_flag_set(m, PG_WINATCFLS);
 
 		vmflush_flags = 0;
