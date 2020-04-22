@@ -128,8 +128,6 @@ ParseConfiguration(int isworker)
 	len = sizeof(PhysMem);
 	if (sysctlbyname("hw.physmem", &PhysMem, &len, NULL, 0) < 0)
 		dfatal_errno("Cannot get hw.physmem");
-	if (PkgDepMemoryTarget == 0)
-		PkgDepMemoryTarget = PhysMem / 3;
 
 	/*
 	 * Calculate nominal defaults.
@@ -196,6 +194,21 @@ ParseConfiguration(int isworker)
 	if (stat(buf, &st) == 0)
 		UseUsrSrc = 1;
 	free(buf);
+
+	/*
+	 * Default pkg dependency memory target.  This is a heuristical
+	 * calculation for how much memory we are willing to put towards
+	 * pkg install dependencies.  The builder count is reduced as needed.
+	 *
+	 * Reduce the target even further when CCache is enabled due to
+	 * its added overhead (even though it doesn't use tmpfs).
+	 */
+	if (PkgDepMemoryTarget == 0) {
+		if (UseCCache)
+			PkgDepMemoryTarget = PhysMem / 5;
+		else
+			PkgDepMemoryTarget = PhysMem / 4;
+	}
 
 	/*
 	 * If this is a dsynth WORKER exec it handles a single slot,
