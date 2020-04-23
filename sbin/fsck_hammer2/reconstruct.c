@@ -535,8 +535,8 @@ main(int argc, char **argv)
 		perror("fstat");
 		exit(1);
 	}
-	if (!S_ISCHR(st.st_mode)) {
-		fprintf(stderr, "%s is not a block device\n", devpath);
+	if (!S_ISCHR(st.st_mode) && !S_ISREG(st.st_mode)) {
+		fprintf(stderr, "Unsupported file type\n");
 		exit(1);
 	}
 

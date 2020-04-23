@@ -1250,7 +1250,6 @@ check_volume(int fd)
 			fprintf(stderr, "Unsupported file type\n");
 			return -1;
 		}
-		assert(0); /* XXX not reached */
 		size = st.st_size;
 	} else {
 		if (pinfo.reserved_blocks) {
@@ -1287,8 +1286,8 @@ test_hammer2(const char *devpath)
 		failed = true;
 		goto end;
 	}
-	if (!S_ISCHR(st.st_mode)) {
-		fprintf(stderr, "%s is not a block device\n", devpath);
+	if (!S_ISCHR(st.st_mode) && !S_ISREG(st.st_mode)) {
+		fprintf(stderr, "Unsupported file type\n");
 		failed = true;
 		goto end;
 	}
