@@ -403,8 +403,8 @@ int	tmpfs_alloc_vp(struct mount *, struct tmpfs_node *,
 	    struct tmpfs_node *, int, struct vnode **);
 int	tmpfs_alloc_file(struct vnode *, struct vnode **, struct vattr *,
 	    struct namecache *, struct ucred *, char *);
-void	tmpfs_dir_attach(struct tmpfs_node *, struct tmpfs_dirent *);
-void	tmpfs_dir_detach(struct tmpfs_node *, struct tmpfs_dirent *);
+void	tmpfs_dir_attach_locked(struct tmpfs_node *, struct tmpfs_dirent *);
+void	tmpfs_dir_detach_locked(struct tmpfs_node *, struct tmpfs_dirent *);
 struct tmpfs_dirent *	tmpfs_dir_lookup(struct tmpfs_node *node,
 			    struct tmpfs_node *f,
 			    struct namecache *ncp);

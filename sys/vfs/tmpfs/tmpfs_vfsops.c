@@ -398,7 +398,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 			struct tmpfs_dirent *de;
 
 			while ((de = RB_ROOT(&node->tn_dir.tn_dirtree)) != NULL)			{
-				tmpfs_dir_detach(node, de);
+				tmpfs_dir_detach_locked(node, de);
 				tmpfs_free_dirent(tmp, de);
 			}
 		}
