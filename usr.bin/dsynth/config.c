@@ -202,12 +202,13 @@ ParseConfiguration(int isworker)
 	 *
 	 * Reduce the target even further when CCache is enabled due to
 	 * its added overhead (even though it doesn't use tmpfs).
+	 * (NOT CURRENTLY IMPLEMENTED, LEAVE THE SAME)
 	 */
 	if (PkgDepMemoryTarget == 0) {
 		if (UseCCache)
-			PkgDepMemoryTarget = PhysMem / 5;
+			PkgDepMemoryTarget = PhysMem / 3;
 		else
-			PkgDepMemoryTarget = PhysMem / 4;
+			PkgDepMemoryTarget = PhysMem / 3;
 	}
 
 	/*
