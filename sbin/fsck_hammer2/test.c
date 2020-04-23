@@ -213,7 +213,7 @@ find_best_zone(int fd)
 		ssize_t ret;
 
 		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
-			tfprintf(stderr, 1, "zone.%d exceeds volume size\n", i);
+			tfprintf(stderr, 0, "zone.%d exceeds volume size\n", i);
 			break;
 		}
 		init_root_blockref(fd, i, HAMMER2_BREF_TYPE_EMPTY, &broot);
@@ -253,7 +253,7 @@ test_volume_header(int fd)
 		if (ScanBest && i != best_zone)
 			continue;
 		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
-			tfprintf(stderr, 1, "zone.%d exceeds volume size\n", i);
+			tfprintf(stderr, 0, "zone.%d exceeds volume size\n", i);
 			break;
 		}
 		init_root_blockref(fd, i, HAMMER2_BREF_TYPE_EMPTY, &broot);
@@ -290,7 +290,7 @@ test_blockref(int fd, uint8_t type)
 		if (ScanBest && i != best_zone)
 			continue;
 		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
-			tfprintf(stderr, 1, "zone.%d exceeds volume size\n", i);
+			tfprintf(stderr, 0, "zone.%d exceeds volume size\n", i);
 			break;
 		}
 		init_root_blockref(fd, i, type, &broot);
@@ -339,7 +339,7 @@ test_pfs_blockref(int fd)
 		if (ScanBest && i != best_zone)
 			continue;
 		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
-			tfprintf(stderr, 1, "zone.%d exceeds volume size\n", i);
+			tfprintf(stderr, 0, "zone.%d exceeds volume size\n", i);
 			break;
 		}
 		init_root_blockref(fd, i, type, &broot);
