@@ -1999,7 +1999,6 @@ again:
 			if (__predict_false(
 				    spin_access_end_only(&vp->v_spin, v))) {
 				vrele(vp);
-				kprintf("CACHE_VREF: RACED %p\n", vp);
 				continue;
 			}
 			if (__predict_true((vp->v_flag & VRECLAIMED) == 0)) {
