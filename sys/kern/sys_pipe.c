@@ -157,6 +157,17 @@ pipeinit(void *dummy)
 		if (mbytes >= 15 * 1024)
 			pipe_maxcache *= 2;
 	}
+
+	/*
+	 * Detune the pcpu caching a bit on systems with an insane number
+	 * of cpu threads to reduce memory waste.
+	 */
+	if (ncpus > 64) {
+		pipe_maxcache = pipe_maxcache * 64 / ncpus;
+		if (pipe_maxcache < PIPEQ_MAX_CACHE)
+			pipe_maxcache = PIPEQ_MAX_CACHE;
+	}
+
 	pipe_gdlocks = kmalloc(sizeof(*pipe_gdlocks) * ncpus,
 			     M_PIPE, M_WAITOK | M_ZERO);
 	for (n = 0; n < ncpus; ++n)

@@ -216,10 +216,12 @@ MALLOC_DEFINE(M_IP6NDP, "ip6ndp", "IPv6 Neighbor Discovery");
  * (typically 32K min, 128K max).
  */
 static void kmeminit(void *dummy);
+static void kmemfinishinit(void *dummy);
 
 char *ZeroPage;
 
-SYSINIT(kmem, SI_BOOT1_ALLOCATOR, SI_ORDER_FIRST, kmeminit, NULL);
+SYSINIT(kmem1, SI_BOOT1_ALLOCATOR, SI_ORDER_FIRST, kmeminit, NULL);
+SYSINIT(kmem2, SI_BOOT2_POST_SMP, SI_ORDER_FIRST, kmemfinishinit, NULL);
 
 #ifdef INVARIANTS
 /*
@@ -316,6 +318,17 @@ kmeminit(void *dummy)
 
     if (bootverbose)
 	kprintf("Slab ZoneSize set to %dKB\n", ZoneSize / 1024);
+}
+
+/*
+ * Once we know how many cpus are configured reduce ZoneRelsThresh
+ * based on multiples of 32 cpu threads.
+ */
+static void
+kmemfinishinit(void *dummy)
+{
+	if (ncpus > 32)
+		ZoneRelsThresh = ZoneRelsThresh * 32 / ncpus;
 }
 
 /*
