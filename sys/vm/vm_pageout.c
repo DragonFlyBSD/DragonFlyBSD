@@ -1292,6 +1292,7 @@ vm_pageout_page(vm_page_t m, long *max_launderp, long *vnodes_skippedp,
 			 * might be undergoing I/O, so skip it.
 			 */
 			if (m->hold_count) {
+rebusy_failed:
 				vm_page_and_queue_spin_lock(m);
 				if (m->queue - m->pc == PQ_INACTIVE) {
 					TAILQ_REMOVE(&vm_page_queues[m->queue].pl, m, pageq);
@@ -1304,6 +1305,36 @@ vm_pageout_page(vm_page_t m, long *max_launderp, long *vnodes_skippedp,
 				vput(vp);
 				return 0;
 			}
+
+			/*
+			 * Recheck queue, object, and vp now that we have
+			 * rebusied the page.
+			 */
+			if (m->queue - m->pc != PQ_INACTIVE ||
+			    m->object != object ||
+			    object->handle != vp) {
+				kprintf("vm_pageout_page: "
+					"rebusy %p failed(A)\n",
+					m);
+				goto rebusy_failed;
+			}
+
+			/*
+			 * Check page validity
+			 */
+			if (m->valid == 0 && (m->flags & PG_NEED_COMMIT) == 0) {
+				kprintf("vm_pageout_page: "
+					"rebusy %p failed(B)\n",
+					m);
+				goto rebusy_failed;
+			}
+			if (m->dirty == 0 && (m->flags & PG_NEED_COMMIT) == 0) {
+				kprintf("vm_pageout_page: "
+					"rebusy %p failed(C)\n",
+					m);
+				goto rebusy_failed;
+			}
+
 			/* (m) is left busied as we fall through */
 		}
 
