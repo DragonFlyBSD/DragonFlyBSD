@@ -510,7 +510,7 @@ print_blockref(FILE *fp, const hammer2_blockref_t *bref, const char *msg)
 }
 
 static void
-print_blockref_verbose(FILE *fp, int depth, int index,
+print_blockref_debug(FILE *fp, int depth, int index,
     const hammer2_blockref_t *bref, const char *msg)
 {
 	if (DebugOpt > 1) {
@@ -523,7 +523,7 @@ print_blockref_verbose(FILE *fp, int depth, int index,
 		tfprintf(fp, 1, buf);
 		fprintf(fp, "%-2d %-3d ", depth, index);
 		__print_blockref(fp, 0, bref, msg);
-	} else
+	} else if (DebugOpt > 0)
 		print_blockref(fp, bref, msg);
 }
 
@@ -773,8 +773,9 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		uint64_t digest64[SHA256_DIGEST_LENGTH/8];
 	} u;
 
+	/* only for DebugOpt > 1 */
 	if (DebugOpt > 1)
-		print_blockref_verbose(stdout, depth, index, bref, NULL);
+		print_blockref_debug(stdout, depth, index, bref, NULL);
 
 	if (bref->data_off) {
 		struct blockref_entry *e;
@@ -787,10 +788,8 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 					/* delta contains cached delta */
 					accumulate_delta_stats(dstats, ds);
 					load_delta_stats(bstats, ds);
-					if (DebugOpt)
-						print_blockref_verbose(stdout,
-						    depth, index, &m->bref,
-						    "cache-hit");
+					print_blockref_debug(stdout, depth,
+					    index, &m->bref, "cache-hit");
 					return 0;
 				}
 			}
@@ -846,8 +845,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		snprintf(msg, sizeof(msg), "Invalid blockref type %d",
 		    bref->type);
 		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
-		if (DebugOpt)
-			print_blockref_verbose(stdout, depth, index, bref, msg);
+		print_blockref_debug(stdout, depth, index, bref, msg);
 		failed = true;
 		break;
 	}
@@ -856,14 +854,12 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	case -1:
 		strlcpy(msg, "Bad I/O bytes", sizeof(msg));
 		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
-		if (DebugOpt)
-			print_blockref_verbose(stdout, depth, index, bref, msg);
+		print_blockref_debug(stdout, depth, index, bref, msg);
 		return -1;
 	case -2:
 		strlcpy(msg, "Failed to read media", sizeof(msg));
 		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
-		if (DebugOpt)
-			print_blockref_verbose(stdout, depth, index, bref, msg);
+		print_blockref_debug(stdout, depth, index, bref, msg);
 		return -1;
 	default:
 		break;
@@ -894,9 +890,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			strlcpy(msg, "Bad HAMMER2_CHECK_ISCSI32", sizeof(msg));
 			add_blockref_entry(&bstats->root, bref, msg,
 			    strlen(msg) + 1);
-			if (DebugOpt)
-				print_blockref_verbose(stdout, depth, index,
-				    bref, msg);
+			print_blockref_debug(stdout, depth, index, bref, msg);
 			failed = true;
 		}
 		break;
@@ -906,9 +900,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			strlcpy(msg, "Bad HAMMER2_CHECK_XXHASH64", sizeof(msg));
 			add_blockref_entry(&bstats->root, bref, msg,
 			    strlen(msg) + 1);
-			if (DebugOpt)
-				print_blockref_verbose(stdout, depth, index,
-				    bref, msg);
+			print_blockref_debug(stdout, depth, index, bref, msg);
 			failed = true;
 		}
 		break;
@@ -922,9 +914,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			strlcpy(msg, "Bad HAMMER2_CHECK_SHA192", sizeof(msg));
 			add_blockref_entry(&bstats->root, bref, msg,
 			    strlen(msg) + 1);
-			if (DebugOpt)
-				print_blockref_verbose(stdout, depth, index,
-				    bref, msg);
+			print_blockref_debug(stdout, depth, index, bref, msg);
 			failed = true;
 		}
 		break;
@@ -934,9 +924,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			strlcpy(msg, "Bad HAMMER2_CHECK_FREEMAP", sizeof(msg));
 			add_blockref_entry(&bstats->root, bref, msg,
 			    strlen(msg) + 1);
-			if (DebugOpt)
-				print_blockref_verbose(stdout, depth, index,
-				    bref, msg);
+			print_blockref_debug(stdout, depth, index, bref, msg);
 			failed = true;
 		}
 		break;
@@ -998,9 +986,7 @@ end:
 	    dstats->count >= BlockrefCacheCount) {
 		assert(bytes);
 		add_blockref_entry(droot, bref, dstats, sizeof(*dstats));
-		if (DebugOpt)
-			print_blockref_verbose(stdout, depth, index, bref,
-			    "cache-add");
+		print_blockref_debug(stdout, depth, index, bref, "cache-add");
 	}
 
 	return 0;
