@@ -1968,8 +1968,6 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 			KKASSERT(chain->dio == NULL);
 			goto skip2;
 		}
-		kprintf("hammer2: DEBUG DEDUP ON OPTDATA MOD %016jx.%02x\n",
-			chain->bref.data_off, chain->bref.type);
 	}
 
 	/*
