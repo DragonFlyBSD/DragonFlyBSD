@@ -385,7 +385,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
-#define HAMMER2_CHAIN_UNUSED0080	0x00000080
+#define HAMMER2_CHAIN_NOTTESTED		0x00000080	/* crc not generated */
 #define HAMMER2_CHAIN_TESTEDGOOD	0x00000100	/* crc tested good */
 #define HAMMER2_CHAIN_ONFLUSH		0x00000200	/* on a flush list */
 #define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */

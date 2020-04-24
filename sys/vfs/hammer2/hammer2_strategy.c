@@ -840,6 +840,7 @@ hammer2_write_file_core(char *data, hammer2_inode_t *ip,
 				HAMMER2_ENC_COMP(HAMMER2_COMP_NONE) +
 				HAMMER2_ENC_CHECK(ip->meta.check_algo);
 			hammer2_chain_setcheck(chain, data);
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 		} else {
 			hammer2_write_bp(chain, data, ioflag, pblksize,
 					 mtid, errorp, ip->meta.check_algo);
@@ -1028,7 +1029,7 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 	}
 
 	/*
-	 * Assign physical storage, data will be set to NULL if a live-dedup
+	 * Assign physical storage, bdata will be set to NULL if a live-dedup
 	 * was successful.
 	 */
 	bdata = comp_size ? comp_buffer : data;
@@ -1103,7 +1104,7 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 				chain->bref.methods =
 					HAMMER2_ENC_COMP(comp_algo) +
 					HAMMER2_ENC_CHECK(check_algo);
-				bcopy(comp_buffer, bdata, comp_size);
+				bcopy(comp_buffer, bdata, comp_block_size);
 			} else {
 				chain->bref.methods =
 					HAMMER2_ENC_COMP(
@@ -1191,7 +1192,7 @@ hammer2_zero_check_and_write(char *data, hammer2_inode_t *ip,
 		zero_write(data, ip, parentp, lbase, mtid, errorp);
 	} else {
 		/*
-		 * Normal write
+		 * Normal write (bdata set to NULL if de-duplicated)
 		 */
 		bdata = data;
 		chain = hammer2_assign_physical(ip, parentp, lbase, pblksize,
@@ -1207,6 +1208,7 @@ hammer2_zero_check_and_write(char *data, hammer2_inode_t *ip,
 				HAMMER2_ENC_COMP(HAMMER2_COMP_NONE) +
 				HAMMER2_ENC_CHECK(check_algo);
 			hammer2_chain_setcheck(chain, data);
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 		}
 		if (chain) {
 			hammer2_chain_unlock(chain);

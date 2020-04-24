@@ -151,6 +151,10 @@ hammer2_io_alloc(hammer2_dev_t *hmp, hammer2_key_t data_off, uint8_t btype,
 
 	/*
 	 * Access/Allocate the DIO, bump dio->refs to prevent destruction.
+	 *
+	 * If DIO_GOOD is set the ref should prevent it from being cleared
+	 * out from under us, we can set *isgoodp, and the caller can operate
+	 * on the buffer without any further interaction.
 	 */
 	hammer2_spin_sh(&hmp->io_spin);
 	dio = RB_LOOKUP(hammer2_io_tree, &hmp->iotree, pbase);
@@ -302,13 +306,13 @@ _hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase,
 			break;
 		case HAMMER2_DOP_READ:
 		default:
+			KKASSERT(dio->bp == NULL);
 			if (hce > 0) {
 				/*
 				 * Synchronous cluster I/O for now.
 				 */
 				peof = (dio->pbase + HAMMER2_SEGMASK64) &
 				       ~HAMMER2_SEGMASK64;
-				dio->bp = NULL;
 				error = cluster_readx(dio->hmp->devvp,
 						     peof, dio->pbase,
 						     dio->psize, bflags,
@@ -316,7 +320,6 @@ _hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase,
 						     HAMMER2_PBUFSIZE*hce,
 						     &dio->bp);
 			} else {
-				dio->bp = NULL;
 				error = breadnx(dio->hmp->devvp, dio->pbase,
 						dio->psize, bflags,
 					        NULL, NULL, 0, &dio->bp);

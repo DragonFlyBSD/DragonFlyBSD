@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2019 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2020 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -1274,16 +1274,23 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	 */
 
 	/*
-	 * Clear INITIAL.  In this case we used io_new() and the buffer has
-	 * been zero'd and marked dirty.
-	 *
 	 * NOTE: hammer2_io_data() call issues bkvasync()
 	 */
 	bdata = hammer2_io_data(chain->dio, chain->bref.data_off);
 
 	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
+		/*
+		 * Clear INITIAL.  In this case we used io_new() and the
+		 * buffer has been zero'd and marked dirty.
+		 *
+		 * CHAIN_MODIFIED has not been set yet, and we leave it
+		 * that way for now.  Set a temporary CHAIN_NOTTESTED flag
+		 * to prevent hammer2_chain_testcheck() from trying to match
+		 * a check code that has not yet been generated.  This bit
+		 * should NOT end up on the actual media.
+		 */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
-		chain->bref.flags |= HAMMER2_BREF_FLAG_ZERO;
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_NOTTESTED);
 	} else if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 		/*
 		 * check data not currently synchronized due to
@@ -1609,12 +1616,12 @@ hammer2_chain_resize(hammer2_chain_t *chain,
 		return error;
 
 	/*
-	 * Relocate the block, even if making it smaller (because different
+	 * Reallocate the block, even if making it smaller (because different
 	 * block sizes may be in different regions).
 	 *
 	 * NOTE: Operation does not copy the data and may only be used
-	 *	  to resize data blocks in-place, or directory entry blocks
-	 *	  which are about to be modified in some manner.
+	 *	 to resize data blocks in-place, or directory entry blocks
+	 *	 which are about to be modified in some manner.
 	 */
 	error = hammer2_freemap_alloc(chain, nbytes);
 	if (error)
@@ -1939,20 +1946,30 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPUPD);
 
 	/*
-	 * Short-cut data blocks which the caller does not need an actual
-	 * data reference to (aka OPTDATA), as long as the chain does not
-	 * already have a data pointer to the data.  This generally means
-	 * that the modifications are being done via the logical buffer cache.
-	 * The INITIAL flag relates only to the device data buffer and thus
-	 * remains unchange in this situation.
+	 * Short-cut data block handling when the caller does not need an
+	 * actual data reference to (aka OPTDATA), as long as the chain does
+	 * not already have a data pointer to the data and no de-duplication
+	 * occurred.
+	 *
+	 * This generally means that the modifications are being done via the
+	 * logical buffer cache.
+	 *
+	 * NOTE: If deduplication occurred we have to run through the data
+	 *	 stuff to clear INITIAL, and the caller will likely want to
+	 *	 assign the check code anyway.  Leaving INITIAL set on a
+	 *	 dedup can be deadly (it can cause the block to be zero'd!).
 	 *
 	 * This code also handles bytes == 0 (most dirents).
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA &&
 	    (flags & HAMMER2_MODIFY_OPTDATA) &&
 	    chain->data == NULL) {
-		KKASSERT(chain->dio == NULL);
-		goto skip2;
+		if (dedup_off == 0) {
+			KKASSERT(chain->dio == NULL);
+			goto skip2;
+		}
+		kprintf("hammer2: DEBUG DEDUP ON OPTDATA MOD %016jx.%02x\n",
+			chain->bref.data_off, chain->bref.type);
 	}
 
 	/*
@@ -1962,6 +1979,8 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	 * If this flag is already clear we are likely in a copy-on-write
 	 * situation but we have to be sure NOT to bzero the storage if
 	 * no data is present.
+	 *
+	 * Clearing of NOTTESTED is allowed if the MODIFIED bit is set,
 	 */
 	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
@@ -2046,7 +2065,7 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 			if (chain->data != (void *)bdata && dedup_off == 0) {
 				bcopy(chain->data, bdata, chain->bytes);
 			}
-		} else if (wasinitial == 0) {
+		} else if (wasinitial == 0 && dedup_off == 0) {
 			/*
 			 * We have a problem.  We were asked to COW but
 			 * we don't have any data to COW with!
@@ -5814,7 +5833,7 @@ hammer2_chain_wdata(hammer2_chain_t *chain)
 void
 hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata)
 {
-	chain->bref.flags &= ~HAMMER2_BREF_FLAG_ZERO;
+	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_NOTTESTED);
 
 	switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
 	case HAMMER2_CHECK_NONE:
@@ -5940,7 +5959,7 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 	uint64_t check64;
 	int r;
 
-	if (chain->bref.flags & HAMMER2_BREF_FLAG_ZERO)
+	if (chain->flags & HAMMER2_CHAIN_NOTTESTED)
 		return 1;
 
 	switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
