@@ -96,10 +96,8 @@ strcoll_l(const char *s, const char *s2, locale_t locale)
 		goto error;
 
 	ret = wcscoll_l(w1, w2, locale);
-	if (t1)
-		free(t1);
-	if (t2)
-		free(t2);
+	free(t1);
+	free(t2);
 
 	return (ret);
 
@@ -116,4 +114,3 @@ strcoll(const char *s, const char *s2)
 {
 	return strcoll_l(s, s2, __get_locale());
 }
-
