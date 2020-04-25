@@ -190,6 +190,9 @@ copies:		mtree_setup
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 linux/types.h \
 		${DESTDIR}/usr/include/compat/uapi/linux
 	cd ${.CURDIR}/../sys/dev/drm/include/asm; \
+		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 bitsperlong.h \
+		${DESTDIR}/usr/include/compat/asm
+	cd ${.CURDIR}/../sys/dev/drm/include/asm; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 int-ll64.h \
 		${DESTDIR}/usr/include/compat/asm
 	cd ${.CURDIR}/../sys/dev/drm/include/asm; \

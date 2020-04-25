@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,23 +24,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _UAPI_ASM_GENERIC_INT_LL64_H_
-#define _UAPI_ASM_GENERIC_INT_LL64_H_
+#ifndef _ASM_BITSPERLONG_H_
+#define _ASM_BITSPERLONG_H_
 
-#include <asm/bitsperlong.h>
+#define BITS_PER_LONG 64
 
-#include <sys/types.h>
+#define BITS_PER_LONG_LONG 64
 
-typedef int8_t __s8;
-typedef uint8_t __u8;
-
-typedef int16_t __s16;
-typedef uint16_t __u16;
-
-typedef int32_t __s32;
-typedef uint32_t __u32;
-
-typedef long long __s64;
-typedef unsigned long long __u64;
-
-#endif	/* _UAPI_ASM_GENERIC_INT_LL64_H_ */
+#endif	/* _ASM_BITSPERLONG_H_ */

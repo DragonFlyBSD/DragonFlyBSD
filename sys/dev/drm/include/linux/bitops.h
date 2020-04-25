@@ -29,19 +29,19 @@
 #ifndef	_LINUX_BITOPS_H_
 #define	_LINUX_BITOPS_H_
 
-#include <sys/types.h>
-#include <sys/systm.h>
-
 #include <asm/types.h>
 
 #define BIT(nr)			(1UL << (nr))
-#define	BITS_PER_LONG		64
+#define BIT_ULL(nb)		(1ULL << (nb))
 #define	BIT_MASK(n)		(~0UL >> (BITS_PER_LONG - (n)))
 #define	BITS_TO_LONGS(n)	howmany((n), BITS_PER_LONG)
 #define BIT_WORD(nr)		((nr) / BITS_PER_LONG)
 #define BITS_PER_BYTE		8
 
 #include <asm/bitops.h>
+
+#include <sys/types.h>
+#include <sys/systm.h>
 
 static inline int
 __ffs(int mask)
@@ -502,6 +502,9 @@ bitmap_release_region(unsigned long *bitmap, int pos, int order)
 /* Returns a contiguous bitmask from bits h to l */
 #define GENMASK(h, l)	\
 	(((~0UL) >> (BITS_PER_LONG - (h) - 1)) & ((~0UL) << (l)))
+
+#define GENMASK_ULL(h, l) \
+	(((~0ULL) >> (BITS_PER_LONG_LONG - 1 - (h))) & ((~0ULL) << (l)))
 
 #include <asm/bitops/non-atomic.h>
 #include <asm/bitops/const_hweight.h>
