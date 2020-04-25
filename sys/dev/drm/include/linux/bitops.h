@@ -514,6 +514,10 @@ bitmap_release_region(unsigned long *bitmap, int pos, int order)
 	     (bit) < (size);					\
 	     (bit) = find_next_bit((addr), (size), (bit) + 1))
 
+#define for_each_clear_bit(bit, addr, size) \
+	for ((bit) = find_first_zero_bit((addr), (size));	\
+	     (bit) < (size);						\
+	     (bit) = find_next_zero_bit((addr), (size), (bit) + 1))
 
 static inline int64_t
 sign_extend64(uint64_t value, int index)
