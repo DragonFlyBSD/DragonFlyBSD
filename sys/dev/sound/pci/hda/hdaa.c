@@ -4166,7 +4166,7 @@ hdaa_audio_disable_nonaudio(struct hdaa_devinfo *devinfo)
 			w->enable = 0;
 			HDA_BOOTHVERBOSE(
 				device_printf(devinfo->dev, 
-				    " Disabling nid %d due to it's"
+				    " Disabling nid %d due to its"
 				    " non-audio type.\n",
 				    w->nid);
 			);
@@ -4273,7 +4273,7 @@ hdaa_audio_disable_useless(struct hdaa_devinfo *devinfo)
 				done = 0;
 				HDA_BOOTHVERBOSE(
 					device_printf(devinfo->dev, 
-					    " Disabling nid %d due to all it's"
+					    " Disabling nid %d due to all its"
 					    " inputs disabled.\n", w->nid);
 				);
 			}
@@ -4298,7 +4298,7 @@ hdaa_audio_disable_useless(struct hdaa_devinfo *devinfo)
 				done = 0;
 				HDA_BOOTHVERBOSE(
 					device_printf(devinfo->dev, 
-					    " Disabling nid %d due to all it's"
+					    " Disabling nid %d due to all its"
 					    " consumers disabled.\n", w->nid);
 				);
 			}

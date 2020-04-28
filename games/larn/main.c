@@ -130,7 +130,7 @@ noone: 				write(2, "Can't find your logname.  Who Are You?\n", 39);
 			break;
 		}
 	if (j) {
-		lprcat("Sorry, Larn needs a VT100 family terminal for all it's features.\n");
+		lprcat("Sorry, Larn needs a VT100 family terminal for all its features.\n");
 		lflush();
 		exit(1);
 	}

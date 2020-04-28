@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd April 3, 2020
+.Dd April 28, 2020
 .Dt DHCPCD-RUN-HOOKS 8
 .Os
 .Sh NAME
@@ -95,7 +95,7 @@ This is generally just a notification and no action need be taken.
 dhcpcd lost the carrier.
 The cable may have been unplugged or association to the wireless point lost.
 .It Dv INFORM | Dv INFORM6
-dhcpcd informed a DHCP server about it's address and obtained other
+dhcpcd informed a DHCP server about its address and obtained other
 configuration details.
 .It Dv BOUND | Dv BOUND6
 dhcpcd obtained a new lease from a DHCP server.

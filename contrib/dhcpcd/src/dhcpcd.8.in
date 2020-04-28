@@ -24,7 +24,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 27, 2020
+.Dd April 28, 2020
 .Dt DHCPCD 8
 .Os
 .Sh NAME
@@ -109,7 +109,7 @@ to renew early.
 .Pp
 If any interface reports a working carrier then
 .Nm
-will try and obtain a lease before forking to the background,
+will try to obtain a lease before forking to the background,
 otherwise it will fork right away.
 This behaviour can be modified with the
 .Fl b , Fl Fl background

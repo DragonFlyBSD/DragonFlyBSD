@@ -137,7 +137,7 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, blackhole, CTLFLAG_RW,
 int tcp_delack_enabled = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, delayed_ack, CTLFLAG_RW,
     &tcp_delack_enabled, 0,
-    "Delay ACK to try and piggyback it onto a data packet");
+    "Delay ACK to try to piggyback it onto a data packet");
 
 #ifdef TCP_DROP_SYNFIN
 static int drop_synfin = 0;
