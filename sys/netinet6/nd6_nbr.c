@@ -701,7 +701,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 	   ((sdl = SDL(rt->rt_gateway)) == NULL))
 		goto freeit;
 
-	if (ln->ln_state == ND6_LLINFO_INCOMPLETE) {
+	if (ln->ln_state <= ND6_LLINFO_INCOMPLETE) {
 		/*
 		 * If the link-layer has address, and no lladdr option came,
 		 * discard the packet.
