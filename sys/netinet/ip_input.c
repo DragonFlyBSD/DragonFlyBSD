@@ -567,7 +567,7 @@ ip_input(struct mbuf *m)
 	ip->ip_off = ntohs(ip->ip_off);
 
 	/* length checks already done in ip_hashfn() */
-	KASSERT(ip->ip_len >= hlen, ("total length less then header length"));
+	KASSERT(ip->ip_len >= hlen, ("total length less than header length"));
 	KASSERT(m->m_pkthdr.len >= ip->ip_len, ("mbuf too short"));
 
 	/*

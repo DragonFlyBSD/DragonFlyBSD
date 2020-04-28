@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)tftpd.8	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/libexec/tftpd/tftpd.8,v 1.6.2.6 2003/04/06 19:42:56 dwmalone Exp $
-.\" $DragonFly: src/libexec/tftpd/tftpd.8,v 1.3 2007/11/23 23:16:36 swildner Exp $
 .\"
 .Dd September 14, 2000
 .Dt TFTPD 8
@@ -83,7 +82,7 @@ with a list of directories by including up to 20 pathnames
 as server program arguments in
 .Pa /etc/inetd.conf .
 In this case access is restricted to files whose
-names are prefixed by the one of the given directories.
+names are prefixed by one of the given directories.
 The given directories are also treated as a search path for
 relative filename requests.
 .Pp

@@ -201,7 +201,7 @@ ipflow_fastforward(struct mbuf *m)
 	iplen = ntohs(ip->ip_len);
 	/* length checks already done in ip_hashfn() */
 	KASSERT(iplen >= sizeof(struct ip),
-		("total length less then header length"));
+		("total length less than header length"));
 	KASSERT(m->m_pkthdr.len >= iplen, ("mbuf too short"));
 
 	/*

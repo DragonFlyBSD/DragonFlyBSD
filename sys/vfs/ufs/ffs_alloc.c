@@ -444,7 +444,7 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	 * in the first blockmap (from soff).
 	 */
 	if (ssize > slen) {
-		panic("ffs_reallocblks: range spans more then two blockmaps!"
+		panic("ffs_reallocblks: range spans more than two blockmaps!"
 			" start_lbn %ld len %d (%d/%d)",
 			(long)start_lbn, len, slen, ssize);
 	}

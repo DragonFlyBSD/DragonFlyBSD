@@ -102,7 +102,7 @@ Consequently, most of the services provided by ppc are macros for
 and
 .Fn outb
 calls.
-But, for an other architecture, accesses to one of our logical
+But, for another architecture, accesses to one of our logical
 registers (data, status, control...) may require more than one I/O access.
 .Ss Description
 The parallel port may operate in the following modes:
@@ -306,7 +306,7 @@ This mode will be saved in the context structure and
 returned each time the driver requests the ppbus.
 .Ss Bus allocation and interrupts
 ppbus allocation is mandatory not to corrupt I/O of other devices.
-An other
+Another
 usage of ppbus allocation is to reserve the port and receive incoming
 interrupts.
 .Pp

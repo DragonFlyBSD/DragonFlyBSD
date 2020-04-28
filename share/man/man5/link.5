@@ -27,7 +27,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/link.5,v 1.14.2.10 2004/05/17 11:38:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/link.5,v 1.7 2008/05/02 02:05:06 swildner Exp $
 .\"
 .Dd October 23, 1993
 .Dt LINK 5
@@ -79,7 +78,7 @@ Global Offset Table, by convention accessible by the reserved name
 .Dv _GLOBAL_OFFSET_TABLE_ .
 The exact mechanism used for this is machine dependent, usually a machine
 register is reserved for the purpose.
-The rational behind this construct
+The rationale behind this construct
 is to generate code that is independent of the actual load address.
 Only
 the values contained in the Global Offset Table may need updating at run-time

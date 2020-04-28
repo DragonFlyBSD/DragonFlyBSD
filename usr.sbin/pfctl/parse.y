@@ -3050,7 +3050,7 @@ port_item	: portrange			{
 		}
 		| unaryop portrange	{
 			if ($2.t) {
-				yyerror("':' cannot be used with an other "
+				yyerror("':' cannot be used with another "
 				    "port operator");
 				YYERROR;
 			}
@@ -3065,7 +3065,7 @@ port_item	: portrange			{
 		}
 		| portrange PORTBINARY portrange	{
 			if ($1.t || $3.t) {
-				yyerror("':' cannot be used with an other "
+				yyerror("':' cannot be used with another "
 				    "port operator");
 				YYERROR;
 			}

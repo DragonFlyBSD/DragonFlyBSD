@@ -5227,7 +5227,7 @@ The peer IP address is set to the given value.
 The tun interface netmask is set to the given value.
 .It RAD_FRAMED_MTU
 If the given MTU is less than the peers MRU as agreed during LCP
-negotiation, *and* it is less that any configured MTU (see the
+negotiation, *and* it is less than any configured MTU (see the
 .Dq set mru
 command), the tun interface MTU is set to the given value.
 .It RAD_FRAMED_COMPRESSION

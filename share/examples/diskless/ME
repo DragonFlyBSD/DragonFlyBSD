@@ -12,7 +12,6 @@ and the /usr/share/examples/diskless/clone_root script which can
 be useful to set up clients and server for diskless boot.
 
 --- $FreeBSD: src/share/examples/diskless/ME,v 1.3.4.1 2002/03/15 06:52:38 luigi Exp $ ---
---- $DragonFly: src/share/examples/diskless/ME,v 1.3 2008/07/08 12:08:29 thomas Exp $ ---
 ------------------------------------------------------------------------
 
 When templating, /conf/ME is typically a softlink to
@@ -45,7 +44,7 @@ use another.  Configuration files can be categorized fairly easily through
 /conf/HT.<category> directories.  You put the actual configuration file in
 /conf/HT.<category> and make a softlink from
 /conf/ME/<appropriate-machines>/config-file to "../HT.<category/config-file".
-This means that access to these files tends to run through more then one
+This means that access to these files tends to run through more than one
 softlink.  The advantage is that for all the complexity of your /conf
 directory hierarchy, most of your common config files exist in only one place
 in reality.

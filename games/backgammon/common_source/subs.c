@@ -49,7 +49,7 @@ const char  *const descr[] = {
 	"\t-b\ttwo players, red and white (implies -n)",
 	"\t-pr\tprint the board before red's turn",
 	"\t-pw\tprint the board before white's turn",
-	"\t-pb\tprint the board before both player's turn",
+	"\t-pb\tprint the board before both players' turn",
 	"\t-tterm\tterminal is a term",
 	"\t-sfile\trecover saved game from file",
 	0
