@@ -57,8 +57,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/namecache.h,v 1.31 2008/05/09 17:52:18 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -67,14 +65,14 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_LOCK_H_
+#include <sys/lock.h>
+#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
-#endif
-#ifndef _SYS_THREAD_H_
-#include <sys/thread.h>
 #endif
 
 struct vnode;
