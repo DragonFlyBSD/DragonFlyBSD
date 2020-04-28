@@ -70,10 +70,10 @@ usage(void)
 	fprintf(stderr,
 	    "usage: tcplay -c -d device [-g] [-z] [-w] [-a pbkdf_hash] [-b cipher]\n"
 	    "              [-f keyfile_hidden] [-k keyfile] [-x pbkdf_hash] [-y cipher]\n"
-	    "       tcplay -i -d device [-e] [-f keyfile_hidden] [-k keyfile]\n"
+	    "       tcplay -i -d device [-e] [-p] [-f keyfile_hidden] [-k keyfile]\n"
 	    "              [-s system_device] [--fde] [--use-backup]\n"
 	    "              [--use-hdr-file=hdr_file] [--use-hidden-hdr-file=hdr_file]\n"
-	    "       tcplay -m mapping -d device [-e] [-f keyfile_hidden] [-k keyfile]\n"
+	    "       tcplay -m mapping -d device [-e] [-p] [-f keyfile_hidden] [-k keyfile]\n"
 	    "              [-s system_device] [--fde] [--use-backup] [--allow-trim]\n"
 	    "              [--use-hdr-file=hdr_file] [--use-hidden-hdr-file=hdr_file]\n"
 	    "       tcplay --modify -d device [-k keyfile] [--new-keyfile=keyfile]\n"
@@ -169,6 +169,8 @@ usage(void)
 	    "Valid options for --info and --map are:\n"
 	    " -e, --protect-hidden\n"
 	    "\t Protect a hidden volume when mounting the outer volume.\n"
+	    " -p, --prompt-passphrase\n"
+	    "\t Immediately prompt for a passphrase even if a keyfile is supplied.\n"
 	    " -s <disk path>, --system-encryption=<disk path>\n"
 	    "\t Specifies that the disk (e.g. /dev/da0) is using system encryption.\n"
 	    " -t, --allow-trim\n"
@@ -215,6 +217,7 @@ static struct option longopts[] = {
 	{ "keyfile-hidden",	required_argument,	NULL, 'f' },
 	{ "protect-hidden",	no_argument,		NULL, 'e' },
 	{ "device",		required_argument,	NULL, 'd' },
+	{ "prompt-passphrase",	no_argument,		NULL, 'p' },
 	{ "system-encryption",	required_argument,	NULL, 's' },
 	{ "allow-trim",		no_argument,		NULL, 't' },
 	{ "fde",		no_argument,		NULL, FLAG_LONG_FDE },
@@ -268,13 +271,13 @@ main(int argc, char *argv[])
 
 	opts->interactive = 1;
 
-	while ((ch = getopt_long(argc, argv, "a:b:cd:ef:ghij:k:m:s:tu:vwx:y:z",
+	while ((ch = getopt_long(argc, argv, "a:b:cd:ef:ghij:k:m:ps:tu:vwx:y:z",
 	    longopts, NULL)) != -1) {
 		switch(ch) {
 		case 'a':
 			if (opts->prf_algo != NULL)
 				usage();
-			if ((opts->prf_algo = check_prf_algo(optarg, 0)) == NULL) {
+			if ((opts->prf_algo = check_prf_algo(optarg, 0, 0)) == NULL) {
 				if (strcmp(optarg, "help") == 0)
 					exit(EXIT_SUCCESS);
 				else
@@ -328,6 +331,9 @@ main(int argc, char *argv[])
 			map_vol = 1;
 			_set_str_opt(map_name);
 			break;
+		case 'p':
+			opts->prompt_passphrase = 1;
+			break;
 		case 's':
 			opts->flags |= TC_FLAG_SYS;
 			_set_str_opt(sys_dev);
@@ -351,7 +357,7 @@ main(int argc, char *argv[])
 		case 'x':
 			if (opts->h_prf_algo != NULL)
 				usage();
-			if ((opts->h_prf_algo = check_prf_algo(optarg, 0)) == NULL) {
+			if ((opts->h_prf_algo = check_prf_algo(optarg, 0, 0)) == NULL) {
 				if (strcmp(optarg, "help") == 0)
 					exit(EXIT_SUCCESS);
 				else
@@ -399,7 +405,7 @@ main(int argc, char *argv[])
 		case FLAG_LONG_MOD_PRF:
 			if (opts->new_prf_algo != NULL)
 				usage();
-			if ((opts->new_prf_algo = check_prf_algo(optarg, 0)) == NULL) {
+			if ((opts->new_prf_algo = check_prf_algo(optarg, 0, 0)) == NULL) {
 				if (strcmp(optarg, "help") == 0)
 					exit(EXIT_SUCCESS);
 				else

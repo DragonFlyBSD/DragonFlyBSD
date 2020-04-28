@@ -43,9 +43,9 @@ pbkdf2(struct pbkdf_prf_algo *hash, const char *pass, int passlen,
 
 	OpenSSL_add_all_algorithms();
 
-	md = EVP_get_digestbyname(hash->name);
+	md = EVP_get_digestbyname(hash->algo);
 	if (md == NULL) {
-		tc_log(1, "Hash %s not found\n", hash->name);
+		tc_log(1, "Hash %s not found\n", hash->algo);
 		return ENOENT;
 	}
 	r = PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen,

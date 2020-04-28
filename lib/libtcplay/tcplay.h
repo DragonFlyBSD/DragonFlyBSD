@@ -37,6 +37,7 @@
 #define HDRSZ			512
 #define HDR_OFFSET_SYS		31744	/* 512 * (63 -1) */
 #define TC_SIG			"TRUE"
+#define VC_SIG			"VERA"
 #define MAX_PASSSZ		64
 #define PASS_BUFSZ		256
 #define KPOOL_SZ		64
@@ -92,8 +93,13 @@ typedef uint64_t disksz_t;
 
 struct pbkdf_prf_algo {
 	const char *name;
+	const char *algo;
 	int iteration_count;
+	const char *sig;
+	int sys;
 };
+
+#define DEFAULT_PRF_ALGO_IDX	6
 
 struct tc_crypto_algo {
 	const char *name;
@@ -211,6 +217,7 @@ struct tcplay_opts {
 	int		protect_hidden;
 	int		retries;	/* XXX: default to DEFAULT_RETRIES */
 	time_t		timeout;
+	int		prompt_passphrase;
 
 	const char	*hdr_file_in;
 	const char	*h_hdr_file_in;
@@ -278,7 +285,7 @@ struct tchdr_enc *create_hdr(unsigned char *pass, int passlen,
     struct tchdr_enc **backup_hdr);
 struct tchdr_dec *decrypt_hdr(struct tchdr_enc *ehdr,
     struct tc_cipher_chain *cipher_chain, unsigned char *key);
-int verify_hdr(struct tchdr_dec *hdr);
+int verify_hdr(struct tchdr_dec *hdr, struct pbkdf_prf_algo *prf_algo);
 struct tchdr_enc *copy_reencrypt_hdr(unsigned char *pass, int passlen,
     struct pbkdf_prf_algo *prf_algo, int weak, struct tcplay_info *info,
     struct tchdr_enc **backup_hdr);
@@ -290,7 +297,7 @@ void check_and_purge_safe_mem(void);
 
 struct tc_crypto_algo *check_cipher(const char *cipher, int quiet);
 struct tc_cipher_chain *check_cipher_chain(const char *cipher_chain, int quiet);
-struct pbkdf_prf_algo *check_prf_algo(const char *algo, int quiet);
+struct pbkdf_prf_algo *check_prf_algo(const char *algo, int sys, int quiet);
 
 int tc_play_init(void);
 void tc_log(int err, const char *fmt, ...);

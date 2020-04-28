@@ -1,6 +1,6 @@
 LIB=		tcplay
-MAJ_VER=	2
-MIN_VER=	0
+MAJ_VER=	3
+MIN_VER=	3
 SHLIB_MAJOR?=	${MAJ_VER}
 SHLIB_MINOR?=	${MIN_VER}
 MAN=		tcplay.3

@@ -115,8 +115,11 @@ tc_api_prf_iterate(tc_api_prf_iterator_fn fn, void *priv)
 		return TC_ERR;
 	}
 
-	/* start at 1 due to RIPEMD weirdness... */
-	for (i = 1; pbkdf_prf_algos[i].name != NULL; i++) {
+	for (i = 0; pbkdf_prf_algos[i].name != NULL; i++) {
+		/* Skip over sys PRFs */
+		if (pbkdf_prf_algos[i].sys)
+			continue;
+
 		if ((fn(priv, pbkdf_prf_algos[i].name)) < 0)
 			break;
 	}
@@ -221,7 +224,7 @@ tc_api_task_set(tc_api_task task, const char *key, ...)
 	void *vp;
 	int r = TC_OK;
 
-	if (task == NULL || ((opts = task->opts) == NULL)) {
+	if (task == NULL || key == NULL || ((opts = task->opts) == NULL)) {
 		errno = EFAULT;
 		return TC_ERR;
 	}
@@ -363,7 +366,7 @@ tc_api_task_set(tc_api_task task, const char *key, ...)
 	} else if (_match(key, "prf_algo")) {
 		s = va_arg(ap, const char *);
 		if (s != NULL) {
-			if ((opts->prf_algo = check_prf_algo(s, 1)) == NULL) {
+			if ((opts->prf_algo = check_prf_algo(s, 0, 1)) == NULL) {
 				errno = ENOENT;
 				r = TC_ERR;
 				goto out;
@@ -374,7 +377,7 @@ tc_api_task_set(tc_api_task task, const char *key, ...)
 	} else if (_match(key, "h_prf_algo")) {
 		s = va_arg(ap, const char *);
 		if (s != NULL) {
-			if ((opts->h_prf_algo = check_prf_algo(s, 1)) == NULL) {
+			if ((opts->h_prf_algo = check_prf_algo(s, 0, 1)) == NULL) {
 				errno = ENOENT;
 				r = TC_ERR;
 				goto out;
@@ -385,7 +388,7 @@ tc_api_task_set(tc_api_task task, const char *key, ...)
 	} else if (_match(key, "new_prf_algo")) {
 		s = va_arg(ap, const char *);
 		if (s != NULL) {
-			if ((opts->new_prf_algo = check_prf_algo(s, 1)) == NULL) {
+			if ((opts->new_prf_algo = check_prf_algo(s, 0, 1)) == NULL) {
 				errno = ENOENT;
 				r = TC_ERR;
 				goto out;

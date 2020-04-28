@@ -52,6 +52,7 @@
 .Fl i
 .Fl d Ar device
 .Op Fl e
+.Op Fl p
 .Op Fl f Ar keyfile_hidden
 .Op Fl k Ar keyfile
 .Op Fl s Ar system_device
@@ -65,6 +66,7 @@
 .Fl m Ar mapping
 .Fl d Ar device
 .Op Fl e
+.Op Fl p
 .Op Fl f Ar keyfile_hidden
 .Op Fl k Ar keyfile
 .Op Fl s Ar system_device
@@ -244,6 +246,24 @@ This option only applies to the
 and
 .Fl -map
 commands.
+.It Fl p, Fl -prompt-passphrase
+This option causes
+.Nm
+to prompt for a passphrase immediately, even if a keyfile is
+provided.
+Normally, if a keyfile is supplied,
+.Nm
+will first attempt to unlock the volume using only the keyfile,
+and only prompt for a passphrase if that first unlocking attempt
+fails.
+However, since a failed unlocking attempt can take a non-trivial
+amount of time, specifying this option can reduce the total unlocking
+time if both a keyfile and passphrase are required.
+This option only makes sense if
+.Fl k
+or
+.Fl f
+are used.
 .It Fl s Ar system_device , Fl -system-encryption Ns = Ns Ar system_device
 This option is required if you are attempting to access a device
 that uses system encryption, for example an encrypted
@@ -348,6 +368,49 @@ using the
 .Fl -protect-hidden
 option and specifying the passphrase and keyfiles for both the outer
 and hidden volumes.
+.Sh VERACRYPT SUPPORT
+.Nm
+offers both legacy TrueCrypt as well as VeraCrypt support.
+When creating a new volume, the selected PBKDF2 PRF determines whether
+the volume will use the TrueCrypt or VeraCrypt format.
+The formats are identical other than the rounds of the key derivation
+functions as well as the volume signature and minver fields in the
+header.
+Converting volumes from one format or another using
+.Nm
+is simply a matter of using the
+.Fl -modify
+option specifying a PBKDF2 PRF hash matching the intended target format
+with the
+.Fl -new-pbkdf-prf
+argument.
+.Pp
+PBKDF2 PRFs suffixed with
+.Dv -VC
+are VeraCrypt PRFs, whilst all others are legacy TrueCrypt PRFs.
+By default, new volumes are created with a VeraCrypt PRF to offer better
+security.
+.Pp
+NOTE: Failed unlocking attempts even for legacy TrueCrypt volumes now take
+significantly longer than before, as
+.Nm
+will cycle through all PRFs, including the VeraCrypt PRFs with much higher
+number of PRF iterations.
+Successful attempts should still take the same amount of time as before, as
+the legacy PRF settings are tried first.
+One notable exception is if both a keyfile and a passphrase is required.
+Normally,
+.Nm
+would first attempt an unlock attempt with just the keyfile, and only prompt
+for a passphrase after that attempt failed.
+If it is known in advance that both a keyfile and passphrase are required to
+unlock a volume, the
+.Fl p
+option to
+.Fl -info
+and
+.Fl -map
+can more than halve the time required to unlock the volume.
 .Sh EXAMPLES
 Create a new TrueCrypt volume on
 .Pa /dev/vn0

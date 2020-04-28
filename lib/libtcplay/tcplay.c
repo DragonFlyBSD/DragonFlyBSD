@@ -47,6 +47,7 @@
 #if defined(__linux__)
 #include <libdevmapper.h>
 #include <uuid/uuid.h>
+#include <sys/sysmacros.h>
 #elif defined(__DragonFly__)
 #include <libdm.h>
 #include <uuid.h>
@@ -93,11 +94,17 @@ tc_log(int is_err, const char *fmt, ...)
 
 /* Supported algorithms */
 struct pbkdf_prf_algo pbkdf_prf_algos[] = {
-	{ "RIPEMD160",	2000 }, /* needs to come before the other RIPEMD160 */
-	{ "RIPEMD160",	1000 },
-	{ "SHA512",	1000 },
-	{ "whirlpool",	1000 },
-	{ NULL,		0    }
+	{ "RIPEMD160",		"RIPEMD160",	2000,	TC_SIG, 0},
+	{ "RIPEMD160",		"RIPEMD160",	1000,	TC_SIG, 1},
+	{ "SHA512",		"SHA512",	1000,	TC_SIG, 0},
+	{ "whirlpool",		"whirlpool",	1000,	TC_SIG, 0},
+	{ "RIPEMD160-VC",	"RIPEMD160",	655331,	VC_SIG, 0},
+	{ "RIPEMD160-VC",	"RIPEMD160",	327661,	VC_SIG, 1},
+	{ "SHA512-VC",		"SHA512",	500000,	VC_SIG, 0},
+	{ "whirlpool-VC",	"whirlpool",	500000,	VC_SIG, 0},
+	{ "SHA256-VC",		"SHA256",	500000,	VC_SIG, 0},
+	{ "SHA256-VC",		"SHA256",	200000,	VC_SIG, 1},
+	{ NULL,			NULL,		0,	NULL,	0}
 };
 
 struct tc_crypto_algo tc_crypto_algos[] = {
@@ -328,6 +335,9 @@ print_info(struct tcplay_info *info)
 	if (info->hdr != NULL) {
 		printf("CRC Key Data:\t\t%#x\n", info->hdr->crc_keys);
 		printf("Sector size:\t\t%d\n", info->hdr->sec_sz);
+		printf("Signature:\t\t%c%c%c%c\n", info->hdr->tc_str[0],
+		       info->hdr->tc_str[1], info->hdr->tc_str[2],
+		       info->hdr->tc_str[3]);
 	} else {
 		printf("Sector size:\t\t512\n");
 	}
@@ -478,7 +488,7 @@ process_hdr(const char *dev, int flags, unsigned char *pass, int passlen,
 				return EINVAL;
 			}
 
-			if (verify_hdr(dhdr)) {
+			if (verify_hdr(dhdr, &pbkdf_prf_algos[i])) {
 #ifdef DEBUG
 				printf("tc_str: %.4s, tc_ver: %d, tc_min_ver: %d, "
 				    "crc_keys: %d, sz_vol: %"PRIu64", "
@@ -534,7 +544,7 @@ create_volume(struct tcplay_opts *opts)
 	if (opts->cipher_chain == NULL)
 		opts->cipher_chain = tc_cipher_chains[0];
 	if (opts->prf_algo == NULL)
-		opts->prf_algo = &pbkdf_prf_algos[0];
+		opts->prf_algo = &pbkdf_prf_algos[DEFAULT_PRF_ALGO_IDX];
 	if (opts->h_cipher_chain == NULL)
 		opts->h_cipher_chain = opts->cipher_chain;
 	if (opts->h_prf_algo == NULL)
@@ -865,7 +875,9 @@ info_map_common(struct tcplay_opts *opts, char *passphrase_out)
 	 * Add one retry so we can do a first try without asking for
 	 * a password if keyfiles are passed in.
 	 */
-	if (opts->interactive && (opts->nkeyfiles > 0)) {
+	if (opts->interactive &&
+	    !opts->prompt_passphrase &&
+	    (opts->nkeyfiles > 0)) {
 		try_empty = 1;
 		++retries;
 	}
@@ -1596,6 +1608,12 @@ dm_info_map(const char *map_name)
 		goto error;
 	}
 
+	info->cipher_chain = tc_dup_cipher_chain(info->cipher_chain);
+	if (info->cipher_chain == NULL) {
+		tc_log(1, "could not dup cipher chain\n");
+		goto error;
+	}
+
 	/* Copy over the name */
 	strncpy(info->dev, dm_table[outermost]->device, sizeof(info->dev));
 
@@ -1607,6 +1625,10 @@ dm_info_map(const char *map_name)
 	info->skip = dm_table[outermost]->skip;
 	info->offset = dm_table[outermost]->offset;
 	info->blk_sz = 512;
+
+	for (i = 0; i < 3; i++)
+		if (dm_table[i] != NULL)
+			free_safe_mem(dm_table[i]);
 
 	return info;
 
@@ -1792,7 +1814,7 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 
 			/*  /dev/ad0s0a              0 */
 			/* dev---^       block off --^ */
-			snprintf(params, 512, "%.88s 0", dev);
+			snprintf(params, 512, "%s 0", dev);
 
 			if ((dm_task_add_target(dmt, 0,
 				INFO_TO_DM_BLOCKS(info, offset),
@@ -1807,7 +1829,7 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 
 		/* aes-cbc-essiv:sha256 7997f8af... 0 /dev/ad0s0a 8 <opts> */
 		/*			   iv off---^  block off--^ <opts> */
-		snprintf(params, 512, "%s %s %"PRIu64 " %.88s %"PRIu64 " %s",
+		snprintf(params, 512, "%s %s %"PRIu64 " %s %"PRIu64 " %s",
 		    cipher_chain->cipher->dm_crypt_str, cipher_chain->dm_key,
 		    (uint64_t)INFO_TO_DM_BLOCKS(info, skip), dev,
 		    (uint64_t)offset,
@@ -2005,11 +2027,14 @@ check_cipher_chain(const char *cipher_chain, int quiet)
 }
 
 struct pbkdf_prf_algo *
-check_prf_algo(const char *algo, int quiet)
+check_prf_algo(const char *algo, int sys, int quiet)
 {
 	int i, found = 0;
 
 	for (i = 0; pbkdf_prf_algos[i].name != NULL; i++) {
+		if (sys != pbkdf_prf_algos[i].sys)
+			continue;
+
 		if (strcmp(algo, pbkdf_prf_algos[i].name) == 0) {
 			found = 1;
 			break;
@@ -2018,8 +2043,11 @@ check_prf_algo(const char *algo, int quiet)
 
 	if (!found && !quiet) {
 		fprintf(stderr, "Valid PBKDF PRF algorithms are: ");
-		for (i = 0; pbkdf_prf_algos[i].name != NULL; i++)
+		for (i = 0; pbkdf_prf_algos[i].name != NULL; i++) {
+			if (sys != pbkdf_prf_algos[i].sys)
+				continue;
 			fprintf(stderr, "%s ", pbkdf_prf_algos[i].name);
+		}
 		fprintf(stderr, "\n");
 		return NULL;
 	}
