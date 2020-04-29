@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd April 16, 2020
+.Dd April 29, 2020
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1101,6 +1101,23 @@ rules that will be applied by
 .Xr devfsctl 8
 in the order in which they are specified and must include the full path
 to the file.
+.It Va tmpfs_var_run
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+a
+.Xr tmpfs 5
+will be mounted at
+.Pa /var/run .
+Necessary directories under there will be automatically created.
+.It Va tmpfs_tmp
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+a
+.Xr tmpfs 5
+will be mounted at
+.Pa /tmp .
 .It Va syslogd_enable
 .Pq Vt bool
 If set to

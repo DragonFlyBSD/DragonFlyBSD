@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# PROVIDE: mounttmpfs
+# REQUIRE: mountcritremote
+
+. /etc/rc.subr
+
+name="mounttmpfs"
+start_cmd="mounttmpfs_start"
+stop_cmd=":"
+
+mounttmpfs_start()
+{
+	if checkyesno tmpfs_var_run; then
+		echo -n "Mounting tmpfs at /var/run"
+		mount_tmpfs dummy /var/run
+		echo "."
+
+		echo "Recreating filesystem hierarchy in /var/run:"
+		mtree -deiqU -f /etc/mtree/BSD.var.dist -p /var
+		echo "."
+	else
+		echo -n "Mounting tmpfs at /var/run/shm"
+		mount_tmpfs -m 01777 dummy /var/run/shm
+		mkdir -p -m 01777 /var/run/shm/tmp
+		echo "."
+	fi
+
+	if checkyesno tmpfs_tmp; then
+		echo -n "Mounting tmpfs at /tmp"
+		mount_tmpfs -m 01777 dummy /tmp
+		echo "."
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"
