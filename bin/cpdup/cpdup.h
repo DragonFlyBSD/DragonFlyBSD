@@ -27,18 +27,6 @@
 #define VERSION	"1.21"
 #define AUTHORS	"Matt Dillon, Dima Ruban, & Oliver Fromme"
 
-#ifdef __sun
-#include "compat_sun.h"
-#endif
-
-#ifdef __linux__
-#define __printflike(a,b)
-#define __printf0like(a,b)
-#define __aligned(x)
-#define __unused
-#define __dead2
-#endif
-
 void logstd(const char *ctl, ...) __printflike(1, 2);
 void logerr(const char *ctl, ...) __printflike(1, 2);
 char *mprintf(const char *ctl, ...) __printflike(1, 2);
