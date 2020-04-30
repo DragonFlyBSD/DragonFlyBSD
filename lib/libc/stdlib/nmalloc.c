@@ -1797,10 +1797,17 @@ mtmagazine_free(int zi, void *ptr)
 		 * allocation to avoid reentrancy and/or to avoid a
 		 * stack overflow if the [zi] happens to be the same that
 		 * would be used to allocate the new magazine.
+		 *
+		 * WARNING! Calling _slaballoc() can indirectly modify
+		 *	    tp->newmag.
 		 */
 		if (tp->newmag == NULL) {
-			tp->newmag = _slaballoc(sizeof(struct magazine),
-						SAFLAG_ZERO);
+			mp = _slaballoc(sizeof(struct magazine),
+					SAFLAG_ZERO | SAFLAG_MAGS);
+			if (tp->newmag && mp)
+				_slabfree(mp, 0, NULL);
+			else
+				tp->newmag = mp;
 			if (tp->newmag == NULL) {
 				rc = -1;
 				break;
