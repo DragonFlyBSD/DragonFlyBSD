@@ -54,7 +54,6 @@
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 #include <vm/vm_kern.h>
-#include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/swap_pager.h>
 #include <vm/vnode_pager.h>

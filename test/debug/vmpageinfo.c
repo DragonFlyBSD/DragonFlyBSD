@@ -39,8 +39,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/test/debug/vmpageinfo.c,v 1.2 2006/05/23 01:00:05 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -55,7 +53,6 @@
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 #include <vm/vm_kern.h>
-#include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/swap_pager.h>
 #include <vm/vnode_pager.h>
