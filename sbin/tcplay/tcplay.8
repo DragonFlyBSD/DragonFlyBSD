@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 8, 2013
+.Dd April 30, 2020
 .Dt TCPLAY 8
 .Os
 .Sh NAME
@@ -48,6 +48,7 @@
 .Op Fl k Ar keyfile
 .Op Fl x Ar pbkdf_hash
 .Op Fl y Ar cipher
+.Op Fl -fde
 .Nm
 .Fl i
 .Fl d Ar device
@@ -56,7 +57,6 @@
 .Op Fl f Ar keyfile_hidden
 .Op Fl k Ar keyfile
 .Op Fl s Ar system_device
-.Op Fl -fde
 .Op Fl -use-backup
 .Op Fl -use-hdr-file Ar hdr_file
 .Op Fl -use-hidden-hdr-file Ar hdr_file
@@ -141,10 +141,6 @@ Removes (unmaps) the
 mapping specified by
 .Ar mapping
 as well as any related cascade mappings.
-If you mapped a volume using full disk encryption and created
-mapping for individual partitions using
-.Xr kpartx 8 ,
-you must remove these prior to unmapping the volume.
 .It Fl v , Fl -version
 Print version message and exit.
 .El
@@ -286,9 +282,6 @@ option should point to the whole disk device, not to any particular
 partition.
 The resultant mapping will cover the whole disk, and will not appear as
 separate partitions.
-To access individual partitions after mapping,
-.Xr kpartx 8
-can be used.
 .It Fl -use-backup
 This option is intended to be used when the primary headers of a volume
 have been corrupted.
@@ -423,7 +416,7 @@ and
 .Bd -ragged -offset indent
 .Nm Fl -create
 .Fl -device Ns = Ns Cm /dev/vn0
-.Fl -cipher Ns = Ns Cm AES-256-XTS,TWOFISH-256-XTS
+.Fl -cipher Ns = Ns Cm TWOFISH-256-XTS,AES-256-XTS
 .Fl -pbkdf-prf Ns = Ns Cm whirlpool
 .Fl -keyfile Ns = Ns Cm one.key
 .Fl -keyfile Ns = Ns Cm two.key
@@ -456,21 +449,7 @@ using the keyfile
 .Ed
 .Pp
 Map and mount the volume in the file
-.Pa secvol
-on Linux:
-.Bd -ragged -offset indent
-.Sy losetup Cm /dev/loop1 Cm secvol
-.Ed
-.Bd -ragged -offset indent
-.Nm Fl -map Ns = Ns Cm secv
-.Fl -device Ns = Ns Cm /dev/loop1
-.Ed
-.Bd -ragged -offset indent
-.Sy mount Cm /dev/mapper/secv Cm /mnt
-.Ed
-.Pp
-Similarly on
-.Dx :
+.Pa secvol :
 .Bd -ragged -offset indent
 .Sy vnconfig Cm vn1 Cm secvol
 .Ed
@@ -484,8 +463,6 @@ Similarly on
 .Pp
 Unmapping the volume
 .Sy truecrypt2
-on both Linux and
-.Dx
 after unmounting:
 .Bd -ragged -offset indent
 .Sy dmsetup Cm remove Cm truecrypt2
@@ -501,8 +478,8 @@ can for example be created with
 .Bd -ragged -offset indent
 .Nm Fl -create
 .Fl -hidden
-.Fl -device Ns = Ns Cm /dev/loop0
-.Fl -cipher Ns = Ns Cm AES-256-XTS,TWOFISH-256-XTS
+.Fl -device Ns = Ns Cm /dev/vn0
+.Fl -cipher Ns = Ns Cm TWOFISH-256-XTS,AES-256-XTS
 .Fl -pbkdf-prf Ns = Ns Cm whirlpool
 .Fl -keyfile Ns = Ns Cm one.key
 .Fl -cipher-hidden Ns = Ns Cm AES-256-XTS
@@ -533,23 +510,16 @@ option.
 .Pp
 A disk encrypted using full disk encryption can be mapped using
 .Bd -ragged -offset indent
-.Nm Fl -map Ns = Ns Cm tcplay_sdb
-.Fl -device Ns = Ns Cm /dev/sdb
+.Nm Fl -map Ns = Ns Cm tcplay_da2
+.Fl -device Ns = Ns Cm /dev/da2
 .Fl -fde
-.Ed
-.Pp
-To access individual partitions on the now mapped disk,
-the following command will generate mappings for each
-individual partition on the encrypted disk:
-.Bd -ragged -offset indent
-.Sy kpartx Fl -av Cm /dev/mapper/tcplay_sdb
 .Ed
 .Pp
 To restore the main volume header from the backup header, the following
 command can be used:
 .Bd -ragged -offset indent
 .Nm Fl -modify
-.Fl -device Ns = Ns Cm /dev/sdb
+.Fl -device Ns = Ns Cm /dev/da2
 .Fl -restore-from-backup-hdr
 .Ed
 .Pp
@@ -559,8 +529,8 @@ on the passphrase and keyfiles used.
 To save a backup copy of a header, the following command can be used:
 .Bd -ragged -offset indent
 .Nm Fl -modify
-.Fl -device Ns = Ns Cm /dev/sdb
-.Fl -save-hdr-backup Ns = Ns Cm /tmp/sdb_backup_header.hdr
+.Fl -device Ns = Ns Cm /dev/da2
+.Fl -save-hdr-backup Ns = Ns Cm /tmp/da2_backup_header.hdr
 .Ed
 .Pp
 As with most other commands, which header is saved (used as source) depends
@@ -570,13 +540,15 @@ To restore a header from a backup header file, the following command can be
 used:
 .Bd -ragged -offset indent
 .Nm Fl -modify
-.Nm -use-hdr-file Ns = Ns Cm /tmp/sdb_backup_header.hdr
+.Fl -device Ns = Ns Cm /dev/da2
+.Fl -use-hdr-file Ns = Ns Cm /tmp/da2_backup_header.hdr
 .Ed
 .Pp
 Similarly, to restore a hidden header from a backup header file:
 .Bd -ragged -offset indent
 .Nm Fl -modify
-.Nm -use-hidden-hdr-file Ns = Ns Cm /tmp/sdb_backup_hidden_header.hdr
+.Fl -device Ns = Ns Cm /dev/da2
+.Fl -use-hidden-hdr-file Ns = Ns Cm /tmp/da2_backup_hidden_header.hdr
 .Ed
 .Pp
 Which header is used as the source of the operation will still depend on the
@@ -588,8 +560,7 @@ main header will be used instead.
 .Sh SEE ALSO
 .Xr crypttab 5 ,
 .Xr cryptsetup 8 ,
-.Xr dmsetup 8 ,
-.Xr kpartx 8
+.Xr dmsetup 8
 .Sh HISTORY
 The
 .Nm
