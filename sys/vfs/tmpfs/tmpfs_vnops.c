@@ -2091,6 +2091,9 @@ tmpfs_move_pages_callback(vm_page_t p, void *data)
 	struct rb_vm_page_scan_info *info = data;
 	vm_pindex_t pindex;
 
+	/*
+	 * Take control of the page
+	 */
 	pindex = p->pindex;
 	if (vm_page_busy_try(p, TRUE)) {
 		vm_page_sleep_busy(p, TRUE, "tpgmov");
@@ -2103,6 +2106,17 @@ tmpfs_move_pages_callback(vm_page_t p, void *data)
 		return -1;
 	}
 
+	/*
+	 * Make sure the page is not mapped.  These flags might also still be
+	 * set heuristically even if we know the page is not mapped and must
+	 * be properly cleaned up.
+	 */
+	if (__predict_false((p->flags & (PG_MAPPED|PG_WRITEABLE)) != 0))
+		vm_page_protect(p, VM_PROT_NONE);
+
+	/*
+	 * Free or rename the page as appropriate
+	 */
 	if ((info->pagerflags & TMPFS_MOVF_FROMBACKING) &&
 	    (p->flags & PG_SWAPPED) &&
 	    (p->flags & PG_NEED_COMMIT) == 0 &&
