@@ -364,6 +364,7 @@ moduledata_t vinum_mod =
     0
 };
 DECLARE_MODULE(vinum, vinum_mod, SI_SUB_RAID, SI_ORDER_MIDDLE);
+MODULE_VERSION(vinum, 1);
 
 /* ARGSUSED */
 /* Open a vinum object */
