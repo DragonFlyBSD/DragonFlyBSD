@@ -42,6 +42,7 @@
 #include <sys/socket.h>
 #include <sys/mount.h>
 #include <sys/procctl.h>
+#include <sys/resource.h>	/* setpriority() */
 #if defined(__DragonFly__)
 #include <sys/vmmeter.h>
 #endif
@@ -505,6 +506,7 @@ extern int DynamicMaxWorkers;
 extern buildenv_t *BuildEnv;
 extern int WorkerProcFlags;
 extern int DebugOpt;
+extern int NiceOpt;
 extern int MaskProbeAbort;
 extern int ColorOpt;
 extern int SlowStartOpt;
