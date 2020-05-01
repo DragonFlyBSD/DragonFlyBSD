@@ -489,6 +489,12 @@ dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
 		dup2(nullfd, 0);	/* no questions! */
 		closefrom(3);		/* be nice */
 
+		/*
+		 * Self-nice to be nice (ignore any error)
+		 */
+		if (NiceOpt)
+			setpriority(PRIO_PROCESS, 0, NiceOpt);
+
 		execve(cav[0], (void *)cav, (void *)cenv);
 		write(2, "EXEC FAILURE\n", 13);
 		_exit(1);

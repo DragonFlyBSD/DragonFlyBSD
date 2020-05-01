@@ -40,7 +40,7 @@
 .Nd dsynth bulk dports builder utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl dhvyDS
+.Op Fl dhvyDSN
 .Op Fl p Ar profile
 .Op Fl s Ar n
 .Op Fl m Ar gb
@@ -204,6 +204,11 @@ turned off.
 You may also wish to use the
 .Fl y
 option for scripting dsynth.
+.It Fl N
+Normally
+.Nm
+nices its sub-processes to +10.
+This option disables the feature.
 .El
 .Sh DIRECTIVES
 Generally

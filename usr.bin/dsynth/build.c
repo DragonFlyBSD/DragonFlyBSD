@@ -2226,9 +2226,15 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 	 */
 	if (pid == 0) {
 		/*
-		 * Slave waits for handshake
+		 * Slave nices itself and waits for handshake
 		 */
 		char ttybuf[2];
+
+		/*
+		 * Self-nice to be nice (ignore any error)
+		 */
+		if (NiceOpt)
+			setpriority(PRIO_PROCESS, 0, NiceOpt);
 
 		read(0, ttybuf, 1);
 	} else {

@@ -49,6 +49,7 @@ int SlowStartOpt = -1;
 long PkgDepMemoryTarget;
 char *DSynthExecPath;
 char *ProfileOverrideOpt;
+int NiceOpt = 10;
 
 int
 main(int ac, char **av)
@@ -85,7 +86,7 @@ main(int ac, char **av)
 	 * Process options and make sure the directive is present
 	 */
 	sopt = 0;
-	while ((c = getopt(ac, av, "dhm:p:vys:DPS")) != -1) {
+	while ((c = getopt(ac, av, "dhm:p:vys:DPSN")) != -1) {
 		switch(c) {
 		case 'y':
 			++YesOpt;
@@ -100,6 +101,9 @@ main(int ac, char **av)
 			UseNCurses = 0;
 			if (++sopt == 2)
 				ColorOpt = 0;
+			break;
+		case 'N':
+			NiceOpt = 0;
 			break;
 		case 'd':
 			++DebugOpt;
@@ -461,6 +465,7 @@ usage(int ecode)
     "    -D                   - Enable DEVELOPER mode\n"
     "    -P                   - Include the check-plist stage\n"
     "    -S                   - Disable ncurses\n"
+    "    -N                   - Do not nice-up sub-processes (else nice +10)\n"
     "\n"
     "    init                 - Initialize /etc/dsynth\n"
     "    status               - Dry-run of 'upgrade-system'\n"
