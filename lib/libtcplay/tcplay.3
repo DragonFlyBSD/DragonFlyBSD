@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 20, 2014
+.Dd May 2, 2020
 .Dt TCPLAY 3
 .Os
 .Sh NAME
@@ -308,10 +308,6 @@ If specified, the device pointed to by the
 .Fa dev
 setting should be a whole disk device, not any partition.
 The device will be mapped or queried as a whole.
-To access individual partitions, a utility such as
-.Xr kpartx 8
-should be used, which will create additional individual mappings
-for each partition in the decrypted mapped volume.
 For more details on full disk encryption, see
 .Xr tcplay 8 .
 .It use_backup_header
@@ -558,8 +554,7 @@ library offers full compatibility with TrueCrypt volumes including
 hidden
 volumes, system encryption (map-only), keyfiles and cipher cascading.
 .Sh SEE ALSO
-.Xr tcplay 8 ,
-.Xr kpartx 8
+.Xr tcplay 8
 .Sh HISTORY
 The
 .Nm tcplay
