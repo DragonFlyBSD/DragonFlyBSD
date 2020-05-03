@@ -372,7 +372,7 @@ size_t wpas_supp_op_class_ie(struct wpa_supplicant *wpa_s,
 
 	*ie_len = wpabuf_len(buf) - 2;
 	if (*ie_len < 2 || wpabuf_len(buf) > len) {
-		wpa_printf(MSG_ERROR,
+		wpa_printf(MSG_WARNING,
 			   "Failed to add supported operating classes IE");
 		res = 0;
 	} else {

@@ -2,7 +2,6 @@ CONTRIBDIR= ${.CURDIR}/../../../contrib
 WPA_DISTDIR=${CONTRIBDIR}/wpa_supplicant
 
 .PATH.c:	${.CURDIR}/.. \
-		${WPA_DISTDIR}/src/ap \
 		${WPA_DISTDIR}/src/common \
 		${WPA_DISTDIR}/src/crypto \
 		${WPA_DISTDIR}/src/eap_common \
@@ -13,6 +12,7 @@ WPA_DISTDIR=${CONTRIBDIR}/wpa_supplicant
 
 CFLAGS+=-I${.CURDIR}
 CFLAGS+=-I${WPA_DISTDIR}/src
+CFLAGS+=-I${WPA_DISTDIR}/src/ap
 CFLAGS+=-I${WPA_DISTDIR}/src/common
 CFLAGS+=-I${WPA_DISTDIR}/src/crypto
 CFLAGS+=-I${WPA_DISTDIR}/src/l2_packet

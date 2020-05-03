@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd April 29, 2020
+.Dd May 21, 2020
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -790,6 +790,8 @@ This will start
 See
 .Xr wpa_supplicant.conf 5
 for configuring authentication information.
+But see also
+.Va wpa_supplicant_enable .
 .Pp
 Finally, you can add
 .Xr ifconfig 8
@@ -1734,6 +1736,28 @@ is set to
 .Dq Li YES ,
 these are the flags to pass to the
 .Xr rarpd 8
+daemon.
+.It Va wpa_supplicant_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+run the
+.Xr wpa_supplicant 8
+daemon in
+.Dq interface matching mode
+at system boot time.
+.It Va wpa_supplicant_program
+.Pq Vt str
+Path to
+.Xr wpa_supplicant 8 .
+.It Va wpa_supplicant_flags
+.Pq Vt str
+If
+.Va wpa_supplicant_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to the
+.Xr wpa_supplicant 8
 daemon.
 .It Va bootparamd_enable
 .Pq Vt bool
@@ -2773,6 +2797,7 @@ By default no flags are passed.
 .Xr syslogd 8 ,
 .Xr sysvipcd 8 ,
 .Xr vinum 8 ,
+.Xr wpa_supplicant 8 ,
 .Xr yp 8 ,
 .Xr ypbind 8 ,
 .Xr ypserv 8 ,

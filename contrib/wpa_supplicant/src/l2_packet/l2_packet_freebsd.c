@@ -8,7 +8,8 @@
  */
 
 #include "includes.h"
-#if defined(__APPLE__) || defined(__GLIBC__)
+#include <sys/param.h>
+#if defined(__APPLE__) || defined(__GLIBC__) || defined(__DragonFly__)
 #include <net/bpf.h>
 #endif /* __APPLE__ */
 #include <pcap.h>

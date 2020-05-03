@@ -639,6 +639,24 @@ hexprint()
 	echo ${str}
 }
 
+is_wired_interface()
+{
+	local media
+
+	case `ifconfig $1 2>/dev/null` in
+		*media:?Ethernet*) media=Ethernet ;;
+	esac
+
+	test "$media" = "Ethernet"
+}
+
+is_ndis_interface()
+{
+	case `sysctl -n net.wlan.${1#wlan}.%parent 2>/dev/null` in
+		ndis*) true ;;
+		*) false ;;
+	esac
+}
 
 #
 # IPv6-specific setup subroutines

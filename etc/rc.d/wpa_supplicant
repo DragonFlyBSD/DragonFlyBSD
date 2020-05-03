@@ -5,67 +5,39 @@
 
 # PROVIDE: wpa_supplicant
 # REQUIRE: mountcritremote
-# KEYWORD: nojail nostart
+# KEYWORD: nojail
 
 . /etc/rc.subr
 . /etc/network.subr
 
 name="wpa_supplicant"
-rcvar=
-command="/usr/sbin/wpa_supplicant"
-conf_file="/etc/wpa_supplicant.conf"
-start_postcmd="wpa_supplicant_postcmd"
-
-wpa_supplicant_postcmd()
-{
-	if [ "${command}" = "/usr/sbin/wpa_supplicant" ];
-	then
-		cat << EOF
-         ==============================================================
-         =              WARNING  *  SECURITY  *  WARNING              =
-         ==============================================================
-
-The base wpa_supplicant is running.  This version is several releases behind
-and is not patched for security vulnerabilities.  It is highly recommended
-that the DPorts version be run instead.  Instructions to switch here:
-
-http://www.dragonflybsd.org/docs/docs/newhandbook/WirelessNetwork/#index1h2
-
-EOF
-		sleep 10
-	fi
-}
-
-ifn="$2"
-if [ -z "$ifn" ]; then
-	return 1
-fi
-
-is_ndis_interface()
-{
-	case `${SYSCTL_N} -q net.wlan.${1#wlan}.%parent` in
-		ndis*) true ;;
-		*) false ;;
-	esac
-}
-
-if is_ndis_interface ${ifn}; then
-	driver="ndis"
-else
-	driver="bsd"
-fi
-
-# For the moment, prefer the DPorts wpa_supplicant if it exists.
-# Since '/etc/defaults/rc.conf' does not set 'wpa_supplicant_program',
-# the following 'command' assignment is enough.
-if [ -x "/usr/local/sbin/wpa_supplicant" ]; then
-	command="/usr/local/sbin/wpa_supplicant"
-fi
+rcvar=`set_rcvar`
 
 load_rc_config $name
 
-pid_file="/var/run/${name}/${ifn}.pid"
-command_args="-B -q -i $ifn -c $conf_file -D $driver -P $pid_file"
-required_files=$conf_file
+ifn="$2"
 
+if [ -z "${ifn}" ]; then
+	# got no interface, run single daemon for multiple matching interfaces
+	# but ensure the feature is supported first
+	case `${wpa_supplicant_program} -h 2>/dev/null` in
+		*-M*) match_iface=1 ;;
+		*) return 1 ;;
+	esac
+	flags="-M -i wlan* -D bsd -P /var/run/${name}.pid ${wpa_supplicant_flags}"
+else
+	# got particular interface, possibly called from ifconfig_up() in network.subr
+	# force "enable" to ensure run_rc_command below runs daemon for the interface
+	wpa_supplicant_enable="YES"
+	if is_wired_interface ${ifn} ; then
+		driver="wired"
+	elif is_ndis_interface ${ifn} ; then
+		driver="ndis"
+	else
+		driver="bsd"
+	fi
+	flags="-i ${ifn} -D ${driver} -P /var/run/${name}/${ifn}.pid ${wpa_supplicant_flags}"
+fi
+
+flags="-B -s ${flags}"
 run_rc_command "$1"

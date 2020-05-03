@@ -24,42 +24,39 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/wpa/wpa_passphrase/wpa_passphrase.8 195644 2009-07-12 19:58:52Z sam $
 .\"
-.Dd July 17, 2007
+.Dd May 21, 2020
 .Dt WPA_PASSPHRASE 8
 .Os
 .Sh NAME
 .Nm wpa_passphrase
-.Nd "utility for generating a 256-bit pre-shared WPA key from an ASCII passphrase"
+.Nd utility for generating a 256-bit pre-shared WPA key from
+an ASCII passphrase
 .Sh SYNOPSIS
 .Nm
 .Aq Ar ssid
 .Op Ar passphrase
 .Sh DESCRIPTION
-The
 .Nm
-utility is a small program for generating a 256-bit pre-shared WPA key
-from an ASCII passphrase and a given SSID. The output is formatted for
-inclusion in
-.Xr wpa_supplicant.conf 5 .
+pre-computes PSK entries for network configuration blocks of a
+.Xr wpa_supplicant.conf 5
+file. An ASCII passphrase and SSID are used to generate a 256-bit PSK.
+.Sh OPTIONS
+.Bl -tag -width indent
+.It Ic ssid
+The SSID whose passphrase should be derived.
+.It Ic passphrase
+The passphrase to use. If not included on the command line,
+passphrase will be read from standard input.
+.Sh "SEE ALSO"
 .Pp
-If
-.Nm
-is called with only an SSID as argument it will prompt for a
-passphrase on standard input.
-.Sh SEE ALSO
 .Xr wpa_supplicant.conf 5 ,
 .Xr wpa_supplicant 8
-.Sh HISTORY
-The
-.Nm
-utility first appeared in
-.Fx 6.3 .
 .Sh AUTHORS
-.An -nosplit
-The
-.Nm
-utility was written by
-.An Jouni Malinen Aq Mt j@w1.fi .
 .Pp
-This manual page was written by
-.An Henrik Brix Andersen Aq Mt henrik@brixandersen.dk .
+wpa_supplicant is copyright (c) 2003-2019,
+Jouni Malinen <j@w1.fi> and
+contributors.
+All Rights Reserved.
+.Pp
+This program is licensed under the BSD license (the one with
+advertisement clause removed).

@@ -2,10 +2,11 @@
 
 .include "${.CURDIR}/../Makefile.inc"
 
-.PATH.c:	${.CURDIR}/..  \
-		${WPA_DISTDIR}/wpa_supplicant
+.PATH.c:	${WPA_DISTDIR}/wpa_supplicant
+
 PROG=	wpa_cli
-SRCS=	common.c edit.c eloop.c os_unix.c wpa_cli.c wpa_ctrl.c wpa_debug.c
+SRCS=	common.c cli.c edit_simple.c eloop.c os_unix.c wpa_cli.c wpa_ctrl.c \
+	wpa_debug.c
 
 MAN=	wpa_cli.8
 

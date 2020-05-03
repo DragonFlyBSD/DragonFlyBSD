@@ -1,3 +1,5 @@
+CONTRIBUTIONS
+hs20/
 src/Makefile
 src/ap/Makefile
 src/common/Makefile
@@ -12,9 +14,11 @@ src/eap_peer/Makefile
 src/eap_server/Makefile
 src/eapol_auth/Makefile
 src/eapol_supp/Makefile
+src/fst/Makefile
 src/l2_packet/Makefile
 src/lib.rules
 src/p2p/Makefile
+src/pae/Makefile
 src/radius/.gitignore
 src/radius/Makefile
 src/rsn_supp/Makefile
@@ -31,7 +35,6 @@ wpa_supplicant/android.config
 wpa_supplicant/dbus/.gitignore
 wpa_supplicant/dbus/Makefile
 wpa_supplicant/dbus/dbus-wpa_supplicant.conf
-wpa_supplicant/dbus/fi.epitest.hostap.WPASupplicant.service.in
 wpa_supplicant/dbus/fi.w1.wpa_supplicant1.service.in
 wpa_supplicant/defconfig
 wpa_supplicant/doc/
@@ -39,9 +42,8 @@ wpa_supplicant/eap_proxy_dummy.mk
 wpa_supplicant/examples/
 wpa_supplicant/nmake.mak
 wpa_supplicant/systemd/
-wpa_supplicant/tests/
 wpa_supplicant/todo.txt
-wpa_supplicant/utils/log2pcap.py
+wpa_supplicant/utils/
 wpa_supplicant/vs2005/
 wpa_supplicant/win_example.reg
 wpa_supplicant/wpa_gui-qt4/

@@ -438,7 +438,7 @@ int aes_wrap(const u8 *kek, size_t kek_len, int n, const u8 *plain, u8 *cipher)
 	if (AES_set_encrypt_key(kek, kek_len << 3, &actx))
 		return -1;
 	res = AES_wrap_key(&actx, NULL, cipher, plain, n * 8);
-	OPENSSL_cleanse(&actx, sizeof(actx));
+	memset(&actx, 0, sizeof(actx));
 	return res <= 0 ? -1 : 0;
 }
 
@@ -454,7 +454,7 @@ int aes_unwrap(const u8 *kek, size_t kek_len, int n, const u8 *cipher,
 	if (AES_set_decrypt_key(kek, kek_len << 3, &actx))
 		return -1;
 	res = AES_unwrap_key(&actx, NULL, plain, cipher, (n + 1) * 8);
-	OPENSSL_cleanse(&actx, sizeof(actx));
+	memset(&actx, 0, sizeof(actx));
 	return res <= 0 ? -1 : 0;
 }
 
