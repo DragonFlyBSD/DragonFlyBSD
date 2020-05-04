@@ -54,10 +54,17 @@
 #include <vm/vm_zone.h>
 #include <vm/vm_page2.h>
 
-static void dev_pager_dealloc (vm_object_t);
-static int dev_pager_getpage (vm_object_t, vm_page_t *, int);
-static void dev_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
-static boolean_t dev_pager_haspage (vm_object_t, vm_pindex_t);
+static	pgo_dealloc_t		dev_pager_dealloc;
+static	pgo_getpage_t		dev_pager_getpage;
+static	pgo_putpages_t		dev_pager_putpages;
+static	pgo_haspage_t		dev_pager_haspage;
+
+struct pagerops devicepagerops = {
+	.pgo_dealloc =		dev_pager_dealloc,
+	.pgo_getpage =		dev_pager_getpage,
+	.pgo_putpages =		dev_pager_putpages,
+	.pgo_haspage =		dev_pager_haspage
+};
 
 /* list of device pager objects */
 static TAILQ_HEAD(, vm_page) dev_freepages_list =
@@ -67,13 +74,6 @@ static MALLOC_DEFINE(M_FICTITIOUS_PAGES, "device-mapped pages",
 
 static vm_page_t dev_pager_getfake (vm_paddr_t, int);
 static void dev_pager_putfake (vm_page_t);
-
-struct pagerops devicepagerops = {
-	dev_pager_dealloc,
-	dev_pager_getpage,
-	dev_pager_putpages,
-	dev_pager_haspage
-};
 
 /* list of device pager objects */
 static struct pagerlst dev_pager_object_list =

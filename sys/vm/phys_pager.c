@@ -41,6 +41,18 @@
 
 #include <vm/vm_page2.h>
 
+static	pgo_dealloc_t		phys_pager_dealloc;
+static	pgo_getpage_t		phys_pager_getpage;
+static	pgo_putpages_t		phys_pager_putpages;
+static	pgo_haspage_t		phys_pager_haspage;
+
+struct pagerops physpagerops = {
+	.pgo_dealloc =		phys_pager_dealloc,
+	.pgo_getpage =		phys_pager_getpage,
+	.pgo_putpages =		phys_pager_putpages,
+	.pgo_haspage =		phys_pager_haspage
+};
+
 /*
  * No requirements.
  */
@@ -120,10 +132,3 @@ phys_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
 	return (TRUE);
 }
-
-struct pagerops physpagerops = {
-	phys_pager_dealloc,
-	phys_pager_getpage,
-	phys_pager_putpages,
-	phys_pager_haspage
-};

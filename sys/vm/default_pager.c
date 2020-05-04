@@ -50,19 +50,19 @@
 #include <vm/vm_pager.h>
 #include <vm/swap_pager.h>
 
-static void default_pager_dealloc (vm_object_t);
-static int default_pager_getpage (vm_object_t, vm_page_t *, int);
-static void default_pager_putpages (vm_object_t, vm_page_t *, int,
-		int, int *);
-static boolean_t default_pager_haspage (vm_object_t, vm_pindex_t);
+static	pgo_dealloc_t		default_pager_dealloc;
+static	pgo_getpage_t		default_pager_getpage;
+static	pgo_putpages_t		default_pager_putpages;
+static	pgo_haspage_t		default_pager_haspage;
+
 /*
  * pagerops for OBJT_DEFAULT - "default pager".
  */
 struct pagerops defaultpagerops = {
-	default_pager_dealloc,
-	default_pager_getpage,
-	default_pager_putpages,
-	default_pager_haspage
+	.pgo_dealloc =		default_pager_dealloc,
+	.pgo_getpage =		default_pager_getpage,
+	.pgo_putpages =		default_pager_putpages,
+	.pgo_haspage =		default_pager_haspage
 };
 
 /*

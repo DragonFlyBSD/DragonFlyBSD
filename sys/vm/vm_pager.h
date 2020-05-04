@@ -58,11 +58,16 @@ TAILQ_HEAD(pagerlst, vm_object);
 struct buf;
 struct bio;
 
+typedef void pgo_dealloc_t(vm_object_t);
+typedef int pgo_getpage_t(vm_object_t, vm_page_t *, int);
+typedef void pgo_putpages_t(vm_object_t, vm_page_t *, int, int, int *);
+typedef boolean_t pgo_haspage_t(vm_object_t, vm_pindex_t);
+
 struct pagerops {
-	void (*pgo_dealloc) (vm_object_t);
-	int (*pgo_getpage) (vm_object_t, vm_page_t *, int);
-	void (*pgo_putpages) (vm_object_t, vm_page_t *, int, int, int *);
-	boolean_t (*pgo_haspage) (vm_object_t, vm_pindex_t);
+	pgo_dealloc_t	*pgo_dealloc;
+	pgo_getpage_t	*pgo_getpage;
+	pgo_putpages_t	*pgo_putpages;
+	pgo_haspage_t	*pgo_haspage;
 };
 #endif	/* _KERNEL */
 

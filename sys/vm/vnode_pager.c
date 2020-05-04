@@ -73,16 +73,16 @@
 
 #include <vm/vm_page2.h>
 
-static void vnode_pager_dealloc (vm_object_t);
-static int vnode_pager_getpage (vm_object_t, vm_page_t *, int);
-static void vnode_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
-static boolean_t vnode_pager_haspage (vm_object_t, vm_pindex_t);
+static	pgo_dealloc_t		vnode_pager_dealloc;
+static	pgo_getpage_t		vnode_pager_getpage;
+static	pgo_putpages_t		vnode_pager_putpages;
+static	pgo_haspage_t		vnode_pager_haspage;
 
 struct pagerops vnodepagerops = {
-	vnode_pager_dealloc,
-	vnode_pager_getpage,
-	vnode_pager_putpages,
-	vnode_pager_haspage
+	.pgo_dealloc =		vnode_pager_dealloc,
+	.pgo_getpage =		vnode_pager_getpage,
+	.pgo_putpages =		vnode_pager_putpages,
+	.pgo_haspage =		vnode_pager_haspage
 };
 
 static struct krate vbadrate = { 1 };

@@ -88,16 +88,23 @@
 #include <sys/buf2.h>
 #include <vm/vm_page2.h>
 
+static	pgo_dealloc_t		dead_pager_dealloc;
+static	pgo_getpage_t		dead_pager_getpage;
+static	pgo_putpages_t		dead_pager_putpages;
+static	pgo_haspage_t		dead_pager_haspage;
+
+static struct pagerops deadpagerops = {
+	.pgo_dealloc =		dead_pager_dealloc,
+	.pgo_getpage =		dead_pager_getpage,
+	.pgo_putpages =		dead_pager_putpages,
+	.pgo_haspage =		dead_pager_haspage
+};
+
 extern struct pagerops defaultpagerops;
 extern struct pagerops swappagerops;
 extern struct pagerops vnodepagerops;
 extern struct pagerops devicepagerops;
 extern struct pagerops physpagerops;
-
-static int dead_pager_getpage (vm_object_t, vm_page_t *, int);
-static void dead_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
-static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t);
-static void dead_pager_dealloc (vm_object_t);
 
 /*
  * No requirements.
@@ -140,13 +147,6 @@ dead_pager_dealloc(vm_object_t object)
 	KKASSERT(object->swblock_count == 0);
 	return;
 }
-
-static struct pagerops deadpagerops = {
-	dead_pager_dealloc,
-	dead_pager_getpage,
-	dead_pager_putpages,
-	dead_pager_haspage
-};
 
 struct pagerops *pagertab[] = {
 	&defaultpagerops,	/* OBJT_DEFAULT */
