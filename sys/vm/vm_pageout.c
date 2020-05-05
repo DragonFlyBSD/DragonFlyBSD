@@ -362,7 +362,7 @@ vm_pageout_clean_helper(vm_page_t m, int vmflush_flags)
 		}
 		if (p->queue - p->pc != PQ_INACTIVE) {
 			if (p->queue - p->pc != PQ_ACTIVE ||
-			    (vmflush_flags & VM_PAGER_ALLOW_ACTIVE) == 0) {
+			    (vmflush_flags & OBJPC_ALLOW_ACTIVE) == 0) {
 				vm_page_wakeup(p);
 				break;
 			}
@@ -405,7 +405,7 @@ vm_pageout_clean_helper(vm_page_t m, int vmflush_flags)
 		}
 		if (p->queue - p->pc != PQ_INACTIVE) {
 			if (p->queue - p->pc != PQ_ACTIVE ||
-			    (vmflush_flags & VM_PAGER_ALLOW_ACTIVE) == 0) {
+			    (vmflush_flags & OBJPC_ALLOW_ACTIVE) == 0) {
 				vm_page_wakeup(p);
 				break;
 			}
@@ -473,7 +473,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 	 * of our soft-busy.
 	 */
 	for (i = 0; i < count; i++) {
-		if (vmflush_flags & VM_PAGER_TRY_TO_CACHE)
+		if (vmflush_flags & OBJPC_TRY_TO_CACHE)
 			vm_page_protect(mc[i], VM_PROT_NONE);
 		else
 			vm_page_protect(mc[i], VM_PROT_READ);
@@ -486,7 +486,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 	vm_pager_put_pages(object, mc, count,
 			   (vmflush_flags |
 			    ((object == &kernel_object) ?
-				VM_PAGER_PUT_SYNC : 0)),
+				OBJPC_SYNC : 0)),
 			   pageout_status);
 
 	for (i = 0; i < count; i++) {
@@ -541,7 +541,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 		if (pageout_status[i] != VM_PAGER_PEND) {
 			vm_page_busy_wait(mt, FALSE, "pgouw");
 			vm_page_io_finish(mt);
-			if (vmflush_flags & VM_PAGER_TRY_TO_CACHE) {
+			if (vmflush_flags & OBJPC_TRY_TO_CACHE) {
 				vm_page_try_to_cache(mt);
 			} else if (vm_page_count_severe()) {
 				vm_page_deactivate(mt);
@@ -670,10 +670,10 @@ vm_pageout_mdp_callback(struct pmap_pgscan_info *info, vm_offset_t va,
 		info->offset = va;
 
 		if (vm_pageout_memuse_mode >= 2) {
-			vmflush_flags = VM_PAGER_TRY_TO_CACHE |
-					VM_PAGER_ALLOW_ACTIVE;
+			vmflush_flags = OBJPC_TRY_TO_CACHE |
+					OBJPC_ALLOW_ACTIVE;
 			if (swap_user_async == 0)
-				vmflush_flags |= VM_PAGER_PUT_SYNC;
+				vmflush_flags |= OBJPC_SYNC;
 			vm_page_flag_set(p, PG_WINATCFLS);
 			info->cleancount +=
 				vm_pageout_page(p, &max_launder,
@@ -954,9 +954,9 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 
 		vmflush_flags = 0;
 		if (vm_pageout_allow_active)
-			vmflush_flags |= VM_PAGER_ALLOW_ACTIVE;
+			vmflush_flags |= OBJPC_ALLOW_ACTIVE;
 		if (m->flags & PG_WINATCFLS)
-			vmflush_flags |= VM_PAGER_TRY_TO_CACHE;
+			vmflush_flags |= OBJPC_TRY_TO_CACHE;
 		count = vm_pageout_page(m, &max_launder, vnodes_skipped,
 					&vpfailed, pass, vmflush_flags, counts);
 		delta += count;

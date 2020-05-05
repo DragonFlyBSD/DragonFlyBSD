@@ -743,11 +743,11 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	 * the system decides how to cluster.
 	 */
 	ioflags = IO_VMIO;
-	if (flags & (VM_PAGER_PUT_SYNC | VM_PAGER_PUT_INVAL))
+	if (flags & (OBJPC_SYNC | OBJPC_INVAL))
 		ioflags |= IO_SYNC;
-	else if ((flags & VM_PAGER_CLUSTER_OK) == 0)
+	else if ((flags & OBJPC_CLUSTER_OK) == 0)
 		ioflags |= IO_ASYNC;
-	ioflags |= (flags & VM_PAGER_PUT_INVAL) ? IO_INVAL: 0;
+	ioflags |= (flags & OBJPC_INVAL) ? IO_INVAL: 0;
 	ioflags |= IO_SEQMAX << IO_SEQSHIFT;
 
 	aiov.iov_base = (caddr_t) 0;

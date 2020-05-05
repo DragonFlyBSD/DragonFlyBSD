@@ -132,7 +132,7 @@
 #define SWBIO_READ	0x01
 #define SWBIO_WRITE	0x02
 #define SWBIO_SYNC	0x04
-#define SWBIO_TTC	0x08	/* for VM_PAGER_TRY_TO_CACHE */
+#define SWBIO_TTC	0x08	/* for OBJPC_TRY_TO_CACHE */
 
 struct swfreeinfo {
 	vm_object_t	object;
@@ -1622,7 +1622,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	if (curthread != pagethread &&
 	    curthread != emergpager &&
 	    swap_user_async == 0) {
-		flags |= VM_PAGER_PUT_SYNC;
+		flags |= OBJPC_SYNC;
 	}
 
 	/*
@@ -1721,7 +1721,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 *
 		 * Use the KVABIO API to avoid synchronizing the pmap.
 		 */
-		if ((flags & VM_PAGER_PUT_SYNC))
+		if ((flags & OBJPC_SYNC))
 			bp = getpbuf_kva(&nsw_wcount_sync);
 		else
 			bp = getpbuf_kva(&nsw_wcount_async);
@@ -1760,7 +1760,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		/*
 		 * asynchronous
 		 */
-		if ((flags & VM_PAGER_PUT_SYNC) == 0) {
+		if ((flags & OBJPC_SYNC) == 0) {
 			bio->bio_done = swp_pager_async_iodone;
 			BUF_KERNPROC(bp);
 			vn_strategy(swapdev_vp, bio);
@@ -1779,7 +1779,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 * double-free.
 		 */
 		bio->bio_caller_info1.index |= SWBIO_SYNC;
-		if (flags & VM_PAGER_TRY_TO_CACHE)
+		if (flags & OBJPC_TRY_TO_CACHE)
 			bio->bio_caller_info1.index |= SWBIO_TTC;
 		bio->bio_done = biodone_sync;
 		bio->bio_flags |= BIO_SYNC;

@@ -228,9 +228,13 @@ struct vm_object {
 
 #ifdef	_KERNEL
 
-#define OBJPC_SYNC	0x1			/* sync I/O */
-#define OBJPC_INVAL	0x2			/* invalidate */
-#define OBJPC_NOSYNC	0x4			/* skip if PG_NOSYNC */
+#define OBJPC_SYNC		0x0001	/* sync I/O */
+#define OBJPC_INVAL		0x0002	/* invalidate */
+#define OBJPC_NOSYNC		0x0004	/* skip if PG_NOSYNC */
+#define OBJPC_IGNORE_CLEANCHK	0x0008
+#define OBJPC_CLUSTER_OK	0x0010	/* used only by vnode pager */
+#define OBJPC_TRY_TO_CACHE	0x0020	/* typically used only in pageout path */
+#define OBJPC_ALLOW_ACTIVE	0x0040	/* dito */
 
 #if 0
 /*
