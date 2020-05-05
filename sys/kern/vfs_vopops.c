@@ -1088,7 +1088,7 @@ vop_getpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
  */
 int
 vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
-	int sync, int *rtvals, vm_ooffset_t offset)
+	int flags, int *rtvals, vm_ooffset_t offset)
 {
 	struct vop_putpages_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -1099,7 +1099,7 @@ vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_vp = vp;
 	ap.a_m = m;
 	ap.a_count = count;
-	ap.a_sync = sync;
+	ap.a_flags = flags;
 	ap.a_rtvals = rtvals;
 	ap.a_offset = offset;
 

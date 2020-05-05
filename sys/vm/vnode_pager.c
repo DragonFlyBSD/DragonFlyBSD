@@ -630,7 +630,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
  */
 static void
 vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
-		     int sync, int *rtvals)
+		     int flags, int *rtvals)
 {
 	int rtval;
 	struct vnode *vp;
@@ -650,17 +650,17 @@ vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 
 	if ((vmstats.v_free_count + vmstats.v_cache_count) <
 	    vmstats.v_pageout_free_min) {
-		sync |= OBJPC_SYNC;
+		flags |= OBJPC_SYNC;
 	}
 
 	/*
 	 * Call device-specific putpages function
 	 */
 	vp = object->handle;
-	rtval = VOP_PUTPAGES(vp, m, bytes, sync, rtvals, 0);
+	rtval = VOP_PUTPAGES(vp, m, bytes, flags, rtvals, 0);
 	if (rtval == EOPNOTSUPP) {
 	    kprintf("vnode_pager: *** WARNING *** stale FS putpages\n");
-	    rtval = vnode_pager_generic_putpages( vp, m, bytes, sync, rtvals);
+	    rtval = vnode_pager_generic_putpages( vp, m, bytes, flags, rtvals);
 	}
 }
 

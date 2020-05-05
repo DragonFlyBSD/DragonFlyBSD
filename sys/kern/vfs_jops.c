@@ -936,7 +936,7 @@ journal_fsync(struct vop_fsync_args *ap)
 }
 
 /*
- * Journal vop_putpages { a_vp, a_m, a_count, a_sync, a_rtvals, a_offset }
+ * Journal vop_putpages { a_vp, a_m, a_count, a_flags, a_rtvals, a_offset }
  *
  * note: a_count is in bytes.
  */

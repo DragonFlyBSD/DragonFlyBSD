@@ -1591,7 +1591,7 @@ fuse_vop_putpages(struct vop_putpages_args *ap)
 		return VM_PAGER_BAD;
 
 	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-	    ap->a_sync, ap->a_rtvals);
+	    ap->a_flags, ap->a_rtvals);
 }
 
 struct vop_ops fuse_vnode_vops = {

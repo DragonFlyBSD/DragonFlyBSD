@@ -528,7 +528,7 @@ smbfs_getpages(struct vop_getpages_args *ap)
  * Note that vop_close always invalidate pages before close, so it's
  * not necessary to open vnode.
  *
- * smbfs_putpages(struct vnode *a_vp, vm_page_t *a_m, int a_count, int a_sync,
+ * smbfs_putpages(struct vnode *a_vp, vm_page_t *a_m, int a_count, int a_flags,
  *		  int *a_rtvals, vm_ooffset_t a_offset)
  */
 int

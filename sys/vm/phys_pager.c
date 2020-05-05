@@ -107,7 +107,7 @@ phys_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
  */
 static void
 phys_pager_putpages(vm_object_t object, vm_page_t *m, int count,
-		    int sync, int *rtvals)
+		    int flags, int *rtvals)
 {
 
 	panic("phys_pager_putpage called");

@@ -361,7 +361,7 @@ struct vop_putpages_args {
 	struct vnode *a_vp;
 	struct vm_page **a_m;
 	int a_count;
-	int a_sync;
+	int a_flags;
 	int *a_rtvals;
 	vm_ooffset_t a_offset;
 };
@@ -813,7 +813,7 @@ int vop_reallocblks(struct vop_ops *ops, struct vnode *vp,
 int vop_getpages(struct vop_ops *ops, struct vnode *vp, struct vm_page **m,
 		int count, int reqpage, vm_ooffset_t offset, int seqaccess);
 int vop_putpages(struct vop_ops *ops, struct vnode *vp, struct vm_page **m,
-		int count, int sync, int *rtvals, vm_ooffset_t offset);
+		int count, int flags, int *rtvals, vm_ooffset_t offset);
 int vop_freeblks(struct vop_ops *ops, struct vnode *vp,
 		off_t offset, int length);
 int vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
@@ -1060,8 +1060,8 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_reallocblks(*(vp)->v_ops, vp, buflist)
 #define VOP_GETPAGES(vp, m, count, reqpage, off, seqaccess)		\
 	vop_getpages(*(vp)->v_ops, vp, m, count, reqpage, off, seqaccess)
-#define VOP_PUTPAGES(vp, m, count, sync, rtvals, off)	\
-	vop_putpages(*(vp)->v_ops, vp, m, count, sync, rtvals, off)
+#define VOP_PUTPAGES(vp, m, count, flags, rtvals, off)	\
+	vop_putpages(*(vp)->v_ops, vp, m, count, flags, rtvals, off)
 #define VOP_FREEBLKS(vp, offset, length)		\
 	vop_freeblks(*(vp)->v_ops, vp, offset, length)
 #define VOP_GETACL(vp, type, aclp, cred)		\

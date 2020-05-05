@@ -116,9 +116,9 @@ default_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
  */
 static void
 default_pager_putpages(vm_object_t object, vm_page_t *mpp, int count,
-		       int sync, int *rtvals)
+		       int flags, int *rtvals)
 {
-	swap_pager_putpages(object, mpp, count, sync, rtvals);
+	swap_pager_putpages(object, mpp, count, flags, rtvals);
 }
 
 /*

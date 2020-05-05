@@ -253,7 +253,7 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
  */
 static void
 dev_pager_putpages(vm_object_t object, vm_page_t *m,
-		   int count, int sync, int *rtvals)
+		   int count, int flags, int *rtvals)
 {
 	panic("dev_pager_putpage called");
 }
