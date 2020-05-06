@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/VOP_GETPAGES.9,v 1.4.2.2 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd July 24, 1996
+.Dd May 6, 2020
 .Dt VOP_GETPAGES 9
 .Os
 .Sh NAME
@@ -38,29 +38,34 @@
 .In sys/vnode.h
 .In vm/vm.h
 .Ft int
-.Fn VOP_GETPAGES "struct vnode *vp" "vm_page_t *m" "int count" "int reqpage" "vm_ooffset_t offset"
+.Fn VOP_GETPAGES "struct vnode *vp" "vm_page_t *m" "int count" "int reqpage" "vm_ooffset_t offset" "int seqaccess"
 .Ft int
-.Fn VOP_PUTPAGES "struct vnode *vp" "vm_page_t *m" "int count" "int sync" "int *rtvals" "vm_ooffset_t offset"
+.Fn VOP_PUTPAGES "struct vnode *vp" "vm_page_t *m" "int count" "int flags" "int *rtvals" "vm_ooffset_t offset"
 .Sh DESCRIPTION
 The arguments are:
-.Bl -tag -width reqpage
+.Bl -tag -width ".Fa seqaccess"
 .It Fa vp
 The file to access.
 .It Fa m
-A page ???
+Pointer to a page array representing a contiguous region of the file to
+be read or written.
 .It Fa count
-How many pages to access.
-.It Fa sync
-Nonzero if the write should be synchronous.
+The length of this array.
+.It Fa flags
+.Dv OBJPC_*
+flags, see
+.In vm/vm_pager.h .
 .It Fa rtvals
-???
+An array of VM system result codes indicating the status of each
+page written by
+.Fn VOP_PUTPAGES .
 .It Fa reqpage
-???
+Index of the requested page.
 .It Fa offset
 Offset in the file to start accessing.
+.It Fa seqaccess
+Sequential access.
 .El
-.Pp
-Not quite sure about this one.
 .Sh RETURN VALUES
 Zero is returned on success, otherwise an error is returned.
 .Sh SEE ALSO
