@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,24 +24,39 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _ASM_ATOMIC_H_
-#define _ASM_ATOMIC_H_
+#ifndef	_ASM_CMPXCHG_H_
+#define	_ASM_CMPXCHG_H_
 
-#include <linux/compiler.h>
-#include <linux/types.h>
-#include <asm/cmpxchg.h>
-#include <asm/barrier.h>
+#define xchg(ptr, value)				\
+({							\
+	__typeof(value) __ret = (value);		\
+							\
+	switch (sizeof(value)) {			\
+	case 8:						\
+		__asm __volatile("xchgq %0, %1"		\
+		    : "+r" (__ret), "+m" (*(ptr))	\
+		    : : "memory");			\
+		break;					\
+	case 4:						\
+		__asm __volatile("xchgl %0, %1"		\
+		    : "+r" (__ret), "+m" (*(ptr))	\
+		    : : "memory");			\
+		break;					\
+	case 2:						\
+		__asm __volatile("xchgw %0, %1"		\
+		    : "+r" (__ret), "+m" (*(ptr))	\
+		    : : "memory");			\
+		break;					\
+	case 1:						\
+		__asm __volatile("xchgb %0, %1"		\
+		    : "+r" (__ret), "+m" (*(ptr))	\
+		    : : "memory");			\
+		break;					\
+	default:					\
+		panic("xchg(): invalid size %ld\n", sizeof(value)); \
+	}						\
+							\
+	__ret;						\
+})
 
-/* atomic_or: atomically set bits in a variable */
-#define atomic_or(mask, addr)		\
-	/* atomic *addr |= mask; */		\
-	__asm __volatile("lock orl %0, %1"	\
-		:				\
-		: "r" (mask), "m" (*addr)	\
-		: "memory");
-
-#define ATOMIC_INIT(i)	{ (i) }
-
-#include <asm/atomic64_64.h>
-
-#endif	/* _ASM_ATOMIC_H_ */
+#endif	/* _ASM_CMPXCHG_H_ */
