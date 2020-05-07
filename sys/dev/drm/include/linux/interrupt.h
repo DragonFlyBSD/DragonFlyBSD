@@ -45,6 +45,7 @@ struct tasklet_struct {
 	unsigned long state;
 	void (*func)(unsigned long);
 	unsigned long data;
+	atomic_t count;
 };
 
 enum {
@@ -68,5 +69,17 @@ void tasklet_init(struct tasklet_struct *t,
 void tasklet_schedule(struct tasklet_struct *t);
 void tasklet_hi_schedule(struct tasklet_struct *t);
 void tasklet_kill(struct tasklet_struct *t);
+
+static inline void
+tasklet_enable(struct tasklet_struct *t)
+{
+	atomic_dec(&t->count);
+}
+
+static inline void
+tasklet_disable(struct tasklet_struct *t)
+{
+	atomic_inc(&t->count);
+}
 
 #endif	/* _LINUX_INTERRUPT_H_ */

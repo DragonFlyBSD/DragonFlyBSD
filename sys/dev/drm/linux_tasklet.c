@@ -64,10 +64,13 @@ static int tasklet_pending = 0;
 		   already been scheduled.				\
 		*/							\
 		if (test_bit(TASKLET_IS_DYING, &t->state)) {		\
-			kprintf("tasklet: killing %p\n", t);		\
 			SLIST_REMOVE(&which_list, te, tasklet_entry, tasklet_entries); \
 			kfree(te);					\
 		}							\
+									\
+		/* This tasklet is not enabled, try the next one */	\
+		if (atomic_read(&t->count) != 0)			\
+			continue;					\
 									\
 		/* This tasklet is not scheduled, try the next one */	\
 		if (!test_bit(TASKLET_STATE_SCHED, &t->state))		\
@@ -116,6 +119,7 @@ tasklet_init(struct tasklet_struct *t,
 	t->state = 0;
 	t->func = func;
 	t->data = data;
+	atomic_set(&t->count, 0);
 }
 
 void
