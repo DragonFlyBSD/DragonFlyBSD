@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------------
-# $File: mail.news,v 1.23 2015/06/29 14:44:26 christos Exp $
+# $File: mail.news,v 1.25 2019/06/21 20:06:05 christos Exp $
 # mail.news:  file(1) magic for mail and news
 #
 # Unfortunately, saved netnews also has From line added in some news software.
@@ -26,7 +26,16 @@
 !:mime	message/rfc822
 0	string/t		Article 	saved news text
 !:mime	message/news
-0	string/t		BABYL		Emacs RMAIL text
+# Reference:	http://quimby.gnus.org/notes/BABYL
+# Update:	Joerg Jenderek
+# Note:		used by Rmail in Emacs version 22 and before
+#		is not text because of characters like Control-L Control-_
+0	string/b		BABYL\ OPTIONS:	Emacs RMAIL
+#0	string/t		BABYL		Emacs RMAIL text
+# https://reposcope.com/mimetype/message/x-gnu-rmail
+!:mime	message/x-gnu-rmail
+# ~/RMAIL
+!:ext	/
 0	string/t		Received:	RFC 822 mail text
 !:mime	message/rfc822
 0	string/t		MIME-Version:	MIME entity text
@@ -57,7 +66,7 @@
 #0	string		\<!--\ MHonArc		text/html; x-type=mhonarc
 
 # Cyrus: file(1) magic for compiled Cyrus sieve scripts
-# URL: http://www.cyrusimap.org/docs/cyrus-imapd/2.4.6/internal/bytecode.php
+# URL: https://www.cyrusimap.org/docs/cyrus-imapd/2.4.6/internal/bytecode.php
 # URL: http://git.cyrusimap.org/cyrus-imapd/tree/sieve/bytecode.h?h=master
 # From: Philipp Hahn <hahn@univention.de>
 
