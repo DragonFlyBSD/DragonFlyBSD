@@ -122,52 +122,37 @@ tasklet_init(struct tasklet_struct *t,
 	atomic_set(&t->count, 0);
 }
 
+#define TASKLET_SCHEDULE_COMMON(t, list) do {			\
+	struct tasklet_entry *te;				\
+								\
+	lockmgr(&tasklet_lock, LK_EXCLUSIVE);			\
+	set_bit(TASKLET_STATE_SCHED, &t->state);		\
+								\
+	SLIST_FOREACH(te, &(list), tasklet_entries) {		\
+		if (te->ts == t)				\
+			goto found_and_done;			\
+	}							\
+								\
+	te = kzalloc(sizeof(struct tasklet_entry), M_WAITOK);	\
+	te->ts = t;						\
+	SLIST_INSERT_HEAD(&(list), te, tasklet_entries);	\
+								\
+found_and_done:							\
+	tasklet_pending = 1;					\
+	wakeup(&tasklet_runner);				\
+	lockmgr(&tasklet_lock, LK_RELEASE);			\
+} while (0)
+
 void
 tasklet_schedule(struct tasklet_struct *t)
 {
-	struct tasklet_entry *te;
-
-	lockmgr(&tasklet_lock, LK_EXCLUSIVE);
-	set_bit(TASKLET_STATE_SCHED, &t->state);
-
-	SLIST_FOREACH(te, &tlist, tasklet_entries) {
-		if (te->ts == t)
-			goto found_and_done;
-	}
-
-	te = kzalloc(sizeof(struct tasklet_entry), M_WAITOK);
-	te->ts = t;
-	SLIST_INSERT_HEAD(&tlist, te, tasklet_entries);
-
-found_and_done:
-	/* schedule the runner thread on the local cpu core */
-	tasklet_pending = 1;
-	wakeup(&tasklet_runner);
-	lockmgr(&tasklet_lock, LK_RELEASE);
+	TASKLET_SCHEDULE_COMMON(t, tlist);
 }
 
 void
 tasklet_hi_schedule(struct tasklet_struct *t)
 {
-	struct tasklet_entry *te;
-
-	lockmgr(&tasklet_lock, LK_EXCLUSIVE);
-	set_bit(TASKLET_STATE_SCHED, &t->state);
-
-	SLIST_FOREACH(te, &tlist_hi, tasklet_entries) {
-		if (te->ts == t)
-			goto found_and_done;
-	}
-
-	te = kzalloc(sizeof(struct tasklet_entry), M_WAITOK);
-	te->ts = t;
-	SLIST_INSERT_HEAD(&tlist_hi, te, tasklet_entries);
-
-found_and_done:
-	/* schedule the runner thread on the local cpu core */
-	tasklet_pending = 1;
-	wakeup(&tasklet_runner);
-	lockmgr(&tasklet_lock, LK_RELEASE);
+	TASKLET_SCHEDULE_COMMON(t, tlist_hi);
 }
 
 void
