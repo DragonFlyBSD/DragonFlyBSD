@@ -281,55 +281,45 @@ fn_root_passwd(struct i_fn_args *a)
 		if (!dfui_be_present(a->c, f, &r))
 			abort_backend();
 
-		if (strcmp(dfui_response_get_action_id(r), "ok") == 0) {
-			new_ds = dfui_dataset_dup(dfui_response_dataset_get_first(r));
-			dfui_form_datasets_free(f);
-			dfui_form_dataset_add(f, new_ds);
+		if (strcmp(dfui_response_get_action_id(r), "cancel") == 0) {
+			done = 1;
+			dfui_response_free(r);
+			break;
+		}
 
-			/*
-			 * Fetch form field values.
-			 */
+		new_ds = dfui_dataset_dup(dfui_response_dataset_get_first(r));
+		dfui_form_datasets_free(f);
+		dfui_form_dataset_add(f, new_ds);
 
-			root_passwd_1 = dfui_dataset_get_value(new_ds, "root_passwd_1");
-			root_passwd_2 = dfui_dataset_get_value(new_ds, "root_passwd_2");
+		root_passwd_1 = dfui_dataset_get_value(new_ds, "root_passwd_1");
+		root_passwd_2 = dfui_dataset_get_value(new_ds, "root_passwd_2");
 
-			if (!assert_clean(a->c, _("Root password"), root_passwd_1, PW_NOT_ALLOWED)) {
-				done = 0;
-			} else if (strlen(root_passwd_1) == 0 && strlen(root_passwd_2) == 0) {
-				done = 0;
-			} else if (strcmp(root_passwd_1, root_passwd_2) == 0) {
-				/*
-				 * Passwords match, so set the root password.
-				 */
-				cmds = commands_new();
-				cmd = command_add(cmds, "%s%s '%s' | "
-				    "%s%s %smnt/ /%s usermod root -h 0",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    root_passwd_1,
-				    a->os_root, cmd_name(a, "CHROOT"),
-				    a->os_root, cmd_name(a, "PW"));
-				command_set_desc(cmd, _("Setting password..."));
-				if (commands_execute(a, cmds)) {
-					inform(a->c, _("The root password has been changed."));
-					done = 1;
-				} else {
-					inform(a->c, _("An error occurred when "
-					    "setting the root password."));
-					done = 0;
-				}
-				commands_free(cmds);
+		if (strlen(root_passwd_1) == 0) {
+			inform(a->c, _("You must enter a password."));
+			done = 0;
+		} else if (strcmp(root_passwd_1, root_passwd_2) != 0) {
+			inform(a->c, _("The passwords do not match."));
+			done = 0;
+		} else if (!assert_clean(a->c, _("Root password"), root_passwd_1, PW_NOT_ALLOWED)) {
+			done = 0;
+		} else {
+			cmds = commands_new();
+			cmd = command_add(cmds, "%s%s '%s' | "
+			    "%s%s %smnt/ /%s usermod root -h 0",
+			    a->os_root, cmd_name(a, "ECHO"),
+			    root_passwd_1,
+			    a->os_root, cmd_name(a, "CHROOT"),
+			    a->os_root, cmd_name(a, "PW"));
+			command_set_desc(cmd, _("Setting password..."));
+			if (commands_execute(a, cmds)) {
+				inform(a->c, _("The root password has been changed."));
+				done = 1;
 			} else {
-				/*
-				 * Passwords don't match - tell the user, let them try again.
-				 */
-				inform(a->c, _("The passwords do not match."));
+				inform(a->c, _("An error occurred when "
+				    "setting the root password."));
 				done = 0;
 			}
-		} else {
-			/*
-			 * Cancelled by user
-			 */
-			done = 1;
+			commands_free(cmds);
 		}
 
 		dfui_response_free(r);
