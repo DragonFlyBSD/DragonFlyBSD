@@ -420,7 +420,8 @@ realclean:	clean
 	rm -rf ${ISODIR}/packages
 	rm -rf ${ISODIR}/distfiles
 
-help all:
+.MAIN: help
+help:
 	@echo "Targets:"
 	@echo "  release     - full build from scratch"
 	@echo "  quick       - attempt to do an incremental rebuild"
