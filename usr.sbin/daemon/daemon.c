@@ -65,6 +65,7 @@ struct log_params {
 static void restrict_process(const char *);
 static void handle_term(int);
 static void handle_chld(int);
+static void handle_reopen(int);
 static int  listen_child(int, struct log_params *);
 static int  get_log_mapping(const char *, const CODE *);
 static void open_pid_files(const char *, const char *, struct pidfh **,
@@ -74,13 +75,14 @@ static void daemon_sleep(time_t, long);
 static void usage(void);
 
 static volatile sig_atomic_t terminate = 0, child_gone = 0, pid = 0;
+static volatile sig_atomic_t reopen = 0;
 
 int
 main(int argc, char *argv[])
 {
 	const char *pidfile, *ppidfile, *title, *user, *outfn, *logtag;
 	int ch, nochdir, noclose, restart, dosyslog, child_eof;
-	sigset_t mask_susp, mask_orig, mask_read, mask_term;
+	sigset_t mask_susp, mask_orig, mask_read, mask_term, mask_reopen;
 	struct log_params logpar;
 	int pfd[2] = { -1, -1 }, outfd = -1;
 	int stdmask, logpri, logfac;
@@ -171,7 +173,7 @@ main(int argc, char *argv[])
 		if (outfd == -1)
 			err(7, "open");
 	}
-	
+
 	if (dosyslog)
 		openlog(logtag, LOG_PID | LOG_NDELAY, logfac);
 
@@ -200,7 +202,7 @@ main(int argc, char *argv[])
 	 */
 	pid = -1;
 	if (pidfile || ppidfile || restart || outfd != -1 || dosyslog) {
-		struct sigaction act_term, act_chld;
+		struct sigaction act_term, act_chld, act_reopen;
 
 		/* Avoid PID racing with SIGCHLD and SIGTERM. */
 		memset(&act_term, 0, sizeof(act_term));
@@ -213,6 +215,11 @@ main(int argc, char *argv[])
 		sigemptyset(&act_chld.sa_mask);
 		sigaddset(&act_chld.sa_mask, SIGTERM);
 
+		memset(&act_reopen, 0, sizeof(act_reopen));
+		act_reopen.sa_handler = handle_reopen;
+		sigemptyset(&act_reopen.sa_mask);
+		sigaddset(&act_reopen.sa_mask, SIGUSR1);
+
 		/* Block these when avoiding racing before sigsuspend(). */
 		sigemptyset(&mask_susp);
 		sigaddset(&mask_susp, SIGTERM);
@@ -220,6 +227,9 @@ main(int argc, char *argv[])
 		/* Block SIGTERM when we lack a valid child PID. */
 		sigemptyset(&mask_term);
 		sigaddset(&mask_term, SIGTERM);
+		/* Same for SIGUSR1. */
+		sigemptyset(&mask_reopen);
+		sigaddset(&mask_reopen, SIGUSR1);
 		/*
 		 * When reading, we wish to avoid SIGCHLD. SIGTERM
 		 * has to be caught, otherwise we'll be stuck until
@@ -237,6 +247,15 @@ main(int argc, char *argv[])
 			goto exit;
 		}
 		if (sigaction(SIGCHLD, &act_chld, NULL) == -1) {
+			warn("sigaction");
+			goto exit;
+		}
+		/* Block SIGUSR1 until fork. */
+		if (sigprocmask(SIG_BLOCK, &mask_reopen, NULL) == -1) {
+			warn("sigprocmask");
+			goto exit;
+		}
+		if (sigaction(SIGUSR1, &act_reopen, NULL) == -1) {
 			warn("sigaction");
 			goto exit;
 		}
@@ -269,6 +288,13 @@ restart:
 			 * child PID to signal.
 			 */
 			if (sigprocmask(SIG_UNBLOCK, &mask_term, NULL)) {
+				warn("sigprocmask");
+				goto exit;
+			}
+			/*
+			 * Unblock SIGUSR1.
+			 */
+			if (sigprocmask(SIG_UNBLOCK, &mask_reopen, NULL)) {
 				warn("sigprocmask");
 				goto exit;
 			}
@@ -338,6 +364,25 @@ restart:
 		} else if (terminate) {
 			goto exit;
 		} else if (!child_eof) {
+			if (reopen) {
+				/*
+				 * Don't close outfd if last open failed.
+				 */
+				if (logpar.outfd > 0)
+					close(logpar.outfd);
+				if (outfn) {
+					logpar.outfd = open(outfn, O_CREAT  |
+								   O_WRONLY |
+								   O_APPEND |
+								   O_CLOEXEC,
+								   0600);
+					if (logpar.outfd == -1) {
+						syslog(LOG_NOTICE,
+						       "Failed to reopen log file");
+					}
+				}
+				reopen = 0;
+			}
 			if (sigprocmask(SIG_BLOCK, &mask_read, NULL)) {
 				warn("sigprocmask");
 				goto exit;
@@ -557,6 +602,12 @@ handle_chld(int signo)
 			return;
 		}
 	}
+}
+
+static void
+handle_reopen(int signo __attribute__((unused)))
+{
+	reopen = 1;
 }
 
 static void
