@@ -1,6 +1,6 @@
 
 #------------------------------------------------------------------------------
-# $File: elf,v 1.70 2016/06/02 12:36:30 christos Exp $
+# $File: elf,v 1.79 2019/12/16 04:24:01 christos Exp $
 # elf:  file(1) magic for ELF executables
 #
 # We have to check the byte order flag to see what byte order all the
@@ -38,6 +38,8 @@
 >0	lelong&0x3		2		relaxed memory ordering,
 
 0	name		elf-pa-risc
+>2	leshort		0x020b		1.0
+>2	leshort		0x0210		1.1
 >2	leshort		0x0214		2.0
 >0	leshort		&0x0008		(LP64)
 
@@ -50,8 +52,12 @@
 !:mime	application/x-executable
 >16	leshort		3		shared object,
 !:mime	application/x-sharedlib
->16	leshort		4		core file
+>16	leshort		4		core file,
 !:mime	application/x-coredump
+# OS-specific
+>7	byte		202
+>>16	leshort		0xFE01		executable,
+!:mime	application/x-executable
 # Core file detection is not reliable.
 #>>>(0x38+0xcc) string	>\0		of '%s'
 #>>>(0x38+0x10) lelong	>0		(signal %d),
@@ -258,6 +264,8 @@
 >18	leshort		217		iCelero CoolEngine,
 >18	leshort		218		Nanoradio Optimized RISC,
 >18	leshort		243		UCB RISC-V,
+>18	leshort		247		eBPF,
+>18	leshort		251             NEC VE,
 >18	leshort		0x1057		AVR (unofficial),
 >18	leshort		0x1059		MSP430 (unofficial),
 >18	leshort		0x1223		Adapteva Epiphany (unofficial),
@@ -320,4 +328,5 @@
 >7	byte		16		(FenixOS)
 >7	byte		17		(Nuxi CloudABI)
 >7	byte		97		(ARM)
+>7	byte		202		(Cafe OS)
 >7	byte		255		(embedded)

@@ -1,6 +1,6 @@
 
 #------------------------------------------------------------------------------
-# $File: database,v 1.52 2017/08/13 00:21:47 christos Exp $
+# $File: database,v 1.56 2019/06/14 20:12:00 christos Exp $
 # database:  file(1) magic for various databases
 #
 # extracted from header/code files by Graeme Wilford (eep2gw@ee.surrey.ac.uk)
@@ -147,9 +147,8 @@
 
 ## XBase database files
 # updated by Joerg Jenderek at Feb 2013
-# http://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm
-# http://www.clicketyclick.dk/databases/xbase/format/dbf.html
-# http://home.f1.htw-berlin.de/scheibl/db/intern/dBase.htm
+# https://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm
+# https://www.clicketyclick.dk/databases/xbase/format/dbf.html
 # inspect VVYYMMDD , where 1<= MM <= 12 and 1<= DD <= 31
 0	ubelong&0x0000FFFF		<0x00000C20
 # skip Infocom game Z-machine
@@ -187,13 +186,13 @@
 >>>>>>>>>>>>4	lelong			>0		\b, %d record
 # plural s appended
 >>>>>>>>>>>>>4	lelong			>1		\bs
-# http://www.clicketyclick.dk/databases/xbase/format/dbf_check.html#CHECK_DBF
+# https://www.clicketyclick.dk/databases/xbase/format/dbf_check.html#CHECK_DBF
 # 1 <= record size <= 4000 (dBase 3,4) or 32 * KB (=0x8000)
 >>>>>>>>>>>>10	uleshort		x		* %d
 # file size = records * record size + header size
 >>>>>>>>>>>>1	ubyte			x		\b, update-date
 >>>>>>>>>>>>1	use			xbase-date
-# http://msdn.microsoft.com/de-de/library/cc483186(v=vs.71).aspx
+# https://msdn.microsoft.com/de-de/library/cc483186(v=vs.71).aspx
 #>>>>>>>>>>>>29	ubyte			=0		\b, codepage ID=0x%x
 # 2~cp850 , 3~cp1252 , 0x1b~?? ; what code page is 0x1b ?
 >>>>>>>>>>>>29	ubyte			>0		\b, codepage ID=0x%x
@@ -261,13 +260,13 @@
 # dBASE IV SQL, no memo;dbv memo var size (Flagship)
 >>0	ubyte		0x43		dBase IV, with SQL table
 !:mime	application/x-dbf
-# http://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
+# https://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
 #>>0	ubyte		0x62		dBase IV, with SQL table
 #!:mime	application/x-dbf
 # dBASE IV, with memo!!
 >>0	ubyte		0x7b		dBase IV, with memo
 !:mime	application/x-dbf
-# http://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
+# https://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
 #>>0	ubyte		0x82		dBase IV, with SQL system
 #!:mime	application/x-dbf
 # FoxBase+/dBaseIII+ with memo .DBT!
@@ -276,7 +275,7 @@
 # VISUAL OBJECTS (first 1.0 versions) for the Dbase III files (NTX clipper driver); memo file
 >>0	ubyte		0x87		VISUAL OBJECTS, with memo file
 !:mime	application/x-dbf
-# http://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
+# https://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
 #>>0	ubyte		0x8A		FoxBase+/dBase III, with memo .DBT
 #!:mime	application/x-dbf
 # dBASE IV with memo!
@@ -287,7 +286,7 @@
 !:mime	application/x-dbf
 # .dbv and .dbt memo (Flagship)?
 >>0	ubyte		0xB3		Flagship
-# http://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
+# https://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
 #>>0	ubyte		0xCA		dBase IV with memo .DBT
 #!:mime	application/x-dbf
 # dBASE IV with SQL table, with memo .DBT
@@ -296,12 +295,12 @@
 # HiPer-Six format;Clipper SIX, with SMT memo file
 >>0	ubyte		0xE5		Clipper SIX with memo
 !:mime	application/x-dbf
-# http://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
+# https://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
 #>>0	ubyte		0xF4		dBase IV, with SQL table, with memo
 #!:mime	application/x-dbf
 >>0	ubyte		0xF5		FoxPro with memo
 !:mime	application/x-dbf
-# http://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
+# https://msdn.microsoft.com/en-US/library/st4a0s68(v=vs.80).aspx
 #>>0	ubyte		0xFA		FoxPro 2.x, with memo
 #!:mime	application/x-dbf
 # unknown version (should not happen)
@@ -332,14 +331,14 @@
 >>>>>2	ubyte		x		\b-%d
 
 #	dBase memo files .DBT or .FPT
-# http://msdn.microsoft.com/en-us/library/8599s21w(v=vs.80).aspx
+# https://msdn.microsoft.com/en-us/library/8599s21w(v=vs.80).aspx
 16		ubyte		<4
 >16		ubyte		!2
 >>16		ubyte		!1
 # next free block index is positive
 >>>0		ulelong		>0
 # skip many JPG. ZIP, BZ2 by test for reserved bytes NULL , 0|2 , 0|1 , low byte of block size
->>>>17		ubelong&0xFFfdFE00	0x00000000
+>>>>17		ubelong&0xFFfdFEff	0x00000000
 # skip many RAR by test for low byte 0 ,high byte 0|2|even of block size, 0|a|e|d7 , 0|64h
 >>>>>20		ubelong&0xFF01209B	0x00000000
 # dBASE III
@@ -355,36 +354,34 @@
 >>>>>>>>>6	ubeshort	>0
 # skip emacs.PIF
 >>>>>>>>>>4	ushort		0
->>>>>>>>>>>0	use		foxpro-memo-print
+# check for valid FoxPro field type
+>>>>>>>>>>>512	ubelong		<3
+>>>>>>>>>>>>0	use		foxpro-memo-print
 # dBASE III DBT , garbage
->>>>>>>>>6	ubeshort	0
-# skip MM*DD*.bin by test for for reserved NULL byte
->>>>>>>>>>510	ubeshort	0
-# skip TK-DOS11.img image by looking for memo text
->>>>>>>>>>>512	ubelong		<0xfeffff03
-# skip EFI executables by looking for memo text
->>>>>>>>>>>>512	ubelong		>0x1F202020
->>>>>>>>>>>>>513 ubyte		>0
+# skip WORD1XW.DOC with improbably high free block index
+>>>>>>>>>0	lelong		<2205083
 # unusual dBASE III DBT like adressen.dbt
->>>>>>>>>>>>>>0	use		dbase3-memo-print
+>>>>>>>>>>0	use		dbase3-memo-print
 # dBASE III DBT like angest.dbt, or garbage PCX DBF
 >>>>>>>>8	ubelong		!0
 # skip PCX and some DBF by test for for reserved NULL bytes
 >>>>>>>>>510	ubeshort	0
-# skip some DBF by test of invalid version
->>>>>>>>>>0	ubyte		>5
->>>>>>>>>>>0	ubyte		<48
->>>>>>>>>>>>0	use		dbase3-memo-print
+# skip AI070GEP.EPS with improbably high free block index
+>>>>>>>>>>0	lelong		<458766
+>>>>>>>>>>>0	use		dbase3-memo-print
 # dBASE IV DBT with positive block size
 >>>>>>>20	uleshort	>0
 # dBASE IV DBT with valid block length like 512, 1024
 # multiple of 2 in between 16 and 16 K ,implies upper and lower bits are zero
->>>>>>>>20	uleshort&0x800f	0
+# skip also 3600h 3E00h size
+>>>>>>>>20	uleshort&0xE00f	0
 >>>>>>>>>0	use		dbase4-memo-print
 
 #		Print the information of dBase III DBT memo file
 0	name				dbase3-memo-print
 >0	ubyte			x		dBase III DBT
+!:mime	application/x-dbt
+!:ext	dbt
 # instead 3 as version number 0 for unusual examples like biblio.dbt
 >16	ubyte			!3		\b, version number %u
 # Number of next available block for appending data
@@ -395,6 +392,7 @@
 >20	uleshort		!0		\b, block length %u
 # dBase III memo field terminated by \032\032
 >512	string			>\0		\b, 1st item "%s"
+# https://www.clicketyclick.dk/databases/xbase/format/dbt.html
 #		Print the information of dBase IV DBT memo file
 0	name				dbase4-memo-print
 >0		lelong		x		dBase IV DBT
@@ -433,9 +431,12 @@
 # length of memo field
 >>4		lelong		x		\b, field length %d
 >>>8		string		>\0		\b, 1st used item "%s"
+# http://www.dbfree.org/webdocs/1-documentation/0018-developers_stuff_(advanced)/os_related_stuff/xbase_file_format.htm
 #		Print the information of FoxPro FPT memo file
 0	name				foxpro-memo-print
 >0		belong		x		FoxPro FPT
+!:mime	application/x-fpt
+!:ext	fpt
 # Size of blocks for FoxPro ( 64,256 )
 >6		ubeshort	x		\b, blocks size %u
 # next available block
@@ -495,7 +496,7 @@
 >>220	ulelong		x		\b.%d
 
 # From: Joerg Jenderek
-# URL: http://forensicswiki.org/wiki/Windows_Application_Compatibility
+# URL: https://forensicswiki.org/wiki/Windows_Application_Compatibility
 # Note: files contain application compatibility fixes, application compatibility modes and application help messages.
 8	string		sdbf
 >7	ubyte		0
@@ -542,7 +543,7 @@
 >>7	byte		x		\b-%d
 
 # Type: Advanced Data Format (ADF) database
-# URL:  http://www.grc.nasa.gov/WWW/cgns/adf/
+# URL:  https://www.grc.nasa.gov/WWW/cgns/adf/
 # From: Nicolas Chauvat <nicolas.chauvat@logilab.fr>
 0	string	@(#)ADF\ Database	CGNS Advanced Data Format
 
@@ -582,7 +583,7 @@
 0	string		ToKyO\ CaBiNeT\n	TokyoCabinet database
 >14	string		x			(version %s)
 
-# From:  Stephane Blondon http://www.yaal.fr
+# From:  Stephane Blondon https://www.yaal.fr
 # Database file for Zope (done by FileStorage)
 0	string	FS21	Zope Object Database File Storage v3 (data)
 0	string	FS30	Zope Object Database File Storage v4 (data)
@@ -593,7 +594,7 @@
 # IDA (Interactive Disassembler) database
 0	string		IDA1	IDA (Interactive Disassembler) database
 
-# Hopper (reverse engineering tool) http://www.hopperapp.com/
+# Hopper (reverse engineering tool) https://www.hopperapp.com/
 0	string		hopperdb	Hopper database
 
 # URL: https://en.wikipedia.org/wiki/Panorama_(database_engine)
@@ -632,3 +633,15 @@
 >28	lelong	x		\b, entries %d
 >32	lelong	x		\b, index %d
 >36	lelong	x		\b, seed %#x
+
+#
+# Redis RDB - https://redis.io/topics/persistence
+0	string	REDIS			Redis RDB file,
+>5	regex	[0-9][0-9][0-9][0-9]	version %s
+
+# Mork database.
+# Used by older versions of Mozilla Suite and Firefox,
+# and current versions of Thunderbird.
+# From: David Korth <gerbilsoft@gerbilsoft.com>
+0	string	//\ <!--\ <mdb:mork:z\ v="	Mozilla Mork database
+>23	string	x		\b, version %.3s
