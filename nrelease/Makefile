@@ -304,11 +304,15 @@ pkgs:
 	umount ${ISOROOT}/dev
 	rm -f ${ISOROOT}/etc/resolv.conf
 
+.if exists(${ISOROOT}/usr/local/etc)
+	echo "dummy /usr/local/etc tmpfs rw,-C 0 0" >> ${ISOROOT}/etc/fstab
+.endif
+
 	# Recopy files that dports may have updated in /etc into /etc.hdd
 	#
 	cpdup ${ISOROOT}/etc/shells ${ISOROOT}/etc.hdd/shells
 	cpdup ${ISOROOT}/etc/group ${ISOROOT}/etc.hdd/group
-.endif
+.endif  # !empty(DPORTS_PACKAGES)
 
 mkiso:
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
