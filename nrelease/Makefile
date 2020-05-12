@@ -253,7 +253,7 @@ pkgs:
 	${CHROOT_CMD} "pkg search --exact --search origin ${PKG}" || \
 	{ \
 		echo "ERROR: Cannot find the package for port '${PKG}'!"; \
-		echo "-----> Use 'pkg_${PKG}=<pkg-name>' to specify the package name."; \
+		echo "-----> Use 'PKG_${PKG}=<pkg-name>' to specify the package name."; \
 		false; \
 	}
 .endfor
