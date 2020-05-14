@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/daemon/daemon.8 353025 2019-10-02 23:19:34Z ian $
 .\"
-.Dd January 29, 2020
+.Dd May 14, 2020
 .Dt DAEMON 8
 .Os
 .Sh NAME
@@ -77,6 +77,15 @@ tag, respectively.
 Append output from the daemonized process to
 .Pa output_file .
 If the file does not exist, it is created with permissions 0600.
+For a proper automatic log file rotation of programs started with
+.Nm
+it is recommended to create a PID file with the
+.Fl p
+option and configure
+.Xr newsyslog.conf 5
+to send
+.Dv SIGUSR1
+to the process ID in this file.
 .It Fl m Ar output_mask
 Redirect output from the child process stdout (1), stderr (2), or both (3).
 This value specifies what is sent to syslog and the log file.
@@ -224,7 +233,8 @@ flag.
 .Xr exec 3 ,
 .Xr pidfile 3 ,
 .Xr termios 4 ,
-.Xr tty 4
+.Xr tty 4 ,
+.Xr newsyslog.conf 5
 .Sh HISTORY
 The
 .Nm
