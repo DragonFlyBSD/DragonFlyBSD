@@ -1,7 +1,8 @@
 #!/bin/sh
 
 # PROVIDE: mounttmpfs
-# REQUIRE: mountcritremote
+# REQUIRE: cleanvar
+# BEFORE: netif
 
 . /etc/rc.subr
 
