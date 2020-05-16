@@ -6,11 +6,7 @@
 ### SUBS ###
 cleanup()
 {
-	PIDS=`ps aux | grep -e dfuife_curses -e dfuibe_installer | awk '{print $1}'`
-	for PID in $PIDS; do
-		# DFUI still running, kill it
-		kill -9 $PID
-	done
+	killall -q dfuife_curses dfuibe_installer
 }
 
 background_backend()
