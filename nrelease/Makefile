@@ -225,7 +225,13 @@ customizeiso:
 	@test -O ${.CURDIR} || echo "chowning copied files to root:wheel"
 	@test -O ${.CURDIR} || ((cd ${ROOTSKEL} && find .) | fgrep -v cpignore | (cd ${ISOROOT} && xargs chown root:wheel))
 .endfor
+
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
+	pw -V ${ISOROOT}/etc useradd installer -o -u 0 -g 0 \
+		-c "DragonFly Installer" -d /root -s /usr/sbin/installer
+	${CHROOT_CMD} "chpass -p '' root"
+	${CHROOT_CMD} "chpass -p '' installer"
+
 .for UPGRADE_ITEM in Makefile			\
 		     etc.${MACHINE_ARCH} 	\
 		     rc.d/Makefile		\
