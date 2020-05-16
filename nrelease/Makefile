@@ -285,7 +285,7 @@ pkgs:
 	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} clean"
 .endfor
 
-	${CHROOT_CMD} "yes | pkg autoremove"
+	${CHROOT_CMD} "pkg autoremove --yes"
 
 	-umount ${ISOROOT}/usr/distfiles
 	umount ${ISOROOT}/usr/dports
@@ -312,6 +312,8 @@ pkgs:
 	#
 	cpdup ${ISOROOT}/etc/shells ${ISOROOT}/etc.hdd/shells
 	cpdup ${ISOROOT}/etc/group ${ISOROOT}/etc.hdd/group
+	cpdup ${ISOROOT}/etc/passwd ${ISOROOT}/etc.hdd/passwd
+	cpdup ${ISOROOT}/etc/master.passwd ${ISOROOT}/etc.hdd/master.passwd
 .endif  # !empty(DPORTS_PACKAGES)
 
 mkiso:
