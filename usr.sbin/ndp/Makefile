@@ -11,8 +11,8 @@
 # AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, WITHOUT
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
+#
 # $FreeBSD: src/usr.sbin/ndp/Makefile,v 1.1.2.1 2001/04/25 12:10:20 ru Exp $
-# $DragonFly: src/usr.sbin/ndp/Makefile,v 1.4 2006/12/25 02:37:09 pavalos Exp $
 
 .PATH:	${.CURDIR}/../../contrib/tcpdump
 
@@ -22,9 +22,7 @@ MAN=	ndp.8
 WARNS?=	2
 NO_STRICT_ALIASING=
 
-CFLAGS+=-DINET6
 CFLAGS+= -I${.CURDIR}/../tcpdump -I${.CURDIR}/../../contrib/tcpdump
 CFLAGS+= -DHAVE_CONFIG_H -D_U_="__attribute__((unused))"
-
 
 .include <bsd.prog.mk>
