@@ -1,10 +1,19 @@
-Original Source can be downloaded from:
-http://www.tcpdump.org/release/
+TCPDUMP
+=======
 
-A list of files and directories removed is in README.DELETED
+Original source can be downloaded from:
+https://www.tcpdump.org/release/
 
-# update config.h in usr.sbin/tcpdump/tcpdump/:
-./configure --without-crypto --disable-ipv6
+file = tcpdump-4.9.3.tar.gz
+date = 2019-10-01
+size = 2333119
+sha1 = 59b309f3620ac4b709de2eaf7bf3a83bf04bc048
+
+A list of files and directories removed is in README.DELETED.
+
+Use "git diff vendor/TCPDUMP contrib/tcpdump" to see local modifications.
+
+Remember to update config.h in usr.sbin/tcpdump.
 
 These sources are used in:
 usr.sbin/ndp/
