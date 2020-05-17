@@ -86,9 +86,7 @@
 
 #include <pcap/socket.h>	/* for SOCKET, as the active-mode rpcap APIs use it */
 
-#ifndef PCAP_DONT_INCLUDE_PCAP_BPF_H
-#include <pcap/bpf.h>
-#endif
+#include <net/bpf.h>
 
 #include <stdio.h>
 

@@ -77,8 +77,8 @@ struct rtentry;
 
 #ifdef HAVE_NET_PFVAR_H
 #include <net/if.h>
-#include <net/pfvar.h>
-#include <net/if_pflog.h>
+#include <net/pf/pfvar.h>
+#include <net/pf/if_pflog.h>
 #endif
 #include "llc.h"
 #include "ieee80211.h"
