@@ -6,12 +6,12 @@ WARNS?=	2
 
 .PATH:	${SRCDIR}
 SRCS=	bpf_dump.c \
+	bpf_filter.c \
 	bpf_image.c \
 	etherent.c \
 	fad-getad.c \
-	fad-helpers.c \
+	fmtutils.c \
 	gencode.c \
-	inet.c \
 	nametoaddr.c \
 	optimize.c \
 	pcap-bpf.c \
@@ -19,11 +19,7 @@ SRCS=	bpf_dump.c \
 	pcap.c \
 	savefile.c \
 	sf-pcap.c \
-	sf-pcap-ng.c \
-	sockutils.c
-
-.PATH:	${SRCDIR}/bpf/net
-SRCS+=	bpf_filter.c
+	sf-pcapng.c
 
 SRCS+=	scanner.l scanner.h
 CLEANFILES+=scanner.h
@@ -40,21 +36,6 @@ CFLAGS+=-DHAVE_STRUCT_ETHER_ADDR -DHAVE_NET_PFVAR_H
 CFLAGS+=-DINET6
 .endif
 
-SRCS+=	version.c pcap_version.h tokdefs.h
-CLEANFILES+=version.c pcap_version.h tokdefs.h
-
-version.c: VERSION
-	echo '#include <pcap/export-defs.h>' > ${.TARGET}
-	echo 'PCAP_API_DEF' >> ${.TARGET}
-	sed -e 's/.*/char pcap_version[] = "&";/' ${.ALLSRC} > ${.TARGET}
-
-pcap_version.h: VERSION
-	sed -e 's/.*/static const char pcap_version_string[] = "libpcap version &";/' \
-		${.ALLSRC} > ${.TARGET}
-
-tokdefs.h: grammar.h
-	${LN} -sf grammar.h tokdefs.h
-
 # Old compatibility headers
 INCS=	pcap.h \
 	pcap-bpf.h \
@@ -64,13 +45,16 @@ PCAPINCS= \
 	pcap/bluetooth.h \
 	pcap/bpf.h \
 	pcap/can_socketcan.h \
+	pcap/compiler-tests.h \
 	pcap/dlt.h \
-	pcap/export-defs.h \
+	pcap/funcattrs.h \
 	pcap/ipnet.h \
 	pcap/namedb.h \
 	pcap/nflog.h \
+	pcap/pcap-inttypes.h \
 	pcap/pcap.h \
 	pcap/sll.h \
+	pcap/socket.h \
 	pcap/usb.h \
 	pcap/vlan.h
 
@@ -97,6 +81,7 @@ MAN=	pcap.3 \
 	pcap_fileno.3 \
 	pcap_findalldevs.3 \
 	pcap_freecode.3 \
+	pcap_get_required_select_timeout.3 \
 	pcap_get_selectable_fd.3 \
 	pcap_get_tstamp_precision.3 \
 	pcap_geterr.3 \
@@ -138,6 +123,7 @@ MAN+=	pcap-filter.7 \
 	pcap-tstamp.7
 
 MLINKS=	pcap_datalink_val_to_name.3 pcap_datalink_val_to_description.3 \
+	pcap_datalink_val_to_name.3 pcap_datalink_val_to_description_or_dlt.3 \
 	pcap_dump_open.3 pcap_dump_fopen.3 \
 	pcap_findalldevs.3 pcap_freealldevs.3 \
 	pcap_geterr.3 pcap_perror.3 \
@@ -147,8 +133,12 @@ MLINKS=	pcap_datalink_val_to_name.3 pcap_datalink_val_to_description.3 \
 	pcap_loop.3 pcap_dispatch.3 \
 	pcap_major_version.3 pcap_minor_version.3 \
 	pcap_next_ex.3 pcap_next.3 \
+	pcap_open_dead.3 pcap_open_dead_with_tstamp_precision.3 \
 	pcap_open_offline.3 pcap_fopen_offline.3 \
-	pcap_setnonblock.3 pcap_getnonblock.3
+	pcap_open_offline.3 pcap_fopen_offline_with_tstamp_precision.3 \
+	pcap_open_offline.3 pcap_open_offline_with_tstamp_precision.3 \
+	pcap_setnonblock.3 pcap_getnonblock.3 \
+	pcap_tstamp_type_val_to_name.3 pcap_tstamp_type_val_to_description.3
 
 # Magic to convert the man pages to something non Solarish
 CLEANFILES+=${MAN}
