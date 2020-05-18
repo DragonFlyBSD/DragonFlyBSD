@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1993, 1994, 1995, 1996, 1997
+ * Copyright (c) 1990, 1991, 1992, 1993, 1994, 1995, 1996
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -17,16 +17,12 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
- *
- * sf-pcap-ng.h - pcap-ng-file-format-specific routines
- *
- * Used to read pcap-ng savefiles.
  */
 
-#ifndef sf_pcap_ng_h
-#define	sf_pcap_ng_h
-
-extern pcap_t *pcap_ng_check_header(bpf_u_int32 magic, FILE *fp,
-    u_int precision, char *errbuf, int *err);
-
+/*
+ * Some stuff for use when debugging the optimizer.
+ */
+#ifdef BDEBUG
+#define NBIDS	1000
+extern int bids[NBIDS];
 #endif

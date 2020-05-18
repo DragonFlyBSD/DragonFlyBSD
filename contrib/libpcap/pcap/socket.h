@@ -1,5 +1,6 @@
+/* -*- Mode: c; tab-width: 8; indent-tabs-mode: 1; c-basic-offset: 8; -*- */
 /*
- * Copyright (c) 1994, 1996
+ * Copyright (c) 1993, 1994, 1995, 1996, 1997
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,53 +32,62 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lib_pcap_namedb_h
-#define lib_pcap_namedb_h
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef lib_pcap_socket_h
+#define lib_pcap_socket_h
 
 /*
- * As returned by the pcap_next_etherent()
- * XXX this stuff doesn't belong in this interface, but this
- * library already must do name to address translation, so
- * on systems that don't have support for /etc/ethers, we
- * export these hooks since they're already being used by
- * some applications (such as tcpdump) and already being
- * marked as exported in some OSes offering libpcap (such
- * as Debian).
+ * Some minor differences between sockets on various platforms.
+ * We include whatever sockets are needed for Internet-protocol
+ * socket access on UN*X and Windows.
  */
-struct pcap_etherent {
-	u_char addr[6];
-	char name[122];
-};
-#ifndef PCAP_ETHERS_FILE
-#define PCAP_ETHERS_FILE "/etc/ethers"
-#endif
-PCAP_API struct	pcap_etherent *pcap_next_etherent(FILE *);
-PCAP_API u_char *pcap_ether_hostton(const char*);
-PCAP_API u_char *pcap_ether_aton(const char *);
+#ifdef _WIN32
+  /* Need windef.h for defines used in winsock2.h under MingW32 */
+  #ifdef __MINGW32__
+    #include <windef.h>
+  #endif
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
 
-PCAP_API bpf_u_int32 **pcap_nametoaddr(const char *);
-PCAP_API struct addrinfo *pcap_nametoaddrinfo(const char *);
-PCAP_API bpf_u_int32 pcap_nametonetaddr(const char *);
+  /*
+   * Winsock doesn't have this UN*X type; it's used in the UN*X
+   * sockets API.
+   *
+   * XXX - do we need to worry about UN*Xes so old that *they*
+   * don't have it, either?
+   */
+  typedef int socklen_t;
 
-PCAP_API int	pcap_nametoport(const char *, int *, int *);
-PCAP_API int	pcap_nametoportrange(const char *, int *, int *, int *);
-PCAP_API int	pcap_nametoproto(const char *);
-PCAP_API int	pcap_nametoeproto(const char *);
-PCAP_API int	pcap_nametollc(const char *);
-/*
- * If a protocol is unknown, PROTO_UNDEF is returned.
- * Also, pcap_nametoport() returns the protocol along with the port number.
- * If there are ambiguous entried in /etc/services (i.e. domain
- * can be either tcp or udp) PROTO_UNDEF is returned.
- */
-#define PROTO_UNDEF		-1
+  /*
+   * Winsock doesn't have this POSIX type; it's used for the
+   * tv_usec value of struct timeval.
+   */
+  typedef long suseconds_t;
+#else /* _WIN32 */
+  #include <sys/types.h>
+  #include <sys/socket.h>
+  #include <netdb.h>		/* for struct addrinfo/getaddrinfo() */
+  #include <netinet/in.h>	/* for sockaddr_in, in BSD at least */
+  #include <arpa/inet.h>
 
-#ifdef __cplusplus
-}
-#endif
+  /*!
+   * \brief In Winsock, a socket handle is of type SOCKET; in UN*X, it's
+   * a file descriptor, and therefore a signed integer.
+   * We define SOCKET to be a signed integer on UN*X, so that it can
+   * be used on both platforms.
+   */
+  #ifndef SOCKET
+    #define SOCKET int
+  #endif
 
-#endif
+  /*!
+   * \brief In Winsock, the error return if socket() fails is INVALID_SOCKET;
+   * in UN*X, it's -1.
+   * We define INVALID_SOCKET to be -1 on UN*X, so that it can be used on
+   * both platforms.
+   */
+  #ifndef INVALID_SOCKET
+    #define INVALID_SOCKET -1
+  #endif
+#endif /* _WIN32 */
+
+#endif /* lib_pcap_socket_h */

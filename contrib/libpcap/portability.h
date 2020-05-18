@@ -38,69 +38,61 @@
  * Helpers for portability between Windows and UN*X and between different
  * flavors of UN*X.
  */
+#include <stdarg.h>	/* we declare varargs functions on some platforms */
+
+#include "pcap/funcattrs.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef HAVE_STRLCPY
- /*
-  * Macro that does the same thing as strlcpy().
-  */
- #ifdef _MSC_VER
-  /*
-   * strncpy_s() is supported at least back to Visual
-   * Studio 2005.
-   */
-  #define strlcpy(x, y, z) \
-	strncpy_s((x), (z), (y), _TRUNCATE)
-
- #else
-  #define strlcpy(x, y, z) \
-	(strncpy((x), (y), (z)), \
-	 ((z) <= 0 ? 0 : ((x)[(z) - 1] = '\0')), \
-	 (void) strlen((y)))
- #endif
-#endif
-
-/*
- * For flagging arguments as format strings in MSVC.
- */
-#if _MSC_VER >= 1400
- #include <sal.h>
- #if _MSC_VER > 1400
-  #define FORMAT_STRING(p) _Printf_format_string_ p
- #else
-  #define FORMAT_STRING(p) __format_string p
- #endif
+#ifdef HAVE_STRLCAT
+  #define pcap_strlcat	strlcat
 #else
- #define FORMAT_STRING(p) p
-#endif
-
-#ifdef _MSC_VER
-  #define strdup	_strdup
-  #define sscanf	sscanf_s
-  #define setbuf(x, y) \
-	setvbuf((x), (y), _IONBF, 0)
-  #define fopen(x, y) \
-	fopen_safe((x), (y))
-  FILE *fopen_safe(const char *filename, const char* mode);
-#endif
-
-#if defined(_MSC_VER) || defined(__MINGW32__)
-  #define strlcat(x, y, z) \
-	strncat_s((x), (z), (y), _TRUNCATE)
-#endif
-
-#ifdef _MSC_VER
-  /*
-   * MSVC.
-   */
-  #if _MSC_VER >= 1900
+  #if defined(_MSC_VER) || defined(__MINGW32__)
     /*
-     * VS 2015 or newer; we have snprintf() function.
+     * strncat_s() is supported at least back to Visual
+     * Studio 2005.
      */
-    #define HAVE_SNPRINTF
+    #define pcap_strlcat(x, y, z) \
+	strncat_s((x), (z), (y), _TRUNCATE)
+  #else
+    /*
+     * Define it ourselves.
+     */
+    extern size_t pcap_strlcat(char * restrict dst, const char * restrict src, size_t dstsize);
+  #endif
+#endif
+
+#ifdef HAVE_STRLCPY
+  #define pcap_strlcpy	strlcpy
+#else
+  #if defined(_MSC_VER) || defined(__MINGW32__)
+    /*
+     * strncpy_s() is supported at least back to Visual
+     * Studio 2005.
+     */
+    #define pcap_strlcpy(x, y, z) \
+	strncpy_s((x), (z), (y), _TRUNCATE)
+  #else
+    /*
+     * Define it ourselves.
+     */
+    extern size_t pcap_strlcpy(char * restrict dst, const char * restrict src, size_t dstsize);
+  #endif
+#endif
+
+#ifdef _MSC_VER
+  #define isascii	__isascii
+
+  /*
+   * If <crtdbg.h> has been included, and _DEBUG is defined, and
+   * __STDC__ is zero, <crtdbg.h> will define strdup() to call
+   * _strdup_dbg().  So if it's already defined, don't redefine
+   * it.
+   */
+  #ifndef strdup
+  #define strdup	_strdup
   #endif
 #endif
 
@@ -129,11 +121,8 @@ extern "C" {
 #ifdef HAVE_SNPRINTF
 #define pcap_snprintf snprintf
 #else
-extern int pcap_snprintf(char *, size_t, FORMAT_STRING(const char *), ...)
-#ifdef __ATTRIBUTE___FORMAT_OK
-    __attribute__((format (printf, 3, 4)))
-#endif /* __ATTRIBUTE___FORMAT_OK */
-    ;
+extern int pcap_snprintf(char *, size_t, PCAP_FORMAT_STRING(const char *), ...)
+    PCAP_PRINTFLIKE(3, 4);
 #endif
 
 #ifdef HAVE_VSNPRINTF
@@ -142,10 +131,27 @@ extern int pcap_snprintf(char *, size_t, FORMAT_STRING(const char *), ...)
 extern int pcap_vsnprintf(char *, size_t, const char *, va_list ap);
 #endif
 
+/*
+ * We also want asprintf(), for some cases where we use it to construct
+ * dynamically-allocated variable-length strings.
+ */
+#ifdef HAVE_ASPRINTF
+#define pcap_asprintf asprintf
+#else
+extern int pcap_asprintf(char **, PCAP_FORMAT_STRING(const char *), ...)
+    PCAP_PRINTFLIKE(2, 3);
+#endif
+
+#ifdef HAVE_VASPRINTF
+#define pcap_vasprintf vasprintf
+#else
+extern int pcap_vasprintf(char **, const char *, va_list ap);
+#endif
+
 #ifdef HAVE_STRTOK_R
   #define pcap_strtok_r	strtok_r
 #else
-  #ifdef _MSC_VER
+  #ifdef _WIN32
     /*
      * Microsoft gives it a different name.
      */
@@ -154,56 +160,11 @@ extern int pcap_vsnprintf(char *, size_t, const char *, va_list ap);
     /*
      * Define it ourselves.
      */
-    #define NEED_STRTOK_R
-    extern int pcap_strtok_r(char *, const char *, char **);
+    extern char *pcap_strtok_r(char *, const char *, char **);
   #endif
 #endif /* HAVE_STRTOK_R */
 
 #ifdef _WIN32
-  /*
-   * These may be defined by <inttypes.h>.
-   *
-   * XXX - for MSVC, we always want the _MSC_EXTENSIONS versions.
-   * What about other compilers?  If, as the MinGW Web site says MinGW
-   * does, the other compilers just use Microsoft's run-time library,
-   * then they should probably use the _MSC_EXTENSIONS even if the
-   * compiler doesn't define _MSC_EXTENSIONS.
-   *
-   * XXX - we currently aren't using any of these, but this allows
-   * their use in the future.
-   */
-  #ifndef PRId64
-    #ifdef _MSC_EXTENSIONS
-      #define PRId64	"I64d"
-    #else
-      #define PRId64	"lld"
-    #endif
-  #endif /* PRId64 */
-
-  #ifndef PRIo64
-    #ifdef _MSC_EXTENSIONS
-      #define PRIo64	"I64o"
-    #else
-      #define PRIo64	"llo"
-    #endif
-  #endif /* PRIo64 */
-
-  #ifndef PRIx64
-    #ifdef _MSC_EXTENSIONS
-      #define PRIx64	"I64x"
-    #else
-      #define PRIx64	"llx"
-    #endif
-  #endif
-
-  #ifndef PRIu64
-    #ifdef _MSC_EXTENSIONS
-      #define PRIu64	"I64u"
-    #else
-      #define PRIu64	"llu"
-    #endif
-  #endif
-
   #if !defined(__cplusplus)
     #define inline __inline
   #endif
