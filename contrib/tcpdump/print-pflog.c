@@ -34,9 +34,8 @@ static const char rcsid[] _U_ =
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <net/if.h>
-#include <net/if_var.h>
-#include <net/pf/pfvar.h>
-#include <net/pf/if_pflog.h>
+#include <net/pfvar.h>
+#include <net/if_pflog.h>
 
 #include <tcpdump-stdinc.h>
 

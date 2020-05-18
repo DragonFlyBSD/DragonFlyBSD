@@ -186,7 +186,7 @@ in order to use it) and will continue capturing packets.
 .LP
 Reading packets from a network interface may require that you have
 special privileges; see the
-.B pcap (3)
+.B pcap (3PCAP)
 man page for details.  Reading a saved packet file doesn't require
 special privileges.
 .SH OPTIONS
@@ -1706,7 +1706,7 @@ is made to account for the time lag between when the
 Ethernet interface removed the packet from the wire and when the kernel
 serviced the `new packet' interrupt.
 .SH "SEE ALSO"
-stty(1), pcap(3), bpf(4), pcap-savefile(@MAN_FILE_FORMATS@),
+stty(1), pcap(3PCAP), bpf(4), nit(4P), pcap-savefile(@MAN_FILE_FORMATS@),
 pcap-filter(@MAN_MISC_INFO@), pcap-tstamp-type(@MAN_MISC_INFO@)
 .SH AUTHORS
 The original authors are:
