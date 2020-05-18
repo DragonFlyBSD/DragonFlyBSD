@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2006 Paolo Abeni (Italy)
+ * Copyright (c) 2002 - 2005 NetGroup, Politecnico di Torino (Italy)
+ * Copyright (c) 2005 - 2009 CACE Technologies, Inc. Davis (California)
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -11,9 +12,9 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in the
  * documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote
- * products derived from this software without specific prior written
- * permission.
+ * 3. Neither the name of the Politecnico di Torino nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -26,31 +27,24 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * bluetooth data struct
- * By Paolo Abeni <paolo.abeni@email.it>
  */
-
-#ifndef lib_pcap_bluetooth_h
-#define lib_pcap_bluetooth_h
-
-#include <pcap/pcap-inttypes.h>
+#ifndef pcap_types_h
+#define pcap_types_h
 
 /*
- * Header prepended libpcap to each bluetooth h4 frame,
- * fields are in network byte order
+ * Get u_int defined, by hook or by crook.
  */
-typedef struct _pcap_bluetooth_h4_header {
-	uint32_t direction; /* if first bit is set direction is incoming */
-} pcap_bluetooth_h4_header;
+#ifdef _WIN32
 
-/*
- * Header prepended libpcap to each bluetooth linux monitor frame,
- * fields are in network byte order
- */
-typedef struct _pcap_bluetooth_linux_monitor_header {
-	uint16_t adapter_id;
-	uint16_t opcode;
-} pcap_bluetooth_linux_monitor_header;
-
+  /*
+   * This defines u_int.
+   */
+  #include <winsock2.h>
+#else /* _WIN32 */
+  /*
+   * This defines u_int, among other types.
+   */
+  #include <sys/types.h>
 #endif
+
+#endif /* pcap_types_h */

@@ -19,6 +19,8 @@
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
+#include "pcap/funcattrs.h"
+
 /*
  * ATM support:
  *
@@ -52,10 +54,6 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef HAVE___ATTRIBUTE__
-#define __attribute__(x)
-#endif /* HAVE___ATTRIBUTE__ */
 
 /* Address qualifiers. */
 
@@ -115,16 +113,14 @@
 #define Q_ISIS_L2       32
 /* PDU types */
 #define Q_ISIS_IIH      33
-#define Q_ISIS_LAN_IIH  34
-#define Q_ISIS_PTP_IIH  35
-#define Q_ISIS_SNP      36
-#define Q_ISIS_CSNP     37
-#define Q_ISIS_PSNP     38
-#define Q_ISIS_LSP      39
+#define Q_ISIS_SNP      34
+#define Q_ISIS_CSNP     35
+#define Q_ISIS_PSNP     36
+#define Q_ISIS_LSP      37
 
-#define Q_RADIO		40
+#define Q_RADIO		38
 
-#define Q_CARP		41
+#define Q_CARP		39
 
 /* Directional qualifiers. */
 
@@ -268,6 +264,11 @@ struct block {
 	int val[N_ATOMS];
 };
 
+/*
+ * A value of 0 for val[i] means the value is unknown.
+ */
+#define VAL_UNKNOWN	0
+
 struct arth {
 	struct block *b;	/* protocol checks */
 	struct slist *s;	/* stmt list */
@@ -296,8 +297,8 @@ void gen_or(struct block *, struct block *);
 void gen_not(struct block *);
 
 struct block *gen_scode(compiler_state_t *, const char *, struct qual);
-struct block *gen_ecode(compiler_state_t *, const u_char *, struct qual);
-struct block *gen_acode(compiler_state_t *, const u_char *, struct qual);
+struct block *gen_ecode(compiler_state_t *, const char *, struct qual);
+struct block *gen_acode(compiler_state_t *, const char *, struct qual);
 struct block *gen_mcode(compiler_state_t *, const char *, const char *,
     unsigned int, struct qual);
 #ifdef INET6
@@ -323,13 +324,13 @@ struct block *gen_llc_u(compiler_state_t *);
 struct block *gen_llc_s_subtype(compiler_state_t *, bpf_u_int32);
 struct block *gen_llc_u_subtype(compiler_state_t *, bpf_u_int32);
 
-struct block *gen_vlan(compiler_state_t *, int);
-struct block *gen_mpls(compiler_state_t *, int);
+struct block *gen_vlan(compiler_state_t *, bpf_u_int32, int);
+struct block *gen_mpls(compiler_state_t *, bpf_u_int32, int);
 
 struct block *gen_pppoed(compiler_state_t *);
-struct block *gen_pppoes(compiler_state_t *, int);
+struct block *gen_pppoes(compiler_state_t *, bpf_u_int32, int);
 
-struct block *gen_geneve(compiler_state_t *, int);
+struct block *gen_geneve(compiler_state_t *, bpf_u_int32, int);
 
 struct block *gen_atmfield_code(compiler_state_t *, int, bpf_int32,
     bpf_u_int32, int);
@@ -365,23 +366,15 @@ struct icode {
 	int cur_mark;
 };
 
-void bpf_optimize(compiler_state_t *, struct icode *ic);
-void bpf_syntax_error(compiler_state_t *, const char *);
-void bpf_error(compiler_state_t *, const char *, ...)
-    __attribute__((noreturn))
-#ifdef __ATTRIBUTE___FORMAT_OK
-    __attribute__((format (printf, 2, 3)))
-#endif /* __ATTRIBUTE___FORMAT_OK */
-    ;
+int bpf_optimize(struct icode *, char *);
+void bpf_set_error(compiler_state_t *, const char *, ...)
+    PCAP_PRINTFLIKE(2, 3);
 
-void finish_parse(compiler_state_t *, struct block *);
+int finish_parse(compiler_state_t *, struct block *);
 char *sdup(compiler_state_t *, const char *);
 
-struct _opt_state;
-typedef struct _opt_state opt_state_t;
-
-struct bpf_insn *icode_to_fcode(compiler_state_t *, struct icode *,
-    struct block *, u_int *);
+struct bpf_insn *icode_to_fcode(struct icode *, struct block *, u_int *,
+    char *);
 void sappend(struct slist *, struct slist *);
 
 /*
