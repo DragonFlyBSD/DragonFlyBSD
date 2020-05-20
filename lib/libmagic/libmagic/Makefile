@@ -9,8 +9,8 @@ MAGIC=	${MAGICSHAREDIR}/magic
 LIB=	magic
 SHLIB_MAJOR=	2
 
-DPADD=	${LIBZ}
-LDADD=	-lz
+DPADD=  ${LIBBZ2} ${LIBLZMA} ${LIBZ}
+LDADD=  -lbz2 -llzma -lz
 
 SRCS=	apprentice.c ascmagic.c cdf.c cdf_time.c \
 	compress.c der.c encoding.c fsmagic.c funcs.c \
