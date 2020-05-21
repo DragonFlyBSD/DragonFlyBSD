@@ -1,6 +1,6 @@
 /*
  * hostapd - WPA/RSN IE and KDE definitions
- * Copyright (c) 2004-2008, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2004-2018, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -164,18 +164,25 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 		pos += RSN_SELECTOR_LEN;
 		num_suites++;
 	}
-#ifdef CONFIG_IEEE80211R
+#ifdef CONFIG_IEEE80211R_AP
 	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_FT_IEEE8021X) {
 		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FT_802_1X);
 		pos += RSN_SELECTOR_LEN;
 		num_suites++;
 	}
+#ifdef CONFIG_SHA384
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_FT_IEEE8021X_SHA384) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FT_802_1X_SHA384);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+#endif /* CONFIG_SHA384 */
 	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_FT_PSK) {
 		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FT_PSK);
 		pos += RSN_SELECTOR_LEN;
 		num_suites++;
 	}
-#endif /* CONFIG_IEEE80211R */
+#endif /* CONFIG_IEEE80211R_AP */
 #ifdef CONFIG_IEEE80211W
 	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_IEEE8021X_SHA256) {
 		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_802_1X_SHA256);
@@ -200,6 +207,61 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 		num_suites++;
 	}
 #endif /* CONFIG_SAE */
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_802_1X_SUITE_B);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B_192) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_802_1X_SUITE_B_192);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+#ifdef CONFIG_FILS
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_FILS_SHA256) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FILS_SHA256);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_FILS_SHA384) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FILS_SHA384);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+#ifdef CONFIG_IEEE80211R_AP
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_FT_FILS_SHA256) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FT_FILS_SHA256);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_FT_FILS_SHA384) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FT_FILS_SHA384);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+#endif /* CONFIG_IEEE80211R_AP */
+#endif /* CONFIG_FILS */
+#ifdef CONFIG_OWE
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_OWE) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_OWE);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+#endif /* CONFIG_OWE */
+#ifdef CONFIG_DPP
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_DPP) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_DPP);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+#endif /* CONFIG_DPP */
+#ifdef CONFIG_HS20
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_OSEN) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_OSEN);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+#endif /* CONFIG_HS20 */
 
 #ifdef CONFIG_RSN_TESTING
 	if (rsn_testing) {
@@ -220,8 +282,6 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 	capab = 0;
 	if (conf->rsn_preauth)
 		capab |= WPA_CAPABILITY_PREAUTH;
-	if (conf->peerkey)
-		capab |= WPA_CAPABILITY_PEERKEY_ENABLED;
 	if (conf->wmm_enabled) {
 		/* 4 PTKSA replay counters when using WMM */
 		capab |= (RSN_NUM_REPLAY_COUNTERS_16 << 2);
@@ -233,15 +293,19 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 			capab |= WPA_CAPABILITY_MFPR;
 	}
 #endif /* CONFIG_IEEE80211W */
+#ifdef CONFIG_OCV
+	if (conf->ocv)
+		capab |= WPA_CAPABILITY_OCVC;
+#endif /* CONFIG_OCV */
 #ifdef CONFIG_RSN_TESTING
 	if (rsn_testing)
-		capab |= BIT(8) | BIT(14) | BIT(15);
+		capab |= BIT(8) | BIT(15);
 #endif /* CONFIG_RSN_TESTING */
 	WPA_PUT_LE16(pos, capab);
 	pos += 2;
 
 	if (pmkid) {
-		if (pos + 2 + PMKID_LEN > buf + len)
+		if (2 + PMKID_LEN > buf + len - pos)
 			return -1;
 		/* PMKID Count */
 		WPA_PUT_LE16(pos, 1);
@@ -251,8 +315,9 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 	}
 
 #ifdef CONFIG_IEEE80211W
-	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION) {
-		if (pos + 2 + 4 > buf + len)
+	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION &&
+	    conf->group_mgmt_cipher != WPA_CIPHER_AES_128_CMAC) {
+		if (2 + 4 > buf + len - pos)
 			return -1;
 		if (pmkid == NULL) {
 			/* PMKID Count */
@@ -261,7 +326,25 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 		}
 
 		/* Management Group Cipher Suite */
-		RSN_SELECTOR_PUT(pos, RSN_CIPHER_SUITE_AES_128_CMAC);
+		switch (conf->group_mgmt_cipher) {
+		case WPA_CIPHER_AES_128_CMAC:
+			RSN_SELECTOR_PUT(pos, RSN_CIPHER_SUITE_AES_128_CMAC);
+			break;
+		case WPA_CIPHER_BIP_GMAC_128:
+			RSN_SELECTOR_PUT(pos, RSN_CIPHER_SUITE_BIP_GMAC_128);
+			break;
+		case WPA_CIPHER_BIP_GMAC_256:
+			RSN_SELECTOR_PUT(pos, RSN_CIPHER_SUITE_BIP_GMAC_256);
+			break;
+		case WPA_CIPHER_BIP_CMAC_256:
+			RSN_SELECTOR_PUT(pos, RSN_CIPHER_SUITE_BIP_CMAC_256);
+			break;
+		default:
+			wpa_printf(MSG_DEBUG,
+				   "Invalid group management cipher (0x%x)",
+				   conf->group_mgmt_cipher);
+			return -1;
+		}
 		pos += RSN_SELECTOR_LEN;
 	}
 #endif /* CONFIG_IEEE80211W */
@@ -295,13 +378,86 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 }
 
 
+static u8 * wpa_write_osen(struct wpa_auth_config *conf, u8 *eid)
+{
+	u8 *len;
+	u16 capab;
+
+	*eid++ = WLAN_EID_VENDOR_SPECIFIC;
+	len = eid++; /* to be filled */
+	WPA_PUT_BE24(eid, OUI_WFA);
+	eid += 3;
+	*eid++ = HS20_OSEN_OUI_TYPE;
+
+	/* Group Data Cipher Suite */
+	RSN_SELECTOR_PUT(eid, RSN_CIPHER_SUITE_NO_GROUP_ADDRESSED);
+	eid += RSN_SELECTOR_LEN;
+
+	/* Pairwise Cipher Suite Count and List */
+	WPA_PUT_LE16(eid, 1);
+	eid += 2;
+	RSN_SELECTOR_PUT(eid, RSN_CIPHER_SUITE_CCMP);
+	eid += RSN_SELECTOR_LEN;
+
+	/* AKM Suite Count and List */
+	WPA_PUT_LE16(eid, 1);
+	eid += 2;
+	RSN_SELECTOR_PUT(eid, RSN_AUTH_KEY_MGMT_OSEN);
+	eid += RSN_SELECTOR_LEN;
+
+	/* RSN Capabilities */
+	capab = 0;
+	if (conf->wmm_enabled) {
+		/* 4 PTKSA replay counters when using WMM */
+		capab |= (RSN_NUM_REPLAY_COUNTERS_16 << 2);
+	}
+#ifdef CONFIG_IEEE80211W
+	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION) {
+		capab |= WPA_CAPABILITY_MFPC;
+		if (conf->ieee80211w == MGMT_FRAME_PROTECTION_REQUIRED)
+			capab |= WPA_CAPABILITY_MFPR;
+	}
+#endif /* CONFIG_IEEE80211W */
+#ifdef CONFIG_OCV
+	if (conf->ocv)
+		capab |= WPA_CAPABILITY_OCVC;
+#endif /* CONFIG_OCV */
+	WPA_PUT_LE16(eid, capab);
+	eid += 2;
+
+	*len = eid - len - 1;
+
+	return eid;
+}
+
+
 int wpa_auth_gen_wpa_ie(struct wpa_authenticator *wpa_auth)
 {
 	u8 *pos, buf[128];
 	int res;
 
+#ifdef CONFIG_TESTING_OPTIONS
+	if (wpa_auth->conf.own_ie_override_len) {
+		wpa_hexdump(MSG_DEBUG, "WPA: Forced own IE(s) for testing",
+			    wpa_auth->conf.own_ie_override,
+			    wpa_auth->conf.own_ie_override_len);
+		os_free(wpa_auth->wpa_ie);
+		wpa_auth->wpa_ie =
+			os_malloc(wpa_auth->conf.own_ie_override_len);
+		if (wpa_auth->wpa_ie == NULL)
+			return -1;
+		os_memcpy(wpa_auth->wpa_ie, wpa_auth->conf.own_ie_override,
+			  wpa_auth->conf.own_ie_override_len);
+		wpa_auth->wpa_ie_len = wpa_auth->conf.own_ie_override_len;
+		return 0;
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
+
 	pos = buf;
 
+	if (wpa_auth->conf.wpa == WPA_PROTO_OSEN) {
+		pos = wpa_write_osen(&wpa_auth->conf, pos);
+	}
 	if (wpa_auth->conf.wpa & WPA_PROTO_RSN) {
 		res = wpa_write_rsn_ie(&wpa_auth->conf,
 				       pos, buf + sizeof(buf) - pos, NULL);
@@ -309,7 +465,7 @@ int wpa_auth_gen_wpa_ie(struct wpa_authenticator *wpa_auth)
 			return res;
 		pos += res;
 	}
-#ifdef CONFIG_IEEE80211R
+#ifdef CONFIG_IEEE80211R_AP
 	if (wpa_key_mgmt_ft(wpa_auth->conf.wpa_key_mgmt)) {
 		res = wpa_write_mdie(&wpa_auth->conf, pos,
 				     buf + sizeof(buf) - pos);
@@ -317,7 +473,7 @@ int wpa_auth_gen_wpa_ie(struct wpa_authenticator *wpa_auth)
 			return res;
 		pos += res;
 	}
-#endif /* CONFIG_IEEE80211R */
+#endif /* CONFIG_IEEE80211R_AP */
 	if (wpa_auth->conf.wpa & WPA_PROTO_WPA) {
 		res = wpa_write_wpa_ie(&wpa_auth->conf,
 				       pos, buf + sizeof(buf) - pos);
@@ -374,9 +530,10 @@ static int wpa_auth_okc_iter(struct wpa_authenticator *a, void *ctx)
 
 
 int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
-			struct wpa_state_machine *sm,
+			struct wpa_state_machine *sm, int freq,
 			const u8 *wpa_ie, size_t wpa_ie_len,
-			const u8 *mdie, size_t mdie_len)
+			const u8 *mdie, size_t mdie_len,
+			const u8 *owe_dh, size_t owe_dh_len)
 {
 	struct wpa_ie_data data;
 	int ciphers, key_mgmt, res, version;
@@ -403,16 +560,53 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 
 	if (version == WPA_PROTO_RSN) {
 		res = wpa_parse_wpa_ie_rsn(wpa_ie, wpa_ie_len, &data);
+		if (!data.has_pairwise)
+			data.pairwise_cipher = wpa_default_rsn_cipher(freq);
+		if (!data.has_group)
+			data.group_cipher = wpa_default_rsn_cipher(freq);
+
+		if (wpa_key_mgmt_ft(data.key_mgmt) && !mdie &&
+		    !wpa_key_mgmt_only_ft(data.key_mgmt)) {
+			/* Workaround for some HP and Epson printers that seem
+			 * to incorrectly copy the FT-PSK + WPA-PSK AKMs from AP
+			 * advertised RSNE to Association Request frame. */
+			wpa_printf(MSG_DEBUG,
+				   "RSN: FT set in RSNE AKM but MDE is missing from "
+				   MACSTR
+				   " - ignore FT AKM(s) because there's also a non-FT AKM",
+				   MAC2STR(sm->addr));
+			data.key_mgmt &= ~WPA_KEY_MGMT_FT;
+		}
 
 		selector = RSN_AUTH_KEY_MGMT_UNSPEC_802_1X;
 		if (0) {
 		}
-#ifdef CONFIG_IEEE80211R
+		else if (data.key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B_192)
+			selector = RSN_AUTH_KEY_MGMT_802_1X_SUITE_B_192;
+		else if (data.key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B)
+			selector = RSN_AUTH_KEY_MGMT_802_1X_SUITE_B;
+#ifdef CONFIG_FILS
+#ifdef CONFIG_IEEE80211R_AP
+		else if (data.key_mgmt & WPA_KEY_MGMT_FT_FILS_SHA384)
+			selector = RSN_AUTH_KEY_MGMT_FT_FILS_SHA384;
+		else if (data.key_mgmt & WPA_KEY_MGMT_FT_FILS_SHA256)
+			selector = RSN_AUTH_KEY_MGMT_FT_FILS_SHA256;
+#endif /* CONFIG_IEEE80211R_AP */
+		else if (data.key_mgmt & WPA_KEY_MGMT_FILS_SHA384)
+			selector = RSN_AUTH_KEY_MGMT_FILS_SHA384;
+		else if (data.key_mgmt & WPA_KEY_MGMT_FILS_SHA256)
+			selector = RSN_AUTH_KEY_MGMT_FILS_SHA256;
+#endif /* CONFIG_FILS */
+#ifdef CONFIG_IEEE80211R_AP
+#ifdef CONFIG_SHA384
+		else if (data.key_mgmt & WPA_KEY_MGMT_FT_IEEE8021X_SHA384)
+			selector = RSN_AUTH_KEY_MGMT_FT_802_1X_SHA384;
+#endif /* CONFIG_SHA384 */
 		else if (data.key_mgmt & WPA_KEY_MGMT_FT_IEEE8021X)
 			selector = RSN_AUTH_KEY_MGMT_FT_802_1X;
 		else if (data.key_mgmt & WPA_KEY_MGMT_FT_PSK)
 			selector = RSN_AUTH_KEY_MGMT_FT_PSK;
-#endif /* CONFIG_IEEE80211R */
+#endif /* CONFIG_IEEE80211R_AP */
 #ifdef CONFIG_IEEE80211W
 		else if (data.key_mgmt & WPA_KEY_MGMT_IEEE8021X_SHA256)
 			selector = RSN_AUTH_KEY_MGMT_802_1X_SHA256;
@@ -429,6 +623,18 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 			selector = RSN_AUTH_KEY_MGMT_UNSPEC_802_1X;
 		else if (data.key_mgmt & WPA_KEY_MGMT_PSK)
 			selector = RSN_AUTH_KEY_MGMT_PSK_OVER_802_1X;
+#ifdef CONFIG_OWE
+		else if (data.key_mgmt & WPA_KEY_MGMT_OWE)
+			selector = RSN_AUTH_KEY_MGMT_OWE;
+#endif /* CONFIG_OWE */
+#ifdef CONFIG_DPP
+		else if (data.key_mgmt & WPA_KEY_MGMT_DPP)
+			selector = RSN_AUTH_KEY_MGMT_DPP;
+#endif /* CONFIG_DPP */
+#ifdef CONFIG_HS20
+		else if (data.key_mgmt & WPA_KEY_MGMT_OSEN)
+			selector = RSN_AUTH_KEY_MGMT_OSEN;
+#endif /* CONFIG_HS20 */
 		wpa_auth->dot11RSNAAuthenticationSuiteSelected = selector;
 
 		selector = wpa_cipher_to_suite(WPA_PROTO_RSN,
@@ -485,12 +691,32 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 	}
 	if (0) {
 	}
-#ifdef CONFIG_IEEE80211R
+	else if (key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B_192)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_IEEE8021X_SUITE_B_192;
+	else if (key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_IEEE8021X_SUITE_B;
+#ifdef CONFIG_FILS
+#ifdef CONFIG_IEEE80211R_AP
+	else if (key_mgmt & WPA_KEY_MGMT_FT_FILS_SHA384)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_FT_FILS_SHA384;
+	else if (data.key_mgmt & WPA_KEY_MGMT_FT_FILS_SHA256)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_FT_FILS_SHA256;
+#endif /* CONFIG_IEEE80211R_AP */
+	else if (key_mgmt & WPA_KEY_MGMT_FILS_SHA384)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_FILS_SHA384;
+	else if (key_mgmt & WPA_KEY_MGMT_FILS_SHA256)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_FILS_SHA256;
+#endif /* CONFIG_FILS */
+#ifdef CONFIG_IEEE80211R_AP
+#ifdef CONFIG_SHA384
+	else if (key_mgmt & WPA_KEY_MGMT_FT_IEEE8021X_SHA384)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_FT_IEEE8021X_SHA384;
+#endif /* CONFIG_SHA384 */
 	else if (key_mgmt & WPA_KEY_MGMT_FT_IEEE8021X)
 		sm->wpa_key_mgmt = WPA_KEY_MGMT_FT_IEEE8021X;
 	else if (key_mgmt & WPA_KEY_MGMT_FT_PSK)
 		sm->wpa_key_mgmt = WPA_KEY_MGMT_FT_PSK;
-#endif /* CONFIG_IEEE80211R */
+#endif /* CONFIG_IEEE80211R_AP */
 #ifdef CONFIG_IEEE80211W
 	else if (key_mgmt & WPA_KEY_MGMT_IEEE8021X_SHA256)
 		sm->wpa_key_mgmt = WPA_KEY_MGMT_IEEE8021X_SHA256;
@@ -505,6 +731,18 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 #endif /* CONFIG_SAE */
 	else if (key_mgmt & WPA_KEY_MGMT_IEEE8021X)
 		sm->wpa_key_mgmt = WPA_KEY_MGMT_IEEE8021X;
+#ifdef CONFIG_OWE
+	else if (key_mgmt & WPA_KEY_MGMT_OWE)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_OWE;
+#endif /* CONFIG_OWE */
+#ifdef CONFIG_DPP
+	else if (key_mgmt & WPA_KEY_MGMT_DPP)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_DPP;
+#endif /* CONFIG_DPP */
+#ifdef CONFIG_HS20
+	else if (key_mgmt & WPA_KEY_MGMT_OSEN)
+		sm->wpa_key_mgmt = WPA_KEY_MGMT_OSEN;
+#endif /* CONFIG_HS20 */
 	else
 		sm->wpa_key_mgmt = WPA_KEY_MGMT_PSK;
 
@@ -528,27 +766,50 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 			return WPA_MGMT_FRAME_PROTECTION_VIOLATION;
 		}
 
-		if (ciphers & WPA_CIPHER_TKIP) {
-			wpa_printf(MSG_DEBUG, "Management frame protection "
-				   "cannot use TKIP");
-			return WPA_MGMT_FRAME_PROTECTION_VIOLATION;
-		}
-
-		if (data.mgmt_group_cipher != WPA_CIPHER_AES_128_CMAC) {
+		if (data.mgmt_group_cipher != wpa_auth->conf.group_mgmt_cipher)
+		{
 			wpa_printf(MSG_DEBUG, "Unsupported management group "
 				   "cipher %d", data.mgmt_group_cipher);
 			return WPA_INVALID_MGMT_GROUP_CIPHER;
 		}
 	}
 
+#ifdef CONFIG_SAE
+	if (wpa_auth->conf.ieee80211w == MGMT_FRAME_PROTECTION_OPTIONAL &&
+	    wpa_auth->conf.sae_require_mfp &&
+	    wpa_key_mgmt_sae(sm->wpa_key_mgmt) &&
+	    !(data.capabilities & WPA_CAPABILITY_MFPC)) {
+		wpa_printf(MSG_DEBUG,
+			   "Management frame protection required with SAE, but client did not enable it");
+		return WPA_MGMT_FRAME_PROTECTION_VIOLATION;
+	}
+#endif /* CONFIG_SAE */
+
+#ifdef CONFIG_OCV
+	if ((data.capabilities & WPA_CAPABILITY_OCVC) &&
+	    !(data.capabilities & WPA_CAPABILITY_MFPC)) {
+		wpa_printf(MSG_DEBUG,
+			   "Management frame protection required with OCV, but client did not enable it");
+		return WPA_MGMT_FRAME_PROTECTION_VIOLATION;
+	}
+	wpa_auth_set_ocv(sm, wpa_auth->conf.ocv &&
+			 (data.capabilities & WPA_CAPABILITY_OCVC));
+#endif /* CONFIG_OCV */
+
 	if (wpa_auth->conf.ieee80211w == NO_MGMT_FRAME_PROTECTION ||
 	    !(data.capabilities & WPA_CAPABILITY_MFPC))
 		sm->mgmt_frame_prot = 0;
 	else
 		sm->mgmt_frame_prot = 1;
+
+	if (sm->mgmt_frame_prot && (ciphers & WPA_CIPHER_TKIP)) {
+		    wpa_printf(MSG_DEBUG,
+			       "Management frame protection cannot use TKIP");
+		    return WPA_MGMT_FRAME_PROTECTION_VIOLATION;
+	}
 #endif /* CONFIG_IEEE80211W */
 
-#ifdef CONFIG_IEEE80211R
+#ifdef CONFIG_IEEE80211R_AP
 	if (wpa_key_mgmt_ft(sm->wpa_key_mgmt)) {
 		if (mdie == NULL || mdie_len < MOBILITY_DOMAIN_ID_LEN + 1) {
 			wpa_printf(MSG_DEBUG, "RSN: Trying to use FT, but "
@@ -561,8 +822,31 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 				    "MDIE", mdie, MOBILITY_DOMAIN_ID_LEN);
 			return WPA_INVALID_MDIE;
 		}
+	} else if (mdie != NULL) {
+		wpa_printf(MSG_DEBUG,
+			   "RSN: Trying to use non-FT AKM suite, but MDIE included");
+		return WPA_INVALID_AKMP;
 	}
-#endif /* CONFIG_IEEE80211R */
+#endif /* CONFIG_IEEE80211R_AP */
+
+#ifdef CONFIG_OWE
+	if (sm->wpa_key_mgmt == WPA_KEY_MGMT_OWE && !owe_dh) {
+		wpa_printf(MSG_DEBUG,
+			   "OWE: No Diffie-Hellman Parameter element");
+		return WPA_INVALID_AKMP;
+	}
+#ifdef CONFIG_DPP
+	if (sm->wpa_key_mgmt == WPA_KEY_MGMT_DPP && owe_dh) {
+		/* Diffie-Hellman Parameter element can be used with DPP as
+		 * well, so allow this to proceed. */
+	} else
+#endif /* CONFIG_DPP */
+	if (sm->wpa_key_mgmt != WPA_KEY_MGMT_OWE && owe_dh) {
+		wpa_printf(MSG_DEBUG,
+			   "OWE: Unexpected Diffie-Hellman Parameter element with non-OWE AKM");
+		return WPA_INVALID_AKMP;
+	}
+#endif /* CONFIG_OWE */
 
 	sm->pairwise = wpa_pick_pairwise_cipher(ciphers, 0);
 	if (sm->pairwise < 0)
@@ -573,6 +857,21 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 		sm->wpa = WPA_VERSION_WPA2;
 	else
 		sm->wpa = WPA_VERSION_WPA;
+
+#if defined(CONFIG_IEEE80211R_AP) && defined(CONFIG_FILS)
+	if ((sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_FILS_SHA256 ||
+	     sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_FILS_SHA384) &&
+	    (sm->auth_alg == WLAN_AUTH_FILS_SK ||
+	     sm->auth_alg == WLAN_AUTH_FILS_SK_PFS ||
+	     sm->auth_alg == WLAN_AUTH_FILS_PK) &&
+	    (data.num_pmkid != 1 || !data.pmkid || !sm->pmk_r1_name_valid ||
+	     os_memcmp_const(data.pmkid, sm->pmk_r1_name,
+			     WPA_PMK_NAME_LEN) != 0)) {
+		wpa_auth_vlogger(wpa_auth, sm->addr, LOGGER_DEBUG,
+				 "No PMKR1Name match for FILS+FT");
+		return WPA_INVALID_PMKID;
+	}
+#endif /* CONFIG_IEEE80211R_AP && CONFIG_FILS */
 
 	sm->pmksa = NULL;
 	for (i = 0; i < data.num_pmkid; i++) {
@@ -604,14 +903,34 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 			break;
 		}
 	}
-	if (sm->pmksa) {
+	if (sm->pmksa && pmkid) {
+		struct vlan_description *vlan;
+
+		vlan = sm->pmksa->vlan_desc;
 		wpa_auth_vlogger(wpa_auth, sm->addr, LOGGER_DEBUG,
-				 "PMKID found from PMKSA cache "
-				 "eap_type=%d vlan_id=%d",
+				 "PMKID found from PMKSA cache eap_type=%d vlan=%d%s",
 				 sm->pmksa->eap_type_authsrv,
-				 sm->pmksa->vlan_id);
+				 vlan ? vlan->untagged : 0,
+				 (vlan && vlan->tagged[0]) ? "+" : "");
 		os_memcpy(wpa_auth->dot11RSNAPMKIDUsed, pmkid, PMKID_LEN);
 	}
+
+#ifdef CONFIG_SAE
+	if (sm->wpa_key_mgmt == WPA_KEY_MGMT_SAE && data.num_pmkid &&
+	    !sm->pmksa) {
+		wpa_auth_vlogger(wpa_auth, sm->addr, LOGGER_DEBUG,
+				 "No PMKSA cache entry found for SAE");
+		return WPA_INVALID_PMKID;
+	}
+#endif /* CONFIG_SAE */
+
+#ifdef CONFIG_DPP
+	if (sm->wpa_key_mgmt == WPA_KEY_MGMT_DPP && !sm->pmksa) {
+		wpa_auth_vlogger(wpa_auth, sm->addr, LOGGER_DEBUG,
+				 "No PMKSA cache entry found for DPP");
+		return WPA_INVALID_PMKID;
+	}
+#endif /* CONFIG_DPP */
 
 	if (sm->wpa_ie == NULL || sm->wpa_ie_len < wpa_ie_len) {
 		os_free(sm->wpa_ie);
@@ -624,6 +943,36 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 
 	return WPA_IE_OK;
 }
+
+
+#ifdef CONFIG_HS20
+int wpa_validate_osen(struct wpa_authenticator *wpa_auth,
+		      struct wpa_state_machine *sm,
+		      const u8 *osen_ie, size_t osen_ie_len)
+{
+	if (wpa_auth == NULL || sm == NULL)
+		return -1;
+
+	/* TODO: parse OSEN element */
+	sm->wpa_key_mgmt = WPA_KEY_MGMT_OSEN;
+	sm->mgmt_frame_prot = 1;
+	sm->pairwise = WPA_CIPHER_CCMP;
+	sm->wpa = WPA_VERSION_WPA2;
+
+	if (sm->wpa_ie == NULL || sm->wpa_ie_len < osen_ie_len) {
+		os_free(sm->wpa_ie);
+		sm->wpa_ie = os_malloc(osen_ie_len);
+		if (sm->wpa_ie == NULL)
+			return -1;
+	}
+
+	os_memcpy(sm->wpa_ie, osen_ie, osen_ie_len);
+	sm->wpa_ie_len = osen_ie_len;
+
+	return 0;
+}
+
+#endif /* CONFIG_HS20 */
 
 
 /**
@@ -648,7 +997,13 @@ static int wpa_parse_generic(const u8 *pos, const u8 *end,
 		return 0;
 	}
 
-	if (pos + 1 + RSN_SELECTOR_LEN < end &&
+	if (pos[1] >= 4 && WPA_GET_BE32(pos + 2) == OSEN_IE_VENDOR_TYPE) {
+		ie->osen = pos;
+		ie->osen_len = pos[1] + 2;
+		return 0;
+	}
+
+	if (1 + RSN_SELECTOR_LEN < end - pos &&
 	    pos[1] >= RSN_SELECTOR_LEN + PMKID_LEN &&
 	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_PMKID) {
 		ie->pmkid = pos + 2 + RSN_SELECTOR_LEN;
@@ -668,36 +1023,6 @@ static int wpa_parse_generic(const u8 *pos, const u8 *end,
 		ie->mac_addr_len = pos[1] - RSN_SELECTOR_LEN;
 		return 0;
 	}
-
-#ifdef CONFIG_PEERKEY
-	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_SMK) {
-		ie->smk = pos + 2 + RSN_SELECTOR_LEN;
-		ie->smk_len = pos[1] - RSN_SELECTOR_LEN;
-		return 0;
-	}
-
-	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_NONCE) {
-		ie->nonce = pos + 2 + RSN_SELECTOR_LEN;
-		ie->nonce_len = pos[1] - RSN_SELECTOR_LEN;
-		return 0;
-	}
-
-	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_LIFETIME) {
-		ie->lifetime = pos + 2 + RSN_SELECTOR_LEN;
-		ie->lifetime_len = pos[1] - RSN_SELECTOR_LEN;
-		return 0;
-	}
-
-	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_ERROR) {
-		ie->error = pos + 2 + RSN_SELECTOR_LEN;
-		ie->error_len = pos[1] - RSN_SELECTOR_LEN;
-		return 0;
-	}
-#endif /* CONFIG_PEERKEY */
 
 #ifdef CONFIG_IEEE80211W
 	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
@@ -727,6 +1052,15 @@ static int wpa_parse_generic(const u8 *pos, const u8 *end,
 	}
 #endif /* CONFIG_P2P */
 
+#ifdef CONFIG_OCV
+	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
+	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_OCI) {
+		ie->oci = pos + 2 + RSN_SELECTOR_LEN;
+		ie->oci_len = pos[1] - RSN_SELECTOR_LEN;
+		return 0;
+	}
+#endif /* CONFIG_OCV */
+
 	return 0;
 }
 
@@ -744,13 +1078,13 @@ int wpa_parse_kde_ies(const u8 *buf, size_t len, struct wpa_eapol_ie_parse *ie)
 	int ret = 0;
 
 	os_memset(ie, 0, sizeof(*ie));
-	for (pos = buf, end = pos + len; pos + 1 < end; pos += 2 + pos[1]) {
+	for (pos = buf, end = pos + len; end - pos > 1; pos += 2 + pos[1]) {
 		if (pos[0] == 0xdd &&
 		    ((pos == buf + len - 1) || pos[1] == 0)) {
 			/* Ignore padding */
 			break;
 		}
-		if (pos + 2 + pos[1] > end) {
+		if (2 + pos[1] > end - pos) {
 			wpa_printf(MSG_DEBUG, "WPA: EAPOL-Key Key Data "
 				   "underflow (ie=%d len=%d pos=%d)",
 				   pos[0], pos[1], (int) (pos - buf));
@@ -762,14 +1096,14 @@ int wpa_parse_kde_ies(const u8 *buf, size_t len, struct wpa_eapol_ie_parse *ie)
 		if (*pos == WLAN_EID_RSN) {
 			ie->rsn_ie = pos;
 			ie->rsn_ie_len = pos[1] + 2;
-#ifdef CONFIG_IEEE80211R
+#ifdef CONFIG_IEEE80211R_AP
 		} else if (*pos == WLAN_EID_MOBILITY_DOMAIN) {
 			ie->mdie = pos;
 			ie->mdie_len = pos[1] + 2;
 		} else if (*pos == WLAN_EID_FAST_BSS_TRANSITION) {
 			ie->ftie = pos;
 			ie->ftie_len = pos[1] + 2;
-#endif /* CONFIG_IEEE80211R */
+#endif /* CONFIG_IEEE80211R_AP */
 		} else if (*pos == WLAN_EID_VENDOR_SPECIFIC) {
 			ret = wpa_parse_generic(pos, end, ie);
 			if (ret < 0)
@@ -792,3 +1126,73 @@ int wpa_auth_uses_mfp(struct wpa_state_machine *sm)
 {
 	return sm ? sm->mgmt_frame_prot : 0;
 }
+
+
+#ifdef CONFIG_OCV
+
+void wpa_auth_set_ocv(struct wpa_state_machine *sm, int ocv)
+{
+	if (sm)
+		sm->ocv_enabled = ocv;
+}
+
+
+int wpa_auth_uses_ocv(struct wpa_state_machine *sm)
+{
+	return sm ? sm->ocv_enabled : 0;
+}
+
+#endif /* CONFIG_OCV */
+
+
+#ifdef CONFIG_OWE
+u8 * wpa_auth_write_assoc_resp_owe(struct wpa_state_machine *sm,
+				   u8 *pos, size_t max_len,
+				   const u8 *req_ies, size_t req_ies_len)
+{
+	int res;
+	struct wpa_auth_config *conf;
+
+	if (!sm)
+		return pos;
+	conf = &sm->wpa_auth->conf;
+
+#ifdef CONFIG_TESTING_OPTIONS
+	if (conf->own_ie_override_len) {
+		if (max_len < conf->own_ie_override_len)
+			return NULL;
+		wpa_hexdump(MSG_DEBUG, "WPA: Forced own IE(s) for testing",
+			    conf->own_ie_override, conf->own_ie_override_len);
+		os_memcpy(pos, conf->own_ie_override,
+			  conf->own_ie_override_len);
+		return pos + conf->own_ie_override_len;
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
+
+	res = wpa_write_rsn_ie(conf, pos, max_len,
+			       sm->pmksa ? sm->pmksa->pmkid : NULL);
+	if (res < 0)
+		return pos;
+	return pos + res;
+}
+#endif /* CONFIG_OWE */
+
+
+#ifdef CONFIG_FILS
+u8 * wpa_auth_write_assoc_resp_fils(struct wpa_state_machine *sm,
+				    u8 *pos, size_t max_len,
+				    const u8 *req_ies, size_t req_ies_len)
+{
+	int res;
+
+	if (!sm ||
+	    sm->wpa_key_mgmt & (WPA_KEY_MGMT_FT_FILS_SHA256 |
+				WPA_KEY_MGMT_FT_FILS_SHA384))
+		return pos;
+
+	res = wpa_write_rsn_ie(&sm->wpa_auth->conf, pos, max_len, NULL);
+	if (res < 0)
+		return pos;
+	return pos + res;
+}
+#endif /* CONFIG_FILS */

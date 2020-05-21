@@ -24,6 +24,7 @@ int hostapd_build_ap_extra_ies(struct hostapd_data *hapd,
 void hostapd_free_ap_extra_ies(struct hostapd_data *hapd, struct wpabuf *beacon,
 			       struct wpabuf *proberesp,
 			       struct wpabuf *assocresp);
+int hostapd_reset_ap_wps_ie(struct hostapd_data *hapd);
 int hostapd_set_ap_wps_ie(struct hostapd_data *hapd);
 int hostapd_set_authorized(struct hostapd_data *hapd,
 			   struct sta_info *sta, int authorized);
@@ -40,7 +41,10 @@ int hostapd_sta_add(struct hostapd_data *hapd,
 		    u16 listen_interval,
 		    const struct ieee80211_ht_capabilities *ht_capab,
 		    const struct ieee80211_vht_capabilities *vht_capab,
-		    u32 flags, u8 qosinfo);
+		    const struct ieee80211_he_capabilities *he_capab,
+		    size_t he_capab_len,
+		    u32 flags, u8 qosinfo, u8 vht_opmode, int supp_p2p_ps,
+		    int set);
 int hostapd_set_privacy(struct hostapd_data *hapd, int enabled);
 int hostapd_set_generic_elem(struct hostapd_data *hapd, const u8 *elem,
 			     size_t elem_len);
@@ -57,20 +61,22 @@ int hostapd_set_ieee8021x(struct hostapd_data *hapd,
 int hostapd_get_seqnum(const char *ifname, struct hostapd_data *hapd,
 		       const u8 *addr, int idx, u8 *seq);
 int hostapd_flush(struct hostapd_data *hapd);
-int hostapd_set_freq(struct hostapd_data *hapd, int mode, int freq,
-		     int channel, int ht_enabled, int vht_enabled,
-		     int sec_channel_offset, int vht_oper_chwidth,
+int hostapd_set_freq(struct hostapd_data *hapd, enum hostapd_hw_mode mode,
+		     int freq, int channel, int ht_enabled, int vht_enabled,
+		     int he_enabled, int sec_channel_offset, int oper_chwidth,
 		     int center_segment0, int center_segment1);
 int hostapd_set_rts(struct hostapd_data *hapd, int rts);
 int hostapd_set_frag(struct hostapd_data *hapd, int frag);
 int hostapd_sta_set_flags(struct hostapd_data *hapd, u8 *addr,
 			  int total_flags, int flags_or, int flags_and);
+int hostapd_sta_set_airtime_weight(struct hostapd_data *hapd, const u8 *addr,
+				   unsigned int weight);
 int hostapd_set_country(struct hostapd_data *hapd, const char *country);
 int hostapd_set_tx_queue_params(struct hostapd_data *hapd, int queue, int aifs,
 				int cw_min, int cw_max, int burst_time);
 struct hostapd_hw_modes *
 hostapd_get_hw_feature_data(struct hostapd_data *hapd, u16 *num_modes,
-			    u16 *flags);
+			    u16 *flags, u8 *dfs_domain);
 int hostapd_driver_commit(struct hostapd_data *hapd);
 int hostapd_drv_none(struct hostapd_data *hapd);
 int hostapd_driver_scan(struct hostapd_data *hapd,
@@ -87,6 +93,9 @@ int hostapd_drv_set_key(const char *ifname,
 			const u8 *key, size_t key_len);
 int hostapd_drv_send_mlme(struct hostapd_data *hapd,
 			  const void *msg, size_t len, int noack);
+int hostapd_drv_send_mlme_csa(struct hostapd_data *hapd,
+			      const void *msg, size_t len, int noack,
+			      const u16 *csa_offs, size_t csa_offs_len);
 int hostapd_drv_sta_deauth(struct hostapd_data *hapd,
 			   const u8 *addr, int reason);
 int hostapd_drv_sta_disassoc(struct hostapd_data *hapd,
@@ -94,6 +103,18 @@ int hostapd_drv_sta_disassoc(struct hostapd_data *hapd,
 int hostapd_drv_send_action(struct hostapd_data *hapd, unsigned int freq,
 			    unsigned int wait, const u8 *dst, const u8 *data,
 			    size_t len);
+int hostapd_drv_send_action_addr3_ap(struct hostapd_data *hapd,
+				     unsigned int freq,
+				     unsigned int wait, const u8 *dst,
+				     const u8 *data, size_t len);
+static inline void
+hostapd_drv_send_action_cancel_wait(struct hostapd_data *hapd)
+{
+	if (!hapd->driver || !hapd->driver->send_action_cancel_wait ||
+	    !hapd->drv_priv)
+		return;
+	hapd->driver->send_action_cancel_wait(hapd->drv_priv);
+}
 int hostapd_add_sta_node(struct hostapd_data *hapd, const u8 *addr,
 			 u16 auth_alg);
 int hostapd_sta_auth(struct hostapd_data *hapd, const u8 *addr,
@@ -102,15 +123,15 @@ int hostapd_sta_assoc(struct hostapd_data *hapd, const u8 *addr,
 		      int reassoc, u16 status, const u8 *ie, size_t len);
 int hostapd_add_tspec(struct hostapd_data *hapd, const u8 *addr,
 		      u8 *tspec_ie, size_t tspec_ielen);
-int hostapd_start_dfs_cac(struct hostapd_iface *iface, int mode, int freq,
+int hostapd_start_dfs_cac(struct hostapd_iface *iface,
+			  enum hostapd_hw_mode mode, int freq,
 			  int channel, int ht_enabled, int vht_enabled,
-			  int sec_channel_offset, int vht_oper_chwidth,
+			  int he_enabled,
+			  int sec_channel_offset, int oper_chwidth,
 			  int center_segment0, int center_segment1);
-int hostapd_set_freq_params(struct hostapd_freq_params *data, int mode,
-			    int freq, int channel, int ht_enabled,
-			    int vht_enabled, int sec_channel_offset,
-			    int vht_oper_chwidth, int center_segment0,
-			    int center_segment1, u32 vht_caps);
+int hostapd_drv_do_acs(struct hostapd_data *hapd);
+int hostapd_drv_update_dh_ie(struct hostapd_data *hapd, const u8 *peer,
+			     u16 reason_code, const u8 *ie, size_t ielen);
 
 
 #include "drivers/driver.h"
@@ -121,6 +142,8 @@ int hostapd_drv_wnm_oper(struct hostapd_data *hapd,
 
 int hostapd_drv_set_qos_map(struct hostapd_data *hapd, const u8 *qos_map_set,
 			    u8 qos_map_set_len);
+
+void hostapd_get_ext_capa(struct hostapd_iface *iface);
 
 static inline int hostapd_drv_set_countermeasures(struct hostapd_data *hapd,
 						  int enabled)
@@ -152,7 +175,7 @@ static inline int hostapd_drv_get_inact_sec(struct hostapd_data *hapd,
 static inline int hostapd_drv_sta_remove(struct hostapd_data *hapd,
 					 const u8 *addr)
 {
-	if (hapd->driver == NULL || hapd->driver->sta_remove == NULL)
+	if (!hapd->driver || !hapd->driver->sta_remove || !hapd->drv_priv)
 		return 0;
 	return hapd->driver->sta_remove(hapd->drv_priv, addr);
 }
@@ -266,8 +289,9 @@ static inline const char * hostapd_drv_get_radio_name(struct hostapd_data *hapd)
 static inline int hostapd_drv_switch_channel(struct hostapd_data *hapd,
 					     struct csa_settings *settings)
 {
-	if (hapd->driver == NULL || hapd->driver->switch_channel == NULL)
-		return -ENOTSUP;
+	if (hapd->driver == NULL || hapd->driver->switch_channel == NULL ||
+	    hapd->drv_priv == NULL)
+		return -1;
 
 	return hapd->driver->switch_channel(hapd->drv_priv, settings);
 }
@@ -275,9 +299,86 @@ static inline int hostapd_drv_switch_channel(struct hostapd_data *hapd,
 static inline int hostapd_drv_status(struct hostapd_data *hapd, char *buf,
 				     size_t buflen)
 {
-	if (hapd->driver == NULL || hapd->driver->status == NULL)
+	if (!hapd->driver || !hapd->driver->status || !hapd->drv_priv)
 		return -1;
 	return hapd->driver->status(hapd->drv_priv, buf, buflen);
+}
+
+static inline int hostapd_drv_br_add_ip_neigh(struct hostapd_data *hapd,
+					      int version, const u8 *ipaddr,
+					      int prefixlen, const u8 *addr)
+{
+	if (hapd->driver == NULL || hapd->drv_priv == NULL ||
+	    hapd->driver->br_add_ip_neigh == NULL)
+		return -1;
+	return hapd->driver->br_add_ip_neigh(hapd->drv_priv, version, ipaddr,
+					     prefixlen, addr);
+}
+
+static inline int hostapd_drv_br_delete_ip_neigh(struct hostapd_data *hapd,
+						 u8 version, const u8 *ipaddr)
+{
+	if (hapd->driver == NULL || hapd->drv_priv == NULL ||
+	    hapd->driver->br_delete_ip_neigh == NULL)
+		return -1;
+	return hapd->driver->br_delete_ip_neigh(hapd->drv_priv, version,
+						ipaddr);
+}
+
+static inline int hostapd_drv_br_port_set_attr(struct hostapd_data *hapd,
+					       enum drv_br_port_attr attr,
+					       unsigned int val)
+{
+	if (hapd->driver == NULL || hapd->drv_priv == NULL ||
+	    hapd->driver->br_port_set_attr == NULL)
+		return -1;
+	return hapd->driver->br_port_set_attr(hapd->drv_priv, attr, val);
+}
+
+static inline int hostapd_drv_br_set_net_param(struct hostapd_data *hapd,
+					       enum drv_br_net_param param,
+					       unsigned int val)
+{
+	if (hapd->driver == NULL || hapd->drv_priv == NULL ||
+	    hapd->driver->br_set_net_param == NULL)
+		return -1;
+	return hapd->driver->br_set_net_param(hapd->drv_priv, param, val);
+}
+
+static inline int hostapd_drv_vendor_cmd(struct hostapd_data *hapd,
+					 int vendor_id, int subcmd,
+					 const u8 *data, size_t data_len,
+					 struct wpabuf *buf)
+{
+	if (hapd->driver == NULL || hapd->driver->vendor_cmd == NULL)
+		return -1;
+	return hapd->driver->vendor_cmd(hapd->drv_priv, vendor_id, subcmd, data,
+					data_len, buf);
+}
+
+static inline int hostapd_drv_stop_ap(struct hostapd_data *hapd)
+{
+	if (!hapd->driver || !hapd->driver->stop_ap || !hapd->drv_priv)
+		return 0;
+	return hapd->driver->stop_ap(hapd->drv_priv);
+}
+
+static inline int hostapd_drv_channel_info(struct hostapd_data *hapd,
+					   struct wpa_channel_info *ci)
+{
+	if (!hapd->driver || !hapd->driver->channel_info)
+		return -1;
+	return hapd->driver->channel_info(hapd->drv_priv, ci);
+}
+
+static inline int
+hostapd_drv_send_external_auth_status(struct hostapd_data *hapd,
+				      struct external_auth *params)
+{
+	if (!hapd->driver || !hapd->drv_priv ||
+	    !hapd->driver->send_external_auth_status)
+		return -1;
+	return hapd->driver->send_external_auth_status(hapd->drv_priv, params);
 }
 
 #endif /* AP_DRV_OPS */

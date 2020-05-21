@@ -12,6 +12,7 @@
 #include <net/if_arp.h>
 
 #include "utils/common.h"
+#include "common/linux_bridge.h"
 #include "linux_ioctl.h"
 
 
@@ -119,25 +120,14 @@ int linux_set_ifhwaddr(int sock, const char *ifname, const u8 *addr)
 }
 
 
-#ifndef SIOCBRADDBR
-#define SIOCBRADDBR 0x89a0
-#endif
-#ifndef SIOCBRDELBR
-#define SIOCBRDELBR 0x89a1
-#endif
-#ifndef SIOCBRADDIF
-#define SIOCBRADDIF 0x89a2
-#endif
-#ifndef SIOCBRDELIF
-#define SIOCBRDELIF 0x89a3
-#endif
-
-
 int linux_br_add(int sock, const char *brname)
 {
 	if (ioctl(sock, SIOCBRADDBR, brname) < 0) {
+		int saved_errno = errno;
+
 		wpa_printf(MSG_DEBUG, "Could not add bridge %s: %s",
 			   brname, strerror(errno));
+		errno = saved_errno;
 		return -1;
 	}
 
@@ -170,8 +160,11 @@ int linux_br_add_if(int sock, const char *brname, const char *ifname)
 	os_strlcpy(ifr.ifr_name, brname, IFNAMSIZ);
 	ifr.ifr_ifindex = ifindex;
 	if (ioctl(sock, SIOCBRADDIF, &ifr) < 0) {
+		int saved_errno = errno;
+
 		wpa_printf(MSG_DEBUG, "Could not add interface %s into bridge "
 			   "%s: %s", ifname, brname, strerror(errno));
+		errno = saved_errno;
 		return -1;
 	}
 
@@ -217,5 +210,28 @@ int linux_br_get(char *brname, const char *ifname)
 		return -1;
 	pos++;
 	os_strlcpy(brname, pos, IFNAMSIZ);
+	return 0;
+}
+
+
+int linux_master_get(char *master_ifname, const char *ifname)
+{
+	char buf[128], masterlink[128], *pos;
+	ssize_t res;
+
+	/* check whether there is a master */
+	os_snprintf(buf, sizeof(buf), "/sys/class/net/%s/master", ifname);
+
+	res = readlink(buf, masterlink, sizeof(masterlink));
+	if (res < 0 || (size_t) res >= sizeof(masterlink))
+		return -1;
+
+	masterlink[res] = '\0';
+
+	pos = os_strrchr(masterlink, '/');
+	if (pos == NULL)
+		return -1;
+	pos++;
+	os_strlcpy(master_ifname, pos, IFNAMSIZ);
 	return 0;
 }

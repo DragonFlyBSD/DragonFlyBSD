@@ -27,7 +27,7 @@
 #include "drivers/driver.h"
 
 
-struct wpa_driver_ops *wpa_drivers[] = { NULL };
+const struct wpa_driver_ops *const wpa_drivers[] = { NULL };
 
 
 struct preauth_test_data {
@@ -35,7 +35,7 @@ struct preauth_test_data {
 };
 
 
-static void _wpa_supplicant_deauthenticate(void *wpa_s, int reason_code)
+static void _wpa_supplicant_deauthenticate(void *wpa_s, u16 reason_code)
 {
 	wpa_supplicant_deauthenticate(wpa_s, reason_code);
 }
@@ -143,16 +143,19 @@ static int wpa_supplicant_mlme_setprotection(void *wpa_s, const u8 *addr,
 }
 
 
-static int wpa_supplicant_add_pmkid(void *wpa_s,
-				    const u8 *bssid, const u8 *pmkid)
+static int wpa_supplicant_add_pmkid(void *wpa_s, void *network_ctx,
+				    const u8 *bssid, const u8 *pmkid,
+				    const u8 *fils_cache_id,
+				    const u8 *pmk, size_t pmk_len)
 {
 	printf("%s - not implemented\n", __func__);
 	return -1;
 }
 
 
-static int wpa_supplicant_remove_pmkid(void *wpa_s,
-				       const u8 *bssid, const u8 *pmkid)
+static int wpa_supplicant_remove_pmkid(void *wpa_s, void *network_ctx,
+				       const u8 *bssid, const u8 *pmkid,
+				       const u8 *fils_cache_id)
 {
 	printf("%s - not implemented\n", __func__);
 	return -1;
@@ -344,8 +347,8 @@ int main(int argc, char *argv[])
 	if (preauth_test.auth_timed_out)
 		ret = -2;
 	else {
-		ret = pmksa_cache_set_current(wpa_s.wpa, NULL, bssid, NULL, 0)
-			? 0 : -3;
+		ret = pmksa_cache_set_current(wpa_s.wpa, NULL, bssid, NULL, 0,
+					      NULL, 0) ? 0 : -3;
 	}
 
 	test_eapol_clean(&wpa_s);

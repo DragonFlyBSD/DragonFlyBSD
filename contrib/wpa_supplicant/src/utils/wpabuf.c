@@ -17,7 +17,7 @@
 
 struct wpabuf_trace {
 	unsigned int magic;
-};
+} __attribute__((aligned(8)));
 
 static struct wpabuf_trace * wpabuf_get_trace(const struct wpabuf *buf)
 {
@@ -205,6 +205,15 @@ void wpabuf_free(struct wpabuf *buf)
 }
 
 
+void wpabuf_clear_free(struct wpabuf *buf)
+{
+	if (buf) {
+		os_memset(wpabuf_mhead(buf), 0, wpabuf_len(buf));
+		wpabuf_free(buf);
+	}
+}
+
+
 void * wpabuf_put(struct wpabuf *buf, size_t len)
 {
 	void *tmp = wpabuf_mhead_u8(buf) + wpabuf_len(buf);
@@ -235,15 +244,13 @@ struct wpabuf * wpabuf_concat(struct wpabuf *a, struct wpabuf *b)
 
 	if (a)
 		len += wpabuf_len(a);
-	if (b)
-		len += wpabuf_len(b);
+	len += wpabuf_len(b);
 
 	n = wpabuf_alloc(len);
 	if (n) {
 		if (a)
 			wpabuf_put_buf(n, a);
-		if (b)
-			wpabuf_put_buf(n, b);
+		wpabuf_put_buf(n, b);
 	}
 
 	wpabuf_free(a);
@@ -300,4 +307,34 @@ void wpabuf_printf(struct wpabuf *buf, char *fmt, ...)
 	if (res < 0 || (size_t) res >= buf->size - buf->used)
 		wpabuf_overflow(buf, res);
 	buf->used += res;
+}
+
+
+/**
+ * wpabuf_parse_bin - Parse a null terminated string of binary data to a wpabuf
+ * @buf: Buffer with null terminated string (hexdump) of binary data
+ * Returns: wpabuf or %NULL on failure
+ *
+ * The string len must be a multiple of two and contain only hexadecimal digits.
+ */
+struct wpabuf * wpabuf_parse_bin(const char *buf)
+{
+	size_t len;
+	struct wpabuf *ret;
+
+	len = os_strlen(buf);
+	if (len & 0x01)
+		return NULL;
+	len /= 2;
+
+	ret = wpabuf_alloc(len);
+	if (ret == NULL)
+		return NULL;
+
+	if (hexstr2bin(buf, wpabuf_put(ret, len), len)) {
+		wpabuf_free(ret);
+		return NULL;
+	}
+
+	return ret;
 }

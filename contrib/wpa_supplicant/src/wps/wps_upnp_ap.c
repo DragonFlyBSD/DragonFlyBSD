@@ -34,10 +34,8 @@ int upnp_er_set_selected_registrar(struct wps_registrar *reg,
 
 	wpa_hexdump_buf(MSG_MSGDUMP, "WPS: SetSelectedRegistrar attributes",
 			msg);
-	if (wps_validate_upnp_set_selected_registrar(msg) < 0)
-		return -1;
-
-	if (wps_parse_msg(msg, &attr) < 0)
+	if (wps_validate_upnp_set_selected_registrar(msg) < 0 ||
+	    wps_parse_msg(msg, &attr) < 0)
 		return -1;
 
 	s->reg = reg;
@@ -61,11 +59,9 @@ int upnp_er_set_selected_registrar(struct wps_registrar *reg,
 			os_memcpy(s->authorized_macs, attr.authorized_macs,
 				  count * ETH_ALEN);
 		} else if (!attr.version2) {
-#ifdef CONFIG_WPS2
 			wpa_printf(MSG_DEBUG, "WPS: Add broadcast "
 				   "AuthorizedMACs for WPS 1.0 ER");
 			os_memset(s->authorized_macs, 0xff, ETH_ALEN);
-#endif /* CONFIG_WPS2 */
 		}
 		eloop_register_timeout(WPS_PBC_WALK_TIME, 0,
 				       upnp_er_set_selected_timeout, s, reg);

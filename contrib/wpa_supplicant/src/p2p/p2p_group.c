@@ -11,6 +11,7 @@
 #include "common.h"
 #include "common/ieee802_11_defs.h"
 #include "common/ieee802_11_common.h"
+#include "common/wpa_ctrl.h"
 #include "wps/wps_defs.h"
 #include "wps/wps_i.h"
 #include "p2p_i.h"
@@ -154,7 +155,8 @@ static void p2p_group_add_common_ies(struct p2p_group *group,
 		group_capab |= P2P_GROUP_CAPAB_CROSS_CONN;
 	if (group->num_members >= group->cfg->max_clients)
 		group_capab |= P2P_GROUP_CAPAB_GROUP_LIMIT;
-	group_capab |= P2P_GROUP_CAPAB_IP_ADDR_ALLOCATION;
+	if (group->cfg->ip_addr_alloc)
+		group_capab |= P2P_GROUP_CAPAB_IP_ADDR_ALLOCATION;
 	p2p_buf_add_capability(ie, dev_capab, group_capab);
 }
 
@@ -214,6 +216,10 @@ static struct wpabuf * p2p_group_build_beacon_ie(struct p2p_group *group)
 		extra = wpabuf_len(group->p2p->wfd_ie_beacon);
 #endif /* CONFIG_WIFI_DISPLAY */
 
+	if (group->p2p->vendor_elem &&
+	    group->p2p->vendor_elem[VENDOR_ELEM_BEACON_P2P_GO])
+		extra += wpabuf_len(group->p2p->vendor_elem[VENDOR_ELEM_BEACON_P2P_GO]);
+
 	ie = wpabuf_alloc(257 + extra);
 	if (ie == NULL)
 		return NULL;
@@ -222,6 +228,11 @@ static struct wpabuf * p2p_group_build_beacon_ie(struct p2p_group *group)
 	if (group->p2p->wfd_ie_beacon)
 		wpabuf_put_buf(ie, group->p2p->wfd_ie_beacon);
 #endif /* CONFIG_WIFI_DISPLAY */
+
+	if (group->p2p->vendor_elem &&
+	    group->p2p->vendor_elem[VENDOR_ELEM_BEACON_P2P_GO])
+		wpabuf_put_buf(ie,
+			       group->p2p->vendor_elem[VENDOR_ELEM_BEACON_P2P_GO]);
 
 	len = p2p_buf_add_ie_hdr(ie);
 	p2p_group_add_common_ies(group, ie);
@@ -286,14 +297,14 @@ static int wifi_display_add_dev_info_descr(struct wpabuf *buf,
 	os_memset(zero_addr, 0, ETH_ALEN);
 	pos = wpabuf_head_u8(m->wfd_ie);
 	end = pos + wpabuf_len(m->wfd_ie);
-	while (pos + 1 < end) {
+	while (end - pos >= 3) {
 		u8 id;
 		u16 len;
 
 		id = *pos++;
 		len = WPA_GET_BE16(pos);
 		pos += 2;
-		if (pos + len > end)
+		if (len > end - pos)
 			break;
 
 		switch (id) {
@@ -356,6 +367,8 @@ wifi_display_build_go_ie(struct p2p_group *group)
 		return NULL;
 	if (group->p2p->wfd_dev_info)
 		wpabuf_put_buf(wfd_subelems, group->p2p->wfd_dev_info);
+	if (group->p2p->wfd_r2_dev_info)
+		wpabuf_put_buf(wfd_subelems, group->p2p->wfd_r2_dev_info);
 	if (group->p2p->wfd_assoc_bssid)
 		wpabuf_put_buf(wfd_subelems,
 			       group->p2p->wfd_assoc_bssid);
@@ -447,6 +460,13 @@ static struct wpabuf * p2p_group_build_probe_resp_ie(struct p2p_group *group)
 
 	ie = p2p_group_encaps_probe_resp(p2p_subelems);
 	wpabuf_free(p2p_subelems);
+
+	if (group->p2p->vendor_elem &&
+	    group->p2p->vendor_elem[VENDOR_ELEM_PROBE_RESP_P2P_GO]) {
+		struct wpabuf *extra;
+		extra = wpabuf_dup(group->p2p->vendor_elem[VENDOR_ELEM_PROBE_RESP_P2P_GO]);
+		ie = wpabuf_concat(extra, ie);
+	}
 
 #ifdef CONFIG_WIFI_DISPLAY
 	if (group->wfd_ie) {
@@ -634,6 +654,10 @@ struct wpabuf * p2p_group_assoc_resp_ie(struct p2p_group *group, u8 status)
 		extra = wpabuf_len(group->wfd_ie);
 #endif /* CONFIG_WIFI_DISPLAY */
 
+	if (group->p2p->vendor_elem &&
+	    group->p2p->vendor_elem[VENDOR_ELEM_P2P_ASSOC_RESP])
+		extra += wpabuf_len(group->p2p->vendor_elem[VENDOR_ELEM_P2P_ASSOC_RESP]);
+
 	/*
 	 * (Re)Association Response - P2P IE
 	 * Status attribute (shall be present when association request is
@@ -648,6 +672,11 @@ struct wpabuf * p2p_group_assoc_resp_ie(struct p2p_group *group, u8 status)
 	if (group->wfd_ie)
 		wpabuf_put_buf(resp, group->wfd_ie);
 #endif /* CONFIG_WIFI_DISPLAY */
+
+	if (group->p2p->vendor_elem &&
+	    group->p2p->vendor_elem[VENDOR_ELEM_P2P_ASSOC_RESP])
+		wpabuf_put_buf(resp,
+			       group->p2p->vendor_elem[VENDOR_ELEM_P2P_ASSOC_RESP]);
 
 	rlen = p2p_buf_add_ie_hdr(resp);
 	if (status != P2P_SC_SUCCESS)
@@ -823,6 +852,20 @@ static struct p2p_group_member * p2p_group_get_client(struct p2p_group *group,
 }
 
 
+const u8 * p2p_group_get_client_interface_addr(struct p2p_group *group,
+					       const u8 *dev_addr)
+{
+	struct p2p_group_member *m;
+
+	if (!group)
+		return NULL;
+	m = p2p_group_get_client(group, dev_addr);
+	if (m)
+		return m->addr;
+	return NULL;
+}
+
+
 static struct p2p_group_member * p2p_group_get_client_iface(
 	struct p2p_group *group, const u8 *interface_addr)
 {
@@ -898,7 +941,8 @@ int p2p_group_go_discover(struct p2p_group *group, const u8 *dev_id,
 	if (p2p->cfg->send_action(p2p->cfg->cb_ctx, freq, m->addr,
 				  group->cfg->interface_addr,
 				  group->cfg->interface_addr,
-				  wpabuf_head(req), wpabuf_len(req), 200) < 0)
+				  wpabuf_head(req), wpabuf_len(req), 200, NULL)
+	    < 0)
 	{
 		p2p_dbg(p2p, "Failed to send Action frame");
 	}
@@ -955,7 +999,19 @@ u8 p2p_group_presence_req(struct p2p_group *group,
 
 unsigned int p2p_get_group_num_members(struct p2p_group *group)
 {
+	if (!group)
+		return 0;
+
 	return group->num_members;
+}
+
+
+int p2p_client_limit_reached(struct p2p_group *group)
+{
+	if (!group || !group->cfg)
+		return 1;
+
+	return group->num_members >= group->cfg->max_clients;
 }
 
 
@@ -973,7 +1029,7 @@ const u8 * p2p_iterate_group_members(struct p2p_group *group, void **next)
 	if (!iter)
 		return NULL;
 
-	return iter->addr;
+	return iter->dev_addr;
 }
 
 
@@ -1012,4 +1068,64 @@ void p2p_group_force_beacon_update_ies(struct p2p_group *group)
 int p2p_group_get_freq(struct p2p_group *group)
 {
 	return group->cfg->freq;
+}
+
+
+const struct p2p_group_config * p2p_group_get_config(struct p2p_group *group)
+{
+	return group->cfg;
+}
+
+
+void p2p_loop_on_all_groups(struct p2p_data *p2p,
+			    int (*group_callback)(struct p2p_group *group,
+						  void *user_data),
+			    void *user_data)
+{
+	unsigned int i;
+
+	for (i = 0; i < p2p->num_groups; i++) {
+		if (!group_callback(p2p->groups[i], user_data))
+			break;
+	}
+}
+
+
+int p2p_group_get_common_freqs(struct p2p_group *group, int *common_freqs,
+			       unsigned int *num)
+
+{
+	struct p2p_channels intersect, res;
+	struct p2p_group_member *m;
+
+	if (!group || !common_freqs || !num)
+		return -1;
+
+	os_memset(&intersect, 0, sizeof(intersect));
+	os_memset(&res, 0, sizeof(res));
+
+	p2p_channels_union(&intersect, &group->p2p->cfg->channels,
+			   &intersect);
+
+	p2p_channels_dump(group->p2p,
+			  "Group common freqs before iterating members",
+			  &intersect);
+
+	for (m = group->members; m; m = m->next) {
+		struct p2p_device *dev;
+
+		dev = p2p_get_device(group->p2p, m->dev_addr);
+		if (!dev || dev->channels.reg_classes == 0)
+			continue;
+
+		p2p_channels_intersect(&intersect, &dev->channels, &res);
+		intersect = res;
+	}
+
+	p2p_channels_dump(group->p2p, "Group common channels", &intersect);
+
+	os_memset(common_freqs, 0, *num * sizeof(int));
+	*num = p2p_channels_to_freqs(&intersect, common_freqs, *num);
+
+	return 0;
 }

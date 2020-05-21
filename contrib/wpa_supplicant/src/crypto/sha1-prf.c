@@ -61,6 +61,7 @@ int sha1_prf(const u8 *key, size_t key_len, const char *label,
 		}
 		counter++;
 	}
+	forced_memzero(hash, sizeof(hash));
 
 	return 0;
 }

@@ -125,6 +125,8 @@ struct wps_data {
 	int pbc_in_m1;
 
 	struct wps_nfc_pw_token *nfc_pw_token;
+
+	int multi_ap_backhaul_sta;
 };
 
 
@@ -132,8 +134,8 @@ struct wps_data {
 void wps_kdf(const u8 *key, const u8 *label_prefix, size_t label_prefix_len,
 	     const char *label, u8 *res, size_t res_len);
 int wps_derive_keys(struct wps_data *wps);
-void wps_derive_psk(struct wps_data *wps, const u8 *dev_passwd,
-		    size_t dev_passwd_len);
+int wps_derive_psk(struct wps_data *wps, const u8 *dev_passwd,
+		   size_t dev_passwd_len);
 struct wpabuf * wps_decrypt_encr_settings(struct wps_data *wps, const u8 *encr,
 					  size_t encr_len);
 void wps_fail_event(struct wps_context *wps, enum wps_msg_type msg,
@@ -163,7 +165,8 @@ int wps_build_encr_settings(struct wps_data *wps, struct wpabuf *msg,
 			    struct wpabuf *plain);
 int wps_build_version(struct wpabuf *msg);
 int wps_build_wfa_ext(struct wpabuf *msg, int req_to_enroll,
-		      const u8 *auth_macs, size_t auth_macs_count);
+		      const u8 *auth_macs, size_t auth_macs_count,
+		      u8 multi_ap_subelem);
 int wps_build_msg_type(struct wpabuf *msg, enum wps_msg_type msg_type);
 int wps_build_enrollee_nonce(struct wps_data *wps, struct wpabuf *msg);
 int wps_build_registrar_nonce(struct wps_data *wps, struct wpabuf *msg);
@@ -212,5 +215,7 @@ int wps_registrar_pbc_overlap(struct wps_registrar *reg,
 			      const u8 *addr, const u8 *uuid_e);
 void wps_registrar_remove_nfc_pw_token(struct wps_registrar *reg,
 				       struct wps_nfc_pw_token *token);
+int wps_cb_new_psk(struct wps_registrar *reg, const u8 *mac_addr,
+		   const u8 *p2p_dev_addr, const u8 *psk, size_t psk_len);
 
 #endif /* WPS_I_H */

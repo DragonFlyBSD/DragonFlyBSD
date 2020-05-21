@@ -83,7 +83,7 @@ static void eap_sake_reset(struct eap_sm *sm, void *priv)
 {
 	struct eap_sake_data *data = priv;
 	os_free(data->peerid);
-	os_free(data);
+	bin_clear_free(data, sizeof(*data));
 }
 
 
@@ -204,7 +204,7 @@ static struct wpabuf * eap_sake_build_confirm(struct eap_sm *sm,
 	{
 		wpa_printf(MSG_INFO, "EAP-SAKE: Failed to compute MIC");
 		data->state = FAILURE;
-		os_free(msg);
+		wpabuf_free(msg);
 		return NULL;
 	}
 
@@ -326,10 +326,9 @@ static void eap_sake_process_challenge(struct eap_sm *sm,
 	data->peerid = NULL;
 	data->peerid_len = 0;
 	if (attr.peerid) {
-		data->peerid = os_malloc(attr.peerid_len);
+		data->peerid = os_memdup(attr.peerid, attr.peerid_len);
 		if (data->peerid == NULL)
 			return;
-		os_memcpy(data->peerid, attr.peerid, attr.peerid_len);
 		data->peerid_len = attr.peerid_len;
 	}
 
@@ -341,17 +340,26 @@ static void eap_sake_process_challenge(struct eap_sm *sm,
 		data->state = FAILURE;
 		return;
 	}
-	eap_sake_derive_keys(sm->user->password,
-			     sm->user->password + EAP_SAKE_ROOT_SECRET_LEN,
-			     data->rand_s, data->rand_p,
-			     (u8 *) &data->tek, data->msk, data->emsk);
+	if (eap_sake_derive_keys(sm->user->password,
+				 sm->user->password + EAP_SAKE_ROOT_SECRET_LEN,
+				 data->rand_s, data->rand_p,
+				 (u8 *) &data->tek, data->msk,
+				 data->emsk) < 0) {
+		wpa_printf(MSG_INFO, "EAP-SAKE: Failed to derive keys");
+		data->state = FAILURE;
+		return;
+	}
 
-	eap_sake_compute_mic(data->tek.auth, data->rand_s, data->rand_p,
-			     sm->server_id, sm->server_id_len,
-			     data->peerid, data->peerid_len, 1,
-			     wpabuf_head(respData), wpabuf_len(respData),
-			     attr.mic_p, mic_p);
-	if (os_memcmp(attr.mic_p, mic_p, EAP_SAKE_MIC_LEN) != 0) {
+	if (eap_sake_compute_mic(data->tek.auth, data->rand_s, data->rand_p,
+				 sm->server_id, sm->server_id_len,
+				 data->peerid, data->peerid_len, 1,
+				 wpabuf_head(respData), wpabuf_len(respData),
+				 attr.mic_p, mic_p) < 0) {
+		wpa_printf(MSG_INFO, "EAP-SAKE: Failed to compute MIC");
+		data->state = FAILURE;
+		return;
+	}
+	if (os_memcmp_const(attr.mic_p, mic_p, EAP_SAKE_MIC_LEN) != 0) {
 		wpa_printf(MSG_INFO, "EAP-SAKE: Incorrect AT_MIC_P");
 		eap_sake_state(data, FAILURE);
 		return;
@@ -383,12 +391,15 @@ static void eap_sake_process_confirm(struct eap_sm *sm,
 		return;
 	}
 
-	eap_sake_compute_mic(data->tek.auth, data->rand_s, data->rand_p,
-			     sm->server_id, sm->server_id_len,
-			     data->peerid, data->peerid_len, 1,
-			     wpabuf_head(respData), wpabuf_len(respData),
-			     attr.mic_p, mic_p);
-	if (os_memcmp(attr.mic_p, mic_p, EAP_SAKE_MIC_LEN) != 0) {
+	if (eap_sake_compute_mic(data->tek.auth, data->rand_s, data->rand_p,
+				 sm->server_id, sm->server_id_len,
+				 data->peerid, data->peerid_len, 1,
+				 wpabuf_head(respData), wpabuf_len(respData),
+				 attr.mic_p, mic_p) < 0) {
+		wpa_printf(MSG_INFO, "EAP-SAKE: Failed to compute MIC");
+		return;
+	}
+	if (os_memcmp_const(attr.mic_p, mic_p, EAP_SAKE_MIC_LEN) != 0) {
 		wpa_printf(MSG_INFO, "EAP-SAKE: Incorrect AT_MIC_P");
 		eap_sake_state(data, FAILURE);
 	} else
@@ -460,10 +471,9 @@ static u8 * eap_sake_getKey(struct eap_sm *sm, void *priv, size_t *len)
 	if (data->state != SUCCESS)
 		return NULL;
 
-	key = os_malloc(EAP_MSK_LEN);
+	key = os_memdup(data->msk, EAP_MSK_LEN);
 	if (key == NULL)
 		return NULL;
-	os_memcpy(key, data->msk, EAP_MSK_LEN);
 	*len = EAP_MSK_LEN;
 
 	return key;
@@ -478,10 +488,9 @@ static u8 * eap_sake_get_emsk(struct eap_sm *sm, void *priv, size_t *len)
 	if (data->state != SUCCESS)
 		return NULL;
 
-	key = os_malloc(EAP_EMSK_LEN);
+	key = os_memdup(data->emsk, EAP_EMSK_LEN);
 	if (key == NULL)
 		return NULL;
-	os_memcpy(key, data->emsk, EAP_EMSK_LEN);
 	*len = EAP_EMSK_LEN;
 
 	return key;
@@ -495,10 +504,31 @@ static Boolean eap_sake_isSuccess(struct eap_sm *sm, void *priv)
 }
 
 
+static u8 * eap_sake_get_session_id(struct eap_sm *sm, void *priv, size_t *len)
+{
+	struct eap_sake_data *data = priv;
+	u8 *id;
+
+	if (data->state != SUCCESS)
+		return NULL;
+
+	*len = 1 + 2 * EAP_SAKE_RAND_LEN;
+	id = os_malloc(*len);
+	if (id == NULL)
+		return NULL;
+
+	id[0] = EAP_TYPE_SAKE;
+	os_memcpy(id + 1, data->rand_s, EAP_SAKE_RAND_LEN);
+	os_memcpy(id + 1 + EAP_SAKE_RAND_LEN, data->rand_s, EAP_SAKE_RAND_LEN);
+	wpa_hexdump(MSG_DEBUG, "EAP-SAKE: Derived Session-Id", id, *len);
+
+	return id;
+}
+
+
 int eap_server_sake_register(void)
 {
 	struct eap_method *eap;
-	int ret;
 
 	eap = eap_server_method_alloc(EAP_SERVER_METHOD_INTERFACE_VERSION,
 				      EAP_VENDOR_IETF, EAP_TYPE_SAKE, "SAKE");
@@ -514,9 +544,7 @@ int eap_server_sake_register(void)
 	eap->getKey = eap_sake_getKey;
 	eap->isSuccess = eap_sake_isSuccess;
 	eap->get_emsk = eap_sake_get_emsk;
+	eap->getSessionId = eap_sake_get_session_id;
 
-	ret = eap_server_method_register(eap);
-	if (ret)
-		eap_server_method_free(eap);
-	return ret;
+	return eap_server_method_register(eap);
 }

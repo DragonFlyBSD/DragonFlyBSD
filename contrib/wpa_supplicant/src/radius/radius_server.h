@@ -22,6 +22,11 @@ struct radius_server_conf {
 	int auth_port;
 
 	/**
+	 * acct_port - UDP port to listen to as an accounting server
+	 */
+	int acct_port;
+
+	/**
 	 * client_file - RADIUS client configuration file
 	 *
 	 * This file contains the RADIUS clients and the shared secret to be
@@ -33,6 +38,11 @@ struct radius_server_conf {
 	 * with '#' are skipped and can be used as comments.
 	 */
 	char *client_file;
+
+	/**
+	 * sqlite_file - SQLite database for storing debug log information
+	 */
+	const char *sqlite_file;
 
 	/**
 	 * conf_ctx - Context pointer for callbacks
@@ -118,6 +128,9 @@ struct radius_server_conf {
 	 */
 	int pac_key_refresh_time;
 
+	int eap_teap_auth;
+	int eap_teap_pac_no_inner;
+
 	/**
 	 * eap_sim_aka_result_ind - EAP-SIM/AKA protected success indication
 	 *
@@ -125,6 +138,8 @@ struct radius_server_conf {
 	 * (AT_RESULT_IND) is used with EAP-SIM and EAP-AKA.
 	 */
 	int eap_sim_aka_result_ind;
+
+	int eap_sim_id;
 
 	/**
 	 * tnc - Trusted Network Connect (TNC)
@@ -147,6 +162,22 @@ struct radius_server_conf {
 	 * server_id - Server identity
 	 */
 	const char *server_id;
+
+	/**
+	 * erp - Whether EAP Re-authentication Protocol (ERP) is enabled
+	 *
+	 * This controls whether the authentication server derives ERP key
+	 * hierarchy (rRK and rIK) from full EAP authentication and allows
+	 * these keys to be used to perform ERP to derive rMSK instead of full
+	 * EAP authentication to derive MSK.
+	 */
+	int erp;
+
+	const char *erp_domain;
+
+	unsigned int tls_session_lifetime;
+
+	unsigned int tls_flags;
 
 	/**
 	 * wps - Wi-Fi Protected Setup context
@@ -204,17 +235,25 @@ struct radius_server_conf {
 #ifdef CONFIG_RADIUS_TEST
 	const char *dump_msk_file;
 #endif /* CONFIG_RADIUS_TEST */
+
+	char *subscr_remediation_url;
+	u8 subscr_remediation_method;
+	char *hs20_sim_provisioning_url;
+
+	char *t_c_server_url;
 };
 
 
 struct radius_server_data *
 radius_server_init(struct radius_server_conf *conf);
 
+void radius_server_erp_flush(struct radius_server_data *data);
 void radius_server_deinit(struct radius_server_data *data);
 
 int radius_server_get_mib(struct radius_server_data *data, char *buf,
 			  size_t buflen);
 
 void radius_server_eap_pending_cb(struct radius_server_data *data, void *ctx);
+int radius_server_dac_request(struct radius_server_data *data, const char *req);
 
 #endif /* RADIUS_SERVER_H */
