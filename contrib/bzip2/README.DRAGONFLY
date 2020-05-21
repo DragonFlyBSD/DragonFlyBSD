@@ -1,10 +1,15 @@
-Original source can be obtained from:
-http://www.bzip.org/
+BZIP2
+=====
+
+Original source can be downloaded from:
+https://sourceware.org/pub/bzip2/
+
+file = bzip2-1.0.8.tar.gz
+date = 2019-07-13
+size = 810029
+sha1 = bf7badf7e248e0ecf465d33c2f5aeec774209227
 
 The file README.DELETED contains a list of deleted files.
-
-cvs hint:
-cvs import src/contrib/bzip2-1.0 BZIP v1_0_?
 
 This is used by:
 lib/libbz2/
