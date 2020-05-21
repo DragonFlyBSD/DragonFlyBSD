@@ -11,7 +11,7 @@ LEAPFILE=
 ZIC_UG_FLAGS=	-u ${BINOWN} -g ${BINGRP}
 
 TZFILES=	africa antarctica asia australasia etcetera europe \
-		northamerica southamerica systemv
+		northamerica southamerica
 TZFILES+=	dragonfly
 POSIXRULES=	America/New_York
 
