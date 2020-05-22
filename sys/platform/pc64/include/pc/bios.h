@@ -31,7 +31,7 @@
 #ifndef _MACHINE_PC_BIOS_H_
 #define _MACHINE_PC_BIOS_H_
 
-u_int32_t	bios_sigsearch(u_int32_t, u_char *, int, int, int);
+uint32_t	bios_sigsearch(uint32_t, unsigned char *, int, int, int);
 
 #define BIOS_PADDRTOVADDR(x)	((x) + KERNBASE)
 #define BIOS_VADDRTOPADDR(x)	((x) - KERNBASE)
@@ -45,9 +45,9 @@ u_int32_t	bios_sigsearch(u_int32_t, u_char *, int, int, int);
 #define	SMAP_TYPE_MEMORY	1
 
 struct bios_smap {
-    u_int64_t	base;
-    u_int64_t	length;
-    u_int32_t	type;
+    uint64_t	base;
+    uint64_t	length;
+    uint32_t	type;
 } __packed;
 
 /*
