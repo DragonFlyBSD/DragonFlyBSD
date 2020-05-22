@@ -222,13 +222,8 @@ s/\$//g
 		usefuncname=$f
 		if (funcalias == "")
 			funcalias = funcname
-		if (argalias == "") {
+		if (argalias == "")
 			argalias = funcname "_args"
-			if ($2 == "COMPAT") {
-				argalias = "o" argalias
-				usefuncname = "sys_o" funcname
-			}
-		}
 		f++
 
 		if ($f != "(")
@@ -323,60 +318,6 @@ s/\$//g
 		    	    funcalias, syscall) > syshdr
 			printf(" \\\n\t%s.o", funcalias) > sysmk
 		}
-		syscall++
-		next
-	}
-	$2 == "COMPAT" || $2 == "CPT_NOA" {
-		ncompat++
-		parseline()
-		if (argc != 0 && $2 != "CPT_NOA") {
-			printf("struct\t%s {\n", argalias) > syscompat
-			printf("#ifdef _KERNEL\n") > syscompat
-			printf("\tstruct sysmsg sysmsg;\n") > syscompat
-			printf("#endif\n") > syscompat
-			for (i = 1; i <= argc; i++)
-				printf("\t%s\t%s;\tchar %s_[PAD_(%s)];\n",
-				    argtype[i], argname[i],
-				    argname[i], argtype[i]) > syscompat
-			printf("};\n") > syscompat
-		}
-		else if($2 != "CPT_NOA") {
-			printf("\tstruct\t%s %s;\n", argalias, usefuncname) > sysun
-			printf("struct\t%s {\n", argalias) > sysarg
-			printf("#ifdef _KERNEL\n") > sysarg
-			printf("\tstruct sysmsg sysmsg;\n") > sysarg
-			printf("#endif\n") > sysarg
-			printf("\tregister_t dummy;\n") > sysarg
-			printf("};\n") > sysarg
-		}
-		printf("%s\tsys_o%s (struct %s *);\n",
-		    rettype, funcname, argalias) > syscompatdcl
-		printf("\t{ compat(%s,%s) },",
-		    argssize, funcname) > sysent
-		align_sysent_comment(8 + 9 + \
-		    length(argssize) + 1 + length(funcname) + 4)
-		printf("/* %d = old %s */\n", syscall, funcalias) > sysent
-		printf("\t\"old.%s\",\t\t/* %d = old %s */\n",
-		    funcalias, syscall, funcalias) > sysnames
-		printf("\t\t\t\t/* %d is old %s */\n",
-		    syscall, funcalias) > syshdr
-		syscall++
-		next
-	}
-	$2 == "LIBCOMPAT" {
-		ncompat++
-		parseline()
-		printf("%s\tsys_o%s();\n", rettype, funcname) > syscompatdcl
-		printf("\t{ compat(%s,%s) },",
-		    argssize, funcname) > sysent
-		align_sysent_comment(8 + 9 + \
-		    length(argssize) + 1 + length(funcname) + 4)
-		printf("/* %d = old %s */\n", syscall, funcalias) > sysent
-		printf("\t\"old.%s\",\t\t/* %d = old %s */\n",
-		    funcalias, syscall, funcalias) > sysnames
-		printf("#define\t%s%s\t%d\t/* compatibility; still used by libc */\n",
-		    syscallprefix, funcalias, syscall) > syshdr
-		printf(" \\\n\t%s.o", funcalias) > sysmk
 		syscall++
 		next
 	}
