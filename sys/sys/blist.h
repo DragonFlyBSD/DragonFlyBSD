@@ -55,7 +55,6 @@
  *		eats around 32 KBytes of memory. 
  *
  * $FreeBSD: src/sys/sys/blist.h,v 1.2.2.1 2003/01/12 09:23:12 dillon Exp $
- * $DragonFly: src/sys/sys/blist.h,v 1.7 2008/08/10 22:09:51 dillon Exp $
  */
 
 #ifndef _SYS_BLIST_H_
@@ -123,13 +122,13 @@ typedef struct blist {
 
 #define BLIST_MAX_ALLOC		BLIST_BMAP_RADIX
 
-extern blist_t blist_create(swblk_t blocks);
-extern void blist_destroy(blist_t blist);
-extern swblk_t blist_alloc(blist_t blist, swblk_t count);
-extern swblk_t blist_allocat(blist_t blist, swblk_t count, swblk_t blkat);
-extern void blist_free(blist_t blist, swblk_t blkno, swblk_t count);
-extern swblk_t blist_fill(blist_t blist, swblk_t blkno, swblk_t count);
-extern void blist_print(blist_t blist);
-extern void blist_resize(blist_t *pblist, swblk_t count, int freenew);
+blist_t blist_create(swblk_t);
+void blist_destroy(blist_t);
+swblk_t blist_alloc(blist_t, swblk_t);
+swblk_t blist_allocat(blist_t, swblk_t, swblk_t);
+void blist_free(blist_t, swblk_t, swblk_t);
+swblk_t blist_fill(blist_t, swblk_t, swblk_t);
+void blist_print(blist_t);
+void blist_resize(blist_t *, swblk_t, int);
 
 #endif	/* _SYS_BLIST_H_ */

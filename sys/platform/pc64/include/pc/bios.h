@@ -31,8 +31,7 @@
 #ifndef _MACHINE_PC_BIOS_H_
 #define _MACHINE_PC_BIOS_H_
 
-extern u_int32_t	bios_sigsearch(u_int32_t start, u_char *sig, int siglen, 
-					 int paralen, int sigofs);
+u_int32_t	bios_sigsearch(u_int32_t, u_char *, int, int, int);
 
 #define BIOS_PADDRTOVADDR(x)	((x) + KERNBASE)
 #define BIOS_VADDRTOPADDR(x)	((x) - KERNBASE)

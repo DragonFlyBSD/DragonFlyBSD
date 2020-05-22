@@ -445,80 +445,77 @@ extern struct lwkt_token vga_token;
 /*
  * Procedures
  */
-extern struct thread *lwkt_alloc_thread(struct thread *, int, int, int);
-extern void lwkt_init_thread(struct thread *, void *, int, int,
-			     struct globaldata *);
-extern void lwkt_set_interrupt_support_thread(void);
-extern void lwkt_set_comm(thread_t, const char *, ...) __printflike(2, 3);
-extern void lwkt_free_thread(struct thread *);
-extern void lwkt_gdinit(struct globaldata *);
-extern void lwkt_switch(void);
-extern void lwkt_switch_return(struct thread *);
-extern void lwkt_preempt(thread_t, int);
-extern void lwkt_schedule(thread_t);
-extern void lwkt_schedule_noresched(thread_t);
-extern void lwkt_schedule_self(thread_t);
-extern void lwkt_deschedule(thread_t);
-extern void lwkt_deschedule_self(thread_t);
-extern void lwkt_yield(void);
-extern void lwkt_yield_quick(void);
-extern void lwkt_user_yield(void);
-extern void lwkt_hold(thread_t);
-extern void lwkt_rele(thread_t);
-extern void lwkt_passive_release(thread_t);
-extern void lwkt_maybe_splz(thread_t);
+struct thread *lwkt_alloc_thread(struct thread *, int, int, int);
+void lwkt_init_thread(struct thread *, void *, int, int, struct globaldata *);
+void lwkt_set_interrupt_support_thread(void);
+void lwkt_set_comm(thread_t, const char *, ...) __printflike(2, 3);
+void lwkt_free_thread(struct thread *);
+void lwkt_gdinit(struct globaldata *);
+void lwkt_switch(void);
+void lwkt_switch_return(struct thread *);
+void lwkt_preempt(thread_t, int);
+void lwkt_schedule(thread_t);
+void lwkt_schedule_noresched(thread_t);
+void lwkt_schedule_self(thread_t);
+void lwkt_deschedule(thread_t);
+void lwkt_deschedule_self(thread_t);
+void lwkt_yield(void);
+void lwkt_yield_quick(void);
+void lwkt_user_yield(void);
+void lwkt_hold(thread_t);
+void lwkt_rele(thread_t);
+void lwkt_passive_release(thread_t);
+void lwkt_maybe_splz(thread_t);
 
-extern void lwkt_gettoken(lwkt_token_t);
-extern void lwkt_gettoken_shared(lwkt_token_t);
-extern int  lwkt_trytoken(lwkt_token_t);
-extern void lwkt_reltoken(lwkt_token_t);
-extern int  lwkt_cnttoken(lwkt_token_t, thread_t);
-extern int  lwkt_getalltokens(thread_t, int);
-extern void lwkt_relalltokens(thread_t);
-extern void lwkt_token_init(lwkt_token_t, const char *);
-extern void lwkt_token_uninit(lwkt_token_t);
+void lwkt_gettoken(lwkt_token_t);
+void lwkt_gettoken_shared(lwkt_token_t);
+int  lwkt_trytoken(lwkt_token_t);
+void lwkt_reltoken(lwkt_token_t);
+int  lwkt_cnttoken(lwkt_token_t, thread_t);
+int  lwkt_getalltokens(thread_t, int);
+void lwkt_relalltokens(thread_t);
+void lwkt_token_init(lwkt_token_t, const char *);
+void lwkt_token_uninit(lwkt_token_t);
 
-extern void lwkt_token_pool_init(void);
-extern lwkt_token_t lwkt_token_pool_lookup(void *);
-extern lwkt_token_t lwkt_getpooltoken(void *);
-extern void lwkt_relpooltoken(void *);
+void lwkt_token_pool_init(void);
+lwkt_token_t lwkt_token_pool_lookup(void *);
+lwkt_token_t lwkt_getpooltoken(void *);
+void lwkt_relpooltoken(void *);
 
-extern void lwkt_token_swap(void);
+void lwkt_token_swap(void);
 
-extern void lwkt_setpri(thread_t, int);
-extern void lwkt_setpri_initial(thread_t, int);
-extern void lwkt_setpri_self(int);
-extern void lwkt_schedulerclock(thread_t td);
-extern void lwkt_setcpu_self(struct globaldata *);
-extern void lwkt_migratecpu(int);
+void lwkt_setpri(thread_t, int);
+void lwkt_setpri_initial(thread_t, int);
+void lwkt_setpri_self(int);
+void lwkt_schedulerclock(thread_t td);
+void lwkt_setcpu_self(struct globaldata *);
+void lwkt_migratecpu(int);
 
-extern void lwkt_giveaway(struct thread *);
-extern void lwkt_acquire(struct thread *);
-extern int  lwkt_send_ipiq3(struct globaldata *, ipifunc3_t, void *, int);
-extern int  lwkt_send_ipiq3_passive(struct globaldata *, ipifunc3_t,
-				    void *, int);
-extern int  lwkt_send_ipiq3_bycpu(int, ipifunc3_t, void *, int);
-extern int  lwkt_send_ipiq3_mask(cpumask_t, ipifunc3_t, void *, int);
-extern void lwkt_wait_ipiq(struct globaldata *, int);
-extern void lwkt_process_ipiq(void);
-extern void lwkt_process_ipiq_frame(struct intrframe *);
-extern void lwkt_smp_stopped(void);
-extern void lwkt_synchronize_ipiqs(const char *);
+void lwkt_giveaway(struct thread *);
+void lwkt_acquire(struct thread *);
+int  lwkt_send_ipiq3(struct globaldata *, ipifunc3_t, void *, int);
+int  lwkt_send_ipiq3_passive(struct globaldata *, ipifunc3_t, void *, int);
+int  lwkt_send_ipiq3_bycpu(int, ipifunc3_t, void *, int);
+int  lwkt_send_ipiq3_mask(cpumask_t, ipifunc3_t, void *, int);
+void lwkt_wait_ipiq(struct globaldata *, int);
+void lwkt_process_ipiq(void);
+void lwkt_process_ipiq_frame(struct intrframe *);
+void lwkt_smp_stopped(void);
+void lwkt_synchronize_ipiqs(const char *);
 
 /* lwkt_cpusync_init() - inline function in sys/thread2.h */
-extern void lwkt_cpusync_simple(cpumask_t, cpusync_func_t, void *);
-extern void lwkt_cpusync_interlock(lwkt_cpusync_t);
-extern void lwkt_cpusync_deinterlock(lwkt_cpusync_t);
-extern void lwkt_cpusync_quick(lwkt_cpusync_t);
+void lwkt_cpusync_simple(cpumask_t, cpusync_func_t, void *);
+void lwkt_cpusync_interlock(lwkt_cpusync_t);
+void lwkt_cpusync_deinterlock(lwkt_cpusync_t);
+void lwkt_cpusync_quick(lwkt_cpusync_t);
 
-extern void crit_panic(void) __dead2;
-extern struct lwp *lwkt_preempted_proc(void);
+void crit_panic(void) __dead2;
+struct lwp *lwkt_preempted_proc(void);
 
-extern int  lwkt_create (void (*func)(void *), void *, struct thread **,
-		struct thread *, int, int,
-		const char *, ...) __printflike(7, 8);
-extern void lwkt_exit (void) __dead2;
-extern void lwkt_remove_tdallq (struct thread *);
+int  lwkt_create(void (*)(void *), void *, struct thread **, struct thread *,
+	int, int, const char *, ...) __printflike(7, 8);
+void lwkt_exit(void) __dead2;
+void lwkt_remove_tdallq(struct thread *);
 
 #endif /* _KERNEL */
 

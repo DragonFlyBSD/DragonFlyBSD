@@ -688,10 +688,10 @@ cpu_invltlb(void)
 
 #endif
 
-extern void smp_invltlb(void);
-extern void smp_sniff(void);
-extern void cpu_sniff(int dcpu);
-extern void hard_sniff(struct trapframe *tf);
+void smp_invltlb(void);
+void smp_sniff(void);
+void cpu_sniff(int);
+void hard_sniff(struct trapframe *);
 
 static __inline u_short
 rfs(void)

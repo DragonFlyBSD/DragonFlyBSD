@@ -103,7 +103,7 @@ union usched_data {
 extern struct usched	usched_bsd4;
 extern struct usched	usched_dfly;
 extern struct usched	usched_dummy;
-extern void dfly_acquire_curproc(struct lwp *lp);
+void dfly_acquire_curproc(struct lwp *);
 extern cpumask_t usched_mastermask;
 extern int sched_ticks; /* From sys/kern/kern_clock.c */
 

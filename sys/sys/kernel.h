@@ -320,7 +320,7 @@ void	sysinit_add (struct sysinit **, struct sysinit **);
  * in a SYSINIT function at SI_BOOT1_TUNABLES with SI_ORDER_LAST.
  */
 
-extern void tunable_int_init(void *);
+void tunable_int_init(void *);
 
 struct tunable_int {
 	const char *path;
@@ -352,7 +352,7 @@ static void __Tunable_ ## var (void *ignored)	\
 SYSINIT(__Tunable_init_ ## var, SI_BOOT1_TUNABLES, SI_ORDER_MIDDLE, \
 	__Tunable_ ## var , NULL);
 
-extern void tunable_long_init(void *);
+void tunable_long_init(void *);
 
 struct tunable_long {
 	const char *path;
@@ -374,7 +374,7 @@ struct tunable_long {
 
 #define	TUNABLE_LONG_FETCH(path, var)	kgetenv_long((path), (var))
 
-extern void tunable_ulong_init(void *);
+void tunable_ulong_init(void *);
 
 struct tunable_ulong {
 	const char *path;
@@ -396,7 +396,7 @@ struct tunable_ulong {
 
 #define	TUNABLE_ULONG_FETCH(path, var)	kgetenv_ulong((path), (var))
 
-extern void tunable_quad_init(void *);
+void tunable_quad_init(void *);
 struct tunable_quad {
 	const char *path;
 	quad_t *var;
@@ -417,7 +417,7 @@ struct tunable_quad {
 
 #define	TUNABLE_QUAD_FETCH(path, var)	kgetenv_quad((path), (var))
 
-extern void tunable_str_init(void *);
+void tunable_str_init(void *);
 struct tunable_str {
 	const char *path;
 	char *var;

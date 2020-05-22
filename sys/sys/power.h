@@ -54,9 +54,9 @@
 #define POWER_SLEEP_STATE_HIBERNATE	0x02
 
 typedef int (*power_pm_fn_t)(u_long, void*, ...);
-extern int	 power_pm_register(u_int, power_pm_fn_t, void *);
-extern u_int	 power_pm_get_type(void);
-extern void	 power_pm_suspend(int);
+int	 power_pm_register(u_int, power_pm_fn_t, void *);
+u_int	 power_pm_get_type(void);
+void	 power_pm_suspend(int);
 
 /*
  * System power API.
@@ -64,8 +64,8 @@ extern void	 power_pm_suspend(int);
 #define POWER_PROFILE_PERFORMANCE        0
 #define POWER_PROFILE_ECONOMY            1
 
-extern int	power_profile_get_state(void);
-extern void	power_profile_set_state(int);
+int	power_profile_get_state(void);
+void	power_profile_set_state(int);
 
 typedef void (*power_profile_change_hook)(void *, int);
 EVENTHANDLER_DECLARE(power_profile_change, power_profile_change_hook);

@@ -469,7 +469,7 @@ MALLOC_DECLARE(M_PARGS);
 /*
  * STOPEVENT
  */
-extern void stopevent(struct proc*, unsigned int, unsigned int);
+void stopevent(struct proc *, unsigned int, unsigned int);
 #define	STOPEVENT(p,e,v)					\
 	do {							\
 		if (__predict_false((p)->p_stops & (e))) {	\

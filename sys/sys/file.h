@@ -139,23 +139,22 @@ LIST_HEAD(filelist, file);
 MALLOC_DECLARE(M_FILE);
 #endif
 
-extern void fhold(struct file *fp);
-extern int fdrop (struct file *fp);
-extern int checkfdclosed(thread_t td, struct filedesc *fdp, int fd,
-			struct file *fp, int closedcounter);
-extern int fp_open(const char *path, int flags, int mode, struct file **fpp);
-extern int fp_vpopen(struct vnode *vp, int flags, struct file **fpp);
-extern int fp_pread(struct file *fp, void *buf, size_t nbytes, off_t offset, ssize_t *res, enum uio_seg);
-extern int fp_pwrite(struct file *fp, void *buf, size_t nbytes, off_t offset, ssize_t *res, enum uio_seg);
-extern int fp_read(struct file *fp, void *buf, size_t nbytes, ssize_t *res, int all, enum uio_seg);
-extern int fp_write(struct file *fp, void *buf, size_t nbytes, ssize_t *res, enum uio_seg);
-extern int fp_stat(struct file *fp, struct stat *ub);
-extern int fp_mmap(void *addr, size_t size, int prot, int flags, struct file *fp, off_t pos, void **resp);
+void fhold(struct file *);
+int fdrop(struct file *);
+int checkfdclosed(thread_t, struct filedesc *, int, struct file *, int);
+int fp_open(const char *, int, int, struct file **);
+int fp_vpopen(struct vnode *, int, struct file **);
+int fp_pread(struct file *, void *, size_t, off_t, ssize_t *, enum uio_seg);
+int fp_pwrite(struct file *, void *, size_t, off_t, ssize_t *, enum uio_seg);
+int fp_read(struct file *, void *, size_t, ssize_t *, int, enum uio_seg);
+int fp_write(struct file *, void *, size_t, ssize_t *, enum uio_seg);
+int fp_stat(struct file *, struct stat *);
+int fp_mmap(void *, size_t, int, int, struct file *, off_t, void **);
 
-extern int nofo_shutdown(struct file *fp, int how);
+int nofo_shutdown(struct file *, int);
 
-extern int fp_close(struct file *fp);
-extern int fp_shutdown(struct file *fp, int how);
+int fp_close(struct file *);
+int fp_shutdown(struct file *, int);
 
 extern struct fileops vnode_fileops;
 extern struct fileops specvnode_fileops;

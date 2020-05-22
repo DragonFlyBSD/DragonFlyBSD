@@ -37,8 +37,8 @@
 #include <sys/vnode.h>
 #include <libprop/proplib.h>
 
-extern void vq_init(struct mount*);
-extern void vq_done(struct mount*);
+void vq_init(struct mount *);
+void vq_done(struct mount *);
 
 int vquotactl(const char *path, struct plistref *pref);
 

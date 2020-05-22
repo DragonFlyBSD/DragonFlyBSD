@@ -215,7 +215,7 @@
  */
 
 #ifdef KERN_TIMESTAMP
-extern void _TSTMP(u_int32_t argument);
+void _TSTMP(u_int32_t);
 #define TSTMP(class, unit, event, par)	_TSTMP(	\
 	(((class) &   0x0f) << 28 ) |		\
 	(((unit)  &   0x0f) << 24 ) |		\

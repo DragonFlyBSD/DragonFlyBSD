@@ -79,11 +79,11 @@ struct mem_range_softc
 
 extern struct mem_range_softc mem_range_softc;
 
-extern int mem_range_attr_get(struct mem_range_desc *mrd, int *arg);
-extern int mem_range_attr_set(struct mem_range_desc *mrd, int *arg);
-extern void mem_range_AP_init(void);
-extern int cpu_set_iopl(void);
-extern int cpu_clr_iopl(void);
+int mem_range_attr_get(struct mem_range_desc *, int *);
+int mem_range_attr_set(struct mem_range_desc *, int *);
+void mem_range_AP_init(void);
+int cpu_set_iopl(void);
+int cpu_clr_iopl(void);
 #endif
 
 #endif	/* !_SYS_MEMRANGE_H_ */

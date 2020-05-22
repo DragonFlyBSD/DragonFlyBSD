@@ -42,7 +42,7 @@
 extern	u_long	atdevbase;	/* offset in virtual memory of ISA io mem */
 extern	int	busdma_swi_pending;
 extern	void	(*cpu_idle_hook)(void);
-extern	void	cpu_idle(void);
+void		cpu_idle(void);
 extern	u_int	cpu_exthigh;
 extern	u_int	via_feature_rng;
 extern	u_int	via_feature_xcrypt;

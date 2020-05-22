@@ -241,16 +241,15 @@ int kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
     k_copyin_fn kevent_copyin, k_copyout_fn kevent_copyout,
     struct timespec *tsp, int flags);
 
-extern void	knote(struct klist *list, long hint);
-extern void	knote_insert(struct klist *klist, struct knote *kn);
-extern void	knote_remove(struct klist *klist, struct knote *kn);
-extern void	knote_assume_knotes(struct kqinfo *, struct kqinfo *,
-		    struct filterops *, void *);
-extern void	knote_fdclose(struct file *fp, struct filedesc *fdp, int fd);
-extern void	kqueue_init(struct kqueue *kq, struct filedesc *fdp);
-extern void	kqueue_terminate(struct kqueue *kq);
-extern int 	kqueue_register(struct kqueue *kq, struct kevent *kev,
-		    int *countp);
+void	knote(struct klist *, long);
+void	knote_insert(struct klist *, struct knote *);
+void	knote_remove(struct klist *, struct knote *);
+void	knote_assume_knotes(struct kqinfo *, struct kqinfo *,
+	    struct filterops *, void *);
+void	knote_fdclose(struct file *, struct filedesc *, int);
+void	kqueue_init(struct kqueue *, struct filedesc *);
+void	kqueue_terminate(struct kqueue *);
+int 	kqueue_register(struct kqueue *, struct kevent *, int *);
 
 extern struct klist fs_klist;	/* EVFILT_FS */
 

@@ -98,16 +98,13 @@ typedef struct alist {
 #define ALIST_RECORDS_65536	2193
 #define ALIST_RECORDS_1048576	34961
 
-extern alist_t alist_create(alist_blk_t blocks, struct malloc_type *mtype);
-extern void alist_init(alist_t alist, alist_blk_t blocks,
-				almeta_t *records, alist_blk_t nrecords);
-extern void alist_destroy(alist_t alist, struct malloc_type *mtype);
-extern alist_blk_t alist_alloc(alist_t alist, alist_blk_t start,
-				alist_blk_t count);
-extern void alist_free(alist_t alist, alist_blk_t blkno, alist_blk_t count);
-extern alist_blk_t alist_free_info(alist_t bl, alist_blk_t *startp,
-				alist_blk_t *countp);
-extern void alist_print(alist_t alist);
+alist_t alist_create(alist_blk_t, struct malloc_type *);
+void alist_init(alist_t, alist_blk_t, almeta_t *, alist_blk_t);
+void alist_destroy(alist_t, struct malloc_type *);
+alist_blk_t alist_alloc(alist_t, alist_blk_t, alist_blk_t);
+void alist_free(alist_t, alist_blk_t, alist_blk_t);
+alist_blk_t alist_free_info(alist_t, alist_blk_t *, alist_blk_t *);
+void alist_print(alist_t);
 
 #endif	/* _SYS_ALIST_H_ */
 

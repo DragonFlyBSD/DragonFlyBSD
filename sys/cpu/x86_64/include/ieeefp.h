@@ -291,11 +291,11 @@ __fpgetsticky(void)
 
 /* Augment the userland declarations. */
 __BEGIN_DECLS
-extern fp_rnd_t    fpgetround(void);
-extern fp_rnd_t    fpsetround(fp_rnd_t);
-extern fp_except_t fpgetmask(void);
-extern fp_except_t fpsetmask(fp_except_t);
-extern fp_except_t fpgetsticky(void);
+fp_rnd_t	fpgetround(void);
+fp_rnd_t	fpsetround(fp_rnd_t);
+fp_except_t	fpgetmask(void);
+fp_except_t	fpsetmask(fp_except_t);
+fp_except_t	fpgetsticky(void);
 fp_prec_t	fpgetprec(void);
 fp_prec_t	fpsetprec(fp_prec_t);
 __END_DECLS

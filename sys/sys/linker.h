@@ -298,12 +298,12 @@ int linker_ddb_symbol_values(c_linker_sym_t _sym, linker_symval_t *_symval);
  * Module lookup
  */
 extern caddr_t		preload_metadata;
-extern caddr_t		preload_search_by_name(const char *);
-extern caddr_t		preload_search_by_type(const char *);
-extern caddr_t		preload_search_next_name(caddr_t);
-extern caddr_t		preload_search_info(caddr_t, int);
-extern void		preload_delete_name(const char *);
-extern void		preload_bootstrap_relocate(vm_offset_t);
+caddr_t		preload_search_by_name(const char *);
+caddr_t		preload_search_by_type(const char *);
+caddr_t		preload_search_next_name(caddr_t);
+caddr_t		preload_search_info(caddr_t, int);
+void		preload_delete_name(const char *);
+void		preload_bootstrap_relocate(vm_offset_t);
 extern struct mod_metadata *find_mod_metadata(const char *);
 
 #ifdef KLD_DEBUG

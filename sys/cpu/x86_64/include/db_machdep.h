@@ -44,9 +44,9 @@ typedef struct x86_64_saved_state db_regs_t;
 extern db_regs_t        ddb_regs;       /* register state */
 #define DDB_REGS        (&ddb_regs)
 
-extern	db_addr_t	PC_REGS(db_regs_t *regs);
-extern	db_addr_t	SP_REGS(db_regs_t *regs);
-extern	db_addr_t	BP_REGS(db_regs_t *regs);
+db_addr_t		PC_REGS(db_regs_t *);
+db_addr_t		SP_REGS(db_regs_t *);
+db_addr_t		BP_REGS(db_regs_t *);
 
 #endif
 
