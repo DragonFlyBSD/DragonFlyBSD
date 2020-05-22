@@ -90,16 +90,7 @@ SRCS+=  icrc32.c
 BZ2DIR=	${LIBSTAND_SRC}/../../contrib/bzip2
 .PATH:	${BZ2DIR}
 CFLAGS+=-I${BZ2DIR} -DBZ_NO_STDIO -DBZ_NO_COMPRESS
-SRCS+=	bzlib.c crctable.c decompress.c huffman.c randtable.c bzlib.h \
-	bzlib_private.h
-
-# check your belt - ugly bzip2 stuff ahead
-.for file in bzlib.c
-CLEANFILES+=   ${file}
-
-${file}: ${BZ2DIR}/${file} ${file}.diff
-	patch -o ${.TARGET} < ${.ALLSRC:M*.diff} ${.ALLSRC:M*.[ch]}
-.endfor
+SRCS+=	bzlib.c crctable.c decompress.c huffman.c randtable.c
 
 # io routines
 SRCS+=	closeall.c dev.c ioctl.c nullfs.c stat.c \

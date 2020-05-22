@@ -11,6 +11,11 @@ sha1 = bf7badf7e248e0ecf465d33c2f5aeec774209227
 
 The file README.DELETED contains a list of deleted files.
 
+The following files have been patched:
+======================================
+
+	modified:   bzlib.c
+
 This is used by:
 lib/libbz2/
 lib/libstand/
