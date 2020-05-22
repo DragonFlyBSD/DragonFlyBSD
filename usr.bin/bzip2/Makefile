@@ -5,7 +5,7 @@ BZ2DIR=	${.CURDIR}/../../contrib/bzip2
 .PATH: ${BZ2DIR}
 
 PROG=	bzip2
-WARNS?=	2
+WARNS?=	3
 
 CFLAGS+= -D_FILE_OFFSET_BITS=64
 
