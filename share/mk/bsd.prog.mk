@@ -26,8 +26,6 @@ LDFLAGS+= -static
 PROG=	${PROG_CXX}
 .endif
 
-.include <bsd.patch.mk>
-
 .if defined(PROG)
 .if defined(SRCS)
 
@@ -38,7 +36,7 @@ LDADD+=	${OBJCLIBS}
 .endif
 
 .if !empty(SRCS)
-OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
+OBJS+=  ${SRCS:N*.h:R:S/$/.o/g}
 .endif
 
 .if !target(${PROG})

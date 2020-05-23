@@ -28,12 +28,7 @@ OBJCLIBS?= -lobjc
 LDADD+=	${OBJCLIBS}
 .endif
 
-OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.no/g}
-.for _PATCH in ${SRCS:T:N*.h.patch:M*.patch}
-.for _OBJ in ${_PATCH:R:R:S/$/.no/}
-OBJS:=	${OBJS:N${_OBJ}} ${_OBJ}
-.endfor
-.endfor
+OBJS+=  ${SRCS:N*.h:R:S/$/.no/g}
 
 ${PROG}.nx: ${OBJS}
 .if defined(PROG_CXX)

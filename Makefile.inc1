@@ -169,8 +169,7 @@ WORLDDEST=	${DESTDIRBASE}/world_${TARGET_ARCH}
 
 # The bootstrap-tools path is used by the bootstrap-tools, build-tools, and
 # cross-tools stages to augment the existing command path to access newer
-# versions of certain utilities such as 'patch' that the cross-tools stage
-# might expect.
+# versions of certain utilities that the cross-tools stage might expect.
 #
 BTOOLSPATH= ${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/sbin:${BTOOLSDEST}/bin
 
@@ -885,10 +884,7 @@ installkernel reinstallkernel:
 # and build tools stages have access to earlier binaries they themselves
 # had generated.
 #
-# patch:	older patch's do not have -i.  This program must be built
-#		first so other bootstrap tools that need to apply patches
-#		can use it.
-# [x]install:	dependancies on various new install features
+# [x]install:	dependencies on various new install features
 # rpcgen:	old rpcgen used a hardwired cpp path, newer OBJFORMAT_PATH
 #		envs are not compatible with older objformat binaries.
 #
@@ -899,7 +895,6 @@ installkernel reinstallkernel:
 # m4's parser file needs the latest byacc (insanity!).
 #
 BSTRAPDIRS1= \
-	usr.bin/patch \
 	bin/chmod bin/cp bin/cpdup bin/dd bin/mkdir bin/rm bin/echo \
 	bin/test bin/cat bin/ln bin/mv bin/expr bin/sh \
 	bin/hostname bin/kill \

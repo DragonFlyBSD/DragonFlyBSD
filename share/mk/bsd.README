@@ -36,7 +36,6 @@ bsd.man.mk		- install of manual pages and their links
 bsd.nls.mk		- build and install of NLS catalogs
 bsd.obj.mk		- creating 'obj' directories and cleaning up
 bsd.own.mk		- define common variables
-bsd.patch.mk		- 
 bsd.prog.mk		- building programs from source files
 bsd.subdir.mk		- targets for building subdirectories
 bsd.sys.mk		- common settings used for building DragonFly sources

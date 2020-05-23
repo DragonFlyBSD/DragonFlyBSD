@@ -130,11 +130,9 @@ ${SHLIB_NAME}:	${VERSION_MAP}
 LDFLAGS+=	-Wl,--version-script=${VERSION_MAP}
 .endif
 
-.include <bsd.patch.mk>
-
 .if defined(LIB) && !empty(LIB) || defined(SHLIB_NAME)
 . if !empty(SRCS)
-OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
+OBJS+=  ${SRCS:N*.h:R:S/$/.o/g}
 . endif
 .endif
 

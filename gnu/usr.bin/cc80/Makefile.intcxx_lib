@@ -15,7 +15,7 @@
 all: objwarn
 
 .if defined(LIB) && !empty(LIB) && !empty(SRCS)
-OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.no/g}
+OBJS+=  ${SRCS:N*.h:R:S/$/.no/g}
 .endif
 
 .if defined(LIB) && !empty(LIB)
