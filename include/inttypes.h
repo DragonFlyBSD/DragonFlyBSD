@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 2001 Mike Barcroft <mike@FreeBSD.org>
  * All rights reserved.
  *
@@ -23,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/include/inttypes.h,v 1.8 2002/09/22 08:06:45 tjr Exp $
+ * $FreeBSD: head/include/inttypes.h 326192 2017-11-25 17:09:43Z pfg $
  */
 
 #ifndef _INTTYPES_H_
