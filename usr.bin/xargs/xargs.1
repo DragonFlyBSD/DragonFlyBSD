@@ -30,10 +30,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)xargs.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/xargs/xargs.1,v 1.6.2.12 2003/06/01 21:40:35 mux Exp $
+.\" $FreeBSD: head/usr.bin/xargs/xargs.1 314436 2017-02-28 23:42:47Z imp $
 .\" $xMach: xargs.1,v 1.2 2002/02/23 05:23:37 tim Exp $
 .\"
-.Dd March 1, 2017
+.Dd May 23, 2020
 .Dt XARGS 1
 .Os
 .Sh NAME
@@ -41,11 +41,12 @@
 .Nd "construct argument list(s) and execute utility"
 .Sh SYNOPSIS
 .Nm
-.Op Fl 0opt
+.Op Fl 0oprt
 .Op Fl E Ar eofstr
 .Oo
 .Fl I Ar replstr
 .Op Fl R Ar replacements
+.Op Fl S Ar replsize
 .Oc
 .Op Fl J Ar replstr
 .Op Fl L Ar number
@@ -53,7 +54,7 @@
 .Fl n Ar number
 .Op Fl x
 .Oc
-.Op Fl P Ar maxjobs
+.Op Fl P Ar maxprocs
 .Op Fl s Ar size
 .Op Ar utility Op Ar argument ...
 .Sh DESCRIPTION
@@ -70,8 +71,7 @@ Any arguments specified on the command line are given to
 upon each invocation, followed by some number of the arguments read
 from the standard input of
 .Nm .
-The utility
-is repeatedly executed until standard input is exhausted.
+This is repeated until standard input is exhausted.
 .Pp
 Spaces, tabs and newlines may be embedded in arguments using single
 (``\ '\ '')
@@ -111,13 +111,20 @@ flag is specified) arguments to
 .Ar utility
 with the entire line of input.
 The resulting arguments, after replacement is done, will not be allowed to grow
-beyond 255 bytes; this is implemented by concatenating as much of the argument
+beyond
+.Ar replsize
+(or 255 if no
+.Fl S
+flag is specified)
+bytes; this is implemented by concatenating as much of the argument
 containing
 .Ar replstr
 as possible, to the constructed arguments to
 .Ar utility ,
-up to 255 bytes.
-The 255 byte limit does not apply to arguments to
+up to
+.Ar replsize
+bytes.
+The size limit does not apply to arguments to
 .Ar utility
 which do not contain
 .Ar replstr ,
@@ -156,7 +163,7 @@ directories which start with an uppercase letter in the current
 directory to
 .Pa destdir :
 .Pp
-.Dl /bin/ls -1d [A-Z]* | xargs -J % cp -rp % destdir
+.Dl /bin/ls -1d [A-Z]* | xargs -J % cp -Rp % destdir
 .It Fl L Ar number
 Call
 .Ar utility
@@ -200,6 +207,11 @@ Parallel mode: run at most
 invocations of
 .Ar utility
 at once.
+If
+.Ar maxprocs
+is set to 0,
+.Nm
+will run as many processes as possible.
 .It Fl p
 Echo each command to be executed and ask the user whether it should be
 executed.
@@ -222,7 +234,7 @@ input is empty, and it supports a
 .Fl r
 option to inhibit this behavior.
 The
-.Dx
+.Fx
 version of
 .Nm
 does not run the
@@ -234,13 +246,23 @@ option for command-line compatibility with GNU
 but the
 .Fl r
 option does nothing in the
-.Dx
+.Fx
 version of
 .Nm .
 .It Fl R Ar replacements
 Specify the maximum number of arguments that
 .Fl I
 will do replacement in.
+If
+.Ar replacements
+is negative, the number of arguments in which to replace is unbounded.
+.It Fl S Ar replsize
+Specify the amount of space (in bytes) that
+.Fl I
+can use for replacements.
+The default for
+.Ar replsize
+is 255.
 .It Fl s Ar size
 Set the maximum number of bytes for the command line length provided to
 .Ar utility .
@@ -276,17 +298,17 @@ Undefined behavior may occur if
 .Ar utility
 reads from the standard input.
 .Pp
-The
-.Nm
-utility exits immediately (without processing any further input) if a
-command line cannot be assembled,
-.Ar utility
-cannot be invoked, an invocation of
+If a command line cannot be assembled, or
+cannot be invoked, or if an invocation of
 .Ar utility
 is terminated by a signal,
 or an invocation of
 .Ar utility
-exits with a value of 255.
+exits with a value of 255, the
+.Nm
+utility stops processing input and exits after all invocations of
+.Ar utility
+finish processing.
 .Sh EXIT STATUS
 The
 .Nm
@@ -314,16 +336,16 @@ utility is expected to be
 .St -p1003.2
 compliant.
 The
-.Fl J , o , P
+.Fl J , o , P, R
 and
-.Fl R
+.Fl S
 options are non-standard
 .Dx
 extensions which may not be available on other operating systems.
 .Sh HISTORY
 The
 .Nm
-command appeared in PWB
+utility appeared in PWB
 .Ux .
 .Sh BUGS
 If
@@ -333,3 +355,12 @@ size of the environment is increased, it risks
 .Xr execvp 3
 failing with
 .Er E2BIG .
+.Pp
+The
+.Nm
+utility does not take multibyte characters into account when performing
+string comparisons for the
+.Fl I
+and
+.Fl J
+options, which may lead to incorrect results in some locales.

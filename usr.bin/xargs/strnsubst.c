@@ -7,8 +7,7 @@
  * with the following statement:
  * 	For the man who taught me vi, and who got too old, too young.
  *
- * $FreeBSD: src/usr.bin/xargs/strnsubst.c,v 1.5.2.1 2002/06/17 04:44:46 jmallett Exp $
- * $DragonFly: src/usr.bin/xargs/strnsubst.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $FreeBSD: head/usr.bin/xargs/strnsubst.c 327230 2017-12-27 03:23:01Z eadler $
  */
 
 #include <err.h>
@@ -37,7 +36,19 @@ strnsubst(char **str, const char *match, const char *replstr, size_t maxsize)
 	s1 = *str;
 	if (s1 == NULL)
 		return;
-	s2 = calloc(maxsize, 1);
+	/*
+	 * If maxsize is 0 then set it to the length of s1, because we have
+	 * to duplicate s1.  XXX we maybe should double-check whether the match
+	 * appears in s1.  If it doesn't, then we also have to set the length
+	 * to the length of s1, to avoid modifying the argument.  It may make
+	 * sense to check if maxsize is <= strlen(s1), because in that case we
+	 * want to return the unmodified string, too.
+	 */
+	if (maxsize == 0) {
+		match = NULL;
+		maxsize = strlen(s1) + 1;
+	}
+	s2 = calloc(1, maxsize);
 	if (s2 == NULL)
 		err(1, "calloc");
 
@@ -53,8 +64,8 @@ strnsubst(char **str, const char *match, const char *replstr, size_t maxsize)
 		this = strstr(s1, match);
 		if (this == NULL)
 			break;
-		if ((strlen(s2) + ((uintptr_t)this - (uintptr_t)s1) +
-		    (strlen(replstr) - 1)) > maxsize && *replstr != '\0') {
+		if ((strlen(s2) + strlen(s1) + strlen(replstr) -
+		    strlen(match) + 1) > maxsize) {
 			strlcat(s2, s1, maxsize);
 			goto done;
 		}
@@ -74,14 +85,25 @@ done:
 int 
 main(void)
 {
-	char *x, *y;
+	char *x, *y, *z, *za;
 
-	y = x = "{}{}{}";
-	strnsubst(&x, "{}", "v ybir whyv! ", 12);
-	if (strcmp(x, "v ybir whyv! ") == 0)
-		printf("strnsubst() seems to work as expected.\n");
-	printf("x: %s\ny: %s\n", x, y);
+	x = "{}%$";
+	strnsubst(&x, "%$", "{} enpury!", 255);
+	y = x;
+	strnsubst(&y, "}{}", "ybir", 255);
+	z = y;
+	strnsubst(&z, "{", "v ", 255);
+	za = z;
+	strnsubst(&z, NULL, za, 255);
+	if (strcmp(z, "v ybir enpury!") == 0)
+		printf("strnsubst() seems to work!\n");
+	else
+		printf("strnsubst() is broken.\n");
+	printf("%s\n", z);
 	free(x);
+	free(y);
+	free(z);
+	free(za);
 	return 0;
 }
 #endif
