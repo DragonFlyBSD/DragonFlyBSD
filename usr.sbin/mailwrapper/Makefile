@@ -3,9 +3,6 @@
 PROG=	mailwrapper
 MAN=	mailwrapper.8
 
-DPADD=	${LIBUTIL}
-LDADD=	-lutil
-
 SYMLINKS= 	mailwrapper ${BINDIR}/sendmail  \
 		mailwrapper ${BINDIR}/hoststat  \
 		mailwrapper ${BINDIR}/purgestat \

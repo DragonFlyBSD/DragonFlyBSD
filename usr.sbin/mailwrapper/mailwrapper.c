@@ -1,7 +1,6 @@
 /*	$OpenBSD: mailwrapper.c,v 1.16 2004/07/06 03:38:14 millert Exp $	*/
 /*	$NetBSD: mailwrapper.c,v 1.9 2003/03/09 08:10:43 mjl Exp $	*/
 /* $FreeBSD: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.9 2003/07/06 12:44:11 charnier Exp $ */
-/* $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.7 2005/07/04 11:36:30 corecode Exp $ */
 
 /*
  * Copyright (c) 1998
@@ -39,7 +38,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <libutil.h>
 #include <syslog.h>
 #include <stdarg.h>
 

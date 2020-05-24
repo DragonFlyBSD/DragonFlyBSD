@@ -39,7 +39,9 @@
 
 #include <err.h>
 #include <fts.h>
+#if defined(BOOTSTRAPPING) && __DragonFly_version < 500901
 #include <libutil.h>
+#endif
 #include <stdbool.h>
 
 #if HAVE_NETDB_H

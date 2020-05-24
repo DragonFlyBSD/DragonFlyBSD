@@ -11,9 +11,6 @@ SRCS+=	specspec.c only.c
 SRCS+=	pack_dev.c stat_flags.c
 CFLAGS+=-DHAVE_NETDB_H
 
-DPADD+=	${LIBUTIL}
-LDADD+=	-lutil
-
 .if !defined(BOOTSTRAPPING)
 SRCS+= getid.c
 .endif
@@ -31,6 +28,10 @@ CFLAGS+=-DBOOTSTRAPPING
 .PATH: ${.CURDIR}/../../lib/libc/gen
 SRCS+=	vis.c
 CFLAGS+=-include ${.CURDIR}/../../include/vis.h
+.endif
+.if ${WORLD_VERSION} < 500901 # fparseln(3) was moved from libutil to libc
+DPADD+=	${LIBUTIL}
+LDADD+=	-lutil
 .endif
 .endif
 

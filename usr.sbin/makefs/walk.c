@@ -49,6 +49,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <dirent.h>
+#include <libutil.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
