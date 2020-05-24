@@ -181,6 +181,8 @@
             ..
             find_interface
             ..
+            getdate
+            ..
             ipfw
             ..
             IPv6
