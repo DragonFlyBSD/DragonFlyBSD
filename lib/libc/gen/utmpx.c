@@ -36,7 +36,6 @@
 #include <sys/wait.h>
 
 #include <assert.h>
-#include <db.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -46,6 +45,9 @@
 #include <pwd.h>
 #include <utmpx.h>
 #include <vis.h>
+#include "un-namespace.h"
+
+#include <db.h>
 
 static FILE *fp;
 static int readonly = 0;
@@ -75,7 +77,7 @@ _open_db(const char *fname)
 		}
 
 	/* get file size in order to check if new file */
-	if (fstat(fileno(fp), &st) == -1)
+	if (_fstat(fileno(fp), &st) == -1)
 		goto failclose;
 
 	if (st.st_size == 0) {
@@ -349,7 +351,7 @@ utmp_update(const struct utmpx *utx)
 	case -1:
 		return NULL;
 	default:
-		if (waitpid(pid, &status, 0) == -1)
+		if (_waitpid(pid, &status, 0) == -1)
 			return NULL;
 		if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 			return memcpy(&ut, utx, sizeof(ut));
@@ -377,23 +379,23 @@ _updwtmpx(const char *file, const struct utmpx *utx)
 	_DIAGASSERT(file != NULL);
 	_DIAGASSERT(utx != NULL);
 
-	fd = open(file, O_WRONLY|O_APPEND|O_SHLOCK|O_CLOEXEC);
+	fd = _open(file, O_WRONLY|O_APPEND|O_SHLOCK|O_CLOEXEC);
 
 	if (fd == -1) {
-		if ((fd = open(file, O_CREAT|O_WRONLY|O_EXLOCK|O_CLOEXEC, 0644)) == -1)
+		if ((fd = _open(file, O_CREAT|O_WRONLY|O_EXLOCK|O_CLOEXEC, 0644)) == -1)
 			goto fail;
 	}
-	if (fstat(fd, &st) == -1)
+	if (_fstat(fd, &st) == -1)
 		goto failclose;
 	if (st.st_size == 0) {
 		/* new file, add signature record */
 		(void)memset(&ut, 0, sizeof(ut));
 		ut.ut_type = SIGNATURE;
 		(void)memcpy(ut.ut_user, vers, sizeof(vers));
-		if (write(fd, &ut, sizeof(ut)) == -1)
+		if (_write(fd, &ut, sizeof(ut)) == -1)
 			goto failclose;
 	}
-	if (write(fd, utx, sizeof(*utx)) == -1)
+	if (_write(fd, utx, sizeof(*utx)) == -1)
 		goto failclose;
 	if (_close(fd) == -1)
 		return -1;
