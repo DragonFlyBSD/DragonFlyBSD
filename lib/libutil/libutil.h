@@ -100,9 +100,6 @@ properties
 	properties_read(int fd);
 int	realhostname(char *, size_t, const struct in_addr *);
 int	realhostname_sa(char *, size_t, struct sockaddr *, int);
-#ifdef _STDIO_H_	/* avoid adding new includes */
-char   *fparseln(FILE *, size_t *, size_t *, const char[3], int);
-#endif
 
 #ifdef _PWD_H_
 int	pw_copy(int _ffd, int _tfd, const struct passwd *_pw,
@@ -155,13 +152,6 @@ void		*erealloc(void *, size_t);
 int		easprintf(char ** __restrict, const char * __restrict, ...)
 		__printflike(2, 3);
 __END_DECLS
-
-/* fparseln(3) */
-#define	FPARSELN_UNESCESC	0x01
-#define	FPARSELN_UNESCCONT	0x02
-#define	FPARSELN_UNESCCOMM	0x04
-#define	FPARSELN_UNESCREST	0x08
-#define	FPARSELN_UNESCALL	0x0f
 
 /* Flags for hexdump(3). */
 #define	HD_COLUMN_MASK		0xff

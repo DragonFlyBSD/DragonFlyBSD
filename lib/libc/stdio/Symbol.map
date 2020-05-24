@@ -161,6 +161,10 @@ DF508.0 {
     gets_s;
 };
 
+DF510.0 {
+    fparseln;
+};
+
 DFprivate_1.0 {
     __fcloseall;
     __fflush;

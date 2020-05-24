@@ -216,9 +216,10 @@
  * 500710 - Implement getrandom() and __realpath() system calls
  * 500800 - 5.8 release
  * 500900 - 5.9 development
+ * 500901 - fparseln() was moved from libutil to libc
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500900	/* propagated to newvers */
+#define __DragonFly_version 500901	/* propagated to newvers */
 
 #include <sys/_null.h>
 

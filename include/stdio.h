@@ -190,6 +190,15 @@ __END_DECLS
 #define	stdout	__stdoutp
 #define	stderr	__stderrp
 
+#if __BSD_VISIBLE
+/* fparseln(3) */
+#define	FPARSELN_UNESCESC	0x01
+#define	FPARSELN_UNESCCONT	0x02
+#define	FPARSELN_UNESCCOMM	0x04
+#define	FPARSELN_UNESCREST	0x08
+#define	FPARSELN_UNESCALL	0x0f
+#endif
+
 __BEGIN_DECLS
 #ifdef _XLOCALE_H_
 #include <xlocale/_stdio.h>
@@ -339,6 +348,7 @@ void	 fcloseall(void);
 void	*fcookie(FILE *);
 char	*fgetln(FILE *, size_t *);
 const char *fmtcheck(const char *, const char *) __format_arg(2);
+char	*fparseln(FILE *, size_t *, size_t *, const char[3], int);
 __ssize_t __fpending(const FILE *);
 int	 fpurge(FILE *);
 void	 setbuffer(FILE *, char *, int);
