@@ -37,7 +37,3 @@ DF404.0 {
 DF406.0 {
     timespec_get;
 };
-
-DF510.0 {
-    getdate;
-};
