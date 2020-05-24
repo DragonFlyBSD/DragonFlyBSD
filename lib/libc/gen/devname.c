@@ -37,7 +37,6 @@
 #include <sys/param.h>
 #include <sys/sysctl.h>
 
-#include <db.h>
 #include <err.h>
 #include <fcntl.h>
 #include <paths.h>
@@ -45,6 +44,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "un-namespace.h"
+
+#include <db.h>
 
 #define DEVNAME_DEVFS_COMPAT 1
 
