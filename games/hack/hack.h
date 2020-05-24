@@ -631,7 +631,7 @@ void	plnamesuffix(void);
 /* hack.unix.c */
 void	 setrandom(void);
 int	 getyear(void);
-char	*getdate(void);
+char	*getdatestr(void);
 int	 phase_of_the_moon(void);
 bool	 night(void);
 bool	 midnight(void);

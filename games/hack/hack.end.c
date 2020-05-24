@@ -286,7 +286,7 @@ topten(void)
 	(t0->name)[NAMSZ] = 0;
 	strncpy(t0->death, killer, DTHSZ);
 	(t0->death)[DTHSZ] = 0;
-	strcpy(t0->date, getdate());
+	strcpy(t0->date, getdatestr());
 
 	/* assure minimum number of points */
 	if (t0->points < POINTSMIN)
