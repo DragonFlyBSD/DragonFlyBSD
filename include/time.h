@@ -151,9 +151,6 @@ char *asctime(const struct tm *);
 clock_t clock(void);
 char *ctime(const time_t *);
 double difftime(time_t, time_t);
-#if 0 /* XXX missing */
-struct tm *getdate(const char *);
-#endif
 struct tm *gmtime(const time_t *);
 struct tm *localtime(const time_t *);
 time_t mktime(struct tm *);
@@ -195,7 +192,9 @@ int timer_settime(timer_t, int, const struct itimerspec *__restrict,
 
 #if __XSI_VISIBLE
 extern int daylight;
+extern int getdate_err;
 extern long timezone;
+struct tm *getdate(const char *) __strftimelike(1, 0);
 char *strptime(const char * __restrict, const char * __restrict,
     struct tm * __restrict) __strftimelike(2, 0);
 #endif
