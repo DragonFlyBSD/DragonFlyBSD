@@ -460,7 +460,7 @@ realquickworld: _qwinit _mtreetmp _obj _includes _libraries everything _qwdone
 
 crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 
-GENLOGDIR=	/usr/obj/${.CURDIR}
+GENLOGDIR=	/usr/obj${.CURDIR}
 .ORDER: build-all install-all
 
 # build-all
