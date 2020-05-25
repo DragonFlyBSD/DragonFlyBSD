@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,8 @@
 #include <linux/spinlock.h>
 #include <linux/atomic.h>
 
+#include <sys/lock.h>
+
 #define down_read(semaphore)	lockmgr((semaphore), LK_SHARED)
 #define up_read(semaphore)	lockmgr((semaphore), LK_RELEASE)
 
@@ -45,6 +47,15 @@
 static inline int
 down_read_trylock(struct lock *sem) {
 	return !lockmgr(sem, LK_EXCLUSIVE|LK_NOWAIT);
+}
+
+static inline int
+down_write_killable(struct lock *sem)
+{
+	if (lockmgr(sem, LK_EXCLUSIVE|LK_SLEEPFAIL|LK_PCATCH))
+		return -EINTR;
+
+	return 0;
 }
 
 #endif	/* _LINUX_RWSEM_H_ */
