@@ -36,10 +36,13 @@
  */
 
 #ifndef _SYS_TIMEB_H_
-#define _SYS_TIMEB_H_
+#define	_SYS_TIMEB_H_
 
-#ifndef _SYS_TIME_H_
-#include <sys/time.h>
+#include <machine/stdint.h>
+
+#ifndef _TIME_T_DECLARED
+typedef	__time_t	time_t;
+#define	_TIME_T_DECLARED
 #endif
 
 /* The ftime(2) system call structure -- deprecated. */
@@ -58,9 +61,10 @@ struct timeb {
 
 __BEGIN_DECLS
 #if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
-int ftime (struct timeb *);					/* LEGACY */
+int ftime(struct timeb *);					/* LEGACY */
 #endif
 __END_DECLS
+
 #endif /* _KERNEL */
 
 #endif
