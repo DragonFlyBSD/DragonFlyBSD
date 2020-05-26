@@ -1,9 +1,6 @@
-/*
- *	$OpenBSD: mkpath.c,v 1.2 2005/06/20 07:14:06 otto Exp $
- *	$DragonFly: src/usr.bin/patch/mkpath.c,v 1.1 2007/09/29 23:11:10 swildner Exp $
- */
-
-/*
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1983, 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,6 +27,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $OpenBSD: mkpath.c,v 1.2 2005/06/20 07:14:06 otto Exp $
+ * $FreeBSD: head/usr.bin/patch/mkpath.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
 #include <sys/types.h>

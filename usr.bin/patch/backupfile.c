@@ -1,11 +1,4 @@
-/*
- * $OpenBSD: backupfile.c,v 1.19 2006/03/11 19:41:30 otto Exp $
- * $DragonFly: src/usr.bin/patch/backupfile.c,v 1.5 2008/08/11 00:05:06 joerg Exp $
- */
-
-/*
- * backupfile.c -- make Emacs style backup file names
- *
+/*-
  * Copyright (C) 1990 Free Software Foundation, Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it
@@ -14,10 +7,13 @@
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.
- */
-
-/*
+ *
+ * backupfile.c -- make Emacs style backup file names
+ *
  * David MacKenzie <djm@ai.mit.edu>. Some algorithms adapted from GNU Emacs.
+ *
+ * $OpenBSD: backupfile.c,v 1.20 2009/10/27 23:59:41 deraadt Exp $
+ * $FreeBSD: head/usr.bin/patch/backupfile.c 285772 2015-07-21 22:57:27Z cem $
  */
 
 #include <ctype.h>
@@ -227,11 +223,11 @@ invalid_arg(const char *kind, const char *value, int problem)
 }
 
 static const char *backup_args[] = {
-	"never", "simple", "nil", "existing", "t", "numbered", 0
+	"none", "never", "simple", "nil", "existing", "t", "numbered", 0
 };
 
 static enum backup_type backup_types[] = {
-	simple, simple, numbered_existing,
+	none, simple, simple, numbered_existing,
 	numbered_existing, numbered, numbered
 };
 

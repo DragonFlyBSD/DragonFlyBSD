@@ -1,11 +1,4 @@
-/*
- * $OpenBSD: pch.h,v 1.9 2003/10/31 20:20:45 millert Exp $
- * $DragonFly: src/usr.bin/patch/pch.h,v 1.1 2004/09/24 18:44:28 joerg Exp $
- */
-
-/*
- * patch - a program to apply diffs to original files
- * 
+/*-
  * Copyright 1986, Larry Wall
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -25,19 +18,26 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * patch - a program to apply diffs to original files
+ *
  * -C option added in 1998, original code by Marc Espie, based on FreeBSD
  * behaviour
+ *
+ * $OpenBSD: pch.h,v 1.9 2003/10/31 20:20:45 millert Exp $
+ * $FreeBSD: head/usr.bin/patch/pch.h 354328 2019-11-04 03:07:01Z kevans $
  */
 
-#define OLD_FILE	0
-#define NEW_FILE	1
-#define INDEX_FILE	2
-#define MAX_FILE	3
+#define	OLD_FILE	0
+#define	NEW_FILE	1
+#define	INDEX_FILE	2
+#define	MAX_FILE	3
 
 struct file_name {
 	char *path;
 	bool exists;
 };
+
+extern char	*source_file;
 
 void		re_patch(void);
 void		open_patch_file(const char *);
@@ -46,7 +46,7 @@ bool		there_is_another_patch(void);
 bool		another_hunk(void);
 bool		pch_swap(void);
 char		*pfetch(LINENUM);
-size_t		pch_line_len(LINENUM);
+unsigned short	pch_line_len(LINENUM);
 LINENUM		pch_first(void);
 LINENUM		pch_ptrn_lines(void);
 LINENUM		pch_newfirst(void);

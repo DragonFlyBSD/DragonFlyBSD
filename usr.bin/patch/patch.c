@@ -23,14 +23,15 @@
  * -C option added in 1998, original code by Marc Espie, based on FreeBSD
  * behaviour
  *
- * $OpenBSD: patch.c,v 1.50 2012/05/15 19:32:02 millert Exp $
- * $FreeBSD: head/usr.bin/patch/patch.c 255894 2013-09-26 18:00:45Z delphij $
+ * $OpenBSD: patch.c,v 1.54 2014/12/13 10:31:07 tobias Exp $
+ * $FreeBSD: head/usr.bin/patch/patch.c 354328 2019-11-04 03:07:01Z kevans $
  *
  */
 
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <assert.h>
 #include <ctype.h>
 #include <getopt.h>
 #include <limits.h>
@@ -53,6 +54,7 @@ size_t		buf_size;		/* size of the general purpose buffer */
 
 bool		using_plan_a = true;	/* try to keep everything in memory */
 bool		out_of_mem = false;	/* ran out of memory in plan a */
+bool		nonempty_patchf_seen = false;	/* seen nonempty patch file? */
 
 #define MAXFILEC 2
 
@@ -102,6 +104,7 @@ static void	dump_line(LINENUM, bool);
 static bool	patch_match(LINENUM, LINENUM, LINENUM);
 static bool	similar(const char *, const char *, int);
 static void	usage(void);
+static bool	handle_creation(bool, bool *);
 
 /* true if -E was specified on command line.  */
 static bool	remove_empty_files = false;
@@ -109,8 +112,10 @@ static bool	remove_empty_files = false;
 /* true if -R was specified on command line.  */
 static bool	reverse_flag_specified = false;
 
+static bool	Vflag = false;
+
 /* buffer holding the name of the rejected patch file. */
-static char	rejname[NAME_MAX + 1];
+static char	rejname[PATH_MAX];
 
 /* how many input lines have been irretractibly output */
 static LINENUM	last_frozen_line = 0;
@@ -144,14 +149,16 @@ static char		end_defined[128];
 int
 main(int argc, char *argv[])
 {
+	struct stat statbuf;
 	int	error = 0, hunk, failed, i, fd;
-	bool	patch_seen, reverse_seen;
+	bool	out_creating, out_existed, patch_seen, remove_file;
+	bool	reverse_seen;
 	LINENUM	where = 0, newwhere, fuzz, mymaxfuzz;
 	const	char *tmpdir;
 	char	*v;
 
-	setlinebuf(stdout);
-	setlinebuf(stderr);
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	setvbuf(stderr, NULL, _IOLBF, 0);
 	for (i = 0; i < MAXFILEC; i++)
 		filearg[i] = NULL;
 
@@ -201,7 +208,7 @@ main(int argc, char *argv[])
 	Argv = argv;
 	get_some_switches();
 
-	if (backup_type == none) {
+	if (!Vflag) {
 		if ((v = getenv("PATCH_VERSION_CONTROL")) == NULL)
 			v = getenv("VERSION_CONTROL");
 		if (v != NULL || !posix)
@@ -216,12 +223,31 @@ main(int argc, char *argv[])
 	    reinitialize_almost_everything()) {
 		/* for each patch in patch file */
 
+		if (source_file != NULL && (diff_type == CONTEXT_DIFF ||
+		    diff_type == NEW_CONTEXT_DIFF ||
+		    diff_type == UNI_DIFF))
+			out_creating = strcmp(source_file, _PATH_DEVNULL) == 0;
+		else
+			out_creating = false;
 		patch_seen = true;
 
 		warn_on_invalid_line = true;
 
 		if (outname == NULL)
-			outname = savestr(filearg[0]);
+			outname = xstrdup(filearg[0]);
+
+		/*
+		 * At this point, we know if we're supposed to be creating the
+		 * file and we know if we should be trying to handle a conflict
+		 * between the patch and the file already existing.  We defer
+		 * handling it until hunk processing because we want to swap
+		 * the hunk if they opt to reverse it, but we want to make sure
+		 * we *can* swap the hunk without running into memory issues
+		 * before we offer it.  We also want to be verbose if flags or
+		 * user decision cause us to skip -- this is explained a little
+		 * more later.
+		 */
+		out_existed = stat(outname, &statbuf) == 0;
 
 		/* for ed script just up and do it and exit */
 		if (diff_type == ED_DIFF) {
@@ -249,9 +275,28 @@ main(int argc, char *argv[])
 		failed = 0;
 		reverse_seen = false;
 		out_of_mem = false;
+		remove_file = false;
 		while (another_hunk()) {
+			assert(!out_creating || hunk == 0);
 			hunk++;
 			fuzz = 0;
+
+			/*
+			 * There are only three cases in handle_creation() that
+			 * results in us skipping hunk location, in order:
+			 *
+			 * 1.) Potentially reversed but -f/--force'd,
+			 * 2.) Potentially reversed but -N/--forward'd
+			 * 3.) Reversed and the user's opted to not apply it.
+			 *
+			 * In all three cases, we still want to inform the user
+			 * that we're ignoring it in the standard way, which is
+			 * also tied to this hunk processing loop.
+			 */
+			if (out_creating)
+				reverse_seen = handle_creation(out_existed,
+				    &remove_file);
+
 			mymaxfuzz = pch_context();
 			if (maxfuzz < mymaxfuzz)
 				mymaxfuzz = maxfuzz;
@@ -369,7 +414,6 @@ main(int argc, char *argv[])
 		/* and put the output where desired */
 		ignore_signals();
 		if (!skip_rest_of_patch) {
-			struct stat	statbuf;
 			char	*realout = outname;
 
 			if (!check_only) {
@@ -380,7 +424,18 @@ main(int argc, char *argv[])
 				} else
 					chmod(outname, filemode);
 
-				if (remove_empty_files &&
+				/*
+				 * remove_file is a per-patch flag indicating
+				 * whether it's OK to remove the empty file.
+				 * This is specifically set when we're reversing
+				 * the creation of a file and it ends up empty.
+				 * This is an exception to the global policy
+				 * (remove_empty_files) because the user would
+				 * likely not expect the reverse of file
+				 * creation to leave an empty file laying
+				 * around.
+				 */
+				if ((remove_empty_files || remove_file) &&
 				    stat(realout, &statbuf) == 0 &&
 				    statbuf.st_size == 0) {
 					if (verbose)
@@ -417,7 +472,7 @@ main(int argc, char *argv[])
 		set_signals(1);
 	}
 
-	if (!patch_seen)
+	if (!patch_seen && nonempty_patchf_seen)
 		error = 2;
 
 	my_exit(error);
@@ -440,6 +495,9 @@ reinitialize_almost_everything(void)
 		free(filearg[0]);
 		filearg[0] = NULL;
 	}
+
+	free(source_file);
+	source_file = NULL;
 
 	free(outname);
 	outname = NULL;
@@ -514,10 +572,10 @@ get_some_switches(void)
 			/* FALLTHROUGH */
 		case 'z':
 			/* must directly follow 'b' case for backwards compat */
-			simple_backup_suffix = savestr(optarg);
+			simple_backup_suffix = xstrdup(optarg);
 			break;
 		case 'B':
-			origprae = savestr(optarg);
+			origprae = xstrdup(optarg);
 			break;
 		case 'c':
 			diff_type = CONTEXT_DIFF;
@@ -555,7 +613,7 @@ get_some_switches(void)
 		case 'i':
 			if (++filec == MAXFILEC)
 				fatal("too many file arguments\n");
-			filearg[filec] = savestr(optarg);
+			filearg[filec] = xstrdup(optarg);
 			break;
 		case 'l':
 			canonicalize = true;
@@ -567,7 +625,7 @@ get_some_switches(void)
 			noreverse = true;
 			break;
 		case 'o':
-			outname = savestr(optarg);
+			outname = xstrdup(optarg);
 			break;
 		case 'p':
 			strippath = atoi(optarg);
@@ -595,6 +653,7 @@ get_some_switches(void)
 			break;
 		case 'V':
 			backup_type = get_version(optarg);
+			Vflag = true;
 			break;
 #ifdef DEBUGGING
 		case 'x':
@@ -611,12 +670,12 @@ get_some_switches(void)
 	Argv += optind;
 
 	if (Argc > 0) {
-		filearg[0] = savestr(*Argv++);
+		filearg[0] = xstrdup(*Argv++);
 		Argc--;
 		while (Argc > 0) {
 			if (++filec == MAXFILEC)
 				fatal("too many file arguments\n");
-			filearg[filec] = savestr(*Argv++);
+			filearg[filec] = xstrdup(*Argv++);
 			Argc--;
 		}
 	}
@@ -631,10 +690,10 @@ usage(void)
 	fprintf(stderr,
 "usage: patch [-bCcEeflNnRstuv] [-B backup-prefix] [-D symbol] [-d directory]\n"
 "             [-F max-fuzz] [-i patchfile] [-o out-file] [-p strip-count]\n"
-"             [-r rej-name] [-V t | nil | never] [-x number] [-z backup-ext]\n"
-"             [--posix] [origfile [patchfile]]\n"
+"             [-r rej-name] [-V t | nil | never | none] [-x number]\n"
+"             [-z backup-ext] [--posix] [origfile [patchfile]]\n"
 "       patch <patchfile\n");
-	my_exit(EXIT_SUCCESS);
+	my_exit(EXIT_FAILURE);
 }
 
 /*
@@ -749,8 +808,12 @@ rej_line(int ch, LINENUM i)
 	len = strlen(line);
 
 	fprintf(rejfp, "%c%s", ch, line);
-	if (len == 0 || line[len-1] != '\n')
-		fprintf(rejfp, "\n\\ No newline at end of file\n");
+	if (len == 0 || line[len - 1] != '\n') {
+		if (len >= USHRT_MAX)
+			fprintf(rejfp, "\n\\ Line too long\n");
+		else
+			fprintf(rejfp, "\n\\ No newline at end of line\n");
+	}
 }
 
 static void
@@ -1017,8 +1080,11 @@ patch_match(LINENUM base, LINENUM offset, LINENUM fuzz)
 	LINENUM		pat_lines = pch_ptrn_lines() - fuzz;
 	const char	*ilineptr;
 	const char	*plineptr;
-	size_t		plinelen;
+	unsigned short	plinelen;
 
+	/* Patch does not match if we don't have any more context to use */
+	if (pline > pat_lines)
+		return false;
 	for (iline = base + offset + fuzz; pline <= pat_lines; pline++, iline++) {
 		ilineptr = ifetch(iline, offset >= 0);
 		if (ilineptr == NULL)
@@ -1072,4 +1138,85 @@ similar(const char *a, const char *b, int len)
 	}
 	return true;		/* actually, this is not reached */
 	/* since there is always a \n */
+}
+
+static bool
+handle_creation(bool out_existed, bool *remove)
+{
+	bool reverse_seen;
+
+	reverse_seen = false;
+	if (reverse && out_existed) {
+		/*
+		 * If the patch creates the file and we're reversing the patch,
+		 * then we need to indicate to the patch processor that it's OK
+		 * to remove this file.
+		 */
+		*remove = true;
+	} else if (!reverse && out_existed) {
+		/*
+		 * Otherwise, we need to blow the horn because the patch appears
+		 * to be reversed/already applied.  For non-batch jobs, we'll
+		 * prompt to figure out what we should be trying to do to raise
+		 * awareness of the issue.  batch (-t) processing suppresses the
+		 * questions and just assumes that we're reversed if it looks
+		 * like we are, which is always the case if we've reached this
+		 * branch.
+		 */
+		if (force) {
+			skip_rest_of_patch = true;
+			return (false);
+		}
+		if (noreverse) {
+			/* If -N is supplied, however, we bail out/ignore. */
+			say("Ignoring previously applied (or reversed) patch.\n");
+			skip_rest_of_patch = true;
+			return (false);
+		}
+
+		/* Unreversed... suspicious if the file existed. */
+		if (!pch_swap())
+			fatal("lost hunk on alloc error!\n");
+
+		reverse = !reverse;
+
+		if (batch) {
+			if (verbose)
+				say("Patch creates file that already exists, %s %seversed",
+				    reverse ? "Assuming" : "Ignoring",
+				    reverse ? "R" : "Unr");
+		} else {
+			ask("Patch creates file that already exists!  %s -R? [y] ",
+			    reverse ? "Assume" : "Ignore");
+
+			if (*buf == 'n') {
+				ask("Apply anyway? [n]");
+				if (*buf != 'y')
+					/* Don't apply; error out. */
+					skip_rest_of_patch = true;
+				else
+					/* Attempt to apply. */
+					reverse_seen = true;
+				reverse = !reverse;
+				if (!pch_swap())
+					fatal("lost hunk on alloc error!\n");
+			} else {
+				/*
+				 * They've opted to assume -R; effectively the
+				 * same as the first branch in this function,
+				 * but the decision is here rather than in a
+				 * prior patch/hunk as in that branch.
+				 */
+				*remove = true;
+			}
+		}
+	}
+
+	/*
+	 * The return value indicates if we offered a chance to reverse but the
+	 * user declined.  This keeps the main patch processor in the loop since
+	 * we've taken this out of the normal flow of hunk processing to
+	 * simplify logic a little bit.
+	 */
+	return (reverse_seen);
 }

@@ -24,16 +24,16 @@
  * behaviour
  *
  * $OpenBSD: util.c,v 1.35 2010/07/24 01:10:12 ray Exp $
- * $FreeBSD: head/usr.bin/patch/util.c 255894 2013-09-26 18:00:45Z delphij $
+ * $FreeBSD: head/usr.bin/patch/util.c 354328 2019-11-04 03:07:01Z kevans $
  */
 
-#include <sys/param.h>
 #include <sys/stat.h>
 
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
+#include <limits.h>
 #include <paths.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -96,7 +96,7 @@ int
 backup_file(const char *orig)
 {
 	struct stat	filestat;
-	char		bakname[MAXPATHLEN], *s, *simplename;
+	char		bakname[PATH_MAX], *s, *simplename;
 	dev_t		orig_device;
 	ino_t		orig_inode;
 
@@ -198,6 +198,22 @@ savestr(const char *s)
 		else
 			fatal("out of memory\n");
 	}
+	return rv;
+}
+
+/*
+ * Allocate a unique area for a string.  Call fatal if out of memory.
+ */
+char *
+xstrdup(const char *s)
+{
+	char	*rv;
+
+	if (!s)
+		s = "Oops";
+	rv = strdup(s);
+	if (rv == NULL)
+		fatal("out of memory\n");
 	return rv;
 }
 
@@ -350,8 +366,10 @@ fetchname(const char *at, bool *exists, int strip_leading)
 		say("fetchname %s %d\n", at, strip_leading);
 #endif
 	/* So files can be created by diffing against /dev/null.  */
-	if (strnEQ(at, _PATH_DEVNULL, sizeof(_PATH_DEVNULL) - 1))
+	if (strnEQ(at, _PATH_DEVNULL, sizeof(_PATH_DEVNULL) - 1)) {
+		*exists = true;
 		return NULL;
+	}
 	name = fullname = t = savestr(at);
 
 	tab = strchr(t, '\t') != NULL;
@@ -383,36 +401,10 @@ fetchname(const char *at, bool *exists, int strip_leading)
 	return name;
 }
 
-/*
- * Takes the name returned by fetchname and looks in RCS/SCCS directories
- * for a checked in version.
- */
-char *
-checked_in(char *file)
-{
-	char		*filebase, *filedir, tmpbuf[MAXPATHLEN];
-	struct stat	filestat;
-
-	filebase = basename(file);
-	filedir = dirname(file);
-
-#define try(f, a1, a2, a3) \
-(snprintf(tmpbuf, sizeof tmpbuf, f, a1, a2, a3), stat(tmpbuf, &filestat) == 0)
-
-	if (try("%s/RCS/%s%s", filedir, filebase, RCSSUFFIX) ||
-	    try("%s/RCS/%s%s", filedir, filebase, "") ||
-	    try("%s/%s%s", filedir, filebase, RCSSUFFIX) ||
-	    try("%s/SCCS/%s%s", filedir, SCCSPREFIX, filebase) ||
-	    try("%s/%s%s", filedir, SCCSPREFIX, filebase))
-		return file;
-
-	return NULL;
-}
-
 void
 version(void)
 {
-	fprintf(stderr, "patch 2.0-12u10\n");
+	printf("patch 2.0-12u11\n");
 	my_exit(EXIT_SUCCESS);
 }
 
