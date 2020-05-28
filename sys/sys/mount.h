@@ -69,6 +69,8 @@ struct vmntvnodescan_info;
 
 typedef struct fsid { int32_t val[2]; } fsid_t;	/* file system id type */
 
+#define fsidcmp(a, b) memcmp((a), (b), sizeof(fsid_t))
+
 /*
  * File identifier.  These are unique per filesystem on a single machine.
  *
