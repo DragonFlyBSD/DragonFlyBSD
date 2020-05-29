@@ -3916,6 +3916,8 @@ TO_REMOVE+=/usr/libexec/dhcpcd-hooks/02-dump
 TO_REMOVE+=/usr/lib/libtcplay.so.2
 TO_REMOVE+=/usr/include/pcap/export-defs.h
 TO_REMOVE+=/usr/share/mk/bsd.patch.mk
+TO_REMOVE+=/usr/sbin/acpinames
+TO_REMOVE+=/usr/share/man/man8/acpinames.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

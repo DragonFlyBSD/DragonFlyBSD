@@ -5,7 +5,6 @@ SUBDIR=	\
 	acpidump \
 	acpiexec \
 	acpihelp \
-	acpinames \
 	acpixtract \
 	iasl
 
