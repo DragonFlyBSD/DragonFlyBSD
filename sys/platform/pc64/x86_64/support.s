@@ -865,3 +865,13 @@ msr_onfault:
 	movq	$0,PCB_ONFAULT(%r8)
 	movl	$EFAULT,%eax
 	ret
+
+ENTRY(smap_open)
+	SMAP_OPEN
+	ret
+END(smap_open)
+
+ENTRY(smap_close)
+	SMAP_CLOSE
+	ret
+END(smap_close)
