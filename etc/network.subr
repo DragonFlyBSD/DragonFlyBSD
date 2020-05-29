@@ -414,6 +414,32 @@ ifscript_down()
 	return 1
 }
 
+# wlan_get_unused
+# walk through net.wlan and find unused device that can be created
+#
+wlan_get_unused()
+{
+	local idx
+
+	idx=0
+
+	while : ; do
+		if ! ${SYSCTL_N} -q net.wlan.${idx}.%parent >/dev/null; then
+			echo "wlan${idx}"
+			break
+		fi
+		idx=$((${idx} + 1))
+	done
+}
+
+# wlan_is_parent
+# check if given interface is parent for any existing wlan device
+#
+wlan_is_parent()
+{
+	sysctl -q net.wlan | grep -q "%parent: ${1}"
+}
+
 # wlan_up
 #	Create IEEE 802.11 interfaces.
 #
@@ -423,9 +449,31 @@ wlan_up()
 	_prefix=
 	_list=
 
+	local _rcconf _auto
+	_rcconf=""
+	_auto=""
+
+	# Order detected devices so that interfaces configured via rc.conf are
+	# created first, and then all other devices are automatically assigned
 	for parent in `${SYSCTL_N} -q net.wlan.devices`; do
+		child_wlans=`get_if_var $parent wlans_IF`
+		if [ -n "${child_wlans}" ]; then
+			_rcconf="${_rcconf} ${parent}"
+		else
+			_auto="${_auto} ${parent}"
+		fi
+	done
+
+	for parent in ${_rcconf} ${_auto}; do
+		if wlan_is_parent $parent; then
+			continue
+		fi
 		# Parse wlans_$parent="$child ..."
 		child_wlans=`get_if_var $parent wlans_IF`
+		# Or find first unused wlan device to create
+		if [ -z "${child_wlans}" ]; then
+			child_wlans=`wlan_get_unused`
+		fi
 		for child in ${child_wlans}; do
 			if ifexists $child; then
 				continue
