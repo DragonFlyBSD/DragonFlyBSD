@@ -232,6 +232,8 @@ void		 pmap_init2 (void);
 struct vm_page	*pmap_kvtom(vm_offset_t va);
 void		 pmap_object_init(vm_object_t object);
 void		 pmap_object_free(vm_object_t object);
+void		 smap_smep_disable(void);
+void		 smap_smep_enable(void);
 
 
 #endif /* _KERNEL */

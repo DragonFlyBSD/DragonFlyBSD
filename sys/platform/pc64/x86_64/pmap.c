@@ -1341,6 +1341,48 @@ pmap_set_opt(void)
 }
 
 /*
+ * SMAP is just a processor flag, but SMEP can only be enabled
+ * and disabled via CR4.  We still use the processor flag to
+ * disable SMAP because the page-fault/trap code checks it, in
+ * order to allow a page-fault to actually occur.
+ */
+void
+smap_smep_disable(void)
+{
+	/*
+	 * disable SMAP.  This also bypasses a software failsafe check
+	 * in the trap() code.
+	 */
+	smap_open();
+
+	/*
+	 * Also needed to bypass a software failsafe check in the trap()
+	 * code and allow the userspace address fault from kernel mode
+	 * to proceed.
+	 *
+	 * Note that This will not reload %rip because pcb_onfault_rsp will
+	 * not match.  Just setting it to non-NULL is sufficient to bypass
+	 * the checks.
+	 */
+	curthread->td_pcb->pcb_onfault = (void *)1;
+
+	/*
+	 * Disable SMEP (requires modifying cr4)
+	 */
+	if (cpu_stdext_feature & CPUID_STDEXT_SMEP)
+		load_cr4(rcr4() & ~CR4_SMEP);
+}
+
+void
+smap_smep_enable(void)
+{
+	if (cpu_stdext_feature & CPUID_STDEXT_SMEP)
+		load_cr4(rcr4() | CR4_SMEP);
+	curthread->td_pcb->pcb_onfault = NULL;
+	smap_close();
+}
+
+/*
  * Early initialization of the pmap module.
  *
  * Called by vm_init, to initialize any structures that the pmap

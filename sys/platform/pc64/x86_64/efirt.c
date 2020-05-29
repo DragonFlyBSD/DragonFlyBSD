@@ -333,6 +333,9 @@ fail:
  * userspace.  Having interrupts enabled fixes the issue with
  * firmware/SMM long operation, which would negatively affect IPIs,
  * esp. TLB shootdown requests.
+ *
+ * We must disable SMAP (aka smap_open()) operation to access the
+ * direct map as it will likely be using userspace addresses.
  */
 static int
 efi_enter(void)
@@ -346,6 +349,7 @@ efi_enter(void)
 	pmap_setlwpvm(td->td_lwp, efi_vmspace);
 	npxpush(&efi_ctx);
 	cpu_invltlb();
+	smap_smep_disable();
 
 	return (0);
 }
@@ -355,6 +359,7 @@ efi_leave(void)
 {
 	thread_t td = curthread;
 
+	smap_smep_enable();
 	pmap_setlwpvm(td->td_lwp, efi_savevm);
 	npxpop(&efi_ctx);
 	cpu_invltlb();

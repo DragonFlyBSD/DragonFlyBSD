@@ -1084,6 +1084,8 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 		kprintf("nested task, ");
 	if (frame->tf_rflags & PSL_RF)
 		kprintf("resume, ");
+	if (frame->tf_rflags & PSL_AC)
+		kprintf("smap_open, ");
 	kprintf("IOPL = %ld\n", (frame->tf_rflags & PSL_IOPL) >> 12);
 	kprintf("current process		= ");
 	if (curproc) {
