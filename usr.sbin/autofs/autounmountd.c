@@ -152,27 +152,25 @@ static int
 do_unmount(const fsid_t fsid __unused, const char *mountpoint)
 {
 	struct stat sb;
-	int error, isbusy = 0;
+	int error;
 
 	error = unmount(mountpoint, 0);
 	if (error != 0) {
 		if (errno == EBUSY) {
-			isbusy = 1;
+			/*
+			 * XXX: Workaround a long-standing VFS bug.
+			 * Need to stat(2) the mountpoint or parent directory
+			 * to access fs after EBUSY (and possibly other errors).
+			 * https://bugs.dragonflybsd.org/issues/2908
+			 */
+			if (stat(mountpoint, &sb))
+				log_warn("cannot stat %s after EBUSY",
+				    mountpoint);
 			log_debugx("cannot unmount %s: %s",
 			    mountpoint, strerror(errno));
 		} else {
 			log_warn("cannot unmount %s", mountpoint);
 		}
-	}
-
-	/*
-	 * XXX: Workaround for DragonFly kernel bug.
-	 * https://bugs.dragonflybsd.org/issues/2908
-	 */
-	if (isbusy) {
-		log_debugx("workaround DragonFly kernel bug via stat(2)");
-		if (stat(mountpoint, &sb))
-			log_warn("cannot stat %s", mountpoint);
 	}
 
 	return (error);
