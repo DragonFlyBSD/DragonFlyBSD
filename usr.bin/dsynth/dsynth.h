@@ -501,6 +501,7 @@ extern int BuildFailCount;
 extern int BuildSkipCount;
 extern int BuildIgnoreCount;
 extern int BuildSuccessCount;
+extern int BuildMissingCount;
 extern int DynamicMaxWorkers;
 
 extern buildenv_t *BuildEnv;
@@ -594,7 +595,7 @@ pkg_t *ParsePackageList(int ac, char **av, int debugstop);
 void FreePackageList(pkg_t *pkgs);
 pkg_t *GetLocalPackageList(void);
 pkg_t *GetFullPackageList(void);
-pkg_t *GetPkgPkg(pkg_t *list);
+pkg_t *GetPkgPkg(pkg_t **listp);
 
 void DoConfigure(void);
 void DoStatus(pkg_t *pkgs);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2019-2020 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -90,6 +90,7 @@ int BuildSkipCount;
 int BuildIgnoreCount;
 int BuildFailCount;
 int BuildSuccessCount;
+int BuildMissingCount;
 
 /*
  * Initialize the WorkerAry[]
@@ -188,10 +189,10 @@ DoBuild(pkg_t *pkgs)
 
 	/*
 	 * The pkg and pkg-static binaries are needed.  If already present
-	 * then assume that the template is also valid, otherwise build
-	 * both.
+	 * then assume that the template is also valid, otherwise add to
+	 * the list and build both.
 	 */
-	scan = GetPkgPkg(pkgs);
+	scan = GetPkgPkg(&pkgs);
 
 	/*
 	 * Create our template.  The template will be missing pkg
@@ -304,6 +305,21 @@ DoBuild(pkg_t *pkgs)
 	}
 	pthread_mutex_unlock(&WorkerMutex);
 
+	/*
+	 * What is left that cannot be built?  The list really ought to be
+	 * empty at this point, report anything that remains.
+	 */
+	for (scan = pkgs; scan; scan = scan->bnext) {
+		if (scan->flags & (PKGF_SUCCESS | PKGF_FAILURE))
+			continue;
+		dlog(DLOG_ABN, "[XXX] %s lost in the ether [flags=%08x]\n",
+		     scan->portdir, scan->flags);
+		++BuildMissingCount;
+	}
+
+	/*
+	 * Final updates
+	 */
 	RunStatsUpdateTop(0);
 	RunStatsUpdateLogs();
 	RunStatsSync();
@@ -328,6 +344,7 @@ DoBuild(pkg_t *pkgs)
 		"           ignored: %d\n"
 		"           skipped: %d\n"
 		"            failed: %d\n"
+		"           missing: %d\n"
 		"\n"
 		"Duration: %02d:%02d:%02d\n"
 		"\n",
@@ -336,6 +353,7 @@ DoBuild(pkg_t *pkgs)
 		BuildIgnoreCount,
 		BuildSkipCount,
 		BuildFailCount,
+		BuildMissingCount,
 		h, m, s);
 }
 
@@ -424,8 +442,8 @@ build_find_leaves(pkg_t *parent, pkg_t *pkg, pkg_t ***build_tailp,
 
 		/*
 		 * ERROR includes FAILURE, which is set in numerous situations
-		 * including when NOBUILD state is processed.  So check for
-		 * NOBUILD state first.
+		 * including when NOBUILD state is finally processed.  So
+		 * check for NOBUILD state first.
 		 *
 		 * An ERROR in a sub-package causes a NOBUILD in packages
 		 * that depend on it.
@@ -550,8 +568,9 @@ skip_to_flavor:
 	/*
 	 * Set PKGF_NOBUILD_I if there is IGNORE data
 	 */
-	if (pkg->ignore)
+	if (pkg->ignore) {
 		pkg->flags |= PKGF_NOBUILD_I;
+	}
 
 	/*
 	 * Handle propagated flags
@@ -587,28 +606,34 @@ skip_to_flavor:
 		 * dummy packages are not counted in the total, so do not
 		 * decrement BuildTotal.
 		 *
-		 * Do not propagate *app up for the dummy node.  If there
-		 * is a generic dependency (i.e. no flavor specified), the
-		 * upper recursion detects PKGF_DUMMY and traverses through
-		 * to the default flavor without checking error/nobuild
-		 * flags.
+		 * Do not propagate *app up for the dummy node or add it to
+		 * the build list.  The dummy node itself is not an actual
+		 * dependency.  Packages which depend on the default flavor
+		 * (aka this dummy node) actually depend on the first flavor
+		 * under this node.
+		 *
+		 * So if there is a generic dependency (i.e. no flavor
+		 * specified), the upper recursion detects PKGF_DUMMY and
+		 * traverses through the dummy node to the default flavor
+		 * without checking the error/nobuild flags on this dummy
+		 * node.
 		 */
 		if (pkg->flags & PKGF_NOBUILD) {
-			ddprintf(depth, "} (DUMMY/META - IGNORED)\n");
+			ddprintf(depth, "} (DUMMY/META - IGNORED "
+				 "- MARK SUCCESS ANYWAY)\n");
 		} else {
 			ddprintf(depth, "} (DUMMY/META - SUCCESS)\n");
-			pkg->flags |= PKGF_SUCCESS;
-			*hasworkp = 1;
-			if (first) {
-				dlog(DLOG_ALL | DLOG_FILTER,
-				     "[XXX] %s META-ALREADY-BUILT\n",
-				     pkg->portdir);
-			} else {
-				dlog(DLOG_SUCC, "[XXX] %s meta-node complete\n",
-				     pkg->portdir);
-				RunStatsUpdateCompletion(NULL, DLOG_SUCC, pkg,
-							 "", "");
-			}
+		}
+		pkg->flags |= PKGF_SUCCESS;
+		*hasworkp = 1;
+		if (first) {
+			dlog(DLOG_ALL | DLOG_FILTER,
+			     "[XXX] %s META-ALREADY-BUILT\n",
+			     pkg->portdir);
+		} else {
+			dlog(DLOG_SUCC, "[XXX] %s meta-node complete\n",
+			     pkg->portdir);
+			RunStatsUpdateCompletion(NULL, DLOG_SUCC, pkg, "", "");
 		}
 	} else if (pkg->flags & PKGF_PACKAGED) {
 		/*
@@ -624,6 +649,12 @@ skip_to_flavor:
 			     "[XXX] %s ALREADY-BUILT\n",
 			     pkg->portdir);
 			--BuildTotal;
+		} else {
+			dlog(DLOG_ABN | DLOG_FILTER,
+			     "[XXX] %s PACKAGED UNEXPECTEDLY\n",
+			     pkg->portdir);
+			/* ++BuildSuccessTotal; XXX not sure */
+			goto addlist;
 		}
 	} else {
 		/*
@@ -634,6 +665,7 @@ skip_to_flavor:
 		 * NOTE: The NOBUILD case propagates to here as well
 		 *	 and is ultimately handled by startbuild().
 		 */
+addlist:
 		*hasworkp = 1;
 		if (pkg->flags & PKGF_NOBUILD_I)
 			ddprintf(depth, "} (ADDLIST(IGNORE/BROKEN) - %s)\n",
@@ -646,6 +678,7 @@ skip_to_flavor:
 		pkg->flags |= PKGF_BUILDLIST;
 		**build_tailp = pkg;
 		*build_tailp = &pkg->build_next;
+		pkg->build_next = NULL;
 		*app |= PKGF_NOTREADY;
 	}
 

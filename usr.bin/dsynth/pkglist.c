@@ -547,12 +547,13 @@ processPackageListBulk(int total)
 }
 
 pkg_t *
-GetPkgPkg(pkg_t *list)
+GetPkgPkg(pkg_t **listp)
 {
 	bulk_t *bulk;
 	pkg_t *scan;
+	pkg_t *s2;
 
-	for (scan = list; scan; scan = scan->bnext) {
+	for (scan = *listp; scan; scan = scan->bnext) {
 		if (strcmp(scan->portdir, "ports-mgmt/pkg") == 0)
 			return scan;
 	}
@@ -570,6 +571,19 @@ GetPkgPkg(pkg_t *list)
 	bulk->list = NULL;
 	freebulk(bulk);
 	donebulk();
+
+
+	/*
+	 * Include added packages to the total and add the initial bulk
+	 * built packages to the list so they get counted.
+	 */
+	for (s2 = scan; s2->bnext; s2 = s2->bnext)
+		++BuildTotal;
+	for (s2 = scan; s2->bnext; s2 = s2->bnext)
+		;
+	s2->bnext = *listp;
+	*listp = scan;
+	++BuildTotal;
 
 	return scan;
 }
