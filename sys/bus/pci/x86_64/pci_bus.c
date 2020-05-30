@@ -509,12 +509,10 @@ legacy_pcib_write_ivar(device_t dev, device_t child, int which,
 SYSCTL_DECL(_hw_pci);
 
 static unsigned long legacy_host_mem_start = 0x80000000;
-/* XXX need TUNABLE_ULONG */
-TUNABLE_INT("hw.pci.host_mem_start", (int *)&legacy_host_mem_start);
+TUNABLE_ULONG("hw.pci.host_mem_start", &legacy_host_mem_start);
 SYSCTL_ULONG(_hw_pci, OID_AUTO, host_mem_start, CTLFLAG_RD,
     &legacy_host_mem_start, 0x80000000,
-    "Limit the host bridge memory to being above this address.  Must be\n\
-set at boot via a tunable.");
+    "Limit the host bridge memory to being above this address.");
 
 struct resource *
 legacy_pcib_alloc_resource(device_t dev, device_t child, int type, int *rid,
