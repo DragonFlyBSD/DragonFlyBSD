@@ -544,10 +544,13 @@ skip_to_flavor:
 	pkg->flags |= *app & ~PKGF_NOTREADY;
 
 	/*
-	 * Clear PACKAGED bit if sub-dependencies aren't clean
+	 * Clear the PACKAGED bit if sub-dependencies aren't clean.
+	 *
+	 * NOTE: PKGF_NOTREADY is not stored in pkg->flags, only in *app,
+	 *	 so incorporate *app to test for it.
 	 */
 	if ((pkg->flags & PKGF_PACKAGED) &&
-	    (pkg->flags & (PKGF_NOTREADY|PKGF_ERROR|PKGF_NOBUILD))) {
+	    ((pkg->flags | *app) & (PKGF_NOTREADY|PKGF_ERROR|PKGF_NOBUILD))) {
 		pkg->flags &= ~PKGF_PACKAGED;
 		ddassert(pkg->pkgfile);
 		asprintf(&buf, "%s/%s", RepositoryPath, pkg->pkgfile);
@@ -646,13 +649,13 @@ skip_to_flavor:
 		*hasworkp = 1;
 		if (first) {
 			dlog(DLOG_ALL | DLOG_FILTER,
-			     "[XXX] %s ALREADY-BUILT\n",
+			     "[XXX] %s Already-Built\n",
 			     pkg->portdir);
 			--BuildTotal;
 		} else {
 			dlog(DLOG_ABN | DLOG_FILTER,
-			     "[XXX] %s PACKAGED UNEXPECTEDLY\n",
-			     pkg->portdir);
+			     "[XXX] %s flags=%08x Packaged Unexpectedly\n",
+			     pkg->portdir, pkg->flags);
 			/* ++BuildSuccessTotal; XXX not sure */
 			goto addlist;
 		}
