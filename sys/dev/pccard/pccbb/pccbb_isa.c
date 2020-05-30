@@ -68,11 +68,11 @@ SYSCTL_NODE(_hw, OID_AUTO, pcic, CTLFLAG_RD, 0, "PCIC parameters");
 static int isa_intr_mask = EXCA_INT_MASK_ALLOWED;
 TUNABLE_INT("hw.cbb.intr_mask", &isa_intr_mask);
 SYSCTL_INT(_hw_pcic, OID_AUTO, intr_mask, CTLFLAG_RD, &isa_intr_mask, 0,
-    "Mask of allowable interrupts for this laptop.  The default is generally\n\
-correct, but some laptops do not route all the IRQ pins to the bridge to\n\
-save wires.  Sometimes you need a more restrictive mask because some of the\n\
-hardware in your laptop may not have a driver so its IRQ might not be\n\
-allocated.");
+    "Mask of allowable interrupts for this laptop.  The default is generally"
+    " correct, but some laptops do not route all the IRQ pins to the bridge to"
+    " save wires.  Sometimes you need a more restrictive mask because some of"
+    " the hardware in your laptop may not have a driver so its IRQ might not be"
+    " allocated.");
 
 /*****************************************************************************
  * End of configurable parameters.
