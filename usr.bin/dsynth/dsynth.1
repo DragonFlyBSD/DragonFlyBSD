@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2019 The DragonFly Project.  All rights reserved.
+.\" Copyright (c) 2020 The DragonFly Project.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthew Dillon <dillon@backplane.com>
@@ -40,7 +40,7 @@
 .Nd dsynth bulk dports builder utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl dhvyDSN
+.Op Fl dhvxyDSN
 .Op Fl p Ar profile
 .Op Fl s Ar n
 .Op Fl m Ar gb
@@ -57,6 +57,9 @@ locally.
 figures out the dependency topology of the dport(s) for you and
 is capable of building any number of ports concurrently based
 on the configuration parameters you supply.
+.Pp
+also detects changes made to the ports tree and rebuilds packages
+and anything that depends on those packages as needed.
 .Pp
 .Nm
 is based on an application called
@@ -169,6 +172,15 @@ can cause the whole machine to essentially become idle for extended
 periods of time.
 .It Fl v
 Quickly output the version and exit.
+.It Fl x
+.It Fl xx
+Normally dsynth builds a package for any of three reasons: (1) If the contents
+of the ports directory changes, (2) If anything the port depends on requires
+rebuilding so to will the port be rebuilt, (3) If there is no binary package
+already built for the port.
+.Pp
+If this option is specified, the first test is ignored.  If this
+option is specified twice, the first and second tests are ignored.
 .It Fl y
 Automatically answer 'y'es to any questions.
 .It Fl p Ar profile
@@ -254,6 +266,10 @@ do not upgrade your system with them.
 Build or rebuild the database files for the configured repository.
 .It Cm purge-distfiles
 Delete any obsolete source distribution files.
+.It Cm reset-db
+Delete ports_crc.db from the build directory.  This database is used
+to detect changes made to the dports tree.  It will be regenerated
+on your next build without forcing any packages to be rebuilt.
 .It Cm status-everything
 This will do a dry-run of a full bulk build of everything,
 but not actually build anything.

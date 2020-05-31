@@ -40,6 +40,7 @@
 static void DoInit(void);
 static void usage(int ecode) __dead2;
 
+int OverridePkgDeleteOpt;
 int YesOpt;
 int DebugOpt;
 int MaskProbeAbort;
@@ -86,8 +87,11 @@ main(int ac, char **av)
 	 * Process options and make sure the directive is present
 	 */
 	sopt = 0;
-	while ((c = getopt(ac, av, "dhm:p:vys:DPSN")) != -1) {
+	while ((c = getopt(ac, av, "dhm:p:vxys:DPSN")) != -1) {
 		switch(c) {
+		case 'x':
+			++OverridePkgDeleteOpt;
+			break;
 		case 'y':
 			++YesOpt;
 			break;
@@ -314,6 +318,14 @@ main(int ac, char **av)
 		OptimizeEnv();
 		pkgs = GetFullPackageList();
 		PurgeDistfiles(pkgs);
+	} else if (strcmp(av[0], "reset-db") == 0) {
+		char *dbmpath;
+
+		asprintf(&dbmpath, "%s/ports_crc.db", BuildBase);
+		remove(dbmpath);
+		printf("%s reset, will be regenerated on next build\n",
+		       dbmpath);
+		free(dbmpath);
 	} else if (strcmp(av[0], "status-everything") == 0) {
 		OptimizeEnv();
 		pkgs = GetFullPackageList();
@@ -461,6 +473,10 @@ usage(int ecode)
     "    -p profile           - Override profile selected in dsynth.ini\n"
     "    -s n                 - Set initial DynamicMaxWorkers\n"
     "    -v                   - Print version info and exit\n"
+    "    -x                   - Do not rebuild packages with dependencies\n"
+    "                           which require rebuilding\n"
+    "    -xx                  - Do not rebuild packages whos dports trees\n"
+    "                           change\n"
     "    -y                   - Automatically answer yes to dsynth questions\n"
     "    -D                   - Enable DEVELOPER mode\n"
     "    -P                   - Include the check-plist stage\n"
@@ -477,6 +493,7 @@ usage(int ecode)
     "    prepare-system       - 'upgrade-system' but stops after building\n"
     "    rebuild-repository   - Rebuild database files for current repository\n"
     "    purge-distfiles      - Delete obsolete source distribution files\n"
+    "    reset-db             - Delete ports_crc.db, regenerate next build\n"
     "    status-everything    - Dry-run of 'everything'\n"
     "    everything           - Build entire dports tree and repo database\n"
     "				(-D everything infers -P)\n"

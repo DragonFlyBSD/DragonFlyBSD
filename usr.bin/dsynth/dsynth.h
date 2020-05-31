@@ -53,6 +53,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <fts.h>
+#include <ndbm.h>
 #include <signal.h>
 #include <poll.h>
 #include <assert.h>
@@ -160,6 +162,7 @@ typedef struct pkg {
 	int dsynth_install_flg;	/* locked with WorkerMutex	*/
 	int flags;
 	int rscan;		/* recursive scan flag (serialized use) */
+	uint32_t crc32;		/* crc of port directory tree */
 	size_t pkgfile_size;	/* size of pkgfile */
 } pkg_t;
 
@@ -511,6 +514,7 @@ extern int NiceOpt;
 extern int MaskProbeAbort;
 extern int ColorOpt;
 extern int SlowStartOpt;
+extern int OverridePkgDeleteOpt;
 extern int YesOpt;
 extern int NullStdinOpt;
 extern int DeleteObsoletePkgs;
@@ -574,6 +578,7 @@ int dlog00_fd(void);
 void addbuildenv(const char *label, const char *data, int type);
 void delbuildenv(const char *label);
 int readlogline(monitorlog_t *log, char **bufp);
+uint32_t crcDirTree(const char *path);
 
 void initbulk(void (*func)(bulk_t *bulk), int jobs);
 void queuebulk(const char *s1, const char *s2, const char *s3,
@@ -628,3 +633,6 @@ int copyfile(char *src, char *dst);
 int ipcreadmsg(int fd, wmsg_t *msg);
 int ipcwritemsg(int fd, wmsg_t *msg);
 extern void MonitorDirective(const char *datfile, const char *lkfile);
+
+uint32_t iscsi_crc32(const void *buf, size_t size);
+uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);

@@ -967,7 +967,6 @@ childGetPackageInfo(bulk_t *bulk)
 	cav[cac++] = "-VUSES";
 
 	fp = dexec_open(cav, cac, &pid, NULL, 1, 1);
-	free(portpath);
 	freestrp(&flavarg);
 
 	pkg = allocpkg();
@@ -1085,11 +1084,19 @@ childGetPackageInfo(bulk_t *bulk)
 	}
 
 	/*
+	 * Checksum the port directory tree.  This just rollsup crcs of the
+	 * path names and a few stat fields (mtime, size) in order to detect
+	 * if any modification has been made to the port.
+	 */
+	pkg->crc32 = crcDirTree(portpath);
+
+	/*
 	 * Only one pkg is put on the return list now.  This code no
 	 * longer creates pseudo-nodes for flavors (the frontend requests
 	 * each flavor instead).
 	 */
 	bulk->list = pkg;
+	free(portpath);
 }
 
 /*
