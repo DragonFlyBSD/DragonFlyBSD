@@ -72,12 +72,14 @@ static int mptylogpoll(int ptyfd, int fdlog, wmsg_t *wmsg,
 static void doHook(pkg_t *pkg, const char *id, const char *path, int waitfor);
 static void childHookRun(bulk_t *bulk);
 static void adjloadavg(double *dload);
+static void check_packaged(const char *dbmpath, pkg_t *pkgs);
 
 static worker_t *SigWork;
 static int MasterPtyFd = -1;
 static int CopyFileFd = -1;
 static pid_t SigPid;
 static const char *WorkerFlavorPrt = "";	/* "" or "@flavor" */
+static DBM *CheckDBM;
 
 #define MPTY_FAILED	-2
 #define MPTY_AGAIN	-1
@@ -168,6 +170,7 @@ DoBuild(pkg_t *pkgs)
 	time_t startTime;
 	time_t t;
 	int h, m, s;
+	char *dbmpath;
 
 	/*
 	 * We use our bulk system to run hooks.  This will be for
@@ -184,6 +187,14 @@ DoBuild(pkg_t *pkgs)
 		if ((scan->flags & PKGF_DUMMY) == 0)
 			++BuildTotal;
 	}
+
+	/*
+	 * Remove binary package files for dports whos directory
+	 * has changed.
+	 */
+	asprintf(&dbmpath, "%s/ports_crc", BuildBase);
+	CheckDBM = dbm_open(dbmpath, O_CREAT|O_RDWR, 0644);
+	check_packaged(dbmpath, pkgs);
 
 	doHook(NULL, "hook_run_start", HookRunStart, 1);
 
@@ -336,6 +347,11 @@ DoBuild(pkg_t *pkgs)
 	h = t / 3600;
 	m = t / 60 % 60;
 	s = t % 60;
+
+	if (CheckDBM) {
+		dbm_close(CheckDBM);
+		CheckDBM = NULL;
+	}
 
 	dlog(DLOG_ALL|DLOG_STDOUT,
 		"\n"
@@ -554,7 +570,13 @@ skip_to_flavor:
 		pkg->flags &= ~PKGF_PACKAGED;
 		ddassert(pkg->pkgfile);
 		asprintf(&buf, "%s/%s", RepositoryPath, pkg->pkgfile);
-		if (remove(buf) < 0) {
+		if (OverridePkgDeleteOpt >= 1) {
+			pkg->flags |= PKGF_PACKAGED;
+			dlog(DLOG_ALL,
+			     "[XXX] %s DELETE-PACKAGE %s "
+			     "(OVERRIDE, NOT DELETED)\n",
+			     pkg->portdir, buf);
+		} else if (remove(buf) < 0) {
 			dlog(DLOG_ALL,
 			     "[XXX] %s DELETE-PACKAGE %s (failed)\n",
 			     pkg->portdir, buf);
@@ -1151,6 +1173,16 @@ workercomplete(worker_t *work)
 			doHook(pkg, "hook_pkg_failure", HookPkgFailure, 0);
 		}
 	} else {
+		if (CheckDBM) {
+			datum key;
+			datum data;
+
+			key.dptr = pkg->portdir;
+			key.dsize = strlen(pkg->portdir);
+			data.dptr = &pkg->crc32;
+			data.dsize = sizeof(pkg->crc32);
+			dbm_store(CheckDBM, key, data, DBM_REPLACE);
+		}
 		pkg->flags |= PKGF_SUCCESS;
 		++BuildSuccessCount;
 		dlog(DLOG_SUCC | DLOG_GRN,
@@ -3057,4 +3089,59 @@ adjloadavg(double *dload)
 #else
 	dload[0] += 0.0;	/* just avoid compiler 'unused' warnings */
 #endif
+}
+
+/*
+ * Check if the ports directory contents has changed and force a
+ * package to be rebuilt if it has by clearing the PACKAGED bit.
+ */
+static
+void
+check_packaged(const char *dbmpath, pkg_t *pkgs)
+{
+	pkg_t *scan;
+	datum key;
+	datum data;
+	char *buf;
+
+	if (CheckDBM == NULL) {
+		dlog(DLOG_ABN, "[XXX] Unable to open/create dbm %s\n", dbmpath);
+		return;
+	}
+	for (scan = pkgs; scan; scan = scan->bnext) {
+		if ((scan->flags & PKGF_PACKAGED) == 0)
+			continue;
+		key.dptr = scan->portdir;
+		key.dsize = strlen(scan->portdir);
+		data = dbm_fetch(CheckDBM, key);
+		if (data.dptr && data.dsize == sizeof(uint32_t) &&
+		    *(uint32_t *)data.dptr != scan->crc32) {
+			scan->flags &= ~PKGF_PACKAGED;
+			asprintf(&buf, "%s/%s", RepositoryPath, scan->pkgfile);
+			if (OverridePkgDeleteOpt >= 2) {
+				scan->flags |= PKGF_PACKAGED;
+				dlog(DLOG_ALL,
+				     "[XXX] %s DELETE-PACKAGE %s "
+				     "(port content changed CRC %08x/%08x "
+				     "OVERRIDE, NOT DELETED)\n",
+				     scan->portdir, buf,
+				     *(uint32_t *)data.dptr, scan->crc32);
+			} else if (remove(buf) < 0) {
+				dlog(DLOG_ALL,
+				     "[XXX] %s DELETE-PACKAGE %s (failed)\n",
+				     scan->portdir, buf);
+			} else {
+				dlog(DLOG_ALL,
+				     "[XXX] %s DELETE-PACKAGE %s "
+				     "(port content changed CRC %08x/%08x)\n",
+				     scan->portdir, buf,
+				     *(uint32_t *)data.dptr, scan->crc32);
+			}
+			freestrp(&buf);
+		} else if (data.dptr == NULL) {
+			data.dptr = &scan->crc32;
+			data.dsize = sizeof(scan->crc32);
+			dbm_store(CheckDBM, key, data, DBM_REPLACE);
+		}
+	}
 }

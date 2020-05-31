@@ -707,3 +707,42 @@ again:
 	log->buf_end += r;
 	goto again;
 }
+
+uint32_t
+crcDirTree(const char *path)
+{
+	FTS *fts;
+	FTSENT *fen;
+	struct stat *st;
+	char *pav[2];
+	uint32_t crc;
+	uint32_t val;
+
+	crc = 0;
+	pav[0] = strdup(path);
+	pav[1] = NULL;
+
+	fts = fts_open(pav, FTS_PHYSICAL | FTS_NOCHDIR, NULL);
+	if (fts == NULL)
+		goto failed;
+	while ((fen = fts_read(fts)) != NULL) {
+		if (fen->fts_info != FTS_F && fen->fts_info != FTS_SL)
+			continue;
+		if (fen->fts_namelen >= 5 &&
+		    !strcmp(fen->fts_name + fen->fts_namelen - 5, ".core")) {
+			continue;
+		}
+
+		st = fen->fts_statp;
+
+		val = iscsi_crc32(&st->st_mtime, sizeof(st->st_mtime));
+		val = iscsi_crc32_ext(&st->st_size, sizeof(st->st_size), val);
+		val = iscsi_crc32_ext(fen->fts_path, fen->fts_pathlen, val);
+		crc ^= val;
+	}
+	fts_close(fts);
+failed:
+	free(pav[0]);
+
+	return crc;
+}
