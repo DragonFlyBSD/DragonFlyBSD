@@ -86,7 +86,9 @@ pidfile_clean(void)
 	else if (ftruncate(pidfile_fd, 0) == -1)
 		error = errno;
 	else {
-		(void) unlink(pidfile_path);
+#ifndef HAVE_PLEDGE /* Avoid a pledge violating segfault. */
+		(void)unlink(pidfile_path);
+#endif
 		error = 0;
 	}
 
