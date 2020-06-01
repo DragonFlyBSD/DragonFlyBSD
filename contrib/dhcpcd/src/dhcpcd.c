@@ -29,6 +29,7 @@
 const char dhcpcd_copyright[] = "Copyright (c) 2006-2020 Roy Marples";
 
 #include <sys/file.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -71,6 +72,9 @@ const char dhcpcd_copyright[] = "Copyright (c) 2006-2020 Roy Marples";
 #include "privsep.h"
 #include "script.h"
 
+#ifdef HAVE_CAPSICUM
+#include <sys/capsicum.h>
+#endif
 #ifdef HAVE_UTIL_H
 #include <util.h>
 #endif
@@ -85,10 +89,17 @@ const int dhcpcd_signals[] = {
 	SIGUSR2,
 };
 const size_t dhcpcd_signals_len = __arraycount(dhcpcd_signals);
+
+const int dhcpcd_signals_ignore[] = {
+	SIGPIPE,
+};
+const size_t dhcpcd_signals_ignore_len = __arraycount(dhcpcd_signals_ignore);
 #endif
 
 #define IF_UPANDRUNNING(a) \
 	(((a)->flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
+
+const char *dhcpcd_default_script = SCRIPT;
 
 static void
 usage(void)
@@ -348,7 +359,7 @@ dhcpcd_daemonise(struct dhcpcd_ctx *ctx)
 
 	/* Don't use loginfo because this makes no sense in a log. */
 	if (!(loggetopts() & LOGERR_QUIET))
-		fprintf(stderr, "forked to background, child pid %d\n",
+		(void)fprintf(stderr, "forked to background, child pid %d\n",
 		    getpid());
 	i = EXIT_SUCCESS;
 	if (write(ctx->fork_fd, &i, sizeof(i)) == -1)
@@ -357,8 +368,17 @@ dhcpcd_daemonise(struct dhcpcd_ctx *ctx)
 	eloop_event_delete(ctx->eloop, ctx->fork_fd);
 	close(ctx->fork_fd);
 	ctx->fork_fd = -1;
-	freopen(_PATH_DEVNULL, "w", stdout);
-	freopen(_PATH_DEVNULL, "w", stderr);
+#ifdef PRIVSEP
+	if (ctx->options & DHCPCD_PRIVSEP) {
+		/* Aside from Linux, we don't have access to /dev/null */
+		fclose(stdout);
+		fclose(stderr);
+	} else
+#endif
+	{
+		(void)freopen(_PATH_DEVNULL, "w", stdout);
+		(void)freopen(_PATH_DEVNULL, "w", stderr);
+	}
 #endif
 }
 
@@ -825,12 +845,27 @@ warn_iaid_conflict(struct interface *ifp, uint16_t ia_type, uint8_t *iaid)
 		    ifp->name, ifn->name);
 }
 
+static void
+dhcpcd_initduid(struct dhcpcd_ctx *ctx, struct interface *ifp)
+{
+	char buf[DUID_LEN * 3];
+
+	if (ctx->duid != NULL)
+		return;
+
+	duid_init(ctx, ifp);
+	if (ctx->duid == NULL)
+		return;
+
+	loginfox("DUID %s",
+	    hwaddr_ntoa(ctx->duid, ctx->duid_len, buf, sizeof(buf)));
+}
+
 void
 dhcpcd_startinterface(void *arg)
 {
 	struct interface *ifp = arg;
 	struct if_options *ifo = ifp->options;
-	char buf[DUID_LEN * 3];
 	int carrier;
 
 	if (ifo->options & DHCPCD_LINK) {
@@ -863,26 +898,21 @@ dhcpcd_startinterface(void *arg)
 	if (ifo->options & (DHCPCD_DUID | DHCPCD_IPV6) &&
 	    !(ifo->options & DHCPCD_ANONYMOUS))
 	{
+		char buf[sizeof(ifo->iaid) * 3];
 #ifdef INET6
 		size_t i;
 		struct if_ia *ia;
 #endif
 
-		/* Report client DUID */
-		if (ifp->ctx->duid == NULL) {
-			if (duid_init(ifp) == 0)
-				return;
-			loginfox("DUID %s",
-			    hwaddr_ntoa(ifp->ctx->duid,
-			    ifp->ctx->duid_len,
-			    buf, sizeof(buf)));
-		}
+		/* Try and init DUID from the interface hardware address */
+		dhcpcd_initduid(ifp->ctx, ifp);
 
 		/* Report IAIDs */
 		loginfox("%s: IAID %s", ifp->name,
 		    hwaddr_ntoa(ifo->iaid, sizeof(ifo->iaid),
 		    buf, sizeof(buf)));
 		warn_iaid_conflict(ifp, 0, ifo->iaid);
+
 #ifdef INET6
 		for (i = 0; i < ifo->ia_len; i++) {
 			ia = &ifo->ia[i];
@@ -1136,6 +1166,9 @@ dhcpcd_linkoverflow(struct dhcpcd_ctx *ctx)
 {
 	socklen_t socklen;
 	int rcvbuflen;
+	char buf[2048];
+	ssize_t rlen;
+	size_t rcnt;
 	struct if_head *ifaces;
 	struct ifaddrs *ifaddrs;
 	struct interface *ifp, *ifn, *ifp1;
@@ -1152,21 +1185,16 @@ dhcpcd_linkoverflow(struct dhcpcd_ctx *ctx)
 	logerrx("route socket overflowed (rcvbuflen %d)"
 	    " - learning interface state", rcvbuflen);
 
-	/* Close the existing socket and open a new one.
-	 * This is easier than draining the kernel buffer of an
-	 * in-determinate size. */
-	eloop_event_delete(ctx->eloop, ctx->link_fd);
-	close(ctx->link_fd);
-	if_closesockets_os(ctx);
-	if (if_opensockets_os(ctx) == -1) {
-		logerr("%s: if_opensockets", __func__);
-		eloop_exit(ctx->eloop, EXIT_FAILURE);
-		return;
-	}
-#ifndef SMALL
-	dhcpcd_setlinkrcvbuf(ctx);
-#endif
-	eloop_event_add(ctx->eloop, ctx->link_fd, dhcpcd_handlelink, ctx);
+	/* Drain the socket.
+	 * We cannot open a new one due to privsep. */
+	rcnt = 0;
+	do {
+		rlen = read(ctx->link_fd, buf, sizeof(buf));
+		if (++rcnt % 1000 == 0)
+			logwarnx("drained %zu messages", rcnt);
+	} while (rlen != -1 || errno == ENOBUFS || errno == ENOMEM);
+	if (rcnt % 1000 != 0)
+		logwarnx("drained %zu messages", rcnt);
 
 	/* Work out the current interfaces. */
 	ifaces = if_discover(ctx, &ifaddrs, ctx->ifc, ctx->ifv);
@@ -1208,17 +1236,12 @@ dhcpcd_linkoverflow(struct dhcpcd_ctx *ctx)
 }
 
 void
-dhcpcd_handlehwaddr(struct dhcpcd_ctx *ctx, const char *ifname,
-    const void *hwaddr, uint8_t hwlen)
+dhcpcd_handlehwaddr(struct interface *ifp,
+    uint16_t hwtype, const void *hwaddr, uint8_t hwlen)
 {
-	struct interface *ifp;
 	char buf[sizeof(ifp->hwaddr) * 3];
 
-	ifp = if_find(ctx->ifaces, ifname);
-	if (ifp == NULL)
-		return;
-
-	if (!if_valid_hwaddr(hwaddr, hwlen))
+	if (hwaddr == NULL || !if_valid_hwaddr(hwaddr, hwlen))
 		hwlen = 0;
 
 	if (hwlen > sizeof(ifp->hwaddr)) {
@@ -1227,13 +1250,21 @@ dhcpcd_handlehwaddr(struct dhcpcd_ctx *ctx, const char *ifname,
 		return;
 	}
 
-	if (ifp->hwlen == hwlen && memcmp(ifp->hwaddr, hwaddr, hwlen) == 0)
+	if (ifp->hwtype != hwtype) {
+		loginfox("%s: hardware address type changed from %d to %d",
+		    ifp->name, ifp->hwtype, hwtype);
+		ifp->hwtype = hwtype;
+	}
+
+	if (ifp->hwlen == hwlen &&
+	    (hwlen == 0 || memcmp(ifp->hwaddr, hwaddr, hwlen) == 0))
 		return;
 
 	loginfox("%s: new hardware address: %s", ifp->name,
 	    hwaddr_ntoa(hwaddr, hwlen, buf, sizeof(buf)));
 	ifp->hwlen = hwlen;
-	memcpy(ifp->hwaddr, hwaddr, hwlen);
+	if (hwaddr != NULL)
+		memcpy(ifp->hwaddr, hwaddr, hwlen);
 }
 
 static void
@@ -1312,13 +1343,13 @@ stop_all_interfaces(struct dhcpcd_ctx *ctx, unsigned long long opts)
 	ctx->options |= DHCPCD_EXITING;
 	/* Drop the last interface first */
 	TAILQ_FOREACH_REVERSE(ifp, ctx->ifaces, if_head, next) {
-		if (ifp->active) {
-			ifp->options->options |= opts;
-			if (ifp->options->options & DHCPCD_RELEASE)
-				ifp->options->options &= ~DHCPCD_PERSISTENT;
-			ifp->options->options |= DHCPCD_EXITING;
-			stop_interface(ifp);
-		}
+		if (!ifp->active)
+			continue;
+		ifp->options->options |= opts;
+		if (ifp->options->options & DHCPCD_RELEASE)
+			ifp->options->options &= ~DHCPCD_PERSISTENT;
+		ifp->options->options |= DHCPCD_EXITING;
+		stop_interface(ifp);
 	}
 }
 
@@ -1633,20 +1664,13 @@ dumperr:
 	return 0;
 }
 
-static const char *dumpskip[] = {
-	"PATH=",
-	"pid=",
-	"chroot=",
-};
-
 static int
 dhcpcd_readdump(struct dhcpcd_ctx *ctx)
 {
 	int error = 0;
-	size_t nifaces, buflen = 0, dlen, i;
+	size_t nifaces, buflen = 0, dlen;
 	ssize_t len;
-	char *buf = NULL, *dp, *de;
-	const char *skip;
+	char *buf = NULL;
 
 again1:
 	len = read(ctx->control_fd, &nifaces, sizeof(nifaces));
@@ -1693,26 +1717,7 @@ again3:
 			error = -1;
 			goto out;
 		}
-		dp = buf;
-		de = dp + dlen;
-		if (*(dp - 1) != '\0') {
-			errno = EINVAL;
-			error = -1;
-			goto out;
-		}
-		while (dp < de) {
-			for (i = 0; i < __arraycount(dumpskip); i++) {
-				skip = dumpskip[i];
-				if (strncmp(dp, skip, strlen(skip)) == 0)
-					break;
-			}
-			if (i == __arraycount(dumpskip)) {
-				if (strncmp(dp, "new_", 4) == 0)
-					dp += 4;
-				printf("%s\n", dp);
-			}
-			dp += strlen(dp) + 1;
-		}
+		script_dump(buf, dlen);
 		fflush(stdout);
 		if (nifaces != 1)
 			putchar('\n');
@@ -1749,7 +1754,7 @@ main(int argc, char **argv)
 	struct ifaddrs *ifaddrs = NULL;
 	struct if_options *ifo;
 	struct interface *ifp;
-	uint16_t family = 0;
+	sa_family_t family = AF_UNSPEC;
 	int opt, oi = 0, i;
 	unsigned int logopts, t;
 	ssize_t len;
@@ -1760,6 +1765,7 @@ main(int argc, char **argv)
 #ifdef USE_SIGNALS
 	int sig = 0;
 	const char *siga = NULL;
+	size_t si;
 #endif
 
 	/* Test for --help and --version */
@@ -1803,6 +1809,7 @@ main(int argc, char **argv)
 
 	ifo = NULL;
 	ctx.cffile = CONFIG;
+	ctx.script = UNCONST(dhcpcd_default_script);
 	ctx.control_fd = ctx.control_unpriv_fd = ctx.link_fd = -1;
 	ctx.pf_inet_fd = -1;
 
@@ -1814,13 +1821,15 @@ main(int argc, char **argv)
 	ctx.dev_fd = -1;
 #endif
 #ifdef INET
-	ctx.udp_fd = -1;
+	ctx.udp_rfd = -1;
+	ctx.udp_wfd = -1;
 #endif
 #if defined(INET6) && !defined(__sun)
 	ctx.nd_fd = -1;
 #endif
 #ifdef DHCP6
-	ctx.dhcp6_fd = -1;
+	ctx.dhcp6_rfd = -1;
+	ctx.dhcp6_wfd = -1;
 #endif
 #ifdef PRIVSEP
 	ctx.ps_root_fd = ctx.ps_data_fd = -1;
@@ -1864,7 +1873,14 @@ main(int argc, char **argv)
 			i = 4;
 			break;
 		case 'q':
-			logopts |= LOGERR_QUIET;
+			/* -qq disables console output entirely.
+			 * This is important for systemd because it logs
+			 * both console AND syslog to the same log
+			 * resulting in untold confusion. */
+			if (logopts & LOGERR_QUIET)
+				logopts &= ~LOGERR_ERR;
+			else
+				logopts |= LOGERR_QUIET;
 			break;
 		case 'x':
 			sig = SIGTERM;
@@ -2016,8 +2032,8 @@ printpidfile:
 	}
 
 #ifdef USE_SIGNALS
-	/* Ignore SIGPIPE, prefer EPIPE. */
-	signal(SIGPIPE, SIG_IGN);
+	for (si = 0; si < dhcpcd_signals_ignore_len; si++)
+		signal(dhcpcd_signals_ignore[si], SIG_IGN);
 
 	/* Save signal mask, block and redirect signals to our handler */
 	if (eloop_signal_set_cb(ctx.eloop,
@@ -2032,52 +2048,6 @@ printpidfile:
 		goto exit_failure;
 	}
 
-	/* Test against siga instead of sig to avoid gcc
-	 * warning about a bogus potential signed overflow.
-	 * The end result will be the same. */
-	if ((siga == NULL || i == 4 || ctx.ifc != 0) &&
-	    !(ctx.options & DHCPCD_TEST))
-	{
-#endif
-		ctx.options |= DHCPCD_FORKED; /* avoid socket unlink */
-		if (!(ctx.options & DHCPCD_MASTER))
-			ctx.control_fd = control_open(argv[optind],
-			    ctx.options & DHCPCD_DUMPLEASE);
-		if (ctx.control_fd == -1)
-			ctx.control_fd = control_open(NULL,
-			    ctx.options & DHCPCD_DUMPLEASE);
-		if (ctx.control_fd != -1) {
-			if (!(ctx.options & DHCPCD_DUMPLEASE))
-				loginfox("sending commands to dhcpcd process");
-			len = control_send(&ctx, argc, argv);
-			if (len > 0)
-				logdebugx("send OK");
-			else {
-				logerr("%s: control_send", __func__);
-				goto exit_failure;
-			}
-			if (ctx.options & DHCPCD_DUMPLEASE) {
-				if (dhcpcd_readdump(&ctx) == -1) {
-					logerr("%s: dhcpcd_readdump", __func__);
-					goto exit_failure;
-				}
-			}
-			goto exit_success;
-		} else {
-			if (errno != ENOENT)
-				logerr("%s: control_open", __func__);
-			if (ctx.options & DHCPCD_DUMPLEASE) {
-				if (errno == ENOENT)
-					logerrx("dhcpcd is not running");
-				goto exit_failure;
-			}
-		}
-		ctx.options &= ~DHCPCD_FORKED;
-#ifdef USE_SIGNALS
-	}
-#endif
-
-#ifdef USE_SIGNALS
 	if (sig != 0) {
 		pid = pidfile_read(ctx.pidfile);
 		if (pid != 0 && pid != -1)
@@ -2110,6 +2080,88 @@ printpidfile:
 			goto exit_failure;
 		}
 	}
+#endif
+
+#ifndef SMALL
+	if (ctx.options & DHCPCD_DUMPLEASE &&
+	    ioctl(fileno(stdin), FIONREAD, &i, sizeof(i)) == 0 &&
+	    i > 0)
+	{
+		ifp = calloc(1, sizeof(*ifp));
+		if (ifp == NULL) {
+			logerr(__func__);
+			goto exit_failure;
+		}
+		ifp->ctx = &ctx;
+		ifp->options = ifo;
+		switch (family) {
+		case AF_INET:
+#ifdef INET
+			if (dhcp_dump(ifp) == -1)
+				goto exit_failure;
+			break;
+#else
+			logerrx("No DHCP support");
+			goto exit_failure
+#endif
+		case AF_INET6:
+#ifdef DHCP6
+			if (dhcp6_dump(ifp) == -1)
+				goto exit_failure;
+			break;
+#else
+			logerrx("No DHCP6 support");
+			goto exit_failure
+#endif
+		default:
+			logerrx("Family not specified. Please use -4 or -6.");
+			goto exit_failure;
+		}
+		goto exit_success;
+	}
+#endif
+
+	/* Test against siga instead of sig to avoid gcc
+	 * warning about a bogus potential signed overflow.
+	 * The end result will be the same. */
+	if ((siga == NULL || i == 4 || ctx.ifc != 0) &&
+	    !(ctx.options & DHCPCD_TEST))
+	{
+		ctx.options |= DHCPCD_FORKED; /* avoid socket unlink */
+		if (!(ctx.options & DHCPCD_MASTER))
+			ctx.control_fd = control_open(argv[optind], family,
+			    ctx.options & DHCPCD_DUMPLEASE);
+		if (ctx.control_fd == -1)
+			ctx.control_fd = control_open(NULL, AF_UNSPEC,
+			    ctx.options & DHCPCD_DUMPLEASE);
+		if (ctx.control_fd != -1) {
+			if (!(ctx.options & DHCPCD_DUMPLEASE))
+				loginfox("sending commands to dhcpcd process");
+			len = control_send(&ctx, argc, argv);
+			if (len > 0)
+				logdebugx("send OK");
+			else {
+				logerr("%s: control_send", __func__);
+				goto exit_failure;
+			}
+			if (ctx.options & DHCPCD_DUMPLEASE) {
+				if (dhcpcd_readdump(&ctx) == -1) {
+					logerr("%s: dhcpcd_readdump", __func__);
+					goto exit_failure;
+				}
+			}
+			goto exit_success;
+		} else {
+			if (errno != ENOENT)
+				logerr("%s: control_open", __func__);
+			if (ctx.options & DHCPCD_DUMPLEASE) {
+				if (errno == ENOENT)
+					logerrx("dhcpcd is not running");
+				goto exit_failure;
+			}
+		}
+		ctx.options &= ~DHCPCD_FORKED;
+	}
 
 	if (!(ctx.options & DHCPCD_TEST)) {
 		/* Ensure we have the needed directories */
@@ -2126,14 +2178,12 @@ printpidfile:
 			goto exit_failure;
 		}
 	}
-#endif
 
 	loginfox(PACKAGE "-" VERSION " starting");
 	freopen(_PATH_DEVNULL, "r", stdin);
 
 #ifdef PRIVSEP
-	if (ps_init(&ctx) == 0)
-		script_runchroot(&ctx, ifo->script);
+	ps_init(&ctx);
 #endif
 
 #ifdef USE_SIGNALS
@@ -2209,23 +2259,19 @@ printpidfile:
 
 	if (!(ctx.options & DHCPCD_TEST) &&
 	    control_start(&ctx,
-	    ctx.options & DHCPCD_MASTER ? NULL : argv[optind]) == -1)
+	    ctx.options & DHCPCD_MASTER ? NULL : argv[optind], family) == -1)
 	{
 		logerr("%s: control_start", __func__);
 		goto exit_failure;
 	}
 
+#ifdef PLUGIN_DEV
 	/* Start any dev listening plugin which may want to
 	 * change the interface name provided by the kernel */
-	if ((ctx.options & (DHCPCD_MASTER | DHCPCD_DEV)) ==
+	if (!IN_PRIVSEP(&ctx) &&
+	    (ctx.options & (DHCPCD_MASTER | DHCPCD_DEV)) ==
 	    (DHCPCD_MASTER | DHCPCD_DEV))
-		dev_start(&ctx);
-
-#ifdef PRIVSEP
-	if (ctx.options & DHCPCD_PRIVSEP && ps_dropprivs(&ctx) == -1) {
-		logerr("ps_dropprivs");
-		goto exit_failure;
-	}
+		dev_start(&ctx, dhcpcd_handleinterface);
 #endif
 
 	setproctitle("%s%s%s",
@@ -2239,6 +2285,34 @@ printpidfile:
 	}
 #ifndef SMALL
 	dhcpcd_setlinkrcvbuf(&ctx);
+#endif
+
+	/* Try and create DUID from the machine UUID. */
+	dhcpcd_initduid(&ctx, NULL);
+
+	/* Cache the default vendor option. */
+	if (dhcp_vendor(ctx.vendor, sizeof(ctx.vendor)) == -1)
+		logerrx("dhcp_vendor");
+
+#ifdef PRIVSEP
+	if (ctx.options & DHCPCD_PRIVSEP) {
+		if (ps_dropprivs(&ctx) == -1) {
+			logerr("ps_dropprivs");
+			goto exit_failure;
+		}
+#ifdef HAVE_CAPSICUM
+		if (cap_enter() == -1 && errno != ENOSYS) {
+			logerr("%s: cap_enter", __func__);
+			goto exit_failure;
+		}
+#endif
+#ifdef HAVE_PLEDGE
+		if (pledge("stdio inet route dns", NULL) == -1) {
+			logerr("%s: pledge", __func__);
+			goto exit_failure;
+		}
+#endif
+	}
 #endif
 
 	/* When running dhcpcd against a single interface, we need to retain
@@ -2391,11 +2465,15 @@ exit1:
 #ifdef INET6
 	ipv6_ctxfree(&ctx);
 #endif
+#ifdef PLUGIN_DEV
 	dev_stop(&ctx);
+#endif
 #ifdef PRIVSEP
 	eloop_free(ctx.ps_eloop);
 #endif
 	eloop_free(ctx.eloop);
+	if (ctx.script != dhcpcd_default_script)
+		free(ctx.script);
 	if (ctx.options & DHCPCD_STARTED && !(ctx.options & DHCPCD_FORKED))
 		loginfox(PACKAGE " exited");
 	logclose();
