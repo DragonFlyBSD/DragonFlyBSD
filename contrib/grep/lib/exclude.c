@@ -1,6 +1,6 @@
 /* exclude.c -- exclude file names
 
-   Copyright (C) 1992-1994, 1997, 1999-2007, 2009-2015 Free Software
+   Copyright (C) 1992-1994, 1997, 1999-2007, 2009-2020 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Paul Eggert <eggert@twinsun.com>
    and Sergey Poznyakoff <gray@gnu.org>.
@@ -146,20 +146,20 @@ fnmatch_pattern_has_wildcards (const char *str, int options)
     {
       switch (*str++)
         {
-	case '.':
-	case '{':
-	case '}':
-	case '(':
-	case ')':
-	  if (options & EXCLUDE_REGEX)
-	    return true;
-	  break;
+        case '.':
+        case '{':
+        case '}':
+        case '(':
+        case ')':
+          if (options & EXCLUDE_REGEX)
+            return true;
+          break;
 
         case '\\':
-	  if (options & EXCLUDE_REGEX)
-	    continue;
-	  else
-	    str += ! (options & FNM_NOESCAPE) && *str;
+          if (options & EXCLUDE_REGEX)
+            continue;
+          else
+            str += ! (options & FNM_NOESCAPE) && *str;
           break;
 
         case '+': case '@': case '!':
@@ -287,10 +287,10 @@ free_exclude_segment (struct exclude_segment *seg)
     {
     case exclude_pattern:
       for (i = 0; i < seg->v.pat.exclude_count; i++)
-	{
-	  if (seg->v.pat.exclude[i].options & EXCLUDE_REGEX)
-	    regfree (&seg->v.pat.exclude[i].v.re);
-	}
+        {
+          if (seg->v.pat.exclude[i].options & EXCLUDE_REGEX)
+            regfree (&seg->v.pat.exclude[i].v.re);
+        }
       free (seg->v.pat.exclude);
       break;
 
@@ -387,7 +387,7 @@ exclude_fnmatch (char const *pattern, char const *f, int options)
   if (! (options & EXCLUDE_ANCHORED))
     for (p = f; *p && ! matched; p++)
       if (*p == '/' && p[1] != '/')
-	matched = ((*matcher) (pattern, p + 1, options) == 0);
+        matched = ((*matcher) (pattern, p + 1, options) == 0);
 
   return matched;
 }
@@ -525,9 +525,9 @@ add_exclude (struct exclude *ex, char const *pattern, int options)
       && fnmatch_pattern_has_wildcards (pattern, options))
     {
       if (! (ex->head && ex->head->type == exclude_pattern
-	     && ((ex->head->options & EXCLUDE_INCLUDE)
-		 == (options & EXCLUDE_INCLUDE))))
-	new_exclude_segment (ex, exclude_pattern, options);
+             && ((ex->head->options & EXCLUDE_INCLUDE)
+                 == (options & EXCLUDE_INCLUDE))))
+        new_exclude_segment (ex, exclude_pattern, options);
 
       seg = ex->head;
 
@@ -539,48 +539,48 @@ add_exclude (struct exclude *ex, char const *pattern, int options)
 
       patopts->options = options;
       if (options & EXCLUDE_REGEX)
-	{
-	  int rc;
-	  int cflags = REG_NOSUB|REG_EXTENDED|
-	               ((options & FNM_CASEFOLD) ? REG_ICASE : 0);
+        {
+          int rc;
+          int cflags = REG_NOSUB|REG_EXTENDED|
+                       ((options & FNM_CASEFOLD) ? REG_ICASE : 0);
 
-	  if (options & FNM_LEADING_DIR)
-	    {
-	      char *tmp;
-	      size_t len = strlen (pattern);
+          if (options & FNM_LEADING_DIR)
+            {
+              char *tmp;
+              size_t len = strlen (pattern);
 
-	      while (len > 0 && ISSLASH (pattern[len-1]))
-		--len;
+              while (len > 0 && ISSLASH (pattern[len-1]))
+                --len;
 
-	      if (len == 0)
-		rc = 1;
-	      else
-		{
-		  tmp = xmalloc (len + 7);
-		  memcpy (tmp, pattern, len);
-		  strcpy (tmp + len, "(/.*)?");
-		  rc = regcomp (&patopts->v.re, tmp, cflags);
-		  free (tmp);
-		}
-	    }
-	  else
-	    rc = regcomp (&patopts->v.re, pattern, cflags);
+              if (len == 0)
+                rc = 1;
+              else
+                {
+                  tmp = xmalloc (len + 7);
+                  memcpy (tmp, pattern, len);
+                  strcpy (tmp + len, "(/.*)?");
+                  rc = regcomp (&patopts->v.re, tmp, cflags);
+                  free (tmp);
+                }
+            }
+          else
+            rc = regcomp (&patopts->v.re, pattern, cflags);
 
-	  if (rc)
-	    {
-	      pat->exclude_count--;
-	      return;
-	    }
-	}
+          if (rc)
+            {
+              pat->exclude_count--;
+              return;
+            }
+        }
       else
-	{
-	  if (options & EXCLUDE_ALLOC)
-	    {
-	      pattern = xstrdup (pattern);
-	      exclude_add_pattern_buffer (ex, (char*) pattern);
-	    }
-	  patopts->v.pattern = pattern;
-	}
+        {
+          if (options & EXCLUDE_ALLOC)
+            {
+              pattern = xstrdup (pattern);
+              exclude_add_pattern_buffer (ex, (char*) pattern);
+            }
+          patopts->v.pattern = pattern;
+        }
     }
   else
     {
@@ -609,9 +609,9 @@ add_exclude (struct exclude *ex, char const *pattern, int options)
 
 int
 add_exclude_fp (void (*add_func) (struct exclude *, char const *, int, void *),
-		struct exclude *ex, FILE *fp, int options,
-		char line_end,
-		void *data)
+                struct exclude *ex, FILE *fp, int options,
+                char line_end,
+                void *data)
 {
   char *buf = NULL;
   char *p;
@@ -674,8 +674,8 @@ call_addfn (struct exclude *ex, char const *pattern, int options, void *data)
 
 int
 add_exclude_file (void (*add_func) (struct exclude *, char const *, int),
-		  struct exclude *ex, char const *file_name, int options,
-		  char line_end)
+                  struct exclude *ex, char const *file_name, int options,
+                  char line_end)
 {
   bool use_stdin = file_name[0] == '-' && !file_name[1];
   FILE *in;

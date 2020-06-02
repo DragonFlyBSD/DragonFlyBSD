@@ -1,6 +1,6 @@
 /* xalloc.h -- malloc with out-of-memory checking
 
-   Copyright (C) 1990-2000, 2003-2004, 2006-2015 Free Software Foundation, Inc.
+   Copyright (C) 1990-2000, 2003-2004, 2006-2020 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,12 +13,13 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #ifndef XALLOC_H_
 #define XALLOC_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "xalloc-oversized.h"
 
@@ -34,12 +35,6 @@ _GL_INLINE_HEADER_BEGIN
 extern "C" {
 #endif
 
-
-#if __GNUC__ >= 3
-# define _GL_ATTRIBUTE_MALLOC __attribute__ ((__malloc__))
-#else
-# define _GL_ATTRIBUTE_MALLOC
-#endif
 
 #if ! defined __clang__ && \
     (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))
@@ -193,14 +188,17 @@ x2nrealloc (void *p, size_t *pn, size_t s)
           n = DEFAULT_MXFAST / s;
           n += !n;
         }
+      if (xalloc_oversized (n, s))
+        xalloc_die ();
     }
   else
     {
       /* Set N = floor (1.5 * N) + 1 so that progress is made even if N == 0.
-         Check for overflow, so that N * S stays in size_t range.
-         The check may be slightly conservative, but an exact check isn't
-         worth the trouble.  */
-      if ((size_t) -1 / 3 * 2 / s <= n)
+         Check for overflow, so that N * S stays in both ptrdiff_t and
+         size_t range.  The check may be slightly conservative, but an
+         exact check isn't worth the trouble.  */
+      if ((PTRDIFF_MAX < SIZE_MAX ? PTRDIFF_MAX : SIZE_MAX) / 3 * 2 / s
+          <= n)
         xalloc_die ();
       n += n / 2 + 1;
     }

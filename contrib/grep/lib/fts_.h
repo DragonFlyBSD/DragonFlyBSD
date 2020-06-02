@@ -1,6 +1,6 @@
 /* Traverse a file hierarchy.
 
-   Copyright (C) 2004-2015 Free Software Foundation, Inc.
+   Copyright (C) 2004-2020 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /*
  * Copyright (c) 1989, 1993
@@ -149,16 +149,14 @@ typedef struct {
      dirent.d_type data.  */
 # define FTS_DEFER_STAT         0x0400
 
-# define FTS_NOATIME    0x0800          /* use O_NOATIME during traversal */
-
   /* Use this flag to disable stripping of trailing slashes
      from input path names during fts_open initialization.  */
-# define FTS_VERBATIM   0x1000
+# define FTS_VERBATIM   0x0800
 
-# define FTS_OPTIONMASK 0x1fff          /* valid user option mask */
+# define FTS_OPTIONMASK 0x0fff          /* valid user option mask */
 
-# define FTS_NAMEONLY   0x2000          /* (private) child names only */
-# define FTS_STOP       0x4000          /* (private) unrecoverable error */
+# define FTS_NAMEONLY   0x1000          /* (private) child names only */
+# define FTS_STOP       0x2000          /* (private) unrecoverable error */
         int fts_options;                /* fts_open options, global flags */
 
         /* Map a directory's device number to a boolean.  The boolean is
@@ -220,7 +218,11 @@ typedef struct _ftsent {
         ptrdiff_t fts_level;            /* depth (-1 to N) */
 
         size_t fts_namelen;             /* strlen(fts_name) */
-        nlink_t fts_n_dirs_remaining;   /* count down from st_nlink */
+
+        /* If not (nlink_t) -1, an upper bound on the number of
+           remaining subdirectories of interest.  If this becomes
+           zero, some work can be avoided.  */
+        nlink_t fts_n_dirs_remaining;
 
 # define FTS_D           1              /* preorder directory */
 # define FTS_DC          2              /* directory that causes cycles */

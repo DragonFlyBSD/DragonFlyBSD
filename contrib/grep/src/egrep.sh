@@ -1,2 +1,0 @@
-#!@SHELL@
-exec @grep@ @option@ "$@"

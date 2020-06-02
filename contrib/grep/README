@@ -1,4 +1,4 @@
-  Copyright (C) 1992, 1997-2002, 2004-2015 Free Software Foundation, Inc.
+  Copyright (C) 1992, 1997-2002, 2004-2020 Free Software Foundation, Inc.
 
   Copying and distribution of this file, with or without modification,
   are permitted in any medium without royalty provided the copyright
@@ -17,7 +17,7 @@ twice as fast as stock Unix egrep) hybridized with a Boyer-Moore-Gosper
 search for a fixed string that eliminates impossible text from being
 considered by the full regexp matcher without necessarily having to
 look at every character.  The result is typically many times faster
-than Unix grep or egrep.  (Regular expressions containing backreferencing
+than Unix grep or egrep.  (Regular expressions containing back-references
 will run more slowly, however.)
 
 See the files AUTHORS and THANKS for a list of authors and other contributors.
@@ -49,11 +49,11 @@ necessarily of the same byte length.
 
 A list of outstanding and resolved bugs can be found at:
 
-        http://debbugs.gnu.org/cgi/pkgreport.cgi?package=grep
+        https://debbugs.gnu.org/cgi/pkgreport.cgi?package=grep
 
 You can also browse the bug-grep mailing list archive at:
 
-        http://lists.gnu.org/archive/html/bug-grep/
+        https://lists.gnu.org/r/bug-grep/
 
 For any copyright year range specified as YYYY-ZZZZ in this package
 note that the range specifies every single year in that closed interval.
