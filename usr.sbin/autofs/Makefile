@@ -12,4 +12,10 @@ LDADD=	-lutil
 LINKS=	${BINDIR}/automount ${BINDIR}/automountd
 LINKS+=	${BINDIR}/automount ${BINDIR}/autounmountd
 
+FILES=	auto_master
+FILESDIR=	/etc
+FILESMODE=	644
+
+SUBDIR=	autofs
+
 .include <bsd.prog.mk>
