@@ -21,10 +21,8 @@ BINDIR?=	/usr/bin
 
 SRCS=		grep.c \
 		searchutils.c \
-		dfa.c \
 		dfasearch.c \
 		kwset.c \
-		kwsearch.c \
-		pcresearch.c
+		kwsearch.c
 
 .include <bsd.prog.mk>

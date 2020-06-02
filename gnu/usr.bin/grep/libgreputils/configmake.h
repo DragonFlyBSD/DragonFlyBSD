@@ -6,7 +6,7 @@
 #define LIBEXECDIR "/usr/libexec"
 #define DATAROOTDIR "/usr/share"
 #define DATADIR "/usr/share"
-#define SYSCONFDIR "/usr/etc"
+#define SYSCONFDIR "/etc"
 #define SHAREDSTATEDIR "/usr/com"
 #define LOCALSTATEDIR "/var"
 #define RUNSTATEDIR "/var/run"

@@ -20,41 +20,57 @@
 ..
 .\}
 .
-.TH GREP 1 \*(Dt "GNU grep 2.22" "User Commands"
+.TH GREP 1 \*(Dt "GNU grep 3.4" "User Commands"
 .hy 0
 .
 .SH NAME
-grep, egrep, fgrep \- print lines matching a pattern
+grep, egrep, fgrep \- print lines that match patterns
 .
 .SH SYNOPSIS
 .B grep
-.RI [ OPTIONS ]
-.I PATTERN
+.RI [ OPTION .\|.\|.]\&
+.I PATTERNS
 .RI [ FILE .\|.\|.]
 .br
 .B grep
-.RI [ OPTIONS ]
-.RB [ \-e
-.I PATTERN
-|
+.RI [ OPTION .\|.\|.]\&
+.B \-e
+.I PATTERNS
+\&.\|.\|.\&
+.RI [ FILE .\|.\|.]
+.br
+.B grep
+.RI [ OPTION .\|.\|.]\&
 .B \-f
-.IR FILE ]
+.I PATTERN_FILE
+\&.\|.\|.\&
 .RI [ FILE .\|.\|.]
 .
 .SH DESCRIPTION
 .B grep
-searches the named input
-.IR FILE s
-for lines containing a match to the given
-.IR PATTERN .
-If no files are specified, or if the file
+searches for
+.I PATTERNS
+in each
+.IR FILE .
+.I PATTERNS
+is one or more patterns separated by newline characters, and
+.B grep
+prints each line that matches a pattern.
+Typically
+.I PATTERNS
+should be quoted when
+.B grep
+is used in a shell command.
+.PP
+A
+.I FILE
+of
 .RB "\*(lq" \- "\*(rq"
-is given,
-.B grep
-searches standard input.
-By default,
-.B grep
-prints the matching lines.
+stands for standard input.
+If no
+.I FILE
+is given, recursive searches examine the working directory,
+and nonrecursive searches read standard input.
 .PP
 In addition, the variant programs
 .B egrep
@@ -77,52 +93,65 @@ Output a usage message and exit.
 Output the version number of
 .B grep
 and exit.
-.SS "Matcher Selection"
+.SS "Pattern Syntax"
 .TP
 .BR \-E ", " \-\^\-extended\-regexp
 Interpret
-.I PATTERN
-as an extended regular expression (ERE, see below).
+.I PATTERNS
+as extended regular expressions (EREs, see below).
 .TP
 .BR \-F ", " \-\^\-fixed\-strings
 Interpret
-.I PATTERN
-as a list of fixed strings, separated by newlines,
-any of which is to be matched.
+.I PATTERNS
+as fixed strings, not regular expressions.
 .TP
 .BR \-G ", " \-\^\-basic\-regexp
 Interpret
-.I PATTERN
-as a basic regular expression (BRE, see below).
+.I PATTERNS
+as basic regular expressions (BREs, see below).
 This is the default.
 .TP
 .BR \-P ", " \-\^\-perl\-regexp
-Interpret
-.I PATTERN
-as a Perl regular expression.
-This is highly experimental and
+Interpret PATTERNS as Perl-compatible regular expressions (PCREs).
+This option is experimental when combined with the
+.B \-z
+.RB ( \-\^\-null\-data )
+option, and
 .B "grep \-P"
 may warn of unimplemented features.
 .SS "Matching Control"
 .TP
-.BI \-e " PATTERN" "\fR,\fP \-\^\-regexp=" PATTERN
+.BI \-e " PATTERNS" "\fR,\fP \-\^\-regexp=" PATTERNS
 Use
-.I PATTERN
-as the pattern.
-This can be used to specify multiple search patterns,
-or to protect a pattern beginning with a hyphen
-.RB ( \- ).
+.I PATTERNS
+as the patterns.
+If this option is used multiple times or is combined with the
+.B \-f
+.RB ( \-\^\-file )
+option, search for all patterns given.
+This option can be used to protect a pattern beginning with \*(lq\-\*(rq.
 .TP
 .BI \-f " FILE" "\fR,\fP \-\^\-file=" FILE
 Obtain patterns from
 .IR FILE ,
 one per line.
+If this option is used multiple times or is combined with the
+.B \-e
+.RB ( \-\^\-regexp )
+option, search for all patterns given.
 The empty file contains zero patterns, and therefore matches nothing.
 .TP
 .BR \-i ", " \-\^\-ignore\-case
-Ignore case distinctions in both the
-.I PATTERN
-and the input files.
+Ignore case distinctions in patterns and input data,
+so that characters that differ only in case
+match each other.
+.TP
+.B \-\^\-no\-ignore\-case
+Do not ignore case distinctions in patterns and input data.
+This is the default.
+This option is useful for passing to shell scripts that already use
+.BR \-i ,
+to cancel its effects because the two options override each other.
 .TP
 .BR \-v ", " \-\^\-invert\-match
 Invert the sense of matching, to select non-matching lines.
@@ -135,9 +164,17 @@ character.
 Similarly, it must be either at the end of the line
 or followed by a non-word constituent character.
 Word-constituent characters are letters, digits, and the underscore.
+This option has no effect if
+.B \-x
+is also specified.
 .TP
 .BR \-x ", " \-\^\-line\-regexp
 Select only those matches that exactly match the whole line.
+For a regular expression pattern, this is like parenthesizing the
+pattern and then surrounding it with
+.B ^
+and
+.BR $ .
 .TP
 .B \-y
 Obsolete synonym for
@@ -252,10 +289,10 @@ This is the default when there is only one file
 .BI \-\^\-label= LABEL
 Display input actually coming from standard input as input coming from file
 .IR LABEL .
-This is especially useful when implementing tools like
-.BR zgrep ,
+This can be useful for commands that transform a file's contents
+before searching,
 e.g.,
-.BR "gzip -cd foo.gz | grep --label=foo -H something" .
+.BR "gzip \-cd foo.gz | grep \-\^\-label=foo \-H 'some pattern'" .
 See also the
 .B \-H
 option.
@@ -288,10 +325,10 @@ on a Unix machine.
 This option has no effect unless
 .B \-b
 option is also used;
-it has no effect on platforms other than \s-1MS-DOS\s0 and \s-1MS\s0-Windows.
+it has no effect on platforms other than MS-DOS and MS-Windows.
 .TP
 .BR \-Z ", " \-\^\-null
-Output a zero byte (the \s-1ASCII\s0
+Output a zero byte (the ASCII
 .B NUL
 character) instead of the character that normally follows a file name.
 For example,
@@ -355,26 +392,39 @@ Process a binary file as if it were text; this is equivalent to the
 option.
 .TP
 .BI \-\^\-binary\-files= TYPE
-If the first few bytes of a file indicate that the file contains binary
-data, assume that the file is of type
+If a file's data or metadata
+indicate that the file contains binary data,
+assume that the file is of type
 .IR TYPE .
+Non-text bytes indicate binary data; these are either output bytes that are
+improperly encoded for the current locale, or null input bytes when the
+.B \-z
+option is not given.
+.IP
 By default,
 .I TYPE
 is
 .BR binary ,
 and
 .B grep
-normally outputs either
-a one-line message saying that a binary file matches, or no message if
-there is no match.
+suppresses output after null input binary data is discovered,
+and suppresses output lines that contain improperly encoded data.
+When some output is suppressed,
+.B grep
+follows any output
+with a one-line message saying that a binary file matches.
+.IP
 If
 .I TYPE
 is
-.BR without-match ,
+.BR without\-match ,
+when
 .B grep
-assumes that a binary file does not match; this is equivalent to the
+discovers null input binary data it assumes that the rest of the file
+does not match; this is equivalent to the
 .B \-I
 option.
+.IP
 If
 .I TYPE
 is
@@ -383,17 +433,53 @@ is
 processes a binary file as if it were text; this is equivalent to the
 .B \-a
 option.
-When processing binary data,
+.IP
+When
+.I type
+is
+.BR binary ,
 .B grep
-may treat non-text bytes as line terminators; for example, the pattern
-.RB ' . '\&
-(period) might not match a null byte, as the null byte might be
-treated as a line terminator.
+may treat non-text bytes as line terminators even without the
+.B \-z
+option.  This means choosing
+.B binary
+versus
+.B text
+can affect whether a pattern matches a file.  For
+example, when
+.I type
+is
+.B binary
+the pattern
+.B q$ might
+match
+.B q
+immediately followed by a null byte, even though this
+is not matched when
+.I type
+is
+.BR text .
+Conversely, when
+.I type
+is
+.B binary
+the pattern
+.B .\&
+(period) might not match a null byte.
+.IP
 .I Warning:
-.B "grep \-\^\-binary\-files=text"
-might output binary garbage,
+The
+.B \-a
+option might output binary garbage,
 which can have nasty side effects if the output is a terminal and if the
 terminal driver interprets some of it as commands.
+On the other hand, when reading files whose text encodings are
+unknown, it can be helpful to use
+.B \-a
+or to set
+.B LC_ALL='C'
+in the environment, in order to find more matches even if the matches
+are unsafe for direct display.
 .TP
 .BI \-D " ACTION" "\fR,\fP \-\^\-devices=" ACTION
 If an input file is a device, FIFO or socket, use
@@ -435,33 +521,45 @@ This is equivalent to the
 option.
 .TP
 .BI \-\^\-exclude= GLOB
-Skip files whose base name matches
-.I GLOB
-(using wildcard matching).
-A file-name glob can use
+Skip any command-line file with a name suffix that matches the pattern
+.IR GLOB ,
+using wildcard matching; a name suffix is either the whole
+name, or a trailing part that starts with a non-slash character
+immediately after a slash
+.RB ( / )
+in the name.
+When searching recursively, skip any subfile whose base name matches
+.IR GLOB ;
+the base name is the part after the last slash.
+A pattern can use
 .BR * ,
 .BR ? ,
 and
-.BR [ ... ]
+.BR [ .\|.\|. ]\&
 as wildcards, and
 .B \e
 to quote a wildcard or backslash character literally.
 .TP
-.BI \-\^\-exclude-from= FILE
+.BI \-\^\-exclude\-from= FILE
 Skip files whose base name matches any of the file-name globs read from
 .I FILE
 (using wildcard matching as described under
 .BR \-\^\-exclude ).
 .TP
-.BI \-\^\-exclude-dir= DIR
-Exclude directories matching the pattern
-.I DIR
-from recursive searches.
+.BI \-\^\-exclude\-dir= GLOB
+Skip any command-line directory with a name suffix that matches the
+pattern
+.IR GLOB .
+When searching recursively, skip any subdirectory
+whose base name matches
+.IR GLOB .
+Ignore any redundant trailing slashes in
+.IR GLOB .
 .TP
 .BR \-I
 Process a binary file as if it did not contain matching data; this is
 equivalent to the
-.B \-\^\-binary\-files=without-match
+.B \-\^\-binary\-files=without\-match
 option.
 .TP
 .BI \-\^\-include= GLOB
@@ -484,16 +582,17 @@ Follow all symbolic links, unlike
 .BR \-r .
 .SS "Other Options"
 .TP
-.BR \-\^\-line\-buffered
+.B \-\^\-line\-buffered
 Use line buffering on output.
 This can cause a performance penalty.
 .TP
 .BR \-U ", " \-\^\-binary
 Treat the file(s) as binary.
-By default, under \s-1MS-DOS\s0 and \s-1MS\s0-Windows,
+By default, under MS-DOS and MS-Windows,
 .BR grep
-guesses the file type by looking at the contents of the first 32KB
-read from the file.
+guesses whether a file is text or binary as described for the
+.B \-\^\-binary\-files
+option.
 If
 .BR grep
 decides the file is a text file, it strips the CR characters from the
@@ -509,15 +608,13 @@ matching mechanism verbatim; if the file is a text file with CR/LF
 pairs at the end of each line, this will cause some regular
 expressions to fail.
 This option has no effect on platforms
-other than \s-1MS-DOS\s0 and \s-1MS\s0-Windows.
+other than MS-DOS and MS-Windows.
 .TP
 .BR \-z ", " \-\^\-null\-data
-Treat the input as a set of lines,
-each terminated by a zero byte (the \s-1ASCII\s0
-.B NUL
-character) instead of a newline.
+Treat input and output data as sequences of lines, each terminated by
+a zero byte (the ASCII NUL character) instead of a newline.
 Like the
-.B -Z
+.B \-Z
 or
 .B \-\^\-null
 option, this option can be used with commands like
@@ -531,16 +628,17 @@ expressions, by using various operators to combine smaller expressions.
 .PP
 .B grep
 understands three different versions of regular expression syntax:
-\*(lqbasic,\*(rq \*(lqextended\*(rq and \*(lqperl.\*(rq In
-.RB "\s-1GNU\s0\ " grep ,
+\*(lqbasic\*(rq (BRE), \*(lqextended\*(rq (ERE) and \*(lqperl\*(rq (PCRE).
+In GNU
+.B grep
 there is no difference in available functionality between basic and
 extended syntaxes.
 In other implementations, basic regular expressions are less powerful.
 The following description applies to extended regular expressions;
 differences for basic regular expressions are summarized afterwards.
-Perl regular expressions give additional functionality, and are
-documented in pcresyntax(3) and pcrepattern(3), but may not be
-available on every system.
+Perl-compatible regular expressions give additional functionality, and are
+documented in pcresyntax(3) and pcrepattern(3), but work only if
+PCRE is available in the system.
 .PP
 The fundamental building blocks are the regular expressions
 that match a single character.
@@ -552,6 +650,7 @@ may be quoted by preceding it with a backslash.
 The period
 .B .\&
 matches any single character.
+It is unspecified whether it matches an encoding error.
 .SS "Character Classes and Bracket Expressions"
 A
 .I "bracket expression"
@@ -560,12 +659,13 @@ is a list of characters enclosed by
 and
 .BR ] .
 It matches any single
-character in that list; if the first character of the list
+character in that list.
+If the first character of the list
 is the caret
 .B ^
 then it matches any character
 .I not
-in the list.
+in the list; it is unspecified whether it matches an encoding error.
 For example, the regular expression
 .B [0123456789]
 matches any single digit.
@@ -597,6 +697,7 @@ bracket expressions, as follows.
 Their names are self explanatory, and they are
 .BR [:alnum:] ,
 .BR [:alpha:] ,
+.BR [:blank:] ,
 .BR [:cntrl:] ,
 .BR [:digit:] ,
 .BR [:graph:] ,
@@ -606,11 +707,12 @@ Their names are self explanatory, and they are
 .BR [:space:] ,
 .BR [:upper:] ,
 and
-.BR [:xdigit:].
+.BR [:xdigit:] .
 For example,
 .B [[:alnum:]]
 means the character class of numbers and
-letters in the current locale. In the C locale and \s-1ASCII\s0
+letters in the current locale.
+In the C locale and ASCII
 character set encoding, this is the same as
 .BR [0\-9A\-Za\-z] .
 (Note that the brackets in these class names are part of the symbolic
@@ -682,7 +784,7 @@ or more times.
 The preceding item is matched at most
 .I m
 times.
-This is a \s-1GNU\s0 extension.
+This is a GNU extension.
 .TP
 .BI { n , m }
 The preceding item is matched at least
@@ -706,7 +808,7 @@ Repetition takes precedence over concatenation, which in turn
 takes precedence over alternation.
 A whole expression may be enclosed in parentheses
 to override these precedence rules and form a subexpression.
-.SS "Back References and Subexpressions"
+.SS "Back-references and Subexpressions"
 The back-reference
 .BI \e n\c
 \&, where
@@ -734,7 +836,18 @@ versions
 and
 .BR \e) .
 .
-.SH "ENVIRONMENT VARIABLES"
+.SH "EXIT STATUS"
+Normally the exit status is 0 if a line is selected, 1 if no lines
+were selected, and 2 if an error occurred.  However, if the
+.B \-q
+or
+.B \-\^\-quiet
+or
+.B \-\^\-silent
+is used and a line is selected, the exit status is 0 even if an error
+occurred.
+.
+.SH ENVIRONMENT
 The behavior of
 .B grep
 is affected by the following environment variables.
@@ -759,7 +872,10 @@ category.
 The C locale is used if none of these environment variables are set,
 if the locale catalog is not installed, or if
 .B grep
-was not compiled with national language support (\s-1NLS\s0).
+was not compiled with national language support (NLS).
+The shell command
+.B "locale \-a"
+lists locales that are currently available.
 .TP
 .B GREP_OPTIONS
 This variable specifies default options
@@ -788,10 +904,10 @@ have priority over it.
 It can only specify the color used to highlight
 the matching non-empty text in any matching line
 (a selected line when the
-.B -v
+.B \-v
 command-line option is omitted,
 or a context line when
-.B -v
+.B \-v
 is specified).
 The default is
 .BR 01;31 ,
@@ -928,7 +1044,7 @@ The default is a cyan text foreground over the terminal's default background.
 .B ne
 Boolean value that prevents clearing to the end of line
 using Erase in Line (EL) to Right
-.RB ( \\\\\\33[K )
+.RB ( \e33[K )
 each time a colorized item ends.
 This is needed on terminals on which EL is not supported.
 It is otherwise useful on terminals
@@ -941,7 +1057,7 @@ or when EL is too slow or causes too much flicker.
 The default is false (i.e., the capability is omitted).
 .PP
 Note that boolean capabilities have no
-.BR = ...
+.BR = .\|.\|.\&
 part.
 They are omitted (i.e., false) by default and become true when specified.
 .PP
@@ -953,7 +1069,7 @@ and can be concatenated with semicolons.
 .B grep
 takes care of assembling the result
 into a complete SGR sequence
-.RB ( \\\\\\33[ ... m ).
+.RB ( \e33[ .\|.\|. m ).
 Common values to concatenate include
 .B 1
 for bold,
@@ -1007,6 +1123,10 @@ These variables specify the locale for the
 category,
 which determines the type of characters,
 e.g., which characters are whitespace.
+This category also determines the character encoding, that is, whether
+text is encoded in UTF-8, ASCII, or some other encoding.  In the C or
+POSIX locale, all characters are encoded as a single byte and every
+byte is a valid character.
 .TP
 \fBLC_ALL\fP, \fBLC_MESSAGES\fP, \fBLANG\fP
 These variables specify the locale for the
@@ -1020,13 +1140,13 @@ The default C locale uses American English messages.
 .B POSIXLY_CORRECT
 If set,
 .B grep
-behaves as \s-1POSIX\s0 requires; otherwise,
+behaves as POSIX requires; otherwise,
 .B grep
-behaves more like other \s-1GNU\s0 programs.
-\s-1POSIX\s0 requires that options that follow file names must be
+behaves more like other GNU programs.
+POSIX requires that options that follow file names must be
 treated as file names; by default, such options are permuted to the
 front of the operand list and are treated as options.
-Also, \s-1POSIX\s0 requires that unrecognized options be diagnosed as
+Also, POSIX requires that unrecognized options be diagnosed as
 \*(lqillegal\*(rq, but since they are not really against the law the default
 is to diagnose them as \*(lqinvalid\*(rq.
 .B POSIXLY_CORRECT
@@ -1050,24 +1170,17 @@ to be an option, even if it appears to be one.
 A shell can put this variable in the environment for each command it runs,
 specifying which operands are the results of file name wildcard
 expansion and therefore should not be treated as options.
-This behavior is available only with the \s-1GNU\s0 C library, and only
+This behavior is available only with the GNU C library, and only
 when
 .B POSIXLY_CORRECT
 is not set.
 .
-.SH "EXIT STATUS"
-Normally the exit status is 0 if a line is selected, 1 if no lines
-were selected, and 2 if an error occurred.  However, if the
-.B \-q
-or
-.B \-\^\-quiet
-or
-.B \-\^\-silent
-is used and a line is selected, the exit status is 0 even if an error
-occurred.
+.SH NOTES
+This man page is maintained only fitfully;
+the full documentation is often more up-to-date.
 .
 .SH COPYRIGHT
-Copyright 1998-2000, 2002, 2005-2015 Free Software Foundation, Inc.
+Copyright 1998-2000, 2002, 2005-2020 Free Software Foundation, Inc.
 .PP
 This is free software;
 see the source for copying conditions.
@@ -1077,11 +1190,17 @@ not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 .SH BUGS
 .SS "Reporting Bugs"
 Email bug reports to
-.MTO bug-grep@gnu.org "the bug-reporting address" .
+.MT bug-grep@gnu.org
+the bug-reporting address
+.ME .
 An
-.URL http://lists.gnu.org/mailman/listinfo/bug-grep "email archive"
+.UR https://lists.gnu.org/mailman/listinfo/bug-grep
+email archive
+.UE
 and a
-.URL http://debbugs.gnu.org/cgi/pkgreport.cgi?package=grep "bug tracker"
+.UR https://debbugs.gnu.org/cgi/pkgreport.cgi?package=grep
+bug tracker
+.UE
 are available.
 .SS "Known Bugs"
 Large repetition counts in the
@@ -1097,19 +1216,53 @@ to run out of memory.
 .PP
 Back-references are very slow, and may require exponential time.
 .
+.SH EXAMPLE
+The following example outputs the location and contents of any line
+containing \*(lqf\*(rq and ending in \*(lq.c\*(rq,
+within all files in the current directory whose names
+contain \*(lqg\*(rq and end in \*(lq.h\*(rq.
+The
+.B \-n
+option outputs line numbers, the
+.B \-\-
+argument treats expansions of \*(lq*g*.h\*(rq starting with \*(lq\-\*(rq
+as file names not options,
+and the empty file /dev/null causes file names to be output
+even if only one file name happens to be of the form \*(lq*g*.h\*(rq.
+.PP
+.in +2n
+.EX
+$ \fBgrep\fP \-n \-\- 'f.*\e.c$' *g*.h /dev/null
+argmatch.h:1:/* definitions and prototypes for argmatch.c
+.EE
+.in
+.PP
+The only line that matches is line 1 of argmatch.h.
+Note that the regular expression syntax used in the pattern differs
+from the globbing syntax that the shell uses to match file names.
+.
 .SH "SEE ALSO"
 .SS "Regular Manual Pages"
-awk(1), cmp(1), diff(1), find(1), gzip(1),
-perl(1), sed(1), sort(1), xargs(1), zgrep(1),
-read(2),
-pcre(3), pcresyntax(3), pcrepattern(3),
-terminfo(5),
-glob(7), regex(7).
-.SS "\s-1POSIX\s0 Programmer's Manual Page"
-grep(1p).
+.BR awk (1),
+.BR cmp (1),
+.BR diff (1),
+.BR find (1),
+.BR perl (1),
+.BR sed (1),
+.BR sort (1),
+.BR xargs (1),
+.BR read (2),
+.BR pcre (3),
+.BR pcresyntax (3),
+.BR pcrepattern (3),
+.BR terminfo (5),
+.BR glob (7),
+.BR regex (7).
 .SS "Full Documentation"
 A
-.URL http://www.gnu.org/software/grep/manual/ "complete manual"
+.UR https://www.gnu.org/software/grep/manual/
+complete manual
+.UE
 is available.
 If the
 .B info
@@ -1121,8 +1274,5 @@ programs are properly installed at your site, the command
 .PP
 should give you access to the complete manual.
 .
-.SH NOTES
-This man page is maintained only fitfully;
-the full documentation is often more up-to-date.
 .\" Work around problems with some troff -man implementations.
 .br

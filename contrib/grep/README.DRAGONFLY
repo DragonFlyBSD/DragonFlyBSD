@@ -4,12 +4,15 @@ GNU GREP
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/grep
 
-file = grep-2.22.tar.xz
-date = 02 November 2015
-size = 1297864
-sha1 = 561ba83226872b1c45205bdd583106ee8df0fe79
+file = grep-3.4.tar.xz
+date = 02 January 2020
+size = 1555820
+sha1 = 1a519e783ea0b46a632a0901bda3beaa1a0b267b
 
 A list of files and directories removed is in README.DELETED
 
-Local modifications applied to following files:
-	src/grep.c
+Use "git diff vendor/GREP contrib/grep" to see local modifications.
+
+When upgrading, remember to update also re-generated header files
+gnu/usr.bin/grep/libgreputils/*.h on master branch, but keep local adjustments
+in config.h and configmake.h.
