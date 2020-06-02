@@ -1,5 +1,5 @@
 /* Portability cruft.  Include after config.h and sys/types.h.
-   Copyright 1996, 1998-2000, 2007, 2009-2015 Free Software Foundation, Inc.
+   Copyright 1996, 1998-2000, 2007, 2009-2020 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "binary-io.h"
 #include "configmake.h"
 #include "dirname.h"
 #include "ignore-value.h"
@@ -37,6 +36,7 @@
 #include <ctype.h>
 
 enum { EXIT_TROUBLE = 2 };
+enum { NCHAR = UCHAR_MAX + 1 };
 
 #include <gettext.h>
 #define N_(String) gettext_noop(String)
@@ -107,6 +107,28 @@ static _GL_UNUSED void
 __asan_poison_memory_region (void const volatile *addr, size_t size) { }
 static _GL_UNUSED void
 __asan_unpoison_memory_region (void const volatile *addr, size_t size) { }
+#endif
+
+#ifndef FALLTHROUGH
+# if __GNUC__ < 7
+#  define FALLTHROUGH ((void) 0)
+# else
+#  define FALLTHROUGH __attribute__ ((__fallthrough__))
+# endif
+#endif
+
+/* When we deliberately use duplicate branches, use this macro to
+   disable gcc's -Wduplicated-branches in the containing expression.  */
+#if 7 <= __GNUC__
+# define IGNORE_DUPLICATE_BRANCH_WARNING(exp)				\
+  ({									\
+    _Pragma ("GCC diagnostic push")					\
+    _Pragma ("GCC diagnostic ignored \"-Wduplicated-branches\"")	\
+    exp;								\
+    _Pragma ("GCC diagnostic pop")					\
+  })
+#else
+# define IGNORE_DUPLICATE_BRANCH_WARNING(exp) exp
 #endif
 
 #endif

@@ -1,5 +1,5 @@
 /* obstack.h - object stack macros
-   Copyright (C) 1988-2015 Free Software Foundation, Inc.
+   Copyright (C) 1988-2020 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -14,7 +14,7 @@
 
    You should have received a copy of the GNU General Public
    License along with the GNU C Library; if not, see
-   <http://www.gnu.org/licenses/>.  */
+   <https://www.gnu.org/licenses/>.  */
 
 /* Summary:
 
@@ -111,6 +111,12 @@
 #include <stddef.h>             /* For size_t and ptrdiff_t.  */
 #include <string.h>             /* For __GNU_LIBRARY__, and memcpy.  */
 
+#if __STDC_VERSION__ < 199901L || defined __HP_cc
+# define __FLEXIBLE_ARRAY_MEMBER 1
+#else
+# define __FLEXIBLE_ARRAY_MEMBER
+#endif
+
 #if _OBSTACK_INTERFACE_VERSION == 1
 /* For binary compatibility with obstack version 1, which used "int"
    and "long" for these two types.  */
@@ -145,6 +151,15 @@
 # define __attribute_pure__ _GL_ATTRIBUTE_PURE
 #endif
 
+/* Not the same as _Noreturn, since it also works with function pointers.  */
+#ifndef __attribute_noreturn__
+# if 2 < __GNUC__ + (8 <= __GNUC_MINOR__) || 0x5110 <= __SUNPRO_C
+#  define __attribute_noreturn__ __attribute__ ((__noreturn__))
+# else
+#  define __attribute_noreturn__
+# endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -153,7 +168,7 @@ struct _obstack_chunk           /* Lives at front of each chunk. */
 {
   char *limit;                  /* 1 past end of this chunk */
   struct _obstack_chunk *prev;  /* address of prior chunk or NULL */
-  char contents[4];             /* objects begin here */
+  char contents[__FLEXIBLE_ARRAY_MEMBER]; /* objects begin here */
 };
 
 struct obstack          /* control current object in current chunk */
@@ -212,7 +227,7 @@ extern _OBSTACK_SIZE_T _obstack_memory_used (struct obstack *)
    more memory.  This can be set to a user defined function which
    should either abort gracefully or use longjump - but shouldn't
    return.  The default action is to print a message and abort.  */
-extern void (*obstack_alloc_failed_handler) (void);
+extern __attribute_noreturn__ void (*obstack_alloc_failed_handler) (void);
 
 /* Exit value used when 'print_and_abort' is used.  */
 extern int obstack_exit_failure;

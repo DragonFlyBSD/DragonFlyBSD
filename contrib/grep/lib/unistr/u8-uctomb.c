@@ -1,5 +1,5 @@
 /* Store a character in UTF-8 string.
-   Copyright (C) 2002, 2005-2006, 2009-2015 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2005-2006, 2009-2020 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2002.
 
    This program is free software: you can redistribute it and/or modify it
@@ -13,7 +13,7 @@
    General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <config.h>
 
@@ -52,17 +52,8 @@ u8_uctomb (uint8_t *s, ucs4_t uc, int n)
           else
             return -1;
         }
-#if 0
-      else if (uc < 0x200000)
-        count = 4;
-      else if (uc < 0x4000000)
-        count = 5;
-      else if (uc <= 0x7fffffff)
-        count = 6;
-#else
       else if (uc < 0x110000)
         count = 4;
-#endif
       else
         return -1;
 
@@ -70,10 +61,6 @@ u8_uctomb (uint8_t *s, ucs4_t uc, int n)
         {
           switch (count) /* note: code falls through cases! */
             {
-#if 0
-            case 6: s[5] = 0x80 | (uc & 0x3f); uc = uc >> 6; uc |= 0x4000000;
-            case 5: s[4] = 0x80 | (uc & 0x3f); uc = uc >> 6; uc |= 0x200000;
-#endif
             case 4: s[3] = 0x80 | (uc & 0x3f); uc = uc >> 6; uc |= 0x10000;
             case 3: s[2] = 0x80 | (uc & 0x3f); uc = uc >> 6; uc |= 0x800;
             case 2: s[1] = 0x80 | (uc & 0x3f); uc = uc >> 6; uc |= 0xc0;

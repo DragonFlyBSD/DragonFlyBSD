@@ -1,6 +1,6 @@
 /* Substring search in a NUL terminated string of UNIT elements,
    using the Knuth-Morris-Pratt algorithm.
-   Copyright (C) 2005-2015 Free Software Foundation, Inc.
+   Copyright (C) 2005-2020 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2005.
 
    This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
+   along with this program; if not, see <https://www.gnu.org/licenses/>.  */
 
 /* Before including this file, you need to define:
      UNIT                    The element type of the needle and haystack.
@@ -24,7 +24,7 @@
                              of type UNIT as well.  */
 
 /* Knuth-Morris-Pratt algorithm.
-   See http://en.wikipedia.org/wiki/Knuth-Morris-Pratt_algorithm
+   See https://en.wikipedia.org/wiki/Knuth-Morris-Pratt_algorithm
    HAYSTACK is the NUL terminated string in which to search for.
    NEEDLE is the string to search for in HAYSTACK, consisting of NEEDLE_LEN
    units.

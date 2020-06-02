@@ -1,5 +1,5 @@
 /* obstack.c - subroutines used implicitly by object stack macros
-   Copyright (C) 1988-2015 Free Software Foundation, Inc.
+   Copyright (C) 1988-2020 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -14,7 +14,7 @@
 
    You should have received a copy of the GNU General Public
    License along with the GNU C Library; if not, see
-   <http://www.gnu.org/licenses/>.  */
+   <https://www.gnu.org/licenses/>.  */
 
 
 #ifdef _LIBC
@@ -348,6 +348,7 @@ print_and_abort (void)
    abort gracefully or use longjump - but shouldn't return.  This
    variable by default points to the internal function
    'print_and_abort'.  */
-void (*obstack_alloc_failed_handler) (void) = print_and_abort;
+__attribute_noreturn__ void (*obstack_alloc_failed_handler) (void)
+  = print_and_abort;
 # endif /* !_OBSTACK_NO_ERROR_HANDLER */
 #endif /* !_OBSTACK_ELIDE_CODE */
