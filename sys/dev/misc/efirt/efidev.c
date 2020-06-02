@@ -180,7 +180,8 @@ vg_out:
 		error = efi_var_set(name, &ev->vendor, ev->attrib, ev->datasize,
 		    data);
 vs_out:
-		kfree(data, M_TEMP);
+		if (ev->datasize > 0)
+			kfree(data, M_TEMP);
 		kfree(name, M_TEMP);
 		break;
 	}
