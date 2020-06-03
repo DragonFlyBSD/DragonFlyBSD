@@ -23,14 +23,14 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: head/share/man/man4/acpi_ibm.4 237509 2012-06-23 20:44:45Z joel $
+.\" $FreeBSD: head/share/man/man4/acpi_ibm.4 358333 2020-02-26 14:26:36Z kaktus $
 .\"
-.Dd October 19, 2014
+.Dd June 1, 2020
 .Dt ACPI_THINKPAD 4
 .Os
 .Sh NAME
 .Nm acpi_thinkpad
-.Nd "ACPI extras driver for IBM/Lenovo Thinkpad laptops"
+.Nd "ThinkPad ACPI extras driver"
 .Sh SYNOPSIS
 To compile this driver into the kernel,
 place the following line in your
@@ -48,8 +48,7 @@ acpi_thinkpad_load="YES"
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for hotkeys and other components of IBM/Lenovo
-Thinkpad laptops.
+driver provides support for hotkeys and other components of ThinkPad laptops.
 The main purpose of this driver is to provide an interface,
 accessible via
 .Xr sysctl 8
@@ -75,7 +74,7 @@ sysctl, is set to
 .Va availmask
 by default, a value representing all possible keypress events on the specific
 ThinkPad model.
-.Ss Xr devd 8 Ss Events
+.Ss Xr devd 8 Events
 Hotkey events received by
 .Xr devd 8
 provide the following information:
@@ -143,9 +142,9 @@ Volume Down
 .It Li 0x17
 Mute
 .It Li 0x18
-Access IBM Button
+Access THINKPAD Button
 .El
-.Ss Xr led 4 Ss Interface
+.Ss Xr led 4 Interface
 The
 .Nm
 driver provides a
@@ -159,15 +158,15 @@ device.
 .Sh SYSCTL VARIABLES
 The following sysctls are currently implemented:
 .Bl -tag -width indent
-.It Va hw.acpi.thinkpad.initialmask
+.It Va dev.acpi_thinkpad.<node>.initialmask
 (read-only)
 Bitmask of ACPI events before the
 .Nm
 driver was loaded.
-.It Va hw.acpi.thinkpad.availmask
+.It Va dev.acpi_thinkpad.<node>.availmask
 (read-only)
 Bitmask of all supported ACPI events.
-.It Va hw.acpi.thinkpad.events
+.It Va dev.acpi_thinkpad.<node>.events
 Enable ACPI events and set the
 .Va eventmask
 to
@@ -175,7 +174,7 @@ to
 Without the
 .Nm
 driver being loaded, only the Fn+F4 button generates an ACPI event.
-.It Va hw.acpi.thinkpad.eventmask
+.It Va dev.acpi_thinkpad.<node>.eventmask
 Sets the ACPI events which are reported to
 .Xr devd 8 .
 Fn+F3, Fn+F4 and Fn+F12 always generate ACPI events, regardless which value
@@ -234,9 +233,9 @@ Volume Down
 .It Li 4194304
 Mute
 .It Li 8388608
-Access IBM Button
+Access THINKPAD Button
 .El
-.It Va hw.acpi.thinkpad.hotkey
+.It Va dev.acpi_thinkpad.<node>.hotkey
 (read-only)
 Status of several buttons.
 Every time a button is pressed, the respecting bit is toggled.
@@ -250,7 +249,7 @@ Search Button
 .It Li 4
 Mail Button
 .It Li 8
-Access IBM Button
+Access THINKPAD Button
 .It Li 16
 Zoom
 .It Li 32
@@ -268,27 +267,30 @@ Brightness Up/Down Button
 .It Li 2048
 Volume Up/Down/Mute Button
 .El
-.It Va hw.acpi.thinkpad.lcd_brightness
+.It Va dev.acpi_thinkpad.<node>.lcd_brightness
 Current brightness level of the display.
-.It Va hw.acpi.thinkpad.volume
+.It Va dev.acpi_thinkpad.<node>.volume
 Speaker volume.
-.It Va hw.acpi.thinkpad.mute
+.It Va dev.acpi_thinkpad.<node>.mute
 Indicates, whether the speakers are muted or not.
-.It Va hw.acpi.thinkpad.thinklight
+.It Va dev.acpi_thinkpad.<node>.mic_mute
+Indicates, whether the microphone led (present on some model) is on or not.
+Note that this does not mean that the microphone input is muted.
+.It Va dev.acpi_thinkpad.<node>.thinklight
 Indicates, whether the ThinkLight keyboard light is activated or not.
-.It Va hw.acpi.thinkpad.bluetooth
+.It Va dev.acpi_thinkpad.<node>.bluetooth
 Toggle Bluetooth chip activity.
-.It Va hw.acpi.thinkpad.wlan
+.It Va dev.acpi_thinkpad.<node>.wlan
 (read-only)
 Indicates whether the WLAN chip is active or not.
-.It Va hw.acpi.thinkpad.fan
+.It Va dev.acpi_thinkpad.<node>.fan
 Indicates whether the fan is in automatic (1) or manual (0) mode.
 Default is automatic mode.
 This sysctl should be used with extreme precaution, since disabling automatic
 fan control might overheat the ThinkPad and lead to permanent damage if the
 .Va fan_level
 is not set accordingly.
-.It Va hw.acpi.thinkpad.fan_level
+.It Va dev.acpi_thinkpad.<node>.fan_level
 Indicates at what speed the fan should run when being in manual mode.
 Values are ranging from 0 (off) to 7 (max).
 The resulting speed differs from model to model.
@@ -304,12 +306,12 @@ off
 .It Li 6, 7
 ~4300 RPM
 .El
-.It Va hw.acpi.thinkpad.fan_speed
+.It Va dev.acpi_thinkpad.<node>.fan_speed
 (read-only)
 Fan speed in rounds per minute.
 A few older ThinkPads report the fan speed in levels ranging from 0 (off)
 to 7 (max).
-.It Va hw.acpi.thinkpad.thermal
+.It Va hw.acpi.thermal
 (read-only)
 Shows the readings of up to eight different temperature sensors.
 Most ThinkPads include six or more temperature sensors but
@@ -336,7 +338,7 @@ Built-in battery
 .It
 UltraBay battery
 .El
-.It Va hw.acpi.thinkpad.handlerevents
+.It Va dev.acpi_thinkpad.<node>.handlerevents
 .Xr devd 8
 events handled by
 .Nm
@@ -375,8 +377,8 @@ script:
 .Bd -literal -offset indent
 notify 10 {
         match "system"          "ACPI";
-        match "subsystem"       "IBM";
-        action "/usr/local/sbin/acpi_oem_exec.sh $notify ibm";
+        match "subsystem"       "THINKPAD";
+        action "/usr/local/sbin/acpi_oem_exec.sh $notify thinkpad";
 };
 .Ed
 .Pp
@@ -404,25 +406,25 @@ DISPLAY_PIPE=/tmp/acpi_${OEM}_display
 
 case ${NOTIFY} in
         0x05)
-                LEVEL=`sysctl -n hw.acpi.${OEM}.bluetooth`
+                LEVEL=`sysctl -n dev.acpi_${OEM}.0.bluetooth`
                 if [ "$LEVEL" = "1" ]
                 then
-                        sysctl hw.acpi.${OEM}.bluetooth=0
+                        sysctl dev.acpi_${OEM}.0.bluetooth=0
                         MESSAGE="bluetooth disabled"
                 else
-                        sysctl hw.acpi.${OEM}.bluetooth=1
+                        sysctl dev.acpi_${OEM}.0.bluetooth=1
                         MESSAGE="bluetooth enabled"
                 fi
                 ;;
         0x10|0x11)
-                LEVEL=`sysctl -n hw.acpi.${OEM}.lcd_brightness`
+                LEVEL=`sysctl -n dev.acpi_${OEM}.0.lcd_brightness`
                 PERCENT=`${ECHO} "${BC_PRECOMMANDS} ; \\
                          ${LEVEL} / ${MAX_LCD_BRIGHTNESS} * 100" |\\
                          ${CALC} | ${CUT} -d . -f 1`
                 MESSAGE="brightness level ${PERCENT}%"
                 ;;
         0x12)
-                LEVEL=`sysctl -n hw.acpi.${OEM}.thinklight`
+                LEVEL=`sysctl -n dev.acpi_${OEM}.0.thinklight`
                 if [ "$LEVEL" = "1" ]
                 then
                         MESSAGE="thinklight enabled"
@@ -431,19 +433,30 @@ case ${NOTIFY} in
                 fi
                 ;;
         0x15|0x16)
-                LEVEL=`sysctl -n hw.acpi.${OEM}.volume`
+                LEVEL=`sysctl -n dev.acpi_${OEM}.0.volume`
                 PERCENT=`${ECHO} "${BC_PRECOMMANDS} ; \\
                         ${LEVEL} / ${MAX_VOLUME} * 100" | \\
                          ${CALC} | ${CUT} -d . -f 1`
                 MESSAGE="volume level ${PERCENT}%"
                 ;;
         0x17)
-                LEVEL=`sysctl -n hw.acpi.${OEM}.mute`
+                LEVEL=`sysctl -n dev.acpi_${OEM}.0.mute`
                 if [ "$LEVEL" = "1" ]
                 then
                         MESSAGE="volume muted"
                 else
                         MESSAGE="volume unmuted"
+                fi
+                ;;
+        0x1b)
+                LEVEL=`sysctl -n dev.acpi_${OEM}.0.mic_led`
+                if [ $LEVEL -eq 0 ]; then
+                        sysctl dev.acpi_${OEM}.0.mic_led=1
+                        mixer rec 0
+                fi
+                if [ $LEVEL -eq 1 ]; then
+                        sysctl dev.acpi_${OEM}.0.mic_led=0
+                        mixer rec 30
                 fi
                 ;;
         *)
@@ -461,7 +474,7 @@ The following example specify that event code 0x04 (Suspend to RAM),
 0x10 (Brightness up) and 0x11 (Brightness down) are handled by
 .Nm .
 .Bd -literal -offset indent
-sysctl hw.acpi.thinkpad.handlerevents='0x04 0x10 0x11'
+sysctl dev.acpi_thinkpad.0.handlerevents='0x04 0x10 0x11'
 .Ed
 .Pp
 in
