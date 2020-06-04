@@ -41,7 +41,7 @@ etc-examples:
 .endif
 
 .if ${SHARED} != "symlinks"
-SUBDIR=	acpica smbfs ssh ssl
+SUBDIR=	acpica autofs smbfs ssh ssl
 .endif
 
 .include <bsd.subdir.mk>
