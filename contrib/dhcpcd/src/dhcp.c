@@ -1034,7 +1034,7 @@ make_message(struct bootp **bootpm, const struct interface *ifp, uint8_t type)
 	auth = NULL;	/* appease GCC */
 	auth_len = 0;
 	if (ifo->auth.options & DHCPCD_AUTH_SEND) {
-		ssize_t alen = dhcp_auth_encode(&ifo->auth,
+		ssize_t alen = dhcp_auth_encode(ifp->ctx, &ifo->auth,
 		    state->auth.token,
 		    NULL, 0, 4, type, NULL, 0);
 		if (alen != -1 && alen > UINT8_MAX) {
@@ -1129,7 +1129,7 @@ make_message(struct bootp **bootpm, const struct interface *ifp, uint8_t type)
 
 #ifdef AUTH
 	if (ifo->auth.options & DHCPCD_AUTH_SEND && auth_len != 0)
-		dhcp_auth_encode(&ifo->auth, state->auth.token,
+		dhcp_auth_encode(ifp->ctx, &ifo->auth, state->auth.token,
 		    (uint8_t *)bootp, len, 4, type, auth, auth_len);
 #endif
 
@@ -2747,6 +2747,18 @@ dhcp_drop(struct interface *ifp, const char *reason)
 #endif
 		}
 	}
+#ifdef AUTH
+	else if (state->auth.reconf != NULL) {
+		/*
+		 * Drop the lease as the token may only be present
+		 * in the initial reply message and not subsequent
+		 * renewals.
+		 * If dhcpcd is restarted, the token is lost.
+		 * XXX persist this in another file?
+		 */
+		dhcp_unlink(ifp->ctx, state->leasefile);
+	}
+#endif
 
 	eloop_timeout_delete(ifp->ctx->eloop, NULL, ifp);
 #ifdef AUTH

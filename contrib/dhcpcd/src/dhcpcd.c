@@ -87,6 +87,7 @@ const int dhcpcd_signals[] = {
 	SIGHUP,
 	SIGUSR1,
 	SIGUSR2,
+	SIGCHLD,
 };
 const size_t dhcpcd_signals_len = __arraycount(dhcpcd_signals);
 
@@ -1341,6 +1342,9 @@ stop_all_interfaces(struct dhcpcd_ctx *ctx, unsigned long long opts)
 	struct interface *ifp;
 
 	ctx->options |= DHCPCD_EXITING;
+	if (ctx->ifaces == NULL)
+		return;
+
 	/* Drop the last interface first */
 	TAILQ_FOREACH_REVERSE(ifp, ctx->ifaces, if_head, next) {
 		if (!ifp->active)
@@ -1396,7 +1400,7 @@ dhcpcd_signal_cb(int sig, void *arg)
 	unsigned long long opts;
 	int exit_code;
 
-	if (ctx->options & DHCPCD_FORKED) {
+	if (sig != SIGCHLD && ctx->options & DHCPCD_FORKED) {
 		pid_t pid = pidfile_read(ctx->pidfile);
 		if (pid == -1) {
 			if (errno != ENOENT)
@@ -1441,6 +1445,10 @@ dhcpcd_signal_cb(int sig, void *arg)
 		logclose();
 		if (logopen(ctx->logfile) == -1)
 			logerr(__func__);
+		return;
+	case SIGCHLD:
+		while (waitpid(-1, NULL, WNOHANG) > 0)
+			;
 		return;
 	default:
 		logerrx("received signal %d but don't know what to do with it",
@@ -2036,13 +2044,9 @@ printpidfile:
 		signal(dhcpcd_signals_ignore[si], SIG_IGN);
 
 	/* Save signal mask, block and redirect signals to our handler */
-	if (eloop_signal_set_cb(ctx.eloop,
+	eloop_signal_set_cb(ctx.eloop,
 	    dhcpcd_signals, dhcpcd_signals_len,
-	    dhcpcd_signal_cb, &ctx) == -1)
-	{
-		logerr("%s: eloop_signal_set_cb", __func__);
-		goto exit_failure;
-	}
+	    dhcpcd_signal_cb, &ctx);
 	if (eloop_signal_mask(ctx.eloop, &ctx.sigset) == -1) {
 		logerr("%s: eloop_signal_mask", __func__);
 		goto exit_failure;
@@ -2102,7 +2106,7 @@ printpidfile:
 			break;
 #else
 			logerrx("No DHCP support");
-			goto exit_failure
+			goto exit_failure;
 #endif
 		case AF_INET6:
 #ifdef DHCP6
@@ -2111,7 +2115,7 @@ printpidfile:
 			break;
 #else
 			logerrx("No DHCP6 support");
-			goto exit_failure
+			goto exit_failure;
 #endif
 		default:
 			logerrx("Family not specified. Please use -4 or -6.");
@@ -2208,7 +2212,6 @@ printpidfile:
 			logerr("fork");
 			goto exit_failure;
 		case 0:
-			eloop_requeue(ctx.eloop);
 			break;
 		default:
 			ctx.options |= DHCPCD_FORKED; /* A lie */
@@ -2217,7 +2220,6 @@ printpidfile:
 		}
 		break;
 	default:
-		waitpid(pid, &i, 0);
 		ctx.options |= DHCPCD_FORKED; /* A lie */
 		ctx.fork_fd = sigpipe[0];
 		close(sigpipe[1]);
