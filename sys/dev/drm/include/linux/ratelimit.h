@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
- * Copyright (c) 2019 jsg <jsg@openbsd.org>
+ * Copyright (c) 2019 Jonathan Gray <jsg@openbsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
