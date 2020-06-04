@@ -40,4 +40,10 @@ put_pid(pid_t  pid)
 	/* Linux decrements a reference counter here */
 }
 
+static inline pid_t
+pid_nr(pid_t pid)
+{
+	return pid;
+}
+
 #endif	/* _LINUX_PID_H_ */
