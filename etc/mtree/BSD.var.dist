@@ -30,8 +30,8 @@
     db
         entropy         uname=operator gname=operator mode=0700
         ..
-	dhcpcd
-	..
+        dhcpcd
+        ..
     ..
     empty               mode=0555 flags=schg
     ..
