@@ -548,15 +548,15 @@ acpi_thinkpad_attach(device_t dev)
 			SYSCTL_ADD_PROC(sc->sysctl_ctx,
 			    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
 			    acpi_thinkpad_sysctls[i].name,
-			    CTLTYPE_INT | CTLFLAG_RD,
-			    sc, i, acpi_thinkpad_sysctl, "I",
+			    CTLTYPE_UINT | CTLFLAG_RD,
+			    sc, i, acpi_thinkpad_sysctl, "IU",
 			    acpi_thinkpad_sysctls[i].description);
 		} else {
 			SYSCTL_ADD_PROC(sc->sysctl_ctx,
 			    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
 			    acpi_thinkpad_sysctls[i].name,
-			    CTLTYPE_INT | CTLFLAG_RW,
-			    sc, i, acpi_thinkpad_sysctl, "I",
+			    CTLTYPE_UINT | CTLFLAG_RW,
+			    sc, i, acpi_thinkpad_sysctl, "IU",
 			    acpi_thinkpad_sysctls[i].description);
 		}
 	}
