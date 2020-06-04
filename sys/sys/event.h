@@ -233,6 +233,10 @@ struct kevent_args;
 
 #define KEVENT_TIMEOUT_PRECISE	0x01
 
+#define KEVENT_SCAN_KEEP_MARKER		0
+#define KEVENT_SCAN_RELOAD_MARKER	1
+#define KEVENT_SCAN_INSERT_MARKER	2
+
 typedef int	(*k_copyout_fn)(void *arg, struct kevent *kevp, int count,
     int *res);
 typedef int	(*k_copyin_fn)(void *arg, struct kevent *kevp, int max,
