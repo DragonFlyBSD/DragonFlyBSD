@@ -6,6 +6,8 @@
   by this include file.
 
 Copyright (c) 2006 - 2019, Intel Corporation. All rights reserved.<BR>
+Portions Copyright (c) 2020, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
+
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -209,7 +211,7 @@ EFI_STATUS
                                          On output, it is the size of the buffer returned by the firmware if
                                          the buffer was large enough, or the size of the buffer needed to contain
                                          the map if the buffer was too small.
-  @param[in, out]  MemoryMap             A pointer to the buffer in which firmware places the current memory
+  @param[out]      MemoryMap             A pointer to the buffer in which firmware places the current memory
                                          map.
   @param[out]      MapKey                A pointer to the location in which firmware returns the key for the
                                          current memory map.
@@ -230,7 +232,7 @@ typedef
 EFI_STATUS
 (EFIAPI *EFI_GET_MEMORY_MAP)(
   IN OUT UINTN                       *MemoryMapSize,
-  IN OUT EFI_MEMORY_DESCRIPTOR       *MemoryMap,
+  OUT    EFI_MEMORY_DESCRIPTOR       *MemoryMap,
   OUT    UINTN                       *MapKey,
   OUT    UINTN                       *DescriptorSize,
   OUT    UINT32                      *DescriptorVersion
@@ -1554,7 +1556,7 @@ EFI_STATUS
   @param[in]       Protocol     Provides the protocol to search by.
                                 This parameter is only valid for a SearchType of ByProtocol.
   @param[in]       SearchKey    Supplies the search key depending on the SearchType.
-  @param[in, out]  NoHandles    The number of handles returned in Buffer.
+  @param[out]      NoHandles    The number of handles returned in Buffer.
   @param[out]      Buffer       A pointer to the buffer to return the requested array of handles that
                                 support Protocol.
 
@@ -1572,7 +1574,7 @@ EFI_STATUS
   IN     EFI_LOCATE_SEARCH_TYPE       SearchType,
   IN     EFI_GUID                     *Protocol,      OPTIONAL
   IN     VOID                         *SearchKey,     OPTIONAL
-  IN OUT UINTN                        *NoHandles,
+  OUT    UINTN                        *NoHandles,
   OUT    EFI_HANDLE                   **Buffer
   );
 
@@ -1781,11 +1783,13 @@ EFI_STATUS
 #define EFI_OS_INDICATIONS_FMP_CAPSULE_SUPPORTED            0x0000000000000008
 #define EFI_OS_INDICATIONS_CAPSULE_RESULT_VAR_SUPPORTED     0x0000000000000010
 #define EFI_OS_INDICATIONS_START_PLATFORM_RECOVERY          0x0000000000000040
+#define EFI_OS_INDICATIONS_JSON_CONFIG_DATA_REFRESH         0x0000000000000080
 
 //
 // EFI Runtime Services Table
 //
 #define EFI_SYSTEM_TABLE_SIGNATURE      SIGNATURE_64 ('I','B','I',' ','S','Y','S','T')
+#define EFI_2_80_SYSTEM_TABLE_REVISION  ((2 << 16) | (80))
 #define EFI_2_70_SYSTEM_TABLE_REVISION  ((2 << 16) | (70))
 #define EFI_2_60_SYSTEM_TABLE_REVISION  ((2 << 16) | (60))
 #define EFI_2_50_SYSTEM_TABLE_REVISION  ((2 << 16) | (50))
@@ -2198,6 +2202,7 @@ typedef struct {
 #define EFI_REMOVABLE_MEDIA_FILE_NAME_X64     L"\\EFI\\BOOT\\BOOTX64.EFI"
 #define EFI_REMOVABLE_MEDIA_FILE_NAME_ARM     L"\\EFI\\BOOT\\BOOTARM.EFI"
 #define EFI_REMOVABLE_MEDIA_FILE_NAME_AARCH64 L"\\EFI\\BOOT\\BOOTAA64.EFI"
+#define EFI_REMOVABLE_MEDIA_FILE_NAME_RISCV64 L"\\EFI\\BOOT\\BOOTRISCV64.EFI"
 
 #if   defined (MDE_CPU_IA32)
   #define EFI_REMOVABLE_MEDIA_FILE_NAME   EFI_REMOVABLE_MEDIA_FILE_NAME_IA32
@@ -2208,6 +2213,8 @@ typedef struct {
   #define EFI_REMOVABLE_MEDIA_FILE_NAME   EFI_REMOVABLE_MEDIA_FILE_NAME_ARM
 #elif defined (MDE_CPU_AARCH64)
   #define EFI_REMOVABLE_MEDIA_FILE_NAME   EFI_REMOVABLE_MEDIA_FILE_NAME_AARCH64
+#elif defined (MDE_CPU_RISCV64)
+  #define EFI_REMOVABLE_MEDIA_FILE_NAME   EFI_REMOVABLE_MEDIA_FILE_NAME_RISCV64
 #else
   #error Unknown Processor Type
 #endif
