@@ -58,10 +58,13 @@ typedef struct fd_set {
 	__fd_mask fds_bits[__howmany(FD_SETSIZE, __NFDBITS)];
 } fd_set;
 
-#define _fdset_mask(n)	((__fd_mask)1 << ((n) % __NFDBITS))
-#define FD_SET(n, p)	((p)->fds_bits[(n)/__NFDBITS] |= _fdset_mask(n))
-#define FD_CLR(n, p)	((p)->fds_bits[(n)/__NFDBITS] &= ~_fdset_mask(n))
-#define FD_ISSET(n, p)	((p)->fds_bits[(n)/__NFDBITS] & _fdset_mask(n))
+#define _fdset_mask(n)	((__fd_mask)1 << ((unsigned int)(n) % __NFDBITS))
+#define FD_SET(n, p)	\
+    ((p)->fds_bits[(unsigned int)(n)/__NFDBITS] |= _fdset_mask(n))
+#define FD_CLR(n, p)	\
+    ((p)->fds_bits[(unsigned int)(n)/__NFDBITS] &= ~_fdset_mask(n))
+#define FD_ISSET(n, p)	\
+    ((p)->fds_bits[(unsigned int)(n)/__NFDBITS] & _fdset_mask(n))
 #define FD_ZERO(p)	__builtin_memset((p), 0, sizeof(*(p)))
 
 
