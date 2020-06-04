@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
 .\"
-.Dd November 23, 2018
+.Dd June 4, 2020
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -120,7 +120,7 @@ the normal
 doesn't work.
 .It Cm world
 .Cm buildworld +
-.Cm installworld .
+.Cm installworld
 .It Cm buildkernel
 Rebuild the kernel and the kernel-modules.
 .It Cm nativekernel
@@ -142,7 +142,16 @@ Install the kernel and the kernel-modules.
 Reinstall the kernel and the kernel-modules.
 .It Cm kernel
 .Cm buildkernel +
-.Cm installkernel .
+.Cm installkernel
+.It Cm build-all
+.Cm buildworld +
+.Cm buildkernel
+.Pp
+The option -j hw.ncpu is added automatically to optimally utilize the system.
+.It Cm install-all
+.Cm installkernel +
+.Cm installworld +
+.Cm upgrade
 .It Cm preupgrade
 Perform certain upgrades that have to be done before
 .Cm installworld ,

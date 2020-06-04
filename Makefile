@@ -29,6 +29,9 @@
 #                       the installworld.
 # upgrade             - Upgrade the files in /etc and also setup the rest
 #                       of the system for DragonFly. ex. two compilers.
+# build-all           - Runs buildworld and buildkernel both with -j hw.ncpu
+# install-all         - Runs installkernel, installworld and upgrade all with
+#                       -j 1
 # initrd              - Install the statically linked rescue tools and the
 #                       initrd image built by "buildworld".
 # backupworld         - Copy /bin /sbin /usr/bin /usr/sbin /usr/lib
