@@ -51,7 +51,6 @@ DPORTS_PACKAGES?=	security/ca_root_nss \
 			dns/bind-tools \
 			net/isc-dhcp44-server \
 			sysutils/cdrtools \
-			security/wpa_supplicant \
 			${DPORTS_EXTRA_PACKAGES}
 
 # dports options to use when building packages
