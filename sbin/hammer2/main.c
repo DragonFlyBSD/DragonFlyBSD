@@ -48,7 +48,7 @@ static void usage(int code);
 int
 main(int ac, char **av)
 {
-	const char *sel_path = NULL;
+	char *sel_path = NULL;
 	const char *uuid_str = NULL;
 	const char *arg;
 	char *opt;
@@ -104,7 +104,7 @@ main(int ac, char **av)
 			RecurseOpt = 1;
 			break;
 		case 's':
-			sel_path = optarg;
+			sel_path = strdup(optarg);
 			break;
 		case 't':
 			/*
@@ -267,7 +267,7 @@ main(int ac, char **av)
 		 */
 		if (ac >= 2) {
 			ecode = cmd_pfs_list(ac - 1,
-					     (const char **)(void *)&av[1]);
+					     (char **)(void *)&av[1]);
 		} else {
 			ecode = cmd_pfs_list(1, &sel_path);
 		}
