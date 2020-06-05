@@ -4,7 +4,7 @@
 
 DIRS!=	for i in *; do \
 	    if test -d $$i -a $$i != acpica -a $$i != smbfs \
-			-a $$i != ssh -a $$i != ssl ; then \
+			-a $$i != ssh -a $$i != ssl -a $$i != autofs ; then \
 		echo $$i; \
             fi; \
 	done
