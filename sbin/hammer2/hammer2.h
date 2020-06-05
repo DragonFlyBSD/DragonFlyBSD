@@ -132,10 +132,10 @@ int cmd_remote_disconnect(const char *sel_path, const char *url);
 int cmd_remote_status(const char *sel_path, int all_opt);
 
 int cmd_pfs_getid(const char *sel_path, const char *name, int privateid);
-int cmd_pfs_list(int ac, const char **av);
+int cmd_pfs_list(int ac, char **av);
 int cmd_pfs_create(const char *sel_path, const char *name,
 			uint8_t pfs_type, const char *uuid_str);
-int cmd_pfs_delete(const char *sel_path, const char *name);
+int cmd_pfs_delete(const char *sel_path, char **av, int ac);
 int cmd_pfs_snapshot(const char *sel_path, const char *name, const char *label,
 			uint32_t pfs_flags);
 

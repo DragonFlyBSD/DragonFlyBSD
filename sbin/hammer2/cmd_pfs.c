@@ -36,19 +36,28 @@
 #include "hammer2.h"
 
 int
-cmd_pfs_list(int ac, const char **av)
+cmd_pfs_list(int ac, char **av)
 {
 	hammer2_ioc_pfs_t pfs;
 	int ecode = 0;
-	int count = 0;
+	int count;
 	int fd;
 	int i;
+	int all = 0;
 	char *pfs_id_str = NULL;
+
+	if (ac == 1 && av[0] == NULL) {
+		av = get_hammer2_mounts(&ac);
+		all = 1;
+	}
 
 	for (i = 0; i < ac; ++i) {
 		if ((fd = hammer2_ioctl_handle(av[i])) < 0)
 			return(1);
 		bzero(&pfs, sizeof(pfs));
+		count = 0;
+		if (i)
+			printf("\n");
 
 		while ((pfs.name_key = pfs.name_next) != (hammer2_key_t)-1) {
 			if (ioctl(fd, HAMMER2IOC_PFS_GET, &pfs) < 0) {
@@ -59,7 +68,7 @@ cmd_pfs_list(int ac, const char **av)
 			if (count == 0) {
 				printf("Type        "
 				       "ClusterId (pfs_clid)                 "
-				       "Label\n");
+				       "Labels on %s\n", av[i]);
 			}
 			switch(pfs.pfs_type) {
 			case HAMMER2_PFSTYPE_NONE:
@@ -106,6 +115,9 @@ cmd_pfs_list(int ac, const char **av)
 		}
 		close(fd);
 	}
+
+	if (all)
+		put_hammer2_mounts(ac, av);
 
 	return (ecode);
 }
@@ -200,23 +212,63 @@ cmd_pfs_create(const char *sel_path, const char *name,
 }
 
 int
-cmd_pfs_delete(const char *sel_path, const char *name)
+cmd_pfs_delete(const char *sel_path, char **av, int ac)
 {
 	hammer2_ioc_pfs_t pfs;
 	int ecode = 0;
 	int fd;
+	int i;
+	int n;
+	int use_fd;
+	int nmnts = 0;
+	char **mnts = NULL;
 
-	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)
-		return(1);
-	bzero(&pfs, sizeof(pfs));
-	snprintf(pfs.name, sizeof(pfs.name), "%s", name);
+	if (sel_path == NULL)
+		mnts = get_hammer2_mounts(&nmnts);
 
-	if (ioctl(fd, HAMMER2IOC_PFS_DELETE, &pfs) < 0) {
-		fprintf(stderr, "hammer2: pfs_delete(%s): %s\n",
-			name, strerror(errno));
-		ecode = 1;
+	for (i = 1; i < ac; ++i) {
+		bzero(&pfs, sizeof(pfs));
+		snprintf(pfs.name, sizeof(pfs.name), "%s", av[i]);
+
+		if (sel_path) {
+			use_fd = hammer2_ioctl_handle(sel_path);
+		} else {
+			use_fd = -1;
+			for (n = 0; n < nmnts; ++n) {
+				if ((fd = hammer2_ioctl_handle(mnts[n])) < 0)
+					continue;
+				if (ioctl(fd, HAMMER2IOC_PFS_LOOKUP, &pfs) < 0)
+					continue;
+				if (use_fd >= 0) {
+					fprintf(stderr,
+						"hammer2: pfs_delete(%s): "
+						"Duplicate PFS name, "
+						"must specify mount\n",
+						av[i]);
+					close(use_fd);
+					use_fd = -1;
+					break;
+				}
+				use_fd = fd;
+			}
+		}
+		if (use_fd >= 0) {
+			if (ioctl(use_fd, HAMMER2IOC_PFS_DELETE, &pfs) < 0) {
+				printf("hammer2: pfs_delete(%s): %s\n",
+				       av[i], strerror(errno));
+				ecode = 1;
+			} else {
+				printf("hammer2: pfs_delete(%s): SUCCESS\n",
+				       av[i]);
+			}
+			close(use_fd);
+		} else {
+			printf("hammer2: pfs_delete(%s): FAILED\n",
+			       av[i]);
+			ecode = 1;
+		}
 	}
-	close(fd);
-
+	if (mnts)
+		put_hammer2_mounts(nmnts, mnts);
 	return (ecode);
 }
