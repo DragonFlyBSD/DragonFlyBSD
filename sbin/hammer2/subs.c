@@ -36,6 +36,8 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
+#include <sys/statvfs.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -304,4 +306,47 @@ dirhash(const unsigned char *name, size_t len)
 	key |= 0x8000U;
 
 	return (key);
+}
+
+char **
+get_hammer2_mounts(int *acp)
+{
+	struct statfs *fs;
+	char **av;
+	int n;
+	int w;
+	int i;
+
+	/*
+	 * Get a stable list of mount points
+	 */
+again:
+	n = getfsstat(NULL, 0, MNT_NOWAIT);
+	av = malloc(sizeof(char *) * n);
+	fs = malloc(sizeof(struct statfs *) * n);
+	if (getfsstat(fs, sizeof(*fs) * n, MNT_NOWAIT) != n) {
+		free(av);
+		free(fs);
+		goto again;
+	}
+
+	/*
+	 * Pull out hammer2 filesystems only
+	 */
+	for (i = w = 0; i < n; ++i) {
+		if (strcmp(fs[i].f_fstypename, "hammer2") != 0)
+			continue;
+		av[w++] = strdup(fs[i].f_mntonname);
+	}
+	*acp = w;
+
+	return av;
+}
+
+void
+put_hammer2_mounts(int ac, char **av)
+{
+	while (--ac >= 0)
+		free(av[ac]);
+	free(av);
 }

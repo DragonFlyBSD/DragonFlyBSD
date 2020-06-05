@@ -58,4 +58,7 @@ hammer2_key_t dirhash(const unsigned char *name, size_t len);
 uint32_t iscsi_crc32(const void *buf, size_t size);
 uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 
+char **get_hammer2_mounts(int *acp);
+void put_hammer2_mounts(int ac, char **av);
+
 #endif /* !HAMMER2_HAMMER2_SUBS_H_ */

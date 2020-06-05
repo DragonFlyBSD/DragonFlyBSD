@@ -288,7 +288,7 @@ main(int ac, char **av)
 			fprintf(stderr, "pfs-delete: requires name\n");
 			usage(1);
 		}
-		ecode = cmd_pfs_delete(sel_path, av[1]);
+		ecode = cmd_pfs_delete(sel_path, av, ac);
 	} else if (strcmp(av[0], "snapshot") == 0 ||
 		   strcmp(av[0], "snapshot-debug") == 0) {
 		/*
