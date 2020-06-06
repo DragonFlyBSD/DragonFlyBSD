@@ -28,7 +28,7 @@
 .\"	@(#)reboot.8	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/sbin/reboot/reboot.8,v 1.10.2.7 2003/02/23 22:42:10 trhodes Exp $
 .\"
-.Dd November 1, 2019
+.Dd June 9, 2020
 .Dt REBOOT 8
 .Os
 .Sh NAME
@@ -83,19 +83,20 @@ and log this themselves.
 .It Fl n
 The file system cache is not flushed.
 This option should probably not be used.
+.It Fl p
+The system will turn off the power if it can.
+If the power down action fails, the system
+will halt or reboot normally, depending on whether
+.Nm halt
+or
+.Nm
+was called.
 .It Fl q
 The system is halted or restarted quickly and ungracefully, and only
 the flushing of the file system cache is performed (if the
 .Fl n
 is not specified).
 This option should probably not be used.
-.It Fl p
-The system will turn off the power
-if it can.
-This is of course likely to make
-.Nm
-rather similar to
-.Nm halt .
 .El
 .Pp
 The

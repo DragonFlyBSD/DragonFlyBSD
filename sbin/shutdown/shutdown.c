@@ -38,6 +38,7 @@
 
 #include <ctype.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <pwd.h>
 #include <setjmp.h>
@@ -313,7 +314,8 @@ timewarn(int timeleft)
 		fprintf(pf, "System going down in %d minute%s\n\n",
 		    timeleft / 60, (timeleft > 60) ? "s" : "");
 	else if (timeleft)
-		fprintf(pf, "System going down in 30 seconds\n\n");
+		fprintf(pf, "System going down in %s30 seconds\n\n",
+		              (offset > 0 && offset < 30 ? "less than " : ""));
 	else
 		fprintf(pf, "System going down IMMEDIATELY\n\n");
 
@@ -408,7 +410,8 @@ getoffset(char *timearg)
 	struct tm *lt;
 	char *p;
 	time_t now;
-	int this_year;
+	int maybe_today, this_year;
+	char *timeunit;
 
 	time(&now);
 
@@ -421,8 +424,27 @@ getoffset(char *timearg)
 	if (*timearg == '+') {				/* +minutes */
 		if (!isdigit(*++timearg))
 			badtime();
-		if ((offset = atoi(timearg) * 60) < 0)
+		errno = 0;
+		offset = strtol(timearg, &timeunit, 10);
+		if (offset < 0 || offset == LONG_MAX || errno != 0)
 			badtime();
+		if (timeunit[0] == '\0' || strcasecmp(timeunit, "m") == 0 ||
+		    strcasecmp(timeunit, "min") == 0 ||
+		    strcasecmp(timeunit, "mins") == 0) {
+			offset *= 60;
+		} else if (strcasecmp(timeunit, "h") == 0 ||
+		           strcasecmp(timeunit, "hour") == 0 ||
+		           strcasecmp(timeunit, "hours") == 0) {
+			offset *= 60 * 60;
+		} else if (strcasecmp(timeunit, "s") == 0 ||
+		           strcasecmp(timeunit, "sec") == 0 ||
+		           strcasecmp(timeunit, "secs") == 0) {
+			offset *= 1;
+		} else {
+			badtime();
+		}
+		/* if ((offset = atoi(timearg) * 60) < 0) */
+		/* 	badtime(); */
 		shuttime = now + offset;
 		return;
 	}
@@ -441,6 +463,7 @@ getoffset(char *timearg)
 
 	unsetenv("TZ");					/* OUR timezone */
 	lt = localtime(&now);				/* current time val */
+	maybe_today = 1;
 
 	switch(strlen(timearg)) {
 	case 10:
@@ -462,6 +485,7 @@ getoffset(char *timearg)
 			badtime();
 		/* FALLTHROUGH */
 	case 6:
+		maybe_today = 0;
 		lt->tm_mday = ATOI2(timearg);
 		if (lt->tm_mday < 1 || lt->tm_mday > 31)
 			badtime();
@@ -476,8 +500,23 @@ getoffset(char *timearg)
 		lt->tm_sec = 0;
 		if ((shuttime = mktime(lt)) == -1)
 			badtime();
-		if ((offset = shuttime - now) < 0)
-			errx(1, "that time is already past.");
+
+		if ((offset = shuttime - now) < 0) {
+			if (!maybe_today)
+				errx(1, "that time is already past.");
+
+			/*
+			 * If the user only gave a time, assume that
+			 * any time earlier than the current time
+			 * was intended to be that time tomorrow.
+			 */
+			lt->tm_mday++;
+			if ((shuttime = mktime(lt)) == -1)
+				badtime();
+			if ((offset = shuttime - now) < 0) {
+				errx(1, "tomorrow is before today?");
+			}
+		}
 		break;
 	default:
 		badtime();

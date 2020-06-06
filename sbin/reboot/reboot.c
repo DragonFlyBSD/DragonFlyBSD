@@ -91,6 +91,8 @@ main(int argc, char *argv[])
 		}
 	argc -= optind;
 	argv += optind;
+	if (argc != 0)
+		usage();
 
 	if ((howto & (RB_DUMP | RB_HALT)) == (RB_DUMP | RB_HALT))
 		errx(1, "cannot dump (-d) when halting; must reboot instead");
@@ -135,6 +137,16 @@ main(int argc, char *argv[])
 	signal(SIGHUP, SIG_IGN);
 	/* parent shell might also send a SIGTERM?  Best to ignore as well */
 	signal(SIGTERM, SIG_IGN);
+	/* Group leaders may try killing us with other signals, ignore */
+	signal(SIGINT,  SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+	signal(SIGTSTP, SIG_IGN);
+
+	/*
+	 * If we're running in a pipeline, we don't want to die
+	 * after killing whatever we're writing to.
+	 */
+	signal(SIGPIPE, SIG_IGN);
 
 	/* Send a SIGTERM first, a chance to save the buffers. */
 	if (kill(-1, SIGTERM) == -1)
