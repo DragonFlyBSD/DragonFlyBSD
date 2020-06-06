@@ -174,7 +174,7 @@ tsnprintf(char *str, size_t siz, int tab, const char *ctl, ...)
 		return;
 
 	va_start(va, ctl);
-	vsnprintf(str + ret, siz, ctl, va);
+	vsnprintf(str + ret, siz - ret, ctl, va);
 	va_end(va);
 }
 
