@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 2014 The FreeBSD Foundation
  * All rights reserved.
  *
@@ -26,8 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/usr.sbin/uefisign/magic.h 289677 2015-10-21 05:37:09Z eadler $
- *
+ * $FreeBSD: head/usr.sbin/uefisign/magic.h 328335 2018-01-24 16:33:33Z trasz $
  */
 
 /*

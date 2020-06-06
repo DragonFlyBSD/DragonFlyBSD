@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 2014 The FreeBSD Foundation
  * All rights reserved.
  *
@@ -26,10 +28,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: head/usr.sbin/uefisign/child.c 336307 2018-07-15 17:21:19Z oshogbo $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/uefisign/child.c 305980 2016-09-19 16:07:32Z emaste $");
 
 #include <sys/param.h>
 #include <sys/types.h>

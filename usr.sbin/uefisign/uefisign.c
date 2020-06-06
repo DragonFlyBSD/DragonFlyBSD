@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 2014 The FreeBSD Foundation
  * All rights reserved.
  *
@@ -26,10 +28,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: head/usr.sbin/uefisign/uefisign.c 339270 2018-10-09 21:28:26Z gjb $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/uefisign/uefisign.c 279315 2015-02-26 09:15:24Z trasz $");
 
 #include <sys/wait.h>
 #include <assert.h>
@@ -388,9 +388,9 @@ main(int argc, char **argv)
 
 	inpath = argv[0];
 
-	OPENSSL_config(NULL);
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG |
+	    OPENSSL_INIT_LOAD_CRYPTO_STRINGS |
+	    OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS, NULL);
 
 	error = pipe(pipefds);
 	if (error != 0)

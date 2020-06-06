@@ -1,4 +1,4 @@
-# $FreeBSD: head/usr.sbin/uefisign/Makefile 279323 2015-02-26 15:48:20Z trasz $
+# $FreeBSD: head/usr.sbin/uefisign/Makefile 359510 2020-04-01 15:10:26Z trasz $
 
 PROG=	uefisign
 SRCS=	uefisign.c child.c pe.c
