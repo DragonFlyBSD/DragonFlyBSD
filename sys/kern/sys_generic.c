@@ -995,6 +995,7 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		 */
 		if ((uint64_t)(uintptr_t)kevp[i].udata !=
 		    skap->lwp->lwp_kqueue_serial) {
+deregister:
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
 			n = 1;
@@ -1048,11 +1049,17 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				}
 				break;
 			}
-			if (nseldebug)
+
+			/*
+			 * We must deregister any unsupported select events
+			 * to avoid a live-lock.
+			 */
+			if (nseldebug) {
 				kprintf("select fd %ju filter %d error %d\n",
 					(uintmax_t)kevp[i].ident,
 					kevp[i].filter, error);
-			continue;
+			}
+			goto deregister;
 		}
 
 		switch (kevp[i].filter) {
@@ -1390,9 +1397,10 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		 * by checking whether the extracted index is out of range.
 		 */
 		pi = (uint64_t)(uintptr_t)kevp[i].udata -
-		    pkap->lwp->lwp_kqueue_serial;
+		     pkap->lwp->lwp_kqueue_serial;
 
 		if (pi >= pkap->nfds) {
+deregister:
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
 			n = 1;
@@ -1404,6 +1412,10 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			}
 			continue;
 		}
+
+		/*
+		 * Locate the pollfd and process events
+		 */
 		pfd = &pkap->fds[pi];
 		if (kevp[i].ident == pfd->fd) {
 			/*
@@ -1433,8 +1445,9 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					 * set POLLPRI|POLLRDBAND and most
 					 * filters do not support EVFILT_EXCEPT.
 					 *
-					 * We also filter out ENODEV since dev_dkqfilter
-					 * returns ENODEV if EOPNOTSUPP is returned in an
+					 * We also filter out ENODEV since
+					 * dev_dkqfilter returns ENODEV if
+					 * EOPNOTSUPP is returned in an
 					 * inner call.
 					 *
 					 * XXX: fix this
@@ -1449,13 +1462,20 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					}
 					break;
 				}
-				if (nseldebug) {
-					kprintf("poll index %ju fd %d "
+				if (pfd->revents == 0 && nseldebug) {
+					kprintf("poll index EV_ERROR %ju fd %d "
 						"filter %d error %jd\n",
 						(uintmax_t)pi, pfd->fd,
 						kevp[i].filter,
 						(intmax_t)kevp[i].data);
 				}
+
+				/*
+				 * Silently deregister any unhandled EV_ERROR
+				 * condition (usually EOPNOTSUPP).
+				 */
+				if (pfd->revents == 0)
+					goto deregister;
 				continue;
 			}
 
@@ -1523,12 +1543,19 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 
 			if (count_res && pfd->revents)
 				++*res;
-		} else {
-			if (nseldebug) {
-				kprintf("poll index %ju mismatch %ju/%d\n",
-				    (uintmax_t)pi, (uintmax_t)kevp[i].ident,
-				    pfd->fd);
-			}
+		}
+
+		/*
+		 * We must deregister any kqueue poll event that does not
+		 * set poll return bits to prevent a live-lock.
+		 */
+		if (pfd->revents == 0) {
+			kprintf("poll index %ju no-action %ju/%d "
+				"events=%08x kevpfilt=%d/%08x\n",
+			    (uintmax_t)pi, (uintmax_t)kevp[i].ident,
+			    pfd->fd, pfd->events,
+			    kevp[i].filter, kevp[i].flags);
+			goto deregister;
 		}
 	}
 
