@@ -210,7 +210,7 @@ struct ttm_buffer_object {
 	 * Members protected by a bo reservation.
 	 */
 
-	struct fence *moving;
+	struct dma_fence *moving;
 
 	RB_ENTRY(ttm_buffer_object) vm_rb;	/* DragonFly */
 	struct drm_vma_offset_node vma_node;

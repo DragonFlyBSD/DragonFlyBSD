@@ -32,7 +32,7 @@
 #include <linux/list.h>
 #include <linux/dma-mapping.h>
 #include <linux/fs.h>
-#include <linux/fence.h>
+#include <linux/dma-fence.h>
 #include <linux/wait.h>
 
 #include <linux/slab.h>

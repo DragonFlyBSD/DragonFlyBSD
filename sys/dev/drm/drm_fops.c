@@ -784,8 +784,8 @@ void drm_send_event_locked(struct drm_device *dev, struct drm_pending_event *e)
 	}
 
 	if (e->fence) {
-		fence_signal(e->fence);
-		fence_put(e->fence);
+		dma_fence_signal(e->fence);
+		dma_fence_put(e->fence);
 	}
 
 	if (!e->file_priv) {

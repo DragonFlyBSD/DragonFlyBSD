@@ -42,7 +42,7 @@
 #include <linux/atomic.h>
 #include <linux/errno.h>
 #include <linux/kref.h>
-#include <linux/fence.h>
+#include <linux/dma-fence.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
