@@ -22,13 +22,31 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: head/lib/libefivar/Makefile 307071 2016-10-11 22:30:41Z imp $
+# $FreeBSD: head/lib/libefivar/Makefile 326458 2017-12-02 07:29:19Z imp $
+
+EFIBOOT=${.CURDIR}/../../sys/boot/efi
+EDK2INC=${.CURDIR}/../../sys/contrib/edk2/Include
+
+.PATH:	${EFIBOOT}/libefi
 
 LIB=		efivar
-SRCS=		efivar.c libefivar.c
-INCS=		efivar.h
+SRCS=		efivar.c libefivar.c efivar-dp-format.c \
+		efivar-dp-parse.c \
+		efivar-dp-xlate.c \
+		uefi-guid.c uefi-dputil.c
+INCS=		efivar.h efivar-dp.h
 SHLIB_MAJOR=	1
 MAN=		efivar.3
+
+CFLAGS+=	-I${EFIBOOT}/include
+CFLAGS+=	-I${.CURDIR} -I${EDK2INC}
+
+.PATH:		${.CURDIR}/../../sbin/gpt
+SRCS+=		gpt.c map.c
+FLAGS_GROUPS=	gpt
+gpt_FLAGS=	-I${.CURDIR}/../../sbin/gpt -D_LIBEFIVAR -Wno-unused-variable
+gpt_FLAGS+=	-Wno-unused-function
+gpt_FLAGS_FILES=efivar-dp-xlate.c gpt.c map.c
 
 MLINKS+=efivar.3 efi_variables_supported.3 \
 	efivar.3 efi_del_variable.3 \
@@ -44,5 +62,7 @@ MLINKS+=efivar.3 efi_variables_supported.3 \
 	efivar.3 efi_guid_to_name.3 \
 	efivar.3 efi_guid_to_symbol.3 \
 	efivar.3 libefivar.3
+
+WARNS?=		3
 
 .include <bsd.lib.mk>

@@ -22,10 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/boot/efi/libefi/efichar.c 314925 2017-03-09 00:24:01Z imp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/lib/libefivar/libefivar.c 307071 2016-10-11 22:30:41Z imp $");
 
 #include <sys/types.h>
 #include <errno.h>
@@ -38,7 +37,16 @@ __FBSDID("$FreeBSD: head/lib/libefivar/libefivar.c 307071 2016-10-11 22:30:41Z i
 
 #include "libefivar_int.h"
 
-#include <stdio.h>
+int
+ucs2len(const efi_char *str)
+{
+	int i;
+
+	i = 0;
+	while (*str++)
+		i++;
+	return (i);
+}
 
 /*
  * If nm were converted to utf8, what what would strlen
@@ -65,7 +73,7 @@ utf8_len_of_ucs2(const efi_char *nm)
 }
 
 int
-libefi_ucs2_to_utf8(const efi_char *nm, char **name)
+ucs2_to_utf8(const efi_char *nm, char **name)
 {
 	size_t len, sz;
 	efi_char c;
@@ -113,7 +121,7 @@ libefi_ucs2_to_utf8(const efi_char *nm, char **name)
 }
 
 int
-libefi_utf8_to_ucs2(const char *name, efi_char **nmp, size_t *len)
+utf8_to_ucs2(const char *name, efi_char **nmp, size_t *len)
 {
 	efi_char *nm;
 	size_t sz;

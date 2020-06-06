@@ -1,6 +1,5 @@
 /*-
- * Copyright (c) 2010 Marcel Moolenaar
- * All rights reserved.
+ * Copyright (c) 2017 Netflix, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,14 +22,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/stand/efi/include/efichar.h 323258 2017-09-07 07:30:05Z imp $
+ * $FreeBSD: head/usr.sbin/efivar/efiutil.h 343755 2019-02-04 21:28:25Z imp $
  */
 
-#ifndef _BOOT_EFI_EFICHAR_H_
-#define	_BOOT_EFI_EFICHAR_H_
+/*
+ * differnt routines to dump data.
+ */
 
-int ucs2_to_utf8(const efi_char *, char **);
-int utf8_to_ucs2(const char *, efi_char **, size_t *);
-int ucs2len(const efi_char *);
+void asciidump(uint8_t *data, size_t datalen);
+void bindump(uint8_t *data, size_t datalen);
+void efi_print_load_option(uint8_t *, size_t, int, int, int);
+void hexdump(uint8_t *data, size_t datalen);
+void utf8dump(uint8_t *data, size_t datalen);
 
-#endif /* _BOOT_EFI_EFICHAR_H_ */

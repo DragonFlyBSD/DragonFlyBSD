@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: head/lib/libefivar/efivar.3 307071 2016-10-11 22:30:41Z imp $
+.\" $FreeBSD: head/lib/libefivar/efivar.3 343755 2019-02-04 21:28:25Z imp $
 .\"
-.Dd December 15, 2018
+.Dd June 6, 2020
 .Dt LIBEFIVAR 3
 .Os
 .Sh NAME
@@ -65,7 +65,9 @@ The
 .Nm
 library implements access to EFI Variables via the EFI Runtime
 Services.
-All char * strings are converted to 16-bit UTF strings before passing
+All
+.Vt "char *"
+strings are converted to 16-bit UTF strings before passing
 them to EFI.
 .Pp
 .Fn efi_variables_supported
@@ -75,29 +77,50 @@ Otherwise zero is returned.
 .Pp
 .Fn efi_del_variable
 deletes the EFI variable selected by
-.Dv guid
+.Fa guid
 and
-.Dv name .
+.Fa name .
 .Pp
-.Fn efi_get_variable
-.Fn efi_get_variable_attributes
-.Fn efi_get_variable_size
+The following functions have not been implemented yet:
+.Bl -dash -offset indent -compact
+.It
 .Fn efi_append_variable
-.Fn efi_set_variable
+.It
 .Fn efi_get_next_variable_name
-.Fn efi_str_to_guid
-.Fn efi_guid_to_str
-.Fn efi_name_to_guid
+.It
+.Fn efi_get_variable
+.It
+.Fn efi_get_variable_attributes
+.It
+.Fn efi_get_variable_size
+.It
 .Fn efi_guid_to_name
+.It
+.Fn efi_guid_to_str
+.It
 .Fn efi_guid_to_symbol
-This function is not actually implemented.
+.It
+.Fn efi_name_to_guid
+.It
+.Fn efi_set_variable
+.It
+.Fn efi_str_to_guid
+.El
 .Sh SEE ALSO
 .Xr efidev 4 ,
+.Xr efidp 8 ,
 .Xr efivar 8
+.Sh HISTORY
+The
+.Nm
+library first appeared in
+.Fx 12.0 .
 .Sh AUTHORS
 .An -nosplit
 This software was originally written by
 .An Warner Losh .
 .Sh BUGS
 No facilities exist to process the strings as native UTF.
-This is a limitation in the Linux libefivar library interface.
+This is a limitation in the Linux
+.Nm
+library interface.

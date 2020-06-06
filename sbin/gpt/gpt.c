@@ -26,7 +26,6 @@
  * CRC32 code derived from work by Gary S. Brown.
  *
  * $FreeBSD: src/sbin/gpt/gpt.c,v 1.16 2006/07/07 02:44:23 marcel Exp $
- * $DragonFly: src/sbin/gpt/gpt.c,v 1.5 2008/07/30 00:45:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -680,6 +679,7 @@ prefix(const char *cmd)
 	setprogname(pfx);
 }
 
+#ifndef _LIBEFIVAR
 int
 main(int argc, char *argv[])
 {
@@ -721,3 +721,4 @@ main(int argc, char *argv[])
 	prefix(cmd);
 	return ((*cmdsw[i].fptr)(argc, argv));
 }
+#endif /* !_LIBEFIVAR */
