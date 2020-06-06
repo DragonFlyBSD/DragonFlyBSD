@@ -33,6 +33,7 @@ SUBDIR= 802_11 \
 	dev_mkdb \
 	dntpd \
 	edquota \
+	efidp \
 	efisetup \
 	efivar \
 	fdcontrol \
