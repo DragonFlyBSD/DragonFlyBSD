@@ -66,7 +66,7 @@ struct kevent_copyin_args {
 	int			pchanges;
 };
 
-#define KNOTE_CACHE_MAX		8
+#define KNOTE_CACHE_MAX		64
 
 struct knote_cache_list {
 	struct klist		knote_cache;
