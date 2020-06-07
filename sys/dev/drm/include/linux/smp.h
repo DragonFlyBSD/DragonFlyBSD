@@ -32,6 +32,7 @@
 #include <linux/list.h>
 #include <linux/cpumask.h>
 #include <linux/init.h>
+#include <linux/llist.h>
 
 #include <linux/preempt.h>
 #include <linux/kernel.h>

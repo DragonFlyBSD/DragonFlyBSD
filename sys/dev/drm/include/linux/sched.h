@@ -52,6 +52,7 @@
 #include <linux/time.h>
 #include <linux/timer.h>
 #include <linux/hrtimer.h>
+#include <linux/llist.h>
 #include <linux/gfp.h>
 
 #include <asm/processor.h>
