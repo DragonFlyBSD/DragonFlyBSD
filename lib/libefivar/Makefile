@@ -44,8 +44,7 @@ CFLAGS+=	-I${.CURDIR} -I${EDK2INC}
 .PATH:		${.CURDIR}/../../sbin/gpt
 SRCS+=		gpt.c map.c
 FLAGS_GROUPS=	gpt
-gpt_FLAGS=	-I${.CURDIR}/../../sbin/gpt -D_LIBEFIVAR -Wno-unused-variable
-gpt_FLAGS+=	-Wno-unused-function
+gpt_FLAGS=	-I${.CURDIR}/../../sbin/gpt -D_LIBEFIVAR
 gpt_FLAGS_FILES=efivar-dp-xlate.c gpt.c map.c
 
 MLINKS+=efivar.3 efi_variables_supported.3 \

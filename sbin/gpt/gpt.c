@@ -631,6 +631,7 @@ gpt_close(int fd)
 	close(fd);
 }
 
+#ifndef _LIBEFIVAR
 static struct {
 	int (*fptr)(int, char *[]);
 	const char *name;
@@ -679,7 +680,6 @@ prefix(const char *cmd)
 	setprogname(pfx);
 }
 
-#ifndef _LIBEFIVAR
 int
 main(int argc, char *argv[])
 {

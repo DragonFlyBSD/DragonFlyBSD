@@ -426,8 +426,8 @@ static char *
 find_slice_efimedia(const char *slice)
 {
 	char disk_path[1024], disks[1024], efimedia[128];
-	char *c, *disk, *disk_ptr, *ep, *s;
-	int error, fd;
+	char *disk, *disk_ptr, *ep, *s;
+	int fd;
 	u_long sliceno;
 	size_t len;
 	map_t *m;
