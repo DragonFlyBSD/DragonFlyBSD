@@ -676,15 +676,13 @@ filt_fs(struct knote *kn, long hint)
  * Initialize a kqueue.
  *
  * NOTE: The lwp/proc code initializes a kqueue for select/poll ops.
- *
- * MPSAFE
  */
 void
 kqueue_init(struct kqueue *kq, struct filedesc *fdp)
 {
+	bzero(kq, sizeof(*kq));
 	TAILQ_INIT(&kq->kq_knpend);
 	TAILQ_INIT(&kq->kq_knlist);
-	kq->kq_count = 0;
 	kq->kq_fdp = fdp;
 	SLIST_INIT(&kq->kq_kqinfo.ki_note);
 }
@@ -959,12 +957,12 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 					    atx.tv_nsec < kq_sleep_threshold) {
 						ustimeout = kq_sleep_threshold /
 							    1000;
-					} else if (atx.tv_sec < 10 * 60) {
+					} else if (atx.tv_sec < 60) {
 						ustimeout =
 							atx.tv_sec * 1000000 +
 							atx.tv_nsec / 1000;
 					} else {
-						ustimeout = 10 * 60 * 1000000;
+						ustimeout = 60 * 1000000;
 					}
 					if (ustimeout == 0)
 						ustimeout = 1;
@@ -2076,8 +2074,7 @@ precise_sleep(void *ident, int flags, const char *wmesg, int us)
 	int r;
 
 	tsleep_interlock(ident, flags);
-	systimer_init_oneshot(&info, precise_sleep_intr, &si,
-	    us == 0 ? 1 : us);
+	systimer_init_oneshot(&info, precise_sleep_intr, &si, us);
 	r = tsleep(ident, flags | PINTERLOCKED, wmesg, 0);
 	systimer_del(&info);
 	if (si.timedout)
