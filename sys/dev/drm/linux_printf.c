@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2015 Michael Neumann
  * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
@@ -25,22 +24,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_SEQ_FILE_H_
-#define _LINUX_SEQ_FILE_H_
+#include <linux/seq_file.h>
 
-#include <linux/types.h>
-#include <linux/string.h>
-#include <linux/bug.h>
-#include <linux/mutex.h>
-#include <linux/cpumask.h>
+#include <sys/sbuf.h>
 
-struct seq_file {
-	char	*buf;
-	size_t	size;
-};
+void
+seq_printf(struct seq_file *m, const char *f, ...)
+{
+	__va_list ap;
 
-void seq_printf(struct seq_file *m, const char *f, ...);
-
-#define seq_puts(m, str)	ksnprintf((m)->buf, (m)->size, str)
-
-#endif	/* _LINUX_SEQ_FILE_H_ */
+	__va_start(ap, f);
+	ksnprintf(m->buf, m->size, f, ap);
+	__va_end(ap);
+}
