@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,6 @@
 #define _ASM_UACCESS_H_
 
 #define	get_user(_x, _p)	-copyin((_p), &(_x), sizeof(*(_p)))
-#define	put_user(_x, _p)	-copyout(&(_x), (_p), sizeof(*(_p)))
 
 static inline long
 copy_to_user(void *to, const void *from, unsigned long n)
@@ -92,9 +91,12 @@ __copy_from_user_inatomic_nocache(void *to, const void __user *from,
 	return ((copyin_nofault(__DECONST(void *, from), to, n) != 0 ? n : 0));
 }
 
-#define __put_user(x, ptr)					\
-({								\
-	__copy_to_user_inatomic((ptr), &(x), sizeof(x));	\
+#define __put_user(value, uptr)						\
+({									\
+	__typeof(*(uptr)) __tmpval = (value);				\
+	__copy_to_user_inatomic((uptr), &__tmpval, sizeof(__tmpval));	\
 })
+
+#define put_user(_x, _p)	__put_user(_x, _p)
 
 #endif	/* _ASM_UACCESS_H_ */
