@@ -28,7 +28,7 @@
 .\"     @(#)read.2	8.4 (Berkeley) 2/26/94
 .\" $FreeBSD: src/lib/libc/sys/read.2,v 1.9.2.6 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd August 7, 2019
+.Dd June 8, 2020
 .Dt READ 2
 .Os
 .Sh NAME
@@ -161,7 +161,7 @@ Otherwise, a -1 is returned and the global variable
 .Va errno
 is set to indicate the error.
 .Sh ERRORS
-.Fn Read ,
+.Fn read ,
 .Fn readv ,
 .Fn pread ,
 .Fn preadv ,
@@ -185,6 +185,12 @@ any data arrived by the delivery of a signal.
 The pointer associated with
 .Fa d
 was negative.
+.It Bq Er EISDIR
+The file descriptor
+.Fa d
+refers to a directory and the implementation does not allow the directory
+to be read using read() or pread(). The readdir() function should be used
+instead.
 .It Bq Er EAGAIN
 The file was marked for non-blocking I/O,
 and no data were ready to be read.
