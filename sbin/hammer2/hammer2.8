@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd September 29, 2019
+.Dd June 8, 2020
 .Dt HAMMER2 8
 .Os
 .Sh NAME
@@ -357,6 +357,12 @@ Snapshots are effectively separate from the cluster they came from
 and can be used as a starting point for a new cluster.
 So unless you build a new cluster from the snapshot, it will stay local
 to the machine it was made on.
+.Pp
+Snapshots can be maintained automatically with
+.Xr periodic 8 .
+See
+.Xr periodic.conf 5
+for details of enabling and configuring the functionality.
 .\" ==== snapshot-debug ====
 .It Cm snapshot-debug Ar path Op label
 Snapshot without filesystem sync.
@@ -680,7 +686,8 @@ TODO.
 .Xr mount_null 8 ,
 .Xr newfs_hammer2 8 ,
 .Xr swapcache 8 ,
-.Xr sysctl 8
+.Xr sysctl 8 ,
+.Xr periodic.conf 5
 .Sh HISTORY
 The
 .Nm

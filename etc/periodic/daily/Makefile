@@ -10,6 +10,7 @@ FILES=	100.clean-disks \
 	161.clean-hammer2 \
 	200.backup-passwd \
 	210.backup-aliases \
+	220.snapshot-hammer2 \
 	300.calendar \
 	310.accounting \
 	330.news \

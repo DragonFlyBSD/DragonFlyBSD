@@ -1,0 +1,80 @@
+#!/bin/sh
+#
+# create snapshots of hammer2 directories
+
+if [ -r /etc/defaults/periodic.conf ]
+then
+    . /etc/defaults/periodic.conf
+    source_periodic_confs
+fi
+
+case "${PERIODIC}" in
+	weekly)
+	snap_dirs=${weekly_snapshot_hammer2_dirs:-"auto"}
+	snap_capacity=${weekly_snapshot_hammer2_capacity:-"90"}
+	snap_keep=${weekly_snapshot_hammer2_keep:-"auto"}
+	snap_keep_auto=6
+	snap_tag=${weekly_snapshot_hammer2_tag:-"weekly"}
+	snap_enable="${weekly_snapshot_hammer2_enable}"
+	;;
+	monthly)
+	snap_dirs=${monthly_snapshot_hammer2_dirs:-"auto"}
+	snap_capacity=${monthly_snapshot_hammer2_capacity:-"90"}
+	snap_keep=${monthly_snapshot_hammer2_keep:-"auto"}
+	snap_keep_auto=12
+	snap_tag=${monthly_snapshot_hammer2_tag:-"monthly"}
+	snap_enable="${monthly_snapshot_hammer2_enable}"
+	;;
+	*)
+	snap_dirs=${daily_snapshot_hammer2_dirs:-"auto"}
+	snap_capacity=${daily_snapshot_hammer2_capacity:-"90"}
+	snap_keep=${daily_snapshot_hammer2_keep:-"auto"}
+	snap_keep_auto=15
+	snap_tag=${daily_snapshot_hammer2_tag:-"daily"}
+	snap_enable="${daily_snapshot_hammer2_enable}"
+	;;
+esac
+
+rc=0
+
+case "${snap_enable}" in
+	[Yy][Ee][Ss])
+	echo ""
+	echo "HAMMER2 snapshots:"
+
+	if [ "${snap_dirs}" = "auto" ]; then
+		snap_dirs="$(mount -v -t hammer2 | awk '{ print $3; }')"
+	fi
+
+	for dir in ${snap_dirs}; do
+		echo -n "${dir}: "
+		if [ ! -d "${dir}" ]; then
+			echo "omitted, not a directory"
+			continue
+		fi
+		_df=$(df ${dir} | grep -oE "[0-9]+%")
+		_pcnt=${_df%%%}
+		if [ ${_pcnt} -gt ${snap_capacity} ]; then
+			echo "omitted, not enough free space"
+			continue
+		fi
+		hammer2 snapshot ${dir} ${dir}.${snap_tag}.$(date +%Y%m%d.%H:%M) \
+			|| rc=1
+		_keep=${snap_keep}
+		if [ "${_keep}" = "auto" ]; then
+			# adjust number of snapshots dynamically, according to free space
+			_keep=$(echo "scale=2;inc=((${snap_capacity}-${_pcnt})/50* \
+				${snap_keep_auto});scale=0;${snap_keep_auto}+inc/1" | bc)
+		fi
+		for _stale in $(hammer2 -s ${dir} pfs-list | grep -v "^Type" | \
+				grep -oE "${dir}\.${snap_tag}\..*$" | \
+				sort -r | tail -n+${_keep}); do
+			hammer2 -s ${dir} pfs-delete ${_stale} || rc=1
+		done
+		echo "${dir}: $(hammer2 -s ${dir} pfs-list | grep -v "^Type" | \
+				grep -coE "${dir}\.${snap_tag}\..*$") snapshot(s)"
+	done
+	;;
+esac
+
+exit $rc

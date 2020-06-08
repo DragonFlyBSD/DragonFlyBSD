@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man5/periodic.conf.5 323550 2017-09-13 16:35:16Z gordon $
 .\"
-.Dd April 21, 2019
+.Dd June 8, 2020
 .Dt PERIODIC.CONF 5
 .Os
 .Sh NAME
@@ -368,6 +368,30 @@ Set to
 .Dq Li YES
 if you want to run
 .Pa /etc/news.expire .
+.It Va daily_snapshot_hammer2_capacity
+.Pq Vt num
+Storage usage threshold, in percents. Snapshots won't be created once
+used capacity exceeds this limit. Default is 90.
+.It Va daily_snapshot_hammer2_dirs
+.Pq Vt str
+Space-separated list of directories on HAMMER2 filesystem(s) to snapshot.
+Default is (a special keyword) "auto" which means snapshots will be created
+for all currently mounted HAMMER2 volumes.
+.It Va daily_snapshot_hammer2_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+if you want to create daily snapshots of directories on HAMMER2 filesystem(s).
+.It Va daily_snapshot_hammer2_keep
+.Pq Vt num or "auto"
+Maximum number of daily snapshots to keep for each configured HAMMER2 directory.
+If set to "auto", 15 is used as the initial value, but more snapshots can be
+kept actually, according to free storage capacity.
+.It Va daily_snapshot_hammer2_tag
+.Pq Vt str
+Tag to be used for daily snapshots labels. Default is "daily".
+The actual label is then composed adhering to this pattern:
+<path>.<flag>.<year><month><day>.<hour>:<minute>
 .It Va daily_status_disks_enable
 .Pq Vt bool
 Set to
@@ -567,6 +591,29 @@ An orphaned file is one with an invalid owner or group.
 A list of directories under which orphaned files are searched for.
 This would usually be set to
 .Pa / .
+.It Va weekly_snapshot_hammer2_capacity
+.Pq Vt num
+Weekly counterpart of
+.Va daily_snapshot_hammer2_capacity .
+.It Va weekly_snapshot_hammer2_dirs
+.Pq Vt str
+Weekly counterpart of
+.Va daily_snapshot_hammer2_dirs .
+.It Va weekly_snapshot_hammer2_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+if you want to create weekly snapshots of directories on HAMMER2 filesystem(s).
+.It Va weekly_snapshot_hammer2_keep
+.Pq Vt num or "auto"
+Weekly counterpart of
+.Va daily_snapshot_hammer2_keep .
+If set to "auto", 6 is used as the initial value.
+.It Va weekly_snapshot_hammer2_tag
+.Pq Vt str
+Weekly counterpart of
+.Va daily_snapshot_hammer2_tag .
+Default is "weekly".
 .It Va weekly_status_security_enable
 .Pq Vt bool
 Weekly counterpart of
@@ -596,6 +643,29 @@ Set to
 if you want to do login accounting using the
 .Xr ac 8
 command.
+.It Va monthly_snapshot_hammer2_capacity
+.Pq Vt num
+Monthly counterpart of
+.Va daily_snapshot_hammer2_capacity .
+.It Va monthly_snapshot_hammer2_dirs
+.Pq Vt str
+Monthly counterpart of
+.Va daily_snapshot_hammer2_dirs .
+.It Va monthly_snapshot_hammer2_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+if you want to create monthly snapshots of directories on HAMMER2 filesystem(s).
+.It Va monthly_snapshot_hammer2_keep
+.Pq Vt num or "auto"
+Monthly counterpart of
+.Va daily_snapshot_hammer2_keep .
+If set to "auto", 12 is used as the initial value.
+.It Va monthly_snapshot_hammer2_tag
+.Pq Vt str
+Monthly counterpart of
+.Va daily_snapshot_hammer2_tag .
+Default is "monthly".
 .It Va monthly_status_security_enable
 .Pq Vt bool
 Monthly counterpart of
