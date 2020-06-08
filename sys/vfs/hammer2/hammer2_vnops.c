@@ -811,6 +811,8 @@ hammer2_vop_read(struct vop_read_args *ap)
 	 * Read operations supported on this vnode?
 	 */
 	vp = ap->a_vp;
+	if (vp->v_type == VDIR)
+		return (EISDIR);
 	if (vp->v_type != VREG)
 		return (EINVAL);
 
