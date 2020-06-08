@@ -43,6 +43,7 @@
 #define GFP_HIGHUSER	GFP_KERNEL
 
 #define __GFP_ZERO	M_ZERO
+#define __GFP_NORETRY	M_NULLOK
 
 #define __GFP_HIGHMEM		0u	/* No particular meaning on DragonFly */
 #define __GFP_RECLAIMABLE	0u
@@ -72,6 +73,34 @@ static inline bool
 gfpflags_allow_blocking(const gfp_t flags)
 {
 	return (flags & M_WAITOK);
+}
+
+/*
+ * Allocate multiple contiguous pages. The DragonFly code can only do
+ * multiple allocations via the free page reserve.  Linux does not appear
+ * to restrict the address space, so neither do we.
+ */
+static inline struct page *
+alloc_pages(gfp_t gfp_mask, unsigned int order)
+{
+	size_t bytes = PAGE_SIZE << order;
+	struct vm_page *pgs;
+
+	pgs = vm_page_alloc_contig(0LLU, ~0LLU, bytes, bytes, bytes,
+				   VM_MEMATTR_DEFAULT);
+
+	return (struct page*)pgs;
+}
+
+/*
+ * Free multiple contiguous pages
+ */
+static inline void
+__free_pages(struct page *pgs, unsigned int order)
+{
+	size_t bytes = PAGE_SIZE << order;
+
+	vm_page_free_contig((struct vm_page *)pgs, bytes);
 }
 
 #endif	/* _LINUX_GFP_H_ */
