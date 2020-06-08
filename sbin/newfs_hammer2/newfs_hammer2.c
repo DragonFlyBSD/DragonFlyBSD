@@ -317,7 +317,6 @@ main(int ac, char **av)
 		printf("    clid %s\n", pfs_clid_name);
 		printf("    fsid %s\n", pfs_fsid_name);
 	}
-	printf("\n");
 
 	free(vol_fsid);
 	free(sup_clid_name);
