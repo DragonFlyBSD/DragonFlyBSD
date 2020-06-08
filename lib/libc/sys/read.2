@@ -189,8 +189,13 @@ was negative.
 The file descriptor
 .Fa d
 refers to a directory and the implementation does not allow the directory
-to be read using read() or pread(). The readdir() function should be used
-instead.
+to be read using
+.Fn read
+or
+.Fn pread .
+The
+.Fn readdir
+function should be used instead.
 .It Bq Er EAGAIN
 The file was marked for non-blocking I/O,
 and no data were ready to be read.
@@ -246,7 +251,8 @@ The file descriptor is associated with a pipe, socket, or FIFO.
 .Xr pipe 2 ,
 .Xr select 2 ,
 .Xr socket 2 ,
-.Xr socketpair 2
+.Xr socketpair 2 ,
+.Xr readdir 3
 .Sh STANDARDS
 The
 .Fn read
