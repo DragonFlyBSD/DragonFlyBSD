@@ -64,10 +64,19 @@ struct device_node;
 	device_printf((dev)->bsddev, "warning: " fmt, ## __VA_ARGS__)
 #define	dev_info(dev, fmt, ...)						\
 	device_printf((dev)->bsddev, "info: " fmt, ## __VA_ARGS__)
-#define	dev_printk(level, dev, fmt, ...)				\
-	device_printf((dev)->bsddev, "%s: " fmt, level, ## __VA_ARGS__)
 #define dev_notice(dev, fmt, ...)					\
 	device_printf((dev)->bsddev, fmt, ##__VA_ARGS__)
+
+static inline void
+dev_printk(const char *level, const struct device *dev, const char *fmt, ...)
+{
+	__va_list ap;
+
+	device_printf((dev)->bsddev, "%s: ", level);
+	__va_start(ap, fmt);
+	kprintf(fmt, ap);
+	__va_end(ap);
+}
 
 static inline const char *
 dev_name(const struct device *dev)
