@@ -317,6 +317,8 @@ hammer_vop_read(struct vop_read_args *ap)
 	int got_trans;
 	size_t resid;
 
+	if (ap->a_vp->v_type == VDIR)
+		return (EISDIR);
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
 	ip = VTOI(ap->a_vp);
