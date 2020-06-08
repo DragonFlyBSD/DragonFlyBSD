@@ -173,6 +173,11 @@ list_del_init(struct list_head *entry)
 	for (p = list_entry((h)->prev, typeof(*p), field); &p->field != (h); \
 	    p = list_entry(p->field.prev, typeof(*p), field))
 
+#define	list_for_each_entry_safe_reverse(p, n, h, field)		\
+	for (p = list_entry((h)->prev, typeof(*p), field),		\
+	    n = list_entry((p)->field.prev, typeof(*p), field); &(p)->field != (h); \
+	    p = n, n = list_entry(n->field.prev, typeof(*n), field))
+
 #define	list_for_each_prev(p, h) for (p = (h)->prev; p != (h); p = p->prev)
 
 static inline void
