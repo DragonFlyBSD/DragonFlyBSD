@@ -105,6 +105,8 @@ NORMAL_FWO= ${LD} -b binary -d -warn-common -r -o ${.TARGET} ${.ALLSRC:M*.fw}
 WERROR=-Werror
 .endif
 
+# NOTE: -lgcc only needed for muldivu64 (__udivti3)
+#
 GEN_CFILES= $S/platform/$P/$M/genassym.c
 SYSTEM_CFILES= ioconf.c config.c
 SYSTEM_SFILES= $S/platform/$P/$M/locore.s
@@ -113,7 +115,7 @@ SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
 SYSTEM_LD= @${CC} -nostdlib -ffreestanding -Wl,--hash-style=sysv \
 	-Wl,-Bdynamic -Wl,-T,$S/platform/$P/conf/ldscript.$M \
 	-Wl,--export-dynamic -Wl,--dynamic-linker,/red/herring \
-	-o ${.TARGET} -Wl,-X ${SYSTEM_OBJS} vers.o
+	-o ${.TARGET} -Wl,-X ${SYSTEM_OBJS} vers.o -lgcc
 
 # In case of LTO provide all standard CFLAGS!
 .if ${CFLAGS:M-flto}

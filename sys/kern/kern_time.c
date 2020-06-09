@@ -328,6 +328,7 @@ int
 kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 {
 	ts->tv_sec = 0;
+
 	switch(clock_id) {
 	case CLOCK_REALTIME:
 	case CLOCK_REALTIME_FAST:
@@ -339,12 +340,10 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 	case CLOCK_UPTIME_FAST:
 	case CLOCK_UPTIME_PRECISE:
 		/*
-		 * Round up the result of the division cheaply
-		 * by adding 1.  Rounding up is especially important
-		 * if rounding down would give 0.  Perfect rounding
-		 * is unimportant.
+		 * Minimum reportable resolution is 1ns.  Rounding is
+		 * otherwise unimportant.
 		 */
-		ts->tv_nsec = 1000000000 / sys_cputimer->freq + 1;
+		ts->tv_nsec = 999999999 / sys_cputimer->freq + 1;
 		break;
 	case CLOCK_VIRTUAL:
 	case CLOCK_PROF:

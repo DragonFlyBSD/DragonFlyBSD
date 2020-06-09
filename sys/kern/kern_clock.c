@@ -867,7 +867,8 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	if (scv == 0) {
 		bump = 1;
 	} else {
-		bump = (sys_cputimer->freq64_usec * (cv - scv)) >> 32;
+		bump = muldivu64(sys_cputimer->freq64_usec,
+				 (cv - scv), 1L << 32);
 		if (bump < 0)
 			bump = 0;
 		if (bump > 1000000)
@@ -1339,7 +1340,7 @@ getmicrouptime(struct timeval *tvp)
 		tvp->tv_sec += delta / sys_cputimer->freq;
 		delta %= sys_cputimer->freq;
 	}
-	tvp->tv_usec = (sys_cputimer->freq64_usec * delta) >> 32;
+	tvp->tv_usec = muldivu64(sys_cputimer->freq64_usec, delta, 1L << 32);
 	if (tvp->tv_usec >= 1000000) {
 		tvp->tv_usec -= 1000000;
 		++tvp->tv_sec;
@@ -1361,7 +1362,7 @@ getnanouptime(struct timespec *tsp)
 		tsp->tv_sec += delta / sys_cputimer->freq;
 		delta %= sys_cputimer->freq;
 	}
-	tsp->tv_nsec = (sys_cputimer->freq64_nsec * delta) >> 32;
+	tsp->tv_nsec = muldivu64(sys_cputimer->freq64_nsec, delta, 1L << 32);
 }
 
 void
@@ -1379,7 +1380,7 @@ microuptime(struct timeval *tvp)
 		tvp->tv_sec += delta / sys_cputimer->freq;
 		delta %= sys_cputimer->freq;
 	}
-	tvp->tv_usec = (sys_cputimer->freq64_usec * delta) >> 32;
+	tvp->tv_usec = muldivu64(sys_cputimer->freq64_usec, delta, 1L << 32);
 }
 
 void
@@ -1397,7 +1398,7 @@ nanouptime(struct timespec *tsp)
 		tsp->tv_sec += delta / sys_cputimer->freq;
 		delta %= sys_cputimer->freq;
 	}
-	tsp->tv_nsec = (sys_cputimer->freq64_nsec * delta) >> 32;
+	tsp->tv_nsec = muldivu64(sys_cputimer->freq64_nsec, delta, 1L << 32);
 }
 
 /*
@@ -1475,7 +1476,7 @@ getnanotime_nbt(struct timespec *nbt, struct timespec *tsp)
 		tsp->tv_sec += delta / sys_cputimer->freq;
 		delta %= sys_cputimer->freq;
 	}
-	tsp->tv_nsec = (sys_cputimer->freq64_nsec * delta) >> 32;
+	tsp->tv_nsec = muldivu64(sys_cputimer->freq64_nsec, delta, 1L << 32);
 
 	tsp->tv_sec += nbt->tv_sec;
 	tsp->tv_nsec += nbt->tv_nsec;
@@ -1502,7 +1503,7 @@ microtime(struct timeval *tvp)
 		tvp->tv_sec += delta / sys_cputimer->freq;
 		delta %= sys_cputimer->freq;
 	}
-	tvp->tv_usec = (sys_cputimer->freq64_usec * delta) >> 32;
+	tvp->tv_usec = muldivu64(sys_cputimer->freq64_usec, delta, 1L << 32);
 
 	bt = &basetime[basetime_index];
 	cpu_lfence();
@@ -1530,7 +1531,7 @@ nanotime(struct timespec *tsp)
 		tsp->tv_sec += delta / sys_cputimer->freq;
 		delta %= sys_cputimer->freq;
 	}
-	tsp->tv_nsec = (sys_cputimer->freq64_nsec * delta) >> 32;
+	tsp->tv_nsec = muldivu64(sys_cputimer->freq64_nsec, delta, 1L << 32);
 
 	bt = &basetime[basetime_index];
 	cpu_lfence();
@@ -1687,7 +1688,7 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 		ts.tv_sec += delta / sys_cputimer->freq;
 		delta %= sys_cputimer->freq;
 	}
-	ts.tv_nsec = (sys_cputimer->freq64_nsec * delta) >> 32;
+	ts.tv_nsec = muldivu64(sys_cputimer->freq64_nsec, delta, 1L << 32);
 	ni = basetime_index;
 	cpu_lfence();
 	bt = &basetime[ni];
@@ -1718,7 +1719,8 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 				 sys_cputimer->freq64_nsec * 
 				 (tcount % sys_cputimer->freq)) >> 32;
 		} else {
-			delta = (sys_cputimer->freq64_nsec * tcount) >> 32;
+			delta = muldivu64(sys_cputimer->freq64_nsec,
+					  tcount, 1L << 32);
 		}
 		hardpps(tsp, delta);
 	}

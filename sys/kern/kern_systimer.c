@@ -82,7 +82,7 @@ systimer_intr(sysclock_t *timep, int in_ipi, struct intrframe *frame)
 	 * If we haven't reached the requested time, tell the cputimer
 	 * how much is left and break out.
 	 */
-	if ((int)(info->time - time) > 0) {
+	if ((ssysclock_t)(info->time - time) > 0) {
 	    cputimer_intr_reload(info->time - time);
 	    break;
 	}
@@ -119,7 +119,7 @@ systimer_intr(sysclock_t *timep, int in_ipi, struct intrframe *frame)
 	    }
 	    info->time += info->periodic;
 	    if ((info->flags & SYSTF_NONQUEUED) &&
-		(int)(info->time - time) <= 0
+		(ssysclock_t)(info->time - time) <= 0
 	    ) {
 		info->time += roundup(time - info->time, info->periodic);
 	    }
@@ -151,7 +151,7 @@ systimer_add(systimer_t info)
 	systimer_t scan1;
 	systimer_t scan2;
 	scan1 = TAILQ_FIRST(&gd->gd_systimerq);
-	if (scan1 == NULL || (int)(scan1->time - info->time) > 0) {
+	if (scan1 == NULL || (ssysclock_t)(scan1->time - info->time) > 0) {
 	    cputimer_intr_reload(info->time - sys_cputimer->count());
 	    TAILQ_INSERT_HEAD(&gd->gd_systimerq, info, node);
 	} else {
@@ -166,11 +166,11 @@ systimer_add(systimer_t info)
 			 * When coincident events occur, the event being
 			 * added wants to be placed before the others.
 			 */
-			if ((int)(scan1->time - info->time) >= 0) {
+			if ((ssysclock_t)(scan1->time - info->time) >= 0) {
 			    TAILQ_INSERT_BEFORE(scan1, info, node);
 			    break;
 			}
-			if ((int)(scan2->time - info->time) < 0) {
+			if ((ssysclock_t)(scan2->time - info->time) < 0) {
 			    TAILQ_INSERT_AFTER(&gd->gd_systimerq, scan2,
 					       info, node);
 			    break;
@@ -181,11 +181,11 @@ systimer_add(systimer_t info)
 			 * added should be placed after the others.  This
 			 * is the default.
 			 */
-			if ((int)(scan1->time - info->time) > 0) {
+			if ((ssysclock_t)(scan1->time - info->time) > 0) {
 			    TAILQ_INSERT_BEFORE(scan1, info, node);
 			    break;
 			}
-			if ((int)(scan2->time - info->time) <= 0) {
+			if ((ssysclock_t)(scan2->time - info->time) <= 0) {
 			    TAILQ_INSERT_AFTER(&gd->gd_systimerq, scan2,
 					        info, node);
 			    break;
@@ -256,7 +256,7 @@ systimer_del(systimer_t info)
 static __inline
 void
 _systimer_init_periodic(systimer_t info, systimer_func_t func, void *data,
-			int freq, int flags)
+			int64_t freq, int flags)
 {
     sysclock_t base_count;
 
@@ -291,14 +291,14 @@ _systimer_init_periodic(systimer_t info, systimer_func_t func, void *data,
 
 void
 systimer_init_periodic(systimer_t info, systimer_func_t func, void *data,
-		       int freq)
+		       int64_t freq)
 {
 	_systimer_init_periodic(info, func, data, freq, 0);
 }
 
 void
 systimer_init_periodic_nq(systimer_t info, systimer_func_t func, void *data,
-			  int freq)
+			  int64_t freq)
 {
 	_systimer_init_periodic(info, func, data, freq, SYSTF_NONQUEUED);
 }
@@ -314,7 +314,7 @@ systimer_init_periodic_nq(systimer_t info, systimer_func_t func, void *data,
  */
 void
 systimer_init_periodic_nq1khz(systimer_t info, systimer_func_t func,
-			      void *data, int freq)
+			      void *data, int64_t freq)
 {
 	_systimer_init_periodic(info, func, data, freq,
 				SYSTF_NONQUEUED | SYSTF_MSSYNC);
@@ -322,7 +322,7 @@ systimer_init_periodic_nq1khz(systimer_t info, systimer_func_t func,
 
 void
 systimer_init_periodic_nq100khz(systimer_t info, systimer_func_t func,
-				void *data, int freq)
+				void *data, int64_t freq)
 {
 	_systimer_init_periodic(info, func, data, freq,
 				SYSTF_NONQUEUED | SYSTF_100KHZSYNC);
@@ -330,7 +330,7 @@ systimer_init_periodic_nq100khz(systimer_t info, systimer_func_t func,
 
 void
 systimer_init_periodic_flags(systimer_t info, systimer_func_t func,
-				void *data, int freq, int flags)
+				void *data, int64_t freq, int flags)
 {
 	_systimer_init_periodic(info, func, data, freq, flags);
 }
@@ -341,7 +341,7 @@ systimer_init_periodic_flags(systimer_t info, systimer_func_t func,
  * running.  The current timeout is not effected.
  */
 void
-systimer_adjust_periodic(systimer_t info, int freq)
+systimer_adjust_periodic(systimer_t info, int64_t freq)
 {
     crit_enter();
     info->periodic = sys_cputimer->fromhz(freq);
@@ -357,7 +357,8 @@ systimer_adjust_periodic(systimer_t info, int freq)
  *	it to the system.  The frequency is uncompensated and approximate.
  */
 void
-systimer_init_oneshot(systimer_t info, systimer_func_t func, void *data, int us)
+systimer_init_oneshot(systimer_t info, systimer_func_t func,
+		      void *data, int64_t us)
 {
     bzero(info, sizeof(struct systimer));
     info->time = sys_cputimer->count() + sys_cputimer->fromus(us);
@@ -365,5 +366,52 @@ systimer_init_oneshot(systimer_t info, systimer_func_t func, void *data, int us)
     info->data = data;
     info->which = sys_cputimer;
     info->gd = mycpu;
+    info->us = us;
     systimer_add(info);
+}
+
+/*
+ * sys_cputimer was changed, recalculate all existing systimers and kick the
+ * new interrupt.
+ */
+static void
+systimer_changed_pcpu(void *arg __unused)
+{
+    globaldata_t gd = mycpu;
+    systimer_t info;
+
+    crit_enter();
+again:
+    TAILQ_FOREACH(info, &gd->gd_systimerq, node) {
+	if (info->which == sys_cputimer)
+		continue;
+	TAILQ_REMOVE(&gd->gd_systimerq, info, node);
+	info->flags &= ~SYSTF_ONQUEUE;
+	if (info->periodic) {
+		_systimer_init_periodic(info, info->func, info->data,
+					info->freq, info->flags);
+	} else {
+		info->time = sys_cputimer->count() +
+			     sys_cputimer->fromus(info->us);
+		systimer_add(info);
+	}
+	goto again;
+    }
+    cputimer_intr_reload(1);
+    crit_exit();
+}
+
+void
+systimer_changed(void)
+{
+    globaldata_t gd = mycpu;
+    int i;
+
+    systimer_changed_pcpu(NULL);
+    for (i = 0; i < ncpus; ++i) {
+	if (i != gd->gd_cpuid) {
+		lwkt_send_ipiq(globaldata_find(i),
+			       systimer_changed_pcpu, NULL);
+	}
+    }
 }

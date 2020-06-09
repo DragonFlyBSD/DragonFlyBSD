@@ -485,4 +485,21 @@ bitcount64(uint64_t x)
 	return (x);
 }
 
+/*
+ * Calculate (a * b) / c with a 128-bit intermediate computation to
+ * avoid overflow.
+ */
+static __inline uint64_t
+muldivu64(uint64_t a, uint64_t b, uint64_t d)
+{
+	unsigned __int128 t;
+
+	t = (unsigned __int128)a * b;
+	if (t / d > 0xFFFFFFFFFFFFFFFFLU) {
+		kprintf("muldivu64: overflow %ld,%ld,%ld\n", a, b, d);
+		print_backtrace(-1);
+	}
+	return (t / d);
+}
+
 #endif /* !_SYS_SYSTM_H_ */

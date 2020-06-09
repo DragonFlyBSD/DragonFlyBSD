@@ -131,7 +131,26 @@ TUNABLE_INT("hw.calibrate_timers_with_hpet", &acpi_hpet_for_calibration);
 static sysclock_t
 acpi_hpet_early_get_timecount(void)
 {
-	return readl(ptr + HPET_MAIN_COUNTER) + acpi_hpet_timer.base;
+	sysclock_t last_counter;
+	sysclock_t next_counter;
+	uint32_t counter;
+
+	last_counter = acpi_hpet_timer.base;
+	for (;;) {
+		cpu_ccfence();
+		counter = readl(ptr + HPET_MAIN_COUNTER);
+		if (counter < (last_counter & 0xFFFFFFFFU))
+			next_counter = ((last_counter + 0x0100000000U) &
+					0xFFFFFFFF00000000LU) | counter;
+		else
+			next_counter = (last_counter &
+					0xFFFFFFFF00000000LU) | counter;
+		if (atomic_fcmpset_long(&acpi_hpet_timer.base, &last_counter,
+					next_counter)) {
+			break;
+		}
+	}
+	return next_counter;
 }
 
 static void
@@ -212,7 +231,7 @@ acpi_hpet_early_init(void)
 	val = readl(ptr + HPET_CONFIG);
 	writel(ptr + HPET_CONFIG, val & ~HPET_CNF_ENABLE);
 	acpi_hpet_timer.freq = freq;
-	kprintf("acpi_hpet: frequency %u\n", acpi_hpet_timer.freq);
+	kprintf("acpi_hpet: frequency %lu\n", acpi_hpet_timer.freq);
 
 	acpi_hpet_timer.count = acpi_hpet_early_get_timecount;
 	acpi_hpet_timer.construct = acpi_hpet_early_construct;
@@ -477,7 +496,7 @@ acpi_hpet_attach(device_t dev)
 	}
 
 	acpi_hpet_timer.freq = freq;
-	device_printf(dev, "frequency %u\n", acpi_hpet_timer.freq);
+	device_printf(dev, "frequency %lu\n", acpi_hpet_timer.freq);
 
 	cputimer_register(&acpi_hpet_timer);
 	cputimer_select(&acpi_hpet_timer, 0);
@@ -499,7 +518,26 @@ acpi_hpet_construct(struct cputimer *timer, sysclock_t oldclock)
 static sysclock_t
 acpi_hpet_get_timecount(void)
 {
-	return acpi_hpet_read() + acpi_hpet_timer.base;  
+	sysclock_t last_counter;
+	sysclock_t next_counter;
+	uint32_t counter;
+
+	last_counter = acpi_hpet_timer.base;
+	for (;;) {
+		cpu_ccfence();
+		counter = acpi_hpet_read();
+		if (counter < (last_counter & 0xFFFFFFFFU))
+			next_counter = ((last_counter + 0x0100000000U) &
+					0xFFFFFFFF00000000LU) | counter;
+		else
+			next_counter = (last_counter &
+					0xFFFFFFFF00000000LU) | counter;
+		if (atomic_fcmpset_long(&acpi_hpet_timer.base, &last_counter,
+					next_counter)) {
+			break;
+		}
+	}
+	return next_counter;
 }
 
 static void

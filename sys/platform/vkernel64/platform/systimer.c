@@ -161,7 +161,7 @@ vkernel_timer_get_timecount(void)
 	else
 		clock_gettime(CLOCK_MONOTONIC_FAST, &ts);
 	count = ts.tv_nsec / 1000;
-	count += ts.tv_sec * 1000000;
+	count += (uint64_t)ts.tv_sec * 1000000;
 
 	return count;
 }
@@ -235,8 +235,8 @@ vktimer_thread(cothread_t cotd)
 		sysclock_t curtime;
 		sysclock_t reload;
 		ssysclock_t delta;
+		sysclock_t freq;
 		int n;
-		uint32_t freq;
 
 		/*
 		 * Sleep
@@ -280,7 +280,7 @@ rescan:
 			 */
 			reload = ticklength_us / 10;
 		}
-		vktimer_ts.tv_nsec = ((uint64_t)reload * 1000000000) / freq;
+		vktimer_ts.tv_nsec = muldivu64(reload, 1000000000, freq);
 	}
 }
 
@@ -298,7 +298,7 @@ vktimer_intr_reload(struct cputimer_intr *cti __unused, sysclock_t reload)
 	vktimer_reload[mycpu->gd_cpuid] = reload;
 	if (vktimer_cotd && (ssysclock_t)(reload - vktimer_target) < 0) {
 		while ((sysclock_t)(reload - vktimer_target) < 0)
-			reload = atomic_swap_int(&vktimer_target, reload);
+			reload = atomic_swap_long(&vktimer_target, reload);
 		cothread_wakeup(vktimer_cotd, &vktimer_ts);
 	}
 }

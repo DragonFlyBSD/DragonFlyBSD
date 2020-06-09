@@ -872,7 +872,7 @@ rand_thread_loop(void *dummy)
 		 * Go faster in the first 1200 seconds after boot.  This effects
 		 * the time-after-next interrupt (pipeline delay).
 		 */
-		count = sys_cputimer->freq * (count + 256) / (256 * 10);
+		count = muldivu64(sys_cputimer->freq, count + 256, 256 * 10);
 		if (time_uptime < 120)
 			count = count / 10 + 1;
 		systimer_rand.periodic = count;

@@ -191,7 +191,6 @@ struct lwp {
 	 * Scheduling.
 	 */
 	sysclock_t	lwp_cpticks;	/* cpu used in sched clock ticks */
-	sysclock_t	lwp_cpbase;	/* Measurement base */
 	fixpt_t		lwp_pctcpu;	/* %cpu for this process */
 	u_int		lwp_slptime;	/* Time since last blocked. */
 	u_int		lwp_rebal_ticks; /* Timestamp sched on current cpu */
@@ -221,7 +220,7 @@ struct lwp {
 	struct lwkt_token lwp_token;	/* per-lwp token for signal/state */
 	struct spinlock lwp_spin;	/* spinlock for signal handling */
 	TAILQ_HEAD(, vm_map_backing) lwp_lpmap_backing_list;
-	void		*lwp_reserveds2; /* reserved for lwp_saveupc */
+	sysclock_t	lwp_cpbase;	/* Measurement base */
 };
 
 struct	proc {

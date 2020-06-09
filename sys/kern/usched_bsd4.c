@@ -1045,7 +1045,8 @@ bsd4_recalculate_estcpu(struct lwp *lp)
 		}
 
 		if (usched_bsd4_debug == lp->lwp_proc->p_pid) {
-			kprintf("pid %d lwp %p estcpu %3d %3d bat %d cp %d/%d",
+			kprintf("pid %d lwp %p estcpu %3d %3d bat %d "
+				"cp %ld/%ld",
 				lp->lwp_proc->p_pid, lp,
 				estcpu, lp->lwp_estcpu,
 				lp->lwp_batch,

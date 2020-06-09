@@ -127,7 +127,7 @@ static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
 static	u_char	rtc_statusb = RTCSB_24HR | RTCSB_PINTR;
 static  int	rtc_loaded;
 
-static int i8254_cputimer_div;
+static	sysclock_t i8254_cputimer_div;
 
 static int i8254_nointr;
 static int i8254_intr_disable = 1;
@@ -292,14 +292,15 @@ i8254_cputimer_count(void)
 
 	clock_lock();
 	outb(TIMER_MODE, i8254_walltimer_sel | TIMER_LATCH);
-	count = (uint8_t)inb(i8254_walltimer_cntr);		/* get countdown */
+	count = (uint8_t)inb(i8254_walltimer_cntr);	/* get countdown */
 	count |= ((uint8_t)inb(i8254_walltimer_cntr) << 8);
 	count = -count;					/* -> countup */
 	if (count < cputimer_last)			/* rollover */
-		i8254_cputimer.base += 0x00010000;
+		i8254_cputimer.base += 0x00010000U;
 	ret = i8254_cputimer.base | count;
 	cputimer_last = count;
 	clock_unlock();
+
 	return(ret);
 }
 
@@ -313,8 +314,8 @@ i8254_cputimer_count(void)
 static void
 i8254_intr_config(struct cputimer_intr *cti, const struct cputimer *timer)
 {
-    int freq;
-    int div;
+    sysclock_t freq;
+    sysclock_t div;
 
     /*
      * Will a simple divide do the trick?
@@ -343,10 +344,12 @@ i8254_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
     if (i8254_cputimer_div)
 	reload /= i8254_cputimer_div;
     else
-	reload = (int64_t)reload * cti->freq / sys_cputimer->freq;
+	reload = muldivu64(reload, cti->freq, sys_cputimer->freq);
 
-    if ((int)reload < 2)
-	reload = 2;
+    if (reload < 2)
+	reload = 2;		/* minimum count */
+    if (reload > 0xFFFF)
+	reload = 0xFFFF;	/* almost full count (0 is full count) */
 
     clock_lock();
     if (timer0_running) {
@@ -360,8 +363,6 @@ i8254_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 	}
     } else {
 	timer0_running = 1;
-	if (reload > 0xFFFF)
-	    reload = 0;		/* full count */
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
 	outb(TIMER_CNTR0, (uint8_t)reload); 		/* lsb */
 	outb(TIMER_CNTR0, (uint8_t)(reload >> 8));	/* msb */
@@ -411,8 +412,7 @@ DODELAY(int n, int doswitch)
 	 * number of microseconds.
 	 */
 	prev_tick = sys_cputimer->count();
-	ticks_left = ((u_int)n * (int64_t)sys_cputimer->freq + 999999) /
-		     1000000;
+	ticks_left = muldivu64(n, sys_cputimer->freq + 999999, 1000000);
 
 	/*
 	 * Loop until done.
@@ -465,11 +465,10 @@ CHECKTIMEOUT(TOTALDELAY *tdd)
 		return(0);
 	}
 	delta = sys_cputimer->count() - tdd->last_clock;
-	us = (u_int64_t)delta * (u_int64_t)1000000 /
-	     (u_int64_t)sys_cputimer->freq;
-	tdd->last_clock += (u_int64_t)us * (u_int64_t)sys_cputimer->freq /
-			   1000000;
+	us = muldivu64(delta, 1000000, sys_cputimer->freq);
+	tdd->last_clock += muldivu64(us, sys_cputimer->freq, 1000000);
 	tdd->us -= us;
+
 	return (tdd->us < 0);
 }
 
@@ -559,7 +558,7 @@ static u_int
 calibrate_clocks(void)
 {
 	tsc_uclock_t old_tsc;
-	u_int tot_count;
+	sysclock_t tot_count;
 	sysclock_t count, prev_count;
 	int sec, start_sec, timeout;
 
@@ -615,7 +614,7 @@ calibrate_clocks(void)
 		if (!(rtcin(RTC_STATUSA) & RTCSA_TUP))
 			sec = rtcin(RTC_SEC);
 		count = sys_cputimer->count();
-		tot_count += (int)(count - prev_count);
+		tot_count += (sysclock_t)(count - prev_count);
 		prev_count = count;
 		if (sec != start_sec)
 			break;
@@ -636,11 +635,11 @@ calibrate_clocks(void)
 	}
 	tsc_oneus_approx = ((tsc_frequency|1) + 999999) / 1000000;
 
-	kprintf("i8254 clock: %u Hz\n", tot_count);
+	kprintf("i8254 clock: %lu Hz\n", tot_count);
 	return (tot_count);
 
 fail:
-	kprintf("failed, using default i8254 clock of %u Hz\n",
+	kprintf("failed, using default i8254 clock of %lu Hz\n",
 		i8254_cputimer.freq);
 	return (i8254_cputimer.freq);
 }
@@ -703,7 +702,7 @@ i8254_cputimer_construct(struct cputimer *timer, sysclock_t oldclock)
 		break;
 	}
 
-	timer->base = (oldclock + 0xFFFF) & ~0xFFFF;
+	timer->base = (oldclock + 0xFFFF) & 0xFFFFFFFFFFFF0000LU;
 
 	clock_lock();
 	outb(TIMER_MODE, i8254_walltimer_sel | TIMER_RATEGEN | TIMER_16BIT);
@@ -818,8 +817,8 @@ do_calibrate_cputimer(u_int usecs, u_int64_t timer_latency)
 		end1 -= start1;
 		end2 -= start2;
 		/* This should in practice be safe from overflows. */
-		freq1 = (freq1 * sys_cputimer->freq) / end1;
-		freq2 = (freq2 * sys_cputimer->freq) / end2;
+		freq1 = muldivu64(freq1, sys_cputimer->freq, end1);
+		freq2 = muldivu64(freq2, sys_cputimer->freq, end2);
 		if (calibrate_test && (retries1 > 0 || retries2 > 0)) {
 			kprintf("%s: retries: %d, %d, %d, %d\n",
 			    __func__, retries1, retries2, retries3, retries4);
@@ -850,7 +849,7 @@ void
 startrtclock(void)
 {
 	const timecounter_init_t **list;
-	u_int delta, freq;
+	sysclock_t delta, freq;
 
 	callout_init_mp(&sysbeepstop_ch);
 
@@ -941,7 +940,7 @@ startrtclock(void)
 	 * frequency.
 	 */
 	delta = freq > i8254_cputimer.freq ? 
-			freq - i8254_cputimer.freq : i8254_cputimer.freq - freq;
+		freq - i8254_cputimer.freq : i8254_cputimer.freq - freq;
 	if (delta < i8254_cputimer.freq / 100) {
 		if (calibrate_timers_with_rtc == 0) {
 			kprintf(
@@ -957,7 +956,7 @@ startrtclock(void)
 		cputimer_set_frequency(&i8254_cputimer, freq);
 	} else {
 		if (bootverbose)
-			kprintf("%d Hz differs from default of %d Hz "
+			kprintf("%lu Hz differs from default of %lu Hz "
 				"by more than 1%%\n",
 			        freq, i8254_cputimer.freq);
 		tsc_frequency = 0;
@@ -1213,15 +1212,19 @@ i8254_ioapic_trial(int irq, struct cputimer_intr *cti)
 	 * Force an 8254 Timer0 interrupt and wait 1/100s for
 	 * it to happen, then see if we got it.
 	 */
-	kprintf("IOAPIC: testing 8254 interrupt delivery\n");
+	kprintf("IOAPIC: testing 8254 interrupt delivery...");
 
-	i8254_intr_reload(cti, 2);
+	i8254_intr_reload(cti, sys_cputimer->fromus(2));
 	base = sys_cputimer->count();
 	while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
 		; /* nothing */
 
-	if (get_interrupt_counter(irq, mycpuid) - lastcnt == 0)
+	if (get_interrupt_counter(irq, mycpuid) - lastcnt == 0) {
+		kprintf(" failed\n");
 		return ENOENT;
+	} else {
+		kprintf(" success\n");
+	}
 	return 0;
 }
 
@@ -1377,7 +1380,7 @@ hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
     else
 	tscval = 0;
     crit_exit();
-    ksnprintf(buf, sizeof(buf), "%08x %016llx", count, (long long)tscval);
+    ksnprintf(buf, sizeof(buf), "%016lx %016lx", count, tscval);
     return(SYSCTL_OUT(req, buf, strlen(buf) + 1));
 }
 

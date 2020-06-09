@@ -112,6 +112,7 @@ cputimer_select(struct cputimer *timer, int pri)
 	    sys_cputimer = timer;
 	    timer->construct(timer, oldclock);
 	    cputimer_intr_config(timer);
+	    systimer_changed();
 	}
     }
 }
@@ -190,15 +191,15 @@ cputimer_set_frequency(struct cputimer *timer, sysclock_t freq)
 }
 
 sysclock_t
-cputimer_default_fromhz(int freq)
+cputimer_default_fromhz(int64_t freq)
 {
     return(sys_cputimer->freq / freq + 1);
 }
 
 sysclock_t
-cputimer_default_fromus(int us)
+cputimer_default_fromus(int64_t us)
 {
-    return((int64_t)sys_cputimer->freq * us / 1000000);
+    return muldivu64(us, sys_cputimer->freq, 1000000);
 }
 
 /*
@@ -286,10 +287,10 @@ SYSCTL_PROC(_kern_cputimer, OID_AUTO, select, CTLTYPE_STRING|CTLFLAG_RD,
 	    NULL, 0, sysctl_cputimer_reglist, "A", "");
 SYSCTL_PROC(_kern_cputimer, OID_AUTO, name, CTLTYPE_STRING|CTLFLAG_RD,
 	    NULL, 0, sysctl_cputimer_name, "A", "");
-SYSCTL_PROC(_kern_cputimer, OID_AUTO, clock, CTLTYPE_UINT|CTLFLAG_RD,
-	    NULL, 0, sysctl_cputimer_clock, "IU", "");
-SYSCTL_PROC(_kern_cputimer, OID_AUTO, freq, CTLTYPE_INT|CTLFLAG_RD,
-	    NULL, 0, sysctl_cputimer_freq, "I", "");
+SYSCTL_PROC(_kern_cputimer, OID_AUTO, clock, CTLTYPE_ULONG|CTLFLAG_RD,
+	    NULL, 0, sysctl_cputimer_clock, "LU", "");
+SYSCTL_PROC(_kern_cputimer, OID_AUTO, freq, CTLTYPE_LONG|CTLFLAG_RD,
+	    NULL, 0, sysctl_cputimer_freq, "L", "");
 
 static struct cputimer_intr *sys_cputimer_intr;
 static uint32_t cputimer_intr_caps;
@@ -524,8 +525,8 @@ SYSCTL_NODE(_kern_cputimer, OID_AUTO, intr, CTLFLAG_RW, NULL,
 
 SYSCTL_PROC(_kern_cputimer_intr, OID_AUTO, reglist, CTLTYPE_STRING|CTLFLAG_RD,
 	    NULL, 0, sysctl_cputimer_intr_reglist, "A", "");
-SYSCTL_PROC(_kern_cputimer_intr, OID_AUTO, freq, CTLTYPE_INT|CTLFLAG_RD,
-	    NULL, 0, sysctl_cputimer_intr_freq, "I", "");
+SYSCTL_PROC(_kern_cputimer_intr, OID_AUTO, freq, CTLTYPE_LONG|CTLFLAG_RD,
+	    NULL, 0, sysctl_cputimer_intr_freq, "L", "");
 SYSCTL_PROC(_kern_cputimer_intr, OID_AUTO, select, CTLTYPE_STRING|CTLFLAG_RW,
 	    NULL, 0, sysctl_cputimer_intr_select, "A", "");
 

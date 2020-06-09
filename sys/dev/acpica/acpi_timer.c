@@ -214,53 +214,51 @@ acpi_timer_construct(struct cputimer *timer, sysclock_t oldclock)
 static sysclock_t
 acpi_timer_get_timecount24(void)
 {
-    sysclock_t counter;
     sysclock_t last_counter;
-    ssysclock_t delta;
-    ssysclock_t admit;
+    sysclock_t next_counter;
+    uint32_t counter;
 
-    /*
-     * Range beyond which we force clock_lock.  Make it occur more
-     * often on one cpu than on the others to avoid nearly all races.
-     */
-    if (mycpu->gd_cpuid == 1)
-	    admit = (ssysclock_t)(0x01000000 / 32);
-    else
-	    admit = (ssysclock_t)(0x01000000 / 16);
-
-    /*
-     * 24-bit timer, shortcut
-     */
     last_counter = acpi_cputimer.base;
-    cpu_ccfence();
-    AcpiGetTimer(&counter);
-    delta = (ssysclock_t)(counter - (last_counter & 0x00FFFFFF));
-    if (delta > -admit && delta < admit)
-	return ((last_counter & 0xFF000000) + counter);
-
-    /*
-     * 24-bit timer, the hard way
-     */
-    clock_lock();
-    last_counter = acpi_cputimer.base;
-    AcpiGetTimer(&counter);
-    if (counter < (last_counter & 0x00FFFFFF))
-	last_counter += 0x01000000;
-    last_counter = (last_counter & 0xFF000000) + counter;
-    cpu_ccfence();
-    acpi_cputimer.base = last_counter;
-    clock_unlock();
-
-    return (last_counter);
+    for (;;) {
+	    cpu_ccfence();
+	    AcpiGetTimer(&counter);
+	    if (counter < (last_counter & 0x00FFFFFFU))
+		next_counter = ((last_counter + 0x01000000U) &
+			        0xFFFFFFFFFF000000LU) | counter;
+	    else
+		next_counter = (last_counter &
+			        0xFFFFFFFFFF000000LU) | counter;
+	    if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
+				    next_counter)) {
+		break;
+	    }
+    }
+    return next_counter;
 }
 
 static sysclock_t
 acpi_timer_get_timecount(void)
 {
-    sysclock_t counter;
+    sysclock_t last_counter;
+    sysclock_t next_counter;
+    uint32_t counter;
 
-    AcpiGetTimer(&counter);
-    return (counter + acpi_cputimer.base);
+    last_counter = acpi_cputimer.base;
+    for (;;) {
+	    cpu_ccfence();
+	    AcpiGetTimer(&counter);
+	    if (counter < (last_counter & 0xFFFFFFFFU))
+		next_counter = ((last_counter + 0x0100000000U) &
+			        0xFFFFFFFF00000000LU) | counter;
+	    else
+		next_counter = (last_counter &
+			        0xFFFFFFFF00000000LU) | counter;
+	    if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
+				    next_counter)) {
+		break;
+	    }
+    }
+    return next_counter;
 }
 
 /*
@@ -289,50 +287,36 @@ _acpi_timer_get_timecount_safe(void)
 static sysclock_t
 acpi_timer_get_timecount_safe(void)
 {
-    sysclock_t counter;
     sysclock_t last_counter;
-    ssysclock_t delta;
-    ssysclock_t admit;
+    sysclock_t next_counter;
+    uint32_t counter;
 
-    /*
-     * Range beyond which we force clock_lock.  Make it occur more
-     * often on one cpu than on the others to avoid nearly all races.
-     */
-    if (mycpu->gd_cpuid == 1)
-	    admit = (ssysclock_t)(0x01000000 / 32);
-    else
-	    admit = (ssysclock_t)(0x01000000 / 16);
-
-    /*
-     * 32-bit timer is easy
-     */
-    if (acpi_timer_resolution == 32)
-	return _acpi_timer_get_timecount_safe();
-
-    /*
-     * 24-bit timer, shortcut
-     */
     last_counter = acpi_cputimer.base;
-    cpu_ccfence();
-    counter = _acpi_timer_get_timecount_safe();
-    delta = (ssysclock_t)(counter - (last_counter & 0x00FFFFFF));
-    if (delta > -admit && delta < admit)
-	return ((last_counter & 0xFF000000) + counter);
+    for (;;) {
+	    cpu_ccfence();
+	    counter = _acpi_timer_get_timecount_safe();
 
-    /*
-     * 24-bit timer, the hard way
-     */
-    clock_lock();
-    last_counter = acpi_cputimer.base;
-    counter = _acpi_timer_get_timecount_safe();
-    if (counter < (last_counter & 0x00FFFFFF))
-	last_counter += 0x01000000;
-    last_counter = (last_counter & 0xFF000000) + counter;
-    cpu_ccfence();
-    acpi_cputimer.base = last_counter;
-    clock_unlock();
-
-    return (last_counter);
+	    if (acpi_timer_resolution == 32) {
+		    if (counter < (last_counter & 0xFFFFFFFFU))
+			next_counter = ((last_counter + 0x0100000000U) &
+					0xFFFFFFFF00000000LU) | counter;
+		    else
+			next_counter = (last_counter &
+					0xFFFFFFFF00000000LU) | counter;
+	    } else {
+		    if (counter < (last_counter & 0x00FFFFFFU))
+			next_counter = ((last_counter + 0x01000000U) &
+					0xFFFFFFFFFF000000LU) | counter;
+		    else
+			next_counter = (last_counter &
+					0xFFFFFFFFFF000000LU) | counter;
+	    }
+	    if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
+				    next_counter)) {
+		break;
+	    }
+    }
+    return next_counter;
 }
 
 /*

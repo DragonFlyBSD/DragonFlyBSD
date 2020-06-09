@@ -73,14 +73,6 @@ static struct cpucounter tsc_cpucounter = {
     .type		= CPUCOUNTER_TSC
 };
 
-#ifdef _KERNEL_VIRTUAL
-#define TSC_CPUTIMER_FREQMAX	2000000	/* 2MHz */
-#else
-#define TSC_CPUTIMER_FREQMAX	128000000	/* 128Mhz */
-#endif
-
-static int tsc_cputimer_shift;
-
 static void
 tsc_cputimer_construct(struct cputimer *timer, sysclock_t oldclock)
 {
@@ -94,7 +86,6 @@ tsc_cputimer_count(void)
 	uint64_t tsc;
 
 	tsc = rdtsc();
-	tsc >>= tsc_cputimer_shift;
 
 	return (tsc + tsc_cputimer.base);
 }
@@ -116,7 +107,6 @@ tsc_cputimer_count_mfence(void)
 static uint64_t
 tsc_cpucounter_count_lfence(void)
 {
-
 	cpu_lfence();
 	return (rdtsc());
 }
@@ -124,7 +114,6 @@ tsc_cpucounter_count_lfence(void)
 static uint64_t
 tsc_cpucounter_count_mfence(void)
 {
-
 	cpu_mfence();
 	return (rdtsc());
 }
@@ -149,15 +138,14 @@ tsc_cputimer_register(void)
 	if (!enable)
 		return;
 
+	/*
+	 * NOTE: We no longer shift the tsc to limit the reported
+	 *	 frequency.  We use the actual tsc frequency as-is.
+	 */
 	freq = tsc_frequency;
-	while (freq > TSC_CPUTIMER_FREQMAX) {
-		freq >>= 1;
-		++tsc_cputimer_shift;
-	}
-	kprintf("TSC: cputimer freq %ju, shift %d\n",
-	    (uintmax_t)freq, tsc_cputimer_shift);
-
 	tsc_cputimer.freq = freq;
+
+	kprintf("TSC: cputimer freq %ju\n", (uintmax_t)freq);
 
 	if (cpu_vendor_id == CPU_VENDOR_INTEL)
 		tsc_cputimer.count = tsc_cputimer_count_lfence;

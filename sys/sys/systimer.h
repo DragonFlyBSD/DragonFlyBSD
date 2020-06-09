@@ -48,8 +48,8 @@
 
 struct intrframe;
 
-typedef __uint32_t	sysclock_t;
-typedef int32_t		ssysclock_t;
+typedef __uint64_t	sysclock_t;
+typedef int64_t		ssysclock_t;
 typedef TAILQ_HEAD(systimerq, systimer) *systimerq_t;
 typedef void (*systimer_func_t)(struct systimer *, int, struct intrframe *);
 
@@ -57,11 +57,12 @@ typedef struct systimer {
     TAILQ_ENTRY(systimer)	node;
     systimerq_t			queue;
     sysclock_t			time;		/* absolute time next intr */
-    sysclock_t			periodic;	/* if non-zero */
+    sysclock_t			periodic;	/* non-zero if periodic */
     systimer_func_t		func;
     void			*data;
     int				flags;
-    int				freq;		/* frequency if periodic */
+    int				us;		/* non-zero if one-shot */
+    ssysclock_t			freq;		/* frequency if periodic */
     struct cputimer		*which;		/* which timer was used? */
     struct globaldata		*gd;		/* cpu owning structure */
 } *systimer_t;
@@ -76,18 +77,19 @@ typedef struct systimer {
 #define SYSTF_OFFSETCPU		0x0080		/* add cpu*periodic/ncpus */
 
 #ifdef _KERNEL
+void systimer_changed(void);
 void systimer_intr_enable(void);
 void systimer_intr(sysclock_t *, int, struct intrframe *);
 void systimer_add(systimer_t);
 void systimer_del(systimer_t);
-void systimer_init_periodic(systimer_t, systimer_func_t, void *, int);
-void systimer_init_periodic_nq(systimer_t, systimer_func_t, void *, int);
-void systimer_init_periodic_nq1khz(systimer_t, systimer_func_t, void *, int);
-void systimer_init_periodic_nq100khz(systimer_t, systimer_func_t, void *, int);
+void systimer_init_periodic(systimer_t, systimer_func_t, void *, int64_t);
+void systimer_init_periodic_nq(systimer_t, systimer_func_t, void *, int64_t);
+void systimer_init_periodic_nq1khz(systimer_t, systimer_func_t, void *, int64_t);
+void systimer_init_periodic_nq100khz(systimer_t, systimer_func_t, void *, int64_t);
 void systimer_init_periodic_flags(systimer_t, systimer_func_t, void *,
-			int, int);
-void systimer_adjust_periodic(systimer_t, int);
-void systimer_init_oneshot(systimer_t, systimer_func_t, void *, int);
+			int64_t, int);
+void systimer_adjust_periodic(systimer_t, int64_t);
+void systimer_init_oneshot(systimer_t, systimer_func_t, void *, int64_t);
 
 /*
  * The cputimer interface.  This provides a free-running (non-interrupt)
@@ -108,8 +110,6 @@ void systimer_init_oneshot(systimer_t, systimer_func_t, void *, int);
  *
  * REQUIREMENT FOR CPUTIMER IMPLEMENTATION:
  *
- * - 'freq' should not be too high, i.e. sysclock_t, which is 32 bits,
- *   must be able to hold several seconds at least.
  * - The values returned by count() must be MP synchronized.
  * - The values returned by count() must be stable under all situation,
  *   e.g. when the platform enters power saving mode.
@@ -122,8 +122,8 @@ struct cputimer {
     int		pri;
     int		type;
     sysclock_t	(*count)(void);
-    sysclock_t	(*fromhz)(int freq);
-    sysclock_t	(*fromus)(int us);
+    sysclock_t	(*fromhz)(int64_t freq);
+    sysclock_t	(*fromus)(int64_t us);
     void	(*construct)(struct cputimer *, sysclock_t);
     void	(*destruct)(struct cputimer *);
     sysclock_t	sync_base;	/* periodic synchronization base */
@@ -163,8 +163,8 @@ void cputimer_select(struct cputimer *, int);
 void cputimer_register(struct cputimer *);
 void cputimer_deregister(struct cputimer *);
 void cputimer_set_frequency(struct cputimer *, sysclock_t);
-sysclock_t cputimer_default_fromhz(int);
-sysclock_t cputimer_default_fromus(int);
+sysclock_t cputimer_default_fromhz(int64_t);
+sysclock_t cputimer_default_fromus(int64_t);
 void cputimer_default_construct(struct cputimer *, sysclock_t);
 void cputimer_default_destruct(struct cputimer *);
 
