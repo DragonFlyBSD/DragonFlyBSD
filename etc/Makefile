@@ -5,7 +5,7 @@ SUBDIR=	sendmail
 
 # Files that should be installed read-only (444)
 #
-BINUPDATE= devd.conf fbtab gettytab network.subr \
+BINUPDATE= devd.conf fbtab network.subr \
 	pf.os \
 	protocols \
 	rc rc.firewall rc.firewall6 \
@@ -26,7 +26,7 @@ BINUPDATE+=${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 BIN1=	auth.conf \
 	crontab csh.cshrc csh.login csh.logout \
 	devtab dhclient.conf dntpd.conf \
-	ftpusers group \
+	ftpusers gettytab group \
 	hosts hosts.allow hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
 	motd modems netconfig networks newsyslog.conf \
