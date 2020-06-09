@@ -145,4 +145,14 @@ static inline void write_seqcount_end(seqcount_t *s)
 	s->sequence++;
 }
 
+static inline unsigned int
+raw_read_seqcount(const seqcount_t *s)
+{
+	unsigned int value = READ_ONCE(s->sequence);
+
+	cpu_ccfence();
+
+	return value;
+}
+
 #endif	/* _LINUX_SEQLOCK_H_ */
