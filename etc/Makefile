@@ -307,11 +307,9 @@ distribution:
 .endif
 .endfor
 	mkdir -p ${DESTDIR}/dev
-	cd ${.CURDIR}/root; \
+	cd ${.CURDIR}/../share/skel; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 		dot.cshrc ${DESTDIR}/root/.cshrc; \
-	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-		dot.klogin ${DESTDIR}/root/.klogin; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 		dot.login ${DESTDIR}/root/.login; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
