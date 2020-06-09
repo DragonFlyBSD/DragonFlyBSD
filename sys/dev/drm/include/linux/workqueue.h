@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -235,5 +235,11 @@ work_busy(struct work_struct *work)
 bool flush_delayed_work(struct delayed_work *dwork);
 
 void drain_workqueue(struct workqueue_struct *wq);
+
+static inline bool
+work_pending(struct work_struct * work)
+{
+	return work->work_task.ta_pending;
+}
 
 #endif	/* _LINUX_WORKQUEUE_H_ */
