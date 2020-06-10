@@ -1,17 +1,16 @@
-GNU DIFFUTILS 3.3
+GNU DIFFUTILS 3.7
 =================
 
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/diffutils
 
-file = diffutils-3.3.tar.xz
-date = 24 March 2013
-size = 1197832
-sha1 = 6463cce7d3eb73489996baefd0e4425928ecd61e
+file = diffutils-3.7.tar.xz
+date = 1 January 2019
+size = 1448828
+sha1 = ad4e0a05ee2e7f5529db6cb84474f45e086e609b
 
-A list of files and directories removed is in README.DELETED
+Use "git diff vendor/DIFFUTILS contrib/diffutils" to see local modifications.
 
-Local modifications applied to following files:
-	src/diff.c
-	src/diff3.c
-	src/sdiff.c
+When upgrading, remember to update also regenerated header files
+gnu/usr.bin/diff/{libdiffutils,libver,diff}/*.h on master branch, but keep
+local adjustments in config.h.

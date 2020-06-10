@@ -1,6 +1,6 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
-/* Provide a more complete sys/stat header file.
-   Copyright (C) 2005-2013 Free Software Foundation, Inc.
+/* Provide a more complete sys/stat.h header file.
+   Copyright (C) 2005-2018 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
+   along with this program; if not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Eric Blake, Paul Eggert, and Jim Meyering.  */
 
@@ -50,8 +50,33 @@
 #define _GL_SYS_STAT_H
 
 /* The definitions of _GL_FUNCDECL_RPL etc. are copied here.  */
+/* C++ compatible function declaration macros.
+   Copyright (C) 2010-2018 Free Software Foundation, Inc.
+
+   This program is free software: you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published
+   by the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
+
 #ifndef _GL_CXXDEFS_H
 #define _GL_CXXDEFS_H
+
+/* Begin/end the GNULIB_NAMESPACE namespace.  */
+#if defined __cplusplus && defined GNULIB_NAMESPACE
+# define _GL_BEGIN_NAMESPACE namespace GNULIB_NAMESPACE {
+# define _GL_END_NAMESPACE }
+#else
+# define _GL_BEGIN_NAMESPACE
+# define _GL_END_NAMESPACE
+#endif
 
 /* The three most frequent use cases of these macros are:
 
@@ -147,14 +172,25 @@
    that redirects to rpl_func, if GNULIB_NAMESPACE is defined.
    Example:
      _GL_CXXALIAS_RPL (open, int, (const char *filename, int flags, ...));
- */
+
+   Wrapping rpl_func in an object with an inline conversion operator
+   avoids a reference to rpl_func unless GNULIB_NAMESPACE::func is
+   actually used in the program.  */
 #define _GL_CXXALIAS_RPL(func,rettype,parameters) \
   _GL_CXXALIAS_RPL_1 (func, rpl_##func, rettype, parameters)
 #if defined __cplusplus && defined GNULIB_NAMESPACE
 # define _GL_CXXALIAS_RPL_1(func,rpl_func,rettype,parameters) \
     namespace GNULIB_NAMESPACE                                \
     {                                                         \
-      rettype (*const func) parameters = ::rpl_func;          \
+      static const struct _gl_ ## func ## _wrapper            \
+      {                                                       \
+        typedef rettype (*type) parameters;                   \
+                                                              \
+        inline operator type () const                         \
+        {                                                     \
+          return ::rpl_func;                                  \
+        }                                                     \
+      } func = {};                                            \
     }                                                         \
     _GL_EXTERN_C int _gl_cxxalias_dummy
 #else
@@ -171,8 +207,15 @@
 # define _GL_CXXALIAS_RPL_CAST_1(func,rpl_func,rettype,parameters) \
     namespace GNULIB_NAMESPACE                                     \
     {                                                              \
-      rettype (*const func) parameters =                           \
-        reinterpret_cast<rettype(*)parameters>(::rpl_func);        \
+      static const struct _gl_ ## func ## _wrapper                 \
+      {                                                            \
+        typedef rettype (*type) parameters;                        \
+                                                                   \
+        inline operator type () const                              \
+        {                                                          \
+          return reinterpret_cast<type>(::rpl_func);               \
+        }                                                          \
+      } func = {};                                                 \
     }                                                              \
     _GL_EXTERN_C int _gl_cxxalias_dummy
 #else
@@ -186,19 +229,24 @@
    is defined.
    Example:
      _GL_CXXALIAS_SYS (open, int, (const char *filename, int flags, ...));
- */
+
+   Wrapping func in an object with an inline conversion operator
+   avoids a reference to func unless GNULIB_NAMESPACE::func is
+   actually used in the program.  */
 #if defined __cplusplus && defined GNULIB_NAMESPACE
-  /* If we were to write
-       rettype (*const func) parameters = ::func;
-     like above in _GL_CXXALIAS_RPL_1, the compiler could optimize calls
-     better (remove an indirection through a 'static' pointer variable),
-     but then the _GL_CXXALIASWARN macro below would cause a warning not only
-     for uses of ::func but also for uses of GNULIB_NAMESPACE::func.  */
-# define _GL_CXXALIAS_SYS(func,rettype,parameters) \
-    namespace GNULIB_NAMESPACE                     \
-    {                                              \
-      static rettype (*func) parameters = ::func;  \
-    }                                              \
+# define _GL_CXXALIAS_SYS(func,rettype,parameters)            \
+    namespace GNULIB_NAMESPACE                                \
+    {                                                         \
+      static const struct _gl_ ## func ## _wrapper            \
+      {                                                       \
+        typedef rettype (*type) parameters;                   \
+                                                              \
+        inline operator type () const                         \
+        {                                                     \
+          return ::func;                                      \
+        }                                                     \
+      } func = {};                                            \
+    }                                                         \
     _GL_EXTERN_C int _gl_cxxalias_dummy
 #else
 # define _GL_CXXALIAS_SYS(func,rettype,parameters) \
@@ -214,8 +262,15 @@
 # define _GL_CXXALIAS_SYS_CAST(func,rettype,parameters) \
     namespace GNULIB_NAMESPACE                          \
     {                                                   \
-      static rettype (*func) parameters =               \
-        reinterpret_cast<rettype(*)parameters>(::func); \
+      static const struct _gl_ ## func ## _wrapper      \
+      {                                                 \
+        typedef rettype (*type) parameters;             \
+                                                        \
+        inline operator type () const                   \
+        {                                               \
+          return reinterpret_cast<type>(::func);        \
+        }                                               \
+      } func = {};                                      \
     }                                                   \
     _GL_EXTERN_C int _gl_cxxalias_dummy
 #else
@@ -238,9 +293,15 @@
 # define _GL_CXXALIAS_SYS_CAST2(func,rettype,parameters,rettype2,parameters2) \
     namespace GNULIB_NAMESPACE                                                \
     {                                                                         \
-      static rettype (*func) parameters =                                     \
-        reinterpret_cast<rettype(*)parameters>(                               \
-          (rettype2(*)parameters2)(::func));                                  \
+      static const struct _gl_ ## func ## _wrapper                            \
+      {                                                                       \
+        typedef rettype (*type) parameters;                                   \
+                                                                              \
+        inline operator type () const                                         \
+        {                                                                     \
+          return reinterpret_cast<type>((rettype2 (*) parameters2)(::func));  \
+        }                                                                     \
+      } func = {};                                                            \
     }                                                                         \
     _GL_EXTERN_C int _gl_cxxalias_dummy
 #else
@@ -257,7 +318,7 @@
    _GL_CXXALIASWARN_1 (func, GNULIB_NAMESPACE)
 # define _GL_CXXALIASWARN_1(func,namespace) \
    _GL_CXXALIASWARN_2 (func, namespace)
-/* To work around GCC bug <http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43881>,
+/* To work around GCC bug <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=43881>,
    we enable the warning only when not optimizing.  */
 # if !__OPTIMIZE__
 #  define _GL_CXXALIASWARN_2(func,namespace) \
@@ -285,7 +346,7 @@
                         GNULIB_NAMESPACE)
 # define _GL_CXXALIASWARN1_1(func,rettype,parameters_and_attributes,namespace) \
    _GL_CXXALIASWARN1_2 (func, rettype, parameters_and_attributes, namespace)
-/* To work around GCC bug <http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43881>,
+/* To work around GCC bug <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=43881>,
    we enable the warning only when not optimizing.  */
 # if !__OPTIMIZE__
 #  define _GL_CXXALIASWARN1_2(func,rettype,parameters_and_attributes,namespace) \
@@ -307,6 +368,22 @@
 #endif /* _GL_CXXDEFS_H */
 
 /* The definition of _GL_ARG_NONNULL is copied here.  */
+/* A C macro for declaring that specific arguments must not be NULL.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
+
+   This program is free software: you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published
+   by the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
+
 /* _GL_ARG_NONNULL((n,...,m)) tells the compiler and static analyzer tools
    that the values passed as arguments n, ..., m must be non-NULL pointers.
    n = 1 stands for the first argument, n = 2 for the second argument etc.  */
@@ -319,19 +396,104 @@
 #endif
 
 /* The definition of _GL_WARN_ON_USE is copied here.  */
+/* A C macro for emitting warnings if a function is used.
+   Copyright (C) 2010-2018 Free Software Foundation, Inc.
+
+   This program is free software: you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published
+   by the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
+
+/* _GL_WARN_ON_USE (function, "literal string") issues a declaration
+   for FUNCTION which will then trigger a compiler warning containing
+   the text of "literal string" anywhere that function is called, if
+   supported by the compiler.  If the compiler does not support this
+   feature, the macro expands to an unused extern declaration.
+
+   _GL_WARN_ON_USE_ATTRIBUTE ("literal string") expands to the
+   attribute used in _GL_WARN_ON_USE.  If the compiler does not support
+   this feature, it expands to empty.
+
+   These macros are useful for marking a function as a potential
+   portability trap, with the intent that "literal string" include
+   instructions on the replacement function that should be used
+   instead.
+   _GL_WARN_ON_USE is for functions with 'extern' linkage.
+   _GL_WARN_ON_USE_ATTRIBUTE is for functions with 'static' or 'inline'
+   linkage.
+
+   However, one of the reasons that a function is a portability trap is
+   if it has the wrong signature.  Declaring FUNCTION with a different
+   signature in C is a compilation error, so this macro must use the
+   same type as any existing declaration so that programs that avoid
+   the problematic FUNCTION do not fail to compile merely because they
+   included a header that poisoned the function.  But this implies that
+   _GL_WARN_ON_USE is only safe to use if FUNCTION is known to already
+   have a declaration.  Use of this macro implies that there must not
+   be any other macro hiding the declaration of FUNCTION; but
+   undefining FUNCTION first is part of the poisoning process anyway
+   (although for symbols that are provided only via a macro, the result
+   is a compilation error rather than a warning containing
+   "literal string").  Also note that in C++, it is only safe to use if
+   FUNCTION has no overloads.
+
+   For an example, it is possible to poison 'getline' by:
+   - adding a call to gl_WARN_ON_USE_PREPARE([[#include <stdio.h>]],
+     [getline]) in configure.ac, which potentially defines
+     HAVE_RAW_DECL_GETLINE
+   - adding this code to a header that wraps the system <stdio.h>:
+     #undef getline
+     #if HAVE_RAW_DECL_GETLINE
+     _GL_WARN_ON_USE (getline, "getline is required by POSIX 2008, but"
+       "not universally present; use the gnulib module getline");
+     #endif
+
+   It is not possible to directly poison global variables.  But it is
+   possible to write a wrapper accessor function, and poison that
+   (less common usage, like &environ, will cause a compilation error
+   rather than issue the nice warning, but the end result of informing
+   the developer about their portability problem is still achieved):
+     #if HAVE_RAW_DECL_ENVIRON
+     static char ***
+     rpl_environ (void) { return &environ; }
+     _GL_WARN_ON_USE (rpl_environ, "environ is not always properly declared");
+     # undef environ
+     # define environ (*rpl_environ ())
+     #endif
+   or better (avoiding contradictory use of 'static' and 'extern'):
+     #if HAVE_RAW_DECL_ENVIRON
+     static char ***
+     _GL_WARN_ON_USE_ATTRIBUTE ("environ is not always properly declared")
+     rpl_environ (void) { return &environ; }
+     # undef environ
+     # define environ (*rpl_environ ())
+     #endif
+   */
 #ifndef _GL_WARN_ON_USE
 
 # if 4 < __GNUC__ || (__GNUC__ == 4 && 3 <= __GNUC_MINOR__)
 /* A compiler attribute is available in gcc versions 4.3.0 and later.  */
 #  define _GL_WARN_ON_USE(function, message) \
 extern __typeof__ (function) function __attribute__ ((__warning__ (message)))
+#  define _GL_WARN_ON_USE_ATTRIBUTE(message) \
+  __attribute__ ((__warning__ (message)))
 # elif __GNUC__ >= 3 && GNULIB_STRICT_CHECKING
 /* Verify the existence of the function.  */
 #  define _GL_WARN_ON_USE(function, message) \
 extern __typeof__ (function) function
+#  define _GL_WARN_ON_USE_ATTRIBUTE(message)
 # else /* Unsupported.  */
 #  define _GL_WARN_ON_USE(function, message) \
 _GL_WARN_EXTERN_C int _gl_warn_on_use
+#  define _GL_WARN_ON_USE_ATTRIBUTE(message)
 # endif
 #endif
 
@@ -369,19 +531,88 @@ _GL_WARN_EXTERN_C int _gl_warn_on_use
 /* Before doing "#define mkdir rpl_mkdir" below, we need to include all
    headers that may declare mkdir().  Native Windows platforms declare mkdir
    in <io.h> and/or <direct.h>, not in <unistd.h>.  */
-#if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
+#if defined _WIN32 && ! defined __CYGWIN__
 # include <io.h>     /* mingw32, mingw64 */
 # include <direct.h> /* mingw64, MSVC 9 */
 #endif
 
 /* Native Windows platforms declare umask() in <io.h>.  */
-#if 0 && ((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__)
+#if 0 && (defined _WIN32 && ! defined __CYGWIN__)
 # include <io.h>
 #endif
 
 /* Large File Support on native Windows.  */
 #if 0
 # define stat _stati64
+#endif
+
+/* Optionally, override 'struct stat' on native Windows.  */
+#if 0
+
+# undef stat
+# if 1
+#  define stat rpl_stat
+# else
+   /* Provoke a clear link error if stat() is used as a function and
+      module 'stat' is not in use.  */
+#  define stat stat_used_without_requesting_gnulib_module_stat
+# endif
+
+# if !GNULIB_defined_struct_stat
+struct stat
+{
+  dev_t st_dev;
+  ino_t st_ino;
+  mode_t st_mode;
+  nlink_t st_nlink;
+#  if 0
+  uid_t st_uid;
+#  else /* uid_t is not defined by default on native Windows.  */
+  short st_uid;
+#  endif
+#  if 0
+  gid_t st_gid;
+#  else /* gid_t is not defined by default on native Windows.  */
+  short st_gid;
+#  endif
+  dev_t st_rdev;
+  off_t st_size;
+#  if 0
+  blksize_t st_blksize;
+  blkcnt_t st_blocks;
+#  endif
+
+#  if 0
+  struct timespec st_atim;
+  struct timespec st_mtim;
+  struct timespec st_ctim;
+#  else
+  time_t st_atime;
+  time_t st_mtime;
+  time_t st_ctime;
+#  endif
+};
+#  if 0
+#   define st_atime st_atim.tv_sec
+#   define st_mtime st_mtim.tv_sec
+#   define st_ctime st_ctim.tv_sec
+    /* Indicator, for gnulib internal purposes.  */
+#   define _GL_WINDOWS_STAT_TIMESPEC 1
+#  endif
+#  define GNULIB_defined_struct_stat 1
+# endif
+
+/* Other possible values of st_mode.  */
+# if 0
+#  define _S_IFBLK  0x6000
+# endif
+# if 0
+#  define _S_IFLNK  0xA000
+# endif
+# if 0
+#  define _S_IFSOCK 0xC000
+# endif
+
 #endif
 
 #ifndef S_IFIFO
@@ -658,6 +889,9 @@ _GL_CXXALIAS_SYS (fstat, int, (int fd, struct stat *buf));
 # endif
 _GL_CXXALIASWARN (fstat);
 #elif 0
+# undef fstat
+# define fstat fstat_used_without_requesting_gnulib_module_fstat
+#elif 0
 /* Above, we define stat to _stati64.  */
 # define fstat _fstati64
 #elif defined GNULIB_POSIXCHECK
@@ -690,6 +924,9 @@ _GL_CXXALIAS_SYS (fstatat, int,
                   (int fd, char const *name, struct stat *st, int flags));
 # endif
 _GL_CXXALIASWARN (fstatat);
+#elif 0
+# undef fstatat
+# define fstatat fstatat_used_without_requesting_gnulib_module_fstatat
 #elif defined GNULIB_POSIXCHECK
 # undef fstatat
 # if HAVE_RAW_DECL_FSTATAT
@@ -788,6 +1025,9 @@ _GL_CXXALIAS_SYS (lstat, int, (const char *name, struct stat *buf));
 # if 1
 _GL_CXXALIASWARN (lstat);
 # endif
+#elif 0
+# undef lstat
+# define lstat lstat_used_without_requesting_gnulib_module_lstat
 #elif defined GNULIB_POSIXCHECK
 # undef lstat
 # if HAVE_RAW_DECL_LSTAT
@@ -810,7 +1050,7 @@ _GL_CXXALIAS_RPL (mkdir, int, (char const *name, mode_t mode));
    Additionally, it declares _mkdir (and depending on compile flags, an
    alias mkdir), only in the nonstandard includes <direct.h> and <io.h>,
    which are included above.  */
-# if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
+# if defined _WIN32 && ! defined __CYGWIN__
 
 #  if !GNULIB_defined_rpl_mkdir
 static int
@@ -937,63 +1177,69 @@ _GL_WARN_ON_USE (mknodat, "mknodat is not portable - "
 
 #if 1
 # if 0
-/* We can't use the object-like #define stat rpl_stat, because of
-   struct stat.  This means that rpl_stat will not be used if the user
-   does (stat)(a,b).  Oh well.  */
-#  if defined _AIX && defined stat && defined _LARGE_FILES
-    /* With _LARGE_FILES defined, AIX (only) defines stat to stat64,
-       so we have to replace stat64() instead of stat(). */
-#   undef stat64
-#   define stat64(name, st) rpl_stat (name, st)
-#  elif 0
-    /* Above, we define stat to _stati64.  */
-#   if defined __MINGW32__ && defined _stati64
-#    ifndef _USE_32BIT_TIME_T
-      /* The system headers define _stati64 to _stat64.  */
-#     undef _stat64
-#     define _stat64(name, st) rpl_stat (name, st)
+#  if !0
+    /* We can't use the object-like #define stat rpl_stat, because of
+       struct stat.  This means that rpl_stat will not be used if the user
+       does (stat)(a,b).  Oh well.  */
+#   if defined _AIX && defined stat && defined _LARGE_FILES
+     /* With _LARGE_FILES defined, AIX (only) defines stat to stat64,
+        so we have to replace stat64() instead of stat(). */
+#    undef stat64
+#    define stat64(name, st) rpl_stat (name, st)
+#   elif 0
+     /* Above, we define stat to _stati64.  */
+#    if defined __MINGW32__ && defined _stati64
+#     ifndef _USE_32BIT_TIME_T
+       /* The system headers define _stati64 to _stat64.  */
+#      undef _stat64
+#      define _stat64(name, st) rpl_stat (name, st)
+#     endif
+#    elif defined _MSC_VER && defined _stati64
+#     ifdef _USE_32BIT_TIME_T
+       /* The system headers define _stati64 to _stat32i64.  */
+#      undef _stat32i64
+#      define _stat32i64(name, st) rpl_stat (name, st)
+#     else
+       /* The system headers define _stati64 to _stat64.  */
+#      undef _stat64
+#      define _stat64(name, st) rpl_stat (name, st)
+#     endif
+#    else
+#     undef _stati64
+#     define _stati64(name, st) rpl_stat (name, st)
 #    endif
-#   elif defined _MSC_VER && defined _stati64
+#   elif defined __MINGW32__ && defined stat
 #    ifdef _USE_32BIT_TIME_T
-      /* The system headers define _stati64 to _stat32i64.  */
+      /* The system headers define stat to _stat32i64.  */
 #     undef _stat32i64
 #     define _stat32i64(name, st) rpl_stat (name, st)
 #    else
-      /* The system headers define _stati64 to _stat64.  */
+      /* The system headers define stat to _stat64.  */
 #     undef _stat64
 #     define _stat64(name, st) rpl_stat (name, st)
 #    endif
-#   else
-#    undef _stati64
-#    define _stati64(name, st) rpl_stat (name, st)
-#   endif
-#  elif defined __MINGW32__ && defined stat
-#   ifdef _USE_32BIT_TIME_T
-     /* The system headers define stat to _stat32i64.  */
-#    undef _stat32i64
-#    define _stat32i64(name, st) rpl_stat (name, st)
-#   else
-     /* The system headers define stat to _stat64.  */
-#    undef _stat64
-#    define _stat64(name, st) rpl_stat (name, st)
-#   endif
-#  elif defined _MSC_VER && defined stat
-#   ifdef _USE_32BIT_TIME_T
-     /* The system headers define stat to _stat32.  */
-#    undef _stat32
-#    define _stat32(name, st) rpl_stat (name, st)
-#   else
-     /* The system headers define stat to _stat64i32.  */
-#    undef _stat64i32
-#    define _stat64i32(name, st) rpl_stat (name, st)
-#   endif
-#  else /* !(_AIX ||__MINGW32__ ||  _MSC_VER) */
-#   undef stat
-#   define stat(name, st) rpl_stat (name, st)
-#  endif /* !_LARGE_FILES */
+#   elif defined _MSC_VER && defined stat
+#    ifdef _USE_32BIT_TIME_T
+      /* The system headers define stat to _stat32.  */
+#     undef _stat32
+#     define _stat32(name, st) rpl_stat (name, st)
+#    else
+      /* The system headers define stat to _stat64i32.  */
+#     undef _stat64i32
+#     define _stat64i32(name, st) rpl_stat (name, st)
+#    endif
+#   else /* !(_AIX || __MINGW32__ || _MSC_VER) */
+#    undef stat
+#    define stat(name, st) rpl_stat (name, st)
+#   endif /* !_LARGE_FILES */
+#  endif /* !0 */
 _GL_EXTERN_C int stat (const char *name, struct stat *buf)
                       _GL_ARG_NONNULL ((1, 2));
 # endif
+#elif 0
+/* see above:
+  #define stat stat_used_without_requesting_gnulib_module_stat
+ */
 #elif defined GNULIB_POSIXCHECK
 # undef stat
 # if HAVE_RAW_DECL_STAT

@@ -1,6 +1,6 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Elementary Unicode string functions.
-   Copyright (C) 2001-2002, 2005-2013 Free Software Foundation, Inc.
+   Copyright (C) 2001-2002, 2005-2018 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published
@@ -13,7 +13,7 @@
    General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #ifndef _UNISTR_H
 #define _UNISTR_H
@@ -138,8 +138,8 @@ extern int
    The number of available units, N, must be > 0.  */
 /* Similar to mbtowc(), except that puc and s must not be NULL, n must be > 0,
    and the NUL character is not treated specially.  */
-/* The variants with _safe suffix are safe, even if the library is compiled
-   without --enable-safety.  */
+/* The variants with _unsafe suffix are for backward compatibility with
+   libunistring versions < 0.9.7.  */
 
 #if GNULIB_UNISTR_U8_MBTOUC_UNSAFE || HAVE_LIBUNISTRING
 # if !HAVE_INLINE
@@ -198,15 +198,11 @@ u32_mbtouc_unsafe (ucs4_t *puc,
 {
   uint32_t c = *s;
 
-#  if CONFIG_UNICODE_SAFETY
   if (c < 0xd800 || (c >= 0xe000 && c < 0x110000))
-#  endif
     *puc = c;
-#  if CONFIG_UNICODE_SAFETY
   else
     /* invalid multibyte character */
     *puc = 0xfffd;
-#  endif
   return 1;
 }
 # endif
