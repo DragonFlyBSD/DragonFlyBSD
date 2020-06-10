@@ -42,12 +42,12 @@ ttyv7	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv8	"/usr/local/bin/xdm -nodaemon"	xterm	off secure
 # Serial terminals - keep it simple
 #
-ttyd0	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
-ttyd1	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
-ttyd2	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
-ttyd3	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
+ttyd0	"/usr/libexec/getty std.115200"	dialup	on secure ifconsole
+ttyd1	"/usr/libexec/getty std.115200"	dialup	on secure ifconsole
+ttyd2	"/usr/libexec/getty std.115200"	dialup	on secure ifconsole
+ttyd3	"/usr/libexec/getty std.115200"	dialup	on secure ifconsole
 # Dumb console
-dcons	"/usr/libexec/getty std.9600"	vt100	on secure ifconsole
+dcons	"/usr/libexec/getty std.115200"	vt100	on secure ifconsole
 # Pseudo terminals
 ttyp0	none			network
 ttyp1	none			network

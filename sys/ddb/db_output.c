@@ -321,7 +321,7 @@ PCHAR_(int c, void *dummy __unused)
 	const int COMC_TXWAIT = 0x40000;
 	const int COMPORT = 0x2f8;		/* 0x3f8 COM1, 0x2f8 COM2 */
 	const int LSR_TXRDY = 0x20;
-	const int BAUD = 9600;
+	const int BAUD = 115200;
 	const int com_lsr = 5;
 	const int com_data = 0;
 	int wait;

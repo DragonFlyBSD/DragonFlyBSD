@@ -145,9 +145,9 @@ console	"/usr/libexec/getty std.1200"	vt100	on secure
 # dialup at 1200 baud, no root logins
 ttyd0	"/usr/libexec/getty d1200"	dialup	on group=dialup	# 555-1234
 # Mike's terminal: hp2621
-ttyh0	"/usr/libexec/getty std.9600"	hp2621-nl	on group=dialup	# 457 Evans
+ttyh0	"/usr/libexec/getty std.115200"	hp2621-nl	on group=dialup	# 457 Evans
 # John's terminal: vt100
-ttyh1	"/usr/libexec/getty std.9600"	vt100	on group=dialup		# 459 Evans
+ttyh1	"/usr/libexec/getty std.115200"	vt100	on group=dialup		# 459 Evans
 # terminal emulate/window system
 ttyv0	"/usr/local/bin/xterm -display :0"	xterm	on window="/usr/local/bin/X :0"
 # Network pseudo ttys -- don't enable getty
