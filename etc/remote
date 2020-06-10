@@ -6,7 +6,7 @@
 # see tip(1), remote(5)
 #
 # at	ACU type
-# br	bit rate (defaults to 9600)
+# br	bit rate (defaults to 115200)
 # cu	call unit (default is dv)
 # du	make a call flag (dial up)
 # dv	device to use for the tty
@@ -50,18 +50,18 @@ dial1200|1200 Baud Hayes attributes:\
 
 # Hardwired line
 cuaa0b|cua0b:dv=/dev/cuaa0:br#2400:pa=none:
-cuaa0c|cua0c:dv=/dev/cuaa0:br#9600:pa=none:
+cuaa0c|cua0c:dv=/dev/cuaa0:br#115200:pa=none:
 
 # Finger friendly shortcuts
-com1:dv=/dev/cuaa0:br#9600:pa=none:
-com2:dv=/dev/cuaa1:br#9600:pa=none:
-com3:dv=/dev/cuaa2:br#9600:pa=none:
-com4:dv=/dev/cuaa3:br#9600:pa=none:
+com1:dv=/dev/cuaa0:br#115200:pa=none:
+com2:dv=/dev/cuaa1:br#115200:pa=none:
+com3:dv=/dev/cuaa2:br#115200:pa=none:
+com4:dv=/dev/cuaa3:br#115200:pa=none:
 com5:dv=/dev/cuaa4:br#115200:pa=none:
 com6:dv=/dev/cuaa5:br#115200:pa=none:
-ucom1:dv=/dev/cuaU0:br#9600:pa=none:
-ucom2:dv=/dev/cuaU1:br#9600:pa=none:
-ucom3:dv=/dev/cuaU2:br#9600:pa=none:
-ucom4:dv=/dev/cuaU3:br#9600:pa=none:
+ucom1:dv=/dev/cuaU0:br#115200:pa=none:
+ucom2:dv=/dev/cuaU1:br#115200:pa=none:
+ucom3:dv=/dev/cuaU2:br#115200:pa=none:
+ucom4:dv=/dev/cuaU3:br#115200:pa=none:
 ucom5:dv=/dev/cuaU4:br#115200:pa=none:
 ucom6:dv=/dev/cuaU5:br#115200:pa=none:

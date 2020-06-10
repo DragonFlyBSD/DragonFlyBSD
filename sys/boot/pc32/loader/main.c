@@ -112,8 +112,8 @@ static void
 WDEBUG_INIT(void)
 {
     isa_outb(0x3f8+3, 0x83);	/* DLAB + 8N1 */
-    isa_outb(0x3f8+0, (115200 / 9600) & 0xFF);
-    isa_outb(0x3f8+1, (115200 / 9600) >> 8);
+    isa_outb(0x3f8+0, (115200 / 115200) & 0xFF);
+    isa_outb(0x3f8+1, (115200 / 115200) >> 8);
     isa_outb(0x3f8+3, 0x03);	/* 8N1 */
     isa_outb(0x3f8+4, 0x03);	/* RTS+DTR */
     isa_outb(0x3f8+2, 0x01);	/* FIFO_ENABLE */

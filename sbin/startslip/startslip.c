@@ -49,7 +49,7 @@
 
 #include <net/slip.h>
 
-#define DEFAULT_BAUD    B9600
+#define DEFAULT_BAUD    B115200
 int     speed = DEFAULT_BAUD;
 #define	FC_NONE		0	/* flow control: none */
 #define FC_HW           1       /* flow control: hardware (RTS/CTS) */

@@ -53,7 +53,7 @@
 #include <net/if.h>
 #include <net/slip.h>
 
-#define DEFAULT_BAUD	9600
+#define DEFAULT_BAUD	115200
 
 static void sighup_handler(int);	/* SIGHUP handler */
 static void sigint_handler(int);	/* SIGINT handler */
