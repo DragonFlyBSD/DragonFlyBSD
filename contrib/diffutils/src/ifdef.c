@@ -1,7 +1,7 @@
 /* #ifdef-format output routines for GNU DIFF.
 
-   Copyright (C) 1989, 1991-1994, 2001-2002, 2004, 2006, 2009-2013 Free
-   Software Foundation, Inc.
+   Copyright (C) 1989, 1991-1994, 2001-2002, 2004, 2006, 2009-2013, 2015-2018
+   Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -357,21 +357,22 @@ do_printf_spec (FILE *out, char const *spec,
 
 	if (out)
 	  {
-	    /* For example, if the spec is "%3xn", use the printf
+	    /* For example, if the spec is "%3xn" and pI is "l", use the printf
 	       format spec "%3lx".  Here the spec prefix is "%3".  */
-	    long int long_value = value;
+	    printint print_value = value;
 	    size_t spec_prefix_len = f - spec - 2;
-#if HAVE_C_VARARRAYS
-	    char format[spec_prefix_len + 3];
+	    size_t pI_len = sizeof pI - 1;
+#if 0
+	    char format[spec_prefix_len + pI_len + 2];
 #else
-	    char *format = xmalloc (spec_prefix_len + 3);
+	    char *format = xmalloc (spec_prefix_len + pI_len + 2);
 #endif
-	    char *p = format + spec_prefix_len;
+	    char *p = format + spec_prefix_len + pI_len;
 	    memcpy (format, spec, spec_prefix_len);
-	    *p++ = 'l';
+	    memcpy (format + spec_prefix_len, pI, pI_len);
 	    *p++ = c;
 	    *p = '\0';
-	    fprintf (out, format, long_value);
+	    fprintf (out, format, print_value);
 #if ! HAVE_C_VARARRAYS
 	    free (format);
 #endif

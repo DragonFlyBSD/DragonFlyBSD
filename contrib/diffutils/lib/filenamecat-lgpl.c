@@ -1,6 +1,6 @@
 /* Concatenate two arbitrary file names.
 
-   Copyright (C) 1996-2007, 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 1996-2007, 2009-2018 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Jim Meyering.  */
 
@@ -31,55 +31,54 @@
 # define mempcpy(D, S, N) ((void *) ((char *) memcpy (D, S, N) + (N)))
 #endif
 
-/* Return the longest suffix of F that is a relative file name.
-   If it has no such suffix, return the empty string.  */
-
-static char const * _GL_ATTRIBUTE_PURE
-longest_relative_suffix (char const *f)
-{
-  for (f += FILE_SYSTEM_PREFIX_LEN (f); ISSLASH (*f); f++)
-    continue;
-  return f;
-}
-
-/* Concatenate two file name components, DIR and ABASE, in
+/* Concatenate two file name components, DIR and BASE, in
    newly-allocated storage and return the result.
    The resulting file name F is such that the commands "ls F" and "(cd
-   DIR; ls BASE)" refer to the same file, where BASE is ABASE with any
-   file system prefixes and leading separators removed.
-   Arrange for a directory separator if necessary between DIR and BASE
-   in the result, removing any redundant separators.
+   DIR; ls ./BASE)" refer to the same file.  If necessary, put
+   a separator between DIR and BASE in the result.  Typically this
+   separator is "/", but in rare cases it might be ".".
    In any case, if BASE_IN_RESULT is non-NULL, set
-   *BASE_IN_RESULT to point to the copy of ABASE in the returned
-   concatenation.  However, if ABASE begins with more than one slash,
-   set *BASE_IN_RESULT to point to the sole corresponding slash that
-   is copied into the result buffer.
+   *BASE_IN_RESULT to point to the copy of BASE at the end of the
+   returned concatenation.
 
    Return NULL if malloc fails.  */
 
 char *
-mfile_name_concat (char const *dir, char const *abase, char **base_in_result)
+mfile_name_concat (char const *dir, char const *base, char **base_in_result)
 {
   char const *dirbase = last_component (dir);
   size_t dirbaselen = base_len (dirbase);
   size_t dirlen = dirbase - dir + dirbaselen;
-  size_t needs_separator = (dirbaselen && ! ISSLASH (dirbase[dirbaselen - 1]));
-
-  char const *base = longest_relative_suffix (abase);
   size_t baselen = strlen (base);
+  char sep = '\0';
+  if (dirbaselen)
+    {
+      /* DIR is not a file system root, so separate with / if needed.  */
+      if (! ISSLASH (dir[dirlen - 1]) && ! ISSLASH (*base))
+        sep = '/';
+    }
+  else if (ISSLASH (*base))
+    {
+      /* DIR is a file system root and BASE begins with a slash, so
+         separate with ".".  For example, if DIR is "/" and BASE is
+         "/foo" then return "/./foo", as "//foo" would be wrong on
+         some POSIX systems.  A fancier algorithm could omit "." in
+         some cases but is not worth the trouble.  */
+      sep = '.';
+    }
 
-  char *p_concat = malloc (dirlen + needs_separator + baselen + 1);
+  char *p_concat = malloc (dirlen + (sep != '\0')  + baselen + 1);
   char *p;
 
   if (p_concat == NULL)
     return NULL;
 
   p = mempcpy (p_concat, dir, dirlen);
-  *p = DIRECTORY_SEPARATOR;
-  p += needs_separator;
+  *p = sep;
+  p += sep != '\0';
 
   if (base_in_result)
-    *base_in_result = p - IS_ABSOLUTE_FILE_NAME (abase);
+    *base_in_result = p;
 
   p = mempcpy (p, base, baselen);
   *p = '\0';

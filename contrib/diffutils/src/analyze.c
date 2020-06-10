@@ -1,7 +1,7 @@
 /* Analyze file differences for GNU DIFF.
 
    Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006-2007,
-   2009-2013 Free Software Foundation, Inc.
+   2009-2013, 2015-2018 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -445,26 +445,16 @@ build_script (struct file_data const filevec[])
   return script;
 }
 
-/* If CHANGES, briefly report that two files differed.
-   Return 2 if trouble, CHANGES otherwise.  */
-static int
+/* If CHANGES, briefly report that two files differed.  */
+static void
 briefly_report (int changes, struct file_data const filevec[])
 {
   if (changes)
-    {
-      char const *label0 = file_label[0] ? file_label[0] : filevec[0].name;
-      char const *label1 = file_label[1] ? file_label[1] : filevec[1].name;
-
-      if (brief)
-	message ("Files %s and %s differ\n", label0, label1);
-      else
-	{
-	  message ("Binary files %s and %s differ\n", label0, label1);
-	  changes = 2;
-	}
-    }
-
-  return changes;
+    message ((brief
+	      ? _("Files %s and %s differ\n")
+	      : _("Binary files %s and %s differ\n")),
+	     file_label[0] ? file_label[0] : filevec[0].name,
+	     file_label[1] ? file_label[1] : filevec[1].name);
 }
 
 /* Report the differences of two files.  */
@@ -487,6 +477,8 @@ diff_2_files (struct comparison *cmp)
     {
       /* Files with different lengths must be different.  */
       if (cmp->file[0].stat.st_size != cmp->file[1].stat.st_size
+	  && 0 < cmp->file[0].stat.st_size
+	  && 0 < cmp->file[1].stat.st_size
 	  && (cmp->file[0].desc < 0 || S_ISREG (cmp->file[0].stat.st_mode))
 	  && (cmp->file[1].desc < 0 || S_ISREG (cmp->file[1].stat.st_mode)))
 	changes = 1;
@@ -536,7 +528,7 @@ diff_2_files (struct comparison *cmp)
 	    }
 	}
 
-      changes = briefly_report (changes, cmp->file);
+      briefly_report (changes, cmp->file);
     }
   else
     {
@@ -574,12 +566,13 @@ diff_2_files (struct comparison *cmp)
 
       ctxt.heuristic = speed_large_files;
 
-      /* Set TOO_EXPENSIVE to be approximate square root of input size,
-	 bounded below by 256.  */
+      /* Set TOO_EXPENSIVE to be the approximate square root of the
+	 input size, bounded below by 4096.  4096 seems to be good for
+	 circa-2016 CPUs; see Bug#16848 and Bug#24715.  */
       too_expensive = 1;
       for (;  diags != 0;  diags >>= 2)
 	too_expensive <<= 1;
-      ctxt.too_expensive = MAX (256, too_expensive);
+      ctxt.too_expensive = MAX (4096, too_expensive);
 
       files[0] = cmp->file[0];
       files[1] = cmp->file[1];
@@ -635,7 +628,7 @@ diff_2_files (struct comparison *cmp)
 	changes = (script != 0);
 
       if (brief)
-	changes = briefly_report (changes, cmp->file);
+	briefly_report (changes, cmp->file);
       else
 	{
 	  if (changes || !no_diff_means_no_output)

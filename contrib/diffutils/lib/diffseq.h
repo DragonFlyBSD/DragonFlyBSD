@@ -1,6 +1,6 @@
 /* Analyze differences between two vectors.
 
-   Copyright (C) 1988-1989, 1992-1995, 2001-2004, 2006-2013 Free Software
+   Copyright (C) 1988-1989, 1992-1995, 2001-2004, 2006-2018 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 
 /* The basic idea is to consider two vectors as similar if, when
@@ -26,13 +26,15 @@
    distance" in Wikipedia.
 
    The basic algorithm is described in:
-   "An O(ND) Difference Algorithm and its Variations", Eugene Myers,
-   Algorithmica Vol. 1 No. 2, 1986, pp. 251-266;
-   see especially section 4.2, which describes the variation used below.
+   "An O(ND) Difference Algorithm and its Variations", Eugene W. Myers,
+   Algorithmica Vol. 1, 1986, pp. 251-266,
+   <http://dx.doi.org/10.1007/BF01840446>.
+   See especially section 4.2, which describes the variation used below.
 
    The basic algorithm was independently discovered as described in:
-   "Algorithms for Approximate String Matching", E. Ukkonen,
-   Information and Control Vol. 64, 1985, pp. 100-118.
+   "Algorithms for Approximate String Matching", Esko Ukkonen,
+   Information and Control Vol. 64, 1985, pp. 100-118,
+   <http://dx.doi.org/10.1016/S0019-9958(85)80046-2>.
 
    Unless the 'find_minimal' flag is set, this code uses the TOO_EXPENSIVE
    heuristic, by Paul Eggert, to limit the cost to O(N**1.5 log N)
@@ -44,8 +46,8 @@
      EQUAL                   A two-argument macro that tests two elements for
                              equality.
      OFFSET                  A signed integer type sufficient to hold the
-                             difference between two indices. Usually
-                             something like ssize_t.
+                             difference between two indices.  Usually
+                             something like ptrdiff_t.
      EXTRA_CONTEXT_FIELDS    Declarations of fields for 'struct context'.
      NOTE_DELETE(ctxt, xoff) Record the removal of the object xvec[xoff].
      NOTE_INSERT(ctxt, yoff) Record the insertion of the object yvec[yoff].
@@ -79,7 +81,7 @@
 /* Use this to suppress gcc's "...may be used before initialized" warnings.
    Beware: The Code argument must not contain commas.  */
 #ifndef IF_LINT
-# ifdef lint
+# if defined GCC_LINT || defined lint
 #  define IF_LINT(Code) Code
 # else
 #  define IF_LINT(Code) /* empty */
@@ -88,7 +90,7 @@
 
 /* As above, but when Code must contain one comma. */
 #ifndef IF_LINT2
-# ifdef lint
+# if defined GCC_LINT || defined lint
 #  define IF_LINT2(Code1, Code2) Code1, Code2
 # else
 #  define IF_LINT2(Code1, Code2) /* empty */
@@ -120,9 +122,9 @@ struct context
   OFFSET *bdiag;
 
   #ifdef USE_HEURISTIC
-  /* This corresponds to the diff -H flag.  With this heuristic, for
-     vectors with a constant small density of changes, the algorithm is
-     linear in the vectors size.  */
+  /* This corresponds to the diff --speed-large-files flag.  With this
+     heuristic, for vectors with a constant small density of changes,
+     the algorithm is linear in the vector size.  */
   bool heuristic;
   #endif
 
@@ -277,6 +279,11 @@ diag (OFFSET xoff, OFFSET xlim, OFFSET yoff, OFFSET ylim, bool find_minimal,
         continue;
 
 #ifdef USE_HEURISTIC
+      bool heuristic = ctxt->heuristic;
+#else
+      bool heuristic = false;
+#endif
+
       /* Heuristic: check occasionally for a diagonal that has made lots
          of progress compared with the edit distance.  If we have any
          such, find the one that has made the most progress and return it
@@ -285,7 +292,7 @@ diag (OFFSET xoff, OFFSET xlim, OFFSET yoff, OFFSET ylim, bool find_minimal,
          With this heuristic, for vectors with a constant small density
          of changes, the algorithm is linear in the vector size.  */
 
-      if (200 < c && big_snake && ctxt->heuristic)
+      if (200 < c && big_snake && heuristic)
         {
           {
             OFFSET best = 0;
@@ -365,7 +372,6 @@ diag (OFFSET xoff, OFFSET xlim, OFFSET yoff, OFFSET ylim, bool find_minimal,
               }
           }
         }
-#endif /* USE_HEURISTIC */
 
       /* Heuristic: if we've gone well beyond the call of duty, give up
          and report halfway between our best results so far.  */

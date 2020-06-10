@@ -1,7 +1,7 @@
 /* System dependent declarations.
 
-   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2013
-   Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2013,
+   2015-2018 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -119,20 +119,45 @@ int strcasecmp (char const *, char const *);
 #include "propername.h"
 #include "version.h"
 
-/* Type used for fast comparison of several bytes at a time.  */
+/* Type used for fast comparison of several bytes at a time.
+   This used to be uintmax_t, but changing it to size_t
+   made plain 'cmp' 90% faster (GCC 4.8.1, x86).  */
 
 #ifndef word
-# define word uintmax_t
+# define word size_t
 #endif
 
-/* The integer type of a line number.  Since files are read into main
-   memory, ptrdiff_t should be wide enough.  */
+/* The signed integer type of a line number.  Since files are read
+   into main memory, ptrdiff_t should be wide enough.  */
 
 typedef ptrdiff_t lin;
 #define LIN_MAX PTRDIFF_MAX
+
+/* The signed integer type for printing line numbers, and its printf
+   length modifier.  This is not simply ptrdiff_t, to cater to older
+   and/or nonstandard C libraries where "l" works but "ll" and "t" do
+   not, or where 'long' is too narrow and "ll" works but "t" does not.  */
+
+#if LIN_MAX <= LONG_MAX
+typedef long int printint;
+# define pI "l"
+#elif LIN_MAX <= LLONG_MAX
+typedef long long int printint;
+# define pI "ll"
+#else
+typedef ptrdiff_t printint;
+# define pI "t"
+#endif
+
 verify (TYPE_SIGNED (lin));
-verify (sizeof (ptrdiff_t) <= sizeof (lin));
-verify (sizeof (lin) <= sizeof (long int));
+verify (TYPE_SIGNED (printint));
+verify (LIN_MAX == TYPE_MAXIMUM (lin));
+verify (LIN_MAX <= TYPE_MAXIMUM (printint));
+
+/* Limit so that 2 * CONTEXT + 1 does not overflow.  */
+
+#define CONTEXT_MAX ((LIN_MAX - 1) / 2)
+
 
 /* This section contains POSIX-compliant defaults for macros
    that are meant to be overridden by hand in config.h as needed.  */
@@ -205,3 +230,11 @@ verify (sizeof (lin) <= sizeof (long int));
 #endif
 
 #define STREQ(a, b) (strcmp (a, b) == 0)
+
+#ifndef FALLTHROUGH
+# if __GNUC__ < 7
+#  define FALLTHROUGH ((void) 0)
+# else
+#  define FALLTHROUGH __attribute__ ((__fallthrough__))
+# endif
+#endif

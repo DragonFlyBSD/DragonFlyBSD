@@ -1,7 +1,7 @@
 /* Read, sort and compare two directories.  Used for GNU DIFF.
 
    Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006-2007,
-   2009-2013 Free Software Foundation, Inc.
+   2009-2013, 2015-2018 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -45,7 +45,6 @@ static bool locale_specific_sorting;
 static jmp_buf failed_locale_specific_sorting;
 
 static bool dir_loop (struct comparison const *, int);
-static int compare_names_for_qsort (void const *, void const *);
 
 
 /* Read a directory and get its vector of names.  */
@@ -140,6 +139,27 @@ dir_read (struct file_data const *dir, struct dirdata *dirdata)
   return true;
 }
 
+/* Compare strings in a locale-specific way, returning a value
+   compatible with strcmp.  */
+
+static int
+compare_collated (char const *name1, char const *name2)
+{
+  int r;
+  errno = 0;
+  if (ignore_file_name_case)
+    r = strcasecoll (name1, name2);
+  else
+    r = strcoll (name1, name2);
+  if (errno)
+    {
+      error (0, errno, _("cannot compare file names '%s' and '%s'"),
+	     name1, name2);
+      longjmp (failed_locale_specific_sorting, 1);
+    }
+  return r;
+}
+
 /* Compare file names, returning a value compatible with strcmp.  */
 
 static int
@@ -147,21 +167,10 @@ compare_names (char const *name1, char const *name2)
 {
   if (locale_specific_sorting)
     {
-      int r;
-      errno = 0;
-      if (ignore_file_name_case)
-	r = strcasecoll (name1, name2);
-      else
-	r = strcoll (name1, name2);
-      if (errno)
-	{
-	  error (0, errno, _("cannot compare file names '%s' and '%s'"),
-		 name1, name2);
-	  longjmp (failed_locale_specific_sorting, 1);
-	}
-      return r;
+      int diff = compare_collated (name1, name2);
+      if (diff || ignore_file_name_case)
+	return diff;
     }
-
   return file_name_cmp (name1, name2);
 }
 
@@ -173,8 +182,15 @@ compare_names_for_qsort (void const *file1, void const *file2)
 {
   char const *const *f1 = file1;
   char const *const *f2 = file2;
-  int diff = compare_names (*f1, *f2);
-  return diff ? diff : file_name_cmp (*f1, *f2);
+  char const *name1 = *f1;
+  char const *name2 = *f2;
+  if (locale_specific_sorting)
+    {
+      int diff = compare_collated (name1, name2);
+      if (diff)
+	return diff;
+    }
+  return file_name_cmp (name1, name2);
 }
 
 /* Compare the contents of two directories named in CMP.
@@ -259,7 +275,7 @@ diff_dirs (struct comparison const *cmp,
 	     O(N**2), where N is the number of names in a directory
 	     that compare_names says are all equal, but in practice N
 	     is so small it's not worth tuning.  */
-	  if (nameorder == 0)
+	  if (nameorder == 0 && ignore_file_name_case)
 	    {
 	      int raw_order = file_name_cmp (*names[0], *names[1]);
 	      if (raw_order != 0)

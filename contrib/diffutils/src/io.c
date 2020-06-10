@@ -1,7 +1,7 @@
 /* File I/O for GNU DIFF.
 
-   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2013
-   Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2013,
+   2015-2018 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -107,6 +107,13 @@ sip (struct file_data *current, bool skip_test)
 				     STAT_BLOCKSIZE (current->stat),
 				     PTRDIFF_MAX - 2 * sizeof (word));
       current->buffer = xmalloc (current->bufsize);
+
+#ifdef __KLIBC__
+      /* Skip test if seek is not possible */
+      skip_test = skip_test
+		  || (lseek (current->desc, 0, SEEK_CUR) < 0
+		      && errno == ESPIPE);
+#endif
 
       if (! skip_test)
 	{
@@ -474,33 +481,32 @@ prepare_text (struct file_data *current)
 {
   size_t buffered = current->buffered;
   char *p = FILE_BUFFER (current);
-  char *dst;
+  if (!p)
+    return;
 
-  if (buffered == 0 || p[buffered - 1] == '\n')
-    current->missing_newline = false;
-  else
+  if (strip_trailing_cr)
+    {
+      char *srclim = p + buffered;
+      *srclim = '\r';
+      char *dst = rawmemchr (p, '\r');
+
+      for (char const *src = dst; src != srclim; src++)
+	{
+	  src += *src == '\r' && src[1] == '\n';
+	  *dst++ = *src;
+	}
+
+      buffered -= srclim - dst;
+    }
+
+  if (buffered != 0 && p[buffered - 1] != '\n')
     {
       p[buffered++] = '\n';
       current->missing_newline = true;
     }
 
-  if (!p)
-    return;
-
   /* Don't use uninitialized storage when planting or using sentinels.  */
   memset (p + buffered, 0, sizeof (word));
-
-  if (strip_trailing_cr && (dst = memchr (p, '\r', buffered)))
-    {
-      char const *src = dst;
-      char const *srclim = p + buffered;
-
-      do
-	dst += ! ((*dst = *src++) == '\r' && *src == '\n');
-      while (src < srclim);
-
-      buffered -= src - dst;
-    }
 
   current->buffered = buffered;
 }
@@ -530,6 +536,7 @@ find_identical_ends (struct file_data filevec[])
   lin i, lines;
   size_t n0, n1;
   lin alloc_lines0, alloc_lines1;
+  bool prefix_needed;
   lin buffered_prefix, prefix_count, prefix_mask;
   lin middle_guess, suffix_guess;
 
@@ -679,12 +686,13 @@ find_identical_ends (struct file_data filevec[])
   prefix_mask = prefix_count - 1;
   lines = 0;
   linbuf0 = xmalloc (alloc_lines0 * sizeof *linbuf0);
+  prefix_needed = ! (no_diff_means_no_output
+		     && filevec[0].prefix_end == p0
+		     && filevec[1].prefix_end == p1);
   p0 = buffer0;
 
   /* If the prefix is needed, find the prefix lines.  */
-  if (! (no_diff_means_no_output
-	 && filevec[0].prefix_end == p0
-	 && filevec[1].prefix_end == p1))
+  if (prefix_needed)
     {
       end0 = filevec[0].prefix_end;
       while (p0 != end0)

@@ -1,5 +1,5 @@
 /* Quoting for a system command.
-   Copyright (C) 2012-2013 Free Software Foundation, Inc.
+   Copyright (C) 2012-2018 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2012.
 
    This program is free software: you can redistribute it and/or modify
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <config.h>
 
@@ -27,7 +27,7 @@
 #include "sh-quote.h"
 #include "xalloc.h"
 
-#if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
+#if defined _WIN32 && ! defined __CYGWIN__
 
 /* The native Windows CreateProcess() function interprets characters like
    ' ', '\t', '\\', '"' (but not '<' and '>') in a special way:
@@ -112,7 +112,7 @@ windows_createprocess_quote (char *p, const char *string)
      even inside quoted strings,
    - '&' '[' ']' '{' '}' '^' '=' ';' '!' '\'' '+' ',' '`' '~' for other
      purposes, according to
-     <http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/cmd.mspx?mfr=true>
+     <https://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/cmd.mspx?mfr=true>
    We quote a string like '%var%' by putting the '%' characters outside of
    double-quotes and the rest of the string inside double-quotes: %"var"%.
    This is guaranteed to not be a reference to an environment variable.
@@ -188,13 +188,13 @@ system_quote_length (enum system_command_interpreter interpreter,
 {
   switch (interpreter)
     {
-#if !((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__)
+#if !(defined _WIN32 && ! defined __CYGWIN__)
     case SCI_SYSTEM:
 #endif
     case SCI_POSIX_SH:
       return shell_quote_length (string);
 
-#if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
+#if defined _WIN32 && ! defined __CYGWIN__
     case SCI_WINDOWS_CREATEPROCESS:
       return windows_createprocess_quote (NULL, string);
 
@@ -216,13 +216,13 @@ system_quote_copy (char *p,
 {
   switch (interpreter)
     {
-#if !((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__)
+#if !(defined _WIN32 && ! defined __CYGWIN__)
     case SCI_SYSTEM:
 #endif
     case SCI_POSIX_SH:
       return shell_quote_copy (p, string);
 
-#if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
+#if defined _WIN32 && ! defined __CYGWIN__
     case SCI_WINDOWS_CREATEPROCESS:
       p += windows_createprocess_quote (p, string);
       *p = '\0';
@@ -247,13 +247,13 @@ system_quote (enum system_command_interpreter interpreter,
 {
   switch (interpreter)
     {
-#if !((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__)
+#if !(defined _WIN32 && ! defined __CYGWIN__)
     case SCI_SYSTEM:
 #endif
     case SCI_POSIX_SH:
       return shell_quote (string);
 
-#if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
+#if defined _WIN32 && ! defined __CYGWIN__
     case SCI_WINDOWS_CREATEPROCESS:
     case SCI_SYSTEM:
     case SCI_WINDOWS_CMD:
