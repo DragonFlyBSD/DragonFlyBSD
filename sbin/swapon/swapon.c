@@ -345,7 +345,6 @@ trim_volume(char * name)
 	     name, (intmax_t)ioarg[0], (intmax_t)ioarg[1]);
 	if (ioctl(fd, DAIOCTRIM, ioarg) < 0) {
 		printf("Device trim failed\n");
-		usage ();
 	}
 	close(fd);
 }
