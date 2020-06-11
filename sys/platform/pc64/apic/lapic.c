@@ -696,6 +696,8 @@ lapic_mem_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 {
 	struct globaldata *gd = mycpu;
 
+	if ((ssysclock_t)reload < 0)
+		reload = 1;
 	reload = muldivu64(reload, cti->freq, sys_cputimer->freq);
 	if (reload < 2)
 		reload = 2;
@@ -716,6 +718,8 @@ lapic_msr_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 {
 	struct globaldata *gd = mycpu;
 
+	if ((ssysclock_t)reload < 0)
+		reload = 1;
 	reload = muldivu64(reload, cti->freq, sys_cputimer->freq);
 	if (reload < 2)
 		reload = 2;

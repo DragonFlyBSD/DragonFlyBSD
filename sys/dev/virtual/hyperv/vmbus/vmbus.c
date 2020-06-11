@@ -360,6 +360,8 @@ vmbus_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 	struct vmbus_pcpu_data *psc = VMBUS_PCPU(sc, gd->gd_cpuid);
 	uint64_t current;
 
+	if ((ssysclock_t)reload < 0)		/* neg value */
+		reload = 1;
 	reload = muldivu64(reload, cti->freq, sys_cputimer->freq);
 	current = hyperv_tc64() + reload;
 

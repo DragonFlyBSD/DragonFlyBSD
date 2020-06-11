@@ -341,6 +341,8 @@ i8254_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 {
     uint16_t count;
 
+    if ((ssysclock_t)reload < 0)
+	    reload = 1;
     if (i8254_cputimer_div)
 	reload /= i8254_cputimer_div;
     else

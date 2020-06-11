@@ -292,7 +292,9 @@ rescan:
 static void
 vktimer_intr_reload(struct cputimer_intr *cti __unused, sysclock_t reload)
 {
-	if (reload >= sys_cputimer->freq)
+	if ((ssysclock_t)reload < 0)		/* neg value */
+		reload = 1;
+	if (reload >= sys_cputimer->freq)	/* max one second */
 		reload = sys_cputimer->freq;
 	reload += sys_cputimer->count();
 	vktimer_reload[mycpu->gd_cpuid] = reload;
