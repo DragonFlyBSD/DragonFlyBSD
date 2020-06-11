@@ -1,7 +1,7 @@
 /* Output routines for ed-script format.
 
-   Copyright (C) 1988-1989, 1991-1993, 1995, 1998, 2001, 2004, 2006, 2009-2013
-   Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1991-1993, 1995, 1998, 2001, 2004, 2006, 2009-2013,
+   2015-2018 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -144,7 +144,7 @@ static void
 print_rcs_hunk (struct change *hunk)
 {
   lin i, f0, l0, f1, l1;
-  long int tf0, tl0, tf1, tl1;
+  printint tf0, tl0, tf1, tl1;
 
   /* Determine range of line numbers involved in each file.  */
   enum changes changes = analyze_hunk (hunk, &f0, &l0, &f1, &l1);
@@ -159,14 +159,16 @@ print_rcs_hunk (struct change *hunk)
     {
       /* For deletion, print just the starting line number from file 0
 	 and the number of lines deleted.  */
-      fprintf (outfile, "d%ld %ld\n", tf0, tf0 <= tl0 ? tl0 - tf0 + 1 : 1);
+      fprintf (outfile, "d%"pI"d %"pI"d\n", tf0,
+	       tf0 <= tl0 ? tl0 - tf0 + 1 : 1);
     }
 
   if (changes & NEW)
     {
       /* Take last-line-number from file 0 and # lines from file 1.  */
       translate_range (&files[1], f1, l1, &tf1, &tl1);
-      fprintf (outfile, "a%ld %ld\n", tl0, tf1 <= tl1 ? tl1 - tf1 + 1 : 1);
+      fprintf (outfile, "a%"pI"d %"pI"d\n", tl0,
+	       tf1 <= tl1 ? tl1 - tf1 + 1 : 1);
 
       /* Print the inserted lines.  */
       for (i = f1; i <= l1; i++)

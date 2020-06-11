@@ -1,6 +1,6 @@
 /* Invoke freopen, but avoid some glitches.
 
-   Copyright (C) 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Eric Blake.  */
 
@@ -25,6 +25,14 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <unistd.h>
+
+#ifndef FALLTHROUGH
+# if __GNUC__ < 7
+#  define FALLTHROUGH ((void) 0)
+# else
+#  define FALLTHROUGH __attribute__ ((__fallthrough__))
+# endif
+#endif
 
 /* Guarantee that FD is open; all smaller FDs must already be open.
    Return true if successful.  */
@@ -69,15 +77,15 @@ freopen_safer (char const *name, char const *mode, FILE *f)
     default: /* -1 or not a standard stream.  */
       if (dup2 (STDERR_FILENO, STDERR_FILENO) != STDERR_FILENO)
         protect_err = true;
-      /* fall through */
+      FALLTHROUGH;
     case STDERR_FILENO:
       if (dup2 (STDOUT_FILENO, STDOUT_FILENO) != STDOUT_FILENO)
         protect_out = true;
-      /* fall through */
+      FALLTHROUGH;
     case STDOUT_FILENO:
       if (dup2 (STDIN_FILENO, STDIN_FILENO) != STDIN_FILENO)
         protect_in = true;
-      /* fall through */
+      FALLTHROUGH;
     case STDIN_FILENO:
       /* Nothing left to protect.  */
       break;

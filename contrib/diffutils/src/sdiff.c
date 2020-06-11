@@ -1,7 +1,7 @@
-/* sdiff - side-by-side merge of file differences
+/* GNU sdiff - side-by-side merge of file differences
 
-   Copyright (C) 1992-1996, 1998, 2001-2002, 2004, 2006-2007, 2009-2013 Free
-   Software Foundation, Inc.
+   Copyright (C) 1992-1996, 1998, 2001-2002, 2004, 2006-2007, 2009-2013,
+   2015-2018 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -26,6 +26,7 @@
 
 #include <c-stack.h>
 #include <dirname.h>
+#include "die.h"
 #include <error.h>
 #include <exitfail.h>
 #include <file-type.h>
@@ -155,9 +156,8 @@ try_help (char const *reason_msgid, char const *operand)
 {
   if (reason_msgid)
     error (0, 0, _(reason_msgid), operand);
-  error (EXIT_TROUBLE, 0, _("Try '%s --help' for more information."),
+  die (EXIT_TROUBLE, 0, _("Try '%s --help' for more information."),
 	 program_name);
-  abort ();
 }
 
 static void
@@ -379,8 +379,8 @@ lf_copy (struct line_filter *lf, lin lines, FILE *outfile)
 
   while (lines)
     {
-      lf->bufpos = (char *) memchr (lf->bufpos, '\n', lf->buflim - lf->bufpos);
-      if (! lf->bufpos)
+      lf->bufpos = rawmemchr (lf->bufpos, '\n');
+      if (lf->bufpos == lf->buflim)
 	{
 	  ck_fwrite (start, lf->buflim - start, outfile);
 	  if (! lf_refill (lf))
@@ -403,8 +403,8 @@ lf_skip (struct line_filter *lf, lin lines)
 {
   while (lines)
     {
-      lf->bufpos = (char *) memchr (lf->bufpos, '\n', lf->buflim - lf->bufpos);
-      if (! lf->bufpos)
+      lf->bufpos = rawmemchr (lf->bufpos, '\n');
+      if (lf->bufpos == lf->buflim)
 	{
 	  if (! lf_refill (lf))
 	    break;
@@ -424,7 +424,7 @@ lf_snarf (struct line_filter *lf, char *buffer, size_t bufsize)
   for (;;)
     {
       char *start = lf->bufpos;
-      char *next = (char *) memchr (start, '\n', lf->buflim + 1 - start);
+      char *next = rawmemchr (start, '\n');
       size_t s = next - start;
       if (bufsize <= s)
 	return 0;
@@ -804,7 +804,7 @@ checksigs (void)
 
       /* Yield an exit status indicating that a signal was received.  */
       untrapsig (s);
-      kill (getpid (), s);
+      raise (s);
 
       /* That didn't work, so exit with error status.  */
       exit (EXIT_TROUBLE);
@@ -917,10 +917,10 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 		  cmd0 = 'q';
 		  break;
 		}
-	      /* Fall through.  */
+	      FALLTHROUGH;
 	    default:
 	      flush_line ();
-	      /* Fall through.  */
+	      FALLTHROUGH;
 	    case '\n':
 	      give_help ();
 	      continue;
@@ -966,14 +966,14 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 	      case 'd':
 		if (llen)
 		  {
+		    printint l1 = lline;
+		    printint l2 = lline + llen - 1;
 		    if (llen == 1)
-		      fprintf (tmp, "--- %s %ld\n", lname, (long int) lline);
+		      fprintf (tmp, "--- %s %"pI"d\n", lname, l1);
 		    else
-		      fprintf (tmp, "--- %s %ld,%ld\n", lname,
-			       (long int) lline,
-			       (long int) (lline + llen - 1));
+		      fprintf (tmp, "--- %s %"pI"d,%"pI"d\n", lname, l1, l2);
 		  }
-		/* Fall through.  */
+		FALLTHROUGH;
 	      case '1': case 'b': case 'l':
 		lf_copy (left, llen, tmp);
 		break;
@@ -988,14 +988,14 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 	      case 'd':
 		if (rlen)
 		  {
+		    printint l1 = rline;
+		    printint l2 = rline + rlen - 1;
 		    if (rlen == 1)
-		      fprintf (tmp, "+++ %s %ld\n", rname, (long int) rline);
+		      fprintf (tmp, "+++ %s %"pI"d\n", rname, l1);
 		    else
-		      fprintf (tmp, "+++ %s %ld,%ld\n", rname,
-			       (long int) rline,
-			       (long int) (rline + rlen - 1));
+		      fprintf (tmp, "+++ %s %"pI"d,%"pI"d\n", rname, l1, l2);
 		  }
-		/* Fall through.  */
+		FALLTHROUGH;
 	      case '2': case 'b': case 'r':
 		lf_copy (right, rlen, tmp);
 		break;
@@ -1098,12 +1098,14 @@ interact (struct line_filter *diff,
 	  uintmax_t val;
 	  lin llen, rlen, lenmax;
 	  errno = 0;
-	  llen = val = strtoumax (diff_help + 1, &numend, 10);
-	  if (llen < 0 || llen != val || errno || *numend != ',')
+	  val = strtoumax (diff_help + 1, &numend, 10);
+	  if (LIN_MAX < val || errno || *numend != ',')
 	    fatal (diff_help);
-	  rlen = val = strtoumax (numend + 1, &numend, 10);
-	  if (rlen < 0 || rlen != val || errno || *numend)
+	  llen = val;
+	  val = strtoumax (numend + 1, &numend, 10);
+	  if (LIN_MAX < val || errno || *numend)
 	    fatal (diff_help);
+	  rlen = val;
 
 	  lenmax = MAX (llen, rlen);
 

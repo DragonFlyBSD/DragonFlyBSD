@@ -1,7 +1,6 @@
 /* Definitions for data structures and routines for the regular
    expression library.
-   Copyright (C) 1985, 1989-1993, 1995-1998, 2000-2003, 2005-2013 Free Software
-   Foundation, Inc.
+   Copyright (C) 1985, 1989-2018 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -16,7 +15,7 @@
 
    You should have received a copy of the GNU General Public
    License along with the GNU C Library; if not, see
-   <http://www.gnu.org/licenses/>.  */
+   <https://www.gnu.org/licenses/>.  */
 
 #ifndef _REGEX_H
 #define _REGEX_H 1
@@ -42,11 +41,6 @@ extern "C" {
    supported within glibc itself, and glibc users should not define
    _REGEX_LARGE_OFFSETS.  */
 
-/* The type of nonnegative object indexes.  Traditionally, GNU regex
-   uses 'int' for these.  Code that uses __re_idx_t should work
-   regardless of whether the type is signed.  */
-typedef size_t __re_idx_t;
-
 /* The type of object sizes.  */
 typedef size_t __re_size_t;
 
@@ -58,7 +52,6 @@ typedef size_t __re_long_size_t;
 
 /* The traditional GNU regex implementation mishandles strings longer
    than INT_MAX.  */
-typedef int __re_idx_t;
 typedef unsigned int __re_size_t;
 typedef unsigned long int __re_long_size_t;
 
@@ -244,19 +237,16 @@ extern reg_syntax_t re_syntax_options;
    | RE_INVALID_INTERVAL_ORD)
 
 # define RE_SYNTAX_GREP							\
-  (RE_BK_PLUS_QM              | RE_CHAR_CLASSES				\
-   | RE_HAT_LISTS_NOT_NEWLINE | RE_INTERVALS				\
-   | RE_NEWLINE_ALT)
+  ((RE_SYNTAX_POSIX_BASIC | RE_NEWLINE_ALT)				\
+   & ~(RE_CONTEXT_INVALID_DUP | RE_DOT_NOT_NULL))
 
 # define RE_SYNTAX_EGREP						\
-  (RE_CHAR_CLASSES        | RE_CONTEXT_INDEP_ANCHORS			\
-   | RE_CONTEXT_INDEP_OPS | RE_HAT_LISTS_NOT_NEWLINE			\
-   | RE_NEWLINE_ALT       | RE_NO_BK_PARENS				\
-   | RE_NO_BK_VBAR)
+  ((RE_SYNTAX_POSIX_EXTENDED | RE_INVALID_INTERVAL_ORD | RE_NEWLINE_ALT) \
+   & ~(RE_CONTEXT_INVALID_OPS | RE_DOT_NOT_NULL))
 
+/* POSIX grep -E behavior is no longer incompatible with GNU.  */
 # define RE_SYNTAX_POSIX_EGREP						\
-  (RE_SYNTAX_EGREP | RE_INTERVALS | RE_NO_BK_BRACES			\
-   | RE_INVALID_INTERVAL_ORD)
+  RE_SYNTAX_EGREP
 
 /* P1003.2/D11.2, section 4.20.7.1, lines 5078ff.  */
 # define RE_SYNTAX_ED RE_SYNTAX_POSIX_BASIC
@@ -491,7 +481,8 @@ typedef struct re_pattern_buffer regex_t;
 #ifdef _REGEX_LARGE_OFFSETS
 /* POSIX 1003.1-2008 requires that regoff_t be at least as wide as
    ptrdiff_t and ssize_t.  We don't know of any hosts where ptrdiff_t
-   is wider than ssize_t, so ssize_t is safe.  */
+   is wider than ssize_t, so ssize_t is safe.  ptrdiff_t is not
+   visible here, so use ssize_t.  */
 typedef ssize_t regoff_t;
 #else
 /* The traditional GNU regex implementation mishandles strings longer
@@ -541,7 +532,7 @@ extern reg_syntax_t re_set_syntax (reg_syntax_t __syntax);
    BUFFER.  Return NULL if successful, and an error string if not.
 
    To free the allocated storage, you must call 'regfree' on BUFFER.
-   Note that the translate table must either have been initialised by
+   Note that the translate table must either have been initialized by
    'regcomp', with a malloc'ed value, or set to NULL before calling
    'regfree'.  */
 extern const char *re_compile_pattern (const char *__pattern, size_t __length,
@@ -560,34 +551,34 @@ extern int re_compile_fastmap (struct re_pattern_buffer *__buffer);
    match, or -2 for an internal error.  Also return register
    information in REGS (if REGS and BUFFER->no_sub are nonzero).  */
 extern regoff_t re_search (struct re_pattern_buffer *__buffer,
-			   const char *__string, __re_idx_t __length,
-			   __re_idx_t __start, regoff_t __range,
+			   const char *__String, regoff_t __length,
+			   regoff_t __start, regoff_t __range,
 			   struct re_registers *__regs);
 
 
 /* Like 're_search', but search in the concatenation of STRING1 and
    STRING2.  Also, stop searching at index START + STOP.  */
 extern regoff_t re_search_2 (struct re_pattern_buffer *__buffer,
-			     const char *__string1, __re_idx_t __length1,
-			     const char *__string2, __re_idx_t __length2,
-			     __re_idx_t __start, regoff_t __range,
+			     const char *__string1, regoff_t __length1,
+			     const char *__string2, regoff_t __length2,
+			     regoff_t __start, regoff_t __range,
 			     struct re_registers *__regs,
-			     __re_idx_t __stop);
+			     regoff_t __stop);
 
 
 /* Like 're_search', but return how many characters in STRING the regexp
    in BUFFER matched, starting at position START.  */
 extern regoff_t re_match (struct re_pattern_buffer *__buffer,
-			  const char *__string, __re_idx_t __length,
-			  __re_idx_t __start, struct re_registers *__regs);
+			  const char *__String, regoff_t __length,
+			  regoff_t __start, struct re_registers *__regs);
 
 
 /* Relates to 're_match' as 're_search_2' relates to 're_search'.  */
 extern regoff_t re_match_2 (struct re_pattern_buffer *__buffer,
-			    const char *__string1, __re_idx_t __length1,
-			    const char *__string2, __re_idx_t __length2,
-			    __re_idx_t __start, struct re_registers *__regs,
-			    __re_idx_t __stop);
+			    const char *__string1, regoff_t __length1,
+			    const char *__string2, regoff_t __length2,
+			    regoff_t __start, struct re_registers *__regs,
+			    regoff_t __stop);
 
 
 /* Set REGS to hold NUM_REGS registers, storing them in STARTS and
@@ -608,7 +599,7 @@ extern void re_set_registers (struct re_pattern_buffer *__buffer,
 			      regoff_t *__starts, regoff_t *__ends);
 #endif	/* Use GNU */
 
-#if defined _REGEX_RE_COMP || (defined _LIBC && defined __USE_BSD)
+#if defined _REGEX_RE_COMP || (defined _LIBC && defined __USE_MISC)
 # ifndef _CRAY
 /* 4.2 bsd compatibility.  */
 extern char *re_comp (const char *);
@@ -616,28 +607,28 @@ extern int re_exec (const char *);
 # endif
 #endif
 
-/* GCC 2.95 and later have "__restrict"; C99 compilers have
+/* For plain 'restrict', use glibc's __restrict if defined.
+   Otherwise, GCC 2.95 and later have "__restrict"; C99 compilers have
    "restrict", and "configure" may have defined "restrict".
    Other compilers use __restrict, __restrict__, and _Restrict, and
    'configure' might #define 'restrict' to those words, so pick a
    different name.  */
 #ifndef _Restrict_
-# if 199901L <= __STDC_VERSION__
-#  define _Restrict_ restrict
-# elif 2 < __GNUC__ || (2 == __GNUC__ && 95 <= __GNUC_MINOR__)
+# if defined __restrict || 2 < __GNUC__ + (95 <= __GNUC_MINOR__)
 #  define _Restrict_ __restrict
+# elif 199901L <= __STDC_VERSION__ || defined restrict
+#  define _Restrict_ restrict
 # else
 #  define _Restrict_
 # endif
 #endif
-/* gcc 3.1 and up support the [restrict] syntax.  Don't trust
-   sys/cdefs.h's definition of __restrict_arr, though, as it
-   mishandles gcc -ansi -pedantic.  */
+/* For [restrict], use glibc's __restrict_arr if available.
+   Otherwise, GCC 3.1 (not in C++ mode) and C99 support [restrict].  */
 #ifndef _Restrict_arr_
-# if ((199901L <= __STDC_VERSION__					\
-       || ((3 < __GNUC__ || (3 == __GNUC__ && 1 <= __GNUC_MINOR__))	\
-	   && !defined __STRICT_ANSI__))					\
-      && !defined __GNUG__)
+# ifdef __restrict_arr
+#  define _Restrict_arr_ __restrict_arr
+# elif ((199901L <= __STDC_VERSION__ || 3 < __GNUC__ + (1 <= __GNUC_MINOR__)) \
+        && !defined __GNUG__)
 #  define _Restrict_arr_ _Restrict_
 # else
 #  define _Restrict_arr_
@@ -650,7 +641,7 @@ extern int regcomp (regex_t *_Restrict_ __preg,
 		    int __cflags);
 
 extern int regexec (const regex_t *_Restrict_ __preg,
-		    const char *_Restrict_ __string, size_t __nmatch,
+		    const char *_Restrict_ __String, size_t __nmatch,
 		    regmatch_t __pmatch[_Restrict_arr_],
 		    int __eflags);
 

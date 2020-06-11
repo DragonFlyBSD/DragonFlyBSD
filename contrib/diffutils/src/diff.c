@@ -1,7 +1,7 @@
-/* diff - compare files line by line
+/* GNU diff - compare files line by line
 
    Copyright (C) 1988-1989, 1992-1994, 1996, 1998, 2001-2002, 2004, 2006-2007,
-   2009-2013 Free Software Foundation, Inc.
+   2009-2013, 2015-2018 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -20,6 +20,7 @@
 
 #define GDIFF_MAIN
 #include "diff.h"
+#include "die.h"
 #include <assert.h>
 #include "paths.h"
 #include <c-stack.h>
@@ -70,6 +71,7 @@ static void add_regexp (struct regexp_list *, char const *);
 static void summarize_regexp_list (struct regexp_list *);
 static void specify_style (enum output_style);
 static void specify_value (char const **, char const *, char const *);
+static void specify_colors_style (char const *);
 static void try_help (char const *, char const *) __attribute__((noreturn));
 static void check_stdout (void);
 static void usage (void);
@@ -136,7 +138,12 @@ enum
   UNCHANGED_GROUP_FORMAT_OPTION,
   OLD_GROUP_FORMAT_OPTION,
   NEW_GROUP_FORMAT_OPTION,
-  CHANGED_GROUP_FORMAT_OPTION
+  CHANGED_GROUP_FORMAT_OPTION,
+
+  COLOR_OPTION,
+  COLOR_PALETTE_OPTION,
+
+  PRESUME_OUTPUT_TTY_OPTION,
 };
 
 static char const group_format_option[][sizeof "--unchanged-group-format"] =
@@ -159,6 +166,7 @@ static struct option const longopts[] =
   {"binary", 0, 0, BINARY_OPTION},
   {"brief", 0, 0, 'q'},
   {"changed-group-format", 1, 0, CHANGED_GROUP_FORMAT_OPTION},
+  {"color", 2, 0, COLOR_OPTION},
   {"context", 2, 0, 'C'},
   {"ed", 0, 0, 'e'},
   {"exclude", 1, 0, 'x'},
@@ -192,6 +200,7 @@ static struct option const longopts[] =
   {"old-group-format", 1, 0, OLD_GROUP_FORMAT_OPTION},
   {"old-line-format", 1, 0, OLD_LINE_FORMAT_OPTION},
   {"paginate", 0, 0, 'l'},
+  {"palette", 1, 0, COLOR_PALETTE_OPTION},
   {"rcs", 0, 0, 'n'},
   {"recursive", 0, 0, 'r'},
   {"report-identical-files", 0, 0, 's'},
@@ -213,6 +222,9 @@ static struct option const longopts[] =
   {"unified", 2, 0, 'U'},
   {"version", 0, 0, 'v'},
   {"width", 1, 0, 'W'},
+
+  /* This is solely for testing.  Do not document.  */
+  {"-presume-output-tty", no_argument, NULL, PRESUME_OUTPUT_TTY_OPTION},
   {0, 0, 0, 0}
 };
 
@@ -283,6 +295,7 @@ main (int argc, char **argv)
   ignore_regexp_list.buf = &ignore_regexp;
   re_set_syntax (RE_SYNTAX_GREP | RE_NO_POSIX_BACKTRACKING);
   excluded = new_exclude ();
+  presume_output_tty = false;
 
   /* Decode the options.  */
 
@@ -303,11 +316,12 @@ main (int argc, char **argv)
 	case '7':
 	case '8':
 	case '9':
-	  if (! ISDIGIT (prev))
-	    ocontext = c - '0';
-	  else if (LIN_MAX / 10 < ocontext
-		   || ((ocontext = 10 * ocontext + c - '0') < 0))
-	    ocontext = LIN_MAX;
+	  ocontext = (! ISDIGIT (prev)
+		      ? c - '0'
+		      : (ocontext - (c - '0' <= CONTEXT_MAX % 10)
+			 < CONTEXT_MAX / 10)
+		      ? 10 * ocontext + (c - '0')
+		      : CONTEXT_MAX);
 	  break;
 
 	case 'a':
@@ -336,8 +350,8 @@ main (int argc, char **argv)
 		numval = strtoumax (optarg, &numend, 10);
 		if (*numend)
 		  try_help ("invalid context length '%s'", optarg);
-		if (LIN_MAX < numval)
-		  numval = LIN_MAX;
+		if (CONTEXT_MAX < numval)
+		  numval = CONTEXT_MAX;
 	      }
 	    else
 	      numval = 3;
@@ -593,7 +607,8 @@ main (int argc, char **argv)
 
 	case TABSIZE_OPTION:
 	  numval = strtoumax (optarg, &numend, 10);
-	  if (! (0 < numval && numval <= SIZE_MAX) || *numend)
+	  if (! (0 < numval && numval <= SIZE_MAX - GUTTER_WIDTH_MINIMUM)
+	      || *numend)
 	    try_help ("invalid tabsize '%s'", optarg);
 	  if (tabsize != numval)
 	    {
@@ -624,10 +639,29 @@ main (int argc, char **argv)
 	  specify_value (&group_format[c], optarg, group_format_option[c]);
 	  break;
 
+	case COLOR_OPTION:
+	  specify_colors_style (optarg);
+	  break;
+
+	case COLOR_PALETTE_OPTION:
+	  set_color_palette (optarg);
+	  break;
+
+        case PRESUME_OUTPUT_TTY_OPTION:
+          presume_output_tty = true;
+          break;
+
 	default:
 	  try_help (NULL, NULL);
 	}
       prev = c;
+    }
+
+  if (colors_style == AUTO)
+    {
+      char const *t = getenv ("TERM");
+      if (t && STREQ (t, "dumb"))
+        colors_style = NEVER;
     }
 
   if (output_style == OUTPUT_UNSPECIFIED)
@@ -680,10 +714,14 @@ main (int argc, char **argv)
 		a half line plus a gutter is an integral number of tabs,
 		so that tabs in the right column line up.  */
 
-    intmax_t t = expand_tabs ? 1 : tabsize;
-    intmax_t w = width;
-    intmax_t off = (w + t + GUTTER_WIDTH_MINIMUM) / (2 * t)  *  t;
-    sdiff_half_width = MAX (0, MIN (off - GUTTER_WIDTH_MINIMUM, w - off)),
+    size_t t = expand_tabs ? 1 : tabsize;
+    size_t w = width;
+    size_t t_plus_g = t + GUTTER_WIDTH_MINIMUM;
+    size_t unaligned_off = (w >> 1) + (t_plus_g >> 1) + (w & t_plus_g & 1);
+    size_t off = unaligned_off - unaligned_off % t;
+    sdiff_half_width = (off <= GUTTER_WIDTH_MINIMUM || w <= off
+			? 0
+			: MIN (off - GUTTER_WIDTH_MINIMUM, w - off));
     sdiff_column2_offset = sdiff_half_width ? off : w;
   }
 
@@ -779,7 +817,7 @@ add_regexp (struct regexp_list *reglist, char const *pattern)
   char const *m = re_compile_pattern (pattern, patlen, reglist->buf);
 
   if (m != 0)
-    error (0, 0, "%s: %s", pattern, m);
+    error (EXIT_TROUBLE, 0, "%s: %s", pattern, m);
   else
     {
       char *regexps = reglist->regexps;
@@ -825,7 +863,7 @@ summarize_regexp_list (struct regexp_list *reglist)
 	  char const *m = re_compile_pattern (reglist->regexps, reglist->len,
 					      reglist->buf);
 	  if (m)
-	    error (EXIT_TROUBLE, 0, "%s: %s", reglist->regexps, m);
+	    die (EXIT_TROUBLE, 0, "%s: %s", reglist->regexps, m);
 	}
     }
 }
@@ -835,9 +873,8 @@ try_help (char const *reason_msgid, char const *operand)
 {
   if (reason_msgid)
     error (0, 0, _(reason_msgid), operand);
-  error (EXIT_TROUBLE, 0, _("Try '%s --help' for more information."),
+  die (EXIT_TROUBLE, 0, _("Try '%s --help' for more information."),
 	 program_name);
-  abort ();
 }
 
 static void
@@ -864,7 +901,7 @@ static char const * const option_help_msgid[] = {
   "",
   N_("-p, --show-c-function         show which C function each change is in"),
   N_("-F, --show-function-line=RE   show the most recent line matching RE"),
-  N_("    --label LABEL             use LABEL instead of file name\n"
+  N_("    --label LABEL             use LABEL instead of file name and timestamp\n"
      "                                (can be repeated)"),
   "",
   N_("-t, --expand-tabs             expand tabs to spaces in output"),
@@ -933,11 +970,15 @@ static char const * const option_help_msgid[] = {
   N_("-d, --minimal            try hard to find a smaller set of changes"),
   N_("    --horizon-lines=NUM  keep NUM lines of the common prefix and suffix"),
   N_("    --speed-large-files  assume large files and many scattered small changes"),
+  N_("    --color[=WHEN]       colorize the output; WHEN can be 'never', 'always',\n"
+     "                           or 'auto' (the default)"),
+  N_("    --palette=PALETTE    the colors to use when --color is active; PALETTE is\n"
+     "                           a colon-separated list of terminfo capabilities"),
   "",
   N_("    --help               display this help and exit"),
   N_("-v, --version            output version information and exit"),
   "",
-  N_("FILES are 'FILE1 FILE2' or 'DIR1 DIR2' or 'DIR FILE...' or 'FILE... DIR'."),
+  N_("FILES are 'FILE1 FILE2' or 'DIR1 DIR2' or 'DIR FILE' or 'FILE DIR'."),
   N_("If --from-file or --to-file is given, there are no restrictions on FILE(s)."),
   N_("If a FILE is '-', read standard input."),
   N_("Exit status is 0 if inputs are the same, 1 if different, 2 if trouble."),
@@ -967,6 +1008,9 @@ Mandatory arguments to long options are mandatory for short options too.\n\
 	  while ((nl = strchr (msg, '\n')))
 	    {
 	      int msglen = nl + 1 - msg;
+	      /* This assertion is solely to avoid a warning from
+		 gcc's -Wformat-overflow=.  */
+	      assert (msglen < 4096);
 	      printf ("  %.*s", msglen, msg);
 	      msg = nl + 1;
 	    }
@@ -1001,6 +1045,21 @@ specify_style (enum output_style style)
       output_style = style;
     }
 }
+
+/* Set the color mode.  */
+static void
+specify_colors_style (char const *value)
+{
+  if (value == NULL || STREQ (value, "auto"))
+    colors_style = AUTO;
+  else if (STREQ (value, "always"))
+    colors_style = ALWAYS;
+  else if (STREQ (value, "never"))
+    colors_style = NEVER;
+  else
+    try_help ("invalid color '%s'", value);
+}
+
 
 /* Set the last-modified time of *ST to be the current time.  */
 
@@ -1337,7 +1396,9 @@ compare_files (struct comparison const *parent,
   else if (files_can_be_treated_as_binary
 	   && S_ISREG (cmp.file[0].stat.st_mode)
 	   && S_ISREG (cmp.file[1].stat.st_mode)
-	   && cmp.file[0].stat.st_size != cmp.file[1].stat.st_size)
+	   && cmp.file[0].stat.st_size != cmp.file[1].stat.st_size
+	   && 0 < cmp.file[0].stat.st_size
+	   && 0 < cmp.file[1].stat.st_size)
     {
       message ("Files %s and %s differ\n",
 	       file_label[0] ? file_label[0] : cmp.file[0].name,

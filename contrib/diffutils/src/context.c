@@ -1,7 +1,7 @@
 /* Context-format output routines for GNU DIFF.
 
-   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2006, 2009-2013
-   Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2006, 2009-2013,
+   2015-2018 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -43,8 +43,9 @@ print_context_label (char const *mark,
 		     char const *name,
 		     char const *label)
 {
+  set_color_context (HEADER_CONTEXT);
   if (label)
-    fprintf (outfile, "%s %s\n", mark, label);
+    fprintf (outfile, "%s %s", mark, label);
   else
     {
       char buf[MAX (INT_STRLEN_BOUND (int) + 32,
@@ -71,8 +72,10 @@ print_context_label (char const *mark,
 	      sprintf (buf, "%"PRIuMAX".%.9d", sec, nsec);
 	    }
 	}
-      fprintf (outfile, "%s %s\t%s\n", mark, name, buf);
+      fprintf (outfile, "%s %s\t%s", mark, name, buf);
     }
+  set_color_context (RESET_CONTEXT);
+  putc ('\n', outfile);
 }
 
 /* Print a header for a context diff, with the file names and dates.  */
@@ -124,7 +127,7 @@ print_context_script (struct change *script, bool unidiff)
 static void
 print_context_number_range (struct file_data const *file, lin a, lin b)
 {
-  long int trans_a, trans_b;
+  printint trans_a, trans_b;
   translate_range (file, a, b, &trans_a, &trans_b);
 
   /* We can have B <= A in the case of a range of no lines.
@@ -137,9 +140,9 @@ print_context_number_range (struct file_data const *file, lin a, lin b)
      specification.  */
 
   if (trans_b <= trans_a)
-    fprintf (outfile, "%ld", trans_b);
+    fprintf (outfile, "%"pI"d", trans_b);
   else
-    fprintf (outfile, "%ld,%ld", trans_a, trans_b);
+    fprintf (outfile, "%"pI"d,%"pI"d", trans_a, trans_b);
 }
 
 /* Print FUNCTION in a context header.  */
@@ -205,9 +208,13 @@ pr_context_hunk (struct change *hunk)
   if (function)
     print_context_function (out, function);
 
-  fputs ("\n*** ", out);
+  putc ('\n', out);
+  set_color_context (LINE_NUMBER_CONTEXT);
+  fputs ("*** ", out);
   print_context_number_range (&files[0], first0, last0);
-  fputs (" ****\n", out);
+  fputs (" ****", out);
+  set_color_context (RESET_CONTEXT);
+  putc ('\n', out);
 
   if (changes & OLD)
     {
@@ -215,6 +222,8 @@ pr_context_hunk (struct change *hunk)
 
       for (i = first0; i <= last0; i++)
 	{
+	  set_color_context (DELETE_CONTEXT);
+
 	  /* Skip past changes that apply (in file 0)
 	     only to lines before line I.  */
 
@@ -225,18 +234,25 @@ pr_context_hunk (struct change *hunk)
 
 	  prefix = " ";
 	  if (next && next->line0 <= i)
-	    /* The change NEXT covers this line.
-	       If lines were inserted here in file 1, this is "changed".
-	       Otherwise it is "deleted".  */
-	    prefix = (next->inserted > 0 ? "!" : "-");
-
-	  print_1_line (prefix, &files[0].linbuf[i]);
+            {
+              /* The change NEXT covers this line.
+                 If lines were inserted here in file 1, this is "changed".
+                 Otherwise it is "deleted".  */
+              prefix = (next->inserted > 0 ? "!" : "-");
+            }
+	  print_1_line_nl (prefix, &files[0].linbuf[i], true);
+          set_color_context (RESET_CONTEXT);
+          if (files[0].linbuf[i + 1][-1] == '\n')
+            putc ('\n', out);
 	}
     }
 
+  set_color_context (LINE_NUMBER_CONTEXT);
   fputs ("--- ", out);
   print_context_number_range (&files[1], first1, last1);
-  fputs (" ----\n", out);
+  fputs (" ----", out);
+  set_color_context (RESET_CONTEXT);
+  putc ('\n', out);
 
   if (changes & NEW)
     {
@@ -244,6 +260,8 @@ pr_context_hunk (struct change *hunk)
 
       for (i = first1; i <= last1; i++)
 	{
+	  set_color_context (ADD_CONTEXT);
+
 	  /* Skip past changes that apply (in file 1)
 	     only to lines before line I.  */
 
@@ -254,12 +272,16 @@ pr_context_hunk (struct change *hunk)
 
 	  prefix = " ";
 	  if (next && next->line1 <= i)
-	    /* The change NEXT covers this line.
-	       If lines were deleted here in file 0, this is "changed".
-	       Otherwise it is "inserted".  */
-	    prefix = (next->deleted > 0 ? "!" : "+");
-
-	  print_1_line (prefix, &files[1].linbuf[i]);
+            {
+              /* The change NEXT covers this line.
+                 If lines were deleted here in file 0, this is "changed".
+                 Otherwise it is "inserted".  */
+              prefix = (next->deleted > 0 ? "!" : "+");
+            }
+	  print_1_line_nl (prefix, &files[1].linbuf[i], true);
+          set_color_context (RESET_CONTEXT);
+          if (files[1].linbuf[i + 1][-1] == '\n')
+            putc ('\n', out);
 	}
     }
 }
@@ -274,7 +296,7 @@ pr_context_hunk (struct change *hunk)
 static void
 print_unidiff_number_range (struct file_data const *file, lin a, lin b)
 {
-  long int trans_a, trans_b;
+  printint trans_a, trans_b;
   translate_range (file, a, b, &trans_a, &trans_b);
 
   /* We can have B < A in the case of a range of no lines.
@@ -282,9 +304,9 @@ print_unidiff_number_range (struct file_data const *file, lin a, lin b)
      which is B.  It would be more logical to print A, but
      'patch' expects B in order to detect diffs against empty files.  */
   if (trans_b <= trans_a)
-    fprintf (outfile, trans_b < trans_a ? "%ld,0" : "%ld", trans_b);
+    fprintf (outfile, trans_b < trans_a ? "%"pI"d,0" : "%"pI"d", trans_b);
   else
-    fprintf (outfile, "%ld,%ld", trans_a, trans_b - trans_a + 1);
+    fprintf (outfile, "%"pI"d,%"pI"d", trans_a, trans_b - trans_a + 1);
 }
 
 /* Print a portion of an edit script in unidiff format.
@@ -330,11 +352,13 @@ pr_unidiff_hunk (struct change *hunk)
   begin_output ();
   out = outfile;
 
+  set_color_context (LINE_NUMBER_CONTEXT);
   fputs ("@@ -", out);
   print_unidiff_number_range (&files[0], first0, last0);
   fputs (" +", out);
   print_unidiff_number_range (&files[1], first1, last1);
   fputs (" @@", out);
+  set_color_context (RESET_CONTEXT);
 
   if (function)
     print_context_function (out, function);
@@ -363,25 +387,39 @@ pr_unidiff_hunk (struct change *hunk)
 	  /* For each difference, first output the deleted part. */
 
 	  k = next->deleted;
+
 	  while (k--)
 	    {
 	      char const * const *line = &files[0].linbuf[i++];
+	      set_color_context (DELETE_CONTEXT);
 	      putc ('-', out);
 	      if (initial_tab && ! (suppress_blank_empty && **line == '\n'))
 		putc ('\t', out);
-	      print_1_line (NULL, line);
+	      print_1_line_nl (NULL, line, true);
+
+	      set_color_context (RESET_CONTEXT);
+
+              if (line[1][-1] == '\n')
+                putc ('\n', out);
 	    }
 
 	  /* Then output the inserted part. */
 
 	  k = next->inserted;
-	  while (k--)
+
+          while (k--)
 	    {
 	      char const * const *line = &files[1].linbuf[j++];
+	      set_color_context (ADD_CONTEXT);
 	      putc ('+', out);
 	      if (initial_tab && ! (suppress_blank_empty && **line == '\n'))
 		putc ('\t', out);
-	      print_1_line (NULL, line);
+	      print_1_line_nl (NULL, line, true);
+
+              set_color_context (RESET_CONTEXT);
+
+              if (line[1][-1] == '\n')
+                putc ('\n', out);
 	    }
 
 	  /* We're done with this hunk, so on to the next! */
@@ -402,12 +440,11 @@ find_hunk (struct change *start)
   lin top0, top1;
   lin thresh;
 
-  /* Threshold distance is 2 * CONTEXT + 1 between two non-ignorable
-     changes, but only CONTEXT if one is ignorable.  Watch out for
-     integer overflow, though.  */
-  lin non_ignorable_threshold =
-    (LIN_MAX - 1) / 2 < context ? LIN_MAX : 2 * context + 1;
+  /* Threshold distance is CONTEXT if the second change is ignorable,
+     2 * CONTEXT + 1 otherwise.  Integer overflow can't happen, due
+     to CONTEXT_LIM.  */
   lin ignorable_threshold = context;
+  lin non_ignorable_threshold = 2 * context + 1;
 
   do
     {
@@ -416,7 +453,7 @@ find_hunk (struct change *start)
       top1 = start->line1 + start->inserted;
       prev = start;
       start = start->link;
-      thresh = (prev->ignore || (start && start->ignore)
+      thresh = (start && start->ignore
 		? ignorable_threshold
 		: non_ignorable_threshold);
       /* It is not supposed to matter which file we check in the end-test.

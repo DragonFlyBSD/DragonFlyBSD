@@ -1,7 +1,7 @@
 /* sdiff-format output routines for GNU DIFF.
 
-   Copyright (C) 1991-1993, 1998, 2001-2002, 2004, 2009-2013 Free Software
-   Foundation, Inc.
+   Copyright (C) 1991-1993, 1998, 2001-2002, 2004, 2009-2013, 2015-2018 Free
+   Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -150,7 +150,7 @@ print_half_line (char const *const *line, size_t indent, size_t out_bound)
 		break;
 	      }
 	  }
-	  /* Fall through.  */
+	  FALLTHROUGH;
 	case '\f':
 	case '\v':
 	  if (in_position < out_bound)
@@ -206,6 +206,18 @@ print_1sdiff_line (char const *const *left, char sep,
   size_t c2o = sdiff_column2_offset;
   size_t col = 0;
   bool put_newline = false;
+  bool color_to_reset = false;
+
+  if (sep == '<')
+    {
+      set_color_context (DELETE_CONTEXT);
+      color_to_reset = true;
+    }
+  else if (sep == '>')
+    {
+      set_color_context (ADD_CONTEXT);
+      color_to_reset = true;
+    }
 
   if (left)
     {
@@ -233,6 +245,9 @@ print_1sdiff_line (char const *const *left, char sep,
 
   if (put_newline)
     putc ('\n', out);
+
+  if (color_to_reset)
+    set_color_context (RESET_CONTEXT);
 }
 
 /* Print lines common to both files in side-by-side format.  */
@@ -245,9 +260,9 @@ print_sdiff_common_lines (lin limit0, lin limit1)
     {
       if (sdiff_merge_assist)
 	{
-	  long int len0 = limit0 - i0;
-	  long int len1 = limit1 - i1;
-	  fprintf (outfile, "i%ld,%ld\n", len0, len1);
+	  printint len0 = limit0 - i0;
+	  printint len1 = limit1 - i1;
+	  fprintf (outfile, "i%"pI"d,%"pI"d\n", len0, len1);
 	}
 
       if (!left_column)
@@ -287,9 +302,9 @@ print_sdiff_hunk (struct change *hunk)
 
   if (sdiff_merge_assist)
     {
-      long int len0 = last0 - first0 + 1;
-      long int len1 = last1 - first1 + 1;
-      fprintf (outfile, "c%ld,%ld\n", len0, len1);
+      printint len0 = last0 - first0 + 1;
+      printint len1 = last1 - first1 + 1;
+      fprintf (outfile, "c%"pI"d,%"pI"d\n", len0, len1);
     }
 
   /* Print "xxx  |  xxx " lines.  */

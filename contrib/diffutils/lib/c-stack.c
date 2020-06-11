@@ -1,6 +1,6 @@
 /* Stack overflow handling.
 
-   Copyright (C) 2002, 2004, 2006, 2008-2013 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2004, 2006, 2008-2018 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Paul Eggert.  */
 
@@ -78,6 +78,7 @@ typedef struct sigaltstack stack_t;
 #include "c-stack.h"
 #include "exitfail.h"
 #include "ignore-value.h"
+#include "getprogname.h"
 
 #if defined SA_ONSTACK && defined SA_SIGINFO
 # define SIGINFO_WORKS 1
@@ -88,8 +89,6 @@ typedef struct sigaltstack stack_t;
 # endif
 #endif
 
-extern char *program_name;
-
 /* The user-specified action to take when a SEGV-related program error
    or stack overflow occurs.  */
 static void (* volatile segv_action) (int);
@@ -99,6 +98,10 @@ static void (* volatile segv_action) (int);
    async-signal-safe.  */
 static char const * volatile program_error_message;
 static char const * volatile stack_overflow_message;
+
+#if ((HAVE_LIBSIGSEGV && ! HAVE_XSI_STACK_OVERFLOW_HEURISTIC) \
+     || (HAVE_SIGALTSTACK && HAVE_DECL_SIGALTSTACK            \
+         && HAVE_STACK_OVERFLOW_HANDLING))
 
 /* Output an error message, then exit with status EXIT_FAILURE if it
    appears to have been a stack overflow, or with a core dump
@@ -116,7 +119,7 @@ die (int signo)
 #endif /* !SIGINFO_WORKS && !HAVE_LIBSIGSEGV */
   segv_action (signo);
   message = signo ? program_error_message : stack_overflow_message;
-  ignore_value (write (STDERR_FILENO, program_name, strlen (program_name)));
+  ignore_value (write (STDERR_FILENO, getprogname (), strlen (getprogname ())));
   ignore_value (write (STDERR_FILENO, ": ", 2));
   ignore_value (write (STDERR_FILENO, message, strlen (message)));
   ignore_value (write (STDERR_FILENO, "\n", 1));
@@ -125,6 +128,7 @@ die (int signo)
   raise (signo);
   abort ();
 }
+#endif
 
 #if (HAVE_SIGALTSTACK && HAVE_DECL_SIGALTSTACK \
      && HAVE_STACK_OVERFLOW_HANDLING) || HAVE_LIBSIGSEGV

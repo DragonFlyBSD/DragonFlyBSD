@@ -1,6 +1,6 @@
 /* Concatenate two arbitrary file names.
 
-   Copyright (C) 1996-2007, 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 1996-2007, 2009-2018 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Jim Meyering.  */
 
@@ -32,9 +32,9 @@
    "memory exhausted" condition and exit.  */
 
 char *
-file_name_concat (char const *dir, char const *abase, char **base_in_result)
+file_name_concat (char const *dir, char const *base, char **base_in_result)
 {
-  char *p = mfile_name_concat (dir, abase, base_in_result);
+  char *p = mfile_name_concat (dir, base, base_in_result);
   if (p == NULL)
     xalloc_die ();
   return p;
