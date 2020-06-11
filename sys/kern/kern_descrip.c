@@ -1644,7 +1644,7 @@ fdalloc_locked(struct proc *p, struct filedesc *fdp, int want, int *result)
 	if (lim < minfilesperproc)
 		lim = minfilesperproc;
 	if (want >= lim)
-		return (EMFILE);
+		return (EINVAL);
 
 	/*
 	 * Check that the user has not run out of descriptors (non-root only).
