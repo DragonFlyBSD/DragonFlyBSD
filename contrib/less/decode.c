@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2015  Mark Nudelman
+ * Copyright (C) 1984-2019  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -35,6 +35,9 @@
 
 extern int erase_char, erase2_char, kill_char;
 extern int secure;
+extern int mousecap;
+extern int screen_trashed;
+extern int sc_height;
 
 #define SK(k) \
 	SK_SPECIAL_KEY, (k), 6, 1, 1, 1
@@ -65,6 +68,8 @@ static unsigned char cmdtable[] =
 	CONTROL('D'),0,			A_F_SCROLL,
 	'u',0,				A_B_SCROLL,
 	CONTROL('U'),0,			A_B_SCROLL,
+	ESC,'[','M',0,			A_X11MOUSE_IN,
+	ESC,'[','<',0,			A_X116MOUSE_IN,
 	' ',0,				A_F_SCREEN,
 	'f',0,				A_F_SCREEN,
 	CONTROL('F'),0,			A_F_SCREEN,
@@ -94,8 +99,12 @@ static unsigned char cmdtable[] =
 	ESC,']',0,			A_RSHIFT,
 	ESC,'(',0,			A_LSHIFT,
 	ESC,')',0,			A_RSHIFT,
+	ESC,'{',0,			A_LLSHIFT,
+	ESC,'}',0,			A_RRSHIFT,
 	SK(SK_RIGHT_ARROW),0,		A_RSHIFT,
 	SK(SK_LEFT_ARROW),0,		A_LSHIFT,
+	SK(SK_CTL_RIGHT_ARROW),0,	A_RRSHIFT,
+	SK(SK_CTL_LEFT_ARROW),0,	A_LLSHIFT,
 	'{',0,				A_F_BRACKET|A_EXTRA,	'{','}',0,
 	'}',0,				A_B_BRACKET|A_EXTRA,	'{','}',0,
 	'(',0,				A_F_BRACKET|A_EXTRA,	'(',')',0,
@@ -136,6 +145,8 @@ static unsigned char cmdtable[] =
 	ESC,'N',0,			A_T_REVERSE_SEARCH,
 	'&',0,				A_FILTER,
 	'm',0,				A_SETMARK,
+	'M',0,				A_SETMARKBOT,
+	ESC,'m',0,			A_CLRMARK,
 	'\'',0,				A_GOMARK,
 	CONTROL('X'),CONTROL('X'),0,	A_GOMARK,
 	'E',0,				A_EXAMINE,
@@ -233,9 +244,9 @@ expand_special_keys(table, len)
 	char *table;
 	int len;
 {
-	register char *fm;
-	register char *to;
-	register int a;
+	char *fm;
+	char *to;
+	int a;
 	char *repl;
 	int klen;
 
@@ -287,10 +298,37 @@ expand_special_keys(table, len)
 }
 
 /*
+ * Expand special key abbreviations in a list of command tables.
+ */
+	static void
+expand_cmd_table(tlist)
+	struct tablelist *tlist;
+{
+	struct tablelist *t;
+	for (t = tlist;  t != NULL;  t = t->t_next)
+	{
+		expand_special_keys(t->t_start, t->t_end - t->t_start);
+	}
+}
+
+/*
+ * Expand special key abbreviations in all command tables.
+ */
+	public void
+expand_cmd_tables(VOID_PARAM)
+{
+	expand_cmd_table(list_fcmd_tables);
+	expand_cmd_table(list_ecmd_tables);
+	expand_cmd_table(list_var_tables);
+	expand_cmd_table(list_sysvar_tables);
+}
+
+
+/*
  * Initialize the command lists.
  */
 	public void
-init_cmds()
+init_cmds(VOID_PARAM)
 {
 	/*
 	 * Add the default command tables.
@@ -325,7 +363,7 @@ add_cmd_table(tlist, buf, len)
 	char *buf;
 	int len;
 {
-	register struct tablelist *t;
+	struct tablelist *t;
 
 	if (len == 0)
 		return (0);
@@ -338,7 +376,6 @@ add_cmd_table(tlist, buf, len)
 	{
 		return (-1);
 	}
-	expand_special_keys(buf, len);
 	t->t_start = buf;
 	t->t_end = buf + len;
 	t->t_next = *tlist;
@@ -384,6 +421,116 @@ add_var_table(tlist, buf, len)
 }
 
 /*
+ * Return action for a mouse wheel down event.
+ */
+	static int
+mouse_wheel_down(VOID_PARAM)
+{
+	return ((mousecap == OPT_ONPLUS) ? A_B_MOUSE : A_F_MOUSE);
+}
+
+/*
+ * Return action for a mouse wheel up event.
+ */
+	static int
+mouse_wheel_up(VOID_PARAM)
+{
+	return ((mousecap == OPT_ONPLUS) ? A_F_MOUSE : A_B_MOUSE);
+}
+
+/*
+ * Return action for a mouse button release event.
+ */
+	static int
+mouse_button_rel(x, y)
+	int x;
+	int y;
+{
+	/*
+	 * {{ It would be better to return an action and then do this 
+	 *    in commands() but it's nontrivial to pass y to it. }}
+	 */
+	if (y < sc_height-1)
+	{
+		setmark('#', y);
+		screen_trashed = 1;
+	}
+	return (A_NOACTION);
+}
+
+/*
+ * Read a decimal integer. Return the integer and set *pterm to the terminating char.
+ */
+	static int
+getcc_int(pterm)
+	char* pterm;
+{
+	int num = 0;
+	int digits = 0;
+	for (;;)
+	{
+		char ch = getcc();
+		if (ch < '0' || ch > '9')
+		{
+			if (pterm != NULL) *pterm = ch;
+			if (digits == 0)
+				return (-1);
+			return (num);
+		}
+		num = (10 * num) + (ch - '0');
+		++digits;
+	}
+}
+
+/*
+ * Read suffix of mouse input and return the action to take.
+ * The prefix ("\e[M") has already been read.
+ */
+	static int
+x11mouse_action(VOID_PARAM)
+{
+	int b = getcc() - X11MOUSE_OFFSET;
+	int x = getcc() - X11MOUSE_OFFSET-1;
+	int y = getcc() - X11MOUSE_OFFSET-1;
+	switch (b) {
+	default:
+		return (A_NOACTION);
+	case X11MOUSE_WHEEL_DOWN:
+		return mouse_wheel_down();
+	case X11MOUSE_WHEEL_UP:
+		return mouse_wheel_up();
+	case X11MOUSE_BUTTON_REL:
+		return mouse_button_rel(x, y);
+	}
+}
+
+/*
+ * Read suffix of mouse input and return the action to take.
+ * The prefix ("\e[<") has already been read.
+ */
+	static int
+x116mouse_action(VOID_PARAM)
+{
+	char ch;
+	int x, y;
+	int b = getcc_int(&ch);
+	if (b < 0 || ch != ';') return (A_NOACTION);
+	x = getcc_int(&ch) - 1;
+	if (x < 0 || ch != ';') return (A_NOACTION);
+	y = getcc_int(&ch) - 1;
+	if (y < 0) return (A_NOACTION);
+	switch (b) {
+	case X11MOUSE_WHEEL_DOWN:
+		return mouse_wheel_down();
+	case X11MOUSE_WHEEL_UP:
+		return mouse_wheel_up();
+	default:
+		if (ch != 'm') return (A_NOACTION);
+		return mouse_button_rel(x, y);
+	}
+}
+
+/*
  * Search a single command table for the command string in cmd.
  */
 	static int
@@ -393,9 +540,9 @@ cmd_search(cmd, table, endtable, sp)
 	char *endtable;
 	char **sp;
 {
-	register char *p;
-	register char *q;
-	register int a;
+	char *p;
+	char *q;
+	int a;
 
 	*sp = NULL;
 	for (p = table, q = cmd;  p < endtable;  p++, q++)
@@ -432,6 +579,10 @@ cmd_search(cmd, table, endtable, sp)
 					*sp = ++p;
 					a &= ~A_EXTRA;
 				}
+				if (a == A_X11MOUSE_IN)
+					a = x11mouse_action();
+				else if (a == A_X116MOUSE_IN)
+					a = x116mouse_action();
 				return (a);
 			}
 		} else if (*q == '\0')
@@ -484,8 +635,8 @@ cmd_decode(tlist, cmd, sp)
 	char *cmd;
 	char **sp;
 {
-	register struct tablelist *t;
-	register int action = A_INVALID;
+	struct tablelist *t;
+	int action = A_INVALID;
 
 	/*
 	 * Search thru all the command tables.
@@ -547,6 +698,16 @@ lgetenv(var)
 	return (NULL);
 }
 
+/*
+ * Is a string null or empty? 
+ */
+	public int
+isnullenv(s)
+	char* s;
+{
+	return (s == NULL || *s == '\0');
+}
+
 #if USERFILE
 /*
  * Get an "integer" from a lesskey file.
@@ -595,8 +756,8 @@ new_lesskey(buf, len, sysvar)
 	int sysvar;
 {
 	char *p;
-	register int c;
-	register int n;
+	int c;
+	int n;
 
 	/*
 	 * New-style lesskey file.
@@ -647,19 +808,17 @@ lesskey(filename, sysvar)
 	char *filename;
 	int sysvar;
 {
-	register char *buf;
-	register POSITION len;
-	register long n;
-	register int f;
+	char *buf;
+	POSITION len;
+	long n;
+	int f;
 
 	if (secure)
 		return (1);
 	/*
 	 * Try to open the lesskey file.
 	 */
-	filename = shell_unquote(filename);
 	f = open(filename, OPEN_READ);
-	free(filename);
 	if (f < 0)
 		return (1);
 
@@ -761,7 +920,13 @@ editchar(c, flags)
 	if (c == erase_char || c == erase2_char)
 		return (EC_BACKSPACE);
 	if (c == kill_char)
+	{
+#if MSDOS_COMPILER==WIN32C
+		if (!win32_kbhit())
+#endif
+
 		return (EC_LINEKILL);
+	}
 		
 	/*
 	 * Collect characters in a buffer.

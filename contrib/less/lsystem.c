@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2015  Mark Nudelman
+ * Copyright (C) 1984-2019  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -19,11 +19,16 @@
 
 #if MSDOS_COMPILER
 #include <dos.h>
+#if MSDOS_COMPILER==WIN32C && defined(MINGW)
+#include <direct.h>
+#define setdisk(n) _chdrive((n)+1)
+#else
 #ifdef _MSC_VER
 #include <direct.h>
 #define setdisk(n) _chdrive((n)+1)
 #else
 #include <dir.h>
+#endif
 #endif
 #endif
 
@@ -42,10 +47,10 @@ lsystem(cmd, donemsg)
 	char *cmd;
 	char *donemsg;
 {
-	register int inp;
+	int inp;
 #if HAVE_SHELL
-	register char *shell;
-	register char *p;
+	char *shell;
+	char *p;
 #endif
 	IFILE save_ifile;
 #if MSDOS_COMPILER && MSDOS_COMPILER!=WIN32C
@@ -289,9 +294,8 @@ pipe_data(cmd, spos, epos)
 	POSITION spos;
 	POSITION epos;
 {
-	register FILE *f;
-	register int c;
-	extern FILE *popen();
+	FILE *f;
+	int c;
 
 	/*
 	 * This is structured much like lsystem().

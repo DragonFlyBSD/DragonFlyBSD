@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2015  Mark Nudelman
+ * Copyright (C) 1984-2019  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -22,6 +22,7 @@ static int curseq;
 
 extern int linenums;
 extern int sigs;
+extern int ctldisp;
 
 enum tag_result {
 	TAG_FOUND,
@@ -37,7 +38,7 @@ enum tag_result {
 enum {
 	T_CTAGS,	/* 'tags': standard and extended format (ctags) */
 	T_CTAGS_X,	/* stdin: cross reference format (ctags) */
-	T_GTAGS,	/* 'GTAGS': function defenition (global) */
+	T_GTAGS,	/* 'GTAGS': function definition (global) */
 	T_GRTAGS,	/* 'GRTAGS': function reference (global) */
 	T_GSYMS,	/* 'GSYMS': other symbols (global) */
 	T_GPATH		/* 'GPATH': path name (global) */
@@ -63,8 +64,6 @@ struct taglist {
 	struct tag *tl_first;
 	struct tag *tl_last;
 };
-#define TAG_END  ((struct tag *) &taglist)
-static struct taglist taglist = { TAG_END, TAG_END };
 struct tag {
 	struct tag *next, *prev; /* List links */
 	char *tag_file;		/* Source file containing the tag */
@@ -72,6 +71,8 @@ struct tag {
 	char *tag_pattern;	/* Pattern used to find the tag */
 	char tag_endline;	/* True if the pattern includes '$' */
 };
+#define TAG_END  ((struct tag *) &taglist)
+static struct taglist taglist = { TAG_END, TAG_END };
 static struct tag *curtag;
 
 #define TAG_INS(tp) \
@@ -88,9 +89,9 @@ static struct tag *curtag;
  * Delete tag structures.
  */
 	public void
-cleantags()
+cleantags(VOID_PARAM)
 {
-	register struct tag *tp;
+	struct tag *tp;
 
 	/*
 	 * Delete any existing tag list.
@@ -100,6 +101,8 @@ cleantags()
 	while ((tp = taglist.tl_first) != TAG_END)
 	{
 		TAG_RM(tp);
+		free(tp->tag_file);
+		free(tp->tag_pattern);
 		free(tp);
 	}
 	curtag = NULL;
@@ -117,7 +120,7 @@ maketagent(name, file, linenum, pattern, endline)
 	char *pattern;
 	int endline;
 {
-	register struct tag *tp;
+	struct tag *tp;
 
 	tp = (struct tag *) ecalloc(sizeof(struct tag), 1);
 	tp->tag_file = (char *) ecalloc(strlen(file) + 1, sizeof(char));
@@ -138,7 +141,7 @@ maketagent(name, file, linenum, pattern, endline)
  * Get tag mode.
  */
 	public int
-gettagtype()
+gettagtype(VOID_PARAM)
 {
 	int f;
 
@@ -170,7 +173,7 @@ gettagtype()
  */
 	public void
 findtag(tag)
-	register char *tag;
+	char *tag;
 {
 	int type = gettagtype();
 	enum tag_result result;
@@ -200,7 +203,7 @@ findtag(tag)
  * Search for a tag.
  */
 	public POSITION
-tagsearch()
+tagsearch(VOID_PARAM)
 {
 	if (curtag == NULL)
 		return (NULL_POSITION);  /* No gtags loaded! */
@@ -242,7 +245,7 @@ prevtag(n)
  * Return the total number of tags.
  */
 	public int
-ntags()
+ntags(VOID_PARAM)
 {
 	return total;
 }
@@ -251,7 +254,7 @@ ntags()
  * Return the sequence number of current tag.
  */
 	public int
-curr_tag()
+curr_tag(VOID_PARAM)
 {
 	return curseq;
 }
@@ -266,11 +269,11 @@ curr_tag()
  */
 	static enum tag_result
 findctag(tag)
-	register char *tag;
+	char *tag;
 {
 	char *p;
-	register FILE *f;
-	register int taglen;
+	FILE *f;
+	int taglen;
 	LINENUM taglinenum;
 	char *tagfile;
 	char *tagpattern;
@@ -377,11 +380,31 @@ findctag(tag)
  * Edit current tagged file.
  */
 	public int
-edit_tagfile()
+edit_tagfile(VOID_PARAM)
 {
 	if (curtag == NULL)
 		return (1);
 	return (edit(curtag->tag_file));
+}
+
+	static int
+curtag_match(char const *line, POSITION linepos)
+{
+	/*
+	 * Test the line to see if we have a match.
+	 * Use strncmp because the pattern may be
+	 * truncated (in the tags file) if it is too long.
+	 * If tagendline is set, make sure we match all
+	 * the way to end of line (no extra chars after the match).
+	 */
+	int len = (int) strlen(curtag->tag_pattern);
+	if (strncmp(curtag->tag_pattern, line, len) == 0 &&
+	    (!curtag->tag_endline || line[len] == '\0' || line[len] == '\r'))
+	{
+		curtag->tag_linenum = find_linenum(linepos);
+		return 1;
+	}
+	return 0;
 }
 
 /*
@@ -394,17 +417,18 @@ edit_tagfile()
  *	parentheses (which are almost always found in a tag).
  */
 	static POSITION
-ctagsearch()
+ctagsearch(VOID_PARAM)
 {
 	POSITION pos, linepos;
 	LINENUM linenum;
-	int len;
+	int line_len;
 	char *line;
+	int found;
 
 	pos = ch_zero();
 	linenum = find_linenum(pos);
 
-	for (;;)
+	for (found = 0; !found;)
 	{
 		/*
 		 * Get lines until we find a matching one or 
@@ -418,7 +442,7 @@ ctagsearch()
 		 * starting position of that line in linepos.
 		 */
 		linepos = pos;
-		pos = forw_raw_line(pos, &line, (int *)NULL);
+		pos = forw_raw_line(pos, &line, &line_len);
 		if (linenum != 0)
 			linenum++;
 
@@ -439,19 +463,21 @@ ctagsearch()
 		if (linenums)
 			add_lnum(linenum, pos);
 
-		/*
-		 * Test the line to see if we have a match.
-		 * Use strncmp because the pattern may be
-		 * truncated (in the tags file) if it is too long.
-		 * If tagendline is set, make sure we match all
-		 * the way to end of line (no extra chars after the match).
-		 */
-		len = (int) strlen(curtag->tag_pattern);
-		if (strncmp(curtag->tag_pattern, line, len) == 0 &&
-		    (!curtag->tag_endline || line[len] == '\0' || line[len] == '\r'))
+		if (ctldisp != OPT_ONPLUS)
 		{
-			curtag->tag_linenum = find_linenum(linepos);
-			break;
+			if (curtag_match(line, linepos))
+				found = 1;
+		} else
+		{
+			int cvt_ops = CVT_ANSI;
+			int cvt_len = cvt_length(line_len, cvt_ops);
+			int *chpos = cvt_alloc_chpos(cvt_len);
+			char *cline = (char *) ecalloc(1, cvt_len);
+			cvt_text(cline, line, chpos, &line_len, cvt_ops);
+			if (curtag_match(cline, linepos))
+				found = 1;
+			free(chpos);
+			free(cline);
 		}
 	}
 
@@ -503,7 +529,7 @@ findgtag(tag, type)
 		char *qtag;
 		char *cmd = lgetenv("LESSGLOBALTAGS");
 
-		if (cmd == NULL || *cmd == '\0')
+		if (isnullenv(cmd))
 			return TAG_NOFILE;
 		/* Get suitable flag value for global(1). */
 		switch (type)
@@ -605,7 +631,7 @@ static int circular = 0;	/* 1: circular tag structure */
  * appropriate tag.
  */
 	static char *
-nextgtag()
+nextgtag(VOID_PARAM)
 {
 	struct tag *tp;
 
@@ -635,7 +661,7 @@ nextgtag()
  * at the appropriate tag.
  */
 	static char *
-prevgtag()
+prevgtag(VOID_PARAM)
 {
 	struct tag *tp;
 
@@ -665,7 +691,7 @@ prevgtag()
  * if it was unable to position at the tag, 0 if successful.
  */
 	static POSITION
-gtagsearch()
+gtagsearch(VOID_PARAM)
 {
 	if (curtag == NULL)
 		return (NULL_POSITION);  /* No gtags loaded! */
