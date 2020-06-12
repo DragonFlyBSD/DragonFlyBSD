@@ -146,7 +146,7 @@ MANINSTALLFLAGS	Additional flags to pass to install(1).
 
 MLINKS		List of manual page links (using a .1 - .9 suffix).  The
 		linked-to file must come first, the linked file second,
-		and there may be multiple pairs.  The files are soft-linked.
+		and there may be multiple pairs.  The files are hard-linked.
 
 The include file <bsd.man.mk> includes a file named "../Makefile.inc" if
 it exists.
@@ -238,12 +238,15 @@ LDADD		Additional loader objects.  Usually used for libraries.
 
 LDFLAGS		Additional loader flags.
 
-LINKS		The list of binary links; should be full pathnames, the
-		linked-to file coming first, followed by the linked
-		file.  The files are hard-linked.  For example, to link
-		/bin/test and /bin/[, use:
+LINKS		The list of hard links; should be full pathnames, the
+		linked-to file coming first, followed by the linked file.
+		For example, to link "/bin/test" and "/bin/[", use:
 
-			LINKS=	${DESTDIR}/bin/test ${DESTDIR}/bin/[
+			LINKS=	/bin/test /bin/[
+
+SYMLINKS	The list of symbolic links.  The linked-to file comes
+		first (can be a relative path), followed by the linked
+		file (should be a full path).
 
 MAN		Manual pages (should end in .1 - .9).  If no MAN variable
 		is defined, "MAN=${PROG}.1" is assumed.
