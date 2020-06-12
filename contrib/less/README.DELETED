@@ -22,8 +22,8 @@ less.hlp
 less.man
 lessecho.man
 lesskey.man
-mkfuncs.awk
-mkhelp.c
+mkfuncs.pl
+mkhelp.pl
 mkinstalldirs
 regexp.c
 regexp.h

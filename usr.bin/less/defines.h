@@ -84,7 +84,7 @@
 #define	PIPEC		(!SECURE)
 
 /*
- * LOGFILE is 1 if you wish to allow the -l option (to create log files).
+ * LOGFILE is 1 if you wish to allow the -o option (to create log files).
  */
 #define	LOGFILE		(!SECURE)
 
@@ -135,6 +135,11 @@
 #define TGETENT_OK  1
 
 /*
+ * HAVE_ANSI_PROTOS	is 1 if your compiler supports ANSI function prototypes.
+ */
+#define HAVE_ANSI_PROTOS 1
+
+/*
  * HAVE_SYS_TYPES_H is 1 if your system has <sys/types.h>.
  */
 #define HAVE_SYS_TYPES_H 1
@@ -163,7 +168,7 @@
 /*
  * Default shell metacharacters and meta-escape character.
  */
-#define	DEF_METACHARS	"; *?\t\n'\"()<>[]|&^`#\\$%=~"
+#define	DEF_METACHARS	"; *?\t\n'\"()<>[]|&^`#\\$%=~{},"
 #define	DEF_METAESCAPE	"\\"
 
 /* 
@@ -259,11 +264,17 @@
 /* PCRE (Perl-compatible regular expression) library */
 /* #undef HAVE_PCRE */
 
+/* PCRE2 (Perl-compatible regular expression) library */
+/* #undef HAVE_PCRE2 */
+
 /* Define to 1 if you have the `popen' function. */
 #define HAVE_POPEN 1
 
 /* POSIX regcomp() and regex.h */
 #define HAVE_POSIX_REGCOMP 1
+
+/* Define to 1 if you have the `realpath' function. */
+#define HAVE_REALPATH 1
 
 /* System V regcmp() */
 /* #undef HAVE_REGCMP */
@@ -379,7 +390,7 @@
 
 /* Define MUST_DEFINE_OSPEED if you have ospeed but it is not defined in
    termcap.h. */
-/* #undef MUST_DEFINE_OSPEED */
+#define MUST_DEFINE_OSPEED 1
 
 /* pattern matching is supported, but without metacharacters. */
 /* #undef NO_REGEX */
@@ -416,6 +427,11 @@
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #define TIME_WITH_SYS_TIME 1
+
+/* Enable large inode numbers on Mac OS X 10.5.  */
+#ifndef _DARWIN_USE_64_BIT_INODE
+# define _DARWIN_USE_64_BIT_INODE 1
+#endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

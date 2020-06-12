@@ -1,15 +1,17 @@
-LESS
-====
+LESS 551
+========
 
 Original source can be downloaded from:
 http://www.greenwoodsoftware.com/less/
 
-file = less-481.tar.gz
-date = 31 August 2015
-size = 316622
-sha1 = 58e7e62a760a9ca3636349de8e3357f7102aea1d
+file = less-551.tar.gz
+date = 11 June 2019
+size = 347007
+sha1 = 7a2dbccd46697ba17189b1e19f75eee5115c19a2
 
 A list of deleted files is in README.DELETED.
+
+Use "git diff vendor/LESS contrib/less" to see local modifications.
 
 When upgrading, remember to update usr.bin/less/defines.h.
 
@@ -17,6 +19,3 @@ This source is used in:
 	usr.bin/less
 	usr.bin/lessecho
 	usr.bin/lesskey
-
-Local modifications applied to following files:
-	cmdbuf.c
