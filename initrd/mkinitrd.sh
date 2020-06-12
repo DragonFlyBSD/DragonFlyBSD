@@ -94,20 +94,6 @@ check_dirs() {
 	return 0
 }
 
-# Calculate the total size of the given directory, taking care of the
-# hard links.
-#
-# NOTE: Do not use 'du' since it gives the disk usage of the files,
-#       which varies between different filesystems.
-#
-calc_size() {
-	find "$1" -ls | \
-	    awk '{ print $7,$1 }' | \
-	    sort -n -k 2 | \
-	    uniq -f 1 | \
-	    awk '{ sum+=$1 } END { print sum }'  # byte
-}
-
 
 #
 # Functions
@@ -117,8 +103,8 @@ calc_initrd_size() {
 	log "Calculating required initrd size ..."
 	isize=0
 	for _dir; do
-		csize=$(calc_size ${_dir})
-		log "* ${_dir}: ${csize} bytes"
+		csize=$(du -kst ${_dir} | awk '{ print $1 }')  # KB
+		log "* ${_dir}: ${csize} KB"
 		isize=$((${isize} + ${csize}))
 	done
 	# Round initrd size up by MB
@@ -128,8 +114,7 @@ calc_initrd_size() {
 	        return (x>y ? y+1 : y);
 	    }
 	    {
-	        mb = $1/1024/1024;
-	        print ceil(mb);
+	        print ceil($1 / 1024);
 	    }')
 	# Reserve another 1 MB for advanced user to add custom files to the
 	# initrd without creating it from scratch.
