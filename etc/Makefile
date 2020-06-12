@@ -170,8 +170,6 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 	cd ${UPGRADE_SRCDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${UPGRADE_SRCDIR}/periodic; ${MAKE} install
-	${LN} -fs /etc/periodic/daily/220.snapshot-hammer2 ${DESTDIR}/etc/periodic/weekly/220.snapshot-hammer2
-	${LN} -fs /etc/periodic/daily/220.snapshot-hammer2 ${DESTDIR}/etc/periodic/monthly/220.snapshot-hammer2
 	mkdir -p ${DESTDIR}/etc/rc.d
 	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install
 	cd ${UPGRADE_SRCDIR}/devd; ${MAKE} install

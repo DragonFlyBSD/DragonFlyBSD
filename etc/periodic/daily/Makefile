@@ -23,4 +23,7 @@ FILES=	100.clean-disks \
 	500.queuerun \
 	999.local
 
+LINKS=	${FILESDIR}/220.snapshot-hammer2 ${FILESDIR}/../weekly/220.snapshot-hammer2 \
+	${FILESDIR}/220.snapshot-hammer2 ${FILESDIR}/../monthly/220.snapshot-hammer2
+
 .include <bsd.prog.mk>
