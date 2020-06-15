@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,52 @@ kmalloc_array(size_t n, size_t size, gfp_t flags)
 
 #include <linux/kasan.h>
 
-#define kmem_cache_free(slab, ptr)     kfree(ptr)
+struct kmem_cache {
+	unsigned int size;
+};
+
+#define SLAB_HWCACHE_ALIGN	(1 << 0)
+#define SLAB_RECLAIM_ACCOUNT	(1 << 1)
+#define SLAB_DESTROY_BY_RCU	(1 << 2)
+
+#define KMEM_CACHE(__struct, flags)				\
+	kmem_cache_create(#__struct, sizeof(struct __struct),	\
+	__alignof(struct __struct), (flags), NULL)
+
+static inline struct kmem_cache *
+kmem_cache_create(const char *name, size_t size, size_t align,
+		  unsigned long flags, void (*ctor)(void *))
+{
+	struct kmem_cache *kc;
+
+	kc = kzalloc(sizeof(struct kmem_cache), flags);
+	kc->size = size;
+
+	return kc;
+}
+
+static inline void
+kmem_cache_destroy(struct kmem_cache *kc)
+{
+	kfree(kc);
+}
+
+static inline void *
+kmem_cache_alloc(struct kmem_cache *kc, gfp_t flags)
+{
+	return kmalloc(kc->size, M_DRM, flags);
+}
+
+static inline void *
+kmem_cache_zalloc(struct kmem_cache *kc, gfp_t flags)
+{
+	return kzalloc(kc->size, flags);
+}
+
+static inline void
+kmem_cache_free(struct kmem_cache *kc, void *ptr)
+{
+	kfree(ptr);
+}
 
 #endif	/* _LINUX_SLAB_H_ */
