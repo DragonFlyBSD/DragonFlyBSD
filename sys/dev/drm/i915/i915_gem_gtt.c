@@ -3446,7 +3446,7 @@ __i915_vma_create(struct drm_i915_gem_object *obj,
 
 	GEM_BUG_ON(vm->closed);
 
-	vma = kzalloc(sizeof(*vma), GFP_KERNEL);
+	vma = kmem_cache_zalloc(to_i915(obj->base.dev)->vmas, GFP_KERNEL);
 	if (vma == NULL)
 		return ERR_PTR(-ENOMEM);
 

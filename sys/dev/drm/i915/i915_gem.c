@@ -493,12 +493,14 @@ out:
 
 void *i915_gem_object_alloc(struct drm_device *dev)
 {
-	return kzalloc(sizeof(struct drm_i915_gem_object), GFP_KERNEL);
+	struct drm_i915_private *dev_priv = to_i915(dev);
+	return kmem_cache_zalloc(dev_priv->objects, GFP_KERNEL);
 }
 
 void i915_gem_object_free(struct drm_i915_gem_object *obj)
 {
-	kfree(obj);
+	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
+	kmem_cache_free(dev_priv->objects, obj);
 }
 
 static int
@@ -4866,7 +4868,6 @@ i915_gem_load_init(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
 
-#if 0
 	dev_priv->objects =
 		kmem_cache_create("i915_gem_object",
 				  sizeof(struct drm_i915_gem_object), 0,
@@ -4884,7 +4885,6 @@ i915_gem_load_init(struct drm_device *dev)
 				  SLAB_RECLAIM_ACCOUNT |
 				  SLAB_DESTROY_BY_RCU,
 				  NULL);
-#endif
 
 	INIT_LIST_HEAD(&dev_priv->context_list);
 	INIT_LIST_HEAD(&dev_priv->mm.unbound_list);
@@ -4910,13 +4910,11 @@ i915_gem_load_init(struct drm_device *dev)
 
 void i915_gem_load_cleanup(struct drm_device *dev)
 {
-#if 0
 	struct drm_i915_private *dev_priv = to_i915(dev);
 
 	kmem_cache_destroy(dev_priv->requests);
 	kmem_cache_destroy(dev_priv->vmas);
 	kmem_cache_destroy(dev_priv->objects);
-#endif
 
 	/* And ensure that our DESTROY_BY_RCU slabs are truly destroyed */
 	rcu_barrier();

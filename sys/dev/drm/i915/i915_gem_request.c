@@ -403,7 +403,7 @@ i915_gem_request_alloc(struct intel_engine_cs *engine,
 	 *
 	 * Do not use kmem_cache_zalloc() here!
 	 */
-	req = kzalloc(sizeof(*req), GFP_KERNEL);
+	req = kmem_cache_alloc(dev_priv->requests, GFP_KERNEL);
 	if (!req)
 		return ERR_PTR(-ENOMEM);
 
