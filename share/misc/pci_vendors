@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2020.05.13
-#	Date:    2020-05-13 03:15:02
+#	Version: 2020.05.29
+#	Date:    2020-05-29 03:15:02
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at https://pci-ids.ucw.cz/.
@@ -3362,7 +3362,8 @@
 	6901  Topaz PRO [Radeon R5 M255]
 		103c 1318  Radeon R6 M255DX
 	6907  Meso XT [Radeon R5 M315]
-	6921  Amethyst XT [Radeon R9 M295X]
+	6920  Amethyst [Radeon R9 M395/ M395X Mac Edition]
+	6921  Amethyst XT [Radeon R9 M295X / M390X]
 	6929  Tonga XT GL [FirePro S7150]
 	692b  Tonga PRO GL [FirePro W7100]
 		13cc 3d2b  MXRT-7600
@@ -3541,7 +3542,7 @@
 		1043 049e  Radeon R9 FURY
 		1043 04a0  Radeon R9 FURY X
 		174b e329  Radeon R9 FURY
-	7310  Navi 10
+	7310  Navi 10 [Radeon Pro W5700X]
 	7312  Navi 10 [Radeon Pro W5700]
 	731f  Navi 10 [Radeon RX 5600 OEM/5600 XT / 5700/5700 XT]
 	7340  Navi 14 [Radeon RX 5500/5500M / Pro 5500M]
@@ -3743,6 +3744,7 @@
 	9599  RV635 PRO [Radeon HD 3650 AGP]
 	95c0  RV620 PRO [Radeon HD 3470]
 		1002 95c0  Mobility Radeon HD 3470
+		1028 3243  C120D
 	95c2  RV620/M82 [Mobility Radeon HD 3410/3430]
 	95c4  RV620/M82 [Mobility Radeon HD 3450/3470]
 		1002 95c4  Mobility Radeon HD 3400
@@ -5195,6 +5197,7 @@
 	0519  MGA 2064W [Millennium]
 	051a  MGA 1064SG [Mystique]
 		102b 0100  MGA-1064SG Mystique
+		102b 051a  MGA-1164SG Mystique 220
 		102b 1100  MGA-1084SG Mystique
 		102b 1200  MGA-1084SG Mystique
 		1100 102b  MGA-1084SG Mystique
@@ -11560,6 +11563,7 @@
 	11a3  GK104M [GeForce GTX 680MX]
 		106b 010d  iMac 13,2
 	11a7  GK104M [GeForce GTX 675MX]
+	11a9  GK104M [GeForce GTX 870M]
 	11af  GK104GLM [GRID IceCube]
 	11b0  GK104GL [GRID K240Q / K260Q vGPU]
 		10de 101a  GRID K240Q
@@ -11993,6 +11997,7 @@
 	1f07  TU106 [GeForce RTX 2070 Rev. A]
 	1f08  TU106 [GeForce RTX 2060 Rev. A]
 	1f09  TU106 [GeForce GTX 1660 SUPER]
+	1f0a  TU106 [GeForce GTX 1650]
 	1f10  TU106M [GeForce RTX 2070 Mobile]
 	1f11  TU106M [GeForce RTX 2060 Mobile]
 	1f12  TU106M [GeForce RTX 2060 Max-Q]
@@ -12005,6 +12010,7 @@
 	1f50  TU106BM [GeForce RTX 2070 Mobile / Max-Q]
 	1f51  TU106BM [GeForce RTX 2060 Mobile]
 	1f54  TU106BM [GeForce RTX 2070 Mobile]
+	1f55  TU106BM [GeForce RTX 2060 Mobile]
 	1f81  TU117
 	1f82  TU117 [GeForce GTX 1650]
 	1f91  TU117M [GeForce GTX 1650 Mobile / Max-Q]
@@ -12017,10 +12023,14 @@
 	1fb8  TU117GLM [Quadro T2000 Mobile / Max-Q]
 	1fb9  TU117GLM [Quadro T1000 Mobile]
 	1fbf  TU117GL
+	20b0  GA100 [GRID A100X]
+	20be  GA100 [GRID A100A]
+	20bf  GA100 [GRID A100B]
 	2182  TU116 [GeForce GTX 1660 Ti]
 	2183  TU116
 	2184  TU116 [GeForce GTX 1660]
 	2187  TU116 [GeForce GTX 1650 SUPER]
+	2188  TU116 [GeForce GTX 1650]
 	2191  TU116M [GeForce GTX 1660 Ti Mobile]
 	2192  TU116M [GeForce GTX 1650 Ti Mobile]
 	21ae  TU116GL
@@ -20879,11 +20889,22 @@
 	0121  PCT-7303A PC card with IRC counters
 	0122  PCT-7408A PC card with counters and timers
 	0123  PCT-7424 PCI card with standard counters
+	0141  PCA7208AL - Analog Inputs/Outputs
+	0142  PCA7208AS - Analog inputs/Outputs
+	0143  PCA7408AL - Analog Inputs/Outputs
+	0144  PCA7408AS - Analog Inputs/Outputs
 	0214  PCT-7424C (F0) PC card with standard counters
 	0215  PCT-7424C (F1) PC card with standard counters
 	0216  PCT-7424E (F0) PC card with standard counters
 	0217  PCT-7424E (F1) PC card with standard counters
+	0240  PCA7428CL_F0 - analog Inputs
+	0241  PCA7428CL_F1 - analog Inputs
+	0242  PCA7428CS_F0 - Analog Inputs/Outputs non isolated
+	0243  PCA7428CS_F1 - Analog Inputs/Outputs non isolated
+	0244  PCA7428CE_F0 - Analog Inputs isolated
+	0245  PCA7428CE_F1 - Analog Inputs isolated
 	0303  PCD-7006C Digital Input & Output PCI Card
+	0800  PCD8006 - PCIe digital Inputs/Outputs
 	ff00  CTU CAN FD PCIe Card
 1761  Pickering Interfaces Ltd
 1771  InnoVISION Multimedia Ltd.
@@ -22071,10 +22092,13 @@
 	0200  Hi1822 Family (2*100GE)
 		19e5 d139  Hi1822 SP572 (2*100GE)
 		19e5 d13d  Hi1822 SC371 (2*100GE)
+		19e5 d147  Hi1822 SP573 (2*100GE)
 	0202  Hi1822 Family (2*32G FC)
+		19e5 d149  Hi1822 SP528 (2*32G FC)
 		19e5 d302  Hi1822 SP521 (2*32G FC)
 		19e5 d304  Hi1822 SP526 (2*32G FC)
 	0203  Hi1822 Family (2*16G FC)
+		19e5 d148  Hi1822 SP527 (2*16G FC)
 		19e5 d301  Hi1822 SP520 (2*16G FC)
 		19e5 d305  Hi1822 SP525 (2*16G FC)
 	0205  Hi1822 Family (2*100GE)
@@ -22082,6 +22106,7 @@
 	0206  Hi1822 Family (2*25GE)
 		19e5 d138  Hi1822 SP582 (2*25GE)
 		19e5 d13a  Hi1822 SC381 (2*25GE)
+		19e5 d145  Hi1822 SP586 (2*25GE)
 	0210  Hi1822 Family (4*25GE)
 		19e5 df2e  Hi1822 MZ532 MEZZ (4*25GE)
 	0211  Hi1822 Family (4*25GE)
@@ -22097,6 +22122,7 @@
 		19e5 d129  Hi1822 SP570 (4*25GE)
 		19e5 d136  Hi1822 SP580 (4*25GE)
 		19e5 d141  Hi1822 SP583 (4*25GE)
+		19e5 d146  Hi1822 SP585 (4*25GE)
 	371e  Hi1822 Family Virtual Bridge
 	375e  Hi1822 Family Virtual Function
 	379e  Hi1822 Family Virtual Function
@@ -22635,8 +22661,11 @@
 	a00a  FBC2CGG3 Capture 8x10Gb [Mango]
 	a00e  FB2CG Capture 2x100Gb [Savona]
 	a00f  FB2CG Capture 2x40Gb [Savona]
+	a010  FB2CGHH Capture 2x40Gb [Tivoli]
 	a011  FB2CG Capture 2x25Gb [Savona]
 	a012  FB2CG Capture 8x10Gb [Savona]
+	a013  FB2CGHH Capture 2x25Gb [Tivoli]
+	a014  FB2CGHH Capture 8x10Gb [Tivoli]
 	a015  FB2CGHH Capture 2x100Gb [Tivoli]
 # Used on V120 VME Crate Controller
 1c32  Highland Technology, Inc.
@@ -22915,6 +22944,7 @@
 1d95  Graphcore Ltd
 	0001  Colossus GC2 [C2]
 	0002  Colossus GC1 [S1]
+1d97  Shenzhen Longsys Electronics Co., Ltd.
 1d9b  Facebook, Inc.
 	0010  Networking DOM Engine
 	0011  IO Bridge
@@ -24526,6 +24556,19 @@
 		1028 1fe7  Express Flash NVMe 3.2TB 2.5" U.2 (P4600)
 		1028 1fe8  Express Flash NVMe 2.0TB HHHL AIC (P4600)
 		1028 1fe9  Express Flash NVMe 4.0TB HHHL AIC (P4600)
+	0b60  NVMe DC SSD [3DNAND, Beta Rock Controller]
+		1028 2060  NVMe SED MU U.2 1.6TB (P5600)
+		1028 2061  NVMe SED MU U.2 3.2TB (P5600)
+		1028 2062  NVMe SED MU U.2 6.4TB (P5600)
+		1028 2064  NVMe SED RI U.2 1.92TB (P5500)
+		1028 2065  NVMe SED RI U.2 3.84TB (P5500)
+		1028 2066  NVMe SED RI U.2 7.68TB (P5500)
+		1028 209e  NVMe MU U.2 1.6TB (P5600)
+		1028 209f  NVMe MU U.2 3.2TB (P5600)
+		1028 2100  NVMe MU U.2 6.4TB (P5600)
+		1028 2102  NVMe RI U.2 1.92TB (P5500)
+		1028 2103  NVMe RI U.2 3.84TB (P5500)
+		1028 2104  NVMe RI U.2 7.68TB (P5500)
 	0be0  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
 	0be1  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
 		105b 0d7c  D270S/D250S Motherboard
@@ -24621,6 +24664,7 @@
 	0d58  Ethernet Controller XXV710 Intel(R) FPGA Programmable Acceleration Card N3000 for Networking
 		8086 0000  Ethernet Controller XXV710 Intel(R) FPGA Programmable Acceleration Card N3000 for Networking
 		8086 0001  Ethernet Controller XXV710 Intel(R) FPGA Programmable Acceleration Card N3000 for Networking
+	0d9f  Ethernet Controller (2) I225-IT
 	0e00  Xeon E7 v2/Xeon E5 v2/Core i7 DMI2
 		1028 04f7  Xeon E5 v2 on PowerEdge R320 server
 		15d9 066b  X9SRL-F
@@ -26031,6 +26075,8 @@
 	15ec  JHL7540 Thunderbolt 3 USB Controller [Titan Ridge 4C 2018]
 	15ef  JHL7540 Thunderbolt 3 Bridge [Titan Ridge DD 2018]
 	15f0  JHL7540 Thunderbolt 3 USB Controller [Titan Ridge DD 2018]
+	15f2  Intel(R) Ethernet Controller I225-LM
+	15f3  Intel(R) Ethernet Controller I225-V
 	15f4  Ethernet Connection (15) I219-LM
 	15f5  Ethernet Connection (15) I219-V
 	15f6  I210 Gigabit Ethernet Connection
@@ -29461,6 +29507,8 @@
 	318e  Celeron/Pentium Silver Processor NorthPeak
 	3192  Gemini Lake P2SB
 	3197  Celeron/Pentium Silver Processor PCI-default ISA-bridge
+	3198  Celeron/Pentium Silver Processor High Definition Audio
+		17aa 380b  V130-15IGM Laptop (Lenovo) - Type 81HL
 	319a  Celeron/Pentium Silver Processor Trusted Execution Engine Interface
 	31a2  Celeron/Pentium Silver Processor Integrated Sensor Solution
 	31ac  Celeron/Pentium Silver Processor Serial IO I2C Host Controller
@@ -30380,6 +30428,7 @@
 	5201  EtherExpress PRO/100 Intelligent Server Fast Ethernet Controller
 		8086 0001  EtherExpress PRO/100 Server Ethernet Adapter
 	530d  80310 (IOP) IO Processor
+	5502  Ethernet Controller (2) I225-LMvP
 	5845  QEMU NVM Express Controller
 		1af4 1100  QEMU Virtual Machine
 	5900  Xeon E3-1200 v6/7th Gen Core Processor Host Bridge/DRAM Registers
@@ -32210,6 +32259,13 @@
 	0001  SG2010 PCI over Starfabric Bridge
 	0002  SG2010 PCI to Starfabric Gateway
 	0003  SG1010 Starfabric Switch and PCI Bridge
+9d32  Beijing Starblaze Technology Co. Ltd.
+	0000  STAR1000 PCIe NVMe SSD Controller
+	1001  STAR1000P PCIe NVMe SSD Controller
+	1201  STAR1200C NVMe SSD
+	1202  STAR1200I NVMe SSD
+	1203  STAR1200L NVMe SSD
+	1204  STAR1200E NVMe SSD
 a0a0  AOPEN Inc.
 a0f1  UNISYS Corporation
 a200  NEC Corporation
