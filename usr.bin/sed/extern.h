@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1992 Diomidis Spinellis.
  * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -31,7 +33,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: head/usr.bin/sed/extern.h 170608 2007-06-12 12:05:24Z yar $
+ * $FreeBSD: head/usr.bin/sed/extern.h 338375 2018-08-29 17:09:03Z markj $
  */
 
 extern struct s_command *prog;
@@ -39,11 +41,13 @@ extern struct s_appends *appends;
 extern regmatch_t *match;
 extern size_t maxnsub;
 extern u_long linenum;
-extern int appendnum;
+extern unsigned int appendnum;
 extern int aflag, eflag, nflag;
 extern const char *fname, *outfname;
 extern FILE *infile, *outfile;
 extern int rflags;	/* regex flags to use */
+extern const char *inplace;
+extern int quit;
 
 void	 cfclose(struct s_command *, struct s_command *);
 void	 compile(void);

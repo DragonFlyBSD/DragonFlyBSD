@@ -29,9 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)sed.1	8.2 (Berkeley) 12/30/93
-.\" $FreeBSD: head/usr.bin/sed/sed.1 267773 2014-06-23 08:23:05Z bapt $
+.\" $FreeBSD: head/usr.bin/sed/sed.1 362017 2020-06-10 19:23:58Z 0mp $
 .\"
-.Dd June 20, 2014
+.Dd June 10, 2020
 .Dt SED 1
 .Os
 .Sh NAME
@@ -41,9 +41,11 @@
 .Nm
 .Op Fl Ealnru
 .Ar command
+.Op Fl I Ar extension
+.Op Fl i Ar extension
 .Op Ar
 .Nm
-.Op Fl Ealnr
+.Op Fl Ealnru
 .Op Fl e Ar command
 .Op Fl f Ar command_file
 .Op Fl I Ar extension
@@ -96,6 +98,10 @@ Append the editing commands found in the file
 .Ar command_file
 to the list of commands.
 The editing commands should each be listed on a separate line.
+The commands are read from the standard input if
+.Ar command_file
+is
+.Dq Li - .
 .It Fl I Ar extension
 Edit files in-place, saving backups with the specified
 .Ar extension .
@@ -197,8 +203,9 @@ option was specified);
 .It
 a context address
 that consists of a regular expression preceded and followed by a
-delimiter. The closing delimiter can also optionally be followed by the
-.Dq i
+delimiter.
+The closing delimiter can also optionally be followed by the
+.Dq I
 character, to indicate that the regular expression is to be matched
 in a case-insensitive way.
 .El
@@ -586,6 +593,36 @@ as described in
 .Xr environ 7 .
 .Sh EXIT STATUS
 .Ex -std
+.Sh EXAMPLES
+Replace
+.Ql bar
+with
+.Ql baz
+when piped from another command:
+.Bd -literal -offset indent
+echo "An alternate word, like bar, is sometimes used in examples." | sed 's/bar/baz/'
+.Ed
+.Pp
+Using backlashes can sometimes be hard to read and follow:
+.Bd -literal -offset indent
+echo "/home/example" | sed  's/\\/home\\/example/\\/usr\\/local\\/example/'
+.Ed
+.Pp
+Using a different separator can be handy when working with paths:
+.Bd -literal -offset indent
+echo "/home/example" | sed 's#/home/example#/usr/local/example#'
+.Ed
+.Pp
+Replace all occurances of
+.Ql foo
+with
+.Ql bar
+in the file
+.Pa test.txt ,
+without creating a backup of the file:
+.Bd -literal -offset indent
+sed -i '' -e 's/foo/bar/g' test.txt
+.Ed
 .Sh SEE ALSO
 .Xr awk 1 ,
 .Xr ed 1 ,
@@ -603,7 +640,9 @@ The
 .Fl E , I , a
 and
 .Fl i
-options, the prefixing
+options, the special meaning of
+.Fl f Cm - ,
+the prefixing
 .Dq \&+
 in the second member of an address range,
 as well as the

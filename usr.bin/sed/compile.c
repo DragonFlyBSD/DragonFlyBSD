@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1992 Diomidis Spinellis.
  * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -31,8 +33,10 @@
  * SUCH DAMAGE.
  *
  * @(#)compile.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: head/usr.bin/sed/compile.c 289677 2015-10-21 05:37:09Z eadler $
+ * $FreeBSD: head/usr.bin/sed/compile.c 361884 2020-06-07 04:32:38Z kevans $
  */
+
+#include <sys/cdefs.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -43,6 +47,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <regex.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -199,9 +204,9 @@ semicolon:	EATSPACE();
 				p = compile_addr(p, cmd->a2);
 				EATSPACE();
 			} else
-				cmd->a2 = 0;
+				cmd->a2 = NULL;
 		} else
-			cmd->a1 = cmd->a2 = 0;
+			cmd->a1 = cmd->a2 = NULL;
 
 nonsel:		/* Now parse the command */
 		if (!*p)
@@ -359,6 +364,51 @@ nonsel:		/* Now parse the command */
 	}
 }
 
+static int
+hex2char(const char *in, char *out, int len)
+{
+	long ord;
+	char *endptr, hexbuf[3];
+
+	hexbuf[0] = in[0];
+	hexbuf[1] = len > 1 ? in[1] : '\0';
+	hexbuf[2] = '\0';
+
+	errno = 0;
+	ord = strtol(hexbuf, &endptr, 16);
+	if (*endptr != '\0' || errno != 0)
+		return (ERANGE);
+	*out = (char)ord;
+	return (0);
+}
+
+static bool
+hexdigit(char c)
+{
+	int lc;
+
+	lc = tolower(c);
+	return isdigit(lc) || (lc >= 'a' && lc <= 'f');
+}
+
+static bool
+dohex(const char *in, char *out, int *len)
+{
+	int tmplen;
+
+	if (!hexdigit(in[0]))
+		return (false);
+	tmplen = 1;
+	if (hexdigit(in[1]))
+		++tmplen;
+	if (hex2char(in, out, tmplen) == 0) {
+		*len = tmplen;
+		return (true);
+	}
+
+	return (false);
+}
+
 /*
  * Get a delimited string.  P points to the delimiter of the string; d points
  * to a buffer area.  Newline and delimiter escapes are processed; other
@@ -371,6 +421,7 @@ nonsel:		/* Now parse the command */
 static char *
 compile_delimited(char *p, char *d, int is_tr)
 {
+	int hexlen;
 	char c;
 
 	c = *p++;
@@ -389,12 +440,29 @@ compile_delimited(char *p, char *d, int is_tr)
 			continue;
 		} else if (*p == '\\' && p[1] == '[') {
 			*d++ = *p++;
-		} else if (*p == '\\' && p[1] == c)
+		} else if (*p == '\\' && p[1] == c) {
 			p++;
-		else if (*p == '\\' && p[1] == 'n') {
-			*d++ = '\n';
+		} else if (*p == '\\' &&
+		    (p[1] == 'n' || p[1] == 'r' || p[1] == 't')) {
+			switch (p[1]) {
+			case 'n':
+				*d++ = '\n';
+				break;
+			case 'r':
+				*d++ = '\r';
+				break;
+			case 't':
+				*d++ = '\t';
+				break;
+			}
 			p += 2;
 			continue;
+		} else if (*p == '\\' && p[1] == 'x') {
+			if (dohex(&p[2], d, &hexlen)) {
+				++d;
+				p += hexlen + 2;
+				continue;
+			}
 		} else if (*p == '\\' && p[1] == '\\') {
 			if (is_tr)
 				p++;
@@ -414,7 +482,7 @@ compile_delimited(char *p, char *d, int is_tr)
 static char *
 compile_ccl(char **sp, char *t)
 {
-	int c, d;
+	int c, d, hexlen;
 	char *s = *sp;
 
 	*t++ = *s++;
@@ -422,13 +490,33 @@ compile_ccl(char **sp, char *t)
 		*t++ = *s++;
 	if (*s == ']')
 		*t++ = *s++;
-	for (; *s && (*t = *s) != ']'; s++, t++)
+	for (; *s && (*t = *s) != ']'; s++, t++) {
 		if (*s == '[' && ((d = *(s+1)) == '.' || d == ':' || d == '=')) {
 			*++t = *++s, t++, s++;
 			for (c = *s; (*t = *s) != ']' || c != d; s++, t++)
 				if ((c = *s) == '\0')
 					return NULL;
+		} else if (*s == '\\') {
+			switch (s[1]) {
+			case 'n':
+				*t = '\n';
+				s++;
+				break;
+			case 'r':
+				*t = '\r';
+				s++;
+				break;
+			case 't':
+				*t = '\t';
+				s++;
+				break;
+			case 'x':
+				if (dohex(&s[2], t, &hexlen))
+					s += hexlen + 1;
+				break;
+			}
 		}
+	}
 	return (*s == ']') ? *sp = ++s, ++t : NULL;
 }
 
@@ -466,7 +554,7 @@ static char *
 compile_subst(char *p, struct s_subst *s)
 {
 	static char lbuf[_POSIX2_LINE_MAX + 1];
-	int asize, size;
+	int asize, hexlen, size;
 	u_char ref;
 	char c, *text, *op, *sp;
 	int more = 1, sawesc = 0;
@@ -515,8 +603,38 @@ compile_subst(char *p, struct s_subst *s)
 								linenum, fname, *p);
 					if (s->maxbref < ref)
 						s->maxbref = ref;
-				} else if (*p == '&' || *p == '\\')
-					*sp++ = '\\';
+				} else {
+					switch (*p) {
+					case '&':
+					case '\\':
+						*sp++ = '\\';
+						break;
+					case 'n':
+						*p = '\n';
+						break;
+					case 'r':
+						*p = '\r';
+						break;
+					case 't':
+						*p = '\t';
+						break;
+					case 'x':
+#define	ADVANCE_N(s, n)					\
+	do {						\
+		char *adv = (s);			\
+		while (*(adv + (n) - 1) != '\0') {	\
+			*adv = *(adv + (n));		\
+			++adv;				\
+		}					\
+		*adv = '\0';				\
+	} while (0);
+						if (dohex(&p[1], p, &hexlen)) {
+							ADVANCE_N(p + 1,
+							    hexlen);
+						}
+						break;
+					}
+				}
 			} else if (*p == c) {
 				if (*++p == '\0' && more) {
 					if (cu_fgets(lbuf, sizeof(lbuf), &more))
@@ -540,7 +658,7 @@ compile_subst(char *p, struct s_subst *s)
 			if ((text = realloc(text, asize)) == NULL)
 				err(1, "realloc");
 		}
-	} while (cu_fgets(p = lbuf, sizeof(lbuf), &more));
+	} while (cu_fgets(p = lbuf, sizeof(lbuf), &more) != NULL);
 	errx(1, "%lu: %s: unterminated substitute in regular expression",
 			linenum, fname);
 	/* NOTREACHED */
@@ -726,7 +844,7 @@ compile_tr(char *p, struct s_tr **py)
 }
 
 /*
- * Compile the text following an a or i command.
+ * Compile the text following an a, c, or i command.
  */
 static char *
 compile_text(void)
@@ -739,10 +857,12 @@ compile_text(void)
 	if ((text = malloc(asize)) == NULL)
 		err(1, "malloc");
 	size = 0;
-	while (cu_fgets(lbuf, sizeof(lbuf), NULL)) {
+	while (cu_fgets(lbuf, sizeof(lbuf), NULL) != NULL) {
 		op = s = text + size;
 		p = lbuf;
+#ifdef LEGACY_BSDSED_COMPAT
 		EATSPACE();
+#endif
 		for (esc_nl = 0; *p != '\0'; p++) {
 			if (*p == '\\' && p[1] != '\0' && *++p == '\n')
 				esc_nl = 1;
