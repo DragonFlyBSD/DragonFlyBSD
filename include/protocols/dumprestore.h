@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * @(#)dumprestore.h	8.2 (Berkeley) 1/21/94
- * $DragonFly: src/include/protocols/dumprestore.h,v 1.3 2006/04/03 01:58:44 dillon Exp $
  */
 
 #ifndef _PROTOCOLS_DUMPRESTORE_H_
@@ -106,4 +105,4 @@ union u_spcl {
 						/* name, level, ctime(date) */
 #define	DUMPINFMT	"%32s %c %[^\n]\n"	/* inverse for scanf */
 
-#endif /* !_DUMPRESTORE_H_ */
+#endif /* !_PROTOCOLS_DUMPRESTORE_H_ */
