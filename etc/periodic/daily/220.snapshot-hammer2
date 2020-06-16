@@ -66,6 +66,7 @@ case "${snap_enable}" in
 			_keep=$(echo "scale=2;inc=((${snap_capacity}-${_pcnt})/50* \
 				${snap_keep_auto});scale=0;${snap_keep_auto}+inc/1" | bc)
 		fi
+		_keep=$((_keep+1))
 		for _stale in $(hammer2 -s ${dir} pfs-list | grep -v "^Type" | \
 				grep -oE "${dir}\.${snap_tag}\..*$" | \
 				sort -r | tail -n+${_keep}); do
