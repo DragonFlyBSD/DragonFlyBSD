@@ -144,11 +144,17 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 		 * represents a negative hit.  NLC_CREATE also requires
 		 * write permission on the governing directory or EPERM
 		 * is returned.
+		 * If the file exists but is missing write permission,
+		 * nlookup() returns EACCES. This has to be handled specially
+		 * when combined with O_EXCL.
 		 */
 		nd->nl_flags |= NLC_CREATE;
 		nd->nl_flags |= NLC_REFDVP;
 		bwillinode(1);
 		error = nlookup(nd);
+		if (error == EACCES && nd->nl_nch.ncp->nc_vp != NULL &&
+			(fmode & O_EXCL))
+			error = EEXIST;
 	} else {
 		/*
 		 * NORMAL OPEN FILE CASE
