@@ -28,7 +28,7 @@ CFLAGS+=	-DDHCP6
 SRCS+=		dhcp6.c
 
 CFLAGS+=	-DPRIVSEP -DPRIVSEP_USER='"_dhcp"'
-SRCS+=		privsep.c privsep-root.c privsep-inet.c
+SRCS+=		privsep.c privsep-root.c privsep-inet.c privsep-control.c
 SRCS+=		privsep-bpf.c
 SRCS+=		privsep-bsd.c
 
