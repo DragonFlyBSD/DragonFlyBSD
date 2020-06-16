@@ -171,11 +171,14 @@ i915_gem_get_aperture_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-#if 0
 static int
 i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 {
+#if 0
 	struct address_space *mapping = obj->base.filp->f_mapping;
+#else
+	vm_object_t vm_obj = obj->base.filp;
+#endif
 	char *vaddr = obj->phys_handle->vaddr;
 	struct sg_table *st;
 	struct scatterlist *sg;
@@ -184,11 +187,16 @@ i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 	if (WARN_ON(i915_gem_object_needs_bit17_swizzle(obj)))
 		return -EINVAL;
 
+	VM_OBJECT_LOCK(vm_obj);
 	for (i = 0; i < obj->base.size / PAGE_SIZE; i++) {
 		struct page *page;
 		char *src;
 
+#if 0
 		page = shmem_read_mapping_page(mapping, i);
+#else
+		page = shmem_read_mapping_page(vm_obj, i);
+#endif
 		if (IS_ERR(page))
 			return PTR_ERR(page);
 
@@ -200,10 +208,11 @@ i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 		put_page(page);
 		vaddr += PAGE_SIZE;
 	}
+	VM_OBJECT_UNLOCK(vm_obj);
 
 	i915_gem_chipset_flush(to_i915(obj->base.dev));
 
-	st = kmalloc(sizeof(*st), GFP_KERNEL);
+	st = kmalloc(sizeof(*st), M_DRM, GFP_KERNEL);
 	if (st == NULL)
 		return -ENOMEM;
 
@@ -242,7 +251,11 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj)
 		obj->dirty = 0;
 
 	if (obj->dirty) {
+#if 0
 		struct address_space *mapping = obj->base.filp->f_mapping;
+#else
+		vm_object_t vm_obj = obj->base.filp;
+#endif
 		char *vaddr = obj->phys_handle->vaddr;
 		int i;
 
@@ -250,7 +263,7 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj)
 			struct page *page;
 			char *dst;
 
-			page = shmem_read_mapping_page(mapping, i);
+			page = shmem_read_mapping_page(vm_obj, i);
 			if (IS_ERR(page))
 				continue;
 
@@ -277,14 +290,11 @@ i915_gem_object_release_phys(struct drm_i915_gem_object *obj)
 {
 	drm_pci_free(obj->base.dev, obj->phys_handle);
 }
-#endif
 
 static const struct drm_i915_gem_object_ops i915_gem_phys_ops = {
-#if 0
 	.get_pages = i915_gem_object_get_pages_phys,
 	.put_pages = i915_gem_object_put_pages_phys,
 	.release = i915_gem_object_release_phys,
-#endif
 };
 
 int i915_gem_object_unbind(struct drm_i915_gem_object *obj)

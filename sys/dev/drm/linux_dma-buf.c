@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,25 @@
 struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
 {
 	return ERR_PTR(-EINVAL);
+}
+
+struct sg_table *
+dma_buf_map_attachment(struct dma_buf_attachment *attach,
+				enum dma_data_direction direction)
+{
+	struct sg_table *sg_table;
+
+	if (attach == NULL)
+		return ERR_PTR(-EINVAL);
+
+	if (attach->dmabuf == NULL)
+		return ERR_PTR(-EINVAL);
+
+	sg_table = attach->dmabuf->ops->map_dma_buf(attach, direction);
+	if (sg_table == NULL)
+		return ERR_PTR(-ENOMEM);
+
+	return sg_table;
 }
 
 void dma_buf_unmap_attachment(struct dma_buf_attachment *attach,

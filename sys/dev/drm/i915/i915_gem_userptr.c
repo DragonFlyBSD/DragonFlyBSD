@@ -701,9 +701,7 @@ i915_gem_userptr_put_pages(struct drm_i915_gem_object *obj)
 			set_page_dirty(page);
 
 		mark_page_accessed(page);
-#if 0
 		put_page(page);
-#endif
 	}
 	obj->dirty = 0;
 

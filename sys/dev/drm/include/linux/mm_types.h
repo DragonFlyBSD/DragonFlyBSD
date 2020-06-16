@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,7 @@ struct page {
 struct mm_struct {
 	long	refs;
 	struct lock mmap_sem;
+	atomic_t mm_users;
 };
 
 struct proc_struct {
