@@ -144,7 +144,7 @@ forward(FILE *fp, enum STYLE style, off_t off, struct stat *sbp)
 				return;
 		break;
 	case RLINES:
-		if (S_ISREG(sbp->st_mode))
+		if (S_ISREG(sbp->st_mode) && sbp->st_size)
 			if (!off) {
 				if (fseeko(fp, (off_t)0, SEEK_END) == -1) {
 					ierr();
