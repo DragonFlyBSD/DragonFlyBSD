@@ -453,9 +453,16 @@ wlan_up()
 	_rcconf=""
 	_auto=""
 
+	local wlan_devices
+	if [ -n "$1" ]; then
+		wlan_devices="$1"
+	else
+		wlan_devices="`${SYSCTL_N} -q net.wlan.devices`"
+	fi
+
 	# Order detected devices so that interfaces configured via rc.conf are
 	# created first, and then all other devices are automatically assigned
-	for parent in `${SYSCTL_N} -q net.wlan.devices`; do
+	for parent in ${wlan_devices}; do
 		child_wlans=`get_if_var $parent wlans_IF`
 		if [ -n "${child_wlans}" ]; then
 			_rcconf="${_rcconf} ${parent}"
@@ -511,7 +518,14 @@ wlan_down()
 	_prefix=
 	_list=
 
-	for parent in `${SYSCTL_N} -q net.wlan.devices`; do
+	local wlan_devices
+	if [ -n "$1" ]; then
+		wlan_devices="$1"
+	else
+		wlan_devices="`${SYSCTL_N} -q net.wlan.devices`"
+	fi
+
+	for parent in ${wlan_devices}; do
 		child_wlans=`get_if_var $parent wlans_IF`
 		for child in ${child_wlans}; do
 			if ! ifexists $child; then
