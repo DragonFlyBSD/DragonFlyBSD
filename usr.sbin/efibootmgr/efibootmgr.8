@@ -92,31 +92,31 @@ non-volatile variables.
 .Pp
 The following options are available:
 .Bl -tag -width Ds
-.It Fl a -activate
+.It Fl a , Fl -activate
 Activate the given
 .Ar bootnum
 boot entry, or the new entry when used with
 .Fl c .
-.It Fl A -deactivate
+.It Fl A , Fl -deactivate
 Deactivate the given
 .Ar bootnum
 boot entry.
-.It Fl b -bootnum Ar bootnum
+.It Fl b Ar bootnum , Fl -bootnum Ar bootnum
 When creating or modifying an entry, use
 .Ar bootnum
 as the index.
 When creating a new entry, fail if it already exists.
-.It Fl B -delete
+.It Fl B , Fl -delete
 Delete the given
 .Ar bootnum
 boot entry.
-.It Fl c -create
+.It Fl c , Fl -create
 Create a new
 .Cm Boot
 variable.
-.It Fl D -dry-run
+.It Fl D , Fl -dry-run
 Process but do not change any variables.
-.It Fl E -esp
+.It Fl E , Fl -esp
 Print the
 .Dx
 path to the ESP device, derived from the EFI variables
@@ -131,23 +131,23 @@ is specified, the UEFI device path to the ESP is reported instead.
 If
 .Fl p -unix-path
 is specified, the mount point of the ESP is reported instead.
-.It Fl k -kernel Ar kernel
+.It Fl k Ar kernel , Fl -kernel Ar kernel
 The path to and name of the kernel.
-.It Fl l -loader Ar loader
+.It Fl l Ar loader , Fl -loader Ar loader
 The path to and name of the loader.
-.It Fl L -label Ar label
+.It Fl L Ar label , Fl -label Ar label
 An optional description for the entry.
-.It Fl n -bootnext
+.It Fl n , Fl -bootnext
 Set
 .Ar bootnum
 boot entry as the
 .Cm BootNext
 variable.
-.It Fl N -delete-bootnext
+.It Fl N , Fl -delete-bootnext
 Delete the
 .Cm BootNext
 optional variable.
-.It Fl o -bootorder Ar bootorder
+.It Fl o Ar bootorder , Fl -bootorder Ar bootorder
 Set
 .Cm BootOrder
 variable to the given comma delimited set of
@@ -155,16 +155,16 @@ variable to the given comma delimited set of
 The numbers are in hex to match
 .Cm Boot Ns Em XXXX ,
 but may omit leading zeros.
-.It Fl t -set-timeout Ar timeout
+.It Fl t Ar timeout , Fl -set-timeout Ar timeout
 Set the bootmenu timeout value.
-.It Fl T -del-timeout
+.It Fl T , Fl -del-timeout
 Delete the
 .Cm BootTimeout
 variable.
-.It Fl v -verbose
+.It Fl v , Fl -verbose
 Display the device path of boot entries in the output.
 .El
-.Sh Examples
+.Sh EXAMPLES
 To display the current
 .Cm Boot
 related variables in the system:
