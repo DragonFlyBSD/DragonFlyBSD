@@ -68,7 +68,7 @@ All Unicode data is presented to the user as UTF-8.
 .Pp
 The following options are available:
 .Bl -tag -width 20m
-.It Fl n Ar name Fl -name Ar name
+.It Fl n Ar name , Fl -name Ar name
 Specify the name of the variable to operate on.
 The
 .Ar name
@@ -78,7 +78,7 @@ The GUID may be in numeric format, or may be one of the well known
 symbolic name (see
 .Fl -list-guids
 for a complete list).
-.It Fl f Ar file Fl -fromfile Ar file
+.It Fl f Ar file , Fl -fromfile Ar file
 When writing or appending to a variable, take the data for the
 variable's value from
 .Ar file
@@ -98,19 +98,19 @@ is specified, the contents of the file are used as the value to
 print using any other specified flags.
 This is used primarily for testing purposes for more complicated
 variable decoding.
-.It Fl a Fl -append
+.It Fl a , Fl -append
 Append the specified value to the UEFI variable rather than replacing
 it.
-.It Fl t Ar attr Fl -attributes Ar attr
+.It Fl t Ar attr , Fl -attributes Ar attr
 Specify, in hexadecimal, the attributes for this
 variable.
 See section 7.2 (GetVariable subsection, Related Definitions) of the
 UEFI Specification for hex values to use.
-.It Fl A Fl -ascii
+.It Fl A , Fl -ascii
 Display the variable data as modified ascii: All printable characters
 are printed, while unprintable characters are rendered as a two-digit
 hexadecimal number preceded by a % character.
-.It Fl b Fl -binary
+.It Fl b , Fl -binary
 Display the variable data as binary data.
 Usually will be used with the
 .Fl N
@@ -118,7 +118,7 @@ or
 .Fl -no-name
 flag.
 Useful in scripts.
-.It Fl D Fl -delete
+.It Fl D , Fl -delete
 Delete the specified variable.
 May not be used with either the
 .Fl -write
@@ -128,22 +128,22 @@ flags.
 No
 .Ar value
 may be specified.
-.It Fl d Fl -device Fl -device-path
+.It Fl d , Fl -device , Fl -device-path
 Interpret the variables printed as UEFI device paths and print the
 UEFI standard string representation.
-.It Fl g Fl -guid
+.It Fl g , Fl -guid
 If the flag is specified, guids are converted to names if they are known (and
 show up in
 .Fl -list-guids ).
-.It Fl H Fl -hex
+.It Fl H , Fl -hex
 List variable data as a hex dump.
-.It Fl L Fl -list-guids
+.It Fl L , Fl -list-guids
 Lists the well known GUIDs.
 The names listed here may be used in place of the numeric GUID values.
 These names will replace the numeric GUID values unless
 .Fl -raw-guid
 flag is specified.
-.It Fl l Fl -list
+.It Fl l , Fl -list
 List all the variables.
 If the
 .Fl -print
@@ -151,16 +151,16 @@ flag is also listed, their values will be displayed.
 .It Fl -load-option
 Decode the variable as if it were a UEFI Boot Option, including information
 about what device and/or paths the UEFI DevicePaths decode to.
-.It Fl N Fl -no-name
+.It Fl N , Fl -no-name
 Do not display the variable name.
-.It Fl p Fl -print
+.It Fl p , Fl -print
 Print the value of the variable.
-.It Fl R Fl -raw-guid
+.It Fl R , Fl -raw-guid
 Do not substitute well known names for GUID numeric values in output.
-.It Fl u Fl -utf8
+.It Fl u , Fl -utf8
 Treat the value of the variable as UCS2 and convert it to UTF8 and
 print the result.
-.It Fl w Fl -write
+.It Fl w , Fl -write
 Write (replace) the variable specified with the value specified from
 standard input.
 No command line option to do this is available since UEFI variables
