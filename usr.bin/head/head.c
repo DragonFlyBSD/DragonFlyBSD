@@ -26,14 +26,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1980, 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)head.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/head/head.c,v 1.10.2.1 2002/02/16 12:29:04 dwmalone Exp $
- * $DragonFly: src/usr.bin/head/head.c,v 1.6 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include <ctype.h>
 #include <err.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,14 +47,15 @@
 static void	head(FILE *, size_t);
 static void	head_bytes(FILE *, size_t);
 static void	obsolete(char *[]);
-static void	usage(void);
+static void	usage(void) __dead2;
 
 int
 main(int argc, char **argv)
 {
 	int ch;
 	FILE *fp;
-	int first, linecnt = -1, bytecnt = -1, eval = 0;
+	bool first;
+	int linecnt = -1, bytecnt = -1, eval = 0;
 	char *ep;
 
 	obsolete(argv);
@@ -82,7 +82,8 @@ main(int argc, char **argv)
 	if (linecnt == -1 )
 		linecnt = 10;
 	if (*argv) {
-		for (first = 1; *argv; ++argv) {
+		first = true;
+		for (; *argv; ++argv) {
 			if ((fp = fopen(*argv, "r")) == NULL) {
 				warn("%s", *argv);
 				eval = 1;
@@ -91,7 +92,7 @@ main(int argc, char **argv)
 			if (argc > 1) {
 				printf("%s==> %s <==\n",
 				    first ? "" : "\n", *argv);
-				first = 0;
+				first = false;
 			}
 			if (bytecnt == -1)
 				head(fp, linecnt);
@@ -159,7 +160,7 @@ obsolete(char **argv)
 	}
 }
 
-static void
+static void __dead2
 usage(void)
 {
 	fprintf(stderr, "usage: head [-n lines | -c bytes] [file ...]\n");
