@@ -55,11 +55,12 @@ main(int argc, char **argv)
 	int ch;
 	FILE *fp;
 	bool first;
+	bool qflag = false, vflag = false;
 	int linecnt = -1, bytecnt = -1, eval = 0;
 	char *ep;
 
 	obsolete(argv);
-	while ((ch = getopt(argc, argv, "n:c:")) != -1)
+	while ((ch = getopt(argc, argv, "c:n:qv")) != -1) {
 		switch(ch) {
 		case 'c':
 			bytecnt = strtol(optarg, &ep, 10);
@@ -71,9 +72,18 @@ main(int argc, char **argv)
 			if (*ep != 0 || linecnt <= 0)
 				errx(1, "illegal line count -- %s", optarg);
 			break;
+		case 'q':
+			qflag = true;
+			vflag = false;
+			break;
+		case 'v':
+			vflag = true;
+			qflag = false;
+			break;
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -89,7 +99,7 @@ main(int argc, char **argv)
 				eval = 1;
 				continue;
 			}
-			if (argc > 1) {
+			if (vflag || (!qflag && argc > 1)) {
 				printf("%s==> %s <==\n",
 				    first ? "" : "\n", *argv);
 				first = false;
@@ -163,6 +173,7 @@ obsolete(char **argv)
 static void __dead2
 usage(void)
 {
-	fprintf(stderr, "usage: head [-n lines | -c bytes] [file ...]\n");
+	fprintf(stderr,
+		"usage: head [-q | -v] [-n lines | -c bytes] [file ...]\n");
 	exit(1);
 }
