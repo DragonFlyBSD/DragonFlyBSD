@@ -57,6 +57,7 @@ static void getarg(int, enum STYLE, enum STYLE, enum STYLE *, int *, off_t *);
 int
 main(int argc, char **argv)
 {
+	const char *optstring;
 	struct stat sb;
 	FILE *fp;
 	off_t off = 0;
@@ -67,9 +68,19 @@ main(int argc, char **argv)
 	file_info_t *file;
 #endif
 
+	if (strcmp(getprogname(), "tac") == 0) {
+		optstring = "";
+		qflag = 1;
+		rflag = 1;
+		vflag = 0;
+	} else {
+		/* tail */
+		optstring = "Fb:c:fn:qrv";
+	}
+
 	obsolete(argv);
 	style_set = 0;
-	while ((ch = getopt(argc, argv, "Fb:c:fn:qrv")) != -1) {
+	while ((ch = getopt(argc, argv, optstring)) != -1) {
 		switch(ch) {
 		case 'F':	/* -F is superset of (and implies) -f */
 #ifndef BOOTSTRAPPING
@@ -336,8 +347,12 @@ obsolete(char **argv)
 static void __dead2
 usage(void)
 {
-	fprintf(stderr,
-		"usage: tail [-F | -f | -r] [-q | -v] [-b # | -c # | -n #] "
-		"[file ...]\n");
+	if (strcmp(getprogname(), "tac") == 0) {
+		fprintf(stderr, "usage: tac [file ...]\n");
+	} else {
+		fprintf(stderr,
+			"usage: tail [-F | -f | -r] [-q | -v] "
+			"[-b # | -c # | -n #] [file ...]\n");
+	}
 	exit(1);
 }
