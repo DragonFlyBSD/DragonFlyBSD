@@ -321,7 +321,7 @@ follow(file_info_t *files, enum STYLE style, off_t off)
 		if (file->fp) {
 			active = 1;
 			n++;
-			if (no_files > 1)
+			if (vflag || no_files > 1)
 				showfilename(i, file->file_name);
 			forward(file->fp, style, off, &file->st);
 			if (Fflag && fileno(file->fp) != STDIN_FILENO)

@@ -30,14 +30,13 @@
 .\"
 .\"	@(#)tail.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/tail/tail.1,v 1.5.2.4 2002/07/15 07:46:27 keramida Exp $
-.\" $DragonFly: src/usr.bin/tail/tail.1,v 1.3 2007/07/30 22:11:33 swildner Exp $
 .\"
-.Dd June 6, 1993
+.Dd June 20, 2020
 .Dt TAIL 1
 .Os
 .Sh NAME
 .Nm tail
-.Nd display the last part of a file
+.Nd display the last part of files
 .Sh SYNOPSIS
 .Nm
 .Oo
@@ -46,7 +45,8 @@
 .Fl r
 .Oc
 .Oo
-.Fl q
+.Fl q |
+.Fl v
 .Oc
 .Oo
 .Fl b Ar number |
@@ -63,12 +63,16 @@ or, by default, its standard input, to the standard output.
 .Pp
 The display begins at a byte, line or 512-byte block location in the
 input.
-Numbers having a leading plus (``+'') sign are relative to the beginning
+Numbers having a leading plus
+.Dq ( + )
+sign are relative to the beginning
 of the input, for example,
 .Dq -c +2
 starts the display at the second
 byte of the input.
-Numbers having a leading minus (``-'') sign or no explicit sign are
+Numbers having a leading minus
+.Dq ( - )
+sign or no explicit sign are
 relative to the end of the input, for example,
 .Dq -n 2
 displays the last two lines of the input.
@@ -134,14 +138,21 @@ from the beginning or end of the input from which to begin the display.
 The default for the
 .Fl r
 option is to display all of the input.
+.It Fl v
+Always prints a header for each file, even if only a single file is
+specified.
 .El
 .Pp
-If more than a single file is specified, each file is preceded by a
-header consisting of the string
+If more than a single file is specified, or the
+.Fl v
+flag is used, each file is preceded by a header consisting of the string
 .Dq ==> XXX <==
 where
 .Dq XXX
 is the name of the file.
+The
+.Fl q
+flag disables the printing of the header in both cases.
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
@@ -174,8 +185,11 @@ and
 .Fl n
 options modify the
 .Fl r
-option, i.e. ``-r -c 4'' displays the last 4 characters of the last line
-of the input, while the historic tail (using the historic syntax ``-4cr'')
+option, i.e.
+.Dq -r -c 4
+displays the last 4 characters of the last line
+of the input, while the historic tail (using the historic syntax
+.Dq -4cr )
 would ignore the
 .Fl c
 option and display the last 4 lines of the input.
