@@ -459,7 +459,7 @@ main(int argc, char **argv)
 /*
  * This routine creates and binds sockets on the appropriate
  * addresses. It gets called one time for each transport and
- * registrates the service with rpcbind on that trasport.
+ * registrates the service with rpcbind on that transport.
  */
 void
 create_service(struct netconfig *nconf)
@@ -577,6 +577,7 @@ create_service(struct netconfig *nconf)
 				res->ai_flags = hints.ai_flags;
 				res->ai_family = hints.ai_family;
 				res->ai_protocol = hints.ai_protocol;
+
 				switch (res->ai_family) {
 				case AF_INET:
 					sin = malloc(sizeof(struct sockaddr_in));
@@ -623,7 +624,10 @@ create_service(struct netconfig *nconf)
 			}
 		}
 
-		{
+		/*
+		 * Set SO_REUSEADDR only if binding to a specific port
+		 */
+		if (svcport_str) {
 			int on = 1;
 
 			setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
@@ -632,7 +636,28 @@ create_service(struct netconfig *nconf)
 
 		r = bindresvport_sa(fd, res->ai_addr);
 		if (r != 0) {
-			syslog(LOG_ERR, "bindresvport_sa: %m");
+			struct sockaddr_in *sin = (void *)res->ai_addr;
+			struct sockaddr_in6 *sin6 = (void *)res->ai_addr;
+			const char *protostr;
+			int portno;
+
+			switch(sin->sin_family) {
+			case AF_INET:
+				protostr = "inet";
+				portno = ntohs(sin->sin_port);
+				break;
+			case AF_INET6:
+				protostr = "inet6";
+				portno = ntohs(sin6->sin6_port);
+				break;
+			default:
+				protostr = "unknown";
+				portno = -1;
+				break;
+			}
+
+			syslog(LOG_ERR, "bindresvport_sa: %m proto %s port %d",
+				protostr, portno);
 			exit(1);
 		}
 
