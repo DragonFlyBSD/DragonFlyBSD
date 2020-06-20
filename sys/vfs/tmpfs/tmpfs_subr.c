@@ -1393,19 +1393,33 @@ tmpfs_dirtree_compare_cookie(struct tmpfs_dirent *a, struct tmpfs_dirent *b)
 }
 
 /*
- * Lock for rename.  The namecache entries are already locked so
- * theoretically we should be able to lock the directories in any
- * order.  Underlying files must be locked after the related directory.
+ * Lock for rename.  The namecache entries for the related terminal files
+ * are already locked but the directories are not.  A directory lock order
+ * reversal is possible so use a deterministic order.
+ *
+ * Generally order path parent-to-child or using a simple pointer comparison.
+ * Probably not perfect but it should catch most of the cases.
+ *
+ * Underlying files must be locked after the related directory.
  */
 void
 tmpfs_lock4(struct tmpfs_node *node1, struct tmpfs_node *node2,
 	    struct tmpfs_node *node3, struct tmpfs_node *node4)
 {
-	TMPFS_NODE_LOCK(node1);		/* fdir */
-	TMPFS_NODE_LOCK(node3);		/* ffile */
-	TMPFS_NODE_LOCK(node2);		/* tdir */
-	if (node4)
-		TMPFS_NODE_LOCK(node4);	/* tfile */
+	if (node1->tn_dir.tn_parent != node2 &&
+	    (node1 < node2 || node2->tn_dir.tn_parent == node1)) {
+		TMPFS_NODE_LOCK(node1);		/* fdir */
+		TMPFS_NODE_LOCK(node3);		/* ffile */
+		TMPFS_NODE_LOCK(node2);		/* tdir */
+		if (node4)
+			TMPFS_NODE_LOCK(node4);	/* tfile */
+	} else {
+		TMPFS_NODE_LOCK(node2);		/* tdir */
+		if (node4)
+			TMPFS_NODE_LOCK(node4);	/* tfile */
+		TMPFS_NODE_LOCK(node1);		/* fdir */
+		TMPFS_NODE_LOCK(node3);		/* ffile */
+	}
 }
 
 void
