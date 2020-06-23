@@ -477,6 +477,7 @@ Ninth   Edition         1986-09-xx [QCU]
 Tenth   Edition         1989-10-xx [QCU]
 
 1BSD                    late 1977
+			1978-01-16 [DOC]
 			1978-03-09 [QCU]
 				PDP-11, Pascal, ex(1)
 				30 free copies of 1BSD sent out
@@ -873,4 +874,4 @@ Steven M. Schultz for providing 2.8BSD, 2.10BSD, 2.11BSD manual pages.
 Copyright (c) 1997-2012 Wolfram Schneider <wosch@FreeBSD.ORG>
 URL: https://svnweb.freebsd.org/base/head/share/misc/bsd-family-tree
 
-$FreeBSD: head/share/misc/bsd-family-tree 361673 2020-05-31 21:38:33Z imp $
+$FreeBSD: head/share/misc/bsd-family-tree 362420 2020-06-20 04:07:44Z imp $
