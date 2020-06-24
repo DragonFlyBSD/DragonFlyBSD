@@ -128,3 +128,10 @@ wait_on_bit_timeout(unsigned long *word, int bit, unsigned mode,
 
 	return 1;
 }
+
+void __init_waitqueue_head(wait_queue_head_t *q,
+			   const char *name, struct lock_class_key *key)
+{
+	lockinit(&q->lock, "lwq", 0, 0);
+	INIT_LIST_HEAD(&q->task_list);
+}

@@ -123,7 +123,7 @@ vma_pages(struct vm_area_struct *vma)
 	return size >> PAGE_SHIFT;
 }
 
-#define offset_in_page(off)	((off) & PAGE_MASK)
+#define offset_in_page(off)	((unsigned long)(off) & PAGE_MASK)
 
 static inline void
 set_page_dirty(struct page *page)
@@ -171,6 +171,12 @@ put_page(struct page *page)
 	vm_page_busy_wait((struct vm_page *)page, FALSE, "i915gem");
 	vm_page_unwire((struct vm_page *)page, 1);
 	vm_page_wakeup((struct vm_page *)page);
+}
+
+static inline void *
+page_address(const struct page *page)
+{
+	return (void *)VM_PAGE_TO_PHYS((const struct vm_page *)page);
 }
 
 #endif	/* _LINUX_MM_H_ */

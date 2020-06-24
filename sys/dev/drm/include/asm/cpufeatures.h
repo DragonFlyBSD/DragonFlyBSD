@@ -27,10 +27,12 @@
 #ifndef _ASM_CPUFEATURES_H_
 #define _ASM_CPUFEATURES_H_
 
+#define X86_FEATURE_PAT		( 0*32+16)
 #define X86_FEATURE_CLFLUSH	( 0*32+19) /* CLFLUSH instruction */
 
 #define X86_FEATURE_XMM4_1	( 4*32+19) /* SSE 4.1, first appeared in 2007 */
 
 #define X86_FEATURE_HYPERVISOR	( 4*32+31) /* Running on a hypervisor */
+
 
 #endif	/* _ASM_CPUFEATURES_H_ */

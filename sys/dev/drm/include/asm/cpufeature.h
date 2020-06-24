@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2016-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,9 @@ static_cpu_has(uint16_t feature)
 		return true;
 	case X86_FEATURE_HYPERVISOR:
 		return ((cpu_feature2 & CPUID2_VMM) != 0);
+	case X86_FEATURE_PAT:
+		/* All amd64 CPUs have PAT support */
+		return true;
 	default:
 		return false;
 	}

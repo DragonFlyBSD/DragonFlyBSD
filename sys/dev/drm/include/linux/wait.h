@@ -52,11 +52,12 @@ typedef struct {
 	struct list_head	task_list;
 } wait_queue_head_t;
 
+void __init_waitqueue_head(wait_queue_head_t *q, const char *name, struct lock_class_key *);
+
 static inline void
-init_waitqueue_head(wait_queue_head_t *eq)
+init_waitqueue_head(wait_queue_head_t *q)
 {
-	lockinit(&eq->lock, "lwq", 0, LK_CANRECURSE);
-	INIT_LIST_HEAD(&eq->task_list);
+	__init_waitqueue_head(q, "", NULL);
 }
 
 void __wake_up_core(wait_queue_head_t *q, int num_to_wake_up);

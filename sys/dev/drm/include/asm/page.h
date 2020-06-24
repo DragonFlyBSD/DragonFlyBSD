@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,5 +44,7 @@ page_to_phys(struct page *page)
 #include <asm/memory_model.h>
 
 typedef unsigned long pgprot_t;
+
+#define virt_to_page(kaddr)	(struct page *)PHYS_TO_VM_PAGE(vtophys(kaddr))
 
 #endif	/* _ASM_PAGE_H_ */

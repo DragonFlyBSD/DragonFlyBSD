@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,36 +24,32 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_FILE_H_
-#define _LINUX_FILE_H_
+#ifndef _LINUX_SYNC_FILE_H_
+#define _LINUX_SYNC_FILE_H_
 
-#include <linux/compiler.h>
 #include <linux/types.h>
-#include <linux/posix_types.h>
+#include <linux/kref.h>
+#include <linux/ktime.h>
+#include <linux/list.h>
+#include <linux/spinlock.h>
+#include <linux/dma-fence.h>
 
-static inline int
-get_unused_fd_flags(unsigned flags)
+struct sync_file {
+	struct file	*file;
+};
+
+static inline struct dma_fence *
+sync_file_get_fence(int fd)
 {
-	kprintf("get_unused_fd_flags(): not implemented\n");
-	return -1;
+	/* sync_file_get_fence not implemented */
+	return NULL;
 }
 
-static inline void
-fd_install(unsigned int fd, struct file *file)
+static inline struct sync_file *
+sync_file_create(struct dma_fence *fence)
 {
-	kprintf("fd_install(): not implemented\n");
+	kprintf("sync_file_create(): not implemented\n");
+	return NULL;
 }
 
-static inline void
-fput(struct file *file)
-{
-	kprintf("fput(): not implemented\n");
-}
-
-static inline void
-put_unused_fd(unsigned int fd)
-{
-	kprintf("put_unused_fd(): not implemented\n");
-}
-
-#endif	/* _LINUX_FILE_H_ */
+#endif	/* _LINUX_SYNC_FILE_H_ */

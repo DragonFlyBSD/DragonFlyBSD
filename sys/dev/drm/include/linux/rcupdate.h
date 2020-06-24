@@ -70,6 +70,9 @@ rcu_read_unlock(void)
 	__rcu_dereference_tmp;					\
 })
 
+#define rcu_dereference_raw(p)			\
+	((__typeof(*p) *)READ_ONCE(p))
+
 #define rcu_assign_pointer(p, v)	\
 do {					\
 	cpu_mfence();			\
@@ -89,5 +92,7 @@ do {					\
 #define rcu_access_pointer(p)	((typeof(*p) *)READ_ONCE(p))
 
 #define rcu_pointer_handoff(p)	(p)
+
+#define synchronize_rcu()
 
 #endif  /* _LINUX_RCUPDATE_H_ */

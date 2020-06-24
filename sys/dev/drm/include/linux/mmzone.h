@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,5 +39,7 @@
 #include <asm/page.h>
 
 struct page;
+
+#define MAX_ORDER	11
 
 #endif	/* _LINUX_MMZONE_H_ */

@@ -37,6 +37,8 @@
 #include <linux/bottom_half.h>
 #include <asm/barrier.h>
 
+#include <linux/spinlock_types.h>
+
 #include <linux/rwlock.h>
 
 #include <sys/spinlock2.h>

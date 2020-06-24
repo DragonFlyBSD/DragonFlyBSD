@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,36 +24,28 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_FILE_H_
-#define _LINUX_FILE_H_
+#ifndef _LINUX_DMA_FENCE_ARRAY_H_
+#define _LINUX_DMA_FENCE_ARRAY_H_
 
-#include <linux/compiler.h>
-#include <linux/types.h>
-#include <linux/posix_types.h>
+#include <linux/dma-fence.h>
 
-static inline int
-get_unused_fd_flags(unsigned flags)
+struct dma_fence_array {
+	unsigned num_fences;
+	struct dma_fence **fences;
+};
+
+static inline bool
+dma_fence_is_array(struct dma_fence *fence)
 {
-	kprintf("get_unused_fd_flags(): not implemented\n");
-	return -1;
+	/* XXX: dma_fence_is_array() not really implemented */
+	return false;
 }
 
-static inline void
-fd_install(unsigned int fd, struct file *file)
+static inline struct dma_fence_array *
+to_dma_fence_array(struct dma_fence *fence)
 {
-	kprintf("fd_install(): not implemented\n");
+	kprintf("to_dma_fence_array() called!\n");
+	return NULL;
 }
 
-static inline void
-fput(struct file *file)
-{
-	kprintf("fput(): not implemented\n");
-}
-
-static inline void
-put_unused_fd(unsigned int fd)
-{
-	kprintf("put_unused_fd(): not implemented\n");
-}
-
-#endif	/* _LINUX_FILE_H_ */
+#endif	/* _LINUX_DMA_FENCE_ARRAY_H_ */
