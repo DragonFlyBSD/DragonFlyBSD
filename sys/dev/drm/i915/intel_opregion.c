@@ -25,6 +25,7 @@
  *
  */
 
+#include <linux/acpi.h>
 #include <linux/dmi.h>
 
 #include <drm/drmP.h>
@@ -641,15 +642,6 @@ static struct notifier_block intel_opregion_notifier = {
 	.notifier_call = intel_opregion_video_event,
 };
 #endif
-
-static int acpi_is_video_device(ACPI_HANDLE devh) {
-	ACPI_HANDLE h;
-	if (ACPI_FAILURE(AcpiGetHandle(devh, "_DOD", &h)) ||
-	    ACPI_FAILURE(AcpiGetHandle(devh, "_DOS", &h))) {
-		return 0;
-	}
-	return 1;
-}
 
 /*
  * Initialise the DIDL field in opregion. This passes a list of devices to

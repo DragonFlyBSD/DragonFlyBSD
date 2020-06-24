@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,5 +26,24 @@
 
 #ifndef _LINUX_ACPI_H_
 #define _LINUX_ACPI_H_
+
+#include <linux/errno.h>
+#include <linux/device.h>
+#include <linux/list.h>
+#include <linux/mod_devicetable.h>
+#include <linux/module.h>
+#include <linux/mutex.h>
+
+#include <contrib/dev/acpica/source/include/acpi.h>
+
+static inline int
+acpi_is_video_device(ACPI_HANDLE devh) {
+	ACPI_HANDLE h;
+	if (ACPI_FAILURE(AcpiGetHandle(devh, "_DOD", &h)) ||
+	    ACPI_FAILURE(AcpiGetHandle(devh, "_DOS", &h))) {
+		return 0;
+	}
+	return 1;
+}
 
 #endif	/* _LINUX_ACPI_H_ */
