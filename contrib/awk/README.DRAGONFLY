@@ -2,16 +2,9 @@ ONE TRUE AWK
 ============
 
 Original source is availale from:
-http://www.cs.princeton.edu/~bwk/btl.mirror/
 
-file = awk.tar.gz
-date = 20 December 2012
-size = 88970
-sha1 = 538fd69fb0fd01966eb41ad20c336215b4a07301
+https://github.com/onetrueawk/awk
 
-Note that only the latest tarball is available on B.Kernighan's site.
-A list of files removed is in README.DELETED
+A list of files removed is in README.DELETED.
 
-Local modifications applied to following files:
-	run.c
-	trans.c
+Use "git diff vendor/AWK contrib/awk" to see local modifications.

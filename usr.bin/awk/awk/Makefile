@@ -18,6 +18,6 @@ ytab.h: awkgram.h
 	${LN} -sf ${.ALLSRC} ${.TARGET}
 
 proctab.c: ytab.h ${AWKSRC}/maketab.c
-	${.OBJDIR}/../maketab/maketab.nx > ${.OBJDIR}/proctab.c
+	${.OBJDIR}/../maketab/maketab.nx ytab.h > ${.OBJDIR}/proctab.c
 
 .include <bsd.prog.mk>

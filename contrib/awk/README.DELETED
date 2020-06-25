@@ -1,6 +1,8 @@
+.gitignore
+ChangeLog
+LICENSE
+REGRESS
+TODO
+bugs-fixed/
 makefile
-proctab.c
-ytab.c
-ytab.h
-ytabc.bak
-ytabh.bak
+testdir/
