@@ -95,6 +95,7 @@ static	void status(const struct afswtch *afp, const struct sockaddr_dl *sdl,
 static	void tunnel_status(int s);
 static	void usage(void) __dead2;
 
+static int getifflags(const char *ifname, int us);
 static struct afswtch *af_getbyname(const char *name);
 static struct afswtch *af_getbyfamily(int af);
 static void af_other_status(int);
@@ -351,7 +352,7 @@ int
 main(int argc, char *argv[])
 {
 	int c, all, namesonly, downonly, uponly;
-	int ifindex;
+	int ifindex, flags;
 	const struct afswtch *afp = NULL;
 	const struct sockaddr_dl *sdl;
 	const char *ifname;
@@ -499,6 +500,25 @@ main(int argc, char *argv[])
 		afp = af_getbyname(*argv);
 		if (afp != NULL)
 			argc--, argv++;
+	}
+
+	/*
+	 * Check for a requested configuration action on a single interface,
+	 * which doesn't require building, sorting, and searching the entire
+	 * system address list.
+	 */
+	if (argc > 0 && ifname != NULL) {
+		iflen = strlcpy(name, ifname, sizeof(name));
+		if (iflen >= sizeof(name))
+			errx(1, "%s: cloning name too long", ifname);
+
+		flags = getifflags(name, -1);
+		if (!((downonly && (flags & IFF_UP) != 0) ||
+		      (uponly && (flags & IFF_UP) == 0))) {
+			ifconfig(argc, argv, 0, afp);
+		}
+
+		exit(exit_code);
 	}
 
 	if (getifaddrs(&ifap) != 0)
@@ -936,25 +956,46 @@ setifdstaddr(const char *addr, int param __unused, int s,
 		afp->af_getaddr(addr, DSTADDR);
 }
 
+static int
+getifflags(const char *ifname, int us)
+{
+	struct ifreq my_ifr;
+	int s;
+
+	memset(&my_ifr, 0, sizeof(struct ifreq));
+	strlcpy(my_ifr.ifr_name, ifname, sizeof(my_ifr.ifr_name));
+
+	s = us;
+	if (us < 0) {
+		if ((s = socket(AF_LOCAL, SOCK_DGRAM, 0)) < 0)
+			err(1, "socket(family AF_LOCAL,SOCK_DGRAM)");
+	}
+
+	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&my_ifr) < 0)
+		Perror("ioctl (SIOCGIFFLAGS)");
+
+	if (us < 0)
+		close(s);
+
+	return ((my_ifr.ifr_flags & 0xffff) | (my_ifr.ifr_flagshigh << 16));
+}
+
 static void
 setifflags(const char *vname, int value, int s, const struct afswtch *afp)
 {
 	struct ifreq my_ifr;
 	int flags;
 
-	memset(&my_ifr, 0, sizeof(struct ifreq));
-	strlcpy(my_ifr.ifr_name, name, sizeof(my_ifr.ifr_name));
-
-	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&my_ifr) < 0)
-		Perror("ioctl (SIOCGIFFLAGS)");
-
-	flags = (my_ifr.ifr_flags & 0xffff) | (my_ifr.ifr_flagshigh << 16);
+	flags = getifflags(name, s);
 	if (value < 0) {
 		value = -value;
 		flags &= ~value;
 	} else {
 		flags |= value;
 	}
+
+	memset(&my_ifr, 0, sizeof(struct ifreq));
+	strlcpy(my_ifr.ifr_name, name, sizeof(my_ifr.ifr_name));
 	my_ifr.ifr_flags = flags & 0xffff;
 	my_ifr.ifr_flagshigh = flags >> 16;
 	if (ioctl(s, SIOCSIFFLAGS, (caddr_t)&my_ifr) < 0)
