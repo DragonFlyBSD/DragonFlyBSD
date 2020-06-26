@@ -84,7 +84,7 @@ void	callback_register(callback_func *, void *);
 	{ name, NEXTARG, { .c_func = func }, 1, NULL }
 
 
-struct rt_addrinfo;
+struct ifaddrs;
 struct addrinfo;
 
 enum {
@@ -106,7 +106,7 @@ struct afswtch {
 	 * is defined then it is invoked after all address status
 	 * is presented.
 	 */
-	void		(*af_status)(int, const struct rt_addrinfo *);
+	void		(*af_status)(int, const struct ifaddrs *);
 	void		(*af_other_status)(int);
 					/* parse address method */
 	void		(*af_getaddr)(const char *, int);
@@ -139,7 +139,6 @@ extern	char name[IFNAMSIZ];	/* name of interface */
 extern	int supmedia;
 extern	int printkeys;
 extern	int printifname;
-extern	int flags;
 extern	int newaddr;
 extern	int verbose;
 extern	int exit_code;

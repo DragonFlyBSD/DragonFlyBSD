@@ -32,12 +32,12 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
-#include <net/route.h>		/* for RTX_IFA */
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/ethernet.h>
 
 #include <err.h>
+#include <ifaddrs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,10 +47,10 @@
 static struct ifreq link_ridreq;
 
 static void
-link_status(int s __unused, const struct rt_addrinfo *info)
+link_status(int s __unused, const struct ifaddrs *ifa)
 {
 	const struct sockaddr_dl *sdl =
-		(const struct sockaddr_dl *) info->rti_info[RTAX_IFA];
+		(const struct sockaddr_dl *)ifa->ifa_addr;
 
 	if (sdl != NULL && sdl->sdl_alen > 0) {
 		if (sdl->sdl_type == IFT_ETHER &&

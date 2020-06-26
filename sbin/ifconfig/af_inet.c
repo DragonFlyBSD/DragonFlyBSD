@@ -29,18 +29,19 @@
  * $FreeBSD: src/sbin/ifconfig/af_inet.c,v 1.2 2005/06/16 19:37:09 ume Exp $
  */
 
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #include <net/if_var.h>		/* for struct ifaddr */
-#include <net/route.h>		/* for RTX_IFA */
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
 #include <err.h>
+#include <ifaddrs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,14 +54,14 @@ static struct ifreq in_ridreq;
 static char addr_buf[NI_MAXHOST];  /* for getnameinfo() */
 
 static void
-in_status(int s __unused, const struct rt_addrinfo *info)
+in_status(int s __unused, const struct ifaddrs *ifa)
 {
 	struct sockaddr_in *sin, null_sin;
 	int error, n_flags;
 
 	memset(&null_sin, 0, sizeof(null_sin));
 
-	sin = (struct sockaddr_in *)info->rti_info[RTAX_IFA];
+	sin = (struct sockaddr_in *)ifa->ifa_addr;
 	if (sin == NULL)
 		return;
 
@@ -78,16 +79,15 @@ in_status(int s __unused, const struct rt_addrinfo *info)
 
 	printf("\tinet %s", addr_buf);
 
-	if (flags & IFF_POINTOPOINT) {
-		/* note RTAX_BRD overlap with IFF_BROADCAST */
-		sin = (struct sockaddr_in *)info->rti_info[RTAX_BRD];
-		if (!sin)
+	if (ifa->ifa_flags & IFF_POINTOPOINT) {
+		sin = (struct sockaddr_in *)ifa->ifa_dstaddr;
+		if (sin == NULL)
 			sin = &null_sin;
 		printf(" --> %s", inet_ntoa(sin->sin_addr));
 	}
 
-	sin = (struct sockaddr_in *)info->rti_info[RTAX_NETMASK];
-	if (!sin)
+	sin = (struct sockaddr_in *)ifa->ifa_netmask;
+	if (sin == NULL)
 		sin = &null_sin;
 	if (f_inet != NULL && strcmp(f_inet, "cidr") == 0) {
 		int cidr = 32;
@@ -107,10 +107,9 @@ in_status(int s __unused, const struct rt_addrinfo *info)
 			(unsigned long)ntohl(sin->sin_addr.s_addr));
 	}
 
-	if (flags & IFF_BROADCAST) {
-		/* note RTAX_BRD overlap with IFF_POINTOPOINT */
-		sin = (struct sockaddr_in *)info->rti_info[RTAX_BRD];
-		if (sin && sin->sin_addr.s_addr != 0)
+	if (ifa->ifa_flags & IFF_BROADCAST) {
+		sin = (struct sockaddr_in *)ifa->ifa_broadaddr;
+		if (sin != NULL && sin->sin_addr.s_addr != 0)
 			printf(" broadcast %s", inet_ntoa(sin->sin_addr));
 	}
 	putchar('\n');
