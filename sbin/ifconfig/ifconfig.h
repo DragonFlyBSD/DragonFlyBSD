@@ -143,6 +143,7 @@ extern	int flags;
 extern	int newaddr;
 extern	int verbose;
 extern	int exit_code;
+extern	char *f_inet, *f_inet6, *f_ether, *f_addr, *f_scope;
 
 void	setifcap(const char *, int value, int s, const struct afswtch *);
 

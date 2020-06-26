@@ -66,7 +66,7 @@ static	int prefix(void *, int);
 static	char *sec2str(time_t);
 static	int explicit_prefix = 0;
 
-static	char addr_buf[MAXHOSTNAMELEN *2 + 1];	/*for getnameinfo()*/
+static 	char addr_buf[NI_MAXHOST];  /* for getnameinfo() */
 
 static void
 setifprefixlen(const char *addr, int dummy __unused, int s,
@@ -182,6 +182,7 @@ in6_status(int s __unused, const struct rt_addrinfo * info)
 	u_int32_t flags6;
 	struct in6_addrlifetime lifetime;
 	struct timespec now;
+	int n_flags, prefixlen;
 	int error;
 	u_int32_t scopeid;
 
@@ -227,12 +228,19 @@ in6_status(int s __unused, const struct rt_addrinfo * info)
 	}
 	scopeid = sin->sin6_scope_id;
 
+	if (f_addr != NULL && strcmp(f_addr, "fqdn") == 0)
+		n_flags = 0;
+	else if (f_addr != NULL && strcmp(f_addr, "host") == 0)
+		n_flags = NI_NOFQDN;
+	else
+		n_flags = NI_NUMERICHOST;
+
 	error = getnameinfo((struct sockaddr *)sin, sin->sin6_len, addr_buf,
-			    sizeof(addr_buf), NULL, 0, NI_NUMERICHOST);
+			    sizeof(addr_buf), NULL, 0, n_flags);
 	if (error != 0)
 		inet_ntop(AF_INET6, &sin->sin6_addr, addr_buf,
 			  sizeof(addr_buf));
-	printf("\tinet6 %s ", addr_buf);
+	printf("\tinet6 %s", addr_buf);
 
 	if (flags & IFF_POINTOPOINT) {
 		/* note RTAX_BRD overlap with IFF_BROADCAST */
@@ -262,15 +270,18 @@ in6_status(int s __unused, const struct rt_addrinfo * info)
 			if (error != 0)
 				inet_ntop(AF_INET6, &sin->sin6_addr, addr_buf,
 					  sizeof(addr_buf));
-			printf("--> %s ", addr_buf);
+			printf(" --> %s", addr_buf);
 		}
 	}
 
 	sin = (struct sockaddr_in6 *)info->rti_info[RTAX_NETMASK];
 	if (!sin)
 		sin = &null_sin;
-	printf("prefixlen %d", prefix(&sin->sin6_addr,
-		sizeof(struct in6_addr)));
+	prefixlen = prefix(&sin->sin6_addr, sizeof(struct in6_addr));
+	if (f_inet6 != NULL && strcmp(f_inet6, "cidr") == 0)
+		printf("/%d", prefixlen);
+	else
+		printf(" prefixlen %d", prefixlen);
 
 	if ((flags6 & IN6_IFF_ANYCAST) != 0)
 		printf(" anycast");

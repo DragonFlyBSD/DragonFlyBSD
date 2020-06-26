@@ -84,6 +84,9 @@ int	printkeys = 0;		/* Print keying material for interfaces. */
 int	printifname = 0;	/* Print the name of the created interface. */
 int	exit_code = 0;
 
+/* Formatter strings */
+char	*f_inet, *f_inet6, *f_ether, *f_addr;
+
 static	int ifconfig(int argc, char *const *argv, int iscreate,
 		     const struct afswtch *afp);
 static	void status(const struct afswtch *afp, int addrcount,
@@ -96,6 +99,8 @@ static struct afswtch *af_getbyname(const char *name);
 static struct afswtch *af_getbyfamily(int af);
 static void af_other_status(int);
 static void printifnamemaybe(void);
+static void freeformat(void);
+static void setformat(char *input);
 
 static struct option *opts = NULL;
 
@@ -120,8 +125,8 @@ usage(void)
 	}
 
 	fprintf(stderr,
-	"usage: ifconfig %s[-n] interface address_family [address [dest_address]]\n"
-	"                [parameters]\n"
+	"usage: ifconfig %s[-n] [-f type:format] interface address_family\n"
+	"                [address [dest_address]] [parameters]\n"
 	"       ifconfig [-n] interface create\n"
 	"       ifconfig [-n] interface destroy\n"
 	"       ifconfig -a %s[-d] [-m] [-u] [-v] [address_family]\n"
@@ -131,11 +136,67 @@ usage(void)
 	exit(1);
 }
 
-static void printifnamemaybe(void)
+static void
+printifnamemaybe(void)
 {
 	if (printifname)
 		printf("%s\n", name);
 }
+
+static void
+freeformat(void)
+{
+	if (f_inet != NULL)
+		free(f_inet);
+	if (f_inet6 != NULL)
+		free(f_inet6);
+	if (f_ether != NULL)
+		free(f_ether);
+	if (f_addr != NULL)
+		free(f_addr);
+}
+
+static void
+setformat(char *input)
+{
+	char *formatstr, *category, *modifier;
+	char **fp;
+
+	formatstr = strdup(input);
+	if (formatstr == NULL)
+		err(1, "no memory to set format");
+
+	while ((category = strsep(&formatstr, ",")) != NULL) {
+		modifier = strchr(category, ':');
+		if (modifier == NULL || modifier[1] == '\0') {
+			warnx("skip invalid format specification: %s\n",
+			      category);
+			continue;
+		}
+
+		modifier[0] = '\0';
+		modifier++;
+
+		fp = NULL;
+		if (strcmp(category, "addr") == 0)
+			fp = &f_addr;
+		else if (strcmp(category, "ether") == 0)
+			fp = &f_ether;
+		else if (strcmp(category, "inet") == 0)
+			fp = &f_inet;
+		else if (strcmp(category, "inet6") == 0)
+			fp = &f_inet6;
+
+		if (fp != NULL) {
+			*fp = strdup(modifier);
+			if (*fp == NULL)
+				err(1, "strdup");
+		}
+	}
+
+	free(formatstr);
+}
+
 
 int
 main(int argc, char *argv[])
@@ -148,6 +209,7 @@ main(int argc, char *argv[])
 	struct ifa_msghdr *ifam;
 	struct sockaddr_dl *sdl;
 	char *buf, *lim, *next;
+	char *envformat;
 	size_t needed;
 	int mib[6];
 	char options[1024];
@@ -156,6 +218,7 @@ main(int argc, char *argv[])
 	size_t iflen;
 
 	all = downonly = uponly = namesonly = verbose = noload = 0;
+	f_inet = f_inet6 = f_ether = f_addr = NULL;
 
 	/*
 	 * Ensure we print interface name when expected to,
@@ -163,8 +226,12 @@ main(int argc, char *argv[])
 	 */
 	atexit(printifnamemaybe);
 
+	envformat = getenv("IFCONFIG_FORMAT");
+	if (envformat != NULL)
+		setformat(envformat);
+
 	/* Parse leading line options */
-	strlcpy(options, "adklmnuv", sizeof(options));
+	strlcpy(options, "adf:klmnuv", sizeof(options));
 	for (p = opts; p != NULL; p = p->next)
 		strlcat(options, p->opt, sizeof(options));
 	while ((c = getopt(argc, argv, options)) != -1) {
@@ -174,6 +241,9 @@ main(int argc, char *argv[])
 			break;
 		case 'd':	/* restrict scan to "down" interfaces */
 			downonly++;
+			break;
+		case 'f':
+			setformat(optarg);
 			break;
 		case 'k':
 			printkeys++;
@@ -385,7 +455,9 @@ retry:
 		else
 			status(afp, addrcount, sdl, ifm, ifam);
 	}
+
 	free(buf);
+	freeformat();
 
 	if (namesonly && need_nl > 0)
 		putchar('\n');

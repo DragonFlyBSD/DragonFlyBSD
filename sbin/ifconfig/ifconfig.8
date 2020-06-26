@@ -28,7 +28,7 @@
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
 .\"
-.Dd November 27, 2018
+.Dd June 26, 2020
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -36,6 +36,7 @@
 .Nd configure network interface parameters
 .Sh SYNOPSIS
 .Nm
+.Op Fl f Ar type:format Ns Op Ar ,type:format
 .Op Fl L
 .Op Fl k
 .Op Fl m
@@ -143,12 +144,12 @@ The link-level
 address
 is specified as a series of colon-separated hex digits.
 This can be used to
-e.g.\& set a new MAC address on an ethernet interface, though the
-mechanism used is not ethernet-specific.
+e.g.\& set a new MAC address on an Ethernet interface, though the
+mechanism used is not Ethernet-specific.
 If the interface is already
 up when this option is used, it will be briefly brought down and
 then brought back up again in order to ensure that the receive
-filter in the underlying ethernet hardware is properly reprogrammed.
+filter in the underlying Ethernet hardware is properly reprogrammed.
 .It Ar address_family
 Specify the
 address family
@@ -180,6 +181,83 @@ for example,
 .Dq Li ed0 .
 .It Ar groupname
 List the interfaces in the given group.
+.El
+.Pp
+The output format of
+.Nm
+can be controlled with the
+.Fl f
+option or the
+.Ev IFCONFIG_FORMAT
+environment variable.
+The format is specified as a comma-separated list of
+.Sy type:format
+pairs.
+The supported
+.Sy type
+and its associated
+.Sy format
+strings are:
+.Bl -tag -width indent
+.It Sy addr
+Adjust the display of inet and inet6 addresses:
+.Bl -tag -width default
+.It Sy default
+Display inet and inet6 addresses in the default format, i.e.,
+.Sy numeric .
+.It Sy fqdn
+Display inet and inet6 addresses as fully qualified domain names
+.Pq FQDN .
+.It Sy host
+Display inet and inet6 addresses as unqualified hostnames.
+.It Sy numeric
+Display inet and inet6 addresses in numeric format.
+.El
+.It Sy ether
+Adjust the display of link-level Ethernet (MAC) addresses:
+.Bl -tag -width default
+.It Sy colon
+Separate address segments with a colon.
+.It Sy dash
+Separate address segments with a dash.
+.It Sy default
+Display Ethernet addresses in the default format, i.e.,
+.Sy colon .
+.El
+.It Sy inet
+Adjust the display of inet address subnet masks:
+.Bl -tag -width default
+.It Sy cidr
+Display subnet masks in CIDR notation, for example:
+.br
+10.0.0.0/8 or 203.0.113.224/26
+.It Sy default
+Display subnet masks in the default format, i.e.,
+.Sy hex .
+.It Sy dotted
+Display subnet masks in dotted quad notation, for example:
+.br
+255.255.0.0, 255.255.255.192
+.It Sy hex
+Display subnet masks in hexidecimal, for example:
+.br
+0xffff0000, 0xffffffc0
+.El
+.It Sy inet6
+Adjust the display of inet6 address prefixes (subnet masks):
+.Bl -tag -width default
+.It Sy cidr
+Display subnet prefix in CIDR notation, for example:
+.br
+::1/128, fe80::1%lo0/64
+.It Sy default
+Display subnet prefix in the default format, i.e.,
+.Sy numeric
+.It Sy numeric
+Display subnet prefix in integer format, for example:
+.br
+prefixlen 64
+.El
 .El
 .Pp
 The following parameters may be set with
@@ -2106,7 +2184,7 @@ for a 6:4 ratio.
 Remember that this also controls packet bursting.
 .It Cm link0
 The link0 option enables transparent bridging mode.
-The bridge will make every effort to retain the ethernet header
+The bridge will make every effort to retain the Ethernet header
 when forwarding packets between interfaces, making the bridging
 function work more like a hardware bridge device.
 .It Cm link1
@@ -2191,7 +2269,7 @@ pseudo-interface.
 The
 .Xr vlan 4
 interface is assigned a
-copy of the parent interface's flags and the parent's ethernet address.
+copy of the parent interface's flags and the parent's Ethernet address.
 The
 .Cm vlandev
 and
