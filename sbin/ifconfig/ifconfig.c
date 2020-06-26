@@ -829,29 +829,24 @@ setifdstaddr(const char *addr, int param __unused, int s,
 		afp->af_getaddr(addr, DSTADDR);
 }
 
-/*
- * Note: doing an SIOCIGIFFLAGS scribbles on the union portion
- * of the ifreq structure, which may confuse other parts of ifconfig.
- * Make a private copy so we can avoid that.
- */
 static void
 setifflags(const char *vname, int value, int s, const struct afswtch *afp)
 {
 	struct ifreq		my_ifr;
 
-	bcopy((char *)&ifr, (char *)&my_ifr, sizeof(struct ifreq));
+	memset(&my_ifr, 0, sizeof(struct ifreq));
+	strlcpy(my_ifr.ifr_name, name, sizeof(my_ifr.ifr_name));
 
-	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&my_ifr) < 0) {
+	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&my_ifr) < 0)
 		Perror("ioctl (SIOCGIFFLAGS)");
-	}
-	strlcpy(my_ifr.ifr_name, name, sizeof (my_ifr.ifr_name));
-	flags = (my_ifr.ifr_flags & 0xffff) | (my_ifr.ifr_flagshigh << 16);
 
+	flags = (my_ifr.ifr_flags & 0xffff) | (my_ifr.ifr_flagshigh << 16);
 	if (value < 0) {
 		value = -value;
 		flags &= ~value;
-	} else
+	} else {
 		flags |= value;
+	}
 	my_ifr.ifr_flags = flags & 0xffff;
 	my_ifr.ifr_flagshigh = flags >> 16;
 	if (ioctl(s, SIOCSIFFLAGS, (caddr_t)&my_ifr) < 0)
