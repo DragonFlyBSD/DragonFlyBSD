@@ -55,11 +55,13 @@
 .Cm destroy
 .Nm
 .Fl a
+.Op Fl G Ar nogroup
 .Op Fl L
 .Oo
 .Fl d |
 .Fl u
 .Oc
+.Op Fl g Ar matchgroup
 .Op Fl m
 .Op Fl v
 .Op Ar address_family
@@ -2367,9 +2369,29 @@ This flag instructs
 to display information about all interfaces in the system.
 The
 .Fl d
-flag limits this to interfaces that are down, and
+flag limits this to interfaces that are down,
 .Fl u
-limits this to interfaces that are up.
+limits this to interfaces that are up,
+.Fl g
+limits this to members of the specified group of interfaces, and
+.Fl G
+excludes members of the specified group from the list.
+Both
+.Fl g
+and
+.Fl G
+flags may be specified to apply both conditions.
+Only one
+.Fl g
+flag should be specified, as the later one overrides previous ones
+(same for the
+.Fl G
+flag).
+The argument of
+.Fl g
+or
+.Fl G
+flag may contain shell patterns but should be quoted in that case.
 When no arguments are given,
 .Fl a
 is implied.

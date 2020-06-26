@@ -56,7 +56,9 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <ifaddrs.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -88,6 +90,8 @@ int	exit_code = 0;
 /* Formatter strings */
 char	*f_inet, *f_inet6, *f_ether, *f_addr;
 
+static	bool group_member(const char *ifname, const char *match,
+			  const char *nomatch);
 static	int ifconfig(int argc, char *const *argv, int iscreate,
 		     const struct afswtch *afp);
 static	void status(const struct afswtch *afp, const struct sockaddr_dl *sdl,
@@ -146,7 +150,7 @@ usage(void)
 	"                [address [dest_address]] [parameters]\n"
 	"       ifconfig [-n] interface create\n"
 	"       ifconfig [-n] interface destroy\n"
-	"       ifconfig -a %s[-d | -u] [-m] [-v] [address_family]\n"
+	"       ifconfig -a %s[-G nogroup] [-d | -u] [-m] [-v] [address_family]\n"
 	"       ifconfig -l [-d | -u] [address_family]\n"
 	"       ifconfig %s[-d | -u] [-m] [-v]\n",
 		options, options, options);
@@ -355,7 +359,7 @@ main(int argc, char *argv[])
 	int ifindex, flags;
 	const struct afswtch *afp = NULL;
 	const struct sockaddr_dl *sdl;
-	const char *ifname;
+	const char *ifname, *matchgroup, *nogroup;
 	struct ifa_order_elt *cur, *tmp;
 	struct ifa_queue q = TAILQ_HEAD_INITIALIZER(q);
 	struct ifaddrs *ifap, *sifap, *ifa;
@@ -367,6 +371,7 @@ main(int argc, char *argv[])
 
 	all = downonly = uponly = namesonly = verbose = noload = 0;
 	f_inet = f_inet6 = f_ether = f_addr = NULL;
+	matchgroup = nogroup = NULL;
 
 	/*
 	 * Ensure we print interface name when expected to,
@@ -379,7 +384,7 @@ main(int argc, char *argv[])
 		setformat(envformat);
 
 	/* Parse leading line options */
-	strlcpy(options, "adf:klmnuv", sizeof(options));
+	strlcpy(options, "adf:G:klmnuv", sizeof(options));
 	for (p = opts; p != NULL; p = p->next)
 		strlcat(options, p->opt, sizeof(options));
 	while ((c = getopt(argc, argv, options)) != -1) {
@@ -392,6 +397,11 @@ main(int argc, char *argv[])
 			break;
 		case 'f':
 			setformat(optarg);
+			break;
+		case 'G':
+			if (!all)
+				usage();
+			nogroup = optarg;
 			break;
 		case 'k':
 			printkeys++;
@@ -411,6 +421,12 @@ main(int argc, char *argv[])
 		case 'v':
 			verbose++;
 			break;
+		case 'g':
+			if (all) {
+				matchgroup = optarg;
+				break;
+			}
+			/* FALLTHROUGH (for ifgroup) */
 		default:
 			for (p = opts; p != NULL; p = p->next)
 				if (p->opt[0] == c) {
@@ -556,6 +572,8 @@ main(int argc, char *argv[])
 			continue;
 		if (uponly && (ifa->ifa_flags & IFF_UP) == 0)
 			continue;
+		if (!group_member(ifa->ifa_name, matchgroup, nogroup))
+			continue;
 
 		if (ifa->ifa_addr->sa_family == AF_LINK)
 			sdl = (const struct sockaddr_dl *)ifa->ifa_addr;
@@ -586,6 +604,73 @@ main(int argc, char *argv[])
 	freeformat();
 
 	return (exit_code);
+}
+
+
+/*
+ * Returns true if an interface should be listed because any its groups
+ * matches shell pattern "match" and none of groups matches pattern "nomatch".
+ * If any pattern is NULL, corresponding condition is skipped.
+ */
+static bool
+group_member(const char *ifname, const char *match, const char *nomatch)
+{
+	static int		 sock = -1;
+
+	struct ifgroupreq	 ifgr;
+	struct ifg_req		*ifg;
+	size_t			 len;
+	bool			 matched, nomatched;
+
+	/* Sanity checks. */
+	if (match == NULL && nomatch == NULL)
+		return (true);
+	if (ifname == NULL)
+		return (false);
+
+	memset(&ifgr, 0, sizeof(ifgr));
+	strlcpy(ifgr.ifgr_name, ifname, sizeof(ifgr.ifgr_name));
+
+	/* The socket is opened once. Let _exit() close it. */
+	if (sock == -1) {
+		sock = socket(AF_LOCAL, SOCK_DGRAM, 0);
+		if (sock == -1)
+			errx(1, "%s: socket(AF_LOCAL,SOCK_DGRAM)", __func__);
+	}
+
+	/* Determine amount of memory for the list of groups. */
+	if (ioctl(sock, SIOCGIFGROUP, (caddr_t)&ifgr) == -1) {
+		if (errno == EINVAL || errno == ENOTTY)
+			return (false);
+		else
+			errx(1, "%s: SIOCGIFGROUP", __func__);
+	}
+
+	/* Obtain the list of groups. */
+	len = ifgr.ifgr_len;
+	ifgr.ifgr_groups =
+		(struct ifg_req *)calloc(len / sizeof(*ifg), sizeof(*ifg));
+	if (ifgr.ifgr_groups == NULL)
+		errx(1, "%s: no memory", __func__);
+	if (ioctl(sock, SIOCGIFGROUP, (caddr_t)&ifgr) == -1)
+		errx(1, "%s: SIOCGIFGROUP", __func__);
+
+	/* Perform matching. */
+	matched = false;
+	nomatched = true;
+	for (ifg = ifgr.ifgr_groups; ifg && len >= sizeof(*ifg); ifg++) {
+		len -= sizeof(struct ifg_req);
+		if (match)
+			matched |= !fnmatch(match, ifg->ifgrq_group, 0);
+		if (nomatch)
+			nomatched &= fnmatch(nomatch, ifg->ifgrq_group, 0);
+	}
+
+	if (match && !nomatch)
+		return (matched);
+	if (!match && nomatch)
+		return (nomatched);
+	return (matched && nomatched);
 }
 
 
