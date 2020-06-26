@@ -146,9 +146,9 @@ usage(void)
 	"                [address [dest_address]] [parameters]\n"
 	"       ifconfig [-n] interface create\n"
 	"       ifconfig [-n] interface destroy\n"
-	"       ifconfig -a %s[-d] [-m] [-u] [-v] [address_family]\n"
-	"       ifconfig -l [-d] [-u] [address_family]\n"
-	"       ifconfig %s[-d] [-m] [-u] [-v]\n",
+	"       ifconfig -a %s[-d | -u] [-m] [-v] [address_family]\n"
+	"       ifconfig -l [-d | -u] [address_family]\n"
+	"       ifconfig %s[-d | -u] [-m] [-v]\n",
 		options, options, options);
 	exit(1);
 }
