@@ -172,7 +172,7 @@ void options (int, char **);
 OPLIST * opt_next (void);
 int opt_add (char *);
 int bad_opt (void);
-char *chdname;
+extern char *chdname;
 
 /*
  * pat_rep.c

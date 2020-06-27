@@ -76,6 +76,7 @@ static int mkpath(char *);
 #define GETLINE_OUT_OF_MEM 2
 static int get_line_error;
 
+char *chdname;
 
 #define GZIP_CMD	"gzip"		/* command to run as gzip */
 #define COMPRESS_CMD	"compress"	/* command to run as compress */
