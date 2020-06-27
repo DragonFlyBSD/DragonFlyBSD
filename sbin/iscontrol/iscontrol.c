@@ -58,10 +58,6 @@
 #define USAGE "[-dv] [-c file] [-n nickname] [-t target] [variable=value ...]"
 #define OPTIONS	"vdc:t:n:"
 
-#ifndef DEBUG
-//int	vflag;
-#endif
-
 token_t AuthMethods[] = {
      {"None",	NONE},
      {"KRB5",	KRB5},
@@ -78,6 +74,9 @@ token_t	DigestMethods[] = {
      {"CRC32C",	1},
      {0, 0}
 };
+
+int	vflag;
+char	*iscsidev;
 
 u_char	isid[6 + 6];
 /*

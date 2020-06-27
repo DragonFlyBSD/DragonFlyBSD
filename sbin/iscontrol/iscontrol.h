@@ -31,8 +31,6 @@
 #define INITIATORMOD "iscsi_initiator"
 
 #ifdef DEBUG
-int vflag;
-
 # define debug(level, fmt, args...)	do {if (level <= vflag) printf("%s: " fmt "\n", __func__ , ##args);} while(0)
 # define debug_called(level)		do {if (level <= vflag) printf("%s: called\n", __func__);} while(0)
 #else
@@ -150,8 +148,8 @@ void	pukeText(char *it, pdu_t *pp);
 
 int	lookup(token_t *tbl, char *m);
 
-int	vflag;
-char	*iscsidev;
+extern int	vflag;
+extern char	*iscsidev;
 
 void	parseArgs(int nargs, char **args, isc_opt_t *op);
 void	parseConfig(FILE *fd, char *key, isc_opt_t *op);
