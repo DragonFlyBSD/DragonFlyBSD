@@ -103,9 +103,9 @@ struct config {
  * it will build from ``Makefile.i386'' and use ``../i386/inline''
  * in the makerules, etc.
  */
-char	*platformname;		/* MACHINE_PLATFORM  - (machine/ headers) */
-char	*machinename;		/* MACHINE      - third party programs */
-char	*machinearchname;	/* MACHINE_ARCH - (cpu/ headers) */
+extern char	*platformname;	/* MACHINE_PLATFORM  - (machine/ headers) */
+extern char	*machinename;	/* MACHINE      - third party programs */
+extern char	*machinearchname; /* MACHINE_ARCH - (cpu/ headers) */
 
 /*
  * For each machine, a set of CPU's may be specified as supported.
@@ -114,7 +114,8 @@ char	*machinearchname;	/* MACHINE_ARCH - (cpu/ headers) */
 struct cputype {
 	char	*cpu_name;
 	struct	cputype *cpu_next;
-} *cputype;
+};
+extern struct cputype *cputype;
 
 /*
  * A set of options may also be specified which are like CPU types,
@@ -127,13 +128,15 @@ struct opt {
 	int	op_line;	/* line number for error-reporting */
 	int	op_ownfile;	/* true = own file, false = makefile */
 	struct	opt *op_next;
-} *opt, *mkopt;
+};
+extern struct opt *opt, *mkopt;
 
 struct opt_list {
 	char *o_name;
 	char *o_file;
 	struct opt_list *o_next;
-} *otab;
+};
+extern struct opt_list *otab;
 
 extern char	*ident;
 extern int	do_trace;

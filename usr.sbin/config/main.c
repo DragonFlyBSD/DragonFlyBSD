@@ -55,6 +55,14 @@
 
 #define	CDIR	"../compile/"
 
+char *	platformname;
+char *	machinename;
+char *	machinearchname;
+
+struct cputype	*cputype;
+struct opt	*opt, *mkopt;
+struct opt_list	*otab;
+
 char *	PREFIX;
 char 	destdir[MAXPATHLEN];
 char 	srcdir[MAXPATHLEN - 32];
