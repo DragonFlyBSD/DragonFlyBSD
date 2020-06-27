@@ -3716,9 +3716,9 @@ bailout:
 #endif /* MINIMALISTIC */
 
 void 
-usage(int verbose)
+usage(int _verbose)
 {
-	fprintf(verbose ? stdout : stderr,
+	fprintf(_verbose ? stdout : stderr,
 "usage:  camcontrol <command>  [device id][generic args][command args]\n"
 "        camcontrol devlist    [-b][-v]\n"
 #ifndef MINIMALISTIC
@@ -3751,7 +3751,7 @@ usage(int verbose)
 "        camcontrol format     [dev_id][generic args][-q][-r][-w][-y]\n"
 #endif /* MINIMALISTIC */
 "        camcontrol help\n");
-	if (!verbose)
+	if (!_verbose)
 		return;
 #ifndef MINIMALISTIC
 	fprintf(stdout,

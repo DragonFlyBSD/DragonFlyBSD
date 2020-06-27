@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.h,v 1.3.2.1 2000/08/14 05:42:32 kbyanc Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.h,v 1.3 2005/01/11 23:58:55 cpressey Exp $
  */
 
 #ifndef _CAMCONTROL_H
@@ -40,6 +39,8 @@ struct get_hook
 	char **argv;
 	int got;
 };
+
+extern int verbose;
 
 void	 mode_sense(struct cam_device *, int, int, int, int, int, u_int8_t *,
 		    int);
