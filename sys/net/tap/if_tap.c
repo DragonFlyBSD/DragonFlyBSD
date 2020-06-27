@@ -365,15 +365,25 @@ tapopen(struct dev_open_args *ap)
 static int
 tapclone(struct dev_clone_args *ap)
 {
+	char ifname[IFNAMSIZ];
 	int unit;
 
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tap), 0);
-	ap->a_dev = make_only_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
-				  0600, "%s%d", TAP, unit);
-	if (tapcreate(ap->a_dev, 0) == NULL)
-		return (ENOMEM);
-	else
-		return (0);
+	ksnprintf(ifname, IFNAMSIZ, "%s%d", TAP, unit);
+	/*
+	 * Use 'make_dev()' instead of 'make_only_dev()' so that the
+	 * created device can be found by 'devfs_find_device_by_name()'
+	 * in 'tap_clone_create()'.
+	 */
+	ap->a_dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
+			     0600, "%s", ifname);
+
+	/*
+	 * Use the if_clone framework to create cloned device/interface,
+	 * so the two clone methods (autoclone device /dev/tap; ifconfig
+	 * clone) are consistent and can be mix used.
+	 */
+	return (if_clone_create(ifname, IFNAMSIZ, NULL));
 }
 
 /*

@@ -182,16 +182,25 @@ tunmodevent(module_t mod, int type, void *data)
 static int
 tunclone(struct dev_clone_args *ap)
 {
+	char ifname[IFNAMSIZ];
 	int unit;
 
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tun), 0);
-	ap->a_dev = make_only_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
-				  0600, "%s%d", TUN, unit);
+	ksnprintf(ifname, IFNAMSIZ, "%s%d", TUN, unit);
+	/*
+	 * Use 'make_dev()' instead of 'make_only_dev()' so that the
+	 * created device can be found by 'devfs_find_device_by_name()'
+	 * in 'tun_clone_create()'.
+	 */
+	ap->a_dev = make_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
+			     0600, "%s", ifname);
 
-	if (tuncreate(ap->a_dev, 0) == NULL)
-		return (ENOMEM);
-	else
-		return (0);
+	/*
+	 * Use the if_clone framework to create cloned device/interface,
+	 * so the two clone methods (autoclone device /dev/tun; ifconfig
+	 * clone) are consistent and can be mix used.
+	 */
+	return (if_clone_create(ifname, IFNAMSIZ, NULL));
 }
 
 static struct tun_softc *
