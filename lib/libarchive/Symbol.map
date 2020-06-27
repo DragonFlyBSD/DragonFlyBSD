@@ -458,6 +458,13 @@ ARCHIVE_3.3.3 {
     archive_write_add_filter_zstd;
 };
 
+ARCHIVE_3.4.3 {
+    archive_entry_set_symlink_type;
+    archive_entry_symlink_type;
+    archive_match_set_inclusion_recursion;
+    archive_read_support_format_rar5;
+};
+
 ARCHIVEprivate_1.0 {
     __archive_check_child;
     __archive_check_magic;

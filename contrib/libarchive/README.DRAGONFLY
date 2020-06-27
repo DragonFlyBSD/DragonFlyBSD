@@ -1,15 +1,18 @@
-LIBARCHIVE
-==========
+LIBARCHIVE 3.4.3
+================
 
 Original source can be downloaded from:
 http://www.libarchive.org/
 
-file = libarchive-3.3.3.tar.gz
-date = 9 April 2019
-size = 6535598
-sha1 = 499a8f48a895faff4151d7398b24070d578f0b2e
+file = libarchive-3.4.3.tar.xz
+date = 20 May 2020
+size = 4811508
+sha1 = 53f1400ac71778d14615a66f89e04403548fae76
 
 A list of deleted files is in README.DELETED.
+
+Use "git diff vendor/LIBARCHIVE contrib/libarchive" to see local
+modifications.
 
 This source is used in:
 	lib/libarchive
@@ -24,8 +27,3 @@ Configured with
 	    ac_cv_lib_md_MD5Init=no ac_cv_lzma_has_mt=no
 
 NOTE: test_read_disk_directory_traversals is expected to fail atime restore
-
-The following files have been patched (* planned)
-=================================================
-  libarchive/archive_read_disk_posix.c	futimens()/utimes()
-  libarchive/archive_write_disk_posix.c futimens()/utimes()
