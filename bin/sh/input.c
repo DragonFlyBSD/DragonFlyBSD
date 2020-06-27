@@ -104,10 +104,6 @@ static struct parsefile basepf = {	/* top level input file */
 static struct parsefile *parsefile = &basepf;	/* current input file */
 int whichprompt;		/* 1 == PS1, 2 == PS2 */
 
-#ifndef NO_HISTORY
-EditLine *el;			/* cookie for editline package */
-#endif
-
 static void pushfile(void);
 static int preadfd(void);
 static void popstring(void);
