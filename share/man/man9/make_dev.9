@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/make_dev.9,v 1.2.2.3 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd August 3, 2016
+.Dd June 27, 2020
 .Dt MAKE_DEV 9
 .Os
 .Sh NAME
@@ -181,7 +181,9 @@ mydev_open(struct dev_open_args *ap)
 .Ed
 .Pp
 .Fn make_dev_covering
-is equivalent to make_dev, except that it also takes an argument
+is equivalent to
+.Fn make_dev ,
+except that it also takes an argument
 .Fa bops
 which is set as the ops of the backing device for the newly created device.
 This function should be used whenever a device is created covering
@@ -190,11 +192,14 @@ another raw device, as the disk subsystem does.
 .Fn make_only_dev
 creates a
 .Vt cdev_t
-structure and initializes it the same way
+structure and initializes it in the same way as
 .Fn make_dev
 would, but the device will not appear in the
 .Xr devfs 5
 namespace.
+This function is usually used in the clone handler of an autoclone device
+created by
+.Fn make_autoclone_dev .
 .Pp
 .Fn destroy_dev
 takes the returned
@@ -327,6 +332,9 @@ or the
 .Vt cdev Ap s
 .Fa si_name
 field.
+.Sh SEE ALSO
+.Xr devfs 5 ,
+.Xr make_autoclone_dev 9
 .Sh HISTORY
 The
 .Fn make_dev
