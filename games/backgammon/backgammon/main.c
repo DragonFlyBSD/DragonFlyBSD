@@ -1,4 +1,7 @@
-/*-
+/*	@(#)main.c	8.1 (Berkeley) 5/31/93			*/
+/*	$NetBSD: main.c,v 1.33 2019/02/03 10:45:58 mrg Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,142 +28,135 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
- * @(#)main.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/backgammon/main.c,v 1.13 1999/11/30 03:48:22 billf Exp $
  */
 
-#include <stdio.h>
-#include <termcap.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <signal.h>
+#include <time.h>
+
 #include "back.h"
+#include "backlocal.h"
 
-#define MVPAUSE	5				/* time to sleep when stuck */
-#define MAXUSERS 35				/* maximum number of users */
+#define MVPAUSE	5		/* time to sleep when stuck */
 
-extern const char	*const instr[];		/* text of instructions */
-extern const char	*const message[];	/* update message */
+extern const char   *const instr[];		/* text of instructions */
+extern const char   *const message[];		/* update message */
 
-const char	*helpm[] = {			/* help message */
+static const char *const helpm[] = {		/* help message */
 	"Enter a space or newline to roll, or",
 	"     R   to reprint the board\tD   to double",
 	"     S   to save the game\tQ   to quit",
 	0
 };
 
-const char	*contin[] = {			/* pause message */
+static const char *const contin[] = {		/* pause message */
 	"(Type a newline to continue.)",
 	"",
 	0
 };
+static const char rules[] = "\nDo you want the rules of the game?";
+static const char noteach[] = "Teachgammon not available!\n\a";
+static const char need[] = "Do you need instructions for this program?";
+static const char askcol[] =
+"Enter 'r' to play red, 'w' to play white, 'b' to play both:";
+static const char rollr[] = "Red rolls a ";
+static const char rollw[] = ".  White rolls a ";
+static const char rstart[] = ".  Red starts.\n";
+static const char wstart[] = ".  White starts.\n";
+static const char toobad1[] = "Too bad, ";
+static const char unable[] = " is unable to use that roll.\n";
+static const char toobad2[] = ".  Too bad, ";
+static const char cantmv[] = " can't move.\n";
+static const char bgammon[] = "Backgammon!  ";
+static const char gammon[] = "Gammon!  ";
+static const char again[] = ".\nWould you like to play again?";
+static const char svpromt[] = "Would you like to save this game?";
 
-static const char	rules[] = "\nDo you want the rules of the game?";
-static const char	noteach[] = "Teachgammon not available!\n\a";
-static const char	need[] = "Do you need instructions for this program?";
-static const char	askcol[] =
-	"Enter 'r' to play red, 'w' to play white, 'b' to play both:";
-static const char	rollr[] = "Red rolls a ";
-static const char	rollw[] = ".  White rolls a ";
-static const char	rstart[] = ".  Red starts.\n";
-static const char	wstart[] = ".  White starts.\n";
-static const char	toobad1[] = "Too bad, ";
-static const char	unable[] = " is unable to use that roll.\n";
-static const char	toobad2[] = ".  Too bad, ";
-static const char	cantmv[] = " can't move.\n";
-static const char	bgammon[] = "Backgammon!  ";
-static const char	gammon[] = "Gammon!  ";
-static const char	again[] = ".\nWould you like to play again?";
-static const char	svpromt[] = "Would you like to save this game?";
-
-static const char	password[] = "losfurng";
-static char	pbuf[10];
+static const char password[] = "losfurng";
+static char pbuf[10];
 
 int
-main(int argc, char **argv)
+main(int argc __unused, char **argv)
 {
-	int i, l;
-	char c;
+	int     i;		/* non-descript index */
+	int     l;		/* non-descript index */
+	char    c;		/* non-descript character storage */
+	time_t  t;		/* time for random num generator */
+	struct move mmstore, *mm;
 
-	/* revoke privs */
+	/* revoke setgid privileges */
 	setgid(getgid());
 
 	/* initialization */
-	bflag = 2;				/* default no board */
-	acnt = 1;				/* Number of args */
-	signal(SIGINT, getout);			/* trap interrupts */
-	if (tcgetattr(0, &tty) == -1)		/* get old tty mode */
-		errexit("backgammon(tcgetattr)");
-	old = tty.c_lflag;
-	bgraw = ((noech = old & ~ECHO) & ~ICANON); /* set up modes */
-	ospeed = cfgetospeed(&tty);		/* for termlib */
+	bflag = 2;		/* default no board */
+	signal(SIGINT, getout);	/* trap interrupts */
+	if (tcgetattr(0, &old) == -1)	/* get old tty mode */
+		errexit("backgammon(gtty)");
+	noech = old;
+	noech.c_lflag &= ~ECHO;
+	raw = noech;
+	raw.c_lflag &= ~ICANON;	/* set up modes */
+	ospeed = cfgetospeed(&old);	/* for termlib */
 
 	/* get terminal capabilities, and decide if it can cursor address */
 	tflag = getcaps(getenv("TERM"));
 	/* use whole screen for text */
 	if (tflag)
 		begscr = 0;
-	srandomdev();
+	t = time(NULL);
+	srandom(t);		/* 'random' seed */
 
-	getarg(argc, argv);
-	args[acnt] = NULL;
-	if (tflag) {				/* clear screen */
-		noech &= ~(ICRNL | OXTABS);
-		bgraw &= ~(ICRNL | OXTABS);
+	/* need this now beceause getarg() may try to load a game */
+	mm = &mmstore;
+	move_init(mm);
+	while (*++argv != 0)	/* process arguments */
+		getarg(mm, &argv);
+	args[acnt] = '\0';
+	if (tflag) {		/* clear screen */
+		noech.c_oflag &= ~(ONLCR | OXTABS);
+		raw.c_oflag &= ~(ONLCR | OXTABS);
 		clear();
 	}
-	fixtty(bgraw);				/* go into raw mode */
+	fixtty(&raw);		/* go into raw mode */
 
 	/* check if restored game and save flag for later */
 	if ((rfl = rflag) != 0) {
-		text(message);			/* print message */
-		text(contin);
-		wrboard();			/* print board */
-						/* if new game, pretend
-						 * to be a non-restored game
-						 */
+		wrtext(message);	/* print message */
+		wrtext(contin);
+		wrboard();	/* print board */
+		/* if new game, pretend to be a non-restored game */
 		if (cturn == 0)
 			rflag = 0;
 	} else {
-		rscore = wscore = 0;		/* zero score */
-		text(message);			/* update message
-							 * without pausing */
+		rscore = wscore = 0;	/* zero score */
+		wrtext(message);	/* update message without pausing */
 
-		if (aflag) {			/* print rules */
+		if (aflag) {	/* print rules */
 			writel(rules);
 			if (yorn(0)) {
-				fixtty(old);	/* restore tty */
-				args[0] = strdup("teachgammon");
-				execv(TEACH, args);
+
+				fixtty(&old);	/* restore tty */
+				execl(TEACH, "teachgammon", args[0]?args:0,
+				      (char *) 0);
 
 				tflag = 0;	/* error! */
 				writel(noteach);
 				exit(1);
-			} else {		/* if not rules, then
-						 * instructions
-						 */
+			} else {/* if not rules, then instructions */
 				writel(need);
 				if (yorn(0)) {	/* print instructions */
 					clear();
-					text(instr);
+					wrtext(instr);
 				}
 			}
 		}
+		init();		/* initialize board */
 
-		for (i = 0; i < acnt; i++)
-			free(args[i]);
-
-		init();				/* initialize board */
-
-		if (pnum == 2) {		/* ask for color(s) */
+		if (pnum == 2) {/* ask for color(s) */
 			writec('\n');
 			writel(askcol);
 			while (pnum == 2) {
 				c = readc();
 				switch (c) {
+
 				case 'R':	/* red */
 					pnum = -1;
 					break;
@@ -213,9 +209,9 @@ main(int argc, char **argv)
 		} else
 			if (!aflag)
 				/* pause to read message */
-				text(contin);
+				wrtext(contin);
 
-		wrboard();			/* print board */
+		wrboard();	/* print board */
 
 		if (tflag)
 			curmove(18, 0);
@@ -226,26 +222,26 @@ main(int argc, char **argv)
 	if (tflag)
 		begscr = 17;
 
-	for (;;) {				/* begin game! */
+	for (;;) {		/* begin game! */
 		/* initial roll if needed */
 		if ((!rflag) || raflag)
-			roll();
+			roll(mm);
 
 		/* perform ritual of first roll */
 		if (!rflag) {
 			if (tflag)
 				curmove(17, 0);
-			while (D0 == D1)	/* no doubles */
-				roll();
+			while (mm->D0 == mm->D1)	/* no doubles */
+				roll(mm);
 
 			/* print rolls */
 			writel(rollr);
-			writec(D0 + '0');
+			writec(mm->D0 + '0');
 			writel(rollw);
-			writec(D1 + '0');
+			writec(mm->D1 + '0');
 
 			/* winner goes first */
-			if (D0 > D1) {
+			if (mm->D0 > mm->D1) {
 				writel(rstart);
 				cturn = 1;
 			} else {
@@ -253,9 +249,9 @@ main(int argc, char **argv)
 				cturn = -1;
 			}
 		}
-
 		/* initialize variables according to whose turn it is */
-		if (cturn == 1) {		/* red */
+
+		if (cturn == 1) {	/* red */
 			home = 25;
 			bar = 0;
 			inptr = &in[1];
@@ -265,7 +261,7 @@ main(int argc, char **argv)
 			Colorptr = &color[1];
 			colorptr = &color[3];
 			colen = 3;
-		} else {			/* white */
+		} else {	/* white */
 			home = 0;
 			bar = 25;
 			inptr = &in[0];
@@ -280,14 +276,14 @@ main(int argc, char **argv)
 		/* do first move (special case) */
 		if (!(rflag && raflag)) {
 			if (cturn == pnum)	/* computer's move */
-				move(0);
-			else {			/* player's move */
-				mvlim = movallow();
+				move(mm, 0);
+			else {	/* player's move */
+				mm->mvlim = movallow(mm);
 				/* reprint roll */
 				if (tflag)
 					curmove(cturn == -1 ? 18 : 19, 0);
-				proll();
-				getmove();	/* get player's move */
+				proll(mm);
+				getmove(mm);	/* get player's move */
 			}
 		}
 		if (tflag) {
@@ -295,13 +291,14 @@ main(int argc, char **argv)
 			cline();
 			begscr = 18;
 		}
-
-		/* no longer any difference between normal and recovered game. */
+		/* no longer any diff- erence between normal game and
+		 * recovered game. */
 		rflag = 0;
 
 		/* move as long as it's someone's turn */
 		while (cturn == 1 || cturn == -1) {
-			/* board maintenance */
+
+			/* board maintainence */
 			if (tflag)
 				refresh();	/* fix board */
 			else
@@ -311,7 +308,7 @@ main(int argc, char **argv)
 
 			/* do computer's move */
 			if (cturn == pnum) {
-				move(1);
+				move(mm, 1);
 
 				/* see if double refused */
 				if (cturn == -2 || cturn == 2)
@@ -323,8 +320,8 @@ main(int argc, char **argv)
 					break;
 				}
 				continue;
-			}
 
+			}
 			/* (player's move) */
 
 			/* clean screen if safe */
@@ -333,7 +330,6 @@ main(int argc, char **argv)
 				clend();
 				hflag = 1;
 			}
-
 			/* if allowed, give him a chance to double */
 			if (dlast != cturn && gvalue < 64) {
 				if (tflag)
@@ -343,34 +339,41 @@ main(int argc, char **argv)
 
 				/* character cases */
 				switch (c) {
-				case 'R':		/* reprint board */
+
+					/* reprint board */
+				case 'R':
 					wrboard();
 					break;
 
-				case 'S':		/* save game */
+					/* save game */
+				case 'S':
 					raflag = 1;
-					save(1);
+					save(mm, 1);
 					break;
 
-				case 'Q':		/* quit */
-					quit();
+					/* quit */
+				case 'Q':
+					quit(mm);
 					break;
 
-				case 'D':		/* double */
+					/* double */
+				case 'D':
 					dble();
 					break;
 
-				case ' ':		/* roll */
+					/* roll */
+				case ' ':
 				case '\n':
-					roll();
+					roll(mm);
 					writel(" rolls ");
-					writec(D0 + '0');
+					writec(mm->D0 + '0');
 					writec(' ');
-					writec(D1 + '0');
+					writec(mm->D1 + '0');
 					writel(".  ");
 
 					/* see if he can move */
-					if ((mvlim = movallow()) == 0) {
+					if ((mm->mvlim = movallow(mm)) == 0) {
+
 						/* can't move */
 						writel(toobad1);
 						writel(*colorptr);
@@ -384,15 +387,14 @@ main(int argc, char **argv)
 						nexturn();
 						break;
 					}
-
 					/* get move */
-					getmove();
+					getmove(mm);
 
 					/* okay to clean screen */
 					hflag = 1;
 					break;
 
-				/* invalid character */
+					/* invalid character */
 				default:
 
 					/* print help message */
@@ -400,25 +402,27 @@ main(int argc, char **argv)
 						curmove(20, 0);
 					else
 						writec('\n');
-					text(helpm);
+					wrtext(helpm);
 					if (tflag)
-						curmove(cturn == -1 ? 18 : 19,
-							0);
+						curmove(cturn == -1 ? 
+						    18 : 19, 0);
 					else
 						writec('\n');
 
 					/* don't erase */
 					hflag = 0;
 				}
-			} else {		/* couldn't double */
-						/* print roll */
-				roll();
+			} else {/* couldn't double */
+
+				/* print roll */
+				roll(mm);
 				if (tflag)
 					curmove(cturn == -1 ? 18 : 19, 0);
-				proll();
+				proll(mm);
 
 				/* can he move? */
-				if ((mvlim = movallow()) == 0) {
+				if ((mm->mvlim = movallow(mm)) == 0) {
+
 					/* he can't */
 					writel(toobad2);
 					writel(*colorptr);
@@ -428,9 +432,8 @@ main(int argc, char **argv)
 					nexturn();
 					continue;
 				}
-
 				/* get move */
-				getmove();
+				getmove(mm);
 			}
 		}
 
@@ -455,17 +458,15 @@ main(int argc, char **argv)
 		/* compute game value */
 		if (tflag)
 			curmove(20, 0);
-		if (*offopp == 15) {
+		if (*offopp == 15 && (*offptr == 0 || *offptr == -15)) {
 			if (mflag) {
 				writel(bgammon);
 				gvalue *= 3;
-			} else
-				if (*offptr <= 0) {
-					writel(gammon);
-					gvalue *= 2;
-				}
+			} else {
+				writel(gammon);
+				gvalue *= 2;
+			}
 		}
-
 		/* report situation */
 		if (cturn == -1) {
 			writel("Red wins ");
@@ -492,9 +493,8 @@ main(int argc, char **argv)
 		if (i == 2) {
 			writel("  Save.\n");
 			cturn = 0;
-			save(0);
+			save(mm, 0);
 		}
-
 		/* yes, reset game */
 		wrboard();
 	}
@@ -506,10 +506,9 @@ main(int argc, char **argv)
 			/* re-initialize for recovery */
 			init();
 			cturn = 0;
-			save(0);
+			save(mm, 0);
 		}
 	}
-
 	/* leave peacefully */
 	getout(0);
 	/* NOTREACHED */

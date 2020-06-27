@@ -1,25 +1,84 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.search.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.search.c,v 1.3 1999/11/16 02:57:11 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.search.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.search.c,v 1.6 2009/06/07 18:30:39 dholland Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
+#include "extern.h"
 
 int
-findit(void)	/* returns number of things found */
-{
-	int num;
-	xchar zx, zy;
-	struct trap *ttmp;
-	struct monst *mtmp;
-	xchar lx, hx, ly, hy;
+findit(void)
+{				/* returns number of things found */
+	int             num;
+	xchar           zx, zy;
+	struct trap    *ttmp;
+	struct monst   *mtmp;
+	xchar           lx, hx, ly, hy;
 
 	if (u.uswallow)
 		return (0);
-	for (lx = u.ux; (num = levl[lx - 1][u.uy].typ) && num != CORR; lx--) ;
-	for (hx = u.ux; (num = levl[hx + 1][u.uy].typ) && num != CORR; hx++) ;
-	for (ly = u.uy; (num = levl[u.ux][ly - 1].typ) && num != CORR; ly--) ;
-	for (hy = u.uy; (num = levl[u.ux][hy + 1].typ) && num != CORR; hy++) ;
+	for (lx = u.ux; (num = levl[lx - 1][u.uy].typ) && num != CORR; lx--);
+	for (hx = u.ux; (num = levl[hx + 1][u.uy].typ) && num != CORR; hx++);
+	for (ly = u.uy; (num = levl[u.ux][ly - 1].typ) && num != CORR; ly--);
+	for (hy = u.uy; (num = levl[u.ux][hy + 1].typ) && num != CORR; hy++);
 	num = 0;
 	for (zy = ly; zy <= hy; zy++)
 		for (zx = lx; zx <= hx; zx++) {
@@ -33,7 +92,7 @@ findit(void)	/* returns number of things found */
 				num++;
 			} else if ((ttmp = t_at(zx, zy)) != NULL) {
 				if (ttmp->ttyp == PIERC) {
-					makemon(PM_PIERCER, zx, zy);
+					(void) makemon(PM_PIERCER, zx, zy);
 					num++;
 					deltrap(ttmp);
 				} else if (!ttmp->tseen) {
@@ -54,9 +113,9 @@ findit(void)	/* returns number of things found */
 int
 dosearch(void)
 {
-	xchar x, y;
-	struct trap *trap;
-	struct monst *mtmp;
+	xchar           x, y;
+	struct trap    *trap;
+	struct monst   *mtmp;
 
 	if (u.uswallow)
 		pline("What are you looking for? The exit?");
@@ -79,8 +138,12 @@ dosearch(void)
 						prl(x, y);
 						nomul(0);
 					} else {
-						/* Be careful not to find anything in an SCORR or SDOOR */
-						if ((mtmp = m_at(x, y)))
+						/*
+						 * Be careful not to find
+						 * anything in an SCORR or
+						 * SDOOR
+						 */
+						if ((mtmp = m_at(x, y)) != NULL)
 							if (mtmp->mimic) {
 								seemimic(mtmp);
 								pline("You find a mimic.");
@@ -93,7 +156,7 @@ dosearch(void)
 								pline("You find a%s.", traps[trap->ttyp]);
 								if (trap->ttyp == PIERC) {
 									deltrap(trap);
-									makemon(PM_PIERCER, x, y);
+									(void) makemon(PM_PIERCER, x, y);
 									return (1);
 								}
 								trap->tseen = 1;
@@ -108,9 +171,8 @@ dosearch(void)
 int
 doidtrap(void)
 {
-	struct trap *trap;
-	int x, y;
-
+	struct trap    *trap;
+	int             x, y;
 	if (!getdir(1))
 		return (0);
 	x = u.ux + u.dx;
@@ -136,7 +198,7 @@ wakeup(struct monst *mtmp)
 		seemimic(mtmp);
 }
 
-/* NOTE: we must check if (mtmp->mimic) before calling this routine */
+/* NOTE: we must check if(mtmp->mimic) before calling this routine */
 void
 seemimic(struct monst *mtmp)
 {

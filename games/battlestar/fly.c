@@ -1,4 +1,7 @@
-/*-
+/*	@(#)fly.c	8.2 (Berkeley) 4/28/95				*/
+/*	$NetBSD: fly.c,v 1.15 2012/10/13 19:58:53 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,35 +28,33 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)fly.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/battlestar/fly.c,v 1.6.2.1 2001/03/05 11:45:36 kris Exp $
  */
 
-#include "externs.h"
+#include "extern.h"
 #undef UP
 #include <curses.h>
+#include <assert.h>
 
-#define MIDR  (LINES / 2 - 1)
-#define MIDC  (COLS / 2 - 1)
+#define MIDR  (LINES/2 - 1)
+#define MIDC  (COLS/2 - 1)
 
-int row, column;
-int dr = 0, dc = 0;
-char destroyed;
-int gclock = 120;               /* gtime for all the flights in the game */
-char cross = 0;
-sig_t oldsig;
+static int     row, column;
+static int     dr = 0, dc = 0;
+static char    destroyed;
+int     ourclock = 120;		/* time for all the flights in the game */
+static char    cross = 0;
+static sig_t   oldsig;
 
-static void     blast(void);
-static void     endfly(void);
-static void     moveenemy(int);
-static void     notarget(void);
-static void     succumb(int);
-static void     screen(void);
-static void     target(void);
+static void blast(void);
+static void endfly(void);
+static void moveenemy(int);
+static void notarget(void);
+static void screen(void);
+static void succumb(int);
+static void target(void);
 
 static void
-succumb(int sig __unused)
+succumb(int dummy __unused)
 {
 	if (oldsig == SIG_DFL) {
 		endfly();
@@ -61,7 +62,7 @@ succumb(int sig __unused)
 	}
 	if (oldsig != SIG_IGN) {
 		endfly();
-		(*oldsig)(SIGINT);
+		(*oldsig) (SIGINT);
 	}
 }
 
@@ -82,6 +83,7 @@ visual(void)
 	moveenemy(0);
 	for (;;) {
 		switch (getchar()) {
+
 		case 'h':
 		case 'r':
 			dc = -1;
@@ -141,8 +143,8 @@ visual(void)
 			if (torps) {
 				torps -= 2;
 				blast();
-				if (row == MIDR && column - MIDC < 2 &&
-				    MIDC - column < 2) {
+				if (row == MIDR && column < MIDC + 2 && 
+				    column > MIDC - 2) {
 					destroyed = 1;
 					alarm(0);
 				}
@@ -165,20 +167,18 @@ visual(void)
 			endfly();
 			return (1);
 		}
-		if (gclock <= 0) {
+		if (ourclock <= 0) {
 			endfly();
-			die(0);
+			die();
 		}
 	}
-	/* NOTREACHED */
-	return (1);
 }
 
 static void
 screen(void)
 {
-	int r, c, n;
-	int i;
+	int     r, c, n;
+	int     i;
 
 	clear();
 	i = rnd(100);
@@ -194,7 +194,7 @@ screen(void)
 static void
 target(void)
 {
-	int n;
+	int     n;
 
 	move(MIDR, MIDC - 10);
 	addstr("-------   +   -------");
@@ -207,7 +207,7 @@ target(void)
 static void
 notarget(void)
 {
-	int n;
+	int     n;
 
 	move(MIDR, MIDC - 10);
 	addstr("                     ");
@@ -220,11 +220,11 @@ notarget(void)
 static void
 blast(void)
 {
-	int n;
+	int     n;
 
 	alarm(0);
 	move(LINES - 1, 24);
-	printw((char *)(uintptr_t)(const void *)"%3d", torps);
+	printw("%3d", torps);
 	for (n = LINES - 1 - 2; n >= MIDR + 1; n--) {
 		mvaddch(n, MIDC + MIDR - n, '/');
 		mvaddch(n, MIDC - MIDR + n, '\\');
@@ -240,12 +240,11 @@ blast(void)
 }
 
 static void
-moveenemy(__unused int sig)
+moveenemy(int dummy __unused)
 {
-	double d;
-	int oldr, oldc;
+	double  d;
+	int     oldr, oldc;
 
-	sig = 0;
 	oldr = row;
 	oldc = column;
 	if (fuel > 0) {
@@ -253,27 +252,28 @@ moveenemy(__unused int sig)
 			row += dr;
 		if (column + dc < COLS - 1 && column + dc > 0)
 			column += dc;
-	} else if (fuel < 0) {
-		fuel = 0;
-		mvaddstr(0, 60, "*** Out of fuel ***");
-	}
-	d = (double)((row - MIDR) * (row - MIDR) + (column - MIDC) *
+	} else
+		if (fuel < 0) {
+			fuel = 0;
+			mvaddstr(0, 60, "*** Out of fuel ***");
+		}
+	d = (double) ((row - MIDR) * (row - MIDR) + (column - MIDC) * 
 	    (column - MIDC));
 	if (d < 16) {
 		row += (rnd(9) - 4) % (4 - abs(row - MIDR));
 		column += (rnd(9) - 4) % (4 - abs(column - MIDC));
 	}
-	gclock--;
+	ourclock--;
 	mvaddstr(oldr, oldc - 1, "   ");
 	if (cross)
 		target();
 	mvaddstr(row, column - 1, "/-\\");
 	move(LINES - 1, 24);
-	printw((char *)(uintptr_t)(const void *)"%3d", torps);
+	printw("%3d", torps);
 	move(LINES - 1, 42);
-	printw((char *)(uintptr_t)(const void *)"%3d", fuel);
+	printw("%3d", fuel);
 	move(LINES - 1, 57);
-	printw((char *)(uintptr_t)(const void *)"%3d", gclock);
+	printw("%3d", ourclock);
 	refresh();
 	signal(SIGALRM, moveenemy);
 	alarm(1);
@@ -286,7 +286,6 @@ endfly(void)
 	signal(SIGALRM, SIG_DFL);
 	mvcur(0, COLS - 1, LINES - 1, 0);
 	endwin();
-	setlinebuf(stdout);
 	signal(SIGTSTP, SIG_DFL);
 	signal(SIGINT, oldsig);
 }

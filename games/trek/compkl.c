@@ -1,4 +1,7 @@
-/*-
+/*	@(#)compkl.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: compkl.c,v 1.8 2009/05/24 21:44:56 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,15 +28,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)compkl.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/compkl.c,v 1.4 1999/11/30 03:49:44 billf Exp $
- * $DragonFly: src/games/trek/compkl.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <math.h>
 #include "trek.h"
-
-static void sortkl(void);
 
 /*
 **  compute klingon distances
@@ -44,10 +42,14 @@ static void sortkl(void);
 **
 **	This routine is used every time the Enterprise or the Klingons
 **	move.
+**
+**  f -- set if new quadrant
 */
 
+static void sortkl(void);
+
 void
-compkldist(bool f)
+compkldist(int f)
 {
 	int		i, dx, dy;
 	double		d;
@@ -96,9 +98,9 @@ sortkl(void)
 		f = 0;
 		for (i = 0; i < m; i++) {
 			if (Etc.klingon[i].dist > Etc.klingon[i+1].dist) {
-				bmove(&Etc.klingon[i], &t, sizeof t);
-				bmove(&Etc.klingon[i+1], &Etc.klingon[i], sizeof t);
-				bmove(&t, &Etc.klingon[i+1], sizeof t);
+				t =  Etc.klingon[i];
+				Etc.klingon[i] = Etc.klingon[i+1];
+				Etc.klingon[i+1] = t;
 				f = 1;
 			}
 		}

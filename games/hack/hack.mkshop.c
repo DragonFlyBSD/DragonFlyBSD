@@ -1,37 +1,98 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mkshop.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.mkshop.c,v 1.4 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mkshop.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.mkshop.c,v 1.11 2011/08/07 06:03:45 dholland Exp $	*/
 
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <stdlib.h>
 #ifndef QUEST
 #include "hack.h"
+#include "extern.h"
+#include "def.mkroom.h"
 #include "def.eshk.h"
-#define	ESHK	((struct eshk *)(&(shk->mextra[0])))
-extern int nroom;
-extern char shtypes[];	/* = "=/)%?!["; 8 types: 7 specialized, 1 mixed */
-schar shprobs[] = { 3,3,5,5,10,10,14,50 };	/* their probabilities */
 
-static struct permonst *morguemon(void);
-static bool nexttodoor(int, int);
-static bool has_dnstairs(struct mkroom *);
-static bool has_upstairs(struct mkroom *);
-static bool isbig(struct mkroom *);
+#define	ESHK	((struct eshk *)(&(shk->mextra[0])))
+
+/* their probabilities */
+static const schar shprobs[] = {3, 3, 5, 5, 10, 10, 14, 50};
+
+static const struct permonst *morguemon(void);
+static int nexttodoor(int, int);
+static int has_dnstairs(struct mkroom *);
+static int has_upstairs(struct mkroom *);
+static int isbig(struct mkroom *);
 static int dist2(int, int, int, int);
 static int sq(int);
 
 void
 mkshop(void)
 {
-	struct mkroom *sroom;
-	int sh, sx, sy, i = -1;
-	char let;
-	int roomno;
-	struct monst *shk;
-
+	struct mkroom  *sroom;
+	int             sh, sx, sy, i = -1;
+	char            let;
+	int             roomno;
+	struct monst   *shk;
 #ifdef WIZARD
 	/* first determine shoptype */
 	if (wizard) {
-		char *ep = getenv("SHOPTYPE");
+		char           *ep = getenv("SHOPTYPE");
 		if (ep) {
 			if (*ep == 'z' || *ep == 'Z') {
 				mkzoo(ZOO);
@@ -56,7 +117,7 @@ mkshop(void)
 		}
 	}
 gottype:
-#endif /* WIZARD */
+#endif	/* WIZARD */
 	for (sroom = &rooms[0], roomno = 0;; sroom++, roomno++) {
 		if (sroom->hx < 0)
 			return;
@@ -71,17 +132,17 @@ gottype:
 		if (
 #ifdef WIZARD
 		    (wizard && getenv("SHOPTYPE") && sroom->doorct != 0) ||
-#endif /* WIZARD */
-		    (sroom->doorct <= 2 && sroom->doorct > 0))
+#endif	/* WIZARD */
+		    sroom->doorct == 1)
 			break;
 	}
 
 	if (i < 0) {		/* shoptype not yet determined */
-		int j;
+		int             j;
 
 		for (j = rn2(100), i = 0; (j -= shprobs[i]) >= 0; i++)
-			if (!shtypes[i])	/* superfluous */
-				break;
+			if (!shtypes[i])
+				break;	/* superfluous */
 		if (isbig(sroom) && i + SHOPBASE == WANDSHOP)
 			i = GENERAL - SHOPBASE;
 	}
@@ -102,7 +163,7 @@ gottype:
 #ifdef WIZARD
 		/* This is said to happen sometimes, but I've never seen it. */
 		if (wizard) {
-			int j = sroom->doorct;
+			int             j = sroom->doorct;
 
 			pline("Where is shopdoor?");
 			pline("Room at (%d,%d),(%d,%d).", sroom->lx, sroom->ly,
@@ -115,14 +176,14 @@ gottype:
 			}
 			more();
 		}
-#endif /* WIZARD */
+#endif	/* WIZARD */
 		return;
 	}
 	if (!(shk = makemon(PM_SHK, sx, sy)))
 		return;
 	shk->isshk = shk->mpeaceful = 1;
 	shk->msleep = 0;
-	shk->mtrapseen = ~0;	/* we know all the traps already */
+	shk->mtrapseen = ~0U;	/* we know all the traps already */
 	ESHK->shoproom = roomno;
 	ESHK->shoplevel = dlevel;
 	ESHK->shd = doors[sh];
@@ -136,7 +197,7 @@ gottype:
 	findname(ESHK->shknam, let);
 	for (sx = sroom->lx; sx <= sroom->hx; sx++)
 		for (sy = sroom->ly; sy <= sroom->hy; sy++) {
-			struct monst *mtmp;
+			struct monst   *mtmp;
 			if ((sx == sroom->lx && doors[sh].x == sx - 1) ||
 			    (sx == sroom->hx && doors[sh].x == sx + 1) ||
 			    (sy == sroom->ly && doors[sh].y == sy - 1) ||
@@ -149,18 +210,18 @@ gottype:
 					(let && rn2(10) < dlevel) ? let : ']';
 				continue;
 			}
-			mkobj_at(let, sx, sy);
+			(void) mkobj_at(let, sx, sy);
 		}
 }
 
 void
 mkzoo(int type)
 {
-	struct mkroom *sroom;
-	struct monst *mon;
-	int sh, sx, sy, i;
-	int goldlim = 500 * dlevel;
-	int moct = 0;
+	struct mkroom  *sroom;
+	struct monst   *mon;
+	int             sh, sx, sy, i;
+	int             goldlim = 500 * dlevel;
+	int             moct = 0;
 
 	i = nroom;
 	for (sroom = &rooms[rn2(nroom)];; sroom++) {
@@ -187,9 +248,9 @@ mkzoo(int type)
 			    (sy == sroom->hy && doors[sh].y == sy + 1))
 				continue;
 			mon = makemon(
-				(type == MORGUE) ? morguemon() :
-				(type == BEEHIVE) ? PM_KILLER_BEE : NULL,
-				sx, sy);
+				      (type == MORGUE) ? morguemon() :
+				      (type == BEEHIVE) ? PM_KILLER_BEE : (struct permonst *) 0,
+				      sx, sy);
 			if (mon)
 				mon->msleep = 1;
 			switch (type) {
@@ -198,10 +259,13 @@ mkzoo(int type)
 				if (i >= goldlim)
 					i = 5 * dlevel;
 				goldlim -= i;
-				mkgold((long)(10 + rn2(i)), sx, sy);
+				mkgold((long) (10 + rn2(i)), sx, sy);
 				break;
 			case MORGUE:
-				/* Usually there is one dead body in the morgue */
+				/*
+				 * Usually there is one dead body in the
+				 * morgue
+				 */
 				if (!moct && rn2(3)) {
 					mksobj_at(CORPSE, sx, sy);
 					moct++;
@@ -215,10 +279,10 @@ mkzoo(int type)
 		}
 }
 
-static struct permonst *
+static const struct permonst *
 morguemon(void)
 {
-	int i = rn2(100), hd = rn2(dlevel);
+	int             i = rn2(100), hd = rn2(dlevel);
 
 	if (hd > 10 && i < 10)
 		return (PM_DEMON);
@@ -228,10 +292,10 @@ morguemon(void)
 }
 
 void
-mkswamp(void)   /* Michiel Huisjes & Fred de Wilde */
-{
-	struct mkroom *sroom;
-	int sx, sy, i, eelct = 0;
+mkswamp(void)
+{				/* Michiel Huisjes & Fred de Wilde */
+	struct mkroom  *sroom;
+	int             sx, sy, i, eelct = 0;
 
 	for (i = 0; i < 5; i++) {	/* 5 tries */
 		sroom = &rooms[rn2(nroom)];
@@ -243,24 +307,23 @@ mkswamp(void)   /* Michiel Huisjes & Fred de Wilde */
 		sroom->rtype = SWAMP;
 		for (sx = sroom->lx; sx <= sroom->hx; sx++)
 			for (sy = sroom->ly; sy <= sroom->hy; sy++)
-				if ((sx + sy) % 2 && !o_at(sx, sy) &&
-				    !t_at(sx, sy) && !m_at(sx, sy) &&
-				    !nexttodoor(sx, sy)) {
+				if ((sx + sy) % 2 && !o_at(sx, sy) && !t_at(sx, sy)
+				  && !m_at(sx, sy) && !nexttodoor(sx, sy)) {
 					levl[sx][sy].typ = POOL;
 					levl[sx][sy].scrsym = POOL_SYM;
 					if (!eelct || !rn2(4)) {
-						makemon(PM_EEL, sx, sy);
+						(void) makemon(PM_EEL, sx, sy);
 						eelct++;
 					}
 				}
 	}
 }
 
-static bool
+static int
 nexttodoor(int sx, int sy)
 {
-	int dx, dy;
-	struct rm *lev;
+	int		dx, dy;
+	struct rm      *lev;
 	for (dx = -1; dx <= 1; dx++)
 		for (dy = -1; dy <= 1; dy++)
 			if ((lev = &levl[sx + dx][sy + dy])->typ == DOOR ||
@@ -269,24 +332,24 @@ nexttodoor(int sx, int sy)
 	return (0);
 }
 
-static bool
+static int
 has_dnstairs(struct mkroom *sroom)
 {
 	return (sroom->lx <= xdnstair && xdnstair <= sroom->hx &&
 		sroom->ly <= ydnstair && ydnstair <= sroom->hy);
 }
 
-static bool
+static int
 has_upstairs(struct mkroom *sroom)
 {
 	return (sroom->lx <= xupstair && xupstair <= sroom->hx &&
 		sroom->ly <= yupstair && yupstair <= sroom->hy);
 }
 
-static bool
+static int
 isbig(struct mkroom *sroom)
 {
-	int area = (sroom->hx - sroom->lx) * (sroom->hy - sroom->ly);
+	int             area = (sroom->hx - sroom->lx) * (sroom->hy - sroom->ly);
 	return (area > 20);
 }
 
@@ -301,4 +364,4 @@ sq(int a)
 {
 	return (a * a);
 }
-#endif /* QUEST */
+#endif	/* QUEST */

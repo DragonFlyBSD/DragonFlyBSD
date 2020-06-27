@@ -1,4 +1,7 @@
-/*-
+/*	@(#)capture.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: capture.c,v 1.12 2009/08/12 08:54:54 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)capture.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/capture.c,v 1.4 1999/11/30 03:49:43 billf Exp $
- * $DragonFly: src/games/trek/capture.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
 #include "trek.h"
 
 static struct kling *selectklingon(void);
@@ -49,6 +49,7 @@ static struct kling *selectklingon(void);
 **	etc.
 */
 
+/*ARGSUSED*/
 void
 capture(int v __unused)
 {
@@ -92,7 +93,8 @@ capture(int v __unused)
 		printf("Klingon at %d,%d surrenders\n", k->x, k->y);
 		i = ranf(Param.klingcrew);
 		if ( i > 0 )
-			printf("%d klingons commit suicide rather than be taken captive\n", Param.klingcrew - i);
+			printf("%d klingons commit suicide rather than be "
+			       "taken captive\n", Param.klingcrew - i);
 		if (i > Ship.brigfree)
 			i = Ship.brigfree;
 		Ship.brigfree -= i;

@@ -1,18 +1,77 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.potion.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.potion.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
+/*	$NetBSD: hack.potion.c,v 1.9 2011/05/23 22:53:25 joerg Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
-extern struct monst youmonst;
+#include "extern.h"
 
 static void ghost_from_bottle(void);
 
 int
 dodrink(void)
 {
-	struct obj *otmp, *objs;
-	struct monst *mtmp;
-	int unkn = 0, nothing = 0;
+	struct obj     *otmp, *objs;
+	struct monst   *mtmp;
+	int             unkn = 0, nothing = 0;
 
 	otmp = getobj("!", "drink");
 	if (!otmp)
@@ -65,8 +124,8 @@ dodrink(void)
 		u.uhp += rnd(10);
 		if (u.uhp > u.uhpmax)
 			u.uhp = ++u.uhpmax;
-		if (Blind)		/* see on next move */
-			Blind = 1;
+		if (Blind)
+			Blind = 1;	/* see on next move */
 		if (Sick)
 			Sick = 0;
 		break;
@@ -102,7 +161,7 @@ dodrink(void)
 					goto outobjmap;
 			pline("You sense the presence of objects close nearby.");
 			break;
-outobjmap:
+	outobjmap:
 			cls();
 			for (objs = fobj; objs; objs = objs->nobj)
 				at(objs->ox, objs->oy, objs->olet);
@@ -128,8 +187,8 @@ outobjmap:
 		break;
 	case POT_GAIN_STRENGTH:
 		pline("Wow do you feel strong!");
-		if (u.ustr >= 118)	/* > 118 is impossible */
-			break;
+		if (u.ustr >= 118)
+			break;	/* > 118 is impossible */
 		if (u.ustr > 17)
 			u.ustr += rnd(118 - u.ustr);
 		else
@@ -228,15 +287,15 @@ strange_feeling(struct obj *obj, const char *txt)
 	useup(obj);
 }
 
-static const char *bottlenames[] = {
+static const char *const bottlenames[] = {
 	"bottle", "phial", "flagon", "carafe", "flask", "jar", "vial"
 };
 
 void
 potionhit(struct monst *mon, struct obj *obj)
 {
-	const char *botlnam = bottlenames[rn2(SIZE(bottlenames))];
-	boolean uclose, isyou = (mon == &youmonst);
+	const char           *botlnam = bottlenames[rn2(SIZE(bottlenames))];
+	boolean         uclose, isyou = (mon == &youmonst);
 
 	if (isyou) {
 		uclose = TRUE;
@@ -255,6 +314,7 @@ potionhit(struct monst *mon, struct obj *obj)
 
 	if (!isyou && !rn2(3))
 		switch (obj->otyp) {
+
 		case POT_RESTORE_STRENGTH:
 		case POT_GAIN_STRENGTH:
 		case POT_HEALING:
@@ -288,18 +348,15 @@ potionhit(struct monst *mon, struct obj *obj)
 		case POT_BLINDNESS:
 			mon->mblinded |= 64 + rn2(64);
 			break;
-/*
- *      case POT_GAIN_LEVEL:
- *      case POT_LEVITATION:
- *      case POT_FRUIT_JUICE:
- *      case POT_MONSTER_DETECTION:
- *      case POT_OBJECT_DETECTION:
- *              break;
- */
+			/*
+			 * case POT_GAIN_LEVEL: case POT_LEVITATION: case
+			 * POT_FRUIT_JUICE: case POT_MONSTER_DETECTION: case
+			 * POT_OBJECT_DETECTION: break;
+			 */
 		}
 	if (uclose && rn2(5))
 		potionbreathe(obj);
-	obfree(obj, NULL);
+	obfree(obj, Null(obj));
 }
 
 void
@@ -308,17 +365,13 @@ potionbreathe(struct obj *obj)
 	switch (obj->otyp) {
 	case POT_RESTORE_STRENGTH:
 	case POT_GAIN_STRENGTH:
-		if (u.ustr < u.ustrmax) {
-			u.ustr++;
-			flags.botl = 1;
-		}
+		if (u.ustr < u.ustrmax)
+			u.ustr++, flags.botl = 1;
 		break;
 	case POT_HEALING:
 	case POT_EXTRA_HEALING:
-		if (u.uhp < u.uhpmax) {
-			u.uhp++;
-			flags.botl = 1;
-		}
+		if (u.uhp < u.uhpmax)
+			u.uhp++, flags.botl = 1;
 		break;
 	case POT_SICKNESS:
 		if (u.uhp <= 5)
@@ -350,14 +403,11 @@ potionbreathe(struct obj *obj)
 		Blind += rnd(5);
 		seeoff(0);
 		break;
-/*
- *      case POT_GAIN_LEVEL:
- *      case POT_LEVITATION:
- *      case POT_FRUIT_JUICE:
- *      case POT_MONSTER_DETECTION:
- *      case POT_OBJECT_DETECTION:
- *              break;
- */
+		/*
+		 * case POT_GAIN_LEVEL: case POT_LEVITATION: case
+		 * POT_FRUIT_JUICE: case POT_MONSTER_DETECTION: case
+		 * POT_OBJECT_DETECTION: break;
+		 */
 	}
 	/* note: no obfree() */
 }
@@ -374,7 +424,7 @@ potionbreathe(struct obj *obj)
 int
 dodip(void)
 {
-	struct obj *potion, *obj;
+	struct obj     *potion, *obj;
 
 	if (!(obj = getobj("#", "dip")))
 		return (0);
@@ -382,19 +432,20 @@ dodip(void)
 		return (0);
 	pline("Interesting...");
 	if (obj->otyp == ARROW || obj->otyp == DART ||
-	    obj->otyp == CROSSBOW_BOLT)
+	    obj->otyp == CROSSBOW_BOLT) {
 		if (potion->otyp == POT_SICKNESS) {
 			useup(potion);
-			if (obj->spe < 7)	/* %% */
-				obj->spe++;
+			if (obj->spe < 7)
+				obj->spe++;	/* %% */
 		}
+	}
 	return (1);
 }
 
 static void
 ghost_from_bottle(void)
 {
-	struct monst *mtmp;
+	struct monst   *mtmp;
 
 	if (!(mtmp = makemon(PM_GHOST, u.ux, u.uy))) {
 		pline("This bottle turns out to be empty.");

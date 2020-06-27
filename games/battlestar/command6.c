@@ -1,4 +1,7 @@
-/*-
+/*	@(#)com6.c	8.2 (Berkeley) 4/28/95				*/
+/*	$NetBSD: command6.c,v 1.8 2010/04/24 00:38:30 dholland Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,19 +28,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)com6.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/battlestar/com6.c,v 1.9.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com6.c,v 1.4 2006/08/08 16:47:20 pavalos Exp $
  */
 
-#include <signal.h>
-#include <sys/time.h>
-#include "externs.h"
+#include "extern.h"
 #include "pathnames.h"
 
-static FILE *score_fp;
-static void post(unsigned int ch);
+static void post(int);
 
 int
 launch(void)
@@ -47,10 +43,12 @@ launch(void)
 			clearbit(location[position].objects, VIPER);
 			position = location[position].up;
 			notes[LAUNCHED] = 1;
-			gtime++;
+			ourtime++;
 			fuel -= 4;
-			puts("You climb into the viper and prepare for launch.");
-			puts("With a touch of your thumb the turbo engines ignite, thrusting you back into\nyour seat.");
+			printf("You climb into the viper and prepare for ");
+			puts("launch.");
+			printf("With a touch of your thumb the turbo engines ");
+			printf("ignite, thrusting you back into\nyour seat.\n");
 			return (1);
 		} else
 			puts("Not enough fuel to launch.");
@@ -68,7 +66,7 @@ land(void)
 		position = location[position].down;
 		setbit(location[position].objects, VIPER);
 		fuel -= 2;
-		gtime++;
+		ourtime++;
 		puts("You are down.");
 		return (1);
 	} else
@@ -77,11 +75,17 @@ land(void)
 }
 
 void
-die(int sig __unused)    /* endgame */
-{
+die(void)
+{				/* endgame */
 	printf("bye.\nYour rating was %s.\n", rate());
 	post(' ');
 	exit(0);
+}
+
+void
+diesig(int dummy __unused)
+{
+	die();
 }
 
 void
@@ -92,46 +96,47 @@ live(void)
 	exit(0);
 }
 
+static FILE *score_fp;
+
 void
 open_score_file(void)
 {
-	if ((score_fp = fopen(_PATH_SCORE, "a")) == NULL)
-		perror(_PATH_SCORE);
+	score_fp = fopen(_PATH_SCORE, "a");
+	if (score_fp == NULL)
+		warn("open %s for append", _PATH_SCORE);
+	if (score_fp != NULL && fileno(score_fp) < 3)
+		exit(1);
 }
 
 static void
-post(unsigned int ch)
+post(int ch)
 {
-	struct timeval tv;
-	char *date;
-	time_t tvsec;
-	int s;
+	time_t tv;
+	sigset_t isigset, osigset;
 
-	if (score_fp == NULL)
-		return;
-
-	s = sigblock(sigmask(SIGINT));
-
-	gettimeofday(&tv, NULL);        /* can't call time */
-	tvsec = (time_t)tv.tv_sec;
-	date = ctime(&tvsec);
-	date[24] = '\0';
-
-	fprintf(score_fp, "%s  %8s  %c%20s", date, uname, ch, rate());
-	if (wiz)
-		fprintf(score_fp, "   wizard\n");
-	else if (tempwiz)
-		fprintf(score_fp, "   WIZARD!\n");
-	else
-		fprintf(score_fp, "\n");
-
-	sigsetmask(s);
+	sigemptyset(&isigset);
+	sigaddset(&isigset, SIGINT);
+	sigprocmask(SIG_BLOCK, &isigset, &osigset);
+	tv = time(NULL);
+	if (score_fp != NULL) {
+		fprintf(score_fp, "%24.24s  %8s  %c%20s", ctime(&tv), username, 
+		    ch, rate());
+		if (wiz)
+			fprintf(score_fp, "   wizard\n");
+		else
+			if (tempwiz)
+				fprintf(score_fp, "   WIZARD!\n");
+			else
+				fprintf(score_fp, "\n");
+	}
+	fflush(score_fp);
+	sigprocmask(SIG_SETMASK, &osigset, (sigset_t *) 0);
 }
 
 const char *
 rate(void)
 {
-	int score;
+	int     score;
 
 	score = max(max(pleasure, power), ego);
 	if (score == pleasure) {
@@ -170,12 +175,13 @@ int
 drive(void)
 {
 	if (testbit(location[position].objects, CAR)) {
-		puts("You hop in the car and turn the key.  There is a perceptible grating noise,");
+		printf("You hop in the car and turn the key.  There is ");
+		puts("a perceptible grating noise,");
 		puts("and an explosion knocks you unconscious...");
 		clearbit(location[position].objects, CAR);
 		setbit(location[position].objects, CRASH);
 		injuries[5] = injuries[6] = injuries[7] = injuries[8] = 1;
-		gtime += 15;
+		ourtime += 15;
 		zzz();
 		return (0);
 	} else
@@ -187,12 +193,14 @@ int
 ride(void)
 {
 	if (testbit(location[position].objects, HORSE)) {
-		puts("You climb onto the stallion and kick it in the guts.  The stupid steed launches");
-		puts("forward through bush and fern.  You are thrown and the horse gallups off.");
+		printf("You climb onto the stallion and kick it in the guts.");
+		puts("  The stupid steed launches");
+		printf("forward through bush and fern.  You are thrown and ");
+		puts("the horse gallops off.");
 		clearbit(location[position].objects, HORSE);
-		while (!(position = rnd(NUMOFROOMS + 1)) || !OUTSIDE ||
+		while (!(position = rnd(NUMOFROOMS + 1)) || !OUTSIDE || 
 		    !beenthere[position] || location[position].flyhere)
-			; /* nothing */
+			continue;
 		setbit(location[position].objects, HORSE);
 		if (location[position].north)
 			position = location[position].north;
@@ -209,17 +217,52 @@ ride(void)
 }
 
 void
-light(void)     /* synonyms = {strike, smoke} */
-{               /* for matches, cigars */
+light(void)
+{				/* synonyms = {strike, smoke} *//* for
+				 * matches, cigars */
 	if (testbit(inven, MATCHES) && matchcount) {
 		puts("Your match splutters to life.");
-		gtime++;
+		ourtime++;
 		matchlight = 1;
 		matchcount--;
 		if (position == 217) {
-			puts("The whole bungalow explodes with an intense blast.");
-			die(0);
+			printf("The whole bungalow explodes with an ");
+			puts("intense blast.");
+			die();
 		}
 	} else
 		puts("You're out of matches.");
+}
+
+void
+dooropen(void)
+{				/* synonyms = {open, unlock} */
+	wordnumber++;
+	if (wordnumber <= wordcount && wordtype[wordnumber] == NOUNS
+	    && wordvalue[wordnumber] == DOOR) {
+		switch(position) {
+		case 189:
+		case 231:
+			if (location[189].north == 231)
+				puts("The door is already open.");
+			else
+				puts("The door does not budge.");
+			break;
+		case 30:
+			if (location[30].west == 25)
+				puts("The door is gone.");
+			else
+				puts("The door is locked tight.");
+			break;
+		case 31:
+			puts("That's one immovable door.");
+			break;
+		case 20:
+			puts("The door is already ajar.");
+			break;
+		default:
+			puts("What door?");
+		}
+	} else
+		puts("That doesn't open.");
 }

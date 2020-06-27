@@ -1,4 +1,7 @@
-/*-
+/*	@(#)systemname.c	8.1 (Berkeley) 5/31/93			*/
+/*	$NetBSD: systemname.c,v 1.9 2009/05/25 00:05:56 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)systemname.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/systemname.c,v 1.4 1999/11/30 03:49:55 billf Exp $
- * $DragonFly: src/games/trek/systemname.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stddef.h>
 #include "trek.h"
 
 /*
@@ -45,9 +45,9 @@
 */
 
 const char *
-systemname(struct quad *q1)
+systemname(const struct quad *q1)
 {
-	struct quad	*q;
+	const struct quad	*q;
 	int		i;
 
 	q = q1;
@@ -58,6 +58,6 @@ systemname(struct quad *q1)
 
 	i &= Q_SYSTEM;
 	if (i == 0)
-		return (NULL);
+		return NULL;
 	return (Systemname[i]);
 }

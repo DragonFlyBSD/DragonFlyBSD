@@ -1,4 +1,7 @@
-/*-
+/*	@(#)externs.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: externs.c,v 1.10 2009/05/24 21:44:56 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)externs.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/externs.c,v 1.2 1999/11/30 03:49:47 billf Exp $
- * $DragonFly: src/games/trek/externs.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 #include "trek.h"
@@ -37,7 +36,7 @@
 **	global variable definitions
 */
 
-struct device Device[NDEV] = {
+const struct device Device[NDEV] = {
 	{ "warp drive",		"Scotty" },
 	{ "S.R. scanners",	"Scotty" },
 	{ "L.R. scanners",	"Scotty" },
@@ -56,7 +55,7 @@ struct device Device[NDEV] = {
 	{ "*ERR 15*",		"Nobody" }
 };
 
-const char *Systemname[NINHAB] = {
+const char *const Systemname[NINHAB] = {
 	"ERROR",
 	"Talos IV",
 	"Rigel III",
@@ -90,3 +89,20 @@ const char *Systemname[NINHAB] = {
 	"Epsilon Eridani IV",
 	"Exo III"
 };
+
+struct quad	Quad[NQUADS][NQUADS];
+
+/* current sector map */
+char	Sect[NSECTS][NSECTS];
+
+/* dynamic event list; one entry per pending event */
+struct event Event[MAXEVENTS];
+
+struct Ship_struct Ship;
+struct Game_struct Game;
+struct Move_struct Move;
+struct Param_struct Param;
+struct Now_struct Now;
+struct Etc_struct Etc;
+
+int Trace;

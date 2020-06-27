@@ -1,54 +1,117 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mklev.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.mklev.c,v 1.6 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mklev.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.mklev.c,v 1.9 2011/08/06 20:42:43 dholland Exp $	*/
 
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <unistd.h>
+#include <stdlib.h>
 #include "hack.h"
+#include "extern.h"
 
-#define	somex()	((random()%(croom->hx-croom->lx+1))+croom->lx)
-#define	somey()	((random()%(croom->hy-croom->ly+1))+croom->ly)
+#define somex() ((random()%(croom->hx-croom->lx+1))+croom->lx)
+#define somey() ((random()%(croom->hy-croom->ly+1))+croom->ly)
 
-#define	XLIM	4	/* define minimum required space around a room */
+#include "def.mkroom.h"
+#define	XLIM	4		/* define minimum required space around a
+				 * room */
 #define	YLIM	3
-boolean secret;		/* TRUE while making a vault: increase [XY]LIM */
-struct mkroom rooms[MAXNROFROOMS+1];
-int smeq[MAXNROFROOMS+1];
-coord doors[DOORMAX];
-int doorindex;
-struct rm zerorm;
-schar nxcor;
-boolean goldseen;
-int nroom;
-xchar xdnstair, xupstair, ydnstair, yupstair;
+static boolean secret;		/* TRUE while making a vault: increase
+				 * [XY]LIM */
+static int smeq[MAXNROFROOMS + 1];
+static const struct rm zerorm;
+static schar nxcor;
+static boolean goldseen;
+
+int             doorindex;
+int             nroom;
 
 /* Definitions used by makerooms() and addrs() */
-#define	MAXRS	50	/* max lth of temp rectangle table - arbitrary */
-struct rectangle {
-	xchar rlx, rly, rhx, rhy;
+#define	MAXRS	50		/* max lth of temp rectangle table -
+				 * arbitrary */
+static struct rectangle {
+	xchar           rlx, rly, rhx, rhy;
 } rs[MAXRS + 1];
-int rscnt, rsmax;	/* 0..rscnt-1: currently under consideration */
-			/* rscnt..rsmax: discarded */
+static int rscnt, rsmax;	/* 0..rscnt-1: currently under consideration */
+/* rscnt..rsmax: discarded */
 
-static bool makerooms(void);
+static int makerooms(void);
 static void addrs(int, int, int, int);
-static void addrsx(int, int, int, int, bool);
+static void addrsx(int, int, int, int, boolean);
 static int comp(const void *, const void *);
 static coord finddpos(int, int, int, int);
-static bool okdoor(int, int);
+static int okdoor(int, int);
 static void dodoor(int, int, struct mkroom *);
 static void dosdoor(int, int, struct mkroom *, int);
-static bool maker(schar, schar, schar, schar);
+static int maker(schar, schar, schar, schar);
 static void makecorridors(void);
 static void join(int, int);
 static void make_niches(void);
 static void makevtele(void);
-static void makeniche(bool);
+static void makeniche(boolean);
 
 void
 makelevel(void)
 {
-	struct mkroom *croom, *troom;
-	unsigned tryct;
+	struct mkroom  *croom, *troom;
+	unsigned        tryct;
 	int x, y;
 
 	nroom = 0;
@@ -65,11 +128,10 @@ makelevel(void)
 		makemaz();
 		return;
 	}
-
 	/* construct the rooms */
 	nroom = 0;
 	secret = FALSE;
-	makerooms();
+	(void) makerooms();
 
 	/* construct stairs (up and down in different rooms if possible) */
 	croom = &rooms[rn2(nroom)];
@@ -90,6 +152,7 @@ makelevel(void)
 
 	/* for each room: put things inside */
 	for (croom = rooms; croom->hx > 0; croom++) {
+
 		/* put a sleeping monster inside */
 		/*
 		 * Note: monster may be on the stairs. This cannot be
@@ -98,7 +161,8 @@ makelevel(void)
 		 * for monsters on the stairs anyway.
 		 */
 		if (!rn2(3))
-			makemon(NULL, somex(), somey());
+			(void)
+				makemon((struct permonst *) 0, somex(), somey());
 
 		/* put traps and mimics inside */
 		goldseen = FALSE;
@@ -107,19 +171,19 @@ makelevel(void)
 		if (!goldseen && !rn2(3))
 			mkgold(0L, somex(), somey());
 		if (!rn2(3)) {
-			mkobj_at(0, somex(), somey());
+			(void) mkobj_at(0, somex(), somey());
 			tryct = 0;
 			while (!rn2(5)) {
 				if (++tryct > 100) {
 					printf("tryct overflow4\n");
 					break;
 				}
-				mkobj_at(0, somex(), somey());
+				(void) mkobj_at(0, somex(), somey());
 			}
 		}
 	}
 
-	qsort((char *)rooms, nroom, sizeof(struct mkroom), comp);
+	qsort(rooms, nroom, sizeof(rooms[0]), comp);
 	makecorridors();
 	make_niches();
 
@@ -132,19 +196,17 @@ makelevel(void)
 				troom->rtype = VAULT;	/* treasure vault */
 				for (x = troom->lx; x <= troom->hx; x++)
 					for (y = troom->ly; y <= troom->hy; y++)
-						mkgold((long)(rnd(dlevel *
-						    100) + 50), x, y);
+						mkgold((long) (rnd(dlevel * 100) + 50), x, y);
 				if (!rn2(3))
 					makevtele();
 			}
 		}
-
 #ifndef QUEST
 #ifdef WIZARD
 	if (wizard && getenv("SHOPTYPE"))
 		mkshop();
 	else
-#endif /* WIZARD */
+#endif	/* WIZARD */
 	if (dlevel > 1 && dlevel < 20 && rn2(dlevel) < 3)
 		mkshop();
 	else if (dlevel > 6 && !rn2(7))
@@ -155,15 +217,15 @@ makelevel(void)
 		mkzoo(MORGUE);
 	else if (dlevel > 18 && !rn2(6))
 		mkswamp();
-#endif /* QUEST */
+#endif	/* QUEST */
 }
 
-static bool
+static int
 makerooms(void)
 {
 	struct rectangle *rsp;
-	int lx, ly, hx, hy, lowx, lowy, hix, hiy, dx, dy;
-	int tryct = 0, xlim, ylim;
+	int             lx, ly, hx, hy, lowx, lowy, hix, hiy, dx, dy;
+	int             tryct = 0, xlim, ylim;
 
 	/* init */
 	xlim = XLIM + secret;
@@ -214,7 +276,6 @@ makerooms(void)
 				tryct++;
 			continue;
 		}
-
 		lowx = lx + xlim + rn2(hx - lx - dx - 2 * xlim + 1);
 		lowy = ly + ylim + rn2(hy - ly - dy - 2 * ylim + 1);
 		hix = lowx + dx;
@@ -235,14 +296,15 @@ static void
 addrs(int lowx, int lowy, int hix, int hiy)
 {
 	struct rectangle *rsp;
-	int lx, ly, hx, hy, xlim, ylim;
-	boolean discarded;
+	int             lx, ly, hx, hy, xlim, ylim;
+	boolean         discarded;
 
 	xlim = XLIM + secret;
 	ylim = YLIM + secret;
 
 	/* walk down since rscnt and rsmax change */
 	for (rsp = &rs[rsmax - 1]; rsp >= rs; rsp--) {
+
 		if ((lx = rsp->rlx) > hix || (ly = rsp->rly) > hiy ||
 		    (hx = rsp->rhx) < lowx || (hy = rsp->rhy) < lowy)
 			continue;
@@ -268,7 +330,7 @@ addrs(int lowx, int lowy, int hix, int hiy)
 
 /* discarded: piece of a discarded area */
 static void
-addrsx(int lx, int ly, int hx, int hy, bool discarded)
+addrsx(int lx, int ly, int hx, int hy, boolean discarded)
 {
 	struct rectangle *rsp;
 
@@ -284,7 +346,7 @@ addrsx(int lx, int ly, int hx, int hy, bool discarded)
 #ifdef WIZARD
 		if (wizard)
 			pline("MAXRS may be too small.");
-#endif /* WIZARD */
+#endif	/* WIZARD */
 		return;
 	}
 	rsmax++;
@@ -302,10 +364,7 @@ addrsx(int lx, int ly, int hx, int hy, bool discarded)
 static int
 comp(const void *vx, const void *vy)
 {
-	const struct mkroom *x, *y;
-
-	x = vx;
-	y = vy;
+	const struct mkroom  *x = vx, *y = vy;
 	if (x->lx < y->lx)
 		return (-1);
 	return (x->lx > y->lx);
@@ -314,7 +373,7 @@ comp(const void *vx, const void *vy)
 static coord
 finddpos(int xl, int yl, int xh, int yh)
 {
-	coord ff;
+	coord           ff;
 	int x, y;
 
 	x = (xl == xh) ? xl : (xl + rn2(xh - xl + 1));
@@ -341,7 +400,7 @@ gotit:
 }
 
 /* see whether it is allowable to create a door at [x,y] */
-static bool
+static int
 okdoor(int x, int y)
 {
 	if (levl[x - 1][y].typ == DOOR || levl[x + 1][y].typ == DOOR ||
@@ -369,7 +428,7 @@ dodoor(int x, int y, struct mkroom *aroom)
 static void
 dosdoor(int x, int y, struct mkroom *aroom, int type)
 {
-	struct mkroom *broom;
+	struct mkroom  *broom;
 	int tmp;
 
 	if (!IS_WALL(levl[x][y].typ))	/* avoid SDOORs with '+' as scrsym */
@@ -392,10 +451,10 @@ dosdoor(int x, int y, struct mkroom *aroom, int type)
 }
 
 /* Only called from makerooms() */
-static bool
+static int
 maker(schar lowx, schar ddx, schar lowy, schar ddy)
 {
-	struct mkroom *croom;
+	struct mkroom  *croom;
 	int x, y, hix = lowx + ddx, hiy = lowy + ddy;
 	int xlim = XLIM + secret, ylim = YLIM + secret;
 
@@ -420,7 +479,7 @@ chk:
 #ifdef WIZARD
 				if (wizard && !secret)
 					pline("Strange area [%d,%d] in maker().", x, y);
-#endif /* WIZARD */
+#endif	/* WIZARD */
 				if (!rn2(3))
 					return (0);
 				if (x < lowx)
@@ -504,10 +563,10 @@ makecorridors(void)
 static void
 join(int a, int b)
 {
-	coord cc, tt;
+	coord           cc, tt;
 	int tx, ty, xx, yy;
-	struct rm *crm;
-	struct mkroom *croom, *troom;
+	struct rm      *crm;
+	struct mkroom  *croom, *troom;
 	int dx, dy, dix, diy, cct;
 
 	croom = &rooms[a];
@@ -575,7 +634,7 @@ join(int a, int b)
 				crm->typ = CORR;
 				crm->scrsym = CORR_SYM;
 				if (nxcor && !rn2(50))
-					mkobj_at(ROCK_SYM, xx, yy);
+					(void) mkobj_at(ROCK_SYM, xx, yy);
 			} else {
 				crm->typ = SCORR;
 				crm->scrsym = ' ';
@@ -608,7 +667,6 @@ join(int a, int b)
 				continue;
 			}
 		}
-
 		/* continue straight on? */
 		crm = &levl[xx + dx][yy + dy];
 		if (!crm->typ || crm->typ == CORR || crm->typ == SCORR)
@@ -646,7 +704,7 @@ join(int a, int b)
 static void
 make_niches(void)
 {
-	int ct = rnd(nroom / 2 + 1);
+	int             ct = rnd(nroom / 2 + 1);
 	while (ct--)
 		makeniche(FALSE);
 }
@@ -658,32 +716,28 @@ makevtele(void)
 }
 
 static void
-makeniche(bool with_trap)
+makeniche(boolean with_trap)
 {
-	struct mkroom *aroom;
-	struct rm *rm;
-	int vct = 8;
-	coord dd;
-	int dy, xx, yy;
-	struct trap *ttmp;
+	struct mkroom  *aroom;
+	struct rm      *rm;
+	int             vct = 8;
+	coord           dd;
+	int		dy, xx, yy;
+	struct trap    *ttmp;
 
 	if (doorindex < DOORMAX)
 		while (vct--) {
 			aroom = &rooms[rn2(nroom - 1)];
-			if (aroom->rtype != 0)	/* not an ordinary room */
-				continue;
+			if (aroom->rtype != 0)
+				continue;	/* not an ordinary room */
 			if (aroom->doorct == 1 && rn2(5))
 				continue;
 			if (rn2(2)) {
 				dy = 1;
-				dd = finddpos(aroom->lx, aroom->hy + 1,
-				    aroom->hx,
-				    aroom->hy + 1);
+				dd = finddpos(aroom->lx, aroom->hy + 1, aroom->hx, aroom->hy + 1);
 			} else {
 				dy = -1;
-				dd = finddpos(aroom->lx, aroom->ly - 1,
-				    aroom->hx,
-				    aroom->ly - 1);
+				dd = finddpos(aroom->lx, aroom->ly - 1, aroom->hx, aroom->ly - 1);
 			}
 			xx = dd.x;
 			yy = dd.y;
@@ -706,7 +760,7 @@ makeniche(bool with_trap)
 				else {
 					mksobj_at(SCR_TELEPORTATION, xx, yy + dy);
 					if (!rn2(3))
-						mkobj_at(0, xx, yy + dy);
+						(void) mkobj_at(0, xx, yy + dy);
 				}
 			}
 			return;
@@ -717,9 +771,9 @@ makeniche(bool with_trap)
 void
 mktrap(int num, int mazeflag, struct mkroom *croom)
 {
-	struct trap *ttmp;
-	int kind, nopierc, nomimic, fakedoor, fakegold, tryct = 0;
-	xchar mx, my;
+	struct trap    *ttmp;
+	int             kind, nopierc, nomimic, fakedoor, fakegold, tryct = 0;
+	xchar           mx, my;
 
 	if (!num || num >= TRAPNUM) {
 		nopierc = (dlevel < 4) ? 1 : 0;
@@ -732,7 +786,7 @@ mktrap(int num, int mazeflag, struct mkroom *croom)
 		kind = num;
 
 	if (kind == MIMIC) {
-		struct monst *mtmp;
+		struct monst   *mtmp;
 
 		fakedoor = (!rn2(3) && !mazeflag);
 		fakegold = (!fakedoor && !rn2(2));
@@ -757,7 +811,7 @@ mktrap(int num, int mazeflag, struct mkroom *croom)
 					mx = somex();
 				}
 			} else if (mazeflag) {
-				coord mm;
+				coord           mm;
 				mm = mazexy();
 				mx = mm.x;
 				my = mm.y;
@@ -775,12 +829,11 @@ mktrap(int num, int mazeflag, struct mkroom *croom)
 		}
 		return;
 	}
-
 	do {
 		if (++tryct > 200)
 			return;
 		if (mazeflag) {
-			coord mm;
+			coord           mm;
 			mm = mazexy();
 			mx = mm.x;
 			my = mm.y;

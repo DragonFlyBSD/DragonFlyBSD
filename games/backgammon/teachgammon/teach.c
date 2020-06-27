@@ -1,4 +1,7 @@
-/*-
+/*	@(#)teach.c	8.1 (Berkeley) 5/31/93			*/
+/*	$NetBSD: teach.c,v 1.25 2019/02/03 03:19:25 mrg Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,58 +28,48 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
- * @(#)teach.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/teachgammon/teach.c,v 1.12 1999/11/30 03:48:30 billf Exp $
  */
 
-#include <string.h>
-#include <sys/types.h>
-#include <termcap.h>
-#include <unistd.h>
-#include <signal.h>
 #include "back.h"
 #include "tutor.h"
 
-const char *const helpm[] = {
-	"\nEnter a space or newline to roll, or",
-	"     b   to display the board",
-	"     d   to double",
-	"     q   to quit\n",
-	0
-};
-
-const char *const contin[] = {
+static const char *const contin[] = {
 	"",
 	0
 };
 
 int
-main(int argc, char *argv[])
+main(int argc __unused, char *argv[])
 {
-	int i;
+	int     i;
+	struct move mmstore, *mm;
 
-	/* revoke privs */
+	/* revoke setgid privileges */
 	setgid(getgid());
 
-	acnt = 1;
 	signal(SIGINT, getout);
-	if (tcgetattr(0, &tty) == -1)			/* get old tty mode */
-		errexit("teachgammon(tcgetattr)");
-	old = tty.c_lflag;
-	bgraw = ((noech = old & ~ECHO) & ~ICANON);	/* set up modes */
-	ospeed = cfgetospeed(&tty);			/* for termlib */
+	if (tcgetattr(0, &old) == -1)	/* get old tty mode */
+		errexit("teachgammon(gtty)");
+	noech = old;
+	noech.c_lflag &= ~ECHO;
+	raw = noech;
+	raw.c_lflag &= ~ICANON;	/* set up modes */
+	ospeed = cfgetospeed(&old);	/* for termlib */
 	tflag = getcaps(getenv("TERM"));
-	getarg(argc, argv);
+
+	/* need this now beceause getarg() may try to load a game */
+	mm = &mmstore;
+	move_init(mm);
+	while (*++argv != 0)
+		getarg(mm, &argv);
 	if (tflag) {
-		noech &= ~(ICRNL | OXTABS);
-		bgraw &= ~(ICRNL | OXTABS);
+		noech.c_oflag &= ~(ONLCR | OXTABS);
+		raw.c_oflag &= ~(ONLCR | OXTABS);
 		clear();
 	}
-	text(hello);
-	text(list);
-	i = text(contin);
+	wrtext(hello);
+	wrtext(list);
+	i = wrtext(contin);
 	if (i == 0)
 		i = 2;
 	init();
@@ -86,45 +79,53 @@ main(int argc, char *argv[])
 			leave();
 
 		case 2:
-			if ((i = text(intro1)) != 0)
+			if ((i = wrtext(intro1)) != 0)
 				break;
 			wrboard();
-			if ((i = text(intro2)) != 0)
+			if ((i = wrtext(intro2)) != 0)
 				break;
+
 			/* FALLTHROUGH */
 		case 3:
-			if ((i = text(moves)) != 0)
+			if ((i = wrtext(moves)) != 0)
 				break;
+
 			/* FALLTHROUGH */
 		case 4:
-			if ((i = text(remove)) != 0)
+			if ((i = wrtext(removepiece)) != 0)
 				break;
+
 			/* FALLTHROUGH */
 		case 5:
-			if ((i = text(hits)) != 0)
+			if ((i = wrtext(hits)) != 0)
 				break;
+
 			/* FALLTHROUGH */
 		case 6:
-			if ((i = text(endgame)) != 0)
+			if ((i = wrtext(endgame)) != 0)
 				break;
+
 			/* FALLTHROUGH */
 		case 7:
-			if ((i = text(doubl)) != 0)
+			if ((i = wrtext(doubl)) != 0)
 				break;
+
 			/* FALLTHROUGH */
 		case 8:
-			if ((i = text(stragy)) != 0)
+			if ((i = wrtext(stragy)) != 0)
 				break;
+
 			/* FALLTHROUGH */
 		case 9:
-			if ((i = text(prog)) != 0)
+			if ((i = wrtext(prog)) != 0)
 				break;
+
 			/* FALLTHROUGH */
 		case 10:
-			if ((i = text(lastch)) != 0)
+			if ((i = wrtext(lastch)) != 0)
 				break;
 		}
-	tutor();
+	tutor(mm);
 	/* NOTREACHED */
 	return (0);
 }
@@ -132,19 +133,12 @@ main(int argc, char *argv[])
 void
 leave(void)
 {
-	int i;
-
 	if (tflag)
 		clear();
 	else
 		writec('\n');
-	fixtty(old);
-	args[0] = strdup("backgammon");
-	args[acnt++] = strdup("-n");
-	args[acnt] = 0;
-	execv(EXEC, args);
-	for (i = 0; i < acnt; i++)
-		free(args[i]);
+	fixtty(&old);
+	execl(EXEC, "backgammon", "-n", args[0]?args:0, (char *) 0);
 	writel("Help! Backgammon program is missing\007!!\n");
-	exit(-1);
+	exit(1);
 }

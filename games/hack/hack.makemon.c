@@ -1,11 +1,70 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.makemon.c - version 1.0.2 */
-/* $FreeBSD: src/games/hack/hack.makemon.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.makemon.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.makemon.c,v 1.9 2009/08/12 07:28:40 dholland Exp $	*/
 
-#include "hack.h"
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-struct monst zeromonst;
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include	"hack.h"
+#include	"extern.h"
+
+static const struct monst zeromonst;
 
 /*
  * called with [x,y] = coordinates;
@@ -15,27 +74,28 @@ struct monst zeromonst;
  *	In case we make an Orc or killer bee, we make an entire horde (swarm);
  *	note that in this case we return only one of them (the one at [x,y]).
  */
-struct monst *
-makemon(struct permonst *ptr, int x, int y)
+struct monst   *
+makemon(const struct permonst *ptr, int x, int y)
 {
-	struct monst *mtmp;
-	int tmp, ct;
-	boolean anything = (!ptr);
+	struct monst   *mtmp;
+	int		tmp, ct;
+	unsigned	i;
+	boolean         anything = (!ptr);
 
 	if (x != 0 || y != 0)
 		if (m_at(x, y))
-			return (NULL);
+			return ((struct monst *) 0);
 	if (ptr) {
 		if (strchr(fut_geno, ptr->mlet))
-			return (NULL);
+			return ((struct monst *) 0);
 	} else {
 		ct = CMNUM - strlen(fut_geno);
-		if (strchr(fut_geno, 'm'))	/* make only 1 minotaur */
-			ct++;
+		if (strchr(fut_geno, 'm'))
+			ct++;	/* make only 1 minotaur */
 		if (strchr(fut_geno, '@'))
 			ct++;
-		if (ct <= 0)			/* no more monsters! */
-			return (0);
+		if (ct <= 0)
+			return (0);	/* no more monsters! */
 		tmp = rn2(ct * dlevel / 24 + 7);
 		if (tmp < dlevel - 4)
 			tmp = rn2(ct * dlevel / 24 + 12);
@@ -53,8 +113,8 @@ makemon(struct permonst *ptr, int x, int y)
 gotmon:
 	mtmp = newmonst(ptr->pxlth);
 	*mtmp = zeromonst;	/* clear all entries in structure */
-	for (ct = 0; (unsigned)ct < ptr->pxlth; ct++)
-		((char *)&(mtmp->mextra[0]))[ct] = 0;
+	for (i = 0; i < ptr->pxlth; i++)
+		((char *) &(mtmp->mextra[0]))[i] = 0;
 	mtmp->nmon = fmon;
 	fmon = mtmp;
 	mtmp->m_id = flags.ident++;
@@ -83,48 +143,48 @@ gotmon:
 		mtmp->mhide = mtmp->mundetected = 1;
 		if (in_mklev)
 			if (mtmp->mx && mtmp->my)
-				mkobj_at(0, mtmp->mx, mtmp->my);
+				(void) mkobj_at(0, mtmp->mx, mtmp->my);
 	}
 	if (ptr->mlet == ':') {
 		mtmp->cham = 1;
-		newcham(mtmp, &mons[dlevel + 14 + rn2(CMNUM - 14 - dlevel)]);
+		(void) newcham(mtmp, &mons[dlevel + 14 + rn2(CMNUM - 14 - dlevel)]);
 	}
 	if (ptr->mlet == 'I' || ptr->mlet == ';')
 		mtmp->minvis = 1;
 	if (ptr->mlet == 'L' || ptr->mlet == 'N'
-	    || (in_mklev && strchr("&w;", ptr->mlet) && rn2(5)))
+	    || (in_mklev && strchr("&w;", ptr->mlet) && rn2(5))
+		)
 		mtmp->msleep = 1;
 
 #ifndef NOWORM
 	if (ptr->mlet == 'w' && getwn(mtmp))
 		initworm(mtmp);
-#endif /* NOWORM */
+#endif	/* NOWORM */
 
 	if (anything)
 		if (ptr->mlet == 'O' || ptr->mlet == 'k') {
-			coord mm;
-			int cnt = rnd(10);
+			coord           mm;
+			int             cnt = rnd(10);
 			mm.x = x;
 			mm.y = y;
 			while (cnt--) {
 				mm = enexto(mm.x, mm.y);
-				makemon(ptr, mm.x, mm.y);
+				(void) makemon(ptr, mm.x, mm.y);
 			}
 		}
-
 	return (mtmp);
 }
 
 coord
 enexto(xchar xx, xchar yy)
 {
-	xchar x, y;
-	coord foo[15], *tfoo;
-	int range;
+	xchar           x, y;
+	coord           foo[15], *tfoo;
+	int             range;
 
 	tfoo = foo;
 	range = 1;
-	do {	/* full kludge action. */
+	do {			/* full kludge action. */
 		for (x = xx - range; x <= xx + range; x++)
 			if (goodpos(x, yy - range)) {
 				tfoo->x = x;
@@ -159,9 +219,9 @@ foofull:
 	return (foo[rn2(tfoo - foo)]);
 }
 
-bool
-goodpos(int x, int y)		/* used only in mnexto and rloc */
-{
+int
+goodpos(int x, int y)
+{				/* used only in mnexto and rloc */
 	return (
 		!(x < 1 || x > COLNO - 2 || y < 1 || y > ROWNO - 2 ||
 		  m_at(x, y) || !ACCESSIBLE(levl[x][y].typ)
@@ -173,13 +233,13 @@ goodpos(int x, int y)		/* used only in mnexto and rloc */
 void
 rloc(struct monst *mtmp)
 {
-	int tx, ty;
-	char ch = mtmp->data->mlet;
+	int		tx, ty;
+	char            ch = mtmp->data->mlet;
 
 #ifndef NOWORM
-	if (ch == 'w' && mtmp->mx)	/* do not relocate worms */
-		return;
-#endif /* NOWORM */
+	if (ch == 'w' && mtmp->mx)
+		return;		/* do not relocate worms */
+#endif	/* NOWORM */
 	do {
 		tx = rn1(COLNO - 3, 2);
 		ty = rn2(ROWNO);
@@ -197,11 +257,11 @@ rloc(struct monst *mtmp)
 	pmon(mtmp);
 }
 
-struct monst *
-mkmon_at(char let, int x, int y)
+struct monst   *
+mkmon_at(int let, int x, int y)
 {
-	int ct;
-	struct permonst *ptr;
+	int             ct;
+	const struct permonst *ptr;
 
 	for (ct = 0; ct < CMNUM; ct++) {
 		ptr = &mons[ct];

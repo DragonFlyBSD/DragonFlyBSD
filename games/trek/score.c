@@ -1,4 +1,7 @@
-/*-
+/*	@(#)score.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: score.c,v 1.11 2009/05/25 00:39:45 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,18 +28,35 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)score.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/score.c,v 1.4 1999/11/30 03:49:53 billf Exp $
- * $DragonFly: src/games/trek/score.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdarg.h>
+#include <stdio.h>
 #include "trek.h"
 #include "getpar.h"
 
 /*
 **  PRINT OUT THE CURRENT SCORE
 */
+
+static void scoreitem(long amount, const char *descfmt, ...)
+	__printflike(2, 3);
+
+static void
+scoreitem(long amount, const char *descfmt, ...)
+{
+	va_list ap;
+	char buf[128];
+
+	if (amount == 0)
+		return;
+
+	va_start(ap, descfmt);
+	vsnprintf(buf, sizeof(buf), descfmt, ap);
+	va_end(ap);
+
+	printf("%-40s %10ld\n", buf, amount);
+}
 
 long
 score(void)
@@ -47,51 +67,57 @@ score(void)
 	double		r;
 
 	printf("\n*** Your score:\n");
+
 	s = t = Param.klingpwr / 4 * (u = Game.killk);
-	if (t != 0)
-		printf("%d Klingons killed\t\t\t%6d\n", u, t);
+	scoreitem(t, "%d Klingons killed", u);
+
 	r = Now.date - Param.date;
 	if (r < 1.0)
 		r = 1.0;
 	r = Game.killk / r;
 	s += (t = 400 * r);
-	if (t != 0)
-		printf("Kill rate %.2f Klingons/stardate  \t%6d\n", r, t);
+	scoreitem(t, "Kill rate %.2f Klingons/stardate", r);
+
 	r = Now.klings;
 	r /= Game.killk + 1;
 	s += (t = -400 * r);
-	if (t != 0)
-		printf("Penalty for %d klingons remaining\t%6d\n", Now.klings, t);
+	scoreitem(t, "Penalty for %d klingons remaining", Now.klings);
+
 	if (Move.endgame > 0) {
 		s += (t = 100 * (u = Game.skill));
-		printf("Bonus for winning a %s%s game\t\t%6d\n", Skitab[u - 1].abrev, Skitab[u - 1].full, t);
+		scoreitem(t, "Bonus for winning a %s%s game",
+			Skitab[u - 1].abbrev, Skitab[u - 1].full);
 	}
+
 	if (Game.killed) {
 		s -= 500;
-		printf("Penalty for getting killed\t\t  -500\n");
+		scoreitem(-500, "Penalty for getting killed");
 	}
+
 	s += (t = -100 * (u = Game.killb));
-	if (t != 0)
-		printf("%d starbases killed\t\t\t%6d\n", u, t);
+	scoreitem(t, "%d starbases killed", u);
+
 	s += (t = -100 * (u = Game.helps));
-	if (t != 0)
-		printf("%d calls for help\t\t\t%6d\n", u, t);
+	scoreitem(t, "%d calls for help", u);
+
 	s += (t = -5 * (u = Game.kills));
-	if (t != 0)
-		printf("%d stars destroyed\t\t\t%6d\n", u, t);
+	scoreitem(t, "%d stars destroyed", u);
+
 	s += (t = -150 * (u = Game.killinhab));
-	if (t != 0)
-		printf("%d inhabited starsystems destroyed\t%6d\n", u, t);
+	scoreitem(t, "%d inhabited starsystems destroyed", u);
+
 	if (Ship.ship != ENTERPRISE) {
 		s -= 200;
-		printf("penalty for abandoning ship\t\t  -200\n");
+		scoreitem(-200, "penalty for abandoning ship");
 	}
+
 	s += (t = 3 * (u = Game.captives));
-	if (t != 0)
-		printf("%d Klingons captured\t\t\t%6d\n", u, t);
+	scoreitem(t, "%d Klingons captured", u);
+
 	s += (t = -(u = Game.deaths));
-	if (t != 0)
-		printf("%d casualties\t\t\t\t%6d\n", u, t);
-	printf("\n***  TOTAL\t\t\t%14ld\n", s);
+	scoreitem(t, "%d casualties", u);
+
+	printf("\n");
+	scoreitem(s, "***  TOTAL");
 	return (s);
 }

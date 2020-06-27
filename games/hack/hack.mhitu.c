@@ -1,19 +1,78 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mhitu.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.mhitu.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mhitu.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.mhitu.c,v 1.7 2009/06/07 18:30:39 dholland Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
+#include "extern.h"
 
 /*
  * mhitu: monster hits you
  *	  returns 1 if monster dies (e.g. 'y', 'F'), 0 otherwise
  */
-bool
+int
 mhitu(struct monst *mtmp)
 {
-	struct permonst *mdat = mtmp->data;
-	int tmp, ctmp;
+	const struct permonst *mdat = mtmp->data;
+	int             tmp, ctmp;
 
 	nomul(0);
 
@@ -51,7 +110,6 @@ mhitu(struct monst *mtmp)
 			done_in_by(mtmp);
 		return (0);
 	}
-
 	if (mdat->mlet == 'c' && Stoned)
 		return (0);
 
@@ -68,21 +126,21 @@ mhitu(struct monst *mtmp)
 		tmp += hitu(mtmp, d(mdat->damn, mdat->damd));
 
 	ctmp = tmp && !mtmp->mcan &&
-	    (!uarm || objects[uarm->otyp].a_can < rnd(3) || !rn2(50));
+		(!uarm || objects[uarm->otyp].a_can < rnd(3) || !rn2(50));
 	switch (mdat->mlet) {
 	case '1':
-		if (wiz_hit(mtmp))	/* he disappeared */
-			return (1);
+		if (wiz_hit(mtmp))
+			return (1);	/* he disappeared */
 		break;
 	case '&':
 		if (!mtmp->cham && !mtmp->mcan && !rn2(13)) {
-			makemon(PM_DEMON, u.ux, u.uy);
+			(void) makemon(PM_DEMON, u.ux, u.uy);
 		} else {
-			hitu(mtmp, d(2, 6));
-			hitu(mtmp, d(2, 6));
-			hitu(mtmp, rnd(3));
-			hitu(mtmp, rnd(3));
-			hitu(mtmp, rn1(4, 2));
+			(void) hitu(mtmp, d(2, 6));
+			(void) hitu(mtmp, d(2, 6));
+			(void) hitu(mtmp, rnd(3));
+			(void) hitu(mtmp, rnd(3));
+			(void) hitu(mtmp, rn1(4, 2));
 		}
 		break;
 	case ',':
@@ -117,31 +175,34 @@ mhitu(struct monst *mtmp)
 		}
 		break;
 	case 'C':
-		hitu(mtmp, rnd(6));
+		(void) hitu(mtmp, rnd(6));
 		break;
 	case 'c':
 		if (!rn2(5)) {
 			pline("You hear %s's hissing!", monnam(mtmp));
 			if (ctmp || !rn2(20) || (flags.moonphase == NEW_MOON
-			    && !carrying(DEAD_LIZARD)))
+					       && !carrying(DEAD_LIZARD))) {
 				Stoned = 5;
+				/* pline("You get turned to stone!"); */
+				/* done_in_by(mtmp); */
+			}
 		}
 		break;
 	case 'D':
 		if (rn2(6) || mtmp->mcan) {
-			hitu(mtmp, d(3, 10));
-			hitu(mtmp, rnd(8));
-			hitu(mtmp, rnd(8));
+			(void) hitu(mtmp, d(3, 10));
+			(void) hitu(mtmp, rnd(8));
+			(void) hitu(mtmp, rnd(8));
 			break;
 		}
 		kludge("%s breathes fire!", "The dragon");
 		buzz(-1, mtmp->mx, mtmp->my, u.ux - mtmp->mx, u.uy - mtmp->my);
 		break;
 	case 'd':
-		hitu(mtmp, d(2, (flags.moonphase == FULL_MOON) ? 3 : 4));
+		(void) hitu(mtmp, d(2, (flags.moonphase == FULL_MOON) ? 3 : 4));
 		break;
 	case 'e':
-		hitu(mtmp, d(3, 6));
+		(void) hitu(mtmp, d(3, 6));
 		break;
 	case 'F':
 		if (mtmp->mcan)
@@ -150,7 +211,7 @@ mhitu(struct monst *mtmp)
 		if (Cold_resistance)
 			pline("You don't seem affected by it.");
 		else {
-			xchar dn;
+			xchar           dn;
 			if (17 - (u.ulevel / 2) > rnd(20)) {
 				pline("You get blasted!");
 				dn = 6;
@@ -179,13 +240,14 @@ mhitu(struct monst *mtmp)
 		tmp = hitu(mtmp, rnd(3));
 		tmp &= hitu(mtmp, rnd(3));
 		if (tmp) {
-			hitu(mtmp, rnd(4));
-			hitu(mtmp, rnd(4));
+			(void) hitu(mtmp, rnd(4));
+			(void) hitu(mtmp, rnd(4));
 		}
 		break;
 	case 'k':
-		if ((hitu(mtmp, rnd(4)) || !rn2(3)) && ctmp)
+		if ((hitu(mtmp, rnd(4)) || !rn2(3)) && ctmp) {
 			poisoned("bee's sting", mdat->mname);
+		}
 		break;
 	case 'L':
 		if (tmp)
@@ -194,7 +256,7 @@ mhitu(struct monst *mtmp)
 	case 'N':
 		if (mtmp->mcan && !Blind) {
 			pline("%s tries to seduce you, but you seem not interested.",
-			    Amonnam(mtmp, "plain"));
+			      Amonnam(mtmp, "plain"));
 			if (rn2(3))
 				rloc(mtmp);
 		} else if (steal(mtmp)) {
@@ -215,8 +277,8 @@ mhitu(struct monst *mtmp)
 			if (!rn2(50))
 				rloc(mtmp);
 		} else {
-			hitu(mtmp, d(2, 6));
-			hitu(mtmp, d(2, 6));
+			(void) hitu(mtmp, d(2, 6));
+			(void) hitu(mtmp, d(2, 6));
 		}
 		break;
 	case 'o':
@@ -235,37 +297,39 @@ mhitu(struct monst *mtmp)
 		if (ctmp && !rn2(4))
 			justswld(mtmp, "The purple worm");
 		else
-			hitu(mtmp, d(2, 4));
+			(void) hitu(mtmp, d(2, 4));
 		break;
 	case 'Q':
-		hitu(mtmp, rnd(2));
-		hitu(mtmp, rnd(2));
+		(void) hitu(mtmp, rnd(2));
+		(void) hitu(mtmp, rnd(2));
 		break;
 	case 'R':
 		if (tmp && uarmh && !uarmh->rustfree &&
-		    (int)uarmh->spe >= -1) {
+		    (int) uarmh->spe >= -1) {
 			pline("Your helmet rusts!");
 			uarmh->spe--;
 		} else if (ctmp && uarm && !uarm->rustfree &&	/* Mike Newton */
-		    uarm->otyp < STUDDED_LEATHER_ARMOR &&
-		    (int)uarm->spe >= -1) {
+			   uarm->otyp < STUDDED_LEATHER_ARMOR &&
+			   (int) uarm->spe >= -1) {
 			pline("Your armor rusts!");
 			uarm->spe--;
 		}
 		break;
 	case 'S':
-		if (ctmp && !rn2(8))
+		if (ctmp && !rn2(8)) {
 			poisoned("snake's bite", mdat->mname);
+		}
 		break;
 	case 's':
-		if (tmp && !rn2(8))
+		if (tmp && !rn2(8)) {
 			poisoned("scorpion's sting", mdat->mname);
-		hitu(mtmp, rnd(8));
-		hitu(mtmp, rnd(8));
+		}
+		(void) hitu(mtmp, rnd(8));
+		(void) hitu(mtmp, rnd(8));
 		break;
 	case 'T':
-		hitu(mtmp, rnd(6));
-		hitu(mtmp, rnd(6));
+		(void) hitu(mtmp, rnd(6));
+		(void) hitu(mtmp, rnd(6));
 		break;
 	case 't':
 		if (!rn2(5))
@@ -275,8 +339,8 @@ mhitu(struct monst *mtmp)
 		mtmp->mflee = 1;
 		break;
 	case 'U':
-		hitu(mtmp, d(3, 4));
-		hitu(mtmp, d(3, 4));
+		(void) hitu(mtmp, d(3, 4));
+		(void) hitu(mtmp, d(3, 4));
 		break;
 	case 'v':
 		if (ctmp && !u.ustuck)
@@ -296,18 +360,18 @@ mhitu(struct monst *mtmp)
 	case 'w':
 		if (tmp)
 			wormhit(mtmp);
-#endif /* NOWORM */
+#endif	/* NOWORM */
 		break;
 	case 'X':
-		hitu(mtmp, rnd(5));
-		hitu(mtmp, rnd(5));
-		hitu(mtmp, rnd(5));
+		(void) hitu(mtmp, rnd(5));
+		(void) hitu(mtmp, rnd(5));
+		(void) hitu(mtmp, rnd(5));
 		break;
 	case 'x':
 		{
-			long side = rn2(2) ? RIGHT_SIDE : LEFT_SIDE;
+			long            side = rn2(2) ? RIGHT_SIDE : LEFT_SIDE;
 			pline("%s pricks in your %s leg!",
-			    Monnam(mtmp), (side == RIGHT_SIDE) ? "right" : "left");
+			      Monnam(mtmp), (side == RIGHT_SIDE) ? "right" : "left");
 			set_wounded_legs(side, rnd(50));
 			losehp_m(2, mtmp);
 			break;
@@ -323,7 +387,7 @@ mhitu(struct monst *mtmp)
 		}
 		return (1);
 	case 'Y':
-		hitu(mtmp, rnd(6));
+		(void) hitu(mtmp, rnd(6));
 		break;
 	}
 	if (u.uhp < 1)
@@ -331,11 +395,10 @@ mhitu(struct monst *mtmp)
 	return (0);
 }
 
-bool
+int
 hitu(struct monst *mtmp, int dam)
 {
-	bool res;
-	int tmp;
+	int tmp, res;
 
 	nomul(0);
 	if (u.uswallow)
@@ -344,13 +407,12 @@ hitu(struct monst *mtmp, int dam)
 	if (mtmp->mhide && mtmp->mundetected) {
 		mtmp->mundetected = 0;
 		if (!Blind) {
-			struct obj *obj;
+			struct obj     *obj;
 			if ((obj = o_at(mtmp->mx, mtmp->my)) != NULL)
 				pline("%s was hidden under %s!",
 				      Xmonnam(mtmp), doname(obj));
 		}
 	}
-
 	tmp = u.uac;
 	/* give people with Ac = -10 at least some vulnerability */
 	if (tmp < 0) {

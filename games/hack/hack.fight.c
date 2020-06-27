@@ -1,13 +1,71 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.fight.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.fight.c,v 1.5 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.fight.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.fight.c,v 1.12 2009/08/12 07:28:40 dholland Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
-extern struct permonst li_dog, dog, la_dog;
+#include "extern.h"
 
-static boolean far_noise;
-static long noisetime;
+static boolean  far_noise;
+static long     noisetime;
 
 static void monstone(struct monst *);
 
@@ -15,36 +73,36 @@ static void monstone(struct monst *);
 int
 hitmm(struct monst *magr, struct monst *mdef)
 {
-	struct permonst *pa = magr->data, *pd = mdef->data;
-	int ht;
-	schar tmp;
-	boolean vis;
+	const struct permonst *pa = magr->data, *pd = mdef->data;
+	int             didhit;
+	schar           tmp;
+	boolean         vis;
 
 	if (strchr("Eauy", pa->mlet))
 		return (0);
-	if (magr->mfroz)		/* riv05!a3 */
-		return (0);
+	if (magr->mfroz)
+		return (0);	/* riv05!a3 */
 	tmp = pd->ac + pa->mlevel;
 	if (mdef->mconf || mdef->mfroz || mdef->msleep) {
 		tmp += 4;
 		if (mdef->msleep)
 			mdef->msleep = 0;
 	}
-	ht = (tmp > rnd(20));
-	if (ht)
+	didhit = (tmp > rnd(20));
+	if (didhit)
 		mdef->msleep = 0;
 	vis = (cansee(magr->mx, magr->my) && cansee(mdef->mx, mdef->my));
 	if (vis) {
-		char buf[BUFSZ];
+		char            buf[BUFSZ];
 		if (mdef->mimic)
 			seemimic(mdef);
 		if (magr->mimic)
 			seemimic(magr);
-		sprintf(buf, "%s %s", Monnam(magr),
-			ht ? "hits" : "misses");
+		(void) snprintf(buf, sizeof(buf), "%s %s", Monnam(magr),
+			       didhit ? "hits" : "misses");
 		pline("%s %s.", buf, monnam(mdef));
 	} else {
-		boolean far = (dist(magr->mx, magr->my) > 15);
+		boolean         far = (dist(magr->mx, magr->my) > 15);
 		if (far != far_noise || moves - noisetime > 10) {
 			far_noise = far;
 			noisetime = moves;
@@ -52,7 +110,7 @@ hitmm(struct monst *magr, struct monst *mdef)
 			      far ? " in the distance" : "");
 		}
 	}
-	if (ht) {
+	if (didhit) {
 		if (magr->data->mlet == 'c' && !magr->cham) {
 			magr->mhpmax += 3;
 			if (vis)
@@ -60,7 +118,7 @@ hitmm(struct monst *magr, struct monst *mdef)
 			else if (mdef->mtame)
 				pline("You have a peculiarly sad feeling for a moment, then it passes.");
 			monstone(mdef);
-			ht = 2;
+			didhit = 2;
 		} else if ((mdef->mhp -= d(pa->damn, pa->damd)) < 1) {
 			magr->mhpmax += 1 + rn2(pd->mlevel + 1);
 			if (magr->mtame && magr->mhpmax > 8 * pa->mlevel) {
@@ -74,20 +132,19 @@ hitmm(struct monst *magr, struct monst *mdef)
 			else if (mdef->mtame)
 				pline("You have a sad feeling for a moment, then it passes.");
 			mondied(mdef);
-			ht = 2;
+			didhit = 2;
 		}
 	}
-	return (ht);
+	return (didhit);
 }
 
 /* drop (perhaps) a cadaver and remove monster */
 void
 mondied(struct monst *mdef)
 {
-	struct permonst *pd = mdef->data;
-
+	const struct permonst *pd = mdef->data;
 	if (letter(pd->mlet) && rn2(3)) {
-		mkobj_at(pd->mlet, mdef->mx, mdef->my);
+		(void) mkobj_at(pd->mlet, mdef->mx, mdef->my);
 		if (cansee(mdef->mx, mdef->my)) {
 			unpmon(mdef);
 			atl(mdef->mx, mdef->my, fobj->olet);
@@ -112,28 +169,27 @@ monstone(struct monst *mdef)
 	mondead(mdef);
 }
 
+
 int
 fightm(struct monst *mtmp)
 {
-	struct monst *mon;
-
+	struct monst   *mon;
 	for (mon = fmon; mon; mon = mon->nmon)
 		if (mon != mtmp) {
 			if (DIST(mon->mx, mon->my, mtmp->mx, mtmp->my) < 3)
 				if (rn2(4))
 					return (hitmm(mtmp, mon));
 		}
-
 	return (-1);
 }
 
 /* u is hit by sth, but not a monster */
-bool
+int
 thitu(int tlev, int dam, const char *name)
 {
-	char buf[BUFSZ];
+	char            buf[BUFSZ];
 
-	setan(name, buf);
+	setan(name, buf, sizeof(buf));
 	if (u.uac + tlev <= rnd(20)) {
 		if (Blind)
 			pline("It misses.");
@@ -150,14 +206,14 @@ thitu(int tlev, int dam, const char *name)
 	}
 }
 
-char mlarge[] = "bCDdegIlmnoPSsTUwY',&";
+const char mlarge[] = "bCDdegIlmnoPSsTUwY',&";
 
 /* return TRUE if mon still alive */
-bool
+boolean
 hmon(struct monst *mon, struct obj *obj, int thrown)
 {
 	int tmp;
-	bool hittxt = FALSE;
+	boolean         hittxt = FALSE;
 
 	if (!obj) {
 		tmp = rnd(2);	/* attack with bare hands */
@@ -176,20 +232,23 @@ hmon(struct monst *mon, struct obj *obj, int thrown)
 					tmp += d(2, 6);
 				else if (obj->otyp == FLAIL)
 					tmp += rnd(4);
-			} else
+			} else {
 				tmp = rnd(objects[obj->otyp].wsdam);
+			}
 			tmp += obj->spe;
 			if (!thrown && obj == uwep && obj->otyp == BOOMERANG
 			    && !rn2(3)) {
 				pline("As you hit %s, the boomerang breaks into splinters.",
-				    monnam(mon));
+				      monnam(mon));
 				freeinv(obj);
-				setworn(NULL, obj->owornmask);
-				obfree(obj, NULL);
+				setworn((struct obj *) 0, obj->owornmask);
+				obfree(obj, (struct obj *) 0);
+				obj = NULL;
 				tmp++;
 			}
 		}
-		if (mon->data->mlet == 'O' && obj->otyp == TWO_HANDED_SWORD &&
+		if (mon->data->mlet == 'O' && obj != NULL &&
+		    obj->otyp == TWO_HANDED_SWORD &&
 		    !strcmp(ONAME(obj), "Orcrist"))
 			tmp += rnd(10);
 	} else
@@ -201,8 +260,8 @@ hmon(struct monst *mon, struct obj *obj, int thrown)
 			pline("You succeed in destroying your camera. Congratulations!");
 			freeinv(obj);
 			if (obj->owornmask)
-				setworn(NULL, obj->owornmask);
-			obfree(obj, NULL);
+				setworn((struct obj *) 0, obj->owornmask);
+			obfree(obj, (struct obj *) 0);
 			return (TRUE);
 		case DEAD_COCKATRICE:
 			pline("You hit %s with the cockatrice corpse.",
@@ -249,21 +308,21 @@ hmon(struct monst *mon, struct obj *obj, int thrown)
 		return (FALSE);
 	}
 	if (mon->mtame && (!mon->mflee || mon->mfleetim)) {
-		mon->mflee = 1;		/* Rick Richardson */
+		mon->mflee = 1;	/* Rick Richardson */
 		mon->mfleetim += 10 * rnd(tmp);
 	}
-
 	if (!hittxt) {
 		if (thrown) {
 			/* this assumes that we cannot throw plural things */
-			hit(xname(obj) /* or: objects[obj->otyp].oc_name */,
+			if (obj == NULL)
+				panic("thrown non-object");
+			hit(xname(obj) /* or: objects[obj->otyp].oc_name */ ,
 			    mon, exclam(tmp));
 		} else if (Blind)
 			pline("You hit it.");
 		else
 			pline("You hit %s%s", monnam(mon), exclam(tmp));
 	}
-
 	if (u.umconf && !thrown) {
 		if (!Blind) {
 			pline("Your hands stop glowing blue.");
@@ -278,19 +337,20 @@ hmon(struct monst *mon, struct obj *obj, int thrown)
 
 /* try to attack; return FALSE if monster evaded */
 /* u.dx and u.dy must be set */
-bool
+int
 attack(struct monst *mtmp)
 {
-	schar tmp;
-	boolean malive = TRUE;
-	struct permonst *mdat;
-
+	schar           tmp;
+	boolean         malive = TRUE;
+	const struct permonst *mdat;
 	mdat = mtmp->data;
-	u_wipe_engr(3);   /* andrew@orca: prevent unlimited pick-axe attacks */
+
+	u_wipe_engr(3);		/* andrew@orca: prevent unlimited pick-axe
+				 * attacks */
 
 	if (mdat->mlet == 'L' && !mtmp->mfroz && !mtmp->msleep &&
 	    !mtmp->mconf && mtmp->mcansee && !rn2(7) &&
-	    (m_move(mtmp, 0) == 2 /* he died */ || /* he moved: */
+	    (m_move(mtmp, 0) == 2 /* he died */ ||	/* he moved: */
 	     mtmp->mx != u.ux + u.dx || mtmp->my != u.uy + u.dy))
 		return (FALSE);
 
@@ -310,11 +370,10 @@ attack(struct monst *mtmp)
 		wakeup(mtmp);	/* clears mtmp->mimic */
 		return (TRUE);
 	}
-
 	wakeup(mtmp);
 
 	if (mtmp->mhide && mtmp->mundetected) {
-		struct obj *obj;
+		struct obj     *obj;
 
 		mtmp->mundetected = 0;
 		if ((obj = o_at(mtmp->mx, mtmp->my)) && !Blind)
@@ -322,7 +381,6 @@ attack(struct monst *mtmp)
 			      mdat->mname, doname(obj));
 		return (TRUE);
 	}
-
 	tmp = u.uluck + u.ulevel + mdat->ac + abon();
 	if (uwep) {
 		if (uwep->olet == WEAPON_SYM || uwep->otyp == PICK_AXE)
@@ -375,7 +433,7 @@ attack(struct monst *mtmp)
 			if (mtmp->wormno)
 				cutworm(mtmp, u.ux + u.dx, u.uy + u.dy,
 					uwep ? uwep->otyp : 0);
-#endif /* NOWORM */
+#endif	/* NOWORM */
 		}
 		if (mdat->mlet == 'a') {
 			if (rn2(2)) {
@@ -396,7 +454,7 @@ attack(struct monst *mtmp)
 		} else {
 			pline("The blinded floating eye cannot defend itself.");
 			if (!rn2(500))
-				if ((int)u.uluck > LUCKMIN)
+				if ((int) u.uluck > LUCKMIN)
 					u.uluck--;
 		}
 	}

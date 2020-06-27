@@ -1,4 +1,7 @@
-/*-
+/*	@(#)tutor.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: tutor.c,v 1.11 2012/10/13 19:19:39 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,24 +28,21 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)tutor.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/teachgammon/tutor.c,v 1.5 1999/11/30 03:48:31 billf Exp $
- * $DragonFly: src/games/backgammon/teachgammon/tutor.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
 #include "tutor.h"
 
-static void	clrest(void);
-static int	brdeq(const int *, const int *);
+static const char better[] = 
+	"That is a legal move, but there is a better one.\n";
 
-static const char better[] = "That is a legal move, but there is a better one.\n";
+static int brdeq(const int *, const int *);
+static void clrest(void);
 
 void
-tutor(void)
+tutor(struct move *mm)
 {
-	int i, j;
+	int     i, j;
 
 	i = 0;
 	begscr = 18;
@@ -64,57 +64,57 @@ tutor(void)
 				curmove(18, 0);
 			writel(better);
 			nexturn();
-			movback(mvlim);
+			movback(mm, mm->mvlim);
 			if (tflag) {
 				refresh();
 				clrest();
 			}
 			if ((!tflag) || curr == 19) {
-				proll();
+				proll(mm);
 				writec('\t');
 			} else
 				curmove(curr > 19 ? curr - 2 : curr + 4, 25);
-			getmove();
+			getmove(mm);
 			if (cturn == 0)
 				leave();
 			continue;
 		}
 		if (tflag)
 			curmove(18, 0);
-		text(*test[i].com);
+		wrtext(*test[i].com);
 		if (!tflag)
 			writec('\n');
 		if (i == maxmoves)
 			break;
-		D0 = test[i].roll1;
-		D1 = test[i].roll2;
-		d0 = 0;
-		mvlim = 0;
+		mm->D0 = test[i].roll1;
+		mm->D1 = test[i].roll2;
+		mm->d0 = 0;
+		mm->mvlim = 0;
 		for (j = 0; j < 4; j++) {
 			if (test[i].mp[j] == test[i].mg[j])
 				break;
-			p[j] = test[i].mp[j];
-			g[j] = test[i].mg[j];
-			mvlim++;
+			mm->p[j] = test[i].mp[j];
+			mm->g[j] = test[i].mg[j];
+			mm->mvlim++;
 		}
-		if (mvlim)
-			for (j = 0; j < mvlim; j++)
-				if (makmove(j))
+		if (mm->mvlim)
+			for (j = 0; j < mm->mvlim; j++)
+				if (makmove(mm, j))
 					writel("AARGH!!!\n");
 		if (tflag)
 			refresh();
 		nexturn();
-		D0 = test[i].new1;
-		D1 = test[i].new2;
-		d0 = 0;
+		mm->D0 = test[i].new1;
+		mm->D1 = test[i].new2;
+		mm->d0 = 0;
 		i++;
-		mvlim = movallow();
-		if (mvlim) {
+		mm->mvlim = movallow(mm);
+		if (mm->mvlim) {
 			if (tflag)
 				clrest();
-			proll();
+			proll(mm);
 			writec('\t');
-			getmove();
+			getmove(mm);
 			if (tflag)
 				refresh();
 			if (cturn == 0)
@@ -127,7 +127,7 @@ tutor(void)
 static void
 clrest(void)
 {
-	int r, c, j;
+	int     r, c, j;
 
 	r = curr;
 	c = curc;
@@ -141,7 +141,7 @@ clrest(void)
 static int
 brdeq(const int *b1, const int *b2)
 {
-	const int *e;
+	const int    *e;
 
 	e = b1 + 26;
 	while (b1 < e)

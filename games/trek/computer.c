@@ -1,4 +1,7 @@
-/*-
+/*	@(#)computer.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: computer.c,v 1.16 2009/08/12 08:54:54 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,16 +28,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)computer.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/computer.c,v 1.5 1999/11/30 03:49:45 billf Exp $
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 #include "trek.h"
 #include "getpar.h"
-
-static int kalc(int, int, int, int, double *);
-static void prkalc(int, double);
 
 /*
 **  On-Board Computer
@@ -82,29 +82,33 @@ static void prkalc(int, double);
 **	command processor.
 */
 
-struct cvntab Cputab[] = {
-	{ "ch",	"art",			(cmdfun)1,		0 },
-	{ "t",	"rajectory",		(cmdfun)2,		0 },
-	{ "c",	"ourse",		(cmdfun)3,		0 },
-	{ "m",	"ove",			(cmdfun)3,		1 },
-	{ "s",	"core",			(cmdfun)4,		0 },
-	{ "p",	"heff",			(cmdfun)5,		0 },
-	{ "w",	"arpcost",		(cmdfun)6,		0 },
-	{ "i",	"mpcost",		(cmdfun)7,		0 },
-	{ "d",	"istresslist",		(cmdfun)8,		0 },
-	{ NULL,	NULL,			NULL,			0 }
+static struct cvntab Cputab[] = {
+	{ "ch",		"art",			(cmdfun)1,		0 },
+	{ "t",		"rajectory",		(cmdfun)2,		0 },
+	{ "c",		"ourse",		(cmdfun)3,		0 },
+	{ "m",		"ove",			(cmdfun)3,		1 },
+	{ "s",		"core",			(cmdfun)4,		0 },
+	{ "p",		"heff",			(cmdfun)5,		0 },
+	{ "w",		"arpcost",		(cmdfun)6,		0 },
+	{ "i",		"mpcost",		(cmdfun)7,		0 },
+	{ "d",		"istresslist",		(cmdfun)8,		0 },
+	{ NULL,		NULL,			NULL,			0 }
 };
 
+static int kalc(int, int, int, int, double *);
+static void prkalc(int, double);
+
+/*ARGSUSED*/
 void
 computer(int v __unused)
 {
 	int		ix, iy;
 	int		i, j;
 	int		tqx, tqy;
-	struct cvntab		*r;
+	const struct cvntab	*r;
 	int		cost;
 	int		course;
-	double		dist, p_time;
+	double		dist, time;
 	double		warpfact;
 	struct quad	*q;
 	struct event	*e;
@@ -116,7 +120,8 @@ computer(int v __unused)
 		switch ((long)r->value) {
 
 		  case 1:			/* star chart */
-			printf("Computer record of galaxy for all long range sensor scans\n\n");
+			printf("Computer record of galaxy for all long range "
+			       "sensor scans\n\n");
 			printf("  ");
 			/* print top header */
 			for (i = 0; i < NQUADS; i++)
@@ -125,8 +130,8 @@ computer(int v __unused)
 			for (i = 0; i < NQUADS; i++) {
 				printf("%d ", i);
 				for (j = 0; j < NQUADS; j++) {
-					if (i == Ship.quadx && j == Ship.quady)
-					{
+					if (i == Ship.quadx &&
+					    j == Ship.quady) {
 						printf("$$$ ");
 						continue;
 					}
@@ -141,7 +146,8 @@ computer(int v __unused)
 						if (q->scanned < 0)
 							printf("... ");
 						else
-							printf("%3d ", q->scanned);
+							printf("%3d ",
+								q->scanned);
 				}
 				printf("%d\n", i);
 			}
@@ -162,8 +168,11 @@ computer(int v __unused)
 			}
 			/* for each Klingon, give the course & distance */
 			for (i = 0; i < Etc.nkling; i++) {
-				printf("Klingon at %d,%d", Etc.klingon[i].x, Etc.klingon[i].y);
-				course = kalc(Ship.quadx, Ship.quady, Etc.klingon[i].x, Etc.klingon[i].y, &dist);
+				printf("Klingon at %d,%d",
+					Etc.klingon[i].x, Etc.klingon[i].y);
+				course = kalc(Ship.quadx, Ship.quady,
+					      Etc.klingon[i].x,
+					      Etc.klingon[i].y, &dist);
 				prkalc(course, dist);
 			}
 			break;
@@ -174,10 +183,10 @@ computer(int v __unused)
 				tqy = Ship.quady;
 			} else {
 				ix = getintpar("Quadrant");
-				if (ix < 0 || ix >= NQUADS)
+				if (ix < 0 || ix >= NSECTS)
 					break;
 				iy = getintpar("q-y");
-				if (iy < 0 || iy >= NQUADS)
+				if (iy < 0 || iy >= NSECTS)
 					break;
 				tqx = ix;
 				tqy = iy;
@@ -194,7 +203,8 @@ computer(int v __unused)
 				break;
 			}
 			printf("%d,%d/%d,%d to %d,%d/%d,%d",
-				Ship.quadx, Ship.quady, Ship.sectx, Ship.secty, tqx, tqy, ix, iy);
+				Ship.quadx, Ship.quady, Ship.sectx, Ship.secty,
+				tqx, tqy, ix, iy);
 			prkalc(course, dist);
 			break;
 
@@ -208,7 +218,8 @@ computer(int v __unused)
 				break;
 			dist *= 10.0;
 			cost = pow(0.90, dist) * 98.0 + 0.5;
-			printf("Phasers are %d%% effective at that range\n", cost);
+			printf("Phasers are %d%% effective at that range\n",
+				cost);
 			break;
 
 		  case 6:			/* warp cost (time/energy) */
@@ -219,9 +230,10 @@ computer(int v __unused)
 			if (warpfact <= 0.0)
 				warpfact = Ship.warp;
 			cost = (dist + 0.05) * warpfact * warpfact * warpfact;
-			p_time = Param.warptime * dist / (warpfact * warpfact);
-			printf("Warp %.2f distance %.2f cost %.2f stardates %d (%d w/ shlds up) units\n",
-				warpfact, dist, p_time, cost, cost + cost);
+			time = Param.warptime * dist / (warpfact * warpfact);
+			printf("Warp %.2f distance %.2f cost %.2f "
+			       "stardates %d (%d w/ shlds up) units\n",
+				warpfact, dist, time, cost, cost + cost);
 			break;
 
 		  case 7:			/* impulse cost */
@@ -229,9 +241,9 @@ computer(int v __unused)
 			if (dist < 0.0)
 				break;
 			cost = 20 + 100 * dist;
-			p_time = dist / 0.095;
+			time = dist / 0.095;
 			printf("Distance %.2f cost %.2f stardates %d units\n",
-				dist, p_time, cost);
+				dist, time, cost);
 			break;
 
 		  case 8:			/* distresslist */
@@ -246,15 +258,18 @@ computer(int v __unused)
 				switch (e->evcode & E_EVENT) {
 
 				  case E_KDESB:
-					printf("Klingon is attacking starbase in quadrant %d,%d\n",
+					printf("Klingon is attacking starbase "
+					       "in quadrant %d,%d\n",
 						e->x, e->y);
 					j = 0;
 					break;
 
 				  case E_ENSLV:
 				  case E_REPRO:
-					printf("Starsystem %s in quadrant %d,%d is distressed\n",
-						Systemname[e->systemname], e->x, e->y);
+					printf("Starsystem %s in quadrant "
+					       "%d,%d is distressed\n",
+						Systemname[e->systemname],
+						e->x, e->y);
 					j = 0;
 					break;
 				}
@@ -270,8 +285,8 @@ computer(int v __unused)
 		 * means get new computer request; newline means
 		 * exit computer mode.
 		 */
-		while ((i = cgetc(0)) != ';') {
-			if (i == '\0')
+		while ((i = getchar()) != ';') {
+			if (i == EOF)
 				exit(1);
 			if (i == '\n') {
 				ungetc(i, stdin);

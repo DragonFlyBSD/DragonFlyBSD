@@ -1,11 +1,72 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.bones.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.bones.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.bones.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.bones.c,v 1.9 2011/07/20 07:04:30 dholland Exp $	*/
 
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <fcntl.h>
+#include <unistd.h>
 #include "hack.h"
+#include "extern.h"
 
-char bones[] = "bones_xx";
+static char bones[] = "bones_xx";
 
 /* save bones and possessions of a deceased adventurer */
 void
@@ -18,12 +79,12 @@ savebones(void)
 
 	if (dlevel <= 0 || dlevel > MAXLEVEL)
 		return;
-	if (!rn2(1 + dlevel / 2))	/* not so many ghosts on low levels */
-		return;
+	if (!rn2(1 + dlevel / 2))
+		return;		/* not so many ghosts on low levels */
 	bones[6] = '0' + (dlevel / 10);
 	bones[7] = '0' + (dlevel % 10);
 	if ((fd = open(bones, O_RDONLY)) >= 0) {
-		close(fd);
+		(void) close(fd);
 		return;
 	}
 	/* drop everything; the corpse's possessions are usually cursed */
@@ -31,7 +92,7 @@ savebones(void)
 	while (otmp) {
 		otmp->ox = u.ux;
 		otmp->oy = u.uy;
-		otmp->age = 0;		/* very long ago */
+		otmp->age = 0;	/* very long ago */
 		otmp->owornmask = 0;
 		if (rn2(5))
 			otmp->cursed = 1;
@@ -48,7 +109,7 @@ savebones(void)
 	mtmp->mx = u.ux;
 	mtmp->my = u.uy;
 	mtmp->msleep = 1;
-	strcpy((char *)mtmp->mextra, plname);
+	(void) strcpy((char *) mtmp->mextra, plname);
 	mkgold(somegold() + d(dlevel, 30), u.ux, u.uy);
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		mtmp->m_id = 0;
@@ -69,14 +130,15 @@ savebones(void)
 		otmp->known = 0;
 		otmp->invlet = 0;
 		if (otmp->olet == AMULET_SYM && !otmp->spe) {
-			otmp->spe = -1;		/* no longer the actual amulet */
-			otmp->cursed = 1;	/* flag as gotten from a ghost */
+			otmp->spe = -1;	/* no longer the actual amulet */
+			otmp->cursed = 1;	/* flag as gotten from a
+						 * ghost */
 		}
 	}
 	if ((fd = creat(bones, FMASK)) < 0)
 		return;
 	savelev(fd, dlevel);
-	close(fd);
+	(void) close(fd);
 }
 
 int
@@ -84,8 +146,8 @@ getbones(void)
 {
 	int fd, x, y, ok;
 
-	if (rn2(3))	/* only once in three times do we find bones */
-		return (0);
+	if (rn2(3))
+		return (0);	/* only once in three times do we find bones */
 	bones[6] = '0' + dlevel / 10;
 	bones[7] = '0' + dlevel % 10;
 	if ((fd = open(bones, O_RDONLY)) < 0)
@@ -96,10 +158,11 @@ getbones(void)
 			for (y = 0; y < ROWNO; y++)
 				levl[x][y].seen = levl[x][y].new = 0;
 	}
-	close(fd);
+	(void) close(fd);
 #ifdef WIZARD
-	if (!wizard)	/* duvel!frans: don't remove bones while debugging */
-#endif /* WiZARD */
+	if (!wizard)		/* duvel!frans: don't remove bones while
+				 * debugging */
+#endif	/* WiZARD */
 		if (unlink(bones) < 0) {
 			pline("Cannot unlink %s .", bones);
 			return (0);

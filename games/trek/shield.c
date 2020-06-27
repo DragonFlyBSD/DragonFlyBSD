@@ -1,4 +1,7 @@
-/*-
+/*	@(#)shield.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: shield.c,v 1.13 2009/08/12 08:54:54 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)shield.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/shield.c,v 1.5 1999/11/30 03:49:54 billf Exp $
- * $DragonFly: src/games/trek/shield.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
 #include "trek.h"
 #include "getpar.h"
 
@@ -51,7 +51,7 @@
 **	so you get partial hits.
 */
 
-struct cvntab Udtab[] = {
+static const struct cvntab Udtab[] = {
 	{ "u",		"p",		(cmdfun)1,	0 },
 	{ "d",		"own",		(cmdfun)0,	0 },
 	{ NULL,		NULL,		NULL,		0 }
@@ -61,7 +61,7 @@ void
 shield(int f)
 {
 	int		i;
-	struct cvntab	*r;
+	const struct cvntab	*r;
 	char		s[100];
 	const char	*device, *dev2, *dev3;
 	int		ind;
@@ -72,7 +72,8 @@ shield(int f)
 	if (f < 0) {
 		/* cloaking device */
 		if (Ship.ship == QUEENE) {
-			printf("Ye Faire Queene does not have the cloaking device.\n");
+			printf("Ye Faire Queene does not have the "
+			       "cloaking device.\n");
 			return;
 		}
 		device = "Cloaking device";
@@ -102,9 +103,13 @@ shield(int f)
 		i = (long) r->value;
 	} else {
 		if (*stat)
-			sprintf(s, "%s %s up.  Do you want %s down", device, dev2, dev3);
+			(void)snprintf(s, sizeof(s),
+				"%s %s up.  Do you want %s down",
+				device, dev2, dev3);
 		else
-			sprintf(s, "%s %s down.  Do you want %s up", device, dev2, dev3);
+			(void)snprintf(s, sizeof(s),
+				"%s %s down.  Do you want %s up",
+				device, dev2, dev3);
 		if (!getynpar(s))
 			return;
 		i = !*stat;

@@ -1,4 +1,7 @@
-/*-
+/*	@(#)getpar.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: getpar.c,v 1.18 2009/08/12 08:54:54 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,15 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)getpar.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/getpar.c,v 1.5 1999/11/30 03:49:48 billf Exp $
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "getpar.h"
 #include "trek.h"
 
-static bool testterm(void);
+static int testterm(void);
 
 /**
  **	get integer parameter
@@ -85,19 +88,19 @@ getfltpar(const char *s)
  **	get yes/no parameter
  **/
 
-struct cvntab Yntab[] = {
-	{ "y",	"es",	(cmdfun)1,	0 },
+static const struct cvntab Yntab[] = {
+	{ "y",	"es",	(cmdfun)1,	1 },
 	{ "n",	"o",	(cmdfun)0,	0 },
 	{ NULL,	NULL,	NULL,		0 }
 };
 
-long
+int
 getynpar(const char *s)
 {
-	struct cvntab		*r;
+	const struct cvntab	*r;
 
 	r = getcodpar(s, Yntab);
-	return ((long) r->value);
+	return r->value2;
 }
 
 
@@ -105,14 +108,13 @@ getynpar(const char *s)
  **	get coded parameter
  **/
 
-struct cvntab *
-getcodpar(const char *s, struct cvntab tab[])
+const struct cvntab *
+getcodpar(const char *s, const struct cvntab tab[])
 {
 	char				input[100];
-	struct cvntab			*r;
+	const struct cvntab		*r;
 	int				flag;
-	char				*p;
-	const char			*q;
+	const char			*p, *q;
 	int				c;
 	int				f;
 
@@ -121,10 +123,12 @@ getcodpar(const char *s, struct cvntab tab[])
 		flag |= (f = testnl());
 		if (flag)
 			printf("%s: ", s);
-		if (f)
-			cgetc(0);		/* throw out the newline */
+		if (f) {
+			/* throw out the newline */
+			getchar();
+		}
 		scanf("%*[ \t;]");
-		if ((c = scanf("%[^ \t;\n]", input)) < 0)
+		if ((c = scanf("%99[^ \t;\n]", input)) < 0)
 			exit(1);
 		if (c == 0)
 			continue;
@@ -133,8 +137,8 @@ getcodpar(const char *s, struct cvntab tab[])
 		/* if command list, print four per line */
 		if (input[0] == '?' && input[1] == 0) {
 			c = 4;
-			for (r = tab; r->abrev; r++) {
-				strcpy(input, r->abrev);
+			for (r = tab; r->abbrev; r++) {
+				strcpy(input, r->abbrev);
 				strcat(input, r->full);
 				printf("%14.14s", input);
 				if (--c > 0)
@@ -148,9 +152,9 @@ getcodpar(const char *s, struct cvntab tab[])
 		}
 
 		/* search for in table */
-		for (r = tab; r->abrev; r++) {
+		for (r = tab; r->abbrev; r++) {
 			p = input;
-			for (q = r->abrev; *q; q++)
+			for (q = r->abbrev; *q; q++)
 				if (*p++ != *q)
 					break;
 			if (!*q) {
@@ -163,11 +167,10 @@ getcodpar(const char *s, struct cvntab tab[])
 		}
 
 		/* check for not found */
-		if (!r->abrev) {
+		if (!r->abbrev) {
 			printf("invalid input; ? for valid inputs\n");
 			skiptonl(0);
-		}
-		else
+		} else
 			return (r);
 	}
 }
@@ -184,14 +187,14 @@ getstrpar(const char *s, char *r, int l, const char *t)
 	char		format[20];
 	int	f;
 
-	if (t == NULL)
+	if (t == 0)
 		t = " \t\n;";
-	sprintf(format, "%%%d[^%s]", l, t);
+	(void)snprintf(format, sizeof(format), "%%%d[^%s]", l, t);
 	while (1) {
 		if ((f = testnl()) && s)
 			printf("%s: ", s);
 		if (f)
-			cgetc(0);
+			getchar();
 		scanf("%*[\t ;]");
 		i = scanf(format, r);
 		if (i < 0)
@@ -206,12 +209,15 @@ getstrpar(const char *s, char *r, int l, const char *t)
  **	test if newline is next valid character
  **/
 
-bool
+int
 testnl(void)
 {
-	char		c;
+	int c;
 
-	while ((c = cgetc(0)) != '\n') {
+	while ((c = getchar()) != '\n') {
+		if (c == EOF) {
+			exit(1);
+		}
 		if ((c >= '0' && c <= '9') || c == '.' || c == '!' ||
 		    (c >= 'A' && c <= 'Z') ||
 		    (c >= 'a' && c <= 'z') || c == '-') {
@@ -229,11 +235,13 @@ testnl(void)
  **/
 
 void
-skiptonl(char c)
+skiptonl(int c)
 {
 	while (c != '\n') {
-		if (!(c = cgetc(0)))
-			return;
+		c = getchar();
+		if (c == EOF) {
+			exit(1);
+		}
 	}
 	ungetc('\n', stdin);
 	return;
@@ -244,13 +252,15 @@ skiptonl(char c)
  **	test for valid terminator
  **/
 
-static bool
+static int
 testterm(void)
 {
-	char		c;
+	int c;
 
-	if (!(c = cgetc(0)))
-		return (1);
+	c = getchar();
+	if (c == EOF) {
+		exit(1);
+	}
 	if (c == '.')
 		return (0);
 	if (c == '\n' || c == ';')
@@ -267,18 +277,18 @@ testterm(void)
 **	zero is returned.
 */
 
-bool
-readdelim(char d)
+int
+readdelim(int d)
 {
-	char	c;
+	int c;
 
-	while ((c = cgetc(0))) {
+	while ((c = getchar()) != EOF) {
 		if (c == d)
 			return (1);
 		if (c == ' ')
 			continue;
 		ungetc(c, stdin);
-		break;
+		return 0;
 	}
-	return (0);
+	exit(1);
 }

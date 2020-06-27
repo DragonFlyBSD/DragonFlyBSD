@@ -1,34 +1,96 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.options.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.options.c,v 1.5 1999/11/16 02:57:08 billf Exp $ */
+/*	$NetBSD: hack.options.c,v 1.11 2011/05/23 22:53:25 joerg Exp $	*/
 
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <stdlib.h>
+#include <unistd.h>
 #include "hack.h"
+#include "extern.h"
 
-static void parseoptions(char *, bool);
+static void parseoptions(char *, boolean);
 
 void
 initoptions(void)
 {
-	char *opts;
+	char           *opts;
 
 	flags.time = flags.nonews = flags.notombstone = flags.end_own =
-	    flags.standout = flags.nonull = FALSE;
+		flags.standout = flags.nonull = FALSE;
 	flags.no_rest_on_space = TRUE;
 	flags.invlet_constant = TRUE;
 	flags.end_top = 5;
 	flags.end_around = 4;
 	flags.female = FALSE;	/* players are usually male */
 
-	if ((opts = getenv("HACKOPTIONS")))
-		parseoptions(opts,TRUE);
+	if ((opts = getenv("HACKOPTIONS")) != NULL)
+		parseoptions(opts, TRUE);
 }
 
 static void
-parseoptions(char *opts, bool from_env)
+parseoptions(char *opts, boolean from_env)
 {
-	char *op, *op2;
-	unsigned num;
-	boolean negated;
+	char           *op, *op2;
+	unsigned        num;
+	boolean         negated;
 
 	if ((op = strchr(opts, ',')) != NULL) {
 		*op++ = 0;
@@ -55,33 +117,27 @@ parseoptions(char *opts, bool from_env)
 		flags.standout = !negated;
 		return;
 	}
-
 	if (!strncmp(opts, "null", 3)) {
 		flags.nonull = negated;
 		return;
 	}
-
 	if (!strncmp(opts, "tombstone", 4)) {
 		flags.notombstone = negated;
 		return;
 	}
-
 	if (!strncmp(opts, "news", 4)) {
 		flags.nonews = negated;
 		return;
 	}
-
 	if (!strncmp(opts, "time", 4)) {
 		flags.time = !negated;
 		flags.botl = 1;
 		return;
 	}
-
 	if (!strncmp(opts, "restonspace", 4)) {
 		flags.no_rest_on_space = negated;
 		return;
 	}
-
 	if (!strncmp(opts, "fixinv", 4)) {
 		if (from_env)
 			flags.invlet_constant = !negated;
@@ -89,7 +145,6 @@ parseoptions(char *opts, bool from_env)
 			pline("The fixinvlet option must be in HACKOPTIONS.");
 		return;
 	}
-
 	if (!strncmp(opts, "male", 4)) {
 		flags.female = negated;
 		return;
@@ -98,7 +153,6 @@ parseoptions(char *opts, bool from_env)
 		flags.female = !negated;
 		return;
 	}
-
 	/* name:string */
 	if (!strncmp(opts, "name", 4)) {
 		if (!from_env) {
@@ -108,10 +162,9 @@ parseoptions(char *opts, bool from_env)
 		op = strchr(opts, ':');
 		if (!op)
 			goto bad;
-		strncpy(plname, op + 1, sizeof(plname) - 1);
+		(void) strncpy(plname, op + 1, sizeof(plname) - 1);
 		return;
 	}
-
 	/* endgame:5t[op] 5a[round] o[wn] */
 	if (!strncmp(opts, "endgame", 3)) {
 		op = strchr(opts, ':');
@@ -141,8 +194,7 @@ parseoptions(char *opts, bool from_env)
 			default:
 				goto bad;
 			}
-			while (letter(*++op))
-				; /* nothing */
+			while (letter(*++op));
 			if (*op == '/')
 				op++;
 		}
@@ -152,28 +204,30 @@ bad:
 	if (!from_env) {
 		if (!strncmp(opts, "help", 4)) {
 			pline("%s%s%s",
-			    "To set options use `HACKOPTIONS=\"<options>\"' in your environment, or ",
-			    "give the command 'o' followed by the line `<options>' while playing. ",
-			    "Here <options> is a list of <option>s separated by commas.");
+			      "To set options use `HACKOPTIONS=\"<options>\"' in your environment, or ",
+			      "give the command 'O' followed by the line `<options>' while playing. ",
+			      "Here <options> is a list of <option>s separated by commas.");
 			pline("%s%s%s",
-			    "Simple (boolean) options are rest_on_space, news, time, ",
-			    "null, tombstone, (fe)male. ",
-			    "These can be negated by prefixing them with '!' or \"no\".");
+			      "Simple (boolean) options are rest_on_space, news, time, ",
+			      "null, tombstone, (fe)male. ",
+			      "These can be negated by prefixing them with '!' or \"no\".");
 			pline("%s",
-			    "A string option is name, as in HACKOPTIONS=\"name:Merlin-W\".");
+			      "A string option is name, as in HACKOPTIONS=\"name:Merlin-W\".");
 			pline("%s%s%s",
-			    "A compound option is endgame; it is followed by a description of what ",
-			    "parts of the scorelist you want to see. You might for example say: ",
-			    "`endgame:own scores/5 top scores/4 around my score'.");
+			      "A compound option is endgame; it is followed by a description of what ",
+			      "parts of the scorelist you want to see. You might for example say: ",
+			      "`endgame:own scores/5 top scores/4 around my score'.");
 			return;
 		}
 		pline("Bad option: %s.", opts);
-		pline("Type `o help<cr>' for help.");
+		pline("Type `O help<cr>' for help.");
 		return;
 	}
 	puts("Bad syntax in HACKOPTIONS.");
 	puts("Use for example:");
-	puts("HACKOPTIONS=\"!restonspace,notombstone,endgame:own/5 topscorers/4 around me\"");
+	puts(
+	     "HACKOPTIONS=\"!restonspace,notombstone,endgame:own/5 topscorers/4 around me\""
+		);
 	getret();
 }
 
@@ -181,31 +235,34 @@ int
 doset(void)
 {
 	char buf[BUFSZ];
+	size_t pos;
 
 	pline("What options do you want to set? ");
 	getlin(buf);
 	if (!buf[0] || buf[0] == '\033') {
-		strcpy(buf, "HACKOPTIONS=");
-		strcat(buf, flags.female ? "female," : "male,");
+		(void) strcpy(buf, "HACKOPTIONS=");
+		(void) strcat(buf, flags.female ? "female," : "male,");
 		if (flags.standout)
-			strcat(buf, "standout,");
+			(void) strlcat(buf, "standout,", sizeof(buf));
 		if (flags.nonull)
-			strcat(buf, "nonull,");
+			(void) strlcat(buf, "nonull,", sizeof(buf));
 		if (flags.nonews)
-			strcat(buf, "nonews,");
+			(void) strlcat(buf, "nonews,", sizeof(buf));
 		if (flags.time)
-			strcat(buf, "time,");
+			(void) strlcat(buf, "time,", sizeof(buf));
 		if (flags.notombstone)
-			strcat(buf, "notombstone,");
+			(void) strlcat(buf, "notombstone,", sizeof(buf));
 		if (flags.no_rest_on_space)
-			strcat(buf, "!rest_on_space,");
+			(void) strlcat(buf, "!rest_on_space,", sizeof(buf));
 		if (flags.end_top != 5 || flags.end_around != 4 || flags.end_own) {
-			sprintf(eos(buf), "endgame: %u topscores/%u around me",
-			    flags.end_top, flags.end_around);
+			pos = strlen(buf);
+			(void) snprintf(buf+pos, sizeof(buf)-pos,
+				       "endgame: %u topscores/%u around me",
+				       flags.end_top, flags.end_around);
 			if (flags.end_own)
-				strcat(buf, "/own scores");
+				(void) strlcat(buf, "/own scores", sizeof(buf));
 		} else {
-			char *eop = eos(buf);
+			char           *eop = eos(buf);
 			if (*--eop == ',')
 				*eop = 0;
 		}

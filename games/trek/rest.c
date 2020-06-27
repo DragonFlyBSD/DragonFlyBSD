@@ -1,4 +1,7 @@
-/*-
+/*	@(#)rest.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: rest.c,v 1.9 2009/05/24 21:44:56 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)rest.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/rest.c,v 1.4 1999/11/30 03:49:53 billf Exp $
- * $DragonFly: src/games/trek/rest.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
 #include "trek.h"
 #include "getpar.h"
 
@@ -48,6 +48,7 @@
 **	rest period if anything momentous happens.
 */
 
+/*ARGSUSED*/
 void
 rest(int v __unused)
 {

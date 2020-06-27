@@ -1,26 +1,88 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.wizard.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.wizard.c,v 1.3 1999/11/16 02:57:14 billf Exp $ */
+/*	$NetBSD: hack.wizard.c,v 1.10 2011/08/07 06:03:45 dholland Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /* wizard code - inspired by rogue code from Merlyn Leroy (digi-g!brian) */
 
 #include "hack.h"
-extern struct permonst pm_wizard;
+#include "extern.h"
 
-#define	WIZSHOT     6	/* one chance in WIZSHOT that wizard will try magic */
-#define	BOLT_LIM    8	/* from this distance D and 1 will try to hit you */
+#define	WIZSHOT	    6		/* one chance in WIZSHOT that wizard will try
+				 * magic */
+#define	BOLT_LIM    8		/* from this distance D and 1 will try to hit
+				 * you */
 
-char wizapp[] = "@DNPTUVXcemntx";
+static const char wizapp[] = "@DNPTUVXcemntx";
 
 static void aggravate(void);
 static void clonewiz(struct monst *);
+
 
 /* If he has found the Amulet, make the wizard appear after some time */
 void
 amulet(void)
 {
-	struct obj *otmp;
-	struct monst *mtmp;
+	struct obj     *otmp;
+	struct monst   *mtmp;
 
 	if (!flags.made_amulet || !flags.no_of_wizards)
 		return;
@@ -31,12 +93,14 @@ amulet(void)
 				if (otmp->olet == AMULET_SYM && !otmp->spe) {
 					mtmp->msleep = 0;
 					if (dist(mtmp->mx, mtmp->my) > 2)
-						pline("You get the creepy feeling that somebody noticed your taking the Amulet.");
+						pline(
+						      "You get the creepy feeling that somebody noticed your taking the Amulet."
+							);
 					return;
 				}
 }
 
-bool
+int
 wiz_hit(struct monst *mtmp)
 {
 	/* if we have stolen or found the amulet, we disappear */
@@ -46,15 +110,15 @@ wiz_hit(struct monst *mtmp)
 		fall_down(mtmp);
 		return (1);
 	}
-
 	/* if it is lying around someplace, we teleport to it */
 	if (!carrying(AMULET_OF_YENDOR)) {
-		struct obj *otmp;
+		struct obj     *otmp;
 
 		for (otmp = fobj; otmp; otmp = otmp->nobj)
 			if (otmp->olet == AMULET_SYM && !otmp->spe) {
 				if ((u.ux != otmp->ox || u.uy != otmp->oy) &&
 				    !m_at(otmp->ox, otmp->oy)) {
+
 					/* teleport to it and pick it up */
 					mtmp->mx = otmp->ox;
 					mtmp->my = otmp->oy;
@@ -69,22 +133,24 @@ wiz_hit(struct monst *mtmp)
 	}
 hithim:
 	if (rn2(2)) {		/* hit - perhaps steal */
+
 		/*
-		 * if hit 1/20 chance of stealing amulet & vanish
-		 *  - amulet is on level 26 again.
+		 * if hit 1/20 chance of stealing amulet & vanish - amulet is
+		 * on level 26 again.
 		 */
 		if (hitu(mtmp, d(mtmp->data->damn, mtmp->data->damd))
-		    && !rn2(20) && stealamulet(mtmp))
-			return (0);
+		    && !rn2(20) && stealamulet(mtmp)) {
+			/* nothing */
+		}
 	} else
-		inrange(mtmp);		/* try magic */
+		inrange(mtmp);	/* try magic */
 	return (0);
 }
 
 void
 inrange(struct monst *mtmp)
 {
-	schar tx, ty;
+	schar           tx, ty;
 
 	/* do nothing if cancelled (but make '1' say something) */
 	if (mtmp->data->mlet != '1' && mtmp->mcan)
@@ -108,12 +174,13 @@ inrange(struct monst *mtmp)
 			/*
 			 * if you zapped wizard with wand of cancellation, he
 			 * has to shake off the effects before he can throw
-			 * spells successfully.  1/2 the time they fail anyway
+			 * spells successfully.  1/2 the time they fail
+			 * anyway
 			 */
 			if (mtmp->mcan || rn2(2)) {
 				if (canseemon(mtmp))
 					pline("%s makes a gesture, then curses.",
-					    Monnam(mtmp));
+					      Monnam(mtmp));
 				else
 					pline("You hear mumbled cursing.");
 				if (!rn2(3)) {
@@ -130,22 +197,32 @@ inrange(struct monst *mtmp)
 						break;
 					} else
 						pline("%s chants an incantation.",
-						    Monnam(mtmp));
+						      Monnam(mtmp));
 				} else
 					pline("You hear a mumbled incantation.");
 				switch (rn2(Invis ? 5 : 6)) {
 				case 0:
-					/* create a nasty monster from a deep level */
-					/* (for the moment, 'nasty' is not implemented) */
-					makemon(NULL, u.ux, u.uy);
+					/*
+					 * create a nasty monster from a deep
+					 * level
+					 */
+					/*
+					 * (for the moment, 'nasty' is not
+					 * implemented)
+					 */
+					(void) makemon((struct permonst *) 0, u.ux, u.uy);
 					break;
 				case 1:
 					pline("\"Destroy the thief, my pets!\"");
-					aggravate(); /* aggravate all the monsters */
+					aggravate();	/* aggravate all the
+							 * monsters */
 					/* FALLTHROUGH */
 				case 2:
 					if (flags.no_of_wizards == 1 && rnd(5) == 0)
-						/* if only 1 wizard, clone himself */
+						/*
+						 * if only 1 wizard, clone
+						 * himself
+						 */
 						clonewiz(mtmp);
 					break;
 				case 3:
@@ -160,7 +237,10 @@ inrange(struct monst *mtmp)
 				case 5:
 					/* Only if not Invisible */
 					pline("You hear a clap of thunder!");
-					/* shoot a bolt of fire or cold, or a sleep ray */
+					/*
+					 * shoot a bolt of fire or cold, or a
+					 * sleep ray
+					 */
 					buzz(-rnd(3), mtmp->mx, mtmp->my, sgn(tx), sgn(ty));
 					break;
 				}
@@ -171,10 +251,10 @@ inrange(struct monst *mtmp)
 	}
 }
 
-static void
+void
 aggravate(void)
 {
-	struct monst *mtmp;
+	struct monst   *mtmp;
 
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		mtmp->msleep = 0;
@@ -183,10 +263,10 @@ aggravate(void)
 	}
 }
 
-static void
+void
 clonewiz(struct monst *mtmp)
 {
-	struct monst *mtmp2;
+	struct monst   *mtmp2;
 
 	if ((mtmp2 = makemon(PM_WIZARD, mtmp->mx, mtmp->my)) != NULL) {
 		flags.no_of_wizards = 2;

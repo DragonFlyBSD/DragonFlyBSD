@@ -1,4 +1,7 @@
-/*-
+/*	@(#)save.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: save.c,v 1.16 2012/10/13 19:19:39 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,34 +28,31 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)save.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/common_source/save.c,v 1.8 1999/11/30 03:48:27 billf Exp $
  */
 
-#include <fcntl.h>
 #include <errno.h>
+
 #include "back.h"
 
-static void	norec(const char *);
+static const char confirm[] = "Are you sure you want to leave now?";
+static const char prompt[] = "Enter a file name:  ";
+static const char exist1[] = "The file '";
+static const char exist2[] =
+"' already exists.\nAre you sure you want to use this file?";
+static const char cantuse[] = "\nCan't use ";
+static const char saved[] = "This game has been saved on the file '";
+static const char type[] = "'.\nType \"backgammon ";
+static const char rec[] = "\" to recover your game.\n\n";
+static const char cantrec[] = "Can't recover file:  ";
 
-static const char	confirm[] = "Are you sure you want to leave now?";
-static const char	prompt[] = "Enter a file name:  ";
-static const char	exist1[] = "The file '";
-static const char	exist2[] =
-	"' already exists.\nAre you sure you want to use this file?";
-static const char	cantuse[] = "\nCan't use ";
-static const char	saved[] = "This game has been saved on the file '";
-static const char	type[] = "'.\nType \"backgammon ";
-static const char	rec[] = "\" to recover your game.\n\n";
-static const char	cantrec[] = "Can't recover file:  ";
+static void norec(const char *) __dead2;
 
 void
-save(int n)
+save(struct move *mm, int n)
 {
-	int fdesc;
-	char *fs;
-	char fname[50];
+	int     fdesc;
+	char   *fs;
+	char    fname[50];
 
 	if (n) {
 		if (tflag) {
@@ -69,7 +69,7 @@ save(int n)
 		writel(prompt);
 		fs = fname;
 		while ((*fs = readc()) != '\n') {
-			if (*fs == tty.c_cc[VERASE]) {
+			if (*fs == old.c_cc[VERASE]) {
 				if (fs > fname) {
 					fs--;
 					if (tflag)
@@ -100,7 +100,7 @@ save(int n)
 			close(fdesc);
 			if (yorn(0)) {
 				unlink(fname);
-				fdesc = creat(fname, 0700);
+				fdesc = creat(fname, 0600);
 				break;
 			} else {
 				cflag = 1;
@@ -115,7 +115,7 @@ save(int n)
 	write(fdesc, board, sizeof board);
 	write(fdesc, off, sizeof off);
 	write(fdesc, in, sizeof in);
-	write(fdesc, dice, sizeof dice);
+	write(fdesc, mm->dice, sizeof mm->dice);
 	write(fdesc, &cturn, sizeof cturn);
 	write(fdesc, &dlast, sizeof dlast);
 	write(fdesc, &pnum, sizeof pnum);
@@ -137,16 +137,16 @@ save(int n)
 }
 
 void
-recover(const char *s)
+recover(struct move *mm, const char *s)
 {
-	int fdesc;
+	int     fdesc;
 
 	if ((fdesc = open(s, O_RDONLY)) == -1)
 		norec(s);
 	read(fdesc, board, sizeof board);
 	read(fdesc, off, sizeof off);
 	read(fdesc, in, sizeof in);
-	read(fdesc, dice, sizeof dice);
+	read(fdesc, mm->dice, sizeof mm->dice);
 	read(fdesc, &cturn, sizeof cturn);
 	read(fdesc, &dlast, sizeof dlast);
 	read(fdesc, &pnum, sizeof pnum);
@@ -161,7 +161,7 @@ recover(const char *s)
 static void
 norec(const char *s)
 {
-	const char *c;
+	const char   *c;
 
 	tflag = 0;
 	writel(cantrec);

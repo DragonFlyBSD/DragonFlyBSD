@@ -1,4 +1,7 @@
-/*-
+/*	@(#)allow.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: allow.c,v 1.8 2012/10/13 19:19:38 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,82 +28,78 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)allow.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/common_source/allow.c,v 1.4 1999/11/30 03:48:24 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/allow.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
 
 int
-movallow(void)
+movallow(struct move *mm)
 {
-	int i, m, iold;
-	int r;
+	int     i, m, iold;
+	int     r;
 
-	if (d0)
-		swap;
-	m = (D0 == D1 ? 4 : 2);
+	if (mm->d0)
+		mswap(mm);
+	m = (mm->D0 == mm->D1 ? 4 : 2);
 	for (i = 0; i < 4; i++)
-		p[i] = bar;
+		mm->p[i] = bar;
 	i = iold = 0;
 	while (i < m) {
 		if (*offptr == 15)
 			break;
-		h[i] = 0;
+		mm->h[i] = 0;
 		if (board[bar]) {
 			if (i == 1 || m == 4)
-				g[i] = bar + cturn * D1;
+				mm->g[i] = bar + cturn * mm->D1;
 			else
-				g[i] = bar + cturn * D0;
-			if ((r = makmove(i)) != 0) {
-				if (d0 || m == 4)
+				mm->g[i] = bar + cturn * mm->D0;
+			if ((r = makmove(mm, i)) != 0) {
+				if (mm->d0 || m == 4)
 					break;
-				swap;
-				movback(i);
+				mswap(mm);
+				movback(mm, i);
 				if (i > iold)
 					iold = i;
 				for (i = 0; i < 4; i++)
-					p[i] = bar;
+					mm->p[i] = bar;
 				i = 0;
 			} else
 				i++;
 			continue;
 		}
-		if ((p[i] += cturn) == home) {
+		if ((mm->p[i] += cturn) == home) {
 			if (i > iold)
 				iold = i;
 			if (m == 2 && i) {
-				movback(i);
-				p[i--] = bar;
-				if (p[i] != bar)
+				movback(mm, i);
+				mm->p[i--] = bar;
+				if (mm->p[i] != bar)
 					continue;
 				else
 					break;
 			}
-			if (d0 || m == 4)
+			if (mm->d0 || m == 4)
 				break;
-			swap;
-			movback(i);
+			mswap(mm);
+			movback(mm, i);
 			for (i = 0; i < 4; i++)
-				p[i] = bar;
+				mm->p[i] = bar;
 			i = 0;
 			continue;
 		}
 		if (i == 1 || m == 4)
-			g[i] = p[i] + cturn * D1;
+			mm->g[i] = mm->p[i] + cturn * mm->D1;
 		else
-			g[i] = p[i] + cturn * D0;
-		if (g[i] * cturn > home) {
+			mm->g[i] = mm->p[i] + cturn * mm->D0;
+		if (mm->g[i] * cturn > home) {
 			if (*offptr >= 0)
-				g[i] = home;
+				mm->g[i] = home;
 			else
 				continue;
 		}
-		if (board[p[i]] * cturn > 0 && (r = makmove(i)) == 0)
+		if (board[mm->p[i]] * cturn > 0 && (r = makmove(mm, i)) == 0)
 			i++;
 	}
-	movback(i);
+	movback(mm, i);
 	return (iold > i ? iold : i);
 }

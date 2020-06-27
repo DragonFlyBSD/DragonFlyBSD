@@ -1,4 +1,7 @@
-/*-
+/*	@(#)extra.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: extra.c,v 1.7 2009/08/12 05:17:57 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,20 +28,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)extra.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/backgammon/extra.c,v 1.4 1999/11/30 03:48:22 billf Exp $
- * $DragonFly: src/games/backgammon/backgammon/extra.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
+#include "backlocal.h"
 
 #ifdef DEBUG
-#include <stdio.h>
-FILE	*trace;
+FILE   *trace;
 #endif
 
-static int	eval(void);
+static int eval(void);
 
 /*
  * dble()
@@ -48,18 +47,18 @@ static int	eval(void);
 void
 dble(void)
 {
-	int resp;				/* response to y/n */
+	int     resp;		/* response to y/n */
 
 	for (;;) {
-		writel(" doubles.");		/* indicate double */
+		writel(" doubles.");	/* indicate double */
 
-		if (cturn == -pnum) {		/* see if computer accepts */
+		if (cturn == -pnum) {	/* see if computer accepts */
 			if (dblgood()) {	/* guess not */
 				writel("  Declined.\n");
 				nexturn();
 				cturn *= -2;	/* indicate loss */
 				return;
-			} else {		/* computer accepts */
+			} else {/* computer accepts */
 				writel("  Accepted.\n");
 				gvalue *= 2;	/* double game value */
 				dlast = cturn;
@@ -91,12 +90,11 @@ dble(void)
 				gwrite();
 			return;
 		}
-		nexturn();			/* declined */
+		nexturn();	/* declined */
 		cturn *= -2;
 		return;
 	}
 }
-
 /*
  * dblgood ()
  *	Returns 1 if the computer would double in this position.  This
@@ -111,12 +109,12 @@ dble(void)
 int
 dblgood(void)
 {
-	int n;				/* accumulated judgment */
-	int OFFC = *offptr;		/* no. of computer's men off */
-	int OFFO = *offopp;		/* no. of player's men off */
+	int     n;		/* accumulated judgment */
+	int     OFFC = *offptr;	/* no. of computer's men off */
+	int     OFFO = *offopp;	/* no. of player's men off */
 
 #ifdef DEBUG
-	int i;
+	int     i;
 	if (trace == NULL)
 		trace = fopen("bgtrace", "w");
 #endif
@@ -161,7 +159,6 @@ dblgood(void)
 			n += 7;
 		n += ((OFFC - OFFO) * 7) / 2;
 	}
-
 #ifdef DEBUG
 	fprintf(trace, "off = %d, ", n);
 #endif
@@ -187,7 +184,7 @@ dblgood(void)
 int
 freemen(int b)
 {
-	int i, inc, lim;
+	int     i, inc, lim;
 
 	odds(0, 0, 0);
 	if (board[b] == 0)
@@ -205,8 +202,8 @@ freemen(int b)
 int
 trapped(int n, int inc)
 {
-	int i, j, k;
-	int c, l, ct;
+	int     i, j, k;
+	int     c, l, ct;
 
 	ct = 0;
 	l = n + 7 * inc;
@@ -231,7 +228,7 @@ trapped(int n, int inc)
 static int
 eval(void)
 {
-	int i, j;
+	int     i, j;
 
 	for (j = i = 0; i < 26; i++)
 		j += (board[i] >= 0 ? i * board[i] : (25 - i) * board[i]);

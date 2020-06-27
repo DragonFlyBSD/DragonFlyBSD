@@ -1,4 +1,7 @@
-/*-
+/*	@(#)misc.c	8.2 (Berkeley) 4/28/95			*/
+/*	$NetBSD: misc.c,v 1.9 2005/07/01 06:04:54 jmc Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,22 +28,17 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)misc.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/battlestar/misc.c,v 1.5 1999/11/30 03:48:38 billf Exp $
- * $DragonFly: src/games/battlestar/misc.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
-#include "externs.h"
+#include "extern.h"
 
+/* for beenthere, injuries */
 int
-card(const char *array, int size)	/* for beenthere, injuries */
+card(const char *array, int size)
 {
-	const char *end;
-	int i;
+	const char   *end = array + size;
+	int     i = 0;
 
-	i = 0;
-	end = array + size;
 	while (array < end)
 		if (*array++)
 			i++;
@@ -50,9 +48,8 @@ card(const char *array, int size)	/* for beenthere, injuries */
 int
 ucard(const unsigned int *array)
 {
-	int j, n;
+	int     j = 0, n;
 
-	j = 0;
 	for (n = 0; n < NUMOFOBJECTS; n++)
 		if (testbit(array, n))
 			j++;

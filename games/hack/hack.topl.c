@@ -1,17 +1,77 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.topl.c - version 1.0.2 */
-/* $FreeBSD: src/games/hack/hack.topl.c,v 1.3 1999/11/16 02:57:12 billf Exp $ */
+/*	$NetBSD: hack.topl.c,v 1.14 2011/08/06 20:29:37 dholland Exp $	*/
 
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <stdlib.h>
 #include "hack.h"
-extern int CO;
+#include "extern.h"
 
-char toplines[BUFSZ];
-xchar tlx, tly;			/* set by pline; used by addtopl */
+static char toplines[BUFSZ];
+static xchar tlx, tly;		/* set by pline; used by addtopl */
 
-struct topl {
-	struct topl *next_topl;
-	char *topl_text;
-} *old_toplines, *last_redone_topl;
+static struct topl {
+	struct topl    *next_topl;
+	char           *topl_text;
+}              *old_toplines, *last_redone_topl;
 #define	OTLMAX	20		/* max nr of old toplines remembered */
 
 static void redotoplin(void);
@@ -24,8 +84,9 @@ doredotopl(void)
 		last_redone_topl = last_redone_topl->next_topl;
 	if (!last_redone_topl)
 		last_redone_topl = old_toplines;
-	if (last_redone_topl)
-		strcpy(toplines, last_redone_topl->topl_text);
+	if (last_redone_topl) {
+		(void) strcpy(toplines, last_redone_topl->topl_text);
+	}
 	redotoplin();
 	return (0);
 }
@@ -48,20 +109,19 @@ redotoplin(void)
 void
 remember_topl(void)
 {
-	struct topl *tl;
-	int cnt = OTLMAX;
-
+	struct topl    *tl;
+	int             cnt = OTLMAX;
 	if (last_redone_topl &&
 	    !strcmp(toplines, last_redone_topl->topl_text))
 		return;
 	if (old_toplines &&
 	    !strcmp(toplines, old_toplines->topl_text))
 		return;
-	last_redone_topl = NULL;
-	tl = alloc((unsigned)(strlen(toplines) + sizeof(struct topl) + 1));
+	last_redone_topl = 0;
+	tl = alloc(strlen(toplines) + sizeof(*tl) + 1);
 	tl->next_topl = old_toplines;
-	tl->topl_text = (char *)(tl + 1);
-	strcpy(tl->topl_text, toplines);
+	tl->topl_text = (char *) (tl + 1);
+	(void) strcpy(tl->topl_text, toplines);
 	old_toplines = tl;
 	while (cnt && tl) {
 		cnt--;
@@ -69,7 +129,7 @@ remember_topl(void)
 	}
 	if (tl && tl->next_topl) {
 		free(tl->next_topl);
-		tl->next_topl = NULL;
+		tl->next_topl = 0;
 	}
 }
 
@@ -85,15 +145,15 @@ addtopl(const char *s)
 	flags.toplin = 1;
 }
 
+/* s = allowed chars besides space/return */
 static void
-xmore(const char *s)	/* allowed chars besides space/return */
+xmore(const char *s)
 {
 	if (flags.toplin) {
 		curs(tlx, tly);
 		if (tlx + 8 > CO)
 			putsym('\n'), tly++;
 	}
-
 	if (flags.standout)
 		standoutbeg();
 	putstr("--More--");
@@ -135,40 +195,41 @@ clrlin(void)
 }
 
 void
-pline(const char *line, ...)
+pline(const char *fmt, ...)
 {
 	va_list ap;
-	va_start(ap, line);
-	vpline(line, ap);
+
+	va_start(ap, fmt);
+	vpline(fmt, ap);
 	va_end(ap);
 }
 
-/*VARARGS1*/
 void
 vpline(const char *line, va_list ap)
 {
-	char pbuf[BUFSZ];
-	char *bp = pbuf, *tl;
-	int n, n0;
+	char            pbuf[BUFSZ];
+	char           *bp = pbuf, *tl;
+	int             n, n0, tlpos, dead;
 
-	if (!line || !*line)
+	if (!*line)
 		return;
 	if (!strchr(line, '%'))
-		strcpy(pbuf, line);
+		(void) strlcpy(pbuf, line, sizeof(pbuf));
 	else
-		vsprintf(pbuf, line, ap);
+		(void) vsnprintf(pbuf, sizeof(pbuf), line, ap);
 	if (flags.toplin == 1 && !strcmp(pbuf, toplines))
 		return;
-	nscr();		/* %% */
+	nscr();			/* %% */
 
 	/* If there is room on the line, print message on same line */
 	/* But messages like "You die..." deserve their own line */
 	n0 = strlen(bp);
 	if (flags.toplin == 1 && tly == 1 &&
-	    n0 + (int)strlen(toplines) + 3 < CO - 8 && /* room for --More-- */
+	    n0 + (int)strlen(toplines) + 3 < CO - 8 &&	/* leave room for
+							 * --More-- */
 	    strncmp(bp, "You ", 4)) {
-		strcat(toplines, "  ");
-		strcat(toplines, bp);
+		(void) strcat(toplines, "  ");
+		(void) strcat(toplines, bp);
 		tlx += 2;
 		addtopl(bp);
 		return;
@@ -176,8 +237,9 @@ vpline(const char *line, va_list ap)
 	if (flags.toplin == 1)
 		more();
 	remember_topl();
+	dead = 0;
 	toplines[0] = 0;
-	while (n0) {
+	while (n0 && !dead) {
 		if (n0 >= CO) {
 			/* look for appropriate cut point */
 			n0 = 0;
@@ -191,7 +253,14 @@ vpline(const char *line, va_list ap)
 			if (!n0)
 				n0 = CO - 2;
 		}
-		strncpy((tl = eos(toplines)), bp, n0);
+		tlpos = strlen(toplines);
+		tl = toplines + tlpos;
+		/* avoid overflow */
+		if (tlpos + n0 > (int)sizeof(toplines) - 1) {
+			n0 = sizeof(toplines) - 1 - tlpos;
+			dead = 1;
+		}
+		(void) memcpy(tl, bp, n0);
 		tl[n0] = 0;
 		bp += n0;
 
@@ -201,14 +270,16 @@ vpline(const char *line, va_list ap)
 
 		n0 = strlen(bp);
 		if (n0 && tl[0])
-			strcat(tl, "\n");
+			(void) strlcat(toplines, "\n", sizeof(toplines));
 	}
 	redotoplin();
 }
 
 void
-putsym(char c)
+putsym(int c1)
 {
+	char c = c1; /* XXX this hack prevents .o diffs -- remove later */
+
 	switch (c) {
 	case '\b':
 		backsp();
@@ -225,7 +296,7 @@ putsym(char c)
 		else
 			curx++;
 	}
-	putchar(c);
+	(void) putchar(c);
 }
 
 void

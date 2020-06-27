@@ -1,4 +1,7 @@
-/*-
+/*	@(#)subs.c	8.1 (Berkeley) 5/31/93			*/
+/*	$NetBSD: subs.c,v 1.20 2013/09/13 20:46:50 joerg Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,35 +28,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)subs.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/common_source/subs.c,v 1.12 1999/11/30 03:48:27 billf Exp $
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "back.h"
 
-int	buffnum;
-char	outbuff[BUFSIZ];
+int     buffnum;
+static char outbuff[BUFSIZ];
 
-static const char	plred[] = "Player is red, computer is white.";
-static const char	plwhite[] = "Player is white, computer is red.";
-static const char	nocomp[] = "(No computer play.)";
-
-const char  *const descr[] = {
-	"Usage:  backgammon [-h n r w b pr pw pb tterm sfile]\n",
-	"\t-h\tgets this list\n\t-n\tdon't ask for rules or instructions",
-	"\t-r\tplayer is red (implies -n)\n\t-w\tplayer is white (implies -n)",
-	"\t-b\ttwo players, red and white (implies -n)",
-	"\t-pr\tprint the board before red's turn",
-	"\t-pw\tprint the board before white's turn",
-	"\t-pb\tprint the board before both players' turn",
-	"\t-tterm\tterminal is a term",
-	"\t-sfile\trecover saved game from file",
-	0
-};
+static const char plred[] = "Player is red, computer is white.";
+static const char plwhite[] = "Player is white, computer is red.";
+static const char nocomp[] = "(No computer play.)";
 
 void
 errexit(const char *s)
@@ -87,10 +71,10 @@ buflush(void)
 	buffnum = -1;
 }
 
-char
+int
 readc(void)
 {
-	char c;
+	char    c;
 
 	if (tflag) {
 		cline();
@@ -115,7 +99,7 @@ readc(void)
 }
 
 void
-writec(char c)
+writec(int c)
 {
 	if (tflag)
 		fancyc(c);
@@ -127,7 +111,7 @@ void
 writel(const char *l)
 {
 #ifdef DEBUG
-	const char *s;
+	const char   *s;
 
 	if (trace == NULL)
 		trace = fopen("bgtrace", "w");
@@ -148,17 +132,17 @@ writel(const char *l)
 }
 
 void
-proll(void)
+proll(struct move *mm)
 {
-	if (d0)
-		swap;
+	if (mm->d0)
+		mswap(mm);
 	if (cturn == 1)
 		writel("Red's roll:  ");
 	else
 		writel("White's roll:  ");
-	writec(D0 + '0');
+	writec(mm->D0 + '0');
 	writec('\040');
-	writec(D1 + '0');
+	writec(mm->D1 + '0');
 	if (tflag)
 		cline();
 }
@@ -166,7 +150,7 @@ proll(void)
 void
 wrint(int n)
 {
-	int i, j, t;
+	int     i, j, t;
 
 	for (i = 4; i > 0; i--) {
 		t = 1;
@@ -181,14 +165,14 @@ wrint(int n)
 void
 gwrite(void)
 {
-	int r, c;
+	int     r, c;
 
-	r = curr;
-	c = curc;
-
-	if (tflag)
+	r = c = 0;
+	if (tflag) {
+		r = curr;
+		c = curc;
 		curmove(16, 0);
-
+	}
 	if (gvalue > 1) {
 		writel("Game value:  ");
 		wrint(gvalue);
@@ -200,13 +184,13 @@ gwrite(void)
 		writel(" doubled last.");
 	} else {
 		switch (pnum) {
-		case -1:		/* player is red */
+		case -1:	/* player is red */
 			writel(plred);
 			break;
-		case 0:			/* player is both colors */
+		case 0:	/* player is both colors */
 			writel(nocomp);
 			break;
-		case 1:			/* player is white */
+		case 1:	/* player is white */
 			writel(plwhite);
 		}
 	}
@@ -222,8 +206,9 @@ gwrite(void)
 }
 
 int
-quit(void)
+quit(struct move *mm)
 {
+
 	if (tflag) {
 		curmove(20, 0);
 		clend();
@@ -234,7 +219,7 @@ quit(void)
 		if (rfl) {
 			writel("Would you like to save this game?");
 			if (yorn(0))
-				save(0);
+				save(mm, 0);
 		}
 		cturn = 0;
 		return (1);
@@ -243,10 +228,10 @@ quit(void)
 }
 
 int
-yorn(char special)
+yorn(int special)
 {
-	char c;
-	int i;
+	char    c;
+	int     i;
 
 	i = 1;
 	while ((c = readc()) != 'Y' && c != 'N') {
@@ -284,7 +269,7 @@ wrhit(int i)
 void
 nexturn(void)
 {
-	int c;
+	int     c;
 
 	cturn = -cturn;
 	c = cturn / abs(cturn);
@@ -299,92 +284,97 @@ nexturn(void)
 }
 
 void
-getarg(int argc, char **argv)
+getarg(struct move *mm, char ***arg)
 {
-	char ch;
-	int i;
+	char  **s;
 
 	/* process arguments here.  dashes are ignored, nbrw are ignored if
 	 * the game is being recovered */
 
-	while ((ch = getopt(argc, argv, "nbrwp:t:s:h")) != -1) {
-		switch (ch) {
-		/* don't ask if rules or instructions needed */
+	s = *arg;
+	while (*s && s[0][0] == '-') {
+		switch (s[0][1]) {
+
+			/* don't ask if rules or instructions needed */
 		case 'n':
 			if (rflag)
 				break;
 			aflag = 0;
-			args[acnt++] = strdup("-n");
+			args[acnt++] = 'n';
 			break;
 
-		/* player is both red and white */
+			/* player is both red and white */
 		case 'b':
 			if (rflag)
 				break;
 			pnum = 0;
 			aflag = 0;
-			args[acnt++] = strdup("-b");
+			args[acnt++] = 'b';
 			break;
 
-		/* player is red */
+			/* player is red */
 		case 'r':
 			if (rflag)
 				break;
 			pnum = -1;
 			aflag = 0;
-			args[acnt++] = strdup("-r");
+			args[acnt++] = 'r';
 			break;
 
-		/* player is white */
+			/* player is white */
 		case 'w':
 			if (rflag)
 				break;
 			pnum = 1;
 			aflag = 0;
-			args[acnt++] = strdup("-w");
+			args[acnt++] = 'w';
 			break;
 
-		/* print board after move according to following character */
+			/* print board after move according to following
+			 * character */
 		case 'p':
-			if (optarg[0] != 'r' && optarg[0] != 'w' &&
-			    optarg[0] != 'b')
+			if (s[0][2] != 'r' && s[0][2] != 'w' && s[0][2] != 'b')
 				break;
-			args[acnt] = strdup("-p ");
-			args[acnt++][2] = optarg[0];
-			if (optarg[0] == 'r')
+			args[acnt++] = 'p';
+			args[acnt++] = s[0][2];
+			if (s[0][2] == 'r')
 				bflag = 1;
-			if (optarg[0] == 'w')
+			if (s[0][2] == 'w')
 				bflag = -1;
-			if (optarg[0] == 'b')
+			if (s[0][2] == 'b')
 				bflag = 0;
 			break;
 
 		case 't':
-			tflag = getcaps(optarg);
+			if (s[0][2] == '\0') {	/* get terminal caps */
+				s++;
+				tflag = getcaps(*s);
+			} else
+				tflag = getcaps(&s[0][2]);
 			break;
 
 		case 's':
+			s++;
 			/* recover file */
-			recover(optarg);
+			if (s[0] == NULL) {
+				writel("No save file named\n");
+				getout(0);
+			} else
+				recover(mm, s[0]);
 			break;
-		case 'h':
-			for (i = 0; descr[i] != NULL; i++)
-				puts(descr[i]);
-			getout(0);
 		}
+		s++;
 	}
-	argc -= optind;
-	argv += optind;
-	if (argc && argv[0][0] != '\0')
-		recover(argv[0]);
+	if (s[0] != 0)
+		recover(mm, s[0]);
 }
 
 void
 init(void)
 {
-	int i;
+	int     i;
 
-	for (i = 0; i < 26; )
+	for (i = 0; i < 26;)
 		board[i++] = 0;
 	board[1] = 2;
 	board[6] = board[13] = -5;
@@ -412,18 +402,17 @@ wrscore(void)
 }
 
 void
-fixtty(int mode)
+fixtty(struct termios *t)
 {
 	if (tflag)
 		newpos();
 	buflush();
-	tty.c_lflag = mode;
-	if (tcsetattr(0, TCSANOW, &tty) < 0)
+	if (tcsetattr(0, TCSADRAIN, t) < 0)
 		errexit("fixtty");
 }
 
 void
-getout(__unused int sig)
+getout(int dummy __unused)
 {
 	/* go to bottom of screen */
 	if (tflag) {
@@ -433,36 +422,37 @@ getout(__unused int sig)
 		writec('\n');
 
 	/* fix terminal status */
-	fixtty(old);
+	fixtty(&old);
 	exit(0);
 }
 
 void
-roll(void)
+roll(struct move *mm)
 {
-	char c;
-	int row;
-	int col;
+	char    c;
+	int     row;
+	int     col;
 
+	row = col = 0;
 	if (iroll) {
-		row = curr;
-		col = curc;
-		if (tflag)
+		if (tflag) {
+			row = curr;
+			col = curc;
 			curmove(17, 0);
-		else
+		} else
 			writec('\n');
 		writel("ROLL: ");
 		c = readc();
 		if (c != '\n') {
 			while (c < '1' || c > '6')
 				c = readc();
-			D0 = c - '0';
+			mm->D0 = c - '0';
 			writec(' ');
 			writec(c);
 			c = readc();
 			while (c < '1' || c > '6')
 				c = readc();
-			D1 = c - '0';
+			mm->D1 = c - '0';
 			writec(' ');
 			writec(c);
 			if (tflag) {
@@ -480,7 +470,7 @@ roll(void)
 		} else
 			writec('\n');
 	}
-	D0 = rnum(6) + 1;
-	D1 = rnum(6) + 1;
-	d0 = 0;
+	mm->D0 = rnum(6) + 1;
+	mm->D1 = rnum(6) + 1;
+	mm->d0 = 0;
 }

@@ -1,22 +1,81 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.timeout.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.timeout.c,v 1.3 1999/11/16 02:57:12 billf Exp $ */
+/*	$NetBSD: hack.timeout.c,v 1.9 2011/05/23 22:53:25 joerg Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
+#include "extern.h"
 
 static void stoned_dialogue(void);
 
 void
-p_timeout(void)
+timeout(void)
 {
-	struct prop *upp;
-
+	struct prop    *upp;
 	if (Stoned)
 		stoned_dialogue();
 	for (upp = u.uprops; upp < u.uprops + SIZE(u.uprops); upp++)
 		if ((upp->p_flgs & TIMEOUT) && !--upp->p_flgs) {
 			if (upp->p_tofn)
-				(*upp->p_tofn)();
+				(*upp->p_tofn) ();
 			else
 				switch (upp - u.uprops) {
 				case STONED:
@@ -50,18 +109,18 @@ p_timeout(void)
 }
 
 /* He is being petrified - dialogue by inmet!tower */
-static const char *stoned_texts[] = {
-	"You are slowing down.",		/* 5 */
-	"Your limbs are stiffening.",		/* 4 */
+static const char *const stoned_texts[] = {
+	"You are slowing down.",/* 5 */
+	"Your limbs are stiffening.",	/* 4 */
 	"Your limbs have turned to stone.",	/* 3 */
-	"You have turned to stone.",		/* 2 */
-	"You are a statue."			/* 1 */
+	"You have turned to stone.",	/* 2 */
+	"You are a statue."	/* 1 */
 };
 
 static void
 stoned_dialogue(void)
 {
-	long i = (Stoned & TIMEOUT);
+	long            i = (Stoned & TIMEOUT);
 
 	if (i > 0 && i <= SIZE(stoned_texts))
 		pline("%s", stoned_texts[SIZE(stoned_texts) - i]);

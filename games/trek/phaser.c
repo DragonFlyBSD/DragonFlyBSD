@@ -1,4 +1,7 @@
-/*-
+/*	@(#)phaser.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: phaser.c,v 1.15 2009/08/12 08:54:54 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)phaser.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/phaser.c,v 1.5.2.1 2000/07/20 10:35:07 kris Exp $
- * $DragonFly: src/games/trek/phaser.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
+#include <math.h>
 #include "trek.h"
 #include "getpar.h"
 
@@ -67,9 +68,9 @@
 **	Uses trace flag 30
 */
 
-struct cvntab Matab[] = {
-	{ "m",		"anual",	(cmdfun)1,	0 },
-	{ "a",		"utomatic",	(cmdfun)0,	0 },
+static struct cvntab Matab[] = {
+	{ "m",		"anual",	(cmdfun) 1,	0 },
+	{ "a",		"utomatic",	(cmdfun) 0,	0 },
 	{ NULL,		NULL,		NULL,		0 }
 };
 
@@ -80,6 +81,8 @@ struct banks {
 };
 
 
+
+/*ARGSUSED*/
 void
 phaser(int v __unused)
 {
@@ -95,7 +98,7 @@ phaser(int v __unused)
 	int		n;
 	int		hitreqd[NBANKS];
 	struct banks	bank[NBANKS];
-	struct cvntab	*ptr;
+	const struct cvntab	*ptr;
 
 	if (Ship.cond == DOCKED) {
 		printf("Phasers cannot fire through starbase shields\n");
@@ -110,7 +113,8 @@ phaser(int v __unused)
 		return;
 	}
 	if (Ship.cloaked) {
-		printf("Sulu: Captain, surely you must realize that we cannot fire\n");
+		printf("Sulu: Captain, surely you must realize that we cannot "
+		       "fire\n");
 		printf("  phasers with the cloaking device up.\n");
 		return;
 	}
@@ -179,7 +183,8 @@ phaser(int v __unused)
 	} else {
 		/* automatic distribution of power */
 		if (Etc.nkling <= 0) {
-			printf("Sulu: But there are no Klingons in this quadrant\n");
+			printf("Sulu: But there are no Klingons in this "
+			       "quadrant\n");
 			return;
 		}
 		printf("Phasers locked on target.  ");
@@ -204,7 +209,8 @@ phaser(int v __unused)
 				k = &Etc.klingon[i];
 				b = &bank[i];
 				distfactor = k->dist;
-				anglefactor = ALPHA * BETA * OMEGA / (distfactor * distfactor + EPSILON);
+				anglefactor = ALPHA * BETA * OMEGA /
+					(distfactor * distfactor + EPSILON);
 				anglefactor *= GAMMA;
 				distfactor = k->power;
 				distfactor /= anglefactor;

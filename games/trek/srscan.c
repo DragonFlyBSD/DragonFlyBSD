@@ -1,4 +1,7 @@
-/*-
+/*	@(#)srscan.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: srscan.c,v 1.11 2009/08/12 08:54:54 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)srscan.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/srscan.c,v 1.4 1999/11/30 03:49:55 billf Exp $
- * $DragonFly: src/games/trek/srscan.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
 #include "trek.h"
 #include "getpar.h"
 
@@ -38,8 +38,8 @@
 **  SHORT RANGE SENSOR SCAN
 **
 **	A short range scan is taken of the current quadrant.  If the
-**	flag 'f' is one, it is an "auto srscan".  It does a status
-**	report and a srscan.
+**	flag 'f' is one, it is an "auto srscan", which is not done
+**	unless in 'fast' mode.  It does a status report and a srscan.
 **	If 'f' is -1, you get a status report only.  If it is zero,
 **	you get a srscan and an optional status report.  The status
 **	report is taken if you enter "srscan yes"; for all srscans
@@ -49,7 +49,7 @@
 **	The current quadrant is filled in on the computer chart.
 */
 
-const char *Color[4] = {
+static const char *const Color[4] = {
 	"GREEN",
 	"DOCKED",
 	"YELLOW",
@@ -64,7 +64,7 @@ srscan(int f)
 	const char	*s;
 	int		percent;
 	struct quad	*q = NULL;
-	struct cvntab	*p;
+	const struct cvntab	*p;
 
 	if (f >= 0 && check_out(SRSCAN)) {
 		return;
@@ -76,8 +76,11 @@ srscan(int f)
 			Etc.statreport = getynpar("status report");
 		statinfo = Etc.statreport;
 	}
-	if (f > 0)
+	if (f > 0) {
 		Etc.statreport = 1;
+		if (!Etc.fast)
+			return;
+	}
 	if (f >= 0) {
 		printf("\nShort range sensor scan\n");
 		q = &Quad[Ship.quadx][Ship.quady];
@@ -139,7 +142,8 @@ srscan(int f)
 			  case 9:
 				printf("life support  ");
 				if (damaged(LIFESUP)) {
-					printf("damaged, reserves = %.2f", Ship.reserves);
+					printf("damaged, reserves = %.2f",
+						Ship.reserves);
 					break;
 				}
 				printf("active");
@@ -154,9 +158,9 @@ srscan(int f)
 		p = &Lentab[Game.length - 1];
 		if (Game.length > 2)
 			p--;
-		printf("Length, Skill %s%s, ", p->abrev, p->full);
+		printf("Length, Skill %s%s, ", p->abbrev, p->full);
 		p = &Skitab[Game.skill - 1];
-		printf("%s%s\n", p->abrev, p->full);
+		printf("%s%s\n", p->abbrev, p->full);
 		return;
 	}
 	printf("  ");

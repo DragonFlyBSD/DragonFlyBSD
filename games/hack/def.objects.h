@@ -1,9 +1,69 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.objects.h - version 1.0.3 */
-/* $DragonFly: src/games/hack/def.objects.h,v 1.2 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: def.objects.h,v 1.6 2003/04/02 18:36:34 jsm Exp $	*/
 
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef _DEF_OBJECTS_H_
+#define _DEF_OBJECTS_H_
 /* objects have letter " % ) ( 0 _ ` [ ! ? / = * */
-#include <string.h>
 #include "config.h"
 #include "def.objclass.h"
 
@@ -23,7 +83,7 @@ struct objclass objects[] = {
 /* food 6 makes you stronger (like Popeye) */
 /* foods CORPSE up to CORPSE+52 are cadavers */
 
-	FOOD("food ration",	50, 5, 4, 800),
+	FOOD("food ration", 	50, 5, 4, 800),
 	FOOD("tripe ration",	20, 1, 2, 200),
 	FOOD("pancake",		3, 1, 1, 200),
 	FOOD("dead lizard",	3, 0, 1, 40),
@@ -99,7 +159,7 @@ struct objclass objects[] = {
 /* weapons ... - (ROCK-1) are shot using idem+(BOW-ARROW) */
 /* weapons AXE, SWORD, THSWORD are good for worm-cutting */
 /* weapons (PICK-)AXE, DAGGER, CRYSKNIFE are good for tin-opening */
-#define	WEAPON(name,prob,wt,ldam,sdam)	{ name, NULL, NULL, 1, 0 /*%%*/,\
+#define WEAPON(name,prob,wt,ldam,sdam)	{ name, NULL, NULL, 1, 0 /*%%*/,\
 		WEAPON_SYM, prob, 0, wt, ldam, sdam, 0 }
 
 	WEAPON("arrow",		7, 0, 6, 6),
@@ -140,7 +200,7 @@ struct objclass objects[] = {
 	{ "enormous rock", NULL, NULL, 1, 0,
 		ROCK_SYM, 100, 0, 200 /* > MAX_CARR_CAP */, 0, 0, 0 },
 
-#define	ARMOR(name,prob,delay,ac,can)	{ name, NULL, NULL, 1, 0,\
+#define ARMOR(name,prob,delay,ac,can)	{ name, NULL, NULL, 1, 0,\
 		ARMOR_SYM, prob, delay, 8, ac, can, 0 }
 	ARMOR("helmet",		 3, 1, 9, 0),
 	ARMOR("plate mail",		 5, 5, 3, 2),
@@ -156,7 +216,7 @@ struct objclass objects[] = {
 	ARMOR("shield",		 3, 0, 9, 0),
 	ARMOR("pair of gloves",	 1, 1, 9, 0),
 
-#define	POTION(name,color)	{ name, color, NULL, 0, 1,\
+#define POTION(name,color)	{ name, color, NULL, 0, 1,\
 		POTION_SYM, 0, 0, 2, 0, 0, 0 }
 
 	POTION("restore strength",	"orange"),
@@ -180,7 +240,7 @@ struct objclass objects[] = {
 	POTION(NULL,	"magenta"),
 	POTION(NULL,	"ebony"),
 
-#define	SCROLL(name,text,prob) { name, text, NULL, 0, 1,\
+#define SCROLL(name,text,prob) { name, text, NULL, 0, 1,\
 		SCROLL_SYM, prob, 0, 3, 0, 0, 0 }
 	SCROLL("mail",	"KIRJE", 0),
 	SCROLL("enchant armor", "ZELGO MER", 6),
@@ -283,8 +343,9 @@ struct objclass objects[] = {
 	{ NULL, NULL, NULL, 0, 0, ILLOBJ_SYM, 0, 0, 0, 0, 0, 0 }
 };
 
-char obj_symbols[] = {
+const char obj_symbols[] = {
 	ILLOBJ_SYM, AMULET_SYM, FOOD_SYM, WEAPON_SYM, TOOL_SYM,
 	BALL_SYM, CHAIN_SYM, ROCK_SYM, ARMOR_SYM, POTION_SYM, SCROLL_SYM,
 	WAND_SYM, RING_SYM, GEM_SYM, 0 };
 int bases[sizeof(obj_symbols)];
+#endif /* _DEF_OBJECTS_H_ */

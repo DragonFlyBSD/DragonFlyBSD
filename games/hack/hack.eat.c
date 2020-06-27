@@ -1,26 +1,80 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.eat.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.eat.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
+/*	$NetBSD: hack.eat.c,v 1.13 2019/02/04 03:33:15 mrg Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
-char POISONOUS[] = "ADKSVabhks";
-
-static bool	opentin(void);
-static void	Meatdone(void);
-static void	unfaint(void);
-static void	newuhs(bool);
-static int	eatcorpse(struct obj *);
+#include "extern.h"
+static char POISONOUS[] = "ADKSVabhks";
 
 /* hunger texts used on bottom line (each 8 chars long) */
 #define	SATIATED	0
-#define	NOT_HUNGRY	1
+#define NOT_HUNGRY	1
 #define	HUNGRY		2
 #define	WEAK		3
 #define	FAINTING	4
-#define	FAINTED		5
-#define	STARVED		6
+#define FAINTED		5
+#define STARVED		6
 
-const char *hu_stat[] = {
+const char           *const hu_stat[] = {
 	"Satiated",
 	"        ",
 	"Hungry  ",
@@ -30,6 +84,12 @@ const char *hu_stat[] = {
 	"Starved "
 };
 
+static int opentin(void);
+static int Meatdone(void);
+static int unfaint(void);
+static void newuhs(boolean);
+static int eatcorpse(struct obj *);
+
 void
 init_uhunger(void)
 {
@@ -38,7 +98,10 @@ init_uhunger(void)
 }
 
 #define	TTSZ	SIZE(tintxts)
-struct { const char *txt; int nut; } tintxts[] = {
+static const struct {
+	const char           *txt;
+	int             nut;
+}               tintxts[] = {
 	{ "It contains first quality peaches - what a surprise!", 40 },
 	{ "It contains salmon - not bad!", 60 },
 	{ "It contains apple juice - perhaps not what you hoped for.", 20 },
@@ -48,14 +111,14 @@ struct { const char *txt; int nut; } tintxts[] = {
 };
 
 static struct {
-	struct obj *tin;
-	int usedtime, reqtime;
-} tin;
+	struct obj     *tin;
+	int             usedtime, reqtime;
+}               tin;
 
-static bool
+static int
 opentin(void)
 {
-	int r;
+	int             r;
 
 	if (!carried(tin.tin))	/* perhaps it was stolen? */
 		return (0);	/* %% probably we should use tinoid */
@@ -88,17 +151,18 @@ opentin(void)
 	return (0);
 }
 
-static void
+static int
 Meatdone(void)
 {
 	u.usym = '@';
 	prme();
+	return 0;
 }
 
 int
 doeat(void)
 {
-	struct obj *otmp;
+	struct obj     *otmp;
 	struct objclass *ftmp;
 	int tmp;
 
@@ -113,7 +177,7 @@ doeat(void)
 				      (otmp->quan == 1) ? "it" : "one");
 				if (readchar() == 'y') {
 					if (otmp->quan != 1)
-						splitobj(otmp, 1);
+						(void) splitobj(otmp, 1);
 					freeobj(otmp);
 					otmp = addinv(otmp);
 					addtobill(otmp);
@@ -121,7 +185,6 @@ doeat(void)
 				}
 			}
 		}
-
 	otmp = getobj("%", "eat");
 	if (!otmp)
 		return (0);
@@ -146,12 +209,12 @@ gotit:
 			pline("Using your %s you try to open the tin.",
 			      aobjnam(uwep, NULL));
 		} else {
-no_opener:
+	no_opener:
 			pline("It is not so easy to open this tin.");
 			if (Glib) {
 				pline("The tin slips out of your hands.");
 				if (otmp->quan > 1) {
-					struct obj *obj;
+					struct obj     *obj;
 
 					obj = splitobj(otmp, 1);
 					if (otmp == uwep)
@@ -160,7 +223,7 @@ no_opener:
 				dropx(otmp);
 				return (1);
 			}
-			tmp = 10 + rn2(1 + 500 / ((int)(u.ulevel + u.ustr)));
+			tmp = 10 + rn2(1 + 500 / ((int) (u.ulevel + u.ustr)));
 		}
 		tin.reqtime = tmp;
 		tin.usedtime = 0;
@@ -241,7 +304,7 @@ no_opener:
 				setsee();
 				pline("Your vision improves.");
 			} else
-#endif /* QUEST */
+#endif	/* QUEST */
 			if (otmp->otyp == FORTUNE_COOKIE) {
 				if (Blind) {
 					pline("This cookie has a scrap of paper inside!");
@@ -267,8 +330,10 @@ no_opener:
 	}
 eatx:
 	if (multi < 0 && !nomovemsg) {
-		static char msgbuf[BUFSZ];
-		sprintf(msgbuf, "You finished eating the %s.", ftmp->oc_name);
+		static char     msgbuf[BUFSZ];
+		(void) snprintf(msgbuf, sizeof(msgbuf),
+			       "You finished eating the %s.",
+			       ftmp->oc_name);
 		nomovemsg = msgbuf;
 	}
 	useup(otmp);
@@ -285,12 +350,12 @@ gethungry(void)
 			u.uhunger--;
 		if (Hunger)
 			u.uhunger--;
-		/* a3:  if (Hunger & LEFT_RING) u.uhunger--;
-		 *      if (Hunger & RIGHT_RING) u.uhunger--;
-		 * etc.
+		/*
+		 * a3:  if(Hunger & LEFT_RING) u.uhunger--; if(Hunger &
+		 * RIGHT_RING) u.uhunger--; etc.
 		 */
 	}
-	if (moves % 20 == 0) {		/* jimt@asgb */
+	if (moves % 20 == 0) {	/* jimt@asgb */
 		if (uleft)
 			u.uhunger--;
 		if (uright)
@@ -315,17 +380,18 @@ lesshungry(int num)
 	newuhs(FALSE);
 }
 
-static void
+static int
 unfaint(void)
 {
 	u.uhs = FAINTING;
 	flags.botl = 1;
+	return 0;
 }
 
 static void
-newuhs(bool incr)
+newuhs(boolean incr)
 {
-	int newhs, h = u.uhunger;
+	int             newhs, h = u.uhunger;
 
 	newhs = (h > 1000) ? SATIATED :
 		(h > 150) ? NOT_HUNGRY :
@@ -336,14 +402,14 @@ newuhs(bool incr)
 		if (u.uhs == FAINTED)
 			newhs = FAINTED;
 		if (u.uhs <= WEAK || rn2(20 - u.uhunger / 10) >= 19) {
-			if (u.uhs != FAINTED && multi >= 0 /* %% */) {
+			if (u.uhs != FAINTED && multi >= 0 /* %% */ ) {
 				pline("You faint from lack of food.");
 				nomul(-10 + (u.uhunger / 10));
 				nomovemsg = "You regain consciousness.";
 				afternmv = unfaint;
 				newhs = FAINTED;
 			}
-		} else if (u.uhunger < -(int)(200 + 25 * u.ulevel)) {
+		} else if (u.uhunger < -(int) (200 + 25 * u.ulevel)) {
 			u.uhs = STARVED;
 			flags.botl = 1;
 			bot();
@@ -351,7 +417,6 @@ newuhs(bool incr)
 			done("starved");
 		}
 	}
-
 	if (newhs != u.uhs) {
 		if (newhs >= WEAK && u.uhs < WEAK)
 			losestr(1);	/* this may kill you -- see below */
@@ -379,10 +444,10 @@ newuhs(bool incr)
 	}
 }
 
-#define	CORPSE_I_TO_C(otyp)	(char)((otyp >= DEAD_ACID_BLOB)\
-				       ?  'a' + (otyp - DEAD_ACID_BLOB)\
-				       :  '@' + (otyp - DEAD_HUMAN))
-bool
+#define	CORPSE_I_TO_C(otyp)	(char) ((otyp >= DEAD_ACID_BLOB)\
+		     ?  'a' + (otyp - DEAD_ACID_BLOB)\
+		     :	'@' + (otyp - DEAD_HUMAN))
+int
 poisonous(struct obj *otmp)
 {
 	return (strchr(POISONOUS, CORPSE_I_TO_C(otmp->otyp)) != 0);
@@ -392,9 +457,8 @@ poisonous(struct obj *otmp)
 static int
 eatcorpse(struct obj *otmp)
 {
-	char let = CORPSE_I_TO_C(otmp->otyp);
-	int tp = 0;
-
+	char            let = CORPSE_I_TO_C(otmp->otyp);
+	int             tp = 0;
 	if (let != 'a' && moves > otmp->age + 50 + rn2(100)) {
 		tp++;
 		pline("Ulch -- that meat was tainted!");
@@ -429,7 +493,7 @@ eatcorpse(struct obj *otmp)
 		/* FALLTHROUGH */
 	case '@':
 		pline("You cannibal! You will be sorry for this!");
-	/* not tp++; */
+		/* not tp++; */
 		/* FALLTHROUGH */
 	case 'd':
 		Aggravate_monster |= INTRINSIC;
@@ -447,7 +511,7 @@ eatcorpse(struct obj *otmp)
 	case 'y':
 #ifdef QUEST
 		u.uhorizon++;
-#endif /* QUEST */
+#endif	/* QUEST */
 		/* FALLTHROUGH */
 	case 'B':
 		Confusion = 50;
@@ -470,8 +534,7 @@ eatcorpse(struct obj *otmp)
 		pline("You turn to stone.");
 		killer = "dead cockatrice";
 		done("died");
-		/* NOTREACHED */
-		exit(1);	/* hint for a compiler */
+		break;
 	case 'a':
 		if (Stoned) {
 			pline("What a pity - you just destroyed a future piece of art!");

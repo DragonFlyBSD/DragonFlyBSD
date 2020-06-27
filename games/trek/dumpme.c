@@ -1,4 +1,7 @@
-/*-
+/*	@(#)dumpme.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: dumpme.c,v 1.8 2009/05/24 22:55:03 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)dumpme.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/dumpme.c,v 1.4 1999/11/30 03:49:47 billf Exp $
- * $DragonFly: src/games/trek/dumpme.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
 #include "trek.h"
 
 /*
@@ -49,7 +49,7 @@ void
 dumpme(int flag)
 {
 	int		f;
-	double		x = 0;
+	double		x;
 	struct event	*e;
 	int		i;
 
@@ -58,13 +58,15 @@ dumpme(int flag)
 	Ship.quady = ranf(NQUADS);
 	Ship.sectx = ranf(NSECTS);
 	Ship.secty = ranf(NSECTS);
-	x += 1.5 * franf();
+	x = 1.5 * franf();
 	Move.time += x;
 	if (f) {
 		printf("%s falls into a black hole.\n", Ship.shipname);
 	} else {
-		printf("Computer applies full reverse power to avoid hitting the\n");
-		printf("   negative energy barrier.  A space warp was entered.\n");
+		printf("Computer applies full reverse power to avoid hitting "
+		       "the\n");
+		printf("   negative energy barrier.  A space warp was "
+		       "entered.\n");
 	}
 	/* bump repair dates forward */
 	for (i = 0; i < MAXEVENTS; i++) {

@@ -1,19 +1,75 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
+/*	$NetBSD: hack.c,v 1.11 2011/08/07 06:03:45 dholland Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
+#include "extern.h"
 
 static void movobj(struct obj *, int, int);
-#ifdef QUEST
-static bool rroom(int, int);
-#endif
 static int inv_cnt(void);
 
-/* called on movement:
- * 1. when throwing ball+chain far away
- * 2. when teleporting
- * 3. when walking out of a lit room
+/*
+ * called on movement: 1. when throwing ball+chain far away 2. when
+ * teleporting 3. when walking out of a lit room
  */
 void
 unsee(void)
@@ -21,11 +77,17 @@ unsee(void)
 	int x, y;
 	struct rm *lev;
 
+	/*
+		if(u.udispl){
+			u.udispl = 0;
+			newsym(u.udisx, u.udisy);
+		}
+	*/
 #ifndef QUEST
-	if (seehx)
+	if (seehx) {
 		seehx = 0;
-	else
-#endif /* QUEST */
+	} else
+#endif	/* QUEST */
 		for (x = u.ux - 1; x < u.ux + 2; x++)
 			for (y = u.uy - 1; y < u.uy + 2; y++) {
 				if (!isok(x, y))
@@ -39,19 +101,18 @@ unsee(void)
 			}
 }
 
-/* called:
- *      in hack.eat.c: seeoff(0) - blind after eating rotten food
- *      in hack.mon.c: seeoff(0) - blinded by a yellow light
- *      in hack.mon.c: seeoff(1) - swallowed
- *      in hack.do.c:  seeoff(0) - blind after drinking potion
- *      in hack.do.c:  seeoff(1) - go up or down the stairs
- *      in hack.trap.c:seeoff(1) - fall through trapdoor
- * mode:
- * 1 to redo @, 0 to leave them *//* 1 means
- * misc movement, 0 means blindness
+/*
+ * called: in hack.eat.c: seeoff(0) - blind after eating rotten food in
+ * hack.mon.c: seeoff(0) - blinded by a yellow light in hack.mon.c: seeoff(1)
+ * - swallowed in hack.do.c:  seeoff(0) - blind after drinking potion in
+ * hack.do.c:  seeoff(1) - go up or down the stairs in hack.trap.c:seeoff(1)
+ * - fall through trapdoor
  */
+/* mode: */
+	/* 1 to redo @, 0 to leave them *//* 1 means
+	 * misc movement, 0 means blindness */
 void
-seeoff(bool mode)
+seeoff(int mode)
 {
 	int x, y;
 	struct rm *lev;
@@ -61,10 +122,10 @@ seeoff(bool mode)
 		levl[u.udisx][u.udisy].scrsym = news0(u.udisx, u.udisy);
 	}
 #ifndef QUEST
-	if (seehx)
+	if (seehx) {
 		seehx = 0;
-	else
-#endif /* QUEST */
+	} else
+#endif	/* QUEST */
 	if (!mode) {
 		for (x = u.ux - 1; x < u.ux + 2; x++)
 			for (y = u.uy - 1; y < u.uy + 2; y++) {
@@ -80,11 +141,11 @@ seeoff(bool mode)
 void
 domove(void)
 {
-	xchar oldx, oldy;
+	xchar           oldx, oldy;
 	struct monst *mtmp = NULL;
 	struct rm *tmpr, *ust;
-	struct trap *trap = NULL;
-	struct obj *otmp;
+	struct trap    *trap = NULL;
+	struct obj *otmp = NULL;
 
 	u_wipe_engr(rnd(5));
 
@@ -113,8 +174,7 @@ domove(void)
 	ust = &levl[u.ux][u.uy];
 	oldx = u.ux;
 	oldy = u.uy;
-	if (!u.uswallow &&
-	    (trap = t_at(u.ux + u.dx, u.uy + u.dy)) && trap->tseen)
+	if (!u.uswallow && (trap = t_at(u.ux + u.dx, u.uy + u.dy)) && trap->tseen)
 		nomul(0);
 	if (u.ustuck && !u.uswallow && (u.ux + u.dx != u.ustuck->mx ||
 					u.uy + u.dy != u.ustuck->my)) {
@@ -126,7 +186,7 @@ domove(void)
 				pline("You cannot escape from it!");
 			else
 				pline("You cannot escape from %s!",
-				    monnam(u.ustuck));
+				      monnam(u.ustuck));
 			nomul(0);
 			return;
 		}
@@ -136,8 +196,8 @@ domove(void)
 
 		nomul(0);
 		gethungry();
-		if (multi < 0)		/* we just fainted */
-			return;
+		if (multi < 0)
+			return;	/* we just fainted */
 
 		/* try to attack; note that it might evade */
 		if (attack(u.uswallow ? u.ustuck : mtmp))
@@ -162,9 +222,9 @@ domove(void)
 		nomul(0);
 		return;
 	}
-	while ((otmp = sobj_at(ENORMOUS_ROCK, u.ux + u.dx, u.uy + u.dy)) != NULL) {
+	while ((otmp = sobj_at(ENORMOUS_ROCK, u.ux + u.dx, u.uy + u.dy)) != NULL){
+		xchar  rx = u.ux + 2 * u.dx, ry = u.uy + 2 * u.dy;
 		struct trap *ttmp;
-		xchar rx = u.ux + 2 * u.dx, ry = u.uy + 2 * u.dy;
 		nomul(0);
 		if (isok(rx, ry) && !IS_ROCK(levl[rx][ry].typ) &&
 		    (levl[rx][ry].typ != DOOR || !(u.dx && u.dy)) &&
@@ -198,26 +258,28 @@ domove(void)
 			}
 			otmp->ox = rx;
 			otmp->oy = ry;
+			/* pobj(otmp); */
 			if (cansee(rx, ry))
 				atl(rx, ry, otmp->olet);
 			if (Invisible)
 				newsym(u.ux + u.dx, u.uy + u.dy);
 
 			{
-				static long lastmovetime;
-			  /* note: this var contains garbage initially and
-			   * after a restore */
+				static long     lastmovetime;
+				/*
+				 * note: this var contains garbage initially
+				 * and after a restore
+				 */
 				if (moves > lastmovetime + 2 || moves < lastmovetime)
 					pline("With great effort you move the enormous rock.");
 				lastmovetime = moves;
 			}
 		} else {
 			pline("You try to move the enormous rock, but in vain.");
-cannot_push:
+	cannot_push:
 			if ((!invent || inv_weight() + 90 <= 0) &&
-			    (!u.dx || !u.dy ||
-			     (IS_ROCK(levl[u.ux][u.uy + u.dy].typ)
-			      && IS_ROCK(levl[u.ux + u.dx][u.uy].typ)))) {
+			    (!u.dx || !u.dy || (IS_ROCK(levl[u.ux][u.uy + u.dy].typ)
+				&& IS_ROCK(levl[u.ux + u.dx][u.uy].typ)))) {
 				pline("However, you can squeeze yourself into a small opening.");
 				break;
 			} else
@@ -237,22 +299,19 @@ cannot_push:
 			movobj(uchain, u.ux, u.uy);
 			goto nodrag;
 		}
-
 		if (DIST(u.ux + u.dx, u.uy + u.dy, uball->ox, uball->oy) < 3) {
 			/* leave ball, move chain under/over ball */
 			movobj(uchain, uball->ox, uball->oy);
 			goto nodrag;
 		}
-
-		if (inv_weight() + (int)uball->owt / 2 > 0) {
+		if (inv_weight() + (int) uball->owt / 2 > 0) {
 			pline("You cannot %sdrag the heavy iron ball.",
 			      invent ? "carry all that and also " : "");
 			nomul(0);
 			return;
 		}
-
 		movobj(uball, uchain->ox, uchain->oy);
-		unpobj(uball);		/* BAH %% */
+		unpobj(uball);	/* BAH %% */
 		uchain->ox = u.ux;
 		uchain->oy = u.uy;
 		nomul(-2);
@@ -267,10 +326,15 @@ nodrag:	;
 		    (xdnstair == u.ux && ydnstair == u.uy))
 			nomul(0);
 	}
-
 	if (tmpr->typ == POOL && !Levitation)
 		drown();	/* not necessarily fatal */
 
+	/*
+		if(u.udispl) {
+			u.udispl = 0;
+			newsym(oldx,oldy);
+		}
+	*/
 	if (!Blind) {
 #ifdef QUEST
 		setsee();
@@ -302,14 +366,15 @@ nodrag:	;
 			}
 			nose1(oldx - u.dx, oldy - u.dy);
 		}
-#endif /* QUEST */
-	} else
+#endif	/* QUEST */
+	} else {
 		pru();
+	}
 	if (!flags.nopick)
 		pickup(1);
 	if (trap)
 		dotrap(trap);	/* fall into pit, arrow trap, etc. */
-	inshop();
+	(void) inshop();
 	if (!Blind)
 		read_engr_at(u.ux, u.uy);
 }
@@ -346,11 +411,11 @@ pickup(int all)
 {
 	struct gold *gold;
 	struct obj *obj, *obj2;
-	int wt;
+	int    wt;
 
 	if (Levitation)
 		return;
-	while ((gold = g_at(u.ux, u.uy))) {
+	while ((gold = g_at(u.ux, u.uy)) != NULL) {
 		pline("%ld gold piece%s.", gold->amount, plur(gold->amount));
 		u.ugold += gold->amount;
 		flags.botl = 1;
@@ -363,7 +428,7 @@ pickup(int all)
 
 	/* check for more than one object */
 	if (!all) {
-		int ct = 0;
+		int    ct = 0;
 
 		for (obj = fobj; obj; obj = obj->nobj)
 			if (obj->ox == u.ux && obj->oy == u.uy)
@@ -374,7 +439,6 @@ pickup(int all)
 		else
 			pline("There are several objects here.");
 	}
-
 	for (obj = fobj; obj; obj = obj2) {
 		obj2 = obj->nobj;	/* perhaps obj will be picked up */
 		if (obj->ox == u.ux && obj->oy == u.uy) {
@@ -386,11 +450,11 @@ pickup(int all)
 				continue;
 
 			if (!all) {
-				char c;
+				char            c;
 
 				pline("Pick up %s ? [ynaq]", doname(obj));
 				while (!strchr("ynaq ", (c = readchar())))
-					bell();
+					sound_bell();
 				if (c == 'q')
 					return;
 				if (c == 'n')
@@ -398,35 +462,35 @@ pickup(int all)
 				if (c == 'a')
 					all = 1;
 			}
-
 			if (obj->otyp == DEAD_COCKATRICE && !uarmg) {
 				pline("Touching the dead cockatrice is a fatal mistake.");
 				pline("You turn to stone.");
 				killer = "cockatrice cadaver";
 				done("died");
 			}
-
 			if (obj->otyp == SCR_SCARE_MONSTER) {
 				if (!obj->spe)
 					obj->spe = 1;
 				else {
-					/* Note: perhaps the 1st pickup failed: you cannot
-					 *  carry anymore, and so we never dropped it -
-					 *  let's assume that treading on it twice also
-					 *  destroys the scroll */
+					/*
+					 * Note: perhaps the 1st pickup
+					 * failed: you cannot carry anymore,
+					 * and so we never dropped it - let's
+					 * assume that treading on it twice
+					 * also destroys the scroll
+					 */
 					pline("The scroll turns to dust as you pick it up.");
 					delobj(obj);
 					continue;
 				}
 			}
-
 			wt = inv_weight() + obj->owt;
 			if (wt > 0) {
 				if (obj->quan > 1) {
 					/* see how many we can lift */
-					int savequan = obj->quan;
-					int iw = inv_weight();
-					int qq;
+					int             savequan = obj->quan;
+					int             iw = inv_weight();
+					int             qq;
 					for (qq = 1; qq < savequan; qq++) {
 						obj->quan = qq;
 						if (iw + weight(obj) > 0)
@@ -438,25 +502,27 @@ pickup(int all)
 					if (!qq)
 						goto too_heavy;
 					pline("You can only carry %s of the %s lying here.",
-					    (qq == 1) ? "one" : "some",
-					    doname(obj));
-					splitobj(obj, qq);
-					/* note: obj2 is set already, so we'll never
-					 * encounter the other half; if it should be
-					 * otherwise then write
-					 *	obj2 = splitobj(obj, qq);
+					      (qq == 1) ? "one" : "some",
+					      doname(obj));
+					(void) splitobj(obj, qq);
+					/*
+					 * note: obj2 is set already, so
+					 * we'll never encounter the other
+					 * half; if it should be otherwise
+					 * then write obj2 =
+					 * splitobj(obj,qq);
 					 */
 					goto lift_some;
 				}
-too_heavy:
+		too_heavy:
 				pline("There %s %s here, but %s.",
 				      (obj->quan == 1) ? "is" : "are",
 				      doname(obj),
-				      !invent ? "it is too heavy for you to lift"
+				 !invent ? "it is too heavy for you to lift"
 				      : "you cannot carry anymore");
 				break;
 			}
-lift_some:
+	lift_some:
 			if (inv_cnt() >= 52) {
 				pline("Your knapsack cannot accommodate anymore items.");
 				break;
@@ -468,12 +534,15 @@ lift_some:
 				newsym(u.ux, u.uy);
 			addtobill(obj);	/* sets obj->unpaid if necessary */
 			{
-				int pickquan = obj->quan;
-				int mergquan;
-				if (!Blind)		/* this is done by prinv(), */
-					obj->dknown = 1;/* but addinv() needs it */
-							/* already for merging */
-				obj = addinv(obj);	/* might merge it with other objects */
+				int             pickquan = obj->quan;
+				int             mergquan;
+				if (!Blind)
+					obj->dknown = 1;	/* this is done by
+								 * prinv(), but addinv()
+								 * needs it already for
+								 * merging */
+				obj = addinv(obj);	/* might merge it with
+							 * other objects */
 				mergquan = obj->quan;
 				obj->quan = pickquan;	/* to fool prinv() */
 				prinv(obj);
@@ -489,12 +558,9 @@ lift_some:
 void
 lookaround(void)
 {
-	int x, y, i, x0, y0, m0, i0 = 9;
-	int corrct = 0, noturn = 0;
+	int    x, y, i, x0 = 0, y0 = 0, m0 = 0, i0 = 9;
+	int    corrct = 0, noturn = 0;
 	struct monst *mtmp;
-
-	/* suppress "used before set" message */
-	x0 = y0 = m0 = 0;
 	if (Blind || flags.run == 0)
 		return;
 	if (flags.run == 1 && levl[u.ux][u.uy].typ == ROOM)
@@ -502,7 +568,7 @@ lookaround(void)
 #ifdef QUEST
 	if (u.ux0 == u.ux + u.dx && u.uy0 == u.uy + u.dy)
 		goto stop;
-#endif /* QUEST */
+#endif	/* QUEST */
 	for (x = u.ux - 1; x <= u.ux + 1; x++)
 		for (y = u.uy - 1; y <= u.uy + 1; y++) {
 			if (x == u.ux && y == u.uy)
@@ -511,11 +577,11 @@ lookaround(void)
 				continue;
 			if ((mtmp = m_at(x, y)) && !mtmp->mimic &&
 			    (!mtmp->minvis || See_invisible)) {
-				if (!mtmp->mtame ||
-				    (x == u.ux + u.dx && y == u.uy + u.dy))
+				if (!mtmp->mtame || (x == u.ux + u.dx && y == u.uy + u.dy))
 					goto stop;
-			} else		/* invisible M cannot influence us */
-				mtmp = NULL;
+			} else
+				mtmp = 0;	/* invisible M cannot
+						 * influence us */
 			if (x == u.ux - u.dx && y == u.uy - u.dy)
 				continue;
 			switch (levl[x][y].scrsym) {
@@ -529,15 +595,14 @@ lookaround(void)
 					break;
 				if (flags.run != 1)
 					goto stop;
-			/* FALLTHROUGH */
+				/* FALLTHROUGH */
 			case CORR_SYM:
-corr:
+		corr:
 				if (flags.run == 1 || flags.run == 3) {
 					i = DIST(x, y, u.ux + u.dx, u.uy + u.dy);
 					if (i > 2)
 						break;
-					if (corrct == 1 &&
-					    DIST(x, y, x0, y0) != 1)
+					if (corrct == 1 && DIST(x, y, x0, y0) != 1)
 						noturn = 1;
 					if (i < i0) {
 						i0 = i;
@@ -549,17 +614,17 @@ corr:
 				corrct++;
 				break;
 			case '^':
-				if (flags.run == 1)	/* if you must */
-					goto corr;
+				if (flags.run == 1)
+					goto corr;	/* if you must */
 				if (x == u.ux + u.dx && y == u.uy + u.dy)
 					goto stop;
 				break;
 			default:	/* e.g. objects or trap or stairs */
 				if (flags.run == 1)
 					goto corr;
-				if (mtmp)	/* d */
-					break;
-stop:
+				if (mtmp)
+					break;	/* d */
+		stop:
 				nomul(0);
 				return;
 			}
@@ -567,7 +632,7 @@ stop:
 #ifdef QUEST
 	if (corrct > 0 && (flags.run == 4 || flags.run == 5))
 		goto stop;
-#endif /* QUEST */
+#endif	/* QUEST */
 	if (corrct > 1 && flags.run == 2)
 		goto stop;
 	if ((flags.run == 1 || flags.run == 3) && !noturn && !m0 && i0 &&
@@ -601,22 +666,19 @@ stop:
 
 /* something like lookaround, but we are not running */
 /* react only to monsters that might hit us */
-bool
+int
 monster_nearby(void)
 {
-	int x, y;
+	int    x, y;
 	struct monst *mtmp;
-
 	if (!Blind)
 		for (x = u.ux - 1; x <= u.ux + 1; x++)
 			for (y = u.uy - 1; y <= u.uy + 1; y++) {
 				if (x == u.ux && y == u.uy)
 					continue;
-				if ((mtmp = m_at(x, y)) && !mtmp->mimic &&
-				    !mtmp->mtame &&
-				    !mtmp->mpeaceful &&
-				    !strchr("Ea", mtmp->data->mlet) &&
-				    !mtmp->mfroz && !mtmp->msleep && /* aplvax!jcn */
+				if ((mtmp = m_at(x, y)) && !mtmp->mimic && !mtmp->mtame &&
+				    !mtmp->mpeaceful && !strchr("Ea", mtmp->data->mlet) &&
+				    !mtmp->mfroz && !mtmp->msleep &&	/* aplvax!jcn */
 				    (!mtmp->minvis || See_invisible))
 					return (1);
 			}
@@ -624,11 +686,10 @@ monster_nearby(void)
 }
 
 #ifdef QUEST
-bool
+int
 cansee(xchar x, xchar y)
 {
-	int dx, dy, adx, ady, sdx, sdy, dmax, d;
-
+	int    dx, dy, adx, ady, sdx, sdy, dmax, d;
 	if (Blind)
 		return (0);
 	if (!isok(x, y))
@@ -669,7 +730,7 @@ cansee(xchar x, xchar y)
 	}
 }
 
-static bool
+int
 rroom(int x, int y)
 {
 	return (IS_ROOM(levl[u.ux + x][u.uy + y].typ));
@@ -677,7 +738,7 @@ rroom(int x, int y)
 
 #else
 
-bool
+int
 cansee(xchar x, xchar y)
 {
 	if (Blind || u.uswallow)
@@ -689,7 +750,7 @@ cansee(xchar x, xchar y)
 		return (1);
 	return (0);
 }
-#endif /* QUEST */
+#endif	/* QUEST */
 
 int
 sgn(int a)
@@ -701,7 +762,7 @@ sgn(int a)
 void
 setsee(void)
 {
-	int x, y;
+	int	x, y;
 
 	if (Blind) {
 		pru();
@@ -731,17 +792,17 @@ setsee(void)
 		seely = u.uy - 1;
 		seehy = u.uy + 1;
 	} else {
-		for (seelx = u.ux; levl[seelx - 1][u.uy].lit; seelx--) ;
-		for (seehx = u.ux; levl[seehx + 1][u.uy].lit; seehx++) ;
-		for (seely = u.uy; levl[u.ux][seely - 1].lit; seely--) ;
-		for (seehy = u.uy; levl[u.ux][seehy + 1].lit; seehy++) ;
+		for (seelx = u.ux; levl[seelx - 1][u.uy].lit; seelx--);
+		for (seehx = u.ux; levl[seehx + 1][u.uy].lit; seehx++);
+		for (seely = u.uy; levl[u.ux][seely - 1].lit; seely--);
+		for (seehy = u.uy; levl[u.ux][seehy + 1].lit; seehy++);
 	}
 	for (y = seely; y <= seehy; y++)
-		for (x = seelx; x <= seehx; x++)
+		for (x = seelx; x <= seehx; x++) {
 			prl(x, y);
-
-	if (!levl[u.ux][u.uy].lit)	/* seems necessary elsewhere */
-		seehx = 0;
+		}
+	if (!levl[u.ux][u.uy].lit)
+		seehx = 0;	/* seems necessary elsewhere */
 	else {
 		if (seely == u.uy)
 			for (x = u.ux - 1; x <= u.ux + 1; x++)
@@ -757,7 +818,7 @@ setsee(void)
 				prl(seehx + 1, y);
 	}
 }
-#endif /* QUEST */
+#endif	/* QUEST */
 
 void
 nomul(int nval)
@@ -779,8 +840,8 @@ abon(void)
 		return (-1);
 	else if (u.ustr < 17)
 		return (0);
-	else if (u.ustr < 69)	/* up to 18/50 */
-		return (1);
+	else if (u.ustr < 69)
+		return (1);	/* up to 18/50 */
 	else if (u.ustr < 118)
 		return (2);
 	else
@@ -796,21 +857,22 @@ dbon(void)
 		return (0);
 	else if (u.ustr < 18)
 		return (1);
-	else if (u.ustr == 18)	/* up to 18 */
-		return (2);
-	else if (u.ustr < 94)	/* up to 18/75 */
-		return (3);
-	else if (u.ustr < 109)	/* up to 18/90 */
-		return (4);
-	else if (u.ustr < 118)	/* up to 18/99 */
-		return (5);
+	else if (u.ustr == 18)
+		return (2);	/* up to 18 */
+	else if (u.ustr < 94)
+		return (3);	/* up to 18/75 */
+	else if (u.ustr < 109)
+		return (4);	/* up to 18/90 */
+	else if (u.ustr < 118)
+		return (5);	/* up to 18/99 */
 	else
 		return (6);
 }
 
-/* may kill you; cause may be poison or monster like 'A' */
+/* may kill you; cause may be poison or */
+/* monster like 'A' */
 void
-losestr(int num)
+losestr(int num)		
 {
 	u.ustr -= num;
 	while (u.ustr < 3) {
@@ -829,7 +891,7 @@ losehp(int n, const char *knam)
 		u.uhpmax = u.uhp;	/* perhaps n was negative */
 	flags.botl = 1;
 	if (u.uhp < 1) {
-		killer = knam;		/* the thing that killed you */
+		killer = knam;	/* the thing that killed you */
 		done("died");
 	}
 }
@@ -844,8 +906,8 @@ losehp_m(int n, struct monst *mtmp)
 }
 
 void
-losexp(void)    /* hit by V or W */
-{
+losexp(void)
+{				/* hit by V or W */
 	int num;
 
 	if (u.ulevel > 1)
@@ -863,9 +925,8 @@ int
 inv_weight(void)
 {
 	struct obj *otmp = invent;
-	int wt = (u.ugold + 500) / 1000;
-	int carrcap;
-
+	int    wt = (u.ugold + 500) / 1000;
+	int    carrcap;
 	if (Levitation)		/* pugh@cornell */
 		carrcap = MAX_CARR_CAP;
 	else {
@@ -888,8 +949,7 @@ static int
 inv_cnt(void)
 {
 	struct obj *otmp = invent;
-	int ct = 0;
-
+	int    ct = 0;
 	while (otmp) {
 		ct++;
 		otmp = otmp->nobj;

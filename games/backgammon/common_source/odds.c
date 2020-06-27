@@ -1,4 +1,7 @@
-/*-
+/*	@(#)odds.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: odds.c,v 1.7 2006/03/22 04:22:05 christos Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)odds.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/common_source/odds.c,v 1.5 1999/11/30 03:48:26 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/odds.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
@@ -36,7 +35,7 @@
 void
 odds(int r1, int r2, int val)
 {
-	int i, j;
+	int     i, j;
 
 	if (r1 == 0) {
 		for (i = 0; i < 6; i++)
@@ -60,7 +59,9 @@ odds(int r1, int r2, int val)
 int
 count(void)
 {
-	int i, j, total;
+	int     i;
+	int     j;
+	int     total;
 
 	total = 0;
 	for (i = 0; i < 6; i++)
@@ -72,8 +73,8 @@ count(void)
 int
 canhit(int i, int c)
 {
-	int j, k, b;
-	int a, diff, place, addon, menstuck;
+	int     j, k, b;
+	int     a, diff, place, addon, menstuck;
 
 	if (c == 0)
 		odds(0, 0, 0);
@@ -90,12 +91,12 @@ canhit(int i, int c)
 		if (board[j] * a > 0) {
 			diff = abs(j - i);
 			addon = place + ((board[j] * a > 2 || j == b) ? 5 : 0);
-			if ((j == b && menstuck == 1) &&
+			if ((j == b && menstuck == 1) ||
 			    (j != b && menstuck == 0))
 				for (k = 1; k < diff; k++)
 					if (k < 7 && diff - k < 7 &&
 					    (board[i + a * k] * a >= 0 ||
-					     board[i + a * (diff - k)] >= 0))
+						board[i + a * (diff - k)] >= 0))
 						odds(k, diff - k, addon);
 			if ((j == b || menstuck < 2) && diff < 7)
 				odds(diff, 0, addon);

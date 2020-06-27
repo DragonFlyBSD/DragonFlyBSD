@@ -1,13 +1,74 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.do.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.do.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.do.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.do.c,v 1.11 2011/08/06 20:29:37 dholland Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /* Contains code for 'd', 'D' (drop), '>', '<' (up, down) and 't' (throw) */
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include "hack.h"
+#include "extern.h"
 
-extern struct monst youmonst;
 
 static int drop(struct obj *);
 static void dropy(struct obj *);
@@ -23,8 +84,8 @@ drop(struct obj *obj)
 {
 	if (!obj)
 		return (0);
-	if (obj->olet == '$') {		/* pseudo object */
-		long amount = OGOLD(obj);
+	if (obj->olet == '$') {	/* pseudo object */
+		long            amount = OGOLD(obj);
 
 		if (amount == 0)
 			pline("You didn't drop any gold pieces.");
@@ -47,7 +108,7 @@ drop(struct obj *obj)
 			pline("Your weapon is welded to your hand!");
 			return (0);
 		}
-		setuwep(NULL);
+		setuwep((struct obj *) 0);
 	}
 	pline("You dropped %s.", doname(obj));
 	dropx(obj);
@@ -99,7 +160,6 @@ dodown(void)
 		pline("You're floating high above the stairs.");
 		return (0);
 	}
-
 	goto_level(dlevel + 1, TRUE);
 	return (1);
 }
@@ -119,7 +179,6 @@ doup(void)
 		pline("Your load is too heavy to climb the stairs.");
 		return (1);
 	}
-
 	goto_level(dlevel - 1, TRUE);
 	return (1);
 }
@@ -128,14 +187,14 @@ void
 goto_level(int newlevel, boolean at_stairs)
 {
 	int fd;
-	boolean up = (newlevel < dlevel);
+	boolean         up = (newlevel < dlevel);
 
-	if (newlevel <= 0)		/* in fact < 0 is impossible */
-		done("escaped");
-	if (newlevel > MAXLEVEL)	/* strange ... */
-		newlevel = MAXLEVEL;
-	if (newlevel == dlevel)		/* this can happen */
-		return;
+	if (newlevel <= 0)
+		done("escaped");/* in fact < 0 is impossible */
+	if (newlevel > MAXLEVEL)
+		newlevel = MAXLEVEL;	/* strange ... */
+	if (newlevel == dlevel)
+		return;		/* this can happen */
 
 	glo(dlevel);
 	fd = creat(lock, FMASK);
@@ -151,7 +210,6 @@ goto_level(int newlevel, boolean at_stairs)
 		      up ? "up" : "down");
 		return;
 	}
-
 	if (Punished)
 		unplacebc();
 	u.utrap = 0;		/* needed in level_tele */
@@ -162,10 +220,10 @@ goto_level(int newlevel, boolean at_stairs)
 		u.uswldtim = u.uswallow = 0;
 	flags.nscrinh = 1;
 	u.ux = FAR;		/* hack */
-	inshop();		/* probably was a trapdoor */
+	(void) inshop();	/* probably was a trapdoor */
 
 	savelev(fd, dlevel);
-	close(fd);
+	(void) close(fd);
 
 	dlevel = newlevel;
 	if (maxdlevel < dlevel)
@@ -181,7 +239,7 @@ goto_level(int newlevel, boolean at_stairs)
 			done("tricked");
 		}
 		getlev(fd, hackpid, dlevel);
-		close(fd);
+		(void) close(fd);
 	}
 
 	if (at_stairs) {
@@ -189,7 +247,8 @@ goto_level(int newlevel, boolean at_stairs)
 			u.ux = xdnstair;
 			u.uy = ydnstair;
 			if (!u.ux) {	/* entering a maze from below? */
-				u.ux = xupstair; /* this will confuse the player! */
+				u.ux = xupstair;	/* this will confuse the
+							 * player! */
 				u.uy = yupstair;
 			}
 			if (Punished && !Levitation) {
@@ -213,7 +272,7 @@ goto_level(int newlevel, boolean at_stairs)
 			}
 		}
 		{
-			struct monst *mtmp = m_at(u.ux, u.uy);
+			struct monst   *mtmp = m_at(u.ux, u.uy);
 			if (mtmp)
 				mnexto(mtmp);
 		}
@@ -232,14 +291,14 @@ goto_level(int newlevel, boolean at_stairs)
 		}
 		selftouch("Falling, you");
 	}
-	inshop();
+	(void) inshop();
 	initrack();
 
 	losedogs();
 	{
-		struct monst *mtmp;
-		if ((mtmp = m_at(u.ux, u.uy)))		/* riv05!a3 */
-			mnexto(mtmp);
+		struct monst   *mtmp;
+		if ((mtmp = m_at(u.ux, u.uy)) != NULL)
+			mnexto(mtmp);	/* riv05!a3 */
 	}
 	flags.nscrinh = 0;
 	setsee();
@@ -266,19 +325,18 @@ dopray(void)
 int
 dothrow(void)
 {
-	struct obj *obj;
-	struct monst *mon;
+	struct obj     *obj;
+	struct monst   *mon;
 	int tmp;
 
 	obj = getobj("#)", "throw");	/* it is also possible to throw food */
-					/* (or jewels, or iron balls ... ) */
-	if (!obj || !getdir(1))		/* ask "in what direction?" */
+	/* (or jewels, or iron balls ... ) */
+	if (!obj || !getdir(1))	/* ask "in what direction?" */
 		return (0);
 	if (obj->owornmask & (W_ARMOR | W_RING)) {
 		pline("You can't throw something you are wearing.");
 		return (0);
 	}
-
 	u_wipe_engr(2);
 
 	if (obj == uwep) {
@@ -289,9 +347,9 @@ dothrow(void)
 		if (obj->quan > 1)
 			setuwep(splitobj(obj, 1));
 		else
-			setuwep(NULL);
+			setuwep((struct obj *) 0);
 	} else if (obj->quan > 1)
-		splitobj(obj, 1);
+		(void) splitobj(obj, 1);
 	freeinv(obj);
 	if (u.uswallow) {
 		mon = u.ustuck;
@@ -300,36 +358,36 @@ dothrow(void)
 	} else if (u.dz) {
 		if (u.dz < 0) {
 			pline("%s hits the ceiling, then falls back on top of your head.",
-			    Doname(obj));	/* note: obj->quan == 1 */
+			      Doname(obj));	/* note: obj->quan == 1 */
 			if (obj->olet == POTION_SYM)
 				potionhit(&youmonst, obj);
 			else {
 				if (uarmh)
 					pline("Fortunately, you are wearing a helmet!");
-				losehp(uarmh ? 1 : rnd((int)(obj->owt)),
-				    "falling object");
+				losehp(uarmh ? 1 : rnd((int) (obj->owt)), "falling object");
 				dropy(obj);
 			}
 		} else {
 			pline("%s hits the floor.", Doname(obj));
 			if (obj->otyp == EXPENSIVE_CAMERA) {
 				pline("It is shattered in a thousand pieces!");
-				obfree(obj, NULL);
+				obfree(obj, Null(obj));
 			} else if (obj->otyp == EGG) {
 				pline("\"Splash!\"");
-				obfree(obj, NULL);
+				obfree(obj, Null(obj));
 			} else if (obj->olet == POTION_SYM) {
 				pline("The flask breaks, and you smell a peculiar odor ...");
 				potionbreathe(obj);
-				obfree(obj, NULL);
-			} else
+				obfree(obj, Null(obj));
+			} else {
 				dropy(obj);
+			}
 		}
 		return (1);
 	} else if (obj->otyp == BOOMERANG) {
 		mon = boomhit(u.dx, u.dy);
-		if (mon == &youmonst) {		/* the thing was caught */
-			addinv(obj);
+		if (mon == &youmonst) {	/* the thing was caught */
+			(void) addinv(obj);
 			return (1);
 		}
 	} else {
@@ -337,9 +395,10 @@ dothrow(void)
 			return (1);
 
 		mon = bhit(u.dx, u.dy, (obj->otyp == ICE_BOX) ? 1 :
-		    (!Punished || obj != uball) ? 8 : !u.ustuck ? 5 : 1,
-		    obj->olet, (void (*)(struct monst *, struct obj *)) 0,
-		    (bool (*)(struct obj *, struct obj *)) 0, obj);
+			(!Punished || obj != uball) ? 8 : !u.ustuck ? 5 : 1,
+			   obj->olet,
+			   (void (*)(struct monst *, struct obj *)) 0,
+			   (int (*)(struct obj *, struct obj *)) 0, obj);
 	}
 	if (mon) {
 		/* awake monster if sleeping */
@@ -362,13 +421,13 @@ dothrow(void)
 					/* mon still alive */
 #ifndef NOWORM
 					cutworm(mon, bhitpos.x, bhitpos.y, obj->otyp);
-#endif /* NOWORM */
+#endif	/* NOWORM */
 				} else
 					mon = 0;
 				/* weapons thrown disappear sometimes */
 				if (obj->otyp < BOOMERANG && rn2(3)) {
 					/* check bill; free */
-					obfree(obj, NULL);
+					obfree(obj, (struct obj *) 0);
 					return (1);
 				}
 			} else
@@ -401,16 +460,17 @@ dothrow(void)
 					if (objects[obj->otyp].g_val > 0) {
 						u.uluck += 5;
 						goto valuable;
-					} else
+					} else {
 						pline("%s is not interested in your junk.",
-						    Monnam(mon));
-				} else { /* value unknown to @ */
+						      Monnam(mon));
+					}
+				} else {	/* value unknown to @ */
 					u.uluck++;
-valuable:
+			valuable:
 					if (u.uluck > LUCKMAX)	/* dan@ut-ngp */
 						u.uluck = LUCKMAX;
 					pline("%s graciously accepts your gift.",
-					    Monnam(mon));
+					      Monnam(mon));
 					mpickobj(mon, obj);
 					rloc(mon);
 					return (1);
@@ -436,7 +496,8 @@ valuable:
 			if (u.utraptype == TT_PIT)
 				pline("The ball pulls you out of the pit!");
 			else {
-				long side = rn2(3) ? LEFT_SIDE : RIGHT_SIDE;
+				long            side =
+				rn2(3) ? LEFT_SIDE : RIGHT_SIDE;
 				pline("The ball pulls you out of the bear trap.");
 				pline("Your %s leg is severely damaged.",
 				    (side == LEFT_SIDE) ? "left" : "right");
@@ -451,7 +512,7 @@ valuable:
 		u.ux = uchain->ox = bhitpos.x - u.dx;
 		u.uy = uchain->oy = bhitpos.y - u.dy;
 		setsee();
-		inshop();
+		(void) inshop();
 	}
 	if (cansee(bhitpos.x, bhitpos.y))
 		prl(bhitpos.x, bhitpos.y);
@@ -460,11 +521,10 @@ valuable:
 
 /* split obj so that it gets size num */
 /* remainder is put in the object structure delivered by this call */
-struct obj *
+struct obj     *
 splitobj(struct obj *obj, int num)
 {
-	struct obj *otmp;
-
+	struct obj     *otmp;
 	otmp = newobj(0);
 	*otmp = *obj;		/* copies whole structure */
 	otmp->o_id = flags.ident++;

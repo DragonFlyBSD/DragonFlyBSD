@@ -1,4 +1,7 @@
-/*-
+/*	@(#)board.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: board.c,v 1.9 2009/08/12 05:17:57 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,30 +28,25 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)board.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/common_source/board.c,v 1.6 1999/11/30 03:48:25 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/board.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
-#include <string.h>
 #include "back.h"
 
-static void	wrbsub(void);
+static int i, j, k;
+static char ln[60];
 
-static int	i, j, k;
-static char	ln[60];
+static void wrbsub(void);
 
 void
 wrboard(void)
 {
-	int l;
+	int     l;
 	static const char bl[] =
-		"|                       |   |                       |\n";
+	"|                       |   |                       |\n";
 	static const char sv[] =
-		"|                       |   |                       |    \n";
+	"|                       |   |                       |    \n";
 
-	fixtty(noech);
+	fixtty(&noech);
 	clear();
 
 	if (tflag) {
@@ -153,14 +151,14 @@ lastline:
 		writec('\n');
 		writec('\n');
 	}
-	fixtty(bgraw);
+	fixtty(&raw);
 }
 
 static void
 wrbsub(void)
 {
-	int m;
-	char d;
+	int     m;
+	char    d;
 
 	if (board[k] > 0) {
 		m = board[k];

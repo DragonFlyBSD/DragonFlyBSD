@@ -1,4 +1,7 @@
-/*-
+/*	@(#)com4.c	8.2 (Berkeley) 4/28/95			*/
+/*	$NetBSD: command4.c,v 1.3 2005/07/01 06:04:54 jmc Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,68 +28,56 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)com4.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/battlestar/com4.c,v 1.8.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com4.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
-#include "externs.h"
+#include "extern.h"
 
 int
 take(unsigned int from[])
 {
-	int firstnumber, heavy, bulky, value;
-	int n;
+	int     firstnumber, heavy, bulky, value;
 
 	firstnumber = wordnumber;
 	if (wordnumber < wordcount && wordvalue[wordnumber + 1] == OFF) {
 		wordnumber++;
 		wordvalue[wordnumber] = TAKEOFF;
+		wordtype[wordnumber] = VERB;
 		return (cypher());
 	} else {
-		while (wordtype[++wordnumber] == ADJS)
-			; /* nothing */
-		while (wordnumber <= wordcount && wordtype[wordnumber] ==
-		       OBJECT) {
+		wordnumber++;
+		while (wordnumber <= wordcount && wordtype[wordnumber] == 
+		    OBJECT) {
 			value = wordvalue[wordnumber];
 			printf("%s:\n", objsht[value]);
-			for (n = 0; objsht[value][n]; n++)
-				; /* nothing */
 			heavy = (carrying + objwt[value]) <= WEIGHT;
 			bulky = (encumber + objcumber[value]) <= CUMBER;
-			if ((testbit(from, value) || wiz || tempwiz) &&
+			if ((testbit(from, value) || wiz || tempwiz) && 
 			    heavy && bulky && !testbit(inven, value)) {
 				setbit(inven, value);
 				carrying += objwt[value];
 				encumber += objcumber[value];
-				gtime++;
+				ourtime++;
 				if (testbit(from, value))
 					printf("Taken.\n");
 				else
 					printf("Zap! Taken from thin air.\n");
 				clearbit(from, value);
 				if (value == MEDALION)
-					bs_win--;
+					win--;
 			} else if (testbit(inven, value))
-				printf("You're already holding%s%s.\n",
-					(objsht[value][n - 1] ==
-					 's' ? " " : " a "),
-					objsht[value]);
+				printf("You're already holding %s%s.\n",
+				    A_OR_AN_OR_BLANK(value),
+				    objsht[value]);
+			else if (!testbit(from, value))
+				printf("I don't see any %s around here.\n", 
+				    objsht[value]);
 			else if (!heavy)
-				printf("The %s %s too heavy.\n", objsht[value],
-				       (objsht[value][n - 1] ==
-					's' ? "are" : "is"));
-			else if (!bulky)
-				printf(
-					"The %s %s too cumbersome to hold.\n",
-					objsht[value],
-					(objsht[value][n - 1] ==
-					 's' ? "are" : "is"));
+				printf("The %s %stoo heavy.\n", objsht[value],
+				    IS_OR_ARE(value));
 			else
-				printf("I dont see any %s around here.\n",
-				       objsht[value]);
-			if (wordnumber < wordcount - 1 &&
+				printf("The %s %stoo cumbersome to hold.\n",
+				    objsht[value], IS_OR_ARE(value));
+			if (wordnumber < wordcount - 1 && 
 			    wordvalue[++wordnumber] == AND)
 				wordnumber++;
 			else
@@ -94,8 +85,10 @@ take(unsigned int from[])
 		}
 	}
 	/* special cases with their own return()'s */
+
 	if (wordnumber <= wordcount && wordtype[wordnumber] == NOUNS)
 		switch (wordvalue[wordnumber]) {
+
 		case SWORD:
 			if (testbit(from, SWORD)) {
 				wordtype[wordnumber--] = OBJECT;
@@ -138,44 +131,64 @@ take(unsigned int from[])
 
 		case AMULET:
 			if (testbit(location[position].objects, AMULET)) {
-				puts("The amulet is warm to the touch, and its beauty catches your breath.");
-				puts("A mist falls over your eyes, but then it is gone.  Sounds seem clearer");
-				puts("and sharper but far away as if in a dream.  The sound of purling water reaches");
-				puts("you from afar.  The mist falls again, and your heart leaps in horror.  The gold");
-				puts("freezes your hands and fathomless darkness engulfs your soul.");
+				printf("The amulet is warm to the touch, and ");
+				puts("its beauty catches your breath.");
+				printf("A mist falls over your eyes, but ");
+				puts("then it is gone.  Sounds seem clearer");
+				printf("and sharper but far away as if in a ");
+				puts("dream.  The sound of purling water");
+				printf("reaches you from afar.  The mist ");
+				printf("falls again, and your heart leaps in ");
+				puts("horror.");
+				printf("The gold freezes your hands and ");
+				puts("fathomless darkness engulfs your soul.");
 			}
 			wordtype[wordnumber--] = OBJECT;
 			return (take(from));
 
 		case MEDALION:
 			if (testbit(location[position].objects, MEDALION)) {
-				puts("The medallion is warm, and it rekindles your spirit with the warmth of life.");
-				puts("Your amulet begins to glow as the medallion is brought near to it, and together\nthey radiate.");
+				printf("The medallion is warm, and it ");
+				printf("rekindles your spirit with the ");
+				puts("warmth of life.");
+				printf("Your amulet begins to glow as the ");
+				printf("medallion is brought near to it, ");
+				printf("and together\nthey radiate.\n");
 			}
 			wordtype[wordnumber--] = OBJECT;
 			return (take(from));
 
 		case TALISMAN:
-			if (testbit(location[position].objects, TALISMAN))
-				puts("The talisman is cold to the touch, and it sends a chill down your spine.");
+			if (testbit(location[position].objects, TALISMAN)) {
+				printf("The talisman is cold to the touch, ");
+				puts("and it sends a chill down your spine.");
+			}
 			wordtype[wordnumber--] = OBJECT;
 			return (take(from));
 
 		case NORMGOD:
-			if (testbit(location[position].objects, BATHGOD) &&
+			if (testbit(location[position].objects, BATHGOD) && 
 			    (testbit(wear, AMULET) || testbit(inven, AMULET))) {
-				puts("She offers a delicate hand, and you help her out of the sparkling springs.");
-				puts("Water droplets like liquid silver bedew her golden skin, but when they part");
-				puts("from her, they fall as teardrops.  She wraps a single cloth around her and");
-				puts("ties it at the waist.  Around her neck hangs a golden amulet.");
-				puts("She bids you to follow her.");
+				printf("She offers a delicate hand, and you ");
+				puts("help her out of the sparkling springs.");
+				printf("Water droplets like liquid silver ");
+				printf("bedew her golden skin, but when ");
+				puts("they part");
+				printf("from her, they fall as teardrops.  ");
+				puts("She wraps a single cloth around her and");
+				printf("ties it at the waist.  Around her ");
+				puts("neck hangs a golden amulet.");
+				printf("She bids you to follow her, and ");
+				puts("walks away.");
 				pleasure++;
-				followgod = gtime;
+				followgod = ourtime;
 				clearbit(location[position].objects, BATHGOD);
 			} else
-				if (!testbit(location[position].objects, BATHGOD))
-					puts("You're in no position to take her.");
-				else
+				if (!testbit(location[position].objects, 
+				    BATHGOD)) {
+					printf("You're in no position to ");
+					puts("take her.");
+				} else
 					puts("She moves away from you.");
 			break;
 
@@ -190,13 +203,14 @@ take(unsigned int from[])
 int
 throw(const char *name)
 {
-	int n, deposit;
-	int first, value;
+	unsigned int     n;
+	int     deposit = 0;
+	int     first, value;
 
-	deposit = 0;
 	first = wordnumber;
 	if (drop(name) != -1) {
 		switch (wordvalue[wordnumber]) {
+
 		case AHEAD:
 			deposit = ahead;
 			break;
@@ -214,7 +228,7 @@ throw(const char *name)
 			break;
 
 		case UP:
-			deposit = location[position].up *
+			deposit = location[position].up * 
 			    (location[position].access || position == FINAL);
 			break;
 
@@ -222,20 +236,22 @@ throw(const char *name)
 			deposit = location[position].down;
 			break;
 		}
-		wordnumber = first;
-		while (wordtype[++wordnumber] == ADJS)
-			; /* nothing */
+		wordnumber = first + 1;
 		while (wordnumber <= wordcount) {
 			value = wordvalue[wordnumber];
-			if (deposit &&
+			if (deposit && 
 			    testbit(location[position].objects, value)) {
 				clearbit(location[position].objects, value);
 				if (value != GRENADE)
-					setbit(location[deposit].objects, value);
+					setbit(location[deposit].objects, 
+					    value);
 				else {
-					puts("A thundering explosion nearby sends up a cloud of smoke and shrapnel.");
+					printf("A thundering explosion ");
+					printf("nearby sends up a cloud of ");
+					puts("smoke and shrapnel.");
 					for (n = 0; n < NUMOFWORDS; n++)
-						location[deposit].objects[n] = 0;
+						location[deposit].objects[n] = 
+						    0;
 					setbit(location[deposit].objects, CHAR);
 				}
 				if (value == ROPE && position == FINAL)
@@ -255,12 +271,14 @@ throw(const char *name)
 					puts("The door is not damaged.");
 				}
 			} else
-				if (value == GRENADE &&
-				    testbit(location[position].objects, value)) {
-					puts("You are blown into shreds when your grenade explodes.");
-					die(0);
+				if (value == GRENADE && 
+				    testbit(location[position].objects, 
+				    value)) {
+					printf("You are blown into shreds ");
+					puts("when your grenade explodes.");
+					die();
 				}
-			if (wordnumber < wordcount - 1 &&
+			if (wordnumber < wordcount - 1 && 
 			    wordvalue[++wordnumber] == AND)
 				wordnumber++;
 			else
@@ -274,48 +292,87 @@ throw(const char *name)
 int
 drop(const char *name)
 {
-	int firstnumber, value;
+
+	int     firstnumber, value;
 
 	firstnumber = wordnumber;
-	while (wordtype[++wordnumber] == ADJS)
-		;
-	while (wordnumber <= wordcount &&
-	       (wordtype[wordnumber] == OBJECT || wordtype[wordnumber] == NOUNS)) {
+	wordnumber++;
+	while (wordnumber <= wordcount && 
+	    (wordtype[wordnumber] == OBJECT || wordtype[wordnumber] == NOUNS)) {
 		value = wordvalue[wordnumber];
-		printf("%s:\n", objsht[value]);
-		if (testbit(inven, value)) {
-			clearbit(inven, value);
-			carrying -= objwt[value];
-			encumber -= objcumber[value];
-			if (value == BOMB) {
-				puts("The bomb explodes.  A blinding white light and immense concussion obliterate us.");
-				die(0);
-			}
-			if (value != AMULET && value != MEDALION && value !=
-			    TALISMAN)
-				setbit(location[position].objects, value);
-			else
-				tempwiz = 0;
-			gtime++;
-			if (*name == 'K')
-				puts("Drop kicked.");
-			else
-				printf("%s.\n", name);
-		} else {
-			if (*name != 'K') {
-				printf("You aren't holding the %s.\n",
-				       objsht[value]);
-				if (testbit(location[position].objects,
-					    value)) {
-					if (*name == 'T')
-						puts("Kicked instead.");
-					else if (*name == 'G')
-						puts("Given anyway.");
-				}
-			} else
-				puts("Kicked.");
+		if (value == BODY) {	/* special case */
+			wordtype[wordnumber] = OBJECT;
+			if (testbit(inven, MAID) || 
+			    testbit(location[position].objects, MAID))
+				value = MAID;
+			else if (testbit(inven, DEADWOOD) || 
+			    testbit(location[position].objects, DEADWOOD))
+				value = DEADWOOD;
+			else if (testbit(inven, DEADGOD) || 
+			    testbit(location[position].objects, DEADGOD))
+				value = DEADGOD;
+			else if (testbit(inven, DEADTIME) || 
+			    testbit(location[position].objects, DEADTIME))
+				value = DEADTIME;
+			else if (testbit(inven, DEADNATIVE) || 
+			    testbit(location[position].objects, DEADNATIVE))
+				value = DEADNATIVE;
 		}
-		if (wordnumber < wordcount - 1 &&
+		if (wordtype[wordnumber] == NOUNS && value == DOOR) {
+			if (*name == 'K')
+				puts("You hurt your foot.");
+			else
+				puts("You're not holding a door.");
+		} else if (objsht[value] == NULL) {
+			if (*name == 'K')
+				puts("That's not for kicking!");
+			else
+				puts("You don't have that.");
+		} else {
+			printf("%s:\n", objsht[value]);
+			if (testbit(inven, value)) {
+				clearbit(inven, value);
+				carrying -= objwt[value];
+				encumber -= objcumber[value];
+				if (value == BOMB) {
+					printf("The bomb explodes.  A ");
+					printf("blinding white light and ");
+					printf("immense concussion ");
+					puts("obliterate us.");
+					die();
+				}
+				if (value != AMULET && value != MEDALION && 
+				    value != TALISMAN)
+					setbit(location[position].objects, 
+					    value);
+				else
+					tempwiz = 0;
+				ourtime++;
+				if (*name == 'K')
+					puts("Drop kicked.");
+				else
+					printf("%s.\n", name);
+			} else {
+				if (*name != 'K') {
+					printf("You aren't holding the %s.\n", 
+					    objsht[value]);
+					if (testbit(location[position].objects,
+					    value)) {
+						if (*name == 'T')
+							puts("Kicked instead.");
+						else if (*name == 'G')
+							puts("Given anyway.");
+					}
+				} else if (testbit(location[position].objects, 
+				    value))
+					puts("Kicked.");
+				else if (testbit(wear, value))
+					puts("Not while it's being worn.");
+				else
+					puts("Not found.");
+			}
+		}
+		if (wordnumber < wordcount - 1 && 
 		    wordvalue[++wordnumber] == AND)
 			wordnumber++;
 		else
@@ -342,25 +399,27 @@ puton(void)
 int
 eat(void)
 {
-	int firstnumber, value;
+	int     firstnumber, value;
 
 	firstnumber = wordnumber;
-	while (wordtype[++wordnumber] == ADJS)
-		; /* nothing */
+	wordnumber++;
 	while (wordnumber <= wordcount) {
 		value = wordvalue[wordnumber];
+		if (wordtype[wordnumber] != OBJECT || objsht[value] == NULL)
+			value = -2;
 		switch (value) {
+
+		case -2:
+			puts("You can't eat that!");
+			return (firstnumber);
+
 		case -1:
 			puts("Eat what?");
 			return (firstnumber);
 
 		default:
-			printf("You can't eat%s%s!\n",
-			    wordtype[wordnumber] == OBJECT &&
-			       objsht[value]
-			       [strlen(objsht[value]) - 1] == 's' ?
-			       " " : " a ",
-			       words[wordnumber]);
+			printf("You can't eat %s%s!\n",
+			    A_OR_AN_OR_BLANK(value), objsht[value]);
 			return (firstnumber);
 
 		case PAPAYAS:
@@ -371,23 +430,24 @@ eat(void)
 
 			printf("%s:\n", objsht[value]);
 			if (testbit(inven, value) &&
-			    gtime > ate - CYCLE &&
+			    ourtime > ate - CYCLE &&
 			    testbit(inven, KNIFE)) {
 				clearbit(inven, value);
 				carrying -= objwt[value];
 				encumber -= objcumber[value];
-				ate = max(gtime, ate) + CYCLE / 3;
+				ate = max(ourtime, ate) + CYCLE / 3;
 				snooze += CYCLE / 10;
-				gtime++;
-				puts("Eaten.  You can explore a little longer now.");
-			} else if (gtime < ate - CYCLE)
-				puts("You're stuffed.");
-			else if (!testbit(inven, KNIFE))
+				ourtime++;
+				printf("Eaten.  You can explore a little ");
+				puts("longer now.");
+			} else if (!testbit(inven, value)) {
+				printf("You aren't holding the %s.\n", 
+				    objsht[value]);
+			} else if (!testbit(inven, KNIFE))
 				puts("You need a knife.");
 			else
-				printf("You aren't holding the %s.\n",
-				       objsht[value]);
-			if (wordnumber < wordcount - 1 &&
+				puts("You're stuffed.");
+			if (wordnumber < wordcount - 1 && 
 			    wordvalue[++wordnumber] == AND)
 				wordnumber++;
 			else

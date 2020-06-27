@@ -1,17 +1,75 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mkobj.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.mkobj.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mkobj.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.mkobj.c,v 1.9 2011/08/07 06:03:45 dholland Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
+#include "extern.h"
 
-char mkobjstr[] = "))[[!!!!????%%%%/=**))[[!!!!????%%%%/=**(%";
+static const char mkobjstr[] = "))[[!!!!????%%%%/=**))[[!!!!????%%%%/=**(%";
 
-struct obj *
+struct obj     *
 mkobj_at(int let, int x, int y)
 {
-	struct obj *otmp = mkobj(let);
-
+	struct obj     *otmp = mkobj(let);
 	otmp->ox = x;
 	otmp->oy = y;
 	otmp->nobj = fobj;
@@ -22,15 +80,14 @@ mkobj_at(int let, int x, int y)
 void
 mksobj_at(int otyp, int x, int y)
 {
-	struct obj *otmp = mksobj(otyp);
-
+	struct obj     *otmp = mksobj(otyp);
 	otmp->ox = x;
 	otmp->oy = y;
 	otmp->nobj = fobj;
 	fobj = otmp;
 }
 
-struct obj *
+struct obj     *
 mkobj(int let)
 {
 	if (!let)
@@ -38,21 +95,20 @@ mkobj(int let)
 	return (
 		mksobj(
 		       letter(let) ?
-		       CORPSE +
-		       ((let > 'Z') ? (let - 'a' + 'Z' - '@' +
-				       1) : (let - '@'))
-		       :   probtype(let)
+	  CORPSE + ((let > 'Z') ? (let - 'a' + 'Z' - '@' + 1) : (let - '@'))
+		       : probtype(let)
 		       )
 		);
 }
 
-struct obj zeroobj;
 
-struct obj *
+struct obj      zeroobj;
+
+struct obj     *
 mksobj(int otyp)
 {
-	struct obj *otmp;
-	char let = objects[otyp].oc_olet;
+	struct obj     *otmp;
+	char            let = objects[otyp].oc_olet;
 
 	otmp = newobj(0);
 	*otmp = zeroobj;
@@ -79,10 +135,11 @@ mksobj(int otyp)
 		/* if tins are to be identified, need to adapt doname() etc */
 		if (otmp->otyp == TIN)
 			otmp->spe = rnd(...);
-#endif /* NOT_YET_IMPLEMENTED */
+#endif	/* NOT_YET_IMPLEMENTED */
 		/* FALLTHROUGH */
 	case GEM_SYM:
 		otmp->quan = rn2(6) ? 1 : 2;
+		break;
 	case TOOL_SYM:
 	case CHAIN_SYM:
 	case BALL_SYM:
@@ -106,7 +163,7 @@ mksobj(int otyp)
 			otmp->spe = 3;
 		else
 			otmp->spe = rn1(5,
-			    (objects[otmp->otyp].bits & NODIR) ? 11 : 4);
+			       (objects[otmp->otyp].bits & NODIR) ? 11 : 4);
 		break;
 	case RING_SYM:
 		if (objects[otmp->otyp].bits & SPEC) {
@@ -127,8 +184,8 @@ mksobj(int otyp)
 	return (otmp);
 }
 
-bool
-letter(char c)
+int
+letter(int c)
 {
 	return (('@' <= c && c <= 'Z') || ('a' <= c && c <= 'z'));
 }
@@ -136,15 +193,15 @@ letter(char c)
 int
 weight(struct obj *obj)
 {
-	int wt = objects[obj->otyp].oc_weight;
+	int             wt = objects[obj->otyp].oc_weight;
 	return (wt ? wt * obj->quan : (obj->quan + 1) / 2);
 }
 
 void
 mkgold(long num, int x, int y)
 {
-	struct gold *gold;
-	long amount = (num ? num : 1 + (rnd(dlevel + 2) * rnd(30)));
+	struct gold    *gold;
+	long            amount = (num ? num : 1 + (rnd(dlevel + 2) * rnd(30)));
 
 	if ((gold = g_at(x, y)) != NULL)
 		gold->amount += amount;

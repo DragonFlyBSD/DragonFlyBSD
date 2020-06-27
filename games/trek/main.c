@@ -1,4 +1,7 @@
-/*-
+/*	@(#)main.c	8.1 (Berkeley) 5/31/93			*/
+/*	$NetBSD: main.c,v 1.23 2011/08/29 20:30:37 joerg Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,16 +28,18 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
- * @(#)main.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/main.c,v 1.7.2.1 2001/03/05 12:11:14 kris Exp $
  */
 
+#include <stdio.h>
+#include <setjmp.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <err.h>
+#include <time.h>
+#include <sys/types.h>
 #include "trek.h"
 #include "getpar.h"
 
-unsigned int	Mother	= 51 + (51 << 8);
 
 /*
 **	 ####  #####    #    ####          #####  ####   #####  #   #
@@ -122,7 +127,7 @@ unsigned int	Mother	= 51 + (51 << 8);
 **	implementations, and because I was too lazy to do the doubleing
 **	point input myself.  Little did I know.  The portable C library
 **	released by Bell Labs has more bugs than you would believe, so
-**	I ended up rewriting the whole blessed thing.  Trek exercises
+**	I ended up rewriting the whole blessed thing.  Trek excercises
 **	many of the bugs in it, as well as bugs in some of the section
 **	III UNIX routines.  We have fixed them here.  One main problem
 **	was a bug in alloc() that caused it to always ask for a large
@@ -135,50 +140,61 @@ unsigned int	Mother	= 51 + (51 << 8);
 
 jmp_buf env;
 
+__dead2 static void
+usage(const char *av0)
+{
+	errx(1, "Usage: %s [-fs]", av0);
+}
+
 int
 main(int argc, char **argv)
 {
-	int		ac;
-	char		**av;
+	int ch;
 
 	/* Revoke setgid privileges */
 	setgid(getgid());
 
-	av = argv;
-	ac = argc;
-	av++;
-	srandomdev();
-	while (ac > 1 && av[0][0] == '-') {
-		switch (av[0][1]) {
+	/* Default to fast mode */
+	Etc.fast = 1;
+
+	srandom((long) time(NULL));
+
+	while ((ch = getopt(argc, argv, "fst")) != -1) {
+		switch (ch) {
+		  case 'f':	/* set fast mode */
+			Etc.fast++;
+			break;
+
+		  case 's':	/* set slow mode */
+			Etc.fast = 0;
+			break;
+
 #ifdef xTRACE
 		  case 't':	/* trace */
-			if (getuid() != Mother)
-				goto badflag;
 			Trace++;
 			break;
 #endif
+
 		  default:
-		  badflag:
-			printf("Invalid option: %s\n", av[0]);
-
+			usage(argv[0]);
 		}
-		ac--;
-		av++;
 	}
-	if (ac > 1)
-		syserr("arg count");
+	if (optind < argc)
+		usage(argv[0]);
 
-	printf("\n   * * *   S T A R   T R E K   * * *\n\nPress return to continue.\n");
+	printf("\n   * * *   S T A R   T R E K   * * *\n\n"
+	       "Press return to continue.\n");
 
 	if (setjmp(env)) {
 		if ( !getynpar("Another game") )
 			exit(0);
 	}
+
 	do {
 		setup();
 		play();
 	} while (getynpar("Another game"));
 
 	fflush(stdout);
-	return (0);
+	return 0;
 }

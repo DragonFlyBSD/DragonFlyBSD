@@ -1,4 +1,7 @@
-/*-
+/*	@(#)getcodi.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: getcodi.c,v 1.6 2009/05/24 19:18:44 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)getcodi.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/getcodi.c,v 1.2 1999/11/30 03:49:48 billf Exp $
- * $DragonFly: src/games/trek/getcodi.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 #include "getpar.h"
@@ -44,7 +43,7 @@
 **	(meaning to drop the request).
 */
 
-bool
+int
 getcodi(int *co, double *di)
 {
 

@@ -1,4 +1,7 @@
-/*-
+/*	@(#)schedule.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: schedule.c,v 1.11 2009/05/24 22:55:03 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)schedule.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/schedule.c,v 1.4 1999/11/30 03:49:53 billf Exp $
- * $DragonFly: src/games/trek/schedule.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
+#include <math.h>
+#include <err.h>
+#include <limits.h>
 #include "trek.h"
 
 /*
@@ -44,7 +47,7 @@
 */
 
 struct event *
-schedule(int type, double offset, char x, char y, char z)
+schedule(int type, double offset, int x, int y, int z)
 {
 	struct event	*e;
 	int		i;
@@ -58,7 +61,8 @@ schedule(int type, double offset, char x, char y, char z)
 		/* got a slot */
 #ifdef xTRACE
 		if (Trace)
-			printf("schedule: type %d @ %.2f slot %d parm %d %d %d\n",
+			printf("schedule: type %d @ %.2f "
+			       "slot %d parm %d %d %d\n",
 				type, date, i, x, y, z);
 #endif
 		e->evcode = type;
@@ -66,12 +70,10 @@ schedule(int type, double offset, char x, char y, char z)
 		e->x = x;
 		e->y = y;
 		e->systemname = z;
-		Now.eventptr[type] = e;
+		Now.eventptr[type & ~E_GHOST] = e;
 		return (e);
 	}
-	syserr("Cannot schedule event %d parm %d %d %d", type, x, y, z);
-	/* NOTREACHED */
-	return(NULL);
+	errx(1, "Cannot schedule event %d parm %d %d %d", type, x, y, z);
 }
 
 

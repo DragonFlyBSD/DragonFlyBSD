@@ -1,20 +1,80 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.o_init.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.o_init.c,v 1.6 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.o_init.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.o_init.c,v 1.14 2011/08/06 20:42:43 dholland Exp $	*/
 
-#include "def.objects.h"
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <string.h>
 #include "hack.h"
+#include "extern.h"
+#include "def.objects.h"
+#include "hack.onames.h"	/* for LAST_GEM */
 
 static void setgemprobs(void);
-static bool interesting_to_discover(int);
+static int interesting_to_discover(int);
 
 int
-letindex(char let)
+letindex(int let)
 {
-	int i = 0;
-	char ch;
-
+	int             i = 0;
+	char            ch;
 	while ((ch = obj_symbols[i++]) != 0)
 		if (ch == let)
 			return (i);
@@ -24,10 +84,9 @@ letindex(char let)
 void
 init_objects(void)
 {
-	int i, j, first, last, sum, end;
-	char let;
+	int             i, j, first, last, sum, end;
+	char            let;
 	const char *tmp;
-
 	/*
 	 * init base; if probs given check that they add up to 100, otherwise
 	 * compute probs; shuffle descriptions
@@ -76,11 +135,10 @@ check:
 }
 
 int
-probtype(char let)
+probtype(int let)
 {
-	int i = bases[letindex(let)];
-	int prob = rn2(100);
-
+	int             i = bases[letindex(let)];
+	int             prob = rn2(100);
 	while ((prob -= objects[i].oc_prob) >= 0)
 		i++;
 	if (objects[i].oc_olet != let || !objects[i].oc_name)
@@ -91,7 +149,7 @@ probtype(char let)
 static void
 setgemprobs(void)
 {
-	int j, first;
+	int             j, first;
 
 	first = bases[letindex(GEM_SYM)];
 
@@ -108,19 +166,18 @@ setgemprobs(void)
 }
 
 void
-oinit(void)		/* level dependent initialization */
-{
+oinit(void)
+{				/* level dependent initialization */
 	setgemprobs();
 }
 
 void
 savenames(int fd)
 {
-	int i;
-	unsigned len;
-
-	bwrite(fd, (char *)bases, sizeof(bases));
-	bwrite(fd, (char *)objects, sizeof(objects));
+	int             i;
+	size_t          len;
+	bwrite(fd, bases, sizeof bases);
+	bwrite(fd, objects, sizeof objects);
 	/*
 	 * as long as we use only one version of Hack/Quest we need not save
 	 * oc_name and oc_descr, but we must save oc_uname for all objects
@@ -128,7 +185,7 @@ savenames(int fd)
 	for (i = 0; i < SIZE(objects); i++) {
 		if (objects[i].oc_uname) {
 			len = strlen(objects[i].oc_uname) + 1;
-			bwrite(fd, (char *)&len, sizeof(len));
+			bwrite(fd, &len, sizeof len);
 			bwrite(fd, objects[i].oc_uname, len);
 		}
 	}
@@ -137,24 +194,23 @@ savenames(int fd)
 void
 restnames(int fd)
 {
-	int i;
-	unsigned len;
-
-	mread(fd, (char *)bases, sizeof(bases));
-	mread(fd, (char *)objects, sizeof(objects));
+	int             i;
+	unsigned        len;
+	mread(fd, bases, sizeof bases);
+	mread(fd, objects, sizeof objects);
 	for (i = 0; i < SIZE(objects); i++)
 		if (objects[i].oc_uname) {
-			mread(fd, (char *)&len, sizeof(len));
+			mread(fd, &len, sizeof len);
 			objects[i].oc_uname = alloc(len);
 			mread(fd, objects[i].oc_uname, len);
 		}
 }
 
 int
-dodiscovered(void)		/* free after Robert Viduya */
-{
-	int i, end;
-	int ct = 0;
+dodiscovered(void)
+{				/* free after Robert Viduya */
+	int             i, end;
+	int             ct = 0;
 
 	cornline(0, "Discoveries");
 
@@ -174,7 +230,7 @@ dodiscovered(void)		/* free after Robert Viduya */
 	return (0);
 }
 
-static bool
+static int
 interesting_to_discover(int i)
 {
 	return (

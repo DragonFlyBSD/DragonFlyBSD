@@ -1,4 +1,7 @@
-/*-
+/*	@(#)snova.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: snova.c,v 1.10 2018/02/08 09:05:16 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)snova.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/snova.c,v 1.4 1999/11/30 03:49:54 billf Exp $
- * $DragonFly: src/games/trek/snova.c,v 1.4 2007/05/13 22:25:41 swildner Exp $
  */
 
+#include <stdio.h>
+#include <unistd.h>
 #include "trek.h"
 
 /*
@@ -112,8 +113,10 @@ snova(int x, int y)
 	} else {
 		if (!damaged(SSRADIO)) {
 			q->scanned = 1000;
-			printf("\nUhura: Captain, Starfleet Command reports a supernova\n");
-			printf("  in quadrant %d,%d.  Caution is advised\n", qx, qy);
+			printf("\nUhura: Captain, Starfleet Command reports "
+			       "a supernova\n");
+			printf("  in quadrant %d,%d.  Caution is advised\n",
+				qx, qy);
 		}
 	}
 
@@ -135,7 +138,8 @@ snova(int x, int y)
 	q->stars = -1;
 	q->klings = 0;
 	if (Now.klings <= 0) {
-		printf("Lucky devil, that supernova destroyed the last klingon\n");
+		printf("Lucky devil, that supernova destroyed the last "
+		       "klingon\n");
 		win();
 	}
 	return;

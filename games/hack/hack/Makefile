@@ -11,7 +11,7 @@ SRCS=	alloc.c hack.Decl.c hack.apply.c hack.bones.c hack.c hack.cmd.c \
 	hack.mkmaze.c hack.mkobj.c hack.mkshop.c hack.mon.c hack.monst.c \
 	hack.o_init.c hack.objnam.c hack.options.c hack.pager.c hack.potion.c \
 	hack.pri.c hack.read.c hack.rip.c hack.rumors.c hack.save.c \
-	hack.search.c hack.shk.c hack.shknam.c hack.steal.c hack.termcap.c \
+	hack.search.c hack.shk.c hack.shknam.c hack.steal.c hack.terminfo.c \
 	hack.timeout.c hack.topl.c hack.track.c hack.trap.c hack.tty.c \
 	hack.u_init.c hack.unix.c hack.vault.c hack.version.c hack.wield.c \
 	hack.wizard.c hack.worm.c hack.worn.c hack.zap.c rnd.c \

@@ -1,4 +1,7 @@
-/*-
+/*	@(#)setup.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: setup.c,v 1.13 2009/05/25 00:37:27 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)setup.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/setup.c,v 1.6 1999/11/30 03:49:54 billf Exp $
- * $DragonFly: src/games/trek/setup.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <err.h>
+#include <limits.h>
 #include "trek.h"
 #include "getpar.h"
 
@@ -45,15 +51,15 @@
 **	Game restart and tournament games are handled here.
 */
 
-struct cvntab Lentab[] = {
+const struct cvntab	Lentab[] = {
 	{ "s",		"hort",		(cmdfun)1,	0 },
 	{ "m",		"edium",	(cmdfun)2,	0 },
 	{ "l",		"ong",		(cmdfun)4,	0 },
-	{ "restart",	"",		NULL,		0 },
+	{ "restart",	"",		(cmdfun)0,	0 },
 	{ NULL,		NULL,		NULL,		0 }
 };
 
-struct cvntab Skitab[] = {
+const struct cvntab	Skitab[] = {
 	{ "n",		"ovice",	(cmdfun)1,	0 },
 	{ "f",		"air",		(cmdfun)2,	0 },
 	{ "g",		"ood",		(cmdfun)3,	0 },
@@ -66,7 +72,7 @@ struct cvntab Skitab[] = {
 void
 setup(void)
 {
-	struct cvntab		*r;
+	const struct cvntab		*r;
 	int		i, j;
 	double			f;
 	int			d;
@@ -89,7 +95,7 @@ setup(void)
 	Game.skill = (long) r->value;
 	Game.tourn = 0;
 	getstrpar("Enter a password", Game.passwd, 14, 0);
-	if (sequal(Game.passwd, "tournament")) {
+	if (strcmp(Game.passwd, "tournament") == 0) {
 		getstrpar("Enter tournament code", Game.passwd, 14, 0);
 		Game.tourn = 1;
 		d = 0;
@@ -150,7 +156,7 @@ setup(void)
 	for (i = j = 0; i < NDEV; i++)
 		j += Param.damprob[i];
 	if (j != 1000)
-		syserr("Device probabilities sum to %d", j);
+		errx(1, "Device probabilities sum to %d", j);
 	Param.dockfac = 0.5;
 	Param.regenfac = (5 - Game.skill) * 0.05;
 	if (Param.regenfac < 0.0)
@@ -214,11 +220,14 @@ setup(void)
 	/* setup stars */
 	for (i = 0; i < NQUADS; i++) {
 		for (j = 0; j < NQUADS; j++) {
+			short s5;
 			q = &Quad[i][j];
 			q->klings = q->bases = 0;
 			q->scanned = -1;
 			q->stars = ranf(9) + 1;
-			q->holes = ranf(3) - q->stars / 5;
+			q->holes = ranf(3);
+			s5 = q->stars / 5;
+			q->holes = q->holes > s5 ? q->holes - s5 : 0;
 			q->qsystemname = 0;
 		}
 	}

@@ -1,4 +1,7 @@
-/*-
+/*	@(#)help.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: help.c,v 1.13 2009/08/12 08:54:54 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)help.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/help.c,v 1.4 1999/11/30 03:49:48 billf Exp $
- * $DragonFly: src/games/trek/help.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
+#include <math.h>
+#include <unistd.h>
+#include <limits.h>
 #include "trek.h"
 
 /*
@@ -53,16 +56,17 @@
 **	to drop you.  After that, it's your problem.
 */
 
-const char *Cntvect[3] = {
+static const char *const Cntvect[3] = {
 	"first", "second", "third"
 };
 
+/*ARGSUSED*/
 void
 help(int v __unused)
 {
 	int		i;
 	double		dist, x;
-	int		dx, dy;
+	int		dx = 0, dy = 0;
 	int		j, l = 0;
 
 	/* check to see if calling for help is reasonable ... */
@@ -128,7 +132,8 @@ help(int v __unused)
 				if (dx < 0 || dx >= NSECTS)
 					continue;
 				dy = Etc.starbase.y + ranf(3) - 1;
-				if (dy < 0 || dy >= NSECTS || Sect[dx][dy] != EMPTY)
+				if (dy < 0 || dy >= NSECTS ||
+				    Sect[dx][dy] != EMPTY)
 					continue;
 				break;
 			}

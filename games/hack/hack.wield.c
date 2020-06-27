@@ -1,10 +1,68 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.wield.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.wield.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.wield.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.wield.c,v 1.8 2011/07/02 02:09:08 mrg Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
-extern struct obj zeroobj;
+#include "extern.h"
 
 void
 setuwep(struct obj *obj)
@@ -15,12 +73,12 @@ setuwep(struct obj *obj)
 int
 dowield(void)
 {
-	struct obj *wep;
-	int res = 0;
+	struct obj     *wep;
+	int             res = 0;
 
 	multi = 0;
-	if (!(wep = getobj("#-)", "wield")))
-		; /* nothing */
+	if (!(wep = getobj("#-)", "wield")))	/* nothing */
+		;
 	else if (uwep == wep)
 		pline("You are already wielding that!");
 	else if (uwep && uwep->cursed)
@@ -30,7 +88,7 @@ dowield(void)
 		if (uwep == 0) {
 			pline("You are already empty handed.");
 		} else {
-			setuwep(NULL);
+			setuwep((struct obj *) 0);
 			res++;
 			pline("You are empty handed.");
 		}
@@ -54,8 +112,8 @@ dowield(void)
 void
 corrode_weapon(void)
 {
-	if (!uwep || uwep->olet != WEAPON_SYM)	/* %% */
-		return;
+	if (!uwep || uwep->olet != WEAPON_SYM)
+		return;		/* %% */
 	if (uwep->rustfree)
 		pline("Your %s not affected.", aobjnam(uwep, "are"));
 	else {
@@ -64,46 +122,42 @@ corrode_weapon(void)
 	}
 }
 
-bool
+int
 chwepon(struct obj *otmp, int amount)
 {
 	const char *color = (amount < 0) ? "black" : "green";
-	const char *ltime;
-
+	const char *stime;
 	if (!uwep || uwep->olet != WEAPON_SYM) {
 		strange_feeling(otmp,
 				(amount > 0) ? "Your hands twitch."
 				: "Your hands itch.");
 		return (0);
 	}
-
 	if (uwep->otyp == WORM_TOOTH && amount > 0) {
 		uwep->otyp = CRYSKNIFE;
 		pline("Your weapon seems sharper now.");
 		uwep->cursed = 0;
 		return (1);
 	}
-
 	if (uwep->otyp == CRYSKNIFE && amount < 0) {
 		uwep->otyp = WORM_TOOTH;
 		pline("Your weapon looks duller now.");
 		return (1);
 	}
-
 	/* there is a (soft) upper limit to uwep->spe */
 	if (amount > 0 && uwep->spe > 5 && rn2(3)) {
 		pline("Your %s violently green for a while and then evaporate%s.",
-		    aobjnam(uwep, "glow"), plur(uwep->quan));
+		      aobjnam(uwep, "glow"), plur(uwep->quan));
 		while (uwep)	/* let all of them disappear */
-				/* note: uwep->quan = 1 is nogood if unpaid */
+			/* note: uwep->quan = 1 is nogood if unpaid */
 			useup(uwep);
 		return (1);
 	}
 	if (!rn2(6))
 		amount *= 2;
-	ltime = (amount * amount == 1) ? "moment" : "while";
+	stime = (amount * amount == 1) ? "moment" : "while";
 	pline("Your %s %s for a %s.",
-	      aobjnam(uwep, "glow"), color, ltime);
+	      aobjnam(uwep, "glow"), color, stime);
 	uwep->spe += amount;
 	if (amount > 0)
 		uwep->cursed = 0;

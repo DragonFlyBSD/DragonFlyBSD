@@ -1,4 +1,7 @@
-/*-
+/*	@(#)nova.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: nova.c,v 1.8 2009/05/24 21:44:56 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)nova.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/nova.c,v 1.4 1999/11/30 03:49:52 billf Exp $
- * $DragonFly: src/games/trek/nova.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
 #include "trek.h"
 
 /*
@@ -65,9 +65,9 @@ nova(int x, int y)
 	}
 	printf("Spock: Star at %d,%d gone nova\n", x, y);
 
-	if (ranf(4) != 0)
+	if (ranf(4) != 0) {
 		Sect[x][y] = EMPTY;
-	else {
+	} else {
 		Sect[x][y] = HOLE;
 		Quad[Ship.quadx][Ship.quady].holes += 1;
 	}
@@ -81,6 +81,7 @@ nova(int x, int y)
 				continue;
 			se = Sect[i][j];
 			switch (se) {
+
 			  case EMPTY:
 			  case HOLE:
 				break;

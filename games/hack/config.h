@@ -1,8 +1,66 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* config.h - version 1.0.3 */
-/* $DragonFly: src/games/hack/config.h,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: config.h,v 1.10 2011/08/06 19:53:24 dholland Exp $	*/
 
-#include <stdbool.h>
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "pathnames.h"
 
 #ifndef CONFIG	/* make sure the compiler doesnt see the typedefs twice */
@@ -11,13 +69,23 @@
 #define	UNIX		/* delete if no fork(), exec() available */
 #define	CHDIR		/* delete if no chdir() available */
 
+/*
+ * Some include files are in a different place under SYSV
+ * 	BSD		   SYSV
+ * <sys/wait.h>		<wait.h>
+ * <sys/time.h>		<time.h>
+ * <sgtty.h>		<termio.h>
+ *
+ * Also, the code for suspend and various ioctls is only given for BSD4.2
+ * (I do not have access to a SYSV system.)
+ */
+#define BSD		/* delete this line on System V */
+
 /* #define STUPID */	/* avoid some complicated expressions if
 			   your C compiler chokes on them */
-/* #define PYRAMID_BUG */	/* avoid a bug on the Pyramid */
-/* #define NOWAITINCLUDE */	/* neither <wait.h> nor <sys/wait.h> exists */
 
-#define	WIZARD	"bruno"	/* the person allowed to use the -D option */
-#define	RECORD	"record"/* the file containing the list of topscorers */
+#define WIZARD  "bruno"	/* the person allowed to use the -D option */
+#define RECORD	"record"/* the file containing the list of topscorers */
 #define	NEWS	"news"	/* the file containing the latest hack news */
 #define	HELP	"help"	/* the file containing a description of the commands */
 #define	SHELP	"hh"	/* abbreviated form of the same */
@@ -25,7 +93,7 @@
 #define	DATAFILE	"data"	/* a file giving the meaning of symbols used */
 #define	FMASK	0660	/* file creation mask */
 #define	HLOCK	"perm"	/* an empty file used for locking purposes */
-#define	LLOCK	"safelock"	/* link to previous */
+#define LLOCK	"safelock"	/* link to previous */
 
 #ifdef UNIX
 /*
@@ -45,11 +113,14 @@
  */
 /* #define	MAIL */
 #define	DEF_MAILREADER	_PATH_MAIL		/* or e.g. /bin/mail */
-#define	MAILCKFREQ	100
+#define	MAILCKFREQ	100	
 
 
-#define	SHELL		/* do not delete the '!' command */
+#define SHELL		/* do not delete the '!' command */
+
+#ifdef BSD
 #define	SUSPEND		/* let ^Z suspend the game */
+#endif /* BSD */
 #endif /* UNIX */
 
 #ifdef CHDIR
@@ -58,9 +129,9 @@
  * otherwise it will be the current directory.
  */
 #ifdef QUEST
-#define	HACKDIR	_PATH_QUEST
+#define HACKDIR _PATH_QUEST
 #else /* QUEST */
-#define	HACKDIR	_PATH_HACK
+#define HACKDIR	_PATH_HACK
 #endif /* QUEST */
 
 /*
@@ -70,7 +141,7 @@
  * since the user might create files in a directory of his choice.
  * Of course SECURE is meaningful only if HACKDIR is defined.
  */
-#define	SECURE			/* do setuid(getuid()) after chdir() */
+#define SECURE			/* do setuid(getuid()) after chdir() */
 
 /*
  * If it is desirable to limit the number of people that can play Hack
@@ -88,8 +159,14 @@
  *	typedef	char	schar;
  * will do when you have signed characters; otherwise use
  *	typedef	short int schar;
+ *
+ * Use short chars anyway to avoid warnings.
  */
-typedef	short	schar;
+#if 1
+typedef	short int	schar;
+#else
+typedef	char		schar;
+#endif
 
 /*
  * small unsigned integers (8 bits suffice - but 7 bits do not)
@@ -106,7 +183,7 @@ typedef	unsigned char	uchar;
  * since otherwise comparisons with signed quantities are done incorrectly
  */
 typedef schar	xchar;
-typedef	bool	boolean;		/* 0 or 1 */
+typedef	xchar	boolean;		/* 0 or 1 */
 #define	TRUE	1
 #define	FALSE	0
 

@@ -1,4 +1,7 @@
-/*-
+/*	@(#)save.c	8.2 (Berkeley) 4/28/95			*/
+/*	$NetBSD: save.c,v 1.12 2005/07/01 06:04:54 jmc Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,37 +28,25 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)save.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/battlestar/save.c,v 1.8.2.1 2001/03/05 11:45:36 kris Exp $
  */
 
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <err.h>
-#include "externs.h"
+#include "extern.h"
 
 void
-restore(void)
+restore(const char *filename)
 {
-	char *home;
-	char home1[MAXPATHLEN];
-	int n;
-	int tmp;
-	FILE *fp;
+	int     n;
+	int     tmp;
+	FILE   *fp;
 
-	if ((home = getenv("HOME")) != NULL)
-		sprintf(home1, "%.*s/Bstar", MAXPATHLEN - 7, home);
-	else
-		return;
-
-	if ((fp = fopen(home1, "r")) == NULL) {
-		perror(home1);
-		return;
+	if (filename == NULL)
+		exit(1); /* Error determining save file name.  */
+	if ((fp = fopen(filename, "r")) == 0) {
+		err(1, "fopen %s", filename);
 	}
 	fread(&WEIGHT, sizeof WEIGHT, 1, fp);
 	fread(&CUMBER, sizeof CUMBER, 1, fp);
-	fread(&gclock, sizeof gclock, 1, fp);
+	fread(&ourclock, sizeof ourclock, 1, fp);
 	fread(&tmp, sizeof tmp, 1, fp);
 	location = tmp ? dayfile : nightfile;
 	for (n = 1; n <= NUMOFROOMS; n++) {
@@ -68,7 +59,7 @@ restore(void)
 	fread(notes, sizeof notes, 1, fp);
 	fread(&direction, sizeof direction, 1, fp);
 	fread(&position, sizeof position, 1, fp);
-	fread(&gtime, sizeof gtime, 1, fp);
+	fread(&ourtime, sizeof ourtime, 1, fp);
 	fread(&fuel, sizeof fuel, 1, fp);
 	fread(&torps, sizeof torps, 1, fp);
 	fread(&carrying, sizeof carrying, 1, fp);
@@ -80,62 +71,36 @@ restore(void)
 	fread(&meetgirl, sizeof meetgirl, 1, fp);
 	fread(&followgod, sizeof followgod, 1, fp);
 	fread(&godready, sizeof godready, 1, fp);
-	fread(&bs_win, sizeof bs_win, 1, fp);
+	fread(&win, sizeof win, 1, fp);
 	fread(&wintime, sizeof wintime, 1, fp);
 	fread(&matchlight, sizeof matchlight, 1, fp);
 	fread(&matchcount, sizeof matchcount, 1, fp);
 	fread(&loved, sizeof loved, 1, fp);
 	fread(&pleasure, sizeof pleasure, 1, fp);
 	fread(&power, sizeof power, 1, fp);
-	/* We must check the last read, to catch truncated save files. */
+	/* We must check the last read, to catch truncated save files */
 	if (fread(&ego, sizeof ego, 1, fp) < 1)
-		errx(1, "save file %s too short", home1);
+		errx(1, "save file %s too short", filename);
 	fclose(fp);
 }
 
 void
-save(void)
+save(const char *filename)
 {
-	struct stat sbuf;
-	char *home;
-	char home1[MAXPATHLEN];
-	int n;
-	int tmp, fd;
-	FILE *fp;
+	int     n;
+	int     tmp;
+	FILE   *fp;
 
-	home = getenv("HOME");
-	if (home == NULL)
-		return;
-	sprintf(home1, "%.*s/Bstar", MAXPATHLEN - 7, home);
-
-	/* Try to open the file safely. */
-	if (stat(home1, &sbuf) < 0) {
-		fd = open(home1, O_WRONLY|O_CREAT|O_EXCL, 0600);
-	        if (fd < 0) {
-          		fprintf(stderr, "Can't create %s\n", home1);
-           		return;
-	        }
-	} else {
-		if ((sbuf.st_mode & S_IFLNK) == S_IFLNK) {
-			fprintf(stderr, "No symlinks!\n");
-			return;
-		}
-
-		fd = open(home1, O_WRONLY|O_EXCL);
-		if (fd < 0) {
-			fprintf(stderr, "Can't open %s for writing\n", home1);
-			return;
-		}
-	}
-
-	if ((fp = fdopen(fd, "w")) == NULL) {
-		perror(home1);
+	if (filename == NULL)
+		return; /* Error determining save file name.  */
+	if ((fp = fopen(filename, "w")) == NULL) {
+		warn("fopen %s", filename);
 		return;
 	}
-	printf("Saved in %s.\n", home1);
+	printf("Saved in %s.\n", filename);
 	fwrite(&WEIGHT, sizeof WEIGHT, 1, fp);
 	fwrite(&CUMBER, sizeof CUMBER, 1, fp);
-	fwrite(&gclock, sizeof gclock, 1, fp);
+	fwrite(&ourclock, sizeof ourclock, 1, fp);
 	tmp = location == dayfile;
 	fwrite(&tmp, sizeof tmp, 1, fp);
 	for (n = 1; n <= NUMOFROOMS; n++) {
@@ -148,7 +113,7 @@ save(void)
 	fwrite(notes, sizeof notes, 1, fp);
 	fwrite(&direction, sizeof direction, 1, fp);
 	fwrite(&position, sizeof position, 1, fp);
-	fwrite(&gtime, sizeof gtime, 1, fp);
+	fwrite(&ourtime, sizeof ourtime, 1, fp);
 	fwrite(&fuel, sizeof fuel, 1, fp);
 	fwrite(&torps, sizeof torps, 1, fp);
 	fwrite(&carrying, sizeof carrying, 1, fp);
@@ -160,7 +125,7 @@ save(void)
 	fwrite(&meetgirl, sizeof meetgirl, 1, fp);
 	fwrite(&followgod, sizeof followgod, 1, fp);
 	fwrite(&godready, sizeof godready, 1, fp);
-	fwrite(&bs_win, sizeof bs_win, 1, fp);
+	fwrite(&win, sizeof win, 1, fp);
 	fwrite(&wintime, sizeof wintime, 1, fp);
 	fwrite(&matchlight, sizeof matchlight, 1, fp);
 	fwrite(&matchcount, sizeof matchcount, 1, fp);
@@ -168,4 +133,55 @@ save(void)
 	fwrite(&pleasure, sizeof pleasure, 1, fp);
 	fwrite(&power, sizeof power, 1, fp);
 	fwrite(&ego, sizeof ego, 1, fp);
+	fflush(fp);
+	if (ferror(fp))
+		warn("fwrite %s", filename);
+	fclose(fp);
+}
+
+/*
+ * Given a save file name (possibly from fgetln, so without terminating NUL),
+ * determine the name of the file to be saved to by adding the HOME
+ * directory if the name does not contain a slash.  Name will be allocated
+ * with malloc(3).
+ */
+char *
+save_file_name(const char *filename, size_t len)
+{
+	char   *home;
+	char   *newname;
+	size_t	tmpl;
+
+	if (memchr(filename, '/', len)) {
+		newname = malloc(len + 1);
+		if (newname == NULL) {
+			warn(NULL);
+			return NULL;
+		}
+		memcpy(newname, filename, len);
+		newname[len] = 0;
+	} else {
+		home = getenv("HOME");
+		if (home != NULL) {
+			tmpl = strlen(home);
+			newname = malloc(tmpl + len + 2);
+			if (newname == NULL) {
+				warn(NULL);
+				return NULL;
+			}
+			memcpy(newname, home, tmpl);
+			newname[tmpl] = '/';
+			memcpy(newname + tmpl + 1, filename, len);
+			newname[tmpl + len + 1] = 0;
+		} else {
+			newname = malloc(len + 1);
+			if (newname == NULL) {
+				warn(NULL);
+				return NULL;
+			}
+			memcpy(newname, filename, len);
+			newname[len] = 0;
+		}
+	}
+	return newname;
 }

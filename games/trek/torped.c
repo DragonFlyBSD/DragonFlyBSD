@@ -1,4 +1,7 @@
-/*-
+/*	@(#)torped.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: torped.c,v 1.14 2009/05/24 23:20:22 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,16 +28,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)torped.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/torped.c,v 1.5 1999/11/30 03:49:55 billf Exp $
- * $DragonFly: src/games/trek/torped.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 #include "trek.h"
 #include "getpar.h"
-
-static int randcourse(int);
 
 /*
 **  PHOTON TORPEDO CONTROL
@@ -55,6 +55,9 @@ static int randcourse(int);
 **	the misfire damages your torpedo tubes.
 */
 
+static int randcourse(int);
+
+/*ARGSUSED*/
 void
 torped(int v __unused)
 {
@@ -69,7 +72,8 @@ torped(int v __unused)
 	int		n;
 
 	if (Ship.cloaked) {
-		printf("Federation regulations do not permit attack while cloaked.\n");
+		printf("Federation regulations do not permit attack while "
+		       "cloaked.\n");
 		return;
 	}
 	if (check_out(TORPED))
@@ -92,7 +96,7 @@ torped(int v __unused)
 	} else {
 		/* see if the user wants one */
 		if (!testnl()) {
-			k = ungetc(cgetc(0), stdin);
+			k = ungetc(getchar(), stdin);
 			if (k >= '0' && k <= '9')
 				burst = 1;
 		}
@@ -118,7 +122,8 @@ torped(int v __unused)
 	for (; n && n <= 3; n++) {
 		/* select a nice random course */
 		course2 = course + randcourse(n);
-		angle = course2 * 0.0174532925;			/* convert to radians */
+		/* convert to radians */
+		angle = course2 * 0.0174532925;
 		dx = -cos(angle);
 		dy =  sin(angle);
 		bigger = fabs(dx);
@@ -149,16 +154,20 @@ torped(int v __unused)
 				continue;
 
 			  case HOLE:
-				printf("Torpedo disappears into a black hole\n");
+				printf("Torpedo disappears into a black "
+				       "hole\n");
 				break;
 
 			  case KLINGON:
 				for (k = 0; k < Etc.nkling; k++) {
-					if (Etc.klingon[k].x != ix || Etc.klingon[k].y != iy)
+					if (Etc.klingon[k].x != ix ||
+					    Etc.klingon[k].y != iy)
 						continue;
 					Etc.klingon[k].power -= 500 + ranf(501);
 					if (Etc.klingon[k].power > 0) {
-						printf("*** Hit on Klingon at %d,%d: extensive damages\n",
+						printf("*** Hit on Klingon at "
+						       "%d,%d: extensive "
+						       "damages\n",
 							ix, iy);
 						break;
 					}
@@ -179,6 +188,7 @@ torped(int v __unused)
 				killb(Ship.quadx, Ship.quady);
 				Game.killb += 1;
 				break;
+
 			  default:
 				printf("Unknown object %c at %d,%d destroyed\n",
 					Sect[ix][iy], ix, iy);

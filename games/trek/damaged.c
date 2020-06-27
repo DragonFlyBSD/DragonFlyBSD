@@ -1,4 +1,7 @@
-/*-
+/*	@(#)damaged.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: damaged.c,v 1.8 2009/05/24 21:44:56 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)damaged.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/damaged.c,v 1.4 1999/11/30 03:49:45 billf Exp $
- * $DragonFly: src/games/trek/damaged.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 #include "trek.h"
@@ -40,7 +39,7 @@
 **	event list for a "device fix" action on that device.
 */
 
-bool
+int
 damaged(int dev)
 {
 	int		d;

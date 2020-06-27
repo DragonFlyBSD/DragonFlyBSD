@@ -1,21 +1,82 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.worm.c - version 1.0.2 */
-/* $FreeBSD: src/games/hack/hack.worm.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
+/*	$NetBSD: hack.worm.c,v 1.9 2011/08/06 20:29:37 dholland Exp $	*/
 
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <stdlib.h>
 #include "hack.h"
+#include "extern.h"
 #ifndef NOWORM
+#include "def.wseg.h"
 
-struct wseg *wsegs[32];	/* linked list, tail first */
-struct wseg *wheads[32];
-long wgrowtime[32];
+struct wseg    *wsegs[32];	/* linked list, tail first */
+struct wseg    *wheads[32];
+long            wgrowtime[32];
 
 static void remseg(struct wseg *);
 
-bool
+int
 getwn(struct monst *mtmp)
 {
-	int tmp;
-
+	int	tmp;
 	for (tmp = 1; tmp < 32; tmp++)
 		if (!wsegs[tmp]) {
 			mtmp->wormno = tmp;
@@ -28,28 +89,28 @@ getwn(struct monst *mtmp)
 void
 initworm(struct monst *mtmp)
 {
-	struct wseg *wtmp;
-	int tmp = mtmp->wormno;
-
+	struct wseg    *wtmp;
+	int	tmp = mtmp->wormno;
 	if (!tmp)
 		return;
 	wheads[tmp] = wsegs[tmp] = wtmp = newseg();
 	wgrowtime[tmp] = 0;
 	wtmp->wx = mtmp->mx;
 	wtmp->wy = mtmp->my;
+	/* wtmp->wdispl = 0; */
 	wtmp->nseg = 0;
 }
 
 void
 worm_move(struct monst *mtmp)
 {
-	struct wseg *wtmp, *whd;
-	int tmp = mtmp->wormno;
-
+	struct wseg    *wtmp, *whd = NULL;
+	int		tmp = mtmp->wormno;
 	wtmp = newseg();
 	wtmp->wx = mtmp->mx;
 	wtmp->wy = mtmp->my;
 	wtmp->nseg = 0;
+	/* wtmp->wdispl = 0; */
 	(whd = wheads[tmp])->nseg = wtmp;
 	wheads[tmp] = wtmp;
 	if (cansee(whd->wx, whd->wy)) {
@@ -75,14 +136,13 @@ worm_move(struct monst *mtmp)
 void
 worm_nomove(struct monst *mtmp)
 {
-	int tmp;
-	struct wseg *wtmp;
-
+	int		tmp;
+	struct wseg    *wtmp;
 	tmp = mtmp->wormno;
 	wtmp = wsegs[tmp];
 	if (wtmp == wheads[tmp])
 		return;
-	if (wtmp == NULL || wtmp->nseg == 0)
+	if (wtmp == 0 || wtmp->nseg == 0)
 		panic("worm_nomove?");
 	wsegs[tmp] = wtmp->nseg;
 	remseg(wtmp);
@@ -92,9 +152,8 @@ worm_nomove(struct monst *mtmp)
 void
 wormdead(struct monst *mtmp)
 {
-	int tmp = mtmp->wormno;
-	struct wseg *wtmp, *wtmp2;
-
+	int		tmp = mtmp->wormno;
+	struct wseg    *wtmp, *wtmp2;
 	if (!tmp)
 		return;
 	mtmp->wormno = 0;
@@ -102,26 +161,24 @@ wormdead(struct monst *mtmp)
 		wtmp2 = wtmp->nseg;
 		remseg(wtmp);
 	}
-	wsegs[tmp] = NULL;
+	wsegs[tmp] = 0;
 }
 
 void
 wormhit(struct monst *mtmp)
 {
-	int tmp = mtmp->wormno;
-	struct wseg *wtmp;
-
-	if (!tmp)	/* worm without tail */
-		return;
+	int		tmp = mtmp->wormno;
+	struct wseg    *wtmp;
+	if (!tmp)
+		return;		/* worm without tail */
 	for (wtmp = wsegs[tmp]; wtmp; wtmp = wtmp->nseg)
-		hitu(mtmp, 1);
+		(void) hitu(mtmp, 1);
 }
 
 void
-wormsee(unsigned int tmp)
+wormsee(unsigned tmp)
 {
-	struct wseg *wtmp = wsegs[tmp];
-
+	struct wseg    *wtmp = wsegs[tmp];
 	if (!wtmp)
 		panic("wormsee: wtmp==0");
 	for (; wtmp->nseg; wtmp = wtmp->nseg)
@@ -140,16 +197,15 @@ pwseg(struct wseg *wtmp)
 	}
 }
 
-/* weptyp: uwep->otyp or 0 */
+/* weptyp is uwep->otyp or 0 */
 void
 cutworm(struct monst *mtmp, xchar x, xchar y, uchar weptyp)
 {
-	struct wseg *wtmp, *wtmp2;
-	struct monst *mtmp2;
-	int tmp, tmp2;
-
-	if (mtmp->mx == x && mtmp->my == y)	/* hit headon */
-		return;
+	struct wseg    *wtmp, *wtmp2;
+	struct monst   *mtmp2;
+	int		tmp, tmp2;
+	if (mtmp->mx == x && mtmp->my == y)
+		return;		/* hit headon */
 
 	/* cutting goes best with axe or sword */
 	tmp = rnd(20);
@@ -167,7 +223,6 @@ cutworm(struct monst *mtmp, xchar x, xchar y, uchar weptyp)
 		remseg(wtmp);
 		return;
 	}
-
 	/* cut the worm in two halves */
 	mtmp2 = newmonst(0);
 	*mtmp2 = *mtmp;
@@ -192,7 +247,7 @@ cutworm(struct monst *mtmp, xchar x, xchar y, uchar weptyp)
 			if (tmp2) {
 				pline("You cut the worm in half.");
 				mtmp2->mhpmax = mtmp2->mhp =
-				    d(mtmp2->data->mlevel, 8);
+					d(mtmp2->data->mlevel, 8);
 				mtmp2->mx = wtmp->wx;
 				mtmp2->my = wtmp->wy;
 				mtmp2->nmon = fmon;
@@ -201,6 +256,7 @@ cutworm(struct monst *mtmp, xchar x, xchar y, uchar weptyp)
 			} else {
 				pline("You cut off part of the worm's tail.");
 				remseg(wtmp);
+				monfree(mtmp2);
 			}
 			mtmp->mhp /= 2;
 			return;
@@ -220,4 +276,4 @@ remseg(struct wseg *wtmp)
 		newsym(wtmp->wx, wtmp->wy);
 	free(wtmp);
 }
-#endif /* NOWORM */
+#endif	/* NOWORM */

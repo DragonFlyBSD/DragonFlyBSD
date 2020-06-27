@@ -1,4 +1,6 @@
-/*-
+/*	$NetBSD: getpar.h,v 1.12 2009/05/25 00:39:45 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -27,29 +29,26 @@
  * SUCH DAMAGE.
  *
  *	@(#)getpar.h	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/trek/getpar.h,v 1.2 2006/09/07 21:19:44 pavalos Exp $
  */
-
-#include <stdbool.h>
 
 typedef void (*cmdfun)(int);
 
 /* used for getcodpar() parameter list */
 struct cvntab {
-	const char	*abrev;
+	const char	*abbrev;
 	const char	*full;
 	cmdfun	value;
 	int	value2;
 };
 
-extern struct cvntab	Skitab[];
-extern struct cvntab	Lentab[];
+extern const struct cvntab	Skitab[];
+extern const struct cvntab	Lentab[];
 
-int getintpar(const char *);
+int getintpar(const  char *);
 double getfltpar(const char *);
-long getynpar(const char *);
-struct cvntab *getcodpar(const char *, struct cvntab[]);
+int getynpar(const char *);
+const struct cvntab *getcodpar(const char *, const struct cvntab[]);
 void getstrpar(const char *, char *, int, const char *);
-bool testnl(void);
-void skiptonl(char);
-bool readdelim(char);
+int testnl(void);
+void skiptonl(int);
+int readdelim(int);

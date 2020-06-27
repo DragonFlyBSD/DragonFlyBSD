@@ -1,69 +1,122 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.cmd.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.cmd.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.cmd.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.cmd.c,v 1.12 2011/08/06 20:42:43 dholland Exp $	*/
 
-#include "hack.h"
-#include "def.func_tab.h"
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-static int	doextcmd(void);
-static char	lowc(char);
-static char	unctrl(char);
-#ifdef QUEST
-static bool	isroom(int, int);
-#endif
-static int	done2(void);
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-struct func_tab cmdlist[]={
+#include	"hack.h"
+#include	"extern.h"
+#include	"def.func_tab.h"
+
+static int doextcmd(void);
+
+static const struct func_tab cmdlist[] = {
 	{ '\020', doredotopl },
 	{ '\022', doredraw },
 	{ '\024', dotele },
 #ifdef SUSPEND
 	{ '\032', dosuspend },
-#endif /* SUSPEND */
+#endif	/* SUSPEND */
 	{ 'a', doapply },
-	/*'A' : UNUSED */
-	/*'b', 'B' : go sw */
+	/* 'A' : UNUSED */
+	/* 'b', 'B' : go sw */
 	{ 'c', ddocall },
 	{ 'C', do_mname },
 	{ 'd', dodrop },
 	{ 'D', doddrop },
 	{ 'e', doeat },
 	{ 'E', doengrave },
-	/*'f', 'F' : multiple go (might become 'fight') */
-	/*'g', 'G' : UNUSED */
-	/*'h', 'H' : go west */
+	/* 'f', 'F' : multiple go (might become 'fight') */
+	/* 'g', 'G' : UNUSED */
+	/* 'h', 'H' : go west */
 	{ 'I', dotypeinv },		/* Robert Viduya */
 	{ 'i', ddoinv },
-	/*'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N' : move commands */
-	/*'o', doopen, */
+	/* 'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N' : move commands */
+	/* 'o', doopen,	 */
 	{ 'O', doset },
 	{ 'p', dopay },
 	{ 'P', dowearring },
 	{ 'q', dodrink },
-	{ 'Q', done2 },
+	{ 'Q', dodone },
 	{ 'r', doread },
 	{ 'R', doremring },
 	{ 's', dosearch },
 	{ 'S', dosave },
 	{ 't', dothrow },
 	{ 'T', doremarm },
-	/*'u', 'U' : go ne */
+	/* 'u', 'U' : go ne */
 	{ 'v', doversion },
-	/*'V' : UNUSED */
+	/* 'V' : UNUSED */
 	{ 'w', dowield },
 	{ 'W', doweararm },
-	/*'x', 'X' : UNUSED */
-	/*'y', 'Y' : go nw */
+	/* 'x', 'X' : UNUSED */
+	/* 'y', 'Y' : go nw */
 	{ 'z', dozap },
-	/*'Z' : UNUSED */
+	/* 'Z' : UNUSED */
 	{ '<', doup },
 	{ '>', dodown },
 	{ '/', dowhatis },
 	{ '?', dohelp },
 #ifdef SHELL
 	{ '!', dosh },
-#endif /* SHELL */
+#endif	/* SHELL */
 	{ '.', donull },
 	{ ' ', donull },
 	{ ',', dopickup },
@@ -78,19 +131,20 @@ struct func_tab cmdlist[]={
 	{ 0, 0 }
 };
 
-struct ext_func_tab extcmdlist[] = {
+static const struct ext_func_tab extcmdlist[] = {
 	{ "dip", dodip },
 	{ "pray", dopray },
 	{ NULL, donull }
 };
 
-extern char quitchars[];
+static char lowc(int);
+static char unctrl(int);
 
 void
 rhack(const char *cmd)
 {
-	struct func_tab *tlist = cmdlist;
-	boolean firsttime = FALSE;
+	const struct func_tab *tlist = cmdlist;
+	boolean         firsttime = FALSE;
 	int res;
 
 	if (!cmd) {
@@ -100,7 +154,7 @@ rhack(const char *cmd)
 	}
 	if (!*cmd || (*cmd & 0377) == 0377 ||
 	    (flags.no_rest_on_space && *cmd == ' ')) {
-		bell();
+		sound_bell();
 		flags.move = 0;
 		return;		/* probably we just had an interrupt */
 	}
@@ -127,7 +181,7 @@ rush:
 			u.ux0 = u.ux + u.dx;
 			u.uy0 = u.uy + u.dy;
 		}
-#endif /* QUEST */
+#endif	/* QUEST */
 		domove();
 		return;
 	}
@@ -158,10 +212,10 @@ rush:
 			flags.run += 1;
 		goto rush;
 	}
-#endif /* QUEST */
+#endif	/* QUEST */
 	while (tlist->f_char) {
 		if (*cmd == tlist->f_char) {
-			res = (*(tlist->f_funct))();
+			res = (*(tlist->f_funct)) ();
 			if (!res) {
 				flags.move = 0;
 				multi = 0;
@@ -171,8 +225,8 @@ rush:
 		tlist++;
 	}
 	{
-		char expcmd[10];
-		char *cp = expcmd;
+		char            expcmd[10];
+		char  *cp = expcmd;
 		while (*cmd && cp - expcmd < (int)sizeof(expcmd) - 2) {
 			if (*cmd >= 040 && *cmd < 0177)
 				*cp++ = *cmd++;
@@ -188,10 +242,11 @@ rush:
 }
 
 static int
-doextcmd(void)  /* here after # - now read a full-word command */
-{
-	char buf[BUFSZ];
-	struct ext_func_tab *efp = extcmdlist;
+doextcmd(void)
+{				/* here after # - now read a full-word
+				 * command */
+	char            buf[BUFSZ];
+	const struct ext_func_tab *efp = extcmdlist;
 
 	pline("# ");
 	getlin(buf);
@@ -200,7 +255,7 @@ doextcmd(void)  /* here after # - now read a full-word command */
 		return (0);
 	while (efp->ef_txt) {
 		if (!strcmp(efp->ef_txt, buf))
-			return ((*(efp->ef_funct))());
+			return ((*(efp->ef_funct)) ());
 		efp++;
 	}
 	pline("%s: unknown command.", buf);
@@ -208,27 +263,27 @@ doextcmd(void)  /* here after # - now read a full-word command */
 }
 
 static char
-lowc(char sym)
+lowc(int sym)
 {
 	return ((sym >= 'A' && sym <= 'Z') ? sym + 'a' - 'A' : sym);
 }
 
 static char
-unctrl(char sym)
+unctrl(int sym)
 {
 	return ((sym >= ('A' & 037) && sym <= ('Z' & 037)) ? sym + 0140 : sym);
 }
 
 /* 'rogue'-like direction commands */
-char sdir[] = "hykulnjb><";
-schar xdir[10] = { -1, -1, 0, 1, 1, 1, 0, -1, 0, 0 };
-schar ydir[10] = { 0, -1, -1, -1, 0, 1, 1, 1, 0, 0 };
-schar zdir[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 1, -1 };
+char            sdir[] = "hykulnjb><";
+schar           xdir[10] = {-1, -1, 0, 1, 1, 1, 0, -1, 0, 0};
+schar           ydir[10] = {0, -1, -1, -1, 0, 1, 1, 1, 0, 0};
+static schar    zdir[10] = {0, 0, 0, 0, 0, 0, 0, 0, 1, -1};
 
-bool
-movecmd(char sym)       /* also sets u.dz, but returns false for <> */
+int
+movecmd(int sym)		/* also sets u.dz, but returns false for <> */
 {
-	char *dp;
+	char  *dp;
 
 	u.dz = 0;
 	if (!(dp = strchr(sdir, sym)))
@@ -239,10 +294,10 @@ movecmd(char sym)       /* also sets u.dz, but returns false for <> */
 	return (!u.dz);
 }
 
-bool
-getdir(bool s)
+int
+getdir(boolean s)
 {
-	char dirsym;
+	char            dirsym;
 
 	if (s)
 		pline("In what direction?");
@@ -261,17 +316,15 @@ void
 confdir(void)
 {
 	int x = rn2(8);
-
 	u.dx = xdir[x];
 	u.dy = ydir[x];
 }
 
 #ifdef QUEST
-void
+int
 finddir(void)
 {
-	int i, ui = u.di;
-
+	int    i, ui = u.di;
 	for (i = 0; i <= 8; i++) {
 		if (flags.run & 1)
 			ui++;
@@ -281,7 +334,7 @@ finddir(void)
 		if (i == 8) {
 			pline("Not near a wall.");
 			flags.move = multi = 0;
-			return;
+			return (0);
 		}
 		if (!isroom(u.ux + xdir[ui], u.uy + ydir[ui]))
 			break;
@@ -295,7 +348,7 @@ finddir(void)
 		if (i == 8) {
 			pline("Not near a room.");
 			flags.move = multi = 0;
-			return;
+			return (0);
 		}
 		if (isroom(u.ux + xdir[ui], u.uy + ydir[ui]))
 			break;
@@ -303,30 +356,20 @@ finddir(void)
 	u.di = ui;
 	u.dx = xdir[ui];
 	u.dy = ydir[ui];
+	return 0;
 }
 
-static bool
+int
 isroom(int x, int y)
-{               /* what about POOL? */
+{				/* what about POOL? */
 	return (isok(x, y) && (levl[x][y].typ == ROOM ||
 			       (levl[x][y].typ >= LDOOR && flags.run >= 6)));
 }
-#endif /* QUEST */
+#endif	/* QUEST */
 
-bool
+int
 isok(int x, int y)
 {
 	/* x corresponds to curx, so x==1 is the first column. Ach. %% */
 	return (x >= 1 && x <= COLNO - 1 && y >= 0 && y <= ROWNO - 1);
-}
-
-/*
- * done2 is a function that fits into cmdlist[] (int func(void))
- * and calls done1 which discards its argument.
- */
-static int
-done2(void)
-{
-	done1(0);
-	return (0);
 }

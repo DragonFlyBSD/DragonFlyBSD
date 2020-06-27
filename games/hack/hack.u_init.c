@@ -1,127 +1,185 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.u_init.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.u_init.c,v 1.4 1999/11/16 02:57:13 billf Exp $ */
+/*	$NetBSD: hack.u_init.c,v 1.13 2011/08/06 19:32:58 dholland Exp $	*/
 
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <ctype.h>
+#include <signal.h>
+#include <stdlib.h>
 #include "hack.h"
-#define	Strcpy	strcpy
-#define	Strcat	strcat
+#include "extern.h"
+
+#define Strcpy	(void) strcpy
+#define	Strcat	(void) strcat
 #define	UNDEF_TYP	0
 #define	UNDEF_SPE	'\177'
 
-struct you zerou;
 char pl_character[PL_CSIZ];
-/*
- * must all have distinct first letter
- * roles[4] may be changed to -man
- */
-char roles[][12 + 1] = {
+
+static const struct you zerou;
+static const char *(roles[]) = {      /* must all have distinct first letter */
+	/* roles[4] may be changed to -woman */
 	"Tourist", "Speleologist", "Fighter", "Knight",
 	"Cave-man", "Wizard"
 };
 #define	NR_OF_ROLES	SIZE(roles)
-char rolesyms[NR_OF_ROLES + 1];		/* filled by u_init() */
+static char rolesyms[NR_OF_ROLES + 1];	/* filled by u_init() */
 
 struct trobj {
-	uchar trotyp;
-	schar trspe;
-	char trolet;
-	Bitfield(trquan,6);
-	Bitfield(trknown,1);
+	uchar           trotyp;
+	schar           trspe;
+	char            trolet;
+	                Bitfield(trquan, 6);
+	                Bitfield(trknown, 1);
 };
 
 #ifdef WIZARD
-struct trobj Extra_objs[] = {
-	{ 0, 0, 0, 0, 0 },
-	{ 0, 0, 0, 0, 0 }
+static struct trobj Extra_objs[] = {
+	{0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0}
 };
-#endif /* WIZARD */
+#endif	/* WIZARD */
 
-struct trobj Cave_man[] = {
-	{ MACE, 1, WEAPON_SYM, 1, 1 },
-	{ BOW, 1, WEAPON_SYM, 1, 1 },
-	{ ARROW, 0, WEAPON_SYM, 25, 1 },	/* quan is variable */
-	{ LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1 },
-	{ 0, 0, 0, 0, 0}
-};
-
-struct trobj Fighter[] = {
-	{ TWO_HANDED_SWORD, 0, WEAPON_SYM, 1, 1 },
-	{ RING_MAIL, 0, ARMOR_SYM, 1, 1 },
-	{ 0, 0, 0, 0, 0 }
+static struct trobj Cave_man[] = {
+	{MACE, 1, WEAPON_SYM, 1, 1},
+	{BOW, 1, WEAPON_SYM, 1, 1},
+	{ARROW, 0, WEAPON_SYM, 25, 1},	/* quan is variable */
+	{LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1},
+	{0, 0, 0, 0, 0}
 };
 
-struct trobj Knight[] = {
-	{ LONG_SWORD, 0, WEAPON_SYM, 1, 1 },
-	{ SPEAR, 2, WEAPON_SYM, 1, 1 },
-	{ RING_MAIL, 1, ARMOR_SYM, 1, 1 },
-	{ HELMET, 0, ARMOR_SYM, 1, 1 },
-	{ SHIELD, 0, ARMOR_SYM, 1, 1 },
-	{ PAIR_OF_GLOVES, 0, ARMOR_SYM, 1, 1 },
-	{ 0, 0, 0, 0, 0 }
+static struct trobj Fighter[] = {
+	{TWO_HANDED_SWORD, 0, WEAPON_SYM, 1, 1},
+	{RING_MAIL, 0, ARMOR_SYM, 1, 1},
+	{0, 0, 0, 0, 0}
 };
 
-struct trobj Speleologist[] = {
-	{ STUDDED_LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1 },
-	{ UNDEF_TYP, 0, POTION_SYM, 2, 0 },
-	{ FOOD_RATION, 0, FOOD_SYM, 3, 1 },
-	{ PICK_AXE, UNDEF_SPE, TOOL_SYM, 1, 0 },
-	{ ICE_BOX, 0, TOOL_SYM, 1, 0 },
-	{ 0, 0, 0, 0, 0}
+static struct trobj Knight[] = {
+	{LONG_SWORD, 0, WEAPON_SYM, 1, 1},
+	{SPEAR, 2, WEAPON_SYM, 1, 1},
+	{RING_MAIL, 1, ARMOR_SYM, 1, 1},
+	{HELMET, 0, ARMOR_SYM, 1, 1},
+	{SHIELD, 0, ARMOR_SYM, 1, 1},
+	{PAIR_OF_GLOVES, 0, ARMOR_SYM, 1, 1},
+	{0, 0, 0, 0, 0}
 };
 
-struct trobj Tinopener[] = {
-	{ CAN_OPENER, 0, TOOL_SYM, 1, 1 },
-	{ 0, 0, 0, 0, 0 }
+static struct trobj Speleologist[] = {
+	{STUDDED_LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1},
+	{UNDEF_TYP, 0, POTION_SYM, 2, 0},
+	{FOOD_RATION, 0, FOOD_SYM, 3, 1},
+	{PICK_AXE, UNDEF_SPE, TOOL_SYM, 1, 0},
+	{ICE_BOX, 0, TOOL_SYM, 1, 0},
+	{0, 0, 0, 0, 0}
 };
 
-struct trobj Tourist[] = {
-	{ UNDEF_TYP, 0, FOOD_SYM, 10, 1 },
-	{ POT_EXTRA_HEALING, 0, POTION_SYM, 2, 0 },
-	{ EXPENSIVE_CAMERA, 0, TOOL_SYM, 1, 1 },
-	{ DART, 2, WEAPON_SYM, 25, 1 },	/* quan is variable */
-	{ 0, 0, 0, 0, 0 }
+static struct trobj Tinopener[] = {
+	{CAN_OPENER, 0, TOOL_SYM, 1, 1},
+	{0, 0, 0, 0, 0}
 };
 
-struct trobj Wizard[] = {
-	{ ELVEN_CLOAK, 0, ARMOR_SYM, 1, 1 },
-	{ UNDEF_TYP, UNDEF_SPE, WAND_SYM, 2, 0 },
-	{ UNDEF_TYP, UNDEF_SPE, RING_SYM, 2, 0 },
-	{ UNDEF_TYP, UNDEF_SPE, POTION_SYM, 2, 0 },
-	{ UNDEF_TYP, UNDEF_SPE, SCROLL_SYM, 3, 0 },
-	{ 0, 0, 0, 0, 0 }
+static struct trobj Tourist[] = {
+	{UNDEF_TYP, 0, FOOD_SYM, 10, 1},
+	{POT_EXTRA_HEALING, 0, POTION_SYM, 2, 0},
+	{EXPENSIVE_CAMERA, 0, TOOL_SYM, 1, 1},
+	{DART, 2, WEAPON_SYM, 25, 1},	/* quan is variable */
+	{0, 0, 0, 0, 0}
+};
+
+static struct trobj Wizard[] = {
+	{ELVEN_CLOAK, 0, ARMOR_SYM, 1, 1},
+	{UNDEF_TYP, UNDEF_SPE, WAND_SYM, 2, 0},
+	{UNDEF_TYP, UNDEF_SPE, RING_SYM, 2, 0},
+	{UNDEF_TYP, UNDEF_SPE, POTION_SYM, 2, 0},
+	{UNDEF_TYP, UNDEF_SPE, SCROLL_SYM, 3, 0},
+	{0, 0, 0, 0, 0}
 };
 
 static void ini_inv(struct trobj *);
-#ifdef WIZARD
 static void wiz_inv(void);
-#endif
-static int role_index(char);
+static int role_index(int);
 
 void
 u_init(void)
 {
-	int i;
-	char exper = 'y', pc;
-
+	int    i;
+	char            exper = 'y', pc;
 	if (flags.female)	/* should have been set in HACKOPTIONS */
-		strlcpy(roles[4], "Cave-woman", sizeof(roles[4]));
+		roles[4] = "Cave-woman";
 	for (i = 0; i < NR_OF_ROLES; i++)
 		rolesyms[i] = roles[i][0];
 	rolesyms[i] = 0;
 
 	if ((pc = pl_character[0]) != '\0') {
-		if ('a' <= pc && pc <= 'z')
-			pc += 'A' - 'a';
+		if (islower((unsigned char)pc))
+			pc = toupper((unsigned char)pc);
 		if ((i = role_index(pc)) >= 0)
 			goto got_suffix;	/* implies experienced */
 		printf("\nUnknown role: %c\n", pc);
 		pl_character[0] = pc = 0;
 	}
-
 	printf("\nAre you an experienced player? [ny] ");
 
 	while (!strchr("ynYN \n\004", (exper = readchar())))
-		bell();
+		sound_bell();
 	if (exper == '\004')	/* Give him an opportunity to get out */
 		end_of_input();
 	printf("%c\n", exper);	/* echo */
@@ -129,7 +187,6 @@ u_init(void)
 		exper = 0;
 		goto beginner;
 	}
-
 	printf("\nTell me what kind of character you are:\n");
 	printf("Are you");
 	for (i = 0; i < NR_OF_ROLES; i++) {
@@ -144,18 +201,19 @@ u_init(void)
 	printf("? [%s] ", rolesyms);
 
 	while ((pc = readchar()) != '\0') {
-		if ('a' <= pc && pc <= 'z')
-			pc += 'A' - 'a';
+		if (islower((unsigned char)pc))
+			pc = toupper((unsigned char)pc);
 		if ((i = role_index(pc)) >= 0) {
 			printf("%c\n", pc);	/* echo */
-			fflush(stdout);		/* should be seen */
+			(void) fflush(stdout);	/* should be seen */
 			break;
 		}
 		if (pc == '\n')
 			break;
-		if (pc == '\004')	/* Give him the opportunity to get out */
+		if (pc == '\004')	/* Give him the opportunity to get
+					 * out */
 			end_of_input();
-		bell();
+		sound_bell();
 	}
 	if (pc == '\n')
 		pc = 0;
@@ -170,15 +228,22 @@ beginner:
 		       roles[i]);
 		getret();
 		/* give him some feedback in case mklev takes much time */
-		putchar('\n');
-		fflush(stdout);
+		(void) putchar('\n');
+		(void) fflush(stdout);
 	}
-	if (exper)
+#if 0
+	/*
+	 * Given the above code, I can't see why this would ever change
+	 * anything; it does core pretty well, though.  - cmh 4/20/93
+	 */
+	if (exper) {
 		roles[i][0] = pc;
+	}
+#endif
 
 got_suffix:
 
-	strncpy(pl_character, roles[i], PL_CSIZ - 1);
+	(void) strncpy(pl_character, roles[i], PL_CSIZ - 1);
 	pl_character[PL_CSIZ - 1] = 0;
 	flags.beginner = 1;
 	u = zerou;
@@ -187,7 +252,7 @@ got_suffix:
 	init_uhunger();
 #ifdef QUEST
 	u.uhorizon = 6;
-#endif /* QUEST */
+#endif	/* QUEST */
 	uarm = uarm2 = uarmh = uarms = uarmg = uwep = uball = uchain =
 		uleft = uright = 0;
 
@@ -246,26 +311,24 @@ got_suffix:
 	}
 	find_ac();
 	if (!rn2(20)) {
-		int d1 = rn2(7) - 2;	/* biased variation */
-		u.ustr += d1;
-		u.ustrmax += d1;
+		int    dr = rn2(7) - 2;	/* biased variation */
+		u.ustr += dr;
+		u.ustrmax += dr;
 	}
-
 #ifdef WIZARD
 	if (wizard)
 		wiz_inv();
-#endif /* WIZARD */
+#endif	/* WIZARD */
 
 	/* make sure he can carry all he has - especially for T's */
 	while (inv_weight() > 0 && u.ustr < 118)
 		u.ustr++, u.ustrmax++;
 }
 
-static void
+void
 ini_inv(struct trobj *trop)
 {
 	struct obj *obj;
-
 	while (trop->trolet) {
 		obj = mkobj(trop->trolet);
 		obj->known = trop->trknown;
@@ -309,28 +372,19 @@ ini_inv(struct trobj *trop)
 		if (obj->olet == WEAPON_SYM)
 			if (!uwep)
 				setuwep(obj);
-#ifndef PYRAMID_BUG
-		if (--trop->trquan)	/* make a similar object */
-			continue;
-#else
-		if (trop->trquan) {	/* check if zero first */
-			--trop->trquan;
-			if (trop->trquan)
-				continue;	/* make a similar object */
-		}
-#endif /* PYRAMID_BUG */
+		if (--trop->trquan)
+			continue;	/* make a similar object */
 		trop++;
 	}
 }
 
 #ifdef WIZARD
-static void
+void
 wiz_inv(void)
 {
 	struct trobj *trop = &Extra_objs[0];
-	char *ep = getenv("INVENT");
-	int type;
-
+	char  *ep = getenv("INVENT");
+	int    type;
 	while (ep && *ep) {
 		type = atoi(ep);
 		ep = strchr(ep, ',');
@@ -354,13 +408,12 @@ wiz_inv(void)
 	trop->trquan = 1;
 	ini_inv(trop);
 }
-#endif /* WIZARD */
+#endif	/* WIZARD */
 
 void
 plnamesuffix(void)
 {
-	char *p;
-
+	char  *p;
 	if ((p = strrchr(plname, '-')) != NULL) {
 		*p = 0;
 		pl_character[0] = p[1];
@@ -372,11 +425,11 @@ plnamesuffix(void)
 	}
 }
 
-static int
-role_index(char pc)
-{               /* must be called only from u_init() */
-		/* so that rolesyms[] is defined */
-	char *cp;
+int
+role_index(int pc)
+{				/* must be called only from u_init() */
+	/* so that rolesyms[] is defined */
+	char  *cp;
 
 	if ((cp = strchr(rolesyms, pc)) != NULL)
 		return (cp - rolesyms);

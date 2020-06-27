@@ -1,4 +1,7 @@
-/*-
+/*	@(#)globals.c	8.2 (Berkeley) 4/28/95			*/
+/*	$NetBSD: globals.c,v 1.19 2003/08/07 09:37:02 agc Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,19 +28,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)globals.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/battlestar/globals.c,v 1.5.2.1 2001/03/05 11:45:36 kris Exp $
  */
 
-#include "externs.h"
+#include "extern.h"
 
-int WEIGHT = MAXWEIGHT;
-int CUMBER = MAXCUMBER;
+int     WEIGHT = MAXWEIGHT;
+int     CUMBER = MAXCUMBER;
 
-const char *const objdes[NUMOFOBJECTS] = {
-	"There is a knife here",
-	"There is an exquisitely crafted sword and scabbard here.",
+const char   *const objdes[NUMOFOBJECTS] = {
+	"There is a knife here.",
+	"There are an exquisitely crafted sword and scabbard here.",
 	NULL,			/* Can land from here. */
 	"There is a fierce woodsman here brandishing a heavy mallet.",
 	"There is an unwieldy two-handed sword here.",
@@ -61,14 +61,14 @@ const char *const objdes[NUMOFOBJECTS] = {
 	"There is a laser pistol here.",
 	"A flower-like young goddess is bathing in the hot mineral pools. She is \nwatching you, but continues to steep and sing softly.",
 	"The goddess is reclining on a bed of ferns and studying you intently.",
-	"There is a grenade here",
+	"There is a grenade here.",
 	"There is a length of heavy chain here.",
 	"There is a stout rope here.",
 	"There is a pair of Levi's here.",
 	"A bloody mace is lying on the ground here.",
 	"There is a shovel here.",
 	"A long, sharp halberd is propped up here.",
-	"There is a compass here",
+	"There is a compass here.",
 	"Wreckage and smoldering debris from a crash litter the ground here.",
 	"A woodland Elf armed with a shield and deadly halberd lunges toward you!",
 	"I think I hear footsteps behind us.",
@@ -86,13 +86,13 @@ const char *const objdes[NUMOFOBJECTS] = {
 	"A swarthy woman with stern features pulls you aside from the crowd,\n'I must talk to you -- but not here.  Meet me at midnight in the gardens.'",
 	"The swarthy woman has been awaiting you anxiously. 'I must warn you that the\nIsland has anticipated your Quest.  You will not be welcomed. The Darkness is\nstrong where you must search.  Seek not the shadows save only at night, for\nthen are they the weakest.  In the mountains far from here a canyon winds\nwith ferns and streams and forgotten vines.  There you must go. Take this\nrope.'",
 	"Out from the shadows a figure leaps!  His black cape swirls around, and he\nholds a laser sword at your chest.  'So, you have come to fulfill the Quest.\nHa! Your weapons are no match for me!'",
-	"An old timer with one eye missing and no money for a drink sits at the bar.",
+	"An old-timer with one eye missing and no money for a drink sits at the bar.",
 	"You are flying through an asteroid field!",
 	"A planet is nearby.",
 	"The ground is charred here.",
 	"There is a thermonuclear warhead here.",
 	"The fragile, beautiful young goddess lies here.  You murdered her horribly.",
-	"The old timer is lying here.  He is dead.",
+	"The old-timer is lying here.  He is dead.",
 	"The native girl's body is lying here.",
 	"A native girl is sitting here.",
 	"A gorgeous white stallion is standing here.",
@@ -103,7 +103,7 @@ const char *const objdes[NUMOFOBJECTS] = {
 
 };
 
-const char *const objsht[NUMOFOBJECTS] = {
+const char   *const objsht[NUMOFOBJECTS] = {
 	"knife",
 	"fine sword",
 	NULL,			/* Can land from here. */
@@ -160,7 +160,7 @@ const char *const objsht[NUMOFOBJECTS] = {
 	NULL,			/* Charred ground. */
 	"warhead",
 	"goddess's body",
-	"old timer's body",
+	"old-timer's body",
 	"girl's body",
 	NULL,			/* Native girl. */
 	"stallion",
@@ -170,7 +170,7 @@ const char *const objsht[NUMOFOBJECTS] = {
 	"diamond block"
 };
 
-const char *const ouch[NUMOFINJURIES] = {
+const char   *const ouch[NUMOFINJURIES] = {
 	"some minor abrasions",
 	"some minor lacerations",
 	"a minor puncture wound",
@@ -186,29 +186,83 @@ const char *const ouch[NUMOFINJURIES] = {
 	"a broken neck"
 };
 
-const int objwt[NUMOFOBJECTS] = {
-	1, 	5,	0,	10,	15,	2,	10,	10,
-	3,	5,	50,	2500,	2,	1,	100,	1,
-	2,	1,	1,	1,	60,	10,	5,	0,
-	50,	5,	15,	5,	1,	20,	10,	10,
-	0,	0,	0,	0,	1,	0,	0,	1,
-	1,	1,	2,	1,	0,	0,	0,	0,
-	0,	0,	100,	0,	0,	0,	55,	47,
-	50,	45,	45,	100,	2000,	30,	20,	10
+const int     objwt[NUMOFOBJECTS] = {
+	1, 5, 0, 10, 15, 2, 10, 10,
+	3, 5, 50, 2500, 2, 1, 100, 1,
+	2, 1, 1, 1, 60, 10, 5, 0,
+	50, 5, 15, 5, 1, 20, 10, 10,
+	0, 0, 0, 0, 1, 0, 0, 1,
+	1, 1, 2, 1, 0, 0, 0, 0,
+	0, 0, 100, 0, 0, 0, 55, 47,
+	50, 45, 45, 100, 2000, 30, 20, 10
 };
 
-const int objcumber[NUMOFOBJECTS] = {
-	1, 	5,	0,	150,	10,	1,	5,	2,
-	2,	1,	5,	10,	1,	1,	10,	1,
-	1,	1,	1,	1,	7,	5,	4,	0,
-	0,	1,	1,	1,	1,	5,	4,	4,
-	1,	0,	0,	0,	1,	0,	0,	1,
-	1,	1,	3,	1,	0,	0,	1,	0,
-	0,	0,	10,	0,	0,	0,	7,	8,
-	10,	8,	8,	10,	10,	3,	1,	2
+const int     objcumber[NUMOFOBJECTS] = {
+	1, 5, 0, 150, 10, 1, 5, 2,
+	2, 1, 5, 10, 1, 1, 10, 1,
+	1, 1, 1, 1, 7, 5, 4, 0,
+	0, 1, 1, 1, 1, 5, 4, 4,
+	1, 0, 0, 0, 1, 0, 0, 1,
+	1, 1, 3, 1, 0, 0, 1, 0,
+	0, 0, 10, 0, 0, 0, 7, 8,
+	10, 8, 8, 10, 10, 3, 1, 2
 };
 
-int bs_win = 1;
-int matchcount = 20;
-int followgod = -1;
-int followfight = -1;
+const int objflags[NUMOFOBJECTS] = {
+	0,		0,	    OBJ_NONOBJ,	    OBJ_PERSON,
+	0,		0,		0,		0,
+	0,		0,		0,		0,
+	0,	    OBJ_PLURAL,	    OBJ_NONOBJ,	    OBJ_PLURAL,
+	0,	      OBJ_AN,		0,		0,
+	0,		0,		0,	    OBJ_PERSON,
+    OBJ_PERSON,		0,		0,		0,
+    OBJ_PLURAL,		0,		0,		0,
+	0,		0,	OBJ_AN|OBJ_PERSON,  OBJ_NONOBJ,
+    OBJ_PLURAL,		0,	    OBJ_PERSON,	    OBJ_PLURAL,
+	0,		0,	    OBJ_PLURAL,		0,
+	0,		0,		0,	    OBJ_PERSON,
+    OBJ_PERSON,	    OBJ_PERSON,	    OBJ_PERSON,	    OBJ_NONOBJ,
+    OBJ_NONOBJ,	    OBJ_NONOBJ,		0,		0,
+      OBJ_AN,		0,	    OBJ_PERSON,		0,
+	0,		0,		0,		0
+};
+
+int     win = 1;
+int     matchcount = 20;
+int     followgod = -1;
+int     followfight = -1;
+
+struct room *location;
+
+ /* current input line */
+char    words[NWORD][WORDLEN];
+int     wordvalue[NWORD];
+int     wordtype[NWORD];
+int     wordcount, wordnumber;
+
+ /* state of the game */
+int     ourtime;
+int     position;
+int     direction;
+int     left, right, ahead, back;
+int     fuel, torps;
+int     carrying, encumber;
+int     rythmn;
+int     ate;
+int     snooze;
+int     meetgirl;
+int     godready;
+int     wintime;
+int     wiz;
+int     tempwiz;
+int     matchlight;
+int     loved;
+int     pleasure, power, ego;
+int     notes[NUMOFNOTES];
+unsigned int inven[NUMOFWORDS];
+unsigned int wear[NUMOFWORDS];
+char    beenthere[NUMOFROOMS + 1];
+char    injuries[NUMOFINJURIES];
+int     verbose = 0;
+
+const char *username;

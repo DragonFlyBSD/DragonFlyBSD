@@ -1,8 +1,68 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.vault.c - version 1.0.2 */
-/* $FreeBSD: src/games/hack/hack.vault.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
+/*	$NetBSD: hack.vault.c,v 1.9 2011/08/16 09:26:22 christos Exp $	*/
+
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "hack.h"
+#include "extern.h"
 #ifdef QUEST
 void
 setgd(void)
@@ -16,7 +76,7 @@ gd_move(void)
 }
 
 void
-gddead(struct monst *mtmp __unused)
+gddead(void)
 {
 }
 
@@ -32,59 +92,62 @@ invault(void)
 
 #else
 
-#define	FCSIZ	(ROWNO + COLNO)
+
+#include "def.mkroom.h"
+#define	FCSIZ	(ROWNO+COLNO)
 struct fakecorridor {
-	xchar fx, fy, ftyp;
+	xchar           fx, fy, ftyp;
 };
 
 struct egd {
-	int fcbeg, fcend;	/* fcend: first unused pos */
-	xchar gdx, gdy;	/* goal of guard's walk */
-	unsigned gddone:1;
+	int             fcbeg, fcend;	/* fcend: first unused pos */
+	xchar           gdx, gdy;	/* goal of guard's walk */
+	unsigned        gddone:1;
 	struct fakecorridor fakecorr[FCSIZ];
 };
 
-static struct permonst pm_guard =
-{ "guard", '@', 12, 12, -1, 4, 10, sizeof(struct egd) };
+static const struct permonst pm_guard =
+{"guard", '@', 12, 12, -1, 4, 10, sizeof(struct egd)};
 
 static struct monst *guard;
-static int gdlevel;
-#define	EGD	((struct egd *)(&(guard->mextra[0])))
+static int      gdlevel;
 
 static void restfakecorr(void);
-static bool goldincorridor(void);
+static int goldincorridor(void);
 
 static void
 restfakecorr(void)
 {
-	int fcx, fcy, fcbeg;
-	struct rm *crm;
+	int		fcx, fcy, fcbeg;
+	struct rm      *crm;
+	struct egd	*egd = monster_private(guard);
 
-	while ((fcbeg = EGD->fcbeg) < EGD->fcend) {
-		fcx = EGD->fakecorr[fcbeg].fx;
-		fcy = EGD->fakecorr[fcbeg].fy;
+	while ((fcbeg = egd->fcbeg) < egd->fcend) {
+		fcx = egd->fakecorr[fcbeg].fx;
+		fcy = egd->fakecorr[fcbeg].fy;
 		if ((u.ux == fcx && u.uy == fcy) || cansee(fcx, fcy) ||
 		    m_at(fcx, fcy))
 			return;
 		crm = &levl[fcx][fcy];
-		crm->typ = EGD->fakecorr[fcbeg].ftyp;
+		crm->typ = egd->fakecorr[fcbeg].ftyp;
 		if (!crm->typ)
 			crm->seen = 0;
 		newsym(fcx, fcy);
-		EGD->fcbeg++;
+		egd->fcbeg++;
 	}
 	/* it seems he left the corridor - let the guard disappear */
 	mondead(guard);
-	guard = NULL;
+	guard = 0;
 }
 
-static bool
+static int
 goldincorridor(void)
 {
-	int fci;
+	int             fci;
+	struct egd	*egd = monster_private(guard);
 
-	for (fci = EGD->fcbeg; fci < EGD->fcend; fci++)
-		if (g_at(EGD->fakecorr[fci].fx, EGD->fakecorr[fci].fy))
+	for (fci = egd->fcbeg; fci < egd->fcend; fci++)
+		if (g_at(egd->fakecorr[fci].fx, egd->fakecorr[fci].fy))
 			return (1);
 	return (0);
 }
@@ -92,29 +155,28 @@ goldincorridor(void)
 void
 setgd(void)
 {
-	struct monst *mtmp;
-
+	struct monst   *mtmp;
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 		if (mtmp->isgd) {
 			guard = mtmp;
 			gdlevel = dlevel;
 			return;
 		}
-	guard = NULL;
+	guard = 0;
 }
 
 void
 invault(void)
 {
 	int tmp = inroom(u.ux, u.uy);
-
+	struct egd	*egd;
 	if (tmp < 0 || rooms[tmp].rtype != VAULT) {
 		u.uinvault = 0;
 		return;
 	}
 	if (++u.uinvault % 50 == 0 && (!guard || gdlevel != dlevel)) {
-		char buf[BUFSZ];
-		int x, y, dd, gx, gy;
+		char            buf[BUFSZ];
+		int		x, y, dd, gx, gy;
 
 		/* first find the goal for the guard */
 		for (dd = 1; (dd < ROWNO || dd < COLNO); dd++) {
@@ -142,7 +204,7 @@ fnd:
 		x = u.ux;
 		y = u.uy;
 		while (levl[x][y].typ == ROOM) {
-			int dx, dy;
+			int             dx, dy;
 
 			dx = (gx > x) ? 1 : (gx < x) ? -1 : 0;
 			dy = (gy > y) ? 1 : (gy < y) ? -1 : 0;
@@ -156,14 +218,14 @@ fnd:
 		if (!(guard = makemon(&pm_guard, x, y)))
 			return;
 		guard->isgd = guard->mpeaceful = 1;
-		EGD->gddone = 0;
+		egd = monster_private(guard);
+		egd->gddone = 0;
 		gdlevel = dlevel;
 		if (!cansee(guard->mx, guard->my)) {
 			mondead(guard);
-			guard = NULL;
+			guard = 0;
 			return;
 		}
-
 		pline("Suddenly one of the Vault's guards enters!");
 		pmon(guard);
 		do {
@@ -174,7 +236,7 @@ fnd:
 		if (!strcmp(buf, "Croesus") || !strcmp(buf, "Kroisos")) {
 			pline("\"Oh, yes - of course. Sorry to have disturbed you.\"");
 			mondead(guard);
-			guard = NULL;
+			guard = 0;
 			return;
 		}
 		clrlin();
@@ -185,31 +247,31 @@ fnd:
 			pline("\"Most likely all that gold was stolen from this vault.\"");
 			pline("\"Please drop your gold (say d$ ) and follow me.\"");
 		}
-		EGD->gdx = gx;
-		EGD->gdy = gy;
-		EGD->fcbeg = 0;
-		EGD->fakecorr[0].fx = x;
-		EGD->fakecorr[0].fy = y;
-		EGD->fakecorr[0].ftyp = levl[x][y].typ;
+		egd->gdx = gx;
+		egd->gdy = gy;
+		egd->fcbeg = 0;
+		egd->fakecorr[0].fx = x;
+		egd->fakecorr[0].fy = y;
+		egd->fakecorr[0].ftyp = levl[x][y].typ;
 		levl[x][y].typ = DOOR;
-		EGD->fcend = 1;
+		egd->fcend = 1;
 	}
 }
 
 int
 gd_move(void)
 {
-	int x, y, dx, dy, gx, gy, nx, ny, typ;
+	int             x, y, dx, dy, gx, gy, nx, ny, typ;
 	struct fakecorridor *fcp;
-	struct rm *crm;
-
+	struct rm      *crm;
+	struct egd	*egd = monster_private(guard);
 	if (!guard || gdlevel != dlevel) {
 		impossible("Where is the guard?");
 		return (2);	/* died */
 	}
 	if (u.ugold || goldincorridor())
 		return (0);	/* didnt move */
-	if (dist(guard->mx, guard->my) > 1 || EGD->gddone) {
+	if (dist(guard->mx, guard->my) > 1 || egd->gddone) {
 		restfakecorr();
 		return (0);	/* didnt move */
 	}
@@ -222,26 +284,30 @@ gd_move(void)
 				if (nx != x || ny != y)
 					if (isok(nx, ny))
 						if (!IS_WALL(typ = (crm = &levl[nx][ny])->typ) && typ != POOL) {
-							int i;
-							for (i = EGD->fcbeg; i < EGD->fcend; i++)
-								if (EGD->fakecorr[i].fx == nx &&
-								    EGD->fakecorr[i].fy == ny)
+							int             i;
+							for (i = egd->fcbeg; i < egd->fcend; i++)
+								if (egd->fakecorr[i].fx == nx &&
+								    egd->fakecorr[i].fy == ny)
 									goto nextnxy;
 							if ((i = inroom(nx, ny)) >= 0 && rooms[i].rtype == VAULT)
 								goto nextnxy;
-							/* seems we found a good place to leave him alone */
-							EGD->gddone = 1;
+							/*
+							 * seems we found a
+							 * good place to
+							 * leave him alone
+							 */
+							egd->gddone = 1;
 							if (ACCESSIBLE(typ))
 								goto newpos;
 							crm->typ = (typ == SCORR) ? CORR : DOOR;
 							goto proceed;
 						}
-nextnxy:	;
+	nextnxy:	;
 		}
 	nx = x;
 	ny = y;
-	gx = EGD->gdx;
-	gy = EGD->gdy;
+	gx = egd->gdx;
+	gy = egd->gdy;
 	dx = (gx > x) ? 1 : (gx < x) ? -1 : 0;
 	dy = (gy > y) ? 1 : (gy < y) ? -1 : 0;
 	if (abs(gx - x) >= abs(gy - y))
@@ -250,7 +316,10 @@ nextnxy:	;
 		ny += dy;
 
 	while ((typ = (crm = &levl[nx][ny])->typ) != 0) {
-		/* in view of the above we must have IS_WALL(typ) or typ == POOL */
+		/*
+		 * in view of the above we must have IS_WALL(typ) or typ ==
+		 * POOL
+		 */
 		/* must be a wall here */
 		if (isok(nx + nx - x, ny + ny - y) && typ != POOL &&
 		    ZAP_POS(levl[nx + nx - x][ny + ny - y].typ)) {
@@ -278,14 +347,14 @@ proceed:
 		mnewsym(nx, ny);
 		prl(nx, ny);
 	}
-	fcp = &(EGD->fakecorr[EGD->fcend]);
-	if (EGD->fcend++ == FCSIZ)
+	fcp = &(egd->fakecorr[egd->fcend]);
+	if (egd->fcend++ == FCSIZ)
 		panic("fakecorr overflow");
 	fcp->fx = nx;
 	fcp->fy = ny;
 	fcp->ftyp = typ;
 newpos:
-	if (EGD->gddone)
+	if (egd->gddone)
 		nx = ny = 0;
 	guard->mx = nx;
 	guard->my = ny;
@@ -297,7 +366,7 @@ newpos:
 void
 gddead(void)
 {
-	guard = NULL;
+	guard = 0;
 }
 
 void
@@ -307,4 +376,4 @@ replgd(struct monst *mtmp, struct monst *mtmp2)
 		guard = mtmp2;
 }
 
-#endif /* QUEST */
+#endif	/* QUEST */

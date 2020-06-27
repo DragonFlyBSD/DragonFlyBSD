@@ -1,4 +1,7 @@
-/*-
+/*	@(#)win.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: win.c,v 1.12 2009/05/25 00:39:45 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)win.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/win.c,v 1.4 1999/11/30 03:49:56 billf Exp $
- * $DragonFly: src/games/trek/win.c,v 1.3 2006/09/07 21:19:45 pavalos Exp $
  */
 
+#include <stdio.h>
+#include <unistd.h>
+#include <setjmp.h>
 #include "trek.h"
 #include "getpar.h"
 
@@ -47,11 +49,13 @@
 **	pretty off the wall.
 */
 
+extern jmp_buf env;
+
 void
 win(void)
 {
 	long		s;
-	struct cvntab	*p;
+	const struct cvntab *p;
 
 	sleep(1);
 	printf("\nCongratulations, you have saved the Federation\n");
@@ -69,9 +73,9 @@ win(void)
 			printf("to the exalted rank of Commodore Emeritus\n");
 		} else {
 			p = &Skitab[Game.skill - 1];
-			printf("from %s%s ", p->abrev, p->full);
+			printf("from %s%s ", p->abbrev, p->full);
 			p++;
-			printf("to %s%s\n", p->abrev, p->full);
+			printf("to %s%s\n", p->abbrev, p->full);
 		}
 	}
 

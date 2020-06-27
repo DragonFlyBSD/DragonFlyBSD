@@ -1,4 +1,7 @@
-/*-
+/*	@(#)kill.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: kill.c,v 1.11 2009/05/24 22:55:03 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,11 +28,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)kill.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/kill.c,v 1.4 1999/11/30 03:49:49 billf Exp $
  */
 
+#include <stdio.h>
+#include <limits.h>
 #include "trek.h"
 
 /*
@@ -69,7 +71,7 @@ killk(int ix, int iy)
 			/* purge him from the list */
 			Etc.nkling -= 1;
 			for (; i < Etc.nkling; i++)
-				bmove(&Etc.klingon[i+1], &Etc.klingon[i], sizeof Etc.klingon[i]);
+				Etc.klingon[i] = Etc.klingon[i+1];
 			break;
 		}
 
@@ -110,16 +112,19 @@ killb(int qx, int qy)
 	for (b = Now.base; ; b++)
 		if (qx == b->x && qy == b->y)
 			break;
-	bmove(&Now.base[Now.bases], b, sizeof *b);
+	*b = Now.base[Now.bases];
 	if (qx == Ship.quadx && qy == Ship.quady) {
 		Sect[Etc.starbase.x][Etc.starbase.y] = EMPTY;
 		if (Ship.cond == DOCKED)
 			undock(0);
-		printf("Starbase at %d,%d destroyed\n", Etc.starbase.x, Etc.starbase.y);
+		printf("Starbase at %d,%d destroyed\n",
+			Etc.starbase.x, Etc.starbase.y);
 	} else {
 		if (!damaged(SSRADIO)) {
-			printf("Uhura: Starfleet command reports that the starbase in\n");
-			printf("   quadrant %d,%d has been destroyed\n", qx, qy);
+			printf("Uhura: Starfleet command reports that the "
+			       "starbase in\n");
+			printf("   quadrant %d,%d has been destroyed\n",
+				qx, qy);
 		}
 		else
 			schedule(E_KATSB | E_GHOST, TOOLARGE, qx, qy, 0);
@@ -146,7 +151,7 @@ kills(int x, int y, int f)
 		q = &Quad[Ship.quadx][Ship.quady];
 		Sect[x][y] = EMPTY;
 		name = systemname(q);
-		if (name == NULL)
+		if (name == 0)
 			return;
 		printf("Inhabited starsystem %s at %d,%d destroyed\n",
 			name, x, y);
@@ -190,7 +195,8 @@ killd(int x, int y, int f)
 		switch (e->evcode) {
 		  case E_KDESB:
 			if (f) {
-				printf("Distress call for starbase in %d,%d nullified\n",
+				printf("Distress call for starbase in "
+				       "%d,%d nullified\n",
 					x, y);
 				unschedule(e);
 			}
@@ -199,7 +205,8 @@ killd(int x, int y, int f)
 		  case E_ENSLV:
 		  case E_REPRO:
 			if (f) {
-				printf("Distress call for %s in quadrant %d,%d nullified\n",
+				printf("Distress call for %s in quadrant "
+				       "%d,%d nullified\n",
 					Systemname[e->systemname], x, y);
 				q->qsystemname = e->systemname;
 				unschedule(e);

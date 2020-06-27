@@ -1,4 +1,7 @@
-/*-
+/*	@(#)battlestar.c	8.2 (Berkeley) 4/28/95			*/
+/*	$NetBSD: battlestar.c,v 1.16 2008/07/20 01:03:21 lukem Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,11 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
- * @(#)battlestar.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/battlestar/battlestar.c,v 1.6.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/battlestar.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 /*
@@ -39,22 +37,28 @@
  * on the Cory PDP-11/70, University of California, Berkeley.
  */
 
-#include "externs.h"
+#include "extern.h"
 
 int
 main(int argc, char **argv)
 {
-	char mainbuf[LINELENGTH];
-	char *next;
+	char    mainbuf[LINELENGTH];
+	char   *next;
 
 	/* Open the score file then revoke setgid privileges */
 	open_score_file();
 	setgid(getgid());
 
-	initialize(argc < 2 || strcmp(argv[1], "-r"));
+	if (argc < 2)
+		initialize(NULL);
+	else if (strcmp(argv[1], "-r") == 0)
+		initialize((argc > 2) ? argv[2] : DEFAULT_SAVE_FILE);
+	else
+		initialize(argv[1]);
 start:
 	news();
-	beenthere[position]++;
+	if (beenthere[position] <= ROOMDESC)
+		beenthere[position]++;
 	if (notes[LAUNCHED])
 		crash();	/* decrements fuel & crash */
 	if (matchlight) {
@@ -71,7 +75,7 @@ start:
 run:
 	next = getcom(mainbuf, sizeof mainbuf, ">-: ",
 	    "Please type in something.");
-	for (wordcount = 0; next && wordcount < 20; wordcount++)
+	for (wordcount = 0; next && wordcount < NWORD - 1; wordcount++)
 		next = getword(next, words[wordcount], -1);
 	parse();
 	switch (cypher()) {
@@ -80,7 +84,6 @@ run:
 	case 0:
 		goto start;
 	default:
-		exit(1); /* Shouldn't happen */
+		errx(1, "bad return from cypher(): please submit a bug report");
 	}
-	return (1);
 }

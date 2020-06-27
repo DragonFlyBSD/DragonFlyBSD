@@ -1,18 +1,79 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.read.c - version 1.0.3 */
-/* $FreeBSD: src/games/hack/hack.read.c,v 1.6 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.read.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
+/*	$NetBSD: hack.read.c,v 1.11 2011/08/06 20:29:37 dholland Exp $	*/
 
+/*
+ * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
+ * Amsterdam
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the Stichting Centrum voor Wiskunde en
+ * Informatica, nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior
+ * written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 1982 Jay Fenlason <hack@gnu.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+ * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <stdlib.h>
 #include "hack.h"
+#include "extern.h"
 
-static bool monstersym(char);
+static int identify(struct obj *);
+static int monstersym(int);
 
 int
 doread(void)
 {
-	struct obj *scroll;
-	boolean confused = (Confusion != 0);
-	boolean known = FALSE;
+	struct obj     *scroll;
+	boolean         confused = (Confusion != 0);
+	boolean         known = FALSE;
 
 	scroll = getobj("?", "read");
 	if (!scroll)
@@ -31,37 +92,37 @@ doread(void)
 	switch (scroll->otyp) {
 #ifdef MAIL
 	case SCR_MAIL:
-		readmail(/* scroll */);
+		readmail( /* scroll */ );
 		break;
-#endif /* MAIL */
+#endif	/* MAIL */
 	case SCR_ENCHANT_ARMOR:
 		{
-			struct obj *otmp = some_armor();
+			struct obj     *otmp = some_armor();
 			if (!otmp) {
 				strange_feeling(scroll, "Your skin glows then fades.");
 				return (1);
 			}
 			if (confused) {
 				pline("Your %s glows silver for a moment.",
-				    objects[otmp->otyp].oc_name);
+				      objects[otmp->otyp].oc_name);
 				otmp->rustfree = 1;
 				break;
 			}
 			if (otmp->spe > 3 && rn2(otmp->spe)) {
 				pline("Your %s glows violently green for a while, then evaporates.",
-				    objects[otmp->otyp].oc_name);
+				      objects[otmp->otyp].oc_name);
 				useup(otmp);
 				break;
 			}
 			pline("Your %s glows green for a moment.",
-			    objects[otmp->otyp].oc_name);
+			      objects[otmp->otyp].oc_name);
 			otmp->cursed = 0;
 			otmp->spe++;
 			break;
 		}
 	case SCR_DESTROY_ARMOR:
 		if (confused) {
-			struct obj *otmp = some_armor();
+			struct obj     *otmp = some_armor();
 			if (!otmp) {
 				strange_feeling(scroll, "Your bones itch.");
 				return (1);
@@ -97,14 +158,14 @@ doread(void)
 		break;
 	case SCR_SCARE_MONSTER:
 		{
-			int ct = 0;
-			struct monst *mtmp;
+			int             ct = 0;
+			struct monst   *mtmp;
 
 			for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 				if (cansee(mtmp->mx, mtmp->my)) {
 					if (confused)
 						mtmp->mflee = mtmp->mfroz =
-						    mtmp->msleep = 0;
+							mtmp->msleep = 0;
 					else
 						mtmp->mflee = 1;
 					ct++;
@@ -125,7 +186,7 @@ doread(void)
 		break;
 	case SCR_REMOVE_CURSE:
 		{
-			struct obj *obj;
+			struct obj     *obj;
 			if (confused)
 				pline("You feel like you need some help.");
 			else
@@ -140,21 +201,21 @@ doread(void)
 				free(uchain);
 				uball->spe = 0;
 				uball->owornmask &= ~W_BALL;
-				uchain = uball = NULL;
+				uchain = uball = (struct obj *) 0;
 			}
 			break;
 		}
 	case SCR_CREATE_MONSTER:
 		{
-			int cnt = 1;
+			int             cnt = 1;
 
 			if (!rn2(73))
 				cnt += rnd(4);
 			if (confused)
 				cnt += 12;
 			while (cnt--)
-				makemon(confused ? PM_ACID_BLOB :
-				    NULL, u.ux, u.uy);
+				(void) makemon(confused ? PM_ACID_BLOB :
+					 (struct permonst *) 0, u.ux, u.uy);
 			break;
 		}
 	case SCR_ENCHANT_WEAPON:
@@ -162,7 +223,7 @@ doread(void)
 			pline("Your %s glows silver for a moment.",
 			      objects[uwep->otyp].oc_name);
 			uwep->rustfree = 1;
-		} else if (!chwepon(scroll, 1))		/* tests for !uwep */
+		} else if (!chwepon(scroll, 1))	/* tests for !uwep */
 			return (1);
 		break;
 	case SCR_DAMAGE_WEAPON:
@@ -175,20 +236,20 @@ doread(void)
 		break;
 	case SCR_TAMING:
 		{
-			int i, j;
-			int bd = confused ? 5 : 1;
-			struct monst *mtmp;
+			int             i, j;
+			int             bd = confused ? 5 : 1;
+			struct monst   *mtmp;
 
 			for (i = -bd; i <= bd; i++)
 				for (j = -bd; j <= bd; j++)
-					if ((mtmp = m_at(u.ux + i, u.uy + j)))
-						tamedog(mtmp, NULL);
+					if ((mtmp = m_at(u.ux + i, u.uy + j)) != NULL)
+						(void) tamedog(mtmp, (struct obj *) 0);
 			break;
 		}
 	case SCR_GENOCIDE:
 		{
-			char buf[BUFSZ];
-			struct monst *mtmp, *mtmp2;
+			char            buf[BUFSZ];
+			struct monst   *mtmp, *mtmp2;
 
 			pline("You have found a scroll of genocide!");
 			known = TRUE;
@@ -196,9 +257,9 @@ doread(void)
 				*buf = u.usym;
 			else
 				do {
-				pline("What monster do you want to genocide (Type the letter)? ");
-				getlin(buf);
-			} while (strlen(buf) != 1 || !monstersym(*buf));
+					pline("What monster do you want to genocide (Type the letter)? ");
+					getlin(buf);
+				} while (strlen(buf) != 1 || !monstersym(*buf));
 			if (!strchr(fut_geno, *buf))
 				charcat(fut_geno, *buf);
 			if (!strchr(genocided, *buf))
@@ -229,16 +290,16 @@ doread(void)
 			level_tele();
 		else {
 #ifdef QUEST
-			int oux = u.ux, ouy = u.uy;
+			int             oux = u.ux, ouy = u.uy;
 			tele();
 			if (dist(oux, ouy) > 100)
 				known = TRUE;
-#else /* QUEST */
-			int uroom = inroom(u.ux, u.uy);
+#else	/* QUEST */
+			int             uroom = inroom(u.ux, u.uy);
 			tele();
 			if (uroom != inroom(u.ux, u.uy))
 				known = TRUE;
-#endif /* QUEST */
+#endif	/* QUEST */
 		}
 		break;
 	case SCR_GOLD_DETECTION:
@@ -247,7 +308,7 @@ doread(void)
 		 * now that gold and traps no longer are of the same type.
 		 */
 		if (confused) {
-			struct trap *ttmp;
+			struct trap    *ttmp;
 
 			if (!ftrap) {
 				strange_feeling(scroll, "Your toes stop itching.");
@@ -256,10 +317,13 @@ doread(void)
 				for (ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
 					if (ttmp->tx != u.ux || ttmp->ty != u.uy)
 						goto outtrapmap;
-				/* only under me - no separate display required */
+				/*
+				 * only under me - no separate display
+				 * required
+				 */
 				pline("Your toes itch!");
 				break;
-outtrapmap:
+		outtrapmap:
 				cls();
 				for (ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
 					at(ttmp->tx, ttmp->ty, '$');
@@ -267,7 +331,7 @@ outtrapmap:
 				pline("You feel very greedy!");
 			}
 		} else {
-			struct gold *gtmp;
+			struct gold    *gtmp;
 
 			if (!fgold) {
 				strange_feeling(scroll, "You feel materially poor.");
@@ -277,10 +341,13 @@ outtrapmap:
 				for (gtmp = fgold; gtmp; gtmp = gtmp->ngold)
 					if (gtmp->gx != u.ux || gtmp->gy != u.uy)
 						goto outgoldmap;
-				/* only under me - no separate display required */
+				/*
+				 * only under me - no separate display
+				 * required
+				 */
 				pline("You notice some gold between your feet.");
 				break;
-outgoldmap:
+		outgoldmap:
 				cls();
 				for (gtmp = fgold; gtmp; gtmp = gtmp->ngold)
 					at(gtmp->gx, gtmp->gy, '$');
@@ -295,8 +362,8 @@ outgoldmap:
 	case SCR_FOOD_DETECTION:
 		{
 			int ct = 0, ctu = 0;
-			struct obj *obj;
-			char foodsym = confused ? POTION_SYM : FOOD_SYM;
+			struct obj     *obj;
+			char            foodsym = confused ? POTION_SYM : FOOD_SYM;
 
 			for (obj = fobj; obj; obj = obj->nobj)
 				if (obj->olet == FOOD_SYM) {
@@ -311,7 +378,8 @@ outgoldmap:
 			} else if (!ct) {
 				known = TRUE;
 				pline("You smell %s close nearby.",
-				    confused ? "something" : "food");
+				      confused ? "something" : "food");
+
 			} else {
 				known = TRUE;
 				cls();
@@ -320,7 +388,7 @@ outgoldmap:
 						at(obj->ox, obj->oy, FOOD_SYM);
 				prme();
 				pline("Your nose tingles and you smell %s!",
-				    confused ? "something" : "food");
+				      confused ? "something" : "food");
 				more();
 				docrt();
 			}
@@ -335,18 +403,19 @@ outgoldmap:
 		useup(scroll);
 		objects[SCR_IDENTIFY].oc_name_known = 1;
 		if (!confused)
-			while (!ggetobj("identify", identify,
-			    rn2(5) ? 1 : rn2(5)) && invent)
-				; /* nothing */
+			while (
+			 !ggetobj("identify", identify, rn2(5) ? 1 : rn2(5))
+			       && invent
+				);
 		return (1);
 	case SCR_MAGIC_MAPPING:
 		{
-			struct rm *lev;
-			int num, zx, zy;
+			struct rm      *lev;
+			int             num, zx, zy;
 
 			known = TRUE;
 			pline("On this scroll %s a map!",
-			    confused ? "was" : "is");
+			      confused ? "was" : "is");
 			for (zy = 0; zy < ROWNO; zy++)
 				for (zx = 0; zx < COLNO; zx++) {
 					if (confused && rn2(7))
@@ -365,7 +434,7 @@ outgoldmap:
 						continue;
 #ifndef QUEST
 					if (num != ROOM)
-#endif /* QUEST */
+#endif	/* QUEST */
 					{
 						lev->seen = lev->new = 1;
 						if (lev->scrsym == ' ' || !lev->scrsym)
@@ -378,7 +447,7 @@ outgoldmap:
 		}
 	case SCR_AMNESIA:
 		{
-			int zx, zy;
+			int             zx, zy;
 
 			known = TRUE;
 			for (zx = 0; zx < COLNO; zx++)
@@ -392,8 +461,8 @@ outgoldmap:
 		}
 	case SCR_FIRE:
 		{
-			int num = 0;
-			struct monst *mtmp;
+			int             num = 0;
+			struct monst   *mtmp;
 
 			known = TRUE;
 			if (confused) {
@@ -414,7 +483,8 @@ outgoldmap:
 				if (dist(mtmp->mx, mtmp->my) < 3) {
 					mtmp->mhp -= num;
 					if (strchr("FY", mtmp->data->mlet))
-						mtmp->mhp -= 3 * num;	/* this might well kill 'F's */
+						mtmp->mhp -= 3 * num;	/* this might well kill
+									 * 'F's */
 					if (mtmp->mhp < 1) {
 						killed(mtmp);
 						break;	/* primitive */
@@ -438,7 +508,7 @@ outgoldmap:
 		Punished = INTRINSIC;
 		setworn(mkobj_at(CHAIN_SYM, u.ux, u.uy), W_CHAIN);
 		setworn(mkobj_at(BALL_SYM, u.ux, u.uy), W_BALL);
-		uball->spe = 1;		/* special ball (see save) */
+		uball->spe = 1;	/* special ball (see save) */
 		break;
 	default:
 		impossible("What weird language is this written in? (%u)",
@@ -455,7 +525,7 @@ outgoldmap:
 	return (1);
 }
 
-int
+static int
 identify(struct obj *otmp)		/* also called by newmail() */
 {
 	objects[otmp->otyp].oc_name_known = 1;
@@ -465,7 +535,7 @@ identify(struct obj *otmp)		/* also called by newmail() */
 }
 
 void
-litroom(bool on)
+litroom(boolean on)
 {
 #ifndef QUEST
 	int num, zx, zy;
@@ -493,7 +563,7 @@ litroom(bool on)
 #ifdef QUEST
 		pline("The cave lights up around you, then fades.");
 		return;
-#else /* QUEST */
+#else	/* QUEST */
 		if (levl[u.ux][u.uy].typ == CORR) {
 			pline("The corridor lights up around you, then fades.");
 			return;
@@ -502,13 +572,13 @@ litroom(bool on)
 			return;
 		} else
 			pline("The room is lit.");
-#endif /* QUEST */
+#endif	/* QUEST */
 	}
 
 do_it:
 #ifdef QUEST
 	return;
-#else /* QUEST */
+#else	/* QUEST */
 	if (levl[u.ux][u.uy].lit == on)
 		return;
 	if (levl[u.ux][u.uy].typ == DOOR) {
@@ -529,13 +599,13 @@ do_it:
 		zy = u.uy;
 	}
 	for (seelx = u.ux; (num = levl[seelx - 1][zy].typ) != CORR && num != 0;
-	     seelx--) ;
+	     seelx--);
 	for (seehx = u.ux; (num = levl[seehx + 1][zy].typ) != CORR && num != 0;
-	     seehx++) ;
+	     seehx++);
 	for (seely = u.uy; (num = levl[zx][seely - 1].typ) != CORR && num != 0;
-	     seely--) ;
+	     seely--);
 	for (seehy = u.uy; (num = levl[zx][seehy + 1].typ) != CORR && num != 0;
-	     seehy++) ;
+	     seehy++);
 	for (zy = seely; zy <= seehy; zy++)
 		for (zx = seelx; zx <= seehx; zx++) {
 			levl[zx][zy].lit = on;
@@ -548,25 +618,25 @@ do_it:
 		}
 	if (!on)
 		seehx = 0;
-#endif /* QUEST */
+#endif	/* QUEST */
 }
 
 /* Test whether we may genocide all monsters with symbol  ch  */
-static bool
-monstersym(char ch)		/* arnold@ucsfcgl */
+static int
+monstersym(int ch)		/* arnold@ucsfcgl */
 {
-	struct permonst *mp;
+	const struct permonst *mp;
 
 	/*
 	 * can't genocide certain monsters
 	 */
 	if (strchr("12 &:", ch))
-		return (FALSE);
+		return FALSE;
 
 	if (ch == pm_eel.mlet)
-		return (TRUE);
+		return TRUE;
 	for (mp = mons; mp < &mons[CMNUM + 2]; mp++)
 		if (mp->mlet == ch)
-			return (TRUE);
-	return (FALSE);
+			return TRUE;
+	return FALSE;
 }

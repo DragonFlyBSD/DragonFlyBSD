@@ -1,4 +1,7 @@
-/*-
+/*	@(#)warp.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: warp.c,v 1.11 2009/05/24 22:55:03 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)warp.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/warp.c,v 1.4 1999/11/30 03:49:56 billf Exp $
- * $DragonFly: src/games/trek/warp.c,v 1.4 2007/05/13 18:33:55 swildner Exp $
  */
 
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+#include <unistd.h>
 #include "trek.h"
 #include "getpar.h"
 
@@ -50,16 +53,11 @@
 **	case, there is code to handle time warps, etc.
 */
 
-/*
- * dowarp() is used in a struct cvntab to call warp().  Since it is always ram
- * or move, fl is never < 0, so ask the user for course and distance, then pass
- * that to warp().
- */
 void
 dowarp(int fl)
 {
-	int	c;
-	double	d;
+	int c;
+	double d;
 
 	if (getcodi(&c, &d))
 		return;
@@ -69,15 +67,16 @@ dowarp(int fl)
 void
 warp(int fl, int c, double d)
 {
+	char	       *p;
 	int		course;
 	double		power;
 	double		dist;
-	double		p_time;
+	double		time;
 	double		speed;
 	double		frac;
 	int		percent;
 	int		i;
-	char		*s;
+	double repairs;
 
 	if (Ship.cond == DOCKED) {
 		printf("%s is docked\n", Ship.shipname);
@@ -87,6 +86,7 @@ warp(int fl, int c, double d)
 		out(WARP);
 		return;
 	}
+
 	course = c;
 	dist = d;
 
@@ -94,7 +94,8 @@ warp(int fl, int c, double d)
 	power = (dist + 0.05) * Ship.warp3;
 	percent = 100 * power / Ship.energy + 0.5;
 	if (percent >= 85) {
-		printf("Scotty: That would consume %d%% of our remaining energy.\n",
+		printf("Scotty: That would consume %d%% of our remaining "
+		       "energy.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))
 			return;
@@ -102,10 +103,10 @@ warp(int fl, int c, double d)
 
 	/* compute the speed we will move at, and the time it will take */
 	speed = Ship.warp2 / Param.warptime;
-	p_time = dist / speed;
+	time = dist / speed;
 
 	/* check to see that that value is not ridiculous */
-	percent = 100 * p_time / Now.time + 0.5;
+	percent = 100 * time / Now.time + 0.5;
 	if (percent >= 85) {
 		printf("Spock: That would take %d%% of our remaining time.\n",
 			percent);
@@ -117,12 +118,13 @@ warp(int fl, int c, double d)
 	if (Ship.warp > 6.0 && ranf(100) < 20 + 15 * (Ship.warp - 6.0)) {
 		frac = franf();
 		dist *= frac;
-		p_time *= frac;
-		damage(WARP, (frac + 1.0) * Ship.warp * (franf() + 0.25) * 0.20);
+		time *= frac;
+		repairs = (frac + 1.0) * Ship.warp * (franf() + 0.25) * 0.20;
+		damage(WARP, repairs);
 	}
 
 	/* do the move */
-	Move.time = move(fl, course, p_time, speed);
+	Move.time = move(fl, course, time, speed);
 
 	/* see how far we actually went, and decrement energy appropriately */
 	dist = Move.time * speed;
@@ -148,36 +150,41 @@ warp(int fl, int c, double d)
 		/* time warp */
 		if (percent < 35 || !Game.snap) {
 			/* positive time warp */
-			p_time = (Ship.warp - 8.0) * dist * (franf() + 1.0);
-			Now.date += p_time;
-			printf("Positive time portal entered -- it is now Stardate %.2f\n",
+			time = (Ship.warp - 8.0) * dist * (franf() + 1.0);
+			Now.date += time;
+			printf("Positive time portal entered -- "
+			       "it is now Stardate %.2f\n",
 				Now.date);
 			for (i = 0; i < MAXEVENTS; i++) {
 				percent = Event[i].evcode;
 				if (percent == E_FIXDV || percent == E_LRTB)
-					Event[i].date += p_time;
+					Event[i].date += time;
 			}
 			return;
 		}
 
 		/* s/he got lucky: a negative time portal */
-		p_time = Now.date;
-		s = Etc.snapshot;
-		bmove(s, Quad, sizeof Quad);
-		bmove(s += sizeof Quad, Event, sizeof Event);
-		bmove(s += sizeof Event, &Now, sizeof Now);
-		printf("Negative time portal entered -- it is now Stardate %.2f\n",
+		time = Now.date;
+		p = (char *) Etc.snapshot;
+		memcpy(p, Quad, sizeof Quad);
+		p += sizeof Quad;
+		memcpy(p, Event, sizeof Event);
+		p += sizeof Event;
+		memcpy(p, &Now, sizeof Now);
+		printf("Negative time portal entered -- "
+		       "it is now Stardate %.2f\n",
 			Now.date);
 		for (i = 0; i < MAXEVENTS; i++)
 			if (Event[i].evcode == E_FIXDV)
-				reschedule(&Event[i], Event[i].date - p_time);
+				reschedule(&Event[i], Event[i].date - time);
 		return;
 	}
 
 	/* test for just a lot of damage */
 	if (percent < 80)
 		lose(L_TOOFAST);
-	printf("Equilibrium restored -- extreme damage occurred to ship systems\n");
+	printf("Equilibrium restored -- "
+	       "extreme damage occurred to ship systems\n");
 	for (i = 0; i < NDEV; i++)
 		damage(i, (3.0 * (franf() + franf()) + 1.0) * Param.damfac[i]);
 	Ship.shldup = 0;

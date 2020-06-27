@@ -1,4 +1,7 @@
-/*-
+/*	@(#)move.c	8.1 (Berkeley) 5/31/93			*/
+/*	$NetBSD: move.c,v 1.11 2011/07/03 06:44:01 mrg Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)move.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/move.c,v 1.6 1999/11/30 03:49:50 billf Exp $
- * $DragonFly: src/games/trek/move.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
+#include <math.h>
+#include <float.h>
 #include "trek.h"
 
 /*
@@ -40,7 +42,7 @@
 **	Klingons, etc.  This is passed from warp(), which gets it from
 **	either play() or ram().  Course is the course (0 -> 360) at
 **	which we want to move.  `Speed' is the speed we
-**	want to go, and `p_time' is the expected time.  It
+**	want to go, and `time' is the expected time.  It
 **	can get cut short if a long range tractor beam is to occur.  We
 **	cut short the move so that the user doesn't get docked time and
 **	energy for distance which he didn't travel.
@@ -69,11 +71,11 @@
 */
 
 double
-move(int ramflag, int course, double p_time, double speed)
+move(int ramflag, int course, double time, double speed)
 {
 	double			angle;
 	double			x, y, dx, dy;
-	int		ix, iy;
+	int		ix = 0, iy = 0;
 	double			bigger;
 	int			n;
 	int		i;
@@ -82,11 +84,10 @@ move(int ramflag, int course, double p_time, double speed)
 	double			xn;
 	double			evtime;
 
-	ix = iy = 0;
 #ifdef xTRACE
 	if (Trace)
 		printf("move: ramflag %d course %d time %.2f speed %.2f\n",
-			ramflag, course, p_time, speed);
+			ramflag, course, time, speed);
 #endif
 	sectsize = NSECTS;
 	/* initialize delta factors for move */
@@ -110,18 +111,18 @@ move(int ramflag, int course, double p_time, double speed)
 	evtime = Now.eventptr[E_LRTB]->date - Now.date;
 #ifdef xTRACE
 	if (Trace)
-		printf("E.ep = %p, ->evcode = %d, ->date = %.2f, evtime = %.2f\n",
-			(void *)Now.eventptr[E_LRTB],
-			Now.eventptr[E_LRTB]->evcode,
+		printf("E.ep = %p, ->evcode = %d, ->date = %.2f, "
+		       "evtime = %.2f\n",
+			Now.eventptr[E_LRTB], Now.eventptr[E_LRTB]->evcode,
 			Now.eventptr[E_LRTB]->date, evtime);
 #endif
-	if (p_time > evtime && Etc.nkling < 3) {
+	if (time > evtime && Etc.nkling < 3) {
 		/* then we got a LRTB */
 		evtime += 0.005;
-		p_time = evtime;
+		time = evtime;
 	} else
-		evtime = -1.0e50;
-	dist = p_time * speed;
+		evtime = DBL_MIN;
+	dist = time * speed;
 
 	/* move within quadrant */
 	Sect[Ship.sectx][Ship.secty] = EMPTY;
@@ -131,7 +132,8 @@ move(int ramflag, int course, double p_time, double speed)
 	n = xn + 0.5;
 #ifdef xTRACE
 	if (Trace)
-		printf("dx = %.2f, dy = %.2f, xn = %.2f, n = %d\n", dx, dy, xn, n);
+		printf("dx = %.2f, dy = %.2f, xn = %.2f, n = %d\n",
+			dx, dy, xn, n);
 #endif
 	Move.free = 0;
 
@@ -140,7 +142,8 @@ move(int ramflag, int course, double p_time, double speed)
 		iy = (y += dy);
 #ifdef xTRACE
 		if (Trace)
-			printf("ix = %d, x = %.2f, iy = %d, y = %.2f\n", ix, x, iy, y);
+			printf("ix = %d, x = %.2f, iy = %d, y = %.2f\n",
+				ix, x, iy, y);
 #endif
 		if (x < 0.0 || y < 0.0 || x >= sectsize || y >= sectsize) {
 			/* enter new quadrant */
@@ -184,7 +187,8 @@ move(int ramflag, int course, double p_time, double speed)
 			if (!damaged(COMPUTER) && ramflag <= 0) {
 				ix = x - dx;
 				iy = y - dy;
-				printf("Computer reports navigation error; %s stopped at %d,%d\n",
+				printf("Computer reports navigation error; "
+				       "%s stopped at %d,%d\n",
 					Ship.shipname, ix, iy);
 				Ship.energy -= Param.stopengy * speed;
 				break;
@@ -205,13 +209,15 @@ move(int ramflag, int course, double p_time, double speed)
 		dx = Ship.sectx - ix;
 		dy = Ship.secty - iy;
 		dist = sqrt(dx * dx + dy * dy) / NSECTS;
-		p_time = dist / speed;
-		if (evtime > p_time)
-			p_time = evtime;		/* spring the LRTB trap */
+		time = dist / speed;
+		if (evtime > time) {
+			/* spring the LRTB trap */
+			time = evtime;
+		}
 		Ship.sectx = ix;
 		Ship.secty = iy;
 	}
 	Sect[Ship.sectx][Ship.secty] = Ship.ship;
 	compkldist(0);
-	return (p_time);
+	return (time);
 }

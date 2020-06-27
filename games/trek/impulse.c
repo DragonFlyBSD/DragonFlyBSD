@@ -1,4 +1,7 @@
-/*-
+/*	@(#)impulse.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: impulse.c,v 1.10 2009/05/24 22:55:03 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,25 +28,23 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)impulse.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/impulse.c,v 1.4 1999/11/30 03:49:48 billf Exp $
- * $DragonFly: src/games/trek/impulse.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-#include "getpar.h"
+#include <stdio.h>
 #include "trek.h"
+#include "getpar.h"
 
 /**
  **	move under impulse power
  **/
 
+/*ARGSUSED*/
 void
 impulse(int v __unused)
 {
 	int		course;
 	int		power;
-	double		dist, p_time;
+	double		dist, time;
 	int		percent;
 
 	if (Ship.cond == DOCKED) {
@@ -59,14 +60,15 @@ impulse(int v __unused)
 	power = 20 + 100 * dist;
 	percent = 100 * power / Ship.energy + 0.5;
 	if (percent >= 85) {
-		printf("Scotty: That would consume %d%% of our remaining energy.\n",
+		printf("Scotty: That would consume %d%% of our remaining "
+		       "energy.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))
 			return;
 		printf("Aye aye, sir\n");
 	}
-	p_time = dist / 0.095;
-	percent = 100 * p_time / Now.time + 0.5;
+	time = dist / 0.095;
+	percent = 100 * time / Now.time + 0.5;
 	if (percent >= 85) {
 		printf("Spock: That would take %d%% of our remaining time.\n",
 			percent);
@@ -74,6 +76,6 @@ impulse(int v __unused)
 			return;
 		printf("(He's finally gone mad)\n");
 	}
-	Move.time = move(0, course, p_time, 0.095);
+	Move.time = move(0, course, time, 0.095);
 	Ship.energy -= 20 + 100 * Move.time * 0.095;
 }

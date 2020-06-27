@@ -1,4 +1,7 @@
-/*-
+/*	@(#)events.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: events.c,v 1.11 2009/05/24 22:55:03 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)events.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/events.c,v 1.4 1999/11/30 03:49:47 billf Exp $
- * $DragonFly: src/games/trek/events.c,v 1.4 2008/04/20 13:44:24 swildner Exp $
  */
 
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
 #include "getpar.h"
 #include "trek.h"
 
@@ -44,17 +46,17 @@
 **      'timewarp' is set if called in a time warp.
 */
 
-void
-events(int t_warp)
+int
+events(int timewarp)
 {
 	int		i;
+	char			*p;
 	int			j = 0;
 	struct kling		*k;
 	double			rtime;
 	double			xdate;
 	double			idate;
 	struct event		*ev = NULL;
-	char			*s;
 	int			ix, iy;
 	struct quad	*q;
 	struct event	*e;
@@ -64,7 +66,7 @@ events(int t_warp)
 	/* if nothing happened, just allow for any Klingons killed */
 	if (Move.time <= 0.0) {
 		Now.time = Now.resource / Now.klings;
-		return;
+		return (0);
 	}
 
 	/* indicate that the cloaking device is now working */
@@ -142,7 +144,8 @@ events(int t_warp)
 					for (iy = 0; iy < NQUADS; iy++) {
 						q = &Quad[ix][iy];
 						if (q->stars >= 0)
-							if ((i -= q->klings) <= 0)
+							if ((i -= q->klings)
+							    <= 0)
 								break;
 					}
 					if (i <= 0)
@@ -156,8 +159,11 @@ events(int t_warp)
 				/* nope, dump him in the new quadrant */
 				Ship.quadx = ix;
 				Ship.quady = iy;
-				printf("\n%s caught in long range tractor beam\n", Ship.shipname);
-				printf("*** Pulled to quadrant %d,%d\n", Ship.quadx, Ship.quady);
+				printf("\n%s caught in long range tractor "
+				       "beam\n",
+					Ship.shipname);
+				printf("*** Pulled to quadrant %d,%d\n",
+					Ship.quadx, Ship.quady);
 				Ship.sectx = ranf(NSECTS);
 				Ship.secty = ranf(NSECTS);
 				initquad(0);
@@ -198,23 +204,33 @@ events(int t_warp)
 			}
 			e = ev;
 			if (i >= Now.bases) {
-				/* not now; wait a while and see if some Klingons move in */
+				/*
+				 * not now; wait a while and see if
+				 * some Klingons move in
+				 */
 				reschedule(e, 0.5 + 3.0 * franf());
 				break;
 			}
-			/* schedule a new attack, and a destruction of the base */
+			/*
+			 * schedule a new attack, and a destruction of
+			 * the base
+			 */
 			xresched(e, E_KATSB, 1);
 			e = xsched(E_KDESB, 1, ix, iy, 0);
 
 			/* report it if we can */
 			if (!damaged(SSRADIO)) {
-				printf("\nUhura:  Captain, we have received a distress signal\n");
-				printf("  from the starbase in quadrant %d,%d.\n",
+				printf("\nUhura:  Captain, we have received a "
+				       "distress signal\n");
+				printf("  from the starbase in quadrant "
+				       "%d,%d.\n",
 					ix, iy);
 				restcancel++;
 			} else {
-				/* SSRADIO out, make it so we can't see the distress call */
-				/* but it's still there!!! */
+				/*
+				 * SSRADIO out, make it so we can't see the
+				 * distress call but it's still there!!!
+				 */
 				e->evcode |= E_HIDDEN;
 			}
 			break;
@@ -222,8 +238,10 @@ events(int t_warp)
 		  case E_KDESB:			/* Klingon destroys starbase */
 			unschedule(e);
 			q = &Quad[e->x][e->y];
-			/* if the base has mysteriously gone away, or if the Klingon
-			   got tired and went home, ignore this event */
+			/*
+			 * if the base has mysteriously gone away, or if the
+			 * Klingon got tired and went home, ignore this event
+			 */
 			if (q->bases <=0 || q->klings <= 0)
 				break;
 			/* are we in the same quadrant? */
@@ -247,13 +265,18 @@ events(int t_warp)
 				ix = ranf(NQUADS);
 				iy = ranf(NQUADS);
 				q = &Quad[ix][iy];
-				/* need a quadrant which is not the current one,
-				   which has some stars which are inhabited and
-				   not already under attack, which is not
-				   supernova'ed, and which has some Klingons in it */
-				if (!((ix == Ship.quadx && iy == Ship.quady) || q->stars < 0 ||
-				    (q->qsystemname & Q_DISTRESSED) ||
-				    (q->qsystemname & Q_SYSTEM) == 0 || q->klings <= 0))
+				/*
+				 * need a quadrant which is not the current
+				 * one, which has some inhabited stars which
+				 * are not already under attack, which is not
+				 * supernova'ed, and which has some Klingons
+				 * in it
+				 */
+				if (!((ix == Ship.quadx && iy == Ship.quady) ||
+				      q->stars < 0 ||
+				      (q->qsystemname & Q_DISTRESSED) ||
+				      (q->qsystemname & Q_SYSTEM) == 0 ||
+				      q->klings <= 0))
 					break;
 			}
 			if (i >= 100)
@@ -267,7 +290,8 @@ events(int t_warp)
 
 			/* tell the captain about it if we can */
 			if (!damaged(SSRADIO)) {
-				printf("\nUhura: Captain, starsystem %s in quadrant %d,%d is under attack\n",
+				printf("\nUhura: Captain, starsystem %s in "
+				       "quadrant %d,%d is under attack\n",
 					Systemname[e->systemname], ix, iy);
 				restcancel++;
 			} else {
@@ -288,11 +312,13 @@ events(int t_warp)
 			}
 
 			/* play stork and schedule the first baby */
-			e = schedule(E_REPRO, Param.eventdly[E_REPRO] * franf(), e->x, e->y, e->systemname);
+			e = schedule(E_REPRO, Param.eventdly[E_REPRO] * franf(),
+				e->x, e->y, e->systemname);
 
 			/* report the disaster if we can */
 			if (!damaged(SSRADIO)) {
-				printf("\nUhura:  We've lost contact with starsystem %s\n",
+				printf("\nUhura:  We've lost contact with "
+				       "starsystem %s\n",
 					Systemname[e->systemname]);
 				printf("  in quadrant %d,%d.\n",
 					e->x, e->y);
@@ -312,8 +338,10 @@ events(int t_warp)
 			/* reproduce one Klingon */
 			ix = e->x;
 			iy = e->y;
-			if (Now.klings == 127)
-				break;		/* full right now */
+			if (Now.klings == 127) {
+				/* full right now */
+				break;
+			}
 			if (q->klings >= MAXKLQUAD) {
 				/* this quadrant not ok, pick an adjacent one */
 				for (i = ix - 1; i <= ix + 1; i++) {
@@ -323,8 +351,12 @@ events(int t_warp)
 						if (j < 0 || j >= NQUADS)
 							continue;
 						q = &Quad[i][j];
-						/* check for this quad ok (not full & no snova) */
-						if (q->klings >= MAXKLQUAD || q->stars < 0)
+						/*
+						 * check for this quad ok (not
+						 * full & no snova)
+						 */
+						if (q->klings >= MAXKLQUAD ||
+						    q->stars < 0)
 							continue;
 						break;
 					}
@@ -349,7 +381,8 @@ events(int t_warp)
 				k->y = iy;
 				k->power = Param.klingpwr;
 				k->srndreq = 0;
-				compkldist(Etc.klingon[0].dist == Etc.klingon[0].avgdist ? 0 : 1);
+				compkldist(Etc.klingon[0].dist ==
+					Etc.klingon[0].avgdist ? 0 : 1);
 			}
 
 			/* recompute time left */
@@ -358,10 +391,12 @@ events(int t_warp)
 
 		  case E_SNAP:		/* take a snapshot of the galaxy */
 			xresched(e, E_SNAP, 1);
-			s = Etc.snapshot;
-			s = bmove(Quad, s, sizeof (Quad));
-			s = bmove(Event, s, sizeof (Event));
-			s = bmove(&Now, s, sizeof (Now));
+			p = (char *) Etc.snapshot;
+			memcpy(p, Quad, sizeof (Quad));
+			p += sizeof(Quad);
+			memcpy(p, Event, sizeof (Event));
+			p += sizeof(Event);
+			memcpy(p, &Now, sizeof (Now));
 			Game.snap = 1;
 			break;
 
@@ -392,9 +427,12 @@ events(int t_warp)
 			  case SINS:
 				if (Ship.cond == DOCKED)
 					break;
-				printf("Spock has tried to recalibrate your Space Internal Navigation System,\n");
-				printf("  but he has no standard base to calibrate to.  Suggest you get\n");
-				printf("  to a starbase immediately so that you can properly recalibrate.\n");
+				printf("Spock has tried to recalibrate your "
+				       "Space Internal Navigation System,\n");
+				printf("  but he has no standard base to "
+				       "calibrate to.  Suggest you get\n");
+				printf("  to a starbase immediately so that "
+				       "you can properly recalibrate.\n");
 				Ship.sinsbad = 1;
 				break;
 
@@ -408,7 +446,8 @@ events(int t_warp)
 			break;
 		}
 
-		if (restcancel && Move.resting && getynpar("Spock: Shall we cancel our rest period"))
+		if (restcancel && Move.resting &&
+		    getynpar("Spock: Shall we cancel our rest period"))
 			Move.time = xdate - idate;
 
 	}
@@ -417,7 +456,7 @@ events(int t_warp)
 	if ((e = Now.eventptr[E_ATTACK]) != NULL)
 		unschedule(e);
 
-	if (!t_warp) {
+	if (!timewarp) {
 		/* eat up energy if cloaked */
 		if (Ship.cloaked)
 			Ship.energy -= Param.cloakenergy * Move.time;
@@ -431,5 +470,5 @@ events(int t_warp)
 		if (damaged(LIFESUP) && Ship.cond != DOCKED)
 			Ship.reserves -= Move.time;
 	}
-	return;
+	return (0);
 }

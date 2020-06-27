@@ -1,4 +1,7 @@
-/*-
+/*	@(#)dumpgame.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: dumpgame.c,v 1.15 2009/08/12 08:54:54 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,14 +28,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)dumpgame.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/dumpgame.c,v 1.6 1999/11/30 03:49:46 billf Exp $
- * $DragonFly: src/games/trek/dumpgame.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
+#include <err.h>
+#include <unistd.h>
 #include <fcntl.h>
-
 #include "trek.h"
 
 /***  THIS CONSTANT MUST CHANGE AS THE DATA SPACES CHANGE ***/
@@ -43,19 +44,20 @@ struct dump {
 	int	count;
 };
 
-static bool readdump(int);
+static int readdump(int);
 
-struct dump Dump_template[] = {
-	{ (char *)&Ship,	sizeof (Ship)	},
-	{ (char *)&Now,		sizeof (Now)	},
-	{ (char *)&Param,	sizeof (Param)	},
-	{ (char *)&Etc,		sizeof (Etc)	},
-	{ (char *)&Game,	sizeof (Game)	},
-	{ (char *)Sect,		sizeof (Sect)	},
-	{ (char *)Quad,		sizeof (Quad)	},
-	{ (char *)&Move,	sizeof (Move)	},
-	{ (char *)Event,	sizeof (Event)	},
-	{ NULL,			0		}
+
+static struct dump Dump_template[] = {
+	{ (char *)&Ship,	sizeof (Ship) },
+	{ (char *)&Now,		sizeof (Now) },
+	{ (char *)&Param,	sizeof (Param) },
+	{ (char *)&Etc,		sizeof (Etc) },
+	{ (char *)&Game,	sizeof (Game) },
+	{ (char *)Sect,		sizeof (Sect) },
+	{ (char *)Quad,		sizeof (Quad) },
+	{ (char *)&Move,	sizeof (Move) },
+	{ (char *)Event,	sizeof (Event) },
+	{ NULL,			0 }
 };
 
 /*
@@ -68,6 +70,7 @@ struct dump Dump_template[] = {
 **	output change.
 */
 
+/*ARGSUSED*/
 void
 dumpgame(int v __unused)
 {
@@ -77,7 +80,7 @@ dumpgame(int v __unused)
 	int		i;
 
 	if ((fd = creat("trek.dump", 0644)) < 0) {
-		printf("cannot dump\n");
+		warn("cannot open `trek.dump'");
 		return;
 	}
 	version = VERSION;
@@ -105,7 +108,7 @@ dumpgame(int v __unused)
 **	Return value is zero for success, one for failure.
 */
 
-bool
+int
 restartgame(void)
 {
 	int	fd;
@@ -116,7 +119,8 @@ restartgame(void)
 	    version != VERSION ||
 	    readdump(fd)) {
 		printf("cannot restart\n");
-		close(fd);
+		if (fd >= 0)
+			close(fd);
 		return (1);
 	}
 
@@ -134,7 +138,7 @@ restartgame(void)
 **	Returns zero for success, one for failure.
 */
 
-static bool
+static int
 readdump(int fd1)
 {
 	int		fd;

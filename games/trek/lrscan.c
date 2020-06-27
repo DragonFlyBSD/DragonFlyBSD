@@ -1,4 +1,7 @@
-/*-
+/*	@(#)lrscan.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: lrscan.c,v 1.10 2009/05/24 22:55:03 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)lrscan.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/lrscan.c,v 1.4 1999/11/30 03:49:50 billf Exp $
- * $DragonFly: src/games/trek/lrscan.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
 #include "trek.h"
 
 /*
@@ -45,6 +45,7 @@
 **	for future use by the "chart" option of the computer.
 */
 
+/*ARGSUSED*/
 void
 lrscan(int v __unused)
 {
@@ -54,7 +55,8 @@ lrscan(int v __unused)
 	if (check_out(LRSCAN)) {
 		return;
 	}
-	printf("Long range scan for quadrant %d,%d\n\n", Ship.quadx, Ship.quady);
+	printf("Long range scan for quadrant %d,%d\n\n",
+		Ship.quadx, Ship.quady);
 
 	/* print the header on top */
 	for (j = Ship.quady - 1; j <= Ship.quady + 1; j++) {

@@ -1,4 +1,7 @@
-/*-
+/*	@(#)ram.c	8.1 (Berkeley) 5/31/93			*/
+/*	$NetBSD: ram.c,v 1.8 2009/05/24 22:55:03 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)ram.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/ram.c,v 1.4 1999/11/30 03:49:53 billf Exp $
- * $DragonFly: src/games/trek/ram.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include <stdio.h>
+#include <unistd.h>
 #include "trek.h"
 
 /*
@@ -63,7 +64,8 @@ ram(int ix, int iy)
 	  case INHABIT:
 		printf("Yeoman Rand: Captain, isn't it getting hot in here?\n");
 		sleep(2);
-		printf("Spock: Hull temperature approaching 550 Degrees Kelvin.\n");
+		printf("Spock: Hull temperature approaching 550 Degrees "
+		       "Kelvin.\n");
 		lose(L_STAR);
 
 	  case BASE:

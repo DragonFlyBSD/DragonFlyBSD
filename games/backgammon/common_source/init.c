@@ -1,4 +1,7 @@
-/*-
+/*	@(#)init.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: init.c,v 1.10 2012/10/13 19:19:39 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,40 +28,38 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)init.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/backgammon/common_source/init.c,v 1.4 1999/11/30 03:48:26 billf Exp $
  */
 
 #include <termios.h>
+
+#include "back.h"
 
 /*
  * variable initialization.
  */
 
-/* name of executable object programs */
-const char	EXEC[] = "/usr/games/backgammon";
-const char	TEACH[] = "/usr/games/teachgammon";
+ /* name of executable object programs */
+const char    EXEC[] = "/usr/games/backgammon";
+const char    TEACH[] = "/usr/games/teachgammon";
 
-int	pnum	= 2;		/* color of player:
-					-1 = white
-					 1 = red
-					 0 = both
-					 2 = not yet init'ed */
-int	acnt	= 1;		/* number of args */
-int	aflag	= 1;		/* flag to ask for rules or instructions */
-int	bflag	= 0;		/* flag for automatic board printing */
-int	cflag	= 0;		/* case conversion flag */
-int	hflag	= 1;		/* flag for cleaning screen */
-int	mflag	= 0;		/* backgammon flag */
-int	raflag	= 0;		/* 'roll again' flag for recovered game */
-int	rflag	= 0;		/* recovered game flag */
-int	tflag	= 0;		/* cursor addressing flag */
-int	iroll	= 0;		/* special flag for inputting rolls */
-int	rfl	= 0;
+int     pnum = 2;		/* color of player: -1 = white 1 = red 0 =
+				 * both 2 = not yet init'ed */
+int     acnt = 0;		/* length of args */
+int     aflag = 1;		/* flag to ask for rules or instructions */
+int     bflag = 0;		/* flag for automatic board printing */
+int     cflag = 0;		/* case conversion flag */
+int     hflag = 1;		/* flag for cleaning screen */
+int     mflag = 0;		/* backgammon flag */
+int     raflag = 0;		/* 'roll again' flag for recovered game */
+int     rflag = 0;		/* recovered game flag */
+int     tflag = 0;		/* cursor addressing flag */
+int     iroll = 0;		/* special flag for inputting rolls */
+int     rfl = 0;
 
-const char	*const color[] = {"White", "Red", "white", "red"};
+const char   *const color[] = {"White", "Red", "white", "red"};
 
+
+struct move gm;
 const char	*const *Colorptr;
 const char	*const *colorptr;
 int	*inopp;
@@ -74,20 +75,25 @@ int	colen;
 int	cturn;
 int	curc;
 int	curr;
-int	d0;
-int	dice[2];
 int	dlast;
-int	g[5];
 int	gvalue;
-int	h[4];
 int	home;
 int	in[2];
-int	mvl;
-int	mvlim;
 int	ncin;
 int	off[2];
-int	p[5];
 int	rscore;
 int	table[6][6];
 int	wscore;
-struct termios	tty, old, noech, bgraw;
+struct termios	old, noech, raw;
+
+void
+move_init(struct move *mm)
+{
+	mm->D0 = 0;
+	mm->D1 = 0;
+	mm->mvlim = 0;
+	mm->p[0] = mm->p[1] = mm->p[2] = mm->p[3] = mm->p[4] = 0;
+	mm->g[0] = mm->g[1] = mm->g[2] = mm->g[3] = mm->g[4] = 0;
+	mm->h[0] = mm->h[1] = mm->h[2] = mm->h[3] = 0;
+	mm->d0 = 0;
+}

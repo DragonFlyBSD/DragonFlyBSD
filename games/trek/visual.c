@@ -1,4 +1,7 @@
-/*-
+/*	@(#)visual.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: visual.c,v 1.10 2009/08/12 08:54:54 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)visual.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/visual.c,v 1.4 1999/11/30 03:49:56 billf Exp $
- * $DragonFly: src/games/trek/visual.c,v 1.3 2006/09/07 21:19:45 pavalos Exp $
  */
 
+#include <stdio.h>
 #include "trek.h"
 #include "getpar.h"
 
@@ -44,7 +44,7 @@
 */
 
 /* This struct[] has the delta x, delta y for particular directions */
-struct xy Visdelta[11] = {
+static struct xy Visdelta[11] = {
 	{ -1,	-1 },
 	{ -1,	 0 },
 	{ -1,	 1 },
@@ -58,6 +58,7 @@ struct xy Visdelta[11] = {
 	{ -1,	 1 }
 };
 
+/*ARGSUSED*/
 void
 visual(int z __unused)
 {

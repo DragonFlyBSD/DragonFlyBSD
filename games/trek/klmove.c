@@ -1,4 +1,7 @@
-/*-
+/*	@(#)klmove.c	8.1 (Berkeley) 5/31/93				*/
+/*	$NetBSD: klmove.c,v 1.9 2009/05/24 22:55:03 dholland Exp $	*/
+
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,11 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)klmove.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/trek/klmove.c,v 1.4 1999/11/30 03:49:49 billf Exp $
  */
 
+#include <stdio.h>
 #include "trek.h"
 
 /*
@@ -126,21 +127,24 @@ klmove(int fl)
 				    Quad[qx][qy].klings > MAXKLQUAD - 1)
 					break;
 				if (!damaged(SRSCAN)) {
-					printf("Klingon at %d,%d escapes to quadrant %d,%d\n",
+					printf("Klingon at %d,%d escapes to "
+					       "quadrant %d,%d\n",
 						k->x, k->y, qx, qy);
 					motion = Quad[qx][qy].scanned;
 					if (motion >= 0 && motion < 1000)
 						Quad[qx][qy].scanned += 100;
-					motion = Quad[Ship.quadx][Ship.quady].scanned;
+					motion = Quad[Ship.quadx][Ship.quady]
+						.scanned;
 					if (motion >= 0 && motion < 1000)
-						Quad[Ship.quadx][Ship.quady].scanned -= 100;
+						Quad[Ship.quadx][Ship.quady]
+							.scanned -= 100;
 				}
 				Sect[k->x][k->y] = EMPTY;
 				Quad[qx][qy].klings += 1;
 				Etc.nkling -= 1;
-				bmove(&Etc.klingon[Etc.nkling], k, sizeof *k);
+				*k = Etc.klingon[Etc.nkling];
 				Quad[Ship.quadx][Ship.quady].klings -= 1;
-				k = NULL;
+				k = 0;
 				break;
 			}
 			if (Sect[lookx][looky] != EMPTY) {

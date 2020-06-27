@@ -8,8 +8,8 @@ SRCS=	abandon.c attack.c autover.c capture.c check_out.c checkcond.c \
 	getcodi.c getpar.c help.c impulse.c initquad.c kill.c klmove.c \
 	lose.c lrscan.c main.c move.c nova.c out.c phaser.c play.c ram.c \
 	ranf.c rest.c schedule.c score.c setup.c setwarp.c \
-	shield.c snova.c srscan.c systemname.c torped.c utility.c \
-	visual.c warp.c win.c cgetc.c
+	shield.c snova.c srscan.c systemname.c torped.c \
+	visual.c warp.c win.c
 MAN=	trek.6
 DPADD=	${LIBM}
 LDADD=	-lm
