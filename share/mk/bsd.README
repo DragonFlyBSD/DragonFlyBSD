@@ -42,8 +42,7 @@ bsd.sys.mk		- common settings used for building DragonFly sources
 sys.mk			- default rules for all makes
 
 
-See also make(1), mkdep(1) and `PMake - A Tutorial', 
-located in /usr/src/share/doc/psd/12.make.
+See also make(1) and mkdep(1).
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
