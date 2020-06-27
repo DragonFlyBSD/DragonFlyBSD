@@ -368,6 +368,7 @@ spcset(int func, cc_t *valp, cc_t **valpp)
  * Returns the file descriptor of the opened pty.
  */
 char alpha[] = "0123456789abcdefghijklmnopqrstuv";
+char line[16];
 
 int
 getpty(int *ptynum __unused)
