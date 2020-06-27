@@ -290,7 +290,7 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 
 		if (dev == NULL)
 			return (ENODEV);
-		if ((sc = tapcreate(dev, TAP_MANUALMAKE)) == NULL)
+		if ((sc = tapcreate(dev, 0)) == NULL)
 			return (ENOMEM);
 	} else {
 		dev = sc->tap_dev;

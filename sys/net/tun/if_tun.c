@@ -393,7 +393,7 @@ tun_clone_create(struct if_clone *ifc __unused, int unit,
 
 		if (dev == NULL)
 			return (ENODEV);
-		if ((sc = tuncreate(dev, TUN_MANUALMAKE)) == NULL)
+		if ((sc = tuncreate(dev, 0)) == NULL)
 			return (ENOMEM);
 	}
 
