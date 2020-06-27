@@ -381,21 +381,21 @@ tun_clone_create(struct if_clone *ifc __unused, int unit,
 	struct tun_softc *sc;
 	cdev_t dev;
 
-	sc = tunfind(unit);
-	if (sc == NULL) {
-		if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tun), unit)) {
-			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), unit);
-			dev = make_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
-				       0600, "%s%d", TUN, unit);
-		} else {
-			dev = devfs_find_device_by_name("%s%d", TUN, unit);
-			if (dev == NULL)
-				return (ENOENT);
-		}
+	if (tunfind(unit) != NULL)
+		return (EEXIST);
 
-		if ((sc = tuncreate(dev, 0)) == NULL)
-			return (ENOMEM);
+	if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tun), unit)) {
+		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), unit);
+		dev = make_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
+			       0600, "%s%d", TUN, unit);
+	} else {
+		dev = devfs_find_device_by_name("%s%d", TUN, unit);
+		if (dev == NULL)
+			return (ENOENT);
 	}
+
+	if ((sc = tuncreate(dev, 0)) == NULL)
+		return (ENOMEM);
 
 	sc->tun_flags |= TUN_CLONE;
 	TUNDEBUG(sc->tun_ifp, "clone created, minor = %#x, flags = 0x%x\n",

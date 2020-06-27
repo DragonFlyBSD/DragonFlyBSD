@@ -278,21 +278,21 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 	struct tap_softc *sc;
 	cdev_t dev;
 
-	sc = tapfind(unit);
-	if (sc == NULL) {
-		if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tap), unit)) {
-			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tap), unit);
-			dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
-				       0600, "%s%d", TAP, unit);
-		} else {
-			dev = devfs_find_device_by_name("%s%d", TAP, unit);
-			if (dev == NULL)
-				return (ENOENT);
-		}
+	if (tapfind(unit) != NULL)
+		return (EEXIST);
 
-		if ((sc = tapcreate(dev, 0)) == NULL)
-			return (ENOMEM);
+	if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tap), unit)) {
+		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tap), unit);
+		dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
+			       0600, "%s%d", TAP, unit);
+	} else {
+		dev = devfs_find_device_by_name("%s%d", TAP, unit);
+		if (dev == NULL)
+			return (ENOENT);
 	}
+
+	if ((sc = tapcreate(dev, 0)) == NULL)
+		return (ENOMEM);
 
 	sc->tap_flags |= TAP_CLONE;
 	TAPDEBUG(&sc->tap_if, "clone created, minor = %#x, flags = 0x%x\n",
