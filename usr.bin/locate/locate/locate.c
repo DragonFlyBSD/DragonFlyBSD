@@ -107,6 +107,7 @@ static int f_silent;	/* suppress output, show only count of matches */
 static int f_limit;	/* limit number of output lines, 0 == infinite */
 static u_int counter;	/* counter for matches [-c] */
 
+u_char myctype[UCHAR_MAX + 1];
 
 static void    usage(void) __dead2;
 static void    statistic(FILE *, char *);
