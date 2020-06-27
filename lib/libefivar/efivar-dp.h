@@ -28,6 +28,8 @@
 #ifndef	_EFIVAR_DP_H_
 #define	_EFIVAR_DP_H_
 
+#include <sys/types.h>
+
 /*
  * "Linux compatible" efivar-dp.h header. At the moment, it's really a
  * very thin, minimal interface.
