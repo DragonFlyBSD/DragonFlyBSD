@@ -60,7 +60,7 @@ extern slcfun	slctab[NSLC + 1];	/* slc mapping table */
 
 #define TERMINAL_TYPE_SIZE	41	/* allocated space for terminaltype */
 
-char	*terminaltype;
+extern char	*terminaltype;
 
 /*
  * I/O data buffers, pointers, and counters.
