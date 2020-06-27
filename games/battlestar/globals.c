@@ -28,7 +28,6 @@
  *
  * @(#)globals.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/globals.c,v 1.5.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/globals.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
  */
 
 #include "externs.h"
@@ -45,7 +44,7 @@ const char *const objdes[NUMOFOBJECTS] = {
 	"There is a bloody meat cleaver here.",
 	"A rusty broadsword is lying here.",
 	"There is an ancient coat of finely woven mail here.",
-	"There is a old dented helmet with an ostrich plume here.",
+	"There is an old dented helmet with an ostrich plume here.",
 	"There is a shield of some native tribe here.",
 	"The maid's body is lying here. She was murdered!",
 	"There is a Viper ready for launch here.",

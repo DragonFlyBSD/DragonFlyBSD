@@ -1731,7 +1731,7 @@ rt_del(const struct sockaddr_in6 *sdst, const struct sockaddr_in6 *sgw,
 		 * fresh list.
 		 */
 		struct riprt *longest;
-		trace(1, "\t%s is a interface route, guessing prefixlen\n",
+		trace(1, "\t%s is an interface route, guessing prefixlen\n",
 			inet6_n2p(dst));
 		longest = NULL;
 		for (rrt = riprt; rrt; rrt = rrt->rrt_next) {

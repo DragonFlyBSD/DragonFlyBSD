@@ -11,7 +11,7 @@ divert(-1)
 
 #
 #  This is the DragonFly BSD template configuration for a set-group-ID
-#  sm-msp sendmail that acts as a initial mail submission program.
+#  sm-msp sendmail that acts as an initial mail submission program.
 #
 #  If you want sendmail.submit.cf to be based on a customized version of
 #  this file, copy it to /etc/mail/<hostname>.submit.mc and modify -or-

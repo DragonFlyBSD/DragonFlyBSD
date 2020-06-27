@@ -618,7 +618,7 @@ check_startmsgs()
 #				The check and possible loads are actually
 #				done after start_precmd so that the modules
 #				aren't loaded in vain, should the precmd
-#				return a non-zero status to indicate a error.
+#				return a non-zero status to indicate an error.
 #				If a word in the list looks like "foo:bar",
 #				"foo" is the KLD file name and "bar" is the
 #				module name.  If a word looks like "foo~bar",

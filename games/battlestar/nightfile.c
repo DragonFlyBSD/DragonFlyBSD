@@ -28,7 +28,6 @@
  *
  * @(#)nightfile.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/nightfile.c,v 1.4.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/nightfile.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
@@ -831,7 +830,7 @@ from the ground itself.* The canyon continues - and -.\n", { 0 } },
 craftsmanship, the parlor reflects its owners impeccable taste.  The tropical\n\
 night air pours in through open shutters *+.  There doesn't seem \n\
 to be anybody around.  A large immaculate oaken desk is visible in the\n\
-study and it even has a old fashioned telephone to complete the decor.**\n", { 0 } },
+study and it even has an old fashioned telephone to complete the decor.**\n", { 0 } },
 	{ "You are in a palm grove.",
 	{ 135, 191, 233, 191, 88, 0, 0, 0 },
 "Grassy rows of dew covered palms stretch as far as I can see.**\n\

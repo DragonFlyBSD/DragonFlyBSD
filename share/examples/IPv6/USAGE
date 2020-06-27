@@ -2,9 +2,8 @@
 	KAME Project
 	$KAME: USAGE,v 1.33 2000/11/22 10:22:57 itojun Exp $
 	$FreeBSD: src/share/examples/IPv6/USAGE,v 1.1.2.2 2001/07/03 11:01:24 ume Exp $
-	$DragonFly: src/share/examples/IPv6/USAGE,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
-This is a introduction of how to use the commands provided in the KAME
+This is an introduction of how to use the commands provided in the KAME
 kit.  For more information, please refer to each man page.
 
 
