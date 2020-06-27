@@ -134,8 +134,9 @@ main(int argc, char *argv[])
 	struct cpio _cpio; /* Allocated on stack. */
 	struct cpio *cpio;
 	const char *errmsg;
+	char *tptr;
 	int uid, gid;
-	int opt;
+	int opt, t;
 
 	cpio = &_cpio;
 	memset(cpio, 0, sizeof(*cpio));
@@ -204,9 +205,15 @@ main(int argc, char *argv[])
 			cpio->add_filter = opt;
 			break;
 		case 'C': /* NetBSD/OpenBSD */
-			cpio->bytes_per_block = atoi(cpio->argument);
-			if (cpio->bytes_per_block <= 0)
-				lafe_errc(1, 0, "Invalid blocksize %s", cpio->argument);
+			errno = 0;
+			tptr = NULL;
+			t = (int)strtol(cpio->argument, &tptr, 10);
+			if (errno || t <= 0 || *(cpio->argument) == '\0' ||
+			    tptr == NULL || *tptr != '\0') {
+				lafe_errc(1, 0, "Invalid blocksize: %s",
+				    cpio->argument);
+			}
+			cpio->bytes_per_block = t;
 			break;
 		case 'c': /* POSIX 1997 */
 			cpio->format = "odc";
@@ -730,7 +737,7 @@ file_to_archive(struct cpio *cpio, const char *srcpath)
 	 */
 	destpath = srcpath;
 	if (cpio->destdir) {
-		len = strlen(cpio->destdir) + strlen(srcpath) + 8;
+		len = cpio->destdir_len + strlen(srcpath) + 8;
 		if (len >= cpio->pass_destpath_alloc) {
 			while (len >= cpio->pass_destpath_alloc) {
 				cpio->pass_destpath_alloc += 512;
@@ -748,8 +755,10 @@ file_to_archive(struct cpio *cpio, const char *srcpath)
 	}
 	if (cpio->option_rename)
 		destpath = cpio_rename(destpath);
-	if (destpath == NULL)
+	if (destpath == NULL) {
+		archive_entry_free(entry);
 		return (0);
+	}
 	archive_entry_copy_pathname(entry, destpath);
 
 	/*
@@ -1130,6 +1139,14 @@ list_item_verbose(struct cpio *cpio, struct archive_entry *entry)
 	const char		*fmt;
 	time_t			 mtime;
 	static time_t		 now;
+	struct tm		*ltime;
+#if defined(HAVE_LOCALTIME_R) || defined(HAVE__LOCALTIME64_S)
+	struct tm		tmbuf;
+#endif
+#if defined(HAVE__LOCALTIME64_S)
+	errno_t			terr;
+	__time64_t		tmptime;
+#endif
 
 	if (!now)
 		time(&now);
@@ -1177,7 +1194,19 @@ list_item_verbose(struct cpio *cpio, struct archive_entry *entry)
 	else
 		fmt = cpio->day_first ? "%e %b %H:%M" : "%b %e %H:%M";
 #endif
-	strftime(date, sizeof(date), fmt, localtime(&mtime));
+#if defined(HAVE_LOCALTIME_R)
+	ltime = localtime_r(&mtime, &tmbuf);
+#elif defined(HAVE__LOCALTIME64_S)
+	tmptime = mtime;
+	terr = _localtime64_s(&tmbuf, &tmptime);
+	if (terr)
+		ltime = NULL;
+	else
+		ltime = &tmbuf;
+#else
+	ltime = localtime(&mtime);
+#endif
+	strftime(date, sizeof(date), fmt, ltime);
 
 	fprintf(out, "%s%3d %-8s %-8s %8s %12s %s",
 	    archive_entry_strmode(entry),
@@ -1199,15 +1228,14 @@ mode_pass(struct cpio *cpio, const char *destdir)
 	struct lafe_line_reader *lr;
 	const char *p;
 	int r;
-	size_t destdir_len;
 
 	/* Ensure target dir has a trailing '/' to simplify path surgery. */
-	destdir_len = strlen(destdir);
-	cpio->destdir = malloc(destdir_len + 8);
-	memcpy(cpio->destdir, destdir, destdir_len);
-	if (destdir_len == 0 || destdir[destdir_len - 1] != '/')
-		cpio->destdir[destdir_len++] = '/';
-	cpio->destdir[destdir_len++] = '\0';
+	cpio->destdir_len = strlen(destdir);
+	cpio->destdir = malloc(cpio->destdir_len + 8);
+	memcpy(cpio->destdir, destdir, cpio->destdir_len);
+	if (cpio->destdir_len == 0 || destdir[cpio->destdir_len - 1] != '/')
+		cpio->destdir[cpio->destdir_len++] = '/';
+	cpio->destdir[cpio->destdir_len] = '\0';
 
 	cpio->archive = archive_write_disk_new();
 	if (cpio->archive == NULL)
