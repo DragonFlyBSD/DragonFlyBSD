@@ -196,10 +196,6 @@ __archive_write_program_free(struct archive_write_program_data *data)
 {
 
 	if (data) {
-#if defined(_WIN32) && !defined(__CYGWIN__)
-		if (data->child)
-			CloseHandle(data->child);
-#endif
 		free(data->program_name);
 		free(data->child_buf);
 		free(data);
@@ -211,12 +207,7 @@ int
 __archive_write_program_open(struct archive_write_filter *f,
     struct archive_write_program_data *data, const char *cmd)
 {
-	pid_t child;
 	int ret;
-
-	ret = __archive_write_open_filter(f->next_filter);
-	if (ret != ARCHIVE_OK)
-		return (ret);
 
 	if (data->child_buf == NULL) {
 		data->child_buf_len = 65536;
@@ -230,27 +221,13 @@ __archive_write_program_open(struct archive_write_filter *f,
 		}
 	}
 
-	child = __archive_create_child(cmd, &data->child_stdin,
-		    &data->child_stdout);
-	if (child == -1) {
+	ret = __archive_create_child(cmd, &data->child_stdin,
+		    &data->child_stdout, &data->child);
+	if (ret != ARCHIVE_OK) {
 		archive_set_error(f->archive, EINVAL,
 		    "Can't launch external program: %s", cmd);
 		return (ARCHIVE_FATAL);
 	}
-#if defined(_WIN32) && !defined(__CYGWIN__)
-	data->child = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, child);
-	if (data->child == NULL) {
-		close(data->child_stdin);
-		data->child_stdin = -1;
-		close(data->child_stdout);
-		data->child_stdout = -1;
-		archive_set_error(f->archive, EINVAL,
-		    "Can't launch external program: %s", cmd);
-		return (ARCHIVE_FATAL);
-	}
-#else
-	data->child = child;
-#endif
 	return (ARCHIVE_OK);
 }
 
@@ -353,11 +330,11 @@ int
 __archive_write_program_close(struct archive_write_filter *f,
     struct archive_write_program_data *data)
 {
-	int ret, r1, status;
+	int ret, status;
 	ssize_t bytes_read;
 
 	if (data->child == 0)
-		return __archive_write_close_filter(f->next_filter);
+		return ARCHIVE_OK;
 
 	ret = 0;
 	close(data->child_stdin);
@@ -409,7 +386,6 @@ cleanup:
 		    "Error closing program: %s", data->program_name);
 		ret = ARCHIVE_FATAL;
 	}
-	r1 = __archive_write_close_filter(f->next_filter);
-	return (r1 < ret ? r1 : ret);
+	return ret;
 }
 

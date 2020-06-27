@@ -694,6 +694,7 @@ _archive_read_data_block(struct archive *_a, const void **buff,
 	struct tree *t = a->tree;
 	int r;
 	ssize_t bytes;
+	int64_t sparse_bytes;
 	size_t buffbytes;
 	int empty_sparse_region = 0;
 
@@ -728,27 +729,23 @@ _archive_read_data_block(struct archive *_a, const void **buff,
 		if ((t->flags & needsRestoreTimes) != 0 &&
 		    t->restore_time.noatime == 0)
 			flags |= O_NOATIME;
-		do {
 #endif
-			t->entry_fd = open_on_current_dir(t,
-			    tree_current_access_path(t), flags);
-			__archive_ensure_cloexec_flag(t->entry_fd);
+		t->entry_fd = open_on_current_dir(t,
+		    tree_current_access_path(t), flags);
+		__archive_ensure_cloexec_flag(t->entry_fd);
 #if defined(O_NOATIME)
-			/*
-			 * When we did open the file with O_NOATIME flag,
-			 * if successful, set 1 to t->restore_time.noatime
-			 * not to restore an atime of the file later.
-			 * if failed by EPERM, retry it without O_NOATIME flag.
-			 */
-			if (flags & O_NOATIME) {
-				if (t->entry_fd >= 0)
-					t->restore_time.noatime = 1;
-				else if (errno == EPERM) {
-					flags &= ~O_NOATIME;
-					continue;
-				}
-			}
-		} while (0);
+		/*
+		 * When we did open the file with O_NOATIME flag,
+		 * if successful, set 1 to t->restore_time.noatime
+		 * not to restore an atime of the file later.
+		 * if failed by EPERM, retry it without O_NOATIME flag.
+		 */
+		if (flags & O_NOATIME) {
+			if (t->entry_fd >= 0)
+				t->restore_time.noatime = 1;
+			else if (errno == EPERM)
+				flags &= ~O_NOATIME;
+		}
 #endif
 		if (t->entry_fd < 0) {
 			archive_set_error(&a->archive, errno,
@@ -792,9 +789,9 @@ _archive_read_data_block(struct archive *_a, const void **buff,
 			a->archive.state = ARCHIVE_STATE_FATAL;
 			goto abort_read_data;
 		}
-		bytes = t->current_sparse->offset - t->entry_total;
-		t->entry_remaining_bytes -= bytes;
-		t->entry_total += bytes;
+		sparse_bytes = t->current_sparse->offset - t->entry_total;
+		t->entry_remaining_bytes -= sparse_bytes;
+		t->entry_total += sparse_bytes;
 	}
 
 	/*
@@ -856,7 +853,12 @@ next_entry(struct archive_read_disk *a, struct tree *t,
 	const struct stat *st; /* info to use for this entry */
 	const struct stat *lst;/* lstat() information */
 	const char *name;
-	int descend, r;
+	int delayed, delayed_errno, descend, r;
+	struct archive_string delayed_str;
+
+	delayed = ARCHIVE_OK;
+	delayed_errno = 0;
+	archive_string_init(&delayed_str);
 
 	st = NULL;
 	lst = NULL;
@@ -885,14 +887,26 @@ next_entry(struct archive_read_disk *a, struct tree *t,
 		case TREE_REGULAR:
 			lst = tree_current_lstat(t);
 			if (lst == NULL) {
+			    if (errno == ENOENT && t->depth > 0) {
+				delayed = ARCHIVE_WARN;
+				delayed_errno = errno;
+				if (delayed_str.length == 0) {
+					archive_string_sprintf(&delayed_str,
+					    "%s", tree_current_path(t));
+				} else {
+					archive_string_sprintf(&delayed_str,
+					    " %s", tree_current_path(t));
+				}
+			    } else {
 				archive_set_error(&a->archive, errno,
 				    "%s: Cannot stat",
 				    tree_current_path(t));
 				tree_enter_initial_dir(t);
 				return (ARCHIVE_FAILED);
+			    }
 			}
 			break;
-		}	
+		}
 	} while (lst == NULL);
 
 #ifdef __APPLE__
@@ -1083,6 +1097,17 @@ next_entry(struct archive_read_disk *a, struct tree *t,
 	r = archive_read_disk_entry_from_file(&(a->archive), entry,
 		t->entry_fd, st);
 
+	if (r == ARCHIVE_OK) {
+		r = delayed;
+		if (r != ARCHIVE_OK) {
+			archive_string_sprintf(&delayed_str, ": %s",
+			    "File removed before we read it");
+			archive_set_error(&(a->archive), delayed_errno,
+			    "%s", delayed_str.s);
+		}
+	}
+	archive_string_free(&delayed_str);
+
 	return (r);
 }
 
@@ -1113,6 +1138,8 @@ _archive_read_next_header2(struct archive *_a, struct archive_entry *entry)
 		close_and_restore_time(t->entry_fd, t, &t->restore_time);
 		t->entry_fd = -1;
 	}
+
+	archive_entry_clear(entry);
 
 	for (;;) {
 		r = next_entry(a, t, entry);
@@ -1266,10 +1293,23 @@ archive_read_disk_descend(struct archive *_a)
 	if (t->visit_type != TREE_REGULAR || !t->descend)
 		return (ARCHIVE_OK);
 
+	/*
+	 * We must not treat the initial specified path as a physical dir,
+	 * because if we do then we will try and ascend out of it by opening
+	 * ".." which is (a) wrong and (b) causes spurious permissions errors
+	 * if ".." is not readable by us. Instead, treat it as if it were a
+	 * symlink. (This uses an extra fd, but it can only happen once at the
+	 * top level of a traverse.) But we can't necessarily assume t->st is
+	 * valid here (though t->lst is), which complicates the logic a
+	 * little.
+	 */
 	if (tree_current_is_physical_dir(t)) {
 		tree_push(t, t->basename, t->current_filesystem_id,
 		    t->lst.st_dev, t->lst.st_ino, &t->restore_time);
-		t->stack->flags |= isDir;
+		if (t->stack->parent->parent != NULL)
+			t->stack->flags |= isDir;
+		else
+			t->stack->flags |= isDirLink;
 	} else if (tree_current_is_dir(t)) {
 		tree_push(t, t->basename, t->current_filesystem_id,
 		    t->st.st_dev, t->st.st_ino, &t->restore_time);
@@ -1618,7 +1658,7 @@ static int
 setup_current_filesystem(struct archive_read_disk *a)
 {
 	struct tree *t = a->tree;
-	struct statvfs sfs;
+	struct statvfs svfs;
 	int r, xr = 0;
 
 	t->current_filesystem->synthetic = -1;
@@ -1627,16 +1667,16 @@ setup_current_filesystem(struct archive_read_disk *a)
 		return (ARCHIVE_FAILED);
 	}
 	if (tree_current_is_symblic_link_target(t)) {
-		r = statvfs(tree_current_access_path(t), &sfs);
+		r = statvfs(tree_current_access_path(t), &svfs);
 		if (r == 0)
 			xr = get_xfer_size(t, -1, tree_current_access_path(t));
 	} else {
 #ifdef HAVE_FSTATVFS
-		r = fstatvfs(tree_current_dir_fd(t), &sfs);
+		r = fstatvfs(tree_current_dir_fd(t), &svfs);
 		if (r == 0)
 			xr = get_xfer_size(t, tree_current_dir_fd(t), NULL);
 #else
-		r = statvfs(".", &sfs);
+		r = statvfs(".", &svfs);
 		if (r == 0)
 			xr = get_xfer_size(t, -1, ".");
 #endif
@@ -1648,30 +1688,30 @@ setup_current_filesystem(struct archive_read_disk *a)
 	} else if (xr == 1) {
 		/* Usually come here unless NetBSD supports _PC_REC_XFER_ALIGN
 		 * for pathconf() function. */
-		t->current_filesystem->xfer_align = sfs.f_frsize;
+		t->current_filesystem->xfer_align = svfs.f_frsize;
 		t->current_filesystem->max_xfer_size = -1;
 #if defined(HAVE_STRUCT_STATVFS_F_IOSIZE)
-		t->current_filesystem->min_xfer_size = sfs.f_iosize;
-		t->current_filesystem->incr_xfer_size = sfs.f_iosize;
+		t->current_filesystem->min_xfer_size = svfs.f_iosize;
+		t->current_filesystem->incr_xfer_size = svfs.f_iosize;
 #else
-		t->current_filesystem->min_xfer_size = sfs.f_bsize;
-		t->current_filesystem->incr_xfer_size = sfs.f_bsize;
+		t->current_filesystem->min_xfer_size = svfs.f_bsize;
+		t->current_filesystem->incr_xfer_size = svfs.f_bsize;
 #endif
 	}
-	if (sfs.f_flag & ST_LOCAL)
+	if (svfs.f_flag & ST_LOCAL)
 		t->current_filesystem->remote = 0;
 	else
 		t->current_filesystem->remote = 1;
 
 #if defined(ST_NOATIME)
-	if (sfs.f_flag & ST_NOATIME)
+	if (svfs.f_flag & ST_NOATIME)
 		t->current_filesystem->noatime = 1;
 	else
 #endif
 		t->current_filesystem->noatime = 0;
 
 	/* Set maximum filename length. */
-	t->current_filesystem->name_max = sfs.f_namemax;
+	t->current_filesystem->name_max = svfs.f_namemax;
 	return (ARCHIVE_OK);
 }
 
@@ -1800,7 +1840,7 @@ setup_current_filesystem(struct archive_read_disk *a)
 #if defined(HAVE_STATVFS)
 	if (svfs.f_flag & ST_NOATIME)
 #else
-	if (sfs.f_flag & ST_NOATIME)
+	if (sfs.f_flags & ST_NOATIME)
 #endif
 		t->current_filesystem->noatime = 1;
 	else
@@ -1824,7 +1864,7 @@ static int
 setup_current_filesystem(struct archive_read_disk *a)
 {
 	struct tree *t = a->tree;
-	struct statvfs sfs;
+	struct statvfs svfs;
 	int r, xr = 0;
 
 	t->current_filesystem->synthetic = -1;/* Not supported */
@@ -1843,7 +1883,7 @@ setup_current_filesystem(struct archive_read_disk *a)
 			    "openat failed");
 			return (ARCHIVE_FAILED);
 		}
-		r = fstatvfs(fd, &sfs);
+		r = fstatvfs(fd, &svfs);
 		if (r == 0)
 			xr = get_xfer_size(t, fd, NULL);
 		close(fd);
@@ -1852,13 +1892,13 @@ setup_current_filesystem(struct archive_read_disk *a)
 			archive_set_error(&a->archive, errno, "fchdir failed");
 			return (ARCHIVE_FAILED);
 		}
-		r = statvfs(tree_current_access_path(t), &sfs);
+		r = statvfs(tree_current_access_path(t), &svfs);
 		if (r == 0)
 			xr = get_xfer_size(t, -1, tree_current_access_path(t));
 #endif
 	} else {
 #ifdef HAVE_FSTATVFS
-		r = fstatvfs(tree_current_dir_fd(t), &sfs);
+		r = fstatvfs(tree_current_dir_fd(t), &svfs);
 		if (r == 0)
 			xr = get_xfer_size(t, tree_current_dir_fd(t), NULL);
 #else
@@ -1866,7 +1906,7 @@ setup_current_filesystem(struct archive_read_disk *a)
 			archive_set_error(&a->archive, errno, "fchdir failed");
 			return (ARCHIVE_FAILED);
 		}
-		r = statvfs(".", &sfs);
+		r = statvfs(".", &svfs);
 		if (r == 0)
 			xr = get_xfer_size(t, -1, ".");
 #endif
@@ -1878,14 +1918,14 @@ setup_current_filesystem(struct archive_read_disk *a)
 		return (ARCHIVE_FAILED);
 	} else if (xr == 1) {
 		/* pathconf(_PC_REX_*) operations are not supported. */
-		t->current_filesystem->xfer_align = sfs.f_frsize;
+		t->current_filesystem->xfer_align = svfs.f_frsize;
 		t->current_filesystem->max_xfer_size = -1;
-		t->current_filesystem->min_xfer_size = sfs.f_bsize;
-		t->current_filesystem->incr_xfer_size = sfs.f_bsize;
+		t->current_filesystem->min_xfer_size = svfs.f_bsize;
+		t->current_filesystem->incr_xfer_size = svfs.f_bsize;
 	}
 
 #if defined(ST_NOATIME)
-	if (sfs.f_flag & ST_NOATIME)
+	if (svfs.f_flag & ST_NOATIME)
 		t->current_filesystem->noatime = 1;
 	else
 #endif
@@ -1893,7 +1933,7 @@ setup_current_filesystem(struct archive_read_disk *a)
 
 #if defined(USE_READDIR_R)
 	/* Set maximum filename length. */
-	t->current_filesystem->name_max = sfs.f_namemax;
+	t->current_filesystem->name_max = svfs.f_namemax;
 #endif
 	return (ARCHIVE_OK);
 }
@@ -2132,6 +2172,17 @@ tree_open(const char *path, int symlink_mode, int restore_time)
 static struct tree *
 tree_reopen(struct tree *t, const char *path, int restore_time)
 {
+#if defined(O_PATH)
+	/* Linux */
+	const int o_flag = O_PATH;
+#elif defined(O_SEARCH)
+	/* SunOS */
+	const int o_flag = O_SEARCH;
+#elif defined(__FreeBSD__) && defined(O_EXEC)
+	/* FreeBSD */
+	const int o_flag = O_EXEC;
+#endif
+
 	t->flags = (restore_time != 0)?needsRestoreTimes:0;
 	t->flags |= onInitialDir;
 	t->visit_type = 0;
@@ -2153,6 +2204,16 @@ tree_reopen(struct tree *t, const char *path, int restore_time)
 	t->stack->flags = needsFirstVisit;
 	t->maxOpenCount = t->openCount = 1;
 	t->initial_dir_fd = open(".", O_RDONLY | O_CLOEXEC);
+#if defined(O_PATH) || defined(O_SEARCH) || \
+ (defined(__FreeBSD__) && defined(O_EXEC))
+	/*
+	 * Most likely reason to fail opening "." is that it's not readable,
+	 * so try again for execute. The consequences of not opening this are
+	 * unhelpful and unnecessary errors later.
+	 */
+	if (t->initial_dir_fd < 0)
+		t->initial_dir_fd = open(".", o_flag | O_CLOEXEC);
+#endif
 	__archive_ensure_cloexec_flag(t->initial_dir_fd);
 	t->working_dir_fd = tree_dup(t->initial_dir_fd);
 	return (t);
@@ -2460,7 +2521,7 @@ tree_current_stat(struct tree *t)
 #else
 		if (tree_enter_working_dir(t) != 0)
 			return NULL;
-		if (stat(tree_current_access_path(t), &t->st) != 0)
+		if (la_stat(tree_current_access_path(t), &t->st) != 0)
 #endif
 			return NULL;
 		t->flags |= hasStat;
