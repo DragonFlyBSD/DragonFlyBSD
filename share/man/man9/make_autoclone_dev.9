@@ -124,7 +124,7 @@ and
 contain the mode and cred passed to the autoclone device's
 .Fn open .
 .Pp
-The clone handler must set
+The clone handler should set
 .Fa a_dev
 to a new
 .Vt cdev_t ,
@@ -181,17 +181,17 @@ is in use (set) and returns 1 if it is; otherwise 0 is returned.
 .Fn devfs_clone_bitmap_set
 marks
 .Fa unit
-in
+in the
 .Fa bitmap
 as used, so further calls to
 .Fn devfs_clone_bitmap_get
 cannot retrieve it.
+The function returns -1 if the unit is already allocated, otherwise 0.
 If one intends to use a clone handler along with preallocated devices, it
 is recommended to block the unit numbers of the preallocated devices by
 calling
 .Fn devfs_clone_bitmap_set
 on them.
-The function returns -1 if the unit is already allocated, otherwise 0.
 .Pp
 .Fn devfs_clone_bitmap_get
 will return the first unused unit number and also mark it as used
@@ -210,8 +210,6 @@ marks
 in the
 .Fa bitmap
 as unused so further calls to
-.Fn devfs_clone_bitmap_fff
-or
 .Fn devfs_clone_bitmap_get
 can retrieve it again.
 It is recommended that the associated device be destroyed prior to
@@ -239,6 +237,11 @@ It is used in conjunction with
 and
 .Fn DEVFS_DECLARE_CLONE_BITMAP ,
 as it uses the same name.
+.Sh SEE ALSO
+.Xr devfs 5 ,
+.Xr destroy_dev 9 ,
+.Xr make_dev 9 ,
+.Xr make_only_dev 9
 .Sh HISTORY
 The
 .Xr devfs 5
