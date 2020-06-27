@@ -286,19 +286,17 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 				       0600, "%s%d", TAP, unit);
 		} else {
 			dev = devfs_find_device_by_name("%s%d", TAP, unit);
+			if (dev == NULL)
+				return (ENOENT);
 		}
 
-		if (dev == NULL)
-			return (ENODEV);
 		if ((sc = tapcreate(dev, 0)) == NULL)
 			return (ENOMEM);
-	} else {
-		dev = sc->tap_dev;
 	}
 
 	sc->tap_flags |= TAP_CLONE;
 	TAPDEBUG(&sc->tap_if, "clone created, minor = %#x, flags = 0x%x\n",
-		 minor(dev), sc->tap_flags);
+		 minor(sc->tap_dev), sc->tap_flags);
 
 	return (0);
 }

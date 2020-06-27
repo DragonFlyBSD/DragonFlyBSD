@@ -389,10 +389,10 @@ tun_clone_create(struct if_clone *ifc __unused, int unit,
 				       0600, "%s%d", TUN, unit);
 		} else {
 			dev = devfs_find_device_by_name("%s%d", TUN, unit);
+			if (dev == NULL)
+				return (ENOENT);
 		}
 
-		if (dev == NULL)
-			return (ENODEV);
 		if ((sc = tuncreate(dev, 0)) == NULL)
 			return (ENOMEM);
 	}
@@ -405,7 +405,7 @@ tun_clone_create(struct if_clone *ifc __unused, int unit,
 }
 
 static int
-tun_clone_destroy(struct ifnet * ifp)
+tun_clone_destroy(struct ifnet *ifp)
 {
 	struct tun_softc *sc = ifp->if_softc;
 
