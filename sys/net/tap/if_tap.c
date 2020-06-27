@@ -477,10 +477,7 @@ tapdestroy(struct tap_softc *sc)
 	ifnet_serialize_all(ifp);
 	tapifstop(sc, 1);
 	ifnet_deserialize_all(ifp);
-
 	ether_ifdetach(ifp);
-
-	kprintf("TAPDESTROY UNIT %d\n", unit);
 
 	sc->tap_dev = NULL;
 	dev->si_drv1 = NULL;
