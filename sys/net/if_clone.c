@@ -80,8 +80,10 @@ if_clone_create(char *name, int len, caddr_t params)
 	 * Update the name with the allocated unit for the caller,
 	 * who must preserve enough space.
 	 */
-	if (wildcard && strlcpy(name, ifname, len) >= len)
+	if (wildcard && strlcpy(name, ifname, len) >= len) {
+		if_clone_free_unit(ifc, unit);
 		return (ENOSPC);
+	}
 
 	if ((err = if_clone_createif(ifc, unit, params)) != 0) {
 		if_clone_free_unit(ifc, unit);
