@@ -90,8 +90,8 @@ void	_thr_log(const char *buf, size_t bytes);
 #define STATIC_LIB_REQUIRE(name)	__asm(".globl " #name)
 #endif
 
-TAILQ_HEAD(thread_head, pthread)	thread_head;
-TAILQ_HEAD(atfork_head, pthread_atfork)	atfork_head;
+typedef TAILQ_HEAD(thread_head, pthread)	thread_head;
+typedef TAILQ_HEAD(atfork_head, pthread_atfork)	atfork_head;
 
 struct pthread_mutex {
 	/*
