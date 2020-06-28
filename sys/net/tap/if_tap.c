@@ -89,7 +89,8 @@ static struct tap_softc *tapcreate(cdev_t, int);
 static void		tapdestroy(struct tap_softc *);
 
 /* clone */
-static int		tap_clone_create(struct if_clone *, int, caddr_t);
+static int		tap_clone_create(struct if_clone *, int,
+					 caddr_t, caddr_t);
 static int		tap_clone_destroy(struct ifnet *);
 
 /* network interface */
@@ -273,22 +274,24 @@ tapfind(int unit)
  */
 static int
 tap_clone_create(struct if_clone *ifc __unused, int unit,
-		 caddr_t param __unused)
+		 caddr_t params __unused, caddr_t data)
 {
 	struct tap_softc *sc;
-	cdev_t dev;
+	cdev_t dev = (cdev_t)data;
 
 	if (tapfind(unit) != NULL)
 		return (EEXIST);
 
-	if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tap), unit)) {
-		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tap), unit);
-		dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
-			       0600, "%s%d", TAP, unit);
-	} else {
-		dev = devfs_find_device_by_name("%s%d", TAP, unit);
-		if (dev == NULL)
-			return (ENOENT);
+	if (dev == NULL) {
+		if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tap), unit)) {
+			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tap), unit);
+			dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
+				       0600, "%s%d", TAP, unit);
+		} else {
+			dev = devfs_find_device_by_name("%s%d", TAP, unit);
+			if (dev == NULL)
+				return (ENOENT);
+		}
 	}
 
 	if ((sc = tapcreate(dev, 0)) == NULL)
@@ -370,20 +373,19 @@ tapclone(struct dev_clone_args *ap)
 
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tap), 0);
 	ksnprintf(ifname, IFNAMSIZ, "%s%d", TAP, unit);
-	/*
-	 * Use 'make_dev()' instead of 'make_only_dev()' so that the
-	 * created device can be found by 'devfs_find_device_by_name()'
-	 * in 'tap_clone_create()'.
-	 */
-	ap->a_dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
-			     0600, "%s", ifname);
+	ap->a_dev = make_only_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
+				  0600, "%s", ifname);
 
 	/*
 	 * Use the if_clone framework to create cloned device/interface,
 	 * so the two clone methods (autoclone device /dev/tap; ifconfig
 	 * clone) are consistent and can be mix used.
+	 *
+	 * Need to pass the cdev_t because the device created by
+	 * 'make_only_dev()' doesn't appear in '/dev' yet so that it can't
+	 * be found by 'devfs_find_device_by_name()' in 'tap_clone_create()'.
 	 */
-	return (if_clone_create(ifname, IFNAMSIZ, NULL));
+	return (if_clone_create(ifname, IFNAMSIZ, NULL, (caddr_t)ap->a_dev));
 }
 
 /*

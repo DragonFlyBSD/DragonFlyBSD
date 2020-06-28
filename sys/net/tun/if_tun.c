@@ -67,7 +67,8 @@ static struct tun_softc *tuncreate(cdev_t, int);
 static void		tundestroy(struct tun_softc *sc);
 
 /* clone */
-static int		tun_clone_create(struct if_clone *, int, caddr_t);
+static int		tun_clone_create(struct if_clone *, int,
+					 caddr_t, caddr_t);
 static int		tun_clone_destroy(struct ifnet *);
 
 /* network interface */
@@ -187,20 +188,19 @@ tunclone(struct dev_clone_args *ap)
 
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tun), 0);
 	ksnprintf(ifname, IFNAMSIZ, "%s%d", TUN, unit);
-	/*
-	 * Use 'make_dev()' instead of 'make_only_dev()' so that the
-	 * created device can be found by 'devfs_find_device_by_name()'
-	 * in 'tun_clone_create()'.
-	 */
-	ap->a_dev = make_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
-			     0600, "%s", ifname);
+	ap->a_dev = make_only_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
+				  0600, "%s", ifname);
 
 	/*
 	 * Use the if_clone framework to create cloned device/interface,
 	 * so the two clone methods (autoclone device /dev/tun; ifconfig
 	 * clone) are consistent and can be mix used.
+	 *
+	 * Need to pass the cdev_t because the device created by
+	 * 'make_only_dev()' doesn't appear in '/dev' yet so that it can't
+	 * be found by 'devfs_find_device_by_name()' in 'tun_clone_create()'.
 	 */
-	return (if_clone_create(ifname, IFNAMSIZ, NULL));
+	return (if_clone_create(ifname, IFNAMSIZ, NULL, (caddr_t)ap->a_dev));
 }
 
 static struct tun_softc *
@@ -385,22 +385,24 @@ tunfind(int unit)
 
 static int
 tun_clone_create(struct if_clone *ifc __unused, int unit,
-		 caddr_t param __unused)
+		 caddr_t params __unused, caddr_t data)
 {
 	struct tun_softc *sc;
-	cdev_t dev;
+	cdev_t dev = (cdev_t)data;
 
 	if (tunfind(unit) != NULL)
 		return (EEXIST);
 
-	if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tun), unit)) {
-		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), unit);
-		dev = make_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
-			       0600, "%s%d", TUN, unit);
-	} else {
-		dev = devfs_find_device_by_name("%s%d", TUN, unit);
-		if (dev == NULL)
-			return (ENOENT);
+	if (dev == NULL) {
+		if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tun), unit)) {
+			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), unit);
+			dev = make_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
+				       0600, "%s%d", TUN, unit);
+		} else {
+			dev = devfs_find_device_by_name("%s%d", TUN, unit);
+			if (dev == NULL)
+				return (ENOENT);
+		}
 	}
 
 	if ((sc = tuncreate(dev, 0)) == NULL)
