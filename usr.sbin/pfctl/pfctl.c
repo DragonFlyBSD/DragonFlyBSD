@@ -99,9 +99,6 @@ int	 pfctl_load_ruleset(struct pfctl *, char *,
 int	 pfctl_load_rule(struct pfctl *, char *, struct pf_rule *, int);
 const char	*pfctl_lookup_option(char *, const char **);
 
-struct pf_anchor_global	 pf_anchors;
-struct pf_anchor	 pf_main_anchor;
-
 const char	*clearopt;
 char		*rulesopt;
 const char	*showopt;
