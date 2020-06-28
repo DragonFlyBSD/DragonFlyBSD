@@ -114,4 +114,7 @@ void	print_ld(struct mfi_ld_info *info, int state_len);
 void	print_pd(struct mfi_pd_info *info, int state_len);
 void	dump_config(int fd, struct mfi_config_data *config, const char* msg_prefix);
 
+void	scan_firmware(struct mfi_info_component *comp);
+void	display_firmware(struct mfi_info_component *comp, const char *tag);
+
 #endif /* !__MFIUTIL_H__ */
