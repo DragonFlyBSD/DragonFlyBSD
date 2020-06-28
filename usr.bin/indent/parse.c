@@ -40,6 +40,10 @@
 #include "indent_codes.h"
 #include "indent.h"
 
+/* Globals */
+int	break_comma;
+float	case_ind;
+
 static void reduce(void);
 
 void
