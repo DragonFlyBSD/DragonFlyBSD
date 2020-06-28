@@ -55,6 +55,9 @@
 #include "truss.h"
 #include "extern.h"
 
+char procfs_path[FILENAME_MAX];
+int have_procfs;
+
 /*
  * These should really be parameterized -- I don't like having globals,
  * but this is the easiest way, right now, to deal with them.

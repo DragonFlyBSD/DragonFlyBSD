@@ -33,8 +33,8 @@
 
 #include <stdio.h>
 
-char procfs_path[FILENAME_MAX];
-int have_procfs;
+extern char procfs_path[FILENAME_MAX];
+extern int have_procfs;
 
 extern int Procfd;
 
