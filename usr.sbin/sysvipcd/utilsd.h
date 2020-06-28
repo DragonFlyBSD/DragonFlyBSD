@@ -61,9 +61,6 @@ struct client_entry {
 	LIST_ENTRY(client_entry)	client_link;
 };
 
-LIST_HEAD(client_hashtable, client_entry) *clienthashtable;
-u_long clientmask;
-
 struct pid_attached {
 	int pid;
 	LIST_ENTRY(pid_attached)	link;
