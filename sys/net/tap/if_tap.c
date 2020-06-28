@@ -320,6 +320,7 @@ tapopen(struct dev_open_args *ap)
 		return (error);
 
 	get_mplock();
+
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
 	if (sc == NULL && (sc = tapcreate(dev, TAP_MANUALMAKE)) == NULL) {
@@ -330,15 +331,8 @@ tapopen(struct dev_open_args *ap)
 		rel_mplock();
 		return (EBUSY);
 	}
+
 	ifp = &sc->tap_if;
-
-	if ((sc->tap_flags & TAP_CLONE) == 0) {
-		EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
-
-		/* Announce the return of the interface. */
-		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
-	}
-
 	bcopy(sc->arpcom.ac_enaddr, sc->ether_addr, sizeof(sc->ether_addr));
 
 	if (curthread->td_proc)

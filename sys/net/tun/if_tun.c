@@ -278,7 +278,6 @@ static int
 tunopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct ifnet *ifp;
 	struct tun_softc *sc;
 	int error;
 
@@ -291,19 +290,11 @@ tunopen(struct dev_open_args *ap)
 	if (sc->tun_flags & TUN_OPEN)
 		return (EBUSY);
 
-	ifp = sc->tun_ifp;
-	if ((sc->tun_flags & TUN_CLONE) == 0) {
-		EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
-
-		/* Announce the return of the interface. */
-		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
-	}
-
 	sc->tun_pid = curproc->p_pid;
 	sc->tun_flags |= TUN_OPEN;
 	tunrefcnt++;
 
-	TUNDEBUG(ifp, "opened, minor = %#x. Module refcnt = %d\n",
+	TUNDEBUG(sc->tun_ifp, "opened, minor = %#x. Module refcnt = %d\n",
 		 minor(dev), tunrefcnt);
 	return (0);
 }
