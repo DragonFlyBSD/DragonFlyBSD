@@ -77,7 +77,7 @@ struct ext_decl {
 void gettime(struct timeval *);
 void quit(int);
 
-int n_cpus;
-int enable_ncpus;
+extern int n_cpus;
+extern int enable_ncpus;
 
 #endif /* _TOP_H_ */

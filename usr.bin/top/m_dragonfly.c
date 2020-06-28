@@ -62,7 +62,7 @@ static int namelength;
 static int cmdlength;
 static int show_fullcmd;
 
-int n_cpus = 0;
+int n_cpus, enable_ncpus;
 
 /* get_process_info passes back a handle.  This is what it looks like: */
 
