@@ -78,6 +78,8 @@
 #include "flow.h"
 #include "pathnames.h"
 
+struct config_vars	*rc_conf;
+
 static const char	*yes_to_y(const char *);
 
 /** CONFIGURE FUNCTIONS **/

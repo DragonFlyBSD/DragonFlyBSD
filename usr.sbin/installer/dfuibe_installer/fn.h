@@ -102,6 +102,6 @@ void		 fn_install_os(struct i_fn_args *);
 
 /* Global variables */
 
-struct		config_vars *rc_conf;
+extern struct	config_vars *rc_conf;
 
 #endif /* !__FN_H_ */

@@ -78,6 +78,9 @@ extern int _nl_msg_cat_cntr;
 
 void (*state)(struct i_fn_args *) = NULL;
 int do_reboot;
+int use_hammer;		/* 0=UFS 1=HAMMER 2=HAMMER2 */
+int use_uefi;
+int during_install;
 
 /*** STATES ***/
 

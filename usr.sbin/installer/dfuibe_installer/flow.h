@@ -49,9 +49,11 @@
 #define BUILD_MAX	20480	/* suggested */
 
 struct i_fn_args;
-int use_hammer;			/* 0=UFS 1=HAMMER 2=HAMMER2 */
-int use_uefi;
-int during_install;
+
+extern int use_hammer;		/* 0=UFS 1=HAMMER 2=HAMMER2 */
+extern int use_uefi;
+extern int during_install;
+
 /*** PROTOTYPES ***/
 
 /* Menus */
