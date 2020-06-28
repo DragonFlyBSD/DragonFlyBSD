@@ -43,8 +43,6 @@
 #include <syslog.h>
 #include "yp_extern.h"
 
-int debug;
-
 extern int _rpcpmstart;
 extern char *progname;
 static void __verr(const char *fmt, va_list ap) __printflike(1, 0);

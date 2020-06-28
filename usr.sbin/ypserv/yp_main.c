@@ -79,7 +79,7 @@ extern int _rpc_dtablesize(void);
 extern int _rpcsvcstate;	 /* Set when a request is serviced */
 char *progname = "ypserv";
 const char *yp_dir = _PATH_YP;
-/*int debug = 0;*/
+int debug = 0;
 int do_dns = 0;
 int resfd;
 

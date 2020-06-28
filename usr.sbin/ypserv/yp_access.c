@@ -53,10 +53,8 @@
 #include "tcpd.h"
 #endif
 
-extern int debug;
-
-			/* NIS v1 */
 static const char *yp_procs[] = {
+	/* NIS v1 */
 	"ypoldproc_null",
 	"ypoldproc_domain",
 	"ypoldproc_domain_nonack",

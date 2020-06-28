@@ -51,6 +51,8 @@ struct dom_binding {};
 #include <rpcsvc/ypxfrd.h>
 #include "ypxfr_extern.h"
 
+int debug = 1;
+
 const char *progname = "ypxfr";
 const char *yp_dir = _PATH_YP;
 int _rpcpmstart = 0;
