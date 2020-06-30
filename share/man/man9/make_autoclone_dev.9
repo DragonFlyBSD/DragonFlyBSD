@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 27, 2020
+.Dd June 30, 2020
 .Dt MAKE_AUTOCLONE_DEV 9
 .Os
 .Sh NAME
@@ -76,17 +76,16 @@ with the default
 .Fa ops ,
 visible in the
 .Xr devfs 5
-namespace, that (when opened) will invoke the clone handler specified by
-.Fa nhandler .
-If a
-.Vt devfs_bitmap *
-is specified, the given
+namespace, that will invoke the clone handler specified by
+.Fa nhandler
+when it is opened.
+If the
 .Fa bitmap
-is initialized using
+argument is specified, it will be initialized using
 .Fn devfs_clone_bitmap_init .
 .Pp
 The clone handler must be defined as follows:
-.Bd -literal
+.Bd -literal -offset indent
 d_clone_t mydev_clone;
 
 int
@@ -98,7 +97,7 @@ mydev_clone(struct dev_clone_args *ap)
 When called, the handler is passed a pointer to a populated
 .Vt dev_clone_args
 structure, which is defined as follows:
-.Bd -literal
+.Bd -literal -offset indent
 struct dev_clone_args {
         struct dev_generic_args a_head;
         struct cdev     *a_dev;
@@ -109,41 +108,36 @@ struct dev_clone_args {
 };
 .Ed
 .Pp
+The
 .Fa a_head.a_dev
 is the
 .Vt cdev_t
 of the accessed autoclone device.
+The
 .Fa a_name
 and
 .Fa a_namelen
 are the registered clonable base name and its length, as specified to
 .Fn make_autoclone_dev .
+The
 .Fa a_mode
 and
 .Fa a_cred
-contain the mode and cred passed to the autoclone device's
-.Fn open .
+contain the mode and credential passed to the
+.Fn open
+of the autoclone device.
 .Pp
-The clone handler should set
+The clone handler must set
 .Fa a_dev
 to a new
-.Vt cdev_t ,
-returned by a call to
+.Vt cdev_t
+that is returned by a call to
 .Fn make_only_dev .
-.Fa a_dev
-may also be set to
-.Dv NULL ,
-in which case the
-.Fn open
-will ultimately fail with
-.Er ENXIO .
-If
-.Fa a_dev
-is
-.Pf non- Ns Dv NULL ,
-it is automatically made visible and linked into
+The new
+.Vt cdev_t
+will be automatically made visible and linked into
 .Xr devfs 5
-as if it was created with
+namespace, as if it was created with
 .Fn make_dev .
 Thus,
 .Fn destroy_dev
