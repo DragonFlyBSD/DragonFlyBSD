@@ -214,6 +214,12 @@
 #define	__returns_twice
 #endif
 
+#if __GNUC_PREREQ__(4, 6) || __has_builtin(__builtin_unreachable)
+#define	__unreachable()	__builtin_unreachable()
+#else
+#define	__unreachable()	((void)0)
+#endif
+
 #if __GNUC_PREREQ__(4, 3) || __has_attribute(__alloc_size__)
 #define	__alloc_size(x)		__attribute__((__alloc_size__(x)))
 #define	__alloc_size2(n, x)	__attribute__((__alloc_size__(n, x)))
