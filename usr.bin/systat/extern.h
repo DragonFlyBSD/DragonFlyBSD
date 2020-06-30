@@ -57,6 +57,8 @@ extern int			num_devices;
 extern int			num_selected;
 extern int			num_selections;
 extern long			select_generation;
+extern struct statinfo		cur, last;
+extern struct kinfo_cputime	old_cp_time;
 
 int	 checkhost(struct inpcb *);
 int	 checkport(struct inpcb *);

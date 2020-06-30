@@ -82,8 +82,8 @@ static struct Info {
 	struct kvm_swap  kvmsw[NKVMSW];
 } s, s1, s2, z;
 
-struct kinfo_cputime cp_time, old_cp_time;
-struct statinfo cur, last, run;
+struct statinfo run;
+struct kinfo_cputime cp_time;
 static int kvnsw;
 
 #define	vmm s.Vmm

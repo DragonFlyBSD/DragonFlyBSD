@@ -69,7 +69,7 @@
 #include "devs.h"
 
 struct statinfo cur, last;
-static struct kinfo_cputime cp_time, old_cp_time;
+static struct kinfo_cputime cp_time;
 
 static  int linesperregion;
 static  int numbers = 0;		/* default display bar graphs */
