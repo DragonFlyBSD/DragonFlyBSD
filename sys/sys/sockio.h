@@ -103,15 +103,13 @@
 #define	SIOCGPRIVATE_0	_IOWR('i', 80, struct ifreq)	/* Linux Private + 0 */
 #define	SIOCGPRIVATE_1	_IOWR('i', 81, struct ifreq)	/* Linux Private + 1 */
 
+#define	SIOCIFGCLONERS	_IOWR('i', 120, struct if_clonereq) /* get cloners */
+#define	SIOCIFDESTROY	 _IOW('i', 121, struct ifreq)	/* destroy clone if */
+#define	SIOCIFCREATE	_IOWR('i', 122, struct ifreq)	/* create clone if */
 #define	SIOCSDRVSPEC	 _IOW('i', 123, struct ifdrv)   /* set driver-specific
 							   parameters */
 #define	SIOCGDRVSPEC	_IOWR('i', 123, struct ifdrv)   /* get driver-specific
 							   parameters */
-
-#define	SIOCIFGCLONERS	_IOWR('i', 120, struct if_clonereq) /* get cloners */
-#define	SIOCIFDESTROY	 _IOW('i', 121, struct ifreq)	/* destroy clone if */
-#define	SIOCIFCREATE	_IOWR('i', 122, struct ifreq)	/* create clone if */
-/* 123 SIOC[SG]DRVSPEC */
 #define	SIOCIFCREATE2	_IOWR('i', 124, struct ifreq)	/* create clone if */
 
 #define	SIOCSIFPOLLCPU	 _IOW('i', 125, struct ifreq)	/* deprecated */
