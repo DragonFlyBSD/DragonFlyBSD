@@ -1930,7 +1930,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 			return (error);
 		return (if_clone_create(ifr->ifr_name, sizeof(ifr->ifr_name),
-			cmd == SIOCIFCREATE2 ? ifr->ifr_data : NULL));
+			(cmd == SIOCIFCREATE2 ? ifr->ifr_data : NULL), NULL));
 	case SIOCIFDESTROY:
 		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 			return (error);

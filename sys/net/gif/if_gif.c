@@ -90,18 +90,19 @@
 static MALLOC_DEFINE(M_GIF, "gif", "Generic Tunnel Interface");
 LIST_HEAD(, gif_softc) gif_softc_list;
 
-int	gif_clone_create (struct if_clone *, int, caddr_t);
-int	gif_clone_destroy (struct ifnet *);
+int	gif_clone_create(struct if_clone *, int, caddr_t, caddr_t);
+int	gif_clone_destroy(struct ifnet *);
 
 struct if_clone gif_cloner = IF_CLONE_INITIALIZER("gif", gif_clone_create,
     gif_clone_destroy, 0, IF_MAXUNIT);
 
-static int gifmodevent (module_t, int, void *);
+static int gifmodevent(module_t, int, void *);
 static void gif_clear_cache(struct gif_softc *sc);
 
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_GIF, gif, CTLFLAG_RW, 0,
     "Generic Tunnel Interface");
+
 #ifndef MAX_GIF_NEST
 /*
  * This macro controls the default upper limitation on nesting of gif tunnels.
@@ -130,8 +131,10 @@ static int parallel_tunnels = 0;
 SYSCTL_INT(_net_link_gif, OID_AUTO, parallel_tunnels, CTLFLAG_RW,
     &parallel_tunnels, 0, "Allow parallel tunnels?");
 
+
 int
-gif_clone_create(struct if_clone *ifc, int unit, caddr_t params)
+gif_clone_create(struct if_clone *ifc, int unit,
+		 caddr_t params __unused, caddr_t data __unused)
 {
 	struct gif_softc *sc;
 	

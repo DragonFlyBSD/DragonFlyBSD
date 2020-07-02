@@ -92,7 +92,7 @@ struct pfsyncstats	 pfsyncstats;
 
 void	pfsyncattach(int);
 static int	pfsync_clone_destroy(struct ifnet *);
-static int	pfsync_clone_create(struct if_clone *, int, caddr_t);
+static int	pfsync_clone_create(struct if_clone *, int, caddr_t, caddr_t);
 void	pfsync_setmtu(struct pfsync_softc *, int);
 int	pfsync_alloc_scrub_memory(struct pfsync_state_peer *,
 	    struct pf_state_peer *);
@@ -121,13 +121,16 @@ int	pfsync_sync_ok;
 struct if_clone	pfsync_cloner =
     IF_CLONE_INITIALIZER("pfsync", pfsync_clone_create, pfsync_clone_destroy, 1 ,1);
 
+
 void
 pfsyncattach(int npfsync)
 {
 	if_clone_attach(&pfsync_cloner);
 }
+
 static int
-pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
+pfsync_clone_create(struct if_clone *ifc, int unit,
+		    caddr_t params __unused, caddr_t data __unused)
 {
 	struct pfsync_softc *sc;
 	struct ifnet *ifp;

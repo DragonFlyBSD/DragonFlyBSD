@@ -69,7 +69,7 @@
 #include <netinet/ip6.h>
 #endif
 
-static int	lo_clone_create(struct if_clone *, int, caddr_t);
+static int	lo_clone_create(struct if_clone *, int, caddr_t, caddr_t);
 static int	lo_clone_destroy(struct ifnet *);
 
 static int	lo_output(struct ifnet *, struct mbuf *, struct sockaddr *,
@@ -103,7 +103,8 @@ lo_sysinit(void *dummy __unused)
 SYSINIT(lo_sysinit, SI_SUB_PSEUDO, SI_ORDER_ANY, lo_sysinit, NULL);
 
 static int
-lo_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
+lo_clone_create(struct if_clone *ifc, int unit,
+		caddr_t params __unused, caddr_t data __unused)
 {
 	struct ifnet *ifp;
 

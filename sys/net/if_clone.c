@@ -50,13 +50,13 @@ static bool	if_clone_match(struct if_clone *, const char *);
 static struct if_clone *if_clone_lookup(const char *);
 static int	if_clone_alloc_unit(struct if_clone *, int *);
 static void	if_clone_free_unit(struct if_clone *, int);
-static int	if_clone_createif(struct if_clone *, int, caddr_t);
+static int	if_clone_createif(struct if_clone *, int, caddr_t, caddr_t);
 
 /*
  * Lookup the cloner and create a clone network interface.
  */
 int
-if_clone_create(char *name, int len, caddr_t params)
+if_clone_create(char *name, int len, caddr_t params, caddr_t data)
 {
 	struct if_clone *ifc;
 	char ifname[IFNAMSIZ];
@@ -85,7 +85,7 @@ if_clone_create(char *name, int len, caddr_t params)
 		return (ENOSPC);
 	}
 
-	if ((err = if_clone_createif(ifc, unit, params)) != 0) {
+	if ((err = if_clone_createif(ifc, unit, params, data)) != 0) {
 		if_clone_free_unit(ifc, unit);
 		return (err);
 	}
@@ -164,7 +164,7 @@ if_clone_attach(struct if_clone *ifc)
 
 	for (unit = 0; unit < ifc->ifc_minifs; unit++) {
 		if_clone_alloc_unit(ifc, &unit);
-		if (if_clone_createif(ifc, unit, NULL) != 0) {
+		if (if_clone_createif(ifc, unit, NULL, NULL) != 0) {
 			panic("%s: failed to create required interface %s%d",
 			      __func__, ifc->ifc_name, unit);
 		}
@@ -358,7 +358,7 @@ if_clone_free_unit(struct if_clone *ifc, int unit)
  * Create a clone network interface.
  */
 static int
-if_clone_createif(struct if_clone *ifc, int unit, caddr_t params)
+if_clone_createif(struct if_clone *ifc, int unit, caddr_t params, caddr_t data)
 {
 	struct ifnet *ifp;
 	char ifname[IFNAMSIZ];
@@ -372,7 +372,7 @@ if_clone_createif(struct if_clone *ifc, int unit, caddr_t params)
 	if (ifp != NULL)
 		return (EEXIST);
 
-	err = (*ifc->ifc_create)(ifc, unit, params);
+	err = (*ifc->ifc_create)(ifc, unit, params, data);
 	if (err != 0)
 		return (err);
 

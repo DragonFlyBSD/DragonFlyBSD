@@ -90,7 +90,7 @@ static int	pflogoutput(struct ifnet *, struct mbuf *,
 static int	pflogioctl(struct ifnet *, u_long, caddr_t __unused,
 		    struct ucred * __unused);
 static void	pflogstart(struct ifnet *, struct ifaltq_subque *);
-static int	pflog_clone_create(struct if_clone *, int, caddr_t __unused);
+static int	pflog_clone_create(struct if_clone *, int, caddr_t, caddr_t);
 static int	pflog_clone_destroy(struct ifnet *);
 
 static struct if_clone pflog_cloner = IF_CLONE_INITIALIZER(
@@ -110,7 +110,8 @@ pflogattach(void)
 }
 
 static int
-pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
+pflog_clone_create(struct if_clone *ifc, int unit,
+		   caddr_t params __unused, caddr_t data __unused)
 {
 	struct ifnet *ifp;
 	struct pflog_softc *pflogif;

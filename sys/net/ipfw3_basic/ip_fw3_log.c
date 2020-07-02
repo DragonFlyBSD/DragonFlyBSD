@@ -149,7 +149,8 @@ ip_fw3_log(struct mbuf *m, struct ether_header *eh, uint16_t id)
 }
 
 static int
-ip_fw3_log_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
+ip_fw3_log_clone_create(struct if_clone *ifc, int unit,
+			caddr_t params __unused, caddr_t data __unused)
 {
 	struct ifnet *ifp;
 

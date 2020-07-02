@@ -179,7 +179,7 @@ SYSCTL_NODE(_net_link_vlan, PF_LINK, link, CTLFLAG_RW, 0, "for consistency");
 static MALLOC_DEFINE(M_VLAN, "vlan", "802.1Q Virtual LAN Interface");
 static LIST_HEAD(, ifvlan) ifv_list;
 
-static int	vlan_clone_create(struct if_clone *, int, caddr_t);
+static int	vlan_clone_create(struct if_clone *, int, caddr_t, caddr_t);
 static int	vlan_clone_destroy(struct ifnet *);
 static void	vlan_ifdetach(void *, struct ifnet *);
 
@@ -443,7 +443,8 @@ vlan_ifdetach(void *arg __unused, struct ifnet *ifp)
 }
 
 static int
-vlan_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
+vlan_clone_create(struct if_clone *ifc, int unit,
+		  caddr_t params __unused, caddr_t data __unused)
 {
 	struct ifvlan *ifv;
 	struct ifnet *ifp;

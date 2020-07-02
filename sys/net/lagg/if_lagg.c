@@ -89,7 +89,7 @@ SLIST_HEAD(, lagg_softc) lagg_list;	/* list of laggs */
 static struct lock	lagg_list_lock;
 eventhandler_tag	lagg_detach_cookie = NULL;
 
-static int	lagg_clone_create(struct if_clone *, int, caddr_t);
+static int	lagg_clone_create(struct if_clone *, int, caddr_t, caddr_t);
 static int	lagg_clone_destroy(struct ifnet *);
 static const char *    laggname = "lagg";
 struct if_clone lagg_cloner = IF_CLONE_INITIALIZER("lagg",
@@ -291,7 +291,8 @@ lagg_unregister_vlan(void *arg, struct ifnet *ifp, u_int16_t vtag)
 }
 
 static int
-lagg_clone_create(struct if_clone *ifc, int unit, caddr_t params __unused)
+lagg_clone_create(struct if_clone *ifc, int unit,
+		  caddr_t params __unused, caddr_t data __unused)
 {
 	struct lagg_softc *sc;
 	struct ifnet *ifp;

@@ -66,7 +66,7 @@
 static void usbpf_init(void *);
 static void usbpf_uninit(void *);
 static int usbpf_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static int usbpf_clone_create(struct if_clone *, int, caddr_t);
+static int usbpf_clone_create(struct if_clone *, int, caddr_t, caddr_t);
 static int usbpf_clone_destroy(struct ifnet *);
 static struct usb_bus *usbpf_ifname2ubus(int unit);
 static uint32_t usbpf_aggregate_xferflags(struct usb_xfer_flags *);
@@ -143,7 +143,8 @@ usbpf_ifname2ubus(int unit)
 }
 
 static int
-usbpf_clone_create(struct if_clone *ifc, int unit, caddr_t params)
+usbpf_clone_create(struct if_clone *ifc, int unit, caddr_t params,
+		   caddr_t data __unused)
 {
 	struct ifnet *ifp;
 	struct usb_bus *ubus;

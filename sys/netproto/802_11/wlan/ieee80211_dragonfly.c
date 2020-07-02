@@ -68,7 +68,7 @@ SYSCTL_INT(_net_wlan, OID_AUTO, force_swcrypto, CTLFLAG_RW,
 	    &ieee80211_force_swcrypto, 0, "force software crypto");
 
 static int	wlan_clone_destroy(struct ifnet *);
-static int	wlan_clone_create(struct if_clone *, int, caddr_t);
+static int	wlan_clone_create(struct if_clone *, int, caddr_t, caddr_t);
 
 static struct if_clone wlan_cloner =
 	IF_CLONE_INITIALIZER("wlan", wlan_clone_create, wlan_clone_destroy,
@@ -77,7 +77,8 @@ static struct if_clone wlan_cloner =
 struct lwkt_serialize wlan_global_serializer = LWKT_SERIALIZE_INITIALIZER;
 
 static int
-wlan_clone_create(struct if_clone *ifc, int unit, caddr_t params)
+wlan_clone_create(struct if_clone *ifc, int unit, caddr_t params,
+		  caddr_t data __unused)
 {
 	struct ieee80211_clone_params cp;
 	struct ieee80211vap *vap;

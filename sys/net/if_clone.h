@@ -63,23 +63,24 @@ struct if_clone {
 	unsigned char	*ifc_units;	/* bitmap to handle units */
 	int 		ifc_bmlen;	/* bitmap length */
 
-	int		(*ifc_create)(struct if_clone *, int, caddr_t);
+	int		(*ifc_create)(struct if_clone *, int,
+				      caddr_t, caddr_t);
 	int		(*ifc_destroy)(struct ifnet *);
 };
 
 #define IF_CLONE_INITIALIZER(name, create, destroy, minifs, maxunit)	\
-{ { 0 }, name, minifs, maxunit, NULL, 0, create, destroy }
+	{ { 0 }, name, minifs, maxunit, NULL, 0, create, destroy }
 
 /* interface clone event */
 typedef void (*if_clone_event_handler_t)(void *, struct if_clone *);
 EVENTHANDLER_DECLARE(if_clone_event, if_clone_event_handler_t);
 
-int	if_clone_attach(struct if_clone *);
-void	if_clone_detach(struct if_clone *);
-int	if_clone_create(char *, int, caddr_t);
-int	if_clone_destroy(const char *);
-int	if_clone_list(struct if_clonereq *);
+int	if_clone_attach(struct if_clone *ifc);
+void	if_clone_detach(struct if_clone *ifc);
+int	if_clone_create(char *name, int len, caddr_t params, caddr_t data);
+int	if_clone_destroy(const char *name);
+int	if_clone_list(struct if_clonereq *ifcr);
 
-#endif	/* _KERNEL */
+#endif /* _KERNEL */
 
 #endif /* !_NET_IF_CLONE_H_ */

@@ -372,7 +372,7 @@ static int	carp_hmac_verify(struct carp_softc *, uint32_t *,
 static void	carp_setroute(struct carp_softc *, int);
 static void	carp_proto_input_c(struct carp_softc *, struct mbuf *,
 		    struct carp_header *, sa_family_t);
-static int 	carp_clone_create(struct if_clone *, int, caddr_t);
+static int 	carp_clone_create(struct if_clone *, int, caddr_t, caddr_t);
 static int 	carp_clone_destroy(struct ifnet *);
 static void	carp_detach(struct carp_softc *, boolean_t, boolean_t);
 static void	carp_prepare_ad(struct carp_softc *, struct carp_header *);
@@ -615,7 +615,8 @@ carp_setroute(struct carp_softc *sc, int cmd)
 }
 
 static int
-carp_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
+carp_clone_create(struct if_clone *ifc, int unit,
+		  caddr_t params __unused, caddr_t data __unused)
 {
 	struct carp_softc *sc;
 	struct ifnet *ifp;
