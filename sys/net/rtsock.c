@@ -86,6 +86,10 @@
 #include <net/netmsg2.h>
 #include <net/netisr2.h>
 
+/* sa_family is after sa_len, rest is data */
+#define	_SA_MINSIZE	(offsetof(struct sockaddr, sa_family) + \
+			 sizeof(((struct sockaddr *)0)->sa_family))
+
 MALLOC_DEFINE(M_RTABLE, "routetbl", "routing tables");
 
 static struct route_cb {
@@ -202,12 +206,13 @@ rts_filter(struct mbuf *m, const struct sockproto *proto,
 		char *ep = cp + rop->rocb_missfilterlen;
 
 		/* Ensure we can access sa_len */
-		if (m->m_pkthdr.len < sizeof(*rtm) +
-		    offsetof(struct sockaddr, sa_len) + sizeof(dst->sa_len))
+		if (m->m_pkthdr.len < sizeof(*rtm) + _SA_MINSIZE)
 			return EINVAL;
 		m_copydata(m, sizeof(*rtm) + offsetof(struct sockaddr, sa_len),
 		    sizeof(ss.ss_len), (caddr_t)&ss);
-		if (m->m_pkthdr.len < sizeof(*rtm) + ss.ss_len)
+		if (ss.ss_len < _SA_MINSIZE ||
+		    ss.ss_len > sizeof(ss) ||
+		    m->m_pkthdr.len < sizeof(*rtm) + ss.ss_len)
 			return EINVAL;
 		/* Copy out the destination sockaddr */
 		m_copydata(m, sizeof(*rtm), ss.ss_len, (caddr_t)&ss);
@@ -508,6 +513,9 @@ route_ctloutput(netmsg_t msg)
 					break;
 				}
 				sa = (struct sockaddr *)cp;
+				if (sa->sa_len < _SA_MINSIZE ||
+				    sa->sa_len >sizeof(struct sockaddr_storage))
+					break;
 				cp += RT_ROUNDUP(sa->sa_len);
 			}
 			if (cp != ep) {
