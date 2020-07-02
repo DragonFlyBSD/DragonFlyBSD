@@ -514,7 +514,7 @@ route_ctloutput(netmsg_t msg)
 				}
 				sa = (struct sockaddr *)cp;
 				if (sa->sa_len < _SA_MINSIZE ||
-				    sa->sa_len >sizeof(struct sockaddr_storage))
+				    sa->sa_len > sizeof(struct sockaddr_storage))
 					break;
 				cp += RT_ROUNDUP(sa->sa_len);
 			}
