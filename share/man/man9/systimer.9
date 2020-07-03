@@ -16,7 +16,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd August 19, 2010
+.Dd July 3, 2020
 .Dt SYSTIMER 9
 .Os
 .Sh NAME
@@ -28,13 +28,13 @@
 .Sh SYNOPSIS
 .In sys/systimer.h
 .Ft void
-.Fn systimer_init_periodic "systimer_t info" "systimer_func_t func" "void *data" "int hz"
+.Fn systimer_init_periodic "systimer_t info" "systimer_func_t func" "void *data" "int64_t freq"
 .Ft void
-.Fn systimer_init_periodic_nq "systimer_t info" "systimer_func_t func" "void *data" "int hz"
+.Fn systimer_init_periodic_nq "systimer_t info" "systimer_func_t func" "void *data" "int64_t freq"
 .Ft void
-.Fn systimer_adjust_periodic "systimer_t info" "int hz"
+.Fn systimer_adjust_periodic "systimer_t info" "int64_t freq"
 .Ft void
-.Fn systimer_init_oneshot "systimer_t info" "systimer_func_t func" "void *data" "int us"
+.Fn systimer_init_oneshot "systimer_t info" "systimer_func_t func" "void *data" "int64_t us"
 .Sh DESCRIPTION
 Systimers invoke callbacks at either fixed frequencies or after time delays.
 The callbacks are invoked in an interrupt thread and should only be used
@@ -43,7 +43,7 @@ for limited work.
 The
 .Fn systimer_init_periodic
 function initializes a systimer callback function to be called at frequency
-.Fa hz .
+.Fa freq .
 The
 .Fa info
 argument is an allocated systimer structure; the
@@ -54,7 +54,7 @@ argument is the function to call, with argument
 The
 .Fn systimer_init_periodic_nq
 function initializes a systimer callback function to be called at a frequency
-.Fa hz .
+.Fa freq .
 Unlike the
 .Fn systimer_init_periodic
 function, the
@@ -68,7 +68,7 @@ function changes the frequency at which a systimer's callback is invoked.
 The
 current time interval is not affected.
 The
-.Fa hz
+.Fa freq
 argument specifies the new frequency.
 .Pp
 The
