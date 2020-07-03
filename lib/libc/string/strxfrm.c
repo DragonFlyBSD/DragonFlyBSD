@@ -38,15 +38,14 @@
 #include "collate.h"
 
 size_t
-strxfrm_l(char * __restrict dest, const char * __restrict src, size_t len, locale_t loc);
-size_t
 strxfrm(char * __restrict dest, const char * __restrict src, size_t len)
 {
 	return strxfrm_l(dest, src, len, __get_locale());
 }
 
 size_t
-strxfrm_l(char * __restrict dest, const char * __restrict src, size_t len, locale_t locale)
+strxfrm_l(char * __restrict dest, const char * __restrict src, size_t len,
+    locale_t locale)
 {
 	size_t slen;
 	size_t xlen;
