@@ -29,6 +29,7 @@
 
 #include <linux/types.h>
 #include <sys/cdefs.h>
+#include <sys/systm.h>
 
 #define cache_line_size()	__VM_CACHELINE_SIZE
 

@@ -99,24 +99,32 @@ extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 #define	KASSERT(exp,msg)	do { if (__predict_false(!(exp)))	  \
 					panic msg; } while (0)
 
-#define KKASSERT(exp)		do { if (__predict_false(!(exp)))	  \
+#define	KKASSERT(exp)		do { if (__predict_false(!(exp)))	  \
 					panic("assertion \"%s\" failed "  \
 					"in %s at %s:%u", #exp, __func__, \
 					__FILE__, __LINE__); } while (0)
 
-#define KKASSERT_UNSPIN(exp, spin)					  \
+#define	KKASSERT_UNSPIN(exp, spin)					  \
 				do { if (__predict_false(!(exp))) { 	  \
 					spin_unlock_any(spin);		  \
 					panic("assertion \"%s\" failed "  \
 					"in %s at %s:%u", #exp, __func__, \
 					__FILE__, __LINE__); } } while (0)
-#define __debugvar
+#define	__debugvar
 #else
 #define	KASSERT(exp,msg)		do { } while (0)
 #define	KKASSERT(exp)			do { } while (0)
 #define	KKASSERT_UNSPIN(exp, spin)	do { } while (0)
-#define __debugvar		__attribute__((__unused__))
+#define	__debugvar		__attribute__((__unused__))
 #endif
+
+/*
+ * Align variables.
+ */
+#define	__read_mostly		__section(".data.read_mostly")
+#define	__read_frequently	__section(".data.read_frequently")
+#define	__exclusive_cache_line	__aligned(__VM_CACHELINE_SIZE*2)	\
+				__section(".data.exclusive_cache_line")
 
 /*
  * General function declarations.
