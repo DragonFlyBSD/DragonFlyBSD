@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/lib/libefivar/efivar.3 343755 2019-02-04 21:28:25Z imp $
 .\"
-.Dd June 6, 2020
+.Dd July 3, 2020
 .Dt LIBEFIVAR 3
 .Os
 .Sh NAME
@@ -55,7 +55,7 @@
 .Ft int
 .Fn efi_name_to_guid "const char *name" "efi_guid_t *guid"
 .Ft int
-.Fn efi_set_variable "efi_guid_t guid" "const char *name" "uint8_t *data" "size_t data_size" "uint32_t attributes" "mode_t mode"
+.Fn efi_set_variable "efi_guid_t guid" "const char *name" "uint8_t *data" "size_t data_size" "uint32_t attributes"
 .Ft int
 .Fn efi_str_to_guid "const char *s" "efi_guid_t *guid"
 .Ft int
