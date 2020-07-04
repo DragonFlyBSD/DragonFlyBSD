@@ -711,6 +711,25 @@ msdosfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	return (0);
 }
 
+static int
+msdosfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
+{
+	struct msdosfsmount *pmp;
+
+	pmp = VFSTOMSDOSFS(mp);
+	sbp->f_bsize = pmp->pm_bpcluster;
+	sbp->f_frsize = pmp->pm_bpcluster;
+	sbp->f_blocks = pmp->pm_maxcluster + 1;
+	sbp->f_bfree = pmp->pm_freeclustercount;
+	sbp->f_bavail = pmp->pm_freeclustercount;
+	sbp->f_files = pmp->pm_RootDirEnts;	/* XXX */
+	sbp->f_ffree = 0;	/* what to put in here? */
+	if (sbp != &mp->mnt_vstat) {
+		sbp->f_type = mp->mnt_vfc->vfc_typenum;
+	}
+	return (0);
+}
+
 struct scaninfo {
 	int rescan;
 	int allerror;
@@ -871,6 +890,7 @@ static struct vfsops msdosfs_vfsops = {
 	.vfs_mount =		msdosfs_mount,
 	.vfs_root =		msdosfs_root,
 	.vfs_statfs =		msdosfs_statfs,
+	.vfs_statvfs =		msdosfs_statvfs,
 	.vfs_sync =		msdosfs_sync,
 	.vfs_fhtovp =		msdosfs_fhtovp,
 	.vfs_checkexp =		msdosfs_checkexp,
