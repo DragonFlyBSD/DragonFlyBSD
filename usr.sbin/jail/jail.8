@@ -188,7 +188,8 @@ and set jail defaults.  Here is an example:
 .Dl "ifconfig em0 192.168.11.100 netmask 255.255.255.0 alias"
 .Pp
 From within your jail you can generally run services normally. Just use
-'localhost' normally.  Do not inform services that localhost is 127.0.0.2.
+.Dq localhost
+normally.  Do not inform services that localhost is 127.0.0.2.
 The kernel will automatically remap 'localhost' (e.g. 127.0.0.1) to the
 localhost IP you specify for the jail.  The kernel will also map the jail's
 localhost IP back to 127.0.0.1 in the
