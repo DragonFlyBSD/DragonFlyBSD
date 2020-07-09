@@ -2954,6 +2954,7 @@ bus/u4b/input/ukbd.c			optional ukbd
 bus/u4b/input/ums.c			optional ums
 bus/u4b/input/uep.c			optional uep
 bus/u4b/input/uhid.c			optional uhid
+bus/u4b/input/wsp.c			optional wsp
 #
 # USB quirks
 #
