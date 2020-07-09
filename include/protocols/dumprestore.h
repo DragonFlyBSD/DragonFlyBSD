@@ -60,7 +60,7 @@
 #define NFS_MAGIC   	(int)60012
 #define CHECKSUM	(int)84446
 
-union u_spcl {
+extern union u_spcl {
 	char dummy[TP_BSIZE];
 	struct	s_spcl {
 		int32_t	c_type;		    /* record type (see below) */

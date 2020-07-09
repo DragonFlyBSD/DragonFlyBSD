@@ -39,10 +39,10 @@
 /*
  * Dump maps used to describe what is to be dumped.
  */
-int	mapsize;	/* size of the state maps */
-char	*usedinomap;	/* map of allocated inodes */
-char	*dumpdirmap;	/* map of directories to be dumped */
-char	*dumpinomap;	/* map of files to be dumped */
+extern int	mapsize;	/* size of the state maps */
+extern char	*usedinomap;	/* map of allocated inodes */
+extern char	*dumpdirmap;	/* map of directories to be dumped */
+extern char	*dumpinomap;	/* map of files to be dumped */
 /*
  * Map manipulation macros.
  */
@@ -53,27 +53,24 @@ char	*dumpinomap;	/* map of files to be dumped */
 /*
  *	All calculations done in 0.1" units!
  */
-char	*disk;		/* name of the disk file */
-const char	*tape;		/* name of the tape file */
+extern char	*disk;		/* name of the disk file */
+extern const char	*tape;		/* name of the tape file */
 extern const char *dumpdates;	/* name of the file containing dump date information*/
-extern const char *temp;		/* name of the file for doing rewrite of dumpdates */
-char	lastlevel;	/* dump level of previous dump */
-char	level;		/* dump level of this dump */
-int	uflag;		/* update flag */
-int	diskfd;		/* disk file descriptor */
-int	tapefd;		/* tape file descriptor */
-int	pipeout;	/* true => output to standard output */
-ufs1_ino_t curino;	/* current inumber; used globally */
-int	newtape;	/* new tape flag */
-long	tapesize;	/* estimated tape size, blocks */
-long	tsize;		/* tape size in 0.1" units */
-long	asize;		/* number of 0.1" units written on current tape */
-int	etapes;		/* estimated number of tapes */
-int	nonodump;	/* if set, do not honor UF_NODUMP user flags */
-int	unlimited;	/* if set, write to end of medium */
-
-extern int	cachesize;	/* size of block cache */
+extern int	lastlevel;	/* dump level of previous dump */
+extern int	level;		/* dump level of this dump */
+extern int	uflag;		/* update flag */
+extern int	diskfd;		/* disk file descriptor */
+extern int	pipeout;	/* true => output to standard output */
+extern ufs1_ino_t curino;	/* current inumber; used globally */
+extern int	newtape;	/* new tape flag */
+extern long	tapesize;	/* estimated tape size, blocks */
+extern long	tsize;		/* tape size in 0.1" units */
+extern int	etapes;		/* estimated number of tapes */
+extern int	nonodump;	/* if set, do not honor UF_NODUMP user flags */
+extern int	unlimited;	/* if set, write to end of medium */
+extern int	tapeno;		/* current tape number */
 extern int	density;	/* density in 0.1" units */
+extern int	cachesize;	/* size of block cache */
 extern int	dokerberos;
 #ifdef NTREC_LONG
 extern long	ntrec;		/* used by sbin/restore */
@@ -87,13 +84,12 @@ extern int	notify;		/* notify operator flag */
 extern int	blockswritten;	/* number of blocks written on current tape */
 extern long	dev_bsize;	/* block size of underlying disk device */
 
-time_t	tstart_writing;	/* when started writing the first tape block */
-time_t	tend_writing;	/* after writing the last tape block */
-int	passno;		/* current dump pass number */
-struct	fs *sblock;	/* the file system super block */
-char	sblock_buf[MAXBSIZE];
-int	dev_bshift;	/* log2(dev_bsize) */
-int	tp_bshift;	/* log2(TP_BSIZE) */
+extern time_t	tstart_writing;	/* when started writing the first tape block */
+extern time_t	tend_writing;	/* after writing the last tape block */
+extern int	passno;		/* current dump pass number */
+extern struct	fs *sblock;	/* the file system super block */
+extern int	dev_bshift;	/* log2(dev_bsize) */
+extern int	tp_bshift;	/* log2(TP_BSIZE) */
 
 /* operator interface functions */
 void	broadcast(const char *);

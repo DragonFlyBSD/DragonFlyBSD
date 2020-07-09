@@ -52,24 +52,44 @@
 #include "dump.h"
 #include "pathnames.h"
 
+int	mapsize;	/* size of the state maps */
+char	*usedinomap;	/* map of allocated inodes */
+char	*dumpdirmap;	/* map of directories to be dumped */
+char	*dumpinomap;	/* map of files to be dumped */
+
 #ifndef SBOFF
 #define SBOFF (SBLOCK * DEV_BSIZE)
 #endif
 
-int	notify = 0;	/* notify operator flag */
-int	blockswritten = 0;	/* number of blocks written on current tape */
-int	tapeno = 0;	/* current tape number */
+char	*disk;		/* name of the disk file */
+const char *tape;	/* name of the tape file */
+int	level;		/* dump level of this dump */
+int	uflag;		/* update flag */
+int	diskfd;		/* disk file descriptor */
+int	pipeout;	/* true => output to standard output */
 int	density = 0;	/* density in bytes/0.1" " <- this is for hilit19 */
+long	tapesize;	/* estimated tape size, blocks */
+long	tsize;		/* tape size in 0.1" units */
+int	etapes;		/* estimated number of tapes */
+int	nonodump;	/* if set, do not honor UF_NODUMP user flags */
+int	unlimited;	/* if set, write to end of medium */
+int	cachesize = 0;	/* block cache size (in bytes) */
+int	notify = 0;	/* notify operator flag */
+int	blockswritten = 0; /* number of blocks written on current tape */
+int	tapeno = 0;	/* current tape number */
 int	ntrec = NTREC;	/* # tape blocks in each tape record */
+long	blocksperfile;	/* output blocks per file */
 int	cartridge = 0;	/* Assume non-cartridge tape */
 int	dokerberos = 0;	/* Use Kerberos authentication */
-int	cachesize = 0;	/* block cache size (in bytes) */
 long	dev_bsize = 1;	/* recalculated below */
-long	blocksperfile;	/* output blocks per file */
 const char *host;	/* remote host (if any) */
-const char *dumpdates;	/* name of the file containing dump date information*/
-const char *temp;	/* name of the file for doing rewrite of dumpdates */
-
+time_t	tstart_writing;	/* when started writing the first tape block */
+time_t	tend_writing;	/* after writing the last tape block */
+int	passno;		/* current dump pass number */
+struct	fs *sblock;	/* the file system super block */
+int	dev_bshift;	/* log2(dev_bsize) */
+int	tp_bshift;	/* log2(TP_BSIZE) */
+char	sblock_buf[MAXBSIZE];
 static long	numarg(const char *, long, long);
 static void	obsolete(int *, char **[]);
 static void	usage(void);
@@ -95,7 +115,6 @@ main(int argc, char **argv)
 	if ((tape = getenv("TAPE")) == NULL)
 		tape = _PATH_DEFTAPE;
 	dumpdates = _PATH_DUMPDATES;
-	temp = _PATH_DTMP;
 	if (TP_BSIZE / DEV_BSIZE == 0 || TP_BSIZE % DEV_BSIZE != 0)
 		quit("TP_BSIZE must be a multiple of DEV_BSIZE\n");
 	level = '0';

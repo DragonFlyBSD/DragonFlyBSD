@@ -102,7 +102,7 @@ struct entry {
 /*
  * The entry describes the next file available on the tape
  */
-struct context {
+extern struct context {
 	const char	*name;		/* name of file */
 	ufs1_ino_t ino;		/* inumber of file */
 	struct	ufs1_dinode *dip;	/* pointer to inode */

@@ -76,7 +76,9 @@ static char	*map;
 static char	lnkbuf[MAXPATHLEN + 1];
 static int	pathlen;
 
+union u_spcl	u_spcl;		/* describes next file available on the tape */
 int		oldinofmt;	/* old inode format conversion required */
+struct context	curfile;	/* describes next file available on the tape */
 int		Bcvt;		/* Swap Bytes (for CCI or sun) */
 static int	Qcvt;		/* Swap quads (for sun) */
 

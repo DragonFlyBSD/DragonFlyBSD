@@ -51,12 +51,16 @@
 
 #include "dump.h"
 
+ufs1_ino_t curino;		/* current inumber; used globally */
+int newtape;			/* new tape flag */
+union u_spcl u_spcl;		/* mapping of variables in a control block */
+static int tapefd;		/* tape file descriptor */
+static long asize;		/* number of 0.1" units written on cur tape */
 static int writesize;		/* size of malloc()ed buffer for tape */
 static long lastspclrec = -1;	/* tape block number of last written header */
 static int trecno = 0;		/* next record to write in current block */
-static long blocksthisvol;		/* number of blocks on current output file */
+static long blocksthisvol;	/* number of blocks on current output file */
 static const char	*nexttape;
-static int tapeno = 0;	/* current tape number */
 
 static int	atomic_read(int, void *, int);
 static int	atomic_write(int, const void *, int);
@@ -82,10 +86,10 @@ struct req {
 	daddr_t dblk;
 	int count;
 };
-int reqsiz;
+static int reqsiz;
 
 #define SLAVES 3		/* 1 slave writing, 1 reading, 1 for slack */
-struct slave {
+static struct slave {
 	int tapea;		/* header number at start of this chunk */
 	int count;		/* count to next header (used for TS_TAPE */
 				/* after EOT) */
@@ -97,12 +101,12 @@ struct slave {
 	char (*tblock)[TP_BSIZE]; /* buffer for data blocks */
 	struct req *req;	/* buffer for requests */
 } slaves[SLAVES+1];
-struct slave *slp;
+static struct slave *slp;
 
-char	(*nextblock)[TP_BSIZE];
+static char	(*nextblock)[TP_BSIZE];
 
-int master;		/* pid of master, for sending error signals */
-int tenths;		/* length of tape used per block written */
+static int master;	/* pid of master, for sending error signals */
+static int tenths;	/* length of tape used per block written */
 static int caught;	/* have we caught the signal to proceed? */
 static int ready;	/* have we reached the lock point without having */
 			/* received the SIGUSR2 signal from the prev slave? */
