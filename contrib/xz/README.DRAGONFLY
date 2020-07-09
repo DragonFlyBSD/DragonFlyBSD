@@ -1,10 +1,10 @@
 This is XZ Utils imported from:
 http://tukaani.org/xz/
 
-file = xz-5.2.4.tar.bz2
-date = 29 April 2018
-size = 1287922
-sha1 = 50ad451279404fb5206e23c7b1ba9c4aa858c994
+file = xz-5.2.5.tar.xz
+date = 17 March 2020
+size = 1148824
+sha1 = 0b9d1e06b59f7fe0796afe1d93851b9306b4a3b6
 
 NOTE: When upgrading, remember to update both config.h files.
 The liblzma is configured without multi-threading.

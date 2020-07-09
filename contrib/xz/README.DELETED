@@ -24,6 +24,7 @@ lib/
 m4/
 macosx/
 po/
+po4a/
 src/Makefile.am
 src/Makefile.in
 src/common/common_w32res.rc
