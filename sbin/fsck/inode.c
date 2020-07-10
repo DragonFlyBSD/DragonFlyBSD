@@ -44,7 +44,12 @@
 #include "fsck.h"
 #include "memzone.h"
 
+struct bufarea cgblk;		/* cylinder group blocks */
+struct bufarea *pbp;		/* current inode block */
+int	newinofmt;		/* filesystem has new inode format */
 static ufs1_ino_t startinum;
+char	rerun;			/* rerun fsck. Only used in non-preen mode */
+struct	ufs1_dinode zino;
 
 static int iblock(struct inodesc *, long ilevel, quad_t isize);
 

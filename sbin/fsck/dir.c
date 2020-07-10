@@ -42,6 +42,9 @@
 
 #include "fsck.h"
 
+struct bufarea *pdirbp;		/* current directory contents */
+ufs1_ino_t	lfdir;			/* lost & found directory inode number */
+
 char	*lfname = "lost+found";
 int	lfmode = 01777;
 struct	dirtemplate emptydir = { 0, DIRBLKSIZ };

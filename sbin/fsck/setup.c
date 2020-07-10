@@ -46,6 +46,25 @@
 
 #include "fsck.h"
 
+struct bufarea sblk;		/* file system superblock */
+struct inoinfo **inphead, **inpsort;	/* Inode cache data structures. */
+long numdirs, dirhash, listmax, inplast, dirhashmask;
+long	dev_bsize;		/* computed value of DEV_BSIZE */
+long	secsize;		/* actual disk sector size */
+char	fflag;			/* force check, ignore clean flag */
+int	bflag;			/* location of alternate super block */
+int	cvtlevel;		/* convert to newer file system format */
+int	doinglevel1;		/* converting to new cylinder group format */
+int	doinglevel2;		/* converting to new inode format */
+char	usedsoftdep;		/* just fix soft dependency inconsistencies */
+char	havesb;			/* superblock has been read */
+int	fsreadfd;		/* file descriptor for reading file system */
+int	fswritefd;		/* file descriptor for writing file system */
+ufs_daddr_t maxfsblock;		/* number of blocks in the file system */
+char	*blockmap;		/* ptr to primary blk allocation map */
+ufs1_ino_t	maxino;			/* number of inodes in file system */
+
+
 struct bufarea asblk;
 #define altsblock (*asblk.b_un.b_fs)
 

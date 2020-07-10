@@ -41,6 +41,12 @@
 
 #include "fsck.h"
 
+struct inostatlist *inostathead; /* A list of inode state information */
+struct dups *muldup;		/* end of unique duplicate dup block numbers */
+long countdirs;			/* number of directories we actually found */
+ufs_daddr_t n_blks;		/* number of blocks in use */
+ufs_daddr_t n_files;		/* number of files in use */
+
 static ufs_daddr_t badblk;
 static ufs_daddr_t dupblk;
 static ufs1_ino_t lastino;		/* last inode in use */

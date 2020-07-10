@@ -49,6 +49,9 @@
 
 #include "fsck.h"
 
+int	returntosingle;		/* 1 => return to single user mode on exit */
+int	lastmntonly;		/* Output the last mounted on only */
+
 static int argtoi(int flag, char *req, char *str, int base);
 static int docheck(struct fstab *fsp);
 static int checkfilesys(char *filesys, char *mntpt, long auxdata,

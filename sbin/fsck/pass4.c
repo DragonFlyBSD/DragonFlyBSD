@@ -40,6 +40,9 @@
 
 #include "fsck.h"
 
+struct dups *duplist;		/* head of dup list */
+struct zlncnt *zlnhead;		/* head of zero link count list */
+
 void
 pass4(void)
 {

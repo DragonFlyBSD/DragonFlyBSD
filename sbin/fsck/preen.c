@@ -43,6 +43,8 @@
 
 #include "fsck.h"
 
+char	preen;			/* just fix normal inconsistencies */
+
 struct part {
 	struct	part *next;		/* forward link of partitions on disk */
 	char	*name;			/* device name */

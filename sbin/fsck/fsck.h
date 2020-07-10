@@ -64,7 +64,7 @@ struct inostat {
  * Inode state information is contained on per cylinder group lists
  * which are described by the following structure.
  */
-struct inostatlist {
+extern struct inostatlist {
 	long	il_numalloced;	/* number of inodes allocated in this cg */
 	struct inostat *il_stat;/* inostat info for this cylinder group */
 } *inostathead;
@@ -92,11 +92,11 @@ struct bufarea {
 #define	B_INUSE 1
 
 #define	MINBUFS		5	/* minimum number of buffers required */
-struct bufarea bufhead;		/* head of list of other blks in filesys */
-struct bufarea sblk;		/* file system superblock */
-struct bufarea cgblk;		/* cylinder group blocks */
-struct bufarea *pdirbp;		/* current directory contents */
-struct bufarea *pbp;		/* current inode block */
+extern struct bufarea bufhead;		/* head of list of other blks in filesys */
+extern struct bufarea sblk;		/* file system superblock */
+extern struct bufarea cgblk;		/* cylinder group blocks */
+extern struct bufarea *pdirbp;		/* current directory contents */
+extern struct bufarea *pbp;		/* current inode block */
 
 #define	dirty(bp)	(bp)->b_dirty = 1
 #define	initbarea(bp) \
@@ -154,8 +154,8 @@ struct dups {
 	struct dups *next;
 	ufs_daddr_t dup;
 };
-struct dups *duplist;		/* head of dup list */
-struct dups *muldup;		/* end of unique duplicate dup block numbers */
+extern struct dups *duplist;		/* head of dup list */
+extern struct dups *muldup;		/* end of unique duplicate dup block numbers */
 
 /*
  * Linked list of inodes with zero link counts.
@@ -164,7 +164,7 @@ struct zlncnt {
 	struct zlncnt *next;
 	ufs1_ino_t zlncnt;
 };
-struct zlncnt *zlnhead;		/* head of zero link count list */
+extern struct zlncnt *zlnhead;		/* head of zero link count list */
 
 /*
  * Inode cache data structures.
@@ -177,9 +177,10 @@ struct inoinfo {
 	size_t	i_isize;		/* size of inode */
 	u_int	i_numblks;		/* size of block array in bytes */
 	ufs_daddr_t i_blks[1];		/* actually longer */
-} **inphead, **inpsort;
-long numdirs, dirhash, listmax, inplast, dirhashmask;
-long countdirs;			/* number of directories we actually found */
+};
+extern struct inoinfo **inphead, **inpsort;
+extern long numdirs, dirhash, listmax, inplast, dirhashmask;
+extern long countdirs;			/* number of directories we actually found */
 
 /*
  * Be careful about cache locality of reference, large filesystems may
@@ -189,44 +190,44 @@ long countdirs;			/* number of directories we actually found */
  */
 #define DIRHASH(ino)	((ino >> 3) & dirhashmask)
 
-char	*cdevname;		/* name of device being checked */
-long	dev_bsize;		/* computed value of DEV_BSIZE */
-long	secsize;		/* actual disk sector size */
-char	fflag;			/* force check, ignore clean flag */
-char	nflag;			/* assume a no response */
-char	yflag;			/* assume a yes response */
-int	bflag;			/* location of alternate super block */
-int	debug;			/* output debugging info */
-int	cvtlevel;		/* convert to newer file system format */
-int	doinglevel1;		/* converting to new cylinder group format */
-int	doinglevel2;		/* converting to new inode format */
-int	newinofmt;		/* filesystem has new inode format */
-char	usedsoftdep;		/* just fix soft dependency inconsistencies */
-char	preen;			/* just fix normal inconsistencies */
-char	rerun;			/* rerun fsck. Only used in non-preen mode */
-int	returntosingle;		/* 1 => return to single user mode on exit */
-char	resolved;		/* cleared if unresolved changes => not clean */
-char	havesb;			/* superblock has been read */
-int	fsmodified;		/* 1 => write done to file system */
-int	fsreadfd;		/* file descriptor for reading file system */
-int	fswritefd;		/* file descriptor for writing file system */
-int	lastmntonly;		/* Output the last mounted on only */
+extern char	*cdevname;		/* name of device being checked */
+extern long	dev_bsize;		/* computed value of DEV_BSIZE */
+extern long	secsize;		/* actual disk sector size */
+extern char	fflag;			/* force check, ignore clean flag */
+extern char	nflag;			/* assume a no response */
+extern char	yflag;			/* assume a yes response */
+extern int	bflag;			/* location of alternate super block */
+extern int	debug;			/* output debugging info */
+extern int	cvtlevel;		/* convert to newer file system format */
+extern int	doinglevel1;		/* converting to new cylinder group format */
+extern int	doinglevel2;		/* converting to new inode format */
+extern int	newinofmt;		/* filesystem has new inode format */
+extern char	usedsoftdep;		/* just fix soft dependency inconsistencies */
+extern char	preen;			/* just fix normal inconsistencies */
+extern char	rerun;			/* rerun fsck. Only used in non-preen mode */
+extern int	returntosingle;		/* 1 => return to single user mode on exit */
+extern char	resolved;		/* cleared if unresolved changes => not clean */
+extern char	havesb;			/* superblock has been read */
+extern int	fsmodified;		/* 1 => write done to file system */
+extern int	fsreadfd;		/* file descriptor for reading file system */
+extern int	fswritefd;		/* file descriptor for writing file system */
+extern int	lastmntonly;		/* Output the last mounted on only */
 
-ufs_daddr_t maxfsblock;		/* number of blocks in the file system */
-char	*blockmap;		/* ptr to primary blk allocation map */
-ufs1_ino_t	maxino;			/* number of inodes in file system */
+extern ufs_daddr_t maxfsblock;		/* number of blocks in the file system */
+extern char	*blockmap;		/* ptr to primary blk allocation map */
+extern ufs1_ino_t	maxino;			/* number of inodes in file system */
 
-ufs1_ino_t	lfdir;			/* lost & found directory inode number */
-char	*lfname;		/* lost & found directory name */
-int	lfmode;			/* lost & found directory creation mode */
+extern ufs1_ino_t	lfdir;			/* lost & found directory inode number */
+extern char	*lfname;		/* lost & found directory name */
+extern int	lfmode;			/* lost & found directory creation mode */
 
-ufs_daddr_t n_blks;		/* number of blocks in use */
-ufs_daddr_t n_files;		/* number of files in use */
+extern ufs_daddr_t n_blks;		/* number of blocks in use */
+extern ufs_daddr_t n_files;		/* number of files in use */
 
-int	got_siginfo;		/* received a SIGINFO */
+extern int	got_siginfo;		/* received a SIGINFO */
 
 #define	clearinode(dp)	(*(dp) = zino)
-struct	ufs1_dinode zino;
+extern struct	ufs1_dinode zino;
 
 #define	setbmap(blkno)	setbit(blockmap, blkno)
 #define	testbmap(blkno)	isset(blockmap, blkno)
@@ -243,68 +244,68 @@ struct	ufs1_dinode zino;
 struct fstab;
 
 
-void		adjust(struct inodesc *, int);
-ufs_daddr_t	allocblk(long);
-ufs1_ino_t		allocdir(ufs1_ino_t, ufs1_ino_t, int);
-ufs1_ino_t		allocino(ufs1_ino_t, int);
-void		blkerror(ufs1_ino_t, char *, ufs_daddr_t);
-char	       *blockcheck(char *);
-int		bread(int, char *, ufs_daddr_t, long);
-void		bufinit(void);
-void		bwrite(int, char *, ufs_daddr_t, long);
-void		cacheino(struct ufs1_dinode *, ufs1_ino_t);
-void		catch(int) __dead2;
-void		catchquit(int);
-int		changeino(ufs1_ino_t, char *, ufs1_ino_t);
-int		checkfstab(int, int,
+extern void		adjust(struct inodesc *, int);
+extern ufs_daddr_t	allocblk(long);
+extern ufs1_ino_t		allocdir(ufs1_ino_t, ufs1_ino_t, int);
+extern ufs1_ino_t		allocino(ufs1_ino_t, int);
+extern void		blkerror(ufs1_ino_t, char *, ufs_daddr_t);
+extern char	       *blockcheck(char *);
+extern int		bread(int, char *, ufs_daddr_t, long);
+extern void		bufinit(void);
+extern void		bwrite(int, char *, ufs_daddr_t, long);
+extern void		cacheino(struct ufs1_dinode *, ufs1_ino_t);
+extern void		catch(int) __dead2;
+extern void		catchquit(int);
+extern int		changeino(ufs1_ino_t, char *, ufs1_ino_t);
+extern int		checkfstab(int, int,
 			int (*)(struct fstab *),
 			int (*)(char *, char *, long, int));
-int		chkrange(ufs_daddr_t, int);
-void		ckfini(int);
-int		ckinode(struct ufs1_dinode *, struct inodesc *);
-void		clri(struct inodesc *, char *, int);
-int		clearentry(struct inodesc *);
-void		direrror(ufs1_ino_t, char *);
-int		dirscan(struct inodesc *);
-int		dofix(struct inodesc *, char *);
-void		ffs_clrblock(struct fs *, u_char *, ufs_daddr_t);
-void		ffs_fragacct(struct fs *, int, int32_t [], int);
-int		ffs_isblock(struct fs *, u_char *, ufs_daddr_t);
-void		ffs_setblock(struct fs *, u_char *, ufs_daddr_t);
-void		fileerror(ufs1_ino_t, ufs1_ino_t, char *);
-int		findino(struct inodesc *);
-int		findname(struct inodesc *);
-void		flush(int, struct bufarea *);
-void		freeblk(ufs_daddr_t, long);
-void		freeino(ufs1_ino_t);
-void		freeinodebuf(void);
-int		ftypeok(struct ufs1_dinode *);
-void		getblk(struct bufarea *, ufs_daddr_t, long);
-struct bufarea *getdatablk(ufs_daddr_t, long);
-struct inoinfo *getinoinfo(ufs1_ino_t);
-struct ufs1_dinode  *getnextinode(ufs1_ino_t);
-void		getpathname(char *, ufs1_ino_t, ufs1_ino_t);
-struct ufs1_dinode  *ginode(ufs1_ino_t);
-void		infohandler(int);
-void		inocleanup(void);
-void		inodirty(void);
-struct inostat *inoinfo(ufs1_ino_t);
-int		linkup(ufs1_ino_t, ufs1_ino_t, char *);
-int		makeentry(ufs1_ino_t, ufs1_ino_t, char *);
-void		panic(const char *, ...) __dead2 __printflike(1, 2);
-void		pass1(void);
-void		pass1b(void);
-int		pass1check(struct inodesc *);
-void		pass2(void);
-void		pass3(void);
-void		pass4(void);
-int		pass4check(struct inodesc *);
-void		pass5(void);
-void		pfatal(const char *, ...) __printflike(1, 2);
-void		pinode(ufs1_ino_t);
-void		propagate(void);
-void		pwarn(const char *, ...) __printflike(1, 2);
-int		reply(char *);
-void		setinodebuf(ufs1_ino_t);
-int		setup(char *);
-void		voidquit(int);
+extern int		chkrange(ufs_daddr_t, int);
+extern void		ckfini(int);
+extern int		ckinode(struct ufs1_dinode *, struct inodesc *);
+extern void		clri(struct inodesc *, char *, int);
+extern int		clearentry(struct inodesc *);
+extern void		direrror(ufs1_ino_t, char *);
+extern int		dirscan(struct inodesc *);
+extern int		dofix(struct inodesc *, char *);
+extern void		ffs_clrblock(struct fs *, u_char *, ufs_daddr_t);
+extern void		ffs_fragacct(struct fs *, int, int32_t [], int);
+extern int		ffs_isblock(struct fs *, u_char *, ufs_daddr_t);
+extern void		ffs_setblock(struct fs *, u_char *, ufs_daddr_t);
+extern void		fileerror(ufs1_ino_t, ufs1_ino_t, char *);
+extern int		findino(struct inodesc *);
+extern int		findname(struct inodesc *);
+extern void		flush(int, struct bufarea *);
+extern void		freeblk(ufs_daddr_t, long);
+extern void		freeino(ufs1_ino_t);
+extern void		freeinodebuf(void);
+extern int		ftypeok(struct ufs1_dinode *);
+extern void		getblk(struct bufarea *, ufs_daddr_t, long);
+extern struct bufarea *getdatablk(ufs_daddr_t, long);
+extern struct inoinfo *getinoinfo(ufs1_ino_t);
+extern struct ufs1_dinode  *getnextinode(ufs1_ino_t);
+extern void		getpathname(char *, ufs1_ino_t, ufs1_ino_t);
+extern struct ufs1_dinode  *ginode(ufs1_ino_t);
+extern void		infohandler(int);
+extern void		inocleanup(void);
+extern void		inodirty(void);
+extern struct inostat *inoinfo(ufs1_ino_t);
+extern int		linkup(ufs1_ino_t, ufs1_ino_t, char *);
+extern int		makeentry(ufs1_ino_t, ufs1_ino_t, char *);
+extern void		panic(const char *, ...) __dead2 __printflike(1, 2);
+extern void		pass1(void);
+extern void		pass1b(void);
+extern int		pass1check(struct inodesc *);
+extern void		pass2(void);
+extern void		pass3(void);
+extern void		pass4(void);
+extern int		pass4check(struct inodesc *);
+extern void		pass5(void);
+extern void		pfatal(const char *, ...) __printflike(1, 2);
+extern void		pinode(ufs1_ino_t);
+extern void		propagate(void);
+extern void		pwarn(const char *, ...) __printflike(1, 2);
+extern int		reply(char *);
+extern void		setinodebuf(ufs1_ino_t);
+extern int		setup(char *);
+extern void		voidquit(int);
