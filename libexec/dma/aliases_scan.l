@@ -1,12 +1,14 @@
 %{
 
 #include <string.h>
+#include "dma.h"
 #include "aliases_parse.h"
+
+#define YY_NO_INPUT
 
 %}
 
 %option yylineno
-%option noinput
 %option nounput
 
 %%

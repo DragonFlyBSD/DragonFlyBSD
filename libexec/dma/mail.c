@@ -36,6 +36,8 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <signal.h>
+#include <strings.h>
+#include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 
@@ -52,7 +54,7 @@ bounce(struct qitem *it, const char *reason)
 	/* Don't bounce bounced mails */
 	if (it->sender[0] == 0) {
 		syslog(LOG_INFO, "can not bounce a bounce message, discarding");
-		exit(1);
+		exit(EX_SOFTWARE);
 	}
 
 	bzero(&bounceq, sizeof(bounceq));
@@ -133,7 +135,7 @@ bounce(struct qitem *it, const char *reason)
 fail:
 	syslog(LOG_CRIT, "error creating bounce: %m");
 	delqueue(it);
-	exit(1);
+	exit(EX_IOERR);
 }
 
 struct parse_state {
@@ -199,7 +201,6 @@ again:
 			return (0);
 		}
 		/* FALLTHROUGH */
-
 	case QUIT:
 		return (0);
 	}
@@ -334,10 +335,10 @@ newaddr:
 	ps->pos = 0;
 	addr = strdup(ps->addr);
 	if (addr == NULL)
-		errlog(1, NULL);
+		errlog(EX_SOFTWARE, NULL);
 
 	if (add_recp(queue, addr, EXPAND_WILDCARD) != 0)
-		errlogx(1, "invalid recipient `%s'", addr);
+		errlogx(EX_DATAERR, "invalid recipient `%s'", addr);
 
 	goto again;
 }
@@ -353,6 +354,7 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 	int had_from = 0;
 	int had_messagid = 0;
 	int had_date = 0;
+	int had_first_line = 0;
 	int had_last_line = 0;
 	int nocopy = 0;
 
@@ -376,7 +378,7 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 		if (fgets(line, sizeof(line) - 1, stdin) == NULL)
 			break;
 		if (had_last_line)
-			errlogx(1, "bad mail input format:"
+			errlogx(EX_DATAERR, "bad mail input format:"
 				" from %s (uid %d) (envelope-from %s)",
 				username, useruid, queue->sender);
 		linelen = strlen(line);
@@ -389,6 +391,15 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 			line[linelen] = '\n';
 			line[linelen + 1] = 0;
 			had_last_line = 1;
+		}
+		if (!had_first_line) {
+			/*
+			 * Ignore a leading RFC-976 From_ or >From_ line mistakenly
+			 * inserted by some programs.
+			 */
+			if (strprefixcmp(line, "From ") == 0 || strprefixcmp(line, ">From ") == 0)
+				continue;
+			had_first_line = 1;
 		}
 		if (!had_headers) {
 			/*
@@ -409,7 +420,7 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 
 			if (parse_state.state != NONE) {
 				if (parse_addrs(&parse_state, line, queue) < 0) {
-					errlogx(1, "invalid address in header\n");
+					errlogx(EX_DATAERR, "invalid address in header\n");
 					/* NOTREACHED */
 				}
 			}
@@ -420,7 +431,7 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 					strprefixcmp(line, "Bcc:") == 0)) {
 				parse_state.state = START;
 				if (parse_addrs(&parse_state, line, queue) < 0) {
-					errlogx(1, "invalid address in header\n");
+					errlogx(EX_DATAERR, "invalid address in header\n");
 					/* NOTREACHED */
 				}
 			}

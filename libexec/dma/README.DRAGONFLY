@@ -6,14 +6,22 @@ considered to be at GitHub:
 
 https://github.com/corecode/dma
 
-Synced commit 22 SEP 2014: b1056e4384472dbbedd6b075819abd6154ac0d69
+Synced commit May 23 2020: 14ea7d7d5b8e0819d462c9265dafd1b222d994c1
 
 Local modifications applied to following files:
-	aliases_scan.1	(flex fix)
+	aliases_parse.y	(-Werror=redundant-decls)
 	dma.8		(typo)
-	dma.c		(typos, byacc fix, period script integration)
-	dma.h		(byacc fix)
+	dma.c		(-Werror=redundant-decls, -Werror=implicit-fallthrough)
+	dma.c		(recognize mailq -Ac)
+	dma.c		(recognize hoststat and purgestat)
+	dma.h		(-Werror=redundant-decls, -Werror=missing-prototypes)
+	mail.c		(-Werror=implicit-fallthrough)
 
 Not imported:
+	BSDmakefile
+	INSTALL
+	Makefile
+	Makefile.etc
+	bsd/
 	get-version.sh
 	test/

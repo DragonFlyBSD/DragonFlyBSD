@@ -37,6 +37,7 @@
 
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include <ctype.h>
 #include <dirent.h>
@@ -45,6 +46,8 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <strings.h>
+#include <string.h>
 #include <syslog.h>
 
 #include "dma.h"
@@ -290,7 +293,7 @@ load_queue(struct queue *queue)
 
 	spooldir = opendir(config.spooldir);
 	if (spooldir == NULL)
-		err(1, "reading queue");
+		err(EX_NOINPUT, "reading queue");
 
 	while ((de = readdir(spooldir)) != NULL) {
 		queuefn = NULL;
