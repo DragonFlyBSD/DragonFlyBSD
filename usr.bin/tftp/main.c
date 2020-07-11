@@ -71,7 +71,7 @@ char	line[MAXLINE];
 int	margc;
 #define	MAX_MARGV	20
 char	*margv[MAX_MARGV];
-jmp_buf	toplevel;
+extern jmp_buf	toplevel;
 volatile int txrx_error;
 void	intr(int) __dead2;
 
