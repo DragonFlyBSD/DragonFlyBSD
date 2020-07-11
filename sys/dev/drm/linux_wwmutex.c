@@ -103,11 +103,12 @@ __wwlock(struct ww_mutex *ww, struct ww_acquire_ctx *ctx,
 	 * prior locks are held).  If prior locks are held then we cannot
 	 * block here.
 	 *
-	 * In the non-blocking case setup our tsleep interlock prior to
-	 * attempting to acquire the lock.
+	 * In the non-blocking case setup our tsleep interlock using
+	 * ww->blocked first.
 	 */
 	for (;;) {
 		if (ctx->acquired != 0) {
+			atomic_swap_int(&ww->blocked, 1);
 			flags |= LK_NOWAIT;
 			tsleep_interlock(ww, (intr ? PCATCH : 0));
 		}
@@ -140,18 +141,21 @@ __wwlock(struct ww_mutex *ww, struct ww_acquire_ctx *ctx,
 			return -EDEADLK;
 
 		/*
-		 * We have priority over the currently held lock.  Tell
-		 * the remote lock holder that we want them to unwind.
+		 * We have priority over the currently held lock.  We have
+		 * already setup the interlock so we can tsleep() until the
+		 * remote wakes us up (which may have already happened).
 		 *
 		 * error is zero if woken up
 		 *	    EINTR / ERESTART - signal
 		 *	    EWOULDBLOCK	     - timeout expired (if not 0)
 		 */
-		atomic_swap_int(&ww->blocked, 1);
-		error = tsleep(ww, PINTERLOCKED | (intr ? PCATCH : 0),
-			       ctx->ww_class->name, 0);
-		if (intr && (error == EINTR || error == ERESTART))
-			return -EINTR;
+		if (flags & LK_NOWAIT) {
+			error = tsleep(ww, PINTERLOCKED | (intr ? PCATCH : 0),
+				       ctx->ww_class->name, 0);
+			if (intr && (error == EINTR || error == ERESTART))
+				return -EINTR;
+			flags &= ~LK_NOWAIT;
+		}
 		/* retry */
 	}
 }
