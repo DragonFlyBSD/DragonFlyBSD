@@ -84,7 +84,6 @@ dma_fence_default_wait_cb(struct dma_fence *fence, struct dma_fence_cb *cb)
 	wake_up_process(wait->task);
 }
 
-/* This version a mix from OpenBSD and Linux */
 long
 dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
 {
@@ -96,10 +95,8 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
 	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return ret;
 
-	if (intr && signal_pending(current)) {
-		ret = -ERESTARTSYS;
-		goto out;
-	}
+	if (intr && signal_pending(current))
+		return -ERESTARTSYS;
 
 	lockmgr(fence->lock, LK_EXCLUSIVE);
 
@@ -130,8 +127,7 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
 			__set_current_state(TASK_UNINTERRUPTIBLE);
 		}
 		/* wake_up_process() directly uses task_struct pointers as sleep identifiers */
-		err = lksleep(current, fence->lock, intr ? PCATCH : 0, "dmafence",
-		    timeout);
+		err = lksleep(current, fence->lock, intr ? PCATCH : 0, "dmafence", timeout);
 		if (err == EINTR || err == ERESTART) {
 			ret = -ERESTARTSYS;
 			break;
@@ -150,69 +146,6 @@ out:
 	
 	return ret;
 }
-
-/* This version from Linux 4.12 */
-#if 0
-signed long
-dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
-{
-	struct default_wait_cb cb;
-	unsigned long flags;
-	signed long ret = timeout ? timeout : 1;
-	bool was_set;
-
-	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
-		return ret;
-
-	spin_lock_irqsave(fence->lock, flags);
-
-	if (intr && signal_pending(current)) {
-		ret = -ERESTARTSYS;
-		goto out;
-	}
-
-	was_set = test_and_set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT,
-				   &fence->flags);
-
-	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
-		goto out;
-
-	if (!was_set) {
-		trace_dma_fence_enable_signal(fence);
-
-		if (!fence->ops->enable_signaling(fence)) {
-			dma_fence_signal_locked(fence);
-			goto out;
-		}
-	}
-
-	cb.base.func = dma_fence_default_wait_cb;
-	cb.task = current;
-	list_add(&cb.base.node, &fence->cb_list);
-
-	while (!test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags) && ret > 0) {
-		if (intr)
-			__set_current_state(TASK_INTERRUPTIBLE);
-		else
-			__set_current_state(TASK_UNINTERRUPTIBLE);
-		spin_unlock_irqrestore(fence->lock, flags);
-
-		ret = schedule_timeout(ret);
-
-		spin_lock_irqsave(fence->lock, flags);
-		if (ret > 0 && intr && signal_pending(current))
-			ret = -ERESTARTSYS;
-	}
-
-	if (!list_empty(&cb.base.node))
-		list_del(&cb.base.node);
-	__set_current_state(TASK_RUNNING);
-
-out:
-	spin_unlock_irqrestore(fence->lock, flags);
-	return ret;
-}
-#endif
 
 int
 dma_fence_signal_locked(struct dma_fence *fence)
