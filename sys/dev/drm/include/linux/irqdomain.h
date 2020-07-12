@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,9 @@
 #define _LINUX_IRQDOMAIN_H_
 
 #include <linux/types.h>
+#include <linux/irqhandler.h>
 #include <linux/of.h>
+#include <linux/radix-tree.h>
 
 struct device_node;
 

@@ -32,6 +32,7 @@
 #include <linux/stat.h>
 #include <linux/list.h>
 #include <linux/llist.h>
+#include <linux/radix-tree.h>
 #include <linux/rbtree.h>
 #include <linux/init.h>
 #include <linux/pid.h>
