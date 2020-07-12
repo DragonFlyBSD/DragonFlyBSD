@@ -122,9 +122,10 @@ void finish_wait(wait_queue_head_t *q, wait_queue_t *wait);
 	while (1) {							\
 		__wait_event_prefix(&wq, flags);			\
 									\
-		tsleep_interlock(current, flags);			\
 		if (condition)						\
 			break;						\
+									\
+		tsleep_interlock(current, flags);			\
 									\
 		if ((timeout_jiffies) != 0) {				\
 			ret = tsleep(current, PINTERLOCKED|flags, "lwe", timeout_jiffies);	\
@@ -136,6 +137,7 @@ void finish_wait(wait_queue_head_t *q, wait_queue_t *wait);
 				ret = 0;				\
 			}						\
 		}							\
+									\
 		if (ret == EINTR || ret == ERESTART) {			\
 			interrupted = true;				\
 			break;						\
