@@ -112,18 +112,30 @@ void finish_wait(wait_queue_head_t *q, wait_queue_t *wait);
 	bool timeout_expired = false;					\
 	bool interrupted = false;					\
 	long retval;							\
-	wait_queue_t tmp_wq;						\
+	int state;							\
+	DEFINE_WAIT(tmp_wq);						\
 									\
 	start_jiffies = ticks;						\
-	INIT_LIST_HEAD(&tmp_wq.task_list);				\
+	state = (flags & PCATCH) ? TASK_INTERRUPTIBLE : TASK_UNINTERRUPTIBLE; \
+	prepare_to_wait(&wq, &tmp_wq, state);				\
 									\
 	while (1) {							\
 		__wait_event_prefix(&wq, flags);			\
 									\
+		tsleep_interlock(current, flags);			\
 		if (condition)						\
 			break;						\
 									\
-		ret = tsleep(&wq, flags, "lwe", timeout_jiffies);	\
+		if ((timeout_jiffies) != 0) {				\
+			ret = tsleep(current, PINTERLOCKED|flags, "lwe", timeout_jiffies);	\
+		} else {						\
+			ret = tsleep(current, PINTERLOCKED|flags, "lwe", hz);\
+			if (ret == EWOULDBLOCK) {			\
+				kprintf("F");				\
+				print_backtrace(-1);			\
+				ret = 0;				\
+			}						\
+		}							\
 		if (ret == EINTR || ret == ERESTART) {			\
 			interrupted = true;				\
 			break;						\
