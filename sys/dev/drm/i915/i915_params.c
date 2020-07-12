@@ -122,7 +122,6 @@ MODULE_PARM_DESC(vbt_sdvo_panel_type,
 	"(-2=ignore, -1=auto [default], index in VBT BIOS table)");
 
 module_param_named_unsafe(reset, i915.reset, bool, 0600);
-TUNABLE_INT("drm.i915.reset", &i915.reset);
 MODULE_PARM_DESC(reset, "Attempt GPU resets (default: true)");
 
 #if IS_ENABLED(CONFIG_DRM_I915_CAPTURE_ERROR)

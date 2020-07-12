@@ -28,7 +28,6 @@
  *      Chris Wilson <chris@chris-wilson.co.uk>
  */
 
-#define KBUILD_MODNAME	"i915"
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/kernel.h>
