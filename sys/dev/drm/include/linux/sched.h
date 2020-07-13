@@ -139,8 +139,6 @@ schedule_timeout(signed long timeout)
 		tsleep(current, 0, "lstim", timo);
 		break;
 	default:
-		/* We are supposed to return immediately here */
-		tsleep(current, 0, "lstim", 1);
 		break;
 	}
 
