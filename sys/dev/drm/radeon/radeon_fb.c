@@ -24,7 +24,7 @@
  *     David Airlie
  */
 #include <linux/module.h>
-#include <linux/fb.h>
+#include <linux/slab.h>
 #include <linux/pm_runtime.h>
 
 #include <drm/drmP.h>
@@ -99,13 +99,13 @@ static struct fb_ops radeonfb_ops = {
 };
 
 
-int radeon_align_pitch(struct radeon_device *rdev, int width, int bpp, bool tiled)
+int radeon_align_pitch(struct radeon_device *rdev, int width, int cpp, bool tiled)
 {
 	int aligned = width;
 	int align_large = (ASIC_IS_AVIVO(rdev)) || tiled;
 	int pitch_mask = 0;
 
-	switch (bpp / 8) {
+	switch (cpp) {
 	case 1:
 		pitch_mask = align_large ? 255 : 127;
 		break;
@@ -120,7 +120,7 @@ int radeon_align_pitch(struct radeon_device *rdev, int width, int bpp, bool tile
 
 	aligned += pitch_mask;
 	aligned &= ~pitch_mask;
-	return aligned;
+	return aligned * cpp;
 }
 
 static void radeonfb_destroy_pinned_object(struct drm_gem_object *gobj)
@@ -149,13 +149,13 @@ static int radeonfb_create_pinned_object(struct radeon_fbdev *rfbdev,
 	int ret;
 	int aligned_size, size;
 	int height = mode_cmd->height;
-	u32 bpp, depth;
+	u32 cpp;
 
-	drm_fb_get_bpp_depth(mode_cmd->pixel_format, &depth, &bpp);
+	cpp = drm_format_plane_cpp(mode_cmd->pixel_format, 0);
 
 	/* need to align pitch with crtc limits */
-	mode_cmd->pitches[0] = radeon_align_pitch(rdev, mode_cmd->width, bpp,
-						  fb_tiled) * ((bpp + 1) / 8);
+	mode_cmd->pitches[0] = radeon_align_pitch(rdev, mode_cmd->width, cpp,
+						  fb_tiled);
 
 	if (rdev->family >= CHIP_R600)
 		height = ALIGN(mode_cmd->height, 8);
@@ -175,11 +175,11 @@ static int radeonfb_create_pinned_object(struct radeon_fbdev *rfbdev,
 		tiling_flags = RADEON_TILING_MACRO;
 
 #ifdef __BIG_ENDIAN
-	switch (bpp) {
-	case 32:
+	switch (cpp) {
+	case 4:
 		tiling_flags |= RADEON_TILING_SWAP_32BIT;
 		break;
-	case 16:
+	case 2:
 		tiling_flags |= RADEON_TILING_SWAP_16BIT;
 	default:
 		break;
@@ -321,7 +321,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	}
 #endif
 
-	DRM_INFO("fb mappable at 0x%jX\n",  info->paddr);
+	DRM_INFO("fb mappable at 0x%lX\n",  info->paddr);
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)rdev->mc.aper_base);
 	DRM_INFO("size %lu\n", (unsigned long)radeon_bo_size(rbo));
 	DRM_INFO("fb depth is %d\n", fb->depth);

@@ -73,6 +73,7 @@
 # define DP_ENHANCED_FRAME_CAP		    (1 << 7)
 
 #define DP_MAX_DOWNSPREAD                   0x003
+# define DP_MAX_DOWNSPREAD_0_5		    (1 << 0)
 # define DP_NO_AUX_HANDSHAKE_LINK_TRAINING  (1 << 6)
 
 #define DP_NORP                             0x004
@@ -344,7 +345,6 @@
 # define DP_PSR_FRAME_CAPTURE		    (1 << 3)
 # define DP_PSR_SELECTIVE_UPDATE	    (1 << 4)
 # define DP_PSR_IRQ_HPD_WITH_CRC_ERRORS     (1 << 5)
-# define DP_PSR_ENABLE_PSR2		    (1 << 6) /* eDP 1.4a */
 
 #define DP_ADAPTER_CTRL			    0x1a0
 # define DP_ADAPTER_CTRL_FORCE_LOAD_SENSE   (1 << 0)
@@ -610,24 +610,6 @@
 #define MODE_I2C_READ	4
 #define MODE_I2C_STOP	8
 
-/**
- * struct i2c_algo_dp_aux_data - driver interface structure for i2c over dp
- * 				 aux algorithm
- * @running: set by the algo indicating whether an i2c is ongoing or whether
- * 	     the i2c bus is quiescent
- * @address: i2c target address for the currently ongoing transfer
- * @aux_ch: driver callback to transfer a single byte of the i2c payload
- */
-struct i2c_algo_dp_aux_data {
-	bool running;
-	u16 address;
-	int (*aux_ch) (device_t adapter,
-		       int mode, uint8_t write_byte,
-		       uint8_t *read_byte);
-	void *priv;
-	device_t port;
-};
-
 /* DP 1.2 MST PORTs - Section 2.5.1 v1.2a spec */
 #define DP_MST_PHYSICAL_PORT_0 0
 #define DP_MST_LOGICAL_PORT_0 8
@@ -708,6 +690,12 @@ drm_dp_tps3_supported(const u8 dpcd[DP_RECEIVER_CAP_SIZE])
 		dpcd[DP_MAX_LANE_COUNT] & DP_TPS3_SUPPORTED;
 }
 
+static inline bool
+drm_dp_is_branch(const u8 dpcd[DP_RECEIVER_CAP_SIZE])
+{
+	return dpcd[DP_DOWNSTREAMPORT_PRESENT] & DP_DWN_STRM_PORT_PRESENT;
+}
+
 /*
  * DisplayPort AUX channel
  */
@@ -724,7 +712,7 @@ struct drm_dp_aux_msg {
 	unsigned int address;
 	u8 request;
 	u8 reply;
-	char *buffer;
+	void *buffer;
 	size_t size;
 };
 
@@ -766,7 +754,7 @@ struct drm_dp_aux_msg {
  * retry logic and i2c helpers assume this is the case.
  */
 struct drm_dp_aux {
-	char *name;
+	const char *name;
 	struct i2c_adapter ddc;
 	struct device *dev;
 	struct lock hw_mutex;

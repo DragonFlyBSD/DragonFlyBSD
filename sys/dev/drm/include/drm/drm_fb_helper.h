@@ -196,7 +196,7 @@ struct drm_fb_helper {
 	struct fb_info *fbdev;
 	u32 pseudo_palette[17];
 	struct drm_clip_rect dirty_clip;
-	struct lock dirty_lock;
+	spinlock_t dirty_lock;
 	struct work_struct dirty_work;
 	struct work_struct resume_work;
 
@@ -228,20 +228,9 @@ struct drm_fb_helper {
 	.fb_set_par	= drm_fb_helper_set_par, \
 	.fb_setcmap	= drm_fb_helper_setcmap, \
 	.fb_blank	= drm_fb_helper_blank, \
-	.fb_pan_display	= drm_fb_helper_pan_display
-
-/**
- * @DRM_FB_HELPER_DEFAULT_OPS:
- *
- * Helper define to register default implementations of drm_fb_helper
- * functions. To be used in struct fb_ops of drm drivers.
- */
-#define DRM_FB_HELPER_DEFAULT_OPS \
-	.fb_check_var	= drm_fb_helper_check_var, \
-	.fb_set_par	= drm_fb_helper_set_par, \
-	.fb_setcmap	= drm_fb_helper_setcmap, \
-	.fb_blank	= drm_fb_helper_blank, \
-	.fb_pan_display	= drm_fb_helper_pan_display
+	.fb_pan_display	= drm_fb_helper_pan_display, \
+	.fb_debug_enter = drm_fb_helper_debug_enter, \
+	.fb_debug_leave = drm_fb_helper_debug_leave
 
 #ifdef CONFIG_DRM_FBDEV_EMULATION
 void drm_fb_helper_prepare(struct drm_device *dev, struct drm_fb_helper *helper,

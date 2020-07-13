@@ -13,6 +13,8 @@
 
 #include "i915_sw_fence.h"
 
+#define I915_SW_FENCE_FLAG_ALLOC BIT(3) /* after WQ_FLAG_* for safety */
+
 static DEFINE_SPINLOCK(i915_sw_fence_lock);
 
 static int __i915_sw_fence_notify(struct i915_sw_fence *fence,
@@ -114,11 +116,14 @@ static void i915_sw_fence_await(struct i915_sw_fence *fence)
 	WARN_ON(atomic_inc_return(&fence->pending) <= 1);
 }
 
-void i915_sw_fence_init(struct i915_sw_fence *fence, i915_sw_fence_notify_t fn)
+void __i915_sw_fence_init(struct i915_sw_fence *fence,
+			  i915_sw_fence_notify_t fn,
+			  const char *name,
+			  struct lock_class_key *key)
 {
 	BUG_ON((unsigned long)fn & ~I915_SW_FENCE_MASK);
 
-	init_waitqueue_head(&fence->wait);
+	__init_waitqueue_head(&fence->wait, name, key);
 	kref_init(&fence->kref);
 	atomic_set(&fence->pending, 1);
 	fence->flags = (unsigned long)fn;
@@ -135,6 +140,8 @@ static int i915_sw_fence_wake(wait_queue_t *wq, unsigned mode, int flags, void *
 	list_del(&wq->task_list);
 	__i915_sw_fence_complete(wq->private, key);
 	i915_sw_fence_put(wq->private);
+	if (wq->flags & I915_SW_FENCE_FLAG_ALLOC)
+		kfree(wq);
 	return 0;
 }
 
@@ -192,9 +199,9 @@ static bool i915_sw_fence_check_if_after(struct i915_sw_fence *fence,
 	return err;
 }
 
-int i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
-				 struct i915_sw_fence *signaler,
-				 wait_queue_t *wq)
+static int __i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
+					  struct i915_sw_fence *signaler,
+					  wait_queue_t *wq, gfp_t gfp)
 {
 	unsigned long flags;
 	int pending;
@@ -206,8 +213,22 @@ int i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
 	if (unlikely(i915_sw_fence_check_if_after(fence, signaler)))
 		return -EINVAL;
 
+	pending = 0;
+	if (!wq) {
+		wq = kmalloc(sizeof(*wq), M_DRM, gfp);
+		if (!wq) {
+			if (!gfpflags_allow_blocking(gfp))
+				return -ENOMEM;
+
+			i915_sw_fence_wait(signaler);
+			return 0;
+		}
+
+		pending |= I915_SW_FENCE_FLAG_ALLOC;
+	}
+
 	INIT_LIST_HEAD(&wq->task_list);
-	wq->flags = 0;
+	wq->flags = pending;
 	wq->func = i915_sw_fence_wake;
 	wq->private = i915_sw_fence_get(fence);
 
@@ -224,6 +245,20 @@ int i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
 	spin_unlock_irqrestore(&signaler->wait.lock, flags);
 
 	return pending;
+}
+
+int i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
+				 struct i915_sw_fence *signaler,
+				 wait_queue_t *wq)
+{
+	return __i915_sw_fence_await_sw_fence(fence, signaler, wq, 0);
+}
+
+int i915_sw_fence_await_sw_fence_gfp(struct i915_sw_fence *fence,
+				     struct i915_sw_fence *signaler,
+				     gfp_t gfp)
+{
+	return __i915_sw_fence_await_sw_fence(fence, signaler, NULL, gfp);
 }
 
 struct i915_sw_dma_fence_cb {

@@ -34,6 +34,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <drm/drm_hashtab.h>
+
 /* BSD specific gem helpers. */
 #define	DRM_GEM_MAPPING_MASK	(3ULL << 62)
 #define	DRM_GEM_MAPPING_KEY	(2ULL << 62) /* Non-canonical address form */

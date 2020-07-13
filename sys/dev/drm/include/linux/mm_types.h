@@ -50,6 +50,7 @@ struct mm_struct {
 	long	refs;
 	struct lock mmap_sem;
 	atomic_t mm_users;
+	atomic_t mm_count;
 };
 
 struct proc_struct {

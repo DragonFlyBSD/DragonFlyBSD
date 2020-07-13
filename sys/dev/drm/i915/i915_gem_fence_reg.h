@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Intel Corporation
+ * Copyright © 2016 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -17,29 +17,35 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
  *
  */
 
-#ifndef _I915_GEM_DMABUF_H_
-#define _I915_GEM_DMABUF_H_
+#ifndef __I915_FENCE_REG_H__
+#define __I915_FENCE_REG_H__
 
-#include <linux/dma-buf.h>
+#include <linux/list.h>
 
-static inline struct reservation_object *
-i915_gem_object_get_dmabuf_resv(struct drm_i915_gem_object *obj)
-{
-	struct dma_buf *dma_buf;
+struct drm_i915_private;
+struct i915_vma;
 
-	if (obj->base.dma_buf)
-		dma_buf = obj->base.dma_buf;
-	else if (obj->base.import_attach)
-		dma_buf = obj->base.import_attach->dmabuf;
-	else
-		return NULL;
-
-	return dma_buf->resv;
-}
+struct drm_i915_fence_reg {
+	struct list_head link;
+	struct drm_i915_private *i915;
+	struct i915_vma *vma;
+	int pin_count;
+	int id;
+	/**
+	 * Whether the tiling parameters for the currently
+	 * associated fence register have changed. Note that
+	 * for the purposes of tracking tiling changes we also
+	 * treat the unfenced register, the register slot that
+	 * the object occupies whilst it executes a fenced
+	 * command (such as BLT on gen2/3), as a "fence".
+	 */
+	bool dirty;
+};
 
 #endif
+

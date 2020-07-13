@@ -55,10 +55,9 @@ int i915_gem_stolen_insert_node_in_range(struct drm_i915_private *dev_priv,
 		return -ENODEV;
 
 	/* See the comment at the drm_mm_init() call for more about this check.
-	 * WaSkipStolenMemoryFirstPage:bdw,chv,kbl (incomplete)
+	 * WaSkipStolenMemoryFirstPage:bdw+ (incomplete)
 	 */
-	if (start < 4096 && (IS_GEN8(dev_priv) ||
-			     IS_KBL_REVID(dev_priv, 0, KBL_REVID_A0)))
+	if (start < 4096 && INTEL_GEN(dev_priv) >= 8)
 		start = 4096;
 
 	mutex_lock(&dev_priv->mm.stolen_lock);
@@ -112,9 +111,8 @@ struct resource * devm_request_mem_region(struct device *dev,
 }
 #endif	/* __DragonFly__ */
 
-static unsigned long i915_stolen_to_physical(struct drm_device *dev)
+static unsigned long i915_stolen_to_physical(struct drm_i915_private *dev_priv)
 {
-	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	struct resource *r;
@@ -132,7 +130,7 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 	 *
 	 */
 	base = 0;
-	if (INTEL_INFO(dev)->gen >= 3) {
+	if (INTEL_GEN(dev_priv) >= 3) {
 		u32 bsm;
 
 		pci_read_config_dword(pdev, INTEL_BSM, &bsm);
@@ -161,7 +159,7 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 					 I865_TOUD, &toud);
 
 		base = (toud << 16) + tseg_size;
-	} else if (IS_I85X(dev)) {
+	} else if (IS_I85X(dev_priv)) {
 		u32 tseg_size = 0;
 		u32 tom;
 		u8 tmp;
@@ -276,7 +274,7 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 	 * kernel. So if the region is already marked as busy, something
 	 * is seriously wrong.
 	 */
-	r = devm_request_mem_region(dev->dev, base, ggtt->stolen_size,
+	r = devm_request_mem_region(dev_priv->drm.dev, base, ggtt->stolen_size,
 				    "Graphics Stolen Memory");
 	if (r == NULL) {
 		/*
@@ -287,7 +285,7 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 		 * PCI bus, but have an off-by-one error. Hence retry the
 		 * reservation starting from 1 instead of 0.
 		 */
-		r = devm_request_mem_region(dev->dev, base + 1,
+		r = devm_request_mem_region(dev_priv->drm.dev, base + 1,
 					    ggtt->stolen_size - 1,
 					    "Graphics Stolen Memory");
 		/*
@@ -431,17 +429,21 @@ static void bdw_get_stolen_reserved(struct drm_i915_private *dev_priv,
 		*size = stolen_top - *base;
 }
 
-int i915_gem_init_stolen(struct drm_device *dev)
+int i915_gem_init_stolen(struct drm_i915_private *dev_priv)
 {
-	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	unsigned long reserved_total, reserved_base = 0, reserved_size;
 	unsigned long stolen_top;
 
 	lockinit(&dev_priv->mm.stolen_lock, "i915msl", 0, LK_CANRECURSE);
 
+	if (intel_vgpu_active(dev_priv)) {
+		DRM_INFO("iGVT-g active, disabling use of stolen memory\n");
+		return 0;
+	}
+
 #ifdef CONFIG_INTEL_IOMMU
-	if (intel_iommu_gfx_mapped && INTEL_INFO(dev)->gen < 8) {
+	if (intel_iommu_gfx_mapped && INTEL_GEN(dev_priv) < 8) {
 		DRM_INFO("DMAR active, disabling use of stolen memory\n");
 		return 0;
 	}
@@ -450,7 +452,7 @@ int i915_gem_init_stolen(struct drm_device *dev)
 	if (ggtt->stolen_size == 0)
 		return 0;
 
-	dev_priv->mm.stolen_base = i915_stolen_to_physical(dev);
+	dev_priv->mm.stolen_base = i915_stolen_to_physical(dev_priv);
 	if (dev_priv->mm.stolen_base == 0)
 		return 0;
 
@@ -538,12 +540,10 @@ i915_pages_create_for_stolen(struct drm_device *dev,
 			     u32 offset, u32 size)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	struct sg_table *st;
 	struct scatterlist *sg;
 
-	DRM_DEBUG_DRIVER("offset=0x%x, size=%d\n", offset, size);
-	BUG_ON(offset > ggtt->stolen_size - size);
+	GEM_BUG_ON(offset > dev_priv->ggtt.stolen_size - size);
 
 	/* We hide that we have no struct page backing our stolen object
 	 * by wrapping the contiguous physical allocation with a fake
@@ -552,11 +552,11 @@ i915_pages_create_for_stolen(struct drm_device *dev,
 
 	st = kmalloc(sizeof(*st), M_DRM, GFP_KERNEL);
 	if (st == NULL)
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 
 	if (sg_alloc_table(st, 1, GFP_KERNEL)) {
 		kfree(st);
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	sg = st->sgl;
@@ -569,31 +569,36 @@ i915_pages_create_for_stolen(struct drm_device *dev,
 	return st;
 }
 
-static int i915_gem_object_get_pages_stolen(struct drm_i915_gem_object *obj)
+static struct sg_table *
+i915_gem_object_get_pages_stolen(struct drm_i915_gem_object *obj)
 {
-	BUG();
-	return -EINVAL;
+	return i915_pages_create_for_stolen(obj->base.dev,
+					    obj->stolen->start,
+					    obj->stolen->size);
 }
 
-static void i915_gem_object_put_pages_stolen(struct drm_i915_gem_object *obj)
+static void i915_gem_object_put_pages_stolen(struct drm_i915_gem_object *obj,
+					     struct sg_table *pages)
 {
-	/* Should only be called during free */
-	sg_free_table(obj->pages);
-	kfree(obj->pages);
+	/* Should only be called from i915_gem_object_release_stolen() */
+	sg_free_table(pages);
+	kfree(pages);
 }
-
 
 static void
 i915_gem_object_release_stolen(struct drm_i915_gem_object *obj)
 {
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
+	struct drm_mm_node *stolen = fetch_and_zero(&obj->stolen);
 
-	if (obj->stolen) {
-		i915_gem_stolen_remove_node(dev_priv, obj->stolen);
-		kfree(obj->stolen);
-		obj->stolen = NULL;
-	}
+	GEM_BUG_ON(!stolen);
+
+	__i915_gem_object_unpin_pages(obj);
+
+	i915_gem_stolen_remove_node(dev_priv, stolen);
+	kfree(stolen);
 }
+
 static const struct drm_i915_gem_object_ops i915_gem_object_stolen_ops = {
 	.get_pages = i915_gem_object_get_pages_stolen,
 	.put_pages = i915_gem_object_put_pages_stolen,
@@ -613,19 +618,13 @@ _i915_gem_object_create_stolen(struct drm_device *dev,
 	drm_gem_private_object_init(dev, &obj->base, stolen->size);
 	i915_gem_object_init(obj, &i915_gem_object_stolen_ops);
 
-	obj->pages = i915_pages_create_for_stolen(dev,
-						  stolen->start, stolen->size);
-	if (obj->pages == NULL)
-		goto cleanup;
-
-	obj->get_page.sg = obj->pages->sgl;
-	obj->get_page.last = 0;
-
-	i915_gem_object_pin_pages(obj);
 	obj->stolen = stolen;
-
 	obj->base.read_domains = I915_GEM_DOMAIN_CPU | I915_GEM_DOMAIN_GTT;
-	obj->cache_level = HAS_LLC(dev) ? I915_CACHE_LLC : I915_CACHE_NONE;
+	obj->cache_level = HAS_LLC(to_i915(dev)) ?
+			   I915_CACHE_LLC : I915_CACHE_NONE;
+
+	if (i915_gem_object_pin_pages(obj))
+		goto cleanup;
 
 	return obj;
 
@@ -645,7 +644,6 @@ i915_gem_object_create_stolen(struct drm_device *dev, u32 size)
 	if (!drm_mm_initialized(&dev_priv->mm.stolen))
 		return NULL;
 
-	DRM_DEBUG_KMS("creating stolen object: size=%x\n", size);
 	if (size == 0)
 		return NULL;
 
@@ -721,10 +719,14 @@ i915_gem_object_create_stolen_for_preallocated(struct drm_device *dev,
 	if (gtt_offset == I915_GTT_OFFSET_NONE)
 		return obj;
 
+	ret = i915_gem_object_pin_pages(obj);
+	if (ret)
+		goto err;
+
 	vma = i915_gem_obj_lookup_or_create_vma(obj, &ggtt->base, NULL);
 	if (IS_ERR(vma)) {
 		ret = PTR_ERR(vma);
-		goto err;
+		goto err_pages;
 	}
 
 	/* To simplify the initialisation sequence between KMS and GTT,
@@ -738,20 +740,20 @@ i915_gem_object_create_stolen_for_preallocated(struct drm_device *dev,
 	ret = drm_mm_reserve_node(&ggtt->base.mm, &vma->node);
 	if (ret) {
 		DRM_DEBUG_KMS("failed to allocate stolen GTT space\n");
-		goto err;
+		goto err_pages;
 	}
 
-	vma->pages = obj->pages;
+	vma->pages = obj->mm.pages;
 	vma->flags |= I915_VMA_GLOBAL_BIND;
 	__i915_vma_set_map_and_fenceable(vma);
 	list_move_tail(&vma->vm_link, &ggtt->base.inactive_list);
+	list_move_tail(&obj->global_link, &dev_priv->mm.bound_list);
 	obj->bind_count++;
-
-	list_add_tail(&obj->global_list, &dev_priv->mm.bound_list);
-	i915_gem_object_pin_pages(obj);
 
 	return obj;
 
+err_pages:
+	i915_gem_object_unpin_pages(obj);
 err:
 	i915_gem_object_put(obj);
 	return NULL;

@@ -856,7 +856,7 @@ intel_enable_tv(struct intel_encoder *encoder,
 	struct drm_i915_private *dev_priv = to_i915(dev);
 
 	/* Prevents vblank waits from timing out in intel_tv_detect_type() */
-	intel_wait_for_vblank(encoder->base.dev,
+	intel_wait_for_vblank(dev_priv,
 			      to_intel_crtc(encoder->base.crtc)->pipe);
 
 	I915_WRITE(TV_CTL, I915_READ(TV_CTL) | TV_ENC_ENABLE);
@@ -1029,8 +1029,7 @@ static void intel_tv_pre_enable(struct intel_encoder *encoder,
 				struct intel_crtc_state *pipe_config,
 				struct drm_connector_state *conn_state)
 {
-	struct drm_device *dev = encoder->base.dev;
-	struct drm_i915_private *dev_priv = to_i915(dev);
+	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
 	struct intel_crtc *intel_crtc = to_intel_crtc(encoder->base.crtc);
 	struct intel_tv *intel_tv = enc_to_tv(encoder);
 	const struct tv_mode *tv_mode = intel_tv_mode_find(intel_tv);
@@ -1116,7 +1115,7 @@ static void intel_tv_pre_enable(struct intel_encoder *encoder,
 
 	set_color_conversion(dev_priv, color_conversion);
 
-	if (INTEL_INFO(dev)->gen >= 4)
+	if (INTEL_GEN(dev_priv) >= 4)
 		I915_WRITE(TV_CLR_KNOBS, 0x00404000);
 	else
 		I915_WRITE(TV_CLR_KNOBS, 0x00606000);
@@ -1238,7 +1237,7 @@ intel_tv_detect_type(struct intel_tv *intel_tv,
 	I915_WRITE(TV_DAC, tv_dac);
 	POSTING_READ(TV_DAC);
 
-	intel_wait_for_vblank(dev, intel_crtc->pipe);
+	intel_wait_for_vblank(dev_priv, intel_crtc->pipe);
 
 	type = -1;
 	tv_dac = I915_READ(TV_DAC);
@@ -1268,7 +1267,7 @@ intel_tv_detect_type(struct intel_tv *intel_tv,
 	POSTING_READ(TV_CTL);
 
 	/* For unknown reasons the hw barfs if we don't do this vblank wait. */
-	intel_wait_for_vblank(dev, intel_crtc->pipe);
+	intel_wait_for_vblank(dev_priv, intel_crtc->pipe);
 
 	/* Restore interrupt config */
 	if (connector->polled & DRM_CONNECTOR_POLL_HPD) {

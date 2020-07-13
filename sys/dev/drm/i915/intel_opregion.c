@@ -649,24 +649,6 @@ static struct notifier_block intel_opregion_notifier = {
  * (version 3)
  */
 
-static u32 get_did(struct intel_opregion *opregion, int i)
-{
-	u32 did;
-
-	if (i < ARRAY_SIZE(opregion->acpi->didl)) {
-		did = opregion->acpi->didl[i];
-	} else {
-		i -= ARRAY_SIZE(opregion->acpi->didl);
-
-		if (WARN_ON(i >= ARRAY_SIZE(opregion->acpi->did2)))
-			return 0;
-
-		did = opregion->acpi->did2[i];
-	}
-
-	return did;
-}
-
 static void set_did(struct intel_opregion *opregion, int i, u32 val)
 {
 	if (i < ARRAY_SIZE(opregion->acpi->didl)) {
@@ -681,11 +663,11 @@ static void set_did(struct intel_opregion *opregion, int i, u32 val)
 	}
 }
 
-static u32 acpi_display_type(struct drm_connector *connector)
+static u32 acpi_display_type(struct intel_connector *connector)
 {
 	u32 display_type;
 
-	switch (connector->connector_type) {
+	switch (connector->base.connector_type) {
 	case DRM_MODE_CONNECTOR_VGA:
 	case DRM_MODE_CONNECTOR_DVIA:
 		display_type = ACPI_DISPLAY_TYPE_VGA;
@@ -714,7 +696,7 @@ static u32 acpi_display_type(struct drm_connector *connector)
 		display_type = ACPI_DISPLAY_TYPE_OTHER;
 		break;
 	default:
-		MISSING_CASE(connector->connector_type);
+		MISSING_CASE(connector->base.connector_type);
 		display_type = ACPI_DISPLAY_TYPE_OTHER;
 		break;
 	}
@@ -725,36 +707,9 @@ static u32 acpi_display_type(struct drm_connector *connector)
 static void intel_didl_outputs(struct drm_i915_private *dev_priv)
 {
 	struct intel_opregion *opregion = &dev_priv->opregion;
-	struct pci_dev *pdev = dev_priv->drm.pdev;
-	struct drm_connector *connector;
-	ACPI_HANDLE handle, acpi_cdev, acpi_video_bus;
-	u32 device_id;
-	ACPI_STATUS status;
-	u32 temp, max_outputs;
-	int i = 0;
-
-	handle = acpi_get_handle(pdev->dev.bsddev);
-	if (!handle)
-		return;
-
-	if (acpi_is_video_device(handle))
-		acpi_video_bus = handle;
-	else {
-		acpi_cdev = NULL;
-		acpi_video_bus = NULL;
-		while (AcpiGetNextObject(ACPI_TYPE_DEVICE, handle, acpi_cdev,
-					 &acpi_cdev) != AE_NOT_FOUND) {
-			if (acpi_is_video_device(acpi_cdev)) {
-				acpi_video_bus = acpi_cdev;
-				break;
-			}
-		}
-	}
-
-	if (!acpi_video_bus) {
-		DRM_DEBUG_KMS("No ACPI video bus found\n");
-		return;
-	}
+	struct intel_connector *connector;
+	int i = 0, max_outputs;
+	int display_index[16] = {};
 
 	/*
 	 * In theory, did2, the extended didl, gets added at opregion version
@@ -766,66 +721,58 @@ static void intel_didl_outputs(struct drm_i915_private *dev_priv)
 	max_outputs = ARRAY_SIZE(opregion->acpi->didl) +
 		ARRAY_SIZE(opregion->acpi->did2);
 
-#ifdef __DragonFly__
-	acpi_cdev = NULL;
-#endif
-	while (AcpiGetNextObject(ACPI_TYPE_DEVICE, acpi_video_bus, acpi_cdev,
-				 &acpi_cdev) != AE_NOT_FOUND) {
-		if (i >= max_outputs) {
-			DRM_DEBUG_KMS("More than %u outputs detected via ACPI\n",
-				      max_outputs);
-			return;
-		}
-		status = acpi_GetInteger(acpi_cdev, "_ADR", &device_id);
-		if (ACPI_SUCCESS(status)) {
-			if (!device_id)
-				goto blind_set;
-			set_did(opregion, i++, (u32)(device_id & 0x0f0f));
-		}
+	for_each_intel_connector(&dev_priv->drm, connector) {
+		u32 device_id, type;
+
+		device_id = acpi_display_type(connector);
+
+		/* Use display type specific display index. */
+		type = (device_id & ACPI_DISPLAY_TYPE_MASK)
+			>> ACPI_DISPLAY_TYPE_SHIFT;
+		device_id |= display_index[type]++ << ACPI_DISPLAY_INDEX_SHIFT;
+
+		connector->acpi_device_id = device_id;
+		if (i < max_outputs)
+			set_did(opregion, i, device_id);
+		i++;
 	}
 
-end:
 	DRM_DEBUG_KMS("%d outputs detected\n", i);
+
+	if (i > max_outputs)
+		DRM_ERROR("More than %d outputs in connector list\n",
+			  max_outputs);
 
 	/* If fewer than max outputs, the list must be null terminated */
 	if (i < max_outputs)
 		set_did(opregion, i, 0);
-	return;
-
-blind_set:
-	i = 0;
-	list_for_each_entry(connector,
-			    &dev_priv->drm.mode_config.connector_list, head) {
-		int display_type = acpi_display_type(connector);
-		if (i >= max_outputs) {
-			DRM_DEBUG_KMS("More than %u outputs in connector list\n",
-				      max_outputs);
-			return;
-		}
-
-		temp = get_did(opregion, i);
-		set_did(opregion, i, temp | (1 << 31) | display_type | i);
-		i++;
-	}
-	goto end;
 }
 
 static void intel_setup_cadls(struct drm_i915_private *dev_priv)
 {
 	struct intel_opregion *opregion = &dev_priv->opregion;
+	struct intel_connector *connector;
 	int i = 0;
-	u32 disp_id;
 
-	/* Initialize the CADL field by duplicating the DIDL values.
-	 * Technically, this is not always correct as display outputs may exist,
-	 * but not active. This initialization is necessary for some Clevo
-	 * laptops that check this field before processing the brightness and
-	 * display switching hotkeys. Just like DIDL, CADL is NULL-terminated if
-	 * there are less than eight devices. */
-	do {
-		disp_id = get_did(opregion, i);
-		opregion->acpi->cadl[i] = disp_id;
-	} while (++i < 8 && disp_id != 0);
+	/*
+	 * Initialize the CADL field from the connector device ids. This is
+	 * essentially the same as copying from the DIDL. Technically, this is
+	 * not always correct as display outputs may exist, but not active. This
+	 * initialization is necessary for some Clevo laptops that check this
+	 * field before processing the brightness and display switching hotkeys.
+	 *
+	 * Note that internal panels should be at the front of the connector
+	 * list already, ensuring they're not left out.
+	 */
+	for_each_intel_connector(&dev_priv->drm, connector) {
+		if (i >= ARRAY_SIZE(opregion->acpi->cadl))
+			break;
+		opregion->acpi->cadl[i++] = connector->acpi_device_id;
+	}
+
+	/* If fewer than 8 active devices, the list must be null terminated */
+	if (i < ARRAY_SIZE(opregion->acpi->cadl))
+		opregion->acpi->cadl[i] = 0;
 }
 
 void intel_opregion_register(struct drm_i915_private *dev_priv)
@@ -1040,7 +987,18 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 			opregion->vbt_size = vbt_size;
 		} else {
 			vbt = base + OPREGION_VBT_OFFSET;
-			vbt_size = OPREGION_ASLE_EXT_OFFSET - OPREGION_VBT_OFFSET;
+			/*
+			 * The VBT specification says that if the ASLE ext
+			 * mailbox is not used its area is reserved, but
+			 * on some CHT boards the VBT extends into the
+			 * ASLE ext area. Allow this even though it is
+			 * against the spec, so we do not end up rejecting
+			 * the VBT on those boards (and end up not finding the
+			 * LCD panel because of this).
+			 */
+			vbt_size = (mboxes & MBOX_ASLE_EXT) ?
+				OPREGION_ASLE_EXT_OFFSET : OPREGION_SIZE;
+			vbt_size -= OPREGION_VBT_OFFSET;
 			if (intel_bios_is_valid_vbt(vbt, vbt_size)) {
 				DRM_DEBUG_KMS("Found valid VBT in ACPI OpRegion (Mailbox #4)\n");
 				opregion->vbt = vbt;

@@ -72,10 +72,11 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 		if (vmf->flags & FAULT_FLAG_RETRY_NOWAIT)
 			goto out_unlock;
 
-#if 0
+		ttm_bo_reference(bo);
 		up_read(&vma->vm_mm->mmap_sem);
-#endif
 		(void) dma_fence_wait(bo->moving, true);
+		ttm_bo_unreserve(bo);
+		ttm_bo_unref(&bo);
 		goto out_unlock;
 	}
 
@@ -121,7 +122,7 @@ static int ttm_bo_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	struct page *page;
 	int ret;
 	int i;
-	unsigned long address = (unsigned long)vmf->virtual_address;
+	unsigned long address = vmf->address;
 	int retval = VM_FAULT_NOPAGE;
 	struct ttm_mem_type_manager *man =
 		&bdev->man[bo->mem.mem_type];
@@ -140,8 +141,10 @@ static int ttm_bo_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 
 		if (vmf->flags & FAULT_FLAG_ALLOW_RETRY) {
 			if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
+				ttm_bo_reference(bo);
 				up_read(&vma->vm_mm->mmap_sem);
 				(void) ttm_bo_wait_unreserved(bo);
+				ttm_bo_unref(&bo);
 			}
 
 			return VM_FAULT_RETRY;
@@ -187,6 +190,13 @@ static int ttm_bo_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	ret = ttm_bo_vm_fault_idle(bo, vma, vmf);
 	if (unlikely(ret != 0)) {
 		retval = ret;
+
+		if (retval == VM_FAULT_RETRY &&
+		    !(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
+			/* The BO has already been unreserved. */
+			return retval;
+		}
+
 		goto out_unlock;
 	}
 
@@ -487,9 +497,7 @@ retry:
 
 		if (vmf->flags & FAULT_FLAG_ALLOW_RETRY || 1) {
 			if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
-#if 0
 				up_read(&vma->vm_mm->mmap_sem);
-#endif
 				(void) ttm_bo_wait_unreserved(bo);
 			}
 

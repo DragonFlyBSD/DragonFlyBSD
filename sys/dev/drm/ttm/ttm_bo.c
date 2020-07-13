@@ -718,6 +718,20 @@ out:
 	return ret;
 }
 
+bool ttm_bo_eviction_valuable(struct ttm_buffer_object *bo,
+			      const struct ttm_place *place)
+{
+	/* Don't evict this BO if it's outside of the
+	 * requested placement range
+	 */
+	if (place->fpfn >= (bo->mem.start + bo->mem.size) ||
+	    (place->lpfn && place->lpfn <= bo->mem.start))
+		return false;
+
+	return true;
+}
+EXPORT_SYMBOL(ttm_bo_eviction_valuable);
+
 static int ttm_mem_evict_first(struct ttm_bo_device *bdev,
 				uint32_t mem_type,
 				const struct ttm_place *place,
@@ -732,21 +746,16 @@ static int ttm_mem_evict_first(struct ttm_bo_device *bdev,
 	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	list_for_each_entry(bo, &man->lru, lru) {
 		ret = __ttm_bo_reserve(bo, false, true, NULL);
-		if (!ret) {
-			if (place && (place->fpfn || place->lpfn)) {
-				/* Don't evict this BO if it's outside of the
-				 * requested placement range
-				 */
-				if (place->fpfn >= (bo->mem.start + bo->mem.size) ||
-				    (place->lpfn && place->lpfn <= bo->mem.start)) {
-					__ttm_bo_unreserve(bo);
-					ret = -EBUSY;
-					continue;
-				}
-			}
+		if (ret)
+			continue;
 
-			break;
+		if (place && !bdev->driver->eviction_valuable(bo, place)) {
+			__ttm_bo_unreserve(bo);
+			ret = -EBUSY;
+			continue;
 		}
+
+		break;
 	}
 
 	if (ret) {
@@ -1641,7 +1650,14 @@ EXPORT_SYMBOL(ttm_bo_unmap_virtual);
 int ttm_bo_wait(struct ttm_buffer_object *bo,
 		bool interruptible, bool no_wait)
 {
-	long timeout = no_wait ? 0 : 15 * HZ;
+	long timeout = 15 * HZ;
+
+	if (no_wait) {
+		if (reservation_object_test_signaled_rcu(bo->resv, true))
+			return 0;
+		else
+			return -EBUSY;
+	}
 
 	timeout = reservation_object_wait_timeout_rcu(bo->resv, true,
 						      interruptible, timeout);
@@ -1693,7 +1709,6 @@ static int ttm_bo_swapout(struct ttm_mem_shrink *shrink)
 	struct ttm_buffer_object *bo;
 	int ret = -EBUSY;
 	int put_count;
-	uint32_t swap_placement = (TTM_PL_FLAG_CACHED | TTM_PL_FLAG_SYSTEM);
 
 	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	list_for_each_entry(bo, &glob->swap_lru, swap) {
@@ -1724,7 +1739,8 @@ static int ttm_bo_swapout(struct ttm_mem_shrink *shrink)
 	 * Move to system cached
 	 */
 
-	if ((bo->mem.placement & swap_placement) != swap_placement) {
+	if (bo->mem.mem_type != TTM_PL_SYSTEM ||
+	    bo->ttm->caching_state != tt_cached) {
 		struct ttm_mem_reg evict_mem;
 
 		evict_mem = bo->mem;

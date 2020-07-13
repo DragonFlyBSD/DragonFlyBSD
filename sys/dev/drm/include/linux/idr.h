@@ -65,15 +65,7 @@ ida_remove(struct ida *ida, int id)
 	idr_remove(&ida->idr, id);
 }
 
-static inline void
-ida_destroy(struct ida *ida)
-{
-	idr_destroy(&ida->idr);
-	if (ida->free_bitmap != NULL) {
-		/* kfree() is a linux macro! Work around the cpp pass */
-		(kfree)(ida->free_bitmap, M_IDR);
-	}
-}
+void ida_destroy(struct ida *ida);
 
 static inline int
 ida_simple_get(struct ida *ida, unsigned int start, unsigned int end, gfp_t gfp_mask)

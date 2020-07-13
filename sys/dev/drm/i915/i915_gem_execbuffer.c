@@ -34,7 +34,6 @@
 #include <drm/i915_drm.h>
 
 #include "i915_drv.h"
-#include "i915_gem_dmabuf.h"
 #include "i915_trace.h"
 #include "intel_drv.h"
 #include "intel_frontbuffer.h"
@@ -80,7 +79,8 @@ eb_create(struct drm_i915_private *i915,
 		unsigned size = args->buffer_count;
 		size *= sizeof(struct i915_vma *);
 		size += sizeof(struct eb_vmas);
-		eb = kmalloc(size, M_DRM, GFP_TEMPORARY);
+		eb = kmalloc(size, M_DRM,
+			     GFP_TEMPORARY | __GFP_NOWARN | __GFP_NORETRY);
 	}
 
 	if (eb == NULL) {
@@ -288,7 +288,7 @@ static inline int use_cpu_reloc(struct drm_i915_gem_object *obj)
 	if (DBG_USE_CPU_RELOC)
 		return DBG_USE_CPU_RELOC > 0;
 
-	return (HAS_LLC(obj->base.dev) ||
+	return (HAS_LLC(to_i915(obj->base.dev)) ||
 		obj->base.write_domain == I915_GEM_DOMAIN_CPU ||
 		obj->cache_level != I915_CACHE_NONE);
 }
@@ -332,7 +332,8 @@ static void reloc_cache_init(struct reloc_cache *cache,
 	cache->page = -1;
 	cache->vaddr = 0;
 	cache->i915 = i915;
-	cache->use_64bit_reloc = INTEL_GEN(cache->i915) >= 8;
+	/* Must be a variable in the struct to allow GCC to unroll. */
+	cache->use_64bit_reloc = HAS_64BIT_RELOC(i915);
 	cache->node.allocated = false;
 }
 
@@ -418,15 +419,6 @@ static void *reloc_iomap(struct drm_i915_gem_object *obj,
 	unsigned long offset;
 	void *vaddr;
 
-	if (cache->node.allocated) {
-		wmb();
-		ggtt->base.insert_page(&ggtt->base,
-				       i915_gem_object_get_dma_address(obj, page),
-				       cache->node.start, I915_CACHE_NONE, 0);
-		cache->page = page;
-		return unmask_page(cache->vaddr);
-	}
-
 	if (cache->vaddr) {
 		io_mapping_unmap_atomic((void __force __iomem *) unmask_page(cache->vaddr));
 	} else {
@@ -466,6 +458,7 @@ static void *reloc_iomap(struct drm_i915_gem_object *obj,
 
 	offset = cache->node.start;
 	if (cache->node.allocated) {
+		wmb();
 		ggtt->base.insert_page(&ggtt->base,
 				       i915_gem_object_get_dma_address(obj, page),
 				       offset, I915_CACHE_NONE, 0);
@@ -841,7 +834,7 @@ need_reloc_mappable(struct i915_vma *vma)
 		return false;
 
 	/* See also use_cpu_reloc() */
-	if (HAS_LLC(vma->obj->base.dev))
+	if (HAS_LLC(to_i915(vma->obj->base.dev)))
 		return false;
 
 	if (vma->obj->base.write_domain == I915_GEM_DOMAIN_CPU)
@@ -1109,44 +1102,20 @@ err:
 	return ret;
 }
 
-static unsigned int eb_other_engines(struct drm_i915_gem_request *req)
-{
-	unsigned int mask;
-
-	mask = ~intel_engine_flag(req->engine) & I915_BO_ACTIVE_MASK;
-	mask <<= I915_BO_ACTIVE_SHIFT;
-
-	return mask;
-}
-
 static int
 i915_gem_execbuffer_move_to_gpu(struct drm_i915_gem_request *req,
 				struct list_head *vmas)
 {
-	const unsigned int other_rings = eb_other_engines(req);
 	struct i915_vma *vma;
 	int ret;
 
 	list_for_each_entry(vma, vmas, exec_list) {
 		struct drm_i915_gem_object *obj = vma->obj;
-		struct reservation_object *resv;
 
-		if (obj->flags & other_rings) {
-			ret = i915_gem_request_await_object
-				(req, obj, obj->base.pending_write_domain);
-			if (ret)
-				return ret;
-		}
-
-		resv = i915_gem_object_get_dmabuf_resv(obj);
-		if (resv) {
-			ret = i915_sw_fence_await_reservation
-				(&req->submit, resv, &i915_fence_ops,
-				 obj->base.pending_write_domain, 10*HZ,
-				 GFP_KERNEL | __GFP_NOWARN);
-			if (ret < 0)
-				return ret;
-		}
+		ret = i915_gem_request_await_object
+			(req, obj, obj->base.pending_write_domain);
+		if (ret)
+			return ret;
 
 		if (obj->base.write_domain & I915_GEM_DOMAIN_CPU)
 			i915_gem_clflush_object(obj, false);
@@ -1211,15 +1180,15 @@ validate_exec_list(struct drm_device *dev,
 		 */
 		if (exec[i].flags & EXEC_OBJECT_PINNED) {
 			if (exec[i].offset !=
-			    gen8_canonical_addr(exec[i].offset & I915_GTT_PAGE_MASK))
+			    gen8_canonical_addr(exec[i].offset & LINUX_PAGE_MASK))
 				return -EINVAL;
-
-			/* From drm_mm perspective address space is continuous,
-			 * so from this point we're always using non-canonical
-			 * form internally.
-			 */
-			exec[i].offset = gen8_noncanonical_addr(exec[i].offset);
 		}
+
+		/* From drm_mm perspective address space is continuous,
+		 * so from this point we're always using non-canonical
+		 * form internally.
+		 */
+		exec[i].offset = gen8_noncanonical_addr(exec[i].offset);
 
 		if (exec[i].alignment && !is_power_of_2(exec[i].alignment))
 			return -EINVAL;
@@ -1281,6 +1250,12 @@ i915_gem_validate_context(struct drm_device *dev, struct drm_file *file,
 	return ctx;
 }
 
+static bool gpu_write_needs_clflush(struct drm_i915_gem_object *obj)
+{
+	return !(obj->cache_level == I915_CACHE_NONE ||
+		 obj->cache_level == I915_CACHE_WT);
+}
+
 void i915_vma_move_to_active(struct i915_vma *vma,
 			     struct drm_i915_gem_request *req,
 			     unsigned int flags)
@@ -1290,8 +1265,6 @@ void i915_vma_move_to_active(struct i915_vma *vma,
 
 	GEM_BUG_ON(!drm_mm_node_allocated(&vma->node));
 
-	obj->dirty = 1; /* be paranoid  */
-
 	/* Add a reference if we're newly entering the active list.
 	 * The order in which we add operations to the retirement queue is
 	 * vital here: mark_active adds to the start of the callback list,
@@ -1299,37 +1272,31 @@ void i915_vma_move_to_active(struct i915_vma *vma,
 	 * add the active reference first and queue for it to be dropped
 	 * *last*.
 	 */
-	if (!i915_gem_object_is_active(obj))
-		i915_gem_object_get(obj);
-	i915_gem_object_set_active(obj, idx);
-	i915_gem_active_set(&obj->last_read[idx], req);
+	if (!i915_vma_is_active(vma))
+		obj->active_count++;
+	i915_vma_set_active(vma, idx);
+	i915_gem_active_set(&vma->last_read[idx], req);
+	list_move_tail(&vma->vm_link, &vma->vm->active_list);
 
 	if (flags & EXEC_OBJECT_WRITE) {
-		i915_gem_active_set(&obj->last_write, req);
-
-		intel_fb_obj_invalidate(obj, ORIGIN_CS);
+		if (intel_fb_obj_invalidate(obj, ORIGIN_CS))
+			i915_gem_active_set(&obj->frontbuffer_write, req);
 
 		/* update for the implicit flush after a batch */
 		obj->base.write_domain &= ~I915_GEM_GPU_DOMAINS;
+		if (!obj->cache_dirty && gpu_write_needs_clflush(obj))
+			obj->cache_dirty = true;
 	}
 
 	if (flags & EXEC_OBJECT_NEEDS_FENCE)
 		i915_gem_active_set(&vma->last_fence, req);
-
-	i915_vma_set_active(vma, idx);
-	i915_gem_active_set(&vma->last_read[idx], req);
-	list_move_tail(&vma->vm_link, &vma->vm->active_list);
 }
 
 static void eb_export_fence(struct drm_i915_gem_object *obj,
 			    struct drm_i915_gem_request *req,
 			    unsigned int flags)
 {
-	struct reservation_object *resv;
-
-	resv = i915_gem_object_get_dmabuf_resv(obj);
-	if (!resv)
-		return;
+	struct reservation_object *resv = obj->resv;
 
 	/* Ignore errors from failing to allocate the new fence, we can't
 	 * handle an error right now. Worst case should be missed
@@ -1446,10 +1413,7 @@ execbuf_submit(struct i915_execbuffer_params *params,
 	       struct drm_i915_gem_execbuffer2 *args,
 	       struct list_head *vmas)
 {
-	struct drm_i915_private *dev_priv = params->request->i915;
 	u64 exec_start, exec_len;
-	int instp_mode;
-	u32 instp_mask;
 	int ret;
 
 	ret = i915_gem_execbuffer_move_to_gpu(params->request, vmas);
@@ -1460,54 +1424,9 @@ execbuf_submit(struct i915_execbuffer_params *params,
 	if (ret)
 		return ret;
 
-	instp_mode = args->flags & I915_EXEC_CONSTANTS_MASK;
-	instp_mask = I915_EXEC_CONSTANTS_MASK;
-	switch (instp_mode) {
-	case I915_EXEC_CONSTANTS_REL_GENERAL:
-	case I915_EXEC_CONSTANTS_ABSOLUTE:
-	case I915_EXEC_CONSTANTS_REL_SURFACE:
-		if (instp_mode != 0 && params->engine->id != RCS) {
-			DRM_DEBUG("non-0 rel constants mode on non-RCS\n");
-			return -EINVAL;
-		}
-
-		if (instp_mode != dev_priv->relative_constants_mode) {
-			if (INTEL_INFO(dev_priv)->gen < 4) {
-				DRM_DEBUG("no rel constants on pre-gen4\n");
-				return -EINVAL;
-			}
-
-			if (INTEL_INFO(dev_priv)->gen > 5 &&
-			    instp_mode == I915_EXEC_CONSTANTS_REL_SURFACE) {
-				DRM_DEBUG("rel surface constants mode invalid on gen5+\n");
-				return -EINVAL;
-			}
-
-			/* The HW changed the meaning on this bit on gen6 */
-			if (INTEL_INFO(dev_priv)->gen >= 6)
-				instp_mask &= ~I915_EXEC_CONSTANTS_REL_SURFACE;
-		}
-		break;
-	default:
-		DRM_DEBUG("execbuf with unknown constants: %d\n", instp_mode);
+	if (args->flags & I915_EXEC_CONSTANTS_MASK) {
+		DRM_DEBUG("I915_EXEC_CONSTANTS_* unsupported\n");
 		return -EINVAL;
-	}
-
-	if (params->engine->id == RCS &&
-	    instp_mode != dev_priv->relative_constants_mode) {
-		struct intel_ring *ring = params->request->ring;
-
-		ret = intel_ring_begin(params->request, 4);
-		if (ret)
-			return ret;
-
-		intel_ring_emit(ring, MI_NOOP);
-		intel_ring_emit(ring, MI_LOAD_REGISTER_IMM(1));
-		intel_ring_emit_reg(ring, INSTPM);
-		intel_ring_emit(ring, instp_mask << 16 | instp_mode);
-		intel_ring_advance(ring);
-
-		dev_priv->relative_constants_mode = instp_mode;
 	}
 
 	if (args->flags & I915_EXEC_GEN7_SOL_RESET) {
@@ -1661,7 +1580,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 	}
 
 	if (args->flags & I915_EXEC_RESOURCE_STREAMER) {
-		if (!HAS_RESOURCE_STREAMER(dev)) {
+		if (!HAS_RESOURCE_STREAMER(dev_priv)) {
 			DRM_DEBUG("RS is only allowed for Haswell, Gen8 and above\n");
 			return -EINVAL;
 		}
@@ -1915,7 +1834,7 @@ i915_gem_execbuffer(struct drm_device *dev, void *data,
 		exec2_list[i].relocs_ptr = exec_list[i].relocs_ptr;
 		exec2_list[i].alignment = exec_list[i].alignment;
 		exec2_list[i].offset = exec_list[i].offset;
-		if (INTEL_INFO(dev)->gen < 4)
+		if (INTEL_GEN(to_i915(dev)) < 4)
 			exec2_list[i].flags = EXEC_OBJECT_NEEDS_FENCE;
 		else
 			exec2_list[i].flags = 0;

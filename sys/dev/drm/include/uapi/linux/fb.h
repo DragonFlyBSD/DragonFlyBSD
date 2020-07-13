@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -51,6 +51,10 @@ struct fb_fillrect {
 };
 
 struct fb_image {
+};
+
+struct fb_fix_screeninfo {
+	char id[16];
 };
 
 #endif /* _UAPI_LINUX_FB_H_ */

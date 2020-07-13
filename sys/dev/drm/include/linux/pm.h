@@ -50,4 +50,8 @@ struct dev_pm_ops {
 	int (*runtime_idle)(struct device *dev);
 };
 
+struct dev_pm_info {
+	bool	is_suspended:1;
+};
+
 #endif	/* _LINUX_PM_H_ */

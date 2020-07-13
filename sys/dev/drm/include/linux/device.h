@@ -48,6 +48,8 @@ struct device {
 	device_t	bsddev;
 
 	void		*driver_data;	/* for dev_set and get_drvdata */
+
+	struct dev_pm_info power;
 };
 
 struct device_driver {

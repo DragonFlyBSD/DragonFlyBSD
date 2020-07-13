@@ -123,8 +123,7 @@ out:
 static void intel_lvds_get_config(struct intel_encoder *encoder,
 				  struct intel_crtc_state *pipe_config)
 {
-	struct drm_device *dev = encoder->base.dev;
-	struct drm_i915_private *dev_priv = to_i915(dev);
+	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
 	struct intel_lvds_encoder *lvds_encoder = to_lvds_encoder(&encoder->base);
 	u32 tmp, flags = 0;
 
@@ -140,12 +139,12 @@ static void intel_lvds_get_config(struct intel_encoder *encoder,
 
 	pipe_config->base.adjusted_mode.flags |= flags;
 
-	if (INTEL_INFO(dev)->gen < 5)
+	if (INTEL_GEN(dev_priv) < 5)
 		pipe_config->gmch_pfit.lvds_border_bits =
 			tmp & LVDS_BORDER_ENABLE;
 
 	/* gen2/3 store dither state in pfit control, needs to match */
-	if (INTEL_INFO(dev)->gen < 4) {
+	if (INTEL_GEN(dev_priv) < 4) {
 		tmp = I915_READ(PFIT_CONTROL);
 
 		pipe_config->gmch_pfit.control |= tmp & PANEL_8TO6_DITHER_ENABLE;
@@ -990,7 +989,7 @@ void intel_lvds_init(struct drm_device *dev)
 	struct drm_display_mode *fixed_mode = NULL;
 	struct drm_display_mode *downclock_mode = NULL;
 	struct edid *edid;
-	struct drm_crtc *crtc;
+	struct intel_crtc *crtc;
 	i915_reg_t lvds_reg;
 	u32 lvds;
 	int pipe;
@@ -1168,10 +1167,10 @@ void intel_lvds_init(struct drm_device *dev)
 		goto failed;
 
 	pipe = (lvds & LVDS_PIPEB_SELECT) ? 1 : 0;
-	crtc = intel_get_crtc_for_pipe(dev, pipe);
+	crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
 
 	if (crtc && (lvds & LVDS_PORT_EN)) {
-		fixed_mode = intel_crtc_mode_get(dev, crtc);
+		fixed_mode = intel_crtc_mode_get(dev, &crtc->base);
 		if (fixed_mode) {
 			DRM_DEBUG_KMS("using current (BIOS) mode: ");
 			drm_mode_debug_printmodeline(fixed_mode);

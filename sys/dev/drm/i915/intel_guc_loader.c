@@ -211,11 +211,13 @@ static void guc_params_init(struct drm_i915_private *dev_priv)
 	params[GUC_CTL_FEATURE] |= GUC_CTL_DISABLE_SCHEDULER |
 			GUC_CTL_VCS2_ENABLED;
 
+	params[GUC_CTL_LOG_PARAMS] = guc->log.flags;
+
 	if (i915.guc_log_level >= 0) {
-		params[GUC_CTL_LOG_PARAMS] = guc->log_flags;
 		params[GUC_CTL_DEBUG] =
 			i915.guc_log_level << GUC_LOG_VERBOSITY_SHIFT;
-	}
+	} else
+		params[GUC_CTL_DEBUG] = GUC_LOG_DISABLED;
 
 	if (guc->ads_vma) {
 		u32 ads = i915_ggtt_offset(guc->ads_vma) >> PAGE_SHIFT;
@@ -483,6 +485,7 @@ int intel_guc_setup(struct drm_device *dev)
 	}
 
 	guc_interrupts_release(dev_priv);
+	gen9_reset_guc_interrupts(dev_priv);
 
 	guc_fw->guc_fw_load_status = GUC_FIRMWARE_PENDING;
 
@@ -527,6 +530,9 @@ int intel_guc_setup(struct drm_device *dev)
 		intel_guc_fw_status_repr(guc_fw->guc_fw_load_status));
 
 	if (i915.enable_guc_submission) {
+		if (i915.guc_log_level >= 0)
+			gen9_enable_guc_interrupts(dev_priv);
+
 		err = i915_guc_submission_enable(dev_priv);
 		if (err)
 			goto fail;
@@ -560,7 +566,7 @@ fail:
 		ret = 0;
 	}
 
-	if (err == 0 && !HAS_GUC_UCODE(dev))
+	if (err == 0 && !HAS_GUC_UCODE(dev_priv))
 		;	/* Don't mention the GuC! */
 	else if (err == 0)
 		DRM_INFO("GuC firmware load skipped\n");
@@ -719,18 +725,18 @@ void intel_guc_init(struct drm_device *dev)
 	struct intel_guc_fw *guc_fw = &dev_priv->guc.guc_fw;
 	const char *fw_path;
 
-	if (!HAS_GUC(dev)) {
+	if (!HAS_GUC(dev_priv)) {
 		i915.enable_guc_loading = 0;
 		i915.enable_guc_submission = 0;
 	} else {
 		/* A negative value means "use platform default" */
 		if (i915.enable_guc_loading < 0)
-			i915.enable_guc_loading = HAS_GUC_UCODE(dev);
+			i915.enable_guc_loading = HAS_GUC_UCODE(dev_priv);
 		if (i915.enable_guc_submission < 0)
-			i915.enable_guc_submission = HAS_GUC_SCHED(dev);
+			i915.enable_guc_submission = HAS_GUC_SCHED(dev_priv);
 	}
 
-	if (!HAS_GUC_UCODE(dev)) {
+	if (!HAS_GUC_UCODE(dev_priv)) {
 		fw_path = NULL;
 	} else if (IS_SKYLAKE(dev_priv)) {
 		fw_path = I915_SKL_GUC_UCODE;

@@ -21,6 +21,7 @@ SRCS	= \
 	drm_dp_mst_topology.c \
 	drm_dragonfly.c \
 	drm_drv.c \
+	drm_dumb_buffers.c \
 	drm_edid.c \
 	drm_edid_load.c \
 	drm_encoder.c \
@@ -38,6 +39,7 @@ SRCS	= \
 	drm_memory.c \
 	drm_mipi_dsi.c \
 	drm_mm.c \
+	drm_mode_config.c \
 	drm_mode_object.c \
 	drm_modes.c \
 	drm_modeset_lock.c \
@@ -47,6 +49,7 @@ SRCS	= \
 	drm_plane.c \
 	drm_plane_helper.c \
 	drm_prime.c \
+	drm_print.c \
 	drm_probe_helper.c \
 	drm_property.c \
 	drm_rect.c \
@@ -63,8 +66,9 @@ SRCS	= \
 	linux_dmi.c \
 	linux_fence.c \
 	linux_hdmi.c \
-	linux_i2c.c \
 	linux_hrtimer.c \
+	linux_i2c.c \
+	linux_ida.c \
 	linux_interval_tree.c \
 	linux_iomapping.c \
 	linux_irq.c \

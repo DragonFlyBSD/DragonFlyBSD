@@ -11,10 +11,12 @@
 
 #define CONFIG_BACKLIGHT_CLASS_DEVICE	1
 
-#define CONFIG_DRM_FBDEV_EMULATION		1
-#define CONFIG_DRM_I915_KMS			1
-#define CONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT	1
-#define CONFIG_DRM_LOAD_EDID_FIRMWARE		1
+#define CONFIG_DRM_FBDEV_EMULATION	1
+#define CONFIG_DRM_LOAD_EDID_FIRMWARE	1
+
+#define CONFIG_DRM_I915_KMS		1
+#define CONFIG_DRM_I915_ALPHA_SUPPOR	1
+#define CONFIG_DRM_I915_DEBUG_GEM	1
 
 // CONFIG_GENERIC_ATOMIC64 is not set on x86
 
@@ -25,3 +27,4 @@
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #pragma GCC diagnostic ignored "-Wpointer-arith"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
