@@ -41,6 +41,7 @@
 
 #ifdef	AUTHENTICATION
 #include <libtelnet/auth.h>
+extern int	auth_level;
 #endif
 
 int cleanopen(char *);

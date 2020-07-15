@@ -37,6 +37,8 @@
 #include "telnetd.h"
 #include <libtelnet/misc.h>
 
+extern void	(*encrypt_output)(unsigned char *, int);
+
 int
 net_write(unsigned char *str, int len)
 {

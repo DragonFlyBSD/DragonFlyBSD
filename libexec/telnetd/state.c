@@ -46,6 +46,7 @@ unsigned char	dont[] = { IAC, DONT, '%', 'c', 0 };
 unsigned char	will[] = { IAC, WILL, '%', 'c', 0 };
 unsigned char	wont[] = { IAC, WONT, '%', 'c', 0 };
 int	not42 = 1;
+char	*terminaltype;
 
 /*
  * Buffer for sub-options, and macros

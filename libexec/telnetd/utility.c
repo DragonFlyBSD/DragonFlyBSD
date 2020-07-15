@@ -45,6 +45,8 @@
 #include <libtelnet/encrypt.h>
 #endif
 
+extern char	line[16];
+
 /*
  * utility functions performing io related tasks
  */

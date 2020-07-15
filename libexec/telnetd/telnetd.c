@@ -111,6 +111,7 @@ char *hostname;
 char host_name[MAXHOSTNAMELEN];
 
 extern void telnet(int, int, char *) __dead2;
+extern char *terminaltype;
 
 int level;
 char user_name[256];

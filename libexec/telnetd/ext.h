@@ -52,15 +52,10 @@ extern int	diagnostic;	/* telnet diagnostic capabilities */
 #ifdef BFTPDAEMON
 extern int	bftpd;		/* behave as bftp daemon */
 #endif /* BFTPDAEMON */
-#ifdef	AUTHENTICATION
-extern int	auth_level;
-#endif
 
 extern slcfun	slctab[NSLC + 1];	/* slc mapping table */
 
 #define TERMINAL_TYPE_SIZE	41	/* allocated space for terminaltype */
-
-char	*terminaltype;
 
 /*
  * I/O data buffers, pointers, and counters.
@@ -75,7 +70,6 @@ extern char	*neturg;		/* one past last bye of urgent data */
 extern int	pcc, ncc;
 
 extern int	pty, net;
-extern char	line[16];
 extern int	SYNCHing;		/* we are in TELNET SYNCH mode */
 
 extern void
@@ -177,8 +171,6 @@ void	output_datalen(const char *, int);
 void	startslave(char *, int, char *);
 
 #ifdef	ENCRYPTION
-extern void	(*encrypt_output)(unsigned char *, int);
-extern int	(*decrypt_input)(int);
 extern char	*nclearto;
 #endif	/* ENCRYPTION */
 
