@@ -56,42 +56,46 @@
 #include <unistd.h>
 #include <errno.h>
 
+#ifndef EXTERN
+#define	EXTERN	extern
+#endif
+
 /*
  * Remote host attributes
  */
-char	*DV;			/* UNIX device(s) to open */
-char	*EL;			/* chars marking an EOL */
-char	*CM;			/* initial connection message */
-char	*IE;			/* EOT to expect on input */
-char	*OE;			/* EOT to send to complete FT */
-char	*CU;			/* call unit if making a phone call */
-char	*AT;			/* acu type */
-char	*PN;			/* phone number(s) */
-char	*DI;			/* disconnect string */
-char	*PA;			/* parity to be generated */
+EXTERN char	*DV;		/* UNIX device(s) to open */
+EXTERN char	*EL;		/* chars marking an EOL */
+EXTERN char	*CM;		/* initial connection message */
+EXTERN char	*IE;		/* EOT to expect on input */
+EXTERN char	*OE;		/* EOT to send to complete FT */
+EXTERN char	*CU;		/* call unit if making a phone call */
+EXTERN char	*AT;		/* acu type */
+EXTERN char	*PN;		/* phone number(s) */
+EXTERN char	*DI;		/* disconnect string */
+EXTERN char	*PA;		/* parity to be generated */
 
-char	*PH;			/* phone number file */
-char	*RM;			/* remote file name */
-char	*HO;			/* host name */
+EXTERN char	*PH;		/* phone number file */
+EXTERN char	*RM;		/* remote file name */
+EXTERN char	*HO;		/* host name */
 
-char	*LI;			/* login script */
-char	*LO;			/* logout script */
+EXTERN char	*LI;		/* login script */
+EXTERN char	*LO;		/* logout script */
 
-long	BR;			/* line speed for conversation */
-long	FS;			/* frame size for transfers */
+EXTERN long	BR;		/* line speed for conversation */
+EXTERN long	FS;		/* frame size for transfers */
 
-char	DU;			/* this host is dialed up */
-char	HW;			/* this device is hardwired, see hunt.c */
-char	*ES;			/* escape character */
-char	*EX;			/* exceptions */
-char	*FO;			/* force (literal next) char*/
-char	*RC;			/* raise character */
-char	*RE;			/* script record file */
-char	*PR;			/* remote prompt */
-long	DL;			/* line delay for file transfers to remote */
-long	CL;			/* char delay for file transfers to remote */
-long	ET;			/* echocheck timeout */
-char	HD;			/* this host is half duplex - do local echo */
+EXTERN char	DU;		/* this host is dialed up */
+EXTERN char	HW;		/* this device is hardwired, see hunt.c */
+EXTERN char	*ES;		/* escape character */
+EXTERN char	*EX;		/* exceptions */
+EXTERN char	*FO;		/* force (literal next) char*/
+EXTERN char	*RC;		/* raise character */
+EXTERN char	*RE;		/* script record file */
+EXTERN char	*PR;		/* remote prompt */
+EXTERN long	DL;		/* line delay for file transfers to remote */
+EXTERN long	CL;		/* char delay for file transfers to remote */
+EXTERN long	ET;		/* echocheck timeout */
+EXTERN char	HD;		/* this host is half duplex - do local echo */
 
 /*
  * String value table
@@ -191,7 +195,6 @@ typedef
 #define EXP	01		/* experimental, mark it with a `*' on help */
 #define PRIV	02		/* priviledged, root execute only */
 
-extern int	vflag;		/* verbose during reading of .tiprc file */
 extern value_t	vtable[];	/* variable table */
 
 void logent(char *, char *, char *, char*);
@@ -247,34 +250,34 @@ void  loginit(void);
 */
 #define DEFBR 1200
 
-struct termios otermios;
-struct termios ctermios;
+EXTERN struct termios otermios;
+EXTERN struct termios ctermios;
 
-FILE	*fscript;		/* FILE for scripting */
+EXTERN FILE	*fscript;	/* FILE for scripting */
 
-int	fildes[2];		/* file transfer synchronization channel */
-int	repdes[2];		/* read process sychronization channel */
-int	FD;			/* open file descriptor to remote host */
-int	AC;			/* open file descriptor to dialer (v831 only) */
-int	vflag;			/* print .tiprc initialization sequence */
-int	sfd;			/* for ~< operation */
-int	pid;			/* pid of tipout */
-uid_t	uid, euid;		/* real and effective user id's */
-gid_t	gid, egid;		/* real and effective group id's */
-int	stop;			/* stop transfer session flag */
-int	quit;			/* same; but on other end */
-int	intflag;		/* recognized interrupt */
-int	stoprompt;		/* for interrupting a prompt session */
-int	timedout;		/* ~> transfer timedout */
-int	cumode;			/* simulating the "cu" program */
+EXTERN int	fildes[2];	/* file transfer synchronization channel */
+EXTERN int	repdes[2];	/* read process sychronization channel */
+EXTERN int	FD;		/* open file descriptor to remote host */
+EXTERN int	AC;		/* open file descriptor to dialer (v831 only) */
+EXTERN int	vflag;		/* print .tiprc initialization sequence */
+EXTERN int	sfd;		/* for ~< operation */
+EXTERN int	pid;		/* pid of tipout */
+EXTERN uid_t	uid, euid;	/* real and effective user id's */
+EXTERN gid_t	gid, egid;	/* real and effective group id's */
+EXTERN int	stop;		/* stop transfer session flag */
+EXTERN int	quit;		/* same; but on other end */
+EXTERN int	intflag;	/* recognized interrupt */
+EXTERN int	stoprompt;	/* for interrupting a prompt session */
+EXTERN int	timedout;	/* ~> transfer timedout */
+EXTERN int	cumode;		/* simulating the "cu" program */
 
-char	fname[PATH_MAX];	/* file name buffer for ~< */
-char	copyname[PATH_MAX];	/* file name buffer for ~> */
-char	ccc;			/* synchronization character */
-char	ch;			/* for tipout */
-char	*uucplock;		/* name of lock file for uucp's */
+EXTERN char	fname[PATH_MAX]; /* file name buffer for ~< */
+EXTERN char	copyname[PATH_MAX]; /* file name buffer for ~> */
+EXTERN char	ccc;		/* synchronization character */
+EXTERN char	ch;		/* for tipout */
+EXTERN char	*uucplock;	/* name of lock file for uucp's */
 
-int	odisc;				/* initial tty line discipline */
+EXTERN int	odisc;			/* initial tty line discipline */
 extern	int disc;			/* current tty discpline */
 
 char	*ctrl(char);

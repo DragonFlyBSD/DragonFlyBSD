@@ -47,6 +47,7 @@ void ttysetup (int speed);
 #include <errno.h>
 #include <sys/types.h>
 #include <libutil.h>
+#define	EXTERN
 #include "tip.h"
 #include "pathnames.h"
 
