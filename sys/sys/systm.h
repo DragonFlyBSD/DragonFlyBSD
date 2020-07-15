@@ -61,8 +61,6 @@ extern int osreldate;		/* System release date */
 extern char version[];		/* system version */
 extern char copyright[];	/* system copyright */
 
-extern int selwait;		/* select timeout address */
-
 extern u_char curpriority;	/* priority of current process */
 extern int cpu_mwait_spin;	/* typically set in machdep, used by lwkt */
 

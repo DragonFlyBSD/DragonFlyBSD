@@ -779,9 +779,6 @@ mapped_ioctl_unregister_handler(struct ioctl_map_handler *he)
 	return(error);
 }
 
-static int	nselcoll;	/* Select collisions since boot */
-int	selwait;
-SYSCTL_INT(_kern, OID_AUTO, nselcoll, CTLFLAG_RD, &nselcoll, 0, "");
 static int	nseldebug;
 SYSCTL_INT(_kern, OID_AUTO, nseldebug, CTLFLAG_RW, &nseldebug, 0, "");
 
