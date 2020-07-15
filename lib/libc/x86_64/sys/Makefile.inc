@@ -21,6 +21,10 @@ SRCS+= asmcontext.h
 CLEANFILES+= asmcontext.h asmcontext.o
 
 GENASSYM= NM=nm sh ${.CURDIR}/../../sys/kern/genassym.sh
+
+asmcontext.o: asmcontext.c
+	${CC} ${CFLAGS} -fcommon -c ${.IMPSRC}
+
 asmcontext.h: asmcontext.o
 	${GENASSYM} ${.ALLSRC} > ${.TARGET}
 
