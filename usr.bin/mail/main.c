@@ -31,6 +31,7 @@
  * $FreeBSD: src/usr.bin/mail/main.c,v 1.6.2.5 2003/01/06 05:46:03 mikeh Exp $
  */
 
+#define	EXTERN
 #include "rcv.h"
 #include <fcntl.h>
 #include "extern.h"
