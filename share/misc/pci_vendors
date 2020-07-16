@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2020.05.29
-#	Date:    2020-05-29 03:15:02
+#	Version: 2020.06.24
+#	Date:    2020-06-24 03:15:01
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at https://pci-ids.ucw.cz/.
@@ -91,6 +91,8 @@
 	1703  ISDN Adapter (PCI Bus, DV, W)
 	1704  ISDN Adapter (PCI Bus, D, C)
 0721  Sapphire, Inc.
+0731  Jingjia Microelectronics Co Ltd
+	7200  JM7200 Series GPU
 0777  Ubiquiti Networks, Inc.
 0795  Wired Inc.
 	6663  Butane II (MPEG2 encoder board)
@@ -2863,7 +2865,7 @@
 	686c  Vega 10 [Radeon Instinct MI25 MxGPU]
 	687f  Vega 10 XL/XT [Radeon RX Vega 56/64]
 		1002 0b36  RX Vega64
-		1002 6b76  RX Vega56
+		1002 6b76  RX Vega64
 	6880  Lexington [Radeon HD 6550M]
 		103c 163c  Pavilion dv6 Radeon HD 6550M
 	6888  Cypress XT [FirePro V8800]
@@ -3545,10 +3547,12 @@
 	7310  Navi 10 [Radeon Pro W5700X]
 	7312  Navi 10 [Radeon Pro W5700]
 	731f  Navi 10 [Radeon RX 5600 OEM/5600 XT / 5700/5700 XT]
+		1da2 e411  Radeon RX 5600 XT
 	7340  Navi 14 [Radeon RX 5500/5500M / Pro 5500M]
 	7341  Navi 14 [Radeon Pro W5500]
 	7347  Navi 14 [Radeon Pro W5500M]
 	734f  Navi 14 [Radeon Pro W5300M]
+	7360  Navi 12 [Radeon Pro 5600M]
 	7833  RS350 Host Bridge
 	7834  RS350 [Radeon 9100 PRO/XT IGP]
 	7835  RS350M [Mobility Radeon 9000 IGP]
@@ -11023,6 +11027,7 @@
 	0fd3  GK107M [GeForce GT 640M LE]
 	0fd4  GK107M [GeForce GTX 660M]
 	0fd5  GK107M [GeForce GT 650M Mac Edition]
+	0fd6  GK107M
 	0fd8  GK107M [GeForce GT 640M Mac Edition]
 	0fd9  GK107M [GeForce GT 645M]
 	0fdb  GK107M
@@ -11039,6 +11044,7 @@
 # GRID K1 USM
 	0fe7  GK107GL [GRID K100 vGPU]
 		10de 101e  GRID K100
+	0fe8  GK107M
 	0fe9  GK107M [GeForce GT 750M Mac Edition]
 	0fea  GK107M [GeForce GT 755M Mac Edition]
 	0fec  GK107M [GeForce 710A]
@@ -11656,8 +11662,10 @@
 	1287  GK208B [GeForce GT 730]
 	1288  GK208B [GeForce GT 720]
 	1289  GK208 [GeForce GT 710]
+	128a  GK208B
 	128b  GK208B [GeForce GT 710]
 		1043 85f7  GT710-SL-1GD5
+	128c  GK208B
 	1290  GK208M [GeForce GT 730M]
 		103c 2afa  GeForce GT 730A
 		103c 2b04  GeForce GT 730A
@@ -12015,7 +12023,7 @@
 	1f82  TU117 [GeForce GTX 1650]
 	1f91  TU117M [GeForce GTX 1650 Mobile / Max-Q]
 	1f92  TU117M [GeForce GTX 1650 Mobile]
-	1f94  TU117M
+	1f94  TU117M [GeForce GTX 1650 Mobile]
 	1f95  TU117M [GeForce GTX 1650 Ti Mobile]
 	1f96  TU117M [GeForce GTX 1650 Mobile / Max-Q]
 	1f99  TU117M
@@ -12026,6 +12034,7 @@
 	20b0  GA100 [GRID A100X]
 	20be  GA100 [GRID A100A]
 	20bf  GA100 [GRID A100B]
+	20f1  GA100 [GRID A100 PCIe 40GB]
 	2182  TU116 [GeForce GTX 1660 Ti]
 	2183  TU116
 	2184  TU116 [GeForce GTX 1660]
@@ -20425,6 +20434,7 @@
 	c580  Radeon RX 580
 1688  CastleNet Technology Inc.
 	1170  WLAN 802.11b card
+168a  Utimaco IS GmbH
 # nee Atheros Communications, Inc.
 168c  Qualcomm Atheros
 	0007  AR5210 Wireless Network Adapter [AR5000 802.11a]
@@ -22366,6 +22376,8 @@
 	1050  Virtio GPU
 # virtio 1.0
 	1052  Virtio input
+# virtio 1.0
+	1053  Virtio socket
 	1110  Inter-VM shared memory
 		1af4 1100  QEMU Virtual Machine
 1af5  Netezza Corp.
@@ -25847,6 +25859,7 @@
 		17aa 4001  ThinkServer X710-4 AnyFabric for 10GbE SFP+
 		17aa 4002  ThinkServer X710-2 AnyFabric for 10GbE SFP+
 		19e5 d11c  Ethernet 2-port X710 10Gb SFP+ Adapter SP330
+		1bd4 0056  Ethernet Network Adapter X710-BM2 for OCP NIC 3.0
 		8086 0000  Ethernet Converged Network Adapter X710
 		8086 0001  Ethernet Converged Network Adapter X710-4
 		8086 0002  Ethernet Converged Network Adapter X710-4
@@ -25993,6 +26006,8 @@
 	159a  Ethernet Controller E810-XXV for QSFP
 	159b  Ethernet Controller E810-XXV for SFP
 		1137 02be  E810XXVDA2 2x25/10 GbE SFP28 PCIe NIC
+		1bd4 0057  Ethernet Network Adapter E810-XXVAM2
+		1bd4 0058  Ethernet Network Adapter E810-XXVAM2 for OCP 3.0
 		8086 0001  Ethernet 25G 2P E810-XXV OCP
 		8086 0002  Ethernet 25G 2P E810-XXV Adapter
 		8086 0003  Ethernet Network Adapter E810-XXV-2
