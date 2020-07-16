@@ -707,6 +707,18 @@ bool ldns_pkt_edns_do(const ldns_pkt *packet);
 void ldns_pkt_set_edns_do(ldns_pkt *packet, bool value);
 
 /**
+ * return the packet's EDNS header bits that are unassigned.
+ */
+uint16_t ldns_pkt_edns_unassigned(const ldns_pkt *packet);
+
+/**
+ * Set the packet's EDNS header bits that are unassigned.
+ * \param[in] packet the packet
+ * \param[in] value the value
+ */
+void ldns_pkt_set_edns_unassigned(ldns_pkt *packet, uint16_t value);
+
+/**
  * returns true if this packet needs and EDNS rr to be sent.
  * At the moment the only reason is an expected packet
  * size larger than 512 bytes, but for instance dnssec would

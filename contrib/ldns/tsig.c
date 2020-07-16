@@ -349,7 +349,13 @@ ldns_pkt_tsig_verify_next(ldns_pkt *pkt, const uint8_t *wire, size_t wirelen, co
 
 	ldns_rdf_deep_free(key_name_rdf);
 
-	if (ldns_rdf_compare(pkt_mac_rdf, my_mac_rdf) == 0) {
+	if( ldns_rdf_size(pkt_mac_rdf) != ldns_rdf_size(my_mac_rdf)) {
+		ldns_rdf_deep_free(my_mac_rdf);
+		return false;
+	}
+	/* use time insensitive memory compare */
+	if(CRYPTO_memcmp(ldns_rdf_data(pkt_mac_rdf), ldns_rdf_data(my_mac_rdf),
+		ldns_rdf_size(my_mac_rdf)) == 0) {
 		ldns_rdf_deep_free(my_mac_rdf);
 		return true;
 	} else {

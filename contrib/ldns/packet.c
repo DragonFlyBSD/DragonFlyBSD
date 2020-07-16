@@ -26,6 +26,7 @@
  */
 
 #define LDNS_EDNS_MASK_DO_BIT 0x8000
+#define LDNS_EDNS_MASK_UNASSIGNED (0xFFFF & ~LDNS_EDNS_MASK_DO_BIT)
 
 /* TODO defines for 3600 */
 /* convert to and from numerical flag values */
@@ -242,6 +243,19 @@ ldns_pkt_set_edns_do(ldns_pkt *packet, bool value)
 	}
 }
 
+uint16_t
+ldns_pkt_edns_unassigned(const ldns_pkt *packet)
+{
+	return (packet->_edns_z & LDNS_EDNS_MASK_UNASSIGNED);
+}
+
+void
+ldns_pkt_set_edns_unassigned(ldns_pkt *packet, uint16_t value)
+{
+	packet->_edns_z = (packet->_edns_z & ~LDNS_EDNS_MASK_UNASSIGNED)
+			| (value & LDNS_EDNS_MASK_UNASSIGNED);
+}
+
 ldns_rdf *
 ldns_pkt_edns_data(const ldns_pkt *packet)
 {
@@ -375,6 +389,7 @@ ldns_pkt_rr(const ldns_pkt *pkt, ldns_pkt_section sec, const ldns_rr *rr)
 		return ldns_rr_list_contains_rr(ldns_pkt_additional(pkt), rr);
 	case LDNS_SECTION_ANY:
 		result = ldns_rr_list_contains_rr(ldns_pkt_question(pkt), rr);
+		/* fallthrough */
 	case LDNS_SECTION_ANY_NOQUESTION:
 		result = result
 		    || ldns_rr_list_contains_rr(ldns_pkt_answer(pkt), rr)
@@ -928,11 +943,13 @@ ldns_pkt_query_new_frm_str_internal(ldns_pkt **p, const char *name,
 	}
 
 	if (!ldns_pkt_set_flags(packet, flags)) {
+		ldns_pkt_free(packet);
 		return LDNS_STATUS_ERR;
 	}
 
 	question_rr = ldns_rr_new();
 	if (!question_rr) {
+		ldns_pkt_free(packet);
 		return LDNS_STATUS_MEM_ERR;
 	}
 

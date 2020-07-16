@@ -17,6 +17,11 @@
 #include <openssl/rand.h>
 #include <openssl/err.h>
 #include <openssl/md5.h>
+#include <openssl/bn.h>
+#include <openssl/rsa.h>
+#ifdef USE_DSA
+#include <openssl/dsa.h>
+#endif
 #endif /* HAVE_SSL */
 
 ldns_rr *
@@ -184,7 +189,7 @@ ldns_sign_public_buffer(ldns_buffer *sign_buf, ldns_key *current_key)
 		b64rdf = ldns_sign_public_evp(
 				   sign_buf,
 				   ldns_key_evp_key(current_key),
-				   EVP_sha512());
+				   NULL);
                 break;
 #endif
 #ifdef USE_ED448
@@ -192,7 +197,7 @@ ldns_sign_public_buffer(ldns_buffer *sign_buf, ldns_key *current_key)
 		b64rdf = ldns_sign_public_evp(
 				   sign_buf,
 				   ldns_key_evp_key(current_key),
-				   EVP_sha512());
+				   NULL);
                 break;
 #endif
 	case LDNS_SIGN_RSAMD5:
@@ -234,8 +239,6 @@ ldns_sign_public(ldns_rr_list *rrset, ldns_key_list *keys)
 
 	new_owner = NULL;
 
-	signatures = ldns_rr_list_new();
-
 	/* prepare a signature and add all the know data
 	 * prepare the rrset. Sign this together.  */
 	rrset_clone = ldns_rr_list_clone(rrset);
@@ -251,6 +254,8 @@ ldns_sign_public(ldns_rr_list *rrset, ldns_key_list *keys)
 	}
 	/* sort */
 	ldns_rr_list_sort(rrset_clone);
+
+	signatures = ldns_rr_list_new();
 
 	for (key_count = 0;
 		key_count < ldns_key_list_key_count(keys);
@@ -456,8 +461,19 @@ ldns_sign_public_evp(ldns_buffer *to_sign,
 
 	/* initializes a signing context */
 	md_type = digest_type;
+#ifdef USE_ED25519
+	if(EVP_PKEY_id(key) == NID_ED25519) {
+		/* digest must be NULL for ED25519 sign and verify */
+		md_type = NULL;
+	} else
+#endif
+#ifdef USE_ED448
+	if(EVP_PKEY_id(key) == NID_ED448) {
+		md_type = NULL;
+	} else
+#endif
 	if(!md_type) {
-		/* unknown message difest */
+		/* unknown message digest */
 		ldns_buffer_free(b64sig);
 		return NULL;
 	}
@@ -473,23 +489,34 @@ ldns_sign_public_evp(ldns_buffer *to_sign,
 		return NULL;
 	}
 
-	r = EVP_SignInit(ctx, md_type);
-	if(r == 1) {
-		r = EVP_SignUpdate(ctx, (unsigned char*)
-					    ldns_buffer_begin(to_sign),
-					    ldns_buffer_position(to_sign));
+#if defined(USE_ED25519) || defined(USE_ED448)
+	if(md_type == NULL) {
+		/* for these methods we must use the one-shot DigestSign */
+		r = EVP_DigestSignInit(ctx, NULL, md_type, NULL, key);
+		if(r == 1) {
+			size_t siglen_sizet = ldns_buffer_capacity(b64sig);
+			r = EVP_DigestSign(ctx,
+				(unsigned char*)ldns_buffer_begin(b64sig),
+				&siglen_sizet,
+				(unsigned char*)ldns_buffer_begin(to_sign),
+				ldns_buffer_position(to_sign));
+			siglen = (unsigned int)siglen_sizet;
+		}
 	} else {
-		ldns_buffer_free(b64sig);
-		EVP_MD_CTX_destroy(ctx);
-		return NULL;
-	}
-	if(r == 1) {
-		r = EVP_SignFinal(ctx, (unsigned char*)
-					   ldns_buffer_begin(b64sig), &siglen, key);
-	} else {
-		ldns_buffer_free(b64sig);
-		EVP_MD_CTX_destroy(ctx);
-		return NULL;
+#else
+	r = 0;
+	if(md_type != NULL) {
+#endif
+		r = EVP_SignInit(ctx, md_type);
+		if(r == 1) {
+			r = EVP_SignUpdate(ctx, (unsigned char*)
+						    ldns_buffer_begin(to_sign),
+						    ldns_buffer_position(to_sign));
+		}
+		if(r == 1) {
+			r = EVP_SignFinal(ctx, (unsigned char*)
+						   ldns_buffer_begin(b64sig), &siglen, key);
+		}
 	}
 	if(r != 1) {
 		ldns_buffer_free(b64sig);
@@ -512,7 +539,7 @@ ldns_sign_public_evp(ldns_buffer *to_sign,
 	}
 #endif
 #endif
-#if defined(USE_ECDSA) || defined(USE_ED25519) || defined(USE_ED448)
+#if defined(USE_ECDSA)
 	if(
 #  ifdef HAVE_EVP_PKEY_BASE_ID
 		EVP_PKEY_base_id(key)
@@ -527,20 +554,6 @@ ldns_sign_public_evp(ldns_buffer *to_sign,
 				b64sig, (long)siglen, ldns_pkey_is_ecdsa(key));
 		}
 #  endif /* USE_ECDSA */
-#  ifdef USE_ED25519
-		if(EVP_PKEY_id(key) == NID_X25519) {
-			r = 1;
-			sigdata_rdf = ldns_convert_ed25519_rrsig_asn12rdf(
-				b64sig, siglen);
-		}
-#  endif /* USE_ED25519 */
-#  ifdef USE_ED448
-		if(EVP_PKEY_id(key) == NID_X448) {
-			r = 1;
-			sigdata_rdf = ldns_convert_ed448_rrsig_asn12rdf(
-				b64sig, siglen);
-		}
-#  endif /* USE_ED448 */
 	}
 #endif /* PKEY_EC */
 	if(r == 0) {
@@ -984,7 +997,6 @@ ldns_dnssec_zone_create_nsec3s_mkmap(ldns_dnssec_zone *zone,
 	    ; hashmap_node != LDNS_RBTREE_NULL
 	    ; hashmap_node  = ldns_rbtree_next(hashmap_node)
 	    ) {
-		current_name = (ldns_dnssec_name *) hashmap_node->data;
 		nsec_rr = ((ldns_dnssec_name *) hashmap_node->data)->nsec;
 		if (nsec_rr) {
 			ldns_rr_list_push_rr(nsec3_list, nsec_rr);
@@ -1251,12 +1263,15 @@ ldns_dnssec_zone_create_rrsigs_flg( ldns_dnssec_zone *zone
 											key_list,
 											func,
 											arg);
-				if(!(flags&LDNS_SIGN_DNSKEY_WITH_ZSK) &&
-					cur_rrset->type == LDNS_RR_TYPE_DNSKEY)
-					ldns_key_list_filter_for_dnskey(key_list, flags);
-
-				if(cur_rrset->type != LDNS_RR_TYPE_DNSKEY)
+				if(cur_rrset->type == LDNS_RR_TYPE_DNSKEY ||
+				   cur_rrset->type == LDNS_RR_TYPE_CDNSKEY ||
+				   cur_rrset->type == LDNS_RR_TYPE_CDS) {
+					if(!(flags&LDNS_SIGN_DNSKEY_WITH_ZSK)) {
+						ldns_key_list_filter_for_dnskey(key_list, flags);
+					}
+				} else {
 					ldns_key_list_filter_for_non_dnskey(key_list, flags);
+				}
 
 				/* TODO: just set count to zero? */
 				rr_list = ldns_rr_list_new();

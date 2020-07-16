@@ -746,6 +746,7 @@ ldns_dnssec_zone_new_frm_fp_l(ldns_dnssec_zone** z, FILE* fp, const ldns_rdf* or
 		newzone = NULL;
 	} else {
 		ldns_dnssec_zone_free(newzone);
+		newzone = NULL;
 	}
 
 error:
@@ -1105,8 +1106,12 @@ ldns_dnssec_zone_add_empty_nonterminals_nsec3(
 				ldns_rdf *ent_name;
 
 				if (!(ent_name = ldns_dname_clone_from(
-						next_name, i)))
+						next_name, i))) {
+					
+					ldns_rdf_deep_free(l1);
+					ldns_rdf_deep_free(l2);
 					return LDNS_STATUS_MEM_ERR;
+				}
 
 				if (nsec3s && zone->_nsec3params) {
 					ldns_rdf *ent_hashed_name;
@@ -1114,28 +1119,34 @@ ldns_dnssec_zone_add_empty_nonterminals_nsec3(
 					if (!(ent_hashed_name =
 					    ldns_nsec3_hash_name_frm_nsec3(
 							zone->_nsec3params,
-							ent_name)))
+							ent_name))) {
+						ldns_rdf_deep_free(l1);
+						ldns_rdf_deep_free(l2);
+						ldns_rdf_deep_free(ent_name);
 						return LDNS_STATUS_MEM_ERR;
+					}
 					node = ldns_rbtree_search(nsec3s, 
 							ent_hashed_name);
 					if (!node) {
 						ldns_rdf_deep_free(l1);
 						ldns_rdf_deep_free(l2);
+						ldns_rdf_deep_free(ent_name);
 						continue;
 					}
 				}
 				new_name = ldns_dnssec_name_new();
 				if (!new_name) {
+					ldns_rdf_deep_free(l1);
+					ldns_rdf_deep_free(l2);
+					ldns_rdf_deep_free(ent_name);
 					return LDNS_STATUS_MEM_ERR;
 				}
 				new_name->name = ent_name;
-				if (!new_name->name) {
-					ldns_dnssec_name_free(new_name);
-					return LDNS_STATUS_MEM_ERR;
-				}
 				new_name->name_alloced = true;
 				new_node = LDNS_MALLOC(ldns_rbnode_t);
 				if (!new_node) {
+					ldns_rdf_deep_free(l1);
+					ldns_rdf_deep_free(l2);
 					ldns_dnssec_name_free(new_name);
 					return LDNS_STATUS_MEM_ERR;
 				}

@@ -692,7 +692,7 @@ ldns_status ldns_verify_rrsig_keylist_notime(const ldns_rr_list *rrset,
  * \param[in] rrset the rrset
  * \param[in] rrsig the rrsig to verify
  * \param[in] key the key to use
- * \return status message wether verification succeeded.
+ * \return status message whether verification succeeded.
  */
 ldns_status ldns_verify_rrsig(ldns_rr_list *rrset,
 						ldns_rr *rrsig,
@@ -705,7 +705,7 @@ ldns_status ldns_verify_rrsig(ldns_rr_list *rrset,
  * \param[in] rrsig the rrsig to verify
  * \param[in] key the key to use
  * \param[in] check_time the time for which the validation is performed
- * \return status message wether verification succeeded.
+ * \return status message whether verification succeeded.
  */
 ldns_status ldns_verify_rrsig_time(
 		ldns_rr_list *rrset, ldns_rr *rrsig, 

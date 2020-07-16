@@ -43,7 +43,7 @@ struct ldns_struct_zone
 {
 	/** the soa defines a zone */
 	ldns_rr 	*_soa;
-	/* basicly a zone is a list of rr's */
+	/* basically a zone is a list of rr's */
 	ldns_rr_list 	*_rrs;
 	/* we could change this to be a b-tree etc etc todo */
 };

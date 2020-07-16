@@ -494,6 +494,7 @@ static void ldns_sha256_Transform(ldns_sha256_CTX* context,
 
 	/* Clean up */
 	a = b = c = d = e = f = g = h = T1 = T2 = 0;
+	(void)a;
 }
 
 #endif /* SHA2_UNROLL_TRANSFORM */
@@ -527,6 +528,7 @@ void ldns_sha256_update(ldns_sha256_CTX* context, const sha2_byte *data, size_t 
 			context->bitcount += len << 3;
 			/* Clean up: */
 			usedspace = freespace = 0;
+			(void)usedspace;
 			return;
 		}
 	}
@@ -544,6 +546,7 @@ void ldns_sha256_update(ldns_sha256_CTX* context, const sha2_byte *data, size_t 
 	}
 	/* Clean up: */
 	usedspace = freespace = 0;
+	(void)usedspace;
 }
 
 typedef union _ldns_sha2_buffer_union {
@@ -614,6 +617,7 @@ void ldns_sha256_final(sha2_byte digest[], ldns_sha256_CTX* context) {
 	/* Clean up state data: */
 	MEMSET_BZERO(context, sizeof(ldns_sha256_CTX));
 	usedspace = 0;
+	(void)usedspace;
 }
 
 unsigned char *
@@ -803,6 +807,7 @@ static void ldns_sha512_Transform(ldns_sha512_CTX* context,
 
 	/* Clean up */
 	a = b = c = d = e = f = g = h = T1 = T2 = 0;
+	(void)a;
 }
 
 #endif /* SHA2_UNROLL_TRANSFORM */
@@ -836,6 +841,7 @@ void ldns_sha512_update(ldns_sha512_CTX* context, const sha2_byte *data, size_t 
 			ADDINC128(context->bitcount, len << 3);
 			/* Clean up: */
 			usedspace = freespace = 0;
+			(void)usedspace;
 			return;
 		}
 	}
@@ -853,6 +859,7 @@ void ldns_sha512_update(ldns_sha512_CTX* context, const sha2_byte *data, size_t 
 	}
 	/* Clean up: */
 	usedspace = freespace = 0;
+	(void)usedspace;
 }
 
 static void ldns_sha512_Last(ldns_sha512_CTX* context) {
