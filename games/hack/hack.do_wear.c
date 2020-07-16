@@ -329,7 +329,7 @@ ringoff(struct obj *obj)
 	mask = obj->owornmask & W_RING;
 	setworn((struct obj *) 0, obj->owornmask);
 	if (!(u.uprops[PROP(obj->otyp)].p_flgs & mask))
-		impossible("Strange... I didnt know you had that ring.");
+		impossible("Strange... I didn't know you had that ring.");
 	u.uprops[PROP(obj->otyp)].p_flgs &= ~mask;
 	switch (obj->otyp) {
 	case RIN_FIRE_RESISTANCE:
