@@ -40,17 +40,17 @@
 /* Is a CAPATH given at configure time */
 #define HAVE_DANE_CA_PATH 0
 
+/* Define to 1 if you have the declaration of `NID_ED25519', and to 0 if you
+   don't. */
+#define HAVE_DECL_NID_ED25519 0
+
+/* Define to 1 if you have the declaration of `NID_ED448', and to 0 if you
+   don't. */
+#define HAVE_DECL_NID_ED448 0
+
 /* Define to 1 if you have the declaration of `NID_secp384r1', and to 0 if you
    don't. */
 #define HAVE_DECL_NID_SECP384R1 1
-
-/* Define to 1 if you have the declaration of `NID_X25519', and to 0 if you
-   don't. */
-/* #undef HAVE_DECL_NID_X25519 */
-
-/* Define to 1 if you have the declaration of `NID_X448', and to 0 if you
-   don't. */
-/* #undef HAVE_DECL_NID_X448 */
 
 /* Define to 1 if you have the declaration of `NID_X9_62_prime256v1', and to 0
    if you don't. */
@@ -82,6 +82,9 @@
 
 /* Define to 1 if you have the `ENGINE_load_cryptodev' function. */
 /* #undef HAVE_ENGINE_LOAD_CRYPTODEV */
+
+/* Define to 1 if you have the `ERR_load_crypto_strings' function. */
+#define HAVE_ERR_LOAD_CRYPTO_STRINGS 1
 
 /* Define to 1 if you have the `EVP_dss1' function. */
 #define HAVE_EVP_DSS1 1
@@ -200,6 +203,12 @@
 
 /* Define to 1 if you have the <openssl/err.h> header file. */
 #define HAVE_OPENSSL_ERR_H 1
+
+/* Define to 1 if you have the `OPENSSL_init_crypto' function. */
+#define HAVE_OPENSSL_INIT_CRYPTO 1
+
+/* Define to 1 if you have the `OPENSSL_init_ssl' function. */
+/* #undef HAVE_OPENSSL_INIT_SSL */
 
 /* Define to 1 if you have the <openssl/rand.h> header file. */
 #define HAVE_OPENSSL_RAND_H 1
@@ -320,7 +329,7 @@
 #define PACKAGE_NAME "ldns"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "ldns 1.7.0"
+#define PACKAGE_STRING "ldns 1.7.1"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libdns"
@@ -329,10 +338,16 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.7.0"
+#define PACKAGE_VERSION "1.7.1"
+
+/* Define this to enable RR type AMTRELAY. */
+/* #undef RRTYPE_AMTRELAY */
 
 /* Define this to enable RR type AVC. */
 /* #undef RRTYPE_AVC */
+
+/* Define this to enable RR type DOA. */
+/* #undef RRTYPE_DOA */
 
 /* Define this to enable RR type NINFO. */
 /* #undef RRTYPE_NINFO */
@@ -645,10 +660,10 @@ size_t strlcpy(char *dst, const char *src, size_t siz);
 
 #ifdef USE_WINSOCK
 #define SOCK_INVALID INVALID_SOCKET
-#define close_socket(_s) do { if (_s > SOCK_INVALID) {closesocket(_s); _s = SOCK_INVALID;} } while(0)
+#define close_socket(_s) do { if (_s != SOCK_INVALID) {closesocket(_s); _s = -1;} } while(0)
 #else
 #define SOCK_INVALID -1
-#define close_socket(_s) do { if (_s > SOCK_INVALID) {close(_s); _s = SOCK_INVALID;} } while(0)
+#define close_socket(_s) do { if (_s != SOCK_INVALID) {close(_s); _s = -1;} } while(0)
 #endif
 
 #ifdef __cplusplus

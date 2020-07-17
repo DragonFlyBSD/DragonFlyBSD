@@ -1,5 +1,5 @@
 .\" @(#)drill.1 1.7.0 14-Jul-2004 OF; 
-.TH drill 1 "28 May 2006"
+.TH drill 1 "16 Jul 2020"
 .SH NAME
 drill \- get (debug) information out of DNS(SEC)
 .SH SYNOPSIS
@@ -232,9 +232,10 @@ or an error occurred while performing the lookup.
 .TP
 /usr/local/etc/unbound/root.key
 The file from which trusted keys are loaded when no \fB-k\fR option is given.
+
 .SH "SEE ALSO"
 .LP
-unbound-anchor(8)
+unbound-anchor(8), RFC403{3,4,5}
 
 .SH AUTHOR
 Jelte Jansen and Miek Gieben. Both of NLnet Labs.
@@ -242,12 +243,7 @@ Jelte Jansen and Miek Gieben. Both of NLnet Labs.
 .SH REPORTING BUGS
 Report bugs to <ldns-team@nlnetlabs.nl>.
 
-.SH BUGS
-
 .SH COPYRIGHT
 Copyright (c) 2004-2008 NLnet Labs.
 Licensed under the revised BSD license. There is NO warranty; not even for MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.
-
-.SH SEE ALSO
-\fBdig\fR(1), \fIRFC403{3,4,5}\fR.
