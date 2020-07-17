@@ -295,7 +295,7 @@ do_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 
 	ldns_pkt_free(p);
 	p = NULL;
-	status = ldns_resolver_send(&p, res, name, t, c, 0);
+	(void) ldns_resolver_send(&p, res, name, t, c, 0);
 	if (!p) {
 		goto cleanup;
 	}

@@ -122,7 +122,7 @@ typedef enum ldns_enum_dane_transport ldns_dane_transport;
  *
  * \param[out] tlsa_owner The created dname.
  * \param[in] name The dname that should be prefixed.
- * \param[in] port The service port number for wich the name should be created.
+ * \param[in] port The service port number for which the name should be created.
  * \param[in] transport The transport for which the name should be created.
  * \return LDNS_STATUS_OK on success or an error code otherwise.
  */

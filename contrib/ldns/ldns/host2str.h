@@ -636,6 +636,17 @@ ldns_status ldns_rdf2buffer_str_long_str(ldns_buffer *output,
 ldns_status ldns_rdf2buffer_str_hip(ldns_buffer *output,
 		const ldns_rdf *rdf);
 
+/** 
+ * Converts an LDNS_RDF_TYPE_AMTRELAY rdata element to presentation format for
+ * the precedence, D-bit, type and relay and adds it to the output buffer 
+ * \param[in] *rdf The rdata to convert
+ * \param[in] *output The buffer to add the data to
+ * \return LDNS_STATUS_OK on success, and error status on failure
+ */
+ldns_status ldns_rdf2buffer_str_amtrelay(ldns_buffer *output,
+		const ldns_rdf *rdf);
+
+
 /**
  * Converts the data in the rdata field to presentation format and
  * returns that as a char *.

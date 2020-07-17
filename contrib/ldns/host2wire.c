@@ -67,17 +67,27 @@ ldns_dname2buffer_wire_compress(ldns_buffer *buffer, const ldns_rdf *name, ldns_
 	{
 		/* Not found. Write cache entry, take off first label, write it, */
 		/* try again with the rest of the name. */
-		node = LDNS_MALLOC(ldns_rbnode_t);
-		if(!node)
-		{
-			return LDNS_STATUS_MEM_ERR;
-		}
 		if (ldns_buffer_position(buffer) < 16384) {
-			node->key = ldns_rdf_clone(name);
+			ldns_rdf *key;
+
+			node = LDNS_MALLOC(ldns_rbnode_t);
+			if(!node)
+			{
+				return LDNS_STATUS_MEM_ERR;
+			}
+
+			key = ldns_rdf_clone(name);
+			if (!key) {
+				LDNS_FREE(node);
+				return LDNS_STATUS_MEM_ERR;
+			}
+			node->key = key;
 			node->data = (void *) (intptr_t) ldns_buffer_position(buffer);
 			if(!ldns_rbtree_insert(compression_data,node))
 			{
 				/* fprintf(stderr,"Name not found but now it's there?\n"); */
+				ldns_rdf_deep_free(key);
+				LDNS_FREE(node);
 			}
 		}
 		label = ldns_dname_label(name, 0);

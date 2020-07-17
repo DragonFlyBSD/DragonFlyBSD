@@ -453,6 +453,7 @@ ldns_nsec3_closest_encloser(ldns_rdf *qname, ldns_rr_type qtype, ldns_rr_list *n
 		}
 
 		if (ldns_dname_cat(hashed_sname, zone_name) != LDNS_STATUS_OK){
+			ldns_rdf_deep_free(hashed_sname);
 			goto done;
 		}
 

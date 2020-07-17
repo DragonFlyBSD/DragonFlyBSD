@@ -311,6 +311,16 @@ ldns_status ldns_str2rdf_long_str(ldns_rdf **rd, const char *str);
  */
 ldns_status ldns_str2rdf_hip(ldns_rdf **rd, const char *str);
 
+/**
+ * Concert a"<precedence> <D-bit> <type> <relay>" encoding
+ * of the value field as specified in Section  4.3.1 of
+ * [draft-ietf-mboned-driad-amt-discovery], encoded as wireformat as specified in
+ * ection 4.2 of [draft-ietf-mboned-driad-amt-discovery]
+ * \param[in] rd the rdf where to put the data
+ * \param[in] str the string to be converted
+ * \return ldns_status
+ */
+ldns_status ldns_str2rdf_amtrelay(ldns_rdf **rd, const char *str);
 
 #ifdef __cplusplus
 }

@@ -28,6 +28,14 @@
 #include <time.h>
 #include <sys/time.h>
 
+#ifdef HAVE_SSL
+#include <openssl/bn.h>
+#include <openssl/rsa.h>
+#ifdef USE_DSA
+#include <openssl/dsa.h>
+#endif
+#endif
+
 #ifndef INET_ADDRSTRLEN
 #define INET_ADDRSTRLEN 16
 #endif
@@ -475,9 +483,18 @@ ldns_rdf2buffer_str_str(ldns_buffer *output, const ldns_rdf *rdf)
 ldns_status
 ldns_rdf2buffer_str_b64(ldns_buffer *output, const ldns_rdf *rdf)
 {
-	size_t size = ldns_b64_ntop_calculate_size(ldns_rdf_size(rdf));
-	char *b64 = LDNS_XMALLOC(char, size);
-	if(!b64) return LDNS_STATUS_MEM_ERR;
+	size_t size;
+	char *b64;
+
+	if (ldns_rdf_size(rdf) == 0) {
+		ldns_buffer_printf(output, "0");
+		return ldns_buffer_status(output);
+	} else
+		size = ldns_b64_ntop_calculate_size(ldns_rdf_size(rdf));
+
+	if (!(b64 = LDNS_XMALLOC(char, size)))
+		return LDNS_STATUS_MEM_ERR;
+
 	if (ldns_b64_ntop(ldns_rdf_data(rdf), ldns_rdf_size(rdf), b64, size)) {
 		ldns_buffer_printf(output, "%s", b64);
 	}
@@ -1085,12 +1102,12 @@ ldns_rdf2buffer_str_ipseckey(ldns_buffer *output, const ldns_rdf *rdf)
 			/* no gateway */
 			break;
 		case 1:
-			gateway_data = LDNS_XMALLOC(uint8_t, LDNS_IP4ADDRLEN);
-                        if(!gateway_data)
-                                return LDNS_STATUS_MEM_ERR;
 			if (ldns_rdf_size(rdf) < offset + LDNS_IP4ADDRLEN) {
 				return LDNS_STATUS_ERR;
 			}
+			gateway_data = LDNS_XMALLOC(uint8_t, LDNS_IP4ADDRLEN);
+                        if(!gateway_data)
+                                return LDNS_STATUS_MEM_ERR;
 			memcpy(gateway_data, &data[offset], LDNS_IP4ADDRLEN);
 			gateway = ldns_rdf_new(LDNS_RDF_TYPE_A,
 					LDNS_IP4ADDRLEN , gateway_data);
@@ -1101,12 +1118,12 @@ ldns_rdf2buffer_str_ipseckey(ldns_buffer *output, const ldns_rdf *rdf)
                         }
 			break;
 		case 2:
-			gateway_data = LDNS_XMALLOC(uint8_t, LDNS_IP6ADDRLEN);
-                        if(!gateway_data)
-                                return LDNS_STATUS_MEM_ERR;
 			if (ldns_rdf_size(rdf) < offset + LDNS_IP6ADDRLEN) {
 				return LDNS_STATUS_ERR;
 			}
+			gateway_data = LDNS_XMALLOC(uint8_t, LDNS_IP6ADDRLEN);
+                        if(!gateway_data)
+                                return LDNS_STATUS_MEM_ERR;
 			memcpy(gateway_data, &data[offset], LDNS_IP6ADDRLEN);
 			offset += LDNS_IP6ADDRLEN;
 			gateway =
@@ -1129,6 +1146,7 @@ ldns_rdf2buffer_str_ipseckey(ldns_buffer *output, const ldns_rdf *rdf)
 	}
 
 	if (ldns_rdf_size(rdf) <= offset) {
+                ldns_rdf_deep_free(gateway);
 		return LDNS_STATUS_ERR;
 	}
 	public_key_size = ldns_rdf_size(rdf) - offset;
@@ -1281,6 +1299,94 @@ ldns_rdf2buffer_str_hip(ldns_buffer *output, const ldns_rdf *rdf)
 	return ldns_buffer_status(output);
 }
 
+/* implementation mimiced from ldns_rdf2buffer_str_ipseckey */
+ldns_status
+ldns_rdf2buffer_str_amtrelay(ldns_buffer *output, const ldns_rdf *rdf)
+{
+	/* wire format from
+	 * draft-ietf-mboned-driad-amt-discovery Section 4.2  
+	 */
+	uint8_t *data = ldns_rdf_data(rdf);
+	uint8_t precedence;
+	uint8_t discovery_optional;
+	uint8_t relay_type;
+
+	ldns_rdf *relay = NULL;
+	uint8_t *relay_data;
+
+	size_t offset = 0;
+	ldns_status status;
+
+	if (ldns_rdf_size(rdf) < 2) {
+		return LDNS_STATUS_WIRE_RDATA_ERR;
+	}
+	precedence = data[0];
+	discovery_optional = ((data[1] & 0x80) >> 7);
+	relay_type = data[1] & 0x7F;
+	offset = 2;
+
+	switch (relay_type) {
+		case 0:
+			/* no relay */
+			break;
+		case 1:
+			if (ldns_rdf_size(rdf) < offset + LDNS_IP4ADDRLEN) {
+				return LDNS_STATUS_ERR;
+			}
+			relay_data = LDNS_XMALLOC(uint8_t, LDNS_IP4ADDRLEN);
+                        if(!relay_data)
+                                return LDNS_STATUS_MEM_ERR;
+			memcpy(relay_data, &data[offset], LDNS_IP4ADDRLEN);
+			relay = ldns_rdf_new(LDNS_RDF_TYPE_A,
+					LDNS_IP4ADDRLEN , relay_data);
+			offset += LDNS_IP4ADDRLEN;
+                        if(!relay) {
+                                LDNS_FREE(relay_data);
+                                return LDNS_STATUS_MEM_ERR;
+                        }
+			break;
+		case 2:
+			if (ldns_rdf_size(rdf) < offset + LDNS_IP6ADDRLEN) {
+				return LDNS_STATUS_ERR;
+			}
+			relay_data = LDNS_XMALLOC(uint8_t, LDNS_IP6ADDRLEN);
+                        if(!relay_data)
+                                return LDNS_STATUS_MEM_ERR;
+			memcpy(relay_data, &data[offset], LDNS_IP6ADDRLEN);
+			offset += LDNS_IP6ADDRLEN;
+			relay =
+				ldns_rdf_new(LDNS_RDF_TYPE_AAAA,
+						LDNS_IP6ADDRLEN, relay_data);
+                        if(!relay) {
+                                LDNS_FREE(relay_data);
+                                return LDNS_STATUS_MEM_ERR;
+                        }
+			break;
+		case 3:
+			status = ldns_wire2dname(&relay, data,
+					ldns_rdf_size(rdf), &offset);
+                        if(status != LDNS_STATUS_OK)
+                                return status;
+			break;
+		default:
+			/* error? */
+			break;
+	}
+
+	if (ldns_rdf_size(rdf) != offset) {
+                ldns_rdf_deep_free(relay);
+		return LDNS_STATUS_ERR;
+	}
+	ldns_buffer_printf(output, "%u %u %u ",
+			precedence, discovery_optional, relay_type);
+	if (relay)
+	  	(void) ldns_rdf2buffer_str(output, relay);
+
+	ldns_rdf_deep_free(relay);
+	return ldns_buffer_status(output);
+}
+
+
 static ldns_status
 ldns_rdf2buffer_str_fmt(ldns_buffer *buffer,
 		const ldns_output_format* fmt, const ldns_rdf *rdf)
@@ -1395,6 +1501,9 @@ ldns_rdf2buffer_str_fmt(ldns_buffer *buffer,
 			break;
 		case LDNS_RDF_TYPE_LONG_STR:
 			res = ldns_rdf2buffer_str_long_str(buffer, rdf);
+			break;
+		case LDNS_RDF_TYPE_AMTRELAY:
+			res = ldns_rdf2buffer_str_amtrelay(buffer, rdf);
 			break;
 		}
 	} else {
@@ -1929,6 +2038,63 @@ ldns_gost_key2buffer_str(ldns_buffer *output, EVP_PKEY *p)
 }
 #endif
 
+#if defined(HAVE_SSL) && defined(USE_ED25519)
+static ldns_status
+ldns_ed25519_key2buffer_str(ldns_buffer *output, EVP_PKEY *p)
+{
+	unsigned char* pp = NULL;
+	int ret;
+	ldns_rdf *b64_bignum;
+	ldns_status status;
+
+	ldns_buffer_printf(output, "PrivateKey: ");
+
+	ret = i2d_PrivateKey(p, &pp);
+	/* 16 byte asn (302e020100300506032b657004220420) + 32byte key */
+	if(ret != 16 + 32) {
+		OPENSSL_free(pp);
+		return LDNS_STATUS_ERR;
+	}
+	b64_bignum = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_B64,
+		(size_t)ret-16, pp+16);
+	status = ldns_rdf2buffer_str(output, b64_bignum);
+
+	ldns_rdf_deep_free(b64_bignum);
+	OPENSSL_free(pp);
+	ldns_buffer_printf(output, "\n");
+	return status;
+}
+#endif
+
+#if defined(HAVE_SSL) && defined(USE_ED448)
+static ldns_status
+ldns_ed448_key2buffer_str(ldns_buffer *output, EVP_PKEY *p)
+{
+	unsigned char* pp = NULL;
+	int ret;
+	ldns_rdf *b64_bignum;
+	ldns_status status;
+
+	ldns_buffer_printf(output, "PrivateKey: ");
+
+	ret = i2d_PrivateKey(p, &pp);
+	/* some-ASN + 57byte key */
+	if(ret != 16 + 57) {
+		OPENSSL_free(pp);
+		return LDNS_STATUS_ERR;
+	}
+	b64_bignum = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_B64,
+		(size_t)ret-16, pp+16);
+	status = ldns_rdf2buffer_str(output, b64_bignum);
+
+	ldns_rdf_deep_free(b64_bignum);
+	OPENSSL_free(pp);
+	ldns_buffer_printf(output, "\n");
+	return status;
+}
+#endif
+
+#if defined(HAVE_SSL)
 /** print one b64 encoded bignum to a line in the keybuffer */
 static int
 ldns_print_bignum_b64_line(ldns_buffer* output, const char* label, const BIGNUM* num)
@@ -1958,6 +2124,7 @@ ldns_print_bignum_b64_line(ldns_buffer* output, const char* label, const BIGNUM*
 	LDNS_FREE(bignumbuf);
 	return 1;
 }
+#endif
 
 ldns_status
 ldns_key2buffer_str(ldns_buffer *output, const ldns_key *k)
@@ -2160,16 +2327,9 @@ ldns_key2buffer_str(ldns_buffer *output, const ldns_key *k)
 				ldns_buffer_printf(output, "Algorithm: %d (", ldns_key_algorithm(k));
                                 status=ldns_algorithm2buffer_str(output, (ldns_algorithm)ldns_key_algorithm(k));
 				ldns_buffer_printf(output, ")\n");
-				if(k->_key.key) {
-                                        EC_KEY* ec = EVP_PKEY_get1_EC_KEY(k->_key.key);
-                                        const BIGNUM* b = EC_KEY_get0_private_key(ec);
-					if(!ldns_print_bignum_b64_line(output, "PrivateKey", b))
-						goto error;
-                                        /* down reference count in EC_KEY
-                                         * its still assigned to the PKEY */
-                                        EC_KEY_free(ec);
-				}
-				ldns_buffer_printf(output, "\n");
+				if (status) break;
+				status = ldns_ed25519_key2buffer_str(output,
+					k->_key.key);
 				break;
 #endif /* USE_ED25519 */
 #ifdef USE_ED448
@@ -2178,16 +2338,9 @@ ldns_key2buffer_str(ldns_buffer *output, const ldns_key *k)
 				ldns_buffer_printf(output, "Algorithm: %d (", ldns_key_algorithm(k));
                                 status=ldns_algorithm2buffer_str(output, (ldns_algorithm)ldns_key_algorithm(k));
 				ldns_buffer_printf(output, ")\n");
-				if(k->_key.key) {
-                                        EC_KEY* ec = EVP_PKEY_get1_EC_KEY(k->_key.key);
-                                        const BIGNUM* b = EC_KEY_get0_private_key(ec);
-					if(!ldns_print_bignum_b64_line(output, "PrivateKey", b))
-						goto error;
-                                        /* down reference count in EC_KEY
-                                         * its still assigned to the PKEY */
-                                        EC_KEY_free(ec);
-				}
-				ldns_buffer_printf(output, "\n");
+				if (status) break;
+				status = ldns_ed448_key2buffer_str(output,
+					k->_key.key);
 				break;
 #endif /* USE_ED448 */
 			case LDNS_SIGN_HMACMD5:
