@@ -1,4 +1,4 @@
-/* $OpenBSD: tls.h,v 1.55 2018/11/29 14:24:23 tedu Exp $ */
+/* $OpenBSD: tls.h,v 1.58 2020/01/22 06:44:02 beck Exp $ */
 /*
  * Copyright (c) 2014 Joel Sing <jsing@openbsd.org>
  *
@@ -34,16 +34,19 @@ typedef SSIZE_T ssize_t;
 #include <stddef.h>
 #include <stdint.h>
 
-#define TLS_API	20180210
+#define TLS_API	20200120
 
 #define TLS_PROTOCOL_TLSv1_0	(1 << 1)
 #define TLS_PROTOCOL_TLSv1_1	(1 << 2)
 #define TLS_PROTOCOL_TLSv1_2	(1 << 3)
+#define TLS_PROTOCOL_TLSv1_3	(1 << 4)
+
 #define TLS_PROTOCOL_TLSv1 \
-	(TLS_PROTOCOL_TLSv1_0|TLS_PROTOCOL_TLSv1_1|TLS_PROTOCOL_TLSv1_2)
+	(TLS_PROTOCOL_TLSv1_0|TLS_PROTOCOL_TLSv1_1|\
+	 TLS_PROTOCOL_TLSv1_2|TLS_PROTOCOL_TLSv1_3)
 
 #define TLS_PROTOCOLS_ALL TLS_PROTOCOL_TLSv1
-#define TLS_PROTOCOLS_DEFAULT TLS_PROTOCOL_TLSv1_2
+#define TLS_PROTOCOLS_DEFAULT (TLS_PROTOCOL_TLSv1_2|TLS_PROTOCOL_TLSv1_3)
 
 #define TLS_WANT_POLLIN		-2
 #define TLS_WANT_POLLOUT	-3
@@ -197,6 +200,7 @@ const uint8_t *tls_peer_cert_chain_pem(struct tls *_ctx, size_t *_len);
 
 const char *tls_conn_alpn_selected(struct tls *_ctx);
 const char *tls_conn_cipher(struct tls *_ctx);
+int tls_conn_cipher_strength(struct tls *_ctx);
 const char *tls_conn_servername(struct tls *_ctx);
 int tls_conn_session_resumed(struct tls *_ctx);
 const char *tls_conn_version(struct tls *_ctx);

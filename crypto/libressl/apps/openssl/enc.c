@@ -1,4 +1,4 @@
-/* $OpenBSD: enc.c,v 1.20 2019/04/01 16:06:54 jsing Exp $ */
+/* $OpenBSD: enc.c,v 1.23 2019/07/25 11:42:12 bcook Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -124,7 +124,7 @@ enc_opt_cipher(int argc, char **argv, int *argsused)
 	return (1);
 }
 
-static struct option enc_options[] = {
+static const struct option enc_options[] = {
 	{
 		.name = "A",
 		.desc = "Process base64 data on one line (requires -a)",
@@ -632,7 +632,8 @@ enc_main(int argc, char **argv)
 				}
 				/* split and move data back to global buffer */
 				memcpy(key, tmpkeyiv, iklen);
-				memcpy(iv, tmpkeyiv+iklen, ivlen);
+				memcpy(iv, tmpkeyiv + iklen, ivlen);
+				explicit_bzero(tmpkeyiv, sizeof tmpkeyiv);
 			} else {
 				EVP_BytesToKey(enc_config.cipher, dgst, sptr,
 				    (unsigned char *)enc_config.keystr,

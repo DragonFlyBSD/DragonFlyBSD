@@ -1,4 +1,4 @@
-/* $OpenBSD: d1_pkt.c,v 1.66 2018/12/03 17:16:12 tb Exp $ */
+/* $OpenBSD: d1_pkt.c,v 1.73 2020/03/13 16:40:42 jsing Exp $ */
 /*
  * DTLS implementation written by Nagendra Modadugu
  * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.
@@ -186,7 +186,7 @@ static int have_handshake_fragment(SSL *s, int type, unsigned char *buf,
     int len, int peek);
 static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap);
 static void dtls1_record_bitmap_update(SSL *s, DTLS1_BITMAP *bitmap);
-static DTLS1_BITMAP *dtls1_get_bitmap(SSL *s, SSL3_RECORD *rr,
+static DTLS1_BITMAP *dtls1_get_bitmap(SSL *s, SSL3_RECORD_INTERNAL *rr,
     unsigned int *is_next_epoch);
 static int dtls1_buffer_record(SSL *s, record_pqueue *q,
     unsigned char *priority);
@@ -196,16 +196,16 @@ static int dtls1_process_record(SSL *s);
 static int
 dtls1_copy_record(SSL *s, pitem *item)
 {
-	DTLS1_RECORD_DATA *rdata;
+	DTLS1_RECORD_DATA_INTERNAL *rdata;
 
-	rdata = (DTLS1_RECORD_DATA *)item->data;
+	rdata = (DTLS1_RECORD_DATA_INTERNAL *)item->data;
 
 	free(S3I(s)->rbuf.buf);
 
 	s->internal->packet = rdata->packet;
 	s->internal->packet_length = rdata->packet_length;
-	memcpy(&(S3I(s)->rbuf), &(rdata->rbuf), sizeof(SSL3_BUFFER));
-	memcpy(&(S3I(s)->rrec), &(rdata->rrec), sizeof(SSL3_RECORD));
+	memcpy(&(S3I(s)->rbuf), &(rdata->rbuf), sizeof(SSL3_BUFFER_INTERNAL));
+	memcpy(&(S3I(s)->rrec), &(rdata->rrec), sizeof(SSL3_RECORD_INTERNAL));
 
 	/* Set proper sequence number for mac calculation */
 	memcpy(&(S3I(s)->read_sequence[2]), &(rdata->packet[5]), 6);
@@ -217,30 +217,29 @@ dtls1_copy_record(SSL *s, pitem *item)
 static int
 dtls1_buffer_record(SSL *s, record_pqueue *queue, unsigned char *priority)
 {
-	DTLS1_RECORD_DATA *rdata;
+	DTLS1_RECORD_DATA_INTERNAL *rdata;
 	pitem *item;
 
 	/* Limit the size of the queue to prevent DOS attacks */
 	if (pqueue_size(queue->q) >= 100)
 		return 0;
 
-	rdata = malloc(sizeof(DTLS1_RECORD_DATA));
+	rdata = malloc(sizeof(DTLS1_RECORD_DATA_INTERNAL));
 	item = pitem_new(priority, rdata);
 	if (rdata == NULL || item == NULL)
 		goto init_err;
 
 	rdata->packet = s->internal->packet;
 	rdata->packet_length = s->internal->packet_length;
-	memcpy(&(rdata->rbuf), &(S3I(s)->rbuf), sizeof(SSL3_BUFFER));
-	memcpy(&(rdata->rrec), &(S3I(s)->rrec), sizeof(SSL3_RECORD));
+	memcpy(&(rdata->rbuf), &(S3I(s)->rbuf), sizeof(SSL3_BUFFER_INTERNAL));
+	memcpy(&(rdata->rrec), &(S3I(s)->rrec), sizeof(SSL3_RECORD_INTERNAL));
 
 	item->data = rdata;
 
-
 	s->internal->packet = NULL;
 	s->internal->packet_length = 0;
-	memset(&(S3I(s)->rbuf), 0, sizeof(SSL3_BUFFER));
-	memset(&(S3I(s)->rrec), 0, sizeof(SSL3_RECORD));
+	memset(&(S3I(s)->rbuf), 0, sizeof(SSL3_BUFFER_INTERNAL));
+	memset(&(S3I(s)->rrec), 0, sizeof(SSL3_RECORD_INTERNAL));
 
 	if (!ssl3_setup_buffers(s))
 		goto err;
@@ -329,7 +328,7 @@ dtls1_process_record(SSL *s)
 	int i, al;
 	int enc_err;
 	SSL_SESSION *sess;
-	SSL3_RECORD *rr;
+	SSL3_RECORD_INTERNAL *rr;
 	unsigned int mac_size, orig_len;
 	unsigned char md[EVP_MAX_MD_SIZE];
 
@@ -361,18 +360,16 @@ dtls1_process_record(SSL *s)
 	/* decrypt in place in 'rr->input' */
 	rr->data = rr->input;
 
-	enc_err = s->method->internal->ssl3_enc->enc(s, 0);
 	/* enc_err is:
 	 *    0: (in non-constant time) if the record is publically invalid.
 	 *    1: if the padding is valid
 	 *    -1: if the padding is invalid */
-	if (enc_err == 0) {
+	if ((enc_err = tls1_enc(s, 0)) == 0) {
 		/* For DTLS we simply ignore bad packets. */
 		rr->length = 0;
 		s->internal->packet_length = 0;
 		goto err;
 	}
-
 
 	/* r->length is now the compressed data plus mac */
 	if ((sess != NULL) && (s->enc_read_ctx != NULL) &&
@@ -383,8 +380,7 @@ dtls1_process_record(SSL *s)
 		mac_size = EVP_MD_CTX_size(s->read_hash);
 		OPENSSL_assert(mac_size <= EVP_MAX_MD_SIZE);
 
-		/* kludge: *_cbc_remove_padding passes padding length in rr->type */
-		orig_len = rr->length + ((unsigned int)rr->type >> 8);
+		orig_len = rr->length + rr->padding_length;
 
 		/* orig_len is the length of the record before any padding was
 		 * removed. This is public information, as is the MAC in use,
@@ -469,7 +465,7 @@ err:
 int
 dtls1_get_record(SSL *s)
 {
-	SSL3_RECORD *rr;
+	SSL3_RECORD_INTERNAL *rr;
 	unsigned char *p = NULL;
 	DTLS1_BITMAP *bitmap;
 	unsigned int is_next_epoch;
@@ -640,7 +636,7 @@ dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek)
 {
 	int al, i, j, ret;
 	unsigned int n;
-	SSL3_RECORD *rr;
+	SSL3_RECORD_INTERNAL *rr;
 	void (*cb)(const SSL *ssl, int type2, int val) = NULL;
 
 	if (S3I(s)->rbuf.buf == NULL) /* Not initialized yet */
@@ -1178,15 +1174,17 @@ dtls1_write_bytes(SSL *s, int type, const void *buf, int len)
 int
 do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len)
 {
-	unsigned char *p, *pseq;
+	unsigned char *p;
 	int i, mac_size, clear = 0;
-	int prefix_len = 0;
-	SSL3_RECORD *wr;
-	SSL3_BUFFER *wb;
+	SSL3_RECORD_INTERNAL *wr;
+	SSL3_BUFFER_INTERNAL *wb;
 	SSL_SESSION *sess;
 	int bs;
+	CBB cbb;
 
-	/* first check if there is a SSL3_BUFFER still being written
+	memset(&cbb, 0, sizeof(cbb));
+
+	/* first check if there is a SSL3_BUFFER_INTERNAL still being written
 	 * out.  This will happen with non blocking IO */
 	if (S3I(s)->wbuf.left != 0) {
 		OPENSSL_assert(0); /* XDTLS:  want to see if we ever get here */
@@ -1222,20 +1220,22 @@ do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len)
 
 	/* DTLS implements explicit IV, so no need for empty fragments. */
 
-	p = wb->buf + prefix_len;
+	p = wb->buf;
 
-	/* write the header */
+	if (!CBB_init_fixed(&cbb, p, DTLS1_RT_HEADER_LENGTH))
+		goto err;
 
-	*(p++) = type&0xff;
-	wr->type = type;
+	/* Write the header. */
+	if (!CBB_add_u8(&cbb, type))
+		goto err;
+	if (!CBB_add_u16(&cbb, s->version))
+		goto err;
+	if (!CBB_add_u16(&cbb, D1I(s)->w_epoch))
+		goto err;
+	if (!CBB_add_bytes(&cbb, &(S3I(s)->write_sequence[2]), 6))
+		goto err;
 
-	*(p++) = (s->version >> 8);
-	*(p++) = s->version&0xff;
-
-	/* field where we are to write out packet epoch, seq num and len */
-	pseq = p;
-
-	p += 10;
+	p += DTLS1_RT_HEADER_LENGTH;
 
 	/* lets setup the record stuff. */
 
@@ -1248,6 +1248,7 @@ do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len)
 	else
 		bs = 0;
 
+	wr->type = type;
 	wr->data = p + bs;
 	/* make room for IV in case of CBC */
 	wr->length = (int)len;
@@ -1273,45 +1274,32 @@ do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len)
 	wr->input = p;
 	wr->data = p;
 
-
-	/* ssl3_enc can only have an error on read */
-	if (bs)	/* bs != 0 in case of CBC */
-	{
+	/* bs != 0 in case of CBC */
+	if (bs) {
 		arc4random_buf(p, bs);
 		/* master IV and last CBC residue stand for
 		 * the rest of randomness */
 		wr->length += bs;
 	}
 
-	s->method->internal->ssl3_enc->enc(s, 1);
+	/* tls1_enc can only have an error on read */
+	tls1_enc(s, 1);
 
-	/* record length after mac and block padding */
-/*	if (type == SSL3_RT_APPLICATION_DATA ||
-	(type == SSL3_RT_ALERT && ! SSL_in_init(s))) */
-
-	/* there's only one epoch between handshake and app data */
-
-	s2n(D1I(s)->w_epoch, pseq);
-
-	/* XDTLS: ?? */
-/*	else
-	s2n(D1I(s)->handshake_epoch, pseq);
-*/
-
-	memcpy(pseq, &(S3I(s)->write_sequence[2]), 6);
-	pseq += 6;
-	s2n(wr->length, pseq);
+	if (!CBB_add_u16(&cbb, wr->length))
+		goto err;
+	if (!CBB_finish(&cbb, NULL, NULL))
+		goto err;
 
 	/* we should now have
 	 * wr->data pointing to the encrypted data, which is
 	 * wr->length long */
-	wr->type=type; /* not needed but helps for debugging */
+	wr->type = type; /* not needed but helps for debugging */
 	wr->length += DTLS1_RT_HEADER_LENGTH;
 
 	tls1_record_sequence_increment(S3I(s)->write_sequence);
 
 	/* now let's set up wb */
-	wb->left = prefix_len + wr->length;
+	wb->left = wr->length;
 	wb->offset = 0;
 
 	/* memorize arguments so that ssl3_write_pending can detect bad write retries later */
@@ -1322,7 +1310,10 @@ do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len)
 
 	/* we now just need to write the buffer */
 	return ssl3_write_pending(s, type, buf, len);
-err:
+
+ err:
+	CBB_cleanup(&cbb);
+
 	return -1;
 }
 
@@ -1415,7 +1406,7 @@ dtls1_dispatch_alert(SSL *s)
 
 
 static DTLS1_BITMAP *
-dtls1_get_bitmap(SSL *s, SSL3_RECORD *rr, unsigned int *is_next_epoch)
+dtls1_get_bitmap(SSL *s, SSL3_RECORD_INTERNAL *rr, unsigned int *is_next_epoch)
 {
 
 	*is_next_epoch = 0;

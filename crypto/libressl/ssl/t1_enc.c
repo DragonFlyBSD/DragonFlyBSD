@@ -1,4 +1,4 @@
-/* $OpenBSD: t1_enc.c,v 1.117 2019/02/09 15:26:15 jsing Exp $ */
+/* $OpenBSD: t1_enc.c,v 1.122 2020/03/16 15:25:14 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -336,10 +336,14 @@ tls1_aead_ctx_init(SSL_AEAD_CTX **aead_ctx)
 
 static int
 tls1_change_cipher_state_aead(SSL *s, char is_read, const unsigned char *key,
-    unsigned key_len, const unsigned char *iv, unsigned iv_len)
+    unsigned int key_len, const unsigned char *iv, unsigned int iv_len)
 {
 	const EVP_AEAD *aead = S3I(s)->tmp.new_aead;
 	SSL_AEAD_CTX *aead_ctx;
+
+	/* XXX - Need to avoid clearing write state for DTLS. */
+	if (SSL_IS_DTLS(s))
+		return 0;
 
 	if (is_read) {
 		ssl_clear_cipher_read_state(s);
@@ -347,7 +351,6 @@ tls1_change_cipher_state_aead(SSL *s, char is_read, const unsigned char *key,
 			return 0;
 		aead_ctx = s->internal->aead_read_ctx;
 	} else {
-		/* XXX - Need to correctly handle DTLS. */
 		ssl_clear_cipher_write_state(s);
 		if (!tls1_aead_ctx_init(&s->internal->aead_write_ctx))
 			return 0;
@@ -668,10 +671,10 @@ tls1_enc(SSL *s, int send)
 	const SSL_AEAD_CTX *aead;
 	const EVP_CIPHER *enc;
 	EVP_CIPHER_CTX *ds;
-	SSL3_RECORD *rec;
+	SSL3_RECORD_INTERNAL *rec;
 	unsigned char *seq;
 	unsigned long l;
-	int bs, i, j, k, pad = 0, ret, mac_size = 0;
+	int bs, i, j, k, ret, mac_size = 0;
 
 	if (send) {
 		aead = s->internal->aead_write_ctx;
@@ -904,8 +907,6 @@ tls1_enc(SSL *s, int send)
 			mac_size = EVP_MD_CTX_size(s->read_hash);
 		if ((bs != 1) && !send)
 			ret = tls1_cbc_remove_padding(s, rec, bs, mac_size);
-		if (pad && !send)
-			rec->length -= pad;
 	}
 	return ret;
 }
@@ -933,7 +934,7 @@ tls1_final_finish_mac(SSL *s, const char *str, int str_len, unsigned char *out)
 int
 tls1_mac(SSL *ssl, unsigned char *md, int send)
 {
-	SSL3_RECORD *rec;
+	SSL3_RECORD_INTERNAL *rec;
 	unsigned char *seq;
 	EVP_MD_CTX *hash;
 	size_t md_size, orig_len;
@@ -973,9 +974,7 @@ tls1_mac(SSL *ssl, unsigned char *md, int send)
 	else
 		memcpy(header, seq, SSL3_SEQUENCE_SIZE);
 
-	/* kludge: tls1_cbc_remove_padding passes padding length in rec->type */
-	orig_len = rec->length + md_size + ((unsigned int)rec->type >> 8);
-	rec->type &= 0xff;
+	orig_len = rec->length + md_size + rec->padding_length;
 
 	header[8] = rec->type;
 	header[9] = (unsigned char)(ssl->version >> 8);

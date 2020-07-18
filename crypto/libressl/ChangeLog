@@ -28,6 +28,135 @@ history is also available from Git.
 
 LibreSSL Portable Release Notes:
 
+3.1.3 - Bug fix
+
+	* libcrypto may fail to build a valid certificate chain due to
+	  expired untrusted issuer certificates.
+
+3.1.2 - Bug fix
+
+	* A TLS client with peer verification disabled may crash when
+	  contacting a server that sends an empty certificate list.
+
+3.1.1 - Stable release
+
+	* Improved cipher suite handling to automatically include TLSv1.3
+	  cipher suites when they are not explicitly referred to in the
+	  cipher string.
+
+	* Improved handling of TLSv1.3 HelloRetryRequests, simplifying
+	  state transitions and ensuring that the legacy session identifer
+	  retains the same value across the handshake.
+
+	* Provided TLSv1.3 cipher suite aliases to match the names used
+	  in RFC 8446.
+
+	* Improved TLSv1.3 client key share handling to allow the use of
+	  any groups in our configured NID list.
+
+	* Fixed printing the serialNumber with X509_print_ex() fall back to
+	  the colon separated hex bytes in case greater than int value.
+
+	* Fix to disallow setting the AES-GCM IV length to zero.
+
+	* Added -groups option to openssl(1) s_server subcommand.
+
+	* Fix to show TLSv1.3 extension types with openssl(1) -tlsextdebug.
+
+	* Improved portable builds to support the use of static MSVC runtimes.
+
+	* Fixed portable builds to avoid exporting a sleep() symbol.
+
+3.1.0 - Development release
+
+	* Completed initial TLS 1.3 implementation with a completely new state
+	  machine and record layer. TLS 1.3 is now enabled by default for the
+	  client side, with the server side to be enabled in a future release.
+	  Note that the OpenSSL TLS 1.3 API is not yet visible/available.
+
+	* Many more code cleanups, fixes, and improvements to memory handling
+	  and protocol parsing.
+
+	* Added RSA-PSS and RSA-OAEP methods from OpenSSL 1.1.1.
+
+	* Ported Cryptographic Message Syntax (CMS) implementation from OpenSSL
+	  1.1.1 and enabled by default.
+
+	* Improved compatibility by backporting functionality and documentation
+	  from OpenSSL 1.1.1.
+
+	* Added many new additional crypto test vectors.
+
+	* Adjusted EVP_chacha20()'s behavior to match OpenSSL's semantics.
+
+	* Default CA bundle location is now configurable in portable builds.
+
+	* Added cms subcommand to openssl(1).
+
+	* Added -addext option to openssl(1) req subcommand.
+
+3.0.2 - Stable release
+
+	* Use a valid curve when constructing an EC_KEY that looks like X25519.
+	  The recent EC group cofactor change results in stricter validation,
+	  which causes the EC_GROUP_set_generator() call to fail.
+	  Issue reported and fix tested by rsadowski@
+
+	* Fixed a padding oracle in PKCS7_dataDecode and CMS_decrypt_set1_pkey.
+	  (Note that the CMS code is currently disabled)
+	  Port of Edlinger's Fix for CVE-2019-1563 from OpenSSL 1.1.1 (old license) 
+
+	* Avoid a path traversal bug in s_server on Windows when run with the -WWW
+	  or -HTTP options, due to incomplete path check logic.
+	  Issue reported and fix tested by Jobert Abma
+
+3.0.1 - Development release
+
+	* Ported Billy Brumley's fix for CVE-2019-1547 in OpenSSL 1.1.1. If a NULL
+	  or zero cofactor is passed to EC_GROUP_set_generator(), try to compute
+	  it using Hasse's bound. This works as long as the cofactor is small
+	  enough.
+
+	* Fixed a memory leak in error paths for eckey_type2param().
+
+	* Initial work on supporting Cryptographic Message Syntax (CMS) in
+	  libcrypto (not enabled).
+
+	* Various manual page improvements and additions.
+
+	* Added a CMake check for an existing uninstall target, facilitating
+	  embedding LibreSSL in larger CMake projects, from Matthew Albrecht.
+
+3.0.0 - Development release
+
+	* Completed the port of RSA_METHOD accessors from the OpenSSL 1.1 API.
+
+	* Documented undescribed options and removed unfunctional options
+	  description in openssl(1) manual.
+
+	* A plethora of small fixes due to regular oss-fuzz testing.
+
+	* Various side channels in DSA and ECDSA were addressed.  These are some of
+	  the many issues found in an extensive systematic analysis of bignum usage
+	  by Samuel Weiser, David Schrammel et al.
+
+	* Enabled openssl(1) speed subcommand on Windows platform.
+
+	* Enabled performance optimizations when building with Visual Studio on Windows.
+
+	* Fixed incorrect carry operation in 512 addition for Streebog.
+
+	* Fixed -modulus option with openssl(1) dsa subcommand.
+
+	* Fixed PVK format output issue with openssl(1) dsa and rsa subcommand.
+
+2.9.2 - Bug fixes
+
+	* Fixed portable builds with older versions of MacOS,
+	  Android targets < API 21, and Solaris 10
+
+	* Fixed SRTP profile advertisement for DTLS servers.
+
 2.9.1 - Stable release
 
 	* Added support for XChaCha20 and XChaCha20-Poly1305.

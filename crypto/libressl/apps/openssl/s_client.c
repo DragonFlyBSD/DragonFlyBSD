@@ -1,4 +1,4 @@
-/* $OpenBSD: s_client.c,v 1.37 2018/11/14 06:24:21 tb Exp $ */
+/* $OpenBSD: s_client.c,v 1.44 2020/04/26 01:59:27 inoguchi Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -222,12 +222,13 @@ sc_usage(void)
 	BIO_printf(bio_err, " -quiet        - no s_client output\n");
 	BIO_printf(bio_err, " -ign_eof      - ignore input eof (default when -quiet)\n");
 	BIO_printf(bio_err, " -no_ign_eof   - don't ignore input eof\n");
+	BIO_printf(bio_err, " -tls1_3       - just use TLSv1.3\n");
 	BIO_printf(bio_err, " -tls1_2       - just use TLSv1.2\n");
 	BIO_printf(bio_err, " -tls1_1       - just use TLSv1.1\n");
 	BIO_printf(bio_err, " -tls1         - just use TLSv1\n");
 	BIO_printf(bio_err, " -dtls1        - just use DTLSv1\n");
 	BIO_printf(bio_err, " -mtu          - set the link layer MTU\n");
-	BIO_printf(bio_err, " -no_tls1_2/-no_tls1_1/-no_tls1/-no_ssl3/-no_ssl2 - turn off that protocol\n");
+	BIO_printf(bio_err, " -no_tls1_3/-no_tls1_2/-no_tls1_1/-no_tls1 - turn off that protocol\n");
 	BIO_printf(bio_err, " -bugs         - Switch on all SSL implementation bug workarounds\n");
 	BIO_printf(bio_err, " -cipher       - preferred cipher to use, use the 'openssl ciphers'\n");
 	BIO_printf(bio_err, "                 command to see what is available\n");
@@ -244,7 +245,7 @@ sc_usage(void)
 	BIO_printf(bio_err, " -status           - request certificate status from server\n");
 	BIO_printf(bio_err, " -no_ticket        - disable use of RFC4507bis session tickets\n");
 	BIO_printf(bio_err, " -alpn arg         - enable ALPN extension, considering named protocols supported (comma-separated list)\n");
-	BIO_printf(bio_err, " -groups arg       - specify EC curve groups (colon-separated list)\n");
+	BIO_printf(bio_err, " -groups arg       - specify EC groups (colon-separated list)\n");
 #ifndef OPENSSL_NO_SRTP
 	BIO_printf(bio_err, " -use_srtp profiles - Offer SRTP key management with a colon-separated profile list\n");
 #endif
@@ -292,10 +293,11 @@ s_client_main(int argc, char **argv)
 {
 	unsigned int off = 0, clr = 0;
 	SSL *con = NULL;
-	int s, k, state = 0, af = AF_UNSPEC;
-	char *cbuf = NULL, *sbuf = NULL, *mbuf = NULL;
+	int s, k, p = 0, pending = 0, state = 0, af = AF_UNSPEC;
+	char *cbuf = NULL, *sbuf = NULL, *mbuf = NULL, *pbuf = NULL;
 	int cbuf_len, cbuf_off;
 	int sbuf_len, sbuf_off;
+	int pbuf_len, pbuf_off;
 	char *port = PORT_STR;
 	int full_log = 1;
 	char *host = SSL_HOST_NAME;
@@ -314,6 +316,7 @@ s_client_main(int argc, char **argv)
 	int ret = 1, in_init = 1, i, nbio_test = 0;
 	int starttls_proto = PROTO_OFF;
 	int prexit = 0;
+	int peekaboo = 0;
 	X509_VERIFY_PARAM *vpm = NULL;
 	int badarg = 0;
 	const SSL_METHOD *meth = NULL;
@@ -332,6 +335,7 @@ s_client_main(int argc, char **argv)
 	int peerlen = sizeof(peer);
 	int enable_timeouts = 0;
 	long socket_mtu = 0;
+	uint16_t min_version = 0, max_version = 0;
 
 	if (single_execution) {
 		if (pledge("stdio cpath wpath rpath inet dns tty", NULL) == -1) {
@@ -340,7 +344,7 @@ s_client_main(int argc, char **argv)
 		}
 	}
 
-	meth = SSLv23_client_method();
+	meth = TLS_client_method();
 
 	c_Pause = 0;
 	c_quiet = 0;
@@ -351,6 +355,7 @@ s_client_main(int argc, char **argv)
 
 	if (((cbuf = malloc(BUFSIZZ)) == NULL) ||
 	    ((sbuf = malloc(BUFSIZZ)) == NULL) ||
+	    ((pbuf = malloc(BUFSIZZ)) == NULL) ||
 	    ((mbuf = malloc(BUFSIZZ + 1)) == NULL)) {	/* NUL byte */
 		BIO_printf(bio_err, "out of memory\n");
 		goto end;
@@ -415,6 +420,8 @@ s_client_main(int argc, char **argv)
 			verify_return_error = 1;
 		else if (strcmp(*argv, "-prexit") == 0)
 			prexit = 1;
+		else if (strcmp(*argv, "-peekaboo") == 0)
+			peekaboo = 1;
 		else if (strcmp(*argv, "-crlf") == 0)
 			crlf = 1;
 		else if (strcmp(*argv, "-quiet") == 0) {
@@ -440,15 +447,21 @@ s_client_main(int argc, char **argv)
 			nbio_test = 1;
 		else if (strcmp(*argv, "-state") == 0)
 			state = 1;
-		else if (strcmp(*argv, "-tls1_2") == 0)
-			meth = TLSv1_2_client_method();
-		else if (strcmp(*argv, "-tls1_1") == 0)
-			meth = TLSv1_1_client_method();
-		else if (strcmp(*argv, "-tls1") == 0)
-			meth = TLSv1_client_method();
+		else if (strcmp(*argv, "-tls1_3") == 0) {
+			min_version = TLS1_3_VERSION;
+			max_version = TLS1_3_VERSION;
+		} else if (strcmp(*argv, "-tls1_2") == 0) {
+			min_version = TLS1_2_VERSION;
+			max_version = TLS1_2_VERSION;
+		} else if (strcmp(*argv, "-tls1_1") == 0) {
+			min_version = TLS1_1_VERSION;
+			max_version = TLS1_1_VERSION;
+		} else if (strcmp(*argv, "-tls1") == 0) {
+			min_version = TLS1_VERSION;
+			max_version = TLS1_VERSION;
 #ifndef OPENSSL_NO_DTLS1
-		else if (strcmp(*argv, "-dtls1") == 0) {
-			meth = DTLSv1_client_method();
+		} else if (strcmp(*argv, "-dtls1") == 0) {
+			meth = DTLS_client_method();
 			socket_type = SOCK_DGRAM;
 		} else if (strcmp(*argv, "-timeout") == 0)
 			enable_timeouts = 1;
@@ -484,7 +497,9 @@ s_client_main(int argc, char **argv)
 			if (--argc < 1)
 				goto bad;
 			CAfile = *(++argv);
-		} else if (strcmp(*argv, "-no_tls1_2") == 0)
+		} else if (strcmp(*argv, "-no_tls1_3") == 0)
+			off |= SSL_OP_NO_TLSv1_3;
+		else if (strcmp(*argv, "-no_tls1_2") == 0)
 			off |= SSL_OP_NO_TLSv1_2;
 		else if (strcmp(*argv, "-no_tls1_1") == 0)
 			off |= SSL_OP_NO_TLSv1_1;
@@ -545,17 +560,14 @@ s_client_main(int argc, char **argv)
 				starttls_proto = PROTO_XMPP;
 			else
 				goto bad;
-		}
-		else if (strcmp(*argv, "-4") == 0) {
+		} else if (strcmp(*argv, "-4") == 0) {
 			af = AF_INET;
 		} else if (strcmp(*argv, "-6") == 0) {
 			af = AF_INET6;
-		}
-		else if (strcmp(*argv, "-servername") == 0) {
+		} else if (strcmp(*argv, "-servername") == 0) {
 			if (--argc < 1)
 				goto bad;
 			servername = *(++argv);
-			/* meth=TLSv1_client_method(); */
 		}
 #ifndef OPENSSL_NO_SRTP
 		else if (strcmp(*argv, "-use_srtp") == 0) {
@@ -643,6 +655,11 @@ s_client_main(int argc, char **argv)
 	}
 	if (vpm)
 		SSL_CTX_set1_param(ctx, vpm);
+
+	if (!SSL_CTX_set_min_proto_version(ctx, min_version))
+		goto end;
+	if (!SSL_CTX_set_max_proto_version(ctx, max_version))
+		goto end;
 
 #ifndef OPENSSL_NO_SRTP
 	if (srtp_profiles != NULL)
@@ -759,7 +776,7 @@ re_start:
 	if (SSL_version(con) == DTLS1_VERSION) {
 
 		sbio = BIO_new_dgram(s, BIO_NOCLOSE);
-		if (getsockname(s, &peer, (void *) &peerlen) < 0) {
+		if (getsockname(s, &peer, (void *) &peerlen) == -1) {
 			BIO_printf(bio_err, "getsockname:errno=%d\n",
 			    errno);
 			shutdown(s, SHUT_RD);
@@ -825,6 +842,8 @@ re_start:
 	cbuf_off = 0;
 	sbuf_len = 0;
 	sbuf_off = 0;
+	pbuf_len = 0;
+	pbuf_off = 0;
 
 	/* This is an ugly hack that does a lot of assumptions */
 	/*
@@ -1013,7 +1032,7 @@ re_start:
 				tty_on,read_tty,write_tty,read_ssl,write_ssl);*/
 
 			i = poll(pfd, 3, ptimeout);
-			if (i < 0) {
+			if (i == -1) {
 				BIO_printf(bio_err, "bad select %d\n",
 				    errno);
 				goto shut;
@@ -1114,7 +1133,20 @@ re_start:
 				}
 			}
 #endif
-			k = SSL_read(con, sbuf, 1024 /* BUFSIZZ */ );
+			if (peekaboo) {
+				k = p = SSL_peek(con, pbuf, 1024 /* BUFSIZZ */ );
+				pending = SSL_pending(con);
+				if (SSL_get_error(con, p) == SSL_ERROR_NONE) {
+					if (p <= 0)
+						goto end;
+					pbuf_off = 0;
+					pbuf_len = p;
+
+					k = SSL_read(con, sbuf, p);
+				}
+			} else {
+				k = SSL_read(con, sbuf, 1024 /* BUFSIZZ */ );
+			}
 
 			switch (SSL_get_error(con, k)) {
 			case SSL_ERROR_NONE:
@@ -1122,7 +1154,27 @@ re_start:
 					goto end;
 				sbuf_off = 0;
 				sbuf_len = k;
-
+				if (peekaboo) {
+					if (p != pending) {
+						ret = -1;
+						BIO_printf(bio_err,
+						    "peeked %d but pending %d!\n", p, pending);
+						goto shut;
+					}
+					if (k < p) {
+						ret = -1;
+						BIO_printf(bio_err,
+						    "read less than peek!\n");
+						goto shut;
+					}
+					if (p > 0 && (memcmp(sbuf, pbuf, p) != 0)) {
+						ret = -1;
+						BIO_printf(bio_err,
+						    "peek of %d different from read of %d!\n",
+						    p, k);
+						goto shut;
+					}
+				}
 				read_ssl = 0;
 				write_tty = 1;
 				break;

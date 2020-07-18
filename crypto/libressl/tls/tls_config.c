@@ -1,4 +1,4 @@
-/* $OpenBSD: tls_config.c,v 1.56 2019/04/04 15:09:09 jsing Exp $ */
+/* $OpenBSD: tls_config.c,v 1.58 2020/01/20 08:39:21 jsing Exp $ */
 /*
  * Copyright (c) 2014 Joel Sing <jsing@openbsd.org>
  *
@@ -15,10 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef _MSC_VER
-#define NO_REDEF_POSIX_FUNCTIONS
-#endif
-
 #include <sys/stat.h>
 
 #include <ctype.h>
@@ -32,7 +28,7 @@
 
 #include "tls_internal.h"
 
-static const char default_ca_file[] = "/etc/ssl/cert.pem";
+static const char default_ca_file[] = TLS_DEFAULT_CA_FILE;
 
 const char *
 tls_default_ca_cert_file(void)
@@ -257,6 +253,8 @@ tls_config_parse_protocols(uint32_t *protocols, const char *protostr)
 			proto = TLS_PROTOCOL_TLSv1_1;
 		else if (strcasecmp(p, "tlsv1.2") == 0)
 			proto = TLS_PROTOCOL_TLSv1_2;
+		else if (strcasecmp(p, "tlsv1.3") == 0)
+			proto = TLS_PROTOCOL_TLSv1_3;
 
 		if (proto == 0) {
 			free(s);

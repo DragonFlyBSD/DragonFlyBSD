@@ -1,4 +1,4 @@
-/*	$OpenBSD: bs_cbb.c,v 1.20 2019/01/23 22:20:40 beck Exp $	*/
+/*	$OpenBSD: bs_cbb.c,v 1.22 2020/03/13 15:54:34 jsing Exp $	*/
 /*
  * Copyright (c) 2014, Google Inc.
  *
@@ -28,8 +28,7 @@ cbb_init(CBB *cbb, uint8_t *buf, size_t cap)
 {
 	struct cbb_buffer_st *base;
 
-	base = malloc(sizeof(struct cbb_buffer_st));
-	if (base == NULL)
+	if ((base = calloc(1, sizeof(struct cbb_buffer_st))) == NULL)
 		return 0;
 
 	base->buf = buf;
@@ -53,7 +52,7 @@ CBB_init(CBB *cbb, size_t initial_capacity)
 	if (initial_capacity == 0)
 		initial_capacity = CBB_INITIAL_SIZE;
 
-	if ((buf = malloc(initial_capacity)) == NULL)
+	if ((buf = calloc(1, initial_capacity)) == NULL)
 		return 0;
 
 	if (!cbb_init(cbb, buf, initial_capacity)) {
@@ -375,6 +374,7 @@ CBB_add_space(CBB *cbb, uint8_t **out_data, size_t len)
 	if (!CBB_flush(cbb) || !cbb_buffer_add(cbb->base, out_data, len))
 		return 0;
 
+	memset(*out_data, 0, len);
 	return 1;
 }
 
