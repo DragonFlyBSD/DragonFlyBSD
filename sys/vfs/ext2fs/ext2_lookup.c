@@ -154,7 +154,6 @@ ext2_readdir(struct vop_readdir_args *ap)
 	struct buf *bp;
 	struct inode *ip;
 	struct ext2fs_direct_2 *dp, *edp;
-	struct m_ext2fs *fs;
 	u_long *cookies;
 	struct dirent dstdp;
 	off_t offset, startoffset;
@@ -167,7 +166,6 @@ ext2_readdir(struct vop_readdir_args *ap)
 	if (uio->uio_offset < 0)
 		return (EINVAL);
 	ip = VTOI(vp);
-	fs = ip->i_e2fs;
 	if (ap->a_ncookies != NULL) {
 		if (uio->uio_resid < 0)
 			ncookies = 0;
@@ -191,22 +189,16 @@ ext2_readdir(struct vop_readdir_args *ap)
 	error = 0;
 	while (error == 0 && uio->uio_resid > 0 &&
 	    uio->uio_offset < ip->i_size) {
-		/* XXX use bp->b_loffset ? */
-		off_t b_offset = lblktodoff(fs, lblkno(fs, uio->uio_offset));
-		if (uio->uio_offset < b_offset) {
-			error = EINVAL;
-			break;
-		}
 		error = ext2_blkatoff(vp, uio->uio_offset, NULL, &bp);
 		if (error)
 			break;
-		if (b_offset + bp->b_bcount > ip->i_size)
-			readcnt = ip->i_size - b_offset;
+		if (bp->b_loffset + bp->b_bcount > ip->i_size)
+			readcnt = ip->i_size - bp->b_loffset;
 		else
 			readcnt = bp->b_bcount;
-		skipcnt = (size_t)(uio->uio_offset - b_offset) &
+		skipcnt = (size_t)(uio->uio_offset - bp->b_loffset) &
 		    ~(size_t)(DIRBLKSIZ - 1);
-		offset = b_offset + skipcnt;
+		offset = bp->b_loffset + skipcnt;
 		dp = (struct ext2fs_direct_2 *)&bp->b_data[skipcnt];
 		edp = (struct ext2fs_direct_2 *)&bp->b_data[readcnt];
 		while (error == 0 && uio->uio_resid > 0 && dp < edp) {
