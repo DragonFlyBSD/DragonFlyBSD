@@ -913,7 +913,7 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 {
 	struct inode *dp;
 	struct ext2fs_direct_2 newdir;
-	int DIRBLKSIZ = ip->i_e2fs->e2fs_bsize;
+	//int DIRBLKSIZ = ip->i_e2fs->e2fs_bsize;
 	int error;
 
 	dp = VTOI(dvp);
@@ -935,7 +935,8 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 		}
 		return (error);
 	}
-
+	/* XXX */
+#if 0
 	if (EXT2_HAS_COMPAT_FEATURE(ip->i_e2fs, EXT2F_COMPAT_DIRHASHINDEX) &&
 	    !ext2_htree_has_idx(dp)) {
 		if ((dp->i_size / DIRBLKSIZ) == 1 &&
@@ -947,7 +948,7 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 			return ext2_htree_create_index(dvp, cnp, &newdir);
 		}
 	}
-
+#endif
 	/*
 	 * If dp->i_count is 0, then namei could find no
 	 * space in the directory. Here, dp->i_offset will
