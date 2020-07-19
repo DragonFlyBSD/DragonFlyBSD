@@ -121,7 +121,7 @@ static int	ext2_check_sb_compat(struct ext2fs *es, struct cdev *dev,
 static int	ext2_compute_sb_data(struct vnode * devvp,
 		    struct ext2fs * es, struct m_ext2fs * fs);
 
-int ext2fs_inode_hash_lock;
+static int ext2fs_inode_hash_lock;
 
 /*
  * VFS Operations.
@@ -1253,28 +1253,15 @@ ext2_sync(struct mount *mp, int waitfor)
 	return (scaninfo.allerror);
 }
 
-/*
- * Look up an EXT2FS dinode number to find its incore vnode, otherwise read it
- * in from disk.  If it is in core, wait for the lock bit to clear, then
- * return the inode locked.  Detection and handling of mount points must be
- * done by the calling routine.
- */
-static int
-ext2_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
+int
+ext2_alloc_vnode(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
-	struct m_ext2fs *fs;
-	struct inode *ip;
 	struct ext2mount *ump;
-	struct buf *bp;
 	struct vnode *vp;
-	unsigned int i, used_blocks;
+	struct inode *ip;
 	int error;
 
 	ump = VFSTOEXT2(mp);
-restart:
-	if ((*vpp = ext2_ihashget(ump->um_dev, ino)) != NULL)
-		return (0);
-
 	/*
 	 * Lock out the creation of new entries in the FFS hash table in
 	 * case getnewvnode() or MALLOC() blocks, otherwise a duplicate
@@ -1285,7 +1272,7 @@ restart:
 			ext2fs_inode_hash_lock = -1;
 			tsleep(&ext2fs_inode_hash_lock, 0, "e2vget", 0);
 		}
-		goto restart;
+		return (-1);
 	}
 	ext2fs_inode_hash_lock = 1;
 
@@ -1307,11 +1294,11 @@ restart:
 	//lockmgr(vp->v_vnlock, LK_EXCLUSIVE, NULL);
 	vp->v_data = ip;
 	ip->i_vnode = vp;
-	ip->i_e2fs = fs = ump->um_e2fs;
+	ip->i_e2fs = ump->um_e2fs;
 	ip->i_dev = ump->um_dev;
 	ip->i_ump = ump;
 	ip->i_number = ino;
-	ip->i_block_group = ino_to_cg(fs, ino);
+	ip->i_block_group = ino_to_cg(ip->i_e2fs, ino);
 	ip->i_next_alloc_block = 0;
 	ip->i_next_alloc_goal = 0;
 
@@ -1328,12 +1315,42 @@ restart:
 		vp->v_type = VBAD;
 		vx_put(vp);
 		free(ip, M_EXT2NODE);
-		goto restart;
+		return (-1);
 	}
 
 	if (ext2fs_inode_hash_lock < 0)
 		wakeup(&ext2fs_inode_hash_lock);
 	ext2fs_inode_hash_lock = 0;
+	*vpp = vp;
+
+	return (0);
+}
+
+/*
+ * Look up an EXT2FS dinode number to find its incore vnode, otherwise read it
+ * in from disk.  If it is in core, wait for the lock bit to clear, then
+ * return the inode locked.  Detection and handling of mount points must be
+ * done by the calling routine.
+ */
+static int
+ext2_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
+{
+	struct m_ext2fs *fs;
+	struct inode *ip;
+	struct ext2mount *ump;
+	struct buf *bp;
+	struct vnode *vp;
+	unsigned int i, used_blocks;
+	int error;
+
+	ump = VFSTOEXT2(mp);
+restart:
+	if ((*vpp = ext2_ihashget(ump->um_dev, ino)) != NULL)
+		return (0);
+	if (ext2_alloc_vnode(mp, ino, &vp) == -1)
+		goto restart;
+	ip = VTOI(vp);
+	fs = ip->i_e2fs;
 
 	/* Read in the disk contents for the inode, copy into the inode. */
 	if ((error = ext2_bread(ump->um_devvp, fsbtodoff(fs, ino_to_fsba(fs, ino)),

@@ -135,6 +135,7 @@ int	ext2_ihashins(struct inode *);
 void	ext2_ihashrem(struct inode *);
 void	ext2_ihashinit(void);
 void	ext2_ihashuninit(void);
+int	ext2_alloc_vnode(struct mount *, ino_t, struct vnode **);
 
 void	ext2_free(void *, struct malloc_type *, const char *);
 int	ext2_bread(struct vnode *, off_t, int, struct buf **);
@@ -156,7 +157,5 @@ void	ext2_bqrelse(struct buf *);
 extern struct vop_ops ext2_vnodeops;
 extern struct vop_ops ext2_specops;
 extern struct vop_ops ext2_fifoops;
-
-extern int ext2fs_inode_hash_lock;
 
 #endif	/* !_FS_EXT2FS_EXT2_EXTERN_H_ */

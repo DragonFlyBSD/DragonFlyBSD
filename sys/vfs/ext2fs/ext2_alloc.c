@@ -424,66 +424,9 @@ restart:
 		printf("ext2_valloc: vp %p exists for inode %lu\n", vp, ino);
 		return (EEXIST);
 	}
-
-	/*
-	 * Lock out the creation of new entries in the FFS hash table in
-	 * case getnewvnode() or MALLOC() blocks, otherwise a duplicate
-	 * may occur!
-	 */
-	if (ext2fs_inode_hash_lock) {
-		while (ext2fs_inode_hash_lock) {
-			ext2fs_inode_hash_lock = -1;
-			tsleep(&ext2fs_inode_hash_lock, 0, "e2vget", 0);
-		}
+	if (ext2_alloc_vnode(ump->um_mountp, ino, &vp) == -1)
 		goto restart;
-	}
-	ext2fs_inode_hash_lock = 1;
-
-	ip = malloc(sizeof(struct inode), M_EXT2NODE, M_WAITOK | M_ZERO);
-	if (ip == NULL) {
-		return (ENOMEM);
-	}
-
-	/* Allocate a new vnode/inode. */
-	if ((error = getnewvnode(VT_EXT2FS, ump->um_mountp, &vp, VLKTIMEOUT,
-	    LK_CANRECURSE)) != 0) {
-		if (ext2fs_inode_hash_lock < 0)
-			wakeup(&ext2fs_inode_hash_lock);
-		ext2fs_inode_hash_lock = 0;
-		*vpp = NULL;
-		free(ip, M_EXT2NODE);
-		return (error);
-	}
-	//lockmgr(vp->v_vnlock, LK_EXCLUSIVE, NULL);
-	vp->v_data = ip;
-	ip->i_vnode = vp;
-	ip->i_e2fs = fs = ump->um_e2fs;
-	ip->i_dev = ump->um_dev;
-	ip->i_ump = ump;
-	ip->i_number = ino;
-	ip->i_block_group = ino_to_cg(fs, ino);
-	ip->i_next_alloc_block = 0;
-	ip->i_next_alloc_goal = 0;
-
-	/*
-	 * Put it onto its hash chain.  Since our vnode is locked, other
-	 * requests for this inode will block if they arrive while we are
-	 * sleeping waiting for old data structures to be purged or for the
-	 * contents of the disk portion of this inode to be read.
-	 */
-	if (ext2_ihashins(ip)) {
-		printf("ext2_valloc: ihashins collision, retrying inode %ld\n",
-		    (long)ip->i_number);
-		*vpp = NULL;
-		vp->v_type = VBAD;
-		vx_put(vp);
-		free(ip, M_EXT2NODE);
-		goto restart;
-	}
-
-	if (ext2fs_inode_hash_lock < 0)
-		wakeup(&ext2fs_inode_hash_lock);
-	ext2fs_inode_hash_lock = 0;
+	ip = VTOI(vp);
 
 	if ((error = ext2_vinit(vp->v_mount, &vp)) != 0) {
 		*vpp = NULL;
