@@ -1267,14 +1267,12 @@ ext2_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	struct ext2mount *ump;
 	struct buf *bp;
 	struct vnode *vp;
-	cdev_t dev;
 	unsigned int i, used_blocks;
 	int error;
 
 	ump = VFSTOEXT2(mp);
-	dev = ump->um_dev;
 restart:
-	if ((*vpp = ext2_ihashget(dev, ino)) != NULL)
+	if ((*vpp = ext2_ihashget(ump->um_dev, ino)) != NULL)
 		return (0);
 
 	/*
@@ -1291,16 +1289,6 @@ restart:
 	}
 	ext2fs_inode_hash_lock = 1;
 
-	/*
-	 * If this MALLOC() is performed after the getnewvnode()
-	 * it might block, leaving a vnode with a NULL v_data to be
-	 * found by ext2_sync() if a sync happens to fire right then,
-	 * which will cause a panic because ext2_sync() blindly
-	 * dereferences vp->v_data (as well it should).
-	 *
-	 * XXX this may no longer be true since getnewvnode returns a
-	 * VX locked vnode now.
-	 */
 	ip = malloc(sizeof(struct inode), M_EXT2NODE, M_WAITOK | M_ZERO);
 	if (ip == NULL) {
 		return (ENOMEM);
@@ -1316,12 +1304,16 @@ restart:
 		free(ip, M_EXT2NODE);
 		return (error);
 	}
+	//lockmgr(vp->v_vnlock, LK_EXCLUSIVE, NULL);
 	vp->v_data = ip;
 	ip->i_vnode = vp;
 	ip->i_e2fs = fs = ump->um_e2fs;
-	ip->i_dev = dev;
+	ip->i_dev = ump->um_dev;
 	ip->i_ump = ump;
 	ip->i_number = ino;
+	ip->i_block_group = ino_to_cg(fs, ino);
+	ip->i_next_alloc_block = 0;
+	ip->i_next_alloc_goal = 0;
 
 	/*
 	 * Put it onto its hash chain.  Since our vnode is locked, other
@@ -1330,7 +1322,7 @@ restart:
 	 * contents of the disk portion of this inode to be read.
 	 */
 	if (ext2_ihashins(ip)) {
-		printf("debug: ext2fs ihashins collision, retrying inode %ld\n",
+		printf("ext2_valloc: ihashins collision, retrying inode %ld\n",
 		    (long)ip->i_number);
 		*vpp = NULL;
 		vp->v_type = VBAD;
@@ -1367,9 +1359,6 @@ restart:
 		*vpp = NULL;
 		return (error);
 	}
-	ip->i_block_group = ino_to_cg(fs, ino);
-	ip->i_next_alloc_block = 0;
-	ip->i_next_alloc_goal = 0;
 
 	/*
 	 * Now we want to make sure that block pointers for unused

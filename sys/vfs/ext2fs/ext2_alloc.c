@@ -471,7 +471,7 @@ restart:
 	 * sleeping waiting for old data structures to be purged or for the
 	 * contents of the disk portion of this inode to be read.
 	 */
-	if ((error = ext2_ihashins(ip)) != 0) {
+	if (ext2_ihashins(ip)) {
 		printf("ext2_valloc: ihashins collision, retrying inode %ld\n",
 		    (long)ip->i_number);
 		*vpp = NULL;
