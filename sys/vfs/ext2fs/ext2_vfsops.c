@@ -1410,7 +1410,6 @@ restart:
 	/*
 	 * Finish inode initialization now that aliasing has been resolved.
 	 */
-	ip->i_devvp = ump->um_devvp;
 	vref(ip->i_devvp);
 	/*
 	 * Set up a generation number for this inode if it does not
