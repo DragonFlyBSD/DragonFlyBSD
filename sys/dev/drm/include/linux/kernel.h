@@ -167,13 +167,13 @@ might_sleep(void)
 
 #define snprintf	ksnprintf
 
-static inline int
+static inline int __printf(3, 0)
 vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
 	return kvsnprintf(buf, size, fmt, args);
 }
 
-static inline int
+static inline int __printf(3, 0)
 vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
 	int ret;
@@ -188,7 +188,7 @@ vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
 	return size - 1;
 }
 
-static inline int
+static inline int __printf(3, 4)
 scnprintf(char *buf, size_t size, const char *fmt, ...)
 {
 	va_list args;
