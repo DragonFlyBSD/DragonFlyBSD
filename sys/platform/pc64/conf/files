@@ -222,7 +222,7 @@ platform/pc64/x86_64/spinlock.s		standard
 
 vmx_genassym.o				standard					\
 	dependency 	" $S/platform/$P/vmm/vmx_genassym.c ${FORWARD_HEADERS_COOKIE}"	\
-	compile-with	"${CC} ${CFLAGS:N-fno-common:N-flto} ${WERROR} -c ${.IMPSRC}"	\
+	compile-with	"${CC} ${CFLAGS:N-fno-common:N-flto} -fcommon ${WERROR} -c ${.IMPSRC}" \
 	no-obj no-implicit-rule								\
 	clean		"vmx_genassym.o"
 vmx_assym.h				standard					\
