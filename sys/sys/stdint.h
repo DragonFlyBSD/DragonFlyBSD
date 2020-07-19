@@ -48,7 +48,7 @@ typedef	__boolean_t	boolean_t;		/* kernel only */
 #define	__bool_true_false_are_defined	1
 #define	false	0
 #define	true	1
-#if __STDC_VERSION__ < 199901L && __GNUC__ < 3
+#if __STDC_VERSION__ < 199901L && !__GNUC_PREREQ__(3, 0)
 typedef	int	_Bool;
 #endif
 typedef	_Bool	bool;
