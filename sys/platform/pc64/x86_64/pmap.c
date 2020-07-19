@@ -1547,10 +1547,12 @@ pmap_init2(void)
 	 * so the default is off for AMD.
 	 */
 	if (meltdown_mitigation < 0) {
-		if (cpu_vendor_id == CPU_VENDOR_INTEL)
-			meltdown_mitigation = 1;
-		else
+		if (cpu_vendor_id == CPU_VENDOR_INTEL) {
+			if ((cpu_ia32_arch_caps & IA32_ARCH_CAP_RDCL_NO) == 0)
+				meltdown_mitigation = 1;
+		} else {
 			meltdown_mitigation = 0;
+		}
 	}
 	if (meltdown_mitigation) {
 		kprintf("machdep.meltdown_mitigation enabled to "

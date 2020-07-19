@@ -274,6 +274,21 @@ printcpuinfo(void)
 				, cpu_feature2);
 			}
 
+			if (cpu_ia32_arch_caps != 0) {
+				kprintf("\n  IA32_ARCH_CAPS=0x%pb%i",
+				       "\020"
+				       "\001RDCL_NO"
+				       "\002IBRS_ALL"
+				       "\003RSBA"
+				       "\004SKIP_L1DFL_VME"
+				       "\005SSB_NO"
+				       "\006MDS_NO"
+				       "\010TSX_CTRL"
+				       "\011TAA_NO",
+				       (u_int)cpu_ia32_arch_caps
+				);
+			}
+
 			/*
 			 * AMD64 Architecture Programmer's Manual Volume 3:
 			 * General-Purpose and System Instructions
@@ -360,33 +375,107 @@ printcpuinfo(void)
 			}
 
 			if (cpu_stdext_feature != 0) {
-				kprintf("\n  Structured Extended Features=0x%pb%i",
-				       "\020"
-				       /* RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE */
-				       "\001GSFSBASE"
-				       "\002TSCADJ"
-				       /* Bit Manipulation Instructions */
-				       "\004BMI1"
-				       /* Hardware Lock Elision */
-				       "\005HLE"
-				       /* Advanced Vector Instructions 2 */
-				       "\006AVX2"
-				       /* Supervisor Mode Execution Prot. */
-				       "\010SMEP"
-				       /* Bit Manipulation Instructions */
-				       "\011BMI2"
-				       "\012ENHMOVSB"
+				kprintf("\n  Structured Extended "
+					"Features=0x%pb%i",
+				        "\020"
+				        /*RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE*/
+				        "\001GSFSBASE"
+				        "\002TSCADJ"
+				        /* Bit Manipulation Instructions */
+				        "\004BMI1"
+				        /* Hardware Lock Elision */
+				        "\005HLE"
+				        /* Advanced Vector Instructions 2 */
+				        "\006AVX2"
+				        /* Supervisor Mode Execution Prot. */
+				        "\010SMEP"
+				        /* Bit Manipulation Instructions */
+				        "\011BMI2"
+				        "\012ENHMOVSB"
 				       /* Invalidate Processor Context ID */
-				       "\013INVPCID"
-				       /* Restricted Transactional Memory */
-				       "\014RTM"
-				       /* Enhanced NRBG */
-				       "\023RDSEED"
-				       /* ADCX + ADOX */
-				       "\024ADX"
-				       /* Supervisor Mode Access Prevention */
-				       "\025SMAP"
-				       , cpu_stdext_feature);
+				        "\013INVPCID"
+				        /* Restricted Transactional Memory */
+				        "\014RTM"
+				        "\015PQM"
+				        "\016NFPUSG"
+				        /* Intel Memory Protection Extensions */
+				        "\017MPX"
+				        "\020PQE"
+				        /* AVX512 Foundation */
+				        "\021AVX512F"
+				        "\022AVX512DQ"
+				        /* Enhanced NRBG */
+				        "\023RDSEED"
+				        /* ADCX + ADOX */
+				        "\024ADX"
+				        /* Supervisor Mode Access Prevention */
+				        "\025SMAP"
+				        "\026AVX512IFMA"
+				        /* Formerly PCOMMIT */
+				        "\027<b22>"
+				        "\030CLFLUSHOPT"
+				        "\031CLWB"
+				        "\032PROCTRACE"
+				        "\033AVX512PF"
+				        "\034AVX512ER"
+				        "\035AVX512CD"
+				        "\036SHA"
+				        "\037AVX512BW"
+				        "\040AVX512VL",
+				        cpu_stdext_feature
+				);
+			}
+
+			if (cpu_stdext_feature2 != 0) {
+				kprintf("\n  Structured Extended "
+					"Features2=0x%pb%i",
+				        "\020"
+				        "\001PREFETCHWT1"
+				        "\002AVX512VBMI"
+				        "\003UMIP"
+				        "\004PKU"
+				        "\005OSPKE"
+				        "\006WAITPKG"
+				        "\007AVX512VBMI2"
+				        "\011GFNI"
+				        "\012VAES"
+				        "\013VPCLMULQDQ"
+				        "\014AVX512VNNI"
+				        "\015AVX512BITALG"
+				        "\016TME"
+				        "\017AVX512VPOPCNTDQ"
+				        "\021LA57"
+				        "\027RDPID"
+				        "\032CLDEMOTE"
+				        "\034MOVDIRI"
+				        "\035MOVDIR64B"
+				        "\036ENQCMD"
+				        "\037SGXLC",
+				        cpu_stdext_feature2
+			       );
+			}
+
+			if (cpu_stdext_feature3 != 0) {
+				kprintf("\n  Structured Extended "
+					"Features3=0x%pb%i",
+				        "\020"
+				        "\003AVX512_4VNNIW"
+				        "\004AVX512_4FMAPS"
+				        "\005FSRM"
+				        "\011AVX512VP2INTERSECT"
+				        "\012MCUOPT"
+				        "\013MD_CLEAR"
+				        "\016TSXFA"
+				        "\023PCONFIG"
+				        "\025IBT"
+				        "\033IBPB"
+				        "\034STIBP"
+				        "\035L1DFL"
+				        "\036ARCH_CAP"
+				        "\037CORE_CAP"
+				        "\040SSBD",
+				        cpu_stdext_feature3
+			       );
 			}
 
 			if (cpu_thermal_feature != 0) {
@@ -585,6 +674,11 @@ identify_cpu(void)
 			cpu_stdext_disable = 0;
 		TUNABLE_INT_FETCH("hw.cpu_stdext_disable", &cpu_stdext_disable);
 		cpu_stdext_feature &= ~cpu_stdext_disable;
+		cpu_stdext_feature2 = regs[2];
+		cpu_stdext_feature3 = regs[3];
+
+		if (cpu_stdext_feature3 & CPUID_SEF_ARCH_CAP)
+			cpu_ia32_arch_caps = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
 	}
 
 	if (cpu_vendor_id == CPU_VENDOR_INTEL ||
