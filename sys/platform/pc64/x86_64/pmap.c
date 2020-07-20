@@ -1548,8 +1548,9 @@ pmap_init2(void)
 	 */
 	if (meltdown_mitigation < 0) {
 		if (cpu_vendor_id == CPU_VENDOR_INTEL) {
-			if ((cpu_ia32_arch_caps & IA32_ARCH_CAP_RDCL_NO) == 0)
-				meltdown_mitigation = 1;
+			meltdown_mitigation = 1;
+			if (cpu_ia32_arch_caps & IA32_ARCH_CAP_RDCL_NO)
+				meltdown_mitigation = 0;
 		} else {
 			meltdown_mitigation = 0;
 		}
