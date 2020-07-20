@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl.h,v 1.166 2019/04/04 15:03:21 jsing Exp $ */
+/* $OpenBSD: ssl.h,v 1.171 2020/03/16 15:25:13 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -403,7 +403,7 @@ struct ssl_method_internal_st;
 struct ssl_method_st {
 	int (*ssl_dispatch_alert)(SSL *s);
 	int (*num_ciphers)(void);
-	const SSL_CIPHER *(*get_cipher)(unsigned ncipher);
+	const SSL_CIPHER *(*get_cipher)(unsigned int ncipher);
 	const SSL_CIPHER *(*get_cipher_by_char)(const unsigned char *ptr);
 	int (*put_cipher_by_char)(const SSL_CIPHER *cipher, unsigned char *ptr);
 
@@ -766,7 +766,7 @@ int SSL_select_next_proto(unsigned char **out, unsigned char *outlen,
     const unsigned char *in, unsigned int inlen, const unsigned char *client,
     unsigned int client_len);
 void SSL_get0_next_proto_negotiated(const SSL *s, const unsigned char **data,
-    unsigned *len);
+    unsigned int *len);
 
 #define OPENSSL_NPN_UNSUPPORTED	0
 #define OPENSSL_NPN_NEGOTIATED	1
@@ -1219,12 +1219,14 @@ int SSL_set_max_proto_version(SSL *ssl, uint16_t version);
 #define SSL_set1_curves_list SSL_set1_groups_list
 #endif
 
-#define SSL_CTX_add_extra_chain_cert(ctx,x509) \
-	SSL_CTX_ctrl(ctx,SSL_CTRL_EXTRA_CHAIN_CERT,0,(char *)x509)
-#define SSL_CTX_get_extra_chain_certs(ctx,px509) \
-	SSL_CTX_ctrl(ctx,SSL_CTRL_GET_EXTRA_CHAIN_CERTS,0,px509)
+#define SSL_CTX_add_extra_chain_cert(ctx, x509) \
+	SSL_CTX_ctrl(ctx, SSL_CTRL_EXTRA_CHAIN_CERT, 0, (char *)x509)
+#define SSL_CTX_get_extra_chain_certs(ctx, px509) \
+	SSL_CTX_ctrl(ctx, SSL_CTRL_GET_EXTRA_CHAIN_CERTS, 0, px509)
+#define SSL_CTX_get_extra_chain_certs_only(ctx, px509) \
+	SSL_CTX_ctrl(ctx, SSL_CTRL_GET_EXTRA_CHAIN_CERTS, 1, px509)
 #define SSL_CTX_clear_extra_chain_certs(ctx) \
-	SSL_CTX_ctrl(ctx,SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS,0,NULL)
+	SSL_CTX_ctrl(ctx, SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS, 0, NULL)
 
 #define SSL_get_server_tmp_key(s, pk) \
 	SSL_ctrl(s,SSL_CTRL_GET_SERVER_TMP_KEY,0,pk)
@@ -2160,6 +2162,7 @@ void ERR_load_SSL_strings(void);
 #define SSL_R_X509_LIB					 268
 #define SSL_R_X509_VERIFICATION_SETUP_PROBLEMS		 269
 #define SSL_R_PEER_BEHAVING_BADLY			 666
+#define SSL_R_UNKNOWN					 999
 
 /*
  * OpenSSL compatible OPENSSL_INIT options

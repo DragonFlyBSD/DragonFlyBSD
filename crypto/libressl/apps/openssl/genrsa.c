@@ -1,4 +1,4 @@
-/* $OpenBSD: genrsa.c,v 1.12 2018/12/09 19:30:34 tobias Exp $ */
+/* $OpenBSD: genrsa.c,v 1.17 2019/07/24 14:23:25 inoguchi Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -85,17 +85,197 @@
 
 static int genrsa_cb(int p, int n, BN_GENCB * cb);
 
+static struct {
+	const EVP_CIPHER *enc;
+	unsigned long f4;
+	char *outfile;
+	char *passargout;
+} genrsa_config;
+
+static int
+set_public_exponent(int argc, char **argv, int *argsused)
+{
+	char *option = argv[0];
+
+	if (strcmp(option, "-3") == 0)
+		genrsa_config.f4 = 3;
+	else if (strcmp(option, "-f4") == 0 || strcmp(option, "-F4") == 0)
+		genrsa_config.f4 = RSA_F4;
+	else
+		return (1);
+
+	*argsused = 1;
+	return (0);
+}
+
+static const EVP_CIPHER *get_cipher_by_name(char *name)
+{
+	if (name == NULL || strcmp(name, "") == 0)
+		return (NULL);
+#ifndef OPENSSL_NO_AES
+	else if (strcmp(name, "aes128") == 0)
+		return EVP_aes_128_cbc();
+	else if (strcmp(name, "aes192") == 0)
+		return EVP_aes_192_cbc();
+	else if (strcmp(name, "aes256") == 0)
+		return EVP_aes_256_cbc();
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	else if (strcmp(name, "camellia128") == 0)
+		return EVP_camellia_128_cbc();
+	else if (strcmp(name, "camellia192") == 0)
+		return EVP_camellia_192_cbc();
+	else if (strcmp(name, "camellia256") == 0)
+		return EVP_camellia_256_cbc();
+#endif
+#ifndef OPENSSL_NO_DES
+	else if (strcmp(name, "des") == 0)
+		return EVP_des_cbc();
+	else if (strcmp(name, "des3") == 0)
+		return EVP_des_ede3_cbc();
+#endif
+#ifndef OPENSSL_NO_IDEA
+	else if (strcmp(name, "idea") == 0)
+		return EVP_idea_cbc();
+#endif
+	else
+		return (NULL);
+}
+
+static int
+set_enc(int argc, char **argv, int *argsused)
+{
+	char *name = argv[0];
+
+	if (*name++ != '-')
+		return (1);
+
+	if ((genrsa_config.enc = get_cipher_by_name(name)) == NULL)
+		return (1);
+
+	*argsused = 1;
+	return (0);
+}
+
+static const struct option genrsa_options[] = {
+	{
+		.name = "3",
+		.desc = "Use 3 for the E value",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_public_exponent,
+	},
+	{
+		.name = "f4",
+		.desc = "Use F4 (0x10001) for the E value",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_public_exponent,
+	},
+	{
+		.name = "F4",
+		.desc = "Use F4 (0x10001) for the E value",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_public_exponent,
+	},
+#ifndef OPENSSL_NO_AES
+	{
+		.name = "aes128",
+		.desc = "Encrypt PEM output with CBC AES",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_enc,
+	},
+	{
+		.name = "aes192",
+		.desc = "Encrypt PEM output with CBC AES",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_enc,
+	},
+	{
+		.name = "aes256",
+		.desc = "Encrypt PEM output with CBC AES",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_enc,
+	},
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	{
+		.name = "camellia128",
+		.desc = "Encrypt PEM output with CBC Camellia",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_enc,
+	},
+	{
+		.name = "camellia192",
+		.desc = "Encrypt PEM output with CBC Camellia",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_enc,
+	},
+	{
+		.name = "camellia256",
+		.desc = "Encrypt PEM output with CBC Camellia",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_enc,
+	},
+#endif
+#ifndef OPENSSL_NO_DES
+	{
+		.name = "des",
+		.desc = "Encrypt the generated key with DES in CBC mode",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_enc,
+	},
+	{
+		.name = "des3",
+		.desc = "Encrypt the generated key with DES in EDE CBC mode (168 bit key)",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_enc,
+	},
+#endif
+#ifndef OPENSSL_NO_IDEA
+	{
+		.name = "idea",
+		.desc = "Encrypt the generated key with IDEA in CBC mode",
+		.type = OPTION_ARGV_FUNC,
+		.opt.argvfunc = set_enc,
+	},
+#endif
+	{
+		.name = "out",
+		.argname = "file",
+		.desc = "Output the key to 'file'",
+		.type = OPTION_ARG,
+		.opt.arg = &genrsa_config.outfile,
+	},
+	{
+		.name = "passout",
+		.argname = "arg",
+		.desc = "Output file passphrase source",
+		.type = OPTION_ARG,
+		.opt.arg = &genrsa_config.passargout,
+	},
+	{ NULL },
+};
+
+static void
+genrsa_usage(void)
+{
+	fprintf(stderr, "usage: genrsa [-3 | -f4] [-aes128 | -aes192 |");
+	fprintf(stderr, " -aes256 |\n");
+	fprintf(stderr, "    -camellia128 | -camellia192 | -camellia256 |");
+	fprintf(stderr, " -des | -des3 | -idea]\n");
+	fprintf(stderr, "    [-out file] [-passout arg] [numbits]\n\n");
+	options_usage(genrsa_options);
+	fprintf(stderr, "\n");
+}
+
 int
 genrsa_main(int argc, char **argv)
 {
 	BN_GENCB cb;
 	int ret = 1;
 	int i, num = DEFBITS;
+	char *numbits= NULL;
 	long l;
-	const EVP_CIPHER *enc = NULL;
-	unsigned long f4 = RSA_F4;
-	char *outfile = NULL;
-	char *passargout = NULL, *passout = NULL;
+	char *passout = NULL;
 	BIO *out = NULL;
 	BIGNUM *bn = BN_new();
 	RSA *rsa = NULL;
@@ -116,89 +296,32 @@ genrsa_main(int argc, char **argv)
 		BIO_printf(bio_err, "unable to create BIO for output\n");
 		goto err;
 	}
-	argv++;
-	argc--;
-	for (;;) {
-		if (argc <= 0)
-			break;
-		if (strcmp(*argv, "-out") == 0) {
-			if (--argc < 1)
-				goto bad;
-			outfile = *(++argv);
-		} else if (strcmp(*argv, "-3") == 0)
-			f4 = 3;
-		else if (strcmp(*argv, "-F4") == 0 || strcmp(*argv, "-f4") == 0)
-			f4 = RSA_F4;
-#ifndef OPENSSL_NO_DES
-		else if (strcmp(*argv, "-des") == 0)
-			enc = EVP_des_cbc();
-		else if (strcmp(*argv, "-des3") == 0)
-			enc = EVP_des_ede3_cbc();
-#endif
-#ifndef OPENSSL_NO_IDEA
-		else if (strcmp(*argv, "-idea") == 0)
-			enc = EVP_idea_cbc();
-#endif
-#ifndef OPENSSL_NO_AES
-		else if (strcmp(*argv, "-aes128") == 0)
-			enc = EVP_aes_128_cbc();
-		else if (strcmp(*argv, "-aes192") == 0)
-			enc = EVP_aes_192_cbc();
-		else if (strcmp(*argv, "-aes256") == 0)
-			enc = EVP_aes_256_cbc();
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-		else if (strcmp(*argv, "-camellia128") == 0)
-			enc = EVP_camellia_128_cbc();
-		else if (strcmp(*argv, "-camellia192") == 0)
-			enc = EVP_camellia_192_cbc();
-		else if (strcmp(*argv, "-camellia256") == 0)
-			enc = EVP_camellia_256_cbc();
-#endif
-		else if (strcmp(*argv, "-passout") == 0) {
-			if (--argc < 1)
-				goto bad;
-			passargout = *(++argv);
-		} else
-			break;
-		argv++;
-		argc--;
-	}
-	if ((argc >= 1) && ((sscanf(*argv, "%d", &num) == 0) || (num < 0))) {
- bad:
-		BIO_printf(bio_err, "usage: genrsa [args] [numbits]\n");
-#ifndef OPENSSL_NO_DES
-		BIO_printf(bio_err, " -des            encrypt the generated key with DES in cbc mode\n");
-		BIO_printf(bio_err, " -des3           encrypt the generated key with DES in ede cbc mode (168 bit key)\n");
-#endif
-#ifndef OPENSSL_NO_IDEA
-		BIO_printf(bio_err, " -idea           encrypt the generated key with IDEA in cbc mode\n");
-#endif
-#ifndef OPENSSL_NO_AES
-		BIO_printf(bio_err, " -aes128, -aes192, -aes256\n");
-		BIO_printf(bio_err, "                 encrypt PEM output with cbc aes\n");
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-		BIO_printf(bio_err, " -camellia128, -camellia192, -camellia256\n");
-		BIO_printf(bio_err, "                 encrypt PEM output with cbc camellia\n");
-#endif
-		BIO_printf(bio_err, " -out file       output the key to 'file\n");
-		BIO_printf(bio_err, " -passout arg    output file pass phrase source\n");
-		BIO_printf(bio_err, " -f4             use F4 (0x10001) for the E value\n");
-		BIO_printf(bio_err, " -3              use 3 for the E value\n");
+
+	memset(&genrsa_config, 0, sizeof(genrsa_config));
+	genrsa_config.f4 = RSA_F4;
+
+	if (options_parse(argc, argv, genrsa_options, &numbits, NULL) != 0) {
+		genrsa_usage();
 		goto err;
 	}
 
-	if (!app_passwd(bio_err, NULL, passargout, NULL, &passout)) {
+	if ((numbits != NULL) &&
+	    ((sscanf(numbits, "%d", &num) == 0) || (num < 0))) {
+		genrsa_usage();
+		goto err;
+	}
+
+	if (!app_passwd(bio_err, NULL, genrsa_config.passargout, NULL,
+	    &passout)) {
 		BIO_printf(bio_err, "Error getting password\n");
 		goto err;
 	}
 
-	if (outfile == NULL) {
+	if (genrsa_config.outfile == NULL) {
 		BIO_set_fp(out, stdout, BIO_NOCLOSE);
 	} else {
-		if (BIO_write_filename(out, outfile) <= 0) {
-			perror(outfile);
+		if (BIO_write_filename(out, genrsa_config.outfile) <= 0) {
+			perror(genrsa_config.outfile);
 			goto err;
 		}
 	}
@@ -209,7 +332,8 @@ genrsa_main(int argc, char **argv)
 	if (!rsa)
 		goto err;
 
-	if (!BN_set_word(bn, f4) || !RSA_generate_key_ex(rsa, num, bn, &cb))
+	if (!BN_set_word(bn, genrsa_config.f4) ||
+	    !RSA_generate_key_ex(rsa, num, bn, &cb))
 		goto err;
 
 	/*
@@ -228,9 +352,9 @@ genrsa_main(int argc, char **argv)
 	{
 		PW_CB_DATA cb_data;
 		cb_data.password = passout;
-		cb_data.prompt_info = outfile;
-		if (!PEM_write_bio_RSAPrivateKey(out, rsa, enc, NULL, 0,
-			password_callback, &cb_data))
+		cb_data.prompt_info = genrsa_config.outfile;
+		if (!PEM_write_bio_RSAPrivateKey(out, rsa, genrsa_config.enc,
+		    NULL, 0, password_callback, &cb_data))
 			goto err;
 	}
 

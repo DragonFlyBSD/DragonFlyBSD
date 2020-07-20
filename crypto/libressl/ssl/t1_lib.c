@@ -1,4 +1,4 @@
-/* $OpenBSD: t1_lib.c,v 1.154 2019/03/25 17:27:31 jsing Exp $ */
+/* $OpenBSD: t1_lib.c,v 1.165 2020/03/10 17:02:21 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -122,22 +122,18 @@
 #include "ssl_sigalgs.h"
 #include "ssl_tlsext.h"
 
-static int tls_decrypt_ticket(SSL *s, const unsigned char *tick, int ticklen,
-    const unsigned char *sess_id, int sesslen,
+static int tls_decrypt_ticket(SSL *s, CBS *session_id, CBS *ticket,
     SSL_SESSION **psess);
 
 SSL3_ENC_METHOD TLSv1_enc_data = {
-	.enc = tls1_enc,
 	.enc_flags = 0,
 };
 
 SSL3_ENC_METHOD TLSv1_1_enc_data = {
-	.enc = tls1_enc,
 	.enc_flags = SSL_ENC_FLAG_EXPLICIT_IV,
 };
 
 SSL3_ENC_METHOD TLSv1_2_enc_data = {
-	.enc = tls1_enc,
 	.enc_flags = SSL_ENC_FLAG_EXPLICIT_IV|SSL_ENC_FLAG_SIGALGS|
 	    SSL_ENC_FLAG_SHA256_PRF|SSL_ENC_FLAG_TLS1_2_CIPHERS,
 };
@@ -759,8 +755,7 @@ ssl_check_serverhello_tlsext(SSL *s)
  * ClientHello, and other operations depend on the result, we need to handle
  * any TLS session ticket extension at the same time.
  *
- *   session_id: points at the session ID in the ClientHello.
- *   session_id_len: the length of the session ID.
+ *   session_id: a CBS containing the session ID.
  *   ext_block: a CBS for the ClientHello extensions block.
  *   ret: (output) on return, if a ticket was decrypted, then this is set to
  *       point to the resulting session.
@@ -787,10 +782,11 @@ ssl_check_serverhello_tlsext(SSL *s)
  *   Otherwise, s->internal->tlsext_ticket_expected is set to 0.
  */
 int
-tls1_process_ticket(SSL *s, const unsigned char *session_id, int session_id_len,
-    CBS *ext_block, SSL_SESSION **ret)
+tls1_process_ticket(SSL *s, CBS *session_id, CBS *ext_block, SSL_SESSION **ret)
 {
-	CBS extensions;
+	CBS extensions, ext_data;
+	uint16_t ext_type = 0;
+	int r;
 
 	s->internal->tlsext_ticket_expected = 0;
 	*ret = NULL;
@@ -813,56 +809,55 @@ tls1_process_ticket(SSL *s, const unsigned char *session_id, int session_id_len,
 		return -1;
 
 	while (CBS_len(&extensions) > 0) {
-		uint16_t ext_type;
-		CBS ext_data;
-
 		if (!CBS_get_u16(&extensions, &ext_type) ||
 		    !CBS_get_u16_length_prefixed(&extensions, &ext_data))
 			return -1;
 
-		if (ext_type == TLSEXT_TYPE_session_ticket) {
-			int r;
-			if (CBS_len(&ext_data) == 0) {
-				/* The client will accept a ticket but doesn't
-				 * currently have one. */
-				s->internal->tlsext_ticket_expected = 1;
-				return 1;
-			}
-			if (s->internal->tls_session_secret_cb != NULL) {
-				/* Indicate that the ticket couldn't be
-				 * decrypted rather than generating the session
-				 * from ticket now, trigger abbreviated
-				 * handshake based on external mechanism to
-				 * calculate the master secret later. */
-				return 2;
-			}
-
-			r = tls_decrypt_ticket(s, CBS_data(&ext_data),
-			    CBS_len(&ext_data), session_id, session_id_len, ret);
-
-			switch (r) {
-			case 2: /* ticket couldn't be decrypted */
-				s->internal->tlsext_ticket_expected = 1;
-				return 2;
-			case 3: /* ticket was decrypted */
-				return r;
-			case 4: /* ticket decrypted but need to renew */
-				s->internal->tlsext_ticket_expected = 1;
-				return 3;
-			default: /* fatal error */
-				return -1;
-			}
-		}
+		if (ext_type == TLSEXT_TYPE_session_ticket)
+			break;
 	}
-	return 0;
+
+	if (ext_type != TLSEXT_TYPE_session_ticket)
+		return 0;
+
+	if (CBS_len(&ext_data) == 0) {
+		/*
+		 * The client will accept a ticket but does not currently
+		 * have one.
+		 */
+		s->internal->tlsext_ticket_expected = 1;
+		return 1;
+	}
+
+	if (s->internal->tls_session_secret_cb != NULL) {
+		/*
+		 * Indicate that the ticket could not be decrypted rather than
+		 * generating the session from ticket now, trigger abbreviated
+		 * handshake based on external mechanism to calculate the master
+		 * secret later.
+		 */
+		return 2;
+	}
+
+	r = tls_decrypt_ticket(s, session_id, &ext_data, ret);
+	switch (r) {
+	case 2: /* ticket couldn't be decrypted */
+		s->internal->tlsext_ticket_expected = 1;
+		return 2;
+	case 3: /* ticket was decrypted */
+		return r;
+	case 4: /* ticket decrypted but need to renew */
+		s->internal->tlsext_ticket_expected = 1;
+		return 3;
+	default: /* fatal error */
+		return -1;
+	}
 }
 
 /* tls_decrypt_ticket attempts to decrypt a session ticket.
  *
- *   etick: points to the body of the session ticket extension.
- *   eticklen: the length of the session tickets extenion.
- *   sess_id: points at the session ID.
- *   sesslen: the length of the session ID.
+ *   session_id: a CBS containing the session ID.
+ *   ticket: a CBS containing the body of the session ticket extension.
  *   psess: (output) on return, if a ticket was decrypted, then this is set to
  *       point to the resulting session.
  *
@@ -873,129 +868,169 @@ tls1_process_ticket(SSL *s, const unsigned char *session_id, int session_id_len,
  *    4: same as 3, but the ticket needs to be renewed.
  */
 static int
-tls_decrypt_ticket(SSL *s, const unsigned char *etick, int eticklen,
-    const unsigned char *sess_id, int sesslen, SSL_SESSION **psess)
+tls_decrypt_ticket(SSL *s, CBS *session_id, CBS *ticket, SSL_SESSION **psess)
 {
-	SSL_SESSION *sess;
-	unsigned char *sdec;
+	CBS ticket_name, ticket_iv, ticket_encdata, ticket_hmac;
+	SSL_SESSION *sess = NULL;
+	unsigned char *sdec = NULL;
+	size_t sdec_len = 0;
+	size_t session_id_len;
 	const unsigned char *p;
-	int slen, mlen, renew_ticket = 0;
-	unsigned char tick_hmac[EVP_MAX_MD_SIZE];
-	HMAC_CTX hctx;
-	EVP_CIPHER_CTX ctx;
+	unsigned char hmac[EVP_MAX_MD_SIZE];
+	HMAC_CTX *hctx = NULL;
+	EVP_CIPHER_CTX *cctx = NULL;
 	SSL_CTX *tctx = s->initial_ctx;
+	int slen, hlen;
+	int renew_ticket = 0;
+	int ret = -1;
+
+	*psess = NULL;
+
+	if (!CBS_get_bytes(ticket, &ticket_name, 16))
+		goto derr;
 
 	/*
-	 * The API guarantees EVP_MAX_IV_LENGTH bytes of space for
-	 * the iv to tlsext_ticket_key_cb().  Since the total space
-	 * required for a session cookie is never less than this,
-	 * this check isn't too strict.  The exact check comes later.
+	 * Initialize session ticket encryption and HMAC contexts.
 	 */
-	if (eticklen < 16 + EVP_MAX_IV_LENGTH)
-		return 2;
+	if ((cctx = EVP_CIPHER_CTX_new()) == NULL)
+		goto err;
+	if ((hctx = HMAC_CTX_new()) == NULL)
+		goto err;
 
-	/* Initialize session ticket encryption and HMAC contexts */
-	HMAC_CTX_init(&hctx);
-	EVP_CIPHER_CTX_init(&ctx);
-	if (tctx->internal->tlsext_ticket_key_cb) {
-		unsigned char *nctick = (unsigned char *)etick;
-		int rv = tctx->internal->tlsext_ticket_key_cb(s,
-		    nctick, nctick + 16, &ctx, &hctx, 0);
-		if (rv < 0) {
-			HMAC_CTX_cleanup(&hctx);
-			EVP_CIPHER_CTX_cleanup(&ctx);
-			return -1;
-		}
-		if (rv == 0) {
-			HMAC_CTX_cleanup(&hctx);
-			EVP_CIPHER_CTX_cleanup(&ctx);
-			return 2;
-		}
+	if (tctx->internal->tlsext_ticket_key_cb != NULL) {
+		int rv;
+
+		/*
+		 * The API guarantees EVP_MAX_IV_LENGTH bytes of space for
+		 * the iv to tlsext_ticket_key_cb().  Since the total space
+		 * required for a session cookie is never less than this,
+		 * this check isn't too strict.  The exact check comes later.
+		 */
+		if (CBS_len(ticket) < EVP_MAX_IV_LENGTH)
+			goto derr;
+
+		if ((rv = tctx->internal->tlsext_ticket_key_cb(s,
+		    (unsigned char *)CBS_data(&ticket_name),
+		    (unsigned char *)CBS_data(ticket), cctx, hctx, 0)) < 0)
+			goto err;
+		if (rv == 0)
+			goto derr;
 		if (rv == 2)
 			renew_ticket = 1;
+
+		/*
+		 * Now that the cipher context is initialised, we can extract
+		 * the IV since its length is known.
+		 */
+		if (!CBS_get_bytes(ticket, &ticket_iv,
+		    EVP_CIPHER_CTX_iv_length(cctx)))
+			goto derr;
 	} else {
-		/* Check key name matches */
-		if (timingsafe_memcmp(etick,
-		    tctx->internal->tlsext_tick_key_name, 16))
-			return 2;
-		HMAC_Init_ex(&hctx, tctx->internal->tlsext_tick_hmac_key,
-		    16, tlsext_tick_md(), NULL);
-		EVP_DecryptInit_ex(&ctx, EVP_aes_128_cbc(), NULL,
-		    tctx->internal->tlsext_tick_aes_key, etick + 16);
+		/* Check that the key name matches. */
+		if (!CBS_mem_equal(&ticket_name,
+		    tctx->internal->tlsext_tick_key_name,
+		    sizeof(tctx->internal->tlsext_tick_key_name)))
+			goto derr;
+		if (!CBS_get_bytes(ticket, &ticket_iv,
+		    EVP_CIPHER_iv_length(EVP_aes_128_cbc())))
+			goto derr;
+		if (!EVP_DecryptInit_ex(cctx, EVP_aes_128_cbc(), NULL,
+		    tctx->internal->tlsext_tick_aes_key, CBS_data(&ticket_iv)))
+			goto err;
+		if (!HMAC_Init_ex(hctx, tctx->internal->tlsext_tick_hmac_key,
+		    sizeof(tctx->internal->tlsext_tick_hmac_key), EVP_sha256(),
+		    NULL))
+			goto err;
 	}
 
 	/*
-	 * Attempt to process session ticket, first conduct sanity and
-	 * integrity checks on ticket.
+	 * Attempt to process session ticket.
 	 */
-	mlen = HMAC_size(&hctx);
-	if (mlen < 0) {
-		HMAC_CTX_cleanup(&hctx);
-		EVP_CIPHER_CTX_cleanup(&ctx);
-		return -1;
-	}
 
-	/* Sanity check ticket length: must exceed keyname + IV + HMAC */
-	if (eticklen <= 16 + EVP_CIPHER_CTX_iv_length(&ctx) + mlen) {
-		HMAC_CTX_cleanup(&hctx);
-		EVP_CIPHER_CTX_cleanup(&ctx);
-		return 2;
-	}
-	eticklen -= mlen;
+	if ((hlen = HMAC_size(hctx)) < 0)
+		goto err;
 
-	/* Check HMAC of encrypted ticket */
-	if (HMAC_Update(&hctx, etick, eticklen) <= 0 ||
-	    HMAC_Final(&hctx, tick_hmac, NULL) <= 0) {
-		HMAC_CTX_cleanup(&hctx);
-		EVP_CIPHER_CTX_cleanup(&ctx);
-		return -1;
-	}
+	if (hlen > CBS_len(ticket))
+		goto derr;
+	if (!CBS_get_bytes(ticket, &ticket_encdata, CBS_len(ticket) - hlen))
+		goto derr;
+	if (!CBS_get_bytes(ticket, &ticket_hmac, hlen))
+		goto derr;
+	if (CBS_len(ticket) != 0)
+		goto err;
 
-	HMAC_CTX_cleanup(&hctx);
-	if (timingsafe_memcmp(tick_hmac, etick + eticklen, mlen)) {
-		EVP_CIPHER_CTX_cleanup(&ctx);
-		return 2;
-	}
+	/* Check HMAC of encrypted ticket. */
+	if (HMAC_Update(hctx, CBS_data(&ticket_name),
+	    CBS_len(&ticket_name)) <= 0)
+		goto err;
+	if (HMAC_Update(hctx, CBS_data(&ticket_iv),
+	    CBS_len(&ticket_iv)) <= 0)
+		goto err;
+	if (HMAC_Update(hctx, CBS_data(&ticket_encdata),
+	    CBS_len(&ticket_encdata)) <= 0)
+		goto err;
+	if (HMAC_Final(hctx, hmac, &hlen) <= 0)
+		goto err;
 
-	/* Attempt to decrypt session data */
-	/* Move p after IV to start of encrypted ticket, update length */
-	p = etick + 16 + EVP_CIPHER_CTX_iv_length(&ctx);
-	eticklen -= 16 + EVP_CIPHER_CTX_iv_length(&ctx);
-	sdec = malloc(eticklen);
-	if (sdec == NULL ||
-	    EVP_DecryptUpdate(&ctx, sdec, &slen, p, eticklen) <= 0) {
-		free(sdec);
-		EVP_CIPHER_CTX_cleanup(&ctx);
-		return -1;
-	}
-	if (EVP_DecryptFinal_ex(&ctx, sdec + slen, &mlen) <= 0) {
-		free(sdec);
-		EVP_CIPHER_CTX_cleanup(&ctx);
-		return 2;
-	}
-	slen += mlen;
-	EVP_CIPHER_CTX_cleanup(&ctx);
+	if (!CBS_mem_equal(&ticket_hmac, hmac, hlen))
+		goto derr;
+
+	/* Attempt to decrypt session data. */
+	sdec_len = CBS_len(&ticket_encdata);
+	if ((sdec = calloc(1, sdec_len)) == NULL)
+		goto err;
+	if (EVP_DecryptUpdate(cctx, sdec, &slen, CBS_data(&ticket_encdata),
+	    CBS_len(&ticket_encdata)) <= 0)
+		goto derr;
+	if (EVP_DecryptFinal_ex(cctx, sdec + slen, &hlen) <= 0)
+		goto derr;
+
+	slen += hlen;
+
+	/*
+	 * For session parse failures, indicate that we need to send a new
+	 * ticket.
+	 */
 	p = sdec;
+	if ((sess = d2i_SSL_SESSION(NULL, &p, slen)) == NULL)
+		goto derr;
 
-	sess = d2i_SSL_SESSION(NULL, &p, slen);
-	free(sdec);
-	if (sess) {
-		/* The session ID, if non-empty, is used by some clients to
-		 * detect that the ticket has been accepted. So we copy it to
-		 * the session structure. If it is empty set length to zero
-		 * as required by standard.
-		 */
-		if (sesslen)
-			memcpy(sess->session_id, sess_id, sesslen);
-		sess->session_id_length = sesslen;
-		*psess = sess;
-		if (renew_ticket)
-			return 4;
-		else
-			return 3;
-	}
-	ERR_clear_error();
-	/* For session parse failure, indicate that we need to send a new
-	 * ticket. */
-	return 2;
+	/*
+	 * The session ID, if non-empty, is used by some clients to detect that
+	 * the ticket has been accepted. So we copy it to the session structure.
+	 * If it is empty set length to zero as required by standard.
+	 */
+	if (!CBS_write_bytes(session_id, sess->session_id,
+	    sizeof(sess->session_id), &session_id_len))
+		goto err;
+	sess->session_id_length = (unsigned int)session_id_len;
+
+	*psess = sess;
+	sess = NULL;
+
+	if (renew_ticket)
+		ret = 4;
+	else
+		ret = 3;
+
+	goto done;
+
+ derr:
+	ret = 2;
+	goto done;
+
+ err:
+	ret = -1;
+	goto done;
+
+ done:
+	freezero(sdec, sdec_len);
+	EVP_CIPHER_CTX_free(cctx);
+	HMAC_CTX_free(hctx);
+	SSL_SESSION_free(sess);
+
+	if (ret == 2)
+		ERR_clear_error();
+
+	return ret;
 }

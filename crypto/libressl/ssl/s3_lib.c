@@ -1,4 +1,4 @@
-/* $OpenBSD: s3_lib.c,v 1.186 2019/04/04 15:03:21 jsing Exp $ */
+/* $OpenBSD: s3_lib.c,v 1.192 2020/04/18 14:07:56 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -1563,13 +1563,10 @@ ssl3_free(SSL *s)
 
 	DH_free(S3I(s)->tmp.dh);
 	EC_KEY_free(S3I(s)->tmp.ecdh);
-
 	freezero(S3I(s)->tmp.x25519, X25519_KEY_LENGTH);
 
+	tls13_key_share_free(S3I(s)->hs_tls13.key_share);
 	tls13_secrets_destroy(S3I(s)->hs_tls13.secrets);
-	freezero(S3I(s)->hs_tls13.x25519_private, X25519_KEY_LENGTH);
-	freezero(S3I(s)->hs_tls13.x25519_public, X25519_KEY_LENGTH);
-	freezero(S3I(s)->hs_tls13.x25519_peer_public, X25519_KEY_LENGTH);
 	freezero(S3I(s)->hs_tls13.cookie, S3I(s)->hs_tls13.cookie_len);
 
 	sk_X509_NAME_pop_free(S3I(s)->tmp.ca_names, X509_NAME_free);
@@ -1599,21 +1596,19 @@ ssl3_clear(SSL *s)
 	S3I(s)->tmp.dh = NULL;
 	EC_KEY_free(S3I(s)->tmp.ecdh);
 	S3I(s)->tmp.ecdh = NULL;
+	S3I(s)->tmp.ecdh_nid = NID_undef;
+	freezero(S3I(s)->tmp.x25519, X25519_KEY_LENGTH);
+	S3I(s)->tmp.x25519 = NULL;
+
 	freezero(S3I(s)->hs.sigalgs, S3I(s)->hs.sigalgs_len);
 	S3I(s)->hs.sigalgs = NULL;
 	S3I(s)->hs.sigalgs_len = 0;
 
-	freezero(S3I(s)->tmp.x25519, X25519_KEY_LENGTH);
-	S3I(s)->tmp.x25519 = NULL;
+	tls13_key_share_free(S3I(s)->hs_tls13.key_share);
+	S3I(s)->hs_tls13.key_share = NULL;
 
 	tls13_secrets_destroy(S3I(s)->hs_tls13.secrets);
 	S3I(s)->hs_tls13.secrets = NULL;
-	freezero(S3I(s)->hs_tls13.x25519_private, X25519_KEY_LENGTH);
-	S3I(s)->hs_tls13.x25519_private = NULL;
-	freezero(S3I(s)->hs_tls13.x25519_public, X25519_KEY_LENGTH);
-	S3I(s)->hs_tls13.x25519_public = NULL;
-	freezero(S3I(s)->hs_tls13.x25519_peer_public, X25519_KEY_LENGTH);
-	S3I(s)->hs_tls13.x25519_peer_public = NULL;
 	freezero(S3I(s)->hs_tls13.cookie, S3I(s)->hs_tls13.cookie_len);
 	S3I(s)->hs_tls13.cookie = NULL;
 	S3I(s)->hs_tls13.cookie_len = 0;
@@ -1657,10 +1652,6 @@ static long
 ssl_ctrl_get_server_tmp_key(SSL *s, EVP_PKEY **pkey_tmp)
 {
 	EVP_PKEY *pkey = NULL;
-	EC_GROUP *group = NULL;
-	EC_POINT *point = NULL;
-	EC_KEY *ec_key = NULL;
-	BIGNUM *order = NULL;
 	SESS_CERT *sc;
 	int ret = 0;
 
@@ -1677,40 +1668,29 @@ ssl_ctrl_get_server_tmp_key(SSL *s, EVP_PKEY **pkey_tmp)
 		return 0;
 
 	if (sc->peer_dh_tmp != NULL) {
-		ret = EVP_PKEY_set1_DH(pkey, sc->peer_dh_tmp);
+		if (!EVP_PKEY_set1_DH(pkey, sc->peer_dh_tmp))
+			goto err;
 	} else if (sc->peer_ecdh_tmp) {
-		ret = EVP_PKEY_set1_EC_KEY(pkey, sc->peer_ecdh_tmp);
+		if (!EVP_PKEY_set1_EC_KEY(pkey, sc->peer_ecdh_tmp))
+			goto err;
 	} else if (sc->peer_x25519_tmp != NULL) {
-		/* Fudge up an EC_KEY that looks like X25519... */
-		if ((group = EC_GROUP_new(EC_GFp_mont_method())) == NULL)
+		if (!ssl_kex_dummy_ecdhe_x25519(pkey))
 			goto err;
-		if ((point = EC_POINT_new(group)) == NULL)
+	} else if (S3I(s)->hs_tls13.key_share != NULL) {
+		if (!tls13_key_share_peer_pkey(S3I(s)->hs_tls13.key_share,
+		    pkey))
 			goto err;
-		if ((order = BN_new()) == NULL)
-			goto err;
-		if (!BN_set_bit(order, 252))
-			goto err;
-		if (!EC_GROUP_set_generator(group, point, order, NULL))
-			goto err;
-		EC_GROUP_set_curve_name(group, NID_X25519);
-		if ((ec_key = EC_KEY_new()) == NULL)
-			goto err;
-		if (!EC_KEY_set_group(ec_key, group))
-			goto err;
-		ret = EVP_PKEY_set1_EC_KEY(pkey, ec_key);
+	} else {
+		goto err;
 	}
 
-	if (ret == 1) {
-		*pkey_tmp = pkey;
-		pkey = NULL;
-	}
+	*pkey_tmp = pkey;
+	pkey = NULL;
 
-  err:
+	ret = 1;
+
+ err:
 	EVP_PKEY_free(pkey);
-	EC_GROUP_free(group);
-	EC_POINT_free(point);
-	EC_KEY_free(ec_key);
-	BN_free(order);
 
 	return (ret);
 }
@@ -2241,6 +2221,16 @@ static int
 _SSL_CTX_get_extra_chain_certs(SSL_CTX *ctx, STACK_OF(X509) **certs)
 {
 	*certs = ctx->extra_certs;
+	if (*certs == NULL)
+		*certs = ctx->internal->cert->key->chain;
+
+	return 1;
+}
+
+static int
+_SSL_CTX_get_extra_chain_certs_only(SSL_CTX *ctx, STACK_OF(X509) **certs)
+{
+	*certs = ctx->extra_certs;
 	return 1;
 }
 
@@ -2324,7 +2314,10 @@ ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 		return _SSL_CTX_add_extra_chain_cert(ctx, parg);
 
 	case SSL_CTRL_GET_EXTRA_CHAIN_CERTS:
-		return _SSL_CTX_get_extra_chain_certs(ctx, parg);
+		if (larg == 0)
+			return _SSL_CTX_get_extra_chain_certs(ctx, parg);
+		else
+			return _SSL_CTX_get_extra_chain_certs_only(ctx, parg);
 
 	case SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS:
 		return _SSL_CTX_clear_extra_chain_certs(ctx);
@@ -2488,13 +2481,22 @@ ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 		    !SSL_USE_TLS1_2_CIPHERS(s))
 			continue;
 
+		/* Skip TLS v1.3 only ciphersuites if not supported. */
+		if ((c->algorithm_ssl & SSL_TLSV1_3) &&
+		    !SSL_USE_TLS1_3_CIPHERS(s))
+			continue;
+
+		/* If TLS v1.3, only allow TLS v1.3 ciphersuites. */
+		if (SSL_USE_TLS1_3_CIPHERS(s) &&
+		    !(c->algorithm_ssl & SSL_TLSV1_3))
+			continue;
+
 		ssl_set_cert_masks(cert, c);
 		mask_k = cert->mask_k;
 		mask_a = cert->mask_a;
 
 		alg_k = c->algorithm_mkey;
 		alg_a = c->algorithm_auth;
-
 
 		ok = (alg_k & mask_k) && (alg_a & mask_a);
 

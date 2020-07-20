@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_lib.c,v 1.204 2019/03/25 17:33:26 jsing Exp $ */
+/* $OpenBSD: ssl_lib.c,v 1.212 2020/03/16 15:25:14 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -140,6 +140,10 @@
  * OTHERWISE.
  */
 
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #include <stdio.h>
 
 #include "ssl_locl.h"
@@ -188,6 +192,9 @@ SSL_clear(SSL *s)
 	s->client_version = s->version;
 	s->internal->rwstate = SSL_NOTHING;
 	s->internal->rstate = SSL_ST_READ_HEADER;
+
+	tls13_ctx_free(s->internal->tls13);
+	s->internal->tls13 = NULL;
 
 	BUF_MEM_free(s->internal->init_buf);
 	s->internal->init_buf = NULL;
@@ -456,7 +463,15 @@ SSL_set_trust(SSL *s, int trust)
 int
 SSL_set1_host(SSL *s, const char *hostname)
 {
-	return X509_VERIFY_PARAM_set1_host(s->param, hostname, 0);
+	struct in_addr ina;
+	struct in6_addr in6a;
+	
+	if (hostname != NULL && *hostname != '\0' &&
+	    (inet_pton(AF_INET, hostname, &ina) == 1 ||
+	    inet_pton(AF_INET6, hostname, &in6a) == 1))
+		return X509_VERIFY_PARAM_set1_ip_asc(s->param, hostname);
+	else
+		return X509_VERIFY_PARAM_set1_host(s->param, hostname, 0);
 }
 
 X509_VERIFY_PARAM *
@@ -511,6 +526,8 @@ SSL_free(SSL *s)
 	if (s->rbio != s->wbio)
 		BIO_free_all(s->rbio);
 	BIO_free_all(s->wbio);
+
+	tls13_ctx_free(s->internal->tls13);
 
 	BUF_MEM_free(s->internal->init_buf);
 
@@ -696,14 +713,12 @@ err:
 size_t
 SSL_get_finished(const SSL *s, void *buf, size_t count)
 {
-	size_t	ret = 0;
+	size_t	ret;
 
-	if (s->s3 != NULL) {
-		ret = S3I(s)->tmp.finish_md_len;
-		if (count > ret)
-			count = ret;
-		memcpy(buf, S3I(s)->tmp.finish_md, count);
-	}
+	ret = S3I(s)->tmp.finish_md_len;
+	if (count > ret)
+		count = ret;
+	memcpy(buf, S3I(s)->tmp.finish_md, count);
 	return (ret);
 }
 
@@ -711,14 +726,12 @@ SSL_get_finished(const SSL *s, void *buf, size_t count)
 size_t
 SSL_get_peer_finished(const SSL *s, void *buf, size_t count)
 {
-	size_t	ret = 0;
+	size_t	ret;
 
-	if (s->s3 != NULL) {
-		ret = S3I(s)->tmp.peer_finish_md_len;
-		if (count > ret)
-			count = ret;
-		memcpy(buf, S3I(s)->tmp.peer_finish_md, count);
-	}
+	ret = S3I(s)->tmp.peer_finish_md_len;
+	if (count > ret)
+		count = ret;
+	memcpy(buf, S3I(s)->tmp.peer_finish_md, count);
 	return (ret);
 }
 
@@ -789,15 +802,7 @@ SSL_get_read_ahead(const SSL *s)
 int
 SSL_pending(const SSL *s)
 {
-	/*
-	 * SSL_pending cannot work properly if read-ahead is enabled
-	 * (SSL_[CTX_]ctrl(..., SSL_CTRL_SET_READ_AHEAD, 1, NULL)),
-	 * and it is impossible to fix since SSL_pending cannot report
-	 * errors that may be observed while scanning the new data.
-	 * (Note that SSL_pending() is often used as a boolean value,
-	 * so we'd better not return -1.)
-	 */
-	return (ssl3_pending(s));
+	return (s->method->internal->ssl_pending(s));
 }
 
 X509 *
@@ -1004,7 +1009,7 @@ SSL_shutdown(SSL *s)
 	}
 
 	if (s != NULL && !SSL_in_init(s))
-		return (ssl3_shutdown(s));
+		return (s->method->internal->ssl_shutdown(s));
 
 	return (1);
 }
@@ -1525,7 +1530,7 @@ found:
 /* SSL_get0_next_proto_negotiated is deprecated. */
 void
 SSL_get0_next_proto_negotiated(const SSL *s, const unsigned char **data,
-    unsigned *len)
+    unsigned int *len)
 {
 	*data = NULL;
 	*len = 0;
@@ -1632,15 +1637,13 @@ SSL_CTX_set_alpn_select_cb(SSL_CTX* ctx,
  */
 void
 SSL_get0_alpn_selected(const SSL *ssl, const unsigned char **data,
-    unsigned *len)
+    unsigned int *len)
 {
 	*data = NULL;
 	*len = 0;
 
-	if (ssl->s3 != NULL) {
-		*data = ssl->s3->internal->alpn_selected;
-		*len = ssl->s3->internal->alpn_selected_len;
-	}
+	*data = ssl->s3->internal->alpn_selected;
+	*len = ssl->s3->internal->alpn_selected_len;
 }
 
 int
@@ -2003,6 +2006,9 @@ ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 		mask_a |= SSL_aRSA;
 
 	mask_a |= SSL_aNULL;
+	mask_a |= SSL_aTLS1_3;
+
+	mask_k |= SSL_kTLS1_3;
 
 	/*
 	 * An ECC certificate may be usable for ECDH and/or
@@ -2233,6 +2239,15 @@ SSL_set_ssl_method(SSL *s, const SSL_METHOD *meth)
 			s->method = meth;
 			ret = s->method->internal->ssl_new(s);
 		}
+
+		/*
+		 * XXX - reset the client max version to that of the incoming
+		 * method, otherwise a caller that uses a TLS_method() and then
+		 * sets with TLS_client_method() cannot do TLSv1.3.
+		 */
+		if (meth->internal->max_version == TLS1_3_VERSION &&
+		    meth->internal->ssl_connect != NULL)
+			s->internal->max_version = meth->internal->max_version;
 
 		if (conn == 1)
 			s->internal->handshake_func = meth->internal->ssl_connect;

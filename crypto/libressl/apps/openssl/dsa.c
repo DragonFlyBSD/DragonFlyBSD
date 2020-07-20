@@ -1,4 +1,4 @@
-/* $OpenBSD: dsa.c,v 1.13 2019/02/09 15:49:21 inoguchi Exp $ */
+/* $OpenBSD: dsa.c,v 1.15 2019/07/14 03:30:45 guenther Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -105,7 +105,7 @@ dsa_opt_enc(int argc, char **argv, int *argsused)
 	return (1);
 }
 
-static struct option dsa_options[] = {
+static const struct option dsa_options[] = {
 	{
 		.name = "in",
 		.argname = "file",
@@ -120,6 +120,12 @@ static struct option dsa_options[] = {
 		    " format)",
 		.type = OPTION_ARG_FORMAT,
 		.opt.value = &dsa_config.informat,
+	},
+	{
+		.name = "modulus",
+		.desc = "Print the DSA public value",
+		.type = OPTION_FLAG,
+		.opt.flag = &dsa_config.modulus,
 	},
 	{
 		.name = "noout",
@@ -209,7 +215,7 @@ dsa_usage(void)
 	int n = 0;
 
 	fprintf(stderr,
-	    "usage: dsa [-in file] [-inform format] [-noout]\n"
+	    "usage: dsa [-in file] [-inform format] [-modulus] [-noout]\n"
 	    "    [-out file] [-outform format] [-passin src] [-passout src]\n"
 	    "    [-pubin] [-pubout] [-pvk-none | -pvk-strong | -pvk-weak]\n"
 	    "    [-text] [-ciphername]\n\n");

@@ -590,6 +590,11 @@
 #define NID_mgf1		911
 #define OBJ_mgf1		OBJ_pkcs1,8L
 
+#define SN_pSpecified		"PSPECIFIED"
+#define LN_pSpecified		"pSpecified"
+#define NID_pSpecified		992
+#define OBJ_pSpecified		OBJ_pkcs1,9L
+
 #define SN_rsassaPss		"RSASSA-PSS"
 #define LN_rsassaPss		"rsassaPss"
 #define NID_rsassaPss		912
@@ -4101,6 +4106,56 @@
 #define SN_aes_256_cbc_hmac_sha1		"AES-256-CBC-HMAC-SHA1"
 #define LN_aes_256_cbc_hmac_sha1		"aes-256-cbc-hmac-sha1"
 #define NID_aes_256_cbc_hmac_sha1		918
+
+#define OBJ_x9_63_scheme		1L,3L,133L,16L,840L,63L,0L
+
+#define OBJ_secg_scheme		OBJ_certicom_arc,1L
+
+#define SN_dhSinglePass_stdDH_sha1kdf_scheme		"dhSinglePass-stdDH-sha1kdf-scheme"
+#define NID_dhSinglePass_stdDH_sha1kdf_scheme		980
+#define OBJ_dhSinglePass_stdDH_sha1kdf_scheme		OBJ_x9_63_scheme,2L
+
+#define SN_dhSinglePass_stdDH_sha224kdf_scheme		"dhSinglePass-stdDH-sha224kdf-scheme"
+#define NID_dhSinglePass_stdDH_sha224kdf_scheme		981
+#define OBJ_dhSinglePass_stdDH_sha224kdf_scheme		OBJ_secg_scheme,11L,0L
+
+#define SN_dhSinglePass_stdDH_sha256kdf_scheme		"dhSinglePass-stdDH-sha256kdf-scheme"
+#define NID_dhSinglePass_stdDH_sha256kdf_scheme		982
+#define OBJ_dhSinglePass_stdDH_sha256kdf_scheme		OBJ_secg_scheme,11L,1L
+
+#define SN_dhSinglePass_stdDH_sha384kdf_scheme		"dhSinglePass-stdDH-sha384kdf-scheme"
+#define NID_dhSinglePass_stdDH_sha384kdf_scheme		983
+#define OBJ_dhSinglePass_stdDH_sha384kdf_scheme		OBJ_secg_scheme,11L,2L
+
+#define SN_dhSinglePass_stdDH_sha512kdf_scheme		"dhSinglePass-stdDH-sha512kdf-scheme"
+#define NID_dhSinglePass_stdDH_sha512kdf_scheme		984
+#define OBJ_dhSinglePass_stdDH_sha512kdf_scheme		OBJ_secg_scheme,11L,3L
+
+#define SN_dhSinglePass_cofactorDH_sha1kdf_scheme		"dhSinglePass-cofactorDH-sha1kdf-scheme"
+#define NID_dhSinglePass_cofactorDH_sha1kdf_scheme		985
+#define OBJ_dhSinglePass_cofactorDH_sha1kdf_scheme		OBJ_x9_63_scheme,3L
+
+#define SN_dhSinglePass_cofactorDH_sha224kdf_scheme		"dhSinglePass-cofactorDH-sha224kdf-scheme"
+#define NID_dhSinglePass_cofactorDH_sha224kdf_scheme		986
+#define OBJ_dhSinglePass_cofactorDH_sha224kdf_scheme		OBJ_secg_scheme,14L,0L
+
+#define SN_dhSinglePass_cofactorDH_sha256kdf_scheme		"dhSinglePass-cofactorDH-sha256kdf-scheme"
+#define NID_dhSinglePass_cofactorDH_sha256kdf_scheme		987
+#define OBJ_dhSinglePass_cofactorDH_sha256kdf_scheme		OBJ_secg_scheme,14L,1L
+
+#define SN_dhSinglePass_cofactorDH_sha384kdf_scheme		"dhSinglePass-cofactorDH-sha384kdf-scheme"
+#define NID_dhSinglePass_cofactorDH_sha384kdf_scheme		988
+#define OBJ_dhSinglePass_cofactorDH_sha384kdf_scheme		OBJ_secg_scheme,14L,2L
+
+#define SN_dhSinglePass_cofactorDH_sha512kdf_scheme		"dhSinglePass-cofactorDH-sha512kdf-scheme"
+#define NID_dhSinglePass_cofactorDH_sha512kdf_scheme		989
+#define OBJ_dhSinglePass_cofactorDH_sha512kdf_scheme		OBJ_secg_scheme,14L,3L
+
+#define SN_dh_std_kdf		"dh-std-kdf"
+#define NID_dh_std_kdf		990
+
+#define SN_dh_cofactor_kdf		"dh-cofactor-kdf"
+#define NID_dh_cofactor_kdf		991
 
 #define SN_teletrust		"teletrust"
 #define NID_teletrust		920

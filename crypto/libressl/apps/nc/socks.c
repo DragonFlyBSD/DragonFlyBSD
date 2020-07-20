@@ -1,4 +1,4 @@
-/*	$OpenBSD: socks.c,v 1.27 2019/01/10 12:44:54 mestre Exp $	*/
+/*	$OpenBSD: socks.c,v 1.30 2019/11/04 17:33:28 millert Exp $	*/
 
 /*
  * Copyright (c) 1999 Niklas Hallqvist.  All rights reserved.
@@ -53,7 +53,7 @@
 #define SOCKS_DOMAIN	3
 #define SOCKS_IPV6	4
 
-int	remote_connect(const char *, const char *, struct addrinfo);
+int	remote_connect(const char *, const char *, struct addrinfo, char *);
 int	socks_connect(const char *, const char *, struct addrinfo,
 	    const char *, const char *, struct addrinfo, int,
 	    const char *);
@@ -201,7 +201,7 @@ socks_connect(const char *host, const char *port,
 	if (authretry++ > 3)
 		errx(1, "Too many authentication failures");
 
-	proxyfd = remote_connect(proxyhost, proxyport, proxyhints);
+	proxyfd = remote_connect(proxyhost, proxyport, proxyhints, NULL);
 
 	if (proxyfd < 0)
 		return (-1);
@@ -334,7 +334,7 @@ socks_connect(const char *host, const char *port,
 			    "CONNECT %s:%d HTTP/1.0\r\n",
 			    host, ntohs(serverport));
 		}
-		if (r == -1 || (size_t)r >= sizeof(buf))
+		if (r < 0 || (size_t)r >= sizeof(buf))
 			errx(1, "hostname too long");
 		r = strlen(buf);
 
@@ -357,7 +357,7 @@ socks_connect(const char *host, const char *port,
 				errx(1, "Proxy username/password too long");
 			r = snprintf(buf, sizeof(buf), "Proxy-Authorization: "
 			    "Basic %s\r\n", resp);
-			if (r == -1 || (size_t)r >= sizeof(buf))
+			if (r < 0 || (size_t)r >= sizeof(buf))
 				errx(1, "Proxy auth response too long");
 			r = strlen(buf);
 			if ((cnt = atomicio(vwrite, proxyfd, buf, r)) != r)
@@ -373,7 +373,8 @@ socks_connect(const char *host, const char *port,
 		/* Read status reply */
 		proxy_read_line(proxyfd, buf, sizeof(buf));
 		if (proxyuser != NULL &&
-		    strncmp(buf, "HTTP/1.0 407 ", 12) == 0) {
+		    (strncmp(buf, "HTTP/1.0 407 ", 12) == 0 ||
+		    strncmp(buf, "HTTP/1.1 407 ", 12) == 0)) {
 			if (authretry > 1) {
 				fprintf(stderr, "Proxy authentication "
 				    "failed\n");

@@ -1,4 +1,4 @@
-/* $OpenBSD: s_cb.c,v 1.11 2018/11/06 05:45:50 jsing Exp $ */
+/* $OpenBSD: s_cb.c,v 1.14 2020/04/26 02:09:21 inoguchi Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -390,6 +390,7 @@ msg_cb(int write_p, int version, int content_type, const void *buf, size_t len, 
 
 	str_write_p = write_p ? ">>>" : "<<<";
 
+	/* XXX convert to using ssl_get_version */
 	switch (version) {
 	case SSL2_VERSION:
 		str_version = "SSL 2.0";
@@ -406,6 +407,9 @@ msg_cb(int write_p, int version, int content_type, const void *buf, size_t len, 
 	case TLS1_2_VERSION:
 		str_version = "TLS 1.2 ";
 		break;
+	case TLS1_3_VERSION:
+		str_version = "TLS 1.3 ";
+		break;
 	case DTLS1_VERSION:
 		str_version = "DTLS 1.0 ";
 		break;
@@ -417,6 +421,7 @@ msg_cb(int write_p, int version, int content_type, const void *buf, size_t len, 
 		str_details1 = "???";
 
 		if (len > 0) {
+			/* XXX magic numbers */
 			switch (((const unsigned char *) buf)[0]) {
 			case 0:
 				str_details1 = ", ERROR:";
@@ -469,7 +474,8 @@ msg_cb(int write_p, int version, int content_type, const void *buf, size_t len, 
 	}
 	if (version == SSL3_VERSION || version == TLS1_VERSION ||
 	    version == TLS1_1_VERSION || version == TLS1_2_VERSION ||
-	    version == DTLS1_VERSION) {
+	    version == TLS1_3_VERSION || version == DTLS1_VERSION) {
+		/* XXX magic numbers are in ssl3.h */
 		switch (content_type) {
 		case 20:
 			str_content_type = "ChangeCipherSpec";
@@ -604,6 +610,15 @@ msg_cb(int write_p, int version, int content_type, const void *buf, size_t len, 
 				case 3:
 					str_details1 = ", HelloVerifyRequest";
 					break;
+				case 4:
+					str_details1 = ", NewSessionTicket";
+					break;
+				case 5:
+					str_details1 = ", EndOfEarlyData";
+					break;
+				case 8:
+					str_details1 = ", EncryptedExtensions";
+					break;
 				case 11:
 					str_details1 = ", Certificate";
 					break;
@@ -624,6 +639,9 @@ msg_cb(int write_p, int version, int content_type, const void *buf, size_t len, 
 					break;
 				case 20:
 					str_details1 = ", Finished";
+					break;
+				case 24:
+					str_details1 = ", KeyUpdate";
 					break;
 				}
 			}
@@ -724,20 +742,62 @@ tlsext_cb(SSL * s, int client_server, int type, unsigned char *data, int len,
 		extname = "heartbeat";
 		break;
 
-	case TLSEXT_TYPE_session_ticket:
-		extname = "session ticket";
-		break;
-
-	case TLSEXT_TYPE_renegotiate:
-		extname = "renegotiation info";
-		break;
-
 	case TLSEXT_TYPE_application_layer_protocol_negotiation:
 		extname = "application layer protocol negotiation";
 		break;
 
 	case TLSEXT_TYPE_padding:
 		extname = "TLS padding";
+		break;
+
+	case TLSEXT_TYPE_session_ticket:
+		extname = "session ticket";
+		break;
+
+#if defined(LIBRESSL_HAS_TLS1_3) || defined(LIBRESSL_INTERNAL)
+	case TLSEXT_TYPE_pre_shared_key:
+		extname = "pre shared key";
+		break;
+
+	case TLSEXT_TYPE_early_data:
+		extname = "early data";
+		break;
+
+	case TLSEXT_TYPE_supported_versions:
+		extname = "supported versions";
+		break;
+
+	case TLSEXT_TYPE_cookie:
+		extname = "cookie";
+		break;
+
+	case TLSEXT_TYPE_psk_key_exchange_modes:
+		extname = "PSK key exchange modes";
+		break;
+
+	case TLSEXT_TYPE_certificate_authorities:
+		extname = "certificate authorities";
+		break;
+
+	case TLSEXT_TYPE_oid_filters:
+		extname = "OID filters";
+		break;
+
+	case TLSEXT_TYPE_post_handshake_auth:
+		extname = "post handshake auth";
+		break;
+
+	case TLSEXT_TYPE_signature_algorithms_cert:
+		extname = "signature algorithms cert";
+		break;
+
+	case TLSEXT_TYPE_key_share:
+		extname = "key share";
+		break;
+#endif
+
+	case TLSEXT_TYPE_renegotiate:
+		extname = "renegotiation info";
 		break;
 
 	default:

@@ -1,4 +1,4 @@
-/* $OpenBSD: evp.h,v 1.75 2019/03/17 18:17:44 tb Exp $ */
+/* $OpenBSD: evp.h,v 1.79 2020/04/27 19:31:02 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -99,6 +99,7 @@
 
 #define EVP_PKEY_NONE	NID_undef
 #define EVP_PKEY_RSA	NID_rsaEncryption
+#define EVP_PKEY_RSA_PSS NID_rsassaPss
 #define EVP_PKEY_RSA2	NID_rsa
 #define EVP_PKEY_DSA	NID_dsa
 #define EVP_PKEY_DSA1	NID_dsa_2
@@ -1014,6 +1015,7 @@ void EVP_PBE_cleanup(void);
 #define ASN1_PKEY_CTRL_DEFAULT_MD_NID	0x3
 #define ASN1_PKEY_CTRL_CMS_SIGN		0x5
 #define ASN1_PKEY_CTRL_CMS_ENVELOPE	0x7
+#define ASN1_PKEY_CTRL_CMS_RI_TYPE	0x8
 
 int EVP_PKEY_asn1_get_count(void);
 const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_get0(int idx);
@@ -1084,9 +1086,13 @@ void EVP_PKEY_asn1_set_ctrl(EVP_PKEY_ASN1_METHOD *ameth,
 #define EVP_PKEY_OP_TYPE_GEN \
 		(EVP_PKEY_OP_PARAMGEN | EVP_PKEY_OP_KEYGEN)
 
-#define	 EVP_PKEY_CTX_set_signature_md(ctx, md)	\
-		EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,  \
-					EVP_PKEY_CTRL_MD, 0, (void *)md)
+#define EVP_PKEY_CTX_set_signature_md(ctx, md) \
+		EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, \
+		    EVP_PKEY_CTRL_MD, 0, (void *)md)
+
+#define EVP_PKEY_CTX_get_signature_md(ctx, pmd) \
+		EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, \
+		    EVP_PKEY_CTRL_GET_MD, 0, (void *)(pmd))
 
 #define EVP_PKEY_CTRL_MD		1
 #define EVP_PKEY_CTRL_PEER_KEY		2
@@ -1108,6 +1114,8 @@ void EVP_PKEY_asn1_set_ctrl(EVP_PKEY_ASN1_METHOD *ameth,
 #define EVP_PKEY_CTRL_CMS_SIGN		11
 
 #define EVP_PKEY_CTRL_CIPHER		12
+
+#define EVP_PKEY_CTRL_GET_MD		13
 
 #define EVP_PKEY_ALG_CTRL		0x1000
 
@@ -1499,6 +1507,7 @@ void ERR_load_EVP_strings(void);
 #define EVP_R_INPUT_NOT_INITIALIZED			 111
 #define EVP_R_INVALID_DIGEST				 152
 #define EVP_R_INVALID_FIPS_MODE				 168
+#define EVP_R_INVALID_IV_LENGTH				 194
 #define EVP_R_INVALID_KEY_LENGTH			 130
 #define EVP_R_INVALID_OPERATION				 148
 #define EVP_R_IV_TOO_LARGE				 102

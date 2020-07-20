@@ -1,4 +1,4 @@
-/* $OpenBSD: e_aes.c,v 1.35 2019/03/17 18:07:41 tb Exp $ */
+/* $OpenBSD: e_aes.c,v 1.41 2020/04/30 18:43:11 tb Exp $ */
 /* ====================================================================
  * Copyright (c) 2001-2011 The OpenSSL Project.  All rights reserved.
  *
@@ -721,6 +721,10 @@ aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr)
 	case EVP_CTRL_INIT:
 		gctx->key_set = 0;
 		gctx->iv_set = 0;
+		if (c->cipher->iv_len == 0) {
+			EVPerror(EVP_R_INVALID_IV_LENGTH);
+			return 0;
+		}
 		gctx->ivlen = c->cipher->iv_len;
 		gctx->iv = c->iv;
 		gctx->taglen = -1;
@@ -834,11 +838,11 @@ aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr)
 				return 0;
 			gctx_out->gcm.key = &gctx_out->ks;
 		}
-		if (gctx->iv == c->iv)
+
+		if (gctx->iv == c->iv) {
 			gctx_out->iv = out->iv;
-		else {
-			gctx_out->iv = malloc(gctx->ivlen);
-			if (!gctx_out->iv)
+		} else {
+			if ((gctx_out->iv = calloc(1, gctx->ivlen)) == NULL)
 				return 0;
 			memcpy(gctx_out->iv, gctx->iv, gctx->ivlen);
 		}
@@ -1396,8 +1400,7 @@ aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const unsigned char *key, size_t key_len,
 		return 0;
 	}
 
-	gcm_ctx = malloc(sizeof(struct aead_aes_gcm_ctx));
-	if (gcm_ctx == NULL)
+	if ((gcm_ctx = calloc(1, sizeof(struct aead_aes_gcm_ctx))) == NULL)
 		return 0;
 
 #ifdef AESNI_CAPABLE
@@ -1442,6 +1445,11 @@ aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, unsigned char *out, size_t *out_len,
 	}
 
 	memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
+
+	if (nonce_len == 0) {
+		EVPerror(EVP_R_INVALID_IV_LENGTH);
+		return 0;
+	}
 	CRYPTO_gcm128_setiv(&gcm, nonce, nonce_len);
 
 	if (ad_len > 0 && CRYPTO_gcm128_aad(&gcm, ad, ad_len))
@@ -1488,6 +1496,11 @@ aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, unsigned char *out, size_t *out_len,
 	}
 
 	memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
+
+	if (nonce_len == 0) {
+		EVPerror(EVP_R_INVALID_IV_LENGTH);
+		return 0;
+	}
 	CRYPTO_gcm128_setiv(&gcm, nonce, nonce_len);
 
 	if (CRYPTO_gcm128_aad(&gcm, ad, ad_len))

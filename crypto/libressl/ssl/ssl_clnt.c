@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_clnt.c,v 1.61 2019/03/31 15:49:03 jsing Exp $ */
+/* $OpenBSD: ssl_clnt.c,v 1.64 2020/03/06 16:36:47 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -811,7 +811,7 @@ ssl3_get_server_hello(SSL *s)
 	long n;
 
 	s->internal->first_packet = 1;
-	n = s->method->internal->ssl_get_message(s, SSL3_ST_CR_SRVR_HELLO_A,
+	n = ssl3_get_message(s, SSL3_ST_CR_SRVR_HELLO_A,
 	    SSL3_ST_CR_SRVR_HELLO_B, -1, 20000, /* ?? */ &ok);
 	if (!ok)
 		return ((int)n);
@@ -872,6 +872,32 @@ ssl3_get_server_hello(SSL *s)
 	if (!CBS_write_bytes(&server_random, s->s3->server_random,
 	    sizeof(s->s3->server_random), NULL))
 		goto err;
+
+	if (!SSL_IS_DTLS(s) && !ssl_enabled_version_range(s, NULL, &max_version))
+		goto err;
+	if (!SSL_IS_DTLS(s) && max_version >= TLS1_2_VERSION &&
+	    s->version < max_version) {
+		/*
+		 * RFC 8446 section 4.1.3. We must not downgrade if the server
+		 * random value contains the TLS 1.2 or TLS 1.1 magical value.
+		 */
+		if (!CBS_skip(&server_random,
+		    CBS_len(&server_random) - sizeof(tls13_downgrade_12)))
+			goto err;
+		if (s->version == TLS1_2_VERSION &&
+		    CBS_mem_equal(&server_random, tls13_downgrade_12,
+		    sizeof(tls13_downgrade_12))) {
+			al = SSL_AD_ILLEGAL_PARAMETER;
+			SSLerror(s, SSL_R_INAPPROPRIATE_FALLBACK);
+			goto f_err;
+		}
+		if (CBS_mem_equal(&server_random, tls13_downgrade_11,
+		    sizeof(tls13_downgrade_11))) {
+			al = SSL_AD_ILLEGAL_PARAMETER;
+			SSLerror(s, SSL_R_INAPPROPRIATE_FALLBACK);
+			goto f_err;
+		}
+	}
 
 	/* Session ID. */
 	if (!CBS_get_u8_length_prefixed(&cbs, &session_id))
@@ -1048,9 +1074,8 @@ ssl3_get_server_certificate(SSL *s)
 	SESS_CERT		*sc;
 	EVP_PKEY		*pkey = NULL;
 
-	n = s->method->internal->ssl_get_message(s, SSL3_ST_CR_CERT_A,
+	n = ssl3_get_message(s, SSL3_ST_CR_CERT_A,
 	    SSL3_ST_CR_CERT_B, -1, s->internal->max_cert_list, &ok);
-
 	if (!ok)
 		return ((int)n);
 
@@ -1264,56 +1289,27 @@ ssl3_get_server_kex_dhe(SSL *s, EVP_PKEY **pkey, CBS *cbs)
 static int
 ssl3_get_server_kex_ecdhe_ecp(SSL *s, SESS_CERT *sc, int nid, CBS *public)
 {
-	const EC_GROUP *group;
-	EC_GROUP *ngroup = NULL;
-	EC_POINT *point = NULL;
-	BN_CTX *bn_ctx = NULL;
 	EC_KEY *ecdh = NULL;
 	int ret = -1;
 
-	/*
-	 * Extract the server's ephemeral ECDH public key.
-	 */
-
+	/* Extract the server's ephemeral ECDH public key. */
 	if ((ecdh = EC_KEY_new()) == NULL) {
 		SSLerror(s, ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
-
-	if ((ngroup = EC_GROUP_new_by_curve_name(nid)) == NULL) {
-		SSLerror(s, ERR_R_EC_LIB);
-		goto err;
-	}
-	if (EC_KEY_set_group(ecdh, ngroup) == 0) {
-		SSLerror(s, ERR_R_EC_LIB);
-		goto err;
-	}
-
-	group = EC_KEY_get0_group(ecdh);
-
-	if ((point = EC_POINT_new(group)) == NULL ||
-	    (bn_ctx = BN_CTX_new()) == NULL) {
-		SSLerror(s, ERR_R_MALLOC_FAILURE);
-		goto err;
-	}
-
-	if (EC_POINT_oct2point(group, point, CBS_data(public),
-	    CBS_len(public), bn_ctx) == 0) {
+	if (!ssl_kex_peer_public_ecdhe_ecp(ecdh, nid, public)) {
 		SSLerror(s, SSL_R_BAD_ECPOINT);
 		ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
 		goto err;
 	}
 
-	EC_KEY_set_public_key(ecdh, point);
+	sc->peer_nid = nid;
 	sc->peer_ecdh_tmp = ecdh;
 	ecdh = NULL;
 
 	ret = 1;
 
  err:
-	BN_CTX_free(bn_ctx);
-	EC_GROUP_free(ngroup);
-	EC_POINT_free(point);
 	EC_KEY_free(ecdh);
 
 	return (ret);
@@ -1443,7 +1439,7 @@ ssl3_get_server_key_exchange(SSL *s)
 	 * Use same message size as in ssl3_get_certificate_request()
 	 * as ServerKeyExchange message may be skipped.
 	 */
-	n = s->method->internal->ssl_get_message(s, SSL3_ST_CR_KEY_EXCH_A,
+	n = ssl3_get_message(s, SSL3_ST_CR_KEY_EXCH_A,
 	    SSL3_ST_CR_KEY_EXCH_B, -1, s->internal->max_cert_list, &ok);
 	if (!ok)
 		return ((int)n);
@@ -1611,9 +1607,8 @@ ssl3_get_certificate_request(SSL *s)
 	const unsigned char	*q;
 	STACK_OF(X509_NAME)	*ca_sk = NULL;
 
-	n = s->method->internal->ssl_get_message(s, SSL3_ST_CR_CERT_REQ_A,
+	n = ssl3_get_message(s, SSL3_ST_CR_CERT_REQ_A,
 	    SSL3_ST_CR_CERT_REQ_B, -1, s->internal->max_cert_list, &ok);
-
 	if (!ok)
 		return ((int)n);
 
@@ -1765,7 +1760,7 @@ ssl3_get_new_session_ticket(SSL *s)
 	long			 n;
 	CBS			 cbs, session_ticket;
 
-	n = s->method->internal->ssl_get_message(s, SSL3_ST_CR_SESSION_TICKET_A,
+	n = ssl3_get_message(s, SSL3_ST_CR_SESSION_TICKET_A,
 	    SSL3_ST_CR_SESSION_TICKET_B, -1, 16384, &ok);
 	if (!ok)
 		return ((int)n);
@@ -1841,10 +1836,9 @@ ssl3_get_cert_status(SSL *s)
 	long			 n;
 	uint8_t			 status_type;
 
-	n = s->method->internal->ssl_get_message(s, SSL3_ST_CR_CERT_STATUS_A,
+	n = ssl3_get_message(s, SSL3_ST_CR_CERT_STATUS_A,
 	    SSL3_ST_CR_CERT_STATUS_B, SSL3_MT_CERTIFICATE_STATUS,
 	    16384, &ok);
-
 	if (!ok)
 		return ((int)n);
 
@@ -1913,12 +1907,12 @@ ssl3_get_server_done(SSL *s)
 	int	ok, ret = 0;
 	long	n;
 
-	n = s->method->internal->ssl_get_message(s, SSL3_ST_CR_SRVR_DONE_A,
+	n = ssl3_get_message(s, SSL3_ST_CR_SRVR_DONE_A,
 	    SSL3_ST_CR_SRVR_DONE_B, SSL3_MT_SERVER_DONE,
 	    30, /* should be very small, like 0 :-) */ &ok);
-
 	if (!ok)
 		return ((int)n);
+
 	if (n > 0) {
 		/* should contain no data */
 		ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
@@ -2052,87 +2046,37 @@ err:
 static int
 ssl3_send_client_kex_ecdhe_ecp(SSL *s, SESS_CERT *sc, CBB *cbb)
 {
-	const EC_GROUP *group = NULL;
-	const EC_POINT *point = NULL;
 	EC_KEY *ecdh = NULL;
-	BN_CTX *bn_ctx = NULL;
-	unsigned char *key = NULL;
-	unsigned char *data;
-	size_t encoded_len;
-	int key_size = 0, key_len;
+	uint8_t *key = NULL;
+	size_t key_len = 0;
 	int ret = -1;
 	CBB ecpoint;
-
-	if ((group = EC_KEY_get0_group(sc->peer_ecdh_tmp)) == NULL ||
-	    (point = EC_KEY_get0_public_key(sc->peer_ecdh_tmp)) == NULL) {
-		SSLerror(s, ERR_R_INTERNAL_ERROR);
-		goto err;
-	}
 
 	if ((ecdh = EC_KEY_new()) == NULL) {
 		SSLerror(s, ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 
-	if (!EC_KEY_set_group(ecdh, group)) {
-		SSLerror(s, ERR_R_EC_LIB);
+	if (!ssl_kex_generate_ecdhe_ecp(ecdh, sc->peer_nid))
 		goto err;
-	}
 
-	/* Generate a new ECDH key pair. */
-	if (!EC_KEY_generate_key(ecdh)) {
-		SSLerror(s, ERR_R_ECDH_LIB);
-		goto err;
-	}
-	if ((key_size = ECDH_size(ecdh)) <= 0) {
-		SSLerror(s, ERR_R_ECDH_LIB);
-		goto err;
-	}
-	if ((key = malloc(key_size)) == NULL) {
-		SSLerror(s, ERR_R_MALLOC_FAILURE);
-		goto err;
-	}
-	key_len = ECDH_compute_key(key, key_size, point, ecdh, NULL);
-	if (key_len <= 0) {
-		SSLerror(s, ERR_R_ECDH_LIB);
-		goto err;
-	}
-
-	/* Generate master key from the result. */
-	s->session->master_key_length =
-	    tls1_generate_master_secret(s,
-		s->session->master_key, key, key_len);
-
-	encoded_len = EC_POINT_point2oct(group, EC_KEY_get0_public_key(ecdh),
-	    POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
-	if (encoded_len == 0) {
-		SSLerror(s, ERR_R_ECDH_LIB);
-		goto err;
-	}
-
-	if ((bn_ctx = BN_CTX_new()) == NULL) {
-		SSLerror(s, ERR_R_MALLOC_FAILURE);
-		goto err;
-	}
-
-	/* Encode the public key. */
+	/* Encode our public key. */
 	if (!CBB_add_u8_length_prefixed(cbb, &ecpoint))
 		goto err;
-	if (!CBB_add_space(&ecpoint, &data, encoded_len))
-		goto err;
-	if (EC_POINT_point2oct(group, EC_KEY_get0_public_key(ecdh),
-	    POINT_CONVERSION_UNCOMPRESSED, data, encoded_len,
-	    bn_ctx) == 0)
+	if (!ssl_kex_public_ecdhe_ecp(ecdh, &ecpoint))
 		goto err;
 	if (!CBB_flush(cbb))
 		goto err;
 
+	if (!ssl_kex_derive_ecdhe_ecp(ecdh, sc->peer_ecdh_tmp, &key, &key_len))
+		goto err;
+	s->session->master_key_length = tls1_generate_master_secret(s,
+		s->session->master_key, key, key_len);
+
 	ret = 1;
 
  err:
-	freezero(key, key_size);
-
-	BN_CTX_free(bn_ctx);
+	freezero(key, key_len);
 	EC_KEY_free(ecdh);
 
 	return (ret);
@@ -2796,10 +2740,11 @@ ssl3_check_finished(SSL *s)
 		return (1);
 	/* this function is called when we really expect a Certificate
 	 * message, so permit appropriate message length */
-	n = s->method->internal->ssl_get_message(s, SSL3_ST_CR_CERT_A,
+	n = ssl3_get_message(s, SSL3_ST_CR_CERT_A,
 	    SSL3_ST_CR_CERT_B, -1, s->internal->max_cert_list, &ok);
 	if (!ok)
 		return ((int)n);
+
 	S3I(s)->tmp.reuse_message = 1;
 	if ((S3I(s)->tmp.message_type == SSL3_MT_FINISHED) ||
 	    (S3I(s)->tmp.message_type == SSL3_MT_NEWSESSION_TICKET))
