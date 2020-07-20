@@ -1277,9 +1277,8 @@ ext2_alloc_vnode(struct mount *mp, ino_t ino, struct vnode **vpp)
 	ext2fs_inode_hash_lock = 1;
 
 	ip = malloc(sizeof(struct inode), M_EXT2NODE, M_WAITOK | M_ZERO);
-	if (ip == NULL) {
+	if (ip == NULL)
 		return (ENOMEM);
-	}
 
 	/* Allocate a new vnode/inode. */
 	if ((error = getnewvnode(VT_EXT2FS, mp, &vp, VLKTIMEOUT,
@@ -1309,7 +1308,7 @@ ext2_alloc_vnode(struct mount *mp, ino_t ino, struct vnode **vpp)
 	 * contents of the disk portion of this inode to be read.
 	 */
 	if (ext2_ihashins(ip)) {
-		printf("ext2_valloc: ihashins collision, retrying inode %ld\n",
+		printf("ext2_alloc_vnode: ihashins collision, retrying inode %ld\n",
 		    (long)ip->i_number);
 		*vpp = NULL;
 		vp->v_type = VBAD;
