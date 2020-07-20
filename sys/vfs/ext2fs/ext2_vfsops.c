@@ -661,6 +661,7 @@ ext2_compute_sb_data(struct vnode *devvp, struct ext2fs *es,
 			 * because this function could be called from
 			 * MNT_UPDATE path.
 			 */
+			ext2_brelse(bp);
 			return (error);
 		}
 		if (EXT2_HAS_INCOMPAT_FEATURE(fs, EXT2F_INCOMPAT_64BIT)) {
@@ -753,8 +754,10 @@ ext2_reload_scan(struct mount *mp, struct vnode *vp, void *data)
 	error = ext2_bread(info->devvp,
 	    fsbtodoff(info->fs, ino_to_fsba(info->fs, ip->i_number)),
 	    (int)info->fs->e2fs_bsize, &bp);
-	if (error)
+	if (error) {
+		ext2_brelse(bp);
 		return (error);
+	}
 
 	error = ext2_ei2i((struct ext2fs_dinode *)((char *)bp->b_data +
 	    EXT2_INODE_SIZE(info->fs) * ino_to_fsbo(info->fs, ip->i_number)),
@@ -805,8 +808,10 @@ ext2_reload(struct mount *mp)
 	 * Step 2: re-read superblock from disk.
 	 * constants have been adjusted for ext2
 	 */
-	if ((error = ext2_bread(devvp, SBOFF, SBSIZE, &bp)) != 0)
+	if ((error = ext2_bread(devvp, SBOFF, SBSIZE, &bp)) != 0) {
+		ext2_brelse(bp);
 		return (error);
+	}
 	es = (struct ext2fs *)bp->b_data;
 	if (ext2_check_sb_compat(es, devvp->v_rdev, 0) != 0) {
 		ext2_brelse(bp);

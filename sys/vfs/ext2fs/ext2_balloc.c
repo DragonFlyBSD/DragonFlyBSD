@@ -113,6 +113,7 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 			error = ext2_bread(vp, lblktodoff(fs, lbn),
 			    fs->e2fs_bsize, &bp);
 			if (error) {
+				ext2_brelse(bp);
 				return (error);
 			}
 			bp->b_bio2.bio_offset = fsbtodoff(fs, nb);
@@ -190,6 +191,7 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 		error = ext2_bread(vp,
 		    lblktodoff(fs, indirs[i].in_lbn), (int)fs->e2fs_bsize, &bp);
 		if (error) {
+			ext2_brelse(bp);
 			return (error);
 		}
 		bap = (e2fs_daddr_t *)bp->b_data;
@@ -210,8 +212,10 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 			ext2_brelse(bp);
 			return (error);
 		}
-		if (newb > UINT_MAX)
+		if (newb > UINT_MAX) {
+			ext2_brelse(bp);
 			return (EFBIG);
+		}
 		nb = newb;
 		nbp = getblk(vp, lblktodoff(fs, indirs[i].in_lbn),
 		    fs->e2fs_bsize, 0, 0);
@@ -251,8 +255,10 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 			ext2_brelse(bp);
 			return (error);
 		}
-		if (newb > UINT_MAX)
+		if (newb > UINT_MAX) {
+			ext2_brelse(bp);
 			return (EFBIG);
+		}
 		nb = newb;
 		nbp = getblk(vp, lblktodoff(fs, lbn), fs->e2fs_bsize, 0, 0);
 		nbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
