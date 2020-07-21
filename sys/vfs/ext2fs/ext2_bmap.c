@@ -148,7 +148,7 @@ readindir(struct vnode *vp, e2fs_lbn_t lbn, e2fs_daddr_t daddr, struct buf **bpp
 #endif
 		error = biowait(&bp->b_bio1, "biord");
 		if (error) {
-			ext2_brelse(bp);
+			brelse(bp);
 			return (error);
 		}
 	}
@@ -248,7 +248,7 @@ ext2_bmaparray(struct vnode *vp, daddr_t bn, daddr_t *bnp, int *runp, int *runb)
 		 * or we have a disk address for it, go fetch it.
 		 */
 		if (bp)
-			ext2_bqrelse(bp);
+			bqrelse(bp);
 		error = readindir(vp, metalbn, daddr, &bp);
 		if (error != 0)
 			return (error);
@@ -272,7 +272,7 @@ ext2_bmaparray(struct vnode *vp, daddr_t bn, daddr_t *bnp, int *runp, int *runb)
 		}
 	}
 	if (bp)
-		ext2_bqrelse(bp);
+		bqrelse(bp);
 
 	*bnp = blkptrtodb(ump, daddr);
 	if (*bnp == 0) {

@@ -69,76 +69,6 @@ ext2_free(void *addr, struct malloc_type *type, const char *func)
 	kfree(addr, type);
 }
 
-int
-ext2_bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
-{
-	struct buf *bp;
-	int error;
-
-	*bpp = NULL;
-	error = bread(vp, loffset, size, &bp);
-	if (error) {
-		ext2_brelse(bp);
-		return (error);
-	}
-
-	*bpp = bp;
-	return (0);
-}
-
-int
-ext2_breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
-    int *rabsize, int cnt, struct buf **bpp)
-{
-	struct buf *bp;
-	int error;
-
-	*bpp = NULL;
-	error = breadn(vp, loffset, size, raoffset, rabsize, cnt, &bp);
-	if (error) {
-		ext2_brelse(bp);
-		return (error);
-	}
-
-	*bpp = bp;
-	return (0);
-}
-
-int
-ext2_cluster_read(struct vnode *vp, off_t filesize, off_t loffset, int blksize,
-    size_t minreq, size_t maxreq, struct buf **bpp)
-{
-	struct buf *bp;
-	int error;
-
-	*bpp = NULL;
-	error = cluster_read(vp, filesize, loffset, blksize, minreq, maxreq,
-	    &bp);
-	if (error) {
-		ext2_brelse(bp);
-		return (error);
-	}
-
-	*bpp = bp;
-	return (0);
-}
-
-void
-ext2_brelse(struct buf *bp)
-{
-	if (bp == NULL)
-		return;
-	brelse(bp);
-}
-
-void
-ext2_bqrelse(struct buf *bp)
-{
-	if (bp == NULL)
-		return;
-	bqrelse(bp);
-}
-
 /*
  * Return buffer with the contents of block "offset" from the beginning of
  * directory "ip".  If "res" is non-zero, fill it in with a pointer to the
@@ -158,13 +88,13 @@ ext2_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	lbn = lblkno(fs, offset);
 	bsize = blksize(fs, ip, lbn);
 
-	if ((error = ext2_bread(vp, lblktodoff(fs, lbn), bsize, &bp)) != 0) {
-		ext2_brelse(bp);
+	if ((error = bread(vp, lblktodoff(fs, lbn), bsize, &bp)) != 0) {
+		brelse(bp);
 		return (error);
 	}
 	error = ext2_dir_blk_csum_verify(ip, bp);
 	if (error != 0) {
-		ext2_brelse(bp);
+		brelse(bp);
 		return (error);
 	}
 	if (res)

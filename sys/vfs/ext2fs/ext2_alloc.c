@@ -266,9 +266,9 @@ ext2_reallocblks(struct vop_reallocblks_args *ap)
 		soff = start_lbn;
 	} else {
 		idp = &start_ap[start_lvl - 1];
-		if (ext2_bread(vp, lblktodoff(fs, idp->in_lbn),
-		    (int)fs->e2fs_bsize, &sbp)) {
-			ext2_brelse(sbp);
+		if (bread(vp, lblktodoff(fs, idp->in_lbn), (int)fs->e2fs_bsize,
+		    &sbp)) {
+			brelse(sbp);
 			return (ENOSPC);
 		}
 		sbap = (u_int *)sbp->b_data;
@@ -286,8 +286,8 @@ ext2_reallocblks(struct vop_reallocblks_args *ap)
 			panic("ext2_reallocblks: start == end");
 #endif
 		ssize = len - (idp->in_off + 1);
-		if (ext2_bread(vp, lblktodoff(fs, idp->in_lbn),
-		    (int)fs->e2fs_bsize, &ebp))
+		if (bread(vp, lblktodoff(fs, idp->in_lbn), (int)fs->e2fs_bsize,
+		    &ebp))
 			goto fail;
 		ebap = (u_int *)ebp->b_data;
 	}
@@ -371,9 +371,9 @@ ext2_reallocblks(struct vop_reallocblks_args *ap)
 
 fail:
 	if (ssize < len)
-		ext2_brelse(ebp);
+		brelse(ebp);
 	if (sbap != &ip->i_db[0])
-		ext2_brelse(sbp);
+		brelse(sbp);
 	return (ENOSPC);
 }
 
@@ -995,7 +995,7 @@ ext2_alloccg(struct inode *ip, int cg, daddr_t bpref, int size)
 		return (0);
 
 	EXT2_UNLOCK(ump);
-	error = ext2_bread(ip->i_devvp, fsbtodoff(fs,
+	error = bread(ip->i_devvp, fsbtodoff(fs,
 	    e2fs_gd_get_b_bitmap(&fs->e2fs_gd[cg])),
 	    (int)fs->e2fs_bsize, &bp);
 	if (error)
@@ -1121,7 +1121,7 @@ gotit:
 	    le32toh(fs->e2fs->e2fs_first_dblock) + bno);
 
 fail:
-	ext2_brelse(bp);
+	brelse(bp);
 	EXT2_LOCK(ump);
 	return (0);
 }
@@ -1147,7 +1147,7 @@ ext2_clusteralloc(struct inode *ip, int cg, daddr_t bpref, int len)
 		return (0);
 
 	EXT2_UNLOCK(ump);
-	error = ext2_bread(ip->i_devvp,
+	error = bread(ip->i_devvp,
 	    fsbtodoff(fs, e2fs_gd_get_b_bitmap(&fs->e2fs_gd[cg])),
 	    (int)fs->e2fs_bsize, &bp);
 	if (error)
@@ -1232,7 +1232,7 @@ ext2_clusteralloc(struct inode *ip, int cg, daddr_t bpref, int len)
 fail_lock:
 	EXT2_LOCK(ump);
 fail:
-	ext2_brelse(bp);
+	brelse(bp);
 	return (0);
 }
 
@@ -1305,11 +1305,11 @@ ext2_nodealloccg(struct inode *ip, int cg, daddr_t ipref, int mode)
 	if (e2fs_gd_get_nifree(&fs->e2fs_gd[cg]) == 0)
 		return (0);
 	EXT2_UNLOCK(ump);
-	error = ext2_bread(ip->i_devvp, fsbtodoff(fs,
+	error = bread(ip->i_devvp, fsbtodoff(fs,
 	    e2fs_gd_get_i_bitmap(&fs->e2fs_gd[cg])),
 	    (int)fs->e2fs_bsize, &bp);
 	if (error) {
-		ext2_brelse(bp);
+		brelse(bp);
 		EXT2_LOCK(ump);
 		return (0);
 	}
@@ -1328,14 +1328,14 @@ ext2_nodealloccg(struct inode *ip, int cg, daddr_t ipref, int mode)
 		ext2_gd_i_bitmap_csum_set(fs, cg, bp);
 		error = ext2_zero_inode_table(ip, cg);
 		if (error) {
-			ext2_brelse(bp);
+			brelse(bp);
 			EXT2_LOCK(ump);
 			return (0);
 		}
 	}
 	error = ext2_gd_i_bitmap_csum_verify(fs, cg, bp);
 	if (error) {
-		ext2_brelse(bp);
+		brelse(bp);
 		EXT2_LOCK(ump);
 		return (0);
 	}
@@ -1344,7 +1344,7 @@ ext2_nodealloccg(struct inode *ip, int cg, daddr_t ipref, int mode)
 		 * Another thread allocated the last i-node in this
 		 * group while we were waiting for the buffer.
 		 */
-		ext2_brelse(bp);
+		brelse(bp);
 		EXT2_LOCK(ump);
 		return (0);
 	}
@@ -1365,7 +1365,7 @@ ext2_nodealloccg(struct inode *ip, int cg, daddr_t ipref, int mode)
 			SDT_PROBE3(ext2fs, , alloc,
 			    ext2_nodealloccg_bmap_corrupted, cg, ipref,
 			    fs->e2fs_fsmnt);
-			ext2_brelse(bp);
+			brelse(bp);
 			EXT2_LOCK(ump);
 			return (0);
 		}
@@ -1417,11 +1417,11 @@ ext2_blkfree(struct inode *ip, e4fs_daddr_t bno, long size)
 		    ip->i_number, bno);
 		return;
 	}
-	error = ext2_bread(ip->i_devvp,
+	error = bread(ip->i_devvp,
 	    fsbtodoff(fs, e2fs_gd_get_b_bitmap(&fs->e2fs_gd[cg])),
 	    (int)fs->e2fs_bsize, &bp);
 	if (error) {
-		ext2_brelse(bp);
+		brelse(bp);
 		return;
 	}
 	bbp = (char *)bp->b_data;
@@ -1464,11 +1464,11 @@ ext2_vfree(struct vnode *pvp, ino_t ino, int mode)
 		    pip->i_devvp, (uintmax_t)ino, fs->e2fs_fsmnt);
 
 	cg = ino_to_cg(fs, ino);
-	error = ext2_bread(pip->i_devvp,
+	error = bread(pip->i_devvp,
 	    fsbtodoff(fs, e2fs_gd_get_i_bitmap(&fs->e2fs_gd[cg])),
 	    (int)fs->e2fs_bsize, &bp);
 	if (error) {
-		ext2_brelse(bp);
+		brelse(bp);
 		return (0);
 	}
 	ibp = (char *)bp->b_data;

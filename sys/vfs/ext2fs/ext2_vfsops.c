@@ -651,8 +651,7 @@ ext2_compute_sb_data(struct vnode *devvp, struct ext2fs *es,
 	    sizeof(*fs->e2fs_contigdirs), M_EXT2MNT, M_WAITOK | M_ZERO);
 
 	for (i = 0; i < fs->e2fs_gdbcount; i++) {
-		error = ext2_bread(devvp,
-		    fsbtodoff(fs, ext2_cg_location(fs, i)),
+		error = bread(devvp, fsbtodoff(fs, ext2_cg_location(fs, i)),
 		    fs->e2fs_bsize, &bp);
 		if (error) {
 			/*
@@ -661,7 +660,7 @@ ext2_compute_sb_data(struct vnode *devvp, struct ext2fs *es,
 			 * because this function could be called from
 			 * MNT_UPDATE path.
 			 */
-			ext2_brelse(bp);
+			brelse(bp);
 			return (error);
 		}
 		if (EXT2_HAS_INCOMPAT_FEATURE(fs, EXT2F_INCOMPAT_64BIT)) {
@@ -675,7 +674,7 @@ ext2_compute_sb_data(struct vnode *devvp, struct ext2fs *es,
 				    bp->b_data + j * E2FS_REV0_GD_SIZE,
 				    E2FS_REV0_GD_SIZE);
 		}
-		ext2_brelse(bp);
+		brelse(bp);
 		bp = NULL;
 	}
 
@@ -751,11 +750,11 @@ ext2_reload_scan(struct mount *mp, struct vnode *vp, void *data)
 	 * Step 2: re-read inode data for all active vnodes.
 	 */
 	ip = VTOI(vp);
-	error = ext2_bread(info->devvp,
+	error = bread(info->devvp,
 	    fsbtodoff(info->fs, ino_to_fsba(info->fs, ip->i_number)),
 	    (int)info->fs->e2fs_bsize, &bp);
 	if (error) {
-		ext2_brelse(bp);
+		brelse(bp);
 		return (error);
 	}
 
@@ -763,7 +762,7 @@ ext2_reload_scan(struct mount *mp, struct vnode *vp, void *data)
 	    EXT2_INODE_SIZE(info->fs) * ino_to_fsbo(info->fs, ip->i_number)),
 	    ip);
 
-	ext2_brelse(bp);
+	brelse(bp);
 	return (error);
 }
 
@@ -808,27 +807,27 @@ ext2_reload(struct mount *mp)
 	 * Step 2: re-read superblock from disk.
 	 * constants have been adjusted for ext2
 	 */
-	if ((error = ext2_bread(devvp, SBOFF, SBSIZE, &bp)) != 0) {
-		ext2_brelse(bp);
+	if ((error = bread(devvp, SBOFF, SBSIZE, &bp)) != 0) {
+		brelse(bp);
 		return (error);
 	}
 	es = (struct ext2fs *)bp->b_data;
 	if (ext2_check_sb_compat(es, devvp->v_rdev, 0) != 0) {
-		ext2_brelse(bp);
+		brelse(bp);
 		return (EIO);		/* XXX needs translation */
 	}
 	fs = VFSTOEXT2(mp)->um_e2fs;
 	bcopy(bp->b_data, fs->e2fs, sizeof(struct ext2fs));
 
 	if ((error = ext2_compute_sb_data(devvp, es, fs)) != 0) {
-		ext2_brelse(bp);
+		brelse(bp);
 		return (error);
 	}
 #ifdef UNKLAR
 	if (fs->fs_sbsize < SBSIZE)
 		bp->b_flags |= B_INVAL;
 #endif
-	ext2_brelse(bp);
+	brelse(bp);
 
 	/*
 	 * Step 3: invalidate all cluster summary information.
@@ -903,7 +902,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp)
 
 	bp = NULL;
 	ump = NULL;
-	if ((error = ext2_bread(devvp, SBOFF, SBSIZE, &bp)) != 0)
+	if ((error = bread(devvp, SBOFF, SBSIZE, &bp)) != 0)
 		goto out;
 	es = (struct ext2fs *)bp->b_data;
 	if (ext2_check_sb_compat(es, dev, ronly) != 0) {
@@ -961,7 +960,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp)
 		}
 	}
 
-	ext2_brelse(bp);
+	brelse(bp);
 	bp = NULL;
 	fs = ump->um_e2fs;
 	fs->e2fs_ronly = ronly;	/* ronly is set according to mnt_flags */
@@ -1003,7 +1002,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp)
 	return (0);
 out:
 	if (bp)
-		ext2_brelse(bp);
+		brelse(bp);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE, NULL);
 	vn_unlock(devvp);
@@ -1357,7 +1356,7 @@ restart:
 	fs = ip->i_e2fs;
 
 	/* Read in the disk contents for the inode, copy into the inode. */
-	if ((error = ext2_bread(ump->um_devvp, fsbtodoff(fs, ino_to_fsba(fs, ino)),
+	if ((error = bread(ump->um_devvp, fsbtodoff(fs, ino_to_fsba(fs, ino)),
 	    (int)fs->e2fs_bsize, &bp)) != 0) {
 		/*
 		 * The inode does not contain anything useful, so it would
@@ -1366,7 +1365,7 @@ restart:
 		 * list by vput().
 		 */
 		vp->v_type = VBAD;
-		ext2_brelse(bp);
+		brelse(bp);
 		vx_put(vp);
 		*vpp = NULL;
 		return (error);
@@ -1375,7 +1374,7 @@ restart:
 	error = ext2_ei2i((struct ext2fs_dinode *)((char *)bp->b_data +
 	    EXT2_INODE_SIZE(fs) * ino_to_fsbo(fs, ino)), ip);
 	if (error) {
-		ext2_brelse(bp);
+		brelse(bp);
 		vx_put(vp);
 		*vpp = NULL;
 		return (error);
@@ -1399,7 +1398,7 @@ restart:
 	ext2_print_inode(ip);
 	ext4_ext_print_extent_tree_status(ip);
 #endif
-	ext2_bqrelse(bp);
+	bqrelse(bp);
 
 	/*
 	 * Initialize the vnode from the inode, check for aliases.

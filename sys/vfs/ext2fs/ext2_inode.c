@@ -82,16 +82,16 @@ ext2_update(struct vnode *vp, int waitfor)
 	fs = ip->i_e2fs;
 	if (fs->e2fs_ronly)
 		return (0);
-	if ((error = ext2_bread(ip->i_devvp,
+	if ((error = bread(ip->i_devvp,
 	    fsbtodoff(fs, ino_to_fsba(fs, ip->i_number)),
 	    (int)fs->e2fs_bsize, &bp)) != 0) {
-		ext2_brelse(bp);
+		brelse(bp);
 		return (error);
 	}
 	error = ext2_i2ei(ip, (struct ext2fs_dinode *)((char *)bp->b_data +
 	    EXT2_INODE_SIZE(fs) * ino_to_fsbo(fs, ip->i_number)));
 	if (error) {
-		ext2_brelse(bp);
+		brelse(bp);
 		return (error);
 	}
 	if (waitfor && !DOINGASYNC(vp))
@@ -162,7 +162,7 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, daddr_t dbn,
 		error = biowait(&bp->b_bio1, "biord");
 	}
 	if (error) {
-		ext2_brelse(bp);
+		brelse(bp);
 		*countp = 0;
 		return (error);
 	}

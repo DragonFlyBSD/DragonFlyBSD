@@ -110,10 +110,10 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 		 * the file
 		 */
 		if (nb != 0) {
-			error = ext2_bread(vp, lblktodoff(fs, lbn),
-			    fs->e2fs_bsize, &bp);
+			error = bread(vp, lblktodoff(fs, lbn), fs->e2fs_bsize,
+			    &bp);
 			if (error) {
-				ext2_brelse(bp);
+				brelse(bp);
 				return (error);
 			}
 			bp->b_bio2.bio_offset = fsbtodoff(fs, nb);
@@ -188,10 +188,10 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 	 * Fetch through the indirect blocks, allocating as necessary.
 	 */
 	for (i = 1;;) {
-		error = ext2_bread(vp,
-		    lblktodoff(fs, indirs[i].in_lbn), (int)fs->e2fs_bsize, &bp);
+		error = bread(vp, lblktodoff(fs, indirs[i].in_lbn),
+		    (int)fs->e2fs_bsize, &bp);
 		if (error) {
-			ext2_brelse(bp);
+			brelse(bp);
 			return (error);
 		}
 		bap = (e2fs_daddr_t *)bp->b_data;
@@ -200,7 +200,7 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 			break;
 		i += 1;
 		if (nb != 0) {
-			ext2_bqrelse(bp);
+			bqrelse(bp);
 			continue;
 		}
 		EXT2_LOCK(ump);
@@ -209,11 +209,11 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 			    lblkno(fs, bp->b_loffset));
 		error = ext2_alloc(ip, lbn, pref, (int)fs->e2fs_bsize, cred, &newb);
 		if (error) {
-			ext2_brelse(bp);
+			brelse(bp);
 			return (error);
 		}
 		if (newb > UINT_MAX) {
-			ext2_brelse(bp);
+			brelse(bp);
 			return (EFBIG);
 		}
 		nb = newb;
@@ -227,7 +227,7 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 		 */
 		if ((error = bwrite(nbp)) != 0) {
 			ext2_blkfree(ip, nb, fs->e2fs_bsize);
-			ext2_brelse(bp);
+			brelse(bp);
 			return (error);
 		}
 		bap[indirs[i - 1].in_off] = htole32(nb);
@@ -252,11 +252,11 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 		    lblkno(fs, bp->b_loffset));
 		if ((error = ext2_alloc(ip,
 		    lbn, pref, (int)fs->e2fs_bsize, cred, &newb)) != 0) {
-			ext2_brelse(bp);
+			brelse(bp);
 			return (error);
 		}
 		if (newb > UINT_MAX) {
-			ext2_brelse(bp);
+			brelse(bp);
 			return (EFBIG);
 		}
 		nb = newb;
@@ -279,20 +279,20 @@ ext2_balloc(struct inode *ip, e2fs_lbn_t lbn, int size, struct ucred *cred,
 		*bpp = nbp;
 		return (0);
 	}
-	ext2_brelse(bp);
+	brelse(bp);
 	if (flags & BA_CLRBUF) {
 		int seqcount = (flags & BA_SEQMASK) >> BA_SEQSHIFT;
 
 		if (seqcount && (vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
-			error = ext2_cluster_read(vp, ip->i_size,
+			error = cluster_read(vp, ip->i_size,
 			    lblktodoff(fs, lbn), (int)fs->e2fs_bsize,
 			    MAXBSIZE, (size_t)seqcount, &nbp);
 		} else {
-			error = ext2_bread(vp, lblktodoff(fs, lbn),
+			error = bread(vp, lblktodoff(fs, lbn),
 			    (int)fs->e2fs_bsize, &nbp);
 		}
 		if (error) {
-			ext2_brelse(nbp);
+			brelse(nbp);
 			return (error);
 		}
 	} else {

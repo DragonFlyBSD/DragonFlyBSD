@@ -1861,20 +1861,20 @@ ext2_read(struct vop_read_args *ap)
 			xfersize = bytesinfile;
 
 		if (nextloffset >= ip->i_size)
-			error = ext2_bread(vp, lblktodoff(fs, lbn), size, &bp);
+			error = bread(vp, lblktodoff(fs, lbn), size, &bp);
 		else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
-			error = ext2_cluster_read(vp, (off_t)ip->i_size,
+			error = cluster_read(vp, (off_t)ip->i_size,
 			    lblktodoff(fs, lbn), size, uio->uio_resid,
 			    (ap->a_ioflag >> IO_SEQSHIFT) * MAXBSIZE, &bp);
 		} else if (seqcount > 1) {
 			u_int nextsize = blksize(fs, ip, nextlbn);
 
-			error = ext2_breadn(vp, lblktodoff(fs, lbn),
-			    size, &nextloffset, &nextsize, 1, &bp);
+			error = breadn(vp, lblktodoff(fs, lbn), size,
+			    &nextloffset, &nextsize, 1, &bp);
 		} else
-			error = ext2_bread(vp, lblktodoff(fs, lbn), size, &bp);
+			error = bread(vp, lblktodoff(fs, lbn), size, &bp);
 		if (error) {
-			ext2_brelse(bp);
+			brelse(bp);
 			bp = NULL;
 			break;
 		}
@@ -1896,7 +1896,7 @@ ext2_read(struct vop_read_args *ap)
 		    (int)xfersize, uio);
 		if (error)
 			break;
-		ext2_bqrelse(bp);
+		bqrelse(bp);
 	}
 
 	/*
@@ -1906,7 +1906,7 @@ ext2_read(struct vop_read_args *ap)
 	 * from a 'break' statement
 	 */
 	if (bp != NULL)
-		ext2_bqrelse(bp);
+		bqrelse(bp);
 
 	if ((error == 0 || uio->uio_resid != orig_resid) &&
 	    (vp->v_mount->mnt_flag & (MNT_NOATIME | MNT_RDONLY)) == 0)

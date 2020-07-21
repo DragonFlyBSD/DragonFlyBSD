@@ -138,13 +138,6 @@ void	ext2_ihashuninit(void);
 int	ext2_alloc_vnode(struct mount *, ino_t, struct vnode **);
 
 void	ext2_free(void *, struct malloc_type *, const char *);
-int	ext2_bread(struct vnode *, off_t, int, struct buf **);
-int	ext2_breadn(struct vnode *, off_t, int, off_t *, int *, int,
-    struct buf **);
-int	ext2_cluster_read(struct vnode *, off_t, off_t, int, size_t, size_t,
-    struct buf **);
-void	ext2_brelse(struct buf *);
-void	ext2_bqrelse(struct buf *);
 
 /* Flags to low-level allocation routines.
  * The low 16-bits are reserved for IO_ flags from vnode.h.

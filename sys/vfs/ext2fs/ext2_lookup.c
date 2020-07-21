@@ -257,7 +257,7 @@ nextentry:
 			dp = (struct ext2fs_direct_2 *)((caddr_t)dp +
 			    le16toh(dp->e2d_reclen));
 		}
-		ext2_bqrelse(bp);
+		bqrelse(bp);
 		uio->uio_offset = offset;
 	}
 	/* We need to correct uio_offset. */
@@ -437,7 +437,7 @@ searchloop:
 		 * If necessary, get the next directory block.
 		 */
 		if (bp != NULL)
-			ext2_brelse(bp);
+			brelse(bp);
 		error = ext2_blkatoff(vdp, (off_t)i_offset, NULL, &bp);
 		if (error != 0)
 			return (error);
@@ -453,7 +453,7 @@ searchloop:
 		    &entryoffsetinblock, &i_offset, &prevoff,
 		    &enduseful, &ss);
 		if (error != 0) {
-			ext2_brelse(bp);
+			brelse(bp);
 			return (error);
 		}
 		if (entry_found) {
@@ -476,7 +476,7 @@ notfound:
 		goto searchloop;
 	}
 	if (bp != NULL)
-		ext2_brelse(bp);
+		brelse(bp);
 	/*
 	 * If creating, and at end of pathname and current
 	 * directory has not been removed, then can consider
@@ -542,7 +542,7 @@ found:
 		dp->i_size = entryoffsetinblock + EXT2_DIR_REC_LEN(ep->e2d_namlen);
 		dp->i_flag |= IN_CHANGE | IN_UPDATE;
 	}
-	ext2_brelse(bp);
+	brelse(bp);
 
 	/*
 	 * Found component in pathname.

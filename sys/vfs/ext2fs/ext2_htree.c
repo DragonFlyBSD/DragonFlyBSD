@@ -145,7 +145,7 @@ ext2_htree_check_next(struct inode *ip, uint32_t hash, const char *name,
 		    ip->i_e2fs->e2fs_bsize, NULL, &bp) != 0)
 			return (0);
 		level = &info->h_levels[idx + 1];
-		ext2_brelse(level->h_bp);
+		brelse(level->h_bp);
 		level->h_bp = bp;
 		level->h_entry = level->h_entries =
 		    ((struct ext2fs_htree_node *)bp->b_data)->h_entries;
@@ -211,7 +211,7 @@ ext2_htree_release(struct ext2fs_htree_lookup_info *info)
 		struct buf *bp = info->h_levels[i].h_bp;
 
 		if (bp != NULL)
-			ext2_brelse(bp);
+			brelse(bp);
 	}
 }
 
@@ -399,7 +399,7 @@ ext2_htree_lookup(struct inode *ip, const char *name, int namelen,
 		if (ext2_search_dirblock(ip, bp->b_data, &found,
 		    name, namelen, entryoffp, offp, prevoffp,
 		    endusefulp, ss) != 0) {
-			ext2_brelse(bp);
+			brelse(bp);
 			ext2_htree_release(&info);
 			return (-1);
 		}
@@ -410,7 +410,7 @@ ext2_htree_lookup(struct inode *ip, const char *name, int namelen,
 			return (0);
 		}
 
-		ext2_brelse(bp);
+		brelse(bp);
 		search_next = ext2_htree_check_next(ip, dirhash, name, &info);
 	} while (search_next);
 
@@ -764,7 +764,7 @@ ext2_htree_create_index(struct vnode *vp, struct componentname *cnp,
 	return (error);
 out:
 	if (bp != NULL)
-		ext2_brelse(bp);
+		brelse(bp);
 out1:
 	free(buf1, M_TEMP);
 	free(buf2, M_TEMP);
@@ -948,9 +948,9 @@ ext2_htree_add_entry(struct vnode *dvp, struct ext2fs_direct_2 *entry,
 
 finish:
 	if (dst_bp != NULL && !write_dst_bp)
-		ext2_brelse(dst_bp);
+		brelse(dst_bp);
 	if (bp != NULL && !write_bp)
-		ext2_brelse(bp);
+		brelse(bp);
 	if (newdirblock != NULL)
 		free(newdirblock, M_TEMP);
 	if (newidxblock != NULL)
