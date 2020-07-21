@@ -2,14 +2,16 @@ LIBRESSL
 ========
 
 Original source can be downloaded from:
-http://www.libressl.org
+https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/
 
-file = libressl-2.9.1.tar.gz
-date = 13 April 2019
-size = 3607116
-sha1 = 46f33e42a307d53e17e11f105a4403b9ccfdcc76
+file = libressl-3.1.3.tar.gz
+date = 12 June 2020
+size = 3766345
+sha1 = 7f747cb9eef1709495e4459176431596384e78c8
 
 The file README.DELETED contains a list of deleted files and directories.
+
+Use "git diff vendor/LIBRESSL crypto/libressl" to see local modifications.
 
 These sources are used in:
 	lib/librecrypto
@@ -17,18 +19,8 @@ These sources are used in:
 	usr.bin/openssl
 	usr.bin/nc
 
-NOTE: The configure script misdetects HOST_ABI=elf and disables ASM versions.
-Configured with
-===============
+Configured with:
+
   --enable-nc ac_cv_header_dlfcn_h=no ac_cv_lib_dl_dlopen=no
 
-The following files have been patched (* planned)
-=================================================
-  apps/nc/netcat.c			pledge dummies
-  apps/openssl/apps.h			pledge dummies
-  crypto/chacha/chacha-merged.c		__bounded__ dummy
-  crypto/cryptlib.c			WARNS nested externs, vsyslog()
-  crypto/ecdsa/ecs_sign.c		missing defs ECDSAerror() and
-  crypto/ecdsa/ecs_vrf.c		EVP_R_METHOD_NOT_SUPPORTED
-  include/openssl/md5.h			exclude <opensslconf.h> for kernel
-  include/openssl/opensslfeatures.h	disable engine and hw_padlock
+NOTE: The configure script misdetects HOST_ABI=elf and disables ASM versions.

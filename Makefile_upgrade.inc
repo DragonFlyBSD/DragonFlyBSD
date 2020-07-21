@@ -3920,6 +3920,8 @@ TO_REMOVE+=/usr/sbin/acpinames
 TO_REMOVE+=/usr/share/man/man8/acpinames.8.gz
 TO_REMOVE+=/var/chroot
 TO_REMOVE+=/usr/share/mk/bsd.doc.mk
+TO_REMOVE+=/lib/libprivate_crypto.so.45
+TO_REMOVE+=/lib/libprivate_ssl.so.47
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

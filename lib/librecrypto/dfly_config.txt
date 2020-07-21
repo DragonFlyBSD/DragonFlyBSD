@@ -14,12 +14,12 @@
 /* unused */
 #define PACKAGE_NAME "libressl"
 #define PACKAGE_TARNAME "libressl"
-#define PACKAGE_VERSION "2.9.1"
-#define PACKAGE_STRING "libressl 2.9.1"
+#define PACKAGE_VERSION "3.1.3"
+#define PACKAGE_STRING "libressl 3.1.3"
 #define PACKAGE_BUGREPORT ""
 #define PACKAGE_URL ""
 #define PACKAGE "libressl"
-#define VERSION "2.9.1"
+#define VERSION "3.1.3"
 #define LT_OBJDIR ".libs/"
 #endif
 

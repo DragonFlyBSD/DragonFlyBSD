@@ -13,7 +13,8 @@ DPADD+=		${LIBSSL} ${LIBCRYPTO}
 LDADD+=		-lprivate_ssl -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-SRCS=	apps_posix.c apps.c asn1pars.c ca.c certhash.c ciphers.c crl2p7.c crl.c \
+SRCS=	apps_posix.c apps.c asn1pars.c ca.c certhash.c ciphers.c cms.c \
+	crl2p7.c crl.c \
 	dgst.c dh.c dhparam.c dsa.c dsaparam.c ec.c ecparam.c enc.c errstr.c \
 	gendh.c gendsa.c genpkey.c genrsa.c nseq.c ocsp.c openssl.c \
 	passwd.c pkcs12.c pkcs7.c pkcs8.c pkey.c pkeyparam.c pkeyutl.c \
