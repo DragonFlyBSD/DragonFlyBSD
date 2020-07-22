@@ -1,4 +1,4 @@
-/* $OpenBSD: auth.c,v 1.138 2019/01/19 21:41:18 djm Exp $ */
+/* $OpenBSD: auth.c,v 1.146 2020/01/31 22:42:45 djm Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *
@@ -32,6 +32,7 @@
 
 #include <netinet/in.h>
 
+#include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
 #ifdef HAVE_PATHS_H
@@ -72,13 +73,13 @@
 #endif
 #include "authfile.h"
 #include "monitor_wrap.h"
-#include "authfile.h"
 #include "ssherr.h"
 #include "compat.h"
 #include "channels.h"
 
 /* import */
 extern ServerOptions options;
+extern struct include_list includes;
 extern int use_privsep;
 extern struct sshbuf *loginmsg;
 extern struct passwd *privsep_pw;
@@ -167,7 +168,7 @@ allowed_user(struct ssh *ssh, struct passwd * pw)
 		char *shell = xstrdup((pw->pw_shell[0] == '\0') ?
 		    _PATH_BSHELL : pw->pw_shell); /* empty = /bin/sh */
 
-		if (stat(shell, &st) != 0) {
+		if (stat(shell, &st) == -1) {
 			logit("User %.100s not allowed because shell %.100s "
 			    "does not exist", pw->pw_name, shell);
 			free(shell);
@@ -489,7 +490,7 @@ check_key_in_hostfiles(struct passwd *pw, struct sshkey *key, const char *host,
 	host_status = check_key_in_hostkeys(hostkeys, key, &found);
 	if (host_status == HOST_REVOKED)
 		error("WARNING: revoked key for %s attempted authentication",
-		    found->host);
+		    host);
 	else if (host_status == HOST_OK)
 		debug("%s: key for %s found at %s:%ld", __func__,
 		    found->host, found->file, found->line);
@@ -517,7 +518,7 @@ auth_openfile(const char *file, struct passwd *pw, int strict_modes,
 		return NULL;
 	}
 
-	if (fstat(fd, &st) < 0) {
+	if (fstat(fd, &st) == -1) {
 		close(fd);
 		return NULL;
 	}
@@ -571,7 +572,7 @@ getpwnamallow(struct ssh *ssh, const char *user)
 
 	ci = get_connection_info(ssh, 1, options.use_dns);
 	ci->user = user;
-	parse_server_match_config(&options, ci);
+	parse_server_match_config(&options, &includes, ci);
 	log_change_level(options.log_level);
 	process_permitopen(ssh, &options);
 
@@ -746,9 +747,9 @@ remote_hostname(struct ssh *ssh)
 	fromlen = sizeof(from);
 	memset(&from, 0, sizeof(from));
 	if (getpeername(ssh_packet_get_connection_in(ssh),
-	    (struct sockaddr *)&from, &fromlen) < 0) {
+	    (struct sockaddr *)&from, &fromlen) == -1) {
 		debug("getpeername failed: %.100s", strerror(errno));
-		return strdup(ntop);
+		return xstrdup(ntop);
 	}
 
 	ipv64_normalise_mapped(&from, &fromlen);
@@ -760,7 +761,7 @@ remote_hostname(struct ssh *ssh)
 	if (getnameinfo((struct sockaddr *)&from, fromlen, name, sizeof(name),
 	    NULL, 0, NI_NAMEREQD) != 0) {
 		/* Host name not found.  Use ip address. */
-		return strdup(ntop);
+		return xstrdup(ntop);
 	}
 
 	/*
@@ -775,7 +776,7 @@ remote_hostname(struct ssh *ssh)
 		logit("Nasty PTR record \"%s\" is set up for %s, ignoring",
 		    name, ntop);
 		freeaddrinfo(ai);
-		return strdup(ntop);
+		return xstrdup(ntop);
 	}
 
 	/* Names are stored in lowercase. */
@@ -796,7 +797,7 @@ remote_hostname(struct ssh *ssh)
 	if (getaddrinfo(name, NULL, &hints, &aitop) != 0) {
 		logit("reverse mapping checking getaddrinfo for %.700s "
 		    "[%s] failed.", name, ntop);
-		return strdup(ntop);
+		return xstrdup(ntop);
 	}
 	/* Look for the address from the list of addresses. */
 	for (ai = aitop; ai; ai = ai->ai_next) {
@@ -811,9 +812,9 @@ remote_hostname(struct ssh *ssh)
 		/* Address not found for the host name. */
 		logit("Address %.100s maps to %.600s, but this does not "
 		    "map back to the address.", ntop, name);
-		return strdup(ntop);
+		return xstrdup(ntop);
 	}
-	return strdup(name);
+	return xstrdup(name);
 }
 
 /*
@@ -884,7 +885,7 @@ subprocess(const char *tag, struct passwd *pw, const char *command,
 		return 0;
 	}
 	temporarily_use_uid(pw);
-	if (stat(av[0], &st) < 0) {
+	if (stat(av[0], &st) == -1) {
 		error("Could not stat %s \"%s\": %s", tag,
 		    av[0], strerror(errno));
 		restore_uid();
@@ -896,7 +897,7 @@ subprocess(const char *tag, struct passwd *pw, const char *command,
 		return 0;
 	}
 	/* Prepare to keep the child's stdout if requested */
-	if (pipe(p) != 0) {
+	if (pipe(p) == -1) {
 		error("%s: pipe: %s", tag, strerror(errno));
 		restore_uid();
 		return 0;
@@ -921,7 +922,7 @@ subprocess(const char *tag, struct passwd *pw, const char *command,
 			child_set_env(&child_env, &envsize, "LANG", cp);
 
 		for (i = 0; i < NSIG; i++)
-			signal(i, SIG_DFL);
+			ssh_signal(i, SIG_DFL);
 
 		if ((devnull = open(_PATH_DEVNULL, O_RDWR)) == -1) {
 			error("%s: open %s: %s", tag, _PATH_DEVNULL,
@@ -946,12 +947,12 @@ subprocess(const char *tag, struct passwd *pw, const char *command,
 		closefrom(STDERR_FILENO + 1);
 
 		/* Don't use permanently_set_uid() here to avoid fatal() */
-		if (setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) != 0) {
+		if (setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) == -1) {
 			error("%s: setresgid %u: %s", tag, (u_int)pw->pw_gid,
 			    strerror(errno));
 			_exit(1);
 		}
-		if (setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) != 0) {
+		if (setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) == -1) {
 			error("%s: setresuid %u: %s", tag, (u_int)pw->pw_uid,
 			    strerror(errno));
 			_exit(1);
@@ -1005,7 +1006,7 @@ auth_log_authopts(const char *loc, const struct sshauthopt *opts, int do_remote)
 
 	snprintf(buf, sizeof(buf), "%d", opts->force_tun_device);
 	/* Try to keep this alphabetically sorted */
-	snprintf(msg, sizeof(msg), "key options:%s%s%s%s%s%s%s%s%s%s%s%s%s",
+	snprintf(msg, sizeof(msg), "key options:%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
 	    opts->permit_agent_forwarding_flag ? " agent-forwarding" : "",
 	    opts->force_command == NULL ? "" : " command",
 	    do_env ?  " environment" : "",
@@ -1018,7 +1019,8 @@ auth_log_authopts(const char *loc, const struct sshauthopt *opts, int do_remote)
 	    opts->force_tun_device == -1 ? "" : " tun=",
 	    opts->force_tun_device == -1 ? "" : buf,
 	    opts->permit_user_rc ? " user-rc" : "",
-	    opts->permit_x11_forwarding_flag ? " x11-forwarding" : "");
+	    opts->permit_x11_forwarding_flag ? " x11-forwarding" : "",
+	    opts->no_require_user_presence ? " no-touch-required" : "");
 
 	debug("%s: %s", loc, msg);
 	if (do_remote)
