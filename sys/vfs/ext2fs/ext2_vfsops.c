@@ -1281,8 +1281,6 @@ ext2_alloc_vnode(struct mount *mp, ino_t ino, struct vnode **vpp)
 	ext2fs_inode_hash_lock = 1;
 
 	ip = malloc(sizeof(struct inode), M_EXT2NODE, M_WAITOK | M_ZERO);
-	if (ip == NULL)
-		return (ENOMEM);
 
 	/* Allocate a new vnode/inode. */
 	if ((error = getnewvnode(VT_EXT2FS, mp, &vp, VLKTIMEOUT,
