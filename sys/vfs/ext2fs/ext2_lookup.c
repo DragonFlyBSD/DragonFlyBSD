@@ -931,7 +931,11 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 		}
 		return (error);
 	}
-	/* XXX */
+	/*
+	 * XXX htree dirents sometimes get lost with certain applications
+	 * (e.g. make -j8 buildworld), but read (lookup) of the existing ones
+	 * seems to work without issues.
+	 */
 #if 0
 	if (EXT2_HAS_COMPAT_FEATURE(ip->i_e2fs, EXT2F_COMPAT_DIRHASHINDEX) &&
 	    !ext2_htree_has_idx(dp)) {
