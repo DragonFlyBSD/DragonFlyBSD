@@ -46,4 +46,6 @@ pid_nr(pid_t pid)
 	return pid;
 }
 
+pid_t get_task_pid(struct task_struct *task, enum pid_type type);
+
 #endif	/* _LINUX_PID_H_ */

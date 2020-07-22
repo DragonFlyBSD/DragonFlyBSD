@@ -80,3 +80,16 @@ init_boot_cpu_data(void *arg)
 }
 
 SYSINIT(boot_cpu_data_init, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, init_boot_cpu_data, NULL);
+
+#include <linux/sched.h>
+
+pid_t get_task_pid(struct task_struct *task, enum pid_type type)
+{
+	if (task->dfly_td == NULL)
+		return -1;
+
+	if (task->dfly_td->td_proc == NULL)
+		return -1;
+
+	return task->dfly_td->td_proc->p_pid;
+}
