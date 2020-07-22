@@ -74,14 +74,13 @@ struct drm_prime_attachment {
 	enum dma_data_direction dir;
 };
 
-#if 0
 static int drm_prime_add_buf_handle(struct drm_prime_file_private *prime_fpriv,
 				    struct dma_buf *dma_buf, uint32_t handle)
 {
 	struct drm_prime_member *member;
 	struct rb_node **p, *rb;
 
-	member = kmalloc(sizeof(*member), GFP_KERNEL);
+	member = kmalloc(sizeof(*member), M_DRM, GFP_KERNEL);
 	if (!member)
 		return -ENOMEM;
 
@@ -166,7 +165,6 @@ static int drm_prime_lookup_buf_handle(struct drm_prime_file_private *prime_fpri
 
 	return -ENOENT;
 }
-#endif
 
 static int drm_gem_map_attach(struct dma_buf *dma_buf,
 			      struct device *target_dev,
@@ -216,7 +214,6 @@ static void drm_gem_map_detach(struct dma_buf *dma_buf,
 	attach->priv = NULL;
 }
 
-#if 0
 void drm_prime_remove_buf_handle_locked(struct drm_prime_file_private *prime_fpriv,
 					struct dma_buf *dma_buf)
 {
@@ -241,7 +238,6 @@ void drm_prime_remove_buf_handle_locked(struct drm_prime_file_private *prime_fpr
 		}
 	}
 }
-#endif
 
 static struct sg_table *drm_gem_map_dma_buf(struct dma_buf_attachment *attach,
 					    enum dma_data_direction dir)
@@ -455,7 +451,6 @@ struct dma_buf *drm_gem_prime_export(struct drm_device *dev,
 }
 EXPORT_SYMBOL(drm_gem_prime_export);
 
-#if 0
 static struct dma_buf *export_and_register_object(struct drm_device *dev,
 						  struct drm_gem_object *obj,
 						  uint32_t flags)
@@ -486,7 +481,6 @@ static struct dma_buf *export_and_register_object(struct drm_device *dev,
 
 	return dmabuf;
 }
-#endif
 
 /**
  * drm_gem_prime_handle_to_fd - PRIME export function for GEM drivers
@@ -506,19 +500,14 @@ int drm_gem_prime_handle_to_fd(struct drm_device *dev,
 			       uint32_t flags,
 			       int *prime_fd)
 {
-#if 0
 	struct drm_gem_object *obj;
-#endif
 	int ret = 0;
-#if 0
 	struct dma_buf *dmabuf;
 
 	mutex_lock(&file_priv->prime.lock);
 	obj = drm_gem_object_lookup(file_priv, handle);
 	if (!obj)  {
-#endif
 		ret = -ENOENT;
-#if 0
 		goto out_unlock;
 	}
 
@@ -588,7 +577,6 @@ out:
 	drm_gem_object_unreference_unlocked(obj);
 out_unlock:
 	mutex_unlock(&file_priv->prime.lock);
-#endif
 
 	return ret;
 }
@@ -605,7 +593,6 @@ EXPORT_SYMBOL(drm_gem_prime_handle_to_fd);
 struct drm_gem_object *drm_gem_prime_import(struct drm_device *dev,
 					    struct dma_buf *dma_buf)
 {
-#if 0
 	struct dma_buf_attachment *attach;
 	struct sg_table *sgt;
 	struct drm_gem_object *obj;
@@ -624,10 +611,8 @@ struct drm_gem_object *drm_gem_prime_import(struct drm_device *dev,
 	}
 
 	if (!dev->driver->gem_prime_import_sg_table)
-#endif
 		return ERR_PTR(-EINVAL);
 
-#if 0
 	attach = dma_buf_attach(dma_buf, dev->dev);
 	if (IS_ERR(attach))
 		return ERR_CAST(attach);
@@ -657,7 +642,6 @@ fail_detach:
 	dma_buf_put(dma_buf);
 
 	return ERR_PTR(ret);
-#endif
 }
 EXPORT_SYMBOL(drm_gem_prime_import);
 
@@ -677,7 +661,6 @@ int drm_gem_prime_fd_to_handle(struct drm_device *dev,
 			       struct drm_file *file_priv, int prime_fd,
 			       uint32_t *handle)
 {
-#if 0
 	struct dma_buf *dma_buf;
 	struct drm_gem_object *obj;
 	int ret;
@@ -738,8 +721,6 @@ out_put:
 	mutex_unlock(&file_priv->prime.lock);
 	dma_buf_put(dma_buf);
 	return ret;
-#endif
-	return -EINVAL;
 }
 EXPORT_SYMBOL(drm_gem_prime_fd_to_handle);
 
@@ -788,17 +769,12 @@ int drm_prime_fd_to_handle_ioctl(struct drm_device *dev, void *data,
  */
 struct sg_table *drm_prime_pages_to_sg(struct page **pages, unsigned int nr_pages)
 {
-#if 0
 	struct sg_table *sg = NULL;
-#endif
 	int ret;
 
-#if 0
-	sg = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
+	sg = kmalloc(sizeof(struct sg_table), M_DRM, GFP_KERNEL);
 	if (!sg) {
-#endif
 		ret = -ENOMEM;
-#if 0
 		goto out;
 	}
 
@@ -810,7 +786,6 @@ struct sg_table *drm_prime_pages_to_sg(struct page **pages, unsigned int nr_page
 	return sg;
 out:
 	kfree(sg);
-#endif
 	return ERR_PTR(ret);
 }
 EXPORT_SYMBOL(drm_prime_pages_to_sg);
@@ -874,11 +849,9 @@ void drm_prime_gem_destroy(struct drm_gem_object *obj, struct sg_table *sg)
 	if (sg)
 		dma_buf_unmap_attachment(attach, sg, DMA_BIDIRECTIONAL);
 	dma_buf = attach->dmabuf;
-#if 0
 	dma_buf_detach(attach->dmabuf, attach);
 	/* remove the reference */
 	dma_buf_put(dma_buf);
-#endif
 }
 EXPORT_SYMBOL(drm_prime_gem_destroy);
 

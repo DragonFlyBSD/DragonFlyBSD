@@ -65,6 +65,7 @@ struct dma_buf {
 	void *priv;
 	const struct dma_buf_ops *ops;
 	size_t size;
+	struct file *file;
 };
 
 struct dma_buf_attachment {
@@ -101,6 +102,35 @@ dma_buf_attach(struct dma_buf *dmabuf, struct device *dev)
 	attach = kmalloc(sizeof(struct dma_buf_attachment), M_DRM, M_WAITOK | M_ZERO);
 
 	return attach;
+}
+
+static inline void
+get_dma_buf(struct dma_buf *dmabuf)
+{
+	fhold(dmabuf->file);
+}
+
+static inline void
+dma_buf_put(struct dma_buf *dmabuf)
+{
+	if (dmabuf == NULL)
+		return;
+
+	if (dmabuf->file == NULL)
+		return;
+
+	fdrop(dmabuf->file);
+}
+
+int dma_buf_fd(struct dma_buf *dmabuf, int flags);
+
+struct dma_buf *dma_buf_get(int fd);
+
+static inline void
+dma_buf_detach(struct dma_buf *dmabuf,
+	       struct dma_buf_attachment *dmabuf_attach)
+{
+	kprintf("dma_buf_detach: Not implemented\n");
 }
 
 #endif /* LINUX_DMA_BUF_H */

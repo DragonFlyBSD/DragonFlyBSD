@@ -128,6 +128,7 @@ struct file {
 #define	DTYPE_KQUEUE	5	/* event queue */
 #define DTYPE_CRYPTO	6	/* crypto */
 #define DTYPE_MQUEUE	7	/* message queue */
+#define DTYPE_DMABUF	8	/* DRM DMA buffer */
 
 LIST_HEAD(filelist, file);
 

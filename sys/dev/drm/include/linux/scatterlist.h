@@ -5,7 +5,7 @@
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
  * Copyright (c) 2015 Matthew Dillon <dillon@backplane.com>
  * Copyright (c) 2016 Matt Macy <mmacy@nextbsd.org>
- * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -382,6 +382,15 @@ static inline struct scatterlist *
 sg_chain_ptr(struct scatterlist *sg)
 {
 	return sg->sl_un.sg;
+}
+
+static inline int
+sg_alloc_table_from_pages(struct sg_table *sgt,
+	struct page **pages, unsigned int n_pages,
+	unsigned long offset, unsigned long size, gfp_t gfp_mask)
+{
+	kprintf("sg_alloc_table_from_pages: Not implemented\n");
+	return -EINVAL;
 }
 
 #endif	/* _LINUX_SCATTERLIST_H_ */

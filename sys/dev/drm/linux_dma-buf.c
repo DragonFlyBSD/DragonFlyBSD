@@ -35,9 +35,104 @@
 #include <linux/reservation.h>
 #include <linux/mm.h>
 
-struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
+static int
+dmabuf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
-	return ERR_PTR(-EINVAL);
+	struct dma_buf *dmabuf = fp->f_data;
+
+	memset(sb, 0, sizeof(*sb));
+	sb->st_size = dmabuf->size;
+	sb->st_mode = S_IFIFO;	/* XXX */
+
+	return (0);
+}
+
+static int
+dmabuf_close(struct file *fp)
+{
+	kprintf("dmabuf_close(): not implemented\n");
+	return (EINVAL);
+}
+
+struct fileops dmabuf_fileops = {
+	.fo_read	= badfo_readwrite,
+	.fo_write	= badfo_readwrite,
+	.fo_ioctl	= badfo_ioctl,
+	.fo_kqfilter	= badfo_kqfilter,
+	.fo_stat	= dmabuf_stat,
+	.fo_close	= dmabuf_close,
+};
+
+struct dma_buf *
+dma_buf_export(const struct dma_buf_export_info *exp_info)
+{
+	struct dma_buf *dmabuf;
+	struct file *fp;
+
+	falloc(curthread->td_lwp, &fp, NULL);
+	if (fp == NULL)
+		return ERR_PTR(-ENFILE);
+
+	dmabuf = kmalloc(sizeof(struct dma_buf), M_DRM, M_WAITOK);
+	fp->f_type = DTYPE_DMABUF;
+	fp->f_ops = &dmabuf_fileops;
+	fp->private_data = dmabuf;
+	dmabuf->priv = exp_info->priv;
+	dmabuf->ops = exp_info->ops;
+	dmabuf->size = exp_info->size;
+	dmabuf->file = fp;
+
+	return dmabuf;
+}
+
+int
+dma_buf_fd(struct dma_buf *dmabuf, int flags)
+{
+	int fd, error;
+
+	if (dmabuf == NULL)
+		return -EINVAL;
+
+	if (dmabuf->file == NULL)
+		return -EINVAL;
+
+	if (flags & O_CLOEXEC) {
+	/* XXX: CLOEXEC not handled yet */
+#if 0
+		__set_close_on_exec(fd, fdt);
+	else
+		__clear_close_on_exec(fd, fdt);
+#endif
+	}
+
+	error = fdalloc(curproc, 0, &fd);
+	if (error != 0)
+		return -error;
+
+	fsetfd(curproc->p_fd, dmabuf->file, fd);
+
+	return fd;
+}
+
+struct dma_buf *
+dma_buf_get(int fd)
+{
+	struct file *fp;
+	struct dma_buf *dmabuf;
+
+	if ((fp = holdfp(curthread, fd, -1)) == NULL)
+		return ERR_PTR(-EBADF);
+
+	if (fp->f_ops != &dmabuf_fileops) {
+		kprintf("dma_buf_get(): file->f_ops != &dmabuf_fileops\n");
+		fdrop(fp);
+		return ERR_PTR(-EBADF);
+	}
+
+	dmabuf = fp->private_data;
+	fdrop(fp);
+
+	return dmabuf;
 }
 
 struct sg_table *
