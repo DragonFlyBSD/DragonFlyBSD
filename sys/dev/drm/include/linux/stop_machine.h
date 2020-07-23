@@ -38,11 +38,15 @@ typedef int (*cpu_stop_fn_t)(void *arg);
 static inline int
 stop_machine(cpu_stop_fn_t fn, void *data, const struct cpumask *cpus)
 {
+	int res;
+
 	/* XXX: is this enough ?
 	 * See Linux commit 5bab6f60cb4d1417ad7c599166bcfec87529c1a2 */
        get_mplock();
-       return (*fn)(data);
+       res = (*fn)(data);
        rel_mplock();
+
+       return res;
 }
 
 #endif	/* _LINUX_STOP_MACHINE_H_ */
