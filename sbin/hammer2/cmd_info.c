@@ -351,7 +351,7 @@ h2pfs_check(int fd, hammer2_blockref_t *bref,
 		io_bytes <<= 1;
 
 	if (io_bytes > sizeof(media)) {
-		printf("(bad block size %zd)\n", bytes);
+		printf("(bad block size %zu)\n", bytes);
 		return;
 	}
 	if (bref->type != HAMMER2_BREF_TYPE_DATA) {

@@ -1374,7 +1374,7 @@ va_list_from_blob(machine_va_list *_valist, const char *fmt, char *blob, size_t 
 	}
 	if (blobsize) {
 		fprintf(stderr, "Couldn't consume all data for format %s "
-			"(%zd bytes left over)\n", fmt, blobsize);
+			"(%zu bytes left over)\n", fmt, blobsize);
 		goto free_areas;
 	}
 	va_list_rewind(valist);

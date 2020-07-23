@@ -743,7 +743,7 @@ command_efi_show(int argc, char *argv[])
 		case 'v':
 			vflag = 1;
 			if (strlen(optarg) >= nitems(varnamearg)) {
-				printf("Variable %s is longer than %zd characters\n",
+				printf("Variable %s is longer than %zu characters\n",
 				    optarg, nitems(varnamearg));
 				return (CMD_ERROR);
 			}
@@ -783,7 +783,7 @@ command_efi_show(int argc, char *argv[])
 	if (argc == 2) {
 		optarg = argv[0];
 		if (strlen(optarg) >= nitems(varnamearg)) {
-			printf("Variable %s is longer than %zd characters\n",
+			printf("Variable %s is longer than %zu characters\n",
 			    optarg, nitems(varnamearg));
 			pager_close();
 			return (CMD_ERROR);

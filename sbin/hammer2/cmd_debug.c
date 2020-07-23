@@ -689,7 +689,7 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			io_bytes <<= 1;
 
 		if (io_bytes > sizeof(media)) {
-			printf("(bad block size %zd)\n", bytes);
+			printf("(bad block size %zu)\n", bytes);
 			return;
 		}
 		if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {

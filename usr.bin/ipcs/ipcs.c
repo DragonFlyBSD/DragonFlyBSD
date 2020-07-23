@@ -389,7 +389,7 @@ main(int argc, char **argv)
 						    shmptr->shm_nattch);
 
 					if (option & BIGGEST)
-						printf(" %13zd",
+						printf(" %13zu",
 						    shmptr->shm_segsz);
 
 					if (option & PID)

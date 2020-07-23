@@ -1,5 +1,4 @@
 /* $NetBSD: search.c,v 1.6 2007/11/06 21:35:52 plunky Exp $ */
-/* $DragonFly: src/usr.bin/sdpquery/search.c,v 1.2 2008/02/11 20:09:42 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -111,7 +110,7 @@ print_service_class_id_list(uint8_t const *start, uint8_t const *end)
 
 	if (end - start < 2) {
 		fprintf(stderr, "Invalid Service Class ID List. " \
-				"Too short, len=%zd\n", end - start);
+				"Too short, len=%td\n", end - start);
 		return;
 	}
 
@@ -350,7 +349,7 @@ print_protocol_descriptor_list(uint8_t const *start, uint8_t const *end)
 
 	if (end - start < 2) {
 		fprintf(stderr, "Invalid Protocol Descriptor List. " \
-				"Too short, len=%zd\n", end - start);
+				"Too short, len=%td\n", end - start);
 		return;
 	}
 
@@ -424,7 +423,7 @@ print_bluetooth_profile_descriptor_list(uint8_t const *start, uint8_t const *end
 
 	if (end - start < 2) {
 		fprintf(stderr, "Invalid Bluetooth Profile Descriptor List. " \
-				"Too short, len=%zd\n", end - start);
+				"Too short, len=%td\n", end - start);
 		return;
 	}
 

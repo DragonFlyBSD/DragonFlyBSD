@@ -209,7 +209,7 @@ parse_buffer(ACPI_OBJECT *dst, char *src)
 	dst->Buffer.Length = len;
 	if ((dst->Buffer.Pointer = malloc(len)) == NULL) {
 		fprintf(stderr,
-		    "%s: failed to allocate %zd bytes\n", __func__, len);
+		    "%s: failed to allocate %zu bytes\n", __func__, len);
 		exit(1);
 	}
 

@@ -156,7 +156,7 @@ DispPkt(RMPCONN *rconn, int direct)
 			GETWORD(rmp->r_rrpl.rmp_offset, t);
 			(void) fprintf(DbgFp, ReadFmt, rmp->r_rrpl.rmp_retcode,
 			        t, ntohs(rmp->r_rrpl.rmp_session));
-			(void) fprintf(DbgFp, "\t\tNoOfBytesSent: %zd\n",
+			(void) fprintf(DbgFp, "\t\tNoOfBytesSent: %zu\n",
 			        rconn->rmplen - RMPREADSIZE(0));
 			break;
 		case RMP_BOOT_DONE:		/* boot complete */

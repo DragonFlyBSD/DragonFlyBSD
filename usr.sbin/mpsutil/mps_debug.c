@@ -84,7 +84,7 @@ debug_dumpreqs(int ac, char **av)
 
 	error = sysctlbyname(sysctlbuf, buf, &len, NULL, 0);
 	if (error) {
-		printf("len= %zd, error= %d errno= %d\n", len, error, errno);
+		printf("len= %zu, error= %d errno= %d\n", len, error, errno);
 		return (error);
 	}
 

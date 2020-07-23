@@ -782,7 +782,7 @@ pipetrans(struct pipe *pi, int i, int flag)
 	}
 
 	printf("* pipe %8lx (%c<->%c)", (u_long)pi, side1, side2);
-	printf(" ravail %-zd wavail %-zd",
+	printf(" ravail %-zu wavail %-zu",
 	       b1->windex - b1->rindex,
 	       b2->windex - b2->rindex);
 	rw[0] = '\0';

@@ -1453,7 +1453,7 @@ evtr_read(evtr_t evtr, void *buf, size_t size)
 {
 	assert(size > 0);
 	assert_foff_in_sync(evtr);
-	printd(IO, "evtr_read at %#jx, %zd bytes\n", evtr->bytes, size);
+	printd(IO, "evtr_read at %#jx, %zu bytes\n", evtr->bytes, size);
 	if (fread(buf, size, 1, evtr->f) != 1) {
 		if (feof(evtr->f)) {
 			evtr->errmsg = "incomplete record";
