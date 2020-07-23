@@ -931,10 +931,18 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 		}
 		return (error);
 	}
+
 	/*
-	 * XXX htree dirents sometimes get lost with certain applications
-	 * (e.g. make -j8 buildworld), but read (lookup) of the existing ones
-	 * seems to work without issues.
+	 * XXX HTree dirents sometimes get lost (or not visible via readdir).
+	 * This is reproducible by copying a directory with enough regular files
+	 * (e.g. contrib/libarchive/libarchive) from somewhere to ext2 for
+	 * several times until it reproduces.  dumpe2fs shows same allocation as
+	 * successful case.  e2fsck says ext2 is clean with correct number of
+	 * files.
+	 *
+	 * On Linux, e2fsck doesn't complain either, but some files are visible
+	 * when mounted.  After unmount, e2fsck starts to complain and files get
+	 * recovered with a few sent to lost+found.
 	 */
 #if 0
 	if (EXT2_HAS_COMPAT_FEATURE(ip->i_e2fs, EXT2F_COMPAT_DIRHASHINDEX) &&
