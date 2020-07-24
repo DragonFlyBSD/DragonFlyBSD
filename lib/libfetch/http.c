@@ -27,8 +27,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libfetch/http.c 341072 2018-11-27 16:23:17Z des $
+ * $FreeBSD: head/lib/libfetch/http.c 351573 2019-08-28 17:01:28Z markj $
  */
+
+#include <sys/cdefs.h>
 
 /*
  * The following copyright applies to the base64 code:
@@ -278,7 +280,7 @@ http_readfn(void *v, char *buf, int len)
 	if (io->eof)
 		return (0);
 
-		/* empty buffer */
+	/* empty buffer */
 	if (!io->buf || io->bufpos == io->buflen) {
 		if ((rlen = http_fillbuf(io, len)) < 0) {
 			if ((errno = io->error) == EINTR)
@@ -286,7 +288,7 @@ http_readfn(void *v, char *buf, int len)
 			return (-1);
 		} else if (rlen == 0) {
 			return (0);
-	}
+		}
 	}
 
 	rlen = io->buflen - io->bufpos;
@@ -1816,11 +1818,11 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 
 		/* get headers. http_next_header expects one line readahead */
 		if (fetch_getln(conn) == -1) {
-		    fetch_syserr();
-		    goto ouch;
+			fetch_syserr();
+			goto ouch;
 		}
 		do {
-		    switch ((h = http_next_header(conn, &headerbuf, &p))) {
+			switch ((h = http_next_header(conn, &headerbuf, &p))) {
 			case hdr_syserror:
 				fetch_syserr();
 				goto ouch;
@@ -1849,7 +1851,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 				    conn->err != HTTP_USE_PROXY) {
 					n = 1;
 					break;
-                                }
+				}
 				if (new)
 					free(new);
 				if (verbose)
@@ -2092,6 +2094,9 @@ fetchListHTTP(struct url *url __unused, const char *flags __unused)
 	return (NULL);
 }
 
+/*
+ * Arbitrary HTTP verb and content requests
+ */
 FILE *
 fetchReqHTTP(struct url *URL, const char *method, const char *flags,
 	const char *content_type, const char *body)

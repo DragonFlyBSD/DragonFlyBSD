@@ -27,8 +27,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libfetch/fetch.c 341013 2018-11-27 10:45:14Z des $
+ * $FreeBSD: head/lib/libfetch/fetch.c 357579 2020-02-05 16:55:00Z emaste $
  */
+
+#include <sys/cdefs.h>
 
 #include <sys/param.h>
 
@@ -326,6 +328,9 @@ fetch_pctdecode(char *dst, const char *src, size_t dlen)
 		    (d2 = fetch_hexval(s[2])) >= 0 && (d1 > 0 || d2 > 0)) {
 			c = d1 << 4 | d2;
 			s += 2;
+		} else if (s[0] == '%') {
+			/* Invalid escape sequence. */
+			return (NULL);
 		} else {
 			c = *s;
 		}
