@@ -204,17 +204,6 @@ userenter(struct thread *curtd, struct proc *curp)
 		if (ocred)
 			crfree(ocred);
 	}
-
-#ifdef DDB
-	/*
-	 * Debugging, remove top two user stack pages to catch kernel faults
-	 */
-	if (__predict_false(freeze_on_seg_fault > 1 && curtd->td_lwp)) {
-		pmap_remove(vmspace_pmap(curtd->td_lwp->lwp_vmspace),
-			    0x00007FFFFFFFD000LU,
-			    0x0000800000000000LU);
-	}
-#endif
 }
 
 /*
