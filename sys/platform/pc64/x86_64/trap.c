@@ -1205,8 +1205,6 @@ syscall2(struct trapframe *frame)
 
 	userenter(td, p);	/* lazy raise our priority */
 
-	regcnt = 6;
-
 	/*
 	 * Misc
 	 */
@@ -1236,10 +1234,11 @@ syscall2(struct trapframe *frame)
 
 	if (__predict_false(code == SYS_syscall || code == SYS___syscall)) {
 		code = frame->tf_rdi;
-		regcnt--;
 		argp = (union sysunion *)(&frame->tf_rdi + 1);
+		regcnt = 5;
 	} else {
 		argp = (union sysunion *)&frame->tf_rdi;
+		regcnt = 6;
 	}
 
 	if (code >= p->p_sysent->sv_size)
