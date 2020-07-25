@@ -66,6 +66,8 @@ RB_PROTOTYPE(linux_root, rb_node, __entry, panic_cmp);
 #define	rb_set_parent(r, p)	rb_parent((r)) = (p)
 #define	rb_set_color(r, c)	rb_color((r)) = (c)
 #define	rb_entry(ptr, type, member)	container_of(ptr, type, member)
+#define	rb_entry_safe(ptr, type, member) \
+	(ptr ? rb_entry(ptr, type, member) : NULL)
 
 #define RB_EMPTY_ROOT(root)     RB_EMPTY((struct linux_root *)root)
 #define RB_EMPTY_NODE(node)     (rb_parent(node) == node)
@@ -79,6 +81,40 @@ RB_PROTOTYPE(linux_root, rb_node, __entry, panic_cmp);
 #define	rb_prev(node)	RB_PREV(linux_root, NULL, (node))
 #define	rb_first(root)	RB_MIN(linux_root, (struct linux_root *)(root))
 #define	rb_last(root)	RB_MAX(linux_root, (struct linux_root *)(root))
+
+static inline struct rb_node *
+__rb_deepest_left(struct rb_node *node)
+{
+	struct rb_node *parent = NULL;
+	while (node) {
+		parent = node;
+		if (RB_LEFT(node, __entry))
+			node = RB_LEFT(node, __entry);
+		else
+			node = RB_RIGHT(node, __entry);
+	}
+	return parent;
+}
+
+static inline struct rb_node *
+rb_next_postorder(const struct rb_node *node)
+{
+	struct rb_node *parent = RB_PARENT(node, __entry);
+	/* left -> right, right -> root */
+	if (parent != NULL &&
+	    (node == RB_LEFT(parent, __entry)) &&
+	    (RB_RIGHT(parent, __entry)))
+		return __rb_deepest_left(RB_RIGHT(parent, __entry));
+	else
+		return parent;
+}
+
+#define	rbtree_postorder_for_each_entry_safe(x, y, head, member)	\
+	for ((x) = rb_entry_safe(__rb_deepest_left((head)->rb_node),	\
+	    __typeof(*x), member);					\
+	    ((x) != NULL) && ((y) =					\
+	    rb_entry_safe(rb_next_postorder(&x->member), typeof(*x), member), 1); \
+	    (x) = (y))
 
 static inline void
 rb_link_node(struct rb_node *node, struct rb_node *parent,
