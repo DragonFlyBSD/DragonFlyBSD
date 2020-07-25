@@ -128,7 +128,7 @@ struct  savexmm {
 	} sv_fp[8];				/* 128 */
 	struct xmmacc	sv_xmm[8];		/* 128 */
 	uint8_t			sv_pad[224];	/* 224 (padding) */
-} __attribute__((aligned(16)));
+} __aligned(16);
 
 /*
  * Floating point context. (amd64 fxsave/fxrstor)
@@ -142,7 +142,7 @@ struct	savexmm64 {
 	} sv_fp[8];				/* 128 */
 	struct xmmacc	sv_xmm[8];		/* 128 */
 	uint8_t			sv_pad[224];	/* 224 */
-} __attribute__((aligned(16)));
+} __aligned(16);
 
 /* xstate_hdr is a 64-byte structure */
 struct	xstate_hdr {
@@ -169,7 +169,7 @@ struct	saveymm {
 	struct xmmacc	sv_xmm[16];		/* 256 */
 	uint8_t			sv_pad[96];	/*  96 */
 	struct savexmm_xstate	sv_xstate;	/* 320 */
-} __attribute__((aligned(64)));
+} __aligned(64);
 
 /* saveymm64 is a 832-byte structure (amd64) */
 struct	saveymm64 {
@@ -181,7 +181,7 @@ struct	saveymm64 {
 	struct xmmacc	sv_xmm[16];		/* 256 */
 	uint8_t			sv_pad[96];	/*  96 */
 	struct savexmm_xstate	sv_xstate;	/* 320 */
-} __attribute__((aligned(64)));
+} __aligned(64);
 
 union	savefpu {
 	struct	save87	sv_87;

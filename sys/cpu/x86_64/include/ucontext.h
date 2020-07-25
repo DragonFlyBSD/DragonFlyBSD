@@ -33,6 +33,8 @@
 #ifndef _CPU_UCONTEXT_H_
 #define	_CPU_UCONTEXT_H_
 
+#include <sys/cdefs.h>
+
 struct __mcontext {
 	/*
 	 * The first 20 fields must match the definition of
@@ -80,7 +82,7 @@ struct __mcontext {
 	 *	 structure.
 	 */
 	int		mc_fpregs[256];
-} __attribute__((aligned(64)));
+} __aligned(64);
 
 typedef struct __mcontext mcontext_t;
 

@@ -95,7 +95,7 @@ struct	sigcontext {
 
 	/* 64 byte aligned */
 	int             sc_fpregs[256]; /* 1024 bytes */
-} __attribute__((aligned(64)));
+} __aligned(64);
 
 #endif /* __BSD_VISIBLE */
 
