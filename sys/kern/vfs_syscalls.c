@@ -2804,7 +2804,7 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 		error = 0;
 		break;
 	case L_XTND:
-		error = VOP_GETATTR_FP(vp, &vattr, fp);
+		error = VOP_GETATTR_QUICK(vp, &vattr);
 		spin_lock(&fp->f_spin);
 		new_offset = offset + vattr.va_size;
 		break;
