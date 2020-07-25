@@ -347,7 +347,7 @@ struct	proc {
 /* These flags are kept in p_flags. */
 #define	P_UNUSED00	0x00001
 #define	P_CONTROLT	0x00002	/* Has a controlling terminal */
-#define	P_UNUSED02	0x00004
+#define	P_SWAPPEDOUT	0x00004	/* Deprecated (port compatibility) */
 #define P_SYSVSEM	0x00008	/* Might have SysV semaphores */
 #define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit */
 #define	P_PROFIL	0x00020	/* Has started profiling */
