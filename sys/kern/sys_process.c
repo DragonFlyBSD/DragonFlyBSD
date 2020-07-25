@@ -33,7 +33,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/uio.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
@@ -214,7 +214,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum)
  * MPALMOSTSAFE
  */
 int
-sys_ptrace(struct ptrace_args *uap)
+sys_ptrace(struct sysmsg *sysmsg, const struct ptrace_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -260,7 +260,7 @@ sys_ptrace(struct ptrace_args *uap)
 		return (error);
 
 	error = kern_ptrace(p, uap->req, uap->pid, addr, uap->data,
-			&uap->sysmsg_result);
+			&sysmsg->sysmsg_result);
 	if (error)
 		return (error);
 

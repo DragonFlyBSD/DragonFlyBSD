@@ -34,7 +34,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/sysent.h>
@@ -69,7 +69,7 @@
  * MPSAFE
  */
 int
-sys_set_tls_area(struct set_tls_area_args *uap)
+sys_set_tls_area(struct sysmsg *sysmsg, const struct set_tls_area_args *uap)
 {
 	struct tls_info info;
 	int error;
@@ -106,7 +106,7 @@ sys_set_tls_area(struct set_tls_area_args *uap)
 	 */
 	curthread->td_tls.info[i] = info;
 	set_user_TLS();
-	uap->sysmsg_result = 0;	/* segment descriptor $0 */
+	sysmsg->sysmsg_result = 0;	/* segment descriptor $0 */
 	return(0);
 }
 	
@@ -121,7 +121,7 @@ sys_set_tls_area(struct set_tls_area_args *uap)
  * MPSAFE
  */
 int
-sys_get_tls_area(struct get_tls_area_args *uap)
+sys_get_tls_area(struct sysmsg *sysmsg, const struct get_tls_area_args *uap)
 {
 	struct tls_info info;
 	int error;

@@ -46,7 +46,7 @@
 #include <vm/vm_map.h>
 #include <vm/vm_extern.h>
 #include <sys/mman.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 #include <sys/malloc.h>
@@ -713,7 +713,8 @@ ckpt_freeze_proc(struct lwp *lp, struct file *fp)
  * MPALMOSTSAFE
  */
 int 
-sys_sys_checkpoint(struct sys_checkpoint_args *uap)
+sys_sys_checkpoint(struct sysmsg *sysmsg,
+		   const struct sys_checkpoint_args *uap)
 {
         int error = 0;
 	struct thread *td = curthread;
@@ -756,7 +757,7 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 			error = EBADF;
 			break;
 		}
-		uap->sysmsg_result = uap->retval;
+		sysmsg->sysmsg_result = uap->retval;
 	        error = ckpt_thaw_proc(td->td_lwp, fp);
 		dropfp(td, uap->fd, fp);
 		break;

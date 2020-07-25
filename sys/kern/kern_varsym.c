@@ -49,7 +49,7 @@
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
 #include <sys/varsym.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 
 MALLOC_DEFINE(M_VARSYM, "varsym", "variable sets for variant symlinks");
 
@@ -128,13 +128,14 @@ varsymreplace(char *cp, int linklen, int maxlen)
  * (int level, const char *name, const char *data)
  */
 int
-sys_varsym_set(struct varsym_set_args *uap)
+sys_varsym_set(struct sysmsg *sysmsg, const struct varsym_set_args *uap)
 {
     char name[MAXVARSYM_NAME];
     char *buf;
     struct thread *td;
     struct lwp *lp;
     int error;
+    int level = uap->level;
 
     td = curthread;
     lp = td->td_lwp;
@@ -148,10 +149,10 @@ sys_varsym_set(struct varsym_set_args *uap)
 	goto done1;
     }
 
-    switch(uap->level) {
+    switch(level) {
     case VARSYM_SYS:
 	if (lp != NULL && td->td_ucred->cr_prison != NULL)
-	    uap->level = VARSYM_PRISON;
+	    level = VARSYM_PRISON;
 	/* fall through */
     case VARSYM_PRISON:
 	if (lp != NULL &&
@@ -163,10 +164,10 @@ sys_varsym_set(struct varsym_set_args *uap)
 	/* fall through */
     case VARSYM_PROC:
 	if (uap->data) {
-	    (void)varsymmake(uap->level, name, NULL);
-	    error = varsymmake(uap->level, name, buf);
+	    (void)varsymmake(level, name, NULL);
+	    error = varsymmake(level, name, buf);
 	} else {
-	    error = varsymmake(uap->level, name, NULL);
+	    error = varsymmake(level, name, NULL);
 	}
 	break;
     }
@@ -184,7 +185,7 @@ done2:
  * MPALMOSTSAFE
  */
 int
-sys_varsym_get(struct varsym_get_args *uap)
+sys_varsym_get(struct sysmsg *sysmsg, const struct varsym_get_args *uap)
 {
     char wild[MAXVARSYM_NAME];
     varsym_t sym;
@@ -204,7 +205,7 @@ sys_varsym_get(struct varsym_get_args *uap)
     } else if (uap->bufsize) {
 	copyout("", uap->buf, 1);
     }
-    uap->sysmsg_result = dlen + 1;
+    sysmsg->sysmsg_result = dlen + 1;
     varsymdrop(sym);
 done:
 
@@ -219,7 +220,7 @@ done:
  * MPALMOSTSAFE
  */
 int
-sys_varsym_list(struct varsym_list_args *uap)
+sys_varsym_list(struct sysmsg *sysmsg, const struct varsym_list_args *uap)
 {
 	struct varsymset *vss;
 	struct varsyment *ve;
@@ -332,7 +333,7 @@ sys_varsym_list(struct varsym_list_args *uap)
 		marker = i;
 	if (error == 0)
 		error = copyout(&marker, uap->marker, sizeof(marker));
-	uap->sysmsg_result = bytes;
+	sysmsg->sysmsg_result = bytes;
 done:
 	return(error);
 }

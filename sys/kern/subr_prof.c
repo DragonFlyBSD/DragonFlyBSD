@@ -32,7 +32,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
@@ -51,7 +51,7 @@
  * MPALMOSTSAFE
  */
 int
-sys_profil(struct profil_args *uap)
+sys_profil(struct sysmsg *sysmsg, const struct profil_args *uap)
 {
 	struct proc *p = curproc;
 	struct uprof *upp;

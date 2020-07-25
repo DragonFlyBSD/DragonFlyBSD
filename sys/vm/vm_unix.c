@@ -44,7 +44,7 @@
  * Traditional sbrk/grow interface to VM
  */
 #include <sys/param.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
 
@@ -64,7 +64,7 @@
  * No requirements.
  */
 int
-sys_sbrk(struct sbrk_args *uap)
+sys_sbrk(struct sysmsg *sysmsg, const struct sbrk_args *uap)
 {
 	struct proc *p = curproc;
 	struct vmspace *vm = p->p_vmspace;
@@ -100,7 +100,7 @@ sys_sbrk(struct sbrk_args *uap)
 	 * Userland requests current base
 	 */
 	if (incr == 0) {
-		uap->sysmsg_resultp = (void *)base;
+		sysmsg->sysmsg_resultp = (void *)base;
 		goto done;
 	}
 
@@ -125,7 +125,7 @@ sys_sbrk(struct sbrk_args *uap)
 	 */
 	if ((base & PAGE_MASK) != 0 &&
 	    ((base ^ (base_end - 1)) & ~(vm_offset_t)PAGE_MASK) == 0) {
-		uap->sysmsg_resultp = (void *)base;
+		sysmsg->sysmsg_resultp = (void *)base;
 		vm->vm_dsize += incr;
 		goto done;
 	}
@@ -144,7 +144,7 @@ sys_sbrk(struct sbrk_args *uap)
 		goto done;
 	}
 	base_end = nbase + round_page(incr);
-	uap->sysmsg_resultp = (void *)nbase;
+	sysmsg->sysmsg_resultp = (void *)nbase;
 	if (vm->vm_map.flags & MAP_WIREFUTURE)
 		vm_map_wire(&vm->vm_map, base, base_end, FALSE);
 
@@ -170,7 +170,7 @@ done:
  * No requirements.
  */
 int
-sys_obreak(struct obreak_args *uap)
+sys_obreak(struct sysmsg *sysmsg, const struct obreak_args *uap)
 {
 	struct proc *p = curproc;
 	struct vmspace *vm = p->p_vmspace;

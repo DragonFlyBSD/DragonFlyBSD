@@ -33,12 +33,11 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
 #include <sys/kernel.h>
 #include <sys/sysent.h>
-#include <sys/sysunion.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/time.h>
@@ -270,7 +269,7 @@ kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
  * MPSAFE
  */
 int
-sys_clock_gettime(struct clock_gettime_args *uap)
+sys_clock_gettime(struct sysmsg *sysmsg, const struct clock_gettime_args *uap)
 {
 	struct timespec ats;
 	int error;
@@ -308,7 +307,7 @@ kern_clock_settime(clockid_t clock_id, struct timespec *ats)
  * MPALMOSTSAFE
  */
 int
-sys_clock_settime(struct clock_settime_args *uap)
+sys_clock_settime(struct sysmsg *sysmsg, const struct clock_settime_args *uap)
 {
 	struct timespec ats;
 	int error;
@@ -372,7 +371,7 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
  * MPSAFE
  */
 int
-sys_clock_getres(struct clock_getres_args *uap)
+sys_clock_getres(struct sysmsg *sysmsg, const struct clock_getres_args *uap)
 {
 	int error;
 	struct timespec ts;
@@ -419,7 +418,7 @@ out:
 }
 
 int
-sys_getcpuclockid(struct getcpuclockid_args *uap)
+sys_getcpuclockid(struct sysmsg *sysmsg, const struct getcpuclockid_args *uap)
 {
 	clockid_t clk_id;
 	int error;
@@ -528,7 +527,7 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
  * MPSAFE
  */
 int
-sys_nanosleep(struct nanosleep_args *uap)
+sys_nanosleep(struct sysmsg *sysmsg, const struct nanosleep_args *uap)
 {
 	int error;
 	struct timespec rqt;
@@ -562,7 +561,7 @@ sys_nanosleep(struct nanosleep_args *uap)
  * which does not have to access a hardware timer.
  */
 int
-sys_gettimeofday(struct gettimeofday_args *uap)
+sys_gettimeofday(struct sysmsg *sysmsg, const struct gettimeofday_args *uap)
 {
 	struct timeval atv;
 	int error = 0;
@@ -586,7 +585,7 @@ sys_gettimeofday(struct gettimeofday_args *uap)
  * MPALMOSTSAFE
  */
 int
-sys_settimeofday(struct settimeofday_args *uap)
+sys_settimeofday(struct sysmsg *sysmsg, const struct settimeofday_args *uap)
 {
 	struct thread *td = curthread;
 	struct timeval atv;
@@ -682,7 +681,7 @@ kern_adjfreq(int64_t rate)
  * MPALMOSTSAFE
  */
 int
-sys_adjtime(struct adjtime_args *uap)
+sys_adjtime(struct sysmsg *sysmsg, const struct adjtime_args *uap)
 {
 	struct thread *td = curthread;
 	struct timeval atv;
@@ -837,7 +836,7 @@ SYSCTL_PROC(_kern_ntp, OID_AUTO, adjust,
  * MPALMOSTSAFE
  */
 int
-sys_getitimer(struct getitimer_args *uap)
+sys_getitimer(struct sysmsg *sysmsg, const struct getitimer_args *uap)
 {
 	struct proc *p = curproc;
 	struct timeval ctv;
@@ -872,12 +871,13 @@ sys_getitimer(struct getitimer_args *uap)
  * MPALMOSTSAFE
  */
 int
-sys_setitimer(struct setitimer_args *uap)
+sys_setitimer(struct sysmsg *sysmsg, const struct setitimer_args *uap)
 {
 	struct itimerval aitv;
 	struct timeval ctv;
 	struct itimerval *itvp;
 	struct proc *p = curproc;
+	struct getitimer_args gitargs;
 	int error;
 
 	if (uap->which > ITIMER_PROF)
@@ -886,9 +886,14 @@ sys_setitimer(struct setitimer_args *uap)
 	if (itvp && (error = copyin((caddr_t)itvp, (caddr_t)&aitv,
 	    sizeof(struct itimerval))))
 		return (error);
-	if ((uap->itv = uap->oitv) &&
-	    (error = sys_getitimer((struct getitimer_args *)uap)))
-		return (error);
+
+	if (uap->oitv) {
+		gitargs.which = uap->which;
+		gitargs.itv = uap->oitv;
+		error = sys_getitimer(sysmsg, &gitargs);
+		if (error)
+			return error;
+	}
 	if (itvp == NULL)
 		return (0);
 	if (itimerfix(&aitv.it_value))

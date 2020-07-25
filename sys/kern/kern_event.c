@@ -43,7 +43,7 @@
 #include <sys/socketvar.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/thread.h>
 #include <sys/uio.h>
 #include <sys/signalvar.h>
@@ -62,7 +62,9 @@
 static MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 
 struct kevent_copyin_args {
-	struct kevent_args	*ka;
+	const struct kevent_args *ka;
+	struct kevent		*eventlist;
+	const struct kevent	*changelist;
 	int			pchanges;
 };
 
@@ -717,7 +719,7 @@ kqueue_terminate(struct kqueue *kq)
  * MPSAFE
  */
 int
-sys_kqueue(struct kqueue_args *uap)
+sys_kqueue(struct sysmsg *sysmsg, const struct kqueue_args *uap)
 {
 	struct thread *td = curthread;
 	struct kqueue *kq;
@@ -736,7 +738,7 @@ sys_kqueue(struct kqueue_args *uap)
 	fp->f_data = kq;
 
 	fsetfd(kq->kq_fdp, fp, fd);
-	uap->sysmsg_result = fd;
+	sysmsg->sysmsg_result = fd;
 	fdrop(fp);
 	return (error);
 }
@@ -752,9 +754,9 @@ kevent_copyout(void *arg, struct kevent *kevp, int count, int *res)
 
 	kap = (struct kevent_copyin_args *)arg;
 
-	error = copyout(kevp, kap->ka->eventlist, count * sizeof(*kevp));
+	error = copyout(kevp, kap->eventlist, count * sizeof(*kevp));
 	if (error == 0) {
-		kap->ka->eventlist += count;
+		kap->eventlist += count;
 		*res += count;
 	} else {
 		*res = -1;
@@ -776,9 +778,9 @@ kevent_copyin(void *arg, struct kevent *kevp, int max, int *events)
 	kap = (struct kevent_copyin_args *)arg;
 
 	count = min(kap->ka->nchanges - kap->pchanges, max);
-	error = copyin(kap->ka->changelist, kevp, count * sizeof *kevp);
+	error = copyin(kap->changelist, kevp, count * sizeof *kevp);
 	if (error == 0) {
-		kap->ka->changelist += count;
+		kap->changelist += count;
 		kap->pchanges += count;
 		*events = count;
 	}
@@ -1045,7 +1047,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
  * MPALMOSTSAFE
  */
 int
-sys_kevent(struct kevent_args *uap)
+sys_kevent(struct sysmsg *sysmsg, const struct kevent_args *uap)
 {
 	struct thread *td = curthread;
 	struct timespec ts, *tsp;
@@ -1075,8 +1077,10 @@ sys_kevent(struct kevent_args *uap)
 	kap = &ka;
 	kap->ka = uap;
 	kap->pchanges = 0;
+	kap->eventlist = uap->eventlist;
+	kap->changelist = uap->changelist;
 
-	error = kern_kevent(kq, uap->nevents, &uap->sysmsg_result, kap,
+	error = kern_kevent(kq, uap->nevents, &sysmsg->sysmsg_result, kap,
 			    kevent_copyin, kevent_copyout, tsp, 0);
 
 	dropfp(td, uap->fd, fp);

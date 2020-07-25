@@ -36,7 +36,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
@@ -191,7 +191,7 @@ VNODEOP_SET(swapdev_vnode_vops);
  * No requirements.
  */
 int
-sys_swapon(struct swapon_args *uap)
+sys_swapon(struct sysmsg *sysmsg, const struct swapon_args *uap)
 {
 	struct thread *td = curthread;
 	struct vattr attr;
@@ -400,7 +400,7 @@ done:
  * No requirements.
  */
 int
-sys_swapoff(struct swapoff_args *uap)
+sys_swapoff(struct sysmsg *sysmsg, const struct swapoff_args *uap)
 {
 	struct vnode *vp;
 	struct nlookupdata nd;

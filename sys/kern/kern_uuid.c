@@ -36,7 +36,7 @@
 #include <sys/random.h>
 #include <sys/sbuf.h>
 #include <sys/socket.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/uuid.h>
 #include <sys/gpt.h>
 #include <net/if.h>
@@ -157,7 +157,7 @@ kern_uuidgen(struct uuid *store, size_t count)
  * Generate an array of new UUIDs
  */
 int
-sys_uuidgen(struct uuidgen_args *uap)
+sys_uuidgen(struct sysmsg *sysmsg, const struct uuidgen_args *uap)
 {
 	struct uuid *store;
 	size_t count;

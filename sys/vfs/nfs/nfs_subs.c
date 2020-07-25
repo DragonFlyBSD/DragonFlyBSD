@@ -52,7 +52,7 @@
 #include <sys/malloc.h>
 #include <sys/sysent.h>
 #include <sys/syscall.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/conf.h>
 #include <sys/objcache.h>
 #include <sys/jail.h>

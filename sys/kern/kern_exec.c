@@ -28,7 +28,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/mount.h>
 #include <sys/filedesc.h>
@@ -615,7 +615,7 @@ exec_fail:
  * execve() system call.
  */
 int
-sys_execve(struct execve_args *uap)
+sys_execve(struct sysmsg *sysmsg, const struct execve_args *uap)
 {
 	struct nlookupdata nd;
 	struct image_args args;
@@ -645,7 +645,7 @@ sys_execve(struct execve_args *uap)
 	 * sure to set it to 0.  XXX
 	 */
 	if (error == 0)
-		uap->sysmsg_result64 = 0;
+		sysmsg->sysmsg_result64 = 0;
 
 	return (error);
 }

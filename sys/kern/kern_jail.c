@@ -45,7 +45,7 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/errno.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/malloc.h>
 #include <sys/nlookup.h>
 #include <sys/namecache.h>
@@ -239,7 +239,7 @@ out:
  * MPALMOSTSAFE
  */
 int
-sys_jail(struct jail_args *uap)
+sys_jail(struct sysmsg *sysmsg, const struct jail_args *uap)
 {
 	struct thread *td = curthread;
 	struct prison *pr;
@@ -248,7 +248,7 @@ sys_jail(struct jail_args *uap)
 	int error;
 	uint32_t jversion;
 
-	uap->sysmsg_result = -1;
+	sysmsg->sysmsg_result = -1;
 
 	error = priv_check(td, PRIV_JAIL_CREATE);
 	if (error)
@@ -322,7 +322,7 @@ sys_jail(struct jail_args *uap)
 	if (error)
 		goto out;
 
-	uap->sysmsg_result = pr->pr_id;
+	sysmsg->sysmsg_result = pr->pr_id;
 	lockmgr(&jail_lock, LK_RELEASE);
 
 	return (0);
@@ -346,7 +346,7 @@ out:
  * MPALMOSTSAFE
  */
 int
-sys_jail_attach(struct jail_attach_args *uap)
+sys_jail_attach(struct sysmsg *sysmsg, const struct jail_attach_args *uap)
 {
 	struct thread *td = curthread;
 	int error;

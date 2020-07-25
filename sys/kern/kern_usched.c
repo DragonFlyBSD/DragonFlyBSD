@@ -38,7 +38,7 @@
 #include <sys/globaldata.h>		/* curthread */
 #include <sys/proc.h>
 #include <sys/priv.h>
-#include <sys/sysproto.h>		/* struct usched_set_args */
+#include <sys/sysmsg.h>			/* struct usched_set_args */
 #include <sys/systm.h>			/* strcmp() */
 #include <sys/usched.h>
 
@@ -181,7 +181,7 @@ usched_schedulerclock(struct lwp *lp, sysclock_t periodic, sysclock_t time)
  * MPALMOSTSAFE
  */
 int
-sys_usched_set(struct usched_set_args *uap)
+sys_usched_set(struct sysmsg *sysmsg, const struct usched_set_args *uap)
 {
 	struct proc *p = curthread->td_proc;
 	struct usched *item;	/* temporaly for TAILQ processing */
@@ -360,7 +360,8 @@ sys_usched_set(struct usched_set_args *uap)
 }
 
 int
-sys_lwp_getaffinity(struct lwp_getaffinity_args *uap)
+sys_lwp_getaffinity(struct sysmsg *sysmsg,
+		    const struct lwp_getaffinity_args *uap)
 {
 	struct proc *p;
 	cpumask_t mask;
@@ -407,7 +408,8 @@ sys_lwp_getaffinity(struct lwp_getaffinity_args *uap)
 }
 
 int
-sys_lwp_setaffinity(struct lwp_setaffinity_args *uap)
+sys_lwp_setaffinity(struct sysmsg *sysmsg,
+		    const struct lwp_setaffinity_args *uap)
 {
 	struct proc *p;
 	cpumask_t mask;

@@ -44,7 +44,7 @@
 #include <sys/spinlock2.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/mman.h>
 #include <sys/linker.h>
 #include <sys/fcntl.h>
@@ -560,11 +560,14 @@ mfs_doio(struct bio *bio, struct mfsnode *mfsp)
 
 			bytes &= ~PAGE_MASK;
 			if (bytes != 0) {
+				struct sysmsg sysmsg;
+
+				bzero(&sysmsg, sizeof(sysmsg));
 				bzero(&uap, sizeof(uap));
 				uap.addr  = base;
 				uap.len   = bytes;
 				uap.behav = MADV_FREE;
-				sys_madvise(&uap);
+				sys_madvise(&sysmsg, &uap);
 			}
                 }
 		bp->b_error = 0;

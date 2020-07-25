@@ -35,7 +35,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/uio.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/fcntl.h>
@@ -107,12 +107,13 @@ ktrputsyscall(struct ktr_syscall *ktp_cache, struct ktr_syscall *ktp)
 }
 
 void
-ktrsyscall(struct lwp *lp, int code, int narg, register_t args[])
+ktrsyscall(struct lwp *lp, int code, int narg, union sysunion *uap)
 {
 	struct ktr_header kth;
 	struct ktr_syscall ktp_cache;
 	struct ktr_syscall *ktp;
 	register_t *argp;
+	register_t *args = (void *)uap;
 	int i;
 
 	/*
@@ -253,7 +254,7 @@ static int ktrace_clear_callback(struct proc *p, void *data);
  * MPALMOSTSAFE
  */
 int
-sys_ktrace(struct ktrace_args *uap)
+sys_ktrace(struct sysmsg *sysmsg, const struct ktrace_args *uap)
 {
 #ifdef KTRACE
 	struct ktrace_clear_info info;
@@ -404,7 +405,7 @@ ktrace_clear_callback(struct proc *p, void *data)
  * MPALMOSTSAFE
  */
 int
-sys_utrace(struct utrace_args *uap)
+sys_utrace(struct sysmsg *sysmsg, const struct utrace_args *uap)
 {
 #ifdef KTRACE
 	struct ktr_header kth;

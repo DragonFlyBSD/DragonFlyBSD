@@ -39,7 +39,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
@@ -134,7 +134,7 @@ wake_umtx_threads(struct proc *p1)
  * fork() system call
  */
 int
-sys_fork(struct fork_args *uap)
+sys_fork(struct sysmsg *sysmsg, const struct fork_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p2;
@@ -144,8 +144,8 @@ sys_fork(struct fork_args *uap)
 	if (error == 0) {
 		PHOLD(p2);
 		start_forked_proc(lp, p2);
-		uap->sysmsg_fds[0] = p2->p_pid;
-		uap->sysmsg_fds[1] = 0;
+		sysmsg->sysmsg_fds[0] = p2->p_pid;
+		sysmsg->sysmsg_fds[1] = 0;
 		PRELE(p2);
 	}
 	return error;
@@ -155,7 +155,7 @@ sys_fork(struct fork_args *uap)
  * vfork() system call
  */
 int
-sys_vfork(struct vfork_args *uap)
+sys_vfork(struct sysmsg *sysmsg, const struct vfork_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p2;
@@ -165,8 +165,8 @@ sys_vfork(struct vfork_args *uap)
 	if (error == 0) {
 		PHOLD(p2);
 		start_forked_proc(lp, p2);
-		uap->sysmsg_fds[0] = p2->p_pid;
-		uap->sysmsg_fds[1] = 0;
+		sysmsg->sysmsg_fds[0] = p2->p_pid;
+		sysmsg->sysmsg_fds[1] = 0;
 		PRELE(p2);
 	}
 	return error;
@@ -184,7 +184,7 @@ sys_vfork(struct vfork_args *uap)
  * rfork { int flags }
  */
 int
-sys_rfork(struct rfork_args *uap)
+sys_rfork(struct sysmsg *sysmsg, const struct rfork_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p2;
@@ -198,12 +198,12 @@ sys_rfork(struct rfork_args *uap)
 		if (p2) {
 			PHOLD(p2);
 			start_forked_proc(lp, p2);
-			uap->sysmsg_fds[0] = p2->p_pid;
-			uap->sysmsg_fds[1] = 0;
+			sysmsg->sysmsg_fds[0] = p2->p_pid;
+			sysmsg->sysmsg_fds[1] = 0;
 			PRELE(p2);
 		} else {
-			uap->sysmsg_fds[0] = 0;
-			uap->sysmsg_fds[1] = 0;
+			sysmsg->sysmsg_fds[0] = 0;
+			sysmsg->sysmsg_fds[1] = 0;
 		}
 	}
 	return error;
@@ -284,14 +284,14 @@ fail2:
  * Low level thread create used by pthreads.
  */
 int
-sys_lwp_create(struct lwp_create_args *uap)
+sys_lwp_create(struct sysmsg *sysmsg, const struct lwp_create_args *uap)
 {
 
 	return (lwp_create1(uap->params, NULL));
 }
 
 int
-sys_lwp_create2(struct lwp_create2_args *uap)
+sys_lwp_create2(struct sysmsg *sysmsg, const struct lwp_create2_args *uap)
 {
 
 	return (lwp_create1(uap->params, uap->mask));
@@ -982,7 +982,7 @@ start_forked_proc(struct lwp *lp1, struct proc *p2)
  * procctl (idtype_t idtype, id_t id, int cmd, void *arg)
  */
 int
-sys_procctl(struct procctl_args *uap)
+sys_procctl(struct sysmsg *sysmsg, const struct procctl_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *p2;

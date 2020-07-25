@@ -47,7 +47,7 @@
 #include <sys/systm.h>
 #include <sys/uio.h>
 #include <sys/malloc.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/conf.h>
 #include <sys/filedesc.h>
 #include <sys/sysctl.h>

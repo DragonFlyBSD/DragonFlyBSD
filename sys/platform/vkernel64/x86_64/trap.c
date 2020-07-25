@@ -65,8 +65,7 @@
 #endif
 #include <sys/ktr.h>
 #include <sys/vkernel.h>
-#include <sys/sysproto.h>
-#include <sys/sysunion.h>
+#include <sys/sysmsg.h>
 #include <sys/vmspace.h>
 
 #include <vm/vm.h>
@@ -1041,7 +1040,6 @@ syscall2(struct trapframe *frame)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct lwp *lp = td->td_lwp;
-	caddr_t params;
 	struct sysent *callp;
 	register_t orig_tf_rflags;
 	int sticks;
@@ -1051,11 +1049,10 @@ syscall2(struct trapframe *frame)
 	int crit_count = td->td_critcount;
 	lwkt_tokref_t curstop = td->td_toks_stop;
 #endif
-	register_t *argp;
+	struct sysmsg sysmsg;
+	union sysunion *argp;
 	u_int code;
 	int reg, regcnt;
-	union sysunion args;
-	register_t *argsdst;
 
 	mycpu->gd_cnt.v_syscall++;
 
@@ -1090,7 +1087,6 @@ syscall2(struct trapframe *frame)
 	 * Get the system call parameters and account for time
 	 */
 	lp->lwp_md.md_regs = frame;
-	params = (caddr_t)frame->tf_rsp + sizeof(register_t);
 	code = frame->tf_rax;
 
 	if (code == SYS_syscall || code == SYS___syscall) {
@@ -1112,28 +1108,27 @@ syscall2(struct trapframe *frame)
 	 * to be the registers used to pass arguments, in exactly the right
 	 * order.
 	 */
-	argp = &frame->tf_rdi;
-	argp += reg;
-	argsdst = (register_t *)(&args.nosys.sysmsg + 1);
-
-	/*
-	 * JG can we overflow the space pointed to by 'argsdst'
-	 * either with 'bcopy' or with 'copyin'?
-	 */
-	bcopy(argp, argsdst, sizeof(register_t) * regcnt);
+	argp = (struct sysunion *)(&frame->tf_rdi + reg);
 
 	/*
 	 * copyin is MP aware, but the tracing code is not
 	 */
 	if (narg > regcnt) {
+		register_t *argsdst;
+		caddr_t params;
+
+		argsdst = (register_t *)&sysmsg.extargs;
+		bcopy(argp, argsdst, sizeof(register_t) * regcnt);
+		params = (caddr_t)frame->tf_rsp + sizeof(register_t);
+
 		KASSERT(params != NULL, ("copyin args with no params!"));
 		error = copyin(params, &argsdst[regcnt],
-			(narg - regcnt) * sizeof(register_t));
+			       (narg - regcnt) * sizeof(register_t));
+		argp = (void *)argsdst;
 		if (error) {
 #ifdef KTRACE
 			if (KTRPOINT(td, KTR_SYSCALL)) {
-				ktrsyscall(lp, code, narg,
-					(void *)(&args.nosys.sysmsg + 1));
+				ktrsyscall(lp, code, narg, argp);
 			}
 #endif
 			goto bad;
@@ -1142,7 +1137,7 @@ syscall2(struct trapframe *frame)
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
-		ktrsyscall(lp, code, narg, (void *)(&args.nosys.sysmsg + 1));
+		ktrsyscall(lp, code, narg, argp);
 	}
 #endif
 
@@ -1151,14 +1146,14 @@ syscall2(struct trapframe *frame)
 	 * returns use %rax and %rdx.  %rdx is left unchanged for system
 	 * calls which return only one result.
 	 */
-	args.sysmsg_fds[0] = 0;
-	args.sysmsg_fds[1] = frame->tf_rdx;
+	sysmsg.sysmsg_fds[0] = 0;
+	sysmsg.sysmsg_fds[1] = frame->tf_rdx;
 
 	/*
 	 * The syscall might manipulate the trap frame. If it does it
 	 * will probably return EJUSTRETURN.
 	 */
-	args.sysmsg_frame = frame;
+	sysmsg.sysmsg_frame = frame;
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
@@ -1166,7 +1161,7 @@ syscall2(struct trapframe *frame)
 	 * NOTE: All system calls run MPSAFE now.  The system call itself
 	 *	 is responsible for getting the MP lock.
 	 */
-	error = (*callp->sy_call)(&args);
+	error = (*callp->sy_call)(&sysmsg, &args);
 
 #if 0
 	kprintf("system call %d returned %d\n", code, error);
@@ -1184,8 +1179,8 @@ out:
 		 */
 		p = curproc;
 		lp = curthread->td_lwp;
-		frame->tf_rax = args.sysmsg_fds[0];
-		frame->tf_rdx = args.sysmsg_fds[1];
+		frame->tf_rax = sysmsg.sysmsg_fds[0];
+		frame->tf_rdx = sysmsg.sysmsg_fds[1];
 		frame->tf_rflags &= ~PSL_C;
 		break;
 	case ERESTART:
@@ -1230,7 +1225,7 @@ bad:
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
-		ktrsysret(lp, code, error, args.sysmsg_result);
+		ktrsysret(lp, code, error, sysmsg.sysmsg_result);
 	}
 #endif
 

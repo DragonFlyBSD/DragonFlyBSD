@@ -43,7 +43,7 @@
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/mountctl.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
 #include <sys/fcntl.h>
@@ -110,7 +110,7 @@ SYSCTL_INT(_vfs, OID_AUTO, debug_unmount, CTLFLAG_RW, &debug_unmount, 0,
  * MPALMOSTSAFE
  */
 int
-sys_mount(struct mount_args *uap)
+sys_mount(struct sysmsg *sysmsg, const struct mount_args *uap)
 {
 	struct thread *td = curthread;
 	struct vnode *vp;
@@ -120,6 +120,7 @@ sys_mount(struct mount_args *uap)
 	int error, flag = 0, flag2 = 0;
 	int hasmount;
 	int priv = 0;
+	int flags = uap->flags;
 	struct vattr va;
 	struct nlookupdata nd;
 	char fstypename[MFSNAMELEN];
@@ -151,7 +152,7 @@ sys_mount(struct mount_args *uap)
 	/*
 	 * Do not allow NFS export by non-root users.
 	 */
-	if (uap->flags & MNT_EXPORTED) {
+	if (flags & MNT_EXPORTED) {
 		error = priv_check(td, priv);
 		if (error)
 			goto done;
@@ -160,7 +161,7 @@ sys_mount(struct mount_args *uap)
 	 * Silently enforce MNT_NOSUID and MNT_NODEV for non-root users
 	 */
 	if (priv_check(td, priv))
-		uap->flags |= MNT_NOSUID | MNT_NODEV;
+		flags |= MNT_NOSUID | MNT_NODEV;
 
 	/*
 	 * Lookup the requested path and extract the nch and vnode.
@@ -214,7 +215,7 @@ sys_mount(struct mount_args *uap)
 	/*
 	 * Now we have an unlocked ref'd nch and a locked ref'd vp
 	 */
-	if (uap->flags & MNT_UPDATE) {
+	if (flags & MNT_UPDATE) {
 		if ((vp->v_flag & (VROOT|VPFSROOT)) == 0) {
 			cache_drop(&nch);
 			vput(vp);
@@ -235,7 +236,7 @@ sys_mount(struct mount_args *uap)
 		 * We only allow the filesystem to be reloaded if it
 		 * is currently mounted read-only.
 		 */
-		if ((uap->flags & MNT_RELOAD) &&
+		if ((flags & MNT_RELOAD) &&
 		    ((mp->mnt_flag & MNT_RDONLY) == 0)) {
 			cache_drop(&nch);
 			vput(vp);
@@ -265,8 +266,7 @@ sys_mount(struct mount_args *uap)
 			error = EBUSY;
 			goto done;
 		}
-		mp->mnt_flag |=
-		    uap->flags & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
+		mp->mnt_flag |= flags & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
 		lwkt_gettoken(&mp->mnt_token);
 		vn_unlock(vp);
 		vfsp = mp->mnt_vfc;
@@ -359,7 +359,7 @@ update:
 	 *
 	 * Set the mount level flags.
 	 */
-	if (uap->flags & MNT_RDONLY)
+	if (flags & MNT_RDONLY)
 		mp->mnt_flag |= MNT_RDONLY;
 	else if (mp->mnt_flag & MNT_RDONLY)
 		mp->mnt_kern_flag |= MNTK_WANTRDWR;
@@ -368,7 +368,7 @@ update:
 	    MNT_NOSYMFOLLOW | MNT_IGNORE | MNT_TRIM |
 	    MNT_NOCLUSTERR | MNT_NOCLUSTERW | MNT_SUIDDIR |
 	    MNT_AUTOMOUNTED);
-	mp->mnt_flag |= uap->flags & (MNT_NOSUID | MNT_NOEXEC |
+	mp->mnt_flag |= flags & (MNT_NOSUID | MNT_NOEXEC |
 	    MNT_NODEV | MNT_SYNCHRONOUS | MNT_ASYNC | MNT_FORCE |
 	    MNT_NOSYMFOLLOW | MNT_IGNORE | MNT_TRIM |
 	    MNT_NOATIME | MNT_NOCLUSTERR | MNT_NOCLUSTERW | MNT_SUIDDIR |
@@ -601,7 +601,7 @@ checkdirs_callback(struct proc *p, void *data)
  * MPALMOSTSAFE
  */
 int
-sys_unmount(struct unmount_args *uap)
+sys_unmount(struct sysmsg *sysmsg, const struct unmount_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p __debugvar = td->td_proc;
@@ -1085,7 +1085,7 @@ SYSCTL_INT(_debug, OID_AUTO, syncprt, CTLFLAG_RW, &syncprt, 0, "");
 static int sync_callback(struct mount *mp, void *data);
 
 int
-sys_sync(struct sync_args *uap)
+sys_sync(struct sysmsg *sysmsg, const struct sync_args *uap)
 {
 	mountlist_scan(sync_callback, NULL, MNTSCAN_FORWARD);
 	return (0);
@@ -1125,7 +1125,7 @@ SYSCTL_INT(_kern_prison, OID_AUTO, quotas, CTLFLAG_RW, &prison_quotas, 0, "");
  * MPALMOSTSAFE
  */
 int
-sys_quotactl(struct quotactl_args *uap)
+sys_quotactl(struct sysmsg *sysmsg, const struct quotactl_args *uap)
 {
 	struct nlookupdata nd;
 	struct thread *td;
@@ -1164,7 +1164,7 @@ done:
  * MPALMOSTSAFE
  */
 int
-sys_mountctl(struct mountctl_args *uap)
+sys_mountctl(struct sysmsg *sysmsg, const struct mountctl_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -1226,11 +1226,11 @@ sys_mountctl(struct mountctl_args *uap)
 	 * Execute the internal kernel function and clean up.
 	 */
 	error = kern_mountctl(path, uap->op, fp, ctl, uap->ctllen,
-			      buf, uap->buflen, &uap->sysmsg_result);
+			      buf, uap->buflen, &sysmsg->sysmsg_result);
 	if (fp)
 		dropfp(td, uap->fd, fp);
-	if (error == 0 && uap->sysmsg_result > 0)
-		error = copyout(buf, uap->buf, uap->sysmsg_result);
+	if (error == 0 && sysmsg->sysmsg_result > 0)
+		error = copyout(buf, uap->buf, sysmsg->sysmsg_result);
 done:
 	if (path)
 		objcache_put(namei_oc, path);
@@ -1355,7 +1355,7 @@ kern_statfs(struct nlookupdata *nd, struct statfs *buf)
  * Get filesystem statistics.
  */
 int
-sys_statfs(struct statfs_args *uap)
+sys_statfs(struct sysmsg *sysmsg, const struct statfs_args *uap)
 {
 	struct nlookupdata nd;
 	struct statfs buf;
@@ -1433,7 +1433,7 @@ done:
  * Get filesystem statistics.
  */
 int
-sys_fstatfs(struct fstatfs_args *uap)
+sys_fstatfs(struct sysmsg *sysmsg, const struct fstatfs_args *uap)
 {
 	struct statfs buf;
 	int error;
@@ -1474,7 +1474,7 @@ kern_statvfs(struct nlookupdata *nd, struct statvfs *buf)
  * Get filesystem statistics.
  */
 int
-sys_statvfs(struct statvfs_args *uap)
+sys_statvfs(struct sysmsg *sysmsg, const struct statvfs_args *uap)
 {
 	struct nlookupdata nd;
 	struct statvfs buf;
@@ -1533,7 +1533,7 @@ done:
  * Get filesystem statistics.
  */
 int
-sys_fstatvfs(struct fstatvfs_args *uap)
+sys_fstatvfs(struct sysmsg *sysmsg, const struct fstatvfs_args *uap)
 {
 	struct statvfs buf;
 	int error;
@@ -1563,7 +1563,7 @@ struct getfsstat_info {
 static int getfsstat_callback(struct mount *, void *);
 
 int
-sys_getfsstat(struct getfsstat_args *uap)
+sys_getfsstat(struct sysmsg *sysmsg, const struct getfsstat_args *uap)
 {
 	struct thread *td = curthread;
 	struct getfsstat_info info;
@@ -1578,9 +1578,9 @@ sys_getfsstat(struct getfsstat_args *uap)
 
 	mountlist_scan(getfsstat_callback, &info, MNTSCAN_FORWARD);
 	if (info.sfsp && info.count > info.maxcount)
-		uap->sysmsg_result = info.maxcount;
+		sysmsg->sysmsg_result = info.maxcount;
 	else
-		uap->sysmsg_result = info.count;
+		sysmsg->sysmsg_result = info.count;
 	return (info.error);
 }
 
@@ -1655,7 +1655,7 @@ struct getvfsstat_info {
 static int getvfsstat_callback(struct mount *, void *);
 
 int
-sys_getvfsstat(struct getvfsstat_args *uap)
+sys_getvfsstat(struct sysmsg *sysmsg, const struct getvfsstat_args *uap)
 {
 	struct thread *td = curthread;
 	struct getvfsstat_info info;
@@ -1671,9 +1671,9 @@ sys_getvfsstat(struct getvfsstat_args *uap)
 
 	mountlist_scan(getvfsstat_callback, &info, MNTSCAN_FORWARD);
 	if (info.vsfsp && info.count > info.maxcount)
-		uap->sysmsg_result = info.maxcount;
+		sysmsg->sysmsg_result = info.maxcount;
 	else
-		uap->sysmsg_result = info.count;
+		sysmsg->sysmsg_result = info.count;
 	return (info.error);
 }
 
@@ -1751,7 +1751,7 @@ getvfsstat_callback(struct mount *mp, void *data)
  * Change current working directory to a given file descriptor.
  */
 int
-sys_fchdir(struct fchdir_args *uap)
+sys_fchdir(struct sysmsg *sysmsg, const struct fchdir_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1863,7 +1863,7 @@ kern_chdir(struct nlookupdata *nd)
  * Change current working directory (``.'').
  */
 int
-sys_chdir(struct chdir_args *uap)
+sys_chdir(struct sysmsg *sysmsg, const struct chdir_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -1984,7 +1984,7 @@ kern_chroot(struct nchandle *nch)
  * Change notion of root (``/'') directory.
  */
 int
-sys_chroot(struct chroot_args *uap)
+sys_chroot(struct sysmsg *sysmsg, const struct chroot_args *uap)
 {
 	struct thread *td __debugvar = curthread;
 	struct nlookupdata nd;
@@ -2003,7 +2003,7 @@ sys_chroot(struct chroot_args *uap)
 }
 
 int
-sys_chroot_kernel(struct chroot_kernel_args *uap)
+sys_chroot_kernel(struct sysmsg *sysmsg, const struct chroot_kernel_args *uap)
 {
 	struct thread *td = curthread;
 	struct nlookupdata nd;
@@ -2218,7 +2218,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
  * and call the device open routine if any.
  */
 int
-sys_open(struct open_args *uap)
+sys_open(struct sysmsg *sysmsg, const struct open_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -2226,7 +2226,7 @@ sys_open(struct open_args *uap)
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags,
-				    uap->mode, &uap->sysmsg_result);
+				    uap->mode, &sysmsg->sysmsg_result);
 	}
 	nlookup_done(&nd);
 	return (error);
@@ -2236,7 +2236,7 @@ sys_open(struct open_args *uap)
  * openat_args(int fd, char *path, int flags, int mode)
  */
 int
-sys_openat(struct openat_args *uap)
+sys_openat(struct sysmsg *sysmsg, const struct openat_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -2245,7 +2245,7 @@ sys_openat(struct openat_args *uap)
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags, uap->mode, 
-					&uap->sysmsg_result);
+					&sysmsg->sysmsg_result);
 	}
 	nlookup_done_at(&nd, fp);
 	return (error);
@@ -2327,7 +2327,7 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
  * Create a special file.
  */
 int
-sys_mknod(struct mknod_args *uap)
+sys_mknod(struct sysmsg *sysmsg, const struct mknod_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -2348,7 +2348,7 @@ sys_mknod(struct mknod_args *uap)
  * with fd.
  */
 int
-sys_mknodat(struct mknodat_args *uap)
+sys_mknodat(struct sysmsg *sysmsg, const struct mknodat_args *uap)
 {
 	struct nlookupdata nd;
 	struct file *fp;
@@ -2400,7 +2400,7 @@ kern_mkfifo(struct nlookupdata *nd, int mode)
  * Create a named pipe.
  */
 int
-sys_mkfifo(struct mkfifo_args *uap)
+sys_mkfifo(struct sysmsg *sysmsg, const struct mkfifo_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -2419,7 +2419,7 @@ sys_mkfifo(struct mkfifo_args *uap)
  * with fd.
  */
 int
-sys_mkfifoat(struct mkfifoat_args *uap)
+sys_mkfifoat(struct sysmsg *sysmsg, const struct mkfifoat_args *uap)
 {
 	struct nlookupdata nd;
 	struct file *fp;
@@ -2559,7 +2559,7 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
  * Make a hard file link.
  */
 int
-sys_link(struct link_args *uap)
+sys_link(struct sysmsg *sysmsg, const struct link_args *uap)
 {
 	struct nlookupdata nd, linknd;
 	int error;
@@ -2583,7 +2583,7 @@ sys_link(struct link_args *uap)
  * the directory associated with fd2.
  */
 int
-sys_linkat(struct linkat_args *uap)
+sys_linkat(struct sysmsg *sysmsg, const struct linkat_args *uap)
 {
 	struct nlookupdata nd, linknd;
 	struct file *fp1, *fp2;
@@ -2635,7 +2635,7 @@ kern_symlink(struct nlookupdata *nd, char *path, int mode)
  * Make a symbolic link.
  */
 int
-sys_symlink(struct symlink_args *uap)
+sys_symlink(struct sysmsg *sysmsg, const struct symlink_args *uap)
 {
 	struct thread *td = curthread;
 	struct nlookupdata nd;
@@ -2664,7 +2664,7 @@ sys_symlink(struct symlink_args *uap)
  * associated with fd.
  */
 int
-sys_symlinkat(struct symlinkat_args *uap)
+sys_symlinkat(struct sysmsg *sysmsg, const struct symlinkat_args *uap)
 {
 	struct thread *td = curthread;
 	struct nlookupdata nd;
@@ -2694,7 +2694,7 @@ sys_symlinkat(struct symlinkat_args *uap)
  * Delete a whiteout from the filesystem.
  */
 int
-sys_undelete(struct undelete_args *uap)
+sys_undelete(struct sysmsg *sysmsg, const struct undelete_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -2739,7 +2739,7 @@ kern_unlink(struct nlookupdata *nd)
  * Delete a name from the filesystem.
  */
 int
-sys_unlink(struct unlink_args *uap)
+sys_unlink(struct sysmsg *sysmsg, const struct unlink_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -2758,7 +2758,7 @@ sys_unlink(struct unlink_args *uap)
  * Delete the file or directory entry pointed to by fd/path.
  */
 int
-sys_unlinkat(struct unlinkat_args *uap)
+sys_unlinkat(struct sysmsg *sysmsg, const struct unlinkat_args *uap)
 {
 	struct nlookupdata nd;
 	struct file *fp;
@@ -2851,12 +2851,12 @@ done:
  * Reposition read/write file offset.
  */
 int
-sys_lseek(struct lseek_args *uap)
+sys_lseek(struct sysmsg *sysmsg, const struct lseek_args *uap)
 {
 	int error;
 
 	error = kern_lseek(uap->fd, uap->offset, uap->whence,
-			   &uap->sysmsg_offset);
+			   &sysmsg->sysmsg_offset);
 
 	return (error);
 }
@@ -2925,7 +2925,7 @@ retry:
  * Check access permissions.
  */
 int
-sys_access(struct access_args *uap)
+sys_access(struct sysmsg *sysmsg, const struct access_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -2944,7 +2944,7 @@ sys_access(struct access_args *uap)
  * Check access permissions.
  */
 int
-sys_eaccess(struct eaccess_args *uap)
+sys_eaccess(struct sysmsg *sysmsg, const struct eaccess_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -2963,7 +2963,7 @@ sys_eaccess(struct eaccess_args *uap)
  * Check access permissions.
  */
 int
-sys_faccessat(struct faccessat_args *uap)
+sys_faccessat(struct sysmsg *sysmsg, const struct faccessat_args *uap)
 {
 	struct nlookupdata nd;
 	struct file *fp;
@@ -3032,7 +3032,7 @@ again:
  * Get file status; this version follows links.
  */
 int
-sys_stat(struct stat_args *uap)
+sys_stat(struct sysmsg *sysmsg, const struct stat_args *uap)
 {
 	struct nlookupdata nd;
 	struct stat st;
@@ -3054,7 +3054,7 @@ sys_stat(struct stat_args *uap)
  * Get file status; this version does not follow links.
  */
 int
-sys_lstat(struct lstat_args *uap)
+sys_lstat(struct sysmsg *sysmsg, const struct lstat_args *uap)
 {
 	struct nlookupdata nd;
 	struct stat st;
@@ -3076,7 +3076,7 @@ sys_lstat(struct lstat_args *uap)
  * Get status of file pointed to by fd/path.
  */
 int
-sys_fstatat(struct fstatat_args *uap)
+sys_fstatat(struct sysmsg *sysmsg, const struct fstatat_args *uap)
 {
 	struct nlookupdata nd;
 	struct stat st;
@@ -3127,10 +3127,10 @@ kern_pathconf(char *path, int name, int flags, register_t *sysmsg_regp)
  * Get configurable pathname variables.
  */
 int
-sys_pathconf(struct pathconf_args *uap)
+sys_pathconf(struct sysmsg *sysmsg, const struct pathconf_args *uap)
 {
 	return (kern_pathconf(uap->path, uap->name, NLC_FOLLOW,
-		&uap->sysmsg_reg));
+		&sysmsg->sysmsg_reg));
 }
 
 /*
@@ -3139,9 +3139,9 @@ sys_pathconf(struct pathconf_args *uap)
  * Get configurable pathname variables, but don't follow symlinks.
  */
 int
-sys_lpathconf(struct lpathconf_args *uap)
+sys_lpathconf(struct sysmsg *sysmsg, const struct lpathconf_args *uap)
 {
-	return (kern_pathconf(uap->path, uap->name, 0, &uap->sysmsg_reg));
+	return (kern_pathconf(uap->path, uap->name, 0, &sysmsg->sysmsg_reg));
 }
 
 /*
@@ -3189,7 +3189,7 @@ kern_readlink(struct nlookupdata *nd, char *buf, int count, int *res)
  * Return target name of a symbolic link.
  */
 int
-sys_readlink(struct readlink_args *uap)
+sys_readlink(struct sysmsg *sysmsg, const struct readlink_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -3197,7 +3197,7 @@ sys_readlink(struct readlink_args *uap)
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_readlink(&nd, uap->buf, uap->count,
-					&uap->sysmsg_result);
+					&sysmsg->sysmsg_result);
 	}
 	nlookup_done(&nd);
 	return (error);
@@ -3210,7 +3210,7 @@ sys_readlink(struct readlink_args *uap)
  * directory associated with fd.
  */
 int
-sys_readlinkat(struct readlinkat_args *uap)
+sys_readlinkat(struct sysmsg *sysmsg, const struct readlinkat_args *uap)
 {
 	struct nlookupdata nd;
 	struct file *fp;
@@ -3219,7 +3219,7 @@ sys_readlinkat(struct readlinkat_args *uap)
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_readlink(&nd, uap->buf, uap->bufsize,
-					&uap->sysmsg_result);
+					&sysmsg->sysmsg_result);
 	}
 	nlookup_done_at(&nd, fp);
 	return (error);
@@ -3261,7 +3261,7 @@ setfflags(struct vnode *vp, u_long flags)
  * Change flags of a file given a path name.
  */
 int
-sys_chflags(struct chflags_args *uap)
+sys_chflags(struct sysmsg *sysmsg, const struct chflags_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -3289,7 +3289,7 @@ sys_chflags(struct chflags_args *uap)
  * Change flags of a file given a path name, but don't follow symlinks.
  */
 int
-sys_lchflags(struct lchflags_args *uap)
+sys_lchflags(struct sysmsg *sysmsg, const struct lchflags_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -3317,7 +3317,7 @@ sys_lchflags(struct lchflags_args *uap)
  * Change flags of a file given a file descriptor.
  */
 int
-sys_fchflags(struct fchflags_args *uap)
+sys_fchflags(struct sysmsg *sysmsg, const struct fchflags_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -3337,7 +3337,8 @@ sys_fchflags(struct fchflags_args *uap)
  * chflagsat_args(int fd, const char *path, u_long flags, int atflags)
  * change flags given a pathname relative to a filedescriptor
  */
-int sys_chflagsat(struct chflagsat_args *uap)
+int
+sys_chflagsat(struct sysmsg *sysmsg, const struct chflagsat_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -3410,7 +3411,7 @@ kern_chmod(struct nlookupdata *nd, int mode)
  * Change mode of a file given path name.
  */
 int
-sys_chmod(struct chmod_args *uap)
+sys_chmod(struct sysmsg *sysmsg, const struct chmod_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -3428,7 +3429,7 @@ sys_chmod(struct chmod_args *uap)
  * Change mode of a file given path name (don't follow links.)
  */
 int
-sys_lchmod(struct lchmod_args *uap)
+sys_lchmod(struct sysmsg *sysmsg, const struct lchmod_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -3446,7 +3447,7 @@ sys_lchmod(struct lchmod_args *uap)
  * Change mode of a file given a file descriptor.
  */
 int
-sys_fchmod(struct fchmod_args *uap)
+sys_fchmod(struct sysmsg *sysmsg, const struct fchmod_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -3468,7 +3469,7 @@ sys_fchmod(struct fchmod_args *uap)
  * Change mode of a file pointed to by fd/path.
  */
 int
-sys_fchmodat(struct fchmodat_args *uap)
+sys_fchmodat(struct sysmsg *sysmsg, const struct fchmodat_args *uap)
 {
 	struct nlookupdata nd;
 	struct file *fp;
@@ -3549,7 +3550,7 @@ kern_chown(struct nlookupdata *nd, int uid, int gid)
  * Set ownership given a path name.
  */
 int
-sys_chown(struct chown_args *uap)
+sys_chown(struct sysmsg *sysmsg, const struct chown_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -3567,7 +3568,7 @@ sys_chown(struct chown_args *uap)
  * Set ownership given a path name, do not cross symlinks.
  */
 int
-sys_lchown(struct lchown_args *uap)
+sys_lchown(struct sysmsg *sysmsg, const struct lchown_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -3585,7 +3586,7 @@ sys_lchown(struct lchown_args *uap)
  * Set ownership given a file descriptor.
  */
 int
-sys_fchown(struct fchown_args *uap)
+sys_fchown(struct sysmsg *sysmsg, const struct fchown_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -3609,7 +3610,7 @@ sys_fchown(struct fchown_args *uap)
  * Set ownership of file pointed to by fd/path.
  */
 int
-sys_fchownat(struct fchownat_args *uap)
+sys_fchownat(struct sysmsg *sysmsg, const struct fchownat_args *uap)
 {
 	struct nlookupdata nd;
 	struct file *fp;
@@ -3724,7 +3725,7 @@ kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
  * Set the access and modification times of a file.
  */
 int
-sys_utimes(struct utimes_args *uap)
+sys_utimes(struct sysmsg *sysmsg, const struct utimes_args *uap)
 {
 	struct timeval tv[2];
 	struct nlookupdata nd;
@@ -3748,7 +3749,7 @@ sys_utimes(struct utimes_args *uap)
  * Set the access and modification times of a file.
  */
 int
-sys_lutimes(struct lutimes_args *uap)
+sys_lutimes(struct sysmsg *sysmsg, const struct lutimes_args *uap)
 {
 	struct timeval tv[2];
 	struct nlookupdata nd;
@@ -3814,7 +3815,7 @@ kern_futimens(int fd, struct timespec *ts)
  * Set the access and modification times of a file.
  */
 int
-sys_futimens(struct futimens_args *uap)
+sys_futimens(struct sysmsg *sysmsg, const struct futimens_args *uap)
 {
 	struct timespec ts[2];
 	int error;
@@ -3848,7 +3849,7 @@ kern_futimes(int fd, struct timeval *tptr)
  * Set the access and modification times of a file.
  */
 int
-sys_futimes(struct futimes_args *uap)
+sys_futimes(struct sysmsg *sysmsg, const struct futimes_args *uap)
 {
 	struct timeval tv[2];
 	int error;
@@ -3902,7 +3903,7 @@ kern_utimensat(struct nlookupdata *nd, const struct timespec *ts, int flags)
  * Set file access and modification times of a file.
  */
 int
-sys_utimensat(struct utimensat_args *uap)
+sys_utimensat(struct sysmsg *sysmsg, const struct utimensat_args *uap)
 {
 	struct timespec ts[2];
 	struct nlookupdata nd;
@@ -3978,7 +3979,7 @@ done:
  * Truncate a file given its path name.
  */
 int
-sys_truncate(struct truncate_args *uap)
+sys_truncate(struct sysmsg *sysmsg, const struct truncate_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -4055,7 +4056,7 @@ done:
  * Truncate a file given a file descriptor.
  */
 int
-sys_ftruncate(struct ftruncate_args *uap)
+sys_ftruncate(struct sysmsg *sysmsg, const struct ftruncate_args *uap)
 {
 	int error;
 
@@ -4070,7 +4071,7 @@ sys_ftruncate(struct ftruncate_args *uap)
  * Sync an open file.
  */
 int
-sys_fsync(struct fsync_args *uap)
+sys_fsync(struct sysmsg *sysmsg, const struct fsync_args *uap)
 {
 	struct thread *td = curthread;
 	struct vnode *vp;
@@ -4314,7 +4315,7 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
  * or both not be directories.  If target is a directory, it must be empty.
  */
 int
-sys_rename(struct rename_args *uap)
+sys_rename(struct sysmsg *sysmsg, const struct rename_args *uap)
 {
 	struct nlookupdata fromnd, tond;
 	int error;
@@ -4340,7 +4341,7 @@ sys_rename(struct rename_args *uap)
  * or both not be directories.  If target is a directory, it must be empty.
  */
 int
-sys_renameat(struct renameat_args *uap)
+sys_renameat(struct sysmsg *sysmsg, const struct renameat_args *uap)
 {
 	struct nlookupdata oldnd, newnd;
 	struct file *oldfp, *newfp;
@@ -4400,7 +4401,7 @@ kern_mkdir(struct nlookupdata *nd, int mode)
  * Make a directory file.
  */
 int
-sys_mkdir(struct mkdir_args *uap)
+sys_mkdir(struct sysmsg *sysmsg, const struct mkdir_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -4419,7 +4420,7 @@ sys_mkdir(struct mkdir_args *uap)
  * with fd.
  */
 int
-sys_mkdirat(struct mkdirat_args *uap)
+sys_mkdirat(struct sysmsg *sysmsg, const struct mkdirat_args *uap)
 {
 	struct nlookupdata nd;
 	struct file *fp;
@@ -4463,7 +4464,7 @@ kern_rmdir(struct nlookupdata *nd)
  * Remove a directory file.
  */
 int
-sys_rmdir(struct rmdir_args *uap)
+sys_rmdir(struct sysmsg *sysmsg, const struct rmdir_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -4532,13 +4533,13 @@ done:
  * Read a block of directory entries in a file system independent format.
  */
 int
-sys_getdirentries(struct getdirentries_args *uap)
+sys_getdirentries(struct sysmsg *sysmsg, const struct getdirentries_args *uap)
 {
 	long base;
 	int error;
 
 	error = kern_getdirentries(uap->fd, uap->buf, uap->count, &base,
-				   &uap->sysmsg_result, UIO_USERSPACE);
+				   &sysmsg->sysmsg_result, UIO_USERSPACE);
 
 	if (error == 0 && uap->basep)
 		error = copyout(&base, uap->basep, sizeof(*uap->basep));
@@ -4549,12 +4550,12 @@ sys_getdirentries(struct getdirentries_args *uap)
  * getdents_args(int fd, char *buf, size_t count)
  */
 int
-sys_getdents(struct getdents_args *uap)
+sys_getdents(struct sysmsg *sysmsg, const struct getdents_args *uap)
 {
 	int error;
 
 	error = kern_getdirentries(uap->fd, uap->buf, uap->count, NULL,
-				   &uap->sysmsg_result, UIO_USERSPACE);
+				   &sysmsg->sysmsg_result, UIO_USERSPACE);
 
 	return (error);
 }
@@ -4565,14 +4566,14 @@ sys_getdents(struct getdents_args *uap)
  * umask(int newmask)
  */
 int
-sys_umask(struct umask_args *uap)
+sys_umask(struct sysmsg *sysmsg, const struct umask_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
 
 	fdp = p->p_fd;
-	uap->sysmsg_result = fdp->fd_cmask;
+	sysmsg->sysmsg_result = fdp->fd_cmask;
 	fdp->fd_cmask = uap->newmask & ALLPERMS;
 	return (0);
 }
@@ -4584,7 +4585,7 @@ sys_umask(struct umask_args *uap)
  * away from vnode.
  */
 int
-sys_revoke(struct revoke_args *uap)
+sys_revoke(struct sysmsg *sysmsg, const struct revoke_args *uap)
 {
 	struct nlookupdata nd;
 	struct vattr vattr;
@@ -4633,7 +4634,7 @@ sys_revoke(struct revoke_args *uap)
  *	    the related parent directories.
  */
 int
-sys_getfh(struct getfh_args *uap)
+sys_getfh(struct sysmsg *sysmsg, const struct getfh_args *uap)
 {
 	struct thread *td = curthread;
 	struct nlookupdata nd;
@@ -4677,7 +4678,7 @@ sys_getfh(struct getfh_args *uap)
  * security hole.
  */
 int
-sys_fhopen(struct fhopen_args *uap)
+sys_fhopen(struct sysmsg *sysmsg, const struct fhopen_args *uap)
 {
 	struct thread *td = curthread;
 	struct filedesc *fdp = td->td_proc->p_fd;
@@ -4842,7 +4843,7 @@ sys_fhopen(struct fhopen_args *uap)
 		fdp->fd_files[indx].fileflags |= UF_EXCLOSE;
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
-	uap->sysmsg_result = indx;
+	sysmsg->sysmsg_result = indx;
 	mount_drop(mp);
 
 	return (error);
@@ -4862,7 +4863,7 @@ done2:
  * fhstat_args(struct fhandle *u_fhp, struct stat *sb)
  */
 int
-sys_fhstat(struct fhstat_args *uap)
+sys_fhstat(struct sysmsg *sysmsg, const struct fhstat_args *uap)
 {
 	struct thread *td = curthread;
 	struct stat sb;
@@ -4902,7 +4903,7 @@ sys_fhstat(struct fhstat_args *uap)
  * fhstatfs_args(struct fhandle *u_fhp, struct statfs *buf)
  */
 int
-sys_fhstatfs(struct fhstatfs_args *uap)
+sys_fhstatfs(struct sysmsg *sysmsg, const struct fhstatfs_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -4965,7 +4966,7 @@ done:
  * fhstatvfs_args(struct fhandle *u_fhp, struct statvfs *buf)
  */
 int
-sys_fhstatvfs(struct fhstatvfs_args *uap)
+sys_fhstatvfs(struct sysmsg *sysmsg, const struct fhstatvfs_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -5026,7 +5027,7 @@ done:
  * Currently this is used only by UFS Extended Attributes.
  */
 int
-sys_extattrctl(struct extattrctl_args *uap)
+sys_extattrctl(struct sysmsg *sysmsg, const struct extattrctl_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -5074,7 +5075,8 @@ sys_extattrctl(struct extattrctl_args *uap)
  * Syscall to get a named extended attribute on a file or directory.
  */
 int
-sys_extattr_set_file(struct extattr_set_file_args *uap)
+sys_extattr_set_file(struct sysmsg *sysmsg,
+		     const struct extattr_set_file_args *uap)
 {
 	char attrname[EXTATTR_MAXNAMELEN];
 	struct nlookupdata nd;
@@ -5123,7 +5125,8 @@ sys_extattr_set_file(struct extattr_set_file_args *uap)
  * Syscall to get a named extended attribute on a file or directory.
  */
 int
-sys_extattr_get_file(struct extattr_get_file_args *uap)
+sys_extattr_get_file(struct sysmsg *sysmsg,
+		     const struct extattr_get_file_args *uap)
 {
 	char attrname[EXTATTR_MAXNAMELEN];
 	struct nlookupdata nd;
@@ -5160,7 +5163,7 @@ sys_extattr_get_file(struct extattr_get_file_args *uap)
 
 	error = VOP_GETEXTATTR(vp, uap->attrnamespace, attrname,
 				&auio, nd.nl_cred);
-	uap->sysmsg_result = uap->nbytes - auio.uio_resid;
+	sysmsg->sysmsg_result = uap->nbytes - auio.uio_resid;
 
 	vput(vp);
 	nlookup_done(&nd);
@@ -5172,7 +5175,8 @@ sys_extattr_get_file(struct extattr_get_file_args *uap)
  * Accepts attribute name.  The real work happens in VOP_SETEXTATTR().
  */
 int
-sys_extattr_delete_file(struct extattr_delete_file_args *uap)
+sys_extattr_delete_file(struct sysmsg *sysmsg,
+			const struct extattr_delete_file_args *uap)
 {
 	char attrname[EXTATTR_MAXNAMELEN];
 	struct nlookupdata nd;
@@ -5251,7 +5255,7 @@ get_fspriv(const char *fsname)
 }
 
 int
-sys___realpath(struct __realpath_args *uap)
+sys___realpath(struct sysmsg *sysmsg, const struct __realpath_args *uap)
 {
 	struct nlookupdata nd;
 	char *rbuf;
@@ -5308,7 +5312,7 @@ sys___realpath(struct __realpath_args *uap)
 	}
 	error = copyout(rbuf, uap->buf, rlen + 1);
 	if (error == 0)
-		uap->sysmsg_szresult = rlen;
+		sysmsg->sysmsg_szresult = rlen;
 done:
 	nlookup_done(&nd);
 	if (fbuf)

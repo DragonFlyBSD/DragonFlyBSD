@@ -6,9 +6,6 @@
  */
 
 union sysunion {
-#ifdef _KERNEL /* header only applies in kernel */
-	struct	sysmsg sysmsg;
-#endif
 	struct	nosys_args nosys;
 	struct	exit_args exit;
 	struct	fork_args fork;

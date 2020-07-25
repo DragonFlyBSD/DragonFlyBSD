@@ -41,7 +41,7 @@
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <libprop/proplib.h>
 #include <libprop/prop_dictionary.h>
 
@@ -326,7 +326,7 @@ cmd_set_limit_gid(struct mount *mp, prop_dictionary_t args)
 }
 
 int
-sys_vquotactl(struct vquotactl_args *vqa)
+sys_vquotactl(struct sysmsg *sysmsg, const struct vquotactl_args *vqa)
 /* const char *path, struct plistref *pref */
 {
 	struct nchandle nch;

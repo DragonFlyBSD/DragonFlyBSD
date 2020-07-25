@@ -36,12 +36,12 @@
 #include <sys/types.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/memrange.h>
 #include <sys/errno.h>
 
 int
-sys_sysarch(struct sysarch_args *uap)
+sys_sysarch(struct sysmsg *sysmsg, const struct sysarch_args *uap)
 {
 	return (EOPNOTSUPP);
 }

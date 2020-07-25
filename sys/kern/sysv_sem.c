@@ -12,7 +12,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/sem.h>
@@ -337,7 +337,7 @@ semundo_clear(int semid, int semnum)
  * MPALMOSTSAFE
  */
 int
-sys___semctl(struct __semctl_args *uap)
+sys___semctl(struct sysmsg *sysmsg, const struct __semctl_args *uap)
 {
 	struct thread *td = curthread;
 	struct prison *pr = td->td_proc->p_ucred->cr_prison;
@@ -556,7 +556,7 @@ sys___semctl(struct __semctl_args *uap)
 	lockmgr(&semaptr->lk, LK_RELEASE);
 
 	if (eval == 0)
-		uap->sysmsg_result = rval;
+		sysmsg->sysmsg_result = rval;
 	return(eval);
 }
 
@@ -564,7 +564,7 @@ sys___semctl(struct __semctl_args *uap)
  * MPALMOSTSAFE
  */
 int
-sys_semget(struct semget_args *uap)
+sys_semget(struct sysmsg *sysmsg, const struct semget_args *uap)
 {
 	struct thread *td = curthread;
 	struct prison *pr = td->td_proc->p_ucred->cr_prison;
@@ -708,7 +708,7 @@ sys_semget(struct semget_args *uap)
 
 done:
 	if (eval == 0) {
-		uap->sysmsg_result =
+		sysmsg->sysmsg_result =
 			IXSEQ_TO_IPCID(semid, sema[semid].ds.sem_perm);
 	}
 	return(eval);
@@ -718,7 +718,7 @@ done:
  * MPSAFE
  */
 int
-sys_semop(struct semop_args *uap)
+sys_semop(struct sysmsg *sysmsg, const struct semop_args *uap)
 {
 	struct thread *td = curthread;
 	struct prison *pr = td->td_proc->p_ucred->cr_prison;
@@ -1033,7 +1033,7 @@ donex:
 #ifdef SEM_DEBUG
 	kprintf("semop:  done\n");
 #endif
-	uap->sysmsg_result = 0;
+	sysmsg->sysmsg_result = 0;
 	eval = 0;
 done:
 	lockmgr(&semaptr->lk, LK_RELEASE);

@@ -70,7 +70,7 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/spinlock.h>
 #include <sys/proc.h>
 #include <sys/nlookup.h>
@@ -4262,7 +4262,7 @@ SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcwdfound, CTLFLAG_RD, &numcwdfound, 0,
  * MPALMOSTSAFE
  */
 int
-sys___getcwd(struct __getcwd_args *uap)
+sys___getcwd(struct sysmsg *sysmsg, const struct __getcwd_args *uap)
 {
 	u_int buflen;
 	int error;

@@ -12,6 +12,12 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_SYSPROTO_H_
+#include <sys/sysproto.h>
+#endif
+#ifndef _SYS_SYSUNION_H_
+#include <sys/sysunion.h>
+#endif
 
 /*
  * The sysmsg holds the kernelland version of a system call's arguments
@@ -36,8 +42,8 @@ struct sysmsg {
 	    __off_t offset;		/* off_t result */
 	    register_t reg;
 	} sm_result;
-	struct trapframe *sm_frame;	 /* trapframe - saved user context */
-	void *sm_unused;
+	struct trapframe *sm_frame;	/* trapframe - saved user context */
+	union sysunion extargs;		/* if more than 6 args */
 } __packed;
 
 struct lwp;
@@ -46,17 +52,17 @@ union sysunion;
 #endif
 
 #ifdef _KERNEL
-#define sysmsg_result	sysmsg.sm_result.result
-#define sysmsg_iresult	sysmsg.sm_result.iresult
-#define sysmsg_lresult	sysmsg.sm_result.lresult
-#define sysmsg_szresult	sysmsg.sm_result.szresult
-#define sysmsg_resultp	sysmsg.sm_result.resultp
-#define sysmsg_fds	sysmsg.sm_result.fds
-#define sysmsg_offset	sysmsg.sm_result.offset
-#define sysmsg_result32	sysmsg.sm_result.result32
-#define sysmsg_result64	sysmsg.sm_result.result64
-#define sysmsg_reg	sysmsg.sm_result.reg
-#define sysmsg_frame	sysmsg.sm_frame
+#define sysmsg_result	sm_result.result
+#define sysmsg_iresult	sm_result.iresult
+#define sysmsg_lresult	sm_result.lresult
+#define sysmsg_szresult	sm_result.szresult
+#define sysmsg_resultp	sm_result.resultp
+#define sysmsg_fds	sm_result.fds
+#define sysmsg_offset	sm_result.offset
+#define sysmsg_result32	sm_result.result32
+#define sysmsg_result64	sm_result.result64
+#define sysmsg_reg	sm_result.reg
+#define sysmsg_frame	sm_frame
 #endif
 
 #endif

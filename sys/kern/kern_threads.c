@@ -51,7 +51,7 @@
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 
 #if 0
 
@@ -74,7 +74,7 @@
  *	returns time waiting in ticks.
  */
 int
-sys_thr_sleep(struct thr_sleep_args *uap) 
+sys_thr_sleep(struct sysmsg *sysmsg, const struct thr_sleep_args *uap)
 {
 	struct proc *p = curproc;
 	struct lwp *lp = curthread->td_lwp;
@@ -104,7 +104,7 @@ sys_thr_sleep(struct thr_sleep_args *uap)
 		timo = tvtohz_high(&atv);
 	}
 
-	uap->sysmsg_result = 0;
+	sysmsg->sysmsg_result = 0;
 	if (p->p_wakeup == 0) {
 		sleepstart = ticks;
 		lp->lwp_flags |= LWP_SINTR;
@@ -112,18 +112,18 @@ sys_thr_sleep(struct thr_sleep_args *uap)
 		lp->lwp_flags &= ~LWP_SINTR;
 		if (error == EWOULDBLOCK) {
 			p->p_wakeup = 0;
-			uap->sysmsg_result = EAGAIN;
+			sysmsg->sysmsg_result = EAGAIN;
 			return 0;
 		}
 		if (uap->timeout == 0)
-			uap->sysmsg_result = ticks - sleepstart;
+			sysmsg->sysmsg_result = ticks - sleepstart;
 	}
 	p->p_wakeup = 0;
 	return (0);
 }
 
 int
-sys_thr_wakeup(struct thr_wakeup_args *uap) 
+sys_thr_wakeup(struct sysmsg *sysmsg, const struct thr_wakeup_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *pSlave = p->p_leader;
@@ -133,7 +133,7 @@ sys_thr_wakeup(struct thr_wakeup_args *uap)
 		pSlave = pSlave->p_peers;
 
 	if(pSlave == 0) {
-		uap->sysmsg_result = ESRCH;
+		sysmsg->sysmsg_result = ESRCH;
 		return(0);
 	}
 
@@ -144,7 +144,7 @@ sys_thr_wakeup(struct thr_wakeup_args *uap)
 		return(0);
 	}
 
-	uap->sysmsg_result = EAGAIN;
+	sysmsg->sysmsg_result = EAGAIN;
 	return 0;
 }
 
@@ -156,9 +156,9 @@ sys_thr_wakeup(struct thr_wakeup_args *uap)
  * MPSAFE
  */
 int
-sys_yield(struct yield_args *uap) 
+sys_yield(struct sysmsg *sysmsg, const struct yield_args *uap)
 {
-	uap->sysmsg_result = 0;
+	sysmsg->sysmsg_result = 0;
 	lwkt_user_yield();
 	return(0);
 }

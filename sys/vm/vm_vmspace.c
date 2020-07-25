@@ -37,7 +37,7 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kern_syscall.h>
 #include <sys/mman.h>
 #include <sys/thread.h>
@@ -77,7 +77,8 @@ static MALLOC_DEFINE(M_VKERNEL, "vkernel", "VKernel structures");
  * No requirements.
  */
 int
-sys_vmspace_create(struct vmspace_create_args *uap)
+sys_vmspace_create(struct sysmsg *sysmsg,
+		   const struct vmspace_create_args *uap)
 {
 	struct vmspace_entry *ve;
 	struct vkernel_proc *vkp;
@@ -141,7 +142,8 @@ sys_vmspace_create(struct vmspace_create_args *uap)
  * No requirements.
  */
 int
-sys_vmspace_destroy(struct vmspace_destroy_args *uap)
+sys_vmspace_destroy(struct sysmsg *sysmsg,
+		    const struct vmspace_destroy_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
@@ -176,7 +178,8 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
  * No requirements.
  */
 int
-sys_vmspace_ctl(struct vmspace_ctl_args *uap)
+sys_vmspace_ctl(struct sysmsg *sysmsg,
+		const struct vmspace_ctl_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vkernel_lwp *vklp;
@@ -223,21 +226,21 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		}
 		vklp->user_trapframe = uap->tframe;
 		vklp->user_vextframe = uap->vframe;
-		bcopy(uap->sysmsg_frame, &vklp->save_trapframe, framesz);
+		bcopy(sysmsg->sysmsg_frame, &vklp->save_trapframe, framesz);
 		bcopy(&curthread->td_tls, &vklp->save_vextframe.vx_tls,
 		      sizeof(vklp->save_vextframe.vx_tls));
-		error = copyin(uap->tframe, uap->sysmsg_frame, framesz);
+		error = copyin(uap->tframe, sysmsg->sysmsg_frame, framesz);
 		if (error == 0) {
 			error = copyin(&uap->vframe->vx_tls,
 				       &curthread->td_tls,
 				       sizeof(struct savetls));
 		}
 		if (error == 0)
-			error = cpu_sanitize_frame(uap->sysmsg_frame);
+			error = cpu_sanitize_frame(sysmsg->sysmsg_frame);
 		if (error == 0)
 			error = cpu_sanitize_tls(&curthread->td_tls);
 		if (error) {
-			bcopy(&vklp->save_trapframe, uap->sysmsg_frame,
+			bcopy(&vklp->save_trapframe, sysmsg->sysmsg_frame,
 			      framesz);
 			bcopy(&vklp->save_vextframe.vx_tls, &curthread->td_tls,
 			      sizeof(vklp->save_vextframe.vx_tls));
@@ -258,7 +261,7 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 				vmm_vm_set_guest_cr3((register_t)uap->id);
 			}
 			set_user_TLS();
-			set_vkernel_fp(uap->sysmsg_frame);
+			set_vkernel_fp(sysmsg->sysmsg_frame);
 			error = EJUSTRETURN;
 		}
 		break;
@@ -283,7 +286,8 @@ done:
  * No requirements.
  */
 int
-sys_vmspace_mmap(struct vmspace_mmap_args *uap)
+sys_vmspace_mmap(struct sysmsg *sysmsg,
+		 const struct vmspace_mmap_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
@@ -301,7 +305,7 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 
 	error = kern_mmap(ve->vmspace, uap->addr, uap->len,
 			  uap->prot, uap->flags,
-			  uap->fd, uap->offset, &uap->sysmsg_resultp);
+			  uap->fd, uap->offset, &sysmsg->sysmsg_resultp);
 
 	vmspace_entry_drop(ve);
 done2:
@@ -316,7 +320,8 @@ done2:
  * No requirements.
  */
 int
-sys_vmspace_munmap(struct vmspace_munmap_args *uap)
+sys_vmspace_munmap(struct sysmsg *sysmsg,
+		   const struct vmspace_munmap_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
@@ -398,7 +403,8 @@ done2:
  * No requirements.
  */
 int
-sys_vmspace_pread(struct vmspace_pread_args *uap)
+sys_vmspace_pread(struct sysmsg *sysmsg,
+		  const struct vmspace_pread_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
@@ -431,7 +437,8 @@ done3:
  * No requirements.
  */
 int
-sys_vmspace_pwrite(struct vmspace_pwrite_args *uap)
+sys_vmspace_pwrite(struct sysmsg *sysmsg,
+		   const struct vmspace_pwrite_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
@@ -459,7 +466,8 @@ done3:
  * No requirements.
  */
 int
-sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
+sys_vmspace_mcontrol(struct sysmsg *sysmsg,
+		     const struct vmspace_mcontrol_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;

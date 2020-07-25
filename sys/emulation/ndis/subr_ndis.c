@@ -69,7 +69,7 @@
 #include <sys/kthread.h>
 #include <sys/linker.h>
 #include <sys/mount.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>

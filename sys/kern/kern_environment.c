@@ -49,7 +49,7 @@
 #include <sys/priv.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/systm.h>
 #include <sys/sysctl.h>
 
@@ -71,7 +71,7 @@ static char	*kenv_getstring_static(const char *name);
 static char	*kernenv_next(char *cp);
 
 int
-sys_kenv(struct kenv_args *uap)
+sys_kenv(struct sysmsg *sysmsg, const struct kenv_args *uap)
 {
 	char *name, *value, *buffer = NULL;
 	size_t len, done, needed, buflen;
@@ -107,7 +107,7 @@ sys_kenv(struct kenv_args *uap)
 			error = copyout(buffer, uap->value, done);
 			kfree(buffer, M_TEMP);
 		}
-		uap->sysmsg_result = ((done == needed) ? 0 : needed);
+		sysmsg->sysmsg_result = ((done == needed) ? 0 : needed);
 		return (error);
 	}
 
@@ -145,7 +145,7 @@ sys_kenv(struct kenv_args *uap)
 		kfreeenv(value);
 		if (error)
 			goto done;
-		uap-> sysmsg_result = len;
+		sysmsg-> sysmsg_result = len;
 		break;
 	case KENV_SET:
 		len = uap->len;

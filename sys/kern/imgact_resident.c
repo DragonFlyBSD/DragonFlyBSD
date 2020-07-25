@@ -37,7 +37,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/exec.h>
 #include <sys/imgact.h>
 #include <sys/imgact_aout.h>
@@ -203,7 +203,8 @@ exec_resident_imgact(struct image_params *imgp)
  * MPALMOSTSAFE
  */
 int
-sys_exec_sys_register(struct exec_sys_register_args *uap)
+sys_exec_sys_register(struct sysmsg *sysmsg,
+		      const struct exec_sys_register_args *uap)
 {
     struct thread *td = curthread;
     struct vmresident *vmres;
@@ -252,7 +253,8 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
  * MPALMOSTSAFE
  */
 int
-sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
+sys_exec_sys_unregister(struct sysmsg *sysmsg,
+			const struct exec_sys_unregister_args *uap)
 {
     struct thread *td = curthread;
     struct vmresident *vmres;
@@ -316,7 +318,7 @@ restart:
     lockmgr(&exec_list_lock, LK_RELEASE);
 
     if (error == 0)
-	uap->sysmsg_result = count;
+	sysmsg->sysmsg_result = count;
     return(error);
 }
 

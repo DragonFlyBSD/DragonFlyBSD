@@ -31,7 +31,7 @@
 #include <sys/systm.h>
 #include <sys/eventhandler.h>
 #include <sys/malloc.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/sysent.h>
 #include <sys/module.h>
 #include <sys/linker.h>
@@ -244,18 +244,18 @@ module_setspecific(module_t mod, modspecific_t *datap)
  * MPALMOSTSAFE
  */
 int
-sys_modnext(struct modnext_args *uap)
+sys_modnext(struct sysmsg *sysmsg, const struct modnext_args *uap)
 {
     module_t mod;
     int error;
 
     error = 0;
     lwkt_gettoken(&mod_token);
-    uap->sysmsg_result = -1;
+    sysmsg->sysmsg_result = -1;
     if (uap->modid == 0) {
 	mod = TAILQ_FIRST(&modules);
 	if (mod)
-	    uap->sysmsg_result = mod->id;
+	    sysmsg->sysmsg_result = mod->id;
 	else
 	    error = ENOENT;
 	goto done;
@@ -268,9 +268,9 @@ sys_modnext(struct modnext_args *uap)
     }
 
     if (TAILQ_NEXT(mod, link))
-	uap->sysmsg_result = TAILQ_NEXT(mod, link)->id;
+	sysmsg->sysmsg_result = TAILQ_NEXT(mod, link)->id;
     else
-	uap->sysmsg_result = 0;
+	sysmsg->sysmsg_result = 0;
 done:
     lwkt_reltoken(&mod_token);
 
@@ -281,13 +281,13 @@ done:
  * MPALMOSTSAFE
  */
 int
-sys_modfnext(struct modfnext_args *uap)
+sys_modfnext(struct sysmsg *sysmsg, const struct modfnext_args *uap)
 {
     module_t mod;
     int error;
 
     lwkt_gettoken(&mod_token);
-    uap->sysmsg_result = -1;
+    sysmsg->sysmsg_result = -1;
 
     mod = module_lookupbyid(uap->modid);
     if (!mod) {
@@ -296,9 +296,9 @@ sys_modfnext(struct modfnext_args *uap)
     }
 
     if (TAILQ_NEXT(mod, flink))
-	uap->sysmsg_result = TAILQ_NEXT(mod, flink)->id;
+	sysmsg->sysmsg_result = TAILQ_NEXT(mod, flink)->id;
     else
-	uap->sysmsg_result = 0;
+	sysmsg->sysmsg_result = 0;
     error = 0;
 done:
     lwkt_reltoken(&mod_token);
@@ -317,7 +317,7 @@ struct module_stat_v1 {
  * MPALMOSTSAFE
  */
 int
-sys_modstat(struct modstat_args *uap)
+sys_modstat(struct sysmsg *sysmsg, const struct modstat_args *uap)
 {
     module_t mod;
     int error;
@@ -364,7 +364,7 @@ sys_modstat(struct modstat_args *uap)
 	    goto out;
     }
 
-    uap->sysmsg_result = 0;
+    sysmsg->sysmsg_result = 0;
 
 out:
     lwkt_reltoken(&mod_token);
@@ -376,7 +376,7 @@ out:
  * MPALMOSTSAFE
  */
 int
-sys_modfind(struct modfind_args *uap)
+sys_modfind(struct sysmsg *sysmsg, const struct modfind_args *uap)
 {
     int error;
     char name[MAXMODNAME];
@@ -390,7 +390,7 @@ sys_modfind(struct modfind_args *uap)
     if (!mod)
 	error = ENOENT;
     else
-	uap->sysmsg_result = mod->id;
+	sysmsg->sysmsg_result = mod->id;
 
 out:
     lwkt_reltoken(&mod_token);

@@ -46,7 +46,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/signalvar.h>
 #include <sys/kernel.h>
 #include <sys/linker.h>
@@ -343,7 +343,7 @@ cpu_sanitize_tls(struct savetls *tls)
 #define	CS_SECURE(cs)		(ISPL(cs) == SEL_UPL)
 
 int
-sys_sigreturn(struct sigreturn_args *uap)
+sys_sigreturn(struct sysmsg *sysmsg, const struct sigreturn_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct trapframe *regs;

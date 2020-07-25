@@ -35,7 +35,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
@@ -279,7 +279,7 @@ SYSCTL_OPAQUE(_kern_ntp_pll, OID_AUTO, time_freq, CTLFLAG_RD, &time_freq, sizeof
  * MPALMOSTSAFE
  */
 int
-sys_ntp_adjtime(struct ntp_adjtime_args *uap)
+sys_ntp_adjtime(struct sysmsg *sysmsg, const struct ntp_adjtime_args *uap)
 {
 	struct thread *td = curthread;
 	struct timex ntv;	/* temporary structure */
@@ -426,9 +426,9 @@ sys_ntp_adjtime(struct ntp_adjtime_args *uap)
 	    time_status & STA_PPSJITTER) ||
 	    (time_status & STA_PPSFREQ &&
 	    time_status & (STA_PPSWANDER | STA_PPSERROR))) {
-		uap->sysmsg_result = TIME_ERROR;
+		sysmsg->sysmsg_result = TIME_ERROR;
 	} else {
-		uap->sysmsg_result = time_state;
+		sysmsg->sysmsg_result = time_state;
 	}
 	return (error);
 }

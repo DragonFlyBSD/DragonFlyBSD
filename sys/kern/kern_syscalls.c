@@ -28,7 +28,8 @@
  */
 
 #include <sys/param.h>
-#include <sys/sysproto.h>
+#include <sys/types.h>
+#include <sys/sysmsg.h>
 #include <sys/sysent.h>
 #include <sys/syscall.h>
 #include <sys/module.h>
@@ -40,9 +41,9 @@
  * Place holder for system call slots reserved for loadable modules.
  */     
 int
-sys_lkmnosys(struct nosys_args *args)
+sys_lkmnosys(struct sysmsg *sysmsg, const struct nosys_args *args)
 {
-	return(sys_nosys(args));
+	return(sys_nosys(sysmsg, args));
 }
 
 int

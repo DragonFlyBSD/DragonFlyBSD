@@ -43,8 +43,7 @@
 #include <sys/systm.h>
 #include <sys/cdefs.h>
 #include <sys/kernel.h>
-#include <sys/sysproto.h>
-#include <sys/sysunion.h>
+#include <sys/sysmsg.h>
 #include <sys/sysent.h>
 #include <sys/syscall.h>
 #include <sys/sysctl.h>
@@ -110,7 +109,7 @@ SYSCTL_INT(_kern, OID_AUTO, umtx_timeout_max, CTLFLAG_RW,
  * umtx_sleep { const int *ptr, int value, int timeout }
  */
 int
-sys_umtx_sleep(struct umtx_sleep_args *uap)
+sys_umtx_sleep(struct sysmsg *sysmsg, const struct umtx_sleep_args *uap)
 {
     void *waddr;
     void *uptr;
@@ -120,6 +119,7 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     int value;
     int fail_counter;
     thread_t td;
+    volatile const int *ptr = uap->ptr;
 
     if (uap->timeout < 0)
 	return (EINVAL);
@@ -127,11 +127,11 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 
     if (td->td_vmm) {
 	register_t gpa;
-	vmm_vm_get_gpa(td->td_proc, &gpa, (register_t)uap->ptr);
-	uap->ptr = (const int *)gpa;
+	vmm_vm_get_gpa(td->td_proc, &gpa, (register_t)ptr);
+	ptr = (const int *)gpa;
     }
 
-    uptr = __DEQUALIFY(void *, uap->ptr);
+    uptr = __DEQUALIFY(void *, ptr);
     if ((vm_offset_t)uptr & (sizeof(int) - 1))
 	return EFAULT;
 
@@ -255,7 +255,7 @@ done:
  * specified user address.  A count of 0 wakes up all waiting processes.
  */
 int
-sys_umtx_wakeup(struct umtx_wakeup_args *uap)
+sys_umtx_wakeup(struct sysmsg *sysmsg, const struct umtx_wakeup_args *uap)
 {
     int offset;
     int error;
@@ -263,14 +263,15 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
     int32_t value;
     void *waddr;
     void *uptr;
+    volatile const int *ptr = uap->ptr;
     thread_t td;
 
     td = curthread;
 
     if (td->td_vmm) {
 	register_t gpa;
-	vmm_vm_get_gpa(td->td_proc, &gpa, (register_t)uap->ptr);
-	uap->ptr = (const int *)gpa;
+	vmm_vm_get_gpa(td->td_proc, &gpa, (register_t)ptr);
+	ptr = (const int *)gpa;
     }
 
     /*
@@ -279,11 +280,11 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
      *	        interlock to protect against flushes/pageouts.
      */
     cpu_mfence();
-    if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
+    if ((vm_offset_t)ptr & (sizeof(int) - 1))
 	return EFAULT;
 
-    offset = (vm_offset_t)uap->ptr & PAGE_MASK;
-    uptr = __DEQUALIFY(void *, uap->ptr);
+    offset = (vm_offset_t)ptr & PAGE_MASK;
+    uptr = __DEQUALIFY(void *, ptr);
 
     fail_counter = 10000;
     do {

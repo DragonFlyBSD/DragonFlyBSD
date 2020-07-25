@@ -46,7 +46,7 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/filedesc.h>
 #include <sys/kern_syscall.h>
 #include <sys/proc.h>
@@ -89,7 +89,7 @@ SYSCTL_INT(_vm, OID_AUTO, vkernel_enable, CTLFLAG_RW, &vkernel_enable, 0, "");
  * MPSAFE
  */
 int
-sys_sstk(struct sstk_args *uap)
+sys_sstk(struct sysmsg *sysmsg, const struct sstk_args *uap)
 {
 	/* Not yet implemented */
 	return (EOPNOTSUPP);
@@ -398,7 +398,7 @@ done:
  * No requirements.
  */
 int
-sys_mmap(struct mmap_args *uap)
+sys_mmap(struct sysmsg *sysmsg, const struct mmap_args *uap)
 {
 	int error;
 	int flags = uap->flags;
@@ -431,7 +431,7 @@ sys_mmap(struct mmap_args *uap)
 
 	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
 			  uap->prot, flags,
-			  uap->fd, upos, &uap->sysmsg_resultp);
+			  uap->fd, upos, &sysmsg->sysmsg_resultp);
 
 	return (error);
 }
@@ -444,7 +444,7 @@ sys_mmap(struct mmap_args *uap)
  * No requirements
  */
 int
-sys_msync(struct msync_args *uap)
+sys_msync(struct sysmsg *sysmsg, const struct msync_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
@@ -533,7 +533,7 @@ done:
  * No requirements
  */
 int
-sys_munmap(struct munmap_args *uap)
+sys_munmap(struct sysmsg *sysmsg, const struct munmap_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
@@ -591,7 +591,7 @@ sys_munmap(struct munmap_args *uap)
  * No requirements.
  */
 int
-sys_mprotect(struct mprotect_args *uap)
+sys_mprotect(struct sysmsg *sysmsg, const struct mprotect_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
@@ -637,7 +637,7 @@ sys_mprotect(struct mprotect_args *uap)
  * No requirements.
  */
 int
-sys_minherit(struct minherit_args *uap)
+sys_minherit(struct sysmsg *sysmsg, const struct minherit_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
@@ -683,7 +683,7 @@ sys_minherit(struct minherit_args *uap)
  * No requirements.
  */
 int
-sys_madvise(struct madvise_args *uap)
+sys_madvise(struct sysmsg *sysmsg, const struct madvise_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t start, end;
@@ -726,7 +726,7 @@ sys_madvise(struct madvise_args *uap)
  * No requirements
  */
 int
-sys_mcontrol(struct mcontrol_args *uap)
+sys_mcontrol(struct sysmsg *sysmsg, const struct mcontrol_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t start, end;
@@ -770,7 +770,7 @@ sys_mcontrol(struct mcontrol_args *uap)
  * No requirements
  */
 int
-sys_mincore(struct mincore_args *uap)
+sys_mincore(struct sysmsg *sysmsg, const struct mincore_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr, first_addr;
@@ -983,7 +983,7 @@ done:
  * No requirements
  */
 int
-sys_mlock(struct mlock_args *uap)
+sys_mlock(struct sysmsg *sysmsg, const struct mlock_args *uap)
 {
 	vm_offset_t addr;
 	vm_offset_t tmpaddr;
@@ -1035,7 +1035,7 @@ sys_mlock(struct mlock_args *uap)
  * No requirements
  */
 int
-sys_mlockall(struct mlockall_args *uap)
+sys_mlockall(struct sysmsg *sysmsg, const struct mlockall_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1076,7 +1076,7 @@ sys_mlockall(struct mlockall_args *uap)
  * No requirements
  */
 int
-sys_munlockall(struct munlockall_args *uap)
+sys_munlockall(struct sysmsg *sysmsg, const struct munlockall_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1138,7 +1138,7 @@ retry:
  * No requirements
  */
 int
-sys_munlock(struct munlock_args *uap)
+sys_munlock(struct sysmsg *sysmsg, const struct munlock_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;

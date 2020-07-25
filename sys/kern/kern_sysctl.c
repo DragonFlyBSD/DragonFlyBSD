@@ -44,7 +44,7 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/lock.h>
 #include <sys/sbuf.h>
 
@@ -1471,7 +1471,7 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 }
 
 int
-sys___sysctl(struct sysctl_args *uap)
+sys___sysctl(struct sysmsg *sysmsg, const struct sysctl_args *uap)
 {
 	int error, i, name[CTL_MAXNAME];
 	size_t j;

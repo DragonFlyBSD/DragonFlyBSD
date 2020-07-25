@@ -71,7 +71,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/file.h>
@@ -610,7 +610,7 @@ readplimits(struct proc *p)
  * System calls on descriptors.
  */
 int
-sys_getdtablesize(struct getdtablesize_args *uap) 
+sys_getdtablesize(struct sysmsg *sysmsg, const struct getdtablesize_args *uap)
 {
 	struct proc *p = curproc;
 	struct plimit *limit = readplimits(p);
@@ -627,7 +627,7 @@ sys_getdtablesize(struct getdtablesize_args *uap)
 		dtsize = minfilesperproc;
 	if (p->p_ucred->cr_uid && dtsize > maxfilesperuser)
 		dtsize = maxfilesperuser;
-	uap->sysmsg_result = dtsize;
+	sysmsg->sysmsg_result = dtsize;
 	return (0);
 }
 
@@ -638,13 +638,13 @@ sys_getdtablesize(struct getdtablesize_args *uap)
  * descriptors from a shared descriptor table (via rfork).
  */
 int
-sys_dup2(struct dup2_args *uap)
+sys_dup2(struct sysmsg *sysmsg, const struct dup2_args *uap)
 {
 	int error;
 	int fd = 0;
 
 	error = kern_dup(DUP_FIXED, uap->from, uap->to, &fd);
-	uap->sysmsg_fds[0] = fd;
+	sysmsg->sysmsg_fds[0] = fd;
 
 	return (error);
 }
@@ -653,13 +653,13 @@ sys_dup2(struct dup2_args *uap)
  * Duplicate a file descriptor.
  */
 int
-sys_dup(struct dup_args *uap)
+sys_dup(struct sysmsg *sysmsg, const struct dup_args *uap)
 {
 	int error;
 	int fd = 0;
 
 	error = kern_dup(DUP_VARIABLE, uap->fd, 0, &fd);
-	uap->sysmsg_fds[0] = fd;
+	sysmsg->sysmsg_fds[0] = fd;
 
 	return (error);
 }
@@ -866,7 +866,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
  * The file control system call.
  */
 int
-sys_fcntl(struct fcntl_args *uap)
+sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 {
 	union fcntl_dat dat;
 	int error;
@@ -905,16 +905,16 @@ sys_fcntl(struct fcntl_args *uap)
 		case F_DUP2FD:
 		case F_DUPFD_CLOEXEC:
 		case F_DUP2FD_CLOEXEC:
-			uap->sysmsg_result = dat.fc_fd;
+			sysmsg->sysmsg_result = dat.fc_fd;
 			break;
 		case F_GETFD:
-			uap->sysmsg_result = dat.fc_cloexec;
+			sysmsg->sysmsg_result = dat.fc_cloexec;
 			break;
 		case F_GETFL:
-			uap->sysmsg_result = dat.fc_flags;
+			sysmsg->sysmsg_result = dat.fc_flags;
 			break;
 		case F_GETOWN:
-			uap->sysmsg_result = dat.fc_owner;
+			sysmsg->sysmsg_result = dat.fc_owner;
 			break;
 		case F_GETLK:
 			error = copyout(&dat.fc_flock, (caddr_t)uap->arg,
@@ -1301,7 +1301,7 @@ fgetown(struct sigio **sigiop)
  * Close many file descriptors.
  */
 int
-sys_closefrom(struct closefrom_args *uap)
+sys_closefrom(struct sysmsg *sysmsg, const struct closefrom_args *uap)
 {
 	return(kern_closefrom(uap->fd));
 }
@@ -1355,7 +1355,7 @@ kern_closefrom(int fd)
  * Close a file descriptor.
  */
 int
-sys_close(struct close_args *uap)
+sys_close(struct sysmsg *sysmsg, const struct close_args *uap)
 {
 	return(kern_close(uap->fd));
 }
@@ -1439,7 +1439,7 @@ kern_shutdown(int fd, int how)
  * MPALMOSTSAFE
  */
 int
-sys_shutdown(struct shutdown_args *uap)
+sys_shutdown(struct sysmsg *sysmsg, const struct shutdown_args *uap)
 {
 	int error;
 
@@ -1470,7 +1470,7 @@ kern_fstat(int fd, struct stat *ub)
  * Return status information about a file descriptor.
  */
 int
-sys_fstat(struct fstat_args *uap)
+sys_fstat(struct sysmsg *sysmsg, const struct fstat_args *uap)
 {
 	struct stat st;
 	int error;
@@ -1488,7 +1488,7 @@ sys_fstat(struct fstat_args *uap)
  * MPALMOSTSAFE
  */
 int
-sys_fpathconf(struct fpathconf_args *uap)
+sys_fpathconf(struct sysmsg *sysmsg, const struct fpathconf_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -1504,14 +1504,14 @@ sys_fpathconf(struct fpathconf_args *uap)
 		if (uap->name != _PC_PIPE_BUF) {
 			error = EINVAL;
 		} else {
-			uap->sysmsg_result = PIPE_BUF;
+			sysmsg->sysmsg_result = PIPE_BUF;
 			error = 0;
 		}
 		break;
 	case DTYPE_FIFO:
 	case DTYPE_VNODE:
 		vp = (struct vnode *)fp->f_data;
-		error = VOP_PATHCONF(vp, uap->name, &uap->sysmsg_reg);
+		error = VOP_PATHCONF(vp, uap->name, &sysmsg->sysmsg_reg);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -3038,7 +3038,7 @@ fdrop(struct file *fp)
  * MPALMOSTSAFE
  */
 int
-sys_flock(struct flock_args *uap)
+sys_flock(struct sysmsg *sysmsg, const struct flock_args *uap)
 {
 	thread_t td = curthread;
 	struct file *fp;

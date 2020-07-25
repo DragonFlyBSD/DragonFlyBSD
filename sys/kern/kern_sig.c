@@ -40,7 +40,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/signalvar.h>
 #include <sys/resourcevar.h>
 #include <sys/vnode.h>
@@ -388,7 +388,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 }
 
 int
-sys_sigaction(struct sigaction_args *uap)
+sys_sigaction(struct sysmsg *sysmsg, const struct sigaction_args *uap)
 {
 	struct sigaction act, oact;
 	struct sigaction *actp, *oactp;
@@ -524,7 +524,7 @@ kern_sigprocmask(int how, sigset_t *set, sigset_t *oset)
  * MPSAFE
  */
 int
-sys_sigprocmask(struct sigprocmask_args *uap)
+sys_sigprocmask(struct sysmsg *sysmsg, const struct sigprocmask_args *uap)
 {
 	sigset_t set, oset;
 	sigset_t *setp, *osetp;
@@ -561,7 +561,7 @@ kern_sigpending(sigset_t *set)
  * MPSAFE
  */
 int
-sys_sigpending(struct sigpending_args *uap)
+sys_sigpending(struct sysmsg *sysmsg, const struct sigpending_args *uap)
 {
 	sigset_t set;
 	int error;
@@ -612,7 +612,7 @@ kern_sigsuspend(sigset_t *set)
  * MPSAFE
  */
 int
-sys_sigsuspend(struct sigsuspend_args *uap)
+sys_sigsuspend(struct sysmsg *sysmsg, const struct sigsuspend_args *uap)
 {
 	sigset_t mask;
 	int error;
@@ -665,7 +665,7 @@ kern_sigaltstack(stack_t *ss, stack_t *oss)
  * MPSAFE
  */
 int
-sys_sigaltstack(struct sigaltstack_args *uap)
+sys_sigaltstack(struct sysmsg *sysmsg, const struct sigaltstack_args *uap)
 {
 	stack_t ss, oss;
 	int error;
@@ -853,7 +853,7 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 }
 
 int
-sys_kill(struct kill_args *uap)
+sys_kill(struct sysmsg *sysmsg, const struct kill_args *uap)
 {
 	int error;
 
@@ -862,7 +862,7 @@ sys_kill(struct kill_args *uap)
 }
 
 int
-sys_lwp_kill(struct lwp_kill_args *uap)
+sys_lwp_kill(struct sysmsg *sysmsg, const struct lwp_kill_args *uap)
 {
 	int error;
 	pid_t pid = uap->pid;
@@ -1851,7 +1851,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
  * MPALMOSTSAFE
  */
 int
-sys_sigtimedwait(struct sigtimedwait_args *uap)
+sys_sigtimedwait(struct sysmsg *sysmsg, const struct sigtimedwait_args *uap)
 {
 	struct timespec ts;
 	struct timespec *timeout;
@@ -1885,7 +1885,7 @@ sys_sigtimedwait(struct sigtimedwait_args *uap)
 	if (error) {
 		ksignal(curproc, info.si_signo);
 	} else {
-		uap->sysmsg_result = info.si_signo;
+		sysmsg->sysmsg_result = info.si_signo;
 	}
 	return (error);
 }
@@ -1894,7 +1894,7 @@ sys_sigtimedwait(struct sigtimedwait_args *uap)
  * MPALMOSTSAFE
  */
 int
-sys_sigwaitinfo(struct sigwaitinfo_args *uap)
+sys_sigwaitinfo(struct sysmsg *sysmsg, const struct sigwaitinfo_args *uap)
 {
 	siginfo_t info;
 	sigset_t set;
@@ -1918,7 +1918,7 @@ sys_sigwaitinfo(struct sigwaitinfo_args *uap)
 	if (error) {
 		ksignal(curproc, info.si_signo);
 	} else {
-		uap->sysmsg_result = info.si_signo;
+		sysmsg->sysmsg_result = info.si_signo;
 	}
 	return (error);
 }
@@ -2600,7 +2600,7 @@ out2:
  */
 /* ARGSUSED */
 int
-sys_nosys(struct nosys_args *args)
+sys_nosys(struct sysmsg *sysmsg, const struct nosys_args *args)
 {
 	lwpsignal(curproc, curthread->td_lwp, SIGSYS);
 	return (EINVAL);

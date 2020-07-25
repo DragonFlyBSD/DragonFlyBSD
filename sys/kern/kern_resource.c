@@ -37,7 +37,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/file.h>
 #include <sys/kern_syscall.h>
 #include <sys/kernel.h>
@@ -83,7 +83,7 @@ static int getpriority_callback(struct proc *p, void *data);
  * MPALMOSTSAFE
  */
 int
-sys_getpriority(struct getpriority_args *uap)
+sys_getpriority(struct sysmsg *sysmsg, const struct getpriority_args *uap)
 {
 	struct getpriority_info info;
 	thread_t curtd = curthread;
@@ -91,14 +91,15 @@ sys_getpriority(struct getpriority_args *uap)
 	struct proc *p;
 	struct pgrp *pg;
 	int low = PRIO_MAX + 1;
+	int who = uap->who;
 	int error;
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
-		if (uap->who == 0) {
+		if (who == 0) {
 			low = curp->p_nice;
 		} else {
-			p = pfind(uap->who);
+			p = pfind(who);
 			if (p) {
 				lwkt_gettoken_shared(&p->p_token);
 				if (PRISON_CHECK(curtd->td_ucred, p->p_ucred))
@@ -109,12 +110,12 @@ sys_getpriority(struct getpriority_args *uap)
 		}
 		break;
 	case PRIO_PGRP: 
-		if (uap->who == 0) {
+		if (who == 0) {
 			lwkt_gettoken_shared(&curp->p_token);
 			pg = curp->p_pgrp;
 			pgref(pg);
 			lwkt_reltoken(&curp->p_token);
-		} else if ((pg = pgfind(uap->who)) == NULL) {
+		} else if ((pg = pgfind(who)) == NULL) {
 			break;
 		} /* else ref held from pgfind */
 
@@ -129,10 +130,10 @@ sys_getpriority(struct getpriority_args *uap)
 		pgrel(pg);
 		break;
 	case PRIO_USER:
-		if (uap->who == 0)
-			uap->who = curtd->td_ucred->cr_uid;
+		if (who == 0)
+			who = curtd->td_ucred->cr_uid;
 		info.low = low;
-		info.who = uap->who;
+		info.who = who;
 		allproc_scan(getpriority_callback, &info, 0);
 		low = info.low;
 		break;
@@ -145,7 +146,7 @@ sys_getpriority(struct getpriority_args *uap)
 		error = ESRCH;
 		goto done;
 	}
-	uap->sysmsg_result = low;
+	sysmsg->sysmsg_result = low;
 	error = 0;
 done:
 	return (error);
@@ -184,7 +185,7 @@ static int setpriority_callback(struct proc *p, void *data);
  * MPALMOSTSAFE
  */
 int
-sys_setpriority(struct setpriority_args *uap)
+sys_setpriority(struct sysmsg *sysmsg, const struct setpriority_args *uap)
 {
 	struct setpriority_info info;
 	thread_t curtd = curthread;
@@ -192,16 +193,17 @@ sys_setpriority(struct setpriority_args *uap)
 	struct proc *p;
 	struct pgrp *pg;
 	int found = 0, error = 0;
+	int who = uap->who;
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
-		if (uap->who == 0) {
+		if (who == 0) {
 			lwkt_gettoken(&curp->p_token);
 			error = donice(curp, uap->prio);
 			found++;
 			lwkt_reltoken(&curp->p_token);
 		} else {
-			p = pfind(uap->who);
+			p = pfind(who);
 			if (p) {
 				lwkt_gettoken(&p->p_token);
 				if (PRISON_CHECK(curtd->td_ucred, p->p_ucred)) {
@@ -214,12 +216,12 @@ sys_setpriority(struct setpriority_args *uap)
 		}
 		break;
 	case PRIO_PGRP: 
-		if (uap->who == 0) {
+		if (who == 0) {
 			lwkt_gettoken_shared(&curp->p_token);
 			pg = curp->p_pgrp;
 			pgref(pg);
 			lwkt_reltoken(&curp->p_token);
-		} else if ((pg = pgfind(uap->who)) == NULL) {
+		} else if ((pg = pgfind(who)) == NULL) {
 			break;
 		} /* else ref held from pgfind */
 
@@ -244,10 +246,10 @@ restart:
 		pgrel(pg);
 		break;
 	case PRIO_USER:
-		if (uap->who == 0)
-			uap->who = curtd->td_ucred->cr_uid;
+		if (who == 0)
+			who = curtd->td_ucred->cr_uid;
 		info.prio = uap->prio;
-		info.who = uap->who;
+		info.who = who;
 		info.error = 0;
 		info.found = 0;
 		allproc_scan(setpriority_callback, &info, 0);
@@ -324,7 +326,7 @@ static int ioprio_get_callback(struct proc *p, void *data);
  * MPALMOSTSAFE
  */
 int
-sys_ioprio_get(struct ioprio_get_args *uap)
+sys_ioprio_get(struct sysmsg *sysmsg, const struct ioprio_get_args *uap)
 {
 	struct ioprio_get_info info;
 	thread_t curtd = curthread;
@@ -332,14 +334,15 @@ sys_ioprio_get(struct ioprio_get_args *uap)
 	struct proc *p;
 	struct pgrp *pg;
 	int high = IOPRIO_MIN-2;
+	int who = uap->who;
 	int error;
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
-		if (uap->who == 0) {
+		if (who == 0) {
 			high = curp->p_ionice;
 		} else {
-			p = pfind(uap->who);
+			p = pfind(who);
 			if (p) {
 				lwkt_gettoken_shared(&p->p_token);
 				if (PRISON_CHECK(curtd->td_ucred, p->p_ucred))
@@ -350,12 +353,12 @@ sys_ioprio_get(struct ioprio_get_args *uap)
 		}
 		break;
 	case PRIO_PGRP:
-		if (uap->who == 0) {
+		if (who == 0) {
 			lwkt_gettoken_shared(&curp->p_token);
 			pg = curp->p_pgrp;
 			pgref(pg);
 			lwkt_reltoken(&curp->p_token);
-		} else if ((pg = pgfind(uap->who)) == NULL) {
+		} else if ((pg = pgfind(who)) == NULL) {
 			break;
 		} /* else ref held from pgfind */
 
@@ -369,10 +372,10 @@ sys_ioprio_get(struct ioprio_get_args *uap)
 		pgrel(pg);
 		break;
 	case PRIO_USER:
-		if (uap->who == 0)
-			uap->who = curtd->td_ucred->cr_uid;
+		if (who == 0)
+			who = curtd->td_ucred->cr_uid;
 		info.high = high;
-		info.who = uap->who;
+		info.who = who;
 		allproc_scan(ioprio_get_callback, &info, 0);
 		high = info.high;
 		break;
@@ -384,7 +387,7 @@ sys_ioprio_get(struct ioprio_get_args *uap)
 		error = ESRCH;
 		goto done;
 	}
-	uap->sysmsg_result = high;
+	sysmsg->sysmsg_result = high;
 	error = 0;
 done:
 	return (error);
@@ -424,7 +427,7 @@ static int ioprio_set_callback(struct proc *p, void *data);
  * MPALMOSTSAFE
  */
 int
-sys_ioprio_set(struct ioprio_set_args *uap)
+sys_ioprio_set(struct sysmsg *sysmsg, const struct ioprio_set_args *uap)
 {
 	struct ioprio_set_info info;
 	thread_t curtd = curthread;
@@ -432,16 +435,17 @@ sys_ioprio_set(struct ioprio_set_args *uap)
 	struct proc *p;
 	struct pgrp *pg;
 	int found = 0, error = 0;
+	int who = uap->who;
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
-		if (uap->who == 0) {
+		if (who == 0) {
 			lwkt_gettoken(&curp->p_token);
 			error = doionice(curp, uap->prio);
 			lwkt_reltoken(&curp->p_token);
 			found++;
 		} else {
-			p = pfind(uap->who);
+			p = pfind(who);
 			if (p) {
 				lwkt_gettoken(&p->p_token);
 				if (PRISON_CHECK(curtd->td_ucred, p->p_ucred)) {
@@ -454,12 +458,12 @@ sys_ioprio_set(struct ioprio_set_args *uap)
 		}
 		break;
 	case PRIO_PGRP:
-		if (uap->who == 0) {
+		if (who == 0) {
 			lwkt_gettoken_shared(&curp->p_token);
 			pg = curp->p_pgrp;
 			pgref(pg);
 			lwkt_reltoken(&curp->p_token);
-		} else if ((pg = pgfind(uap->who)) == NULL) {
+		} else if ((pg = pgfind(who)) == NULL) {
 			break;
 		} /* else ref held from pgfind */
 
@@ -484,10 +488,10 @@ restart:
 		pgrel(pg);
 		break;
 	case PRIO_USER:
-		if (uap->who == 0)
-			uap->who = curtd->td_ucred->cr_uid;
+		if (who == 0)
+			who = curtd->td_ucred->cr_uid;
 		info.prio = uap->prio;
-		info.who = uap->who;
+		info.who = who;
 		info.error = 0;
 		info.found = 0;
 		allproc_scan(ioprio_set_callback, &info, 0);
@@ -550,7 +554,7 @@ doionice(struct proc *chgp, int n)
  * MPALMOSTSAFE
  */
 int
-sys_lwp_rtprio(struct lwp_rtprio_args *uap)
+sys_lwp_rtprio(struct sysmsg *sysmsg, const struct lwp_rtprio_args *uap)
 {
 	struct ucred *cr = curthread->td_ucred;
 	struct proc *p;
@@ -670,7 +674,7 @@ done:
  * MPALMOSTSAFE
  */
 int
-sys_rtprio(struct rtprio_args *uap)
+sys_rtprio(struct sysmsg *sysmsg, const struct rtprio_args *uap)
 {
 	struct ucred *cr = curthread->td_ucred;
 	struct proc *p;
@@ -762,7 +766,7 @@ done:
 }
 
 int
-sys_setrlimit(struct __setrlimit_args *uap)
+sys_setrlimit(struct sysmsg *sysmsg, const struct __setrlimit_args *uap)
 {
 	struct rlimit alim;
 	int error;
@@ -777,7 +781,7 @@ sys_setrlimit(struct __setrlimit_args *uap)
 }
 
 int
-sys_getrlimit(struct __getrlimit_args *uap)
+sys_getrlimit(struct sysmsg *sysmsg, const struct __getrlimit_args *uap)
 {
 	struct rlimit lim;
 	int error;
@@ -859,7 +863,7 @@ calcru_proc(struct proc *p, struct rusage *ru)
  * MPALMOSTSAFE
  */
 int
-sys_getrusage(struct getrusage_args *uap)
+sys_getrusage(struct sysmsg *sysmsg, const struct getrusage_args *uap)
 {
 	struct proc *p = curproc;
 	struct rusage ru;

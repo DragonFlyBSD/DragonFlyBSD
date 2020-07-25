@@ -38,8 +38,9 @@
 #endif
 
 struct lwp;
+struct sysmsg;
 
-typedef	int	sy_call_t (void *);
+typedef	int	sy_call_t (struct sysmsg *sysmsg, const void *);
 
 struct sysent {		/* system call table */
 	int	sy_narg;	/* number of arguments */

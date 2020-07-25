@@ -44,7 +44,7 @@
 #include <sys/proc.h>
 #include <sys/syslog.h>
 #include <sys/module.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
 
@@ -191,7 +191,8 @@ static int sched_attach(void)
 }
 
 int
-sys_sched_setparam(struct sched_setparam_args *uap)
+sys_sched_setparam(struct sysmsg *sysmsg,
+		   const struct sched_setparam_args *uap)
 {
 	struct proc *p;
 	struct lwp *lp;
@@ -205,7 +206,7 @@ sys_sched_setparam(struct sched_setparam_args *uap)
 		if (lp) {
 			LWPHOLD(lp);
 			lwkt_gettoken(&lp->lwp_token);
-			e = ksched_setparam(&uap->sysmsg_reg, ksched, lp,
+			e = ksched_setparam(&sysmsg->sysmsg_reg, ksched, lp,
 				    (const struct sched_param *)&sched_param);
 			lwkt_reltoken(&lp->lwp_token);
 			LWPRELE(lp);
@@ -218,7 +219,8 @@ sys_sched_setparam(struct sched_setparam_args *uap)
 }
 
 int
-sys_sched_getparam(struct sched_getparam_args *uap)
+sys_sched_getparam(struct sysmsg *sysmsg,
+		   const struct sched_getparam_args *uap)
 {
 	struct proc *targetp;
 	struct lwp *lp;
@@ -230,7 +232,7 @@ sys_sched_getparam(struct sched_getparam_args *uap)
 		if (lp) {
 			LWPHOLD(lp);
 			lwkt_gettoken(&lp->lwp_token);
-			e = ksched_getparam(&uap->sysmsg_reg, ksched,
+			e = ksched_getparam(&sysmsg->sysmsg_reg, ksched,
 					    lp, &sched_param);
 			lwkt_reltoken(&lp->lwp_token);
 			LWPRELE(lp);
@@ -245,7 +247,8 @@ sys_sched_getparam(struct sched_getparam_args *uap)
 }
 
 int
-sys_sched_setscheduler(struct sched_setscheduler_args *uap)
+sys_sched_setscheduler(struct sysmsg *sysmsg,
+		       const struct sched_setscheduler_args *uap)
 {
 	struct proc *p;
 	struct lwp *lp;
@@ -259,7 +262,7 @@ sys_sched_setscheduler(struct sched_setscheduler_args *uap)
 		if (lp) {
 			LWPHOLD(lp);
 			lwkt_gettoken(&lp->lwp_token);
-			e = ksched_setscheduler(&uap->sysmsg_reg, ksched,
+			e = ksched_setscheduler(&sysmsg->sysmsg_reg, ksched,
 						lp, uap->policy,
 				    (const struct sched_param *)&sched_param);
 			lwkt_reltoken(&lp->lwp_token);
@@ -273,7 +276,8 @@ sys_sched_setscheduler(struct sched_setscheduler_args *uap)
 }
 
 int
-sys_sched_getscheduler(struct sched_getscheduler_args *uap)
+sys_sched_getscheduler(struct sysmsg *sysmsg,
+		       const struct sched_getscheduler_args *uap)
 {
 	struct proc *targetp;
 	struct lwp *lp;
@@ -284,7 +288,7 @@ sys_sched_getscheduler(struct sched_getscheduler_args *uap)
 		if (lp) {
 			LWPHOLD(lp);
 			lwkt_gettoken(&lp->lwp_token);
-			e = ksched_getscheduler(&uap->sysmsg_reg, ksched, lp);
+			e = ksched_getscheduler(&sysmsg->sysmsg_reg, ksched, lp);
 			lwkt_reltoken(&lp->lwp_token);
 			LWPRELE(lp);
 		} else {
@@ -299,31 +303,35 @@ sys_sched_getscheduler(struct sched_getscheduler_args *uap)
  * MPSAFE
  */
 int
-sys_sched_yield(struct sched_yield_args *uap)
+sys_sched_yield(struct sysmsg *sysmsg,
+		const struct sched_yield_args *uap)
 {
-	return ksched_yield(&uap->sysmsg_reg, ksched);
+	return ksched_yield(&sysmsg->sysmsg_reg, ksched);
 }
 
 /*
  * MPSAFE
  */
 int
-sys_sched_get_priority_max(struct sched_get_priority_max_args *uap)
+sys_sched_get_priority_max(struct sysmsg *sysmsg,
+			   const struct sched_get_priority_max_args *uap)
 {
-	return ksched_get_priority_max(&uap->sysmsg_reg, ksched, uap->policy);
+	return ksched_get_priority_max(&sysmsg->sysmsg_reg, ksched, uap->policy);
 }
 
 /*
  * MPSAFE
  */
 int
-sys_sched_get_priority_min(struct sched_get_priority_min_args *uap)
+sys_sched_get_priority_min(struct sysmsg *sysmsg,
+			   const struct sched_get_priority_min_args *uap)
 {
-	return ksched_get_priority_min(&uap->sysmsg_reg, ksched, uap->policy);
+	return ksched_get_priority_min(&sysmsg->sysmsg_reg, ksched, uap->policy);
 }
 
 int
-sys_sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
+sys_sched_rr_get_interval(struct sysmsg *sysmsg,
+			  const struct sched_rr_get_interval_args *uap)
 {
 	int e;
 	struct proc *p;
@@ -335,7 +343,7 @@ sys_sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
 		if (lp) {
 			LWPHOLD(lp);
 			lwkt_gettoken(&lp->lwp_token);
-			e = ksched_rr_get_interval(&uap->sysmsg_reg, ksched,
+			e = ksched_rr_get_interval(&sysmsg->sysmsg_reg, ksched,
 						   lp, &ts);
 			if (e == 0)
 				e = copyout(&ts, uap->interval, sizeof(ts));

@@ -39,7 +39,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
@@ -108,7 +108,7 @@ void (*linux_proc_drop_callback)(struct proc *p);
  * SYS_EXIT_ARGS(int rval)
  */
 int
-sys_exit(struct exit_args *uap)
+sys_exit(struct sysmsg *sysmsg, const struct exit_args *uap)
 {
 	exit1(W_EXITCODE(uap->rval, 0));
 	/* NOTREACHED */
@@ -119,7 +119,7 @@ sys_exit(struct exit_args *uap)
  *	Death of a lwp or process with optional bells and whistles.
  */
 int
-sys_extexit(struct extexit_args *uap)
+sys_extexit(struct sysmsg *sysmsg, const struct extexit_args *uap)
 {
 	struct proc *p = curproc;
 	int action, who;
@@ -326,16 +326,17 @@ exit1(int rv)
 
 	/* are we a task leader? */
 	if (p == p->p_leader) {
-        	struct kill_args killArgs;
-		killArgs.signum = SIGKILL;
+		struct sysmsg sysmsg;
+
+		sysmsg.extargs.kill.signum = SIGKILL;
 		q = p->p_peers;
 		while(q) {
-			killArgs.pid = q->p_pid;
+			sysmsg.extargs.kill.pid = q->p_pid;
 			/*
 		         * The interface for kill is better
 			 * than the internal signal
 			 */
-			sys_kill(&killArgs);
+			sys_kill(&sysmsg, &sysmsg.extargs.kill);
 			q = q->p_peers;
 		}
 		while (p->p_peers) 
@@ -899,7 +900,7 @@ lwp_dispose(struct lwp *lp)
 }
 
 int
-sys_wait4(struct wait_args *uap)
+sys_wait4(struct sysmsg *sysmsg, const struct wait_args *uap)
 {
 	struct __wrusage wrusage;
 	int error;
@@ -924,7 +925,7 @@ sys_wait4(struct wait_args *uap)
 	}
 
 	error = kern_wait(idtype, id, &status, options, &wrusage,
-			  NULL, &uap->sysmsg_result);
+			  NULL, &sysmsg->sysmsg_result);
 
 	if (error == 0 && uap->status)
 		error = copyout(&status, uap->status, sizeof(*uap->status));
@@ -936,7 +937,7 @@ sys_wait4(struct wait_args *uap)
 }
 
 int
-sys_wait6(struct wait6_args *uap)
+sys_wait6(struct sysmsg *sysmsg, const struct wait6_args *uap)
 {
 	struct __wrusage wrusage;
 	siginfo_t info;
@@ -970,7 +971,7 @@ sys_wait6(struct wait6_args *uap)
 	}
 
 	error = kern_wait(idtype, id, &status, options,
-			  &wrusage, infop, &uap->sysmsg_result);
+			  &wrusage, infop, &sysmsg->sysmsg_result);
 
 	if (error == 0 && uap->status)
 		error = copyout(&status, uap->status, sizeof(*uap->status));

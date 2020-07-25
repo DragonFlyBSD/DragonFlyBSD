@@ -38,7 +38,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/mount.h>
@@ -119,7 +119,7 @@ SYSINIT(acct, SI_SUB_DRIVERS, SI_ORDER_ANY, acct_init, NULL);
  * MPALMOSTSAFE
  */
 int
-sys_acct(struct acct_args *uap)
+sys_acct(struct sysmsg *sysmsg, const struct acct_args *uap)
 {
 	struct thread *td = curthread;
 	struct nlookupdata nd;

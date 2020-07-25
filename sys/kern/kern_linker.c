@@ -32,7 +32,7 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/sysent.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
@@ -764,7 +764,7 @@ linker_ddb_symbol_values(c_linker_sym_t sym, linker_symval_t *symval)
  * MPALMOSTSAFE
  */
 int
-sys_kldload(struct kldload_args *uap)
+sys_kldload(struct sysmsg *sysmsg, const struct kldload_args *uap)
 {
     struct thread *td = curthread;
     char *file;
@@ -772,7 +772,7 @@ sys_kldload(struct kldload_args *uap)
     linker_file_t lf;
     int error = 0;
 
-    uap->sysmsg_result = -1;
+    sysmsg->sysmsg_result = -1;
 
     if (securelevel > 0 || kernel_mem_readonly)	/* redundant, but that's OK */
 	return EPERM;
@@ -804,7 +804,7 @@ sys_kldload(struct kldload_args *uap)
 	goto out;
 
     lf->userrefs++;
-    uap->sysmsg_result = lf->id;
+    sysmsg->sysmsg_result = lf->id;
 
 out:
     if (file)
@@ -816,7 +816,7 @@ out:
  * MPALMOSTSAFE
  */
 int
-sys_kldunload(struct kldunload_args *uap)
+sys_kldunload(struct sysmsg *sysmsg, const struct kldunload_args *uap)
 {
     struct thread *td = curthread;
     linker_file_t lf;
@@ -854,13 +854,13 @@ out:
  * MPALMOSTSAFE
  */
 int
-sys_kldfind(struct kldfind_args *uap)
+sys_kldfind(struct sysmsg *sysmsg, const struct kldfind_args *uap)
 {
     char *filename = NULL, *modulename;
     linker_file_t lf;
     int error;
 
-    uap->sysmsg_result = -1;
+    sysmsg->sysmsg_result = -1;
 
     filename = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
     if ((error = copyinstr(uap->file, filename, MAXPATHLEN, NULL)) != 0)
@@ -873,7 +873,7 @@ sys_kldfind(struct kldfind_args *uap)
     lockmgr(&kld_lock, LK_EXCLUSIVE);
     lf = linker_find_file_by_name(modulename);
     if (lf)
-	uap->sysmsg_result = lf->id;
+	sysmsg->sysmsg_result = lf->id;
     else
 	error = ENOENT;
     lockmgr(&kld_lock, LK_RELEASE);
@@ -888,7 +888,7 @@ out:
  * MPALMOSTSAFE
  */
 int
-sys_kldnext(struct kldnext_args *uap)
+sys_kldnext(struct sysmsg *sysmsg, const struct kldnext_args *uap)
 {
     linker_file_t lf;
     int error = 0;
@@ -911,9 +911,9 @@ sys_kldnext(struct kldnext_args *uap)
     }
 
     if (lf)
-	uap->sysmsg_result = lf->id;
+	sysmsg->sysmsg_result = lf->id;
     else
-	uap->sysmsg_result = 0;
+	sysmsg->sysmsg_result = 0;
 
 out:
     lockmgr(&kld_lock, LK_RELEASE);
@@ -925,7 +925,7 @@ out:
  * MPALMOSTSAFE
  */
 int
-sys_kldstat(struct kldstat_args *uap)
+sys_kldstat(struct sysmsg *sysmsg, const struct kldstat_args *uap)
 {
     linker_file_t lf;
     int error = 0;
@@ -966,7 +966,7 @@ sys_kldstat(struct kldstat_args *uap)
     if ((error = copyout(&lf->size, &stat->size, sizeof(size_t))) != 0)
 	goto out;
 
-    uap->sysmsg_result = 0;
+    sysmsg->sysmsg_result = 0;
 
 out:
     lockmgr(&kld_lock, LK_RELEASE);
@@ -978,7 +978,7 @@ out:
  * MPALMOSTSAFE
  */
 int
-sys_kldfirstmod(struct kldfirstmod_args *uap)
+sys_kldfirstmod(struct sysmsg *sysmsg, const struct kldfirstmod_args *uap)
 {
     linker_file_t lf;
     int error = 0;
@@ -987,9 +987,9 @@ sys_kldfirstmod(struct kldfirstmod_args *uap)
     lf = linker_find_file_by_id(uap->fileid);
     if (lf) {
 	if (TAILQ_FIRST(&lf->modules))
-	    uap->sysmsg_result = module_getid(TAILQ_FIRST(&lf->modules));
+	    sysmsg->sysmsg_result = module_getid(TAILQ_FIRST(&lf->modules));
 	else
-	    uap->sysmsg_result = 0;
+	    sysmsg->sysmsg_result = 0;
     } else {
 	error = ENOENT;
     }
@@ -1002,7 +1002,7 @@ sys_kldfirstmod(struct kldfirstmod_args *uap)
  * MPALMOSTSAFE
  */
 int
-sys_kldsym(struct kldsym_args *uap)
+sys_kldsym(struct sysmsg *sysmsg, const struct kldsym_args *uap)
 {
     char *symstr = NULL;
     c_linker_sym_t sym;

@@ -39,7 +39,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/event.h>
 #include <sys/filedesc.h>
 #include <sys/filio.h>
@@ -117,7 +117,7 @@ static int	dofilewrite(int, struct file *, struct uio *, int, size_t *);
  * MPSAFE
  */
 int
-sys_read(struct read_args *uap)
+sys_read(struct sysmsg *sysmsg, const struct read_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -137,7 +137,7 @@ sys_read(struct read_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_szresult);
+	error = kern_preadv(uap->fd, &auio, 0, &sysmsg->sysmsg_szresult);
 	return(error);
 }
 
@@ -147,7 +147,7 @@ sys_read(struct read_args *uap)
  * MPSAFE
  */
 int
-sys_extpread(struct extpread_args *uap)
+sys_extpread(struct sysmsg *sysmsg, const struct extpread_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -172,7 +172,7 @@ sys_extpread(struct extpread_args *uap)
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
 
-	error = kern_preadv(uap->fd, &auio, flags, &uap->sysmsg_szresult);
+	error = kern_preadv(uap->fd, &auio, flags, &sysmsg->sysmsg_szresult);
 	return(error);
 }
 
@@ -182,7 +182,7 @@ sys_extpread(struct extpread_args *uap)
  * MPSAFE
  */
 int
-sys_readv(struct readv_args *uap)
+sys_readv(struct sysmsg *sysmsg, const struct readv_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -200,7 +200,7 @@ sys_readv(struct readv_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_szresult);
+	error = kern_preadv(uap->fd, &auio, 0, &sysmsg->sysmsg_szresult);
 
 	iovec_free(&iov, aiov);
 	return (error);
@@ -213,7 +213,7 @@ sys_readv(struct readv_args *uap)
  * MPSAFE
  */
 int
-sys_extpreadv(struct extpreadv_args *uap)
+sys_extpreadv(struct sysmsg *sysmsg, const struct extpreadv_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -236,7 +236,7 @@ sys_extpreadv(struct extpreadv_args *uap)
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
 
-	error = kern_preadv(uap->fd, &auio, flags, &uap->sysmsg_szresult);
+	error = kern_preadv(uap->fd, &auio, flags, &sysmsg->sysmsg_szresult);
 
 	iovec_free(&iov, aiov);
 	return(error);
@@ -323,7 +323,7 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
  * MPSAFE
  */
 int
-sys_write(struct write_args *uap)
+sys_write(struct sysmsg *sysmsg, const struct write_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -343,7 +343,7 @@ sys_write(struct write_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_szresult);
+	error = kern_pwritev(uap->fd, &auio, 0, &sysmsg->sysmsg_szresult);
 
 	return(error);
 }
@@ -354,7 +354,7 @@ sys_write(struct write_args *uap)
  * MPSAFE
  */
 int
-sys_extpwrite(struct extpwrite_args *uap)
+sys_extpwrite(struct sysmsg *sysmsg, const struct extpwrite_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -378,7 +378,7 @@ sys_extpwrite(struct extpwrite_args *uap)
 	flags = uap->flags & O_FMASK;
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
-	error = kern_pwritev(uap->fd, &auio, flags, &uap->sysmsg_szresult);
+	error = kern_pwritev(uap->fd, &auio, flags, &sysmsg->sysmsg_szresult);
 	return(error);
 }
 
@@ -386,7 +386,7 @@ sys_extpwrite(struct extpwrite_args *uap)
  * MPSAFE
  */
 int
-sys_writev(struct writev_args *uap)
+sys_writev(struct sysmsg *sysmsg, const struct writev_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -404,7 +404,7 @@ sys_writev(struct writev_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_szresult);
+	error = kern_pwritev(uap->fd, &auio, 0, &sysmsg->sysmsg_szresult);
 
 	iovec_free(&iov, aiov);
 	return (error);
@@ -417,7 +417,7 @@ sys_writev(struct writev_args *uap)
  * MPSAFE
  */
 int
-sys_extpwritev(struct extpwritev_args *uap)
+sys_extpwritev(struct sysmsg *sysmsg, const struct extpwritev_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -440,7 +440,7 @@ sys_extpwritev(struct extpwritev_args *uap)
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
 
-	error = kern_pwritev(uap->fd, &auio, flags, &uap->sysmsg_szresult);
+	error = kern_pwritev(uap->fd, &auio, flags, &sysmsg->sysmsg_szresult);
 
 	iovec_free(&iov, aiov);
 	return(error);
@@ -531,11 +531,11 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
  * MPSAFE
  */
 int
-sys_ioctl(struct ioctl_args *uap)
+sys_ioctl(struct sysmsg *sysmsg, const struct ioctl_args *uap)
 {
 	int error;
 
-	error = mapped_ioctl(uap->fd, uap->com, uap->data, NULL, &uap->sysmsg);
+	error = mapped_ioctl(uap->fd, uap->com, uap->data, NULL, sysmsg);
 	return (error);
 }
 
@@ -788,7 +788,7 @@ SYSCTL_INT(_kern, OID_AUTO, nseldebug, CTLFLAG_RW, &nseldebug, 0, "");
  * MPSAFE
  */
 int
-sys_select(struct select_args *uap)
+sys_select(struct sysmsg *sysmsg, const struct select_args *uap)
 {
 	struct timeval ktv;
 	struct timespec *ktsp, kts;
@@ -811,7 +811,7 @@ sys_select(struct select_args *uap)
 	 * Do real work.
 	 */
 	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
-			 &uap->sysmsg_result);
+			 &sysmsg->sysmsg_result);
 
 	return (error);
 }
@@ -821,7 +821,7 @@ sys_select(struct select_args *uap)
  * Pselect system call.
  */
 int
-sys_pselect(struct pselect_args *uap)
+sys_pselect(struct sysmsg *sysmsg, const struct pselect_args *uap)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
@@ -859,7 +859,7 @@ sys_pselect(struct pselect_args *uap)
 	 * Do real job.
 	 */
 	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
-			 &uap->sysmsg_result);
+			 &sysmsg->sysmsg_result);
 
 	if (uap->sigmask != NULL) {
 		lwkt_gettoken(&lp->lwp_proc->p_token);
@@ -1218,7 +1218,7 @@ done:
  * MPSAFE
  */
 int
-sys_poll(struct poll_args *uap)
+sys_poll(struct sysmsg *sysmsg, const struct poll_args *uap)
 {
 	struct timespec ts, *tsp;
 	int error;
@@ -1233,7 +1233,7 @@ sys_poll(struct poll_args *uap)
 		tsp = NULL;
 	}
 
-	error = dopoll(uap->nfds, uap->fds, tsp, &uap->sysmsg_result, 0);
+	error = dopoll(uap->nfds, uap->fds, tsp, &sysmsg->sysmsg_result, 0);
 
 	return (error);
 }
@@ -1244,7 +1244,7 @@ sys_poll(struct poll_args *uap)
  * MPSAFE
  */
 int
-sys_ppoll(struct ppoll_args *uap)
+sys_ppoll(struct sysmsg *sysmsg, const struct ppoll_args *uap)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
@@ -1278,7 +1278,7 @@ sys_ppoll(struct ppoll_args *uap)
 		lwkt_reltoken(&lp->lwp_proc->p_token);
 	}
 
-	error = dopoll(uap->nfds, uap->fds, ktsp, &uap->sysmsg_result,
+	error = dopoll(uap->nfds, uap->fds, ktsp, &sysmsg->sysmsg_result,
 	    ktsp != NULL ? KEVENT_TIMEOUT_PRECISE : 0);
 
 	if (uap->sigmask != NULL) {
@@ -1674,9 +1674,9 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
  * MPSAFE
  */
 int
-sys_openbsd_poll(struct openbsd_poll_args *uap)
+sys_openbsd_poll(struct sysmsg *sysmsg, const struct openbsd_poll_args *uap)
 {
-	return (sys_poll((struct poll_args *)uap));
+	return (sys_poll(sysmsg, (const struct poll_args *)uap));
 }
 
 /*ARGSUSED*/

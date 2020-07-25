@@ -34,7 +34,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/proc.h>
 #include <sys/wait.h>
 #include <sys/vmm.h>
@@ -55,11 +55,12 @@
  * - prepare for running in non-root mode
  */
 int
-sys_vmm_guest_ctl(struct vmm_guest_ctl_args *uap)
+sys_vmm_guest_ctl(struct sysmsg *sysmsg,
+		  const struct vmm_guest_ctl_args *uap)
 {
 	int error = 0;
 	struct vmm_guest_options options;
-	struct trapframe *tf = uap->sysmsg_frame;
+	struct trapframe *tf = sysmsg->sysmsg_frame;
 	unsigned long stack_limit = USRSTACK;
 	unsigned char stack_page[PAGE_SIZE];
 
@@ -146,7 +147,8 @@ vmm_exit_vmm(void *dummy __unused)
  * *dstaddr = v
  */
 int
-sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
+sys_vmm_guest_sync_addr(struct sysmsg *sysmsg,
+			const struct vmm_guest_sync_addr_args *uap)
 {
 	int error = 0;
 	cpulock_t olock;

@@ -23,7 +23,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
@@ -200,7 +200,7 @@ msg_freehdr(struct msg *msghdr)
  * MPALMOSTSAFE
  */
 int
-sys_msgctl(struct msgctl_args *uap)
+sys_msgctl(struct sysmsg *sysmsg, const struct msgctl_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -334,7 +334,7 @@ sys_msgctl(struct msgctl_args *uap)
 done:
 	lwkt_reltoken(&msg_token);
 	if (eval == 0)
-		uap->sysmsg_result = rval;
+		sysmsg->sysmsg_result = rval;
 	return(eval);
 }
 
@@ -342,7 +342,7 @@ done:
  * MPALMOSTSAFE
  */
 int
-sys_msgget(struct msgget_args *uap)
+sys_msgget(struct sysmsg *sysmsg, const struct msgget_args *uap)
 {
 	struct thread *td = curthread;
 	struct prison *pr = td->td_proc->p_ucred->cr_prison;
@@ -445,7 +445,7 @@ done:
 	lwkt_reltoken(&msg_token);
 	/* Construct the unique msqid */
 	if (eval == 0)
-		uap->sysmsg_result = IXSEQ_TO_IPCID(msqid, msqptr->msg_perm);
+		sysmsg->sysmsg_result = IXSEQ_TO_IPCID(msqid, msqptr->msg_perm);
 	return(eval);
 }
 
@@ -453,7 +453,7 @@ done:
  * MPALMOSTSAFE
  */
 int
-sys_msgsnd(struct msgsnd_args *uap)
+sys_msgsnd(struct sysmsg *sysmsg, const struct msgsnd_args *uap)
 {
 	struct thread *td = curthread;
 	struct prison *pr = td->td_proc->p_ucred->cr_prison;
@@ -777,7 +777,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 done:
 	lwkt_reltoken(&msg_token);
 	if (eval == 0)
-		uap->sysmsg_result = 0;
+		sysmsg->sysmsg_result = 0;
 	return (eval);
 }
 
@@ -785,7 +785,7 @@ done:
  * MPALMOSTSAFE
  */
 int
-sys_msgrcv(struct msgrcv_args *uap)
+sys_msgrcv(struct sysmsg *sysmsg, const struct msgrcv_args *uap)
 {
 	struct thread *td = curthread;
 	struct prison *pr = td->td_proc->p_ucred->cr_prison;
@@ -1065,7 +1065,7 @@ sys_msgrcv(struct msgrcv_args *uap)
 done:
 	lwkt_reltoken(&msg_token);
 	if (eval == 0)
-		uap->sysmsg_result = msgsz;
+		sysmsg->sysmsg_result = msgsz;
 	return(eval);
 }
 

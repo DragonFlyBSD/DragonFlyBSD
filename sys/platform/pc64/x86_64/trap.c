@@ -66,8 +66,6 @@
 #endif
 #include <sys/ktr.h>
 #include <sys/sysmsg.h>
-#include <sys/sysproto.h>
-#include <sys/sysunion.h>
 
 #include <vm/pmap.h>
 #include <vm/vm.h>
@@ -1188,11 +1186,10 @@ syscall2(struct trapframe *frame)
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 #endif
-	register_t *argp;
+	struct sysmsg sysmsg;
+	union sysunion *argp;
 	u_int code;
-	int regcnt, optimized_regcnt;
-	union sysunion args;
-	register_t *argsdst;
+	int regcnt;
 
 	mycpu->gd_cnt.v_syscall++;
 
@@ -1209,7 +1206,6 @@ syscall2(struct trapframe *frame)
 	userenter(td, p);	/* lazy raise our priority */
 
 	regcnt = 6;
-	optimized_regcnt = 6;
 
 	/*
 	 * Misc
@@ -1241,9 +1237,9 @@ syscall2(struct trapframe *frame)
 	if (__predict_false(code == SYS_syscall || code == SYS___syscall)) {
 		code = frame->tf_rdi;
 		regcnt--;
-		argp = &frame->tf_rdi + 1;
+		argp = (union sysunion *)(&frame->tf_rdi + 1);
 	} else {
-		argp = &frame->tf_rdi;
+		argp = (union sysunion *)&frame->tf_rdi;
 	}
 
 	if (code >= p->p_sysent->sv_size)
@@ -1256,31 +1252,25 @@ syscall2(struct trapframe *frame)
 	 * on the stack. The first six members of 'struct trapframe' happen
 	 * to be the registers used to pass arguments, in exactly the right
 	 * order.
-	 */
-	argsdst = (register_t *)(&args.nosys.sysmsg + 1);
-
-	/*
-	 * Its easier to copy up to the highest number of syscall arguments
-	 * passed in registers, which is 6, than to conditionalize it.
-	 */
-	bcopy(argp, argsdst, sizeof(register_t) * optimized_regcnt);
-
-	/*
+	 *
 	 * Any arguments beyond available argument-passing registers must
 	 * be copyin()'d from the user stack.
 	 */
 	narg = callp->sy_narg;
 	if (__predict_false(narg > regcnt)) {
+		register_t *argsdst;
 		caddr_t params;
 
+		argsdst = (register_t *)&sysmsg.extargs;
+		bcopy(argp, argsdst, sizeof(register_t) * regcnt);
 		params = (caddr_t)frame->tf_rsp + sizeof(register_t);
 		error = copyin(params, &argsdst[regcnt],
 			       (narg - regcnt) * sizeof(register_t));
+		argp = (void *)argsdst;
 		if (error) {
 #ifdef KTRACE
 			if (KTRPOINTP(p, td, KTR_SYSCALL)) {
-				ktrsyscall(lp, code, narg,
-					(void *)(&args.nosys.sysmsg + 1));
+				ktrsyscall(lp, code, narg, argp);
 			}
 #endif
 			goto bad;
@@ -1289,7 +1279,7 @@ syscall2(struct trapframe *frame)
 
 #ifdef KTRACE
 	if (KTRPOINTP(p, td, KTR_SYSCALL)) {
-		ktrsyscall(lp, code, narg, (void *)(&args.nosys.sysmsg + 1));
+		ktrsyscall(lp, code, narg, argp);
 	}
 #endif
 
@@ -1298,14 +1288,14 @@ syscall2(struct trapframe *frame)
 	 * returns use %rax and %rdx.  %rdx is left unchanged for system
 	 * calls which return only one result.
 	 */
-	args.sysmsg_fds[0] = 0;
-	args.sysmsg_fds[1] = frame->tf_rdx;
+	sysmsg.sysmsg_fds[0] = 0;
+	sysmsg.sysmsg_fds[1] = frame->tf_rdx;
 
 	/*
 	 * The syscall might manipulate the trap frame. If it does it
 	 * will probably return EJUSTRETURN.
 	 */
-	args.sysmsg_frame = frame;
+	sysmsg.sysmsg_frame = frame;
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
@@ -1316,7 +1306,7 @@ syscall2(struct trapframe *frame)
 #ifdef SYSCALL_DEBUG
 	tsc_uclock_t tscval = rdtsc();
 #endif
-	error = (*callp->sy_call)(&args);
+	error = (*callp->sy_call)(&sysmsg, argp);
 #ifdef SYSCALL_DEBUG
 	tscval = rdtsc() - tscval;
 	tscval = tscval * 1000000 / (tsc_frequency / 1000);	/* ns */
@@ -1341,8 +1331,8 @@ out:
 		 */
 		p = curproc;
 		lp = curthread->td_lwp;
-		frame->tf_rax = args.sysmsg_fds[0];
-		frame->tf_rdx = args.sysmsg_fds[1];
+		frame->tf_rax = sysmsg.sysmsg_fds[0];
+		frame->tf_rdx = sysmsg.sysmsg_fds[1];
 		frame->tf_rflags &= ~PSL_C;
 	} else if (error == ERESTART) {
 		/*
@@ -1387,7 +1377,7 @@ bad:
 
 #ifdef KTRACE
 	if (KTRPOINTP(p, td, KTR_SYSRET)) {
-		ktrsysret(lp, code, error, args.sysmsg_result);
+		ktrsysret(lp, code, error, sysmsg.sysmsg_result);
 	}
 #endif
 

@@ -34,7 +34,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/vnode.h>
@@ -146,7 +146,8 @@ vacl_aclcheck(struct vnode *vp, acl_type_t type, struct acl *aclp)
  * Given a file path, get an ACL for it
  */
 int
-sys___acl_get_file(struct __acl_get_file_args *uap)
+sys___acl_get_file(struct sysmsg *sysmsg,
+		   const struct __acl_get_file_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -170,7 +171,8 @@ sys___acl_get_file(struct __acl_get_file_args *uap)
  * Given a file path, set an ACL for it
  */
 int
-sys___acl_set_file(struct __acl_set_file_args *uap)
+sys___acl_set_file(struct sysmsg *sysmsg,
+		   const struct __acl_set_file_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -194,7 +196,8 @@ sys___acl_set_file(struct __acl_set_file_args *uap)
  * Given a file descriptor, get an ACL for it
  */
 int
-sys___acl_get_fd(struct __acl_get_fd_args *uap)
+sys___acl_get_fd(struct sysmsg *sysmsg,
+		 const struct __acl_get_fd_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -212,7 +215,8 @@ sys___acl_get_fd(struct __acl_get_fd_args *uap)
  * Given a file descriptor, set an ACL for it
  */
 int
-sys___acl_set_fd(struct __acl_set_fd_args *uap)
+sys___acl_set_fd(struct sysmsg *sysmsg,
+		 const struct __acl_set_fd_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -229,7 +233,8 @@ sys___acl_set_fd(struct __acl_set_fd_args *uap)
  * Given a file path, delete an ACL from it.
  */
 int
-sys___acl_delete_file(struct __acl_delete_file_args *uap)
+sys___acl_delete_file(struct sysmsg *sysmsg,
+		      const struct __acl_delete_file_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -254,7 +259,8 @@ sys___acl_delete_file(struct __acl_delete_file_args *uap)
  * Given a file path, delete an ACL from it.
  */
 int
-sys___acl_delete_fd(struct __acl_delete_fd_args *uap)
+sys___acl_delete_fd(struct sysmsg *sysmsg,
+		    const struct __acl_delete_fd_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -272,7 +278,8 @@ sys___acl_delete_fd(struct __acl_delete_fd_args *uap)
  * Given a file path, check an ACL for it
  */
 int
-sys___acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
+sys___acl_aclcheck_file(struct sysmsg *sysmsg,
+			const struct __acl_aclcheck_file_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -297,7 +304,8 @@ sys___acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
  * Given a file descriptor, check an ACL for it
  */
 int
-sys___acl_aclcheck_fd(struct __acl_aclcheck_fd_args *uap)
+sys___acl_aclcheck_fd(struct sysmsg *sysmsg,
+		      const struct __acl_aclcheck_fd_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;

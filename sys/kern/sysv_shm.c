@@ -32,7 +32,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/shm.h>
@@ -54,8 +54,10 @@
 
 static MALLOC_DEFINE(M_SHM, "shm", "SVID compatible shared memory segments");
 
-static int shmget_allocate_segment (struct proc *p, struct shmget_args *uap, int mode);
-static int shmget_existing (struct proc *p, struct shmget_args *uap, int mode, int segnum);
+static int shmget_allocate_segment(struct proc *p, struct sysmsg *sysmsg,
+			const struct shmget_args *uap, int mode);
+static int shmget_existing(struct proc *p, struct sysmsg *sysmsg,
+			const struct shmget_args *uap, int mode, int segnum);
 
 #define	SHMSEG_FREE     	0x0200
 #define	SHMSEG_REMOVED  	0x0400
@@ -219,7 +221,7 @@ shm_delete_mapping(struct vmspace *vm, struct shmmap_state *shmmap_s)
  * MPALMOSTSAFE
  */
 int
-sys_shmdt(struct shmdt_args *uap)
+sys_shmdt(struct sysmsg *sysmsg, const struct shmdt_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -257,7 +259,7 @@ done:
  * MPALMOSTSAFE
  */
 int
-sys_shmat(struct shmat_args *uap)
+sys_shmat(struct sysmsg *sysmsg, const struct shmat_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -385,7 +387,7 @@ again:
 	shmseg->shm_lpid = p->p_pid;
 	shmseg->shm_atime = time_second;
 	shmseg->shm_nattch++;
-	uap->sysmsg_resultp = (void *)attach_va;
+	sysmsg->sysmsg_resultp = (void *)attach_va;
 	error = 0;
 done:
 	lwkt_reltoken(&shm_token);
@@ -397,7 +399,7 @@ done:
  * MPALMOSTSAFE
  */
 int
-sys_shmctl(struct shmctl_args *uap)
+sys_shmctl(struct sysmsg *sysmsg, const struct shmctl_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -461,7 +463,8 @@ done:
 }
 
 static int
-shmget_existing(struct proc *p, struct shmget_args *uap, int mode, int segnum)
+shmget_existing(struct proc *p, struct sysmsg *sysmsg,
+		const struct shmget_args *uap, int mode, int segnum)
 {
 	struct shmid_ds *shmseg;
 	int error;
@@ -486,12 +489,13 @@ shmget_existing(struct proc *p, struct shmget_args *uap, int mode, int segnum)
 		return error;
 	if (uap->size && uap->size > shmseg->shm_segsz)
 		return EINVAL;
-	uap->sysmsg_result = IXSEQ_TO_IPCID(segnum, shmseg->shm_perm);
+	sysmsg->sysmsg_result = IXSEQ_TO_IPCID(segnum, shmseg->shm_perm);
 	return 0;
 }
 
 static int
-shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
+shmget_allocate_segment(struct proc *p, struct sysmsg *sysmsg,
+			const struct shmget_args *uap, int mode)
 {
 	int i, segnum, shmid;
 	size_t size;
@@ -597,7 +601,7 @@ shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
 		shmseg->shm_perm.mode &= ~SHMSEG_WANTED;
 		wakeup((caddr_t)shmseg);
 	}
-	uap->sysmsg_result = shmid;
+	sysmsg->sysmsg_result = shmid;
 	return 0;
 }
 
@@ -605,7 +609,7 @@ shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
  * MPALMOSTSAFE
  */
 int
-sys_shmget(struct shmget_args *uap)
+sys_shmget(struct sysmsg *sysmsg, const struct shmget_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -623,7 +627,7 @@ sys_shmget(struct shmget_args *uap)
 	again:
 		segnum = shm_find_segment_by_key(uap->key);
 		if (segnum >= 0) {
-			error = shmget_existing(p, uap, mode, segnum);
+			error = shmget_existing(p, sysmsg, uap, mode, segnum);
 			if (error == EAGAIN)
 				goto again;
 			goto done;
@@ -633,7 +637,7 @@ sys_shmget(struct shmget_args *uap)
 			goto done;
 		}
 	}
-	error = shmget_allocate_segment(p, uap, mode);
+	error = shmget_allocate_segment(p, sysmsg, uap, mode);
 done:
 	lwkt_reltoken(&shm_token);
 

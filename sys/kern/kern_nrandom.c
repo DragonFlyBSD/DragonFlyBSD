@@ -160,7 +160,7 @@
 #include <sys/proc.h>
 #include <sys/lock.h>
 #include <sys/sysctl.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/spinlock.h>
 #include <sys/csprng.h>
 #include <sys/malloc.h>
@@ -744,7 +744,7 @@ sysctl_kern_random(SYSCTL_HANDLER_ARGS)
 }
 
 int
-sys_getrandom(struct getrandom_args *uap)
+sys_getrandom(struct sysmsg *sysmsg, const struct getrandom_args *uap)
 {
 	char buf[256];
 	ssize_t bytes;
@@ -780,7 +780,7 @@ sys_getrandom(struct getrandom_args *uap)
 		}
 	}
 	if (error == 0)
-		uap->sysmsg_szresult = r;
+		sysmsg->sysmsg_szresult = r;
 
 	return error;
 }

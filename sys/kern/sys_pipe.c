@@ -38,7 +38,7 @@
 #include <sys/ttycom.h>
 #include <sys/stat.h>
 #include <sys/signalvar.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/pipe.h>
 #include <sys/vnode.h>
 #include <sys/uio.h>
@@ -259,15 +259,15 @@ pipe_end_uio(int *ipp)
  * MPSAFE
  */
 int
-sys_pipe(struct pipe_args *uap)
+sys_pipe(struct sysmsg *sysmsg, const struct pipe_args *uap)
 {
-	return kern_pipe(uap->sysmsg_fds, 0);
+	return kern_pipe(sysmsg->sysmsg_fds, 0);
 }
 
 int
-sys_pipe2(struct pipe2_args *uap)
+sys_pipe2(struct sysmsg *sysmsg, const struct pipe2_args *uap)
 {
-	return kern_pipe(uap->sysmsg_fds, uap->flags);
+	return kern_pipe(sysmsg->sysmsg_fds, uap->flags);
 }
 
 int

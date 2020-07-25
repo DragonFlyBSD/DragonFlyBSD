@@ -35,7 +35,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/file.h>
@@ -120,7 +120,7 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, soreserve, CTLFLAG_RW, &nfs_soreserve, 0,
  * MPALMOSTSAFE
  */
 int
-sys_nfssvc(struct nfssvc_args *uap)
+sys_nfssvc(struct sysmsg *sysmsg, const struct nfssvc_args *uap)
 {
 #ifndef NFS_NOSERVER
 	struct nlookupdata nd;

@@ -3,7 +3,7 @@
 ;
 ; System call name/number master file.
 ; Processed to create kern/init_sysent.c, kern/syscalls.c, sys/syscall.h,
-;                     sys/syscall.mk, sys/sysproto.h and sys/sysunion.h
+;                     sys/syscall.mk, and sys/sysmsg.h
 
 ; Columns: number type nargs namespc name alt{name,tag,rtyp}/comments
 ;	number	system call number, must be in order
@@ -27,7 +27,7 @@
 
 #include <sys/param.h>
 #include <sys/sysent.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/statvfs.h>
 
 ; Reserved/unimplemented system calls in the range 0-150 inclusive

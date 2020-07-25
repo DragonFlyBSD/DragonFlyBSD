@@ -199,7 +199,7 @@ void	ktrnamei (struct lwp *,char *);
 void	ktrcsw (struct lwp *,int,int);
 void	ktrpsig (struct lwp *, int, sig_t, sigset_t *, int);
 void	ktrgenio (struct lwp *, int, enum uio_rw, struct uio *, int);
-void	ktrsyscall (struct lwp *, int, int narg, register_t args[]);
+void	ktrsyscall (struct lwp *, int, int narg, union sysunion *args);
 void	ktrsysret (struct lwp *, int, int, register_t);
 void	ktrdestroy (struct ktrace_node **);
 struct ktrace_node *ktrinherit (struct ktrace_node *);

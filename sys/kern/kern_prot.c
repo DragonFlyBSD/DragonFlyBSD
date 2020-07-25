@@ -42,7 +42,7 @@
 #include <sys/param.h>
 #include <sys/acct.h>
 #include <sys/systm.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/proc.h>
@@ -59,29 +59,29 @@
 static MALLOC_DEFINE(M_CRED, "cred", "credentials");
 
 int
-sys_getpid(struct getpid_args *uap)
+sys_getpid(struct sysmsg *sysmsg, const struct getpid_args *uap)
 {
 	struct proc *p = curproc;
 
-	uap->sysmsg_fds[0] = p->p_pid;
+	sysmsg->sysmsg_fds[0] = p->p_pid;
 	return (0);
 }
 
 int
-sys_getppid(struct getppid_args *uap)
+sys_getppid(struct sysmsg *sysmsg, const struct getppid_args *uap)
 {
 	struct proc *p = curproc;
 
-	uap->sysmsg_result = p->p_ppid;
+	sysmsg->sysmsg_result = p->p_ppid;
 
 	return (0);
 }
 
 int
-sys_lwp_gettid(struct lwp_gettid_args *uap)
+sys_lwp_gettid(struct sysmsg *sysmsg, const struct lwp_gettid_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
-	uap->sysmsg_result = lp->lwp_tid;
+	sysmsg->sysmsg_result = lp->lwp_tid;
 	return (0);
 }
 
@@ -89,12 +89,12 @@ sys_lwp_gettid(struct lwp_gettid_args *uap)
  * Get process group ID; note that POSIX getpgrp takes no parameter 
  */
 int
-sys_getpgrp(struct getpgrp_args *uap)
+sys_getpgrp(struct sysmsg *sysmsg, const struct getpgrp_args *uap)
 {
 	struct proc *p = curproc;
 
 	lwkt_gettoken_shared(&p->p_token);
-	uap->sysmsg_result = p->p_pgrp->pg_id;
+	sysmsg->sysmsg_result = p->p_pgrp->pg_id;
 	lwkt_reltoken(&p->p_token);
 
 	return (0);
@@ -104,7 +104,7 @@ sys_getpgrp(struct getpgrp_args *uap)
  * Get an arbitrary pid's process group id 
  */
 int
-sys_getpgid(struct getpgid_args *uap)
+sys_getpgid(struct sysmsg *sysmsg, const struct getpgid_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *pt;
@@ -122,7 +122,7 @@ sys_getpgid(struct getpgid_args *uap)
 	}
 	if (error == 0) {
 		lwkt_gettoken_shared(&pt->p_token);
-		uap->sysmsg_result = pt->p_pgrp->pg_id;
+		sysmsg->sysmsg_result = pt->p_pgrp->pg_id;
 		lwkt_reltoken(&pt->p_token);
 	}
 	if (pt)
@@ -134,7 +134,7 @@ sys_getpgid(struct getpgid_args *uap)
  * Get an arbitrary pid's session id.
  */
 int
-sys_getsid(struct getsid_args *uap)
+sys_getsid(struct sysmsg *sysmsg, const struct getsid_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *pt;
@@ -151,7 +151,7 @@ sys_getsid(struct getsid_args *uap)
 			error = ESRCH;
 	}
 	if (error == 0)
-		uap->sysmsg_result = pt->p_session->s_sid;
+		sysmsg->sysmsg_result = pt->p_session->s_sid;
 	if (pt)
 		PRELE(pt);
 	return (error);
@@ -162,11 +162,11 @@ sys_getsid(struct getsid_args *uap)
  * getuid()
  */
 int
-sys_getuid(struct getuid_args *uap)
+sys_getuid(struct sysmsg *sysmsg, const struct getuid_args *uap)
 {
 	struct ucred *cred = curthread->td_ucred;
 
-	uap->sysmsg_fds[0] = cred->cr_ruid;
+	sysmsg->sysmsg_fds[0] = cred->cr_ruid;
 	return (0);
 }
 
@@ -174,11 +174,11 @@ sys_getuid(struct getuid_args *uap)
  * geteuid()
  */
 int
-sys_geteuid(struct geteuid_args *uap)
+sys_geteuid(struct sysmsg *sysmsg, const struct geteuid_args *uap)
 {
 	struct ucred *cred = curthread->td_ucred;
 
-	uap->sysmsg_result = cred->cr_uid;
+	sysmsg->sysmsg_result = cred->cr_uid;
 	return (0);
 }
 
@@ -186,11 +186,11 @@ sys_geteuid(struct geteuid_args *uap)
  * getgid()
  */
 int
-sys_getgid(struct getgid_args *uap)
+sys_getgid(struct sysmsg *sysmsg, const struct getgid_args *uap)
 {
 	struct ucred *cred = curthread->td_ucred;
 
-	uap->sysmsg_fds[0] = cred->cr_rgid;
+	sysmsg->sysmsg_fds[0] = cred->cr_rgid;
 	return (0);
 }
 
@@ -200,16 +200,16 @@ sys_getgid(struct getgid_args *uap)
  * correctly in a library function.
  */
 int
-sys_getegid(struct getegid_args *uap)
+sys_getegid(struct sysmsg *sysmsg, const struct getegid_args *uap)
 {
 	struct ucred *cred = curthread->td_ucred;
 
-	uap->sysmsg_result = cred->cr_groups[0];
+	sysmsg->sysmsg_result = cred->cr_groups[0];
 	return (0);
 }
 
 int
-sys_getgroups(struct getgroups_args *uap)
+sys_getgroups(struct sysmsg *sysmsg, const struct getgroups_args *uap)
 {
 	struct ucred *cr;
 	u_int ngrp;
@@ -217,7 +217,7 @@ sys_getgroups(struct getgroups_args *uap)
 
 	cr = curthread->td_ucred;
 	if ((ngrp = uap->gidsetsize) == 0) {
-		uap->sysmsg_result = cr->cr_ngroups;
+		sysmsg->sysmsg_result = cr->cr_ngroups;
 		return (0);
 	}
 	if (ngrp < cr->cr_ngroups)
@@ -226,7 +226,7 @@ sys_getgroups(struct getgroups_args *uap)
 	error = copyout((caddr_t)cr->cr_groups,
 			(caddr_t)uap->gidset, ngrp * sizeof(gid_t));
 	if (error == 0)
-		uap->sysmsg_result = ngrp;
+		sysmsg->sysmsg_result = ngrp;
 	return (error);
 }
 
@@ -234,7 +234,7 @@ sys_getgroups(struct getgroups_args *uap)
  * Set the per-thread title for ps
  */
 int
-sys_lwp_setname(struct lwp_setname_args *uap)
+sys_lwp_setname(struct sysmsg *sysmsg, const struct lwp_setname_args *uap)
 {
 	struct proc *p = curproc;
 	struct lwp *lp;
@@ -280,7 +280,7 @@ sys_lwp_setname(struct lwp_setname_args *uap)
  * Retrieve the per-thread title for ps
  */
 int
-sys_lwp_getname(struct lwp_getname_args *uap)
+sys_lwp_getname(struct sysmsg *sysmsg, const struct lwp_getname_args *uap)
 {
 	struct proc *p = curproc;
 	struct lwp *lp;
@@ -323,7 +323,7 @@ sys_lwp_getname(struct lwp_getname_args *uap)
 }
 
 int
-sys_setsid(struct setsid_args *uap)
+sys_setsid(struct sysmsg *sysmsg, const struct setsid_args *uap)
 {
 	struct proc *p = curproc;
 	struct pgrp *pg = NULL;
@@ -336,7 +336,7 @@ sys_setsid(struct setsid_args *uap)
 			pgrel(pg);
 	} else {
 		enterpgrp(p, p->p_pid, 1);
-		uap->sysmsg_result = p->p_pid;
+		sysmsg->sysmsg_result = p->p_pid;
 		error = 0;
 	}
 	lwkt_reltoken(&p->p_token);
@@ -357,14 +357,15 @@ sys_setsid(struct setsid_args *uap)
  * pid must not be session leader (EPERM)
  */
 int
-sys_setpgid(struct setpgid_args *uap)
+sys_setpgid(struct sysmsg *sysmsg, const struct setpgid_args *uap)
 {
 	struct proc *curp = curproc;
 	struct proc *targp;		/* target process */
 	struct pgrp *pgrp = NULL;	/* target pgrp */
 	int error;
+	int pgid = uap->pgid;
 
-	if (uap->pgid < 0)
+	if (pgid < 0)
 		return (EINVAL);
 
 	if (uap->pid != 0 && uap->pid != curp->p_pid) {
@@ -396,16 +397,16 @@ sys_setpgid(struct setpgid_args *uap)
 		error = EPERM;
 		goto done;
 	}
-	if (uap->pgid == 0) {
-		uap->pgid = targp->p_pid;
-	} else if (uap->pgid != targp->p_pid) {
-		if ((pgrp = pgfind(uap->pgid)) == NULL ||
+	if (pgid == 0) {
+		pgid = targp->p_pid;
+	} else if (pgid != targp->p_pid) {
+		if ((pgrp = pgfind(pgid)) == NULL ||
 	            pgrp->pg_session != curp->p_session) {
 			error = EPERM;
 			goto done;
 		}
 	}
-	error = enterpgrp(targp, uap->pgid, 0);
+	error = enterpgrp(targp, pgid, 0);
 done:
 	if (pgrp)
 		pgrel(pgrp);
@@ -429,7 +430,7 @@ done:
 #define POSIX_APPENDIX_B_4_2_2
 
 int
-sys_setuid(struct setuid_args *uap)
+sys_setuid(struct sysmsg *sysmsg, const struct setuid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -515,7 +516,7 @@ done:
 }
 
 int
-sys_seteuid(struct seteuid_args *uap)
+sys_seteuid(struct sysmsg *sysmsg, const struct seteuid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -545,7 +546,7 @@ sys_seteuid(struct seteuid_args *uap)
 }
 
 int
-sys_setgid(struct setgid_args *uap)
+sys_setgid(struct sysmsg *sysmsg, const struct setgid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -627,7 +628,7 @@ done:
 }
 
 int
-sys_setegid(struct setegid_args *uap)
+sys_setegid(struct sysmsg *sysmsg, const struct setegid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -654,7 +655,7 @@ done:
 }
 
 int
-sys_setgroups(struct setgroups_args *uap)
+sys_setgroups(struct sysmsg *sysmsg, const struct setgroups_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -699,7 +700,7 @@ done:
 }
 
 int
-sys_setreuid(struct setreuid_args *uap)
+sys_setreuid(struct sysmsg *sysmsg, const struct setreuid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -740,7 +741,7 @@ done:
 }
 
 int
-sys_setregid(struct setregid_args *uap)
+sys_setregid(struct sysmsg *sysmsg, const struct setregid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -787,7 +788,7 @@ done:
  * saved uid is explicit.
  */
 int
-sys_setresuid(struct setresuid_args *uap)
+sys_setresuid(struct sysmsg *sysmsg, const struct setresuid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -833,7 +834,7 @@ done:
  * saved gid is explicit.
  */
 int
-sys_setresgid(struct setresgid_args *uap)
+sys_setresgid(struct sysmsg *sysmsg, const struct setresgid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -877,7 +878,7 @@ done:
 }
 
 int
-sys_getresuid(struct getresuid_args *uap)
+sys_getresuid(struct sysmsg *sysmsg, const struct getresuid_args *uap)
 {
 	struct ucred *cr;
 	int error1 = 0, error2 = 0, error3 = 0;
@@ -900,7 +901,7 @@ sys_getresuid(struct getresuid_args *uap)
 }
 
 int
-sys_getresgid(struct getresgid_args *uap)
+sys_getresgid(struct sysmsg *sysmsg, const struct getresgid_args *uap)
 {
 	struct ucred *cr;
 	int error1 = 0, error2 = 0, error3 = 0;
@@ -928,9 +929,9 @@ sys_getresgid(struct getresgid_args *uap)
  * that libc *might* have put in their data segment.
  */
 int
-sys_issetugid(struct issetugid_args *uap)
+sys_issetugid(struct sysmsg *sysmsg, const struct issetugid_args *uap)
 {
-	uap->sysmsg_result = (curproc->p_flags & P_SUGID) ? 1 : 0;
+	sysmsg->sysmsg_result = (curproc->p_flags & P_SUGID) ? 1 : 0;
 	return (0);
 }
 
@@ -1193,20 +1194,23 @@ cru2x(struct ucred *cr, struct xucred *xcr)
  * Get login name, if available.
  */
 int
-sys_getlogin(struct getlogin_args *uap)
+sys_getlogin(struct sysmsg *sysmsg, const struct getlogin_args *uap)
 {
 	struct proc *p = curproc;
 	char buf[MAXLOGNAME];
 	int error;
+	size_t namelen;
 
-	if (uap->namelen > MAXLOGNAME)		/* namelen is unsigned */
-		uap->namelen = MAXLOGNAME;
+	namelen = uap->namelen;
+	if (namelen > MAXLOGNAME)		/* namelen is unsigned */
+		namelen = MAXLOGNAME;
 	bzero(buf, sizeof(buf));
 	lwkt_gettoken_shared(&p->p_token);
-	bcopy(p->p_pgrp->pg_session->s_login, buf, uap->namelen);
+	bcopy(p->p_pgrp->pg_session->s_login, buf, namelen);
 	lwkt_reltoken(&p->p_token);
 
-	error = copyout(buf, uap->namebuf, uap->namelen);
+	error = copyout(buf, uap->namebuf, namelen);
+
 	return (error);
 }
 
@@ -1214,7 +1218,7 @@ sys_getlogin(struct getlogin_args *uap)
  * Set login name.
  */
 int
-sys_setlogin(struct setlogin_args *uap)
+sys_setlogin(struct sysmsg *sysmsg, const struct setlogin_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p;

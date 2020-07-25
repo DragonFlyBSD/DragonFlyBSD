@@ -42,7 +42,7 @@
 #define STATIC static					    /* nothing while we're testing XXX */
 
 #include "vinumhdr.h"
-#include <sys/sysproto.h>				    /* for sync(2) */
+#include <sys/sysmsg.h>					    /* for sync(2) */
 #include <sys/poll.h>					    /* XXX: poll ops used in kq filters */
 #include <sys/event.h>
 #include <sys/udev.h>
@@ -303,7 +303,7 @@ vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 	if (!vinum_inactive(1))				    /* is anything open? */
 	    return EBUSY;				    /* yes, we can't do it */
 	vinum_conf.flags |= VF_STOPPING;		    /* note that we want to stop */
-	sys_sync(NULL);			    /* write out buffers */
+	sys_sync(NULL, NULL);			    /* write out buffers */
 	free_vinum(0);					    /* clean up */
 
 	if (vinum_super_dev) {

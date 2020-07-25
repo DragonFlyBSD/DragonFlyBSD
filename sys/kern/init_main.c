@@ -53,7 +53,7 @@
 #include <sys/vnode.h>
 #include <sys/sysent.h>
 #include <sys/reboot.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/vmmeter.h>
 #include <sys/unistd.h>
 #include <sys/malloc.h>
@@ -538,6 +538,7 @@ static void
 start_init(void *dummy, struct trapframe *frame)
 {
 	vm_offset_t addr;
+	struct sysmsg sysmsg;
 	struct execve_args args;
 	int options, error;
 	char *var, *path, *next, *s;
@@ -657,6 +658,7 @@ start_init(void *dummy, struct trapframe *frame)
 		/*
 		 * Point at the arguments.
 		 */
+		bzero(&sysmsg, sizeof(sysmsg));
 		args.fname = arg0;
 		args.argv = uap;
 		args.envv = NULL;
@@ -673,7 +675,7 @@ start_init(void *dummy, struct trapframe *frame)
 		 * MP lock will migrate with us though so we still have to
 		 * release it.
 		 */
-		if ((error = sys_execve(&args)) == 0) {
+		if ((error = sys_execve(&sysmsg, &args)) == 0) {
 			lp->lwp_proc->p_usched->acquire_curproc(lp);
 			return;
 		}

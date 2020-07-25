@@ -62,7 +62,7 @@
 #include <sys/spinlock2.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/systm.h>
 #include <sys/lock.h>
 #include <sys/unistd.h>
@@ -411,7 +411,7 @@ mq_close_fop(file_t *fp)
  */
 
 int
-sys_mq_open(struct mq_open_args *uap)
+sys_mq_open(struct sysmsg *sysmsg, const struct mq_open_args *uap)
 {
 	/* {
 		syscallarg(const char *) name;
@@ -602,7 +602,7 @@ exit:
 		fp->f_ops = &badfileops;
 	} else {
 		fsetfd(fdp, fp, mqd);
-		uap->sysmsg_result = mqd;
+		sysmsg->sysmsg_result = mqd;
 	}
 	fdrop(fp);
 	kfree(name, M_MQBUF);
@@ -611,9 +611,9 @@ exit:
 }
 
 int
-sys_mq_close(struct mq_close_args *uap)
+sys_mq_close(struct sysmsg *sysmsg, const struct mq_close_args *uap)
 {
-	return sys_close((void *)uap);
+	return sys_close(sysmsg, (const void *)uap);
 }
 
 /*
@@ -724,7 +724,7 @@ error:
 }
 
 int
-sys_mq_receive(struct mq_receive_args *uap)
+sys_mq_receive(struct sysmsg *sysmsg, const struct mq_receive_args *uap)
 {
 	/* {
 		syscallarg(mqd_t) mqdes;
@@ -738,13 +738,13 @@ sys_mq_receive(struct mq_receive_args *uap)
 	error = mq_receive1(curthread->td_lwp, SCARG(uap, mqdes), SCARG(uap, msg_ptr),
 	    SCARG(uap, msg_len), SCARG(uap, msg_prio), 0, &mlen);
 	if (error == 0)
-		uap->sysmsg_result = mlen;
+		sysmsg->sysmsg_result = mlen;
 
 	return error;
 }
 
 int
-sys_mq_timedreceive(struct mq_timedreceive_args *uap)
+sys_mq_timedreceive(struct sysmsg *sysmsg, const struct mq_timedreceive_args *uap)
 {
 	/* {
 		syscallarg(mqd_t) mqdes;
@@ -770,7 +770,7 @@ sys_mq_timedreceive(struct mq_timedreceive_args *uap)
 	error = mq_receive1(curthread->td_lwp, SCARG(uap, mqdes), SCARG(uap, msg_ptr),
 	    SCARG(uap, msg_len), SCARG(uap, msg_prio), tsp, &mlen);
 	if (error == 0)
-		uap->sysmsg_result = mlen;
+		sysmsg->sysmsg_result = mlen;
 
 	return error;
 }
@@ -912,7 +912,7 @@ error:
 }
 
 int
-sys_mq_send(struct mq_send_args *uap)
+sys_mq_send(struct sysmsg *sysmsg, const struct mq_send_args *uap)
 {
 	/* {
 		syscallarg(mqd_t) mqdes;
@@ -926,7 +926,7 @@ sys_mq_send(struct mq_send_args *uap)
 }
 
 int
-sys_mq_timedsend(struct mq_timedsend_args *uap)
+sys_mq_timedsend(struct sysmsg *sysmsg, const struct mq_timedsend_args *uap)
 {
 	/* {
 		syscallarg(mqd_t) mqdes;
@@ -953,7 +953,7 @@ sys_mq_timedsend(struct mq_timedsend_args *uap)
 }
 
 int
-sys_mq_notify(struct mq_notify_args *uap)
+sys_mq_notify(struct sysmsg *sysmsg, const struct mq_notify_args *uap)
 {
 	/* {
 		syscallarg(mqd_t) mqdes;
@@ -1001,7 +1001,7 @@ sys_mq_notify(struct mq_notify_args *uap)
 }
 
 int
-sys_mq_getattr(struct mq_getattr_args *uap)
+sys_mq_getattr(struct sysmsg *sysmsg, const struct mq_getattr_args *uap)
 {
 	/* {
 		syscallarg(mqd_t) mqdes;
@@ -1025,7 +1025,7 @@ sys_mq_getattr(struct mq_getattr_args *uap)
 }
 
 int
-sys_mq_setattr(struct mq_setattr_args *uap)
+sys_mq_setattr(struct sysmsg *sysmsg, const struct mq_setattr_args *uap)
 {
 	/* {
 		syscallarg(mqd_t) mqdes;
@@ -1075,7 +1075,7 @@ sys_mq_setattr(struct mq_setattr_args *uap)
 }
 
 int
-sys_mq_unlink(struct mq_unlink_args *uap)
+sys_mq_unlink(struct sysmsg *sysmsg, const struct mq_unlink_args *uap)
 {
 	/* {
 		syscallarg(const char *) name;

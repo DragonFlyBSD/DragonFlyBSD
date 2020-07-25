@@ -61,7 +61,7 @@
 #include <sys/sysctl.h>
 #include <sys/vkernel.h>
 #include <sys/conf.h>
-#include <sys/sysproto.h>
+#include <sys/sysmsg.h>
 #include <sys/device.h>
 #include <sys/cons.h>
 #include <sys/kbio.h>
@@ -179,7 +179,7 @@ SYSINIT(shutdown_conf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, shutdown_conf, NULL);
  * MPALMOSTSAFE
  */
 int
-sys_reboot(struct reboot_args *uap)
+sys_reboot(struct sysmsg *sysmsg, const struct reboot_args *uap)
 {
 	struct thread *td = curthread;
 	int error;
@@ -312,7 +312,7 @@ boot(int howto)
 		zcount = 0;
 		kprintf("\nsyncing disks... ");
 
-		sys_sync(NULL);
+		sys_sync(NULL, NULL);
 
 		/*
 		 * With soft updates, some buffers that are written will be
@@ -357,7 +357,7 @@ boot(int howto)
 			if (iter > 5)
 				bio_ops_sync(NULL);
  
-			sys_sync(NULL);
+			sys_sync(NULL, NULL);
 			tsleep(boot, 0, "shutdn", hz * iter / 20 + 1);
 		}
 		kprintf("\n");
