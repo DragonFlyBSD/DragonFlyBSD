@@ -159,4 +159,16 @@ dma_fence_set_error(struct dma_fence *fence, int error)
 	fence->error = error;
 }
 
+static inline struct dma_fence *
+dma_fence_get_rcu_safe(struct dma_fence **dfp)
+{
+	struct dma_fence *fence;
+	if (dfp == NULL)
+		return NULL;
+	fence = *dfp;
+	if (fence)
+		kref_get(&fence->refcount);
+	return fence;
+}
+
 #endif	/* _LINUX_DMA_FENCE_H_ */
