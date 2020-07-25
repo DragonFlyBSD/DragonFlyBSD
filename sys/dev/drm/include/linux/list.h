@@ -77,6 +77,19 @@ list_empty_careful(const struct list_head *head)
 }
 
 static inline void
+__list_del(struct list_head *prev, struct list_head *next)
+{
+	next->prev = prev;
+	WRITE_ONCE(prev->next, next);
+}
+
+static inline void
+__list_del_entry(struct list_head *entry)
+{
+	__list_del(entry->prev, entry->next);
+}
+
+static inline void
 list_del(struct list_head *entry)
 {
 
