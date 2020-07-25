@@ -282,22 +282,6 @@ recheck:
 	}
 
 	/*
-	 * block here if we are swapped out, but still process signals
-	 * (such as SIGKILL).  proc0 (the swapin scheduler) is already
-	 * aware of our situation, we do not have to wake it up.
-	 */
-	if (__predict_false(p->p_flags & P_SWAPPEDOUT)) {
-		lwkt_gettoken(&p->p_token);
-		p->p_flags |= P_SWAPWAIT;
-		swapin_request();
-		if (p->p_flags & P_SWAPWAIT)
-			tsleep(p, PCATCH, "SWOUT", 0);
-		p->p_flags &= ~P_SWAPWAIT;
-		lwkt_reltoken(&p->p_token);
-		goto recheck;
-	}
-
-	/*
 	 * In a multi-threaded program it is possible for a thread to change
 	 * signal state during a system call which temporarily changes the
 	 * signal mask.  In this case postsig() might not be run and we

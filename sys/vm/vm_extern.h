@@ -78,7 +78,6 @@ void kmem_suballoc(struct vm_map *, struct vm_map *,
 			vm_offset_t *, vm_offset_t *, vm_size_t);
 void munmapfd(struct proc *, int);
 int swaponvp(struct thread *, struct vnode *, u_quad_t);
-void swapout_procs(int);
 int useracc(c_caddr_t, int, int);
 int vm_fault(struct vm_map *, vm_offset_t, vm_prot_t, int);
 int vm_fault_collapse(struct vm_map *, struct vm_map_entry *);

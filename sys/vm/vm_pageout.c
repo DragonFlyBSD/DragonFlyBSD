@@ -160,7 +160,6 @@ __read_mostly int vm_page_free_hysteresis = 16;
 __read_mostly static int vm_pagedaemon_time;
 
 #if !defined(NO_SWAPPING)
-static int vm_pageout_req_swapout;
 static int vm_daemon_needed;
 #endif
 __read_mostly static int vm_max_launder = 0;
@@ -176,10 +175,8 @@ __read_mostly static int vm_pageout_debug;
 
 #if defined(NO_SWAPPING)
 __read_mostly static int vm_swap_enabled=0;
-__read_mostly static int vm_swap_idle_enabled=0;
 #else
 __read_mostly static int vm_swap_enabled=1;
-__read_mostly static int vm_swap_idle_enabled=0;
 #endif
 
 /* 0-disable, 1-passive, 2-active swp, 3-acive swp + single-queue dirty pages*/
@@ -223,13 +220,9 @@ SYSCTL_INT(_vm, OID_AUTO, pageout_debug,
 #if defined(NO_SWAPPING)
 SYSCTL_INT(_vm, VM_SWAPPING_ENABLED, swap_enabled,
 	CTLFLAG_RD, &vm_swap_enabled, 0, "");
-SYSCTL_INT(_vm, OID_AUTO, swap_idle_enabled,
-	CTLFLAG_RD, &vm_swap_idle_enabled, 0, "");
 #else
 SYSCTL_INT(_vm, VM_SWAPPING_ENABLED, swap_enabled,
 	CTLFLAG_RW, &vm_swap_enabled, 0, "Enable entire process swapout");
-SYSCTL_INT(_vm, OID_AUTO, swap_idle_enabled,
-	CTLFLAG_RW, &vm_swap_idle_enabled, 0, "Allow swapout on idle criteria");
 #endif
 
 SYSCTL_INT(_vm, OID_AUTO, defer_swapspace_pageouts,
@@ -1726,20 +1719,6 @@ next_rover:
 			cache_rover[0] += PQ_PRIME2;
 	}
 
-#if !defined(NO_SWAPPING)
-	/*
-	 * Idle process swapout -- run once per second.
-	 */
-	if (vm_swap_idle_enabled) {
-		static time_t lsec;
-		if (time_uptime != lsec) {
-			atomic_set_int(&vm_pageout_req_swapout, VM_SWAP_IDLE);
-			vm_req_vmdaemon();
-			lsec = time_uptime;
-		}
-	}
-#endif
-		
 	/*
 	 * If we didn't get enough free pages, and we have skipped a vnode
 	 * in a writeable object, wakeup the sync daemon.  And kick swapout
@@ -1749,10 +1728,8 @@ next_rover:
 		if (vnodes_skipped && vm_page_count_min(0))
 			speedup_syncer(NULL);
 #if !defined(NO_SWAPPING)
-		if (vm_swap_enabled && vm_page_count_target()) {
-			atomic_set_int(&vm_pageout_req_swapout, VM_SWAP_NORMAL);
+		if (vm_swap_enabled && vm_page_count_target())
 			vm_req_vmdaemon();
-		}
 #endif
 	}
 
@@ -2638,26 +2615,15 @@ static int vm_daemon_callback(struct proc *p, void *data __unused);
 
 /*
  * No requirements.
+ *
+ * Scan processes for exceeding their rlimits, deactivate pages
+ * when RSS is exceeded.
  */
 static void
 vm_daemon(void)
 {
-	int req_swapout;
-
 	while (TRUE) {
 		tsleep(&vm_daemon_needed, 0, "psleep", 0);
-		req_swapout = atomic_swap_int(&vm_pageout_req_swapout, 0);
-
-		/*
-		 * forced swapouts
-		 */
-		if (req_swapout)
-			swapout_procs(vm_pageout_req_swapout);
-
-		/*
-		 * scan the processes for exceeding their rlimits or if
-		 * process is swapped out -- deactivate pages
-		 */
 		allproc_scan(vm_daemon_callback, NULL, 0);
 	}
 }
@@ -2693,14 +2659,6 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	 */
 	limit = OFF_TO_IDX(qmin(p->p_rlimit[RLIMIT_RSS].rlim_cur,
 			        p->p_rlimit[RLIMIT_RSS].rlim_max));
-
-	/*
-	 * let processes that are swapped out really be
-	 * swapped out.  Set the limit to nothing to get as
-	 * many pages out to swap as possible.
-	 */
-	if (p->p_flags & P_SWAPPEDOUT)
-		limit = 0;
 
 	vm = p->p_vmspace;
 	vmspace_hold(vm);

@@ -160,27 +160,18 @@ do_vmtotal_callback(struct proc *p, void *data)
 		switch (lp->lwp_stat) {
 		case LSSTOP:
 		case LSSLEEP:
-			if ((p->p_flags & P_SWAPPEDOUT) == 0) {
-				if ((lp->lwp_flags & LWP_SINTR) == 0)
-					totalp->t_dw++;
-				else if (lp->lwp_slptime < maxslp)
-					totalp->t_sl++;
-			} else if (lp->lwp_slptime < maxslp) {
-				totalp->t_sw++;
-			}
+			if ((lp->lwp_flags & LWP_SINTR) == 0)
+				totalp->t_dw++;
+			else if (lp->lwp_slptime < maxslp)
+				totalp->t_sl++;
 			if (lp->lwp_slptime >= maxslp)
 				goto out;
 			break;
-
 		case LSRUN:
-			if (p->p_flags & P_SWAPPEDOUT)
-				totalp->t_sw++;
-			else
-				totalp->t_rq++;
+			totalp->t_rq++;
 			if (p->p_stat == SIDL)
 				goto out;
 			break;
-
 		default:
 			goto out;
 		}

@@ -345,9 +345,9 @@ struct	proc {
 #define	p_pgid		p_pgrp->pg_id
 
 /* These flags are kept in p_flags. */
-#define	P_UNUSED00	0x00001 /* was: Process may hold a POSIX advisory lock */
+#define	P_UNUSED00	0x00001
 #define	P_CONTROLT	0x00002	/* Has a controlling terminal */
-#define	P_SWAPPEDOUT	0x00004	/* Swapped out of memory */
+#define	P_UNUSED02	0x00004
 #define P_SYSVSEM	0x00008	/* Might have SysV semaphores */
 #define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit */
 #define	P_PROFIL	0x00020	/* Has started profiling */
@@ -366,7 +366,7 @@ struct	proc {
 #define P_LOWMEMKILL	0x00010000 /* trying to kill due to low memory */
 #define	P_UNUSED17	0x00020000
 
-#define	P_SWAPWAIT	0x00040000 /* Waiting for a swapin */
+#define	P_UNUSED18	0x00040000
 #define	P_UNUSED19	0x00080000 /* was: Now in a zombied state */
 
 /* Marked a kernel thread */
@@ -583,7 +583,6 @@ int	trace_req (struct proc *);
 void	cpu_thread_wait (struct thread *);
 void	setsugid (void);
 void	faultin (struct proc *p);
-void	swapin_request (void);
 void	phold (struct proc *);
 void	prele (struct proc *);
 int	pwaitres_pending (struct proc *);

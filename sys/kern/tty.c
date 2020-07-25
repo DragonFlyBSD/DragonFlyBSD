@@ -2592,7 +2592,7 @@ ttyinfo(struct tty *tp)
 	 * Calculate cpu usage, percent cpu, and cmsz.  Note that
 	 * 'pick' becomes invalid the moment we release the token.
 	 */
-	if (lp->lwp_thread && (pick->p_flags & P_SWAPPEDOUT) == 0)
+	if (lp->lwp_thread)
 		calcru_proc(pick, &ru);
 
 	pctcpu = (lp->lwp_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;

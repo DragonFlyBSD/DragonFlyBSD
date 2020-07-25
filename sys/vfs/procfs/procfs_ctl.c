@@ -149,7 +149,6 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 		 * Stop the target.
 		 */
 		p->p_flags |= P_TRACED;
-		faultin(p);
 		p->p_xstat = 0;		/* XXX ? */
 		if (p->p_pptr != curp) {
 			p->p_oppid = p->p_pptr->p_pid;

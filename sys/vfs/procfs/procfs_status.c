@@ -123,10 +123,7 @@ procfs_dostatus(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		DOCHECK();
 	}
 
-	if (p->p_flags & P_SWAPPEDOUT) {
-		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
-		    " -1,-1 -1,-1 -1,-1");
-	} else {
+	{
 		struct rusage ru;
 
 		calcru_proc(p, &ru);
