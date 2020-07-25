@@ -58,6 +58,8 @@ ETCMAIL=aliases mailer.conf access.sample virtusertable.sample \
 # Use this directory as the source for new configuration files when upgrading
 UPGRADE_SRCDIR?=${.CURDIR}
 
+CHECK_DEPRECATED_DIRS+=	/usr/local
+
 # Include file which contains obsolete files
 .if exists(${DESTDIR}/etc/upgrade/Makefile_upgrade.inc)
 .include "${DESTDIR}/etc/upgrade/Makefile_upgrade.inc"
@@ -89,13 +91,33 @@ remove-deprecated-files:
 		fi; \
 	done;
 .else
+	@make check-deprecated-files
+.endif
+
+check-deprecated-files:
 	@echo "===> Checking for deprecated files"
-	@count=0; for item in ${TO_REMOVE_LATE}; do \
+	@tmpldd=`mktemp -t chkldd`; \
+	chroot ${DESTDIR}/ find ${CHECK_DEPRECATED_DIRS:O:u} \
+				-type f \( -name '*.so*' -o -perm +111 \) | \
+				chroot ${DESTDIR}/ xargs ldd 2>/dev/null > $${tmpldd}; \
+	count=0; for item in ${TO_REMOVE_LATE}; do \
 		if [ -e ${DESTDIR}$${item} -o -L ${DESTDIR}$${item} ]; then \
 			echo "${DESTDIR}$${item} is deprecated"; \
+			deps=""; \
+			for object in `cat $${tmpldd} | awk -v library=$${item} \
+				-f ${.CURDIR}/../tools/tools/chkldd/chkldd.awk`; do \
+				echo "${TO_REMOVE_LATE}" | grep -q "$${object}" \
+					|| deps="$${deps} $${object}"; \
+			done; \
+			if [ -n "$${deps}" ]; then \
+				echo "  but it's still linked from these objects:"; \
+				echo "  " $${deps}; \
+				echo ""; \
+			fi; \
 			count=`expr $$count + 1`; \
 		fi; \
 	done; \
+	rm $${tmpldd}; \
 	if [ "$$count" -gt 0 ]; then \
 		echo "==================================================================" ; \
 		echo "= You have $$count now deprecated files." ; \
@@ -104,7 +126,6 @@ remove-deprecated-files:
 		echo "=     make upgrade -DREMOVE_DEPRECATED" ; \
 		echo "==================================================================" ; \
 	fi;
-.endif
 
 preupgrade:
 	(pw -V ${DESTDIR}/etc usershow mail -q > /dev/null) || \
