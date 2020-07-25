@@ -1090,7 +1090,7 @@ syscall2(struct trapframe *frame)
 	 * to be the registers used to pass arguments, in exactly the right
 	 * order.
 	 */
-	argp = (struct sysunion *)(&frame->tf_rdi + reg);
+	argp = (union sysunion *)(&frame->tf_rdi + reg);
 
 	/*
 	 * copyin is MP aware, but the tracing code is not
@@ -1143,7 +1143,7 @@ syscall2(struct trapframe *frame)
 	 * NOTE: All system calls run MPSAFE now.  The system call itself
 	 *	 is responsible for getting the MP lock.
 	 */
-	error = (*callp->sy_call)(&sysmsg, &args);
+	error = (*callp->sy_call)(&sysmsg, &argp);
 
 #if 0
 	kprintf("system call %d returned %d\n", code, error);
