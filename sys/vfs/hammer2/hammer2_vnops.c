@@ -395,7 +395,7 @@ retry:
 	vap->va_gid = hammer2_to_unix_xid(&ip->meta.gid);
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
-	vap->va_size = -1;
+	vap->va_size = ip->meta.size;
 	vap->va_blocksize = HAMMER2_PBUFSIZE;
 	vap->va_flags = ip->meta.uflags;
 	vap->va_type = hammer2_get_vtype(ip->meta.type);
