@@ -45,11 +45,10 @@
 #include "vmm.h"
 
 static struct vmm_ctl *ctl = NULL;
+static struct sysctl_ctx_list vmm_sysctl_ctx;
+static int vmm_enabled;
 
-struct sysctl_ctx_list vmm_sysctl_ctx;
 struct sysctl_oid *vmm_sysctl_tree;
-
-int vmm_enabled;
 int vmm_debug;
 
 static int

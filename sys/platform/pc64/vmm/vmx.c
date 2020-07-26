@@ -74,33 +74,35 @@ extern void trap(struct trapframe *frame);
 static int vmx_check_cpu_migration(void);
 static int execute_vmptrld(struct vmx_thread_info *vti);
 
-struct instr_decode syscall_asm = {
+#ifdef VMM_DEBUG
+static struct instr_decode syscall_asm = {
 	.opcode_bytes = 2,
 	.opcode.byte1 = 0x0F,
 	.opcode.byte2 = 0x05,
 };
+#endif
 
-struct vmx_ctl_info vmx_pinbased = {
+static struct vmx_ctl_info vmx_pinbased = {
 	.msr_addr = IA32_VMX_PINBASED_CTLS,
 	.msr_true_addr = IA32_VMX_TRUE_PINBASED_CTLS,
 };
 
-struct vmx_ctl_info vmx_procbased = {
+static struct vmx_ctl_info vmx_procbased = {
 	.msr_addr = IA32_VMX_PROCBASED_CTLS,
 	.msr_true_addr = IA32_VMX_TRUE_PROCBASED_CTLS,
 };
 
-struct vmx_ctl_info vmx_procbased2 = {
+static struct vmx_ctl_info vmx_procbased2 = {
 	.msr_addr = IA32_VMX_PROCBASED_CTLS2,
 	.msr_true_addr = IA32_VMX_PROCBASED_CTLS2,
 };
 
-struct vmx_ctl_info vmx_exit = {
+static struct vmx_ctl_info vmx_exit = {
 	.msr_addr = IA32_VMX_EXIT_CTLS,
 	.msr_true_addr = IA32_VMX_TRUE_EXIT_CTLS,
 };
 
-struct vmx_ctl_info vmx_entry = {
+static struct vmx_ctl_info vmx_entry = {
 	.msr_addr = IA32_VMX_ENTRY_CTLS,
 	.msr_true_addr = IA32_VMX_TRUE_ENTRY_CTLS,
 };
@@ -113,21 +115,21 @@ static struct sysctl_oid *vmx_sysctl_tree;
 static struct sysctl_ctx_list vmx_sysctl_ctx;
 
 /* Per cpu info */
-struct vmx_pcpu_info *pcpu_info;
+static struct vmx_pcpu_info *pcpu_info;
 
 /* VMX BASIC INFO */
-uint32_t vmx_revision;
-uint32_t vmx_region_size;
-uint8_t vmx_width_addr;
+static uint32_t vmx_revision;
+static uint32_t vmx_region_size;
+static uint8_t vmx_width_addr;
 
 /* IA32_VMX_EPT_VPID_CAP */
 uint64_t vmx_ept_vpid_cap;
 
 /* VMX fixed bits */
-uint64_t cr0_fixed_to_0;
-uint64_t cr4_fixed_to_0;
-uint64_t cr0_fixed_to_1;
-uint64_t cr4_fixed_to_1;
+static uint64_t cr0_fixed_to_0;
+static uint64_t cr4_fixed_to_0;
+static uint64_t cr0_fixed_to_1;
+static uint64_t cr4_fixed_to_1;
 
 /* VMX status */
 static uint8_t vmx_enabled = 0;

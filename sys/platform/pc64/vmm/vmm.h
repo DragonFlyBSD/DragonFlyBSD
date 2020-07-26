@@ -92,7 +92,6 @@ struct vmm_ctl* get_ctl_amd(void);
 
 #ifdef _KERNEL
 
-extern int vmm_enabled;
 extern int vmm_debug;
 
 #endif

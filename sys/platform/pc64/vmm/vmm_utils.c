@@ -42,6 +42,7 @@
 
 #include "vmm_utils.h"
 
+#ifdef VMM_DEBUG
 int
 instr_check(struct instr_decode *instr, void *ip, uint8_t instr_length)
 {
@@ -69,6 +70,7 @@ instr_check(struct instr_decode *instr, void *ip, uint8_t instr_length)
 	}
 	return 0;
 }
+#endif
 
 static int
 get_pt_entry(struct vmspace *vm, pt_entry_t *pte, vm_offset_t addr, int index)
