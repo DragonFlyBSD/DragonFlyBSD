@@ -10,6 +10,7 @@ MIASM =  \
 	open.o \
 	close.o \
 	wait4.o \
+	__nosys.o \
 	link.o \
 	unlink.o \
 	chdir.o \

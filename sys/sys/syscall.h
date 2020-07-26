@@ -13,7 +13,7 @@
 #define	SYS_open	5
 #define	SYS_close	6
 #define	SYS_wait4	7
-				/* 8 is obsolete 4.3 creat */
+#define	SYS___nosys	8
 #define	SYS_link	9
 #define	SYS_unlink	10
 				/* 11 is obsolete execv */

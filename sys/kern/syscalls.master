@@ -36,7 +36,7 @@
 ; redistributions should be placed in the reserved range at the end
 ; of the current calls.
 
-0	STD	{ int nosys(void); } syscall nosys_args int
+0	NOARGS	{ int xsyscall(void); } syscall nosys_args int
 1	STD	{ void exit(int rval); }
 2	STD	{ int fork(void); }
 3	STD	{ ssize_t read(int fd, void *buf, size_t nbyte); }
@@ -48,7 +48,7 @@
 6	STD	{ int close(int fd); }
 7	STD	{ int wait4(int pid, int *status, int options, \
 			    struct rusage *rusage); } wait4 wait_args int
-8	OBSOL	4.3 creat
+8	STD	{ int nosys(void); } __nosys nosys_args int
 9	STD	{ int link(char *path, char *link); }
 10	STD	{ int unlink(char *path); }
 11	OBSOL	execv
@@ -277,7 +277,7 @@
 196	UNIMPL	nosys
 197	STD	{ caddr_t mmap(caddr_t addr, size_t len, int prot, \
 			    int flags, int fd, int pad, off_t pos); }
-198	STD	{ int nosys(void); } __syscall __syscall_args int
+198	NOPROTO	{ int xsyscall(void); } __syscall nosys_args int
 199	STD	{ off_t lseek(int fd, int pad, off_t offset, \
 			    int whence); }
 200	STD	{ int truncate(char *path, int pad, off_t length); }

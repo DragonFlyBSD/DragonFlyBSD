@@ -1003,18 +1003,12 @@ dblfault_handler(void)
 }
 
 /*
- *	syscall2 -	MP aware system call request C handler
+ * syscall2 -	MP aware system call request C handler
  *
- *	A system call is essentially treated as a trap except that the
- *	MP lock is not held on entry or return.  We are responsible for
- *	obtaining the MP lock if necessary and for handling ASTs
- *	(e.g. a task switch) prior to return.
- *
- *	In general, only simple access and manipulation of curproc and
- *	the current stack is allowed without having to hold MP lock.
- *
- *	MPSAFE - note that large sections of this routine are run without
- *		 the MP lock.
+ * A system call is essentially treated as a trap except that the
+ * MP lock is not held on entry or return.  We are responsible for
+ * obtaining the MP lock if necessary and for handling ASTs
+ * (e.g. a task switch) prior to return.
  */
 void
 syscall2(struct trapframe *frame)
@@ -1034,7 +1028,7 @@ syscall2(struct trapframe *frame)
 	struct sysmsg sysmsg;
 	union sysunion *argp;
 	u_int code;
-	int reg, regcnt;
+	const int regcnt = 6;
 
 	mycpu->gd_cnt.v_syscall++;
 
@@ -1043,8 +1037,6 @@ syscall2(struct trapframe *frame)
 
 	userenter(td, p);	/* lazy raise our priority */
 
-	reg = 0;
-	regcnt = 6;
 	/*
 	 * Misc
 	 */
@@ -1057,7 +1049,7 @@ syscall2(struct trapframe *frame)
 	 * Restore the virtual kernel context and return from its system
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
-	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
+	if (__predict_false(lp->lwp_vkernel && lp->lwp_vkernel->ve)) {
 		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
 		callp = NULL;
@@ -1071,31 +1063,22 @@ syscall2(struct trapframe *frame)
 	lp->lwp_md.md_regs = frame;
 	code = frame->tf_rax;
 
-	if (code == SYS_syscall || code == SYS___syscall) {
-		code = frame->tf_rdi;
-		reg++;
-		regcnt--;
-	}
-
 	if (code >= p->p_sysent->sv_size)
-		callp = &p->p_sysent->sv_table[0];
-	else
-		callp = &p->p_sysent->sv_table[code];
-
-	narg = callp->sy_narg;
+		code = SYS___nosys;
+	argp = (union sysunion *)&frame->tf_rdi;
+	callp = &p->p_sysent->sv_table[code];
 
 	/*
 	 * On x86_64 we get up to six arguments in registers. The rest are
 	 * on the stack. The first six members of 'struct trapframe' happen
 	 * to be the registers used to pass arguments, in exactly the right
 	 * order.
+	 *
+	 * Any arguments beyond available argument-passing registers must
+	 * be copyin()'d from the user stack.
 	 */
-	argp = (union sysunion *)(&frame->tf_rdi + reg);
-
-	/*
-	 * copyin is MP aware, but the tracing code is not
-	 */
-	if (narg > regcnt) {
+	narg = callp->sy_narg;
+	if (__predict_false(narg > regcnt)) {
 		register_t *argsdst;
 		caddr_t params;
 
@@ -1228,6 +1211,69 @@ bad:
 		("syscall: extra tokens held after trap! %ld",
 		td->td_toks_stop - &td->td_toks_base));
 #endif
+}
+
+/*
+ * Handles the syscall() and __syscall() API
+ */
+void xsyscall(struct sysmsg *sysmsg, struct nosys_args *uap);
+
+int
+sys_xsyscall(struct sysmsg *sysmsg, const struct nosys_args *uap)
+{
+	struct trapframe *frame;
+	struct sysent *callp;
+	union sysunion *argp;
+	struct thread *td;
+	const int regcnt = 5;	/* number of args passed in registers */
+	u_int code;
+	int error;
+	int narg;
+
+	td = curthread;
+	frame = sysmsg->sysmsg_frame;
+	code = (u_int)frame->tf_rdi;
+	if (code >= td->td_proc->p_sysent->sv_size)
+		code = SYS___nosys;
+	argp = (union sysunion *)(&frame->tf_rdi + 1);
+	callp = &td->td_proc->p_sysent->sv_table[code];
+	narg = callp->sy_narg;
+
+	/*
+	 * On x86_64 we get up to six arguments in registers.  The rest are
+	 * on the stack.  However, for syscall() and __syscall() the syscall
+	 * number is inserted as the first argument, so the limit is reduced
+	 * by one to five.
+	 */
+	if (__predict_false(narg > regcnt)) {
+		register_t *argsdst;
+		caddr_t params;
+
+		argsdst = (register_t *)&sysmsg->extargs;
+		bcopy(argp, argsdst, sizeof(register_t) * regcnt);
+		params = (caddr_t)frame->tf_rsp + sizeof(register_t);
+		error = copyin(params, &argsdst[regcnt],
+			       (narg - regcnt) * sizeof(register_t));
+		argp = (void *)argsdst;
+		if (error)
+			return error;
+	}
+
+#ifdef KTRACE
+	if (KTRPOINTP(td->td_proc, td, KTR_SYSCALL)) {
+		ktrsyscall(td->td_lwp, code, narg, argp);
+	}
+#endif
+
+	error = (*callp->sy_call)(sysmsg, argp);
+
+#ifdef KTRACE
+	if (KTRPOINTP(td->td_proc, td, KTR_SYSRET)) {
+		ktrsysret(td->td_lwp, code, error, sysmsg->sysmsg_result);
+	}
+#endif
+
+	return error;
 }
 
 /*

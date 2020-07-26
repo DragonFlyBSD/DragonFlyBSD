@@ -14,7 +14,7 @@
 
 /* The casts are bogus but will do for now. */
 struct sysent sysent[] = {
-	{ 0, (sy_call_t *)sys_nosys },			/* 0 = syscall */
+	{ 0, (sy_call_t *)sys_xsyscall },		/* 0 = syscall */
 	{ AS(exit_args), (sy_call_t *)sys_exit },	/* 1 = exit */
 	{ 0, (sy_call_t *)sys_fork },			/* 2 = fork */
 	{ AS(read_args), (sy_call_t *)sys_read },	/* 3 = read */
@@ -22,7 +22,7 @@ struct sysent sysent[] = {
 	{ AS(open_args), (sy_call_t *)sys_open },	/* 5 = open */
 	{ AS(close_args), (sy_call_t *)sys_close },	/* 6 = close */
 	{ AS(wait_args), (sy_call_t *)sys_wait4 },	/* 7 = wait4 */
-	{ 0, (sy_call_t *)sys_nosys },			/* 8 = obsolete 4.3 creat */
+	{ 0, (sy_call_t *)sys_nosys },			/* 8 = __nosys */
 	{ AS(link_args), (sy_call_t *)sys_link },	/* 9 = link */
 	{ AS(unlink_args), (sy_call_t *)sys_unlink },	/* 10 = unlink */
 	{ 0, (sy_call_t *)sys_nosys },			/* 11 = obsolete execv */
@@ -212,7 +212,7 @@ struct sysent sysent[] = {
 	{ AS(__setrlimit_args), (sy_call_t *)sys_setrlimit },	/* 195 = setrlimit */
 	{ 0, (sy_call_t *)sys_nosys },			/* 196 = nosys */
 	{ AS(mmap_args), (sy_call_t *)sys_mmap },	/* 197 = mmap */
-	{ 0, (sy_call_t *)sys_nosys },			/* 198 = __syscall */
+	{ 0, (sy_call_t *)sys_xsyscall },		/* 198 = __syscall */
 	{ AS(lseek_args), (sy_call_t *)sys_lseek },	/* 199 = lseek */
 	{ AS(truncate_args), (sy_call_t *)sys_truncate },	/* 200 = truncate */
 	{ AS(ftruncate_args), (sy_call_t *)sys_ftruncate },	/* 201 = ftruncate */

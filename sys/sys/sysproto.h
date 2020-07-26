@@ -20,9 +20,6 @@
 #define	PAD_(t)	(sizeof(register_t) <= sizeof(t) ? \
 		0 : sizeof(register_t) - sizeof(t))
 
-struct	nosys_args {
-	register_t dummy;
-};
 struct	exit_args {
 	int	rval;	char rval_[PAD_(int)];
 };
@@ -52,6 +49,9 @@ struct	wait_args {
 	int *	status;	char status_[PAD_(int *)];
 	int	options;	char options_[PAD_(int)];
 	struct rusage *	rusage;	char rusage_[PAD_(struct rusage *)];
+};
+struct	nosys_args {
+	register_t dummy;
 };
 struct	link_args {
 	char *	path;	char path_[PAD_(char *)];
@@ -1438,7 +1438,7 @@ struct sysmsg;
 
 struct sysmsg;
 
-int	sys_nosys (struct sysmsg *sysmsg, const struct nosys_args *);
+int	sys_xsyscall (struct sysmsg *sysmsg, const struct nosys_args *);
 int	sys_exit (struct sysmsg *sysmsg, const struct exit_args *);
 int	sys_fork (struct sysmsg *sysmsg, const struct fork_args *);
 int	sys_read (struct sysmsg *sysmsg, const struct read_args *);
@@ -1446,6 +1446,7 @@ int	sys_write (struct sysmsg *sysmsg, const struct write_args *);
 int	sys_open (struct sysmsg *sysmsg, const struct open_args *);
 int	sys_close (struct sysmsg *sysmsg, const struct close_args *);
 int	sys_wait4 (struct sysmsg *sysmsg, const struct wait_args *);
+int	sys_nosys (struct sysmsg *sysmsg, const struct nosys_args *);
 int	sys_link (struct sysmsg *sysmsg, const struct link_args *);
 int	sys_unlink (struct sysmsg *sysmsg, const struct unlink_args *);
 int	sys_chdir (struct sysmsg *sysmsg, const struct chdir_args *);

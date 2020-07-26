@@ -6,7 +6,6 @@
  */
 
 union sysunion {
-	struct	nosys_args nosys;
 	struct	exit_args exit;
 	struct	fork_args fork;
 	struct	read_args read;
@@ -14,6 +13,7 @@ union sysunion {
 	struct	open_args open;
 	struct	close_args close;
 	struct	wait_args wait4;
+	struct	nosys_args nosys;
 	struct	link_args link;
 	struct	unlink_args unlink;
 	struct	chdir_args chdir;

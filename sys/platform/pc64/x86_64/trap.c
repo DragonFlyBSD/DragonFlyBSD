@@ -1142,8 +1142,6 @@ dblfault_handler(struct trapframe *frame)
  * MP lock is not held on entry or return.  We are responsible for
  * obtaining the MP lock if necessary and for handling ASTs
  * (e.g. a task switch) prior to return.
- *
- * MPSAFE
  */
 void
 syscall2(struct trapframe *frame)
@@ -1162,7 +1160,7 @@ syscall2(struct trapframe *frame)
 	struct sysmsg sysmsg;
 	union sysunion *argp;
 	u_int code;
-	int regcnt;
+	const int regcnt = 6;	/* number of args passed in registers */
 
 	mycpu->gd_cnt.v_syscall++;
 
@@ -1201,23 +1199,17 @@ syscall2(struct trapframe *frame)
 	/*
 	 * Get the system call parameters and account for time
 	 */
+#ifdef DIAGNOSTIC
 	KASSERT(lp->lwp_md.md_regs == frame,
 		("Frame mismatch %p %p", lp->lwp_md.md_regs, frame));
+#endif
+
 	code = (u_int)frame->tf_rax;
-
-	if (__predict_false(code == SYS_syscall || code == SYS___syscall)) {
-		code = frame->tf_rdi;
-		argp = (union sysunion *)(&frame->tf_rdi + 1);
-		regcnt = 5;
-	} else {
-		argp = (union sysunion *)&frame->tf_rdi;
-		regcnt = 6;
-	}
-
 	if (code >= p->p_sysent->sv_size)
-		callp = &p->p_sysent->sv_table[0];
-	else
-		callp = &p->p_sysent->sv_table[code];
+		code = SYS___nosys;
+
+	argp = (union sysunion *)&frame->tf_rdi;
+	callp = &p->p_sysent->sv_table[code];
 
 	/*
 	 * On x86_64 we get up to six arguments in registers. The rest are
@@ -1371,6 +1363,81 @@ bad:
 		td->td_toks_stop - &td->td_toks_base,
 		callp->sy_call));
 #endif
+}
+
+/*
+ * Handles the syscall() and __syscall() API
+ */
+void xsyscall(struct sysmsg *sysmsg, struct nosys_args *uap);
+
+int
+sys_xsyscall(struct sysmsg *sysmsg, const struct nosys_args *uap)
+{
+	struct trapframe *frame;
+	struct sysent *callp;
+	union sysunion *argp;
+	struct thread *td;
+	struct proc *p;
+	const int regcnt = 5;	/* number of args passed in registers */
+	u_int code;
+	int error;
+	int narg;
+
+	td = curthread;
+	p = td->td_proc;
+	frame = sysmsg->sysmsg_frame;
+	code = (u_int)frame->tf_rdi;
+	if (code >= p->p_sysent->sv_size)
+		code = SYS___nosys;
+	argp = (union sysunion *)(&frame->tf_rdi + 1);
+	callp = &p->p_sysent->sv_table[code];
+	narg = callp->sy_narg;
+
+	/*
+	 * On x86_64 we get up to six arguments in registers.  The rest are
+	 * on the stack.  However, for syscall() and __syscall() the syscall
+	 * number is inserted as the first argument, so the limit is reduced
+	 * by one to five.
+	 */
+	if (__predict_false(narg > regcnt)) {
+		register_t *argsdst;
+		caddr_t params;
+
+		argsdst = (register_t *)&sysmsg->extargs;
+		bcopy(argp, argsdst, sizeof(register_t) * regcnt);
+		params = (caddr_t)frame->tf_rsp + sizeof(register_t);
+		error = copyin(params, &argsdst[regcnt],
+			       (narg - regcnt) * sizeof(register_t));
+		argp = (void *)argsdst;
+		if (error) {
+#ifdef KTRACE
+			if (KTRPOINTP(p, td, KTR_SYSCALL)) {
+				ktrsyscall(td->td_lwp, code, narg, argp);
+			}
+			if (KTRPOINTP(p, td, KTR_SYSRET)) {
+				ktrsysret(td->td_lwp, code, error,
+					  sysmsg->sysmsg_result);
+			}
+#endif
+			return error;
+		}
+	}
+
+#ifdef KTRACE
+	if (KTRPOINTP(p, td, KTR_SYSCALL)) {
+		ktrsyscall(td->td_lwp, code, narg, argp);
+	}
+#endif
+
+	error = (*callp->sy_call)(sysmsg, argp);
+
+#ifdef KTRACE
+	if (KTRPOINTP(p, td, KTR_SYSRET)) {
+		ktrsysret(td->td_lwp, code, error, sysmsg->sysmsg_result);
+	}
+#endif
+
+	return error;
 }
 
 void
