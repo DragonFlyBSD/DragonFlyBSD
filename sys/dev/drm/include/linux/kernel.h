@@ -46,6 +46,8 @@
 
 #define U64_MAX		((u64)~0ULL)
 
+#include <machine/limits.h>	/* LONG_MAX etc... */
+
 #undef	ALIGN
 #define	ALIGN(x, y)		roundup2((x), (y))
 #define	IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)

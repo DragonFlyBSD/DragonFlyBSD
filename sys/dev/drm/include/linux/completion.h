@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,7 +60,8 @@ static inline void
 complete(struct completion *c)
 {
 	lockmgr(&c->wait.lock, LK_EXCLUSIVE);
-	c->done++;
+	if (c->done != UINT_MAX)
+		c->done++;
 	lockmgr(&c->wait.lock, LK_RELEASE);
 	wakeup_one(&c->wait);
 }
@@ -69,7 +70,7 @@ static inline void
 complete_all(struct completion *c)
 {
 	lockmgr(&c->wait.lock, LK_EXCLUSIVE);
-	c->done++;
+	c->done = UINT_MAX;
 	lockmgr(&c->wait.lock, LK_RELEASE);
 	wakeup(&c->wait);
 }
