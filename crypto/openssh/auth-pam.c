@@ -56,6 +56,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -99,6 +100,7 @@ extern char *__progname;
 #include "servconf.h"
 #include "ssh2.h"
 #include "auth-options.h"
+#include "misc.h"
 #ifdef GSSAPI
 #include "ssh-gss.h"
 #endif
@@ -150,12 +152,12 @@ static struct pam_ctxt *cleanup_ctxt;
  */
 
 static int sshpam_thread_status = -1;
-static mysig_t sshpam_oldsig;
+static sshsig_t sshpam_oldsig;
 
 static void
 sshpam_sigchld_handler(int sig)
 {
-	signal(SIGCHLD, SIG_DFL);
+	ssh_signal(SIGCHLD, SIG_DFL);
 	if (cleanup_ctxt == NULL)
 		return;	/* handler called after PAM cleanup, shouldn't happen */
 	if (waitpid(cleanup_ctxt->pam_thread, &sshpam_thread_status, WNOHANG)
@@ -197,7 +199,7 @@ pthread_create(sp_pthread_t *thread, const void *attr,
 	switch ((pid = fork())) {
 	case -1:
 		error("fork(): %s", strerror(errno));
-		return (-1);
+		return errno;
 	case 0:
 		close(ctx->pam_psock);
 		ctx->pam_psock = -1;
@@ -207,7 +209,7 @@ pthread_create(sp_pthread_t *thread, const void *attr,
 		*thread = pid;
 		close(ctx->pam_csock);
 		ctx->pam_csock = -1;
-		sshpam_oldsig = signal(SIGCHLD, sshpam_sigchld_handler);
+		sshpam_oldsig = ssh_signal(SIGCHLD, sshpam_sigchld_handler);
 		return (0);
 	}
 }
@@ -215,7 +217,7 @@ pthread_create(sp_pthread_t *thread, const void *attr,
 static int
 pthread_cancel(sp_pthread_t thread)
 {
-	signal(SIGCHLD, sshpam_oldsig);
+	ssh_signal(SIGCHLD, sshpam_oldsig);
 	return (kill(thread, SIGTERM));
 }
 
@@ -227,7 +229,7 @@ pthread_join(sp_pthread_t thread, void **value)
 
 	if (sshpam_thread_status != -1)
 		return (sshpam_thread_status);
-	signal(SIGCHLD, sshpam_oldsig);
+	ssh_signal(SIGCHLD, sshpam_oldsig);
 	while (waitpid(thread, &status, 0) == -1) {
 		if (errno == EINTR)
 			continue;
@@ -258,13 +260,21 @@ static char **
 pam_getenvlist(pam_handle_t *pamh)
 {
 	/*
-	 * XXX - If necessary, we can still support envrionment passing
+	 * XXX - If necessary, we can still support environment passing
 	 * for platforms without pam_getenvlist by searching for known
 	 * env vars (e.g. KRB5CCNAME) from the PAM environment.
 	 */
 	 return NULL;
 }
 #endif
+
+#ifndef HAVE_PAM_PUTENV
+static int
+pam_putenv(pam_handle_t *pamh, const char *name_value)
+{
+	return PAM_SUCCESS;
+}
+#endif /* HAVE_PAM_PUTENV */
 
 /*
  * Some platforms, notably Solaris, do not enforce password complexity
@@ -360,13 +370,11 @@ import_environments(struct sshbuf *b)
 	for (i = 0; i < num_env; i++) {
 		if ((r = sshbuf_get_cstring(b, &env, NULL)) != 0)
 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
-#ifdef HAVE_PAM_PUTENV
 		/* Errors are not fatal here */
 		if ((r = pam_putenv(sshpam_handle, env)) != PAM_SUCCESS) {
 			error("PAM: pam_putenv: %s",
 			    pam_strerror(sshpam_handle, r));
 		}
-#endif
 		/* XXX leak env? */
 	}
 #endif
@@ -535,7 +543,7 @@ sshpam_thread(void *ctxtp)
 	for (i = 0; environ[i] != NULL; i++) {
 		/* Count */
 		if (i > INT_MAX)
-			fatal("%s: too many enviornment strings", __func__);
+			fatal("%s: too many environment strings", __func__);
 	}
 	if ((r = sshbuf_put_u32(buffer, i)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -548,7 +556,7 @@ sshpam_thread(void *ctxtp)
 	for (i = 0; env_from_pam != NULL && env_from_pam[i] != NULL; i++) {
 		/* Count */
 		if (i > INT_MAX)
-			fatal("%s: too many PAM enviornment strings", __func__);
+			fatal("%s: too many PAM environment strings", __func__);
 	}
 	if ((r = sshbuf_put_u32(buffer, i)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -770,7 +778,7 @@ static void *
 sshpam_init_ctx(Authctxt *authctxt)
 {
 	struct pam_ctxt *ctxt;
-	int socks[2];
+	int result, socks[2];
 
 	debug3("PAM: %s entering", __func__);
 	/*
@@ -797,9 +805,10 @@ sshpam_init_ctx(Authctxt *authctxt)
 	}
 	ctxt->pam_psock = socks[0];
 	ctxt->pam_csock = socks[1];
-	if (pthread_create(&ctxt->pam_thread, NULL, sshpam_thread, ctxt) == -1) {
+	result = pthread_create(&ctxt->pam_thread, NULL, sshpam_thread, ctxt);
+	if (result != 0) {
 		error("PAM: failed to start authentication thread: %s",
-		    strerror(errno));
+		    strerror(result));
 		close(socks[0]);
 		close(socks[1]);
 		free(ctxt);
@@ -844,6 +853,7 @@ sshpam_query(void *ctx, char **name, char **info,
 			plen += mlen;
 			**echo_on = (type == PAM_PROMPT_ECHO_ON);
 			free(msg);
+			sshbuf_free(buffer);
 			return (0);
 		case PAM_ERROR_MSG:
 		case PAM_TEXT_INFO:
@@ -872,6 +882,7 @@ sshpam_query(void *ctx, char **name, char **info,
 				**echo_on = 0;
 				ctxt->pam_done = -1;
 				free(msg);
+				sshbuf_free(buffer);
 				return 0;
 			}
 			/* FALLTHROUGH */
@@ -898,6 +909,7 @@ sshpam_query(void *ctx, char **name, char **info,
 				**echo_on = 0;
 				ctxt->pam_done = 1;
 				free(msg);
+				sshbuf_free(buffer);
 				return (0);
 			}
 			error("PAM: %s for %s%.100s from %.100s", msg,
@@ -909,9 +921,11 @@ sshpam_query(void *ctx, char **name, char **info,
 			**echo_on = 0;
 			free(msg);
 			ctxt->pam_done = -1;
+			sshbuf_free(buffer);
 			return (-1);
 		}
 	}
+	sshbuf_free(buffer);
 	return (-1);
 }
 
@@ -1205,7 +1219,6 @@ int
 do_pam_putenv(char *name, char *value)
 {
 	int ret = 1;
-#ifdef HAVE_PAM_PUTENV
 	char *compound;
 	size_t len;
 
@@ -1215,7 +1228,6 @@ do_pam_putenv(char *name, char *value)
 	snprintf(compound, len, "%s=%s", name, value);
 	ret = pam_putenv(sshpam_handle, compound);
 	free(compound);
-#endif
 
 	return (ret);
 }

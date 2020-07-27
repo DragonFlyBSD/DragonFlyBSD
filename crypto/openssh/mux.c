@@ -1,4 +1,4 @@
-/* $OpenBSD: mux.c,v 1.79 2019/01/19 21:35:25 djm Exp $ */
+/* $OpenBSD: mux.c,v 1.82 2020/04/30 17:12:20 markus Exp $ */
 /*
  * Copyright (c) 2002-2008 Damien Miller <djm@openbsd.org>
  *
@@ -1492,7 +1492,7 @@ mux_client_read(int fd, struct sshbuf *b, size_t need)
 			return -1;
 		}
 		len = read(fd, p + have, need - have);
-		if (len < 0) {
+		if (len == -1) {
 			switch (errno) {
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
 			case EWOULDBLOCK:
@@ -1541,7 +1541,7 @@ mux_client_write_packet(int fd, struct sshbuf *m)
 			return -1;
 		}
 		len = write(fd, ptr + have, need - have);
-		if (len < 0) {
+		if (len == -1) {
 			switch (errno) {
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
 			case EWOULDBLOCK:
@@ -1911,7 +1911,7 @@ mux_client_request_session(int fd)
 		return -1;
 	}
 
-	signal(SIGPIPE, SIG_IGN);
+	ssh_signal(SIGPIPE, SIG_IGN);
 
 	if (stdin_null_flag) {
 		if ((devnull = open(_PATH_DEVNULL, O_RDONLY)) == -1)
@@ -1987,6 +1987,7 @@ mux_client_request_session(int fd)
 	case MUX_S_SESSION_OPENED:
 		if ((r = sshbuf_get_u32(m, &sid)) != 0)
 			fatal("%s: decode ID: %s", __func__, ssh_err(r));
+		debug("%s: master session id: %u", __func__, sid);
 		break;
 	case MUX_S_PERMISSION_DENIED:
 		if ((r = sshbuf_get_cstring(m, &e, NULL)) != 0)
@@ -2012,10 +2013,10 @@ mux_client_request_session(int fd)
 		fatal("%s pledge(): %s", __func__, strerror(errno));
 	platform_pledge_mux();
 
-	signal(SIGHUP, control_client_sighandler);
-	signal(SIGINT, control_client_sighandler);
-	signal(SIGTERM, control_client_sighandler);
-	signal(SIGWINCH, control_client_sigrelay);
+	ssh_signal(SIGHUP, control_client_sighandler);
+	ssh_signal(SIGINT, control_client_sighandler);
+	ssh_signal(SIGTERM, control_client_sighandler);
+	ssh_signal(SIGWINCH, control_client_sigrelay);
 
 	rawmode = tty_flag;
 	if (tty_flag)
@@ -2145,7 +2146,7 @@ mux_client_request_stdio_fwd(int fd)
 		return -1;
 	}
 
-	signal(SIGPIPE, SIG_IGN);
+	ssh_signal(SIGPIPE, SIG_IGN);
 
 	if (stdin_null_flag) {
 		if ((devnull = open(_PATH_DEVNULL, O_RDONLY)) == -1)
@@ -2219,10 +2220,10 @@ mux_client_request_stdio_fwd(int fd)
 	}
 	muxclient_request_id++;
 
-	signal(SIGHUP, control_client_sighandler);
-	signal(SIGINT, control_client_sighandler);
-	signal(SIGTERM, control_client_sighandler);
-	signal(SIGWINCH, control_client_sigrelay);
+	ssh_signal(SIGHUP, control_client_sighandler);
+	ssh_signal(SIGINT, control_client_sighandler);
+	ssh_signal(SIGTERM, control_client_sighandler);
+	ssh_signal(SIGWINCH, control_client_sigrelay);
 
 	/*
 	 * Stick around until the controlee closes the client_fd.
@@ -2324,7 +2325,7 @@ muxclient(const char *path)
 		fatal("ControlPath too long ('%s' >= %u bytes)", path,
 		     (unsigned int)sizeof(addr.sun_path));
 
-	if ((sock = socket(PF_UNIX, SOCK_STREAM, 0)) < 0)
+	if ((sock = socket(PF_UNIX, SOCK_STREAM, 0)) == -1)
 		fatal("%s socket(): %s", __func__, strerror(errno));
 
 	if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {

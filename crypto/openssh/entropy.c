@@ -39,6 +39,7 @@
 
 #include <errno.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <stddef.h> /* for offsetof */
@@ -83,7 +84,7 @@ get_random_bytes_prngd(unsigned char *buf, int len,
 	struct sockaddr_storage addr;
 	struct sockaddr_in *addr_in = (struct sockaddr_in *)&addr;
 	struct sockaddr_un *addr_un = (struct sockaddr_un *)&addr;
-	mysig_t old_sigpipe;
+	sshsig_t old_sigpipe;
 
 	/* Sanity checks */
 	if (socket_path == NULL && tcp_port == 0)
@@ -109,7 +110,7 @@ get_random_bytes_prngd(unsigned char *buf, int len,
 		    strlen(socket_path) + 1;
 	}
 
-	old_sigpipe = signal(SIGPIPE, SIG_IGN);
+	old_sigpipe = ssh_signal(SIGPIPE, SIG_IGN);
 
 	errors = 0;
 	rval = -1;
@@ -159,7 +160,7 @@ reopen:
 
 	rval = 0;
 done:
-	signal(SIGPIPE, old_sigpipe);
+	ssh_signal(SIGPIPE, old_sigpipe);
 	if (fd != -1)
 		close(fd);
 	return rval;
@@ -201,14 +202,15 @@ rexec_send_rng_seed(struct sshbuf *m)
 void
 rexec_recv_rng_seed(struct sshbuf *m)
 {
-	u_char *buf = NULL;
+	const u_char *buf = NULL;
 	size_t len = 0;
 	int r;
 
-	if ((r = sshbuf_get_string_direct(m, &buf, &len)) != 0
+	if ((r = sshbuf_get_string_direct(m, &buf, &len)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
-	debug3("rexec_recv_rng_seed: seeding rng with %u bytes", len);
+	debug3("rexec_recv_rng_seed: seeding rng with %lu bytes",
+	    (unsigned long)len);
 	RAND_add(buf, len, len);
 }
 #endif /* OPENSSL_PRNG_ONLY */
@@ -247,7 +249,10 @@ seed_rng(void)
 
 #else /* WITH_OPENSSL */
 
-/* Acutal initialisation is handled in arc4random() */
+#include <stdlib.h>
+#include <string.h>
+
+/* Actual initialisation is handled in arc4random() */
 void
 seed_rng(void)
 {

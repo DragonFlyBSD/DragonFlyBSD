@@ -1,4 +1,4 @@
-/* $OpenBSD: hostfile.c,v 1.73 2018/07/16 03:09:13 djm Exp $ */
+/* $OpenBSD: hostfile.c,v 1.79 2020/03/06 18:25:12 markus Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -49,7 +49,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 #include <unistd.h>
 
 #include "xmalloc.h"
@@ -163,13 +162,12 @@ int
 hostfile_read_key(char **cpp, u_int *bitsp, struct sshkey *ret)
 {
 	char *cp;
-	int r;
 
 	/* Skip leading whitespace. */
 	for (cp = *cpp; *cp == ' ' || *cp == '\t'; cp++)
 		;
 
-	if ((r = sshkey_read(ret, &cp)) != 0)
+	if (sshkey_read(ret, &cp) != 0)
 		return 0;
 
 	/* Skip trailing whitespace. */
@@ -300,8 +298,7 @@ free_hostkeys(struct hostkeys *hostkeys)
 		explicit_bzero(hostkeys->entries + i, sizeof(*hostkeys->entries));
 	}
 	free(hostkeys->entries);
-	explicit_bzero(hostkeys, sizeof(*hostkeys));
-	free(hostkeys);
+	freezero(hostkeys, sizeof(*hostkeys));
 }
 
 static int
@@ -315,7 +312,7 @@ check_key_not_revoked(struct hostkeys *hostkeys, struct sshkey *k)
 			continue;
 		if (sshkey_equal_public(k, hostkeys->entries[i].key))
 			return -1;
-		if (is_cert &&
+		if (is_cert && k != NULL &&
 		    sshkey_equal_public(k->cert->signature_key,
 		    hostkeys->entries[i].key))
 			return -1;
@@ -545,8 +542,8 @@ hostfile_replace_entries(const char *filename, const char *host, const char *ip,
 	/*
 	 * Prepare temporary file for in-place deletion.
 	 */
-	if ((r = asprintf(&temp, "%s.XXXXXXXXXXX", filename)) < 0 ||
-	    (r = asprintf(&back, "%s.old", filename)) < 0) {
+	if ((r = asprintf(&temp, "%s.XXXXXXXXXXX", filename)) == -1 ||
+	    (r = asprintf(&back, "%s.old", filename)) == -1) {
 		r = SSH_ERR_ALLOC_FAIL;
 		goto fail;
 	}
@@ -568,6 +565,7 @@ hostfile_replace_entries(const char *filename, const char *host, const char *ip,
 	/* Remove all entries for the specified host from the file */
 	if ((r = hostkeys_foreach(filename, host_delete, &ctx, host, ip,
 	    HKF_WANT_PARSE_KEY)) != 0) {
+		oerrno = errno;
 		error("%s: hostkeys_foreach failed: %s", __func__, ssh_err(r));
 		goto fail;
 	}

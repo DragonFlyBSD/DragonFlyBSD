@@ -1,4 +1,4 @@
-/* $OpenBSD: misc.h,v 1.79 2019/01/23 21:50:56 dtucker Exp $ */
+/* $OpenBSD: misc.h,v 1.84 2020/01/24 23:54:40 djm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -44,6 +44,7 @@ struct ForwardOptions {
 /* misc.c */
 
 char	*chop(char *);
+void	skip_space(char **);
 char	*strdelim(char **);
 char	*strdelimw(char **);
 int	 set_nonblock(int);
@@ -68,6 +69,8 @@ long	 convtime(const char *);
 char	*tilde_expand_filename(const char *, uid_t);
 char	*percent_expand(const char *, ...) __attribute__((__sentinel__));
 char	*tohex(const void *, size_t);
+void	 xextendf(char **s, const char *sep, const char *fmt, ...)
+    __attribute__((__format__ (printf, 3, 4))) __attribute__((__nonnull__ (3)));
 void	 sanitise_stdfd(void);
 void	 ms_subtract_diff(struct timeval *, int *);
 void	 ms_to_timeval(struct timeval *, int);
@@ -165,6 +168,11 @@ int	 safe_path(const char *, struct stat *, const char *, uid_t,
 int	 safe_path_fd(int, const char *, struct passwd *,
 	     char *err, size_t errlen);
 
+/* authorized_key-style options parsing helpers */
+int	opt_flag(const char *opt, int allow_negate, const char **optsp);
+char	*opt_dequote(const char **sp, const char **errstrp);
+int	opt_match(const char **opts, const char *term);
+
 /* readpass.c */
 
 #define RP_ECHO			0x0001
@@ -172,11 +180,18 @@ int	 safe_path_fd(int, const char *, struct passwd *,
 #define RP_ALLOW_EOF		0x0004
 #define RP_USE_ASKPASS		0x0008
 
+struct notifier_ctx;
+
 char	*read_passphrase(const char *, int);
 int	 ask_permission(const char *, ...) __attribute__((format(printf, 1, 2)));
+struct notifier_ctx *notify_start(int, const char *, ...)
+	__attribute__((format(printf, 2, 3)));
+void	notify_complete(struct notifier_ctx *);
 
 #define MINIMUM(a, b)	(((a) < (b)) ? (a) : (b))
 #define MAXIMUM(a, b)	(((a) > (b)) ? (a) : (b))
 #define ROUNDUP(x, y)   ((((x)+((y)-1))/(y))*(y))
 
+typedef void (*sshsig_t)(int);
+sshsig_t ssh_signal(int, sshsig_t);
 #endif /* _MISC_H */
