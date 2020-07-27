@@ -208,6 +208,13 @@ waitqueue_active(wait_queue_head_t *q)
 		.func = autoremove_wake_function,		\
 	}
 
+#define DEFINE_WAIT_FUNC(name, _function)			\
+	wait_queue_t name = {					\
+		.private = current,				\
+		.task_list = LIST_HEAD_INIT((name).task_list),	\
+		.func = _function,				\
+	}
+
 static inline void
 __add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
 {

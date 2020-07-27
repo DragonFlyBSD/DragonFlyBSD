@@ -45,6 +45,14 @@
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 
+static void intel_fbdev_invalidate(struct intel_fbdev *ifbdev)
+{
+	struct drm_i915_gem_object *obj = ifbdev->fb->obj;
+	unsigned int origin = ifbdev->vma->fence ? ORIGIN_GTT : ORIGIN_CPU;
+
+	intel_fb_obj_invalidate(obj, origin);
+}
+
 static int intel_fbdev_set_par(struct fb_info *info)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -53,12 +61,8 @@ static int intel_fbdev_set_par(struct fb_info *info)
 	int ret;
 
 	ret = drm_fb_helper_set_par(info);
-
-	if (ret == 0) {
-		mutex_lock(&fb_helper->dev->struct_mutex);
-		intel_fb_obj_invalidate(ifbdev->fb->obj, ORIGIN_GTT);
-		mutex_unlock(&fb_helper->dev->struct_mutex);
-	}
+	if (ret == 0)
+		intel_fbdev_invalidate(ifbdev);
 
 	return ret;
 }
@@ -71,12 +75,8 @@ static int intel_fbdev_blank(int blank, struct fb_info *info)
 	int ret;
 
 	ret = drm_fb_helper_blank(blank, info);
-
-	if (ret == 0) {
-		mutex_lock(&fb_helper->dev->struct_mutex);
-		intel_fb_obj_invalidate(ifbdev->fb->obj, ORIGIN_GTT);
-		mutex_unlock(&fb_helper->dev->struct_mutex);
-	}
+	if (ret == 0)
+		intel_fbdev_invalidate(ifbdev);
 
 	return ret;
 }
@@ -88,15 +88,11 @@ static int intel_fbdev_pan_display(struct fb_var_screeninfo *var,
 	struct drm_fb_helper *fb_helper = info->par;
 	struct intel_fbdev *ifbdev =
 		container_of(fb_helper, struct intel_fbdev, helper);
-
 	int ret;
-	ret = drm_fb_helper_pan_display(var, info);
 
-	if (ret == 0) {
-		mutex_lock(&fb_helper->dev->struct_mutex);
-		intel_fb_obj_invalidate(ifbdev->fb->obj, ORIGIN_GTT);
-		mutex_unlock(&fb_helper->dev->struct_mutex);
-	}
+	ret = drm_fb_helper_pan_display(var, info);
+	if (ret == 0)
+		intel_fbdev_invalidate(ifbdev);
 
 	return ret;
 }
@@ -105,8 +101,8 @@ static int intel_fbdev_pan_display(struct fb_var_screeninfo *var,
 static struct fb_ops intelfb_ops = {
 #if 0
 	.owner = THIS_MODULE,
-	.fb_check_var = drm_fb_helper_check_var,
 #endif
+	DRM_FB_HELPER_DEFAULT_OPS,
 	.fb_set_par = intel_fbdev_set_par,
 #if 0
 	.fb_fillrect = drm_fb_helper_cfb_fillrect,
@@ -115,13 +111,6 @@ static struct fb_ops intelfb_ops = {
 	.fb_pan_display = intel_fbdev_pan_display,
 #endif
 	.fb_blank = intel_fbdev_blank,
-#if 0
-	.fb_setcmap = drm_fb_helper_setcmap,
-#endif
-	.fb_debug_enter = drm_fb_helper_debug_enter,
-#if 0
-	.fb_debug_leave = drm_fb_helper_debug_leave,
-#endif
 };
 
 static int intelfb_alloc(struct drm_fb_helper *helper,
@@ -134,7 +123,7 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	struct drm_mode_fb_cmd2 mode_cmd = {};
-	struct drm_i915_gem_object *obj = NULL;
+	struct drm_i915_gem_object *obj;
 	int size, ret;
 
 	/* we don't do packed 24bpp */
@@ -149,39 +138,36 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 	mode_cmd.pixel_format = drm_mode_legacy_fb_format(sizes->surface_bpp,
 							  sizes->surface_depth);
 
-	mutex_lock(&dev->struct_mutex);
-
 	size = mode_cmd.pitches[0] * mode_cmd.height;
 	size = PAGE_ALIGN(size);
 
 	/* If the FB is too big, just don't use it since fbdev is not very
 	 * important and we should probably use that space with FBC or other
 	 * features. */
+	obj = NULL;
 	if (size * 2 < ggtt->stolen_usable_size)
-		obj = i915_gem_object_create_stolen(dev, size);
+		obj = i915_gem_object_create_stolen(dev_priv, size);
 	if (obj == NULL)
-		obj = i915_gem_object_create(dev, size);
+		obj = i915_gem_object_create(dev_priv, size);
 	if (IS_ERR(obj)) {
 		DRM_ERROR("failed to allocate framebuffer\n");
 		ret = PTR_ERR(obj);
-		goto out;
+		goto err;
 	}
 
-	fb = __intel_framebuffer_create(dev, &mode_cmd, obj);
+	fb = intel_framebuffer_create(obj, &mode_cmd);
 	if (IS_ERR(fb)) {
-		i915_gem_object_put(obj);
 		ret = PTR_ERR(fb);
-		goto out;
+		goto err_obj;
 	}
-
-	mutex_unlock(&dev->struct_mutex);
 
 	ifbdev->fb = to_intel_framebuffer(fb);
 
 	return 0;
 
-out:
-	mutex_unlock(&dev->struct_mutex);
+err_obj:
+	i915_gem_object_put(obj);
+err:
 	return ret;
 }
 
@@ -260,17 +246,14 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	info->paddr = ggtt->mappable_base + vma->node.start;
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
 	info->fbops = intelfb_ops;
-#endif
 
-#if 0
+#else
 	strcpy(info->fix.id, "inteldrmfb");
 
 	info->flags = FBINFO_DEFAULT | FBINFO_CAN_FORCE_OUTPUT;
 	info->fbops = &intelfb_ops;
-#endif
 
 	/* setup aperture base/size for vesafb takeover */
-#ifndef __DragonFly__
 	info->apertures->ranges[0].base = dev->mode_config.fb_base;
 	info->apertures->ranges[0].size = ggtt->mappable_end;
 
@@ -282,7 +265,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	if (IS_ERR(vaddr)) {
 		DRM_ERROR("Failed to remap framebuffer into virtual memory\n");
 		ret = PTR_ERR(vaddr);
-		goto out_destroy_fbi;
+		goto out_unpin;
 	}
 #ifdef __DragonFly__
 	info->vaddr = (vm_offset_t)vaddr;
@@ -293,7 +276,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	/* This driver doesn't need a VT switch to restore the mode on resume */
 	info->skip_vt_switch = true;
 
-	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
+	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->format->depth);
 	drm_fb_helper_fill_var(info, &ifbdev->helper, sizes->fb_width, sizes->fb_height);
 
 	/* If the object is shmemfs backed, it will have given us zeroed pages.
@@ -302,9 +285,9 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	 */
 	if (intel_fb->obj->stolen && !prealloc)
 		memset_io(info->screen_base, 0, info->screen_size);
+#endif
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
-#endif
 
 	DRM_DEBUG_KMS("allocated %dx%d fb: 0x%08x\n",
 		      fb->width, fb->height, i915_ggtt_offset(vma));
@@ -314,8 +297,6 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	vga_switcheroo_client_fb_set(pdev, info);
 	return 0;
 
-out_destroy_fbi:
-	drm_fb_helper_release_fbi(helper);
 out_unpin:
 	intel_unpin_fb_vma(vma);
 out_unlock:
@@ -403,7 +384,7 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 		return false;
 
 	memcpy(save_enabled, enabled, count);
-	mask = BIT(count) - 1;
+	mask = GENMASK(count - 1, 0);
 	conn_configured = 0;
 retry:
 	conn_seq = conn_configured;
@@ -480,7 +461,7 @@ retry:
 			      connector->name);
 
 		/* go for command line mode first */
-		modes[i] = drm_pick_cmdline_mode(fb_conn, width, height);
+		modes[i] = drm_pick_cmdline_mode(fb_conn);
 
 		/* try for preferred next */
 		if (!modes[i]) {
@@ -574,17 +555,17 @@ static void intel_fbdev_destroy(struct intel_fbdev *ifbdev)
 	 */
 
 	drm_fb_helper_unregister_fbi(&ifbdev->helper);
-	drm_fb_helper_release_fbi(&ifbdev->helper);
 
 	drm_fb_helper_fini(&ifbdev->helper);
 
-	if (ifbdev->fb) {
+	if (ifbdev->vma) {
 		mutex_lock(&ifbdev->helper.dev->struct_mutex);
 		intel_unpin_fb_vma(ifbdev->vma);
 		mutex_unlock(&ifbdev->helper.dev->struct_mutex);
-
-		drm_framebuffer_remove(&ifbdev->fb->base);
 	}
+
+	if (ifbdev->fb)
+		drm_framebuffer_remove(&ifbdev->fb->base);
 
 	kfree(ifbdev);
 }
@@ -652,7 +633,7 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 		 * rather than the current pipe's, since they differ.
 		 */
 		cur_size = intel_crtc->config->base.adjusted_mode.crtc_hdisplay;
-		cur_size = cur_size * fb->base.bits_per_pixel / 8;
+		cur_size = cur_size * fb->base.format->cpp[0];
 		if (fb->base.pitches[0] < cur_size) {
 			DRM_DEBUG_KMS("fb not wide enough for plane %c (%d vs %d)\n",
 				      pipe_name(intel_crtc->pipe),
@@ -662,15 +643,13 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 		}
 
 		cur_size = intel_crtc->config->base.adjusted_mode.crtc_vdisplay;
-		cur_size = intel_fb_align_height(dev, cur_size,
-						 fb->base.pixel_format,
-						 fb->base.modifier);
+		cur_size = intel_fb_align_height(&fb->base, 0, cur_size);
 		cur_size *= fb->base.pitches[0];
 		DRM_DEBUG_KMS("pipe %c area: %dx%d, bpp: %d, size: %d\n",
 			      pipe_name(intel_crtc->pipe),
 			      intel_crtc->config->base.adjusted_mode.crtc_hdisplay,
 			      intel_crtc->config->base.adjusted_mode.crtc_vdisplay,
-			      fb->base.bits_per_pixel,
+			      fb->base.format->cpp[0] * 8,
 			      cur_size);
 
 		if (cur_size > max_size) {
@@ -691,7 +670,7 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 		goto out;
 	}
 
-	ifbdev->preferred_bpp = fb->base.bits_per_pixel;
+	ifbdev->preferred_bpp = fb->base.format->cpp[0] * 8;
 	ifbdev->fb = fb;
 
 	drm_framebuffer_reference(&ifbdev->fb->base);
@@ -744,8 +723,7 @@ int intel_fbdev_init(struct drm_device *dev)
 	if (!intel_fbdev_init_bios(dev, ifbdev))
 		ifbdev->preferred_bpp = 32;
 
-	ret = drm_fb_helper_init(dev, &ifbdev->helper,
-				 INTEL_INFO(dev_priv)->num_pipes, 4);
+	ret = drm_fb_helper_init(dev, &ifbdev->helper, 4);
 	if (ret) {
 		kfree(ifbdev);
 		return ret;
@@ -798,9 +776,7 @@ void intel_fbdev_fini(struct drm_device *dev)
 		return;
 
 	cancel_work_sync(&dev_priv->fbdev_suspend_work);
-#if 0
 	if (!current_is_async())
-#endif
 		intel_fbdev_sync(ifbdev);
 
 	intel_fbdev_destroy(ifbdev);
@@ -814,7 +790,7 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
 	struct intel_fbdev *ifbdev = dev_priv->fbdev;
 	struct fb_info *info;
 
-	if (!ifbdev || !ifbdev->fb)
+	if (!ifbdev || !ifbdev->vma)
 		return;
 
 	info = ifbdev->helper.fbdev;
@@ -862,7 +838,7 @@ void intel_fbdev_output_poll_changed(struct drm_device *dev)
 {
 	struct intel_fbdev *ifbdev = to_i915(dev)->fbdev;
 
-	if (ifbdev && ifbdev->fb)
+	if (ifbdev && ifbdev->vma)
 		drm_fb_helper_hotplug_event(&ifbdev->helper);
 }
 
@@ -874,7 +850,7 @@ void intel_fbdev_restore_mode(struct drm_device *dev)
 		return;
 
 	intel_fbdev_sync(ifbdev);
-	if (!ifbdev->fb)
+	if (!ifbdev->vma)
 		return;
 
 #ifdef __DragonFly__
@@ -885,11 +861,6 @@ void intel_fbdev_restore_mode(struct drm_device *dev)
 	}
 #endif
 
-	if (drm_fb_helper_restore_fbdev_mode_unlocked(&ifbdev->helper)) {
-		DRM_DEBUG("failed to restore crtc mode\n");
-	} else {
-		mutex_lock(&dev->struct_mutex);
-		intel_fb_obj_invalidate(ifbdev->fb->obj, ORIGIN_GTT);
-		mutex_unlock(&dev->struct_mutex);
-	}
+	if (drm_fb_helper_restore_fbdev_mode_unlocked(&ifbdev->helper) == 0)
+		intel_fbdev_invalidate(ifbdev);
 }

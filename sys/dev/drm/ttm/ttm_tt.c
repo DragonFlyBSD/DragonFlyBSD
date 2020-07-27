@@ -38,11 +38,15 @@
 #include <linux/swap.h>
 #include <linux/slab.h>
 #include <linux/export.h>
+#include <drm/drm_cache.h>
 #include <drm/drm_mem_util.h>
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <drm/ttm/ttm_page_alloc.h>
+#ifdef CONFIG_X86
+#include <asm/set_memory.h>
+#endif
 
 /**
  * Allocates storage for pointers to the pages that back the ttm.
@@ -84,9 +88,9 @@ static inline int ttm_tt_set_page_caching(struct page *p,
 	if (c_new == tt_wc)
 		pmap_page_set_memattr((struct vm_page *)p, VM_MEMATTR_WRITE_COMBINING);
 	else if (c_new == tt_uncached)
-		pmap_page_set_memattr((struct vm_page *)p, VM_MEMATTR_UNCACHEABLE);
+		ret = set_pages_uc(p, 1);
 
-	return (0);
+	return ret;
 }
 #else /* CONFIG_X86 */
 static inline int ttm_tt_set_page_caching(struct page *p,
@@ -284,22 +288,24 @@ EXPORT_SYMBOL(ttm_tt_bind);
 
 int ttm_tt_swapin(struct ttm_tt *ttm)
 {
-	vm_object_t obj;
+	vm_object_t swap_storage;
 	struct page *from_page;
 	struct page *to_page;
 	int i;
 	int ret = -ENOMEM;
 
-	obj = ttm->swap_storage;
+	swap_storage = ttm->swap_storage;
+	BUG_ON(swap_storage == NULL);
 
-	VM_OBJECT_LOCK(obj);
-	vm_object_pip_add(obj, 1);
+	VM_OBJECT_LOCK(swap_storage);
+	vm_object_pip_add(swap_storage, 1);
 	for (i = 0; i < ttm->num_pages; ++i) {
-		from_page = (struct page *)vm_page_grab(obj, i, VM_ALLOC_NORMAL |
+		from_page = (struct page *)vm_page_grab(swap_storage, i, VM_ALLOC_NORMAL |
 						 VM_ALLOC_RETRY);
 		if (((struct vm_page *)from_page)->valid != VM_PAGE_BITS_ALL) {
-			if (vm_pager_has_page(obj, i)) {
-				if (vm_pager_get_page(obj, (struct vm_page **)&from_page, 1) != VM_PAGER_OK) {
+			if (vm_pager_has_page(swap_storage, i)) {
+				if (vm_pager_get_page(swap_storage,
+				    (struct vm_page **)&from_page, 1) != VM_PAGER_OK) {
 					vm_page_free((struct vm_page *)from_page);
 					ret = -EIO;
 					goto out_err;
@@ -318,18 +324,19 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 			       VM_PAGE_TO_PHYS((struct vm_page *)to_page));
 		vm_page_wakeup((struct vm_page *)from_page);
 	}
-	vm_object_pip_wakeup(obj);
-	VM_OBJECT_UNLOCK(obj);
+	vm_object_pip_wakeup(swap_storage);
+	VM_OBJECT_UNLOCK(swap_storage);
 
 	if (!(ttm->page_flags & TTM_PAGE_FLAG_PERSISTENT_SWAP))
-		vm_object_deallocate(obj);
+		vm_object_deallocate(swap_storage);
 	ttm->swap_storage = NULL;
 	ttm->page_flags &= ~TTM_PAGE_FLAG_SWAPPED;
 
 	return 0;
 out_err:
-	vm_object_pip_wakeup(obj);
-	VM_OBJECT_UNLOCK(obj);
+	vm_object_pip_wakeup(swap_storage);
+	VM_OBJECT_UNLOCK(swap_storage);
+
 	return ret;
 }
 

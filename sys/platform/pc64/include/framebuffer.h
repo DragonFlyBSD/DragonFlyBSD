@@ -43,6 +43,8 @@ struct fb_ops {
 	int (*fb_pan_display)(struct fb_var_screeninfo *var, struct fb_info *info);
 	int (*fb_debug_enter)(struct fb_info *);
 	int (*fb_debug_leave)(struct fb_info *info);
+	int (*fb_ioctl)(struct fb_info *info, unsigned int cmd,
+			unsigned long arg);
 };
 
 struct fb_info {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 François Tigeot
+ * Copyright (c) 2016-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,19 @@ gpiod_put(struct gpio_desc *desc)
 
 static inline void
 gpiod_set_value_cansleep(struct gpio_desc *desc, int value)
+{
+	kprintf("Stub: %s\n", __FUNCTION__);
+}
+
+static inline struct gpio_desc *
+devm_gpiod_get_index(struct device *dev, const char *con_id,
+		     unsigned int idx, enum gpiod_flags flags)
+{
+	return ERR_PTR(-ENOSYS);
+}
+
+static inline void
+gpiod_set_value(struct gpio_desc *desc, int value)
 {
 	kprintf("Stub: %s\n", __FUNCTION__);
 }

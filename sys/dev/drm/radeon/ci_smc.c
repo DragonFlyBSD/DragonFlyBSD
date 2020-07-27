@@ -23,7 +23,7 @@
  */
 
 #include <linux/firmware.h>
-#include <drm/drmP.h>
+#include "drmP.h"
 #include "radeon.h"
 #include "cikd.h"
 #include "ppsmc.h"
@@ -48,6 +48,7 @@ int ci_copy_bytes_to_smc(struct radeon_device *rdev,
 			 u32 smc_start_address,
 			 const u8 *src, u32 byte_count, u32 limit)
 {
+	unsigned long flags;
 	u32 data, original_data;
 	u32 addr;
 	u32 extra_shift;
@@ -60,7 +61,7 @@ int ci_copy_bytes_to_smc(struct radeon_device *rdev,
 
 	addr = smc_start_address;
 
-	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->smc_idx_lock, flags);
 	while (byte_count >= 4) {
 		/* SMC address space is BE */
 		data = (src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3];
@@ -105,7 +106,7 @@ int ci_copy_bytes_to_smc(struct radeon_device *rdev,
 	}
 
 done:
-	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->smc_idx_lock, flags);
 
 	return ret;
 }
@@ -205,6 +206,7 @@ PPSMC_Result ci_wait_for_smc_inactive(struct radeon_device *rdev)
 
 int ci_load_smc_ucode(struct radeon_device *rdev, u32 limit)
 {
+	unsigned long flags;
 	u32 ucode_start_address;
 	u32 ucode_size;
 	const u8 *src;
@@ -222,7 +224,7 @@ int ci_load_smc_ucode(struct radeon_device *rdev, u32 limit)
 		ucode_start_address = le32_to_cpu(hdr->ucode_start_addr);
 		ucode_size = le32_to_cpu(hdr->header.ucode_size_bytes);
 		src = (const u8 *)
-			((const char *)rdev->smc_fw->data + le32_to_cpu(hdr->header.ucode_array_offset_bytes));
+			(rdev->smc_fw->data + le32_to_cpu(hdr->header.ucode_array_offset_bytes));
 	} else {
 		switch (rdev->family) {
 		case CHIP_BONAIRE:
@@ -244,7 +246,7 @@ int ci_load_smc_ucode(struct radeon_device *rdev, u32 limit)
 	if (ucode_size & 3)
 		return -EINVAL;
 
-	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->smc_idx_lock, flags);
 	WREG32(SMC_IND_INDEX_0, ucode_start_address);
 	WREG32_P(SMC_IND_ACCESS_CNTL, AUTO_INCREMENT_IND_0, ~AUTO_INCREMENT_IND_0);
 	while (ucode_size >= 4) {
@@ -257,7 +259,7 @@ int ci_load_smc_ucode(struct radeon_device *rdev, u32 limit)
 		ucode_size -= 4;
 	}
 	WREG32_P(SMC_IND_ACCESS_CNTL, 0, ~AUTO_INCREMENT_IND_0);
-	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->smc_idx_lock, flags);
 
 	return 0;
 }
@@ -265,13 +267,14 @@ int ci_load_smc_ucode(struct radeon_device *rdev, u32 limit)
 int ci_read_smc_sram_dword(struct radeon_device *rdev,
 			   u32 smc_address, u32 *value, u32 limit)
 {
+	unsigned long flags;
 	int ret;
 
-	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->smc_idx_lock, flags);
 	ret = ci_set_smc_sram_address(rdev, smc_address, limit);
 	if (ret == 0)
 		*value = RREG32(SMC_IND_DATA_0);
-	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->smc_idx_lock, flags);
 
 	return ret;
 }
@@ -279,13 +282,14 @@ int ci_read_smc_sram_dword(struct radeon_device *rdev,
 int ci_write_smc_sram_dword(struct radeon_device *rdev,
 			    u32 smc_address, u32 value, u32 limit)
 {
+	unsigned long flags;
 	int ret;
 
-	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->smc_idx_lock, flags);
 	ret = ci_set_smc_sram_address(rdev, smc_address, limit);
 	if (ret == 0)
 		WREG32(SMC_IND_DATA_0, value);
-	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->smc_idx_lock, flags);
 
 	return ret;
 }

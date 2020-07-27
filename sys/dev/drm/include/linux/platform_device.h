@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,5 +29,8 @@
 
 #include <linux/device.h>
 #include <linux/mod_devicetable.h>
+
+struct platform_device {
+};
 
 #endif	/* _LINUX_PLATFORM_DEVICE_H_ */

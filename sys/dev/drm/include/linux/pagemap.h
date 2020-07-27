@@ -91,4 +91,17 @@ fault_in_pages_readable(const char __user *uaddr, int size)
 	return ret;
 }
 
+static inline gfp_t
+mapping_gfp_mask(struct vm_object * mapping)
+{
+	/* XXX Linux mappings have an associated gfp_mask attribute */
+	return GFP_KERNEL;
+}
+
+static inline gfp_t
+mapping_gfp_constraint(struct vm_object *mapping, gfp_t gfp_mask)
+{
+	return (mapping_gfp_mask(mapping) & gfp_mask);
+}
+
 #endif	/* _LINUX_PAGEMAP_H_ */

@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011 The FreeBSD Foundation
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Portions of this software were developed by Konstantin Belousov
@@ -32,11 +32,16 @@
 #ifndef _LINUX_SHMEM_FS_H_
 #define _LINUX_SHMEM_FS_H_
 
+#include <linux/file.h>
 #include <linux/swap.h>
+#include <linux/mempolicy.h>
 #include <linux/pagemap.h>
 
 #define	VM_OBJECT_LOCK_ASSERT_OWNED(object)
 
 struct page * shmem_read_mapping_page(vm_object_t, vm_pindex_t);
+
+struct page *shmem_read_mapping_page_gfp(struct vm_object *mapping,
+    pgoff_t index, gfp_t gfp_mask);
 
 #endif	/* _LINUX_SHMEM_FS_H_ */

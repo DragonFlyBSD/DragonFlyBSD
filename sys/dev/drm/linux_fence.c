@@ -255,3 +255,9 @@ dma_fence_remove_callback(struct dma_fence *fence, struct dma_fence_cb *cb)
 
 	return ret;
 }
+
+void
+dma_fence_free(struct dma_fence *fence)
+{
+	kfree(fence);
+}

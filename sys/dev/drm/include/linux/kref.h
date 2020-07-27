@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013-2016 François Tigeot
+ * Copyright (c) 2013-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,11 +29,11 @@
 #ifndef _LINUX_KREF_H_
 #define _LINUX_KREF_H_
 
-#include <sys/refcount.h>
+#include <linux/spinlock.h>
 
-#include <linux/bug.h>
-#include <linux/atomic.h>
 #include <linux/mutex.h>
+
+#include <sys/refcount.h>
 
 struct kref {
 	atomic_t refcount;
@@ -44,6 +44,12 @@ kref_init(struct kref *kref)
 {
 
 	refcount_init(&kref->refcount.counter, 1);
+}
+
+static inline unsigned int
+kref_read(const struct kref *kref)
+{
+	return atomic_read(&kref->refcount);
 }
 
 static inline void

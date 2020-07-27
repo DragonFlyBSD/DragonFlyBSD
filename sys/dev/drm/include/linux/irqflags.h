@@ -27,6 +27,7 @@
 #ifndef _LINUX_IRQFLAGS_H_
 #define _LINUX_IRQFLAGS_H_
 
+#if 0
 /*
  * local_irq_disable/enable functions prevent interrupts to run on the
  * current CPU in critical sections of code.
@@ -34,9 +35,19 @@
  */
 #define local_irq_disable()	crit_enter()
 #define local_irq_enable()	crit_exit()
+#endif
 
-static inline void local_irq_save(unsigned long flags) {}
-static inline void local_irq_restore(unsigned long flags) {}
+static inline void
+local_irq_disable(void)
+{
+	__asm __volatile("cli": : :"memory");
+}
+
+static inline void
+local_irq_enable(void)
+{
+	__asm __volatile("sti": : :"memory");
+}
 
 static inline bool
 irqs_disabled(void)

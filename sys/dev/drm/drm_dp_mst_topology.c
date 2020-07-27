@@ -329,6 +329,13 @@ static bool drm_dp_sideband_msg_build(struct drm_dp_sideband_msg_rx *msg,
 			return false;
 		}
 
+		/*
+		 * ignore out-of-order messages or messages that are part of a
+		 * failed transaction
+		 */
+		if (!recv_hdr.somt && !msg->have_somt)
+			return false;
+
 		/* get length contained in this portion */
 		msg->curchunk_len = recv_hdr.msg_len;
 		msg->curchunk_hdrlen = hdrlen;
@@ -1085,7 +1092,7 @@ static void build_mst_prop_path(const struct drm_dp_mst_branch *mstb,
 }
 
 static void drm_dp_add_port(struct drm_dp_mst_branch *mstb,
-			    struct device *dev,
+			    struct drm_device *dev,
 			    struct drm_dp_link_addr_reply_port *port_msg)
 {
 	struct drm_dp_mst_port *port;
@@ -1103,7 +1110,7 @@ static void drm_dp_add_port(struct drm_dp_mst_branch *mstb,
 		port->port_num = port_msg->port_number;
 		port->mgr = mstb->mgr;
 		port->aux.name = "DPMST";
-		port->aux.dev = dev;
+		port->aux.dev = dev->dev;
 		created = true;
 	} else {
 		old_pdt = port->pdt;
@@ -2041,10 +2048,6 @@ int drm_dp_mst_topology_mgr_set_mst(struct drm_dp_mst_topology_mgr *mgr, bool ms
 			goto out_unlock;
 		}
 
-		mgr->total_pbn = 2560;
-		mgr->total_slots = DIV_ROUND_UP(mgr->total_pbn, mgr->pbn_div);
-		mgr->avail_slots = mgr->total_slots;
-
 		/* add initial branch device at LCT 1 */
 		mstb = drm_dp_add_mst_branch_device(1, NULL);
 		if (mstb == NULL) {
@@ -2167,7 +2170,7 @@ out_unlock:
 }
 EXPORT_SYMBOL(drm_dp_mst_topology_mgr_resume);
 
-static void drm_dp_get_one_sb_msg(struct drm_dp_mst_topology_mgr *mgr, bool up)
+static bool drm_dp_get_one_sb_msg(struct drm_dp_mst_topology_mgr *mgr, bool up)
 {
 	int len;
 	u8 replyblock[32];
@@ -2182,12 +2185,12 @@ static void drm_dp_get_one_sb_msg(struct drm_dp_mst_topology_mgr *mgr, bool up)
 			       replyblock, len);
 	if (ret != len) {
 		DRM_DEBUG_KMS("failed to read DPCD down rep %d %d\n", len, ret);
-		return;
+		return false;
 	}
 	ret = drm_dp_sideband_msg_build(msg, replyblock, len, true);
 	if (!ret) {
 		DRM_DEBUG_KMS("sideband msg build failed %d\n", replyblock[0]);
-		return;
+		return false;
 	}
 	replylen = msg->curchunk_len + msg->curchunk_hdrlen;
 
@@ -2199,21 +2202,32 @@ static void drm_dp_get_one_sb_msg(struct drm_dp_mst_topology_mgr *mgr, bool up)
 		ret = drm_dp_dpcd_read(mgr->aux, basereg + curreply,
 				    replyblock, len);
 		if (ret != len) {
-			DRM_DEBUG_KMS("failed to read a chunk\n");
+			DRM_DEBUG_KMS("failed to read a chunk (len %d, ret %d)\n",
+				      len, ret);
+			return false;
 		}
+
 		ret = drm_dp_sideband_msg_build(msg, replyblock, len, false);
-		if (ret == false)
+		if (!ret) {
 			DRM_DEBUG_KMS("failed to build sideband msg\n");
+			return false;
+		}
+
 		curreply += len;
 		replylen -= len;
 	}
+	return true;
 }
 
 static int drm_dp_mst_handle_down_rep(struct drm_dp_mst_topology_mgr *mgr)
 {
 	int ret = 0;
 
-	drm_dp_get_one_sb_msg(mgr, false);
+	if (!drm_dp_get_one_sb_msg(mgr, false)) {
+		memset(&mgr->down_rep_recv, 0,
+		       sizeof(struct drm_dp_sideband_msg_rx));
+		return 0;
+	}
 
 	if (mgr->down_rep_recv.have_eomt) {
 		struct drm_dp_sideband_msg_tx *txmsg;
@@ -2269,7 +2283,12 @@ static int drm_dp_mst_handle_down_rep(struct drm_dp_mst_topology_mgr *mgr)
 static int drm_dp_mst_handle_up_req(struct drm_dp_mst_topology_mgr *mgr)
 {
 	int ret = 0;
-	drm_dp_get_one_sb_msg(mgr, true);
+
+	if (!drm_dp_get_one_sb_msg(mgr, true)) {
+		memset(&mgr->up_req_recv, 0,
+		       sizeof(struct drm_dp_sideband_msg_rx));
+		return 0;
+	}
 
 	if (mgr->up_req_recv.have_eomt) {
 		struct drm_dp_sideband_msg_req_body msg;
@@ -2321,7 +2340,9 @@ static int drm_dp_mst_handle_up_req(struct drm_dp_mst_topology_mgr *mgr)
 			DRM_DEBUG_KMS("Got RSN: pn: %d avail_pbn %d\n", msg.u.resource_stat.port_number, msg.u.resource_stat.available_pbn);
 		}
 
-		drm_dp_put_mst_branch_device(mstb);
+		if (mstb)
+			drm_dp_put_mst_branch_device(mstb);
+
 		memset(&mgr->up_req_recv, 0, sizeof(struct drm_dp_sideband_msg_rx));
 	}
 	return ret;
@@ -2474,26 +2495,25 @@ int drm_dp_find_vcpi_slots(struct drm_dp_mst_topology_mgr *mgr,
 
 	num_slots = DIV_ROUND_UP(pbn, mgr->pbn_div);
 
-	if (num_slots > mgr->avail_slots)
+	/* max. time slots - one slot for MTP header */
+	if (num_slots > 63)
 		return -ENOSPC;
 	return num_slots;
 }
 EXPORT_SYMBOL(drm_dp_find_vcpi_slots);
 
 static int drm_dp_init_vcpi(struct drm_dp_mst_topology_mgr *mgr,
-			    struct drm_dp_vcpi *vcpi, int pbn)
+			    struct drm_dp_vcpi *vcpi, int pbn, int slots)
 {
-	int num_slots;
 	int ret;
 
-	num_slots = DIV_ROUND_UP(pbn, mgr->pbn_div);
-
-	if (num_slots > mgr->avail_slots)
+	/* max. time slots - one slot for MTP header */
+	if (slots > 63)
 		return -ENOSPC;
 
 	vcpi->pbn = pbn;
-	vcpi->aligned_pbn = num_slots * mgr->pbn_div;
-	vcpi->num_slots = num_slots;
+	vcpi->aligned_pbn = slots * mgr->pbn_div;
+	vcpi->num_slots = slots;
 
 	ret = drm_dp_mst_assign_payload_id(mgr, vcpi);
 	if (ret < 0)
@@ -2508,7 +2528,8 @@ static int drm_dp_init_vcpi(struct drm_dp_mst_topology_mgr *mgr,
  * @pbn: payload bandwidth number to request
  * @slots: returned number of slots for this PBN.
  */
-bool drm_dp_mst_allocate_vcpi(struct drm_dp_mst_topology_mgr *mgr, struct drm_dp_mst_port *port, int pbn, int *slots)
+bool drm_dp_mst_allocate_vcpi(struct drm_dp_mst_topology_mgr *mgr,
+			      struct drm_dp_mst_port *port, int pbn, int slots)
 {
 	int ret;
 
@@ -2516,22 +2537,25 @@ bool drm_dp_mst_allocate_vcpi(struct drm_dp_mst_topology_mgr *mgr, struct drm_dp
 	if (!port)
 		return false;
 
+	if (slots < 0)
+		return false;
+
 	if (port->vcpi.vcpi > 0) {
 		DRM_DEBUG_KMS("payload: vcpi %d already allocated for pbn %d - requested pbn %d\n", port->vcpi.vcpi, port->vcpi.pbn, pbn);
 		if (pbn == port->vcpi.pbn) {
-			*slots = port->vcpi.num_slots;
 			drm_dp_put_port(port);
 			return true;
 		}
 	}
 
-	ret = drm_dp_init_vcpi(mgr, &port->vcpi, pbn);
+	ret = drm_dp_init_vcpi(mgr, &port->vcpi, pbn, slots);
 	if (ret) {
-		DRM_DEBUG_KMS("failed to init vcpi %d %d %d\n", DIV_ROUND_UP(pbn, mgr->pbn_div), mgr->avail_slots, ret);
+		DRM_DEBUG_KMS("failed to init vcpi slots=%d max=63 ret=%d\n",
+				DIV_ROUND_UP(pbn, mgr->pbn_div), ret);
 		goto out;
 	}
-	DRM_DEBUG_KMS("initing vcpi for %d %d\n", pbn, port->vcpi.num_slots);
-	*slots = port->vcpi.num_slots;
+	DRM_DEBUG_KMS("initing vcpi for pbn=%d slots=%d\n",
+			pbn, port->vcpi.num_slots);
 
 	drm_dp_put_port(port);
 	return true;
@@ -2948,7 +2972,7 @@ static void drm_dp_destroy_connector_work(struct work_struct *work)
  * Return 0 for success, or negative error code on failure
  */
 int drm_dp_mst_topology_mgr_init(struct drm_dp_mst_topology_mgr *mgr,
-				 struct device *dev, struct drm_dp_aux *aux,
+				 struct drm_device *dev, struct drm_dp_aux *aux,
 				 int max_dpcd_transaction_bytes,
 				 int max_payloads, int conn_base_id)
 {

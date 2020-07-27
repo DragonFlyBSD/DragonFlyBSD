@@ -1760,8 +1760,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 	} else {
 		err = radeon_ucode_validate(rdev->pfp_fw);
 		if (err) {
-			printk(KERN_ERR
-			       "si_cp: validation failed for firmware \"%s\"\n",
+			pr_err("si_cp: validation failed for firmware \"%s\"\n",
 			       fw_name);
 			goto out;
 		} else {
@@ -1845,9 +1844,9 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	if (si58_fw)
-		snprintf(fw_name, sizeof(fw_name), "radeonkmsfw_si58_mc.bin");
+		snprintf(fw_name, sizeof(fw_name), "radeonkmsfw_si58_mc");
 	else
-		snprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc.bin", new_chip_name);
+		snprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc", new_chip_name);
 	err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc2", chip_name);
@@ -1869,8 +1868,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 	} else {
 		err = radeon_ucode_validate(rdev->mc_fw);
 		if (err) {
-			printk(KERN_ERR
-			       "si_cp: validation failed for firmware \"%s\"\n",
+			pr_err("si_cp: validation failed for firmware \"%s\"\n",
 			       fw_name);
 			goto out;
 		} else {
@@ -1916,7 +1914,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 	if (new_fw == 0) {
 		rdev->new_fw = false;
 	} else if (new_fw < 6) {
-		printk(KERN_ERR "si_fw: mixing new and old firmware!\n");
+		pr_err("si_fw: mixing new and old firmware!\n");
 		err = -EINVAL;
 	} else {
 		rdev->new_fw = true;
@@ -1924,8 +1922,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 out:
 	if (err) {
 		if (err != -EINVAL)
-			printk(KERN_ERR
-			       "si_cp: Failed to load firmware \"%s\"\n",
+			pr_err("si_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
 		release_firmware(rdev->pfp_fw);
 		rdev->pfp_fw = NULL;
@@ -2232,23 +2229,10 @@ static u32 dce6_latency_watermark(struct dce6_wm_params *wm)
 	a.full = dfixed_const(available_bandwidth);
 	b.full = dfixed_const(wm->num_heads);
 	a.full = dfixed_div(a, b);
+	tmp = div_u64((u64) dmif_size * (u64) wm->disp_clk, mc_latency + 512);
+	tmp = min(dfixed_trunc(a), tmp);
 
-	b.full = dfixed_const(mc_latency + 512);
-	c.full = dfixed_const(wm->disp_clk);
-	b.full = dfixed_div(b, c);
-
-	c.full = dfixed_const(dmif_size);
-	b.full = dfixed_div(c, b);
-
-	tmp = min(dfixed_trunc(a), dfixed_trunc(b));
-
-	b.full = dfixed_const(1000);
-	c.full = dfixed_const(wm->disp_clk);
-	b.full = dfixed_div(c, b);
-	c.full = dfixed_const(wm->bytes_per_pixel);
-	b.full = dfixed_mul(b, c);
-
-	lb_fill_bw = min(tmp, dfixed_trunc(b));
+	lb_fill_bw = min(tmp, wm->disp_clk * wm->bytes_per_pixel / 1000);
 
 	a.full = dfixed_const(max_src_lines_per_dst_line * wm->src_width * wm->bytes_per_pixel);
 	b.full = dfixed_const(1000);
@@ -2315,7 +2299,7 @@ static void dce6_program_watermarks(struct radeon_device *rdev,
 	struct drm_display_mode *mode = &radeon_crtc->base.mode;
 	struct dce6_wm_params wm_low, wm_high;
 	u32 dram_channels;
-	u32 pixel_period;
+	u32 active_time;
 	u32 line_time = 0;
 	u32 latency_watermark_a = 0, latency_watermark_b = 0;
 	u32 priority_a_mark = 0, priority_b_mark = 0;
@@ -2325,8 +2309,11 @@ static void dce6_program_watermarks(struct radeon_device *rdev,
 	fixed20_12 a, b, c;
 
 	if (radeon_crtc->base.enabled && num_heads && mode) {
-		pixel_period = 1000000 / (u32)mode->clock;
-		line_time = min((u32)mode->crtc_htotal * pixel_period, (u32)65535);
+		active_time = (u32) div_u64((u64)mode->crtc_hdisplay * 1000000,
+					    (u32)mode->clock);
+		line_time = (u32) div_u64((u64)mode->crtc_htotal * 1000000,
+					  (u32)mode->clock);
+		line_time = min(line_time, (u32)65535);
 		priority_a_cnt = 0;
 		priority_b_cnt = 0;
 
@@ -2348,7 +2335,7 @@ static void dce6_program_watermarks(struct radeon_device *rdev,
 
 		wm_high.disp_clk = mode->clock;
 		wm_high.src_width = mode->crtc_hdisplay;
-		wm_high.active_time = mode->crtc_hdisplay * pixel_period;
+		wm_high.active_time = active_time;
 		wm_high.blank_time = line_time - wm_high.active_time;
 		wm_high.interlaced = false;
 		if (mode->flags & DRM_MODE_FLAG_INTERLACE)
@@ -2375,7 +2362,7 @@ static void dce6_program_watermarks(struct radeon_device *rdev,
 
 		wm_low.disp_clk = mode->clock;
 		wm_low.src_width = mode->crtc_hdisplay;
-		wm_low.active_time = mode->crtc_hdisplay * pixel_period;
+		wm_low.active_time = active_time;
 		wm_low.blank_time = line_time - wm_low.active_time;
 		wm_low.interlaced = false;
 		if (mode->flags & DRM_MODE_FLAG_INTERLACE)

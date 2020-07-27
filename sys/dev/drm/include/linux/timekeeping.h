@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -63,6 +63,12 @@ static inline void
 do_gettimeofday(struct timeval *tv)
 {
 	microtime(tv);
+}
+
+static inline ktime_t
+ktime_get_raw(void)
+{
+	return ktime_get_raw_ns();
 }
 
 #endif	/* _LINUX_TIMEKEEPING_H_ */

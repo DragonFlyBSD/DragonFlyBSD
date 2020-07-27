@@ -53,9 +53,9 @@ struct kmem_cache {
 	unsigned int size;
 };
 
-#define SLAB_HWCACHE_ALIGN	(1 << 0)
-#define SLAB_RECLAIM_ACCOUNT	(1 << 1)
-#define SLAB_DESTROY_BY_RCU	(1 << 2)
+#define SLAB_HWCACHE_ALIGN	0x01UL
+#define SLAB_RECLAIM_ACCOUNT	0x02UL
+#define SLAB_TYPESAFE_BY_RCU	0x04UL
 
 #define KMEM_CACHE(__struct, flags)				\
 	kmem_cache_create(#__struct, sizeof(struct __struct),	\

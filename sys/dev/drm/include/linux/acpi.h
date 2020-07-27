@@ -28,6 +28,7 @@
 #define _LINUX_ACPI_H_
 
 #include <linux/errno.h>
+#include <linux/ioport.h>
 #include <linux/device.h>
 #include <linux/list.h>
 #include <linux/mod_devicetable.h>

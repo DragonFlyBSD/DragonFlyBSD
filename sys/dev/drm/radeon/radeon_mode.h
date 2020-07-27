@@ -32,6 +32,7 @@
 
 #include <drm/drm_crtc.h>
 #include <drm/drm_edid.h>
+#include <drm/drm_encoder.h>
 #include <drm/drm_dp_helper.h>
 #include <drm/drm_dp_mst_helper.h>
 #include <drm/drm_fixed.h>
@@ -487,7 +488,6 @@ struct radeon_encoder {
 struct radeon_connector_atom_dig {
 	uint32_t igp_lane_info;
 	/* displayport */
-	struct radeon_i2c_chan *dp_i2c_bus;
 	u8 dpcd[DP_RECEIVER_CAP_SIZE];
 	u8 dp_sink_type;
 	int dp_clock;
@@ -783,8 +783,6 @@ extern void atombios_set_mst_encoder_crtc_source(struct drm_encoder *encoder,
 						 int fe);
 extern void radeon_atom_ext_encoder_setup_ddc(struct drm_encoder *encoder);
 extern struct drm_encoder *radeon_get_external_encoder(struct drm_encoder *encoder);
-extern int radeon_dp_i2c_aux_ch(device_t dev, int mode,
-				u8 write_byte, u8 *read_byte);
 void radeon_atom_copy_swap(u8 *dst, u8 *src, u8 num_bytes, bool to_le);
 
 extern void radeon_i2c_init(struct radeon_device *rdev);
@@ -796,9 +794,6 @@ extern void radeon_i2c_add(struct radeon_device *rdev,
 			   const char *name);
 extern struct radeon_i2c_chan *radeon_i2c_lookup(struct radeon_device *rdev,
 						 struct radeon_i2c_bus_rec *i2c_bus);
-extern struct radeon_i2c_chan *radeon_i2c_create_dp(struct drm_device *dev,
-						    struct radeon_i2c_bus_rec *rec,
-						    const char *name);
 extern struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 						 struct radeon_i2c_bus_rec *rec,
 						 const char *name);
@@ -814,8 +809,6 @@ extern void radeon_i2c_put_byte(struct radeon_i2c_chan *i2c,
 extern void radeon_router_select_ddc_port(struct radeon_connector *radeon_connector);
 extern void radeon_router_select_cd_port(struct radeon_connector *radeon_connector);
 extern bool radeon_ddc_probe(struct radeon_connector *radeon_connector, bool use_aux);
-
-extern struct drm_encoder *radeon_best_encoder(struct drm_connector *connector);
 
 extern bool radeon_atombios_get_ppll_ss_info(struct radeon_device *rdev,
 					     struct radeon_atom_ss *ss,

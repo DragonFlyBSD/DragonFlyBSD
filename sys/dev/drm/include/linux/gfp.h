@@ -35,9 +35,9 @@
 #include <vm/vm_page.h>
 #include <machine/bus_dma.h>
 
-#define GFP_NOWAIT	M_NOWAIT | M_CACHEALIGN
-#define GFP_ATOMIC	M_NOWAIT | M_CACHEALIGN
-#define GFP_KERNEL	M_WAITOK | M_CACHEALIGN
+#define GFP_NOWAIT	(M_NOWAIT | M_CACHEALIGN)
+#define GFP_ATOMIC	(M_NOWAIT | M_CACHEALIGN)
+#define GFP_KERNEL	(M_WAITOK | M_CACHEALIGN)
 #define GFP_TEMPORARY	GFP_KERNEL
 #define GFP_USER	GFP_KERNEL
 #define GFP_HIGHUSER	GFP_KERNEL
@@ -46,6 +46,8 @@
 #define __GFP_NORETRY	M_NULLOK
 
 #define __GFP_HIGHMEM		0u	/* No particular meaning on DragonFly */
+#define __GFP_IO		0u	/* No particular meaning on DragonFly */
+#define __GFP_RECLAIM		0u
 #define __GFP_RECLAIMABLE	0u
 #define __GFP_NOWARN		0u
 

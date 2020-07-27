@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,6 +50,13 @@ static inline void async_synchronize_full(void) {
 static inline void
 async_synchronize_cookie(async_cookie_t cookie)
 {
+}
+
+static inline bool
+current_is_async(void)
+{
+	/* Linux async functions are executed synchronously on DragonFly */
+	return false;
 }
 
 #endif	/* _LINUX_ASYNC_H_ */

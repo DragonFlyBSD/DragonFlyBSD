@@ -60,6 +60,9 @@
 #if IS_ENABLED(CONFIG_AGP)
 #include <asm/agp.h>
 #endif
+#ifdef CONFIG_X86
+#include <asm/set_memory.h>
+#endif
 
 #define NUM_PAGES_TO_ALLOC		(PAGE_SIZE/sizeof(struct page *))
 #define SMALL_ALLOCATION		16
@@ -633,7 +636,7 @@ static void ttm_page_pool_fill_locked(struct ttm_page_pool *pool,
 		} else {
 			pr_err("Failed to fill pool (%p)\n", pool);
 			/* If we have any pages left put them to the pool. */
-			TAILQ_FOREACH(p, &pool->list, pageq) {
+			TAILQ_FOREACH(p, &new_pages, pageq) {
 				++cpages;
 			}
 			TAILQ_CONCAT(&pool->list, &new_pages, pageq);

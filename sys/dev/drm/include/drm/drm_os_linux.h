@@ -1,13 +1,10 @@
 /**
- * \file drm_os_dragonfly.h
+ * \file drm_os_linux.h
  * OS abstraction macros.
  */
 
-#include <sys/param.h>
-#include <sys/endian.h>
-#include <sys/systm.h>
-#include <sys/serialize.h>
 #include <linux/interrupt.h>	/* For task queue support */
+#include <linux/sched/signal.h>
 #include <linux/delay.h>
 
 /* Handle the DRM options from kernel config. */
@@ -52,9 +49,7 @@ static inline void writeq(u64 val, void __iomem *reg)
 /** Write a word into a MMIO region */
 #define DRM_WRITE16(map, offset, val)   writew(val, ((void __iomem *)(map)->handle) + (offset))
 /** Write a dword into a MMIO region */
-#define DRM_WRITE32(map, offset, val)					\
-	*(volatile u_int32_t *)(((vm_offset_t)(map)->handle) +		\
-	    (vm_offset_t)(offset)) = htole32(val)
+#define DRM_WRITE32(map, offset, val)	writel(val, ((void __iomem *)(map)->handle) + (offset))
 
 /** Read a qword from a MMIO region - be careful using these unless you really understand them */
 #define DRM_READ64(map, offset)		readq(((void __iomem *)(map)->handle) + (offset))

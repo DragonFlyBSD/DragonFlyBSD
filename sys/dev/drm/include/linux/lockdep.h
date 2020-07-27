@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,9 @@
 #ifndef _LINUX_LOCKDEP_H_
 #define _LINUX_LOCKDEP_H_
 
+#include <linux/linkage.h>
+#include <linux/list.h>
+
 #include <sys/lock.h>
 
 static inline void
@@ -39,5 +42,8 @@ lockdep_assert_held(struct lock *l)
 
 struct lock_class_key {
 };
+
+#define lock_acquire_shared_recursive(lock, b, c, d, e)	do {} while (0)
+#define lock_release(lock, b, c)			do {} while (0)
 
 #endif	/* _LINUX_LOCKDEP_H_ */

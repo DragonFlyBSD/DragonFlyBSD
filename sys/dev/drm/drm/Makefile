@@ -27,7 +27,7 @@ SRCS	= \
 	drm_encoder.c \
 	drm_encoder_slave.c \
 	drm_fb_helper.c \
-	drm_fops.c \
+	drm_file.c \
 	drm_fourcc.c \
 	drm_framebuffer.c \
 	drm_gem.c \
@@ -54,6 +54,7 @@ SRCS	= \
 	drm_property.c \
 	drm_rect.c \
 	drm_scatter.c \
+	drm_scdc_helper.c \
 	drm_sysctl.c \
 	drm_sysfs.c \
 	drm_vm.c \
@@ -68,7 +69,6 @@ SRCS	= \
 	linux_hdmi.c \
 	linux_hrtimer.c \
 	linux_i2c.c \
-	linux_ida.c \
 	linux_interval_tree.c \
 	linux_iomapping.c \
 	linux_irq.c \

@@ -25,7 +25,6 @@
  *
  */
 
-#include <linux/acpi.h>
 #include <linux/dmi.h>
 
 #include <drm/drmP.h>
@@ -437,6 +436,7 @@ int intel_opregion_notify_adapter(struct drm_i915_private *dev_priv,
 static u32 asle_set_backlight(struct drm_i915_private *dev_priv, u32 bclp)
 {
 	struct intel_connector *connector;
+	struct drm_connector_list_iter conn_iter;
 	struct opregion_asle *asle = dev_priv->opregion.asle;
 	struct drm_device *dev = &dev_priv->drm;
 
@@ -463,8 +463,10 @@ static u32 asle_set_backlight(struct drm_i915_private *dev_priv, u32 bclp)
 	 * only one).
 	 */
 	DRM_DEBUG_KMS("updating opregion backlight %d/255\n", bclp);
-	for_each_intel_connector(dev, connector)
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	for_each_intel_connector_iter(connector, &conn_iter)
 		intel_panel_set_backlight_acpi(connector, bclp, 255);
+	drm_connector_list_iter_end(&conn_iter);
 	asle->cblv = DIV_ROUND_UP(bclp * 100, 255) | ASLE_CBLV_VALID;
 
 	drm_modeset_unlock(&dev->mode_config.connection_mutex);
@@ -708,6 +710,7 @@ static void intel_didl_outputs(struct drm_i915_private *dev_priv)
 {
 	struct intel_opregion *opregion = &dev_priv->opregion;
 	struct intel_connector *connector;
+	struct drm_connector_list_iter conn_iter;
 	int i = 0, max_outputs;
 	int display_index[16] = {};
 
@@ -721,7 +724,8 @@ static void intel_didl_outputs(struct drm_i915_private *dev_priv)
 	max_outputs = ARRAY_SIZE(opregion->acpi->didl) +
 		ARRAY_SIZE(opregion->acpi->did2);
 
-	for_each_intel_connector(&dev_priv->drm, connector) {
+	drm_connector_list_iter_begin(&dev_priv->drm, &conn_iter);
+	for_each_intel_connector_iter(connector, &conn_iter) {
 		u32 device_id, type;
 
 		device_id = acpi_display_type(connector);
@@ -736,6 +740,7 @@ static void intel_didl_outputs(struct drm_i915_private *dev_priv)
 			set_did(opregion, i, device_id);
 		i++;
 	}
+	drm_connector_list_iter_end(&conn_iter);
 
 	DRM_DEBUG_KMS("%d outputs detected\n", i);
 
@@ -752,6 +757,7 @@ static void intel_setup_cadls(struct drm_i915_private *dev_priv)
 {
 	struct intel_opregion *opregion = &dev_priv->opregion;
 	struct intel_connector *connector;
+	struct drm_connector_list_iter conn_iter;
 	int i = 0;
 
 	/*
@@ -764,11 +770,13 @@ static void intel_setup_cadls(struct drm_i915_private *dev_priv)
 	 * Note that internal panels should be at the front of the connector
 	 * list already, ensuring they're not left out.
 	 */
-	for_each_intel_connector(&dev_priv->drm, connector) {
+	drm_connector_list_iter_begin(&dev_priv->drm, &conn_iter);
+	for_each_intel_connector_iter(connector, &conn_iter) {
 		if (i >= ARRAY_SIZE(opregion->acpi->cadl))
 			break;
 		opregion->acpi->cadl[i++] = connector->acpi_device_id;
 	}
+	drm_connector_list_iter_end(&conn_iter);
 
 	/* If fewer than 8 active devices, the list must be null terminated */
 	if (i < ARRAY_SIZE(opregion->acpi->cadl))
@@ -915,7 +923,9 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 	u32 asls, mboxes;
 	char buf[sizeof(OPREGION_SIGNATURE)];
 	int err = 0;
-	char *base;
+	void *base;
+	const void *vbt;
+	u32 vbt_size;
 
 	BUILD_BUG_ON(sizeof(struct opregion_header) != 0x100);
 	BUILD_BUG_ON(sizeof(struct opregion_acpi) != 0x100);
@@ -927,7 +937,7 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 	DRM_DEBUG_DRIVER("graphic opregion physical addr: 0x%x\n", asls);
 	if (asls == 0) {
 		DRM_DEBUG_DRIVER("ACPI OpRegion not supported!\n");
-		return -ENOTSUP;
+		return -ENOTSUPP;
 	}
 
 	INIT_WORK(&opregion->asle_work, asle_work);
@@ -943,25 +953,24 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 		err = -EINVAL;
 		goto err_out;
 	}
-	opregion->header = (struct opregion_header *)base;
-
-	opregion->lid_state = (u32 *)(base + ACPI_CLID);
+	opregion->header = base;
+	opregion->lid_state = base + ACPI_CLID;
 
 	mboxes = opregion->header->mboxes;
 	if (mboxes & MBOX_ACPI) {
 		DRM_DEBUG_DRIVER("Public ACPI methods supported\n");
-		opregion->acpi = (struct opregion_acpi *)(base + OPREGION_ACPI_OFFSET);
+		opregion->acpi = base + OPREGION_ACPI_OFFSET;
 	}
 
 	if (mboxes & MBOX_SWSCI) {
 		DRM_DEBUG_DRIVER("SWSCI supported\n");
-		opregion->swsci = (struct opregion_swsci *)(base + OPREGION_SWSCI_OFFSET);
+		opregion->swsci = base + OPREGION_SWSCI_OFFSET;
 		swsci_setup(dev_priv);
 	}
 
 	if (mboxes & MBOX_ASLE) {
 		DRM_DEBUG_DRIVER("ASLE supported\n");
-		opregion->asle = (struct opregion_asle *)(base + OPREGION_ASLE_OFFSET);
+		opregion->asle = base + OPREGION_ASLE_OFFSET;
 
 		opregion->asle->ardy = ASLE_ARDY_NOT_READY;
 	}
@@ -969,44 +978,45 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 	if (mboxes & MBOX_ASLE_EXT)
 		DRM_DEBUG_DRIVER("ASLE extension supported\n");
 
-	if (!dmi_check_system(intel_no_opregion_vbt)) {
-		const void *vbt = NULL;
-		u32 vbt_size = 0;
+	if (dmi_check_system(intel_no_opregion_vbt))
+		goto out;
 
-		if (opregion->header->opregion_ver >= 2 && opregion->asle &&
-		    opregion->asle->rvda && opregion->asle->rvds) {
-			opregion->rvda = pmap_mapbios(opregion->asle->rvda,
-						  opregion->asle->rvds);
-			vbt = opregion->rvda;
-			vbt_size = opregion->asle->rvds;
-		}
-
+	if (opregion->header->opregion_ver >= 2 && opregion->asle &&
+	    opregion->asle->rvda && opregion->asle->rvds) {
+		opregion->rvda = pmap_mapbios(opregion->asle->rvda,
+					  opregion->asle->rvds);
+		vbt = opregion->rvda;
+		vbt_size = opregion->asle->rvds;
 		if (intel_bios_is_valid_vbt(vbt, vbt_size)) {
 			DRM_DEBUG_KMS("Found valid VBT in ACPI OpRegion (RVDA)\n");
 			opregion->vbt = vbt;
 			opregion->vbt_size = vbt_size;
+			goto out;
 		} else {
-			vbt = base + OPREGION_VBT_OFFSET;
-			/*
-			 * The VBT specification says that if the ASLE ext
-			 * mailbox is not used its area is reserved, but
-			 * on some CHT boards the VBT extends into the
-			 * ASLE ext area. Allow this even though it is
-			 * against the spec, so we do not end up rejecting
-			 * the VBT on those boards (and end up not finding the
-			 * LCD panel because of this).
-			 */
-			vbt_size = (mboxes & MBOX_ASLE_EXT) ?
-				OPREGION_ASLE_EXT_OFFSET : OPREGION_SIZE;
-			vbt_size -= OPREGION_VBT_OFFSET;
-			if (intel_bios_is_valid_vbt(vbt, vbt_size)) {
-				DRM_DEBUG_KMS("Found valid VBT in ACPI OpRegion (Mailbox #4)\n");
-				opregion->vbt = vbt;
-				opregion->vbt_size = vbt_size;
-			}
+			DRM_DEBUG_KMS("Invalid VBT in ACPI OpRegion (RVDA)\n");
 		}
 	}
 
+	vbt = base + OPREGION_VBT_OFFSET;
+	/*
+	 * The VBT specification says that if the ASLE ext mailbox is not used
+	 * its area is reserved, but on some CHT boards the VBT extends into the
+	 * ASLE ext area. Allow this even though it is against the spec, so we
+	 * do not end up rejecting the VBT on those boards (and end up not
+	 * finding the LCD panel because of this).
+	 */
+	vbt_size = (mboxes & MBOX_ASLE_EXT) ?
+		OPREGION_ASLE_EXT_OFFSET : OPREGION_SIZE;
+	vbt_size -= OPREGION_VBT_OFFSET;
+	if (intel_bios_is_valid_vbt(vbt, vbt_size)) {
+		DRM_DEBUG_KMS("Found valid VBT in ACPI OpRegion (Mailbox #4)\n");
+		opregion->vbt = vbt;
+		opregion->vbt_size = vbt_size;
+	} else {
+		DRM_DEBUG_KMS("Invalid VBT in ACPI OpRegion (Mailbox #4)\n");
+	}
+
+out:
 	return 0;
 
 err_out:
@@ -1062,28 +1072,6 @@ intel_opregion_get_panel_type(struct drm_i915_private *dev_priv)
 	 * via a quirk list :(
 	 */
 	if (!dmi_check_system(intel_use_opregion_panel_type)) {
-		DRM_DEBUG_KMS("Ignoring OpRegion panel type (%d)\n", ret - 1);
-		return -ENODEV;
-	}
-
-	/*
-	 * FIXME On Dell XPS 13 9350 the OpRegion panel type (0) gives us
-	 * low vswing for eDP, whereas the VBT panel type (2) gives us normal
-	 * vswing instead. Low vswing results in some display flickers, so
-	 * let's simply ignore the OpRegion panel type on SKL for now.
-	 */
-	if (IS_SKYLAKE(dev_priv)) {
-		DRM_DEBUG_KMS("Ignoring OpRegion panel type (%d)\n", ret - 1);
-		return -ENODEV;
-	}
-
-	/*
-	 * FIXME On Dell XPS 13 9350 the OpRegion panel type (0) gives us
-	 * low vswing for eDP, whereas the VBT panel type (2) gives us normal
-	 * vswing instead. Low vswing results in some display flickers, so
-	 * let's simply ignore the OpRegion panel type on SKL for now.
-	 */
-	if (IS_SKYLAKE(dev_priv)) {
 		DRM_DEBUG_KMS("Ignoring OpRegion panel type (%d)\n", ret - 1);
 		return -ENODEV;
 	}

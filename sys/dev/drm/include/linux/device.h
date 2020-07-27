@@ -27,6 +27,7 @@
 #ifndef	_LINUX_DEVICE_H_
 #define	_LINUX_DEVICE_H_
 
+#include <linux/ioport.h>
 #include <linux/kobject.h>
 #include <linux/list.h>
 #include <linux/lockdep.h>
@@ -65,7 +66,7 @@ struct device_node;
 #define	dev_warn(dev, fmt, ...)						\
 	device_printf((dev)->bsddev, "warning: " fmt, ## __VA_ARGS__)
 #define	dev_info(dev, fmt, ...)						\
-	device_printf((dev)->bsddev, "info: " fmt, ## __VA_ARGS__)
+	device_printf(((struct device *)(dev))->bsddev, "info: " fmt, ## __VA_ARGS__)
 #define dev_notice(dev, fmt, ...)					\
 	device_printf((dev)->bsddev, fmt, ##__VA_ARGS__)
 

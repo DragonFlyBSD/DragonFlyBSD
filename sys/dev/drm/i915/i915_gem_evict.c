@@ -51,7 +51,10 @@ static bool ggtt_is_idle(struct drm_i915_private *dev_priv)
 }
 
 static bool
-mark_free(struct i915_vma *vma, unsigned int flags, struct list_head *unwind)
+mark_free(struct drm_mm_scan *scan,
+	  struct i915_vma *vma,
+	  unsigned int flags,
+	  struct list_head *unwind)
 {
 	if (i915_vma_is_pinned(vma))
 		return false;
@@ -63,7 +66,7 @@ mark_free(struct i915_vma *vma, unsigned int flags, struct list_head *unwind)
 		return false;
 
 	list_add(&vma->exec_list, unwind);
-	return drm_mm_scan_add_block(&vma->node);
+	return drm_mm_scan_add_block(scan, &vma->node);
 }
 
 /**
@@ -96,7 +99,8 @@ i915_gem_evict_something(struct i915_address_space *vm,
 			 u64 start, u64 end,
 			 unsigned flags)
 {
-	struct drm_i915_private *dev_priv = to_i915(vm->dev);
+	struct drm_i915_private *dev_priv = vm->i915;
+	struct drm_mm_scan scan;
 	struct list_head eviction_list;
 	struct list_head *phases[] = {
 		&vm->inactive_list,
@@ -104,9 +108,11 @@ i915_gem_evict_something(struct i915_address_space *vm,
 		NULL,
 	}, **phase;
 	struct i915_vma *vma, *next;
+	struct drm_mm_node *node;
+	enum drm_mm_insert_mode mode;
 	int ret;
 
-	lockdep_assert_held(&vm->dev->struct_mutex);
+	lockdep_assert_held(&vm->i915->drm.struct_mutex);
 	trace_i915_gem_evict(vm, min_size, alignment, flags);
 
 	/*
@@ -122,14 +128,24 @@ i915_gem_evict_something(struct i915_address_space *vm,
 	 * On each list, the oldest objects lie at the HEAD with the freshest
 	 * object on the TAIL.
 	 */
-	if (start != 0 || end != vm->total) {
-		drm_mm_init_scan_with_range(&vm->mm, min_size,
-					    alignment, cache_level,
-					    start, end);
-	} else
-		drm_mm_init_scan(&vm->mm, min_size, alignment, cache_level);
+	kprintf("i915_gem_evict_something: %016llx-%016llx\n", start, end);
+	mode = DRM_MM_INSERT_BEST;
+	if (flags & PIN_HIGH)
+		mode = DRM_MM_INSERT_HIGH;
+	if (flags & PIN_MAPPABLE)
+		mode = DRM_MM_INSERT_LOW;
+	drm_mm_scan_init_with_range(&scan, &vm->mm,
+				    min_size, alignment, cache_level,
+				    start, end, mode);
 
-	if (flags & PIN_NONBLOCK)
+	/* Retire before we search the active list. Although we have
+	 * reasonable accuracy in our retirement lists, we may have
+	 * a stray pin (preventing eviction) that can only be resolved by
+	 * retiring.
+	 */
+	if (!(flags & PIN_NONBLOCK))
+		i915_gem_retire_requests(dev_priv);
+	else
 		phases[1] = NULL;
 
 search_again:
@@ -137,13 +153,13 @@ search_again:
 	phase = phases;
 	do {
 		list_for_each_entry(vma, *phase, vm_link)
-			if (mark_free(vma, flags, &eviction_list))
+			if (mark_free(&scan, vma, flags, &eviction_list))
 				goto found;
 	} while (*++phase);
 
 	/* Nothing found, clean up and bail out! */
 	list_for_each_entry_safe(vma, next, &eviction_list, exec_list) {
-		ret = drm_mm_scan_remove_block(&vma->node);
+		ret = drm_mm_scan_remove_block(&scan, &vma->node);
 		BUG_ON(ret);
 
 		INIT_LIST_HEAD(&vma->exec_list);
@@ -154,15 +170,21 @@ search_again:
 	 * such as scanouts, rinbuffers and contexts, we can skip the
 	 * purge when inspecting per-process local address spaces.
 	 */
-	if (!i915_is_ggtt(vm) || flags & PIN_NONBLOCK)
+	if (!i915_is_ggtt(vm) || flags & PIN_NONBLOCK) {
+		kprintf("i915_gem_evict_something: ENOSPC %d,%d\n",
+			!i915_is_ggtt(vm), ((flags & PIN_NONBLOCK) != 0));
 		return -ENOSPC;
+	}
+	kprintf("i915_gem_evict_something: Nothing found %d,%d\n",
+		ggtt_is_idle(dev_priv),
+		intel_has_pending_fb_unpin(dev_priv));
 
 	if (ggtt_is_idle(dev_priv)) {
 		/* If we still have pending pageflip completions, drop
 		 * back to userspace to give our workqueues time to
 		 * acquire our locks and unpin the old scanouts.
 		 */
-		return intel_has_pending_fb_unpin(vm->dev) ? -EAGAIN : -ENOSPC;
+		return intel_has_pending_fb_unpin(dev_priv) ? -EAGAIN : -ENOSPC;
 	}
 
 	/* Not everything in the GGTT is tracked via vma (otherwise we
@@ -174,14 +196,15 @@ search_again:
 	ret = i915_gem_switch_to_kernel_context(dev_priv);
 	if (ret)
 		return ret;
+	kprintf("i915_gem_evict_something: (A) Switch to kernel context and retire everything %d\n", ret);
 
 	ret = i915_gem_wait_for_idle(dev_priv,
 				     I915_WAIT_INTERRUPTIBLE |
 				     I915_WAIT_LOCKED);
+	kprintf("i915_gem_evict_something: (B) Switch to kernel context and retire everything %d\n", ret);
 	if (ret)
 		return ret;
 
-	i915_gem_retire_requests(dev_priv);
 	goto search_again;
 
 found:
@@ -192,7 +215,7 @@ found:
 	 * of any of our objects, thus corrupting the list).
 	 */
 	list_for_each_entry_safe(vma, next, &eviction_list, exec_list) {
-		if (drm_mm_scan_remove_block(&vma->node))
+		if (drm_mm_scan_remove_block(&scan, &vma->node))
 			__i915_vma_pin(vma);
 		else
 			list_del_init(&vma->exec_list);
@@ -206,52 +229,132 @@ found:
 				       exec_list);
 
 		list_del_init(&vma->exec_list);
+		kprintf("i915_gem_evict_something: EVICT VMA size=%lld (%016llx,%lld) ",
+			vma->size, vma->node.start, vma->node.size);
+		__i915_vma_unpin(vma);
+		if (ret == 0)
+			ret = i915_vma_unbind(vma);
+		kprintf("ret=%d\n", ret);
+	}
+
+	while (ret == 0 && (node = drm_mm_scan_color_evict(&scan))) {
+		vma = container_of(node, struct i915_vma, node);
+		ret = i915_vma_unbind(vma);
+	}
+
+	return ret;
+}
+
+/**
+ * i915_gem_evict_for_vma - Evict vmas to make room for binding a new one
+ * @vm: address space to evict from
+ * @target: range (and color) to evict for
+ * @flags: additional flags to control the eviction algorithm
+ *
+ * This function will try to evict vmas that overlap the target node.
+ *
+ * To clarify: This is for freeing up virtual address space, not for freeing
+ * memory in e.g. the shrinker.
+ */
+int i915_gem_evict_for_node(struct i915_address_space *vm,
+			    struct drm_mm_node *target,
+			    unsigned int flags)
+{
+	LINUX_LIST_HEAD(eviction_list);
+	struct drm_mm_node *node;
+	u64 start = target->start;
+	u64 end = start + target->size;
+	struct i915_vma *vma, *next;
+	bool check_color;
+	int ret = 0;
+
+	lockdep_assert_held(&vm->i915->drm.struct_mutex);
+	GEM_BUG_ON(!IS_ALIGNED(start, I915_GTT_PAGE_SIZE));
+	GEM_BUG_ON(!IS_ALIGNED(end, I915_GTT_PAGE_SIZE));
+
+	trace_i915_gem_evict_node(vm, target, flags);
+
+	/* Retire before we search the active list. Although we have
+	 * reasonable accuracy in our retirement lists, we may have
+	 * a stray pin (preventing eviction) that can only be resolved by
+	 * retiring.
+	 */
+	if (!(flags & PIN_NONBLOCK))
+		i915_gem_retire_requests(vm->i915);
+
+	check_color = vm->mm.color_adjust;
+	if (check_color) {
+		/* Expand search to cover neighbouring guard pages (or lack!) */
+		if (start)
+			start -= I915_GTT_PAGE_SIZE;
+
+		/* Always look at the page afterwards to avoid the end-of-GTT */
+		end += I915_GTT_PAGE_SIZE;
+	}
+	GEM_BUG_ON(start >= end);
+
+	drm_mm_for_each_node_in_range(node, &vm->mm, start, end) {
+		/* If we find any non-objects (!vma), we cannot evict them */
+		if (node->color == I915_COLOR_UNEVICTABLE) {
+			ret = -ENOSPC;
+			break;
+		}
+
+		GEM_BUG_ON(!node->allocated);
+		vma = container_of(node, typeof(*vma), node);
+
+		/* If we are using coloring to insert guard pages between
+		 * different cache domains within the address space, we have
+		 * to check whether the objects on either side of our range
+		 * abutt and conflict. If they are in conflict, then we evict
+		 * those as well to make room for our guard pages.
+		 */
+		if (check_color) {
+			if (node->start + node->size == target->start) {
+				if (node->color == target->color)
+					continue;
+			}
+			if (node->start == target->start + target->size) {
+				if (node->color == target->color)
+					continue;
+			}
+		}
+
+		if (flags & PIN_NONBLOCK &&
+		    (i915_vma_is_pinned(vma) || i915_vma_is_active(vma))) {
+			ret = -ENOSPC;
+			break;
+		}
+
+		/* Overlap of objects in the same batch? */
+		if (i915_vma_is_pinned(vma) || !list_empty(&vma->exec_list)) {
+			ret = -ENOSPC;
+			if (vma->exec_entry &&
+			    vma->exec_entry->flags & EXEC_OBJECT_PINNED)
+				ret = -EINVAL;
+			break;
+		}
+
+		/* Never show fear in the face of dragons!
+		 *
+		 * We cannot directly remove this node from within this
+		 * iterator and as with i915_gem_evict_something() we employ
+		 * the vma pin_count in order to prevent the action of
+		 * unbinding one vma from freeing (by dropping its active
+		 * reference) another in our eviction list.
+		 */
+		__i915_vma_pin(vma);
+		list_add(&vma->exec_list, &eviction_list);
+	}
+
+	list_for_each_entry_safe(vma, next, &eviction_list, exec_list) {
+		list_del_init(&vma->exec_list);
 		__i915_vma_unpin(vma);
 		if (ret == 0)
 			ret = i915_vma_unbind(vma);
 	}
+
 	return ret;
-}
-
-int
-i915_gem_evict_for_vma(struct i915_vma *target)
-{
-	struct drm_mm_node *node, *next;
-
-	lockdep_assert_held(&target->vm->dev->struct_mutex);
-
-	list_for_each_entry_safe(node, next,
-			&target->vm->mm.head_node.node_list,
-			node_list) {
-		struct i915_vma *vma;
-		int ret;
-
-		if (node->start + node->size <= target->node.start)
-			continue;
-		if (node->start >= target->node.start + target->node.size)
-			break;
-
-		vma = container_of(node, typeof(*vma), node);
-
-		if (i915_vma_is_pinned(vma)) {
-			if (!vma->exec_entry || i915_vma_pin_count(vma) > 1)
-				/* Object is pinned for some other use */
-				return -EBUSY;
-
-			/* We need to evict a buffer in the same batch */
-			if (vma->exec_entry->flags & EXEC_OBJECT_PINNED)
-				/* Overlapping fixed objects in the same batch */
-				return -EINVAL;
-
-			return -ENOSPC;
-		}
-
-		ret = i915_vma_unbind(vma);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
 }
 
 /**
@@ -273,11 +376,11 @@ int i915_gem_evict_vm(struct i915_address_space *vm, bool do_idle)
 	struct i915_vma *vma, *next;
 	int ret;
 
-	lockdep_assert_held(&vm->dev->struct_mutex);
+	lockdep_assert_held(&vm->i915->drm.struct_mutex);
 	trace_i915_gem_evict_vm(vm);
 
 	if (do_idle) {
-		struct drm_i915_private *dev_priv = to_i915(vm->dev);
+		struct drm_i915_private *dev_priv = vm->i915;
 
 		if (i915_is_ggtt(vm)) {
 			ret = i915_gem_switch_to_kernel_context(dev_priv);
@@ -291,7 +394,6 @@ int i915_gem_evict_vm(struct i915_address_space *vm, bool do_idle)
 		if (ret)
 			return ret;
 
-		i915_gem_retire_requests(dev_priv);
 		WARN_ON(!list_empty(&vm->active_list));
 	}
 
@@ -301,3 +403,7 @@ int i915_gem_evict_vm(struct i915_address_space *vm, bool do_idle)
 
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)
+#include "selftests/i915_gem_evict.c"
+#endif

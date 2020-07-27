@@ -290,7 +290,7 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 			       devtoname(priv->dev->devnode),
 			       priv->pid,
 			       priv->magic,
-			       priv->ioctl_count);
+			       0UL);
 	}
 
 	SYSCTL_OUT(req, "", 1);

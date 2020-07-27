@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@
 #include <linux/posix_types.h>
 
 typedef uint16_t __le16;
+typedef uint16_t __be16;
 
 typedef __u32 __le32;
 typedef __u32 __be32;

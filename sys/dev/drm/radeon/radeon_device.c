@@ -1251,7 +1251,7 @@ static void radeon_switcheroo_set_state(struct pci_dev *pdev, enum vga_switchero
 	if (state == VGA_SWITCHEROO_ON) {
 		unsigned d3_delay = dev->pdev->d3_delay;
 
-		printk(KERN_INFO "radeon: switched on\n");
+		pr_info("radeon: switched on\n");
 		/* don't suspend or resume card normally */
 		dev->switch_power_state = DRM_SWITCH_POWER_CHANGING;
 
@@ -1265,7 +1265,7 @@ static void radeon_switcheroo_set_state(struct pci_dev *pdev, enum vga_switchero
 		dev->switch_power_state = DRM_SWITCH_POWER_ON;
 		drm_kms_helper_poll_enable(dev);
 	} else {
-		printk(KERN_INFO "radeon: switched off\n");
+		pr_info("radeon: switched off\n");
 		drm_kms_helper_poll_disable(dev);
 		dev->switch_power_state = DRM_SWITCH_POWER_CHANGING;
 		radeon_suspend_kms(dev, true, true, false);
@@ -1417,12 +1417,12 @@ int radeon_device_init(struct radeon_device *rdev,
 	if (r) {
 		rdev->need_dma32 = true;
 		dma_bits = 32;
-		printk(KERN_WARNING "radeon: No suitable DMA available.\n");
+		pr_warn("radeon: No suitable DMA available\n");
 	}
 	r = pci_set_consistent_dma_mask(rdev->pdev, DMA_BIT_MASK(dma_bits));
 	if (r) {
 		pci_set_consistent_dma_mask(rdev->pdev, DMA_BIT_MASK(32));
-		printk(KERN_WARNING "radeon: No coherent DMA available.\n");
+		pr_warn("radeon: No coherent DMA available\n");
 	}
 
 	/* Registers mapping */
@@ -1447,11 +1447,8 @@ int radeon_device_init(struct radeon_device *rdev,
 		rdev->rmmio_size = pci_resource_len(rdev->pdev, 2);
 	}
 	rdev->rmmio = ioremap(rdev->rmmio_base, rdev->rmmio_size);
-	if (rdev->rmmio == NULL) {
+	if (rdev->rmmio == NULL)
 		return -ENOMEM;
-	}
-	DRM_INFO("register mmio base: 0x%08X\n", (uint32_t)rdev->rmmio_base);
-	DRM_INFO("register mmio size: %u\n", (unsigned)rdev->rmmio_size);
 
 	/* doorbell bar mapping */
 	if (rdev->family >= CHIP_BONAIRE)
@@ -1485,7 +1482,9 @@ int radeon_device_init(struct radeon_device *rdev,
 
 	if (rdev->flags & RADEON_IS_PX)
 		runtime = true;
-	vga_switcheroo_register_client(rdev->pdev, &radeon_switcheroo_ops, runtime);
+	if (!pci_is_thunderbolt_attached(rdev->pdev))
+		vga_switcheroo_register_client(rdev->pdev,
+					       &radeon_switcheroo_ops, runtime);
 	if (runtime)
 		vga_switcheroo_init_domain_pm_ops(rdev->dev, &rdev->vga_pm_domain);
 #endif
@@ -1580,8 +1579,6 @@ failed:
 	return r;
 }
 
-static void radeon_debugfs_remove_files(struct radeon_device *rdev);
-
 /**
  * radeon_device_fini - tear down the driver
  *
@@ -1605,7 +1602,8 @@ void radeon_device_fini(struct radeon_device *rdev)
 
 	radeon_fini(rdev);
 #ifdef DUMBBELL_WIP
-	vga_switcheroo_unregister_client(rdev->pdev);
+	if (!pci_is_thunderbolt_attached(rdev->pdev))
+		vga_switcheroo_unregister_client(rdev->pdev);
 	if (rdev->flags & RADEON_IS_PX)
 		vga_switcheroo_fini_domain_pm_ops(rdev->dev);
 	vga_client_register(rdev->pdev, NULL, NULL, NULL);
@@ -1618,7 +1616,6 @@ void radeon_device_fini(struct radeon_device *rdev)
 	rdev->rmmio = NULL;
 	if (rdev->family >= CHIP_BONAIRE)
 		radeon_doorbell_fini(rdev);
-	radeon_debugfs_remove_files(rdev);
 }
 
 
@@ -2010,17 +2007,4 @@ int radeon_debugfs_add_files(struct radeon_device *rdev,
 				 rdev->ddev->primary);
 #endif
 	return 0;
-}
-
-static void radeon_debugfs_remove_files(struct radeon_device *rdev)
-{
-#if defined(CONFIG_DEBUG_FS)
-	unsigned i;
-
-	for (i = 0; i < rdev->debugfs_count; i++) {
-		drm_debugfs_remove_files(rdev->debugfs[i].files,
-					 rdev->debugfs[i].num_files,
-					 rdev->ddev->primary);
-	}
-#endif
 }

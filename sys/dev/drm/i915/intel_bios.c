@@ -114,16 +114,18 @@ fill_detail_timing_data(struct drm_display_mode *panel_fixed_mode,
 	panel_fixed_mode->hsync_start = panel_fixed_mode->hdisplay +
 		((dvo_timing->hsync_off_hi << 8) | dvo_timing->hsync_off_lo);
 	panel_fixed_mode->hsync_end = panel_fixed_mode->hsync_start +
-		dvo_timing->hsync_pulse_width;
+		((dvo_timing->hsync_pulse_width_hi << 8) |
+			dvo_timing->hsync_pulse_width_lo);
 	panel_fixed_mode->htotal = panel_fixed_mode->hdisplay +
 		((dvo_timing->hblank_hi << 8) | dvo_timing->hblank_lo);
 
 	panel_fixed_mode->vdisplay = (dvo_timing->vactive_hi << 8) |
 		dvo_timing->vactive_lo;
 	panel_fixed_mode->vsync_start = panel_fixed_mode->vdisplay +
-		dvo_timing->vsync_off;
+		((dvo_timing->vsync_off_hi << 4) | dvo_timing->vsync_off_lo);
 	panel_fixed_mode->vsync_end = panel_fixed_mode->vsync_start +
-		dvo_timing->vsync_pulse_width;
+		((dvo_timing->vsync_pulse_width_hi << 4) |
+			dvo_timing->vsync_pulse_width_lo);
 	panel_fixed_mode->vtotal = panel_fixed_mode->vdisplay +
 		((dvo_timing->vblank_hi << 8) | dvo_timing->vblank_lo);
 	panel_fixed_mode->clock = dvo_timing->clock * 10;
@@ -330,17 +332,19 @@ parse_lfp_backlight(struct drm_i915_private *dev_priv,
 
 		method = &backlight_data->backlight_control[panel_type];
 		dev_priv->vbt.backlight.type = method->type;
+		dev_priv->vbt.backlight.controller = method->controller;
 	}
 
 	dev_priv->vbt.backlight.pwm_freq_hz = entry->pwm_freq_hz;
 	dev_priv->vbt.backlight.active_low_pwm = entry->active_low_pwm;
 	dev_priv->vbt.backlight.min_brightness = entry->min_brightness;
 	DRM_DEBUG_KMS("VBT backlight PWM modulation frequency %u Hz, "
-		      "active %s, min brightness %u, level %u\n",
+		      "active %s, min brightness %u, level %u, controller %u\n",
 		      dev_priv->vbt.backlight.pwm_freq_hz,
 		      dev_priv->vbt.backlight.active_low_pwm ? "low" : "high",
 		      dev_priv->vbt.backlight.min_brightness,
-		      backlight_data->level[panel_type]);
+		      backlight_data->level[panel_type],
+		      dev_priv->vbt.backlight.controller);
 }
 
 /* Try to find sdvo panel data */
@@ -1116,8 +1120,8 @@ static void parse_ddi_port(struct drm_i915_private *dev_priv, enum port port,
 	bool is_dvi, is_hdmi, is_dp, is_edp, is_crt;
 	uint8_t aux_channel, ddc_pin;
 	/* Each DDI port can have more than one value on the "DVO Port" field,
-	 * so look for all the possible values for each port and abort if more
-	 * than one is found. */
+	 * so look for all the possible values for each port.
+	 */
 	int dvo_ports[][3] = {
 		{DVO_PORT_HDMIA, DVO_PORT_DPA, -1},
 		{DVO_PORT_HDMIB, DVO_PORT_DPB, -1},
@@ -1126,7 +1130,10 @@ static void parse_ddi_port(struct drm_i915_private *dev_priv, enum port port,
 		{DVO_PORT_CRT, DVO_PORT_HDMIE, DVO_PORT_DPE},
 	};
 
-	/* Find the child device to use, abort if more than one found. */
+	/*
+	 * Find the first child device to reference the port, report if more
+	 * than one found.
+	 */
 	for (i = 0; i < dev_priv->vbt.child_dev_num; i++) {
 		it = dev_priv->vbt.child_dev + i;
 
@@ -1136,11 +1143,11 @@ static void parse_ddi_port(struct drm_i915_private *dev_priv, enum port port,
 
 			if (it->common.dvo_port == dvo_ports[port][j]) {
 				if (child) {
-					DRM_DEBUG_KMS("More than one child device for port %c in VBT.\n",
+					DRM_DEBUG_KMS("More than one child device for port %c in VBT, using the first.\n",
 						      port_name(port));
-					return;
+				} else {
+					child = it;
 				}
-				child = it;
 			}
 		}
 	}
@@ -1159,6 +1166,7 @@ static void parse_ddi_port(struct drm_i915_private *dev_priv, enum port port,
 	info->supports_dvi = is_dvi;
 	info->supports_hdmi = is_hdmi;
 	info->supports_dp = is_dp;
+	info->supports_edp = is_edp;
 
 	DRM_DEBUG_KMS("Port %c VBT info: DP:%d HDMI:%d DVI:%d EDP:%d CRT:%d\n",
 		      port_name(port), is_dp, is_hdmi, is_dvi, is_edp, is_crt);
@@ -1336,6 +1344,7 @@ parse_device_mapping(struct drm_i915_private *dev_priv,
 	return;
 }
 
+/* Common defaults which may be overridden by VBT. */
 static void
 init_vbt_defaults(struct drm_i915_private *dev_priv)
 {
@@ -1372,6 +1381,18 @@ init_vbt_defaults(struct drm_i915_private *dev_priv)
 			&dev_priv->vbt.ddi_port_info[port];
 
 		info->hdmi_level_shift = HDMI_LEVEL_SHIFT_UNKNOWN;
+	}
+}
+
+/* Defaults to initialize only if there is no VBT. */
+static void
+init_vbt_missing_defaults(struct drm_i915_private *dev_priv)
+{
+	enum port port;
+
+	for (port = PORT_A; port < I915_MAX_PORTS; port++) {
+		struct ddi_vbt_port_info *info =
+			&dev_priv->vbt.ddi_port_info[port];
 
 		info->supports_dvi = (port != PORT_A && port != PORT_E);
 		info->supports_hdmi = info->supports_dvi;
@@ -1411,13 +1432,16 @@ bool intel_bios_is_valid_vbt(const void *buf, size_t size)
 		return false;
 	}
 
-	if (vbt->bdb_offset + sizeof(struct bdb_header) > size) {
+	if (range_overflows_t(size_t,
+			      vbt->bdb_offset,
+			      sizeof(struct bdb_header),
+			      size)) {
 		DRM_DEBUG_DRIVER("BDB header incomplete\n");
 		return false;
 	}
 
 	bdb = get_bdb_header(vbt);
-	if (vbt->bdb_offset + bdb->bdb_size > size) {
+	if (range_overflows_t(size_t, vbt->bdb_offset, bdb->bdb_size, size)) {
 		DRM_DEBUG_DRIVER("BDB incomplete\n");
 		return false;
 	}
@@ -1454,36 +1478,35 @@ static const struct vbt_header *find_vbt(void __iomem *bios, size_t size)
  * intel_bios_init - find VBT and initialize settings from the BIOS
  * @dev_priv: i915 device instance
  *
- * Loads the Video BIOS and checks that the VBT exists.  Sets scratch registers
- * to appropriate values.
- *
- * Returns 0 on success, nonzero on failure.
+ * Parse and initialize settings from the Video BIOS Tables (VBT). If the VBT
+ * was not found in ACPI OpRegion, try to find it in PCI ROM first. Also
+ * initialize some defaults if the VBT is not present at all.
  */
-int
-intel_bios_init(struct drm_i915_private *dev_priv)
+void intel_bios_init(struct drm_i915_private *dev_priv)
 {
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	const struct vbt_header *vbt = dev_priv->opregion.vbt;
 	const struct bdb_header *bdb;
 	u8 __iomem *bios = NULL;
 
-	if (HAS_PCH_NOP(dev_priv))
-		return -ENODEV;
+	if (HAS_PCH_NOP(dev_priv)) {
+		DRM_DEBUG_KMS("Skipping VBT init due to disabled display.\n");
+		return;
+	}
 
 	init_vbt_defaults(dev_priv);
 
+	/* If the OpRegion does not have VBT, look in PCI ROM. */
 	if (!vbt) {
 		size_t size;
 
 		bios = pci_map_rom(pdev, &size);
 		if (!bios)
-			return -1;
+			goto out;
 
 		vbt = find_vbt(bios, size);
-		if (!vbt) {
-			pci_unmap_rom(pdev, bios);
-			return -1;
-		}
+		if (!vbt)
+			goto out;
 
 		DRM_DEBUG_KMS("Found valid VBT in PCI ROM\n");
 	}
@@ -1508,10 +1531,14 @@ intel_bios_init(struct drm_i915_private *dev_priv)
 	parse_mipi_sequence(dev_priv, bdb);
 	parse_ddi_ports(dev_priv, bdb);
 
+out:
+	if (!vbt) {
+		DRM_INFO("Failed to find VBIOS tables (VBT)\n");
+		init_vbt_missing_defaults(dev_priv);
+	}
+
 	if (bios)
 		pci_unmap_rom(pdev, bios);
-
-	return 0;
 }
 
 /**
@@ -1662,6 +1689,9 @@ bool intel_bios_is_port_edp(struct drm_i915_private *dev_priv, enum port port)
 	};
 	int i;
 
+	if (HAS_DDI(dev_priv))
+		return dev_priv->vbt.ddi_port_info[port].supports_edp;
+
 	if (!dev_priv->vbt.child_dev_num)
 		return false;
 
@@ -1779,7 +1809,7 @@ intel_bios_is_port_hpd_inverted(struct drm_i915_private *dev_priv,
 {
 	int i;
 
-	if (WARN_ON_ONCE(!IS_BROXTON(dev_priv)))
+	if (WARN_ON_ONCE(!IS_GEN9_LP(dev_priv)))
 		return false;
 
 	for (i = 0; i < dev_priv->vbt.child_dev_num; i++) {

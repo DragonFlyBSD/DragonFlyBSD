@@ -43,4 +43,6 @@
 
 #define	BUILD_BUG_ON_MSG(cond, msg)	do { } while (0)
 
+#define BUILD_BUG_ON_INVALID(expr)	((void)(expr))
+
 #endif /* LINUX_BUG_H */

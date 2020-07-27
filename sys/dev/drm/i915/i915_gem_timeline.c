@@ -53,11 +53,8 @@ static int __i915_gem_timeline_init(struct drm_i915_private *i915,
 
 		tl->fence_context = fences++;
 		tl->common = timeline;
-#ifdef CONFIG_DEBUG_SPINLOCK
-		__raw_spin_lock_init(&tl->lock.rlock, lockname, lockclass);
-#else
+
 		lockinit(&tl->lock, "i9tll", 0, 0);
-#endif
 		init_request_active(&tl->last_request, NULL);
 		INIT_LIST_HEAD(&tl->requests);
 	}
@@ -85,10 +82,18 @@ int i915_gem_timeline_init__global(struct drm_i915_private *i915)
 					&class, "&global_timeline->lock");
 }
 
-void i915_gem_timeline_fini(struct i915_gem_timeline *tl)
+void i915_gem_timeline_fini(struct i915_gem_timeline *timeline)
 {
-	lockdep_assert_held(&tl->i915->drm.struct_mutex);
+	int i;
 
-	list_del(&tl->link);
-	kfree(tl->name);
+	lockdep_assert_held(&timeline->i915->drm.struct_mutex);
+
+	for (i = 0; i < ARRAY_SIZE(timeline->engine); i++) {
+		struct intel_timeline *tl = &timeline->engine[i];
+
+		GEM_BUG_ON(!list_empty(&tl->requests));
+	}
+
+	list_del(&timeline->link);
+	kfree(timeline->name);
 }

@@ -42,6 +42,8 @@
 #include <linux/spinlock.h>
 #include <linux/reservation.h>
 
+#define TTM_MAX_BO_PRIORITY	4U
+
 struct ttm_backend_func {
 	/**
 	 * struct ttm_backend_func member bind
@@ -182,6 +184,7 @@ struct ttm_mem_type_manager_func {
 	 * @man: Pointer to a memory type manager.
 	 * @bo: Pointer to the buffer object we're allocating space for.
 	 * @placement: Placement details.
+	 * @flags: Additional placement flags.
 	 * @mem: Pointer to a struct ttm_mem_reg to be filled in.
 	 *
 	 * This function should allocate space in the memory type managed
@@ -297,7 +300,7 @@ struct ttm_mem_type_manager {
 	 * Protected by the global->lru_lock.
 	 */
 
-	struct list_head lru;
+	struct list_head lru[TTM_MAX_BO_PRIORITY];
 
 	/*
 	 * Protected by @move_lock.
@@ -430,9 +433,15 @@ struct ttm_bo_driver {
 	int (*verify_access)(struct ttm_buffer_object *bo,
 			     struct file *filp);
 
-	/* hook to notify driver about a driver move so it
-	 * can do tiling things */
+	/**
+	 * Hook to notify driver about a driver move so it
+	 * can do tiling things and book-keeping.
+	 *
+	 * @evict: whether this move is evicting the buffer from the graphics
+	 * address space
+	 */
 	void (*move_notify)(struct ttm_buffer_object *bo,
+			    bool evict,
 			    struct ttm_mem_reg *new_mem);
 	/* notify the driver we are taking a fault on this BO
 	 * and have reserved it */
@@ -455,16 +464,13 @@ struct ttm_bo_driver {
 			    struct ttm_mem_reg *mem);
 
 	/**
-	 * Optional driver callback for when BO is removed from the LRU.
-	 * Called with LRU lock held immediately before the removal.
+	 * Return the pfn for a given page_offset inside the BO.
+	 *
+	 * @bo: the BO to look up the pfn for
+	 * @page_offset: the offset to look up
 	 */
-	void (*lru_removal)(struct ttm_buffer_object *bo);
-
-	/**
-	 * Return the list_head after which a BO should be inserted in the LRU.
-	 */
-	struct list_head *(*lru_tail)(struct ttm_buffer_object *bo);
-	struct list_head *(*swap_lru_tail)(struct ttm_buffer_object *bo);
+	unsigned long (*io_mem_pfn)(struct ttm_buffer_object *bo,
+				    unsigned long page_offset);
 };
 
 /**
@@ -501,7 +507,7 @@ struct ttm_bo_global {
 	struct page *dummy_read_page;
 	struct ttm_mem_shrink shrink;
 	struct lock device_list_mutex;
-	struct lock lru_lock;
+	spinlock_t lru_lock;
 
 	/**
 	 * Protected by device_list_mutex.
@@ -511,7 +517,7 @@ struct ttm_bo_global {
 	/**
 	 * Protected by the lru_lock.
 	 */
-	struct list_head swap_lru;
+	struct list_head swap_lru[TTM_MAX_BO_PRIORITY];
 
 	/**
 	 * Internal protection.
@@ -522,10 +528,6 @@ struct ttm_bo_global {
 
 #define TTM_NUM_MEM_TYPES 8
 
-#define TTM_BO_PRIV_FLAG_MOVING  0	/* Buffer object is moving and needs
-					   idling before CPU mapping */
-#define TTM_BO_PRIV_FLAG_ACTIVE	 1
-#define TTM_BO_PRIV_FLAG_MAX 2
 /**
  * struct ttm_bo_device - Buffer object driver device-specific data.
  *
@@ -782,9 +784,6 @@ extern void ttm_mem_io_unlock(struct ttm_mem_type_manager *man);
 
 extern void ttm_bo_del_sub_from_lru(struct ttm_buffer_object *bo);
 
-struct list_head *ttm_bo_default_lru_tail(struct ttm_buffer_object *bo);
-struct list_head *ttm_bo_default_swap_lru_tail(struct ttm_buffer_object *bo);
-
 /**
  * __ttm_bo_reserve:
  *
@@ -855,10 +854,10 @@ static inline int __ttm_bo_reserve(struct ttm_buffer_object *bo,
  * reserved, the validation sequence is checked against the validation
  * sequence of the process currently reserving the buffer,
  * and if the current validation sequence is greater than that of the process
- * holding the reservation, the function returns -EAGAIN. Otherwise it sleeps
+ * holding the reservation, the function returns -EDEADLK. Otherwise it sleeps
  * waiting for the buffer to become unreserved, after which it retries
  * reserving.
- * The caller should, when receiving an -EAGAIN error
+ * The caller should, when receiving an -EDEADLK error
  * release all its buffer reservations, wait for @bo to become unreserved, and
  * then rerun the validation with the same validation sequence. This procedure
  * will always guarantee that the process with the lowest validation sequence
@@ -880,7 +879,7 @@ static inline int ttm_bo_reserve(struct ttm_buffer_object *bo,
 {
 	int ret;
 
-	WARN_ON(!atomic_read(&bo->kref.refcount));
+	WARN_ON(!kref_read(&bo->kref));
 
 	ret = __ttm_bo_reserve(bo, interruptible, no_wait, ticket);
 	if (likely(ret == 0))
@@ -905,7 +904,7 @@ static inline int ttm_bo_reserve_slowpath(struct ttm_buffer_object *bo,
 {
 	int ret = 0;
 
-	WARN_ON(!atomic_read(&bo->kref.refcount));
+	WARN_ON(!kref_read(&bo->kref));
 
 	if (interruptible)
 		ret = ww_mutex_lock_slow_interruptible(&bo->resv->lock,

@@ -29,4 +29,6 @@
 
 #include <linux/lockdep.h>
 
+typedef struct lock spinlock_t;
+
 #endif	/* _LINUX_SPINLOCK_TYPES_H_ */

@@ -30,6 +30,7 @@
 #include "radeon_audio.h"
 #include "radeon_asic.h"
 #include "atom.h"
+#include <linux/backlight.h>
 #include <linux/dmi.h>
 
 static u8
@@ -221,7 +222,20 @@ void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
 {
 	struct drm_device *dev = radeon_encoder->base.dev;
 	struct radeon_device *rdev = dev->dev_private;
+#if 0
+	struct backlight_device *bd;
+#endif
+	struct backlight_properties props;
+	struct radeon_backlight_privdata *pdata;
 	struct radeon_encoder_atom_dig *dig;
+	char bl_name[16];
+
+	/* Mac laptops with multiple GPUs use the gmux driver for backlight
+	 * so don't register a backlight device
+	 */
+	if ((rdev->pdev->subsystem_vendor == PCI_VENDOR_ID_APPLE) &&
+	    (rdev->pdev->device == 0x6741))
+		return;
 
 	if (!radeon_encoder->enc_priv)
 		return;
@@ -232,8 +246,44 @@ void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
 	if (!(rdev->mode_info.firmware_flags & ATOM_BIOS_INFO_BL_CONTROLLED_BY_GPU))
 		return;
 
+	pdata = kmalloc(sizeof(struct radeon_backlight_privdata), M_DRM,
+			GFP_KERNEL);
+	if (!pdata) {
+		DRM_ERROR("Memory allocation failed\n");
+		goto error;
+	}
+
+	memset(&props, 0, sizeof(props));
+	props.max_brightness = RADEON_MAX_BL_LEVEL;
+	props.type = BACKLIGHT_RAW;
+	snprintf(bl_name, sizeof(bl_name),
+		 "radeon_bl%d", dev->primary->index);
+#if 0
+	bd = backlight_device_register(bl_name, drm_connector->kdev,
+				       pdata, &radeon_atom_backlight_ops, &props);
+	if (IS_ERR(bd)) {
+		DRM_ERROR("Backlight registration failed\n");
+		goto error;
+	}
+#endif
+
+	pdata->encoder = radeon_encoder;
+
 	dig = radeon_encoder->enc_priv;
-	dig->backlight_level = radeon_atom_get_backlight_level_from_reg(rdev);
+#if 0
+	dig->bl_dev = bd;
+
+	bd->props.brightness = radeon_atom_backlight_get_brightness(bd);
+	/* Set a reasonable default here if the level is 0 otherwise
+	 * fbdev will attempt to turn the backlight on after console
+	 * unblanking and it will try and restore 0 which turns the backlight
+	 * off again.
+	 */
+	if (bd->props.brightness == 0)
+		bd->props.brightness = RADEON_MAX_BL_LEVEL;
+	bd->props.power = FB_BLANK_UNBLANK;
+	backlight_update_status(bd);
+#endif
 
 	DRM_INFO("radeon atom DIG backlight initialized\n");
 	rdev->mode_info.bl_encoder = radeon_encoder;
@@ -250,6 +300,11 @@ void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
 			radeon_encoder, sizeof(int),
 			sysctl_backlight_handler,
 			"I", "Backlight level");
+
+	return;
+
+error:
+	kfree(pdata);
 	return;
 }
 
@@ -288,8 +343,7 @@ static void radeon_atom_backlight_exit(struct radeon_encoder *radeon_encoder)
 
 #else /* !CONFIG_BACKLIGHT_CLASS_DEVICE */
 
-void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
-				struct drm_connector *drm_connector)
+void radeon_atom_backlight_init(struct radeon_encoder *encoder)
 {
 }
 
@@ -298,7 +352,6 @@ static void radeon_atom_backlight_exit(struct radeon_encoder *encoder)
 }
 
 #endif
-
 
 static bool radeon_atom_mode_fixup(struct drm_encoder *encoder,
 				   const struct drm_display_mode *mode,

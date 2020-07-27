@@ -23,7 +23,7 @@
  */
 
 #include <linux/firmware.h>
-#include <drm/drmP.h>
+#include "drmP.h"
 #include "radeon.h"
 #include "rv770d.h"
 #include "rv770_dpm.h"
@@ -296,6 +296,7 @@ int rv770_copy_bytes_to_smc(struct radeon_device *rdev,
 			    u16 smc_start_address, const u8 *src,
 			    u16 byte_count, u16 limit)
 {
+	unsigned long flags;
 	u32 data, original_data, extra_shift;
 	u16 addr;
 	int ret = 0;
@@ -307,7 +308,7 @@ int rv770_copy_bytes_to_smc(struct radeon_device *rdev,
 
 	addr = smc_start_address;
 
-	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->smc_idx_lock, flags);
 	while (byte_count >= 4) {
 		/* SMC address space is BE */
 		data = (src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3];
@@ -353,7 +354,7 @@ int rv770_copy_bytes_to_smc(struct radeon_device *rdev,
 	}
 
 done:
-	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->smc_idx_lock, flags);
 
 	return ret;
 }
@@ -465,14 +466,15 @@ PPSMC_Result rv770_wait_for_smc_inactive(struct radeon_device *rdev)
 
 static void rv770_clear_smc_sram(struct radeon_device *rdev, u16 limit)
 {
+	unsigned long flags;
 	u16 i;
 
-	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->smc_idx_lock, flags);
 	for (i = 0;  i < limit; i += 4) {
 		rv770_set_smc_sram_address(rdev, i, limit);
 		WREG32(SMC_SRAM_DATA, 0);
 	}
-	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->smc_idx_lock, flags);
 }
 
 int rv770_load_smc_ucode(struct radeon_device *rdev,
@@ -601,13 +603,14 @@ int rv770_load_smc_ucode(struct radeon_device *rdev,
 int rv770_read_smc_sram_dword(struct radeon_device *rdev,
 			      u16 smc_address, u32 *value, u16 limit)
 {
+	unsigned long flags;
 	int ret;
 
-	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->smc_idx_lock, flags);
 	ret = rv770_set_smc_sram_address(rdev, smc_address, limit);
 	if (ret == 0)
 		*value = RREG32(SMC_SRAM_DATA);
-	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->smc_idx_lock, flags);
 
 	return ret;
 }
@@ -615,13 +618,14 @@ int rv770_read_smc_sram_dword(struct radeon_device *rdev,
 int rv770_write_smc_sram_dword(struct radeon_device *rdev,
 			       u16 smc_address, u32 value, u16 limit)
 {
+	unsigned long flags;
 	int ret;
 
-	lockmgr(&rdev->smc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->smc_idx_lock, flags);
 	ret = rv770_set_smc_sram_address(rdev, smc_address, limit);
 	if (ret == 0)
 		WREG32(SMC_SRAM_DATA, value);
-	lockmgr(&rdev->smc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->smc_idx_lock, flags);
 
 	return ret;
 }

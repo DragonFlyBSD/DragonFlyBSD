@@ -26,6 +26,7 @@
  *          Jerome Glisse
  */
 #include <linux/seq_file.h>
+#include <linux/slab.h>
 #include <drm/drmP.h>
 #include <drm/radeon_drm.h>
 #include "radeon_reg.h"
@@ -1100,13 +1101,12 @@ static void r100_cp_load_microcode(struct radeon_device *rdev)
 	int i, size;
 
 	if (r100_gui_wait_for_idle(rdev)) {
-		printk(KERN_WARNING "Failed to wait GUI idle while "
-		       "programming pipes. Bad things might happen.\n");
+		pr_warn("Failed to wait GUI idle while programming pipes. Bad things might happen.\n");
 	}
 
 	if (rdev->me_fw) {
 		size = rdev->me_fw->datasize / 4;
-		fw_data = (const __be32 *)rdev->me_fw->data;
+		fw_data = (const __be32 *)&rdev->me_fw->data[0];
 		WREG32(RADEON_CP_ME_RAM_ADDR, 0);
 		for (i = 0; i < size; i += 2) {
 			WREG32(RADEON_CP_ME_RAM_DATAH,
@@ -1259,8 +1259,7 @@ void r100_cp_disable(struct radeon_device *rdev)
 	WREG32(RADEON_CP_CSQ_CNTL, 0);
 	WREG32(R_000770_SCRATCH_UMSK, 0);
 	if (r100_gui_wait_for_idle(rdev)) {
-		printk(KERN_WARNING "Failed to wait GUI idle while "
-		       "programming pipes. Bad things might happen.\n");
+		pr_warn("Failed to wait GUI idle while programming pipes. Bad things might happen.\n");
 	}
 }
 
@@ -1894,8 +1893,7 @@ static int r100_packet0_check(struct radeon_cs_parser *p,
 		track->tex_dirty = true;
 		break;
 	default:
-		printk(KERN_ERR "Forbidden register 0x%04X in cs at %d\n",
-		       reg, idx);
+		pr_err("Forbidden register 0x%04X in cs at %d\n", reg, idx);
 		return -EINVAL;
 	}
 	return 0;
@@ -2499,8 +2497,7 @@ int r100_gui_wait_for_idle(struct radeon_device *rdev)
 	uint32_t tmp;
 
 	if (r100_rbbm_fifo_wait_for_entry(rdev, 64)) {
-		printk(KERN_WARNING "radeon: wait for empty RBBM fifo failed !"
-		       " Bad things might happen.\n");
+		pr_warn("radeon: wait for empty RBBM fifo failed! Bad things might happen.\n");
 	}
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		tmp = RREG32(RADEON_RBBM_STATUS);
@@ -2766,7 +2763,7 @@ static u32 r100_get_accessible_vram(struct radeon_device *rdev)
 	 * check if it's a multifunction card by reading the PCI config
 	 * header type... Limit those to one aperture size
 	 */
-	byte = pci_read_config(rdev->dev->bsddev, 0xe, 1);
+	pci_read_config_byte(rdev->pdev, 0xe, &byte);
 	if (byte & 0x80) {
 		DRM_INFO("Generation 1 PCI interface in multifunction mode\n");
 		DRM_INFO("Limiting VRAM to one aperture\n");
@@ -2892,25 +2889,28 @@ static void r100_pll_errata_after_data(struct radeon_device *rdev)
 
 uint32_t r100_pll_rreg(struct radeon_device *rdev, uint32_t reg)
 {
+	unsigned long flags;
 	uint32_t data;
 
-	lockmgr(&rdev->pll_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->pll_idx_lock, flags);
 	WREG8(RADEON_CLOCK_CNTL_INDEX, reg & 0x3f);
 	r100_pll_errata_after_index(rdev);
 	data = RREG32(RADEON_CLOCK_CNTL_DATA);
 	r100_pll_errata_after_data(rdev);
-	lockmgr(&rdev->pll_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->pll_idx_lock, flags);
 	return data;
 }
 
 void r100_pll_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	lockmgr(&rdev->pll_idx_lock, LK_EXCLUSIVE);
+	unsigned long flags;
+
+	spin_lock_irqsave(&rdev->pll_idx_lock, flags);
 	WREG8(RADEON_CLOCK_CNTL_INDEX, ((reg & 0x3f) | RADEON_PLL_WR_EN));
 	r100_pll_errata_after_index(rdev);
 	WREG32(RADEON_CLOCK_CNTL_DATA, v);
 	r100_pll_errata_after_data(rdev);
-	lockmgr(&rdev->pll_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->pll_idx_lock, flags);
 }
 
 static void r100_set_safe_registers(struct radeon_device *rdev)
@@ -3235,13 +3235,19 @@ void r100_bandwidth_update(struct radeon_device *rdev)
 	radeon_update_display_priority(rdev);
 
 	if (rdev->mode_info.crtcs[0]->base.enabled) {
+		const struct drm_framebuffer *fb =
+			rdev->mode_info.crtcs[0]->base.primary->fb;
+
 		mode1 = &rdev->mode_info.crtcs[0]->base.mode;
-		pixel_bytes1 = rdev->mode_info.crtcs[0]->base.primary->fb->bits_per_pixel / 8;
+		pixel_bytes1 = fb->format->cpp[0];
 	}
 	if (!(rdev->flags & RADEON_SINGLE_CRTC)) {
 		if (rdev->mode_info.crtcs[1]->base.enabled) {
+			const struct drm_framebuffer *fb =
+				rdev->mode_info.crtcs[1]->base.primary->fb;
+
 			mode2 = &rdev->mode_info.crtcs[1]->base.mode;
-			pixel_bytes2 = rdev->mode_info.crtcs[1]->base.primary->fb->bits_per_pixel / 8;
+			pixel_bytes2 = fb->format->cpp[0];
 		}
 	}
 
@@ -3305,7 +3311,7 @@ void r100_bandwidth_update(struct radeon_device *rdev)
 		mem_trp = ((temp >> 8) & 0x7) + 1;
 		mem_tras = ((temp >> 11) & 0xf) + 4;
 	} else if (rdev->family == CHIP_RV350 ||
-		   rdev->family <= CHIP_RV380) {
+		   rdev->family == CHIP_RV380) {
 		/* rv3x0 */
 		mem_trcd = (temp & 0x7) + 3;
 		mem_trp = ((temp >> 8) & 0x7) + 3;
@@ -3465,16 +3471,6 @@ void r100_bandwidth_update(struct radeon_device *rdev)
 		max_stop_req = 0x5c;
 	else
 		max_stop_req = 0x7c;
-
-/*
-XXX: disp_drain_rate.full not initialized in (mode2) block
-Looks like a real bug. Try to report it upstream.
-*/
-#ifdef __DragonFly__
-	disp_drain_rate.full = dfixed_div(pix_clk, temp_ff);
-	crit_point_ff.full = dfixed_mul(disp_drain_rate, disp_latency);
-	crit_point_ff.full += dfixed_const_half(0);
-#endif
 
 	if (mode1) {
 		/*  CRTC1
@@ -4128,39 +4124,42 @@ int r100_init(struct radeon_device *rdev)
 
 uint32_t r100_mm_rreg_slow(struct radeon_device *rdev, uint32_t reg)
 {
+	unsigned long flags;
 	uint32_t ret;
 
-	lockmgr(&rdev->mmio_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->mmio_idx_lock, flags);
 	writel(reg, ((void __iomem *)rdev->rmmio) + RADEON_MM_INDEX);
 	ret = readl(((void __iomem *)rdev->rmmio) + RADEON_MM_DATA);
-	lockmgr(&rdev->mmio_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->mmio_idx_lock, flags);
 	return ret;
 }
 
 void r100_mm_wreg_slow(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	lockmgr(&rdev->mmio_idx_lock, LK_EXCLUSIVE);
+	unsigned long flags;
+
+	spin_lock_irqsave(&rdev->mmio_idx_lock, flags);
 	writel(reg, ((void __iomem *)rdev->rmmio) + RADEON_MM_INDEX);
 	writel(v, ((void __iomem *)rdev->rmmio) + RADEON_MM_DATA);
-	lockmgr(&rdev->mmio_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->mmio_idx_lock, flags);
 }
 
 u32 r100_io_rreg(struct radeon_device *rdev, u32 reg)
 {
 	if (reg < rdev->rio_mem_size)
-		return bus_read_4(rdev->rio_mem, reg);
+		return ioread32(rdev->rio_mem + reg);
 	else {
-		bus_write_4(rdev->rio_mem, RADEON_MM_INDEX, reg);
-		return bus_read_4(rdev->rio_mem, RADEON_MM_DATA);
+		iowrite32(reg, rdev->rio_mem + RADEON_MM_INDEX);
+		return ioread32(rdev->rio_mem + RADEON_MM_DATA);
 	}
 }
 
 void r100_io_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
 	if (reg < rdev->rio_mem_size)
-		bus_write_4(rdev->rio_mem, reg, v);
+		iowrite32(v, rdev->rio_mem + reg);
 	else {
-		bus_write_4(rdev->rio_mem, RADEON_MM_INDEX, reg);
-		bus_write_4(rdev->rio_mem, RADEON_MM_DATA, v);
+		iowrite32(reg, rdev->rio_mem + RADEON_MM_INDEX);
+		iowrite32(v, rdev->rio_mem + RADEON_MM_DATA);
 	}
 }

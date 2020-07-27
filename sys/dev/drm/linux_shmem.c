@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011 The FreeBSD Foundation
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Portions of this software were developed by Konstantin Belousov
@@ -64,4 +64,11 @@ shmem_read_mapping_page(vm_object_t object, vm_pindex_t pindex)
 	vm_page_wire(m);
 	vm_page_wakeup(m);
 	return (struct page *)m;
+}
+
+struct page *
+shmem_read_mapping_page_gfp(struct vm_object *mapping,
+    pgoff_t index, gfp_t gfp_mask)
+{
+	return shmem_read_mapping_page(mapping, index);
 }

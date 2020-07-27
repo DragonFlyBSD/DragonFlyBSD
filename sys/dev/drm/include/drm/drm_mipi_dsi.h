@@ -289,7 +289,6 @@ struct mipi_dsi_driver {
 	void (*shutdown)(struct mipi_dsi_device *dsi);
 };
 
-#if 0
 static inline struct mipi_dsi_driver *
 to_mipi_dsi_driver(struct device_driver *driver)
 {
@@ -305,7 +304,6 @@ static inline void mipi_dsi_set_drvdata(struct mipi_dsi_device *dsi, void *data)
 {
 	dev_set_drvdata(&dsi->dev, data);
 }
-#endif
 
 int mipi_dsi_driver_register_full(struct mipi_dsi_driver *driver,
 				  struct module *owner);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@
 
 #include <linux/types.h>
 #include <linux/init.h>
+#include <linux/ioport.h>
 #include <linux/list.h>
 #include <linux/compiler.h>
 #include <linux/errno.h>
@@ -62,6 +63,10 @@ struct pci_device_id {
 	unsigned long driver_data;
 };
 
+typedef unsigned short pci_dev_flags_t;
+
+#define PCI_DEV_FLAGS_NEEDS_RESUME	(1 << 11)
+
 struct pci_dev {
 	struct pci_bus *bus;		/* bus device is nailed to */
 	struct device dev;
@@ -78,6 +83,7 @@ struct pci_dev {
 	void *pci_dev_data;
 
 	unsigned int	no_64bit_msi:1;
+	pci_dev_flags_t dev_flags;
 
 	/* DragonFly-specific data */
 	int		_irq_type;
@@ -489,6 +495,19 @@ static inline void
 pci_unmap_rom(struct pci_dev *pdev, void __iomem *rom)
 {
 	vga_pci_unmap_bios(device_get_parent(pdev->dev.bsddev), rom);
+}
+
+static inline int
+pci_resource_flags(struct pci_dev *pdev, int bar)
+{
+	/* Hardcoded to return only the type */
+	if ((bar & PCIM_BAR_SPACE) == PCIM_BAR_IO_SPACE) {
+		kprintf("pci_resource_flags: pdev=%p bar=%d type=IO\n", pdev, bar);
+		return IORESOURCE_IO;
+	} else {
+		kprintf("pci_resource_flags: pdev=%p bar=%d type=MEM\n", pdev, bar);
+		return IORESOURCE_MEM;
+	}
 }
 
 #include <linux/pci-dma-compat.h>

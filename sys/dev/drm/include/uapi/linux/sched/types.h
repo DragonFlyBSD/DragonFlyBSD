@@ -24,14 +24,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <linux/slab.h>
-#include <linux/idr.h>
+#ifndef _UAPI_LINUX_SCHED_TYPES_H_
+#define _UAPI_LINUX_SCHED_TYPES_H_
 
-void
-ida_destroy(struct ida *ida)
-{
-	idr_destroy(&ida->idr);
-	if (ida->free_bitmap != NULL) {
-		kfree(ida->free_bitmap);	/* XXX: idr uses M_IDR and not M_DRM */
-	}
-}
+#include <linux/types.h>
+
+#endif /* _UAPI_LINUX_SCHED_TYPES_H_ */

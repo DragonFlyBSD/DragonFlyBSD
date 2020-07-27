@@ -23,8 +23,10 @@
  */
 
 #include <linux/pci.h>
+#include <linux/slab.h>
 #include <linux/dma-mapping.h>
 #include <linux/export.h>
+#include <drm/drm_pci.h>
 #include <drm/drmP.h>
 #include "drm_internal.h"
 #include "drm_legacy.h"
@@ -34,6 +36,9 @@
  * @dev: DRM device
  * @size: size of block to allocate
  * @align: alignment of block
+ *
+ * FIXME: This is a needless abstraction of the Linux dma-api and should be
+ * removed.
  *
  * Return: A handle to the allocated memory block on success or NULL on
  * failure.
@@ -107,6 +112,9 @@ void __drm_legacy_pci_free(struct drm_device * dev, drm_dma_handle_t * dmah)
  * drm_pci_free - Free a PCI consistent memory block
  * @dev: DRM device
  * @dmah: handle to memory block
+ *
+ * FIXME: This is a needless abstraction of the Linux dma-api and should be
+ * removed.
  */
 void drm_pci_free(struct drm_device * dev, drm_dma_handle_t * dmah)
 {
@@ -226,7 +234,7 @@ int drm_irq_by_busid(struct drm_device *dev, void *data,
  * Try and register, if we fail to register, backout previous work.
  *
  * NOTE: This function is deprecated, please use drm_dev_alloc() and
- * drm_dev_register() instead and remove your ->load() callback.
+ * drm_dev_register() instead and remove your &drm_driver.load callback.
  *
  * Return: 0 on success or a negative error code on failure.
  */
@@ -263,10 +271,6 @@ int drm_get_pci_dev(struct pci_dev *pdev, const struct pci_device_id *ent,
 	ret = drm_dev_register(dev, ent->driver_data);
 	if (ret)
 		goto err_agp;
-
-	DRM_INFO("Initialized %s %d.%d.%d %s for %s on minor %d\n",
-		 driver->name, driver->major, driver->minor, driver->patchlevel,
-		 driver->date, pci_name(pdev), dev->primary->index);
 
 	/* No locking needed since shadow-attach is single-threaded since it may
 	 * only be called from the per-driver module init hook. */

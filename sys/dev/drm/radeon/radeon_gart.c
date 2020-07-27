@@ -26,8 +26,10 @@
  *          Jerome Glisse
  */
 #include <drm/drmP.h>
-#include "drm/drm_legacy.h"		/* for drm_dma_handle_t */
 #include <drm/radeon_drm.h>
+#ifdef CONFIG_X86
+#include <asm/set_memory.h>
+#endif
 #include "radeon.h"
 
 /*
@@ -98,15 +100,16 @@ void radeon_gart_table_ram_free(struct radeon_device *rdev)
 	if (rdev->gart.ptr == NULL) {
 		return;
 	}
-#if defined(__i386) || defined(__amd64)
+#ifdef CONFIG_X86
 	if (rdev->family == CHIP_RS400 || rdev->family == CHIP_RS480 ||
 	    rdev->family == CHIP_RS690 || rdev->family == CHIP_RS740) {
-		pmap_change_attr((vm_offset_t)rdev->gart.ptr,
-		    rdev->gart.table_size >> PAGE_SHIFT, PAT_WRITE_COMBINING);
+		set_memory_wb((unsigned long)rdev->gart.ptr,
+			      rdev->gart.table_size >> PAGE_SHIFT);
 	}
 #endif
-	drm_pci_free(rdev->ddev, rdev->gart.dmah);
-	rdev->gart.dmah = NULL;
+	pci_free_consistent(rdev->pdev, rdev->gart.table_size,
+			    (void *)rdev->gart.ptr,
+			    rdev->gart.table_addr);
 	rdev->gart.ptr = NULL;
 	rdev->gart.table_addr = 0;
 }

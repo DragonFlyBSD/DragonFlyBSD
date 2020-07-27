@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -35,17 +35,13 @@
 #include "intel_drv.h"
 #include "intel_ringbuffer.h"
 
+#define trace_dma_fence_enable_signal(fence)
 
 #define trace_i915_flip_complete(a,b)
 #define trace_i915_flip_request(a,b)
 
 #define trace_i915_gem_evict(a,b,c,d)
 #define trace_i915_gem_evict_everything(a)
-
-static inline void
-trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u32 write)
-{
-}
 
 #define trace_i915_gem_object_clflush(obj)
 #define trace_i915_gem_object_create(obj)
@@ -56,9 +52,14 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 
 #define trace_i915_gem_request_add(req)
 #define trace_i915_gem_request_complete(ring)
+#define trace_i915_gem_request_execute(request)
+#define trace_i915_gem_request_in(request, n)
 #define trace_i915_gem_request_notify(ring)
+#define trace_i915_gem_request_out(request)
+#define trace_i915_gem_request_queue(request, flags)
 #define trace_i915_gem_request_retire(req)
-#define trace_i915_gem_request_wait_begin(req)
+#define trace_i915_gem_request_submit(request)
+#define trace_i915_gem_request_wait_begin(req, flags)
 #define trace_i915_gem_request_wait_end(req)
 
 #define trace_i915_gem_ring_dispatch(a,b)
@@ -69,12 +70,19 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 
 #define trace_i915_reg_rw(a,b,c,d,trace)
 
+#define trace_intel_cpu_fifo_underrun(a,b)
+#define trace_intel_disable_plane(plane, crtc)
+#define trace_intel_engine_notify(engine, waiters)
 #define trace_intel_gpu_freq_change(a)
+#define trace_intel_memory_cxsr(a,b,c)
+#define trace_intel_pch_fifo_underrun(a,b)
+#define trace_intel_update_plane(plane, crtc)
 
 #define trace_i915_vma_bind(vma, map_and_fenceable)
 #define trace_i915_vma_unbind(vma)
 
 #define trace_i915_gem_evict_vm(vm)
+#define trace_i915_gem_evict_node(vm, target, flags)
 
 #define trace_i915_pipe_update_start(crtc)
 #define trace_i915_pipe_update_vblank_evaded(crtc)
@@ -95,5 +103,8 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 
 #define trace_i915_page_directory_entry_alloc(vm, pdpe, start, shift)
 #define trace_i915_page_directory_pointer_entry_alloc(vm, pdpe, start, shift)
+
+#define trace_vlv_wm(a,b)
+#define trace_vlv_fifo_size(a,b,c,d)
 
 #endif /* _I915_TRACE_H_ */

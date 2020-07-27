@@ -1,7 +1,4 @@
 /*
- * \file drm_fops.c
- * File operations for DRM
- *
  * \author Rickard E. (Rik) Faith <faith@valinux.com>
  * \author Daryll Strauss <daryll@valinux.com>
  * \author Gareth Hughes <gareth@valinux.com>
@@ -36,10 +33,14 @@
 
 #include <sys/types.h>
 #include <sys/uio.h>	/* must come first to avoid kfree() macros issues */
-#include <drm/drmP.h>
+
 #include <linux/poll.h>
 #include <linux/slab.h>
 #include <linux/module.h>
+
+#include <drm/drm_file.h>
+#include <drm/drmP.h>
+
 #include "drm_legacy.h"
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"
@@ -260,10 +261,12 @@ static int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC
 		}
 	}
 
+#ifdef __DragonFly__
 	/* first opener automatically becomes master */
 	mutex_lock(&dev->master_mutex);
 	priv->is_master = list_empty(&dev->filelist);
 	mutex_unlock(&dev->master_mutex);
+#endif
 
 	mutex_lock(&dev->filelist_mutex);
 	list_add(&priv->lhead, &dev->filelist);
@@ -283,6 +286,7 @@ out_close:
 		dev->driver->postclose(dev, priv);
 	if (drm_core_check_feature(dev, DRIVER_GEM))
 		drm_gem_release(dev, priv);
+	put_pid(priv->pid);
 	kfree(priv);
 	filp->private_data = NULL;
 	return ret;
@@ -619,11 +623,9 @@ static void
 drmfilt_detach(struct knote *kn)
 {
 	struct drm_file *file_priv;
-	struct drm_device *dev;
 	struct klist *klist;
 
 	file_priv = (struct drm_file *)kn->kn_hook;
-	dev = file_priv->dev;
 
 	klist = &file_priv->dkq.ki_note;
 	knote_remove(klist, kn);
@@ -677,7 +679,7 @@ drm_kqfilter(struct dev_kqfilter_args *ap)
  * kmalloc and @p must be the first member element.
  *
  * This is the locked version of drm_event_reserve_init() for callers which
- * already hold dev->event_lock.
+ * already hold &drm_device.event_lock.
  *
  * RETURNS:
  *
@@ -718,8 +720,8 @@ EXPORT_SYMBOL(drm_event_reserve_init_locked);
  * If callers embedded @p into a larger structure it must be allocated with
  * kmalloc and @p must be the first member element.
  *
- * Callers which already hold dev->event_lock should use
- * drm_event_reserve_init() instead.
+ * Callers which already hold &drm_device.event_lock should use
+ * drm_event_reserve_init_locked() instead.
  *
  * RETURNS:
  *
@@ -770,7 +772,12 @@ EXPORT_SYMBOL(drm_event_cancel_free);
  *
  * This function sends the event @e, initialized with drm_event_reserve_init(),
  * to its associated userspace DRM file. Callers must already hold
- * dev->event_lock, see drm_send_event() for the unlocked version.
+ * &drm_device.event_lock, see drm_send_event() for the unlocked version.
+ *
+ * Note that the core will take care of unlinking and disarming events when the
+ * corresponding DRM file is closed. Drivers need not worry about whether the
+ * DRM file for this event still exists and can call this function upon
+ * completion of the asynchronous work unconditionally.
  */
 void drm_send_event_locked(struct drm_device *dev, struct drm_pending_event *e)
 {
@@ -809,8 +816,9 @@ EXPORT_SYMBOL(drm_send_event_locked);
  * @e: DRM event to deliver
  *
  * This function sends the event @e, initialized with drm_event_reserve_init(),
- * to its associated userspace DRM file. This function acquires dev->event_lock,
- * see drm_send_event_locked() for callers which already hold this lock.
+ * to its associated userspace DRM file. This function acquires
+ * &drm_device.event_lock, see drm_send_event_locked() for callers which already
+ * hold this lock.
  *
  * Note that the core will take care of unlinking and disarming events when the
  * corresponding DRM file is closed. Drivers need not worry about whether the

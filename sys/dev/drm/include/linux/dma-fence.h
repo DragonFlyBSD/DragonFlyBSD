@@ -171,4 +171,6 @@ dma_fence_get_rcu_safe(struct dma_fence **dfp)
 	return fence;
 }
 
+void dma_fence_free(struct dma_fence *fence);
+
 #endif	/* _LINUX_DMA_FENCE_H_ */

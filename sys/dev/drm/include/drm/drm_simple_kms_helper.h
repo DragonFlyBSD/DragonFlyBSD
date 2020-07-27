@@ -10,6 +10,10 @@
 #ifndef __LINUX_DRM_SIMPLE_KMS_HELPER_H
 #define __LINUX_DRM_SIMPLE_KMS_HELPER_H
 
+#include <drm/drm_crtc.h>
+#include <drm/drm_encoder.h>
+#include <drm/drm_plane.h>
+
 struct drm_simple_display_pipe;
 
 /**
@@ -68,7 +72,7 @@ struct drm_simple_display_pipe_funcs {
 	 * the hardware lacks vblank support entirely.
 	 */
 	void (*update)(struct drm_simple_display_pipe *pipe,
-		       struct drm_plane_state *plane_state);
+		       struct drm_plane_state *old_plane_state);
 
 	/**
 	 * @prepare_fb:
@@ -113,8 +117,6 @@ struct drm_simple_display_pipe {
 
 int drm_simple_display_pipe_attach_bridge(struct drm_simple_display_pipe *pipe,
 					  struct drm_bridge *bridge);
-
-void drm_simple_display_pipe_detach_bridge(struct drm_simple_display_pipe *pipe);
 
 int drm_simple_display_pipe_init(struct drm_device *dev,
 			struct drm_simple_display_pipe *pipe,

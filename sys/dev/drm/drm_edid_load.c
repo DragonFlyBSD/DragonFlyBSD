@@ -40,35 +40,28 @@ static u8 *do_edid_fw_load(struct drm_connector *connector, const char *fwname,
 static char edidfw_tun[256];
 TUNABLE_STR("drm.edid_firmware", edidfw_tun, sizeof(edidfw_tun));
 
-int drm_load_edid_firmware(struct drm_connector *connector)
+struct edid *drm_load_edid_firmware(struct drm_connector *connector)
 {
 	const char *connector_name = connector->name;
 	char *cp, *fwname = edidfw_tun;
 	struct edid *fwedid;
-	int ret;
 
 	if (*fwname == '\0')
-		return 0;
+		return ERR_PTR(-ENOENT);
 
 	/* Check for connector specifier presence */
 	if ((cp = strchr(fwname, ':')) != NULL) {
 		/* if connector name doesn't match, we're done */
 		if (strncmp(connector_name, fwname, cp - fwname))
-			return 0;
+			return ERR_PTR(-ENOENT);
 		fwname = cp + 1;
 		if (*fwname == '\0')
-			return 0;
+			return ERR_PTR(-ENOENT);
 	}
 
 	fwedid = (struct edid *)do_edid_fw_load(connector, fwname, connector_name);
-	if (fwedid == NULL)
-		return 0;
 
-	drm_mode_connector_update_edid_property(connector, fwedid);
-	ret = drm_add_edid_modes(connector, fwedid);
-	kfree(fwedid);
-
-	return ret;
+	return fwedid;
 }
 
 static u8 *

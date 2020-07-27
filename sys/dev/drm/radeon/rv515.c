@@ -25,6 +25,8 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
+#include <linux/seq_file.h>
+#include <linux/slab.h>
 #include <drm/drmP.h>
 #include "rv515d.h"
 #include "radeon.h"
@@ -151,8 +153,7 @@ static void rv515_gpu_init(struct radeon_device *rdev)
 	unsigned pipe_select_current, gb_pipe_select, tmp;
 
 	if (r100_gui_wait_for_idle(rdev)) {
-		printk(KERN_WARNING "Failed to wait GUI idle while "
-		       "resetting GPU. Bad things might happen.\n");
+		pr_warn("Failed to wait GUI idle while resetting GPU. Bad things might happen.\n");
 	}
 	rv515_vga_render_disable(rdev);
 	r420_pipes_init(rdev);
@@ -163,12 +164,10 @@ static void rv515_gpu_init(struct radeon_device *rdev)
 	      (((gb_pipe_select >> 8) & 0xF) << 4);
 	WREG32_PLL(0x000D, tmp);
 	if (r100_gui_wait_for_idle(rdev)) {
-		printk(KERN_WARNING "Failed to wait GUI idle while "
-		       "resetting GPU. Bad things might happen.\n");
+		pr_warn("Failed to wait GUI idle while resetting GPU. Bad things might happen.\n");
 	}
 	if (rv515_mc_wait_for_idle(rdev)) {
-		printk(KERN_WARNING "Failed to wait MC idle while "
-		       "programming pipes. Bad things might happen.\n");
+		pr_warn("Failed to wait MC idle while programming pipes. Bad things might happen.\n");
 	}
 }
 
@@ -206,24 +205,27 @@ static void rv515_mc_init(struct radeon_device *rdev)
 
 uint32_t rv515_mc_rreg(struct radeon_device *rdev, uint32_t reg)
 {
+	unsigned long flags;
 	uint32_t r;
 
-	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->mc_idx_lock, flags);
 	WREG32(MC_IND_INDEX, 0x7f0000 | (reg & 0xffff));
 	r = RREG32(MC_IND_DATA);
 	WREG32(MC_IND_INDEX, 0);
-	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->mc_idx_lock, flags);
 
 	return r;
 }
 
 void rv515_mc_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
+	unsigned long flags;
+
+	spin_lock_irqsave(&rdev->mc_idx_lock, flags);
 	WREG32(MC_IND_INDEX, 0xff0000 | ((reg) & 0xffff));
 	WREG32(MC_IND_DATA, (v));
 	WREG32(MC_IND_INDEX, 0);
-	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->mc_idx_lock, flags);
 }
 
 #if defined(CONFIG_DEBUG_FS)
@@ -956,7 +958,6 @@ static void rv515_crtc_bandwidth_compute(struct radeon_device *rdev,
 	fixed20_12 sclk;
 	u32 selected_sclk;
 
-	bzero(wm, sizeof(*wm));	/* avoid gcc warning */
 	if (!crtc->base.enabled) {
 		/* FIXME: wouldn't it better to set priority mark to maximum */
 		wm->lb_request_fifo_depth = 4;

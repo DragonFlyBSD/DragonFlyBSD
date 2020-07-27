@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,10 +47,10 @@ struct dma_buf_ops {
 						struct sg_table *,
 						enum dma_data_direction);
 	void (*release)(struct dma_buf *);
-	void *(*kmap)(struct dma_buf *, unsigned long);
-	void *(*kmap_atomic)(struct dma_buf *, unsigned long);
-	void (*kunmap)(struct dma_buf *, unsigned long, void *);
-	void (*kunmap_atomic)(struct dma_buf *, unsigned long, void *);
+	void *(*map)(struct dma_buf *, unsigned long);
+	void *(*map_atomic)(struct dma_buf *, unsigned long);
+	void (*unmap)(struct dma_buf *, unsigned long, void *);
+	void (*unmap_atomic)(struct dma_buf *, unsigned long, void *);
 	int (*mmap)(struct dma_buf *, struct vm_area_struct *vma);
 	void *(*vmap)(struct dma_buf *);
 	void (*vunmap)(struct dma_buf *, void *vaddr);

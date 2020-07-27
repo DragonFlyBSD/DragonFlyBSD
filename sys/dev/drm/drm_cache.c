@@ -29,8 +29,12 @@
  */
 
 #include <linux/export.h>
-#include <drm/drmP.h>
-#include <asm/cpufeature.h>
+#include <linux/highmem.h>
+
+#include <drm/drm_cache.h>
+
+#if defined(CONFIG_X86)
+#include <asm/smp.h>
 
 /*
  * clflushopt is an unordered instruction which needs fencing with mfence or
@@ -63,24 +67,45 @@ static void drm_cache_flush_clflush(struct page *pages[],
 		drm_clflush_page(*pages++);
 	mb();
 }
+#endif
 
 void
 drm_clflush_pages(struct page *pages[], unsigned long num_pages)
 {
-	pmap_invalidate_cache_pages((struct vm_page **)pages, num_pages);
 
+#if defined(CONFIG_X86)
 	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
 		drm_cache_flush_clflush(pages, num_pages);
 		return;
 	}
 
 	cpu_wbinvd_on_all_cpus();
+
+#elif defined(__powerpc__)
+	unsigned long i;
+	for (i = 0; i < num_pages; i++) {
+		struct page *page = pages[i];
+		void *page_virtual;
+
+		if (unlikely(page == NULL))
+			continue;
+
+		page_virtual = kmap_atomic(page);
+		flush_dcache_range((unsigned long)page_virtual,
+				   (unsigned long)page_virtual + PAGE_SIZE);
+		kunmap_atomic(page_virtual);
+	}
+#else
+	pr_err("Architecture has no drm_cache.c support\n");
+	WARN_ON_ONCE(1);
+#endif
 }
 EXPORT_SYMBOL(drm_clflush_pages);
 
 void
 drm_clflush_sg(struct sg_table *st)
 {
+#if defined(CONFIG_X86)
 	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
 		struct sg_page_iter sg_iter;
 
@@ -93,17 +118,20 @@ drm_clflush_sg(struct sg_table *st)
 	}
 
 	cpu_wbinvd_on_all_cpus();
+#else
+	printk(KERN_ERR "Architecture has no drm_cache.c support\n");
+	WARN_ON_ONCE(1);
+#endif
 }
 EXPORT_SYMBOL(drm_clflush_sg);
 
 void
-drm_clflush_virt_range(void *in_addr, unsigned long length)
+drm_clflush_virt_range(void *addr, unsigned long length)
 {
-	char *addr = in_addr;
-
+#if defined(CONFIG_X86)
 	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
-		const int size = cpu_clflush_line_size;
-		char *end = addr + length;
+		const int size = boot_cpu_data.x86_clflush_size;
+		void *end = addr + length;
 		addr = (void *)(((unsigned long)addr) & -size);
 		mb();
 		for (; addr < end; addr += size)
@@ -114,5 +142,9 @@ drm_clflush_virt_range(void *in_addr, unsigned long length)
 	}
 
 	cpu_wbinvd_on_all_cpus();
+#else
+	printk(KERN_ERR "Architecture has no drm_cache.c support\n");
+	WARN_ON_ONCE(1);
+#endif
 }
 EXPORT_SYMBOL(drm_clflush_virt_range);

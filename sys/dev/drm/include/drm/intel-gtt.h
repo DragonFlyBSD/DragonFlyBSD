@@ -76,8 +76,10 @@ void agp_intel_gtt_clear_range(device_t dev, u_int first_entry,
 void agp_intel_gtt_insert_pages(device_t dev, u_int first_entry,
     u_int num_entries, vm_page_t *pages, u_int flags);
 
-void intel_gtt_get(u64 *gtt_total, size_t *stolen_size,
-		   phys_addr_t *mappable_base, u64 *mappable_end);
+void intel_gtt_get(u64 *gtt_total,
+		   u32 *stolen_size,
+		   phys_addr_t *mappable_base,
+		   u64 *mappable_end);
 
 int intel_gtt_chipset_flush(void);
 void intel_gtt_clear_range(u_int first_entry, u_int num_entries);

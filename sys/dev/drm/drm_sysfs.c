@@ -62,6 +62,14 @@ int drm_class_device_register(struct device *dev)
 	return 0;
 }
 
+/**
+ * drm_class_device_unregister - unregister device with the DRM sysfs class
+ * @dev: device to unregister
+ *
+ * Unregisters a &struct device from the DRM sysfs class. Essentially only used
+ * by ttm to have a place for its global settings. Drivers should never use
+ * this.
+ */
 void drm_class_device_unregister(struct device *dev)
 {
 }

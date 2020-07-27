@@ -77,6 +77,8 @@ writel(u32 value, volatile void __iomem *addr)
 	*(volatile uint32_t *)addr = value;
 }
 
+#define writel_relaxed(v, a)	writel(v, a)
+
 #undef writeq
 static inline void
 writeq(u64 value, volatile void __iomem *addr)

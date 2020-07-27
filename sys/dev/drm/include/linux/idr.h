@@ -27,6 +27,8 @@
 #ifndef _LINUX_IDR_H_
 #define _LINUX_IDR_H_
 
+#include <linux/slab.h>
+
 #include <sys/idr.h>
 
 #ifdef MALLOC_DECLARE
@@ -65,7 +67,15 @@ ida_remove(struct ida *ida, int id)
 	idr_remove(&ida->idr, id);
 }
 
-void ida_destroy(struct ida *ida);
+static inline void
+ida_destroy(struct ida *ida)
+{
+	idr_destroy(&ida->idr);
+	if (ida->free_bitmap != NULL) {
+		/* kfree() is a linux macro! Work around the cpp pass */
+		(kfree)(ida->free_bitmap, M_IDR);
+	}
+}
 
 static inline int
 ida_simple_get(struct ida *ida, unsigned int start, unsigned int end, gfp_t gfp_mask)

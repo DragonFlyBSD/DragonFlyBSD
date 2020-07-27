@@ -44,6 +44,8 @@
 #include <sys/stat.h>
 #include <sys/endian.h>
 
+#define U8_MAX		((u8)~0U)
+#define U32_MAX		((u32)~0U)
 #define U64_MAX		((u64)~0ULL)
 
 #include <machine/limits.h>	/* LONG_MAX etc... */
@@ -168,6 +170,7 @@ might_sleep(void)
 }
 
 #define snprintf	ksnprintf
+#define sprintf		ksprintf
 
 static inline int __printf(3, 0)
 vsnprintf(char *buf, size_t size, const char *fmt, va_list args)

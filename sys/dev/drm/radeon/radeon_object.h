@@ -150,6 +150,7 @@ extern void radeon_bo_get_tiling_flags(struct radeon_bo *bo,
 extern int radeon_bo_check_tiling(struct radeon_bo *bo, bool has_moved,
 				bool force_drop);
 extern void radeon_bo_move_notify(struct ttm_buffer_object *bo,
+				  bool evict,
 				  struct ttm_mem_reg *new_mem);
 extern int radeon_bo_fault_reserve_notify(struct ttm_buffer_object *bo);
 extern int radeon_bo_get_surface_reg(struct radeon_bo *bo);
@@ -167,7 +168,7 @@ static inline uint64_t radeon_sa_bo_gpu_addr(struct radeon_sa_bo *sa_bo)
 
 static inline void * radeon_sa_bo_cpu_addr(struct radeon_sa_bo *sa_bo)
 {
-	return (char *)sa_bo->manager->cpu_ptr + sa_bo->soffset;
+	return sa_bo->manager->cpu_ptr + sa_bo->soffset;
 }
 
 extern int radeon_sa_bo_manager_init(struct radeon_device *rdev,

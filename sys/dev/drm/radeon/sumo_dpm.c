@@ -21,7 +21,7 @@
  *
  */
 
-#include <drm/drmP.h>
+#include "drmP.h"
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "sumod.h"
@@ -1472,16 +1472,16 @@ static int sumo_parse_power_table(struct radeon_device *rdev)
 	if (!atom_parse_data_header(mode_info->atom_context, index, NULL,
 				   &frev, &crev, &data_offset))
 		return -EINVAL;
-	power_info = (union power_info *)((uint8_t*)mode_info->atom_context->bios + data_offset);
+	power_info = (union power_info *)(mode_info->atom_context->bios + data_offset);
 
 	state_array = (struct _StateArray *)
-		((uint8_t*)mode_info->atom_context->bios + data_offset +
+		(mode_info->atom_context->bios + data_offset +
 		 le16_to_cpu(power_info->pplib.usStateArrayOffset));
 	clock_info_array = (struct _ClockInfoArray *)
-		((uint8_t*)mode_info->atom_context->bios + data_offset +
+		(mode_info->atom_context->bios + data_offset +
 		 le16_to_cpu(power_info->pplib.usClockInfoArrayOffset));
 	non_clock_info_array = (struct _NonClockInfoArray *)
-		((uint8_t*)mode_info->atom_context->bios + data_offset +
+		(mode_info->atom_context->bios + data_offset +
 		 le16_to_cpu(power_info->pplib.usNonClockInfoArrayOffset));
 
 	rdev->pm.dpm.ps = kzalloc(sizeof(struct radeon_ps) *
@@ -1666,7 +1666,7 @@ static int sumo_parse_sys_info_table(struct radeon_device *rdev)
 
 	if (atom_parse_data_header(mode_info->atom_context, index, NULL,
 				   &frev, &crev, &data_offset)) {
-		igp_info = (union igp_info *)((uint8_t*)mode_info->atom_context->bios +
+		igp_info = (union igp_info *)(mode_info->atom_context->bios +
 					      data_offset);
 
 		if (crev != 6) {

@@ -33,9 +33,11 @@
 #ifndef _DRM_CACHE_H_
 #define _DRM_CACHE_H_
 
-#if 0
+#include <linux/scatterlist.h>
+
 void drm_clflush_pages(struct page *pages[], unsigned long num_pages);
-#endif
+void drm_clflush_sg(struct sg_table *st);
+void drm_clflush_virt_range(void *addr, unsigned long length);
 
 static inline bool drm_arch_can_wc_memory(void)
 {

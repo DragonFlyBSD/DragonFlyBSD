@@ -50,7 +50,7 @@ struct i915_params i915 __read_mostly = {
 	.error_capture = true,
 	.invert_brightness = 0,
 	.disable_display = 0,
-	.enable_cmd_parser = 1,
+	.enable_cmd_parser = true,
 	.use_mmio_flip = 0,
 	.mmio_debug = 0,
 	.verbose_state_checks = 1,
@@ -59,6 +59,8 @@ struct i915_params i915 __read_mostly = {
 	.enable_guc_loading = 0,
 	.enable_guc_submission = 0,
 	.guc_log_level = -1,
+	.guc_firmware_path = NULL,
+	.huc_firmware_path = NULL,
 	.enable_dp_mst = true,
 	.inject_load_failure = 0,
 	.enable_dpcd_backlight = false,
@@ -66,21 +68,25 @@ struct i915_params i915 __read_mostly = {
 };
 
 module_param_named(modeset, i915.modeset, int, 0400);
+TUNABLE_INT("drm.i915.modeset", &i915.modeset);
 MODULE_PARM_DESC(modeset,
 	"Use kernel modesetting [KMS] (0=disable, "
 	"1=on, -1=force vga console preference [default])");
 
 module_param_named_unsafe(panel_ignore_lid, i915.panel_ignore_lid, int, 0600);
+TUNABLE_INT("drm.i915.panel_ignore_lid", &i915.panel_ignore_lid);
 MODULE_PARM_DESC(panel_ignore_lid,
 	"Override lid status (0=autodetect, 1=autodetect disabled [default], "
 	"-1=force lid closed, -2=force lid open)");
 
 module_param_named_unsafe(semaphores, i915.semaphores, int, 0400);
+TUNABLE_INT("drm.i915.semaphores", &i915.semaphores);
 MODULE_PARM_DESC(semaphores,
 	"Use semaphores for inter-ring sync "
 	"(default: -1 (use per-chip defaults))");
 
 module_param_named_unsafe(enable_rc6, i915.enable_rc6, int, 0400);
+TUNABLE_INT("drm.i915.enable_rc6", &i915.enable_rc6);
 MODULE_PARM_DESC(enable_rc6,
 	"Enable power-saving render C-state 6. "
 	"Different stages can be selected via bitmask values "
@@ -89,26 +95,31 @@ MODULE_PARM_DESC(enable_rc6,
 	"default: -1 (use per-chip default)");
 
 module_param_named_unsafe(enable_dc, i915.enable_dc, int, 0400);
+TUNABLE_INT("drm.i915.enable_dc", &i915.enable_dc);
 MODULE_PARM_DESC(enable_dc,
 	"Enable power-saving display C-states. "
 	"(-1=auto [default]; 0=disable; 1=up to DC5; 2=up to DC6)");
 
 module_param_named_unsafe(enable_fbc, i915.enable_fbc, int, 0600);
+TUNABLE_INT("drm.i915.enable_fbc", &i915.enable_fbc);
 MODULE_PARM_DESC(enable_fbc,
 	"Enable frame buffer compression for power savings "
 	"(default: -1 (use per-chip default))");
 
 module_param_named_unsafe(lvds_channel_mode, i915.lvds_channel_mode, int, 0400);
+TUNABLE_INT("drm.i915.lvds_channel_mode", &i915.lvds_channel_mode);
 MODULE_PARM_DESC(lvds_channel_mode,
 	 "Specify LVDS channel mode "
 	 "(0=probe BIOS [default], 1=single-channel, 2=dual-channel)");
 
 module_param_named_unsafe(lvds_use_ssc, i915.panel_use_ssc, int, 0600);
+TUNABLE_INT("drm.i915.panel_use_ssc", &i915.panel_use_ssc);
 MODULE_PARM_DESC(lvds_use_ssc,
 	"Use Spread Spectrum Clock with panels [LVDS/eDP] "
 	"(default: auto from VBT)");
 
 module_param_named_unsafe(vbt_sdvo_panel_type, i915.vbt_sdvo_panel_type, int, 0400);
+TUNABLE_INT("drm.i915.vbt_sdvo_panel_type", &i915.vbt_sdvo_panel_type);
 MODULE_PARM_DESC(vbt_sdvo_panel_type,
 	"Override/Ignore selection of SDVO panel mode in the VBT "
 	"(-2=ignore, -1=auto [default], index in VBT BIOS table)");
@@ -131,21 +142,24 @@ MODULE_PARM_DESC(enable_hangcheck,
 	"(default: true)");
 
 module_param_named_unsafe(enable_ppgtt, i915.enable_ppgtt, int, 0400);
+TUNABLE_INT("drm.i915.enable_ppgtt", &i915.enable_ppgtt);
 MODULE_PARM_DESC(enable_ppgtt,
 	"Override PPGTT usage. "
 	"(-1=auto [default], 0=disabled, 1=aliasing, 2=full, 3=full with extended address space)");
 
 module_param_named_unsafe(enable_execlists, i915.enable_execlists, int, 0400);
+TUNABLE_INT("drm.i915.enable_execlists", &i915.enable_execlists);
 MODULE_PARM_DESC(enable_execlists,
 	"Override execlists usage. "
 	"(-1=auto [default], 0=disabled, 1=enabled)");
 
 module_param_named_unsafe(enable_psr, i915.enable_psr, int, 0600);
+TUNABLE_INT("drm.i915.enable_psr", &i915.enable_psr);
 MODULE_PARM_DESC(enable_psr, "Enable PSR "
 		 "(0=disabled, 1=enabled - link mode chosen per-platform, 2=force link-standby mode, 3=force link-off mode) "
 		 "Default: -1 (use per-chip default)");
 
-module_param_named_unsafe(alpha_support, i915.alpha_support, int, 0400);
+module_param_named_unsafe(alpha_support, i915.alpha_support, bool, 0400);
 MODULE_PARM_DESC(alpha_support,
 	"Enable alpha quality driver support for latest hardware. "
 	"See also CONFIG_DRM_I915_ALPHA_SUPPORT.");
@@ -178,6 +192,7 @@ MODULE_PARM_DESC(force_reset_modeset_test,
 	"For developers only.");
 
 module_param_named_unsafe(invert_brightness, i915.invert_brightness, int, 0600);
+TUNABLE_INT("drm.i915.panel_invert_brightness", &i915.invert_brightness);
 MODULE_PARM_DESC(invert_brightness,
 	"Invert backlight brightness "
 	"(-1 force normal, 0 machine defaults, 1 force inversion), please "
@@ -188,11 +203,12 @@ MODULE_PARM_DESC(invert_brightness,
 module_param_named(disable_display, i915.disable_display, bool, 0400);
 MODULE_PARM_DESC(disable_display, "Disable display (default: false)");
 
-module_param_named_unsafe(enable_cmd_parser, i915.enable_cmd_parser, int, 0600);
+module_param_named_unsafe(enable_cmd_parser, i915.enable_cmd_parser, bool, 0400);
 MODULE_PARM_DESC(enable_cmd_parser,
-		 "Enable command parsing (1=enabled [default], 0=disabled)");
+		 "Enable command parsing (true=enabled [default], false=disabled)");
 
 module_param_named_unsafe(use_mmio_flip, i915.use_mmio_flip, int, 0600);
+TUNABLE_INT("drm.i915.use_mmio_flip", &i915.use_mmio_flip);
 MODULE_PARM_DESC(use_mmio_flip,
 		 "use MMIO flips (-1=never, 0=driver discretion [default], 1=always)");
 
@@ -205,9 +221,9 @@ module_param_named(verbose_state_checks, i915.verbose_state_checks, bool, 0600);
 MODULE_PARM_DESC(verbose_state_checks,
 	"Enable verbose logs (ie. WARN_ON()) in case of unexpected hw state conditions.");
 
-module_param_named_unsafe(nuclear_pageflip, i915.nuclear_pageflip, bool, 0600);
+module_param_named_unsafe(nuclear_pageflip, i915.nuclear_pageflip, bool, 0400);
 MODULE_PARM_DESC(nuclear_pageflip,
-		 "Force atomic modeset functionality; asynchronous mode is not yet supported. (default: false).");
+		 "Force enable atomic functionality on platforms that don't have full support yet.");
 
 /* WA to get away with the default setting in VBT for early platforms.Will be removed */
 module_param_named_unsafe(edp_vswing, i915.edp_vswing, int, 0400);
@@ -229,6 +245,14 @@ MODULE_PARM_DESC(enable_guc_submission,
 module_param_named(guc_log_level, i915.guc_log_level, int, 0400);
 MODULE_PARM_DESC(guc_log_level,
 	"GuC firmware logging level (-1:disabled (default), 0-3:enabled)");
+
+module_param_named_unsafe(guc_firmware_path, i915.guc_firmware_path, charp, 0400);
+MODULE_PARM_DESC(guc_firmware_path,
+	"GuC firmware path to use instead of the default one");
+
+module_param_named_unsafe(huc_firmware_path, i915.huc_firmware_path, charp, 0400);
+MODULE_PARM_DESC(huc_firmware_path,
+	"HuC firmware path to use instead of the default one");
 
 module_param_named_unsafe(enable_dp_mst, i915.enable_dp_mst, bool, 0600);
 MODULE_PARM_DESC(enable_dp_mst,

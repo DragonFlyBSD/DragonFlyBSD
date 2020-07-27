@@ -1083,7 +1083,7 @@ void r600_pcie_gart_tlb_flush(struct radeon_device *rdev)
 		tmp = RREG32(VM_CONTEXT0_REQUEST_RESPONSE);
 		tmp = (tmp & RESPONSE_TYPE_MASK) >> RESPONSE_TYPE_SHIFT;
 		if (tmp == 2) {
-			printk(KERN_WARNING "[drm] r600 flush TLB failed\n");
+			pr_warn("[drm] r600 flush TLB failed\n");
 			return;
 		}
 		if (tmp) {
@@ -2585,8 +2585,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 out:
 	if (err) {
 		if (err != -EINVAL)
-			printk(KERN_ERR
-			       "r600_cp: Failed to load firmware \"%s\"\n",
+			pr_err("r600_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
 		release_firmware(rdev->pfp_fw);
 		rdev->pfp_fw = NULL;

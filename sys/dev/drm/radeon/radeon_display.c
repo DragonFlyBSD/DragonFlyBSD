@@ -28,6 +28,7 @@
 #include "radeon.h"
 
 #include "atom.h"
+#include <asm/div64.h>
 
 #include <linux/pm_runtime.h>
 #include <drm/drm_crtc_helper.h>
@@ -231,7 +232,8 @@ void radeon_crtc_fb_gamma_get(struct drm_crtc *crtc, u16 *red, u16 *green,
 }
 
 static int radeon_crtc_gamma_set(struct drm_crtc *crtc, u16 *red, u16 *green,
-				 u16 *blue, uint32_t size)
+				 u16 *blue, uint32_t size,
+				 struct drm_modeset_acquire_ctx *ctx)
 {
 	struct radeon_crtc *radeon_crtc = to_radeon_crtc(crtc);
 	int i;
@@ -484,7 +486,8 @@ static int radeon_crtc_page_flip_target(struct drm_crtc *crtc,
 					struct drm_framebuffer *fb,
 					struct drm_pending_vblank_event *event,
 					uint32_t page_flip_flags,
-					uint32_t target)
+					uint32_t target,
+					struct drm_modeset_acquire_ctx *ctx)
 {
 	struct drm_device *dev = crtc->dev;
 	struct radeon_device *rdev = dev->dev_private;
@@ -548,19 +551,19 @@ static int radeon_crtc_page_flip_target(struct drm_crtc *crtc,
 	if (!ASIC_IS_AVIVO(rdev)) {
 		/* crtc offset is from display base addr not FB location */
 		base -= radeon_crtc->legacy_display_base_addr;
-		pitch_pixels = fb->pitches[0] / (fb->bits_per_pixel / 8);
+		pitch_pixels = fb->pitches[0] / fb->format->cpp[0];
 
 		if (tiling_flags & RADEON_TILING_MACRO) {
 			if (ASIC_IS_R300(rdev)) {
 				base &= ~0x7ff;
 			} else {
-				int byteshift = fb->bits_per_pixel >> 4;
+				int byteshift = fb->format->cpp[0] * 8 >> 4;
 				int tile_addr = (((crtc->y >> 3) * pitch_pixels +  crtc->x) >> (8 - byteshift)) << 11;
 				base += tile_addr + ((crtc->x << byteshift) % 256) + ((crtc->y % 8) << 8);
 			}
 		} else {
 			int offset = crtc->y * pitch_pixels + crtc->x;
-			switch (fb->bits_per_pixel) {
+			switch (fb->format->cpp[0] * 8) {
 			case 8:
 			default:
 				offset *= 1;
@@ -622,7 +625,8 @@ cleanup:
 }
 
 static int
-radeon_crtc_set_config(struct drm_mode_set *set)
+radeon_crtc_set_config(struct drm_mode_set *set,
+		       struct drm_modeset_acquire_ctx *ctx)
 {
 	struct drm_device *dev;
 	struct radeon_device *rdev;
@@ -635,21 +639,17 @@ radeon_crtc_set_config(struct drm_mode_set *set)
 
 	dev = set->crtc->dev;
 
-#ifdef PM_TODO
 	ret = pm_runtime_get_sync(dev->dev);
 	if (ret < 0)
 		return ret;
-#endif
 
-	ret = drm_crtc_helper_set_config(set);
+	ret = drm_crtc_helper_set_config(set, ctx);
 
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head)
 		if (crtc->enabled)
 			active = true;
 
-#ifdef PM_TODO
 	pm_runtime_mark_last_busy(dev->dev);
-#endif
 
 	rdev = dev->dev_private;
 	/* if we have active crtcs and we don't have a power ref,
@@ -661,16 +661,12 @@ radeon_crtc_set_config(struct drm_mode_set *set)
 	/* if we have no active crtcs, then drop the power ref
 	   we got before */
 	if (!active && rdev->have_disp_power_ref) {
-#ifdef PM_TODO
 		pm_runtime_put_autosuspend(dev->dev);
-#endif
 		rdev->have_disp_power_ref = false;
 	}
 
 	/* drop the power reference we got coming in here */
-#ifdef PM_TODO
 	pm_runtime_put_autosuspend(dev->dev);
-#endif
 	return ret;
 }
 
@@ -1143,7 +1139,7 @@ void radeon_compute_pll_legacy(struct radeon_pll *pll,
 	uint32_t post_div;
 	u32 pll_out_min, pll_out_max;
 
-	DRM_DEBUG_KMS("PLL freq %ju %u %u\n", freq, pll->min_ref_div, pll->max_ref_div);
+	DRM_DEBUG_KMS("PLL freq %lu %u %u\n", freq, pll->min_ref_div, pll->max_ref_div);
 	freq = freq * 1000;
 
 	if (pll->flags & RADEON_PLL_IS_LCD) {
@@ -1334,7 +1330,7 @@ radeon_framebuffer_init(struct drm_device *dev,
 {
 	int ret;
 	rfb->obj = obj;
-	drm_helper_mode_fill_fb_struct(&rfb->base, mode_cmd);
+	drm_helper_mode_fill_fb_struct(dev, &rfb->base, mode_cmd);
 	ret = drm_framebuffer_init(dev, &rfb->base, &radeon_fb_funcs);
 	if (ret) {
 		rfb->obj = NULL;

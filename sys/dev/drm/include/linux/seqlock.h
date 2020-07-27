@@ -111,7 +111,7 @@ __seqcount_init(seqcount_t *s, const char *name, struct lock_class_key *key)
 }
 
 static inline unsigned int
-read_seqcount_begin(const seqcount_t *s)
+__read_seqcount_begin(const seqcount_t *s)
 {
 	unsigned int ret;
 
@@ -123,14 +123,30 @@ read_seqcount_begin(const seqcount_t *s)
 		cpu_pause();
 	} while (1);
 
-	cpu_lfence();
 	return ret;
 }
 
-static inline int read_seqcount_retry(const seqcount_t *s, unsigned start)
+static inline unsigned int
+read_seqcount_begin(const seqcount_t *s)
+{
+	unsigned int ret = __read_seqcount_begin(s);
+
+	cpu_lfence();
+
+	return ret;
+}
+
+static inline int
+__read_seqcount_retry(const seqcount_t *s, unsigned start)
+{
+	return (s->sequence != start);
+}
+
+static inline int
+read_seqcount_retry(const seqcount_t *s, unsigned start)
 {
 	cpu_lfence();
-	return (s->sequence != start);
+	return __read_seqcount_retry(s, start);
 }
 
 static inline void write_seqcount_begin(seqcount_t *s)

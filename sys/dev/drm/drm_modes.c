@@ -35,6 +35,7 @@
 #include <linux/export.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
+#include <video/of_videomode.h>
 #include <video/videomode.h>
 #include <drm/drm_modes.h>
 
@@ -70,7 +71,7 @@ struct drm_display_mode *drm_mode_create(struct drm_device *dev)
 	if (!nmode)
 		return NULL;
 
-	if (drm_mode_object_get(dev, &nmode->base, DRM_MODE_OBJECT_MODE)) {
+	if (drm_mode_object_add(dev, &nmode->base, DRM_MODE_OBJECT_MODE)) {
 		kfree(nmode);
 		return NULL;
 	}
@@ -726,7 +727,7 @@ void drm_mode_set_name(struct drm_display_mode *mode)
 {
 	bool interlaced = !!(mode->flags & DRM_MODE_FLAG_INTERLACE);
 
-	ksnprintf(mode->name, DRM_DISPLAY_MODE_LEN, "%dx%d%s",
+	snprintf(mode->name, DRM_DISPLAY_MODE_LEN, "%dx%d%s",
 		 mode->hdisplay, mode->vdisplay,
 		 interlaced ? "i" : "");
 }
@@ -791,6 +792,26 @@ int drm_mode_vrefresh(const struct drm_display_mode *mode)
 	return refresh;
 }
 EXPORT_SYMBOL(drm_mode_vrefresh);
+
+/**
+ * drm_mode_get_hv_timing - Fetches hdisplay/vdisplay for given mode
+ * @mode: mode to query
+ * @hdisplay: hdisplay value to fill in
+ * @vdisplay: vdisplay value to fill in
+ *
+ * The vdisplay value will be doubled if the specified mode is a stereo mode of
+ * the appropriate layout.
+ */
+void drm_mode_get_hv_timing(const struct drm_display_mode *mode,
+			    int *hdisplay, int *vdisplay)
+{
+	struct drm_display_mode adjusted = *mode;
+
+	drm_mode_set_crtcinfo(&adjusted, CRTC_STEREO_DOUBLE_ONLY);
+	*hdisplay = adjusted.crtc_hdisplay;
+	*vdisplay = adjusted.crtc_vdisplay;
+}
+EXPORT_SYMBOL(drm_mode_get_hv_timing);
 
 /**
  * drm_mode_set_crtcinfo - set CRTC modesetting timing parameters
@@ -1457,12 +1478,8 @@ drm_mode_create_from_cmdline_mode(struct drm_device *dev,
 
 	mode->type |= DRM_MODE_TYPE_USERDEF;
 	/* fix up 1368x768: GFT/CVT can't express 1366 width due to alignment */
-	if (cmd->xres == 1366 && mode->hdisplay == 1368) {
-		mode->hdisplay = 1366;
-		mode->hsync_start--;
-		mode->hsync_end--;
-		drm_mode_set_name(mode);
-	}
+	if (cmd->xres == 1366)
+		drm_mode_fixup_1366x768(mode);
 	drm_mode_set_crtcinfo(mode, CRTC_INTERLACE_HALVE_V);
 	return mode;
 }

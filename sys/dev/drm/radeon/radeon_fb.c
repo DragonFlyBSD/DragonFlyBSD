@@ -24,7 +24,7 @@
  *     David Airlie
  */
 #include <linux/module.h>
-#include <linux/slab.h>
+#include <linux/fb.h>
 #include <linux/pm_runtime.h>
 
 #include <drm/drmP.h>
@@ -77,24 +77,16 @@ radeonfb_release(struct fb_info *info, int user)
 static struct fb_ops radeonfb_ops = {
 #if 0
 	.owner = THIS_MODULE,
+#endif
+	DRM_FB_HELPER_DEFAULT_OPS,
+#if 0
 	.fb_open = radeonfb_open,
 	.fb_release = radeonfb_release,
-	.fb_check_var = drm_fb_helper_check_var,
 #endif
-	.fb_set_par = drm_fb_helper_set_par,
 #if 0
 	.fb_fillrect = drm_fb_helper_cfb_fillrect,
 	.fb_copyarea = drm_fb_helper_cfb_copyarea,
 	.fb_imageblit = drm_fb_helper_cfb_imageblit,
-	.fb_pan_display = drm_fb_helper_pan_display,
-#endif
-	.fb_blank = drm_fb_helper_blank,
-#if 0
-	.fb_setcmap = drm_fb_helper_setcmap,
-#endif
-	.fb_debug_enter = drm_fb_helper_debug_enter,
-#if 0
-	.fb_debug_leave = drm_fb_helper_debug_leave,
 #endif
 };
 
@@ -165,8 +157,7 @@ static int radeonfb_create_pinned_object(struct radeon_fbdev *rfbdev,
 				       RADEON_GEM_DOMAIN_VRAM,
 				       0, true, &gobj);
 	if (ret) {
-		printk(KERN_ERR "failed to allocate framebuffer (%d)\n",
-		       aligned_size);
+		pr_err("failed to allocate framebuffer (%d)\n", aligned_size);
 		return -ENOMEM;
 	}
 	rbo = gem_to_radeon_bo(gobj);
@@ -258,7 +249,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	info = drm_fb_helper_alloc_fbi(helper);
 	if (IS_ERR(info)) {
 		ret = PTR_ERR(info);
-		goto out_unref;
+		goto out;
 	}
 
 	info->par = rfbdev;
@@ -266,7 +257,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	ret = radeon_framebuffer_init(rdev->ddev, &rfbdev->rfb, &mode_cmd, gobj);
 	if (ret) {
 		DRM_ERROR("failed to initialize framebuffer %d\n", ret);
-		goto out_destroy_fbi;
+		goto out;
 	}
 
 	fb = &rfbdev->rfb.base;
@@ -296,7 +287,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 #else
 	strcpy(info->fix.id, "radeondrmfb");
 
-	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
+	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->format->depth);
 
 	info->flags = FBINFO_DEFAULT | FBINFO_CAN_FORCE_OUTPUT;
 	info->fbops = &radeonfb_ops;
@@ -317,22 +308,20 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 	if (info->screen_base == NULL) {
 		ret = -ENOSPC;
-		goto out_destroy_fbi;
+		goto out;
 	}
 #endif
 
-	DRM_INFO("fb mappable at 0x%lX\n",  info->paddr);
+	DRM_INFO("fb mappable at 0x%jX\n",  info->paddr);
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)rdev->mc.aper_base);
 	DRM_INFO("size %lu\n", (unsigned long)radeon_bo_size(rbo));
-	DRM_INFO("fb depth is %d\n", fb->depth);
+	DRM_INFO("fb depth is %d\n", fb->format->depth);
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
 
 	vga_switcheroo_client_fb_set(rdev->ddev->pdev, info);
 	return 0;
 
-out_destroy_fbi:
-	drm_fb_helper_release_fbi(helper);
-out_unref:
+out:
 	if (rbo) {
 
 	}
@@ -356,7 +345,6 @@ static int radeon_fbdev_destroy(struct drm_device *dev, struct radeon_fbdev *rfb
 	struct radeon_framebuffer *rfb = &rfbdev->rfb;
 
 	drm_fb_helper_unregister_fbi(&rfbdev->helper);
-	drm_fb_helper_release_fbi(&rfbdev->helper);
 
 	if (rfb->obj) {
 		radeonfb_destroy_pinned_object(rfb->obj);
@@ -400,7 +388,6 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 			      &radeon_fb_helper_funcs);
 
 	ret = drm_fb_helper_init(rdev->ddev, &rfbdev->helper,
-				 rdev->num_crtc,
 				 RADEONFB_CONN_LIMIT);
 	if (ret)
 		goto free;
