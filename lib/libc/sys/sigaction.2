@@ -306,7 +306,7 @@ signals that restart pending system calls continue to do so.
 The following is a list of all signals
 with names as in the include file
 .In signal.h :
-.Bl -column SIGVTALARMXX "create core imagexxx"
+.Bl -column SIGCKPTEXITXX "create core imagexxx"
 .It Sy NAME Ta Sy Default Action Ta Sy Description
 .It Dv SIGHUP Ta terminate process Ta terminal line hangup
 .It Dv SIGINT Ta terminate process Ta interrupt program
@@ -339,6 +339,8 @@ with names as in the include file
 .It Dv SIGINFO Ta discard signal Ta status request from keyboard
 .It Dv SIGUSR1 Ta terminate process Ta user defined signal 1
 .It Dv SIGUSR2 Ta terminate process Ta user defined signal 2
+.It Dv SIGCKPT Ta checkpoint process Ta checkpoint
+.It Dv SIGCKPTEXIT Ta terminate process Ta checkpoint and exit
 .El
 .Sh NOTE
 The
