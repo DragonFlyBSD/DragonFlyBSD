@@ -32,6 +32,7 @@ MAN=	aac.4 \
 	amdsbwd.4 \
 	amdsmb.4 \
 	amdsmn.4 \
+	amdtemp.4 \
 	amr.4 \
 	aperf.4 \
 	aps.4 \
