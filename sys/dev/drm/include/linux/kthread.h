@@ -37,4 +37,9 @@ int kthread_stop(struct task_struct *k);
 
 bool kthread_should_stop(void);
 
+int kthread_park(struct task_struct *k);
+void kthread_unpark(struct task_struct *k);
+bool kthread_should_park(void);
+void kthread_parkme(void);
+
 #endif	/* _LINUX_KTHREAD_H_ */

@@ -85,7 +85,6 @@ struct task_struct {
 
 	/* kthread-specific data */
 	unsigned long		kt_flags;
-	struct completion	kt_exited;
 	int			(*kt_fn)(void *data);
 	void			*kt_fndata;
 	int			kt_exitvalue;

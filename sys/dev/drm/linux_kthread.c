@@ -76,6 +76,7 @@ kthread_run(int (*lfn)(void *), void *data, const char *namefmt, ...)
 }
 
 #define KTHREAD_SHOULD_STOP 1
+#define KTHREAD_SHOULD_PARK 2
 
 bool
 kthread_should_stop(void)
@@ -89,7 +90,38 @@ kthread_stop(struct task_struct *ts)
 	set_bit(KTHREAD_SHOULD_STOP, &ts->kt_flags);
 
 	wake_up_process(ts);
-	wait_for_completion(&ts->kt_exited);
 
 	return ts->kt_exitvalue;
+}
+
+int
+kthread_park(struct task_struct *ts)
+{
+	set_bit(KTHREAD_SHOULD_PARK, &ts->kt_flags);
+	wake_up_process(ts);
+
+	return ts->kt_exitvalue;
+}
+
+void
+kthread_unpark(struct task_struct *ts)
+{
+	clear_bit(KTHREAD_SHOULD_PARK, &ts->kt_flags);
+	lwkt_schedule(ts->dfly_td);
+	wake_up_process(ts);
+}
+
+bool
+kthread_should_park(void)
+{
+	return test_bit(KTHREAD_SHOULD_PARK, &current->kt_flags);
+}
+
+void
+kthread_parkme(void)
+{
+	if (test_bit(KTHREAD_SHOULD_PARK, &current->kt_flags) == 0)
+		return;
+
+	lwkt_deschedule_self(curthread);
 }
