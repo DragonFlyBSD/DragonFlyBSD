@@ -32,7 +32,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\"
-.Dd August 28, 2019
+.Dd July 27, 2020
 .Dt JAIL 8
 .Os
 .Sh NAME
@@ -462,6 +462,8 @@ by setting this MIB entry to 1.
 .Xr sysctl.conf 5 ,
 .Xr halt 8 ,
 .Xr inetd 8 ,
+.Xr jexec 8 ,
+.Xr jls 8 ,
 .Xr named 8 ,
 .Xr pw 8 ,
 .Xr reboot 8 ,
@@ -513,7 +515,7 @@ address alias flag such that daemons listening on all IPs
 will not bind on that address, which would facilitate building a safe
 host environment such that host daemons do not impose on services offered
 from within jails.
-Currently, the simplist answer is to minimize services
+Currently, the simplest answer is to minimize services
 offered on the host, possibly limiting it to services offered from
 .Xr inetd 8
 which is easily configurable.
