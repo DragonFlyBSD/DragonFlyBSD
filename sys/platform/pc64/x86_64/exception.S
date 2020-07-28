@@ -264,8 +264,6 @@ IDTVEC(fpusegm)
 	TRAP(T_FPOPFLT)
 IDTVEC(mchk)
 	TRAP(T_MCHK)
-IDTVEC(rsvd)
-	TRAP(T_RESERVED)
 IDTVEC(fpu)
 	TRAP(T_ARITHTRAP)
 IDTVEC(xmm)
@@ -624,6 +622,50 @@ IDTVEC(nmi)
 	MEXITCOUNT
 
 	POP_FRAME(jmp doreti_iret)
+
+/*
+ * Reserved (unconfigured) traps rsvd00 - rsvdff
+ */
+.macro reservetrap a b
+IDTVEC(rsvd\a\b)
+	TRAP(T_RESERVED + 0x\a\b)
+.endm
+
+.macro reservegrp a
+reservetrap \a 0
+reservetrap \a 1
+reservetrap \a 2
+reservetrap \a 3
+reservetrap \a 4
+reservetrap \a 5
+reservetrap \a 6
+reservetrap \a 7
+reservetrap \a 8
+reservetrap \a 9
+reservetrap \a a
+reservetrap \a b
+reservetrap \a c
+reservetrap \a d
+reservetrap \a e
+reservetrap \a f
+.endm
+
+reservegrp 0
+reservegrp 1
+reservegrp 2
+reservegrp 3
+reservegrp 4
+reservegrp 5
+reservegrp 6
+reservegrp 7
+reservegrp 8
+reservegrp 9
+reservegrp a
+reservegrp b
+reservegrp c
+reservegrp d
+reservegrp e
+reservegrp f
 
 /*
  * This function is what cpu_heavy_restore jumps to after a new process

@@ -62,7 +62,7 @@
 #define	T_STKFLT	27	/* stack fault */
 #define	T_MCHK		28	/* machine check trap */
 #define	T_XMMFLT	29	/* SIMD floating-point exception */
-#define	T_RESERVED	30	/* reserved (unknown) */
+#define	T_RESERVED	256	/* reserved to reserved+255 (unknown) */
 
 /* XXX most of the following codes aren't used, but could be. */
 

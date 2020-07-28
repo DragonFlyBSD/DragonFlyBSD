@@ -1124,20 +1124,27 @@ lapic_config(void)
 	TUNABLE_INT_FETCH("hw.x2apic_enable", &x2apic_enable);
 	if (x2apic_enable < 0)
 		x2apic_enable = 1;
-
 	if ((cpu_feature2 & CPUID2_X2APIC) == 0) {
 		/* X2APIC is not supported. */
 		x2apic_enable = 0;
-	} else if (!x2apic_enable) {
+	} else {
 		/*
 		 * If the BIOS enabled the X2APIC mode, then we would stick
 		 * with the X2APIC mode.
 		 */
 		apic_base = rdmsr(MSR_APICBASE);
 		if (apic_base & APICBASE_X2APIC) {
-			kprintf("LAPIC: BIOS enabled X2APIC mode\n");
+			if (x2apic_enable == 0)
+				kprintf("LAPIC: BIOS enabled X2APIC mode, force on\n");
+			else
+				kprintf("LAPIC: BIOS enabled X2APIC mode\n");
 			x2apic_enable = 1;
 		}
+	}
+	if (cpu_feature2 & CPUID2_X2APIC) {
+		apic_base = rdmsr(MSR_APICBASE);
+		if (apic_base & APICBASE_X2APIC)
+			kprintf("LAPIC: BIOS already enabled X2APIC mode\n");
 	}
 
 	if (x2apic_enable) {

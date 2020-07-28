@@ -771,8 +771,17 @@ trap(struct trapframe *frame)
 				goto out2;
 			} else if (panic_on_nmi == 0)
 				goto out2;
-			/* FALL THROUGH */
 #endif /* NISA > 0 */
+			break;
+		default:
+			if (type >= T_RESERVED && type < T_RESERVED + 256) {
+				kprintf("Ignoring spurious unknown "
+					"cpu trap T_RESERVED+%d\n",
+					type - T_RESERVED);
+				gd->gd_cnt.v_trap++;
+				goto out2;
+			}
+			break;
 		}
 		trap_fatal(frame, 0);
 		goto out2;
@@ -1012,18 +1021,20 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 	u_int type;
 	long rsp;
 	struct soft_segment_descriptor softseg;
-	char *msg;
 
 	code = frame->tf_err;
 	type = frame->tf_trapno;
 	sdtossd(&gdt[IDXSEL(frame->tf_cs & 0xffff)], &softseg);
 
+	kprintf("\n\nFatal trap %d: ", type);
 	if (type <= MAX_TRAP_MSG)
-		msg = trap_msg[type];
+		kprintf("%s ", trap_msg[type]);
 	else
-		msg = "UNKNOWN";
-	kprintf("\n\nFatal trap %d: %s while in %s mode\n", type, msg,
-	    ISPL(frame->tf_cs) == SEL_UPL ? "user" : "kernel");
+		kprintf("rsvd(%d) ", type - T_RESERVED);
+
+	kprintf("while in %s mode\n",
+		ISPL(frame->tf_cs) == SEL_UPL ? "user" : "kernel");
+
 	/* three separate prints in case of a trap on an unmapped page */
 	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
 	if (lapic_usable)
