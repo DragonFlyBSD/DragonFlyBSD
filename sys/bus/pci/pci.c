@@ -1705,6 +1705,7 @@ pci_teardown_msix(device_t dev)
 	KASSERT(msix->msix_alloc == 0 && TAILQ_EMPTY(&msix->msix_vectors),
 	    ("MSI-X vector is still allocated"));
 
+	pci_disable_msix(dev);
 	pci_mask_msix_allvectors(dev);
 
 	msix->msix_table_res = NULL;
