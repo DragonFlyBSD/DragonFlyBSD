@@ -2642,8 +2642,8 @@ resource_list_alloc(struct resource_list *rl,
 
 	if (isdefault) {
 		start = rle->start;
-		count = max(count, rle->count);
-		end = max(rle->end, start + count - 1);
+		count = ulmax(count, rle->count);
+		end = ulmax(rle->end, start + count - 1);
 	}
 	cpuid = rle->cpuid;
 
