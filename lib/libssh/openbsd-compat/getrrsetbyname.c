@@ -57,11 +57,19 @@
 
 #include "getrrsetbyname.h"
 
+#if defined(HAVE_DECL_H_ERRNO) && !HAVE_DECL_H_ERRNO
+extern int h_errno;
+#endif
+
 /* We don't need multithread support here */
 #ifdef _THREAD_PRIVATE
 # undef _THREAD_PRIVATE
 #endif
 #define _THREAD_PRIVATE(a,b,c) (c)
+
+#ifndef HAVE__RES_EXTERN
+struct __res_state _res;
+#endif
 
 /* Necessary functions and macros */
 

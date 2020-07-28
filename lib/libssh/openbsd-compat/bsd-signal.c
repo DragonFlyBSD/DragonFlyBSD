@@ -17,31 +17,18 @@
 #include "includes.h"
 
 #include <signal.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "openbsd-compat/bsd-signal.h"
 
-#undef signal
-
-mysig_t
-mysignal(int sig, mysig_t act)
+#if !defined(HAVE_STRSIGNAL)
+char *strsignal(int sig)
 {
-	struct sigaction sa, osa;
+	static char buf[16];
 
-	if (sigaction(sig, NULL, &osa) == -1)
-		return (mysig_t) -1;
-	if (osa.sa_handler != act) {
-		memset(&sa, 0, sizeof(sa));
-		sigemptyset(&sa.sa_mask);
-		sa.sa_flags = 0;
-#ifdef SA_INTERRUPT
-		if (sig == SIGALRM)
-			sa.sa_flags |= SA_INTERRUPT;
-#endif
-		sa.sa_handler = act;
-		if (sigaction(sig, &sa, NULL) == -1)
-			return (mysig_t) -1;
-	}
-	return (osa.sa_handler);
+	(void)snprintf(buf, sizeof(buf), "%d", sig);
+	return buf;
 }
+#endif

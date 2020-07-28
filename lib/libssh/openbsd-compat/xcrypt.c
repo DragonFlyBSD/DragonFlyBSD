@@ -33,6 +33,17 @@
 #  include <crypt.h>
 # endif
 
+# ifdef __hpux
+#  include <hpsecurity.h>
+#  include <prot.h>
+# endif
+
+# ifdef HAVE_SECUREWARE
+#  include <sys/security.h>
+#  include <sys/audit.h>
+#  include <prot.h>
+# endif
+
 # if defined(HAVE_SHADOW_H) && !defined(DISABLE_SHADOW)
 #  include <shadow.h>
 # endif
@@ -102,6 +113,13 @@ xcrypt(const char *password, const char *salt)
 		crypted = md5_crypt(password, salt);
 	else
 		crypted = crypt(password, salt);
+# elif defined(__hpux) && !defined(HAVE_SECUREWARE)
+	if (iscomsec())
+		crypted = bigcrypt(password, salt);
+	else
+		crypted = crypt(password, salt);
+# elif defined(HAVE_SECUREWARE)
+	crypted = bigcrypt(password, salt);
 # else
 	crypted = crypt(password, salt);
 # endif
@@ -126,10 +144,19 @@ shadow_pw(struct passwd *pw)
 		pw_password = spw->sp_pwdp;
 # endif
 
+#ifdef USE_LIBIAF
+	return(get_iaf_password(pw));
+#endif
+
 # if defined(HAVE_GETPWANAM) && !defined(DISABLE_SHADOW)
 	struct passwd_adjunct *spw;
 	if (issecure() && (spw = getpwanam(pw->pw_name)) != NULL)
 		pw_password = spw->pwa_passwd;
+# elif defined(HAVE_SECUREWARE)
+	struct pr_passwd *spw = getprpwnam(pw->pw_name);
+
+	if (spw != NULL)
+		pw_password = spw->ufld.fd_encrypt;
 # endif
 
 	return pw_password;

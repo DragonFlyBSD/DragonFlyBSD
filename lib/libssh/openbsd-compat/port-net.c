@@ -41,6 +41,85 @@
  * including tun/tap forwarding and routing domains.
  */
 
+#if defined(SYS_RDOMAIN_LINUX) || defined(SSH_TUN_LINUX)
+#include <linux/if.h>
+#endif
+
+#if defined(SYS_RDOMAIN_LINUX)
+char *
+sys_get_rdomain(int fd)
+{
+	char dev[IFNAMSIZ + 1];
+	socklen_t len = sizeof(dev) - 1;
+
+	if (getsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, dev, &len) == -1) {
+		error("%s: cannot determine VRF for fd=%d : %s",
+		    __func__, fd, strerror(errno));
+		return NULL;
+	}
+	dev[len] = '\0';
+	return strdup(dev);
+}
+
+int
+sys_set_rdomain(int fd, const char *name)
+{
+	if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE,
+	    name, strlen(name)) == -1) {
+		error("%s: setsockopt(%d, SO_BINDTODEVICE, %s): %s",
+		      __func__, fd, name, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+int
+sys_valid_rdomain(const char *name)
+{
+	int fd;
+
+	/*
+	 * This is a pretty crappy way to test. It would be better to
+	 * check whether "name" represents a VRF device, but apparently
+	 * that requires an rtnetlink transaction.
+	 */
+	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+		return 0;
+	if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE,
+	    name, strlen(name)) == -1) {
+		close(fd);
+		return 0;
+	}
+	close(fd);
+	return 1;
+}
+#elif defined(SYS_RDOMAIN_XXX)
+/* XXX examples */
+char *
+sys_get_rdomain(int fd)
+{
+	return NULL;
+}
+
+int
+sys_set_rdomain(int fd, const char *name)
+{
+	return -1;
+}
+
+int
+valid_rdomain(const char *name)
+{
+	return 0;
+}
+
+void
+sys_set_process_rdomain(const char *name)
+{
+	fatal("%s: not supported", __func__);
+}
+#endif /* defined(SYS_RDOMAIN_XXX) */
+
 /*
  * This is the portable version of the SSH tunnel forwarding, it
  * uses some preprocessor definitions for various platform-specific
@@ -55,6 +134,67 @@
 /*
  * System-specific tunnel open function
  */
+
+#if defined(SSH_TUN_LINUX)
+#include <linux/if_tun.h>
+#define TUN_CTRL_DEV "/dev/net/tun"
+
+int
+sys_tun_open(int tun, int mode, char **ifname)
+{
+	struct ifreq ifr;
+	int fd = -1;
+	const char *name = NULL;
+
+	if (ifname != NULL)
+		*ifname = NULL;
+	if ((fd = open(TUN_CTRL_DEV, O_RDWR)) == -1) {
+		debug("%s: failed to open tunnel control device \"%s\": %s",
+		    __func__, TUN_CTRL_DEV, strerror(errno));
+		return (-1);
+	}
+
+	bzero(&ifr, sizeof(ifr));
+
+	if (mode == SSH_TUNMODE_ETHERNET) {
+		ifr.ifr_flags = IFF_TAP;
+		name = "tap%d";
+	} else {
+		ifr.ifr_flags = IFF_TUN;
+		name = "tun%d";
+	}
+	ifr.ifr_flags |= IFF_NO_PI;
+
+	if (tun != SSH_TUNID_ANY) {
+		if (tun > SSH_TUNID_MAX) {
+			debug("%s: invalid tunnel id %x: %s", __func__,
+			    tun, strerror(errno));
+			goto failed;
+		}
+		snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), name, tun);
+	}
+
+	if (ioctl(fd, TUNSETIFF, &ifr) == -1) {
+		debug("%s: failed to configure tunnel (mode %d): %s", __func__,
+		    mode, strerror(errno));
+		goto failed;
+	}
+
+	if (tun == SSH_TUNID_ANY)
+		debug("%s: tunnel mode %d fd %d", __func__, mode, fd);
+	else
+		debug("%s: %s mode %d fd %d", __func__, ifr.ifr_name, mode, fd);
+
+	if (ifname != NULL && (*ifname = strdup(ifr.ifr_name)) == NULL)
+		goto failed;
+
+	return (fd);
+
+ failed:
+	close(fd);
+	return (-1);
+}
+#endif /* SSH_TUN_LINUX */
 
 #ifdef SSH_TUN_FREEBSD
 #include <sys/socket.h>
@@ -151,3 +291,87 @@ sys_tun_open(int tun, int mode, char **ifname)
 	return (-1);
 }
 #endif /* SSH_TUN_FREEBSD */
+
+/*
+ * System-specific channel filters
+ */
+
+#if defined(SSH_TUN_FILTER)
+/*
+ * The tunnel forwarding protocol prepends the address family of forwarded
+ * IP packets using OpenBSD's numbers.
+ */
+#define OPENBSD_AF_INET		2
+#define OPENBSD_AF_INET6	24
+
+int
+sys_tun_infilter(struct ssh *ssh, struct Channel *c, char *buf, int _len)
+{
+	int r;
+	size_t len;
+	char *ptr = buf;
+#if defined(SSH_TUN_PREPEND_AF)
+	char rbuf[CHAN_RBUF];
+	struct ip iph;
+#endif
+#if defined(SSH_TUN_PREPEND_AF) || defined(SSH_TUN_COMPAT_AF)
+	u_int32_t af;
+#endif
+
+	/* XXX update channel input filter API to use unsigned length */
+	if (_len < 0)
+		return -1;
+	len = _len;
+
+#if defined(SSH_TUN_PREPEND_AF)
+	if (len <= sizeof(iph) || len > sizeof(rbuf) - 4)
+		return -1;
+	/* Determine address family from packet IP header. */
+	memcpy(&iph, buf, sizeof(iph));
+	af = iph.ip_v == 6 ? OPENBSD_AF_INET6 : OPENBSD_AF_INET;
+	/* Prepend address family to packet using OpenBSD constants */
+	memcpy(rbuf + 4, buf, len);
+	len += 4;
+	POKE_U32(rbuf, af);
+	ptr = rbuf;
+#elif defined(SSH_TUN_COMPAT_AF)
+	/* Convert existing address family header to OpenBSD value */
+	if (len <= 4)
+		return -1;
+	af = PEEK_U32(buf);
+	/* Put it back */
+	POKE_U32(buf, af == AF_INET6 ? OPENBSD_AF_INET6 : OPENBSD_AF_INET);
+#endif
+
+	if ((r = sshbuf_put_string(c->input, ptr, len)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+	return (0);
+}
+
+u_char *
+sys_tun_outfilter(struct ssh *ssh, struct Channel *c,
+    u_char **data, size_t *dlen)
+{
+	u_char *buf;
+	u_int32_t af;
+	int r;
+
+	/* XXX new API is incompatible with this signature. */
+	if ((r = sshbuf_get_string(c->output, data, dlen)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+	if (*dlen < sizeof(af))
+		return (NULL);
+	buf = *data;
+
+#if defined(SSH_TUN_PREPEND_AF)
+	/* skip address family */
+	*dlen -= sizeof(af);
+	buf = *data + sizeof(af);
+#elif defined(SSH_TUN_COMPAT_AF)
+	/* translate address family */
+	af = (PEEK_U32(buf) == OPENBSD_AF_INET6) ? AF_INET6 : AF_INET;
+	POKE_U32(buf, af);
+#endif
+	return (buf);
+}
+#endif /* SSH_TUN_FILTER */

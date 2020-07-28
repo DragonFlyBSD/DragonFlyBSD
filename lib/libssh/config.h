@@ -46,9 +46,6 @@
    against it */
 /* #undef BROKEN_READ_COMPARISON */
 
-/* realpath does not work with nonexistent files */
-#define BROKEN_REALPATH 1
-
 /* Needed for NeXT */
 /* #undef BROKEN_SAVED_UIDS */
 
@@ -313,6 +310,10 @@
    */
 #define HAVE_DECL_BZERO 1
 
+/* Define to 1 if you have the declaration of `getpeereid', and to 0 if you
+   don't. */
+#define HAVE_DECL_GETPEEREID 1
+
 /* Define to 1 if you have the declaration of `GLOB_NOMATCH', and to 0 if you
    don't. */
 #define HAVE_DECL_GLOB_NOMATCH 1
@@ -345,6 +346,10 @@
    don't. */
 #define HAVE_DECL_MAXSYMLINKS 1
 
+/* Define to 1 if you have the declaration of `memmem', and to 0 if you don't.
+   */
+#define HAVE_DECL_MEMMEM 1
+
 /* Define to 1 if you have the declaration of `NFDBITS', and to 0 if you
    don't. */
 #define HAVE_DECL_NFDBITS 1
@@ -372,6 +377,10 @@
 /* Define to 1 if you have the declaration of `SHUT_RD', and to 0 if you
    don't. */
 #define HAVE_DECL_SHUT_RD 1
+
+/* Define to 1 if you have the declaration of `UINT32_MAX', and to 0 if you
+   don't. */
+#define HAVE_DECL_UINT32_MAX 1
 
 /* Define to 1 if you have the declaration of `writev', and to 0 if you don't.
    */
@@ -417,6 +426,9 @@
 
 /* Define to 1 if you have the `dirname' function. */
 #define HAVE_DIRNAME 1
+
+/* Define to 1 if you have the `dlopen' function. */
+#define HAVE_DLOPEN 1
 
 /* Define to 1 if you have the `DSA_generate_parameters_ex' function. */
 #define HAVE_DSA_GENERATE_PARAMETERS_EX 1
@@ -475,6 +487,9 @@
 /* Define if your system has /etc/default/login */
 /* #undef HAVE_ETC_DEFAULT_LOGIN */
 
+/* Define to 1 if you have the `EVP_chacha20' function. */
+#define HAVE_EVP_CHACHA20 1
+
 /* Define to 1 if you have the `EVP_CIPHER_CTX_ctrl' function. */
 #define HAVE_EVP_CIPHER_CTX_CTRL 1
 
@@ -514,11 +529,14 @@
 /* Define to 1 if you have the `EVP_PKEY_get0_RSA' function. */
 #define HAVE_EVP_PKEY_GET0_RSA 1
 
-/* Define to 1 if you have the `EVP_ripemd160' function. */
-#define HAVE_EVP_RIPEMD160 1
-
 /* Define to 1 if you have the `EVP_sha256' function. */
 #define HAVE_EVP_SHA256 1
+
+/* Define to 1 if you have the `EVP_sha384' function. */
+#define HAVE_EVP_SHA384 1
+
+/* Define to 1 if you have the `EVP_sha512' function. */
+#define HAVE_EVP_SHA512 1
 
 /* Define if you have ut_exit in utmp.h */
 /* #undef HAVE_EXIT_IN_UTMP */
@@ -558,6 +576,12 @@
 
 /* Define to 1 if you have the `fmt_scaled' function. */
 /* #undef HAVE_FMT_SCALED */
+
+/* Define to 1 if you have the `fnmatch' function. */
+#define HAVE_FNMATCH 1
+
+/* Define to 1 if you have the <fnmatch.h> header file. */
+#define HAVE_FNMATCH_H 1
 
 /* Define to 1 if you have the `freeaddrinfo' function. */
 #define HAVE_FREEADDRINFO 1
@@ -641,7 +665,7 @@
 /* #undef HAVE_GETPWANAM */
 
 /* Define to 1 if you have the `getrandom' function. */
-/* #undef HAVE_GETRANDOM */
+#define HAVE_GETRANDOM 1
 
 /* Define to 1 if you have the `getrlimit' function. */
 #define HAVE_GETRLIMIT 1
@@ -814,6 +838,9 @@
 /* Define to 1 if you have the `pam' library (-lpam). */
 #define HAVE_LIBPAM 1
 
+/* Define to 1 if you have the <libproc.h> header file. */
+/* #undef HAVE_LIBPROC_H */
+
 /* Define to 1 if you have the `socket' library (-lsocket). */
 /* #undef HAVE_LIBSOCKET */
 
@@ -846,6 +873,9 @@
 
 /* Define to 1 if you have the <locale.h> header file. */
 #define HAVE_LOCALE_H 1
+
+/* Define to 1 if you have the `localtime_r' function. */
+#define HAVE_LOCALTIME_R 1
 
 /* Define to 1 if you have the `login' function. */
 /* #undef HAVE_LOGIN */
@@ -889,6 +919,9 @@
 
 /* Define if you want to allow MD5 passwords */
 /* #undef HAVE_MD5_PASSWORDS */
+
+/* Define to 1 if you have the `memmem' function. */
+#define HAVE_MEMMEM 1
 
 /* Define to 1 if you have the `memmove' function. */
 #define HAVE_MEMMOVE 1
@@ -1001,6 +1034,9 @@
 
 /* Define if you have /proc/$pid/fd */
 /* #undef HAVE_PROC_PID */
+
+/* Define to 1 if you have the `proc_pidinfo' function. */
+/* #undef HAVE_PROC_PIDINFO */
 
 /* Define to 1 if you have the `pstat' function. */
 /* #undef HAVE_PSTAT */
@@ -1192,11 +1228,17 @@
 /* Define to 1 if you have the `set_id' function. */
 /* #undef HAVE_SET_ID */
 
-/* Define to 1 if you have the `SHA256_Update' function. */
-#define HAVE_SHA256_UPDATE 1
+/* Define to 1 if you have the `SHA256Update' function. */
+/* #undef HAVE_SHA256UPDATE */
 
 /* Define to 1 if you have the <sha2.h> header file. */
 /* #undef HAVE_SHA2_H */
+
+/* Define to 1 if you have the `SHA384Update' function. */
+/* #undef HAVE_SHA384UPDATE */
+
+/* Define to 1 if you have the `SHA512Update' function. */
+/* #undef HAVE_SHA512UPDATE */
 
 /* Define to 1 if you have the <shadow.h> header file. */
 /* #undef HAVE_SHADOW_H */
@@ -1330,8 +1372,11 @@
 /* define if you have struct sockaddr_storage data type */
 #define HAVE_STRUCT_SOCKADDR_STORAGE 1
 
+/* Define to 1 if `f_files' is a member of `struct statfs'. */
+#define HAVE_STRUCT_STATFS_F_FILES 1
+
 /* Define to 1 if `f_flags' is a member of `struct statfs'. */
-/* #undef HAVE_STRUCT_STATFS_F_FLAGS */
+#define HAVE_STRUCT_STATFS_F_FLAGS 1
 
 /* Define to 1 if `st_blksize' is a member of `struct stat'. */
 #define HAVE_STRUCT_STAT_ST_BLKSIZE 1
@@ -1342,7 +1387,7 @@
 /* Define to 1 if `st_mtime' is a member of `struct stat'. */
 #define HAVE_STRUCT_STAT_ST_MTIME 1
 
-/* Define to 1 if the system has the type `struct timespec'. */
+/* define if you have struct timespec */
 #define HAVE_STRUCT_TIMESPEC 1
 
 /* define if you have struct timeval */
@@ -1365,6 +1410,9 @@
 
 /* Define to 1 if you have the <sys/bsdtty.h> header file. */
 /* #undef HAVE_SYS_BSDTTY_H */
+
+/* Define to 1 if you have the <sys/byteorder.h> header file. */
+/* #undef HAVE_SYS_BYTEORDER_H */
 
 /* Define to 1 if you have the <sys/capsicum.h> header file. */
 /* #undef HAVE_SYS_CAPSICUM_H */
@@ -1679,6 +1727,9 @@
 /* compiler does not accept __attribute__ on return types */
 /* #undef NO_ATTRIBUTE_ON_RETURN_TYPE */
 
+/* SA_RESTARTed signals do no interrupt select */
+/* #undef NO_SA_RESTART */
+
 /* Define to disable UID restoration test */
 /* #undef NO_UID_RESTORATION_TEST */
 
@@ -1774,7 +1825,7 @@
 /* #undef SANDBOX_SKIP_RLIMIT_FSIZE */
 
 /* define if setrlimit RLIMIT_NOFILE breaks things */
-#define SANDBOX_SKIP_RLIMIT_NOFILE 1
+/* #undef SANDBOX_SKIP_RLIMIT_NOFILE */
 
 /* Sandbox using Solaris/Illumos privileges */
 /* #undef SANDBOX_SOLARIS */
@@ -1855,6 +1906,9 @@
 /* Support routing domains using Linux VRF */
 /* #undef SYS_RDOMAIN_LINUX */
 
+/* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
+#define TIME_WITH_SYS_TIME 1
+
 /* Support passwords > 8 chars */
 /* #undef UNIXWARE_LONG_PASSWORDS */
 
@@ -1918,6 +1972,9 @@
 
 /* Define if you want SELinux support. */
 /* #undef WITH_SELINUX */
+
+/* Enable zlib */
+#define WITH_ZLIB 1
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */

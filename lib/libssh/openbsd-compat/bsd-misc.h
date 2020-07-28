@@ -21,18 +21,8 @@
 
 char *ssh_get_progname(char *);
 
-#ifndef __DragonFly__
-#ifndef AT_FDCWD
-# define AT_FDCWD (-2)
-#endif
-#endif
-
 #ifndef HAVE_PLEDGE
-#ifndef __DragonFly__
 int pledge(const char *promises, const char *paths[]);
-#else
-#define pledge(request, paths) 0
-#endif
 #endif
 
 #endif /* _BSD_MISC_H */

@@ -5,6 +5,7 @@ ChangeLog
 INSTALL
 Makefile.in
 OVERVIEW
+PROTOCOL.u2f
 README.md
 README.platform
 README.privsep
@@ -18,11 +19,11 @@ auth-krb5.c
 auth-shadow.c
 auth-sia.c
 auth-sia.h
-auth-skey.c
 auth2-gss.c
 buildpkg.sh.in
 cipher-aes.c
 cipher-aesctr.c
+cipher-chachapoly.c
 cipher-ctr.c
 config.guess
 config.h.in
@@ -42,7 +43,6 @@ contrib/solaris/
 contrib/sshd.pam.freebsd
 contrib/sshd.pam.generic
 contrib/suse/
-crc32.c
 digest-libc.c
 fixalgorithms
 fixpaths
@@ -75,6 +75,7 @@ sandbox-systrace.c
 scp.0
 sftp-server.0
 sftp.0
+sk-usbhid.c
 sntrup4591761.sh
 ssh-add.0
 ssh-agent.0
@@ -85,6 +86,10 @@ ssh-keysign.0
 ssh-pkcs11-client.c
 ssh-pkcs11-helper.0
 ssh-pkcs11.c
+ssh-sk-helper.0
+ssh-sk-helper.8
+ssh-sk-helper.c
+ssh-sk.c
 ssh-xmss.c
 ssh.0
 ssh_config.0

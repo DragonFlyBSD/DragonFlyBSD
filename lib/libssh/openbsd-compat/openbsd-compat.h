@@ -34,37 +34,9 @@
 
 #include <sys/socket.h>
 
-#ifndef __DragonFly__
-#include <stddef.h>  /* for wchar_t */
-#endif
-
-/* OpenBSD function replacements */
-#ifndef __DragonFly__
-#include "base64.h"
-#include "sigact.h"
-#include "readpassphrase.h"
-#include "vis.h"
-#endif
 #include "getrrsetbyname.h"
-#ifndef __DragonFly__
-#include "sha1.h"
-#include "sha2.h"
-#include "rmd160.h"
-#include "md5.h"
-#endif
 #include "blf.h"
-
-#if !defined(HAVE_REALPATH) || defined(BROKEN_REALPATH)
-/*
- * glibc's FORTIFY_SOURCE can redefine this and prevent us picking up the
- * compat version.
- */
-# ifdef BROKEN_REALPATH
-#  define realpath(x, y) _ssh_compat_realpath(x, y)
-# endif
-
-char *realpath(const char *path, char *resolved);
-#endif
+#include "fnmatch.h"
 
 #ifndef HAVE_FMT_SCALED
 #define	FMT_SCALED_STRSIZE	7
@@ -77,15 +49,7 @@ int	scan_scaled(char *, long long *);
 
 /* Home grown routines */
 #include "bsd-misc.h"
-#ifndef __DragonFly__
-#include "bsd-setres_id.h"
-#endif
 #include "bsd-signal.h"
-#ifndef __DragonFly__
-#include "bsd-statvfs.h"
-#include "bsd-waitpid.h"
-#include "bsd-poll.h"
-#endif
 
 /*
  * Some platforms unconditionally undefine va_copy() so we define VA_COPY()
@@ -93,7 +57,7 @@ int	scan_scaled(char *, long long *);
  * AIX with the xlc compiler.
  */
 #ifndef VA_COPY
-#  define VA_COPY(dest, src) va_copy(dest, src)
+#define VA_COPY(dest, src) va_copy(dest, src)
 #endif
 
 #ifndef HAVE_BCRYPT_PBKDF
@@ -104,26 +68,6 @@ int	bcrypt_pbkdf(const char *, size_t, const u_int8_t *, size_t,
 char *xcrypt(const char *password, const char *salt);
 char *shadow_pw(struct passwd *pw);
 
-#ifndef __DragonFly__
-/* rfc2553 socket API replacements */
-#include "fake-rfc2553.h"
-#endif
-
-#ifndef __DragonFly__
-/* Routines for a single OS platform */
-#include "bsd-cygwin_util.h"
-#endif
-
-#ifndef __DragonFly__
-#include "port-aix.h"
-#include "port-irix.h"
-#include "port-linux.h"
-#include "port-solaris.h"
-#endif
-
 #include "port-net.h"
-#ifndef __DragonFly__
-#include "port-uw.h"
-#endif
 
 #endif /* _OPENBSD_COMPAT_H */

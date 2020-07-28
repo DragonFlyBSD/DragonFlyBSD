@@ -3,7 +3,7 @@
 
 PROG=	sftp-server
 SRCS=	sftp-server.c
-SRCS+=	sftp-common.c sftp-server-main.c
+SRCS+=	sftp-common.c sftp-realpath.c sftp-server-main.c
 MAN=	sftp-server.8
 WARNS?=	3
 
