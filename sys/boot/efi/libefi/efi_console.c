@@ -428,11 +428,12 @@ efi_cons_getchar(void)
 	EFI_STATUS status;
 	UINTN junk;
 
+again:
 	/* Try to read a key stroke. We wait for one if none is pending. */
 	status = conin->ReadKeyStroke(conin, &key);
 	if (status == EFI_NOT_READY) {
 		BS->WaitForEvent(1, &conin->WaitForKey, &junk);
-		status = conin->ReadKeyStroke(conin, &key);
+		goto again;
 	}
 	switch (key.ScanCode) {
 	case 0x17: /* ESC */
