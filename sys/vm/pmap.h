@@ -126,6 +126,10 @@ typedef struct vm_phystable {
  *			  used to determine what kernel memory userland has
  *			  access to.
  *
+ * DMapMaxAddress	- Maximum virtual address for DMap (not physical addr).
+ *			  We do not allocate the entire space from
+ *			  DMAP_MIN_ADDRESS to DMAP_MAX_ADDRESS.
+ *
  * virtual_{start,end}	- KVA space available for allocation, not including
  *			  KVA space reserved during MD startup.  Used by
  *			  the KMEM subsystem, used to initialize kernel_map.
@@ -137,6 +141,7 @@ typedef struct vm_phystable {
 extern vm_offset_t KvaStart;
 extern vm_offset_t KvaEnd;
 extern vm_offset_t KvaSize;
+extern vm_offset_t DMapMaxAddress;
 extern vm_offset_t virtual_start;
 extern vm_offset_t virtual_end;
 extern vm_offset_t virtual2_start;

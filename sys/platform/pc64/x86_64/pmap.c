@@ -919,6 +919,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	if (ndmpdp < 4)		/* Minimum 4GB of DMAP */
 		ndmpdp = 4;
 
+#if 0
 	/*
 	 * HACK XXX fix me - Some laptops map the EFI framebuffer in
 	 * very high physical addresses and the DMAP winds up being too
@@ -927,6 +928,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 */
 	if (ndmpdp < 512)	/* Minimum 512GB of DMAP */
 		ndmpdp = 512;
+#endif
 
 	KKASSERT(ndmpdp <= NDMPML4E * NPML4EPG);
 	DMapMaxAddress = DMAP_MIN_ADDRESS +

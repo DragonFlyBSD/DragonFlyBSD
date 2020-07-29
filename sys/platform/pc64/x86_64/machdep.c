@@ -2131,11 +2131,13 @@ efi_fb_init_vaddr(int direct_map)
 
 	if (direct_map) {
 		addr = PHYS_TO_DMAP(efi_fb_info.paddr);
-		if (addr >= DMAP_MIN_ADDRESS && addr + sz < DMAP_MAX_ADDRESS)
+		if (addr >= DMAP_MIN_ADDRESS && addr + sz <= DMapMaxAddress)
 			efi_fb_info.vaddr = addr;
 	} else {
-		efi_fb_info.vaddr = (vm_offset_t)pmap_mapdev_attr(
-		    efi_fb_info.paddr, sz, PAT_WRITE_COMBINING);
+		efi_fb_info.vaddr =
+			(vm_offset_t)pmap_mapdev_attr(efi_fb_info.paddr,
+						      sz,
+						      PAT_WRITE_COMBINING);
 	}
 }
 
@@ -2557,18 +2559,26 @@ do_next:
 		pmap_kenter((vm_offset_t)msgbufp + off, avail_end + off);
 	}
 
-	/* Try to get EFI framebuffer working as early as possible */
+	/*
+	 * Try to get EFI framebuffer working as early as possible.
+	 *
+	 * WARN: Some BIOSes do not list the EFI framebuffer memory, causing
+	 * the pmap probe code to create a DMAP that does not cover its
+	 * physical address space, efi_fb_init_vaddr(1) might not return
+	 * an initialized framebuffer base pointer.  In this situation the
+	 * later efi_fb_init_vaddr(0) call will deal with it.
+	 *
+	 * HACK: Setting machdep.hack_efifb_probe_early=1 works around
+	 * an issue that occurs on some recent systems where there is
+	 * no system console when booting via UEFI. Bug #3167.
+	 *
+	 * NOTE: This is not intended to be a permant fix.
+	 */
 	{
-		/*
-		 * HACK: Setting machdep.hack_efifb_probe_early=1 works around
-		 * an issue that occurs on some recent systems where there is
-		 * no system console when booting via UEFI. Bug #3167.
-		 *
-		 * NOTE: This is not intended to be a permant fix.
-		 */
 
 		int hack_efifb_probe_early = 0;
-		TUNABLE_INT_FETCH("machdep.hack_efifb_probe_early", &hack_efifb_probe_early);
+		TUNABLE_INT_FETCH("machdep.hack_efifb_probe_early",
+				  &hack_efifb_probe_early);
 
 		if (hack_efifb_probe_early)
 			probe_efi_fb(1);
