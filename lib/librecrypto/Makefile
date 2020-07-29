@@ -31,17 +31,6 @@ CFLAGS+=	-I${LCRYPTO_SRC}/evp -I${.OBJDIR}
 CFLAGS+=	-DLIBRESSL_INTERNAL -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_DECLS=
 CFLAGS+=	-D__STRICT_ALIGNMENT
 
-# Local sources:
-# Replacement for malloc-wrapper.c, base tools depend on CRYPTO_free() here:
-#  contrib/ldns/host2str.c	OPENSSL_free(), unused (only if USE_GOST)
-#  lib/libfetch/common.c	OPENSSL_free()
-#  lib/libtelnet/pk.c		OPENSSL_free()
-#  usr.bin/dc/bcode.c		OPENSSL_free(), unused (only if DEBUGGING)
-#  usr.bin/newkey/generic.c	OPENSSL_free()
-#  contrib/wpa_supplicant/src/crypto/tls_openssl.c OPENSSL_malloc() XXX
-# XXX: is this really needed? wouldn't be easier to just use malloc-wrapper.c?
-SRCS_LOCAL=	CRYPTO_free.c CRYPTO_malloc.c
-
 # Do not use ASM if -flto for now
 .if ${CFLAGS:M-flto}
 CFLAGS+=	-DOPENSSL_NO_ASM
@@ -95,8 +84,8 @@ NOASM_WHRLPOOL=
 # Based on vendor libcrypto_la_SOURCES definitions with subdirectories stripped out
 
 SRC_TOP=	cpt_err.c cryptlib.c crypto_init.c crypto_lock.c cversion.c \
-		ex_data.c mem_dbg.c o_init.c o_time.c
-# not needed: mem_clr.c o_str.c malloc-wrapper.c(?)
+		ex_data.c malloc-wrapper.c mem_dbg.c o_init.c o_time.c
+# not needed: mem_clr.c o_str.c
 SRC_AES=	aes_ige.c aes_misc.c aes_wrap.c ${NOASM_AES}
 # not needed: aes_cfb.c aes_ctr.c aes_ecb.c aes_ofb.c
 SRC_ASN1=	a_bitstr.c a_bool.c a_d2i_fp.c a_digest.c a_dup.c a_enum.c \
@@ -259,7 +248,6 @@ SRCS=		${ASM_X86_64_ELF} ${SRC_TOP} ${SRC_AES} ${SRC_ASN1} \
 		${SRC_TXT_DB} ${SRC_UI} ${SRC_WHRLPOOL} ${SRC_X509} \
 		${SRC_X509V3} ${SRC_CURVE25519} \
 		${SRC_RC4} ${SRC_SM3} ${SRC_SM4}
-SRCS+=		${SRCS_LOCAL}
 
 .PATH:	${LCRYPTO_SRC} \
 	${LCRYPTO_SRC}/aes \
