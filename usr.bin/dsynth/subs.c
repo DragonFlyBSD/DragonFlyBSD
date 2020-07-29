@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2019-2020 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -37,10 +37,35 @@
 
 #include "dsynth.h"
 
+struct logerrinfo {
+	struct logerrinfo *next;
+	char	*logid;
+	pid_t	pid;
+	long	seq;
+	int	exited;
+};
+
 buildenv_t *BuildEnv;
 static buildenv_t **BuildEnvTail = &BuildEnv;
 
 extern char **environ;
+
+static void *dexec_logerr_thread(void *info);
+
+#define EINFO_HSIZE	1024
+#define EINFO_HMASK	(EINFO_HSIZE - 1)
+
+static struct logerrinfo *EInfo[EINFO_HSIZE];
+static pthread_t ETid;
+static int EFds[2];
+static pthread_cond_t ECond;
+
+static __inline
+struct logerrinfo **
+einfohash(pid_t pid)
+{
+	return(&EInfo[pid & EINFO_HMASK]);
+}
 
 __dead2 void
 _dfatal(const char *file __unused, int line __unused, const char *func,
@@ -402,8 +427,8 @@ getswappct(int *noswapp)
  * elements on the command line.
  */
 FILE *
-dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
-	   int with_env, int with_mvars)
+dexec_open(const char *logid, const char **cav, int cac,
+	   pid_t *pidp, buildenv_t *xenv, int with_env, int with_mvars)
 {
 	buildenv_t *benv;
 	const char **cenv;
@@ -412,9 +437,35 @@ dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
 	int envi;
 	int alloci;
 	int nullfd;
-	int fds[2];
+	int fds[2];	/* stdout */
 	pid_t pid;
 	FILE *fp;
+	struct logerrinfo *einfo;
+	static int warned;
+
+	/*
+	 * Error logging thread setup
+	 */
+	if (ETid == 0) {
+		pthread_mutex_lock(&DLogFdMutex);
+		if (ETid == 0) {
+			if (socketpair(AF_UNIX, SOCK_DGRAM, 0, EFds) < 0)
+				dfatal_errno("socketpair");
+#ifdef SO_PASSCRED
+			int optval = 1;
+			if (setsockopt(EFds[0], SOL_SOCKET, SO_PASSCRED, &optval, sizeof(optval)) < 0) {
+				if (warned == 0) {
+					warned = 1;
+					fprintf(stderr, "SO_PASSCRED not supported\n");
+				}
+			}
+#endif
+
+			pthread_cond_init(&ECond, NULL);
+			pthread_create(&ETid, NULL, dexec_logerr_thread, NULL);
+		}
+		pthread_mutex_unlock(&DLogFdMutex);
+	}
 
 	env_basei = 0;
 	while (environ[env_basei])
@@ -458,9 +509,9 @@ dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
 	cav[cac] = NULL;
 	cenv[envi] = NULL;
 
-	if (pipe(fds) < 0)
+	if (pipe2(fds, O_CLOEXEC) < 0)
 		dfatal_errno("pipe");
-	nullfd = open("/dev/null", O_RDWR);
+	nullfd = open("/dev/null", O_RDWR | O_CLOEXEC);
 	if (nullfd < 0)
 		dfatal_errno("open(\"/dev/null\")");
 
@@ -485,7 +536,12 @@ dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
 			dup2(fds[1], 1);
 			close(fds[1]);
 		}
+		if (EFds[1] != 2) {
+			dup2(EFds[1], 2);
+			close(EFds[1]);
+		}
 		close(fds[0]);		/* safety */
+		close(EFds[0]);		/* safety */
 		dup2(nullfd, 0);	/* no questions! */
 		closefrom(3);		/* be nice */
 
@@ -508,6 +564,20 @@ dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
 	fp = fdopen(fds[0], "r");
 	*pidp = pid;
 
+	/*
+	 * einfo setup
+	 */
+	einfo = calloc(1, sizeof(*einfo));
+	if (logid)
+		einfo->logid = strdup(logid);
+
+	pthread_mutex_lock(&DLogFdMutex);
+	einfo->pid = pid;
+	einfo->next = *einfohash(pid);
+	*einfohash(pid) = einfo;
+	pthread_cond_signal(&ECond);
+	pthread_mutex_unlock(&DLogFdMutex);
+
 	while (--alloci >= 0)
 		free(allocary[alloci]);
 	free(cenv);
@@ -518,6 +588,8 @@ dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
 int
 dexec_close(FILE *fp, pid_t pid)
 {
+	struct logerrinfo **einfop;
+	struct logerrinfo *einfo;
 	pid_t rpid;
 	int status;
 
@@ -529,7 +601,147 @@ dexec_close(FILE *fp, pid_t pid)
 			return 1;
 		}
 	}
+
+	pthread_mutex_lock(&DLogFdMutex);
+	einfop = einfohash(pid);
+	while ((einfo = *einfop) != NULL) {
+		if (einfo->pid == pid) {
+			einfo->exited = 1;
+			break;
+		}
+		einfop = &einfo->next;
+	}
+	pthread_mutex_unlock(&DLogFdMutex);
+
 	return (WEXITSTATUS(status));
+}
+
+static void *
+dexec_logerr_thread(void *dummy __unused)
+{
+	char buf[4096];
+	union {
+		char cbuf[CMSG_SPACE(sizeof(struct ucred))];
+		struct cmsghdr cbuf_align;
+	} cmsg_buf;
+	struct cmsghdr *cmsg;
+	struct logerrinfo **einfop;
+	struct logerrinfo *einfo;
+	struct msghdr msg;
+	struct iovec iov;
+	ssize_t len;
+	int mflags = MSG_DONTWAIT;
+	int fd;
+
+	pthread_detach(pthread_self());
+
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_iov = &iov;
+
+	msg.msg_control = cmsg_buf.cbuf;
+	msg.msg_controllen = sizeof(cmsg_buf.cbuf);
+
+	fd = EFds[0];
+	for (;;) {
+		int i;
+
+		msg.msg_iovlen = 1;
+		iov.iov_base = buf;
+		iov.iov_len = sizeof(buf) - 1;
+
+		/*
+		 * Wait for message, if none are pending then clean-up
+		 * exited einfos (this ensures that we have flushed all
+		 * error output before freeing the structure).
+		 *
+		 * Don't obtain the mutex until we really need it.  The
+		 * parent thread can only 'add' einfo entries to the hash
+		 * table so we are basically scan-safe.
+		 */
+		len = recvmsg(fd, &msg, mflags);
+		if (len < 0) {
+			if (errno != EAGAIN) {	/* something messed up */
+				fprintf(stderr, "ERRNO %d\n", errno);
+				break;
+			}
+
+			for (i = 0; i < EINFO_HSIZE; ++i) {
+				einfo = EInfo[i];
+				while (einfo) {
+					if (einfo->exited)
+						break;
+					einfo = einfo->next;
+				}
+				if (einfo == NULL)
+					continue;
+				pthread_mutex_lock(&DLogFdMutex);
+				einfop = &EInfo[i];
+				while ((einfo = *einfop) != NULL) {
+					if (einfo->exited) {
+						*einfop = einfo->next;
+						if (einfo->logid)
+							free(einfo->logid);
+						free(einfo);
+					} else {
+						einfop = &einfo->next;
+					}
+				}
+				pthread_mutex_unlock(&DLogFdMutex);
+			}
+			mflags = 0;
+			continue;
+		}
+
+		/*
+		 * Process SCM_CREDS, if present.  Throw away SCM_RIGHTS
+		 * if some sub-process stupidly sent it.
+		 */
+		einfo = NULL;
+		mflags = MSG_DONTWAIT;
+
+		if (len && buf[len-1] == '\n')
+			--len;
+		buf[len] = 0;
+
+		for (cmsg = CMSG_FIRSTHDR(&msg);
+		     cmsg;
+		     cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+			struct cmsgcred *cred;
+			int *fds;
+			int n;
+
+			if (cmsg->cmsg_level != SOL_SOCKET)
+				continue;
+
+			switch(cmsg->cmsg_type) {
+			case SCM_CREDS:
+
+				cred = (void *)CMSG_DATA(cmsg);
+
+				einfo = *einfohash(cred->cmcred_pid);
+				while (einfo && einfo->pid != cred->cmcred_pid)
+					einfo = einfo->next;
+				break;
+			case SCM_RIGHTS:
+				fds = (void *)CMSG_DATA(cmsg);
+				n = (cmsg->cmsg_len - sizeof(cmsg)) /
+				    sizeof(int);
+				for (i = 0; i < n; ++i)
+					close(fds[i]);
+				break;
+			}
+		}
+
+		if (einfo && einfo->logid) {
+			dlog(DLOG_ALL | DLOG_STDOUT,
+			     "%s: %s\n",
+			     einfo->logid, buf);
+		} else {
+			dlog(DLOG_ALL | DLOG_STDOUT, "%s", buf);
+		}
+	}
+	return NULL;
 }
 
 const char *

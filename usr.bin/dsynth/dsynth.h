@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/mount.h>
 #include <sys/procctl.h>
 #include <sys/resource.h>	/* setpriority() */
@@ -590,7 +591,8 @@ void freestrp(char **strp);
 void dupstrp(char **strp);
 int askyn(const char *ctl, ...);
 double getswappct(int *noswapp);
-FILE *dexec_open(const char **cav, int cac, pid_t *pidp, buildenv_t *xenv,
+FILE *dexec_open(const char *logid, const char **cav, int cac,
+			pid_t *pidp, buildenv_t *xenv,
 			int with_env, int with_mvars);
 int dexec_close(FILE *fp, pid_t pid);
 const char *getphasestr(worker_phase_t phase);

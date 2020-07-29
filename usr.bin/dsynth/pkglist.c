@@ -966,7 +966,8 @@ childGetPackageInfo(bulk_t *bulk)
 	cav[cac++] = "-VFLAVORS";
 	cav[cac++] = "-VUSES";
 
-	fp = dexec_open(cav, cac, &pid, NULL, 1, 1);
+	fp = dexec_open(portpath + strlen(DPortsPath) + 1, cav, cac,
+			&pid, NULL, 1, 1);
 	freestrp(&flavarg);
 
 	pkg = allocpkg();
@@ -1128,7 +1129,7 @@ childGetBinaryDistInfo(bulk_t *bulk)
 	cav[cac++] = repopath;
 	cav[cac++] = "%n-%v";
 
-	fp = dexec_open(cav, cac, &pid, NULL, 1, 0);
+	fp = dexec_open(NULL, cav, cac, &pid, NULL, 1, 0);
 	deleteme = DeleteObsoletePkgs;
 
 	while ((ptr = fgetln(fp, &len)) != NULL) {
@@ -1177,7 +1178,8 @@ childOptimizeEnv(bulk_t *bulk)
 	cav[cac++] = portpath;
 	cav[cac++] = "-V_PERL5_FROM_BIN";
 
-	fp = dexec_open(cav, cac, &pid, NULL, 1, 1);
+	fp = dexec_open(portpath + strlen(DPortsPath) + 1, cav, cac,
+			&pid, NULL, 1, 1);
 	free(portpath);
 
 	line = 1;

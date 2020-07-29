@@ -3059,7 +3059,7 @@ childHookRun(bulk_t *bulk)
 	benv[bi].label = NULL;
 	benv[bi].data = NULL;
 
-	fp = dexec_open(cav, cac, &pid, benv, 0, 0);
+	fp = dexec_open(bulk->s1, cav, cac, &pid, benv, 0, 0);
 	while ((ptr = fgetln(fp, &len)) != NULL)
 		;
 

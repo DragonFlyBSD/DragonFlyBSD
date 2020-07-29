@@ -149,7 +149,7 @@ childRebuildRepo(bulk_t *bulk)
 
 	printf("pkg repo -m %s -o %s %s\n", bulk->s1, cav[cac-2], cav[cac-1]);
 
-	fp = dexec_open(cav, cac, &pid, NULL, 1, 0);
+	fp = dexec_open(NULL, cav, cac, &pid, NULL, 1, 0);
 	while ((ptr = fgetln(fp, &len)) != NULL)
 		fwrite(ptr, 1, len, stdout);
 	if (dexec_close(fp, pid) == 0)
@@ -163,7 +163,7 @@ childRebuildRepo(bulk_t *bulk)
 	cac = 0;
 	cav[cac++] = PKG_BINARY;
 	cav[cac++] = "-v";
-	fp = dexec_open(cav, cac, &pid, NULL, 1, 0);
+	fp = dexec_open(NULL, cav, cac, &pid, NULL, 1, 0);
 	if ((ptr = fgetln(fp, &len)) != NULL && len > 0) {
 		int v1;
 		int v2;
