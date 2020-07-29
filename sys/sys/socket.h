@@ -100,6 +100,7 @@ typedef __socklen_t	socklen_t;
 #define	SO_NOSIGPIPE	0x0800		/* no SIGPIPE from EPIPE */
 #define	SO_ACCEPTFILTER	0x1000		/* there is an accept filter */
 #define	SO_RERROR	0x2000		/* Keep track of receive errors */
+#define SO_PASSCRED	0x4000		/* receive credentials */
 
 /*
  * Additional options, not kept in so_options.

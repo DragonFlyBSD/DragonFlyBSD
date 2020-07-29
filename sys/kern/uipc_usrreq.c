@@ -672,6 +672,33 @@ uipc_send(netmsg_t msg)
 		/* NOTE: unp2 is referenced. */
 		so2 = unp2->unp_socket;
 
+		/*
+		 * Include creds if the receive side wants them, even if
+		 * the send side did not send them.
+		 */
+		if (so2->so_options & SO_PASSCRED) {
+			struct mbuf **mp;
+			struct cmsghdr *cm;
+			struct cmsgcred cred;
+			struct mbuf *ncon;
+
+			mp = &control;
+			while ((ncon = *mp) != NULL) {
+				cm = mtod(ncon, struct cmsghdr *);
+				if (cm->cmsg_type == SCM_CREDS &&
+				    cm->cmsg_level == SOL_SOCKET)
+					break;
+				mp = &ncon->m_next;
+			}
+			if (ncon == NULL) {
+				ncon = sbcreatecontrol((caddr_t)&cred,
+						       sizeof(cred),
+						       SCM_CREDS, SOL_SOCKET);
+				unp_internalize(ncon, msg->send.nm_td);
+				*mp = ncon;
+			}
+		}
+
 		if (unp->unp_addr)
 			from = (struct sockaddr *)unp->unp_addr;
 		else
