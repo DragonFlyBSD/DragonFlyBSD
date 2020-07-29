@@ -923,15 +923,6 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 
 	bcopy(cnp->cn_nameptr, newdir.e2d_name, (unsigned)cnp->cn_namelen + 1);
 
-	if (ext2_htree_has_idx(dp)) {
-		error = ext2_htree_add_entry(dvp, &newdir, cnp);
-		if (error) {
-			dp->i_flag &= ~IN_E3INDEX;
-			dp->i_flag |= IN_CHANGE | IN_UPDATE;
-		}
-		return (error);
-	}
-
 	/*
 	 * XXX HTree dirents sometimes get lost (or not visible via readdir).
 	 * This is reproducible by copying a directory with enough regular files
@@ -945,6 +936,15 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 	 * recovered with a few sent to lost+found.
 	 */
 #if 0
+	if (ext2_htree_has_idx(dp)) {
+		error = ext2_htree_add_entry(dvp, &newdir, cnp);
+		if (error) {
+			dp->i_flag &= ~IN_E3INDEX;
+			dp->i_flag |= IN_CHANGE | IN_UPDATE;
+		}
+		return (error);
+	}
+
 	if (EXT2_HAS_COMPAT_FEATURE(ip->i_e2fs, EXT2F_COMPAT_DIRHASHINDEX) &&
 	    !ext2_htree_has_idx(dp)) {
 		if ((dp->i_size / DIRBLKSIZ) == 1 &&
