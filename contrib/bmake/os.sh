@@ -17,7 +17,7 @@
 #	Simon J. Gerraty <sjg@crufty.net>
 
 # RCSid:
-#	$Id: os.sh,v 1.52 2016/06/17 05:15:14 sjg Exp $
+#	$Id: os.sh,v 1.55 2017/12/11 20:31:41 sjg Exp $
 #
 #	@(#) Copyright (c) 1994 Simon J. Gerraty
 #
@@ -138,6 +138,7 @@ SunOS)
 	# so NetBSD/i386 is good enough
 	case $OS in
 	NetBSD)
+	        LOCALBASE=/usr/pkg
 		HOST_ARCH=$MACHINE
 		SHARE_ARCH=$OS/$HOST_ARCH
 		;;
@@ -196,6 +197,7 @@ Haiku)
 	esac
 	;;
 esac
+LOCALBASE=${LOCALBASE:-/usr/local}
 
 HOSTNAME=${HOSTNAME:-`( hostname ) 2>/dev/null`}
 HOSTNAME=${HOSTNAME:-`( uname -n ) 2>/dev/null`}
@@ -206,7 +208,13 @@ esac
 
 TMP_DIRS=${TMP_DIRS:-"/tmp /var/tmp"}
 MACHINE_ARCH=${MACHINE_ARCH:-$MACHINE}
+case "$MACHINE_ARCH" in
+x86*64|amd64) MACHINE32_ARCH=i386;;
+*64) MACHINE32_ARCH=`echo $MACHINE_ARCH | sed 's,64,32,'`;;
+*) MACHINE32_ARCH=$MACHINE_ARCH;;
+esac
 HOST_ARCH=${HOST_ARCH:-$MACHINE_ARCH}
+HOST_ARCH32=${HOST_ARCH32:-$MACHINE32_ARCH}
 # we mount server:/share/arch/$SHARE_ARCH as /usr/local
 SHARE_ARCH_DEFAULT=$OS/$OSMAJOR.X/$HOST_ARCH
 SHARE_ARCH=${SHARE_ARCH:-$SHARE_ARCH_DEFAULT}
@@ -215,7 +223,8 @@ TR=${TR:-tr}
 
 # Some people like have /share/$HOST_TARGET/bin etc.
 HOST_TARGET=`echo ${OS}${OSMAJOR}-$HOST_ARCH | tr -d / | toLower`
-export HOST_TARGET
+HOST_TARGET32=`echo ${OS}${OSMAJOR}-$HOST_ARCH32 | tr -d / | toLower`
+export HOST_TARGET HOST_TARGET32
 
 case `echo -n .` in -n*) N=; C="\c";; *) N=-n; C=;; esac
 
@@ -230,6 +239,7 @@ Echo() {
 export HOSTNAME HOST	    
 export OS MACHINE MACHINE_ARCH OSREL OSMAJOR LOCAL_FS TMP_DIRS MAILER N C K PS_AXC
 export LN SHARE_ARCH TR
+export LOCALBASE
 
 case /$0 in
 */os.sh)
@@ -239,5 +249,7 @@ case /$0 in
 		echo "$v='$vv'"
 	done
 	;;
+*/host_target32) echo $HOST_TARGET32;;
+*/host_target) echo $HOST_TARGET;;
 esac
 

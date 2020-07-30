@@ -1,4 +1,4 @@
-/*	$NetBSD: make_malloc.c,v 1.10 2012/06/20 17:46:28 sjg Exp $	*/
+/*	$NetBSD: make_malloc.c,v 1.12 2020/07/03 08:02:55 rillig Exp $	*/
 
 /*-
  * Copyright (c) 2009 The NetBSD Foundation, Inc.
@@ -28,7 +28,7 @@
 
 #ifdef MAKE_NATIVE
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: make_malloc.c,v 1.10 2012/06/20 17:46:28 sjg Exp $");
+__RCSID("$NetBSD: make_malloc.c,v 1.12 2020/07/03 08:02:55 rillig Exp $");
 #endif
 
 #include <stdio.h>
@@ -39,13 +39,13 @@ __RCSID("$NetBSD: make_malloc.c,v 1.10 2012/06/20 17:46:28 sjg Exp $");
 #include "make.h"
 
 #ifndef USE_EMALLOC
-static void enomem(void) MAKE_ATTR_DEAD;
+static MAKE_ATTR_DEAD void enomem(void);
 
 /*
  * enomem --
  *	die when out of memory.
  */
-static void
+static MAKE_ATTR_DEAD void
 enomem(void)
 {
 	(void)fprintf(stderr, "%s: %s.\n", progname, strerror(ENOMEM));
@@ -63,7 +63,7 @@ bmake_malloc(size_t len)
 
 	if ((p = malloc(len)) == NULL)
 		enomem();
-	return(p);
+	return p;
 }
 
 /*
@@ -102,7 +102,7 @@ bmake_strndup(const char *str, size_t max_len)
 	memcpy(p, str, len);
 	p[len] = '\0';
 
-	return(p);
+	return p;
 }
 
 /*
@@ -114,6 +114,6 @@ bmake_realloc(void *ptr, size_t size)
 {
 	if ((ptr = realloc(ptr, size)) == NULL)
 		enomem();
-	return(ptr);
+	return ptr;
 }
 #endif

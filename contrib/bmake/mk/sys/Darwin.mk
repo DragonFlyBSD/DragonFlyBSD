@@ -1,107 +1,108 @@
 #	$NetBSD: Darwin.sys.mk,v 1.3 2003/02/16 09:44:41 grant Exp $
 #	@(#)sys.mk	8.2 (Berkeley) 3/21/94
 
-OS=		Darwin
-unix?=		We run ${OS}.
+OS ?=		Darwin
+unix ?=		We run ${OS}.
 
-.SUFFIXES: .out .a .ln .o .s .S .c ${CXX_SUFFIXES} .F .f .r .y .l .cl .p .h
+.SUFFIXES: .out .a .ln .o .s .S .c .m ${CXX_SUFFIXES} .F .f .r .y .l .cl .p .h
 .SUFFIXES: .sh .m4 .dylib
 
 .LIBS:		.a .dylib
 
-SHLIBEXT =	.dylib
-HOST_LIBEXT =	.dylib
-DSHLIBEXT =	.dylib
+SHLIBEXT  ?=	.dylib
+HOST_LIBEXT  ?=	.dylib
+DSHLIBEXT  ?=	.dylib
 
-AR?=		ar
-ARFLAGS?=	rl
+AR ?=		ar
+ARFLAGS ?=	rl
 RANLIB =
 
-AS?=		as
-AFLAGS?=
-COMPILE.s?=	${AS} ${AFLAGS}
-LINK.s?=	${CC} ${AFLAGS} ${LDFLAGS}
-COMPILE.S?=	${CC} ${AFLAGS} ${CPPFLAGS} -c
-LINK.S?=	${CC} ${AFLAGS} ${CPPFLAGS} ${LDFLAGS}
+AS ?=		as
+AFLAGS ?=
+COMPILE.s ?=	${AS} ${AFLAGS}
+LINK.s ?=	${CC} ${AFLAGS} ${LDFLAGS}
+COMPILE.S ?=	${CC} ${AFLAGS} ${CPPFLAGS} -c
+LINK.S ?=	${CC} ${AFLAGS} ${CPPFLAGS} ${LDFLAGS}
 
-.if exists(/usr/bin/gcc)
-CC?=		gcc -pipe
+PIPE ?=		-pipe
+
+.if exists(/usr/bin/clang)
+CC ?=		cc ${PIPE}
+CXX ?=		c++
+.elif exists(/usr/bin/gcc)
+CC ?=		gcc ${PIPE}
 .else
-CC?=		cc -pipe
+CC ?=		cc ${PIPE}
 .endif
-DBG?=		-O2
-CFLAGS?=	${DBG}
-COMPILE.c?=	${CC} ${CFLAGS} ${CPPFLAGS} -c
-LINK.c?=	${CC} ${CFLAGS} ${CPPFLAGS} ${LDFLAGS}
+DBG ?=		-O2
+CFLAGS ?=	${DBG}
+COMPILE.c ?=	${CC} ${CFLAGS} ${CPPFLAGS} -c
+LINK.c ?=	${CC} ${CFLAGS} ${CPPFLAGS} ${LDFLAGS}
 
 .if exists(/usr/bin/g++)
-CXX?=		g++
+CXX ?=		g++
 .else
-CXX?=		c++
+CXX ?=		c++
 .endif
-CXXFLAGS?=	${CFLAGS}
-COMPILE.cc?=	${CXX} ${CXXFLAGS} ${CPPFLAGS} -c
-LINK.cc?=	${CXX} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}
+CXXFLAGS ?=	${CFLAGS}
+COMPILE.cc ?=	${CXX} ${CXXFLAGS} ${CPPFLAGS} -c
+LINK.cc ?=	${CXX} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}
 
-OBJC?=		${CC}
-OBJCFLAGS?=	${CFLAGS}
-COMPILE.m?=	${OBJC} ${OBJCFLAGS} ${CPPFLAGS} -c
-LINK.m?=	${OBJC} ${OBJCFLAGS} ${CPPFLAGS} ${LDFLAGS}
+OBJC ?=		${CC}
+OBJCFLAGS ?=	${CFLAGS}
+COMPILE.m ?=	${OBJC} ${OBJCFLAGS} ${CPPFLAGS} -c
+LINK.m ?=	${OBJC} ${OBJCFLAGS} ${CPPFLAGS} ${LDFLAGS}
 
-CPP?=		cpp
-NOLINT=		1
-CPPFLAGS?=
+CPP ?=		cpp
+NOLINT ?=		1
+CPPFLAGS ?=
 
-MK_DEP?=	mkdeps.sh -N
+MK_DEP ?=	mkdep
 
-FC?=		f77
-FFLAGS?=	-O
-RFLAGS?=
-COMPILE.f?=	${FC} ${FFLAGS} -c
-LINK.f?=	${FC} ${FFLAGS} ${LDFLAGS}
-COMPILE.F?=	${FC} ${FFLAGS} ${CPPFLAGS} -c
-LINK.F?=	${FC} ${FFLAGS} ${CPPFLAGS} ${LDFLAGS}
-COMPILE.r?=	${FC} ${FFLAGS} ${RFLAGS} -c
-LINK.r?=	${FC} ${FFLAGS} ${RFLAGS} ${LDFLAGS}
+FC ?=		f77
+FFLAGS ?=	-O
+RFLAGS ?=
+COMPILE.f ?=	${FC} ${FFLAGS} -c
+LINK.f ?=	${FC} ${FFLAGS} ${LDFLAGS}
+COMPILE.F ?=	${FC} ${FFLAGS} ${CPPFLAGS} -c
+LINK.F ?=	${FC} ${FFLAGS} ${CPPFLAGS} ${LDFLAGS}
+COMPILE.r ?=	${FC} ${FFLAGS} ${RFLAGS} -c
+LINK.r ?=	${FC} ${FFLAGS} ${RFLAGS} ${LDFLAGS}
 
-INSTALL?=	install
+INSTALL ?=	install
 
-LEX?=		lex
-LFLAGS?=
-LEX.l?=		${LEX} ${LFLAGS}
+LEX ?=		lex
+LFLAGS ?=
+LEX.l ?=		${LEX} ${LFLAGS}
 
-LD?=		ld
-LDFLAGS?=
+LD ?=		ld
+LDFLAGS ?=
 
-SHLIB_TEENY = 0
-SHLIB_MINOR = 0
+SHLIB_TEENY  ?= 0
+SHLIB_MINOR  ?= 0
 
-MKPICLIB = no
-LIBEXT = .dylib
+MKPICLIB  ?= no
+LIBEXT  ?= .dylib
 
-LINT?=		lint
-LINTFLAGS?=	-chapbx
+LINT ?=		lint
+LINTFLAGS ?=	-chapbx
 
-LORDER?=	lorder
+LORDER ?=	lorder
 
-MAKE?=		bmake
+NM ?=		nm
 
-NM?=		nm
+PC ?=		pc
+PFLAGS ?=
+COMPILE.p ?=	${PC} ${PFLAGS} ${CPPFLAGS} -c
+LINK.p ?=	${PC} ${PFLAGS} ${CPPFLAGS} ${LDFLAGS}
 
-PC?=		pc
-PFLAGS?=
-COMPILE.p?=	${PC} ${PFLAGS} ${CPPFLAGS} -c
-LINK.p?=	${PC} ${PFLAGS} ${CPPFLAGS} ${LDFLAGS}
+SIZE ?=		size
 
-SHELL?=		sh
+TSORT ?=		tsort -q
 
-SIZE?=		size
-
-TSORT?=		tsort -q
-
-YACC?=		bison -y
-YFLAGS?=	-d
-YACC.y?=	${YACC} ${YFLAGS}
+YACC ?=		bison -y
+YFLAGS ?=	-d
+YACC.y ?=	${YACC} ${YFLAGS}
 
 # C
 .c:
@@ -120,6 +121,16 @@ ${CXX_SUFFIXES:%=%.o}:
 	${COMPILE.cc} ${.IMPSRC}
 ${CXX_SUFFIXES:%=%.a}:
 	${COMPILE.cc} ${.IMPSRC}
+	${AR} ${ARFLAGS} $@ $*.o
+	rm -f $*.o
+
+# Objective-C
+.m:
+	${LINK.m} -o ${.TARGET} ${.IMPSRC} ${LDLIBS}
+.m.o:
+	${COMPILE.m} ${.IMPSRC}
+.m.a:
+	${COMPILE.m} ${.IMPSRC}
 	${AR} ${ARFLAGS} $@ $*.o
 	rm -f $*.o
 

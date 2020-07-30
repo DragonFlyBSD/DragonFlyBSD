@@ -1,4 +1,4 @@
-/*	$NetBSD: arch.c,v 1.69 2016/04/06 09:57:00 gson Exp $	*/
+/*	$NetBSD: arch.c,v 1.73 2020/07/03 08:02:55 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -69,14 +69,14 @@
  */
 
 #ifndef MAKE_NATIVE
-static char rcsid[] = "$NetBSD: arch.c,v 1.69 2016/04/06 09:57:00 gson Exp $";
+static char rcsid[] = "$NetBSD: arch.c,v 1.73 2020/07/03 08:02:55 rillig Exp $";
 #else
 #include <sys/cdefs.h>
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)arch.c	8.2 (Berkeley) 1/2/94";
 #else
-__RCSID("$NetBSD: arch.c,v 1.69 2016/04/06 09:57:00 gson Exp $");
+__RCSID("$NetBSD: arch.c,v 1.73 2020/07/03 08:02:55 rillig Exp $");
 #endif
 #endif /* not lint */
 #endif
@@ -312,7 +312,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 	    free(freeIt);
 
 	    if (result == var_Error) {
-		return(FAILURE);
+		return FAILURE;
 	    } else {
 		subLibName = TRUE;
 	    }
@@ -354,7 +354,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 		free(freeIt);
 
 		if (result == var_Error) {
-		    return(FAILURE);
+		    return FAILURE;
 		} else {
 		    doSubst = TRUE;
 		}
@@ -372,7 +372,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 	 */
 	if (*cp == '\0') {
 	    printf("No closing parenthesis in archive specification\n");
-	    return (FAILURE);
+	    return FAILURE;
 	}
 
 	/*
@@ -426,7 +426,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 
 		if (gn == NULL) {
 		    free(buf);
-		    return(FAILURE);
+		    return FAILURE;
 		} else {
 		    gn->type |= OP_ARCHV;
 		    (void)Lst_AtEnd(nodeLst, gn);
@@ -437,7 +437,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 		 * ourselves.
 		 */
 		free(buf);
-		return(FAILURE);
+		return FAILURE;
 	    }
 	    /*
 	     * Free buffer and continue with our work.
@@ -461,7 +461,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 		gn = Targ_FindNode(nameBuf, TARG_CREATE);
 		if (gn == NULL) {
 		    free(nameBuf);
-		    return (FAILURE);
+		    return FAILURE;
 		} else {
 		    /*
 		     * We've found the node, but have to make sure the rest of
@@ -483,7 +483,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 	    gn = Targ_FindNode(nameBuf, TARG_CREATE);
 	    free(nameBuf);
 	    if (gn == NULL) {
-		return (FAILURE);
+		return FAILURE;
 	    } else {
 		/*
 		 * We've found the node, but have to make sure the rest of the
@@ -520,7 +520,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
     } while (*cp != '\0' && isspace ((unsigned char)*cp));
 
     *linePtr = cp;
-    return (SUCCESS);
+    return SUCCESS;
 }
 
 /*-
@@ -544,7 +544,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 static int
 ArchFindArchive(const void *ar, const void *archName)
 {
-    return (strcmp(archName, ((const Arch *)ar)->name));
+    return strcmp(archName, ((const Arch *)ar)->name);
 }
 
 /*-
@@ -602,7 +602,7 @@ ArchStatMember(char *archive, char *member, Boolean hash)
 	he = Hash_FindEntry(&ar->members, member);
 
 	if (he != NULL) {
-	    return ((struct ar_hdr *)Hash_GetValue(he));
+	    return (struct ar_hdr *)Hash_GetValue(he);
 	} else {
 	    /* Try truncated name */
 	    char copy[AR_MAX_NAME_LEN+1];
@@ -614,7 +614,7 @@ ArchStatMember(char *archive, char *member, Boolean hash)
 		copy[AR_MAX_NAME_LEN] = '\0';
 	    }
 	    if ((he = Hash_FindEntry(&ar->members, copy)) != NULL)
-		return ((struct ar_hdr *)Hash_GetValue(he));
+		return (struct ar_hdr *)Hash_GetValue(he);
 	    return NULL;
 	}
     }
@@ -635,7 +635,7 @@ ArchStatMember(char *archive, char *member, Boolean hash)
 	    return NULL;
 	} else {
 	    fclose(arch);
-	    return (&sarh);
+	    return &sarh;
 	}
     }
 
@@ -682,7 +682,7 @@ ArchStatMember(char *archive, char *member, Boolean hash)
 	    arh.AR_SIZE[sizeof(arh.AR_SIZE)-1] = '\0';
 	    size = (int)strtol(arh.AR_SIZE, NULL, 10);
 
-	    (void)strncpy(memName, arh.AR_NAME, sizeof(arh.AR_NAME));
+	    memcpy(memName, arh.AR_NAME, sizeof(arh.AR_NAME));
 	    for (cp = &memName[AR_MAX_NAME_LEN]; *cp == ' '; cp--) {
 		continue;
 	    }
@@ -726,7 +726,8 @@ ArchStatMember(char *archive, char *member, Boolean hash)
 		if (fread(memName, elen, 1, arch) != 1)
 			goto badarch;
 		memName[elen] = '\0';
-		fseek(arch, -elen, SEEK_CUR);
+		if (fseek(arch, -elen, SEEK_CUR) != 0)
+			goto badarch;
 		if (DEBUG(ARCH) || DEBUG(MAKE)) {
 		    fprintf(debug_file, "ArchStat: Extended format entry for %s\n", memName);
 		}
@@ -737,7 +738,8 @@ ArchStatMember(char *archive, char *member, Boolean hash)
 	    Hash_SetValue(he, bmake_malloc(sizeof(struct ar_hdr)));
 	    memcpy(Hash_GetValue(he), &arh, sizeof(struct ar_hdr));
 	}
-	fseek(arch, (size + 1) & ~1, SEEK_CUR);
+	if (fseek(arch, (size + 1) & ~1, SEEK_CUR) != 0)
+	    goto badarch;
     }
 
     fclose(arch);
@@ -751,7 +753,7 @@ ArchStatMember(char *archive, char *member, Boolean hash)
     he = Hash_FindEntry(&ar->members, member);
 
     if (he != NULL) {
-	return ((struct ar_hdr *)Hash_GetValue(he));
+	return (struct ar_hdr *)Hash_GetValue(he);
     } else {
 	return NULL;
     }
@@ -956,8 +958,11 @@ ArchFindMember(char *archive, char *member, struct ar_hdr *arhPtr,
 		 * the file at the actual member, rather than its header, but
 		 * not here...
 		 */
-		fseek(arch, -sizeof(struct ar_hdr), SEEK_CUR);
-		return (arch);
+		if (fseek(arch, -sizeof(struct ar_hdr), SEEK_CUR) != 0) {
+		    fclose(arch);
+		    return NULL;
+		}
+		return arch;
 	    }
 	} else
 #ifdef AR_EFMT1
@@ -986,10 +991,17 @@ ArchFindMember(char *archive, char *member, struct ar_hdr *arhPtr,
 		}
 		if (strncmp(ename, member, len) == 0) {
 			/* Found as extended name */
-			fseek(arch, -sizeof(struct ar_hdr) - elen, SEEK_CUR);
-			return (arch);
+			if (fseek(arch, -sizeof(struct ar_hdr) - elen,
+				SEEK_CUR) != 0) {
+			    fclose(arch);
+			    return NULL;
+			}
+			return arch;
 		}
-		fseek(arch, -elen, SEEK_CUR);
+		if (fseek(arch, -elen, SEEK_CUR) != 0) {
+		    fclose(arch);
+		    return NULL;
+		}
 		goto skip;
 	} else
 #endif
@@ -1002,9 +1014,12 @@ skip:
 	     * extract the size of the file from the 'size' field of the
 	     * header and round it up during the seek.
 	     */
-	    arhPtr->ar_size[sizeof(arhPtr->AR_SIZE)-1] = '\0';
+	    arhPtr->AR_SIZE[sizeof(arhPtr->AR_SIZE)-1] = '\0';
 	    size = (int)strtol(arhPtr->AR_SIZE, NULL, 10);
-	    fseek(arch, (size + 1) & ~1, SEEK_CUR);
+	    if (fseek(arch, (size + 1) & ~1, SEEK_CUR) != 0) {
+		fclose(arch);
+		return NULL;
+	    }
 	}
     }
 
@@ -1137,7 +1152,7 @@ Arch_MTime(GNode *gn)
     }
 
     gn->mtime = modTime;
-    return (modTime);
+    return modTime;
 }
 
 /*-
@@ -1164,7 +1179,7 @@ Arch_MemMTime(GNode *gn)
 
     if (Lst_Open(gn->parents) != SUCCESS) {
 	gn->mtime = 0;
-	return (0);
+	return 0;
     }
     while ((ln = Lst_Next(gn->parents)) != NULL) {
 	pgn = (GNode *)Lst_Datum(ln);
@@ -1196,7 +1211,7 @@ Arch_MemMTime(GNode *gn)
 
     Lst_Close(gn->parents);
 
-    return (gn->mtime);
+    return gn->mtime;
 }
 
 /*-
@@ -1237,9 +1252,9 @@ Arch_FindLib(GNode *gn, Lst path)
     free(libName);
 
 #ifdef LIBRARIES
-    Var_Set(TARGET, gn->name, gn, 0);
+    Var_Set(TARGET, gn->name, gn);
 #else
-    Var_Set(TARGET, gn->path == NULL ? gn->name : gn->path, gn, 0);
+    Var_Set(TARGET, gn->path == NULL ? gn->name : gn->path, gn);
 #endif /* LIBRARIES */
 }
 
@@ -1322,7 +1337,7 @@ Arch_LibOODate(GNode *gn)
 	oodate = FALSE;
 #endif
     }
-    return (oodate);
+    return oodate;
 }
 
 /*-
