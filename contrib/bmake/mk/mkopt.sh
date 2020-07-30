@@ -1,7 +1,8 @@
-:
-# $Id: mkopt.sh,v 1.10 2015/06/07 17:29:08 sjg Exp $
+#!/bin/sh
+
+# $Id: mkopt.sh,v 1.12 2020/06/23 04:16:35 sjg Exp $
 #
-#	@(#) Copyright (c) 2014, Simon J. Gerraty
+#	@(#) Copyright (c) 2014, 2020, Simon J. Gerraty
 #
 #	This file is provided in the hope that it will
 #	be of use.  There is absolutely NO WARRANTY.
@@ -40,7 +41,7 @@ _mk_opt() {
     eval "_mov=\$$_mo _wov=\$$_wo _wiv=\$$_wi"
 
     case "$_wiv" in
-    no) _wov=no;;
+    [Nn][Oo]) _wov=no;;
     esac
     _v=${_mov:-${_wov:+no}}
     _v=${_v:-${_wiv:+yes}}

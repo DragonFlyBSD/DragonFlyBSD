@@ -1,4 +1,4 @@
-/*	$NetBSD: str.c,v 1.36 2016/04/06 09:57:00 gson Exp $	*/
+/*	$NetBSD: str.c,v 1.51 2020/07/03 07:40:13 rillig Exp $	*/
 
 /*-
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -69,14 +69,14 @@
  */
 
 #ifndef MAKE_NATIVE
-static char rcsid[] = "$NetBSD: str.c,v 1.36 2016/04/06 09:57:00 gson Exp $";
+static char rcsid[] = "$NetBSD: str.c,v 1.51 2020/07/03 07:40:13 rillig Exp $";
 #else
 #include <sys/cdefs.h>
 #ifndef lint
 #if 0
 static char     sccsid[] = "@(#)str.c	5.8 (Berkeley) 6/1/90";
 #else
-__RCSID("$NetBSD: str.c,v 1.36 2016/04/06 09:57:00 gson Exp $");
+__RCSID("$NetBSD: str.c,v 1.51 2020/07/03 07:40:13 rillig Exp $");
 #endif
 #endif				/* not lint */
 #endif
@@ -119,7 +119,7 @@ str_concat(const char *s1, const char *s2, int flags)
 	/* copy second string plus EOS into place */
 	memcpy(result + len1, s2, len2 + 1);
 
-	return(result);
+	return result;
 }
 
 /*-
@@ -133,42 +133,43 @@ str_concat(const char *s1, const char *s2, int flags)
  *
  * returns --
  *	Pointer to the array of pointers to the words.
- *      Memory containing the actual words in *buffer.
+ *      Memory containing the actual words in *store_words_buf.
  *		Both of these must be free'd by the caller.
- *      Number of words in *store_argc.
+ *      Number of words in *store_words_len.
  */
 char **
-brk_string(const char *str, int *store_argc, Boolean expand, char **buffer)
+brk_string(const char *str, int *store_words_len, Boolean expand,
+	char **store_words_buf)
 {
-	int argc, ch;
-	char inquote, *start, *t;
-	const char *p;
-	int len;
-	int argmax = 50, curlen = 0;
-    	char **argv;
+	char inquote;
+	const char *str_p;
+	size_t str_len;
+    	char **words;
+	int words_len;
+	int words_cap = 50;
+	char *words_buf, *word_start, *word_end;
 
 	/* skip leading space chars. */
 	for (; *str == ' ' || *str == '\t'; ++str)
 		continue;
 
-	/* allocate room for a copy of the string */
-	if ((len = strlen(str) + 1) > curlen)
-		*buffer = bmake_malloc(curlen = len);
+	/* words_buf holds the words, separated by '\0'. */
+	str_len = strlen(str);
+	words_buf = bmake_malloc(strlen(str) + 1);
 
-	/*
-	 * initial argmax based on len
-	 */
-	argmax = MAX((len / 5), 50);
-	argv = bmake_malloc((argmax + 1) * sizeof(char *));
+	words_cap = MAX((str_len / 5), 50);
+	words = bmake_malloc((words_cap + 1) * sizeof(char *));
 
 	/*
 	 * copy the string; at the same time, parse backslashes,
-	 * quotes and build the argument list.
+	 * quotes and build the word list.
 	 */
-	argc = 0;
+	words_len = 0;
 	inquote = '\0';
-	for (p = str, start = t = *buffer;; ++p) {
-		switch(ch = *p) {
+	word_start = word_end = words_buf;
+	for (str_p = str;; ++str_p) {
+		char ch = *str_p;
+		switch(ch) {
 		case '"':
 		case '\'':
 			if (inquote) {
@@ -180,21 +181,21 @@ brk_string(const char *str, int *store_argc, Boolean expand, char **buffer)
 			else {
 				inquote = (char) ch;
 				/* Don't miss "" or '' */
-				if (start == NULL && p[1] == inquote) {
+				if (word_start == NULL && str_p[1] == inquote) {
 					if (!expand) {
-						start = t;
-						*t++ = ch;
+						word_start = word_end;
+						*word_end++ = ch;
 					} else
-						start = t + 1;
-					p++;
+						word_start = word_end + 1;
+					str_p++;
 					inquote = '\0';
 					break;
 				}
 			}
 			if (!expand) {
-				if (!start)
-					start = t;
-				*t++ = ch;
+				if (word_start == NULL)
+					word_start = word_end;
+				*word_end++ = ch;
 			}
 			continue;
 		case ' ':
@@ -202,30 +203,30 @@ brk_string(const char *str, int *store_argc, Boolean expand, char **buffer)
 		case '\n':
 			if (inquote)
 				break;
-			if (!start)
+			if (word_start == NULL)
 				continue;
 			/* FALLTHROUGH */
 		case '\0':
 			/*
-			 * end of a token -- make sure there's enough argv
+			 * end of a token -- make sure there's enough words
 			 * space and save off a pointer.
 			 */
-			if (!start)
+			if (word_start == NULL)
 			    goto done;
 
-			*t++ = '\0';
-			if (argc == argmax) {
-				argmax *= 2;		/* ramp up fast */
-				argv = (char **)bmake_realloc(argv,
-				    (argmax + 1) * sizeof(char *));
+			*word_end++ = '\0';
+			if (words_len == words_cap) {
+				words_cap *= 2;		/* ramp up fast */
+				words = (char **)bmake_realloc(words,
+				    (words_cap + 1) * sizeof(char *));
 			}
-			argv[argc++] = start;
-			start = NULL;
+			words[words_len++] = word_start;
+			word_start = NULL;
 			if (ch == '\n' || ch == '\0') {
 				if (expand && inquote) {
-					free(argv);
-					free(*buffer);
-					*buffer = NULL;
+					free(words);
+					free(words_buf);
+					*store_words_buf = NULL;
 					return NULL;
 				}
 				goto done;
@@ -233,21 +234,22 @@ brk_string(const char *str, int *store_argc, Boolean expand, char **buffer)
 			continue;
 		case '\\':
 			if (!expand) {
-				if (!start)
-					start = t;
-				*t++ = '\\';
-				if (*(p+1) == '\0') /* catch '\' at end of line */
+				if (word_start == NULL)
+					word_start = word_end;
+				*word_end++ = '\\';
+				/* catch '\' at end of line */
+				if (str_p[1] == '\0')
 					continue;
-				ch = *++p;
+				ch = *++str_p;
 				break;
 			}
 
-			switch (ch = *++p) {
+			switch (ch = *++str_p) {
 			case '\0':
 			case '\n':
 				/* hmmm; fix it up as best we can */
 				ch = '\\';
-				--p;
+				--str_p;
 				break;
 			case 'b':
 				ch = '\b';
@@ -267,13 +269,14 @@ brk_string(const char *str, int *store_argc, Boolean expand, char **buffer)
 			}
 			break;
 		}
-		if (!start)
-			start = t;
-		*t++ = (char) ch;
+		if (word_start == NULL)
+			word_start = word_end;
+		*word_end++ = ch;
 	}
-done:	argv[argc] = NULL;
-	*store_argc = argc;
-	return(argv);
+done:	words[words_len] = NULL;
+	*store_words_len = words_len;
+	*store_words_buf = words_buf;
+	return words;
 }
 
 /*
@@ -301,7 +304,7 @@ Str_FindSubstring(const char *string, const char *substring)
 	 * substring.
 	 */
 
-	for (b = substring; *string != 0; string += 1) {
+	for (b = substring; *string != 0; string++) {
 		if (*string != *b)
 			continue;
 		a = string;
@@ -317,106 +320,109 @@ Str_FindSubstring(const char *string, const char *substring)
 }
 
 /*
- * Str_Match --
- *
- * See if a particular string matches a particular pattern.
- *
- * Results: Non-zero is returned if string matches pattern, 0 otherwise. The
- * matching operation permits the following special characters in the
- * pattern: *?\[] (see the man page for details on what these mean).
+ * Str_Match -- Test if a string matches a pattern like "*.[ch]".
  *
  * XXX this function does not detect or report malformed patterns.
  *
+ * Results:
+ *	Non-zero is returned if string matches the pattern, 0 otherwise. The
+ *	matching operation permits the following special characters in the
+ *	pattern: *?\[] (as in fnmatch(3)).
+ *
  * Side effects: None.
  */
-int
-Str_Match(const char *string, const char *pattern)
+Boolean
+Str_Match(const char *str, const char *pat)
 {
-	char c2;
-
 	for (;;) {
 		/*
 		 * See if we're at the end of both the pattern and the
 		 * string. If, we succeeded.  If we're at the end of the
 		 * pattern but not at the end of the string, we failed.
 		 */
-		if (*pattern == 0)
-			return(!*string);
-		if (*string == 0 && *pattern != '*')
-			return(0);
+		if (*pat == 0)
+			return *str == 0;
+		if (*str == 0 && *pat != '*')
+			return FALSE;
+
 		/*
-		 * Check for a "*" as the next pattern character.  It matches
-		 * any substring.  We handle this by calling ourselves
-		 * recursively for each postfix of string, until either we
-		 * match or we reach the end of the string.
+		 * A '*' in the pattern matches any substring.  We handle this
+		 * by calling ourselves for each suffix of the string.
 		 */
-		if (*pattern == '*') {
-			pattern += 1;
-			if (*pattern == 0)
-				return(1);
-			while (*string != 0) {
-				if (Str_Match(string, pattern))
-					return(1);
-				++string;
+		if (*pat == '*') {
+			pat++;
+			while (*pat == '*')
+				pat++;
+			if (*pat == 0)
+				return TRUE;
+			while (*str != 0) {
+				if (Str_Match(str, pat))
+					return TRUE;
+				str++;
 			}
-			return(0);
+			return FALSE;
 		}
-		/*
-		 * Check for a "?" as the next pattern character.  It matches
-		 * any single character.
-		 */
-		if (*pattern == '?')
+
+		/* A '?' in the pattern matches any single character. */
+		if (*pat == '?')
 			goto thisCharOK;
+
 		/*
-		 * Check for a "[" as the next pattern character.  It is
-		 * followed by a list of characters that are acceptable, or
-		 * by a range (two characters separated by "-").
+		 * A '[' in the pattern matches a character from a list.
+		 * The '[' is followed by the list of acceptable characters,
+		 * or by ranges (two characters separated by '-'). In these
+		 * character lists, the backslash is an ordinary character.
 		 */
-		if (*pattern == '[') {
-			++pattern;
+		if (*pat == '[') {
+			Boolean neg = pat[1] == '^';
+			pat += 1 + neg;
+
 			for (;;) {
-				if ((*pattern == ']') || (*pattern == 0))
-					return(0);
-				if (*pattern == *string)
-					break;
-				if (pattern[1] == '-') {
-					c2 = pattern[2];
-					if (c2 == 0)
-						return(0);
-					if ((*pattern <= *string) &&
-					    (c2 >= *string))
+				if (*pat == ']' || *pat == 0) {
+					if (neg)
 						break;
-					if ((*pattern >= *string) &&
-					    (c2 <= *string))
-						break;
-					pattern += 2;
+					return FALSE;
 				}
-				++pattern;
+				if (*pat == *str)
+					break;
+				if (pat[1] == '-') {
+					if (pat[2] == 0)
+						return neg;
+					if (*pat <= *str && pat[2] >= *str)
+						break;
+					if (*pat >= *str && pat[2] <= *str)
+						break;
+					pat += 2;
+				}
+				pat++;
 			}
-			while ((*pattern != ']') && (*pattern != 0))
-				++pattern;
+			if (neg && *pat != ']' && *pat != 0)
+				return FALSE;
+			while (*pat != ']' && *pat != 0)
+				pat++;
+			if (*pat == 0)
+				pat--;
 			goto thisCharOK;
 		}
+
 		/*
-		 * If the next pattern character is '/', just strip off the
-		 * '/' so we do exact matching on the character that follows.
+		 * A backslash in the pattern matches the character following
+		 * it exactly.
 		 */
-		if (*pattern == '\\') {
-			++pattern;
-			if (*pattern == 0)
-				return(0);
+		if (*pat == '\\') {
+			pat++;
+			if (*pat == 0)
+				return FALSE;
 		}
-		/*
-		 * There's no special character.  Just make sure that the
-		 * next characters of each string match.
-		 */
-		if (*pattern != *string)
-			return(0);
-thisCharOK:	++pattern;
-		++string;
+
+		if (*pat != *str)
+			return FALSE;
+
+	thisCharOK:
+		pat++;
+		str++;
 	}
 }
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -438,12 +444,14 @@ thisCharOK:	++pattern;
  *-----------------------------------------------------------------------
  */
 char *
-Str_SYSVMatch(const char *word, const char *pattern, int *len)
+Str_SYSVMatch(const char *word, const char *pattern, size_t *len,
+    Boolean *hasPercent)
 {
     const char *p = pattern;
     const char *w = word;
     const char *m;
 
+    *hasPercent = FALSE;
     if (*p == '\0') {
 	/* Null pattern is the whole string */
 	*len = strlen(w);
@@ -451,6 +459,11 @@ Str_SYSVMatch(const char *word, const char *pattern, int *len)
     }
 
     if ((m = strchr(p, '%')) != NULL) {
+	*hasPercent = TRUE;
+	if (*w == '\0') {
+		/* empty word does not match pattern */
+		return NULL;
+	}
 	/* check that the prefix matches */
 	for (; p != m && *w && *w == *p; w++, p++)
 	     continue;
@@ -495,19 +508,21 @@ Str_SYSVMatch(const char *word, const char *pattern, int *len)
  *-----------------------------------------------------------------------
  */
 void
-Str_SYSVSubst(Buffer *buf, char *pat, char *src, int len)
+Str_SYSVSubst(Buffer *buf, char *pat, char *src, size_t len,
+    Boolean lhsHasPercent)
 {
     char *m;
 
-    if ((m = strchr(pat, '%')) != NULL) {
+    if ((m = strchr(pat, '%')) != NULL && lhsHasPercent) {
 	/* Copy the prefix */
 	Buf_AddBytes(buf, m - pat, pat);
 	/* skip the % */
 	pat = m + 1;
     }
-
-    /* Copy the pattern */
-    Buf_AddBytes(buf, len, src);
+    if (m != NULL || !lhsHasPercent) {
+	/* Copy the pattern */
+	Buf_AddBytes(buf, len, src);
+    }
 
     /* append the rest */
     Buf_AddBytes(buf, strlen(pat), pat);
