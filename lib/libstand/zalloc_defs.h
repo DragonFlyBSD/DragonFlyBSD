@@ -27,8 +27,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/zalloc_defs.h,v 1.6 1999/08/28 00:05:35 peter Exp $
- * $DragonFly: src/lib/libstand/zalloc_defs.h,v 1.4 2008/06/05 18:01:49 swildner Exp $
  */
+
+#ifndef _STAND_ZALLOC_DEFS_H_
+#define	_STAND_ZALLOC_DEFS_H_
 
 /*
  * DEFS.H
@@ -71,3 +73,4 @@ typedef struct Guard {
 
 #include "zalloc_protos.h"
 
+#endif /* !_STAND_ZALLOC_DEFS_H_ */

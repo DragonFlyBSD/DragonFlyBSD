@@ -34,6 +34,9 @@
  * $FreeBSD: src/lib/libstand/quad.h,v 1.2 1999/08/28 00:05:33 peter Exp $
  */
 
+#ifndef _STAND_QUAD_H_
+#define	_STAND_QUAD_H_
+
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <limits.h>
@@ -66,3 +69,5 @@ union uu {
 u_quad_t	__udivmoddi4 (u_quad_t, u_quad_t, u_quad_t *);
 u_quad_t	__udivdi3 (u_quad_t, u_quad_t);
 u_quad_t	__umoddi3 (u_quad_t, u_quad_t);
+
+#endif /* !_STAND_QUAD_H_ */

@@ -20,9 +20,10 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/lib/libstand/bootp.h,v 1.1.1.1.6.1 2000/09/10 02:52:19 ps Exp $
- * $DragonFly: src/lib/libstand/bootp.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
+#ifndef _STAND_BOOTP_H_
+#define	_STAND_BOOTP_H_
 
 struct bootp {
 	unsigned char	bp_op;		/* packet opcode type */
@@ -144,3 +145,5 @@ struct cmu_vend {
 
 /* v_flags values */
 #define VF_SMASK	1	/* Subnet mask field contains valid data */
+
+#endif /* !_STAND_BOOTP_H_ */

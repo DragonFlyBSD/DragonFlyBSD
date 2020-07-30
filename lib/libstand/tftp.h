@@ -32,5 +32,9 @@
  *
  */
 
+#ifndef _STAND_TFTP_H_
+#define	_STAND_TFTP_H_
 
 #define IPPORT_TFTP 69
+
+#endif /* !_STAND_TFTP_H_ */

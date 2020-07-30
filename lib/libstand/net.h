@@ -34,8 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/net.h,v 1.1.1.1.6.3 2001/03/05 06:27:18 kris Exp $
- * $DragonFly: src/lib/libstand/net.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
+
+#ifndef _STAND_NET_H_
+#define	_STAND_NET_H_
 
 #ifndef _KERNEL	/* XXX - see <netinet/in.h> */
 #undef __IPADDR
@@ -119,3 +121,5 @@ n_long	inet_addr(char *);
 
 /* Machine-dependent functions: */
 time_t	getsecs(void);
+
+#endif /* !_STAND_NET_H_ */

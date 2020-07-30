@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __SYS_LIBNETBOOT_IODESC_H
-#define __SYS_LIBNETBOOT_IODESC_H
+#ifndef _STAND_IODESC_H_
+#define	_STAND_IODESC_H_
 
 struct iodesc {
 	struct	in_addr destip;		/* dest. ip addr, net order */
@@ -47,4 +47,4 @@ struct iodesc {
 	struct netif *io_netif;
 };
 
-#endif /* __SYS_LIBNETBOOT_IODESC_H */
+#endif /* !_STAND_IODESC_H_ */

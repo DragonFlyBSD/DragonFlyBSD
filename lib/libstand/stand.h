@@ -59,7 +59,7 @@
  */
 
 #ifndef _STAND_H_
-#define _STAND_H_
+#define	_STAND_H_
 
 #include <machine/stdarg.h>	/* __va_list */
 #include <sys/types.h>
@@ -406,4 +406,4 @@ free_debug(void *p, const char *file, int line)
 
 #endif
 
-#endif	/* !_STAND_H_ */
+#endif /* !_STAND_H_ */

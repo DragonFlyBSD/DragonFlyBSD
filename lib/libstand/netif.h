@@ -2,8 +2,9 @@
 
 /* $FreeBSD: src/lib/libstand/netif.h,v 1.1.1.1.6.1 2000/09/10 01:24:16 ps Exp $ */
 
-#ifndef __SYS_LIBNETBOOT_NETIF_H
-#define __SYS_LIBNETBOOT_NETIF_H
+#ifndef _STAND_NETIF_H_
+#define	_STAND_NETIF_H_
+
 #include "iodesc.h"
 
 #define NENTS(x)	sizeof(x)/sizeof(x[0])
@@ -63,4 +64,5 @@ int		netif_close(int);
 
 struct iodesc	*socktodesc(int);
 	
-#endif /* __SYS_LIBNETBOOT_NETIF_H */
+#endif /* !_STAND_NETIF_H_ */
+

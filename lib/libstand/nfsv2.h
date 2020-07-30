@@ -1,5 +1,4 @@
 /* $FreeBSD: src/lib/libstand/nfsv2.h,v 1.1.1.1.6.1 2000/05/04 13:47:51 ps Exp $ */
-/* $DragonFly: src/lib/libstand/nfsv2.h,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
 /*	$NetBSD: nfsv2.h,v 1.2 1996/02/26 23:05:23 gwr Exp $	*/
 
 /*
@@ -35,6 +34,9 @@
  *
  *	@(#)nfsv2.h	8.1 (Berkeley) 6/10/93
  */
+
+#ifndef _STAND_NFSV2_H_
+#define	_STAND_NFSV2_H_
 
 /*
  * nfs definitions as per the version 2 specs
@@ -163,3 +165,5 @@ struct nfsv2_statfs {
 	n_long	sf_bfree;
 	n_long	sf_bavail;
 };
+
+#endif /* !_STAND_NFSVS2_H_ */

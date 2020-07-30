@@ -33,6 +33,9 @@
  * SUCH DAMAGE.
  */
 
+#ifndef _STAND_RPC_H_
+#define	_STAND_RPC_H_
+
 /* XXX defines we can't easily get from system includes */
 #define	PMAPPORT		111
 #define	PMAPPROG		100000
@@ -61,3 +64,5 @@ int	rpc_newport(void);
  *  2: Auth NULL
  */
 #define	RPC_HEADER_WORDS 28
+
+#endif /* !_STAND_RPC_H_ */

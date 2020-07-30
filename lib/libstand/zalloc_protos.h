@@ -27,10 +27,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/zalloc_protos.h,v 1.3 1999/08/28 00:05:35 peter Exp $
- * $DragonFly: src/lib/libstand/zalloc_protos.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
+
+#ifndef _STAND_ZALLOC_PROTOS_H_
+#define	_STAND_ZALLOC_PROTOS_H_
 
 Library void *znalloc(struct MemPool *mpool, uintptr_t bytes);
 Library void zfree(struct MemPool *mpool, void *ptr, uintptr_t bytes);
 Library void zextendPool(MemPool *mp, void *base, uintptr_t bytes);
 Library void zallocstats(struct MemPool *mp);
+
+#endif /* !_STAND_ZALLOC_PROTOS_H_ */

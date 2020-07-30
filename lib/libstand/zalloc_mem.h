@@ -27,8 +27,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/zalloc_mem.h,v 1.3 1999/08/28 00:05:35 peter Exp $
- * $DragonFly: src/lib/libstand/zalloc_mem.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
+
+#ifndef _STAND_ZALLOC_MEM_H_
+#define	_STAND_ZALLOC_MEM_H_
 
 /*
  * H/MEM.H
@@ -54,3 +56,4 @@ typedef struct MemPool {
 #define ZNOTE_FREE	0
 #define ZNOTE_REUSE	1
 
+#endif /* !_STAND_ZALLOC_MEM_H_ */

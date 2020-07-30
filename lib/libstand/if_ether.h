@@ -31,8 +31,10 @@
  *	@(#)if_ether.h	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/lib/libstand/if_ether.h,v 1.1.1.1.6.1 2000/09/20 09:49:17 jkh Exp $
- * $DragonFly: src/lib/libstand/if_ether.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
+
+#ifndef _STAND_IF_ETHER_H_
+#define	_STAND_IF_ETHER_H_
 
 /*
  * Ethernet address - 6 octets
@@ -260,3 +262,5 @@ int	ether_hostton(char *, struct ether_addr *);
 int	ether_line(char *, struct ether_addr *, char *);
 __END_DECLS
 #endif
+
+#endif /* !_STAND_IF_ETHER_H_ */
