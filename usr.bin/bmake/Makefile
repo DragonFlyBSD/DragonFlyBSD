@@ -21,7 +21,7 @@ SRCS+=	meta.c metachar.c
 srcdir= ${.CURDIR}/../../contrib/bmake
 
 # Base version on src date
-MAKE_VERSION= 20160818
+MAKE_VERSION= 20200710
 .if defined(BOOTSTRAPPING)
 DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
 .else

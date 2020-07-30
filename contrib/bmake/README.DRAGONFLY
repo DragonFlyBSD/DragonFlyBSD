@@ -4,16 +4,11 @@ BSD MAKE
 Original source can be downloaded from:
 http://www.crufty.net/ftp/pub/sjg
 
-file = bmake-20160818.tar.gz
-date = 18 August 2016
-size = 543406
-sha1 = bdadeb59583d6f1b115ede4080bc68e8de818702
+file = bmake-20200710.tar.gz
+date = 12 July 2020
+size = 582898
+sha1 = 709220c3a098042604257fa9be127b554e277699
 
 The file README.DELETED contains a list of deleted files and directories.
 
-The following files have been patched:
-bmake.1
-job.c
-main.c
-meta.c
-var.c
+Use "git diff vendor/BMAKE contrib/bmake" to see local modifications.
