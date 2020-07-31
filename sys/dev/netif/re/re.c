@@ -25826,8 +25826,8 @@ static void re_hw_phy_config(struct re_softc *sc)
                 MP_WritePhyUshort(sc, 0x00, 0x9200);
         }
         //EthPhyPPSW
-        if (sc->re_type == MACFG_56 || sc->re_type == MACFG_56 ||
-            sc->re_type == MACFG_58 || sc->re_type == MACFG_58 ||
+        if (sc->re_type == MACFG_56 || sc->re_type == MACFG_57 ||
+            sc->re_type == MACFG_58 || sc->re_type == MACFG_59 ||
             sc->re_type == MACFG_60) {
                 //disable EthPhyPPSW
                 MP_WritePhyUshort(sc, 0x1F, 0x0BCD);
