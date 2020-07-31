@@ -58,8 +58,6 @@
 #include <wchar.h>
 #include "mblocal.h"
 
-extern int __mb_sb_limit;
-
 static size_t	_UTF8_mbrtowc(wchar_t * __restrict, const char * __restrict,
 		    size_t, mbstate_t * __restrict);
 static int	_UTF8_mbsinit(const mbstate_t *);

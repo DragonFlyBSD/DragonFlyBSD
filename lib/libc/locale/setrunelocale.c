@@ -61,8 +61,6 @@ extern _RuneLocale const *_CurrentRuneLocale;
 __thread const _RuneLocale *_ThreadRuneLocale;
 #endif
 
-extern int __mb_sb_limit;
-
 extern _RuneLocale	*_Read_RuneMagi(const char *);
 
 static int		__setrunelocale(struct xlocale_ctype *l, const char *);

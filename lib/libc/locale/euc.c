@@ -50,8 +50,6 @@
 #include <wchar.h>
 #include "mblocal.h"
 
-extern int __mb_sb_limit;
-
 static size_t	_EUC_mbrtowc_impl(wchar_t * __restrict, const char * __restrict,
     size_t, mbstate_t * __restrict, uint8_t, uint8_t, uint8_t, uint8_t);
 static size_t	_EUC_wcrtomb_impl(char * __restrict, wchar_t,
