@@ -57,9 +57,6 @@ help all:
 	@echo
 .endif
 	@echo "src checkout branch: ${BRANCH}"
-	@echo
-	@echo "If automating please feel free to run 'git pull' from cron."
-	@echo "We prefer once a day but you can run them more often if you desire."
 
 git-check:
 	@/usr/bin/which -s git || \
@@ -84,7 +81,9 @@ src-create-shallow: src-check
 	git clone --depth 1 --branch ${BRANCH} -- ${GITURL_SRC} ${.CURDIR}/src
 
 src-update: src-check-hasdir
-	cd ${.CURDIR}/src && git pull
+	cd ${.CURDIR}/src && git pull --ff-only
+	@echo
+	@echo "To automate, feel free to run this task from cron(8)."
 
 .if exists(${.CURDIR}/src-sys.tar.bz2)
 release-sys-extract:
@@ -126,7 +125,9 @@ dports-create-shallow: dports-check
 .endif
 
 dports-update: dports-check-hasdir
-	cd ${.CURDIR}/dports && git pull
+	cd ${.CURDIR}/dports && git pull --ff-only
+	@echo
+	@echo "To automate, feel free to run this task from cron(8)."
 
 dports-download: dports-download-check
 	rm -f ${DPTBALL}
