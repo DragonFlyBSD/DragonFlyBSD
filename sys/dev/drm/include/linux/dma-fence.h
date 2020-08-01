@@ -135,7 +135,14 @@ signed long dma_fence_wait_timeout(struct dma_fence *,
 static inline signed long
 dma_fence_wait(struct dma_fence *fence, bool intr)
 {
-	return dma_fence_wait_timeout(fence, intr, MAX_SCHEDULE_TIMEOUT);
+	signed long ret;
+
+	ret = dma_fence_wait_timeout(fence, intr, MAX_SCHEDULE_TIMEOUT);
+
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 
 int dma_fence_add_callback(struct dma_fence *fence,
