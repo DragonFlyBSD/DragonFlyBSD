@@ -109,11 +109,18 @@ extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 					"in %s at %s:%u", #exp, __func__, \
 					__FILE__, __LINE__); } } while (0)
 #define	__debugvar
+#define	__assert_unreachable()						  \
+				do {					  \
+					panic("executing segment marked " \
+					"as unreachable at %s:%d (%s)\n", \
+					__FILE__, __LINE__, __func__);    \
+				} while (0)
 #else
 #define	KASSERT(exp,msg)		do { } while (0)
 #define	KKASSERT(exp)			do { } while (0)
 #define	KKASSERT_UNSPIN(exp, spin)	do { } while (0)
 #define	__debugvar		__attribute__((__unused__))
+#define	__assert_unreachable()	__unreachable()
 #endif
 
 /*
