@@ -33,7 +33,7 @@
 #include <string.h>
 #include "libc_private.h"
 
-struct dl_phdr_info build_phdr_info(void);
+struct dl_phdr_info build_phdr_info(void) __dso_hidden;
 void _rtld_thread_childfork(void);
 void _rtld_thread_init(void *);
 void _rtld_thread_postfork(void);
@@ -131,7 +131,7 @@ dlinfo(void *handle __unused, int request __unused, void *p __unused)
 	return 0;
 }
 
-__dso_hidden struct dl_phdr_info
+struct dl_phdr_info
 build_phdr_info(void)
 {
 	struct dl_phdr_info phdr_info;
