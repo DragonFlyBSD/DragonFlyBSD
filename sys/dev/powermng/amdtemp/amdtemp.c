@@ -1,5 +1,4 @@
 /*-
-
  * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
  * Copyright (c) 2008, 2009 Rui Paulo <rpaulo@FreeBSD.org>
@@ -28,18 +27,14 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/dev/amdtemp/amdtemp.c 361011 2020-05-13 18:07:37Z kevans $
  */
 
 /*
  * Driver for the AMD CPU on-die thermal sensors.
  * Initially based on the k8temp Linux driver.
  */
-
-//#include <stdio.h>
-
-#include <sys/cdefs.h>
-//__FBSDID("$FreeBSD$");
-
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -672,7 +667,7 @@ amdtemp_gettemp0f(device_t dev, amdsensor_t sensor)
 			temp |= AMDTEMP_TTSR_SELCORE;
 		break;
 	default:
-		__builtin_unreachable();
+		__assert_unreachable();
 	}
 	pci_write_config(dev, AMDTEMP_THERMTP_STAT, temp, 1);
 
@@ -772,7 +767,7 @@ amdtemp_gettemp17h(device_t dev, amdsensor_t sensor)
 		    ("sensor %d: not valid", (int)sensor));
 		return (amdtemp_decode_fam10h_to_17h(sc->sc_offset, val, true));
 	default:
-		__builtin_unreachable();
+		__assert_unreachable();
 	}
 }
 

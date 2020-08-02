@@ -1640,7 +1640,9 @@ device		clockmod
 # Intel Sandy Bridge and newer CPUs power usage estimation
 device		corepower
 
-# Intel Core and newer CPUs on-die digital thermal sensor support
+# amdtemp: On-die sensor on AMD K8/K10/K11 CPUs
+# coretemp: Intel Core and newer CPUs on-die digital thermal sensor support
+device		amdtemp
 device		coretemp
 
 # Memory thermal sensor
@@ -1649,6 +1651,11 @@ device		memtemp
 # CPU control pseudo-device. Provides access to MSRs, CPUID info and
 # microcode update feature.
 device		cpuctl
+
+#
+# AMD System Management Network (SMN)
+#
+device		amdsmn
 
 # Effective CPU frequency interface via APERF/MPERF MSRs
 device		aperf

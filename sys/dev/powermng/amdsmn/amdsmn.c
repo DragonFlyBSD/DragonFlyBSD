@@ -22,14 +22,13 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/dev/amdsmn/amdsmn.c 357190 2020-01-28 01:39:50Z cem $
  */
 
 /*
  * Driver for the AMD Family 15h and 17h CPU System Management Network.
  */
-
-#include <sys/cdefs.h>
-//__FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -125,7 +124,6 @@ static driver_t amdsmn_driver = {
 static devclass_t amdsmn_devclass;
 DRIVER_MODULE(amdsmn, hostb, amdsmn_driver, amdsmn_devclass, NULL, NULL);
 MODULE_VERSION(amdsmn, 1);
-
 #if !defined(__DragonFly__)
 MODULE_PNP_INFO("U16:vendor;U16:device", pci, amdsmn, amdsmn_ids,
     nitems(amdsmn_ids));
