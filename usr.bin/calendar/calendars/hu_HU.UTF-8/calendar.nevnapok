@@ -10,11 +10,11 @@
 LANG=hu_HU.UTF-8
 
 /*
- * N.B.: A névnapok Magyarországon a szentek napjai alapján szerepelnek
- *	 a naptárban. Néhány név többször is szerepel, de mindenki
- *	 csak egyszer tart névnapot egy évben. A választott nap
- *	 ebben az esetben a hagyományokon és az illetőn múlik.
- *
+ * N.B.:
+ * A névnapok Magyarországon a szentek napjai alapján szerepelnek
+ * a naptárban. Néhány név többször is szerepel, de mindenki
+ * csak egyszer tart névnapot egy évben. A választott nap
+ * ebben az esetben a hagyományokon és az illetőn múlik.
  */
 
 01/01	Fruzsina

@@ -1,8 +1,12 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
+ * Copyright (c) 2020 The DragonFly Project.  All rights reserved.
  * Copyright (c) 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Aaron LI <aly@aaronly.me>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,14 +37,11 @@
  */
 
 #include <sys/param.h>
-#include <sys/stat.h>
-#include <sys/uio.h>
 #include <sys/wait.h>
 
 #include <assert.h>
 #include <ctype.h>
 #include <err.h>
-#include <errno.h>
 #include <langinfo.h>
 #include <locale.h>
 #include <paths.h>
@@ -49,345 +50,347 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stringlist.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "calendar.h"
+#include "basics.h"
+#include "dates.h"
+#include "days.h"
+#include "gregorian.h"
+#include "io.h"
+#include "nnames.h"
+#include "parsedata.h"
+#include "utils.h"
 
-struct iovec header[] = {
-	{ __DECONST(char *, "From: "), 6 },
-	{ NULL, 0 },
-	{ __DECONST(char *, " (Reminder Service)\nTo: "), 24 },
-	{ NULL, 0 },
-	{ __DECONST(char *, "\nSubject: "), 10 },
-	{ NULL, 0 },
-	{ __DECONST(char *, "'s Calendar\nPrecedence: bulk\n"),  29 },
-	{ __DECONST(char *, "Auto-Submitted: auto-generated\n\n"), 32 },
+
+enum { C_NONE, C_LINE, C_BLOCK };
+enum { T_NONE, T_TOKEN, T_VARIABLE, T_DATE };
+
+struct cal_entry {
+	int   type;		/* type of the read entry */
+	char *token;		/* token to process (T_TOKEN) */
+	char *variable;		/* variable name (T_VARIABLE) */
+	char *value;		/* variable value (T_VARIABLE) */
+	char *date;		/* event date (T_DATE) */
+	struct cal_desc *description;  /* event description (T_DATE) */
 };
 
-enum {
-	T_OK = 0,
-	T_ERR,
-	T_PROCESS,
+struct cal_file {
+	FILE	*fp;
+	char	*line;		/* line string read from file */
+	size_t	 line_cap;	/* capacity of the 'line' buffer */
+	char	*nextline;	/* to store the rewinded line */
+	size_t	 nextline_cap;	/* capacity of the 'nextline' buffer */
+	bool	 rewinded;	/* if 'nextline' has the rewinded line */
 };
 
-struct fixs neaster, npaskha, ncny, nfullmoon, nnewmoon;
-struct fixs nmarequinox, nsepequinox, njunsolstice, ndecsolstice;
-
-const char *calendarFile = "calendar"; /* default calendar file */
-static const char *calendarHomes[] = {".calendar", "/usr/share/calendar"};
-static const char *calendarNoMail = "nomail"; /* don't sent mail if file exist */
-
-static char path[MAXPATHLEN];
-
-static StringList *definitions = NULL;
-static struct event *events[MAXCOUNT];
-static char *extradata[MAXCOUNT];
+static struct cal_desc *descriptions = NULL;
+static struct node *definitions = NULL;
 
 static FILE	*cal_fopen(const char *file);
-static bool	 cal_parse(FILE *in, FILE *out);
-static void	 closecal(FILE *fp);
-static FILE	*opencalin(void);
-static FILE	*opencalout(void);
-static int	 token(char *line, FILE *out, bool *skip);
-static void	 trimlr(char **buf);
+static bool	 cal_parse(FILE *in);
+static bool	 process_token(char *line, bool *skip);
+static void	 send_mail(FILE *fp);
+static char	*skip_comment(char *line, int *comment);
+static void	 write_mailheader(FILE *fp);
 
+static bool	 cal_readentry(struct cal_file *cfile,
+			       struct cal_entry *entry, bool skip);
+static char	*cal_readline(struct cal_file *cfile);
+static void	 cal_rewindline(struct cal_file *cfile);
+static bool	 is_date_entry(char *line, char **content);
+static bool	 is_variable_entry(char *line, char **value);
 
-static void
-trimlr(char **buf)
+static struct cal_desc *cal_desc_new(struct cal_desc **head);
+static void	 cal_desc_freeall(struct cal_desc *head);
+static void	 cal_desc_addline(struct cal_desc *desc, const char *line);
+
+/*
+ * XXX: Quoted or escaped comment marks are not supported yet.
+ */
+static char *
+skip_comment(char *line, int *comment)
 {
-	char *walk = *buf;
-	char *last;
+	char *p, *pp;
 
-	while (isspace(*walk))
-		walk++;
-	if (*walk != '\0') {
-		last = walk + strlen(walk) - 1;
-		while (last > walk && isspace(*last))
-			last--;
-		*(last+1) = 0;
+	if (*comment == C_LINE) {
+		*line = '\0';
+		*comment = C_NONE;
+		return line;
+	} else if (*comment == C_BLOCK) {
+		for (p = line, pp = p + 1; *p; p++, pp = p + 1) {
+			if (*p == '*' && *pp == '/') {
+				*comment = C_NONE;
+				return p + 2;
+			}
+		}
+		*line = '\0';
+		return line;
+	} else {
+		*comment = C_NONE;
+		for (p = line, pp = p + 1; *p; p++, pp = p + 1) {
+			if (*p == '/' && (*pp == '/' || *pp == '*')) {
+				*comment = (*pp == '/') ? C_LINE : C_BLOCK;
+				break;
+			}
+		}
+		if (*comment != C_NONE) {
+			pp = skip_comment(p, comment);
+			if (pp > p)
+				memmove(p, pp, strlen(pp) + 1);
+		}
+		return line;
 	}
 
-	*buf = walk;
+	return line;
 }
+
 
 static FILE *
 cal_fopen(const char *file)
 {
 	FILE *fp = NULL;
-	char *cwd = NULL;
-	char *home;
-	char cwdpath[MAXPATHLEN];
-	unsigned int i;
+	char fpath[MAXPATHLEN];
 
-	if (!doall) {
-		home = getenv("HOME");
-		if (home == NULL || *home == '\0')
-			errx(1, "Cannot get home directory");
-		if (chdir(home) != 0)
-			errx(1, "Cannot enter home directory: \"%s\"", home);
+	for (size_t i = 0; calendarDirs[i] != NULL; i++) {
+		snprintf(fpath, sizeof(fpath), "%s/%s",
+			 calendarDirs[i], file);
+		if ((fp = fopen(fpath, "r")) != NULL)
+			return (fp);
 	}
 
-	if (getcwd(cwdpath, sizeof(cwdpath)) != NULL)
-		cwd = cwdpath;
-	else
-		warnx("Cannot get current working directory");
-
-	for (i = 0; i < nitems(calendarHomes); i++) {
-		if (chdir(calendarHomes[i]) != 0)
-			continue;
-
-		if ((fp = fopen(file, "r")) != NULL)
-			break;
-	}
-
-	if (cwd && chdir(cwdpath) != 0)
-		warnx("Cannot back to original directory: \"%s\"", cwdpath);
-
-	if (fp == NULL)
-		warnx("Cannot open calendar file \"%s\"", file);
-
-	return (fp);
+	warnx("Cannot open calendar file: '%s'", file);
+	return (NULL);
 }
 
-static int
-token(char *line, FILE *out, bool *skip)
+/*
+ * NOTE: input 'line' should have trailing comment and whitespace trimmed.
+ */
+static bool
+process_token(char *line, bool *skip)
 {
-	char *walk, c, a;
+	char *walk;
 
-	if (strncmp(line, "endif", 5) == 0) {
+	if (strcmp(line, "#endif") == 0) {
 		*skip = false;
-		return (T_OK);
+		return true;
 	}
 
-	if (*skip)
-		return (T_OK);
+	if (*skip)  /* deal with nested #ifndef */
+		return true;
 
-	if (strncmp(line, "include", 7) == 0) {
-		walk = line + 7;
-
-		trimlr(&walk);
-
+	if (string_startswith(line, "#include ") ||
+	    string_startswith(line, "#include\t")) {
+		walk = triml(line + sizeof("#include"));
 		if (*walk == '\0') {
 			warnx("Expecting arguments after #include");
-			return (T_ERR);
+			return false;
 		}
-
 		if (*walk != '<' && *walk != '\"') {
-			warnx("Excecting '<' or '\"' after #include");
-			return (T_ERR);
+			warnx("Expecting '<' or '\"' after #include");
+			return false;
 		}
 
-		a = *walk;
-		walk++;
-		c = walk[strlen(walk) - 1];
+		char a = *walk;
+		char c = walk[strlen(walk) - 1];
 
 		switch(c) {
 		case '>':
 			if (a != '<') {
 				warnx("Unterminated include expecting '\"'");
-				return (T_ERR);
+				return false;
 			}
 			break;
 		case '\"':
 			if (a != '\"') {
 				warnx("Unterminated include expecting '>'");
-				return (T_ERR);
+				return false;
 			}
 			break;
 		default:
 			warnx("Unterminated include expecting '%c'",
-			    a == '<' ? '>' : '\"' );
-			return (T_ERR);
+			      (a == '<') ? '>' : '\"' );
+			return false;
 		}
+
+		walk++;
 		walk[strlen(walk) - 1] = '\0';
 
-		if (!cal_parse(cal_fopen(walk), out))
-			return (T_ERR);
+		FILE *fpin = cal_fopen(walk);
+		if (fpin == NULL)
+			return false;
+		if (!cal_parse(fpin)) {
+			warnx("Failed to parse calendar files");
+			fclose(fpin);
+			return false;
+		}
 
-		return (T_OK);
-	}
+		fclose(fpin);
+		return true;
 
-	if (strncmp(line, "define", 6) == 0) {
-		if (definitions == NULL)
-			definitions = sl_init();
-		walk = line + 6;
-		trimlr(&walk);
-
+	} else if (string_startswith(line, "#define ") ||
+	           string_startswith(line, "#define\t")) {
+		walk = triml(line + sizeof("#define"));
 		if (*walk == '\0') {
 			warnx("Expecting arguments after #define");
-			return (T_ERR);
+			return false;
 		}
 
-		sl_add(definitions, strdup(walk));
-		return (T_OK);
-	}
+		struct node *new = list_newnode(xstrdup(walk), NULL);
+		definitions = list_addfront(definitions, new);
 
-	if (strncmp(line, "ifndef", 6) == 0) {
-		walk = line + 6;
-		trimlr(&walk);
+		return true;
 
+	} else if (string_startswith(line, "#ifndef ") ||
+	           string_startswith(line, "#ifndef\t")) {
+		walk = triml(line + sizeof("#ifndef"));
 		if (*walk == '\0') {
 			warnx("Expecting arguments after #ifndef");
-			return (T_ERR);
+			return false;
 		}
 
-		if (definitions != NULL && sl_find(definitions, walk) != NULL)
+		if (list_lookup(definitions, walk, strcmp, NULL))
 			*skip = true;
 
-		return (T_OK);
+		return true;
 	}
 
-	return (T_PROCESS);
+	warnx("Unknown token line: |%s|", line);
+	return false;
 }
 
 static bool
-cal_parse(FILE *in, FILE *out)
+locale_day_first(void)
 {
-	char *line = NULL;
-	char *buf;
-	size_t linecap = 0;
-	ssize_t linelen;
-	ssize_t l;
-	static int d_first = -1;
-	static int count = 0;
-	int i;
-	int month[MAXCOUNT];
-	int day[MAXCOUNT];
-	int year[MAXCOUNT];
-	bool skip = false;
-	char dbuf[80];
-	char *pp, p;
-	struct tm tm;
-	int flags;
+	char *d_fmt = nl_langinfo(D_FMT);
+	DPRINTF("%s: d_fmt=|%s|\n", __func__, d_fmt);
+	/* NOTE: BSDs use '%e' in D_FMT while Linux uses '%d' */
+	return (strpbrk(d_fmt, "ed") < strchr(d_fmt, 'm'));
+}
 
-	/* Unused */
-	tm.tm_sec = 0;
-	tm.tm_min = 0;
-	tm.tm_hour = 0;
-	tm.tm_wday = 0;
+static bool
+cal_parse(FILE *in)
+{
+	struct cal_file cfile = { 0 };
+	struct cal_entry entry = { 0 };
+	struct cal_desc *desc;
+	struct cal_line *line;
+	struct cal_day *cdays[CAL_MAX_REPEAT] = { NULL };
+	struct specialday *sday;
+	char *extradata[CAL_MAX_REPEAT] = { NULL };
+	bool d_first, skip, var_handled;
+	bool locale_changed, calendar_changed;
+	int flags, count;
 
-	if (in == NULL)
-		return (false);
+	assert(in != NULL);
+	cfile.fp = in;
+	d_first = locale_day_first();
+	skip = false;
+	locale_changed = false;
+	calendar_changed = false;
 
-	while ((linelen = getline(&line, &linecap, in)) > 0) {
-		if (*line == '#') {
-			switch (token(line+1, out, &skip)) {
-			case T_ERR:
-				free(line);
-				return (false);
-			case T_OK:
-				continue;
-			case T_PROCESS:
-				break;
-			default:
-				break;
+	while (cal_readentry(&cfile, &entry, skip)) {
+		if (entry.type == T_TOKEN) {
+			DPRINTF2("%s: T_TOKEN: |%s|\n",
+				 __func__, entry.token);
+			if (!process_token(entry.token, &skip)) {
+				free(entry.token);
+				return false;
 			}
-		}
 
-		if (skip)
-			continue;
-
-		buf = line;
-		for (l = linelen;
-		     l > 0 && isspace((unsigned char)buf[l - 1]);
-		     l--)
-			;
-		buf[l] = '\0';
-		if (buf[0] == '\0')
-			continue;
-
-		/* Parse special definitions: LANG, Easter, Paskha etc */
-		if (strncmp(buf, "LANG=", 5) == 0) {
-			setlocale(LC_ALL, buf + 5);
-			d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
-			setnnames();
+			free(entry.token);
 			continue;
 		}
 
-#define	REPLACE(string, slen, struct_) \
-		if (strncasecmp(buf, (string), (slen)) == 0 && buf[(slen)]) {	\
-			if (struct_.name != NULL)				\
-				free(struct_.name);				\
-			if ((struct_.name = strdup(buf + (slen))) == NULL)	\
-				errx(1, "cannot allocate memory");		\
-			struct_.len = strlen(buf + (slen));			\
-			continue;						\
-		}
+		if (entry.type == T_VARIABLE) {
+			DPRINTF2("%s: T_VARIABLE: |%s|=|%s|\n",
+				 __func__, entry.variable, entry.value);
+			var_handled = false;
 
-		REPLACE("Easter=", 7, neaster);
-		REPLACE("Paskha=", 7, npaskha);
-		REPLACE("ChineseNewYear=", 15, ncny);
-		REPLACE("NewMoon=", 8, nnewmoon);
-		REPLACE("FullMoon=", 9, nfullmoon);
-		REPLACE("MarEquinox=", 11, nmarequinox);
-		REPLACE("SepEquinox=", 11, nsepequinox);
-		REPLACE("JunSolstice=", 12, njunsolstice);
-		REPLACE("DecSolstice=", 12, ndecsolstice);
-#undef	REPLACE
+			if (strcasecmp(entry.variable, "LANG") == 0) {
+				if (setlocale(LC_ALL, entry.value) == NULL) {
+					warnx("Failed to set LC_ALL='%s'",
+					      entry.value);
+				}
+				d_first = locale_day_first();
+				set_nnames();
+				locale_changed = true;
+				DPRINTF("%s: set LC_ALL='%s' (day_first=%s)\n",
+					__func__, entry.value,
+					d_first ? "true" : "false");
+				var_handled = true;
+			}
 
-		if (strncmp(buf, "SEQUENCE=", 9) == 0) {
-			setnsequences(buf + 9);
+			if (strcasecmp(entry.variable, "CALENDAR") == 0) {
+				if (!set_calendar(entry.value)) {
+					warnx("Failed to set CALENDAR='%s'",
+					      entry.value);
+				}
+				calendar_changed = true;
+				DPRINTF("%s: set CALENDAR='%s'\n",
+					__func__, entry.value);
+				var_handled = true;
+			}
+
+			if (strcasecmp(entry.variable, "SEQUENCE") == 0) {
+				set_nsequences(entry.value);
+				var_handled = true;
+			}
+
+			for (size_t i = 0; specialdays[i].name; i++) {
+				sday = &specialdays[i];
+				if (strcasecmp(entry.variable, sday->name) == 0) {
+					free(sday->n_name);
+					sday->n_name = xstrdup(entry.value);
+					sday->n_len = strlen(sday->n_name);
+					var_handled = true;
+					break;
+				}
+			}
+
+			if (!var_handled) {
+				warnx("Unknown variable: |%s|=|%s|",
+				      entry.variable, entry.value);
+			}
+
+			free(entry.variable);
+			free(entry.value);
 			continue;
 		}
 
-		/*
-		 * If the line starts with a tab, the data has to be
-		 * added to the previous line
-		 */
-		if (buf[0] == '\t') {
-			for (i = 0; i < count; i++)
-				event_continue(events[i], buf);
-			continue;
-		}
+		if (entry.type == T_DATE) {
+			desc = entry.description;
+			DPRINTF2("----------------\n%s: T_DATE: |%s|\n",
+				 __func__, entry.date);
+			for (line = desc->firstline; line; line = line->next)
+				DPRINTF3("\t|%s|\n", line->str);
 
-		/* Get rid of leading spaces (non-standard) */
-		while (isspace((unsigned char)buf[0]))
-			memcpy(buf, buf + 1, strlen(buf));
-
-		/* No tab in the line, then not a valid line */
-		if ((pp = strchr(buf, '\t')) == NULL)
-			continue;
-
-		/* Trim spaces in front of the tab */
-		while (isspace((unsigned char)pp[-1]))
-			pp--;
-
-		p = *pp;
-		*pp = '\0';
-		if ((count = parsedaymonth(buf, year, month, day, &flags,
-		    extradata)) == 0)
-			continue;
-		*pp = p;
-		if (count < 0) {
-			/* Show error status based on return value */
-			if (debug)
-				fprintf(stderr, "Ignored: %s\n", buf);
-			if (count == -1)
+			count = parse_cal_date(entry.date, &flags, cdays,
+					       extradata);
+			if (count < 0) {
+				warnx("Cannot parse date |%s| with content |%s|",
+				      entry.date, desc->firstline->str);
 				continue;
-			count = -count + 1;
+			} else if (count == 0) {
+				DPRINTF2("Ignore out-of-range date |%s| "
+					 "with content |%s|\n",
+					 entry.date, desc->firstline->str);
+				continue;
+			}
+
+			for (int i = 0; i < count; i++) {
+				event_add(cdays[i], d_first,
+				          ((flags & F_VARIABLE) != 0),
+				          desc, extradata[i]);
+				cdays[i] = NULL;
+				extradata[i] = NULL;
+			}
+
+			free(entry.date);
+			continue;
 		}
 
-		/* Find the last tab */
-		while (pp[1] == '\t')
-			pp++;
-
-		if (d_first < 0)
-			d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
-
-		for (i = 0; i < count; i++) {
-			tm.tm_mon = month[i] - 1;
-			tm.tm_mday = day[i];
-			tm.tm_year = year[i] - 1900;
-			strftime(dbuf, sizeof(dbuf),
-			    d_first ? "%e %b" : "%b %e", &tm);
-			if (debug)
-				fprintf(stderr, "got %s\n", pp);
-			events[i] = event_add(year[i], month[i], day[i], dbuf,
-			    ((flags &= F_VARIABLE) != 0) ? 1 : 0, pp,
-			    extradata[i]);
-		}
+		errx(1, "Invalid calendar entry type: %d", entry.type);
 	}
 
 	/*
@@ -395,102 +398,272 @@ cal_parse(FILE *in, FILE *out)
 	 * the locale (by defining the "LANG" variable) does not interfere the
 	 * following calendar files without the "LANG" definition.
 	 */
-	setlocale(LC_ALL, "");
-	setnnames();
-
-	free(line);
-	fclose(in);
-	return (true);
-}
-
-void
-cal(void)
-{
-	FILE *fpin;
-	FILE *fpout;
-	int i;
-
-	for (i = 0; i < MAXCOUNT; i++)
-		extradata[i] = (char *)calloc(1, 20);
-
-	if ((fpin = opencalin()) == NULL)
-		return;
-
-	if ((fpout = opencalout()) == NULL) {
-		fclose(fpin);
-		return;
+	if (locale_changed) {
+		setlocale(LC_ALL, "");
+		set_nnames();
+		DPRINTF("%s: reset LC_ALL\n", __func__);
 	}
 
-	if (!cal_parse(fpin, fpout))
-		return;
+	if (calendar_changed) {
+		set_calendar(NULL);
+		DPRINTF("%s: reset CALENDAR\n", __func__);
+	}
 
-	event_print_all(fpout);
-	closecal(fpout);
+	free(cfile.line);
+	free(cfile.nextline);
+
+	return true;
 }
 
-static FILE *
-opencalin(void)
+static bool
+cal_readentry(struct cal_file *cfile, struct cal_entry *entry, bool skip)
 {
-	struct stat sbuf;
-	FILE *fpin = NULL;
+	char *p, *value, *content;
+	int comment;
 
-	/* open up calendar file */
-	if ((fpin = fopen(calendarFile, "r")) == NULL) {
-		if (doall) {
-			if (chdir(calendarHomes[0]) != 0)
-				return (NULL);
-			if (stat(calendarNoMail, &sbuf) == 0)
-				return (NULL);
-			if ((fpin = fopen(calendarFile, "r")) == NULL)
-				return (NULL);
-		} else {
-			fpin = cal_fopen(calendarFile);
+	memset(entry, 0, sizeof(*entry));
+	entry->type = T_NONE;
+	comment = C_NONE;
+
+	while ((p = cal_readline(cfile)) != NULL) {
+		p = skip_comment(p, &comment);
+		p = trimr(p);  /* Need to keep the leading tabs */
+		if (*p == '\0')
+			continue;
+
+		if (*p == '#') {
+			entry->type = T_TOKEN;
+			entry->token = xstrdup(p);
+			return true;
 		}
+
+		if (skip) {
+			/* skip entries but tokens (e.g., '#endif') */
+			DPRINTF2("%s: skip line: |%s|\n", __func__, p);
+			continue;
+		}
+
+		if (is_variable_entry(p, &value)) {
+			value = triml(value);
+			if (*value == '\0') {
+				warnx("%s: varaible |%s| has no value",
+				      __func__, p);
+				continue;
+			}
+
+			entry->type = T_VARIABLE;
+			entry->variable = xstrdup(p);
+			entry->value = xstrdup(value);
+			return true;
+		}
+
+		if (is_date_entry(p, &content)) {
+			content = triml(content);
+			if (*content == '\0') {
+				warnx("%s: date |%s| has no content",
+				      __func__, p);
+				continue;
+			}
+
+			entry->type = T_DATE;
+			entry->date = xstrdup(p);
+			entry->description = cal_desc_new(&descriptions);
+			cal_desc_addline(entry->description, content);
+
+			/* Continuous description of the event */
+			while ((p = cal_readline(cfile)) != NULL) {
+				p = trimr(skip_comment(p, &comment));
+				if (*p == '\0')
+					continue;
+
+				if (*p == '\t') {
+					content = triml(p);
+					cal_desc_addline(entry->description,
+							 content);
+				} else {
+					cal_rewindline(cfile);
+					break;
+				}
+			}
+
+			return true;
+		}
+
+		warnx("%s: unknown line: |%s|", __func__, p);
 	}
 
-	if (fpin == NULL) {
-		errx(1, "No calendar file: \"%s\" or \"~/%s/%s\"",
-				calendarFile, calendarHomes[0], calendarFile);
-	}
-
-	return (fpin);
+	return false;
 }
 
-static FILE *
-opencalout(void)
+static char *
+cal_readline(struct cal_file *cfile)
 {
-	int fd;
+	if (cfile->rewinded) {
+		cfile->rewinded = false;
+		return cfile->nextline;
+	}
 
-	/* not reading all calendar files, just set output to stdout */
-	if (!doall)
-		return (stdout);
+	if (getline(&cfile->line, &cfile->line_cap, cfile->fp) <= 0)
+		return NULL;
 
-	/* set output to a temporary file, so if no output don't send mail */
-	snprintf(path, sizeof(path), "%s/_calXXXXXX", _PATH_TMP);
-	if ((fd = mkstemp(path)) < 0)
-		return (NULL);
-	return (fdopen(fd, "w+"));
+	return cfile->line;
 }
 
 static void
-closecal(FILE *fp)
+cal_rewindline(struct cal_file *cfile)
 {
-	struct stat sbuf;
-	int nread, pdes[2], status;
-	char buf[1024];
+	if (cfile->nextline_cap == 0)
+		cfile->nextline = xmalloc(cfile->line_cap);
+	else if (cfile->nextline_cap < cfile->line_cap)
+		cfile->nextline = xrealloc(cfile->nextline, cfile->line_cap);
 
-	if (!doall)
+	memcpy(cfile->nextline, cfile->line, cfile->line_cap);
+	cfile->nextline_cap = cfile->line_cap;
+	cfile->rewinded = true;
+}
+
+static bool
+is_variable_entry(char *line, char **value)
+{
+	char *p, *eq;
+
+	if (line == NULL)
+		return false;
+	if (!(*line == '_' || isalpha((unsigned int)*line)))
+		return false;
+	if ((eq = strchr(line, '=')) == NULL)
+		return false;
+	for (p = line+1; p < eq; p++) {
+		if (!isalnum((unsigned int)*p))
+			return false;
+	}
+
+	*eq = '\0';
+	if (value != NULL)
+		*value = eq + 1;
+
+	return true;
+}
+
+static bool
+is_date_entry(char *line, char **content)
+{
+	char *p;
+
+	if (*line == '\t')
+		return false;
+	if ((p = strchr(line, '\t')) == NULL)
+		return false;
+
+	*p = '\0';
+	if (content != NULL)
+		*content = p + 1;
+
+	return true;
+}
+
+
+static struct cal_desc *
+cal_desc_new(struct cal_desc **head)
+{
+	struct cal_desc *desc = xcalloc(1, sizeof(*desc));
+
+	if (*head == NULL) {
+		*head = desc;
+	} else {
+		desc->next = *head;
+		*head = desc;
+	}
+
+	return desc;
+}
+
+static void	
+cal_desc_freeall(struct cal_desc *head)
+{
+	struct cal_desc *desc;
+	struct cal_line *line;
+
+	while ((desc = head) != NULL) {
+		head = head->next;
+		while ((line = desc->firstline) != NULL) {
+			desc->firstline = desc->firstline->next;
+			free(line->str);
+			free(line);
+		}
+		free(desc);
+	}
+}
+
+static void	
+cal_desc_addline(struct cal_desc *desc, const char *line)
+{
+	struct cal_line *cline;
+
+	cline = xcalloc(1, sizeof(*cline));
+	cline->str = xstrdup(line);
+	if (desc->lastline != NULL) {
+		desc->lastline->next = cline;
+		desc->lastline = cline;
+	} else {
+		desc->firstline = desc->lastline = cline;
+	}
+}
+
+
+int
+cal(FILE *fpin)
+{
+	if (!cal_parse(fpin)) {
+		warnx("Failed to parse calendar files");
+		return 1;
+	}
+
+	if (Options.allmode) {
+		FILE *fpout;
+
+		/*
+		 * Use a temporary output file, so we can skip sending mail
+		 * if there is no output.
+		 */
+		if ((fpout = tmpfile()) == NULL) {
+			warn("tmpfile");
+			return 1;
+		}
+		event_print_all(fpout);
+		send_mail(fpout);
+	} else {
+		event_print_all(stdout);
+	}
+
+	list_freeall(definitions, free, NULL);
+	definitions = NULL;
+	cal_desc_freeall(descriptions);
+	descriptions = NULL;
+
+	return 0;
+}
+
+
+static void
+send_mail(FILE *fp)
+{
+	int ch, pdes[2];
+	FILE *fpipe;
+
+	assert(Options.allmode == true);
+
+	if (fseek(fp, 0L, SEEK_END) == -1 || ftell(fp) == 0) {
+		DPRINTF("%s: no events; skip sending mail\n", __func__);
 		return;
-
-	rewind(fp);
-	if (fstat(fileno(fp), &sbuf) || !sbuf.st_size)
-		goto done;
-	if (pipe(pdes) < 0)
-		goto done;
+	}
+	if (pipe(pdes) < 0) {
+		warnx("pipe");
+		return;
+	}
 
 	switch (fork()) {
 	case -1:
-		/* error */
 		close(pdes[0]);
 		close(pdes[1]);
 		goto done;
@@ -502,23 +675,52 @@ closecal(FILE *fp)
 		}
 		close(pdes[1]);
 		execl(_PATH_SENDMAIL, "sendmail", "-i", "-t", "-F",
-		    "\"Reminder Service\"", (char *)NULL);
+		      "\"Reminder Service\"", (char *)NULL);
 		warn(_PATH_SENDMAIL);
 		_exit(1);
 	}
 	/* parent -- write to pipe input */
 	close(pdes[0]);
 
-	header[1].iov_base = header[3].iov_base = pw->pw_name;
-	header[1].iov_len = header[3].iov_len = strlen(pw->pw_name);
-	writev(pdes[1], header, 8);
-	while ((nread = read(fileno(fp), buf, sizeof(buf))) > 0)
-		write(pdes[1], buf, nread);
-	close(pdes[1]);
+	fpipe = fdopen(pdes[1], "w");
+	if (fpipe == NULL) {
+		close(pdes[1]);
+		goto done;
+	}
+
+	write_mailheader(fpipe);
+	rewind(fp);
+	while ((ch = fgetc(fp)) != EOF)
+		fputc(ch, fpipe);
+	fclose(fpipe);  /* will also close the underlying fd */
 
 done:
 	fclose(fp);
-	unlink(path);
-	while (wait(&status) >= 0)
+	while (wait(NULL) >= 0)
 		;
+}
+
+static void
+write_mailheader(FILE *fp)
+{
+	uid_t uid = getuid();
+	struct passwd *pw = getpwuid(uid);
+	struct date date;
+	char dayname[32] = { 0 };
+	int dow;
+
+	gregorian_from_fixed(Options.today, &date);
+	dow = dayofweek_from_fixed(Options.today);
+	sprintf(dayname, "%s, %d %s %d",
+		dow_names[dow].f_name, date.day,
+		month_names[date.month-1].f_name, date.year);
+
+	fprintf(fp,
+		"From: %s (Reminder Service)\n"
+		"To: %s\n"
+		"Subject: %s's Calendar\n"
+		"Precedence: bulk\n"
+		"Auto-Submitted: auto-generated\n\n",
+		pw->pw_name, pw->pw_name, dayname);
+	fflush(fp);
 }

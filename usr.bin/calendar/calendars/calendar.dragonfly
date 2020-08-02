@@ -1,12 +1,90 @@
 /*
- * DragonFly
- *
- * $DragonFly: src/usr.bin/calendar/calendars/calendar.dragonfly,v 1.1 2008/07/16 23:09:04 swildner Exp $
+ * DragonFly-specific events
  */
 
 #ifndef _calendar_dragonfly_
 #define _calendar_dragonfly_
 
-07/16	DragonFly BSD first announced, 2003
+Jul/16	DragonFly BSD first announced, 2003
 
-#endif /* !_calendar_dragonfly_ */
+Jul/12	DragonFly 1.0, 2004
+Apr/08	DragonFly 1.2.0, 2005
+Apr/22	DragonFly 1.2.1, 2005
+May/09	DragonFly 1.2.2, 2005
+Jun/29	DragonFly 1.2.3, 2005
+Jul/07	DragonFly 1.2.4, 2005
+Jul/31	DragonFly 1.2.5, 2005
+Oct/09	DragonFly 1.2.6, 2005
+Jan/08	DragonFly 1.4.0, 2006
+Apr/23	DragonFly 1.4.4, 2006
+Jul/24	DragonFly 1.6.0, 2006
+Jan/30	DragonFly 1.8.0, 2007
+Mar/27	DragonFly 1.8.1, 2007
+Aug/06	DragonFly 1.10.0, 2007
+Aug/21	DragonFly 1.10.1, 2007
+Feb/26	DragonFly 1.12.0, 2008
+Mar/08	DragonFly 1.12.1, 2008
+Apr/20	DragonFly 1.12.2, 2008
+Jul/20	DragonFly 2.0.0, 2008
+Sep/27	DragonFly 2.0.1, 2008
+Apr/26	DragonFly 2.2.1, 2009
+Sep/16	DragonFly 2.4.0, 2009
+Oct/01	DragonFly 2.4.1, 2009
+Apr/06	DragonFly 2.6.1, 2010
+Apr/22	DragonFly 2.6.2, 2010
+May/07	DragonFly 2.6.3, 2010
+Oct/30	DragonFly 2.8.2, 2010
+Apr/26	DragonFly 2.10.1, 2011
+Feb/22	DragonFly 3.0.1, 2012
+Mar/26	DragonFly 3.0.2, 2012
+Aug/23	DragonFly 3.0.3, 2012
+Nov/02	DragonFly 3.2.1, 2012
+Dec/16	DragonFly 3.2.2, 2012
+Apr/29	DragonFly 3.4.1, 2013
+May/27	DragonFly 3.4.2, 2013
+Aug/26	DragonFly 3.4.3, 2013
+Nov/25	DragonFly 3.6.0, 2013
+Feb/21	DragonFly 3.6.1, 2014
+Apr/09	DragonFly 3.6.2, 2014
+Jun/04	DragonFly 3.8.0 (last 32-bit release), 2014
+Jun/16	DragonFly 3.8.1, 2014
+Jun/17	DragonFly 3.6.3, 2014
+Aug/08	DragonFly 3.8.2, 2014
+Nov/25	DragonFly 4.0.1 (64-bit only), 2014
+Jan/07	DragonFly 4.0.2, 2015
+Jan/21	DragonFly 4.0.3, 2015
+Mar/09	DragonFly 4.0.4, 2015
+Mar/23	DragonFly 4.0.5, 2015
+Jun/13	DragonFly 4.0.6, 2015
+Jun/29	DragonFly 4.2.0, 2015
+Jul/01	DragonFly 4.2.1, 2015
+/* DragonFly 4.2.2 was mis-tagged and immediately replaced by 4.2.3 */
+Jul/13	DragonFly 4.2.3, 2015
+Aug/10	DragonFly 4.2.4, 2015
+/* DragonFly 4.4.0 was never officially released */
+Dec/07	DragonFly 4.4.1, 2015
+Feb/16	DragonFly 4.4.2, 2016
+Apr/19	DragonFly 4.4.3, 2016
+Aug/02	DragonFly 4.6.0, 2016
+Oct/17	DragonFly 4.6.1, 2016
+Mar/27	DragonFly 4.8.0, 2017
+Apr/04	DragonFly 4.6.2, 2017
+Aug/02	DragonFly 4.8.1, 2017
+Oct/16	DragonFly 5.0.0, 2017
+Nov/06	DragonFly 5.0.1, 2017
+Dec/04	DragonFly 5.0.2, 2017
+Apr/10	DragonFly 5.2.0, 2018
+May/21	DragonFly 5.2.1, 2018
+Jun/18	DragonFly 5.2.2, 2018
+Dec/03	DragonFly 5.4.0, 2018
+Dec/24	DragonFly 5.4.1, 2018
+Apr/22	DragonFly 5.4.2, 2019
+May/20	DragonFly 5.4.3, 2019
+Jun/17	DragonFly 5.6.0, 2019
+Jun/19	DragonFly 5.6.1, 2019
+Aug/10	DragonFly 5.6.2, 2019
+Mar/03	DragonFly 5.8.0, 2020
+Mar/10	DragonFly 5.6.3, 2020
+May/06	DragonFly 5.8.1, 2020
+
+#endif

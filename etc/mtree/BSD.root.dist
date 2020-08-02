@@ -30,6 +30,8 @@
         ..
         bluetooth
         ..
+        calendar
+        ..
         defaults
         ..
         devd

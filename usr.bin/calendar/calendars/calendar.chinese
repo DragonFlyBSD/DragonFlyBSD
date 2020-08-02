@@ -1,0 +1,11 @@
+/*
+ * Events in China
+ */
+
+#ifndef _calendar_chinese_
+#define _calendar_chinese_
+
+#include <zh_Hans_CN.UTF-8/calendar.all>
+#include <zh_Hant_TW.UTF-8/calendar.all>
+
+#endif

@@ -1,0 +1,11 @@
+/*
+ * Calendar events in Taiwan (Republic of China)
+ */
+
+#ifndef _zh_Hant_TW_UTF_8_all_
+#define _zh_Hant_TW_UTF_8_all_
+
+#include <zh_Hant_TW.UTF-8/calendar.gregorian>
+#include <zh_Hant_TW.UTF-8/calendar.chinese>
+
+#endif

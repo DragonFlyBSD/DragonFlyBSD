@@ -1,0 +1,11 @@
+/*
+ * Calendar events in People's Republic of China (PRC)
+ */
+
+#ifndef _zh_Hans_CN_UTF_8_all_
+#define _zh_Hans_CN_UTF_8_all_
+
+#include <zh_Hans_CN.UTF-8/calendar.gregorian>
+#include <zh_Hans_CN.UTF-8/calendar.chinese>
+
+#endif

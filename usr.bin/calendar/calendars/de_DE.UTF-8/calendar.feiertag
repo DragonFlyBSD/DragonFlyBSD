@@ -14,7 +14,7 @@ LANG=de_DE.UTF-8
 05/01	Maifeiertag
 10/03	Tag der deutschen Einheit
 
-/*  christliche Feiertage, meist irgendwo arbeitsfrei */
+/* christliche Feiertage, meist irgendwo arbeitsfrei */
 Easter-2	Karfreitag
 Easter		Ostersonntag
 Easter+1	Ostermontag
@@ -36,7 +36,7 @@ Easter+60	Fronleichnam
 12/26		Zweiter Weihnachtstag
 12/31		Silvester
 
-/*  Gedenktage - nicht arbeitsfreie Feiertage :-( */
+/* Gedenktage - nicht arbeitsfreie Feiertage :-( */
 01/27	Befreiung des KZ Auschwitz durch die Rote Armee, 1945
 06/17	Arbeiteraufstand am 17. Juni 1953
 

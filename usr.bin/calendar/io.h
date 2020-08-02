@@ -1,8 +1,12 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (C) 1993-1996 by Andrey A. Chernov, Moscow, Russia.
- * All rights reserved.
+ * Copyright (c) 2020 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 1989, 1993, 1994
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Aaron LI <aly@aaronly.me>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -12,8 +16,11 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
@@ -24,49 +31,22 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/usr.bin/calendar/paskha.c 326276 2017-11-27 15:37:16Z pfg $
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#ifndef IO_H_
+#define IO_H_
 
-#include "calendar.h"
+struct cal_line {
+	struct cal_line *next;
+	char		*str;
+};
 
-#define	PASKHA		"paskha"
-#define	PASKHALEN	(sizeof(PASKHA) - 1)
+struct cal_desc {
+	struct cal_desc *next;
+	struct cal_line *firstline;
+	struct cal_line *lastline;
+};
 
-static int	j2g(int year);
+int	cal(FILE *fp);
 
-/*
- * Return difference in days between Julian and Gregorian calendars
- */
-static int
-j2g(int year)
-{
-	return (year < 1500) ?
-		0 :
-		10 + (year/100 - 16) - ((year/100 - 16) / 4);
-}
-
-/*
- * Return year day for Orthodox Easter using Gauss formula
- * (new style result)
- */
-int
-paskha(int R) /*year*/
-{
-	int a, b, c, d, e;
-	static int x = 15;
-	static int y = 6;
-	int *cumday;
-
-	a = R % 19;
-	b = R % 4;
-	c = R % 7;
-	d = (19 * a + x) % 30;
-	e = (2 * b + 4 * c + 6 * d + y) % 7;
-	cumday = cumdaytab[isleap(R)];
-	return (((cumday[3] + 1) + 22) + (d + e) + j2g(R));
-}
+#endif

@@ -18,7 +18,7 @@ LANG=de_AT.UTF-8
 01/06		Heilige 3 Könige
 Easter-2	Karfreitag
 Easter		Ostersonntag
-Easter+1 	Ostermontag
+Easter+1	Ostermontag
 Easter+49	Pfingstsonntag
 Easter+50	Pfingstmontag
 Easter+39	Christi Himmelfahrt
@@ -57,6 +57,6 @@ Dec Sun+3		4. Advent
 10/SundayLast	Ende der Sommerzeit
 
 /* Blumenverkäufer */
-May Sun+2 	Muttertag
+May Sun+2	Muttertag
 
 #endif /*! _de_AT_UTF_8_feiertag_ */

@@ -1,0 +1,38 @@
+/*
+ * Holidays set by the Gregorian calendar
+ *
+ * https://en.wikipedia.org/wiki/Public_holidays_in_China
+ */
+
+#ifndef _zh_Hans_CN_UTF_8_gregorian_
+#define _zh_Hans_CN_UTF_8_gregorian_
+
+LANG=zh_Hans_CN.UTF-8
+
+DecSolstice=Dongzhi
+
+/*
+ * Official public holidays
+ */
+ChineseQingming	Tomb-Sweeping Day (清明节)
+01/01		New Year (元旦)
+05/01		Labor Day (劳动节)
+10/01		National Day (国庆节)
+
+/*
+ * Other holidays
+ */
+Dongzhi		Dongzhi Festival (冬至)
+03/08		International Women's Day (国际妇女节)
+03/12		Arbor Day (植树节)
+05/04		Youth Day (五四青年节)
+06/01		Children's Day (六一儿童节)
+07/01		Communist Party of China (CPC) Founding Day (建党节)
+07/11		China National Maritime Day (中国航海日)
+08/01		People's Liberation Army (PLA) Day (建军节)
+09/03		Victory over Japan Day (中国人民抗日战争胜利纪念日)
+09/10		Teachers' Day (教师节)
+09/30		National Memorial Day (烈士纪念日)
+12/13		Nanking Massacre Memorial Day (南京大屠杀死难者国家公祭日)
+
+#endif

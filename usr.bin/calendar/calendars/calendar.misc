@@ -1,0 +1,23 @@
+/*
+ * Miscellaneous events
+ */
+
+#ifndef _calendar_misc_
+#define _calendar_misc_
+
+01/04	Quadrantid meteor shower (look north)
+01/20	The Eve of St. Agnes (Ah, bitter chill it was...)
+03/02	Blackthorn winds (New England)
+03/19	Swallows return to Capistrano
+04/01	People of superb intelligence, savoir-faire, etc. born this day.
+04/07	Alewives run, Cape Cod
+04/21	Lyrid meteor shower
+06/21	Sun rises over Heelstone at Stonehenge
+07/03	Dog days begin
+08/11	Dog days end
+08/11	Perseid meteor shower (look north; three days)
+10/23	Swallows leave Capistrano
+12/10	Nobel Peace Prize awarded each year
+12/13	Geminid meteor shower (look south)
+
+#endif

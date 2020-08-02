@@ -202,6 +202,7 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 	cd ${UPGRADE_SRCDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
 	cd ${UPGRADE_SRCDIR}/bluetooth; ${MAKE} install
+	cd ${UPGRADE_SRCDIR}/calendar; ${MAKE} install
 	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 Makefile.usr ${DESTDIR}/usr/Makefile
 .if !exists(${DESTDIR}/etc/pam.d)
 	mkdir -p ${DESTDIR}/etc/pam.d
@@ -312,6 +313,7 @@ distribution:
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${.CURDIR}/pam.d; ${MAKE} install
 	cd ${.CURDIR}/bluetooth; ${MAKE} install
+	cd ${.CURDIR}/calendar; ${MAKE} install
 	cd ${.CURDIR}/periodic; ${MAKE} install
 	cd ${.CURDIR}/rc.d; ${MAKE} install
 	cd ${.CURDIR}/devd; ${MAKE} install

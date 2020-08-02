@@ -28,14 +28,14 @@ LANG=de_DE.UTF-8
 10/18	Wartburgfest der Deutschen Burschenschaften, 1817
 01/01	Inkrafttreten des Vertrages über den deutschen Zollverein, 1834
 12/07	Erste deutsche Eisenbahn zwischen Nürnberg und Fürth, 1835
-06	Aufstand der schlesischen Weber, 1844
+06/04	Aufstand der schlesischen Weber, 1844
 12/21	Verabschiedung des Gesetzes über die Grundrechte des deutschen
 	Volkes durch die Frankfurter Nationalversammlung, 1848
 03/27	Annahme der deutschen Reichsverfassung in der Frankfurter
 	Paulskirche, Wahl von Friedrich Wilhelm IV von Preußen zum
 	deutschen Kaiser, 1849
 04/28	Ablehnung der deutschen Kaiserkrone durch den preußischen König, 1849
-07/03	Schlacht von Königgrätz
+07/03	Schlacht bei Königgrätz, 1866
 07/13	Emser Depesche, 1870
 07/18	Verkündung des Dogmas von der päpstlichen Unfehlbarkeit
 	durch das I. Vatikanische Konzil
@@ -156,7 +156,8 @@ LANG=de_DE.UTF-8
 04/01	Organisierter Boykott jüdischer Geschäfte, 1933
 04/07	Zweites Gesetz zur Gleichschaltung der Länder, 1933
 05/02	Auflösung der Gewerkschaften, 1933
-06	Auflösung aller Parteien außer NSDAP, 1933
+06/22	Gesetz gegen die Neubildung von Parteien, 1933
+07/05	Auflösung aller Parteien außer NSDAP, 1933
 07/20	Konkordat zwischen Deutschland und dem Vatikan, 1933
 06/30	Röhm-Putsch, Ausschaltung der SA-Führung, 1934
 09/15	Nürnberger Gesetze, 1935
@@ -168,7 +169,7 @@ LANG=de_DE.UTF-8
 /* Sozialismus */
 01/19	Markus Johannes Wolf geboren, 1923
 01/21	Lenin gestorben, 1924
-06	Gründung des Bundes der Kommunisten in London
+06/01	Gründung des Bundes der Kommunisten in London, England,
 	durch Marx und Engels, 1847
 05/23	Gründung des Allgemeinen Deutschen Arbeitervereins in Leipzig
 	unter Führung von Ferdinand Lassalles, 1863

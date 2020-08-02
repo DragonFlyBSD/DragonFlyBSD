@@ -23,7 +23,7 @@ Easter-21	Mothering Sunday (Sunday 3 weeks before Easter Sunday)
 Easter-2	Good Friday (bank holiday)
 Easter+1	Easter Monday (bank holiday - except Scotland)
 05/MonFirst	Early May bank holiday
-05/MonThird*	Victoria Day in Scotland (Monday on or immediately before 24th May)
+05/MonLast	Victoria Day in Scotland (last Monday before or on 24 May)
 05/MonLast	Spring Bank Holiday
 06/SunThird	Father's Day (3rd Sunday of June)
 06/21*	Summer Solstice

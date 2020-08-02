@@ -20,8 +20,7 @@ LANG=en_CA.UTF-8
 Easter-2	Good Friday (Statutory holiday)
 Easter+1	Easter Monday
 05/SunSecond	Mother's Day (2nd Sunday of May)
-/* Holds up to and including 2015 */
-05/MonThird*	Victoria Day (Monday on or immediately before May 24)
+05/MonLast	Victoria Day (last Monday preceding May 25)
 06/SunThird	Father's Day (3rd Sunday of June)
 06/21*	Summer Solstice
 06/24	St-Jean Baptiste

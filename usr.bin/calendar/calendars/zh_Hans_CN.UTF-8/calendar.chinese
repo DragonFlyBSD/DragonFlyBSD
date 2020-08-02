@@ -1,0 +1,34 @@
+/*
+ * Holidays set by the Chinese calendar
+ *
+ * https://en.wikipedia.org/wiki/Public_holidays_in_China
+ * https://en.wikipedia.org/wiki/List_of_observances_set_by_the_Chinese_calendar
+ */
+
+#ifndef _zh_Hans_CN_UTF_8_chinese_
+#define _zh_Hans_CN_UTF_8_chinese_
+
+CALENDAR=Chinese
+LANG=zh_Hans_CN.UTF-8
+
+/*
+ * Official public holidays
+ */
+ChineseNewYear	Chinese New Year / Spring Festival (春节)
+05/05		Dragon Boat Festival (端午节)
+08/15		Mid-Autumn Festival (中秋节)
+
+/*
+ * Other holidays
+ */
+ChineseNewYear-1	Chinese New Year's Eve (除夕)
+01/15		Lantern Festival (元宵节)
+02/02		Zhonghe Festival (中和节)
+03/03		Shangsi Festival (上巳节)
+04/08		Buddha's Birthday (佛诞)
+07/07		Double Seven Festival (七夕)
+07/15		Ghost Festival (中元节)
+09/09		Chongyang Festival (重阳节)
+12/08		Laba Festival (腊八节)
+
+#endif

@@ -8,6 +8,7 @@
 #define _calendar_holiday_
 
 01/01	New Year's Day
+01/01	Anniversary of the Triumph of the Revolution in Cuba
 01/01	Independence Day in Haiti and Sudan
 01/01	Universal Fraternity Day in Mozambique
 01/02	Ancestry Day in Haiti
@@ -21,7 +22,9 @@
 01/07	Christmas in Ethiopia
 01/07	Pioneer's Day in Liberia
 01/09	Day of the Martyrs in Panama
+01/11	Anniversary of the Peoples Republic of Albania
 01/11	Armed Forces Day in Liberia
+01/11	Prithvi Jayanti in Nepal
 01/12	Zanzibar Revolution Day in Tanzania
 01/13	National Liberation Day in Togo
 01/SunSecond	Coming-of-Age Day
@@ -99,6 +102,7 @@
 03/21	Juarez' Birthday in Mexico
 03/21*	Vernal Equinox in Japan
 03/22	Abolition Day in Puerto Rico
+03/22	World Day for Water
 03/23	Pakistan Day in Pakistan
 03/25	Greek Independence Day in Cyprus
 03/25	Lady Day (a.k.a. the Feast of the Annunciation)
@@ -107,7 +111,7 @@
 03/26	Independence Day in Bangladesh
 03/26	Prince Jonah Kuhio Kalanianaole Day in Hawaii
 03/27	Armed Forces Day in Burma
-03/29	Death of President Barthelemy Boganda in Central African Republic
+03/29	Death of President Barthelemy Boganda in Central African Republic, 1959
 03/29	Memorial Day in Madagascar
 03/31	National Day in Malta
 03/MonLast	Seward's Day in Alaska (last Monday)
@@ -124,6 +128,7 @@
 04/08	Fast and Prayer Day in Liberia
 04/09	Martyrs Day in Tunisia
 04/11	National Heroes Day in Costa Rica
+04/13	Laotian New Year (3 days) in Laos
 04/13	National Day in Chad
 04/13	Songkran Day in Thailand
 04/14	Day of the Americas in Honduras
@@ -133,6 +138,7 @@
 04/16	Tourist Week (5 days) in Uruguay
 04/17	Burmese New Year in Burma
 04/18	Independence Day in Chile and Zimbabwe
+04/19	Landing of the 33 Patriots Day in Uruguay
 04/19	Declaration of Independence in Venezuela
 04/19	Republic Day in Sierra Leone
 04/21	San Jacinto Day in Texas
@@ -155,6 +161,7 @@
 04/MonLast	Arbor Day in Wyoming (last Monday)
 04/MonLast	Confederate Memorial Day in Alabama & Mississippi (last Monday)
 04/MonThird	Patriot's Day in Maine & Massachusetts (3rd Monday)
+05/01	Beltane; Feast of the Sun God: Bel (Belenos)
 05/01	Labor Day in many places
 05/01	May Day in many places
 05/01	US Law Day (decl. by Eisenhower)
@@ -213,7 +220,6 @@
 05/31	Pya Martyrs Day in Togo
 05/31	Republic Day in South Africa
 05/MonThird	Memorial Day in Michigan (3rd Monday)
-05/Mon-2	Victoria Day in Canada
 06/01	Independence Days (3 days) in Western Samoa
 06/01	Madaraka Day in Kenya
 06/01	Victory Day in Tunisia
@@ -325,6 +331,8 @@
 08/01	Emancipation Day in Granada
 08/01	Founding of Asuncion in Paraguay
 08/01	Freedom Day in Guyana
+08/01	Lughnasa; Feast of the Lugh God, a 30 day Celtic feast centers on
+	this day
 08/01	National Day in Switzerland
 08/01	National Holidays (5 days) in El Salvador
 08/01	Parent's Day in Zaire
@@ -369,16 +377,19 @@
 08/27	Liberation Day in Hong Kong
 08/28	Heroes Day in Philippines
 08/30	Huey P. Long Day in Louisiana
+08/30	St. Rose of Lima in Peru
 08/30	Victory Day in Turkey
 08/31	Independence Day (Merdeka) in Malaysia
 08/31	Independence Day in Trinidad and Tobago
 08/31	Pashtunistan Day in Afghanistan
 08/FriThird	Admission Day in Hawaii, 1959 (3rd Friday)
 09/01	Army Day in Chile
+09/03	Anniversary of the Founding of the Republic in San Marino
 09/03	Independence Day in Qatar
 09/03	Memorial Day in Tunisia
 09/06	Defense of Pakistan Day in Pakistan
 09/06	Settlers Day in South Africa
+09/06	Somhlolo in Swaziland
 09/06	Unification of Bulgaria
 09/07	Independence Day in Brazil
 09/09	Admission Day in California
@@ -480,7 +491,7 @@
 10/MonSecond	Health Sports Day in Japan
 10/MonSecond	Thanksgiving Day in Canada
 11/01	All Saints Day
-11/01	Samhain; Beginning of the Celtic year and most important holiday.
+11/01	Samhain; Beginning of the Celtic year and most important holiday
 11/02	All Souls Day
 11/02	Memorial Day in Ecuador
 11/03	Culture Day in Japan
@@ -489,15 +500,16 @@
 11/03	Thanksgiving Day in Liberia
 11/04	Flag Day in Panama
 11/04	Will Rogers Day, USA
+11/06	Anniversary of the October Socialist Revolution (2 days) in U.S.S.R
 11/06	Green March Day in Morocco
 11/07	October Revolution Day in Hungary
 11/08	Her Majesty, the Queen's Birthday in Nepal
 11/10	King's Birthday in Bhutan
-11/11	Angola gains independence from Portugal, 1975
 11/11	Independence Day in Angola
 11/11	Independence of Cartagena in Colombia
 11/11	Remembrance Day in Canada
 11/11	Republic Day in Maldives
+11/12	Dr. Sun Yat-sen's Birthday in Taiwan
 11/14	King Hussein's Birthday in Jordan
 11/15	Dynasty Day in Belgium
 11/15	Proclamation of the Republic in Brazil
@@ -578,5 +590,6 @@
 12/31	Bank Holiday in El Salvador, Honduras, Pakistan
 12/31	Feed Yourself Day in Benin
 12/31	Proclamation of the Republic in Congo
+12/31	St. Sylvester's Day in Switzerland
 
 #endif /* !_calendar_holiday_ */

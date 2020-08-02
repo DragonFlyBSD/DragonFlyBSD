@@ -1,8 +1,12 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
- * Copyright (c) 1996 Wolfram Schneider <wosch@FreeBSD.org>. Berlin.
+ * Copyright (c) 2020 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 1992-2009 Edwin Groothuis <edwin@FreeBSD.org>.
  * All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Aaron LI <aly@aaronly.me>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,45 +28,35 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/usr.bin/calendar/ostern.c 326276 2017-11-27 15:37:16Z pfg $
  */
 
+#ifndef DATES_H_
+#define DATES_H_
+
+#include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include "calendar.h"
+struct event;
+struct cal_desc;
 
-/* return year day for Easter */
+struct cal_day {
+	int	rd;
+	int	year;
+	int	month;
+	int	day;
+	int	dow[3];  /* [day-of-week, index-in-month, reverse-index] */
+	bool	last_dom;  /* true if the last day of month */
+	struct event *events;
+};
 
-/*
- * This code is based on the Calendar FAQ's code for how to calculate
- * easter is. This is the Gregorian calendar version. They refer to
- * the Algorithm of Oudin in the "Explanatory Supplement to the
- * Astronomical Almanac".
- */
+void	generate_dates(void);
+void	free_dates(void);
+struct cal_day *loop_dates(struct cal_day *dp);
 
-int
-easter(int year) /* 0 ... abcd, NOT since 1900 */
-{
-	int G,	/* Golden number - 1 */
-	    C,	/* Century */
-	    H,	/* 23 - epact % 30 */
-	    I,	/* days from 21 March to Paschal full moon */
-	    J,	/* weekday of full moon */
-	    L;	/* days from 21 March to Sunday on of before full moon */
+struct cal_day *find_rd(int rd, int offset);
 
-	G = year % 19;
-	C = year / 100;
-	H = (C - C / 4 - (8 * C + 13) / 25 + 19 * G + 15) % 30;
-	I = H - (H / 28) * (1 - (H / 28) * (29 / (H + 1)) * ((21 - G) / 11));
-	J = (year + year / 4 + I + 2 - C + C / 4) % 7;
+struct event *event_add(struct cal_day *dp, bool day_first, bool variable,
+			struct cal_desc *desc, char *extra);
+void	event_print_all(FILE *fp);
 
-	L = I - J;
-
-	if (isleap(year))
-		return 31 + 29 + 21 + L + 7;
-	else
-		return 31 + 28 + 21 + L + 7;
-}
+#endif

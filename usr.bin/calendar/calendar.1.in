@@ -1,0 +1,565 @@
+.\" Copyright (c) 1989, 1990, 1993
+.\"     The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)calendar.1  8.1 (Berkeley) 6/29/93
+.\" $FreeBSD: head/usr.bin/calendar/calendar.1 314436 2017-02-28 23:42:47Z imp $
+.\"
+.Dd September 4, 2020
+.Dt CALENDAR 1
+.Os
+.Sh NAME
+.Nm calendar
+.Nd reminder service
+.Sh SYNOPSIS
+.Nm
+.Op Fl A Ar num
+.Op Fl a
+.Op Fl B Ar num
+.Op Fl d
+.Op Fl F Ar friday
+.Op Fl f Ar calendar_file
+.Op Fl H Ar calendar_home
+.Op Fl h
+.Op Fl L Ar latitude,longitude[,elevation]
+.Op Fl s Ar chinese|julian|moon|sun
+.Op Fl T Ar hh:mm[:ss]
+.Op Fl t Ar [[[CC]YY]MM]DD
+.Op Fl U Ar \(+-hh[[:]mm]
+.Op Fl W Ar num
+.Sh DESCRIPTION
+The
+.Nm
+utility processes calendar files and displays lines that fall into the
+specified date range.
+On the day before a weekend (normally Friday), events for the next
+three days are displayed.
+.Pp
+The following options are available:
+.Bl -tag -width Ds
+.It Fl A Ar num
+Print lines from today and the next
+.Ar num
+days (forward, future).
+.It Fl a
+Process the calendar files
+.Pa ( ~/.calendar/calendar )
+of all users and mail the results to them.
+This requires super-user privileges.
+.It Fl B Ar num
+Print lines from today and the previous
+.Ar num
+days (backward, past).
+.It Fl d
+Print debug messages.
+This flag may be repeated multiple times to increase the verbosity.
+.It Fl F Ar friday
+Specify which day of the week is
+.Dq Friday
+(the day before the weekend begins).
+The default is 5.
+.It Fl f Pa calendar_file
+Use
+.Ar calendar_file
+as the default calendar file.
+If specified as
+.Pa - ,
+then read from standard input.
+Note that this flag cannot be used together with the
+.Fl a
+flag.
+.It Fl H Pa calendar_home
+Use
+.Ar calendar_home
+as the calendar home directory.
+Note that this flag cannot be used together with the
+.Fl a
+flag.
+.It Fl h
+Show the utility usage.
+.It Fl L Ar latitude,longitude[,elevation]
+Specify the location for use in some calculations, such as the current
+Sun and Moon positions and their rise and set times.
+The
+.Ar latitude
+and
+.Ar longitude
+arguments are given in units of degrees,
+which can be a decimal number or in the DMS format of
+.Dq [+-]d:m:s .
+The
+.Ar elevation
+argument is optional and is given in units of meters.
+If not specified, the
+.Ar latitude
+and
+.Ar elevation
+arguments are default to 0, while the
+.Ar longitude
+argument is calculated from the adopted UTC offset
+(i.e., 15 degrees times the UTC offset in hours).
+.It Fl s Ar chinese|julian|moon|sun
+Show information of the specified category:
+.Pp
+.Bl -tag -width chinese -compact
+.It Va chinese
+Show the Chinese calendar and the 24 solar terms in this year.
+.It Va julian
+Show the Julian calendar.
+.It Va moon
+Show Moon position, phases, rise and set times, and lunar events in this year.
+.It Va sun
+Show Sun position, rise and set times, and solar events in this year.
+.El
+.It Fl T Ar hh:mm[:ss]
+Specify the time of day to use instead of the current system time.
+This time is only used in determining the Sun and Moon information.
+.It Fl t Ar [[[CC]YY]MM]DD
+Act like the specified value is
+.Dq today
+instead of using the current date.
+If
+.Ar YY
+is specified, but
+.Ar CC
+is not,
+a value for
+.Ar YY
+between 69 and 99 results in a
+.Ar CC
+value of 19.
+Otherwise, a
+.Ar CC
+value of 20 is used.
+.It Fl U Ar \(+-hh[[:]mm]
+Specify the timezone with a UTC offset.
+If not specified, the timezone of localtime is used.
+.It Fl W Ar num
+Print lines from today and the next
+.Ar num
+days (forward, future).
+Similar to the
+.Fl A
+option but ignore weekends when calculating the number of days.
+.El
+.Sh FILE FORMAT
+The calendar files are preprocessed by a limited subset of
+.Xr cpp 1
+internally, allowing the inclusion of shared calendar files.
+This limited directive subset consists of
+.Sy #include ,
+.Sy #ifndef ,
+.Sy #endif ,
+and
+.Sy #define .
+If the calendar file to be included (via the
+.Sy #include
+directive) is not referenced by a full pathname,
+.Nm
+searches in its home directory
+.Pa ( ~/.calendar
+or specified by the
+.Fl H
+flag)
+first, then in the
+.Pa @@CALENDAR_ETCDIR@@
+directory, and finally in the
+.Pa @@CALENDAR_DIR@@
+directory.
+Both the C-style comment
+.Pq Li /* ... */
+and C++-style comment
+.Pq Li // ...
+are supported.
+.Pp
+The default calendar used by the
+.Nm
+utility is the
+.Dq Gregorian calendar .
+In addition, the following calendars are supported:
+.Bl -tag -offset indent -width chinese -compact
+.It Julian
+The Julian calendar
+.It Chinese
+The Chinese calendar
+.El
+Specify
+.Dq CALENDAR=<calendar>
+in the calendar file to select the calendar to use.
+The calendar will be reset to the default Gregorian calendar
+at the end of the calendar file.
+When a non-default calendar is selected, the matched events will
+be printed with a secondary date formatted in the selected calendar.
+.Pp
+To handle calendars in national code table, specify
+.Dq LANG=<locale>
+in the calendar file, before the national names being used.
+This setting will also make the event date in this calendar file
+be formatted in national names in the output.
+The locale change will be reset at the end of the calendar file.
+.Pp
+To handle the local name of sequences, specify them as
+.Dq SEQUENCE=<first> <second> <third> <fourth> <fifth> <last>
+in the calendar file.
+.Pp
+The names of the following special days are recognized:
+.Bl -tag -offset indent -width 1234567890123456 -compact
+.It Easter
+Catholic Easter.
+.It Paskha
+Orthodox Easter.
+.It Advent
+First Sunday of Advent.
+.It NewMoon
+The lunar New Moon.
+.It FullMoon
+The lunar Full Moon.
+.It MarEquinox
+The solar equinox in March.
+.It JunSolstice
+The solar solstice in June.
+.It SepEquinox
+The solar equinox in September.
+.It DecSolstice
+The solar solstice in December.
+.It ChineseNewYear
+The first day of the Chinese year.
+.It ChineseQingming
+The Chinese Qīngmíng festival (a.k.a. Tomb-Sweeping Day).
+.It ChineseJieqi
+The 24 solar terms (Jiéqì) in Chinese calendar.
+.El
+These names may be reassigned to their local names via an assignment
+like
+.Dq <name>=<local_name>
+in the calendar file, and then the
+.Dq <local_name>
+can also be used to specify the date.
+.Pp
+Other lines should begin with a year (optional), month and day.
+They may be entered in multiple formats, either numeric or as
+character strings.
+If the proper locale is set (via
+.Dq LANG=<locale> ) ,
+national month and weekday names can be used as well.
+Additional rules are as follows:
+.Bl -bullet -offset indent
+.It
+Two numbers default to the month followed by the day.
+.It
+A single asterisk
+.Pq Sq *
+matches every month.
+.It
+A day without a month matches that day of every week.
+.It
+A day of zero means the last day of previous month.
+.It
+The names of special days may be followed by a
+positive or negative integer to represent the date offset, like:
+.Dq Easter+3
+or
+.Dq Paskha-4 .
+.It
+A weekday may be followed by a sequence name
+.Dq ( First
+.Li ...
+.Dq Fifth ,
+and
+.Dq Last )
+to specify moving events, like
+.Dq the last Monday in April .
+Numeric sequence
+.Dq ( \(+-[12345] )
+can also be used.
+.It
+A date may be followed by an asterisk
+.Pq Sq *
+to indicate that it is not fixed (i.e., changes from year to year).
+.It
+A date must be immediately followed by <tab> character(s), and then
+followed by the event description.
+Lines without containing a <tab> character are invalid and thus ignored.
+.It
+Lines starting with a <tab> character are treated as a continuation of
+the previous line, allowing multiple-line description of an event.
+.El
+.Pp
+The supported date styles can vary with calendars.
+In the Gregorian calendar, the following date styles are supported:
+.Bd -literal -offset indent
+Date                    ::=     Year . '/' . Month . '/' . DayOfMonth |
+                                Year . ' ' . Month . ' ' . DayOfMonth |
+                                Month . '/' . DayOfMonth |
+                                Month . ' ' . DayOfMonth |
+                                Month . '/' . DayOfWeek . Index |
+                                Month . ' ' . DayOfWeek . Index |
+                                MonthName . '/' . AllDays |
+                                MonthName . ' ' . AllDays |
+                                AllDays . '/' . MonthName |
+                                AllDays . ' ' . MonthName |
+                                AllMonths . '/' . DayOfMonth |
+                                AllMonths . ' ' . DayOfMonth |
+                                DayOfMonth . '/' . AllMonths |
+                                DayOfMonth . ' ' . AllMonths |
+                                DayOfMonth . '/' . Month |
+                                DayOfMonth . ' ' . Month |
+                                DayOfWeek . Index . '/' . MonthName |
+                                DayOfWeek . Index . ' ' . MonthName |
+                                DayOfWeek . Index
+                                SpecialDay . Offset
+
+Year                    ::=     '0' ... '9' | '00' ... '09' | '10' ... '99' |
+                                '100' ... '999' | '1000' ... '9999'
+
+Month                   ::=     MonthName | MonthNumber
+MonthNumber             ::=     '0' ... '9' | '00' ... '09' | '10' ... '12'
+MonthName               ::=     MonthNameShort | MonthNameLong
+MonthNameLong           ::=     'January' ... 'December'
+MonthNameShort          ::=     'Jan' ... 'Dec' | 'Jan.' ... 'Dec.'
+
+DayOfWeek               ::=     DayOfWeekShort | DayOfWeekLong
+DayOfWeekShort          ::=     'Mon' ... 'Sun'
+DayOfWeekLong           ::=     'Monday' ... 'Sunday'
+DayOfMonth              ::=     '0' ... '9' | '00' ... '09' | '10' ... '29' |
+                                '30' ... '31'
+
+AllMonths               ::=     '*'
+AllDays                 ::=     '*'
+
+Index                   ::=     '' | IndexName |
+                                '+' . IndexNumber | '-' . IndexNumber
+IndexName               ::=     'First' | 'Second' | 'Third' | 'Fourth' |
+                                'Fifth' | 'Last'
+IndexNumber             ::=     '1' ... '5'
+
+Offset                  ::=     '' | '+' . OffsetNumber | '-' . OffsetNumber
+OffsetNumber            ::=     '0' ... '9' | '00' ... '99' | '000' ... '299' |
+                                '300' ... '359' | '360' ... '365'
+
+SpecialDay              ::=     'Easter' | 'Paskha' | 'Advent' |
+                                'ChineseNewYear' |
+                                'ChineseQingming' | 'ChineseJieqi' |
+                                'NewMoon' | 'FullMoon' |
+                                'MarEquinox' | 'SepEquinox' |
+                                'JunSolstice' | 'DecSolstice'
+.Ed
+.Sh EXAMPLES
+Some possible calendar entries (<tab> characters highlighted as
+.Sq \fB\et\fR ) :
+.Bd -unfilled -offset indent
+CLANEDAR=Gregorian
+LANG=C
+Easter=Ostern
+
+/* Include shared calendar files */
+#include <calendar.birthday>
+#include <calendar.holiday>
+
+6/15\fB\et\fRJune 15 (if ambiguous, will default to month/day)
+Jun. 15\fB\et\fRJune 15
+15 June\fB\et\fRJune 15
+15 *\fB\et\fR15th of every month
+0 *\fB\et\fRLast day of every month
+March/0\fB\et\fRLast day of February
+2010/4/15\fB\et\fR15 April 2010
+2020/11/03*\fB\et\fRU.S. Election Day ('*' indicates a movable event)
+
+Thursday\fB\et\fREvery Thursday
+SatSecond\fB\et\fRSecond Saturday of every month
+Apr/Mon\fB\et\fREvery Monday in April
+May Sun+2\fB\et\fRSecond Sunday in May (Muttertag)
+04/SunLast\fB\et\fRLast Sunday in April,
+\fB\et\fRSummer time in Europe  // continuation of previous line
+
+Easter\fB\et\fREaster
+Ostern-2\fB\et\fRGood Friday (2 days before Easter)
+Paskha\fB\et\fROrthodox Easter
+NewMoon\fB\et\fRNew moon of every month
+.Ed
+.Sh FILES
+.Bl -tag -width calendar.123456789012 -compact
+.It Pa calendar
+The calendar file to find in current directory.
+.It Pa ~/.calendar
+The default calendar home directory.
+A
+.Xr chdir 2
+is done into this directory if it exists.
+.It Pa ~/.calendar/calendar
+The calendar file to use if no calendar file exists in the current directory.
+.It Pa ~/.calendar/nomail
+Do not send mail if this file exists.
+.It Pa @@CALENDAR_ETCDIR@@/default
+The system-wide default calendar file, which is used if the
+.Pa ~/.calendar/calendar
+doesn't exist.
+This fallback calendar file is ignored in the
+.Fl a
+mode.
+.El
+.Pp
+The following calendar files are provided in
+.Pa @@CALENDAR_DIR@@ :
+.Pp
+.Bl -tag -width calendar.123456789012 -compact
+.It Pa calendar.all
+File which includes all the calendar files.
+.It Pa calendar.australia
+Calendar of events in Australia.
+.It Pa calendar.birthday
+Births and deaths of famous (and not-so-famous) people.
+.It Pa calendar.brazilian
+Calendar of events in Brazil.
+.It Pa calendar.canada
+Canadian holidays.
+.It Pa calendar.chinese
+Calendar of events in China.
+.It Pa calendar.christian
+Christian holidays.
+.It Pa calendar.computer
+Days of special significance to computer people.
+.It Pa calendar.croatian
+Calendar of events in Croatia.
+.It Pa calendar.discord
+Discordian calendar (all rites reversed).
+.It Pa calendar.dragonfly
+.Dx
+related events.
+.It Pa calendar.dutch
+Calendar of events in the Netherlands.
+.It Pa calendar.fictional
+Fantasy and fiction dates (mostly
+.Em Load Of The Rings ) .
+.It Pa calendar.french
+Calendar of events in France.
+.It Pa calendar.german
+Calendar of events in Germany.
+.It Pa calendar.history
+Miscellaneous history.
+.It Pa calendar.holiday
+Other holidays, including the not-well-known, obscure, and
+.Em really
+obscure.
+.It Pa calendar.hungarian
+Calendar of events in Hungary.
+.It Pa calendar.judaic
+Jewish holidays.
+This calendar should be updated yearly by the local system administrator
+so that roving holidays are set correctly for the current year.
+The entries for this calendar have been obtained from the port
+.Pa deskutils/hebcal .
+.It Pa calendar.misc
+Miscellaneous events.
+.It Pa calendar.music
+Musical events, births, and deaths.
+Strongly oriented toward rock 'n' roll and classical.
+.It Pa calendar.newzealand
+Calendar of events in New Zealand.
+.It Pa calendar.orthodox
+Orthodox holidays.
+.It Pa calendar.russian
+Russian calendar.
+.It Pa calendar.southafrica
+Calendar of events in South Africa.
+.It Pa calendar.space
+Aerospace and astronomical events.
+.It Pa calendar.uk
+Calendar of events in U.K.
+.It Pa calendar.ukrainian
+Calendar of events in Ukraine.
+.It Pa calendar.ushistory
+U.S.\& history.
+.It Pa calendar.usholiday
+U.S.\& holidays.
+This calendar should be updated yearly by the local system administrator
+so that roving holidays are set correctly for the current year.
+.It Pa calendar.world
+Includes all calendar files except for national ones.
+.El
+.Sh COMPATIBILITY
+The
+.Nm
+utility previously selected lines which had the correct date anywhere
+in the line.
+This is no longer true: the date is only recognized when it occurs
+at the beginning of a line.
+.Sh SEE ALSO
+.Xr at 1 ,
+.Xr cal 1 ,
+.Xr mail 1 ,
+.Xr cron 8
+.Bl -tag -width indent
+.It [RD18]
+Edward M. Reingold and Nachum Dershowitz,
+.Em Calendrical Calculations: The Ultimate Edition
+(4th Edition).
+Cambridge University Press, 2018.
+ISBN: 9781107057623
+.El
+.Sh HISTORY
+A
+.Nm
+command appeared in
+.At v7 .
+.Pp
+The
+.Nm
+utility was significantly enhanced in
+.Fx 9.0
+by
+.An Edwin Groothuis Aq Mt edwin@FreeBSD.org ,
+and was later rewritten to support multiple calendars in
+.Dx 5.9
+by
+.An Aaron LI Aq Mt aly@aaronly.me .
+.Sh NOTES
+The new and full moons are happening on the day indicated.
+They can happen in the time period from the early morning to
+the late evening.
+.Pp
+The adopted methods to calculate solar and lunar events is are
+simplified astronomical algorithms, so the accuracy of events is
+within several minutes, provided that the precise location is specified.
+Druids and Werewolves should double-check the start and end time of
+solar and lunar events.
+.Sh BUGS
+The
+.Nm
+internal preprocessor only recognizes
+.Sy #include ,
+.Sy #ifndef ,
+.Sy #endif ,
+and
+.Sy #define .
+Quoted or escaped comment marks are not supported yet.
+.Pp
+An event can repeat at most 100 times in the specified date range.
+The most repeated event is an weekly event, so a maximum of 100 repeats
+covers a date range of about 2 years.
+If more repeats of events are needed, you're likely using
+.Nm
+in the wrong way ;)

@@ -1,0 +1,39 @@
+/*
+ * Holidays set by the Chinese calendar
+ *
+ * https://en.wikipedia.org/wiki/Public_holidays_in_Taiwan
+ * https://en.wikipedia.org/wiki/List_of_observances_set_by_the_Chinese_calendar
+ */
+
+#ifndef _zh_Hant_TW_UTF_8_chinese_
+#define _zh_Hant_TW_UTF_8_chinese_
+
+CALENDAR=Chinese
+LANG=zh_Hant_TW.UTF-8
+
+/*
+ * Official public holidays
+ */
+ChineseNewYear-1	Lunar New Year's Eve (農曆除夕)
+ChineseNewYear		Lunar New Year / Spring Festival (春節)
+05/05		Dragon Boat Festival (端午節)
+08/15		Mid-Autumn Festival (中秋節)
+
+/*
+ * Other holidays
+ */
+01/15		Lantern Festival (元宵節) / Tourism Day (觀光節)
+02/02		Earth God's Birthday (土地公誕辰)
+02/19		Kuan Yin's Birthday (觀音誕辰)
+03/03		Shangsi Festival (上巳節)
+03/15		God of Medicine's Birthday (保生大帝誕辰)
+03/23		Matsu's Birthday (媽祖誕辰)
+04/08		Buddha's Birthday (佛誕日)
+05/13		Kuan Kung's Birthday (關公誕辰)
+07/07		Double Seven Festival (七夕)
+07/15		Ghost Festival (中元節)
+09/09		Chongyang Festival (重陽節)
+10/15		Saisiat Festival (賽夏節)
+12/08		Laba Festival (臘八節)
+
+#endif

@@ -16,7 +16,7 @@ LANG=pt_BR.UTF-8
 Easter-47	Carnaval
 Easter-7	Domingo de Ramos
 Easter-2	Sexta-feira Santa
-Easter	Páscoa
+Easter		Páscoa
 Easter+60	Corpus Christi
 
 #endif /* !_pt_BR_UTF_8_mcommemorative_ */

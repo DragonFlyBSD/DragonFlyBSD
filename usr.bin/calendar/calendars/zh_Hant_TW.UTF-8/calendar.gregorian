@@ -1,0 +1,41 @@
+/*
+ * Holidays set by the Gregorian calendar
+ *
+ * https://en.wikipedia.org/wiki/Public_holidays_in_Taiwan
+ */
+
+#ifndef _zh_Hant_TW_UTF_8_gregorian_
+#define _zh_Hant_TW_UTF_8_gregorian_
+
+LANG=zh_Hant_TW.UTF-8
+
+DecSolstice=Dongzhi
+
+/*
+ * Official public holidays
+ */
+ChineseQingming	Tomb-Sweeping Day (淸明節)
+01/01		Founding of the Republic of China (中華民國開國紀念日)
+02/28		Peace Memorial Day (二二八和平紀念日)
+04/04		Children's Day (兒童節)
+10/10		National Day (國慶日) / Double Tenth Day (雙十節)
+
+/*
+ * Other holidays
+ */
+Dongzhi		Dongzhi Festival (冬至)
+03/12		Arbor Day (國父逝世紀念日)
+03/29		Youth Day (靑年節)
+05/01		Labor Day (勞動節)
+05/04		Literary Day (文藝節)
+05/SunSecond	Mother's Day (母親節)
+06/03		Opium Suppression Movement Day (禁菸節)
+08/08		Father's Day (父親節)
+09/03		Armed Forces Day (軍人節)
+09/28		Teachers' Day / Confucius's Birthday (孔子誕辰紀念日)
+10/21		Overseas Chinese Day (華僑節)
+10/25		Taiwan Retrocession Day (臺灣光復節)
+11/12		Sun Yat-sen's Birthday (國父誕辰紀念日)
+12/25		Constitution Day (行憲紀念日)
+
+#endif

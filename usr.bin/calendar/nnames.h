@@ -1,8 +1,12 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
+ * Copyright (c) 2020 The DragonFly Project.  All rights reserved.
  * Copyright (c) 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Aaron LI <aly@aaronly.me>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,87 +31,32 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/usr.bin/calendar/day.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
-#include <err.h>
-#include <locale.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#ifndef NNAMES_H_
+#define NNAMES_H_
 
-#include "calendar.h"
+#define NDOWS		7
+#define NMONTHS		12
+#define NSEQUENCES	6
 
-static time_t		time1, time2;
-const struct tm		tm0;
-char			dayname[100];
-int			year1, year2;
+struct nname {
+	int		 value;		/* month number, dow value, etc. */
+	const char	*name;		/* short name */
+	size_t		 len;		/* length of short name */
+	const char	*f_name;	/* full name */
+	size_t		 f_len;		/* length of full name */
+	char		*n_name;	/* short national name */
+	size_t		 n_len;		/* length of short national name */
+	char		*fn_name;	/* full national name */
+	size_t		 fn_len;	/* length of full national name */
+};
 
+extern struct nname dow_names[];	/* names of every day of week */
+extern struct nname month_names[];	/* names of every month */
+extern struct nname sequence_names[];	/* names of every sequence */
 
-void
-settimes(time_t now, int before, int after, int friday,
-	 struct tm *tp1, struct tm *tp2)
-{
-	struct tm tp;
+void	set_nnames(void);
+void	set_nsequences(const char *seq);
 
-	localtime_r(&now, &tp);
-
-	/* Friday displays Monday's events */
-	if (after == 0 && before == 0 && friday != -1)
-		after = tp.tm_wday == friday ? 3 : 1;
-
-	time1 = now - SECSPERDAY * before;
-	localtime_r(&time1, tp1);
-	year1 = 1900 + tp1->tm_year;
-	time2 = now + SECSPERDAY * after;
-	localtime_r(&time2, tp2);
-	year2 = 1900 + tp2->tm_year;
-
-	setlocale(LC_TIME, "C");
-	header[5].iov_base = dayname;
-	header[5].iov_len = strftime(dayname, sizeof(dayname),
-				     "%A, %d %B %Y", tp1);
-	setlocale(LC_TIME, "");
-
-	setnnames();
-}
-
-/* convert Day[/Month][/Year] into unix time (since 1970)
- * Day: two digits, Month: two digits, Year: digits
- */
-time_t
-Mktime(char *dp)
-{
-	time_t t;
-	int d, m, y;
-	struct tm tm, tp;
-
-	(void)time(&t);
-	localtime_r(&t, &tp);
-
-	tm = tm0;
-	tm.tm_mday = tp.tm_mday;
-	tm.tm_mon = tp.tm_mon;
-	tm.tm_year = tp.tm_year;
-
-	switch (sscanf(dp, "%d.%d.%d", &d, &m, &y)) {
-	case 3:
-		if (y > 1900)
-			y -= 1900;
-		tm.tm_year = y;
-		/* FALLTHROUGH */
-	case 2:
-		tm.tm_mon = m - 1;
-		/* FALLTHROUGH */
-	case 1:
-		tm.tm_mday = d;
-	}
-
-#ifdef DEBUG
-	fprintf(stderr, "Mktime: %d %d %s\n",
-	    (int)mktime(&tm), (int)t, asctime(&tm));
 #endif
-	return (mktime(&tm));
-}

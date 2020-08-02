@@ -10,14 +10,15 @@
 LANG=fr_FR.UTF-8
 
 /*
- * N.B.: ceci n'est pas un calendrier liturgique !
- *	 Il a seulement été réalisé pour me faire payer à boire
- *	 par mes collègues de travail ; on n'y trouve donc que
- *	 des prénoms seuls.
+ * N.B.:
+ * ceci n'est pas un calendrier liturgique !
+ * Il a seulement été réalisé pour me faire payer à boire
+ * par mes collègues de travail ; on n'y trouve donc que
+ * des prénoms seuls.
  *
- *	 Par ex. « St Antoine de Padoue » se retrouve abrégé en
- *	 Antoine, et si Antoine est fêté plusieurs jours par an,
- *	 tant mieux pour lui, c'est voulu.
+ * Par ex. « St Antoine de Padoue » se retrouve abrégé en
+ * Antoine, et si Antoine est fêté plusieurs jours par an,
+ * tant mieux pour lui, c'est voulu.
  */
 
 01/01	Aujourd'hui, c'est la St(e) Almaque.

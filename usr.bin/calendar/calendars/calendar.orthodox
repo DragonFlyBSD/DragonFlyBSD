@@ -1,0 +1,53 @@
+/*
+ * Orthodox holidays
+ *
+ * Obtained from:
+ * "Calendrical Calculations: The Ultimate Edition" (4th Edition),
+ * by Edward M. Reingold and Nachum Dershowitz,
+ * Cambridge University Press, 2018.
+ * ISBN: 9781107057623
+ */
+
+#ifndef _calendar_orthodox_
+#define _calendar_orthodox_
+
+CALENDAR=Julian
+
+/*
+ * Fixed Orthodox holidays
+ */
+01/06	Theophany
+02/02	Presentation of Christ in the Temple
+03/25	Annunciation
+08/01	Fast of the Repose of the Virgin Mary (August 1-14)
+08/06	Transfiguration
+08/15	Repose of the Virgin Mary
+09/08	Nativity of the Virgin Mary
+09/14	Elevation of the Life-Giving Cross
+11/15	Christmas Fast (November 15 - December 24)
+11/21	Presentation of the Virgin Mary in the Temple
+
+/*
+ * Movable Orthodox holidays
+ */
+Paskha-63	Septuagesima Sunday
+Paskha-56	Sexagesima Sunday
+Paskha-49	Shrove Sunday
+Paskha-48	Shrove Monday (First day of Lent)
+Paskha-47	Shrove Tuesday / Mardi Gras (day before Ash Wednesday)
+Paskha-46	Ash Wednesday
+Paskha-42	Feast of Orthodoxy
+Paskha-14	Passion Sunday
+Paskha-7	Palm Sunday (7 days before Easter)
+Paskha-3	Maundy Thursday (3 days before Easter)
+Paskha-2	Good Friday (2 days before Easter)
+Paskha		Easter Sunday
+Paskha+35	Rogation Sunday
+Paskha+39	Ascension Day (10 days before Pentecost)
+Paskha+49	Pentecost / Whitsunday
+Paskha+50	Whit Monday / Pentecost Monday
+Paskha+56	Trinity Sunday (7 days after Pentecost)
+Paskha+57	Fast of the Apostles (8 days after Pentecost; ends on June 28)
+Paskha+60	Corpus Christi (11 days after Pentecost)
+
+#endif

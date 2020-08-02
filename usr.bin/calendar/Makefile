@@ -1,12 +1,26 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: head/usr.bin/calendar/Makefile 334102 2018-05-23 16:28:31Z brd $
 
-PROG=	calendar
-SRCS=	calendar.c locale.c events.c dates.c parsedata.c io.c day.c \
-	ostern.c paskha.c pom.c sunpos.c
+PROG=		calendar
+MAN=		calendar.1
+SRCS=		basics.c calendar.c chinese.c dates.c days.c \
+		ecclesiastical.c gregorian.c io.c julian.c \
+		moon.c nnames.c parsedata.c sun.c utils.c
 
-DPADD=	${LIBM} ${LIBUTIL}
-LDADD=	-lm -lutil
+DPADD=		${LIBM}
+LDADD=		-lm
+
+CALENDAR_ETCDIR=/etc/calendar
+CALENDAR_DIR=	/usr/share/calendar
+CFLAGS+=	-DCALENDAR_ETCDIR='"${CALENDAR_ETCDIR}"' \
+		-DCALENDAR_DIR='"${CALENDAR_DIR}"'
+
+SED_EXPR=	-e 's|@@CALENDAR_ETCDIR@@|${CALENDAR_ETCDIR}|' \
+		-e 's|@@CALENDAR_DIR@@|${CALENDAR_DIR}|'
+
+CLEANFILES+=${MAN}
+${MAN}: ${MAN}.in
+	sed ${SED_EXPR} ${.ALLSRC} > ${.TARGET}
 
 .if !defined(NO_SHARE)
 INTER=		de_AT.UTF-8 \
@@ -16,7 +30,9 @@ INTER=		de_AT.UTF-8 \
 		hu_HU.UTF-8 \
 		pt_BR.UTF-8 \
 		ru_RU.UTF-8 \
-		uk_UA.UTF-8
+		uk_UA.UTF-8 \
+		zh_Hans_CN.UTF-8 \
+		zh_Hant_TW.UTF-8
 
 FILESGROUPS+=	CALS
 CALS=		calendars/calendar.all \
@@ -24,6 +40,7 @@ CALS=		calendars/calendar.all \
 		calendars/calendar.birthday \
 		calendars/calendar.brazilian \
 		calendars/calendar.canada \
+		calendars/calendar.chinese \
 		calendars/calendar.christian \
 		calendars/calendar.computer \
 		calendars/calendar.croatian \
@@ -37,8 +54,10 @@ CALS=		calendars/calendar.all \
 		calendars/calendar.holiday \
 		calendars/calendar.hungarian \
 		calendars/calendar.judaic \
+		calendars/calendar.misc \
 		calendars/calendar.music \
 		calendars/calendar.newzealand \
+		calendars/calendar.orthodox \
 		calendars/calendar.russian \
 		calendars/calendar.southafrica \
 		calendars/calendar.space \
@@ -87,6 +106,16 @@ CAL_uk_UA.UTF-8=calendar.all \
 		calendar.holiday \
 		calendar.misc \
 		calendar.orthodox
+
+CAL_zh_Hans_CN.UTF-8=\
+		calendar.all \
+		calendar.chinese \
+		calendar.gregorian
+
+CAL_zh_Hant_TW.UTF-8=\
+		calendar.all \
+		calendar.chinese \
+		calendar.gregorian
 
 .for lang in ${INTER}
 FILESGROUPS+=	CALS_${lang}

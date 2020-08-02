@@ -17,7 +17,7 @@ LANG=hu_HU.UTF-8
 
 /* Vallási munkaszüneti napok */
 Easter		Húsvét
-Easter+1 	Húsvét hétfő
+Easter+1	Húsvét hétfő
 Easter+42	Virágvasárnap
 Easter+49	Pünkösd
 Easter+50	Pünkösd hétfő
@@ -44,7 +44,7 @@ Easter-2	Nagy péntek ("a harangok Romába mennek")
 /* Egyéb ünnepnapok és emléknapok*/
 02/14		Valentin nap - a szerelmesek ünnepe
 03/08		Nő nap - egy-egy szál virág a nőknek
-May Sun+2 	Anyák napja
+05/SunSecond	Anyák napja
 10/06		Az 1848-as aradi vértanuk napja
 12/06		Mikulás napja - gyerekek csokit kapnak
 12/24		Karácsony előestéje

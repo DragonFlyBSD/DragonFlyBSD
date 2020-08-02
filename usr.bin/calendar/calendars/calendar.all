@@ -12,6 +12,7 @@
 #include <calendar.australia>
 #include <calendar.brazilian>
 #include <calendar.canada>
+#include <calendar.chinese>
 #include <calendar.croatian>
 #include <calendar.discord>
 #include <calendar.dutch>
