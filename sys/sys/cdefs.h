@@ -537,6 +537,18 @@
 #define	__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1]
 #endif
 #endif
+
+/*
+ * GCC 4.7 has -std=c++11 but does not support thread_local.
+ */
+#if !__has_extension(c_thread_local)
+#if (defined(__cplusplus) && __cplusplus >= 201103L && __GNUC_PREREQ__(4, 8)) || \
+    __has_extension(cxx_thread_local)
+#define	_Thread_local		thread_local
+#else
+#define	_Thread_local		__thread
+#endif
+#endif
 #endif
 
 #endif /* __STDC_VERSION__ || __STDC_VERSION__ < 201112L */
