@@ -23,7 +23,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD$
+.\" $FreeBSD: head/share/man/man4/amdtemp.4 323185 2017-09-05 15:19:14Z cem $
 .\"
 .Dd August 2, 2020
 .Dt AMDTEMP 4
@@ -53,7 +53,7 @@ The
 driver provides support for the on-die digital thermal sensor present
 in
 .Tn AMD
-Family 0Fh, 10h, 11h, 12h, 14h, 15h, and 16h processors.
+Family 0Fh, 10h, 11h, 12h, 14h, 15h, 16h, and 17h processors.
 .Pp
 For Family 0Fh processors, the
 .Nm
@@ -64,8 +64,8 @@ The driver also creates
 in the corresponding CPU device's sysctl tree, displaying the maximum
 temperature of the two sensors located in each CPU core.
 .Pp
-For Family 10h, 11h, 12h, 14h, 15h, and 16h processors, the driver reports each
-package's temperature through a sysctl node, named
+For Family 10h, 11h, 12h, 14h, 15h, 16h, and 17h processors, the driver reports
+each package's temperature through a sysctl node, named
 .Va dev.amdtemp.%d.core0.sensor0 .
 The driver also creates
 .Va dev.cpu.%d.temperature
@@ -83,6 +83,8 @@ tunable:
 Add the given offset to the temperature of the sensor.
 Default is 0.
 .Sh SEE ALSO
+.Xr kate 4 ,
+.Xr km 4 ,
 .Xr loader 8 ,
 .Xr sysctl 8
 .Sh HISTORY
@@ -90,6 +92,9 @@ The
 .Nm
 driver first appeared in
 .Fx 7.1 .
+.Pp
+It was subsequently brought into
+.Dx 5.9 .
 .Sh AUTHORS
 .An Rui Paulo Aq Mt rpaulo@FreeBSD.org
 .An Norikatsu Shigemura Aq Mt nork@FreeBSD.org
