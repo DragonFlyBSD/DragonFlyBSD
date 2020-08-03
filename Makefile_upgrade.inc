@@ -3631,7 +3631,6 @@ TO_REMOVE+=/usr/lib/gcc47/profile/libobjc.a
 TO_REMOVE+=/usr/libdata/gcc47/objc
 TO_REMOVE+=/usr/libexec/gcc47/cc1obj
 TO_REMOVE+=/usr/include/priv/openssl/asn1_mac.h
-TO_REMOVE+=/usr/include/priv/openssl/cms.h
 TO_REMOVE+=/usr/include/priv/openssl/engine.h
 TO_REMOVE+=/usr/include/priv/openssl/krb5_asn.h
 TO_REMOVE+=/usr/include/priv/openssl/ui_compat.h
