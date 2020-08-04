@@ -9,13 +9,15 @@
 #    libprop must be built before libdevattr
 #
 # libcrypt must be built before libfetch, libarchive.
-# libz must be built before libarchive, libmagic.
+# libz must be built before libarchive, libmagic, libssh.
 # libbz2 must be built before libarchive
 # liblmza must be built before libarchive.
 # libncurses must be built before libedit.
 # libsbuf must be built before libcam.
 # libpcap must be built before libipfw3.
 # libpthread must be built before librt, and libusb.
+# libutil must be built before libssh.
+# libldns must be built before libssh.
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
@@ -39,7 +41,9 @@ SUBDIR_ORDERED= \
 	libprop \
 	librt \
 	libusb \
-	libexecinfo
+	libexecinfo \
+	libldns \
+	libssh
 
 SUBDIR=	${SUBDIR_ORDERED} \
 	csu \
@@ -79,8 +83,8 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libsmb \
 	${_libsmdb} \
 	${_libsmutil} \
-	libssh \
 	libstand \
+	libtcplay \
 	libtelnet \
 	libu4bhid \
 	libvgl \
@@ -92,9 +96,6 @@ SUBDIR:=	libc ${SUBDIR:Nlibc}
 .endif
 
 _libdmsg=	libdmsg
-
-SUBDIR+=	libldns \
-		libtcplay
 
 .if defined(WANT_NETGRAPH7) 
 _libnetgraph=	libnetgraph7

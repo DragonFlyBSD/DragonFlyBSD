@@ -69,6 +69,7 @@ CRUNCH_LIBS+= -lprivate_ncurses -lcrypt  # telnet
 CRUNCH_LIBS+= -lprivate_ssl  # fetch, wpa_supplicant
 CRUNCH_LIBS+= -lprivate_ssh  # ssh
 CRUNCH_LIBS+= -lprivate_crypto # cpio, hammer2, md5, ping6, tar
+CRUNCH_LIBS+= -lprivate_ldns  # ssh
 CRUNCH_LIBS+= -lutil
 CRUNCH_LIBS+= -lz  # cpio, ssh, tar
 CRUNCH_LIBS+= -lm  # hammer, hammer2, ping6

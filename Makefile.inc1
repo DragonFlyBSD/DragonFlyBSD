@@ -1082,6 +1082,9 @@ _generic_libs+=	lib
 _prebuild_libs+=	lib/librecrypto lib/libressl
 lib/libressl__L: lib/librecrypto__L
 
+_prebuild_libs+=       lib/libldns
+lib/libldns__L: lib/librecrypto__L
+
 _prebuild_libs+= lib/libsbuf lib/libm \
 		lib/libpam/libpam lib/libypclnt lib/lib${THREAD_LIB} \
 		lib/libpthread lib/libprop

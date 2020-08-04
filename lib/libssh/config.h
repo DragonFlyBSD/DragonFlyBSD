@@ -812,7 +812,7 @@
 /* #undef HAVE_LASTLOG_H */
 
 /* Define if you want ldns support */
-/* #undef HAVE_LDNS */
+#define HAVE_LDNS 1
 
 /* Define to 1 if you have the <libaudit.h> header file. */
 /* #undef HAVE_LIBAUDIT_H */

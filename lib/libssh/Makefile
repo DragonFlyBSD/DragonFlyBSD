@@ -30,10 +30,7 @@ SRCS+=	kex.c kexc25519.c kexdh.c kexecdh.c \
 # Portability layer
 .PATH: ${.CURDIR}/openbsd-compat
 SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c bsd-signal.c fmt_scaled.c \
-	glob.c openssl-compat.c port-net.c xcrypt.c
-SRCS+=	getrrsetbyname.c
-# XXX needs to link libldns, use simple version for now
-#SRCS+=	getrrsetbyname-ldns.c
+	getrrsetbyname-ldns.c glob.c openssl-compat.c port-net.c xcrypt.c
 
 # not needed compat:
 # arc4random.c base64.c basename.c bindresvport.c bsd-asprintf.c
@@ -56,10 +53,9 @@ NO_STRICT_ALIASING=
 
 CFLAGS+=	-I${.CURDIR} -I${.CURDIR}/../../crypto/openssh
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-.if 0
-DPADD=		${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_crypto -lutil -lz
+CFLAGS+=	-I${.CURDIR}/../../contrib/ldns
+DPADD=		${LIBCRYPTO} ${LIBLDNS} ${LIBUTIL} ${LIBZ}
+LDADD=		-lprivate_crypto -lprivate_ldns -lutil -lz
 LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
-.endif
 
 .include <bsd.lib.mk>
