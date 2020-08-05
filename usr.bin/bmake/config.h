@@ -144,7 +144,7 @@
 /* Define to 1 if you have the `strtol' function. */
 #define HAVE_STRTOL 1
 
-/* Define to 1 if `struct stat' is a member of `st_rdev'. */
+/* Define to 1 if `st_rdev' is a member of `struct stat'. */
 #define HAVE_STRUCT_STAT_ST_RDEV 1
 
 /* Define to 1 if your `struct stat' has `st_rdev'. Deprecated, use
@@ -235,7 +235,7 @@
 #define HAVE_WORKING_VFORK 1
 
 /* define if your compiler has __attribute__ */
-/* #undef HAVE___ATTRIBUTE__ */
+#define HAVE___ATTRIBUTE__ 1
 
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT "sjg@NetBSD.org"
@@ -244,7 +244,7 @@
 #define PACKAGE_NAME "bmake"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "bmake 20160606"
+#define PACKAGE_STRING "bmake 20200710"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "bmake"
@@ -253,7 +253,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "20160606"
+#define PACKAGE_VERSION "20200710"
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
