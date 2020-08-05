@@ -1,7 +1,9 @@
-# $Id: doc.mk,v 1.5 2015/09/08 06:15:31 sjg Exp $
+# $Id: doc.mk,v 1.7 2019/06/09 16:22:08 sjg Exp $
 
 .if !target(__${.PARSEFILE}__)
 __${.PARSEFILE}__:
+
+.include <init.mk>
 
 BIB?=		bib
 EQN?=		eqn
@@ -16,9 +18,8 @@ TBL?=		tbl
 
 .PATH: ${.CURDIR}
 
-.if !target(all)
-.MAIN: all
-all: paper.ps
+.if !defined(_SKIP_BUILD)
+realbuild: paper.ps
 .endif
 
 .if !target(paper.ps)
@@ -56,10 +57,8 @@ install:
 spell: ${SRCS}
 	spell ${SRCS} | sort | comm -23 - spell.ok > paper.spell
 
-.include <own.mk>
-
 .if !empty(DOCOWN)
-DOC_INSTALL_OWN?= -o ${DOCOWN} -g ${DOGGRP}
+DOC_INSTALL_OWN?= -o ${DOCOWN} -g ${DOCGRP}
 .endif
 
 .endif

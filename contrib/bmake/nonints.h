@@ -1,4 +1,4 @@
-/*	$NetBSD: nonints.h,v 1.73 2016/06/03 01:21:59 sjg Exp $	*/
+/*	$NetBSD: nonints.h,v 1.78 2020/07/03 07:40:13 rillig Exp $	*/
 
 /*-
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -109,7 +109,6 @@ void JobReapChild(pid_t, WAIT_T, Boolean);
 /* main.c */
 void Main_ParseArgLine(const char *);
 void MakeMode(const char *);
-int main(int, char **);
 char *Cmd_Exec(const char *, const char **);
 void Error(const char *, ...) MAKE_ATTR_PRINTFLIKE(1, 2);
 void Fatal(const char *, ...) MAKE_ATTR_PRINTFLIKE(1, 2) MAKE_ATTR_DEAD;
@@ -140,9 +139,14 @@ Lst Parse_MainName(void);
 char *str_concat(const char *, const char *, int);
 char **brk_string(const char *, int *, Boolean, char **);
 char *Str_FindSubstring(const char *, const char *);
-int Str_Match(const char *, const char *);
-char *Str_SYSVMatch(const char *, const char *, int *len);
-void Str_SYSVSubst(Buffer *, char *, char *, int);
+Boolean Str_Match(const char *, const char *);
+char *Str_SYSVMatch(const char *, const char *, size_t *, Boolean *);
+void Str_SYSVSubst(Buffer *, char *, char *, size_t, Boolean);
+
+#ifndef HAVE_STRLCPY
+/* strlcpy.c */
+size_t strlcpy(char *, const char *, size_t);
+#endif
 
 /* suff.c */
 void Suff_ClearSuffixes(void);
@@ -181,13 +185,20 @@ void Targ_Propagate(void);
 void Targ_Propagate_Wait(void);
 
 /* var.c */
+
+typedef enum {
+	VARF_UNDEFERR = 1,
+	VARF_WANTRES = 2,
+	VARF_ASSIGN = 4
+} Varf_Flags;
+
 void Var_Delete(const char *, GNode *);
-void Var_Set(const char *, const char *, GNode *, int);
+void Var_Set(const char *, const char *, GNode *);
 void Var_Append(const char *, const char *, GNode *);
 Boolean Var_Exists(const char *, GNode *);
 char *Var_Value(const char *, GNode *, char **);
-char *Var_Parse(const char *, GNode *, int, int *, void **);
-char *Var_Subst(const char *, const char *, GNode *, int);
+char *Var_Parse(const char *, GNode *, Varf_Flags, int *, void **);
+char *Var_Subst(const char *, const char *, GNode *, Varf_Flags);
 char *Var_GetTail(const char *);
 char *Var_GetHead(const char *);
 void Var_Init(void);
