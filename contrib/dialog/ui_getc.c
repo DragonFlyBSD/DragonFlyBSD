@@ -1,9 +1,9 @@
 /*
- *  $Id: ui_getc.c,v 1.67 2013/03/24 23:53:19 tom Exp $
+ *  $Id: ui_getc.c,v 1.75 2020/03/27 21:49:03 tom Exp $
  *
  *  ui_getc.c - user interface glue for getc()
  *
- *  Copyright 2001-2012,2013	Thomas E. Dickey
+ *  Copyright 2001-2019,2020	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -68,7 +68,7 @@ dlg_add_callback(DIALOG_CALLBACK * p)
 {
     p->next = dialog_state.getc_callbacks;
     dialog_state.getc_callbacks = p;
-    wtimeout(p->win, WTIMEOUT_VAL);
+    dlg_set_timeout(p->win, TRUE);
 }
 
 /*
@@ -89,10 +89,16 @@ dlg_remove_callback(DIALOG_CALLBACK * p)
     DIALOG_CALLBACK *q;
 
     if (p->input != 0) {
-	fclose(p->input);
+	FILE *input = p->input;
+	fclose(input);
 	if (p->input == dialog_state.pipe_input)
 	    dialog_state.pipe_input = 0;
-	p->input = 0;
+	/* more than one callback can have the same input */
+	for (q = dialog_state.getc_callbacks; q != 0; q = q->next) {
+	    if (q->input == input) {
+		q->input = 0;
+	    }
+	}
     }
 
     if (!(p->keep_win))
@@ -147,8 +153,9 @@ handle_inputs(WINDOW *win)
     if (result) {
 	(void) wmove(win, cur_y, cur_x);	/* Restore cursor position */
 	wrefresh(win);
-	curs_set(state);
     }
+    if (state != ERR)
+	curs_set(state);
     return result;
 }
 
@@ -180,15 +187,17 @@ check_inputs(void)
     DIALOG_CALLBACK *p;
     fd_set read_fds;
     struct timeval test;
-    int last_fd = -1;
-    int fd;
-    int found;
     int result = -1;
 
     if ((p = dialog_state.getc_callbacks) != 0) {
+	int last_fd = -1;
+	int found;
+	int fd;
+
 	FD_ZERO(&read_fds);
 
 	while (p != 0) {
+
 	    p->input_ready = FALSE;
 	    if (p->input != 0 && (fd = fileno(p->input)) >= 0) {
 		FD_SET(fd, &read_fds);
@@ -306,6 +315,7 @@ dlg_add_last_key(int mode)
 	} else {
 	    char temp[80];
 	    sprintf(temp, "%d", last_getc);
+	    DLG_TRACE(("# dlg_add_last_key(%s)\n", temp));
 	    dlg_add_string(temp);
 	    if (mode == -1)
 		dlg_add_separator();
@@ -336,9 +346,7 @@ really_getch(WINDOW *win, int *fkey)
 {
     int ch;
 #ifdef USE_WIDE_CURSES
-    int code;
     mbstate_t state;
-    wchar_t my_wchar;
     wint_t my_wint;
 
     /*
@@ -346,6 +354,9 @@ really_getch(WINDOW *win, int *fkey)
      * having to change the rest of the code to use wide-characters.
      */
     if (used_last_getc >= have_last_getc) {
+	int code;
+	wchar_t my_wchar;
+
 	used_last_getc = 0;
 	have_last_getc = 0;
 	ch = ERR;
@@ -434,14 +445,9 @@ dlg_getc(WINDOW *win, int *fkey)
     bool done = FALSE;
     bool literal = FALSE;
     DIALOG_CALLBACK *p = 0;
-    int interval = (dialog_vars.timeout_secs * 1000);
+    int interval = dlg_set_timeout(win, may_handle_inputs());
     time_t expired = time((time_t *) 0) + dialog_vars.timeout_secs;
     time_t current;
-
-    if (may_handle_inputs())
-	wtimeout(win, WTIMEOUT_VAL);
-    else if (interval > 0)
-	wtimeout(win, interval);
 
     while (!done) {
 	bool handle_others = FALSE;
@@ -480,10 +486,12 @@ dlg_getc(WINDOW *win, int *fkey)
 	    case ERR:		/* wtimeout() in effect; check for file I/O */
 		if (interval > 0
 		    && current >= expired) {
-		    dlg_exiterr("timeout");
-		}
-		if (!valid_file(stdin)
-		    || !valid_file(dialog_state.screen_output)) {
+		    DLG_TRACE(("# dlg_getc: timeout expired\n"));
+		    ch = ESC;
+		    done = TRUE;
+		} else if (!valid_file(stdin)
+			   || !valid_file(dialog_state.screen_output)) {
+		    DLG_TRACE(("# dlg_getc: input or output is invalid\n"));
 		    ch = ESC;
 		    done = TRUE;
 		} else if (check_inputs()) {
@@ -587,7 +595,6 @@ void
 dlg_killall_bg(int *retval)
 {
     DIALOG_CALLBACK *cb;
-    int pid;
 #ifdef HAVE_TYPE_UNIONWAIT
     union wait wstatus;
 #else
@@ -604,6 +611,7 @@ dlg_killall_bg(int *retval)
 	    }
 	}
 	if (dialog_state.getc_callbacks != 0) {
+	    int pid;
 
 	    refresh();
 	    fflush(stdout);
@@ -611,7 +619,7 @@ dlg_killall_bg(int *retval)
 	    reset_shell_mode();
 	    if ((pid = fork()) != 0) {
 		_exit(pid > 0 ? DLG_EXIT_OK : DLG_EXIT_ERROR);
-	    } else if (pid == 0) {	/* child */
+	    } else {		/* child, pid==0 */
 		if ((pid = fork()) != 0) {
 		    /*
 		     * Echo the process-id of the grandchild so a shell script
@@ -641,7 +649,7 @@ dlg_killall_bg(int *retval)
 			;
 #endif
 		    _exit(WEXITSTATUS(wstatus));
-		} else if (pid == 0) {
+		} else {	/* child, pid==0 */
 		    if (!dialog_vars.cant_kill)
 			(void) signal(SIGHUP, finish_bg);
 		    (void) signal(SIGINT, finish_bg);

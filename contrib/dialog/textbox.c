@@ -1,9 +1,9 @@
 /*
- *  $Id: textbox.c,v 1.110 2012/12/01 01:48:08 tom Exp $
+ *  $Id: textbox.c,v 1.124 2020/03/27 20:29:49 tom Exp $
  *
  *  textbox.c -- implements the text box
  *
- *  Copyright 2000-2011,2012	Thomas E.  Dickey
+ *  Copyright 2000-2019,2020	Thomas E.  Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -92,7 +92,7 @@ lseek_end(MY_OBJ * obj, long offset)
 {
     long actual = lseek_obj(obj, offset, SEEK_END);
 
-    if (actual > offset) {
+    if (offset == 0L && actual > offset) {
 	obj->file_size = actual;
     }
 }
@@ -103,7 +103,7 @@ lseek_cur(MY_OBJ * obj, long offset)
     long actual = lseek_obj(obj, offset, SEEK_CUR);
 
     if (actual != offset) {
-	dlg_trace_msg("Lseek returned %ld, expected %ld\n", actual, offset);
+	DLG_TRACE(("# Lseek returned %ld, expected %ld\n", actual, offset));
     }
 }
 
@@ -127,14 +127,14 @@ xalloc(size_t size)
 static void
 read_high(MY_OBJ * obj, size_t size_read)
 {
-    char *buftab, ch;
-    int i = 0, j, n, tmpint;
-    long begin_line;
+    char *buftab;
 
     /* Allocate space for read buffer */
     buftab = xalloc(size_read + 1);
 
     if ((obj->fd_bytes_read = read(obj->fd, buftab, size_read)) != -1) {
+	int i = 0, j, n, tmpint;
+	long begin_line;
 
 	buftab[obj->fd_bytes_read] = '\0';	/* mark end of valid data */
 
@@ -179,7 +179,9 @@ read_high(MY_OBJ * obj, size_t size_read)
 
 	j = 0;
 	begin_line = 0;
-	while (j < obj->fd_bytes_read)
+	while (j < obj->fd_bytes_read) {
+	    char ch;
+
 	    if (((ch = buftab[j++]) == TAB) && (dialog_vars.tab_correct != 0)) {
 		tmpint = (dialog_state.tab_len
 			  - ((int) ((long) i - begin_line) % dialog_state.tab_len));
@@ -190,6 +192,7 @@ read_high(MY_OBJ * obj, size_t size_read)
 		    begin_line = i + 1;
 		obj->buf[i++] = ch;
 	    }
+	}
 
 	obj->buf[i] = '\0';	/* mark end of valid data */
 
@@ -525,7 +528,7 @@ get_search_term(WINDOW *dialog, char *input, int height, int width)
 		  searchbox_attr,
 		  searchbox_border_attr,
 		  searchbox_border2_attr);
-    (void) wattrset(widget, searchbox_title_attr);
+    dlg_attrset(widget, searchbox_title_attr);
     (void) wmove(widget, 0, (box_width - len_caption) / 2);
 
     indx = dlg_index_wchars(caption);
@@ -571,16 +574,17 @@ static bool
 perform_search(MY_OBJ * obj, int height, int width, int key, char *search_term)
 {
     int dir;
-    long tempinx;
-    long fpos;
-    int result;
-    bool found;
-    bool temp, temp1;
     bool moved = FALSE;
 
     /* set search direction */
     dir = (key == '/' || key == 'n') ? 1 : 0;
     if (dir ? !obj->end_reached : !obj->begin_reached) {
+	long tempinx;
+	long fpos;
+	int result;
+	bool found;
+	bool temp, temp1;
+
 	if (key == 'n' || key == 'N') {
 	    if (search_term[0] == '\0') {	/* No search term yet */
 		(void) beep();
@@ -597,9 +601,11 @@ perform_search(MY_OBJ * obj, int height, int width, int key, char *search_term)
 		ungetch(KEY_RESIZE);
 		/* FALLTHRU */
 	    }
+#else
+	    (void) result;
 #endif
 	    /* ESC pressed, or no search term, reprint page to clear box */
-	    (void) wattrset(obj->text, dialog_attr);
+	    dlg_attrset(obj->text, dialog_attr);
 	    back_lines(obj, obj->page_length);
 	    return TRUE;
 	}
@@ -644,7 +650,7 @@ perform_search(MY_OBJ * obj, int height, int width, int key, char *search_term)
 	    back_lines(obj, 1L);
 	}
 	/* Reprint page */
-	(void) wattrset(obj->text, dialog_attr);
+	dlg_attrset(obj->text, dialog_attr);
 	moved = TRUE;
     } else {			/* no need to find */
 	(void) beep();
@@ -656,7 +662,7 @@ perform_search(MY_OBJ * obj, int height, int width, int key, char *search_term)
  * Display text from a file in a dialog box.
  */
 int
-dialog_textbox(const char *title, const char *file, int height, int width)
+dialog_textbox(const char *title, const char *filename, int height, int width)
 {
     /* *INDENT-OFF* */
     static DLG_KEYS_BINDING binding[] = {
@@ -679,7 +685,7 @@ dialog_textbox(const char *title, const char *file, int height, int width)
 	DLG_KEYS_DATA( DLGK_PAGE_LAST,  'G' ),
 	DLG_KEYS_DATA( DLGK_PAGE_LAST,  KEY_END ),
 	DLG_KEYS_DATA( DLGK_PAGE_LAST,  KEY_LL ),
-	DLG_KEYS_DATA( DLGK_PAGE_NEXT,  ' ' ),
+	DLG_KEYS_DATA( DLGK_PAGE_NEXT,  CHR_SPACE ),
 	DLG_KEYS_DATA( DLGK_PAGE_NEXT,  KEY_NPAGE ),
 	DLG_KEYS_DATA( DLGK_PAGE_PREV,  'B' ),
 	DLG_KEYS_DATA( DLGK_PAGE_PREV,  'b' ),
@@ -698,9 +704,9 @@ dialog_textbox(const char *title, const char *file, int height, int width)
 #endif
     long fpos;
     int x, y, cur_x, cur_y;
-    int key = 0, fkey;
+    int key, fkey;
     int next = 0;
-    int i, code, passed_end;
+    int i, passed_end;
     char search_term[MAX_LEN + 1];
     MY_OBJ obj;
     WINDOW *dialog;
@@ -708,6 +714,12 @@ dialog_textbox(const char *title, const char *file, int height, int width)
     int result = DLG_EXIT_UNKNOWN;
     int button = dlg_default_button();
     int min_width = 12;
+
+    DLG_TRACE(("# textbox args:\n"));
+    DLG_TRACE2S("title", title);
+    DLG_TRACE2S("filename", filename);
+    DLG_TRACE2N("height", height);
+    DLG_TRACE2N("width", width);
 
     search_term[0] = '\0';	/* no search term entered yet */
 
@@ -719,8 +731,8 @@ dialog_textbox(const char *title, const char *file, int height, int width)
     obj.buttons = dlg_exit_label();
 
     /* Open input file for reading */
-    if ((obj.fd = open(file, O_RDONLY)) == -1)
-	dlg_exiterr("Can't open input file %s", file);
+    if ((obj.fd = open(filename, O_RDONLY)) == -1)
+	dlg_exiterr("Can't open input file %s", filename);
 
     /* Get file size. Actually, 'file_size' is the real file size - 1,
        since it's only the last byte offset from the beginning */
@@ -738,7 +750,7 @@ dialog_textbox(const char *title, const char *file, int height, int width)
 #endif
     moved = TRUE;
 
-    dlg_auto_sizefile(title, file, &height, &width, 2, min_width);
+    dlg_auto_sizefile(title, filename, &height, &width, 2, min_width);
     dlg_print_size(height, width);
     dlg_ctl_size(height, width);
 
@@ -767,6 +779,7 @@ dialog_textbox(const char *title, const char *file, int height, int width)
     dlg_attr_clear(obj.text, PAGE_LENGTH, PAGE_WIDTH, dialog_attr);
 
     while (result == DLG_EXIT_UNKNOWN) {
+	int code;
 
 	/*
 	 * Update the screen according to whether we shifted up/down by a line
@@ -814,8 +827,10 @@ dialog_textbox(const char *title, const char *file, int height, int width)
 	next = 0;		/* ...but not scroll by a line */
 
 	key = dlg_mouse_wgetch(dialog, &fkey);
-	if (dlg_result_key(key, fkey, &result))
-	    break;
+	if (dlg_result_key(key, fkey, &result)) {
+	    if (!dlg_ok_button_key(result, &button, &key, &fkey))
+		break;
+	}
 
 	if (!fkey && (code = dlg_char_to_button(key, obj.buttons)) >= 0) {
 	    result = dlg_ok_buttoncode(code);
@@ -942,15 +957,13 @@ dialog_textbox(const char *title, const char *file, int height, int width)
 		break;
 #ifdef KEY_RESIZE
 	    case KEY_RESIZE:
+		dlg_will_resize(dialog);
 		/* reset data */
 		height = old_height;
 		width = old_width;
 		back_lines(&obj, obj.page_length);
 		/* repaint */
-		dlg_clear();
-		dlg_del_window(dialog);
-		refresh();
-		dlg_mouse_free_regions();
+		_dlg_resize_cleanup(dialog);
 		goto retry;
 #endif
 	    }
@@ -969,6 +982,7 @@ dialog_textbox(const char *title, const char *file, int height, int width)
 	    }
 	}
     }
+    dlg_add_last_key(-1);
 
     dlg_del_window(dialog);
     free(obj.buf);
