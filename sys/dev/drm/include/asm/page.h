@@ -41,6 +41,12 @@ page_to_phys(struct page *page)
 
 #define LINUX_PAGE_MASK	(~PAGE_MASK)
 
+static inline struct page *
+virt_to_page(void *kaddr)
+{
+	return (struct page *)PHYS_TO_VM_PAGE(vtophys(kaddr));
+}
+
 #include <asm/memory_model.h>
 
 typedef unsigned long pgprot_t;

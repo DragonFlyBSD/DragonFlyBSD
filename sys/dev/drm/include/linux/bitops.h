@@ -67,6 +67,17 @@ __flsl(long mask)
 	return (flsl(mask) - 1);
 }
 
+/*
+ * fls64 - find leftmost set bit in a 64-bit word
+ *
+ * Returns 0 if no bit is set or the bit
+ * position counted from 1 to 64 otherwise
+ */
+static inline int
+fls64(__u64 x)
+{
+	return flsl(x);
+}
 
 #define	ffz(mask)	__ffs(~(mask))
 

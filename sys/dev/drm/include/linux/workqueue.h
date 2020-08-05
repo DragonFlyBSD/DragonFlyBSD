@@ -221,9 +221,10 @@ destroy_work_on_stack(struct work_struct *work)
 
 /* System-wide workqueues */
 extern struct workqueue_struct *system_wq;
+extern struct workqueue_struct *system_highpri_wq;
 extern struct workqueue_struct *system_long_wq;
-extern struct workqueue_struct *system_power_efficient_wq;
 extern struct workqueue_struct *system_unbound_wq;
+extern struct workqueue_struct *system_power_efficient_wq;
 
 static inline unsigned int
 work_busy(struct work_struct *work)

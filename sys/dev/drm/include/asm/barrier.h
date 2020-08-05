@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,11 @@
 #define smp_store_mb(var, value) do {	\
 	WRITE_ONCE(var, value);		\
 	cpu_mfence();			\
+} while (0)
+
+#define smp_store_release(p, v)	do {	\
+	cpu_ccfence();			\
+	WRITE_ONCE(*p, v);		\
 } while (0)
 
 #endif	/* _ASM_BARRIER_H_ */

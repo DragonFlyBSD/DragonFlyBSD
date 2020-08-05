@@ -36,6 +36,7 @@
 #include <linux/compiler.h>
 #include <linux/bitops.h>
 #include <linux/log2.h>
+#include <linux/typecheck.h>
 #include <linux/printk.h>
 
 #include <sys/systm.h>
@@ -168,6 +169,8 @@ static inline void
 might_sleep(void)
 {
 }
+
+#define might_sleep_if(cond)
 
 #define snprintf	ksnprintf
 #define sprintf		ksprintf

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,37 +24,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_IRQFLAGS_H_
-#define _LINUX_IRQFLAGS_H_
+#ifndef _LINUX_LIMITS_H_
+#define _LINUX_LIMITS_H_
 
-#include <linux/typecheck.h>
+#include <linux/types.h>
 
-#if 0
-/*
- * local_irq_disable/enable functions prevent interrupts to run on the
- * current CPU in critical sections of code.
- * This maps nicely to crit_enter/exit sequences in the DragonFly kernel
- */
-#define local_irq_disable()	crit_enter()
-#define local_irq_enable()	crit_exit()
-#endif
+#define SIZE_MAX	(~(size_t)0)
 
-static inline void
-local_irq_disable(void)
-{
-	__asm __volatile("cli": : :"memory");
-}
-
-static inline void
-local_irq_enable(void)
-{
-	__asm __volatile("sti": : :"memory");
-}
-
-static inline bool
-irqs_disabled(void)
-{
-	return !(read_rflags() & 0x200UL);
-}
-
-#endif	/* _LINUX_IRQFLAGS_H_ */
+#endif /* _LINUX_LIMITS_H_ */

@@ -179,4 +179,8 @@ page_address(const struct page *page)
 	return (void *)VM_PAGE_TO_PHYS((const struct vm_page *)page);
 }
 
+void * kvmalloc_array(size_t n, size_t size, gfp_t flags);
+
+#define kvfree(addr)	kfree(addr)
+
 #endif	/* _LINUX_MM_H_ */

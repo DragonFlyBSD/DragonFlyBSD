@@ -32,6 +32,7 @@
 
 #include <linux/types.h>
 #include <linux/stddef.h>
+#include <linux/poison.h>
 #include <linux/kernel.h>
 
 #include <sys/queue.h>

@@ -27,6 +27,7 @@
 #ifndef _LINUX_SPINLOCK_H_
 #define _LINUX_SPINLOCK_H_
 
+#include <linux/typecheck.h>
 #include <linux/preempt.h>
 #include <linux/linkage.h>
 #include <linux/compiler.h>

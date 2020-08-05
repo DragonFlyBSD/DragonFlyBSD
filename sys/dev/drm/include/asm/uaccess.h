@@ -91,6 +91,8 @@ __copy_from_user_inatomic_nocache(void *to, const void __user *from,
 	return ((copyin_nofault(__DECONST(void *, from), to, n) != 0 ? n : 0));
 }
 
+#define __get_user(x, ptr)	get_user((x), (ptr))
+
 #define __put_user(value, uptr)						\
 ({									\
 	__typeof(*(uptr)) __tmpval = (value);				\
@@ -98,5 +100,8 @@ __copy_from_user_inatomic_nocache(void *to, const void __user *from,
 })
 
 #define put_user(_x, _p)	__put_user(_x, _p)
+
+#define user_access_begin()
+#define user_access_end()
 
 #endif	/* _ASM_UACCESS_H_ */
