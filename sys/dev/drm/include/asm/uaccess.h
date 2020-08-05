@@ -101,6 +101,11 @@ __copy_from_user_inatomic_nocache(void *to, const void __user *from,
 
 #define put_user(_x, _p)	__put_user(_x, _p)
 
+#define unsafe_put_user(x, ptr, err) do { \
+	if (unlikely(__put_user(x, ptr))) \
+		goto err; \
+} while (0)
+
 #define user_access_begin()
 #define user_access_end()
 
