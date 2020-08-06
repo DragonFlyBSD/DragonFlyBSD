@@ -505,13 +505,11 @@ ARCHIVEprivate_1.0 {
     __archive_read_seek;
     __archive_reset_read_data;
     __archive_write_allocate_filter;
-    __archive_write_close_filter;
     __archive_write_filter;
     __archive_write_filters_free;
     __archive_write_format_header_ustar;
     __archive_write_get_passphrase;
     __archive_write_nulls;
-    __archive_write_open_filter;
     __archive_write_output;
     __archive_write_program_allocate;
     __archive_write_program_close;
