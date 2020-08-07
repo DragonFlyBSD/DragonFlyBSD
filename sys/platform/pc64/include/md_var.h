@@ -33,6 +33,8 @@
 #ifndef _MACHINE_MD_VAR_H_
 #define	_MACHINE_MD_VAR_H_
 
+#include <sys/types.h>
+
 #include <machine/globaldata.h>
 
 /*
