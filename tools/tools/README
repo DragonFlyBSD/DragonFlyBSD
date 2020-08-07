@@ -7,21 +7,18 @@ other categories.
 
 Please make a subdir per program, and add a brief description to this file.
 
-convert_usb_ids Convert FreeBSD USB device IDs to DragonFly device IDs.
 crypto		Exercise the crypto framework through /dev/crypto
-editing		Editor modes and the like to help editing FreeBSD code.
 genreadmedeleted  Create a README.DELETED suitable for the new contrib system.
 ifinfo		Uses the interface MIB to print out all the information
 		an interface exports in an ugly form.
-kerninclude	Shellscript to find unused #includes in the kernel.
-kernxref	Shellscript to cross reference symbols in the LINT64 kernel.
-local_syms	Shellscript to find symbols not referenced by other files.
+kerninclude	Shell script to find unused #includes in the kernel.
+kernxref	Shell script to cross reference symbols in the LINT64 kernel.
+local_syms	Shell script to find symbols not referenced by other files.
 netrate		Generate network packets.
 scsi-defects	Get at the primary or grown defect list of a SCSI disk.
 splitpatch	Python script to split a large patch file into independent
 		patches.  Default name convention is compatible with
 		the patch framework.
-unpriv_base	Crates symlinks for private base libraries and headers.
+unpriv_base	Creates symlinks for private base libraries and headers.
 vop_table	Generates a HTML document that shows all the VOP's in
 		the kernel.
-wlandebug	Manipulate netproto/802_11 debug flags symbolically.
