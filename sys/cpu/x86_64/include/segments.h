@@ -38,6 +38,10 @@
 #ifndef _CPU_SEGMENTS_H_
 #define	_CPU_SEGMENTS_H_
 
+#ifndef LOCORE
+#include <sys/tls.h>
+#endif
+
 /*
  * x86_64 Segmentation Data Structures and definitions
  */
@@ -142,10 +146,6 @@ struct	gate_descriptor {
 
 
 #ifndef LOCORE
-
-#ifndef _SYS_TLS_H_
-#include <sys/tls.h>
-#endif
 
 struct savetls {
 	struct tls_info info[2];
