@@ -30,12 +30,12 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/sysid.h,v 1.1 2007/04/29 01:29:31 dillon Exp $
  */
 
 #ifndef _SYS_SYSID_H_
 #define _SYS_SYSID_H_
+
+#include <sys/types.h>
 
 /*
  * SYSIDs are 64 bit entities and come in two varieties.  Physical SYSIDs
