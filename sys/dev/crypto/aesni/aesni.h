@@ -39,7 +39,6 @@
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
-#include <machine/npx.h>
 #endif
 
 #define AESNI_ALIGN	16

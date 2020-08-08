@@ -35,7 +35,6 @@
 #ifndef _CPU_VFRAME_H_
 #define _CPU_VFRAME_H_
 
-#include <machine/npx.h>
 #include <machine/segments.h>
 
 /*
