@@ -49,7 +49,9 @@
 #include <string.h>
 #include <assert.h>
 
+#ifdef HAMMER2_USE_OPENSSL
 #include <openssl/sha.h>
+#endif
 
 #include <vfs/hammer2/hammer2_disk.h>
 #include <vfs/hammer2/hammer2_xxhash.h>
@@ -766,20 +768,19 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	uint32_t cv;
 	uint64_t cv64;
 	char msg[256];
-
+#ifdef HAMMER2_USE_OPENSSL
 	SHA256_CTX hash_ctx;
 	union {
 		uint8_t digest[SHA256_DIGEST_LENGTH];
 		uint64_t digest64[SHA256_DIGEST_LENGTH/8];
 	} u;
-
+#endif
 	/* only for DebugOpt > 1 */
 	if (DebugOpt > 1)
 		print_blockref_debug(stdout, depth, index, bref, NULL);
 
 	if (bref->data_off) {
 		struct blockref_entry *e, bref_find;
-
 		memset(&bref_find, 0, sizeof(bref_find));
 		bref_find.data_off = bref->data_off;
 		e = RB_FIND(blockref_tree, droot, &bref_find);
@@ -908,6 +909,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		}
 		break;
 	case HAMMER2_CHECK_SHA192:
+#ifdef HAMMER2_USE_OPENSSL
 		SHA256_Init(&hash_ctx);
 		SHA256_Update(&hash_ctx, &media, bytes);
 		SHA256_Final(u.digest, &hash_ctx);
@@ -920,6 +922,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 			print_blockref_debug(stdout, depth, index, bref, msg);
 			failed = true;
 		}
+#endif
 		break;
 	case HAMMER2_CHECK_FREEMAP:
 		cv = hammer2_icrc32(&media, bytes);
