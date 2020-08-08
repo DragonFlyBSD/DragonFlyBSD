@@ -22,8 +22,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/sfbuf.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SFBUF_H_
@@ -32,14 +30,8 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _SYS_QUEUE_H_
-#include <sys/queue.h>
-#endif
 #ifndef _CPU_LWBUF_H_
 #include <cpu/lwbuf.h>
-#endif
-#ifndef _SYS_REFCOUNT_H
-#include <sys/refcount.h>
 #endif
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)

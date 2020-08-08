@@ -36,9 +36,6 @@
 #ifndef _SYS_MOUNT_H_
 #include <sys/mount.h>
 #endif
-#ifndef _SYS_PROC_H_
-#include <sys/proc.h>
-#endif
 #ifndef _SYS_SIGNALVAR_H_
 #include <sys/signalvar.h>
 #endif

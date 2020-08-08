@@ -43,7 +43,6 @@
 
 #include "opt_posix.h"
 
-#include <sys/param.h>
 #include <sys/sched.h>
 
 #ifdef MALLOC_DECLARE
