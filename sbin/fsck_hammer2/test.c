@@ -82,10 +82,8 @@ blockref_cmp(struct blockref_entry *b1, struct blockref_entry *b2)
 }
 
 RB_HEAD(blockref_tree, blockref_entry);
-RB_PROTOTYPE2(blockref_tree, blockref_entry, entry, blockref_cmp,
-    hammer2_off_t);
-RB_GENERATE2(blockref_tree, blockref_entry, entry, blockref_cmp, hammer2_off_t,
-    data_off);
+RB_PROTOTYPE(blockref_tree, blockref_entry, entry, blockref_cmp);
+RB_GENERATE(blockref_tree, blockref_entry, entry, blockref_cmp);
 
 typedef struct {
 	struct blockref_tree root;
@@ -475,9 +473,11 @@ static void
 add_blockref_entry(struct blockref_tree *root, const hammer2_blockref_t *bref,
     const void *msg, size_t siz)
 {
-	struct blockref_entry *e;
+	struct blockref_entry *e, bref_find;
 
-	e = RB_LOOKUP(blockref_tree, root, bref->data_off);
+	memset(&bref_find, 0, sizeof(bref_find));
+	bref_find.data_off = bref->data_off;
+	e = RB_FIND(blockref_tree, root, &bref_find);
 	if (!e) {
 		e = calloc(1, sizeof(*e));
 		assert(e);
@@ -778,8 +778,11 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		print_blockref_debug(stdout, depth, index, bref, NULL);
 
 	if (bref->data_off) {
-		struct blockref_entry *e;
-		e = RB_LOOKUP(blockref_tree, droot, bref->data_off);
+		struct blockref_entry *e, bref_find;
+
+		memset(&bref_find, 0, sizeof(bref_find));
+		bref_find.data_off = bref->data_off;
+		e = RB_FIND(blockref_tree, droot, &bref_find);
 		if (e) {
 			struct blockref_msg *m;
 			TAILQ_FOREACH(m, &e->head, entry) {
