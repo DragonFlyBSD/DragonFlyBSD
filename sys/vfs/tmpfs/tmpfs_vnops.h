@@ -51,7 +51,7 @@ extern int tmpfs_bufcache_mode __read_mostly;
 
 int tmpfs_access(struct vop_access_args *);
 int tmpfs_getattr(struct vop_getattr_args *);
-int tmpfs_getattr_quick(struct vop_getattr_args *);
+int tmpfs_getattr_lite(struct vop_getattr_lite_args *);
 int tmpfs_setattr(struct vop_setattr_args *);
 int tmpfs_reclaim(struct vop_reclaim_args *);
 

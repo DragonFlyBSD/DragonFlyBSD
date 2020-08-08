@@ -408,14 +408,14 @@ __elfN(load_file)(struct proc *p, const char *file, u_long *addr, u_long *entry)
 {
 	struct {
 		struct nlookupdata nd;
-		struct vattr attr;
+		struct vattr_lite lva;
 		struct image_params image_params;
 	} *tempdata;
 	const Elf_Ehdr *hdr = NULL;
 	const Elf_Phdr *phdr = NULL;
 	struct nlookupdata *nd;
 	struct vmspace *vmspace = p->p_vmspace;
-	struct vattr *attr;
+	struct vattr_lite *lvap;
 	struct image_params *imgp;
 	struct mount *topmnt;
 	vm_prot_t prot;
@@ -425,14 +425,14 @@ __elfN(load_file)(struct proc *p, const char *file, u_long *addr, u_long *entry)
 
 	tempdata = kmalloc(sizeof(*tempdata), M_TEMP, M_WAITOK);
 	nd = &tempdata->nd;
-	attr = &tempdata->attr;
+	lvap = &tempdata->lva;
 	imgp = &tempdata->image_params;
 
 	/*
 	 * Initialize part of the common data
 	 */
 	imgp->proc = p;
-	imgp->attr = attr;
+	imgp->lvap = lvap;
 	imgp->firstpage = NULL;
 	imgp->image_header = NULL;
 	imgp->vp = NULL;

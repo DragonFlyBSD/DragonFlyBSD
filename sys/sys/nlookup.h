@@ -44,6 +44,7 @@
 
 struct vnode;
 struct vattr;
+struct vattr_lite;
 struct mount;
 struct thread;
 struct ucred;
@@ -149,7 +150,7 @@ struct nlookupdata {
 #ifdef _KERNEL
 #include <sys/_uio.h>
 
-int	naccess_va(struct vattr *va, int nflags, struct ucred *cred);
+int	naccess_lva(struct vattr_lite *lvap, int nflags, struct ucred *cred);
 int	nlookup(struct nlookupdata *);
 void	nlookup_done(struct nlookupdata *);
 void	nlookup_done_at(struct nlookupdata *, struct file *);

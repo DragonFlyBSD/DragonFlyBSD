@@ -78,7 +78,7 @@ struct vop_ops default_vnode_vops = {
 	.vop_old_lookup		= vop_nolookup,
 	.vop_open		= vop_stdopen,
 	.vop_close		= vop_stdclose,
-	.vop_getattr_quick	= vop_stdgetattr_quick,
+	.vop_getattr_lite	= vop_stdgetattr_lite,
 	.vop_pathconf		= vop_stdpathconf,
 	.vop_readlink		= (void *)vop_einval,
 	.vop_reallocblks	= (void *)vop_eopnotsupp,
@@ -1214,14 +1214,29 @@ vop_stdclose(struct vop_close_args *ap)
 }
 
 /*
- * Standard getattr_quick
+ * Standard getattr_lite
  *
  * Just calls getattr
  */
 int
-vop_stdgetattr_quick(struct vop_getattr_args *ap)
+vop_stdgetattr_lite(struct vop_getattr_lite_args *ap)
 {
-	return VOP_GETATTR(ap->a_vp, ap->a_vap);
+	struct vattr va;
+	struct vattr_lite *lvap;
+	int error;
+
+	error = VOP_GETATTR(ap->a_vp, &va);
+	if (__predict_true(error == 0)) {
+		lvap = ap->a_lvap;
+		lvap->va_type = va.va_type;
+		lvap->va_nlink = va.va_nlink;
+		lvap->va_mode = va.va_mode;
+		lvap->va_uid = va.va_uid;
+		lvap->va_gid = va.va_gid;
+		lvap->va_size = va.va_size;
+		lvap->va_flags = va.va_flags;
+	}
+	return error;
 }
 
 /*

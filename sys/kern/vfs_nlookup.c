@@ -1331,7 +1331,7 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp,
 	int nchislocked)
 {
     struct vnode *vp;
-    struct vattr va;
+    struct vattr_lite lva;
     struct namecache *ncp;
     int error;
     int cflags;
@@ -1408,7 +1408,7 @@ again:
     /*
      * Get the vnode attributes so we can do the rest of our checks.
      *
-     * NOTE: We only call naccess_va() if the target exists.
+     * NOTE: We only call naccess_lva() if the target exists.
      */
     if (error == 0) {
 	if (nchislocked == 0) {
@@ -1440,9 +1440,9 @@ again:
 	     *
 	     * XXX cache the va in the namecache or in the vnode
 	     */
-	    error = VOP_GETATTR_QUICK(vp, &va);
+	    error = VOP_GETATTR_LITE(vp, &lva);
 	    if (error == 0 && (nflags & NLC_TRUNCATE)) {
-		switch(va.va_type) {
+		switch(lva.va_type) {
 		case VREG:
 		case VDATABASE:
 		case VCHR:
@@ -1460,7 +1460,7 @@ again:
 	    if (error == 0 && (nflags & NLC_WRITE) && vp->v_mount &&
 		(vp->v_mount->mnt_flag & MNT_RDONLY)
 	    ) {
-		switch(va.va_type) {
+		switch(lva.va_type) {
 		case VDIR:
 		case VLNK:
 		case VREG:
@@ -1487,11 +1487,11 @@ again:
 		 * Adjust the returned (*nflagsp) if non-NULL.
 		 */
 		if (nflagsp) {
-		    if ((va.va_mode & VSVTX) && va.va_uid != cred->cr_uid)
+		    if ((lva.va_mode & VSVTX) && lva.va_uid != cred->cr_uid)
 			*nflagsp |= NLC_STICKY;
-		    if (va.va_flags & APPEND)
+		    if (lva.va_flags & APPEND)
 			*nflagsp |= NLC_APPENDONLY;
-		    if (va.va_flags & IMMUTABLE)
+		    if (lva.va_flags & IMMUTABLE)
 			*nflagsp |= NLC_IMMUTABLE;
 		}
 
@@ -1503,24 +1503,24 @@ again:
 		 * capabilities.
 		 */
 		cflags = 0;
-		if (va.va_type == VDIR &&
-		    (va.va_mode & S_WXOK_MASK) == S_WXOK_MASK) {
+		if (lva.va_type == VDIR &&
+		    (lva.va_mode & S_WXOK_MASK) == S_WXOK_MASK) {
 			cflags |= NCF_WXOK;
 		}
-		if ((va.va_mode & S_XOK_MASK) == 0)
+		if ((lva.va_mode & S_XOK_MASK) == 0)
 			cflags |= NCF_NOTX;
 
 		/*
 		 * Track swapcache management flags in the namecache.
 		 *
-		 * Calculate the flags based on the current vattr info
+		 * Calculate the flags based on the current vattr_lite info
 		 * and recalculate the inherited flags from the parent
 		 * (the original cache linkage may have occurred without
 		 * getattrs and thus have stale flags).
 		 */
-		if (va.va_flags & SF_NOCACHE)
+		if (lva.va_flags & SF_NOCACHE)
 			cflags |= NCF_SF_NOCACHE;
-		if (va.va_flags & UF_CACHE)
+		if (lva.va_flags & UF_CACHE)
 			cflags |= NCF_UF_CACHE;
 		if (ncp->nc_parent) {
 			if (ncp->nc_parent->nc_flag &
@@ -1549,7 +1549,7 @@ again:
 		/*
 		 * Process general access.
 		 */
-		error = naccess_va(&va, nflags, cred);
+		error = naccess_lva(&lva, nflags, cred);
 	    }
 	}
     }
@@ -1562,7 +1562,7 @@ again:
  * Check the requested access against the given vattr using cred.
  */
 int
-naccess_va(struct vattr *va, int nflags, struct ucred *cred)
+naccess_lva(struct vattr_lite *lvap, int nflags, struct ucred *cred)
 {
     int i;
     int vmode;
@@ -1588,7 +1588,7 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
      *
      * Writes and truncations are only allowed on special devices.
      */
-    if ((va->va_flags & IMMUTABLE) || (nflags & NLC_IMMUTABLE)) {
+    if ((lvap->va_flags & IMMUTABLE) || (nflags & NLC_IMMUTABLE)) {
 	if ((nflags & NLC_IMMUTABLE) && (nflags & NLC_HLINK))
 	    return (EPERM);
 	if (nflags & (NLC_CREATE | NLC_DELETE |
@@ -1596,7 +1596,7 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
 	    return (EPERM);
 	}
 	if (nflags & (NLC_WRITE | NLC_TRUNCATE)) {
-	    switch(va->va_type) {
+	    switch(lvap->va_type) {
 	    case VDIR:
 		return (EISDIR);
 	    case VLNK:
@@ -1620,7 +1620,7 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
      * If the governing directory is marked APPEND-only it implies
      * NOUNLINK for all entries in the directory.
      */
-    if (((va->va_flags & NOUNLINK) || (nflags & NLC_APPENDONLY)) &&
+    if (((lvap->va_flags & NOUNLINK) || (nflags & NLC_APPENDONLY)) &&
 	(nflags & (NLC_DELETE | NLC_RENAME_SRC | NLC_RENAME_DST))
     ) {
 	return (EPERM);
@@ -1629,7 +1629,7 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
     /*
      * A file marked append-only may not be deleted but can be renamed.
      */
-    if ((va->va_flags & APPEND) &&
+    if ((lvap->va_flags & APPEND) &&
 	(nflags & (NLC_DELETE | NLC_RENAME_DST))
     ) {
 	return (EPERM);
@@ -1639,7 +1639,7 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
      * A file marked append-only which is opened for writing must also
      * be opened O_APPEND.
      */
-    if ((va->va_flags & APPEND) && (nflags & (NLC_OPEN | NLC_TRUNCATE))) {
+    if ((lvap->va_flags & APPEND) && (nflags & (NLC_OPEN | NLC_TRUNCATE))) {
 	if (nflags & NLC_TRUNCATE)
 	    return (EPERM);
 	if ((nflags & (NLC_OPEN | NLC_WRITE)) == (NLC_OPEN | NLC_WRITE)) {
@@ -1668,9 +1668,9 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
     if (nflags & NLC_EXEC)
 	vmode |= S_IXUSR;
 
-    if (cred->cr_uid == va->va_uid) {
+    if (cred->cr_uid == lvap->va_uid) {
 	if ((nflags & NLC_OWN) == 0) {
-	    if ((vmode & va->va_mode) != vmode)
+	    if ((vmode & lvap->va_mode) != vmode)
 		return(EACCES);
 	}
 	return(0);
@@ -1694,8 +1694,8 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
      */
     vmode >>= 3;
     for (i = 0; i < cred->cr_ngroups; ++i) {
-	if (va->va_gid == cred->cr_groups[i]) {
-	    if ((vmode & va->va_mode) != vmode)
+	if (lvap->va_gid == cred->cr_groups[i]) {
+	    if ((vmode & lvap->va_mode) != vmode)
 		return(EACCES);
 	    return(0);
 	}
@@ -1705,7 +1705,7 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
      * Check world perms
      */
     vmode >>= 3;
-    if ((vmode & va->va_mode) != vmode)
+    if ((vmode & lvap->va_mode) != vmode)
 	return(EACCES);
     return(0);
 }

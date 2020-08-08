@@ -153,6 +153,13 @@ struct vop_getattr_args {
 	struct file *a_fp; /* FUSE */
 };
 
+struct vop_getattr_lite_args {
+	struct vop_generic_args a_head;
+	struct vnode *a_vp;
+	struct vattr_lite *a_lvap;
+	struct file *a_fp; /* FUSE */
+};
+
 struct vop_setattr_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
@@ -596,7 +603,7 @@ struct vop_ops {
 	int	(*vop_close)(struct vop_close_args *);
 	int	(*vop_access)(struct vop_access_args *);
 	int	(*vop_getattr)(struct vop_getattr_args *);
-	int	(*vop_getattr_quick)(struct vop_getattr_args *);
+	int	(*vop_getattr_lite)(struct vop_getattr_lite_args *);
 	int	(*vop_setattr)(struct vop_setattr_args *);
 	int	(*vop_read)(struct vop_read_args *);
 	int	(*vop_write)(struct vop_write_args *);
@@ -757,7 +764,8 @@ int vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
 		struct ucred *cred);
 int vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 		struct file *fp);
-int vop_getattr_quick(struct vop_ops *ops, struct vnode *vp, struct vattr *vap);
+int vop_getattr_lite(struct vop_ops *ops, struct vnode *vp,
+		struct vattr_lite *vap);
 int vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 		struct ucred *cred, struct file *fp);
 int vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
@@ -877,7 +885,7 @@ int vop_open_ap(struct vop_open_args *ap);
 int vop_close_ap(struct vop_close_args *ap);
 int vop_access_ap(struct vop_access_args *ap);
 int vop_getattr_ap(struct vop_getattr_args *ap);
-int vop_getattr_quick_ap(struct vop_getattr_args *ap);
+int vop_getattr_lite_ap(struct vop_getattr_lite_args *ap);
 int vop_setattr_ap(struct vop_setattr_args *ap);
 int vop_read_ap(struct vop_read_args *ap);
 int vop_write_ap(struct vop_write_args *ap);
@@ -940,7 +948,7 @@ extern struct syslink_desc vop_open_desc;
 extern struct syslink_desc vop_close_desc;
 extern struct syslink_desc vop_access_desc;
 extern struct syslink_desc vop_getattr_desc;
-extern struct syslink_desc vop_getattr_quick_desc;
+extern struct syslink_desc vop_getattr_lite_desc;
 extern struct syslink_desc vop_setattr_desc;
 extern struct syslink_desc vop_read_desc;
 extern struct syslink_desc vop_write_desc;
@@ -1010,8 +1018,8 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_getattr(*(vp)->v_ops, vp, vap, fp) /* FUSE */
 #define VOP_GETATTR(vp, vap)				\
 	VOP_GETATTR_FP(vp, vap, NULL)
-#define VOP_GETATTR_QUICK(vp, vap)			\
-	vop_getattr_quick(*(vp)->v_ops, vp, vap)
+#define VOP_GETATTR_LITE(vp, lvap)			\
+	vop_getattr_lite(*(vp)->v_ops, vp, lvap)
 #define VOP_SETATTR_FP(vp, vap, cred, fp)		\
 	vop_setattr(*(vp)->v_ops, vp, vap, cred, fp) /* FUSE */
 #define VOP_SETATTR(vp, vap, cred)			\

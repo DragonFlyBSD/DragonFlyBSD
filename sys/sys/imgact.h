@@ -53,7 +53,7 @@ struct image_params {
 	struct proc *proc;	/* our process struct */
 	struct image_args *args;	/* syscall arguments */
 	struct vnode *vp;	/* pointer to vnode of file to exec */
-	struct vattr *attr;	/* attributes of file */
+	struct vattr_lite *lvap; /* attributes of file */
 	const char *image_header; /* head of file to exec */
 	unsigned long entry_addr; /* entry address of target executable */
 	char resident;		/* flag - resident image */

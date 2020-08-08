@@ -146,7 +146,7 @@ exec_aout_imgact(struct image_params *imgp)
 		return (-1);
 
 	/* text + data can't exceed file size */
-	if (a_out->a_data + a_out->a_text > imgp->attr->va_size)
+	if (a_out->a_data + a_out->a_text > imgp->lvap->va_size)
 		return (EFAULT);
 
 	/*

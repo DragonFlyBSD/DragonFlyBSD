@@ -201,7 +201,7 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	struct sigacts *nps;
 	int error, len, i;
 	struct image_params image_params, *imgp;
-	struct vattr attr;
+	struct vattr_lite lva;
 	int (*img_first) (struct image_params *);
 
 	if (debug_execve_args) {
@@ -226,7 +226,7 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	 */
 	imgp->proc = p;
 	imgp->args = args;
-	imgp->attr = &attr;
+	imgp->lvap = &lva;
 	imgp->entry_addr = 0;
 	imgp->resident = 0;
 	imgp->vmspace_destroyed = 0;
@@ -445,8 +445,8 @@ interpret:
 	 * Don't honor setuid/setgid if the filesystem prohibits it or if
 	 * the process is being traced.
 	 */
-	if ((((attr.va_mode & VSUID) && p->p_ucred->cr_uid != attr.va_uid) ||
-	     ((attr.va_mode & VSGID) && p->p_ucred->cr_gid != attr.va_gid)) &&
+	if ((((lva.va_mode & VSUID) && p->p_ucred->cr_uid != lva.va_uid) ||
+	     ((lva.va_mode & VSGID) && p->p_ucred->cr_gid != lva.va_gid)) &&
 	    (imgp->vp->v_mount->mnt_flag & MNT_NOSUID) == 0 &&
 	    (p->p_flags & P_TRACED) == 0) {
 		/*
@@ -470,10 +470,10 @@ interpret:
 		 * Set the new credentials.
 		 */
 		cratom_proc(p);
-		if (attr.va_mode & VSUID)
-			change_euid(attr.va_uid);
-		if (attr.va_mode & VSGID)
-			p->p_ucred->cr_gid = attr.va_gid;
+		if (lva.va_mode & VSUID)
+			change_euid(lva.va_uid);
+		if (lva.va_mode & VSGID)
+			p->p_ucred->cr_gid = lva.va_gid;
 
 		/*
 		 * Clear local varsym variables
@@ -1155,11 +1155,11 @@ exec_check_permissions(struct image_params *imgp, struct mount *topmnt)
 {
 	struct proc *p = imgp->proc;
 	struct vnode *vp = imgp->vp;
-	struct vattr *attr = imgp->attr;
+	struct vattr_lite *lvap = imgp->lvap;
 	int error;
 
 	/* Get file attributes */
-	error = VOP_GETATTR(vp, attr);
+	error = VOP_GETATTR_LITE(vp, lvap);
 	if (error)
 		return (error);
 
@@ -1173,15 +1173,15 @@ exec_check_permissions(struct image_params *imgp, struct mount *topmnt)
 	 */
 	if ((vp->v_mount->mnt_flag & MNT_NOEXEC) ||
 	    ((topmnt != NULL) && (topmnt->mnt_flag & MNT_NOEXEC)) ||
-	    ((attr->va_mode & 0111) == 0) ||
-	    (attr->va_type != VREG)) {
+	    ((lvap->va_mode & 0111) == 0) ||
+	    (lvap->va_type != VREG)) {
 		return (EACCES);
 	}
 
 	/*
 	 * Zero length files can't be exec'd
 	 */
-	if (attr->va_size == 0)
+	if (lvap->va_size == 0)
 		return (ENOEXEC);
 
 	/*

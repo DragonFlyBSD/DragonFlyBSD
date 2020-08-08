@@ -2784,7 +2784,7 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 	struct thread *td = curthread;
 	struct file *fp;
 	struct vnode *vp;
-	struct vattr vattr;
+	struct vattr_lite lva;
 	off_t new_offset;
 	int error;
 
@@ -2804,9 +2804,9 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 		error = 0;
 		break;
 	case L_XTND:
-		error = VOP_GETATTR_QUICK(vp, &vattr);
+		error = VOP_GETATTR_LITE(vp, &lva);
 		spin_lock(&fp->f_spin);
-		new_offset = offset + vattr.va_size;
+		new_offset = offset + lva.va_size;
 		break;
 	case L_SET:
 		new_offset = offset;
@@ -3780,6 +3780,7 @@ kern_futimens(int fd, struct timespec *ts)
 	struct file *fp;
 	struct vnode *vp;
 	struct vattr vattr;
+	struct vattr_lite lva;
 	int nullflag;
 	int error;
 
@@ -3796,7 +3797,15 @@ kern_futimens(int fd, struct timespec *ts)
 		if (error == 0) {
 			error = VOP_GETATTR_FP(vp, &vattr, fp);
 			if (error == 0) {
-				error = naccess_va(&vattr, NLC_OWN | NLC_WRITE,
+				lva.va_type = vattr.va_type;
+				lva.va_nlink = vattr.va_nlink;
+				lva.va_mode = vattr.va_mode;
+				lva.va_uid = vattr.va_uid;
+				lva.va_gid = vattr.va_gid;
+				lva.va_size = vattr.va_size;
+				lva.va_flags = vattr.va_flags;
+
+				error = naccess_lva(&lva, NLC_OWN | NLC_WRITE,
 						   fp->f_cred);
 			}
 			if (error == 0) {

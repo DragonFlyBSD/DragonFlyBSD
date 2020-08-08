@@ -370,16 +370,16 @@ retry:
 
 static
 int
-hammer2_vop_getattr_quick(struct vop_getattr_args *ap)
+hammer2_vop_getattr_lite(struct vop_getattr_lite_args *ap)
 {
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *ip;
 	struct vnode *vp;
-	struct vattr *vap;
+	struct vattr_lite *lvap;
 	int update;
 
 	vp = ap->a_vp;
-	vap = ap->a_vap;
+	lvap = ap->a_lvap;
 
 	ip = VTOI(vp);
 	pmp = ip->pmp;
@@ -387,23 +387,31 @@ hammer2_vop_getattr_quick(struct vop_getattr_args *ap)
 retry:
 	update = spin_access_start(&ip->cluster_spin);
 
+#if 0
 	vap->va_fsid = pmp->mp->mnt_stat.f_fsid.val[0];
 	vap->va_fileid = ip->meta.inum;
-	vap->va_mode = ip->meta.mode;
-	vap->va_nlink = ip->meta.nlinks;
-	vap->va_uid = hammer2_to_unix_xid(&ip->meta.uid);
-	vap->va_gid = hammer2_to_unix_xid(&ip->meta.gid);
+#endif
+	lvap->va_mode = ip->meta.mode;
+	lvap->va_nlink = ip->meta.nlinks;
+	lvap->va_uid = hammer2_to_unix_xid(&ip->meta.uid);
+	lvap->va_gid = hammer2_to_unix_xid(&ip->meta.gid);
+#if 0
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
-	vap->va_size = ip->meta.size;
+#endif
+	lvap->va_size = ip->meta.size;
+#if 0
 	vap->va_blocksize = HAMMER2_PBUFSIZE;
-	vap->va_flags = ip->meta.uflags;
-	vap->va_type = hammer2_get_vtype(ip->meta.type);
+#endif
+	lvap->va_flags = ip->meta.uflags;
+	lvap->va_type = hammer2_get_vtype(ip->meta.type);
+#if 0
 	vap->va_filerev = 0;
 	vap->va_uid_uuid = ip->meta.uid;
 	vap->va_gid_uuid = ip->meta.gid;
 	vap->va_vaflags = VA_UID_UUID_VALID | VA_GID_UUID_VALID |
 			  VA_FSID_UUID_VALID;
+#endif
 
 	if (__predict_false(spin_access_end(&ip->cluster_spin, update)))
 		goto retry;
@@ -2540,7 +2548,7 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_nrmdir	= hammer2_vop_nrmdir,
 	.vop_nrename	= hammer2_vop_nrename,
 	.vop_getattr	= hammer2_vop_getattr,
-	.vop_getattr_quick = hammer2_vop_getattr_quick,
+	.vop_getattr_lite = hammer2_vop_getattr_lite,
 	.vop_setattr	= hammer2_vop_setattr,
 	.vop_readdir	= hammer2_vop_readdir,
 	.vop_readlink	= hammer2_vop_readlink,

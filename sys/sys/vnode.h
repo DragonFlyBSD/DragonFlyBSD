@@ -523,7 +523,7 @@ int	vn_writechk (struct vnode *vp);
 int	ncp_writechk(struct nchandle *nch);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
-int	vop_stdgetattr_quick (struct vop_getattr_args *ap);
+int	vop_stdgetattr_lite (struct vop_getattr_lite_args *ap);
 int	vop_stdmountctl(struct vop_mountctl_args *ap);
 int	vop_stdgetpages(struct vop_getpages_args *ap);
 int	vop_stdputpages(struct vop_putpages_args *ap);

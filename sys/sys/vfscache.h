@@ -146,6 +146,22 @@ struct vattr {
 };
 
 /*
+ * A light version of vattr used by the fast-path GETATTR_LITE()
+ *
+ * NOTE: If adjusting fields in this structure, also adjust in
+ *	 vop_stdgetattr_lite() and kern_futimes().
+ */
+struct vattr_lite {
+	enum vtype	va_type;	/* vnode type (for create) */
+	u_int64_t	va_nlink;	/* number of references to file */
+	u_short		va_mode;	/* files access mode and type */
+	uid_t		va_uid;		/* owner user id */
+	gid_t		va_gid;		/* owner group id */
+	u_quad_t	va_size;	/* file size in bytes */
+	u_long		va_flags;	/* flags defined for file */
+};
+
+/*
  * Flags for va_vaflags.
  *
  * NOTE: The short versions for the uid, gid, and fsid are always populated
