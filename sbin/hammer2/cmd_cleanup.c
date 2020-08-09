@@ -91,9 +91,9 @@ docleanup(const char *path)
 	return rc;
 }
 
-char **h2prefixes;
-int h2count;
-int h2limit;
+static char **h2prefixes;
+static int h2count;
+static int h2limit;
 
 static
 int
