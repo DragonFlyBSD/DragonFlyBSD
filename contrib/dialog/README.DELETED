@@ -4,14 +4,16 @@ config.hin
 config.sub
 configure
 configure.in
+demo.pl
 dialog-config.in
 dialog.lsm
 dialog.pl
-headers-sh
 headers-sh.in
+headers.sh
 install-sh
 makefile.in
 package/
 po/
 rename.sh
+run_test.sh
 samples/

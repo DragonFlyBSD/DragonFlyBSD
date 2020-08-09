@@ -4,10 +4,10 @@ DIALOG
 Original source can be downloaded from:
 http://invisible-island.net/dialog/dialog.html
 
-file = dialog.tar.gz  (dialog-20150920)
-date = 21 September 2015
-size = 498181
-sha1 = 520b0d21b6f3bb859f67927616027b0432b650fb
+file = dialog.tar.gz (dialog-1.3-20200327)
+date = 28 March 2020
+size = 547962
+sha1 = d737f57f91b6fb3cbca0faee35f3c227265fbf46
 
 Note that author "rerolls" this file with the latest version.
 It's unclear if previous versions are renamed and archived.
