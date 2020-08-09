@@ -48,7 +48,7 @@
 
 #define	DevicePathType(a)		(((a)->Type) & EFI_DP_TYPE_MASK)
 #define	DevicePathSubType(a)		((a)->SubType)
-#define	DevicePathNodeLength(a)		(((a)->Length[0]) | ((a)->Length[1] << 8))
+#define	DevicePathNodeLength(a)		((size_t)(((a)->Length[0]) | ((a)->Length[1] << 8)))
 #define	NextDevicePathNode(a)		((EFI_DEVICE_PATH *)(((UINT8 *)(a)) + DevicePathNodeLength(a)))
 #define	IsDevicePathType(a, t)		(DevicePathType(a) == t)
 #define	IsDevicePathEndType(a)		IsDevicePathType(a, END_DEVICE_PATH_TYPE)
