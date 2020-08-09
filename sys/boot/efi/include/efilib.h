@@ -77,3 +77,5 @@ EFI_STATUS efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table);
 void efi_exit(EFI_STATUS status); /* should be __dead2 */
 EFI_STATUS main(int argc, CHAR16 *argv[]);
 void delay(int usecs);
+
+EFI_STATUS OpenProtocolByHandle(EFI_HANDLE, EFI_GUID *, void **);

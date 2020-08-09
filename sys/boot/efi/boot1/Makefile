@@ -50,6 +50,9 @@ CFLAGS+=	-fPIC
 LDFLAGS+=	-Wl,-znocombreloc
 .endif
 
+.if exists(${.OBJDIR}/../libefi/libefi.a)
+LIBEFI=		${.OBJDIR}/../libefi/libefi.a
+.endif
 .if exists(${.OBJDIR}/../../../../lib/libstand/libstand.a)
 LIBSTAND=	${.OBJDIR}/../../../../lib/libstand/libstand.a
 .endif
@@ -59,8 +62,8 @@ LIBSTAND=	${.OBJDIR}/../../../../lib/libstand/libstand.a
 # __aeabi_* (arm) or __divdi3 (i386).
 # as well as required string and memory functions for all platforms.
 #
-DPADD+=		${LIBSTAND}
-LDADD+=		${LIBSTAND}
+DPADD+=		${LIBEFI} ${LIBSTAND}
+LDADD+=		${LIBEFI} ${LIBSTAND}
 
 DPADD+=		${LDSCRIPT}
 

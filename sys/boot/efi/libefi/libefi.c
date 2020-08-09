@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/boot/efi/libefi/libefi.c 294769 2016-01-26 06:26:56Z imp $
+ * $FreeBSD: head/stand/efi/libefi/libefi.c 350656 2019-08-06 20:13:28Z tsoome $
  */
 
 #include <efi.h>
@@ -46,4 +46,11 @@ efi_get_table(EFI_GUID *tbl)
 			return (ST->ConfigurationTable[i].VendorTable);
 	}
 	return (NULL);
+}
+
+EFI_STATUS
+OpenProtocolByHandle(EFI_HANDLE handle, EFI_GUID *protocol, void **interface)
+{
+	return (BS->OpenProtocol(handle, protocol, interface, IH, NULL,
+	    EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL));
 }

@@ -22,10 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/boot/efi/libefi/efipart.c 293724 2016-01-12 02:17:39Z smh $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/boot/efi/libefi/efipart.c 293724 2016-01-12 02:17:39Z smh $");
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -94,7 +93,7 @@ efipart_init(void)
 	bzero(aliases, nin * sizeof(EFI_HANDLE));
 
 	for (n = 0; n < nin; n++) {
-		status = BS->HandleProtocol(hin[n], &devpath_guid,
+		status = OpenProtocolByHandle(hin[n], &devpath_guid,
 		    (void **)&devpath);
 		if (EFI_ERROR(status)) {
 			continue;
@@ -108,7 +107,7 @@ efipart_init(void)
 		}
 		devpathlen += DevicePathNodeLength(NextDevicePathNode(node));
 
-		status = BS->HandleProtocol(hin[n], &blkio_guid,
+		status = OpenProtocolByHandle(hin[n], &blkio_guid,
 		    (void**)&blkio);
 		if (EFI_ERROR(status))
 			continue;
@@ -162,7 +161,7 @@ efipart_print(int verbose)
 		sprintf(line, "    %s%d:", efipart_dev.dv_name, unit);
 		pager_output(line);
 
-		status = BS->HandleProtocol(h, &blkio_guid, (void **)&blkio);
+		status = OpenProtocolByHandle(h, &blkio_guid, (void **)&blkio);
 		if (!EFI_ERROR(status)) {
 			sprintf(line, "    %llu blocks",
 			    (unsigned long long)(blkio->Media->LastBlock + 1));
@@ -195,7 +194,7 @@ efipart_open(struct open_file *f, ...)
 	if (h == NULL)
 		return (EINVAL);
 
-	status = BS->HandleProtocol(h, &blkio_guid, (void **)&blkio);
+	status = OpenProtocolByHandle(h, &blkio_guid, (void **)&blkio);
 	if (EFI_ERROR(status))
 		return (efi_status_to_errno(status));
 

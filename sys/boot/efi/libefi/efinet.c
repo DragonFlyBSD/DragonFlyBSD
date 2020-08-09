@@ -23,10 +23,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/boot/efi/libefi/efinet.c 295210 2016-02-03 14:34:25Z andrew $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/boot/efi/libefi/efinet.c 295210 2016-02-03 14:34:25Z andrew $");
 
 #include <sys/param.h>
 #include <netinet/in.h>
@@ -191,7 +190,7 @@ efinet_init(struct iodesc *desc, void *machdep_hint)
 	}
 
 	h = nif->nif_driver->netif_ifs[nif->nif_unit].dif_private;
-	status = BS->HandleProtocol(h, &sn_guid, (VOID **)&nif->nif_devdata);
+	status = OpenProtocolByHandle(h, &sn_guid, (VOID **)&nif->nif_devdata);
 	if (status != EFI_SUCCESS) {
 		printf("net%d: cannot start interface (status=%llu)\n",
 		    nif->nif_unit, status);
