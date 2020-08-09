@@ -111,7 +111,7 @@ exec_gzip_imgact(struct image_params *imgp)
 			if (igz.idx >= PAGE_SIZE)
 				return ENOEXEC;
 	}
-	igz.len = imgp->attr->va_size;
+	igz.len = imgp->lvap->va_size;
 
 	error = inflate(&infl);
 
