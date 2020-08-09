@@ -95,7 +95,7 @@ init_dev(dev_info_t* dev)
 	label_size = (sizeof(*label) + 2047) & ~(size_t)2047;
 
 	label_off = 0;
-	status = bs->AllocatePool(EfiLoaderData, label_size, (void **)&label);
+	status = BS->AllocatePool(EfiLoaderData, label_size, (void **)&label);
 	if (status == EFI_SUCCESS) {
 		if (dskread(label, 0, label_size / DEV_BSIZE) == 0 &&
 		    label->d_magic == DISKMAGIC64 &&
@@ -103,7 +103,7 @@ init_dev(dev_info_t* dev)
 		    label->d_partitions[0].p_fstype == FS_BSDFFS) {
 			label_off = label->d_partitions[0].p_boffset;
 		}
-		bs->FreePool(label);
+		BS->FreePool(label);
 	}
 	return fsread(0, NULL, 0);
 }
@@ -146,7 +146,7 @@ load(const char *filepath, dev_info_t *dev, void **bufp, size_t *bufsize)
 		return (EFI_INVALID_PARAMETER);
 	}
 
-	if ((status = bs->AllocatePool(EfiLoaderData, size, &buf)) !=
+	if ((status = BS->AllocatePool(EfiLoaderData, size, &buf)) !=
 	    EFI_SUCCESS) {
 		printf("Failed to allocate read buffer %zu for '%s' (%llu)\n",
 		    size, filepath, status);
@@ -157,7 +157,7 @@ load(const char *filepath, dev_info_t *dev, void **bufp, size_t *bufsize)
 	if ((size_t)read != size) {
 		printf("Failed to read '%s' (%zd != %zu)\n", filepath, read,
 		    size);
-		(void)bs->FreePool(buf);
+		(void)BS->FreePool(buf);
 		return (EFI_INVALID_PARAMETER);
 	}
 

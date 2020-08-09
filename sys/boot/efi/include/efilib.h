@@ -73,6 +73,7 @@ int efi_handle_update_dev(EFI_HANDLE, struct devsw *, int, uint64_t);
 
 int efi_status_to_errno(EFI_STATUS);
 
+EFI_STATUS efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table);
+void efi_exit(EFI_STATUS status); /* should be __dead2 */
 EFI_STATUS main(int argc, CHAR16 *argv[]);
-void exit(EFI_STATUS status);
 void delay(int usecs);

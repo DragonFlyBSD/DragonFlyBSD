@@ -14,6 +14,7 @@ SRCS=	autoload.c \
 	conf.c \
 	copy.c \
 	devicename.c \
+	efi_main.c \
 	i386_module.c \
 	main.c \
 	self_reloc.c \

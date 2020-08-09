@@ -49,11 +49,10 @@ static const boot_module_t *boot_modules[] =
 /* The initial number of handles used to query EFI for partitions. */
 #define NUM_HANDLES_INIT	24
 
-EFI_STATUS efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE* Xsystab);
-
-EFI_SYSTEM_TABLE *systab;
-EFI_BOOT_SERVICES *bs;
-static EFI_HANDLE *image;
+EFI_HANDLE		IH;
+EFI_SYSTEM_TABLE	*ST;
+EFI_BOOT_SERVICES	*BS;
+EFI_RUNTIME_SERVICES	*RS;
 
 static EFI_GUID BlockIoProtocolGUID = BLOCK_IO_PROTOCOL;
 static EFI_GUID DevicePathGUID = DEVICE_PATH_PROTOCOL;
@@ -76,7 +75,7 @@ Malloc(size_t len, const char *file __unused, int line __unused)
 {
 	void *out;
 
-	if (bs->AllocatePool(EfiLoaderData, len, &out) == EFI_SUCCESS)
+	if (BS->AllocatePool(EfiLoaderData, len, &out) == EFI_SUCCESS)
 		return (out);
 
 	return (NULL);
@@ -85,7 +84,7 @@ Malloc(size_t len, const char *file __unused, int line __unused)
 void
 Free(void *buf, const char *file __unused, int line __unused)
 {
-	(void)bs->FreePool(buf);
+	(void)BS->FreePool(buf);
 }
 
 #endif
@@ -417,14 +416,14 @@ try_boot(void)
 		buf = NULL;
 	}
 
-	if ((status = bs->LoadImage(TRUE, image, devpath_last(dev->devpath),
+	if ((status = BS->LoadImage(TRUE, IH, devpath_last(dev->devpath),
 	    loaderbuf, loadersize, &loaderhandle)) != EFI_SUCCESS) {
 		printf("Failed to load image provided by %s, size: %zu, (%llu)\n",
 		     mod->name, loadersize, status);
 		goto errout;
 	}
 
-	if ((status = bs->HandleProtocol(loaderhandle, &LoadedImageGUID,
+	if ((status = BS->HandleProtocol(loaderhandle, &LoadedImageGUID,
 	    (VOID**)&loaded_image)) != EFI_SUCCESS) {
 		printf("Failed to query LoadedImage provided by %s (%llu)\n",
 		    mod->name, status);
@@ -450,7 +449,7 @@ try_boot(void)
 	DSTALL(1000000);
 	DPRINTF(".\n");
 
-	if ((status = bs->StartImage(loaderhandle, NULL, NULL)) !=
+	if ((status = BS->StartImage(loaderhandle, NULL, NULL)) !=
 	    EFI_SUCCESS) {
 		printf("Failed to start image provided by %s (%llu)\n",
 		    mod->name, status);
@@ -484,7 +483,7 @@ probe_handle(EFI_HANDLE h, EFI_DEVICE_PATH *imgpath, BOOLEAN *preferred)
 	UINTN i;
 
 	/* Figure out if we're dealing with an actual partition. */
-	status = bs->HandleProtocol(h, &DevicePathGUID, (void **)&devpath);
+	status = BS->HandleProtocol(h, &DevicePathGUID, (void **)&devpath);
 	if (status == EFI_UNSUPPORTED)
 		return (status);
 
@@ -496,7 +495,7 @@ probe_handle(EFI_HANDLE h, EFI_DEVICE_PATH *imgpath, BOOLEAN *preferred)
 
 	DPRINTF("probing: %s\n", devpath_str(devpath));
 
-	status = bs->HandleProtocol(h, &BlockIoProtocolGUID, (void **)&blkio);
+	status = BS->HandleProtocol(h, &BlockIoProtocolGUID, (void **)&blkio);
 	if (status == EFI_UNSUPPORTED)
 		return (status);
 
@@ -516,7 +515,7 @@ probe_handle(EFI_HANDLE h, EFI_DEVICE_PATH *imgpath, BOOLEAN *preferred)
 		if (boot_modules[i] == NULL)
 			continue;
 
-		if ((status = bs->AllocatePool(EfiLoaderData,
+		if ((status = BS->AllocatePool(EfiLoaderData,
 		    sizeof(*devinfo), (void **)&devinfo)) !=
 		    EFI_SUCCESS) {
 			DPRINTF("\nFailed to allocate devinfo (%llu)\n",
@@ -533,7 +532,7 @@ probe_handle(EFI_HANDLE h, EFI_DEVICE_PATH *imgpath, BOOLEAN *preferred)
 		status = boot_modules[i]->probe(devinfo);
 		if (status == EFI_SUCCESS)
 			return (EFI_SUCCESS);
-		(void)bs->FreePool(devinfo);
+		(void)BS->FreePool(devinfo);
 	}
 
 	return (EFI_UNSUPPORTED);
@@ -587,12 +586,13 @@ efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE *Xsystab)
 	UINTN i, max_dim, best_mode, cols, rows, hsize, nhandles;
 
 	/* Basic initialization*/
-	systab = Xsystab;
-	image = Ximage;
-	bs = Xsystab->BootServices;
+	ST = Xsystab;
+	IH = Ximage;
+	BS = ST->BootServices;
+	RS = ST->RuntimeServices;
 
 	/* Set up the console, so printf works. */
-	status = bs->LocateProtocol(&ConsoleControlGUID, NULL,
+	status = BS->LocateProtocol(&ConsoleControlGUID, NULL,
 	    (VOID **)&ConsoleControl);
 	if (status == EFI_SUCCESS)
 		(void)ConsoleControl->SetMode(ConsoleControl,
@@ -600,7 +600,7 @@ efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE *Xsystab)
 	/*
 	 * Reset the console and find the best text mode.
 	 */
-	conout = systab->ConOut;
+	conout = ST->ConOut;
 	conout->Reset(conout, TRUE);
 	max_dim = best_mode = 0;
 	for (i = 0; ; i++) {
@@ -637,24 +637,24 @@ efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE *Xsystab)
 
 	/* Get all the device handles */
 	hsize = (UINTN)NUM_HANDLES_INIT * sizeof(EFI_HANDLE);
-	if ((status = bs->AllocatePool(EfiLoaderData, hsize, (void **)&handles))
+	if ((status = BS->AllocatePool(EfiLoaderData, hsize, (void **)&handles))
 	    != EFI_SUCCESS)
 		panic("Failed to allocate %d handles (%llu)", NUM_HANDLES_INIT,
 		    status);
 
-	status = bs->LocateHandle(ByProtocol, &BlockIoProtocolGUID, NULL,
+	status = BS->LocateHandle(ByProtocol, &BlockIoProtocolGUID, NULL,
 	    &hsize, handles);
 	switch (status) {
 	case EFI_SUCCESS:
 		break;
 	case EFI_BUFFER_TOO_SMALL:
-		(void)bs->FreePool(handles);
-		if ((status = bs->AllocatePool(EfiLoaderData, hsize,
+		(void)BS->FreePool(handles);
+		if ((status = BS->AllocatePool(EfiLoaderData, hsize,
 		    (void **)&handles)) != EFI_SUCCESS) {
 			panic("Failed to allocate %llu handles (%llu)", hsize /
 			    sizeof(*handles), status);
 		}
-		status = bs->LocateHandle(ByProtocol, &BlockIoProtocolGUID,
+		status = BS->LocateHandle(ByProtocol, &BlockIoProtocolGUID,
 		    NULL, &hsize, handles);
 		if (status != EFI_SUCCESS)
 			panic("Failed to get device handles (%llu)\n",
@@ -671,10 +671,10 @@ efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE *Xsystab)
 	DPRINTF("\n");
 
 	/* Determine the devpath of our image so we can prefer it. */
-	status = bs->HandleProtocol(image, &LoadedImageGUID, (VOID**)&img);
+	status = BS->HandleProtocol(IH, &LoadedImageGUID, (VOID**)&img);
 	imgpath = NULL;
 	if (status == EFI_SUCCESS) {
-		status = bs->HandleProtocol(img->DeviceHandle, &DevicePathGUID,
+		status = BS->HandleProtocol(img->DeviceHandle, &DevicePathGUID,
 		    (void **)&imgpath);
 		if (status != EFI_SUCCESS)
 			DPRINTF("Failed to get image DevicePath (%llu)\n",
@@ -741,9 +741,9 @@ putchar(int c)
 	if (c == '\n') {
 		buf[0] = '\r';
 		buf[1] = 0;
-		systab->ConOut->OutputString(systab->ConOut, buf);
+		ST->ConOut->OutputString(ST->ConOut, buf);
 	}
 	buf[0] = c;
 	buf[1] = 0;
-	systab->ConOut->OutputString(systab->ConOut, buf);
+	ST->ConOut->OutputString(ST->ConOut, buf);
 }

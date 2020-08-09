@@ -372,6 +372,7 @@ extern int	null_readdir(struct open_file *, struct dirent *);
  * Machine dependent functions and data, must be provided or stubbed by 
  * the consumer 
  */
+extern void		exit(int); /* should be __dead2 */
 extern int		getchar(void);
 extern int		ischar(void);
 extern void		putchar(int);
