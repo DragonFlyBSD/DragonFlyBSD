@@ -115,10 +115,10 @@ typedef struct hammer2_udppkt hammer2_udppkt_t;
 #endif
 
 extern int DebugOpt;
-extern int ForceOpt;
-extern int RecurseOpt;
 extern int VerboseOpt;
 extern int QuietOpt;
+extern int ForceOpt;
+extern int RecurseOpt;
 extern int NormalExit;
 extern size_t MemOpt;
 

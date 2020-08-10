@@ -38,9 +38,9 @@
 int DebugOpt;
 int VerboseOpt;
 int QuietOpt;
-int NormalExit = 1;	/* if set to 0 main() has to pthread_exit() */
-int RecurseOpt;
 int ForceOpt;
+int RecurseOpt;
+int NormalExit = 1;	/* if set to 0 main() has to pthread_exit() */
 size_t MemOpt;
 
 static void usage(int code);
@@ -64,7 +64,7 @@ main(int ac, char **av)
 	/*
 	 * Core options
 	 */
-	while ((ch = getopt(ac, av, "adfm:rqs:t:u:v")) != -1) {
+	while ((ch = getopt(ac, av, "adfm:rs:t:u:vq")) != -1) {
 		switch(ch) {
 		case 'a':
 			all_opt = 1;
