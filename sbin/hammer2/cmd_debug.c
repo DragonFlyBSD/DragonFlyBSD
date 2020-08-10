@@ -1170,16 +1170,21 @@ int
 cmd_dumpchain(const char *path, u_int flags)
 {
 	int dummy = (int)flags;
+	int ecode = 0;
 	int fd;
 
 	fd = open(path, O_RDONLY);
 	if (fd >= 0) {
-		ioctl(fd, HAMMER2IOC_DEBUG_DUMP, &dummy);
+		if (ioctl(fd, HAMMER2IOC_DEBUG_DUMP, &dummy) < 0) {
+			fprintf(stderr, "%s: %s\n", path, strerror(errno));
+			ecode = 1;
+		}
 		close(fd);
 	} else {
 		fprintf(stderr, "unable to open %s\n", path);
+		ecode = 1;
 	}
-	return 0;
+	return ecode;
 }
 
 
