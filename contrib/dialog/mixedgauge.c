@@ -1,9 +1,9 @@
 /*
- *  $Id: mixedgauge.c,v 1.30 2012/11/18 16:30:20 tom Exp $
+ *  $Id: mixedgauge.c,v 1.36 2020/03/26 03:22:44 tom Exp $
  *
  *  mixedgauge.c -- implements the mixedgauge dialog
  *
- *  Copyright 2007-2011,2012	Thomas E. Dickey
+ *  Copyright 2007-2019,2020	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -89,7 +89,7 @@ status_string(char *given, char **freeMe)
 	    break;
 	}
     } else if (*given == '-') {
-	size_t need = strlen(++given);
+	size_t need = strlen(++given) + 4;
 	char *temp = dlg_malloc(char, need);
 	*freeMe = temp;
 	sprintf(temp, "%3s%%", given);
@@ -110,7 +110,6 @@ myprint_status(DIALOG_MIXEDGAUGE * dlg)
     int limit_y = dlg->height;
     int limit_x = dlg->width;
 
-    int y = MARGIN;
     int item;
     int cells = dlg->len_text - 2;
     int lm = limit_x - dlg->len_text - 1;
@@ -118,15 +117,15 @@ myprint_status(DIALOG_MIXEDGAUGE * dlg)
     int last_y = 0, last_x = 0;
     int j, xxx;
     float percent;
-    const char *status = "";
     char *freeMe = 0;
 
     bm -= (2 * MARGIN);
     getyx(win, last_y, last_x);
     for (item = 0; item < dlg->item_no; ++item) {
+	const char *status = "";
 	chtype attr = A_NORMAL;
+	int y = item + MARGIN + 1;
 
-	y = item + MARGIN + 1;
 	if (y > bm)
 	    break;
 
@@ -135,6 +134,7 @@ myprint_status(DIALOG_MIXEDGAUGE * dlg)
 	    continue;
 
 	(void) wmove(win, y, 2 * MARGIN);
+	dlg_attrset(win, dialog_attr);
 	dlg_print_text(win, dlg->list[item].name, lm, &attr);
 
 	(void) wmove(win, y, lm);
@@ -142,7 +142,7 @@ myprint_status(DIALOG_MIXEDGAUGE * dlg)
 	(void) wmove(win, y, lm + (cells - (int) strlen(status)) / 2);
 	if (freeMe) {
 	    (void) wmove(win, y, lm + 1);
-	    (void) wattrset(win, title_attr);
+	    dlg_attrset(win, title_attr);
 	    for (j = 0; j < cells; j++)
 		(void) waddch(win, ' ');
 
@@ -150,9 +150,9 @@ myprint_status(DIALOG_MIXEDGAUGE * dlg)
 	    (void) waddstr(win, status);
 
 	    if ((title_attr & A_REVERSE) != 0) {
-		wattroff(win, A_REVERSE);
+		dlg_attroff(win, A_REVERSE);
 	    } else {
-		(void) wattrset(win, A_REVERSE);
+		dlg_attrset(win, A_REVERSE);
 	    }
 	    (void) wmove(win, y, lm + 1);
 
@@ -173,6 +173,7 @@ myprint_status(DIALOG_MIXEDGAUGE * dlg)
 	    (void) waddstr(win, status);
 	}
 	(void) wmove(win, y, limit_x - 3);
+	dlg_attrset(win, dialog_attr);
 	(void) waddch(win, ']');
 	(void) wnoutrefresh(win);
     }
@@ -189,10 +190,10 @@ mydraw_mixed_box(WINDOW *win, int y, int x, int height, int width,
 	chtype attr = A_NORMAL;
 	const char *message = _("Overall Progress");
 	chtype save2 = dlg_get_attrs(win);
-	(void) wattrset(win, title_attr);
+	dlg_attrset(win, title_attr);
 	(void) wmove(win, y, x + 2);
 	dlg_print_text(win, message, width, &attr);
-	(void) wattrset(win, save2);
+	dlg_attrset(win, save2);
     }
 }
 
@@ -220,7 +221,7 @@ dlg_update_mixedgauge(DIALOG_MIXEDGAUGE * dlg, int percent)
      * attribute.
      */
     (void) wmove(dlg->dialog, dlg->height - 3, 4);
-    (void) wattrset(dlg->dialog, gauge_attr);
+    dlg_attrset(dlg->dialog, gauge_attr);
 
     for (i = 0; i < (dlg->width - 2 * (3 + MARGIN)); i++)
 	(void) waddch(dlg->dialog, ' ');
@@ -235,9 +236,9 @@ dlg_update_mixedgauge(DIALOG_MIXEDGAUGE * dlg, int percent)
      */
     x = (percent * (dlg->width - 2 * (3 + MARGIN))) / 100;
     if ((title_attr & A_REVERSE) != 0) {
-	wattroff(dlg->dialog, A_REVERSE);
+	dlg_attroff(dlg->dialog, A_REVERSE);
     } else {
-	(void) wattrset(dlg->dialog, A_REVERSE);
+	dlg_attrset(dlg->dialog, A_REVERSE);
     }
     (void) wmove(dlg->dialog, dlg->height - 3, 4);
     for (i = 0; i < x; i++) {
@@ -264,9 +265,11 @@ dlg_begin_mixedgauge(DIALOG_MIXEDGAUGE * dlg,
 		     int aItemNo,
 		     char **items)
 {
-    int n, y, x;
+    int y, x;
 
     if (!*began) {
+	int n;
+
 	curs_set(0);
 
 	memset(dlg, 0, sizeof(*dlg));
@@ -338,7 +341,7 @@ dlg_begin_mixedgauge(DIALOG_MIXEDGAUGE * dlg,
 				      dlg->width,
 				      y + dlg->item_no + (2 * MARGIN),
 				      x);
-	(void) wattrset(dlg->caption, dialog_attr);
+	dlg_attrset(dlg->caption, dialog_attr);
 	dlg_print_autowrap(dlg->caption, dlg->prompt, dlg->height, dlg->width);
     }
 
@@ -365,6 +368,8 @@ dlg_finish_mixedgauge(DIALOG_MIXEDGAUGE * dlg, int status)
 #endif
     curs_set(1);
     dlg_del_window(dlg->dialog);
+    free(dlg->prompt);
+    free(dlg->list);
     return status;
 }
 
@@ -382,6 +387,15 @@ dialog_mixedgauge(const char *title,
 {
     DIALOG_MIXEDGAUGE dlg;
     int began = 0;
+
+    DLG_TRACE(("# mixedgauge args:\n"));
+    DLG_TRACE2S("title", title);
+    DLG_TRACE2S("message", cprompt);
+    DLG_TRACE2N("height", height);
+    DLG_TRACE2N("width", width);
+    DLG_TRACE2N("percent", percent);
+    DLG_TRACE2N("llength", item_no);
+    /* FIXME dump the items[][] too */
 
     dlg_begin_mixedgauge(&dlg, &began, title, cprompt, height,
 			 width, item_no, items);

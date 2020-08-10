@@ -1,9 +1,9 @@
 /*
- * $Id: dialog.c,v 1.240 2015/09/20 23:48:54 tom Exp $
+ * $Id: dialog.c,v 1.273 2020/02/29 01:32:21 tom Exp $
  *
  *  cdialog - Display simple dialog boxes from shell scripts
  *
- *  Copyright 2000-2014,2015	Thomas E. Dickey
+ *  Copyright 2000-2019,2020	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -25,6 +25,7 @@
  */
 
 #include <dialog.h>
+
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -32,6 +33,8 @@
 #ifdef HAVE_SETLOCALE
 #include <locale.h>
 #endif
+
+#include <dlg_internals.h>
 
 #define PASSARGS             t,       av,        offset_add
 #define CALLARGS const char *t, char *av[], int *offset_add
@@ -109,6 +112,8 @@ typedef enum {
     ,o_prgbox
     ,o_print_maxsize
     ,o_print_size
+    ,o_print_text_only
+    ,o_print_text_size
     ,o_print_version
     ,o_programbox
     ,o_progressbox
@@ -151,10 +156,12 @@ typedef enum {
     ,o_editbox
     ,o_fselect
     ,o_timebox
+    ,o_week_start
 #endif
 #ifdef HAVE_XDIALOG2
     ,o_buildlist
     ,o_rangebox
+    ,o_reorder
     ,o_treeview
 #endif
 #if defined(HAVE_XDIALOG2) || defined(HAVE_WHIPTAIL)
@@ -164,6 +171,7 @@ typedef enum {
 #ifdef HAVE_DLG_TRACE
     ,o_trace
 #endif
+    ,o_iso_week
 } eOptions;
 
 /*
@@ -186,12 +194,25 @@ typedef struct {
     callerFn *jumper;
 } Mode;
 
-static bool *dialog_opts;
+static int known_opts = 0;
+static const char **dialog_opts;
 static char **dialog_argv;
+
+static char **special_argv = 0;
+static int special_argc = 0;
 
 static bool ignore_unknown = FALSE;
 
 static const char *program = "dialog";
+
+#ifdef NO_LEAKS
+typedef struct _all_blobs {
+    struct _all_blobs *next;
+    void *blob;
+} AllBlobs;
+
+static AllBlobs *all_blobs;
+#endif
 
 /*
  * The options[] table is organized this way to make it simple to maintain
@@ -272,6 +293,8 @@ static const Options options[] = {
     { "prgbox",		o_prgbox,		2, "<text> <command> <height> <width>" },
     { "print-maxsize",	o_print_maxsize,	1, "" },
     { "print-size",	o_print_size,		1, "" },
+    { "print-text-only",o_print_text_only,	5, "<text> <height> <width>" },
+    { "print-text-size",o_print_text_size,	5, "<text> <height> <width>" },
     { "print-version",	o_print_version,	5, "" },
     { "programbox",	o_programbox,		2, "<text> <height> <width>" },
     { "progressbox",	o_progressbox,		2, "<text> <height> <width>" },
@@ -320,12 +343,15 @@ static const Options options[] = {
     { "editbox",	o_editbox,		2, "<file> <height> <width>" },
     { "fselect",	o_fselect,		2, "<filepath> <height> <width>" },
     { "timebox",	o_timebox,		2, "<text> <height> <width> <hour> <minute> <second>" },
+    { "week-start",	o_week_start,		1, "<str>" },
+    { "iso-week",	o_iso_week,		1, NULL },
 #endif
 #ifdef HAVE_XDIALOG2
-    { "buildlist",	o_buildlist,		2, "<text> <height> <width> <tag1> <item1> <status1>..." },
+    { "buildlist",	o_buildlist,		2, "<text> <height> <width> <list-height> <tag1> <item1> <status1>..." },
     { "no-items", 	o_no_items,		1, "" },
     { "no-tags", 	o_no_tags,		1, "" },
     { "rangebox",	o_rangebox,		2, "<text> <height> <width> <min-value> <max-value> <default-value>" },
+    { "reorder", 	o_reorder,		1, "" },
     { "treeview",	o_treeview,		2, "<text> <height> <width> <list-height> <tag1> <item1> <status1> <depth1>..." },
 #endif
 #if defined(HAVE_XDIALOG2) || defined(HAVE_WHIPTAIL)
@@ -337,6 +363,76 @@ static const Options options[] = {
 #endif
 };
 /* *INDENT-ON* */
+
+#ifdef NO_LEAKS
+static void
+ignore_leak(void *value)
+{
+    AllBlobs *next = dlg_calloc(AllBlobs, (size_t) 1);
+    if (next != 0) {
+	next->blob = value;
+	next->next = all_blobs;
+	all_blobs = next;
+    }
+}
+
+static void
+handle_leaks(void)
+{
+    while (all_blobs != 0) {
+	char *blob = all_blobs->blob;
+	AllBlobs *next = all_blobs->next;
+	free(blob);
+	free(all_blobs);
+	all_blobs = next;
+    }
+    free(dialog_opts);
+    if (special_argv != 0) {
+	free(special_argv[0]);
+	free(special_argv);
+	special_argv = 0;
+	special_argc = 0;
+    }
+}
+#else
+#define handle_leaks()		/* nothing */
+#define ignore_leak(n)		/* nothing */
+#endif
+
+#define OptionChars "\
+0123456789\
+-\
+abcdefghijklmnopqrstuvwxyz\
+"
+
+/*
+ * Check if the given string from main's argv is an option.
+ */
+static bool
+isOption(const char *arg)
+{
+    bool result = FALSE;
+
+    if (arg != 0) {
+	if (dialog_opts != 0) {
+	    int n;
+	    for (n = 0; dialog_opts[n] != 0; ++n) {
+		if (dialog_opts[n] == arg) {
+		    result = TRUE;
+		    break;
+		}
+	    }
+	} else if (!strncmp(arg, "--", (size_t) 2) && isalpha(UCH(arg[2]))) {
+	    if (strlen(arg) == (strspn) (arg, OptionChars)) {
+		result = TRUE;
+	    } else {
+		handle_leaks();
+		dlg_exiterr("Invalid option \"%s\"", arg);
+	    }
+	}
+    }
+    return result;
+}
 
 /*
  * Make an array showing which argv[] entries are options.  Use "--" as a
@@ -357,37 +453,55 @@ unescape_argv(int *argcp, char ***argvp)
     int j, k;
     int limit_includes = 20 + *argcp;
     int count_includes = 0;
-    bool changed = FALSE;
     bool doalloc = FALSE;
     char *filename;
+    const char **my_argv = 0;
+    int my_argc;
 
-    dialog_opts = dlg_calloc(bool, (size_t) *argcp + 1);
-    assert_ptr(dialog_opts, "unescape_argv");
+    DLG_TRACE(("# unescape_argv\n"));
+    for (k = 0; k < 2; ++k) {
+
+	my_argc = 0;
+	if (special_argv != 0) {
+	    for (j = 0; special_argv[j] != 0; ++j) {
+		if (!strcmp(special_argv[j], "--")) {
+		    break;
+		} else if (isOption(special_argv[j])) {
+		    if (k != 0)
+			my_argv[my_argc] = special_argv[j];
+		    my_argc++;
+		}
+	    }
+	}
+
+	if (k == 0) {
+	    my_argc += (*argcp + 1);
+	    my_argv = dlg_calloc(const char *, (size_t) my_argc);
+	    assert_ptr(my_argv, "unescape_argv");
+	}
+    }
 
     for (j = 1; j < *argcp; j++) {
 	bool escaped = FALSE;
 	if (!strcmp((*argvp)[j], "--")) {
 	    escaped = TRUE;
-	    changed = dlg_eat_argv(argcp, argvp, j, 1);
+	    dlg_eat_argv(argcp, argvp, j, 1);
 	} else if (!strcmp((*argvp)[j], "--args")) {
 	    fprintf(stderr, "Showing arguments at arg%d\n", j);
 	    for (k = 0; k < *argcp; ++k) {
 		fprintf(stderr, " arg%d:%s\n", k, (*argvp)[k]);
 	    }
-	    changed = dlg_eat_argv(argcp, argvp, j, 1);
+	    dlg_eat_argv(argcp, argvp, j, 1);
 	    --j;
 	} else if (!strcmp((*argvp)[j], "--file")) {
-	    if (++count_includes > limit_includes)
+	    if (++count_includes > limit_includes) {
+		handle_leaks();
 		dlg_exiterr("Too many --file options");
+	    }
 
 	    if ((filename = (*argvp)[j + 1]) != 0) {
 		FILE *fp;
 		char **list;
-		char *blob;
-		int added;
-		size_t bytes_read;
-		size_t length;
-		int n;
 
 		if (*filename == '&') {
 		    fp = fdopen(atoi(filename + sizeof(char)), "r");
@@ -396,6 +510,13 @@ unescape_argv(int *argcp, char ***argvp)
 		}
 
 		if (fp) {
+		    char *blob;
+		    int added;
+		    size_t bytes_read;
+		    size_t length;
+		    int n;
+
+		    DLG_TRACE(("# opened --file %s ..\n", filename));
 		    blob = NULL;
 		    length = 0;
 		    do {
@@ -406,12 +527,15 @@ unescape_argv(int *argcp, char ***argvp)
 					     (size_t) BUFSIZ,
 					   fp);
 			length += bytes_read;
-			if (ferror(fp))
+			if (ferror(fp)) {
+			    handle_leaks();
 			    dlg_exiterr("error on filehandle in unescape_argv");
+			}
 		    } while (bytes_read == BUFSIZ);
 		    fclose(fp);
 
 		    blob[length] = '\0';
+		    ignore_leak(blob);
 
 		    list = dlg_string_to_argv(blob);
 		    added = dlg_count_argv(list);
@@ -426,6 +550,7 @@ unescape_argv(int *argcp, char ***argvp)
 			    assert_ptr(*argvp, "unescape_argv");
 			} else {
 			    char **newp = dlg_malloc(char *, need);
+			    ignore_leak(newp);
 			    assert_ptr(newp, "unescape_argv");
 			    for (n = 0; n < *argcp; ++n) {
 				newp[n] = (*argvp)[n];
@@ -434,14 +559,13 @@ unescape_argv(int *argcp, char ***argvp)
 			    *argvp = newp;
 			    doalloc = TRUE;
 			}
-			dialog_opts = dlg_realloc(bool, need, dialog_opts);
-			assert_ptr(dialog_opts, "unescape_argv");
+			my_argv = dlg_realloc(const char *, need, my_argv);
+			assert_ptr(my_argv, "unescape_argv");
 
 			/* Shift the arguments after '--file <filepath>'
 			   right by (added - 2) positions */
 			for (n = *argcp - 1; n >= j + 2; --n) {
 			    (*argvp)[n + added - 2] = (*argvp)[n];
-			    dialog_opts[n + added - 2] = dialog_opts[n];
 			}
 		    } else if (added < 2) {
 			/* 0 or 1 argument read from the included file
@@ -449,24 +573,25 @@ unescape_argv(int *argcp, char ***argvp)
 			   left by (2 - added) positions */
 			for (n = j + added; n + 2 - added < *argcp; ++n) {
 			    (*argvp)[n] = (*argvp)[n + 2 - added];
-			    dialog_opts[n] = dialog_opts[n + 2 - added];
 			}
 		    }
 		    /* Copy the inserted arguments to *argvp */
 		    for (n = 0; n < added; ++n) {
 			(*argvp)[n + j] = list[n];
-			dialog_opts[n + j] = FALSE;
 		    }
 		    *argcp += added - 2;
 		    (*argvp)[*argcp] = 0;	/* Write the NULL terminator */
 		    free(list);	/* No-op if 'list' is NULL */
 		    /* Force rescan starting from the first inserted argument */
 		    --j;
+		    DLG_TRACE(("# finished --file\n"));
 		    continue;
 		} else {
+		    handle_leaks();
 		    dlg_exiterr("Cannot open --file %s", filename);
 		}
 	    } else {
+		handle_leaks();
 		dlg_exiterr("No value given for --file");
 	    }
 	}
@@ -474,63 +599,30 @@ unescape_argv(int *argcp, char ***argvp)
 	    && (*argvp)[j] != 0
 	    && !strncmp((*argvp)[j], "--", (size_t) 2)
 	    && isalpha(UCH((*argvp)[j][2]))) {
-	    dialog_opts[j] = TRUE;
+	    my_argv[my_argc++] = (*argvp)[j];
+	    DLG_TRACE(("#\toption argv[%d]=%s\n", j, (*argvp)[j]));
 	}
     }
 
-    /* if we didn't find any "--" tokens, there's no reason to do the table
-     * lookup in isOption()
-     */
-    if (!changed) {
-	free(dialog_opts);
-	dialog_opts = 0;
-    }
+    my_argv[my_argc] = 0;
+
+    known_opts = my_argc;
+    dialog_opts = my_argv;
+
+    DLG_TRACE(("#\t%d options vs %d arguments\n", known_opts, *argcp));
     dialog_argv = (*argvp);
-}
-
-#define OptionChars "\
-0123456789\
--\
-abcdefghijklmnopqrstuvwxyz\
-"
-
-/*
- * Check if the given string from main's argv is an option.
- */
-static bool
-isOption(const char *arg)
-{
-    bool result = FALSE;
-
-    if (arg != 0) {
-	if (dialog_opts != 0) {
-	    int n;
-	    for (n = 1; dialog_argv[n] != 0; ++n) {
-		if (dialog_argv[n] == arg) {
-		    result = dialog_opts[n];
-		    break;
-		}
-	    }
-	} else if (!strncmp(arg, "--", (size_t) 2) && isalpha(UCH(arg[2]))) {
-	    if (strlen(arg) == (strspn) (arg, OptionChars)) {
-		result = TRUE;
-	    } else {
-		dlg_exiterr("Invalid option \"%s\"", arg);
-	    }
-	}
-    }
-    return result;
 }
 
 static eOptions
 lookupOption(const char *name, int pass)
 {
-    unsigned n;
     eOptions result = o_unknown;
 
     if (isOption(name)) {
+	unsigned n;
+
 	name += 2;
-	for (n = 0; n < sizeof(options) / sizeof(options[0]); n++) {
+	for (n = 0; n < TableSize(options); n++) {
 	    if ((pass & options[n].pass) != 0
 		&& !strcmp(name, options[n].name)) {
 		result = options[n].code;
@@ -544,6 +636,7 @@ lookupOption(const char *name, int pass)
 static void
 Usage(const char *msg)
 {
+    handle_leaks();
     dlg_exiterr("Error: %s.\nUse --help to list options.\n\n", msg);
 }
 
@@ -570,20 +663,25 @@ static int
 howmany_tags(char *argv[], int group)
 {
     int result = 0;
-    int have;
-    const char *format = "Expected %d arguments, found only %d";
     char temp[80];
 
     while (argv[0] != 0) {
+	int have;
+
 	if (isOption(argv[0]))
 	    break;
 	if ((have = arg_rest(argv)) < group) {
+	    const char *format = _("Expected %d arguments, found only %d");
 	    sprintf(temp, format, group, have);
+	    Usage(temp);
+	} else if ((have % group) != 0) {
+	    const char *format = _("Expected %d arguments, found extra %d");
+	    sprintf(temp, format, group, (have % group));
 	    Usage(temp);
 	}
 
-	argv += group;
-	result++;
+	argv += have;
+	result += (have / group);
     }
 
     return result;
@@ -595,11 +693,12 @@ numeric_arg(char **av, int n)
     int result = 0;
 
     if (n < dlg_count_argv(av)) {
-	char msg[80];
 	char *last = 0;
 	result = (int) strtol(av[n], &last, 10);
 
 	if (last == 0 || *last != 0) {
+	    char msg[80];
+
 	    sprintf(msg, "Expected a number for token %d of %.20s", n, av[0]);
 	    Usage(msg);
 	}
@@ -652,6 +751,7 @@ show_result(int ret)
 	if (dialog_vars.input_result != 0
 	    && dialog_vars.input_result[0] != '\0') {
 	    fputs(dialog_vars.input_result, dialog_state.output);
+	    DLG_TRACE(("# input_result:\n%s\n", dialog_vars.input_result));
 	    either = TRUE;
 	}
 	if (either) {
@@ -890,7 +990,7 @@ call_buildlist(CALLARGS)
 			      numeric_arg(av, 3),
 			      numeric_arg(av, 4),
 			      tags, av + 5,
-			      TRUE);
+			      dialog_vars.reorder);
     RestoreNoTags();
     return result;
 }
@@ -1145,13 +1245,15 @@ static const Mode modes[] =
     {o_tailboxbg,       4, 4, call_tailboxbg},
 #endif
 #ifdef HAVE_XDIALOG
-    {o_buildlist,       4, 0, call_buildlist},
     {o_calendar,        4, 7, call_calendar},
     {o_dselect,         4, 5, call_dselect},
     {o_editbox,         4, 4, call_editbox},
     {o_fselect,         4, 5, call_fselect},
-    {o_rangebox,        5, 7, call_rangebox},
     {o_timebox,         4, 7, call_timebox},
+#endif
+#ifdef HAVE_XDIALOG2
+    {o_buildlist,       4, 0, call_buildlist},
+    {o_rangebox,        5, 7, call_rangebox},
     {o_treeview,        4, 0, call_treeview},
 #endif
 };
@@ -1215,7 +1317,7 @@ button_code(const char *name)
     int code = DLG_EXIT_ERROR;
     size_t i;
 
-    for (i = 0; i < (sizeof(table) / sizeof(table[0])); i++) {
+    for (i = 0; i < TableSize(table); i++) {
 	if (!dlg_strcmp(name, table[i].name)) {
 	    code = table[i].code;
 	    break;
@@ -1229,6 +1331,67 @@ button_code(const char *name)
     }
 
     return code;
+}
+
+/*
+ * If this is the last option, we do not want any error messages - just our
+ * output.  Calling end_dialog() cancels the refresh() at the end of the
+ * program as well.
+ */
+static void
+IgnoreNonScreen(char **argv, int offset)
+{
+    if (argv[offset + 1] == 0) {
+	ignore_unknown = TRUE;
+	end_dialog();
+    }
+}
+
+static void
+PrintTextOnly(char **argv, int *offset, eOptions code)
+{
+    /* TODO - handle two optional numeric params */
+    char *text;
+    int height = 0;
+    int width = 0;
+    int height2 = 0;
+    int width2 = 0;
+    int next = arg_rest(argv + *offset);
+
+    if (LINES <= 0 && COLS <= 0) {
+	dlg_ttysize(fileno(dialog_state.input),
+		    &dialog_state.screen_height,
+		    &dialog_state.screen_width);
+    }
+
+    text = strdup(optionString(argv, offset));
+    IgnoreNonScreen(argv, *offset);
+
+    if (next >= 1) {
+	next = MIN(next, 3);
+	height = numeric_arg(argv, *offset + 1);
+	if (next >= 2)
+	    width = numeric_arg(argv, *offset + 2);
+	*offset += next - 1;
+    }
+
+    dlg_trim_string(text);
+    dlg_auto_size(NULL, text, &height2, &width2, height, width);
+
+    switch (code) {
+    case o_print_text_only:
+	dialog_state.text_only = TRUE;
+	dlg_print_autowrap(stdscr, text, height2, width2);
+	dialog_state.text_only = FALSE;
+	break;
+    case o_print_text_size:
+	fprintf(dialog_state.output, "%d %d\n",
+		dialog_state.text_height,
+		dialog_state.text_width);
+	break;
+    default:
+	break;
+    }
 }
 
 /*
@@ -1259,7 +1422,7 @@ lookupMode(eOptions code)
     const Mode *modePtr = 0;
     unsigned n;
 
-    for (n = 0; n < sizeof(modes) / sizeof(modes[0]); n++) {
+    for (n = 0; n < TableSize(modes); n++) {
 	if (modes[n].code == code) {
 	    modePtr = &modes[n];
 	    break;
@@ -1294,7 +1457,7 @@ Help(void)
     static const char *const tbl_1[] =
     {
 	"cdialog (ComeOn Dialog!) version %s",
-	"Copyright 2000-2014,2015 Thomas E. Dickey",
+	"Copyright 2000-2017,2018 Thomas E. Dickey",
 	"This is free software; see the source for copying conditions.  There is NO",
 	"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
 	"",
@@ -1315,7 +1478,7 @@ Help(void)
 	"Global-auto-size if also menu_height/list_height = 0.",
 	0
     };
-    size_t limit = sizeof(options) / sizeof(options[0]);
+    size_t limit = TableSize(options);
     size_t j, k;
     const Options **opts;
 
@@ -1348,13 +1511,15 @@ Help(void)
     for (j = 0; j < limit; j++) {
 	if ((opts[j]->pass & 2) != 0
 	    && opts[j]->help != 0
-	    && lookupMode(opts[j]->code))
+	    && lookupMode(opts[j]->code)) {
 	    fprintf(dialog_state.output, "  --%-12s %s\n", opts[j]->name,
 		    opts[j]->help);
+	}
     }
     PrintList(tbl_3);
 
     free(opts);
+    handle_leaks();
     dlg_exit(DLG_EXIT_OK);
 }
 
@@ -1373,13 +1538,13 @@ process_trace_option(char **argv, int *offset)
     if (dialog_state.trace_output == 0) {
 	dlg_trace(optionString(argv, offset));
     } else {
-	dlg_trace_msg("# ignore extra --trace option\n");
+	DLG_TRACE(("# ignore extra --trace option\n"));
 	*offset += 1;
     }
 
-    dlg_trace_msg("# Parameters:\n");
+    DLG_TRACE(("# Parameters:\n"));
     for (j = 0; argv[j] != 0; ++j) {
-	dlg_trace_msg("# argv[%d] = %s\n", j, argv[j]);
+	DLG_TRACE(("#\targv[%d] = %s\n", j, argv[j]));
     }
 }
 #endif
@@ -1390,15 +1555,16 @@ process_trace_option(char **argv, int *offset)
  * output stream.
  */
 static int
-process_common_options(int argc, char **argv, int offset, bool output)
+process_common_options(int argc, char **argv, int offset, int output)
 {
     bool done = FALSE;
+    eOptions code;
 
-    dlg_trace_msg("# process_common_options, offset %d\n", offset);
+    DLG_TRACE(("# process_common_options, offset %d\n", offset));
 
     while (offset < argc && !done) {	/* Common options */
-	dlg_trace_msg("#\targv[%d] = %s\n", offset, argv[offset]);
-	switch (lookupOption(argv[offset], 1)) {
+	DLG_TRACE(("#\targv[%d] = %s\n", offset, argv[offset]));
+	switch (code = lookupOption(argv[offset], 1)) {
 	case o_title:
 	    dialog_vars.title = optionString(argv, &offset);
 	    break;
@@ -1503,17 +1669,13 @@ process_common_options(int argc, char **argv, int offset, bool output)
 	case o_print_size:
 	    dialog_vars.print_siz = TRUE;
 	    break;
+	case o_print_text_only:
+	case o_print_text_size:
+	    PrintTextOnly(argv, &offset, code);
+	    break;
 	case o_print_maxsize:
 	    if (output) {
-		/*
-		 * If this is the last option, we do not want any error
-		 * messages - just our output.  Calling end_dialog() cancels
-		 * the refresh() at the end of the program as well.
-		 */
-		if (argv[offset + 1] == 0) {
-		    ignore_unknown = TRUE;
-		    end_dialog();
-		}
+		IgnoreNonScreen(argv, offset);
 		fflush(dialog_state.output);
 		fprintf(dialog_state.output, "MaxSize: %d, %d\n", SLINES, SCOLS);
 	    }
@@ -1650,10 +1812,31 @@ process_common_options(int argc, char **argv, int offset, bool output)
 	    dialog_vars.no_tags = TRUE;
 	    break;
 #endif
+#ifdef HAVE_XDIALOG2
+	case o_reorder:
+	    dialog_vars.reorder = TRUE;
+	    break;
+#endif
+#ifdef HAVE_XDIALOG
+	case o_week_start:
+	    dialog_vars.week_start = optionString(argv, &offset);
+	    break;
+#endif
+	case o_iso_week:
+	    dialog_vars.iso_week = TRUE;
+	    if (dialog_vars.week_start == 0) {	/* Monday is implied */
+		static char default_1st[] = "1";
+		dialog_vars.week_start = default_1st;
+	    }
+	    break;
 	}
 	if (!done)
 	    offset++;
     }
+
+    if (dialog_state.aspect_ratio == 0)
+	dialog_state.aspect_ratio = DEFAULT_ASPECT_RATIO;
+
     return offset;
 }
 
@@ -1665,10 +1848,8 @@ static void
 init_result(char *buffer)
 {
     static bool first = TRUE;
-    static char **special_argv = 0;
-    static int special_argc = 0;
 
-    dlg_trace_msg("# init_result\n");
+    DLG_TRACE(("# init_result\n"));
 
     /* clear everything we do not save for the next widget */
     memset(&dialog_vars, 0, sizeof(dialog_vars));
@@ -1693,19 +1874,8 @@ init_result(char *buffer)
 	first = FALSE;
     }
 
-    /*
-     * If we are not checking memory leaks, just do the parse of the
-     * environment once.
-     */
     if (special_argv != 0) {
 	process_common_options(special_argc, special_argv, 0, FALSE);
-#ifdef NO_LEAKS
-	free(special_argv[0]);
-	free(special_argv);
-	special_argv = 0;
-	special_argc = 0;
-	first = TRUE;
-#endif
     }
 }
 
@@ -1715,12 +1885,12 @@ main(int argc, char *argv[])
     char temp[256];
     bool esc_pressed = FALSE;
     bool keep_tite = FALSE;
+    int initial = 1;
     int offset = 1;
     int offset_add;
     int retval = DLG_EXIT_OK;
-    int j, have;
+    int j;
     eOptions code;
-    const Mode *modePtr;
     char my_buffer[MAX_LEN + 1];
 
     memset(&dialog_state, 0, sizeof(dialog_state));
@@ -1735,6 +1905,7 @@ main(int argc, char *argv[])
     (void) setlocale(LC_ALL, "");
 #endif
 
+    init_result(my_buffer);	/* honor $DIALOGOPTS */
     unescape_argv(&argc, &argv);
     program = argv[0];
     dialog_state.output = stderr;
@@ -1760,13 +1931,17 @@ main(int argc, char *argv[])
 	    break;
 	case o_input_fd:
 	    if ((j = optionValue(argv, &offset)) < 0
-		|| (dialog_state.input = fdopen(j, "r")) == 0)
+		|| (dialog_state.input = fdopen(j, "r")) == 0) {
+		handle_leaks();
 		dlg_exiterr("Cannot open input-fd\n");
+	    }
 	    break;
 	case o_output_fd:
 	    if ((j = optionValue(argv, &offset)) < 0
-		|| (dialog_state.output = fdopen(j, "w")) == 0)
+		|| (dialog_state.output = fdopen(j, "w")) == 0) {
+		handle_leaks();
 		dlg_exiterr("Cannot open output-fd\n");
+	    }
 	    break;
 	case o_keep_tite:
 	    keep_tite = TRUE;
@@ -1774,7 +1949,7 @@ main(int argc, char *argv[])
 	case o_version:
 	    dialog_state.output = stdout;
 	    PrintVersion(dialog_state.output);
-	    exit(DLG_EXIT_OK);
+	    dlg_exit(DLG_EXIT_OK);
 	    break;
 	case o_help:
 	    Help();
@@ -1798,26 +1973,25 @@ main(int argc, char *argv[])
 	    ++offset;
 	    continue;
 	}
-	dlg_trace_msg("# discarding %d parameters starting with argv[%d] (%s)\n",
-		      1 + offset - base, base,
-		      argv[base]);
+	DLG_TRACE(("# discarding %d parameters starting with argv[%d] (%s)\n",
+		   1 + offset - base, base,
+		   argv[base]));
 	for (j = base; j < argc; ++j) {
 	    dialog_argv[j] = dialog_argv[j + 1 + (offset - base)];
-	    if (dialog_opts != 0)
-		dialog_opts[j] = dialog_opts[j + 1 + (offset - base)];
 	}
 	argc -= (1 + offset - base);
 	offset = base;
     }
     offset = 1;
     init_result(my_buffer);
+    dialog_vars.keep_tite = keep_tite;	/* init_result() cleared global */
 
     /*
      * Dialog's output may be redirected (see above).  Handle the special
      * case of options that only report information without interaction.
      */
     if (argc == 2) {
-	switch (lookupOption(argv[1], 7)) {
+	switch (code = lookupOption(argv[1], 7)) {
 	case o_print_maxsize:
 	    (void) initscr();
 	    endwin();
@@ -1838,33 +2012,43 @@ main(int argc, char *argv[])
 	    Help();
 	    break;
 	}
-	return DLG_EXIT_OK;
-    }
-
-    if (argc < 2) {
+	dlg_exit(DLG_EXIT_OK);
+    } else if (argc < 2) {
 	Help();
     }
 #ifdef HAVE_RC_FILE
-    if (lookupOption(argv[1], 7) == o_create_rc) {
+    else if (lookupOption(argv[1], 7) == o_create_rc) {
 	if (argc != 3) {
 	    sprintf(temp, "Expected a filename for %.50s", argv[1]);
 	    Usage(temp);
 	}
-	if (dlg_parse_rc() == -1)	/* Read the configuration file */
+	if (dlg_parse_rc() == -1) {	/* Read the configuration file */
+	    handle_leaks();
 	    dlg_exiterr("dialog: dlg_parse_rc");
+	}
 	dlg_create_rc(argv[2]);
-	return DLG_EXIT_OK;
+	dlg_exit(DLG_EXIT_OK);
     }
 #endif
-
-    dialog_vars.keep_tite = keep_tite;	/* init_result() cleared global */
+    else {
+	/*
+	 * Handle combinations of common options including --print-text-only
+	 * which can be done before involving curses, in case we can exit
+	 * without initializing curses (and writing to the terminal).
+	 */
+	initial = process_common_options(argc, argv, offset, TRUE);
+	if (initial >= argc)
+	    dlg_exit(DLG_EXIT_OK);
+    }
 
     init_dialog(dialog_state.input, dialog_state.output);
 
     while (offset < argc && !esc_pressed) {
-	init_result(my_buffer);
+	int have;
+	const Mode *modePtr;
 
-	offset = process_common_options(argc, argv, offset, TRUE);
+	init_result(my_buffer);
+	offset = process_common_options(argc, argv, offset, offset > initial);
 
 	if (argv[offset] == NULL) {
 	    if (ignore_unknown)
@@ -1887,9 +2071,6 @@ main(int argc, char *argv[])
 		Usage(temp);
 	    }
 	}
-
-	if (dialog_state.aspect_ratio == 0)
-	    dialog_state.aspect_ratio = DEFAULT_ASPECT_RATIO;
 
 	dlg_put_backtitle();
 
@@ -1945,15 +2126,17 @@ main(int argc, char *argv[])
 		    } else {
 			argv[j] = strdup("?");
 		    }
+		    ignore_leak(argv[j]);
 		}
 		break;
 	    }
 	}
 
+	DLG_TRACE(("# execute %s\n", argv[offset]));
 	retval = show_result((*(modePtr->jumper)) (dialog_vars.title,
 						   argv + offset,
 						   &offset_add));
-	dlg_trace_msg("# widget returns %d\n", retval);
+	DLG_TRACE(("# widget returns %d\n", retval));
 	offset += offset_add;
 
 	if (dialog_vars.input_result != my_buffer) {
@@ -2000,5 +2183,6 @@ main(int argc, char *argv[])
 	(void) refresh();
 	end_dialog();
     }
+    handle_leaks();
     dlg_exit(retval);
 }

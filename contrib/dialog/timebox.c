@@ -1,9 +1,9 @@
 /*
- * $Id: timebox.c,v 1.54 2013/03/17 15:03:41 tom Exp $
+ * $Id: timebox.c,v 1.67 2020/03/27 20:26:21 tom Exp $
  *
  *  timebox.c -- implements the timebox dialog
  *
- *  Copyright 2001-2012,2013   Thomas E. Dickey
+ *  Copyright 2001-2019,2020   Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,7 +21,7 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
 
 #include <time.h>
@@ -82,7 +82,7 @@ draw_cell(BOX * data)
 		 data->height + (2 * MARGIN), data->width + (2 * MARGIN),
 		 menubox_border_attr, menubox_border2_attr);
 
-    (void) wattrset(data->window, item_attr);
+    dlg_attrset(data->window, item_attr);
     wprintw(data->window, "%02d", data->value);
     return 0;
 }
@@ -148,7 +148,7 @@ dialog_timebox(const char *title,
 	DLG_KEYS_DATA( DLGK_DELETE_RIGHT,KEY_DC ),
 	HELPKEY_BINDINGS,
 	ENTERKEY_BINDINGS,
-	DLG_KEYS_DATA( DLGK_ENTER,	' ' ),
+	TOGGLEKEY_BINDINGS,
 	DLG_KEYS_DATA( DLGK_FIELD_FIRST,KEY_HOME ),
 	DLG_KEYS_DATA( DLGK_FIELD_LAST, KEY_END ),
 	DLG_KEYS_DATA( DLGK_FIELD_LAST, KEY_LL ),
@@ -176,17 +176,26 @@ dialog_timebox(const char *title,
     int old_width = width;
 #endif
     BOX hr_box, mn_box, sc_box;
-    int key = 0, key2, fkey;
+    int key, fkey;
     int button;
     int result = DLG_EXIT_UNKNOWN;
     WINDOW *dialog;
-    time_t now_time = time((time_t *) 0);
+    time_t now_time;
     struct tm current;
     int state = dlg_default_button();
     const char **buttons = dlg_ok_labels();
-    char *prompt = dlg_strclone(subtitle);
+    char *prompt;
     char buffer[MAX_LEN];
     DIALOG_VARS save_vars;
+
+    DLG_TRACE(("# timebox args:\n"));
+    DLG_TRACE2S("title", title);
+    DLG_TRACE2S("message", subtitle);
+    DLG_TRACE2N("height", height);
+    DLG_TRACE2N("width", width);
+    DLG_TRACE2N("hour", hour);
+    DLG_TRACE2N("minute", minute);
+    DLG_TRACE2N("second", second);
 
     now_time = time((time_t *) 0);
     current = *localtime(&now_time);
@@ -200,10 +209,9 @@ dialog_timebox(const char *title,
   retry:
 #endif
 
-    dlg_auto_size(title, prompt, &height, &width, 0, 0);
-    height += MIN_HIGH;
-    if (width < MIN_WIDE)
-	width = MIN_WIDE;
+    prompt = dlg_strclone(subtitle);
+    dlg_auto_size(title, prompt, &height, &width, MIN_HIGH, MIN_WIDE);
+
     dlg_button_layout(buttons, &width);
     dlg_print_size(height, width);
     dlg_ctl_size(height, width);
@@ -224,7 +232,7 @@ dialog_timebox(const char *title,
     dlg_draw_title(dialog, title);
     dlg_draw_helpline(dialog, FALSE);
 
-    (void) wattrset(dialog, dialog_attr);
+    dlg_attrset(dialog, dialog_attr);
     dlg_print_autowrap(dialog, prompt, height, width);
 
     /* compute positions of hour, month and year boxes */
@@ -278,6 +286,7 @@ dialog_timebox(const char *title,
 	BOX *obj = (state == sHR ? &hr_box
 		    : (state == sMN ? &mn_box :
 		       (state == sSC ? &sc_box : 0)));
+	int key2;
 
 	button = (state < 0) ? 0 : state;
 	dlg_draw_buttons(dialog, height - 2, 0, buttons, button, FALSE, width);
@@ -285,8 +294,10 @@ dialog_timebox(const char *title,
 	    dlg_set_focus(dialog, obj->window);
 
 	key = dlg_mouse_wgetch(dialog, &fkey);
-	if (dlg_result_key(key, fkey, &result))
-	    break;
+	if (dlg_result_key(key, fkey, &result)) {
+	    if (!dlg_button_key(result, &button, &key, &fkey))
+		break;
+	}
 
 	if ((key2 = dlg_char_to_button(key, buttons)) >= 0) {
 	    result = key2;
@@ -303,6 +314,7 @@ dialog_timebox(const char *title,
 		case DLGK_MOUSE('S'):
 		    state = sSC;
 		    break;
+		case DLGK_TOGGLE:
 		case DLGK_ENTER:
 		    result = dlg_ok_buttoncode(button);
 		    break;
@@ -340,6 +352,7 @@ dialog_timebox(const char *title,
 		    break;
 #ifdef KEY_RESIZE
 		case KEY_RESIZE:
+		    dlg_will_resize(dialog);
 		    /* reset data */
 		    height = old_height;
 		    width = old_width;
@@ -347,10 +360,8 @@ dialog_timebox(const char *title,
 		    minute = mn_box.value;
 		    second = sc_box.value;
 		    /* repaint */
-		    dlg_clear();
-		    dlg_del_window(dialog);
-		    refresh();
-		    dlg_mouse_free_regions();
+		    free(prompt);
+		    _dlg_resize_cleanup(dialog);
 		    goto retry;
 #endif
 		default:
@@ -381,7 +392,7 @@ dialog_timebox(const char *title,
 			beep();
 		    }
 		}
-	    } else {
+	    } else if (key > 0) {
 		beep();
 	    }
 	}
@@ -411,8 +422,7 @@ dialog_timebox(const char *title,
 	DefaultFormat(buffer, hr_box);
 
     dlg_add_result(buffer);
-    dlg_add_separator();
-    dlg_add_last_key(-1);
+    AddLastKey();
 
     return CleanupResult(result, dialog, prompt, &save_vars);
 }

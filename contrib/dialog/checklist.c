@@ -1,9 +1,9 @@
 /*
- *  $Id: checklist.c,v 1.154 2015/01/25 23:53:06 tom Exp $
+ *  $Id: checklist.c,v 1.166 2020/03/27 20:19:51 tom Exp $
  *
  *  checklist.c -- implements the checklist box
  *
- *  Copyright 2000-2013,2015	Thomas E. Dickey
+ *  Copyright 2000-2019,2020	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -70,17 +70,17 @@ print_item(ALL_DATA * data,
 			: item->text);
 
     /* Clear 'residue' of last item */
-    (void) wattrset(win, menubox_attr);
+    dlg_attrset(win, menubox_attr);
     (void) wmove(win, choice, 0);
     for (i = 0; i < data->use_width; i++)
 	(void) waddch(win, ' ');
 
     (void) wmove(win, choice, data->check_x);
-    (void) wattrset(win, selected ? check_selected_attr : check_attr);
+    dlg_attrset(win, selected ? check_selected_attr : check_attr);
     (void) wprintw(win,
 		   (data->checkflag == FLAG_CHECK) ? "[%c]" : "(%c)",
 		   states[item->state]);
-    (void) wattrset(win, menubox_attr);
+    dlg_attrset(win, menubox_attr);
     (void) waddch(win, ' ');
 
     if (both) {
@@ -94,7 +94,7 @@ print_item(ALL_DATA * data,
     if (selected) {
 	dlg_item_help(item->help);
     }
-    (void) wattrset(win, save);
+    dlg_attrset(win, save);
 }
 
 static void
@@ -181,6 +181,7 @@ dlg_checklist(const char *title,
 	DLG_KEYS_DATA( DLGK_PAGE_NEXT,	DLGK_MOUSE(KEY_NPAGE) ),
 	DLG_KEYS_DATA( DLGK_PAGE_PREV,	KEY_PPAGE ),
 	DLG_KEYS_DATA( DLGK_PAGE_PREV,	DLGK_MOUSE(KEY_PPAGE) ),
+	TOGGLEKEY_BINDINGS,
 	END_KEYS_BINDING
     };
     /* *INDENT-ON* */
@@ -191,19 +192,30 @@ dlg_checklist(const char *title,
 #endif
     ALL_DATA all;
     int i, j, key2, found, x, y, cur_x, cur_y;
-    int key = 0, fkey;
+    int key, fkey;
     int button = dialog_state.visit_items ? -1 : dlg_default_button();
     int choice = dlg_default_listitem(items);
     int scrollamt = 0;
     int max_choice;
-    int was_mouse;
     int use_width, list_width, name_width, text_width;
     int result = DLG_EXIT_UNKNOWN;
     int num_states;
     WINDOW *dialog;
-    char *prompt = dlg_strclone(cprompt);
+    char *prompt;
     const char **buttons = dlg_ok_labels();
     const char *widget_name;
+
+    DLG_TRACE(("# %s args:\n", flag ? "checklist" : "radiolist"));
+    DLG_TRACE2S("title", title);
+    DLG_TRACE2S("message", cprompt);
+    DLG_TRACE2N("height", height);
+    DLG_TRACE2N("width", width);
+    DLG_TRACE2N("lheight", list_height);
+    DLG_TRACE2N("llength", item_no);
+    /* FIXME dump the items[][] too */
+    DLG_TRACE2S("states", states);
+    DLG_TRACE2N("flag", flag);
+    DLG_TRACE2N("current", *current_item);
 
     dialog_state.plain_buttons = TRUE;
 
@@ -212,7 +224,6 @@ dlg_checklist(const char *title,
     all.item_no = item_no;
 
     dlg_does_output();
-    dlg_tab_correct_str(prompt);
 
     /*
      * If this is a radiobutton list, ensure that no more than one item is
@@ -238,6 +249,9 @@ dlg_checklist(const char *title,
 #ifdef KEY_RESIZE
   retry:
 #endif
+
+    prompt = dlg_strclone(cprompt);
+    dlg_tab_correct_str(prompt);
 
     all.use_height = list_height;
     use_width = dlg_calc_list_width(item_no, items) + 10;
@@ -277,7 +291,7 @@ dlg_checklist(const char *title,
     dlg_draw_bottom_box2(dialog, border_attr, border2_attr, dialog_attr);
     dlg_draw_title(dialog, title);
 
-    (void) wattrset(dialog, dialog_attr);
+    dlg_attrset(dialog, dialog_attr);
     dlg_print_autowrap(dialog, prompt, height, width);
 
     all.use_width = width - 6;
@@ -289,8 +303,7 @@ dlg_checklist(const char *title,
      * After displaying the prompt, we know how much space we really have.
      * Limit the list to avoid overwriting the ok-button.
      */
-    if (all.use_height + MIN_HIGH > height - cur_y)
-	all.use_height = height - MIN_HIGH - cur_y;
+    all.use_height = height - MIN_HIGH - cur_y;
     if (all.use_height <= 0)
 	all.use_height = 1;
 
@@ -364,13 +377,18 @@ dlg_checklist(const char *title,
     dlg_draw_buttons(dialog, height - 2, 0, buttons, button, FALSE, width);
 
     dlg_trace_win(dialog);
+
     while (result == DLG_EXIT_UNKNOWN) {
+	int was_mouse;
+
 	if (button < 0)		/* --visit-items */
 	    wmove(dialog, all.box_y + choice + 1, all.box_x + all.check_x + 2);
 
 	key = dlg_mouse_wgetch(dialog, &fkey);
-	if (dlg_result_key(key, fkey, &result))
-	    break;
+	if (dlg_result_key(key, fkey, &result)) {
+	    if (!dlg_button_key(result, &button, &key, &fkey))
+		break;
+	}
 
 	was_mouse = (fkey && is_DLGK_MOUSE(key));
 	if (was_mouse)
@@ -383,7 +401,7 @@ dlg_checklist(const char *title,
 		choice = (key - KEY_MAX);
 		print_list(&all, choice, scrollamt, max_choice);
 
-		key = ' ';	/* force the selected item to toggle */
+		key = DLGK_TOGGLE;	/* force the selected item to toggle */
 	    } else {
 		beep();
 		continue;
@@ -398,7 +416,7 @@ dlg_checklist(const char *title,
 	 * (any number of items can be selected) or radio list (zero or one
 	 * items can be selected).
 	 */
-	if (key == ' ') {
+	if (key == DLGK_TOGGLE) {
 	    int current = scrollamt + choice;
 	    int next = items[current].state + 1;
 
@@ -557,14 +575,13 @@ dlg_checklist(const char *title,
 		break;
 #ifdef KEY_RESIZE
 	    case KEY_RESIZE:
+		dlg_will_resize(dialog);
 		/* reset data */
 		height = old_height;
 		width = old_width;
+		free(prompt);
+		_dlg_resize_cleanup(dialog);
 		/* repaint */
-		dlg_clear();
-		dlg_del_window(dialog);
-		refresh();
-		dlg_mouse_free_regions();
 		goto retry;
 #endif
 	    default:
@@ -576,7 +593,7 @@ dlg_checklist(const char *title,
 		    beep();
 		}
 	    }
-	} else {
+	} else if (key > 0) {
 	    beep();
 	}
     }

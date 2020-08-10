@@ -1,9 +1,9 @@
 /*
- *  $Id: pause.c,v 1.36 2012/07/03 00:01:59 tom Exp $
+ *  $Id: pause.c,v 1.46 2020/03/27 20:32:55 tom Exp $
  *
  *  pause.c -- implements the pause dialog
  *
- *  Copyright 2004-2011,2012	Thomas E. Dickey
+ *  Copyright 2004-2019,2020	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -72,25 +72,31 @@ dialog_pause(const char *title,
     const char **buttons = dlg_ok_labels();
     bool have_buttons = (dlg_button_count(buttons) != 0);
     bool first;
-    int key = 0, fkey;
+    int key, fkey;
     int result = DLG_EXIT_UNKNOWN;
     int button_high = (have_buttons ? BTN_HIGH : MARGIN);
     int gauge_y;
-    char *prompt = dlg_strclone(cprompt);
+    char *prompt;
     int save_timeout = dialog_vars.timeout_secs;
 
-    curs_set(0);
+    DLG_TRACE(("# pause args:\n"));
+    DLG_TRACE2S("title", title);
+    DLG_TRACE2S("message", cprompt);
+    DLG_TRACE2N("height", height);
+    DLG_TRACE2N("width", width);
+    DLG_TRACE2N("seconds", seconds);
 
-    dlg_tab_correct_str(prompt);
+    curs_set(0);
 
     dialog_vars.timeout_secs = 0;
     seconds_orig = (seconds > 0) ? seconds : 1;
 
 #ifdef KEY_RESIZE
   retry:
-    height = old_height;
-    width = old_width;
 #endif
+
+    prompt = dlg_strclone(cprompt);
+    dlg_tab_correct_str(prompt);
 
     if (have_buttons) {
 	dlg_auto_size(title, prompt, &height, &width,
@@ -125,7 +131,7 @@ dialog_pause(const char *title,
 	dlg_draw_title(dialog, title);
 	dlg_draw_helpline(dialog, FALSE);
 
-	(void) wattrset(dialog, dialog_attr);
+	dlg_attrset(dialog, dialog_attr);
 	dlg_print_autowrap(dialog, prompt, height, width);
 
 	dlg_draw_box2(dialog,
@@ -141,7 +147,7 @@ dialog_pause(const char *title,
 	 * attribute.
 	 */
 	(void) wmove(dialog, gauge_y + MARGIN, 4);
-	(void) wattrset(dialog, title_attr);
+	dlg_attrset(dialog, title_attr);
 
 	for (i = 0; i < (width - 2 * (3 + MARGIN)); i++)
 	    (void) waddch(dialog, ' ');
@@ -156,9 +162,9 @@ dialog_pause(const char *title,
 	 */
 	x = (seconds * (width - 2 * (3 + MARGIN))) / seconds_orig;
 	if ((title_attr & A_REVERSE) != 0) {
-	    wattroff(dialog, A_REVERSE);
+	    dlg_attroff(dialog, A_REVERSE);
 	} else {
-	    (void) wattrset(dialog, A_REVERSE);
+	    dlg_attrset(dialog, A_REVERSE);
 	}
 	(void) wmove(dialog, gauge_y + MARGIN, 4);
 	for (i = 0; i < x; i++) {
@@ -188,17 +194,19 @@ dialog_pause(const char *title,
 	    key = dlg_mouse_wgetch_nowait(dialog, &fkey);
 	    if (key == ERR) {
 		;		/* ignore errors in nodelay mode */
-	    } else {
-		if (dlg_result_key(key, fkey, &result))
+	    } else if (dlg_result_key(key, fkey, &result)) {
+		if (!dlg_button_key(result, &button, &key, &fkey))
 		    break;
 	    }
 
 	    switch (key) {
 #ifdef KEY_RESIZE
 	    case KEY_RESIZE:
-		dlg_clear();	/* fill the background */
-		dlg_del_window(dialog);		/* delete this window */
-		refresh();	/* get it all onto the terminal */
+		dlg_will_resize(dialog);
+		height = old_height;
+		width = old_width;
+		free(prompt);
+		_dlg_resize_cleanup(dialog);
 		goto retry;
 #endif
 	    case DLGK_FIELD_NEXT:
@@ -234,6 +242,7 @@ dialog_pause(const char *title,
 	    }
 	}
     } while ((result == DLG_EXIT_UNKNOWN) && (seconds-- > 0));
+    dlg_add_last_key(-1);
 
     curs_set(1);
     dlg_mouse_free_regions();
