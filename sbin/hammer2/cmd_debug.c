@@ -38,7 +38,6 @@
 #include <openssl/sha.h>
 
 #define GIG	(1024LL*1024*1024)
-#define arysize(ary)	(sizeof(ary) / sizeof((ary)[0]))
 
 static int show_tab = 2;
 
@@ -555,13 +554,13 @@ show_volhdr(hammer2_volume_data_t *voldata, int fd, int bi)
 	printf("    reserved0080   0x%016jx\n", voldata->reserved0080);
 	printf("    reserved0088   0x%016jx\n", voldata->reserved0088);
 	printf("    freemap_tid    0x%016jx\n", voldata->freemap_tid);
-	for (i = 0; i < arysize(voldata->reserved00A0); ++i) {
+	for (i = 0; i < nitems(voldata->reserved00A0); ++i) {
 		printf("    reserved00A0/%u 0x%016jx\n",
 		       i, voldata->reserved00A0[0]);
 	}
 
 	printf("    copyexists    ");
-	for (i = 0; i < arysize(voldata->copyexists); ++i)
+	for (i = 0; i < nitems(voldata->copyexists); ++i)
 		printf(" 0x%02x", voldata->copyexists[i]);
 	printf("\n");
 
@@ -575,7 +574,7 @@ show_volhdr(hammer2_volume_data_t *voldata, int fd, int bi)
 	 *	 CRCs.
 	 */
 	printf("\n");
-	for (i = 0; i < arysize(voldata->icrc_sects); ++i) {
+	for (i = 0; i < nitems(voldata->icrc_sects); ++i) {
 		printf("    icrc_sects[%u]  ", i);
 		switch(i) {
 		case HAMMER2_VOL_ICRC_SECT0:
