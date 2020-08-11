@@ -1016,7 +1016,7 @@ init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_INODE:
 		ipdata = media.ipdata;
-		if (ipdata.meta.pfs_type & HAMMER2_PFSTYPE_SUPROOT) {
+		if (ipdata.meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT) {
 			bscan = &ipdata.u.blockset.blockref[0];
 			bcount = HAMMER2_SET_COUNT;
 		} else {
