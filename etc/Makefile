@@ -96,6 +96,7 @@ remove-deprecated-files:
 
 check-deprecated-files:
 	@echo "===> Checking for deprecated files"
+	@echo "     (harmless ELF linker warnings may appear here)"
 	@tmpldd=`mktemp -t chkldd`; \
 	chroot ${DESTDIR}/ find ${CHECK_DEPRECATED_DIRS:O:u} \
 				-type f \( -name '*.so*' -o -perm +111 \) | \
