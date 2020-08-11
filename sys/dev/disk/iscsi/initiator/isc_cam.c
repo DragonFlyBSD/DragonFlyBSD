@@ -72,7 +72,7 @@ ic_release(isc_session_t *sp)
 #if 0
      sdebug(2, "release path=%p", sp->cam_path == NULL? 0: sp->cam_path);
      if((sp->cam_path != NULL) && (sp->flags & ISC_FROZEN)) {
-	  xpt_release_devq(sp->cam_path, 1, TRUE);
+	  xpt_release_devq(sp->cam_path, 1, true);
      }
 #endif
      sp->flags &= ~ISC_FROZEN;

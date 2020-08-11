@@ -28,10 +28,10 @@
 /*
  | $Id: iscsi.h,v 1.17 2006/12/01 09:10:17 danny Exp danny $
  */
-#define	TRUE	1
-#define FALSE	0
 #ifndef _KERNEL
-typedef int boolean_t;
+#include <stdbool.h>
+#else
+#include <sys/stdint.h>
 #endif
 
 #include <sys/objcache.h>
@@ -453,10 +453,10 @@ typedef struct opvals {
      int	errorRecoveryLevel;
      int	targetPortalGroupTag;
 
-     boolean_t	initialR2T;
-     boolean_t	immediateData;
-     boolean_t	dataPDUInOrder;
-     boolean_t	dataSequenceInOrder;
+     bool	initialR2T;
+     bool	immediateData;
+     bool	dataPDUInOrder;
+     bool	dataSequenceInOrder;
      char	*headerDigest;
      char	*dataDigest;
      char	*sessionType;

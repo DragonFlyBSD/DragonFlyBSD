@@ -104,11 +104,11 @@ isc_opt_t opvals = {
      .maxOutstandingR2T		= 1,
      .errorRecoveryLevel	= 0,
 
-     .dataPDUInOrder		= TRUE,
-     .dataSequenceInOrder	= TRUE,
+     .dataPDUInOrder		= true,
+     .dataSequenceInOrder	= true,
 
-     .initialR2T		= TRUE,
-     .immediateData		= TRUE,
+     .initialR2T		= true,
+     .immediateData		= true,
 };
 
 int
