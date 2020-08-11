@@ -46,7 +46,7 @@ cmd_stat(int ac, const char **av)
 {
 	hammer2_ioc_inode_t ino;
 	const char *cdir = ".";
-	int ec = 0;
+	int ecode = 0;
 	int w;
 	int i;
 	int fd;
@@ -65,12 +65,12 @@ cmd_stat(int ac, const char **av)
 	for (i = 0; i < ac; ++i) {
 		if ((fd = open(av[i], O_RDONLY)) < 0) {
 			fprintf(stderr, "%s: %s\n", av[i], strerror(errno));
-			ec = 1;
+			ecode = 1;
 			continue;
 		}
 		if (ioctl(fd, HAMMER2IOC_INODE_GET, &ino) < 0) {
 			fprintf(stderr, "%s: %s\n", av[i], strerror(errno));
-			ec = 1;
+			ecode = 1;
 			continue;
 		}
 		printf("%-*.*s ", w, w, av[i]);
@@ -90,7 +90,7 @@ cmd_stat(int ac, const char **av)
 		}
 		printf("\n");
 	}
-	return ec;
+	return ecode;
 }
 
 static
