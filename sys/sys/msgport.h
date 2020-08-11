@@ -161,7 +161,7 @@ typedef struct lwkt_port {
 
 #ifdef _KERNEL
 
-#include <sys/types.h>	/* for boolean_t */
+#include <sys/stdint.h>	/* for boolean_t */
 
 #define mpu_spin	mp_u.spin
 #define mpu_serialize	mp_u.serialize
