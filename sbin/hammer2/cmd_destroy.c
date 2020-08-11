@@ -40,6 +40,7 @@ cmd_destroy_path(int ac, const char **av)
 	const char *last;
 	int i;
 	int fd;
+	int ecode = 0;
 
 	for (i = 0; i < ac; ++i) {
 		bzero(&destroy, sizeof(destroy));
@@ -51,16 +52,18 @@ cmd_destroy_path(int ac, const char **av)
 			snprintf(destroy.path, sizeof(destroy.path),
 				 "%s", last);
 			if (ioctl(fd, HAMMER2IOC_DESTROY, &destroy) < 0) {
-				printf("error: %s\n", strerror(errno));
+				printf("%s\n", strerror(errno));
+				ecode = 1;
 			} else {
 				printf("ok\n");
 			}
 			close(fd);
 		} else {
-			printf("error: %s\n", strerror(errno));
+			printf("%s\n", strerror(errno));
+			ecode = 1;
 		}
 	}
-	return 0;
+	return ecode;
 }
 
 static
@@ -93,6 +96,7 @@ cmd_destroy_inum(const char *sel_path, int ac, const char **av)
 	hammer2_ioc_destroy_t destroy;
 	int i;
 	int fd;
+	int ecode = 0;
 
 	fd = hammer2_ioctl_handle(sel_path);
 	if (fd < 0)
@@ -104,12 +108,14 @@ cmd_destroy_inum(const char *sel_path, int ac, const char **av)
 		destroy.cmd = HAMMER2_DELETE_INUM;
 		destroy.inum = strtoul(av[i], NULL, 0);
 		printf("%16jd ", (intmax_t)destroy.inum);
-		if (ioctl(fd, HAMMER2IOC_DESTROY, &destroy) < 0)
+		if (ioctl(fd, HAMMER2IOC_DESTROY, &destroy) < 0) {
 			printf("%s\n", strerror(errno));
-		else
+			ecode = 1;
+		} else {
 			printf("ok\n");
+		}
 	}
 	close(fd);
 
-	return 0;
+	return ecode;
 }
