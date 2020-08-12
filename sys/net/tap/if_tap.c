@@ -278,6 +278,7 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 {
 	struct tap_softc *sc;
 	cdev_t dev = (cdev_t)data;
+	int flags;
 
 	if (tapfind(unit) != NULL)
 		return (EEXIST);
@@ -292,12 +293,16 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 			if (dev == NULL)
 				return (ENOENT);
 		}
+		flags = TAP_MANUALMAKE;
+	} else {
+		flags = 0;
 	}
 
-	if ((sc = tapcreate(dev, TAP_MANUALMAKE)) == NULL)
+	if ((sc = tapcreate(dev, flags)) == NULL)
 		return (ENOMEM);
 
 	sc->tap_flags |= TAP_CLONE;
+
 	TAPDEBUG(&sc->tap_if, "clone created, minor = %#x, flags = 0x%x\n",
 		 minor(sc->tap_dev), sc->tap_flags);
 
@@ -393,6 +398,7 @@ tapclose(struct dev_close_args *ap)
 	struct ifnet *ifp;
 	int unit = minor(dev);
 	int clear_flags = 0;
+	char ifname[IFNAMSIZ];
 
 	KASSERT(sc != NULL,
 		("try closing the already destroyed %s%d", TAP, unit));
@@ -419,7 +425,7 @@ tapclose(struct dev_close_args *ap)
 	tapifstop(sc, clear_flags);
 	ifnet_deserialize_all(ifp);
 
-	if ((sc->tap_flags & TAP_CLONE) == 0) {
+	if ((sc->tap_flags & TAP_MANUALMAKE) == 0) {
 		if_purgeaddrs_nolink(ifp);
 
 		EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
@@ -448,8 +454,8 @@ tapclose(struct dev_close_args *ap)
 
 	/* Only auto-destroy if the interface was not manually created. */
 	if ((sc->tap_flags & TAP_MANUALMAKE) == 0) {
-		tapdestroy(sc);
-		dev->si_drv1 = NULL;
+		ksnprintf(ifname, IFNAMSIZ, "%s%d", TAP, unit);
+		if_clone_destroy(ifname);
 	}
 
 	rel_mplock();
