@@ -658,11 +658,6 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	}
 
 	if (saveoff == 1) {
-		/*
-		 * Be careful with lockorder when accessing ".."
-		 *
-		 * (ip is the current dir. xip is the parent dir).
-		 */
 		inum = ip->meta.inum & HAMMER2_DIRHASH_USERMSK;
 		if (ip != ip->pmp->iroot)
 			inum = ip->meta.iparent & HAMMER2_DIRHASH_USERMSK;
