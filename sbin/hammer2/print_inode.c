@@ -91,7 +91,7 @@ print_inode(const char *path)
 	printf("inum = 0x%jx\n", (uintmax_t)meta->inum);
 	printf("size = %ju\n", (uintmax_t)meta->size);
 	printf("nlinks = %ju\n", (uintmax_t)meta->nlinks);
-	printf("iparent = %ju\n", (uintmax_t)meta->iparent);
+	printf("iparent = 0x%jx\n", (uintmax_t)meta->iparent);
 	printf("name_key = 0x%jx\n", (uintmax_t)meta->name_key);
 	printf("name_len = %u\n", meta->name_len);
 	printf("ncopies = %u\n", meta->ncopies);
