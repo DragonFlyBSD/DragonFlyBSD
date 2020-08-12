@@ -38,7 +38,7 @@ int
 cmd_bulkfree(const char *sel_path)
 {
 	hammer2_ioc_bulkfree_t bfi;
-	int ecode;
+	int ecode = 0;
 	int fd;
 	int res;
 	size_t usermem;
@@ -71,7 +71,7 @@ int
 cmd_bulkfree_async(const char *sel_path)
 {
 	hammer2_ioc_bulkfree_t bfi;
-	int ecode;
+	int ecode = 0;
 	int fd;
 	int res;
 
