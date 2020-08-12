@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2011,2014 Free Software Foundation, Inc.                   *
+ * Copyright 2018,2020 Thomas E. Dickey                                     *
+ * Copyright 2011-2014,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -30,10 +31,12 @@
  *  Author: Thomas E. Dickey                        2011                    *
  ****************************************************************************/
 
-/* $Id: nc_termios.h,v 1.3 2014/05/03 19:40:10 juergen Exp $ */
+/* $Id: nc_termios.h,v 1.7 2020/02/02 23:34:34 tom Exp $ */
 
 #ifndef NC_TERMIOS_included
 #define NC_TERMIOS_included 1
+
+#include <ncurses_cfg.h>
 
 #if HAVE_TERMIOS_H && HAVE_TCGETATTR
 
@@ -69,7 +72,7 @@
 
 #else /* !HAVE_TERMIO_H */
 
-#if __MINGW32__
+#if _WIN32
 
 /* lflag bits */
 #define ISIG	0x0001
@@ -153,7 +156,7 @@
 #undef  ttyname
 #define ttyname(fd) NULL
 
-#endif /* __MINGW32__ */
+#endif /* _WIN32 */
 #endif /* HAVE_TERMIO_H */
 
 #endif /* HAVE_TERMIOS_H */

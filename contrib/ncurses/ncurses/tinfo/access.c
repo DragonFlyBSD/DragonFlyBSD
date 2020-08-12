@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2011,2012 Free Software Foundation, Inc.              *
+ * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2011,2012 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -36,15 +37,7 @@
 
 #include <tic.h>
 
-MODULE_ID("$Id: access.c,v 1.23 2012/09/01 19:21:29 tom Exp $")
-
-#ifdef __TANDEM
-#define ROOT_UID 65535
-#endif
-
-#ifndef ROOT_UID
-#define ROOT_UID 0
-#endif
+MODULE_ID("$Id: access.c,v 1.25 2020/02/02 23:34:34 tom Exp $")
 
 #define LOWERCASE(c) ((isalpha(UChar(c)) && isupper(UChar(c))) ? tolower(UChar(c)) : (c))
 

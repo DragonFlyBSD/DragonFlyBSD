@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2002-2006,2009 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 2002-2009,2016 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,17 +40,19 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_in_wch.c,v 1.5 2009/10/24 22:37:55 tom Exp $")
+MODULE_ID("$Id: lib_in_wch.c,v 1.7 2020/02/02 23:34:34 tom Exp $")
 
 NCURSES_EXPORT(int)
 win_wch(WINDOW *win, cchar_t *wcval)
 {
-    int row, col;
     int code = OK;
 
     TR(TRACE_CCALLS, (T_CALLED("win_wch(%p,%p)"), (void *) win, (void *) wcval));
+
     if (win != 0
 	&& wcval != 0) {
+	int row, col;
+
 	getyx(win, row, col);
 
 	*wcval = win->_line[row].text[col];

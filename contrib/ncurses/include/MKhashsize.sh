@@ -1,6 +1,7 @@
 #!/bin/sh
 ##############################################################################
-# Copyright (c) 1998,2006 Free Software Foundation, Inc.                     #
+# Copyright 2019,2020 Thomas E. Dickey                                       #
+# Copyright 1998,2006 Free Software Foundation, Inc.                         #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -26,7 +27,7 @@
 # use or other dealings in this Software without prior written               #
 # authorization.                                                             #
 ##############################################################################
-# $Id: MKhashsize.sh,v 1.7 2006/10/22 00:45:39 tom Exp $
+# $Id: MKhashsize.sh,v 1.9 2020/02/02 23:34:34 tom Exp $
 #
 # MKhashsize.sh --- generate size include for hash functions
 #
@@ -34,8 +35,8 @@ echo "/*"
 echo " * hashsize.h -- hash and token table constants"
 echo " */"
 
-CAPS="${1-Caps}"
-TABSIZE=`grep -v '^[ #]' $CAPS | grep -v "^$" | grep -v "^capalias"| grep -v "^infoalias" | wc -l`
+test $# = 0 && set Caps
+TABSIZE=`cat "$@" | grep -v '^[ #]' | grep -v "^$" | grep -v "^capalias"| grep -v "^infoalias" | grep -v "^userdef" | grep -v "^used_by" | wc -l`
 
 echo ""
 echo "#define CAPTABSIZE	${TABSIZE}"

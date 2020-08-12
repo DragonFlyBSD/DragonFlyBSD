@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2002-2009,2011 Free Software Foundation, Inc.              *
+ * Copyright 2018,2020 Thomas E. Dickey                                     *
+ * Copyright 2002-2009,2011 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,7 +40,7 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_get_wstr.c,v 1.13 2011/10/22 16:31:35 tom Exp $")
+MODULE_ID("$Id: lib_get_wstr.c,v 1.16 2020/02/02 23:34:34 tom Exp $")
 
 static int
 wadd_wint(WINDOW *win, wint_t *src)
@@ -99,6 +100,8 @@ wgetn_wstr(WINDOW *win, wint_t *str, int maxlen)
 
     if (!win)
 	returnCode(ERR);
+
+    maxlen = _nc_getstr_limit(maxlen);
 
     _nc_get_tty_mode(&buf);
 
@@ -164,7 +167,7 @@ wgetn_wstr(WINDOW *win, wint_t *str, int maxlen)
 	    } else {
 		beep();
 	    }
-	} else if (maxlen >= 0 && tmpstr - oldstr >= maxlen) {
+	} else if (tmpstr - oldstr >= maxlen) {
 	    beep();
 	} else {
 	    *tmpstr++ = ch;

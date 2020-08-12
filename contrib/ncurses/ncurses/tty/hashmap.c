@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+ * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2015,2016 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -73,7 +74,7 @@ AUTHOR
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: hashmap.c,v 1.65 2015/07/25 20:13:56 tom Exp $")
+MODULE_ID("$Id: hashmap.c,v 1.68 2020/02/02 23:34:34 tom Exp $")
 
 #ifdef HASHDEBUG
 
@@ -119,7 +120,7 @@ static NCURSES_CH_T newtext[MAXLINES][TEXTWIDTH(sp)];
 static const NCURSES_CH_T blankchar = NewChar(BLANK_TEXT);
 
 static NCURSES_INLINE unsigned long
-hash(SCREEN *sp, NCURSES_CH_T * text)
+hash(SCREEN *sp, NCURSES_CH_T *text)
 {
     int i;
     NCURSES_CH_T ch;
@@ -135,7 +136,7 @@ hash(SCREEN *sp, NCURSES_CH_T * text)
 
 /* approximate update cost */
 static int
-update_cost(SCREEN *sp, NCURSES_CH_T * from, NCURSES_CH_T * to)
+update_cost(SCREEN *sp, NCURSES_CH_T *from, NCURSES_CH_T *to)
 {
     int cost = 0;
     int i;
@@ -149,7 +150,7 @@ update_cost(SCREEN *sp, NCURSES_CH_T * from, NCURSES_CH_T * to)
 }
 
 static int
-update_cost_from_blank(SCREEN *sp, NCURSES_CH_T * to)
+update_cost_from_blank(SCREEN *sp, NCURSES_CH_T *to)
 {
     int cost = 0;
     int i;
@@ -198,9 +199,8 @@ cost_effective(SCREEN *sp, const int from, const int to, const int blank)
 static void
 grow_hunks(SCREEN *sp)
 {
-    int start, end, shift;
-    int back_limit, forward_limit;	/* limits for cells to fill */
-    int back_ref_limit, forward_ref_limit;	/* limits for refrences */
+    int back_limit;		/* limits for cells to fill */
+    int back_ref_limit;		/* limit for references */
     int i;
     int next_hunk;
 
@@ -215,8 +215,11 @@ grow_hunks(SCREEN *sp)
     while (i < screen_lines(sp) && OLDNUM(sp, i) == _NEWINDEX)
 	i++;
     for (; i < screen_lines(sp); i = next_hunk) {
-	start = i;
-	shift = OLDNUM(sp, i) - i;
+	int forward_limit;
+	int forward_ref_limit;
+	int end;
+	int start = i;
+	int shift = OLDNUM(sp, i) - i;
 
 	/* get forward limit */
 	i = start + 1;
@@ -285,7 +288,6 @@ NCURSES_SP_NAME(_nc_hash_map) (NCURSES_SP_DCL0)
 {
     HASHMAP *hsp;
     register int i;
-    int start, shift, size;
 
     if (screen_lines(SP_PARM) > lines_alloc(SP_PARM)) {
 	if (hashtab(SP_PARM))
@@ -387,6 +389,8 @@ NCURSES_SP_NAME(_nc_hash_map) (NCURSES_SP_DCL0)
      * more than carry.
      */
     for (i = 0; i < screen_lines(SP_PARM);) {
+	int start, shift, size;
+
 	while (i < screen_lines(SP_PARM) && OLDNUM(SP_PARM, i) == _NEWINDEX)
 	    i++;
 	if (i >= screen_lines(SP_PARM))
@@ -580,11 +584,7 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	    break;
 	}
     }
-#if NO_LEAKS
-    _nc_free_and_exit(EXIT_SUCCESS);
-#else
-    return EXIT_SUCCESS;
-#endif
+    exit_curses(EXIT_SUCCESS);
 }
 
 #endif /* HASHDEBUG */

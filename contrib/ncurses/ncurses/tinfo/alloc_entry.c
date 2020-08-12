@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2012,2013 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2013,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -47,7 +48,7 @@
 
 #include <tic.h>
 
-MODULE_ID("$Id: alloc_entry.c,v 1.58 2013/08/17 19:20:38 tom Exp $")
+MODULE_ID("$Id: alloc_entry.c,v 1.64 2020/02/02 23:34:34 tom Exp $")
 
 #define ABSENT_OFFSET    -1
 #define CANCELLED_OFFSET -2
@@ -58,7 +59,7 @@ static char *stringbuf;		/* buffer for string capabilities */
 static size_t next_free;	/* next free character in stringbuf */
 
 NCURSES_EXPORT(void)
-_nc_init_entry(TERMTYPE *const tp)
+_nc_init_entry(ENTRY * const tp)
 /* initialize a terminal type data block */
 {
 #if NO_LEAKS
@@ -75,7 +76,7 @@ _nc_init_entry(TERMTYPE *const tp)
 
     next_free = 0;
 
-    _nc_init_termtype(tp);
+    _nc_init_termtype(&(tp->tterm));
 }
 
 NCURSES_EXPORT(ENTRY *)
@@ -85,7 +86,7 @@ _nc_copy_entry(ENTRY * oldp)
 
     if (newp != 0) {
 	*newp = *oldp;
-	_nc_copy_termtype(&(newp->tterm), &(oldp->tterm));
+	_nc_copy_termtype2(&(newp->tterm), &(oldp->tterm));
     }
     return newp;
 }
@@ -96,7 +97,11 @@ _nc_save_str(const char *const string)
 {
     char *result = 0;
     size_t old_next_free = next_free;
-    size_t len = strlen(string) + 1;
+    size_t len;
+
+    if (!VALID_STRING(string))
+	return _nc_save_str("");
+    len = strlen(string) + 1;
 
     if (len == 1 && next_free != 0) {
 	/*
@@ -126,7 +131,7 @@ _nc_wrap_entry(ENTRY * const ep, bool copy_strings)
     int useoffsets[MAX_USES];
     unsigned i, n;
     unsigned nuses = ep->nuses;
-    TERMTYPE *tp = &(ep->tterm);
+    TERMTYPE2 *tp = &(ep->tterm);
 
     if (copy_strings) {
 	next_free = 0;		/* clear static storage */
@@ -218,12 +223,22 @@ _nc_wrap_entry(ENTRY * const ep, bool copy_strings)
 }
 
 NCURSES_EXPORT(void)
-_nc_merge_entry(TERMTYPE *const to, TERMTYPE *const from)
+_nc_merge_entry(ENTRY * const target, ENTRY * const source)
 /* merge capabilities from `from' entry into `to' entry */
 {
+    TERMTYPE2 *to = &(target->tterm);
+    TERMTYPE2 *from = &(source->tterm);
+#if NCURSES_XNAMES
+    TERMTYPE2 copy;
+#endif
     unsigned i;
 
+    if (source == 0 || from == 0 || target == 0 || to == 0)
+	return;
+
 #if NCURSES_XNAMES
+    _nc_copy_termtype2(&copy, from);
+    from = &copy;
     _nc_align_termtype(to, from);
 #endif
     for_each_boolean(i, from) {
@@ -233,18 +248,18 @@ _nc_merge_entry(TERMTYPE *const to, TERMTYPE *const from)
 	    if (mergebool == CANCELLED_BOOLEAN)
 		to->Booleans[i] = FALSE;
 	    else if (mergebool == TRUE)
-		to->Booleans[i] = (char) mergebool;
+		to->Booleans[i] = (NCURSES_SBOOL) mergebool;
 	}
     }
 
     for_each_number(i, from) {
 	if (to->Numbers[i] != CANCELLED_NUMERIC) {
-	    short mergenum = from->Numbers[i];
+	    int mergenum = from->Numbers[i];
 
 	    if (mergenum == CANCELLED_NUMERIC)
 		to->Numbers[i] = ABSENT_NUMERIC;
 	    else if (mergenum != ABSENT_NUMERIC)
-		to->Numbers[i] = mergenum;
+		to->Numbers[i] = (NCURSES_INT2) mergenum;
 	}
     }
 
@@ -263,6 +278,16 @@ _nc_merge_entry(TERMTYPE *const to, TERMTYPE *const from)
 		to->Strings[i] = mergestring;
 	}
     }
+#if NCURSES_XNAMES
+    /* Discard the data allocated in _nc_copy_termtype2, but do not use
+     * _nc_free_termtype2 because that frees the string-table (which is
+     * not allocated by _nc_copy_termtype2).
+     */
+    free(copy.Booleans);
+    free(copy.Numbers);
+    free(copy.Strings);
+    free(copy.ext_Names);
+#endif
 }
 
 #if NO_LEAKS

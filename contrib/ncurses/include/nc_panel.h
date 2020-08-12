@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2008,2009 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2009,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +33,7 @@
  ****************************************************************************/
 
 /*
- * $Id: nc_panel.h,v 1.7 2009/07/04 18:20:02 tom Exp $
+ * $Id: nc_panel.h,v 1.10 2020/02/02 23:34:34 tom Exp $
  *
  *	nc_panel.h
  *
@@ -42,6 +43,9 @@
 
 #ifndef NC_PANEL_H
 #define NC_PANEL_H 1
+
+#include <ncurses_cfg.h>
+#include <curses.h>
 
 #ifdef __cplusplus
 extern "C"

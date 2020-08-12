@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+ * Copyright 2018,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -33,13 +34,18 @@
  ****************************************************************************/
 
 /*
- * $Id: dump_entry.h,v 1.37 2015/09/05 15:49:58 tom Exp $
+ * $Id: dump_entry.h,v 1.42 2020/02/02 23:34:34 tom Exp $
  *
  * Dump control definitions and variables
  */
 
 #ifndef DUMP_ENTRY_H
 #define DUMP_ENTRY_H 1
+
+#define NCURSES_OPAQUE    0
+#define NCURSES_INTERNALS 1
+#include <curses.h>
+#include <term.h>
 
 /* capability output formats */
 #define F_TERMINFO	0	/* use terminfo names */
@@ -68,14 +74,17 @@ typedef void (*PredHook) (PredType, PredIdx, const char *);
 
 extern NCURSES_CONST char *nametrans(const char *);
 extern bool has_params(const char *src);
-extern int fmt_entry(TERMTYPE *, PredFunc, int, int, int, int);
+extern int fmt_entry(TERMTYPE2 *, PredFunc, int, int, int, int);
 extern int show_entry(void);
-extern void compare_entry(PredHook, TERMTYPE *, bool);
-extern void dump_entry(TERMTYPE *, int, int, int, PredFunc);
-extern void dump_init(const char *, int, int, int, int, unsigned, bool,
+extern void compare_entry(PredHook, TERMTYPE2 *, bool);
+extern void dump_entry(TERMTYPE2 *, int, int, int, PredFunc);
+extern void dump_init(const char *, int, int, bool, int, int, unsigned, bool,
 		      bool, int);
 extern void dump_uses(const char *, bool);
-extern void repair_acsc(TERMTYPE *tp);
+extern void repair_acsc(TERMTYPE2 *tp);
+
+#define L_CURL "{"
+#define R_CURL "}"
 
 #define FAIL	-1
 

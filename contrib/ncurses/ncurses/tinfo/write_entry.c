@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -43,37 +44,62 @@
 
 #if 1
 #define TRACE_OUT(p) DEBUG(2, p)
+#define TRACE_NUM(n) if (VALID_NUMERIC(Numbers[n])) { \
+	TRACE_OUT(("put Numbers[%u]=%d", (unsigned) (n), Numbers[n])); }
 #else
 #define TRACE_OUT(p)		/*nothing */
+#define TRACE_NUM(n)		/* nothing */
 #endif
 
-MODULE_ID("$Id: write_entry.c,v 1.93 2015/09/05 21:24:29 tom Exp $")
+MODULE_ID("$Id: write_entry.c,v 1.115 2020/02/02 23:34:34 tom Exp $")
 
 static int total_written;
+static int total_parts;
+static int total_size;
 
 static int make_db_root(const char *);
 
 #if !USE_HASHED_DB
 static void
-write_file(char *filename, TERMTYPE *tp)
+write_file(char *filename, TERMTYPE2 *tp)
 {
     char buffer[MAX_ENTRY_SIZE];
     unsigned limit = sizeof(buffer);
     unsigned offset = 0;
 
-    FILE *fp = (_nc_access(filename, W_OK) == 0) ? fopen(filename, "wb") : 0;
-    if (fp == 0) {
-	perror(filename);
-	_nc_syserr_abort("can't open %s/%s", _nc_tic_dir(0), filename);
-    }
-    DEBUG(1, ("Created %s", filename));
+    if (_nc_write_object(tp, buffer, &offset, limit) == ERR) {
+	_nc_warning("entry is larger than %u bytes", limit);
+    } else {
+	FILE *fp = ((_nc_access(filename, W_OK) == 0)
+		    ? fopen(filename, BIN_W)
+		    : 0);
+	size_t actual;
 
-    if (_nc_write_object(tp, buffer, &offset, limit) == ERR
-	|| fwrite(buffer, sizeof(char), (size_t) offset, fp) != offset) {
-	_nc_syserr_abort("error writing %s/%s", _nc_tic_dir(0), filename);
-    }
+	if (fp == 0) {
+	    perror(filename);
+	    _nc_syserr_abort("can't open %s/%s", _nc_tic_dir(0), filename);
+	}
 
-    fclose(fp);
+	actual = fwrite(buffer, sizeof(char), (size_t) offset, fp);
+	if (actual != offset) {
+	    int myerr = ferror(fp) ? errno : 0;
+	    if (myerr) {
+		_nc_syserr_abort("error writing %s/%s: %s",
+				 _nc_tic_dir(0),
+				 filename,
+				 strerror(myerr));
+	    } else {
+		_nc_syserr_abort("error writing %s/%s: %u bytes vs actual %lu",
+				 _nc_tic_dir(0),
+				 filename,
+				 offset,
+				 (unsigned long) actual);
+	    }
+	} else {
+	    fclose(fp);
+	    DEBUG(1, ("Created %s", filename));
+	}
+    }
 }
 
 /*
@@ -166,7 +192,7 @@ make_db_root(const char *path)
 
 	if ((rc = stat(path, &statbuf)) < 0) {
 	    rc = mkdir(path
-#if !defined(__MINGW32__)
+#if !defined(_WIN32)
 		       ,0777
 #endif
 		);
@@ -246,7 +272,7 @@ _nc_set_writedir(const char *dir)
  */
 
 NCURSES_EXPORT(void)
-_nc_write_entry(TERMTYPE *const tp)
+_nc_write_entry(TERMTYPE2 *const tp)
 {
 #if USE_HASHED_DB
 
@@ -266,6 +292,9 @@ _nc_write_entry(TERMTYPE *const tp)
 #define HAVE_LINK 1
 #endif
 #endif /* USE_SYMLINKS */
+
+    unsigned limit2 = sizeof(filename) - (2 + LEAF_LEN);
+    char saved = '\0';
 
     static int call_count;
     static time_t start_time;	/* time at start of writes */
@@ -342,6 +371,8 @@ _nc_write_entry(TERMTYPE *const tp)
 		       sizeof(buffer) - 1);
 	    data.size = name_size + 1;
 
+	    total_size += data.size;
+	    total_parts++;
 	    _nc_db_put(capdb, &key, &data);
 
 	    while (*other_names != '\0') {
@@ -356,6 +387,8 @@ _nc_write_entry(TERMTYPE *const tp)
 		key.data = ptr;
 		key.size = strlen(ptr);
 
+		total_size += data.size;
+		total_parts++;
 		_nc_db_put(capdb, &key, &data);
 	    }
 	}
@@ -365,11 +398,19 @@ _nc_write_entry(TERMTYPE *const tp)
 	start_time = 0;
     }
 
-    if (strlen(first_name) >= sizeof(filename) - (2 + LEAF_LEN))
+    if (strlen(first_name) >= limit2) {
 	_nc_warning("terminal name too long.");
+	saved = first_name[limit2];
+	first_name[limit2] = '\0';
+    }
 
     _nc_SPRINTF(filename, _nc_SLIMIT(sizeof(filename))
-		LEAF_FMT "/%s", first_name[0], first_name);
+		LEAF_FMT "/%.*s", UChar(first_name[0]),
+		(int) (sizeof(filename) - (LEAF_LEN + 2)),
+		first_name);
+
+    if (saved)
+	first_name[limit2] = saved;
 
     /*
      * Has this primary name been written since the first call to
@@ -426,7 +467,8 @@ _nc_write_entry(TERMTYPE *const tp)
 
 	check_writeable(ptr[0]);
 	_nc_SPRINTF(linkname, _nc_SLIMIT(sizeof(linkname))
-		    LEAF_FMT "/%s", ptr[0], ptr);
+		    LEAF_FMT "/%.*s", ptr[0],
+		    (int) sizeof(linkname) - (2 + LEAF_LEN), ptr);
 
 	if (strcmp(filename, linkname) == 0) {
 	    _nc_warning("self-synonym ignored");
@@ -438,13 +480,14 @@ _nc_write_entry(TERMTYPE *const tp)
 	{
 	    int code;
 #if USE_SYMLINKS
-	    if (first_name[0] == linkname[0])
-		strncpy(symlinkname, first_name, sizeof(symlinkname) - 1);
-	    else {
-		_nc_STRCPY(symlinkname, "../", sizeof(suymlinkname));
-		strncat(symlinkname, filename, sizeof(symlinkname) - 4);
+#define MY_SIZE sizeof(symlinkname) - 1
+	    if (first_name[0] == linkname[0]) {
+		_nc_STRNCPY(symlinkname, first_name, MY_SIZE);
+	    } else {
+		_nc_STRCPY(symlinkname, "../", sizeof(symlinkname));
+		_nc_STRNCPY(symlinkname + 3, filename, MY_SIZE - 3);
 	    }
-	    symlinkname[sizeof(symlinkname) - 1] = '\0';
+	    symlinkname[MY_SIZE] = '\0';
 #endif /* USE_SYMLINKS */
 #if HAVE_REMOVE
 	    code = remove(linkname);
@@ -541,7 +584,7 @@ compute_offsets(char **Strings, size_t strmax, short *offsets)
     return nextfree;
 }
 
-static void
+static size_t
 convert_shorts(unsigned char *buf, short *Numbers, size_t count)
 {
     size_t i;
@@ -556,14 +599,49 @@ convert_shorts(unsigned char *buf, short *Numbers, size_t count)
 	    TRACE_OUT(("put Numbers[%u]=%d", (unsigned) i, Numbers[i]));
 	}
     }
+    return SIZEOF_SHORT;
 }
+
+#if NCURSES_EXT_NUMBERS
+static size_t
+convert_16bit(unsigned char *buf, NCURSES_INT2 *Numbers, size_t count)
+{
+    size_t i, j;
+    size_t size = SIZEOF_SHORT;
+    for (i = 0; i < count; i++) {
+	unsigned value = (unsigned) Numbers[i];
+	TRACE_NUM(i);
+	for (j = 0; j < size; ++j) {
+	    *buf++ = value & 0xff;
+	    value >>= 8;
+	}
+    }
+    return size;
+}
+
+static size_t
+convert_32bit(unsigned char *buf, NCURSES_INT2 *Numbers, size_t count)
+{
+    size_t i, j;
+    size_t size = SIZEOF_INT2;
+    for (i = 0; i < count; i++) {
+	unsigned value = (unsigned) Numbers[i];
+	TRACE_NUM(i);
+	for (j = 0; j < size; ++j) {
+	    *buf++ = value & 0xff;
+	    value >>= 8;
+	}
+    }
+    return size;
+}
+#endif
 
 #define even_boundary(value) \
 	    ((value) % 2 != 0 && Write(&zero, sizeof(char), 1) != 1)
 
 #if NCURSES_XNAMES
 static unsigned
-extended_Booleans(TERMTYPE *tp)
+extended_Booleans(TERMTYPE2 *tp)
 {
     unsigned result = 0;
     unsigned i;
@@ -576,7 +654,7 @@ extended_Booleans(TERMTYPE *tp)
 }
 
 static unsigned
-extended_Numbers(TERMTYPE *tp)
+extended_Numbers(TERMTYPE2 *tp)
 {
     unsigned result = 0;
     unsigned i;
@@ -589,7 +667,7 @@ extended_Numbers(TERMTYPE *tp)
 }
 
 static unsigned
-extended_Strings(TERMTYPE *tp)
+extended_Strings(TERMTYPE2 *tp)
 {
     unsigned short result = 0;
     unsigned short i;
@@ -606,7 +684,7 @@ extended_Strings(TERMTYPE *tp)
  * clause - discard the unneeded data.
  */
 static bool
-extended_object(TERMTYPE *tp)
+extended_object(TERMTYPE2 *tp)
 {
     bool result = FALSE;
 
@@ -620,10 +698,10 @@ extended_object(TERMTYPE *tp)
 #endif
 
 NCURSES_EXPORT(int)
-_nc_write_object(TERMTYPE *tp, char *buffer, unsigned *offset, unsigned limit)
+_nc_write_object(TERMTYPE2 *tp, char *buffer, unsigned *offset, unsigned limit)
 {
     char *namelist;
-    size_t namelen, boolmax, nummax, strmax;
+    size_t namelen, boolmax, nummax, strmax, numlen;
     char zero = '\0';
     size_t i;
     int nextfree;
@@ -632,6 +710,12 @@ _nc_write_object(TERMTYPE *tp, char *buffer, unsigned *offset, unsigned limit)
     unsigned last_bool = BOOLWRITE;
     unsigned last_num = NUMWRITE;
     unsigned last_str = STRWRITE;
+#if NCURSES_EXT_NUMBERS
+    bool need_ints = FALSE;
+    size_t (*convert_numbers) (unsigned char *, NCURSES_INT2 *, size_t) = convert_32bit;
+#else
+#define convert_numbers convert_shorts
+#endif
 
 #if NCURSES_XNAMES
     /*
@@ -652,14 +736,21 @@ _nc_write_object(TERMTYPE *tp, char *buffer, unsigned *offset, unsigned limit)
 
     boolmax = 0;
     for (i = 0; i < last_bool; i++) {
-	if (tp->Booleans[i] == TRUE)
+	if (tp->Booleans[i] == TRUE) {
 	    boolmax = i + 1;
+	}
     }
 
     nummax = 0;
     for (i = 0; i < last_num; i++) {
-	if (tp->Numbers[i] != ABSENT_NUMERIC)
+	if (tp->Numbers[i] != ABSENT_NUMERIC) {
 	    nummax = i + 1;
+#if NCURSES_EXT_NUMBERS
+	    if (tp->Numbers[i] > MAX_OF_TYPE(NCURSES_COLOR_T)) {
+		need_ints = TRUE;
+	    }
+#endif
+	}
     }
 
     strmax = 0;
@@ -671,7 +762,17 @@ _nc_write_object(TERMTYPE *tp, char *buffer, unsigned *offset, unsigned limit)
     nextfree = compute_offsets(tp->Strings, strmax, offsets);
 
     /* fill in the header */
+#if NCURSES_EXT_NUMBERS
+    if (need_ints) {
+	convert_numbers = convert_32bit;
+	LITTLE_ENDIAN(buf, MAGIC2);
+    } else {
+	convert_numbers = convert_16bit;
+	LITTLE_ENDIAN(buf, MAGIC);
+    }
+#else
     LITTLE_ENDIAN(buf, MAGIC);
+#endif
     LITTLE_ENDIAN(buf + 2, min(namelen, MAX_NAME_SIZE + 1));
     LITTLE_ENDIAN(buf + 4, boolmax);
     LITTLE_ENDIAN(buf + 6, nummax);
@@ -681,62 +782,81 @@ _nc_write_object(TERMTYPE *tp, char *buffer, unsigned *offset, unsigned limit)
     /* write out the header */
     TRACE_OUT(("Header of %s @%d", namelist, *offset));
     if (Write(buf, 12, 1) != 1
-	|| Write(namelist, sizeof(char), namelen) != namelen)
-	  return (ERR);
-
-    for (i = 0; i < boolmax; i++)
-	if (tp->Booleans[i] == TRUE)
-	    buf[i] = TRUE;
-	else
-	    buf[i] = FALSE;
-    if (Write(buf, sizeof(char), boolmax) != boolmax)
-	  return (ERR);
-
-    if (even_boundary(namelen + boolmax))
+	|| Write(namelist, sizeof(char), namelen) != namelen) {
 	return (ERR);
+    }
+
+    for (i = 0; i < boolmax; i++) {
+	if (tp->Booleans[i] == TRUE) {
+	    buf[i] = TRUE;
+	} else {
+	    buf[i] = FALSE;
+	}
+    }
+    if (Write(buf, sizeof(char), boolmax) != boolmax) {
+	return (ERR);
+    }
+
+    if (even_boundary(namelen + boolmax)) {
+	return (ERR);
+    }
 
     TRACE_OUT(("Numerics begin at %04x", *offset));
 
     /* the numerics */
-    convert_shorts(buf, tp->Numbers, nummax);
-    if (Write(buf, 2, nummax) != nummax)
+    numlen = convert_numbers(buf, tp->Numbers, nummax);
+    if (Write(buf, numlen, nummax) != nummax) {
 	return (ERR);
+    }
 
     TRACE_OUT(("String offsets begin at %04x", *offset));
 
     /* the string offsets */
     convert_shorts(buf, offsets, strmax);
-    if (Write(buf, 2, strmax) != strmax)
+    if (Write(buf, SIZEOF_SHORT, strmax) != strmax) {
 	return (ERR);
+    }
 
     TRACE_OUT(("String table begins at %04x", *offset));
 
     /* the strings */
-    for (i = 0; i < strmax; i++)
-	if (VALID_STRING(tp->Strings[i]))
-	    if (!WRITE_STRING(tp->Strings[i]))
+    for (i = 0; i < strmax; i++) {
+	if (VALID_STRING(tp->Strings[i])) {
+	    if (!WRITE_STRING(tp->Strings[i])) {
 		return (ERR);
+	    }
+	}
+    }
 
 #if NCURSES_XNAMES
     if (extended_object(tp)) {
-	unsigned extcnt = (unsigned) NUM_EXT_NAMES(tp);
+	unsigned ext_total = (unsigned) NUM_EXT_NAMES(tp);
+	unsigned ext_usage = ext_total;
 
-	if (even_boundary(nextfree))
+	if (even_boundary(nextfree)) {
 	    return (ERR);
+	}
 
 	nextfree = compute_offsets(tp->Strings + STRCOUNT,
 				   (size_t) tp->ext_Strings,
 				   offsets);
 	TRACE_OUT(("after extended string capabilities, nextfree=%d", nextfree));
 
-	if (tp->ext_Strings >= SIZEOF(offsets))
+	if (tp->ext_Strings >= SIZEOF(offsets)) {
 	    return (ERR);
+	}
 
 	nextfree += compute_offsets(tp->ext_Names,
-				    (size_t) extcnt,
+				    (size_t) ext_total,
 				    offsets + tp->ext_Strings);
 	TRACE_OUT(("after extended capnames, nextfree=%d", nextfree));
-	strmax = tp->ext_Strings + extcnt;
+	strmax = tp->ext_Strings + ext_total;
+	for (i = 0; i < tp->ext_Strings; ++i) {
+	    if (VALID_STRING(tp->Strings[i + STRCOUNT])) {
+		ext_usage++;
+	    }
+	}
+	TRACE_OUT(("will write %u/%lu strings", ext_usage, (unsigned long) strmax));
 
 	/*
 	 * Write the extended header
@@ -744,26 +864,30 @@ _nc_write_object(TERMTYPE *tp, char *buffer, unsigned *offset, unsigned limit)
 	LITTLE_ENDIAN(buf + 0, tp->ext_Booleans);
 	LITTLE_ENDIAN(buf + 2, tp->ext_Numbers);
 	LITTLE_ENDIAN(buf + 4, tp->ext_Strings);
-	LITTLE_ENDIAN(buf + 6, strmax);
+	LITTLE_ENDIAN(buf + 6, ext_usage);
 	LITTLE_ENDIAN(buf + 8, nextfree);
 	TRACE_OUT(("WRITE extended-header @%d", *offset));
-	if (Write(buf, 10, 1) != 1)
+	if (Write(buf, 10, 1) != 1) {
 	    return (ERR);
+	}
 
 	TRACE_OUT(("WRITE %d booleans @%d", tp->ext_Booleans, *offset));
 	if (tp->ext_Booleans
 	    && Write(tp->Booleans + BOOLCOUNT, sizeof(char),
-		     tp->ext_Booleans) != tp->ext_Booleans)
-	      return (ERR);
-
-	if (even_boundary(tp->ext_Booleans))
+		     tp->ext_Booleans) != tp->ext_Booleans) {
 	    return (ERR);
+	}
+
+	if (even_boundary(tp->ext_Booleans)) {
+	    return (ERR);
+	}
 
 	TRACE_OUT(("WRITE %d numbers @%d", tp->ext_Numbers, *offset));
 	if (tp->ext_Numbers) {
-	    convert_shorts(buf, tp->Numbers + NUMCOUNT, (size_t) tp->ext_Numbers);
-	    if (Write(buf, 2, tp->ext_Numbers) != tp->ext_Numbers)
+	    numlen = convert_numbers(buf, tp->Numbers + NUMCOUNT, (size_t) tp->ext_Numbers);
+	    if (Write(buf, numlen, tp->ext_Numbers) != tp->ext_Numbers) {
 		return (ERR);
+	    }
 	}
 
 	/*
@@ -772,8 +896,9 @@ _nc_write_object(TERMTYPE *tp, char *buffer, unsigned *offset, unsigned limit)
 	 */
 	convert_shorts(buf, offsets, strmax);
 	TRACE_OUT(("WRITE offsets @%d", *offset));
-	if (Write(buf, 2, strmax) != strmax)
+	if (Write(buf, SIZEOF_SHORT, strmax) != strmax) {
 	    return (ERR);
+	}
 
 	/*
 	 * Write the string table after the offset tables so we do not
@@ -783,24 +908,28 @@ _nc_write_object(TERMTYPE *tp, char *buffer, unsigned *offset, unsigned limit)
 	    if (VALID_STRING(tp->Strings[i + STRCOUNT])) {
 		TRACE_OUT(("WRITE ext_Strings[%d]=%s", (int) i,
 			   _nc_visbuf(tp->Strings[i + STRCOUNT])));
-		if (!WRITE_STRING(tp->Strings[i + STRCOUNT]))
+		if (!WRITE_STRING(tp->Strings[i + STRCOUNT])) {
 		    return (ERR);
+		}
 	    }
 	}
 
 	/*
 	 * Write the extended names
 	 */
-	for (i = 0; i < extcnt; i++) {
+	for (i = 0; i < ext_total; i++) {
 	    TRACE_OUT(("WRITE ext_Names[%d]=%s", (int) i, tp->ext_Names[i]));
-	    if (!WRITE_STRING(tp->ext_Names[i]))
+	    if (!WRITE_STRING(tp->ext_Names[i])) {
 		return (ERR);
+	    }
 	}
 
     }
 #endif /* NCURSES_XNAMES */
 
     total_written++;
+    total_parts++;
+    total_size = total_size + (int) (*offset + 1);
     return (OK);
 }
 
@@ -810,5 +939,7 @@ _nc_write_object(TERMTYPE *tp, char *buffer, unsigned *offset, unsigned limit)
 NCURSES_EXPORT(int)
 _nc_tic_written(void)
 {
+    TR(TRACE_DATABASE, ("_nc_tic_written %d entries, %d parts, %d size",
+			total_written, total_parts, total_size));
     return total_written;
 }
