@@ -294,7 +294,7 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 		}
 	}
 
-	if ((sc = tapcreate(dev, 0)) == NULL)
+	if ((sc = tapcreate(dev, TAP_MANUALMAKE)) == NULL)
 		return (ENOMEM);
 
 	sc->tap_flags |= TAP_CLONE;
@@ -323,7 +323,7 @@ tapopen(struct dev_open_args *ap)
 
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
-	if (sc == NULL && (sc = tapcreate(dev, TAP_MANUALMAKE)) == NULL) {
+	if (sc == NULL && (sc = tapcreate(dev, 0)) == NULL) {
 		rel_mplock();
 		return (ENOMEM);
 	}

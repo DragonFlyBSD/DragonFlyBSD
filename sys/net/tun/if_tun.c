@@ -285,7 +285,7 @@ tunopen(struct dev_open_args *ap)
 		return (error);
 
 	sc = dev->si_drv1;
-	if (sc == NULL && (sc = tuncreate(dev, TUN_MANUALMAKE)) == NULL)
+	if (sc == NULL && (sc = tuncreate(dev, 0)) == NULL)
 		return (ENOMEM);
 	if (sc->tun_flags & TUN_OPEN)
 		return (EBUSY);
@@ -396,7 +396,7 @@ tun_clone_create(struct if_clone *ifc __unused, int unit,
 		}
 	}
 
-	if ((sc = tuncreate(dev, 0)) == NULL)
+	if ((sc = tuncreate(dev, TUN_MANUALMAKE)) == NULL)
 		return (ENOMEM);
 
 	sc->tun_flags |= TUN_CLONE;
