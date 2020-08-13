@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2012,2014 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2014,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -26,7 +27,7 @@
  * authorization.                                                           *
  ****************************************************************************/
 
-/* $Id: panel.priv.h,v 1.26 2014/11/01 14:48:03 tom Exp $ */
+/* $Id: panel.priv.h,v 1.28 2020/02/02 23:34:34 tom Exp $ */
 
 #ifndef NCURSES_PANEL_PRIV_H
 #define NCURSES_PANEL_PRIV_H 1
@@ -41,15 +42,10 @@
 struct screen;              /* forward declaration */
 
 #include "curses.priv.h"    /* includes nc_panel.h */
+
+#define NCURSES_OPAQUE_PANEL 0
+
 #include "panel.h"
-
-
-#if USE_RCS_IDS
-#  define MODULE_ID(id) static const char Ident[] = id;
-#else
-#  define MODULE_ID(id) /*nothing*/
-#endif
-
 
 #ifdef TRACE
    extern NCURSES_EXPORT(const char *) _nc_my_visbuf (const void *);

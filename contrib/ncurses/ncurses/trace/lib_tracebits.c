@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2012,2015 Free Software Foundation, Inc.              *
+ * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2012,2015 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -34,7 +35,7 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_tracebits.c,v 1.26 2015/04/19 14:58:39 tom Exp $")
+MODULE_ID("$Id: lib_tracebits.c,v 1.28 2020/02/02 23:34:34 tom Exp $")
 
 #if HAVE_SYS_TERMIO_H
 #include <sys/termio.h>		/* needed for ISC */
@@ -130,7 +131,7 @@ _nc_trace_ttymode(TTY * tty)
 	DATA(ONOCR),
 	DATA(ONLRET),
 	DATAX()
-#define ALLOUT	(OPOST|OFLAGS_TABS|ONLCR|OCRNL|ONOCR|ONLRET)
+#define ALLOUT	(OPOST|OFLAGS_TABS|ONLCR|OCRNL|ONOCR|ONLRET|OFLAGS_TABS)
     }, cflags[] =
     {
 	DATA(CLOCAL),

@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2011,2012 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -49,7 +50,7 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_raw.c,v 1.21 2012/01/21 19:21:29 KO.Myung-Hun Exp $")
+MODULE_ID("$Id: lib_raw.c,v 1.24 2020/02/02 23:34:34 tom Exp $")
 
 #if HAVE_SYS_TERMIO_H
 #include <sys/termio.h>		/* needed for ISC */
@@ -112,8 +113,10 @@ NCURSES_SP_NAME(raw) (NCURSES_SP_DCL0)
 	    kbdinfo.fsMask |= KEYBOARD_BINARY_MODE;
 	    KbdSetStatus(&kbdinfo, 0);
 #endif
-	    SP_PARM->_raw = TRUE;
-	    SP_PARM->_cbreak = 1;
+	    if (SP_PARM) {
+		SP_PARM->_raw = TRUE;
+		SP_PARM->_cbreak = 1;
+	    }
 	    termp->Nttyb = buf;
 	}
 	AFTER("raw");
@@ -154,7 +157,9 @@ NCURSES_SP_NAME(cbreak) (NCURSES_SP_DCL0)
 #endif
 	result = NCURSES_SP_NAME(_nc_set_tty_mode) (NCURSES_SP_ARGx &buf);
 	if (result == OK) {
-	    SP_PARM->_cbreak = 1;
+	    if (SP_PARM) {
+		SP_PARM->_cbreak = 1;
+	    }
 	    termp->Nttyb = buf;
 	}
 	AFTER("cbreak");
@@ -177,12 +182,12 @@ cbreak(void)
 NCURSES_EXPORT(void)
 NCURSES_SP_NAME(qiflush) (NCURSES_SP_DCL0)
 {
-    int result = ERR;
     TERMINAL *termp;
 
     T((T_CALLED("qiflush(%p)"), (void *) SP_PARM));
     if ((termp = TerminalOf(SP_PARM)) != 0) {
 	TTY buf;
+	int result;
 
 	BEFORE("qiflush");
 	buf = termp->Nttyb;
@@ -190,6 +195,7 @@ NCURSES_SP_NAME(qiflush) (NCURSES_SP_DCL0)
 	buf.c_lflag &= (unsigned) ~(NOFLSH);
 	result = NCURSES_SP_NAME(_nc_set_tty_mode) (NCURSES_SP_ARGx &buf);
 #else
+	result = ERR;
 	/* FIXME */
 #endif
 	if (result == OK)
@@ -241,8 +247,10 @@ NCURSES_SP_NAME(noraw) (NCURSES_SP_DCL0)
 	    kbdinfo.fsMask |= KEYBOARD_ASCII_MODE;
 	    KbdSetStatus(&kbdinfo, 0);
 #endif
-	    SP_PARM->_raw = FALSE;
-	    SP_PARM->_cbreak = 0;
+	    if (SP_PARM) {
+		SP_PARM->_raw = FALSE;
+		SP_PARM->_cbreak = 0;
+	    }
 	    termp->Nttyb = buf;
 	}
 	AFTER("noraw");
@@ -280,7 +288,9 @@ NCURSES_SP_NAME(nocbreak) (NCURSES_SP_DCL0)
 #endif
 	result = NCURSES_SP_NAME(_nc_set_tty_mode) (NCURSES_SP_ARGx &buf);
 	if (result == OK) {
-	    SP_PARM->_cbreak = 0;
+	    if (SP_PARM) {
+		SP_PARM->_cbreak = 0;
+	    }
 	    termp->Nttyb = buf;
 	}
 	AFTER("nocbreak");
@@ -299,12 +309,12 @@ nocbreak(void)
 NCURSES_EXPORT(void)
 NCURSES_SP_NAME(noqiflush) (NCURSES_SP_DCL0)
 {
-    int result = ERR;
     TERMINAL *termp;
 
     T((T_CALLED("noqiflush(%p)"), (void *) SP_PARM));
     if ((termp = TerminalOf(SP_PARM)) != 0) {
 	TTY buf;
+	int result;
 
 	BEFORE("noqiflush");
 	buf = termp->Nttyb;
@@ -313,6 +323,7 @@ NCURSES_SP_NAME(noqiflush) (NCURSES_SP_DCL0)
 	result = NCURSES_SP_NAME(_nc_set_tty_mode) (NCURSES_SP_ARGx &buf);
 #else
 	/* FIXME */
+	result = ERR;
 #endif
 	if (result == OK)
 	    termp->Nttyb = buf;

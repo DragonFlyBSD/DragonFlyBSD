@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright 2018,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -48,7 +49,7 @@
 
 #include <tic.h>
 
-MODULE_ID("$Id: lib_newterm.c,v 1.92 2014/04/26 18:00:39 tom Exp $")
+MODULE_ID("$Id: lib_newterm.c,v 1.102 2020/02/02 23:34:34 tom Exp $")
 
 #ifdef USE_TERM_DRIVER
 #define NumLabels      InfoOf(SP_PARM).numlabels
@@ -76,6 +77,7 @@ _nc_initscr(NCURSES_SP_DCL0)
 
     /* for extended XPG4 conformance requires cbreak() at this point */
     /* (SVr4 curses does this anyway) */
+    T((T_CALLED("_nc_initscr(%p) ->term %p"), (void *) SP_PARM, (void *) term));
     if (NCURSES_SP_NAME(cbreak) (NCURSES_SP_ARG) == OK) {
 	TTY buf;
 
@@ -93,7 +95,7 @@ _nc_initscr(NCURSES_SP_DCL0)
 	if (result == OK)
 	    term->Nttyb = buf;
     }
-    return result;
+    returnCode(result);
 }
 
 /*
@@ -162,20 +164,16 @@ nofilter(void)
 
 NCURSES_EXPORT(SCREEN *)
 NCURSES_SP_NAME(newterm) (NCURSES_SP_DCLx
-			  NCURSES_CONST char *name,
+			  const char *name,
 			  FILE *ofp,
 			  FILE *ifp)
 {
-    int value;
     int errret;
     SCREEN *result = 0;
     SCREEN *current;
     TERMINAL *its_term;
     FILE *_ofp = ofp ? ofp : stdout;
     FILE *_ifp = ifp ? ifp : stdin;
-    int cols;
-    int slk_format;
-    int filter_mode;
     TERMINAL *new_term = 0;
 
     START_TRACE();
@@ -202,6 +200,8 @@ NCURSES_SP_NAME(newterm) (NCURSES_SP_DCLx
     if (
 	   TINFO_SETUP_TERM(&new_term, name,
 			    fileno(_ofp), &errret, FALSE) != ERR) {
+	int slk_format;
+	int filter_mode;
 
 	_nc_set_screen(0);
 #ifdef USE_TERM_DRIVER
@@ -232,6 +232,9 @@ NCURSES_SP_NAME(newterm) (NCURSES_SP_DCLx
 	    _nc_set_screen(current);
 	    result = 0;
 	} else {
+	    int value;
+	    int cols;
+
 #ifdef USE_TERM_DRIVER
 	    TERMINAL_CONTROL_BLOCK *TCB;
 #elif !NCURSES_SP_FUNCS
@@ -265,7 +268,11 @@ NCURSES_SP_NAME(newterm) (NCURSES_SP_DCLx
 
 	    /* allow user to set maximum escape delay from the environment */
 	    if ((value = _nc_getenv_num("ESCDELAY")) >= 0) {
+#if NCURSES_EXT_FUNCS
 		NCURSES_SP_NAME(set_escdelay) (NCURSES_SP_ARGx value);
+#else
+		ESCDELAY = value;
+#endif
 	    }
 
 	    /* if the terminal type has real soft labels, set those up */
@@ -281,7 +288,7 @@ NCURSES_SP_NAME(newterm) (NCURSES_SP_DCLx
 #else
 	    SP_PARM->_use_meta = FALSE;
 #endif
-	    SP_PARM->_endwin = FALSE;
+	    SP_PARM->_endwin = ewInitial;
 #ifndef USE_TERM_DRIVER
 	    /*
 	     * Check whether we can optimize scrolling under dumb terminals in
@@ -341,8 +348,14 @@ NCURSES_SP_NAME(newterm) (NCURSES_SP_DCLx
 
 #if NCURSES_SP_FUNCS
 NCURSES_EXPORT(SCREEN *)
-newterm(NCURSES_CONST char *name, FILE *ofp, FILE *ifp)
+newterm(const char *name, FILE *ofp, FILE *ifp)
 {
-    return NCURSES_SP_NAME(newterm) (CURRENT_SCREEN_PRE, name, ofp, ifp);
+    SCREEN *rc;
+    _nc_lock_global(prescreen);
+    START_TRACE();
+    rc = NCURSES_SP_NAME(newterm) (CURRENT_SCREEN_PRE, name, ofp, ifp);
+    _nc_forget_prescr();
+    _nc_unlock_global(prescreen);
+    return rc;
 }
 #endif

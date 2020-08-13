@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2000,2009 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2009,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -42,14 +43,14 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_isendwin.c,v 1.7 2009/02/15 00:36:24 tom Exp $")
+MODULE_ID("$Id: lib_isendwin.c,v 1.9 2020/02/02 23:34:34 tom Exp $")
 
 NCURSES_EXPORT(bool)
 NCURSES_SP_NAME(isendwin) (NCURSES_SP_DCL0)
 {
     if (SP_PARM == NULL)
 	return FALSE;
-    return SP_PARM->_endwin;
+    return (SP_PARM->_endwin == ewSuspend);
 }
 
 #if NCURSES_SP_FUNCS

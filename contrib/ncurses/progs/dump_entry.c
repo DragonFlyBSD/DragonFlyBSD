@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,12 +40,14 @@
 #include "termsort.c"		/* this C file is generated */
 #include <parametrized.h>	/* so is this */
 
-MODULE_ID("$Id: dump_entry.c,v 1.124 2015/11/28 22:54:33 tom Exp $")
+MODULE_ID("$Id: dump_entry.c,v 1.176 2020/02/02 23:34:34 tom Exp $")
 
 #define DISCARD(string) string = ABSENT_STRING
 #define PRINTF (void) printf
+#define WRAPPED 32
 
 #define OkIndex(index,array) ((int)(index) >= 0 && (int)(index) < (int) SIZEOF(array))
+#define TcOutput() (outform == F_TERMCAP || outform == F_TCONVERR)
 
 typedef struct {
     char *text;
@@ -60,6 +63,8 @@ static int height = 65535;	/* max number of lines for listings */
 static int column;		/* current column, limited by 'width' */
 static int oldcol;		/* last value of column before wrap */
 static bool pretty;		/* true if we format if-then-else strings */
+static bool wrapped;		/* true if we wrap too-long strings */
+static bool did_wrap;		/* true if last wrap_concat did wrapping */
 static bool checking;		/* true if we are checking for tic */
 static int quickdump;		/* true if we are dumping compiled data */
 
@@ -90,7 +95,7 @@ static int indent = 8;
 #define OBSOLETE(n) (n[0] == 'O' && n[1] == 'T')
 #endif
 
-#define isObsolete(f,n) ((f == F_TERMINFO || f == F_VARIABLE) && OBSOLETE(n))
+#define isObsolete(f,n) ((f == F_TERMINFO || f == F_VARIABLE) && (sortmode != S_VARIABLE) && OBSOLETE(n))
 
 #if NCURSES_XNAMES
 #define BoolIndirect(j) ((j >= BOOLCOUNT) ? (j) : ((sortmode == S_NOSORT) ? j : bool_indirect[j]))
@@ -121,7 +126,7 @@ strncpy_DYN(DYNBUF * dst, const char *src, size_t need)
 	if (dst->text == 0)
 	    failed("strncpy_DYN");
     }
-    (void) strncpy(dst->text + dst->used, src, need);
+    _nc_STRNCPY(dst->text + dst->used, src, need + 1);
     dst->used += need;
     dst->text[dst->used] = 0;
 }
@@ -190,6 +195,7 @@ void
 dump_init(const char *version,
 	  int mode,
 	  int sort,
+	  bool wrap_strings,
 	  int twidth,
 	  int theight,
 	  unsigned traceval,
@@ -201,8 +207,11 @@ dump_init(const char *version,
     width = twidth;
     height = theight;
     pretty = formatted;
+    wrapped = wrap_strings;
     checking = check;
     quickdump = (quick & 3);
+
+    did_wrap = (width <= 0);
 
     /* versions */
     if (version == 0)
@@ -291,7 +300,7 @@ dump_init(const char *version,
 		       _nc_progname, width, tversion, outform);
 }
 
-static TERMTYPE *cur_type;
+static TERMTYPE2 *cur_type;
 
 static int
 dump_predicate(PredType type, PredIdx idx)
@@ -314,7 +323,7 @@ dump_predicate(PredType type, PredIdx idx)
     return (FALSE);		/* pacify compiler */
 }
 
-static void set_obsolete_termcaps(TERMTYPE *tp);
+static void set_obsolete_termcaps(TERMTYPE2 *tp);
 
 /* is this the index of a function key string? */
 #define FNKEY(i) \
@@ -420,19 +429,251 @@ force_wrap(void)
     column = indent;
 }
 
-static void
-wrap_concat(const char *src)
+static int
+op_length(const char *src, int offset)
 {
-    size_t need = strlen(src);
-    size_t want = strlen(separator) + need;
+    int result = 0;
+    int ch;
+    if (offset > 0 && src[offset - 1] == '\\') {
+	result = 0;
+    } else {
+	result++;		/* for '%' mark */
+	ch = src[offset + result];
+	if (TcOutput()) {
+	    if (ch == '>') {
+		result += 3;
+	    } else if (ch == '+') {
+		result += 2;
+	    } else {
+		result++;
+	    }
+	} else if (ch == '\'') {
+	    result += 3;
+	} else if (ch == L_CURL[0]) {
+	    int n = result;
+	    while ((ch = src[offset + n]) != '\0') {
+		if (ch == R_CURL[0]) {
+		    result = ++n;
+		    break;
+		}
+		n++;
+	    }
+	} else if (strchr("pPg", ch) != 0) {
+	    result += 2;
+	} else {
+	    result++;		/* ordinary operator */
+	}
+    }
+    return result;
+}
 
-    if (column > indent
-	&& column + (int) want > width) {
+/*
+ * When wrapping too-long strings, avoid splitting a backslash sequence, or
+ * a terminfo '%' operator.  That will leave things a little ragged, but avoids
+ * a stray backslash at the end of the line, as well as making the result a
+ * little more readable.
+ */
+static int
+find_split(const char *src, int step, int size)
+{
+    int result = size;
+    int n;
+    if (size > 0) {
+	/* check if that would split a backslash-sequence */
+	int mark = size;
+	for (n = size - 1; n > 0; --n) {
+	    int ch = UChar(src[step + n]);
+	    if (ch == '\\') {
+		if (n > 0 && src[step + n - 1] == ch)
+		    --n;
+		mark = n;
+		break;
+	    } else if (!isalnum(ch)) {
+		break;
+	    }
+	}
+	if (mark < size) {
+	    result = mark;
+	} else {
+	    /* check if that would split a backslash-sequence */
+	    for (n = size - 1; n > 0; --n) {
+		int ch = UChar(src[step + n]);
+		if (ch == '%') {
+		    int need = op_length(src, step + n);
+		    if ((n + need) > size) {
+			mark = n;
+		    }
+		    break;
+		}
+	    }
+	    if (mark < size) {
+		result = mark;
+	    }
+	}
+    }
+    return result;
+}
+
+/*
+ * If we are going to wrap lines, we cannot leave literal spaces because that
+ * would be ambiguous if we split on that space.
+ */
+static char *
+fill_spaces(const char *src)
+{
+    const char *fill = "\\s";
+    size_t need = strlen(src);
+    size_t size = strlen(fill);
+    char *result = 0;
+    int pass;
+    int s, d;
+    for (pass = 0; pass < 2; ++pass) {
+	for (s = d = 0; src[s] != '\0'; ++s) {
+	    if (src[s] == ' ') {
+		if (pass) {
+		    _nc_STRCPY(&result[d], fill, need + 1 - d);
+		    d += (int) size;
+		} else {
+		    need += size;
+		}
+	    } else {
+		if (pass) {
+		    result[d++] = src[s];
+		} else {
+		    ++d;
+		}
+	    }
+	}
+	if (pass) {
+	    result[d] = '\0';
+	} else {
+	    result = malloc(need + 1);
+	    if (result == 0)
+		failed("fill_spaces");
+	}
+    }
+    return result;
+}
+
+typedef enum {
+    wOFF = 0
+    ,w1ST = 1
+    ,w2ND = 2
+    ,wEND = 4
+    ,wERR = 8
+} WRAPMODE;
+
+#define wrap_1ST(mode) ((mode)&w1ST)
+#define wrap_END(mode) ((mode)&wEND)
+#define wrap_ERR(mode) ((mode)&wERR)
+
+static void
+wrap_concat(const char *src, int need, unsigned mode)
+{
+    int gaps = (int) strlen(separator);
+    int want = gaps + need;
+
+    did_wrap = (width <= 0);
+    if (wrap_1ST(mode)
+	&& column > indent
+	&& column + want > width) {
 	force_wrap();
     }
-    strcpy_DYN(&outbuf, src);
-    strcpy_DYN(&outbuf, separator);
-    column += (int) need;
+    if ((wrap_END(mode) && !wrap_ERR(mode)) &&
+	wrapped &&
+	(width >= 0) &&
+	(column + want) > width) {
+	int step = 0;
+	int used = width > WRAPPED ? width : WRAPPED;
+	int size;
+	int base = 0;
+	char *p, align[9];
+	const char *my_t = trailer;
+	char *fill = fill_spaces(src);
+	int last = (int) strlen(fill);
+
+	need = last;
+
+	if (TcOutput())
+	    trailer = "\\\n\t ";
+
+	if (!TcOutput() && (p = strchr(fill, '=')) != 0) {
+	    base = (int) (p + 1 - fill);
+	    if (base > 8)
+		base = 8;
+	    _nc_SPRINTF(align, _nc_SLIMIT(align) "%*s", base, " ");
+	} else if (column > 8) {
+	    base = column - 8;
+	    if (base > 8)
+		base = 8;
+	    _nc_SPRINTF(align, _nc_SLIMIT(align) "%*s", base, " ");
+	} else {
+	    align[base] = '\0';
+	}
+	/* "pretty" overrides wrapping if it already split the line */
+	if (!pretty || strchr(fill, '\n') == 0) {
+	    int tag = 0;
+
+	    if (TcOutput() && outbuf.used && !wrap_1ST(mode)) {
+		tag = 3;
+	    }
+
+	    while ((column + (need + gaps)) > used) {
+		size = used - tag;
+		if (step) {
+		    strcpy_DYN(&outbuf, align);
+		    size -= base;
+		}
+		if (size > (last - step)) {
+		    size = (last - step);
+		}
+		size = find_split(fill, step, size);
+		strncpy_DYN(&outbuf, fill + step, (size_t) size);
+		step += size;
+		need -= size;
+		if (need > 0) {
+		    force_wrap();
+		    did_wrap = TRUE;
+		    tag = 0;
+		}
+	    }
+	}
+	if (need > 0) {
+	    if (step)
+		strcpy_DYN(&outbuf, align);
+	    strcpy_DYN(&outbuf, fill + step);
+	}
+	if (wrap_END(mode))
+	    strcpy_DYN(&outbuf, separator);
+	trailer = my_t;
+	force_wrap();
+
+	free(fill);
+    } else {
+	strcpy_DYN(&outbuf, src);
+	if (wrap_END(mode))
+	    strcpy_DYN(&outbuf, separator);
+	column += (int) strlen(src);
+    }
+}
+
+static void
+wrap_concat1(const char *src)
+{
+    int need = (int) strlen(src);
+    wrap_concat(src, need, w1ST | wEND);
+}
+
+static void
+wrap_concat3(const char *name, const char *eqls, const char *value)
+{
+    int nlen = (int) strlen(name);
+    int elen = (int) strlen(eqls);
+    int vlen = (int) strlen(value);
+
+    wrap_concat(name, nlen + elen + vlen, w1ST);
+    wrap_concat(eqls, elen + vlen, w2ND);
+    wrap_concat(value, vlen, wEND);
 }
 
 #define IGNORE_SEP_TRAIL(first,last,sep_trail) \
@@ -478,6 +719,33 @@ indent_DYN(DYNBUF * buffer, int level)
 	strncpy_DYN(buffer, "\t", (size_t) 1);
 }
 
+/*
+ * Check if the current line which was begun consists only of a tab and the
+ * given leading text.
+ */
+static bool
+leading_DYN(DYNBUF * buffer, const char *leading)
+{
+    bool result = FALSE;
+    size_t need = strlen(leading);
+    if (buffer->used > need) {
+	need = buffer->used - need;
+	if (!strcmp(buffer->text + need, leading)) {
+	    result = TRUE;
+	    while (--need != 0) {
+		if (buffer->text[need] == '\n') {
+		    break;
+		}
+		if (buffer->text[need] != '\t') {
+		    result = FALSE;
+		    break;
+		}
+	    }
+	}
+    }
+    return result;
+}
+
 bool
 has_params(const char *src)
 {
@@ -503,7 +771,7 @@ has_params(const char *src)
 }
 
 static char *
-fmt_complex(TERMTYPE *tterm, const char *capability, char *src, int level)
+fmt_complex(TERMTYPE2 *tterm, const char *capability, char *src, int level)
 {
     bool percent = FALSE;
     bool params = has_params(src);
@@ -581,7 +849,7 @@ fmt_complex(TERMTYPE *tterm, const char *capability, char *src, int level)
 	    }
 	    break;
 	case 'p':
-	    if (percent && params) {
+	    if (percent && params && !leading_DYN(&tmpbuf, "%")) {
 		tmpbuf.text[tmpbuf.used - 1] = '\n';
 		indent_DYN(&tmpbuf, level + 1);
 		strncpy_DYN(&tmpbuf, "%", (size_t) 1);
@@ -602,11 +870,35 @@ fmt_complex(TERMTYPE *tterm, const char *capability, char *src, int level)
     return src;
 }
 
+/*
+ * Make "large" numbers a little easier to read by showing them in hexadecimal
+ * if they are "close" to a power of two.
+ */
+static const char *
+number_format(int value)
+{
+    const char *result = "%d";
+    if ((outform != F_TERMCAP) && (value > 255)) {
+	unsigned long lv = (unsigned long) value;
+	unsigned long mm;
+	int bits = sizeof(unsigned long) * 8;
+	int nn;
+	for (nn = 8; nn < bits; ++nn) {
+	    mm = 1UL << nn;
+	    if ((mm - 16) <= lv && (mm + 16) > lv) {
+		result = "%#x";
+		break;
+	    }
+	}
+    }
+    return result;
+}
+
 #define SAME_CAP(n,cap) (&tterm->Strings[n] == &cap)
 #define EXTRA_CAP 20
 
 int
-fmt_entry(TERMTYPE *tterm,
+fmt_entry(TERMTYPE2 *tterm,
 	  PredFunc pred,
 	  int content_only,
 	  int suppress_untranslatable,
@@ -623,9 +915,8 @@ fmt_entry(TERMTYPE *tterm,
     PredIdx num_strings = 0;
     bool outcount = 0;
 
-#define WRAP_CONCAT	\
-	wrap_concat(buffer); \
-	outcount = TRUE
+#define WRAP_CONCAT1(s)		wrap_concat1(s); outcount = TRUE
+#define WRAP_CONCAT		WRAP_CONCAT1(buffer)
 
     len = 12;			/* terminfo file-header */
 
@@ -698,8 +989,13 @@ fmt_entry(TERMTYPE *tterm,
 		_nc_SPRINTF(buffer, _nc_SLIMIT(sizeof(buffer))
 			    "%s@", name);
 	    } else {
+		size_t nn;
 		_nc_SPRINTF(buffer, _nc_SLIMIT(sizeof(buffer))
-			    "%s#%d", name, tterm->Numbers[i]);
+			    "%s#", name);
+		nn = strlen(buffer);
+		_nc_SPRINTF(buffer + nn, _nc_SLIMIT(sizeof(buffer) - nn)
+			    number_format(tterm->Numbers[i]),
+			    tterm->Numbers[i]);
 		if (i + 1 > num_values)
 		    num_values = i + 1;
 	    }
@@ -719,12 +1015,12 @@ fmt_entry(TERMTYPE *tterm,
 #undef CUR
 #define CUR tterm->
     if (outform == F_TERMCAP) {
-	if (termcap_reset != ABSENT_STRING) {
-	    if (init_3string != ABSENT_STRING
+	if (VALID_STRING(termcap_reset)) {
+	    if (VALID_STRING(init_3string)
 		&& !strcmp(init_3string, termcap_reset))
 		DISCARD(init_3string);
 
-	    if (reset_2string != ABSENT_STRING
+	    if (VALID_STRING(reset_2string)
 		&& !strcmp(reset_2string, termcap_reset))
 		DISCARD(reset_2string);
 	}
@@ -784,9 +1080,9 @@ fmt_entry(TERMTYPE *tterm,
 		    set_attributes = save_sgr;
 
 		    trimmed_sgr0 = _nc_trim_sgr0(tterm);
-		    if (strcmp(capability, trimmed_sgr0))
+		    if (strcmp(capability, trimmed_sgr0)) {
 			capability = trimmed_sgr0;
-		    else {
+		    } else {
 			if (trimmed_sgr0 != exit_attribute_mode)
 			    free(trimmed_sgr0);
 		    }
@@ -800,7 +1096,7 @@ fmt_entry(TERMTYPE *tterm,
 	buffer[0] = '\0';
 
 	if (predval != FAIL) {
-	    if (capability != ABSENT_STRING
+	    if (VALID_STRING(capability)
 		&& i + 1 > num_strings)
 		num_strings = i + 1;
 
@@ -808,10 +1104,9 @@ fmt_entry(TERMTYPE *tterm,
 		_nc_SPRINTF(buffer, _nc_SLIMIT(sizeof(buffer))
 			    "%s@", name);
 		WRAP_CONCAT;
-	    } else if (outform == F_TERMCAP || outform == F_TCONVERR) {
+	    } else if (TcOutput()) {
 		char *srccap = _nc_tic_expand(capability, TRUE, numbers);
-		int params = (((i < (int) SIZEOF(parametrized)) &&
-			       (i < STRCOUNT))
+		int params = ((i < (int) SIZEOF(parametrized))
 			      ? parametrized[i]
 			      : ((*srccap == 'k')
 				 ? 0
@@ -823,28 +1118,45 @@ fmt_entry(TERMTYPE *tterm,
 			_nc_SPRINTF(buffer, _nc_SLIMIT(sizeof(buffer))
 				    "%s=!!! %s WILL NOT CONVERT !!!",
 				    name, srccap);
+			WRAP_CONCAT;
 		    } else if (suppress_untranslatable) {
 			continue;
 		    } else {
 			char *s = srccap, *d = buffer;
-			_nc_SPRINTF(d, _nc_SLIMIT(sizeof(buffer)) "..%s=", name);
-			d += strlen(d);
+			int need = 3 + (int) strlen(name);
 			while ((*d = *s++) != 0) {
+			    if ((d - buffer + 1) >= (int) sizeof(buffer)) {
+				fprintf(stderr,
+					"%s: value for %s is too long\n",
+					_nc_progname,
+					name);
+				*d = '\0';
+				break;
+			    }
 			    if (*d == ':') {
 				*d++ = '\\';
 				*d = ':';
 			    } else if (*d == '\\') {
-				*++d = *s++;
+				if ((*++d = *s++) == '\0')
+				    break;
 			    }
 			    d++;
+			    *d = '\0';
 			}
+			need += (int) (d - buffer);
+			wrap_concat("..", need, w1ST | wERR);
+			need -= 2;
+			wrap_concat(name, need, wOFF | wERR);
+			need -= (int) strlen(name);
+			wrap_concat("=", need, w2ND | wERR);
+			need -= 1;
+			wrap_concat(buffer, need, wEND | wERR);
+			outcount = TRUE;
 		    }
 		} else {
-		    _nc_SPRINTF(buffer, _nc_SLIMIT(sizeof(buffer))
-				"%s=%s", name, cv);
+		    wrap_concat3(name, "=", cv);
 		}
 		len += (int) strlen(capability) + 1;
-		WRAP_CONCAT;
 	    } else {
 		char *src = _nc_tic_expand(capability,
 					   outform == F_TERMINFO, numbers);
@@ -860,13 +1172,11 @@ fmt_entry(TERMTYPE *tterm,
 		    strcpy_DYN(&tmpbuf, src);
 		}
 		len += (int) strlen(capability) + 1;
-		wrap_concat(tmpbuf.text);
-		outcount = TRUE;
+		WRAP_CONCAT1(tmpbuf.text);
 	    }
 	}
 	/* e.g., trimmed_sgr0 */
-	if (capability != ABSENT_STRING &&
-	    capability != CANCELLED_STRING &&
+	if (VALID_STRING(capability) &&
 	    capability != tterm->Strings[i])
 	    free(capability);
     }
@@ -955,9 +1265,11 @@ fmt_entry(TERMTYPE *tterm,
     if (outcount) {
 	bool trimmed = FALSE;
 	j = (PredIdx) outbuf.used;
-	if (j >= 2
-	    && outbuf.text[j - 1] == '\t'
-	    && outbuf.text[j - 2] == '\n') {
+	if (wrapped && did_wrap) {
+	    /* EMPTY */ ;
+	} else if (j >= 2
+		   && outbuf.text[j - 1] == '\t'
+		   && outbuf.text[j - 2] == '\n') {
 	    outbuf.used -= 2;
 	    trimmed = TRUE;
 	} else if (j >= 4
@@ -992,7 +1304,7 @@ fmt_entry(TERMTYPE *tterm,
 }
 
 static bool
-kill_string(TERMTYPE *tterm, char *cap)
+kill_string(TERMTYPE2 *tterm, char *cap)
 {
     unsigned n;
     for (n = 0; n < NUM_STRINGS(tterm); ++n) {
@@ -1005,7 +1317,7 @@ kill_string(TERMTYPE *tterm, char *cap)
 }
 
 static char *
-find_string(TERMTYPE *tterm, char *name)
+find_string(TERMTYPE2 *tterm, char *name)
 {
     PredIdx n;
     for (n = 0; n < NUM_STRINGS(tterm); ++n) {
@@ -1026,7 +1338,7 @@ find_string(TERMTYPE *tterm, char *name)
  * make it smaller.
  */
 static int
-kill_labels(TERMTYPE *tterm, int target)
+kill_labels(TERMTYPE2 *tterm, int target)
 {
     int n;
     int result = 0;
@@ -1035,7 +1347,8 @@ kill_labels(TERMTYPE *tterm, int target)
 
     for (n = 0; n <= 10; ++n) {
 	_nc_SPRINTF(name, _nc_SLIMIT(sizeof(name)) "lf%d", n);
-	if ((cap = find_string(tterm, name)) != ABSENT_STRING
+	cap = find_string(tterm, name);
+	if (VALID_STRING(cap)
 	    && kill_string(tterm, cap)) {
 	    target -= (int) (strlen(cap) + 5);
 	    ++result;
@@ -1051,7 +1364,7 @@ kill_labels(TERMTYPE *tterm, int target)
  * make it smaller.
  */
 static int
-kill_fkeys(TERMTYPE *tterm, int target)
+kill_fkeys(TERMTYPE2 *tterm, int target)
 {
     int n;
     int result = 0;
@@ -1060,7 +1373,8 @@ kill_fkeys(TERMTYPE *tterm, int target)
 
     for (n = 60; n >= 0; --n) {
 	_nc_SPRINTF(name, _nc_SLIMIT(sizeof(name)) "kf%d", n);
-	if ((cap = find_string(tterm, name)) != ABSENT_STRING
+	cap = find_string(tterm, name);
+	if (VALID_STRING(cap)
 	    && kill_string(tterm, cap)) {
 	    target -= (int) (strlen(cap) + 5);
 	    ++result;
@@ -1082,9 +1396,9 @@ one_one_mapping(const char *mapping)
 {
     bool result = TRUE;
 
-    if (mapping != ABSENT_STRING) {
+    if (VALID_STRING(mapping)) {
 	int n = 0;
-	while (mapping[n] != '\0') {
+	while (mapping[n] != '\0' && mapping[n + 1] != '\0') {
 	    if (isLine(mapping[n]) &&
 		mapping[n] != mapping[n + 1]) {
 		result = FALSE;
@@ -1105,7 +1419,7 @@ one_one_mapping(const char *mapping)
 #define SHOW_WHY PRINTF
 
 static bool
-purged_acs(TERMTYPE *tterm)
+purged_acs(TERMTYPE2 *tterm)
 {
     bool result = FALSE;
 
@@ -1132,16 +1446,16 @@ encode_b64(char *target, char *source, unsigned state, int *saved)
 
     switch (state % 3) {
     case 0:
-	*target++ = data[ch & 077];
-	*saved = (ch >> 6) & 3;
+	*target++ = data[(ch >> 2) & 077];
+	*saved = (ch << 4);
 	break;
     case 1:
-	*target++ = data[((ch << 2) | *saved) & 077];
-	*saved = (ch >> 4) & 017;
+	*target++ = data[((ch >> 4) | *saved) & 077];
+	*saved = (ch << 2);
 	break;
     case 2:
-	*target++ = data[((ch << 4) | *saved) & 077];
-	*target++ = data[(ch >> 2) & 077];
+	*target++ = data[((ch >> 6) | *saved) & 077];
+	*target++ = data[ch & 077];
 	*saved = 0;
 	break;
     }
@@ -1152,13 +1466,13 @@ encode_b64(char *target, char *source, unsigned state, int *saved)
  * Dump a single entry.
  */
 void
-dump_entry(TERMTYPE *tterm,
+dump_entry(TERMTYPE2 *tterm,
 	   int suppress_untranslatable,
 	   int limited,
 	   int numbers,
 	   PredFunc pred)
 {
-    TERMTYPE save_tterm;
+    TERMTYPE2 save_tterm;
     int len, critlen;
     const char *legend;
     bool infodump;
@@ -1174,30 +1488,37 @@ dump_entry(TERMTYPE *tterm,
 	    char numbuf[80];
 	    if (quickdump & 1) {
 		if (outbuf.used)
-		    wrap_concat("\n");
-		wrap_concat("hex:");
+		    wrap_concat1("\n");
+		wrap_concat1("hex:");
 		for (n = 0; n < offset; ++n) {
-		    sprintf(numbuf, "%02X", UChar(bigbuf[n]));
-		    wrap_concat(numbuf);
+		    _nc_SPRINTF(numbuf, _nc_SLIMIT(sizeof(numbuf))
+				"%02X", UChar(bigbuf[n]));
+		    wrap_concat1(numbuf);
 		}
 	    }
 	    if (quickdump & 2) {
+		static char padding[] =
+		{0, 0};
 		int value = 0;
 		if (outbuf.used)
-		    wrap_concat("\n");
-		wrap_concat("b64:");
+		    wrap_concat1("\n");
+		wrap_concat1("b64:");
 		for (n = 0; n < offset; ++n) {
 		    encode_b64(numbuf, bigbuf, n, &value);
-		    wrap_concat(numbuf);
+		    wrap_concat1(numbuf);
 		}
 		switch (n % 3) {
 		case 0:
 		    break;
 		case 1:
-		    wrap_concat("===");
+		    encode_b64(numbuf, padding, 1, &value);
+		    wrap_concat1(numbuf);
+		    wrap_concat1("==");
 		    break;
 		case 2:
-		    wrap_concat("==");
+		    encode_b64(numbuf, padding, 1, &value);
+		    wrap_concat1(numbuf);
+		    wrap_concat1("=");
 		    break;
 		}
 	    }
@@ -1205,7 +1526,7 @@ dump_entry(TERMTYPE *tterm,
 	return;
     }
 
-    if (outform == F_TERMCAP || outform == F_TCONVERR) {
+    if (TcOutput()) {
 	critlen = MAX_TERMCAP_LENGTH;
 	legend = "older termcap";
 	infodump = FALSE;
@@ -1294,7 +1615,8 @@ dump_entry(TERMTYPE *tterm,
 		}
 		if (len > critlen) {
 		    (void) fprintf(stderr,
-				   "warning: %s entry is %d bytes long\n",
+				   "%s: %s entry is %d bytes long\n",
+				   _nc_progname,
 				   _nc_first_name(tterm->term_names),
 				   len);
 		    SHOW_WHY("# WARNING: this entry, %d bytes long, may core-dump %s libraries!\n",
@@ -1320,11 +1642,11 @@ dump_uses(const char *name, bool infodump)
 {
     char buffer[MAX_TERMINFO_LENGTH];
 
-    if (outform == F_TERMCAP || outform == F_TCONVERR)
+    if (TcOutput())
 	trim_trailing();
     _nc_SPRINTF(buffer, _nc_SLIMIT(sizeof(buffer))
 		"%s%s", infodump ? "use=" : "tc=", name);
-    wrap_concat(buffer);
+    wrap_concat1(buffer);
 }
 
 int
@@ -1334,7 +1656,7 @@ show_entry(void)
      * Trim any remaining whitespace.
      */
     if (outbuf.used != 0) {
-	bool infodump = (outform != F_TERMCAP && outform != F_TCONVERR);
+	bool infodump = !TcOutput();
 	char delim = (char) (infodump ? ',' : ':');
 	int j;
 
@@ -1363,7 +1685,7 @@ show_entry(void)
 
 void
 compare_entry(PredHook hook,
-	      TERMTYPE *tp GCC_UNUSED,
+	      TERMTYPE2 *tp GCC_UNUSED,
 	      bool quiet)
 /* compare two entries */
 {
@@ -1422,7 +1744,7 @@ compare_entry(PredHook hook,
 #define CUR tp->
 
 static void
-set_obsolete_termcaps(TERMTYPE *tp)
+set_obsolete_termcaps(TERMTYPE2 *tp)
 {
 #include "capdefaults.c"
 }
@@ -1432,7 +1754,7 @@ set_obsolete_termcaps(TERMTYPE *tp)
  * unique.
  */
 void
-repair_acsc(TERMTYPE *tp)
+repair_acsc(TERMTYPE2 *tp)
 {
     if (VALID_STRING(acs_chars)) {
 	size_t n, m;

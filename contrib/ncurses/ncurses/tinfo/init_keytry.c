@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1999-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1999-2010,2016 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,7 +30,7 @@
 #include <curses.priv.h>
 #include <tic.h>		/* struct tinfo_fkeys */
 
-MODULE_ID("$Id: init_keytry.c,v 1.17 2010/04/24 22:29:56 tom Exp $")
+MODULE_ID("$Id: init_keytry.c,v 1.19 2020/02/02 23:34:34 tom Exp $")
 
 /*
 **      _nc_init_keytry()
@@ -66,14 +67,14 @@ _nc_tinfo_fkeysf(void)
 NCURSES_EXPORT(void)
 _nc_init_keytry(SCREEN *sp)
 {
-    unsigned n;
-
     /* The sp->_keytry value is initialized in newterm(), where the sp
      * structure is created, because we can not tell where keypad() or
      * mouse_activate() (which will call keyok()) are first called.
      */
 
     if (sp != 0) {
+	unsigned n;
+
 	for (n = 0; _nc_tinfo_fkeys[n].code; n++) {
 	    if (_nc_tinfo_fkeys[n].offset < STRCOUNT) {
 		(void) _nc_add_to_try(&(sp->_keytry),

@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2010,2014 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -42,35 +43,38 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_chgat.c,v 1.10 2014/02/01 22:13:31 tom Exp $")
+MODULE_ID("$Id: lib_chgat.c,v 1.13 2020/02/02 23:34:34 tom Exp $")
 
 NCURSES_EXPORT(int)
 wchgat(WINDOW *win,
        int n,
        attr_t attr,
-       NCURSES_PAIRS_T color,
+       NCURSES_PAIRS_T pair_arg,
        const void *opts GCC_UNUSED)
 {
-    int i;
+    int code = ERR;
+    int color_pair = pair_arg;
 
     T((T_CALLED("wchgat(%p,%d,%s,%d)"),
        (void *) win,
        n,
        _traceattr(attr),
-       (int) color));
+       color_pair));
 
+    set_extended_pair(opts, color_pair);
     if (win) {
 	struct ldat *line = &(win->_line[win->_cury]);
+	int i;
 
-	toggle_attr_on(attr, ColorPair(color));
+	toggle_attr_on(attr, ColorPair(color_pair));
 
 	for (i = win->_curx; i <= win->_maxx && (n == -1 || (n-- > 0)); i++) {
 	    SetAttr(line->text[i], attr);
-	    SetPair(line->text[i], color);
+	    SetPair(line->text[i], color_pair);
 	    CHANGED_CELL(line, i);
 	}
 
-	returnCode(OK);
-    } else
-	returnCode(ERR);
+	code = OK;
+    }
+    returnCode(code);
 }

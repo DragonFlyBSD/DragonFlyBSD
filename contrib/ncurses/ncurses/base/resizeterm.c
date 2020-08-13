@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2015,2016 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -45,7 +46,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: resizeterm.c,v 1.48 2015/10/10 19:47:25 tom Exp $")
+MODULE_ID("$Id: resizeterm.c,v 1.50 2020/02/02 23:34:34 tom Exp $")
 
 /*
  * If we're trying to be reentrant, do not want any local statics.
@@ -146,9 +147,10 @@ static int
 ripped_bottom(WINDOW *win)
 {
     int result = 0;
-    ripoff_t *rop;
 
     if (win != 0) {
+	ripoff_t *rop;
+
 #ifdef USE_SP_RIPOFF
 	SCREEN *sp = _nc_screen_of(win);
 #endif
@@ -448,7 +450,7 @@ NCURSES_SP_NAME(resize_term) (NCURSES_SP_DCLx int ToLines, int ToCols)
 NCURSES_EXPORT(int)
 resize_term(int ToLines, int ToCols)
 {
-    int res = ERR;
+    int res;
     _nc_sp_lock_global(curses);
     res = NCURSES_SP_NAME(resize_term) (CURRENT_SCREEN, ToLines, ToCols);
     _nc_sp_unlock_global(curses);

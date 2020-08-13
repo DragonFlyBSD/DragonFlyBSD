@@ -1,6 +1,7 @@
 #!/bin/sh
 ##############################################################################
-# Copyright (c) 1998-2006,2014 Free Software Foundation, Inc.                #
+# Copyright 2019,2020 Thomas E. Dickey                                       #
+# Copyright 1998-2014,2017 Free Software Foundation, Inc.                    #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -26,15 +27,18 @@
 # use or other dealings in this Software without prior written               #
 # authorization.                                                             #
 ##############################################################################
-# $Id: MKparametrized.sh,v 1.7 2014/05/24 15:07:19 tom Exp $
+# $Id: MKparametrized.sh,v 1.10 2020/02/02 23:34:34 tom Exp $
 #
 # MKparametrized.sh -- generate indirection vectors for various sort methods
 #
 # The output of this script is C source for an array specifying whether
 # termcap strings should undergo parameter and padding translation.
 #
-CAPS="${1-Caps}"
+[ $# = 0 ] && set - Caps
+
 cat <<EOF
+#ifndef PARAMETRIZED_H
+#define PARAMETRIZED_H 1
 /*
  * parametrized.h --- is a termcap capability parametrized?
  *
@@ -52,7 +56,14 @@ EOF
 # XENIX acs_* capabilities.  Maybe someday we'll dedicate a flag field for
 # this, that would be cleaner....
 
-${AWK-awk} <$CAPS '
+cat "$@" | ${AWK-awk} '
+
+/^#/ { next ; }
+/^capalias/ { next ; }
+/^infoalias/ { next ; }
+/^used_by/ { next ; }
+/^userdef/ { next ; }
+
 $3 != "str"		{next;}
 $1 ~ /^acs_/		{print "-1,\t/* ", $2, " */"; count++; next;}
 $1 ~ /^label_format/	{print "-1,\t/* ", $2, " */"; count++; next;}
@@ -61,3 +72,4 @@ $0 ~ /#[0-9]/		{print "1,\t/* ", $2, " */"; count++; next;}
 END			{printf("} /* %d entries */;\n\n", count);}
 '
 
+echo "#endif /* PARAMETRIZED_H */"

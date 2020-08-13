@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2015,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +33,7 @@
  *     and: Thomas E. Dickey                        1998-on                 *
  ****************************************************************************/
 
-/* $Id: term_entry.h,v 1.47 2015/08/30 00:41:20 tom Exp $ */
+/* $Id: term_entry.h,v 1.59 2020/02/02 23:34:34 tom Exp $ */
 
 /*
  *	term_entry.h -- interface to entry-manipulation code
@@ -40,53 +41,18 @@
 
 #ifndef NCURSES_TERM_ENTRY_H_incl
 #define NCURSES_TERM_ENTRY_H_incl 1
+/* *INDENT-OFF* */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include <curses.h>
 #include <term.h>
 
-    /*
-     * see db_iterator.c - this enumeration lists the places searched for a
-     * terminal description and defines the order in which they are searched.
-     */
-    typedef enum {
-	dbdTIC = 0,		/* special, used by tic when writing entry */
-#if NCURSES_USE_DATABASE
-	dbdEnvOnce,		/* the $TERMINFO environment variable */
-	dbdHome,		/* $HOME/.terminfo */
-	dbdEnvList,		/* the $TERMINFO_DIRS environment variable */
-	dbdCfgList,		/* the compiled-in TERMINFO_DIRS value */
-	dbdCfgOnce,		/* the compiled-in TERMINFO value */
-#endif
-#if NCURSES_USE_TERMCAP
-	dbdEnvOnce2,		/* the $TERMCAP environment variable */
-	dbdEnvList2,		/* the $TERMPATH environment variable */
-	dbdCfgList2,		/* the compiled-in TERMPATH */
-#endif
-	dbdLAST
-    } DBDIRS;
-
-#define MAX_USES	32
-#define MAX_CROSSLINKS	16
-
-    typedef struct entry {
-	TERMTYPE tterm;
-	unsigned nuses;
-	struct {
-	    char *name;
-	    struct entry *link;
-	    long line;
-	} uses[MAX_USES];
-	int ncrosslinks;
-	struct entry *crosslinks[MAX_CROSSLINKS];
-	long cstart, cend;
-	long startline;
-	struct entry *next;
-	struct entry *last;
-    } ENTRY;
-/* *INDENT-OFF* */
+/*
+ * These macros may be used by programs that know about TERMTYPE:
+ */
 #if NCURSES_XNAMES
 #define NUM_BOOLEANS(tp) (tp)->num_Booleans
 #define NUM_NUMBERS(tp)  (tp)->num_Numbers
@@ -115,6 +81,57 @@ extern "C" {
 #define ExtNumname(tp,i,names)  EXT_NAMES(tp, i, NUMCOUNT, (i - (tp->num_Numbers - tp->ext_Numbers)) + tp->ext_Booleans, names)
 #define ExtStrname(tp,i,names)  EXT_NAMES(tp, i, STRCOUNT, (i - (tp->num_Strings - tp->ext_Strings)) + (tp->ext_Numbers + tp->ext_Booleans), names)
 
+/*
+ * The remaining type-definitions and macros are used only internally by the
+ * ncurses utilities.
+ */
+#ifdef NCURSES_INTERNALS
+
+/*
+ * see db_iterator.c - this enumeration lists the places searched for a
+ * terminal description and defines the order in which they are searched.
+ */
+typedef enum {
+	dbdTIC = 0,		/* special, used by tic when writing entry */
+#if NCURSES_USE_DATABASE
+	dbdEnvOnce,		/* the $TERMINFO environment variable */
+	dbdHome,		/* $HOME/.terminfo */
+	dbdEnvList,		/* the $TERMINFO_DIRS environment variable */
+	dbdCfgList,		/* the compiled-in TERMINFO_DIRS value */
+	dbdCfgOnce,		/* the compiled-in TERMINFO value */
+#endif
+#if NCURSES_USE_TERMCAP
+	dbdEnvOnce2,		/* the $TERMCAP environment variable */
+	dbdEnvList2,		/* the $TERMPATH environment variable */
+	dbdCfgList2,		/* the compiled-in TERMPATH */
+#endif
+	dbdLAST
+} DBDIRS;
+
+#define MAX_USES	32
+#define MAX_CROSSLINKS	16
+
+typedef struct entry ENTRY;
+
+typedef struct {
+	char *name;
+	ENTRY *link;
+	long line;
+} ENTRY_USES;
+
+struct entry {
+	TERMTYPE2 tterm;
+	unsigned nuses;
+	ENTRY_USES uses[MAX_USES];
+	int ncrosslinks;
+	ENTRY *crosslinks[MAX_CROSSLINKS];
+	long cstart;
+	long cend;
+	long startline;
+	ENTRY *next;
+	ENTRY *last;
+};
+
 extern NCURSES_EXPORT_VAR(ENTRY *) _nc_head;
 extern NCURSES_EXPORT_VAR(ENTRY *) _nc_tail;
 #define for_entry_list(qp)	for (qp = _nc_head; qp; qp = qp->next)
@@ -131,7 +148,10 @@ extern NCURSES_EXPORT_VAR(ENTRY *) _nc_tail;
 #define PRESENT(s)	(((s) != ABSENT_STRING) && ((s) != CANCELLED_STRING))
 
 #define ANDMISSING(p,q) \
-		{if (PRESENT(p) && !PRESENT(q)) _nc_warning(#p " but no " #q);}
+		{ \
+		if (PRESENT(p) && !PRESENT(q)) \
+			_nc_warning(#p " but no " #q); \
+		}
 
 #define PAIRED(p,q) \
 		{ \
@@ -141,25 +161,25 @@ extern NCURSES_EXPORT_VAR(ENTRY *) _nc_tail;
 			_nc_warning(#p " but no " #q); \
 		}
 
+/*
+ * These entrypoints are used only by the ncurses utilities such as tic.
+ */
+
 /* alloc_entry.c: elementary allocation code */
 extern NCURSES_EXPORT(ENTRY *) _nc_copy_entry (ENTRY *oldp);
 extern NCURSES_EXPORT(char *) _nc_save_str (const char *const);
-extern NCURSES_EXPORT(void) _nc_init_entry (TERMTYPE *const);
-extern NCURSES_EXPORT(void) _nc_merge_entry (TERMTYPE *const, TERMTYPE *const);
+extern NCURSES_EXPORT(void) _nc_init_entry (ENTRY *const);
+extern NCURSES_EXPORT(void) _nc_merge_entry (ENTRY *const, ENTRY *const);
 extern NCURSES_EXPORT(void) _nc_wrap_entry (ENTRY *const, bool);
 
 /* alloc_ttype.c: elementary allocation code */
-extern NCURSES_EXPORT(void) _nc_align_termtype (TERMTYPE *, TERMTYPE *);
-extern NCURSES_EXPORT(void) _nc_copy_termtype (TERMTYPE *, const TERMTYPE *);
+extern NCURSES_EXPORT(void) _nc_align_termtype (TERMTYPE2 *, TERMTYPE2 *);
 
 /* free_ttype.c: elementary allocation code */
-extern NCURSES_EXPORT(void) _nc_free_termtype (TERMTYPE *);
-
-/* lib_acs.c */
-extern NCURSES_EXPORT(void) _nc_init_acs (void);	/* corresponds to traditional 'init_acs()' */
+extern NCURSES_EXPORT(void) _nc_free_termtype2 (TERMTYPE2 *);
 
 /* lib_termcap.c: trim sgr0 string for termcap users */
-extern NCURSES_EXPORT(char *) _nc_trim_sgr0 (TERMTYPE *);
+extern NCURSES_EXPORT(char *) _nc_trim_sgr0 (TERMTYPE2 *);
 
 /* parse_entry.c: entry-parsing code */
 #if NCURSES_XNAMES
@@ -171,8 +191,8 @@ extern NCURSES_EXPORT(int) _nc_capcmp (const char *, const char *);
 
 /* write_entry.c: writing an entry to the file system */
 extern NCURSES_EXPORT(void) _nc_set_writedir (const char *);
-extern NCURSES_EXPORT(void) _nc_write_entry (TERMTYPE *const);
-extern NCURSES_EXPORT(int) _nc_write_object(TERMTYPE *, char *, unsigned *, unsigned);
+extern NCURSES_EXPORT(void) _nc_write_entry (TERMTYPE2 *const);
+extern NCURSES_EXPORT(int) _nc_write_object (TERMTYPE2 *, char *, unsigned *, unsigned);
 
 /* comp_parse.c: entry list handling */
 extern NCURSES_EXPORT(void) _nc_read_entry_source (FILE*, char*, int, bool, bool (*)(ENTRY*));
@@ -181,13 +201,37 @@ extern NCURSES_EXPORT(int) _nc_resolve_uses (bool); /* obs 20040705 */
 extern NCURSES_EXPORT(int) _nc_resolve_uses2 (bool, bool);
 extern NCURSES_EXPORT(void) _nc_free_entries (ENTRY *);
 extern NCURSES_IMPEXP void NCURSES_API (*_nc_check_termtype)(TERMTYPE *); /* obs 20040705 */
-extern NCURSES_IMPEXP void NCURSES_API (*_nc_check_termtype2)(TERMTYPE *, bool);
+extern NCURSES_IMPEXP void NCURSES_API (*_nc_check_termtype2)(TERMTYPE2 *, bool);
 
 /* trace_xnames.c */
 extern NCURSES_EXPORT(void) _nc_trace_xnames (TERMTYPE *);
-/* *INDENT-ON* */
+
+#endif /* NCURSES_INTERNALS */
+
+/*
+ * These entrypoints were used by tack before 1.08.
+ */
+
+#undef  NCURSES_TACK_1_08
+#ifdef  NCURSES_INTERNALS
+#define NCURSES_TACK_1_08 /* nothing */
+#else
+#define NCURSES_TACK_1_08 GCC_DEPRECATED("upgrade to tack 1.08")
+#endif
+
+/* alloc_ttype.c: elementary allocation code */
+extern NCURSES_EXPORT(void) _nc_copy_termtype (TERMTYPE *, const TERMTYPE *) NCURSES_TACK_1_08;
+
+/* lib_acs.c */
+extern NCURSES_EXPORT(void) _nc_init_acs (void) NCURSES_TACK_1_08;	/* corresponds to traditional 'init_acs()' */
+
+/* free_ttype.c: elementary allocation code */
+extern NCURSES_EXPORT(void) _nc_free_termtype (TERMTYPE *) NCURSES_TACK_1_08;
 
 #ifdef __cplusplus
 }
 #endif
-#endif				/* NCURSES_TERM_ENTRY_H_incl */
+
+/* *INDENT-ON* */
+
+#endif /* NCURSES_TERM_ENTRY_H_incl */

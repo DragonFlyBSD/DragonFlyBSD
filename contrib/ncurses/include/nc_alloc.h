@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2012,2013 Free Software Foundation, Inc.              *
+ * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2013,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,11 +30,14 @@
 /****************************************************************************
  *  Author: Thomas E. Dickey                    1996-on                     *
  ****************************************************************************/
-/* $Id: nc_alloc.h,v 1.22 2013/01/26 21:56:51 tom Exp $ */
+/* $Id: nc_alloc.h,v 1.26 2020/02/02 23:34:34 tom Exp $ */
 
 #ifndef NC_ALLOC_included
 #define NC_ALLOC_included 1
 /* *INDENT-OFF* */
+
+#include <ncurses_cfg.h>
+#include <curses.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,8 +73,9 @@ extern "C" {
 #if HAVE_LIBDBMALLOC || HAVE_LIBDMALLOC || NO_LEAKS
 #define HAVE_NC_FREEALL 1
 struct termtype;
-extern NCURSES_EXPORT(void) _nc_free_and_exit(int) GCC_NORETURN;
-extern NCURSES_EXPORT(void) _nc_free_tinfo(int) GCC_NORETURN;
+extern NCURSES_EXPORT(void) _nc_free_tinfo(int) GCC_NORETURN GCC_DEPRECATED("use exit_terminfo");
+
+#ifdef NCURSES_INTERNALS
 extern NCURSES_EXPORT(void) _nc_free_tic(int) GCC_NORETURN;
 extern NCURSES_EXPORT(void) _nc_free_tparm(void);
 extern NCURSES_EXPORT(void) _nc_leaks_dump_entry(void);
@@ -79,9 +84,16 @@ extern NCURSES_EXPORT(void) _nc_leaks_tic(void);
 #if NCURSES_SP_FUNCS
 extern NCURSES_EXPORT(void) NCURSES_SP_NAME(_nc_free_and_exit)(SCREEN*, int) GCC_NORETURN;
 #endif
+extern NCURSES_EXPORT(void) _nc_free_and_exit(int) GCC_NORETURN;
 
-#define ExitProgram(code) _nc_free_and_exit(code)
+#else /* !NCURSES_INTERNALS */
+extern NCURSES_EXPORT(void) _nc_free_and_exit(int) GCC_NORETURN GCC_DEPRECATED("use exit_curses");
+#endif
 
+#define ExitProgram(code) exit_curses(code)
+
+#else
+extern NCURSES_EXPORT(void) _nc_free_and_exit(int) GCC_NORETURN GCC_DEPRECATED("use exit_curses");
 #endif /* NO_LEAKS, etc */
 
 #ifndef HAVE_NC_FREEALL

@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2015,2016 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -42,7 +43,7 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_getch.c,v 1.134 2016/01/23 21:32:00 tom Exp $")
+MODULE_ID("$Id: lib_getch.c,v 1.139 2020/02/02 23:34:34 tom Exp $")
 
 #include <fifo_defs.h>
 
@@ -69,16 +70,20 @@ NCURSES_EXPORT(int)
 NCURSES_SP_NAME(set_escdelay) (NCURSES_SP_DCLx int value)
 {
     int code = OK;
-#if USE_REENTRANT
-    if (SP_PARM) {
-	SET_ESCDELAY(value);
-    } else {
+    if (value < 0) {
 	code = ERR;
-    }
+    } else {
+#if USE_REENTRANT
+	if (SP_PARM) {
+	    SET_ESCDELAY(value);
+	} else {
+	    code = ERR;
+	}
 #else
-    (void) SP_PARM;
-    ESCDELAY = value;
+	(void) SP_PARM;
+	ESCDELAY = value;
 #endif
+    }
     return code;
 }
 
@@ -87,12 +92,16 @@ NCURSES_EXPORT(int)
 set_escdelay(int value)
 {
     int code;
+    if (value < 0) {
+	code = ERR;
+    } else {
 #if USE_REENTRANT
-    code = NCURSES_SP_NAME(set_escdelay) (CURRENT_SCREEN, value);
+	code = NCURSES_SP_NAME(set_escdelay) (CURRENT_SCREEN, value);
 #else
-    ESCDELAY = value;
-    code = OK;
+	ESCDELAY = value;
+	code = OK;
 #endif
+    }
     return code;
 }
 #endif
@@ -125,7 +134,7 @@ _nc_use_meta(WINDOW *win)
 }
 
 #ifdef USE_TERM_DRIVER
-# ifdef __MINGW32__
+# ifdef _WIN32
 static HANDLE
 _nc_get_handle(int fd)
 {
@@ -146,7 +155,7 @@ check_mouse_activity(SCREEN *sp, int delay EVENTLIST_2nd(_nc_eventlist * evl))
 #ifdef USE_TERM_DRIVER
     TERMINAL_CONTROL_BLOCK *TCB = TCBOf(sp);
     rc = TCBOf(sp)->drv->td_testmouse(TCBOf(sp), delay EVENTLIST_2nd(evl));
-# ifdef __MINGW32__
+# ifdef _WIN32
     /* if we emulate terminfo on console, we have to use the console routine */
     if (IsTermInfoOnConsole(sp)) {
 	HANDLE fd = _nc_get_handle(sp->_ifd);
@@ -224,11 +233,6 @@ fifo_push(SCREEN *sp EVENTLIST_2nd(_nc_eventlist * evl))
     if (tail < 0)
 	return ERR;
 
-#ifdef HIDE_EINTR
-  again:
-    errno = 0;
-#endif
-
 #ifdef NCURSES_WGETCH_EVENTS
     if (evl
 #if USE_GPM_SUPPORT || USE_EMX_MOUSE || USE_SYSMOUSE
@@ -288,7 +292,7 @@ fifo_push(SCREEN *sp EVENTLIST_2nd(_nc_eventlist * evl))
     {				/* Can block... */
 #ifdef USE_TERM_DRIVER
 	int buf;
-#ifdef __MINGW32__
+#ifdef _WIN32
 	if (NC_ISATTY(sp->_ifd) && IsTermInfoOnConsole(sp) && sp->_cbreak)
 	    n = _nc_mingw_console_read(sp,
 				       _nc_get_handle(sp->_ifd),
@@ -312,24 +316,6 @@ fifo_push(SCREEN *sp EVENTLIST_2nd(_nc_eventlist * evl))
 	ch = c2;
 #endif
     }
-
-#ifdef HIDE_EINTR
-    /*
-     * Under System V curses with non-restarting signals, getch() returns
-     * with value ERR when a handled signal keeps it from completing.
-     * If signals restart system calls, OTOH, the signal is invisible
-     * except to its handler.
-     *
-     * We don't want this difference to show.  This piece of code
-     * tries to make it look like we always have restarting signals.
-     */
-    if (n <= 0 && errno == EINTR
-# if USE_PTHREADS_EINTR
-	&& (_nc_globals.have_sigwinch == 0)
-# endif
-	)
-	goto again;
-#endif
 
     if ((n == -1) || (n == 0)) {
 	TR(TRACE_IEVENT, ("read(%d,&ch,1)=%d, errno=%d", sp->_ifd, n, errno));
@@ -360,7 +346,7 @@ fifo_clear(SCREEN *sp)
     tail = peek = 0;
 }
 
-static int kgetch(SCREEN *EVENTLIST_2nd(_nc_eventlist * evl));
+static int kgetch(SCREEN *, bool EVENTLIST_2nd(_nc_eventlist *));
 
 static void
 recur_wrefresh(WINDOW *win)
@@ -497,8 +483,6 @@ _nc_wgetch(WINDOW *win,
 	    TR(TRACE_IEVENT, ("timed delay in wgetch()"));
 	    if (sp->_cbreak > 1)
 		delay = (sp->_cbreak - 1) * 100;
-	    else if (win->_notimeout)
-		delay = 0;
 	    else
 		delay = win->_delay;
 
@@ -539,7 +523,7 @@ _nc_wgetch(WINDOW *win,
 	int runcount = 0;
 
 	do {
-	    ch = kgetch(sp EVENTLIST_2nd(evl));
+	    ch = kgetch(sp, win->_notimeout EVENTLIST_2nd(evl));
 	    if (ch == KEY_MOUSE) {
 		++runcount;
 		if (sp->_mouse_inline(sp))
@@ -651,7 +635,7 @@ wgetch_events(WINDOW *win, _nc_eventlist * evl)
     int code;
     int value;
 
-    T((T_CALLED("wgetch_events(%p,%p)"), (void *) win, (void *)evl));
+    T((T_CALLED("wgetch_events(%p,%p)"), (void *) win, (void *) evl));
     code = _nc_wgetch(win,
 		      &value,
 		      _nc_use_meta(win)
@@ -694,11 +678,11 @@ wgetch(WINDOW *win)
 */
 
 static int
-kgetch(SCREEN *sp EVENTLIST_2nd(_nc_eventlist * evl))
+kgetch(SCREEN *sp, bool forever EVENTLIST_2nd(_nc_eventlist * evl))
 {
     TRIES *ptr;
     int ch = 0;
-    int timeleft = GetEscdelay(sp);
+    int timeleft = forever ? 9999999 : GetEscdelay(sp);
 
     TR(TRACE_IEVENT, ("kgetch() called"));
 

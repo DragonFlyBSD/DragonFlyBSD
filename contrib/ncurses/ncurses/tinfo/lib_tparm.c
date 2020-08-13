@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -42,7 +43,7 @@
 #include <ctype.h>
 #include <tic.h>
 
-MODULE_ID("$Id: lib_tparm.c,v 1.94 2015/07/17 01:03:35 tom Exp $")
+MODULE_ID("$Id: lib_tparm.c,v 1.108 2020/02/02 23:34:34 tom Exp $")
 
 /*
  *	char *
@@ -326,6 +327,7 @@ parse_format(const char *s, char *format, int *len)
 
 #define isUPPER(c) ((c) >= 'A' && (c) <= 'Z')
 #define isLOWER(c) ((c) >= 'a' && (c) <= 'z')
+#define tc_BUMP()  if (level < 0 && number < 2) number++
 
 /*
  * Analyze the string to see how many parameters we need from the varargs list,
@@ -346,14 +348,15 @@ _nc_tparm_analyze(const char *string, char *p_is_s[NUM_PARM], int *popcount)
     int lastpop = -1;
     int len;
     int number = 0;
+    int level = -1;
     const char *cp = string;
     static char dummy[] = "";
 
     if (cp == 0)
 	return 0;
 
-    if ((len2 = strlen(cp)) > TPS(fmt_size)) {
-	TPS(fmt_size) = len2 + TPS(fmt_size) + 2;
+    if ((len2 = strlen(cp)) + 2 > TPS(fmt_size)) {
+	TPS(fmt_size) += len2 + 2;
 	TPS(fmt_buff) = typeRealloc(char, TPS(fmt_size), TPS(fmt_buff));
 	if (TPS(fmt_buff) == 0)
 	    return 0;
@@ -378,22 +381,27 @@ _nc_tparm_analyze(const char *string, char *p_is_s[NUM_PARM], int *popcount)
 #ifdef EXP_XTERM_1005
 	    case 'u':
 #endif
-		if (lastpop <= 0)
-		    number++;
+		if (lastpop <= 0) {
+		    tc_BUMP();
+		}
+		level -= 1;
 		lastpop = -1;
 		break;
 
 	    case 'l':
 	    case 's':
-		if (lastpop > 0)
+		if (lastpop > 0) {
+		    level -= 1;
 		    p_is_s[lastpop - 1] = dummy;
-		++number;
+		}
+		tc_BUMP();
 		break;
 
 	    case 'p':
 		cp++;
 		i = (UChar(*cp) - '0');
 		if (i >= 0 && i <= NUM_PARM) {
+		    ++level;
 		    lastpop = i;
 		    if (lastpop > *popcount)
 			*popcount = lastpop;
@@ -401,20 +409,22 @@ _nc_tparm_analyze(const char *string, char *p_is_s[NUM_PARM], int *popcount)
 		break;
 
 	    case 'P':
-		++number;
 		++cp;
 		break;
 
 	    case 'g':
+		++level;
 		cp++;
 		break;
 
 	    case S_QUOTE:
+		++level;
 		cp += 2;
 		lastpop = -1;
 		break;
 
 	    case L_BRACE:
+		++level;
 		cp++;
 		while (isdigit(UChar(*cp))) {
 		    cp++;
@@ -434,14 +444,15 @@ _nc_tparm_analyze(const char *string, char *p_is_s[NUM_PARM], int *popcount)
 	    case '=':
 	    case '<':
 	    case '>':
+		tc_BUMP();
+		level -= 1;	/* pop 2, operate, push 1 */
 		lastpop = -1;
-		number += 2;
 		break;
 
 	    case '!':
 	    case '~':
+		tc_BUMP();
 		lastpop = -1;
-		++number;
 		break;
 
 	    case 'i':
@@ -475,8 +486,10 @@ tparam_internal(int use_TPARM_ARG, const char *string, va_list ap)
     bool termcap_hack;
     bool incremented_two;
 
-    if (cp == NULL)
+    if (cp == NULL) {
+	TR(TRACE_CALLS, ("%s: format is null", TPS(tname)));
 	return NULL;
+    }
 
     TPS(out_used) = 0;
     len2 = strlen(cp);
@@ -487,8 +500,10 @@ tparam_internal(int use_TPARM_ARG, const char *string, va_list ap)
      * variable-length argument list.
      */
     number = _nc_tparm_analyze(cp, p_is_s, &popcount);
-    if (TPS(fmt_buff) == 0)
+    if (TPS(fmt_buff) == 0) {
+	TR(TRACE_CALLS, ("%s: error in analysis", TPS(tname)));
 	return NULL;
+    }
 
     incremented_two = FALSE;
 
@@ -527,7 +542,6 @@ tparam_internal(int use_TPARM_ARG, const char *string, va_list ap)
     termcap_hack = FALSE;
     if (popcount == 0) {
 	termcap_hack = TRUE;
-	popcount = number;
 	for (i = number - 1; i >= 0; i--) {
 	    if (p_is_s[i])
 		spush(p_is_s[i]);
@@ -538,10 +552,16 @@ tparam_internal(int use_TPARM_ARG, const char *string, va_list ap)
 #ifdef TRACE
     if (USE_TRACEF(TRACE_CALLS)) {
 	for (i = 0; i < num_args; i++) {
-	    if (p_is_s[i] != 0)
+	    if (p_is_s[i] != 0) {
 		save_text(", %s", _nc_visbuf(p_is_s[i]), 0);
-	    else
+	    } else if ((long) param[i] > MAX_OF_TYPE(NCURSES_INT2) ||
+		       (long) param[i] < 0) {
+		_tracef("BUG: problem with tparm parameter #%d of %d",
+			i + 1, num_args);
+		break;
+	    } else {
 		save_number(", %d", (int) param[i], 0);
+	    }
 	}
 	_tracef(T_CALLED("%s(%s%s)"), TPS(tname), _nc_visbuf(cp), TPS(out_buff));
 	TPS(out_used) = 0;
@@ -821,7 +841,7 @@ tparam_internal(int use_TPARM_ARG, const char *string, va_list ap)
 #endif
 
 NCURSES_EXPORT(char *)
-tparm_varargs(NCURSES_CONST char *string,...)
+tparm_varargs(const char *string, ...)
 {
     va_list ap;
     char *result;
@@ -838,7 +858,7 @@ tparm_varargs(NCURSES_CONST char *string,...)
 
 #if !NCURSES_TPARM_VARARGS
 NCURSES_EXPORT(char *)
-tparm_proto(NCURSES_CONST char *string,
+tparm_proto(const char *string,
 	    TPARM_ARG a1,
 	    TPARM_ARG a2,
 	    TPARM_ARG a3,
@@ -854,7 +874,7 @@ tparm_proto(NCURSES_CONST char *string,
 #endif /* NCURSES_TPARM_VARARGS */
 
 NCURSES_EXPORT(char *)
-tiparm(const char *string,...)
+tiparm(const char *string, ...)
 {
     va_list ap;
     char *result;

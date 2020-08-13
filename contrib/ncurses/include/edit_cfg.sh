@@ -1,7 +1,8 @@
 #!/bin/sh
-# $Id: edit_cfg.sh,v 1.12 2001/12/23 00:52:40 tom Exp $
+# $Id: edit_cfg.sh,v 1.14 2020/02/02 23:34:34 tom Exp $
 ##############################################################################
-# Copyright (c) 1998,2000,2001 Free Software Foundation, Inc.                #
+# Copyright 2020 Thomas E. Dickey                                            #
+# Copyright 1998-2001,2017 Free Software Foundation, Inc.                    #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -38,7 +39,7 @@
 #
 BAK=save$$
 TMP=edit$$
-trap "rm -f $BAK $TMP" 0 1 2 5 15
+trap "rm -f $BAK $TMP" 0 1 2 3 15
 for name in \
 	HAVE_TCGETATTR \
 	HAVE_TERMIOS_H \
