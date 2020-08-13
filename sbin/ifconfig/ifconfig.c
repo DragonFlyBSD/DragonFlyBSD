@@ -504,7 +504,7 @@ main(int argc, char *argv[])
 			if (argc > 0 && (strcmp(argv[0], "create") == 0 ||
 			    strcmp(argv[0], "plumb") == 0)) {
 				if (argc == 1)
-					errx(1, "interface %s alreay exists",
+					errx(1, "interface %s already exists",
 					    ifname);
 				argc--, argv++;
 			}
