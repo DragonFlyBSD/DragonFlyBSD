@@ -125,6 +125,12 @@ CWARNFLAGS	+=	-Werror
 . endif
 .endif
 
+# Build world with -fno-common. This will be default with GCC 10.
+#
+.if ${_WCCVER:Ngcc1[0-9][0-9]}
+CFLAGS		+=	-fno-common
+.endif
+
 .if defined(NO_WCAST_FUNCTION_TYPE) && ${WARNS} >= 3 && ${_WCCVER:Mgcc8*}
 _cnowarnflags	+=      -Wno-cast-function-type
 .endif
