@@ -161,6 +161,15 @@ SMTP authentication can be configured in
 .Pa auth.conf .
 Each line has the format
 .Dq Li user|smarthost:password .
+.Pp
+.Nm
+uses the recipient MTA hostname and finds the first entry in the auth.conf
+file that matches the smarthost value or the hostname of the recipient
+address.
+It then uses the user and password to authenticate with the smarthost.
+.Pp
+Note, that the only authentication method supported is CRAM-MD5.
+The receiving MTA must be configured to accept CRAM-MD5 authentication.
 .Ss dma.conf
 Most of the behaviour of
 .Nm
