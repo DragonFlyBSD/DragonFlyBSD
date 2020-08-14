@@ -30,7 +30,7 @@ run_tic.sh:
 	  -e 's;@DESTDIR@;;g' \
 	  -e 's;@TERMINFO@;${.CURDIR}/terminfo;g' \
 	  -e 's;@TERMINFO_SRC@;${TSOURCE};g' \
-	  -e 's;@TIC_PATH@;${TIC};g' \
+	  -e 's;@TIC@;${TIC};g' \
 	  -e 's;@NCURSES_EXT_FUNCS@;1;g' \
 	  -e 's;@LN_S@;ln -s -f;g' \
 	  -e 's;@prefix@;/usr;g' \

@@ -28,7 +28,6 @@ NCURSES_5.9 {
 	_nc_capcmp;
 	_nc_captoinfo_leaks;
 	_nc_check_termtype2;
-	_nc_check_termtype;
 	_nc_comp_scan_leaks;
 	_nc_copy_termtype;
 	_nc_curr_col;
@@ -111,7 +110,6 @@ NCURSES_5.9 {
 	_nc_read_termtype;
 	_nc_reset_input;
 	_nc_resolve_uses2;
-	_nc_resolve_uses;
 	_nc_retrace_attr_t;
 	_nc_retrace_bool;
 	_nc_retrace_chtype;
@@ -799,4 +797,8 @@ NCURSES_5.9 {
 
 NCURSES_6.0 {
 	_nc_write_object;
+};
+
+NCURSES_6.2 {
+	_nc_find_user_entry;
 };

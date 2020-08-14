@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2014 Free Software Foundation, Inc.              *
+ * Copyright 2018,2020 Thomas E. Dickey                                     *
+ * Copyright 2009,2014 Free Software Foundation, Inc.                       *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -25,17 +26,30 @@
  * sale, use or other dealings in this Software without prior written       *
  * authorization.                                                           *
  ****************************************************************************/
-/* $Id: ncurses_dll.h.in,v 1.9 2014/08/02 21:30:20 tom Exp $ */
+/* $Id: ncurses_dll.h.in,v 1.12 2020/02/02 23:34:34 tom Exp $ */
 
 #ifndef NCURSES_DLL_H_incl
 #define NCURSES_DLL_H_incl 1
+
+/*
+ * MinGW gcc (unlike MSYS2 and Cygwin) should define _WIN32 and possibly _WIN64.
+ */
+#if defined(__MINGW64__)
+
+#ifndef _WIN64
+#define _WIN64 1
+#endif
+
+#elif defined(__MINGW32__)
+
+#ifndef _WIN32
+#define _WIN32 1
+#endif
 
 /* 2014-08-02 workaround for broken MinGW compiler.
  * Oddly, only TRACE is mapped to trace - the other -D's are okay.
  * suggest TDM as an alternative.
  */
-#if defined(__MINGW64__)
-#elif defined(__MINGW32__)
 #if (__GNUC__ == 4) && (__GNUC_MINOR__ == 8)
 
 #ifdef trace
@@ -44,6 +58,7 @@
 #endif
 
 #endif	/* broken compiler */
+
 #endif	/* MingW */
 
 /*
@@ -60,7 +75,7 @@
 #undef NCURSES_DLL
 #define NCURSES_STATIC
 
-#if defined(__CYGWIN__) || defined(__MINGW32__)
+#if defined(__CYGWIN__) || defined(_WIN32)
 #  if defined(NCURSES_DLL)
 #    if defined(NCURSES_STATIC)
 #      undef NCURSES_STATIC

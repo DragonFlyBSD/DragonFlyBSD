@@ -110,3 +110,15 @@ NCURSES_5.9 {
 	wunctrl_sp;
 	wvline_set;
 };
+
+NCURSES_6.2 {
+	alloc_pair;
+	extended_color_content;
+	extended_pair_content;
+	extended_slk_color;
+	find_pair;
+	free_pair;
+	init_extended_color;
+	init_extended_pair;
+	reset_color_pairs;
+};

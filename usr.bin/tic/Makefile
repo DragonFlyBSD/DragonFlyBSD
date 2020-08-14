@@ -16,12 +16,17 @@ CFLAGS+=	-I${.CURDIR}/../../lib/libncurses/include
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
 
-# Ideally this should be -lprivate_ncursesw
-# Wide version can be used when DragonFly 3.3 branch is created
-DPADD=		${LIBNCURSES}
-LDADD=		-lprivate_ncurses
+DPADD=		${LIBNCURSESW}
+LDADD=		-lprivate_ncursesw
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+
+term.h:
+	awk -f ${.CURDIR}/../../lib/libncurses/include/MKterm.h.awk ${TERMINFO_CAPS} \
+	  > ${.TARGET}.new
+	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../../libncurses/include/ncurses_cfg.h \
+	  ${.TARGET}.new
+	mv -f ${.TARGET}.new ${.TARGET}
 
 ncurses_def.h:
 	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
@@ -45,9 +50,9 @@ transform.o: ${PROGSDIR}/transform.c
 dump_entry.o: ${PROGSDIR}/dump_entry.c termsort.c
 	${CC} ${CFLAGS} -c ${PROGSDIR}/dump_entry.c -o ${.TARGET}
 
-CLEANFILES=	ncurses_def.h parametrized.h termsort.c
+CLEANFILES=	ncurses_def.h parametrized.h term.h termsort.c
 
-SRCS=	ncurses_def.h parametrized.h
+SRCS=	ncurses_def.h parametrized.h term.h
 SRCS+=	tic.c dump_entry.c tparm_type.c transform.c
 
 .include <bsd.prog.mk>

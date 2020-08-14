@@ -1,18 +1,26 @@
-GNU NCURSES 5.9
+GNU NCURSES 6.2
 ===============
 
 Original source can be downloaded from:
 http://ftp.gnu.org/pub/gnu/ncurses
 
-file = ncurses-6.0-20160305.tgz
-date = 6 March 2016
-size = 3153972
-sha1 = dbbaff96c4e447148243a9b5a8babb014f5b4bdc
+file = ncurses-6.2.tar.gz
+date = 12 February 2020
+size = 3425862
+sha1 = 56e410fb77f2b5501a0b2f6a995376f3cefe1097
 
-A list of files and directories removed is in README.DELETED
+A list of files and directories removed is in README.DELETED.
 
-The .h files copied into base where created using configure opts:
-	--enable-widec
+Use "git diff vendor/NCURSES contrib/ncurses" to see local modifications.
+
+Configuring ncurses is tricky a bit because both ncurses and ncursesw
+have to be configured, and both into the same set of .h files.
+To distinguish one from the other, ENABLE_WIDEC is defined and activated
+later from Makefiles via -DENABLE_WIDEC.
+
+Basically, vendor configure script has to be run twice with these common
+options:
+
 	--enable-const
 	--with-sysmouse
 	--enable-termcap
@@ -21,17 +29,9 @@ The .h files copied into base where created using configure opts:
 	--with-default-terminfo-dir=/usr/share/terminfo
 	--with-terminfo-dirs=/usr/share/terminfo
 
-The following files have been modified:
-	ncurses/base/Mklib_gen.sh
-	ncurses/tinfo/comp_scan.c
-	misc/terminfo.src [1]
-	progs/dump_entry.c [2]
-	progs/tic.c [2]
-
-[1] smcup and rmcup were removed from xterm-basic to disable the
-    restoration of the console after less, more, man, and other
-    utilities are executed.  It was rendering them useless.
-
-[2] tic can't be built with ncurses 5.9 headers.  Since it is a
-    bootstrap tool, it had to be modified so that it can be, but
-    only during the bootstrap tool building phase.
+First run with --disable-widec, second run with --enable-widec. Generated
+content from ./include/ directory has to be saved elsewhere between runs.
+Then carefully compare the outputs and apply appropriately into
+lib/libncurses/include/ on master branch. Special attention has to be paid
+to 'if 0' and 'if 1' directives in curses.head and MKterm.h.awk - ncurses'
+configure uses this to define different content to disable or enable widec.
