@@ -442,6 +442,21 @@ typedef Elf_Note Elf_Nhdr;
 #define NT_TASKSTRUCT	4		/* Contains copy of task struct */
 #define NT_AUXV 	6		/* Contains copy of Elfxx_auxv_t */
 
+/* GNU note types. */
+#define NT_GNU_ABI_TAG		1
+#define NT_GNU_HWCAP		2
+#define NT_GNU_BUILD_ID		3
+#define NT_GNU_GOLD_VERSION	4
+#define NT_GNU_PROPERTY_TYPE_0	5
+
+#define GNU_PROPERTY_LOPROC			0xc0000000
+#define GNU_PROPERTY_HIPROC			0xdfffffff
+
+#define GNU_PROPERTY_X86_FEATURE_1_AND		0xc0000002
+
+#define GNU_PROPERTY_X86_FEATURE_1_IBT		0x00000001
+#define GNU_PROPERTY_X86_FEATURE_1_SHSTK	0x00000002
+
 #define STN_UNDEF	0		/* Undefined symbol index */
 
 #define STB_LOCAL	0		/* Symbol not visible outside obj */
