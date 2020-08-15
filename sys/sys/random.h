@@ -114,6 +114,8 @@ int random_filter_read(struct knote *kn, long hint);
 
 #endif /* _KERNEL */
 
+__BEGIN_DECLS
 ssize_t getrandom(void *buf, size_t buflen, unsigned int flags);
+__END_DECLS
 
 #endif /* !_SYS_RANDOM_H_ */
