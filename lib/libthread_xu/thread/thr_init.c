@@ -37,6 +37,8 @@
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/resource.h>
 #include <sys/ttycom.h>
 #include <sys/mman.h>
 #include <stdio.h>
@@ -372,6 +374,30 @@ init_main_thread(struct pthread *thread)
 	/* Others cleared to zero by thr_alloc() */
 }
 
+/*
+ * Determine the size of the main thread.
+ *
+ * Set the main thread's stack size equal to the value of RLIMIT_STACK for the
+ * process. The size of stacks for threads created by the process at run-time
+ * with pthread_create(3) is not affected by this and is still controlled by
+ * thread attributes.
+ *
+ * Note: FreeBSD uses environment variables LIBPTHREAD_BIGSTACK_MAIN and
+ * LIBPTHREAD_SPLITSTACK_MAIN to control use of RLIMIT_STACK vs the hard-coded
+ * 4MB with RLIMIT_STACK being the default behaviour. DragonFly instead respects
+ * RLIMIT_STACK unconditionally.
+ */
+static int64_t
+get_mainthread_size(void)
+{
+	struct rlimit rlim;
+
+	if (getrlimit(RLIMIT_STACK, &rlim) == -1)
+		PANIC("Cannot get stack rlimit");
+
+	return rlim.rlim_cur;
+}
+
 static void
 init_private(void)
 {
@@ -392,6 +418,7 @@ init_private(void)
 		len = sizeof (_usrstack);
 		if (sysctl(mib, 2, &_usrstack, &len, NULL, 0) == -1)
 			PANIC("Cannot get kern.usrstack from sysctl");
+		_thr_stack_initial = get_mainthread_size();
 		_thr_page_size = getpagesize();
 		_thr_guard_default = _thr_page_size;
 		_pthread_attr_default.guardsize_attr = _thr_guard_default;
