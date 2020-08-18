@@ -7,9 +7,8 @@ SRCS=	closure.c error.c graph.c lalr.c lr0.c main.c mkpar.c mstring.c \
 
 VER!=	cat ${CONTRIBDIR}/VERSION
 CFLAGS+=-DYYPATCH=${VER}
-# config.h defines
-CFLAGS+=-DHAVE_FCNTL_H -DHAVE_MKSTEMP -DHAVE_VSNPRINTF
-CFLAGS+=-DGCC_PRINTFLIKE=__printflike -DMAXTABLE=65000
+CFLAGS+=-DHAVE_CONFIG_H -I${.CURDIR}
+CFLAGS+=-DMAXTABLE=65000
 
 LINKS=	${BINDIR}/yacc ${BINDIR}/byacc
 MLINKS=	yacc.1 byacc.1
