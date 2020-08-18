@@ -8,6 +8,7 @@
 .Nd retrieve authentication token
 .Sh SYNOPSIS
 .In sys/types.h
+.In security/pam_appl.h
 .In security/openpam.h
 .Ft "int"
 .Fn pam_get_authtok "pam_handle_t *pamh" "int item" "const char **authtok" "const char *prompt"
