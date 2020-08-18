@@ -28,7 +28,7 @@ ioctl_includes=`
 '^#[ 	]*define[ 	]+[A-Za-z_][A-Za-z0-9_]*[ 	]+_IO[^a-z0-9_]' |
 		awk '{printf("#include <%s>\\\\n", $1)}'
 	printf '#undef loff_t /* XXX ext2_fs.h defines it */\\\\n'
-       	printf '/*\\\\n'
+	printf '/*\\\\n'
 	printf ' * We should probably install some of these to /usr/include/sys\\\\n'
 	printf ' */\\\\n'
 	printf '#include <bus/firewire/firewire.h>\\\\n'
