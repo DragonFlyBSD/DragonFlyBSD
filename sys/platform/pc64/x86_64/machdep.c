@@ -2567,24 +2567,9 @@ do_next:
 	 * physical address space, efi_fb_init_vaddr(1) might not return
 	 * an initialized framebuffer base pointer.  In this situation the
 	 * later efi_fb_init_vaddr(0) call will deal with it.
-	 *
-	 * HACK: Setting machdep.hack_efifb_probe_early=1 works around
-	 * an issue that occurs on some recent systems where there is
-	 * no system console when booting via UEFI. Bug #3167.
-	 *
-	 * NOTE: This is not intended to be a permant fix.
 	 */
-	{
-
-		int hack_efifb_probe_early = 0;
-		TUNABLE_INT_FETCH("machdep.hack_efifb_probe_early",
-				  &hack_efifb_probe_early);
-
-		if (hack_efifb_probe_early)
-			probe_efi_fb(1);
-		else if (have_efi_framebuffer)
-			efi_fb_init_vaddr(1);
-	}
+	if (have_efi_framebuffer)
+		efi_fb_init_vaddr(1);
 }
 
 struct machintr_abi MachIntrABI;

@@ -792,10 +792,6 @@ suggested values are 8192, 16384, or 32768.
 .It Va nfsroot.rahead
 Override the default read-ahead used by netbooted root mounts.
 The default is 4 which is reasonable.  Suggested values are 1 through 8.
-.It Va machdep.hack_efifb_probe_early
-Setting this to 1 works around an issue that occurs on some recent
-systems where there is no system console when booting via UEFI.
-See bug report #3167.
 .El
 .Sh FILES
 .Bl -tag -width /boot/defaults/dloader.menu -compact
