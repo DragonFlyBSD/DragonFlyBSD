@@ -250,7 +250,7 @@ mvselprintw(int y, int x0, int item, int curitem,
 		attron(A_REVERSE);
 	}
 	va_start(ap, fmt);
-	vwprintw(stdscr, fmt, ap);
+	vw_printw(stdscr, fmt, ap);
 	va_end(ap);
 	if (curitem == item) {
 		for (x = getcurx(stdscr); x < x0 + width; x++) {
@@ -306,7 +306,7 @@ oops(int y, int x, const char *fmt, ...)
 	ox = getcurx(stdscr);
 	move(y, x);
 	va_start(ap, fmt);
-	vwprintw(stdscr, fmt, ap);
+	vw_printw(stdscr, fmt, ap);
 	va_end(ap);
 	move(oy, ox);
 	wrefresh(stdscr);
