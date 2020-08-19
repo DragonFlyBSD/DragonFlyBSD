@@ -244,8 +244,6 @@ typedef uint32_t hammer2_xid_t;
  *	  cannot straddle edges.
  */
 RB_HEAD(hammer2_chain_tree, hammer2_chain);
-TAILQ_HEAD(h2_flush_list, hammer2_chain);
-TAILQ_HEAD(h2_core_list, hammer2_chain);
 
 struct hammer2_reptrack {
 	hammer2_spin_t	spin;
