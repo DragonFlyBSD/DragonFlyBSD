@@ -120,41 +120,28 @@ add_new_resolv_conf() {
 	# $new_domain_name are provided. As reported in PR#3135, some ISPs
 	# provide only $new_domain_name_servers.
 
-	rm -f /etc/resolv.conf.std
+	local tmpres="/var/run/dhclient-resolv.conf.$interface"
+
+	rm -f "$tmpres"
 
 	if [ -n "$new_domain_name" ]; then
-		echo "search $new_domain_name" >>/etc/resolv.conf.std
+		echo "search $new_domain_name" >>"$tmpres"
 	fi
 
 	if [ -n "$new_domain_name_servers" ]; then
 		for nameserver in $new_domain_name_servers; do
-			echo "nameserver $nameserver" >>/etc/resolv.conf.std
+			echo "nameserver $nameserver" >>"$tmpres"
 		done
 	fi
 
-	if [ -f /etc/resolv.conf.std ]; then
-		if [ -f /etc/resolv.conf.tail ]; then
-			cat /etc/resolv.conf.tail >>/etc/resolv.conf.std
-		fi
-
-		# In case (e.g. during OpenBSD installs) /etc/resolv.conf
-		# is a symbolic link, take care to preserve the link and write
-		# the new data in the correct location.
-
-		if [ -f /etc/resolv.conf ]; then
-			cat /etc/resolv.conf > /etc/resolv.conf.save
-		fi
-		cat /etc/resolv.conf.std > /etc/resolv.conf
-		rm -f /etc/resolv.conf.std
-
-		# Try to ensure correct ownership and permissions.
-		chown -RL root:wheel /etc/resolv.conf
-		chmod -RL 644 /etc/resolv.conf
-
-		return 0
+	if [ -f "$tmpres" ]; then
+		/sbin/resolvconf -a "$interface.dhcp" <"$tmpres"
+		rm -f "$tmpres"
+	else
+		/sbin/resolvconf -d "$interface.dhcp" -f
 	fi
 
-	return 1
+	return 0
 }
 
 #
@@ -202,10 +189,7 @@ EXPIRE|FAIL)
 		delete_old_address
 		delete_old_routes
 	fi
-	if [ -f /etc/resolv.conf.save ]; then
-		cat /etc/resolv.conf.save > /etc/resolv.conf
-		rm -f /etc/resolv.conf.save
-	fi
+	/sbin/resolvconf -d "$interface.dhcp" -f
 	;;
 
 TIMEOUT)
