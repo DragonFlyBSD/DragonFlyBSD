@@ -25,7 +25,7 @@ MAKE_VERSION= 20200710
 .if defined(BOOTSTRAPPING)
 DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
 .else
-DEFAULT_SYS_PATH = /usr/share/mk:.../share/mk
+DEFAULT_SYS_PATH = /usr/share/mk
 .endif
 
 # move vital dports information to bmake for performance reasons
