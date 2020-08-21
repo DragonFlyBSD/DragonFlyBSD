@@ -4241,22 +4241,9 @@ cache_purge(struct vnode *vp)
 	cache_inval_vp(vp, CINV_DESTROY | CINV_CHILDREN);
 }
 
-static int disablecwd;
+__read_mostly static int disablecwd;
 SYSCTL_INT(_debug, OID_AUTO, disablecwd, CTLFLAG_RW, &disablecwd, 0,
     "Disable getcwd");
-
-static u_long numcwdcalls;
-SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcwdcalls, CTLFLAG_RD, &numcwdcalls, 0,
-    "Number of current directory resolution calls");
-static u_long numcwdfailnf;
-SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcwdfailnf, CTLFLAG_RD, &numcwdfailnf, 0,
-    "Number of current directory failures due to lack of file");
-static u_long numcwdfailsz;
-SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcwdfailsz, CTLFLAG_RD, &numcwdfailsz, 0,
-    "Number of current directory failures due to large result");
-static u_long numcwdfound;
-SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcwdfound, CTLFLAG_RD, &numcwdfound, 0,
-    "Number of current directory resolution successes");
 
 /*
  * MPALMOSTSAFE
@@ -4296,7 +4283,6 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 	struct nchandle nch;
 	struct namecache *ncp;
 
-	numcwdcalls++;
 	bp = buf;
 	bp += buflen - 1;
 	*bp = '\0';
@@ -4330,7 +4316,6 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 		 */
 		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
-				numcwdfailsz++;
 				*error = ERANGE;
 				bp = NULL;
 				goto done;
@@ -4338,7 +4323,6 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 			*--bp = ncp->nc_name[i];
 		}
 		if (bp == buf) {
-			numcwdfailsz++;
 			*error = ERANGE;
 			bp = NULL;
 			goto done;
@@ -4367,21 +4351,18 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 		ncp = nch.ncp;
 	}
 	if (ncp == NULL) {
-		numcwdfailnf++;
 		*error = ENOENT;
 		bp = NULL;
 		goto done;
 	}
 	if (!slash_prefixed) {
 		if (bp == buf) {
-			numcwdfailsz++;
 			*error = ERANGE;
 			bp = NULL;
 			goto done;
 		}
 		*--bp = '/';
 	}
-	numcwdfound++;
 	*error = 0;
 done:
 	if (ncp)
@@ -4394,7 +4375,7 @@ done:
  *
  * The passed nchp is referenced but not locked.
  */
-static int disablefullpath;
+__read_mostly static int disablefullpath;
 SYSCTL_INT(_debug, OID_AUTO, disablefullpath, CTLFLAG_RW,
     &disablefullpath, 0,
     "Disable fullpath lookups");
