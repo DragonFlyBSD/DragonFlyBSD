@@ -251,11 +251,7 @@ main(int ac, char **av)
 				break;
 			case OBJT_DEFAULT:
 			case OBJT_SWAP:
-#ifdef PMAP_ADVANCED
 				if (m.flags & PG_MAPPED)
-#else
-				if (m.md.pmap_count)
-#endif
 					++count_wired_in_pmap;
 				else
 					++count_wired_anon;
@@ -266,11 +262,7 @@ main(int ac, char **av)
 			}
 		}
 	} else
-#ifdef PMAP_ADVANCED
 	if (m.flags & PG_MAPPED) {
-#else
-	if (m.md.pmap_count) {
-#endif
 		if (m.object && m.object != kernel_object_ptr) {
 			switch(obj.type) {
 			case OBJT_DEFAULT:
@@ -296,13 +288,8 @@ main(int ac, char **av)
 		m.wire_count,
 		m.act_count,
 		m.busy_count,
-#ifdef PMAP_ADVANCED
 		((m.flags & PG_WRITEABLE) != 0),
 		((m.flags & PG_MAPPED) != 0),
-#else
-		m.md.writeable_count,
-		m.md.pmap_count,
-#endif
 		qstr
 	    );
 	}

@@ -413,52 +413,6 @@ RB_GENERATE2(pv_entry_rb_tree, pv_entry, pv_entry,
              pv_entry_compare, vm_pindex_t, pv_pindex);
 
 /*
- * Keep track of pages in the pmap.  The procedure is handed
- * the vm_page->md.pmap_count value prior to an increment or
- * decrement.
- *
- *	t_arm		- Active real memory
- *	t_avm		- Active virtual memory
- *	t_armshr	- Active real memory that is also shared
- *	t_avmshr	- Active virtual memory that is also shared
- *
- * NOTE: At the moment t_avm is effectively just the same as t_arm.
- */
-static __inline
-void
-pmap_page_stats_adding(long prev_count)
-{
-	globaldata_t gd = mycpu;
-
-	if (prev_count == 0) {
-		++gd->gd_vmtotal.t_arm;
-		++gd->gd_vmtotal.t_avm;
-	} else if (prev_count == 1) {
-		++gd->gd_vmtotal.t_armshr;
-		++gd->gd_vmtotal.t_avmshr;
-	} else {
-		++gd->gd_vmtotal.t_avmshr;
-	}
-}
-
-static __inline
-void
-pmap_page_stats_deleting(long prev_count)
-{
-	globaldata_t gd = mycpu;
-
-	if (prev_count == 1) {
-		--gd->gd_vmtotal.t_arm;
-		--gd->gd_vmtotal.t_avm;
-	} else if (prev_count == 2) {
-		--gd->gd_vmtotal.t_armshr;
-		--gd->gd_vmtotal.t_avmshr;
-	} else {
-		--gd->gd_vmtotal.t_avmshr;
-	}
-}
-
-/*
  * We have removed a managed pte.  The page might not be hard or soft-busied
  * at this point so we have to be careful.
  *
@@ -476,7 +430,6 @@ static __inline
 void
 pmap_removed_pte(vm_page_t m, pt_entry_t pte)
 {
-#ifdef PMAP_ADVANCED
 	int flags;
 	int nflags;
 
@@ -487,11 +440,6 @@ pmap_removed_pte(vm_page_t m, pt_entry_t pte)
 		if (atomic_fcmpset_int(&m->flags, &flags, nflags))
 			break;
 	}
-#else
-	if (pte & pmap->pmap_bits[PG_RW_IDX])
-		atomic_add_long(&p->md.writeable_count, -1);
-	pmap_page_stats_deleting(atomic_fetchadd_long(&p->md.pmap_count, -1));
-#endif
 }
 
 /*
@@ -1460,12 +1408,7 @@ pmap_init(void)
 		vm_page_t m;
 
 		m = &vm_page_array[i];
-#ifdef PMAP_ADVANCED
 		m->md.interlock_count = 0;
-#else
-		m->md.pmap_count = 0;
-		m->md.writeable_count = 0;
-#endif
 	}
 
 	/*
@@ -1748,12 +1691,7 @@ void
 pmap_page_init(struct vm_page *m)
 {
 	vm_page_init(m);
-#ifdef PMAP_ADVANCED
 	m->md.interlock_count = 0;
-#else
-	m->md.pmap_count = 0;
-	m->md.writeable_count = 0;
-#endif
 }
 
 /***************************************************
@@ -2979,11 +2917,6 @@ pmap_release_pv(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk)
 	 * terminal pages aren't page table pages they aren't wired
 	 * by us, so we have to be sure not to unwire them either.
 	 *
-	 * XXX this code is operating on a user page rather than
-	 *     a page-table page and cannot safely clear the PG_MAPPED
-	 *     and PG_WRITEABLE bits.  (XXX clearing these bits should
-	 *     be safe in PMAP_ADVANCED mode).
-	 *
 	 * XXX It is unclear if this code ever gets called because we
 	 *     no longer use pv's to track terminal pages.
 	 */
@@ -3218,19 +3151,6 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		vm_page_flag_clear(p, PG_MAPPED | PG_WRITEABLE);
 		vm_page_free(p);
 	}
-#if !defined(PMAP_ADVANCED)
-	else if (destroy == 2) {
-		/*
-		 * Normal page, remove from pmap and leave the underlying
-		 * page untouched.
-		 *
-		 * XXX REMOVE ME, destroy can no longer be 2.
-		 */
-		pmap_remove_pv_page(pv, 0);
-		pv_free(pv, pvp);
-		pv = NULL;		/* safety */
-	}
-#endif
 
 	/*
 	 * If we acquired pvp ourselves then we are responsible for
@@ -3445,28 +3365,16 @@ pmap_maybethreaded(pmap_t pmap)
  * the bits in prior actions due to not holding the page hard-busied at
  * the time.
  *
- * When PMAP_ADVANCED is enabled the clearing of PG_MAPPED/WRITEABLE
- * is an optional optimization done when the pte is removed and only
- * if the pte has not been multiply-mapped.  The caller may have to
- * call vm_page_protect() if the bits are still set here.
- *
- * When PMAP_ADVANCED is disabled we check pmap_count to synchronize
- * the clearing of PG_MAPPED etc.  The caller only has to call
- * vm_page_protect() if the page is still actually mapped.
+ * The clearing of PG_MAPPED/WRITEABLE is an optional optimization done
+ * when the pte is removed and only if the pte has not been multiply-mapped.
+ * The caller may have to call vm_page_protect() if the bits are still set
+ * here.
  *
  * This function is expected to be quick.
  */
 int
 pmap_mapped_sync(vm_page_t m)
 {
-#if !defined(PMAP_ADVANCED)
-	if (m->flags & (PG_MAPPED | PG_WRITEABLE)) {
-		if (m->md.pmap_count == 0) {
-			vm_page_flag_clear(m, PG_MAPPED | PG_MAPPEDMULTI |
-					      PG_WRITEABLE);
-		}
-	}
-#endif
 	return (m->flags);
 }
 
@@ -4684,9 +4592,7 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		     vm_offset_t va, pt_entry_t *ptep, void *arg __unused)
 {
 	pt_entry_t pte;
-#ifdef PMAP_ADVANCED
 	vm_page_t oldm;
-#endif
 
 	/*
 	 * Managed or unmanaged pte (pte_placemark is non-NULL)
@@ -4696,7 +4602,6 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 	 *
 	 * We have to unwire the target page table page.
 	 */
-#ifdef PMAP_ADVANCED
 	pte = *ptep;
 	if (pte & pmap->pmap_bits[PG_MANAGED_IDX]) {
 		oldm = PHYS_TO_VM_PAGE(pte & PG_FRAME);
@@ -4704,7 +4609,6 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 	} else {
 		oldm = NULL;
 	}
-#endif
 
 	pte = pmap_inval_bulk(info->bulk, va, ptep, 0);
 	if (pte & pmap->pmap_bits[PG_MANAGED_IDX]) {
@@ -4720,9 +4624,8 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		/*
 		 * (p) is not hard-busied.
 		 *
-		 * If PMAP_ADVANCED mode is enabled we can safely
-		 * clear PG_MAPPED and PG_WRITEABLE only if PG_MAPPEDMULTI
-		 * is not set, atomically.
+		 * We can safely clear PG_MAPPED and PG_WRITEABLE only
+		 * if PG_MAPPEDMULTI is not set, atomically.
 		 */
 		pmap_removed_pte(p, pte);
 	}
@@ -4736,7 +4639,6 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 	if (pte & pmap->pmap_bits[PG_G_IDX])
 		cpu_invlpg((void *)va);
 	pv_placemarker_wakeup(pmap, pte_placemark);
-#ifdef PMAP_ADVANCED
 	if (oldm) {
 		if ((atomic_fetchadd_long(&oldm->md.interlock_count, -1) &
 		     0x7FFFFFFFFFFFFFFFLU) == 0x4000000000000001LU) {
@@ -4745,7 +4647,6 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 			wakeup(&oldm->md.interlock_count);
 		}
 	}
-#endif
 }
 
 /*
@@ -4762,9 +4663,7 @@ static
 void
 pmap_remove_all(vm_page_t m)
 {
-#ifdef PMAP_ADVANCED
 	long icount;
-#endif
 	int retry;
 
 	if (__predict_false(!pmap_initialized))
@@ -4827,7 +4726,6 @@ again:
 			cpu_invlpg((void *)iva);
 	} PMAP_PAGE_BACKING_DONE;
 
-#ifdef PMAP_ADVANCED
 	/*
 	 * If our scan lost a pte swap race oldm->md.interlock_count might
 	 * be set from the pmap_enter() code.  If so sleep a little and try
@@ -4851,21 +4749,6 @@ again:
 			      m, m->md.interlock_count);
 		}
 	}
-#else
-	/*
-	 * pmap_count should be zero but it is possible to race a pmap_enter()
-	 * replacement (see 'oldm').  Once it is zero it cannot become
-	 * non-zero because the page is hard-busied.
-	 */
-	if (m->md.pmap_count || m->md.writeable_count) {
-		tsleep(&m->md.pmap_count, 0, "pgunm", 1);
-		if (retry - ticks > 0)
-			goto again;
-		panic("pmap_remove_all: cannot return pmap_count "
-		      "to 0 (%p, %ld, %ld)",
-		      m, m->md.pmap_count, m->md.writeable_count);
-	}
-#endif
 	vm_page_flag_clear(m, PG_MAPPED | PG_MAPPEDMULTI | PG_WRITEABLE);
 }
 
@@ -5007,11 +4890,6 @@ again:
 				vm_page_flag_set(m, PG_REFERENCED);
 			if (pbits & pmap->pmap_bits[PG_M_IDX])
 				vm_page_dirty(m);
-#if !defined(PMAP_ADVANCED)
-			if (pbits & pmap->pmap_bits[PG_RW_IDX])
-				atomic_add_long(&m->md.writeable_count, -1);
-#endif
-
 		}
 	}
 	pv_placemarker_wakeup(pmap, pte_placemark);
@@ -5042,10 +4920,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	vm_page_t oldm;
 	pt_entry_t newpte;
 	vm_paddr_t pa;
-#if defined(PMAP_ADVANCED)
 	int flags;
 	int nflags;
-#endif
 
 	if (pmap == NULL)
 		return;
@@ -5159,14 +5035,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 *	 interlocks our setting of the flags here.
 	 */
 	/*vm_page_spin_lock(m);*/
-#if !defined(PMAP_ADVANCED)
-	if ((m->flags & PG_FICTITIOUS) == 0) {
-		pmap_page_stats_adding(
-			atomic_fetchadd_long(&m->md.pmap_count, 1));
-		if (newpte & pmap->pmap_bits[PG_RW_IDX])
-			atomic_add_long(&m->md.writeable_count, 1);
-	}
-#endif
 
 	/*
 	 * In advanced mode we keep track of single mappings verses
@@ -5178,7 +5046,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * Avoid modifying the vm_page as much as possible, conditionalize
 	 * updates to reduce cache line ping-ponging.
 	 */
-#if defined(PMAP_ADVANCED)
 	flags = m->flags;
 	cpu_ccfence();
 	for (;;) {
@@ -5192,15 +5059,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		if (atomic_fcmpset_int(&m->flags, &flags, flags | nflags))
 			break;
 	}
-#else
-	if (newpte & pmap->pmap_bits[PG_RW_IDX]) {
-		if ((m->flags & (PG_MAPPED | PG_WRITEABLE)) == 0)
-			vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
-	} else {
-		if ((m->flags & PG_MAPPED) == 0)
-			vm_page_flag_set(m, PG_MAPPED);
-	}
-#endif
 	/*vm_page_spin_unlock(m);*/
 
 	/*
@@ -5209,22 +5067,15 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * old page could be ripped out from under us at any time by
 	 * a backing scan.
 	 *
-	 * When PMAP_ADVANCED is disabled the race is handled by having the
-	 * backing scans check pmap_count and writeable_count when doing
-	 * operations that should ensure one becomes 0.
-	 *
-	 * When PMAP_ADVANCED is enabled, if we do nothing, a concurrent
-	 * backing scan may clear PG_WRITEABLE and PG_MAPPED before we can
-	 * act on oldm.
+	 * If we do nothing, a concurrent backing scan may clear
+	 * PG_WRITEABLE and PG_MAPPED before we can act on oldm.
 	 */
 	opa = origpte & PG_FRAME;
 	if (opa && (origpte & pmap->pmap_bits[PG_MANAGED_IDX])) {
 		oldm = PHYS_TO_VM_PAGE(opa);
 		KKASSERT(opa == oldm->phys_addr);
 		KKASSERT(entry != NULL);
-#ifdef PMAP_ADVANCED
 		atomic_add_long(&oldm->md.interlock_count, 1);
-#endif
 	} else {
 		oldm = NULL;
 	}
@@ -5288,10 +5139,9 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 *	    placemarker.  So if it is still there, it must not have
 	 *	    changed.
 	 *
-	 * WARNING! When PMAP_ADVANCED is enabled, a backing scan
-	 *	    can clear PG_WRITEABLE and/or PG_MAPPED and rip oldm
-	 *	    away from us, possibly even freeing or paging it, and
-	 *	    not setting our dirtying below.
+	 * WARNING! A backing scan can clear PG_WRITEABLE and/or PG_MAPPED
+	 *	    and rip oldm away from us, possibly even freeing or
+	 *	    paging it, and not setting our dirtying below.
 	 *
 	 *	    To deal with this, oldm->md.interlock_count is bumped
 	 *	    to indicate that we might (only might) have won the pte
@@ -5312,7 +5162,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 */
 		pmap_removed_pte(oldm, origpte);
 	}
-#ifdef PMAP_ADVANCED
 	if (oldm) {
 		if ((atomic_fetchadd_long(&oldm->md.interlock_count, -1) &
 		     0x7FFFFFFFFFFFFFFFLU) == 0x4000000000000001LU) {
@@ -5321,7 +5170,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			wakeup(&oldm->md.interlock_count);
 		}
 	}
-#endif
 
 done:
 	KKASSERT((newpte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0 ||
@@ -5723,13 +5571,8 @@ pmap_testbit(vm_page_t m, int bit)
 	 * The page's [M]odify bits have already been synchronized
 	 * to the vm_page_t and cleaned out.
 	 */
-#ifdef PMAP_ADVANCED
 	if (bit == PG_M_IDX && (m->flags & PG_WRITEABLE) == 0)
 		return FALSE;
-#else
-	if (bit == PG_M_IDX && m->md.writeable_count == 0)
-		return FALSE;
-#endif
 
 	/*
 	 * Iterate the mapping
@@ -5773,9 +5616,7 @@ pmap_clearbit(vm_page_t m, int bit_index)
 {
 	pt_entry_t npte;
 	int retry;
-#ifdef PMAP_ADVANCED
 	long icount;
-#endif
 
 	/*
 	 * Too early in the boot
@@ -5785,33 +5626,26 @@ pmap_clearbit(vm_page_t m, int bit_index)
 			vm_page_flag_clear(m, PG_WRITEABLE);
 		return;
 	}
-#ifdef PMAP_ADVANCED
 	if ((m->flags & (PG_MAPPED | PG_WRITEABLE)) == 0)
 		return;
-#endif
 
 	/*
 	 * Being asked to clear other random bits, we don't track them
 	 * so we have to iterate.
 	 *
-	 * When PMAP_ADVANCED is enabled, pmap_clear_reference()
-	 * is called (into here) with the page hard-busied to check whether
-	 * the page is still mapped and will clear PG_MAPPED and PG_WRITEABLE
-	 * if it isn't.
+	 * pmap_clear_reference() is called (into here) with the page
+	 * hard-busied to check whether the page is still mapped and
+	 * will clear PG_MAPPED and PG_WRITEABLE if it isn't.
 	 */
 	if (bit_index != PG_RW_IDX) {
 #if 0
-#ifdef PMAP_ADVANCED
 		long icount;
 
 		icount = 0;
 #endif
-#endif
 		PMAP_PAGE_BACKING_SCAN(m, NULL, ipmap, iptep, ipte, iva) {
 #if 0
-#ifdef PMAP_ADVANCED
 			++icount;
-#endif
 #endif
 			if (ipte & ipmap->pmap_bits[bit_index]) {
 				atomic_clear_long(iptep,
@@ -5819,7 +5653,6 @@ pmap_clearbit(vm_page_t m, int bit_index)
 			}
 		} PMAP_PAGE_BACKING_DONE;
 #if 0
-#ifdef PMAP_ADVANCED
 		if (icount == 0) {
 			icount = atomic_fetchadd_long(&m->md.interlock_count,
 						      0x8000000000000000LU);
@@ -5830,7 +5663,6 @@ pmap_clearbit(vm_page_t m, int bit_index)
 			}
 		}
 #endif
-#endif
 		return;
 	}
 
@@ -5839,13 +5671,8 @@ pmap_clearbit(vm_page_t m, int bit_index)
 	 *
 	 * Nothing to do if all the mappings are already read-only
 	 */
-#ifdef PMAP_ADVANCED
 	if ((m->flags & PG_WRITEABLE) == 0)
 		return;
-#else
-	if (m->md.writeable_count == 0)
-		return;
-#endif
 
 	/*
 	 * Iterate the mappings and check.
@@ -5881,13 +5708,8 @@ again:
 		 *	 pmap_count and writeable_count are only applicable
 		 *	 to non-fictitious pages (PG_MANAGED_IDX from pte)
 		 */
-#if !defined(PMAP_ADVANCED)
-		if (ipte & ipmap->pmap_bits[PG_MANAGED_IDX])
-			atomic_add_long(&m->md.writeable_count, -1);
-#endif
 	} PMAP_PAGE_BACKING_DONE;
 
-#ifdef PMAP_ADVANCED
 	/*
 	 * If our scan lost a pte swap race oldm->md.interlock_count might
 	 * be set from the pmap_enter() code.  If so sleep a little and try
@@ -5913,21 +5735,6 @@ again:
 			      m, m->md.interlock_count);
 		}
 	}
-#else
-	/*
-	 * writeable_count should be zero but it is possible to race
-	 * a pmap_enter() replacement (see 'oldm').  Once it is zero
-	 * it cannot become non-zero because the page is hard-busied.
-	 */
-	if (m->md.writeable_count != 0) {
-		tsleep(&m->md.writeable_count, 0, "pgwab", 1);
-		if (retry - ticks > 0)
-			goto again;
-		panic("pmap_clearbit: cannot return writeable_count "
-		      "to 0 (%ld)",
-		      m->md.writeable_count);
-	}
-#endif
 	vm_page_flag_clear(m, PG_WRITEABLE);
 }
 

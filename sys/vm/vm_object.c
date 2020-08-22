@@ -858,8 +858,8 @@ vm_object_terminate(vm_object_t object)
 /*
  * The caller must hold the object.
  *
- * NOTE: In PMAP_ADVANCED mode it is possible for vm_page's to remain flagged
- *	 PG_MAPPED or PG_MAPPED|PG_WRITEABLE, even after pmap_mapped_sync()
+ * NOTE: It is possible for vm_page's to remain flagged PG_MAPPED
+ *	 or PG_MAPPED|PG_WRITEABLE, even after pmap_mapped_sync()
  *	 is called, due to normal pmap operations.  This is because only
  *	 global pmap operations on the vm_page can clear the bits and not
  *	 just local operations on individual pmaps.

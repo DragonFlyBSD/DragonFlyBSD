@@ -216,33 +216,17 @@ struct vm_page;
 struct vm_object;
 struct vmspace;
 
-#define PMAP_ADVANCED
-
 /*
  * vm_page structure extension for pmap.  Track the number of pmap mappings
  * for a managed page.  Unmanaged pages do not use this field.
  */
 struct md_page {
-#ifdef PMAP_ADVANCED
 	long interlock_count;
 	long writeable_count_unused;
-#else
-	long pmap_count;
-	long writeable_count;
-#endif
 };
-
-#ifdef PMAP_ADVANCED
 
 #define MD_PAGE_FREEABLE(m)	\
 	(((m)->flags & (PG_MAPPED | PG_WRITEABLE)) == 0)
-
-#else
-
-#define MD_PAGE_FREEABLE(m)	\
-	((m)->md.pmap_count == 0 && (m)->md.writeable_count == 0)
-
-#endif
 
 /*
  * vm_object's representing large mappings can contain embedded pmaps
