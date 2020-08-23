@@ -602,8 +602,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 #define HAMMER2_XOPMASK_ALLDONE	(HAMMER2_XOPMASK_VOP | HAMMER2_XOPMASK_CLUSTER)
 
-#define HAMMER2_SPECTHREADS	1	/* sync */
-
 struct hammer2_cluster_item {
 	hammer2_chain_t		*chain;
 	int			error;
