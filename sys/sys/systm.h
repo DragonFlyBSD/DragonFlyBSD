@@ -499,7 +499,7 @@ bitcount64(uint64_t x)
 }
 
 /*
- * Calculate (a * b) / c with a 128-bit intermediate computation to
+ * Calculate (a * b) / d with a 128-bit intermediate computation to
  * avoid overflow.
  */
 static __inline uint64_t
