@@ -544,11 +544,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_FREECACHE_TYPES		4
 
 /*
- * hammer2_freemap_alloc() block preference
- */
-#define HAMMER2_OFF_NOPREF		((hammer2_off_t)-1)
-
-/*
  * BMAP read-ahead maximum parameters
  */
 #define HAMMER2_BMAP_COUNT		16	/* max bmap read-ahead */
