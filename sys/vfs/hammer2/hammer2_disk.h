@@ -476,12 +476,10 @@ typedef uint32_t hammer2_crc32_t;
  *	    case which means no data associated with the blockref, and
  *	    not the '1 byte' it would otherwise calculate to.
  */
-#define HAMMER2_OFF_BAD		((hammer2_off_t)-1)
 #define HAMMER2_OFF_MASK	0xFFFFFFFFFFFFFFC0ULL
 #define HAMMER2_OFF_MASK_LO	(HAMMER2_OFF_MASK & HAMMER2_PBUFMASK64)
 #define HAMMER2_OFF_MASK_HI	(~HAMMER2_PBUFMASK64)
 #define HAMMER2_OFF_MASK_RADIX	0x000000000000003FULL
-#define HAMMER2_MAX_COPIES	6
 
 /*
  * HAMMER2 directory support and pre-defined keys
