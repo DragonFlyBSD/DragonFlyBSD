@@ -1124,34 +1124,6 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_PFSMODE_RW		0x02
 
 /*
- *				Allocation Table
- *
- */
-
-
-/*
- * Flags (8 bits) - blockref, for freemap only
- *
- * Note that the minimum chunk size is 1KB so we could theoretically have
- * 10 bits here, but we might have some future extension that allows a
- * chunk size down to 256 bytes and if so we will need bits 8 and 9.
- */
-#define HAMMER2_AVF_SELMASK		0x03	/* select group */
-#define HAMMER2_AVF_ALL_ALLOC		0x04	/* indicate all allocated */
-#define HAMMER2_AVF_ALL_FREE		0x08	/* indicate all free */
-#define HAMMER2_AVF_RESERVED10		0x10
-#define HAMMER2_AVF_RESERVED20		0x20
-#define HAMMER2_AVF_RESERVED40		0x40
-#define HAMMER2_AVF_RESERVED80		0x80
-#define HAMMER2_AVF_AVMASK32		((uint32_t)0xFFFFFF00LU)
-#define HAMMER2_AVF_AVMASK64		((uint64_t)0xFFFFFFFFFFFFFF00LLU)
-
-#define HAMMER2_AV_SELECT_A		0x00
-#define HAMMER2_AV_SELECT_B		0x01
-#define HAMMER2_AV_SELECT_C		0x02
-#define HAMMER2_AV_SELECT_D		0x03
-
-/*
  * The volume header eats a 64K block.  There is currently an issue where
  * we want to try to fit all nominal filesystem updates in a 512-byte section
  * but it may be a lost cause due to the need for a blockset.
