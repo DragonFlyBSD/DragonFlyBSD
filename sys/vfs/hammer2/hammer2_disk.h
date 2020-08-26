@@ -90,13 +90,7 @@
 #define HAMMER2_RADIX_KEY	64	/* number of bits in key */
 
 /*
- * MINALLOCSIZE		- The minimum allocation size.  This can be smaller
- *		  	  or larger than the minimum physical IO size.
- *
- *			  NOTE: Should not be larger than 1K since inodes
- *				are 1K.
- *
- * MINIOSIZE		- The minimum IO size.  This must be less than
+ * HAMMER2_MINIOSIZE	- The minimum IO size.  This must be less than
  *			  or equal to HAMMER2_LBUFSIZE.
  *
  * HAMMER2_LBUFSIZE	- Nominal buffer size for I/O rollups.
