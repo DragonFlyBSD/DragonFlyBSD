@@ -1999,6 +1999,10 @@ add_smap_entries(int *physmap_idx)
 
 		Realmem += smap->length;
 
+		/*
+		 * NOTE: This little bit of code initially expands
+		 *	 physmap[1] as well as later entries.
+		 */
 		if (smap->base == physmap[*physmap_idx + 1]) {
 			physmap[*physmap_idx + 1] += smap->length;
 			continue;
@@ -2101,6 +2105,10 @@ add_efi_map_entries(int *physmap_idx)
 
 		Realmem += p->md_pages * PAGE_SIZE;
 
+		/*
+		 * NOTE: This little bit of code initially expands
+		 *	 physmap[1] as well as later entries.
+		 */
 		if (p->md_phys == physmap[*physmap_idx + 1]) {
 			physmap[*physmap_idx + 1] += p->md_pages * PAGE_SIZE;
 			continue;
