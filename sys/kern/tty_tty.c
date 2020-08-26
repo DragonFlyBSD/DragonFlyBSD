@@ -108,7 +108,6 @@ retry:
 	vhold(ttyvp);
 	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
 	if (ttyvp != cttyvp(p) || (ttyvp->v_flag & VCTTYISOPEN)) {
-		kprintf("Warning: cttyopen: race-1 avoided\n");
 		vn_unlock(ttyvp);
 		vdrop(ttyvp);
 		goto retry;
