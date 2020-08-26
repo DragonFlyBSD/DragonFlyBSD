@@ -541,7 +541,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 		alloc_direct(&alloc_base, &root_blockref[i],
 			     HAMMER2_INODE_BYTES);
 		assert(((sroot_blockref.data_off ^ root_blockref[i].data_off) &
-			HAMMER2_OFF_MASK_HI) == 0);
+			~HAMMER2_PBUFMASK64) == 0);
 
 		/*
 		 * Format the root directory inode, which is left empty.
@@ -691,7 +691,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * Write out the 64K HAMMER2 block containing the root and sroot.
 	 */
 	n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
-		   sroot_blockref.data_off & HAMMER2_OFF_MASK_HI);
+		   sroot_blockref.data_off & ~HAMMER2_PBUFMASK64);
 	if (n != HAMMER2_PBUFSIZE) {
 		perror("write");
 		exit(1);
