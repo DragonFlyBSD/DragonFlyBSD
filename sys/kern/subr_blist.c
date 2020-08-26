@@ -525,8 +525,8 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blkat,
 			 * count does not fit in object even if it were
 			 * complete free.
 			 */
-			panic("blist_meta_alloc: allocation too large %lu/%lu",
-			      count, radix);
+			panic("%s: allocation too large %lu/%lu",
+			      __func__, count, radix);
 		}
 		blk += (swblk_t)radix;
 	}
@@ -560,7 +560,7 @@ blst_leaf_free(blmeta_t *scan, swblk_t blk, swblk_t count)
 	    ((u_swblk_t)-1 >> (BLIST_BMAP_RADIX - count - n));
 
 	if (scan->u.bmu_bitmap & mask)
-		panic("blst_radix_free: freeing free block");
+		panic("%s: freeing free block", __func__);
 	scan->u.bmu_bitmap |= mask;
 
 	/*
@@ -638,9 +638,9 @@ blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count,
 	 * Break the free down into its components
 	 */
 	if (scan->u.bmu_avail > radix) {
-		panic("blst_meta_free: freeing already "
+		panic("%s: freeing already "
 		      "free blocks (%lu) %lu/%lu",
-		      count, (long)scan->u.bmu_avail, radix);
+		      __func__, count, (long)scan->u.bmu_avail, radix);
 	}
 
 	radix /= BLIST_META_RADIX;
@@ -657,7 +657,7 @@ blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count,
 			v = count;
 
 		if (scan->bm_bighint == (swblk_t)-1)
-			panic("blst_meta_free: freeing unexpected range");
+			panic("%s: freeing unexpected range", __func__);
 
 		if (next_skip == 1) {
 			blst_leaf_free(&scan[i], freeBlk, v);
@@ -758,7 +758,7 @@ blst_meta_fill(blmeta_t *scan, swblk_t fillBlk, swblk_t count,
 	}
 
 	if (count > (swblk_t)radix)
-		panic("blst_meta_fill: allocation too large");
+		panic("%s: allocation too large", __func__);
 
 	i = (fillBlk - blk) / (swblk_t)radix;
 	blk += i * (swblk_t)radix;
@@ -772,7 +772,7 @@ blst_meta_fill(blmeta_t *scan, swblk_t fillBlk, swblk_t count,
 			v = count;
 
 		if (scan->bm_bighint == (swblk_t)-1)
-			panic("blst_meta_fill: filling unexpected range");
+			panic("%s: filling unexpected range", __func__);
 
 		if (next_skip == 1) {
 			nblks += blst_leaf_fill(&scan[i], fillBlk, v);

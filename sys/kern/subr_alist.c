@@ -660,7 +660,7 @@ alst_leaf_free(almeta_t *scan, alist_blk_t blk, alist_blk_t count)
 	    ((alist_bmap_t)-1 >> (ALIST_BMAP_RADIX - count - n));
 
 	if (scan->bm_bitmap & mask)
-		panic("alst_radix_free: freeing free block");
+		panic("%s: freeing free block", __func__);
 	scan->bm_bitmap |= mask;
 
 	/*
@@ -712,7 +712,7 @@ alst_meta_free(almeta_t *scan, alist_blk_t freeBlk, alist_blk_t count,
 			v = count;
 
 		if (scan->bm_bighint == (alist_blk_t)-1)
-			panic("alst_meta_free: freeing unexpected range");
+			panic("%s: freeing unexpected range", __func__);
 
 		/*
 		 * WARNING on bighint updates.  When we free an element in
