@@ -686,7 +686,9 @@ tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
 
 	de = RB_FIND(tmpfs_dirtree, &node->tn_dir.tn_dirtree, &wanted);
 
-	KKASSERT(f == NULL || de == NULL || f == de->td_node);
+	KASSERT((f == NULL || de == NULL || f == de->td_node),
+		("tmpfs_dir_lookup: Incorrect node %p %p %p",
+		 f, de, (de ? de->td_node : NULL)));
 
 	return de;
 }
