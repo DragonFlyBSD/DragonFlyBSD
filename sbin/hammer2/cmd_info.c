@@ -339,11 +339,11 @@ h2pfs_check(int fd, hammer2_blockref_t *bref,
 	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 
 	io_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
-	io_base = io_off & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
+	io_base = io_off & ~(hammer2_off_t)(HAMMER2_LBUFSIZE - 1);
 	io_bytes = bytes;
 	boff = io_off - io_base;
 
-	io_bytes = HAMMER2_MINIOSIZE;
+	io_bytes = HAMMER2_LBUFSIZE;
 	while (io_bytes + boff < bytes)
 		io_bytes <<= 1;
 

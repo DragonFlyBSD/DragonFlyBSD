@@ -90,9 +90,6 @@
 #define HAMMER2_RADIX_KEY	64	/* number of bits in key */
 
 /*
- * HAMMER2_MINIOSIZE	- The minimum IO size.  This must be less than
- *			  or equal to HAMMER2_LBUFSIZE.
- *
  * HAMMER2_LBUFSIZE	- Nominal buffer size for I/O rollups.
  *
  * HAMMER2_PBUFSIZE	- Topological block size used by files for all
@@ -109,12 +106,6 @@
 #define HAMMER2_PBUFSIZE	65536
 #define HAMMER2_LBUFRADIX	14	/* logical buf (1<<14) bytes */
 #define HAMMER2_LBUFSIZE	16384
-
-/*
- * Generally speaking we want to use 16K and 64K I/Os
- */
-#define HAMMER2_MINIORADIX	HAMMER2_LBUFRADIX
-#define HAMMER2_MINIOSIZE	HAMMER2_LBUFSIZE
 
 #define HAMMER2_IND_BYTES_MIN	4096
 #define HAMMER2_IND_BYTES_NOM	HAMMER2_LBUFSIZE
