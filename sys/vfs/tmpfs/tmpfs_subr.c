@@ -602,6 +602,7 @@ void
 tmpfs_dir_attach_locked(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 {
 	struct tmpfs_node *node = de->td_node;
+	struct tmpfs_dirent *de2;
 
 	if (node && node->tn_type == VDIR) {
 		TMPFS_NODE_LOCK(node);
@@ -611,8 +612,14 @@ tmpfs_dir_attach_locked(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 		atomic_add_int(&dnode->tn_links, 1);
 		TMPFS_NODE_UNLOCK(node);
 	}
-	RB_INSERT(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
-	RB_INSERT(tmpfs_dirtree_cookie, &dnode->tn_dir.tn_cookietree, de);
+	de2 = RB_INSERT(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
+	KASSERT(de2 == NULL,
+		("tmpfs_dir_attach_lockedA: duplicate insertion of %p, has %p\n",
+		de, de2));
+	de2 = RB_INSERT(tmpfs_dirtree_cookie, &dnode->tn_dir.tn_cookietree, de);
+	KASSERT(de2 == NULL,
+		("tmpfs_dir_attach_lockedB: duplicate insertion of %p, has %p\n",
+		de, de2));
 	dnode->tn_size += sizeof(struct tmpfs_dirent);
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;

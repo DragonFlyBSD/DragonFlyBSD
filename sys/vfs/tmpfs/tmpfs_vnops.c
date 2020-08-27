@@ -1257,7 +1257,7 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 	struct vnode *tdvp = ap->a_tdvp;
 	struct namecache *tncp = ap->a_tnch->ncp;
 	struct vnode *tvp;
-	struct tmpfs_dirent *de, *tde;
+	struct tmpfs_dirent *de, *tde, *de2;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *fdnode;
 	struct tmpfs_node *tdnode;
@@ -1434,9 +1434,15 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 		tmpfs_dir_attach_locked(tdnode, de);
 	} else {
 		tdnode->tn_status |= TMPFS_NODE_MODIFIED;
-		RB_INSERT(tmpfs_dirtree, &tdnode->tn_dir.tn_dirtree, de);
-		RB_INSERT(tmpfs_dirtree_cookie,
-			  &tdnode->tn_dir.tn_cookietree, de);
+		de2 = RB_INSERT(tmpfs_dirtree, &tdnode->tn_dir.tn_dirtree, de);
+		KASSERT(de2 == NULL,
+			("tmpfs_nrenameA: duplicate insertion of %p, has %p\n",
+			de, de2));
+		de2 = RB_INSERT(tmpfs_dirtree_cookie,
+				&tdnode->tn_dir.tn_cookietree, de);
+		KASSERT(de2 == NULL,
+			("tmpfs_nrenameB: duplicate insertion of %p, has %p\n",
+			de, de2));
 	}
 	tmpfs_unlock4(fdnode, tdnode, fnode, tnode);
 
