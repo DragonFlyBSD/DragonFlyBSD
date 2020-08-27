@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/usr.sbin/efibootmgr/efibootmgr.c 354925 2019-11-20 23:58:36Z imp $
+ * $FreeBSD: head/usr.sbin/efibootmgr/efibootmgr.c 364818 2020-08-26 14:02:38Z tsoome $
  */
 
 #include <sys/stat.h>
@@ -62,6 +62,8 @@
 
 #define BAD_LENGTH	((size_t)-1)
 
+#define EFI_OS_INDICATIONS_BOOT_TO_FW_UI 0x0000000000000001
+
 typedef struct _bmgr_opts {
 	char	*env;
 	char	*loader;
@@ -78,6 +80,8 @@ typedef struct _bmgr_opts {
 	bool    dry_run;
 	bool	device_path;
 	bool	esp_device;
+	bool    fw_ui;
+	bool    no_fw_ui;
 	bool	has_bootnum;
 	bool    once;
 	int	cp_src;
@@ -105,6 +109,8 @@ static struct option lopts[] = {
 	{"dry-run", no_argument, NULL, 'D'},
 	{"env", required_argument, NULL, 'e'},
 	{"esp", no_argument, NULL, 'E'},
+	{"fw-ui", no_argument, NULL, 'f'},
+	{"no-fw-ui", no_argument, NULL, 'F'},
 	{"help", no_argument, NULL, 'h'},
 	{"kernel", required_argument, NULL, 'k'},
 	{"label", required_argument, NULL, 'L'},
@@ -192,7 +198,7 @@ parse_args(int argc, char *argv[])
 {
 	int ch;
 
-	while ((ch = getopt_long(argc, argv, "AaBb:C:cdDe:Ehk:L:l:NnOo:pTt:v",
+	while ((ch = getopt_long(argc, argv, "AaBb:C:cdDe:EFfhk:L:l:NnOo:pTt:v",
 		    lopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
@@ -227,6 +233,12 @@ parse_args(int argc, char *argv[])
 			break;
 		case 'E':
 			opts.esp_device = true;
+			break;
+		case 'F':
+			opts.no_fw_ui = true;
+			break;
+		case 'f':
+			opts.fw_ui = true;
 			break;
 		case 'h':
 		default:
@@ -279,7 +291,7 @@ parse_args(int argc, char *argv[])
 		return;
 	}
 
-	if (opts.order && !(opts.order))
+	if (opts.order != NULL && *opts.order == '\0')
 		errx(1, "%s", ORDER_USAGE);
 
 	if ((opts.set_inactive || opts.set_active) && !opts.has_bootnum)
@@ -821,6 +833,45 @@ print_boot_var(const char *name, bool verbose, bool curboot)
 }
 
 
+static bool
+os_indication_supported(uint64_t indication)
+{
+	uint8_t *data;
+	size_t size;
+	uint32_t attrs;
+	int ret;
+
+	ret = efi_get_variable(EFI_GLOBAL_GUID, "OsIndicationsSupported", &data,
+	    &size, &attrs);
+	if (ret < 0)
+		return false;
+	return (le64dec(data) & indication) == indication;
+}
+
+static uint64_t
+os_indications(void)
+{
+	uint8_t *data;
+	size_t size;
+	uint32_t attrs;
+	int ret;
+
+	ret = efi_get_variable(EFI_GLOBAL_GUID, "OsIndications", &data, &size,
+	    &attrs);
+	if (ret < 0)
+		return 0;
+	return le64dec(data);
+}
+
+static int
+os_indications_set(uint64_t mask, uint64_t val)
+{
+	uint8_t new[sizeof(uint64_t)];
+
+	le64enc(&new, (os_indications() & ~mask) | (val & mask));
+	return set_bootvar("OsIndications", new, sizeof(new));
+}
+
 /* Cmd epilogue, or just the default with no args.
  * The order is [bootnext] bootcurrent, timeout, order, and the bootvars [-v]
  */
@@ -837,6 +888,14 @@ print_boot_vars(bool verbose)
 	uint32_t attrs;
 	int ret, bolen;
 	uint16_t *boot_order = NULL, current;
+	bool boot_to_fw_ui;
+
+	if (os_indication_supported(EFI_OS_INDICATIONS_BOOT_TO_FW_UI)) {
+		boot_to_fw_ui =
+		    (os_indications() & EFI_OS_INDICATIONS_BOOT_TO_FW_UI) != 0;
+		printf("Boot to FW : %s\n", boot_to_fw_ui != 0 ?
+		    "true" : "false");
+	}
 
 	ret = efi_get_variable(EFI_GLOBAL_GUID, "BootNext", &data, &size, &attrs);
 	if (ret > 0) {
@@ -982,6 +1041,23 @@ report_esp_device(bool do_dp, bool do_unix)
 	exit(0);
 }
 
+static void
+set_boot_to_fw_ui(bool to_fw)
+{
+	int ret;
+
+	if (!os_indication_supported(EFI_OS_INDICATIONS_BOOT_TO_FW_UI)) {
+		if (to_fw)
+			errx(1, "boot to fw ui not supported");
+		else
+			return;
+	}
+	ret = os_indications_set(EFI_OS_INDICATIONS_BOOT_TO_FW_UI,
+	    to_fw ? ~0 : 0);
+	if (ret < 0)
+		errx(1, "failed to set boot to fw ui");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1016,6 +1092,10 @@ main(int argc, char *argv[])
 		handle_timeout(opts.timeout);
 	else if (opts.esp_device)
 		report_esp_device(opts.device_path, opts.unix_path);
+	else if (opts.fw_ui)
+		set_boot_to_fw_ui(true);
+	else if (opts.no_fw_ui)
+		set_boot_to_fw_ui(false);
 
 	print_boot_vars(opts.verbose);
 }
