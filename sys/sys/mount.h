@@ -259,6 +259,7 @@ struct mount {
 	int16_t		mnt_streamid;		/* last streamid */
 
 	struct bio_ops	*mnt_bioops;		/* BIO ops (hammer, softupd) */
+	struct lock	mnt_renlock;		/* rename directory lock */
 
 	struct vfs_acct	mnt_acct;		/* vfs space accounting */
 	RB_ENTRY(mount)	mnt_node;		/* mnt_stat.f_fsid */

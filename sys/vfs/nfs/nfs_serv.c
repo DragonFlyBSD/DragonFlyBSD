@@ -2131,10 +2131,14 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int error = 0, len, len2, fdirfor_ret = 1, fdiraft_ret = 1;
 	int tdirfor_ret = 1, tdiraft_ret = 1;
 	struct nlookupdata fromnd, tond;
+	struct nchandle fnchd;
+	struct nchandle tnchd;
 	struct vnode *fvp, *fdirp, *fdvp;
 	struct vnode *tvp, *tdirp, *tdvp;
 	struct namecache *ncp;
 	struct vattr fdirfor, fdiraft, tdirfor, tdiraft;
+	int fnchd_status = 0;
+	int tnchd_status = 0;
 	nfsfh_t fnfh, tnfh;
 	fhandle_t *ffhp, *tfhp;
 	uid_t saved_uid;
@@ -2168,8 +2172,12 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	/*
 	 * Remember our original uid so that we can reset cr_uid before
 	 * the second nfs_namei() call, in case it is remapped.
+	 *
+	 * NOTE! If nfs_namei() is called twice on the same nd, it assumes
+	 *	 a retry and does not try to reparse the path.
 	 */
 	saved_uid = cred->cr_uid;
+again:
 	error = nfs_namei(&fromnd, cred, NLC_RENAME_SRC,
 			  NULL, NULL,
 			  ffhp, len, slp, nam, &info.md, &info.dpos, &fdirp,
@@ -2188,6 +2196,15 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = 0;
 		goto nfsmout;
 	}
+
+	fnchd.mount = fromnd.nl_nch.mount;
+	fnchd.ncp = fromnd.nl_nch.ncp->nc_parent;
+	if (fnchd.ncp == NULL) {
+		error = ENOENT;
+		goto nfsmout;
+	}
+	cache_hold(&fnchd);
+	fnchd_status = 1;
 
 	/*
 	 * We have to unlock the from ncp before we can safely lookup
@@ -2209,24 +2226,44 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	}
 	if (error)
 		goto out1;
+	tnchd.mount = tond.nl_nch.mount;
+	tnchd.ncp = tond.nl_nch.ncp->nc_parent;
+	if (tnchd.ncp == NULL) {
+		error = ENOENT;
+		goto nfsmout;
+	}
+	cache_hold(&tnchd);
+	tnchd_status = 1;
+
+	cache_lock4_tondlocked(&fnchd, &fromnd.nl_nch,
+			       &tnchd, &tond.nl_nch,
+                               fromnd.nl_cred, tond.nl_cred);
+	fromnd.nl_flags |= NLC_NCPISLOCKED;
+	fnchd_status = 2;
+	tnchd_status = 2;
 
 	/*
-	 * relock the source
+	 * Revalidate namecache records and retry the lookups if necessary.
 	 */
-	if (cache_lock_nonblock(&fromnd.nl_nch) == 0) {
-		cache_resolve(&fromnd.nl_nch, fromnd.nl_cred);
-	} else if (fromnd.nl_nch.ncp > tond.nl_nch.ncp) {
-		cache_lock(&fromnd.nl_nch);
-		cache_resolve(&fromnd.nl_nch, fromnd.nl_cred);
-	} else {
-		cache_unlock(&tond.nl_nch);
-		cache_lock(&fromnd.nl_nch);
-		cache_resolve(&fromnd.nl_nch, fromnd.nl_cred);
-		cache_lock(&tond.nl_nch);
-		cache_resolve(&tond.nl_nch, tond.nl_cred);
+	if (fnchd.ncp != fromnd.nl_nch.ncp->nc_parent ||
+	    tnchd.ncp != tond.nl_nch.ncp->nc_parent ||
+	    (fromnd.nl_nch.ncp->nc_flag & (NCF_DESTROYED | NCF_UNRESOLVED)) ||
+            fromnd.nl_nch.ncp->nc_vp == NULL ||
+            (tond.nl_nch.ncp->nc_flag & (NCF_DESTROYED | NCF_UNRESOLVED))) {
+		cache_put(&fnchd);
+		cache_put(&tnchd);
+		if (tdirp)
+			vrele(tdirp);
+		if (fdirp)
+			vrele(fdirp);
+		kprintf("nfs - retry rename %s to %s\n",
+			fromnd.nl_path, tond.nl_path);
+		goto again;
 	}
-	fromnd.nl_flags |= NLC_NCPISLOCKED;
 
+	/*
+	 * Source and target vnodes (tvp might be NULL)
+	 */
 	fvp = fromnd.nl_nch.ncp->nc_vp;
 	tvp = tond.nl_nch.ncp->nc_vp;
 
@@ -2239,14 +2276,8 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * Holding the children ncp's should be sufficient to prevent
 	 * fdvp and tdvp ripouts.
 	 */
-	if (fromnd.nl_nch.ncp->nc_parent)
-		fdvp = fromnd.nl_nch.ncp->nc_parent->nc_vp;
-	else
-		fdvp = NULL;
-	if (tond.nl_nch.ncp->nc_parent)
-		tdvp = tond.nl_nch.ncp->nc_parent->nc_vp;
-	else
-		tdvp = NULL;
+	fdvp = fromnd.nl_nch.ncp->nc_parent->nc_vp;
+	tdvp = tond.nl_nch.ncp->nc_parent->nc_vp;
 
 	if (tvp != NULL) {
 		if (fvp->v_type == VDIR && tvp->v_type != VDIR) {
@@ -2344,6 +2375,15 @@ out1:
 	/* fall through */
 
 nfsmout:
+	if (fnchd_status > 1)
+		cache_unlock(&fnchd);
+	if (fnchd_status > 0)
+		cache_drop(&fnchd);
+	if (tnchd_status > 1)
+		cache_unlock(&tnchd);
+	if (tnchd_status > 0)
+		cache_drop(&tnchd);
+
 	*mrq = info.mreq;
 	if (tdirp)
 		vrele(tdirp);

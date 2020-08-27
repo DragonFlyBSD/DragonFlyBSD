@@ -98,6 +98,9 @@ SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0,
 static int	debug_unmount = 0; /* if 1 loop until unmount success */
 SYSCTL_INT(_vfs, OID_AUTO, debug_unmount, CTLFLAG_RW, &debug_unmount, 0,
     "Stall failed unmounts in loop");
+
+static struct krate krate_rename = { 1 };
+
 /*
  * Virtual File System System Calls
  */
@@ -4116,6 +4119,7 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	struct vnode *fdvp;
 	struct vnode *tdvp;
 	struct mount *mp;
+	struct mount *userenlk;
 	int error;
 	u_int fncp_gen;
 	u_int tncp_gen;
@@ -4140,21 +4144,32 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 */
 	KKASSERT(fromnd->nl_flags & NLC_NCPISLOCKED);
 	fromnd->nl_flags &= ~NLC_NCPISLOCKED;
-
 	fncp_gen = fromnd->nl_nch.ncp->nc_generation;
 
-	cache_unlock(&fromnd->nl_nch);
+	if (fromnd->nl_nch.ncp->nc_vp &&
+	    fromnd->nl_nch.ncp->nc_vp->v_type == VDIR) {
+		userenlk = fnchd.mount;
+		cache_unlock(&fromnd->nl_nch);
+		lockmgr(&userenlk->mnt_renlock, LK_EXCLUSIVE);
+	} else {
+		userenlk = NULL;
+		cache_unlock(&fromnd->nl_nch);
+	}
 
+	/*
+	 * Lookup target
+	 */
 	tond->nl_flags |= NLC_RENAME_DST | NLC_REFDVP;
 	if ((error = nlookup(tond)) != 0) {
 		cache_drop(&fnchd);
-		return (error);
+		goto done;
 	}
 	tncp_gen = tond->nl_nch.ncp->nc_generation;
 
 	if ((tnchd.ncp = tond->nl_nch.ncp->nc_parent) == NULL) {
 		cache_drop(&fnchd);
-		return (ENOENT);
+		error = ENOENT;
+		goto done;
 	}
 	tnchd.mount = tond->nl_nch.mount;
 	cache_hold(&tnchd);
@@ -4165,7 +4180,8 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	if (fromnd->nl_nch.ncp == tond->nl_nch.ncp) {
 		cache_drop(&fnchd);
 		cache_drop(&tnchd);
-		return (0);
+		error = 0;
+		goto done;
 	}
 
 	/*
@@ -4176,20 +4192,16 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	) {
 		cache_drop(&fnchd);
 		cache_drop(&tnchd);
-		return (EINVAL);
+		error = EINVAL;
+		goto done;
 	}
 
 	/*
-	 * Relock the source ncp.  cache_relock() will deal with any
-	 * deadlocks against the already-locked tond and will also
-	 * make sure both are resolved.
-	 *
-	 * NOTE AFTER RELOCKING: The source or target ncp may have become
-	 * invalid while they were unlocked, nc_vp and nc_mount could
-	 * be NULL.
+	 * Lock all four namecache entries.  tond is already locked.
 	 */
-	cache_relock(&fromnd->nl_nch, fromnd->nl_cred,
-		     &tond->nl_nch, tond->nl_cred);
+	cache_lock4_tondlocked(&fnchd, &fromnd->nl_nch,
+			       &tnchd, &tond->nl_nch,
+			       fromnd->nl_cred, tond->nl_cred);
 	fromnd->nl_flags |= NLC_NCPISLOCKED;
 
 	/*
@@ -4198,13 +4210,13 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 */
 	if (fromnd->nl_nch.ncp->nc_generation != fncp_gen ||
 	    tond->nl_nch.ncp->nc_generation != tncp_gen) {
-		kprintf("kern_rename: retry due to gen on: "
+		krateprintf(&krate_rename,
+			"kern_rename: retry due to race on: "
 			"\"%s\" -> \"%s\"\n",
 			fromnd->nl_nch.ncp->nc_name,
 			tond->nl_nch.ncp->nc_name);
-		cache_drop(&fnchd);
-		cache_drop(&tnchd);
-		return (EAGAIN);
+		error = EAGAIN;
+		goto finish;
 	}
 
 	/*
@@ -4213,25 +4225,25 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 */
 	if ((fromnd->nl_nch.ncp->nc_flag & (NCF_DESTROYED | NCF_UNRESOLVED)) ||
 	    fromnd->nl_nch.ncp->nc_vp == NULL ||
-	    (tond->nl_nch.ncp->nc_flag & NCF_DESTROYED)) {
-		kprintf("kern_rename: retry due to ripout on: "
+	    (tond->nl_nch.ncp->nc_flag & (NCF_DESTROYED | NCF_UNRESOLVED))) {
+		krateprintf(&krate_rename,
+			"kern_rename: retry due to ripout on: "
 			"\"%s\" -> \"%s\"\n",
 			fromnd->nl_nch.ncp->nc_name,
 			tond->nl_nch.ncp->nc_name);
-		cache_drop(&fnchd);
-		cache_drop(&tnchd);
-		return (EAGAIN);
+		error = EAGAIN;
+		goto finish;
 	}
 
 	/*
-	 * Make sure the parent directories linkages are the same.
-	 * XXX shouldn't be needed any more w/ generation check above.
+	 * Make sure the parent directories linkages are the same.  We have
+	 * already checked that fromnd and tond are not mount points so this
+	 * should not loop forever on a cross-mount.
 	 */
 	if (fnchd.ncp != fromnd->nl_nch.ncp->nc_parent ||
 	    tnchd.ncp != tond->nl_nch.ncp->nc_parent) {
-		cache_drop(&fnchd);
-		cache_drop(&tnchd);
-		return (ENOENT);
+		error = EAGAIN;
+		goto finish;
 	}
 
 	/*
@@ -4244,18 +4256,15 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	mp = fnchd.mount;
 	if (mp != tnchd.mount || mp != fromnd->nl_nch.mount ||
 	    mp != tond->nl_nch.mount) {
-		cache_drop(&fnchd);
-		cache_drop(&tnchd);
-		return (EXDEV);
+		error = EXDEV;
+		goto finish;
 	}
 
 	/*
 	 * Make sure the mount point is writable
 	 */
 	if ((error = ncp_writechk(&tond->nl_nch)) != 0) {
-		cache_drop(&fnchd);
-		cache_drop(&tnchd);
-		return (error);
+		goto finish;
 	}
 
 	/*
@@ -4281,9 +4290,10 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 * We check this by travsersing the target directory upwards looking
 	 * for a match against the source.
 	 *
-	 * XXX MPSAFE
+	 * Only required when renaming a directory, in which case userenlk is
+	 * non-NULL.
 	 */
-	if (error == 0) {
+	if (__predict_false(userenlk && error == 0)) {
 		for (ncp = tnchd.ncp; ncp; ncp = ncp->nc_parent) {
 			if (fromnd->nl_nch.ncp == ncp) {
 				error = EINVAL;
@@ -4291,9 +4301,6 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 			}
 		}
 	}
-
-	cache_drop(&fnchd);
-	cache_drop(&tnchd);
 
 	/*
 	 * Even though the namespaces are different, they may still represent
@@ -4314,6 +4321,12 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 					    fdvp, tdvp, tond->nl_cred);
 		}
 	}
+finish:
+	cache_put(&tnchd);
+	cache_put(&fnchd);
+done:
+	if (userenlk)
+		lockmgr(&userenlk->mnt_renlock, LK_RELEASE);
 	return (error);
 }
 

@@ -178,8 +178,9 @@ struct mount;
 void	cache_clearmntcache(struct mount *mp);
 void	cache_lock(struct nchandle *nch);
 void	cache_lock_maybe_shared(struct nchandle *nch, int excl);
-void	cache_relock(struct nchandle *nch1, struct ucred *cred1,
-			struct nchandle *nch2, struct ucred *cred2);
+void	cache_lock4_tondlocked(struct nchandle *fncpd, struct nchandle *fncp,
+		    struct nchandle *tncpd, struct nchandle *tncp,
+		    struct ucred *fcred, struct ucred *tcred);
 int	cache_lock_nonblock(struct nchandle *nch);
 void	cache_unlock(struct nchandle *nch);
 int	cache_lockstatus(struct nchandle *nch);

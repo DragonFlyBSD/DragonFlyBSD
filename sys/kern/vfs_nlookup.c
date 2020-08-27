@@ -1113,6 +1113,18 @@ double_break:
 	/*
 	 * Termination: no more elements.
 	 *
+	 * Check to see if the immediate parent has been destroyed.  This race
+	 * can occur because the element lookup must temporarily unlock
+	 * the parent.  If so, do a retry.
+	 */
+	if (nch.ncp->nc_parent &&
+	    (nch.ncp->nc_parent->nc_flag & NCF_DESTROYED)) {
+		doretry = TRUE;
+	}
+
+	/*
+	 * Termination: no more elements.
+	 *
 	 * If NLC_REFDVP is set acquire a referenced parent dvp.  Typically
 	 * used for mkdir/mknod/ncreate/nremove/unlink/rename.
 	 *
@@ -1123,20 +1135,25 @@ double_break:
 	 * child-to-parent so we can safely lock its parent.  We can
 	 * just use cache_dvpref().
 	 *
-	 * If nc_parent is NULL this is probably a mount point and there
-	 * is no legal parent directory.  However, we do not want to fail
-	 * the nlookup() because a higher level may wish to return a better
-	 * error code, such as mkdir("/mntpt") would want to return EEXIST
+	 * If nc_parent is NULL this is probably a mount point or a deleted
+	 * file and there is no legal parent directory.  However, we do not
+	 * want to fail the nlookup() because a higher level may wish to
+	 * return a better error code, such as mkdir("/mntpt") would want to
+	 * return EEXIST
 	 */
-	if (nd->nl_flags & NLC_REFDVP) {
+	if ((nd->nl_flags & NLC_REFDVP) &&
+	    (doretry == FALSE || inretry == TRUE)) {
 		if (nch.ncp->nc_parent) {
 			nd->nl_dvp = cache_dvpref(nch.ncp);
 			if (nd->nl_dvp == NULL) {
 				error = EINVAL;
 				if (keeperror(nd, error)) {
-					kprintf("NLC_REFDVP: Cannot ref dvp "
-						"of %s\n",
-						nch.ncp->nc_name);
+					kprintf("Parent directory lost during "
+						"nlookup: %s/%s (%08x/%08x)\n",
+						nch.ncp->nc_parent->nc_name,
+						nch.ncp->nc_name,
+						nch.ncp->nc_parent->nc_flag,
+						nch.ncp->nc_flag);
 					cache_put(&nch);
 					break;
 				}

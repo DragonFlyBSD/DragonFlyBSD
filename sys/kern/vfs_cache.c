@@ -1028,46 +1028,81 @@ cache_lock_maybe_shared(struct nchandle *nch, int excl)
 }
 
 /*
- * Relock nch1 given an unlocked nch1 and a locked nch2.  The caller
- * is responsible for checking both for validity on return as they
- * may have become invalid.
+ * Lock fncpd, fncp, tncpd, and tncp.  tncp is already locked but may
+ * have to be cycled to avoid deadlocks.  Make sure all four are resolved.
  *
- * We have to deal with potential deadlocks here, just ping pong
- * the lock until we get it (we will always block somewhere when
- * looping so this is not cpu-intensive).
+ * The caller is responsible for checking the validity upon return as
+ * the records may have been flagged DESTROYED in the interim.
  *
- * which = 0	nch1 not locked, nch2 is locked
- * which = 1	nch1 is locked, nch2 is not locked
+ * Namecache lock ordering is leaf first, then parent.  However, complex
+ * interactions may occur between the source and target because there is
+ * no ordering guarantee between (fncpd, fncp) and (tncpd and tncp).
  */
 void
-cache_relock(struct nchandle *nch1, struct ucred *cred1,
-	     struct nchandle *nch2, struct ucred *cred2)
+cache_lock4_tondlocked(struct nchandle *fncpd, struct nchandle *fncp,
+		       struct nchandle *tncpd, struct nchandle *tncp,
+		       struct ucred *fcred, struct ucred *tcred)
 {
-	int which;
+	int tlocked = 1;
 
-	which = 0;
-
-	for (;;) {
-		if (which == 0) {
-			if (cache_lock_nonblock(nch1) == 0) {
-				cache_resolve(nch1, cred1);
-				break;
-			}
-			cache_unlock(nch2);
-			cache_lock(nch1);
-			cache_resolve(nch1, cred1);
-			which = 1;
-		} else {
-			if (cache_lock_nonblock(nch2) == 0) {
-				cache_resolve(nch2, cred2);
-				break;
-			}
-			cache_unlock(nch1);
-			cache_lock(nch2);
-			cache_resolve(nch2, cred2);
-			which = 0;
-		}
+	/*
+	 * Lock tncp and tncpd
+	 *
+	 * NOTE: Because these ncps are not locked to begin with, it is
+	 *	 possible for other rename races to cause the normal lock
+	 *	 order assumptions to fail.
+	 *
+	 * NOTE: Lock ordering assumptions are valid if a leaf's parent
+	 *	 matches after the leaf has been locked.  However, ordering
+	 *	 between the 'from' and the 'to' is not and an overlapping
+	 *	 lock order reversal is still possible.
+	 */
+again:
+	if (__predict_false(tlocked == 0)) {
+		cache_lock(tncp);
 	}
+	if (__predict_false(cache_lock_nonblock(tncpd) != 0)) {
+		cache_unlock(tncp);
+		cache_lock(tncpd); cache_unlock(tncpd); /* cycle */
+		tlocked = 0;
+		goto again;
+	}
+
+	/*
+	 * Lock fncp and fncpd
+	 *
+	 * NOTE: Because these ncps are not locked to begin with, it is
+	 *	 possible for other rename races to cause the normal lock
+	 *	 order assumptions to fail.
+	 *
+	 * NOTE: Lock ordering assumptions are valid if a leaf's parent
+	 *	 matches after the leaf has been locked.  However, ordering
+	 *	 between the 'from' and the 'to' is not and an overlapping
+	 *	 lock order reversal is still possible.
+	 */
+	if (__predict_false(cache_lock_nonblock(fncp) != 0)) {
+		cache_unlock(tncpd);
+		cache_unlock(tncp);
+		cache_lock(fncp); cache_unlock(fncp); /* cycle */
+		tlocked = 0;
+		goto again;
+	}
+	if (__predict_false(cache_lock_nonblock(fncpd) != 0)) {
+		cache_unlock(fncp);
+		cache_unlock(tncpd);
+		cache_unlock(tncp);
+		cache_lock(fncpd); cache_unlock(fncpd); /* cycle */
+		tlocked = 0;
+		goto again;
+	}
+	if (__predict_true((fncpd->ncp->nc_flag & NCF_DESTROYED) == 0))
+		cache_resolve(fncpd, fcred);
+	if (__predict_true((tncpd->ncp->nc_flag & NCF_DESTROYED) == 0))
+		cache_resolve(tncpd, tcred);
+	if (__predict_true((fncp->ncp->nc_flag & NCF_DESTROYED) == 0))
+		cache_resolve(fncp, fcred);
+	if (__predict_true((tncp->ncp->nc_flag & NCF_DESTROYED) == 0))
+		cache_resolve(tncp, tcred);
 }
 
 int
@@ -1742,9 +1777,11 @@ cache_inval_wxok(struct vnode *vp)
 }
 
 /*
- * The source ncp has been renamed to the target ncp.  Both fncp and tncp
- * must be locked.  The target ncp is destroyed (as a normal rename-over
- * would destroy the target file or directory).
+ * The source ncp has been renamed to the target ncp.  All elements have been
+ * locked, including the parent ncp's.
+ *
+ * The target ncp is destroyed (as a normal rename-over would destroy the
+ * target file or directory).
  *
  * Because there may be references to the source ncp we cannot copy its
  * contents to the target.  Instead the source ncp is relinked as the target
@@ -1782,8 +1819,7 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 		kfree(oname, M_VFSCACHE);
 
 	tncp_par = tncp->nc_parent;
-	_cache_hold(tncp_par);
-	_cache_lock(tncp_par);
+	KKASSERT(tncp_par->nc_lock.lk_lockholder == curthread);
 
 	/*
 	 * Rename fncp (relink)
@@ -1795,8 +1831,6 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 	spin_lock(&nchpp->spin);
 	_cache_link_parent(fncp, tncp_par, nchpp);
 	spin_unlock(&nchpp->spin);
-
-	_cache_put(tncp_par);
 
 	/*
 	 * Get rid of the overwritten tncp (unlink)
@@ -2836,6 +2870,7 @@ cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 	u_int32_t hash;
 	globaldata_t gd;
 	int par_locked;
+	int use_excl;
 
 	gd = mycpu;
 	mp = par_nch->mount;
@@ -2853,10 +2888,11 @@ cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 	hash = fnv_32_buf(nlc->nlc_nameptr, nlc->nlc_namelen, FNV1_32_INIT);
 	hash = fnv_32_buf(&par_nch->ncp, sizeof(par_nch->ncp), hash);
 	new_ncp = NULL;
+	use_excl = 0;
 	nchpp = NCHHASH(hash);
 restart:
 	rep_ncp = NULL;
-	if (new_ncp)
+	if (use_excl)
 		spin_lock(&nchpp->spin);
 	else
 		spin_lock_shared(&nchpp->spin);
@@ -2882,7 +2918,7 @@ restart:
 			if (bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen))
 				continue;
 			_cache_hold(ncp);
-			if (new_ncp)
+			if (use_excl)
 				spin_unlock(&nchpp->spin);
 			else
 				spin_unlock_shared(&nchpp->spin);
@@ -2905,8 +2941,10 @@ restart:
 					goto restart;
 				}
 				_cache_auto_unresolve(mp, ncp);
-				if (new_ncp)
+				if (new_ncp) {
 					_cache_free(new_ncp);
+					new_ncp = NULL; /* safety */
+				}
 				goto found;
 			}
 			_cache_get(ncp);	/* cycle the lock to block */
@@ -2925,8 +2963,12 @@ restart:
 	 * This case can occur under heavy loads due to not being able
 	 * to safely lock the parent in cache_zap().  Nominally a repeated
 	 * create/unlink load, but only the namelen needs to match.
+	 *
+	 * An exclusive lock on the nchpp is required to process this case,
+	 * otherwise a race can cause duplicate entries to be created with
+	 * one cpu reusing a DESTROYED ncp while another creates a new_ncp.
 	 */
-	if (rep_ncp && new_ncp == NULL) {
+	if (rep_ncp && use_excl) {
 		if (_cache_lock_nonblock(rep_ncp) == 0) {
 			_cache_hold(rep_ncp);
 			if (rep_ncp->nc_parent == par_nch->ncp &&
@@ -2934,15 +2976,37 @@ restart:
 			    (rep_ncp->nc_flag & NCF_DESTROYED) &&
 			    rep_ncp->nc_refs == 2) {
 				/*
-				 * Update nc_name as reuse as new.
+				 * Update nc_name.
 				 */
 				ncp = rep_ncp;
 				bcopy(nlc->nlc_nameptr, ncp->nc_name,
 				      nlc->nlc_namelen);
-				spin_unlock_shared(&nchpp->spin);
+
+				/*
+				 * This takes some care.  We must clear the
+				 * NCF_DESTROYED flag before unlocking the
+				 * hash chain so other concurrent searches
+				 * do not skip this element.
+				 *
+				 * We must also unlock the hash chain before
+				 * unresolving the ncp to avoid deadlocks.
+				 * We hold the lock on the ncp so we can safely
+				 * reinitialize nc_flag after that.
+				 */
+				ncp->nc_flag &= ~NCF_DESTROYED;
+				spin_unlock(&nchpp->spin);	/* use_excl */
+
 				_cache_setunresolved(ncp);
 				ncp->nc_flag = NCF_UNRESOLVED;
 				ncp->nc_error = ENOTCONN;
+				if (par_locked) {
+					_cache_unlock(par_nch->ncp);
+					par_locked = 0;
+				}
+				if (new_ncp) {
+					_cache_free(new_ncp);
+					new_ncp = NULL; /* safety */
+				}
 				goto found;
 			}
 			_cache_put(rep_ncp);
@@ -2958,15 +3022,25 @@ restart:
 	 *
 	 * NOTE: nlc_namelen can be 0 and nlc_nameptr NULL as a special
 	 *	 mount case, in which case nc_name will be NULL.
+	 *
+	 * NOTE: In the rep_ncp != NULL case we are trying to reuse
+	 *	 a DESTROYED entry, but didn't have an exclusive lock.
+	 *	 In this situation we do not create a new_ncp.
 	 */
 	if (new_ncp == NULL) {
-		spin_unlock_shared(&nchpp->spin);
-		new_ncp = cache_alloc(nlc->nlc_namelen);
-		if (nlc->nlc_namelen) {
-			bcopy(nlc->nlc_nameptr, new_ncp->nc_name,
-			      nlc->nlc_namelen);
-			new_ncp->nc_name[nlc->nlc_namelen] = 0;
+		if (use_excl)
+			spin_unlock(&nchpp->spin);
+		else
+			spin_unlock_shared(&nchpp->spin);
+		if (rep_ncp == NULL) {
+			new_ncp = cache_alloc(nlc->nlc_namelen);
+			if (nlc->nlc_namelen) {
+				bcopy(nlc->nlc_nameptr, new_ncp->nc_name,
+				      nlc->nlc_namelen);
+				new_ncp->nc_name[nlc->nlc_namelen] = 0;
+			}
 		}
+		use_excl = 1;
 		goto restart;
 	}
 

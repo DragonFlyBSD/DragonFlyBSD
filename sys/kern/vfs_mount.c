@@ -347,6 +347,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	mp = kmalloc(sizeof(struct mount), M_MOUNT, M_WAITOK | M_ZERO);
 	mount_init(mp, vfsp->vfc_vfsops);
 	lockinit(&mp->mnt_lock, "vfslock", VLKTIMEOUT, 0);
+	lockinit(&mp->mnt_renlock, "renamlk", VLKTIMEOUT, 0);
 
 	vfs_busy(mp, 0);
 	mp->mnt_vfc = vfsp;
@@ -376,6 +377,7 @@ void
 mount_init(struct mount *mp, struct vfsops *ops)
 {
 	lockinit(&mp->mnt_lock, "vfslock", hz*5, 0);
+	lockinit(&mp->mnt_renlock, "vfslock", hz*5, 0);
 	lwkt_token_init(&mp->mnt_token, "permnt");
 
 	TAILQ_INIT(&mp->mnt_vnodescan_list);

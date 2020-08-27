@@ -999,43 +999,58 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nflags,
 	struct vnode *dp;
 	struct mount *mp;
 	int error, rdonly;
+	int isretry;
 
-	namebuf = objcache_get(namei_oc, M_WAITOK);
+	/*
+	 * Check retry case
+	 */
+	if (nd->nl_flags & NLC_HASBUF) {
+		namebuf = nd->nl_path;
+		nd->nl_flags &= ~NLC_HASBUF;
+		nd->nl_path = NULL;
+		isretry = 1;
+	} else {
+		namebuf = objcache_get(namei_oc, M_WAITOK);
+		isretry = 0;
+	}
 	*dirpp = NULL;
 
 	/*
 	 * Copy the name from the mbuf list to namebuf.
 	 */
-	fromcp = *dposp;
-	tocp = namebuf;
-	md = *mdp;
-	rem = mtod(md, caddr_t) + md->m_len - fromcp;
-	for (i = 0; i < len; i++) {
-		while (rem == 0) {
-			md = md->m_next;
-			if (md == NULL) {
-				error = EBADRPC;
+	if (isretry == 0) {
+		fromcp = *dposp;
+		tocp = namebuf;
+		md = *mdp;
+		rem = mtod(md, caddr_t) + md->m_len - fromcp;
+
+		for (i = 0; i < len; i++) {
+			while (rem == 0) {
+				md = md->m_next;
+				if (md == NULL) {
+					error = EBADRPC;
+					goto out;
+				}
+				fromcp = mtod(md, caddr_t);
+				rem = md->m_len;
+			}
+			if (*fromcp == '\0' || (!pubflag && *fromcp == '/')) {
+				error = EACCES;
 				goto out;
 			}
-			fromcp = mtod(md, caddr_t);
-			rem = md->m_len;
+			*tocp++ = *fromcp++;
+			rem--;
 		}
-		if (*fromcp == '\0' || (!pubflag && *fromcp == '/')) {
-			error = EACCES;
-			goto out;
+		*tocp = '\0';
+		*mdp = md;
+		*dposp = fromcp;
+		len = nfsm_rndup(len)-len;
+		if (len > 0) {
+			if (rem >= len)
+				*dposp += len;
+			else if ((error = nfs_adv(mdp, dposp, len, rem)) != 0)
+				goto out;
 		}
-		*tocp++ = *fromcp++;
-		rem--;
-	}
-	*tocp = '\0';
-	*mdp = md;
-	*dposp = fromcp;
-	len = nfsm_rndup(len)-len;
-	if (len > 0) {
-		if (rem >= len)
-			*dposp += len;
-		else if ((error = nfs_adv(mdp, dposp, len, rem)) != 0)
-			goto out;
 	}
 
 	/*
