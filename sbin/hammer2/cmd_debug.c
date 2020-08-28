@@ -40,6 +40,7 @@
 #define GIG	(1024LL*1024*1024)
 
 static int show_tab = 2;
+static int show_depth = -1;
 
 static void shell_msghandler(dmsg_msg_t *msg, int unmanaged);
 static void shell_ttymsg(dmsg_iocom_t *iocom);
@@ -410,6 +411,12 @@ cmd_show(const char *devpath, int which)
 		if (errno || show_tab < 0 || show_tab > 8)
 			show_tab = 2;
 	}
+	env = getenv("HAMMER2_SHOW_DEPTH");
+	if (env != NULL) {
+		show_depth = (int)strtol(env, NULL, 0);
+		if (errno || show_depth < 0)
+			show_depth = -1;
+	}
 
 	fd = open(devpath, O_RDONLY);
 	if (fd < 0) {
@@ -662,12 +669,16 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 	char *str = NULL;
 	uint32_t cv;
 	uint64_t cv64;
+	static int init_tab = -1;
 
 	SHA256_CTX hash_ctx;
 	union {
 		uint8_t digest[SHA256_DIGEST_LENGTH];
 		uint64_t digest64[SHA256_DIGEST_LENGTH/8];
 	} u;
+
+	if (init_tab == -1)
+		init_tab = tab;
 
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
@@ -1083,9 +1094,12 @@ skip_data:
 	 * direct children to help with debugging, but go no further than
 	 * that because they are probably garbage.
 	 */
-	for (i = 0; norecurse == 0 && i < bcount; ++i) {
-		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY) {
-			show_bref(voldata, fd, tab, i, &bscan[i], failed);
+	if (show_depth == -1 || ((tab - init_tab) / show_tab) < show_depth) {
+		for (i = 0; norecurse == 0 && i < bcount; ++i) {
+			if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY) {
+				show_bref(voldata, fd, tab, i, &bscan[i],
+				    failed);
+			}
 		}
 	}
 	tab -= show_tab;
