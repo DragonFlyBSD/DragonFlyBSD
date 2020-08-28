@@ -40,4 +40,5 @@ DF406.0 {
 
 DF510.0 {
     getdate;
+    getdate_err;
 };
