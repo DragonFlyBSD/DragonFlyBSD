@@ -455,7 +455,8 @@ cmd_show(const char *devpath, int which)
 					show_volhdr(&media.voldata, fd, i);
 					break;
 				}
-				printf("\n");
+				if (i != HAMMER2_NUM_VOLHDRS - 1)
+					printf("\n");
 			}
 		}
 	}
@@ -634,7 +635,6 @@ show_volhdr(hammer2_volume_data_t *voldata, int fd, int bi)
 	for (i = 0; i < HAMMER2_SET_COUNT; ++i) {
 		show_bref(voldata, fd, 16, i,
 			  &voldata->sroot_blockset.blockref[i], 2);
-	        printf("\n");
 	}
 	printf("    }\n");
 
@@ -642,7 +642,6 @@ show_volhdr(hammer2_volume_data_t *voldata, int fd, int bi)
 	for (i = 0; i < HAMMER2_SET_COUNT; ++i) {
 		show_bref(voldata, fd, 16, i,
 			  &voldata->freemap_blockset.blockref[i], 2);
-	        printf("\n");
 	}
 	printf("    }\n");
 
@@ -871,6 +870,8 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
+		if (norecurse)
+			printf("\n");
 		obrace = 0;
 		break;
 	case HAMMER2_BREF_TYPE_DIRENT:
@@ -1186,7 +1187,6 @@ cmd_dumpchain(const char *path, u_int flags)
 	}
 	return ecode;
 }
-
 
 static
 void
