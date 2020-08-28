@@ -377,7 +377,7 @@ void
 mount_init(struct mount *mp, struct vfsops *ops)
 {
 	lockinit(&mp->mnt_lock, "vfslock", hz*5, 0);
-	lockinit(&mp->mnt_renlock, "vfslock", hz*5, 0);
+	lockinit(&mp->mnt_renlock, "renamlk", hz*5, 0);
 	lwkt_token_init(&mp->mnt_token, "permnt");
 
 	TAILQ_INIT(&mp->mnt_vnodescan_list);
