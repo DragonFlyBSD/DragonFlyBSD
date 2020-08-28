@@ -749,7 +749,6 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 			  (intmax_t)bref->mirror_tid,
 			  (intmax_t)bref->modify_tid,
 			  bref->leaf_count);
-		tab += show_tab;
 	} else {
 		tabprintf(tab, "%s.%-3d%*.*s 0x%016jx 0x%016jx/%-2d ",
 			  type_str, bi, type_pad, type_pad, "",
