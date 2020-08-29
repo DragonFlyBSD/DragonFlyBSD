@@ -492,8 +492,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *	 blocks in the INITIAL-create state.
  */
 #define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
-#define HAMMER2_MODIFY_NO_MODIFY_TID	0x00000004
-#define HAMMER2_MODIFY_UNUSED0008	0x00000008
 
 /*
  * Flags passed to hammer2_chain_lock()
