@@ -588,7 +588,7 @@ conn_t *
 fetch_connect(const char *host, int port, int af, int verbose)
 {
 	struct addrinfo *cais = NULL, *sais = NULL, *cai, *sai;
-	const char *bindaddr;
+	const char *bindaddr = NULL;
 	conn_t *conn = NULL;
 	int err = 0, sd = -1;
 	char *sockshost;
