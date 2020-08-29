@@ -165,6 +165,11 @@ cpumask_t smp_idleinvl_reqs;
  /* MWAIT hint (EAX) or CPU_MWAIT_HINT_ */
 __read_mostly static int cpu_mwait_halt_global;
 __read_mostly static int clock_debug1;
+__read_mostly static int flame_poll_debug;
+
+SYSCTL_INT(_debug, OID_AUTO, flame_poll_debug,
+	CTLFLAG_RW, &flame_poll_debug, 0, "");
+TUNABLE_INT("debug.flame_poll_debug", &flame_poll_debug);
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
@@ -2808,20 +2813,28 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	TUNABLE_INT_FETCH("machdep.cpu_idle_hlt", &cpu_idle_hlt);
 
 	/*
-	 * Some of the virtual machines do not work w/ I/O APIC
-	 * enabled.  If the user does not explicitly enable or
-	 * disable the I/O APIC (ioapic_enable < 0), then we
-	 * disable I/O APIC on all virtual machines.
+	 * By default always enable the ioapic.  Certain virtual machines
+	 * may not work with the I/O apic enabled and can be specified in
+	 * the case statement below.  On the otherhand, if the ioapic is
+	 * disabled for virtual machines which DO work with the I/O apic,
+	 * the virtual machine can implode if we disable the I/O apic.
 	 *
-	 * NOTE:
-	 * This must be done after identify_cpu(), which sets
-	 * 'cpu_feature2'
+	 * For now enable the ioapic for all guests.
+	 *
+	 * NOTE: This must be done after identify_cpu(), which sets
+	 *	 'cpu_feature2'.
 	 */
 	if (ioapic_enable < 0) {
-		if (cpu_feature2 & CPUID2_VMM)
-			ioapic_enable = 0;
-		else
+		ioapic_enable = 1;
+		switch(vmm_guest) {
+		case VMM_GUEST_NONE:	/* should be enabled on real hw */
+		case VMM_GUEST_KVM:	/* must be enabled for VM implodes */
 			ioapic_enable = 1;
+			break;
+		default:		/* enable by default for other VMs */
+			ioapic_enable = 1;
+			break;
+		}
 	}
 
 	/*
@@ -3591,51 +3604,50 @@ cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS)
 static int saveticks[SMP_MAXCPU];
 static int savecounts[SMP_MAXCPU];
 #endif
+static tsc_uclock_t last_tsc[SMP_MAXCPU];
 
 void
 pcpu_timer_always(struct intrframe *frame)
 {
-#if 0
-	globaldata_t gd = mycpu;
-	int cpu = gd->gd_cpuid;
-	char buf[64];
-	short *gptr;
-	int i;
+        globaldata_t gd;
+        thread_t td;
+        char *top;
+        char *bot;
+        char *rbp;
+        char *rip;
+        int n;
+	tsc_uclock_t tsc;
 
-	if (cpu <= 20) {
-		gptr = (short *)0xFFFFFFFF800b8000 + 80 * cpu;
-		*gptr = ((*gptr + 1) & 0x00FF) | 0x0700;
-		++gptr;
+	if (flame_poll_debug == 0)
+		return;
+	gd = mycpu;
+	tsc = rdtsc() - last_tsc[gd->gd_cpuid];
+	if (tsc_frequency == 0 || tsc < tsc_frequency)
+		return;
+	last_tsc[gd->gd_cpuid] = rdtsc();
 
-		ksnprintf(buf, sizeof(buf), " %p %16s %d %16s ",
-		    (void *)frame->if_rip, gd->gd_curthread->td_comm, ticks,
-		    gd->gd_infomsg);
-		for (i = 0; buf[i]; ++i) {
-			gptr[i] = 0x0700 | (unsigned char)buf[i];
-		}
-	}
-#if 0
-	if (saveticks[gd->gd_cpuid] != ticks) {
-		saveticks[gd->gd_cpuid] = ticks;
-		savecounts[gd->gd_cpuid] = 0;
-	}
-	++savecounts[gd->gd_cpuid];
-	if (savecounts[gd->gd_cpuid] > 2000 && panicstr == NULL) {
-		panic("cpud %d panicing on ticks failure",
-			gd->gd_cpuid);
-	}
-	for (i = 0; i < ncpus; ++i) {
-		int delta;
-		if (saveticks[i] && panicstr == NULL) {
-			delta = saveticks[i] - ticks;
-			if (delta < -10 || delta > 10) {
-				panic("cpu %d panicing on cpu %d watchdog",
-				      gd->gd_cpuid, i);
-			}
-		}
-	}
-#endif
-#endif
+        td = gd->gd_curthread;
+        if (td == NULL)
+                return;
+        bot = (char *)td->td_kstack + PAGE_SIZE;        /* skip guard */
+        top = (char *)td->td_kstack + td->td_kstack_size;
+        if (bot >= top)
+                return;
+
+        rip = (char *)(intptr_t)frame->if_rip;
+	kprintf("POLL%02d %016lx", gd->gd_cpuid, (intptr_t)rip);
+        rbp = (char *)(intptr_t)frame->if_rbp;
+
+        for (n = 1; n < 8; ++n) {
+                if (rbp < bot || rbp > top - 8 || ((intptr_t)rbp & 7))
+                        break;
+		kprintf("<-%016lx", (intptr_t)*(char **)(rbp + 8));
+                if (*(char **)rbp <= rbp)
+                        break;
+                rbp = *(char **)rbp;
+        }
+	kprintf("\n");
+        cpu_sfence();
 }
 
 SET_DECLARE(smap_open, char);
