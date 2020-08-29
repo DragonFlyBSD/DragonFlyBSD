@@ -530,12 +530,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_INSERT_SAMEPARENT	0x0008
 
 /*
- * BMAP read-ahead maximum parameters
- */
-#define HAMMER2_BMAP_COUNT		16	/* max bmap read-ahead */
-#define HAMMER2_BMAP_BYTES		(HAMMER2_PBUFSIZE * HAMMER2_BMAP_COUNT)
-
-/*
  * hammer2_freemap_adjust()
  */
 #define HAMMER2_FREEMAP_DORECOVER	1
