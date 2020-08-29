@@ -618,6 +618,7 @@ ioapic_sysinit(void *dummy __unused)
 	KASSERT(lapic_enable, ("I/O APIC is enabled, but LAPIC is disabled"));
 	error = ioapic_config();
 	if (error) {
+		kprintf("IOAPIC disabled - error during ioapic_config()\n");
 		ioapic_enable = 0;
 		icu_reinit_noioapic();
 		lapic_fixup_noioapic();

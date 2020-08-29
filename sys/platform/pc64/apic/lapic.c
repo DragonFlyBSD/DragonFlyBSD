@@ -383,6 +383,9 @@ lapic_init(boolean_t bsp)
 			if (bsp)
 				kprintf("    LAPIC disabling EOI supp\n");
 		}
+		/* (future, on KVM auto-EOI must be disabled) */
+		if (vmm_guest == VMM_GUEST_KVM)
+			temp &= ~APIC_SVR_EOI_SUPP;
 	}
 
 	/*
@@ -1279,6 +1282,7 @@ lapic_sysinit(void *dummy __unused)
 		/* Initialize BSP's local APIC */
 		lapic_init(TRUE);
 	} else if (ioapic_enable) {
+		kprintf("IOAPIC disabled - lapic was not enabled\n");
 		ioapic_enable = 0;
 		icu_reinit_noioapic();
 	}
