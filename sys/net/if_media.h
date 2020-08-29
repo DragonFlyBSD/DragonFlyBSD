@@ -135,6 +135,9 @@ uint64_t ifmedia_baudrate(int);
 
 /*
  * Ethernet
+ *
+ * Please update ieee8023ad_lacp.c:lacp_compose_key()
+ * after adding new ethernet media types.
  */
 #define	IFM_ETHER	0x00000020
 #define	IFM_10_T	3		/* 10BaseT - RJ45 */
@@ -145,26 +148,25 @@ uint64_t ifmedia_baudrate(int);
 #define	IFM_100_T4	8		/* 100BaseT4 - 4 pair cat 3 */
 #define	IFM_100_VG	9		/* 100VG-AnyLAN */
 #define	IFM_100_T2	10		/* 100BaseT2 */
-#define IFM_1000_FX	11		/* 1000BaseFX - gigabit over fiber */
-#define IFM_10_STP	12		/* 10BaseT over shielded TP */
-#define IFM_10_FL	13		/* 10baseFL - Fiber */
-#define IFM_1000_SX	14		/* 1000BaseSX Multi-mode Fiber */
-#define IFM_1000_LX	15		/* 1000BaseLX Single-mode Fiber */
-#define IFM_1000_CX	16		/* 1000BaseCX 150ohm STP */
-#define IFM_1000_T	17		/* 1000BaseT 4 pair cat 5 */
-#define IFM_HPNA_1	18		/* HomePNA media for ethernet frames */
-#define	IFM_10G_LR	19		/* 10GBase-LR 1310nm Single-mode */
-#define	IFM_10G_SR	20		/* 10GBase-SR 850nm Multi-mode */
-#define	IFM_10G_CX4	21		/* 10GBase CX4 copper */
-#define IFM_2500_SX	22		/* 2500BaseSX - multi-mode fiber */
-#define IFM_10G_TWINAX	23		/* 10GBase Twinax copper */
-#define IFM_10G_TWINAX_LONG	24	/* 10GBase Twinax Long copper */
-#define IFM_10G_LRM	25		/* 10GBase-LRM 850nm Multi-mode */
-#define IFM_UNKNOWN	26		/* media types not defined yet */
-#define IFM_10G_T	27		/* 10GBase-T - RJ45 */
-#define IFM_40G_CR4     28		/* 40GBase-CR4 */
-#define IFM_40G_SR4     29		/* 40GBase-SR4 */
-#define IFM_40G_LR4     30		/* 40GBase-LR4 */
+#define	IFM_1000_SX	11		/* 1000BaseSX Multi-mode Fiber */
+#define	IFM_10_STP	12		/* 10BaseT over shielded TP */
+#define	IFM_10_FL	13		/* 10baseFL - Fiber */
+#define	IFM_1000_LX	14		/* 1000BaseLX Single-mode Fiber */
+#define	IFM_1000_CX	15		/* 1000BaseCX 150ohm STP */
+#define	IFM_1000_T	16		/* 1000BaseT 4 pair cat 5 */
+#define	IFM_HPNA_1	17		/* HomePNA media for ethernet frames */
+#define	IFM_10G_LR	18		/* 10GBase-LR 1310nm Single-mode */
+#define	IFM_10G_SR	19		/* 10GBase-SR 850nm Multi-mode */
+#define	IFM_10G_CX4	20		/* 10GBase CX4 copper */
+#define	IFM_2500_SX	21		/* 2500BaseSX - multi-mode fiber */
+#define	IFM_10G_TWINAX	22		/* 10GBase Twinax copper */
+#define	IFM_10G_TWINAX_LONG	23	/* 10GBase Twinax Long copper */
+#define	IFM_10G_LRM	24		/* 10GBase-LRM 850nm Multi-mode */
+#define	IFM_UNKNOWN	25		/* media types not defined yet */
+#define	IFM_10G_T	26		/* 10GBase-T - RJ45 */
+#define	IFM_40G_CR4	27		/* 40GBase-CR4 */
+#define	IFM_40G_SR4	28		/* 40GBase-SR4 */
+#define	IFM_40G_LR4	29		/* 40GBase-LR4 */
 
 #define	IFM_ETH_MASTER	0x00000100	/* master mode (1000baseT) */
 #define	IFM_ETH_RXPAUSE	0x00000200	/* receive PAUSE frames */
@@ -330,10 +332,9 @@ struct ifmedia_description {
 	{ IFM_100_T4,	"100baseT4" },					\
 	{ IFM_100_VG,	"100baseVG" },					\
 	{ IFM_100_T2,	"100baseT2" },					\
-	{ IFM_1000_FX,	"1000baseFX" },					\
+	{ IFM_1000_SX,	"1000baseSX" },					\
 	{ IFM_10_STP,	"10baseSTP" },					\
 	{ IFM_10_FL,	"10baseFL" },					\
-	{ IFM_1000_SX,	"1000baseSX" },					\
 	{ IFM_1000_LX,	"1000baseLX" },					\
 	{ IFM_1000_CX,	"1000baseCX" },					\
 	{ IFM_1000_T,	"1000baseT" },					\
@@ -342,9 +343,9 @@ struct ifmedia_description {
 	{ IFM_10G_SR,	"10Gbase-SR" },					\
 	{ IFM_10G_CX4,	"10Gbase-CX4" },				\
 	{ IFM_2500_SX,	"2500BaseSX" },					\
-	{ IFM_10G_LRM,	"10Gbase-LRM" },				\
 	{ IFM_10G_TWINAX,	"10Gbase-Twinax" },			\
 	{ IFM_10G_TWINAX_LONG,	"10Gbase-Twinax-Long" },		\
+	{ IFM_10G_LRM,	"10Gbase-LRM" },				\
 	{ IFM_UNKNOWN,	"Unknown" },					\
 	{ IFM_10G_T,	"10Gbase-T" },					\
 	{ IFM_40G_CR4,  "40Gbase-CR4" },                                \
@@ -365,7 +366,6 @@ struct ifmedia_description {
 	{ IFM_100_T4,	"100T4" },					\
 	{ IFM_100_VG,	"100VG" },					\
 	{ IFM_100_T2,	"100T2" },					\
-	{ IFM_1000_FX,	"1000FX" },					\
 	{ IFM_10_STP,	"10STP" },					\
 	{ IFM_10_FL,	"10FL" },					\
 	{ IFM_1000_SX,	"1000SX" },					\
@@ -571,9 +571,9 @@ struct ifmedia_baudrate {
 	{ IFM_ETHER|IFM_10G_TWINAX_LONG,IF_Gbps(10ULL) },		\
 	{ IFM_ETHER|IFM_10G_LRM,	IF_Gbps(10ULL) },		\
 	{ IFM_ETHER|IFM_10G_T,		IF_Gbps(10ULL) },		\
-	{ IFM_ETHER | IFM_40G_CR4,      IF_Gbps(40ULL) },               \
-	{ IFM_ETHER | IFM_40G_SR4,      IF_Gbps(40ULL) },               \
-	{ IFM_ETHER | IFM_40G_LR4,      IF_Gbps(40ULL) },               \
+	{ IFM_ETHER|IFM_40G_CR4,	IF_Gbps(40ULL) },		\
+	{ IFM_ETHER|IFM_40G_SR4,	IF_Gbps(40ULL) },		\
+	{ IFM_ETHER|IFM_40G_LR4,	IF_Gbps(40ULL) },		\
 									\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH1, IF_Mbps(1) },		\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH2, IF_Mbps(2) },		\
