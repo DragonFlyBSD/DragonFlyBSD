@@ -530,15 +530,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_INSERT_SAMEPARENT	0x0008
 
 /*
- * Cluster different types of storage together for allocations
- */
-#define HAMMER2_FREECACHE_INODE		0
-#define HAMMER2_FREECACHE_INDIR		1
-#define HAMMER2_FREECACHE_DATA		2
-#define HAMMER2_FREECACHE_UNUSED3	3
-#define HAMMER2_FREECACHE_TYPES		4
-
-/*
  * BMAP read-ahead maximum parameters
  */
 #define HAMMER2_BMAP_COUNT		16	/* max bmap read-ahead */
