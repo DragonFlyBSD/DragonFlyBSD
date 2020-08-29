@@ -36,7 +36,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd September 30, 2014
+.Dd August 29, 2020
 .Dt IFMEDIA 4
 .Os
 .Sh NAME
@@ -130,7 +130,7 @@ AMD TAXI, 140Mb/s over multi-node fiber optic cables.  [Taxi/140MBit, TAXI-140]
 .El
 .Sh MEDIA TYPES AND OPTIONS FOR ETHERNET
 The following media types are defined for Ethernet:
-.Bl -tag -offset indent -width ".Dv IFM_1000_FX"
+.Bl -tag -offset indent -width ".Dv IFM_1000_SX"
 .It Dv IFM_HPNA_1
 HomePNA 1.0, 1Mb/s.  [homePNA]
 .It Dv IFM_10_T
@@ -175,21 +175,23 @@ connector.
 .It Dv IFM_10G_LR
 10GBASE-LR, 10Gb/s over single-mode fiber optic cables.
 [10Gbase-LR]
+.It Dv IFM_2500_SX
+2500BASE-SX, 2.5Gb/s over multi-mode fiber optic cables.
+[2500BaseSX, 2500SX]
 .It Dv IFM_10G_SR
 10GBASE-SR, 10Gb/s over multi-mode fiber optic cables.
 [10Gbase-SR]
 .It Dv IFM_10G_CX4
 10GBASE-CX4, 10Gb/s over XAUI 4-lane PCS and copper cables.
 [10Gbase-CX4]
-.It Dv IFM_2500_SX
-2500BASE-SX, 2.5Gb/s over multi-mode fiber optic cables.
-[2500BaseSX, 2500SX]
-.\".It Dv IFM_10G_TWINAX
-.\".It Dv IFM_10G_TWINAX_LONG
 .\".It Dv IFM_10G_LRM
 .It Dv IFM_10G_T
 10GBASE-T, 10Gb/s over unshielded twisted pair, RJ45 connector.
 [10Gbase-T]
+.It Dv IFM_10G_TWINAX
+SFP+ direct attach, 10Gb/s over twinaxial cable.
+[10Gbase-Twinax]
+.\".It Dv IFM_10G_TWINAX_LONG
 .It Dv IFM_40G_CR4
 40GBASE-CR4, 40Gb/s over twin-ax copper cable.
 [40GBASE-CR4]
