@@ -93,13 +93,15 @@
 	movl $0,TF_ERR(%rsp) ;						\
 	cld ;								\
 
+/*
+ * Caller must re-enable the ICU atomically with the masking and
+ * is responsible for ICU_IMASK_LOCK/UNLOCK
+ */
 #define MASK_IRQ(icu, irq_num)						\
-	ICU_IMASK_LOCK ;						\
 	movb	icu_imen + IRQ_BYTE(irq_num),%al ;			\
 	orb	$IRQ_BIT(irq_num),%al ;					\
 	movb	%al,icu_imen + IRQ_BYTE(irq_num) ;			\
 	outb	%al,$icu+ICU_IMR_OFFSET ;				\
-	ICU_IMASK_UNLOCK ;						\
 
 #define UNMASK_IRQ(icu, irq_num)					\
 	cmpl	$0,%eax ;						\
@@ -132,8 +134,10 @@
 IDTVEC(icu_intr##irq_num) ; 						\
 	ICU_PUSH_FRAME ;						\
 	FAKE_MCOUNT(TF_RIP(%rsp)) ; 					\
+	ICU_IMASK_LOCK ;						\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
+	ICU_IMASK_UNLOCK ;						\
 	movq	PCPU(curthread),%rbx ;					\
 	testl	$-1,TD_NEST_COUNT(%rbx) ;				\
 	jne	1f ;							\

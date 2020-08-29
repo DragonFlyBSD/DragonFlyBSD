@@ -107,22 +107,38 @@ icu_imen:
 	 */
 ENTRY(ICU_INTRDIS)
 	ICU_IMASK_LOCK
+	cmpl	$8,%edi
+	jl	1f
+	movl	%edi,%eax	/* C argument */
+	btsl	%eax,icu_imen
+	movl	icu_imen,%eax
+	mov	%ah,%al
+	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
+	ICU_IMASK_UNLOCK
+	ret
+1:
 	movl	%edi,%eax	/* C argument */
 	btsl	%eax,icu_imen
 	movl	icu_imen,%eax
 	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
-	mov	%ah,%al
-	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
 	ICU_IMASK_UNLOCK
 	ret
 
 ENTRY(ICU_INTREN)
 	ICU_IMASK_LOCK
+	cmpl	$8,%edi
+	jl	1f
+	movl	%edi,%eax	/* C argument */
+	btrl	%eax,icu_imen
+	movl	icu_imen,%eax
+	mov	%ah,%al
+	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
+	ICU_IMASK_UNLOCK
+	ret
+1:
 	movl	%edi,%eax	/* C argument */
 	btrl	%eax,icu_imen
 	movl	icu_imen,%eax
 	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
-	mov	%ah,%al
-	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
 	ICU_IMASK_UNLOCK
 	ret

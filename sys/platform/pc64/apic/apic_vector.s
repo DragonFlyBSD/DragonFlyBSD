@@ -59,7 +59,6 @@
 	CNAME(ioapic_irqs) + IOAPIC_IRQI_SIZE * (irq_num) + IOAPIC_IRQI_FLAGS
  
 #define MASK_IRQ(irq_num)						\
-	IOAPIC_IMASK_LOCK ;			/* into critical reg */	\
 	testl	$IOAPIC_IRQI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;	\
 	jne	7f ;			/* masked, don't mask */	\
 	orl	$IOAPIC_IRQI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;	\
@@ -69,7 +68,6 @@
 	movl	%eax, (%rcx) ;			/* write the index */	\
 	orl	$IOART_INTMASK,IOAPIC_WINDOW(%rcx) ;/* set the mask */	\
 7: ;						/* already masked */	\
-	IOAPIC_IMASK_UNLOCK ;						\
 
 /*
  * Test to see whether we are handling an edge or level triggered INT.
@@ -88,7 +86,7 @@
 #define UNMASK_IRQ(irq_num)					\
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
-	IOAPIC_IMASK_LOCK ;			/* into critical reg */	\
+	IOAPIC_IMASK_LOCK ;						\
 	testl	$IOAPIC_IRQI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;	\
 	je	7f ;			/* bit clear, not masked */	\
 	andl	$~IOAPIC_IRQI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;	\
@@ -120,8 +118,10 @@
 IDTVEC(ioapic_intr##irq_num) ;						\
 	APIC_PUSH_FRAME_TFRIP ;						\
 	FAKE_MCOUNT(TF_RIP(%rsp)) ;					\
+	IOAPIC_IMASK_LOCK ;						\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	movq	lapic_eoi, %rax ;					\
+	IOAPIC_IMASK_UNLOCK ;						\
 	callq	*%rax ;							\
 	movq	PCPU(curthread),%rbx ;					\
 	testl	$-1,TD_NEST_COUNT(%rbx) ;				\
