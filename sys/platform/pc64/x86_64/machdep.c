@@ -2815,7 +2815,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	/*
 	 * By default always enable the ioapic.  Certain virtual machines
 	 * may not work with the I/O apic enabled and can be specified in
-	 * the case statement below.  On the otherhand, if the ioapic is
+	 * the case statement below.  On the other hand, if the ioapic is
 	 * disabled for virtual machines which DO work with the I/O apic,
 	 * the virtual machine can implode if we disable the I/O apic.
 	 *
@@ -2827,8 +2827,8 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	if (ioapic_enable < 0) {
 		ioapic_enable = 1;
 		switch(vmm_guest) {
-		case VMM_GUEST_NONE:	/* should be enabled on real hw */
-		case VMM_GUEST_KVM:	/* must be enabled for VM implodes */
+		case VMM_GUEST_NONE:	/* should be enabled on real HW */
+		case VMM_GUEST_KVM:	/* must be enabled or VM implodes */
 			ioapic_enable = 1;
 			break;
 		default:		/* enable by default for other VMs */
@@ -3090,17 +3090,17 @@ fill_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
 	struct pcb *pcb;
 
-        if (lp == NULL) {
-                dbregs->dr[0] = rdr0();
-                dbregs->dr[1] = rdr1();
-                dbregs->dr[2] = rdr2();
-                dbregs->dr[3] = rdr3();
-                dbregs->dr[4] = rdr4();
-                dbregs->dr[5] = rdr5();
-                dbregs->dr[6] = rdr6();
-                dbregs->dr[7] = rdr7();
+	if (lp == NULL) {
+		dbregs->dr[0] = rdr0();
+		dbregs->dr[1] = rdr1();
+		dbregs->dr[2] = rdr2();
+		dbregs->dr[3] = rdr3();
+		dbregs->dr[4] = rdr4();
+		dbregs->dr[5] = rdr5();
+		dbregs->dr[6] = rdr6();
+		dbregs->dr[7] = rdr7();
 		return (0);
-        }
+	}
 	if (lp->lwp_thread == NULL || (pcb = lp->lwp_thread->td_pcb) == NULL)
 		return EINVAL;
 	dbregs->dr[0] = pcb->pcb_dr0;
@@ -3217,65 +3217,65 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 int
 user_dbreg_trap(void)
 {
-        u_int64_t dr7, dr6; /* debug registers dr6 and dr7 */
-        u_int64_t bp;       /* breakpoint bits extracted from dr6 */
-        int nbp;            /* number of breakpoints that triggered */
-        caddr_t addr[4];    /* breakpoint addresses */
-        int i;
+	u_int64_t dr7, dr6; /* debug registers dr6 and dr7 */
+	u_int64_t bp;       /* breakpoint bits extracted from dr6 */
+	int nbp;            /* number of breakpoints that triggered */
+	caddr_t addr[4];    /* breakpoint addresses */
+	int i;
 
-        dr7 = rdr7();
-        if ((dr7 & 0xff) == 0) {
-                /*
-                 * all GE and LE bits in the dr7 register are zero,
-                 * thus the trap couldn't have been caused by the
-                 * hardware debug registers
-                 */
-                return 0;
-        }
+	dr7 = rdr7();
+	if ((dr7 & 0xff) == 0) {
+		/*
+		 * all GE and LE bits in the dr7 register are zero,
+		 * thus the trap couldn't have been caused by the
+		 * hardware debug registers
+		 */
+		return 0;
+	}
 
-        nbp = 0;
-        dr6 = rdr6();
-        bp = dr6 & 0xf;
+	nbp = 0;
+	dr6 = rdr6();
+	bp = dr6 & 0xf;
 
-        if (bp == 0) {
-                /*
-                 * None of the breakpoint bits are set meaning this
-                 * trap was not caused by any of the debug registers
-                 */
-                return 0;
-        }
+	if (bp == 0) {
+		/*
+		 * None of the breakpoint bits are set meaning this
+		 * trap was not caused by any of the debug registers
+		 */
+		return 0;
+	}
 
-        /*
-         * at least one of the breakpoints were hit, check to see
-         * which ones and if any of them are user space addresses
-         */
+	/*
+	 * at least one of the breakpoints were hit, check to see
+	 * which ones and if any of them are user space addresses
+	 */
 
-        if (bp & 0x01) {
-                addr[nbp++] = (caddr_t)rdr0();
-        }
-        if (bp & 0x02) {
-                addr[nbp++] = (caddr_t)rdr1();
-        }
-        if (bp & 0x04) {
-                addr[nbp++] = (caddr_t)rdr2();
-        }
-        if (bp & 0x08) {
-                addr[nbp++] = (caddr_t)rdr3();
-        }
+	if (bp & 0x01) {
+		addr[nbp++] = (caddr_t)rdr0();
+	}
+	if (bp & 0x02) {
+		addr[nbp++] = (caddr_t)rdr1();
+	}
+	if (bp & 0x04) {
+		addr[nbp++] = (caddr_t)rdr2();
+	}
+	if (bp & 0x08) {
+		addr[nbp++] = (caddr_t)rdr3();
+	}
 
-        for (i = 0; i < nbp; i++) {
-                if (addr[i] < (caddr_t)VM_MAX_USER_ADDRESS) {
-                        /*
-                         * addr[i] is in user space
-                         */
-                        return nbp;
-                }
-        }
+	for (i = 0; i < nbp; i++) {
+		if (addr[i] < (caddr_t)VM_MAX_USER_ADDRESS) {
+			/*
+			 * addr[i] is in user space
+			 */
+			return nbp;
+		}
+	}
 
-        /*
-         * None of the breakpoints are in user space.
-         */
-        return 0;
+	/*
+	 * None of the breakpoints are in user space.
+	 */
+	return 0;
 }
 
 
@@ -3609,13 +3609,13 @@ static tsc_uclock_t last_tsc[SMP_MAXCPU];
 void
 pcpu_timer_always(struct intrframe *frame)
 {
-        globaldata_t gd;
-        thread_t td;
-        char *top;
-        char *bot;
-        char *rbp;
-        char *rip;
-        int n;
+	globaldata_t gd;
+	thread_t td;
+	char *top;
+	char *bot;
+	char *rbp;
+	char *rip;
+	int n;
 	tsc_uclock_t tsc;
 
 	if (flame_poll_debug == 0)
@@ -3626,28 +3626,28 @@ pcpu_timer_always(struct intrframe *frame)
 		return;
 	last_tsc[gd->gd_cpuid] = rdtsc();
 
-        td = gd->gd_curthread;
-        if (td == NULL)
-                return;
-        bot = (char *)td->td_kstack + PAGE_SIZE;        /* skip guard */
-        top = (char *)td->td_kstack + td->td_kstack_size;
-        if (bot >= top)
-                return;
+	td = gd->gd_curthread;
+	if (td == NULL)
+		return;
+	bot = (char *)td->td_kstack + PAGE_SIZE;        /* skip guard */
+	top = (char *)td->td_kstack + td->td_kstack_size;
+	if (bot >= top)
+		return;
 
-        rip = (char *)(intptr_t)frame->if_rip;
+	rip = (char *)(intptr_t)frame->if_rip;
 	kprintf("POLL%02d %016lx", gd->gd_cpuid, (intptr_t)rip);
-        rbp = (char *)(intptr_t)frame->if_rbp;
+	rbp = (char *)(intptr_t)frame->if_rbp;
 
-        for (n = 1; n < 8; ++n) {
-                if (rbp < bot || rbp > top - 8 || ((intptr_t)rbp & 7))
-                        break;
+	for (n = 1; n < 8; ++n) {
+		if (rbp < bot || rbp > top - 8 || ((intptr_t)rbp & 7))
+			break;
 		kprintf("<-%016lx", (intptr_t)*(char **)(rbp + 8));
-                if (*(char **)rbp <= rbp)
-                        break;
-                rbp = *(char **)rbp;
-        }
+		if (*(char **)rbp <= rbp)
+			break;
+		rbp = *(char **)rbp;
+	}
 	kprintf("\n");
-        cpu_sfence();
+	cpu_sfence();
 }
 
 SET_DECLARE(smap_open, char);
