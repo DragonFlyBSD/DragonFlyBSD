@@ -136,7 +136,7 @@ uint64_t ifmedia_baudrate(int);
 /*
  * Ethernet
  *
- * Please update ieee8023ad_lacp.c:lacp_compose_key() and if_vke:vke_attach()
+ * Please update ieee8023ad_lacp.c:lacp_compose_key() and if_vke.c:vke_attach()
  * after adding new ethernet media types.
  */
 #define	IFM_ETHER	0x00000020
