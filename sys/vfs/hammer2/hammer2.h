@@ -530,11 +530,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_INSERT_SAMEPARENT	0x0008
 
 /*
- * Flags passed to hammer2_chain_delete_duplicate()
- */
-#define HAMMER2_DELDUP_RECORE		0x0001
-
-/*
  * Cluster different types of storage together for allocations
  */
 #define HAMMER2_FREECACHE_INODE		0
