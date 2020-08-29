@@ -869,10 +869,9 @@ vke_attach(const struct vknetif_info *info, int unit)
 	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_T4, 0, NULL);
 	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_VG, 0, NULL);
 	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_T2, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_FX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_SX, 0, NULL);
 	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_STP, 0, NULL);
 	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_FL, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_SX, 0, NULL);
 	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_LX, 0, NULL);
 	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_CX, 0, NULL);
 	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_T, 0, NULL);
