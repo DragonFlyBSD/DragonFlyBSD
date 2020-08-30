@@ -492,7 +492,7 @@ add_blockref_entry(struct blockref_tree *root, const hammer2_blockref_t *bref,
 	RB_INSERT(blockref_tree, root, e);
 }
 
-static __inline void
+static void
 __print_blockref(FILE *fp, int tab, const hammer2_blockref_t *bref,
     const char *msg)
 {
