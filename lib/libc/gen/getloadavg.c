@@ -53,7 +53,7 @@ getloadavg(double loadavg[], int nelem)
 	if (sysctlbyname("vm.loadavg", &loadinfo, &size, NULL, 0) < 0)
 		return (-1);
 
-	nelem = MIN(nelem, sizeof(loadinfo.ldavg) / sizeof(fixpt_t));
+	nelem = MIN(nelem, sizeof(loadinfo.ldavg) / sizeof(__uint64_t));
 	for (i = 0; i < nelem; i++)
 		loadavg[i] = (double) loadinfo.ldavg[i] / loadinfo.fscale;
 	return (nelem);
