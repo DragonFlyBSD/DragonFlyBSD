@@ -1648,12 +1648,6 @@ hammer2_tid_t hammer2_trans_newinum(hammer2_pfs_t *pmp);
 void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
 
 /*
- * hammer2_strategy.c
- */
-void hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio,
-				const char *data);
-
-/*
  * hammer2_ioctl.c
  */
 int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
@@ -1964,6 +1958,8 @@ void hammer2_volconf_update(hammer2_dev_t *hmp, int index);
 int hammer2_vop_strategy(struct vop_strategy_args *ap);
 int hammer2_vop_bmap(struct vop_bmap_args *ap);
 void hammer2_bioq_sync(hammer2_pfs_t *pmp);
+void hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio,
+				const char *data);
 void hammer2_dedup_clear(hammer2_dev_t *hmp);
 
 /*
