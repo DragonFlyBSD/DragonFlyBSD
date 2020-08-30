@@ -789,7 +789,7 @@ failed:
 }
 
 /* 
- * hammer2_write_file_core() - hammer2_write_thread() helper
+ * hammer2_write_file_core()
  *
  * The core write function which determines which path to take
  * depending on compression settings.  We also have to locate the
