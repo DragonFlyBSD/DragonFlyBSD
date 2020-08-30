@@ -89,7 +89,7 @@ kvm_getloadavg(kvm_t *kd, double loadavg[], int nelem)
 	if (!KREAD(kd, nl[X_FSCALE].n_value, &fscale))
 		loadinfo.fscale = fscale;
 
-	nelem = MIN((size_t)nelem, sizeof(loadinfo.ldavg) / sizeof(fixpt_t));
+	nelem = MIN((size_t)nelem, sizeof(loadinfo.ldavg) / sizeof(__uint64_t));
 	for (i = 0; i < nelem; i++)
 		loadavg[i] = (double) loadinfo.ldavg[i] / loadinfo.fscale;
 	return (nelem);
