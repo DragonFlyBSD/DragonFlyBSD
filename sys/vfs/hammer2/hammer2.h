@@ -722,7 +722,7 @@ struct hammer2_inode {
 	hammer2_mtx_t		truncate_lock;	/* prevent truncates */
 	struct hammer2_pfs	*pmp;		/* PFS mount */
 	struct vnode		*vp;
-	struct spinlock		cluster_spin;	/* update cluster */
+	hammer2_spin_t		cluster_spin;	/* update cluster */
 	hammer2_cluster_t	cluster;
 	struct lockf		advlock;
 	u_int			flags;
@@ -1126,13 +1126,13 @@ struct hammer2_dev {
 	int		nipstacks;
 	int		maxipstacks;
 	kdmsg_iocom_t	iocom;		/* volume-level dmsg interface */
-	struct spinlock	io_spin;	/* iotree, iolruq access */
+	hammer2_spin_t	io_spin;	/* iotree, iolruq access */
 	struct hammer2_io_tree iotree;
 	int		iofree_count;
 	int		freemap_relaxed;
 	hammer2_chain_t vchain;		/* anchor chain (topology) */
 	hammer2_chain_t fchain;		/* anchor chain (freemap) */
-	struct spinlock	list_spin;
+	hammer2_spin_t	list_spin;
 	struct hammer2_pfs *spmp;	/* super-root pmp for transactions */
 	struct lock	vollk;		/* lockmgr lock */
 	struct lock	bulklk;		/* bulkfree operation lock */
@@ -1224,10 +1224,10 @@ struct hammer2_pfs {
 	int			hflags;		/* pfs-specific mount flags */
 	struct malloc_type	*minode;
 	struct malloc_type	*mmsg;
-	struct spinlock		inum_spin;	/* inumber lookup */
+	hammer2_spin_t		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
 	long			inum_count;	/* #of inodes in inum_tree */
-	struct spinlock		lru_spin;	/* inumber lookup */
+	hammer2_spin_t		lru_spin;	/* inumber lookup */
 	struct hammer2_chain_list lru_list;	/* basis for LRU tests */
 	int			lru_count;	/* #of chains on LRU */
 	int			flags;
@@ -1243,14 +1243,14 @@ struct hammer2_pfs {
 	hammer2_off_t		free_nominal;
 	uint32_t		inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
-	struct spinlock		list_spin;
+	hammer2_spin_t		list_spin;
 	struct inoq_head	syncq;		/* SYNCQ flagged inodes */
 	struct depq_head	depq;		/* SIDEQ flagged inodes */
 	long			sideq_count;	/* total inodes on depq */
 	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	uint32_t		cluster_flags;	/* cached cluster flags */
 	int			has_xop_threads;
-	struct spinlock		xop_spin;	/* xop sequencer */
+	hammer2_spin_t		xop_spin;	/* xop sequencer */
 	hammer2_xop_group_t	*xop_groups;
 };
 

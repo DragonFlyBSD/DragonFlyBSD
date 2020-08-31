@@ -156,7 +156,7 @@ struct ccms_cst;
  *	   fashion for race-to-root flags updates and lastdrop iterations.
  */
 struct ccms_cst {
-	struct spinlock spin;		/* thread spinlock */
+	hammer2_spin_t	spin;		/* thread spinlock */
 	ccms_state_t	state;		/* granted or inherited state */
 	ccms_type_t	type;		/* CST type and flags */
 	uint8_t		unused02;
