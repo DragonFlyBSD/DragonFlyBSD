@@ -128,9 +128,6 @@
  * resulting in highly efficient storage for files <= 512 bytes and for files
  * <= 512KB.  Up to 4 directory entries can be referenced from a directory
  * without requiring an indirect block.
- *
- * Indirect blocks are typically either 4KB (64 blockrefs / ~4MB represented),
- * or 64KB (1024 blockrefs / ~64MB represented).
  */
 #define HAMMER2_SET_RADIX		2	/* radix 2 = 4 entries */
 #define HAMMER2_SET_COUNT		(1 << HAMMER2_SET_RADIX)
@@ -794,9 +791,6 @@ typedef struct hammer2_blockref hammer2_blockref_t;
  * until the set actually becomes full (that is, the entries in the set can
  * shortcut the indirect blocks when the set is not full).  Depending on how
  * things are filled multiple indirect blocks will eventually be created.
- *
- * Indirect blocks are typically 4KB (64 entres) or 64KB (1024 entries) and
- * are also treated as fully set-associative.
  */
 struct hammer2_blockset {
 	hammer2_blockref_t	blockref[HAMMER2_SET_COUNT];
