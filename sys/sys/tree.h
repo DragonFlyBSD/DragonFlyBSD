@@ -739,7 +739,7 @@ name##_scan_info_done(struct name##_scan_info *scan, struct name *head)	\
 	RB_SCAN_UNLOCK(&head->rbh_spin);				\
 }									\
 									\
-static int								\
+static __inline int							\
 _##name##_RB_SCAN(struct name *head,					\
 		int (*scancmp)(struct type *, void *),			\
 		int (*callback)(struct type *, void *),			\
