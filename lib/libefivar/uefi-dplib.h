@@ -525,8 +525,12 @@ UefiDevicePathLibConvertTextToDevicePath (
 #define StrnCatS(d, l, s, len) strncat(d, s, len)
 #define StrnCmp(a, b, n) strncmp(a, b, n)
 #define StrnLenS(str, max) strlen(str)
-#define Strtoi(x) strtol(x, NULL, 0)
-#define Strtoi64(x, y) *(UINT64 *)y = strtoll(x, NULL, 0)
+/*
+ * NOTE: despite naming, next two functions, as implemented in upstream,
+ *       actually return unsigned results
+ */
+#define Strtoi(x) strtoul(x, NULL, 0)
+#define Strtoi64(x, y) *(UINT64 *)y = strtoull(x, NULL, 0)
 #define SwapBytes64(u64) bswap64(u64)
 #define UnicodeStrToAsciiStrS(src, dest, len) strlcpy(dest, src, len)
 #define ZeroMem(p,l) memset(p, 0, l)
