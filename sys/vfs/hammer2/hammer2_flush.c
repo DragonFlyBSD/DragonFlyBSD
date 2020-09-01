@@ -760,9 +760,6 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 				chain->bref.keybits,
 				(uintmax_t)chain->bref.data_off);
 		}
-		if (hammer2_debug & 0x2000) {
-			Debugger("Flush hell");
-		}
 
 		/*
 		 * Update chain CRCs for flush.

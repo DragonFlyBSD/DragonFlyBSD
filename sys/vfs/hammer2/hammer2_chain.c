@@ -399,9 +399,6 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 {
 	u_int refs;
 
-	if (hammer2_debug & 0x200000)
-		Debugger("drop");
-
 	KKASSERT(chain->refs > 0);
 
 	while (chain) {
