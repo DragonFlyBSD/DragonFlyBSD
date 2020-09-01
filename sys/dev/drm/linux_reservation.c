@@ -193,7 +193,7 @@ done:
 	preempt_enable();
 
 	if (old)
-		kfree_rcu(old, rcu);
+		kfree_rcu(old, NULL);
 
 	if (old_fence)
 		dma_fence_put(old_fence);
