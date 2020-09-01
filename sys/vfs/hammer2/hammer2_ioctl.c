@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2018 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2020 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -59,6 +59,8 @@ static int hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_debug_dump(hammer2_inode_t *ip, u_int flags);
 static int hammer2_ioctl_emerg_mode(hammer2_inode_t *ip, u_int mode);
+static int hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data,
+			struct ucred *cred);
 //static int hammer2_ioctl_inode_comp_set(hammer2_inode_t *ip, void *data);
 //static int hammer2_ioctl_inode_comp_rec_set(hammer2_inode_t *ip, void *data);
 //static int hammer2_ioctl_inode_comp_rec_set2(hammer2_inode_t *ip, void *data);
@@ -152,6 +154,10 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_EMERG_MODE:
 		if (error == 0)
 			error = hammer2_ioctl_emerg_mode(ip, *(u_int *)data);
+		break;
+	case HAMMER2IOC_GROWFS:
+		if (error == 0)
+			error = hammer2_ioctl_growfs(ip, data, cred);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -1248,4 +1254,117 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 		break;
 	}
 	return error;
+}
+
+/*
+ * Grow a filesystem into its partition size
+ */
+static int
+hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
+{
+	hammer2_ioc_growfs_t *grow = data;
+	hammer2_dev_t *hmp;
+	hammer2_off_t delta;
+	hammer2_tid_t mtid;
+	struct buf *bp;
+	int error;
+	int i;
+
+	hmp = ip->pmp->pfs_hmps[0];
+
+	/*
+	 * Extract from disklabel
+	 */
+	grow->modified = 0;
+	if (grow->size == 0) {
+		struct partinfo part;
+		struct vattr_lite va;
+
+		if (VOP_IOCTL(hmp->devvp, DIOCGPART, (void *)&part,
+			      0, cred, NULL) == 0) {
+			grow->size = part.media_size;
+			kprintf("hammer2: growfs partition-auto to %jd\n",
+				(intmax_t)grow->size);
+		} else if (VOP_GETATTR_LITE(hmp->devvp, &va) == 0) {
+			grow->size = va.va_size;
+			kprintf("hammer2: growfs fstat-auto to %jd\n",
+				(intmax_t)grow->size);
+		} else {
+			return EINVAL;
+		}
+	}
+
+	/*
+	 * This is typically ~8MB alignment to avoid edge cases accessing
+	 * reserved blocks at the base of each 2GB zone.
+	 */
+	grow->size &= ~HAMMER2_VOLUME_ALIGNMASK64;
+	delta = grow->size - hmp->voldata.volu_size;
+
+	/*
+	 * Maximum allowed size is 2^63
+	 */
+	if (grow->size > 0x7FFFFFFFFFFFFFFFLU) {
+		kprintf("hammer2: growfs failure, limit is 2^63 - 1 bytes\n");
+		return EINVAL;
+	}
+
+	/*
+	 * We can't shrink a filesystem
+	 */
+	if (grow->size < hmp->voldata.volu_size) {
+		kprintf("hammer2: growfs failure, "
+			"would shrink from %jd to %jd\n",
+			(intmax_t)hmp->voldata.volu_size,
+			(intmax_t)grow->size);
+		return EINVAL;
+	}
+
+	if (delta == 0) {
+		kprintf("hammer2: growfs - size did not change\n");
+		return 0;
+	}
+
+	/*
+	 * Clear any new volume header backups that we extend into.
+	 * Skip volume headers that are already part of the filesystem.
+	 */
+	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
+		if (i * HAMMER2_ZONE_BYTES64 < hmp->voldata.volu_size)
+			continue;
+		kprintf("hammer2: growfs - clear volhdr %d ", i);
+		error = bread(hmp->devvp, i * HAMMER2_ZONE_BYTES64,
+			      HAMMER2_VOLUME_BYTES, &bp);
+		if (error) {
+			brelse(bp);
+			kprintf("I/O error %d\n", error);
+			return EINVAL;
+		}
+		vfs_bio_clrbuf(bp);
+		error = bwrite(bp);
+		if (error) {
+			kprintf("I/O error %d\n", error);
+			return EINVAL;
+		}
+		kprintf("\n");
+	}
+
+	kprintf("hammer2: growfs - expand by %jd to %jd\n",
+		(intmax_t)delta, (intmax_t)grow->size);
+
+	hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
+	mtid = hammer2_trans_sub(hmp->spmp);
+
+	hammer2_voldata_lock(hmp);
+	hammer2_voldata_modify(hmp);
+	hmp->voldata.volu_size = grow->size;
+	hmp->voldata.allocator_size += delta;
+	hmp->voldata.allocator_free += delta;
+	hammer2_voldata_unlock(hmp);
+
+	hammer2_trans_done(hmp->spmp, HAMMER2_TRANS_ISFLUSH |
+				      HAMMER2_TRANS_SIDEQ);
+	grow->modified = 1;
+
+	return 0;
 }

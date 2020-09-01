@@ -73,6 +73,7 @@
 #ifdef _KERNEL
 #include <sys/systm.h>
 #endif
+#include <sys/diskslice.h>
 #include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>

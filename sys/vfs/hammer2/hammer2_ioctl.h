@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2018 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2020 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -156,6 +156,20 @@ struct hammer2_ioc_destroy {
 typedef struct hammer2_ioc_destroy hammer2_ioc_destroy_t;
 
 /*
+ * Grow the filesystem.  If size is set to 0 H2 will auto-size to the
+ * partition it is in.  The caller can resize the partition, then issue
+ * the ioctl.
+ */
+struct hammer2_ioc_growfs {
+	hammer2_off_t		size;
+	int			modified;
+	int			unused01;
+	int			unusedary[14];
+};
+
+typedef struct hammer2_ioc_growfs hammer2_ioc_growfs_t;
+
+/*
  * Ioctl list
  */
 
@@ -190,5 +204,6 @@ typedef struct hammer2_ioc_destroy hammer2_ioc_destroy_t;
 #define HAMMER2IOC_BULKFREE_ASYNC _IOWR('h', 93, struct hammer2_ioc_bulkfree)
 #define HAMMER2IOC_DESTROY	_IOWR('h', 94, struct hammer2_ioc_destroy)
 #define HAMMER2IOC_EMERG_MODE	_IOWR('h', 95, int)
+#define HAMMER2IOC_GROWFS	_IOWR('h', 96, struct hammer2_ioc_growfs)
 
 #endif /* !_VFS_HAMMER2_IOCTL_H_ */
