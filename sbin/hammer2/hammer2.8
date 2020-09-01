@@ -196,6 +196,11 @@ Restore services using the filesystem.
 .It Cm emergency-mode-disable Ar target
 Turn off the emergency operations mode on a filesystem, restoring normal
 operation.
+.\" ==== growfs ====
+.It Cm growfs Op fspath...
+After resizing the disk partition you can issue this command on a
+mounted hammer2 filesystem to grow into the new space in the partition.
+This command is run on a live hammer2 filesystem.
 .\" ==== info ====
 .It Cm info Op devpath...
 Access and print the status and super-root entries for all HAMMER2
