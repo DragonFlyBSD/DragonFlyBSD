@@ -787,7 +787,9 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 	/* The Tx IRQ is currently always the last allocated interrupt. */
 	ifq_set_cpuid(&ifp->if_snd, sc->vtnet_cpus[sc->vtnet_nintr - 1]);
 	ifsq_watchdog_init(&sc->vtnet_tx_watchdog,
-	    ifq_get_subq_default(&ifp->if_snd), vtnet_watchdog);
+			   ifq_get_subq_default(&ifp->if_snd),
+			   vtnet_watchdog,
+			   IF_WDOG_LASTTICK);
 	ifq_set_hw_serialize(&ifp->if_snd, &sc->vtnet_tx_slz);
 
 	/* Tell the upper layer(s) we support long frames. */
@@ -953,9 +955,25 @@ vtnet_watchdog(struct ifaltq_subque *ifsq)
 	sc = ifp->if_softc;
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
+	/*
+	 * Clean out expended tx buffers prior to terminal count.
+	 *
+	 * NOTE: vtnet_txeof() will set wd_timer to 0 if the virtqueue
+	 *	 becomes empty, preventing further watchdog callbacks.
+	 */
+	if (sc->vtnet_tx_watchdog.wd_timer != 0) {
+		vtnet_txeof(sc);
+		if (!ifq_is_empty(&ifp->if_snd))
+			if_devstart(ifp);
+		return;
+	}
+
+	/*
+	 * Check to see if there are any unexpended transmit descriptors.
+	 */
 	if (virtqueue_empty(sc->vtnet_tx_vq)) {
 		if_printf(ifp, "Spurious TX watchdog timeout -- ignoring\n");
-		sc->vtnet_tx_watchdog.wd_timer = 0;
+		ifsq_watchdog_set_count(&sc->vtnet_tx_watchdog, 0);
 		return;
 	}
 
@@ -1842,9 +1860,10 @@ vtnet_txeof(struct vtnet_softc *sc)
 	if (deq > 0) {
 		ifq_clr_oactive(&ifp->if_snd);
 		if (virtqueue_empty(vq))
-			sc->vtnet_tx_watchdog.wd_timer = 0;
+			ifsq_watchdog_set_count(&sc->vtnet_tx_watchdog, 0);
 		else
-			sc->vtnet_tx_watchdog.wd_timer = VTNET_WATCHDOG_TIMEOUT;
+			ifsq_watchdog_set_count(&sc->vtnet_tx_watchdog,
+						VTNET_WATCHDOG_TIMEOUT);
 	}
 }
 
@@ -2135,7 +2154,8 @@ vtnet_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	if (enq > 0) {
 		virtqueue_notify(vq, NULL);
-		sc->vtnet_tx_watchdog.wd_timer = VTNET_WATCHDOG_TIMEOUT;
+		ifsq_watchdog_set_count(&sc->vtnet_tx_watchdog,
+					VTNET_WATCHDOG_TIMEOUT);
 	}
 }
 

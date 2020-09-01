@@ -1987,7 +1987,7 @@ mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	ifsq_set_oactive(ifsq);
 done:
 	if (encap)
-		tx->watchdog.wd_timer = 5;
+		ifsq_watchdog_set_count(&tx->watchdog, 5);
 }
 
 static void
@@ -2395,7 +2395,7 @@ mxge_tx_done(struct ifnet *ifp, mxge_tx_ring_t *tx, uint32_t mcp_idx)
 		ifsq_clr_oactive(tx->ifsq);
 		if (tx->req == tx->done) {
 			/* Reset watchdog */
-			tx->watchdog.wd_timer = 0;
+			ifsq_watchdog_set_count(&tx->watchdog, 0);
 		}
 	}
 
@@ -4422,7 +4422,7 @@ mxge_attach(device_t dev)
 		ifsq_set_priv(ifsq, &ss->tx);
 		ss->tx.ifsq = ifsq;
 
-		ifsq_watchdog_init(&ss->tx.watchdog, ifsq, mxge_watchdog);
+		ifsq_watchdog_init(&ss->tx.watchdog, ifsq, mxge_watchdog, 0);
 	}
 
 	/*

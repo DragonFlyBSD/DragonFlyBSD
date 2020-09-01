@@ -2419,7 +2419,8 @@ bnx_attach(device_t dev)
 		ifsq_set_priv(ifsq, txr);
 		txr->bnx_ifsq = ifsq;
 
-		ifsq_watchdog_init(&txr->bnx_tx_watchdog, ifsq, bnx_watchdog);
+		ifsq_watchdog_init(&txr->bnx_tx_watchdog, ifsq,
+				   bnx_watchdog, 0);
 
 		if (bootverbose) {
 			device_printf(dev, "txr %d -> cpu%d\n", i,
@@ -2867,7 +2868,7 @@ bnx_txeof(struct bnx_tx_ring *txr, uint16_t tx_cons)
 		ifsq_clr_oactive(txr->bnx_ifsq);
 
 	if (txr->bnx_tx_cnt == 0)
-		txr->bnx_tx_watchdog.wd_timer = 0;
+		ifsq_watchdog_set_count(&txr->bnx_tx_watchdog, 0);
 
 	if (!ifsq_is_empty(txr->bnx_ifsq))
 		ifsq_devstart(txr->bnx_ifsq);
@@ -3500,7 +3501,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		/*
 		 * Set a timeout in case the chip goes out to lunch.
 		 */
-		txr->bnx_tx_watchdog.wd_timer = 5;
+		ifsq_watchdog_set_count(&txr->bnx_tx_watchdog, 5);
 	}
 
 	if (nsegs > 0) {

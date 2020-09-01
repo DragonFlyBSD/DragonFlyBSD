@@ -1629,7 +1629,7 @@ igb_setup_ifp(struct igb_softc *sc)
 		ifsq_set_hw_serialize(ifsq, &txr->tx_serialize);
 		txr->ifsq = ifsq;
 
-		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, igb_watchdog);
+		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, igb_watchdog, 0);
 	}
 
 	/*
@@ -2212,7 +2212,7 @@ igb_txeof(struct igb_tx_ring *txr, int hdr)
 		 * packets (roughly intr_nsegs) pending on
 		 * the transmit ring.
 		 */
-		txr->tx_watchdog.wd_timer = 0;
+		ifsq_watchdog_set_count(&txr->tx_watchdog, 0);
 	}
 	txr->tx_running = IGB_TX_RUNNING;
 }
@@ -3696,7 +3696,7 @@ igb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		if (txr->tx_avail <= IGB_MAX_SCATTER + IGB_TX_RESERVED) {
 			ifsq_set_oactive(ifsq);
 			/* Set watchdog on */
-			txr->tx_watchdog.wd_timer = 5;
+			ifsq_watchdog_set_count(&txr->tx_watchdog, 5);
 			break;
 		}
 
@@ -3748,7 +3748,7 @@ igb_watchdog(struct ifaltq_subque *ifsq)
 	 */
 	if (sc->pause_frames) {
 		sc->pause_frames = 0;
-		txr->tx_watchdog.wd_timer = 5;
+		ifsq_watchdog_set_count(&txr->tx_watchdog, 5);
 		return;
 	}
 

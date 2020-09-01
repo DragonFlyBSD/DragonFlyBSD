@@ -3524,23 +3524,58 @@ ifq_mapsubq_modulo(struct ifaltq *ifq, int cpuid)
 	return (cpuid % ifq->altq_subq_mappriv);
 }
 
+/*
+ * Watchdog timeout.  Process callback as appropriate.  If we cannot
+ * serialize the ifnet just try again on the next timeout.
+ *
+ * NOTE: The ifnet can adjust wd_timer while holding the serializer.  We
+ *	 can only safely adjust it under the same circumstances.
+ */
 static void
 ifsq_watchdog(void *arg)
 {
 	struct ifsubq_watchdog *wd = arg;
 	struct ifnet *ifp;
+	int count;
 
-	if (__predict_true(wd->wd_timer == 0 || --wd->wd_timer))
+	/*
+	 * Fast track.  Try to avoid acquiring the serializer when not
+	 * near the terminal count, unless asked to.  If the atomic op
+	 * to decrement the count fails just retry on the next callout.
+	 */
+	count = wd->wd_timer;
+	cpu_ccfence();
+	if (count == 0)
 		goto done;
-
-	ifp = ifsq_get_ifp(wd->wd_subq);
-	if (ifnet_tryserialize_all(ifp)) {
-		wd->wd_watchdog(wd->wd_subq);
-		ifnet_deserialize_all(ifp);
-	} else {
-		/* try again next timeout */
-		wd->wd_timer = 1;
+	if (count > 2 && (wd->wd_flags & IF_WDOG_ALLTICKS) == 0) {
+		(void)atomic_cmpset_int(&wd->wd_timer, count, count - 1);
+		goto done;
 	}
+
+	/*
+	 * Obtain the serializer and then re-test all wd_timer conditions
+	 * as it may have changed.  NICs do not mess with wd_timer without
+	 * holding the serializer.
+	 *
+	 * If we are unable to obtain the serializer just retry the same
+	 * count on the next callout.
+	 *
+	 * - call watchdog in terminal count (0)
+	 * - call watchdog on last tick (1) if requested
+	 * - call watchdog on all ticks if requested
+	 */
+	ifp = ifsq_get_ifp(wd->wd_subq);
+	if (ifnet_tryserialize_all(ifp) == 0)
+		goto done;
+	if (atomic_cmpset_int(&wd->wd_timer, count, count - 1)) {
+		--count;
+		if (count == 0 ||
+		    (wd->wd_flags & IF_WDOG_ALLTICKS) ||
+		    ((wd->wd_flags & IF_WDOG_LASTTICK) && count == 1)) {
+			wd->wd_watchdog(wd->wd_subq);
+		}
+	}
+	ifnet_deserialize_all(ifp);
 done:
 	ifsq_watchdog_reset(wd);
 }
@@ -3554,10 +3589,11 @@ ifsq_watchdog_reset(struct ifsubq_watchdog *wd)
 
 void
 ifsq_watchdog_init(struct ifsubq_watchdog *wd, struct ifaltq_subque *ifsq,
-    ifsq_watchdog_t watchdog)
+		   ifsq_watchdog_t watchdog, int flags)
 {
 	callout_init_mp(&wd->wd_callout);
 	wd->wd_timer = 0;
+	wd->wd_flags = flags;
 	wd->wd_subq = ifsq;
 	wd->wd_watchdog = watchdog;
 }
@@ -3565,15 +3601,21 @@ ifsq_watchdog_init(struct ifsubq_watchdog *wd, struct ifaltq_subque *ifsq,
 void
 ifsq_watchdog_start(struct ifsubq_watchdog *wd)
 {
-	wd->wd_timer = 0;
+	atomic_swap_int(&wd->wd_timer, 0);
 	ifsq_watchdog_reset(wd);
 }
 
 void
 ifsq_watchdog_stop(struct ifsubq_watchdog *wd)
 {
-	wd->wd_timer = 0;
+	atomic_swap_int(&wd->wd_timer, 0);
 	callout_stop(&wd->wd_callout);
+}
+
+void
+ifsq_watchdog_set_count(struct ifsubq_watchdog *wd, int count)
+{
+	atomic_swap_int(&wd->wd_timer, count);
 }
 
 void

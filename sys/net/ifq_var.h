@@ -68,9 +68,13 @@ typedef void	(*ifsq_watchdog_t)(struct ifaltq_subque *);
 struct ifsubq_watchdog {
 	struct callout	wd_callout;
 	int		wd_timer;
+	int		wd_flags;
 	struct ifaltq_subque *wd_subq;
 	ifsq_watchdog_t	wd_watchdog;
 };
+
+#define IF_WDOG_ALLTICKS	0x00000001
+#define IF_WDOG_LASTTICK	0x00000002
 
 /*
  * Support for "classic" ALTQ interfaces.
@@ -91,9 +95,10 @@ void		ifsq_devstart(struct ifaltq_subque *ifsq);
 void		ifsq_devstart_sched(struct ifaltq_subque *ifsq);
 
 void		ifsq_watchdog_init(struct ifsubq_watchdog *,
-		    struct ifaltq_subque *, ifsq_watchdog_t);
+		    struct ifaltq_subque *, ifsq_watchdog_t, int);
 void		ifsq_watchdog_start(struct ifsubq_watchdog *);
 void		ifsq_watchdog_stop(struct ifsubq_watchdog *);
+void		ifsq_watchdog_set_count(struct ifsubq_watchdog *, int);
 
 /*
  * Dispatch a packet to an interface.

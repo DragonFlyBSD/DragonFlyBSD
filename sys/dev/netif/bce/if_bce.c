@@ -1011,7 +1011,7 @@ bce_attach(device_t dev)
 		ifsq_set_hw_serialize(ifsq, &txr->tx_serialize);
 		txr->ifsq = ifsq;
 
-		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, bce_watchdog);
+		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, bce_watchdog, 0);
 	}
 
 	callout_init_mp(&sc->bce_tick_callout);
@@ -4579,7 +4579,7 @@ bce_tx_intr(struct bce_tx_ring *txr, uint16_t hw_tx_cons)
 
 	if (txr->used_tx_bd == 0) {
 		/* Clear the TX timeout timer. */
-		txr->tx_watchdog.wd_timer = 0;
+		ifsq_watchdog_set_count(&txr->tx_watchdog, 0);
 	}
 
 	/* Clear the tx hardware queue full flag. */
@@ -5023,7 +5023,7 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		ETHER_BPF_MTAP(ifp, m_head);
 
 		/* Set the tx timeout. */
-		txr->tx_watchdog.wd_timer = BCE_TX_TIMEOUT;
+		ifsq_watchdog_set_count(&txr->tx_watchdog, BCE_TX_TIMEOUT);
 	}
 	if (count > 0)
 		bce_xmit(txr);

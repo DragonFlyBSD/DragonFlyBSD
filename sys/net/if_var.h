@@ -250,13 +250,19 @@ enum ifnet_serialize {
  *
  *		ifsq_set_cpuid(ifsq, Q_CPUID);
  *		ifsq_set_hw_serialize(ifsq, Q_SLIZE);
- *		ifsq_watchdog_init(Q_WDOG, ifsq, Q_WDOG_FUNC);
+ *		ifsq_watchdog_init(Q_WDOG, ifsq, Q_WDOG_FUNC, IF_WDOG_FLAGS);
  *	}
  *
  * Q_CPUID, the cpu which handles the hardware transmit queue interrupt
  * Q_SLIZE, the serializer protects the hardware transmit queue
  * Q_WDOG, per hardware transmit queue watchdog handler, struct ifsubq_watchdog
  * Q_WDOG_FUNC, watchdog function, probably should reset hardware
+ * IF_WDOG_FLAGS, various IF_WDOG_* flags (typically 0)
+ *
+ * The watchdog function is called on the 1->0 transition of wd_timer by
+ * default.  Flags modify thiis behavior:
+ *	IF_WDOG_ALLTICKS	Issue callback on all wd_timer transitions
+ *	IF_WDOG_LASTTICK	Issue callback on 2->1 and 1->0
  *
  * 2) Stop
  *

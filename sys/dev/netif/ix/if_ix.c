@@ -777,7 +777,7 @@ ix_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 		if (txr->tx_avail <= IX_MAX_SCATTER + IX_TX_RESERVED) {
 			ifsq_set_oactive(ifsq);
-			txr->tx_watchdog.wd_timer = 5;
+			ifsq_watchdog_set_count(&txr->tx_watchdog, 5);
 			break;
 		}
 
@@ -1850,7 +1850,7 @@ ix_setup_ifp(struct ix_softc *sc)
 		ifsq_set_hw_serialize(ifsq, &txr->tx_serialize);
 		txr->tx_ifsq = ifsq;
 
-		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, ix_watchdog);
+		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, ix_watchdog, 0);
 	}
 
 	/* Specify the media types supported by this adapter */
@@ -2382,7 +2382,7 @@ ix_txeof(struct ix_tx_ring *txr, int hdr)
 
 	if (txr->tx_avail > IX_MAX_SCATTER + IX_TX_RESERVED) {
 		ifsq_clr_oactive(txr->tx_ifsq);
-		txr->tx_watchdog.wd_timer = 0;
+		ifsq_watchdog_set_count(&txr->tx_watchdog, 0);
 	}
 	txr->tx_running = IX_TX_RUNNING;
 }
@@ -4238,7 +4238,7 @@ ix_watchdog(struct ifaltq_subque *ifsq)
 	 * If the interface has been paused then don't do the watchdog check
 	 */
 	if (IXGBE_READ_REG(&sc->hw, IXGBE_TFCS) & IXGBE_TFCS_TXOFF) {
-		txr->tx_watchdog.wd_timer = 5;
+		ifsq_watchdog_set_count(&txr->tx_watchdog, 5);
 		return;
 	}
 
