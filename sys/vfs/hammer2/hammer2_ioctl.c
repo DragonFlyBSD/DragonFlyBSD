@@ -1332,6 +1332,8 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		if (i * HAMMER2_ZONE_BYTES64 < hmp->voldata.volu_size)
 			continue;
+		if (i * HAMMER2_ZONE_BYTES64 >= grow->size)
+			break;
 		kprintf("hammer2: growfs - clear volhdr %d ", i);
 		error = bread(hmp->devvp, i * HAMMER2_ZONE_BYTES64,
 			      HAMMER2_VOLUME_BYTES, &bp);
