@@ -93,7 +93,6 @@ ext2_print_inode(struct inode *in)
 }
 #endif	/* EXT2FS_PRINT_EXTENTS */
 
-
 #define XTIME_TO_NSEC(x)	((le32toh(x) & EXT3_NSEC_MASK) >> 2)
 
 /*

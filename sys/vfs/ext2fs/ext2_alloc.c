@@ -1281,7 +1281,6 @@ ext2_fix_bitmap_tail(unsigned char *bitmap, int first, int last)
 		bitmap[i] = 0xff;
 }
 
-
 /*
  * Determine whether an inode can be allocated.
  *
