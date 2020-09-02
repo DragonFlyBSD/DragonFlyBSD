@@ -42,6 +42,9 @@
 .Op Fl r
 .Ar disk
 .Nm
+.Op Fl x
+.Ar disk
+.Nm
 .Fl w
 .Op Fl r
 .Op Fl n
@@ -540,10 +543,21 @@ and finally a
 partition for the root file system (usually all remaining space).
 Your mileage may vary.
 .Pp
-.Dl "gpt create da0"
-.Dl "gpt add da0"
-.Dl "disklabel64 -B -r -w da0s0"
-.Dl "disklabel64 -e da0s0"
+.Dl "gpt init -f -B da0"
+.Dl "disklabel64 -B -r -w da0s1"
+.Dl "disklabel64 -e da0s1"
+.Ss Expanding the disklabel
+The
+.Fl x[x]
+option may be used to expand an existing disklabel to cover an expanded
+storage device.  This is useful when an image is copied to larger underlying
+storage.  If specified twice, the last partition will also be expanded to
+fill the area.  Mounted HAMMER2 filesystems can also be expanded to cover
+the new space in the partition.
+.Pp
+.Dl "gpt expand da0"
+.Dl "disklabel64 -xx da0s1
+.Dl "hammer2 growfs /blahblah"
 .Sh ALIGNMENT
 When a virgin disklabel64 is laid down a
 .Dx 2.5

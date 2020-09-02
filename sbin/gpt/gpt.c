@@ -640,6 +640,7 @@ static struct {
 	{ cmd_boot, "boot" },
 	{ cmd_create, "create" },
 	{ cmd_destroy, "destroy" },
+	{ cmd_expand, "expand" },
 	{ NULL, "help" },
 	{ cmd_init, "init" },
 	{ cmd_label, "label" },

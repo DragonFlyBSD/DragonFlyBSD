@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2007,2020 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -100,6 +100,7 @@ extern uint32_t crc32(const void *buf, size_t size);
 
 static void	makelabel(const char *, const char *, struct disklabel64 *);
 static int	writelabel(int, struct disklabel64 *);
+static int	expandlabel(int f, struct disklabel64 *lp, int *wbackp);
 static void	l_perror(const char *);
 static void	display(FILE *, const struct disklabel64 *);
 static int	edit(struct disklabel64 *, int);
@@ -132,7 +133,8 @@ static char	part_size_type[MAX_NUM_PARTS];
 static char	part_offset_type[MAX_NUM_PARTS];
 static int	part_set[MAX_NUM_PARTS];
 
-static int	installboot;	/* non-zero if we should install a boot program */
+static int	installboot;
+static int	expandopt;
 static int	boot1size;
 static int	boot1lsize;
 static int	boot2size;
@@ -142,7 +144,8 @@ static char	*boot1path;
 static char	*boot2path;
 
 static enum {
-	UNSPEC, EDIT, NOWRITE, READ, RESTORE, WRITE, WRITEABLE, WRITEBOOT
+	UNSPEC, EDIT, NOWRITE, READ, RESTORE, WRITE, WRITEABLE, WRITEBOOT,
+	EXPAND
 } op = UNSPEC;
 
 static int	rflag;
@@ -151,9 +154,9 @@ static int	disable_write;   /* set to disable writing to disk label */
 
 #ifdef DEBUG
 static int	debug;
-#define OPTIONS	"BNRWb:denrs:Vw"
+#define OPTIONS	"BNRWb:denrs:Vwx"
 #else
-#define OPTIONS	"BNRWb:enrs:Vw"
+#define OPTIONS	"BNRWb:enrs:Vwx"
 #endif
 
 int
@@ -211,6 +214,10 @@ main(int argc, char *argv[])
 					usage();
 				op = WRITE;
 				break;
+			case 'x':
+				expandopt++;
+				op = EXPAND;
+				break;
 #ifdef DEBUG
 			case 'd':
 				debug++;
@@ -265,6 +272,17 @@ main(int argc, char *argv[])
 		lp = readlabel(f);
 		display(stdout, lp);
 		error = checklabel(lp);
+		break;
+
+	case EXPAND:
+		{
+			int wback = 0;
+
+			lp = readlabel(f);
+			error = expandlabel(f, lp, &wback);
+			if (checklabel(lp) == 0 && wback)
+				error = writelabel(f, lp);
+		}
 		break;
 
 	case RESTORE:
@@ -1445,6 +1463,93 @@ checklabel(struct disklabel64 *lp)
 				(intmax_t)pp->p_boffset);
 	}
 	return (errors);
+}
+
+static int
+expandlabel(int f, struct disklabel64 *lp, int *wbackp)
+{
+	const uint64_t onemeg = 1024 * 1024;
+	uint64_t pstop;
+	uint64_t abase;
+	uint64_t tsize;
+	uint64_t bsize;
+	struct partinfo info;
+	struct partition64 *part;
+	struct partition64 *best;
+	struct stat st;
+	uint32_t n;
+
+	if (ioctl(f, DIOCGPART, &info) == 0) {
+		st.st_size = info.media_size;
+	} else if (fstat(f, &st) == 0) {
+		;
+	} else {
+		fprintf(stderr, "disklabel64: cannot ioctl/stat device\n");
+		return EINVAL;
+	}
+	abase = st.st_size - 4096;
+	pstop = abase & ~(onemeg - 1);
+	tsize = st.st_size;
+
+	printf("partitions data stop:  %ld -> %ld\n", lp->d_pstop, pstop);
+	printf("backup label:          %ld -> %ld\n", lp->d_abase, abase);
+	printf("total size:            %ld -> %ld\n", lp->d_total_size, tsize);
+
+	/*
+	 * This directive does not shrink disklabels!!!
+	 */
+	if (lp->d_pstop > pstop ||
+	    lp->d_abase > abase ||
+	    lp->d_total_size > tsize) {
+		fprintf(stderr, "disklabel64: cannot expand "
+				"disklabel because it would "
+				"shrink!\n");
+		return 1;
+	}
+
+
+	if (lp->d_pstop == pstop &&
+	    lp->d_abase == abase &&
+	    lp->d_total_size == tsize) {
+		fprintf(stderr, "disklabel64: expand: "
+				"no change in disklabel "
+				"size\n");
+	} else {
+		lp->d_pstop = pstop;
+		lp->d_abase = abase;
+		lp->d_total_size = tsize;
+		*wbackp = 1;
+	}
+
+	/*
+	 * Resize the last partition
+	 */
+	if (expandopt > 1) {
+		best = NULL;
+		for (n = 0; n < lp->d_npartitions; ++n) {
+			part = &lp->d_partitions[n];
+			if (best == NULL || best->p_boffset < part->p_boffset)
+				best = part;
+		}
+		if (best) {
+			bsize = lp->d_pstop - best->p_boffset;
+			if (best->p_bsize > bsize) {
+				fprintf(stderr, "disklabel64: cannot expand "
+						"partition because it would "
+						"shrink!\n");
+				return 1;
+			} else if (best->p_bsize == bsize) {
+				fprintf(stderr, "disklabel64: expand: "
+						"no change in partition "
+						"size\n");
+			} else {
+				best->p_bsize = bsize;
+				*wbackp = 1;
+			}
+		}
+	}
+
+	return 0;
 }
 
 /*

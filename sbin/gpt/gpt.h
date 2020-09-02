@@ -80,6 +80,7 @@ int	cmd_add(int, char *[]);
 int	cmd_boot(int, char *[]);
 int	cmd_create(int, char *[]);
 int	cmd_destroy(int, char *[]);
+int	cmd_expand(int, char *[]);
 int	cmd_label(int, char *[]);
 int	cmd_init(int, char *[]);
 int	cmd_migrate(int, char *[]);

@@ -236,6 +236,15 @@ The
 option instructs
 .Nm
 to destroy the table in a way that it can be recovered.
+.\" ==== expand ====
+.It Nm Ic expand Ar device
+The
+.Ic expand
+command will expand an existing gpt label to cover a device which
+has grown in size, and will also expand the size of the last GPT
+partition to fit.
+This is typically the first step when expanding a hammer2 filesystem,
+after which disklabel -x and hammer2 growfs are run.
 .\" ==== init ====
 .It Nm Ic init Fl f Oo Fl B Oc Oo Fl E Oc Ar device ...
 The
