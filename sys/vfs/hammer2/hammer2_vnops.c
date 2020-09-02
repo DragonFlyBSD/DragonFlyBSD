@@ -574,7 +574,7 @@ done:
 	 * cause havoc.
 	 *
 	 * If an extend occured that changed the DIRECTDATA state, we must
-	 * call inode_fsync now in order to prepare the inode's indirect
+	 * call inode_chain_sync now in order to prepare the inode's indirect
 	 * block table.
 	 *
 	 * WARNING! This means we are making an adjustment to the inode's
