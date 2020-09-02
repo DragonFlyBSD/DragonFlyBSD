@@ -800,7 +800,6 @@ clusteralloc1(struct msdosfsmount *pmp, u_long start, u_long count,
 			got));
 }
 
-
 /*
  * Free a chain of clusters.
  *
