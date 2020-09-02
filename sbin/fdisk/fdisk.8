@@ -8,7 +8,7 @@
 .Nd PC slice table (MBR) maintenance program
 .Sh SYNOPSIS
 .Nm
-.Op Fl BCEIaistu
+.Op Fl BCEIaistux
 .Op Fl b Ar bootcode
 .Op Fl p Ar diskimage
 .Op Fl 1234
@@ -162,6 +162,14 @@ When
 is used,
 .Nm
 prints out the slice table that is written to the disk.
+.It Fl x
+Expand the last valid slice in an existing fdisk table to fit
+the device.  Used to expand traditional DOS labels when the underlying
+storage has been enlarged, or the image has been copied to a larger
+device.
+.Pp
+This feature does not work on GPT partitions, use 'gpt expand device'
+instead.
 .It Fl 1234
 Operate on a single fdisk entry only.
 Ignored if

@@ -122,6 +122,7 @@ static int u_flag  = 0;		/* update partition data */
 static int p_flag  = 0;		/* operate on a disk image file */
 static int s_flag  = 0;		/* Print a summary and exit */
 static int t_flag  = 0;		/* test only */
+static int x_flag  = 0;		/* Expand-to-fit device */
 static char *f_flag = NULL;	/* Read config info from file */
 static int v_flag  = 0;		/* Be verbose */
 
@@ -243,13 +244,14 @@ static int read_config(char *config_file);
 static void reset_boot(void);
 static int sanitize_partition(struct dos_partition *);
 static void usage(void);
+static int expand_table(void);
 
 int
 main(int argc, char *argv[])
 {
 	int	c, i;
 
-	while ((c = getopt(argc, argv, "BCEIab:f:p:istuv1234")) != -1)
+	while ((c = getopt(argc, argv, "BCEIab:f:p:istuvx1234")) != -1)
 		switch (c) {
 		case 'B':
 			B_flag = 1;
@@ -290,6 +292,9 @@ main(int argc, char *argv[])
 			break;
 		case 'v':
 			v_flag = 1;
+			break;
+		case 'x':
+			++x_flag;
 			break;
 		case '1':
 		case '2':
@@ -399,6 +404,8 @@ main(int argc, char *argv[])
 	    {
 		exit(1);
 	    }
+	    if (x_flag)
+		x_flag = expand_table();
 	    if (v_flag)
 	    {
 		print_s0(-1);
@@ -437,7 +444,10 @@ main(int argc, char *argv[])
 	    if (B_flag)
 		change_code();
 
-	    if (u_flag || a_flag || B_flag) {
+	    if (x_flag)
+		x_flag = expand_table();
+
+	    if (x_flag || u_flag || a_flag || B_flag) {
 		if (!t_flag)	{
 		    printf("\nWe haven't changed the partition table yet.  ");
 		    printf("This is your last chance.\n");
@@ -476,6 +486,60 @@ usage(void)
 		"usage: fdisk [-BCEIaistu] [-b bootcode] [-p diskimage] [-1234] [disk]\n",
 		"       fdisk -f configfile [-itv] [disk]\n");
         exit(1);
+}
+
+static int
+expand_table(void)
+{
+	struct dos_partition *part;
+	struct dos_partition *best;
+	int i;
+
+	printf("\n");
+
+	best = NULL;
+	for (i = 0; i < NDOSPART; ++i) {
+		part = ((struct dos_partition *) &mboot.parts) + i;
+		if (part->dp_start == 0 && part->dp_size == 0)
+			continue;
+		if (best == NULL || best->dp_start < part->dp_start)
+			best = part;
+	}
+	if (best) {
+		if (best->dp_typ == 0xEE || best->dp_typ == 0xEF) {
+			printf("Cannot use fdisk to resize a GPT label\n");
+			printf("use 'gpt expand <device>' instead\n");
+			best = NULL;
+			return 0;
+		}
+		if (disksecs - best->dp_start > 0xFFFFFFFFU) {
+			if (best->dp_size == 0xFFFFFFFFU) {
+				printf("Last slice already using max value, "
+				       "no changes required\n");
+				best = NULL;
+			}
+		} else if (best->dp_size == rounddown(disksecs, dos_cylsecs) -
+						      best->dp_start) {
+			printf("Last slice already properly sized, "
+			       "no changes required\n");
+			best = NULL;
+		}
+	}
+
+	if (best) {
+		printf("Changing size of last slice %u -> ", best->dp_start);
+		if (disksecs - best->dp_start > 0xFFFFFFFFU) {
+			printf("max-value\n");
+			best->dp_size = 0xFFFFFFFFU;
+		} else {
+			best->dp_size = rounddown(disksecs, dos_cylsecs) -
+						  best->dp_start;
+			printf("%u\n", best->dp_size);
+		}
+		dos(best);
+		return 1;
+	}
+	return 0;
 }
 
 static void
@@ -830,7 +894,8 @@ open_disk(void)
 	if (!(st.st_mode & S_IFCHR) && p_flag == 0)
 		warnx("device %s is not character special", disk);
 	if ((fd = open(disk,
-	    a_flag || I_flag || B_flag || u_flag ? O_RDWR : O_RDONLY)) == -1) {
+	    (x_flag || a_flag || I_flag ||
+	     B_flag || u_flag) ? O_RDWR : O_RDONLY)) == -1) {
 		if (errno == ENXIO)
 			return -2;
 		warnx("can't open device %s", disk);
