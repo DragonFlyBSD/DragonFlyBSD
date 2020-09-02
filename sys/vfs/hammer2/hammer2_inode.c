@@ -1571,8 +1571,8 @@ killit:
  * ip->meta.
  *
  * If a vnode is present we set the vnode dirty and the nominal filesystem
- * sync will also handle synchronizing the inode meta-data.  If no vnode
- * is present we must ensure that the inode is on pmp->sideq.
+ * sync will also handle synchronizing the inode meta-data.  Unless NOSIDEQ
+ * we must ensure that the inode is on pmp->sideq.
  *
  * NOTE: We must always queue the inode to the sideq.  This allows H2 to
  *	 shortcut vsyncscan() and flush inodes and their related vnodes
