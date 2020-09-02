@@ -78,6 +78,7 @@ expand(int fd __unused)
 	struct gpt_ent *lent;
 	char *name = NULL;
 	u_int i;
+	u_int li;
 
 	pmbr = map_find(MAP_TYPE_PMBR);
 	if (pmbr == NULL) {
@@ -103,7 +104,6 @@ expand(int fd __unused)
 		return;
 	}
 	blocks = tbl->map_size;
-	printf("BLOCKS %ld\n", blocks);
 
 	/*
 	 * Since the device may have changed size, gpt might not be able to
@@ -117,12 +117,6 @@ expand(int fd __unused)
 	tbl2->map_data = tbl->map_data;
 
 	/*
-	 * Calculate expansion size
-	 */
-	delta = last - gpt2->map_start;
-	printf("DELTA %ld\n", delta);
-
-	/*
 	 * Update the PMBR
 	 */
 	if (last > 0xffffffff) {
@@ -134,22 +128,23 @@ expand(int fd __unused)
 	}
 
 	/*
-	 * Update the secondary gpt header.
-	 */
-	if (delta == 0) {
-		printf("gpt already expanded to full device size\n");
-		if (0)
-		goto done;
-	}
-
-	/*
+	 * Calculate expansion size
+	 *
 	 * Update the primary gpt header, adjusting the pointer to the
 	 * alternative table.
 	 */
 	hdr = gpt->map_data;
-	printf("HDR_LBA_SLF %ld\n", hdr->hdr_lba_self);
-	printf("HDR_LBA_ALT %ld %ld\n", hdr->hdr_lba_alt, htole64(last));
+	delta = last - hdr->hdr_lba_alt;
 	hdr->hdr_lba_alt = htole64(last);
+
+	/*
+	 * Update the secondary gpt header.
+	 */
+	if (delta == 0) {
+		printf("gpt already expanded to full device size\n");
+	} else {
+		printf("Expand GPT by %jd blocks\n", (intmax_t)delta);
+	}
 
 	/*
 	 * Create the secondary gpt header
@@ -162,35 +157,40 @@ expand(int fd __unused)
 	hdr->hdr_lba_alt = htole64(1);
 
 	lent = NULL;
+	li = 0;
 	for (i = 0; i < le32toh(hdr->hdr_entries); ++i) {
 		ent = (void *)((char *)tbl->map_data + i *
 			       le32toh(hdr->hdr_entsz));
 		if (uuid_is_nil(&ent->ent_type, NULL))
 			continue;
 		lent = ent;
-
-		uuid_to_string(&ent->ent_type, &name, NULL);
-
-		printf("ent %d type=%s %ld,%ld\n",
-			i, name,
-			ent->ent_lba_start,
-			ent->ent_lba_end);
+		li = i;
 	}
 
 	hdr = gpt2->map_data;
-	printf("TPG HDR_LBA_SLF %ld %ld\n", hdr->hdr_lba_self, htole64(last));
-	printf("TPG HDR_LBA_ALT %ld\n", hdr->hdr_lba_alt);
 
 	if (lent) {
+		uuid_to_string(&ent->ent_type, &name, NULL);
 		nblocks = last - blocks - le64toh(lent->ent_lba_start);
 		nblocks = (nblocks * secsz / (1024 * 1024)) * 1024 * 1024 /
 			  secsz;
-		printf("NBLOCKS %ld->%ld\n",
-		       le64toh(lent->ent_lba_end) -
-		        le64toh(lent->ent_lba_start) - 1,
-		       nblocks);
-		lent->ent_lba_end = htole64(le64toh(lent->ent_lba_start) +
-					    nblocks - 1);
+
+		if (le64toh(lent->ent_lba_end) ==
+		    le64toh(lent->ent_lba_start) + nblocks - 1) {
+			printf("entry %d type=%s %ld,%ld unchanged\n",
+				li, name,
+				le64toh(lent->ent_lba_start),
+				le64toh(lent->ent_lba_end));
+		} else {
+			printf("expand entry %d type=%s %ld,%ld to %ld\n",
+				li, name,
+				le64toh(lent->ent_lba_start),
+				le64toh(lent->ent_lba_end),
+				le64toh(lent->ent_lba_start) + nblocks - 1);
+			lent->ent_lba_end = htole64(
+						le64toh(lent->ent_lba_start) +
+						nblocks - 1);
+		}
 	}
 
 	/*
@@ -217,7 +217,8 @@ expand(int fd __unused)
 	gpt_write(fd, gpt2);	/* secondary header */
 	gpt_write(fd, gpt);	/* primary partition table */
 	gpt_write(fd, tbl);	/* primary header */
-done:
+	gpt_write(fd, pmbr);	/* primary header */
+
 	if (name)
 		free(name);
 }

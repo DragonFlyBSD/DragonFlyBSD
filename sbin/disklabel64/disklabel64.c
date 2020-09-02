@@ -1511,9 +1511,9 @@ expandlabel(int f, struct disklabel64 *lp, int *wbackp)
 	if (lp->d_pstop == pstop &&
 	    lp->d_abase == abase &&
 	    lp->d_total_size == tsize) {
-		fprintf(stderr, "disklabel64: expand: "
-				"no change in disklabel "
-				"size\n");
+		printf("disklabel64: expand: "
+		       "no change in disklabel "
+		       "size\n");
 	} else {
 		lp->d_pstop = pstop;
 		lp->d_abase = abase;
@@ -1534,15 +1534,19 @@ expandlabel(int f, struct disklabel64 *lp, int *wbackp)
 		if (best) {
 			bsize = lp->d_pstop - best->p_boffset;
 			if (best->p_bsize > bsize) {
-				fprintf(stderr, "disklabel64: cannot expand "
-						"partition because it would "
-						"shrink!\n");
+				printf("disklabel64: cannot expand "
+				       "partition because it would "
+				       "shrink!\n");
 				return 1;
 			} else if (best->p_bsize == bsize) {
-				fprintf(stderr, "disklabel64: expand: "
-						"no change in partition "
-						"size\n");
+				printf("disklabel64: expand: "
+				       "no change in partition "
+				       "size\n");
 			} else {
+				printf("disklabel64: expand: increase part "
+				       "%ld to %ld bytes\n",
+				       best->p_bsize,
+				       bsize);
 				best->p_bsize = bsize;
 				*wbackp = 1;
 			}
