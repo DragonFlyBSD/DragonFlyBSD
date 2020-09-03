@@ -547,21 +547,23 @@ hbhcheck:
 
 	/*
 	 * Process Hop-by-Hop options header if it's contained.
-	 * m may be modified in ip6_hopopts_input().
+	 * m may be modified in ip6_hopopts_input(), catch this via mp
 	 * If a JumboPayload option is included, plen will also be modified.
 	 */
 	plen = (u_int32_t)ntohs(ip6->ip6_plen);
 	if (ip6->ip6_nxt == IPPROTO_HOPOPTS) {
 		struct ip6_hbh *hbh;
+		struct mbuf **mp = &m;
 
-		if (ip6_hopopts_input(&plen, &rtalert, &m, &off)) {
+		if (ip6_hopopts_input(&plen, &rtalert, mp, &off)) {
 #if 0	/*touches NULL pointer*/
-			in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_discard);
+			in6_ifstat_inc((*mp)->m_pkthdr.rcvif, ifs6_in_discard);
 #endif
 			goto bad2;	/* m have already been freed */
 		}
 
 		/* adjust pointer */
+		m = *mp;
 		ip6 = mtod(m, struct ip6_hdr *);
 
 		/*
