@@ -293,6 +293,10 @@ main(int ac, char **av)
 			  HAMMER2_FREEMAP_LEVEL1_SIZE) * HAMMER2_ZONE_SEG64;
 
 	free_space = total_space - reserved_space - BootAreaSize - AuxAreaSize;
+	if ((int64_t)free_space < 0) {
+		fprintf(stderr, "Not enough free space\n");
+		exit(1);
+	}
 
 	format_hammer2(fd, total_space, free_space);
 	fsync(fd);
