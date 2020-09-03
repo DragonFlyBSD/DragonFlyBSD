@@ -179,7 +179,7 @@ pkg-bootstrap-install:
 .else
 	${.CURDIR}/local/sbin/pkg-static install -y ${PKG_FLAGS} pkg
 .endif
-	${.CURDIR}/local/sbin/pkg install -y ${PKG_FLAGS} ca_root_nss
+	${.CURDIR}/local/sbin/pkg-static install -y ${PKG_FLAGS} ca_root_nss
 	cp -f ${.CURDIR}/local/etc/pkg/repos/df-latest.conf.sample \
 		${.CURDIR}/local/etc/pkg/repos/df-latest.conf \
 
