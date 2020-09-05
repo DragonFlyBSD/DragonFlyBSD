@@ -391,9 +391,13 @@ hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes)
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		counterp = &hammer2_iod_fmap_read;
 		break;
-	default:
+	case HAMMER2_BREF_TYPE_FREEMAP:
+	case HAMMER2_BREF_TYPE_VOLUME:
 		counterp = &hammer2_iod_volu_read;
 		break;
+	case HAMMER2_BREF_TYPE_EMPTY:
+	default:
+		return;
 	}
 	*counterp += bytes;
 }
