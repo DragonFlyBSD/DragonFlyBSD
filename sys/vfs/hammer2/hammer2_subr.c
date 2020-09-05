@@ -253,37 +253,6 @@ hammer2_dirhash(const unsigned char *name, size_t len)
 	return (key);
 }
 
-#if 0
-/*
- * Return the power-of-2 radix greater or equal to
- * the specified number of bytes.
- *
- * Always returns at least the minimum media allocation
- * size radix, HAMMER2_RADIX_MIN (10), which is 1KB.
- */
-int
-hammer2_allocsize(size_t bytes)
-{
-	int radix;
-
-	if (bytes < HAMMER2_ALLOC_MIN)
-		bytes = HAMMER2_ALLOC_MIN;
-	if (bytes == HAMMER2_PBUFSIZE)
-		radix = HAMMER2_PBUFRADIX;
-	else if (bytes >= 16384)
-		radix = 14;
-	else if (bytes >= 1024)
-		radix = 10;
-	else
-		radix = HAMMER2_RADIX_MIN;
-
-	while (((size_t)1 << radix) < bytes)
-		++radix;
-	return (radix);
-}
-
-#endif
-
 /*
  * Convert bytes to radix with no limitations.
  *
