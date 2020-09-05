@@ -1230,7 +1230,7 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	}
 	if (error) {
 		chain->error = HAMMER2_ERROR_EIO;
-		kprintf("hammer2_chain_lock: I/O error %016jx: %d\n",
+		kprintf("hammer2_chain_load_data: I/O error %016jx: %d\n",
 			(intmax_t)bref->data_off, error);
 		hammer2_io_bqrelse(&chain->dio);
 		goto done;
@@ -4054,7 +4054,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	 */
 	*errorp = hammer2_chain_modify(parent, mtid, 0, 0);
 	if (*errorp) {
-		kprintf("hammer2_create_indirect: error %08x %s\n",
+		kprintf("hammer2_chain_create_indirect: error %08x %s\n",
 			*errorp, hammer2_error_str(*errorp));
 		return NULL;
 	}
@@ -4179,7 +4179,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	 */
 	*errorp = hammer2_chain_modify(ichain, mtid, 0, 0);
 	if (*errorp) {
-		kprintf("hammer2_alloc_indirect: error %08x %s\n",
+		kprintf("hammer2_chain_create_indirect: error %08x %s\n",
 			*errorp, hammer2_error_str(*errorp));
 		hammer2_chain_unlock(ichain);
 		hammer2_chain_drop(ichain);
@@ -5781,7 +5781,7 @@ hammer2_base_sort(hammer2_chain_t *chain)
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		kprintf("hammer2_chain_lookup: unrecognized "
+		kprintf("hammer2_base_sort: unrecognized "
 			"blockref(A) type: %d",
 		        chain->bref.type);
 		while (1)
@@ -6037,7 +6037,7 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 		}
 		break;
 	default:
-		kprintf("hammer2_chain_setcheck: unknown check type %02x\n",
+		kprintf("hammer2_chain_testcheck: unknown check type %02x\n",
 			chain->bref.methods);
 		r = 1;
 		break;

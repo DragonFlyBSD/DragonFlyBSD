@@ -592,7 +592,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, void *scratch, int clindex)
 
 	if (chain == NULL) {
 		/* XXX shouldn't happen, but does under fsstress */
-		kprintf("hammer2_xop_rename: \"%s\" -> \"%s\"  ENOENT\n",
+		kprintf("hammer2_xop_nrename: \"%s\" -> \"%s\"  ENOENT\n",
 			xop->head.name1,
 			xop->head.name2);
 		if (error == 0)

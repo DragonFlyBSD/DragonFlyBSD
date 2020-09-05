@@ -493,7 +493,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 	j = iroot->cluster.nchains;
 
 	if (j == HAMMER2_MAXCLUSTER) {
-		kprintf("hammer2_mount: cluster full!\n");
+		kprintf("hammer2_pfsalloc: cluster full!\n");
 		/* XXX fatal error? */
 	} else {
 		KKASSERT(chain->pmp == NULL);
