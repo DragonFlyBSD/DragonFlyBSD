@@ -66,16 +66,19 @@
 #endif
 
 #if defined(__cplusplus)
-#if __GNUC_PREREQ__(4, 0)
-#define	__BEGIN_DECLS	_Pragma("GCC visibility push(default)") extern "C" {
-#define	__END_DECLS	} _Pragma("GCC visibility pop")
+#define	__BEGIN_EXTERN_C	extern "C" {
+#define	__END_EXTERN_C		}
 #else
-#define	__BEGIN_DECLS	extern "C" {
-#define	__END_DECLS	}
+#define	__BEGIN_EXTERN_C
+#define	__END_EXTERN_C
 #endif
+
+#if __GNUC_PREREQ__(4, 0)
+#define	__BEGIN_DECLS	_Pragma("GCC visibility push(default)") __BEGIN_EXTERN_C
+#define	__END_DECLS	__END_EXTERN_C _Pragma("GCC visibility pop")
 #else
-#define	__BEGIN_DECLS
-#define	__END_DECLS
+#define	__BEGIN_DECLS	__BEGIN_EXTERN_C
+#define	__END_DECLS	__END_EXTERN_C
 #endif
 
 /*
