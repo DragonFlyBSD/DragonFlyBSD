@@ -8,7 +8,7 @@ PRIVATELIB=	shpub
 SHLIBDIR?=	/lib
 WARNS?=		2
 
-CFLAGS+=	-DLIBRESSL_INTERNAL -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_DECLS=
+CFLAGS+=	-DLIBRESSL_INTERNAL
 
 # from vendor makefile
 SRCS=	bio_ssl.c bs_cbb.c bs_cbs.c \

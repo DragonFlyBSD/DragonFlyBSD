@@ -78,11 +78,19 @@
 #define	__dso_hidden	__attribute__((__visibility__("hidden")))
 #define	__BEGIN_DECLS	_Pragma("GCC visibility push(default)") __BEGIN_EXTERN_C
 #define	__END_DECLS	__END_EXTERN_C _Pragma("GCC visibility pop")
+#define	__BEGIN_HIDDEN_DECLS \
+			_Pragma("GCC visibility push(hidden)") __BEGIN_EXTERN_C
+#define	__END_HIDDEN_DECLS \
+			__END_EXTERN_C _Pragma("GCC visibility pop")
 #else
 #define	__dso_public
 #define	__dso_hidden
 #define	__BEGIN_DECLS	__BEGIN_EXTERN_C
 #define	__END_DECLS	__END_EXTERN_C
+#define	__BEGIN_HIDDEN_DECLS \
+			__BEGIN_EXTERN_C
+#define	__END_HIDDEN_DECLS \
+			__END_EXTERN_C
 #endif
 
 /*
