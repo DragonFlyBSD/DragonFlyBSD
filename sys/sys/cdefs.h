@@ -74,9 +74,13 @@
 #endif
 
 #if __GNUC_PREREQ__(4, 0)
+#define	__dso_public	__attribute__((__visibility__("default")))
+#define	__dso_hidden	__attribute__((__visibility__("hidden")))
 #define	__BEGIN_DECLS	_Pragma("GCC visibility push(default)") __BEGIN_EXTERN_C
 #define	__END_DECLS	__END_EXTERN_C _Pragma("GCC visibility pop")
 #else
+#define	__dso_public
+#define	__dso_hidden
 #define	__BEGIN_DECLS	__BEGIN_EXTERN_C
 #define	__END_DECLS	__END_EXTERN_C
 #endif
@@ -387,14 +391,6 @@
 #define	__ARRAY_ZERO	0
 #else
 #define	__ARRAY_ZERO
-#endif
-
-#if __GNUC_PREREQ__(4, 0)
-#define	__dso_public	__attribute__((__visibility__("default")))
-#define	__dso_hidden	__attribute__((__visibility__("hidden")))
-#else
-#define	__dso_public
-#define	__dso_hidden
 #endif
 
 /*
