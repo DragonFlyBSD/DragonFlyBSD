@@ -390,7 +390,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_COUNTEDBREFS	0x00002000	/* block table stats */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_ONLRU		0x00008000	/* on LRU list */
-#define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
+#define HAMMER2_CHAIN_UNUSED10000	0x00010000
 #define HAMMER2_CHAIN_RELEASE		0x00020000	/* don't keep around */
 #define HAMMER2_CHAIN_BMAPPED		0x00040000	/* present in blkmap */
 #define HAMMER2_CHAIN_BMAPUPD		0x00080000	/* +needs updating */
