@@ -1684,7 +1684,6 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 
 	hmp = chain->hmp;
 	obref = chain->bref;
-	KKASSERT((chain->flags & HAMMER2_CHAIN_FICTITIOUS) == 0);
 	KKASSERT(chain->lock.mtx_lock & MTX_EXCLUSIVE);
 
 	/*
@@ -3828,8 +3827,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	hammer2_dev_t *hmp;
 	int error = 0;
 
-	KKASSERT((chain->flags & (HAMMER2_CHAIN_DELETED |
-				  HAMMER2_CHAIN_FICTITIOUS)) == 0);
+	KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0);
 	KKASSERT(chain->parent == parent);
 	hmp = chain->hmp;
 

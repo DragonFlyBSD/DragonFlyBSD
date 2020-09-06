@@ -369,9 +369,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *		  an update.  Prevents chain free on lastdrop if still in
  *		  the topology.
  *
- * FICTITIOUS	- Faked chain as a placeholder for an error condition.  This
- *		  chain is unsuitable for I/O.
- *
  * BMAPPED	- Indicates that the chain is present in the parent blockmap.
  *
  * BMAPUPD	- Indicates that the chain is present but needs to be updated
@@ -387,7 +384,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_NOTTESTED		0x00000080	/* crc not generated */
 #define HAMMER2_CHAIN_TESTEDGOOD	0x00000100	/* crc tested good */
 #define HAMMER2_CHAIN_ONFLUSH		0x00000200	/* on a flush list */
-#define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */
+#define HAMMER2_CHAIN_UNUSED0400	0x00000400
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
 #define HAMMER2_CHAIN_UNUSED1000	0x00001000
 #define HAMMER2_CHAIN_COUNTEDBREFS	0x00002000	/* block table stats */
