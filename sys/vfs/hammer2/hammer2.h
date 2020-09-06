@@ -468,8 +468,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *
  *		      (Cannot be used for remote or cluster ops).
  *
- *	ALLNODES    - Allows NULL focus.
- *
  *	ALWAYS	    - Always resolve the data.  If ALWAYS and NODATA are both
  *		      missing, bulk file data is not resolved but inodes and
  *		      other meta-data will.
@@ -479,7 +477,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_LOOKUP_NODIRECT		0x00000004	/* no offset=0 DD */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
 #define HAMMER2_LOOKUP_MATCHIND		0x00000200	/* return all chains */
-#define HAMMER2_LOOKUP_ALLNODES		0x00000400	/* allow NULL focus */
+#define HAMMER2_LOOKUP_UNUSED0400	0x00000400
 #define HAMMER2_LOOKUP_ALWAYS		0x00000800	/* resolve data */
 #define HAMMER2_LOOKUP_UNUSED1000	0x00001000
 
