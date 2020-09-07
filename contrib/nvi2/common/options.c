@@ -9,10 +9,6 @@
 
 #include "config.h"
 
-#ifndef lint
-static const char sccsid[] = "$Id: options.c,v 10.73 2012/10/09 06:14:07 zy Exp $";
-#endif /* not lint */
-
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
@@ -24,6 +20,7 @@ static const char sccsid[] = "$Id: options.c,v 10.73 2012/10/09 06:14:07 zy Exp 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unctrl.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -79,6 +76,8 @@ OPTLIST const optlist[] = {
 	{L("errorbells"),	NULL,		OPT_0BOOL,	0},
 /* O_ESCAPETIME	  4.4BSD */
 	{L("escapetime"),	NULL,		OPT_NUM,	0},
+/* O_EXPANDTAB	NetBSD 5.0 */
+	{L("expandtab"),	NULL,		OPT_0BOOL,	0},
 /* O_EXRC	System V (undocumented) */
 	{L("exrc"),	NULL,		OPT_0BOOL,	0},
 /* O_EXTENDED	  4.4BSD */
@@ -256,6 +255,7 @@ static OABBREV const abbrev[] = {
 	{L("dir"),	O_TMPDIR},		/*     4BSD */
 	{L("eb"),	O_ERRORBELLS},		/*     4BSD */
 	{L("ed"),	O_EDCOMPATIBLE},	/*     4BSD */
+	{L("et"),	O_EXPANDTAB},		/* NetBSD 5.0 */
 	{L("ex"),	O_EXRC},		/* System V (undocumented) */
 	{L("fe"),	O_FILEENCODING},
 	{L("ht"),	O_HARDTABS},		/*     4BSD */
@@ -297,9 +297,7 @@ static OABBREV const abbrev[] = {
  * PUBLIC: int opts_init(SCR *, int *);
  */
 int
-opts_init(
-	SCR *sp,
-	int *oargs)
+opts_init(SCR *sp, int *oargs)
 {
 	ARGS *argv[2], a, b;
 	OPTLIST const *op;
@@ -369,7 +367,7 @@ opts_init(
 	OI(O_PARAGRAPHS, L("paragraphs=IPLPPPQPP LIpplpipbp"));
 	(void)SPRINTF(b2, SIZE(b2), L("path=%s"), "");
 	OI(O_PATH, b2);
-	(void)SPRINTF(b2, SIZE(b2), L("recdir=%s"), _PATH_PRESERVE);
+	(void)SPRINTF(b2, SIZE(b2), L("recdir=%s"), NVI_PATH_PRESERVE);
 	OI(O_RECDIR, b2);
 	OI(O_SECTIONS, L("sections=NHSHH HUnhsh"));
 	(void)SPRINTF(b2, SIZE(b2),
@@ -463,10 +461,7 @@ err:	msgq_wstr(sp, M_ERR, optlist[optindx].name,
  * PUBLIC: int opts_set(SCR *, ARGS *[], char *);
  */
 int
-opts_set(
-	SCR *sp,
-	ARGS *argv[],
-	char *usage)
+opts_set(SCR *sp, ARGS *argv[], char *usage)
 {
 	enum optdisp disp;
 	enum nresult nret;
@@ -757,12 +752,7 @@ badnum:				INT2CHAR(sp, name, STRLEN(name) + 1,
  * PUBLIC: int o_set(SCR *, int, u_int, char *, u_long);
  */
 int
-o_set(
-	SCR *sp,
-	int opt,
-	u_int flags,
-	char *str,
-	u_long val)
+o_set(SCR *sp, int opt, u_int flags, char *str, u_long val)
 {
 	OPTION *op;
 
@@ -779,14 +769,14 @@ o_set(
 	/* Free the previous string, if requested, and set the value. */
 	if LF_ISSET(OS_DEF)
 		if (LF_ISSET(OS_STR | OS_STRDUP)) {
-			if (!LF_ISSET(OS_NOFREE) && op->o_def.str != NULL)
+			if (!LF_ISSET(OS_NOFREE))
 				free(op->o_def.str);
 			op->o_def.str = str;
 		} else
 			op->o_def.val = val;
 	else
 		if (LF_ISSET(OS_STR | OS_STRDUP)) {
-			if (!LF_ISSET(OS_NOFREE) && op->o_cur.str != NULL)
+			if (!LF_ISSET(OS_NOFREE))
 				free(op->o_cur.str);
 			op->o_cur.str = str;
 		} else
@@ -801,10 +791,7 @@ o_set(
  * PUBLIC: int opts_empty(SCR *, int, int);
  */
 int
-opts_empty(
-	SCR *sp,
-	int off,
-	int silent)
+opts_empty(SCR *sp, int off, int silent)
 {
 	char *p;
 
@@ -824,9 +811,7 @@ opts_empty(
  * PUBLIC: void opts_dump(SCR *, enum optdisp);
  */
 void
-opts_dump(
-	SCR *sp,
-	enum optdisp type)
+opts_dump(SCR *sp, enum optdisp type)
 {
 	OPTLIST const *op;
 	int base, b_num, cnt, col, colwidth, curlen, s_num;
@@ -958,11 +943,10 @@ opts_dump(
  *	Print out an option.
  */
 static int
-opts_print(
-	SCR *sp,
-	OPTLIST const *op)
+opts_print(SCR *sp, OPTLIST const *op)
 {
 	int curlen, offset;
+	const char *p;
 
 	curlen = 0;
 	offset = op - optlist;
@@ -976,8 +960,13 @@ opts_print(
 		curlen += ex_printf(sp, WS"=%ld", op->name, O_VAL(sp, offset));
 		break;
 	case OPT_STR:
-		curlen += ex_printf(sp, WS"=\"%s\"", op->name,
-		    O_STR(sp, offset) == NULL ? "" : O_STR(sp, offset));
+		curlen += ex_printf(sp, WS"=\"", op->name);
+		p = O_STR(sp, offset);
+		/* Keep correct count for unprintable character sequences */
+		if (p != NULL)
+			for (; *p != '\0'; ++p)
+				curlen += ex_puts(sp, unctrl(*p));
+		curlen += ex_puts(sp, "\"");
 		break;
 	}
 	return (curlen);
@@ -990,9 +979,7 @@ opts_print(
  * PUBLIC: int opts_save(SCR *, FILE *);
  */
 int
-opts_save(
-	SCR *sp,
-	FILE *fp)
+opts_save(SCR *sp, FILE *fp)
 {
 	OPTLIST const *op;
 	CHAR_T ch, *p;
@@ -1093,26 +1080,20 @@ opts_search(CHAR_T *name)
  * PUBLIC: void opts_nomatch(SCR *, CHAR_T *);
  */
 void
-opts_nomatch(
-	SCR *sp,
-	CHAR_T *name)
+opts_nomatch(SCR *sp, CHAR_T *name)
 {
 	msgq_wstr(sp, M_ERR, name,
 	    "033|set: no %s option: 'set all' gives all option values");
 }
 
 static int
-opts_abbcmp(
-	const void *a,
-	const void *b)
+opts_abbcmp(const void *a, const void *b)
 {
 	return(STRCMP(((OABBREV *)a)->name, ((OABBREV *)b)->name));
 }
 
 static int
-opts_cmp(
-	const void *a,
-	const void *b)
+opts_cmp(const void *a, const void *b)
 {
 	return(STRCMP(((OPTLIST *)a)->name, ((OPTLIST *)b)->name));
 }
@@ -1124,9 +1105,7 @@ opts_cmp(
  * PUBLIC: int opts_copy(SCR *, SCR *);
  */
 int
-opts_copy(
-	SCR *orig,
-	SCR *sp)
+opts_copy(SCR *orig, SCR *sp)
 {
 	int cnt, rval;
 
@@ -1180,9 +1159,7 @@ opts_free(SCR *sp)
 		if (optlist[cnt].type != OPT_STR ||
 		    F_ISSET(&sp->opts[cnt], OPT_GLOBAL))
 			continue;
-		if (O_STR(sp, cnt) != NULL)
-			free(O_STR(sp, cnt));
-		if (O_D_STR(sp, cnt) != NULL)
-			free(O_D_STR(sp, cnt));
+		free(O_STR(sp, cnt));
+		free(O_D_STR(sp, cnt));
 	}
 }
