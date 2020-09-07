@@ -1397,6 +1397,14 @@ hammer2_error_to_errno(int error)
 			error = EINPROGRESS;
 		else if (error & HAMMER2_ERROR_EEXIST)
 			error = EEXIST;
+		else if (error & HAMMER2_ERROR_EINVAL)
+			error = EINVAL;
+		else if (error & HAMMER2_ERROR_EDEADLK)
+			error = EDEADLK;
+		else if (error & HAMMER2_ERROR_ESRCH)
+			error = ESRCH;
+		else if (error & HAMMER2_ERROR_ETIMEDOUT)
+			error = ETIMEDOUT;
 		else
 			error = EDOM;
 	}
@@ -1412,7 +1420,36 @@ hammer2_errno_to_error(int error)
 		return 0;
 	case EIO:
 		return HAMMER2_ERROR_EIO;
+	case EDOM:
+		return HAMMER2_ERROR_CHECK;
+	case EINTR:
+		return HAMMER2_ERROR_ABORTED;
+	//case EIO:
+	//	return HAMMER2_ERROR_BADBREF;
+	case ENOSPC:
+		return HAMMER2_ERROR_ENOSPC;
+	case ENOENT:
+		return HAMMER2_ERROR_ENOENT;
+	case ENOTEMPTY:
+		return HAMMER2_ERROR_ENOTEMPTY;
+	case EAGAIN:
+		return HAMMER2_ERROR_EAGAIN;
+	case ENOTDIR:
+		return HAMMER2_ERROR_ENOTDIR;
+	case EISDIR:
+		return HAMMER2_ERROR_EISDIR;
+	case EINPROGRESS:
+		return HAMMER2_ERROR_EINPROGRESS;
+	case EEXIST:
+		return HAMMER2_ERROR_EEXIST;
 	case EINVAL:
+		return HAMMER2_ERROR_EINVAL;
+	case EDEADLK:
+		return HAMMER2_ERROR_EDEADLK;
+	case ESRCH:
+		return HAMMER2_ERROR_ESRCH;
+	case ETIMEDOUT:
+		return HAMMER2_ERROR_ETIMEDOUT;
 	default:
 		return HAMMER2_ERROR_EINVAL;
 	}
