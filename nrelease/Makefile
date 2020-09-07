@@ -405,6 +405,8 @@ mkimg:
 	-fgrep -v kernel_options ${IMGMNT}/boot/loader.conf > ${IMGMNT}/boot/loader.conf.new
 	echo 'vfs.root.mountfrom="ufs:part-by-label/${LABEL}.a"' >> ${IMGMNT}/boot/loader.conf.new
 	mv ${IMGMNT}/boot/loader.conf.new ${IMGMNT}/boot/loader.conf
+	@echo "STEP: create /firstboot"
+	touch ${IMGMNT}/firstboot
 	@echo "STEP: cleanup"
 	df ${IMGMNT}
 	sync
