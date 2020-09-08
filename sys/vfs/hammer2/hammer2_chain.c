@@ -5885,7 +5885,7 @@ hammer2_characterize_failed_chain(hammer2_chain_t *chain, uint64_t check,
 		"(flags=%08x, bref/data ",
 		chain->bref.data_off,
 		chain->bref.type,
-		hammer2_bref_type_str(&chain->bref),
+		hammer2_bref_type_str(chain->bref.type),
 		chain->bref.methods,
 		chain->flags);
 	if (did == 0)

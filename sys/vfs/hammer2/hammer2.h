@@ -1512,7 +1512,7 @@ extern struct objcache *cache_xops;
 
 int hammer2_signal_check(time_t *timep);
 const char *hammer2_error_str(int error);
-const char *hammer2_bref_type_str(hammer2_blockref_t *bref);
+const char *hammer2_bref_type_str(int btype);
 
 void hammer2_dev_exlock(hammer2_dev_t *hmp);
 void hammer2_dev_shlock(hammer2_dev_t *hmp);

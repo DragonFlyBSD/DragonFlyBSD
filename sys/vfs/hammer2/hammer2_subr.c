@@ -471,9 +471,9 @@ hammer2_error_str(int error)
 }
 
 const char *
-hammer2_bref_type_str(hammer2_blockref_t *bref)
+hammer2_bref_type_str(int btype)
 {
-	switch(bref->type) {
+	switch(btype) {
 	case HAMMER2_BREF_TYPE_EMPTY:
 		return("Unknown-zero'd field");
 	case HAMMER2_BREF_TYPE_INODE:
