@@ -109,8 +109,11 @@ long hammer2_iod_meta_write;
 long hammer2_iod_indr_write;
 long hammer2_iod_fmap_write;
 long hammer2_iod_volu_write;
-long hammer2_iod_inode_creates;
-long hammer2_iod_inode_deletes;
+static long hammer2_iod_inode_creates;
+static long hammer2_iod_inode_deletes;
+
+long hammer2_process_icrc32;
+long hammer2_process_xxhash64;
 
 MALLOC_DECLARE(M_HAMMER2_CBUFFER);
 MALLOC_DEFINE(M_HAMMER2_CBUFFER, "HAMMER2-compbuffer",
@@ -195,8 +198,6 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_creates, CTLFLAG_RW,
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_deletes, CTLFLAG_RW,
 	   &hammer2_iod_inode_deletes, 0, "");
 
-long hammer2_process_icrc32;
-long hammer2_process_xxhash64;
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_icrc32, CTLFLAG_RW,
 	   &hammer2_process_icrc32, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_xxhash64, CTLFLAG_RW,

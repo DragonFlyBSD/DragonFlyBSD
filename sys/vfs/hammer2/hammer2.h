@@ -1497,8 +1497,8 @@ extern long hammer2_iod_indr_write;
 extern long hammer2_iod_fmap_write;
 extern long hammer2_iod_volu_write;
 
-extern long hammer2_process_xxhash64;
 extern long hammer2_process_icrc32;
+extern long hammer2_process_xxhash64;
 
 extern struct objcache *cache_buffer_read;
 extern struct objcache *cache_buffer_write;
