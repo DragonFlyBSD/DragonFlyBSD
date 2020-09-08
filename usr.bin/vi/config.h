@@ -21,3 +21,6 @@
 
 /* Define if you have <term.h> */
 #define HAVE_TERM_H
+
+/* Define if struct dirent has field d_namlen */
+#define HAVE_DIRENT_D_NAMLEN

@@ -16,8 +16,8 @@
 #define	_PATH_NEXRC	".nexrc"
 #endif
 
-#ifndef	_PATH_PRESERVE
-#define	_PATH_PRESERVE	"/var/tmp/vi.recover/"
+#ifndef	NVI_PATH_PRESERVE
+#define	NVI_PATH_PRESERVE	"/var/tmp/vi.recover/"
 #endif
 
 #ifndef	_PATH_SYSEXRC

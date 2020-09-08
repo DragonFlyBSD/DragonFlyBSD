@@ -1,2 +1,3 @@
 .gitignore
-build/
+CMakeLists.txt
+files/
