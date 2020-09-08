@@ -1533,7 +1533,8 @@ int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 			hammer2_key_t *lbasep, hammer2_key_t *leofp);
 int hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase);
 void hammer2_update_time(uint64_t *timep);
-void hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
+void hammer2_adjreadcounter(int btype, size_t bytes);
+void hammer2_adjwritecounter(int btype, size_t bytes);
 
 /*
  * hammer2_inode.c

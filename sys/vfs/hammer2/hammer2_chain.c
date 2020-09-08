@@ -1226,7 +1226,7 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 		error = hammer2_io_bread(hmp, bref->type,
 					 bref->data_off, chain->bytes,
 					 &chain->dio);
-		hammer2_adjreadcounter(&chain->bref, chain->bytes);
+		hammer2_adjreadcounter(chain->bref.type, chain->bytes);
 	}
 	if (error) {
 		chain->error = HAMMER2_ERROR_EIO;
@@ -2031,7 +2031,7 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 						 chain->bref.data_off,
 						 chain->bytes, &dio);
 		}
-		hammer2_adjreadcounter(&chain->bref, chain->bytes);
+		hammer2_adjreadcounter(chain->bref.type, chain->bytes);
 
 		/*
 		 * If an I/O error occurs make sure callers cannot accidently

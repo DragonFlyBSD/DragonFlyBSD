@@ -854,35 +854,9 @@ static
 void
 dio_write_stats_update(hammer2_io_t *dio, struct buf *bp)
 {
-	long *counterp;
-
 	if (bp->b_flags & B_DELWRI)
 		return;
-
-	switch(dio->btype) {
-	case HAMMER2_BREF_TYPE_DATA:
-		counterp = &hammer2_iod_file_write;
-		break;
-	case HAMMER2_BREF_TYPE_DIRENT:
-	case HAMMER2_BREF_TYPE_INODE:
-		counterp = &hammer2_iod_meta_write;
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		counterp = &hammer2_iod_indr_write;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		counterp = &hammer2_iod_fmap_write;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP:
-	case HAMMER2_BREF_TYPE_VOLUME:
-		counterp = &hammer2_iod_volu_write;
-		break;
-	case HAMMER2_BREF_TYPE_EMPTY:
-	default:
-		return;
-	}
-	*counterp += dio->psize;
+	hammer2_adjwritecounter(dio->btype, dio->psize);
 }
 
 void

@@ -341,11 +341,11 @@ hammer2_update_time(uint64_t *timep)
 }
 
 void
-hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes)
+hammer2_adjreadcounter(int btype, size_t bytes)
 {
 	long *counterp;
 
-	switch(bref->type) {
+	switch(btype) {
 	case HAMMER2_BREF_TYPE_DATA:
 		counterp = &hammer2_iod_file_read;
 		break;
@@ -363,6 +363,37 @@ hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes)
 	case HAMMER2_BREF_TYPE_FREEMAP:
 	case HAMMER2_BREF_TYPE_VOLUME:
 		counterp = &hammer2_iod_volu_read;
+		break;
+	case HAMMER2_BREF_TYPE_EMPTY:
+	default:
+		return;
+	}
+	*counterp += bytes;
+}
+
+void
+hammer2_adjwritecounter(int btype, size_t bytes)
+{
+	long *counterp;
+
+	switch(btype) {
+	case HAMMER2_BREF_TYPE_DATA:
+		counterp = &hammer2_iod_file_write;
+		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+	case HAMMER2_BREF_TYPE_INODE:
+		counterp = &hammer2_iod_meta_write;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		counterp = &hammer2_iod_indr_write;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		counterp = &hammer2_iod_fmap_write;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+	case HAMMER2_BREF_TYPE_VOLUME:
+		counterp = &hammer2_iod_volu_write;
 		break;
 	case HAMMER2_BREF_TYPE_EMPTY:
 	default:
