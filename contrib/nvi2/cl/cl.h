@@ -5,14 +5,14 @@
  *	Keith Bostic.  All rights reserved.
  *
  * See the LICENSE file for redistribution information.
- *
- *	$Id: cl.h,v 10.34 2011/08/15 20:07:32 zy Exp $
  */
 
 #ifdef USE_WIDECHAR
 #define _XOPEN_SOURCE_EXTENDED
 #endif
-#ifdef HAVE_NCURSES_H
+#ifdef HAVE_NCURSESW_NCURSES_H
+#include <ncursesw/ncurses.h>
+#elif defined HAVE_NCURSES_H
 #include <ncurses.h>
 #else
 #include <curses.h>
