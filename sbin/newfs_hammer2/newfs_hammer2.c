@@ -578,7 +578,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 						    HAMMER2_COMP_AUTOZERO);
 			rawip->meta.check_algo = HAMMER2_ENC_ALGO(
 						    HAMMER2_CHECK_XXHASH64);
-		} else  {
+		} else {
 			rawip->meta.comp_algo = HAMMER2_ENC_ALGO(
 						    HAMMER2_COMP_NEWFS_DEFAULT);
 			rawip->meta.check_algo = HAMMER2_ENC_ALGO(
@@ -694,6 +694,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	/*
 	 * Write out the 64K HAMMER2 block containing the root and sroot.
 	 */
+	assert((sroot_blockref.data_off & ~HAMMER2_PBUFMASK64) ==
+		(alloc_base & ~HAMMER2_PBUFMASK64));
 	n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
 		   sroot_blockref.data_off & ~HAMMER2_PBUFMASK64);
 	if (n != HAMMER2_PBUFSIZE) {
@@ -707,6 +709,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * The volume header points to sroot_blockref.  Also be absolutely
 	 * sure that allocator_beg is set.
 	 */
+	assert(HAMMER2_VOLUME_BYTES <= HAMMER2_PBUFSIZE);
 	bzero(buf, HAMMER2_PBUFSIZE);
 	vol = (void *)buf;
 
