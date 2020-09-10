@@ -15,7 +15,7 @@
  * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $FreeBSD: src/sys/dev/tpm/tpmvar.h,v 1.1 2010/08/12 00:16:18 takawata Exp $
+ * $FreeBSD: head/sys/dev/tpm/tpmvar.h 211201 2010-08-12 00:16:18Z takawata $
  */
 
 #ifndef _TPMVAR_H

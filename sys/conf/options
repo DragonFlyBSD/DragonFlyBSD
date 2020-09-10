@@ -670,6 +670,9 @@ SND_OLDSTEREO		opt_snd.h
 
 PANIC_REBOOT_WAIT_TIME	opt_panic.h
 
+# This options turns TPM into entropy source.
+TPM_HARVEST		opt_tpm.h
+
 # Evdev protocol support
 EVDEV_SUPPORT		opt_evdev.h
 EVDEV_DEBUG		opt_evdev.h

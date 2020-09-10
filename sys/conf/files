@@ -1239,8 +1239,11 @@ dev/netif/sn/if_sn.c		optional sn
 dev/netif/sn/if_sn_pccard.c	optional sn pccard
 dev/misc/snp/snp.c		optional snp
 dev/crypto/tpm/tpm.c		optional tpm
+dev/crypto/tpm/tpm20.c		optional tpm
 dev/crypto/tpm/tpm_acpi.c	optional tpm acpi
+dev/crypto/tpm/tpm_crb.c	optional tpm acpi
 dev/crypto/tpm/tpm_isa.c	optional tpm isa
+dev/crypto/tpm/tpm_tis.c	optional tpm acpi
 bus/iicbus/iicbb.c	optional iicbb
 bus/iicbus/iicbb_if.m		optional iicbb
 bus/iicbus/iicsmb.c		optional iicsmb

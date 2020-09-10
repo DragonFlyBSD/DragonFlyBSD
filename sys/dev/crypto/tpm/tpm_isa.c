@@ -15,7 +15,7 @@
  * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $FreeBSD: src/sys/dev/tpm/tpm_isa.c,v 1.1 2010/08/12 00:16:18 takawata Exp $
+ * $FreeBSD: head/sys/dev/tpm/tpm_isa.c 211201 2010-08-12 00:16:18Z takawata $
  */
 
 #include <sys/param.h>

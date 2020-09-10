@@ -1239,6 +1239,7 @@ device		joy0	at isa? port IO_GAME
 # nullmodem terminal driver
 device		nmdm
 device		tpm
+options		TPM_HARVEST	# This options turns TPM into entropy source.
 device		ipmi
 
 # The adw driver will attempt to use memory mapped I/O for all PCI

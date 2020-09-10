@@ -15,7 +15,7 @@
  * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $FreeBSD: src/sys/dev/tpm/tpm_acpi.c,v 1.1 2010/08/12 00:16:18 takawata Exp $
+ * $FreeBSD: head/sys/dev/tpm/tpm_acpi.c 365144 2020-09-01 21:50:31Z mjg $
  */
 
 #include <sys/param.h>
@@ -42,8 +42,6 @@
 #include <contrib/dev/acpica/source/include/accommon.h>
 #include <dev/acpica/acpivar.h>
 
-
-
 char *tpm_ids[] = {"ATM1200",  "BCM0102", "INTC0102", "SNO3504", "WEC1000",
     "PNP0C31", NULL};
 
@@ -60,7 +58,7 @@ tpm_acpi_probe(device_t dev)
 
 static device_method_t tpm_acpi_methods[] = {
 #if 0
-	/*In some case, TPM existance is found only in TPCA header*/
+	/*In some case, TPM existence is found only in TPCA header*/
 	DEVMETHOD(device_identify,	tpm_acpi_identify),
 #endif
 

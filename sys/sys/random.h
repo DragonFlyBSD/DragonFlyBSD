@@ -88,6 +88,7 @@
 #define RAND_SRC_THREAD1	0x000b
 #define RAND_SRC_THREAD2	0x000c
 #define RAND_SRC_THREAD3	0x000d
+#define RAND_SRC_TPM		0x000e
 
 #define RAND_SRC_MASK		0x00FF
 
