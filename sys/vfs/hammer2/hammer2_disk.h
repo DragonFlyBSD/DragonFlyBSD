@@ -1086,9 +1086,8 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_PFSMODE_RW		0x02
 
 /*
- * The volume header eats a 64K block.  There is currently an issue where
- * we want to try to fit all nominal filesystem updates in a 512-byte section
- * but it may be a lost cause due to the need for a blockset.
+ * The volume header eats a 64K block at the beginning of each 2GB zone
+ * up to four copies.
  *
  * All information is stored in host byte order.  The volume header's magic
  * number may be checked to determine the byte order.  If you wish to mount
@@ -1115,7 +1114,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
  *	 allow HAMMER2 to pick up the others when it checks the copyinfo[]
  *	 array on mount.
  *
- * NOTE: root_blockref points to the super-root directory, not the root
+ * NOTE: sroot_blockset points to the super-root directory, not the root
  *	 directory.  The root directory will be a subdirectory under the
  *	 super-root.
  *
@@ -1123,13 +1122,6 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
  *	 snapshots (readonly or writable).  It is possible to do a
  *	 null-mount of the super-root using special path constructions
  *	 relative to your mounted root.
- *
- * NOTE: HAMMER2 allows any subdirectory tree to be managed as if it were
- *	 a PFS, including mirroring and storage quota operations, and this is
- *	 prefered over creating discrete PFSs in the super-root.  Instead
- *	 the super-root is most typically used to create writable snapshots,
- *	 alternative roots, and so forth.  The super-root is also used by
- *	 the automatic snapshotting mechanism.
  */
 #define HAMMER2_VOLUME_ID_HBO	0x48414d3205172011LLU
 #define HAMMER2_VOLUME_ID_ABO	0x11201705324d4148LLU
