@@ -874,12 +874,7 @@ struct hammer2_bmap_data {
 typedef struct hammer2_bmap_data hammer2_bmap_data_t;
 
 /*
- * XXX "Inodes ARE directory entries" is no longer the case.  Hardlinks are
- * dirents which refer to the same inode#, which is how filesystems usually
- * implement hardlink.  The following comments need to be updated.
- *
- * In HAMMER2 inodes ARE directory entries, with a special exception for
- * hardlinks.  The inode number is stored in the inode rather than being
+ * The inode number is stored in the inode rather than being
  * based on the location of the inode (since the location moves every time
  * the inode or anything underneath the inode is modified).
  *
@@ -903,18 +898,6 @@ typedef struct hammer2_bmap_data hammer2_bmap_data_t;
  *
  * The compression mode can be changed at any time in the inode and is
  * recorded on a blockref-by-blockref basis.
- *
- * Hardlinks are supported via the inode map.  Essentially the way a hardlink
- * works is that all individual directory entries representing the same file
- * are special cased and specify the same inode number.  The actual file
- * is placed in the nearest parent directory that is parent to all instances
- * of the hardlink.  If all hardlinks to a file are in the same directory
- * the actual file will also be placed in that directory.  This file uses
- * the inode number as the directory entry key and is invisible to normal
- * directory scans.  Real directory entry keys are differentiated from the
- * inode number key via bit 63.  Access to the hardlink silently looks up
- * the real file and forwards all operations to that file.  Removal of the
- * last hardlink also removes the real file.
  */
 #define HAMMER2_INODE_BYTES		1024	/* (asserted by code) */
 #define HAMMER2_INODE_MAXNAME		256	/* maximum name in bytes */
