@@ -4772,7 +4772,7 @@ xterm-basic|modern xterm terminal emulator - common,
 	sgr0=\E(B\E[m, smacs=\E(0, smam=\E[?7h, smir=\E[4h,
 	smkx=\E[?1h\E=, smm=\E[?1034h, smso=\E[7m, smul=\E[4m,
 	tbc=\E[3g, vpa=\E[%i%p1%dd, E3=\E[3J, use=ecma+italics,
-	use=ansi+pp, use=xterm+kbs, use=xterm+alt+title,
+	use=ansi+pp, use=xterm+kbs, use=xterm+noalt,
 	use=ansi+enq,
 
 # From: David J. MacKenzie <djm@va.pubnix.com>, 14 Nov 1997
