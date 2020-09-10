@@ -147,10 +147,9 @@
 #define HAMMER2_UUID_STRING	"5cbb9ad1-862d-11dc-a94d-01301bb8a9f5"
 
 /*
- * A 4MB segment is reserved at the beginning of each 2GB zone.  This segment
+ * A 4MB segment is reserved at the beginning of each 1GB.  This segment
  * contains the volume header (or backup volume header), the free block
- * table, and possibly other information in the future.  A 4MB segment for
- * freemap is reserved at the beginning of every 1GB.
+ * table, and possibly other information in the future.
  *
  * 4MB = 64 x 64K blocks.  Each 4MB segment is broken down as follows:
  *

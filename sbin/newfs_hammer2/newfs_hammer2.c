@@ -277,7 +277,7 @@ main(int ac, char **av)
 
 	/*
 	 * Calculate the amount of reserved space.  HAMMER2_ZONE_SEG (4MB)
-	 * is reserved at the beginning of every 2GB of storage, rounded up.
+	 * is reserved at the beginning of every 1GB of storage, rounded up.
 	 * Thus a 200MB filesystem will still have a 4MB reserve area.
 	 *
 	 * We also include the boot and redo areas in the reserve.  The
@@ -514,13 +514,13 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 
 	/*
 	 * Make sure alloc_base won't cross the reserved area at the
-	 * beginning of each 2GB zone.
+	 * beginning of each 1GB.
 	 *
 	 * Reserve space for the super-root inode and the root inode.
 	 * Make sure they are in the same 64K block to simplify our code.
 	 */
 	assert((alloc_base & HAMMER2_PBUFMASK) == 0);
-	assert(alloc_base < HAMMER2_ZONE_BYTES64 - HAMMER2_ZONE_SEG);
+	assert(alloc_base < HAMMER2_FREEMAP_LEVEL1_SIZE);
 
 	/*
 	 * Clear the boot/aux area.
@@ -695,7 +695,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * Write out the 64K HAMMER2 block containing the root and sroot.
 	 */
 	assert((sroot_blockref.data_off & ~HAMMER2_PBUFMASK64) ==
-		(alloc_base & ~HAMMER2_PBUFMASK64));
+		((alloc_base - 1) & ~HAMMER2_PBUFMASK64));
 	n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
 		   sroot_blockref.data_off & ~HAMMER2_PBUFMASK64);
 	if (n != HAMMER2_PBUFSIZE) {
