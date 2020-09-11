@@ -1,4 +1,7 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright 2018 Staysail Systems, Inc. <info@staysail.tech>
  * Copyright 2014 Garrett D'Amore <garrett@damore.org>
  * Copyright 2010 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 1989, 1993
@@ -30,7 +33,7 @@
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)printf.c	8.1 (Berkeley) 7/20/93
- * $FreeBSD: head/usr.bin/printf/printf.c 279503 2015-03-01 21:46:55Z jilles $
+ * $FreeBSD: head/usr.bin/printf/printf.c 337618 2018-08-11 11:13:34Z jilles $
  */
 /*
  * Important: This file is used both as a standalone program /usr/bin/printf
@@ -55,23 +58,19 @@
 #define	main printfcmd
 #include "bltin/bltin.h"
 #include "error.h"
+#include "options.h"
 #endif
 
 #define	PF(f, func) do {						\
-	char *b = NULL;							\
 	if (havewidth)							\
 		if (haveprec)						\
-			asprintf(&b, f, fieldwidth, precision, func);	\
+			printf(f, fieldwidth, precision, func);	\
 		else							\
-			asprintf(&b, f, fieldwidth, func);		\
+			printf(f, fieldwidth, func);			\
 	else if (haveprec)						\
-		asprintf(&b, f, precision, func);			\
+		printf(f, precision, func);				\
 	else								\
-		asprintf(&b, f, func);					\
-	if (b) {							\
-		fputs(b, stdout);					\
-		free(b);						\
-	}								\
+		printf(f, func);					\
 } while (0)
 
 static int	 asciicode(void);
@@ -364,13 +363,16 @@ printf_doformat(char *fmt, int *rval)
 		char *p;
 		int getout;
 
-		p = strdup(getstr());
-		if (p == NULL) {
+		/* Convert "b" to "s" for output. */
+		start[strlen(start) - 1] = 's';
+		if ((p = strdup(getstr())) == NULL) {
 			warnx("%s", strerror(ENOMEM));
 			return (NULL);
 		}
 		getout = escape(p, 0, &len);
-		fputs(p, stdout);
+		PF(start, p);
+		/* Restore format for next loop. */
+
 		free(p);
 		if (getout)
 			return (end_fmt);
@@ -380,7 +382,8 @@ printf_doformat(char *fmt, int *rval)
 		char p;
 
 		p = getchr();
-		PF(start, p);
+		if (p != '\0')
+			PF(start, p);
 		break;
 	}
 	case 's': {
