@@ -4513,7 +4513,7 @@ xterm-xfree86|xterm terminal emulator (XFree86),
 # This version reflects the current xterm features.
 xterm-new|modern xterm terminal emulator,
 	npc,
-	kcbt=\E[Z, kent=\EOM, use=ecma+index, use=ansi+rep,
+	kcbt=\E[Z, kent=\EOM, use=ecma+index,
 	use=ecma+strikeout, use=xterm+keypad, use=vt420+lrmm,
 	use=xterm+sm+1006, use=xterm+pcfkeys, use=xterm+tmux,
 	use=xterm-basic,
