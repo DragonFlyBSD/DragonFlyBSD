@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/trap3.0 218889 2011-02-20 14:18:58Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/trap3.0 218889 2011-02-20 14:18:58Z jilles $
 
 {
 	trap '' garbage && exit 3

@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/cmdsubst9.0 216819 2010-12-30 15:04:59Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/cmdsubst9.0 216819 2010-12-30 15:04:59Z jilles $
 
 set -e
 

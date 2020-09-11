@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/return1.0 149791 2005-09-05 09:42:10Z stefanf $
+# $FreeBSD: head/bin/sh/tests/builtins/return1.0 149791 2005-09-05 09:42:10Z stefanf $
 f() {
 	return 0
 	exit 1

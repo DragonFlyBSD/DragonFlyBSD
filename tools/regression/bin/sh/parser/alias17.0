@@ -1,0 +1,7 @@
+# $FreeBSD: head/bin/sh/tests/parser/alias17.0 317037 2017-04-16 21:42:43Z jilles $
+
+v=1
+alias a='unalias -a
+v=2'
+eval a
+[ "$v" = 2 ]

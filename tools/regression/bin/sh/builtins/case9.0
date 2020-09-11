@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/case9.0 223186 2011-06-17 13:03:49Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/case9.0 223186 2011-06-17 13:03:49Z jilles $
 
 errors=0
 

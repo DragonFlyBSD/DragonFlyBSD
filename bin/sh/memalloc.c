@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -36,7 +38,7 @@ static char sccsid[] = "@(#)memalloc.c	8.3 (Berkeley) 5/4/95";
 #endif
 #endif /* not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: head/bin/sh/memalloc.c 360452 2020-04-28 20:34:27Z jilles $");
 
 #include <sys/param.h>
 #include "shell.h"
@@ -48,6 +50,13 @@ __FBSDID("$FreeBSD$");
 #include <stdlib.h>
 #include <unistd.h>
 
+static void
+badalloc(const char *message)
+{
+	write(2, message, strlen(message));
+	abort();
+}
+
 /*
  * Like malloc, but returns an error when out of space.
  */
@@ -57,9 +66,9 @@ ckmalloc(size_t nbytes)
 {
 	pointer p;
 
-	INTOFF;
+	if (!is_int_on())
+		badalloc("Unsafe ckmalloc() call\n");
 	p = malloc(nbytes);
-	INTON;
 	if (p == NULL)
 		error("Out of space");
 	return p;
@@ -73,9 +82,9 @@ ckmalloc(size_t nbytes)
 pointer
 ckrealloc(pointer p, int nbytes)
 {
-	INTOFF;
+	if (!is_int_on())
+		badalloc("Unsafe ckrealloc() call\n");
 	p = realloc(p, nbytes);
-	INTON;
 	if (p == NULL)
 		error("Out of space");
 	return p;
@@ -84,9 +93,9 @@ ckrealloc(pointer p, int nbytes)
 void
 ckfree(pointer p)
 {
-	INTOFF;
+	if (!is_int_on())
+		badalloc("Unsafe ckfree() call\n");
 	free(p);
-	INTON;
 }
 
 

@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/tilde2.0 206150 2010-04-03 22:04:44Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/tilde2.0 206150 2010-04-03 22:04:44Z jilles $
 
 HOME=/tmp
 roothome=~root

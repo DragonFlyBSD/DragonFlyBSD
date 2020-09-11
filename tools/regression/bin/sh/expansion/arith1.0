@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/arith1.0 201259 2009-12-30 15:59:40Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/arith1.0 201259 2009-12-30 15:59:40Z jilles $
 
 failures=0
 

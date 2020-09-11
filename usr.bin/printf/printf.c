@@ -57,7 +57,6 @@
 #ifdef SHELL
 #define	main printfcmd
 #include "bltin/bltin.h"
-#include "error.h"
 #include "options.h"
 #endif
 

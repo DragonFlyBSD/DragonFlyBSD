@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/printf3.0 216606 2010-12-20 23:06:57Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/printf3.0 216606 2010-12-20 23:06:57Z jilles $
 
 set -e
 v=$(! printf "%d" @wrong 2>/dev/null)

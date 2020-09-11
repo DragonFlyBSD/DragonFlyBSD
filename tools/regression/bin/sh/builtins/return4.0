@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/return4.0 208629 2010-05-28 22:08:34Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/return4.0 208629 2010-05-28 22:08:34Z jilles $
 
 failures=
 failure() {

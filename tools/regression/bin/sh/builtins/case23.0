@@ -1,0 +1,5 @@
+# $FreeBSD: head/bin/sh/tests/builtins/case23.0 333092 2018-04-29 17:46:08Z jilles $
+
+case [ in
+[[:alpha:]]) echo bad
+esac

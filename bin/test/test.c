@@ -33,7 +33,6 @@
 #ifdef SHELL
 #define main testcmd
 #include "bltin/bltin.h"
-#include "error.h"
 #else
 #include <locale.h>
 
@@ -442,7 +441,7 @@ find_op_2char(const struct t_op *op, const struct t_op *end, const char *s)
 		op++;
 	}
 	return OPERAND;
-}
+ }
 
 static int
 find_op(const char *s)

@@ -48,7 +48,6 @@
 #ifdef SHELL
 #define main killcmd
 #include "bltin/bltin.h"
-#include "error.h"
 #endif
 
 static void	nosig(const char *);

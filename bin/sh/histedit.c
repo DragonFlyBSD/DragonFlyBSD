@@ -36,7 +36,7 @@ static char sccsid[] = "@(#)histedit.c	8.2 (Berkeley) 5/4/95";
 #endif
 #endif /* not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: head/bin/sh/histedit.c 360139 2020-04-21 00:37:55Z bdrewery $");
 
 #include <sys/param.h>
 #include <limits.h>
@@ -54,15 +54,12 @@ __FBSDID("$FreeBSD$");
 #include "main.h"
 #include "output.h"
 #include "mystring.h"
+#include "builtins.h"
 #ifndef NO_HISTORY
 #include "myhistedit.h"
-#endif
 #include "error.h"
 #include "eval.h"
 #include "memalloc.h"
-#include "builtins.h"
-
-#ifndef NO_HISTORY
 
 #define MAXHISTLOOPS	4	/* max recursions through fc */
 #define DEFEDITOR	"ed"	/* default editor *should* be $EDITOR */
@@ -70,7 +67,7 @@ __FBSDID("$FreeBSD$");
 History *hist;	/* history cookie */
 EditLine *el;	/* editline cookie */
 int displayhist;
-static FILE *el_in, *el_out, *el_err;
+static FILE *el_in, *el_out;
 
 static char *fc_replace(const char *, char *, char *);
 static int not_fcnumber(const char *);
@@ -109,18 +106,16 @@ histedit(void)
 			INTOFF;
 			if (el_in == NULL)
 				el_in = fdopen(0, "r");
-			if (el_err == NULL)
-				el_err = fdopen(1, "w");
 			if (el_out == NULL)
 				el_out = fdopen(2, "w");
-			if (el_in == NULL || el_err == NULL || el_out == NULL)
+			if (el_in == NULL || el_out == NULL)
 				goto bad;
 			term = lookupvar("TERM");
 			if (term)
 				setenv("TERM", term, 1);
 			else
 				unsetenv("TERM");
-			el = el_init(arg0, el_in, el_out, el_err);
+			el = el_init(arg0, el_in, el_out, el_out);
 			if (el != NULL) {
 				if (hist)
 					el_set(el, EL_HIST, history, hist);
@@ -362,7 +357,7 @@ histcmd(int argc, char **argv __unused)
 					 * cursor, set it back to the current
 					 * entry.
 					 */
-					retval = history(hist, &he,
+					history(hist, &he,
 					    H_NEXT_EVENT, oldhistnum);
 				}
 			} else
@@ -379,10 +374,10 @@ histcmd(int argc, char **argv __unused)
 		char *editcmd;
 
 		fclose(efp);
+		INTON;
 		editcmd = stalloc(strlen(editor) + strlen(editfile) + 2);
 		sprintf(editcmd, "%s %s", editor, editfile);
 		evalstring(editcmd, 0);	/* XXX - should use no JC command */
-		INTON;
 		readcmdfile(editfile);	/* XXX - should read back - quick tst */
 		unlink(editfile);
 	}
@@ -477,13 +472,35 @@ str_to_event(const char *str, int last)
 int
 bindcmd(int argc, char **argv)
 {
+	int ret;
+	FILE *old;
+	FILE *out;
 
 	if (el == NULL)
 		error("line editing is disabled");
-	return (el_parse(el, argc, __DECONST(const char **, argv)));
+
+	INTOFF;
+
+	out = out1fp();
+	if (out == NULL)
+		error("Out of space");
+
+	el_get(el, EL_GETFP, 1, &old);
+	el_set(el, EL_SETFP, 1, out);
+
+	ret = el_parse(el, argc, __DECONST(const char **, argv));
+
+	el_set(el, EL_SETFP, 1, old);
+
+	fclose(out);
+
+	INTON;
+
+	return ret;
 }
 
 #else
+#include "error.h"
 
 int
 histcmd(int argc __unused, char **argv __unused)

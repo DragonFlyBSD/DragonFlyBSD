@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -36,7 +38,7 @@ static char sccsid[] = "@(#)trap.c	8.5 (Berkeley) 6/5/95";
 #endif
 #endif /* not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: head/bin/sh/trap.c 364919 2020-08-28 15:35:45Z jilles $");
 
 #include <signal.h>
 #include <unistd.h>
@@ -56,6 +58,9 @@ __FBSDID("$FreeBSD$");
 #include "trap.h"
 #include "mystring.h"
 #include "builtins.h"
+#ifndef NO_HISTORY
+#include "myhistedit.h"
+#endif
 
 
 /*
@@ -379,15 +384,10 @@ onsig(int signo)
 {
 
 	if (signo == SIGINT && trap[SIGINT] == NULL) {
-		/*
-		 * The !in_dotrap here is safe.  The only way we can arrive
-		 * here with in_dotrap set is that a trap handler set SIGINT to
-		 * SIG_DFL and killed itself.
-		 */
-		if (suppressint && !in_dotrap)
+		if (suppressint)
 			SET_PENDING_INT;
 		else
-		onint();
+			onint();
 		return;
 	}
 
@@ -411,6 +411,7 @@ onsig(int signo)
 void
 dotrap(void)
 {
+	struct stackmark smark;
 	int i;
 	int savestatus, prev_evalskip, prev_skipcount;
 
@@ -444,7 +445,9 @@ dotrap(void)
 
 					last_trapsig = i;
 					savestatus = exitstatus;
-					evalstring(trap[i], 0);
+					setstackmark(&smark);
+					evalstring(stsavestr(trap[i]), 0);
+					popstackmark(&smark);
 
 					/*
 					 * If such a command was not
@@ -473,20 +476,21 @@ dotrap(void)
 }
 
 
-/*
- * Controls whether the shell is interactive or not.
- */
 void
-setinteractive(int on)
+trap_init(void)
 {
-	static int is_interactive = -1;
-
-	if (on == is_interactive)
-		return;
 	setsignal(SIGINT);
 	setsignal(SIGQUIT);
+}
+
+
+/*
+ * Controls whether the shell is interactive or not based on iflag.
+ */
+void
+setinteractive(void)
+{
 	setsignal(SIGTERM);
-	is_interactive = on;
 }
 
 
@@ -519,22 +523,24 @@ exitshell_savedstatus(void)
 	}
 	exitstatus = oexitstatus = exiting_exitstatus;
 	if (!setjmp(loc1.loc)) {
-	handler = &loc1;
-	if ((p = trap[0]) != NULL && *p != '\0') {
-		/*
-		 * Reset evalskip, or the trap on EXIT could be
-		 * interrupted if the last command was a "return".
-		 */
-		evalskip = 0;
-		trap[0] = NULL;
-		evalstring(p, 0);
-	}
+		handler = &loc1;
+		if ((p = trap[0]) != NULL && *p != '\0') {
+			/*
+			 * Reset evalskip, or the trap on EXIT could be
+			 * interrupted if the last command was a "return".
+			 */
+			evalskip = 0;
+			trap[0] = NULL;
+			FORCEINTON;
+			evalstring(p, 0);
+		}
 	}
 	if (!setjmp(loc2.loc)) {
 		handler = &loc2;		/* probably unnecessary */
-	flushall();
+		FORCEINTON;
+		flushall();
 #if JOBS
-	setjobctl(0);
+		setjobctl(0);
 #endif
 	}
 	if (sig != 0 && sig != SIGSTOP && sig != SIGTSTP && sig != SIGTTIN &&

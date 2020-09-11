@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/cmdsubst16.0 245392 2013-01-13 22:35:51Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/cmdsubst16.0 245392 2013-01-13 22:35:51Z jilles $
 
 f() { return 3; }
 f

@@ -1,0 +1,5 @@
+# $FreeBSD: head/bin/sh/tests/expansion/cmdsubst23.0 315005 2017-03-10 16:04:00Z jilles $
+
+unset n
+x=abcd
+[ "X${n#$(echo a)}X${x#$(echo ab)}X$(echo abc)X" = XXcdXabcX ]

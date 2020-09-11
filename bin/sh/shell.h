@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,7 +32,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)shell.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD$
+ * $FreeBSD: head/bin/sh/shell.h 343981 2019-02-10 22:23:05Z jilles $
  */
 
 #ifndef SHELL_H_
@@ -57,9 +59,9 @@
  * systems without these features.
  */
 #ifdef F_DUPFD_CLOEXEC
-#define F_DUPFD_CLOEXEC_MAYBE	F_DUPFD_CLOEXEC
+#define F_DUPFD_CLOEXEC_MAYBE		F_DUPFD_CLOEXEC
 #else
-#define F_DUPFD_CLOEXEC_MAYBE	F_DUPFD
+#define F_DUPFD_CLOEXEC_MAYBE		F_DUPFD
 #endif
 
 #ifdef O_CLOEXEC
@@ -73,8 +75,6 @@
  */
 typedef intmax_t arith_t;
 #define	ARITH_FORMAT_STR  "%" PRIdMAX
-#define	atoarith_t(arg)  strtoimax(arg, NULL, 0)
-#define	strtoarith_t(nptr, endptr, base)  strtoimax(nptr, endptr, base)
 #define	ARITH_MIN INTMAX_MIN
 #define	ARITH_MAX INTMAX_MAX
 

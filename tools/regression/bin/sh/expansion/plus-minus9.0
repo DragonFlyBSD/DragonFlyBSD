@@ -1,0 +1,8 @@
+# $FreeBSD: head/bin/sh/tests/expansion/plus-minus9.0 333927 2018-05-20 17:25:52Z jilles $
+
+a=1
+b=${a+
+}
+n='
+'
+[ "$b" = "$n" ]

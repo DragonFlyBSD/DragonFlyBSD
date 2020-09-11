@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD$
+ * $FreeBSD: head/bin/sh/cd.h 314436 2017-02-28 23:42:47Z imp $
  */
 
 void	 pwd_init(int);

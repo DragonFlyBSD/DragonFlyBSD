@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/parameters/positional2.0 228873 2011-12-25 13:24:48Z jilles $
+# $FreeBSD: head/bin/sh/tests/parameters/positional2.0 228873 2011-12-25 13:24:48Z jilles $
 
 failures=''
 ok=''

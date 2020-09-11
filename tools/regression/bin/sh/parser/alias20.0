@@ -1,0 +1,9 @@
+# $FreeBSD: head/bin/sh/tests/parser/alias20.0 360992 2020-05-12 21:59:21Z jilles $
+
+alias begin={ end=}
+: <<EOF &&
+$(echo bad1)
+EOF
+begin
+echo ok
+end

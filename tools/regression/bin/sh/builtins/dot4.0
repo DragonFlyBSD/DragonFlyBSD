@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/dot4.0 222174 2011-05-22 12:15:14Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/dot4.0 222174 2011-05-22 12:15:14Z jilles $
 
 v=abcd
 v=$v$v$v$v

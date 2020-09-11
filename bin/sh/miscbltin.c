@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -36,7 +38,7 @@ static char sccsid[] = "@(#)miscbltin.c	8.4 (Berkeley) 5/4/95";
 #endif
 #endif /* not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: head/bin/sh/miscbltin.c 361384 2020-05-22 14:46:23Z jilles $");
 
 /*
  * Miscellaneous builtins.
@@ -64,15 +66,82 @@ __FBSDID("$FreeBSD$");
 
 #undef eflag
 
+#define	READ_BUFLEN	1024
+struct fdctx {
+	int	fd;
+	size_t	off;	/* offset in buf */
+	size_t	buflen;
+	char	*ep;	/* tail pointer */
+	char	buf[READ_BUFLEN];
+};
+
+static void fdctx_init(int, struct fdctx *);
+static void fdctx_destroy(struct fdctx *);
+static ssize_t fdgetc(struct fdctx *, char *);
 int readcmd(int, char **);
 int umaskcmd(int, char **);
 int ulimitcmd(int, char **);
 
+static void
+fdctx_init(int fd, struct fdctx *fdc)
+{
+	off_t cur;
+
+	/* Check if fd is seekable. */
+	cur = lseek(fd, 0, SEEK_CUR);
+	*fdc = (struct fdctx){
+		.fd = fd,
+		.buflen = (cur != -1) ? READ_BUFLEN : 1,
+		.ep = &fdc->buf[0],	/* No data */
+	};
+}
+
+static ssize_t
+fdgetc(struct fdctx *fdc, char *c)
+{
+	ssize_t nread;
+
+	if (&fdc->buf[fdc->off] == fdc->ep) {
+		nread = read(fdc->fd, fdc->buf, fdc->buflen);
+		if (nread > 0) {
+			fdc->off = 0;
+			fdc->ep = fdc->buf + nread;
+		} else
+			return (nread);
+	}
+	*c = fdc->buf[fdc->off++];
+
+	return (1);
+}
+
+static void
+fdctx_destroy(struct fdctx *fdc)
+{
+	off_t residue;
+
+	if (fdc->buflen > 1) {
+	/*
+	 * Reposition the file offset.  Here is the layout of buf:
+	 *
+	 *     | off
+	 *     v
+	 * |*****************|-------|
+	 * buf               ep   buf+buflen
+	 *     |<- residue ->|
+	 *
+	 * off: current character
+	 * ep:  offset just after read(2)
+	 * residue: length for reposition
+	 */
+		residue = (fdc->ep - fdc->buf) - fdc->off;
+		if (residue > 0)
+			(void) lseek(fdc->fd, -residue, SEEK_CUR);
+	}
+}
+
 /*
  * The read builtin.  The -r option causes backslashes to be treated like
  * ordinary characters.
- *
- * This uses unbuffered input, which may be avoidable in some cases.
  *
  * Note that if IFS=' :' then read x y should work so that:
  * 'a b'	x='a', y='b'
@@ -100,11 +169,13 @@ readcmd(int argc __unused, char **argv __unused)
 	int i;
 	int is_ifs;
 	int saveall = 0;
+	ptrdiff_t lastnonifs, lastnonifsws;
 	struct timeval tv;
 	char *tvptr;
 	fd_set ifds;
 	ssize_t nread;
 	int sig;
+	struct fdctx fdctx;
 
 	rflag = 0;
 	prompt = NULL;
@@ -169,8 +240,11 @@ readcmd(int argc __unused, char **argv __unused)
 	startword = 2;
 	backslash = 0;
 	STARTSTACKSTR(p);
+	lastnonifs = lastnonifsws = -1;
+	fdctx_init(STDIN_FILENO, &fdctx);
 	for (;;) {
-		nread = read(STDIN_FILENO, &c, 1);
+		c = 0;
+		nread = fdgetc(&fdctx, &c);
 		if (nread == -1) {
 			if (errno == EINTR) {
 				sig = pendingsig;
@@ -191,9 +265,11 @@ readcmd(int argc __unused, char **argv __unused)
 		CHECKSTRSPACE(1, p);
 		if (backslash) {
 			backslash = 0;
-			startword = 0;
-			if (c != '\n')
+			if (c != '\n') {
+				startword = 0;
+				lastnonifs = lastnonifsws = p - stackblock();
 				USTPUTC(c, p);
+			}
 			continue;
 		}
 		if (!rflag && c == '\\') {
@@ -217,8 +293,10 @@ readcmd(int argc __unused, char **argv __unused)
 			if (is_ifs == 2 && startword == 1) {
 				/* Only one non-whitespace IFS per word */
 				startword = 2;
-				if (saveall)
+				if (saveall) {
+					lastnonifsws = p - stackblock();
 					USTPUTC(c, p);
+				}
 				continue;
 			}
 		}
@@ -229,6 +307,7 @@ readcmd(int argc __unused, char **argv __unused)
 			if (saveall)
 				/* Not just a spare terminator */
 				saveall++;
+			lastnonifs = lastnonifsws = p - stackblock();
 			USTPUTC(c, p);
 			continue;
 		}
@@ -239,6 +318,8 @@ readcmd(int argc __unused, char **argv __unused)
 		if (ap[1] == NULL) {
 			/* Last variable needs all IFS chars */
 			saveall++;
+			if (is_ifs == 2)
+				lastnonifsws = p - stackblock();
 			USTPUTC(c, p);
 			continue;
 		}
@@ -247,20 +328,18 @@ readcmd(int argc __unused, char **argv __unused)
 		setvar(*ap, stackblock(), 0);
 		ap++;
 		STARTSTACKSTR(p);
+		lastnonifs = lastnonifsws = -1;
 	}
+	fdctx_destroy(&fdctx);
 	STACKSTRNUL(p);
 
-	/* Remove trailing IFS chars */
-	for (; stackblock() <= --p; *p = 0) {
-		if (!strchr(ifs, *p))
-			break;
-		if (strchr(" \t\n", *p))
-			/* Always remove whitespace */
-			continue;
-		if (saveall > 1)
-			/* Don't remove non-whitespace unless it was naked */
-			break;
-	}
+	/*
+	 * Remove trailing IFS chars: always remove whitespace, don't remove
+	 * non-whitespace unless it was naked
+	 */
+	if (saveall <= 1)
+		lastnonifsws = lastnonifs;
+	stackblock()[lastnonifsws + 1] = '\0';
 	setvar(*ap, stackblock(), 0);
 
 	/* Set any remaining args to "" */
@@ -335,7 +414,7 @@ umaskcmd(int argc __unused, char **argv __unused)
 		} else {
 			void *set;
 			INTOFF;
-			if ((set = setmode (ap)) == 0)
+			if ((set = setmode (ap)) == NULL)
 				error("Illegal number: %s", ap);
 
 			mask = getmode (set, ~mask & 0777);
@@ -361,7 +440,7 @@ struct limits {
 	const char *name;
 	const char *units;
 	int	cmd;
-	int	factor;	/* multiply by to get rlim_{cur,max} values */
+	short	factor;	/* multiply by to get rlim_{cur,max} values */
 	char	option;
 };
 
@@ -400,13 +479,16 @@ static const struct limits limits[] = {
 	{ "swap limit",		"kbytes",	RLIMIT_SWAP,	1024, 'w' },
 #endif
 #ifdef RLIMIT_SBSIZE
-	{ "sbsize",		"bytes",	RLIMIT_SBSIZE,	   1, 'b' },
+	{ "socket buffer size",	"bytes",	RLIMIT_SBSIZE,	   1, 'b' },
 #endif
 #ifdef RLIMIT_NPTS
 	{ "pseudo-terminals",	(char *)0,	RLIMIT_NPTS,	   1, 'p' },
 #endif
 #ifdef RLIMIT_KQUEUES
 	{ "kqueues",		(char *)0,	RLIMIT_KQUEUES,	   1, 'k' },
+#endif
+#ifdef RLIMIT_UMTXP
+	{ "umtx shared locks",	(char *)0,	RLIMIT_UMTXP,	   1, 'o' },
 #endif
 	{ (char *) 0,		(char *)0,	0,		   0, '\0' }
 };
@@ -443,7 +525,7 @@ ulimitcmd(int argc __unused, char **argv __unused)
 	struct rlimit	limit;
 
 	what = 'f';
-	while ((optc = nextopt("HSatfdsmcnuvlbpwk")) != '\0')
+	while ((optc = nextopt("HSatfdsmcnuvlbpwko")) != '\0')
 		switch (optc) {
 		case 'H':
 			how = HARD;

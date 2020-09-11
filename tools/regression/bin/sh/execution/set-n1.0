@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/execution/set-n1.0 222661 2011-06-03 21:17:42Z jilles $
+# $FreeBSD: head/bin/sh/tests/execution/set-n1.0 222661 2011-06-03 21:17:42Z jilles $
 
 v=$( ($SH -n <<'EOF'
 for

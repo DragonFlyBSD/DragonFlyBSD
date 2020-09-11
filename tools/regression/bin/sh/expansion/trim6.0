@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/trim6.0 214524 2010-10-29 19:34:57Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/trim6.0 214524 2010-10-29 19:34:57Z jilles $
 
 e=
 for i in 0 1 2 3; do

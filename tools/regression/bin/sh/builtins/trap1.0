@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/trap1.0 213738 2010-10-12 18:20:38Z obrien $
+# $FreeBSD: head/bin/sh/tests/builtins/trap1.0 213738 2010-10-12 18:20:38Z obrien $
 
 test "$(trap 'echo trapped' EXIT; :)" = trapped || exit 1
 

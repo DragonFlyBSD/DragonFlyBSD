@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/pathname4.0 211646 2010-08-22 21:18:21Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/pathname4.0 211646 2010-08-22 21:18:21Z jilles $
 
 failures=0
 

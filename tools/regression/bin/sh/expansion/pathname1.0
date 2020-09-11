@@ -1,4 +1,8 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/pathname1.0 207935 2010-05-11 22:28:55Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/pathname1.0 302937 2016-07-16 13:26:18Z ache $
+
+unset LC_ALL
+LC_COLLATE=C
+export LC_COLLATE
 
 failures=0
 

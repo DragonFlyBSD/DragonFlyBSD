@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/ifs2.0 211341 2010-08-15 17:14:05Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/ifs2.0 211341 2010-08-15 17:14:05Z jilles $
 
 failures=0
 i=1

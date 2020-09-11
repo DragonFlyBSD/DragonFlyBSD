@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/parser/heredoc4.0 208655 2010-05-30 14:11:27Z jilles $
+# $FreeBSD: head/bin/sh/tests/parser/heredoc4.0 208655 2010-05-30 14:11:27Z jilles $
 
 failures=0
 

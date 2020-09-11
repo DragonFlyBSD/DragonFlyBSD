@@ -1,0 +1,7 @@
+# $FreeBSD: head/bin/sh/tests/expansion/trim11.0 333927 2018-05-20 17:25:52Z jilles $
+
+a='z
+'
+b="${a%
+}"
+[ "$b" = z ]

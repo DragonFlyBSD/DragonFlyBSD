@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -36,8 +38,10 @@ static char sccsid[] = "@(#)parser.c	8.7 (Berkeley) 5/16/95";
 #endif
 #endif /* not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: head/bin/sh/parser.c 343399 2019-01-24 11:59:46Z trasz $");
 
+#include <sys/param.h>
+#include <pwd.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -106,6 +110,8 @@ static int startlinno;		/* line # where last token started */
 static int funclinno;		/* line # where the current function started */
 static struct parser_temp *parser_temp;
 
+#define NOEOFMARK ((const char *)&heredoclist)
+
 
 static union node *list(int);
 static union node *andor(void);
@@ -126,6 +132,7 @@ static void synexpect(int) __dead2;
 static void synerror(const char *) __dead2;
 static void setprompt(int);
 static int pgetc_linecont(void);
+static void getusername(char *, size_t);
 
 
 static void *
@@ -227,6 +234,41 @@ parsecmd(int interact)
 	tokpushback++;
 	return list(1);
 }
+
+
+#if 0
+/*
+ * Read and parse words for wordexp.
+ * Returns a list of NARG nodes; NULL if there are no words.
+ */
+union node *
+parsewordexp(void)
+{
+	union node *n, *first = NULL, **pnext;
+	int t;
+
+	/* This assumes the parser is not re-entered,
+	 * which could happen if we add command substitution on PS1/PS2.
+	 */
+	parser_temp_free_all();
+	heredoclist = NULL;
+
+	tokpushback = 0;
+	checkkwd = 0;
+	doprompt = 0;
+	setprompt(0);
+	needprompt = 0;
+	pnext = &first;
+	while ((t = readtoken()) != TEOF) {
+		if (t != TWORD)
+			synexpect(TWORD);
+		n = makename();
+		*pnext = n;
+		pnext = &n->narg.next;
+	}
+	return first;
+}
+#endif
 
 
 static union node *
@@ -552,6 +594,7 @@ command(void)
 	case TRP:
 		if (!redir)
 			synexpect(-1);
+		/* FALLTHROUGH */
 	case TWORD:
 		tokpushback++;
 		n1 = simplecmd(rpp, redir);
@@ -593,7 +636,7 @@ simplecmd(union node **rpp, union node *redir)
 
 	/* If we don't have any redirections already, then we must reset */
 	/* rpp to be the address of the local redir variable.  */
-	if (redir == 0)
+	if (redir == NULL)
 		rpp = &redir;
 
 	args = NULL;
@@ -972,6 +1015,10 @@ checkend(int c, const char *eofmark, int striptabs)
 			pungetc();
 			pushstring(eofmark + 1, q - (eofmark + 1), NULL);
 		}
+	} else if (c == '\n' && *eofmark == '\0') {
+		c = PEOF;
+		plinno++;
+		needprompt = doprompt;
 	}
 	return (c);
 }
@@ -1040,7 +1087,7 @@ parseredir(char *out, int c)
 
 static char *
 parsebackq(char *out, struct nodelist **pbqlist,
-    int oldstyle, int dblquote, int quoted)
+		int oldstyle, int dblquote, int quoted)
 {
 	struct nodelist **nlpp;
 	union node *n;
@@ -1079,16 +1126,16 @@ parsebackq(char *out, struct nodelist **pbqlist,
 	handler = &jmploc;
 	heredoclist = NULL;
 	INTON;
-	if (oldstyle) {
+        if (oldstyle) {
                 /* We must read until the closing backquote, giving special
                    treatment to some slashes, and then push the string and
                    reread it as input, interpreting it normally.  */
-		char *oout;
+                char *oout;
                 int c;
                 int olen;
 
 
-		STARTSTACKSTR(oout);
+                STARTSTACKSTR(oout);
 		for (;;) {
 			if (needprompt) {
 				setprompt(2);
@@ -1101,9 +1148,9 @@ parsebackq(char *out, struct nodelist **pbqlist,
 			switch (c) {
 			case '\\':
 				c = pgetc();
-				if (c != '\\' && c != '`' && c != '$'
-				    && (!dblquote || c != '"'))
-					USTPUTC('\\', oout);
+                                if (c != '\\' && c != '`' && c != '$'
+                                    && (!dblquote || c != '"'))
+                                        USTPUTC('\\', oout);
 				break;
 
 			case '\n':
@@ -1112,23 +1159,23 @@ parsebackq(char *out, struct nodelist **pbqlist,
 				break;
 
 			case PEOF:
-				startlinno = plinno;
+			        startlinno = plinno;
 				synerror("EOF in backquote substitution");
-				break;
+ 				break;
 
 			default:
 				break;
 			}
 			USTPUTC(c, oout);
-		}
-		USTPUTC('\0', oout);
-		olen = oout - stackblock();
+                }
+                USTPUTC('\0', oout);
+                olen = oout - stackblock();
 		INTOFF;
 		ostr = ckmalloc(olen);
 		memcpy(ostr, stackblock(), olen);
 		setinputstring(ostr, 1);
 		INTON;
-	}
+        }
 	nlpp = pbqlist;
 	while (*nlpp)
 		nlpp = &(*nlpp)->next;
@@ -1150,12 +1197,12 @@ parsebackq(char *out, struct nodelist **pbqlist,
 		consumetoken(TRP);
 
 	(*nlpp)->n = n;
-	if (oldstyle) {
+        if (oldstyle) {
 		/*
 		 * Start reading from old file again, ignoring any pushed back
 		 * tokens left from the backquote parsing
 		 */
-		popfile();
+                popfile();
 		tokpushback = 0;
 	}
 	STARTSTACKSTR(out);
@@ -1195,7 +1242,8 @@ parsebackq(char *out, struct nodelist **pbqlist,
 static char *
 readcstyleesc(char *out)
 {
-	int c, v, i, n;
+	int c, vc, i, n;
+	unsigned int v;
 
 	c = pgetc();
 	switch (c) {
@@ -1310,12 +1358,12 @@ readcstyleesc(char *out)
 	default:
 		  synerror("Bad escape sequence");
 	}
-	v = (char)v;
+	vc = (char)v;
 	/*
 	 * We can't handle NUL bytes.
 	 * POSIX says we should skip till the closing quote.
 	 */
-	if (v == '\0') {
+	if (vc == '\0') {
 		while ((c = pgetc()) != '\'') {
 			if (c == '\\')
 				c = pgetc();
@@ -1332,9 +1380,9 @@ readcstyleesc(char *out)
 		pungetc();
 		return out;
 	}
-	if (SQSYNTAX[v] == CCTL)
+	if (SQSYNTAX[vc] == CCTL)
 		USTPUTC(CTLESC, out);
-	USTPUTC(v, out);
+	USTPUTC(vc, out);
 	return out;
 }
 
@@ -1382,7 +1430,7 @@ readtoken1(int firstc, char const *initialsyntax, const char *eofmark,
 
 	STARTSTACKSTR(out);
 	loop: {	/* for each line, until end of word */
-		if (eofmark)
+		if (eofmark && eofmark != NOEOFMARK)
 			/* set c to PEOF if at end of here document */
 			c = checkend(c, eofmark, striptabs);
 		for (;;) {	/* until end of line or end of word */
@@ -1392,8 +1440,10 @@ readtoken1(int firstc, char const *initialsyntax, const char *eofmark,
 
 			switch(synentry) {
 			case CNL:	/* '\n' */
-				if (state[level].syntax == BASESYNTAX)
+				if (level == 0)
 					goto endword;	/* exit outer loop */
+				/* FALLTHROUGH */
+			case CQNL:
 				USTPUTC(c, out);
 				plinno++;
 				if (doprompt)
@@ -1570,13 +1620,11 @@ endword:
  */
 
 parsesub: {
-	char buf[10];
 	int subtype;
 	int typeloc;
 	int flags;
 	char *p;
 	static const char types[] = "}-+?=";
-	int bracketed_name = 0; /* used to handle ${[0-9]*} variables */
 	int linno;
 	int length;
 	int c1;
@@ -1600,7 +1648,6 @@ parsesub: {
 		subtype = VSNORMAL;
 		flags = 0;
 		if (c == '{') {
-			bracketed_name = 1;
 			c = pgetc_linecont();
 			subtype = 0;
 		}
@@ -1616,22 +1663,25 @@ varname:
 			    strncmp(out - length, "LINENO", length) == 0) {
 				/* Replace the variable name with the
 				 * current line number. */
+				STADJUST(-6, out);
+				CHECKSTRSPACE(11, out);
 				linno = plinno;
 				if (funclinno != 0)
 					linno -= funclinno - 1;
-				snprintf(buf, sizeof(buf), "%d", linno);
-				STADJUST(-6, out);
-				STPUTS(buf, out);
+				length = snprintf(out, 11, "%d", linno);
+				if (length > 10)
+					length = 10;
+				out += length;
 				flags |= VSLINENO;
 			}
 		} else if (is_digit(c)) {
-			if (bracketed_name) {
+			if (subtype != VSNORMAL) {
 				do {
 					STPUTC(c, out);
 					c = pgetc_linecont();
 				} while (is_digit(c));
 			} else {
-				STPUTC(c, out);
+				USTPUTC(c, out);
 				c = pgetc_linecont();
 			}
 		} else if (is_special(c)) {
@@ -1661,7 +1711,7 @@ varname:
 				pungetc();
 			else if (c == '\n' || c == PEOF)
 				synerror("Unexpected end of line in substitution");
-			else
+			else if (BASESYNTAX[c] != CCTL)
 				USTPUTC(c, out);
 		}
 		if (subtype == 0) {
@@ -1677,7 +1727,8 @@ varname:
 						synerror("Unexpected end of line in substitution");
 					if (flags == VSNUL)
 						STPUTC(':', out);
-					STPUTC(c, out);
+					if (BASESYNTAX[c] != CCTL)
+						STPUTC(c, out);
 					subtype = VSERROR;
 				} else
 					subtype = p - types + VSNORMAL;
@@ -1889,6 +1940,8 @@ static void
 setprompt(int which)
 {
 	whichprompt = which;
+	if (which == 0)
+		return;
 
 #ifndef NO_HISTORY
 	if (!el)
@@ -1922,6 +1975,53 @@ pgetc_linecont(void)
 	return (c);
 }
 
+
+static struct passwd *
+getpwlogin(void)
+{
+	const char *login;
+
+	login = getlogin();
+	if (login == NULL)
+		return (NULL);
+
+	return (getpwnam(login));
+}
+
+
+static void
+getusername(char *name, size_t namelen)
+{
+	static char cached_name[MAXLOGNAME];
+	struct passwd *pw;
+	uid_t euid;
+
+	if (cached_name[0] == '\0') {
+		euid = geteuid();
+
+		/*
+		 * Handle the case when there is more than one
+		 * login with the same UID, or when the login
+		 * returned by getlogin(2) does no longer match
+		 * the current UID.
+		 */
+		pw = getpwlogin();
+		if (pw == NULL || pw->pw_uid != euid)
+			pw = getpwuid(euid);
+
+		if (pw != NULL) {
+			strlcpy(cached_name, pw->pw_name,
+			    sizeof(cached_name));
+		} else {
+			snprintf(cached_name, sizeof(cached_name),
+			    "%u", euid);
+		}
+	}
+
+	strlcpy(name, cached_name, namelen);
+}
+
+
 /*
  * called by editline -- any expansions to the prompt
  *    should be added here.
@@ -1931,7 +2031,9 @@ getprompt(void *unused __unused)
 {
 	static char ps[PROMPTLEN];
 	const char *fmt;
+	const char *home;
 	const char *pwd;
+	size_t homelen;
 	int i, trim;
 	static char internal_error[] = "??";
 
@@ -1955,7 +2057,7 @@ getprompt(void *unused __unused)
 	/*
 	 * Format prompt string.
 	 */
-	for (i = 0; (i < 127) && (*fmt != '\0'); i++, fmt++)
+	for (i = 0; (i < PROMPTLEN - 1) && (*fmt != '\0'); i++, fmt++)
 		if (*fmt == '\\')
 			switch (*++fmt) {
 
@@ -1968,10 +2070,23 @@ getprompt(void *unused __unused)
 			case 'h':
 			case 'H':
 				ps[i] = '\0';
-				gethostname(&ps[i], PROMPTLEN - i);
+				gethostname(&ps[i], PROMPTLEN - i - 1);
+				ps[PROMPTLEN - 1] = '\0';
 				/* Skip to end of hostname. */
 				trim = (*fmt == 'h') ? '.' : '\0';
-				while ((ps[i+1] != '\0') && (ps[i+1] != trim))
+				while ((ps[i] != '\0') && (ps[i] != trim))
+					i++;
+				--i;
+				break;
+
+				/*
+				 * User name.
+				 */
+			case 'u':
+				ps[i] = '\0';
+				getusername(&ps[i], PROMPTLEN - i);
+				/* Skip to end of username. */
+				while (ps[i + 1] != '\0')
 					i++;
 				break;
 
@@ -1984,14 +2099,30 @@ getprompt(void *unused __unused)
 			case 'W':
 			case 'w':
 				pwd = lookupvar("PWD");
-				if (pwd == NULL)
+				if (pwd == NULL || *pwd == '\0')
 					pwd = "?";
 				if (*fmt == 'W' &&
 				    *pwd == '/' && pwd[1] != '\0')
 					strlcpy(&ps[i], strrchr(pwd, '/') + 1,
 					    PROMPTLEN - i);
-				else
-					strlcpy(&ps[i], pwd, PROMPTLEN - i);
+				else {
+					home = lookupvar("HOME");
+					if (home != NULL)
+						homelen = strlen(home);
+					if (home != NULL &&
+					    strcmp(home, "/") != 0 &&
+					    strncmp(pwd, home, homelen) == 0 &&
+					    (pwd[homelen] == '/' ||
+					    pwd[homelen] == '\0')) {
+						strlcpy(&ps[i], "~",
+						    PROMPTLEN - i);
+						strlcpy(&ps[i + 1],
+						    pwd + homelen,
+						    PROMPTLEN - i - 1);
+					} else {
+						strlcpy(&ps[i], pwd, PROMPTLEN - i);
+					}
+				}
 				/* Skip to end of path. */
 				while (ps[i + 1] != '\0')
 					i++;
@@ -2017,8 +2148,9 @@ getprompt(void *unused __unused)
 				 * Emit unrecognized formats verbatim.
 				 */
 			default:
-				ps[i++] = '\\';
-				ps[i] = *fmt;
+				ps[i] = '\\';
+				if (i < PROMPTLEN - 2)
+					ps[++i] = *fmt;
 				break;
 			}
 		else
@@ -2044,7 +2176,7 @@ expandstr(const char *ps)
 		parser_temp = NULL;
 		setinputstring(ps, 1);
 		doprompt = 0;
-		readtoken1(pgetc(), DQSYNTAX, "", 0);
+		readtoken1(pgetc(), DQSYNTAX, NOEOFMARK, 0);
 		if (backquotelist != NULL)
 			error("Command substitution not allowed here");
 

@@ -1,0 +1,5 @@
+# $FreeBSD: head/bin/sh/tests/execution/env1.0 342741 2019-01-03 20:23:12Z jilles $
+
+unset somestrangevar
+export somestrangevar
+[ "`$SH -c 'echo ${somestrangevar-unset}'`" = unset ]

@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/export1.0 238430 2012-07-13 22:29:02Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/export1.0 238430 2012-07-13 22:29:02Z jilles $
 
 w='@ vv=6'
 

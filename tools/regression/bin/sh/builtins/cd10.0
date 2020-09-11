@@ -1,0 +1,6 @@
+# $FreeBSD: head/bin/sh/tests/builtins/cd10.0 320340 2017-06-25 21:53:08Z jilles $
+
+# Precondition
+(cd /bin) || exit
+# Verify write error is ignored.
+$SH +m -ic 'CDPATH=/:; cd bin 1</dev/null'

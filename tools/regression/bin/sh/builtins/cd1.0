@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/cd1.0 228975 2011-12-30 00:04:11Z uqs $
+# $FreeBSD: head/bin/sh/tests/builtins/cd1.0 228975 2011-12-30 00:04:11Z uqs $
 set -e
 
 P=${TMPDIR:-/tmp}

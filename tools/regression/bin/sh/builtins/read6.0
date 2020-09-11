@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/read6.0 247190 2013-02-23 15:15:41Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/read6.0 247190 2013-02-23 15:15:41Z jilles $
 
 : | read x
 r=$?

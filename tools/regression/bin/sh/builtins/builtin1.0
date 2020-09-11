@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/builtin1.0 201431 2010-01-03 15:01:38Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/builtin1.0 201431 2010-01-03 15:01:38Z jilles $
 
 failures=0
 
