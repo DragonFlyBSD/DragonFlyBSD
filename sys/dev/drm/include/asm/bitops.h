@@ -37,7 +37,7 @@ __test_and_set_bit(long nr, volatile unsigned long *addr)
 	bool previous_bit;
 
 	__asm __volatile(
-		"btsq	%1,%2 ;"
+		"btsq	%2,%1 ;"
 		"setc	%0 ;"
 		: "=q" (previous_bit),	/* %0 */
 		  "+m" (*addr)		/* %1 */
