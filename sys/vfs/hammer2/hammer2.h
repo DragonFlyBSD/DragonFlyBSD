@@ -1480,7 +1480,6 @@ extern long hammer2_chain_allocs;
 extern long hammer2_limit_dirty_chains;
 extern long hammer2_limit_dirty_inodes;
 extern long hammer2_count_modified_chains;
-extern long hammer2_iod_invals;
 extern long hammer2_iod_file_read;
 extern long hammer2_iod_meta_read;
 extern long hammer2_iod_indr_read;

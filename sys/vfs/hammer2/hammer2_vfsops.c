@@ -93,7 +93,6 @@ long hammer2_chain_allocs;
 long hammer2_limit_dirty_chains;
 long hammer2_limit_dirty_inodes;
 long hammer2_count_modified_chains;
-long hammer2_iod_invals;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
 long hammer2_iod_indr_read;
@@ -158,8 +157,6 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_count, CTLFLAG_RD,
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_limit, CTLFLAG_RW,
 	   &hammer2_dio_limit, 0, "");
 
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_invals, CTLFLAG_RW,
-	   &hammer2_iod_invals, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RW,
 	   &hammer2_iod_file_read, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_read, CTLFLAG_RW,
