@@ -39,12 +39,12 @@ Easter+60	Fronleichnam
 02/14			Valentinstag
 Easter-46		Aschermittwoch
 Easter-7		Palmsonntag
-Nov Sun+3		Totensonntag
-Nov Sun+4		1. Advent
-Dec Sun+1		2. Advent
+Advent-7		Totensonntag
+Advent			1. Advent
+Advent+7		2. Advent
 12/06			Nikolaus
-Dec Sun+2		3. Advent
-Dec Sun+3		4. Advent
+Advent+14		3. Advent
+Advent+21		4. Advent
 
 /* Jahreszeiten */
 03/20*	Frühlingsanfang
