@@ -1471,7 +1471,6 @@ extern int hammer2_cluster_data_read;
 extern int hammer2_cluster_write;
 extern int hammer2_dedup_enable;
 extern int hammer2_always_compress;
-extern int hammer2_inval_enable;
 extern int hammer2_flush_pipe;
 extern int hammer2_dio_count;
 extern int hammer2_dio_limit;

@@ -84,7 +84,6 @@ int hammer2_cluster_data_read = 4;	/* physical read-ahead */
 int hammer2_cluster_write = 0;		/* physical write clustering */
 int hammer2_dedup_enable = 1;
 int hammer2_always_compress = 0;	/* always try to compress */
-int hammer2_inval_enable = 0;
 int hammer2_flush_pipe = 100;
 int hammer2_dio_count;
 int hammer2_dio_limit = 256;
@@ -141,8 +140,6 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, dedup_enable, CTLFLAG_RW,
 	   &hammer2_dedup_enable, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, always_compress, CTLFLAG_RW,
 	   &hammer2_always_compress, 0, "");
-SYSCTL_INT(_vfs_hammer2, OID_AUTO, inval_enable, CTLFLAG_RW,
-	   &hammer2_inval_enable, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
 	   &hammer2_flush_pipe, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, worker_rmask, CTLFLAG_RW,
