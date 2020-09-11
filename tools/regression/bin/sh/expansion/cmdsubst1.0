@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/expansion/cmdsubst1.0 201366 2010-01-01 18:17:46Z jilles $
+# $FreeBSD: head/bin/sh/tests/expansion/cmdsubst1.0 201366 2010-01-01 18:17:46Z jilles $
 
 failures=0
 

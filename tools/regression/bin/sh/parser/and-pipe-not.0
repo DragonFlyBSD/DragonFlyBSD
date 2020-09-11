@@ -1,2 +1,2 @@
-# $FreeBSD: head/tools/regression/bin/sh/parser/and-pipe-not.0 191010 2009-04-13 19:12:28Z stefanf $
+# $FreeBSD: head/bin/sh/tests/parser/and-pipe-not.0 191010 2009-04-13 19:12:28Z stefanf $
 true && ! true | false

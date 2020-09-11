@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/wait8.0 251429 2013-06-05 19:08:22Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/wait8.0 251429 2013-06-05 19:08:22Z jilles $
 
 exit 44 & p44=$!
 exit 45 & p45=$!

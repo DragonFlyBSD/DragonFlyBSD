@@ -1,0 +1,7 @@
+# $FreeBSD: head/bin/sh/tests/invocation/sh-ca1.0 322438 2017-08-12 19:17:48Z jilles $
+# Test that attached options after c are processed
+
+case `${SH} -ca 'echo $-:$0' moo` in
+*a*:moo) true ;;
+*) false ;;
+esac

@@ -1,0 +1,6 @@
+# $FreeBSD: head/bin/sh/tests/execution/unknown2.0 361117 2020-05-16 19:38:58Z jilles $
+
+{
+	: $(/var/empty/nosuchtool) 
+	: $(:)
+} 2>/dev/null

@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/wait4.0 247206 2013-02-23 22:50:57Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/wait4.0 247206 2013-02-23 22:50:57Z jilles $
 
 T=`mktemp -d ${TMPDIR:-/tmp}/sh-test.XXXXXX`
 trap 'rm -rf $T' 0

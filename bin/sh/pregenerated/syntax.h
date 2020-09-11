@@ -8,20 +8,21 @@
 /* Syntax classes */
 #define CWORD 0			/* character is nothing special */
 #define CNL 1			/* newline character */
-#define CBACK 2			/* a backslash character */
-#define CSBACK 3		/* a backslash character in single quotes */
-#define CSQUOTE 4		/* single quote */
-#define CDQUOTE 5		/* double quote */
-#define CENDQUOTE 6		/* a terminating quote */
-#define CBQUOTE 7		/* backwards single quote */
-#define CVAR 8			/* a dollar sign */
-#define CENDVAR 9		/* a '}' character */
-#define CLP 10			/* a left paren in arithmetic */
-#define CRP 11			/* a right paren in arithmetic */
-#define CEOF 12			/* end of file */
-#define CCTL 13			/* like CWORD, except it must be escaped */
-#define CSPCL 14		/* these terminate a word */
-#define CIGN 15			/* character should be ignored */
+#define CQNL 2			/* newline character in quotes */
+#define CBACK 3			/* a backslash character */
+#define CSBACK 4		/* a backslash character in single quotes */
+#define CSQUOTE 5		/* single quote */
+#define CDQUOTE 6		/* double quote */
+#define CENDQUOTE 7		/* a terminating quote */
+#define CBQUOTE 8		/* backwards single quote */
+#define CVAR 9			/* a dollar sign */
+#define CENDVAR 10		/* a '}' character */
+#define CLP 11			/* a left paren in arithmetic */
+#define CRP 12			/* a right paren in arithmetic */
+#define CEOF 13			/* end of file */
+#define CCTL 14			/* like CWORD, except it must be escaped */
+#define CSPCL 15		/* these terminate a word */
+#define CIGN 16			/* character should be ignored */
 
 /* Syntax classes for is_ functions */
 #define ISDIGIT 01		/* a digit */

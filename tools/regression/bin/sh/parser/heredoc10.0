@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/parser/heredoc10.0 221887 2011-05-14 14:19:30Z jilles $
+# $FreeBSD: head/bin/sh/tests/parser/heredoc10.0 221887 2011-05-14 14:19:30Z jilles $
 
 # It may be argued that
 #   x=$(cat <<EOF

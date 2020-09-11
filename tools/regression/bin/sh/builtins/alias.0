@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/alias.0 190285 2009-03-22 21:12:00Z stefanf $
+# $FreeBSD: head/bin/sh/tests/builtins/alias.0 190285 2009-03-22 21:12:00Z stefanf $
 set -e
 
 unalias -a

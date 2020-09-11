@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/cd5.0 222379 2011-05-27 19:36:07Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/cd5.0 222379 2011-05-27 19:36:07Z jilles $
 
 set -e
 T=$(mktemp -d "${TMPDIR:-/tmp}/sh-test.XXXXXX")

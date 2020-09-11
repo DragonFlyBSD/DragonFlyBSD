@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/parameters/pwd2.0 213738 2010-10-12 18:20:38Z obrien $
+# $FreeBSD: head/bin/sh/tests/parameters/pwd2.0 213738 2010-10-12 18:20:38Z obrien $
 # Check that PWD is exported and accepted from the environment.
 set -e
 

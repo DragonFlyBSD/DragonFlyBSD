@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/errors/assignment-error1.0 213738 2010-10-12 18:20:38Z obrien $
+# $FreeBSD: head/bin/sh/tests/errors/assignment-error1.0 213738 2010-10-12 18:20:38Z obrien $
 IFS=,
 
 SPECIAL="break,\

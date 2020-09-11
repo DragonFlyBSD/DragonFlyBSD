@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/execution/set-x2.0 222882 2011-06-08 21:58:19Z jilles $
+# $FreeBSD: head/bin/sh/tests/execution/set-x2.0 222882 2011-06-08 21:58:19Z jilles $
 
 key='must contain this'
 PS4="$key+ "

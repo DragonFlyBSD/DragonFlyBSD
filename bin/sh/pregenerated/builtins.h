@@ -45,14 +45,10 @@
 #define WAITCMD 39
 #define WORDEXPCMD 40
 
-struct builtincmd {
-      const char *name;
-      int code;
-      int special;
-};
+#define BUILTIN_SPECIAL 0x80
 
 extern int (*const builtinfunc[])(int, char **);
-extern const struct builtincmd builtincmd[];
+extern const unsigned char builtincmd[];
 
 int bltincmd(int, char **);
 int aliascmd(int, char **);
@@ -95,3 +91,23 @@ int unaliascmd(int, char **);
 int unsetcmd(int, char **);
 int waitcmd(int, char **);
 int wordexpcmd(int, char **);
+
+static inline int
+safe_builtin_always(int idx)
+{
+	if (idx == BLTINCMD || 
+	    idx == COMMANDCMD || 
+	    idx == ECHOCMD || 
+	    idx == FALSECMD || 
+	    idx == JOBIDCMD || 
+	    idx == JOBSCMD || 
+	    idx == KILLCMD || 
+	    idx == PRINTFCMD || 
+	    idx == PWDCMD || 
+	    idx == TESTCMD || 
+	    idx == TIMESCMD || 
+	    idx == TRUECMD || 
+	    idx == TYPECMD)
+		return (1);
+	return(0);
+}

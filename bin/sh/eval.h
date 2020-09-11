@@ -30,13 +30,13 @@
  * SUCH DAMAGE.
  *
  *	@(#)eval.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD$
+ * $FreeBSD: head/bin/sh/eval.h 314436 2017-02-28 23:42:47Z imp $
  */
 
 extern char *commandname;	/* currently executing command */
 extern int exitstatus;		/* exit status of last command */
 extern int oexitstatus;		/* saved exit status */
-extern struct strlist *cmdenviron;  /* environment for builtin command */
+extern struct arglist *cmdenviron;  /* environment for builtin command */
 
 
 struct backcmd {		/* result of evalbackcmd */

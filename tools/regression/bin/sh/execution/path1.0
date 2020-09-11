@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/execution/path1.0 217206 2011-01-09 21:07:30Z jilles $
+# $FreeBSD: head/bin/sh/tests/execution/path1.0 217206 2011-01-09 21:07:30Z jilles $
 # Some builtins should not be overridable via PATH.
 
 set -e

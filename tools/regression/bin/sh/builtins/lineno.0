@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/lineno.0 179023 2008-05-15 19:58:44Z stefanf $
+# $FreeBSD: head/bin/sh/tests/builtins/lineno.0 179023 2008-05-15 19:58:44Z stefanf $
 echo $LINENO
 echo $LINENO
 

@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/cd6.0 222381 2011-05-27 20:01:46Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/cd6.0 222381 2011-05-27 20:01:46Z jilles $
 
 set -e
 cd -P /bin

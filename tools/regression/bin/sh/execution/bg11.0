@@ -1,0 +1,16 @@
+# $FreeBSD: head/bin/sh/tests/execution/bg11.0 362182 2020-06-14 19:41:24Z jilles $
+
+T=`mktemp -d ${TMPDIR:-/tmp}/sh-test.XXXXXXXX`
+trap 'rm -rf $T' 0
+cd $T || exit 3
+mkfifo fifo1
+# Use a trap, not the default action, since the shell may catch SIGINT and
+# therefore its processing may be delayed.
+{ trap 'exit 5' TERM; read dummy <fifo1; exit 4; } &
+exec 3>fifo1
+kill -INT "$!"
+kill -TERM "$!"
+exec 3>&-
+wait "$!"
+r=$?
+[ "$r" = 5 ]

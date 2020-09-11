@@ -1,0 +1,9 @@
+# $FreeBSD: head/bin/sh/tests/builtins/command14.0 365037 2020-09-01 13:19:15Z jilles $
+
+r=`cd /bin && PATH=. command -V ls`
+case $r in
+*/bin/ls*|*/bin/./ls*) ;;
+*)
+	echo "Unexpected result: $r"
+	exit 1
+esac

@@ -50,52 +50,51 @@ int (*const builtinfunc[])(int, char **) = {
 	wordexpcmd,
 };
 
-const struct builtincmd builtincmd[] = {
-	{ "builtin", 0, 0 },
-	{ "alias", 1, 0 },
-	{ "bg", 2, 0 },
-	{ "bind", 3, 0 },
-	{ "break", 4, 1 },
-	{ "continue", 4, 1 },
-	{ "cd", 5, 0 },
-	{ "chdir", 5, 0 },
-	{ "command", 6, 0 },
-	{ ".", 7, 1 },
-	{ "echo", 8, 0 },
-	{ "eval", 9, 1 },
-	{ "exec", 10, 1 },
-	{ "exit", 11, 1 },
-	{ "let", 12, 0 },
-	{ "export", 13, 1 },
-	{ "readonly", 13, 1 },
-	{ "false", 14, 0 },
-	{ "fg", 15, 0 },
-	{ "getopts", 16, 0 },
-	{ "hash", 17, 0 },
-	{ "fc", 18, 0 },
-	{ "jobid", 19, 0 },
-	{ "jobs", 20, 0 },
-	{ "kill", 21, 0 },
-	{ "local", 22, 0 },
-	{ "printf", 23, 0 },
-	{ "pwd", 24, 0 },
-	{ "read", 25, 0 },
-	{ "return", 26, 1 },
-	{ "set", 27, 1 },
-	{ "setvar", 28, 0 },
-	{ "shift", 29, 1 },
-	{ "test", 30, 0 },
-	{ "[", 30, 0 },
-	{ "times", 31, 1 },
-	{ "trap", 32, 1 },
-	{ ":", 33, 1 },
-	{ "true", 33, 0 },
-	{ "type", 34, 0 },
-	{ "ulimit", 35, 0 },
-	{ "umask", 36, 0 },
-	{ "unalias", 37, 0 },
-	{ "unset", 38, 1 },
-	{ "wait", 39, 0 },
-	{ "wordexp", 40, 0 },
-	{ NULL, 0, 0 }
+const unsigned char builtincmd[] = {
+	"\007\000builtin"
+	"\005\001alias"
+	"\002\002bg"
+	"\004\003bind"
+	"\005\204break"
+	"\010\204continue"
+	"\002\005cd"
+	"\005\005chdir"
+	"\007\006command"
+	"\001\207."
+	"\004\010echo"
+	"\004\211eval"
+	"\004\212exec"
+	"\004\213exit"
+	"\003\014let"
+	"\006\215export"
+	"\010\215readonly"
+	"\005\016false"
+	"\002\017fg"
+	"\007\020getopts"
+	"\004\021hash"
+	"\002\022fc"
+	"\005\023jobid"
+	"\004\024jobs"
+	"\004\025kill"
+	"\005\026local"
+	"\006\027printf"
+	"\003\030pwd"
+	"\004\031read"
+	"\006\232return"
+	"\003\233set"
+	"\006\034setvar"
+	"\005\235shift"
+	"\004\036test"
+	"\001\036["
+	"\005\237times"
+	"\004\240trap"
+	"\001\241:"
+	"\004\041true"
+	"\004\042type"
+	"\006\043ulimit"
+	"\005\044umask"
+	"\007\045unalias"
+	"\005\246unset"
+	"\004\047wait"
+	"\007\050wordexp"
 };

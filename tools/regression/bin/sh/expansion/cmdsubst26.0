@@ -1,0 +1,6 @@
+# $FreeBSD: head/bin/sh/tests/expansion/cmdsubst26.0 317514 2017-04-27 18:52:18Z jilles $
+
+nl='
+'
+v=$nl`printf '\n'`
+[ "$v" = "$nl" ]

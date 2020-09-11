@@ -1,0 +1,6 @@
+# $FreeBSD: head/bin/sh/tests/expansion/cmdsubst20.0 314637 2017-03-03 22:46:20Z jilles $
+
+set -T
+trapped=''
+trap "trapped=x$trapped" USR1
+[ "x$(kill -USR1 $$)y" = xy ] && [ "$trapped" = x ]

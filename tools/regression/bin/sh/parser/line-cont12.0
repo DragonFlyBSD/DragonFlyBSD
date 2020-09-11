@@ -1,0 +1,5 @@
+# $FreeBSD: head/bin/sh/tests/parser/line-cont12.0 333507 2018-05-11 21:56:01Z jilles $
+
+[ '\
+' = "\\
+" ]

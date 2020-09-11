@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1995
  *      The Regents of the University of California.  All rights reserved.
  *
@@ -27,7 +29,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)show.h	1.1 (Berkeley) 5/4/95
- * $FreeBSD$
+ * $FreeBSD: head/bin/sh/show.h 326025 2017-11-20 19:49:47Z pfg $
  */
 
 void showtree(union node *);

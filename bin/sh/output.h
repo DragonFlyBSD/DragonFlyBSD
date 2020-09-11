@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,17 +32,18 @@
  * SUCH DAMAGE.
  *
  *	@(#)output.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD$
+ * $FreeBSD: head/bin/sh/output.h 344306 2019-02-19 21:27:30Z jilles $
  */
 
 #ifndef OUTPUT_INCL
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdio.h>
 
 struct output {
 	char *nextc;
-	int nleft;
+	char *bufend;
 	char *buf;
 	int bufsize;
 	short fd;
@@ -73,9 +76,10 @@ void out1fmt(const char *, ...) __printflike(1, 2);
 void out2fmt_flush(const char *, ...) __printflike(1, 2);
 void fmtstr(char *, int, const char *, ...) __printflike(3, 4);
 void doformat(struct output *, const char *, va_list) __printflike(2, 0);
+FILE *out1fp(void);
 int xwrite(int, const char *, int);
 
-#define outc(c, file)	(--(file)->nleft < 0? (emptyoutbuf(file), *(file)->nextc++ = (c)) : (*(file)->nextc++ = (c)))
+#define outc(c, file)	((file)->nextc == (file)->bufend ? (emptyoutbuf(file), *(file)->nextc++ = (c)) : (*(file)->nextc++ = (c)))
 #define out1c(c)	outc(c, out1);
 #define out2c(c)	outcslow(c, out2);
 

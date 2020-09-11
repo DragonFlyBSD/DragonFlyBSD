@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/builtins/local2.0 251797 2013-06-15 22:22:03Z jilles $
+# $FreeBSD: head/bin/sh/tests/builtins/local2.0 251797 2013-06-15 22:22:03Z jilles $
 
 f() {
 	local -

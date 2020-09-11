@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/parameters/positional1.0 222158 2011-05-21 14:52:26Z jilles $
+# $FreeBSD: head/bin/sh/tests/parameters/positional1.0 222158 2011-05-21 14:52:26Z jilles $
 
 set -- a b c d e f g h i j
 [ "$1" = a ] || echo "error at line $LINENO"

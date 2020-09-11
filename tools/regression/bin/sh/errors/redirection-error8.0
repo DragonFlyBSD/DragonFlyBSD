@@ -1,0 +1,5 @@
+# $FreeBSD: head/bin/sh/tests/errors/redirection-error8.0 319575 2017-06-04 20:52:55Z jilles $
+
+$SH -c '{ { :; } </var/empty/x; } 2>/dev/null || kill -INT $$; echo continued'
+r=$?
+[ "$r" -gt 128 ] && [ "$(kill -l "$r")" = INT ]

@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,7 +32,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)parser.h	8.3 (Berkeley) 5/4/95
- * $FreeBSD$
+ * $FreeBSD: head/bin/sh/parser.h 326025 2017-11-20 19:49:47Z pfg $
  */
 
 /* control characters in argument strings */
@@ -76,6 +78,9 @@ extern const char *const parsekwd[];
 
 
 union node *parsecmd(int);
+#if 0
+union node *parsewordexp(void);
+#endif
 void forcealias(void);
 void fixredir(union node *, const char *, int);
 int goodname(const char *);

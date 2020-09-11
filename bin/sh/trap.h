@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,7 +32,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)trap.h	8.3 (Berkeley) 6/5/95
- * $FreeBSD$
+ * $FreeBSD: head/bin/sh/trap.h 364919 2020-08-28 15:35:45Z jilles $
  */
 
 extern volatile sig_atomic_t pendingsig;
@@ -43,6 +45,7 @@ void ignoresig(int);
 int issigchldtrapped(void);
 void onsig(int);
 void dotrap(void);
-void setinteractive(int);
+void trap_init(void);
+void setinteractive(void);
 void exitshell(int) __dead2;
 void exitshell_savedstatus(void) __dead2;

@@ -36,7 +36,7 @@ static char sccsid[] = "@(#)input.c	8.3 (Berkeley) 6/9/95";
 #endif
 #endif /* not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: head/bin/sh/input.c 359398 2020-03-28 17:02:32Z kevans $");
 
 #include <stdio.h>	/* defines BUFSIZ */
 #include <fcntl.h>
@@ -199,8 +199,7 @@ retry:
 int
 preadbuffer(void)
 {
-	char *p, *q;
-	int more;
+	char *p, *q, *r, *end;
 	char savec;
 
 	while (parsefile->strpush) {
@@ -217,8 +216,6 @@ preadbuffer(void)
 	}
 	if (parsenleft == EOF_NLEFT || parsefile->buf == NULL)
 		return PEOF;
-	flushout(&output);
-	flushout(&errout);
 
 again:
 	if (parselleft <= 0) {
@@ -228,34 +225,32 @@ again:
 		}
 	}
 
-	q = p = parsefile->buf + (parsenextc - parsefile->buf);
-
-	/* delete nul characters */
-	for (more = 1; more;) {
-		switch (*p) {
-		case '\0':
-			p++;	/* Skip nul */
-			goto check;
-
-		case '\n':
-			parsenleft = q - parsenextc;
-			more = 0; /* Stop processing here */
-			break;
-
-		default:
-			break;
+	p = parsefile->buf + (parsenextc - parsefile->buf);
+	end = p + parselleft;
+	*end = '\0';
+	q = strchrnul(p, '\n');
+	if (q != end && *q == '\0') {
+		/* delete nul characters */
+		for (r = q; q != end; q++) {
+			if (*q != '\0')
+				*r++ = *q;
 		}
-
-		*q++ = *p++;
-check:
-		if (--parselleft <= 0) {
-			parsenleft = q - parsenextc - 1;
-			if (parsenleft < 0)
-				goto again;
-			*q = '\0';
-			more = 0;
-		}
+		parselleft -= end - r;
+		if (parselleft == 0)
+			goto again;
+		end = p + parselleft;
+		*end = '\0';
+		q = strchrnul(p, '\n');
 	}
+	if (q == end) {
+		parsenleft = parselleft;
+		parselleft = 0;
+	} else /* *q == '\n' */ {
+		q++;
+		parsenleft = q - parsenextc;
+		parselleft -= parsenleft;
+	}
+	parsenleft--;
 
 	savec = *q;
 	*q = '\0';
@@ -368,12 +363,16 @@ popstring(void)
 void
 setinputfile(const char *fname, int push)
 {
+	int e;
 	int fd;
 	int fd2;
 
 	INTOFF;
-	if ((fd = open(fname, O_RDONLY | O_CLOEXEC_MAYBE)) < 0)
-		error("cannot open %s: %s", fname, strerror(errno));
+	if ((fd = open(fname, O_RDONLY | O_CLOEXEC_MAYBE)) < 0) {
+		e = errno;
+		errorwithstatus(e == ENOENT || e == ENOTDIR ? 127 : 126,
+		    "cannot open %s: %s", fname, strerror(e));
+	}
 	if (fd < 10) {
 		fd2 = fcntl(fd, F_DUPFD_CLOEXEC_MAYBE, 10);
 		close(fd);

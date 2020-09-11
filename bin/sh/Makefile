@@ -76,4 +76,5 @@ token.h: mktokens
 
 regress: sh
 	cd ${.CURDIR}/../../tools/regression/bin/sh && ${MAKE} SH=${.OBJDIR}/sh
+
 .include <bsd.prog.mk>

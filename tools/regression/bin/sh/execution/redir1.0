@@ -1,4 +1,4 @@
-# $FreeBSD: head/tools/regression/bin/sh/execution/redir1.0 211408 2010-08-16 22:23:19Z jilles $
+# $FreeBSD: head/bin/sh/tests/execution/redir1.0 211408 2010-08-16 22:23:19Z jilles $
 trap ': $((brokenpipe+=1))' PIPE
 
 P=${TMPDIR:-/tmp}

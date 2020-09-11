@@ -1,0 +1,5 @@
+# $FreeBSD: head/bin/sh/tests/expansion/cmdsubst19.0 314637 2017-03-03 22:46:20Z jilles $
+
+b=200 c=30 d=5 x=4
+r=$(echo a)$(($(echo b) + ${x+$(echo c)} + ${x-$(echo d)}))$(echo e)
+[ "$r" = a234e ]
