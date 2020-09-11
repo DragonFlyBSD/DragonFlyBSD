@@ -1,3 +1,6 @@
+
+#include <sys/param.h>
+
 /* src/config.h.  Generated from config.h.in by configure.  */
 /* src/config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -88,8 +91,10 @@
    and to 0 otherwise. */
 #define HAVE_REALLOC 1
 
+#if __DragonFly_version >= 500501
 /* Define to 1 if you have the `reallocarray' function. */
 #define HAVE_REALLOCARRAY 1
+#endif
 
 /* Define to 1 if you have the `regcomp' function. */
 #define HAVE_REGCOMP 1
