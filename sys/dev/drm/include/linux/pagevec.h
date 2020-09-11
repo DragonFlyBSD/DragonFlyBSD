@@ -67,4 +67,10 @@ __pagevec_release(struct pagevec *pvec)
 	pvec->nr = 0;
 }
 
+static inline unsigned int
+pagevec_space(struct pagevec *pvec)
+{
+	return PAGEVEC_SIZE - pvec->nr;
+}
+
 #endif	/* _LINUX_PAGEVEC_H_ */
