@@ -28,7 +28,7 @@
 .\"     @(#)calendar.1  8.1 (Berkeley) 6/29/93
 .\" $FreeBSD: head/usr.bin/calendar/calendar.1 314436 2017-02-28 23:42:47Z imp $
 .\"
-.Dd September 4, 2020
+.Dd September 11, 2020
 .Dt CALENDAR 1
 .Os
 .Sh NAME
@@ -45,7 +45,7 @@
 .Op Fl H Ar calendar_home
 .Op Fl h
 .Op Fl L Ar latitude,longitude[,elevation]
-.Op Fl s Ar chinese|julian|moon|sun
+.Op Fl s Ar category
 .Op Fl T Ar hh:mm[:ss]
 .Op Fl t Ar [[[CC]YY]MM]DD
 .Op Fl U Ar \(+-hh[[:]mm]
@@ -121,17 +121,19 @@ arguments are default to 0, while the
 .Ar longitude
 argument is calculated from the adopted UTC offset
 (i.e., 15 degrees times the UTC offset in hours).
-.It Fl s Ar chinese|julian|moon|sun
-Show information of the specified category:
+.It Fl s Ar category
+Show information of the specified
+.Ar category ,
+which can take the following values:
 .Pp
 .Bl -tag -width chinese -compact
-.It Va chinese
-Show the Chinese calendar and the 24 solar terms in this year.
-.It Va julian
+.It Cm chinese
+Show the Chinese calendar and the 24 solar terms (a.k.a. Jieqi) in this year.
+.It Cm julian
 Show the Julian calendar.
-.It Va moon
+.It Cm moon
 Show Moon position, phases, rise and set times, and lunar events in this year.
-.It Va sun
+.It Cm sun
 Show Sun position, rise and set times, and solar events in this year.
 .El
 .It Fl T Ar hh:mm[:ss]
@@ -250,7 +252,7 @@ The first day of the Chinese year.
 .It ChineseQingming
 The Chinese Qīngmíng festival (a.k.a. Tomb-Sweeping Day).
 .It ChineseJieqi
-The 24 solar terms (Jiéqì) in Chinese calendar.
+The 24 solar terms (Jieqi) in Chinese calendar.
 .El
 These names may be reassigned to their local names via an assignment
 like
@@ -512,14 +514,14 @@ at the beginning of a line.
 .Xr cal 1 ,
 .Xr mail 1 ,
 .Xr cron 8
-.Bl -tag -width indent
-.It [RD18]
-Edward M. Reingold and Nachum Dershowitz,
-.Em Calendrical Calculations: The Ultimate Edition
-(4th Edition).
-Cambridge University Press, 2018.
-ISBN: 9781107057623
-.El
+.Rs
+.%A Edward M. Reingold
+.%A Nachum Dershowitz
+.%B Calendrical Calculations: The Ultimate Edition (4th Edition)
+.%I Cambridge University Press
+.%D 2018
+.%O ISBN: 9781107057623
+.Re
 .Sh HISTORY
 A
 .Nm

@@ -569,9 +569,8 @@ usage(const char *progname)
 		"usage:\n"
 		"%s [-A days] [-a] [-B days] [-d] [-F friday]\n"
 		"\t[-f calendar_file] [-H calendar_home]\n"
-		"\t[-L latitude,longitude[,elevation]]\n"
-		"\t[-s chinese|julian|moon|sun] [-T hh:mm[:ss]]\n"
-		"\t[-t [[[CC]YY]MM]DD] [-U ±hh[[:]mm]] [-W days]\n",
+		"\t[-L latitude,longitude[,elevation]] [-s category]\n"
+		"\t[-T hh:mm[:ss]] [-t [[[CC]YY]MM]DD] [-U ±hh[[:]mm]] [-W days]\n",
 		progname);
 	exit(1);
 }
