@@ -13,13 +13,12 @@ Easter-46	Aschermittwoch
 Easter-48	Rosenmontag
 Easter-7	Palmsonntag
 
-11/Sun-3	Volkstrauertag (maybe)
-11/Sun-2	Volkstrauertag oder Totensonntag
-11/Sun-1	1. Advent oder Totensonntag
-12/Sun+1	1. oder 2. Advent
-12/Sun+2	2. oder 3. Advent
-12/Sun+3	3. oder 4. Advent
-12/Sun+4	4. Advent (maybe)
+Advent-14	Volkstrauertag
+Advent-7	Totensonntag
+Advent		1. Advent
+Advent+7	2. Advent
+Advent+14	3. Advent
+Advent+21	4. Advent
 
 12/06	Nikolaus
 12/25	1. Weihnachtstag
