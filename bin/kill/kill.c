@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1988, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,6 +32,10 @@
  * @(#)kill.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/kill/kill.c,v 1.24 2011/02/04 16:40:50 jilles Exp $
  */
+/*
+ * Important: This file is used both as a standalone program /bin/kill and
+ * as a builtin for /bin/sh (#define SHELL).
+ */
 
 #include <ctype.h>
 #include <err.h>
@@ -53,8 +59,9 @@ static void	usage(void);
 int
 main(int argc, char **argv)
 {
-	int errors, numsig;
+	long pidl;
 	pid_t pid;
+	int errors, numsig, ret;
 	char *ep;
 
 	if (argc < 2)
@@ -121,15 +128,18 @@ main(int argc, char **argv)
 	for (errors = 0; argc; argc--, argv++) {
 #ifdef SHELL
 		if (**argv == '%')
-			pid = killjob(*argv, numsig);
+			ret = killjob(*argv, numsig);
 		else
 #endif
 		{
-			pid = (pid_t)strtol(*argv, &ep, 10);
-			if (**argv == '\0' || *ep != '\0')
+			pidl = strtol(*argv, &ep, 10);
+			/* Check for overflow of pid_t. */
+			pid = (pid_t)pidl;
+			if (!**argv || *ep || pid != pidl)
 				errx(2, "illegal process id: %s", *argv);
+			ret = kill(pid, numsig);
 		}
-		if (kill(pid, numsig) == -1) {
+		if (ret == -1) {
 			warn("%s", *argv);
 			errors = 1;
 		}
@@ -149,7 +159,7 @@ signame_to_signum(const char *sig)
 		if (strcasecmp(sys_signame[n], sig) == 0)
 			return(n);
 	}
-	return(-1);
+	return (-1);
 }
 
 static void
