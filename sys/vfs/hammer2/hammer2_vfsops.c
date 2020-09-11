@@ -90,7 +90,6 @@ int hammer2_dio_limit = 256;
 int hammer2_bulkfree_tps = 5000;
 int hammer2_worker_rmask = 3;
 long hammer2_chain_allocs;
-long hammer2_chain_frees;
 long hammer2_limit_dirty_chains;
 long hammer2_limit_dirty_inodes;
 long hammer2_count_modified_chains;
@@ -148,8 +147,6 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, bulkfree_tps, CTLFLAG_RW,
 	   &hammer2_bulkfree_tps, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_allocs, CTLFLAG_RW,
 	   &hammer2_chain_allocs, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_frees, CTLFLAG_RW,
-	   &hammer2_chain_frees, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_chains, CTLFLAG_RW,
 	   &hammer2_limit_dirty_chains, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_inodes, CTLFLAG_RW,

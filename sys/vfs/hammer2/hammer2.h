@@ -1477,7 +1477,6 @@ extern int hammer2_dio_limit;
 extern int hammer2_bulkfree_tps;
 extern int hammer2_worker_rmask;
 extern long hammer2_chain_allocs;
-extern long hammer2_chain_frees;
 extern long hammer2_limit_dirty_chains;
 extern long hammer2_limit_dirty_inodes;
 extern long hammer2_count_modified_chains;
