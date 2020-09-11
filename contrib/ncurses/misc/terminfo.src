@@ -638,7 +638,7 @@ ansi-generic|ansiterm|generic ansi standard terminal,
 	am, xon,
 	cols#80, lines#24, use=vanilla, use=ansi+csr, use=ansi+cup,
 	use=ansi+rca, use=ansi+erase, use=ansi+tabs,
-	use=ansi+local, use=ansi+idc, use=ansi+idl, use=ansi+rep,
+	use=ansi+local, use=ansi+idc, use=ansi+idl,
 	use=ansi+sgrbold, use=ansi+arrows,
 
 #### DOS ANSI.SYS variants
@@ -1415,7 +1415,7 @@ qansi-g|QNX ANSI,
 	    %|%t;7%;%?%p7%t;9%;m%?%p9%t\016%e\017%;,
 	sgr0=\E[m\017, smacs=^N, smam=\E[?7h, smso=\E[7m,
 	smul=\E[4m, tbc=\E[3g,
-	tsl=\E7\E1;24r\E[?6l\E[25;%i%p1%dH, use=ansi+rep,
+	tsl=\E7\E1;24r\E[?6l\E[25;%i%p1%dH,
 	use=ecma+index,
 #
 qansi|QNX ansi with console writes,
@@ -4027,7 +4027,7 @@ mintty+common|shared capabilities for mintty,
 	rsupm=\E[75m, smm@, smpch=\E[11m, sshm=\E[1\:2m,
 	ssubm=\E[74m, ssupm=\E[73m, Rmol=\E[55m, Smol=\E[53m,
 	Smulx=\E[4\:%p1%dm, blink2=\E[6m, norm=\E[22m,
-	opaq=\E[28m, smul2=\E[21m, use=ansi+rep,
+	opaq=\E[28m, smul2=\E[21m,
 	use=ecma+strikeout, use=ecma+index, use=vt420+lrmm,
 	use=xterm+sm+1006, use=xterm+pcfkeys, use=xterm+tmux,
 	use=xterm-basic,
@@ -4272,7 +4272,7 @@ ms-vt-utf8|vt-utf8|UTF-8 flavor of vt100+,
 ms-terminal|Windows10 terminal,
 	npc,
 	rmkx=\E[?1l, rmm@, smkx=\E[?1h, smm@, use=xterm+256setaf,
-	use=xterm+pcfkeys, use=ansi+rep, use=ecma+index,
+	use=xterm+pcfkeys, use=ecma+index,
 	use=xterm-basic,
 
 #### Visual Studio
@@ -4511,6 +4511,7 @@ xterm-xfree86|xterm terminal emulator (XFree86),
 	use=xterm-xf86-v44,
 
 # This version reflects the current xterm features.
+#
 xterm-new|modern xterm terminal emulator,
 	npc,
 	kcbt=\E[Z, kent=\EOM, use=ecma+index,
@@ -6951,7 +6952,7 @@ alacritty+common|base fragment for alacritty,
 	km@, npc,
 	kb2=\EOE, kbs=^?, kcbt=\E[Z, kent=\EOM, Se=\E[0 q,
 	use=ecma+index, use=xterm+sm+1006, use=xterm-basic,
-	use=xterm+app, use=ansi+rep, use=xterm+tmux,
+	use=xterm+app, use=xterm+tmux,
 	use=ecma+strikeout, use=xterm+sl-twm, use=ecma+italics,
 	use=xterm+pce2, use=xterm+pcc2, use=xterm+pcf2,
 
@@ -13344,7 +13345,7 @@ att510d|bct510d|AT&T 510D Personal Terminal,
 	sgr0=\E[m\017, smacs=^N, smgl=\E4, smgr=\E5, smir=\E[4h,
 	smkx=\E[19;1|, smln=\E?, smso=\E[7m, smul=\E[4m,
 	smxon=\E[29;0|, tbc=\E[3g, vpa=\E[%p1%{1}%+%dd,
-	use=ansi+rep, use=ecma+index,
+	use=ecma+index,
 
 # (att500: I merged this with the att513 entry, att500 just used att513 -- esr)
 att500|att513|AT&T 513 using page mode,
@@ -13396,7 +13397,7 @@ att500|att513|AT&T 513 using page mode,
 	    %|%p6%|%t;7%;%?%p7%t;8%;m%?%p9%t\016%e\017%;,
 	sgr0=\E[m\017, smacs=^N, smir=\E[4h,
 	smkx=\E[19;1|\E[21;4|\Eent, smln=\E?, smso=\E[7m,
-	smul=\E[4m, tbc=\E[3g, vpa=\E[%p1%{1}%+%dd, use=ansi+rep,
+	smul=\E[4m, tbc=\E[3g, vpa=\E[%p1%{1}%+%dd,
 
 # 01-07-88
 # printer must be set to EMUL ANSI to accept ESC codes
@@ -13838,7 +13839,7 @@ att700|AT&T 700 24x80 column display w/102key keyboard,
 	    %|%t;7%;%?%p7%t;8%;m%?%p9%t\016%e\017%;,
 	sgr0=\E[m\017, smacs=^N, smir=\E[4h, smln=\E[p, smso=\E[7m,
 	smul=\E[4m, smxon=\E[53;0|, tbc=\E[3g,
-	tsl=\E7\E[99;%i%p1%dx, use=ansi+rep,
+	tsl=\E7\E[99;%i%p1%dx,
 
 # This entry was modified 3/13/90 by JWE.
 # fixes include additions of <enacs>, correcting <rep>, and modification
@@ -13893,7 +13894,7 @@ att730|AT&T 730 windowing terminal,
 	    %|%t;7%;%?%p7%t;8%;m%?%p9%t\016%e\017%;,
 	sgr0=\E[m\017, smacs=^N, smam=\E[?7h, smir=\E[4h,
 	smln=\E[?13l, smso=\E[7m, smul=\E[4m, smxon=\E[?21h,
-	swidm=\E#6, tsl=\E7\E[;%i%p1%dx, use=ansi+rep,
+	swidm=\E#6, tsl=\E7\E[;%i%p1%dx,
 att730-41|730MTG-41|AT&T 730-41 windowing terminal Version,
 	lines#41, use=att730,
 att730-24|730MTG-24|AT&T 730-24 windowing terminal Version,
@@ -14377,7 +14378,7 @@ aaa+unk|aaa-unk|ann arbor ambassador (internal - don't use this directly),
 	smkx=\EP`>z~[[J`8xz~[[A`4xz~[[D`6xz~[[C`2xz~[[B\E
 	     \\,
 	smm=\E[>52h, smso=\E[7m, smul=\E[4m, tbc=\E[3g,
-	vpa=\E[%p1%{1}%+%dd, use=ansi+rep,
+	vpa=\E[%p1%{1}%+%dd,
 
 aaa+rv|ann arbor ambassador in reverse video,
 	blink=\E[5;7m, bold=\E[1;7m, invis=\E[7;8m,
@@ -15490,7 +15491,7 @@ avt-ns|concept avt no status line,
 	sgr0=\E[m\016$<1>, smacs=\017$<1>,
 	smcup=\E[=4l\E[1;24w\E2\r, smir=\E[4h,
 	smkx=\E[1!z\E[0;3u, smso=\E[7m, smul=\E[4m, tbc=\E[3g,
-	vpa=\E[%p1%{1}%+%dd, use=ansi+rep,
+	vpa=\E[%p1%{1}%+%dd,
 avt-rv-ns|concept avt in reverse video mode/no status line,
 	flash=\E[=205l$<200>\E[=205h, is1=\E[=103l\E[=205h,
 	use=avt-ns,
@@ -19576,7 +19577,7 @@ tek4115|newer tektronix 4115 entry with more ANSI capabilities,
 	sgr=\E[%?%p1%t7;%;%?%p2%t4;%;%?%p3%t7;%;%?%p4%t5;%;%?%p6%t1;
 	    %;%?%p7%t8;%;m,
 	sgr0=\E[m, smam=\E[?7h, smso=\E[7m, smul=\E[4m, tbc=\E[3g,
-	vpa=\E[%p1%{1}%+%dd, use=ansi+rep,
+	vpa=\E[%p1%{1}%+%dd,
 # The tek4125 emulates a vt100 incorrectly - the scrolling region
 # command is ignored.  The following entry replaces <csr> with the needed
 # <il>, <il>, and <smir>; removes some cursor pad commands that the tek4125
@@ -26434,5 +26435,10 @@ v3220|LANPAR Vision II model 3220/3221/3222,
 # 2020-01-18
 #	+ spelling fixes per codespell -TD
 #	+ improve xm example for xterm+x11mouse, xterm+sm+1006 -TD
+#
+# 2020-09-11 LOCAL DRAGONFLY CHANGE
+#	+ Remove all uses of ansi+rep.  This sequence is not being
+#	  generated properly under some conditions by vi (LC_CTYPE and
+#	  LANG envs both unset).
 #
 ######## SHANTIH!  SHANTIH!  SHANTIH!
