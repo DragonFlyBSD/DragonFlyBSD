@@ -414,9 +414,9 @@ typedef uint64_t			hammer2_bitmap_t;
 #define HAMMER2_BOOT_NOM_BYTES		(64*1024*1024)
 #define HAMMER2_BOOT_MAX_BYTES		(256*1024*1024)
 
-#define HAMMER2_REDO_MIN_BYTES		HAMMER2_VOLUME_ALIGN
-#define HAMMER2_REDO_NOM_BYTES		(256*1024*1024)
-#define HAMMER2_REDO_MAX_BYTES		(1024*1024*1024)
+#define HAMMER2_AUX_MIN_BYTES		HAMMER2_VOLUME_ALIGN
+#define HAMMER2_AUX_NOM_BYTES		(256*1024*1024)
+#define HAMMER2_AUX_MAX_BYTES		(1024*1024*1024)
 
 /*
  * Most HAMMER2 types are implemented as unsigned 64-bit integers.
@@ -1149,7 +1149,7 @@ struct hammer2_volume_data {
 
 	/*
 	 * allocator_size is precalculated at newfs time and does not include
-	 * reserved blocks, boot, or redo areas.
+	 * reserved blocks, boot, or aux areas.
 	 *
 	 * Initial non-reserved-area allocations do not use the freemap
 	 * but instead adjust alloc_iterator.  Dynamic allocations take

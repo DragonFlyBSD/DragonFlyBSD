@@ -70,7 +70,6 @@ static void alloc_direct(hammer2_off_t *basep, hammer2_blockref_t *bref,
 				size_t bytes);
 
 static int Hammer2Version = -1;
-static int ForceOpt;
 static uuid_t Hammer2_FSType;	/* static filesystem type id for HAMMER2 */
 static uuid_t Hammer2_VolFSID;	/* unique filesystem id in volu header */
 static uuid_t Hammer2_SupCLID;	/* PFS cluster id in super-root inode */
@@ -126,11 +125,8 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "fL:b:r:V:")) != -1) {
+	while ((ch = getopt(ac, av, "L:b:r:V:")) != -1) {
 		switch(ch) {
-		case 'f':
-			ForceOpt = 1;
-			break;
 		case 'L':
 			defaultlabels = 0;
 			if (strcasecmp(optarg, "none") == 0) {
@@ -154,7 +150,7 @@ main(int ac, char **av)
 		case 'r':
 			AuxAreaSize = getsize(optarg,
 					 HAMMER2_NEWFS_ALIGN,
-					 HAMMER2_REDO_MAX_BYTES, 2);
+					 HAMMER2_AUX_MAX_BYTES, 2);
 			break;
 		case 'V':
 			Hammer2Version = strtol(optarg, NULL, 0);
@@ -250,20 +246,20 @@ main(int ac, char **av)
 		        ~HAMMER2_VOLUME_ALIGNMASK64;
 
 	/*
-	 * Calculate defaults for the redo area size and round to the
+	 * Calculate defaults for the aux area size and round to the
 	 * volume alignment boundary.
 	 *
 	 * NOTE: These areas are currently not used for logging but are
 	 *	 reserved for future filesystem expansion.
 	 */
 	if (AuxAreaSize == 0) {
-		AuxAreaSize = HAMMER2_REDO_NOM_BYTES;
+		AuxAreaSize = HAMMER2_AUX_NOM_BYTES;
 		while (AuxAreaSize > total_space / 20)
 			AuxAreaSize >>= 1;
-		if (AuxAreaSize < HAMMER2_REDO_MIN_BYTES)
-			AuxAreaSize = HAMMER2_REDO_MIN_BYTES;
-	} else if (AuxAreaSize < HAMMER2_REDO_MIN_BYTES) {
-		AuxAreaSize = HAMMER2_REDO_MIN_BYTES;
+		if (AuxAreaSize < HAMMER2_AUX_MIN_BYTES)
+			AuxAreaSize = HAMMER2_AUX_MIN_BYTES;
+	} else if (AuxAreaSize < HAMMER2_AUX_MIN_BYTES) {
+		AuxAreaSize = HAMMER2_AUX_MIN_BYTES;
 	}
 	AuxAreaSize = (AuxAreaSize + HAMMER2_VOLUME_ALIGNMASK64) &
 		       ~HAMMER2_VOLUME_ALIGNMASK64;
@@ -280,7 +276,7 @@ main(int ac, char **av)
 	 * is reserved at the beginning of every 1GB of storage, rounded up.
 	 * Thus a 200MB filesystem will still have a 4MB reserve area.
 	 *
-	 * We also include the boot and redo areas in the reserve.  The
+	 * We also include the boot and aux areas in the reserve.  The
 	 * reserve is used to help 'df' calculate the amount of available
 	 * space.
 	 *
@@ -336,7 +332,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-		"usage: newfs_hammer2 [-f] [-b bootsize] [-r redosize] "
+		"usage: newfs_hammer2 [-b bootsize] [-r auxsize] "
 		"[-V version] [-L label ...] special\n"
 	);
 	exit(1);

@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 26, 2015
+.Dd September 12, 2020
 .Dt NEWFS_HAMMER2 8
 .Os
 .Sh NAME
@@ -40,7 +40,7 @@
 .Nm
 .Op Fl f
 .Op Fl b Ar bootsize
-.Op Fl r Ar redosize
+.Op Fl r Ar auxsize
 .Op Fl V Ar version
 .Op Fl L Ar label ...
 .Ar special
@@ -150,22 +150,14 @@ is specified in bytes.
 By default a boot area of approximately 64MB will be created.
 This area is not currently used for booting and may be repurposed in the
 future.
-.It Fl f
-Force operation.
-This is needed for the creation of a
-.Nm HAMMER2
-file system less than 10GB size or
-with less than 500MB UNDO/REDO FIFO.
-This should not be used under normal circumstances.
-.It Fl r Ar redosize
-Specify the size of the fixed REDO FIFO.
+.It Fl r Ar auxsize
+Specify a fixed area in which an aux related kernel and data can be stored.
 The
-.Ar redosize
+.Ar auxsize
 is specified in bytes.
-By default 0.1% of the root
-volume's size is used, with a reasonable minimum and a reasonable cap.
-The UNDO/REDO FIFO is used to sequence meta-data out to the media for
-instant crash recovery.
+By default an aux area of approximately 256MB will be created.
+This area is not currently used and may be repurposed in the
+future.
 .It Fl V Ar version
 Specify the
 .Nm HAMMER2
@@ -209,7 +201,7 @@ directives to create the desired cluster.
 The
 .Ar bootsize
 and
-.Ar redosize
+.Ar auxsize
 must be given with a suffix of
 .Cm K , M , G
 or
