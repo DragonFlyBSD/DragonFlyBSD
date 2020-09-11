@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_tlsext.c,v 1.63 2020/04/21 17:06:16 jsing Exp $ */
+/* $OpenBSD: ssl_tlsext.c,v 1.63.4.1 2020/08/10 18:59:47 tb Exp $ */
 /*
  * Copyright (c) 2016, 2017, 2019 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2017 Doug Hogan <doug@openbsd.org>
@@ -896,12 +896,49 @@ tlsext_ocsp_server_build(SSL *s, CBB *cbb)
 int
 tlsext_ocsp_client_parse(SSL *s, CBS *cbs, int *alert)
 {
-	if (s->tlsext_status_type == -1) {
-		*alert = TLS1_AD_UNSUPPORTED_EXTENSION;
-		return 0;
+	CBS response;
+	size_t resp_len;
+	uint16_t version = TLS1_get_client_version(s);
+	uint8_t status_type;
+
+	if (version >= TLS1_3_VERSION) {
+		/*
+		 * RFC 8446, 4.4.2.1 - the server may request an OCSP
+		 * response with an empty status_request.
+		 */
+		if (CBS_len(cbs) == 0)
+			return 1;
+
+		if (!CBS_get_u8(cbs, &status_type)) {
+			SSLerror(s, SSL_R_LENGTH_MISMATCH);
+			return 0;
+		}
+		if (status_type != TLSEXT_STATUSTYPE_ocsp) {
+			SSLerror(s, SSL_R_UNSUPPORTED_STATUS_TYPE);
+			return 0;
+		}
+		if (!CBS_get_u24_length_prefixed(cbs, &response)) {
+			SSLerror(s, SSL_R_LENGTH_MISMATCH);
+			return 0;
+		}
+		if (CBS_len(&response) > 65536) {
+			SSLerror(s, SSL_R_DATA_LENGTH_TOO_LONG);
+			return 0;
+		}
+		if (!CBS_stow(&response, &s->internal->tlsext_ocsp_resp,
+		    &resp_len)) {
+			*alert = SSL_AD_INTERNAL_ERROR;
+			return 0;
+		}
+		s->internal->tlsext_ocsp_resplen = (int)resp_len;
+	} else {
+		if (s->tlsext_status_type == -1) {
+			*alert = TLS1_AD_UNSUPPORTED_EXTENSION;
+			return 0;
+		}
+		/* Set flag to expect CertificateStatus message */
+		s->internal->tlsext_status_expected = 1;
 	}
-	/* Set flag to expect CertificateStatus message */
-	s->internal->tlsext_status_expected = 1;
 	return 1;
 }
 

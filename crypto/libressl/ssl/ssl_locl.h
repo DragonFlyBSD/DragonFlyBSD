@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_locl.h,v 1.272 2020/04/18 14:07:56 jsing Exp $ */
+/* $OpenBSD: ssl_locl.h,v 1.272.4.1 2020/08/10 18:59:47 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -433,6 +433,12 @@ typedef struct ssl_handshake_st {
 	uint8_t *sigalgs;
 } SSL_HANDSHAKE;
 
+typedef struct cert_pkey_st {
+	X509 *x509;
+	EVP_PKEY *privatekey;
+	STACK_OF(X509) *chain;
+} CERT_PKEY;
+
 typedef struct ssl_handshake_tls13_st {
 	uint16_t min_version;
 	uint16_t max_version;
@@ -440,6 +446,10 @@ typedef struct ssl_handshake_tls13_st {
 
 	int use_legacy;
 	int hrr;
+
+	/* Certificate and sigalg selected for use (static pointers) */
+	const CERT_PKEY *cpk;
+	const struct ssl_sigalg *sigalg;
 
 	/* Version proposed by peer server. */
 	uint16_t server_version;
@@ -987,12 +997,6 @@ typedef struct dtls1_state_internal_st {
 	unsigned int change_cipher_spec_ok;
 } DTLS1_STATE_INTERNAL;
 #define D1I(s) (s->d1->internal)
-
-typedef struct cert_pkey_st {
-	X509 *x509;
-	EVP_PKEY *privatekey;
-	STACK_OF(X509) *chain;
-} CERT_PKEY;
 
 typedef struct cert_st {
 	/* Current active set */
