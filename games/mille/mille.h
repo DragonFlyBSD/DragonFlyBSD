@@ -147,9 +147,6 @@
 #define	EXTENSIONPROMPT		7
 #define	OVERWRITEFILEPROMPT	8
 
-#define	erasechar()	cur_term->Nttyb.c_cc[VERASE]
-#define	killchar()	cur_term->Nttyb.c_cc[VKILL]
-
 typedef struct {
 	bool	coups[NUM_SAFE];
 	bool	can_go;
