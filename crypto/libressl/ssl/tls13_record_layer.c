@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_record_layer.c,v 1.33 2020/05/03 15:57:25 jsing Exp $ */
+/* $OpenBSD: tls13_record_layer.c,v 1.33.4.1 2020/08/10 18:59:47 tb Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -435,6 +435,8 @@ tls13_record_layer_set_traffic_key(const EVP_AEAD *aead, EVP_AEAD_CTX *aead_ctx,
 	struct tls13_secret key = { .data = NULL, .len = 0 };
 	int ret = 0;
 
+	EVP_AEAD_CTX_cleanup(aead_ctx);
+
 	freezero(iv->data, iv->len);
 	iv->data = NULL;
 	iv->len = 0;
@@ -523,8 +525,9 @@ static int
 tls13_record_layer_open_record_protected(struct tls13_record_layer *rl)
 {
 	CBS header, enc_record;
+	ssize_t inner_len;
 	uint8_t *content = NULL;
-	ssize_t content_len = 0;
+	size_t content_len = 0;
 	uint8_t content_type;
 	size_t out_len;
 
@@ -560,18 +563,18 @@ tls13_record_layer_open_record_protected(struct tls13_record_layer *rl)
 	 * Time to hunt for that elusive content type!
 	 */
 	/* XXX - CBS from end? CBS_get_end_u8()? */
-	content_len = out_len - 1;
-	while (content_len >= 0 && content[content_len] == 0)
-		content_len--;
-	if (content_len < 0)
+	inner_len = out_len - 1;
+	while (inner_len >= 0 && content[inner_len] == 0)
+		inner_len--;
+	if (inner_len < 0)
 		goto err;
-	content_type = content[content_len];
+	content_type = content[inner_len];
 
 	tls13_record_layer_rbuf_free(rl);
 
 	rl->rbuf_content_type = content_type;
 	rl->rbuf = content;
-	rl->rbuf_len = content_len;
+	rl->rbuf_len = inner_len;
 
 	CBS_init(&rl->rbuf_cbs, rl->rbuf, rl->rbuf_len);
 
