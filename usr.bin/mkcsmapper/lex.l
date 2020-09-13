@@ -41,8 +41,6 @@
 #include "ldef.h"
 #include "yacc.h"
 
-#define YY_DECL int yylex(void)
-
 int linenumber = 1;
 %}
 %option	noinput
