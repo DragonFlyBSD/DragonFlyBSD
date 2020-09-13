@@ -2765,7 +2765,8 @@ class Sized_relobj_file : public Sized_relobj<size, big_endian>
   // LV_IN points to a local symbol value containing the input value.
   // LV_OUT points to a local symbol value storing the final output value,
   // which must not be a merged symbol value since before calling this
-  // method to avoid memory leak.  OUT_SECTIONS is an array of output
+  // method to avoid memory leak.  RELOCATABLE indicates whether we are
+  // linking a relocatable output.  OUT_SECTIONS is an array of output
   // sections.  OUT_OFFSETS is an array of offsets of the sections.  SYMTAB
   // points to a symbol table.
   //
@@ -2777,6 +2778,7 @@ class Sized_relobj_file : public Sized_relobj<size, big_endian>
   compute_final_local_value_internal(unsigned int r_sym,
 				     const Symbol_value<size>* lv_in,
 				     Symbol_value<size>* lv_out,
+				     bool relocatable,
 				     const Output_sections& out_sections,
 				     const std::vector<Address>& out_offsets,
 				     const Symbol_table* symtab);
