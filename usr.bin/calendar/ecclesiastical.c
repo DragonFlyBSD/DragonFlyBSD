@@ -68,7 +68,8 @@ orthodox_easter(int g_year)
 }
 
 /*
- * Calculate the fixed date (RD) of Orthodox Easter in Gregorian year $g_year.
+ * Calculate the fixed date (RD) of Gregorian Easter (used by Catholic and
+ * Protestant churches) in Gregorian year $g_year.
  * Ref: Sec.(9.2), Eq.(9.3)
  */
 int
