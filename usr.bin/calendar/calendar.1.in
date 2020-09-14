@@ -28,7 +28,7 @@
 .\"     @(#)calendar.1  8.1 (Berkeley) 6/29/93
 .\" $FreeBSD: head/usr.bin/calendar/calendar.1 314436 2017-02-28 23:42:47Z imp $
 .\"
-.Dd September 11, 2020
+.Dd September 14, 2020
 .Dt CALENDAR 1
 .Os
 .Sh NAME
@@ -250,7 +250,7 @@ The solar solstice in December.
 .It ChineseNewYear
 The first day of the Chinese year.
 .It ChineseQingming
-The Chinese Qīngmíng festival (a.k.a. Tomb-Sweeping Day).
+The Chinese Qingming festival (a.k.a. Tomb-Sweeping Day).
 .It ChineseJieqi
 The 24 solar terms (Jieqi) in Chinese calendar.
 .El
@@ -543,7 +543,7 @@ The new and full moons are happening on the day indicated.
 They can happen in the time period from the early morning to
 the late evening.
 .Pp
-The adopted methods to calculate solar and lunar events is are
+The adopted methods to calculate solar and lunar events are
 simplified astronomical algorithms, so the accuracy of events is
 within several minutes, provided that the precise location is specified.
 Druids and Werewolves should double-check the start and end time of
