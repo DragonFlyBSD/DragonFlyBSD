@@ -51,6 +51,7 @@
 #include <locale.h>
 #include <paths.h>
 #include <regex.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -659,8 +660,14 @@ waitchildren(const char *name, int waitall)
 			warn("%s", name);
 		} else if (WIFSIGNALED(status)) {
 			waitall = cause_exit = 1;
-			warnx("%s: terminated with signal %d; aborting",
-			    name, WTERMSIG(status));
+			if (WTERMSIG(status) != SIGPIPE) {
+			  if (WTERMSIG(status) < NSIG)
+			    warnx("%s terminated by SIG%s", name,
+				  sys_signame[WTERMSIG(status)]);
+			  else
+			    warnx("%s terminated by signal %d",
+				  name, WTERMSIG(status));
+			}
 		} else if (WEXITSTATUS(status) == 255) {
 			waitall = cause_exit = 1;
 			warnx("%s: exited with status 255; aborting", name);
