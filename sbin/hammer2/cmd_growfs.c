@@ -53,10 +53,15 @@ cmd_growfs(const char *sel_path, int ac, const char **av)
 			continue;
 
 		fd = hammer2_ioctl_handle(sel_path);
+		if (fd < 0) {
+			ecode = 1;
+			continue;
+		}
 		bzero(&growfs, sizeof(growfs));
 		if (ioctl(fd, HAMMER2IOC_GROWFS, &growfs) < 0) {
-			printf("grow %s failed: %s\n",
+			fprintf(stderr, "grow %s failed: %s\n",
 			       sel_path, strerror(errno));
+			ecode = 1;
 		} else if (growfs.modified) {
 			printf("%s grown to %ld\n",
 			       sel_path, (intmax_t)growfs.size);
