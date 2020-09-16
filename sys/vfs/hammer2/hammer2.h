@@ -1294,47 +1294,6 @@ MALLOC_DECLARE(M_HAMMER2);
 
 #define ITOV(ip)	((ip)->vp)
 
-/*
- * Currently locked chains retain the locked buffer cache buffer for
- * indirect blocks, and indirect blocks can be one of two sizes.  The
- * device buffer has to match the case to avoid deadlocking recursive
- * chains that might otherwise try to access different offsets within
- * the same device buffer.
- */
-static __inline
-int
-hammer2_devblkradix(int radix)
-{
-#if 0
-	if (radix <= HAMMER2_LBUFRADIX) {
-		return (HAMMER2_LBUFRADIX);
-	} else {
-		return (HAMMER2_PBUFRADIX);
-	}
-#endif
-	return (HAMMER2_PBUFRADIX);
-}
-
-/*
- * XXX almost time to remove this.  DIO uses PBUFSIZE exclusively now.
- */
-static __inline
-size_t
-hammer2_devblksize(size_t bytes)
-{
-#if 0
-	if (bytes <= HAMMER2_LBUFSIZE) {
-		return(HAMMER2_LBUFSIZE);
-	} else {
-		KKASSERT(bytes <= HAMMER2_PBUFSIZE &&
-			 (bytes ^ (bytes - 1)) == ((bytes << 1) - 1));
-		return (HAMMER2_PBUFSIZE);
-	}
-#endif
-	return (HAMMER2_PBUFSIZE);
-}
-
-
 static __inline
 hammer2_pfs_t *
 MPTOPMP(struct mount *mp)

@@ -259,7 +259,7 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 	 * for each type.  At a minimum we have to break-up our heuristic
 	 * by device block sizes.
 	 */
-	hindex = hammer2_devblkradix(radix) - HAMMER2_LBUFRADIX;
+	hindex = HAMMER2_PBUFRADIX - HAMMER2_LBUFRADIX;
 	KKASSERT(hindex < HAMMER2_FREEMAP_HEUR_NRADIX);
 	hindex += bref->type * HAMMER2_FREEMAP_HEUR_NRADIX;
 	hindex &= HAMMER2_FREEMAP_HEUR_TYPES * HAMMER2_FREEMAP_HEUR_NRADIX - 1;
@@ -322,7 +322,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 	 *	    mask calculation.
 	 */
 	bytes = (size_t)1 << radix;
-	class = (bref->type << 8) | hammer2_devblkradix(radix);
+	class = (bref->type << 8) | HAMMER2_PBUFRADIX;
 
 	/*
 	 * Lookup the level1 freemap chain, creating and initializing one
@@ -729,11 +729,11 @@ success:
 	 * to use a compatible buffer size for this operation.
 	 */
 	if ((bmap->bitmapq[i] & bmmask) == 0 &&
-	    hammer2_devblksize(size) != size) {
-		size_t psize = hammer2_devblksize(size);
+	    HAMMER2_PBUFSIZE != size) {
+		size_t psize = HAMMER2_PBUFSIZE;
 		hammer2_off_t pmask = (hammer2_off_t)psize - 1;
 		int pbmradix = (hammer2_bitmap_t)2 <<
-					(hammer2_devblkradix(radix) -
+					(HAMMER2_PBUFRADIX -
 			       HAMMER2_FREEMAP_BLOCK_RADIX);
 		hammer2_bitmap_t pbmmask;
 		int pradix = hammer2_getradix(psize);
@@ -994,7 +994,7 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 		bytes = (size_t)1 << radix;
 	else
 		bytes = 0;
-	class = (bref->type << 8) | hammer2_devblkradix(radix);
+	class = (bref->type << 8) | HAMMER2_PBUFRADIX;
 
 	/*
 	 * We can't adjust the freemap for data allocations made by
