@@ -62,7 +62,9 @@ static void	register_named_csid(char *, uint32_t);
 static void	set_prop_string(const char *, char **, char **);
 static void	set_invalid(uint32_t);
 
+#if YYPATCH < 20180510
 int yylex (void);
+#endif
 %}
 %union {
 	uint32_t	i_value;

@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * @(#)grammar.y	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/atc/grammar.y,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -60,7 +59,9 @@
 %{
 #include "include.h"
 
+#if YYPATCH < 20180510
 extern int	yylex(void);
+#endif
 
 static void	check_edge(int, int);
 static void	check_point(int, int);

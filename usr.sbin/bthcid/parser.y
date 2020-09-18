@@ -43,7 +43,9 @@
 #include <unistd.h>
 #include "bthcid.h"
 
+#if YYPATCH < 20180510
 	int	yylex    (void);
+#endif
 
 static	void	free_key (link_key_p key);
 static	int	hexa2int4(char *a);

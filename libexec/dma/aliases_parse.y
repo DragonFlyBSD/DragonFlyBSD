@@ -8,7 +8,9 @@
 extern int yylineno;
 static void yyerror(const char *);
 int yywrap(void);
+#if YYPATCH < 20180510
 int yylex(void);
+#endif
 
 static void
 yyerror(const char *msg)

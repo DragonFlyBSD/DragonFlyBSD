@@ -39,7 +39,9 @@
 
 #include "inf.h"
 
+#if YYPATCH < 20180510
 extern int yylex (void);
+#endif
 extern void yyerror(const char *);
 %}
 

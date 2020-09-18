@@ -98,7 +98,9 @@ static void	put32(void *, size_t, u_int32_t);
 static void	set_range(u_int32_t, u_int32_t);
 static void	set_src(linear_zone_t *, u_int32_t, u_int32_t);
 
+#if YYPATCH < 20180510
 int		yylex(void);
+#endif
 %}
 
 %union {

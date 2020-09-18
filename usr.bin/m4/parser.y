@@ -29,7 +29,9 @@
 
 #define	YYSTYPE	int32_t
 
+#if YYPATCH < 20180510
 extern int yylex(void);
+#endif
 extern int yyerror(const char *);
 %}
 %token NUMBER

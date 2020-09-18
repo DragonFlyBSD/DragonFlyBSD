@@ -77,7 +77,6 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.15 2008/05/01 09:24:42 swildner Exp $
  */
 
 #include <ctype.h>
@@ -100,7 +99,9 @@ int	maxusers;
 static int connect(char *, int);
 static void yyerror(const char *s);
 
+#if YYPATCH < 20180510
 int yylex(void);
+#endif
 
 %}
 %%
