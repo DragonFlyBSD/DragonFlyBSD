@@ -596,6 +596,8 @@ addrloop:
 
 			if (regen)
 				goto addrloop; /* XXX: see below */
+			/* ia6 is no longer good, continue on to next */
+			continue;
 		}
 		if (IFA6_IS_DEPRECATED(ia6)) {
 			int oldflags = ia6->ia6_flags;
