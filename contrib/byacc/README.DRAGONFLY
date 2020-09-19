@@ -1,5 +1,19 @@
-This is Berkeley yacc available from:
-http://invisible-island.net/byacc/
+BYACC 20200910
+==============
 
-Instead of using a config.h, just add the appropriate defines to
-usr.bin/yacc/Makefile.
+Original source can be downloaded from:
+ftp://ftp.invisible-island.net/byacc
+
+file = byacc-20200910.tgz
+date = September 10, 2020
+size = 871242
+sha1 = ebdf2d1a8d1a558f8c2fb7cc372435ca0f5c21df
+
+A list of deleted files is in README.DELETED.
+
+Use "git diff vendor/BYACC contrib/byacc" to see local modifications.
+
+When upgrading, remember to update usr.bin/byacc/config.h
+
+This source is used in:
+	usr.bin/yacc
