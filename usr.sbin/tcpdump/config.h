@@ -112,7 +112,7 @@
 #define HAVE_PCAP_DATALINK_VAL_TO_DESCRIPTION 1
 
 /* define if libpcap has pcap_debug */
-#define HAVE_PCAP_DEBUG 1
+/* #undef HAVE_PCAP_DEBUG */
 
 /* Define to 1 if you have the `pcap_dump_flush' function. */
 #define HAVE_PCAP_DUMP_FLUSH 1

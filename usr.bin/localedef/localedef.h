@@ -38,6 +38,8 @@
 #include <stdarg.h>
 #include <sys/types.h>
 
+#define	yylex	localedef_yylex
+
 extern int com_char;
 extern int esc_char;
 extern int mb_cur_max;

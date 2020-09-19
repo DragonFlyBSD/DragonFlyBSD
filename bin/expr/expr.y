@@ -18,6 +18,8 @@
 #include <regex.h>
 #include <limits.h>
   
+#define	yylex	expr_yylex
+
 enum valtype {
 	integer, numeric_string, string
 } ;
@@ -59,7 +61,7 @@ struct val	*op_times (struct val *, struct val *);
 quad_t		to_integer (struct val *);
 void		to_string (struct val *);
 int		yyerror (const char *) __dead2;
-int		yylex (void);
+static int	yylex (void);
 
 char **av;
 %}
@@ -206,7 +208,7 @@ isstring(struct val *vp)
 }
 
 
-int
+static int
 yylex(void)
 {
 	char *p;

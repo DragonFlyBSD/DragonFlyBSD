@@ -63,6 +63,8 @@
 #include "extern.h"
 #include "pathnames.h"
 
+#define	yylex	ftpcmd_yylex
+
 extern	union sockunion data_dest, his_addr;
 extern	int hostinfo;
 extern	int logged_in;
