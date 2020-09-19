@@ -1,4 +1,4 @@
-/* $Id: warshall.c,v 1.7 2010/06/06 22:48:51 tom Exp $ */
+/* $Id: warshall.c,v 1.8 2020/09/10 17:31:42 tom Exp $ */
 
 #include "defs.h"
 
@@ -10,7 +10,6 @@ transitive_closure(unsigned *R, int n)
     unsigned *rowj;
     unsigned *rp;
     unsigned *rend;
-    unsigned *ccol;
     unsigned *relend;
     unsigned *cword;
     unsigned *rowi;
@@ -23,7 +22,8 @@ transitive_closure(unsigned *R, int n)
     rowi = R;
     while (rowi < relend)
     {
-	ccol = cword;
+	unsigned *ccol = cword;
+
 	rowj = R;
 
 	while (rowj < relend)

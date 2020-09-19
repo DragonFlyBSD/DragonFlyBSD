@@ -1,4 +1,4 @@
-/* $Id: closure.c,v 1.11 2014/09/18 00:40:07 tom Exp $ */
+/* $Id: closure.c,v 1.12 2020/09/10 17:22:08 tom Exp $ */
 
 #include "defs.h"
 
@@ -21,7 +21,6 @@ set_EFF(void)
 {
     unsigned *row;
     int symbol;
-    Value_t *sp;
     int rowsize;
     int i;
     int rule;
@@ -32,7 +31,7 @@ set_EFF(void)
     row = EFF;
     for (i = start_symbol; i < nsyms; i++)
     {
-	sp = derives[i];
+	Value_t *sp = derives[i];
 	for (rule = *sp; rule > 0; rule = *++sp)
 	{
 	    symbol = ritem[rrhs[rule]];
@@ -56,9 +55,7 @@ void
 set_first_derives(void)
 {
     unsigned *rrow;
-    unsigned *vrow;
     int j;
-    unsigned k;
     unsigned cword = 0;
     Value_t *rp;
 
@@ -77,8 +74,9 @@ set_first_derives(void)
     rrow = first_derives + ntokens * rulesetsize;
     for (i = start_symbol; i < nsyms; i++)
     {
-	vrow = EFF + ((i - ntokens) * varsetsize);
-	k = BITS_PER_WORD;
+	unsigned *vrow = EFF + ((i - ntokens) * varsetsize);
+	unsigned k = BITS_PER_WORD;
+
 	for (j = start_symbol; j < nsyms; k++, j++)
 	{
 	    if (k >= BITS_PER_WORD)
@@ -111,7 +109,6 @@ void
 closure(Value_t *nucleus, int n)
 {
     unsigned ruleno;
-    unsigned word;
     unsigned i;
     Value_t *csp;
     unsigned *dsp;
@@ -120,7 +117,6 @@ closure(Value_t *nucleus, int n)
 
     Value_t *csend;
     unsigned *rsend;
-    int symbol;
     Value_t itemno;
 
     rulesetsize = WORDSIZE(nrules);
@@ -131,7 +127,8 @@ closure(Value_t *nucleus, int n)
     csend = nucleus + n;
     for (csp = nucleus; csp < csend; ++csp)
     {
-	symbol = ritem[*csp];
+	int symbol = ritem[*csp];
+
 	if (ISVAR(symbol))
 	{
 	    dsp = first_derives + symbol * rulesetsize;
@@ -146,7 +143,8 @@ closure(Value_t *nucleus, int n)
     csp = nucleus;
     for (rsp = ruleset; rsp < rsend; ++rsp)
     {
-	word = *rsp;
+	unsigned word = *rsp;
+
 	if (word)
 	{
 	    for (i = 0; i < BITS_PER_WORD; ++i)
