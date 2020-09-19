@@ -65,8 +65,6 @@ hammer2_dev_unlock(hammer2_dev_t *hmp)
 
 /*
  * Return the directory entry type for an inode.
- *
- * ip must be locked sh/ex.
  */
 int
 hammer2_get_dtype(uint8_t type)
@@ -80,9 +78,9 @@ hammer2_get_dtype(uint8_t type)
 		return (DT_REG);
 	case HAMMER2_OBJTYPE_FIFO:
 		return (DT_FIFO);
-	case HAMMER2_OBJTYPE_CDEV:	/* not supported */
+	case HAMMER2_OBJTYPE_CDEV:
 		return (DT_CHR);
-	case HAMMER2_OBJTYPE_BDEV:	/* not supported */
+	case HAMMER2_OBJTYPE_BDEV:
 		return (DT_BLK);
 	case HAMMER2_OBJTYPE_SOFTLINK:
 		return (DT_LNK);
@@ -111,18 +109,18 @@ hammer2_get_vtype(uint8_t type)
 		return (VREG);
 	case HAMMER2_OBJTYPE_FIFO:
 		return (VFIFO);
-	case HAMMER2_OBJTYPE_CDEV:	/* not supported */
+	case HAMMER2_OBJTYPE_CDEV:
 		return (VCHR);
-	case HAMMER2_OBJTYPE_BDEV:	/* not supported */
+	case HAMMER2_OBJTYPE_BDEV:
 		return (VBLK);
 	case HAMMER2_OBJTYPE_SOFTLINK:
 		return (VLNK);
 	case HAMMER2_OBJTYPE_SOCKET:
 		return (VSOCK);
 	case HAMMER2_OBJTYPE_WHITEOUT:	/* not supported */
-		return (DT_UNKNOWN);
+		return (VBAD);
 	default:
-		return (DT_UNKNOWN);
+		return (VBAD);
 	}
 	/* not reached */
 }
