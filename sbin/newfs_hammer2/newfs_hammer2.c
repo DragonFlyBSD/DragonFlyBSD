@@ -487,7 +487,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	int i;
 
 	/*
-	 * Clear the entire reserve for the first 2G segment and
+	 * Clear the entire 4MB reserve for the first 2G zone and
 	 * make sure we can write to the last block.
 	 */
 	bzero(buf, HAMMER2_PBUFSIZE);
@@ -598,10 +598,10 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 
 		/*
 		 * The root blockref will be stored in the super-root inode as
-		 * the only directory entry.  The copyid here is the actual
-		 * copyid of the storage ref.
+		 * one of the ~4 PFS root directories.  The copyid here is the
+		 * actual copyid of the storage ref.
 		 *
-		 * The key field for a directory entry's blockref is
+		 * The key field for a PFS root directory's blockref is
 		 * essentially the name key for the entry.
 		 */
 		root_blockref[i].key = rawip->meta.name_key;
@@ -618,11 +618,11 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	}
 
 	/*
-	 * Format the super-root directory inode, giving it one directory
-	 * entry (root_blockref) and fixup the icrc method.
+	 * Format the super-root directory inode, giving it ~4 PFS root
+	 * directories (root_blockref).
 	 *
-	 * The superroot contains one directory entry pointing at the root
-	 * inode (named via the label).  Inodes contain one blockset which
+	 * The superroot contains ~4 directories pointing at the PFS root
+	 * inodes (named via the label).  Inodes contain one blockset which
 	 * is fully associative so we can put the entry anywhere without
 	 * having to worry about the hash.  Use index 0.
 	 */
