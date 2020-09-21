@@ -48,6 +48,7 @@
 #include <machine/stdarg.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
+#include <machine/int_limits.h>
 
 extern int securelevel;		/* system security level (see init(8)) */
 extern int kernel_mem_readonly;	/* disable writes to kernel memory */
@@ -505,11 +506,11 @@ bitcount64(uint64_t x)
 static __inline uint64_t
 muldivu64(uint64_t a, uint64_t b, uint64_t d)
 {
-	unsigned __int128 t;
+	_uint128_t t;
 
-	t = (unsigned __int128)a * b;
-	if (t / d > 0xFFFFFFFFFFFFFFFFLU) {
-		kprintf("muldivu64: overflow %ld,%ld,%ld\n", a, b, d);
+	t = (_uint128_t)a * b;
+	if (t / d > UINT64_MAX) {
+		kprintf("muldivu64: overflow %lu,%lu,%lu\n", a, b, d);
 		print_backtrace(-1);
 	}
 	return (t / d);

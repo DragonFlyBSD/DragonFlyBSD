@@ -136,4 +136,10 @@ typedef __uint32_t	__socklen_t;
 typedef volatile int	__atomic_intr_t;
 typedef __int64_t	__rlim_t;
 
+/* kernel only for now, for __udivti3() */
+#if defined(_KERNEL)
+typedef	int		_int128_t __attribute__((__mode__(TI)));
+typedef	unsigned	_uint128_t __attribute__((__mode__(TI)));
+#endif
+
 #endif /* _CPU_STDINT_H_ */
