@@ -474,7 +474,6 @@ send_host_information(void)
 	for (we = mywd.wd_we; we < wend; we++) {
 		if (stat(we->we_utmp.out_line, &stb) >= 0)
 			we->we_idle = htonl(now - stb.st_atime);
-		we++;
 	}
 	getloadavg(avenrun, NELEM(avenrun));
 	for (i = 0; i < 3; i++)
