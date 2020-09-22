@@ -63,13 +63,13 @@ getgrpath(const char * file)
 }
 
 int
-grdb(char *arg,...)
+grdb(char *arg __unused, ...)
 {
 	/*
 	 * This is a stub for now, but maybe eventually be functional
 	 * if ever an indexed version of /etc/groups is implemented.
 	 */
-	arg=arg;
+
 	return 0;
 }
 

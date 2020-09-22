@@ -167,9 +167,8 @@ vgetpwnam(const char * nam)
 }
 
 int
-vpwdb(char *arg, ...)
+vpwdb(char *arg __unused, ...)
 {
-  arg=arg;
   return 0;
 }
 
@@ -302,9 +301,8 @@ vgetgrnam(const char * nam)
 }
 
 int
-vgrdb(char *arg, ...)
+vgrdb(char *arg __unused, ...)
 {
-  arg=arg;
   return 0;
 }
 
