@@ -46,7 +46,6 @@
 #include "map.h"
 #include "gpt.h"
 
-char	device_path[MAXPATHLEN];
 char	*device_name;
 
 off_t	mediasz;
@@ -555,6 +554,7 @@ int
 gpt_open(const char *dev)
 {
 	struct stat sb;
+	char device_path[MAXPATHLEN];
 	int fd, mode;
 
 	mode = readonly ? O_RDONLY : O_RDWR|O_EXCL;
