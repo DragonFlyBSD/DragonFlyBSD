@@ -1483,6 +1483,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * Connect up mount pointers.
 	 */
 	hammer2_mount_helper(mp, pmp);
+	hmp->devvp->v_rdev->si_mountpoint = mp;
 
         lockmgr(&hammer2_mntlk, LK_RELEASE);
 
@@ -1827,6 +1828,7 @@ again:
 		vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
 		kprintf("hammer2_unmount(B): devvp %s rbdirty %p\n",
 			hmp->devrepname, RB_ROOT(&devvp->v_rbdirty_tree));
+		devvp->v_rdev->si_mountpoint = NULL;
 		hmp->devvp = NULL;
 		VOP_CLOSE(devvp, (ronly ? FREAD : FREAD|FWRITE), NULL);
 		vn_unlock(devvp);
