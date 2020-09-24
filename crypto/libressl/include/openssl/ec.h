@@ -1,4 +1,4 @@
-/* $OpenBSD: ec.h,v 1.16 2019/01/19 01:17:41 tb Exp $ */
+/* $OpenBSD: ec.h,v 1.18 2019/09/29 10:09:09 tb Exp $ */
 /*
  * Originally written by Bodo Moeller for the OpenSSL project.
  */
@@ -1196,6 +1196,7 @@ void ERR_load_EC_strings(void);
 #define EC_R_SLOT_FULL					 108
 #define EC_R_UNDEFINED_GENERATOR			 113
 #define EC_R_UNDEFINED_ORDER				 128
+#define EC_R_UNKNOWN_COFACTOR				 164
 #define EC_R_UNKNOWN_GROUP				 129
 #define EC_R_UNKNOWN_ORDER				 114
 #define EC_R_UNSUPPORTED_FIELD				 131
