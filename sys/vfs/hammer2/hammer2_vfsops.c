@@ -1555,14 +1555,14 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 					 HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
 					 &error, 0);
 	while (chain) {
-		if (chain->bref.type != HAMMER2_BREF_TYPE_INODE)
-			continue;
 		if (chain->error) {
 			kprintf("I/O error scanning PFS labels\n");
+		} else if (chain->bref.type != HAMMER2_BREF_TYPE_INODE) {
+			kprintf("Non inode chain type %d under super-root\n",
+				chain->bref.type);
 		} else {
 			ripdata = &chain->data->ipdata;
 			bref = chain->bref;
-
 			pmp = hammer2_pfsalloc(chain, ripdata,
 					       bref.modify_tid, force_local);
 		}
