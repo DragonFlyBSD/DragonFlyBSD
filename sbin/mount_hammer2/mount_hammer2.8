@@ -27,7 +27,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd October 7, 2017
+.Dd September 25, 2020
 .Dt MOUNT_HAMMER2 8
 .Os
 .Sh NAME
@@ -58,6 +58,7 @@ file at mount point
 PFS
 .Ar label
 is mounted.
+.Pp
 .Cm @ Ns Ar label
 (no
 .Ar special )
@@ -66,6 +67,9 @@ is a short form, which mounts
 from an already mounted
 .Nm HAMMER2
 filesystem.
+If there are multiple mounts with the same
+.Ar label ,
+the first one mounted takes precedence over others.
 .Pp
 Default value for
 .Ar label
