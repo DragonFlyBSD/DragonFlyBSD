@@ -323,7 +323,7 @@ get_hammer2_mounts(int *acp)
 again:
 	n = getfsstat(NULL, 0, MNT_NOWAIT);
 	av = calloc(n, sizeof(char *));
-	fs = calloc(n, sizeof(struct statfs *));
+	fs = calloc(n, sizeof(struct statfs));
 	if (getfsstat(fs, sizeof(*fs) * n, MNT_NOWAIT) != n) {
 		free(av);
 		free(fs);
