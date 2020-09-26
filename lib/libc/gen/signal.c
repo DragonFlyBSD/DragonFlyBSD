@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/signal.c,v 1.1.1.1.14.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/signal.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)signal.c	8.1 (Berkeley) 6/4/93
  */
@@ -40,7 +39,7 @@
 #include "un-namespace.h"
 #include "libc_private.h"
 
-sigset_t _sigintr;		/* shared with siginterrupt */
+sigset_t _sigintr __dso_hidden;	/* shared with siginterrupt */
 
 sig_t
 signal(int s, sig_t a)
