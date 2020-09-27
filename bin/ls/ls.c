@@ -113,8 +113,8 @@ static int f_reversesort;	/* reverse whatever sort is used */
        int f_sectime;		/* print the real time for all files */
 static int f_singlecol;		/* use single column output */
        int f_size;		/* list size in short listing */
+static int f_sizesort;		/* Sort by size */
        int f_slash;		/* similar to f_type, but only for dirs */
-       int f_sizesort;		/* Sort by size */
        int f_sortacross;	/* sort across rows, not down columns */
        int f_statustime;	/* use time of last mode change */
 static int f_stream;		/* stream the output, separate with commas */

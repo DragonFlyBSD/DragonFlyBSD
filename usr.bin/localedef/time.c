@@ -42,7 +42,7 @@
 #include "parser.h"
 #include "timelocal.h"
 
-struct lc_time_T tm;
+static struct lc_time_T tm;
 
 void
 init_time(void)

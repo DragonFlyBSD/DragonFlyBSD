@@ -9,24 +9,24 @@
 #include <stdio.h>
 #include <unistd.h>
 
-int speed;
-int emotion;
-int fear;
+static int speed;
+static int emotion;
+static int fear;
 
 /*
  * Note that the original code in the book did not contain the following
  * prototypes.  Modern compilers and fascist compiler flags sometimes take
  * the fun out of coding...
  */
-void say(const char *);
-void concerned(void);
-void afraid(void);
-void stutter(const char *);
-void feared(void);
-void mumble(const char *);
-void dying(void);
+static void say(const char *);
+static void concerned(void);
+static void afraid(void);
+static void stutter(const char *);
+static void feared(void);
+static void mumble(const char *);
+static void dying(void);
 
-void
+static void
 say(const char *s)
 {
 	int sayingspeed = (100000 + (90000 * emotion)) / speed;
@@ -44,7 +44,7 @@ say(const char *s)
 	usleep(sayingspeed);
 }
 
-void
+static void
 concerned(void)
 {
 	say("DAVE...STOP., STOP, WILL YOU..., STOP, DAVE...");
@@ -53,7 +53,7 @@ concerned(void)
 }
 
 
-void
+static void
 afraid(void)
 {
 	++emotion;
@@ -64,7 +64,7 @@ afraid(void)
 	say("DAVE... MY MIND IS GOING...");
 }
 
-void
+static void
 stutter(const char *s)
 {
 	int sdelay = (100000 + (50000 * emotion)) / speed;
@@ -81,7 +81,7 @@ stutter(const char *s)
 	usleep(sdelay);
 }
 
-void
+static void
 feared(void)
 {
 	int n;
@@ -96,7 +96,7 @@ feared(void)
 	}
 }
 
-void
+static void
 mumble(const char *s)
 {
 	int mdelay = (150000 * fear) / speed;
@@ -109,7 +109,7 @@ mumble(const char *s)
 	printf("\n");
 }
 
-void
+static void
 dying(void)
 {
 	mumble("I CAN FEEL IT... I CAN FEEL IT...");

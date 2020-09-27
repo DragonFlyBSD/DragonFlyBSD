@@ -59,7 +59,8 @@ collect_compare(struct collect *c1, struct collect *c2)
 	return(0);
 }
 
-RB_HEAD(collect_rb_tree, collect) CollectTree = RB_INITIALIZER(&CollectTree);
+static RB_HEAD(collect_rb_tree, collect) CollectTree =
+					RB_INITIALIZER(&CollectTree);
 RB_PROTOTYPE2(collect_rb_tree, collect, entry, collect_compare, hammer_off_t);
 RB_GENERATE2(collect_rb_tree, collect, entry, collect_compare, hammer_off_t,
 	phys_offset);

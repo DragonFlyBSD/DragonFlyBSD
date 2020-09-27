@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)whois.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/whois/whois.c,v 1.15.2.11 2003/02/25 20:59:41 roberto Exp $
- * $DragonFly: src/usr.bin/whois/whois.c,v 1.7 2005/02/17 11:53:33 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -74,8 +73,8 @@
 
 #define ishost(h) (isalnum(h) || h == '.' || h == '-')
 
-const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
-const char *port = DEFAULT_PORT;
+static const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
+static const char *port = DEFAULT_PORT;
 
 static char	*choose_server(const char *);
 static struct addrinfo *gethostinfo(const char *, int);

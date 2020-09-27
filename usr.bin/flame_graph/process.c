@@ -49,7 +49,7 @@ typedef struct elm {
 static elm_t *elm_lookup(const char *s);
 static void flame_process_dump(void);
 
-long total_ticks;
+static long total_ticks;
 
 void
 flame_process_loop(void)

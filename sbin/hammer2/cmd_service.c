@@ -83,7 +83,7 @@ struct autoconn {
 
 #define WS " \r\n"
 
-TAILQ_HEAD(, diskcon) diskconq = TAILQ_HEAD_INITIALIZER(diskconq);
+static TAILQ_HEAD(, diskcon) diskconq = TAILQ_HEAD_INITIALIZER(diskconq);
 static pthread_mutex_t diskmtx;
 static pthread_mutex_t confmtx;
 

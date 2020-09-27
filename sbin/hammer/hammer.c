@@ -46,7 +46,6 @@ static void usage(int exit_code) __dead2;
 int RecurseOpt;
 int VerboseOpt;
 int QuietOpt;
-int NoSyncOpt;
 int TwoWayPipeOpt;
 int TimeoutOpt;
 int DelayOpt = 5;

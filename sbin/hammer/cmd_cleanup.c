@@ -101,7 +101,7 @@ static void runcmd(int *resp, const char *ctl, ...) __printflike(2, 3);
 
 #define WS	" \t\r\n"
 
-struct didpfs *FirstPFS;
+static struct didpfs *FirstPFS;
 
 void
 hammer_cmd_cleanup(char **av, int ac)

@@ -62,7 +62,7 @@ static	const char *ccdconf = _PATH_CCDCONF;
 static	char *core = NULL;
 static	char *kernel = NULL;
 
-struct	flagval {
+static struct flagval {
 	const char	*fv_flag;
 	int	fv_val;
 } flagvaltab[] = {

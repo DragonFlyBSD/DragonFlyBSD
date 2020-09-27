@@ -50,7 +50,7 @@ static void	user(struct passwd *);
 static struct passwd *
 		who(char *);
 
-int isgroups, iswhoami;
+static int isgroups, iswhoami;
 
 int
 main(int argc, char **argv)

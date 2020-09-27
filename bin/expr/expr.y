@@ -32,7 +32,7 @@ struct val {
 	} u;
 } ;
 
-struct val *result;
+static struct val *result;
 
 int		chk_div (quad_t, quad_t);
 int		chk_minus (quad_t, quad_t, quad_t);
@@ -63,7 +63,7 @@ void		to_string (struct val *);
 int		yyerror (const char *) __dead2;
 static int	yylex (void);
 
-char **av;
+static char **av;
 %}
 
 %union

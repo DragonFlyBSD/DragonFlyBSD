@@ -92,7 +92,7 @@ static void usage(void);
 
 static int dev_fd;
 
-const char *config_name = NULL, *mountp = NULL;
+static const char *config_name = NULL, *mountp = NULL;
 static int dflag = 0;
 static int aflag = 0, cflag = 0, rflag = 0, tflag = 0;
 static int line_stack[RULE_MAX_STACK];

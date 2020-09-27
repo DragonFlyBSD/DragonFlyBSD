@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkdir.c	8.2 (Berkeley) 1/25/94
  * $FreeBSD: src/bin/mkdir/mkdir.c,v 1.19.2.2 2001/08/01 04:42:37 obrien Exp $
- * $DragonFly: src/bin/mkdir/mkdir.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -48,7 +47,7 @@ static int	build(char *, mode_t);
 static int	mkdir_race(const char *path, int nmode);
 static void	usage(void);
 
-int vflag;
+static int	vflag;
 
 int
 main(int argc, char **argv)

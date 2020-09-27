@@ -43,7 +43,7 @@
 #define FLAG_BADCHILDPARENT	0x0008
 #define FLAG_BADMIRRORTID	0x0010
 
-struct {
+static struct {
 	struct hammer_base_elm base;
 	int limit;	/* # of fields to test */
 	int filter;	/* filter type (default -1) */

@@ -57,8 +57,8 @@ static void pkgfree(pkg_t *pkg);
 
 static int PrepareSystemFlag;
 
-pkg_t *PkgHash1[PKG_HSIZE];	/* by portdir */
-pkg_t *PkgHash2[PKG_HSIZE];	/* by pkgfile */
+static pkg_t *PkgHash1[PKG_HSIZE];	/* by portdir */
+static pkg_t *PkgHash2[PKG_HSIZE];	/* by pkgfile */
 
 /*
  * Allocate a new pkg structure plus basic initialization.

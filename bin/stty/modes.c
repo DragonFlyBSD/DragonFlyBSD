@@ -47,7 +47,7 @@ struct modes {
  * The code in optlist() depends on minus options following regular
  * options, i.e. "foo" must immediately precede "-foo".
  */
-struct modes cmodes[] = {
+static struct modes cmodes[] = {
 	{ "cs5",	CS5, CSIZE },
 	{ "cs6",	CS6, CSIZE },
 	{ "cs7",	CS7, CSIZE },
@@ -89,7 +89,7 @@ struct modes cmodes[] = {
 	{ NULL,		0, 0 },
 };
 
-struct modes imodes[] = {
+static struct modes imodes[] = {
 	{ "ignbrk",	IGNBRK, 0 },
 	{ "-ignbrk",	0, IGNBRK },
 	{ "brkint",	BRKINT, 0 },
@@ -125,7 +125,7 @@ struct modes imodes[] = {
 	{ NULL,		0, 0 },
 };
 
-struct modes lmodes[] = {
+static struct modes lmodes[] = {
 	{ "echo",	ECHO, 0 },
 	{ "-echo",	0, ECHO },
 	{ "echoe",	ECHOE, 0 },
@@ -177,7 +177,7 @@ struct modes lmodes[] = {
 	{ NULL,		0, 0 },
 };
 
-struct modes omodes[] = {
+static struct modes omodes[] = {
 	{ "opost",	OPOST, 0 },
 	{ "-opost",	0, OPOST },
 	{ "litout",	0, OPOST },

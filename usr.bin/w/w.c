@@ -73,33 +73,32 @@
 
 #include "extern.h"
 
-struct timeval	boottime;
-struct winsize	ws;
-kvm_t	       *kd;
-time_t		now;		/* the current time of day */
-time_t		then;
-time_t		uptime;		/* time of last reboot & elapsed time since */
-int		ttywidth;	/* width of tty */
-int		argwidth;	/* width of tty */
-int		header = 1;	/* true if -h flag: don't print heading */
-int		nflag;		/* true if -n flag: don't convert addrs */
-int		dflag;		/* true if -d flag: output debug info */
-int		sortidle;	/* sort by idle time */
+static struct timeval	boottime;
+static struct winsize	ws;
+static kvm_t	*kd;
+static time_t	now;		/* the current time of day */
+static time_t	then;
+static int	ttywidth;	/* width of tty */
+static int	argwidth;	/* width of tty */
+static int	header = 1;	/* true if -h flag: don't print heading */
+static int	nflag;		/* true if -n flag: don't convert addrs */
+static int	dflag;		/* true if -d flag: output debug info */
+static int	sortidle;	/* sort by idle time */
 int		use_ampm;	/* use AM/PM time */
-int             use_comma;      /* use comma as floats separator */
-char	      **sel_users;	/* login array of particular users selected */
-char		domain[MAXHOSTNAMELEN];
-int maxname = 8, maxline = 3, maxhost = 16;
+static int	use_comma;      /* use comma as floats separator */
+static char	**sel_users;	/* login array of particular users selected */
+static char	domain[MAXHOSTNAMELEN];
+static int	maxname = 8, maxline = 3, maxhost = 16;
 
 /*
  * One of these per active utmpx entry.
  */
-struct	entry {
+static struct entry {
 	struct	entry *next;
-	char name[UTX_USERSIZE + 1];
-	char line[UTX_LINESIZE + 1];
-	char host[UTX_HOSTSIZE + 1];
-	char type[2];
+	char	name[UTX_USERSIZE + 1];
+	char	line[UTX_LINESIZE + 1];
+	char	host[UTX_HOSTSIZE + 1];
+	char	type[2];
 	struct timeval tv;
 	dev_t	tdev;			/* dev_t of terminal */
 	time_t	idle;			/* idle time of terminal in seconds */
@@ -113,7 +112,7 @@ struct	entry {
 
 static void		 pr_header(time_t *, int);
 static struct stat	*ttystat(char *, int);
-static void	process(struct entry *);
+static void		 process(struct entry *);
 static void		 usage(int);
 static int		 this_is_uptime(const char *s);
 

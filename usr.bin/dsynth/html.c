@@ -44,7 +44,7 @@ static int HistNum;
 static int EntryNum;
 static char KickOff_Buf[64];
 
-const char *CopyFilesAry[] = {
+static const char *CopyFilesAry[] = {
 	"favicon.png",
 	"progress.html",
 	"progress.css",
@@ -53,9 +53,9 @@ const char *CopyFilesAry[] = {
 	NULL
 };
 
-char **HtmlSlots;
-time_t HtmlStart;
-time_t HtmlLast;
+static char **HtmlSlots;
+static time_t HtmlStart;
+static time_t HtmlLast;
 
 /*
  * Get rid of stuff that might blow up the json output.

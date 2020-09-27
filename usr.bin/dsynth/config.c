@@ -71,7 +71,7 @@ const char *UsePkgSufx = USE_PKG_SUFX;
 char *StatsBase;
 char *StatsFilePath;
 char *StatsLockPath;
-const char *ProfileLabel = "[LiveSystem]";	/* with the brackets */
+static const char *ProfileLabel = "[LiveSystem]"; /* with the brackets */
 const char *Profile = "LiveSystem";		/* without the brackets */
 
 /*

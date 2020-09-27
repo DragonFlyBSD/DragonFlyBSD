@@ -64,23 +64,23 @@ static int show_idle;			/* show idle time */
 static int show_details;		/* show exit status etc. */
 static int bflag;			/* Show date and time of last reboot */
 
-struct ut_type_names {
-  int type;
-  const char *name;
+static struct ut_type_names {
+	int type;
+	const char *name;
 } ut_type_names[] = {
-  { EMPTY, "empty" },
-  { RUN_LVL, "run level" },
-  { BOOT_TIME, "boot time" },
-  { OLD_TIME, "old time" },
-  { NEW_TIME, "new time" },
-  { INIT_PROCESS, "init process" },
-  { LOGIN_PROCESS, "login process" },
-  { USER_PROCESS, "user process" },
-  { DEAD_PROCESS, "dead process" },
-  { ACCOUNTING, "accounting" },
-  { SIGNATURE, "signature" },
-  { DOWN_TIME, "down time" },
-  { -1, "unknown" }
+	{ EMPTY, "empty" },
+	{ RUN_LVL, "run level" },
+	{ BOOT_TIME, "boot time" },
+	{ OLD_TIME, "old time" },
+	{ NEW_TIME, "new time" },
+	{ INIT_PROCESS, "init process" },
+	{ LOGIN_PROCESS, "login process" },
+	{ USER_PROCESS, "user process" },
+	{ DEAD_PROCESS, "dead process" },
+	{ ACCOUNTING, "accounting" },
+	{ SIGNATURE, "signature" },
+	{ DOWN_TIME, "down time" },
+	{ -1, "unknown" }
 };
 
 int

@@ -42,7 +42,7 @@
 
 /* Sorted list of block CRCs - light version for dedup-simulate */
 struct sim_dedup_entry_rb_tree;
-RB_HEAD(sim_dedup_entry_rb_tree, sim_dedup_entry) sim_dedup_tree =
+static RB_HEAD(sim_dedup_entry_rb_tree, sim_dedup_entry) sim_dedup_tree =
 					RB_INITIALIZER(&sim_dedup_tree);
 RB_PROTOTYPE2(sim_dedup_entry_rb_tree, sim_dedup_entry, rb_entry,
 		rb_sim_dedup_entry_compare, hammer_crc_t);
@@ -81,7 +81,7 @@ struct sha_dedup_entry {
 struct dedup_entry_rb_tree;
 struct sha_dedup_entry_rb_tree;
 
-RB_HEAD(dedup_entry_rb_tree, dedup_entry) dedup_tree =
+static RB_HEAD(dedup_entry_rb_tree, dedup_entry) dedup_tree =
 					RB_INITIALIZER(&dedup_tree);
 RB_PROTOTYPE2(dedup_entry_rb_tree, dedup_entry, rb_entry,
 		rb_dedup_entry_compare, hammer_crc_t);
@@ -92,7 +92,7 @@ RB_PROTOTYPE(sha_dedup_entry_rb_tree, sha_dedup_entry, fict_entry,
 /*
  * Pass2 list - contains entries that were not dedup'ed because ioctl failed
  */
-STAILQ_HEAD(, pass2_dedup_entry) pass2_dedup_queue =
+static STAILQ_HEAD(, pass2_dedup_entry) pass2_dedup_queue =
 				STAILQ_HEAD_INITIALIZER(pass2_dedup_queue);
 
 struct pass2_dedup_entry {

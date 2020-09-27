@@ -70,9 +70,9 @@ int UseGMT;
 int OutputWidth = 1024;
 int OutputHeight = 1024;
 int SmoothOpt;
-int LoadedFromDB;
-int HostnameMismatch;
-int Fflag;
+static int LoadedFromDB;
+static int HostnameMismatch;
+static int Fflag;
 
 int
 main(int ac, char **av)

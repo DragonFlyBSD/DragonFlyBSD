@@ -44,7 +44,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-volatile sig_atomic_t sig_caught = 0;
+static volatile sig_atomic_t sig_caught = 0;
 
 static void onsig (int sig);
 

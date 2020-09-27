@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/usr.bin/vknet/vknet.c,v 1.1 2008/05/27 23:26:38 dillon Exp $
  */
 /*
  * vknet [-C] [-b local-bridge] [-B remote-bridge] [-r delay[:retries]]
@@ -56,7 +54,7 @@ static pid_t vknet_execssh(int fdin, int fdout, int compressOpt,
 			   const char *remoteSide, const char *remoteBridge);
 static void usage(void);
 
-pthread_mutex_t MasterLock;
+static pthread_mutex_t MasterLock;
 
 int
 main(int ac, char **av)

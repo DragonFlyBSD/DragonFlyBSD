@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.12 2008/08/12 03:35:35 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +54,7 @@
 
 #define STBLOCKS(statp)	_stblocks(tflag, statp)
 
-SLIST_HEAD(ignhead, ignentry) ignores;
+static SLIST_HEAD(ignhead, ignentry) ignores;
 struct ignentry {
 	char			*mask;
 	SLIST_ENTRY(ignentry)	next;

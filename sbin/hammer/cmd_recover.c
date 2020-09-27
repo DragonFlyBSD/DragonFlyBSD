@@ -85,7 +85,8 @@ bigblock_cmp(bigblock_t b1, bigblock_t b2)
 	return(0);
 }
 
-RB_HEAD(bigblock_rb_tree, bigblock) ZoneTree = RB_INITIALIZER(&ZoneTree);
+static RB_HEAD(bigblock_rb_tree, bigblock) ZoneTree =
+					RB_INITIALIZER(&ZoneTree);
 RB_PROTOTYPE2(bigblock_rb_tree, bigblock, entry, bigblock_cmp, hammer_off_t);
 RB_GENERATE2(bigblock_rb_tree, bigblock, entry, bigblock_cmp, hammer_off_t,
 	phys_offset);
@@ -613,7 +614,7 @@ done:
 #define RD_HSIZE	32768
 #define RD_HMASK	(RD_HSIZE - 1)
 
-struct recover_dict *RDHash[RD_HSIZE];
+static struct recover_dict *RDHash[RD_HSIZE];
 
 static
 struct recover_dict *

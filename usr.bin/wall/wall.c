@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1988, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wall.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/usr.bin/wall/wall.c,v 1.13.2.6 2001/10/18 08:08:17 des Exp $
- * $DragonFly: src/usr.bin/wall/wall.c,v 1.4 2005/08/31 16:27:53 liamfoy Exp $
  */
 
 /*
@@ -59,14 +58,14 @@
 static void makemsg(char *);
 static void usage(void);
 
-struct wallgroup {
+static struct wallgroup {
 	struct wallgroup *next;
 	char		*name;
 	gid_t		gid;
 } *grouplist;
-int nobanner;
-int mbufsize;
-char *mbuf;
+static int nobanner;
+static int mbufsize;
+static char *mbuf;
 
 int
 main(int argc, char *argv[])

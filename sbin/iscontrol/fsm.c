@@ -320,7 +320,7 @@ startSession(isess_t *sess)
      return T4;
 }
 
-isess_t *currsess;
+static isess_t *currsess;
 
 static void
 trap(int sig)

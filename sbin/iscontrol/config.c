@@ -94,7 +94,7 @@
 #define _OFF(v)	(offsetof(isc_opt_t *), (v))
 #define _E(u, s, v) {.usage=u, .scope=s, .name=#v, .tokenID=OPT_##v}
 
-textkey_t keyMap[] = {
+static textkey_t keyMap[] = {
      _E(U_PR, S_PR, port),
      _E(U_PR, S_PR, tags),
      _E(U_PR, S_PR, maxluns),

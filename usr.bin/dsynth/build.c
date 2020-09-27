@@ -36,14 +36,14 @@
  */
 #include "dsynth.h"
 
-worker_t WorkerAry[MAXWORKERS];
-int BuildInitialized;
-int RunningWorkers;
+static worker_t WorkerAry[MAXWORKERS];
+static int BuildInitialized;
+static int RunningWorkers;
 int DynamicMaxWorkers;
-int FailedWorkers;
-long RunningPkgDepSize;
-pthread_mutex_t WorkerMutex;
-pthread_cond_t WorkerCond;
+static int FailedWorkers;
+static long RunningPkgDepSize;
+static pthread_mutex_t WorkerMutex;
+static pthread_cond_t WorkerCond;
 
 static int build_find_leaves(pkg_t *parent, pkg_t *pkg,
 			pkg_t ***build_tailp, int *app, int *hasworkp,

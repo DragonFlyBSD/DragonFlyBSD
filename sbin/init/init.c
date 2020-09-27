@@ -112,7 +112,7 @@ static state_t f_clean_ttys(void);
 static state_t f_catatonia(void);
 static state_t f_death(void);
 
-state_func_t state_funcs[] = {
+static state_func_t state_funcs[] = {
 	NULL,
 	f_single_user,
 	f_runcom,
@@ -123,7 +123,7 @@ state_func_t state_funcs[] = {
 	f_death
 };
 
-enum { AUTOBOOT, FASTBOOT } runcom_mode = AUTOBOOT;
+static enum { AUTOBOOT, FASTBOOT } runcom_mode = AUTOBOOT;
 #define FALSE	0
 #define TRUE	1
 
@@ -197,7 +197,7 @@ static void	del_session(session_t *);
 static session_t *find_session(pid_t);
 
 static struct timeval boot_time;
-state_t current_state = death;
+static state_t current_state = death;
 static void session_utmpx(const session_t *, int);
 static void make_utmpx(const char *, const char *, int, pid_t,
     const struct timeval *, int);

@@ -88,8 +88,8 @@ static long	 regetmntinfo(struct statfs **, struct statvfs **, long, char **);
 static void	 update_maxwidths(struct maxwidths *, struct statfs *, struct statvfs *);
 static void	 usage(void);
 
-int	aflag = 0, hflag, iflag, nflag, Tflag;
-struct	ufs_args mdev;
+static int	aflag = 0, hflag, iflag, nflag, Tflag;
+static struct	ufs_args mdev;
 
 static __inline int
 imax(int a, int b)

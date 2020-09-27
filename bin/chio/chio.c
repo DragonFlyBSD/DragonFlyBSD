@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1996 Jason R. Thorpe.  All rights reserved.
  * $NetBSD: chio.c,v 1.6 1998/01/04 23:53:58 thorpej Exp $
  * $FreeBSD: src/bin/chio/chio.c,v 1.15.2.3 2001/07/28 19:22:01 mikeh Exp $
- * $DragonFly: src/bin/chio/chio.c,v 1.5 2004/08/25 01:13:05 dillon Exp $
  */
 /*
  * Additional Copyright (c) 1997, by Matthew Jacob, for NASA/Ames Research Ctr.
@@ -83,7 +82,7 @@ static	int do_voltag (const char *, int, char **);
 #endif
 
 /* Valid changer element types. */
-const struct element_type elements[] = {
+static const struct element_type elements[] = {
 	{ "drive",		CHET_DT },
 	{ "picker",		CHET_MT },
 	{ "portal",		CHET_IE },
@@ -93,7 +92,7 @@ const struct element_type elements[] = {
 };
 
 /* Valid commands. */
-const struct changer_command commands[] = {
+static const struct changer_command commands[] = {
 	{ "exchange",		do_exchange },
 	{ "getpicker",		do_getpicker },
 	{ "ielem", 		do_ielem },
@@ -108,7 +107,7 @@ const struct changer_command commands[] = {
 };
 
 /* Valid special words. */
-const struct special_word specials[] = {
+static const struct special_word specials[] = {
 	{ "inv",		SW_INVERT },
 	{ "inv1",		SW_INVERT1 },
 	{ "inv2",		SW_INVERT2 },

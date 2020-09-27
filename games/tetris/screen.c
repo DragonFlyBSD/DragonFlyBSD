@@ -88,7 +88,7 @@ static int LInum;		/* li# value */
 static int MSflag;		/* can move in standout mode */
 
 
-struct tcsinfo {		/* termcap string info; some abbrevs above */
+static struct tcsinfo {		/* termcap string info; some abbrevs above */
 	char tcname[3];
 	char **tcaddr;
 } tcstrings[] = {

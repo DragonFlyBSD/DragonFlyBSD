@@ -7,7 +7,6 @@
  * v2.0 featuring strict ANSI/POSIX conformance, November 1993.
  *
  * $FreeBSD: src/games/bs/bs.c,v 1.9 2000/02/21 03:07:31 billf Exp $
- * $DragonFly: src/games/bs/bs.c,v 1.7 2007/04/18 18:32:12 swildner Exp $
  */
 
 #include <assert.h>
@@ -103,21 +102,21 @@ typedef struct {
 }
 ship_t;
 
-ship_t plyship[SHIPTYPES] =
+static ship_t plyship[SHIPTYPES] =
 {
     { carrier,	0, 'A', 5, 0, 0, E, FALSE},
     { battle,	0, 'B', 4, 0, 0, E, FALSE},
     { destroy,	0, 'D', 3, 0, 0, E, FALSE},
-    { sub,		0, 'S', 3, 0, 0, E, FALSE},
+    { sub,	0, 'S', 3, 0, 0, E, FALSE},
     { ptboat,	0, 'P', 2, 0, 0, E, FALSE},
 };
 
-ship_t cpuship[SHIPTYPES] =
+static ship_t cpuship[SHIPTYPES] =
 {
     { carrier,	0, 'A', 5, 0, 0, E, FALSE},
     { battle,	0, 'B', 4, 0, 0, E, FALSE},
     { destroy,	0, 'D', 3, 0, 0, E, FALSE},
-    { sub,		0, 'S', 3, 0, 0, E, FALSE},
+    { sub,	0, 'S', 3, 0, 0, E, FALSE},
     { ptboat,	0, 'P', 2, 0, 0, E, FALSE},
 };
 

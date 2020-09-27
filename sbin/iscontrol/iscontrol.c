@@ -78,11 +78,10 @@ token_t	DigestMethods[] = {
 int	vflag;
 char	*iscsidev;
 
-u_char	isid[6 + 6];
 /*
  | Default values
  */
-isc_opt_t opvals = {
+static isc_opt_t opvals = {
      .port			= 3260,
      .sockbufsize		= 128,
      .iqn			= "iqn.2005-01.il.ac.huji.cs:",
