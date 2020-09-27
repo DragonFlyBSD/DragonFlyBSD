@@ -53,7 +53,7 @@ static void usage(const char *ctl, ...);
 
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,
-	{ "update", 0, MNT_UPDATE, 0 },
+	MOPT_UPDATE,
 	{ "local", 0, HMNT2_LOCAL, 1 },
 	MOPT_NULL
 };
