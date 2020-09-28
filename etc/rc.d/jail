@@ -244,6 +244,8 @@ jail_start()
 	    chflags_allow
 	set_sysctl jail_default_raw_sockets_allow \
 	    jail.defaults.allow_raw_sockets  raw_sockets_allow
+	set_sysctl jail_default_allow_listen_override  \
+	    jail.defaults.allow_listen_override  allow_listen_override
 	echo '.'
 
 	echo -n 'Starting jails:'

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd June 4, 2020
+.Dd September 29, 2020
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -2486,6 +2486,12 @@ allow applications within a jail to alter system file flags.
 If set to
 .Dq Li YES ,
 allow applications within a jail to user raw sockets.
+.It Va jail_default_allow_listen_override
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+ allows both wildcard and non-wildcard listen sockets in the jail to
+override wildcard listen sockets on the host.
 .It Va lvm_enable
 .Pq Vt bool
 If set to
