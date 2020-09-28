@@ -1147,8 +1147,12 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			if (hmp)
 				break;
 		}
-		if (hmp == NULL)
-			error = ENOENT;
+		if (hmp == NULL) {
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
+			kprintf("hammer2_mount: PFS label \"%s\" not found\n",
+				label);
+			return ENOENT;
+		}
 	}
 
 	/*
@@ -1416,15 +1420,18 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * PFS could not be found?
 	 */
 	if (chain == NULL) {
-		if (error)
-			kprintf("hammer2_mount: PFS label I/O error\n");
-		else
-			kprintf("hammer2_mount: PFS label not found\n");
 		hammer2_unmount_helper(mp, NULL, hmp);
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 
-		return EINVAL;
+		if (error) {
+			kprintf("hammer2_mount: PFS label I/O error\n");
+			return EINVAL;
+		} else {
+			kprintf("hammer2_mount: PFS label \"%s\" not found\n",
+				label);
+			return ENOENT;
+		}
 	}
 
 	/*

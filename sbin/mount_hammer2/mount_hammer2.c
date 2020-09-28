@@ -185,12 +185,15 @@ main(int ac, char *av[])
 	if (error < 0) {
 		if (errno == ERANGE) {
 			fprintf(stderr,
-				"%s integrated with %s\n",
+				"mount_hammer2: %s integrated with %s\n",
 				info.volume, mountpt);
+		} else if (errno == ENOENT) {
+			fprintf(stderr, "mount_hammer2: %s not found\n",
+				info.volume);
 		} else {
 			perror("mount");
-			exit(1);
 		}
+		exit(1);
 	}
 	free(devpath);
 
