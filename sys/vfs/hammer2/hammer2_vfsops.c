@@ -2963,6 +2963,7 @@ hammer2_install_volume_header(hammer2_dev_t *hmp)
 		vd = (struct hammer2_volume_data *) bp->b_data;
 		if ((vd->magic != HAMMER2_VOLUME_ID_HBO) &&
 		    (vd->magic != HAMMER2_VOLUME_ID_ABO)) {
+			kprintf("hammer2: volume header #%d: bad magic\n", i);
 			brelse(bp);
 			bp = NULL;
 			continue;
@@ -2970,7 +2971,8 @@ hammer2_install_volume_header(hammer2_dev_t *hmp)
 
 		if (vd->magic == HAMMER2_VOLUME_ID_ABO) {
 			/* XXX: Reversed-endianness filesystem */
-			kprintf("hammer2: reverse-endian filesystem detected");
+			kprintf("hammer2: volume header #%d: reverse-endian "
+				"filesystem detected\n", i);
 			brelse(bp);
 			bp = NULL;
 			continue;
@@ -2983,8 +2985,8 @@ hammer2_install_volume_header(hammer2_dev_t *hmp)
 		bcrc0 = hammer2_icrc32(bp->b_data + HAMMER2_VOLUME_ICRC1_OFF,
 				       HAMMER2_VOLUME_ICRC1_SIZE);
 		if ((crc0 != crc) || (bcrc0 != bcrc)) {
-			kprintf("hammer2 volume header crc "
-				"mismatch copy #%d %08x/%08x\n",
+			kprintf("hammer2: volume header #%d: volume header crc "
+				"mismatch %08x/%08x\n",
 				i, crc0, crc);
 			error_reported = 1;
 			brelse(bp);
