@@ -102,6 +102,12 @@ cmd_pfs_list(int ac, char **av)
 					break;
 				}
 				break;
+			case HAMMER2_PFSTYPE_SUPROOT:
+				printf("SUPROOT     ");
+				break;
+			case HAMMER2_PFSTYPE_DUMMY:
+				printf("DUMMY       ");
+				break;
 			default:
 				printf("%02x          ", pfs.pfs_type);
 				break;
