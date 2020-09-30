@@ -100,7 +100,7 @@ cleanup_pfs_names(void)
 static void
 usage(void)
 {
-	fprintf(stderr, "fsck_hammer2 [-f] [-v] [-q] [-e] [-b] [-p] [-P]"
+	fprintf(stderr, "fsck_hammer2 [-f] [-v] [-q] [-e] [-b] [-p] [-P] "
 	    "[-l pfs_names] [-c cache_count] special\n");
 	exit(1);
 }
