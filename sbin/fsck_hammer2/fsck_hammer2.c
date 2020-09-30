@@ -50,6 +50,7 @@ int QuietOpt;
 int CountEmpty;
 int ScanBest;
 int ScanPFS;
+int PrintPFS;
 int NumPFSNames;
 char **PFSNames;
 long BlockrefCacheCount = -1;
@@ -99,7 +100,7 @@ cleanup_pfs_names(void)
 static void
 usage(void)
 {
-	fprintf(stderr, "fsck_hammer2 [-f] [-v] [-q] [-e] [-b] [-p] "
+	fprintf(stderr, "fsck_hammer2 [-f] [-v] [-q] [-e] [-b] [-p] [-P]"
 	    "[-l pfs_names] [-c cache_count] special\n");
 	exit(1);
 }
@@ -109,7 +110,7 @@ main(int ac, char **av)
 {
 	int ch;
 
-	while ((ch = getopt(ac, av, "dfvqebpl:c:")) != -1) {
+	while ((ch = getopt(ac, av, "dfvqebpPl:c:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt++;
@@ -137,6 +138,9 @@ main(int ac, char **av)
 			break;
 		case 'p':
 			ScanPFS = 1;
+			break;
+		case 'P':
+			PrintPFS = 1;
 			break;
 		case 'l':
 			init_pfs_names(optarg);

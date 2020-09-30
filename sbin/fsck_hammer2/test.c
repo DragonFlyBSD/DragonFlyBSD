@@ -137,6 +137,8 @@ static int read_media(int, const hammer2_blockref_t *, hammer2_media_data_t *,
 static int verify_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, bool, blockref_stats_t *,
     struct blockref_tree *, delta_stats_t *, int, int);
+static void print_pfs(hammer2_inode_data_t *);
+static char *get_inode_filename(const hammer2_inode_data_t *);
 static int init_pfs_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, struct blockref_list *);
 static void cleanup_pfs_blockref(struct blockref_list *);
@@ -367,18 +369,26 @@ test_pfs_blockref(int fd)
 			TAILQ_FOREACH(p, &blist, entry) {
 				blockref_stats_t bstats;
 				bool found = false;
+				char *f = get_inode_filename(p->msg);
 				if (NumPFSNames) {
 					int j;
 					for (j = 0; j < NumPFSNames; j++)
-						if (!strcmp(PFSNames[j],
-						    p->msg))
+						if (!strcmp(PFSNames[j], f))
 							found = true;
 				} else
 					found = true;
-				if (!found)
+				if (!found) {
+					free(f);
 					continue;
+				}
 				count++;
-				tfprintf(stdout, 1, "%s\n", p->msg);
+				if (PrintPFS) {
+					print_pfs(p->msg);
+					free(f);
+					continue;
+				}
+				tfprintf(stdout, 1, "%s\n", f);
+				free(f);
 				init_blockref_stats(&bstats, type);
 				delta_stats_t ds;
 				memset(&ds, 0, sizeof(ds));
@@ -998,6 +1008,103 @@ end:
 	return 0;
 }
 
+static void
+print_pfs(hammer2_inode_data_t *ipdata)
+{
+	char *f, *pfs_id_str = NULL;
+	const char *type;
+
+	switch (ipdata->meta.pfs_type) {
+	case HAMMER2_PFSTYPE_NONE:
+		type = "NONE       ";
+		break;
+	case HAMMER2_PFSTYPE_CACHE:
+		type = "CACHE      ";
+		break;
+	case HAMMER2_PFSTYPE_SLAVE:
+		type = "SLAVE      ";
+		break;
+	case HAMMER2_PFSTYPE_SOFT_SLAVE:
+		type = "SOFT_SLAVE ";
+		break;
+	case HAMMER2_PFSTYPE_SOFT_MASTER:
+		type = "SOFT_MASTER";
+		break;
+	case HAMMER2_PFSTYPE_MASTER:
+		switch (ipdata->meta.pfs_subtype) {
+		case HAMMER2_PFSSUBTYPE_NONE:
+			type = "MASTER     ";
+			break;
+		case HAMMER2_PFSSUBTYPE_SNAPSHOT:
+			type = "SNAPSHOT   ";
+			break;
+		case HAMMER2_PFSSUBTYPE_AUTOSNAP:
+			type = "AUTOSNAP   ";
+			break;
+		default:
+			type = "???        ";
+			break;
+		}
+		break;
+	case HAMMER2_PFSTYPE_SUPROOT:
+		type = "SUPROOT    ";
+		break;
+	case HAMMER2_PFSTYPE_DUMMY:
+		type = "DUMMY      ";
+		break;
+	default:
+		type = "???        ";
+		break;
+	}
+	f = get_inode_filename(ipdata);
+	hammer2_uuid_to_str(&ipdata->meta.pfs_clid, &pfs_id_str);
+
+	tfprintf(stdout, 1, "%s %s %s\n", type, pfs_id_str, f);
+
+	free(f);
+	free(pfs_id_str);
+}
+
+static char*
+get_inode_filename(const hammer2_inode_data_t *ipdata)
+{
+	char *p = malloc(HAMMER2_INODE_MAXNAME + 1);
+
+	memcpy(p, ipdata->filename, sizeof(ipdata->filename));
+	p[HAMMER2_INODE_MAXNAME] = '\0';
+
+	return p;
+}
+
+static void
+__add_pfs_blockref(const hammer2_blockref_t *bref, struct blockref_list *blist,
+    const hammer2_inode_data_t *ipdata)
+{
+	struct blockref_msg *newp, *p;
+
+	newp = calloc(1, sizeof(*newp));
+	newp->bref = *bref;
+	newp->msg = calloc(1, sizeof(*ipdata));
+	memcpy(newp->msg, ipdata, sizeof(*ipdata));
+
+	p = TAILQ_FIRST(blist);
+	while (p) {
+		char *f1 = get_inode_filename(newp->msg);
+		char *f2 = get_inode_filename(p->msg);
+		if (strcmp(f1, f2) <= 0) {
+			TAILQ_INSERT_BEFORE(p, newp, entry);
+			free(f1);
+			free(f2);
+			break;
+		}
+		p = TAILQ_NEXT(p, entry);
+		free(f1);
+		free(f2);
+	}
+	if (!p)
+		TAILQ_INSERT_TAIL(blist, newp, entry);
+}
+
 static int
 init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
     const hammer2_blockref_t *bref, struct blockref_list *blist)
@@ -1022,27 +1129,9 @@ init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
 		} else {
 			bscan = NULL;
 			bcount = 0;
-			if (ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) {
-				struct blockref_msg *newp, *p;
-				newp = calloc(1, sizeof(*newp));
-				assert(newp);
-				newp->bref = *bref;
-				newp->msg = calloc(1,
-				    sizeof(ipdata.filename) + 1);
-				memcpy(newp->msg, ipdata.filename,
-				    sizeof(ipdata.filename));
-				p = TAILQ_FIRST(blist);
-				while (p) {
-					if (strcmp(newp->msg, p->msg) <= 0) {
-						TAILQ_INSERT_BEFORE(p, newp,
-						    entry);
-						break;
-					}
-					p = TAILQ_NEXT(p, entry);
-				}
-				if (!p)
-					TAILQ_INSERT_TAIL(blist, newp, entry);
-			} else
+			if (ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT)
+				__add_pfs_blockref(bref, blist, &ipdata);
+			else
 				assert(0); /* should only see SUPROOT or PFS */
 		}
 		break;
@@ -1295,6 +1384,12 @@ test_hammer2(const char *devpath)
 	best_zone = find_best_zone(fd);
 	if (best_zone == -1)
 		fprintf(stderr, "Failed to find best zone\n");
+
+	if (PrintPFS) {
+		if (test_pfs_blockref(fd) == -1)
+			failed = true;
+		goto end; /* print PFS info and exit */
+	}
 
 	printf("volume header\n");
 	if (test_volume_header(fd) == -1) {

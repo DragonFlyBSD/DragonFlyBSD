@@ -44,6 +44,7 @@ extern int QuietOpt;
 extern int CountEmpty;
 extern int ScanBest;
 extern int ScanPFS;
+extern int PrintPFS;
 extern int NumPFSNames;
 extern char **PFSNames;
 extern long BlockrefCacheCount;
