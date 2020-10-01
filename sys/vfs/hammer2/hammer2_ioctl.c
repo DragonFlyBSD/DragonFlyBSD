@@ -734,6 +734,10 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
 		return ENOENT;
 	}
+	if (pmp->mp) {
+		lockmgr(&hammer2_mntlk, LK_RELEASE);
+		return EBUSY;
+	}
 
 	/*
 	 * Ok, we found the pmp and we have the index.  Permanently remove
