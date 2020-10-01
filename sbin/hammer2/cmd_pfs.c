@@ -233,6 +233,7 @@ cmd_pfs_delete(const char *sel_path, char **av, int ac)
 		mnts = get_hammer2_mounts(&nmnts);
 
 	for (i = 1; i < ac; ++i) {
+		int enoents = 0;
 		bzero(&pfs, sizeof(pfs));
 		snprintf(pfs.name, sizeof(pfs.name), "%s", av[i]);
 
@@ -241,10 +242,14 @@ cmd_pfs_delete(const char *sel_path, char **av, int ac)
 		} else {
 			use_fd = -1;
 			for (n = 0; n < nmnts; ++n) {
-				if ((fd = hammer2_ioctl_handle(mnts[n])) < 0)
+				if ((fd = hammer2_ioctl_handle(mnts[n])) < 0) {
+					enoents++;
 					continue;
-				if (ioctl(fd, HAMMER2IOC_PFS_LOOKUP, &pfs) < 0)
+				}
+				if (ioctl(fd, HAMMER2IOC_PFS_LOOKUP, &pfs) < 0) {
+					enoents++;
 					continue;
+				}
 				if (use_fd >= 0) {
 					fprintf(stderr,
 						"hammer2: pfs_delete(%s): "
@@ -269,8 +274,12 @@ cmd_pfs_delete(const char *sel_path, char **av, int ac)
 			}
 			close(use_fd);
 		} else {
-			printf("hammer2: pfs_delete(%s): FAILED\n",
-			       av[i]);
+			if (enoents == nmnts)
+				printf("hammer2: pfs_delete(%s): %s not found\n",
+				       av[i], av[i]);
+			else
+				printf("hammer2: pfs_delete(%s): FAILED\n",
+				       av[i]);
 			ecode = 1;
 		}
 	}
