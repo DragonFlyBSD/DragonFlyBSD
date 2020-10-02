@@ -202,15 +202,19 @@ cmd_pfs_create(const char *sel_path, const char *name,
 					"different mounts,\n"
 					"      but cluster elements on the "
 					"same mount require unique names.\n"
-					"pfs-create %s: already present\n",
+					"hammer2: pfs_create(%s): already present\n",
 					name);
 			} else {
-				perror("ioctl");
+				fprintf(stderr, "hammer2: pfs_create(%s): %s\n",
+				       name, strerror(errno));
 			}
 			ecode = 1;
+		} else {
+			printf("hammer2: pfs_create(%s): SUCCESS\n", name);
 		}
 	} else {
-		fprintf(stderr, "hammer2: pfs_create: badly formed uuid\n");
+		fprintf(stderr, "hammer2: pfs_create(%s): badly formed uuid\n",
+			name);
 		ecode = 1;
 	}
 	close(fd);
