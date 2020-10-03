@@ -61,7 +61,8 @@ cmd_stat(int ac, const char **av)
 	}
 	if (w < 16)
 		w = 16;
-	printf("%-*.*s ncp  data-use inode-use comp/check\n", w, w, "PATH");
+	printf("%-*.*s ncp  data-use inode-use comp               check        quota\n",
+		w, w, "PATH");
 	for (i = 0; i < ac; ++i) {
 		if ((fd = open(av[i], O_RDONLY)) < 0) {
 			fprintf(stderr, "%s: %s\n", av[i], strerror(errno));
@@ -77,12 +78,11 @@ cmd_stat(int ac, const char **av)
 		printf("%3d ", ino.ip_data.meta.ncopies);
 		printf("%9s ", sizetostr(ino.data_count));
 		printf("%9s ", counttostr(ino.inode_count));
-		printf("comp=%s ", compmodestr(ino.ip_data.meta.comp_algo));
-		printf("check=%s ", checkmodestr(ino.ip_data.meta.check_algo));
+		printf("%-18s ", compmodestr(ino.ip_data.meta.comp_algo));
+		printf("%-12s ", checkmodestr(ino.ip_data.meta.check_algo));
 		if (ino.ip_data.meta.data_quota ||
 		    ino.ip_data.meta.inode_quota) {
-			printf(" quota ");
-			printf("%12s",
+			printf("%s",
 				sizetostr(ino.ip_data.meta.data_quota));
 			printf("/%-12s",
 				counttostr(ino.ip_data.meta.inode_quota));
