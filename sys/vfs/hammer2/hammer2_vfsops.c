@@ -2146,9 +2146,6 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
  * transaction.  In case of a crash, then on a fresh mount we must do an
  * incremental scan of the last committed transaction id and make sure that
  * all related blocks have been marked allocated.
- *
- * The super-root topology and each PFS has its own transaction id domain,
- * so we must track PFS boundary transitions.
  */
 struct hammer2_recovery_elm {
 	TAILQ_ENTRY(hammer2_recovery_elm) entry;
@@ -2282,8 +2279,7 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * Defer operation if depth limit reached or if we are crossing a
-	 * PFS boundary.
+	 * Defer operation if depth limit reached.
 	 */
 	if (info->depth >= HAMMER2_RECOVERY_MAXDEPTH) {
 		struct hammer2_recovery_elm *elm;
