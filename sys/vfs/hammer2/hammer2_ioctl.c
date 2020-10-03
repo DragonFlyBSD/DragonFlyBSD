@@ -984,7 +984,6 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 	}
 	bzero(&ino->ip_data, sizeof(ino->ip_data));
 	ino->ip_data.meta = ip->meta;
-	ino->kdata = ip;
 	hammer2_inode_unlock(ip);
 
 	return hammer2_error_to_errno(error);
@@ -1013,8 +1012,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 		hammer2_inode_modify(ip);
 		ip->meta.comp_algo = ino->ip_data.meta.comp_algo;
 	}
-	ino->kdata = ip;
-	
+
 	/* Ignore these flags for now...*/
 	if ((ino->flags & HAMMER2IOC_INODE_FLAG_IQUOTA) &&
 	    ip->meta.inode_quota != ino->ip_data.meta.inode_quota) {
