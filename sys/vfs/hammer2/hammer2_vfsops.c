@@ -297,16 +297,16 @@ hammer2_vfs_init(struct vfsconf *conf)
 
 	if (error)
 		kprintf("HAMMER2 structure size mismatch; cannot continue.\n");
-	
+
 	margs_read.objsize = 65536;
 	margs_read.mtype = M_HAMMER2_DEBUFFER;
-	
+
 	margs_write.objsize = 32768;
 	margs_write.mtype = M_HAMMER2_CBUFFER;
 
 	margs_vop.objsize = sizeof(hammer2_xop_t);
 	margs_vop.mtype = M_HAMMER2;
-	
+
 	/*
 	 * Note thaht for the XOPS cache we want backing store allocations
 	 * to use M_ZERO.  This is not allowed in objcache_get() (to avoid
@@ -977,8 +977,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		info.cluster_fd = -1;
 		ksnprintf(devstr, sizeof(devstr), "%s",
 			  mp->mnt_stat.f_mntfromname);
-		kprintf("hammer2_mount: root '%s'\n", devstr);
 		done = strlen(devstr) + 1;
+		kprintf("hammer2_mount: root devstr=\"%s\"\n", devstr);
 	} else {
 		/*
 		 * Non-root mount or updating a mount
@@ -990,7 +990,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		error = copyinstr(info.volume, devstr, MNAMELEN - 1, &done);
 		if (error)
 			return (error);
-		kprintf("hammer2_mount: '%s'\n", devstr);
+		kprintf("hammer2_mount: devstr=\"%s\"\n", devstr);
 	}
 
 	/*
@@ -1008,8 +1008,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	dev = devstr;
 	label = strchr(devstr, '@');
 	if (label && ((label + 1) - dev) > done) {
-		kprintf("hammer2: mount: bad label %s/%zd\n",
-			devstr, done);
+		kprintf("hammer2: mount: bad label %s/%zd\n", devstr, done);
 		return (EINVAL);
 	}
 	if (label == NULL || label[1] == 0) {
@@ -1471,16 +1470,16 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
         mp->mnt_flag |= MNT_LOCAL;
         mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;   /* all entry pts are SMP */
         mp->mnt_kern_flag |= MNTK_THR_SYNC;     /* new vsyncscan semantics */
- 
+
         /*
          * required mount structure initializations
          */
         mp->mnt_stat.f_iosize = HAMMER2_PBUFSIZE;
         mp->mnt_stat.f_bsize = HAMMER2_PBUFSIZE;
- 
+
         mp->mnt_vstat.f_frsize = HAMMER2_PBUFSIZE;
         mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
- 
+
         /*
          * Optional fields
          */
@@ -1522,7 +1521,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * Initial statfs to prime mnt_stat.
 	 */
 	hammer2_vfs_statfs(mp, &mp->mnt_stat, cred);
-	
+
 	return 0;
 }
 
@@ -1810,8 +1809,7 @@ again:
 
 	if ((hmp->vchain.flags | hmp->fchain.flags) &
 	    HAMMER2_CHAIN_FLUSH_MASK) {
-		kprintf("hammer2_unmount: chains left over "
-			"after final sync\n");
+		kprintf("hammer2_unmount: chains left over after final sync\n");
 		kprintf("    vchain %08x\n", hmp->vchain.flags);
 		kprintf("    fchain %08x\n", hmp->fchain.flags);
 
@@ -2189,11 +2187,11 @@ hammer2_recovery(hammer2_dev_t *hmp)
 	sync_tid = hmp->voldata.freemap_tid;
 	mirror_tid = hmp->voldata.mirror_tid;
 
-	kprintf("hammer2 mount \"%s\": ", hmp->devrepname);
+	kprintf("hammer2_mount \"%s\": ", hmp->devrepname);
 	if (sync_tid >= mirror_tid) {
-		kprintf(" no recovery needed\n");
+		kprintf("no recovery needed\n");
 	} else {
-		kprintf(" freemap recovery %016jx-%016jx\n",
+		kprintf("freemap recovery %016jx-%016jx\n",
 			sync_tid + 1, mirror_tid);
 	}
 
