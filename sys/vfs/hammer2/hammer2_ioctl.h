@@ -100,7 +100,7 @@ struct hammer2_ioc_pfs {
 	uint64_t		reserved0018;
 	uuid_t			pfs_fsid;	/* identifies PFS instance */
 	uuid_t			pfs_clid;	/* identifies PFS cluster */
-	char			name[NAME_MAX+1]; /* device@name mtpt */
+	char			name[NAME_MAX+1]; /* PFS label */
 };
 
 typedef struct hammer2_ioc_pfs hammer2_ioc_pfs_t;
