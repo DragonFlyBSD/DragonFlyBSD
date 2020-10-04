@@ -1011,55 +1011,18 @@ end:
 static void
 print_pfs(hammer2_inode_data_t *ipdata)
 {
+	hammer2_inode_meta_t *meta = &ipdata->meta;
 	char *f, *pfs_id_str = NULL;
-	const char *type;
+	const char *type_str;
 
-	switch (ipdata->meta.pfs_type) {
-	case HAMMER2_PFSTYPE_NONE:
-		type = "NONE       ";
-		break;
-	case HAMMER2_PFSTYPE_CACHE:
-		type = "CACHE      ";
-		break;
-	case HAMMER2_PFSTYPE_SLAVE:
-		type = "SLAVE      ";
-		break;
-	case HAMMER2_PFSTYPE_SOFT_SLAVE:
-		type = "SOFT_SLAVE ";
-		break;
-	case HAMMER2_PFSTYPE_SOFT_MASTER:
-		type = "SOFT_MASTER";
-		break;
-	case HAMMER2_PFSTYPE_MASTER:
-		switch (ipdata->meta.pfs_subtype) {
-		case HAMMER2_PFSSUBTYPE_NONE:
-			type = "MASTER     ";
-			break;
-		case HAMMER2_PFSSUBTYPE_SNAPSHOT:
-			type = "SNAPSHOT   ";
-			break;
-		case HAMMER2_PFSSUBTYPE_AUTOSNAP:
-			type = "AUTOSNAP   ";
-			break;
-		default:
-			type = "???        ";
-			break;
-		}
-		break;
-	case HAMMER2_PFSTYPE_SUPROOT:
-		type = "SUPROOT    ";
-		break;
-	case HAMMER2_PFSTYPE_DUMMY:
-		type = "DUMMY      ";
-		break;
-	default:
-		type = "???        ";
-		break;
-	}
 	f = get_inode_filename(ipdata);
-	hammer2_uuid_to_str(&ipdata->meta.pfs_clid, &pfs_id_str);
+	hammer2_uuid_to_str(&meta->pfs_clid, &pfs_id_str);
+	if (meta->pfs_type == HAMMER2_PFSTYPE_MASTER)
+		type_str = hammer2_pfssubtype_to_str(meta->pfs_subtype);
+	else
+		type_str = hammer2_pfstype_to_str(meta->pfs_type);
 
-	tfprintf(stdout, 1, "%s %s %s\n", type, pfs_id_str, f);
+	tfprintf(stdout, 1, "%-11s %s %s\n", type_str, pfs_id_str, f);
 
 	free(f);
 	free(pfs_id_str);
@@ -1179,7 +1142,11 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 		tfprintf(fp, tab, "filename \"%*.*s\"\n", namelen, namelen,
 		    ipdata->filename);
 		tfprintf(fp, tab, "version %d\n", ipdata->meta.version);
-		tfprintf(fp, tab, "pfs_subtype %d\n", ipdata->meta.pfs_subtype);
+		if ((ipdata->meta.op_flags & HAMMER2_OPFLAG_PFSROOT) ||
+		    ipdata->meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT)
+			tfprintf(fp, tab, "pfs_subtype %d (%s)\n",
+			    ipdata->meta.pfs_subtype,
+			    hammer2_pfssubtype_to_str(ipdata->meta.pfs_subtype));
 		tfprintf(fp, tab, "uflags 0x%08x\n", ipdata->meta.uflags);
 		if (ipdata->meta.rmajor || ipdata->meta.rminor) {
 			tfprintf(fp, tab, "rmajor %d\n", ipdata->meta.rmajor);

@@ -50,7 +50,7 @@ cmd_pfs_list(int ac, char **av)
 	int i;
 	int all = 0;
 	char *pfs_id_str = NULL;
-	const char *type;
+	const char *type_str;
 	TAILQ_HEAD(, pfs_entry) head;
 	struct pfs_entry *p, *e;
 
@@ -73,52 +73,15 @@ cmd_pfs_list(int ac, char **av)
 				ecode = 1;
 				break;
 			}
-			switch(pfs.pfs_type) {
-			case HAMMER2_PFSTYPE_NONE:
-				type = "NONE       ";
-				break;
-			case HAMMER2_PFSTYPE_CACHE:
-				type = "CACHE      ";
-				break;
-			case HAMMER2_PFSTYPE_SLAVE:
-				type = "SLAVE      ";
-				break;
-			case HAMMER2_PFSTYPE_SOFT_SLAVE:
-				type = "SOFT_SLAVE ";
-				break;
-			case HAMMER2_PFSTYPE_SOFT_MASTER:
-				type = "SOFT_MASTER";
-				break;
-			case HAMMER2_PFSTYPE_MASTER:
-				switch (pfs.pfs_subtype) {
-				case HAMMER2_PFSSUBTYPE_NONE:
-					type = "MASTER     ";
-					break;
-				case HAMMER2_PFSSUBTYPE_SNAPSHOT:
-					type = "SNAPSHOT   ";
-					break;
-				case HAMMER2_PFSSUBTYPE_AUTOSNAP:
-					type = "AUTOSNAP   ";
-					break;
-				default:
-					type = "unknown    ";
-					break;
-				}
-				break;
-			case HAMMER2_PFSTYPE_SUPROOT:
-				type = "SUPROOT    ";
-				break;
-			case HAMMER2_PFSTYPE_DUMMY:
-				type = "DUMMY      ";
-				break;
-			default:
-				type = "unknown    ";
-				break;
-			}
 			hammer2_uuid_to_str(&pfs.pfs_clid, &pfs_id_str);
+			if (pfs.pfs_type == HAMMER2_PFSTYPE_MASTER)
+				type_str = hammer2_pfssubtype_to_str(pfs.pfs_subtype);
+			else
+				type_str = hammer2_pfstype_to_str(pfs.pfs_type);
 			e = calloc(1, sizeof(*e));
 			snprintf(e->name, sizeof(e->name), "%s", pfs.name);
-			snprintf(e->s, sizeof(e->s), "%s %s", type, pfs_id_str);
+			snprintf(e->s, sizeof(e->s), "%-11s %s",
+				type_str, pfs_id_str);
 			free(pfs_id_str);
 			pfs_id_str = NULL;
 

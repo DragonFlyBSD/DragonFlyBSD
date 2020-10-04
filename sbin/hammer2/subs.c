@@ -160,6 +160,21 @@ hammer2_pfstype_to_str(uint8_t type)
 }
 
 const char *
+hammer2_pfssubtype_to_str(uint8_t subtype)
+{
+	switch(subtype) {
+	case HAMMER2_PFSSUBTYPE_NONE:
+		return("MASTER");
+	case HAMMER2_PFSSUBTYPE_SNAPSHOT:
+		return("SNAPSHOT");
+	case HAMMER2_PFSSUBTYPE_AUTOSNAP:
+		return("AUTOSNAP");
+	default:
+		return("ILLEGAL");
+	}
+}
+
+const char *
 hammer2_breftype_to_str(uint8_t type)
 {
 	switch (type) {

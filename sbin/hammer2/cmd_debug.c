@@ -911,7 +911,12 @@ show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
 		tabprintf(tab, "filename \"%*.*s\"\n",
 			  namelen, namelen, media.ipdata.filename);
 		tabprintf(tab, "version  %d\n", media.ipdata.meta.version);
-		tabprintf(tab, "pfs_st   %d\n", media.ipdata.meta.pfs_subtype);
+		if ((media.ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) ||
+		    media.ipdata.meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT) {
+			tabprintf(tab, "pfs_st   %d (%s)\n",
+				  media.ipdata.meta.pfs_subtype,
+				  hammer2_pfssubtype_to_str(media.ipdata.meta.pfs_subtype));
+		}
 		tabprintf(tab, "uflags   0x%08x\n",
 			  media.ipdata.meta.uflags);
 		if (media.ipdata.meta.rmajor || media.ipdata.meta.rminor) {
