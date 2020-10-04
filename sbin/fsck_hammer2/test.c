@@ -137,13 +137,13 @@ static int read_media(int, const hammer2_blockref_t *, hammer2_media_data_t *,
 static int verify_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, bool, blockref_stats_t *,
     struct blockref_tree *, delta_stats_t *, int, int);
-static void print_pfs(hammer2_inode_data_t *);
+static void print_pfs(const hammer2_inode_data_t *);
 static char *get_inode_filename(const hammer2_inode_data_t *);
 static int init_pfs_blockref(int, const hammer2_volume_data_t *,
     const hammer2_blockref_t *, struct blockref_list *);
 static void cleanup_pfs_blockref(struct blockref_list *);
 static void print_media(FILE *, int, const hammer2_blockref_t *,
-    hammer2_media_data_t *, size_t);
+    const hammer2_media_data_t *, size_t);
 
 static hammer2_off_t volume_size;
 static int best_zone = -1;
@@ -540,7 +540,7 @@ print_blockref_debug(FILE *fp, int depth, int index,
 }
 
 static void
-print_blockref_msg(int fd, struct blockref_list *head)
+print_blockref_msg(int fd, const struct blockref_list *head)
 {
 	struct blockref_msg *m;
 
@@ -1009,9 +1009,9 @@ end:
 }
 
 static void
-print_pfs(hammer2_inode_data_t *ipdata)
+print_pfs(const hammer2_inode_data_t *ipdata)
 {
-	hammer2_inode_meta_t *meta = &ipdata->meta;
+	const hammer2_inode_meta_t *meta = &ipdata->meta;
 	char *f, *pfs_id_str = NULL;
 	const char *type_str;
 
@@ -1126,10 +1126,10 @@ cleanup_pfs_blockref(struct blockref_list *blist)
 
 static void
 print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
-    hammer2_media_data_t *media, size_t media_bytes)
+    const hammer2_media_data_t *media, size_t media_bytes)
 {
-	hammer2_blockref_t *bscan;
-	hammer2_inode_data_t *ipdata;
+	const hammer2_blockref_t *bscan;
+	const hammer2_inode_data_t *ipdata;
 	int i, bcount, namelen;
 	char *str = NULL;
 

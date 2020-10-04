@@ -96,7 +96,7 @@ hammer2_time64_to_str(uint64_t htime64, char **strp)
 }
 
 const char *
-hammer2_uuid_to_str(uuid_t *uuid, char **strp)
+hammer2_uuid_to_str(const uuid_t *uuid, char **strp)
 {
 	uint32_t status;
 	if (*strp) {
