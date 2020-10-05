@@ -1502,8 +1502,7 @@ hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp,
 			hammer2_xop_head_t *xop, hammer2_tid_t inum, int idx);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
-void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
-			hammer2_cluster_t *cluster);
+void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_cluster_t *cluster);
 void hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 			int idx);
 void hammer2_inode_modify(hammer2_inode_t *ip);

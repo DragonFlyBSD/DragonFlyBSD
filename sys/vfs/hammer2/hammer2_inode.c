@@ -621,7 +621,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				 * Cleaning out ip->cluster isn't entirely
 				 * trivial.
 				 */
-				hammer2_inode_repoint(ip, NULL, NULL);
+				hammer2_inode_repoint(ip, NULL);
 
 				kfree(ip, pmp->minode);
 				atomic_add_long(&pmp->inmem_inodes, -1);
@@ -883,7 +883,7 @@ again:
 				hammer2_inode_repoint_one(nip, &xop->cluster,
 							  idx);
 			else
-				hammer2_inode_repoint(nip, NULL, &xop->cluster);
+				hammer2_inode_repoint(nip, &xop->cluster);
 		}
 		return nip;
 	}
@@ -910,7 +910,7 @@ again:
 		nip->meta = nipdata->meta;
 		hammer2_xop_pdata(xop);
 		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);
-		hammer2_inode_repoint(nip, NULL, &xop->cluster);
+		hammer2_inode_repoint(nip, &xop->cluster);
 	} else {
 		nip->meta.inum = inum;		/* PFS inum is always 1 XXX */
 		/* mtime will be updated when a cluster is available */
@@ -1243,7 +1243,7 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	 * Associate the media chains created by the backend with the
 	 * frontend inode.
 	 */
-	hammer2_inode_repoint(nip, NULL, &xop->head.cluster);
+	hammer2_inode_repoint(nip, &xop->head.cluster);
 done:
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	/*hammer2_inode_unlock(dip);*/
@@ -1351,8 +1351,7 @@ done2:
  * Cluster may be NULL to clean out any chains in ip->cluster.
  */
 void
-hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
-		      hammer2_cluster_t *cluster)
+hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_cluster_t *cluster)
 {
 	hammer2_chain_t *dropch[HAMMER2_MAXCLUSTER];
 	hammer2_chain_t *ochain;
