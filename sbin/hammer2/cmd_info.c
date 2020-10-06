@@ -33,14 +33,14 @@
  */
 #include "hammer2.h"
 
-typedef void (*cmd_callback)(const char *, hammer2_blockref_t *, int);
+typedef void (*cmd_callback)(const void *, hammer2_blockref_t *, int);
 
 static void h2disk_check(const char *devpath, cmd_callback callback1);
 static void h2pfs_check(int fd, hammer2_blockref_t *bref,
 		    cmd_callback callback2);
 
-static void info_callback1(const char *, hammer2_blockref_t *, int);
-static void info_callback2(const char *, hammer2_blockref_t *, int);
+static void info_callback1(const void *, hammer2_blockref_t *, int);
+static void info_callback2(const void *, hammer2_blockref_t *, int);
 
 static
 void
@@ -145,22 +145,22 @@ cmd_info(int ac, const char **av)
 
 static
 void
-info_callback1(const char *path, hammer2_blockref_t *bref, int fd)
+info_callback1(const void *path, hammer2_blockref_t *bref, int fd)
 {
-	printf("%s:\n", path);
+	printf("%s:\n", (const char*)path);
 	h2pfs_check(fd, bref, info_callback2);
 }
 
 static
 void
-info_callback2(const char *pfsname,
+info_callback2(const void *pfsname,
 	       hammer2_blockref_t *bref __unused, int fd __unused)
 {
-	printf("    %s\n", pfsname);
+	printf("    %s\n", (const char*)pfsname);
 }
 
-static void mount_callback1(const char *, hammer2_blockref_t *, int);
-static void mount_callback2(const char *, hammer2_blockref_t *, int);
+static void mount_callback1(const void *, hammer2_blockref_t *, int);
+static void mount_callback2(const void *, hammer2_blockref_t *, int);
 static void cmd_mountall_alarm(int signo);
 
 static volatile sig_atomic_t DidAlarm;
@@ -206,7 +206,7 @@ static const char *mount_comp;
 
 static
 void
-mount_callback1(const char *devpath, hammer2_blockref_t *bref, int fd)
+mount_callback1(const void *devpath, hammer2_blockref_t *bref, int fd)
 {
 	mount_path = devpath;
 	mount_comp = strrchr(devpath, '/');
@@ -218,7 +218,7 @@ mount_callback1(const char *devpath, hammer2_blockref_t *bref, int fd)
 
 static
 void
-mount_callback2(const char *pfsname,
+mount_callback2(const void *pfsname,
 		hammer2_blockref_t *bref __unused, int fd)
 {
 	char *tmp_path;
