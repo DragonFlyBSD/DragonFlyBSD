@@ -143,20 +143,66 @@ cmd_info(int ac, const char **av)
 	return 0;
 }
 
+struct pfs_entry {
+	TAILQ_ENTRY(pfs_entry) entry;
+	char name[NAME_MAX+1];
+	char s[NAME_MAX+1];
+};
+
+static TAILQ_HEAD(, pfs_entry) head;
+
 static
 void
 info_callback1(const void *path, hammer2_blockref_t *bref, int fd)
 {
+	struct pfs_entry *p;
+
 	printf("%s:\n", (const char*)path);
+
+	TAILQ_INIT(&head);
 	h2pfs_check(fd, bref, info_callback2);
+
+	printf("    Type        "
+	       "ClusterId (pfs_clid)                 "
+	       "Labels\n");
+	while ((p = TAILQ_FIRST(&head)) != NULL) {
+		printf("    %s %s\n", p->s, p->name);
+		TAILQ_REMOVE(&head, p, entry);
+		free(p);
+	}
 }
 
 static
 void
-info_callback2(const void *pfsname,
+info_callback2(const void *data,
 	       hammer2_blockref_t *bref __unused, int fd __unused)
 {
-	printf("    %s\n", (const char*)pfsname);
+	const hammer2_inode_data_t *ipdata = data;
+	const hammer2_inode_meta_t *meta = &ipdata->meta;
+	char *pfs_id_str = NULL;
+	const char *type_str;
+	struct pfs_entry *p, *e;
+
+	hammer2_uuid_to_str(&meta->pfs_clid, &pfs_id_str);
+	if (meta->pfs_type == HAMMER2_PFSTYPE_MASTER)
+		type_str = hammer2_pfssubtype_to_str(meta->pfs_subtype);
+	else
+		type_str = hammer2_pfstype_to_str(meta->pfs_type);
+	e = calloc(1, sizeof(*e));
+	snprintf(e->name, sizeof(e->name), "%s", ipdata->filename);
+	snprintf(e->s, sizeof(e->s), "%-11s %s", type_str, pfs_id_str);
+	free(pfs_id_str);
+
+	p = TAILQ_FIRST(&head);
+	while (p) {
+		if (strcmp(e->name, p->name) <= 0) {
+			TAILQ_INSERT_BEFORE(p, e, entry);
+			break;
+		}
+		p = TAILQ_NEXT(p, entry);
+	}
+	if (!p)
+		TAILQ_INSERT_TAIL(&head, e, entry);
 }
 
 static void mount_callback1(const void *, hammer2_blockref_t *, int);
@@ -218,14 +264,15 @@ mount_callback1(const void *devpath, hammer2_blockref_t *bref, int fd)
 
 static
 void
-mount_callback2(const void *pfsname,
+mount_callback2(const void *data,
 		hammer2_blockref_t *bref __unused, int fd)
 {
+	const hammer2_inode_data_t *ipdata = data;
 	char *tmp_path;
 	char *label;
 	int tfd;
 
-	if (strcmp(pfsname, "LOCAL") == 0) {
+	if (strcmp(ipdata->filename, "LOCAL") == 0) {
 		if ((tfd = open("/dev/null", O_RDONLY)) >= 0) {
 			dup2(tfd, fd);
 			close(tfd);
@@ -414,7 +461,7 @@ h2pfs_check(int fd, hammer2_blockref_t *bref, cmd_callback callback2)
 				bcount = HAMMER2_SET_COUNT;
 			}
 		} else if (media.ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) {
-			callback2((char*)media.ipdata.filename, bref, fd);
+			callback2(&media.ipdata, bref, fd);
 			bscan = NULL;
 			bcount = 0;
 		} else {
