@@ -33,15 +33,14 @@
  */
 #include "hammer2.h"
 
-static void h2disk_check(const char *devpath,
-		    void (*callback1)(const char *, hammer2_blockref_t *, int));
+typedef void (*cmd_callback)(const char *, hammer2_blockref_t *, int);
+
+static void h2disk_check(const char *devpath, cmd_callback callback1);
 static void h2pfs_check(int fd, hammer2_blockref_t *bref,
-		    void (*callback2)(const char *, hammer2_blockref_t *, int));
+		    cmd_callback callback2);
 
 static void info_callback1(const char *, hammer2_blockref_t *, int);
 static void info_callback2(const char *, hammer2_blockref_t *, int);
-
-typedef void (*cmd_callback)(const char *, hammer2_blockref_t *, int);
 
 static
 void
@@ -253,8 +252,7 @@ mount_callback2(const char *pfsname,
 
 static
 void
-h2disk_check(const char *devpath,
-	     void (*callback1)(const char *, hammer2_blockref_t *, int))
+h2disk_check(const char *devpath, cmd_callback callback1)
 {
 	hammer2_blockref_t broot;
 	hammer2_blockref_t best;
@@ -321,8 +319,7 @@ done:
 
 static
 void
-h2pfs_check(int fd, hammer2_blockref_t *bref,
-	    void (*callback2)(const char *, hammer2_blockref_t *, int))
+h2pfs_check(int fd, hammer2_blockref_t *bref, cmd_callback callback2)
 {
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
