@@ -968,25 +968,55 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	dev = NULL;
 	label = NULL;
 	devvp = NULL;
+	bzero(&info, sizeof(info));
 
-	if (path == NULL) {
-		/*
-		 * Root mount
-		 */
-		bzero(&info, sizeof(info));
-		info.cluster_fd = -1;
-		ksnprintf(devstr, sizeof(devstr), "%s",
-			  mp->mnt_stat.f_mntfromname);
-		done = strlen(devstr) + 1;
-		kprintf("hammer2_mount: root devstr=\"%s\"\n", devstr);
-	} else {
+	if (path) {
 		/*
 		 * Non-root mount or updating a mount
 		 */
 		error = copyin(data, &info, sizeof(info));
 		if (error)
 			return (error);
+	}
 
+	if (mp->mnt_flag & MNT_UPDATE) {
+		/*
+		 * Update mount.  Note that pmp->iroot->cluster is
+		 * an inode-embedded cluster and thus cannot be
+		 * directly locked.
+		 *
+		 * XXX HAMMER2 needs to implement NFS export via
+		 *     mountctl.
+		 */
+		hammer2_cluster_t *cluster;
+
+		pmp = MPTOPMP(mp);
+		pmp->hflags = info.hflags;
+		cluster = &pmp->iroot->cluster;
+		for (i = 0; i < cluster->nchains; ++i) {
+			if (cluster->array[i].chain == NULL)
+				continue;
+			hmp = cluster->array[i].chain->hmp;
+			devvp = hmp->devvp;
+			error = hammer2_remount(hmp, mp, path,
+						devvp, cred);
+			if (error)
+				break;
+		}
+
+		return error;
+	}
+
+	if (path == NULL) {
+		/*
+		 * Root mount
+		 */
+		info.cluster_fd = -1;
+		ksnprintf(devstr, sizeof(devstr), "%s",
+			  mp->mnt_stat.f_mntfromname);
+		done = strlen(devstr) + 1;
+		kprintf("hammer2_mount: root devstr=\"%s\"\n", devstr);
+	} else {
 		error = copyinstr(info.volume, devstr, MNAMELEN - 1, &done);
 		if (error)
 			return (error);
@@ -1038,34 +1068,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	kprintf("hammer2_mount: dev=\"%s\" label=\"%s\" rdonly=%d\n",
 		dev, label, (mp->mnt_flag & MNT_RDONLY));
-
-	if (mp->mnt_flag & MNT_UPDATE) {
-		/*
-		 * Update mount.  Note that pmp->iroot->cluster is
-		 * an inode-embedded cluster and thus cannot be
-		 * directly locked.
-		 *
-		 * XXX HAMMER2 needs to implement NFS export via
-		 *     mountctl.
-		 */
-		hammer2_cluster_t *cluster;
-
-		pmp = MPTOPMP(mp);
-		pmp->hflags = info.hflags;
-		cluster = &pmp->iroot->cluster;
-		for (i = 0; i < cluster->nchains; ++i) {
-			if (cluster->array[i].chain == NULL)
-				continue;
-			hmp = cluster->array[i].chain->hmp;
-			devvp = hmp->devvp;
-			error = hammer2_remount(hmp, mp, path,
-						devvp, cred);
-			if (error)
-				break;
-		}
-
-		return error;
-	}
 
 	/*
 	 * HMP device mount
