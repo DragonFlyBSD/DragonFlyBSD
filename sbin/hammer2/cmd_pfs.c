@@ -100,7 +100,7 @@ cmd_pfs_list(int ac, char **av)
 
 		printf("Type        "
 		       "ClusterId (pfs_clid)                 "
-		       "Labels on %s\n", av[i]);
+		       "Label on %s\n", av[i]);
 		while ((p = TAILQ_FIRST(&head)) != NULL) {
 			printf("%s %s\n", p->s, p->name);
 			TAILQ_REMOVE(&head, p, entry);

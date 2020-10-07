@@ -164,7 +164,7 @@ info_callback1(const void *path, hammer2_blockref_t *bref, int fd)
 
 	printf("    Type        "
 	       "ClusterId (pfs_clid)                 "
-	       "Labels\n");
+	       "Label\n");
 	while ((p = TAILQ_FIRST(&head)) != NULL) {
 		printf("    %s %s\n", p->s, p->name);
 		TAILQ_REMOVE(&head, p, entry);
