@@ -43,7 +43,7 @@ shmem_read_mapping_page(vm_object_t object, vm_pindex_t pindex)
 	vm_page_t m;
 	int rv;
 
-	VM_OBJECT_LOCK_ASSERT_OWNED(object);
+	VM_OBJECT_LOCK(object);
 	m = vm_page_grab(object, pindex, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 	if (m->valid != VM_PAGE_BITS_ALL) {
 		if (vm_pager_has_page(object, pindex)) {
@@ -63,6 +63,8 @@ shmem_read_mapping_page(vm_object_t object, vm_pindex_t pindex)
 	}
 	vm_page_wire(m);
 	vm_page_wakeup(m);
+	VM_OBJECT_UNLOCK(object);
+
 	return (struct page *)m;
 }
 

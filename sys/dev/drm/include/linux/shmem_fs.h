@@ -37,8 +37,6 @@
 #include <linux/mempolicy.h>
 #include <linux/pagemap.h>
 
-#define	VM_OBJECT_LOCK_ASSERT_OWNED(object)
-
 struct page * shmem_read_mapping_page(vm_object_t, vm_pindex_t);
 
 struct page *shmem_read_mapping_page_gfp(struct vm_object *mapping,
