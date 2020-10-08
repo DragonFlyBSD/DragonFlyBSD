@@ -108,7 +108,7 @@ usage(void)
 int
 main(int ac, char **av)
 {
-	int ch;
+	int i, ch;
 
 	while ((ch = getopt(ac, av, "dfvqebpPl:c:")) != -1) {
 		switch(ch) {
@@ -169,8 +169,15 @@ main(int ac, char **av)
 		/* not reached */
 	}
 
-	if (test_hammer2(av[0]) == -1)
-		exit(1);
+	for (i = 0; i < ac; i++) {
+		if (ac != 1)
+			printf("%s\n", av[i]);
+		if (test_hammer2(av[i]) == -1)
+			exit(1);
+		if (i != ac - 1)
+			printf("----------------------------------------"
+			       "----------------------------------------\n");
+	}
 
 	cleanup_pfs_names();
 
