@@ -1880,9 +1880,9 @@ again:
 	 * rot).
 	 */
 	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt, 'v', (u_int)-1);
+	hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, 'v', (u_int)-1);
 	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->fchain, 0, &dumpcnt, 'f', (u_int)-1);
+	hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, 'f', (u_int)-1);
 #if 0
 	hammer2_dev_unlock(hmp);
 #endif
@@ -3235,8 +3235,8 @@ hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred)
  * Debugging
  */
 void
-hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx,
-		   u_int flags)
+hammer2_dump_chain(hammer2_chain_t *chain, int tab, int bi, int *countp,
+		   char pfx, u_int flags)
 {
 	hammer2_chain_t *scan;
 	hammer2_chain_t *parent;
@@ -3248,10 +3248,10 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx,
 	}
 	if (*countp < 0)
 		return;
-	kprintf("%*.*s%c-chain %p.%d %016jx/%d mir=%016jx\n",
-		tab, tab, "", pfx,
-		chain, chain->bref.type,
-		chain->bref.key, chain->bref.keybits,
+	kprintf("%*.*s%c-chain %p %s.%-3d %016jx %016jx/%-2d mir=%016jx\n",
+		tab, tab, "", pfx, chain,
+		hammer2_bref_type_str(chain->bref.type), bi,
+		chain->bref.data_off, chain->bref.key, chain->bref.keybits,
 		chain->bref.mirror_tid);
 
 	kprintf("%*.*s      [%08x] (%s) refs=%d",
@@ -3263,18 +3263,20 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx,
 
 	parent = chain->parent;
 	if (parent)
-		kprintf("\n%*.*s      p=%p [pflags %08x prefs %d",
+		kprintf("\n%*.*s      p=%p [pflags %08x prefs %d]",
 			tab, tab, "",
 			parent, parent->flags, parent->refs);
 	if (RB_EMPTY(&chain->core.rbtree)) {
 		kprintf("\n");
 	} else {
+		int bi = 0;
 		kprintf(" {\n");
 		RB_FOREACH(scan, hammer2_chain_tree, &chain->core.rbtree) {
 			if ((scan->flags & flags) || flags == (u_int)-1) {
-				hammer2_dump_chain(scan, tab + 4, countp, 'a',
-						   flags);
+				hammer2_dump_chain(scan, tab + 4, bi, countp,
+						   'a', flags);
 			}
+			bi++;
 		}
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE && chain->data)
 			kprintf("%*.*s}(%s)\n", tab, tab, "",

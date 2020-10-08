@@ -177,7 +177,7 @@ hammer2_pfssubtype_to_str(uint8_t subtype)
 const char *
 hammer2_breftype_to_str(uint8_t type)
 {
-	switch (type) {
+	switch(type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
 		return("empty");
 	case HAMMER2_BREF_TYPE_INODE:

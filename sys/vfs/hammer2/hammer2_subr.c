@@ -473,25 +473,24 @@ hammer2_bref_type_str(int btype)
 {
 	switch(btype) {
 	case HAMMER2_BREF_TYPE_EMPTY:
-		return("Unknown-zero'd field");
+		return("empty");
 	case HAMMER2_BREF_TYPE_INODE:
-		return("Inode");
+		return("inode");
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		return("Indirect-Block");
+		return("indirect");
 	case HAMMER2_BREF_TYPE_DATA:
-		return("Data-Block");
+		return("data");
 	case HAMMER2_BREF_TYPE_DIRENT:
-		return("Directory-Entry");
+		return("dirent");
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		return("Freemap-Node");
+		return("freemap_node");
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		return("Freemap-Leaf");
+		return("freemap_leaf");
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		return("Freemap-Header");
+		return("freemap");
 	case HAMMER2_BREF_TYPE_VOLUME:
-		return("Volume-Header");
+		return("volume");
 	default:
-		break;
+		return("unknown");
 	}
-	return("Unknown");
 }
