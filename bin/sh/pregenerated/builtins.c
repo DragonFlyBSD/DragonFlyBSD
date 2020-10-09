@@ -48,6 +48,7 @@ int (*const builtinfunc[])(int, char **) = {
 	unsetcmd,
 	waitcmd,
 	wordexpcmd,
+	wordexp2cmd,
 };
 
 const unsigned char builtincmd[] = {
@@ -97,4 +98,5 @@ const unsigned char builtincmd[] = {
 	"\005\246unset"
 	"\004\047wait"
 	"\007\050wordexp"
+	"\010\051wordexp2"
 };

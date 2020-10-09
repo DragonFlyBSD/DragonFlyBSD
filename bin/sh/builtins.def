@@ -66,7 +66,6 @@ exportcmd	-s export -s readonly
 #exprcmd		expr
 falsecmd -n	false
 fgcmd -j	fg
-#freebsd_wordexpcmd	freebsd_wordexp
 getoptscmd	getopts
 hashcmd		hash
 histcmd		fc
@@ -92,3 +91,4 @@ unaliascmd	unalias
 unsetcmd	-s unset
 waitcmd		wait
 wordexpcmd	wordexp
+wordexp2cmd	wordexp2

@@ -236,7 +236,6 @@ parsecmd(int interact)
 }
 
 
-#if 0
 /*
  * Read and parse words for wordexp.
  * Returns a list of NARG nodes; NULL if there are no words.
@@ -268,7 +267,6 @@ parsewordexp(void)
 	}
 	return first;
 }
-#endif
 
 
 static union node *

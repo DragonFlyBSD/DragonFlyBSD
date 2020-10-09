@@ -78,9 +78,7 @@ extern const char *const parsekwd[];
 
 
 union node *parsecmd(int);
-#if 0
 union node *parsewordexp(void);
-#endif
 void forcealias(void);
 void fixredir(union node *, const char *, int);
 int goodname(const char *);

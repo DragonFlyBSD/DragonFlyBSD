@@ -44,6 +44,7 @@
 #define UNSETCMD 38
 #define WAITCMD 39
 #define WORDEXPCMD 40
+#define WORDEXP2CMD 41
 
 #define BUILTIN_SPECIAL 0x80
 
@@ -91,6 +92,7 @@ int unaliascmd(int, char **);
 int unsetcmd(int, char **);
 int waitcmd(int, char **);
 int wordexpcmd(int, char **);
+int wordexp2cmd(int, char **);
 
 static inline int
 safe_builtin_always(int idx)
