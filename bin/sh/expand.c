@@ -1503,13 +1503,12 @@ wordexpcmd(int argc, char **argv)
         return (0);
 }
 
-#if 0
 /*
  * Do most of the work for wordexp(3), new version.
  */
 
 int
-freebsd_wordexpcmd(int argc __unused, char **argv __unused)
+wordexp2cmd(int argc __unused, char **argv __unused)
 {
 	struct arglist arglist;
 	union node *args, *n;
@@ -1556,4 +1555,3 @@ freebsd_wordexpcmd(int argc __unused, char **argv __unused)
 		outbin(arglist.args[i], strlen(arglist.args[i]) + 1, out1);
 	return (0);
 }
-#endif

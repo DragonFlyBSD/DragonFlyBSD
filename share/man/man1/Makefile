@@ -94,7 +94,8 @@ MLINKS=	builtin.1 alias.1 \
 	builtin.1 wait.1 \
 	builtin.1 where.1 \
 	builtin.1 while.1 \
-	builtin.1 wordexp.1
+	builtin.1 wordexp.1 \
+	builtin.1 wordexp2.1
 
 MLINKS+=intro.1 introduction.1
 
