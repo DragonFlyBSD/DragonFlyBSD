@@ -958,30 +958,15 @@ static int
 hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino;
-	hammer2_chain_t *chain;
 	int error;
-	int i;
 
 	ino = data;
 	error = 0;
 
 	hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
-	ino->data_count = 0;
-	ino->inode_count = 0;
-	for (i = 0; i < ip->cluster.nchains; ++i) {
-		if ((chain = ip->cluster.array[i].chain) != NULL) {
-			if (ino->data_count <
-			    chain->bref.embed.stats.data_count) {
-				ino->data_count =
-					chain->bref.embed.stats.data_count;
-			}
-			if (ino->inode_count <
-			    chain->bref.embed.stats.inode_count) {
-				ino->inode_count =
-					chain->bref.embed.stats.inode_count;
-			}
-		}
-	}
+	ino->data_count = hammer2_inode_data_count(ip);
+	ino->inode_count = hammer2_inode_inode_count(ip);
+
 	bzero(&ino->ip_data, sizeof(ino->ip_data));
 	ino->ip_data.meta = ip->meta;
 	hammer2_inode_unlock(ip);

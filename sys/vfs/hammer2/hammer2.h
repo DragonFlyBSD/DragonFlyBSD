@@ -1503,6 +1503,8 @@ void hammer2_inode_drop(hammer2_inode_t *ip);
 void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_cluster_t *cluster);
 void hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 			int idx);
+hammer2_key_t hammer2_inode_data_count(const hammer2_inode_t *ip);
+hammer2_key_t hammer2_inode_inode_count(const hammer2_inode_t *ip);
 void hammer2_inode_modify(hammer2_inode_t *ip);
 void hammer2_inode_delayed_sideq(hammer2_inode_t *ip);
 void hammer2_inode_lock(hammer2_inode_t *ip, int how);

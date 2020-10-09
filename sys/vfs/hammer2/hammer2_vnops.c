@@ -309,9 +309,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	hammer2_inode_t *ip;
 	struct vnode *vp;
 	struct vattr *vap;
-	hammer2_chain_t *chain;
 	int update;
-	int i;
 
 	vp = ap->a_vp;
 	vap = ap->a_vap;
@@ -345,15 +343,7 @@ retry:
 		 */
 		vap->va_bytes += HAMMER2_INODE_BYTES;
 	} else {
-		for (i = 0; i < ip->cluster.nchains; ++i) {
-			if ((chain = ip->cluster.array[i].chain) != NULL) {
-				if (vap->va_bytes <
-				    chain->bref.embed.stats.data_count) {
-					vap->va_bytes =
-					    chain->bref.embed.stats.data_count;
-				}
-			}
-		}
+		vap->va_bytes = hammer2_inode_data_count(ip);
 	}
 	vap->va_type = hammer2_get_vtype(ip->meta.type);
 	vap->va_filerev = 0;

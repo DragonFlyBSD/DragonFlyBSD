@@ -1478,6 +1478,38 @@ hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 	}
 }
 
+hammer2_key_t
+hammer2_inode_data_count(const hammer2_inode_t *ip)
+{
+	hammer2_chain_t *chain;
+	hammer2_key_t count = 0;
+	int i;
+
+	for (i = 0; i < ip->cluster.nchains; ++i) {
+		if ((chain = ip->cluster.array[i].chain) != NULL) {
+			if (count < chain->bref.embed.stats.data_count)
+				count = chain->bref.embed.stats.data_count;
+		}
+	}
+	return count;
+}
+
+hammer2_key_t
+hammer2_inode_inode_count(const hammer2_inode_t *ip)
+{
+	hammer2_chain_t *chain;
+	hammer2_key_t count = 0;
+	int i;
+
+	for (i = 0; i < ip->cluster.nchains; ++i) {
+		if ((chain = ip->cluster.array[i].chain) != NULL) {
+			if (count < chain->bref.embed.stats.inode_count)
+				count = chain->bref.embed.stats.inode_count;
+		}
+	}
+	return count;
+}
+
 /*
  * Called with a locked inode to finish unlinking an inode after xop_unlink
  * had been run.  This function is responsible for decrementing nlinks.
