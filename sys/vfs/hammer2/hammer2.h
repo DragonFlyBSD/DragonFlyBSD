@@ -1292,8 +1292,6 @@ TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
 MALLOC_DECLARE(M_HAMMER2);
 #endif
 
-#define ITOV(ip)	((ip)->vp)
-
 static __inline
 hammer2_pfs_t *
 MPTOPMP(struct mount *mp)
