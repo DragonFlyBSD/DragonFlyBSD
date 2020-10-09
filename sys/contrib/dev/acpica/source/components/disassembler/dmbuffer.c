@@ -496,6 +496,10 @@ AcpiDmUuid (
     {
         AcpiOsPrintf (" /* %s */", Description);
     }
+    else
+    {
+        AcpiOsPrintf (" /* Unknown UUID */");
+    }
 }
 
 
