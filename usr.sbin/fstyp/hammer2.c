@@ -169,7 +169,7 @@ extract_device_name(const char *devpath)
 	char *p, *head;
 
 	if (!devpath)
-		return NULL;
+		return (NULL);
 
 	p = strdup(devpath);
 	head = p;
@@ -183,14 +183,14 @@ extract_device_name(const char *devpath)
 		p++;
 		if (*p == 0) {
 			free(head);
-			return NULL;
+			return (NULL);
 		}
 		p = strdup(p);
 		free(head);
-		return p;
+		return (p);
 	}
 
-	return head;
+	return (head);
 }
 
 static int
