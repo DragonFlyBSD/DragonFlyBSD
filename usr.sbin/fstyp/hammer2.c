@@ -35,23 +35,29 @@
 
 #include "fstyp.h"
 
-static hammer2_volume_data_t*
-read_voldata(FILE *fp)
+static int
+test_voldata(FILE *fp)
 {
 	hammer2_volume_data_t *voldata;
+	int i, num, fail = 0;
 
-	voldata = read_buf(fp, 0, sizeof(*voldata));
-	if (voldata == NULL)
-		err(1, "failed to read volume data");
+	for (num = 0; num < HAMMER2_NUM_VOLHDRS; num++) {
+		if (fseek(fp, num * HAMMER2_ZONE_BYTES64, SEEK_SET))
+			break;
+	}
+	if (num < 1)
+		return (1);
 
-	return (voldata);
-}
-
-static int
-test_voldata(const hammer2_volume_data_t *voldata)
-{
-	if (voldata->magic != HAMMER2_VOLUME_ID_HBO &&
-	    voldata->magic != HAMMER2_VOLUME_ID_ABO)
+	for (i = 0; i < num; i++) {
+		voldata = read_buf(fp, i * HAMMER2_ZONE_BYTES64,
+		    sizeof(*voldata));
+		if (voldata == NULL)
+			err(1, "failed to read volume data");
+		if (voldata->magic != HAMMER2_VOLUME_ID_HBO &&
+		    voldata->magic != HAMMER2_VOLUME_ID_ABO)
+			fail++;
+	}
+	if (fail)
 		return (1);
 
 	return (0);
@@ -292,15 +298,8 @@ fail:
 int
 fstyp_hammer2(FILE *fp, char *label, size_t size, const char *devpath)
 {
-	hammer2_volume_data_t *voldata;
-	int error = 1;
+	if (test_voldata(fp))
+		return (1);
 
-	voldata = read_voldata(fp);
-	if (test_voldata(voldata))
-		goto fail;
-
-	error = read_label(fp, label, size, devpath);
-fail:
-	free(voldata);
-	return (error);
+	return (read_label(fp, label, size, devpath));
 }
