@@ -29,7 +29,7 @@
 .\" $FreeBSD: src/usr.bin/uname/uname.1,v 1.8.2.4 2002/10/17 07:47:29 jmallett Exp $
 .\" $DragonFly: src/usr.bin/uname/uname.1,v 1.5 2007/07/30 22:11:33 swildner Exp $
 .\"
-.Dd October 24, 2003
+.Dd October 10, 2020
 .Dt UNAME 1
 .Os
 .Sh NAME
@@ -37,7 +37,7 @@
 .Nd display information about the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl aimnprsvP
+.Op Fl aiKmnprsUvP
 .Sh DESCRIPTION
 The
 .Nm
@@ -56,6 +56,10 @@ and
 were specified.
 .It Fl i
 Write the kernel ident to standard output.
+.It Fl K
+Write the
+.Dx
+version of the kernel.
 .It Fl m
 Write the type of the current hardware platform to standard output.
 .It Fl n
@@ -67,6 +71,10 @@ Write the current release level of the operating system
 to standard output.
 .It Fl s
 Write the name of the operating system implementation to standard output.
+.It Fl U
+Write the
+.Dx
+version of the user environment.
 .It Fl v
 Write the version level of this release of the operating system
 to standard output.
@@ -82,6 +90,14 @@ If the
 .Fl a
 flag is specified, or multiple flags are specified, all
 output is written on a single line, separated by spaces.
+.Pp
+The
+.Fl K
+and
+.Fl U
+flags are intended to be used for fine grain differentiation of incremental
+.Dx
+development and user visible changes.
 .Sh ENVIRONMENT
 An environment variable composed of the string
 .Ev UNAME_

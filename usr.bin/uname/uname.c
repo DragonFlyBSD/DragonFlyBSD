@@ -48,13 +48,16 @@
 #define	RFLAG	0x0008
 #define	SFLAG	0x0010
 #define	VFLAG	0x0020
-#define	IFLAG   0x0040
-#define	GFLAG   0x0080
-#define	GFLAG2  0x0100
+#define	IFLAG	0x0040
+#define	UFLAG	0x0080
+#define	KFLAG	0x0100
+#define	GFLAG	0x0200
+#define	GFLAG2	0x0400
 
 typedef void (*get_t)(void);
 static get_t get_ident, get_machine, get_hostname, get_arch;
 static get_t get_release, get_sysname, get_version, get_pkgabi;
+static get_t get_kernvers, get_uservers;
   
 static void native_ident(void);
 static void native_machine(void);
@@ -64,12 +67,15 @@ static void native_release(void);
 static void native_sysname(void);
 static void native_version(void);
 static void native_pkgabi(void);
+static void native_kernvers(void);
+static void native_uservers(void);
 static void print_uname(void);
 static void setup_get(void);
 static void usage(void) __dead2;
 
 static char *ident, *machine, *hostname, *arch;
 static char *release, *sysname, *version, *pkgabi;
+static char *kernvers, *uservers;
 static int space;
 static u_int flags;
 
@@ -80,13 +86,16 @@ main(int argc, char *argv[])
 
 	setup_get();
 
-	while ((ch = getopt(argc, argv, "aimnprsvP")) != -1) {
+	while ((ch = getopt(argc, argv, "aiKmnprsUvP")) != -1) {
 		switch(ch) {
 		case 'a':
 			flags |= (MFLAG | NFLAG | RFLAG | SFLAG | VFLAG);
 			break;
 		case 'i':
 			flags |= IFLAG;
+			break;
+		case 'K':
+			flags |= KFLAG;
 			break;
 		case 'm':
 			flags |= MFLAG;
@@ -102,6 +111,9 @@ main(int argc, char *argv[])
 			break;
 		case 's':
 			flags |= SFLAG;
+			break;
+		case 'U':
+			flags |= UFLAG;
 			break;
 		case 'v':
 			flags |= VFLAG;
@@ -164,6 +176,8 @@ setup_get(void)
 	CHECK_ENV("UNAME_m", &get_machine, native_machine, &machine);
 	CHECK_ENV("UNAME_p", &get_arch, native_arch, &arch);
 	CHECK_ENV("UNAME_i", &get_ident, native_ident, &ident);
+	CHECK_ENV("UNAME_K", &get_kernvers, native_kernvers, &kernvers);
+	CHECK_ENV("UNAME_U", &get_uservers, native_uservers, &uservers);
 	CHECK_ENV("UNAME_G", &get_pkgabi, native_pkgabi, &pkgabi);
 }
 
@@ -188,6 +202,8 @@ print_uname(void)
 	PRINT_FLAG(flags, MFLAG, machine);
 	PRINT_FLAG(flags, PFLAG, arch);
 	PRINT_FLAG(flags, IFLAG, ident);
+	PRINT_FLAG(flags, KFLAG, kernvers);
+	PRINT_FLAG(flags, UFLAG, uservers);
 	PRINT_FLAG(flags, GFLAG, pkgabi);
 	printf("\n");
 }
@@ -289,6 +305,24 @@ native_pkgabi(void)				\
 		snprintf(mach, sizeof(mach), "x86:32");
 
 	asprintf(&pkgabi, "dragonfly:%3.1f:%s", d, mach);
+}
+
+static void
+native_kernvers(void)
+{
+	static char buf[128];
+
+	snprintf(buf, sizeof(buf), "%d", getosreldate());
+	kernvers = buf;
+}
+
+static void
+native_uservers(void)
+{
+	static char buf[128];
+
+	snprintf(buf, sizeof(buf), "%d", __DragonFly_version);
+	uservers = buf;
 }
 
 static void
