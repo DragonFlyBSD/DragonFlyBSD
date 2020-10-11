@@ -136,7 +136,6 @@ cpu/x86_64/misc/monitor.s		standard
 kern/subr_diskmbr.c			standard
 kern/subr_diskgpt.c			standard
 
-libkern/memset.c			standard
 libkern/stack_protector.c		standard
 
 # DEVICES
