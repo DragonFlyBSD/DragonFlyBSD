@@ -68,20 +68,19 @@ static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_chain_t *parent,
 		hammer2_key_t key, int keybits,
 		hammer2_tid_t mtid, int for_type, int *errorp);
-static void hammer2_chain_rename_obref(hammer2_chain_t **parentp,
-		hammer2_chain_t *chain, hammer2_tid_t mtid,
-		int flags, hammer2_blockref_t *obref);
 static int hammer2_chain_delete_obref(hammer2_chain_t *parent,
 		hammer2_chain_t *chain,
 		hammer2_tid_t mtid, int flags,
 		hammer2_blockref_t *obref);
-static hammer2_io_t *hammer2_chain_drop_data(hammer2_chain_t *chain);
 static hammer2_chain_t *hammer2_combined_find(
 		hammer2_chain_t *parent,
 		hammer2_blockref_t *base, int count,
 		hammer2_key_t *key_nextp,
 		hammer2_key_t key_beg, hammer2_key_t key_end,
 		hammer2_blockref_t **bresp);
+static hammer2_chain_t *hammer2_chain_lastdrop(hammer2_chain_t *chain,
+				int depth);
+static void hammer2_chain_lru_flush(hammer2_pfs_t *pmp);
 
 /*
  * There are many degenerate situations where an extreme rate of console
@@ -390,10 +389,6 @@ failed:
  * unable to acquire the mutex, and refs is unlikely to be 1 unless we again
  * race against another drop.
  */
-static hammer2_chain_t *hammer2_chain_lastdrop(hammer2_chain_t *chain,
-				int depth);
-static void hammer2_chain_lru_flush(hammer2_pfs_t *pmp);
-
 void
 hammer2_chain_drop(hammer2_chain_t *chain)
 {
@@ -3787,7 +3782,7 @@ hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
  * indirect blocks, can leave us with a 'dirty' (non-disposable) in-memory
  * inode chain that does not have a hammer2_inode_t associated with it.
  */
-void
+static void
 hammer2_chain_rename_obref(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 			   hammer2_tid_t mtid, int flags,
 			   hammer2_blockref_t *obref)
