@@ -1219,9 +1219,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
 		hmp->vchain.bref.mirror_tid = hmp->voldata.mirror_tid;
-
 		hammer2_chain_core_init(&hmp->vchain);
-		/* hmp->vchain.u.xxx is left NULL */
 
 		/*
 		 * fchain setup.  fchain.data is embedded.
@@ -1242,9 +1240,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->fchain.bref.methods =
 			HAMMER2_ENC_CHECK(HAMMER2_CHECK_FREEMAP) |
 			HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
-
 		hammer2_chain_core_init(&hmp->fchain);
-		/* hmp->fchain.u.xxx is left NULL */
 
 		/*
 		 * Install the volume header and initialize fields from
