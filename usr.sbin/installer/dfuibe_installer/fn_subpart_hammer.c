@@ -283,7 +283,7 @@ create_subpartitions(int which, struct i_fn_args *a)
 					subpartition_get_device_name(sp)));
 				free(ham_name);
 			} else {
-				command_add(cmds, "%s%s -f /dev/%s",
+				command_add(cmds, "%s%s /dev/%s",
 				    a->os_root, cmd_name(a, "NEWFS_HAMMER2"),
 				    (subpartition_is_encrypted(sp) ?
 					subpartition_get_mapper_name(sp, 0) :
