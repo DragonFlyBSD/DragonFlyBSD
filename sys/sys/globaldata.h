@@ -149,7 +149,16 @@ struct globaldata {
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */
 	u_int		gd_npoll;		/* ipiq synchronization */
 	int		gd_tdrunqcount;
-	struct thread	gd_unused02B;
+
+	/* temporary mess to retain structural compatibilty for now */
+	union {
+		struct {
+			struct {
+				int	gd_exisarmed;
+			} __cachealign;
+		};
+		long	gd_reserved02B[200];	/* used to be struct thread */
+	};
 	struct thread	gd_idlethread;
 	SLGlobalData	gd_slab;		/* slab allocator */
 	int		gd_trap_nesting_level;	/* track traps */
@@ -199,7 +208,8 @@ struct globaldata {
 	struct lock	gd_sysctllock;		/* sysctl topology lock */
 	uintptr_t	gd_debug1;
 	uintptr_t	gd_debug2;
-	void		*gd_preserved[2];	/* future fields */
+	long		gd_exislockcnt;
+	void		*gd_preserved[1];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 

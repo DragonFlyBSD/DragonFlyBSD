@@ -88,6 +88,7 @@
 #include <sys/lock.h>
 #include <sys/sysctl.h>
 #include <sys/kcollect.h>
+#include <sys/exislock.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -128,6 +129,8 @@ __read_mostly static int clock_debug2 = 0;
 SYSCTL_INT(_kern, OID_AUTO, sniff_enable, CTLFLAG_RW, &sniff_enable, 0 , "");
 SYSCTL_INT(_kern, OID_AUTO, sniff_target, CTLFLAG_RW, &sniff_target, 0 , "");
 SYSCTL_INT(_debug, OID_AUTO, clock_debug2, CTLFLAG_RW, &clock_debug2, 0 , "");
+
+__read_mostly long pseudo_ticks = 1;		/* existential timed locks */
 
 static int
 sysctl_cputime(SYSCTL_HANDLER_ARGS)
@@ -775,12 +778,48 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		++kpmap->upticks;
 		cpu_sfence();
 	    }
+
+	    /*
+	     * Handle exislock pseudo_ticks.  We make things as simple as
+	     * possible for the critical path arming code by adding a little
+	     * complication here.
+	     *
+	     * When we find that all cores have been armed, we increment
+	     * pseudo_ticks and disarm all the cores.
+	     */
+	    {
+		globaldata_t gd;
+		int n;
+
+		for (n = 0; n < ncpus; ++n) {
+		    gd = globaldata_find(n);
+		    if (gd->gd_exisarmed == 0)
+			break;
+		}
+
+		if (n == ncpus) {
+		    for (n = 0; n < ncpus; ++n) {
+			gd = globaldata_find(n);
+			gd->gd_exisarmed = 0;
+		    }
+		    ++pseudo_ticks;
+		}
+	    }
 	}
 
 	/*
 	 * lwkt thread scheduler fair queueing
 	 */
 	lwkt_schedulerclock(curthread);
+
+	/*
+	 * Cycle the existential lock system on odd ticks in order to re-arm
+	 * our cpu (in case the cpu is idle or nobody is using any exis locks).
+	 */
+	if (ticks & 1) {
+		exis_hold_gd(gd);
+		exis_drop_gd(gd);
+	}
 
 	/*
 	 * softticks are handled for all cpus

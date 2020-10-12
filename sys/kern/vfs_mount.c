@@ -460,6 +460,7 @@ vfs_getnewfsid(struct mount *mp)
 		tfsid.val[0] = makeudev(255,
 					iscsi_crc32(retbuf, strlen(retbuf)) &
 					~makeudev(255, 0));
+		kprintf("getnewfsid %08x %08x %s\n", tfsid.val[0], tfsid.val[1], retbuf);
 		kfree(freebuf, M_TEMP);
 	}
 	mp->mnt_stat.f_fsid.val[0] = tfsid.val[0];
