@@ -3392,10 +3392,6 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 		 * then allocate the in-memory chain structure.  Set the
 		 * INITIAL flag for fresh chains which do not have embedded
 		 * data.
-		 *
-		 * XXX for now set the check mode of the child based on
-		 *     the parent or, if the parent is an inode, the
-		 *     specification in the inode.
 		 */
 		bzero(&dummy, sizeof(dummy));
 		dummy.type = type;
@@ -3433,15 +3429,7 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 		/*
 		 * Set INITIAL to optimize I/O.  The flag will generally be
 		 * processed when we call hammer2_chain_modify().
-		 *
-		 * Recalculate bytes to reflect the actual media block
-		 * allocation.  Handle special case radix 0 == 0 bytes.
 		 */
-		bytes = (size_t)(chain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
-		if (bytes)
-			bytes = (hammer2_off_t)1 << bytes;
-		chain->bytes = bytes;
-
 		switch(type) {
 		case HAMMER2_BREF_TYPE_VOLUME:
 		case HAMMER2_BREF_TYPE_FREEMAP:
