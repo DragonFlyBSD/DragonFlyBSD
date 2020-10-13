@@ -3691,7 +3691,6 @@ hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	hammer2_blockref_t *bref;
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
-	size_t bytes;
 
 	/*
 	 * WARNING!  We should never resolve DATA to device buffers
@@ -3707,18 +3706,7 @@ hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	hmp = chain->hmp;
 	KKASSERT(chain->parent == NULL);
 	/*KKASSERT(chain->error == 0); allow */
-
-	/*
-	 * Now create a duplicate of the chain structure, associating
-	 * it with the same core, making it the same size, pointing it
-	 * to the same bref (the same media block).
-	 *
-	 * NOTE: Handle special radix == 0 case (means 0 bytes).
-	 */
 	bref = &chain->bref;
-	bytes = (size_t)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
-	if (bytes)
-		bytes = (hammer2_off_t)1 << bytes;
 
 	/*
 	 * If parent is not NULL the duplicated chain will be entered under
