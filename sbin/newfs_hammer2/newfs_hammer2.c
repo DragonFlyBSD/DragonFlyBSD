@@ -136,11 +136,18 @@ main(int ac, char **av)
 				errx(1, "Limit of %d local labels",
 				     MAXLABELS - 1);
 			}
-			Label[NLabels++] = optarg;
-			if (strlen(Label[NLabels-1]) > HAMMER2_INODE_MAXNAME) {
-				errx(1, "Volume label '%s' is too long "
-					"(64 chars max)\n", optarg);
+			if (strlen(optarg) == 0) {
+				errx(1, "Volume label '%s' "
+					"cannot be 0-length\n",
+					optarg);
 			}
+			if (strlen(optarg) >= HAMMER2_INODE_MAXNAME) {
+				errx(1, "Volume label '%s' is too long "
+					"(%d chars max)\n",
+					optarg,
+					HAMMER2_INODE_MAXNAME - 1);
+			}
+			Label[NLabels++] = optarg;
 			break;
 		case 'b':
 			BootAreaSize = getsize(optarg,
