@@ -1,4 +1,4 @@
-/*	$NetBSD: literal.c,v 1.3 2017/06/30 20:26:52 kre Exp $	*/
+/*	$NetBSD: literal.c,v 1.5 2019/07/23 13:10:11 christos Exp $	*/
 
 /*-
  * Copyright (c) 2017 The NetBSD Foundation, Inc.
@@ -32,7 +32,7 @@
 #include "config.h"
 #if !defined(lint) && !defined(SCCSID)
 #if 0
-__RCSID("$NetBSD: literal.c,v 1.3 2017/06/30 20:26:52 kre Exp $");
+__RCSID("$NetBSD: literal.c,v 1.5 2019/07/23 13:10:11 christos Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
@@ -100,8 +100,8 @@ literal_add(EditLine *el, const wchar_t *buf, const wchar_t *end, int *wp)
 		return 0;
 
 	for (n = 0, i = 0; i < len; i++)
-		n += ct_encode_char(b + n, w - n, buf[i]);
-	n += ct_encode_char(b + n, w - n, end[1]);
+		n += ct_encode_char(b + n, (size_t)(w - n), buf[i]);
+	n += ct_encode_char(b + n, (size_t)(w - n), end[1]);
 	b[n] = '\0';
 
 	/*

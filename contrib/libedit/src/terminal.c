@@ -1,4 +1,4 @@
-/*	$NetBSD: terminal.c,v 1.35 2019/02/15 23:20:35 christos Exp $	*/
+/*	$NetBSD: terminal.c,v 1.41 2019/11/12 20:59:46 christos Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -37,7 +37,7 @@
 #if 0
 static char sccsid[] = "@(#)term.c	8.2 (Berkeley) 4/30/95";
 #else
-__RCSID("$NetBSD: terminal.c,v 1.35 2019/02/15 23:20:35 christos Exp $");
+__RCSID("$NetBSD: terminal.c,v 1.41 2019/11/12 20:59:46 christos Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
@@ -269,31 +269,27 @@ libedit_private int
 terminal_init(EditLine *el)
 {
 
-	el->el_terminal.t_buf = el_malloc(TC_BUFSIZE *
+	el->el_terminal.t_buf = el_calloc(TC_BUFSIZE,
 	    sizeof(*el->el_terminal.t_buf));
 	if (el->el_terminal.t_buf == NULL)
 		goto fail1;
-	el->el_terminal.t_cap = el_malloc(TC_BUFSIZE *
+	el->el_terminal.t_cap = el_calloc(TC_BUFSIZE,
 	    sizeof(*el->el_terminal.t_cap));
 	if (el->el_terminal.t_cap == NULL)
 		goto fail2;
-	el->el_terminal.t_fkey = el_malloc(A_K_NKEYS *
+	el->el_terminal.t_fkey = el_calloc(A_K_NKEYS,
 	    sizeof(*el->el_terminal.t_fkey));
 	if (el->el_terminal.t_fkey == NULL)
 		goto fail3;
 	el->el_terminal.t_loc = 0;
-	el->el_terminal.t_str = el_malloc(T_str *
+	el->el_terminal.t_str = el_calloc(T_str,
 	    sizeof(*el->el_terminal.t_str));
 	if (el->el_terminal.t_str == NULL)
 		goto fail4;
-	(void) memset(el->el_terminal.t_str, 0, T_str *
-	    sizeof(*el->el_terminal.t_str));
-	el->el_terminal.t_val = el_malloc(T_val *
+	el->el_terminal.t_val = el_calloc(T_val,
 	    sizeof(*el->el_terminal.t_val));
 	if (el->el_terminal.t_val == NULL)
 		goto fail5;
-	(void) memset(el->el_terminal.t_val, 0, T_val *
-	    sizeof(*el->el_terminal.t_val));
 	(void) terminal_set(el, NULL);
 	terminal_init_arrow(el);
 	return 0;
@@ -426,11 +422,11 @@ terminal_alloc_buffer(EditLine *el)
 	coord_t *c = &el->el_terminal.t_size;
 	int i;
 
-	b =  el_malloc(sizeof(*b) * (size_t)(c->v + 1));
+	b =  el_calloc((size_t)(c->v + 1), sizeof(*b));
 	if (b == NULL)
 		return NULL;
 	for (i = 0; i < c->v; i++) {
-		b[i] = el_malloc(sizeof(**b) * (size_t)(c->h + 1));
+		b[i] = el_calloc((size_t)(c->h + 1), sizeof(**b));
 		if (b[i] == NULL) {
 			while (--i >= 0)
 				el_free(b[i]);
@@ -501,7 +497,7 @@ terminal_move_to_line(EditLine *el, int where)
 	if (where == el->el_cursor.v)
 		return;
 
-	if (where > el->el_terminal.t_size.v) {
+	if (where >= el->el_terminal.t_size.v) {
 #ifdef DEBUG_SCREEN
 		(void) fprintf(el->el_errfile,
 		    "%s: where is ridiculous: %d\r\n", __func__, where);
@@ -509,15 +505,14 @@ terminal_move_to_line(EditLine *el, int where)
 		return;
 	}
 	if ((del = where - el->el_cursor.v) > 0) {
-		if ((del > 1) && GoodStr(T_DO)) {
-			terminal_tputs(el, tgoto(Str(T_DO), del, del), del);
-			del = 0;
-		} else {
-			for (; del > 0; del--)
-				terminal__putc(el, '\n');
-			/* because the \n will become \r\n */
-			el->el_cursor.h = 0;
-		}
+		/*
+		 * We don't use DO here because some terminals are buggy
+		 * if the destination is beyond bottom of the screen.
+		 */
+		for (; del > 0; del--)
+			terminal__putc(el, '\n');
+		/* because the \n will become \r\n */
+		el->el_cursor.h = 0;
 	} else {		/* del < 0 */
 		if (GoodStr(T_UP) && (-del > 1 || !GoodStr(T_up)))
 			terminal_tputs(el, tgoto(Str(T_UP), -del, -del), -del);
@@ -652,7 +647,8 @@ terminal_overwrite(EditLine *el, const wchar_t *cp, size_t n)
 	if (el->el_cursor.h >= el->el_terminal.t_size.h) {	/* wrap? */
 		if (EL_HAS_AUTO_MARGINS) {	/* yes */
 			el->el_cursor.h = 0;
-			el->el_cursor.v++;
+			if (el->el_cursor.v + 1 < el->el_terminal.t_size.v)
+				el->el_cursor.v++;
 			if (EL_HAS_MAGIC_MARGINS) {
 				/* force the wrap to avoid the "magic"
 				 * situation */
@@ -966,9 +962,10 @@ terminal_get_size(EditLine *el, int *lins, int *cols)
 libedit_private int
 terminal_change_size(EditLine *el, int lins, int cols)
 {
+	coord_t cur = el->el_cursor;
 	/*
-         * Just in case
-         */
+	 * Just in case
+	 */
 	Val(T_co) = (cols < 2) ? 80 : cols;
 	Val(T_li) = (lins < 1) ? 24 : lins;
 
@@ -976,6 +973,7 @@ terminal_change_size(EditLine *el, int lins, int cols)
 	if (terminal_rebuffer_display(el) == -1)
 		return -1;
 	re_clear_display(el);
+	el->el_cursor = cur;
 	return 0;
 }
 
@@ -1227,7 +1225,7 @@ terminal__putc(EditLine *el, wint_t c)
 {
 	char buf[MB_LEN_MAX +1];
 	ssize_t i;
-	if (c == (wint_t)MB_FILL_CHAR)
+	if (c == MB_FILL_CHAR)
 		return 0;
 	if (c & EL_LITERAL)
 		return fputs(literal_get(el, c), el->el_outfile);
