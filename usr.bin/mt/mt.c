@@ -66,7 +66,7 @@
 
 static struct commands {
 	char *c_name;
-	int c_code;
+	u_long c_code;
 	int c_ronly;
 #if defined(__DragonFly__)
 	int c_flags;
