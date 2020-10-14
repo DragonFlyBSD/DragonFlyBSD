@@ -1119,6 +1119,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 			panic("hammer2_flush_core: "
 			      "unrecognized blockref type: %d",
 			      parent->bref.type);
+			break;
 		}
 
 		/*

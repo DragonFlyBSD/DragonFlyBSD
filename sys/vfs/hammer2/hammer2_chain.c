@@ -1490,6 +1490,7 @@ hammer2_chain_base_and_count(hammer2_chain_t *parent, int *countp)
 			panic("hammer2_chain_base_and_count: "
 			      "unrecognized blockref type: %d",
 			      parent->bref.type);
+			base = NULL;
 			count = 0;
 			break;
 		}
@@ -2801,16 +2802,12 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		kprintf("hammer2_chain_lookup: unrecognized "
-			"blockref(B) type: %d",
-			parent->bref.type);
-		while (1)
-			tsleep(&base, 0, "dead", 0);
 		panic("hammer2_chain_lookup: unrecognized "
 		      "blockref(B) type: %d",
 		      parent->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
+		break;
 	}
 
 	/*
@@ -3202,6 +3199,7 @@ again:
 		      parent->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
+		break;
 	}
 
 	/*
@@ -3874,6 +3872,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 			panic("_hammer2_chain_delete_helper: "
 			      "unrecognized blockref type: %d",
 			      parent->bref.type);
+			break;
 		}
 
 		/*
@@ -5750,16 +5749,12 @@ hammer2_base_sort(hammer2_chain_t *chain)
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		kprintf("hammer2_base_sort: unrecognized "
-			"blockref(A) type: %d",
-		        chain->bref.type);
-		while (1)
-			tsleep(&base, 0, "dead", 0);
 		panic("hammer2_base_sort: unrecognized "
 		      "blockref(A) type: %d",
 		      chain->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
+		break;
 	}
 	kqsort(base, count, sizeof(*base), hammer2_base_sort_callback);
 }
