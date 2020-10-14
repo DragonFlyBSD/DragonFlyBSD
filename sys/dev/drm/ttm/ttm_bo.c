@@ -169,7 +169,10 @@ void ttm_bo_add_to_lru(struct ttm_buffer_object *bo)
 
 	if (!(bo->mem.placement & TTM_PL_FLAG_NO_EVICT)) {
 
-		BUG_ON(!list_empty(&bo->lru));
+#ifdef __DragonFly__
+		if (WARN_ON(!list_empty(&bo->lru)))
+			return;
+#endif
 
 		man = &bdev->man[bo->mem.mem_type];
 		list_add_tail(&bo->lru, &man->lru[bo->priority]);
