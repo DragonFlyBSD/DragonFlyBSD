@@ -97,12 +97,6 @@ imax(int a, int b)
 	return (a > b ? a : b);
 }
 
-static __inline int64_t
-qmax(int64_t a, int64_t b)
-{
-	return (a > b ? a : b);
-}
-
 int
 main(int argc, char **argv)
 {
