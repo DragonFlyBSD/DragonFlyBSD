@@ -184,9 +184,6 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	hammer2_chain_t *chain;
 	u_int bytes;
 
-	if (bref->type == HAMMER2_BREF_TYPE_EMPTY)
-		panic("hammer2_chain_alloc: empty blockref type\n");
-
 	/*
 	 * Special case - radix of 0 indicates a chain that does not
 	 * need a data reference (context is completely embedded in the
@@ -197,8 +194,24 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	else
 		bytes = 0;
 
-	atomic_add_long(&hammer2_chain_allocs, 1);
-	chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+	case HAMMER2_BREF_TYPE_INDIRECT:
+	case HAMMER2_BREF_TYPE_DATA:
+	case HAMMER2_BREF_TYPE_DIRENT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+	case HAMMER2_BREF_TYPE_FREEMAP:
+	case HAMMER2_BREF_TYPE_VOLUME:
+		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
+		atomic_add_long(&hammer2_chain_allocs, 1);
+		break;
+	case HAMMER2_BREF_TYPE_EMPTY:
+	default:
+		panic("hammer2_chain_alloc: unrecognized blockref type: %d",
+		      bref->type);
+		break;
+	}
 
 	/*
 	 * Initialize the new chain structure.  pmp must be set to NULL for
