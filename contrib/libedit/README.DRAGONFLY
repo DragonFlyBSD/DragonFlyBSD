@@ -4,13 +4,11 @@ LIBEDIT
 Original source can be downloaded from:
 http://www.thrysoee.dk/editline
 
-file = libedit-20190324-3.1.tar.gz
-date = 24 March 2019
-size = 521999
-sha1 = 29802018f853788e7c3ba3ec7ef3c662b79dbea7
+file = libedit-20191231-3.1.tar.gz
+date = 31 December 2019
+size = 516801
+sha1 = 44891b6ceb0429fec0a118a1245c605410571d7d
 
 A list of files and directories removed is in README.DELETED
 
-Local modifications applied to following files:
-	src/el.c
-	src/sys.h
+Use "git diff vendor/LIBEDIT contrib/libedit" to see local modifications.
