@@ -5755,12 +5755,6 @@ hammer2_base_sort(hammer2_chain_t *chain)
 /*
  * Chain memory management
  */
-void
-hammer2_chain_wait(hammer2_chain_t *chain)
-{
-	tsleep(chain, 0, "chnflw", 1);
-}
-
 const hammer2_media_data_t *
 hammer2_chain_rdata(hammer2_chain_t *chain)
 {
