@@ -119,9 +119,6 @@ boot2$s.s: boot2.c boot2$s.h ufsread.c hammer2.c scrc32.c
 	sed -e '/align/d' -e '/nop/d' < ${.TARGET}.tmp > ${.TARGET}
 	rm -f ${.TARGET}.tmp
 
-boot2$s.o: boot2$s.s
-	${AS} ${AFLAGS} -o ${.TARGET} boot2$s.s
-
 boot2$s.h: boot1$s.out bootasm.h
 	@echo "NOTE: boot2 using xread from boot1 at ${REL1}"
 	${NM} -t d ${.ALLSRC:M*.out} | awk '/([0-9])+ T xread/ \
