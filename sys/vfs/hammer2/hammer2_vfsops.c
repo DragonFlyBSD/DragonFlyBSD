@@ -1317,7 +1317,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 * Any chain belonging to the super-root topology should
 		 * have a NULL pmp (not even set to spmp).
 		 */
-		ripdata = &hammer2_chain_rdata(schain)->ipdata;
+		ripdata = &schain->data->ipdata;
 		KKASSERT(schain->pmp == NULL);
 		spmp->pfs_clid = ripdata->meta.pfs_clid;
 
@@ -2249,7 +2249,7 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 		 * for recursion.
 		 */
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
-		ripdata = &hammer2_chain_rdata(parent)->ipdata;
+		ripdata = &parent->data->ipdata;
 		if (ripdata->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
 			/* not applicable to recovery scan */
 			hammer2_chain_unlock(parent);

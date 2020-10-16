@@ -5753,23 +5753,6 @@ hammer2_base_sort(hammer2_chain_t *chain)
 #endif
 
 /*
- * Chain memory management
- */
-const hammer2_media_data_t *
-hammer2_chain_rdata(hammer2_chain_t *chain)
-{
-	KKASSERT(chain->data != NULL);
-	return (chain->data);
-}
-
-hammer2_media_data_t *
-hammer2_chain_wdata(hammer2_chain_t *chain)
-{
-	KKASSERT(chain->data != NULL);
-	return (chain->data);
-}
-
-/*
  * Set the check data for a chain.  This can be a heavy-weight operation
  * and typically only runs on-flush.  For file data check data is calculated
  * when the logical buffers are flushed.
