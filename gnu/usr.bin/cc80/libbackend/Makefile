@@ -433,6 +433,8 @@ CXXFLAGS+=	-Wno-pragmas
 # for tree-ssa-structalias.c, tree-vect-stmts.c
 .if ${CCVER:Mgcc80}
 CXXFLAGS+=	-Wno-narrowing
+.elif ${CCVER:Mclang*}
+CXXFLAGS+=	-Wno-c++11-narrowing
 .endif
 
 # hack to force c++ compiler to compile *.c files to create library

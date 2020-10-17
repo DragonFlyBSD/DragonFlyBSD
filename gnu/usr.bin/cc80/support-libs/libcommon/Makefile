@@ -19,6 +19,8 @@ CFLAGS+=	-I${GCCDIR}/libbacktrace
 # for pretty-print.c
 .if ${CCVER:Mgcc80}
 CXXFLAGS+=	-Wno-narrowing
+.elif ${CCVER:Mclang*}
+CXXFLAGS+=	-Wno-c++11-narrowing
 .endif
 
 .for ofile in ${OBJS-libcommon}
