@@ -1538,9 +1538,6 @@ int hammer2_dirent_create(hammer2_inode_t *dip, const char *name,
 /*
  * hammer2_chain.c
  */
-void hammer2_voldata_lock(hammer2_dev_t *hmp);
-void hammer2_voldata_unlock(hammer2_dev_t *hmp);
-void hammer2_voldata_modify(hammer2_dev_t *hmp);
 hammer2_chain_t *hammer2_chain_alloc(hammer2_dev_t *hmp,
 				hammer2_pfs_t *pmp,
 				hammer2_blockref_t *bref);
@@ -1899,6 +1896,10 @@ void hammer2_lwinprog_wait(hammer2_pfs_t *pmp, int pipe);
 void hammer2_pfs_memory_wait(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_inc(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp, int count);
+
+void hammer2_voldata_lock(hammer2_dev_t *hmp);
+void hammer2_voldata_unlock(hammer2_dev_t *hmp);
+void hammer2_voldata_modify(hammer2_dev_t *hmp);
 
 /*
  * hammer2_freemap.c

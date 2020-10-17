@@ -3169,6 +3169,31 @@ hammer2_pfs_memory_inc(hammer2_pfs_t *pmp)
 }
 
 /*
+ * Volume header data locks
+ */
+void
+hammer2_voldata_lock(hammer2_dev_t *hmp)
+{
+	lockmgr(&hmp->vollk, LK_EXCLUSIVE);
+}
+
+void
+hammer2_voldata_unlock(hammer2_dev_t *hmp)
+{
+	lockmgr(&hmp->vollk, LK_RELEASE);
+}
+
+void
+hammer2_voldata_modify(hammer2_dev_t *hmp)
+{
+	if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		atomic_add_long(&hammer2_count_modified_chains, 1);
+		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
+		hammer2_pfs_memory_inc(hmp->vchain.pmp);
+	}
+}
+
+/*
  * Returns 0 if the filesystem has tons of free space
  * Returns 1 if the filesystem has less than 10% remaining
  * Returns 2 if the filesystem has less than 2%/5% (user/root) remaining.

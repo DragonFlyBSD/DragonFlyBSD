@@ -2117,31 +2117,6 @@ hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
 }
 
 /*
- * Volume header data locks
- */
-void
-hammer2_voldata_lock(hammer2_dev_t *hmp)
-{
-	lockmgr(&hmp->vollk, LK_EXCLUSIVE);
-}
-
-void
-hammer2_voldata_unlock(hammer2_dev_t *hmp)
-{
-	lockmgr(&hmp->vollk, LK_RELEASE);
-}
-
-void
-hammer2_voldata_modify(hammer2_dev_t *hmp)
-{
-	if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) == 0) {
-		atomic_add_long(&hammer2_count_modified_chains, 1);
-		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
-		hammer2_pfs_memory_inc(hmp->vchain.pmp);
-	}
-}
-
-/*
  * This function returns the chain at the nearest key within the specified
  * range.  The returned chain will be referenced but not locked.
  *
