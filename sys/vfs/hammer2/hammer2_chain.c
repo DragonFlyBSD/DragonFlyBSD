@@ -6079,7 +6079,6 @@ hammer2_chain_dirent_test(hammer2_chain_t *chain, const char *name,
 			  size_t name_len)
 {
 	const hammer2_inode_data_t *ripdata;
-	const hammer2_dirent_head_t *den;
 
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		ripdata = &chain->data->ipdata;
@@ -6089,8 +6088,7 @@ hammer2_chain_dirent_test(hammer2_chain_t *chain, const char *name,
 		}
 	}
 	if (chain->bref.type == HAMMER2_BREF_TYPE_DIRENT &&
-	   chain->bref.embed.dirent.namlen == name_len) {
-		den = &chain->bref.embed.dirent;
+	    chain->bref.embed.dirent.namlen == name_len) {
 		if (name_len > sizeof(chain->bref.check.buf) &&
 		    bcmp(chain->data->buf, name, name_len) == 0) {
 			return 1;
