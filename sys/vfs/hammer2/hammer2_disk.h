@@ -120,9 +120,7 @@
 
 /*
  * In HAMMER2, arrays of blockrefs are fully set-associative, meaning that
- * any element can occur at any index and holes can be anywhere.  As a
- * future optimization we will be able to flag that such arrays are sorted
- * and thus optimize lookups, but for now we don't.
+ * any element can occur at any index and holes can be anywhere.
  *
  * Inodes embed either 512 bytes of direct data or an array of 4 blockrefs,
  * resulting in highly efficient storage for files <= 512 bytes and for files
@@ -772,17 +770,12 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 
 /*
  * HAMMER2 block references are collected into sets of 4 blockrefs.  These
- * sets are fully associative, meaning the elements making up a set are
- * not sorted in any way and may contain duplicate entries, holes, or
- * entries which shortcut multiple levels of indirection.  Sets are used
- * in various ways:
+ * sets are fully associative, meaning the elements making up a set may
+ * contain duplicate entries, holes, but valid elements are always sorted.
  *
- * (1) When redundancy is desired a set may contain several duplicate
- *     entries pointing to different copies of the same data.  Up to 4 copies
- *     are supported.
- *
- * (2) The blockrefs in a set can shortcut multiple levels of indirections
- *     within the bounds imposed by the parent of set.
+ * When redundancy is desired a set may contain several duplicate
+ * entries pointing to different copies of the same data.  Up to 4 copies
+ * are supported. Not implemented.
  *
  * When a set fills up another level of indirection is inserted, moving
  * some or all of the set's contents into indirect blocks placed under the
