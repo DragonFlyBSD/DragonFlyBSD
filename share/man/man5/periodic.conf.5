@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man5/periodic.conf.5 323550 2017-09-13 16:35:16Z gordon $
 .\"
-.Dd June 8, 2020
+.Dd Oct 18, 2020
 .Dt PERIODIC.CONF 5
 .Os
 .Sh NAME
@@ -534,6 +534,11 @@ for yesterday's mail rejects.
 Set to
 .Dq Li YES
 if you want to shorten the mail rejections output.
+.It Va daily_status_world_kernel
+.Pq Vt bool
+Set to
+.Dq Li YES
+to check if running userland and kernel are in sync.
 .It Va daily_queuerun_enable
 .Pq Vt bool
 Set to
