@@ -138,7 +138,10 @@ hammer2_io_alloc(hammer2_dev_t *hmp, hammer2_key_t data_off, uint8_t btype,
 
 	psize = HAMMER2_PBUFSIZE;
 	pmask = ~(hammer2_off_t)(psize - 1);
-	lsize = 1 << (int)(data_off & HAMMER2_OFF_MASK_RADIX);
+	if ((int)(data_off & HAMMER2_OFF_MASK_RADIX))
+		lsize = 1 << (int)(data_off & HAMMER2_OFF_MASK_RADIX);
+	else
+		lsize = 0;
 	lbase = data_off & ~HAMMER2_OFF_MASK_RADIX;
 	pbase = lbase & pmask;
 
@@ -785,7 +788,10 @@ hammer2_io_dedup_set(hammer2_dev_t *hmp, hammer2_blockref_t *bref)
 	int isgood;
 
 	dio = hammer2_io_alloc(hmp, bref->data_off, bref->type, 1, &isgood);
-	lsize = 1 << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	if ((int)(bref->data_off & HAMMER2_OFF_MASK_RADIX))
+		lsize = 1 << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	else
+		lsize = 0;
 	mask = hammer2_dedup_mask(dio, bref->data_off, lsize);
 	atomic_clear_64(&dio->dedup_valid, mask);
 	atomic_set_64(&dio->dedup_alloc, mask);
