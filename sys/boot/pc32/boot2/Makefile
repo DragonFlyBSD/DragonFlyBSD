@@ -90,6 +90,9 @@ boot: boot1_32 boot2_32
 .for s in _32 _64
 
 _ADDCFLAGS$s:= -DNSECT=${NSECT$s}
+.if ${CCVER:Mclang*}
+_ADDCFLAGS$s+= -fno-addrsig
+.endif
 _ts=	$s
 .if ${_ts} == "_64"
 _ADDCFLAGS$s+= -DDISKLABEL64
