@@ -1526,11 +1526,11 @@ filt_ext2vnode(struct knote *kn, long hint)
 }
 
 static struct filterops ext2read_filtops =
-	{ FILTEROP_ISFD, NULL, filt_ext2detach, filt_ext2read };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL, filt_ext2detach, filt_ext2read };
 static struct filterops ext2write_filtops =
-	{ FILTEROP_ISFD, NULL, filt_ext2detach, filt_ext2write };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL, filt_ext2detach, filt_ext2write };
 static struct filterops ext2vnode_filtops =
-	{ FILTEROP_ISFD, NULL, filt_ext2detach, filt_ext2vnode };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL, filt_ext2detach, filt_ext2vnode };
 
 static int
 ext2_kqfilter(struct vop_kqfilter_args *ap)

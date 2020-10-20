@@ -112,7 +112,7 @@ static struct vfsops ext2fs_vfsops = {
 	.vfs_uninit =		ext2_uninit
 };
 
-VFS_SET(ext2fs_vfsops, ext2fs, 0);
+VFS_SET(ext2fs_vfsops, ext2fs, VFCF_MPSAFE);
 MODULE_VERSION(ext2fs, 1);
 
 static int	ext2_check_sb_compat(struct ext2fs *es, struct cdev *dev,
@@ -978,6 +978,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp)
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 	mp->mnt_maxsymlinklen = EXT2_MAXSYMLINKLEN;
 	mp->mnt_flag |= MNT_LOCAL;
+	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
 	ump->um_mountp = mp;
 	ump->um_dev = dev;
 	ump->um_devvp = devvp;
