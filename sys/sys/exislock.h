@@ -180,8 +180,12 @@
  *	caller actually intends to terminate the structure, only that stronger
  *	locking will be required to return it to its fast-access state.
  */
-#include <sys/lock.h>
-#include <machine/cpumask.h>
+
+#ifndef _SYS_EXISLOCK_H_
+#define	_SYS_EXISLOCK_H_
+
+#include <sys/globaldata.h>
+#include <machine/thread.h>
 
 struct thread;
 
@@ -371,3 +375,5 @@ exis_terminate(exislock_t *xlk)
 	}
 	return state;
 }
+
+#endif /* !_SYS_EXISLOCK_H_ */
