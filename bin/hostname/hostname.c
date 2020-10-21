@@ -228,7 +228,7 @@ main(int argc, char **argv)
 							}
 						}
 					} else {
-						if ((sai->sin_family == AF_INET)) {
+						if (sai->sin_family == AF_INET) {
 
 							hst = gethostbyaddr(&sai->sin_addr,
 									sizeof(sai->sin_addr),AF_INET);
