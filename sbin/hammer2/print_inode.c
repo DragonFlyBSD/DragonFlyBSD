@@ -111,8 +111,8 @@ print_inode(const char *path)
 	printf("decrypt_check = 0x%jx\n", (uintmax_t)meta->decrypt_check);
 
 	free(str);
-	/* XXX HAMMER2IOC_INODE_GET only supports meta part */
-	return;
+
+#if 0	/* XXX HAMMER2IOC_INODE_GET only supports meta part */
 	printf("\n");
 
 	hexdump_inode(ipdata->filename, sizeof(ipdata->filename));
@@ -154,4 +154,5 @@ print_inode(const char *path)
 		hexdump_inode(ipdata->u.data, sizeof(ipdata->u.data));
 		printf("embedded data\n");
 	}
+#endif
 }
