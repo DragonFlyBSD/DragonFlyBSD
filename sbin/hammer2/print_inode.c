@@ -59,7 +59,7 @@ print_inode(const char *path)
 	hammer2_inode_data_t *ipdata;
 	hammer2_inode_meta_t *meta;
 	char *str = NULL;
-	int i, fd;
+	int fd;
 
 	fd = hammer2_ioctl_handle(path);
 	if (fd == -1)
@@ -120,6 +120,8 @@ print_inode(const char *path)
 	printf("\n");
 
 	if (!(meta->op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
+		int i;
+
 		for (i = 0; i < HAMMER2_SET_COUNT; ++i) {
 			hammer2_blockref_t *bref =
 			    &ipdata->u.blockset.blockref[i];
