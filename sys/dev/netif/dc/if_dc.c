@@ -1301,7 +1301,7 @@ dc_setfilt_xircom(struct dc_softc *sc)
 	}
 
 	if (ifp->if_flags & IFF_BROADCAST) {
-		h = dc_mchash_xircom(sc, (caddr_t)&etherbroadcastaddr);
+		h = dc_mchash_xircom(sc, __DECONST(caddr_t, &etherbroadcastaddr));
 		sp[h >> 4] |= 1 << (h & 0xF);
 	}
 

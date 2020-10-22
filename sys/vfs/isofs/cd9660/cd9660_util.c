@@ -72,7 +72,7 @@ isochar(u_char *isofn, u_char *isoend, int joliet_level, u_short *c,
 		inbuf[2]='\0';
 		inp = inbuf;
 		outp = outbuf;
-		cd9660_iconv->convchr(handle, (const char **)(void *)&inp,
+		cd9660_iconv->convchr(handle, __DECONST(const char **, &inp),
 		    &i, &outp, &j);
 		len -= j;
 		if (clen) *clen = len;
@@ -107,7 +107,8 @@ isofncmp(u_char *fn, int fnlen, u_char *isofn, int isolen, int joliet_level,
 	u_char *fnend = fn + fnlen, *isoend = isofn + isolen;
 
 	for (; fn < fnend; ) {
-		d = sgetrune(fn, fnend - fn, (char const **)&fn, flags, lhandle);
+		d = sgetrune(fn, fnend - fn, __DECONST(const char **, &fn),
+		    flags, lhandle);
 		if (isofn == isoend)
 			return d;
 		isofn += isochar(isofn, isoend, joliet_level, &c, NULL, flags, handle);
