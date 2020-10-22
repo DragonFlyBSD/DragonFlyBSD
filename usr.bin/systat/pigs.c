@@ -229,29 +229,4 @@ compar(const void *a, const void *b)
 		return (1);	/* b is better */
 	else
 		return 0;
-
-	if (pta->pt_kp == NULL && ptb->pt_kp == NULL)
-		return(0);
-	if (ptb->pt_kp == NULL)
-		return(-1);	/* a is better */
-	if (pta->pt_kp == NULL)
-		return(1);	/* b is better */
-	/*
-	 * Then check sleep times and run status.
-	 */
-	if (pta->pt_kp->kp_lwp.kl_slptime < ptb->pt_kp->kp_lwp.kl_slptime)
-		return(-1);
-	if (pta->pt_kp->kp_lwp.kl_slptime > ptb->pt_kp->kp_lwp.kl_slptime)
-		return(1);
-
-	/*
-	 * Runnability
-	 */
-	if (pta->pt_kp->kp_lwp.kl_stat != ptb->pt_kp->kp_lwp.kl_stat) {
-		if (pta->pt_kp->kp_lwp.kl_stat == LSRUN)
-			return(-1);
-		if (ptb->pt_kp->kp_lwp.kl_stat == LSRUN)
-			return(1);
-	}
-	return(0);
 }
