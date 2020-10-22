@@ -380,7 +380,9 @@ h2pfs_check(int fd, hammer2_blockref_t *bref, cmd_callback callback2)
 	hammer2_off_t io_off;
 	hammer2_off_t io_base;
 
-	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	if (bytes)
+		bytes = (size_t)1 << bytes;
 
 	io_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
 	io_base = io_off & ~(hammer2_off_t)(HAMMER2_LBUFSIZE - 1);
