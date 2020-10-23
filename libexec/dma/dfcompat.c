@@ -96,7 +96,7 @@ reallocf(void *ptr, size_t size)
 	void *nptr;
 
 	nptr = realloc(ptr, size);
-	if (!nptr && ptr)
+	if (!nptr && ptr && size != 0)
 		free(ptr);
 	return (nptr);
 }

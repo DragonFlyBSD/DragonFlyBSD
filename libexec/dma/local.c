@@ -82,7 +82,7 @@ create_mbox(const char *name)
 		for (i = 3; i <= maxfd; ++i)
 			close(i);
 
-		execl(LIBEXEC_PATH "/dma-mbox-create", "dma-mbox-create", name, NULL);
+		execl(LIBEXEC_PATH "/dma-mbox-create", "dma-mbox-create", name, (char *)NULL);
 		syslog(LOG_ERR, "cannot execute "LIBEXEC_PATH"/dma-mbox-create: %m");
 		exit(EX_SOFTWARE);
 

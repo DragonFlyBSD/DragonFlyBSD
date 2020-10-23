@@ -192,8 +192,7 @@ again:
 		switch (*s) {
 		case ' ':
 		case '\t':
-			s++;
-			/* continue */
+			ps->state = MAIN;
 			break;
 
 		default:
@@ -220,6 +219,7 @@ again:
 				goto copy;
 			}
 		}
+		break;
 
 		if (ps->quote) {
 			switch (*s) {
