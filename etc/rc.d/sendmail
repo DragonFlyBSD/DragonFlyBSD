@@ -2,7 +2,6 @@
 #
 # $NetBSD: sendmail,v 1.14 2002/02/12 01:26:36 lukem Exp $
 # $FreeBSD: src/etc/rc.d/sendmail,v 1.7 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/sendmail,v 1.4 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: mail
@@ -55,7 +54,7 @@ sendmail_precmd()
 		else
 			echo \
 	    "${name}: /etc/mail/aliases.db not present, generating"
-				/usr/bin/newaliases
+			/usr/bin/newaliases
 		fi
 	fi
 
