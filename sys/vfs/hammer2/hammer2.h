@@ -239,7 +239,7 @@ typedef uint32_t hammer2_xid_t;
  *	copies the flushed blockdata of the directory or file that was
  *	snapshotted.
  *
- * RBTREE NOTES:
+ * Radix tree NOTES:
  *
  *	- Note that the radix tree runs in powers of 2 only so sub-trees
  *	  cannot straddle edges.

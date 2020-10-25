@@ -1227,9 +1227,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 *
 		 * The data is not used but needs to be initialized to
 		 * pass assertion muster.  We use this chain primarily
-		 * as a placeholder for the freemap's top-level RBTREE
+		 * as a placeholder for the freemap's top-level radix tree
 		 * so it does not interfere with the volume's topology
-		 * RBTREE.
+		 * radix tree.
 		 */
 		hmp->fchain.hmp = hmp;
 		hmp->fchain.refs = 1;
