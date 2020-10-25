@@ -222,7 +222,7 @@ static uint64_t protection_codes[PROTECTION_CODES_SIZE];
 	}								\
 
 struct pmap kernel_pmap;
-struct pmap iso_pmap;
+static struct pmap iso_pmap;
 
 vm_paddr_t avail_start;		/* PA of first available physical page */
 vm_paddr_t avail_end;		/* PA of last available physical page */
@@ -237,7 +237,7 @@ vm_offset_t DMapMaxAddress;
 /* Has pmap_init completed? */
 __read_frequently static boolean_t pmap_initialized = FALSE;
 //static int pgeflag;		/* PG_G or-in */
-uint64_t PatMsr;
+static uint64_t PatMsr;
 
 static int ndmpdp;
 static vm_paddr_t dmaplimit;
@@ -267,16 +267,16 @@ static struct pv_entry *pvinit;
 /*
  * All those kernel PT submaps that BSD is so fond of
  */
-pt_entry_t *CMAP1 = NULL, *ptmmap;
+pt_entry_t *CMAP1 = NULL;
 caddr_t CADDR1 = NULL, ptvmmap = NULL;
-static pt_entry_t *msgbufmap;
+static pt_entry_t *msgbufmap, *ptmmap;
 struct msgbuf *msgbufp=NULL;
 
 /*
  * PMAP default PG_* bits. Needed to be able to add
  * EPT/NPT pagetable pmap_bits for the VMM module
  */
-__read_frequently uint64_t pmap_bits_default[] = {
+__read_frequently static uint64_t pmap_bits_default[] = {
 		REGULAR_PMAP,			/* TYPE_IDX		0 */
 		X86_PG_V,			/* PG_V_IDX		1 */
 		X86_PG_RW,			/* PG_RW_IDX		2 */
@@ -309,13 +309,13 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_enter_debug, CTLFLAG_RW,
 static int pmap_yield_count = 64;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_yield_count, CTLFLAG_RW,
     &pmap_yield_count, 0, "Yield during init_pt/release");
-int pmap_fast_kernel_cpusync = 0;
+static int pmap_fast_kernel_cpusync = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_fast_kernel_cpusync, CTLFLAG_RW,
     &pmap_fast_kernel_cpusync, 0, "Share page table pages when possible");
-int pmap_dynamic_delete = 0;
+static int pmap_dynamic_delete = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
     &pmap_dynamic_delete, 0, "Dynamically delete PT/PD/PDPs");
-int pmap_lock_delay = 100;
+static int pmap_lock_delay = 100;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_lock_delay, CTLFLAG_RW,
     &pmap_lock_delay, 0, "Spin loops");
 static int meltdown_mitigation = -1;

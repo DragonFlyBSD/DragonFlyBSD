@@ -107,9 +107,6 @@ static struct vmx_ctl_info vmx_entry = {
 	.msr_true_addr = IA32_VMX_TRUE_ENTRY_CTLS,
 };
 
-/* Declared in generic vmm.c - SYSCTL parent */
-extern struct sysctl_oid *vmm_sysctl_tree;
-
 /* SYSCTL tree and context */
 static struct sysctl_oid *vmx_sysctl_tree;
 static struct sysctl_ctx_list vmx_sysctl_ctx;

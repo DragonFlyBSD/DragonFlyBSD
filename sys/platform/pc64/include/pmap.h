@@ -191,8 +191,8 @@
 #define	PML4map		((pd_entry_t *)(addr_PML4map))
 #define	PML4pml4e	((pd_entry_t *)(addr_PML4pml4e))
 
-extern u_int64_t KPML4phys;	/* physical address of kernel level 4 */
-extern int pmap_fast_kernel_cpusync;
+extern uint64_t KPDPphys;	/* phys addr of kernel level 3 */
+extern uint64_t KPML4phys;	/* physical address of kernel level 4 */
 #endif
 
 #ifdef _KERNEL

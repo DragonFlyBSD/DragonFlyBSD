@@ -103,6 +103,7 @@ static void resettodr_on_shutdown(void *arg __unused);
 
 static uint8_t i8254_walltimer_sel;
 static uint16_t i8254_walltimer_cntr;
+static int timer0_running;
 
 int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
@@ -110,14 +111,13 @@ int	tsc_present;
 int	tsc_invariant;
 int	tsc_mpsync;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
-int	timer0_running;
 tsc_uclock_t tsc_frequency;
 tsc_uclock_t tsc_oneus_approx;	/* always at least 1, approx only */
 
 enum tstate { RELEASED, ACQUIRED };
-enum tstate timer0_state;
-enum tstate timer1_state;
-enum tstate timer2_state;
+static enum tstate timer0_state;
+static enum tstate timer1_state;
+static enum tstate timer2_state;
 
 int	i8254_cputimer_disable;	/* No need to initialize i8254 cputimer. */
 
@@ -1626,7 +1626,7 @@ tsc_mpsync_test(void)
 }
 SYSINIT(tsc_mpsync, SI_BOOT2_FINISH_SMP, SI_ORDER_ANY, tsc_mpsync_test, NULL);
 
-SYSCTL_NODE(_hw, OID_AUTO, i8254, CTLFLAG_RW, 0, "I8254");
+static SYSCTL_NODE(_hw, OID_AUTO, i8254, CTLFLAG_RW, 0, "I8254");
 SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &i8254_cputimer.freq, 0,
 	    "frequency");
 SYSCTL_PROC(_hw_i8254, OID_AUTO, timestamp, CTLTYPE_STRING|CTLFLAG_RD,

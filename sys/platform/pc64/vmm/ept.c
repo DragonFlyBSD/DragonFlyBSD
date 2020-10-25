@@ -58,8 +58,6 @@ static pt_entry_t pmap_cache_mask_ept;
 static int pmap_pm_flags_ept = PMAP_HVM;
 static int eptp_bits;
 
-extern uint64_t vmx_ept_vpid_cap;
-
 int
 vmx_ept_init(void)
 {

@@ -36,6 +36,7 @@
 #include <sys/rman.h>
 
 #if !defined(KLD_MODULE)
+#include <machine/clock.h>
 #include <machine/pmap.h>
 #endif
 
@@ -121,8 +122,6 @@ acpi_hpet_read(void)
 }
 
 #if !defined(KLD_MODULE)
-extern int i8254_cputimer_disable;
-
 static vm_offset_t ptr = 0;
 
 static int acpi_hpet_for_calibration = 1;

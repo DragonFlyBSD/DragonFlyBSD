@@ -44,6 +44,7 @@ extern int	tsc_mpsync;
 extern int	wall_cmos_clock;
 extern tsc_uclock_t tsc_frequency;
 extern tsc_uclock_t tsc_oneus_approx;	/* do not use for fine calc, min 1 */
+extern int	i8254_cputimer_disable;	/* No need to initialize i8254 cputimer. */
 
 /*
  * Driver to clock driver interface.

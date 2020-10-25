@@ -44,7 +44,7 @@
 
 CTASSERT(sizeof(struct kerneldumpheader) == 512);
 
-int do_minidump = 1;
+static int do_minidump = 1;
 TUNABLE_INT("debug.minidump", &do_minidump);
 SYSCTL_INT(_debug, OID_AUTO, minidump, CTLFLAG_RW, &do_minidump, 0,
     "Enable mini crash dumps");

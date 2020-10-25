@@ -93,6 +93,8 @@ struct vmm_ctl* get_ctl_amd(void);
 #ifdef _KERNEL
 
 extern int vmm_debug;
+extern struct sysctl_oid *vmm_sysctl_tree;
+extern uint64_t vmx_ept_vpid_cap;
 
 #endif
 

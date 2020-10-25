@@ -55,6 +55,7 @@
 #include <machine_base/icu/elcr_var.h>
 
 #include <machine_base/icu/icu.h>
+#include <machine_base/icu/icu_abi.h>
 #include <machine_base/icu/icu_ipl.h>
 #include <machine_base/apic/ioapic.h>
 

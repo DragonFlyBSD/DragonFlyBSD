@@ -54,7 +54,7 @@
 
 #include <machine/md_var.h>		/* setidt() */
 
-__read_frequently struct flame_graph_pcpu *flame_graph_array;
+__read_frequently static struct flame_graph_pcpu *flame_graph_array;
 __read_frequently static int flame_graph_enable;
 
 SYSCTL_INT(_debug, OID_AUTO, flame_graph_enable, CTLFLAG_RW,
@@ -62,7 +62,7 @@ SYSCTL_INT(_debug, OID_AUTO, flame_graph_enable, CTLFLAG_RW,
 SYSCTL_LONG(_debug, OID_AUTO, flame_graph_array, CTLFLAG_RD,
 	   &flame_graph_array, 0, "Collect data for flame graphs");
 
-MALLOC_DEFINE(M_FLAME, "flame_graphs", "Flame Graphs");
+static MALLOC_DEFINE(M_FLAME, "flame_graphs", "Flame Graphs");
 
 static void
 hard_sniff_init(void *arg)

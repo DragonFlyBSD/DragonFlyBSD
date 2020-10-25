@@ -35,6 +35,7 @@
 #include <sys/systm.h>
 #include <sys/sysctl.h>
 
+#include <machine/clock.h>
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
@@ -42,8 +43,6 @@
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
-
-extern int i8254_cputimer_disable;
 
 static int tsc_ignore_cpuid = 0;
 TUNABLE_INT("hw.tsc_ignore_cpuid", &tsc_ignore_cpuid);
@@ -68,7 +67,6 @@ char	cpu_vendor[20];		/* CPU Origin code */
 u_int	cpu_vendor_id;		/* CPU vendor ID */
 u_int	cpu_fxsr;		/* SSE enabled */
 u_int	cpu_xsave;		/* AVX enabled by OS*/
-u_int	cpu_mxcsr_mask;		/* Valid bits in mxcsr */
 u_int	cpu_clflush_line_size = 32;	/* Default CLFLUSH line size */
 u_int	cpu_stdext_feature;
 u_int	cpu_stdext_feature2;

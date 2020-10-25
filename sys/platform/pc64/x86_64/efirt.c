@@ -94,7 +94,7 @@ static int efi_status2err[25] = {
 	EPROTO		/* EFI_PROTOCOL_ERROR */
 };
 
-MALLOC_DEFINE(M_EFI, "efi", "EFI BIOS");
+static MALLOC_DEFINE(M_EFI, "efi", "EFI BIOS");
 
 static int
 efi_status_to_errno(efi_status status)
@@ -463,8 +463,6 @@ efi_get_table(struct uuid *uuid, void **ptr)
 	}
 	return (ENOENT);
 }
-
-char SaveCode[1024];
 
 int
 efi_get_time_locked(struct efi_tm *tm)

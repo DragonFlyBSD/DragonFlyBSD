@@ -133,7 +133,7 @@ struct deadlines {
 	uint64_t downcount_time;
 	uint64_t padding[6];
 };
-struct deadlines *tsc_deadlines = NULL;
+static struct deadlines *tsc_deadlines = NULL;
 
 static void	lapic_mem_eoi(void);
 static int	lapic_mem_ipi(int dest_type, int vector, int delivery_mode);

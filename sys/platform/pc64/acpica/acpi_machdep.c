@@ -46,7 +46,7 @@ static device_t	acpi_dev;
 #include <machine_base/apic/ioapic.h>
 #include <machine/smp.h>
 
-uint32_t acpi_reset_video = 1;
+static uint32_t acpi_reset_video = 1;
 TUNABLE_INT("hw.acpi.reset_video", &acpi_reset_video);
 
 int
