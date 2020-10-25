@@ -164,7 +164,7 @@ hammer2_pfssubtype_to_str(uint8_t subtype)
 {
 	switch(subtype) {
 	case HAMMER2_PFSSUBTYPE_NONE:
-		return("MASTER");
+		return("NONE");
 	case HAMMER2_PFSSUBTYPE_SNAPSHOT:
 		return("SNAPSHOT");
 	case HAMMER2_PFSSUBTYPE_AUTOSNAP:

@@ -184,10 +184,14 @@ info_callback2(const void *data,
 	struct pfs_entry *p, *e;
 
 	hammer2_uuid_to_str(&meta->pfs_clid, &pfs_id_str);
-	if (meta->pfs_type == HAMMER2_PFSTYPE_MASTER)
-		type_str = hammer2_pfssubtype_to_str(meta->pfs_subtype);
-	else
+	if (meta->pfs_type == HAMMER2_PFSTYPE_MASTER) {
+		if (meta->pfs_subtype == HAMMER2_PFSSUBTYPE_NONE)
+			type_str = "MASTER";
+		else
+			type_str = hammer2_pfssubtype_to_str(meta->pfs_subtype);
+	} else {
 		type_str = hammer2_pfstype_to_str(meta->pfs_type);
+	}
 	e = calloc(1, sizeof(*e));
 	snprintf(e->name, sizeof(e->name), "%s", ipdata->filename);
 	snprintf(e->s, sizeof(e->s), "%-11s %s", type_str, pfs_id_str);

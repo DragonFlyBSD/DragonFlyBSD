@@ -74,10 +74,15 @@ cmd_pfs_list(int ac, char **av)
 				break;
 			}
 			hammer2_uuid_to_str(&pfs.pfs_clid, &pfs_id_str);
-			if (pfs.pfs_type == HAMMER2_PFSTYPE_MASTER)
-				type_str = hammer2_pfssubtype_to_str(pfs.pfs_subtype);
-			else
+			if (pfs.pfs_type == HAMMER2_PFSTYPE_MASTER) {
+				if (pfs.pfs_subtype == HAMMER2_PFSSUBTYPE_NONE)
+					type_str = "MASTER";
+				else
+					type_str = hammer2_pfssubtype_to_str(
+						pfs.pfs_subtype);
+			} else {
 				type_str = hammer2_pfstype_to_str(pfs.pfs_type);
+			}
 			e = calloc(1, sizeof(*e));
 			snprintf(e->name, sizeof(e->name), "%s", pfs.name);
 			snprintf(e->s, sizeof(e->s), "%-11s %s",

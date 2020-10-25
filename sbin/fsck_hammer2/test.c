@@ -1017,11 +1017,14 @@ print_pfs(const hammer2_inode_data_t *ipdata)
 
 	f = get_inode_filename(ipdata);
 	hammer2_uuid_to_str(&meta->pfs_clid, &pfs_id_str);
-	if (meta->pfs_type == HAMMER2_PFSTYPE_MASTER)
-		type_str = hammer2_pfssubtype_to_str(meta->pfs_subtype);
-	else
+	if (meta->pfs_type == HAMMER2_PFSTYPE_MASTER) {
+		if (meta->pfs_subtype == HAMMER2_PFSSUBTYPE_NONE)
+			type_str = "MASTER";
+		else
+			type_str = hammer2_pfssubtype_to_str(meta->pfs_subtype);
+	} else {
 		type_str = hammer2_pfstype_to_str(meta->pfs_type);
-
+	}
 	tfprintf(stdout, 1, "%-11s %s %s\n", type_str, pfs_id_str, f);
 
 	free(f);
