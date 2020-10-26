@@ -215,9 +215,6 @@ static int hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 static int hammer2_vfs_modifying(struct mount *mp);
 
 static int hammer2_install_volume_header(hammer2_dev_t *hmp);
-#if 0
-static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
-#endif
 
 static void hammer2_update_pmps(hammer2_dev_t *hmp);
 
@@ -2779,15 +2776,6 @@ restart:
 	 */
 	hammer2_bioq_sync(pmp);
 
-#if 0
-	info.pass = 1;
-	info.waitfor = MNT_WAIT;
-	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
-
-	info.pass = 2;
-	info.waitfor = MNT_WAIT;
-	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
-#endif
 #if 0
 	/*
 	 * Generally speaking we now want to flush the media topology from
