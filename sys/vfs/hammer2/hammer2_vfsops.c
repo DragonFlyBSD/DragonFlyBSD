@@ -1766,9 +1766,6 @@ again:
 
 	hammer2_bulkfree_uninit(hmp);
 	hammer2_pfsfree_scan(hmp, 0);
-#if 0
-	hammer2_dev_exlock(hmp);	/* XXX order */
-#endif
 
 	/*
 	 * Cycle the volume data lock as a safety (probably not needed any
@@ -1879,9 +1876,7 @@ again:
 	hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, 'v', (u_int)-1);
 	dumpcnt = 50;
 	hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, 'f', (u_int)-1);
-#if 0
-	hammer2_dev_unlock(hmp);
-#endif
+
 	hammer2_chain_drop(&hmp->vchain);
 
 	hammer2_io_cleanup(hmp, &hmp->iotree);

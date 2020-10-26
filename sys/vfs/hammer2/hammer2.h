@@ -1468,10 +1468,6 @@ int hammer2_signal_check(time_t *timep);
 const char *hammer2_error_str(int error);
 const char *hammer2_bref_type_str(int btype);
 
-void hammer2_dev_exlock(hammer2_dev_t *hmp);
-void hammer2_dev_shlock(hammer2_dev_t *hmp);
-void hammer2_dev_unlock(hammer2_dev_t *hmp);
-
 int hammer2_get_dtype(uint8_t type);
 int hammer2_get_vtype(uint8_t type);
 uint8_t hammer2_get_obj_type(enum vtype vtype);
