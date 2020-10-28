@@ -23,16 +23,19 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: head/sys/dev/drm2/ttm/ttm_memory.c 248663 2013-03-23 20:46:47Z dumbbell $
  **************************************************************************/
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <drm/drmP.h>
 #include <drm/ttm/ttm_memory.h>
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_page_alloc.h>
-#include <linux/export.h>
+#include <linux/spinlock.h>
+#include <linux/sched.h>
+#include <linux/wait.h>
+#include <linux/mm.h>
+#include <linux/module.h>
+#include <linux/slab.h>
 
 #define TTM_MEMORY_ALLOC_RETRIES 4
 
@@ -231,9 +234,10 @@ out:
 
 
 
-static void ttm_shrink_work(void *arg, int pending __unused)
+static void ttm_shrink_work(struct work_struct *work)
 {
-	struct ttm_mem_global *glob = arg;
+	struct ttm_mem_global *glob =
+	    container_of(work, struct ttm_mem_global, work);
 
 	ttm_shrink(glob, true, 0ULL);
 }
@@ -296,8 +300,7 @@ static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
 	zone->glob = glob;
 	glob->zone_dma32 = zone;
 	ret = kobject_init_and_add(
-		&zone->kobj, &ttm_mem_zone_kobj_type, &glob->kobj, "%s",
-		zone->name);
+		&zone->kobj, &ttm_mem_zone_kobj_type, &glob->kobj, zone->name);
 	if (unlikely(ret != 0)) {
 		kobject_put(&zone->kobj);
 		return ret;
@@ -315,11 +318,8 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	struct ttm_mem_zone *zone;
 
 	lockinit(&glob->lock, "ttmemglob", 0, 0);
-	glob->swap_queue = taskqueue_create("ttm_swap", M_WAITOK,
-	    taskqueue_thread_enqueue, &glob->swap_queue);
-	taskqueue_start_threads(&glob->swap_queue, 1, TDPRI_KERN_DAEMON,
-				-1, "ttm swap");
-	TASK_INIT(&glob->work, 0, ttm_shrink_work, glob);
+	glob->swap_queue = create_singlethread_workqueue("ttm_swap");
+	INIT_WORK(&glob->work, ttm_shrink_work);
 	ret = kobject_init_and_add(
 		&glob->kobj, &ttm_mem_glob_kobj_type, ttm_get_kobj(), "memory_accounting");
 	if (unlikely(ret != 0)) {
@@ -338,10 +338,15 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	ret = ttm_mem_init_kernel_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
+#ifdef CONFIG_HIGHMEM
+	ret = ttm_mem_init_highmem_zone(glob, &si);
+	if (unlikely(ret != 0))
+		goto out_no_zone;
+#else
 	ret = ttm_mem_init_dma32_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
-	pr_info("(struct ttm_mem_global *)%p\n", glob);
+#endif
 	for (i = 0; i < glob->num_zones; ++i) {
 		zone = glob->zones[i];
 		pr_info("Zone %7s: Available graphics memory: %llu kiB\n",
@@ -365,8 +370,8 @@ void ttm_mem_global_release(struct ttm_mem_global *glob)
 	ttm_page_alloc_fini();
 	ttm_dma_page_alloc_fini();
 
-	taskqueue_drain(glob->swap_queue, &glob->work);
-	taskqueue_free(glob->swap_queue);
+	flush_workqueue(glob->swap_queue);
+	destroy_workqueue(glob->swap_queue);
 	glob->swap_queue = NULL;
 	for (i = 0; i < glob->num_zones; ++i) {
 		zone = glob->zones[i];
@@ -375,7 +380,6 @@ void ttm_mem_global_release(struct ttm_mem_global *glob)
 	}
 	kobject_del(&glob->kobj);
 	kobject_put(&glob->kobj);
-	
 }
 EXPORT_SYMBOL(ttm_mem_global_release);
 
@@ -396,7 +400,7 @@ static void ttm_check_swapping(struct ttm_mem_global *glob)
 	lockmgr(&glob->lock, LK_RELEASE);
 
 	if (unlikely(needs_swapping))
-		taskqueue_enqueue(glob->swap_queue, &glob->work);
+		(void)queue_work(glob->swap_queue, &glob->work);
 
 }
 
@@ -420,7 +424,7 @@ static void ttm_mem_global_free_zone(struct ttm_mem_global *glob,
 void ttm_mem_global_free(struct ttm_mem_global *glob,
 			 uint64_t amount)
 {
-	ttm_mem_global_free_zone(glob, NULL, amount);
+	return ttm_mem_global_free_zone(glob, NULL, amount);
 }
 EXPORT_SYMBOL(ttm_mem_global_free);
 

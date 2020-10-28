@@ -77,8 +77,8 @@ struct ttm_mem_zone;
 struct ttm_mem_global {
 	struct kobject kobj;
 	struct ttm_mem_shrink *shrink;
-	struct taskqueue *swap_queue;
-	struct task work;
+	struct workqueue_struct *swap_queue;
+	struct work_struct work;
 	spinlock_t lock;
 	struct ttm_mem_zone *zones[TTM_MEM_MAX_ZONES];
 	unsigned int num_zones;
