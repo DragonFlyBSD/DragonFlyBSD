@@ -159,6 +159,7 @@ plimit_fork(struct proc *p1)
 		} else {
 			nlimit = kmalloc(sizeof(*nlimit), M_PLIMIT, M_WAITOK);
 			plimit_copy(olimit, nlimit);
+			plimit_free(olimit);
 			olimit = nlimit;
 		}
 	}
