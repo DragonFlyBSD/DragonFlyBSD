@@ -91,26 +91,6 @@
 # SHAREMODE	ASCII text file mode. [${NOBINMODE}]
 #
 #
-# DOCDIR	Base path for system documentation (e.g. PSD, USD,
-#		handbook, FAQ etc.). [${SHAREDIR}/doc]
-#
-# DOCOWN	Documentation owner. [${SHAREOWN}]
-#
-# DOCGRP	Documentation group. [${SHAREGRP}]
-#
-# DOCMODE	Documentation mode. [${NOBINMODE}]
-#
-#
-# INFODIR	Base path for GNU's hypertext system
-#		called Info (see info(1)). [${SHAREDIR}/info]
-#
-# INFOOWN	Info owner. [${SHAREOWN}]
-#
-# INFOGRP	Info group. [${SHAREGRP}]
-#
-# INFOMODE	Info mode. [${NOBINMODE}]
-#
-#
 # MANDIR	Base path for manual installation. [${SHAREDIR}/man/man]
 #
 # MANOWN	Manual owner. [${SHAREOWN}]
@@ -164,16 +144,6 @@ MANDIR?=	${SHAREDIR}/man/man
 MANOWN?=	${SHAREOWN}
 MANGRP?=	${SHAREGRP}
 MANMODE?=	${NOBINMODE}
-
-DOCDIR?=	${SHAREDIR}/doc
-DOCOWN?=	${SHAREOWN}
-DOCGRP?=	${SHAREGRP}
-DOCMODE?=	${NOBINMODE}
-
-INFODIR?=	${SHAREDIR}/info
-INFOOWN?=	${SHAREOWN}
-INFOGRP?=	${SHAREGRP}
-INFOMODE?=	${NOBINMODE}
 
 NLSDIR?=	${SHAREDIR}/nls
 NLSGRP?=	${SHAREGRP}
