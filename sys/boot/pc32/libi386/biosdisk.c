@@ -143,7 +143,8 @@ static int	bd_bestslice(struct open_disk *od);
 static void	bd_chainextended(struct open_disk *od, u_int32_t base,
 					u_int32_t offset);
 
-char	bounce_base[BOUNCEBUF_SIZE];	/* also used by CD code */
+/* also used by CD code */
+char	__aligned(16) bounce_base[BOUNCEBUF_SIZE];
 
 
 /*
@@ -1029,7 +1030,6 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
      * Always bounce.  Our buffer is probably not segment-addressable.
      */
     if (1) {
-
 	/* 
 	 * There is a 64k physical boundary somewhere in the destination
 	 * buffer, so we have to arrange a suitable bounce buffer.  Allocate
@@ -1037,7 +1037,7 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	 * there is a break there, in which case we use the top half.
 	 */
 	bbuf = bounce_base;
-	x = min(BOUNCEBUF_SECTS, (unsigned)blks);
+	x = min(BOUNCEBUF_SECTS / 2, (unsigned)blks);
 
 	if (((u_int32_t)VTOP(bbuf) & 0xffff8000) ==
 	    ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE - 1) & 0xffff8000)) {
@@ -1177,10 +1177,10 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	 * unless there is a break there, in which case we use the top half.
 	 */
 	bbuf = bounce_base;
-	x = min(BOUNCEBUF_SECTS, (unsigned)blks);
+	x = min(BOUNCEBUF_SECTS / 2, (unsigned)blks);
 
-	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) ==
-	    ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE - 1) & 0xffff0000)) {
+	if (((u_int32_t)VTOP(bbuf) & 0xffff8000) ==
+	    ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE - 1) & 0xffff8000)) {
 	    breg = bbuf;
 	} else {
 	    breg = bbuf + x * BIOSDISK_SECSIZE;
