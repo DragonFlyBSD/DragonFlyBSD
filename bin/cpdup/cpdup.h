@@ -24,6 +24,30 @@
 #include <fnmatch.h>
 #include <assert.h>
 
+/*
+ * See ./mklinux script
+ *
+ * This is a horrible hack.  lchmod also seems to be missing
+ * on the Debian system I am testing compatibility on (which will
+ * break the symlink handling code), so not sure what to do about
+ * that.
+ *
+ * XXX TODO
+ */
+#ifdef __linux
+
+#define __printflike(a, b)
+#define __printf0like(a, b)
+#define __aligned(n)
+#define __dead2
+#define __unused
+
+#define lchmod	chmod	/* horrible hack */
+
+size_t strlcpy(char *dst, const char *src, size_t size);
+
+#endif
+
 #define VERSION	"1.21"
 #define AUTHORS	"Matt Dillon, Dima Ruban, & Oliver Fromme"
 

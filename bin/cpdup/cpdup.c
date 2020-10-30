@@ -136,6 +136,8 @@ static int DoCopy(copy_info_t info, struct stat *stat1, int depth);
 static int ScanDir(List *list, struct HostConf *host, const char *path,
 	int64_t *CountReadBytes, int n);
 static int mtimecmp(struct stat *st1, struct stat *st2);
+static int symlink_mfo_test(struct HostConf *hc, struct stat *st1,
+	struct stat *st2);
 
 int AskConfirmation = 1;
 int SafetyOpt = 1;
@@ -322,8 +324,11 @@ main(int ac, char **av)
 	    fatal("The MD5 options are not currently supported for remote sources");
 	if (hc_connect(&SrcHost, ReadOnlyOpt) < 0)
 	    exit(1);
-    } else if (ReadOnlyOpt)
-	fatal("The -R option is only supported for remote sources");
+    } else {
+	SrcHost.version = HCPROTO_VERSION;
+	if (ReadOnlyOpt)
+	    fatal("The -R option is only supported for remote sources");
+    }
 
     if (dst && (ptr = SplitRemote(&dst)) != NULL) {
 	DstHost.host = dst;
@@ -332,6 +337,8 @@ main(int ac, char **av)
 	    fatal("The FSMID options are not currently supported for remote targets");
 	if (hc_connect(&DstHost, 0) < 0)
 	    exit(1);
+    } else {
+	DstHost.version = HCPROTO_VERSION;
     }
 
     /*
@@ -1206,6 +1213,7 @@ relink:
 			logerr("%-32s rename-after-copy failed: %s\n",
 			    (dpath ? dpath : spath), strerror(errno)
 			);
+			xremove(&DstHost, path);
 			++r;
 		    } else {
 			if (VerboseOpt)
@@ -1274,7 +1282,19 @@ skip_copy:
 		n2 = -1;
 	}
 	if (n1 >= 0) {
-	    if (ForceOpt || n1 != n2 || bcmp(link1, link2, n1) != 0) {
+	    if (ForceOpt || n1 != n2 || bcmp(link1, link2, n1) != 0 ||
+		(st2Valid && symlink_mfo_test(&DstHost, stat1, &st2))
+	    ) {
+		struct timeval tv[2];
+
+		bzero(tv, sizeof(tv));
+		tv[0].tv_sec = stat1->st_mtime;
+		tv[1].tv_sec = stat1->st_mtime;
+#if defined(st_mtime)
+		tv[0].tv_usec = stat1->st_mtim.tv_nsec / 1000;
+		tv[1].tv_usec = stat1->st_mtim.tv_nsec / 1000;
+#endif
+
 		hc_umask(&DstHost, ~stat1->st_mode);
 		xremove(&DstHost, path);
 		link1[n1] = 0;
@@ -1287,16 +1307,32 @@ skip_copy:
 		} else {
 		    if (DstRootPrivs || ChgrpAllowed(stat1->st_gid))
 			hc_lchown(&DstHost, path, stat1->st_uid, stat1->st_gid);
+
 		    /*
-		     * there is no lchmod() or lchflags(), we
-		     * cannot chmod or chflags a softlink.
+		     * lutimes, lchmod if supported by destination.
+		     */
+		    if (DstHost.version >= HCPROTO_VERSION_LUCC) {
+			hc_lchmod(&DstHost, path, stat1->st_mode);
+			hc_lutimes(&DstHost, path, tv);
+		    }
+
+		    /*
+		     * rename (and set flags if supported by destination)
 		     */
 		    if (st2Valid && xrename(path, dpath, st2_flags) != 0) {
 			logerr("%-32s rename softlink (%s->%s) failed: %s\n",
 			    (dpath ? dpath : spath),
 			    path, dpath, strerror(errno));
-		    } else if (VerboseOpt) {
-			logstd("%-32s softlink-ok\n", (dpath ? dpath : spath));
+			xremove(&DstHost, path);
+		    } else {
+#ifdef _ST_FLAGS_PRESENT_
+			if (DstHost.version >= HCPROTO_VERSION_LUCC)
+			    hc_lchflags(&DstHost, dpath, stat1->st_flags);
+#endif
+			if (VerboseOpt) {
+			    logstd("%-32s softlink-ok\n",
+				   (dpath ? dpath : spath));
+			}
 		    }
 		    hc_umask(&DstHost, 000);
 		    CountWriteBytes += n1;
@@ -1740,9 +1776,17 @@ xrename(const char *src, const char *dst, u_long flags)
 
     if ((r = hc_rename(&DstHost, src, dst)) < 0) {
 #ifdef _ST_FLAGS_PRESENT_
-	hc_chflags(&DstHost, dst, 0);
-	if ((r = hc_rename(&DstHost, src, dst)) < 0)
+	if (DstHost.version >= HCPROTO_VERSION_LUCC)
+	    hc_lchflags(&DstHost, dst, 0);
+	else
+	    hc_chflags(&DstHost, dst, 0);
+
+	if ((r = hc_rename(&DstHost, src, dst)) < 0) {
+	    if (DstHost.version >= HCPROTO_VERSION_LUCC)
+		hc_lchflags(&DstHost, dst, flags);
+	    else
 		hc_chflags(&DstHost, dst, flags);
+	}
 #endif
     }
     return(r);
@@ -1758,7 +1802,10 @@ xlink(const char *src, const char *dst, u_long flags)
 
     if ((r = hc_link(&DstHost, src, dst)) < 0) {
 #ifdef _ST_FLAGS_PRESENT_
-	hc_chflags(&DstHost, src, 0);
+	if (DstHost.version >= HCPROTO_VERSION_LUCC)
+	    hc_lchflags(&DstHost, dst, 0);
+	else
+	    hc_chflags(&DstHost, src, 0);
 	r = hc_link(&DstHost, src, dst);
 	e = errno;
 	hc_chflags(&DstHost, src, flags);
@@ -1778,7 +1825,10 @@ xremove(struct HostConf *host, const char *path)
     res = hc_remove(host, path);
 #ifdef _ST_FLAGS_PRESENT_
     if (res == -EPERM) {
-	hc_chflags(host, path, 0);
+	if (host->version >= HCPROTO_VERSION_LUCC)
+	    hc_lchflags(host, path, 0);
+	else
+	    hc_chflags(host, path, 0);
 	res = hc_remove(host, path);
     }
 #endif
@@ -1813,9 +1863,31 @@ xrmdir(struct HostConf *host, const char *path)
 static int
 mtimecmp(struct stat *st1, struct stat *st2)
 {
-	if (st1->st_mtime < st2->st_mtime)
-		return -1;
-	if (st1->st_mtime == st2->st_mtime)
-		return 0;
-	return 1;
+    if (st1->st_mtime < st2->st_mtime)
+	return -1;
+    if (st1->st_mtime == st2->st_mtime)
+	return 0;
+    return 1;
+}
+
+/*
+ * Check to determine if a symlink's mtime, flags, or mode differ.
+ *
+ * This is only supported on targets that support lchflags, lutimes,
+ * and lchmod.
+ */
+static int
+symlink_mfo_test(struct HostConf *hc, struct stat *st1, struct stat *st2)
+{
+    int res = 0;
+
+    if (hc->version >= HCPROTO_VERSION_LUCC) {
+	if (!FlagsMatch(st1, st2))
+	    res = 1;
+	if (mtimecmp(st1, st2) != 0)
+	    res = 1;
+	if (st1->st_mode != st2->st_mode)
+	    res = 1;
+    }
+    return res;
 }

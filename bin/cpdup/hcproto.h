@@ -7,8 +7,9 @@
 #ifndef _HCPROTO_H_
 #define _HCPROTO_H_
 
-#define HCPROTO_VERSION		5
+#define HCPROTO_VERSION		6
 #define HCPROTO_VERSION_COMPAT	2
+#define HCPROTO_VERSION_LUCC	6	/* lutimes, lchflags, lchmod */
 
 #define HC_HELLO	0x0001
 
@@ -39,6 +40,9 @@
 #define HC_GETGROUPS	0x0028
 #define HC_SCANDIR	0x0029
 #define HC_READFILE	0x002A
+#define HC_LUTIMES	0x002B
+#define HC_LCHFLAGS	0x002C
+#define HC_LCHMOD	0x002D
 
 #define LC_HELLOSTR	(0x0001|LCF_STRING)
 #define LC_PATH1	(0x0010|LCF_STRING)
@@ -106,14 +110,17 @@ int hc_rmdir(struct HostConf *hc, const char *path);
 int hc_chown(struct HostConf *hc, const char *path, uid_t owner, gid_t group);
 int hc_lchown(struct HostConf *hc, const char *path, uid_t owner, gid_t group);
 int hc_chmod(struct HostConf *hc, const char *path, mode_t mode);
+int hc_lchmod(struct HostConf *hc, const char *path, mode_t mode);
 int hc_mknod(struct HostConf *hc, const char *path, mode_t mode, dev_t rdev);
 int hc_link(struct HostConf *hc, const char *name1, const char *name2);
 int hc_chflags(struct HostConf *hc, const char *path, u_long flags);
+int hc_lchflags(struct HostConf *hc, const char *path, u_long flags);
 int hc_readlink(struct HostConf *hc, const char *path, char *buf, int bufsiz);
 mode_t hc_umask(struct HostConf *hc, mode_t numask);
 int hc_symlink(struct HostConf *hc, const char *name1, const char *name2);
 int hc_rename(struct HostConf *hc, const char *name1, const char *name2);
 int hc_utimes(struct HostConf *hc, const char *path, const struct timeval *times);
+int hc_lutimes(struct HostConf *hc, const char *path, const struct timeval *times);
 uid_t hc_geteuid(struct HostConf *hc);
 int hc_getgroups(struct HostConf *hc, gid_t **gidlist);
 
