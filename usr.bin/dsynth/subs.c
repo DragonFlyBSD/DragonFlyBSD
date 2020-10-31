@@ -940,6 +940,12 @@ crcDirTree(const char *path)
 	while ((fen = fts_read(fts)) != NULL) {
 		if (fen->fts_info != FTS_F && fen->fts_info != FTS_SL)
 			continue;
+		/*
+		 * Ignore hidden dot files or ones ending with .core from the
+		 * calculated CRC sum to prevent unnecessary rebuilds.
+		 */
+		if (fen->fts_name[0] == '.')
+			continue;
 		if (fen->fts_namelen >= 5 &&
 		    !strcmp(fen->fts_name + fen->fts_namelen - 5, ".core")) {
 			continue;
