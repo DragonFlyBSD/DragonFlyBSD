@@ -6,7 +6,7 @@ PROG=		cdboot
 NOMAN=
 STRIP=
 BINDIR?=	/boot
-CFLAGS+=	${ASSEMBLER_FLAGS}
+CFLAGS+=	${BOOT_CCASM_FLAGS}
 
 ${PROG}: ${PROG}.o
 	${LD} ${LDFLAGS:N-Wl,*} -N -e start -Ttext ${ORG} -o ${PROG}.out ${PROG}.o

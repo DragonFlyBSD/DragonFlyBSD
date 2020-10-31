@@ -90,9 +90,7 @@ boot: boot1_32 boot2_32
 .for s in _32 _64
 
 _ADDCFLAGS$s:= -DNSECT=${NSECT$s}
-.if ${CCVER:Mclang*}
-_ADDCFLAGS$s+= -fno-addrsig
-.endif
+_ADDCFLAGS$s+= ${BOOT_CCASM_FLAGS}
 _ts=	$s
 .if ${_ts} == "_64"
 _ADDCFLAGS$s+= -DDISKLABEL64
@@ -113,7 +111,7 @@ boot1$s.out: boot1$s.o bootasm.h
 
 boot1$s.o: boot1.S
 	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -DFLAGS=${B1FLAGS} \
-		${ASSEMBLER_FLAGS} ${.ALLSRC} -o ${.TARGET} -c
+		${BOOT_CCASM_FLAGS} ${.ALLSRC} -o ${.TARGET} -c
 
 #${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../../lib/libstand/hammer2.c
 
