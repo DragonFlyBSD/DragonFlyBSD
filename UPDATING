@@ -12,6 +12,17 @@
 +         UPGRADING DRAGONFLY FROM 5.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+BINUTILS 2.34 REPLACES 2.25, PRIMARY
+------------------------------------
+
+The oldest of the two versions of Binutils, version 2.25, was removed
+and replaced with Binutils 2.34.  It becomes the primary version of
+binutils and version 2.27 becomes the alternate.
+
+The accepted values of BINUTILSVER are now "binutils234" (default) and
+"binutils227".  The building of Binutils 2.27 can be prevented by setting
+NO_ALTBINUTILS=yes in make.conf
+
 LIBRADIUS AND LIBTACPLUS REMOVED
 --------------------------------
 
