@@ -36,9 +36,16 @@ COPTFLAGS?=-O2 -pipe
 #COPTFLAGS?=-O -fcrossjumping -pipe
 #COPTFLAGS?=-Os -fno-strict-aliasing -pipe
 #COPTFLAGS?=-O2 -fno-strict-aliasing -pipe
+
+# always use external as(1)
+.if ${CCVER:Mclang*}
+COPTFLAGS+=	-no-integrated-as
+.endif
+
 .if !defined(NO_CPU_COPTFLAGS)
 COPTFLAGS+= ${_CPUCFLAGS}
 .endif
+
 # don't use -I- so we can use proper source-relative locality for local
 # includes.
 #

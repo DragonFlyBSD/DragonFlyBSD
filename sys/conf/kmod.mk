@@ -83,6 +83,11 @@ WERROR=-Werror
 
 COPTFLAGS?=-O2 -pipe
 
+# always use external as(1)
+.if ${CCVER:Mclang*}
+COPTFLAGS+=	-no-integrated-as
+.endif
+
 # useful for debugging
 #.warning "KMOD-PREFILTER ${CFLAGS}"
 
