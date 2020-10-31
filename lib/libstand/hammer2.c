@@ -975,7 +975,7 @@ hammer2_readdir(struct open_file *f, struct dirent *den)
 	return ENOENT;
 }
 
-struct fs_ops hammer_fsops = {
+struct fs_ops hammer2_fsops = {
 	"hammer2",
 	hammer2_open,
 	hammer2_close,

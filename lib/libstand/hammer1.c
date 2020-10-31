@@ -1041,7 +1041,7 @@ hammer_readdir(struct open_file *f, struct dirent *d)
 }
 
 // libstand
-struct fs_ops hammer_fsops = {
+struct fs_ops hammer1_fsops = {
 	"hammer",
 	hammer_open,
 	hammer_close,

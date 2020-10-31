@@ -114,7 +114,8 @@ struct fs_ops {
  * libstand-supplied filesystems
  */
 extern struct fs_ops ufs_fsops;
-extern struct fs_ops hammer_fsops;
+extern struct fs_ops hammer1_fsops;
+extern struct fs_ops hammer2_fsops;
 extern struct fs_ops tftp_fsops;
 extern struct fs_ops nfs_fsops;
 extern struct fs_ops cd9660_fsops;
