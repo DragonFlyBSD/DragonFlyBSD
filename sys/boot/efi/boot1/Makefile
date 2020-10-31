@@ -86,7 +86,7 @@ boot1.efi: ${PROG}
 	${OBJCOPY} -j .peheader -j .text -j .sdata -j .data \
 		-j .dynamic -j .dynsym -j .rel.dyn \
 		-j .rela.dyn -j .reloc \
-		--subsystem efi-app \
+		${EFI_GOLD_OBJCOPY_FLAGS} --subsystem efi-app \
 		--output-target=${EFI_TARGET} ${.ALLSRC} ${.TARGET}
 
 boot1.o: ${.CURDIR}/../../common/ufsread.c

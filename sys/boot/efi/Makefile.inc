@@ -15,3 +15,6 @@ CFLAGS+=	-fshort-wchar
 CFLAGS+=	-mno-red-zone
 CFLAGS+=	-mno-aes
 .endif
+
+# post binutils-2.27 ld.gold workaround for linker script handling
+EFI_GOLD_OBJCOPY_FLAGS=	-j .got -j .got.plt -j .bss
