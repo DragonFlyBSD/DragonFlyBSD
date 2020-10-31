@@ -55,20 +55,20 @@ struct devsw *devsw[] = {
 struct fs_ops *file_system[] = {
     &hammer_fsops,
     &ufs_fsops,
-    &ext2fs_fsops,
     &dosfs_fsops,
+    &ext2fs_fsops,
     &cd9660_fsops,
+#ifdef LOADER_TFTP_SUPPORT
+    &tftp_fsops,
+#endif
+#ifdef LOADER_NFS_SUPPORT
+    &nfs_fsops,
+#endif
 #ifdef LOADER_GZIP_SUPPORT
     &gzipfs_fsops,
 #endif
 #ifdef LOADER_BZIP2_SUPPORT
     &bzipfs_fsops,
-#endif
-#ifdef LOADER_TFTP_SUPPORT
-    &tftp_fsops,
-#endif
-#ifdef LOADER_NFS_SUPPORT 
-    &nfs_fsops,
 #endif
 #ifdef LOADER_SPLITFS_SUPPORT
     &splitfs_fsops,
