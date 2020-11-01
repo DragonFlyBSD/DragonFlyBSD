@@ -1196,7 +1196,8 @@ struct hammer2_volume_data {
 	/*
 	 * sector #1 - 512 bytes
 	 *
-	 * The entire sector is used by a blockset.
+	 * The entire sector is used by a blockset, but currently only first
+	 * blockref is used.
 	 */
 	hammer2_blockset_t sroot_blockset;	/* 0200-03FF Superroot dir */
 
@@ -1217,10 +1218,6 @@ struct hammer2_volume_data {
 	 * specify local and remote copies operating as masters or slaves.
 	 * copyid's 0 and 255 are reserved (0 indicates an empty slot and 255
 	 * indicates the local media).
-	 *
-	 * Each inode contains a set of up to 8 copyids, either inherited
-	 * from its parent or explicitly specified in the inode, which
-	 * indexes into this array.
 	 */
 						/* 1000-8FFF copyinfo config */
 	hammer2_volconf_t copyinfo[HAMMER2_COPYID_COUNT];
