@@ -4371,6 +4371,11 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 	while (ncp && (ncp != fdp->fd_nrdir.ncp ||
 	       nch.mount != fdp->fd_nrdir.mount)
 	) {
+		if (ncp->nc_flag & NCF_DESTROYED) {
+			_cache_drop(ncp);
+			ncp = NULL;
+			break;
+		}
 		/*
 		 * While traversing upwards if we encounter the root
 		 * of the current mount we have to skip to the mount point
