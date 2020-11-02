@@ -188,6 +188,7 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 	info.ident = NULL;	/* avoid improper gcc warning */
 	info.secs = 0;		/* avoid improper gcc warning */
 	info.base = 0;		/* avoid improper gcc warning */
+	info.count = 0;		/* avoid improper gcc warning */
 	expbackoff = 0;
 
 	/*
