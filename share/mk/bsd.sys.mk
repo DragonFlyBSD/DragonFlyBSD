@@ -99,6 +99,9 @@ _cnowarnflags	+=	-Wno-error=maybe-uninitialized\
 			-Wno-error=uninitialized\
 			-Wno-error=shadow
 .  endif
+.  if ${WARNS} >= 3 && ${_WCCVER:Mgcc4[789]}
+_cnowarnflags	+=	-Wno-error=missing-field-initializers
+.  endif
 # Disable -Werror selectively for -Os and -Og compilations.  Both -Winline and
 # -Wmaybe-uninitialized are noisy and should be caught by standard -O and -O2.
 # These are still useful diagnostics while investigating compilation issues.
