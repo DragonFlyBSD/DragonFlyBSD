@@ -395,6 +395,20 @@ reloc_jmpslots(Obj_Entry *obj, int flags, RtldLockState *lockstate)
     return 0;
 }
 
+static void
+reloc_iresolve_one(Obj_Entry *obj, const Elf_Rela *rela,
+    RtldLockState *lockstate)
+{
+    Elf_Addr *where, target, *ptr;
+
+    ptr = (Elf_Addr *)(obj->relocbase + rela->r_addend);
+    where = (Elf_Addr *)(obj->relocbase + rela->r_offset);
+    lock_release(rtld_bind_lock, lockstate);
+    target = ((Elf_Addr (*)(void))ptr)();
+    wlock_acquire(rtld_bind_lock, lockstate);
+    *where = target;
+}
+
 int
 reloc_iresolve(Obj_Entry *obj, RtldLockState *lockstate)
 {
@@ -403,25 +417,18 @@ reloc_iresolve(Obj_Entry *obj, RtldLockState *lockstate)
 
     if (!obj->irelative)
 	return (0);
+    obj->irelative = false;
     relalim = (const Elf_Rela *)((char *)obj->pltrela + obj->pltrelasize);
     for (rela = obj->pltrela;  rela < relalim;  rela++) {
-	Elf_Addr *where, target, *ptr;
-
 	switch (ELF_R_TYPE(rela->r_info)) {
 	case R_X86_64_JMP_SLOT:
 	  break;
 
 	case R_X86_64_IRELATIVE:
-	  ptr = (Elf_Addr *)(obj->relocbase + rela->r_addend);
-	  where = (Elf_Addr *)(obj->relocbase + rela->r_offset);
-	  lock_release(rtld_bind_lock, lockstate);
-	  target = ((Elf_Addr (*)(void))ptr)();
-	  wlock_acquire(rtld_bind_lock, lockstate);
-	  *where = target;
+	  reloc_iresolve_one(obj, rela, lockstate);
 	  break;
 	}
     }
-    obj->irelative = false;
     return (0);
 }
 
