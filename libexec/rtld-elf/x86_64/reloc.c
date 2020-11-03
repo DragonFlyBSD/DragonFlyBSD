@@ -303,6 +303,9 @@ reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld, int flags,
 		case R_X86_64_RELATIVE:
 			*where = (Elf_Addr)(obj->relocbase + rela->r_addend);
 			break;
+		case R_X86_64_IRELATIVE:
+			obj->irelative_nonplt = true;
+			break;
 		/*
 		 * missing:
 		 * R_X86_64_GOTPCREL, R_X86_64_32, R_X86_64_32S, R_X86_64_16,
@@ -428,6 +431,23 @@ reloc_iresolve(Obj_Entry *obj, RtldLockState *lockstate)
 	  reloc_iresolve_one(obj, rela, lockstate);
 	  break;
 	}
+    }
+    return (0);
+}
+
+int
+reloc_iresolve_nonplt(Obj_Entry *obj, RtldLockState *lockstate)
+{
+    const Elf_Rela *relalim;
+    const Elf_Rela *rela;
+
+    if (!obj->irelative_nonplt)
+	return (0);
+    obj->irelative_nonplt = false;
+    relalim = (const Elf_Rela *)((char *)obj->rela + obj->relasize);
+    for (rela = obj->rela;  rela < relalim;  rela++) {
+	if (ELF_R_TYPE(rela->r_info) == R_X86_64_IRELATIVE)
+	    reloc_iresolve_one(obj, rela, lockstate);
     }
     return (0);
 }

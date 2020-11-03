@@ -2736,6 +2736,9 @@ resolve_object_ifunc(Obj_Entry *obj, bool bind_now, int flags,
 {
 	if (obj->irelative && reloc_iresolve(obj, lockstate) == -1)
 		return (-1);
+	if (obj->irelative_nonplt && reloc_iresolve_nonplt(obj,
+	    lockstate) == -1)
+		return (-1);
 	if ((obj->bind_now || bind_now) && obj->gnu_ifunc &&
 	    reloc_gnu_ifunc(obj, flags, lockstate) == -1)
 		return (-1);
