@@ -1,4 +1,4 @@
-/* $OpenBSD: t1_lib.c,v 1.165.4.1 2020/08/10 18:59:47 tb Exp $ */
+/* $OpenBSD: t1_lib.c,v 1.176 2020/09/12 17:25:11 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -122,7 +122,7 @@
 #include "ssl_sigalgs.h"
 #include "ssl_tlsext.h"
 
-static int tls_decrypt_ticket(SSL *s, CBS *session_id, CBS *ticket,
+static int tls_decrypt_ticket(SSL *s, CBS *ticket, int *alert,
     SSL_SESSION **psess);
 
 SSL3_ENC_METHOD TLSv1_enc_data = {
@@ -137,14 +137,6 @@ SSL3_ENC_METHOD TLSv1_2_enc_data = {
 	.enc_flags = SSL_ENC_FLAG_EXPLICIT_IV|SSL_ENC_FLAG_SIGALGS|
 	    SSL_ENC_FLAG_SHA256_PRF|SSL_ENC_FLAG_TLS1_2_CIPHERS,
 };
-
-long
-tls1_default_timeout(void)
-{
-	/* 2 hours, the 24 hours mentioned in the TLSv1 spec
-	 * is way too long for http, the cache would over fill */
-	return (60 * 60 * 2);
-}
 
 int
 tls1_new(SSL *s)
@@ -514,43 +506,38 @@ tls1_set_ec_id(uint16_t *curve_id, uint8_t *comp_id, EC_KEY *ec)
 {
 	const EC_GROUP *grp;
 	const EC_METHOD *meth;
-	int is_prime = 0;
-	int nid, id;
+	int prime_field;
+	int nid;
 
 	if (ec == NULL)
 		return (0);
 
-	/* Determine if it is a prime field. */
+	/* Determine whether the curve is defined over a prime field. */
 	if ((grp = EC_KEY_get0_group(ec)) == NULL)
 		return (0);
 	if ((meth = EC_GROUP_method_of(grp)) == NULL)
 		return (0);
-	if (EC_METHOD_get_field_type(meth) == NID_X9_62_prime_field)
-		is_prime = 1;
+	prime_field = (EC_METHOD_get_field_type(meth) == NID_X9_62_prime_field);
 
-	/* Determine curve ID. */
+	/* Determine curve ID - NID_undef results in a curve ID of zero. */
 	nid = EC_GROUP_get_curve_name(grp);
-	id = tls1_ec_nid2curve_id(nid);
-
 	/* If we have an ID set it, otherwise set arbitrary explicit curve. */
-	if (id != 0)
-		*curve_id = id;
-	else
-		*curve_id = is_prime ? 0xff01 : 0xff02;
+	if ((*curve_id = tls1_ec_nid2curve_id(nid)) == 0)
+		*curve_id = prime_field ? 0xff01 : 0xff02;
+
+	if (comp_id == NULL)
+		return (1);
 
 	/* Specify the compression identifier. */
-	if (comp_id != NULL) {
-		if (EC_KEY_get0_public_key(ec) == NULL)
-			return (0);
-
-		if (EC_KEY_get_conv_form(ec) == POINT_CONVERSION_COMPRESSED) {
-			*comp_id = is_prime ?
-			    TLSEXT_ECPOINTFORMAT_ansiX962_compressed_prime :
-			    TLSEXT_ECPOINTFORMAT_ansiX962_compressed_char2;
-		} else {
-			*comp_id = TLSEXT_ECPOINTFORMAT_uncompressed;
-		}
+	if (EC_KEY_get0_public_key(ec) == NULL)
+		return (0);
+	*comp_id = TLSEXT_ECPOINTFORMAT_uncompressed;
+	if (EC_KEY_get_conv_form(ec) == POINT_CONVERSION_COMPRESSED) {
+		*comp_id = TLSEXT_ECPOINTFORMAT_ansiX962_compressed_char2;
+		if (prime_field)
+			*comp_id = TLSEXT_ECPOINTFORMAT_ansiX962_compressed_prime;
 	}
+
 	return (1);
 }
 
@@ -642,7 +629,6 @@ ssl_check_clienthello_tlsext_early(SSL *s)
 		ssl3_send_alert(s, SSL3_AL_WARNING, al);
 		return 1;
 	case SSL_TLSEXT_ERR_NOACK:
-		s->internal->servername_done = 0;
 	default:
 		return 1;
 	}
@@ -730,12 +716,11 @@ ssl_check_serverhello_tlsext(SSL *s)
 	if ((s->tlsext_status_type != -1) && !(s->internal->tlsext_status_expected) &&
 	    s->ctx && s->ctx->internal->tlsext_status_cb) {
 		int r;
-		/* Set resp to NULL, resplen to -1 so callback knows
- 		 * there is no response.
- 		 */
+
 		free(s->internal->tlsext_ocsp_resp);
 		s->internal->tlsext_ocsp_resp = NULL;
-		s->internal->tlsext_ocsp_resplen = -1;
+		s->internal->tlsext_ocsp_resp_len = 0;
+
 		r = s->ctx->internal->tlsext_status_cb(s,
 		    s->ctx->internal->tlsext_status_arg);
 		if (r == 0) {
@@ -751,14 +736,11 @@ ssl_check_serverhello_tlsext(SSL *s)
 	switch (ret) {
 	case SSL_TLSEXT_ERR_ALERT_FATAL:
 		ssl3_send_alert(s, SSL3_AL_FATAL, al);
-
 		return -1;
 	case SSL_TLSEXT_ERR_ALERT_WARNING:
 		ssl3_send_alert(s, SSL3_AL_WARNING, al);
-
 		return 1;
 	case SSL_TLSEXT_ERR_NOACK:
-		s->internal->servername_done = 0;
 	default:
 		return 1;
 	}
@@ -768,7 +750,6 @@ ssl_check_serverhello_tlsext(SSL *s)
  * ClientHello, and other operations depend on the result, we need to handle
  * any TLS session ticket extension at the same time.
  *
- *   session_id: a CBS containing the session ID.
  *   ext_block: a CBS for the ClientHello extensions block.
  *   ret: (output) on return, if a ticket was decrypted, then this is set to
  *       point to the resulting session.
@@ -778,13 +759,14 @@ ssl_check_serverhello_tlsext(SSL *s)
  * never be decrypted, nor will s->internal->tlsext_ticket_expected be set to 1.
  *
  * Returns:
- *   -1: fatal error, either from parsing or decrypting the ticket.
- *    0: no ticket was found (or was ignored, based on settings).
- *    1: a zero length extension was found, indicating that the client supports
- *       session tickets but doesn't currently have one to offer.
- *    2: either s->internal->tls_session_secret_cb was set, or a ticket was offered but
- *       couldn't be decrypted because of a non-fatal error.
- *    3: a ticket was successfully decrypted and *ret was set.
+ *    TLS1_TICKET_FATAL_ERROR: error from parsing or decrypting the ticket.
+ *    TLS1_TICKET_NONE: no ticket was found (or was ignored, based on settings).
+ *    TLS1_TICKET_EMPTY: a zero length extension was found, indicating that the
+ *       client supports session tickets but doesn't currently have one to offer.
+ *    TLS1_TICKET_NOT_DECRYPTED: either s->internal->tls_session_secret_cb was
+ *       set, or a ticket was offered but couldn't be decrypted because of a
+ *       non-fatal error.
+ *    TLS1_TICKET_DECRYPTED: a ticket was successfully decrypted and *ret was set.
  *
  * Side effects:
  *   Sets s->internal->tlsext_ticket_expected to 1 if the server will have to issue
@@ -795,11 +777,10 @@ ssl_check_serverhello_tlsext(SSL *s)
  *   Otherwise, s->internal->tlsext_ticket_expected is set to 0.
  */
 int
-tls1_process_ticket(SSL *s, CBS *session_id, CBS *ext_block, SSL_SESSION **ret)
+tls1_process_ticket(SSL *s, CBS *ext_block, int *alert, SSL_SESSION **ret)
 {
 	CBS extensions, ext_data;
 	uint16_t ext_type = 0;
-	int r;
 
 	s->internal->tlsext_ticket_expected = 0;
 	*ret = NULL;
@@ -809,29 +790,33 @@ tls1_process_ticket(SSL *s, CBS *session_id, CBS *ext_block, SSL_SESSION **ret)
 	 * resumption.
 	 */
 	if (SSL_get_options(s) & SSL_OP_NO_TICKET)
-		return 0;
+		return TLS1_TICKET_NONE;
 
 	/*
 	 * An empty extensions block is valid, but obviously does not contain
 	 * a session ticket.
 	 */
 	if (CBS_len(ext_block) == 0)
-		return 0;
+		return TLS1_TICKET_NONE;
 
-	if (!CBS_get_u16_length_prefixed(ext_block, &extensions))
-		return -1;
+	if (!CBS_get_u16_length_prefixed(ext_block, &extensions)) {
+		*alert = SSL_AD_DECODE_ERROR;
+		return TLS1_TICKET_FATAL_ERROR;
+	}
 
 	while (CBS_len(&extensions) > 0) {
 		if (!CBS_get_u16(&extensions, &ext_type) ||
-		    !CBS_get_u16_length_prefixed(&extensions, &ext_data))
-			return -1;
+		    !CBS_get_u16_length_prefixed(&extensions, &ext_data)) {
+			*alert = SSL_AD_DECODE_ERROR;
+			return TLS1_TICKET_FATAL_ERROR;
+		}
 
 		if (ext_type == TLSEXT_TYPE_session_ticket)
 			break;
 	}
 
 	if (ext_type != TLSEXT_TYPE_session_ticket)
-		return 0;
+		return TLS1_TICKET_NONE;
 
 	if (CBS_len(&ext_data) == 0) {
 		/*
@@ -839,7 +824,7 @@ tls1_process_ticket(SSL *s, CBS *session_id, CBS *ext_block, SSL_SESSION **ret)
 		 * have one.
 		 */
 		s->internal->tlsext_ticket_expected = 1;
-		return 1;
+		return TLS1_TICKET_EMPTY;
 	}
 
 	if (s->internal->tls_session_secret_cb != NULL) {
@@ -849,53 +834,38 @@ tls1_process_ticket(SSL *s, CBS *session_id, CBS *ext_block, SSL_SESSION **ret)
 		 * handshake based on external mechanism to calculate the master
 		 * secret later.
 		 */
-		return 2;
+		return TLS1_TICKET_NOT_DECRYPTED;
 	}
 
-	r = tls_decrypt_ticket(s, session_id, &ext_data, ret);
-	switch (r) {
-	case 2: /* ticket couldn't be decrypted */
-		s->internal->tlsext_ticket_expected = 1;
-		return 2;
-	case 3: /* ticket was decrypted */
-		return r;
-	case 4: /* ticket decrypted but need to renew */
-		s->internal->tlsext_ticket_expected = 1;
-		return 3;
-	default: /* fatal error */
-		return -1;
-	}
+	return tls_decrypt_ticket(s, &ext_data, alert, ret);
 }
 
 /* tls_decrypt_ticket attempts to decrypt a session ticket.
  *
- *   session_id: a CBS containing the session ID.
  *   ticket: a CBS containing the body of the session ticket extension.
  *   psess: (output) on return, if a ticket was decrypted, then this is set to
  *       point to the resulting session.
  *
  * Returns:
- *   -1: fatal error, either from parsing or decrypting the ticket.
- *    2: the ticket couldn't be decrypted.
- *    3: a ticket was successfully decrypted and *psess was set.
- *    4: same as 3, but the ticket needs to be renewed.
+ *    TLS1_TICKET_FATAL_ERROR: error from parsing or decrypting the ticket.
+ *    TLS1_TICKET_NOT_DECRYPTED: the ticket couldn't be decrypted.
+ *    TLS1_TICKET_DECRYPTED: a ticket was decrypted and *psess was set.
  */
 static int
-tls_decrypt_ticket(SSL *s, CBS *session_id, CBS *ticket, SSL_SESSION **psess)
+tls_decrypt_ticket(SSL *s, CBS *ticket, int *alert, SSL_SESSION **psess)
 {
 	CBS ticket_name, ticket_iv, ticket_encdata, ticket_hmac;
 	SSL_SESSION *sess = NULL;
 	unsigned char *sdec = NULL;
 	size_t sdec_len = 0;
-	size_t session_id_len;
 	const unsigned char *p;
 	unsigned char hmac[EVP_MAX_MD_SIZE];
 	HMAC_CTX *hctx = NULL;
 	EVP_CIPHER_CTX *cctx = NULL;
 	SSL_CTX *tctx = s->initial_ctx;
 	int slen, hlen;
-	int renew_ticket = 0;
-	int ret = -1;
+	int alert_desc = SSL_AD_INTERNAL_ERROR;
+	int ret = TLS1_TICKET_FATAL_ERROR;
 
 	*psess = NULL;
 
@@ -928,8 +898,10 @@ tls_decrypt_ticket(SSL *s, CBS *session_id, CBS *ticket, SSL_SESSION **psess)
 			goto err;
 		if (rv == 0)
 			goto derr;
-		if (rv == 2)
-			renew_ticket = 1;
+		if (rv == 2) {
+			/* Renew ticket. */
+			s->internal->tlsext_ticket_expected = 1;
+		}
 
 		/*
 		 * Now that the cipher context is initialised, we can extract
@@ -969,8 +941,10 @@ tls_decrypt_ticket(SSL *s, CBS *session_id, CBS *ticket, SSL_SESSION **psess)
 		goto derr;
 	if (!CBS_get_bytes(ticket, &ticket_hmac, hlen))
 		goto derr;
-	if (CBS_len(ticket) != 0)
+	if (CBS_len(ticket) != 0) {
+		alert_desc = SSL_AD_DECODE_ERROR;
 		goto err;
+	}
 
 	/* Check HMAC of encrypted ticket. */
 	if (HMAC_Update(hctx, CBS_data(&ticket_name),
@@ -1007,33 +981,21 @@ tls_decrypt_ticket(SSL *s, CBS *session_id, CBS *ticket, SSL_SESSION **psess)
 	p = sdec;
 	if ((sess = d2i_SSL_SESSION(NULL, &p, slen)) == NULL)
 		goto derr;
-
-	/*
-	 * The session ID, if non-empty, is used by some clients to detect that
-	 * the ticket has been accepted. So we copy it to the session structure.
-	 * If it is empty set length to zero as required by standard.
-	 */
-	if (!CBS_write_bytes(session_id, sess->session_id,
-	    sizeof(sess->session_id), &session_id_len))
-		goto err;
-	sess->session_id_length = (unsigned int)session_id_len;
-
 	*psess = sess;
 	sess = NULL;
 
-	if (renew_ticket)
-		ret = 4;
-	else
-		ret = 3;
-
+	ret = TLS1_TICKET_DECRYPTED;
 	goto done;
 
  derr:
-	ret = 2;
+	ERR_clear_error();
+	s->internal->tlsext_ticket_expected = 1;
+	ret = TLS1_TICKET_NOT_DECRYPTED;
 	goto done;
 
  err:
-	ret = -1;
+	*alert = alert_desc;
+	ret = TLS1_TICKET_FATAL_ERROR;
 	goto done;
 
  done:
@@ -1041,9 +1003,6 @@ tls_decrypt_ticket(SSL *s, CBS *session_id, CBS *ticket, SSL_SESSION **psess)
 	EVP_CIPHER_CTX_free(cctx);
 	HMAC_CTX_free(hctx);
 	SSL_SESSION_free(sess);
-
-	if (ret == 2)
-		ERR_clear_error();
 
 	return ret;
 }

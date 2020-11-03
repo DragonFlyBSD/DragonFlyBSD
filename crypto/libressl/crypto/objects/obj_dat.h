@@ -62,12 +62,12 @@
  * [including the GNU Public Licence.]
  */
 
-#define NUM_NID 993
-#define NUM_SN 986
-#define NUM_LN 986
-#define NUM_OBJ 916
+#define NUM_NID 1001
+#define NUM_SN 994
+#define NUM_LN 994
+#define NUM_OBJ 924
 
-static const unsigned char lvalues[6411]={
+static const unsigned char lvalues[6481]={
 0x2A,0x86,0x48,0x86,0xF7,0x0D,               /* [  0] OBJ_rsadsi */
 0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,          /* [  6] OBJ_pkcs */
 0x2A,0x86,0x48,0x86,0xF7,0x0D,0x02,0x02,     /* [ 13] OBJ_md2 */
@@ -939,8 +939,8 @@ static const unsigned char lvalues[6411]={
 0x2A,0x85,0x03,0x07,0x01,                    /* [6118] OBJ_tc26 */
 0x2A,0x85,0x03,0x07,0x01,0x01,0x02,0x02,     /* [6123] OBJ_id_tc26_gost3411_2012_256 */
 0x2A,0x85,0x03,0x07,0x01,0x01,0x02,0x03,     /* [6131] OBJ_id_tc26_gost3411_2012_512 */
-0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x02,0x01,/* [6139] OBJ_id_tc26_gost_3410_2012_512_paramSetA */
-0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x02,0x02,/* [6148] OBJ_id_tc26_gost_3410_2012_512_paramSetB */
+0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x02,0x01,/* [6139] OBJ_id_tc26_gost_3410_12_512_paramSetA */
+0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x02,0x02,/* [6148] OBJ_id_tc26_gost_3410_12_512_paramSetB */
 0x2A,0x85,0x03,0x07,0x01,0x02,0x05,0x01,0x01,/* [6157] OBJ_id_tc26_gost_28147_param_Z */
 0x2A,0x85,0x03,0x07,0x01,0x01,0x01,0x01,     /* [6166] OBJ_id_tc26_gost3410_2012_256 */
 0x2A,0x85,0x03,0x07,0x01,0x01,0x01,0x02,     /* [6174] OBJ_id_tc26_gost3410_2012_512 */
@@ -978,6 +978,14 @@ static const unsigned char lvalues[6411]={
 0x2B,0x81,0x04,0x01,0x0E,0x02,               /* [6389] OBJ_dhSinglePass_cofactorDH_sha384kdf_scheme */
 0x2B,0x81,0x04,0x01,0x0E,0x03,               /* [6395] OBJ_dhSinglePass_cofactorDH_sha512kdf_scheme */
 0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,0x01,0x09,/* [6401] OBJ_pSpecified */
+0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x01,0x01,/* [6410] OBJ_id_tc26_gost_3410_12_256_paramSetA */
+0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x01,0x02,/* [6419] OBJ_id_tc26_gost_3410_12_256_paramSetB */
+0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x01,0x03,/* [6428] OBJ_id_tc26_gost_3410_12_256_paramSetC */
+0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x01,0x04,/* [6437] OBJ_id_tc26_gost_3410_12_256_paramSetD */
+0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x02,0x00,/* [6446] OBJ_id_tc26_gost_3410_12_512_paramSetTest */
+0x2A,0x85,0x03,0x07,0x01,0x02,0x01,0x02,0x03,/* [6455] OBJ_id_tc26_gost_3410_12_512_paramSetC */
+0x2A,0x85,0x03,0x07,0x01,0x01,0x04,0x01,     /* [6464] OBJ_id_tc26_hmac_gost_3411_12_256 */
+0x2A,0x85,0x03,0x07,0x01,0x01,0x04,0x02,     /* [6472] OBJ_id_tc26_hmac_gost_3411_12_512 */
 };
 
 static const ASN1_OBJECT nid_objs[NUM_NID]={
@@ -2497,12 +2505,12 @@ static const ASN1_OBJECT nid_objs[NUM_NID]={
 	NID_id_tc26_gost3411_2012_256,8,&(lvalues[6123]),0},
 {"streebog512","GOST R 34-11-2012 (512 bit)",
 	NID_id_tc26_gost3411_2012_512,8,&(lvalues[6131]),0},
-{"id-tc26-gost-3410-2012-512-paramSetA",
-	"id-tc26-gost-3410-2012-512-paramSetA",
-	NID_id_tc26_gost_3410_2012_512_paramSetA,9,&(lvalues[6139]),0},
-{"id-tc26-gost-3410-2012-512-paramSetB",
-	"id-tc26-gost-3410-2012-512-paramSetB",
-	NID_id_tc26_gost_3410_2012_512_paramSetB,9,&(lvalues[6148]),0},
+{"id-tc26-gost-3410-12-512-paramSetA",
+	"GOST R 34.10-2012 (512 bit) ParamSet A",
+	NID_id_tc26_gost_3410_12_512_paramSetA,9,&(lvalues[6139]),0},
+{"id-tc26-gost-3410-12-512-paramSetB",
+	"GOST R 34.10-2012 (512 bit) ParamSet B",
+	NID_id_tc26_gost_3410_12_512_paramSetB,9,&(lvalues[6148]),0},
 {"id-tc26-gost-28147-param-Z","id-tc26-gost-28147-param-Z",
 	NID_id_tc26_gost_28147_param_Z,9,&(lvalues[6157]),0},
 {"id-tc26-gost3410-2012-256","GOST R 34.10-2012 (256 bit)",
@@ -2582,6 +2590,28 @@ static const ASN1_OBJECT nid_objs[NUM_NID]={
 {"dh-std-kdf","dh-std-kdf",NID_dh_std_kdf,0,NULL,0},
 {"dh-cofactor-kdf","dh-cofactor-kdf",NID_dh_cofactor_kdf,0,NULL,0},
 {"PSPECIFIED","pSpecified",NID_pSpecified,9,&(lvalues[6401]),0},
+{"id-tc26-gost-3410-12-256-paramSetA",
+	"GOST R 34.10-2012 (256 bit) ParamSet A",
+	NID_id_tc26_gost_3410_12_256_paramSetA,9,&(lvalues[6410]),0},
+{"id-tc26-gost-3410-12-256-paramSetB",
+	"GOST R 34.10-2012 (256 bit) ParamSet B",
+	NID_id_tc26_gost_3410_12_256_paramSetB,9,&(lvalues[6419]),0},
+{"id-tc26-gost-3410-12-256-paramSetC",
+	"GOST R 34.10-2012 (256 bit) ParamSet C",
+	NID_id_tc26_gost_3410_12_256_paramSetC,9,&(lvalues[6428]),0},
+{"id-tc26-gost-3410-12-256-paramSetD",
+	"GOST R 34.10-2012 (256 bit) ParamSet D",
+	NID_id_tc26_gost_3410_12_256_paramSetD,9,&(lvalues[6437]),0},
+{"id-tc26-gost-3410-12-512-paramSetTest",
+	"GOST R 34.10-2012 (512 bit) testing parameter set",
+	NID_id_tc26_gost_3410_12_512_paramSetTest,9,&(lvalues[6446]),0},
+{"id-tc26-gost-3410-12-512-paramSetC",
+	"GOST R 34.10-2012 (512 bit) ParamSet C",
+	NID_id_tc26_gost_3410_12_512_paramSetC,9,&(lvalues[6455]),0},
+{"id-tc26-hmac-gost-3411-12-256","HMAC STREEBOG 256",
+	NID_id_tc26_hmac_gost_3411_12_256,8,&(lvalues[6464]),0},
+{"id-tc26-hmac-gost-3411-12-512","HMAC STREEBOG 512",
+	NID_id_tc26_hmac_gost_3411_12_512,8,&(lvalues[6472]),0},
 };
 
 static const unsigned int sn_objs[NUM_SN]={
@@ -3206,10 +3236,18 @@ static const unsigned int sn_objs[NUM_SN]={
 250,	/* "id-smime-spq-ets-sqt-unotice" */
 249,	/* "id-smime-spq-ets-sqt-uri" */
 945,	/* "id-tc26-gost-28147-param-Z" */
-943,	/* "id-tc26-gost-3410-2012-512-paramSetA" */
-944,	/* "id-tc26-gost-3410-2012-512-paramSetB" */
+993,	/* "id-tc26-gost-3410-12-256-paramSetA" */
+994,	/* "id-tc26-gost-3410-12-256-paramSetB" */
+995,	/* "id-tc26-gost-3410-12-256-paramSetC" */
+996,	/* "id-tc26-gost-3410-12-256-paramSetD" */
+943,	/* "id-tc26-gost-3410-12-512-paramSetA" */
+944,	/* "id-tc26-gost-3410-12-512-paramSetB" */
+998,	/* "id-tc26-gost-3410-12-512-paramSetC" */
+997,	/* "id-tc26-gost-3410-12-512-paramSetTest" */
 946,	/* "id-tc26-gost3410-2012-256" */
 947,	/* "id-tc26-gost3410-2012-512" */
+999,	/* "id-tc26-hmac-gost-3411-12-256" */
+1000,	/* "id-tc26-hmac-gost-3411-12-512" */
 948,	/* "id-tc26-signwithdigest-gost3410-2012-256" */
 949,	/* "id-tc26-signwithdigest-gost3410-2012-512" */
 676,	/* "identified-organization" */
@@ -3607,7 +3645,15 @@ static const unsigned int ln_objs[NUM_LN]={
 811,	/* "GOST R 34.10-2001" */
 817,	/* "GOST R 34.10-2001 DH" */
 946,	/* "GOST R 34.10-2012 (256 bit)" */
+993,	/* "GOST R 34.10-2012 (256 bit) ParamSet A" */
+994,	/* "GOST R 34.10-2012 (256 bit) ParamSet B" */
+995,	/* "GOST R 34.10-2012 (256 bit) ParamSet C" */
+996,	/* "GOST R 34.10-2012 (256 bit) ParamSet D" */
 947,	/* "GOST R 34.10-2012 (512 bit)" */
+943,	/* "GOST R 34.10-2012 (512 bit) ParamSet A" */
+944,	/* "GOST R 34.10-2012 (512 bit) ParamSet B" */
+998,	/* "GOST R 34.10-2012 (512 bit) ParamSet C" */
+997,	/* "GOST R 34.10-2012 (512 bit) testing parameter set" */
 812,	/* "GOST R 34.10-94" */
 818,	/* "GOST R 34.10-94 DH" */
 941,	/* "GOST R 34.11-2012 (256 bit)" */
@@ -3621,6 +3667,8 @@ static const unsigned int ln_objs[NUM_LN]={
 852,	/* "GOST R 34.11-94 with GOST R 34.10-94 Cryptocom" */
 854,	/* "GOST R 3410-2001 Parameter Set Cryptocom" */
 810,	/* "HMAC GOST 34.11-94" */
+999,	/* "HMAC STREEBOG 256" */
+1000,	/* "HMAC STREEBOG 512" */
 432,	/* "Hold Instruction Call Issuer" */
 430,	/* "Hold Instruction Code" */
 431,	/* "Hold Instruction None" */
@@ -4172,8 +4220,6 @@ static const unsigned int ln_objs[NUM_LN]={
 250,	/* "id-smime-spq-ets-sqt-unotice" */
 249,	/* "id-smime-spq-ets-sqt-uri" */
 945,	/* "id-tc26-gost-28147-param-Z" */
-943,	/* "id-tc26-gost-3410-2012-512-paramSetA" */
-944,	/* "id-tc26-gost-3410-2012-512-paramSetB" */
 34,	/* "idea-cbc" */
 35,	/* "idea-cfb" */
 36,	/* "idea-ecb" */
@@ -5010,6 +5056,8 @@ static const unsigned int obj_objs[NUM_OBJ]={
 942,	/* OBJ_id_tc26_gost3411_2012_512    1 2 643 7 1 1 2 3 */
 948,	/* OBJ_id_tc26_signwithdigest_gost3410_2012_256 1 2 643 7 1 1 3 2 */
 949,	/* OBJ_id_tc26_signwithdigest_gost3410_2012_512 1 2 643 7 1 1 3 3 */
+999,	/* OBJ_id_tc26_hmac_gost_3411_12_256 1 2 643 7 1 1 4 1 */
+1000,	/* OBJ_id_tc26_hmac_gost_3411_12_512 1 2 643 7 1 1 4 2 */
 186,	/* OBJ_pkcs1                        1 2 840 113549 1 1 */
 27,	/* OBJ_pkcs3                        1 2 840 113549 1 3 */
 187,	/* OBJ_pkcs5                        1 2 840 113549 1 5 */
@@ -5177,8 +5225,14 @@ static const unsigned int obj_objs[NUM_OBJ]={
 439,	/* OBJ_pilotAttributeSyntax         0 9 2342 19200300 100 3 */
 440,	/* OBJ_pilotObjectClass             0 9 2342 19200300 100 4 */
 441,	/* OBJ_pilotGroups                  0 9 2342 19200300 100 10 */
-943,	/* OBJ_id_tc26_gost_3410_2012_512_paramSetA 1 2 643 7 1 2 1 2 1 */
-944,	/* OBJ_id_tc26_gost_3410_2012_512_paramSetB 1 2 643 7 1 2 1 2 2 */
+993,	/* OBJ_id_tc26_gost_3410_12_256_paramSetA 1 2 643 7 1 2 1 1 1 */
+994,	/* OBJ_id_tc26_gost_3410_12_256_paramSetB 1 2 643 7 1 2 1 1 2 */
+995,	/* OBJ_id_tc26_gost_3410_12_256_paramSetC 1 2 643 7 1 2 1 1 3 */
+996,	/* OBJ_id_tc26_gost_3410_12_256_paramSetD 1 2 643 7 1 2 1 1 4 */
+997,	/* OBJ_id_tc26_gost_3410_12_512_paramSetTest 1 2 643 7 1 2 1 2 0 */
+943,	/* OBJ_id_tc26_gost_3410_12_512_paramSetA 1 2 643 7 1 2 1 2 1 */
+944,	/* OBJ_id_tc26_gost_3410_12_512_paramSetB 1 2 643 7 1 2 1 2 2 */
+998,	/* OBJ_id_tc26_gost_3410_12_512_paramSetC 1 2 643 7 1 2 1 2 3 */
 945,	/* OBJ_id_tc26_gost_28147_param_Z   1 2 643 7 1 2 5 1 1 */
 108,	/* OBJ_cast5_cbc                    1 2 840 113533 7 66 10 */
 112,	/* OBJ_pbeWithMD5AndCast5_CBC       1 2 840 113533 7 66 12 */

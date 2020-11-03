@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_pkt.c,v 1.24 2020/03/16 15:25:14 tb Exp $ */
+/* $OpenBSD: ssl_pkt.c,v 1.31 2020/08/30 15:40:20 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -617,25 +617,43 @@ ssl3_write_bytes(SSL *s, int type, const void *buf_, int len)
 }
 
 static int
-ssl3_create_record(SSL *s, unsigned char *p, int type, const unsigned char *buf,
-    unsigned int len)
+do_ssl3_write(SSL *s, int type, const unsigned char *buf, unsigned int len)
 {
-	SSL3_RECORD_INTERNAL *wr = &(S3I(s)->wrec);
+	SSL3_BUFFER_INTERNAL *wb = &(S3I(s)->wbuf);
 	SSL_SESSION *sess = s->session;
-	int eivlen, mac_size;
+	int need_empty_fragment = 0;
+	size_t align, out_len;
 	uint16_t version;
 	CBB cbb;
+	int ret;
 
 	memset(&cbb, 0, sizeof(cbb));
 
-	if ((sess == NULL) || (s->internal->enc_write_ctx == NULL) ||
-	    (EVP_MD_CTX_md(s->internal->write_hash) == NULL)) {
-		mac_size = 0;
-	} else {
-		mac_size = EVP_MD_CTX_size(s->internal->write_hash);
-		if (mac_size < 0)
-			goto err;
+	if (wb->buf == NULL)
+		if (!ssl3_setup_write_buffer(s))
+			return -1;
+
+	/*
+	 * First check if there is a SSL3_BUFFER_INTERNAL still being written
+	 * out.  This will happen with non blocking IO.
+	 */
+	if (wb->left != 0)
+		return (ssl3_write_pending(s, type, buf, len));
+
+	/* If we have an alert to send, let's send it. */
+	if (S3I(s)->alert_dispatch) {
+		if ((ret = s->method->ssl_dispatch_alert(s)) <= 0)
+			return (ret);
+		/* If it went, fall through and send more stuff. */
+
+		/* We may have released our buffer, if so get it again. */
+		if (wb->buf == NULL)
+			if (!ssl3_setup_write_buffer(s))
+				return -1;
 	}
+
+	if (len == 0)
+		return 0;
 
 	/*
 	 * Some servers hang if initial client hello is larger than 256
@@ -646,181 +664,65 @@ ssl3_create_record(SSL *s, unsigned char *p, int type, const unsigned char *buf,
 	    TLS1_get_version(s) > TLS1_VERSION)
 		version = TLS1_VERSION;
 
-	if (!CBB_init_fixed(&cbb, p, SSL3_RT_HEADER_LENGTH))
-		goto err;
-
-	/* Write the header. */
-	if (!CBB_add_u8(&cbb, type))
-		goto err;
-	if (!CBB_add_u16(&cbb, version))
-		goto err;
-
-	p += SSL3_RT_HEADER_LENGTH;
-
-	/* Explicit IV length. */
-	eivlen = 0;
-	if (s->internal->enc_write_ctx && SSL_USE_EXPLICIT_IV(s)) {
-		int mode = EVP_CIPHER_CTX_mode(s->internal->enc_write_ctx);
-		if (mode == EVP_CIPH_CBC_MODE) {
-			eivlen = EVP_CIPHER_CTX_iv_length(s->internal->enc_write_ctx);
-			if (eivlen <= 1)
-				eivlen = 0;
-		}
-	} else if (s->internal->aead_write_ctx != NULL &&
-	    s->internal->aead_write_ctx->variable_nonce_in_record) {
-		eivlen = s->internal->aead_write_ctx->variable_nonce_len;
+	/*
+	 * Countermeasure against known-IV weakness in CBC ciphersuites
+	 * (see http://www.openssl.org/~bodo/tls-cbc.txt). Note that this
+	 * is unnecessary for AEAD.
+	 */
+	if (sess != NULL && s->internal->enc_write_ctx != NULL &&
+	    EVP_MD_CTX_md(s->internal->write_hash) != NULL) {
+		if (S3I(s)->need_empty_fragments &&
+		    !S3I(s)->empty_fragment_done &&
+		    type == SSL3_RT_APPLICATION_DATA)
+			need_empty_fragment = 1;
 	}
 
-	/* lets setup the record stuff. */
-	wr->type = type;
-	wr->data = p + eivlen;
-	wr->length = (int)len;
-	wr->input = (unsigned char *)buf;
-
-	/* we now 'read' from wr->input, wr->length bytes into wr->data */
-
-	memcpy(wr->data, wr->input, wr->length);
-	wr->input = wr->data;
-
-	/* we should still have the output to wr->data and the input
-	 * from wr->input.  Length should be wr->length.
-	 * wr->data still points in the wb->buf */
-
-	if (mac_size != 0) {
-		if (tls1_mac(s, &(p[wr->length + eivlen]), 1) < 0)
-			goto err;
-		wr->length += mac_size;
-	}
-
-	wr->input = p;
-	wr->data = p;
-
-	if (eivlen) {
-		/* if (RAND_pseudo_bytes(p, eivlen) <= 0)
-			goto err;
-		*/
-		wr->length += eivlen;
-	}
-
-	/* tls1_enc can only have an error on read */
-	tls1_enc(s, 1);
-
-	/* record length after mac and block padding */
-	if (!CBB_add_u16(&cbb, wr->length))
-		goto err;
-	if (!CBB_finish(&cbb, NULL, NULL))
-		goto err;
-
-	/* we should now have
-	 * wr->data pointing to the encrypted data, which is
-	 * wr->length long */
-	wr->type = type; /* not needed but helps for debugging */
-	wr->length += SSL3_RT_HEADER_LENGTH;
-
-	return 1;
-
- err:
-	CBB_cleanup(&cbb);
-
-	return 0;
-}
-
-static int
-do_ssl3_write(SSL *s, int type, const unsigned char *buf, unsigned int len)
-{
-	SSL3_RECORD_INTERNAL *wr = &(S3I(s)->wrec);
-	SSL3_BUFFER_INTERNAL *wb = &(S3I(s)->wbuf);
-	SSL_SESSION *sess = s->session;
-	unsigned char *p;
-	int i, clear = 0;
-	int prefix_len = 0;
-	size_t align;
-
-	if (wb->buf == NULL)
-		if (!ssl3_setup_write_buffer(s))
-			return -1;
-
-	/* first check if there is a SSL3_BUFFER_INTERNAL still being written
-	 * out.  This will happen with non blocking IO */
-	if (wb->left != 0)
-		return (ssl3_write_pending(s, type, buf, len));
-
-	/* If we have an alert to send, lets send it */
-	if (S3I(s)->alert_dispatch) {
-		i = s->method->ssl_dispatch_alert(s);
-		if (i <= 0)
-			return (i);
-		/* if it went, fall through and send more stuff */
-		/* we may have released our buffer, so get it again */
-		if (wb->buf == NULL)
-			if (!ssl3_setup_write_buffer(s))
-				return -1;
-	}
-
-	if (len == 0)
-		return 0;
-
+	/*
+	 * An extra fragment would be a couple of cipher blocks, which would
+	 * be a multiple of SSL3_ALIGN_PAYLOAD, so if we want to align the real
+	 * payload, then we can just simply pretend we have two headers.
+	 */
 	align = (size_t)wb->buf + SSL3_RT_HEADER_LENGTH;
+	if (need_empty_fragment)
+		align += SSL3_RT_HEADER_LENGTH;
 	align = (-align) & (SSL3_ALIGN_PAYLOAD - 1);
-
-	p = wb->buf + align;
 	wb->offset = align;
 
-	if ((sess == NULL) || (s->internal->enc_write_ctx == NULL) ||
-	    (EVP_MD_CTX_md(s->internal->write_hash) == NULL)) {
-		clear = s->internal->enc_write_ctx ? 0 : 1; /* must be AEAD cipher */
-	}
+	if (!CBB_init_fixed(&cbb, wb->buf + align, wb->len - align))
+		goto err;
 
-	if (!clear && !S3I(s)->empty_fragment_done) {
-		/*
-		 * Countermeasure against known-IV weakness in CBC ciphersuites
-		 * (see http://www.openssl.org/~bodo/tls-cbc.txt)
-		 */
-		if (S3I(s)->need_empty_fragments &&
-		    type == SSL3_RT_APPLICATION_DATA) {
-			/* extra fragment would be couple of cipher blocks,
-			 * which would be multiple of SSL3_ALIGN_PAYLOAD, so
-			 * if we want to align the real payload, then we can
-			 * just pretent we simply have two headers. */
-			align = (size_t)wb->buf + 2 * SSL3_RT_HEADER_LENGTH;
-			align = (-align) & (SSL3_ALIGN_PAYLOAD - 1);
+	tls12_record_layer_set_version(s->internal->rl, version);
 
-			p = wb->buf + align;
-			wb->offset = align;
-
-			if (!ssl3_create_record(s, p, type, buf, 0))
-				goto err;
-
-			prefix_len = wr->length;
-			if (prefix_len > (SSL3_RT_HEADER_LENGTH +
-			    SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD)) {
-				/* insufficient space */
-				SSLerror(s, ERR_R_INTERNAL_ERROR);
-				goto err;
-			}
-
-			p = wb->buf + wb->offset + prefix_len;
-		}
-
+	if (need_empty_fragment) {
+		if (!tls12_record_layer_seal_record(s->internal->rl, type,
+		    buf, 0, &cbb))
+			goto err;
 		S3I(s)->empty_fragment_done = 1;
 	}
 
-	if (!ssl3_create_record(s, p, type, buf, len))
+	if (!tls12_record_layer_seal_record(s->internal->rl, type, buf, len, &cbb))
 		goto err;
 
-	/* now let's set up wb */
-	wb->left = prefix_len + wr->length;
+	if (!CBB_finish(&cbb, NULL, &out_len))
+		goto err;
 
-	/* memorize arguments so that ssl3_write_pending can detect
-	 * bad write retries later */
+	wb->left = out_len;
+
+	/*
+	 * Memorize arguments so that ssl3_write_pending can detect
+	 * bad write retries later.
+	 */
 	S3I(s)->wpend_tot = len;
 	S3I(s)->wpend_buf = buf;
 	S3I(s)->wpend_type = type;
 	S3I(s)->wpend_ret = len;
 
-	/* we now just need to write the buffer */
+	/* We now just need to write the buffer. */
 	return ssl3_write_pending(s, type, buf, len);
-err:
+
+ err:
+	CBB_cleanup(&cbb);
+
 	return -1;
 }
 
@@ -843,9 +745,8 @@ ssl3_write_pending(SSL *s, int type, const unsigned char *buf, unsigned int len)
 		errno = 0;
 		if (s->wbio != NULL) {
 			s->internal->rwstate = SSL_WRITING;
-			i = BIO_write(s->wbio,
-			(char *)&(wb->buf[wb->offset]),
-			(unsigned int)wb->left);
+			i = BIO_write(s->wbio, (char *)&(wb->buf[wb->offset]),
+			    (unsigned int)wb->left);
 		} else {
 			SSLerror(s, SSL_R_BIO_NOT_SET);
 			i = -1;
