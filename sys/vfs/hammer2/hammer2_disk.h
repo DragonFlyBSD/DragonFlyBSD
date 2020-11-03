@@ -336,7 +336,7 @@
 #define HAMMER2_FREEMAP_LEVEL3_RADIX	46	/* 64TB */
 #define HAMMER2_FREEMAP_LEVEL2_RADIX	38	/* 256GB */
 #define HAMMER2_FREEMAP_LEVEL1_RADIX	30	/* 1GB */
-#define HAMMER2_FREEMAP_LEVEL0_RADIX	22	/* 4MB (128by in l-1 leaf) */
+#define HAMMER2_FREEMAP_LEVEL0_RADIX	22	/* 4MB (x 256 in l-1 leaf) */
 
 #define HAMMER2_FREEMAP_LEVELN_PSIZE	32768	/* physical bytes */
 
@@ -846,6 +846,32 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  *	     01 (reserved)
  *	     10 Possibly free
  *           11 Allocated
+ *
+ * ==========
+ * level6 freemap
+ * blockref[0]       : 4EB
+ * blockref[1]       : 4EB
+ * blockref[2]       : 4EB
+ * blockref[3]       : 4EB
+ * -----------------------------------------------------------------------
+ * 4 x 128B = 512B   : 4 x 4EB = 16EB
+ *
+ * level2-5 FREEMAP_NODE
+ * blockref[0]       : 1GB,256GB,64TB,16PB
+ * blockref[1]       : 1GB,256GB,64TB,16PB
+ * ...
+ * blockref[255]     : 1GB,256GB,64TB,16PB
+ * -----------------------------------------------------------------------
+ * 256 x 128B = 32KB : 256 x 1GB,256GB,64TB,16PB = 256GB,64TB,16PB,4EB
+ *
+ * level1 FREEMAP_LEAF
+ * bmap_data[0]      : 8 x 8B = 512bits = 256 x 2bits -> 256 x 16KB = 4MB
+ * bmap_data[1]      : 8 x 8B = 512bits = 256 x 2bits -> 256 x 16KB = 4MB
+ * ...
+ * bmap_data[255]    : 8 x 8B = 512bits = 256 x 2bits -> 256 x 16KB = 4MB
+ * -----------------------------------------------------------------------
+ * 256 x 128B = 32KB : 256 x 4MB = 1GB
+ * ==========
  */
 struct hammer2_bmap_data {
 	int32_t linear;		/* 00 linear sub-granular allocation offset */
