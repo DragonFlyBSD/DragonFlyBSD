@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_both.c,v 1.17 2020/03/12 17:15:33 jsing Exp $ */
+/* $OpenBSD: ssl_both.c,v 1.20 2020/09/24 18:12:00 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -591,7 +591,7 @@ ssl_cert_type(X509 *x, EVP_PKEY *pkey)
 
 	i = pk->type;
 	if (i == EVP_PKEY_RSA) {
-		ret = SSL_PKEY_RSA_ENC;
+		ret = SSL_PKEY_RSA;
 	} else if (i == EVP_PKEY_EC) {
 		ret = SSL_PKEY_ECC;
 	} else if (i == NID_id_GostR3410_2001 ||
@@ -686,6 +686,16 @@ err:
 	return (0);
 }
 
+void
+ssl3_release_init_buffer(SSL *s)
+{
+	BUF_MEM_free(s->internal->init_buf);
+	s->internal->init_buf = NULL;
+	s->internal->init_msg = NULL;
+	s->internal->init_num = 0;
+	s->internal->init_off = 0;
+}
+
 int
 ssl3_setup_read_buffer(SSL *s)
 {
@@ -708,7 +718,7 @@ ssl3_setup_read_buffer(SSL *s)
 		S3I(s)->rbuf.len = len;
 	}
 
-	s->internal->packet = &(S3I(s)->rbuf.buf[0]);
+	s->internal->packet = S3I(s)->rbuf.buf;
 	return 1;
 
 err:
@@ -759,18 +769,22 @@ ssl3_setup_buffers(SSL *s)
 	return 1;
 }
 
-int
-ssl3_release_write_buffer(SSL *s)
+void
+ssl3_release_buffer(SSL3_BUFFER_INTERNAL *b)
 {
-	free(S3I(s)->wbuf.buf);
-	S3I(s)->wbuf.buf = NULL;
-	return 1;
+	freezero(b->buf, b->len);
+	b->buf = NULL;
+	b->len = 0;
 }
 
-int
+void
 ssl3_release_read_buffer(SSL *s)
 {
-	free(S3I(s)->rbuf.buf);
-	S3I(s)->rbuf.buf = NULL;
-	return 1;
+	ssl3_release_buffer(&S3I(s)->rbuf);
+}
+
+void
+ssl3_release_write_buffer(SSL *s)
+{
+	ssl3_release_buffer(&S3I(s)->wbuf);
 }

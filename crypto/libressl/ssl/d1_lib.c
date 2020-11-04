@@ -1,4 +1,4 @@
-/* $OpenBSD: d1_lib.c,v 1.45 2020/03/12 17:01:53 jsing Exp $ */
+/* $OpenBSD: d1_lib.c,v 1.50 2020/09/26 14:43:17 jsing Exp $ */
 /*
  * DTLS implementation written by Nagendra Modadugu
  * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.
@@ -70,108 +70,86 @@
 #include "pqueue.h"
 #include "ssl_locl.h"
 
+void dtls1_hm_fragment_free(hm_fragment *frag);
+
 static int dtls1_listen(SSL *s, struct sockaddr *client);
 
 SSL3_ENC_METHOD DTLSv1_enc_data = {
 	.enc_flags = SSL_ENC_FLAG_EXPLICIT_IV,
 };
 
-long
-dtls1_default_timeout(void)
-{
-	/* 2 hours, the 24 hours mentioned in the DTLSv1 spec
-	 * is way too long for http, the cache would over fill */
-	return (60*60*2);
-}
-
 int
 dtls1_new(SSL *s)
 {
-	DTLS1_STATE *d1;
-
 	if (!ssl3_new(s))
-		return (0);
-	if ((d1 = calloc(1, sizeof(*d1))) == NULL) {
-		ssl3_free(s);
-		return (0);
-	}
-	if ((d1->internal = calloc(1, sizeof(*d1->internal))) == NULL) {
-		free(d1);
-		ssl3_free(s);
-		return (0);
-	}
+		goto err;
 
-	/* d1->handshake_epoch=0; */
+	if ((s->d1 = calloc(1, sizeof(*s->d1))) == NULL)
+		goto err;
+	if ((s->d1->internal = calloc(1, sizeof(*s->d1->internal))) == NULL)
+		goto err;
 
-	d1->internal->unprocessed_rcds.q = pqueue_new();
-	d1->internal->processed_rcds.q = pqueue_new();
-	d1->internal->buffered_messages = pqueue_new();
-	d1->sent_messages = pqueue_new();
-	d1->internal->buffered_app_data.q = pqueue_new();
+	if ((s->d1->internal->unprocessed_rcds.q = pqueue_new()) == NULL)
+		goto err;
+	if ((s->d1->internal->processed_rcds.q = pqueue_new()) == NULL)
+		goto err;
+	if ((s->d1->internal->buffered_messages = pqueue_new()) == NULL)
+		goto err;
+	if ((s->d1->sent_messages = pqueue_new()) == NULL)
+		goto err;
+	if ((s->d1->internal->buffered_app_data.q = pqueue_new()) == NULL)
+		goto err;
 
-	if (s->server) {
-		d1->internal->cookie_len = sizeof(D1I(s)->cookie);
-	}
+	if (s->server)
+		s->d1->internal->cookie_len = sizeof(D1I(s)->cookie);
 
-	if (!d1->internal->unprocessed_rcds.q || !d1->internal->processed_rcds.q ||
-	    !d1->internal->buffered_messages || !d1->sent_messages ||
-	    !d1->internal->buffered_app_data.q) {
-		pqueue_free(d1->internal->unprocessed_rcds.q);
-		pqueue_free(d1->internal->processed_rcds.q);
-		pqueue_free(d1->internal->buffered_messages);
-		pqueue_free(d1->sent_messages);
-		pqueue_free(d1->internal->buffered_app_data.q);
-		free(d1);
-		ssl3_free(s);
-		return (0);
-	}
-
-	s->d1 = d1;
 	s->method->internal->ssl_clear(s);
 	return (1);
+
+ err:
+	dtls1_free(s);
+	return (0);
+}
+
+static void
+dtls1_drain_records(pqueue queue)
+{
+	pitem *item;
+	DTLS1_RECORD_DATA_INTERNAL *rdata;
+
+	if (queue == NULL)
+		return;
+
+	while ((item = pqueue_pop(queue)) != NULL) {
+		rdata = (DTLS1_RECORD_DATA_INTERNAL *)item->data;
+		ssl3_release_buffer(&rdata->rbuf);
+		free(item->data);
+		pitem_free(item);
+	}
+}
+
+static void
+dtls1_drain_fragments(pqueue queue)
+{
+	pitem *item;
+
+	if (queue == NULL)
+		return;
+
+	while ((item = pqueue_pop(queue)) != NULL) {
+		dtls1_hm_fragment_free(item->data);
+		pitem_free(item);
+	}
 }
 
 static void
 dtls1_clear_queues(SSL *s)
 {
-	pitem *item = NULL;
-	hm_fragment *frag = NULL;
-	DTLS1_RECORD_DATA_INTERNAL *rdata;
-
-	while ((item = pqueue_pop(D1I(s)->unprocessed_rcds.q)) != NULL) {
-		rdata = (DTLS1_RECORD_DATA_INTERNAL *) item->data;
-		free(rdata->rbuf.buf);
-		free(item->data);
-		pitem_free(item);
-	}
-
-	while ((item = pqueue_pop(D1I(s)->processed_rcds.q)) != NULL) {
-		rdata = (DTLS1_RECORD_DATA_INTERNAL *) item->data;
-		free(rdata->rbuf.buf);
-		free(item->data);
-		pitem_free(item);
-	}
-
-	while ((item = pqueue_pop(D1I(s)->buffered_messages)) != NULL) {
-		frag = (hm_fragment *)item->data;
-		free(frag->fragment);
-		free(frag);
-		pitem_free(item);
-	}
-
-	while ((item = pqueue_pop(s->d1->sent_messages)) != NULL) {
-		frag = (hm_fragment *)item->data;
-		free(frag->fragment);
-		free(frag);
-		pitem_free(item);
-	}
-
-	while ((item = pqueue_pop(D1I(s)->buffered_app_data.q)) != NULL) {
-		rdata = (DTLS1_RECORD_DATA_INTERNAL *) item->data;
-		free(rdata->rbuf.buf);
-		free(item->data);
-		pitem_free(item);
-	}
+	dtls1_drain_records(D1I(s)->unprocessed_rcds.q);
+	dtls1_drain_records(D1I(s)->processed_rcds.q);
+	dtls1_drain_fragments(D1I(s)->buffered_messages);
+	dtls1_drain_fragments(s->d1->sent_messages);
+	dtls1_drain_records(D1I(s)->buffered_app_data.q);
 }
 
 void

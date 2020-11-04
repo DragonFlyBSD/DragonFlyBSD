@@ -1,6 +1,6 @@
-/* $OpenBSD: ssl_sigalgs.c,v 1.20.8.1 2020/08/10 18:59:47 tb Exp $ */
+/* $OpenBSD: ssl_sigalgs.c,v 1.21 2020/05/09 16:52:15 beck Exp $ */
 /*
- * Copyright (c) 2018-2019 Bob Beck <beck@openbsd.org>
+ * Copyright (c) 2018-2020 Bob Beck <beck@openbsd.org>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

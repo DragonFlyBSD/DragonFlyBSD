@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_rand.c,v 1.22 2018/11/06 06:49:45 tb Exp $ */
+/* $OpenBSD: bn_rand.c,v 1.24 2020/09/12 17:16:36 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -129,6 +129,11 @@ bnrand(int pseudorand, BIGNUM *rnd, int bits, int top, int bottom)
 		return (0);
 	}
 
+	if (bits < 0 || (bits == 1 && top > 0)) {
+		BNerror(BN_R_BITS_TOO_SMALL);
+		return (0);
+	}
+
 	if (bits == 0) {
 		BN_zero(rnd);
 		return (1);
@@ -166,18 +171,16 @@ bnrand(int pseudorand, BIGNUM *rnd, int bits, int top, int bottom)
 	}
 #endif
 
-	if (top != -1) {
-		if (top) {
-			if (bit == 0) {
-				buf[0] = 1;
-				buf[1] |= 0x80;
-			} else {
-				buf[0] |= (3 << (bit - 1));
-			}
+	if (top > 0) {
+		if (bit == 0) {
+			buf[0] = 1;
+			buf[1] |= 0x80;
 		} else {
-			buf[0] |= (1 << bit);
+			buf[0] |= (3 << (bit - 1));
 		}
 	}
+	if (top == 0)
+		buf[0] |= (1 << bit);
 	buf[0] &= ~mask;
 	if (bottom) /* set bottom bit if requested */
 		buf[bytes - 1] |= 1;

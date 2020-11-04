@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_ciph.c,v 1.117 2020/04/19 14:54:14 jsing Exp $ */
+/* $OpenBSD: ssl_ciph.c,v 1.119 2020/09/13 16:49:05 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -1184,22 +1184,24 @@ ssl_aes_is_accelerated(void)
 STACK_OF(SSL_CIPHER) *
 ssl_create_cipher_list(const SSL_METHOD *ssl_method,
     STACK_OF(SSL_CIPHER) **cipher_list,
-    STACK_OF(SSL_CIPHER) **cipher_list_by_id,
+    STACK_OF(SSL_CIPHER) *cipher_list_tls13,
     const char *rule_str)
 {
 	int ok, num_of_ciphers, num_of_alias_max, num_of_group_aliases;
 	unsigned long disabled_mkey, disabled_auth, disabled_enc, disabled_mac, disabled_ssl;
-	STACK_OF(SSL_CIPHER) *cipherstack, *tmp_cipher_list;
+	STACK_OF(SSL_CIPHER) *cipherstack;
 	const char *rule_p;
 	CIPHER_ORDER *co_list = NULL, *head = NULL, *tail = NULL, *curr;
 	const SSL_CIPHER **ca_list = NULL;
+	const SSL_CIPHER *cipher;
 	int tls13_seen = 0;
 	int any_active;
+	int i;
 
 	/*
 	 * Return with error if nothing to do.
 	 */
-	if (rule_str == NULL || cipher_list == NULL || cipher_list_by_id == NULL)
+	if (rule_str == NULL || cipher_list == NULL)
 		return NULL;
 
 	/*
@@ -1336,11 +1338,21 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 		return (NULL);
 	}
 
+	/* Prefer TLSv1.3 cipher suites. */
+	if (cipher_list_tls13 != NULL) {
+		for (i = 0; i < sk_SSL_CIPHER_num(cipher_list_tls13); i++) {
+			cipher = sk_SSL_CIPHER_value(cipher_list_tls13, i);
+			sk_SSL_CIPHER_push(cipherstack, cipher);
+		}
+		tls13_seen = 1;
+	}
+
 	/*
 	 * The cipher selection for the list is done. The ciphers are added
 	 * to the resulting precedence to the STACK_OF(SSL_CIPHER).
 	 *
-	 * If the rule string did not contain any references to TLSv1.3,
+	 * If the rule string did not contain any references to TLSv1.3 and
+	 * TLSv1.3 cipher suites have not been configured separately,
 	 * include inactive TLSv1.3 cipher suites. This avoids attempts to
 	 * use TLSv1.3 with an older rule string that does not include
 	 * TLSv1.3 cipher suites. If the rule string resulted in no active
@@ -1358,19 +1370,9 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 
 	free(co_list);	/* Not needed any longer */
 
-	tmp_cipher_list = sk_SSL_CIPHER_dup(cipherstack);
-	if (tmp_cipher_list == NULL) {
-		sk_SSL_CIPHER_free(cipherstack);
-		return NULL;
-	}
 	sk_SSL_CIPHER_free(*cipher_list);
 	*cipher_list = cipherstack;
-	sk_SSL_CIPHER_free(*cipher_list_by_id);
-	*cipher_list_by_id = tmp_cipher_list;
-	(void)sk_SSL_CIPHER_set_cmp_func(*cipher_list_by_id,
-	    ssl_cipher_ptr_id_cmp);
 
-	sk_SSL_CIPHER_sort(*cipher_list_by_id);
 	return (cipherstack);
 }
 
