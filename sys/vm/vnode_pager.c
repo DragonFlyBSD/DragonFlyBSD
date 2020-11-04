@@ -791,7 +791,7 @@ struct vnode *
 vnode_pager_lock(vm_map_backing_t ba)
 {
 	vm_map_backing_t lba;
-	struct vnode *vp;
+	struct vnode *vp = NULL;
 	vm_object_t lobject;
 	int error;
 
