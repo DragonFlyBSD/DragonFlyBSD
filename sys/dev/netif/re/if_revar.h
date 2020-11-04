@@ -128,6 +128,7 @@ struct re_softc {
 	bus_dma_tag_t		re_tag;
 	struct ifpoll_compat	re_npoll;
 	struct re_list_data	re_ldata;
+	void			(*re_start_xmit)(struct re_softc *);
 	struct callout		re_timer;
 	struct mbuf		*re_head;
 	struct mbuf		*re_tail;
@@ -144,7 +145,10 @@ struct re_softc {
 	uint32_t		re_flags;	/* see RE_F_ */
 	int			re_saved_ifflags;
 
-	uint16_t		re_intrs;
+	void			(*re_write_imr)(struct re_softc *, uint32_t);
+	void			(*re_write_isr)(struct re_softc *, uint32_t);
+	uint32_t		(*re_read_isr)(struct re_softc *);
+	uint32_t		re_intrs;
 	uint16_t		re_tx_ack;
 	uint16_t		re_rx_ack;
 	int			re_tx_time;
@@ -192,6 +196,9 @@ struct re_softc {
 	bus_space_handle_t	re_cmac_handle;		/* bus space handle */
 	bus_space_tag_t		re_cmac_tag;		/* bus space tag */
 	u_int8_t		HwPkgDet;
+	u_int8_t		hw_hw_supp_serdes_phy_ver;
+	u_int8_t		RequirePhyMdiSwapPatch;
+	u_int16_t		phy_reg_anlpar;
 };
 
 #define RE_C_HWIM		0x4	/* hardware interrupt moderation */

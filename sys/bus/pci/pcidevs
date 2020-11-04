@@ -514,6 +514,7 @@ product RALINK	RT5390_3	0x539f	RT5390
 
 /* Realtek (Creative Labs?) products */
 product REALTEK	RT8029		0x8029	8029 Ethernet
+product REALTEK RT8125		0x8125	8125 PCIe Gigabit Ethernet
 product REALTEK	RT8129		0x8129	8129 10/100 Ethernet
 product REALTEK RT8101E		0x8136	8101E PCIe 10/10 Ethernet
 product REALTEK RT8139B		0x8138	8139B 10/100 Ethernet

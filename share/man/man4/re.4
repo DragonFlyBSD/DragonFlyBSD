@@ -30,12 +30,12 @@
 .\"
 .\" $FreeBSD$
 .\"
-.Dd November 14, 2016
+.Dd November 21, 2020
 .Dt RE 4
 .Os
 .Sh NAME
 .Nm re
-.Nd "RealTek 816xS/811xS/8101E/8105E PCI/PCIe Ethernet adapter driver"
+.Nd "RealTek 816xS/811xS/8101E/8105E/8125 PCI/PCIe Ethernet adapter driver"
 .Sh SYNOPSIS
 .Cd "device miibus"
 .Cd "device re"
@@ -50,13 +50,21 @@ if_re_load="YES"
 The
 .Nm
 driver provides support for various NICs based on the RealTek
-RTL8169S, RTL8110S, RTL8168S, RTL8111S and RTL8101E
+RTL8169S,
+RTL8110S,
+RTL8168S,
+RTL8111S,
+RTL8101E
+and
+RTL8125
 PCI and PCIe ethernet controllers.
 .Pp
 NICs based on the
 8101E are capable of 10 and 100Mbps speeds over CAT5 cable.
 NICs based on the
 816xS and 811xS are capable of 10, 100 and 1000Mbps operation.
+NICs based on the
+8125 are capable of 10, 100, 1000Mbps and 2500Mbps operation.
 .Pp
 All NICs supported by the
 .Nm
@@ -65,9 +73,10 @@ features, and use a descriptor-based DMA mechanism. They are also
 capable of TCP large send (TCP segmentation offload).
 .Pp
 The 8169S and 8110S are single-chip devices containing both a 10/100/1000
-MAC and 10/100/1000 copper PHY. Standalone 10/100/1000 cards are available
-in both 32-bit PCI and 64-bit PCI models. The 8110S is designed for
-embedded LAN-on-motherboard applications.
+MAC and 10/100/1000 copper PHY.
+Standalone 10/100/1000 cards are available in both 32-bit PCI and 64-bit
+PCI models.
+The 8110S is designed for embedded LAN-on-motherboard applications.
 .Pp
 .\"The 8169S and 8110S also support jumbo frames, which can be configured
 .\"via the interface MTU setting.
@@ -203,8 +212,14 @@ it may not work reliably.
 .Sh HARDWARE
 The
 .Nm
-driver supports RealTek RTL816xS, RTL811xS,
-RTL8105E, and RTL8101E based Fast Ethernet and Gigabit Ethernet adapters
+driver supports RealTek
+RTL816xS,
+RTL811xS,
+RTL8105E,
+RTL8101E,
+and
+RTL8125
+based Fast Ethernet and Gigabit Ethernet adapters
 including:
 .Pp
 .Bl -bullet -compact

@@ -66,6 +66,7 @@
 #define	RE_HPQ		0x80		/* high priority queue polling */
 #define	RE_NPQ		0x40		/* normal priority queue polling */
 #define	RE_FSWInt	0x01		/* Forced Software Interrupt */
+#define	RE_NPQ_8125	0x01
 
 
 /*
@@ -119,6 +120,7 @@
 /* 0053-0057 reserved */
 #define RE_TDFNR	0x0057		/* Tx descriptor fetch number */
 #define RE_MEDIASTAT	0x0058		/* media status register (8139) */
+#define RE_TIMERINT	0x0058		/* timer interrupt register */
 /* 0059-005A reserved */
 #define RE_MII		0x005A		/* 8129 chip only */
 #define RE_HALTCLK	0x005B
@@ -147,11 +149,19 @@
 #define RE_RxMaxSize	0x00DA
 #define RE_EFUSEAR	0x00DC
 #define RE_CPlusCmd	0x00E0
+#define RE_IntrMitigate	0x00E2
 #define	RE_MTPS		0x00EC
 #define	RE_CMAC_IBCR0     	0x00F8
 #define	RE_CMAC_IBCR2     	0x00F9
 #define	RE_CMAC_IBIMR0    	0x00FA
 #define	RE_CMAC_IBISR0   	0x00FB
+/* 8125 */
+#define RE_IMR0_8125 0x38
+#define RE_ISR0_8125 0x3C
+#define RE_TPPOLL_8125 0x90
+#define RE_BACKUP_ADDR0_8125 0x19E0
+#define RE_BACKUP_ADDR4_8125 0X19E4
+#define RE_EEE_TXIDLE_TIMER_8125 0x6048
 
 /* ERI access */
 #define	ERIAR_Flag   0x80000000
@@ -228,7 +238,7 @@
 #define RE_ISR_RX_OVERRUN	0x0010
 #define RE_ISR_PKT_UNDERRUN	0x0020
 #define RE_ISR_LINKCHG		0x0020
-#define RE_ISR_FIFO_OFLOW	0x0040	/* 8139 only */
+#define RE_ISR_FIFO_OFLOW	0x0040
 #define RE_ISR_TDU		0x0080
 #define RE_ISR_PCS_TIMEOUT	0x4000	/* 8129 only */
 #define RE_ISR_SYSTEM_ERR	0x8000
@@ -393,6 +403,12 @@
 /*
  * PHY Status register
  */
+#define RL_PHY_STATUS_500MF 0x80000
+#define RL_PHY_STATUS_2500MF 0x400
+#define RL_PHY_STATUS_1250MF 0x200
+#define RL_PHY_STATUS_CABLE_PLUG 0x80
+#define RL_PHY_STATUS_TX_FLOW_CTRL 0x40
+#define RL_PHY_STATUS_RX_FLOW_CTRL 0x20
 #define RL_PHY_STATUS_1000MF    0x10
 #define RL_PHY_STATUS_100M      0x08
 #define RL_PHY_STATUS_10M       0x04
@@ -764,6 +780,7 @@ struct re_mii_frame {
 #define	RL_FLAG_MSIX		    0x00000800
 #define RL_FLAG_MAGIC_PACKET_V2 0x20000000
 #define RL_FLAG_PCIE            0x40000000
+#define RL_FLAG_MAGIC_PACKET_V3 0x80000000
 
 #define RL_ProtoIP  	((1<<17)|(1<<18))
 //#define RL_ProtoIP  	((1<<16)|(1<<17))
@@ -788,6 +805,7 @@ enum  {
         EFUSE_SUPPORT_V1,
         EFUSE_SUPPORT_V2,
         EFUSE_SUPPORT_V3,
+        EFUSE_SUPPORT_V4,
 };
 
 enum {
@@ -850,6 +868,12 @@ enum {
         MACFG_69,
         MACFG_70,
         MACFG_71,
+        MACFG_72,
+
+        MACFG_80 = 80,
+        MACFG_81,
+        MACFG_82,
+        MACFG_83,
 
         MACFG_FF = 0xFF
 };
@@ -886,7 +910,10 @@ struct re_softc {
         u_int8_t		re_type;
         u_int8_t		re_stats_no_timeout;
         u_int8_t		re_revid;
+        u_int16_t		re_vendor_id;
         u_int16_t		re_device_id;
+        u_int16_t		re_subvendor_id;
+        u_int16_t		re_subdevice_id;
 
         struct re_chain_data	re_cdata;		/* Tx buffer chain, Used only in ~C+ mode */
         struct re_descriptor	re_desc;			/* Descriptor, Used only in C+ mode */
@@ -916,6 +943,8 @@ struct re_softc {
 
         u_int8_t RequiredSecLanDonglePatch;
 
+        u_int8_t RequirePhyMdiSwapPatch;
+
         u_int8_t  re_efuse_ver;
 
         u_int16_t re_sw_ram_code_ver;
@@ -924,6 +953,8 @@ struct re_softc {
         struct task		re_inttask;
 #endif
         u_int16_t cur_page;
+
+        u_int16_t phy_reg_anlpar;
 
         u_int8_t re_hw_enable_msi_msix;
 
@@ -935,6 +966,8 @@ struct re_softc {
 
         u_int8_t	re_hw_supp_now_is_oob_ver;
 
+        u_int8_t hw_hw_supp_serdes_phy_ver;
+
         u_int8_t HwSuppDashVer;
         u_int8_t	re_dash;
         bus_space_handle_t	re_mapped_cmac_handle;			/* bus space tag */
@@ -942,6 +975,19 @@ struct re_softc {
         bus_space_handle_t	re_cmac_handle;		/* bus space handle */
         bus_space_tag_t		re_cmac_tag;			/* bus space tag */
         u_int8_t HwPkgDet;
+
+        u_int32_t HwFiberModeVer;
+        u_int32_t HwFiberStat;
+
+        int (*ifmedia_upd)(struct ifnet *);
+        void (*ifmedia_sts)(struct ifnet *, struct ifmediareq *);
+#if OS_VER < VERSION(7,0)
+        void (*intr)(void *);
+#else
+        int (*intr)(void *);
+#endif //OS_VER < VERSION(7,0)
+        void (*int_task)(void *, int);
+        void (*hw_start_unlock)(struct re_softc *);
 };
 #endif	/* !__DragonFly__ */
 
@@ -1030,6 +1076,7 @@ enum bits {
 #define RT_DEVICEID_8168			0x8168		/* For RTL8168B */
 #define RT_DEVICEID_8161			0x8161		/* For RTL8168 Series add-on card */
 #define RT_DEVICEID_8136			0x8136		/* For RTL8101E */
+#define RT_DEVICEID_8125			0x8125		/* For RTL8125 */
 
 /*
  * Accton PCI vendor ID
@@ -1108,6 +1155,8 @@ enum bits {
 #define RE_WOL_LINK_SPEED_10M_FIRST ( 0 )
 #define RE_WOL_LINK_SPEED_100M_FIRST ( 1 )
 
+#define RTK_ADVERTISE_2500FULL  0x80
+
 //Ram Code Version
 #define NIC_RAMCODE_VERSION_8168E (0x0057)
 #define NIC_RAMCODE_VERSION_8168EVL (0x0055)
@@ -1119,6 +1168,10 @@ enum bits {
 #define NIC_RAMCODE_VERSION_8411B (0x0012)
 #define NIC_RAMCODE_VERSION_8168H (0x0018)
 #define NIC_RAMCODE_VERSION_8168FP (0x0003)
+#define NIC_RAMCODE_VERSION_8125A_REV_A (0x0B11)
+#define NIC_RAMCODE_VERSION_8125A_REV_B (0x0B33)
+#define NIC_RAMCODE_VERSION_8125B_REV_A (0x0B17)
+#define NIC_RAMCODE_VERSION_8125B_REV_B (0x0B36)
 
 #ifdef __alpha__
 #undef vtophys
@@ -1146,6 +1199,8 @@ enum bits {
 #define HW_DASH_SUPPORT_TYPE_1(_M)        ((_M)->HwSuppDashVer == 1 )
 #define HW_DASH_SUPPORT_TYPE_2(_M)        ((_M)->HwSuppDashVer == 2 )
 #define HW_DASH_SUPPORT_TYPE_3(_M)        ((_M)->HwSuppDashVer == 3 )
+
+#define HW_SUPP_SERDES_PHY(_M)        ((_M)->hw_hw_supp_serdes_phy_ver > 0)
 
 /*#define RE_DBG*/
 
@@ -1190,4 +1245,13 @@ enum bits {
 #define RE_PCIER_LINK_CAP             PCIR_EXPRESS_LINK_CAP
 #endif
 #endif //OS_VER>=VERSION(7,4)
+
+#ifndef IFM_2500_X
+#define	IFM_2500_X	IFM_X(63)
+#endif
+
 #endif	/* !__DragonFly__ */
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(_a)  (sizeof((_a)) / sizeof((_a)[0]))
+#endif

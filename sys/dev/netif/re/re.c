@@ -42,10 +42,18 @@
 
 #ifndef __DragonFly__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v 1.95.00 " __DATE__ " " __TIME__ "  wpaul Exp $");
+
+#ifdef ENABLE_FIBER_SUPPORT
+#define FIBER_SUFFIX "-FIBER"
+#else
+#define FIBER_SUFFIX ""
+#endif
+#define RE_VERSION "1.96.04" FIBER_SUFFIX
+
+__FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v " RE_VERSION __DATE__ " " __TIME__ "  wpaul Exp $");
 
 /*
-* This driver also support Realtek 8139C+, 8110S/SB/SC, RTL8111B/C/CP/D and RTL8101E/8102E/8103E.
+* This driver also support Realtek RTL8110/RTL8169, RTL8111/RTL8168, RTL8125, and RTL8136/RTL810x.
 */
 
 #include <sys/param.h>
@@ -79,6 +87,9 @@ __FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v 1.95.00 " __DATE__ " " __TIME__ "  
 
 #include <dev/mii/mii.h>
 #include <dev/re/if_rereg.h>
+#ifdef ENABLE_FIBER_SUPPORT
+#include <dev/re/if_fiber.h>
+#endif //ENABLE_FIBER_SUPPORT
 
 #if OS_VER < VERSION(5,3)
 #include <pci/pcireg.h>
@@ -144,19 +155,19 @@ __FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v 1.95.00 " __DATE__ " " __TIME__ "  
 static struct re_type re_devs[] = {
         {
                 RT_VENDORID, RT_DEVICEID_8169,
-                "Realtek PCI GBE Family Controller"
+                "Realtek PCI GbE Family Controller"
         },
         {
                 RT_VENDORID, RT_DEVICEID_8169SC,
-                "Realtek PCI GBE Family Controller"
+                "Realtek PCI GbE Family Controller"
         },
         {
                 RT_VENDORID, RT_DEVICEID_8168,
-                "Realtek PCIe GBE Family Controller"
+                "Realtek PCIe GbE Family Controller"
         },
         {
                 RT_VENDORID, RT_DEVICEID_8161,
-                "Realtek PCIe GBE Family Controller"
+                "Realtek PCIe GbE Family Controller"
         },
         {
                 RT_VENDORID, RT_DEVICEID_8136,
@@ -164,7 +175,11 @@ static struct re_type re_devs[] = {
         },
         {
                 DLINK_VENDORID, 0x4300,
-                "Realtek PCI GBE Family Controller"
+                "Realtek PCI GbE Family Controller"
+        },
+        {
+                RT_VENDORID, RT_DEVICEID_8125,
+                "Realtek PCIe 2.5GbE Family Controller"
         },
         { 0, 0, NULL }
 };
@@ -176,19 +191,24 @@ static int	re_suspend 			__P((device_t));
 static int	re_resume 			__P((device_t));
 static int	re_shutdown			__P((device_t));
 
-static void MP_WritePhyUshort			__P((struct re_softc*, u_int8_t, u_int16_t));
-static u_int16_t MP_ReadPhyUshort		__P((struct re_softc*, u_int8_t));
+void MP_WritePhyUshort			__P((struct re_softc*, u_int8_t, u_int16_t));
+u_int16_t MP_ReadPhyUshort		__P((struct re_softc*, u_int8_t));
 static void MP_WriteEPhyUshort			__P((struct re_softc*, u_int8_t, u_int16_t));
 static u_int16_t MP_ReadEPhyUshort		__P((struct re_softc*, u_int8_t));
 static u_int8_t MP_ReadEfuse			__P((struct re_softc*, u_int16_t));
+static void MP_RealWritePhyOcpRegWord       __P((struct re_softc*, u_int16_t, u_int16_t));
+static u_int16_t MP_RealReadPhyOcpRegWord   __P((struct re_softc*, u_int16_t));
 static void MP_WritePhyOcpRegWord       __P((struct re_softc*, u_int16_t, u_int8_t, u_int16_t));
 static u_int16_t MP_ReadPhyOcpRegWord   __P((struct re_softc*, u_int16_t, u_int8_t));
-static void MP_WriteMcuAccessRegWord    __P((struct re_softc*, u_int16_t, u_int16_t));
-static u_int16_t MP_ReadMcuAccessRegWord  __P((struct re_softc*, u_int16_t));
+void MP_WriteMcuAccessRegWord    __P((struct re_softc*, u_int16_t, u_int16_t));
+u_int16_t MP_ReadMcuAccessRegWord  __P((struct re_softc*, u_int16_t));
 static void MP_WriteOtherFunPciEConfigSpace    __P((struct re_softc *, u_int8_t, u_int16_t, u_int32_t Regata));
 static u_int32_t MP_ReadOtherFunPciEConfigSpace   __P((struct re_softc *, u_int8_t, u_int16_t));
 static void MP_WritePciEConfigSpace     __P((struct re_softc*, u_int16_t, u_int32_t));
 static u_int32_t MP_ReadPciEConfigSpace __P((struct re_softc*, u_int16_t));
+static u_int8_t MP_ReadByteFun0PciEConfigSpace __P((struct re_softc*, u_int16_t));
+static bool re_set_phy_mcu_patch_request  __P((struct re_softc *));
+static bool re_clear_phy_mcu_patch_request  __P((struct re_softc *));
 #endif	/* !__DragonFly__ */
 
 static int re_check_dash  __P((struct re_softc *));
@@ -225,6 +245,11 @@ static void re_intr				__P((void *));
 #else
 static int re_intr				__P((void *));
 #endif //OS_VER < VERSION(7,0)
+#if OS_VER < VERSION(7,0)
+static void re_intr_8125				__P((void *));
+#else
+static int re_intr_8125				__P((void *));
+#endif //OS_VER < VERSION(7,0)
 #endif	/* !__DragonFly__ */
 static void re_set_multicast_reg	__P((struct re_softc *, u_int32_t, u_int32_t));
 #ifndef __DragonFly__
@@ -251,6 +276,9 @@ static void re_watchdog				__P((struct ifnet *));
 static int  re_ifmedia_upd			__P((struct ifnet *));
 static void re_ifmedia_sts			__P((struct ifnet *, struct ifmediareq *));
 
+static int  re_ifmedia_upd_8125			__P((struct ifnet *));
+static void re_ifmedia_sts_8125			__P((struct ifnet *, struct ifmediareq *));
+
 static void re_eeprom_ShiftOutBits		__P((struct re_softc *, int, int));
 static u_int16_t re_eeprom_ShiftInBits		__P((struct re_softc *));
 static void re_eeprom_EEpromCleanup		__P((struct re_softc *));
@@ -258,6 +286,7 @@ static void re_eeprom_getword			__P((struct re_softc *, int, u_int16_t *));
 static void re_read_eeprom			__P((struct re_softc *, caddr_t, int, int, int));
 #ifndef __DragonFly__
 static void re_int_task				(void *, int);
+static void re_int_task_8125		(void *, int);
 #endif	/* !__DragonFly__ */
 
 static void re_phy_power_up(device_t dev);
@@ -275,6 +304,9 @@ static void OOB_mutex_lock(struct re_softc *);
 static void OOB_mutex_unlock(struct re_softc *);
 
 #ifdef __DragonFly__
+static u_int16_t MP_RealReadPhyOcpRegWord(struct re_softc*, u_int16_t);
+static void MP_RealWritePhyOcpRegWord(struct re_softc*, u_int16_t, u_int16_t);
+
 u_int16_t MP_ReadMcuAccessRegWord(struct re_softc *, u_int16_t);
 void MP_WriteMcuAccessRegWord(struct re_softc *, u_int16_t, u_int16_t);
 
@@ -290,6 +322,7 @@ u_int32_t MP_ReadOtherFunPciEConfigSpace(struct re_softc *, u_int8_t,
     u_int16_t);
 void MP_WriteOtherFunPciEConfigSpace(struct re_softc *, u_int8_t, u_int16_t,
     u_int32_t);
+static u_int8_t MP_ReadByteFun0PciEConfigSpace(struct re_softc*, u_int16_t);
 
 u_int16_t MP_ReadEPhyUshort(struct re_softc *, u_int8_t);
 void MP_WriteEPhyUshort(struct re_softc *, u_int8_t, u_int16_t);
@@ -298,7 +331,13 @@ u_int8_t MP_ReadEfuse(struct re_softc *, u_int16_t);
 
 void re_driver_start(struct re_softc *);
 void re_driver_stop(struct re_softc *);
+
+static bool re_set_phy_mcu_patch_request(struct re_softc *);
+static bool re_clear_phy_mcu_patch_request(struct re_softc *);
 #endif	/* __DragonFly__ */
+
+static void re_hw_start_unlock(struct re_softc *sc);
+static void re_hw_start_unlock_8125(struct re_softc *sc);
 
 /* Tunables. */
 static int msi_disable = 1;
@@ -307,12 +346,28 @@ static int msix_disable = 0;
 TUNABLE_INT("hw.re.msix_disable", &msix_disable);
 static int prefer_iomap = 0;
 TUNABLE_INT("hw.re.prefer_iomap", &prefer_iomap);
+#ifdef ENABLE_EEE
+static int eee_enable = 1;
+#else
 static int eee_enable = 0;
+#endif
 TUNABLE_INT("hw.re.eee_enable", &eee_enable);
 static int phy_power_saving = 1;
 TUNABLE_INT("hw.re.phy_power_saving", &phy_power_saving);
 static int phy_mdix_mode = RE_ETH_PHY_AUTO_MDI_MDIX;
 TUNABLE_INT("hw.re.phy_mdix_mode", &phy_mdix_mode);
+#ifdef ENABLE_S5WOL
+static int s5wol = 1;
+#else
+static int s5wol = 0;
+TUNABLE_INT("hw.re.s5wol", &s5wol);
+#endif
+#ifdef ENABLE_S0_MAGIC_PACKET
+static int s0_magic_packet = 1;
+#else
+static int s0_magic_packet = 0;
+#endif
+TUNABLE_INT("hw.re.s0_magic_packet", &s0_magic_packet);
 
 #define RE_CSUM_FEATURES    (CSUM_IP | CSUM_TCP | CSUM_UDP)
 
@@ -336,17 +391,183 @@ static driver_t re_driver = {
 
 static devclass_t re_devclass;
 
-DRIVER_MODULE(if_re, pci, re_driver, re_devclass, NULL, NULL);
+DRIVER_MODULE(if_re, pci, re_driver, re_devclass, 0, 0);
 #endif	/* !__DragonFly__ */
+
+static void
+ClearAndSetEthPhyBit(
+        struct re_softc *sc,
+        u_int8_t   addr,
+        u_int16_t   clearmask,
+        u_int16_t   setmask
+)
+{
+        u_int16_t PhyRegValue;
+
+
+        PhyRegValue = MP_ReadPhyUshort(sc, addr);
+        PhyRegValue &= ~clearmask;
+        PhyRegValue |= setmask;
+        MP_WritePhyUshort(sc, addr, PhyRegValue);
+}
+
+static void
+ClearEthPhyBit(
+        struct re_softc *sc,
+        u_int8_t   addr,
+        u_int16_t   mask
+)
+{
+        ClearAndSetEthPhyBit(sc,
+                             addr,
+                             mask,
+                             0
+                            );
+}
+
+static void
+SetEthPhyBit(
+        struct re_softc *sc,
+        u_int8_t   addr,
+        u_int16_t   mask
+)
+{
+        ClearAndSetEthPhyBit(sc,
+                             addr,
+                             0,
+                             mask
+                            );
+}
+
+static void
+ClearAndSetEthPhyOcpBit(
+        struct re_softc *sc,
+        u_int16_t   addr,
+        u_int16_t   clearmask,
+        u_int16_t   setmask
+)
+{
+        u_int16_t PhyRegValue;
+
+        PhyRegValue = MP_RealReadPhyOcpRegWord(sc, addr);
+        PhyRegValue &= ~clearmask;
+        PhyRegValue |= setmask;
+        MP_RealWritePhyOcpRegWord(sc, addr, PhyRegValue);
+}
+
+static void
+ClearEthPhyOcpBit(
+        struct re_softc *sc,
+        u_int16_t   addr,
+        u_int16_t   mask
+)
+{
+        ClearAndSetEthPhyOcpBit(sc,
+                                addr,
+                                mask,
+                                0
+                               );
+}
+
+static void
+SetEthPhyOcpBit(
+        struct re_softc *sc,
+        u_int16_t   addr,
+        u_int16_t   mask
+)
+{
+        ClearAndSetEthPhyOcpBit(sc,
+                                addr,
+                                0,
+                                mask
+                               );
+}
+
+static void
+ClearAndSetMcuAccessRegBit(
+        struct re_softc *sc,
+        u_int16_t   addr,
+        u_int16_t   clearmask,
+        u_int16_t   setmask
+)
+{
+        u_int16_t PhyRegValue;
+
+        PhyRegValue = MP_ReadMcuAccessRegWord(sc, addr);
+        PhyRegValue &= ~clearmask;
+        PhyRegValue |= setmask;
+        MP_WriteMcuAccessRegWord(sc, addr, PhyRegValue);
+}
+
+static void
+ClearMcuAccessRegBit(
+        struct re_softc *sc,
+        u_int16_t   addr,
+        u_int16_t   mask
+)
+{
+        ClearAndSetMcuAccessRegBit(sc,
+                                   addr,
+                                   mask,
+                                   0
+                                  );
+}
+
+static void
+SetMcuAccessRegBit(
+        struct re_softc *sc,
+        u_int16_t   addr,
+        u_int16_t   mask
+)
+{
+        ClearAndSetMcuAccessRegBit(sc,
+                                   addr,
+                                   0,
+                                   mask
+                                  );
+}
+
+static void re_clear_phy_ups_reg(struct re_softc *sc)
+{
+        switch(sc->re_type) {
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                if (sc->re_type == MACFG_82 || sc->re_type == MACFG_83)
+                        ClearEthPhyOcpBit(sc, 0xA466, BIT_0);
+
+                ClearEthPhyOcpBit(sc, 0xA468, BIT_3 | BIT_1);
+                break;
+        };
+}
 
 static int re_is_ups_resume(struct re_softc *sc)
 {
-        return (MP_ReadMcuAccessRegWord(sc, 0xD408) & BIT_0);
+        switch(sc->re_type) {
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                return (MP_ReadMcuAccessRegWord(sc, 0xD42C) & BIT_8);
+        default:
+                return (MP_ReadMcuAccessRegWord(sc, 0xD408) & BIT_0);
+        }
 }
 
 static void re_clear_ups_resume_bit(struct re_softc *sc)
 {
-        MP_WriteMcuAccessRegWord(sc, 0xD408, MP_ReadMcuAccessRegWord(sc, 0xD408) & ~(BIT_0));
+        switch(sc->re_type) {
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                MP_WriteMcuAccessRegWord(sc, 0xD408, MP_ReadMcuAccessRegWord(sc, 0xD408) & ~(BIT_8));
+                break;
+        default:
+                MP_WriteMcuAccessRegWord(sc, 0xD408, MP_ReadMcuAccessRegWord(sc, 0xD408) & ~(BIT_0));
+                break;
+        }
 }
 
 static void re_wait_phy_ups_resume(struct re_softc *sc, u_int16_t PhyState)
@@ -354,12 +575,27 @@ static void re_wait_phy_ups_resume(struct re_softc *sc, u_int16_t PhyState)
         u_int16_t TmpPhyState;
         int i=0;
 
-        do {
-                TmpPhyState = MP_ReadPhyOcpRegWord(sc, 0x0A42, 0x10);
-                TmpPhyState &= 0x7;
-                DELAY(1000);
-                i++;
-        } while ((i < 100) && (TmpPhyState != 2));
+        switch(sc->re_type) {
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                do {
+                        TmpPhyState = MP_RealReadPhyOcpRegWord(sc, 0xA420);
+                        TmpPhyState &= 0x7;
+                        DELAY(1000);
+                        i++;
+                } while ((i < 100) && (TmpPhyState != 2));
+                break;
+        default:
+                do {
+                        TmpPhyState = MP_ReadPhyOcpRegWord(sc, 0x0A42, 0x10);
+                        TmpPhyState &= 0x7;
+                        DELAY(1000);
+                        i++;
+                } while ((i < 100) && (TmpPhyState != 2));
+                break;
+        };
 }
 
 static void re_phy_power_up(device_t dev)
@@ -425,9 +661,24 @@ static void re_phy_power_up(device_t dev)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
                 re_wait_phy_ups_resume(sc, 3);
                 break;
         };
+}
+
+static u_int16_t re_get_phy_lp_ability(struct re_softc *sc)
+{
+        u_int16_t anlpar;
+
+        MP_WritePhyUshort(sc, 0x1F, 0x0000);
+        anlpar = MP_ReadPhyUshort(sc, MII_ANLPAR);
+
+        return anlpar;
 }
 
 static void re_phy_power_down(device_t dev)
@@ -436,6 +687,11 @@ static void re_phy_power_down(device_t dev)
         u_int8_t Data8;
 
         sc = device_get_softc(dev);
+
+#ifdef ENABLE_FIBER_SUPPORT
+        if (HW_FIBER_MODE_ENABLED(sc))
+                return;
+#endif //ENABLE_FIBER_SUPPORT
 
         if (sc->re_dash) {
                 re_set_wol_linkspeed(sc);
@@ -479,15 +735,32 @@ static void re_phy_power_down(device_t dev)
         }
 
         switch (sc->re_type) {
-        case MACFG_56:
-        case MACFG_57:
+        case MACFG_36:
+        case MACFG_37:
+        case MACFG_42:
+        case MACFG_43:
+        case MACFG_54:
+        case MACFG_55:
                 CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) & ~BIT_6);
                 break;
-        }
-
-        switch (sc->re_type) {
+        case MACFG_38:
+        case MACFG_39:
+        case MACFG_50:
+        case MACFG_51:
+        case MACFG_52:
+        case MACFG_56:
+        case MACFG_57:
+        case MACFG_58:
+        case MACFG_59:
+        case MACFG_60:
+        case MACFG_61:
+        case MACFG_62:
+        case MACFG_67:
         case MACFG_68:
         case MACFG_69:
+        case MACFG_70:
+        case MACFG_71:
+        case MACFG_72:
                 CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) & ~BIT_6);
                 CSR_WRITE_1(sc, 0xF2, CSR_READ_1(sc, 0xF2) & ~BIT_6);
                 break;
@@ -683,51 +956,6 @@ static int re_eri_write(struct re_softc *sc, int addr, int len, u_int32_t value,
         return re_eri_write_with_oob_base_address(sc, addr, len, value, type, 0);
 }
 
-static void
-ClearAndSetEthPhyBit(
-        struct re_softc *sc,
-        u_int8_t   addr,
-        u_int16_t   clearmask,
-        u_int16_t   setmask
-)
-{
-        u_int16_t PhyRegValue;
-
-
-        PhyRegValue = MP_ReadPhyUshort(sc, addr);
-        PhyRegValue &= ~clearmask;
-        PhyRegValue |= setmask;
-        MP_WritePhyUshort(sc, addr, PhyRegValue);
-}
-
-static void
-ClearEthPhyBit(
-        struct re_softc *sc,
-        u_int8_t   addr,
-        u_int16_t   mask
-)
-{
-        ClearAndSetEthPhyBit(sc,
-                             addr,
-                             mask,
-                             0
-                            );
-}
-
-static void
-SetEthPhyBit(
-        struct re_softc *sc,
-        u_int8_t   addr,
-        u_int16_t   mask
-)
-{
-        ClearAndSetEthPhyBit(sc,
-                             addr,
-                             0,
-                             mask
-                            );
-}
-
 #ifndef __DragonFly__
 static void re_release_rx_buf(struct re_softc *sc)
 {
@@ -895,6 +1123,11 @@ static void DisableMcuBPs(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
                 MP_WriteMcuAccessRegWord(sc, 0xFC38, 0x0000);
                 break;
         }
@@ -912,6 +1145,7 @@ static void DisableMcuBPs(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 re_enable_cfg9346_write(sc);
                 CSR_WRITE_1(sc, RE_CFG5, CSR_READ_1(sc, RE_CFG5) & ~BIT_0);
                 CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) & ~BIT_7);
@@ -3002,6 +3236,159 @@ static void re_set_mac_mcu_8168fp_2(struct re_softc *sc)
         MP_WriteMcuAccessRegWord(sc, 0xFC38, 0x0022);
 }
 
+static void re_set_mac_mcu_8168fp_3(struct re_softc *sc)
+{
+        DisableMcuBPs(sc);
+
+        MP_WriteMcuAccessRegWord(sc, 0xF800, 0xE008);
+        MP_WriteMcuAccessRegWord(sc, 0xF802, 0xE00A);
+        MP_WriteMcuAccessRegWord(sc, 0xF804, 0xE00F);
+        MP_WriteMcuAccessRegWord(sc, 0xF806, 0xE014);
+        MP_WriteMcuAccessRegWord(sc, 0xF808, 0xE016);
+        MP_WriteMcuAccessRegWord(sc, 0xF80A, 0xE018);
+        MP_WriteMcuAccessRegWord(sc, 0xF80C, 0xE01A);
+        MP_WriteMcuAccessRegWord(sc, 0xF80E, 0xE01C);
+        MP_WriteMcuAccessRegWord(sc, 0xF810, 0xC602);
+        MP_WriteMcuAccessRegWord(sc, 0xF812, 0xBE00);
+        MP_WriteMcuAccessRegWord(sc, 0xF814, 0x2AB2);
+        MP_WriteMcuAccessRegWord(sc, 0xF816, 0x1BC0);
+        MP_WriteMcuAccessRegWord(sc, 0xF818, 0x46EB);
+        MP_WriteMcuAccessRegWord(sc, 0xF81A, 0x1BFE);
+        MP_WriteMcuAccessRegWord(sc, 0xF81C, 0xC102);
+        MP_WriteMcuAccessRegWord(sc, 0xF81E, 0xB900);
+        MP_WriteMcuAccessRegWord(sc, 0xF820, 0x0B1A);
+        MP_WriteMcuAccessRegWord(sc, 0xF822, 0x1BC0);
+        MP_WriteMcuAccessRegWord(sc, 0xF824, 0x46EB);
+        MP_WriteMcuAccessRegWord(sc, 0xF826, 0x1B7E);
+        MP_WriteMcuAccessRegWord(sc, 0xF828, 0xC102);
+        MP_WriteMcuAccessRegWord(sc, 0xF82A, 0xB900);
+        MP_WriteMcuAccessRegWord(sc, 0xF82C, 0x0BEA);
+        MP_WriteMcuAccessRegWord(sc, 0xF82E, 0xC602);
+        MP_WriteMcuAccessRegWord(sc, 0xF830, 0xBE00);
+        MP_WriteMcuAccessRegWord(sc, 0xF832, 0x0000);
+        MP_WriteMcuAccessRegWord(sc, 0xF834, 0xC602);
+        MP_WriteMcuAccessRegWord(sc, 0xF836, 0xBE00);
+        MP_WriteMcuAccessRegWord(sc, 0xF838, 0x0000);
+        MP_WriteMcuAccessRegWord(sc, 0xF83A, 0xC602);
+        MP_WriteMcuAccessRegWord(sc, 0xF83C, 0xBE00);
+        MP_WriteMcuAccessRegWord(sc, 0xF83E, 0x0000);
+        MP_WriteMcuAccessRegWord(sc, 0xF840, 0xC602);
+        MP_WriteMcuAccessRegWord(sc, 0xF842, 0xBE00);
+        MP_WriteMcuAccessRegWord(sc, 0xF844, 0x0000);
+        MP_WriteMcuAccessRegWord(sc, 0xF846, 0xC602);
+        MP_WriteMcuAccessRegWord(sc, 0xF848, 0xBE00);
+        MP_WriteMcuAccessRegWord(sc, 0xF84A, 0x0000);
+
+        MP_WriteMcuAccessRegWord(sc, 0xFC26, 0x8000);
+
+        MP_WriteMcuAccessRegWord(sc, 0xFC28, 0x2AAC);
+        MP_WriteMcuAccessRegWord(sc, 0xFC2A, 0x0B14);
+        MP_WriteMcuAccessRegWord(sc, 0xFC2C, 0x0BE4);
+
+        if (sc->hw_hw_supp_serdes_phy_ver == 1) {
+                MP_WriteMcuAccessRegWord(sc, 0xFC38, 0x0007);
+        } else {
+                MP_WriteMcuAccessRegWord(sc, 0xFC38, 0x0006);
+        }
+}
+
+static void re_set_mac_mcu_8168fp_4(struct re_softc *sc)
+{
+        DisableMcuBPs(sc);
+}
+
+static void re_set_mac_mcu_8125a_1(struct re_softc *sc)
+{
+        DisableMcuBPs(sc);
+}
+
+static void re_set_mac_mcu_8125a_2(struct re_softc *sc)
+{
+        u_int16_t i;
+        static const u_int16_t mcu_patch_code_8125a_2[] =  {
+                0xE008, 0xE01E, 0xE02E, 0xE054, 0xE057, 0xE059, 0xE0C2, 0xE0CB, 0x9996,
+                0x49D1, 0xF005, 0x49D4, 0xF10A, 0x49D8, 0xF108, 0xC00F, 0x7100, 0x209C,
+                0x249C, 0xC009, 0x9900, 0xE004, 0xC006, 0x1900, 0x9900, 0xC602, 0xBE00,
+                0x5A48, 0xE0C2, 0x0004, 0xE10A, 0xC60F, 0x73C4, 0x49B3, 0xF106, 0x73C2,
+                0xC608, 0xB406, 0xC609, 0xFF80, 0xC605, 0xB406, 0xC605, 0xFF80, 0x0544,
+                0x0568, 0xE906, 0xCDE8, 0xC724, 0xC624, 0x9EE2, 0x1E01, 0x9EE0, 0x76E0,
+                0x49E0, 0xF1FE, 0x76E6, 0x486D, 0x4868, 0x9EE4, 0x1E03, 0x9EE0, 0x76E0,
+                0x49E0, 0xF1FE, 0xC615, 0x9EE2, 0x1E01, 0x9EE0, 0x76E0, 0x49E0, 0xF1FE,
+                0x76E6, 0x486F, 0x9EE4, 0x1E03, 0x9EE0, 0x76E0, 0x49E0, 0xF1FE, 0x7196,
+                0xC702, 0xBF00, 0x5A44, 0xEB0E, 0x0070, 0x00C3, 0x1BC0, 0xC602, 0xBE00,
+                0x0E26, 0xC602, 0xBE00, 0x0EBA, 0x1501, 0xF02A, 0x1500, 0xF15D, 0xC661,
+                0x75C8, 0x49D5, 0xF00A, 0x49D6, 0xF008, 0x49D7, 0xF006, 0x49D8, 0xF004,
+                0x75D2, 0x49D9, 0xF150, 0xC553, 0x77A0, 0x75C8, 0x4855, 0x4856, 0x4857,
+                0x4858, 0x48DA, 0x48DB, 0x49FE, 0xF002, 0x485A, 0x49FF, 0xF002, 0x485B,
+                0x9DC8, 0x75D2, 0x4859, 0x9DD2, 0xC643, 0x75C0, 0x49D4, 0xF033, 0x49D0,
+                0xF137, 0xE030, 0xC63A, 0x75C8, 0x49D5, 0xF00E, 0x49D6, 0xF00C, 0x49D7,
+                0xF00A, 0x49D8, 0xF008, 0x75D2, 0x49D9, 0xF005, 0xC62E, 0x75C0, 0x49D7,
+                0xF125, 0xC528, 0x77A0, 0xC627, 0x75C8, 0x4855, 0x4856, 0x4857, 0x4858,
+                0x48DA, 0x48DB, 0x49FE, 0xF002, 0x485A, 0x49FF, 0xF002, 0x485B, 0x9DC8,
+                0x75D2, 0x4859, 0x9DD2, 0xC616, 0x75C0, 0x4857, 0x9DC0, 0xC613, 0x75C0,
+                0x49DA, 0xF003, 0x49D0, 0xF107, 0xC60B, 0xC50E, 0x48D9, 0x9DC0, 0x4859,
+                0x9DC0, 0xC608, 0xC702, 0xBF00, 0x3AE0, 0xE860, 0xB400, 0xB5D4, 0xE908,
+                0xE86C, 0x1200, 0xC409, 0x6780, 0x48F1, 0x8F80, 0xC404, 0xC602, 0xBE00,
+                0x10AA, 0xC010, 0xEA7C, 0xC602, 0xBE00, 0x0000
+        };
+
+        DisableMcuBPs(sc);
+
+        for (i = 0; i < ARRAY_SIZE(mcu_patch_code_8125a_2); i++) {
+                MP_WriteMcuAccessRegWord(sc, 0xF800 + i * 2, mcu_patch_code_8125a_2[i]);
+        }
+
+        MP_WriteMcuAccessRegWord(sc, 0xFC26, 0x8000);
+
+        MP_WriteMcuAccessRegWord(sc, 0xFC2A, 0x0540);
+        MP_WriteMcuAccessRegWord(sc, 0xFC2E, 0x0E24);
+        MP_WriteMcuAccessRegWord(sc, 0xFC30, 0x0EB8);
+        MP_WriteMcuAccessRegWord(sc, 0xFC32, 0x3A5C);
+        MP_WriteMcuAccessRegWord(sc, 0xFC34, 0x10A8);
+
+        MP_WriteMcuAccessRegWord(sc, 0xFC48, 0x007A);
+}
+
+static void re_set_mac_mcu_8125b_1(struct re_softc *sc)
+{
+        DisableMcuBPs(sc);
+}
+
+static void re_set_mac_mcu_8125b_2(struct re_softc *sc)
+{
+        u_int16_t i;
+        static const u_int16_t mcu_patch_code_8125b_2[] =   {
+                0xE008, 0xE013, 0xE01E, 0xE02F, 0xE035, 0xE04F, 0xE053, 0xE055, 0x740A,
+                0x4846, 0x4847, 0x9C0A, 0xC607, 0x74C0, 0x48C6, 0x9CC0, 0xC602, 0xBE00,
+                0x13F0, 0xE054, 0x72CA, 0x4826, 0x4827, 0x9ACA, 0xC607, 0x72C0, 0x48A6,
+                0x9AC0, 0xC602, 0xBE00, 0x081C, 0xE054, 0xC60F, 0x74C4, 0x49CC, 0xF109,
+                0xC60C, 0x74CA, 0x48C7, 0x9CCA, 0xC609, 0x74C0, 0x4846, 0x9CC0, 0xC602,
+                0xBE00, 0x2494, 0xE092, 0xE0C0, 0xE054, 0x7420, 0x48C0, 0x9C20, 0x7444,
+                0xC602, 0xBE00, 0x12DC, 0x733A, 0x21B5, 0x25BC, 0x1304, 0xF111, 0x1B12,
+                0x1D2A, 0x3168, 0x3ADA, 0x31AB, 0x1A00, 0x9AC0, 0x1300, 0xF1FB, 0x7620,
+                0x236E, 0x276F, 0x1A3C, 0x22A1, 0x41B5, 0x9EE2, 0x76E4, 0x486F, 0x9EE4,
+                0xC602, 0xBE00, 0x4A26, 0x733A, 0x49BB, 0xC602, 0xBE00, 0x47A2, 0xC602,
+                0xBE00, 0x0000, 0xC602, 0xBE00, 0x0000
+        };
+
+        DisableMcuBPs(sc);
+
+        for (i = 0; i < ARRAY_SIZE(mcu_patch_code_8125b_2); i++) {
+                MP_WriteMcuAccessRegWord(sc, 0xF800 + i * 2, mcu_patch_code_8125b_2[i]);
+        }
+
+        MP_WriteMcuAccessRegWord(sc, 0xFC26, 0x8000);
+
+        MP_WriteMcuAccessRegWord(sc, 0xFC28, 0x13E6);
+        MP_WriteMcuAccessRegWord(sc, 0xFC2A, 0x0812);
+        MP_WriteMcuAccessRegWord(sc, 0xFC2C, 0x248C);
+        MP_WriteMcuAccessRegWord(sc, 0xFC2E, 0x12DA);
+        MP_WriteMcuAccessRegWord(sc, 0xFC30, 0x4A20);
+        MP_WriteMcuAccessRegWord(sc, 0xFC32, 0x47A0);
+
+        MP_WriteMcuAccessRegWord(sc, 0xFC48, 0x003F);
+}
+
 static void re_hw_mac_mcu_config(struct re_softc *sc)
 {
         switch(sc->re_type) {
@@ -3034,7 +3421,22 @@ static void re_hw_mac_mcu_config(struct re_softc *sc)
                         re_set_mac_mcu_8168fp_2(sc);
                 break;
         case MACFG_71:
-                DisableMcuBPs(sc);
+                re_set_mac_mcu_8168fp_3(sc);
+                break;
+        case MACFG_72:
+                re_set_mac_mcu_8168fp_4(sc);
+                break;
+        case MACFG_80:
+                re_set_mac_mcu_8125a_1(sc);
+                break;
+        case MACFG_81:
+                re_set_mac_mcu_8125a_2(sc);
+                break;
+        case MACFG_82:
+                re_set_mac_mcu_8125b_1(sc);
+                break;
+        case MACFG_83:
+                re_set_mac_mcu_8125b_2(sc);
                 break;
         }
 }
@@ -3132,6 +3534,44 @@ static void re_disable_now_is_oob(struct re_softc *sc)
                 CSR_WRITE_1(sc, RE_MCU_CMD, CSR_READ_1(sc, RE_MCU_CMD) & ~RE_NOW_IS_OOB);
 }
 
+static void re_switch_to_sgmii_mode(struct re_softc *sc)
+{
+        if (FALSE == HW_SUPP_SERDES_PHY(sc)) return;
+
+        switch (sc->hw_hw_supp_serdes_phy_ver) {
+        case 1:
+                MP_WriteMcuAccessRegWord(sc, 0xEB00, 0x2);
+                SetMcuAccessRegBit(sc, 0xEB16, BIT_1);
+                break;
+        }
+}
+
+static void
+re_enable_magic_packet(struct re_softc *sc)
+{
+        if (sc->re_if_flags & RL_FLAG_MAGIC_PACKET_V3)
+                SetMcuAccessRegBit(sc, 0xC0B6, BIT_0);
+        else if (sc->re_if_flags & RL_FLAG_MAGIC_PACKET_V2)
+                re_eri_write(sc, 0xDC, 4,
+                             re_eri_read(sc, 0xDC, 4, ERIAR_ExGMAC) | BIT_16,
+                             ERIAR_ExGMAC);
+        else
+                CSR_WRITE_1(sc, RE_CFG3, CSR_READ_1(sc, RE_CFG3) | RL_CFG3_WOL_MAGIC);
+}
+
+static void
+re_disable_magic_packet(struct re_softc *sc)
+{
+        if (sc->re_if_flags & RL_FLAG_MAGIC_PACKET_V3)
+                ClearMcuAccessRegBit(sc, 0xC0B6, BIT_0);
+        else if (sc->re_if_flags & RL_FLAG_MAGIC_PACKET_V2)
+                re_eri_write(sc, 0xDC, 4,
+                             re_eri_read(sc, 0xDC, 4, ERIAR_ExGMAC) & ~BIT_16,
+                             ERIAR_ExGMAC);
+        else
+                CSR_WRITE_1(sc, RE_CFG3, CSR_READ_1(sc, RE_CFG3) & ~RL_CFG3_WOL_MAGIC);
+}
+
 static void re_exit_oob(struct re_softc *sc)
 {
         u_int16_t data16;
@@ -3139,12 +3579,19 @@ static void re_exit_oob(struct re_softc *sc)
 
         re_disable_cfg9346_write(sc);
 
+        if (HW_SUPP_SERDES_PHY(sc)) {
+                if (sc->hw_hw_supp_serdes_phy_ver == 1) {
+                        re_switch_to_sgmii_mode(sc);
+                }
+        }
+
         switch(sc->re_type) {
         case MACFG_61:
         case MACFG_62:
         case MACFG_67:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 Dash2DisableTxRx(sc);
                 break;
         }
@@ -3165,11 +3612,12 @@ static void re_exit_oob(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 CSR_WRITE_1(sc, 0xF2, CSR_READ_1(sc, 0xF2) | BIT_3);
                 DELAY(2000);
 
-                for (i = 0; i < 10; i++) {
-                        DELAY(100);
+                for (i = 0; i < 3000; i++) {
+                        DELAY(50);
                         if (CSR_READ_4(sc, RE_TXCFG) & BIT_11)
                                 break;
                 }
@@ -3179,11 +3627,39 @@ static void re_exit_oob(struct re_softc *sc)
                         CSR_WRITE_1(sc, RE_COMMAND, CSR_READ_1(sc, RE_COMMAND) & ~(RE_CMD_TX_ENB | RE_CMD_RX_ENB));
                 }
 
-                for (i = 0; i < 10; i++) {
-                        DELAY(100);
+                for (i = 0; i < 3000; i++) {
+                        DELAY(50);
                         if ((CSR_READ_1(sc, RE_MCU_CMD) & (RE_TXFIFO_EMPTY | RE_RXFIFO_EMPTY)) == (RE_TXFIFO_EMPTY | RE_RXFIFO_EMPTY))
                                 break;
 
+                }
+                break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                CSR_WRITE_1(sc, 0xF2, CSR_READ_1(sc, 0xF2) | BIT_3);
+                DELAY(2000);
+
+                if (CSR_READ_1(sc, RE_COMMAND) & (RE_CMD_TX_ENB | RE_CMD_RX_ENB)) {
+                        DELAY(100);
+                        CSR_WRITE_1(sc, RE_COMMAND, CSR_READ_1(sc, RE_COMMAND) & ~(RE_CMD_TX_ENB | RE_CMD_RX_ENB));
+                }
+
+                for (i = 0; i < 3000; i++) {
+                        DELAY(50);
+                        if ((CSR_READ_1(sc, RE_MCU_CMD) & (RE_TXFIFO_EMPTY | RE_RXFIFO_EMPTY)) == (RE_TXFIFO_EMPTY | RE_RXFIFO_EMPTY))
+                                break;
+
+                }
+
+                if (sc->re_type == MACFG_82 || sc->re_type == MACFG_83) {
+                        for (i = 0; i < 3000; i++) {
+                                DELAY(50);
+                                if ((CSR_READ_2(sc, RE_IntrMitigate) & (BIT_0 | BIT_1 | BIT_8)) == (BIT_0 | BIT_1 | BIT_8))
+                                        break;
+
+                        }
                 }
                 break;
         }
@@ -3246,6 +3722,7 @@ static void re_exit_oob(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 data16 = MP_ReadMcuAccessRegWord(sc, 0xE8DE) & ~BIT_14;
                 MP_WriteMcuAccessRegWord(sc, 0xE8DE, data16);
                 for (i = 0; i < 10; i++) {
@@ -3263,6 +3740,28 @@ static void re_exit_oob(struct re_softc *sc)
                                 break;
                 }
                 break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xE8DE) & ~BIT_14;
+                MP_WriteMcuAccessRegWord(sc, 0xE8DE, data16);
+                for (i = 0; i < 10; i++) {
+                        DELAY(100);
+                        if (CSR_READ_2(sc, 0xD2) & BIT_9)
+                                break;
+                }
+
+                MP_WriteMcuAccessRegWord(sc, 0xC0AA, 0x07D0);
+                MP_WriteMcuAccessRegWord(sc, 0xC0A6, 0x01B5);
+                MP_WriteMcuAccessRegWord(sc, 0xC01E, 0x5555);
+
+                for (i = 0; i < 10; i++) {
+                        DELAY(100);
+                        if (CSR_READ_2(sc, 0xD2) & BIT_9)
+                                break;
+                }
+                break;
         }
 
         //wait ups resume (phy state 2)
@@ -3271,9 +3770,15 @@ static void re_exit_oob(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
                 if (re_is_ups_resume(sc)) {
                         re_wait_phy_ups_resume(sc, 2);
                         re_clear_ups_resume_bit(sc);
+                        re_clear_phy_ups_reg(sc);
                 }
                 break;
         };
@@ -3310,6 +3815,11 @@ static void re_hw_init(struct re_softc *sc)
                 CSR_WRITE_1(sc, 0xF2, CSR_READ_1(sc, 0xF2) & ~(BIT_0|BIT_1|BIT_2));
                 break;
         }
+
+        if (s0_magic_packet == 0)
+                re_disable_magic_packet(sc);
+        else
+                re_enable_magic_packet(sc);
 
         switch(sc->re_type) {
         case MACFG_5:
@@ -3361,10 +3871,15 @@ static void re_hw_init(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
                 re_enable_cfg9346_write(sc);
                 CSR_WRITE_1(sc, RE_CFG5, CSR_READ_1(sc, RE_CFG5) & ~BIT_0);
                 CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) & ~BIT_7);
-                CSR_WRITE_1(sc, 0xF1, CSR_READ_1(sc, 0xF1) & ~ BIT_7);
+                CSR_WRITE_1(sc, 0xF1, CSR_READ_1(sc, 0xF1) & ~BIT_7);
                 CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) | BIT_5);
                 re_disable_cfg9346_write(sc);
                 break;
@@ -3439,8 +3954,16 @@ static void re_get_hw_mac_address(struct re_softc *sc, u_int8_t *eaddr)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 *(u_int32_t *)&eaddr[0] = re_eri_read(sc, 0xE0, 4, ERIAR_ExGMAC);
                 *(u_int16_t *)&eaddr[4] = (u_int16_t)re_eri_read(sc, 0xE4, 4, ERIAR_ExGMAC);
+                break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                *(u_int32_t *)&eaddr[0] = CSR_READ_4(sc, RE_BACKUP_ADDR0_8125);
+                *(u_int16_t *)&eaddr[4] = CSR_READ_2(sc, RE_BACKUP_ADDR4_8125);
                 break;
         case MACFG_63:
         case MACFG_64:
@@ -3804,6 +4327,36 @@ static int re_check_mac_version(struct re_softc *sc)
                 sc->re_if_flags |= RL_FLAG_DESCV2 | RL_FLAG_PHYWAKE_PM | RL_FLAG_MAGIC_PACKET_V2;
                 CSR_WRITE_4(sc, RE_RXCFG, 0xCF00);
                 break;
+        case 0x54B00000:
+                sc->re_type = MACFG_72;
+                sc->max_jumbo_frame_size = Jumbo_Frame_9k;
+                sc->re_if_flags |= RL_FLAG_DESCV2 | RL_FLAG_PHYWAKE_PM | RL_FLAG_MAGIC_PACKET_V2;
+                CSR_WRITE_4(sc, RE_RXCFG, 0xCF00);
+                break;
+        case 0x60800000:
+                sc->re_type = MACFG_80;
+                sc->max_jumbo_frame_size = Jumbo_Frame_9k;
+                sc->re_if_flags |= RL_FLAG_DESCV2 | RL_FLAG_PHYWAKE_PM | RL_FLAG_MAGIC_PACKET_V3;
+                CSR_WRITE_4(sc, RE_RXCFG, 0x40C00000);
+                break;
+        case 0x60900000:
+                sc->re_type = MACFG_81;
+                sc->max_jumbo_frame_size = Jumbo_Frame_9k;
+                sc->re_if_flags |= RL_FLAG_DESCV2 | RL_FLAG_PHYWAKE_PM | RL_FLAG_MAGIC_PACKET_V3;
+                CSR_WRITE_4(sc, RE_RXCFG, 0x40C00000);
+                break;
+        case 0x64000000:
+                sc->re_type = MACFG_82;
+                sc->max_jumbo_frame_size = Jumbo_Frame_9k;
+                sc->re_if_flags |= RL_FLAG_DESCV2 | RL_FLAG_PHYWAKE_PM | RL_FLAG_MAGIC_PACKET_V3;
+                CSR_WRITE_4(sc, RE_RXCFG, 0x40C00000);
+                break;
+        case 0x64100000:
+                sc->re_type = MACFG_83;
+                sc->max_jumbo_frame_size = Jumbo_Frame_9k;
+                sc->re_if_flags |= RL_FLAG_DESCV2 | RL_FLAG_PHYWAKE_PM | RL_FLAG_MAGIC_PACKET_V3;
+                CSR_WRITE_4(sc, RE_RXCFG, 0x40C00000);
+                break;
         default:
                 device_printf(dev,"unknown device\n");
                 sc->re_type = MACFG_FF;
@@ -3816,6 +4369,7 @@ static int re_check_mac_version(struct re_softc *sc)
         case RT_DEVICEID_8169SC:
         case RT_DEVICEID_8168:
         case RT_DEVICEID_8161:
+        case RT_DEVICEID_8125:
                 //do nothing
                 break;
         default:
@@ -3832,6 +4386,7 @@ static void re_init_software_variable(struct re_softc *sc)
         case RT_DEVICEID_8168:
         case RT_DEVICEID_8161:
         case RT_DEVICEID_8136:
+        case RT_DEVICEID_8125:
                 sc->re_if_flags |= RL_FLAG_PCIE;
                 break;
         }
@@ -3857,6 +4412,7 @@ static void re_init_software_variable(struct re_softc *sc)
                 break;
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 sc->HwSuppDashVer = 3;
                 break;
         default:
@@ -3867,14 +4423,26 @@ static void re_init_software_variable(struct re_softc *sc)
         switch(sc->re_type) {
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 sc->HwPkgDet = MP_ReadMcuAccessRegWord(sc, 0xDC00);
                 sc->HwPkgDet = (sc->HwPkgDet >> 3) & 0x0F;
-                //printf("Realtek PCIe GBE Family Controller HwPkgDet = 0x%02X\n",
-                //       sc->HwPkgDet);
                 break;
         }
 
-        if (HW_DASH_SUPPORT_TYPE_3(sc) && sc->HwPkgDet == 0x06)
+        switch(sc->re_type) {
+        case MACFG_71:
+        case MACFG_72:
+                if (sc->HwPkgDet == 0x06) {
+                        u_int8_t tmpUchar = re_eri_read(sc, 0xE6, 1, ERIAR_ExGMAC);
+                        if (tmpUchar == 0x02)
+                                sc->hw_hw_supp_serdes_phy_ver = 1;
+                        else if (tmpUchar == 0x00)
+                                sc->hw_hw_supp_serdes_phy_ver = 2;
+                }
+                break;
+        }
+
+        if (HW_SUPP_SERDES_PHY(sc))
                 eee_enable = 0;
 
         if (HW_DASH_SUPPORT_DASH(sc))
@@ -3915,6 +4483,7 @@ static void re_init_software_variable(struct re_softc *sc)
                 break;
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 sc->re_cmac_handle = sc->re_mapped_cmac_handle;
                 sc->re_cmac_tag = sc->re_mapped_cmac_tag;
                 break;
@@ -3963,7 +4532,14 @@ static void re_init_software_variable(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 sc->re_efuse_ver = EFUSE_SUPPORT_V3;
+                break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                sc->re_efuse_ver = EFUSE_SUPPORT_V4;
                 break;
         default:
                 sc->re_efuse_ver = EFUSE_NOT_SUPPORT;
@@ -4005,7 +4581,8 @@ static void re_init_software_variable(struct re_softc *sc)
         case MACFG_68:
         case MACFG_69:
         case MACFG_70:
-        case MACFG_71: {
+        case MACFG_71:
+        case MACFG_72: {
                 u_int16_t rg_saw_cnt;
 
                 MP_WritePhyUshort(sc, 0x1F, 0x0C42);
@@ -4022,6 +4599,10 @@ static void re_init_software_variable(struct re_softc *sc)
         }
         break;
         }
+
+#ifdef ENABLE_FIBER_SUPPORT
+        re_check_hw_fiber_mode_support(sc);
+#endif //ENABLE_FIBER_SUPPORT
 
         switch(sc->re_type) {
         case MACFG_31:
@@ -4055,6 +4636,11 @@ static void re_init_software_variable(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
                 sc->re_hw_enable_msi_msix = TRUE;
                 break;
         }
@@ -4116,6 +4702,11 @@ static void re_init_software_variable(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
                 sc->re_hw_supp_now_is_oob_ver = 1;
                 break;
         }
@@ -4158,12 +4749,35 @@ static void re_init_software_variable(struct re_softc *sc)
                 break;
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 sc->re_sw_ram_code_ver = NIC_RAMCODE_VERSION_8168FP;
+                break;
+        case MACFG_80:
+                sc->re_sw_ram_code_ver = NIC_RAMCODE_VERSION_8125A_REV_A;
+                break;
+        case MACFG_81:
+                sc->re_sw_ram_code_ver = NIC_RAMCODE_VERSION_8125A_REV_B;
+                break;
+        case MACFG_82:
+                sc->re_sw_ram_code_ver = NIC_RAMCODE_VERSION_8125B_REV_A;
+                break;
+        case MACFG_83:
+                sc->re_sw_ram_code_ver = NIC_RAMCODE_VERSION_8125B_REV_B;
                 break;
         }
 
-        sc->re_8169_MacVersion=(CSR_READ_4(sc, RE_TXCFG)&0x7c800000)>>25;		/* Get bit 26~30 	*/
-        sc->re_8169_MacVersion|=((CSR_READ_4(sc, RE_TXCFG)&0x00800000)!=0 ? 1:0);	/* Get bit 23 		*/
+        switch (sc->re_type) {
+        case MACFG_81:
+                if ((MP_ReadMcuAccessRegWord(sc, 0xD442) & BIT_5) &&
+                    (MP_RealReadPhyOcpRegWord(sc, 0xD068) & BIT_1)
+                   ) {
+                        sc->RequirePhyMdiSwapPatch = TRUE;
+                }
+                break;
+        }
+
+        sc->re_8169_MacVersion = (CSR_READ_4(sc, RE_TXCFG)&0x7c800000)>>25;		/* Get bit 26~30 	*/
+        sc->re_8169_MacVersion |= ((CSR_READ_4(sc, RE_TXCFG)&0x00800000)!=0 ? 1:0);	/* Get bit 23 		*/
         DBGPRINT1(sc->re_unit,"8169 Mac Version %d",sc->re_8169_MacVersion);
 
         /* Rtl8169s single chip detected */
@@ -4177,16 +4791,87 @@ static void re_init_software_variable(struct re_softc *sc)
 #ifndef __DragonFly__
         sc->link_state = LINK_STATE_UNKNOWN;
 #endif
+
+#ifdef ENABLE_FIBER_SUPPORT
+        if (HW_FIBER_MODE_ENABLED(sc))
+                re_set_fiber_mode_software_variable(sc);
+#endif //ENABLE_FIBER_SUPPORT
+}
+
+static void re_enable_ocp_phy_power_saving(struct re_softc *sc)
+{
+        u_int16_t val;
+
+        if (sc->re_type == MACFG_59 || sc->re_type == MACFG_60 ||
+            sc->re_type == MACFG_62 || sc->re_type == MACFG_67 ||
+            sc->re_type == MACFG_68 || sc->re_type == MACFG_69 ||
+            sc->re_type == MACFG_70 || sc->re_type == MACFG_71 ||
+            sc->re_type == MACFG_72) {
+                val = MP_ReadPhyOcpRegWord(sc, 0x0C41, 0x13);
+                if (val != 0x0050) {
+                        re_set_phy_mcu_patch_request(sc);
+                        MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0000);
+                        MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0050);
+                        re_clear_phy_mcu_patch_request(sc);
+                }
+        } else if (sc->re_type == MACFG_80 || sc->re_type == MACFG_81 ||
+                   sc->re_type == MACFG_82 || sc->re_type == MACFG_83) {
+                val = MP_RealReadPhyOcpRegWord(sc, 0xC416);
+                if (val != 0x0050) {
+                        re_set_phy_mcu_patch_request(sc);
+                        MP_RealWritePhyOcpRegWord(sc, 0xC416, 0x0000);
+                        MP_RealWritePhyOcpRegWord(sc, 0xC416, 0x0050);
+                        re_clear_phy_mcu_patch_request(sc);
+                }
+        }
+}
+
+static void re_disable_ocp_phy_power_saving(struct re_softc *sc)
+{
+        u_int16_t val;
+
+        if (sc->re_type == MACFG_59 || sc->re_type == MACFG_60 ||
+            sc->re_type == MACFG_62 || sc->re_type == MACFG_67 ||
+            sc->re_type == MACFG_68 || sc->re_type == MACFG_69 ||
+            sc->re_type == MACFG_70 || sc->re_type == MACFG_71 ||
+            sc->re_type == MACFG_72) {
+                val = MP_ReadPhyOcpRegWord(sc, 0x0C41, 0x13);
+                if (val != 0x0500) {
+                        re_set_phy_mcu_patch_request(sc);
+                        MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0000);
+                        MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0500);
+                        re_clear_phy_mcu_patch_request(sc);
+                }
+        } else if (sc->re_type == MACFG_80 || sc->re_type == MACFG_81 ||
+                   sc->re_type == MACFG_82 || sc->re_type == MACFG_83) {
+                val = MP_RealReadPhyOcpRegWord(sc, 0xC416);
+                if (val != 0x0500) {
+                        re_set_phy_mcu_patch_request(sc);
+                        MP_RealWritePhyOcpRegWord(sc, 0xC416, 0x0000);
+                        MP_RealWritePhyOcpRegWord(sc, 0xC416, 0x0500);
+                        re_clear_phy_mcu_patch_request(sc);
+                }
+        }
 }
 
 static void re_hw_d3_para(struct re_softc *sc)
 {
-        if (sc->re_type == MACFG_59 || sc->re_type == MACFG_60 ||
-            sc->re_type == MACFG_62 || sc->re_type == MACFG_67 ||
-            sc->re_type == MACFG_68 || sc->re_type == MACFG_69 ||
-            sc->re_type == MACFG_70 || sc->re_type == MACFG_71) {
-                MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0000);
-                MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0500);
+        switch (sc->re_type) {
+        case MACFG_59:
+        case MACFG_60:
+        case MACFG_62:
+        case MACFG_67:
+        case MACFG_68:
+        case MACFG_69:
+        case MACFG_70:
+        case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                re_disable_ocp_phy_power_saving(sc);
+                break;
         }
 }
 
@@ -4219,7 +4904,10 @@ static int re_attach(device_t dev)
 
         sc->driver_detach = 0;
 
+        sc->re_vendor_id  = pci_get_vendor(dev);
         sc->re_device_id = pci_get_device(dev);
+        sc->re_subvendor_id = pci_get_subvendor(dev);
+        sc->re_subdevice_id = pci_get_subdevice(dev);
         sc->re_revid = pci_get_revid(dev);
         pci_enable_busmaster(dev);
 
@@ -4236,7 +4924,7 @@ static int re_attach(device_t dev)
                 sc->re_res_type = SYS_RES_MEMORY;
                 /* PCIE NIC use different BARs. */
                 if (sc->re_device_id == RT_DEVICEID_8168 || sc->re_device_id == RT_DEVICEID_8161 ||
-                    sc->re_device_id == RT_DEVICEID_8136)
+                    sc->re_device_id == RT_DEVICEID_8136 || sc->re_device_id == RT_DEVICEID_8125)
                         sc->re_res_id = PCIR_BAR(2);
         } else {
                 sc->re_res_id = PCIR_BAR(0);
@@ -4406,7 +5094,7 @@ static int re_attach(device_t dev)
         /*
          * A RealTek chip was detected. Inform the world.
          */
-        device_printf(dev,"version:1.95.00\n");
+        device_printf(dev,"version:%s\n", RE_VERSION);
         device_printf(dev,"Ethernet address: %6D\n", eaddr, ":");
         printf("\nThis product is covered by one or more of the following patents: \
            \nUS6,570,884, US6,115,776, and US6,327,625.\n");
@@ -4493,12 +5181,6 @@ static int re_attach(device_t dev)
                 goto fail;
         }
 
-        RE_LOCK(sc);
-        re_phy_power_up(dev);
-        re_hw_phy_config(sc);
-        re_clrwol(sc);
-        RE_UNLOCK(sc);
-
         sc->re_tx_cstag =1;
         sc->re_rx_cstag =1;
 
@@ -4534,7 +5216,6 @@ static int re_attach(device_t dev)
 
         ifp->if_capabilities = IFCAP_HWCSUM;
         ifp->if_capenable = ifp->if_capabilities;
-        CSR_WRITE_2 (sc, RE_CPlusCmd,CSR_READ_2(sc, RE_CPlusCmd) |RL_RxChkSum);
         ifp->if_init = re_init;
         /* VLAN capability setup */
         ifp->if_capabilities |= IFCAP_VLAN_MTU | IFCAP_VLAN_HWTAGGING;
@@ -4547,6 +5228,10 @@ static int re_attach(device_t dev)
         ifp->if_capenable &= ~(IFCAP_WOL_UCAST | IFCAP_WOL_MCAST);
 
         RE_LOCK(sc);
+        re_phy_power_up(dev);
+        re_hw_phy_config(sc);
+        re_clrwol(sc);
+
         set_rxbufsize(sc);
         error =re_alloc_buf(sc);
 
@@ -4560,13 +5245,15 @@ static int re_attach(device_t dev)
         RE_UNLOCK(sc);
 
         switch(sc->re_device_id) {
+        case RT_DEVICEID_8125:
+                ifp->if_baudrate = 25000000000;
+                break;
         case RT_DEVICEID_8169:
         case RT_DEVICEID_8169SC:
         case RT_DEVICEID_8168:
         case RT_DEVICEID_8161:
                 ifp->if_baudrate = 1000000000;
                 break;
-
         default:
                 ifp->if_baudrate = 100000000;
                 break;
@@ -4575,8 +5262,22 @@ static int re_attach(device_t dev)
         ifp->if_snd.ifq_drv_maxlen = IFQ_MAXLEN;
         IFQ_SET_READY(&ifp->if_snd);
 
+        if (sc->re_device_id == RT_DEVICEID_8125) {
+                sc->ifmedia_upd = re_ifmedia_upd_8125;
+                sc->ifmedia_sts = re_ifmedia_sts_8125;
+                sc->intr = re_intr_8125;
+                sc->int_task = re_int_task_8125;
+                sc->hw_start_unlock = re_hw_start_unlock_8125;
+        } else {
+                sc->ifmedia_upd = re_ifmedia_upd;
+                sc->ifmedia_sts = re_ifmedia_sts;
+                sc->intr = re_intr;
+                sc->int_task = re_int_task;
+                sc->hw_start_unlock = re_hw_start_unlock;
+        }
+
 #if OS_VER>=VERSION(7,0)
-        TASK_INIT(&sc->re_inttask, 0, re_int_task, sc);
+        TASK_INIT(&sc->re_inttask, 0, sc->int_task, sc);
 #endif
 
         /*
@@ -4591,10 +5292,10 @@ static int re_attach(device_t dev)
 
 #if OS_VER < VERSION(7,0)
         error = bus_setup_intr(dev, sc->re_irq, INTR_TYPE_NET,
-                               re_intr, sc, &sc->re_intrhand);
+                               sc->intr, sc, &sc->re_intrhand);
 #else
         error = bus_setup_intr(dev, sc->re_irq, INTR_TYPE_NET|INTR_MPSAFE,
-                               re_intr, NULL, sc, &sc->re_intrhand);
+                               sc->intr, NULL, sc, &sc->re_intrhand);
 #endif
 
         if (error) {
@@ -4611,27 +5312,34 @@ static int re_attach(device_t dev)
          * Specify the media types supported by this adapter and register
          * callbacks to update media and link information
          */
-        ifmedia_init(&sc->media, IFM_IMASK, re_ifmedia_upd, re_ifmedia_sts);
+        ifmedia_init(&sc->media, IFM_IMASK, sc->ifmedia_upd, sc->ifmedia_sts);
         ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T, 0, NULL);
         ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T | IFM_FDX, 0, NULL);
         ifmedia_add(&sc->media, IFM_ETHER | IFM_100_TX, 0, NULL);
         ifmedia_add(&sc->media, IFM_ETHER | IFM_100_TX | IFM_FDX, 0, NULL);
         switch(sc->re_device_id) {
+        case RT_DEVICEID_8125:
         case RT_DEVICEID_8169:
         case RT_DEVICEID_8169SC:
         case RT_DEVICEID_8168:
         case RT_DEVICEID_8161:
                 ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
-                ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_T, 0, NULL);
+                //ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_T, 0, NULL);
                 break;
-
+        default:
+                break;
+        }
+        switch(sc->re_device_id) {
+        case RT_DEVICEID_8125:
+                ifmedia_add(&sc->media, IFM_ETHER | IFM_2500_T | IFM_FDX, 0, NULL);
+                break;
         default:
                 break;
         }
         ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
         ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO);
         sc->media.ifm_media = IFM_ETHER | IFM_AUTO;
-        re_ifmedia_upd(ifp);
+        sc->ifmedia_upd(ifp);
 
 fail:
         if (error)
@@ -4789,6 +5497,7 @@ re_suspend(device_t dev)
         RE_LOCK(sc);
         ifp = RE_GET_IFNET(sc);
         sc->re_link_chg_det = 0;
+        sc->phy_reg_anlpar = re_get_phy_lp_ability(sc);
         re_stop(sc);
         re_hw_d3_para(sc);
         re_setwol(sc);
@@ -4839,7 +5548,7 @@ re_resume(device_t dev)
         RE_UNLOCK(sc);
 
         RE_LOCK(sc);
-        re_ifmedia_upd(ifp);
+        sc->ifmedia_upd(ifp);
         sc->suspended = 0;
         if (ifp->if_flags & IFF_UP) {
                 sc->re_link_chg_det = 1;
@@ -4913,12 +5622,20 @@ device_t		dev;
 
         RE_LOCK(sc);
         sc->re_link_chg_det = 0;
+        sc->phy_reg_anlpar = re_get_phy_lp_ability(sc);
         re_stop(sc);
         RE_UNLOCK(sc);
 
         RE_LOCK(sc);
         re_hw_d3_para(sc);
-        re_phy_power_down(dev);
+        if (s5wol == 0) {
+                re_phy_power_down(dev);
+        } else {
+                struct ifnet            *ifp;
+                ifp = RE_GET_IFNET(sc);
+                ifp->if_capenable = IFCAP_WOL_MAGIC;
+                re_setwol(sc);
+        }
         RE_UNLOCK(sc);
 
         return 0;
@@ -4967,9 +5684,10 @@ static void re_hw_start_unlock(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 CSR_WRITE_1(sc, RE_CFG5, CSR_READ_1(sc, RE_CFG5) & ~BIT_0);
                 CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) & ~BIT_7);
-                CSR_WRITE_1(sc, 0xF1, CSR_READ_1(sc, 0xF1) & ~ BIT_7);
+                CSR_WRITE_1(sc, 0xF1, CSR_READ_1(sc, 0xF1) & ~BIT_7);
                 break;
         }
 
@@ -4977,7 +5695,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
         /*CSR_WRITE_1(sc, RE_LDPS, 0x05);*/
         /*ldps= CSR_READ_1(sc, RE_LDPS);*/
 
-        CSR_WRITE_2(sc, RE_CPCR, 0x2060);
+        CSR_WRITE_2(sc, RE_CPlusCmd, 0x2060);
 
         CSR_WRITE_2(sc, RE_IM, 0x5151);
 
@@ -4995,7 +5713,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
                 CSR_WRITE_2(sc, RE_CPlusCmd, 0x0063| ((sc->re_type == MACFG_3 && sc->re_8169_MacVersion==1) ? 0x4008:0));
         } else if (macver == 0x18000000 || macver == 0x98000000) {
                 CSR_WRITE_2(sc, RE_CPlusCmd, 0x0068);
-                CSR_WRITE_2(sc, 0xe2, 0x0000);
+                CSR_WRITE_2(sc, RE_IntrMitigate, 0x0000);
         } else if (macver == 0x30000000) {
                 CSR_WRITE_2 (sc, RE_CPlusCmd, 0x2060);
                 CSR_WRITE_1(sc, RE_CFG3, CSR_READ_1(sc, RE_CFG3) & ~BIT_0);
@@ -5784,7 +6502,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
 
                 CSR_WRITE_4(sc, RE_TXCFG, CSR_READ_4(sc, RE_TXCFG) | BIT_7);
                 CSR_WRITE_1(sc, 0xD3, CSR_READ_1(sc, 0xD3) & ~BIT_7);
-//		CSR_WRITE_1(sc, 0x1B, CSR_READ_1(sc, 0x1B) & ~0x07);
+                //CSR_WRITE_1(sc, 0x1B, CSR_READ_1(sc, 0x1B) & ~0x07);
 
                 CSR_WRITE_2 (sc, RE_CPlusCmd, 0x2060);
 
@@ -6104,7 +6822,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
 
                 Data32 = re_eri_read(sc, 0x2FC, 4, ERIAR_ExGMAC);
                 Data32 &= ~(BIT_0 | BIT_1 | BIT_2);
-                Data32 |= (BIT_0);
+                Data32 |= (BIT_0 | BIT_1);
                 re_eri_write(sc, 0x2FC, 4, Data32, ERIAR_ExGMAC);
 
                 Data32 = re_eri_read(sc, 0x1B0, 4, ERIAR_ExGMAC);
@@ -6128,14 +6846,17 @@ static void re_hw_start_unlock(struct re_softc *sc)
                         MP_WriteEPhyUshort(sc, 0x19, 0xFC00);
                         MP_WriteEPhyUshort(sc, 0x1E, 0x20EA);
                 } else if (sc->re_type == MACFG_67) {
-                        SetPCIePhyBit(sc, 0x00, BIT_7);
+                        MP_WriteEPhyUshort(sc, 0x00, 0x10AB);
+                        MP_WriteEPhyUshort(sc, 0x19, 0xFC00);
+                        MP_WriteEPhyUshort(sc, 0x1E, 0x20EB);
+                        MP_WriteEPhyUshort(sc, 0x0D, 0x1666);
+                        ClearPCIePhyBit(sc, 0x0B, BIT_0);
+                        SetPCIePhyBit(sc, 0x1D, BIT_14);
                         ClearAndSetPCIePhyBit(sc,
-                                              0x0D,
-                                              BIT_8,
-                                              BIT_9
+                                              0x0C,
+                                              BIT_13 | BIT_12 | BIT_11 | BIT_10 | BIT_8 | BIT_7 | BIT_6 | BIT_5,
+                                              BIT_9 | BIT_4
                                              );
-                        ClearPCIePhyBit(sc, 0x19, (BIT_15 | BIT_5 | BIT_0));
-                        SetPCIePhyBit(sc, 0x1E, BIT_13);
                 }
 
                 CSR_WRITE_1(sc, RE_CFG3, CSR_READ_1(sc, RE_CFG3) & ~BIT_0);
@@ -6150,7 +6871,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
                 if (sc->re_type == MACFG_67) {
                         data16 = MP_ReadMcuAccessRegWord(sc, 0xD3E2);
                         data16 &= 0xF000;
-                        data16 |= 0x3A9;
+                        data16 |= 0xAFD;
                         MP_WriteMcuAccessRegWord(sc, 0xD3E2, data16);
 
                         data16 = MP_ReadMcuAccessRegWord(sc, 0xD3E4);
@@ -6178,6 +6899,8 @@ static void re_hw_start_unlock(struct re_softc *sc)
                         }
                 }
         } else if (macver == 0x54800000) {
+                MP_WriteMcuAccessRegWord(sc, 0xE098, 0xC302);
+
                 MP_WriteMcuAccessRegWord(sc, 0xD400, MP_ReadMcuAccessRegWord(sc, 0xD400) & ~(BIT_0));
 
                 if (sc->RequireAdjustUpsTxLinkPulseTiming) {
@@ -6189,15 +6912,22 @@ static void re_hw_start_unlock(struct re_softc *sc)
 
                 data16 = MP_ReadMcuAccessRegWord(sc, 0xE056);
                 data16 &= ~(BIT_7 | BIT_6 | BIT_5 | BIT_4);
-                data16 |= (BIT_6 | BIT_5 | BIT_4);
+                if (FALSE == HW_SUPP_SERDES_PHY(sc))
+                        data16 |= (BIT_6 | BIT_5 | BIT_4);
                 MP_WriteMcuAccessRegWord(sc, 0xE056, data16);
+                if (FALSE == HW_SUPP_SERDES_PHY(sc))
+                        MP_WriteMcuAccessRegWord(sc, 0xEA80, 0x0003);
+                else
+                        MP_WriteMcuAccessRegWord(sc, 0xEA80, 0x0000);
 
                 OOB_mutex_lock(sc);
                 data16 = MP_ReadMcuAccessRegWord(sc, 0xE052);
-                if (sc->re_type == MACFG_71)
-                        data16 |= BIT_3;
-                else
-                        data16 &= ~BIT_3;
+                data16 &= ~(BIT_3 | BIT_0);
+                if (FALSE == HW_SUPP_SERDES_PHY(sc)) {
+                        data16 |= BIT_0;
+                        if (sc->re_type == MACFG_71 || sc->re_type == MACFG_72)
+                                data16 |= BIT_3;
+                }
                 MP_WriteMcuAccessRegWord(sc, 0xE052, data16);
                 OOB_mutex_unlock(sc);
 
@@ -6231,7 +6961,8 @@ static void re_hw_start_unlock(struct re_softc *sc)
 
                 Data32 = re_eri_read(sc, 0xD4, 4, ERIAR_ExGMAC);
                 Data32 |= BIT_7 | BIT_8 | BIT_9 | BIT_10 | BIT_11 | BIT_12;
-                if (sc->re_type == MACFG_71) Data32 |= BIT_4;
+                if (sc->re_type == MACFG_71 || sc->re_type == MACFG_72)
+                        Data32 |= BIT_4;
                 re_eri_write(sc, 0xD4, 4, Data32, ERIAR_ExGMAC);
 
                 re_eri_write(sc, 0xC8, 4, 0x00080002, ERIAR_ExGMAC);
@@ -6239,12 +6970,11 @@ static void re_hw_start_unlock(struct re_softc *sc)
                 re_eri_write(sc, 0xD0, 1, 0x5F, ERIAR_ExGMAC);
                 re_eri_write(sc, 0xE8, 4, 0x00100006, ERIAR_ExGMAC);
 
-                MP_WriteMcuAccessRegWord(sc, 0xE054, 0xFC01);
-
                 OOB_mutex_lock(sc);
-                Data32 = re_eri_read(sc, 0x5F0, 4, ERIAR_ExGMAC);
-                Data32 |= (BIT_8 | BIT_9 | BIT_10 | BIT_11);
-                re_eri_write(sc, 0x5F0, 4, Data32, ERIAR_ExGMAC);
+                if (FALSE == HW_SUPP_SERDES_PHY(sc))
+                        re_eri_write(sc, 0x5F0, 2, 0x4F87, ERIAR_ExGMAC);
+                else
+                        re_eri_write(sc, 0x5F0, 2, 0x4080, ERIAR_ExGMAC);
                 OOB_mutex_unlock(sc);
 
                 Data32 = re_eri_read(sc, 0xdc, 4, ERIAR_ExGMAC);
@@ -6254,7 +6984,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
                 re_eri_write(sc, 0xdc, 1, Data32, ERIAR_ExGMAC);
 
                 Data32 = re_eri_read(sc, 0x2FC, 4, ERIAR_ExGMAC);
-                Data32 &= ~(BIT_0 | BIT_1 | BIT_2);
+                Data32 &= ~(BIT_0 | BIT_1);
                 Data32 |= (BIT_0);
                 re_eri_write(sc, 0x2FC, 4, Data32, ERIAR_ExGMAC);
 
@@ -6285,31 +7015,26 @@ static void re_hw_start_unlock(struct re_softc *sc)
                                       BIT_6,
                                       (BIT_12| BIT_8)
                                      );
+                ClearPCIePhyBit(sc, 0x0C, BIT_4);
+                ClearPCIePhyBit(sc, 0x4C, BIT_4);
+                ClearPCIePhyBit(sc, 0x0B, BIT_0);
 
                 CSR_WRITE_1(sc, RE_CFG3, CSR_READ_1(sc, RE_CFG3) & ~BIT_0);
 
-                CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) | BIT_6);
-                CSR_WRITE_1(sc, 0xF2, CSR_READ_1(sc, 0xF2) | BIT_6);
-
-                CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) | BIT_7);
+                if (FALSE == HW_SUPP_SERDES_PHY(sc)) {
+                        CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) | BIT_6);
+                        CSR_WRITE_1(sc, 0xF2, CSR_READ_1(sc, 0xF2) | BIT_6);
+                        CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) | BIT_7);
+                } else {
+                        CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) & ~BIT_6);
+                        CSR_WRITE_1(sc, 0xF2, CSR_READ_1(sc, 0xF2) & ~BIT_6);
+                        CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) & ~BIT_7);
+                }
 
                 CSR_WRITE_1(sc, 0xF2, CSR_READ_1(sc, 0xF2) & ~BIT_3);
 
                 if (ifp->if_mtu > ETHERMTU)
                         CSR_WRITE_1 (sc, RE_MTPS, 0x27);
-
-                data16 = MP_ReadMcuAccessRegWord(sc, 0xD3E2);
-                data16 &= 0xF000;
-                data16 |= 0x3A9;
-                MP_WriteMcuAccessRegWord(sc, 0xD3E2, data16);
-
-                data16 = MP_ReadMcuAccessRegWord(sc, 0xD3E4);
-                data16 &= 0xFF00;
-                MP_WriteMcuAccessRegWord(sc, 0xD3E4, data16);
-
-                data16 = MP_ReadMcuAccessRegWord(sc, 0xE860);
-                data16 |= BIT_7;
-                MP_WriteMcuAccessRegWord(sc, 0xE860, data16);
 
                 MP_WriteMcuAccessRegWord(sc, 0xC140, 0xFFFF);
                 MP_WriteMcuAccessRegWord(sc, 0xC142, 0xFFFF);
@@ -6348,6 +7073,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 CSR_WRITE_1(sc, RE_CFG3, CSR_READ_1(sc, RE_CFG3) & ~BIT_1);
                 break;
         }
@@ -6377,9 +7103,10 @@ static void re_hw_start_unlock(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 CSR_WRITE_1(sc, RE_CFG5, CSR_READ_1(sc, RE_CFG5) | BIT_0);
                 CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) | BIT_7);
-                CSR_WRITE_1(sc, 0xF1, CSR_READ_1(sc, 0xF1) | BIT_7);
+                CSR_WRITE_1(sc, 0xF1, CSR_READ_1(sc, 0xF1) & ~BIT_7);
                 break;
         }
 
@@ -6475,7 +7202,7 @@ static void re_init_unlock(void *xsc)  	/* Software & Hardware Initialize */
         re_rar_set(sc, eaddr.eaddr);
 
 #ifndef __DragonFly__
-        re_hw_start_unlock(sc);
+        sc->hw_start_unlock(sc);
 #endif
 
         return;
@@ -6501,7 +7228,333 @@ static void re_init(void *xsc)  	/* Software & Hardware Initialize */
 
         RE_UNLOCK(sc);
 }
+#endif	/* !__DragonFly__ */
 
+static void re_hw_start_unlock_8125(struct re_softc *sc)
+{
+        struct ifnet		*ifp;
+        u_int32_t		macver;
+        u_int8_t		data8;
+        u_int16_t		data16 = 0;
+        u_int32_t		Data32;
+
+        ifp = RE_GET_IFNET(sc);
+
+#ifndef __DragonFly__
+        /* Init descriptors. */
+        re_var_init(sc);
+#endif
+
+        re_enable_cfg9346_write(sc);
+
+        CSR_WRITE_1(sc, RE_CFG5, CSR_READ_1(sc, RE_CFG5) & ~BIT_0);
+        CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) & ~BIT_7);
+        CSR_WRITE_1(sc, 0xF1, CSR_READ_1(sc, 0xF1) & ~BIT_7);
+
+        //Interrupt Mitigation
+        CSR_WRITE_4(sc, 0x0A00, 0x00630063);
+
+        CSR_WRITE_2(sc, RE_CPlusCmd, 0x2060);
+
+        /* Set the initial TX configuration.*/
+        CSR_WRITE_4(sc, RE_TXCFG, RE_TXCFG_CONFIG);
+
+        macver = CSR_READ_4(sc, RE_TXCFG) & 0xFC800000;
+        if (macver == 0x60800000 || macver == 0x64000000) {
+                CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) | BIT_5);
+
+                MP_WriteMcuAccessRegWord(sc, 0xE098, 0xC302);
+
+                /*set configuration space offset 0x70f to 0x17*/
+                Data32 = MP_ReadPciEConfigSpace(sc, 0x870c);
+                Data32 &=0xC0FFFFFF;
+                Data32 |= (0x27 << 24);
+                MP_WritePciEConfigSpace(sc, 0x870c, Data32);
+
+                data8 = pci_read_config(sc->dev, 0x79, 1);
+                data8 &= ~0x70;
+                data8 |= 0x50;
+                pci_write_config(sc->dev, 0x79, data8, 1);
+
+                CSR_WRITE_2(sc, 0x382, 0x221B);
+
+                CSR_WRITE_1(sc, 0x4500, 0x00);
+                CSR_WRITE_2(sc, 0x4800, 0x0000);
+
+                CSR_WRITE_1(sc, RE_CFG1, CSR_READ_1(sc, RE_CFG1) & ~0x10);
+
+                CSR_WRITE_1(sc, 0xF2, CSR_READ_1(sc, 0xF2) & ~BIT_3);
+
+                CSR_WRITE_1(sc, RE_TDFNR, 0x10);
+
+                if (sc->re_type == MACFG_80) {
+                        MP_WriteEPhyUshort(sc, 0x01, 0xA812);
+                        MP_WriteEPhyUshort(sc, 0x09, 0x520C);
+                        MP_WriteEPhyUshort(sc, 0x04, 0xD000);
+                        MP_WriteEPhyUshort(sc, 0x0D, 0xF702);
+                        MP_WriteEPhyUshort(sc, 0x0A, 0x8653);
+                        MP_WriteEPhyUshort(sc, 0x06, 0x001E);
+                        MP_WriteEPhyUshort(sc, 0x08, 0x3595);
+                        MP_WriteEPhyUshort(sc, 0x20, 0x9455);
+                        MP_WriteEPhyUshort(sc, 0x21, 0x99FF);
+                        MP_WriteEPhyUshort(sc, 0x02, 0x6046);
+                        MP_WriteEPhyUshort(sc, 0x29, 0xFE00);
+                        MP_WriteEPhyUshort(sc, 0x23, 0xAB62);
+                        ClearPCIePhyBit(sc, 0x24, BIT_11);
+
+                        MP_WriteEPhyUshort(sc, 0x41, 0xA80C);
+                        MP_WriteEPhyUshort(sc, 0x49, 0x520C);
+                        MP_WriteEPhyUshort(sc, 0x44, 0xD000);
+                        MP_WriteEPhyUshort(sc, 0x4D, 0xF702);
+                        MP_WriteEPhyUshort(sc, 0x4A, 0x8653);
+                        MP_WriteEPhyUshort(sc, 0x46, 0x001E);
+                        MP_WriteEPhyUshort(sc, 0x48, 0x3595);
+                        MP_WriteEPhyUshort(sc, 0x60, 0x9455);
+                        MP_WriteEPhyUshort(sc, 0x61, 0x99FF);
+                        MP_WriteEPhyUshort(sc, 0x42, 0x6046);
+                        MP_WriteEPhyUshort(sc, 0x69, 0xFE00);
+                        MP_WriteEPhyUshort(sc, 0x63, 0xAB62);
+                        ClearPCIePhyBit(sc, 0x64, BIT_11);
+                }  else if (sc->re_type == MACFG_81) {
+                        MP_WriteEPhyUshort(sc, 0x04, 0xD000);
+                        MP_WriteEPhyUshort(sc, 0x0A, 0x8653);
+                        MP_WriteEPhyUshort(sc, 0x23, 0xAB66);
+                        MP_WriteEPhyUshort(sc, 0x20, 0x9455);
+                        MP_WriteEPhyUshort(sc, 0x21, 0x99FF);
+                        MP_WriteEPhyUshort(sc, 0x29, 0xFE04);
+
+                        MP_WriteEPhyUshort(sc, 0x44, 0xD000);
+                        MP_WriteEPhyUshort(sc, 0x4A, 0x8653);
+                        MP_WriteEPhyUshort(sc, 0x63, 0xAB66);
+                        MP_WriteEPhyUshort(sc, 0x60, 0x9455);
+                        MP_WriteEPhyUshort(sc, 0x61, 0x99FF);
+                        MP_WriteEPhyUshort(sc, 0x69, 0xFE04);
+
+                        ClearAndSetPCIePhyBit(sc,
+                                              0x2A,
+                                              (BIT_14 | BIT_13 | BIT_12),
+                                              (BIT_13 | BIT_12)
+                                             );
+                        ClearPCIePhyBit(sc, 0x19, BIT_6);
+                        SetPCIePhyBit(sc, 0x1B, (BIT_11 | BIT_10 | BIT_9));
+                        ClearPCIePhyBit(sc, 0x1B, (BIT_14 | BIT_13 | BIT_12));
+                        MP_WriteEPhyUshort(sc, 0x02, 0x6042);
+                        MP_WriteEPhyUshort(sc, 0x06, 0x0014);
+
+                        ClearAndSetPCIePhyBit(sc,
+                                              0x6A,
+                                              (BIT_14 | BIT_13 | BIT_12),
+                                              (BIT_13 | BIT_12)
+                                             );
+                        ClearPCIePhyBit(sc, 0x59, BIT_6);
+                        SetPCIePhyBit(sc, 0x5B, (BIT_11 | BIT_10 | BIT_9));
+                        ClearPCIePhyBit(sc, 0x5B, (BIT_14 | BIT_13 | BIT_12));
+                        MP_WriteEPhyUshort(sc, 0x42, 0x6042);
+                        MP_WriteEPhyUshort(sc, 0x46, 0x0014);
+                } else if (sc->re_type == MACFG_82) {
+                        MP_WriteEPhyUshort(sc, 0x06, 0x001F);
+                        MP_WriteEPhyUshort(sc, 0x0A, 0xB66B);
+                        MP_WriteEPhyUshort(sc, 0x01, 0xA852);
+                        MP_WriteEPhyUshort(sc, 0x24, 0x0008);
+                        MP_WriteEPhyUshort(sc, 0x2F, 0x6052);
+                        MP_WriteEPhyUshort(sc, 0x0D, 0xF716);
+                        MP_WriteEPhyUshort(sc, 0x20, 0xD477);
+                        MP_WriteEPhyUshort(sc, 0x21, 0x4477);
+                        MP_WriteEPhyUshort(sc, 0x22, 0x0013);
+                        MP_WriteEPhyUshort(sc, 0x23, 0xBB66);
+                        MP_WriteEPhyUshort(sc, 0x0B, 0xA909);
+                        MP_WriteEPhyUshort(sc, 0x29, 0xFF04);
+                        MP_WriteEPhyUshort(sc, 0x1B, 0x1EA0);
+
+                        MP_WriteEPhyUshort(sc, 0x46, 0x001F);
+                        MP_WriteEPhyUshort(sc, 0x4A, 0xB66B);
+                        MP_WriteEPhyUshort(sc, 0x41, 0xA84A);
+                        MP_WriteEPhyUshort(sc, 0x64, 0x000C);
+                        MP_WriteEPhyUshort(sc, 0x6F, 0x604A);
+                        MP_WriteEPhyUshort(sc, 0x4D, 0xF716);
+                        MP_WriteEPhyUshort(sc, 0x60, 0xD477);
+                        MP_WriteEPhyUshort(sc, 0x61, 0x4477);
+                        MP_WriteEPhyUshort(sc, 0x62, 0x0013);
+                        MP_WriteEPhyUshort(sc, 0x63, 0xBB66);
+                        MP_WriteEPhyUshort(sc, 0x4B, 0xA909);
+                        MP_WriteEPhyUshort(sc, 0x69, 0xFF04);
+                        MP_WriteEPhyUshort(sc, 0x5B, 0x1EA0);
+                } else if (sc->re_type == MACFG_83) {
+                        MP_WriteEPhyUshort(sc, 0x0B, 0xA908);
+                        MP_WriteEPhyUshort(sc, 0x1E, 0x20EB);
+
+                        MP_WriteEPhyUshort(sc, 0x4B, 0xA908);
+                        MP_WriteEPhyUshort(sc, 0x5E, 0x20EB);
+
+                        ClearAndSetPCIePhyBit(sc,
+                                              0x22,
+                                              (BIT_5 | BIT_4),
+                                              BIT_5
+                                             );
+                        ClearAndSetPCIePhyBit(sc,
+                                              0x62,
+                                              (BIT_5 | BIT_4),
+                                              BIT_5
+                                             );
+                }
+
+                MP_WriteMcuAccessRegWord(sc, 0xC140, 0xFFFF);
+                MP_WriteMcuAccessRegWord(sc, 0xC142, 0xFFFF);
+
+                //old tx desc format
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xEB58);
+                data16 &= ~(BIT_0);
+                MP_WriteMcuAccessRegWord(sc, 0xEB58, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xE614);
+                data16 &= ~( BIT_10 | BIT_9 | BIT_8);
+                if (sc->re_type == MACFG_82 || sc->re_type == MACFG_83) {
+                        data16 |= ((2 & 0x07) << 8);
+                } else {
+                        if (sc->re_dash && !(MP_ReadByteFun0PciEConfigSpace(sc, 0x79) & BIT_0))
+                                data16 |= ((3 & 0x07) << 8);
+                        else
+                                data16 |= ((4 & 0x07) << 8);
+                }
+                MP_WriteMcuAccessRegWord(sc, 0xE614, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xE63E);
+                data16 &= ~(BIT_11 | BIT_10);
+                data16 |= ((0 & 0x03) << 10);
+                MP_WriteMcuAccessRegWord(sc, 0xE63E, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xE63E);
+                data16 &= ~(BIT_5 | BIT_4);
+                if (sc->re_type == MACFG_80 || sc->re_type == MACFG_81)
+                        data16 |= ((0x02 & 0x03) << 4);
+                MP_WriteMcuAccessRegWord(sc, 0xE63E, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xC0B4);
+                data16 |= (BIT_3|BIT_2);
+                MP_WriteMcuAccessRegWord(sc, 0xC0B4, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xEB6A);
+                data16 &= ~(BIT_7 | BIT_6 | BIT_5 | BIT_4 | BIT_3 | BIT_2 | BIT_1 | BIT_0);
+                data16 |= (BIT_5 | BIT_4 | BIT_1 | BIT_0);
+                MP_WriteMcuAccessRegWord(sc, 0xEB6A, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xEB50);
+                data16 &= ~(BIT_9 | BIT_8 | BIT_7 | BIT_6 | BIT_5);
+                data16 |= (BIT_6);
+                MP_WriteMcuAccessRegWord(sc, 0xEB50, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xE056);
+                data16 &= ~(BIT_7 | BIT_6 | BIT_5 | BIT_4);
+                data16 |= (BIT_4 | BIT_5);
+                MP_WriteMcuAccessRegWord(sc, 0xE056, data16);
+
+                CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) | BIT_7);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xE040);
+                data16 &= ~(BIT_12);
+                MP_WriteMcuAccessRegWord(sc, 0xE040, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xEA1C);
+                data16 &= ~(BIT_1 | BIT_0);
+                data16 |= (BIT_0);
+                MP_WriteMcuAccessRegWord(sc, 0xEA1C, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xE0C0);
+                data16 &= ~(BIT_14 | BIT_11 | BIT_10 | BIT_9 | BIT_8 | BIT_3 | BIT_2 | BIT_1 | BIT_0);
+                data16 |= (BIT_14 | BIT_10 | BIT_1 | BIT_0);
+                MP_WriteMcuAccessRegWord(sc, 0xE0C0, data16);
+
+                SetMcuAccessRegBit(sc, 0xE052, (BIT_6|BIT_5|BIT_3));
+                ClearMcuAccessRegBit(sc, 0xE052, BIT_7);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xC0AC);
+                data16 &= ~(BIT_7);
+                data16 |= (BIT_8|BIT_9|BIT_10|BIT_11|BIT_12);
+                MP_WriteMcuAccessRegWord(sc, 0xC0AC, data16);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xD430);
+                data16 &= ~(BIT_11 | BIT_10 | BIT_9 | BIT_8 | BIT_7 | BIT_6 | BIT_5 | BIT_4 | BIT_3 | BIT_2 | BIT_1 | BIT_0);
+                data16 |= 0x47F;
+                MP_WriteMcuAccessRegWord(sc, 0xD430, data16);
+
+                //MP_WriteMcuAccessRegWord(sc, 0xE0C0, 0x4F87);
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xE84C);
+                data16 &= ~BIT_6;
+                if (sc->re_type == MACFG_80 || sc->re_type == MACFG_81)
+                        data16 |= BIT_6;
+                data16 |= BIT_7;
+                MP_WriteMcuAccessRegWord(sc, 0xE84C, data16);
+
+                CSR_WRITE_1(sc, 0xD0, CSR_READ_1(sc, 0xD0) | BIT_6);
+
+                if (sc->re_type == MACFG_80 || sc->re_type == MACFG_81)
+                        CSR_WRITE_1(sc, 0xD3, CSR_READ_1(sc, 0xD3) | BIT_0);
+
+                MP_WriteMcuAccessRegWord(sc, 0xE080, MP_ReadMcuAccessRegWord(sc, 0xE080)&~BIT_1);
+
+                data16 = MP_ReadMcuAccessRegWord(sc, 0xEA1C);
+                data16 &= ~(BIT_2);
+                MP_WriteMcuAccessRegWord(sc, 0xEA1C, data16);
+
+                SetMcuAccessRegBit(sc, 0xEB54, BIT_0);
+                DELAY(1);
+                ClearMcuAccessRegBit(sc, 0xEB54, BIT_0);
+                CSR_WRITE_2(sc, 0x1880, CSR_READ_2(sc, 0x1880) & ~(BIT_4 | BIT_5));
+
+                if (sc->re_tx_cstag) {
+                        ifp->if_capenable |= IFCAP_TXCSUM;
+                        ifp->if_hwassist |= RE_CSUM_FEATURES;
+                }
+                if (sc->re_rx_cstag) {
+                        ifp->if_capenable |= IFCAP_RXCSUM;
+                }
+        }
+
+        //clear io_rdy_l23
+        CSR_WRITE_1(sc, RE_CFG3, CSR_READ_1(sc, RE_CFG3) & ~BIT_1);
+
+        CSR_WRITE_1(sc, RE_CFG5, CSR_READ_1(sc, RE_CFG5) | BIT_0);
+        CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) | BIT_7);
+        CSR_WRITE_1(sc, 0xF1, CSR_READ_1(sc, 0xF1) & ~BIT_7);
+
+        //clear wol
+        re_clrwol(sc);
+
+        if ((ifp->if_capenable & IFCAP_VLAN_HWTAGGING) != 0)
+                CSR_WRITE_4(sc, RE_RXCFG, CSR_READ_4(sc, RE_RXCFG) | (BIT_22 | BIT_23));
+        else
+                CSR_WRITE_4(sc, RE_RXCFG, CSR_READ_4(sc, RE_RXCFG) & ~(BIT_22 | BIT_23));
+
+        data16 = CSR_READ_2(sc, RE_CPlusCmd);
+        if ((ifp->if_capenable & IFCAP_RXCSUM) != 0)
+                data16 |= RL_RxChkSum;
+        else
+                data16 &= ~RL_RxChkSum;
+        CSR_WRITE_2 (sc, RE_CPlusCmd, data16);
+
+        re_disable_cfg9346_write(sc);
+
+        /* Set the initial RX configuration.*/
+        /*
+         * Program the multicast filter, if necessary.
+         */
+        re_set_rx_packet_filter(sc);
+
+        /* Enable transmit and receive.*/
+        CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_TX_ENB | RE_CMD_RX_ENB);
+
+#ifndef __DragonFly__
+        ifp->if_drv_flags |= IFF_DRV_RUNNING;
+        ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+
+        /*
+        * Enable interrupts.
+        */
+        CSR_WRITE_4(sc, RE_IMR0_8125, RE_INTRS);
+#endif	/* !__DragonFly__ */
+}
+
+#ifndef __DragonFly__
 /*
  * Initialize the transmit descriptors.
  */
@@ -6636,6 +7689,11 @@ static void re_reset(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
                 DELAY(2000);
                 break;
         default:
@@ -6672,19 +7730,25 @@ re_set_wol_linkspeed(struct re_softc *sc)
         u_int8_t wol_link_speed;
         u_int16_t anar;
 
+        if (HW_SUPP_SERDES_PHY(sc)) return;
+
+#ifdef ENABLE_FIBER_SUPPORT
+        if (HW_FIBER_MODE_ENABLED(sc))
+                return;
+#endif //ENABLE_FIBER_SUPPORT
+
         MP_WritePhyUshort(sc, 0x1F, 0x0000);
 
         wol_link_speed = RE_WOL_LINK_SPEED_100M_FIRST;
         if (!sc->re_dash) {
-                if (re_link_ok(sc)) {
-                        u_int16_t anlpar;
+                u_int16_t anlpar;
 
-                        anlpar = MP_ReadPhyUshort(sc,MII_ANLPAR);
-                        if ((anlpar & ANLPAR_10_FD) || (anlpar & ANLPAR_10)) {
-                                wol_link_speed = RE_WOL_LINK_SPEED_10M_FIRST;
-                        } else {
-                                wol_link_speed = RE_WOL_LINK_SPEED_100M_FIRST;
-                        }
+                anlpar = sc->phy_reg_anlpar;
+
+                if ((anlpar & ANLPAR_10_FD) || (anlpar & ANLPAR_10)) {
+                        wol_link_speed = RE_WOL_LINK_SPEED_10M_FIRST;
+                } else {
+                        wol_link_speed = RE_WOL_LINK_SPEED_100M_FIRST;
                 }
         }
 
@@ -6692,9 +7756,17 @@ re_set_wol_linkspeed(struct re_softc *sc)
 
         if (wol_link_speed == RE_WOL_LINK_SPEED_10M_FIRST)
                 anar &= ~(ANAR_TX_FD | ANAR_TX);
+        if (sc->re_device_id==RT_DEVICEID_8125) {
+                u_int16_t gbcr;
 
-        if (sc->re_device_id==RT_DEVICEID_8169 || sc->re_device_id==RT_DEVICEID_8169SC ||
-            sc->re_device_id==RT_DEVICEID_8168 || sc->re_device_id==RT_DEVICEID_8161) {
+                ClearEthPhyOcpBit(sc, 0xA5D4, RTK_ADVERTISE_2500FULL);
+                gbcr = MP_ReadPhyUshort(sc,MII_100T2CR);
+                gbcr &= ~(GTCR_ADV_1000TFDX|GTCR_ADV_1000THDX);
+                MP_WritePhyUshort(sc, MII_100T2CR, gbcr);
+                MP_WritePhyUshort(sc, MII_ANAR, anar);
+                MP_WritePhyUshort(sc, MII_BMCR, BMCR_RESET | BMCR_AUTOEN | BMCR_STARTNEG);
+        } else if (sc->re_device_id==RT_DEVICEID_8169 || sc->re_device_id==RT_DEVICEID_8169SC ||
+                   sc->re_device_id==RT_DEVICEID_8168 || sc->re_device_id==RT_DEVICEID_8161) {
                 u_int16_t gbcr;
 
                 gbcr = MP_ReadPhyUshort(sc,MII_100T2CR);
@@ -6744,21 +7816,10 @@ re_setwol(struct re_softc *sc)
                 CSR_WRITE_1(sc, RE_CFG1, v);
         }
 
-        if (sc->re_if_flags & RL_FLAG_MAGIC_PACKET_V2) {
-                uint32_t                Data32;
-
-                Data32 = re_eri_read(sc, 0xDC, 4, ERIAR_ExGMAC);
-                Data32 &= ~(BIT_16);
-                if ((ifp->if_capenable & IFCAP_WOL_MAGIC) != 0)
-                        Data32 |= BIT_16;
-                re_eri_write(sc, 0xDC, 4, Data32, ERIAR_ExGMAC);
-        } else {
-                v = CSR_READ_1(sc, RE_CFG3);
-                v &= ~(RL_CFG3_WOL_MAGIC);
-                if ((ifp->if_capenable & IFCAP_WOL_MAGIC) != 0)
-                        v |= RL_CFG3_WOL_MAGIC;
-                CSR_WRITE_1(sc, RE_CFG3, v);
-        }
+        if (ifp->if_capenable & IFCAP_WOL_MAGIC)
+                re_enable_magic_packet(sc);
+        else
+                re_disable_magic_packet(sc);
 
         v = CSR_READ_1(sc, RE_CFG5);
         v &= ~(RL_CFG5_WOL_BCAST | RL_CFG5_WOL_MCAST | RL_CFG5_WOL_UCAST |
@@ -6833,17 +7894,7 @@ re_clrwol(struct re_softc *sc)
         v &= ~(RL_CFG3_WOL_LINK);
         CSR_WRITE_1(sc, RE_CFG3, v);
 
-        if (sc->re_if_flags & RL_FLAG_MAGIC_PACKET_V2) {
-                uint32_t                Data32;
-
-                Data32 = re_eri_read(sc, 0xDC, 4, ERIAR_ExGMAC);
-                Data32 &= ~(BIT_16);
-                re_eri_write(sc, 0xDC, 4, Data32, ERIAR_ExGMAC);
-        } else {
-                v = CSR_READ_1(sc, RE_CFG3);
-                v &= ~(RL_CFG3_WOL_MAGIC);
-                CSR_WRITE_1(sc, RE_CFG3, v);
-        }
+        re_disable_magic_packet(sc);
 
         v = CSR_READ_1(sc, RE_CFG5);
         v &= ~(RL_CFG5_WOL_BCAST | RL_CFG5_WOL_MCAST | RL_CFG5_WOL_UCAST);
@@ -6888,8 +7939,13 @@ re_stop_rtl(struct re_softc *sc)
                     ~(RE_RXCFG_RX_ALLPHYS | RE_RXCFG_RX_INDIV | RE_RXCFG_RX_MULTI |
                       RE_RXCFG_RX_BROAD | RE_RXCFG_RX_RUNT | RE_RXCFG_RX_ERRPKT));
 
-        CSR_WRITE_2(sc, RE_IMR, 0x0000);
-        CSR_WRITE_2(sc, RE_ISR, 0xffff);
+        if (sc->re_device_id==RT_DEVICEID_8125) {
+                CSR_WRITE_4(sc, RE_IMR0_8125, 0x00000000);
+                CSR_WRITE_4(sc, RE_ISR0_8125, 0xffffffff);
+        } else {
+                CSR_WRITE_2(sc, RE_IMR, 0x0000);
+                CSR_WRITE_2(sc, RE_ISR, 0xffff);
+        }
         if (sc->re_type == MACFG_50 || sc->re_type == MACFG_51 || sc->re_type == MACFG_52) {
                 re_eri_write(sc, 0x1bc, 4, 0x0000001f, ERIAR_ExGMAC);
                 re_eri_write(sc, 0x1dc, 4, 0x0000002d, ERIAR_ExGMAC);
@@ -7079,39 +8135,47 @@ static int re_encap(struct re_softc *sc,struct mbuf *m_head)
 static void WritePacket(struct re_softc	*sc, caddr_t addr, int len,int fs_flag,int ls_flag, uint32_t opts2,uint32_t opts1)
 {
         union TxDesc *txptr;
+        uint32_t status;
+        uint32_t tx_cur_index = sc->re_desc.tx_cur_index;
 
-        txptr=&(sc->re_desc.tx_desc[sc->re_desc.tx_cur_index]);
+        txptr =&(sc->re_desc.tx_desc[tx_cur_index]);
 
-        txptr->ul[0] &= htole32(0x40000000);
-        txptr->ul[0] |= htole32(opts1);
-        txptr->ul[1] = htole32(opts2);
+        status = RL_TDESC_CMD_OWN | opts1 | len;
 
         if (fs_flag)
-                txptr->ul[0] |= htole32(RL_TDESC_CMD_SOF);
+                status |= RL_TDESC_CMD_SOF;
         if (ls_flag)
-                txptr->ul[0] |= htole32(RL_TDESC_CMD_EOF);
-        txptr->ul[0] |= htole32(len);
+                status |= RL_TDESC_CMD_EOF;
+        if (tx_cur_index == (RE_TX_BUF_NUM - 1))
+                status |= RL_TDESC_CMD_EOR;
+
         bus_dmamap_load(sc->re_desc.re_tx_mtag,
-                        sc->re_desc.re_tx_dmamap[sc->re_desc.tx_cur_index],
+                        sc->re_desc.re_tx_dmamap[tx_cur_index],
                         addr,
                         len,
                         re_tx_dma_map_buf, txptr,
                         0);
         bus_dmamap_sync(sc->re_desc.re_tx_mtag,
-                        sc->re_desc.re_tx_dmamap[sc->re_desc.tx_cur_index],
+                        sc->re_desc.re_tx_dmamap[tx_cur_index],
                         BUS_DMASYNC_PREWRITE);
-        txptr->ul[0] |= htole32(RL_TDESC_CMD_OWN);
+        txptr->ul[1] = htole32(opts2);
+        txptr->ul[0] = htole32(status);
 
         bus_dmamap_sync(sc->re_desc.tx_desc_tag,
                         sc->re_desc.tx_desc_dmamap,
                         BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE);
 
         if (ls_flag) {
-                CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
-                CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
+                if (sc->re_device_id==RT_DEVICEID_8125) {
+                        CSR_WRITE_2(sc, RE_TPPOLL_8125, RE_NPQ_8125);
+                        CSR_WRITE_2(sc, RE_TPPOLL_8125, RE_NPQ_8125);
+                } else {
+                        CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
+                        CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
+                }
         }
 
-        sc->re_desc.tx_cur_index = (sc->re_desc.tx_cur_index+1)%RE_TX_BUF_NUM;
+        sc->re_desc.tx_cur_index = (tx_cur_index+1)%RE_TX_BUF_NUM;
 }
 
 static int CountFreeTxDescNum(struct re_descriptor desc)
@@ -7257,8 +8321,8 @@ struct re_softc		*sc;
         struct mbuf *buf;
         int size;
         int maxpkt = RE_RX_BUF_NUM;
-
-        u_int32_t opts2,opts1;
+        u_int32_t rx_cur_index;
+        u_int32_t opts2,opts1,status;
 
         /*		RE_LOCK_ASSERT(sc);*/
 
@@ -7268,11 +8332,13 @@ struct re_softc		*sc;
                         sc->re_desc.rx_desc_dmamap,
                         BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE);
 
-        rxptr=&(sc->re_desc.rx_desc[sc->re_desc.rx_cur_index]);
-        while ((rxptr->ul[0]&htole32(RL_RDESC_STAT_OWN))==0) {	/* Receive OK */
+        rx_cur_index = sc->re_desc.rx_cur_index;
+        rxptr=&(sc->re_desc.rx_desc[rx_cur_index]);
+        opts1 = le32toh(rxptr->ul[0]);
+        while ((opts1&RL_RDESC_STAT_OWN)==0) {	/* Receive OK */
                 bError = 0;
 
-                opts1 = le32toh(rxptr->ul[0]);
+                sc->re_desc.rx_cur_index = (rx_cur_index+1)%RE_RX_BUF_NUM;
 
                 /* Check if this packet is received correctly*/
                 if (opts1&0x200000) {	/*Check RES bit*/
@@ -7322,13 +8388,13 @@ struct re_softc		*sc;
 #endif
 
                 bus_dmamap_sync(sc->re_desc.re_rx_mtag,
-                                sc->re_desc.re_rx_dmamap[sc->re_desc.rx_cur_index],
+                                sc->re_desc.re_rx_dmamap[rx_cur_index],
                                 BUS_DMASYNC_POSTREAD);
                 bus_dmamap_unload(sc->re_desc.re_rx_mtag,
-                                  sc->re_desc.re_rx_dmamap[sc->re_desc.rx_cur_index]);
+                                  sc->re_desc.re_rx_dmamap[rx_cur_index]);
 
-                m = sc->re_desc.rx_buf[sc->re_desc.rx_cur_index];
-                sc->re_desc.rx_buf[sc->re_desc.rx_cur_index] = buf;
+                m = sc->re_desc.rx_buf[rx_cur_index];
+                sc->re_desc.rx_buf[rx_cur_index] = buf;
                 m->m_pkthdr.len = m->m_len = (opts1&RL_RDESC_STAT_GFRAGLEN)-ETHER_CRC_LEN;
                 m->m_pkthdr.rcvif = ifp;
 
@@ -7387,24 +8453,27 @@ struct re_softc		*sc;
                 RE_LOCK(sc);
 
 update_desc:
-                rxptr->ul[0]&=htole32(0x40000000);	/* keep EOR bit */
+                //rxptr->ul[0]&=htole32(0x40000000);	/* keep EOR bit */
                 rxptr->ul[1]=0;
 
-                rxptr->ul[0] |= htole32(sc->re_rx_desc_buf_sz);
+                status = RL_RDESC_CMD_OWN | sc->re_rx_desc_buf_sz;
+                if (rx_cur_index == (RE_RX_BUF_NUM - 1))
+                        status |= RL_RDESC_CMD_EOR;
                 if (!bError) {
                         bus_dmamap_load(sc->re_desc.re_rx_mtag,
-                                        sc->re_desc.re_rx_dmamap[sc->re_desc.rx_cur_index],
-                                        sc->re_desc.rx_buf[sc->re_desc.rx_cur_index]->m_data,
+                                        sc->re_desc.re_rx_dmamap[rx_cur_index],
+                                        sc->re_desc.rx_buf[rx_cur_index]->m_data,
                                         sc->re_rx_desc_buf_sz,
                                         re_rx_dma_map_buf, rxptr,
                                         0);
                         bus_dmamap_sync(sc->re_desc.re_rx_mtag,
-                                        sc->re_desc.re_rx_dmamap[sc->re_desc.rx_cur_index],
+                                        sc->re_desc.re_rx_dmamap[rx_cur_index],
                                         BUS_DMASYNC_PREREAD);
                 }
-                rxptr->ul[0] |= htole32(RL_RDESC_CMD_OWN);
-                sc->re_desc.rx_cur_index = (sc->re_desc.rx_cur_index+1)%RE_RX_BUF_NUM;
-                rxptr=&sc->re_desc.rx_desc[sc->re_desc.rx_cur_index];
+                rxptr->ul[0] = htole32(status);
+                rx_cur_index = sc->re_desc.rx_cur_index;
+                rxptr=&sc->re_desc.rx_desc[rx_cur_index];
+                opts1 = le32toh(rxptr->ul[0]);
 
                 maxpkt--;
                 if (maxpkt==0)
@@ -7453,11 +8522,46 @@ static int re_intr(void *arg)  	/* Interrupt Handler */
 #endif //OS_VER < VERSION(7,0)
 }
 
+#if OS_VER < VERSION(7,0)
+static void re_intr_8125(void *arg)  	/* Interrupt Handler */
+#else
+static int re_intr_8125(void *arg)  	/* Interrupt Handler */
+#endif //OS_VER < VERSION(7,0)
+{
+        struct re_softc		*sc;
+
+        sc = arg;
+
+        if ((sc->re_if_flags & (RL_FLAG_MSI | RL_FLAG_MSIX)) == 0) {
+                if ((CSR_READ_4(sc, RE_ISR0_8125) & RE_INTRS) == 0) {
+#if OS_VER < VERSION(7,0)
+                        return;
+#else
+                        return (FILTER_STRAY);
+#endif
+                }
+        }
+
+        /* Disable interrupts. */
+        CSR_WRITE_4(sc, RE_IMR0_8125, 0x00000000);
+
+#if OS_VER < VERSION(7,0)
+        re_int_task_8125(arg, 0);
+#else //OS_VER < VERSION(7,0)
+#if OS_VER < VERSION(11,0)
+        taskqueue_enqueue_fast(taskqueue_fast, &sc->re_inttask);
+#else ////OS_VER < VERSION(11,0)
+        taskqueue_enqueue(taskqueue_fast, &sc->re_inttask);
+#endif //OS_VER < VERSION(11,0)
+        return (FILTER_HANDLED);
+#endif //OS_VER < VERSION(7,0)
+}
+
 static void re_int_task(void *arg, int npending)
 {
         struct re_softc		*sc;
         struct ifnet		*ifp;
-        u_int16_t		status;
+        u_int32_t		status;
 
         sc = arg;
 
@@ -7468,7 +8572,7 @@ static void re_int_task(void *arg, int npending)
         status = CSR_READ_2(sc, RE_ISR);
 
         if (status) {
-                CSR_WRITE_2(sc, RE_ISR, status & 0xffbf);
+                CSR_WRITE_2(sc, RE_ISR, status & ~RE_ISR_FIFO_OFLOW);
         }
 
         if (sc->suspended ||
@@ -7482,12 +8586,12 @@ static void re_int_task(void *arg, int npending)
         if (sc->re_type == MACFG_21) {
                 if (status & RE_ISR_FIFO_OFLOW) {
                         sc->rx_fifo_overflow = 1;
-                        CSR_WRITE_2(sc, 0x00e2, 0x0000);
-                        CSR_WRITE_4(sc, 0x0048, 0x4000);
-                        CSR_WRITE_4(sc, 0x0058, 0x4000);
+                        CSR_WRITE_2(sc, RE_IntrMitigate, 0x0000);
+                        CSR_WRITE_4(sc, RE_TIMERCNT, 0x4000);
+                        CSR_WRITE_4(sc, RE_TIMERINT, 0x4000);
                 } else {
                         sc->rx_fifo_overflow = 0;
-                        CSR_WRITE_4(sc,RE_CPCR, 0x51512082);
+                        CSR_WRITE_4(sc,RE_CPlusCmd, 0x51512082);
                 }
 
                 if (status & RE_ISR_PCS_TIMEOUT) {
@@ -7539,6 +8643,60 @@ static void re_int_task(void *arg, int npending)
         /* Re-enable interrupts. */
         CSR_WRITE_2(sc, RE_IMR, RE_INTRS);
 }
+
+static void re_int_task_8125(void *arg, int npending)
+{
+        struct re_softc		*sc;
+        struct ifnet		*ifp;
+        u_int32_t		status;
+
+        sc = arg;
+
+        RE_LOCK(sc);
+
+        ifp = RE_GET_IFNET(sc);
+
+        status = CSR_READ_4(sc, RE_ISR0_8125);
+
+        if (status) {
+                CSR_WRITE_4(sc, RE_ISR0_8125, status & ~RE_ISR_FIFO_OFLOW);
+        }
+
+        if (sc->suspended ||
+            (ifp->if_drv_flags & IFF_DRV_RUNNING) == 0) {
+                RE_UNLOCK(sc);
+                return;
+        }
+
+        re_rxeof(sc);
+
+        re_txeof(sc);
+
+        if (status & RE_ISR_SYSTEM_ERR) {
+                re_reset(sc);
+                re_init(sc);
+        }
+
+        RE_UNLOCK(sc);
+
+        if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
+                re_start(ifp);
+
+#if OS_VER>=VERSION(7,0)
+        if (CSR_READ_4(sc, RE_ISR0_8125) & RE_INTRS) {
+#if OS_VER < VERSION(11,0)
+                taskqueue_enqueue_fast(taskqueue_fast, &sc->re_inttask);
+#else ////OS_VER < VERSION(11,0)
+                taskqueue_enqueue(taskqueue_fast, &sc->re_inttask);
+#endif //OS_VER < VERSION(11,0)
+                return;
+        }
+#endif //OS_VER>=VERSION(7,0)
+
+        /* Re-enable interrupts. */
+        CSR_WRITE_4(sc, RE_IMR0_8125, RE_INTRS);
+}
+
 #endif	/* !__DragonFly__ */
 
 static void re_set_multicast_reg(struct re_softc *sc, u_int32_t mask0, u_int32_t mask4)
@@ -7559,7 +8717,8 @@ static void re_set_multicast_reg(struct re_softc *sc, u_int32_t mask0, u_int32_t
 }
 
 #ifndef __DragonFly__
-static void re_set_rx_packet_filter_in_sleep_state(struct re_softc *sc)
+static void re_set_rx_packet_filter_in_sleep_state(sc)
+struct re_softc		*sc;
 {
         struct ifnet		*ifp;
         u_int32_t		rxfilt;
@@ -7647,8 +8806,10 @@ static void re_setmulti(struct re_softc *sc)
 #if OS_VER < VERSION(4,9)
         for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
              ifma = ifma->ifma_link.le_next)
-#else
+#elif OS_VER < VERSION(12,0)
         TAILQ_FOREACH(ifma,&ifp->if_multiaddrs,ifma_link)
+#else
+        CK_STAILQ_FOREACH(ifma,&ifp->if_multiaddrs,ifma_link)
 #endif
 #else	/* __DragonFly__ */
 	TAILQ_FOREACH(ifma,&ifp->if_multiaddrs,ifma_link)
@@ -7775,7 +8936,7 @@ caddr_t			data;
                 if ((mask & IFCAP_TXCSUM) != 0 && (ifp->if_capabilities & IFCAP_TXCSUM) != 0) {
                         ifp->if_capenable ^= IFCAP_TXCSUM;
                         if ((ifp->if_capenable & IFCAP_TXCSUM) != 0)  {
-                                if ((sc->re_type == MACFG_24) || (sc->re_type == MACFG_24) || (sc->re_type == MACFG_26))
+                                if ((sc->re_type == MACFG_24) || (sc->re_type == MACFG_25) || (sc->re_type == MACFG_26))
                                         ifp->if_hwassist |= CSUM_TCP | CSUM_UDP;
                                 else
                                         ifp->if_hwassist |= RE_CSUM_FEATURES;
@@ -7868,7 +9029,7 @@ static void re_link_on_patch(struct re_softc *sc)
                                 re_eri_write(sc, 0x1dc, 4, 0x0000003f, ERIAR_ExGMAC);
                         }
                 }
-        } else if ((sc->re_type == MACFG_36 || sc->re_type == MACFG_37) && eee_enable ==1) {
+        } else if ((sc->re_type == MACFG_36 || sc->re_type == MACFG_37) && eee_enable == 1) {
                 /*Full -Duplex  mode*/
                 if (CSR_READ_1(sc, RE_PHY_STATUS) & RL_PHY_STATUS_FULL_DUP) {
                         MP_WritePhyUshort(sc, 0x1F, 0x0006);
@@ -7889,7 +9050,10 @@ static void re_link_on_patch(struct re_softc *sc)
                     sc->re_type == MACFG_60 || sc->re_type == MACFG_61 ||
                     sc->re_type == MACFG_62 || sc->re_type == MACFG_67 ||
                     sc->re_type == MACFG_68 || sc->re_type == MACFG_69 ||
-                    sc->re_type == MACFG_70 || sc->re_type == MACFG_71) &&
+                    sc->re_type == MACFG_70 || sc->re_type == MACFG_71 ||
+                    sc->re_type == MACFG_72 || sc->re_type == MACFG_80 ||
+                    sc->re_type == MACFG_81 || sc->re_type == MACFG_82 ||
+                    sc->re_type == MACFG_83) &&
                    (ifp->if_flags & IFF_UP)) {
                 if (CSR_READ_1(sc, RE_PHY_STATUS) & RL_PHY_STATUS_FULL_DUP)
                         CSR_WRITE_4(sc, RE_TXCFG, (CSR_READ_4(sc, RE_TXCFG) | (BIT_24 | BIT_25)) & ~BIT_19);
@@ -7906,13 +9070,18 @@ static void re_link_on_patch(struct re_softc *sc)
                 }
         }
 
-        if ((sc->re_type == MACFG_70 || sc->re_type == MACFG_71) &&
-            (CSR_READ_1(sc, RE_PHY_STATUS) & RL_PHY_STATUS_10M)) {
-                uint32_t Data32;
+        if (CSR_READ_1(sc, RE_PHY_STATUS) & RL_PHY_STATUS_10M) {
+                if (sc->re_type == MACFG_70 || sc->re_type == MACFG_71 ||
+                    sc->re_type == MACFG_72) {
+                        uint32_t Data32;
 
-                Data32 = re_eri_read(sc, 0x1D0, 1, ERIAR_ExGMAC);
-                Data32 |= BIT_1;
-                re_eri_write(sc, 0x1D0, 1, Data32, ERIAR_ExGMAC);
+                        Data32 = re_eri_read(sc, 0x1D0, 1, ERIAR_ExGMAC);
+                        Data32 |= BIT_1;
+                        re_eri_write(sc, 0x1D0, 1, Data32, ERIAR_ExGMAC);
+                } else if (sc->re_type == MACFG_80 || sc->re_type == MACFG_81 ||
+                           sc->re_type == MACFG_82 || sc->re_type == MACFG_83) {
+                        MP_WriteMcuAccessRegWord(sc, 0xE080, MP_ReadMcuAccessRegWord(sc, 0xE080)|BIT_1);
+                }
         }
 
 #ifndef __DragonFly__
@@ -7931,7 +9100,7 @@ static void re_link_down_patch(struct re_softc *sc)
         re_rxeof(sc);
         re_stop(sc);
 
-        re_ifmedia_upd(ifp);
+        sc->ifmedia_upd(ifp);
 }
 
 /*
@@ -8056,11 +9225,13 @@ static int re_ifmedia_upd(struct ifnet *ifp)
                 return(EINVAL);
 
         if (sc->re_type == MACFG_68 || sc->re_type == MACFG_69 ||
-            sc->re_type == MACFG_70 || sc->re_type == MACFG_71) {
+            sc->re_type == MACFG_70 || sc->re_type == MACFG_71 ||
+            sc->re_type == MACFG_72) {
                 //Disable Giga Lite
                 MP_WritePhyUshort(sc, 0x1F, 0x0A42);
                 ClearEthPhyBit(sc, 0x14, BIT_9);
-                if (sc->re_type == MACFG_70 || sc->re_type == MACFG_71)
+                if (sc->re_type == MACFG_70 || sc->re_type == MACFG_71 ||
+                    sc->re_type == MACFG_72)
                         ClearEthPhyBit(sc, 0x14, BIT_7);
                 MP_WritePhyUshort(sc, 0x1F, 0x0A40);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
@@ -8149,6 +9320,114 @@ static int re_ifmedia_upd(struct ifnet *ifp)
         return(0);
 }
 
+static int re_ifmedia_upd_8125(struct ifnet *ifp)
+{
+        struct re_softc	*sc = ifp->if_softc;
+        struct ifmedia	*ifm = &sc->media;
+        int anar;
+        int gbcr;
+        int cr2500 = 0;
+
+        if (IFM_TYPE(ifm->ifm_media) != IFM_ETHER)
+                return(EINVAL);
+
+        //Disable Giga Lite
+        ClearEthPhyOcpBit(sc, 0xA428, BIT_9);
+        ClearEthPhyOcpBit(sc, 0xA5EA, BIT_0);
+
+        cr2500 = MP_RealReadPhyOcpRegWord(sc, 0xA5D4);
+        cr2500 &= ~RTK_ADVERTISE_2500FULL;
+
+        switch (IFM_SUBTYPE(ifm->ifm_media)) {
+        case IFM_AUTO:
+                cr2500 |= RTK_ADVERTISE_2500FULL;
+                anar = ANAR_TX_FD |
+                       ANAR_TX |
+                       ANAR_10_FD |
+                       ANAR_10;
+                gbcr = GTCR_ADV_1000TFDX |
+                       GTCR_ADV_1000THDX;
+                break;
+        case IFM_2500_SX:
+#ifndef __DragonFly__
+        case IFM_2500_X:
+#endif
+#ifdef IFM_2500_T
+        case IFM_2500_T:
+#endif
+                cr2500 |= RTK_ADVERTISE_2500FULL;
+                anar = ANAR_TX_FD |
+                       ANAR_TX |
+                       ANAR_10_FD |
+                       ANAR_10;
+                gbcr = GTCR_ADV_1000TFDX |
+                       GTCR_ADV_1000THDX;
+                break;
+        case IFM_1000_SX:
+#ifndef __DragonFly__
+#if OS_VER < 500000
+        case IFM_1000_TX:
+#else
+        case IFM_1000_T:
+#endif
+#else	/* __DragonFly__ */
+	case IFM_1000_T:
+#endif	/* !__DragonFly__ */
+                anar = ANAR_TX_FD |
+                       ANAR_TX |
+                       ANAR_10_FD |
+                       ANAR_10;
+                gbcr = GTCR_ADV_1000TFDX |
+                       GTCR_ADV_1000THDX;
+                break;
+        case IFM_100_TX:
+                gbcr = MP_ReadPhyUshort(sc, MII_100T2CR) &
+                       ~(GTCR_ADV_1000TFDX | GTCR_ADV_1000THDX);
+                if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX) {
+                        anar = ANAR_TX_FD |
+                               ANAR_TX |
+                               ANAR_10_FD |
+                               ANAR_10;
+                } else {
+                        anar = ANAR_TX |
+                               ANAR_10_FD |
+                               ANAR_10;
+                }
+                break;
+        case IFM_10_T:
+                gbcr = MP_ReadPhyUshort(sc, MII_100T2CR) &
+                       ~(GTCR_ADV_1000TFDX | GTCR_ADV_1000THDX);
+                if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX) {
+                        anar = ANAR_10_FD |
+                               ANAR_10;
+                } else {
+                        anar = ANAR_10;
+                }
+
+                if (sc->re_type == MACFG_13) {
+                        MP_WritePhyUshort(sc, MII_BMCR, 0x8000);
+                }
+
+                break;
+        default:
+#ifndef __DragonFly__
+                printf("re%d: Unsupported media type\n", sc->re_unit);
+                return(0);
+#else
+		if_printf(ifp, "Unsupported media type\n");
+		return (EOPNOTSUPP);
+#endif
+        }
+
+        MP_WritePhyUshort(sc, 0x1F, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA5D4, cr2500);
+        MP_WritePhyUshort(sc, MII_ANAR, anar | 0x0800 | ANAR_FC);
+        MP_WritePhyUshort(sc, MII_100T2CR, gbcr);
+        MP_WritePhyUshort(sc, MII_BMCR, BMCR_RESET | BMCR_AUTOEN | BMCR_STARTNEG);
+
+        return(0);
+}
+
 /*
  * Report current media status.
  */
@@ -8194,12 +9473,63 @@ static void re_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
         return;
 }
 
+static void re_ifmedia_sts_8125(struct ifnet *ifp, struct ifmediareq *ifmr)
+{
+        struct re_softc		*sc;
+
+        sc = ifp->if_softc;
+
+        RE_LOCK(sc);
+
+        ifmr->ifm_status = IFM_AVALID;
+        ifmr->ifm_active = IFM_ETHER;
+
+        if (re_link_ok(sc)) {
+                u_int32_t msr;
+
+                ifmr->ifm_status |= IFM_ACTIVE;
+
+                msr = CSR_READ_4(sc, RE_PHY_STATUS);
+
+                if (msr & RL_PHY_STATUS_FULL_DUP)
+                        ifmr->ifm_active |= IFM_FDX;
+                else
+                        ifmr->ifm_active |= IFM_HDX;
+
+                if (msr & RL_PHY_STATUS_10M)
+                        ifmr->ifm_active |= IFM_10_T;
+                else if (msr & RL_PHY_STATUS_100M)
+                        ifmr->ifm_active |= IFM_100_TX;
+                else if (msr & RL_PHY_STATUS_1000MF)
+                        ifmr->ifm_active |= IFM_1000_T;
+                else if (msr & RL_PHY_STATUS_500MF)
+                        ifmr->ifm_active |= IFM_1000_T;
+                else if (msr & RL_PHY_STATUS_1250MF)
+                        ifmr->ifm_active |= IFM_1000_T;
+                else if (msr & RL_PHY_STATUS_2500MF)
+#ifdef IFM_2500_T
+                        ifmr->ifm_active |= IFM_2500_T;
+#else
+                        ifmr->ifm_active |= IFM_2500_SX;
+#endif
+#ifdef __DragonFly__
+        } else {
+		if (IFM_SUBTYPE(sc->media.ifm_media) == IFM_AUTO)
+			ifmr->ifm_active |= IFM_NONE;
+		else
+			ifmr->ifm_active |= sc->media.ifm_media;
+#endif
+        }
+
+        RE_UNLOCK(sc);
+
+        return;
+}
+
 static int re_enable_EEE(struct re_softc *sc)
 {
         int ret;
         u_int16_t data;
-        u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
 
         ret = 0;
         switch (sc->re_type) {
@@ -8335,6 +9665,7 @@ static int re_enable_EEE(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 data = re_eri_read(sc, 0x1B0, 4, ERIAR_ExGMAC);
                 data |= BIT_1 | BIT_0;
                 re_eri_write(sc, 0x1B0, 4, data, ERIAR_ExGMAC);
@@ -8344,6 +9675,32 @@ static int re_enable_EEE(struct re_softc *sc)
                 MP_WritePhyUshort(sc, 0x1F, 0x0A5D);
                 MP_WritePhyUshort(sc, 0x10, 0x0006);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
+                break;
+
+        case MACFG_80:
+        case MACFG_81:
+                SetMcuAccessRegBit(sc, 0xE040, (BIT_1|BIT_0));
+                SetMcuAccessRegBit(sc, 0xEB62, (BIT_2|BIT_1));
+
+                SetEthPhyOcpBit(sc, 0xA432, BIT_4);
+                SetEthPhyOcpBit(sc, 0xA5D0, (BIT_2 | BIT_1));
+                ClearEthPhyOcpBit(sc, 0xA6D4, BIT_0);
+
+                ClearEthPhyOcpBit(sc, 0xA6D8, BIT_4);
+                ClearEthPhyOcpBit(sc, 0xA428, BIT_7);
+                ClearEthPhyOcpBit(sc, 0xA4A2, BIT_9);
+                break;
+
+        case MACFG_82:
+        case MACFG_83:
+                SetMcuAccessRegBit(sc, 0xE040, (BIT_1|BIT_0));
+
+                SetEthPhyOcpBit(sc, 0xA5D0, (BIT_2 | BIT_1));
+                ClearEthPhyOcpBit(sc, 0xA6D4, BIT_0);
+
+                ClearEthPhyOcpBit(sc, 0xA6D8, BIT_4);
+                ClearEthPhyOcpBit(sc, 0xA428, BIT_7);
+                ClearEthPhyOcpBit(sc, 0xA4A2, BIT_9);
                 break;
 
         default:
@@ -8369,21 +9726,14 @@ static int re_enable_EEE(struct re_softc *sc)
         case MACFG_60:
         case MACFG_68:
         case MACFG_69:
-                MP_WritePhyUshort(sc, 0x1F, 0x0B82);
-                SetEthPhyBit(sc, 0x10, BIT_4);
-                MP_WritePhyUshort(sc, 0x1F, 0x0000);
-
-                MP_WritePhyUshort(sc, 0x1F, 0x0B80);
-                WaitCnt = 0;
-                do {
-                        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                        PhyRegValue &= 0x0040;
-                        DELAY(50);
-                        DELAY(50);
-                        WaitCnt++;
-                } while(PhyRegValue != 0x0040 && WaitCnt <1000);
-
-                MP_WritePhyUshort(sc, 0x1F, 0x0000);
+        case MACFG_70:
+        case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                re_set_phy_mcu_patch_request(sc);
                 break;
         }
 
@@ -8445,6 +9795,7 @@ static int re_enable_EEE(struct re_softc *sc)
                 break;
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 OOB_mutex_lock(sc);
                 data = MP_ReadMcuAccessRegWord(sc, 0xE052);
                 data &= ~BIT_0;
@@ -8454,7 +9805,6 @@ static int re_enable_EEE(struct re_softc *sc)
                 data &= 0xFF0F;
                 data |= (BIT_4 | BIT_5 | BIT_6);
                 MP_WriteMcuAccessRegWord(sc, 0xE056, data);
-                MP_WriteMcuAccessRegWord(sc, 0xEA80, 0x0003);
                 break;
         case MACFG_68:
         case MACFG_69:
@@ -8471,6 +9821,14 @@ static int re_enable_EEE(struct re_softc *sc)
                 data &= ~(BIT_12);
                 MP_WritePhyUshort(sc, 0x11, data);
                 break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                ClearMcuAccessRegBit(sc, 0xE052, BIT_0);
+                ClearEthPhyOcpBit(sc, 0xA442, BIT_12 | BIT_13);
+                ClearEthPhyOcpBit(sc, 0xA430, BIT_15);
+                break;
         }
 
         switch (sc->re_type) {
@@ -8479,9 +9837,14 @@ static int re_enable_EEE(struct re_softc *sc)
         case MACFG_60:
         case MACFG_68:
         case MACFG_69:
-                MP_WritePhyUshort(sc, 0x1F, 0x0B82);
-                ClearEthPhyBit(sc, 0x10, BIT_4);
-                MP_WritePhyUshort(sc, 0x1F, 0x0000);
+        case MACFG_70:
+        case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                re_clear_phy_mcu_patch_request(sc);
                 break;
         }
 
@@ -8492,8 +9855,6 @@ static int re_disable_EEE(struct re_softc *sc)
 {
         int ret;
         u_int16_t data;
-        u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
 
         ret = 0;
         switch (sc->re_type) {
@@ -8640,6 +10001,7 @@ static int re_disable_EEE(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 data = re_eri_read(sc, 0x1B0, 4, ERIAR_ExGMAC);
                 data &= ~(BIT_1 | BIT_0);
                 re_eri_write(sc, 0x1B0, 4, data, ERIAR_ExGMAC);
@@ -8649,6 +10011,32 @@ static int re_disable_EEE(struct re_softc *sc)
                 MP_WritePhyUshort(sc, 0x1F, 0x0A5D);
                 MP_WritePhyUshort(sc, 0x10, 0x0000);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
+                break;
+
+        case MACFG_80:
+        case MACFG_81:
+                ClearMcuAccessRegBit(sc, 0xE040, (BIT_1|BIT_0));
+                ClearMcuAccessRegBit(sc, 0xEB62, (BIT_2|BIT_1));
+
+                ClearEthPhyOcpBit(sc, 0xA432, BIT_4);
+                ClearEthPhyOcpBit(sc, 0xA5D0, (BIT_2 | BIT_1));
+                ClearEthPhyOcpBit(sc, 0xA6D4, BIT_0);
+
+                ClearEthPhyOcpBit(sc, 0xA6D8, BIT_4);
+                ClearEthPhyOcpBit(sc, 0xA428, BIT_7);
+                ClearEthPhyOcpBit(sc, 0xA4A2, BIT_9);
+                break;
+
+        case MACFG_82:
+        case MACFG_83:
+                ClearMcuAccessRegBit(sc, 0xE040, (BIT_1|BIT_0));
+
+                ClearEthPhyOcpBit(sc, 0xA5D0, (BIT_2 | BIT_1));
+                ClearEthPhyOcpBit(sc, 0xA6D4, BIT_0);
+
+                ClearEthPhyOcpBit(sc, 0xA6D8, BIT_4);
+                ClearEthPhyOcpBit(sc, 0xA428, BIT_7);
+                ClearEthPhyOcpBit(sc, 0xA4A2, BIT_9);
                 break;
 
         default:
@@ -8674,21 +10062,14 @@ static int re_disable_EEE(struct re_softc *sc)
         case MACFG_60:
         case MACFG_68:
         case MACFG_69:
-                MP_WritePhyUshort(sc, 0x1F, 0x0B82);
-                SetEthPhyBit(sc, 0x10, BIT_4);
-                MP_WritePhyUshort(sc, 0x1F, 0x0000);
-
-                MP_WritePhyUshort(sc, 0x1F, 0x0B80);
-                WaitCnt = 0;
-                do {
-                        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                        PhyRegValue &= 0x0040;
-                        DELAY(50);
-                        DELAY(50);
-                        WaitCnt++;
-                } while(PhyRegValue != 0x0040 && WaitCnt <1000);
-
-                MP_WritePhyUshort(sc, 0x1F, 0x0000);
+        case MACFG_70:
+        case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                re_set_phy_mcu_patch_request(sc);
                 break;
         }
 
@@ -8718,6 +10099,7 @@ static int re_disable_EEE(struct re_softc *sc)
         case MACFG_67:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 data = MP_ReadMcuAccessRegWord(sc, 0xE052);
                 data &= ~(BIT_0);
                 MP_WriteMcuAccessRegWord(sc, 0xE052, data);
@@ -8735,6 +10117,15 @@ static int re_disable_EEE(struct re_softc *sc)
                 MP_WritePhyUshort(sc, 0x1F, 0x0A44);
                 data = MP_ReadPhyUshort(sc, 0x11) & ~(BIT_12 | BIT_13 | BIT_14);
                 MP_WritePhyUshort(sc, 0x11, data);
+                MP_WritePhyUshort(sc, 0x1f, 0x0000);
+                break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                ClearMcuAccessRegBit(sc, 0xE052, BIT_0);
+                ClearEthPhyOcpBit(sc, 0xA442, BIT_12 | BIT_13);
+                ClearEthPhyOcpBit(sc, 0xA430, BIT_15);
                 break;
         }
 
@@ -8744,9 +10135,14 @@ static int re_disable_EEE(struct re_softc *sc)
         case MACFG_60:
         case MACFG_68:
         case MACFG_69:
-                MP_WritePhyUshort(sc, 0x1F, 0x0B82);
-                ClearEthPhyBit(sc, 0x10, BIT_4);
-                MP_WritePhyUshort(sc, 0x1F, 0x0000);
+        case MACFG_70:
+        case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                re_clear_phy_mcu_patch_request(sc);
                 break;
         }
 
@@ -8756,7 +10152,6 @@ static int re_disable_EEE(struct re_softc *sc)
 static int re_phy_ram_code_check(struct re_softc *sc)
 {
         u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
         int retval = TRUE;
 
         switch(sc->re_type) {
@@ -8778,24 +10173,7 @@ static int re_phy_ram_code_check(struct re_softc *sc)
                 PhyRegValue &= ~(BIT_11);
                 MP_WritePhyUshort(sc, 0x14, PhyRegValue);
 
-                MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue |= BIT_4;
-                MP_WritePhyUshort(sc, 0x10, PhyRegValue);
-
-                MP_WritePhyUshort(sc, 0x1f, 0x0B80);
-                WaitCnt = 0;
-                do {
-                        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                        PhyRegValue &= 0x0040;
-                        DELAY(50);
-                        DELAY(50);
-                        WaitCnt++;
-                } while(PhyRegValue != 0x0040 && WaitCnt <1000);
-
-                if (WaitCnt == 1000) {
-                        retval = FALSE;
-                }
+                retval = re_set_phy_mcu_patch_request(sc);
 
                 MP_WritePhyUshort(sc, 0x1f, 0x0A40);
                 MP_WritePhyUshort(sc, 0x10, 0x0140);
@@ -8816,24 +10194,7 @@ static int re_phy_ram_code_check(struct re_softc *sc)
                 PhyRegValue |= (BIT_11|BIT_12);
                 MP_WritePhyUshort(sc, 0x11, PhyRegValue);
 
-                MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= ~(BIT_4);
-                MP_WritePhyUshort(sc, 0x10, PhyRegValue);
-
-                MP_WritePhyUshort(sc, 0x1f, 0x0A22);
-                WaitCnt = 0;
-                do {
-                        PhyRegValue = MP_ReadPhyUshort(sc, 0x12);
-                        PhyRegValue &= 0x0010;
-                        DELAY(50);
-                        DELAY(50);
-                        WaitCnt++;
-                } while(PhyRegValue != 0x0010 && WaitCnt <1000);
-
-                if (WaitCnt == 1000) {
-                        retval = FALSE;
-                }
+                retval = re_clear_phy_mcu_patch_request(sc);
 
                 MP_WritePhyUshort(sc, 0x1f, 0x0A40);
                 MP_WritePhyUshort(sc, 0x10, 0x1040);
@@ -8859,24 +10220,7 @@ static int re_phy_ram_code_check(struct re_softc *sc)
                 PhyRegValue |= (BIT_11);
                 MP_WritePhyUshort(sc, 0x14, PhyRegValue);
 
-                MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue |= BIT_4;
-                MP_WritePhyUshort(sc, 0x10, PhyRegValue);
-
-                MP_WritePhyUshort(sc, 0x1f, 0x0B80);
-                WaitCnt = 0;
-                do {
-                        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                        PhyRegValue &= 0x0040;
-                        DELAY(50);
-                        DELAY(50);
-                        WaitCnt++;
-                } while(PhyRegValue != 0x0040 && WaitCnt <1000);
-
-                if (WaitCnt == 1000) {
-                        retval = FALSE;
-                }
+                retval = re_set_phy_mcu_patch_request(sc);
 
                 MP_WritePhyUshort(sc, 0x1f, 0x0A20);
                 PhyRegValue = MP_ReadPhyUshort(sc, 0x13);
@@ -8886,10 +10230,7 @@ static int re_phy_ram_code_check(struct re_softc *sc)
                         }
                 }
 
-                MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= ~(BIT_4);
-                MP_WritePhyUshort(sc, 0x10, PhyRegValue);
+                retval = re_clear_phy_mcu_patch_request(sc);
 
                 //delay 2ms
                 DELAY(2000);
@@ -8950,10 +10291,18 @@ static int re_hw_phy_mcu_code_ver_matched(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 MP_WritePhyUshort(sc, 0x13, 0x801E);
                 sc->re_hw_ram_code_ver = MP_ReadPhyUshort(sc, 0x14);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
+                break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x801E);
+                sc->re_hw_ram_code_ver = MP_RealReadPhyOcpRegWord(sc, 0xA438);
                 break;
         default:
                 sc->re_hw_ram_code_ver = ~0;
@@ -9000,13 +10349,214 @@ static void re_write_hw_phy_mcu_code_ver(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 MP_WritePhyUshort(sc, 0x13, 0x801E);
                 MP_WritePhyUshort(sc, 0x14, sc->re_sw_ram_code_ver);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
                 sc->re_hw_ram_code_ver = sc->re_sw_ram_code_ver;
                 break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x801E);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, sc->re_sw_ram_code_ver);
+                sc->re_hw_ram_code_ver = sc->re_sw_ram_code_ver;
+                break;
         }
+}
+
+static void
+re_acquire_phy_mcu_patch_key_lock(struct re_softc *sc)
+{
+        u_int16_t PatchKey;
+
+        switch (sc->re_type) {
+        case MACFG_80:
+                PatchKey = 0x8600;
+                break;
+        case MACFG_81:
+                PatchKey = 0x8601;
+                break;
+        case MACFG_82:
+                PatchKey = 0x3700;
+                break;
+        case MACFG_83:
+                PatchKey = 0x3701;
+                break;
+        default:
+                return;
+        }
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8024);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, PatchKey);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xB82E);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0001);
+}
+
+static void
+re_release_phy_mcu_patch_key_lock(struct re_softc *sc)
+{
+        switch (sc->re_type) {
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                ClearEthPhyOcpBit(sc, 0xB82E, BIT_0);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8024);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                break;
+        default:
+                break;
+        }
+}
+
+bool
+re_set_phy_mcu_patch_request(struct re_softc *sc)
+{
+        u_int16_t PhyRegValue;
+        u_int16_t WaitCount = 0;
+        int i;
+        bool bSuccess = TRUE;
+
+        switch (sc->re_type) {
+        case MACFG_56:
+        case MACFG_57:
+        case MACFG_58:
+        case MACFG_59:
+        case MACFG_60:
+        case MACFG_61:
+        case MACFG_62:
+        case MACFG_67:
+        case MACFG_68:
+        case MACFG_69:
+        case MACFG_70:
+        case MACFG_71:
+        case MACFG_72:
+                MP_WritePhyUshort(sc, 0x1f, 0x0B82);
+                SetEthPhyBit(sc, 0x10, BIT_4);
+
+                MP_WritePhyUshort(sc, 0x1f, 0x0B80);
+                WaitCount = 0;
+                do {
+                        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
+                        PhyRegValue &= BIT_6;
+                        DELAY(50);
+                        DELAY(50);
+                        WaitCount++;
+                } while(PhyRegValue != BIT_6 && WaitCount < 1000);
+
+                if (PhyRegValue != BIT_6 && WaitCount == 1000) bSuccess = FALSE;
+
+                MP_WritePhyUshort(sc, 0x1f, 0x0000);
+                break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                SetEthPhyOcpBit(sc, 0xB820, BIT_4);
+
+                i = 0;
+                do {
+                        PhyRegValue = MP_RealReadPhyOcpRegWord(sc, 0xB800);
+                        PhyRegValue &= BIT_6;
+                        DELAY(50);
+                        DELAY(50);
+                        i++;
+                } while(PhyRegValue != BIT_6 && i < 1000);
+
+                if (PhyRegValue != BIT_6 && WaitCount == 1000) bSuccess = FALSE;
+                break;
+        }
+
+        return bSuccess;
+}
+
+bool
+re_clear_phy_mcu_patch_request(struct re_softc *sc)
+{
+        u_int16_t PhyRegValue;
+        u_int16_t WaitCount = 0;
+        int i;
+        bool bSuccess = TRUE;
+
+        switch (sc->re_type) {
+        case MACFG_56:
+        case MACFG_57:
+        case MACFG_58:
+        case MACFG_59:
+        case MACFG_60:
+        case MACFG_61:
+        case MACFG_62:
+        case MACFG_67:
+        case MACFG_68:
+        case MACFG_69:
+        case MACFG_70:
+        case MACFG_71:
+        case MACFG_72:
+                MP_WritePhyUshort(sc, 0x1f, 0x0B82);
+                ClearEthPhyBit(sc, 0x10, BIT_4);
+
+                MP_WritePhyUshort(sc, 0x1f, 0x0B80);
+                WaitCount = 0;
+                do {
+                        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
+                        PhyRegValue &= BIT_6;
+                        DELAY(50);
+                        DELAY(50);
+                        WaitCount++;
+                } while(PhyRegValue != BIT_6 && WaitCount < 1000);
+
+                if (PhyRegValue != BIT_6 && WaitCount == 1000) bSuccess = FALSE;
+
+                MP_WritePhyUshort(sc, 0x1f, 0x0000);
+                break;
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                ClearEthPhyOcpBit(sc, 0xB820, BIT_4);
+
+                i = 0;
+                do {
+                        PhyRegValue = MP_RealReadPhyOcpRegWord(sc, 0xB800);
+                        PhyRegValue &= BIT_6;
+                        DELAY(50);
+                        DELAY(50);
+                        i++;
+                } while(PhyRegValue != BIT_6 && i < 1000);
+
+                if (PhyRegValue != BIT_6 && WaitCount == 1000) bSuccess = FALSE;
+                break;
+        }
+
+        return bSuccess;
+}
+
+static void
+re_set_phy_mcu_ram_code(struct re_softc *sc, const u_int16_t *ramcode, u_int16_t codesize)
+{
+        u_int16_t i;
+        u_int16_t addr;
+        u_int16_t val;
+
+        if (ramcode == NULL || codesize % 2) {
+                goto out;
+        }
+
+        for (i = 0; i < codesize; i += 2) {
+                addr = ramcode[i];
+                val = ramcode[i + 1];
+                if (addr == 0xFFFF && val == 0xFFFF) {
+                        break;
+                }
+                MP_RealWritePhyOcpRegWord(sc, addr, val);
+        }
+
+out:
+        return;
 }
 
 static void re_set_phy_mcu_8168e_1(struct re_softc *sc)
@@ -18560,22 +20110,8 @@ static void re_set_phy_mcu_8411_1(struct re_softc *sc)
 static void re_set_phy_mcu_8168g_1(struct re_softc *sc)
 {
         u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue |= BIT_4;
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
-
-        MP_WritePhyUshort(sc, 0x1f, 0x0B80);
-        WaitCnt = 0;
-        do {
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= 0x0040;
-                DELAY(50);
-                DELAY(50);
-                WaitCnt++;
-        } while(PhyRegValue != 0x0040 && WaitCnt <1000);
+        re_set_phy_mcu_patch_request(sc);
 
         MP_WritePhyUshort(sc, 0x1f, 0x0A43);
         MP_WritePhyUshort(sc, 0x13, 0x8146);
@@ -19621,10 +21157,7 @@ static void re_set_phy_mcu_8168g_1(struct re_softc *sc)
         MP_WritePhyUshort(sc, 0x13, 0x8146);
         MP_WritePhyUshort(sc, 0x14, 0x0000);
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue &= ~(BIT_4);
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
+        re_clear_phy_mcu_patch_request(sc);
         if (sc->RequiredSecLanDonglePatch) {
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 PhyRegValue = MP_ReadPhyUshort(sc, 0x11);
@@ -19636,22 +21169,8 @@ static void re_set_phy_mcu_8168g_1(struct re_softc *sc)
 static void re_set_phy_mcu_8168gu_2(struct re_softc *sc)
 {
         u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue |= BIT_4;
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
-
-        MP_WritePhyUshort(sc, 0x1f, 0x0B80);
-        WaitCnt = 0;
-        do {
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= 0x0040;
-                DELAY(50);
-                DELAY(50);
-                WaitCnt++;
-        } while(PhyRegValue != 0x0040 && WaitCnt <1000);
+        re_set_phy_mcu_patch_request(sc);
 
         MP_WritePhyUshort(sc, 0x1f, 0x0A43);
         MP_WritePhyUshort(sc, 0x13, 0x8146);
@@ -19696,10 +21215,7 @@ static void re_set_phy_mcu_8168gu_2(struct re_softc *sc)
         MP_WritePhyUshort(sc, 0x13, 0x8146);
         MP_WritePhyUshort(sc, 0x14, 0x0000);
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue &= ~(BIT_4);
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
+        re_clear_phy_mcu_patch_request(sc);
         if (sc->RequiredSecLanDonglePatch) {
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 PhyRegValue = MP_ReadPhyUshort(sc, 0x11);
@@ -19711,22 +21227,8 @@ static void re_set_phy_mcu_8168gu_2(struct re_softc *sc)
 static void re_set_phy_mcu_8411b_1(struct re_softc *sc)
 {
         u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue |= BIT_4;
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
-
-        MP_WritePhyUshort(sc, 0x1f, 0x0B80);
-        WaitCnt = 0;
-        do {
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= 0x0040;
-                DELAY(50);
-                DELAY(50);
-                WaitCnt++;
-        } while(PhyRegValue != 0x0040 && WaitCnt <1000);
+        re_set_phy_mcu_patch_request(sc);
 
         MP_WritePhyUshort(sc, 0x1f, 0x0A43);
         MP_WritePhyUshort(sc, 0x13, 0x8146);
@@ -19771,10 +21273,7 @@ static void re_set_phy_mcu_8411b_1(struct re_softc *sc)
         MP_WritePhyUshort(sc, 0x13, 0x8146);
         MP_WritePhyUshort(sc, 0x14, 0x0000);
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue &= ~(BIT_4);
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
+        re_clear_phy_mcu_patch_request(sc);
         if (sc->RequiredSecLanDonglePatch) {
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 PhyRegValue = MP_ReadPhyUshort(sc, 0x11);
@@ -19786,22 +21285,8 @@ static void re_set_phy_mcu_8411b_1(struct re_softc *sc)
 static void re_set_phy_mcu_8168h_1(struct re_softc *sc)
 {
         u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue |= BIT_4;
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
-
-        MP_WritePhyUshort(sc, 0x1f, 0x0B80);
-        WaitCnt = 0;
-        do {
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= 0x0040;
-                DELAY(50);
-                DELAY(50);
-                WaitCnt++;
-        } while(PhyRegValue != 0x0040 && WaitCnt <1000);
+        re_set_phy_mcu_patch_request(sc);
 
         MP_WritePhyUshort(sc, 0x1f, 0x0A43);
         MP_WritePhyUshort(sc, 0x13, 0x8028);
@@ -19855,10 +21340,7 @@ static void re_set_phy_mcu_8168h_1(struct re_softc *sc)
         MP_WritePhyUshort(sc, 0x13, 0x8028);
         MP_WritePhyUshort(sc, 0x14, 0x0000);
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue &= ~(BIT_4);
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
+        re_clear_phy_mcu_patch_request(sc);
         if (sc->RequiredSecLanDonglePatch) {
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 PhyRegValue = MP_ReadPhyUshort(sc, 0x11);
@@ -19870,22 +21352,8 @@ static void re_set_phy_mcu_8168h_1(struct re_softc *sc)
 static void re_set_phy_mcu_8168h_2(struct re_softc *sc)
 {
         u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue |= BIT_4;
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
-
-        MP_WritePhyUshort(sc, 0x1f, 0x0B80);
-        WaitCnt = 0;
-        do {
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= 0x0040;
-                DELAY(50);
-                DELAY(50);
-                WaitCnt++;
-        } while(PhyRegValue != 0x0040 && WaitCnt <1000);
+        re_set_phy_mcu_patch_request(sc);
 
         MP_WritePhyUshort(sc, 0x1f, 0x0A43);
         MP_WritePhyUshort(sc, 0x13, 0x8028);
@@ -19922,6 +21390,288 @@ static void re_set_phy_mcu_8168h_2(struct re_softc *sc)
         MP_WritePhyUshort(sc, 0x14, 0x0210);
 
         MP_WritePhyUshort(sc, 0x1F, 0x0A43);
+        MP_WritePhyUshort(sc, 0x13, 0x8323);
+        MP_WritePhyUshort(sc, 0x14, 0xaf83);
+        MP_WritePhyUshort(sc, 0x14, 0x2faf);
+        MP_WritePhyUshort(sc, 0x14, 0x853d);
+        MP_WritePhyUshort(sc, 0x14, 0xaf85);
+        MP_WritePhyUshort(sc, 0x14, 0x3daf);
+        MP_WritePhyUshort(sc, 0x14, 0x853d);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x45ad);
+        MP_WritePhyUshort(sc, 0x14, 0x2052);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7ae3);
+        MP_WritePhyUshort(sc, 0x14, 0x85fe);
+        MP_WritePhyUshort(sc, 0x14, 0x1a03);
+        MP_WritePhyUshort(sc, 0x14, 0x10e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85f6);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7a1b);
+        MP_WritePhyUshort(sc, 0x14, 0x03e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85fa);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7be3);
+        MP_WritePhyUshort(sc, 0x14, 0x85fe);
+        MP_WritePhyUshort(sc, 0x14, 0x1a03);
+        MP_WritePhyUshort(sc, 0x14, 0x10e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85f7);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7b1b);
+        MP_WritePhyUshort(sc, 0x14, 0x03e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85fb);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7ce3);
+        MP_WritePhyUshort(sc, 0x14, 0x85fe);
+        MP_WritePhyUshort(sc, 0x14, 0x1a03);
+        MP_WritePhyUshort(sc, 0x14, 0x10e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85f8);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7c1b);
+        MP_WritePhyUshort(sc, 0x14, 0x03e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85fc);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7de3);
+        MP_WritePhyUshort(sc, 0x14, 0x85fe);
+        MP_WritePhyUshort(sc, 0x14, 0x1a03);
+        MP_WritePhyUshort(sc, 0x14, 0x10e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85f9);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7d1b);
+        MP_WritePhyUshort(sc, 0x14, 0x03e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85fd);
+        MP_WritePhyUshort(sc, 0x14, 0xae50);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7ee3);
+        MP_WritePhyUshort(sc, 0x14, 0x85ff);
+        MP_WritePhyUshort(sc, 0x14, 0x1a03);
+        MP_WritePhyUshort(sc, 0x14, 0x10e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85f6);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7e1b);
+        MP_WritePhyUshort(sc, 0x14, 0x03e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85fa);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7fe3);
+        MP_WritePhyUshort(sc, 0x14, 0x85ff);
+        MP_WritePhyUshort(sc, 0x14, 0x1a03);
+        MP_WritePhyUshort(sc, 0x14, 0x10e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85f7);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x7f1b);
+        MP_WritePhyUshort(sc, 0x14, 0x03e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85fb);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x80e3);
+        MP_WritePhyUshort(sc, 0x14, 0x85ff);
+        MP_WritePhyUshort(sc, 0x14, 0x1a03);
+        MP_WritePhyUshort(sc, 0x14, 0x10e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85f8);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x801b);
+        MP_WritePhyUshort(sc, 0x14, 0x03e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85fc);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x81e3);
+        MP_WritePhyUshort(sc, 0x14, 0x85ff);
+        MP_WritePhyUshort(sc, 0x14, 0x1a03);
+        MP_WritePhyUshort(sc, 0x14, 0x10e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85f9);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x811b);
+        MP_WritePhyUshort(sc, 0x14, 0x03e4);
+        MP_WritePhyUshort(sc, 0x14, 0x85fd);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xf6ad);
+        MP_WritePhyUshort(sc, 0x14, 0x2404);
+        MP_WritePhyUshort(sc, 0x14, 0xee85);
+        MP_WritePhyUshort(sc, 0x14, 0xf610);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xf7ad);
+        MP_WritePhyUshort(sc, 0x14, 0x2404);
+        MP_WritePhyUshort(sc, 0x14, 0xee85);
+        MP_WritePhyUshort(sc, 0x14, 0xf710);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xf8ad);
+        MP_WritePhyUshort(sc, 0x14, 0x2404);
+        MP_WritePhyUshort(sc, 0x14, 0xee85);
+        MP_WritePhyUshort(sc, 0x14, 0xf810);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xf9ad);
+        MP_WritePhyUshort(sc, 0x14, 0x2404);
+        MP_WritePhyUshort(sc, 0x14, 0xee85);
+        MP_WritePhyUshort(sc, 0x14, 0xf910);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xfaad);
+        MP_WritePhyUshort(sc, 0x14, 0x2704);
+        MP_WritePhyUshort(sc, 0x14, 0xee85);
+        MP_WritePhyUshort(sc, 0x14, 0xfa00);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xfbad);
+        MP_WritePhyUshort(sc, 0x14, 0x2704);
+        MP_WritePhyUshort(sc, 0x14, 0xee85);
+        MP_WritePhyUshort(sc, 0x14, 0xfb00);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xfcad);
+        MP_WritePhyUshort(sc, 0x14, 0x2704);
+        MP_WritePhyUshort(sc, 0x14, 0xee85);
+        MP_WritePhyUshort(sc, 0x14, 0xfc00);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xfdad);
+        MP_WritePhyUshort(sc, 0x14, 0x2704);
+        MP_WritePhyUshort(sc, 0x14, 0xee85);
+        MP_WritePhyUshort(sc, 0x14, 0xfd00);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x44ad);
+        MP_WritePhyUshort(sc, 0x14, 0x203f);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xf6e4);
+        MP_WritePhyUshort(sc, 0x14, 0x8288);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xfae4);
+        MP_WritePhyUshort(sc, 0x14, 0x8289);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x440d);
+        MP_WritePhyUshort(sc, 0x14, 0x0458);
+        MP_WritePhyUshort(sc, 0x14, 0x01bf);
+        MP_WritePhyUshort(sc, 0x14, 0x8264);
+        MP_WritePhyUshort(sc, 0x14, 0x0215);
+        MP_WritePhyUshort(sc, 0x14, 0x38bf);
+        MP_WritePhyUshort(sc, 0x14, 0x824e);
+        MP_WritePhyUshort(sc, 0x14, 0x0213);
+        MP_WritePhyUshort(sc, 0x14, 0x06a0);
+        MP_WritePhyUshort(sc, 0x14, 0x010f);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x44f6);
+        MP_WritePhyUshort(sc, 0x14, 0x20e4);
+        MP_WritePhyUshort(sc, 0x14, 0x8244);
+        MP_WritePhyUshort(sc, 0x14, 0x580f);
+        MP_WritePhyUshort(sc, 0x14, 0xe582);
+        MP_WritePhyUshort(sc, 0x14, 0x5aae);
+        MP_WritePhyUshort(sc, 0x14, 0x0ebf);
+        MP_WritePhyUshort(sc, 0x14, 0x825e);
+        MP_WritePhyUshort(sc, 0x14, 0xe382);
+        MP_WritePhyUshort(sc, 0x14, 0x44f7);
+        MP_WritePhyUshort(sc, 0x14, 0x3ce7);
+        MP_WritePhyUshort(sc, 0x14, 0x8244);
+        MP_WritePhyUshort(sc, 0x14, 0x0212);
+        MP_WritePhyUshort(sc, 0x14, 0xf0ad);
+        MP_WritePhyUshort(sc, 0x14, 0x213f);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xf7e4);
+        MP_WritePhyUshort(sc, 0x14, 0x8288);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xfbe4);
+        MP_WritePhyUshort(sc, 0x14, 0x8289);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x440d);
+        MP_WritePhyUshort(sc, 0x14, 0x0558);
+        MP_WritePhyUshort(sc, 0x14, 0x01bf);
+        MP_WritePhyUshort(sc, 0x14, 0x826b);
+        MP_WritePhyUshort(sc, 0x14, 0x0215);
+        MP_WritePhyUshort(sc, 0x14, 0x38bf);
+        MP_WritePhyUshort(sc, 0x14, 0x824f);
+        MP_WritePhyUshort(sc, 0x14, 0x0213);
+        MP_WritePhyUshort(sc, 0x14, 0x06a0);
+        MP_WritePhyUshort(sc, 0x14, 0x010f);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x44f6);
+        MP_WritePhyUshort(sc, 0x14, 0x21e4);
+        MP_WritePhyUshort(sc, 0x14, 0x8244);
+        MP_WritePhyUshort(sc, 0x14, 0x580f);
+        MP_WritePhyUshort(sc, 0x14, 0xe582);
+        MP_WritePhyUshort(sc, 0x14, 0x5bae);
+        MP_WritePhyUshort(sc, 0x14, 0x0ebf);
+        MP_WritePhyUshort(sc, 0x14, 0x8265);
+        MP_WritePhyUshort(sc, 0x14, 0xe382);
+        MP_WritePhyUshort(sc, 0x14, 0x44f7);
+        MP_WritePhyUshort(sc, 0x14, 0x3de7);
+        MP_WritePhyUshort(sc, 0x14, 0x8244);
+        MP_WritePhyUshort(sc, 0x14, 0x0212);
+        MP_WritePhyUshort(sc, 0x14, 0xf0ad);
+        MP_WritePhyUshort(sc, 0x14, 0x223f);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xf8e4);
+        MP_WritePhyUshort(sc, 0x14, 0x8288);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xfce4);
+        MP_WritePhyUshort(sc, 0x14, 0x8289);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x440d);
+        MP_WritePhyUshort(sc, 0x14, 0x0658);
+        MP_WritePhyUshort(sc, 0x14, 0x01bf);
+        MP_WritePhyUshort(sc, 0x14, 0x8272);
+        MP_WritePhyUshort(sc, 0x14, 0x0215);
+        MP_WritePhyUshort(sc, 0x14, 0x38bf);
+        MP_WritePhyUshort(sc, 0x14, 0x8250);
+        MP_WritePhyUshort(sc, 0x14, 0x0213);
+        MP_WritePhyUshort(sc, 0x14, 0x06a0);
+        MP_WritePhyUshort(sc, 0x14, 0x010f);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x44f6);
+        MP_WritePhyUshort(sc, 0x14, 0x22e4);
+        MP_WritePhyUshort(sc, 0x14, 0x8244);
+        MP_WritePhyUshort(sc, 0x14, 0x580f);
+        MP_WritePhyUshort(sc, 0x14, 0xe582);
+        MP_WritePhyUshort(sc, 0x14, 0x5cae);
+        MP_WritePhyUshort(sc, 0x14, 0x0ebf);
+        MP_WritePhyUshort(sc, 0x14, 0x826c);
+        MP_WritePhyUshort(sc, 0x14, 0xe382);
+        MP_WritePhyUshort(sc, 0x14, 0x44f7);
+        MP_WritePhyUshort(sc, 0x14, 0x3ee7);
+        MP_WritePhyUshort(sc, 0x14, 0x8244);
+        MP_WritePhyUshort(sc, 0x14, 0x0212);
+        MP_WritePhyUshort(sc, 0x14, 0xf0ad);
+        MP_WritePhyUshort(sc, 0x14, 0x233f);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xf9e4);
+        MP_WritePhyUshort(sc, 0x14, 0x8288);
+        MP_WritePhyUshort(sc, 0x14, 0xe085);
+        MP_WritePhyUshort(sc, 0x14, 0xfde4);
+        MP_WritePhyUshort(sc, 0x14, 0x8289);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x440d);
+        MP_WritePhyUshort(sc, 0x14, 0x0758);
+        MP_WritePhyUshort(sc, 0x14, 0x01bf);
+        MP_WritePhyUshort(sc, 0x14, 0x8279);
+        MP_WritePhyUshort(sc, 0x14, 0x0215);
+        MP_WritePhyUshort(sc, 0x14, 0x38bf);
+        MP_WritePhyUshort(sc, 0x14, 0x8251);
+        MP_WritePhyUshort(sc, 0x14, 0x0213);
+        MP_WritePhyUshort(sc, 0x14, 0x06a0);
+        MP_WritePhyUshort(sc, 0x14, 0x010f);
+        MP_WritePhyUshort(sc, 0x14, 0xe082);
+        MP_WritePhyUshort(sc, 0x14, 0x44f6);
+        MP_WritePhyUshort(sc, 0x14, 0x23e4);
+        MP_WritePhyUshort(sc, 0x14, 0x8244);
+        MP_WritePhyUshort(sc, 0x14, 0x580f);
+        MP_WritePhyUshort(sc, 0x14, 0xe582);
+        MP_WritePhyUshort(sc, 0x14, 0x5dae);
+        MP_WritePhyUshort(sc, 0x14, 0x0ebf);
+        MP_WritePhyUshort(sc, 0x14, 0x8273);
+        MP_WritePhyUshort(sc, 0x14, 0xe382);
+        MP_WritePhyUshort(sc, 0x14, 0x44f7);
+        MP_WritePhyUshort(sc, 0x14, 0x3fe7);
+        MP_WritePhyUshort(sc, 0x14, 0x8244);
+        MP_WritePhyUshort(sc, 0x14, 0x0212);
+        MP_WritePhyUshort(sc, 0x14, 0xf0ee);
+        MP_WritePhyUshort(sc, 0x14, 0x8288);
+        MP_WritePhyUshort(sc, 0x14, 0x10ee);
+        MP_WritePhyUshort(sc, 0x14, 0x8289);
+        MP_WritePhyUshort(sc, 0x14, 0x00af);
+        MP_WritePhyUshort(sc, 0x14, 0x14aa);
+        MP_WritePhyUshort(sc, 0x13, 0xb818);
+        MP_WritePhyUshort(sc, 0x14, 0x13cf);
+        MP_WritePhyUshort(sc, 0x13, 0xb81a);
+        MP_WritePhyUshort(sc, 0x14, 0xfffd);
+        MP_WritePhyUshort(sc, 0x13, 0xb81c);
+        MP_WritePhyUshort(sc, 0x14, 0xfffd);
+        MP_WritePhyUshort(sc, 0x13, 0xb81e);
+        MP_WritePhyUshort(sc, 0x14, 0xfffd);
+        MP_WritePhyUshort(sc, 0x13, 0xb832);
+        MP_WritePhyUshort(sc, 0x14, 0x0001);
+
+        MP_WritePhyUshort(sc, 0x1F, 0x0A43);
         MP_WritePhyUshort(sc, 0x13, 0x0000);
         MP_WritePhyUshort(sc, 0x14, 0x0000);
         MP_WritePhyUshort(sc, 0x1f, 0x0B82);
@@ -19932,10 +21682,7 @@ static void re_set_phy_mcu_8168h_2(struct re_softc *sc)
         MP_WritePhyUshort(sc, 0x13, 0x8028);
         MP_WritePhyUshort(sc, 0x14, 0x0000);
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue &= ~(BIT_4);
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
+        re_clear_phy_mcu_patch_request(sc);
         if (sc->RequiredSecLanDonglePatch) {
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 PhyRegValue = MP_ReadPhyUshort(sc, 0x11);
@@ -19947,28 +21694,15 @@ static void re_set_phy_mcu_8168h_2(struct re_softc *sc)
 static void re_set_phy_mcu_8168ep_1(struct re_softc *sc)
 {
         u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue |= BIT_4;
-        MP_WritePhyUshort(sc, 0x10, PhyRegValue);
+        re_set_phy_mcu_patch_request(sc);
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0B80);
-        WaitCnt = 0;
-        do {
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= 0x0040;
-                DELAY(50);
-                DELAY(50);
-                WaitCnt++;
-        } while(PhyRegValue != 0x0040 && WaitCnt <1000);
+        MP_WritePhyUshort(sc,0x1f, 0x0A43);
+        MP_WritePhyUshort(sc,0x13, 0x8146);
+        MP_WritePhyUshort(sc,0x14, 0x2700);
+        MP_WritePhyUshort(sc,0x13, 0xB82E);
+        MP_WritePhyUshort(sc,0x14, 0x0001);
 
-        MP_WritePhyUshort(sc, 0x1f, 0x0A43);
-        MP_WritePhyUshort(sc, 0x13, 0x8146);
-        MP_WritePhyUshort(sc, 0x14, 0x2700);
-        MP_WritePhyUshort(sc, 0x13, 0xB82E);
-        MP_WritePhyUshort(sc, 0x14, 0x0001);
 
         MP_WritePhyUshort(sc, 0x1F, 0x0A43);
         MP_WritePhyUshort(sc, 0x13, 0xb820);
@@ -20432,7 +22166,8 @@ static void re_set_phy_mcu_8168ep_1(struct re_softc *sc)
         MP_WritePhyUshort(sc, 0x13, 0xb820);
         MP_WritePhyUshort(sc, 0x14, 0x0010);
 
-        MP_WritePhyUshort(sc, 0x1F, 0x0A43);
+
+        MP_WritePhyUshort(sc,0x1F, 0x0A43);
         MP_WritePhyUshort(sc, 0x13, 0x83b0);
         MP_WritePhyUshort(sc, 0x14, 0xaf83);
         MP_WritePhyUshort(sc, 0x14, 0xbcaf);
@@ -20929,51 +22664,26 @@ static void re_set_phy_mcu_8168ep_1(struct re_softc *sc)
         MP_WritePhyUshort(sc, 0x14, 0x021b);
         MP_WritePhyUshort(sc, 0x1f, 0x0000);
 
-        MP_WritePhyUshort(sc, 0x1F, 0x0A43);
-        MP_WritePhyUshort(sc, 0x13, 0x0000);
-        MP_WritePhyUshort(sc, 0x14, 0x0000);
-        MP_WritePhyUshort(sc, 0x1f, 0x0B82);
+
+        MP_WritePhyUshort(sc,0x1F, 0x0A43);
+        MP_WritePhyUshort(sc,0x13, 0x0000);
+        MP_WritePhyUshort(sc,0x14, 0x0000);
+        MP_WritePhyUshort(sc,0x1f, 0x0B82);
         PhyRegValue = MP_ReadPhyUshort(sc, 0x17);
         PhyRegValue &= ~(BIT_0);
-        MP_WritePhyUshort(sc, 0x17, PhyRegValue);
-        if (sc->RequiredSecLanDonglePatch)
-                PhyRegValue &= ~(BIT_2);
-        MP_WritePhyUshort(sc,0x1f, 0x0000);
+        MP_WritePhyUshort(sc,0x17, PhyRegValue);
+        MP_WritePhyUshort(sc,0x1f, 0x0A43);
+        MP_WritePhyUshort(sc,0x13, 0x8146);
+        MP_WritePhyUshort(sc,0x14, 0x0000);
 
-        MP_WritePhyUshort(sc, 0x1F, 0x0003);
-        MP_WritePhyUshort(sc, 0x09, 0xA20F);
-        MP_WritePhyUshort(sc, 0x1F, 0x0000);
-        MP_WritePhyUshort(sc, 0x1F, 0x0003);
-        MP_WritePhyUshort(sc, 0x01, 0x328A);
-        MP_WritePhyUshort(sc, 0x1F, 0x0000);
-        MP_WritePhyUshort(sc, 0x1F, 0x0A43);
-        MP_WritePhyUshort(sc, 0x13, 0x8011);
-        ClearEthPhyBit(sc, 0x14, BIT_14);
-        MP_WritePhyUshort(sc, 0x1F, 0x0A40);
-        MP_WritePhyUshort(sc, 0x1F, 0x0000);
-        MP_WritePhyUshort(sc,0x1f, 0x0000);
-        MP_WritePhyUshort(sc,0x00, 0x9200);
+        re_clear_phy_mcu_patch_request(sc);
 }
 
 static void re_set_phy_mcu_8168ep_2(struct re_softc *sc)
 {
         u_int16_t PhyRegValue;
-        u_int32_t WaitCnt;
 
-        MP_WritePhyUshort(sc,0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue |= BIT_4;
-        MP_WritePhyUshort(sc,0x10, PhyRegValue);
-
-        MP_WritePhyUshort(sc,0x1f, 0x0B80);
-        WaitCnt = 0;
-        do {
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= 0x0040;
-                DELAY(50);
-                DELAY(50);
-                WaitCnt++;
-        } while(PhyRegValue != 0x0040 && WaitCnt <1000);
+        re_set_phy_mcu_patch_request(sc);
 
         MP_WritePhyUshort(sc,0x1f, 0x0A43);
         MP_WritePhyUshort(sc,0x13, 0x8146);
@@ -21024,10 +22734,2245 @@ static void re_set_phy_mcu_8168ep_2(struct re_softc *sc)
         MP_WritePhyUshort(sc,0x13, 0x8146);
         MP_WritePhyUshort(sc,0x14, 0x0000);
 
-        MP_WritePhyUshort(sc,0x1f, 0x0B82);
-        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-        PhyRegValue &= ~(BIT_4);
-        MP_WritePhyUshort(sc,0x10, PhyRegValue);
+        re_clear_phy_mcu_patch_request(sc);
+}
+
+static void
+re_real_set_phy_mcu_8125a_1(struct re_softc *sc)
+{
+        re_acquire_phy_mcu_patch_key_lock(sc);
+
+
+        SetEthPhyOcpBit(sc, 0xB820, BIT_7);
+
+
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA016);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA012);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA014);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8013);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8021);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x802f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x803d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8042);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8051);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8051);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa088);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a50);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8008);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd014);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd1a3);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x401a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd707);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x40c2);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60a6);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5f8b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a6c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8080);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd019);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd1a2);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x401a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd707);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x40c4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60a6);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5f8b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a84);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd503);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8970);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c07);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0901);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xcf09);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd705);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xceff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaf0a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1213);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8401);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8580);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1253);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd064);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd181);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4018);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc50f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd706);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2c59);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x804d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc60f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc605);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x10fd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA026);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA024);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA022);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x10f4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA020);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1252);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA006);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1206);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA004);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a78);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a60);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a4f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA008);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3f00);
+
+
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA016);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA012);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA014);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8066);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x807c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8089);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x808e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x80a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x80b2);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x80c2);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x62db);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x655c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd73e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60e9);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x614a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x61ab);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0503);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0505);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0509);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x653c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd73e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60e9);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x614a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x61ab);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0503);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0502);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0506);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x050a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd73e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60e9);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x614a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x61ab);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0505);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0506);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x050c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd73e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60e9);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x614a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x61ab);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0509);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x050a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x050c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0508);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0304);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd73e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60e9);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x614a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x61ab);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0321);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0502);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0321);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0321);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0508);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0321);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0346);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8208);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x609d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa50f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x001a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0503);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x001a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x607d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00ab);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00ab);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60fd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa50f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaa0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x017b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0503);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a05);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x017b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60fd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa50f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaa0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x01e0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0503);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a05);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x01e0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60fd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa50f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaa0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0231);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0503);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a05);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0231);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA08E);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA08C);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0221);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA08A);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x01ce);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA088);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0169);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA086);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00a6);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA084);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x000d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA082);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0308);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA080);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x029f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA090);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x007f);
+
+
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA016);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0020);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA012);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA014);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8017);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x801b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8029);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8054);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x805a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8064);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x80a7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9430);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9480);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb408);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd120);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd057);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x064b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xcb80);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9906);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0567);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xcb94);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8190);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x82a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x800a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8406);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8dff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07e4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa840);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0773);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xcb91);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4063);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd139);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd140);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd040);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07dc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa610);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa110);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa2a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4045);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa180);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x405d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa720);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0742);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07ec);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5f74);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0742);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd702);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7fb6);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8190);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x82a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8610);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07dc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x064b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07c0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5fa7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0481);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x94bc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x870c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa190);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa00a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa280);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8220);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x078e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xcb92);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa840);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4063);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd140);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd150);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd040);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd703);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6121);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x61a2);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6223);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf02f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d10);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf00f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d20);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf00a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d30);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf005);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d40);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07e4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa610);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa008);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4046);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x405d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa720);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0742);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07f7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5f74);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0742);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd702);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7fb5);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x800a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07e4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3ad4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0537);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8610);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8840);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x064b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8301);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x800a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8190);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x82a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa70c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9402);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x890c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8840);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x064b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA10E);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0642);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA10C);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0686);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA10A);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0788);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA108);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x047b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA106);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x065c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA104);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0769);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA102);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0565);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA100);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x06f9);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA110);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00ff);
+
+
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb87c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8530);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb87e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaf85);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3caf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8593);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaf85);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9caf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x85a5);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd702);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5afb);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xe083);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfb0c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x020d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x021b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x10bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86d7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86da);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfbe0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x83fc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1b10);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xda02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xdd02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5afb);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xe083);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfd0c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x020d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x021b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x10bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86dd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86e0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfbe0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x83fe);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1b10);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xe002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaf2f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbd02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2cac);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0286);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x65af);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x212b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x022c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86b6);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaf21);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cd1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x03bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8710);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x870d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8719);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8716);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x871f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x871c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8728);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8725);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8707);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfbad);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x281c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd100);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1302);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2202);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2b02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae1a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd101);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1302);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2202);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2b02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd101);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3402);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3102);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3d02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3a02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4302);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4c02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4902);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd100);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2e02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3702);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4602);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf87);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4f02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ab7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaf35);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7ff8);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfaef);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x69bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86e3);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfbbf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86fb);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86e6);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfbbf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86fe);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86e9);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfbbf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86ec);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfbbf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x025a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7bf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86ef);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0262);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7cbf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86f2);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0262);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7cbf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86f5);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0262);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7cbf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x86f8);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0262);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7cef);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x96fe);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfc04);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf8fa);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xef69);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xef02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6273);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf202);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6273);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf502);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6273);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbf86);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf802);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6273);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xef96);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfefc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0420);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb540);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x53b5);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4086);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb540);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb9b5);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x40c8);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb03a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc8b0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbac8);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb13a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc8b1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xba77);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbd26);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffbd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2677);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbd28);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffbd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2840);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbd26);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc8bd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2640);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbd28);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc8bd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x28bb);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa430);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x98b0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1eba);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb01e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xdcb0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1e98);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb09e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbab0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9edc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb09e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x98b1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1eba);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb11e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xdcb1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1e98);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb19e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbab1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9edc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb19e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x11b0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1e22);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb01e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x33b0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1e11);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb09e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x22b0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9e33);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb09e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x11b1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1e22);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb11e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x33b1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1e11);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb19e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x22b1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9e33);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb19e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb85e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2f71);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb860);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x20d9);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb862);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2109);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb864);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x34e7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb878);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x000f);
+
+
+        ClearEthPhyOcpBit(sc, 0xB820, BIT_7);
+
+
+        re_release_phy_mcu_patch_key_lock(sc);
+}
+
+static void
+re_set_phy_mcu_8125a_1(struct re_softc *sc)
+{
+        re_set_phy_mcu_patch_request(sc);
+
+        re_real_set_phy_mcu_8125a_1(sc);
+
+        re_clear_phy_mcu_patch_request(sc);
+}
+
+static void
+re_real_set_phy_mcu_8125a_2(struct re_softc *sc)
+{
+        re_acquire_phy_mcu_patch_key_lock(sc);
+
+
+        SetEthPhyOcpBit(sc, 0xB820, BIT_7);
+
+
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA016);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA012);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA014);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x808b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x808f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8093);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8097);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x809d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x80a1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x80aa);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd718);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x607b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x40da);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf00e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x42da);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf01e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd718);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x615b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1456);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x14a4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x14bc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd718);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5f2e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf01c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1456);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x14a4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x14bc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd718);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5f2e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf024);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1456);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x14a4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x14bc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd718);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5f2e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf02c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1456);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x14a4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x14bc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd718);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5f2e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf034);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd719);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4118);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xac11);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa410);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4779);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xac0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1444);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf034);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd719);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4118);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xac22);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa420);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4559);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xac0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1444);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf023);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd719);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4118);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xac44);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa440);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4339);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xac0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1444);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf012);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd719);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4118);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xac88);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa480);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xce00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4119);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xac0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1444);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf001);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1456);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd718);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5fac);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc48f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x141b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd504);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x121a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd0b4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd1bb);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0898);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd0b4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd1bb);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a0e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd064);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd18a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0b7e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x401c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd501);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa804);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8804);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x053b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd500);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa301);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0648);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc520);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa201);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x252d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1646);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd708);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4006);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1646);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0308);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA026);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0307);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA024);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1645);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA022);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0647);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA020);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x053a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA006);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0b7c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA004);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0a0c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0896);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x11a1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA008);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xff00);
+
+
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA016);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA012);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA014);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8015);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x801a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x801a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x801a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x801a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x801a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x801a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xad02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x02d7);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00ed);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0509);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xc100);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x008f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA08E);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA08C);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA08A);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA088);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA086);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA084);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA082);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x008d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA080);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00eb);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA090);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0103);
+
+
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA016);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0020);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA012);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA014);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8014);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8018);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8024);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8051);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8055);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8072);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x80dc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfffd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfffd);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8301);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x800a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8190);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x82a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa70c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x9402);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x890c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8840);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa380);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x066e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xcb91);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4063);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd139);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd140);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd040);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07e0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa610);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa110);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa2a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4085);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa180);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8280);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x405d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa720);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0743);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07f0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5f74);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0743);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd702);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7fb6);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8190);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x82a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8610);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0c0f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07e0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x066e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd158);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd04d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x03d4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x94bc);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x870c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8380);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd10d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd040);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07c4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5fb4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa190);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa00a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa280);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa404);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa220);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd130);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd040);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07c4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5fb4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xbb80);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd1c4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd074);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa301);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x604b);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa90c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0556);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xcb92);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4063);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd116);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd119);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd040);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd703);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x60a0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6241);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x63e2);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6583);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf054);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x611e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x40da);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d10);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf02f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d50);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf02a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x611e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x40da);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d20);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf021);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d60);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf01c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x611e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x40da);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d30);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf013);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d70);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf00e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x611e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x40da);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d40);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf005);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d80);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07e8);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa610);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x405d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa720);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd700);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x5ff4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa008);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd704);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x4046);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa002);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0743);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07fb);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd703);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7f6f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7f4e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7f2d);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7f0c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x800a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0cf0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0d00);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07e8);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8010);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa740);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0743);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd702);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7fb5);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd701);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3ad4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0556);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8610);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x066e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd1f5);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xd049);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x1800);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x01ec);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA10E);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x01ea);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA10C);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x06a9);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA10A);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x078a);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA108);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x03d2);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA106);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x067f);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA104);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0665);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA102);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA100);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xA110);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00fc);
+
+
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb87c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8530);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb87e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaf85);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x3caf);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8545);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaf85);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x45af);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8545);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xee82);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf900);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0103);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xaf03);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb7f8);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xe0a6);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00e1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa601);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xef01);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x58f0);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa080);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x37a1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8402);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae16);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa185);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x02ae);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x11a1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8702);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae0c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xa188);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x02ae);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x07a1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8902);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae02);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xae1c);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xe0b4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x62e1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb463);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6901);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xe4b4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x62e5);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb463);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xe0b4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x62e1);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb463);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6901);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xe4b4);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x62e5);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xb463);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xfc04);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb85e);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x03b3);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb860);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb862);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb864);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xffff);
+        MP_RealWritePhyOcpRegWord(sc, 0xA436, 0xb878);
+        MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0001);
+
+
+        ClearEthPhyOcpBit(sc, 0xB820, BIT_7);
+
+
+        re_release_phy_mcu_patch_key_lock(sc);
+}
+
+static void
+re_set_phy_mcu_8125a_2(struct re_softc *sc)
+{
+        re_set_phy_mcu_patch_request(sc);
+
+        re_real_set_phy_mcu_8125a_2(sc);
+
+        re_clear_phy_mcu_patch_request(sc);
+}
+
+static const u_int16_t phy_mcu_ram_code_8125b_1[] = {
+        0xa436, 0x8024, 0xa438, 0x3700, 0xa436, 0xB82E, 0xa438, 0x0001,
+        0xb820, 0x0090, 0xa436, 0xA016, 0xa438, 0x0000, 0xa436, 0xA012,
+        0xa438, 0x0000, 0xa436, 0xA014, 0xa438, 0x1800, 0xa438, 0x8010,
+        0xa438, 0x1800, 0xa438, 0x8025, 0xa438, 0x1800, 0xa438, 0x803a,
+        0xa438, 0x1800, 0xa438, 0x8044, 0xa438, 0x1800, 0xa438, 0x8083,
+        0xa438, 0x1800, 0xa438, 0x808d, 0xa438, 0x1800, 0xa438, 0x808d,
+        0xa438, 0x1800, 0xa438, 0x808d, 0xa438, 0xd712, 0xa438, 0x4077,
+        0xa438, 0xd71e, 0xa438, 0x4159, 0xa438, 0xd71e, 0xa438, 0x6099,
+        0xa438, 0x7f44, 0xa438, 0x1800, 0xa438, 0x1a14, 0xa438, 0x9040,
+        0xa438, 0x9201, 0xa438, 0x1800, 0xa438, 0x1b1a, 0xa438, 0xd71e,
+        0xa438, 0x2425, 0xa438, 0x1a14, 0xa438, 0xd71f, 0xa438, 0x3ce5,
+        0xa438, 0x1afb, 0xa438, 0x1800, 0xa438, 0x1b00, 0xa438, 0xd712,
+        0xa438, 0x4077, 0xa438, 0xd71e, 0xa438, 0x4159, 0xa438, 0xd71e,
+        0xa438, 0x60b9, 0xa438, 0x2421, 0xa438, 0x1c17, 0xa438, 0x1800,
+        0xa438, 0x1a14, 0xa438, 0x9040, 0xa438, 0x1800, 0xa438, 0x1c2c,
+        0xa438, 0xd71e, 0xa438, 0x2425, 0xa438, 0x1a14, 0xa438, 0xd71f,
+        0xa438, 0x3ce5, 0xa438, 0x1c0f, 0xa438, 0x1800, 0xa438, 0x1c13,
+        0xa438, 0xd702, 0xa438, 0xd501, 0xa438, 0x6072, 0xa438, 0x8401,
+        0xa438, 0xf002, 0xa438, 0xa401, 0xa438, 0x1000, 0xa438, 0x146e,
+        0xa438, 0x1800, 0xa438, 0x0b77, 0xa438, 0xd703, 0xa438, 0x665d,
+        0xa438, 0x653e, 0xa438, 0x641f, 0xa438, 0xd700, 0xa438, 0x62c4,
+        0xa438, 0x6185, 0xa438, 0x6066, 0xa438, 0x1800, 0xa438, 0x165a,
+        0xa438, 0xc101, 0xa438, 0xcb00, 0xa438, 0x1000, 0xa438, 0x1945,
+        0xa438, 0xd700, 0xa438, 0x7fa6, 0xa438, 0x1800, 0xa438, 0x807d,
+        0xa438, 0xc102, 0xa438, 0xcb00, 0xa438, 0x1000, 0xa438, 0x1945,
+        0xa438, 0xd700, 0xa438, 0x2569, 0xa438, 0x8058, 0xa438, 0x1800,
+        0xa438, 0x807d, 0xa438, 0xc104, 0xa438, 0xcb00, 0xa438, 0x1000,
+        0xa438, 0x1945, 0xa438, 0xd700, 0xa438, 0x7fa4, 0xa438, 0x1800,
+        0xa438, 0x807d, 0xa438, 0xc120, 0xa438, 0xcb00, 0xa438, 0x1000,
+        0xa438, 0x1945, 0xa438, 0xd703, 0xa438, 0x7fbf, 0xa438, 0x1800,
+        0xa438, 0x807d, 0xa438, 0xc140, 0xa438, 0xcb00, 0xa438, 0x1000,
+        0xa438, 0x1945, 0xa438, 0xd703, 0xa438, 0x7fbe, 0xa438, 0x1800,
+        0xa438, 0x807d, 0xa438, 0xc180, 0xa438, 0xcb00, 0xa438, 0x1000,
+        0xa438, 0x1945, 0xa438, 0xd703, 0xa438, 0x7fbd, 0xa438, 0xc100,
+        0xa438, 0xcb00, 0xa438, 0xd708, 0xa438, 0x6018, 0xa438, 0x1800,
+        0xa438, 0x165a, 0xa438, 0x1000, 0xa438, 0x14f6, 0xa438, 0xd014,
+        0xa438, 0xd1e3, 0xa438, 0x1000, 0xa438, 0x1356, 0xa438, 0xd705,
+        0xa438, 0x5fbe, 0xa438, 0x1800, 0xa438, 0x1559, 0xa436, 0xA026,
+        0xa438, 0xffff, 0xa436, 0xA024, 0xa438, 0xffff, 0xa436, 0xA022,
+        0xa438, 0xffff, 0xa436, 0xA020, 0xa438, 0x1557, 0xa436, 0xA006,
+        0xa438, 0x1677, 0xa436, 0xA004, 0xa438, 0x0b75, 0xa436, 0xA002,
+        0xa438, 0x1c17, 0xa436, 0xA000, 0xa438, 0x1b04, 0xa436, 0xA008,
+        0xa438, 0x1f00, 0xa436, 0xA016, 0xa438, 0x0020, 0xa436, 0xA012,
+        0xa438, 0x0000, 0xa436, 0xA014, 0xa438, 0x1800, 0xa438, 0x8010,
+        0xa438, 0x1800, 0xa438, 0x817f, 0xa438, 0x1800, 0xa438, 0x82ab,
+        0xa438, 0x1800, 0xa438, 0x83f8, 0xa438, 0x1800, 0xa438, 0x8444,
+        0xa438, 0x1800, 0xa438, 0x8454, 0xa438, 0x1800, 0xa438, 0x8459,
+        0xa438, 0x1800, 0xa438, 0x8465, 0xa438, 0xcb11, 0xa438, 0xa50c,
+        0xa438, 0x8310, 0xa438, 0xd701, 0xa438, 0x4076, 0xa438, 0x0c03,
+        0xa438, 0x0903, 0xa438, 0xd700, 0xa438, 0x6083, 0xa438, 0x0c1f,
+        0xa438, 0x0d00, 0xa438, 0xf003, 0xa438, 0x0c1f, 0xa438, 0x0d00,
+        0xa438, 0x1000, 0xa438, 0x0a7d, 0xa438, 0x1000, 0xa438, 0x0a4d,
+        0xa438, 0xcb12, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x5f84, 0xa438, 0xd102, 0xa438, 0xd040, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0xd701,
+        0xa438, 0x60f3, 0xa438, 0xd413, 0xa438, 0x1000, 0xa438, 0x0a37,
+        0xa438, 0xd410, 0xa438, 0x1000, 0xa438, 0x0a37, 0xa438, 0xcb13,
+        0xa438, 0xa108, 0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8108,
+        0xa438, 0xa00a, 0xa438, 0xa910, 0xa438, 0xa780, 0xa438, 0xd14a,
+        0xa438, 0xd048, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd701,
+        0xa438, 0x6255, 0xa438, 0xd700, 0xa438, 0x5f74, 0xa438, 0x6326,
+        0xa438, 0xd702, 0xa438, 0x5f07, 0xa438, 0x800a, 0xa438, 0xa004,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8004, 0xa438, 0xa001,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8001, 0xa438, 0x0c03,
+        0xa438, 0x0902, 0xa438, 0xffe2, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd71f, 0xa438, 0x5fab, 0xa438, 0xba08, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x7f8b, 0xa438, 0x9a08,
+        0xa438, 0x800a, 0xa438, 0xd702, 0xa438, 0x6535, 0xa438, 0xd40d,
+        0xa438, 0x1000, 0xa438, 0x0a37, 0xa438, 0xcb14, 0xa438, 0xa004,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8004, 0xa438, 0xa001,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8001, 0xa438, 0xa00a,
+        0xa438, 0xa780, 0xa438, 0xd14a, 0xa438, 0xd048, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0x6206,
+        0xa438, 0xd702, 0xa438, 0x5f47, 0xa438, 0x800a, 0xa438, 0xa004,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8004, 0xa438, 0xa001,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8001, 0xa438, 0x0c03,
+        0xa438, 0x0902, 0xa438, 0x1800, 0xa438, 0x8064, 0xa438, 0x800a,
+        0xa438, 0xd40e, 0xa438, 0x1000, 0xa438, 0x0a37, 0xa438, 0xb920,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5fac,
+        0xa438, 0x9920, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x7f8c, 0xa438, 0xd701, 0xa438, 0x6073, 0xa438, 0xd701,
+        0xa438, 0x4216, 0xa438, 0xa004, 0xa438, 0x1000, 0xa438, 0x0a42,
+        0xa438, 0x8004, 0xa438, 0xa001, 0xa438, 0x1000, 0xa438, 0x0a42,
+        0xa438, 0x8001, 0xa438, 0xd120, 0xa438, 0xd040, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0x8504,
+        0xa438, 0xcb21, 0xa438, 0xa301, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd700, 0xa438, 0x5f9f, 0xa438, 0x8301, 0xa438, 0xd704,
+        0xa438, 0x40e0, 0xa438, 0xd196, 0xa438, 0xd04d, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0xcb22,
+        0xa438, 0x1000, 0xa438, 0x0a6d, 0xa438, 0x0c03, 0xa438, 0x1502,
+        0xa438, 0xa640, 0xa438, 0x9503, 0xa438, 0x8910, 0xa438, 0x8720,
+        0xa438, 0xd700, 0xa438, 0x6083, 0xa438, 0x0c1f, 0xa438, 0x0d01,
+        0xa438, 0xf003, 0xa438, 0x0c1f, 0xa438, 0x0d01, 0xa438, 0x1000,
+        0xa438, 0x0a7d, 0xa438, 0x0c1f, 0xa438, 0x0f14, 0xa438, 0xcb23,
+        0xa438, 0x8fc0, 0xa438, 0x1000, 0xa438, 0x0a25, 0xa438, 0xaf40,
+        0xa438, 0x1000, 0xa438, 0x0a25, 0xa438, 0x0cc0, 0xa438, 0x0f80,
+        0xa438, 0x1000, 0xa438, 0x0a25, 0xa438, 0xafc0, 0xa438, 0x1000,
+        0xa438, 0x0a25, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd701,
+        0xa438, 0x5dee, 0xa438, 0xcb24, 0xa438, 0x8f1f, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd701, 0xa438, 0x7f6e, 0xa438, 0xa111,
+        0xa438, 0xa215, 0xa438, 0xa401, 0xa438, 0x8404, 0xa438, 0xa720,
+        0xa438, 0xcb25, 0xa438, 0x0c03, 0xa438, 0x1502, 0xa438, 0x8640,
+        0xa438, 0x9503, 0xa438, 0x1000, 0xa438, 0x0b43, 0xa438, 0x1000,
+        0xa438, 0x0b86, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xb920,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5fac,
+        0xa438, 0x9920, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x7f8c, 0xa438, 0xcb26, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd71f, 0xa438, 0x5f82, 0xa438, 0x8111, 0xa438, 0x8205,
+        0xa438, 0x8404, 0xa438, 0xcb27, 0xa438, 0xd404, 0xa438, 0x1000,
+        0xa438, 0x0a37, 0xa438, 0xd700, 0xa438, 0x6083, 0xa438, 0x0c1f,
+        0xa438, 0x0d02, 0xa438, 0xf003, 0xa438, 0x0c1f, 0xa438, 0x0d02,
+        0xa438, 0x1000, 0xa438, 0x0a7d, 0xa438, 0xa710, 0xa438, 0xa104,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8104, 0xa438, 0xa001,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8001, 0xa438, 0xa120,
+        0xa438, 0xaa0f, 0xa438, 0x8110, 0xa438, 0xa284, 0xa438, 0xa404,
+        0xa438, 0xa00a, 0xa438, 0xd193, 0xa438, 0xd046, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0xcb28,
+        0xa438, 0xa110, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700,
+        0xa438, 0x5fa8, 0xa438, 0x8110, 0xa438, 0x8284, 0xa438, 0xa404,
+        0xa438, 0x800a, 0xa438, 0x8710, 0xa438, 0xb804, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x7f82, 0xa438, 0x9804,
+        0xa438, 0xcb29, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x5f85, 0xa438, 0xa710, 0xa438, 0xb820, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x7f65, 0xa438, 0x9820,
+        0xa438, 0xcb2a, 0xa438, 0xa190, 0xa438, 0xa284, 0xa438, 0xa404,
+        0xa438, 0xa00a, 0xa438, 0xd13d, 0xa438, 0xd04a, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x3444, 0xa438, 0x8149,
+        0xa438, 0xa220, 0xa438, 0xd1a0, 0xa438, 0xd040, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x3444, 0xa438, 0x8151,
+        0xa438, 0xd702, 0xa438, 0x5f51, 0xa438, 0xcb2f, 0xa438, 0xa302,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd708, 0xa438, 0x5f63,
+        0xa438, 0xd411, 0xa438, 0x1000, 0xa438, 0x0a37, 0xa438, 0x8302,
+        0xa438, 0xd409, 0xa438, 0x1000, 0xa438, 0x0a37, 0xa438, 0xb920,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5fac,
+        0xa438, 0x9920, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x7f8c, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x5fa3, 0xa438, 0x8190, 0xa438, 0x82a4, 0xa438, 0x8404,
+        0xa438, 0x800a, 0xa438, 0xb808, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd71f, 0xa438, 0x7fa3, 0xa438, 0x9808, 0xa438, 0x1800,
+        0xa438, 0x0433, 0xa438, 0xcb15, 0xa438, 0xa508, 0xa438, 0xd700,
+        0xa438, 0x6083, 0xa438, 0x0c1f, 0xa438, 0x0d01, 0xa438, 0xf003,
+        0xa438, 0x0c1f, 0xa438, 0x0d01, 0xa438, 0x1000, 0xa438, 0x0a7d,
+        0xa438, 0x1000, 0xa438, 0x0a4d, 0xa438, 0xa301, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5f9f, 0xa438, 0x8301,
+        0xa438, 0xd704, 0xa438, 0x40e0, 0xa438, 0xd115, 0xa438, 0xd04f,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4,
+        0xa438, 0xd413, 0xa438, 0x1000, 0xa438, 0x0a37, 0xa438, 0xcb16,
+        0xa438, 0x1000, 0xa438, 0x0a6d, 0xa438, 0x0c03, 0xa438, 0x1502,
+        0xa438, 0xa640, 0xa438, 0x9503, 0xa438, 0x8720, 0xa438, 0xd17a,
+        0xa438, 0xd04c, 0xa438, 0x0c1f, 0xa438, 0x0f14, 0xa438, 0xcb17,
+        0xa438, 0x8fc0, 0xa438, 0x1000, 0xa438, 0x0a25, 0xa438, 0xaf40,
+        0xa438, 0x1000, 0xa438, 0x0a25, 0xa438, 0x0cc0, 0xa438, 0x0f80,
+        0xa438, 0x1000, 0xa438, 0x0a25, 0xa438, 0xafc0, 0xa438, 0x1000,
+        0xa438, 0x0a25, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd701,
+        0xa438, 0x61ce, 0xa438, 0xd700, 0xa438, 0x5db4, 0xa438, 0xcb18,
+        0xa438, 0x0c03, 0xa438, 0x1502, 0xa438, 0x8640, 0xa438, 0x9503,
+        0xa438, 0xa720, 0xa438, 0x1000, 0xa438, 0x0b43, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xffd6, 0xa438, 0x8f1f, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd701, 0xa438, 0x7f8e, 0xa438, 0xa131,
+        0xa438, 0xaa0f, 0xa438, 0xa2d5, 0xa438, 0xa407, 0xa438, 0xa720,
+        0xa438, 0x8310, 0xa438, 0xa308, 0xa438, 0x8308, 0xa438, 0xcb19,
+        0xa438, 0x0c03, 0xa438, 0x1502, 0xa438, 0x8640, 0xa438, 0x9503,
+        0xa438, 0x1000, 0xa438, 0x0b43, 0xa438, 0x1000, 0xa438, 0x0b86,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xb920, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5fac, 0xa438, 0x9920,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x7f8c,
+        0xa438, 0xcb1a, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x5f82, 0xa438, 0x8111, 0xa438, 0x82c5, 0xa438, 0xa404,
+        0xa438, 0x8402, 0xa438, 0xb804, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd71f, 0xa438, 0x7f82, 0xa438, 0x9804, 0xa438, 0xcb1b,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5f85,
+        0xa438, 0xa710, 0xa438, 0xb820, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd71f, 0xa438, 0x7f65, 0xa438, 0x9820, 0xa438, 0xcb1c,
+        0xa438, 0xd700, 0xa438, 0x6083, 0xa438, 0x0c1f, 0xa438, 0x0d02,
+        0xa438, 0xf003, 0xa438, 0x0c1f, 0xa438, 0x0d02, 0xa438, 0x1000,
+        0xa438, 0x0a7d, 0xa438, 0xa110, 0xa438, 0xa284, 0xa438, 0xa404,
+        0xa438, 0x8402, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700,
+        0xa438, 0x5fa8, 0xa438, 0xcb1d, 0xa438, 0xa180, 0xa438, 0xa402,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fa8,
+        0xa438, 0xa220, 0xa438, 0xd1f5, 0xa438, 0xd049, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x3444, 0xa438, 0x8221,
+        0xa438, 0xd702, 0xa438, 0x5f51, 0xa438, 0xb920, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5fac, 0xa438, 0x9920,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x7f8c,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5fa3,
+        0xa438, 0xa504, 0xa438, 0xd700, 0xa438, 0x6083, 0xa438, 0x0c1f,
+        0xa438, 0x0d00, 0xa438, 0xf003, 0xa438, 0x0c1f, 0xa438, 0x0d00,
+        0xa438, 0x1000, 0xa438, 0x0a7d, 0xa438, 0xa00a, 0xa438, 0x8190,
+        0xa438, 0x82a4, 0xa438, 0x8402, 0xa438, 0xa404, 0xa438, 0xb808,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x7fa3,
+        0xa438, 0x9808, 0xa438, 0xcb2b, 0xa438, 0xcb2c, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5f84, 0xa438, 0xd14a,
+        0xa438, 0xd048, 0xa438, 0xa780, 0xa438, 0xcb2d, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5f94, 0xa438, 0x6208,
+        0xa438, 0xd702, 0xa438, 0x5f27, 0xa438, 0x800a, 0xa438, 0xa004,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8004, 0xa438, 0xa001,
+        0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8001, 0xa438, 0x0c03,
+        0xa438, 0x0902, 0xa438, 0xa00a, 0xa438, 0xffe9, 0xa438, 0xcb2e,
+        0xa438, 0xd700, 0xa438, 0x6083, 0xa438, 0x0c1f, 0xa438, 0x0d02,
+        0xa438, 0xf003, 0xa438, 0x0c1f, 0xa438, 0x0d02, 0xa438, 0x1000,
+        0xa438, 0x0a7d, 0xa438, 0xa190, 0xa438, 0xa284, 0xa438, 0xa406,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fa8,
+        0xa438, 0xa220, 0xa438, 0xd1a0, 0xa438, 0xd040, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x3444, 0xa438, 0x827d,
+        0xa438, 0xd702, 0xa438, 0x5f51, 0xa438, 0xcb2f, 0xa438, 0xa302,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd708, 0xa438, 0x5f63,
+        0xa438, 0xd411, 0xa438, 0x1000, 0xa438, 0x0a37, 0xa438, 0x8302,
+        0xa438, 0xd409, 0xa438, 0x1000, 0xa438, 0x0a37, 0xa438, 0xb920,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5fac,
+        0xa438, 0x9920, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x7f8c, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x5fa3, 0xa438, 0x8190, 0xa438, 0x82a4, 0xa438, 0x8406,
+        0xa438, 0x800a, 0xa438, 0xb808, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd71f, 0xa438, 0x7fa3, 0xa438, 0x9808, 0xa438, 0x1800,
+        0xa438, 0x0433, 0xa438, 0xcb30, 0xa438, 0x8380, 0xa438, 0xcb31,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5f86,
+        0xa438, 0x9308, 0xa438, 0xb204, 0xa438, 0xb301, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd701, 0xa438, 0x5fa2, 0xa438, 0xb302,
+        0xa438, 0x9204, 0xa438, 0xcb32, 0xa438, 0xd408, 0xa438, 0x1000,
+        0xa438, 0x0a37, 0xa438, 0xd141, 0xa438, 0xd043, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0xd704,
+        0xa438, 0x4ccc, 0xa438, 0xd700, 0xa438, 0x4c81, 0xa438, 0xd702,
+        0xa438, 0x609e, 0xa438, 0xd1e5, 0xa438, 0xd04d, 0xa438, 0xf003,
+        0xa438, 0xd1e5, 0xa438, 0xd04d, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0xd700, 0xa438, 0x6083,
+        0xa438, 0x0c1f, 0xa438, 0x0d01, 0xa438, 0xf003, 0xa438, 0x0c1f,
+        0xa438, 0x0d01, 0xa438, 0x1000, 0xa438, 0x0a7d, 0xa438, 0x8710,
+        0xa438, 0xa108, 0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8108,
+        0xa438, 0xa203, 0xa438, 0x8120, 0xa438, 0x8a0f, 0xa438, 0xa111,
+        0xa438, 0x8204, 0xa438, 0xa140, 0xa438, 0x1000, 0xa438, 0x0a42,
+        0xa438, 0x8140, 0xa438, 0xd17a, 0xa438, 0xd04b, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0xa204,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fa7,
+        0xa438, 0xb920, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x5fac, 0xa438, 0x9920, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd71f, 0xa438, 0x7f8c, 0xa438, 0xd404, 0xa438, 0x1000,
+        0xa438, 0x0a37, 0xa438, 0xd700, 0xa438, 0x6083, 0xa438, 0x0c1f,
+        0xa438, 0x0d02, 0xa438, 0xf003, 0xa438, 0x0c1f, 0xa438, 0x0d02,
+        0xa438, 0x1000, 0xa438, 0x0a7d, 0xa438, 0xa710, 0xa438, 0x8101,
+        0xa438, 0x8201, 0xa438, 0xa104, 0xa438, 0x1000, 0xa438, 0x0a42,
+        0xa438, 0x8104, 0xa438, 0xa120, 0xa438, 0xaa0f, 0xa438, 0x8110,
+        0xa438, 0xa284, 0xa438, 0xa404, 0xa438, 0xa00a, 0xa438, 0xd193,
+        0xa438, 0xd047, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700,
+        0xa438, 0x5fb4, 0xa438, 0xa110, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd700, 0xa438, 0x5fa8, 0xa438, 0xa180, 0xa438, 0xd13d,
+        0xa438, 0xd04a, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700,
+        0xa438, 0x5fb4, 0xa438, 0xf024, 0xa438, 0xa710, 0xa438, 0xa00a,
+        0xa438, 0x8190, 0xa438, 0x8204, 0xa438, 0xa280, 0xa438, 0xa404,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fa7,
+        0xa438, 0x8710, 0xa438, 0xb920, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd71f, 0xa438, 0x5fac, 0xa438, 0x9920, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x7f8c, 0xa438, 0x800a,
+        0xa438, 0x8190, 0xa438, 0x8284, 0xa438, 0x8406, 0xa438, 0xd700,
+        0xa438, 0x4121, 0xa438, 0xd701, 0xa438, 0x60f3, 0xa438, 0xd1e5,
+        0xa438, 0xd04d, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700,
+        0xa438, 0x5fb4, 0xa438, 0x8710, 0xa438, 0xa00a, 0xa438, 0x8190,
+        0xa438, 0x8204, 0xa438, 0xa280, 0xa438, 0xa404, 0xa438, 0xb920,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x5fac,
+        0xa438, 0x9920, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f,
+        0xa438, 0x7f8c, 0xa438, 0xcb33, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd71f, 0xa438, 0x5f85, 0xa438, 0xa710, 0xa438, 0xb820,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd71f, 0xa438, 0x7f65,
+        0xa438, 0x9820, 0xa438, 0xcb34, 0xa438, 0xa00a, 0xa438, 0xa190,
+        0xa438, 0xa284, 0xa438, 0xa404, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd700, 0xa438, 0x5fa9, 0xa438, 0xd701, 0xa438, 0x6853,
+        0xa438, 0xd700, 0xa438, 0x6083, 0xa438, 0x0c1f, 0xa438, 0x0d00,
+        0xa438, 0xf003, 0xa438, 0x0c1f, 0xa438, 0x0d00, 0xa438, 0x1000,
+        0xa438, 0x0a7d, 0xa438, 0x8190, 0xa438, 0x8284, 0xa438, 0xcb35,
+        0xa438, 0xd407, 0xa438, 0x1000, 0xa438, 0x0a37, 0xa438, 0x8110,
+        0xa438, 0x8204, 0xa438, 0xa280, 0xa438, 0xa00a, 0xa438, 0xd704,
+        0xa438, 0x4215, 0xa438, 0xa304, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd700, 0xa438, 0x5fb8, 0xa438, 0xd1c3, 0xa438, 0xd043,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4,
+        0xa438, 0x8304, 0xa438, 0xd700, 0xa438, 0x4109, 0xa438, 0xf01e,
+        0xa438, 0xcb36, 0xa438, 0xd412, 0xa438, 0x1000, 0xa438, 0x0a37,
+        0xa438, 0xd700, 0xa438, 0x6309, 0xa438, 0xd702, 0xa438, 0x42c7,
+        0xa438, 0x800a, 0xa438, 0x8180, 0xa438, 0x8280, 0xa438, 0x8404,
+        0xa438, 0xa004, 0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8004,
+        0xa438, 0xa001, 0xa438, 0x1000, 0xa438, 0x0a42, 0xa438, 0x8001,
+        0xa438, 0x0c03, 0xa438, 0x0902, 0xa438, 0xa00a, 0xa438, 0xd14a,
+        0xa438, 0xd048, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700,
+        0xa438, 0x5fb4, 0xa438, 0xd700, 0xa438, 0x6083, 0xa438, 0x0c1f,
+        0xa438, 0x0d02, 0xa438, 0xf003, 0xa438, 0x0c1f, 0xa438, 0x0d02,
+        0xa438, 0x1000, 0xa438, 0x0a7d, 0xa438, 0xcc55, 0xa438, 0xcb37,
+        0xa438, 0xa00a, 0xa438, 0xa190, 0xa438, 0xa2a4, 0xa438, 0xa404,
+        0xa438, 0xd700, 0xa438, 0x6041, 0xa438, 0xa402, 0xa438, 0xd13d,
+        0xa438, 0xd04a, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700,
+        0xa438, 0x5fb4, 0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700,
+        0xa438, 0x5fa9, 0xa438, 0xd702, 0xa438, 0x5f71, 0xa438, 0xcb38,
+        0xa438, 0x8224, 0xa438, 0xa288, 0xa438, 0x8180, 0xa438, 0xa110,
+        0xa438, 0xa404, 0xa438, 0x800a, 0xa438, 0xd700, 0xa438, 0x6041,
+        0xa438, 0x8402, 0xa438, 0xd415, 0xa438, 0x1000, 0xa438, 0x0a37,
+        0xa438, 0xd13d, 0xa438, 0xd04a, 0xa438, 0x1000, 0xa438, 0x0a5e,
+        0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0xcb39, 0xa438, 0xa00a,
+        0xa438, 0xa190, 0xa438, 0xa2a0, 0xa438, 0xa404, 0xa438, 0xd700,
+        0xa438, 0x6041, 0xa438, 0xa402, 0xa438, 0xd17a, 0xa438, 0xd047,
+        0xa438, 0x1000, 0xa438, 0x0a5e, 0xa438, 0xd700, 0xa438, 0x5fb4,
+        0xa438, 0x1800, 0xa438, 0x0560, 0xa438, 0xa111, 0xa438, 0x0000,
+        0xa438, 0x0000, 0xa438, 0x0000, 0xa438, 0x0000, 0xa438, 0xd3f5,
+        0xa438, 0xd219, 0xa438, 0x1000, 0xa438, 0x0c31, 0xa438, 0xd708,
+        0xa438, 0x5fa5, 0xa438, 0xa215, 0xa438, 0xd30e, 0xa438, 0xd21a,
+        0xa438, 0x1000, 0xa438, 0x0c31, 0xa438, 0xd708, 0xa438, 0x63e9,
+        0xa438, 0xd708, 0xa438, 0x5f65, 0xa438, 0xd708, 0xa438, 0x7f36,
+        0xa438, 0xa004, 0xa438, 0x1000, 0xa438, 0x0c35, 0xa438, 0x8004,
+        0xa438, 0xa001, 0xa438, 0x1000, 0xa438, 0x0c35, 0xa438, 0x8001,
+        0xa438, 0xd708, 0xa438, 0x4098, 0xa438, 0xd102, 0xa438, 0x9401,
+        0xa438, 0xf003, 0xa438, 0xd103, 0xa438, 0xb401, 0xa438, 0x1000,
+        0xa438, 0x0c27, 0xa438, 0xa108, 0xa438, 0x1000, 0xa438, 0x0c35,
+        0xa438, 0x8108, 0xa438, 0x8110, 0xa438, 0x8294, 0xa438, 0xa202,
+        0xa438, 0x1800, 0xa438, 0x0bdb, 0xa438, 0xd39c, 0xa438, 0xd210,
+        0xa438, 0x1000, 0xa438, 0x0c31, 0xa438, 0xd708, 0xa438, 0x5fa5,
+        0xa438, 0xd39c, 0xa438, 0xd210, 0xa438, 0x1000, 0xa438, 0x0c31,
+        0xa438, 0xd708, 0xa438, 0x5fa5, 0xa438, 0x1000, 0xa438, 0x0c31,
+        0xa438, 0xd708, 0xa438, 0x29b5, 0xa438, 0x840e, 0xa438, 0xd708,
+        0xa438, 0x5f4a, 0xa438, 0x0c1f, 0xa438, 0x1014, 0xa438, 0x1000,
+        0xa438, 0x0c31, 0xa438, 0xd709, 0xa438, 0x7fa4, 0xa438, 0x901f,
+        0xa438, 0x1800, 0xa438, 0x0c23, 0xa438, 0xcb43, 0xa438, 0xa508,
+        0xa438, 0xd701, 0xa438, 0x3699, 0xa438, 0x844a, 0xa438, 0xa504,
+        0xa438, 0xa190, 0xa438, 0xa2a0, 0xa438, 0xa404, 0xa438, 0xa00a,
+        0xa438, 0xd700, 0xa438, 0x2109, 0xa438, 0x05ea, 0xa438, 0xa402,
+        0xa438, 0x1800, 0xa438, 0x05ea, 0xa438, 0xcb90, 0xa438, 0x0cf0,
+        0xa438, 0x0ca0, 0xa438, 0x1800, 0xa438, 0x06db, 0xa438, 0xd1ff,
+        0xa438, 0xd052, 0xa438, 0xa508, 0xa438, 0x8718, 0xa438, 0xa00a,
+        0xa438, 0xa190, 0xa438, 0xa2a0, 0xa438, 0xa404, 0xa438, 0x0cf0,
+        0xa438, 0x0c50, 0xa438, 0x1800, 0xa438, 0x09ef, 0xa438, 0x1000,
+        0xa438, 0x0a5e, 0xa438, 0xd704, 0xa438, 0x2e70, 0xa438, 0x06da,
+        0xa438, 0xd700, 0xa438, 0x5f55, 0xa438, 0xa90c, 0xa438, 0x1800,
+        0xa438, 0x0645, 0xa436, 0xA10E, 0xa438, 0x0644, 0xa436, 0xA10C,
+        0xa438, 0x09e9, 0xa436, 0xA10A, 0xa438, 0x06da, 0xa436, 0xA108,
+        0xa438, 0x05e1, 0xa436, 0xA106, 0xa438, 0x0be4, 0xa436, 0xA104,
+        0xa438, 0x0435, 0xa436, 0xA102, 0xa438, 0x0141, 0xa436, 0xA100,
+        0xa438, 0x026d, 0xa436, 0xA110, 0xa438, 0x00ff, 0xa436, 0xb87c,
+        0xa438, 0x85fe, 0xa436, 0xb87e, 0xa438, 0xaf86, 0xa438, 0x16af,
+        0xa438, 0x8699, 0xa438, 0xaf86, 0xa438, 0xe5af, 0xa438, 0x86f9,
+        0xa438, 0xaf87, 0xa438, 0x7aaf, 0xa438, 0x883a, 0xa438, 0xaf88,
+        0xa438, 0x58af, 0xa438, 0x8b6c, 0xa438, 0xd48b, 0xa438, 0x7c02,
+        0xa438, 0x8644, 0xa438, 0x2c00, 0xa438, 0x503c, 0xa438, 0xffd6,
+        0xa438, 0xac27, 0xa438, 0x18e1, 0xa438, 0x82fe, 0xa438, 0xad28,
+        0xa438, 0x0cd4, 0xa438, 0x8b84, 0xa438, 0x0286, 0xa438, 0x442c,
+        0xa438, 0x003c, 0xa438, 0xac27, 0xa438, 0x06ee, 0xa438, 0x8299,
+        0xa438, 0x01ae, 0xa438, 0x04ee, 0xa438, 0x8299, 0xa438, 0x00af,
+        0xa438, 0x23dc, 0xa438, 0xf9fa, 0xa438, 0xcefa, 0xa438, 0xfbef,
+        0xa438, 0x79fb, 0xa438, 0xc4bf, 0xa438, 0x8b76, 0xa438, 0x026c,
+        0xa438, 0x6dac, 0xa438, 0x2804, 0xa438, 0xd203, 0xa438, 0xae02,
+        0xa438, 0xd201, 0xa438, 0xbdd8, 0xa438, 0x19d9, 0xa438, 0xef94,
+        0xa438, 0x026c, 0xa438, 0x6d78, 0xa438, 0x03ef, 0xa438, 0x648a,
+        0xa438, 0x0002, 0xa438, 0xbdd8, 0xa438, 0x19d9, 0xa438, 0xef94,
+        0xa438, 0x026c, 0xa438, 0x6d78, 0xa438, 0x03ef, 0xa438, 0x7402,
+        0xa438, 0x72cd, 0xa438, 0xac50, 0xa438, 0x02ef, 0xa438, 0x643a,
+        0xa438, 0x019f, 0xa438, 0xe4ef, 0xa438, 0x4678, 0xa438, 0x03ac,
+        0xa438, 0x2002, 0xa438, 0xae02, 0xa438, 0xd0ff, 0xa438, 0xffef,
+        0xa438, 0x97ff, 0xa438, 0xfec6, 0xa438, 0xfefd, 0xa438, 0x041f,
+        0xa438, 0x771f, 0xa438, 0x221c, 0xa438, 0x450d, 0xa438, 0x481f,
+        0xa438, 0x00ac, 0xa438, 0x7f04, 0xa438, 0x1a94, 0xa438, 0xae08,
+        0xa438, 0x1a94, 0xa438, 0xac7f, 0xa438, 0x03d7, 0xa438, 0x0100,
+        0xa438, 0xef46, 0xa438, 0x0d48, 0xa438, 0x1f00, 0xa438, 0x1c45,
+        0xa438, 0xef69, 0xa438, 0xef57, 0xa438, 0xef74, 0xa438, 0x0272,
+        0xa438, 0xe8a7, 0xa438, 0xffff, 0xa438, 0x0d1a, 0xa438, 0x941b,
+        0xa438, 0x979e, 0xa438, 0x072d, 0xa438, 0x0100, 0xa438, 0x1a64,
+        0xa438, 0xef76, 0xa438, 0xef97, 0xa438, 0x0d98, 0xa438, 0xd400,
+        0xa438, 0xff1d, 0xa438, 0x941a, 0xa438, 0x89cf, 0xa438, 0x1a75,
+        0xa438, 0xaf74, 0xa438, 0xf9bf, 0xa438, 0x8b79, 0xa438, 0x026c,
+        0xa438, 0x6da1, 0xa438, 0x0005, 0xa438, 0xe180, 0xa438, 0xa0ae,
+        0xa438, 0x03e1, 0xa438, 0x80a1, 0xa438, 0xaf26, 0xa438, 0x9aac,
+        0xa438, 0x284d, 0xa438, 0xe08f, 0xa438, 0xffef, 0xa438, 0x10c0,
+        0xa438, 0xe08f, 0xa438, 0xfe10, 0xa438, 0x1b08, 0xa438, 0xa000,
+        0xa438, 0x04c8, 0xa438, 0xaf40, 0xa438, 0x67c8, 0xa438, 0xbf8b,
+        0xa438, 0x8c02, 0xa438, 0x6c4e, 0xa438, 0xc4bf, 0xa438, 0x8b8f,
+        0xa438, 0x026c, 0xa438, 0x6def, 0xa438, 0x74e0, 0xa438, 0x830c,
+        0xa438, 0xad20, 0xa438, 0x0302, 0xa438, 0x74ac, 0xa438, 0xccef,
+        0xa438, 0x971b, 0xa438, 0x76ad, 0xa438, 0x5f02, 0xa438, 0xae13,
+        0xa438, 0xef69, 0xa438, 0xef30, 0xa438, 0x1b32, 0xa438, 0xc4ef,
+        0xa438, 0x46e4, 0xa438, 0x8ffb, 0xa438, 0xe58f, 0xa438, 0xfce7,
+        0xa438, 0x8ffd, 0xa438, 0xcc10, 0xa438, 0x11ae, 0xa438, 0xb8d1,
+        0xa438, 0x00a1, 0xa438, 0x1f03, 0xa438, 0xaf40, 0xa438, 0x4fbf,
+        0xa438, 0x8b8c, 0xa438, 0x026c, 0xa438, 0x4ec4, 0xa438, 0xbf8b,
+        0xa438, 0x8f02, 0xa438, 0x6c6d, 0xa438, 0xef74, 0xa438, 0xe083,
+        0xa438, 0x0cad, 0xa438, 0x2003, 0xa438, 0x0274, 0xa438, 0xaccc,
+        0xa438, 0xef97, 0xa438, 0x1b76, 0xa438, 0xad5f, 0xa438, 0x02ae,
+        0xa438, 0x04ef, 0xa438, 0x69ef, 0xa438, 0x3111, 0xa438, 0xaed1,
+        0xa438, 0x0287, 0xa438, 0x80af, 0xa438, 0x2293, 0xa438, 0xf8f9,
+        0xa438, 0xfafb, 0xa438, 0xef59, 0xa438, 0xe080, 0xa438, 0x13ad,
+        0xa438, 0x252f, 0xa438, 0xbf88, 0xa438, 0x2802, 0xa438, 0x6c6d,
+        0xa438, 0xef64, 0xa438, 0x1f44, 0xa438, 0xe18f, 0xa438, 0xb91b,
+        0xa438, 0x64ad, 0xa438, 0x4f1d, 0xa438, 0xd688, 0xa438, 0x2bd7,
+        0xa438, 0x882e, 0xa438, 0x0274, 0xa438, 0x73ad, 0xa438, 0x5008,
+        0xa438, 0xbf88, 0xa438, 0x3102, 0xa438, 0x737c, 0xa438, 0xae03,
+        0xa438, 0x0287, 0xa438, 0xd0bf, 0xa438, 0x882b, 0xa438, 0x0273,
+        0xa438, 0x73e0, 0xa438, 0x824c, 0xa438, 0xf621, 0xa438, 0xe482,
+        0xa438, 0x4cbf, 0xa438, 0x8834, 0xa438, 0x0273, 0xa438, 0x7cef,
+        0xa438, 0x95ff, 0xa438, 0xfefd, 0xa438, 0xfc04, 0xa438, 0xf8f9,
+        0xa438, 0xfafb, 0xa438, 0xef79, 0xa438, 0xbf88, 0xa438, 0x1f02,
+        0xa438, 0x737c, 0xa438, 0x1f22, 0xa438, 0xac32, 0xa438, 0x31ef,
+        0xa438, 0x12bf, 0xa438, 0x8822, 0xa438, 0x026c, 0xa438, 0x4ed6,
+        0xa438, 0x8fba, 0xa438, 0x1f33, 0xa438, 0xac3c, 0xa438, 0x1eef,
+        0xa438, 0x13bf, 0xa438, 0x8837, 0xa438, 0x026c, 0xa438, 0x4eef,
+        0xa438, 0x96d8, 0xa438, 0x19d9, 0xa438, 0xbf88, 0xa438, 0x2502,
+        0xa438, 0x6c4e, 0xa438, 0xbf88, 0xa438, 0x2502, 0xa438, 0x6c4e,
+        0xa438, 0x1616, 0xa438, 0x13ae, 0xa438, 0xdf12, 0xa438, 0xaecc,
+        0xa438, 0xbf88, 0xa438, 0x1f02, 0xa438, 0x7373, 0xa438, 0xef97,
+        0xa438, 0xfffe, 0xa438, 0xfdfc, 0xa438, 0x0466, 0xa438, 0xac88,
+        0xa438, 0x54ac, 0xa438, 0x88f0, 0xa438, 0xac8a, 0xa438, 0x92ac,
+        0xa438, 0xbadd, 0xa438, 0xac6c, 0xa438, 0xeeac, 0xa438, 0x6cff,
+        0xa438, 0xad02, 0xa438, 0x99ac, 0xa438, 0x0030, 0xa438, 0xac88,
+        0xa438, 0xd4c3, 0xa438, 0x5000, 0xa438, 0x0000, 0xa438, 0x0000,
+        0xa438, 0x0000, 0xa438, 0x0000, 0xa438, 0x0000, 0xa438, 0x0000,
+        0xa438, 0x0000, 0xa438, 0x0000, 0xa438, 0x00b4, 0xa438, 0xecee,
+        0xa438, 0x8298, 0xa438, 0x00af, 0xa438, 0x1412, 0xa438, 0xf8bf,
+        0xa438, 0x8b5d, 0xa438, 0x026c, 0xa438, 0x6d58, 0xa438, 0x03e1,
+        0xa438, 0x8fb8, 0xa438, 0x2901, 0xa438, 0xe58f, 0xa438, 0xb8a0,
+        0xa438, 0x0049, 0xa438, 0xef47, 0xa438, 0xe483, 0xa438, 0x02e5,
+        0xa438, 0x8303, 0xa438, 0xbfc2, 0xa438, 0x5f1a, 0xa438, 0x95f7,
+        0xa438, 0x05ee, 0xa438, 0xffd2, 0xa438, 0x00d8, 0xa438, 0xf605,
+        0xa438, 0x1f11, 0xa438, 0xef60, 0xa438, 0xbf8b, 0xa438, 0x3002,
+        0xa438, 0x6c4e, 0xa438, 0xbf8b, 0xa438, 0x3302, 0xa438, 0x6c6d,
+        0xa438, 0xf728, 0xa438, 0xbf8b, 0xa438, 0x3302, 0xa438, 0x6c4e,
+        0xa438, 0xf628, 0xa438, 0xbf8b, 0xa438, 0x3302, 0xa438, 0x6c4e,
+        0xa438, 0x0c64, 0xa438, 0xef46, 0xa438, 0xbf8b, 0xa438, 0x6002,
+        0xa438, 0x6c4e, 0xa438, 0x0289, 0xa438, 0x9902, 0xa438, 0x3920,
+        0xa438, 0xaf89, 0xa438, 0x96a0, 0xa438, 0x0149, 0xa438, 0xef47,
+        0xa438, 0xe483, 0xa438, 0x04e5, 0xa438, 0x8305, 0xa438, 0xbfc2,
+        0xa438, 0x5f1a, 0xa438, 0x95f7, 0xa438, 0x05ee, 0xa438, 0xffd2,
+        0xa438, 0x00d8, 0xa438, 0xf605, 0xa438, 0x1f11, 0xa438, 0xef60,
+        0xa438, 0xbf8b, 0xa438, 0x3002, 0xa438, 0x6c4e, 0xa438, 0xbf8b,
+        0xa438, 0x3302, 0xa438, 0x6c6d, 0xa438, 0xf729, 0xa438, 0xbf8b,
+        0xa438, 0x3302, 0xa438, 0x6c4e, 0xa438, 0xf629, 0xa438, 0xbf8b,
+        0xa438, 0x3302, 0xa438, 0x6c4e, 0xa438, 0x0c64, 0xa438, 0xef46,
+        0xa438, 0xbf8b, 0xa438, 0x6302, 0xa438, 0x6c4e, 0xa438, 0x0289,
+        0xa438, 0x9902, 0xa438, 0x3920, 0xa438, 0xaf89, 0xa438, 0x96a0,
+        0xa438, 0x0249, 0xa438, 0xef47, 0xa438, 0xe483, 0xa438, 0x06e5,
+        0xa438, 0x8307, 0xa438, 0xbfc2, 0xa438, 0x5f1a, 0xa438, 0x95f7,
+        0xa438, 0x05ee, 0xa438, 0xffd2, 0xa438, 0x00d8, 0xa438, 0xf605,
+        0xa438, 0x1f11, 0xa438, 0xef60, 0xa438, 0xbf8b, 0xa438, 0x3002,
+        0xa438, 0x6c4e, 0xa438, 0xbf8b, 0xa438, 0x3302, 0xa438, 0x6c6d,
+        0xa438, 0xf72a, 0xa438, 0xbf8b, 0xa438, 0x3302, 0xa438, 0x6c4e,
+        0xa438, 0xf62a, 0xa438, 0xbf8b, 0xa438, 0x3302, 0xa438, 0x6c4e,
+        0xa438, 0x0c64, 0xa438, 0xef46, 0xa438, 0xbf8b, 0xa438, 0x6602,
+        0xa438, 0x6c4e, 0xa438, 0x0289, 0xa438, 0x9902, 0xa438, 0x3920,
+        0xa438, 0xaf89, 0xa438, 0x96ef, 0xa438, 0x47e4, 0xa438, 0x8308,
+        0xa438, 0xe583, 0xa438, 0x09bf, 0xa438, 0xc25f, 0xa438, 0x1a95,
+        0xa438, 0xf705, 0xa438, 0xeeff, 0xa438, 0xd200, 0xa438, 0xd8f6,
+        0xa438, 0x051f, 0xa438, 0x11ef, 0xa438, 0x60bf, 0xa438, 0x8b30,
+        0xa438, 0x026c, 0xa438, 0x4ebf, 0xa438, 0x8b33, 0xa438, 0x026c,
+        0xa438, 0x6df7, 0xa438, 0x2bbf, 0xa438, 0x8b33, 0xa438, 0x026c,
+        0xa438, 0x4ef6, 0xa438, 0x2bbf, 0xa438, 0x8b33, 0xa438, 0x026c,
+        0xa438, 0x4e0c, 0xa438, 0x64ef, 0xa438, 0x46bf, 0xa438, 0x8b69,
+        0xa438, 0x026c, 0xa438, 0x4e02, 0xa438, 0x8999, 0xa438, 0x0239,
+        0xa438, 0x20af, 0xa438, 0x8996, 0xa438, 0xaf39, 0xa438, 0x1ef8,
+        0xa438, 0xf9fa, 0xa438, 0xe08f, 0xa438, 0xb838, 0xa438, 0x02ad,
+        0xa438, 0x2702, 0xa438, 0xae03, 0xa438, 0xaf8b, 0xa438, 0x201f,
+        0xa438, 0x66ef, 0xa438, 0x65bf, 0xa438, 0xc21f, 0xa438, 0x1a96,
+        0xa438, 0xf705, 0xa438, 0xeeff, 0xa438, 0xd200, 0xa438, 0xdaf6,
+        0xa438, 0x05bf, 0xa438, 0xc22f, 0xa438, 0x1a96, 0xa438, 0xf705,
+        0xa438, 0xeeff, 0xa438, 0xd200, 0xa438, 0xdbf6, 0xa438, 0x05ef,
+        0xa438, 0x021f, 0xa438, 0x110d, 0xa438, 0x42bf, 0xa438, 0x8b3c,
+        0xa438, 0x026c, 0xa438, 0x4eef, 0xa438, 0x021b, 0xa438, 0x031f,
+        0xa438, 0x110d, 0xa438, 0x42bf, 0xa438, 0x8b36, 0xa438, 0x026c,
+        0xa438, 0x4eef, 0xa438, 0x021a, 0xa438, 0x031f, 0xa438, 0x110d,
+        0xa438, 0x42bf, 0xa438, 0x8b39, 0xa438, 0x026c, 0xa438, 0x4ebf,
+        0xa438, 0xc23f, 0xa438, 0x1a96, 0xa438, 0xf705, 0xa438, 0xeeff,
+        0xa438, 0xd200, 0xa438, 0xdaf6, 0xa438, 0x05bf, 0xa438, 0xc24f,
+        0xa438, 0x1a96, 0xa438, 0xf705, 0xa438, 0xeeff, 0xa438, 0xd200,
+        0xa438, 0xdbf6, 0xa438, 0x05ef, 0xa438, 0x021f, 0xa438, 0x110d,
+        0xa438, 0x42bf, 0xa438, 0x8b45, 0xa438, 0x026c, 0xa438, 0x4eef,
+        0xa438, 0x021b, 0xa438, 0x031f, 0xa438, 0x110d, 0xa438, 0x42bf,
+        0xa438, 0x8b3f, 0xa438, 0x026c, 0xa438, 0x4eef, 0xa438, 0x021a,
+        0xa438, 0x031f, 0xa438, 0x110d, 0xa438, 0x42bf, 0xa438, 0x8b42,
+        0xa438, 0x026c, 0xa438, 0x4eef, 0xa438, 0x56d0, 0xa438, 0x201f,
+        0xa438, 0x11bf, 0xa438, 0x8b4e, 0xa438, 0x026c, 0xa438, 0x4ebf,
+        0xa438, 0x8b48, 0xa438, 0x026c, 0xa438, 0x4ebf, 0xa438, 0x8b4b,
+        0xa438, 0x026c, 0xa438, 0x4ee1, 0xa438, 0x8578, 0xa438, 0xef03,
+        0xa438, 0x480a, 0xa438, 0x2805, 0xa438, 0xef20, 0xa438, 0x1b01,
+        0xa438, 0xad27, 0xa438, 0x3f1f, 0xa438, 0x44e0, 0xa438, 0x8560,
+        0xa438, 0xe185, 0xa438, 0x61bf, 0xa438, 0x8b51, 0xa438, 0x026c,
+        0xa438, 0x4ee0, 0xa438, 0x8566, 0xa438, 0xe185, 0xa438, 0x67bf,
+        0xa438, 0x8b54, 0xa438, 0x026c, 0xa438, 0x4ee0, 0xa438, 0x856c,
+        0xa438, 0xe185, 0xa438, 0x6dbf, 0xa438, 0x8b57, 0xa438, 0x026c,
+        0xa438, 0x4ee0, 0xa438, 0x8572, 0xa438, 0xe185, 0xa438, 0x73bf,
+        0xa438, 0x8b5a, 0xa438, 0x026c, 0xa438, 0x4ee1, 0xa438, 0x8fb8,
+        0xa438, 0x5900, 0xa438, 0xf728, 0xa438, 0xe58f, 0xa438, 0xb8af,
+        0xa438, 0x8b2c, 0xa438, 0xe185, 0xa438, 0x791b, 0xa438, 0x21ad,
+        0xa438, 0x373e, 0xa438, 0x1f44, 0xa438, 0xe085, 0xa438, 0x62e1,
+        0xa438, 0x8563, 0xa438, 0xbf8b, 0xa438, 0x5102, 0xa438, 0x6c4e,
+        0xa438, 0xe085, 0xa438, 0x68e1, 0xa438, 0x8569, 0xa438, 0xbf8b,
+        0xa438, 0x5402, 0xa438, 0x6c4e, 0xa438, 0xe085, 0xa438, 0x6ee1,
+        0xa438, 0x856f, 0xa438, 0xbf8b, 0xa438, 0x5702, 0xa438, 0x6c4e,
+        0xa438, 0xe085, 0xa438, 0x74e1, 0xa438, 0x8575, 0xa438, 0xbf8b,
+        0xa438, 0x5a02, 0xa438, 0x6c4e, 0xa438, 0xe18f, 0xa438, 0xb859,
+        0xa438, 0x00f7, 0xa438, 0x28e5, 0xa438, 0x8fb8, 0xa438, 0xae4a,
+        0xa438, 0x1f44, 0xa438, 0xe085, 0xa438, 0x64e1, 0xa438, 0x8565,
+        0xa438, 0xbf8b, 0xa438, 0x5102, 0xa438, 0x6c4e, 0xa438, 0xe085,
+        0xa438, 0x6ae1, 0xa438, 0x856b, 0xa438, 0xbf8b, 0xa438, 0x5402,
+        0xa438, 0x6c4e, 0xa438, 0xe085, 0xa438, 0x70e1, 0xa438, 0x8571,
+        0xa438, 0xbf8b, 0xa438, 0x5702, 0xa438, 0x6c4e, 0xa438, 0xe085,
+        0xa438, 0x76e1, 0xa438, 0x8577, 0xa438, 0xbf8b, 0xa438, 0x5a02,
+        0xa438, 0x6c4e, 0xa438, 0xe18f, 0xa438, 0xb859, 0xa438, 0x00f7,
+        0xa438, 0x28e5, 0xa438, 0x8fb8, 0xa438, 0xae0c, 0xa438, 0xe18f,
+        0xa438, 0xb839, 0xa438, 0x04ac, 0xa438, 0x2f04, 0xa438, 0xee8f,
+        0xa438, 0xb800, 0xa438, 0xfefd, 0xa438, 0xfc04, 0xa438, 0xf0ac,
+        0xa438, 0x8efc, 0xa438, 0xac8c, 0xa438, 0xf0ac, 0xa438, 0xfaf0,
+        0xa438, 0xacf8, 0xa438, 0xf0ac, 0xa438, 0xf6f0, 0xa438, 0xad00,
+        0xa438, 0xf0ac, 0xa438, 0xfef0, 0xa438, 0xacfc, 0xa438, 0xf0ac,
+        0xa438, 0xf4f0, 0xa438, 0xacf2, 0xa438, 0xf0ac, 0xa438, 0xf0f0,
+        0xa438, 0xacb0, 0xa438, 0xf0ac, 0xa438, 0xaef0, 0xa438, 0xacac,
+        0xa438, 0xf0ac, 0xa438, 0xaaf0, 0xa438, 0xacee, 0xa438, 0xf0b0,
+        0xa438, 0x24f0, 0xa438, 0xb0a4, 0xa438, 0xf0b1, 0xa438, 0x24f0,
+        0xa438, 0xb1a4, 0xa438, 0xee8f, 0xa438, 0xb800, 0xa438, 0xd400,
+        0xa438, 0x00af, 0xa438, 0x3976, 0xa438, 0x66ac, 0xa438, 0xeabb,
+        0xa438, 0xa430, 0xa438, 0x6e50, 0xa438, 0x6e53, 0xa438, 0x6e56,
+        0xa438, 0x6e59, 0xa438, 0x6e5c, 0xa438, 0x6e5f, 0xa438, 0x6e62,
+        0xa438, 0x6e65, 0xa438, 0xd9ac, 0xa438, 0x70f0, 0xa438, 0xac6a,
+        0xa436, 0xb85e, 0xa438, 0x23b7, 0xa436, 0xb860, 0xa438, 0x74db,
+        0xa436, 0xb862, 0xa438, 0x268c, 0xa436, 0xb864, 0xa438, 0x3FE5,
+        0xa436, 0xb886, 0xa438, 0x2250, 0xa436, 0xb888, 0xa438, 0x140e,
+        0xa436, 0xb88a, 0xa438, 0x3696, 0xa436, 0xb88c, 0xa438, 0x3973,
+        0xa436, 0xb838, 0xa438, 0x00ff, 0xb820, 0x0010, 0xa436, 0x8464,
+        0xa438, 0xaf84, 0xa438, 0x7caf, 0xa438, 0x8485, 0xa438, 0xaf85,
+        0xa438, 0x13af, 0xa438, 0x851e, 0xa438, 0xaf85, 0xa438, 0xb9af,
+        0xa438, 0x8684, 0xa438, 0xaf87, 0xa438, 0x01af, 0xa438, 0x8701,
+        0xa438, 0xac38, 0xa438, 0x03af, 0xa438, 0x38bb, 0xa438, 0xaf38,
+        0xa438, 0xc302, 0xa438, 0x4618, 0xa438, 0xbf85, 0xa438, 0x0a02,
+        0xa438, 0x54b7, 0xa438, 0xbf85, 0xa438, 0x1002, 0xa438, 0x54c0,
+        0xa438, 0xd400, 0xa438, 0x0fbf, 0xa438, 0x8507, 0xa438, 0x024f,
+        0xa438, 0x48bf, 0xa438, 0x8504, 0xa438, 0x024f, 0xa438, 0x6759,
+        0xa438, 0xf0a1, 0xa438, 0x3008, 0xa438, 0xbf85, 0xa438, 0x0d02,
+        0xa438, 0x54c0, 0xa438, 0xae06, 0xa438, 0xbf85, 0xa438, 0x0d02,
+        0xa438, 0x54b7, 0xa438, 0xbf85, 0xa438, 0x0402, 0xa438, 0x4f67,
+        0xa438, 0xa183, 0xa438, 0x02ae, 0xa438, 0x15a1, 0xa438, 0x8502,
+        0xa438, 0xae10, 0xa438, 0x59f0, 0xa438, 0xa180, 0xa438, 0x16bf,
+        0xa438, 0x8501, 0xa438, 0x024f, 0xa438, 0x67a1, 0xa438, 0x381b,
+        0xa438, 0xae0b, 0xa438, 0xe18f, 0xa438, 0xffbf, 0xa438, 0x84fe,
+        0xa438, 0x024f, 0xa438, 0x48ae, 0xa438, 0x17bf, 0xa438, 0x84fe,
+        0xa438, 0x0254, 0xa438, 0xb7bf, 0xa438, 0x84fb, 0xa438, 0x0254,
+        0xa438, 0xb7ae, 0xa438, 0x09a1, 0xa438, 0x5006, 0xa438, 0xbf84,
+        0xa438, 0xfb02, 0xa438, 0x54c0, 0xa438, 0xaf04, 0xa438, 0x4700,
+        0xa438, 0xad34, 0xa438, 0xfdad, 0xa438, 0x0670, 0xa438, 0xae14,
+        0xa438, 0xf0a6, 0xa438, 0x00b8, 0xa438, 0xbd32, 0xa438, 0x30bd,
+        0xa438, 0x30aa, 0xa438, 0xbd2c, 0xa438, 0xccbd, 0xa438, 0x2ca1,
+        0xa438, 0x0705, 0xa438, 0xec80, 0xa438, 0xaf40, 0xa438, 0xf7af,
+        0xa438, 0x40f5, 0xa438, 0xd101, 0xa438, 0xbf85, 0xa438, 0xa402,
+        0xa438, 0x4f48, 0xa438, 0xbf85, 0xa438, 0xa702, 0xa438, 0x54c0,
+        0xa438, 0xd10f, 0xa438, 0xbf85, 0xa438, 0xaa02, 0xa438, 0x4f48,
+        0xa438, 0x024d, 0xa438, 0x6abf, 0xa438, 0x85ad, 0xa438, 0x024f,
+        0xa438, 0x67bf, 0xa438, 0x8ff7, 0xa438, 0xddbf, 0xa438, 0x85b0,
+        0xa438, 0x024f, 0xa438, 0x67bf, 0xa438, 0x8ff8, 0xa438, 0xddbf,
+        0xa438, 0x85b3, 0xa438, 0x024f, 0xa438, 0x67bf, 0xa438, 0x8ff9,
+        0xa438, 0xddbf, 0xa438, 0x85b6, 0xa438, 0x024f, 0xa438, 0x67bf,
+        0xa438, 0x8ffa, 0xa438, 0xddd1, 0xa438, 0x00bf, 0xa438, 0x85aa,
+        0xa438, 0x024f, 0xa438, 0x4802, 0xa438, 0x4d6a, 0xa438, 0xbf85,
+        0xa438, 0xad02, 0xa438, 0x4f67, 0xa438, 0xbf8f, 0xa438, 0xfbdd,
+        0xa438, 0xbf85, 0xa438, 0xb002, 0xa438, 0x4f67, 0xa438, 0xbf8f,
+        0xa438, 0xfcdd, 0xa438, 0xbf85, 0xa438, 0xb302, 0xa438, 0x4f67,
+        0xa438, 0xbf8f, 0xa438, 0xfddd, 0xa438, 0xbf85, 0xa438, 0xb602,
+        0xa438, 0x4f67, 0xa438, 0xbf8f, 0xa438, 0xfedd, 0xa438, 0xbf85,
+        0xa438, 0xa702, 0xa438, 0x54b7, 0xa438, 0xbf85, 0xa438, 0xa102,
+        0xa438, 0x54b7, 0xa438, 0xaf3c, 0xa438, 0x2066, 0xa438, 0xb800,
+        0xa438, 0xb8bd, 0xa438, 0x30ee, 0xa438, 0xbd2c, 0xa438, 0xb8bd,
+        0xa438, 0x7040, 0xa438, 0xbd86, 0xa438, 0xc8bd, 0xa438, 0x8640,
+        0xa438, 0xbd88, 0xa438, 0xc8bd, 0xa438, 0x8802, 0xa438, 0x1929,
+        0xa438, 0xa202, 0xa438, 0x02ae, 0xa438, 0x03a2, 0xa438, 0x032e,
+        0xa438, 0xd10f, 0xa438, 0xbf85, 0xa438, 0xaa02, 0xa438, 0x4f48,
+        0xa438, 0xe18f, 0xa438, 0xf7bf, 0xa438, 0x85ad, 0xa438, 0x024f,
+        0xa438, 0x48e1, 0xa438, 0x8ff8, 0xa438, 0xbf85, 0xa438, 0xb002,
+        0xa438, 0x4f48, 0xa438, 0xe18f, 0xa438, 0xf9bf, 0xa438, 0x85b3,
+        0xa438, 0x024f, 0xa438, 0x48e1, 0xa438, 0x8ffa, 0xa438, 0xbf85,
+        0xa438, 0xb602, 0xa438, 0x4f48, 0xa438, 0xae2c, 0xa438, 0xd100,
+        0xa438, 0xbf85, 0xa438, 0xaa02, 0xa438, 0x4f48, 0xa438, 0xe18f,
+        0xa438, 0xfbbf, 0xa438, 0x85ad, 0xa438, 0x024f, 0xa438, 0x48e1,
+        0xa438, 0x8ffc, 0xa438, 0xbf85, 0xa438, 0xb002, 0xa438, 0x4f48,
+        0xa438, 0xe18f, 0xa438, 0xfdbf, 0xa438, 0x85b3, 0xa438, 0x024f,
+        0xa438, 0x48e1, 0xa438, 0x8ffe, 0xa438, 0xbf85, 0xa438, 0xb602,
+        0xa438, 0x4f48, 0xa438, 0xbf86, 0xa438, 0x7e02, 0xa438, 0x4f67,
+        0xa438, 0xa100, 0xa438, 0x02ae, 0xa438, 0x25a1, 0xa438, 0x041d,
+        0xa438, 0xe18f, 0xa438, 0xf1bf, 0xa438, 0x8675, 0xa438, 0x024f,
+        0xa438, 0x48e1, 0xa438, 0x8ff2, 0xa438, 0xbf86, 0xa438, 0x7802,
+        0xa438, 0x4f48, 0xa438, 0xe18f, 0xa438, 0xf3bf, 0xa438, 0x867b,
+        0xa438, 0x024f, 0xa438, 0x48ae, 0xa438, 0x29a1, 0xa438, 0x070b,
+        0xa438, 0xae24, 0xa438, 0xbf86, 0xa438, 0x8102, 0xa438, 0x4f67,
+        0xa438, 0xad28, 0xa438, 0x1be1, 0xa438, 0x8ff4, 0xa438, 0xbf86,
+        0xa438, 0x7502, 0xa438, 0x4f48, 0xa438, 0xe18f, 0xa438, 0xf5bf,
+        0xa438, 0x8678, 0xa438, 0x024f, 0xa438, 0x48e1, 0xa438, 0x8ff6,
+        0xa438, 0xbf86, 0xa438, 0x7b02, 0xa438, 0x4f48, 0xa438, 0xaf09,
+        0xa438, 0x8420, 0xa438, 0xbc32, 0xa438, 0x20bc, 0xa438, 0x3e76,
+        0xa438, 0xbc08, 0xa438, 0xfda6, 0xa438, 0x1a00, 0xa438, 0xb64e,
+        0xa438, 0xd101, 0xa438, 0xbf85, 0xa438, 0xa402, 0xa438, 0x4f48,
+        0xa438, 0xbf85, 0xa438, 0xa702, 0xa438, 0x54c0, 0xa438, 0xd10f,
+        0xa438, 0xbf85, 0xa438, 0xaa02, 0xa438, 0x4f48, 0xa438, 0x024d,
+        0xa438, 0x6abf, 0xa438, 0x85ad, 0xa438, 0x024f, 0xa438, 0x67bf,
+        0xa438, 0x8ff7, 0xa438, 0xddbf, 0xa438, 0x85b0, 0xa438, 0x024f,
+        0xa438, 0x67bf, 0xa438, 0x8ff8, 0xa438, 0xddbf, 0xa438, 0x85b3,
+        0xa438, 0x024f, 0xa438, 0x67bf, 0xa438, 0x8ff9, 0xa438, 0xddbf,
+        0xa438, 0x85b6, 0xa438, 0x024f, 0xa438, 0x67bf, 0xa438, 0x8ffa,
+        0xa438, 0xddd1, 0xa438, 0x00bf, 0xa438, 0x85aa, 0xa438, 0x024f,
+        0xa438, 0x4802, 0xa438, 0x4d6a, 0xa438, 0xbf85, 0xa438, 0xad02,
+        0xa438, 0x4f67, 0xa438, 0xbf8f, 0xa438, 0xfbdd, 0xa438, 0xbf85,
+        0xa438, 0xb002, 0xa438, 0x4f67, 0xa438, 0xbf8f, 0xa438, 0xfcdd,
+        0xa438, 0xbf85, 0xa438, 0xb302, 0xa438, 0x4f67, 0xa438, 0xbf8f,
+        0xa438, 0xfddd, 0xa438, 0xbf85, 0xa438, 0xb602, 0xa438, 0x4f67,
+        0xa438, 0xbf8f, 0xa438, 0xfedd, 0xa438, 0xbf85, 0xa438, 0xa702,
+        0xa438, 0x54b7, 0xa438, 0xaf00, 0xa438, 0x8800, 0xa436, 0xb818,
+        0xa438, 0x38b8, 0xa436, 0xb81a, 0xa438, 0x0444, 0xa436, 0xb81c,
+        0xa438, 0x40ee, 0xa436, 0xb81e, 0xa438, 0x3C1A, 0xa436, 0xb850,
+        0xa438, 0x0981, 0xa436, 0xb852, 0xa438, 0x0085, 0xa436, 0xb878,
+        0xa438, 0xffff, 0xa436, 0xb884, 0xa438, 0xffff, 0xa436, 0xb832,
+        0xa438, 0x003f, 0xa436, 0x0000, 0xa438, 0x0000, 0xa436, 0xB82E,
+        0xa438, 0x0000, 0xa436, 0x8024, 0xa438, 0x0000, 0xb820, 0x0000,
+        0xa436, 0x801E, 0xa438, 0x0021, 0xFFFF, 0xFFFF
+};
+
+static const u_int16_t phy_mcu_ram_code_8125b_2[] = {
+        0xa436, 0x8024, 0xa438, 0x3701, 0xa436, 0xB82E, 0xa438, 0x0001,
+        0xb820, 0x0090, 0xa436, 0xA016, 0xa438, 0x0000, 0xa436, 0xA012,
+        0xa438, 0x0000, 0xa436, 0xA014, 0xa438, 0x1800, 0xa438, 0x8010,
+        0xa438, 0x1800, 0xa438, 0x801a, 0xa438, 0x1800, 0xa438, 0x8024,
+        0xa438, 0x1800, 0xa438, 0x802f, 0xa438, 0x1800, 0xa438, 0x8051,
+        0xa438, 0x1800, 0xa438, 0x8057, 0xa438, 0x1800, 0xa438, 0x8063,
+        0xa438, 0x1800, 0xa438, 0x8068, 0xa438, 0xd093, 0xa438, 0xd1c4,
+        0xa438, 0x1000, 0xa438, 0x135c, 0xa438, 0xd704, 0xa438, 0x5fbc,
+        0xa438, 0xd504, 0xa438, 0xc9f1, 0xa438, 0x1800, 0xa438, 0x0fc9,
+        0xa438, 0xbb50, 0xa438, 0xd505, 0xa438, 0xa202, 0xa438, 0xd504,
+        0xa438, 0x8c0f, 0xa438, 0xd500, 0xa438, 0x1000, 0xa438, 0x1519,
+        0xa438, 0x1800, 0xa438, 0x1548, 0xa438, 0x2f70, 0xa438, 0x802a,
+        0xa438, 0x2f73, 0xa438, 0x156a, 0xa438, 0x1800, 0xa438, 0x155c,
+        0xa438, 0xd505, 0xa438, 0xa202, 0xa438, 0xd500, 0xa438, 0x1800,
+        0xa438, 0x1551, 0xa438, 0xc0c1, 0xa438, 0xc0c0, 0xa438, 0xd05a,
+        0xa438, 0xd1ba, 0xa438, 0xd701, 0xa438, 0x2529, 0xa438, 0x022a,
+        0xa438, 0xd0a7, 0xa438, 0xd1b9, 0xa438, 0xa208, 0xa438, 0x1000,
+        0xa438, 0x080e, 0xa438, 0xd701, 0xa438, 0x408b, 0xa438, 0x1000,
+        0xa438, 0x0a65, 0xa438, 0xf003, 0xa438, 0x1000, 0xa438, 0x0a6b,
+        0xa438, 0xd701, 0xa438, 0x1000, 0xa438, 0x0920, 0xa438, 0x1000,
+        0xa438, 0x0915, 0xa438, 0x1000, 0xa438, 0x0909, 0xa438, 0x228f,
+        0xa438, 0x8038, 0xa438, 0x9801, 0xa438, 0xd71e, 0xa438, 0x5d61,
+        0xa438, 0xd701, 0xa438, 0x1800, 0xa438, 0x022a, 0xa438, 0x2005,
+        0xa438, 0x091a, 0xa438, 0x3bd9, 0xa438, 0x0919, 0xa438, 0x1800,
+        0xa438, 0x0916, 0xa438, 0x1000, 0xa438, 0x14c5, 0xa438, 0xd703,
+        0xa438, 0x3181, 0xa438, 0x8061, 0xa438, 0x60ad, 0xa438, 0x1000,
+        0xa438, 0x135c, 0xa438, 0xd703, 0xa438, 0x5fba, 0xa438, 0x1800,
+        0xa438, 0x0cc7, 0xa438, 0xd096, 0xa438, 0xd1a9, 0xa438, 0xd503,
+        0xa438, 0x1800, 0xa438, 0x0c94, 0xa436, 0xA026, 0xa438, 0xffff,
+        0xa436, 0xA024, 0xa438, 0x0c93, 0xa436, 0xA022, 0xa438, 0x0cc5,
+        0xa436, 0xA020, 0xa438, 0x0915, 0xa436, 0xA006, 0xa438, 0x020a,
+        0xa436, 0xA004, 0xa438, 0x155b, 0xa436, 0xA002, 0xa438, 0x1542,
+        0xa436, 0xA000, 0xa438, 0x0fc7, 0xa436, 0xA008, 0xa438, 0x7f00,
+        0xa436, 0xA016, 0xa438, 0x0010, 0xa436, 0xA012, 0xa438, 0x0000,
+        0xa436, 0xA014, 0xa438, 0x1800, 0xa438, 0x8010, 0xa438, 0x1800,
+        0xa438, 0x801d, 0xa438, 0x1800, 0xa438, 0x802c, 0xa438, 0x1800,
+        0xa438, 0x802c, 0xa438, 0x1800, 0xa438, 0x802c, 0xa438, 0x1800,
+        0xa438, 0x802c, 0xa438, 0x1800, 0xa438, 0x802c, 0xa438, 0x1800,
+        0xa438, 0x802c, 0xa438, 0xd700, 0xa438, 0x6090, 0xa438, 0x60d1,
+        0xa438, 0xc95c, 0xa438, 0xf007, 0xa438, 0x60b1, 0xa438, 0xc95a,
+        0xa438, 0xf004, 0xa438, 0xc956, 0xa438, 0xf002, 0xa438, 0xc94e,
+        0xa438, 0x1800, 0xa438, 0x00cd, 0xa438, 0xd700, 0xa438, 0x6090,
+        0xa438, 0x60d1, 0xa438, 0xc95c, 0xa438, 0xf007, 0xa438, 0x60b1,
+        0xa438, 0xc95a, 0xa438, 0xf004, 0xa438, 0xc956, 0xa438, 0xf002,
+        0xa438, 0xc94e, 0xa438, 0x1000, 0xa438, 0x022a, 0xa438, 0x1800,
+        0xa438, 0x0132, 0xa436, 0xA08E, 0xa438, 0xffff, 0xa436, 0xA08C,
+        0xa438, 0xffff, 0xa436, 0xA08A, 0xa438, 0xffff, 0xa436, 0xA088,
+        0xa438, 0xffff, 0xa436, 0xA086, 0xa438, 0xffff, 0xa436, 0xA084,
+        0xa438, 0xffff, 0xa436, 0xA082, 0xa438, 0x012f, 0xa436, 0xA080,
+        0xa438, 0x00cc, 0xa436, 0xA090, 0xa438, 0x0103, 0xa436, 0xA016,
+        0xa438, 0x0020, 0xa436, 0xA012, 0xa438, 0x0000, 0xa436, 0xA014,
+        0xa438, 0x1800, 0xa438, 0x8010, 0xa438, 0x1800, 0xa438, 0x8020,
+        0xa438, 0x1800, 0xa438, 0x802a, 0xa438, 0x1800, 0xa438, 0x8035,
+        0xa438, 0x1800, 0xa438, 0x803c, 0xa438, 0x1800, 0xa438, 0x803c,
+        0xa438, 0x1800, 0xa438, 0x803c, 0xa438, 0x1800, 0xa438, 0x803c,
+        0xa438, 0xd107, 0xa438, 0xd042, 0xa438, 0xa404, 0xa438, 0x1000,
+        0xa438, 0x09df, 0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0x8280,
+        0xa438, 0xd700, 0xa438, 0x6065, 0xa438, 0xd125, 0xa438, 0xf002,
+        0xa438, 0xd12b, 0xa438, 0xd040, 0xa438, 0x1800, 0xa438, 0x077f,
+        0xa438, 0x0cf0, 0xa438, 0x0c50, 0xa438, 0xd104, 0xa438, 0xd040,
+        0xa438, 0x1000, 0xa438, 0x0aa8, 0xa438, 0xd700, 0xa438, 0x5fb4,
+        0xa438, 0x1800, 0xa438, 0x0a2e, 0xa438, 0xcb9b, 0xa438, 0xd110,
+        0xa438, 0xd040, 0xa438, 0x1000, 0xa438, 0x0b7b, 0xa438, 0x1000,
+        0xa438, 0x09df, 0xa438, 0xd700, 0xa438, 0x5fb4, 0xa438, 0x1800,
+        0xa438, 0x081b, 0xa438, 0x1000, 0xa438, 0x09df, 0xa438, 0xd704,
+        0xa438, 0x7fb8, 0xa438, 0xa718, 0xa438, 0x1800, 0xa438, 0x074e,
+        0xa436, 0xA10E, 0xa438, 0xffff, 0xa436, 0xA10C, 0xa438, 0xffff,
+        0xa436, 0xA10A, 0xa438, 0xffff, 0xa436, 0xA108, 0xa438, 0xffff,
+        0xa436, 0xA106, 0xa438, 0x074d, 0xa436, 0xA104, 0xa438, 0x0818,
+        0xa436, 0xA102, 0xa438, 0x0a2c, 0xa436, 0xA100, 0xa438, 0x077e,
+        0xa436, 0xA110, 0xa438, 0x000f, 0xa436, 0xb87c, 0xa438, 0x8625,
+        0xa436, 0xb87e, 0xa438, 0xaf86, 0xa438, 0x3daf, 0xa438, 0x8689,
+        0xa438, 0xaf88, 0xa438, 0x69af, 0xa438, 0x8887, 0xa438, 0xaf88,
+        0xa438, 0x9caf, 0xa438, 0x889c, 0xa438, 0xaf88, 0xa438, 0x9caf,
+        0xa438, 0x889c, 0xa438, 0xbf86, 0xa438, 0x49d7, 0xa438, 0x0040,
+        0xa438, 0x0277, 0xa438, 0x7daf, 0xa438, 0x2727, 0xa438, 0x0000,
+        0xa438, 0x7205, 0xa438, 0x0000, 0xa438, 0x7208, 0xa438, 0x0000,
+        0xa438, 0x71f3, 0xa438, 0x0000, 0xa438, 0x71f6, 0xa438, 0x0000,
+        0xa438, 0x7229, 0xa438, 0x0000, 0xa438, 0x722c, 0xa438, 0x0000,
+        0xa438, 0x7217, 0xa438, 0x0000, 0xa438, 0x721a, 0xa438, 0x0000,
+        0xa438, 0x721d, 0xa438, 0x0000, 0xa438, 0x7211, 0xa438, 0x0000,
+        0xa438, 0x7220, 0xa438, 0x0000, 0xa438, 0x7214, 0xa438, 0x0000,
+        0xa438, 0x722f, 0xa438, 0x0000, 0xa438, 0x7223, 0xa438, 0x0000,
+        0xa438, 0x7232, 0xa438, 0x0000, 0xa438, 0x7226, 0xa438, 0xf8f9,
+        0xa438, 0xfae0, 0xa438, 0x85b3, 0xa438, 0x3802, 0xa438, 0xad27,
+        0xa438, 0x02ae, 0xa438, 0x03af, 0xa438, 0x8830, 0xa438, 0x1f66,
+        0xa438, 0xef65, 0xa438, 0xbfc2, 0xa438, 0x1f1a, 0xa438, 0x96f7,
+        0xa438, 0x05ee, 0xa438, 0xffd2, 0xa438, 0x00da, 0xa438, 0xf605,
+        0xa438, 0xbfc2, 0xa438, 0x2f1a, 0xa438, 0x96f7, 0xa438, 0x05ee,
+        0xa438, 0xffd2, 0xa438, 0x00db, 0xa438, 0xf605, 0xa438, 0xef02,
+        0xa438, 0x1f11, 0xa438, 0x0d42, 0xa438, 0xbf88, 0xa438, 0x4202,
+        0xa438, 0x6e7d, 0xa438, 0xef02, 0xa438, 0x1b03, 0xa438, 0x1f11,
+        0xa438, 0x0d42, 0xa438, 0xbf88, 0xa438, 0x4502, 0xa438, 0x6e7d,
+        0xa438, 0xef02, 0xa438, 0x1a03, 0xa438, 0x1f11, 0xa438, 0x0d42,
+        0xa438, 0xbf88, 0xa438, 0x4802, 0xa438, 0x6e7d, 0xa438, 0xbfc2,
+        0xa438, 0x3f1a, 0xa438, 0x96f7, 0xa438, 0x05ee, 0xa438, 0xffd2,
+        0xa438, 0x00da, 0xa438, 0xf605, 0xa438, 0xbfc2, 0xa438, 0x4f1a,
+        0xa438, 0x96f7, 0xa438, 0x05ee, 0xa438, 0xffd2, 0xa438, 0x00db,
+        0xa438, 0xf605, 0xa438, 0xef02, 0xa438, 0x1f11, 0xa438, 0x0d42,
+        0xa438, 0xbf88, 0xa438, 0x4b02, 0xa438, 0x6e7d, 0xa438, 0xef02,
+        0xa438, 0x1b03, 0xa438, 0x1f11, 0xa438, 0x0d42, 0xa438, 0xbf88,
+        0xa438, 0x4e02, 0xa438, 0x6e7d, 0xa438, 0xef02, 0xa438, 0x1a03,
+        0xa438, 0x1f11, 0xa438, 0x0d42, 0xa438, 0xbf88, 0xa438, 0x5102,
+        0xa438, 0x6e7d, 0xa438, 0xef56, 0xa438, 0xd020, 0xa438, 0x1f11,
+        0xa438, 0xbf88, 0xa438, 0x5402, 0xa438, 0x6e7d, 0xa438, 0xbf88,
+        0xa438, 0x5702, 0xa438, 0x6e7d, 0xa438, 0xbf88, 0xa438, 0x5a02,
+        0xa438, 0x6e7d, 0xa438, 0xe185, 0xa438, 0xa0ef, 0xa438, 0x0348,
+        0xa438, 0x0a28, 0xa438, 0x05ef, 0xa438, 0x201b, 0xa438, 0x01ad,
+        0xa438, 0x2735, 0xa438, 0x1f44, 0xa438, 0xe085, 0xa438, 0x88e1,
+        0xa438, 0x8589, 0xa438, 0xbf88, 0xa438, 0x5d02, 0xa438, 0x6e7d,
+        0xa438, 0xe085, 0xa438, 0x8ee1, 0xa438, 0x858f, 0xa438, 0xbf88,
+        0xa438, 0x6002, 0xa438, 0x6e7d, 0xa438, 0xe085, 0xa438, 0x94e1,
+        0xa438, 0x8595, 0xa438, 0xbf88, 0xa438, 0x6302, 0xa438, 0x6e7d,
+        0xa438, 0xe085, 0xa438, 0x9ae1, 0xa438, 0x859b, 0xa438, 0xbf88,
+        0xa438, 0x6602, 0xa438, 0x6e7d, 0xa438, 0xaf88, 0xa438, 0x3cbf,
+        0xa438, 0x883f, 0xa438, 0x026e, 0xa438, 0x9cad, 0xa438, 0x2835,
+        0xa438, 0x1f44, 0xa438, 0xe08f, 0xa438, 0xf8e1, 0xa438, 0x8ff9,
+        0xa438, 0xbf88, 0xa438, 0x5d02, 0xa438, 0x6e7d, 0xa438, 0xe08f,
+        0xa438, 0xfae1, 0xa438, 0x8ffb, 0xa438, 0xbf88, 0xa438, 0x6002,
+        0xa438, 0x6e7d, 0xa438, 0xe08f, 0xa438, 0xfce1, 0xa438, 0x8ffd,
+        0xa438, 0xbf88, 0xa438, 0x6302, 0xa438, 0x6e7d, 0xa438, 0xe08f,
+        0xa438, 0xfee1, 0xa438, 0x8fff, 0xa438, 0xbf88, 0xa438, 0x6602,
+        0xa438, 0x6e7d, 0xa438, 0xaf88, 0xa438, 0x3ce1, 0xa438, 0x85a1,
+        0xa438, 0x1b21, 0xa438, 0xad37, 0xa438, 0x341f, 0xa438, 0x44e0,
+        0xa438, 0x858a, 0xa438, 0xe185, 0xa438, 0x8bbf, 0xa438, 0x885d,
+        0xa438, 0x026e, 0xa438, 0x7de0, 0xa438, 0x8590, 0xa438, 0xe185,
+        0xa438, 0x91bf, 0xa438, 0x8860, 0xa438, 0x026e, 0xa438, 0x7de0,
+        0xa438, 0x8596, 0xa438, 0xe185, 0xa438, 0x97bf, 0xa438, 0x8863,
+        0xa438, 0x026e, 0xa438, 0x7de0, 0xa438, 0x859c, 0xa438, 0xe185,
+        0xa438, 0x9dbf, 0xa438, 0x8866, 0xa438, 0x026e, 0xa438, 0x7dae,
+        0xa438, 0x401f, 0xa438, 0x44e0, 0xa438, 0x858c, 0xa438, 0xe185,
+        0xa438, 0x8dbf, 0xa438, 0x885d, 0xa438, 0x026e, 0xa438, 0x7de0,
+        0xa438, 0x8592, 0xa438, 0xe185, 0xa438, 0x93bf, 0xa438, 0x8860,
+        0xa438, 0x026e, 0xa438, 0x7de0, 0xa438, 0x8598, 0xa438, 0xe185,
+        0xa438, 0x99bf, 0xa438, 0x8863, 0xa438, 0x026e, 0xa438, 0x7de0,
+        0xa438, 0x859e, 0xa438, 0xe185, 0xa438, 0x9fbf, 0xa438, 0x8866,
+        0xa438, 0x026e, 0xa438, 0x7dae, 0xa438, 0x0ce1, 0xa438, 0x85b3,
+        0xa438, 0x3904, 0xa438, 0xac2f, 0xa438, 0x04ee, 0xa438, 0x85b3,
+        0xa438, 0x00af, 0xa438, 0x39d9, 0xa438, 0x22ac, 0xa438, 0xeaf0,
+        0xa438, 0xacf6, 0xa438, 0xf0ac, 0xa438, 0xfaf0, 0xa438, 0xacf8,
+        0xa438, 0xf0ac, 0xa438, 0xfcf0, 0xa438, 0xad00, 0xa438, 0xf0ac,
+        0xa438, 0xfef0, 0xa438, 0xacf0, 0xa438, 0xf0ac, 0xa438, 0xf4f0,
+        0xa438, 0xacf2, 0xa438, 0xf0ac, 0xa438, 0xb0f0, 0xa438, 0xacae,
+        0xa438, 0xf0ac, 0xa438, 0xacf0, 0xa438, 0xacaa, 0xa438, 0xa100,
+        0xa438, 0x0ce1, 0xa438, 0x8ff7, 0xa438, 0xbf88, 0xa438, 0x8402,
+        0xa438, 0x6e7d, 0xa438, 0xaf26, 0xa438, 0xe9e1, 0xa438, 0x8ff6,
+        0xa438, 0xbf88, 0xa438, 0x8402, 0xa438, 0x6e7d, 0xa438, 0xaf26,
+        0xa438, 0xf520, 0xa438, 0xac86, 0xa438, 0xbf88, 0xa438, 0x3f02,
+        0xa438, 0x6e9c, 0xa438, 0xad28, 0xa438, 0x03af, 0xa438, 0x3324,
+        0xa438, 0xad38, 0xa438, 0x03af, 0xa438, 0x32e6, 0xa438, 0xaf32,
+        0xa438, 0xfb00, 0xa436, 0xb87c, 0xa438, 0x8ff6, 0xa436, 0xb87e,
+        0xa438, 0x0705, 0xa436, 0xb87c, 0xa438, 0x8ff8, 0xa436, 0xb87e,
+        0xa438, 0x19cc, 0xa436, 0xb87c, 0xa438, 0x8ffa, 0xa436, 0xb87e,
+        0xa438, 0x28e3, 0xa436, 0xb87c, 0xa438, 0x8ffc, 0xa436, 0xb87e,
+        0xa438, 0x1047, 0xa436, 0xb87c, 0xa438, 0x8ffe, 0xa436, 0xb87e,
+        0xa438, 0x0a45, 0xa436, 0xb85e, 0xa438, 0x271E, 0xa436, 0xb860,
+        0xa438, 0x3846, 0xa436, 0xb862, 0xa438, 0x26E6, 0xa436, 0xb864,
+        0xa438, 0x32E3, 0xa436, 0xb886, 0xa438, 0xffff, 0xa436, 0xb888,
+        0xa438, 0xffff, 0xa436, 0xb88a, 0xa438, 0xffff, 0xa436, 0xb88c,
+        0xa438, 0xffff, 0xa436, 0xb838, 0xa438, 0x000f, 0xb820, 0x0010,
+        0xa436, 0x0000, 0xa438, 0x0000, 0xa436, 0xB82E, 0xa438, 0x0000,
+        0xa436, 0x8024, 0xa438, 0x0000, 0xb820, 0x0000, 0xa436, 0x801E,
+        0xa438, 0x0016, 0xFFFF, 0xFFFF
+};
+
+static void
+re_real_set_phy_mcu_8125b_1(struct re_softc *sc)
+{
+        re_set_phy_mcu_ram_code(sc,
+                                phy_mcu_ram_code_8125b_1,
+                                ARRAY_SIZE(phy_mcu_ram_code_8125b_1)
+                               );
+}
+
+static void
+re_set_phy_mcu_8125b_1(struct re_softc *sc)
+{
+        re_set_phy_mcu_patch_request(sc);
+
+        re_real_set_phy_mcu_8125b_1(sc);
+
+        re_clear_phy_mcu_patch_request(sc);
+}
+
+static void
+re_real_set_phy_mcu_8125b_2(struct re_softc *sc)
+{
+        re_set_phy_mcu_ram_code(sc,
+                                phy_mcu_ram_code_8125b_2,
+                                ARRAY_SIZE(phy_mcu_ram_code_8125b_2)
+                               );
+}
+
+static void
+re_set_phy_mcu_8125b_2(struct re_softc *sc)
+{
+        re_set_phy_mcu_patch_request(sc);
+
+        re_real_set_phy_mcu_8125b_2(sc);
+
+        re_clear_phy_mcu_patch_request(sc);
 }
 
 static void re_init_hw_phy_mcu(struct re_softc *sc)
@@ -21077,11 +25022,56 @@ static void re_init_hw_phy_mcu(struct re_softc *sc)
         case MACFG_69:
                 re_set_phy_mcu_8168h_2(sc);
                 break;
+        case MACFG_80:
+                re_set_phy_mcu_8125a_1(sc);
+                break;
+        case MACFG_81:
+                re_set_phy_mcu_8125a_2(sc);
+                break;
+        case MACFG_82:
+                re_set_phy_mcu_8125b_1(sc);
+                break;
+        case MACFG_83:
+                re_set_phy_mcu_8125b_2(sc);
+                break;
         }
 
         re_write_hw_phy_mcu_code_ver(sc);
 
         MP_WritePhyUshort(sc, 0x1F, 0x0000);
+}
+
+static void re_set_hw_phy_before_init_phy_mcu(struct re_softc *sc)
+{
+        device_t dev = sc->dev;
+        u_int16_t PhyRegValue;
+
+        switch (sc->re_type) {
+        case MACFG_82:
+        case MACFG_83:
+                MP_RealWritePhyOcpRegWord(sc, 0xBF86, 0x9000);
+
+                SetEthPhyOcpBit(sc, 0xC402, BIT_10);
+                ClearEthPhyOcpBit(sc, 0xC402, BIT_10);
+
+                PhyRegValue = MP_RealReadPhyOcpRegWord(sc, 0xBF86);
+                PhyRegValue &= (BIT_1 | BIT_0);
+                if (PhyRegValue != 0)
+                        device_printf(dev, "PHY watch dog not clear, value = 0x%x \n", PhyRegValue);
+
+                MP_RealWritePhyOcpRegWord(sc, 0xBD86, 0x1010);
+                MP_RealWritePhyOcpRegWord(sc, 0xBD88, 0x1010);
+
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xBD4E,
+                                        BIT_11 | BIT_10,
+                                        BIT_11);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xBF46,
+                                        BIT_11 | BIT_10 | BIT_9 | BIT_8,
+                                        BIT_10 | BIT_9 | BIT_8);
+                break;
+        }
 }
 
 static void re_hw_phy_config(struct re_softc *sc)
@@ -21090,16 +25080,29 @@ static void re_hw_phy_config(struct re_softc *sc)
         u_int32_t Data_u32;
         u_int16_t dout_tapbin;
         int	i;
+        struct ifnet *ifp = RE_GET_IFNET(sc);
 
-        if (sc->re_type == MACFG_59 || sc->re_type == MACFG_60 ||
-            sc->re_type == MACFG_62 || sc->re_type == MACFG_67 ||
-            sc->re_type == MACFG_68 || sc->re_type == MACFG_69 ||
-            sc->re_type == MACFG_70 || sc->re_type == MACFG_71) {
-                MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0000);
-                MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0500);
+        switch (sc->re_type) {
+        case MACFG_59:
+        case MACFG_60:
+        case MACFG_62:
+        case MACFG_67:
+        case MACFG_68:
+        case MACFG_69:
+        case MACFG_70:
+        case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                re_disable_ocp_phy_power_saving(sc);
+                break;
         }
 
         if (HW_DASH_SUPPORT_TYPE_3(sc) && sc->HwPkgDet == 0x06) return;
+
+        re_set_hw_phy_before_init_phy_mcu(sc);
 
         if (FALSE == re_phy_ram_code_check(sc)) {
                 re_set_phy_ram_code_check_fail_flag(sc);
@@ -25060,15 +29063,6 @@ static void re_hw_phy_config(struct re_softc *sc)
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
                 MP_WritePhyUshort(sc, 0x00, 0x9200);
         } else if (sc->re_type == MACFG_61) {
-                MP_WritePhyUshort(sc, 0x1f, 0x0A43);
-                MP_WritePhyUshort(sc, 0x13, 0x8146);
-                MP_WritePhyUshort(sc, 0x14, 0x0000);
-
-                MP_WritePhyUshort(sc, 0x1f, 0x0B82);
-                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
-                PhyRegValue &= ~(BIT_4);
-                MP_WritePhyUshort(sc, 0x10, PhyRegValue);
-
                 MP_WritePhyUshort(sc, 0x1F, 0x0A44);
                 SetEthPhyBit(sc, 0x11, (BIT_3 | BIT_2));
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
@@ -25665,6 +29659,26 @@ static void re_hw_phy_config(struct re_softc *sc)
                 }
 
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
+                MP_WritePhyUshort(sc, 0x13, 0x85FE);
+                ClearAndSetEthPhyBit(
+                        sc,
+                        0x14,
+                        BIT_15|BIT_14|BIT_13|BIT_12|BIT_11|BIT_10|BIT_8,
+                        BIT_9);
+                MP_WritePhyUshort(sc, 0x13, 0x85FF);
+                ClearAndSetEthPhyBit(
+                        sc,
+                        0x14,
+                        BIT_15|BIT_14|BIT_13|BIT_12,
+                        BIT_11|BIT_10|BIT_9|BIT_8);
+                MP_WritePhyUshort(sc, 0x13, 0x814B);
+                ClearAndSetEthPhyBit(
+                        sc,
+                        0x14,
+                        BIT_15|BIT_14|BIT_13|BIT_11|BIT_10|BIT_9|BIT_8,
+                        BIT_12);
+
+                MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 MP_WritePhyUshort(sc, 0x13, 0x8045);
                 MP_WritePhyUshort(sc, 0x14, 0x2444);
                 MP_WritePhyUshort(sc, 0x13, 0x804d);
@@ -25676,7 +29690,8 @@ static void re_hw_phy_config(struct re_softc *sc)
                 MP_WritePhyUshort(sc, 0x1F, 0x0A40);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
                 MP_WritePhyUshort(sc, 0x00, 0x9200);
-        }  else if (sc->re_type == MACFG_70 || sc->re_type == MACFG_71) {
+        }  else if (sc->re_type == MACFG_70 || sc->re_type == MACFG_71 ||
+                    sc->re_type == MACFG_72) {
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 MP_WritePhyUshort(sc, 0x13, 0x808E);
                 ClearAndSetEthPhyBit(sc,
@@ -25801,7 +29816,7 @@ static void re_hw_phy_config(struct re_softc *sc)
                 SetEthPhyBit(sc, 0x14, BIT_10);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
 
-                if (phy_power_saving == 1) {
+                if (phy_power_saving == 1 && !HW_SUPP_SERDES_PHY(sc)) {
                         MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                         SetEthPhyBit(sc, 0x10, BIT_2);
                         MP_WritePhyUshort(sc, 0x1F, 0x0000);
@@ -25824,7 +29839,894 @@ static void re_hw_phy_config(struct re_softc *sc)
                 MP_WritePhyUshort(sc, 0x1F, 0x0A40);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
                 MP_WritePhyUshort(sc, 0x00, 0x9200);
+        } else if (sc->re_type == MACFG_80) {
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAD40,
+                                        0x03FF,
+                                        0x84
+                                       );
+
+                SetEthPhyOcpBit(sc, 0xAD4E, BIT_4);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAD16,
+                                        0x03FF,
+                                        0x0006
+                                       );
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAD32,
+                                        0x003F,
+                                        0x0006
+                                       );
+                ClearEthPhyOcpBit(sc, 0xAC08, BIT_12);
+                ClearEthPhyOcpBit(sc, 0xAC08, BIT_8);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAC8A,
+                                        BIT_15|BIT_14|BIT_13|BIT_12,
+                                        BIT_14|BIT_13|BIT_12
+                                       );
+                SetEthPhyOcpBit(sc, 0xAD18, BIT_10);
+                SetEthPhyOcpBit(sc, 0xAD1A, 0x3FF);
+                SetEthPhyOcpBit(sc, 0xAD1C, 0x3FF);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80EA);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0xC400
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80EB);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0x0700,
+                                        0x0300
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80F8);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x1C00
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80F1);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x3000
+                                       );
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80FE);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0xA500
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8102);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x5000
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8105);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x3300
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8100);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x7000
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8104);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0xF000
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8106);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x6500
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80DC);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0xED00
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80DF);
+                SetEthPhyOcpBit(sc, 0xA438, BIT_8);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80E1);
+                ClearEthPhyOcpBit(sc, 0xA438, BIT_8);
+
+
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xBF06,
+                                        0x003F,
+                                        0x38
+                                       );
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x819F);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xD0B6);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xBC34, 0x5555);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xBF0A,
+                                        BIT_11|BIT_10|BIT_9,
+                                        BIT_11|BIT_9
+                                       );
+
+
+                ClearEthPhyOcpBit(sc, 0xA5C0, BIT_10);
+
+
+                SetEthPhyOcpBit(sc, 0xA442, BIT_11);
+
+
+                if (phy_power_saving == 1) {
+                        SetEthPhyOcpBit(sc, 0xA430, BIT_2);
+                } else {
+                        ClearEthPhyOcpBit(sc, 0xA430, BIT_2);
+                        DELAY(20000);
+                }
+        } else if (sc->re_type == MACFG_81) {
+                SetEthPhyOcpBit(sc, 0xAD4E, BIT_4);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAD16,
+                                        0x03FF,
+                                        0x03FF
+                                       );
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAD32,
+                                        0x003F,
+                                        0x0006
+                                       );
+                ClearEthPhyOcpBit(sc, 0xAC08, BIT_12);
+                ClearEthPhyOcpBit(sc, 0xAC08, BIT_8);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xACC0,
+                                        BIT_1|BIT_0,
+                                        BIT_1
+                                       );
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAD40,
+                                        BIT_7|BIT_6|BIT_5,
+                                        BIT_6
+                                       );
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAD40,
+                                        BIT_2|BIT_1|BIT_0,
+                                        BIT_2
+                                       );
+                ClearEthPhyOcpBit(sc, 0xAC14, BIT_7);
+                ClearEthPhyOcpBit(sc, 0xAC80, BIT_9|BIT_8);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAC5E,
+                                        BIT_2|BIT_1|BIT_0,
+                                        BIT_1
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xAD4C, 0x00A8);
+                MP_RealWritePhyOcpRegWord(sc, 0xAC5C, 0x01FF);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAC8A,
+                                        BIT_7|BIT_6|BIT_5|BIT_4,
+                                        BIT_5|BIT_4
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8157);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xB87E,
+                                        0xFF00,
+                                        0x0500
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8159);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xB87E,
+                                        0xFF00,
+                                        0x0700
+                                       );
+
+
+                CSR_WRITE_2(sc, RE_EEE_TXIDLE_TIMER_8125, ifp->if_mtu + ETHER_HDR_LEN + 0x20);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x80A2);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0153);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x809C);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0153);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x81B3);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0043);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00A7);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00D6);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00EC);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00F6);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00FB);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00FD);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00FF);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x00BB);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0058);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0029);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0013);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0009);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0004);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0002);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0000);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8257);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x020F);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80EA);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x7843);
+
+
+                re_set_phy_mcu_patch_request(sc);
+
+                ClearEthPhyOcpBit(sc, 0xB896, BIT_0);
+                ClearEthPhyOcpBit(sc, 0xB892, 0xFF00);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC091);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x6E12);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC092);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x1214);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC094);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x1516);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC096);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x171B);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC098);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x1B1C);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC09A);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x1F1F);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC09C);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x2021);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC09E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x2224);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC0A0);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x2424);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC0A2);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x2424);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC0A4);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x2424);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC018);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x0AF2);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC01A);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x0D4A);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC01C);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x0F26);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC01E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x118D);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC020);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x14F3);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC022);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x175A);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC024);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x19C0);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC026);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x1C26);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC089);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x6050);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC08A);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x5F6E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC08C);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x6E6E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC08E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x6E6E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC090);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x6E12);
+
+                SetEthPhyOcpBit(sc, 0xB896, BIT_0);
+
+                re_clear_phy_mcu_patch_request(sc);
+
+
+                SetEthPhyOcpBit(sc, 0xD068, BIT_13);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x81A2);
+                SetEthPhyOcpBit(sc, 0xA438, BIT_8);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xB54C,
+                                        0xFF00,
+                                        0xDB00);
+
+
+                ClearEthPhyOcpBit(sc, 0xA454, BIT_0);
+
+
+                SetEthPhyOcpBit(sc, 0xA5D4, BIT_5);
+                ClearEthPhyOcpBit(sc, 0xAD4E, BIT_4);
+                ClearEthPhyOcpBit(sc, 0xA86A, BIT_0);
+
+
+                SetEthPhyOcpBit(sc, 0xA442, BIT_11);
+
+
+                if (sc->RequirePhyMdiSwapPatch) {
+                        u_int16_t adccal_offset_p0;
+                        u_int16_t adccal_offset_p1;
+                        u_int16_t adccal_offset_p2;
+                        u_int16_t adccal_offset_p3;
+                        u_int16_t rg_lpf_cap_xg_p0;
+                        u_int16_t rg_lpf_cap_xg_p1;
+                        u_int16_t rg_lpf_cap_xg_p2;
+                        u_int16_t rg_lpf_cap_xg_p3;
+                        u_int16_t rg_lpf_cap_p0;
+                        u_int16_t rg_lpf_cap_p1;
+                        u_int16_t rg_lpf_cap_p2;
+                        u_int16_t rg_lpf_cap_p3;
+
+                        //	GPHY OCP 0xD068 bit[2:0] = 0x1 ([2:1]:subadc,[0]:offset)
+                        //	GPHY OCP 0xD068 bit[4:3] = 0x0 (p0)
+                        //	adccal_offset_p0 = GPHY OCP 0xD06A bit[10:0]
+                        //	GPHY OCP 0xD068 bit[4:3] = 0x1 (p1)
+                        //	adccal_offset_p1 = GPHY OCP 0xD06A bit[10:0]
+                        //	GPHY OCP 0xD068 bit[4:3] = 0x2 (p2)
+                        //	adccal_offset_p2 = GPHY OCP 0xD06A bit[10:0]
+                        //	GPHY OCP 0xD068 bit[4:3] = 0x3 (p3)
+                        //	adccal_offset_p3 = GPHY OCP 0xD06A bit[10:0]
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD068,
+                                                0x0007,
+                                                0x0001
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD068,
+                                                0x0018,
+                                                0x0000
+                                               );
+                        adccal_offset_p0 = MP_RealReadPhyOcpRegWord(sc, 0xD06A);
+                        adccal_offset_p0 &= 0x07FF;
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD068,
+                                                0x0018,
+                                                0x0008
+                                               );
+                        adccal_offset_p1 = MP_RealReadPhyOcpRegWord(sc, 0xD06A);
+                        adccal_offset_p1 &= 0x07FF;
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD068,
+                                                0x0018,
+                                                0x0010
+                                               );
+                        adccal_offset_p2 = MP_RealReadPhyOcpRegWord(sc, 0xD06A);
+                        adccal_offset_p2 &= 0x07FF;
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD068,
+                                                0x0018,
+                                                0x0018
+                                               );
+                        adccal_offset_p3 = MP_RealReadPhyOcpRegWord(sc, 0xD06A);
+                        adccal_offset_p3 &= 0x07FF;
+
+
+                        //	GPHY OCP 0xD068 bit[4:3] = 0x0 (p0)
+                        //	GPHY OCP 0xD06A bit[10:0] = adccal_offset_p3
+                        //	GPHY OCP 0xD068 bit[4:3] = 0x1 (p1)
+                        //	GPHY OCP 0xD06A bit[10:0] = adccal_offset_p2
+                        //	GPHY OCP 0xD068 bit[4:3] = 0x2 (p2)
+                        //	GPHY OCP 0xD06A bit[10:0] = adccal_offset_p1
+                        //	GPHY OCP 0xD068 bit[4:3] = 0x3 (p3)
+                        //	GPHY OCP 0xD06A bit[10:0] = adccal_offset_p0
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD068,
+                                                0x0018,
+                                                0x0000
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD06A,
+                                                0x07FF,
+                                                adccal_offset_p3
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD068,
+                                                0x0018,
+                                                0x0008
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD06A,
+                                                0x07FF,
+                                                adccal_offset_p2
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD068,
+                                                0x0018,
+                                                0x0010
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD06A,
+                                                0x07FF,
+                                                adccal_offset_p1
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD068,
+                                                0x0018,
+                                                0x0018
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xD06A,
+                                                0x07FF,
+                                                adccal_offset_p0
+                                               );
+                        //	rg_lpf_cap_xg_p0 = GPHY OCP 0xBD5A bit[4:0]
+                        //	rg_lpf_cap_xg_p1 = GPHY OCP 0xBD5A bit[12:8]
+                        //	rg_lpf_cap_xg_p2 = GPHY OCP 0xBD5C bit[4:0]
+                        //	rg_lpf_cap_xg_p3 = GPHY OCP 0xBD5C bit[12:8]
+                        //	rg_lpf_cap_p0 = GPHY OCP 0xBC18 bit[4:0]
+                        //	rg_lpf_cap_p1 = GPHY OCP 0xBC18 bit[12:8]
+                        //	rg_lpf_cap_p2 = GPHY OCP 0xBC1A bit[4:0]
+                        //	rg_lpf_cap_p3 = GPHY OCP 0xBC1A bit[12:8]
+                        rg_lpf_cap_xg_p0 = MP_RealReadPhyOcpRegWord(sc, 0xBD5A);
+                        rg_lpf_cap_xg_p0 &= 0x001F;
+                        rg_lpf_cap_xg_p1 = MP_RealReadPhyOcpRegWord(sc, 0xBD5A);
+                        rg_lpf_cap_xg_p1 &= 0x1F00;
+                        rg_lpf_cap_xg_p2 = MP_RealReadPhyOcpRegWord(sc, 0xBD5C);
+                        rg_lpf_cap_xg_p2 &= 0x001F;
+                        rg_lpf_cap_xg_p3 = MP_RealReadPhyOcpRegWord(sc, 0xBD5C);
+                        rg_lpf_cap_xg_p3 &= 0x1F00;
+                        rg_lpf_cap_p0 = MP_RealReadPhyOcpRegWord(sc, 0xBC18);
+                        rg_lpf_cap_p0 &= 0x001F;
+                        rg_lpf_cap_p1 = MP_RealReadPhyOcpRegWord(sc, 0xBC18);
+                        rg_lpf_cap_p1 &= 0x1F00;
+                        rg_lpf_cap_p2 = MP_RealReadPhyOcpRegWord(sc, 0xBC1A);
+                        rg_lpf_cap_p2 &= 0x001F;
+                        rg_lpf_cap_p3 = MP_RealReadPhyOcpRegWord(sc, 0xBC1A);
+                        rg_lpf_cap_p3 &= 0x1F00;
+
+                        //	GPHY OCP 0xBD5A bit[4:0] = rg_lpf_cap_xg_p3
+                        //	GPHY OCP 0xBD5A bit[12:8] = rg_lpf_cap_xg_p2
+                        //	GPHY OCP 0xBD5C bit[4:0] = rg_lpf_cap_xg_p1
+                        //	GPHY OCP 0xBD5C bit[12:8] = rg_lpf_cap_xg_p0
+                        //	GPHY OCP 0xBC18 bit[4:0] = rg_lpf_cap_p3
+                        //	GPHY OCP 0xBC18 bit[12:8] = rg_lpf_cap_p2
+                        //	GPHY OCP 0xBC1A bit[4:0] = rg_lpf_cap_p1
+                        //	GPHY OCP 0xBC1A bit[12:8] = rg_lpf_cap_p0
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xBD5A,
+                                                0x001F,
+                                                rg_lpf_cap_xg_p3 >> 8
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xBD5A,
+                                                0x1F00,
+                                                rg_lpf_cap_xg_p2 << 8
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xBD5C,
+                                                0x001F,
+                                                rg_lpf_cap_xg_p1 >> 8
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xBD5C,
+                                                0x1F00,
+                                                rg_lpf_cap_xg_p0 << 8
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xBC18,
+                                                0x001F,
+                                                rg_lpf_cap_p3 >> 8
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xBC18,
+                                                0x1F00,
+                                                rg_lpf_cap_p2 << 8
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xBC1A,
+                                                0x001F,
+                                                rg_lpf_cap_p1 >> 8
+                                               );
+                        ClearAndSetEthPhyOcpBit(sc,
+                                                0xBC1A,
+                                                0x1F00,
+                                                rg_lpf_cap_p0 << 8
+                                               );
+                }
+
+
+                if (phy_power_saving == 1) {
+                        SetEthPhyOcpBit(sc, 0xA430, BIT_2);
+                } else {
+                        ClearEthPhyOcpBit(sc, 0xA430, BIT_2);
+                        DELAY(20000);
+                }
+        } else if (sc->re_type == MACFG_82) {
+                SetEthPhyOcpBit(sc, 0xA442, BIT_11);
+
+
+                SetEthPhyOcpBit(sc, 0xBC08, (BIT_3 | BIT_2));
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8FFF);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x0400
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8560);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x19CC);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8562);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x19CC);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8564);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x19CC);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8566);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x147D);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8568);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x147D);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x856A);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x147D);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FFE);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0907);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xACDA,
+                                        0xFF00,
+                                        0xFF00
+                                       );
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xACDE,
+                                        0xF000,
+                                        0xF000
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x80D6);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x2801);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x80F2);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x2801);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x80F4);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x6077);
+                MP_RealWritePhyOcpRegWord(sc, 0xB506, 0x01E7);
+                MP_RealWritePhyOcpRegWord(sc, 0xAC8C, 0x0FFC);
+                MP_RealWritePhyOcpRegWord(sc, 0xAC46, 0xB7B4);
+                MP_RealWritePhyOcpRegWord(sc, 0xAC50, 0x0FBC);
+                MP_RealWritePhyOcpRegWord(sc, 0xAC3C, 0x9240);
+                MP_RealWritePhyOcpRegWord(sc, 0xAC4E, 0x0DB4);
+                MP_RealWritePhyOcpRegWord(sc, 0xACC6, 0x0707);
+                MP_RealWritePhyOcpRegWord(sc, 0xACC8, 0xA0D3);
+                MP_RealWritePhyOcpRegWord(sc, 0xAD08, 0x0007);
+
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8013);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0700);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FB9);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x2801);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FBA);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0100);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FBC);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x1900);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FBE);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xE100);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FC0);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0800);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FC2);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xE500);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FC4);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0F00);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FC6);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xF100);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FC8);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0400);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FCa);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xF300);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FCc);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xFD00);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FCe);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xFF00);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FD0);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xFB00);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FD2);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0100);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FD4);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xF400);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FD6);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xFF00);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8FD8);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xF600);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x813D);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x390E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x814F);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x790E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x80B0);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0F31);
+                SetEthPhyOcpBit(sc, 0xBF4C, BIT_1);
+                SetEthPhyOcpBit(sc, 0xBCCA, (BIT_9 | BIT_8));
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8141);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x320E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8153);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x720E);
+                ClearEthPhyOcpBit(sc, 0xA432, BIT_6);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8529);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x050E);
+
+
+                CSR_WRITE_2(sc, RE_EEE_TXIDLE_TIMER_8125, ifp->if_mtu + ETHER_HDR_LEN + 0x20);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x816C);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xC4A0);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8170);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xC4A0);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8174);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x04A0);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8178);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x04A0);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x817C);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0719);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8FF4);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0400);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8FF1);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0404);
+                MP_RealWritePhyOcpRegWord(sc, 0xBF4A, 0x001B);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8033);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x7C13);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8037);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x7C13);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x803B);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0xFC32);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x803F);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x7C13);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8043);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x7C13);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8047);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x7C13);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8145);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x370E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8157);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x770E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8169);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x0D0A);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x817B);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x1D0A);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x8217);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x5000
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x821A);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x5000
+                                       );
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80DA);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0403);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80DC);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x1000
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80B3);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x0384);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80B7);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2007);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80BA);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x6C00
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80B5);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xF009);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80BD);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x9F00
+                                       );
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80C7);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xf083);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80DD);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x03f0);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80DF);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x1000
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80CB);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x2007);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80CE);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x6C00
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80C9);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x8009);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80D1);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0x8000
+                                       );
+
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80A3);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x200A);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80A5);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0xF0AD);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x809F);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x6073);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80A1);
+                MP_RealWritePhyOcpRegWord(sc, 0xA438, 0x000B);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x80A9);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xA438,
+                                        0xFF00,
+                                        0xC000
+                                       );
+
+                re_set_phy_mcu_patch_request(sc);
+
+                ClearEthPhyOcpBit(sc, 0xB896, BIT_0);
+                ClearEthPhyOcpBit(sc, 0xB892, 0xFF00);
+
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC23E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x0000);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC240);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x0103);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC242);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x0507);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC244);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x090B);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC246);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x0C0E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC248);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x1012);
+                MP_RealWritePhyOcpRegWord(sc, 0xB88E, 0xC24A);
+                MP_RealWritePhyOcpRegWord(sc, 0xB890, 0x1416);
+
+                SetEthPhyOcpBit(sc, 0xB896, BIT_0);
+
+                re_clear_phy_mcu_patch_request(sc);
+
+
+                SetEthPhyOcpBit(sc, 0xA86A, BIT_0);
+                SetEthPhyOcpBit(sc, 0xA6F0, BIT_0);
+
+
+                MP_RealWritePhyOcpRegWord(sc, 0xBFA0, 0xD70D);
+                MP_RealWritePhyOcpRegWord(sc, 0xBFA2, 0x4100);
+                MP_RealWritePhyOcpRegWord(sc, 0xBFA4, 0xE868);
+                MP_RealWritePhyOcpRegWord(sc, 0xBFA6, 0xDC59);
+                MP_RealWritePhyOcpRegWord(sc, 0xB54C, 0x3C18);
+                ClearEthPhyOcpBit(sc, 0xBFA4, BIT_5);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x817D);
+                SetEthPhyOcpBit(sc, 0xA438, BIT_12);
+
+
+                if (phy_power_saving == 1) {
+                        SetEthPhyOcpBit(sc, 0xA430, BIT_2);
+                } else {
+                        ClearEthPhyOcpBit(sc, 0xA430, BIT_2);
+                        DELAY(20000);
+                }
+        } else if (sc->re_type == MACFG_83) {
+                SetEthPhyOcpBit(sc, 0xA442, BIT_11);
+
+
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAC46,
+                                        0x00F0,
+                                        0x0090
+                                       );
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xAD30,
+                                        0x0003,
+                                        0x0001
+                                       );
+
+
+                CSR_WRITE_2(sc, RE_EEE_TXIDLE_TIMER_8125, ifp->if_mtu + ETHER_HDR_LEN + 0x20);
+
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x80F5);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x760E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8107);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87E, 0x360E);
+                MP_RealWritePhyOcpRegWord(sc, 0xB87C, 0x8551);
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xB87E,
+                                        BIT_15 | BIT_14 | BIT_13 | BIT_12 | BIT_11 | BIT_10 | BIT_9 | BIT_8,
+                                        BIT_11
+                                       );
+
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xbf00,
+                                        0xE000,
+                                        0xA000
+                                       );
+                ClearAndSetEthPhyOcpBit(sc,
+                                        0xbf46,
+                                        0x0F00,
+                                        0x0300
+                                       );
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x8044);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x804A);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x8050);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x8056);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x805C);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x8062);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x8068);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x806E);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x8074);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+                MP_RealWritePhyOcpRegWord(sc, 0xa436, 0x807A);
+                MP_RealWritePhyOcpRegWord(sc, 0xa438, 0x2417);
+
+                ////Nway DACONB
+                //GPHY OCP 0xA4CA bit[6] = 0x1 (rg_dac_lp_burst_off_option)
+                SetEthPhyOcpBit(sc, 0xA4CA, BIT_6);
+
+                /*
+                MP_RealWritePhyOcpRegWord(sc, 0xBFA0, 0xD70D);
+                MP_RealWritePhyOcpRegWord(sc, 0xBFA2, 0x4100);
+                MP_RealWritePhyOcpRegWord(sc, 0xBFA4, 0xE868);
+                MP_RealWritePhyOcpRegWord(sc, 0xBFA6, 0xDC59);
+                MP_RealWritePhyOcpRegWord(sc, 0xB54C, 0x3C18);
+                ClearEthPhyOcpBit(sc, 0xBFA4, BIT_5);
+                MP_RealWritePhyOcpRegWord(sc, 0xA436, 0x817D);
+                SetEthPhyOcpBit(sc, 0xA438, BIT_12);
+                */
+
+
+                if (phy_power_saving == 1) {
+                        SetEthPhyOcpBit(sc, 0xA430, BIT_2);
+                } else {
+                        ClearEthPhyOcpBit(sc, 0xA430, BIT_2);
+                        DELAY(20000);
+                }
         }
+
+#ifdef ENABLE_FIBER_SUPPORT
+        if (HW_FIBER_MODE_ENABLED(sc))
+                re_hw_fiber_phy_config(sc);
+#endif //ENABLE_FIBER_SUPPORT
+
         //EthPhyPPSW
         if (sc->re_type == MACFG_56 || sc->re_type == MACFG_57 ||
             sc->re_type == MACFG_58 || sc->re_type == MACFG_59 ||
@@ -25860,6 +30762,11 @@ static void re_hw_phy_config(struct re_softc *sc)
         case MACFG_69:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
                 if (phy_mdix_mode == RE_ETH_PHY_FORCE_MDI) {
                         //Force MDI
                         MP_WritePhyUshort(sc, 0x1F, 0x0A43);
@@ -25881,13 +30788,37 @@ static void re_hw_phy_config(struct re_softc *sc)
                 break;
         }
 
+        //legacy force mode(Chap 22)
+        switch(sc->re_type) {
+        case MACFG_80:
+        case MACFG_81:
+        case MACFG_82:
+        case MACFG_83:
+                MP_WritePhyUshort(sc, 0x1F, 0x0A5B);
+                ClearEthPhyBit(sc, 0x12, BIT_15);
+                MP_WritePhyUshort(sc, 0x1F, 0x0000);
+                break;
+        }
+
         if (phy_power_saving == 1) {
-                if (sc->re_type == MACFG_59 || sc->re_type == MACFG_60 ||
-                    sc->re_type == MACFG_62 || sc->re_type == MACFG_67 ||
-                    sc->re_type == MACFG_68 || sc->re_type == MACFG_69 ||
-                    sc->re_type == MACFG_70 || sc->re_type == MACFG_71) {
-                        MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0000);
-                        MP_WritePhyOcpRegWord(sc, 0x0C41, 0x13, 0x0050);
+                switch (sc->re_type) {
+                case MACFG_59:
+                case MACFG_60:
+                case MACFG_62:
+                case MACFG_67:
+                case MACFG_68:
+                case MACFG_69:
+                case MACFG_70:
+                case MACFG_71:
+                case MACFG_72:
+                        re_enable_ocp_phy_power_saving(sc);
+                        break;
+                case MACFG_80:
+                case MACFG_81:
+                case MACFG_82:
+                case MACFG_83:
+                        //re_enable_ocp_phy_power_saving(sc);
+                        break;
                 }
         }
 
@@ -25925,8 +30856,11 @@ void MP_WritePhyUshort(struct re_softc *sc,u_int8_t RegAddr,u_int16_t RegData)
                    sc->re_type == MACFG_58 || sc->re_type == MACFG_59 ||
                    sc->re_type == MACFG_60 || sc->re_type == MACFG_61 ||
                    sc->re_type == MACFG_62 || sc->re_type == MACFG_67 ||
-                   sc->re_type == MACFG_69 || sc->re_type == MACFG_69 ||
-                   sc->re_type == MACFG_70 || sc->re_type == MACFG_71) {
+                   sc->re_type == MACFG_68 || sc->re_type == MACFG_69 ||
+                   sc->re_type == MACFG_70 || sc->re_type == MACFG_71 ||
+                   sc->re_type == MACFG_72 || sc->re_type == MACFG_80 ||
+                   sc->re_type == MACFG_81 || sc->re_type == MACFG_82 ||
+                   sc->re_type == MACFG_83) {
                 if (RegAddr == 0x1F) {
                         return;
                 }
@@ -25986,10 +30920,12 @@ u_int16_t MP_ReadPhyUshort(struct re_softc *sc,u_int8_t RegAddr)
                    sc->re_type == MACFG_58 || sc->re_type == MACFG_59 ||
                    sc->re_type == MACFG_60 || sc->re_type == MACFG_61 ||
                    sc->re_type == MACFG_62 || sc->re_type == MACFG_67 ||
-                   sc->re_type == MACFG_69 || sc->re_type == MACFG_69 ||
-                   sc->re_type == MACFG_70 || sc->re_type == MACFG_71) {
-                RegData= MP_ReadPhyOcpRegWord(sc, sc->cur_page, RegAddr);
-
+                   sc->re_type == MACFG_68 || sc->re_type == MACFG_69 ||
+                   sc->re_type == MACFG_70 || sc->re_type == MACFG_71 ||
+                   sc->re_type == MACFG_72 || sc->re_type == MACFG_80 ||
+                   sc->re_type == MACFG_81 || sc->re_type == MACFG_82 ||
+                   sc->re_type == MACFG_83) {
+                RegData = MP_ReadPhyOcpRegWord(sc, sc->cur_page, RegAddr);
         } else {
                 if (sc->re_type == MACFG_65 || sc->re_type == MACFG_66)
                         CSR_WRITE_4(sc, 0xD0, CSR_READ_4(sc, 0xD0) & ~0x00020000);
@@ -26291,6 +31227,25 @@ u_int32_t MP_ReadPciEConfigSpace(
         return MP_ReadOtherFunPciEConfigSpace(sc, MultiFunSelBit, ByteEnAndAddr);
 }
 
+u_int8_t MP_ReadByteFun0PciEConfigSpace(
+        struct re_softc *sc,
+        u_int16_t RegAddr)
+{
+        u_int8_t RetVal = 0;
+        u_int32_t TmpUlong;
+        u_int16_t RegAlignAddr;
+        u_int8_t ShiftByte;
+
+        RegAlignAddr = RegAddr & ~(0x3);
+        ShiftByte = RegAddr & (0x3);
+
+        TmpUlong = MP_ReadOtherFunPciEConfigSpace(sc, 0, RegAlignAddr | 0xF000);
+        TmpUlong >>= (8*ShiftByte);
+        RetVal = (u_int8_t)TmpUlong;
+
+        return RetVal;
+}
+
 static u_int16_t MappingPhyOcpAddress(
         struct re_softc *sc,
         u_int16_t   PageNum,
@@ -26322,7 +31277,7 @@ static u_int16_t MappingPhyOcpAddress(
         return OcpPhyAddress;
 }
 
-static u_int16_t MP_RealReadPhyOcpRegWord(
+u_int16_t MP_RealReadPhyOcpRegWord(
         struct re_softc *sc,
         u_int16_t OcpRegAddr)
 {
@@ -26378,7 +31333,7 @@ u_int16_t MP_ReadPhyOcpRegWord(
         return RetVal;
 }
 
-static void MP_RealWritePhyOcpRegWord(
+void MP_RealWritePhyOcpRegWord(
         struct re_softc *sc,
         u_int16_t OcpRegAddr,
         u_int16_t RegData)
@@ -26607,6 +31562,7 @@ static void OOB_mutex_lock(struct re_softc *sc)
         case MACFG_67:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
         default:
                 ocp_reg_mutex_oob = 0x110;
                 ocp_reg_mutex_ib = 0x114;
@@ -26667,6 +31623,7 @@ static void OOB_mutex_unlock(struct re_softc *sc)
         case MACFG_67:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
         default:
                 ocp_reg_mutex_oob = 0x110;
                 ocp_reg_mutex_ib = 0x114;
@@ -26690,6 +31647,7 @@ static int re_check_dash(struct re_softc *sc)
         case MACFG_66:
         case MACFG_70:
         case MACFG_71:
+        case MACFG_72:
                 if (HW_DASH_SUPPORT_TYPE_2(sc) || HW_DASH_SUPPORT_TYPE_3(sc)) {
                         if (OCP_read(sc, 0x128, 1) & BIT_0)
                                 return 1;
@@ -27032,21 +31990,30 @@ rtl_clrwol(struct re_softc *sc)
 int
 rtl_ifmedia_upd(struct ifnet *ifp)
 {
+	struct re_softc *sc = ifp->if_softc;
 
-	return (re_ifmedia_upd(ifp));
+	if (sc->re_device_id == RT_DEVICEID_8125)
+		return (re_ifmedia_upd_8125(ifp));
+	else
+		return (re_ifmedia_upd(ifp));
 }
 
 void
 rtl_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
+	struct re_softc *sc = ifp->if_softc;
 
-	re_ifmedia_sts(ifp, ifmr);
+	if (sc->re_device_id == RT_DEVICEID_8125)
+		re_ifmedia_sts_8125(ifp, ifmr);
+	else
+		re_ifmedia_sts(ifp, ifmr);
 }
 
 void
 rtl_stop(struct re_softc *sc)
 {
 
+	sc->phy_reg_anlpar = re_get_phy_lp_ability(sc);
 	re_stop_rtl(sc);
 }
 
@@ -27075,7 +32042,10 @@ void
 rtl_hw_start(struct re_softc *sc)
 {
 
-	re_hw_start_unlock(sc);
+	if (sc->re_device_id == RT_DEVICEID_8125)
+		re_hw_start_unlock_8125(sc);
+	else
+		re_hw_start_unlock(sc);
 }
 
 void

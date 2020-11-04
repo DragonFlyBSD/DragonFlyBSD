@@ -36,7 +36,7 @@
  */
 
 /*
- * RealTek 8169S/8110S/8168/8111/8101E PCI NIC driver
+ * RealTek 8169S/8110S/8168/8111/8101E/8125 PCI NIC driver
  *
  * Written by Bill Paul <wpaul@windriver.com>
  * Senior Networking Software Engineer
@@ -83,6 +83,7 @@
  * programming API as the older 8169, but also have some vendor-specific
  * registers for the on-board PHY.  The 8110S is a LAN-on-motherboard
  * part designed to be pin-compatible with the RealTek 8100 10/100 chip.
+ * 8125 supports 10/100/1000/2500.
  * 
  * This driver takes advantage of the RX and TX checksum offload and
  * VLAN tag insertion/extraction features.  It also implements
@@ -151,6 +152,9 @@ static const struct re_type {
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168_1,
 	  "RealTek 8168 PCIe Gigabit Ethernet" },
 
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8125,
+	  "RealTek 8125 PCIe Gigabit Ethernet" },
+
 #ifdef notyet
 	/*
 	 * This driver now only supports built-in PHYs.
@@ -204,6 +208,15 @@ static void	re_tick_serialized(void *);
 static void	re_disable_aspm(device_t);
 static void	re_link_up(struct re_softc *);
 static void	re_link_down(struct re_softc *);
+
+static void	re_start_xmit(struct re_softc *);
+static void	re_write_imr(struct re_softc *, uint32_t);
+static void	re_write_isr(struct re_softc *, uint32_t);
+static uint32_t	re_read_isr(struct re_softc *);
+static void	re_start_xmit_8125(struct re_softc *);
+static void	re_write_imr_8125(struct re_softc *, uint32_t);
+static void	re_write_isr_8125(struct re_softc *, uint32_t);
+static uint32_t	re_read_isr_8125(struct re_softc *);
 
 static void	re_start(struct ifnet *, struct ifaltq_subque *);
 static int	re_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -548,6 +561,7 @@ re_is_faste(struct re_softc *sc)
 		case PCI_PRODUCT_REALTEK_RT8169SC:
 		case PCI_PRODUCT_REALTEK_RT8168:
 		case PCI_PRODUCT_REALTEK_RT8168_1:
+		case PCI_PRODUCT_REALTEK_RT8125:
 			return FALSE;
 		default:
 			return TRUE;
@@ -555,6 +569,21 @@ re_is_faste(struct re_softc *sc)
 	} else {
 		return FALSE;
 	}
+}
+
+static bool
+re_is_2500e(const struct re_softc *sc)
+{
+	if (pci_get_vendor(sc->dev) == PCI_VENDOR_REALTEK) {
+		switch (sc->re_device_id) {
+		case PCI_PRODUCT_REALTEK_RT8125:
+			return true;
+
+		default:
+			return false;
+		}
+	}
+	return false;
 }
 
 /*
@@ -577,6 +606,19 @@ re_attach(device_t dev)
 	sc->re_device_id = pci_get_device(dev);
 	sc->re_unit = device_get_unit(dev);
 	ifmedia_init(&sc->media, IFM_IMASK, rtl_ifmedia_upd, rtl_ifmedia_sts);
+
+	if (pci_get_vendor(dev) == PCI_VENDOR_REALTEK &&
+	    sc->re_device_id == PCI_PRODUCT_REALTEK_RT8125) {
+		sc->re_start_xmit = re_start_xmit_8125;
+		sc->re_write_imr = re_write_imr_8125;
+		sc->re_write_isr = re_write_isr_8125;
+		sc->re_read_isr = re_read_isr_8125;
+	} else {
+		sc->re_start_xmit = re_start_xmit;
+		sc->re_write_imr = re_write_imr;
+		sc->re_write_isr = re_write_isr;
+		sc->re_read_isr = re_read_isr;
+	}
 
 	sc->re_caps = RE_C_HWIM;
 
@@ -762,13 +804,6 @@ re_attach(device_t dev)
 	}
 	device_printf(dev, "bus speed %dMHz\n", sc->re_bus_speed);
 
-	rtl_phy_power_up(sc);
-	rtl_hw_phy_config(sc);
-	rtl_clrwol(sc);
-
-	/* TODO: jumbo frame */
-	CSR_WRITE_2(sc, RE_RxMaxSize, sc->re_rxbuf_size);
-
 	/* Enable hardware checksum if available. */
 	sc->re_tx_cstag = 1;
 	sc->re_rx_cstag = 1;
@@ -804,6 +839,13 @@ re_attach(device_t dev)
 
 	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->re_irq));
 
+	rtl_phy_power_up(sc);
+	rtl_hw_phy_config(sc);
+	rtl_clrwol(sc);
+
+	/* TODO: jumbo frame */
+	CSR_WRITE_2(sc, RE_RxMaxSize, sc->re_rxbuf_size);
+
 #ifdef IFPOLL_ENABLE
 	ifpoll_compat_setup(&sc->re_npoll, ctx, (struct sysctl_oid *)tree,
 	    device_get_unit(dev), ifp->if_serializer);
@@ -825,6 +867,15 @@ re_attach(device_t dev)
 	if (!re_is_faste(sc)) {
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_T | IFM_FDX,
 		    0, NULL);
+	}
+	if (re_is_2500e(sc)) {
+#ifndef IFM_2500_T
+		ifmedia_add(&sc->media, IFM_ETHER | IFM_2500_SX | IFM_FDX,
+		    0, NULL);
+#else
+		ifmedia_add(&sc->media, IFM_ETHER | IFM_2500_T | IFM_FDX,
+		    0, NULL);
+#endif
 	}
 	ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
 	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO);
@@ -1244,8 +1295,12 @@ re_tx_collect(struct re_softc *sc)
 		 * in a fragment chain, which also happens to
 		 * be the only place where the TX status bits
 		 * are valid.
+		 *
+		 * NOTE:
+		 * On 8125, RE_TDESC_CMD_EOF is no longer left
+		 * uncleared.
 		 */
-		if (txstat & RE_TDESC_CMD_EOF) {
+		if (sc->re_ldata.re_tx_mbuf[idx] != NULL) {
 			bus_dmamap_unload(sc->re_ldata.re_tx_mtag,
 			    sc->re_ldata.re_tx_dmamap[idx]);
 			m_freem(sc->re_ldata.re_tx_mbuf[idx]);
@@ -1285,7 +1340,7 @@ re_txeof(struct re_softc *sc)
 	 * to be required with the PCIe devices.
 	 */
 	if (sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt)
-		CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
+		sc->re_start_xmit(sc);
 	else
 		ifp->if_timer = 0;
 
@@ -1332,13 +1387,13 @@ re_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->re_npoll.ifpc_stcount-- == 0) {
-		uint16_t status;
+		uint32_t status;
 
 		sc->re_npoll.ifpc_stcount = sc->re_npoll.ifpc_stfrac;
 
-		status = CSR_READ_2(sc, RE_ISR);
+		status = sc->re_read_isr(sc);
 		if (status)
-			CSR_WRITE_2(sc, RE_ISR, status);
+			sc->re_write_isr(sc, status);
 
 		/*
 		 * XXX check behaviour on receiver stalls.
@@ -1390,7 +1445,7 @@ re_intr(void *arg)
 {
 	struct re_softc	*sc = arg;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint16_t status;
+	uint32_t status;
 	int proc;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -1400,13 +1455,13 @@ re_intr(void *arg)
 		return;
 
 	/* Disable interrupts. */
-	CSR_WRITE_2(sc, RE_IMR, 0);
+	sc->re_write_imr(sc, 0);
 
-	status = CSR_READ_2(sc, RE_ISR);
+	status = sc->re_read_isr(sc);
 again:
 	proc = 0;
 	if (status)
-		CSR_WRITE_2(sc, RE_ISR, status);
+		sc->re_write_isr(sc, status);
 	if (status & sc->re_intrs) {
 		if (status & RE_ISR_SYSTEM_ERR) {
 			rtl_reset(sc);
@@ -1438,7 +1493,7 @@ again:
 				re_txeof(sc);
 			} else {
 				/* Re-enable interrupts. */
-				CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
+				sc->re_write_imr(sc, sc->re_intrs);
 				CSR_WRITE_4(sc, RE_TIMERCNT, 1); /* reload */
 			}
 		} else if (proc) {
@@ -1452,10 +1507,10 @@ again:
 			re_setup_intr(sc, 1, RE_IMTYPE_SIM);
 		} else {
 			/* Re-enable interrupts. */
-			CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
+			sc->re_write_imr(sc, sc->re_intrs);
 		}
 	} else {
-		status = CSR_READ_2(sc, RE_ISR);
+		status = sc->re_read_isr(sc);
 		if (status & sc->re_intrs) {
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
@@ -1463,7 +1518,7 @@ again:
 			goto again;
 		}
 		/* Re-enable interrupts. */
-		CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
+		sc->re_write_imr(sc, sc->re_intrs);
 	}
 
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -1585,17 +1640,26 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 
 		d = &tx_ring[idx];
 
-		cmdstat = segs[i].ds_len;
+		KKASSERT(sc->re_ldata.re_tx_mbuf[idx] == NULL);
+
 		d->re_bufaddr_lo = htole32(RE_ADDR_LO(segs[i].ds_addr));
 		d->re_bufaddr_hi = htole32(RE_ADDR_HI(segs[i].ds_addr));
-		if (i == 0)
+
+		cmdstat = segs[i].ds_len;
+		if (i == 0) {
 			cmdstat |= RE_TDESC_CMD_SOF;
-		else
+		} else if (i != nsegs - 1) {
+			/*
+			 * Last descriptor's ownership will be transfered
+			 * later.
+			 */
 			cmdstat |= RE_TDESC_CMD_OWN;
+		}
 		if (idx == (sc->re_tx_desc_cnt - 1))
 			cmdstat |= RE_TDESC_CMD_EOR;
-		d->re_cmdstat = htole32(cmdstat | cmd_csum);
+
 		d->re_control = htole32(ctl_csum | vlantag);
+		d->re_cmdstat = htole32(cmdstat | cmd_csum);
 
 		i++;
 		if (i == nsegs)
@@ -1656,7 +1720,7 @@ re_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	need_trans = 0;
 	oactive = 0;
-	while (sc->re_ldata.re_tx_mbuf[idx] == NULL) {
+	for (;;) {
 		if (sc->re_ldata.re_tx_free <= RE_TXDESC_SPARE) {
 			if (!oactive) {
 				if (re_tx_collect(sc)) {
@@ -1697,22 +1761,6 @@ re_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
-	/*
-	 * If sc->re_ldata.re_tx_mbuf[idx] is not NULL it is possible
-	 * for OACTIVE to not be properly set when we also do not
-	 * have sufficient free tx descriptors, leaving packet in
-	 * ifp->if_snd.  This can cause if_start_dispatch() to loop
-	 * infinitely so make sure OACTIVE is set properly.
-	 */
-	if (sc->re_ldata.re_tx_free <= RE_TXDESC_SPARE) {
-		if (!ifq_is_oactive(&ifp->if_snd)) {
-#if 0
-			if_printf(ifp, "Debug: OACTIVE was not set when "
-			    "re_tx_free was below minimum!\n");
-#endif
-			ifq_set_oactive(&ifp->if_snd);
-		}
-	}
 	if (!need_trans)
 		return;
 
@@ -1722,7 +1770,7 @@ re_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	 * RealTek put the TX poll request register in a different
 	 * location on the 8169 gigE chip. I don't know why.
 	 */
-	CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
+	sc->re_start_xmit(sc);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -1780,7 +1828,7 @@ re_link_up(struct re_softc *sc)
 	 * Enable interrupts.
 	 */
 	re_setup_intr(sc, 1, sc->re_imtype);
-	CSR_WRITE_2(sc, RE_ISR, sc->re_intrs);
+	sc->re_write_isr(sc, sc->re_intrs);
 
 	sc->re_flags |= RE_F_LINKED;
 	ifp->if_link_state = LINK_STATE_UP;
@@ -2144,11 +2192,11 @@ re_sysctl_simtime(SYSCTL_HANDLER_ARGS)
 			 * Following code causes various strange
 			 * performance problems.  Hmm ...
 			 */
-			CSR_WRITE_2(sc, RE_IMR, 0);
+			sc->re_write_imr(sc, 0);
 			CSR_WRITE_4(sc, RE_TIMERINT, 0);
 			CSR_READ_4(sc, RE_TIMERINT); /* flush */
 
-			CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
+			sc->re_write_imr(sc, sc->re_intrs);
 			re_setup_sim_im(sc);
 #else
 			re_setup_intr(sc, 0, RE_IMTYPE_NONE);
@@ -2299,9 +2347,9 @@ re_setup_intr(struct re_softc *sc, int enable_intrs, int imtype)
 	re_config_imtype(sc, imtype);
 
 	if (enable_intrs)
-		CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
+		sc->re_write_imr(sc, sc->re_intrs);
 	else
-		CSR_WRITE_2(sc, RE_IMR, 0); 
+		sc->re_write_imr(sc, 0);
 
 	sc->re_npoll.ifpc_stcount = 0;
 
@@ -2480,4 +2528,52 @@ re_disable_aspm(device_t dev)
 	link_ctrl = pci_read_config(dev, reg, 2);
 	link_ctrl &= ~(PCIEM_LNKCTL_ASPM_L0S | PCIEM_LNKCTL_ASPM_L1);
 	pci_write_config(dev, reg, link_ctrl, 2);
+}
+
+static void
+re_start_xmit(struct re_softc *sc)
+{
+	CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
+}
+
+static void
+re_write_imr(struct re_softc *sc, uint32_t val)
+{
+	CSR_WRITE_2(sc, RE_IMR, val);
+}
+
+static void
+re_write_isr(struct re_softc *sc, uint32_t val)
+{
+	CSR_WRITE_2(sc, RE_ISR, val);
+}
+
+static uint32_t
+re_read_isr(struct re_softc *sc)
+{
+	return CSR_READ_2(sc, RE_ISR);
+}
+
+static void
+re_start_xmit_8125(struct re_softc *sc)
+{
+	CSR_WRITE_2(sc, RE_TPPOLL_8125, RE_NPQ_8125);
+}
+
+static void
+re_write_imr_8125(struct re_softc *sc, uint32_t val)
+{
+	CSR_WRITE_4(sc, RE_IMR0_8125, val);
+}
+
+static void
+re_write_isr_8125(struct re_softc *sc, uint32_t val)
+{
+	CSR_WRITE_4(sc, RE_ISR0_8125, val);
+}
+
+static uint32_t
+re_read_isr_8125(struct re_softc *sc)
+{
+	return CSR_READ_4(sc, RE_ISR0_8125);
 }
