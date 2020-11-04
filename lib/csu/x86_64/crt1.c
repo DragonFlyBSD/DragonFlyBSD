@@ -27,7 +27,9 @@
 #error "GCC is needed to compile this file"
 #endif
 
+#include <sys/cdefs.h>
 #include <machine/tls.h>
+#include <elf.h>
 #include <stdlib.h>
 
 #include "libc_private.h"
@@ -42,6 +44,29 @@ extern void monstartup(void *, void *);
 extern int eprol;
 extern int etext;
 #endif
+
+/* static ifunc reloc support */
+extern const Elf_Rela __rela_iplt_start[] __dso_hidden __weak_symbol;
+extern const Elf_Rela __rela_iplt_end[] __dso_hidden __weak_symbol;
+static void fix_iplta(void) __noinline;
+
+static void
+fix_iplta(void)
+{
+	const Elf_Rela *rela, *relalim;
+	Elf_Addr *where, target, *ptr;
+
+	rela = __rela_iplt_start;
+	relalim = __rela_iplt_end;
+	for (; rela < relalim; ++rela) {
+		if (ELF_R_TYPE(rela->r_info) != R_X86_64_IRELATIVE)
+			abort();
+		ptr = (Elf_Addr *)rela->r_addend;
+		where = (Elf_Addr *)rela->r_offset;
+		target = ((Elf_Addr (*)(void))ptr)();
+		*where = target;
+	}
+}
 
 void _start(char **, void (*)(void));
 
@@ -69,6 +94,8 @@ _start(char **ap, void (*cleanup)(void))
 
 	if (&_DYNAMIC != NULL)
 		atexit(cleanup);
+	else
+		fix_iplta();
 
 #ifdef GCRT
 	atexit(_mcleanup);
