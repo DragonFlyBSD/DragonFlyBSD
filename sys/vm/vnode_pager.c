@@ -434,7 +434,8 @@ vnode_pager_freepage(vm_page_t m)
  * backing vp's VOP_GETPAGES.
  */
 static int
-vnode_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
+vnode_pager_getpage(vm_object_t object, vm_pindex_t pindex,
+		    vm_page_t *mpp, int seqaccess)
 {
 	int rtval;
 	struct vnode *vp;
@@ -791,7 +792,7 @@ struct vnode *
 vnode_pager_lock(vm_map_backing_t ba)
 {
 	vm_map_backing_t lba;
-	struct vnode *vp;
+	struct vnode *vp = NULL;
 	vm_object_t lobject;
 	int error;
 
