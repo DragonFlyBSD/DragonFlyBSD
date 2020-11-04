@@ -110,7 +110,8 @@ extern struct pagerops physpagerops;
  * No requirements.
  */
 static int
-dead_pager_getpage(vm_object_t obj, vm_page_t *mpp, int seqaccess)
+dead_pager_getpage(vm_object_t obj, vm_pindex_t pindex,
+		   vm_page_t *mpp, int seqaccess)
 {
 	return VM_PAGER_FAIL;
 }

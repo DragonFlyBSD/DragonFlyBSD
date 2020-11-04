@@ -234,15 +234,13 @@ dev_pager_dealloc(vm_object_t object)
  *	    deadlock in DRMs VM paging code.
  */
 static int
-dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
+dev_pager_getpage(vm_object_t object, vm_pindex_t pindex,
+		  vm_page_t *mpp, int seqaccess)
 {
-	vm_page_t page;
 	int error;
 
-	page = *mpp;
-
 	error = object->un_pager.devp.ops->cdev_pg_fault(
-			object, IDX_TO_OFF(page->pindex),
+			object, IDX_TO_OFF(pindex),
 			PROT_READ, mpp);
 
 	return (error);

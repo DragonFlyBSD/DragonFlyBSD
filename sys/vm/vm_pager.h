@@ -59,7 +59,7 @@ struct buf;
 struct bio;
 
 typedef void pgo_dealloc_t(vm_object_t);
-typedef int pgo_getpage_t(vm_object_t, vm_page_t *, int);
+typedef int pgo_getpage_t(vm_object_t, vm_pindex_t, vm_page_t *, int);
 typedef void pgo_putpages_t(vm_object_t, vm_page_t *, int, int, int *);
 typedef boolean_t pgo_haspage_t(vm_object_t, vm_pindex_t);
 
@@ -103,7 +103,8 @@ vm_object_t vnode_pager_alloc (void *, off_t, vm_prot_t, off_t, int, int);
 vm_object_t vnode_pager_reference (struct vnode *);
 
 void vm_pager_deallocate (vm_object_t);
-static __inline int vm_pager_get_page (vm_object_t, vm_page_t *, int);
+static __inline int vm_pager_get_page (vm_object_t, vm_pindex_t,
+			vm_page_t *, int);
 static __inline boolean_t vm_pager_has_page (vm_object_t, vm_pindex_t);
 vm_object_t vm_pager_object_lookup(struct pagerlst *, void *);
 void vm_pager_sync (void);
@@ -125,11 +126,13 @@ void swap_pager_unswapped (vm_page_t m);
  */
 
 static __inline int
-vm_pager_get_page(vm_object_t object, vm_page_t *m, int seqaccess)
+vm_pager_get_page(vm_object_t object, vm_pindex_t pindex,
+		  vm_page_t *m, int seqaccess)
 {
 	int r;
 
-	r = (*pagertab[object->type]->pgo_getpage)(object, m, seqaccess);
+	r = (*pagertab[object->type]->pgo_getpage)(object, pindex,
+						   m, seqaccess);
 	if (r == VM_PAGER_OK && (*m)->valid != VM_PAGE_BITS_ALL) {
 		vm_page_zero_invalid(*m, TRUE);
 	}

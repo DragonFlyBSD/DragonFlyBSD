@@ -1970,8 +1970,16 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 			 *
 			 * It is possible for the allocation to race, so
 			 * handle the case.
+			 *
+			 * Does not apply to OBJT_MGTDEVICE (e.g. gpu / drm
+			 * subsystem).  For OBJT_MGTDEVICE the pages are not
+			 * indexed in the VM object at all but instead directly
+			 * entered into the pmap.
 			 */
 			fs->mary[0] = NULL;
+			if (fs->ba->object->type == OBJT_MGTDEVICE)
+				goto readrest;
+
 			if (!vm_page_count_severe()) {
 				fs->mary[0] = vm_page_alloc(fs->ba->object,
 				    pindex,
@@ -2037,18 +2045,22 @@ readrest:
 			 *	 VM object.
 			 */
 			if (fs->ba == fs->first_ba && fs->first_shared) {
-				vm_page_deactivate(fs->mary[0]);
-				vm_page_wakeup(fs->mary[0]);
-				fs->mary[0]= NULL;
+				if (fs->mary[0]) {
+					vm_page_deactivate(fs->mary[0]);
+					vm_page_wakeup(fs->mary[0]);
+					fs->mary[0]= NULL;
+				}
 				fs->first_shared = 0;
 				vm_object_pip_wakeup(fs->first_ba->object);
 				unlock_things(fs);
 				return (KERN_TRY_AGAIN);
 			}
 			if (fs->ba != fs->first_ba && fs->shared) {
-				vm_page_deactivate(fs->mary[0]);
-				vm_page_wakeup(fs->mary[0]);
-				fs->mary[0] = NULL;
+				if (fs->mary[0]) {
+					vm_page_deactivate(fs->mary[0]);
+					vm_page_wakeup(fs->mary[0]);
+					fs->mary[0] = NULL;
+				}
 				fs->first_shared = 0;
 				fs->shared = 0;
 				vm_object_pip_wakeup(fs->first_ba->object);
@@ -2086,11 +2098,23 @@ readrest:
 			 * because we will probably have to copy fs->mary[0]
 			 * to fs->first_m on the retry.  If this is a
 			 * read fault we probably won't need the page.
+			 *
+			 * For OBJT_MGTDEVICE (and eventually all types),
+			 * fs->mary[0] is not pre-allocated and may be set
+			 * to a vm_page (busied for us) without being inserted
+			 * into the object.  In this case we want to return
+			 * the vm_page directly so the caller can issue the
+			 * pmap_enter().
 			 */
-			rv = vm_pager_get_page(object, &fs->mary[0], seqaccess);
+			rv = vm_pager_get_page(object, pindex,
+					       &fs->mary[0], seqaccess);
 
 			if (rv == VM_PAGER_OK) {
 				++fs->hardfault;
+				if (object->type == OBJT_MGTDEVICE) {
+					break;
+				}
+
 				fs->mary[0] = vm_page_lookup(object, pindex);
 				if (fs->mary[0]) {
 					vm_page_activate(fs->mary[0]);
@@ -2099,6 +2123,7 @@ readrest:
 				}
 
 				if (fs->mary[0]) {
+					/* NOT REACHED */
 					/* have page */
 					break;
 				}
@@ -2115,8 +2140,10 @@ readrest:
 			 */
 			if (rv == VM_PAGER_FAIL) {
 				if (fs->ba != fs->first_ba) {
-					vm_page_free(fs->mary[0]);
-					fs->mary[0] = NULL;
+					if (fs->mary[0]) {
+						vm_page_free(fs->mary[0]);
+						fs->mary[0] = NULL;
+					}
 				}
 				goto next;
 			}
@@ -2420,7 +2447,7 @@ next:
 	 */
 	vm_page_activate(fs->mary[0]);
 	if (fs->prot & VM_PROT_WRITE) {
-		vm_object_set_writeable_dirty(fs->mary[0]->object);
+		vm_object_set_writeable_dirty(fs->first_ba->object);
 		vm_set_nosync(fs->mary[0], fs->entry);
 		if (fs->fault_flags & VM_FAULT_DIRTY) {
 			vm_page_dirty(fs->mary[0]);
@@ -3157,12 +3184,16 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 
 		/*
 		 * The object must be marked dirty if we are mapping a
-		 * writable page.  m->object is either lobject or object,
-		 * both of which are still held.  Do this before we
-		 * potentially drop the object.
+		 * writable page.  Note that (m) does not have to be
+		 * entered into the object, so use lobject or object
+		 * as appropriate instead of m->object.
+		 *
+		 * Do this before we potentially drop the object.
 		 */
-		if (pprot & VM_PROT_WRITE)
-			vm_object_set_writeable_dirty(m->object);
+		if (pprot & VM_PROT_WRITE) {
+			vm_object_set_writeable_dirty(
+				(allocated ? object : lobject));
+		}
 
 		/*
 		 * Do not conditionalize on PG_RAM.  If pages are present in
@@ -3182,6 +3213,9 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 		 * allocated the page we have to place it on a queue.  If not
 		 * we just have to make sure it isn't on the cache queue
 		 * (pages on the cache queue are not allowed to be mapped).
+		 *
+		 * When allocated is TRUE, m corresponds to object,
+		 * not lobject.
 		 */
 		if (allocated) {
 			/*
@@ -3205,7 +3239,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 #endif
 			vm_page_deactivate(m);
 			if (pprot & VM_PROT_WRITE) {
-				/*vm_object_set_writeable_dirty(m->object);*/
+				/*vm_object_set_writeable_dirty(object);*/
 				vm_set_nosync(m, entry);
 				if (fault_flags & VM_FAULT_DIRTY) {
 					vm_page_dirty(m);
@@ -3222,11 +3256,13 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 			/*
 			 * A fully valid page not undergoing soft I/O can
 			 * be immediately entered into the pmap.
+			 *
+			 * When allocated is false, m corresponds to lobject.
 			 */
 			if ((m->queue - m->pc) == PQ_CACHE)
 				vm_page_deactivate(m);
 			if (pprot & VM_PROT_WRITE) {
-				/*vm_object_set_writeable_dirty(m->object);*/
+				/*vm_object_set_writeable_dirty(lobject);*/
 				vm_set_nosync(m, entry);
 				if (fault_flags & VM_FAULT_DIRTY) {
 					vm_page_dirty(m);

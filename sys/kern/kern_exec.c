@@ -702,7 +702,7 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 		 * the buffer cache) so vnode_pager_freepage() must be
 		 * used to properly release it.
 		 */
-		rv = vm_pager_get_page(object, &ma, 1);
+		rv = vm_pager_get_page(object, pageno, &ma, 1);
 		m = vm_page_lookup(object, pageno);
 
 		if (rv != VM_PAGER_OK || m == NULL || m->valid == 0) {

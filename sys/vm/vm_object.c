@@ -1386,18 +1386,73 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 * the entire contents of the object or not.  If removing the entire
 	 * contents, be sure to get all pages, even those that might be
 	 * beyond the end of the object.
+	 *
+	 * NOTE: end is non-inclusive, but info.end_pindex is inclusive.
 	 */
 	info.object = object;
 	info.start_pindex = start;
-	if (end == 0)
+	if (end == 0) {
 		info.end_pindex = (vm_pindex_t)-1;
-	else
+		end = object->size;
+	} else {
 		info.end_pindex = end - 1;
+	}
 	info.limit = clean_only;
 	info.count = 0;
 	all = (start == 0 && info.end_pindex >= object->size - 1);
 
 	/*
+	 * Efficiently remove pages from the pmap via a backing scan.
+	 *
+	 * NOTE: This is the only way pages can be removed and unwired
+	 *	 from OBJT_MGTDEVICE devices which typically do not enter
+	 *	 their pages into the vm_object's RB tree.  And possibly
+	 *	 other OBJT_* types in the future.
+	 */
+	{
+		vm_map_backing_t ba;
+		vm_pindex_t sba, eba;
+		vm_offset_t sva, eva;
+
+		lockmgr(&object->backing_lk, LK_EXCLUSIVE);
+		TAILQ_FOREACH(ba, &object->backing_list, entry) {
+			/*
+			 * object offset range within the ba, intersectioned
+			 * with the page range specified for the object
+			 */
+			sba = OFF_TO_IDX(ba->offset);
+			eba = sba + OFF_TO_IDX(ba->end - ba->start);
+			if (sba < start)
+				sba = start;
+			if (eba > end)
+				eba = end;
+
+			/*
+			 * If the intersection is valid, remove the related
+			 * pages.
+			 *
+			 * NOTE! This may also remove other incidental pages
+			 *	 in the pmap, as the backing area may be
+			 *	 overloaded.
+			 */
+			if (sba < eba) {
+				sva = ba->start + IDX_TO_OFF(sba) - ba->offset;
+				eva = sva + IDX_TO_OFF(eba - sba);
+#if 0
+				kprintf("VM_OBJECT_PAGE_REMOVE "
+					"%p[%016jx] %016jx-%016jx\n",
+					ba->pmap, ba->start, sva, eva);
+#endif
+				pmap_remove_pages(ba->pmap, sva, eva);
+			}
+		}
+		lockmgr(&object->backing_lk, LK_RELEASE);
+	}
+
+	/*
+	 * Remove and free pages entered onto the object list.  Note that
+	 * for OBJT_MGTDEVICE objects, there are typically no pages entered.
+	 *
 	 * Loop until we are sure we have gotten them all.
 	 */
 	do {

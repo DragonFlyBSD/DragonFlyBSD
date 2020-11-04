@@ -103,7 +103,8 @@ default_pager_dealloc(vm_object_t object)
  * see a vm_page with assigned swap here.
  */
 static int
-default_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
+default_pager_getpage(vm_object_t object, vm_pindex_t pindex,
+		      vm_page_t *mpp, int seqaccess)
 {
 	return VM_PAGER_FAIL;
 }

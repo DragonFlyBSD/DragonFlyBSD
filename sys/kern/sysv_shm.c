@@ -585,7 +585,7 @@ shmget_allocate_segment(struct proc *p, struct sysmsg *sysmsg,
 					 VM_ALLOC_ZERO);
 			if (m == NULL)
 				break;
-			vm_pager_get_page(shm_handle->shm_object, &m, 1);
+			vm_pager_get_page(shm_handle->shm_object, pi, &m, 1);
 			vm_page_activate(m);
 			vm_page_wakeup(m);
 			lwkt_yield();
