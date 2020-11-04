@@ -20,6 +20,7 @@ SRCS=	bio_ssl.c bs_cbb.c bs_cbs.c \
 	ssl_sess.c ssl_sigalgs.c ssl_srvr.c ssl_stat.c \
 	ssl_tlsext.c ssl_transcript.c ssl_txt.c ssl_versions.c \
 	t1_enc.c t1_lib.c \
+	tls12_record_layer.c \
 	tls13_buffer.c tls13_client.c tls13_error.c \
 	tls13_handshake.c tls13_handshake_msg.c tls13_key_schedule.c \
 	tls13_key_share.c tls13_legacy.c tls13_lib.c tls13_record.c \

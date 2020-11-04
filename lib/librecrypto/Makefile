@@ -18,7 +18,8 @@ INCS+=		obj_mac.h objects.h ocsp.h
 INCS+=		opensslconf.h opensslfeatures.h opensslv.h ossl_typ.h
 INCS+=  	pem.h pem2.h pkcs12.h pkcs7.h poly1305.h rand.h rc2.h rc4.h
 INCS+=  	ripemd.h rsa.h safestack.h sha.h sm3.h sm4.h stack.h
-INCS+=  	ts.h txt_db.h ui.h whrlpool.h x509.h x509_vfy.h x509v3.h
+INCS+=  	ts.h txt_db.h ui.h whrlpool.h x509.h x509_verify.h x509_vfy.h
+INCS+=  	x509v3.h
 INCSDIR=	${INCLUDEDIR}/priv/openssl
 # explicitly disabled: engine.h
 # not needed: ui_compat.h
@@ -221,19 +222,17 @@ SRC_TXT_DB=	txt_db.c
 SRC_UI=		ui_err.c ui_lib.c ui_openssl.c
 # not needed: ui_util.c
 SRC_WHRLPOOL=	wp_dgst.c ${NOASM_WHRLPOOL}
-SRC_X509=	by_dir.c by_file.c by_mem.c x509_att.c x509_cmp.c x509_d2.c \
-		x509_def.c x509_err.c x509_ext.c x509_lu.c x509_obj.c \
-		x509_r2x.c x509_req.c x509_set.c x509_trs.c x509_txt.c \
-		x509_v3.c x509_vfy.c x509_vpm.c x509cset.c x509name.c \
-		x509rset.c x509spki.c x509type.c x_all.c
-# not needed but included: x509_r2x.c
-SRC_X509V3=	pcy_cache.c pcy_data.c pcy_lib.c pcy_map.c pcy_node.c \
-		pcy_tree.c v3_akey.c v3_akeya.c v3_alt.c v3_bcons.c \
-		v3_bitst.c v3_conf.c v3_cpols.c v3_crld.c v3_enum.c \
-		v3_extku.c v3_genn.c v3_ia5.c v3_info.c v3_int.c v3_lib.c \
-		v3_ncons.c v3_ocsp.c v3_pci.c v3_pcia.c v3_pcons.c v3_pku.c \
-		v3_pmaps.c v3_prn.c v3_purp.c v3_skey.c v3_sxnet.c v3_utl.c \
-		v3err.c
+SRC_X509=	by_dir.c by_file.c by_mem.c pcy_cache.c pcy_data.c pcy_lib.c \
+		pcy_map.c pcy_node.c pcy_tree.c x509_akey.c x509_akeya.c x509_alt.c \
+		x509_att.c x509_bcons.c x509_bitst.c x509_cmp.c x509_conf.c \
+		x509_constraints.c x509_cpols.c x509_crld.c x509_d2.c x509_def.c \
+		x509_enum.c x509_err.c x509_ext.c x509_extku.c x509_genn.c \
+		x509_ia5.c x509_info.c x509_int.c x509_issuer_cache.c x509_lib.c \
+		x509_lu.c x509_ncons.c x509_obj.c x509_ocsp.c x509_pci.c x509_pcia.c \
+		x509_pcons.c x509_pku.c x509_pmaps.c x509_prn.c x509_purp.c \
+		x509_skey.c x509_sxnet.c x509_r2x.c x509_req.c x509_set.c x509_trs.c \
+		x509_txt.c x509_utl.c x509_v3.c x509_verify.c x509_vfy.c x509_vpm.c \
+		x509cset.c x509name.c x509rset.c x509spki.c x509type.c x_all.c
 
 SRCS=		${ASM_X86_64_ELF} ${SRC_TOP} ${SRC_AES} ${SRC_ASN1} \
 		${SRC_BF} ${SRC_BIO} ${SRC_BN} ${SRC_BUFFER} ${SRC_CAMELLIA} \
@@ -246,8 +245,7 @@ SRCS=		${ASM_X86_64_ELF} ${SRC_TOP} ${SRC_AES} ${SRC_ASN1} \
 		${SRC_PKCS7} ${SRC_POLY1305} ${SRC_RAND} ${SRC_RC2} \
 		${SRC_RIPEMD} ${SRC_RSA} ${SRC_SHA} ${SRC_STACK} ${SRC_TS} \
 		${SRC_TXT_DB} ${SRC_UI} ${SRC_WHRLPOOL} ${SRC_X509} \
-		${SRC_X509V3} ${SRC_CURVE25519} \
-		${SRC_RC4} ${SRC_SM3} ${SRC_SM4}
+		${SRC_CURVE25519} ${SRC_RC4} ${SRC_SM3} ${SRC_SM4}
 
 .PATH:	${LCRYPTO_SRC} \
 	${LCRYPTO_SRC}/aes \
@@ -300,7 +298,6 @@ SRCS=		${ASM_X86_64_ELF} ${SRC_TOP} ${SRC_AES} ${SRC_ASN1} \
 	${LCRYPTO_SRC}/ui \
 	${LCRYPTO_SRC}/whrlpool \
 	${LCRYPTO_SRC}/x509 \
-	${LCRYPTO_SRC}/x509v3 \
 	${LIBRESSL_SRC}/include/openssl
 
 .include <bsd.lib.mk>
