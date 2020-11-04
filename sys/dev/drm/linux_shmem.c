@@ -37,6 +37,11 @@
 #include <linux/err.h>
 #include <linux/shmem_fs.h>
 
+/*
+ * This code is typically called with a normal VM object to access
+ * data from a userspace shared memory mapping.  However, handle the
+ * case where it might be called with OBJT_MGTDEVICE anyway.
+ */
 struct page *
 shmem_read_mapping_page(vm_object_t object, vm_pindex_t pindex)
 {
@@ -44,24 +49,36 @@ shmem_read_mapping_page(vm_object_t object, vm_pindex_t pindex)
 	int rv;
 
 	VM_OBJECT_LOCK(object);
-	m = vm_page_grab(object, pindex, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-	if (m->valid != VM_PAGE_BITS_ALL) {
-		if (vm_pager_has_page(object, pindex)) {
-			rv = vm_pager_get_page(object, &m, 1);
-			m = vm_page_lookup(object, pindex);
-			if (m == NULL)
-				return ERR_PTR(-ENOMEM);
-			if (rv != VM_PAGER_OK) {
-				vm_page_free(m);
-				return ERR_PTR(-ENOMEM);
+	if (object->type == OBJT_MGTDEVICE) {
+		m = NULL;
+		rv = vm_pager_get_page(object, pindex, &m, 1);
+		if (m == NULL)
+			return ERR_PTR(-ENOMEM);
+		if (rv != VM_PAGER_OK) {
+			vm_page_free(m);
+			return ERR_PTR(-ENOMEM);
+		}
+	} else {
+		m = vm_page_grab(object, pindex,
+				 VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
+		if (m->valid != VM_PAGE_BITS_ALL) {
+			if (vm_pager_has_page(object, pindex)) {
+				rv = vm_pager_get_page(object, pindex, &m, 1);
+				m = vm_page_lookup(object, pindex);
+				if (m == NULL)
+					return ERR_PTR(-ENOMEM);
+				if (rv != VM_PAGER_OK) {
+					vm_page_free(m);
+					return ERR_PTR(-ENOMEM);
+				}
+			} else {
+				pmap_zero_page(VM_PAGE_TO_PHYS(m));
+				m->valid = VM_PAGE_BITS_ALL;
+				m->dirty = 0;
 			}
-		} else {
-			pmap_zero_page(VM_PAGE_TO_PHYS(m));
-			m->valid = VM_PAGE_BITS_ALL;
-			m->dirty = 0;
 		}
 	}
-	vm_page_wire(m);
+	vm_page_wire(m);		/* put_page() undoes this */
 	vm_page_wakeup(m);
 	VM_OBJECT_UNLOCK(object);
 

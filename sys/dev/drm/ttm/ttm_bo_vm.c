@@ -431,7 +431,7 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 	struct ttm_buffer_object *bo = vm_obj->handle;
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_tt *ttm = NULL;
-	vm_page_t m, mtmp;
+	vm_page_t m;
 	int ret;
 	int retval = VM_PAGER_OK;
 	struct ttm_mem_type_manager *man =
@@ -456,30 +456,11 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 	vm_object_pip_add(vm_obj, 1);
 
 	/*
-	 * We must atomically clean up any possible placeholder page to avoid
-	 * the DRM subsystem attempting to use it.  We can determine if this
-	 * is a place holder page by checking m->valid.
-	 *
-	 * We have to do this before any potential fault_reserve_notify()
-	 * which might try to free the map (and thus deadlock on our busy
-	 * page).
+	 * OBJT_MGTDEVICE does not pre-allocate the page.
 	 */
-	m = *mres;
-	*mres = NULL;
-	if (m) {
-		if (m->valid == VM_PAGE_BITS_ALL) {
-			/* actual page */
-			vm_page_wakeup(m);
-		} else {
-			/* placeholder page */
-			KKASSERT((m->flags & PG_FICTITIOUS) == 0);
-			vm_page_remove(m);
-			vm_page_free(m);
-		}
-	}
+	KKASSERT(*mres == NULL);
 
 retry:
-	VM_OBJECT_UNLOCK(vm_obj);
 	m = NULL;
 
 	/*
@@ -492,23 +473,17 @@ retry:
 	if (unlikely(ret != 0)) {
 		if (ret != -EBUSY) {
 			retval = VM_PAGER_ERROR;
-			VM_OBJECT_LOCK(vm_obj);
 			goto out_unlock2;
 		}
 
-		if (vmf->flags & FAULT_FLAG_ALLOW_RETRY || 1) {
+		if ((vmf->flags & FAULT_FLAG_ALLOW_RETRY) || 1) {
 			if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
 				up_read(&vma->vm_mm->mmap_sem);
 				(void) ttm_bo_wait_unreserved(bo);
 			}
 
-#ifndef __DragonFly__
-			return VM_FAULT_RETRY;
-#else
-			VM_OBJECT_LOCK(vm_obj);
 			lwkt_yield();
 			goto retry;
-#endif
 		}
 
 		/*
@@ -516,13 +491,8 @@ retry:
 		 * mmap_sem -> bo::reserve, we'd use a blocking reserve here
 		 * instead of retrying the fault...
 		 */
-#ifndef __DragonFly__
-		return VM_FAULT_NOPAGE;
-#else
 		retval = VM_PAGER_ERROR;
-		VM_OBJECT_LOCK(vm_obj);
 		goto out_unlock2;
-#endif
 	}
 
 	if (bdev->driver->fault_reserve_notify) {
@@ -536,10 +506,10 @@ retry:
 		case -ERESTARTSYS:
 		case -EINTR:
 			retval = VM_PAGER_ERROR;
-			goto out_unlock;
+			goto out_unlock1;
 		default:
 			retval = VM_PAGER_ERROR;
-			goto out_unlock;
+			goto out_unlock1;
 		}
 	}
 
@@ -549,26 +519,23 @@ retry:
 	 */
 	ret = ttm_bo_vm_fault_idle(bo, vma, vmf);
 	if (unlikely(ret != 0)) {
-		retval = ret;
-#ifdef __DragonFly__
 		retval = VM_PAGER_ERROR;
-#endif
-		goto out_unlock;
+		goto out_unlock1;
 	}
 
 	ret = ttm_mem_io_lock(man, true);
 	if (unlikely(ret != 0)) {
 		retval = VM_PAGER_ERROR;
-		goto out_unlock;
+		goto out_unlock1;
 	}
 	ret = ttm_mem_io_reserve_vm(bo);
 	if (unlikely(ret != 0)) {
 		retval = VM_PAGER_ERROR;
-		goto out_io_unlock;
+		goto out_io_unlock1;
 	}
 	if (unlikely(OFF_TO_IDX(offset) >= bo->num_pages)) {
 		retval = VM_PAGER_ERROR;
-		goto out_io_unlock;
+		goto out_io_unlock1;
 	}
 
 	/*
@@ -615,20 +582,18 @@ retry:
 		/* Allocate all page at once, most common usage */
 		if (ttm->bdev->driver->ttm_tt_populate(ttm)) {
 			retval = VM_PAGER_ERROR;
-			goto out_io_unlock;
+			goto out_io_unlock1;
 		}
 
 		m = (struct vm_page *)ttm->pages[OFF_TO_IDX(offset)];
 		if (unlikely(!m)) {
 			retval = VM_PAGER_ERROR;
-			goto out_io_unlock;
+			goto out_io_unlock1;
 		}
 		pmap_page_set_memattr(m,
 		    (bo->mem.placement & TTM_PL_FLAG_CACHED) ?
 		    VM_MEMATTR_WRITE_BACK : ttm_io_prot(bo->mem.placement, 0));
 	}
-
-	VM_OBJECT_LOCK(vm_obj);
 
 	if (vm_page_busy_try(m, FALSE)) {
 		kprintf("r");
@@ -639,38 +604,11 @@ retry:
 	}
 
 	/*
-	 * We want our fake page in the VM object, not the page the OS
-	 * allocatedd for us as a placeholder.
+	 * Return our fake page BUSYd.  Do not index it into the VM object.
+	 * The caller will enter it into the pmap.
 	 */
 	m->valid = VM_PAGE_BITS_ALL;
 	*mres = m;
-
-	/*
-	 * Insert the page into the object if not already inserted.
-	 */
-	if (m->object) {
-		if (m->object != vm_obj || m->pindex != OFF_TO_IDX(offset)) {
-			retval = VM_PAGER_ERROR;
-			kprintf("ttm_bo_vm_fault_dfly: m(%p) already inserted "
-				"in obj %p, attempt obj %p\n",
-				m, m->object, vm_obj);
-			while (drm_unstall == 0) {
-				tsleep(&retval, 0, "DEBUG", hz/10);
-			}
-			if (drm_unstall > 0)
-				--drm_unstall;
-		}
-	} else {
-		mtmp = vm_page_lookup(vm_obj, OFF_TO_IDX(offset));
-		if (mtmp == NULL) {
-			vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
-		} else {
-			panic("inconsistent insert bo %p m %p mtmp %p "
-			      "offset %jx",
-			      bo, m, mtmp,
-			      (uintmax_t)offset);
-		}
-	}
 
 out_io_unlock1:
 	ttm_mem_io_unlock(man);
@@ -679,14 +617,6 @@ out_unlock1:
 out_unlock2:
 	vm_object_pip_wakeup(vm_obj);
 	return (retval);
-
-out_io_unlock:
-	VM_OBJECT_LOCK(vm_obj);
-	goto out_io_unlock1;
-
-out_unlock:
-	VM_OBJECT_LOCK(vm_obj);
-	goto out_unlock1;
 }
 
 static int

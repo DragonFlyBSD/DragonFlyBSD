@@ -304,7 +304,7 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 						 VM_ALLOC_RETRY);
 		if (((struct vm_page *)from_page)->valid != VM_PAGE_BITS_ALL) {
 			if (vm_pager_has_page(swap_storage, i)) {
-				if (vm_pager_get_page(swap_storage,
+				if (vm_pager_get_page(swap_storage, i,
 				    (struct vm_page **)&from_page, 1) != VM_PAGER_OK) {
 					vm_page_free((struct vm_page *)from_page);
 					ret = -EIO;

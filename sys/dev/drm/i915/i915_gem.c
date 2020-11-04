@@ -1887,12 +1887,8 @@ compute_partial_view(struct drm_i915_gem_object *obj,
  *
  * vm_obj is locked on entry and expected to be locked on return.
  *
- * The vm_pager has placemarked the object with an anonymous memory page
- * which we must replace atomically to avoid races against concurrent faults
- * on the same page.  XXX we currently are unable to do this atomically.
- *
- * If we are to return an error we should not touch the anonymous page,
- * the caller will deallocate it.
+ * This is a OBJT_MGTDEVICE object, *mres will be NULL and should be set
+ * to the desired vm_page.  The page is not indexed into the vm_obj.
  *
  * XXX Most GEM calls appear to be interruptable, but we can't hard loop
  * in that case.  Release all resources and wait 1 tick before retrying.
@@ -1935,7 +1931,6 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	vm_page_t m;
 	unsigned int flags;
 	int ret;
-#ifdef __DragonFly__
 	int didref = 0;
 	struct vm_area_struct tmp_vm_area;
 	struct vm_area_struct *area = &tmp_vm_area;
@@ -1944,7 +1939,6 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	area->vm_private_data = vm_obj->handle;
 	area->vm_start = 0;
 	area->vm_end = obj->base.size;
-#endif
 
 	/* We don't use vmf->pgoff since that has the fake offset */
 	page_offset = (unsigned long)offset >> PAGE_SHIFT;
@@ -1958,16 +1952,7 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	 * and then dealing with the potential for a new placeholder when
 	 * we try to insert later.
 	 */
-	if (*mres != NULL) {
-		m = *mres;
-		*mres = NULL;
-		if ((m->busy_count & PBUSY_LOCKED) == 0)
-			kprintf("i915_gem_fault: Page was not busy\n");
-		else
-			vm_page_remove(m);
-		vm_page_free(m);
-	}
- 
+	KKASSERT(*mres == NULL);
 	m = NULL;
 
 retry:
@@ -2059,26 +2044,6 @@ retry:
 	didref = 1;
 
 	ret = 0;
-	m = NULL;
-
-	/*
-	 * Since the object lock was dropped, another thread might have
-	 * faulted on the same GTT address and instantiated the mapping.
-	 * Recheck.
-	 */
-	m = vm_page_lookup(vm_obj, OFF_TO_IDX(offset));
-	if (m != NULL) {
-		/*
-		 * Try to busy the page, retry on failure (non-zero ret).
-		 */
-		if (vm_page_busy_try(m, false)) {
-			kprintf("i915_gem_fault: BUSY\n");
-			ret = -EINTR;
-			goto err_unpin;
-		}
-		goto have_page;
-	}
-	/* END FREEBSD MAGIC */
 
 	/* Mark as being mmapped into userspace for later revocation */
 	assert_rpm_wakelock_held(dev_priv);
@@ -2105,23 +2070,6 @@ retry:
 		goto err_unpin;
 	}
 	m->valid = VM_PAGE_BITS_ALL;
-
-#if 1
-	/*
-	 * This should always work since we already checked via a lookup
-	 * above.
-	 */
-	if (vm_page_insert(m, vm_obj, OFF_TO_IDX(offset)) == FALSE) {
-		kprintf("i915:gem_fault: page %p,%jd already in object\n",
-			vm_obj,
-			OFF_TO_IDX(offset));
-		vm_page_wakeup(m);
-		ret = -EINTR;
-		goto err_unpin;
-	}
-#endif
-
-have_page:
 	*mres = m;
 
 	__i915_vma_unpin(vma);
