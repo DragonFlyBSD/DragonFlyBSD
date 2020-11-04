@@ -1159,6 +1159,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, int *countp)
 
 	lwkt_getpooltoken(kq);
 	count = 0;
+	error = 0;
 
 	/*
 	 * To avoid races, only one thread can register events on this
