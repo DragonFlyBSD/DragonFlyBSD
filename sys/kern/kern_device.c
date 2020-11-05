@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com> All rights reserved.
  * cdevsw from kern/kern_conf.c Copyright (c) 1995 Terrence R. Lambert
- * cdevsw from kern/kern_conf.c Copyright (c) 1995 Julian R. Elishcer,
+ * cdevsw from kern/kern_conf.c Copyright (c) 1995 Julian R. Elischer,
  *							All rights reserved.
  * Copyright (c) 1982, 1986, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -118,14 +118,14 @@ static __inline
 int
 dev_needmplock(cdev_t dev)
 {
-    return((dev->si_ops->head.flags & D_MPSAFE) == 0);
+	return((dev->si_ops->head.flags & D_MPSAFE) == 0);
 }
 
 static __inline
 int
 dev_nokvabio(cdev_t dev)
 {
-    return((dev->si_ops->head.flags & D_KVABIO) == 0);
+	return((dev->si_ops->head.flags & D_KVABIO) == 0);
 }
     
 /************************************************************************
@@ -502,7 +502,7 @@ dev_dkqfilter(cdev_t dev, struct knote *kn, struct file *fp)
 int
 dev_drefs(cdev_t dev)
 {
-    return(dev->si_sysref.refcnt);
+	return(dev->si_sysref.refcnt);
 }
 
 /*
@@ -511,7 +511,7 @@ dev_drefs(cdev_t dev)
 const char *
 dev_dname(cdev_t dev)
 {
-    return(dev->si_ops->head.name);
+	return(dev->si_ops->head.name);
 }
 
 /*
@@ -520,7 +520,7 @@ dev_dname(cdev_t dev)
 int
 dev_dflags(cdev_t dev)
 {
-    return(dev->si_ops->head.flags);
+	return(dev->si_ops->head.flags);
 }
 
 /*
@@ -529,7 +529,7 @@ dev_dflags(cdev_t dev)
 int
 dev_dmaj(cdev_t dev)
 {
-    return(dev->si_ops->head.maj);
+	return(dev->si_ops->head.maj);
 }
 
 /*
@@ -539,19 +539,19 @@ dev_dmaj(cdev_t dev)
 int
 dev_doperate(struct dev_generic_args *ap)
 {
-    int (*func)(struct dev_generic_args *);
-    int needmplock = dev_needmplock(ap->a_dev);
-    int error;
+	int (*func)(struct dev_generic_args *);
+	int needmplock = dev_needmplock(ap->a_dev);
+	int error;
 
-    func = *(void **)((char *)ap->a_dev->si_ops + ap->a_desc->sd_offset);
+	func = *(void **)((char *)ap->a_dev->si_ops + ap->a_desc->sd_offset);
 
-    if (needmplock)
-	    get_mplock();
-    error = func(ap);
-    if (needmplock)
-	    rel_mplock();
+	if (needmplock)
+		get_mplock();
+	error = func(ap);
+	if (needmplock)
+		rel_mplock();
 
-    return (error);
+	return (error);
 }
 
 /*
@@ -562,19 +562,19 @@ dev_doperate(struct dev_generic_args *ap)
 int
 dev_doperate_ops(struct dev_ops *ops, struct dev_generic_args *ap)
 {
-    int (*func)(struct dev_generic_args *);
-    int needmplock = ((ops->head.flags & D_MPSAFE) == 0);
-    int error;
+	int (*func)(struct dev_generic_args *);
+	int needmplock = ((ops->head.flags & D_MPSAFE) == 0);
+	int error;
 
-    func = *(void **)((char *)ops + ap->a_desc->sd_offset);
+	func = *(void **)((char *)ops + ap->a_desc->sd_offset);
 
-    if (needmplock)
-	    get_mplock();
-    error = func(ap);
-    if (needmplock)
-	    rel_mplock();
+	if (needmplock)
+		get_mplock();
+	error = func(ap);
+	if (needmplock)
+		rel_mplock();
 
-    return (error);
+	return (error);
 }
 
 /*
@@ -624,11 +624,11 @@ static
 int
 rb_dev_ops_compare(struct dev_ops_maj *a, struct dev_ops_maj *b)
 {
-    if (a->maj < b->maj)
-	return(-1);
-    else if (a->maj > b->maj)
-	return(1);
-    return(0);
+	if (a->maj < b->maj)
+		return(-1);
+	else if (a->maj > b->maj)
+		return(1);
+	return(0);
 }
 
 RB_GENERATE2(dev_ops_rb_tree, dev_ops_maj, rbnode, rb_dev_ops_compare, int, maj);
@@ -784,4 +784,3 @@ nullclose(struct dev_close_args *ap)
 {
 	return (0);
 }
-
