@@ -28,7 +28,7 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/dev/amdtemp/amdtemp.c 361011 2020-05-13 18:07:37Z kevans $
+ * $FreeBSD: head/sys/dev/amdtemp/amdtemp.c 366136 2020-09-25 04:16:28Z cem $
  */
 
 /*
@@ -106,6 +106,7 @@ struct amdtemp_softc {
 #define	DEVICEID_AMD_HOSTB17H_ROOT	0x1450
 #define	DEVICEID_AMD_HOSTB17H_M10H_ROOT	0x15d0
 #define	DEVICEID_AMD_HOSTB17H_M30H_ROOT	0x1480	/* Also M70h. */
+#define	DEVICEID_AMD_HOSTB17H_M60H_ROOT	0x1630
 
 static const struct amdtemp_product {
 	uint16_t	amdtemp_vendorid;
@@ -129,6 +130,7 @@ static const struct amdtemp_product {
 	{ VENDORID_AMD,	DEVICEID_AMD_HOSTB17H_ROOT, false },
 	{ VENDORID_AMD,	DEVICEID_AMD_HOSTB17H_M10H_ROOT, false },
 	{ VENDORID_AMD,	DEVICEID_AMD_HOSTB17H_M30H_ROOT, false },
+	{ VENDORID_AMD,	DEVICEID_AMD_HOSTB17H_M60H_ROOT, false },
 };
 
 /*
