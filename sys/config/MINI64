@@ -1,0 +1,17 @@
+#
+# MINI64 -- minimal configuration to test the kernel build without any options
+#
+# Needs -DNO_MODULES, see below for building modules.
+#
+
+platform	pc64
+machine		x86_64
+machine_arch	x86_64
+cpu		HAMMER_CPU
+ident		MINI64
+
+# Uncomment those to be able to build modules, too.
+#
+#options	INET
+#pseudo-device	ether
+#pseudo-device	loop
