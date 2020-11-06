@@ -20,7 +20,7 @@ machine		x86_64
 machine_arch	x86_64
 
 #
-# This is the ``identification'' of the kernel.  Usually this should
+# This is the mandatory ``identification'' of the kernel.  Usually this should
 # be the same as the name of your kernel.
 #
 ident		LINT64
@@ -107,6 +107,8 @@ options 	ROOTDEVNAME=\"ufs:da0s2e\"
 #####################################################################
 # CPU OPTIONS
 
+# cpu is mandatory
+#
 cpu		HAMMER_CPU
 
 #
