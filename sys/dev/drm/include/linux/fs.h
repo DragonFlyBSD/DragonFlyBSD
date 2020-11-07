@@ -85,6 +85,12 @@ invalidate_mapping_pages(struct vm_object *obj, pgoff_t start, pgoff_t end)
 {
 	int start_count, end_count, clean_only = 1;
 
+	/*
+	 * XXX - resident_page_count no longer represents the
+	 *	 number of pages that might be mapped.
+	 *
+	 *	 All current use cases ignore the return value.
+	 */
 	VM_OBJECT_LOCK(obj);
 	start_count = obj->resident_page_count;
 	/* Only non-dirty pages must be freed or invalidated */

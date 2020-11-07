@@ -2146,20 +2146,11 @@ static inline void drm_vma_node_unmap(struct drm_vma_offset_node *node,
 	struct drm_i915_gem_object *obj = container_of(
 		node,struct drm_i915_gem_object, base.vma_node);
 	vm_object_t devobj;
-	vm_page_t m;
-	int i, page_count;
 
 	devobj = cdev_pager_lookup(obj);
 	if (devobj != NULL) {
-		page_count = OFF_TO_IDX(obj->base.size);
-
 		VM_OBJECT_LOCK(devobj);
-		for (i = 0; i < page_count; i++) {
-			m = vm_page_lookup_busy_wait(devobj, i, TRUE, "915unm");
-			if (m == NULL)
-				continue;
-			cdev_pager_free_page(devobj, m);
-		}
+		vm_object_page_remove(devobj, 0, 0, false);
 		VM_OBJECT_UNLOCK(devobj);
 		vm_object_deallocate(devobj);
 	}

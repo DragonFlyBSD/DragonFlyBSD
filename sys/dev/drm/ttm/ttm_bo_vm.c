@@ -715,20 +715,13 @@ void
 ttm_bo_release_mmap(struct ttm_buffer_object *bo)
 {
 	vm_object_t vm_obj;
-	vm_page_t m;
-	int i;
 
 	vm_obj = cdev_pager_lookup(bo);
 	if (vm_obj == NULL)
 		return;
 
 	VM_OBJECT_LOCK(vm_obj);
-	for (i = 0; i < bo->num_pages; i++) {
-		m = vm_page_lookup_busy_wait(vm_obj, i, TRUE, "ttm_unm");
-		if (m == NULL)
-			continue;
-		cdev_pager_free_page(vm_obj, m);
-	}
+	vm_object_page_remove(vm_obj, 0, 0, false);
 	VM_OBJECT_UNLOCK(vm_obj);
 
 	vm_object_deallocate(vm_obj);
