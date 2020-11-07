@@ -1365,11 +1365,16 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	int all;
 
 	/*
-	 * Degenerate cases and assertions
+	 * Degenerate cases and assertions.
+	 *
+	 * NOTE: Don't shortcut on resident_page_count for MGTDEVICE objects.
+	 *	 These objects do not have to have their pages entered into
+	 *	 them and are handled via their vm_map_backing lists.
 	 */
 	vm_object_hold(object);
 	if (object == NULL ||
-	    (object->resident_page_count == 0 && object->swblock_count == 0)) {
+	    (object->type != OBJT_MGTDEVICE &&
+	     object->resident_page_count == 0 && object->swblock_count == 0)) {
 		vm_object_drop(object);
 		return;
 	}
@@ -1391,7 +1396,7 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 */
 	info.object = object;
 	info.start_pindex = start;
-	if (end == 0) {
+	if (end == 0 || end == (vm_pindex_t)-1) {
 		info.end_pindex = (vm_pindex_t)-1;
 		end = object->size;
 	} else {
@@ -1434,6 +1439,11 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 			 * NOTE! This may also remove other incidental pages
 			 *	 in the pmap, as the backing area may be
 			 *	 overloaded.
+			 *
+			 * NOTE! pages for MGTDEVICE objects are only removed
+			 *	 here, they aren't entered into rb_memq, so
+			 *	 we must use pmap_remove() instead of
+			 *	 the non-TLB-invalidating pmap_remove_pages().
 			 */
 			if (sba < eba) {
 				sva = ba->start + IDX_TO_OFF(sba) - ba->offset;
@@ -1443,7 +1453,7 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 					"%p[%016jx] %016jx-%016jx\n",
 					ba->pmap, ba->start, sva, eva);
 #endif
-				pmap_remove_pages(ba->pmap, sva, eva);
+				pmap_remove(ba->pmap, sva, eva);
 			}
 		}
 		lockmgr(&object->backing_lk, LK_RELEASE);
