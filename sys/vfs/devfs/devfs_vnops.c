@@ -2212,7 +2212,7 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 		 */
 		int tmpseq = fp->f_seqcount;
 
-		tmpseq += (uio->uio_resid + MAXBSIZE - 1) / MAXBSIZE;
+		tmpseq += howmany(uio->uio_resid, MAXBSIZE);
 		if (tmpseq > IO_SEQMAX)
 			tmpseq = IO_SEQMAX;
 		fp->f_seqcount = tmpseq;

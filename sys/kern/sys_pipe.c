@@ -1060,7 +1060,7 @@ pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 	ub->st_mode = S_IFIFO;
 	ub->st_blksize = rpb->size;
 	ub->st_size = rpb->windex - rpb->rindex;
-	ub->st_blocks = (ub->st_size + ub->st_blksize - 1) / ub->st_blksize;
+	ub->st_blocks = howmany(ub->st_size, ub->st_blksize);
 	ub->st_atimespec = rpb->atime;
 	ub->st_mtimespec = rpb->mtime;
 	ub->st_ctimespec = pipe->ctime;

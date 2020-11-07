@@ -510,7 +510,7 @@ sys_msgsnd(struct sysmsg *sysmsg, const struct msgsnd_args *uap)
 		goto done;
 	}
 
-	segs_needed = (msgsz + msginfo.msgssz - 1) / msginfo.msgssz;
+	segs_needed = howmany(msgsz, msginfo.msgssz);
 #ifdef MSG_DEBUG_OK
 	kprintf("msgsz=%d, msgssz=%d, segs_needed=%d\n", msgsz, msginfo.msgssz,
 	    segs_needed);

@@ -903,8 +903,8 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 * vm_page array
 	 * initial pventry's
 	 */
-	nkpt_phys = (Maxmem * sizeof(struct vm_page) + NBPDR - 1) / NBPDR;
-	nkpt_phys += (Maxmem * sizeof(struct pv_entry) + NBPDR - 1) / NBPDR;
+	nkpt_phys = howmany(Maxmem * sizeof(struct vm_page), NBPDR);
+	nkpt_phys += howmany(Maxmem * sizeof(struct pv_entry), NBPDR);
 	nkpt_phys += 128;	/* a few extra */
 
 	/*
