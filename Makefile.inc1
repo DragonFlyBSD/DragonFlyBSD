@@ -488,7 +488,7 @@ install-all:
 	@(cd ${.CURDIR}; ${MAKE} -j 1 upgrade >> ${GENLOGDIR}/bw.out 2>&1)
 	@sync
 	@echo "install-all completed ok.  reboot recommended and after that, "
-	@echo "if doing a major upgrade, pkg upgrade -f"
+	@echo "when doing a major upgrade, 'pkg upgrade -f' after rebooting"
 
 .ORDER: _bwinit ${WMAKE_TGTS} _bwdone
 .ORDER: _obj _includes
