@@ -34,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/msgbuf.h>
 #include <sys/sysctl.h>
+#include <sys/stat.h>
 
 #include <err.h>
 #include <fcntl.h>
@@ -75,6 +76,7 @@ main(int argc, char **argv)
 	int tailmode = 0;
 	int kno;
 	size_t buflen, bufpos;
+	struct stat st;
 
 	setlocale(LC_CTYPE, "");
 	memf = nlistf = NULL;
@@ -97,8 +99,14 @@ main(int argc, char **argv)
 			break;
 		case 'n':
 			kno = strtol(optarg, NULL, 0);
-			asprintf(&memf, "/var/crash/vmcore.%d", kno);
-			asprintf(&nlistf, "/var/crash/kern.%d", kno);
+			asprintf(&memf, "vmcore.%d", kno);
+			asprintf(&nlistf, "kern.%d", kno);
+			if (stat(memf, &st) || stat(nlistf, &st)) {
+				free(memf);
+				free(nlistf);
+				asprintf(&memf, "/var/crash/vmcore.%d", kno);
+				asprintf(&nlistf, "/var/crash/kern.%d", kno);
+			}
 			break;
 		case '?':
 		default:

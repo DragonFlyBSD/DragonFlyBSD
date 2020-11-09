@@ -92,6 +92,9 @@ instead of the default, which is the kernel image the system has booted from.
 Use the kernel core dump file numbered
 .Ar dumpnr
 for debugging.
+If not found in the current directory,
+.Pa /var/crash
+is checked.
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /var/run/dmesg.boot" -compact
