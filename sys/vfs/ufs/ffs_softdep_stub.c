@@ -54,7 +54,7 @@
 #include "ffs_extern.h"
 #include "ufs_extern.h"
 
-int
+int __dead2
 softdep_flushfiles(struct mount *oldmnt, int flags)
 {
 	panic("softdep_flushfiles called");
@@ -72,19 +72,19 @@ softdep_initialize(void)
 	/* empty */
 }
 
-void
+void __dead2
 softdep_setup_inomapdep(struct buf *bp, struct inode *ip, ino_t newinum)
 {
 	panic("softdep_setup_inomapdep called");
 }
 
-void
+void __dead2
 softdep_setup_blkmapdep(struct buf *bp, struct fs *fs, ufs_daddr_t newblkno)
 {
 	panic("softdep_setup_blkmapdep called");
 }
 
-void 
+void __dead2
 softdep_setup_allocdirect(struct inode *ip, ufs_lbn_t lbn,
 			  ufs_daddr_t newblkno, ufs_daddr_t oldblkno,
 			  long newsize, long oldsize, struct buf *bp)
@@ -92,7 +92,7 @@ softdep_setup_allocdirect(struct inode *ip, ufs_lbn_t lbn,
 	panic("softdep_setup_allocdirect called");
 }
 
-void
+void __dead2
 softdep_setup_allocindir_page(struct inode *ip, ufs_lbn_t lbn, struct buf *bp,
 			      int ptrno, ufs_daddr_t newblkno,
 			      ufs_daddr_t oldblkno, struct buf *nbp)
@@ -100,34 +100,34 @@ softdep_setup_allocindir_page(struct inode *ip, ufs_lbn_t lbn, struct buf *bp,
 	panic("softdep_setup_allocindir_page called");
 }
 
-void
+void __dead2
 softdep_setup_allocindir_meta(struct buf *nbp, struct inode *ip, struct buf *bp,
 			      int ptrno, ufs_daddr_t newblkno)
 {
 	panic("softdep_setup_allocindir_meta called");
 }
 
-void
+void __dead2
 softdep_setup_freeblocks(struct inode *ip, off_t length)
 {
 	panic("softdep_setup_freeblocks called");
 }
 
 /* XXX needed to change this for FreeBSD.. hit poul */
-void
+void __dead2
 softdep_freefile(struct vnode *pvp, ino_t ino, int mode)
 {
 	panic("softdep_freefile called");
 }
 
-void 
+void __dead2
 softdep_setup_directory_add(struct buf *bp, struct inode *dp, off_t diroffset,
 			    ino_t newinum, struct buf *newdirbp)
 {
 	panic("softdep_setup_directory_add called");
 }
 
-void 
+void __dead2
 softdep_change_directoryentry_offset(struct inode *dp, caddr_t base,
 				     caddr_t oldloc, caddr_t newloc,
 				     int entrysize)
@@ -135,33 +135,33 @@ softdep_change_directoryentry_offset(struct inode *dp, caddr_t base,
 	panic("softdep_change_directoryentry_offset called");
 }
 
-void 
+void __dead2
 softdep_setup_remove(struct buf *bp, struct inode *dp, struct inode *ip,
 		     int isrmdir)
 {
 	panic("softdep_setup_remove called");
 }
 
-void 
+void __dead2
 softdep_setup_directory_change(struct buf *bp, struct inode *dp,
 			       struct inode *ip, ino_t newinum, int isrmdir)
 {
 	panic("softdep_setup_directory_change called");
 }
 
-void
+void __dead2
 softdep_change_linkcnt(struct inode *ip)
 {
 	panic("softdep_change_linkcnt called");
 }
 
-void 
+void __dead2
 softdep_load_inodeblock(struct inode *ip)
 {
 	panic("softdep_load_inodeblock called");
 }
 
-void 
+void __dead2
 softdep_update_inodeblock(struct inode *ip, struct buf *bp, int waitfor)
 {
 	panic("softdep_update_inodeblock called");
@@ -182,7 +182,7 @@ softdep_sync_metadata(struct vnode *vp, struct thread *td)
 	return (0);
 }
 
-int
+int __dead2
 softdep_slowdown(struct vnode *vp)
 {
 	panic("softdep_slowdown called");
