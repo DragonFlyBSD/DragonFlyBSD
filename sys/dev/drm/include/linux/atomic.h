@@ -212,6 +212,23 @@ atomic_fetch_xor(int i, atomic_t *v)
 	return val;
 }
 
+static inline int
+atomic_dec_if_positive(atomic_t *v)
+{
+	int retval;
+	int old;
+
+	old = atomic_read(v);
+	for (;;) {
+		retval = old - 1;
+		if (unlikely(retval < 0))
+			break;
+		if (likely(atomic_fcmpset_int(&v->counter, &old, retval)))
+			break;
+	}
+	return (retval);
+}
+
 #include <asm-generic/atomic-long.h>
 
 #endif	/* _LINUX_ATOMIC_H_ */
