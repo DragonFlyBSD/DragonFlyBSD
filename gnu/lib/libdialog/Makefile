@@ -12,9 +12,12 @@ SRCS=	argv.c arrows.c buildlist.c buttons.c \
 	pause.c prgbox.c progressbox.c rangebox.c rc.c \
 	tailbox.c textbox.c timebox.c trace.c treeview.c \
 	ttysize.c ui_getc.c util.c version.c yesno.c
-WARNS?=	3
+WARNS?=	6
 
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 CFLAGS+=	-DNCURSES_WIDECHAR
+CFLAGS+=	-D'GCC_NORETURN=__dead2'
+CFLAGS+=	-D'GCC_PRINTFLIKE(fmt,var)=__printflike(fmt,var)'
+CFLAGS+=	-D'GCC_UNUSED=__unused'
 
 .include <bsd.lib.mk>
