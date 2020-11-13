@@ -55,7 +55,7 @@
  */
 
 /*
- * API
+ * API (see sys/exislock2.h)
  *
  * exis_hold()
  * exis_drop()
@@ -81,8 +81,11 @@
  *
  *	Return the pseudo_ticks delta relative to an exis structure.  A
  *	value >= 0 indicates that the structure is LIVE or CACHED.  A negative
- *	value indicates that the structure is not usable.  Values
- *	should not generally be interpreted beyond this.
+ *	value indicates that the structure is not usable.  -1 indicates
+ *	NOTCACHED and <= -2 indicates TERMINATE (freeable).
+ *
+ *	Values should not generally be interpreted beyond this.  Instead,
+ *	use exis_state(), exis_usable(), and exis_freeable().
  *
  * exis_state()
  *
@@ -94,7 +97,12 @@
  * exis_usable()
  *
  *	Returns non-zero if the exis structure is usable, meaning that it
- *	is in a LIVE or CACHED state.
+ *	is in a LIVE or CACHED state (>= 0).
+ *
+ * exis_freeable()
+ *
+ *	Returns non-zero if the exis structure is usable, meaning that it
+ *	is in a TERMINATE state (<= -2).
  *
  * exis_cache(N)
  *
@@ -184,11 +192,6 @@
 #ifndef _SYS_EXISLOCK_H_
 #define	_SYS_EXISLOCK_H_
 
-#include <sys/globaldata.h>
-#include <machine/thread.h>
-
-struct thread;
-
 struct exislock {
 	long		pseudo_ticks;
 };
@@ -202,178 +205,5 @@ typedef enum exis_state {
 } exis_state_t;
 
 extern long pseudo_ticks;
-
-/*
- * Initialize the structure
- */
-static __inline void
-exis_init(exislock_t *xlk)
-{
-	xlk->pseudo_ticks = 0;
-}
-
-/*
- * pcpu exis lock API.  Enter and and exit a type-safe critical section.
- */
-static __inline void
-exis_hold_gd(globaldata_t gd)
-{
-	++gd->gd_exislockcnt;
-}
-
-static __inline void
-exis_drop_gd(globaldata_t gd)
-{
-	if (--gd->gd_exislockcnt == 0)
-		gd->gd_exisarmed = 1;
-}
-
-static __inline void
-exis_hold(void)
-{
-	exis_hold_gd(mycpu);
-}
-
-static __inline void
-exis_drop(void)
-{
-	exis_drop_gd(mycpu);
-}
-
-/*
- * poll whether the object is usable or not.  A value >= 0 indicates that
- * the (possibly cached) object is usable.
- *
- * This call returns the approximate number of pseudo_ticks remaining until
- * the object becomes unusable, +/- one.
- *
- * The actual value returns is either >= 0, or a negative number.  Caller
- * should refrain from trying to interpret values >= 0 other than the fact
- * that they are >= 0.
- *
- * Negative numbers indicate the number of pseudo_ticks which have occurred
- * since the object became unusable.  Various negative values trigger different
- */
-static __inline long
-exis_poll(exislock_t *xlk)
-{
-	long val = xlk->pseudo_ticks;
-
-	cpu_ccfence();
-	if (val == 0)
-		return val;
-	return (pseudo_ticks - val);
-}
-
-/*
- * Return the current state.  Note that the NOTCACHED state persists for
- * two pseudo_ticks.  This is done because the global pseudo_ticks counter
- * can concurrently increment by 1 (but no more than 1) during a type-safe
- * critical section.
- *
- * The state can transition even while holding a type-safe critical section,
- * but sequencing is designed such that this does not cause any problems.
- */
-static __inline int
-exis_state(exislock_t *xlk)
-{
-	long val = xlk->pseudo_ticks;
-
-	cpu_ccfence();
-	if (val == 0)
-		return EXIS_LIVE;
-	val = pseudo_ticks - val;
-	if (val >= 0)
-		return EXIS_CACHED;
-	if (val >= -2)
-		return EXIS_NOTCACHED;
-	return EXIS_TERMINATE;
-}
-
-/*
- * Returns non-zero if the structure is usable (either LIVE or CACHED).
- *
- * WARNING! The structure is not considered to be usable if it is in
- *	    an UNCACHED state, but if it is CACHED and transitions to
- *	    UNCACHED during a type-safe critical section it does remain
- *	    usable for the duration of that type-safe critical section.
- */
-static __inline int
-exis_usable(exislock_t *xlk)
-{
-	return (exis_poll(xlk) >= 0);
-}
-
-/*
- * If the structure is in a LIVE or CACHED state, or if it was CACHED and
- * concurrently transitioned to NOTCACHED in the same type-safe critical
- * section, the state will be reset to a CACHED(n) state and non-zero is
- * returned.
- *
- * Otherwise 0 is returned and no action is taken.
- */
-static __inline int
-exis_cache(exislock_t *xlk, long n)
-{
-	long val = xlk->pseudo_ticks;
-	long pticks = pseudo_ticks;
-
-	cpu_ccfence();
-	if (val)
-		val = val - pticks;
-	if (val >= -1) {
-		/*
-		 * avoid cache line ping-pong
-		 */
-		pticks += n + 1;
-		if (xlk->pseudo_ticks != pticks) {
-			cpu_ccfence();
-			xlk->pseudo_ticks = pticks;
-		}
-		return 1;
-	}
-	return 0;
-}
-
-/*
- * Termination sequencing.
- *
- * The structure is placed in a CACHED(0) state if LIVE or CACHED.
- * The NOTCACHED state should not be acted upon by the caller until
- * and unless it transitions to TERMINATE.
- *
- * Upon returning EXIS_TERMINATE, the structure is returned to a
- * NOTCACHED state and another 1-2 pseudo ticks will pass until it goes
- * back to EXIS_TERMINATE (if needed by the caller).  Once the caller
- * is fully satisfied, it may repurpose or destroy the structure.
- *
- * Caller should hold a strong interlock on the structure in addition
- * to being in a type-safe critical section.
- */
-static __inline exis_state_t
-exis_terminate(exislock_t *xlk)
-{
-	exis_state_t state;
-
-	state = exis_state(xlk);
-	switch(state) {
-	case EXIS_TERMINATE:
-		/*
-		 * Set to NOTCACHED state and return EXIS_TERMINATE.
-		 * due to pseudo_ticks races, the NOTCACHED state will
-		 * persist for 1-2 pseudo ticks.
-		 */
-		xlk->pseudo_ticks = pseudo_ticks - 1;
-		state = EXIS_TERMINATE;
-		break;
-	case EXIS_NOTCACHED:
-		break;
-	case EXIS_CACHED:
-	case EXIS_LIVE:
-		xlk->pseudo_ticks = pseudo_ticks;
-		break;
-	}
-	return state;
-}
 
 #endif /* !_SYS_EXISLOCK_H_ */

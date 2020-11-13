@@ -44,26 +44,16 @@
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
+#ifndef _SYS_EXISLOCK_H_
+#include <sys/exislock.h>
+#endif
 
-/*
- * WITH TYPESTABLE (currently disabled)
- *
- *  This is a mechanism to use a separate internal _callout structure
- *  for kern_timeout's internals instead of embedding.  At the moment
- *  it doesn't work properly because tsleep() is using a temporary callout
- *  and can't afford to block on setup.
- *
- * WITHOUT TYPESTABLE  <---
- *
- *  Without typestable we embed the internal _callout structure within
- *  the external callout structure.  We will still use the verifier to
- *  try to catch corruption.
- */
 struct callout;
-#undef CALLOUT_TYPESTABLE
+struct softclock_pcpu;
 
 struct _callout {
-	struct spinlock	spin;
+	struct spinlock	spin;		/* typestable spinlock */
+	exislock_t	exis;
 	TAILQ_ENTRY(_callout) entry;
 	struct callout	*verifier;
 	uint32_t	flags;
@@ -75,7 +65,7 @@ struct _callout {
 	void		*rarg;
 	void		(*rfunc)(void *);
 	int		rtick;
-	int		unused01;
+	uint32_t	unused01;
 
 	struct softclock_pcpu *qsc;	/* active info */
 	void		*qarg;
@@ -85,32 +75,22 @@ struct _callout {
 };
 
 struct callout {
-#ifdef CALLOUT_TYPESTABLE
-	struct _callout	*toc;		/* opaque internal structure */
-	uint32_t	flags;		/* initial flags */
-	uint32_t	lineno;		/* debugging */
-	struct lock	*lk;		/* interlock */
-	const char	*ident;		/* debugging */
-	void		*arg;		/* ONLY used for callout_arg() XXX */
-#else
-	struct _callout	toc;
-	uint32_t	flags;
-#endif
+	struct _callout *toc;		/* opaque internal pointer */
+	struct lock	*lk;		/* callout_init() copy data */
+	uint32_t	flags;		/* callout_init() copy data */
+	uint32_t	unused01;
 };
 
 /*
  * Legacy access/setting of the function and argument.  Used only
  * by netgraph7 and ieee80211_dfs.c.  DO NOT USE FOR NEW CODE!
  */
-#ifdef CALLOUT_TYPESTABLE
-#define callout_set_arg(cc, _arg)	((cc)->qarg = (_arg))
-#define callout_arg(cc)			((cc)->qarg)
-#define callout_func(cc)		((cc)->qfunc)
-#else
-#define callout_set_arg(cc, _arg)	((cc)->toc.qarg = (_arg))
-#define callout_arg(cc)			((cc)->toc.qarg)
-#define callout_func(cc)		((cc)->toc.qfunc)
-#endif
+#define callout_set_arg(cc, _arg)	do {	\
+	if ((cc)->toc)				\
+		((cc)->toc->qarg = (cc)->toc->rarg = (_arg))	\
+} while(0)
+#define callout_arg(cc)			((cc)->toc ? (cc)->toc->rarg : NULL)
+#define callout_func(cc)		((cc)->toc ? (cc)->toc->rfunc : NULL)
 
 #ifdef _KERNEL
 
@@ -138,6 +118,11 @@ void	_callout_init_mp (struct callout *cc
 			CALLOUT_DEBUG_ARGS);
 void	_callout_init_lk (struct callout *cc, struct lock *lk
 			CALLOUT_DEBUG_ARGS);
+
+void	_callout_setup_quick(struct callout *cc, struct _callout *c,
+			int ticks, void (*)(void *), void *);
+void	_callout_cancel_quick(struct _callout *c);
+
 void	callout_reset (struct callout *, int,
 			void (*)(void *), void *);
 void	callout_reset_bycpu (struct callout *, int,

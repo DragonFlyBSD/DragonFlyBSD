@@ -519,7 +519,8 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	int catch;
 	int error;
 	int oldpri;
-	struct callout thandle;
+	struct callout thandle1;
+	struct _callout thandle2;
 
 	/*
 	 * Currently a severe hack.  Make sure any delayed wakeups
@@ -688,8 +689,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 */
 	KKASSERT((td->td_flags & TDF_TIMEOUT) == 0);
 	if (timo) {
-		callout_init_mp(&thandle);
-		callout_reset(&thandle, timo, endtsleep, td);
+		_callout_setup_quick(&thandle1, &thandle2, timo, endtsleep, td);
 	}
 
 	/*
@@ -750,8 +750,11 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			td->td_flags &= ~TDF_TIMEOUT;
 			error = EWOULDBLOCK;
 		} else {
-			/* does not block when on same cpu */
-			callout_cancel(&thandle);
+			/*
+			 * We are on the same cpu so use the quick version
+			 * which is guaranteed not to block or race.
+			 */
+			_callout_cancel_quick(&thandle2);
 		}
 	}
 	td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;

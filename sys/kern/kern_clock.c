@@ -89,6 +89,7 @@
 #include <sys/sysctl.h>
 #include <sys/kcollect.h>
 #include <sys/exislock.h>
+#include <sys/exislock2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
