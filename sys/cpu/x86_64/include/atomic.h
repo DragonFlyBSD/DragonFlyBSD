@@ -543,6 +543,16 @@ atomic_cmpset_long_xrelease(volatile u_long *_dst, u_long _old, u_long _new)
 	return (res == _old);
 }
 
+static inline void *
+atomic_cas_ptr(volatile void *p, void *e, void *n)
+{
+	__asm volatile(MPLOCKED " cmpxchgq %2, %1"
+	    : "=a" (n), "=m" (*(volatile unsigned long *)p)
+	    : "r" (n), "a" (e), "m" (*(volatile unsigned long *)p));
+
+	return (n);
+}
+
 /*
  * Atomically add the value of v to the integer pointed to by p and return
  * the previous value of *p.
