@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Jonathan Gray <jsg@openbsd.org>
+ * Copyright (c) 2019-2020 Jonathan Gray <jsg@openbsd.org>
  * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -45,6 +45,21 @@ llist_del_all(struct llist_head *head)
 	return atomic_swap_ptr((void *)&head->first, NULL);
 }
 
+static inline struct llist_node *
+llist_del_first(struct llist_head *head)
+{
+	struct llist_node *first, *next;
+
+	do {
+		first = head->first;
+		if (first == NULL)
+			return NULL;
+		next = first->next;
+	} while (atomic_cas_ptr(&head->first, first, next) != first);
+
+	return first;
+}
+
 static inline bool
 llist_add(struct llist_node *new, struct llist_head *head)
 {
@@ -74,5 +89,10 @@ llist_empty(struct llist_head *head)
 	    pos != NULL &&						\
 	    (n = llist_entry(pos->member.next, __typeof(*pos), member), pos); \
 	    pos = n)
+
+#define llist_for_each_entry(pos, node, member)				\
+	for ((pos) = llist_entry((node), __typeof(*(pos)), member);	\
+	    (pos) != NULL;						\
+	    (pos) = llist_entry((pos)->member.next, __typeof(*(pos)), member))
 
 #endif	/* _LINUX_LLIST_H_ */
