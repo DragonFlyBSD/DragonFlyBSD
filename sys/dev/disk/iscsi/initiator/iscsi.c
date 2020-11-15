@@ -267,7 +267,7 @@ iscsi_ioctl(struct dev_ioctl_args *ap)
      case ISCSISIGNAL: {
 	  int sig = *(int *)arg;
 
-	  if(sig < 0 || sig > _SIG_MAXSIG)
+	  if(sig < 0 || sig >= _SIG_MAXSIG)
 	       error = EINVAL;
 	  else
 		sp->signal = sig;

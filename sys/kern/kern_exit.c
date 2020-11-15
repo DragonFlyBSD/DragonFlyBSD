@@ -537,6 +537,8 @@ exit1(int rv)
 	 * to the designated reaper.  We must hold the reaper's p_token in
 	 * order to safely mess with p_children.
 	 *
+	 * Issue the p_deathsig signal to children that request it.
+	 *
 	 * We already hold p->p_token (to remove the children from our list).
 	 */
 	reproc = NULL;
@@ -566,6 +568,12 @@ exit1(int rv)
 				q->p_flags &= ~P_TRACED;
 				ksignal(q, SIGKILL);
 			}
+
+			/*
+			 * Issue p_deathsig to children that request it
+			 */
+			if (q->p_deathsig)
+				ksignal(q, q->p_deathsig);
 			lwkt_reltoken(&q->p_token);
 			PRELE(q);
 		}

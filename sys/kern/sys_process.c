@@ -473,7 +473,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 	case PT_CONTINUE:
 	case PT_DETACH:
 		/* Zero means do not send any signal */
-		if (data < 0 || data > _SIG_MAXSIG) {
+		if (data < 0 || data >= _SIG_MAXSIG) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			return EINVAL;

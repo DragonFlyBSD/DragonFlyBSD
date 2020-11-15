@@ -336,7 +336,9 @@ struct	proc {
 	struct sys_upmap *p_upmap;	/* user RW mappable per-process page */
 	forkid_t	p_forkid;	/* unique forkid */
 	struct sysreaper *p_reaper;	/* reaper control */
-	void		*p_reserveds[3]; /* reserved for future */
+	int		p_deathsig;	/* signal us on parent death */
+	int		p_unused03;
+	void		*p_reserveds[2]; /* reserved for future */
 };
 
 #define lwp_wchan	lwp_thread->td_wchan

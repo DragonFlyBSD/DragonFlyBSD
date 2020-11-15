@@ -1489,7 +1489,7 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 		 */
 		if (sig == METEOR_SIG_MODE_MASK)
 			sig = 0;
-		if (sig < 0 || sig > _SIG_MAXSIG)
+		if (sig < 0 || sig >= _SIG_MAXSIG)
 			return (EINVAL);
 		bktr->signal = sig;
 		bktr->proc = sig ? td->td_proc : NULL;

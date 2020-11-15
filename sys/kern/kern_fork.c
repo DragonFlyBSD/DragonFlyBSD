@@ -990,7 +990,9 @@ sys_procctl(struct sysmsg *sysmsg, const struct procctl_args *uap)
 	union reaper_info udata;
 	int error;
 
-	if (uap->idtype != P_PID || uap->id != (id_t)p->p_pid)
+	if (uap->idtype != P_PID)
+		return EINVAL;
+	if (uap->id != 0 && uap->id != (id_t)p->p_pid)
 		return EINVAL;
 
 	switch(uap->cmd) {
@@ -1048,6 +1050,23 @@ release_again:
 					sizeof(udata.status));
 		} else {
 			error = 0;
+		}
+		break;
+	case PROC_PDEATHSIG_CTL:
+		error = EINVAL;
+		if (uap->data) {
+			int dsig = 0;
+
+			error = copyin(uap->data, &dsig, sizeof(dsig));
+			if (error == 0 && dsig >= 0 && dsig <= _SIG_MAXSIG)
+				p->p_deathsig = dsig;
+		}
+		break;
+	case PROC_PDEATHSIG_STATUS:
+		error = EINVAL;
+		if (uap->data) {
+			error = copyout(&p->p_deathsig, uap->data,
+					sizeof(p->p_deathsig));
 		}
 		break;
 	default:

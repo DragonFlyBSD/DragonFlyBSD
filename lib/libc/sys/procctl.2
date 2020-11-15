@@ -34,7 +34,7 @@
 .Os
 .Sh NAME
 .Nm procctl
-.Nd control reaping of sub-processes
+.Nd control reaping of sub-processes and other functions
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -50,8 +50,24 @@
 .Sh DESCRIPTION
 The
 .Fn procctl
-system call allows a process to take-over the reaping task from init for
-any forked sub-process, recursively (for all children thereafter) which
+system call applies certain process-related control operations to the system.
+The
+.Fa idtype
+argument may be
+.Dv P_PID
+or
+.Dv P_PGID ,
+and the
+.Fa id
+argument is either a process id or a process group id, or 0 indicating
+the current process or process group.
+.Pp
+Note that currently all functions only operate on the current process.
+.Sh REAPER OPERATION
+The
+.Fn procctl
+system call may be used by a process to take-over the reaping task from init
+for any forked sub-process, recursively (for all children thereafter) which
 would otherwise reparent to init.
 This allows a chain of control to be maintained no matter what the
 sub-process does.
@@ -92,6 +108,20 @@ kill the process in question, waitpid it, and loop until no processes
 remain.
 This is guaranteed to ultimately irradicate everything that was directly
 or indirectly started under the reaper.
+.It Dv PROC_PDEATHSIG_CTL
+The argument is a pointer to an integer specifying the signal that should
+be delivered to the current process when its parent process exits.
+A value of 0 cancels any previously set signal.
+.Pp
+Any previously set signal is automatically canceled in the child process of
+a fork() or when a suid or sgid program is exec'd.
+.Pp
+Only the current process pid or 0 may be specified.  Both have the same effect.
+.It Dv PROC_PDEATHSIG_STATUS
+The argument is a pointer to an integer variable which will be filled in
+with the current pdeathsig signal, or 0 if the feature is not enabled.
+.Pp
+Only the current process pid or 0 may be specified.  Both have the same effect.
 .El
 .Sh RETURN VALUES
 .Rv -std

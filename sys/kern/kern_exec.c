@@ -460,6 +460,10 @@ interpret:
 			ktrdestroy(&p->p_tracenode);
 			p->p_traceflag = 0;
 		}
+
+		/* Clear any PROC_PDEATHSIG_CTL setting */
+		p->p_deathsig = 0;
+
 		/* Close any file descriptors 0..2 that reference procfs */
 		setugidsafety(p);
 		/* Make sure file descriptors 0..2 are in use. */

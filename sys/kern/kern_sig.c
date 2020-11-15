@@ -263,7 +263,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 	struct lwp *lp;
 	struct sigacts *ps = p->p_sigacts;
 
-	if (sig <= 0 || sig > _SIG_MAXSIG)
+	if (sig <= 0 || sig >= _SIG_MAXSIG)
 		return (EINVAL);
 
 	lwkt_gettoken(&p->p_token);
@@ -773,7 +773,7 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 {
 	int t;
 
-	if ((u_int)sig > _SIG_MAXSIG)
+	if ((u_int)sig >= _SIG_MAXSIG)
 		return (EINVAL);
 
 	if (pid > 0) {
@@ -1130,7 +1130,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 	sig_t action;
 	int prop;
 
-	if (sig > _SIG_MAXSIG || sig <= 0) {
+	if (sig >= _SIG_MAXSIG || sig <= 0) {
 		kprintf("lwpsignal: signal %d\n", sig);
 		panic("lwpsignal signal number");
 	}
