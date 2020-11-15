@@ -4,8 +4,9 @@
 #
 
 UTILDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/tools/acpihelp
+IASLDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/compiler
 
-.PATH:	${UTILDIR}
+.PATH:	${UTILDIR} ${IASLDIR}
 
 PROG=	acpihelp
 MAN=	acpihelp.8
@@ -36,8 +37,12 @@ SRCS+=	\
 	utpredef.c \
 	utuuid.c
 
+SRCS+=	\
+	aslmessages.c
+
 CFLAGS+= \
 	-DACPI_HELP_APP \
-	-I${UTILDIR}
+	-I${UTILDIR}	\
+	-I${IASLDIR}
 
 .include <bsd.prog.mk>
