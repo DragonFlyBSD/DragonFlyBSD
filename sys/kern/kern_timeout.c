@@ -181,10 +181,13 @@ _callout_update_spinlocked(struct _callout *c)
 {
 	struct wheel *wheel;
 
-	if (c->flags & CALLOUT_INPROG) {
+	if ((c->flags & CALLOUT_INPROG) && curthread != &c->qsc->thread) {
 		/*
 		 * If the callout is in-progress the SET queuing state is
 		 * indeterminant and no action can be taken at this time.
+		 *
+		 * (however, recursive calls from the call-back are not
+		 * indeterminant and must be processed at this time).
 		 */
 		/* nop */
 	} else if (c->flags & CALLOUT_SET) {
@@ -201,11 +204,15 @@ _callout_update_spinlocked(struct _callout *c)
 		wheel = &sc->callwheel[c->qtick & cwheelmask];
 		spin_lock(&wheel->spin);
 
-		if (c->flags & CALLOUT_INPROG) {
+		if ((c->flags & CALLOUT_INPROG) &&
+		    curthread != &c->qsc->thread) {
 			/*
 			 * Raced against INPROG getting set by the softclock
 			 * handler while we were acquiring wheel->spin.  We
 			 * can do nothing at this time.
+			 *
+			 * (however, recursive calls from the call-back are not
+			 * indeterminant and must be processed at this time).
 			 */
 			/* nop */
 		} else if (c->flags & CALLOUT_CANCEL) {
@@ -535,9 +542,16 @@ loop:
 			 * The wheel spinlock is sufficient to set INPROG and
 			 * remove (c) from the list.  Once INPROG is set,
 			 * other threads can only make limited changes to (c).
+			 *
+			 * Setting INPROG masks SET tests in all other
+			 * conditionals except the 'quick' code (which is
+			 * always same-cpu and doesn't race).  This means
+			 * that we can clear SET here without obtaining
+			 * c->spin.
 			 */
 			TAILQ_REMOVE(&wheel->list, c, entry);
 			atomic_set_int(&c->flags, CALLOUT_INPROG);
+			atomic_clear_int(&c->flags, CALLOUT_SET);
 			sc->running = c;
 			spin_unlock(&wheel->spin);
 
@@ -603,12 +617,17 @@ loop:
 			}
 
 			/*
+			 * INPROG will prevent SET from being set again.
+			 * Once we clear INPROG, update the callout to
+			 * handle any pending operations that have built-up.
+			 */
+
+			/*
 			 * Interlocked clearing of INPROG, then handle any
 			 * queued request (such as a callout_reset() request).
 			 */
 			spin_lock(&c->spin);
-			atomic_clear_int(&c->flags,
-					 CALLOUT_INPROG | CALLOUT_SET);
+			atomic_clear_int(&c->flags, CALLOUT_INPROG);
 			sc->running = NULL;
 			_callout_update_spinlocked(c);
 			spin_unlock(&c->spin);
@@ -870,12 +889,20 @@ _callout_cancel_or_stop(struct callout *cc, uint32_t flags, int sync)
 	/*
 	 * With c->spin held we can synchronously wait completion of our
 	 * request.
+	 *
+	 * If INPROG is set and we are recursing from the callback the
+	 * function completes immediately.
 	 */
 	++c->waiters;
 	for (;;) {
 		cpu_ccfence();
 		if ((c->flags & flags) == 0)
 			break;
+		if ((c->flags & CALLOUT_INPROG) &&
+		    curthread == &c->qsc->thread) {
+			_callout_update_spinlocked(c);
+			break;
+		}
 		ssleep(c, &c->spin, 0, "costp", 0);
 	}
 	--c->waiters;
