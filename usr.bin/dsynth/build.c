@@ -2146,12 +2146,16 @@ WorkerProcess(int ac, char **av)
 		}
 		dophase(work, &wmsg,
 			WDOG5, PHASE_PACKAGE, "package");
-#if 0
-		dophase(work, &wmsg,
-			WDOG5, PHASE_INSTALL, "install");
-		dophase(work, &wmsg,
-			WDOG5, PHASE_DEINSTALL, "deinstall");
-#endif
+
+		if (WorkerProcFlags & WORKER_PROC_INSTALL) {
+			dophase(work, &wmsg,
+			    WDOG5, PHASE_INSTALL, "install");
+		}
+
+		if (WorkerProcFlags & WORKER_PROC_DEINSTALL) {
+			dophase(work, &wmsg,
+			    WDOG5, PHASE_DEINSTALL, "deinstall");
+		}
 	}
 
 	if (MasterPtyFd >= 0) {

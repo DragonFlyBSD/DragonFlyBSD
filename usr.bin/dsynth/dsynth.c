@@ -368,7 +368,7 @@ main(int ac, char **av)
 		DoRebuildRepo(1);
 		DoUpgradePkgs(pkgs, 1);
 	} else if (strcmp(av[0], "test") == 0) {
-		WorkerProcFlags |= WORKER_PROC_CHECK_PLIST;
+		WorkerProcFlags |= WORKER_PROC_CHECK_PLIST | WORKER_PROC_INSTALL | WORKER_PROC_DEINSTALL;
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1, 0);
