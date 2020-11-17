@@ -810,9 +810,6 @@ getphasestr(worker_phase_t phaseid)
 	case PHASE_PACKAGE:
 		phase = "package";
 		break;
-	case PHASE_INSTALL_MTREE:
-		phase = "install-mtree";
-		break;
 	case PHASE_INSTALL:
 		phase = "install";
 		break;

@@ -268,7 +268,6 @@ enum worker_phase { PHASE_PENDING,
 		    PHASE_TEST,
 		    PHASE_CHECK_PLIST,
 		    PHASE_PACKAGE,
-		    PHASE_INSTALL_MTREE,
 		    PHASE_INSTALL,
 		    PHASE_DEINSTALL
 		};

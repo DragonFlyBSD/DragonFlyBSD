@@ -1868,7 +1868,6 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
  *	test		(skipped)
  *	check-plist	('dsynth test blahblah' or 'dsynth -D everything' only)
  *	package		 e.g. /construction/lang/perl5.28/pkg/perl5-5.28.2.txz
- *	install-mtree	(skipped)
  *	install		(skipped)
  *	deinstall	(skipped)
  */
@@ -2149,8 +2148,6 @@ WorkerProcess(int ac, char **av)
 			WDOG5, PHASE_PACKAGE, "package");
 #if 0
 		dophase(work, &wmsg,
-			WDOG5, PHASE_INSTALL_MTREE, "install-mtree");
-		dophase(work, &wmsg,
 			WDOG5, PHASE_INSTALL, "install");
 		dophase(work, &wmsg,
 			WDOG5, PHASE_DEINSTALL, "deinstall");
@@ -2367,7 +2364,6 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		case PHASE_STAGE:
 		case PHASE_TEST:
 		case PHASE_CHECK_PLIST:
-		case PHASE_INSTALL_MTREE:
 		case PHASE_INSTALL:
 		case PHASE_DEINSTALL:
 			break;
