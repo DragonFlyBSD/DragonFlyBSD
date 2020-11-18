@@ -137,13 +137,12 @@ main(int ac, char **av)
 				     MAXLABELS - 1);
 			}
 			if (strlen(optarg) == 0) {
-				errx(1, "Volume label '%s' "
-					"cannot be 0-length\n",
+				errx(1, "Volume label '%s' cannot be 0-length",
 					optarg);
 			}
 			if (strlen(optarg) >= HAMMER2_INODE_MAXNAME) {
 				errx(1, "Volume label '%s' is too long "
-					"(%d chars max)\n",
+					"(%d chars max)",
 					optarg,
 					HAMMER2_INODE_MAXNAME - 1);
 			}
@@ -163,9 +162,8 @@ main(int ac, char **av)
 			Hammer2Version = strtol(optarg, NULL, 0);
 			if (Hammer2Version < HAMMER2_VOL_VERSION_MIN ||
 			    Hammer2Version >= HAMMER2_VOL_VERSION_WIP) {
-				errx(1,
-				     "I don't understand how to format "
-				     "HAMMER2 version %d\n",
+				errx(1, "I don't understand how to format "
+				     "HAMMER2 version %d",
 				     Hammer2Version);
 			}
 			break;
@@ -373,25 +371,25 @@ getsize(const char *str, int64_t minval, int64_t maxval, int powerof2)
 		val *= 1024;
 		break;
 	default:
-		errx(1, "Unknown suffix in number '%s'\n", str);
+		errx(1, "Unknown suffix in number '%s'", str);
 		/* not reached */
 	}
 	if (ptr[1]) {
-		errx(1, "Unknown suffix in number '%s'\n", str);
+		errx(1, "Unknown suffix in number '%s'", str);
 		/* not reached */
 	}
 	if (val < minval) {
-		errx(1, "Value too small: %s, min is %s\n",
+		errx(1, "Value too small: %s, min is %s",
 		     str, sizetostr(minval));
 		/* not reached */
 	}
 	if (val > maxval) {
-		errx(1, "Value too large: %s, max is %s\n",
+		errx(1, "Value too large: %s, max is %s",
 		     str, sizetostr(maxval));
 		/* not reached */
 	}
 	if ((powerof2 & 1) && (val ^ (val - 1)) != ((val << 1) - 1)) {
-		errx(1, "Value not power of 2: %s\n", str);
+		errx(1, "Value not power of 2: %s", str);
 		/* not reached */
 	}
 	if ((powerof2 & 2) && (val & HAMMER2_NEWFS_ALIGNMASK)) {
