@@ -562,6 +562,7 @@ show_volhdr(hammer2_volume_data_t *voldata, int fd, int bi)
 	printf("    reserved0080   0x%016jx\n", voldata->reserved0080);
 	printf("    reserved0088   0x%016jx\n", voldata->reserved0088);
 	printf("    freemap_tid    0x%016jx\n", voldata->freemap_tid);
+	printf("    bulkfree_tid   0x%016jx\n", voldata->bulkfree_tid);
 	for (i = 0; i < nitems(voldata->reserved00A0); ++i) {
 		printf("    reserved00A0/%u 0x%016jx\n",
 		       i, voldata->reserved00A0[0]);
