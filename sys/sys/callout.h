@@ -87,7 +87,7 @@ struct callout {
  */
 #define callout_set_arg(cc, _arg)	do {	\
 	if ((cc)->toc)				\
-		((cc)->toc->qarg = (cc)->toc->rarg = (_arg))	\
+		((cc)->toc->qarg = (cc)->toc->rarg = (_arg));	\
 } while(0)
 #define callout_arg(cc)			((cc)->toc ? (cc)->toc->rarg : NULL)
 #define callout_func(cc)		((cc)->toc ? (cc)->toc->rfunc : NULL)
