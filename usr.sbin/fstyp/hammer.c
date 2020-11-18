@@ -30,6 +30,7 @@
 #include <string.h>
 #include <err.h>
 #include <assert.h>
+#include <uuid.h>
 #include <vfs/hammer/hammer_disk.h>
 
 #include "fstyp.h"
@@ -72,9 +73,9 @@ test_ondisk(const hammer_volume_ondisk_t ondisk)
 	} else {
 		if (ondisk->vol_count != count)
 			return (5);
-		if (memcmp(&ondisk->vol_fsid, &fsid, sizeof(fsid)))
+		if (!uuid_equal(&ondisk->vol_fsid, &fsid, NULL))
 			return (6);
-		if (memcmp(&ondisk->vol_fstype, &fstype, sizeof(fstype)))
+		if (!uuid_equal(&ondisk->vol_fstype, &fstype, NULL))
 			return (7);
 		if (strcmp(ondisk->vol_label, label))
 			return (8);
@@ -173,7 +174,7 @@ __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 	}
 
 	if (!volpath)
-		err(1, "invalid path %s", blkdevs);
+		errx(1, "invalid path %s", blkdevs);
 	if ((fp = fopen(volpath, "r")) == NULL)
 		err(1, "failed to open %s", volpath);
 	ondisk = read_ondisk(fp);
