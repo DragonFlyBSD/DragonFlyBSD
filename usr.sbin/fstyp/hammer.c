@@ -188,10 +188,13 @@ __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 			rootvolpath = volpath;
 	}
 
-	if (!rootvolpath)
+	/* If no rootvolpath, proceed only if partial mode with volpath. */
+	if (rootvolpath)
+		volpath = rootvolpath;
+	else if (!partial || !volpath)
 		goto fail;
-	if ((fp = fopen(rootvolpath, "r")) == NULL)
-		err(1, "failed to open %s", rootvolpath);
+	if ((fp = fopen(volpath, "r")) == NULL)
+		err(1, "failed to open %s", volpath);
 	ondisk = read_ondisk(fp);
 	fclose(fp);
 
@@ -213,7 +216,7 @@ __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 			goto fail;
 success:
 	/* Add device name to help support multiple autofs -media mounts. */
-	p = (char*)extract_device_name(rootvolpath);
+	p = (char*)extract_device_name(volpath);
 	if (p)
 		snprintf(label, size, "%s_%s", ondisk->vol_label, p);
 	else
