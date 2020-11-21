@@ -9,18 +9,18 @@ check() {
 	fi
 }
 
-check 'PATH=/libexec type ld-elf.so.1 >/dev/null'
+check 'PATH=/libexec type ld-elf.so.2 >/dev/null'
 check '! PATH=/libexec type ls 2>/dev/null'
 
 PATH=/libexec:$PATH
 
-check 'type ld-elf.so.1 >/dev/null'
+check 'type ld-elf.so.2 >/dev/null'
 
 PATH=/libexec
 
-check 'type ld-elf.so.1 >/dev/null'
+check 'type ld-elf.so.2 >/dev/null'
 check '! type ls 2>/dev/null'
 check 'PATH=/bin type ls >/dev/null'
-check '! PATH=/bin type ld-elf.so.1 2>/dev/null'
+check '! PATH=/bin type ld-elf.so.2 2>/dev/null'
 
 exit $((failures > 0))

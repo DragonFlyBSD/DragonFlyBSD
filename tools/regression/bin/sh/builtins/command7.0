@@ -9,17 +9,17 @@ check() {
 	fi
 }
 
-check '"$(PATH=/libexec command -V ld-elf.so.1)" = "ld-elf.so.1 is /libexec/ld-elf.so.1"'
-check '"$(PATH=/libexec command -V ld-elf.so.1; :)" = "ld-elf.so.1 is /libexec/ld-elf.so.1"'
-check '"$(PATH=/libexec command -pv ld-elf.so.1)" = ""'
-check '"$(PATH=/libexec command -pv ld-elf.so.1; :)" = ""'
+check '"$(PATH=/libexec command -V ld-elf.so.2)" = "ld-elf.so.2 is /libexec/ld-elf.so.2"'
+check '"$(PATH=/libexec command -V ld-elf.so.2; :)" = "ld-elf.so.2 is /libexec/ld-elf.so.2"'
+check '"$(PATH=/libexec command -pv ld-elf.so.2)" = ""'
+check '"$(PATH=/libexec command -pv ld-elf.so.2; :)" = ""'
 
 PATH=/libexec:$PATH
 
-check '"$(command -V ld-elf.so.1)" = "ld-elf.so.1 is /libexec/ld-elf.so.1"'
-check '"$(command -V ld-elf.so.1; :)" = "ld-elf.so.1 is /libexec/ld-elf.so.1"'
-check '"$(command -pv ld-elf.so.1)" = ""'
-check '"$(command -pv ld-elf.so.1; :)" = ""'
+check '"$(command -V ld-elf.so.2)" = "ld-elf.so.2 is /libexec/ld-elf.so.2"'
+check '"$(command -V ld-elf.so.2; :)" = "ld-elf.so.2 is /libexec/ld-elf.so.2"'
+check '"$(command -pv ld-elf.so.2)" = ""'
+check '"$(command -pv ld-elf.so.2; :)" = ""'
 
 PATH=/libexec
 
