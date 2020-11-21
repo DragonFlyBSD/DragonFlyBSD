@@ -67,9 +67,7 @@
 #include <arpa/telnet.h>
 
 #include <stdio.h>
-#ifdef	__STDC__
 #include <stdlib.h>
-#endif
 #include <signal.h>
 #include <errno.h>
 #include <netdb.h>
@@ -97,9 +95,7 @@
 typedef unsigned char cc_t;
 #endif
 
-#ifdef	__STDC__
 #include <unistd.h>
-#endif
 
 #ifndef _POSIX_VDISABLE
 # ifdef VDISABLE

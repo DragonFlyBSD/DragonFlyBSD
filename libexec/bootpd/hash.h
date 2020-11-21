@@ -93,11 +93,7 @@ SOFTWARE.
 /*
  * Define "hash_datum" as a universal data type
  */
-#ifdef __STDC__
 typedef void hash_datum;
-#else
-typedef char hash_datum;
-#endif
 
 typedef struct hash_memberstruct  hash_member;
 typedef struct hash_tblstruct     hash_tbl;

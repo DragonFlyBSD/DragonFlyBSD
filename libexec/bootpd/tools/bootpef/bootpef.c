@@ -37,11 +37,7 @@ SOFTWARE.
 
 
 
-#ifdef	__STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 #include <sys/types.h>
 #include <sys/time.h>
