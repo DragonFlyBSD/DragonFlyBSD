@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -27,147 +29,148 @@
  * SUCH DAMAGE.
  *
  * @(#)siglist.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: head/lib/libc/gen/siglist.c 335898 2018-07-03 17:31:45Z jhb $
  */
 
 #include <signal.h>
 
 const char *const sys_signame[NSIG] = {
-	"Signal 0",
-	"hup",				/* SIGHUP */
-	"int",				/* SIGINT */
-	"quit",				/* SIGQUIT */
-	"ill",				/* SIGILL */
-	"trap",				/* SIGTRAP */
-	"abrt",				/* SIGABRT */
-	"emt",				/* SIGEMT */
-	"fpe",				/* SIGFPE */
-	"kill",				/* SIGKILL */
-	"bus",				/* SIGBUS */
-	"segv",				/* SIGSEGV */
-	"sys",				/* SIGSYS */
-	"pipe",				/* SIGPIPE */
-	"alrm",				/* SIGALRM */
-	"term",				/* SIGTERM */
-	"urg",				/* SIGURG */
-	"stop",				/* SIGSTOP */
-	"tstp",				/* SIGTSTP */
-	"cont",				/* SIGCONT */
-	"chld",				/* SIGCHLD */
-	"ttin",				/* SIGTTIN */
-	"ttou",				/* SIGTTOU */
-	"io",				/* SIGIO */
-	"xcpu",				/* SIGXCPU */
-	"xfsz",				/* SIGXFSZ */
-	"vtalrm",			/* SIGVTALRM */
-	"prof",				/* SIGPROF */
-	"winch",			/* SIGWINCH */
-	"info",				/* SIGINFO */
-	"usr1",				/* SIGUSR1 */
-	"usr2",				/* SIGUSR2 */
+	[0] =		"Signal 0",
+	[SIGHUP] =	"HUP",
+	[SIGINT] =	"INT",
+	[SIGQUIT] =	"QUIT",
+	[SIGILL] =	"ILL",
+	[SIGTRAP] =	"TRAP",
+	[SIGABRT] =	"ABRT",
+	[SIGEMT] =	"EMT",
+	[SIGFPE] =	"FPE",
+	[SIGKILL] =	"KILL",
+	[SIGBUS] =	"BUS",
+	[SIGSEGV] =	"SEGV",
+	[SIGSYS] =	"SYS",
+	[SIGPIPE] =	"PIPE",
+	[SIGALRM] =	"ALRM",
+	[SIGTERM] =	"TERM",
+	[SIGURG] =	"URG",
+	[SIGSTOP] =	"STOP",
+	[SIGTSTP] =	"TSTP",
+	[SIGCONT] =	"CONT",
+	[SIGCHLD] =	"CHLD",
+	[SIGTTIN] =	"TTIN",
+	[SIGTTOU] =	"TTOU",
+	[SIGIO] =	"IO",
+	[SIGXCPU] =	"XCPU",
+	[SIGXFSZ] =	"XFSZ",
+	[SIGVTALRM] =	"VTALRM",
+	[SIGPROF] =	"PROF",
+	[SIGWINCH] =	"WINCH",
+	[SIGINFO] =	"INFO",
+	[SIGUSR1] =	"USR1",
+	[SIGUSR2] =	"USR2",
 
 	/* 32-63 */
 
-	"thrd",				/* 32 */
-	"ckpt",				/* 33 */
-	"ckptx",			/* 34 */
-	"Signal35",			/* 35 */
-	"Signal36",			/* 36 */
-	"Signal37",			/* 37 */
-	"Signal38",			/* 38 */
-	"Signal39",			/* 39 */
-	"Signal40",			/* 40 */
-	"Signal41",			/* 41 */
-	"Signal42",			/* 42 */
-	"Signal43",			/* 43 */
-	"Signal44",			/* 44 */
-	"Signal45",			/* 45 */
-	"Signal46",			/* 46 */
-	"Signal47",			/* 47 */
-	"Signal48",			/* 48 */
-	"Signal49",			/* 49 */
-	"Signal50",			/* 50 */
-	"Signal51",			/* 51 */
-	"Signal52",			/* 52 */
-	"Signal53",			/* 53 */
-	"Signal54",			/* 54 */
-	"Signal55",			/* 55 */
-	"Signal56",			/* 56 */
-	"Signal57",			/* 57 */
-	"Signal58",			/* 58 */
-	"Signal59",			/* 59 */
-	"Signal60",			/* 60 */
-	"Signal61",			/* 61 */
-	"Signal62",			/* 62 */
-	"Signal63"			/* 63 */
+	[SIGTHR] =	"THR",
+	[SIGCKPT] =	"CKPT",
+	[SIGCKPTEXIT] =	"CKPTX",
+	[35] =		"Signal 35",
+	[36] =		"Signal 36",
+	[37] =		"Signal 37",
+	[38] =		"Signal 38",
+	[39] =		"Signal 39",
+	[40] =		"Signal 40",
+	[41] =		"Signal 41",
+	[42] =		"Signal 42",
+	[43] =		"Signal 43",
+	[44] =		"Signal 44",
+	[45] =		"Signal 45",
+	[46] =		"Signal 46",
+	[47] =		"Signal 47",
+	[48] =		"Signal 48",
+	[49] =		"Signal 49",
+	[50] =		"Signal 50",
+	[51] =		"Signal 51",
+	[52] =		"Signal 52",
+	[53] =		"Signal 53",
+	[54] =		"Signal 54",
+	[55] =		"Signal 55",
+	[56] =		"Signal 56",
+	[57] =		"Signal 57",
+	[58] =		"Signal 58",
+	[59] =		"Signal 59",
+	[60] =		"Signal 60",
+	[61] =		"Signal 61",
+	[62] =		"Signal 62",
+	[63] =		"Signal 63"
 };
 
 const char *const sys_siglist[NSIG] = {
-	"Signal 0",
-	"Hangup",			/* SIGHUP */
-	"Interrupt",			/* SIGINT */
-	"Quit",				/* SIGQUIT */
-	"Illegal instruction",		/* SIGILL */
-	"Trace/BPT trap",		/* SIGTRAP */
-	"Abort trap",			/* SIGABRT */
-	"EMT trap",			/* SIGEMT */
-	"Floating point exception",	/* SIGFPE */
-	"Killed",			/* SIGKILL */
-	"Bus error",			/* SIGBUS */
-	"Segmentation fault",		/* SIGSEGV */
-	"Bad system call",		/* SIGSYS */
-	"Broken pipe",			/* SIGPIPE */
-	"Alarm clock",			/* SIGALRM */
-	"Terminated",			/* SIGTERM */
-	"Urgent I/O condition",		/* SIGURG */
-	"Suspended (signal)",		/* SIGSTOP */
-	"Suspended",			/* SIGTSTP */
-	"Continued",			/* SIGCONT */
-	"Child exited",			/* SIGCHLD */
-	"Stopped (tty input)",		/* SIGTTIN */
-	"Stopped (tty output)",		/* SIGTTOU */
-	"I/O possible",			/* SIGIO */
-	"Cputime limit exceeded",	/* SIGXCPU */
-	"Filesize limit exceeded",	/* SIGXFSZ */
-	"Virtual timer expired",	/* SIGVTALRM */
-	"Profiling timer expired",	/* SIGPROF */
-	"Window size changes",		/* SIGWINCH */
-	"Information request",		/* SIGINFO */
-	"User defined signal 1",	/* SIGUSR1 */
-	"User defined signal 2",	/* SIGUSR2 */
+	[0] =		"Signal 0",
+	[SIGHUP] =	"Hangup",
+	[SIGINT] =	"Interrupt",
+	[SIGQUIT] =	"Quit",
+	[SIGILL] =	"Illegal instruction",
+	[SIGTRAP] =	"Trace/BPT trap",
+	[SIGABRT] =	"Abort trap",
+	[SIGEMT] =	"EMT trap",
+	[SIGFPE] =	"Floating point exception",
+	[SIGKILL] =	"Killed",
+	[SIGBUS] =	"Bus error",
+	[SIGSEGV] =	"Segmentation fault",
+	[SIGSYS] =	"Bad system call",
+	[SIGPIPE] =	"Broken pipe",
+	[SIGALRM] =	"Alarm clock",
+	[SIGTERM] =	"Terminated",
+	[SIGURG] =	"Urgent I/O condition",
+	[SIGSTOP] =	"Suspended (signal)",
+	[SIGTSTP] =	"Suspended",
+	[SIGCONT] =	"Continued",
+	[SIGCHLD] =	"Child exited",
+	[SIGTTIN] =	"Stopped (tty input)",
+	[SIGTTOU] =	"Stopped (tty output)",
+	[SIGIO] =	"I/O possible",
+	[SIGXCPU] =	"Cputime limit exceeded",
+	[SIGXFSZ] =	"Filesize limit exceeded",
+	[SIGVTALRM] =	"Virtual timer expired",
+	[SIGPROF] =	"Profiling timer expired",
+	[SIGWINCH] =	"Window size changes",
+	[SIGINFO] =	"Information request",
+	[SIGUSR1] =	"User defined signal 1",
+	[SIGUSR2] =	"User defined signal 2",
 
 	/* 32-63 */
 
-	"Thread Scheduler",		/* SIGTHR */
-	"CheckPoint",			/* SIGCKPT */
-	"CheckPointExit",		/* SIGCKPTEXIT */
-	"Signal35",			/* 35 */
-	"Signal36",			/* 36 */
-	"Signal37",			/* 37 */
-	"Signal38",			/* 38 */
-	"Signal39",			/* 39 */
-	"Signal40",			/* 40 */
-	"Signal41",			/* 41 */
-	"Signal42",			/* 42 */
-	"Signal43",			/* 43 */
-	"Signal44",			/* 44 */
-	"Signal45",			/* 45 */
-	"Signal46",			/* 46 */
-	"Signal47",			/* 47 */
-	"Signal48",			/* 48 */
-	"Signal49",			/* 49 */
-	"Signal50",			/* 50 */
-	"Signal51",			/* 51 */
-	"Signal52",			/* 52 */
-	"Signal53",			/* 53 */
-	"Signal54",			/* 54 */
-	"Signal55",			/* 55 */
-	"Signal56",			/* 56 */
-	"Signal57",			/* 57 */
-	"Signal58",			/* 58 */
-	"Signal59",			/* 59 */
-	"Signal60",			/* 60 */
-	"Signal61",			/* 61 */
-	"Signal62",			/* 62 */
-	"Signal63"			/* 63 */
+	[SIGTHR] =	"Thread Scheduler",
+	[SIGCKPT] =	"CheckPoint",
+	[SIGCKPTEXIT] =	"CheckPointExit",
+	[35] =		"Signal 35",
+	[36] =		"Signal 36",
+	[37] =		"Signal 37",
+	[38] =		"Signal 38",
+	[39] =		"Signal 39",
+	[40] =		"Signal 40",
+	[41] =		"Signal 41",
+	[42] =		"Signal 42",
+	[43] =		"Signal 43",
+	[44] =		"Signal 44",
+	[45] =		"Signal 45",
+	[46] =		"Signal 46",
+	[47] =		"Signal 47",
+	[48] =		"Signal 48",
+	[49] =		"Signal 49",
+	[50] =		"Signal 50",
+	[51] =		"Signal 51",
+	[52] =		"Signal 52",
+	[53] =		"Signal 53",
+	[54] =		"Signal 54",
+	[55] =		"Signal 55",
+	[56] =		"Signal 56",
+	[57] =		"Signal 57",
+	[58] =		"Signal 58",
+	[59] =		"Signal 59",
+	[60] =		"Signal 60",
+	[61] =		"Signal 61",
+	[62] =		"Signal 62",
+	[63] =		"Signal 63"
 };
 const int sys_nsig = sizeof(sys_siglist) / sizeof(sys_siglist[0]);
