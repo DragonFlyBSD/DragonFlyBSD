@@ -56,7 +56,7 @@ main(int argc, char *argv[])
 	char len_str[32], sockbuf_str[64], msgsz_str[64];
 	char *args[32];
 	const char *msgsz, *sockbuf, *name1, *name2;
-	const char **host;
+	const char ** volatile host;
 	volatile int set_minmax = 0, nhost, dual;
 	int len, ninst, ninst_done, host_idx, host_arg_idx, test_arg_idx;
 	int opt, i, null_fd;
