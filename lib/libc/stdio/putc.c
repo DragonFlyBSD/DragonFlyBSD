@@ -31,7 +31,6 @@
  *
  * @(#)putc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/putc.c,v 1.16 2008/05/05 16:03:52 jhb Exp $
- * $DragonFly: src/lib/libc/stdio/putc.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"

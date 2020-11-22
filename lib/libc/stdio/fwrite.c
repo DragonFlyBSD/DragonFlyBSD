@@ -44,8 +44,8 @@
  * Return the number of whole objects written.
  */
 size_t
-fwrite(const void * __restrict buf, size_t size, size_t count,
-       FILE * __restrict fp)
+fwrite_unlocked(const void * __restrict buf, size_t size, size_t count,
+    FILE * __restrict fp)
 {
 	size_t n;
 	struct __suio uio;
@@ -56,7 +56,6 @@ fwrite(const void * __restrict buf, size_t size, size_t count,
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
 
-	FLOCKFILE(fp);
 	ORIENT(fp, -1);
 	/*
 	 * The usual case is success (__sfvwrite returns 0);
@@ -65,6 +64,17 @@ fwrite(const void * __restrict buf, size_t size, size_t count,
 	 */
 	if (__sfvwrite(fp, &uio) != 0)
 	    count = (n - uio.uio_resid) / size;
-	FUNLOCKFILE(fp);
 	return (count);
+}
+
+size_t
+fwrite(const void * __restrict buf, size_t size, size_t count,
+    FILE * __restrict fp)
+{
+	size_t n;
+
+	FLOCKFILE(fp);
+	n = fwrite_unlocked(buf, size, count, fp);
+	FUNLOCKFILE(fp);
+	return (n);
 }

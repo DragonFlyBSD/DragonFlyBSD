@@ -217,9 +217,10 @@
  * 500800 - 5.8 release
  * 500900 - 5.9 development
  * 500901 - fparseln() was moved from libutil to libc
+ * 500902 - unlocked flavors of fflush(), fputc(), fputs(), fread(), fwrite()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500901	/* propagated to newvers */
+#define __DragonFly_version 500902	/* propagated to newvers */
 
 #include <sys/_null.h>
 

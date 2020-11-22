@@ -44,7 +44,7 @@
  * Write the given string to the given file.
  */
 int
-fputs(const char * __restrict s, FILE * __restrict fp)
+fputs_unlocked(const char * __restrict s, FILE * __restrict fp)
 {
 	int retval;
 	struct __suio uio;
@@ -54,9 +54,18 @@ fputs(const char * __restrict s, FILE * __restrict fp)
 	iov.iov_len = uio.uio_resid = strlen(s);
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
-	FLOCKFILE(fp);
 	ORIENT(fp, -1);
 	retval = __sfvwrite(fp, &uio);
+	return (retval);
+}
+
+int
+fputs(const char * __restrict s, FILE * __restrict fp)
+{
+	int retval;
+
+	FLOCKFILE(fp);
+	retval = fputs_unlocked(s, fp);
 	FUNLOCKFILE(fp);
 	return (retval);
 }

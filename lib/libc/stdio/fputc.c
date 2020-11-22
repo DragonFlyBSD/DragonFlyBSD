@@ -31,7 +31,6 @@
  *
  * @(#)fputc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fputc.c,v 1.14 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/fputc.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  */
 
 #include "namespace.h"
@@ -40,12 +39,20 @@
 #include "local.h"
 #include "libc_private.h"
 
+#undef fputc_unlocked
+
+int
+fputc_unlocked(int c, FILE *fp)
+{
+	return (__sputc(c, fp));
+}
+
 int
 fputc(int c, FILE *fp)
 {
 	int retval;
 	FLOCKFILE(fp);
-	retval = __sputc(c, fp);
+	retval = fputc_unlocked(c, fp);
 	FUNLOCKFILE(fp);
 	return (retval);
 }
