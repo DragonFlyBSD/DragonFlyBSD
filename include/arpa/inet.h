@@ -60,10 +60,7 @@
 
 #include <sys/cdefs.h>
 #include <machine/endian.h>	/* Required for byteorder(3) functions. */
-#include <machine/stdint.h>	/* for __size_t, __socklen_t */
-#ifndef _KERNEL
-#include <stdint.h>		/* for uint16_t, uint32_t as per POSIX */
-#endif
+#include <machine/stdint.h>	/* for __size_t, __socklen_t, __uint*_t */
 
 #define	INET_ADDRSTRLEN		16
 #define	INET6_ADDRSTRLEN	46
@@ -76,6 +73,15 @@ typedef	__uint32_t	in_addr_t;	/* base type for internet address */
 #ifndef _IN_PORT_T_DECLARED
 typedef	__uint16_t	in_port_t;
 #define	_IN_PORT_T_DECLARED
+#endif
+
+#ifndef _UINT16_T_DECLARED
+typedef	__uint16_t	uint16_t;
+#define	_UINT16_T_DECLARED
+#endif
+#ifndef _UINT32_T_DECLARED
+typedef	__uint32_t	uint32_t;
+#define	_UINT32_T_DECLARED
 #endif
 
 #if __BSD_VISIBLE

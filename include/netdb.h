@@ -58,8 +58,7 @@
 #define _NETDB_H_
 
 #include <sys/cdefs.h>
-#include <machine/stdint.h>	/* for __size_t, __socklen_t */
-#include <stdint.h>
+#include <machine/stdint.h>	/* for __size_t, __socklen_t, __uint*_t */
 
 #ifndef _IN_ADDR_T_DECLARED
 typedef	__uint32_t	in_addr_t;	/* base type for internet address */
@@ -79,6 +78,11 @@ typedef	__size_t	size_t;
 #ifndef _SOCKLEN_T_DECLARED
 typedef	__socklen_t	socklen_t;
 #define	_SOCKLEN_T_DECLARED
+#endif
+
+#ifndef _UINT32_T_DECLARED
+typedef	__uint32_t	uint32_t;
+#define	_UINT32_T_DECLARED
 #endif
 
 #ifndef _PATH_HEQUIV

@@ -33,7 +33,7 @@
 #ifndef _NETINET_IN_H_
 #define	_NETINET_IN_H_
 
-#include <sys/types.h>
+#include <machine/stdint.h>
 
 #ifndef _KERNEL
 #include <machine/endian.h>
@@ -246,9 +246,28 @@
 
 #define	IPPORT_MAX		65535
 
+#ifndef _IN_ADDR_T_DECLARED
+typedef	__uint32_t	in_addr_t;	/* base type for internet address */
+#define	_IN_ADDR_T_DECLARED
+#endif
+
+#ifndef _IN_PORT_T_DECLARED
+typedef	__uint16_t	in_port_t;
+#define	_IN_PORT_T_DECLARED
+#endif
+
 #ifndef _SA_FAMILY_T_DECLARED
 typedef	__uint8_t	sa_family_t;
 #define	_SA_FAMILY_T_DECLARED
+#endif
+
+#ifndef _UINT8_T_DECLARED
+typedef	__uint8_t	uint8_t;
+#define	_UINT8_T_DECLARED
+#endif
+#ifndef _UINT32_T_DECLARED
+typedef	__uint32_t	uint32_t;
+#define	_UINT32_T_DECLARED
 #endif
 
 #ifndef _STRUCT_IN_ADDR_DECLARED
