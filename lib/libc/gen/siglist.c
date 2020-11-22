@@ -72,7 +72,7 @@ const char *const sys_signame[NSIG] = {
 
 	[SIGTHR] =	"THR",
 	[SIGCKPT] =	"CKPT",
-	[SIGCKPTEXIT] =	"CKPTX",
+	[SIGCKPTEXIT] =	"CKPTEXIT",
 	[35] =		"Signal 35",
 	[36] =		"Signal 36",
 	[37] =		"Signal 37",
