@@ -38,6 +38,7 @@
 /*
  * make this file dirty...
  */
+#include <sys/types.h>
 #ifndef _NETINET_IN_H_
 #include <netinet/in.h>
 #endif

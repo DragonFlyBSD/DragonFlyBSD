@@ -35,6 +35,7 @@
 #ifndef _NETPROTO_SMB_SMB_CONN_H_
 #define	_NETPROTO_SMB_SMB_CONN_H_
 
+#include <sys/types.h>
 #ifndef _NETINET_IN_H_
 #include <netinet/in.h>
 #endif
