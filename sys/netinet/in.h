@@ -37,16 +37,11 @@
 
 #ifndef _KERNEL
 #include <machine/endian.h>
-#ifndef htonl
+#ifndef _BYTEORDER_FUNC_DEFINED
+#define	_BYTEORDER_FUNC_DEFINED
 #define	htonl(x)	__htonl(x)
-#endif
-#ifndef htons
 #define	htons(x)	__htons(x)
-#endif
-#ifndef ntohl
 #define	ntohl(x)	__ntohl(x)
-#endif
-#ifndef ntohs
 #define	ntohs(x)	__ntohs(x)
 #endif
 #endif
