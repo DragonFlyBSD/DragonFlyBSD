@@ -572,22 +572,22 @@ prison_get_local(struct prison *pr, sa_family_t af, struct sockaddr *ip)
 
 /* Check if the IP is among ours, if it is return 1, else 0 */
 int
-jailed_ip(struct prison *pr, struct sockaddr *ip)
+jailed_ip(struct prison *pr, const struct sockaddr *ip)
 {
-	struct jail_ip_storage *jis;
-	struct sockaddr_in *jip4, *ip4;
-	struct sockaddr_in6 *jip6, *ip6;
+	const struct jail_ip_storage *jis;
+	const struct sockaddr_in *jip4, *ip4;
+	const struct sockaddr_in6 *jip6, *ip6;
 
 	if (pr == NULL)
 		return(0);
-	ip4 = (struct sockaddr_in *)ip;
-	ip6 = (struct sockaddr_in6 *)ip;
+	ip4 = (const struct sockaddr_in *)ip;
+	ip6 = (const struct sockaddr_in6 *)ip;
 
 	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	SLIST_FOREACH(jis, &pr->pr_ips, entries) {
 		switch (ip->sa_family) {
 		case AF_INET:
-			jip4 = (struct sockaddr_in *) &jis->ip;
+			jip4 = (const struct sockaddr_in *) &jis->ip;
 			if (jip4->sin_family == AF_INET &&
 			    ip4->sin_addr.s_addr == jip4->sin_addr.s_addr) {
 				lockmgr(&jail_lock, LK_RELEASE);
@@ -595,7 +595,7 @@ jailed_ip(struct prison *pr, struct sockaddr *ip)
 			}
 			break;
 		case AF_INET6:
-			jip6 = (struct sockaddr_in6 *) &jis->ip;
+			jip6 = (const struct sockaddr_in6 *) &jis->ip;
 			if (jip6->sin6_family == AF_INET6 &&
 			    IN6_ARE_ADDR_EQUAL(&ip6->sin6_addr,
 				&jip6->sin6_addr)) {

@@ -132,7 +132,7 @@ struct prison {
 /*
  * Kernel support functions for jail.
  */
-int	jailed_ip(struct prison *, struct sockaddr *);
+int	jailed_ip(struct prison *, const struct sockaddr *);
 void	prison_free(struct prison *);
 void	prison_hold(struct prison *);
 int	prison_if(struct ucred *cred, struct sockaddr *sa);
