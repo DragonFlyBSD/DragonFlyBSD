@@ -453,6 +453,25 @@ loop:
 	return error;
 }
 
+static __inline struct inpcbporthead *
+OBTAIN_LPORTHASH_TOKEN(struct inpcbinfo *pcbinfo, u_short lport)
+{
+	struct inpcbportinfo *portinfo;
+	struct inpcbporthead *porthash;
+	u_short lport_ho = ntohs(lport);
+
+	/*
+	 * Locate the proper portinfo based on lport
+	 */
+	portinfo = &pcbinfo->portinfo[lport_ho % pcbinfo->portinfo_cnt];
+	KKASSERT((lport_ho % pcbinfo->portinfo_cnt) == portinfo->offset);
+
+	porthash = in_pcbporthash_head(portinfo, lport);
+	GET_PORTHASH_TOKEN(porthash);
+
+	return porthash;
+}
+
 int
 in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
@@ -473,11 +492,9 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 	if (nam != NULL) {
 		struct sockaddr_in *sin = (struct sockaddr_in *)nam;
-		struct inpcbinfo *pcbinfo;
-		struct inpcbportinfo *portinfo;
 		struct inpcbporthead *porthash;
 		struct inpcb *t;
-		u_short lport, lport_ho;
+		u_short lport;
 		int reuseport = (so->so_options & SO_REUSEPORT);
 		int error;
 
@@ -526,10 +543,9 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			/* Auto-select local port */
 			return in_pcbsetlport(inp, wild, cred);
 		}
-		lport_ho = ntohs(lport);
 
 		/* GROSS */
-		if (lport_ho < IPPORT_RESERVED && cred &&
+		if (ntohs(lport) < IPPORT_RESERVED && cred &&
 		    (error =
 		     priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
 			inp->inp_laddr.s_addr = INADDR_ANY;
@@ -537,21 +553,11 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		}
 
 		/*
-		 * Locate the proper portinfo based on lport
-		 */
-		pcbinfo = inp->inp_pcbinfo;
-		portinfo =
-		    &pcbinfo->portinfo[lport_ho % pcbinfo->portinfo_cnt];
-		KKASSERT((lport_ho % pcbinfo->portinfo_cnt) ==
-		    portinfo->offset);
-
-		/*
 		 * This has to be atomic.  If the porthash is shared across
 		 * multiple protocol threads, e.g. tcp and udp then the token
 		 * must be held.
 		 */
-		porthash = in_pcbporthash_head(portinfo, lport);
-		GET_PORTHASH_TOKEN(porthash);
+		porthash = OBTAIN_LPORTHASH_TOKEN(inp->inp_pcbinfo, lport);
 
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
@@ -1868,18 +1874,9 @@ in_pcbinsporthash(struct inpcbporthead *pcbporthash, struct inpcb *inp)
 void
 in_pcbinsporthash_lport(struct inpcb *inp)
 {
-	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
-	struct inpcbportinfo *portinfo;
 	struct inpcbporthead *porthash;
-	u_short lport_ho;
 
-	/* Locate the proper portinfo based on lport */
-	lport_ho = ntohs(inp->inp_lport);
-	portinfo = &pcbinfo->portinfo[lport_ho % pcbinfo->portinfo_cnt];
-	KKASSERT((lport_ho % pcbinfo->portinfo_cnt) == portinfo->offset);
-
-	porthash = in_pcbporthash_head(portinfo, inp->inp_lport);
-	GET_PORTHASH_TOKEN(porthash);
+	porthash = OBTAIN_LPORTHASH_TOKEN(inp->inp_pcbinfo, inp->inp_lport);
 	in_pcbinsporthash(porthash, inp);
 	REL_PORTHASH_TOKEN(porthash);
 }
