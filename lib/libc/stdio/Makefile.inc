@@ -109,6 +109,7 @@ MLINKS+=printf_l.3 asprintf_l.3 \
 	printf_l.3 vsnprintf_l.3 \
 	printf_l.3 vsprintf_l.3
 MLINKS+=putc.3 fputc.3 \
+	putc.3 fputc_unlocked.3 \
 	putc.3 putchar.3 \
 	putc.3 putchar_unlocked.3 \
 	putc.3 putc_unlocked.3 \
