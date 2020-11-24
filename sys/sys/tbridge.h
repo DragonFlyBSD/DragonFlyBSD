@@ -83,6 +83,8 @@ static moduledata_t name##_mod = {				\
 	tbridge_testcase_modhandler,				\
 	testcase						\
 };								\
-DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_ANY)
+DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_ANY);	\
+MODULE_DEPEND(name, testbridge, 1, 1, 1);				\
+MODULE_VERSION(name, 1)
 
 #endif
