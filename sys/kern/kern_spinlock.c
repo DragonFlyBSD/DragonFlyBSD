@@ -315,8 +315,16 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 
 		/*
 		 * Ignore the EXCLWAIT bits if we are inside our window.
+		 *
+		 * We must always use a windowing approach here or the
+		 * EXCLWAIT bits can prevent the shared lock from ever
+		 * resolving... permanent starvation.
+		 *
+		 * In addition, if we were to always ignore the EXCLWAIT
+		 * bits overlapping shared locks can prevent an exclusive
+		 * lock from ever resolving... permanent starvation again.
 		 */
-		if (indefinite_uses_rdtsc &&
+		if (/*indefinite_uses_rdtsc &&*/
 		    (ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0 &&
 		    (rdtsc() >> spin_window_shift) % ncpus == mycpuid)  {
 			if (atomic_fcmpset_int(&spin->lock, &ovalue,
