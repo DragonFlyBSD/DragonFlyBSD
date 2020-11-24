@@ -472,6 +472,85 @@ OBTAIN_LPORTHASH_TOKEN(struct inpcbinfo *pcbinfo, u_short lport)
 	return porthash;
 }
 
+static int
+in_pcbbind_laddr(struct sockaddr_in *sin, struct in_addr *laddr,
+    struct thread *td)
+{
+	struct sockaddr_in jsin;
+
+	if (!prison_replace_wildcards(td, (struct sockaddr *)sin))
+		return (EINVAL);
+
+	if (!IN_MULTICAST(ntohl(sin->sin_addr.s_addr)) &&
+	    sin->sin_addr.s_addr != INADDR_ANY) {
+		sin->sin_port = 0;		/* yech... */
+		bzero(&sin->sin_zero, sizeof sin->sin_zero);
+		if (ifa_ifwithaddr((struct sockaddr *)sin) == NULL)
+			return (EADDRNOTAVAIL);
+	}
+
+	*laddr = sin->sin_addr;
+
+	jsin.sin_family = AF_INET;
+	jsin.sin_addr.s_addr = laddr->s_addr;
+	if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
+		laddr->s_addr = INADDR_ANY;
+		return (EINVAL);
+	}
+	laddr->s_addr = jsin.sin_addr.s_addr;
+
+	return (0);
+}
+
+static int
+in_pcbbind_laddrport_check(const struct socket *so, struct sockaddr_in *sin,
+    struct inpcbporthead *porthash, int wild, struct ucred *cred,
+    struct thread *td)
+{
+	int reuseport = (so->so_options & SO_REUSEPORT);
+	struct inpcb *t;
+
+	ASSERT_PORTHASH_TOKEN_HELD(porthash);
+
+	if (IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
+		/*
+		 * Treat SO_REUSEADDR as SO_REUSEPORT for multicast;
+		 * allow complete duplication of binding if
+		 * SO_REUSEPORT is set, or if SO_REUSEADDR is set
+		 * and a multicast address is bound on both
+		 * new and duplicated sockets.
+		 */
+		if (so->so_options & SO_REUSEADDR)
+			reuseport = SO_REUSEADDR | SO_REUSEPORT;
+	}
+
+	if (so->so_cred->cr_uid != 0 &&
+	    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
+		t = in_pcblookup_local(porthash, sin->sin_addr, sin->sin_port,
+				       INPLOOKUP_WILDCARD, cred);
+		if (t &&
+		    (so->so_cred->cr_uid != t->inp_socket->so_cred->cr_uid))
+			return (EADDRINUSE);
+	}
+	if (cred && !prison_replace_wildcards(td, (struct sockaddr *)sin))
+		return (EADDRNOTAVAIL);
+
+	/*
+	 * When binding to a local port if the best match is against
+	 * an accepted socket we generally want to allow the binding.
+	 * This means that there is no longer any specific socket
+	 * bound or bound for listening.
+	 */
+	t = in_pcblookup_local(porthash, sin->sin_addr, sin->sin_port,
+			       wild, cred);
+	if (t &&
+	    (reuseport & t->inp_socket->so_options) == 0 &&
+	    (t->inp_socket->so_state & SS_ACCEPTMECH) == 0)
+		return (EADDRINUSE);
+
+	return (0);
+}
+
 int
 in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
@@ -493,9 +572,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	if (nam != NULL) {
 		struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 		struct inpcbporthead *porthash;
-		struct inpcb *t;
 		u_short lport;
-		int reuseport = (so->so_options & SO_REUSEPORT);
 		int error;
 
 		if (nam->sa_len != sizeof *sin)
@@ -508,36 +585,16 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		if (sin->sin_family != AF_INET)
 			return (EAFNOSUPPORT);
 #endif
-		if (!prison_replace_wildcards(td, nam))
-			return (EINVAL);
 
+		/*
+		 * Save sin_port for later use, since it will
+		 * be whacked by in_pcbbind_laddr().
+		 */
 		lport = sin->sin_port;
-		if (IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
-			/*
-			 * Treat SO_REUSEADDR as SO_REUSEPORT for multicast;
-			 * allow complete duplication of binding if
-			 * SO_REUSEPORT is set, or if SO_REUSEADDR is set
-			 * and a multicast address is bound on both
-			 * new and duplicated sockets.
-			 */
-			if (so->so_options & SO_REUSEADDR)
-				reuseport = SO_REUSEADDR | SO_REUSEPORT;
-		} else if (sin->sin_addr.s_addr != INADDR_ANY) {
-			sin->sin_port = 0;		/* yech... */
-			bzero(&sin->sin_zero, sizeof sin->sin_zero);
-			if (ifa_ifwithaddr((struct sockaddr *)sin) == NULL)
-				return (EADDRNOTAVAIL);
-		}
 
-		inp->inp_laddr = sin->sin_addr;
-
-		jsin.sin_family = AF_INET;
-		jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
-		if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
-			inp->inp_laddr.s_addr = INADDR_ANY;
-			return (EINVAL);
-		}
-		inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
+		error = in_pcbbind_laddr(sin, &inp->inp_laddr, td);
+		if (error)
+			return (error);
 
 		if (lport == 0) {
 			/* Auto-select local port */
@@ -559,39 +616,19 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		 */
 		porthash = OBTAIN_LPORTHASH_TOKEN(inp->inp_pcbinfo, lport);
 
-		if (so->so_cred->cr_uid != 0 &&
-		    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
-			t = in_pcblookup_local(porthash, sin->sin_addr, lport,
-					       INPLOOKUP_WILDCARD, cred);
-			if (t &&
-			    (so->so_cred->cr_uid !=
-			     t->inp_socket->so_cred->cr_uid)) {
-				inp->inp_laddr.s_addr = INADDR_ANY;
-				error = EADDRINUSE;
-				goto done;
-			}
-		}
-		if (cred && !prison_replace_wildcards(td, nam)) {
+		/*
+		 * Restore the sin_port whacked by in_pcbbind_ladddr();
+		 * sin->sin_port is checked by in_pcbbind_laddrport_check().
+		 */
+		sin->sin_port = lport;
+
+		error = in_pcbbind_laddrport_check(so, sin, porthash,
+						   wild, cred, td);
+		if (error) {
 			inp->inp_laddr.s_addr = INADDR_ANY;
-			error = EADDRNOTAVAIL;
 			goto done;
 		}
 
-		/*
-		 * When binding to a local port if the best match is against
-		 * an accepted socket we generally want to allow the binding.
-		 * This means that there is no longer any specific socket
-		 * bound or bound for listening.
-		 */
-		t = in_pcblookup_local(porthash, sin->sin_addr, lport,
-				       wild, cred);
-		if (t &&
-		    (reuseport & t->inp_socket->so_options) == 0 &&
-		    (t->inp_socket->so_state & SS_ACCEPTMECH) == 0) {
-			inp->inp_laddr.s_addr = INADDR_ANY;
-			error = EADDRINUSE;
-			goto done;
-		}
 		inp->inp_lport = lport;
 		in_pcbinsporthash(porthash, inp);
 		error = 0;
