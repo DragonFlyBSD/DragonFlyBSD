@@ -1126,7 +1126,7 @@ syscall2(struct trapframe *frame)
 	 * NOTE: All system calls run MPSAFE now.  The system call itself
 	 *	 is responsible for getting the MP lock.
 	 */
-	error = (*callp->sy_call)(&sysmsg, &argp);
+	error = (*callp->sy_call)(&sysmsg, argp);
 
 #if 0
 	kprintf("system call %d returned %d\n", code, error);
