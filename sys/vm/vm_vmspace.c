@@ -181,6 +181,7 @@ int
 sys_vmspace_ctl(struct sysmsg *sysmsg,
 		const struct vmspace_ctl_args *uap)
 {
+	struct vmspace_ctl_args ua = *uap;
 	struct vkernel_proc *vkp;
 	struct vkernel_lwp *vklp;
 	struct vmspace_entry *ve = NULL;
@@ -197,15 +198,18 @@ sys_vmspace_ctl(struct sysmsg *sysmsg,
 
 	/*
 	 * ve only matters when VMM is not used.
+	 *
+	 * NOTE: We have to copy *uap into ua because uap is an aliased
+	 *	 pointer into the sysframe, which we are replacing.
 	 */
 	if (curthread->td_vmm == NULL) {
-		if ((ve = vkernel_find_vmspace(vkp, uap->id, 0)) == NULL) {
+		if ((ve = vkernel_find_vmspace(vkp, ua.id, 0)) == NULL) {
 			error = ENOENT;
 			goto done;
 		}
 	}
 
-	switch(uap->cmd) {
+	switch(ua.cmd) {
 	case VMSPACE_CTL_RUN:
 		/*
 		 * Save the caller's register context, swap VM spaces, and
@@ -224,14 +228,14 @@ sys_vmspace_ctl(struct sysmsg *sysmsg,
 				vmspace_entry_cache_drop(vklp->ve_cache);
 			vklp->ve_cache = ve;
 		}
-		vklp->user_trapframe = uap->tframe;
-		vklp->user_vextframe = uap->vframe;
+		vklp->user_trapframe = ua.tframe;
+		vklp->user_vextframe = ua.vframe;
 		bcopy(sysmsg->sysmsg_frame, &vklp->save_trapframe, framesz);
 		bcopy(&curthread->td_tls, &vklp->save_vextframe.vx_tls,
 		      sizeof(vklp->save_vextframe.vx_tls));
-		error = copyin(uap->tframe, sysmsg->sysmsg_frame, framesz);
+		error = copyin(ua.tframe, sysmsg->sysmsg_frame, framesz);
 		if (error == 0) {
-			error = copyin(&uap->vframe->vx_tls,
+			error = copyin(&ua.vframe->vx_tls,
 				       &curthread->td_tls,
 				       sizeof(struct savetls));
 		}
@@ -257,8 +261,8 @@ sys_vmspace_ctl(struct sysmsg *sysmsg,
 				atomic_add_int(&ve->refs, 1);
 				pmap_setlwpvm(lp, ve->vmspace);
 			} else {
-				vklp->ve = uap->id;
-				vmm_vm_set_guest_cr3((register_t)uap->id);
+				vklp->ve = ua.id;
+				vmm_vm_set_guest_cr3((register_t)ua.id);
 			}
 			set_user_TLS();
 			set_vkernel_fp(sysmsg->sysmsg_frame);
