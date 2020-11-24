@@ -72,6 +72,7 @@ struct pollfd {
 #define	POLLHUP		0x0010		/* file descriptor was "hung up" */
 #define	POLLNVAL	0x0020		/* requested events "invalid" */
 
+#if __BSD_VISIBLE
 #define	POLLSTANDARD	(POLLIN|POLLPRI|POLLOUT|POLLRDNORM|POLLRDBAND|\
 			 POLLWRBAND|POLLERR|POLLHUP|POLLNVAL)
 
@@ -81,6 +82,7 @@ struct pollfd {
  * by poll.h.
  */
 #define	INFTIM		(-1)
+#endif
 
 #ifndef _KERNEL
 
