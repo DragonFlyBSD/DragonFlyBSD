@@ -18,6 +18,7 @@
 
 #define FLAG_NOREPLY	0x0001
 #define FLAG_BINDCPU	0x0002
+#define FLAG_NOREUSE	0x0004
 
 static void	mainloop(struct sockaddr_in *, int, int, uint32_t);
 
@@ -25,7 +26,7 @@ static void
 usage(const char *cmd)
 {
 	fprintf(stderr, "%s [-4 addr4] -p port [-i ninst] [-r rcvbuf] "
-	    "[-N] [-B]\n", cmd);
+	    "[-N] [-B] [-U]\n", cmd);
 	exit(2);
 }
 
@@ -46,7 +47,7 @@ main(int argc, char *argv[])
 	flags = 0;
 	rcvbuf = RCVBUF_SIZE;
 
-	while ((opt = getopt(argc, argv, "4:p:i:r:NB")) != -1) {
+	while ((opt = getopt(argc, argv, "4:p:i:r:NBU")) != -1) {
 		switch (opt) {
 		case '4':
 			if (inet_pton(AF_INET, optarg, &in.sin_addr) <= 0)
@@ -73,6 +74,10 @@ main(int argc, char *argv[])
 
 		case 'B':
 			flags |= FLAG_BINDCPU;
+			break;
+
+		case 'U':
+			flags |= FLAG_NOREUSE;
 			break;
 
 		default:
@@ -102,7 +107,6 @@ main(int argc, char *argv[])
 static void
 mainloop(struct sockaddr_in *in, int s, int rcvbuf, uint32_t flags)
 {
-	int on;
 	void *buf;
 
 	if (s < 0) {
@@ -115,9 +119,12 @@ mainloop(struct sockaddr_in *in, int s, int rcvbuf, uint32_t flags)
 	if (buf == NULL)
 		err(1, "malloc buf failed");
 
-	on = 1;
-	if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0)
-		err(1, "setsockopt(SOCK, REUSEPORT) failed");
+	if ((flags & FLAG_NOREUSE) == 0) {
+		int on = 1;
+
+		if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0)
+			err(1, "setsockopt(SOCK, REUSEPORT) failed");
+	}
 
 	if (setsockopt(s, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
 		err(1, "setsockopt(SOCK, RCVBUF) failed");
