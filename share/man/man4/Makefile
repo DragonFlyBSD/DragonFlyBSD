@@ -319,6 +319,7 @@ MAN=	aac.4 \
 	sysmouse.4 \
 	tap.4 \
 	targ.4 \
+	tbridge.4 \
 	tcp.4 \
 	termios.4 \
 	ti.4 \
