@@ -495,6 +495,8 @@ void	in_pcblink_flags (struct inpcb *, struct inpcbinfo *, int);
 void	in_pcbonlist (struct inpcb *);
 void	in_pcbofflist (struct inpcb *);
 int	in_pcbbind (struct inpcb *, struct sockaddr *, struct thread *);
+int	in_pcbsrcaddr_check(const struct inpcb *, struct sockaddr_in *,
+	    struct in_addr *, struct thread *);
 int	in_pcbbind_remote(struct inpcb *, const struct sockaddr *,
 	    struct thread *);
 int	in_pcbconnect (struct inpcb *, struct sockaddr *, struct thread *);

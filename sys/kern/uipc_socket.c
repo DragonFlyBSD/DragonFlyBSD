@@ -966,8 +966,6 @@ sosendudp(struct socket *so, struct sockaddr *addr, struct uio *uio,
 
 	if (td->td_lwp != NULL)
 		td->td_lwp->lwp_ru.ru_msgsnd++;
-	if (control)
-		m_freem(control);
 
 	KASSERT((uio && !top) || (top && !uio), ("bad arguments to sosendudp"));
 	resid = uio ? uio->uio_resid : (size_t)top->m_pkthdr.len;
@@ -1044,18 +1042,23 @@ restart:
 		pru_flags |= PRUS_DONTROUTE;
 
 	if (udp_sosend_async && (flags & MSG_SYNC) == 0) {
-		so_pru_send_async(so, pru_flags, top, addr, NULL, td);
+		so_pru_send_async(so, pru_flags, top, addr, control, td);
 		error = 0;
 	} else {
-		error = so_pru_send(so, pru_flags, top, addr, NULL, td);
+		error = so_pru_send(so, pru_flags, top, addr, control, td);
 	}
-	top = NULL;		/* sent or freed in lower layer */
+
+	/* sent or freed in lower layer */
+	control = NULL;
+	top = NULL;
 
 release:
 	ssb_unlock(&so->so_snd);
 out:
 	if (top)
 		m_freem(top);
+	if (control)
+		m_freem(control);
 	return (error);
 }
 

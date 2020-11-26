@@ -889,6 +889,7 @@ udp_send(netmsg_t msg)
 	int pru_flags = msg->send.nm_flags;
 	struct inpcb *inp = so->so_pcb;
 	struct thread *td = msg->send.nm_td;
+	struct mbuf *control = msg->send.nm_control;
 	uint16_t hash;
 	int flags;
 
@@ -896,8 +897,8 @@ udp_send(netmsg_t msg)
 	int len = m->m_pkthdr.len;
 	struct sockaddr_in *sin;	/* really is initialized before use */
 	int error = 0, cpu;
-
-	KKASSERT(msg->send.nm_control == NULL);
+	struct sockaddr_in src;
+	struct in_addr laddr;
 
 	logudp(send_beg, inp);
 
@@ -932,6 +933,76 @@ udp_send(netmsg_t msg)
 			logudp(send_inswildcard, inp);
 			return;
 		}
+	}
+
+	src.sin_family = 0;
+	if (control != NULL) {
+		struct cmsghdr *cm;
+
+		/*
+		 * XXX: Currently, we assume all the optional information is
+		 * stored in a single mbuf.
+		 */
+		if (control->m_next) {
+			error = EINVAL;
+			goto release;
+		}
+		for (; control->m_len > 0;
+		    control->m_data += CMSG_ALIGN(cm->cmsg_len),
+		    control->m_len -= CMSG_ALIGN(cm->cmsg_len)) {
+			cm = mtod(control, struct cmsghdr *);
+			if (control->m_len < sizeof(*cm) ||
+			    cm->cmsg_len == 0 ||
+			    cm->cmsg_len > control->m_len) {
+				error = EINVAL;
+				goto release;
+			}
+			if (cm->cmsg_level != IPPROTO_IP)
+				continue;
+
+			switch (cm->cmsg_type) {
+			case IP_SENDSRCADDR:
+				if (cm->cmsg_len !=
+				    CMSG_LEN(sizeof(struct in_addr))) {
+					error = EINVAL;
+					goto release;
+				}
+				src.sin_family = AF_INET;
+				src.sin_len = sizeof(src);
+				src.sin_addr = *(struct in_addr *)CMSG_DATA(cm);
+				break;
+
+#ifdef notyet
+			case IP_TOS:
+				if (cm->cmsg_len != CMSG_LEN(sizeof(u_char))) {
+					error = EINVAL;
+					goto release;
+				}
+				tos = *(u_char *)CMSG_DATA(cm);
+				break;
+#endif
+
+			default:
+				error = ENOPROTOOPT;
+				goto release;
+			}
+		}
+		KKASSERT(error == 0);
+
+		m_freem(control);
+		control = NULL;
+	}
+
+	/*
+	 * If the IP_SENDSRCADDR control message was specified, override the
+	 * source address for this datagram.  Its use is invalidated if the
+	 * address thus specified is incomplete or clobbers other inpcbs.
+	 */
+	laddr = inp->inp_laddr;
+	if (src.sin_family == AF_INET) {
+		error = in_pcbsrcaddr_check(inp, &src, &laddr, td);
+		if (error)
+			goto release;
 	}
 
 	if (dstaddr != NULL) {		/* destination address specified */
@@ -982,8 +1053,7 @@ udp_send(netmsg_t msg)
 	/*
 	 * Set source address.
 	 */
-	if (inp->inp_laddr.s_addr == INADDR_ANY ||
-	    IN_MULTICAST(ntohl(inp->inp_laddr.s_addr))) {
+	if (laddr.s_addr == INADDR_ANY || IN_MULTICAST(ntohl(laddr.s_addr))) {
 		struct sockaddr_in *if_sin;
 
 		if (dstaddr == NULL) {	
@@ -1002,7 +1072,7 @@ udp_send(netmsg_t msg)
 			goto release;
 		ui->ui_src = if_sin->sin_addr;	/* use address of interface */
 	} else {
-		ui->ui_src = inp->inp_laddr;	/* use non-null bound address */
+		ui->ui_src = laddr;		/* use non-null bound address */
 	}
 	ui->ui_sport = inp->inp_lport;
 	KASSERT(inp->inp_lport != 0, ("inp lport should have been bound"));
@@ -1046,7 +1116,14 @@ udp_send(netmsg_t msg)
 	if (pru_flags & PRUS_DONTROUTE)
 		flags |= SO_DONTROUTE;
 
-	if (inp->inp_flags & INP_CONNECTED) {
+	/*
+	 * NOTE:
+	 * For multicast bound and connected socket, source address of
+	 * the datagram is selected at the time of the sending, so the
+	 * datagram will have to be hashed.
+	 */
+	if ((inp->inp_flags & INP_CONNECTED) &&
+	    ui->ui_src.s_addr == inp->inp_laddr.s_addr) {
 		/*
 		 * For connected socket, this datagram has already
 		 * been in the correct netisr; no need to rehash.
@@ -1065,6 +1142,15 @@ udp_send(netmsg_t msg)
 		struct mbuf *m_opt = NULL;
 		struct netmsg_pru_send *smsg;
 		struct lwkt_port *port = netisr_cpuport(cpu);
+
+		if (inp->inp_flags & INP_DIRECT_DETACH) {
+			/*
+			 * No longer direct detachable, i.e. datagram has
+			 * to be forwarded to other CPUs for multicast
+			 * bound and connected socket.
+			 */
+			inp->inp_flags &= ~INP_DIRECT_DETACH;
+		}
 
 		/*
 		 * Not on the CPU that matches this UDP datagram hash;
@@ -1129,6 +1215,8 @@ sendit:
 release:
 	if (m != NULL)
 		m_freem(m);
+	if (control != NULL)
+		m_freem(control);
 
 	if (pru_flags & PRUS_HELDTD)
 		lwkt_rele(td);

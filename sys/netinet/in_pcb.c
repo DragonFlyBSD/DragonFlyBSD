@@ -528,7 +528,7 @@ in_pcbbind_laddrport_check(const struct socket *so, struct sockaddr_in *sin,
 	    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
 		t = in_pcblookup_local(porthash, sin->sin_addr, sin->sin_port,
 				       INPLOOKUP_WILDCARD, cred);
-		if (t &&
+		if (t && t->inp_socket != so &&
 		    (so->so_cred->cr_uid != t->inp_socket->so_cred->cr_uid))
 			return (EADDRINUSE);
 	}
@@ -543,7 +543,7 @@ in_pcbbind_laddrport_check(const struct socket *so, struct sockaddr_in *sin,
 	 */
 	t = in_pcblookup_local(porthash, sin->sin_addr, sin->sin_port,
 			       wild, cred);
-	if (t &&
+	if (t && t->inp_socket != so &&
 	    (reuseport & t->inp_socket->so_options) == 0 &&
 	    (t->inp_socket->so_state & SS_ACCEPTMECH) == 0)
 		return (EADDRINUSE);
@@ -552,10 +552,75 @@ in_pcbbind_laddrport_check(const struct socket *so, struct sockaddr_in *sin,
 }
 
 int
+in_pcbsrcaddr_check(const struct inpcb *inp, struct sockaddr_in *sin,
+    struct in_addr *laddr, struct thread *td)
+{
+	const struct socket *so = inp->inp_socket;
+	struct inpcbporthead *porthash;
+	struct ucred *cred = NULL;
+	int wild = 0;
+	int error;
+
+	/* inp must be bound beforehand. */
+	KKASSERT(inp->inp_lport != 0);
+	KKASSERT(sin->sin_len == sizeof(*sin));
+
+	if (!(so->so_options & (SO_REUSEADDR|SO_REUSEPORT)))
+		wild = 1;    /* neither SO_REUSEADDR nor SO_REUSEPORT is set */
+	if (td->td_proc)
+		cred = td->td_proc->p_ucred;
+
+	/* Always use inp_lport */
+	sin->sin_port = inp->inp_lport;
+
+	error = in_pcbbind_laddr(sin, laddr, td);
+	if (error)
+		return (error);
+
+	if (IN_MULTICAST(ntohl(laddr->s_addr))) {
+		/* Unlike bind, multicast src address is not allowed. */
+		return (EINVAL);
+	}
+
+	if (inp->inp_laddr.s_addr == laddr->s_addr) {
+		/*
+		 * src address is same as what we bound to.
+		 *
+		 * inp_laddr == INADDR_ANY && srcaddr == INADDR_ANY
+		 * is allowed, which does not really matter.
+		 */
+		return (0);
+	} else if (inp->inp_laddr.s_addr != INADDR_ANY &&
+	    !IN_MULTICAST(ntohl(inp->inp_laddr.s_addr))) {
+		/* Already bound to a specific address */
+		return (EINVAL);
+	}
+
+	/*
+	 * This has to be atomic.  If the porthash is shared across
+	 * multiple protocol threads, e.g. tcp and udp then the token
+	 * must be held.
+	 */
+	porthash = OBTAIN_LPORTHASH_TOKEN(inp->inp_pcbinfo, inp->inp_lport);
+
+	/*
+	 * Restore the sin_port whacked by in_pcbbind_ladddr();
+	 * sin->sin_port is checked by in_pcbbind_laddrport_check().
+	 */
+	sin->sin_port = inp->inp_lport;
+
+	error = in_pcbbind_laddrport_check(so, sin, porthash, wild, cred, td);
+	if (error)
+		laddr->s_addr = INADDR_ANY;
+
+	REL_PORTHASH_TOKEN(porthash);
+	return (error);
+}
+
+int
 in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
-	struct socket *so = inp->inp_socket;
-	struct sockaddr_in jsin;
+	const struct socket *so = inp->inp_socket;
 	struct ucred *cred = NULL;
 	int wild = 0;
 
@@ -636,6 +701,8 @@ done:
 		REL_PORTHASH_TOKEN(porthash);
 		return (error);
 	} else {
+		struct sockaddr_in jsin;
+
 		jsin.sin_family = AF_INET;
 		jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
 		if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
