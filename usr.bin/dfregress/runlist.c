@@ -216,7 +216,10 @@ runlist_run_test(void *arg, prop_dictionary_t testcase)
 
 	case TESTCASE_TYPE_USERLAND:
 		/* Main testcase execution */
-		r = run_userland(testcase_path, testcase_get_args(testcase),
+		r = run_userland(testcase_path,
+		    testcase_get_argc(testcase),
+		    testcase_get_args(testcase),
+		    testcase_get_interpreter_noexit(testcase),
 		    testcase_needs_setuid(testcase),
 		    testcase_get_runas_uid(testcase),
 		    testcase_get_timeout(testcase), 0, errbuf, sizeof(errbuf),

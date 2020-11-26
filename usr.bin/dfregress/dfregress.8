@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd November 17, 2011
+.Dd November 26, 2020
 .Dt DFREGRESS 8
 .Os
 .Sh NAME
@@ -137,6 +137,7 @@ A buildonly test passes when the build for the given testcase succeeds.
 .Pp
 Valid options are
 .Ic defaults ,
+.Ic interpreter ,
 .Ic make ,
 .Ic timeout ,
 .Ic nobuild ,
@@ -150,6 +151,15 @@ and
 .It Ic defaults
 This option does nothing.
 All default options are applied.
+.It Ic interpreter Ar command
+Uses
+.Ar command
+for running the test case instead of calling it directly.
+This is useful when you have tests that you want to call with a specific shell
+like
+.Xr sh 1 ,
+and there is no shebang in the testcase file, there are no
+execution permissions and you don't want or cannot modify the testcase.
 .It Ic make Ar make_command
 Uses
 .Ar make_command

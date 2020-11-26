@@ -27,8 +27,8 @@
  * SUCH DAMAGE.
  */
 
-int run_userland(const char *binary, const char **argv, int need_setuid, uid_t uid,
-    struct timeval *timeout, int unify_output, char *errbuf, size_t errbuf_sz,
-    struct testcase_result *tr);
+int run_userland(const char *binary, int argc, const char **argv, const char *interpreter,
+    int need_setuid, uid_t uid, struct timeval *timeout, int unify_output,
+    char *errbuf, size_t errbuf_sz, struct testcase_result *tr);
 int run_simple_cmd(const char *binary, const char *arg, char *errbuf,
     size_t errbuf_sz, struct testcase_result *tr);

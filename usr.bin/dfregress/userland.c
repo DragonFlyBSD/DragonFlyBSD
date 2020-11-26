@@ -64,9 +64,9 @@ sig_handle(int sig __unused)
 }
 
 int
-run_userland(const char *binary, const char **argv, int need_setuid, uid_t uid,
-    struct timeval *timeout, int unify_output, char *errbuf, size_t errbuf_sz,
-    struct testcase_result *tr)
+run_userland(const char *binary, int argc, const char **argv, const char *interpreter,
+    int need_setuid, uid_t uid, struct timeval *timeout, int unify_output,
+    char *errbuf, size_t errbuf_sz, struct testcase_result *tr)
 {
 	struct itimerval itim;
 	struct sigaction sa;
@@ -76,6 +76,7 @@ run_userland(const char *binary, const char **argv, int need_setuid, uid_t uid,
 	size_t sz_stdout, sz_stderr;
 	char stdout_file[256];
 	char stderr_file[256];
+	char **argv_copy;
 
 	/* Set sane defaults */
 	bzero(tr, sizeof(*tr));
@@ -199,8 +200,45 @@ run_userland(const char *binary, const char **argv, int need_setuid, uid_t uid,
 			}
 		}
 
-		/* Try to exec() */
-		r = execvp(binary, __DECONST(char **, argv));
+		if (interpreter) {
+			/*
+			 * Allocate argc + 3 arguments more as shown below:
+			 * argv_copy[0] = interpreter
+			 * argv_copy[1] = argv[0]
+			 * argv_copy[argc+2] = NULL
+			 *
+			 * execvp requires the array to end with NULL.
+			 */
+			argv_copy = (char **)calloc(argc + 3, sizeof(char *));
+			if (argv_copy == NULL) {
+				err(1, "could not calloc argv_copy memory");
+
+			}
+			/* Insert the interpreter at pos 0 */
+			argv_copy[0] = malloc(strlen(interpreter) + 1);
+			snprintf(argv_copy[0], strlen(interpreter) + 1, "%s",
+			    interpreter);
+
+			/* We still need argv[0] when argc is 0 */
+			for (int i = 0; i <= argc; i++) {
+				size_t len;
+				len = strlen(argv[i]) + 1; /* NULL-terminated */
+
+				argv_copy[i + 1] = malloc(len);
+				if (argv_copy[i] == NULL)
+					err(1, "could not malloc memory");
+
+				snprintf(argv_copy[i + 1], len, "%s",
+					argv[i]);
+
+			}
+			/* Null terminate the array */
+			argv_copy[argc + 2] = NULL;
+			r = execvp(interpreter, argv_copy);
+		} else {
+			/* Try to exec() */
+			r = execvp(binary, __DECONST(char **, argv));
+		}
 		if (r == -1) {
 			/*
 			 * If we couldn't exec(), notify parent that we didn't
@@ -274,5 +312,5 @@ run_simple_cmd(const char *binary, const char *arg, char *errbuf,
 	argv[1] = __DECONST(char *, arg);
 	argv[2] = NULL;
 
-	return run_userland(binary, argv, 0, 0, NULL, 1, errbuf, errbuf_sz, tr);
+	return run_userland(binary, 1, argv, NULL, 0, 0, NULL, 1, errbuf, errbuf_sz, tr);
 }

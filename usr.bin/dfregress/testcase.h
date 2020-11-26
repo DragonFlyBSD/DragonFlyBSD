@@ -44,6 +44,7 @@ struct testcase_options {
 	uint32_t	flags;
 	uid_t		runas_uid;
 
+	char		*interpreter;
 	char		*pre_cmd;
 	char		*post_cmd;
 	char		*make_cmd;
@@ -78,6 +79,7 @@ struct timeval *testcase_get_timeout(prop_dictionary_t testcase);
 int testcase_get_type(prop_dictionary_t testcase);
 const char *testcase_get_type_desc(prop_dictionary_t testcase);
 const char *testcase_get_name(prop_dictionary_t testcase);
+int testcase_get_argc(prop_dictionary_t testcase);
 const char **testcase_get_args(prop_dictionary_t testcase);
 uint32_t testcase_get_flags(prop_dictionary_t testcase);
 int testcase_get_precmd_type(prop_dictionary_t testcase);
@@ -86,6 +88,8 @@ int testcase_needs_setuid(prop_dictionary_t testcase);
 uid_t testcase_get_runas_uid(prop_dictionary_t testcase);
 const char *testcase_get_custom_precmd(prop_dictionary_t testcase);
 const char *testcase_get_custom_postcmd(prop_dictionary_t testcase);
+const char *testcase_get_interpreter(prop_dictionary_t testcase);
+const char *testcase_get_interpreter_noexit(prop_dictionary_t testcase);
 const char *testcase_get_make_cmd(prop_dictionary_t testcase);
 prop_dictionary_t testcase_get_result_dict(prop_dictionary_t testcase);
 int testcase_set_build_buf(prop_dictionary_t testcase, const char *buf);

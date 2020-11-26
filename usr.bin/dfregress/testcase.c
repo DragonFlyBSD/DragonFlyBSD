@@ -69,6 +69,11 @@ testcase_from_struct(struct testcase *testcase)
 	if (r == 0)
 		err(1, "prop_dictionary operation failed");
 
+	r = prop_dictionary_set_int32(testcase_dict, "argc",
+	    (int32_t)testcase->argc);
+	if (r == 0)
+		err(1, "prop_dictionary operation failed");
+
 	a = prop_array_create_with_capacity(testcase->argc+1);
 	if (a == NULL)
 		err(1, "prop_array_create for argv failed");
@@ -111,6 +116,13 @@ testcase_from_struct(struct testcase *testcase)
 	if (testcase->opts.post_cmd != NULL) {
 		r = prop_dictionary_set_cstring(dict, "post_cmd",
 		    testcase->opts.post_cmd);
+		if (r == 0)
+			err(1, "prop_dictionary operation failed");
+	}
+
+	if (testcase->opts.interpreter != NULL) {
+		r = prop_dictionary_set_cstring(dict, "interpreter",
+		    testcase->opts.interpreter);
 		if (r == 0)
 			err(1, "prop_dictionary operation failed");
 	}
@@ -179,7 +191,7 @@ testcase_get_type_desc(prop_dictionary_t testcase)
 	r = prop_dictionary_get_cstring_nocopy(testcase, "type", &str);
 	if (r == 0)
 		err(1, "prop_dictionary operation failed");
-	
+
 	return str;
 }
 
@@ -194,6 +206,19 @@ testcase_get_name(prop_dictionary_t testcase)
 		err(1, "prop_dictionary operation failed");
 
 	return str;
+}
+
+int
+testcase_get_argc(prop_dictionary_t testcase)
+{
+	int32_t argc;
+	int r;
+
+	r = prop_dictionary_get_int32(testcase, "argc", &argc);
+	if (r == 0)
+		err(1, "prop_dictionary operation failed for argc");
+
+	return argc;
 }
 
 const char **
@@ -300,6 +325,34 @@ testcase_get_custom_postcmd(prop_dictionary_t testcase)
 		err(1, "prop_dictionary operation failed");
 
 	return str;
+}
+
+static const char *
+_testcase_get_interpreter(prop_dictionary_t testcase, bool fatal)
+{
+	const char *str;
+	int r;
+
+	r = prop_dictionary_get_cstring_nocopy(
+	    prop_dictionary_get(testcase, "opts"), "interpreter", &str);
+	if (r == 0 && fatal)
+		err(1, "prop_dictionary operation failed for interpreter");
+	else
+		return NULL;
+
+	return str;
+}
+
+const char *
+testcase_get_interpreter(prop_dictionary_t testcase)
+{
+	return _testcase_get_interpreter(testcase, true);
+}
+
+const char *
+testcase_get_interpreter_noexit(prop_dictionary_t testcase)
+{
+	return _testcase_get_interpreter(testcase, false);
 }
 
 const char *
@@ -610,6 +663,11 @@ parse_testcase_option(struct testcase_options *opts, char *option)
 		}
 	} else if (strcmp(option, "nobuild") == 0) {
 		opts->flags |= TESTCASE_NOBUILD;
+	} else if (strcmp(option, "interpreter") == 0) {
+		if (noparam)
+			syntax_error("The option 'interpreter' needs a parameter");
+			/* NOTREACHED */
+		opts->interpreter = strdup(parameter);
 	} else if (strcmp(option, "make") == 0) {
 		if (noparam)
 			syntax_error("The option 'make' needs a parameter");
@@ -687,6 +745,8 @@ testcase_entry_parser(void *arg, char **tokens)
 		free(testcase->opts.pre_cmd);
 	if (testcase->opts.post_cmd != NULL)
 		free(testcase->opts.post_cmd);
+	if (testcase->opts.interpreter != NULL)
+		free(testcase->opts.interpreter);
 	if (testcase->opts.make_cmd != NULL)
 		free(testcase->opts.make_cmd);
 	free(testcase);
