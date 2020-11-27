@@ -65,7 +65,7 @@ sig_handle(int sig __unused)
 
 int
 run_userland(const char *binary, int argc, const char **argv, const char *interpreter,
-    int need_setuid, uid_t uid, struct timeval *timeout, int unify_output,
+    int need_setuid, uid_t uid, struct timeval *timeout, int rc, int unify_output,
     char *errbuf, size_t errbuf_sz, struct testcase_result *tr)
 {
 	struct itimerval itim;
@@ -154,7 +154,7 @@ run_userland(const char *binary, int argc, const char **argv, const char *interp
 			}
 		} else {
 			if (WIFEXITED(status)) {
-				tr->result = (WEXITSTATUS(status) == 0) ?
+				tr->result = (WEXITSTATUS(status) == rc) ?
 				    RESULT_PASS :
 				    (WEXITSTATUS(status) == EXIT_NOTRUN) ?
 				    RESULT_NOTRUN : RESULT_FAIL;
@@ -312,5 +312,16 @@ run_simple_cmd(const char *binary, const char *arg, char *errbuf,
 	argv[1] = __DECONST(char *, arg);
 	argv[2] = NULL;
 
-	return run_userland(binary, 1, argv, NULL, 0, 0, NULL, 1, errbuf, errbuf_sz, tr);
+	return run_userland(binary, /* executable */
+	    1,    /* argc */
+	    argv, /* argv */
+	    NULL, /* interpreter */
+	    0,    /* needs_setuid */
+	    0,    /* runas_uid */
+	    NULL, /* timeout */
+	    0,    /* rc */
+	    1,    /* unify_output */
+	    errbuf,    /* errbuf */
+	    errbuf_sz, /* errbuf_size */
+	    tr);       /* testcase_result */
 }

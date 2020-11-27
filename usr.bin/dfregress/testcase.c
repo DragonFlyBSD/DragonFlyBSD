@@ -102,6 +102,11 @@ testcase_from_struct(struct testcase *testcase)
 	if (r == 0)
 		err(1, "prop_dictionary operation failed");
 
+	r = prop_dictionary_set_int32(dict, "rc",
+	    (int32_t)testcase->opts.rc);
+	if (r == 0)
+		err(1, "prop_dictionary operation failed");
+
 	r = prop_dictionary_set_uint32(dict, "flags", testcase->opts.flags);
 	if (r == 0)
 		err(1, "prop_dictionary operation failed");
@@ -267,6 +272,20 @@ testcase_get_precmd_type(prop_dictionary_t testcase)
 	uint32_t flags = testcase_get_flags(testcase);
 
 	return (flags & (TESTCASE_INT_PRE | TESTCASE_CUSTOM_PRE));
+}
+
+int
+testcase_get_rc(prop_dictionary_t testcase)
+{
+	int32_t rc;
+	int r;
+
+	r = prop_dictionary_get_int32(prop_dictionary_get(testcase, "opts"),
+	    "rc", &rc);
+	if (r == 0)
+		err(1, "prop_dictionary operation failed for rc");
+
+	return rc;
 }
 
 int
@@ -633,6 +652,18 @@ parse_testcase_option(struct testcase_options *opts, char *option)
 			/* NOTREACHED */
 
 		opts->timeout_in_secs = (long int)lval;
+	} else if (strcmp(option, "rc") == 0) {
+		if (noparam)
+			syntax_error("The option 'timeout' needs a parameter");
+		/* NOTREACHED */
+
+		lval = strtol(parameter, &endptr, 10);
+		if (*endptr != '\0')
+			syntax_error("The option 'timeout' expects an integer "
+			    "parameter, not '%s'", parameter);
+			/* NOTREACHED */
+
+		opts->rc = (int)lval;
 	} else if (strcmp(option, "intpre") == 0) {
 		opts->flags |= TESTCASE_INT_PRE;
 	} else if (strcmp(option, "intpost") == 0) {

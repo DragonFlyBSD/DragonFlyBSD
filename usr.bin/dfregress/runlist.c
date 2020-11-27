@@ -222,8 +222,9 @@ runlist_run_test(void *arg, prop_dictionary_t testcase)
 		    testcase_get_interpreter_noexit(testcase),
 		    testcase_needs_setuid(testcase),
 		    testcase_get_runas_uid(testcase),
-		    testcase_get_timeout(testcase), 0, errbuf, sizeof(errbuf),
-		    &tr);
+		    testcase_get_timeout(testcase),
+		    testcase_get_rc(testcase),
+		    0, errbuf, sizeof(errbuf), &tr);
 
 		if (r == 0) {
 			testcase_set_result(testcase, tr.result);
@@ -319,3 +320,4 @@ out:
 	printf("done.\n");
 	return 0;
 }
+

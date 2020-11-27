@@ -45,6 +45,7 @@ struct testcase_options {
 	uid_t		runas_uid;
 
 	char		*interpreter;
+	int32_t		rc;
 	char		*pre_cmd;
 	char		*post_cmd;
 	char		*make_cmd;
@@ -77,6 +78,7 @@ prop_dictionary_t testcase_from_struct(struct testcase *testcase);
 
 struct timeval *testcase_get_timeout(prop_dictionary_t testcase);
 int testcase_get_type(prop_dictionary_t testcase);
+int testcase_get_rc(prop_dictionary_t testcase);
 const char *testcase_get_type_desc(prop_dictionary_t testcase);
 const char *testcase_get_name(prop_dictionary_t testcase);
 int testcase_get_argc(prop_dictionary_t testcase);
