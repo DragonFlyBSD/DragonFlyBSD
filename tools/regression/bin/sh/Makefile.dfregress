@@ -1,0 +1,8 @@
+# SH environment variable is required
+SH?=	/bin/sh
+
+all:
+	-rm sh.runlist
+	sh genrunlist.sh
+	env SH=${SH} dfregress sh.runlist
+	-rm sh.runlist
