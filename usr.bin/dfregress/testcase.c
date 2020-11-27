@@ -335,10 +335,12 @@ _testcase_get_interpreter(prop_dictionary_t testcase, bool fatal)
 
 	r = prop_dictionary_get_cstring_nocopy(
 	    prop_dictionary_get(testcase, "opts"), "interpreter", &str);
-	if (r == 0 && fatal)
-		err(1, "prop_dictionary operation failed for interpreter");
-	else
-		return NULL;
+	if (r == 0) {
+		if (fatal)
+			err(1, "prop_dictionary operation failed for interpreter");
+		else
+			return NULL;
+	}
 
 	return str;
 }
