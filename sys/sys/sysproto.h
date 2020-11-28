@@ -14,7 +14,6 @@
 #include <sys/cpumask.h>
 #include <sys/mqueue.h>
 #include <sys/msgport.h>
-#include <sys/sysmsg.h>
 #include <sys/procctl.h>
 
 #define	PAD_(t)	(sizeof(register_t) <= sizeof(t) ? \
