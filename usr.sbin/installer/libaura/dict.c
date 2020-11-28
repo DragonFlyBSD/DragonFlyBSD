@@ -45,29 +45,21 @@
 
 #include "dict.h"
 
-/*** INTERNAL PROTOTYPES ***/
-
-size_t	hashpjw(const void *key, size_t key_size, size_t table_size);
-int	keycmp(const void *key, size_t key_size, struct aura_bucket *b);
-
-struct aura_bucket *aura_bucket_new(const void *key, size_t key_size,
-				const void *data, size_t data_size);
-void	aura_bucket_free(struct aura_bucket *b);
 void	aura_dict_locate_hash(struct aura_dict *d, const void *key, size_t key_size,
 				size_t *b_index, struct aura_bucket **b);
 void	aura_dict_locate_list(struct aura_dict *d, const void *key, size_t key_size,
 				struct aura_bucket **b);
 void	aura_dict_advance(struct aura_dict *d);
 
-void	aura_dict_fetch_hash(struct aura_dict *d, const void *key, size_t key_size,
+static void	aura_dict_fetch_hash(struct aura_dict *d, const void *key, size_t key_size,
 				void **data, size_t *data_size);
-void	aura_dict_store_hash(struct aura_dict *d, const void *key, size_t key_size,
+static void	aura_dict_store_hash(struct aura_dict *d, const void *key, size_t key_size,
 				const void *data, size_t data_size);
-void	aura_dict_fetch_list(struct aura_dict *d, const void *key, size_t key_size,
+static void	aura_dict_fetch_list(struct aura_dict *d, const void *key, size_t key_size,
 				void **data, size_t *data_size);
-void	aura_dict_store_list(struct aura_dict *d, const void *key, size_t key_size,
+static void	aura_dict_store_list(struct aura_dict *d, const void *key, size_t key_size,
 				const void *data, size_t data_size);
-void	aura_dict_store_list_sorted(struct aura_dict *d, const void *key, size_t key_size,
+static void	aura_dict_store_list_sorted(struct aura_dict *d, const void *key, size_t key_size,
 				const void *data, size_t data_size);
 
 /*** CONSTRUCTOR ***/
@@ -111,7 +103,7 @@ aura_dict_new(size_t num_buckets, int method)
 
 /*** DESTRUCTORS ***/
 
-void
+static void
 aura_bucket_free(struct aura_bucket *b)
 {
 	if (b == NULL)
@@ -147,7 +139,7 @@ aura_dict_free(struct aura_dict *d)
  * Hash function, taken from "Compilers: Principles, Techniques, and Tools"
  * by Aho, Sethi, & Ullman (a.k.a. "The Dragon Book", 2nd edition.)
  */
-size_t
+static size_t
 hashpjw(const void *key, size_t key_size, size_t table_size) {
 	const char *k = (const char *)key;
 	const char *p;
@@ -167,7 +159,7 @@ hashpjw(const void *key, size_t key_size, size_t table_size) {
  * Uses a copy of key and data for the bucket, so the dictionary
  * code is responsible for cleaning it up itself.
  */
-struct aura_bucket *
+static struct aura_bucket *
 aura_bucket_new(const void *key, size_t key_size, const void *data, size_t data_size)
 {
 	struct aura_bucket *b;
@@ -218,7 +210,7 @@ aura_dict_locate_list(struct aura_dict *d, const void *key, size_t key_size,
 
 /***** HASH TABLE *****/
 
-void
+static void
 aura_dict_fetch_hash(struct aura_dict *d, const void *key, size_t key_size,
 		     void **data, size_t *data_size)
 {
@@ -234,7 +226,7 @@ aura_dict_fetch_hash(struct aura_dict *d, const void *key, size_t key_size,
 	}
 }
 
-void
+static void
 aura_dict_store_hash(struct aura_dict *d, const void *key, size_t key_size,
 		     const void *data, size_t data_size)
 {
@@ -258,7 +250,7 @@ aura_dict_store_hash(struct aura_dict *d, const void *key, size_t key_size,
 
 /***** LIST *****/
 
-void
+static void
 aura_dict_fetch_list(struct aura_dict *d, const void *key, size_t key_size,
 		     void **data, size_t *data_size)
 {
@@ -274,7 +266,7 @@ aura_dict_fetch_list(struct aura_dict *d, const void *key, size_t key_size,
 	*data = NULL;
 }
 
-void
+static void
 aura_dict_store_list(struct aura_dict *d, const void *key, size_t key_size,
 		     const void *data, size_t data_size)
 {
@@ -297,7 +289,7 @@ aura_dict_store_list(struct aura_dict *d, const void *key, size_t key_size,
 
 /***** SORTED LIST *****/
 
-int
+static int
 keycmp(const void *key, size_t key_size, struct aura_bucket *b)
 {
 	int r;
@@ -313,7 +305,7 @@ keycmp(const void *key, size_t key_size, struct aura_bucket *b)
 	return(r);
 }
 
-void
+static void
 aura_dict_store_list_sorted(struct aura_dict *d, const void *key, size_t key_size,
 			    const void *data, size_t data_size)
 {
