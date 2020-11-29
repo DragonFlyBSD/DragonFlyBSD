@@ -55,7 +55,7 @@ DPORTS_PACKAGES?=	security/ca_root_nss \
 
 # dports options to use when building packages
 #
-DPORTS_OPTIONS+=	-DBATCH
+DPORTS_OPTIONS+=	-DBATCH -DBUILDING_NRELEASE_DPORTS
 DPORTS_OPTIONS+=	dns_bind-tools_UNSET=PYTHON
 .endif
 
