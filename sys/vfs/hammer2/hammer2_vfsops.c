@@ -1100,7 +1100,12 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * already mounted until we determine that its a fresh H2 device.
 	 */
 	if (error == 0 && devvp) {
-		vn_isdisk(devvp, &error);
+		if (!vn_isdisk(devvp, &error)) {
+			KKASSERT(error);
+			kprintf("hammer2_mount: %s not a block device %d\n",
+				dev, error);
+			return error;
+		}
 	}
 
 	/*
