@@ -1035,7 +1035,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	dev = devstr;
 	label = strchr(devstr, '@');
 	if (label && ((label + 1) - dev) > done) {
-		kprintf("hammer2: mount: bad label %s/%zd\n", devstr, done);
+		kprintf("hammer2_mount: bad label %s/%zd\n", devstr, done);
 		return (EINVAL);
 	}
 	if (label == NULL || label[1] == 0) {
@@ -1087,7 +1087,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		cdev_t cdev = kgetdiskbyname(dev);
 		error = bdevvp(cdev, &devvp);
 		if (error)
-			kprintf("hammer2: cannot find '%s'\n", dev);
+			kprintf("hammer2_mount: cannot find '%s'\n", dev);
 	} else {
 		/*
 		 * We will locate the hmp using the label in the hmp loop.
@@ -1168,7 +1168,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hammer2_xop_head_t xop;
 
 		if (error == 0 && vcount(devvp) > 0) {
-			kprintf("Primary device already has references\n");
+			kprintf("hammer2_mount: Primary device already has references\n");
 			error = EBUSY;
 		}
 
@@ -1372,7 +1372,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	} else {
 		spmp = hmp->spmp;
 		if (info.hflags & HMNT2_DEVFLAGS) {
-			kprintf("hammer2: Warning: mount flags pertaining "
+			kprintf("hammer2_mount: Warning: mount flags pertaining "
 				"to the whole device may only be specified "
 				"on the first mount of the device: %08x\n",
 				info.hflags & HMNT2_DEVFLAGS);
@@ -1455,7 +1455,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	/*
 	 * Finish the mount
 	 */
-        kprintf("hammer2_mount hmp=%p pmp=%p\n", hmp, pmp);
+        kprintf("hammer2_mount: hmp=%p pmp=%p\n", hmp, pmp);
 
 	if (pmp->mp) {
 		kprintf("hammer2_mount: PFS already mounted!\n");
