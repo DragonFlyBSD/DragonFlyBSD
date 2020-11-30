@@ -75,14 +75,6 @@ aura_dict_new(size_t num_buckets, int method)
 
 	AURA_MALLOC(d, aura_dict);
 
-	d->num_buckets = num_buckets;
-	d->b = malloc(sizeof(struct bucket *) * num_buckets);
-	for (i = 0; i < num_buckets; i++) {
-		d->b[i] = NULL;
-	}
-	d->cursor = NULL;
-	d->cur_bucket = 0;
-
 	switch (method) {
 	case AURA_DICT_HASH:
 		d->fetch = aura_dict_fetch_hash;
@@ -96,7 +88,22 @@ aura_dict_new(size_t num_buckets, int method)
 		d->fetch = aura_dict_fetch_list;
 		d->store = aura_dict_store_list_sorted;
 		break;
+	default:
+		AURA_FREE(d, aura_dict);
+		return NULL;
 	}
+
+	d->num_buckets = num_buckets;
+	d->b = malloc(sizeof(struct bucket *) * num_buckets);
+	if (d->b == NULL) {
+		AURA_FREE(d, aura_dict);
+		return NULL;
+	}
+	for (i = 0; i < num_buckets; i++) {
+		d->b[i] = NULL;
+	}
+	d->cursor = NULL;
+	d->cur_bucket = 0;
 
 	return(d);
 }
