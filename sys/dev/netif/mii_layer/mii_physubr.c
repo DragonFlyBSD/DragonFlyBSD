@@ -276,7 +276,7 @@ mii_phy_add_media(struct mii_softc *sc)
 
 	if (sc->mii_extcapabilities & EXTSR_MEDIAMASK) {
 		/*
-		 * XXX Right now only handle 1000SX and 1000TX.  Need
+		 * XXX Right now only handle 1000SX and 1000T.  Need
 		 * XXX to handle 1000LX and 1000CX some how.
 		 *
 		 * Note since it can take 5 seconds to auto-negotiate

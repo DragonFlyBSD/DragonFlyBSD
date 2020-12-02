@@ -819,10 +819,12 @@ re_attach(device_t dev)
 #endif
 	ifp->if_watchdog = re_watchdog;
 	ifp->if_init = re_init;
-	if (!re_is_faste(sc))
-		ifp->if_baudrate = 1000000000;
+	if (re_is_faste(sc))
+		ifp->if_baudrate = IF_Mbps(100ULL);
+	else if (re_is_2500e(sc))
+		ifp->if_baudrate = IF_Mbps(2500ULL);
 	else
-		ifp->if_baudrate = 100000000;
+		ifp->if_baudrate = IF_Mbps(1000ULL);
 	ifp->if_nmbclusters = sc->re_rx_desc_cnt;
 	ifq_set_maxlen(&ifp->if_snd, qlen);
 	ifq_set_ready(&ifp->if_snd);
@@ -1923,6 +1925,7 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCGIFMEDIA:
+	case SIOCGIFXMEDIA:
 	case SIOCSIFMEDIA:
 		error = ifmedia_ioctl(ifp, ifr, &sc->media, command);
 		break;

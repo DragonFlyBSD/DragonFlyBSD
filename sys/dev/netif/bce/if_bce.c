@@ -969,9 +969,9 @@ bce_attach(device_t dev)
 	ifp->if_capenable = ifp->if_capabilities;
 
 	if (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)
-		ifp->if_baudrate = IF_Mbps(2500UL);
+		ifp->if_baudrate = IF_Mbps(2500ULL);
 	else
-		ifp->if_baudrate = IF_Mbps(1000UL);
+		ifp->if_baudrate = IF_Mbps(1000ULL);
 
 	ifp->if_nmbclusters = sc->rx_ring_cnt * USABLE_RX_BD(&sc->rx_rings[0]);
 

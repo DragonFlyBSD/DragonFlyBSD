@@ -417,6 +417,7 @@ vke_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		}
 		break;
 	case SIOCGIFMEDIA:
+	case SIOCGIFXMEDIA:
 	case SIOCSIFMEDIA:
 		error = ifmedia_ioctl(ifp, ifr, &sc->sc_media, cmd);
 		break;
@@ -750,6 +751,18 @@ vke_tx_thread(cothread_t cotd)
 	sc->cotd_tx_exit = VKE_COTD_DEAD;
 }
 
+static void
+vke_ifmedia_add(struct vke_softc *sc, int mword)
+{
+	ifmedia_add(&sc->sc_media, IFM_ETHER | mword, 0, NULL);
+}
+
+static void
+vke_ifmedia_addfdx(struct vke_softc *sc, int mword)
+{
+	vke_ifmedia_add(sc, mword | IFM_FDX)
+}
+
 static int
 vke_attach(const struct vknetif_info *info, int unit)
 {
@@ -859,36 +872,62 @@ vke_attach(const struct vknetif_info *info, int unit)
 	ifmedia_init(&sc->sc_media, 0, vke_media_change, vke_media_status);
 	/* We support as many media types as we please for
 	   debugging purposes */
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_T, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_T | IFM_FDX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_2, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_5, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_TX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_TX | IFM_FDX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_FX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_T4, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_VG, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_T2, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_SX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_STP, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_FL, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_LX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_CX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_T, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_HPNA_1, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_LR, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_SR, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_CX4, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_2500_SX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_TWINAX, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_TWINAX_LONG, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_LRM, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_T, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_40G_CR4, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_40G_SR4, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_40G_LR4, 0, NULL);
-	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_AUTO, 0, NULL);
+	vke_ifmedia_add(sc, IFM_10_T);
+	vke_ifmedia_add(sc, IFM_10_T);
+	vke_ifmedia_add(sc, IFM_10_2);
+	vke_ifmedia_add(sc, IFM_10_5);
+	vke_ifmedia_add(sc, IFM_100_TX);
+	vke_ifmedia_addfdx(sc, IFM_100_TX);
+	vke_ifmedia_add(sc, IFM_100_FX);
+	vke_ifmedia_add(sc, IFM_100_T4);
+	vke_ifmedia_add(sc, IFM_100_VG);
+	vke_ifmedia_add(sc, IFM_100_T2);
+	vke_ifmedia_addfdx(sc, IFM_1000_SX);
+	vke_ifmedia_add(sc, IFM_10_STP);
+	vke_ifmedia_add(sc, IFM_10_FL);
+	vke_ifmedia_addfdx(sc, IFM_1000_LX);
+	vke_ifmedia_addfdx(sc, IFM_1000_CX);
+	vke_ifmedia_addfdx(sc, IFM_1000_T);
+	vke_ifmedia_add(sc, IFM_HPNA_1);
+	vke_ifmedia_addfdx(sc, IFM_10G_LR);
+	vke_ifmedia_addfdx(sc, IFM_10G_SR);
+	vke_ifmedia_addfdx(sc, IFM_10G_CX4);
+	vke_ifmedia_addfdx(sc, IFM_2500_SX);
+	vke_ifmedia_addfdx(sc, IFM_10G_TWINAX);
+	vke_ifmedia_addfdx(sc, IFM_10G_TWINAX_LONG);
+	vke_ifmedia_addfdx(sc, IFM_10G_LRM);
+	vke_ifmedia_addfdx(sc, IFM_10G_T);
+	vke_ifmedia_addfdx(sc, IFM_40G_CR4);
+	vke_ifmedia_addfdx(sc, IFM_40G_SR4);
+	vke_ifmedia_addfdx(sc, IFM_40G_LR4);
+	vke_ifmedia_addfdx(sc, IFM_1000_KX);
+	vke_ifmedia_addfdx(sc, IFM_10G_KX4);
+	vke_ifmedia_addfdx(sc, IFM_10G_KR);
+	vke_ifmedia_addfdx(sc, IFM_10G_CR1);
+	vke_ifmedia_addfdx(sc, IFM_20G_KR2);
+	vke_ifmedia_addfdx(sc, IFM_2500_KX);
+	vke_ifmedia_addfdx(sc, IFM_2500_T); 
+	vke_ifmedia_addfdx(sc, IFM_5000_T); 
+	vke_ifmedia_addfdx(sc, IFM_50G_PCIE);
+	vke_ifmedia_addfdx(sc, IFM_25G_PCIE);
+	vke_ifmedia_addfdx(sc, IFM_1000_SGMII);
+	vke_ifmedia_addfdx(sc, IFM_10G_SFI);
+	vke_ifmedia_addfdx(sc, IFM_40G_XLPPI);
+	vke_ifmedia_addfdx(sc, IFM_1000_CX_SGMII);
+	vke_ifmedia_addfdx(sc, IFM_40G_KR4);
+	vke_ifmedia_addfdx(sc, IFM_10G_ER);
+	vke_ifmedia_addfdx(sc, IFM_100G_CR4);
+	vke_ifmedia_addfdx(sc, IFM_100G_SR4);
+	vke_ifmedia_addfdx(sc, IFM_100G_KR4);
+	vke_ifmedia_addfdx(sc, IFM_100G_LR4);
+	vke_ifmedia_addfdx(sc, IFM_56G_R4);
+	vke_ifmedia_addfdx(sc, IFM_100_T);
+	vke_ifmedia_addfdx(sc, IFM_25G_CR);
+	vke_ifmedia_addfdx(sc, IFM_25G_KR);
+	vke_ifmedia_addfdx(sc, IFM_25G_SR);
+	vke_ifmedia_addfdx(sc, IFM_50G_CR2);
+	vke_ifmedia_addfdx(sc, IFM_50G_KR2);
+	vke_ifmedia_add(sc, IFM_AUTO);
 
 	ifmedia_set(&sc->sc_media, IFM_ETHER | IFM_AUTO);
 

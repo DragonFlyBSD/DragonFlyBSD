@@ -199,6 +199,21 @@ ifmedia_tryset(struct ifmedia *ifm, int target)
 }
 
 /*
+ * Given a media word, return one suitable for an application
+ * using the original encoding.
+ */
+static int
+compat_media(int media)
+{
+
+	if (IFM_TYPE(media) == IFM_ETHER && IFM_SUBTYPE(media) > IFM_OTHER) {
+		media &= ~(IFM_ETH_XTYPE|IFM_TMASK);
+		media |= IFM_OTHER;
+	}
+	return (media);
+}
+
+/*
  * Device-independent media ioctl support function, typically called
  * from the device network ioctl procedure.
  */
@@ -276,6 +291,7 @@ ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 	 * Get list of available media and current media on interface.
 	 */
 	case  SIOCGIFMEDIA: 
+	case  SIOCGIFXMEDIA: 
 	{
 		struct ifmedia_entry *ep;
 		int *kptr, count;
@@ -289,8 +305,13 @@ ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 		 * flow control options, so ifm_media should be used
 		 * instead.
 		 */
-		ifmr->ifm_active = ifmr->ifm_current = ifm->ifm_cur ?
-		    ifm->ifm_media : IFM_NONE;
+		if (cmd == SIOCGIFMEDIA) {
+			ifmr->ifm_active = ifmr->ifm_current = ifm->ifm_cur ?
+			    compat_media(ifm->ifm_cur->ifm_media) : IFM_NONE;
+		} else {
+			ifmr->ifm_active = ifmr->ifm_current = ifm->ifm_cur ?
+			    ifm->ifm_cur->ifm_media : IFM_NONE;
+		}
 		ifmr->ifm_mask = ifm->ifm_mask;
 		ifmr->ifm_status = 0;
 		(*ifm->ifm_status)(ifp, ifmr);
@@ -400,8 +421,7 @@ ifmedia_baudrate(int mword)
 	int i;
 
 	for (i = 0; ifmedia_baudrate_descriptions[i].ifmb_word != 0; i++) {
-		if ((mword & (IFM_NMASK|IFM_TMASK)) ==
-		    ifmedia_baudrate_descriptions[i].ifmb_word)
+		if (IFM_TYPE_MATCH(mword, ifmedia_baudrate_descriptions[i].ifmb_word))
 			return (ifmedia_baudrate_descriptions[i].ifmb_baudrate);
 	}
 
@@ -489,7 +509,7 @@ ifmedia_printword(int ifmw)
 		kprintf("<unknown type>\n");
 		return;
 	}
-	kprintf(desc->ifmt_string);
+	kprintf("%s", desc->ifmt_string);
 
 	/*
 	 * Check for the shared subtype descriptions first, then the
