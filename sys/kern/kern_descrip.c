@@ -974,7 +974,7 @@ retry:
 	if (dtsize < minfilesperproc)
 		dtsize = minfilesperproc;
 
-	if (new < 0 || new > dtsize)
+	if (new < 0 || new >= dtsize)
 		return (flags & DUP_FCNTL ? EINVAL : EBADF);
 
 	spin_lock(&fdp->fd_spin);
