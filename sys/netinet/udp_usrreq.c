@@ -899,6 +899,7 @@ udp_send(netmsg_t msg)
 	int error = 0, cpu;
 	struct sockaddr_in src;
 	struct in_addr laddr;
+	u_char tos;
 
 	logudp(send_beg, inp);
 
@@ -935,6 +936,7 @@ udp_send(netmsg_t msg)
 		}
 	}
 
+	tos = inp->inp_ip_tos;
 	src.sin_family = 0;
 	if (control != NULL) {
 		struct cmsghdr *cm;
@@ -972,7 +974,6 @@ udp_send(netmsg_t msg)
 				src.sin_addr = *(struct in_addr *)CMSG_DATA(cm);
 				break;
 
-#ifdef notyet
 			case IP_TOS:
 				if (cm->cmsg_len != CMSG_LEN(sizeof(u_char))) {
 					error = EINVAL;
@@ -980,7 +981,6 @@ udp_send(netmsg_t msg)
 				}
 				tos = *(u_char *)CMSG_DATA(cm);
 				break;
-#endif
 
 			default:
 				error = ENOPROTOOPT;
@@ -1108,7 +1108,7 @@ udp_send(netmsg_t msg)
 	}
 	((struct ip *)ui)->ip_len = sizeof(struct udpiphdr) + len;
 	((struct ip *)ui)->ip_ttl = inp->inp_ip_ttl;	/* XXX */
-	((struct ip *)ui)->ip_tos = inp->inp_ip_tos;	/* XXX */
+	((struct ip *)ui)->ip_tos = tos;
 	udp_stat.udps_opackets++;
 
 	flags = IP_DEBUGROUTE |

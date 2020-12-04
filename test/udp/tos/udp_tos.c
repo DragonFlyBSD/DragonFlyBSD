@@ -14,7 +14,7 @@
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s -4 ip4 -p port [-t tos]\n", cmd);
+	fprintf(stderr, "%s -4 ip4 -p port [-t tos [-c]]\n", cmd);
 	exit(1);
 }
 
@@ -22,18 +22,30 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_in in;
-	int s, opt, n, tos;
+	int s, opt, n, tos, cmsg_tos;
 	uint8_t buf[18];
+	struct msghdr msg;
+	struct iovec iov;
+	struct cmsghdr *cm;
+	union {
+		struct cmsghdr cm;
+		uint8_t data[CMSG_SPACE(sizeof(u_char))];
+	} ctrl;
 
 	memset(&in, 0, sizeof(in));
 	in.sin_family = AF_INET;
 	tos = -1;
+	cmsg_tos = 0;
 
-	while ((opt = getopt(argc, argv, "4:p:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "4:cp:t:")) != -1) {
 		switch (opt) {
 		case '4':
 			if (inet_pton(AF_INET, optarg, &in.sin_addr) <= 0)
 				usage(argv[0]);
+			break;
+
+		case 'c':
+			cmsg_tos = 1;
 			break;
 
 		case 'p':
@@ -58,20 +70,38 @@ main(int argc, char *argv[])
 		err(2, "socket failed");
 
 	if (tos >= 0) {
-		if (setsockopt(s, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0)
-			err(2, "setsockopt IP_TOS %d failed", tos);
+		if (!cmsg_tos) {
+			if (setsockopt(s, IPPROTO_IP, IP_TOS,
+			    &tos, sizeof(tos)) < 0)
+				err(2, "setsockopt IP_TOS %d failed", tos);
 
-		if (sendto(s, buf, sizeof(buf), 0,
-		    (const struct sockaddr *)&in, sizeof(in)) < 0)
-			err(2, "sendto failed");
+			if (sendto(s, buf, sizeof(buf), 0,
+			    (const struct sockaddr *)&in, sizeof(in)) < 0)
+				err(2, "sendto failed");
+		} else {
+			iov.iov_base = buf;
+			iov.iov_len = sizeof(buf);
+
+			memset(&msg, 0, sizeof(msg));
+			msg.msg_name = &in;
+			msg.msg_namelen = sizeof(in);
+			msg.msg_iov = &iov;
+			msg.msg_iovlen = 1;
+			msg.msg_control = ctrl.data;
+			msg.msg_controllen = sizeof(ctrl.data);
+
+			memset(&ctrl, 0, sizeof(ctrl));
+			cm = CMSG_FIRSTHDR(&msg);
+			cm->cmsg_len = CMSG_LEN(sizeof(u_char));
+			cm->cmsg_level = IPPROTO_IP;
+			cm->cmsg_type = IP_TOS;
+			*((u_char *)CMSG_DATA(cm)) = tos;
+
+			fprintf(stderr, "sendmsg tos %d\n", tos);
+			if (sendmsg(s, &msg, MSG_SYNC) < 0)
+				err(2, "sendmsg failed");
+		}
 	} else {
-		struct msghdr msg;
-		struct iovec iov;
-		union {
-			struct cmsghdr cm;
-			uint8_t data[CMSG_SPACE(sizeof(u_char))];
-		} ctrl;
-		struct cmsghdr *cm;
 		const int on = 1;
 
 		if (bind(s, (const struct sockaddr *)&in, sizeof(in)) < 0)
