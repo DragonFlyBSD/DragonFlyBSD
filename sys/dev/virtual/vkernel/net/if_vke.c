@@ -760,7 +760,7 @@ vke_ifmedia_add(struct vke_softc *sc, int mword)
 static void
 vke_ifmedia_addfdx(struct vke_softc *sc, int mword)
 {
-	vke_ifmedia_add(sc, mword | IFM_FDX)
+	vke_ifmedia_add(sc, mword | IFM_FDX);
 }
 
 static int
