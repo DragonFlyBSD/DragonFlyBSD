@@ -1131,6 +1131,7 @@ ip_ctloutput(netmsg_t msg)
 		case IP_RECVRETOPTS:
 		case IP_RECVDSTADDR:
 		case IP_RECVIF:
+		case IP_RECVTOS:
 		case IP_RECVTTL:
 			error = soopt_to_kbuf(sopt, &optval, sizeof optval,
 					     sizeof optval);
@@ -1170,6 +1171,10 @@ ip_ctloutput(netmsg_t msg)
 
 			case IP_RECVIF:
 				OPTSET(INP_RECVIF);
+				break;
+
+			case IP_RECVTOS:
+				OPTSET(INP_RECVTOS);
 				break;
 
 			case IP_RECVTTL:
@@ -1241,6 +1246,7 @@ ip_ctloutput(netmsg_t msg)
 		case IP_RECVOPTS:
 		case IP_RECVRETOPTS:
 		case IP_RECVDSTADDR:
+		case IP_RECVTOS:
 		case IP_RECVTTL:
 		case IP_RECVIF:
 		case IP_PORTRANGE:
@@ -1269,6 +1275,10 @@ ip_ctloutput(netmsg_t msg)
 
 			case IP_RECVDSTADDR:
 				optval = OPTBIT(INP_RECVDSTADDR);
+				break;
+
+			case IP_RECVTOS:
+				optval = OPTBIT(INP_RECVTOS);
 				break;
 
 			case IP_RECVTTL:

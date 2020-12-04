@@ -389,6 +389,8 @@ struct sockaddr_in {
 
 #define	IP_RECVTTL		65   /* bool; receive IP TTL w/dgram */
 #define	IP_MINTTL		66   /* minimum TTL for packet or drop */
+/* 67 IP_DONTFRAG */
+#define	IP_RECVTOS		68   /* bool; receive IP TOS w/dgram */
 
 /*
  * Defaults and limits for options

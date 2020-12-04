@@ -219,9 +219,10 @@
  * 500901 - fparseln() was moved from libutil to libc
  * 500902 - unlocked flavors of fflush(), fputc(), fputs(), fread(), fwrite()
  * 500903 - add SIOCGIFXMEDIA ioctl
+ * 500904 - add IPPROTO_IP/IP_RECVTOS.
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500903	/* propagated to newvers */
+#define __DragonFly_version 500904	/* propagated to newvers */
 
 #include <sys/_null.h>
 

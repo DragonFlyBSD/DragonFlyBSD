@@ -331,6 +331,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_ANONPORT		0x40	/* port chosen for user */
 #define	INP_RECVIF		0x80	/* receive incoming interface */
 #define	INP_MTUDISC		0x100	/* user can do MTU discovery */
+/* 0x200 unused */
 #define	INP_WILDCARD		0x400	/* wildcard match */
 #define INP_FLAG_PROTO2		0x800	/* protocol specific */
 #define	INP_CONNECTED		0x1000	/* exact match */
@@ -344,6 +345,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	IN6P_DSTOPTS		0x080000 /* receive dst options after rthdr */
 #define	IN6P_RTHDR		0x100000 /* receive routing header */
 #define	IN6P_RTHDRDSTOPTS	0x200000 /* receive dstoptions before rthdr */
+/* 0x400000 used: IN6P_TCLASS; see below */
 #define IN6P_AUTOFLOWLABEL	0x800000 /* attach flowlabel automatically */
 /* 
  * RFC3542 Definition 
@@ -352,12 +354,12 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	IN6P_RFC2292		0x40000000 /* used RFC2292 API on the socket */
 #define	IN6P_MTU		0x80000000 /* receive path MTU */
 
-/* 0x10000000 unused */
+#define INP_RECVTOS		0x10000000 /* receive incoming IP TOS */
 #define INP_ONLIST		0x20000000 /* on pcblist */
 #define	INP_RECVTTL		0x80000000 /* receive incoming IP TTL */
 
 #define	INP_CONTROLOPTS		(INP_RECVOPTS|INP_RECVRETOPTS|INP_RECVDSTADDR|\
-				 INP_RECVIF|INP_RECVTTL|\
+				 INP_RECVIF|INP_RECVTTL|INP_RECVTOS|\
 				 IN6P_PKTINFO|IN6P_HOPLIMIT|IN6P_HOPOPTS|\
 				 IN6P_DSTOPTS|IN6P_RTHDR|IN6P_RTHDRDSTOPTS|\
 				 IN6P_TCLASS|IN6P_AUTOFLOWLABEL|IN6P_RFC2292|\

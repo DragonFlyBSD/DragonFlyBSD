@@ -2086,6 +2086,12 @@ ip_savecontrol(struct inpcb *inp, struct mbuf **mp, struct ip *ip,
 		if (*mp)
 			mp = &(*mp)->m_next;
 	}
+	if (inp->inp_flags & INP_RECVTOS) {
+		*mp = sbcreatecontrol((caddr_t) &ip->ip_tos,
+		    sizeof(u_char), IP_RECVTOS, IPPROTO_IP);
+		if (*mp)
+			mp = &(*mp)->m_next;
+	}
 #ifdef notyet
 	/* XXX
 	 * Moving these out of udp_input() made them even more broken
