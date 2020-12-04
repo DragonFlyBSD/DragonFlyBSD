@@ -1104,6 +1104,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			KKASSERT(error);
 			kprintf("hammer2_mount: %s not a block device %d\n",
 				dev, error);
+			vrele(devvp);
+			devvp = NULL;
 			return error;
 		}
 	}
