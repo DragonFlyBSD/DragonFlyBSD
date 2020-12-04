@@ -220,9 +220,10 @@
  * 500902 - unlocked flavors of fflush(), fputc(), fputs(), fread(), fwrite()
  * 500903 - add SIOCGIFXMEDIA ioctl
  * 500904 - add IPPROTO_IP/IP_RECVTOS.
+ * 500905 - add IPPROTO_IP/IP_SENDSRCADDR and IP_TOS control message.
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500904	/* propagated to newvers */
+#define __DragonFly_version 500905	/* propagated to newvers */
 
 #include <sys/_null.h>
 
