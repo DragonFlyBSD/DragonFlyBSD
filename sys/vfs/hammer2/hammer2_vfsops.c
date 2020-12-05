@@ -2181,7 +2181,7 @@ hammer2_recovery(hammer2_dev_t *hmp)
 	sync_tid = hmp->voldata.freemap_tid;
 	mirror_tid = hmp->voldata.mirror_tid;
 
-	kprintf("hammer2_mount \"%s\": ", hmp->devrepname);
+	kprintf("hammer2_mount: \"%s\": ", hmp->devrepname);
 	if (sync_tid >= mirror_tid) {
 		kprintf("no recovery needed\n");
 	} else {
