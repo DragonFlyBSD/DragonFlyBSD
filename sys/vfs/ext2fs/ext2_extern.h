@@ -141,6 +141,13 @@ void	ext2_free(void *, struct malloc_type *, const char *);
 
 /* Flags to low-level allocation routines.
  * The low 16-bits are reserved for IO_ flags from vnode.h.
+ *
+ * The BA_CLRBUF flag specifies that the existing content of the block
+ * will not be completely overwritten by the caller, so buffers for new
+ * blocks must be cleared and buffers for existing blocks must be read.
+ * When BA_CLRBUF is not set the buffer will be completely overwritten
+ * and there is no reason to clear them or to spend I/O fetching existing
+ * data. The BA_CLRBUF flag is handled in the UFS_BALLOC() functions.
  */
 #define	BA_CLRBUF	0x00010000	/* Clear invalid areas of buffer. */
 #define	BA_SEQMASK	0x7F000000	/* Bits holding seq heuristic. */
