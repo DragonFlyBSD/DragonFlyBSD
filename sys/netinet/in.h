@@ -408,6 +408,17 @@ struct ip_mreq {
 };
 
 /*
+ * Modified argument structure for IP_MULTICAST_IF and IP_ADD_MEMBERSHIP,
+ * obtained from Linux.  This is used to specify an interface index for
+ * multicast sends.
+ */
+struct ip_mreqn {
+	struct	in_addr imr_multiaddr;	/* IP multicast address of group */
+	struct	in_addr imr_address;	/* local IP address of interface */
+	int		imr_ifindex;	/* Interface index; cast to uint32_t */
+};
+
+/*
  * Argument for IP_PORTRANGE:
  * - which range to search when port is unspecified at bind() or connect()
  */

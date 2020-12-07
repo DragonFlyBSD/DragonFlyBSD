@@ -1459,8 +1459,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 {
 	int error = 0;
 	int i;
-	struct in_addr addr;
-	struct ip_mreq mreq;
+	struct ip_mreqn mreqn;
 	struct ifnet *ifp;
 	struct ip_moptions *imo = *imop;
 	int ifindex;
@@ -1503,37 +1502,66 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		/*
 		 * Select the interface for outgoing multicast packets.
 		 */
-		error = soopt_to_kbuf(sopt, &addr, sizeof addr, sizeof addr);
-		if (error)
-			break;
-
-		/*
-		 * INADDR_ANY is used to remove a previous selection.
-		 * When no interface is selected, a default one is
-		 * chosen every time a multicast packet is sent.
-		 */
-		if (addr.s_addr == INADDR_ANY) {
-			imo->imo_multicast_ifp = NULL;
-			break;
+		if (sopt->sopt_valsize >= sizeof(mreqn)) {
+			/*
+			 * Linux compat.
+			 */
+			error = soopt_to_kbuf(sopt, &mreqn,
+			    sizeof(mreqn), sizeof(mreqn));
+			if (error)
+				break;
+		} else if (sopt->sopt_valsize >= sizeof(struct ip_mreq)) {
+			/*
+			 * Linux compat.
+			 */
+			mreqn.imr_ifindex = 0;
+			error = soopt_to_kbuf(sopt, &mreqn,
+			    sizeof(struct ip_mreq), sizeof(struct ip_mreq));
+			if (error)
+				break;
+		} else {
+			mreqn.imr_ifindex = 0;
+			error = soopt_to_kbuf(sopt, &mreqn.imr_address,
+			    sizeof(struct in_addr), sizeof(struct in_addr));
+			if (error)
+				break;
 		}
-		/*
-		 * The selected interface is identified by its local
-		 * IP address.  Find the interface and confirm that
-		 * it supports multicasting.
-		 */
-		crit_enter();
-		ifp = ip_multicast_if(&addr, &ifindex);
+
+		ifindex = mreqn.imr_ifindex;
+		if (ifindex != 0) {
+			if (ifindex < 0 || if_index < ifindex) {
+				error = EINVAL;
+				break;
+			}
+			ifp = ifindex2ifnet[ifindex];
+			mreqn.imr_address.s_addr = htonl(ifindex & 0xffffff);
+		} else {
+			/*
+			 * INADDR_ANY is used to remove a previous selection.
+			 * When no interface is selected, a default one is
+			 * chosen every time a multicast packet is sent.
+			 */
+			if (mreqn.imr_address.s_addr == INADDR_ANY) {
+				imo->imo_multicast_ifp = NULL;
+				break;
+			}
+			/*
+			 * The selected interface is identified by its local
+			 * IP address.  Find the interface and confirm that
+			 * it supports multicasting.
+			 */
+			ifp = ip_multicast_if(&mreqn.imr_address, &ifindex);
+		}
+
 		if (ifp == NULL || !(ifp->if_flags & IFF_MULTICAST)) {
-			crit_exit();
 			error = EADDRNOTAVAIL;
 			break;
 		}
 		imo->imo_multicast_ifp = ifp;
 		if (ifindex)
-			imo->imo_multicast_addr = addr;
+			imo->imo_multicast_addr = mreqn.imr_address;
 		else
 			imo->imo_multicast_addr.s_addr = INADDR_ANY;
-		crit_exit();
 		break;
 
 	case IP_MULTICAST_TTL:
@@ -1591,37 +1619,53 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * Add a multicast group membership.
 		 * Group must be a valid IP multicast address.
 		 */
-		error = soopt_to_kbuf(sopt, &mreq, sizeof mreq, sizeof mreq);
-		if (error)
-			break;
+		if (sopt->sopt_valsize >= sizeof(mreqn)) {
+			error = soopt_to_kbuf(sopt, &mreqn,
+			    sizeof(mreqn), sizeof(mreqn));
+			if (error)
+				break;
+		} else {
+			mreqn.imr_ifindex = 0;
+			error = soopt_to_kbuf(sopt, &mreqn,
+			    sizeof(struct ip_mreq), sizeof(struct ip_mreq));
+			if (error)
+				break;
+		}
 
-		if (!IN_MULTICAST(ntohl(mreq.imr_multiaddr.s_addr))) {
+		if (!IN_MULTICAST(ntohl(mreqn.imr_multiaddr.s_addr))) {
 			error = EINVAL;
 			break;
 		}
-		crit_enter();
-		/*
-		 * If no interface address was provided, use the interface of
-		 * the route to the given multicast address.
-		 */
-		if (mreq.imr_interface.s_addr == INADDR_ANY) {
+
+		ifindex = mreqn.imr_ifindex;
+		if (ifindex != 0) {
+			if (ifindex < 0 || if_index < ifindex) {
+				error = EINVAL;
+				break;
+			}
+			ifp = ifindex2ifnet[ifindex];
+		} else if (mreqn.imr_address.s_addr == INADDR_ANY) {
 			struct sockaddr_in dst;
 			struct rtentry *rt;
 
+			/*
+			 * If no interface address or index was provided,
+			 * use the interface of the route to the given
+			 * multicast address.
+			 */
 			bzero(&dst, sizeof(struct sockaddr_in));
 			dst.sin_len = sizeof(struct sockaddr_in);
 			dst.sin_family = AF_INET;
-			dst.sin_addr = mreq.imr_multiaddr;
+			dst.sin_addr = mreqn.imr_multiaddr;
 			rt = rtlookup((struct sockaddr *)&dst);
 			if (rt == NULL) {
 				error = EADDRNOTAVAIL;
-				crit_exit();
 				break;
 			}
 			--rt->rt_refcnt;
 			ifp = rt->rt_ifp;
 		} else {
-			ifp = ip_multicast_if(&mreq.imr_interface, NULL);
+			ifp = ip_multicast_if(&mreqn.imr_address, NULL);
 		}
 
 		/*
@@ -1630,7 +1674,6 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 */
 		if (ifp == NULL || !(ifp->if_flags & IFF_MULTICAST)) {
 			error = EADDRNOTAVAIL;
-			crit_exit();
 			break;
 		}
 		/*
@@ -1640,17 +1683,15 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		for (i = 0; i < imo->imo_num_memberships; ++i) {
 			if (imo->imo_membership[i]->inm_ifp == ifp &&
 			    imo->imo_membership[i]->inm_addr.s_addr
-						== mreq.imr_multiaddr.s_addr)
+						== mreqn.imr_multiaddr.s_addr)
 				break;
 		}
 		if (i < imo->imo_num_memberships) {
 			error = EADDRINUSE;
-			crit_exit();
 			break;
 		}
 		if (i == IP_MAX_MEMBERSHIPS) {
 			error = ETOOMANYREFS;
-			crit_exit();
 			break;
 		}
 		/*
@@ -1658,13 +1699,11 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * address list for the given interface.
 		 */
 		if ((imo->imo_membership[i] =
-		     in_addmulti(&mreq.imr_multiaddr, ifp)) == NULL) {
+		     in_addmulti(&mreqn.imr_multiaddr, ifp)) == NULL) {
 			error = ENOBUFS;
-			crit_exit();
 			break;
 		}
 		++imo->imo_num_memberships;
-		crit_exit();
 		break;
 
 	case IP_DROP_MEMBERSHIP:
@@ -1672,27 +1711,41 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * Drop a multicast group membership.
 		 * Group must be a valid IP multicast address.
 		 */
-		error = soopt_to_kbuf(sopt, &mreq, sizeof mreq, sizeof mreq);
-		if (error)
-			break;
+		if (sopt->sopt_valsize >= sizeof(mreqn)) {
+			error = soopt_to_kbuf(sopt, &mreqn,
+			    sizeof(mreqn), sizeof(mreqn));
+			if (error)
+				break;
+		} else {
+			mreqn.imr_ifindex = 0;
+			error = soopt_to_kbuf(sopt, &mreqn,
+			    sizeof(struct ip_mreq), sizeof(struct ip_mreq));
+			if (error)
+				break;
+		}
 
-		if (!IN_MULTICAST(ntohl(mreq.imr_multiaddr.s_addr))) {
+		if (!IN_MULTICAST(ntohl(mreqn.imr_multiaddr.s_addr))) {
 			error = EINVAL;
 			break;
 		}
 
-		crit_enter();
 		/*
-		 * If an interface address was specified, get a pointer
-		 * to its ifnet structure.
+		 * If an interface index or address was specified, get a
+		 * pointer to its ifnet structure.
 		 */
-		if (mreq.imr_interface.s_addr == INADDR_ANY)
+		ifindex = mreqn.imr_ifindex;
+		if (ifindex != 0) {
+			if (ifindex < 0 || if_index < ifindex) {
+				error = EINVAL;
+				break;
+			}
+			ifp = ifindex2ifnet[ifindex];
+		} else if (mreqn.imr_address.s_addr == INADDR_ANY) {
 			ifp = NULL;
-		else {
-			ifp = ip_multicast_if(&mreq.imr_interface, NULL);
+		} else {
+			ifp = ip_multicast_if(&mreqn.imr_address, NULL);
 			if (ifp == NULL) {
 				error = EADDRNOTAVAIL;
-				crit_exit();
 				break;
 			}
 		}
@@ -1703,12 +1756,11 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 			if ((ifp == NULL ||
 			     imo->imo_membership[i]->inm_ifp == ifp) &&
 			    imo->imo_membership[i]->inm_addr.s_addr ==
-			    mreq.imr_multiaddr.s_addr)
+			    mreqn.imr_multiaddr.s_addr)
 				break;
 		}
 		if (i == imo->imo_num_memberships) {
 			error = EADDRNOTAVAIL;
-			crit_exit();
 			break;
 		}
 		/*
@@ -1722,7 +1774,6 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		for (++i; i < imo->imo_num_memberships; ++i)
 			imo->imo_membership[i-1] = imo->imo_membership[i];
 		--imo->imo_num_memberships;
-		crit_exit();
 		break;
 
 	default:

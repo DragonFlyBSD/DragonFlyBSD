@@ -221,9 +221,11 @@
  * 500903 - add SIOCGIFXMEDIA ioctl
  * 500904 - add IPPROTO_IP/IP_RECVTOS.
  * 500905 - add IPPROTO_IP/IP_SENDSRCADDR and IP_TOS control message.
+ * 500906 - add struct ip_mreqn for IPPROTO_IP/IP_MULTICAST_IF,
+ *          IP_ADD_MEMBERSHIP and IP_DROP_MEMBERSHIP.
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500905	/* propagated to newvers */
+#define __DragonFly_version 500906	/* propagated to newvers */
 
 #include <sys/_null.h>
 
