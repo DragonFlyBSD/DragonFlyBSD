@@ -87,7 +87,7 @@ cond_init(pthread_cond_t *cond, const pthread_condattr_t *cond_attr)
 	pthread_cond_t pcond;
 	int rval = 0;
 
-	pcond = __malloc(sizeof(struct pthread_cond));
+	pcond = __malloc(sizeof(struct __pthread_cond_s));
 	if (pcond == NULL) {
 		rval = ENOMEM;
 	} else {

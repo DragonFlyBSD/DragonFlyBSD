@@ -38,7 +38,7 @@
 #include <machine/sysarch.h>
 #include <machine/tls.h>
 
-struct pthread;
+struct __pthread_s;
 
 #define	CPU_SPINWAIT		__asm __volatile("pause");
 
@@ -47,7 +47,7 @@ struct pthread;
 /*
  * The constructors.
  */
-struct tls_tcb	*_tcb_ctor(struct pthread *, int);
+struct tls_tcb	*_tcb_ctor(struct __pthread_s *, int);
 void		_tcb_dtor(struct tls_tcb *tcb);
 
 #endif

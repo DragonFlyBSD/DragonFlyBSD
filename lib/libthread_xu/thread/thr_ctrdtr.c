@@ -37,7 +37,7 @@
  * The constructors.
  */
 struct tls_tcb *
-_tcb_ctor(struct pthread *thread, int initial)
+_tcb_ctor(struct __pthread_s *thread, int initial)
 {
 	struct tls_tcb *tcb;
 

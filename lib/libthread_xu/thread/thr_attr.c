@@ -72,8 +72,8 @@ __strong_reference(_pthread_attr_destroy, pthread_attr_destroy);
 int
 _pthread_attr_get_np(pthread_t pid, pthread_attr_t *dst)
 {
-	struct pthread *curthread;
-	struct pthread_attr attr;
+	pthread_t curthread;
+	struct __pthread_attr_s attr;
 	int	ret;
 
 	if (pid == NULL || dst == NULL || *dst == NULL)
@@ -86,7 +86,7 @@ _pthread_attr_get_np(pthread_t pid, pthread_attr_t *dst)
 	if (pid->tlflags & TLFLAGS_DETACHED)
 		attr.flags |= PTHREAD_DETACHED;
 	_thr_ref_delete(curthread, pid);
-	memcpy(*dst, &attr, sizeof(struct pthread_attr));
+	memcpy(*dst, &attr, sizeof(struct __pthread_attr_s));
 
 	return (0);
 }
@@ -301,14 +301,14 @@ _pthread_attr_init(pthread_attr_t *attr)
 	pthread_attr_t	pattr;
 
 	/* Allocate memory for the attribute object: */
-	pattr = __malloc(sizeof(struct pthread_attr));
+	pattr = __malloc(sizeof(struct __pthread_attr_s));
 	if (pattr == NULL) {
 		/* Insufficient memory: */
 		ret = ENOMEM;
 	} else {
 		/* Initialise the attribute object with the defaults: */
 		memcpy(pattr, &_pthread_attr_default,
-		    sizeof(struct pthread_attr));
+		    sizeof(struct __pthread_attr_s));
 
 		/* Return a pointer to the attribute object: */
 		*attr = pattr;

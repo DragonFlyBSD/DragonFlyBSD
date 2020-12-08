@@ -51,7 +51,7 @@ once_cancel_handler(void *arg)
 	pthread_once_t *once_control = arg;
 
 	_pthread_mutex_lock(&once_lock);
-	once_control->state = ONCE_NEVER_DONE;
+	once_control->__state = ONCE_NEVER_DONE;
 	_pthread_mutex_unlock(&once_lock);
 	_pthread_cond_broadcast(&once_cv);
 }
@@ -63,23 +63,23 @@ _pthread_once(pthread_once_t *once_control, void (*init_routine) (void))
 
 	_thr_check_init();
 
-	if (once_control->state == ONCE_DONE)
+	if (once_control->__state == ONCE_DONE)
 		return (0);
 	_pthread_mutex_lock(&once_lock);
-	while (*(volatile int *)&(once_control->state) == ONCE_IN_PROGRESS)
+	while (*(volatile int *)&(once_control->__state) == ONCE_IN_PROGRESS)
 		_pthread_cond_wait(&once_cv, &once_lock);
 	/*
 	 * If previous thread was canceled, then the state still
 	 * could be ONCE_NEVER_DONE, we need to check it again.
 	 */
-	if (*(volatile int *)&(once_control->state) == ONCE_NEVER_DONE) {
-		once_control->state = ONCE_IN_PROGRESS;
+	if (*(volatile int *)&(once_control->__state) == ONCE_NEVER_DONE) {
+		once_control->__state = ONCE_IN_PROGRESS;
 		_pthread_mutex_unlock(&once_lock);
 		_pthread_cleanup_push(once_cancel_handler, once_control);
 		init_routine();
 		_pthread_cleanup_pop(0);
 		_pthread_mutex_lock(&once_lock);
-		once_control->state = ONCE_DONE;
+		once_control->__state = ONCE_DONE;
 		wakeup = 1;
 	}
 	_pthread_mutex_unlock(&once_lock);

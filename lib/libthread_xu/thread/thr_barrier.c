@@ -61,7 +61,7 @@ _pthread_barrier_init(pthread_barrier_t * __restrict barrier,
 	if (barrier == NULL || count == 0 || count > INT_MAX)
 		return (EINVAL);
 
-	bar = __malloc(sizeof(struct pthread_barrier));
+	bar = __malloc(sizeof(struct __pthread_barrier_s));
 	if (bar == NULL)
 		return (ENOMEM);
 

@@ -90,10 +90,10 @@ void	_thr_log(const char *buf, size_t bytes);
 #define STATIC_LIB_REQUIRE(name)	__asm(".globl " #name)
 #endif
 
-typedef TAILQ_HEAD(thread_head, pthread)	thread_head;
+typedef TAILQ_HEAD(thread_head, __pthread_s)	thread_head;
 typedef TAILQ_HEAD(atfork_head, pthread_atfork)	atfork_head;
 
-struct pthread_mutex {
+struct __pthread_mutex_s {
 	/*
 	 * Lock for accesses to this structure.
 	 */
@@ -103,8 +103,8 @@ struct pthread_mutex {
 #endif
 	enum pthread_mutextype		m_type;
 	int				m_protocol;
-	TAILQ_HEAD(mutex_head, pthread)	m_queue;
-	struct pthread			*m_owner;
+	TAILQ_HEAD(mutex_head, __pthread_s) m_queue;
+	struct __pthread_s			*m_owner;
 	long				m_flags;
 	int				m_count;
 	int				m_refcount;
@@ -126,7 +126,7 @@ struct pthread_mutex {
 	/*
 	 * Link for list of all mutexes a thread currently owns.
 	 */
-	TAILQ_ENTRY(pthread_mutex)	m_qe;
+	TAILQ_ENTRY(__pthread_mutex_s)	m_qe;
 };
 
 #define TAILQ_INITIALIZER	{ NULL, NULL }
@@ -144,7 +144,7 @@ struct pthread_mutex {
 #define MUTEX_FLAGS_PRIVATE	0x01
 #define MUTEX_FLAGS_INITED	0x02
 
-struct pthread_mutex_attr {
+struct __pthread_mutexattr_s {
 	enum pthread_mutextype	m_type;
 	int			m_protocol;
 	int			m_ceiling;
@@ -156,7 +156,7 @@ struct pthread_mutex_attr {
 
 struct cond_cancel_info;
 
-struct pthread_cond {
+struct __pthread_cond_s {
 	/*
 	 * Lock for accesses to this structure.
 	 */
@@ -167,7 +167,7 @@ struct pthread_cond {
 	TAILQ_HEAD(, cond_cancel_info)	c_waitlist;
 };
 
-struct pthread_cond_attr {
+struct __pthread_condattr_s {
 	int		c_pshared;
 	int		c_clockid;
 };
@@ -178,18 +178,18 @@ struct pthread_cond_attr {
 #define COND_FLAGS_PRIVATE	0x01
 #define COND_FLAGS_INITED	0x02
 
-struct pthread_barrier {
+struct __pthread_barrier_s {
 	volatile umtx_t	b_lock;
 	volatile umtx_t	b_cycle;
 	volatile int	b_count;
 	volatile int	b_waiters;
 };
 
-struct pthread_barrierattr {
+struct __pthread_barrierattr_s {
 	int		pshared;
 };
 
-struct pthread_spinlock {
+struct __pthread_spinlock_s {
 	volatile umtx_t	s_lock;
 };
 
@@ -225,7 +225,7 @@ struct pthread_atfork {
 	void (*child)(void);
 };
 
-struct pthread_attr {
+struct __pthread_attr_s {
 	int	sched_policy;
 	int	sched_inherit;
 	int	prio;
@@ -279,11 +279,11 @@ struct pthread_attr {
  */
 #define TIMESLICE_USEC				20000
 
-struct pthread_rwlockattr {
+struct __pthread_rwlockattr_s {
 	int		pshared;
 };
 
-struct pthread_rwlock {
+struct __pthread_rwlock_s {
 	pthread_mutex_t	lock;	/* monitor lock */
 	pthread_cond_t	read_signal;
 	pthread_cond_t	write_signal;
@@ -314,7 +314,7 @@ struct pthread_key {
 /*
  * Thread structure.
  */
-struct pthread {
+struct __pthread_s {
 	/*
 	 * Magic value to help recognize a valid thread structure
 	 * from an invalid one:
@@ -351,13 +351,13 @@ struct pthread {
 	int			sigblock;
 
 	/* Queue entry for list of all threads. */
-	TAILQ_ENTRY(pthread)	tle;	/* link for all threads in process */
+	TAILQ_ENTRY(__pthread_s) tle;	/* link for all threads in process */
 
 	/* Queue entry for GC lists. */
-	TAILQ_ENTRY(pthread)	gcle;
+	TAILQ_ENTRY(__pthread_s) gcle;
 
 	/* Hash queue entry. */
-	LIST_ENTRY(pthread)	hle;
+	LIST_ENTRY(__pthread_s)	hle;
 
 	/* Threads reference count. */
 	int			refcount;
@@ -368,7 +368,7 @@ struct pthread {
 	 */
 	void			*(*start_routine)(void *);
 	void			*arg;
-	struct pthread_attr	attr;
+	struct __pthread_attr_s	attr;
 
 	/*
 	 * Cancelability flags
@@ -402,13 +402,13 @@ struct pthread {
 	 * The joiner is the thread that is joining to this thread.  The
 	 * join status keeps track of a join operation to another thread.
 	 */
-	struct pthread		*joiner;
+	struct __pthread_s	*joiner;
 
 	/*
 	 * The current thread can belong to a priority mutex queue.
 	 * This is the synchronization queue link.
 	 */
-	TAILQ_ENTRY(pthread)	sqe;
+	TAILQ_ENTRY(__pthread_s) sqe;
 
 	/* Miscellaneous flags; only set with scheduling lock held. */
 	int			flags;
@@ -453,7 +453,7 @@ struct pthread {
 	int			priority_mutex_count;
 
 	/* Queue of currently owned simple type mutexes. */
-	TAILQ_HEAD(, pthread_mutex)	mutexq;
+	TAILQ_HEAD(, __pthread_mutex_s)	mutexq;
 
 	void				*ret;
 	struct pthread_specific_elem	*specific;
@@ -630,13 +630,13 @@ extern struct	atfork_head	_thr_atfork_kern_list;
 extern umtx_t	_thr_atfork_lock;
 
 /* Default thread attributes */
-extern struct pthread_attr _pthread_attr_default;
+extern struct __pthread_attr_s _pthread_attr_default;
 
 /* Default mutex attributes */
-extern struct pthread_mutex_attr _pthread_mutexattr_default;
+extern struct __pthread_mutexattr_s _pthread_mutexattr_default;
 
 /* Default condition variable attributes */
-extern struct pthread_cond_attr _pthread_condattr_default;
+extern struct __pthread_condattr_s _pthread_condattr_default;
 
 extern pid_t	_thr_pid;
 extern size_t	_thr_guard_default;

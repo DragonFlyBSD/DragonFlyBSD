@@ -65,7 +65,7 @@ _pthread_rwlockattr_init(pthread_rwlockattr_t *rwlockattr)
 	if (rwlockattr == NULL)
 		return (EINVAL);
 
-	prwlockattr = __malloc(sizeof(struct pthread_rwlockattr));
+	prwlockattr = __malloc(sizeof(struct __pthread_rwlockattr_s));
 	if (prwlockattr == NULL)
 		return (ENOMEM);
 

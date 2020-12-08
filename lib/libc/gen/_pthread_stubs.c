@@ -192,9 +192,9 @@ stub_zero(void)
 static int __used
 stub_once(pthread_once_t *o, void (*r)(void))
 {
-	if (o->state != PTHREAD_DONE_INIT) {
+	if (o->__state != PTHREAD_DONE_INIT) {
 		(*r)();
-		o->state = PTHREAD_DONE_INIT;
+		o->__state = PTHREAD_DONE_INIT;
 	}
 
 	return (0);

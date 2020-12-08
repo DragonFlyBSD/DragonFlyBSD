@@ -55,7 +55,7 @@
 #include "thr_private.h"
 
 /* Default thread attributes: */
-struct pthread_attr _pthread_attr_default = {
+struct __pthread_attr_s _pthread_attr_default = {
 	.sched_policy = SCHED_OTHER,
 	.sched_inherit = 0,
 	.prio = THR_DEFAULT_PRIORITY,
@@ -67,7 +67,7 @@ struct pthread_attr _pthread_attr_default = {
 };
 
 /* Default mutex attributes: */
-struct pthread_mutex_attr _pthread_mutexattr_default = {
+struct __pthread_mutexattr_s _pthread_mutexattr_default = {
 	.m_type = PTHREAD_MUTEX_DEFAULT,
 	.m_protocol = PTHREAD_PRIO_NONE,
 	.m_ceiling = 0,
@@ -75,7 +75,7 @@ struct pthread_mutex_attr _pthread_mutexattr_default = {
 };
 
 /* Default condition variable attributes: */
-struct pthread_cond_attr _pthread_condattr_default = {
+struct __pthread_condattr_s _pthread_condattr_default = {
 	.c_pshared = PTHREAD_PROCESS_PRIVATE,
 	.c_clockid = CLOCK_REALTIME
 };

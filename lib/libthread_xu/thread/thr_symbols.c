@@ -41,16 +41,16 @@
 
 int _libthread_xu_debug;
 int _thread_max_keys = PTHREAD_KEYS_MAX;
-int _thread_off_attr_flags = offsetof(struct pthread, attr.flags);
-int _thread_off_event_buf = offsetof(struct pthread, event_buf);
-int _thread_off_event_mask = offsetof(struct pthread, event_mask);
+int _thread_off_attr_flags = offsetof(struct __pthread_s, attr.flags);
+int _thread_off_event_buf = offsetof(struct __pthread_s, event_buf);
+int _thread_off_event_mask = offsetof(struct __pthread_s, event_mask);
 int _thread_off_key_allocated = offsetof(struct pthread_key, allocated);
 int _thread_off_key_destructor = offsetof(struct pthread_key, destructor);
-int _thread_off_next = offsetof(struct pthread, tle.tqe_next);
-int _thread_off_report_events = offsetof(struct pthread, report_events);
-int _thread_off_state = offsetof(struct pthread, state);
-int _thread_off_tcb = offsetof(struct pthread, tcb);
-int _thread_off_tid = offsetof(struct pthread, tid);
+int _thread_off_next = offsetof(struct __pthread_s, tle.tqe_next);
+int _thread_off_report_events = offsetof(struct __pthread_s, report_events);
+int _thread_off_state = offsetof(struct __pthread_s, state);
+int _thread_off_tcb = offsetof(struct __pthread_s, tcb);
+int _thread_off_tid = offsetof(struct __pthread_s, tid);
 int _thread_size_key = sizeof(struct pthread_key);
 int _thread_state_running = PS_RUNNING;
 int _thread_state_zoombie = PS_DEAD;

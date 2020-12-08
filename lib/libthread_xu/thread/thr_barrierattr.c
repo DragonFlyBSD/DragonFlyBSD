@@ -66,7 +66,7 @@ _pthread_barrierattr_init(pthread_barrierattr_t *attr)
 	if (attr == NULL)
 		return (EINVAL);
 
-	*attr = __malloc(sizeof(struct pthread_barrierattr));
+	*attr = __malloc(sizeof(struct __pthread_barrierattr_s));
 	if (*attr ==NULL)
 		return (ENOMEM);
 	(*attr)->pshared = PTHREAD_PROCESS_PRIVATE;

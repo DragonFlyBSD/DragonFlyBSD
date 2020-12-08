@@ -44,7 +44,7 @@ _pthread_spin_init(pthread_spinlock_t *lock, int pshared)
 
 	if (lock == NULL || pshared != PTHREAD_PROCESS_PRIVATE)
 		return (EINVAL);
-	lck = __malloc(sizeof(struct pthread_spinlock));
+	lck = __malloc(sizeof(struct __pthread_spinlock_s));
 	if (lck == NULL)
 		return (ENOMEM);
 	_thr_umtx_init(&lck->s_lock);

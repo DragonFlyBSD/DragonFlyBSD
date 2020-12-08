@@ -82,7 +82,7 @@ rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr __unused)
 	int ret;
 
 	/* allocate rwlock object */
-	prwlock = __malloc(sizeof(struct pthread_rwlock));
+	prwlock = __malloc(sizeof(struct __pthread_rwlock_s));
 	if (prwlock == NULL)
 		return (ENOMEM);
 

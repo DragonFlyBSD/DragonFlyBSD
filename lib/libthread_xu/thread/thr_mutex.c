@@ -151,7 +151,7 @@ int __pthread_mutex_timedlock(pthread_mutex_t *mutex,
 	const struct timespec *abs_timeout);
 
 static int
-mutex_check_attr(const struct pthread_mutex_attr *attr)
+mutex_check_attr(const struct __pthread_mutexattr_s *attr)
 {
 	if (attr->m_type < PTHREAD_MUTEX_ERRORCHECK ||
 	    attr->m_type >= PTHREAD_MUTEX_TYPE_MAX)
@@ -163,8 +163,8 @@ mutex_check_attr(const struct pthread_mutex_attr *attr)
 }
 
 static void
-mutex_init_body(struct pthread_mutex *pmutex,
-    const struct pthread_mutex_attr *attr, int private)
+mutex_init_body(pthread_mutex_t pmutex,
+    const struct __pthread_mutexattr_s *attr, int private)
 {
 	_thr_umtx_init(&pmutex->m_lock);
 	pmutex->m_type = attr->m_type;
@@ -189,8 +189,8 @@ static int
 mutex_init(pthread_mutex_t *mutex,
     const pthread_mutexattr_t *mutex_attr, int private)
 {
-	const struct pthread_mutex_attr *attr;
-	struct pthread_mutex *pmutex;
+	const struct __pthread_mutexattr_s *attr;
+	pthread_mutex_t pmutex;
 	int error;
 
 	if (mutex_attr == NULL) {
@@ -202,7 +202,7 @@ mutex_init(pthread_mutex_t *mutex,
 			return (error);
 	}
 
-	pmutex = __malloc(sizeof(struct pthread_mutex));
+	pmutex = __malloc(sizeof(struct __pthread_mutex_s));
 	if (pmutex == NULL)
 		return (ENOMEM);
 	mutex_init_body(pmutex, attr, private);

@@ -38,10 +38,10 @@ static int
 _libc_once(pthread_once_t *once_control, void (*init_routine)(void))
 {
 
-	if (once_control->state == PTHREAD_DONE_INIT)
+	if (once_control->__state == PTHREAD_DONE_INIT)
 		return (0);
 	init_routine();
-	once_control->state = PTHREAD_DONE_INIT;
+	once_control->__state = PTHREAD_DONE_INIT;
 	return (0);
 }
 

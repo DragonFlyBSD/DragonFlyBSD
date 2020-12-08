@@ -32,7 +32,7 @@
 #ifndef _GEN_PRIVATE_H_
 #define	_GEN_PRIVATE_H_
 
-struct pthread_mutex;
+struct __pthread_mutex_s;
 
 /*
  * Structure describing an open directory.
@@ -49,7 +49,7 @@ struct _dirdesc {
 	long	dd_lastseek;	/* last seek index */
 	long	dd_rewind;	/* magic cookie for rewinding */
 	int	dd_flags;	/* flags for readdir */
-	struct pthread_mutex	*dd_lock;	/* lock */
+	struct __pthread_mutex_s *dd_lock;	/* lock */
 	off_t	dd_seek;	/* new magic cookie returned by getdirentries */
 };
 

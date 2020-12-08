@@ -68,14 +68,14 @@ umtx_t	_thr_list_lock;
  * to have a speedy free list, but also so they can be deallocated
  * after a fork().
  */
-static TAILQ_HEAD(, pthread)	free_threadq;
+static TAILQ_HEAD(, __pthread_s) free_threadq;
 static umtx_t			free_thread_lock;
 static umtx_t			tcb_lock;
 static int			free_thread_count = 0;
 static int			inited = 0;
 static u_int64_t		next_uniqueid = 1;
 
-LIST_HEAD(thread_hash_head, pthread);
+LIST_HEAD(thread_hash_head, __pthread_s);
 #define HASH_QUEUES	128
 static struct thread_hash_head	thr_hashtable[HASH_QUEUES];
 #define	THREAD_HASH(thrd)	(((unsigned long)thrd >> 12) % HASH_QUEUES)
@@ -103,8 +103,8 @@ _thr_list_init(void)
 void
 _thr_gc(pthread_t curthread)
 {
-	struct pthread *td, *td_next;
-	TAILQ_HEAD(, pthread) worklist;
+	pthread_t td, td_next;
+	TAILQ_HEAD(, __pthread_s) worklist;
 
 	TAILQ_INIT(&worklist);
 	THREAD_LIST_LOCK(curthread);
@@ -165,7 +165,7 @@ _thr_alloc(pthread_t curthread)
 		}
 	}
 	if (thread == NULL) {
-		thread = __malloc(sizeof(struct pthread));
+		thread = __malloc(sizeof(struct __pthread_s));
 		if (thread == NULL)
 			return (NULL);
 	}

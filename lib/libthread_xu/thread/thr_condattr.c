@@ -42,12 +42,12 @@ _pthread_condattr_init(pthread_condattr_t *attr)
 	pthread_condattr_t pattr;
 	int ret;
 
-	pattr = __malloc(sizeof(struct pthread_cond_attr));
+	pattr = __malloc(sizeof(struct __pthread_condattr_s));
 	if (pattr == NULL) {
 		ret = ENOMEM;
 	} else {
 		memcpy(pattr, &_pthread_condattr_default,
-		       sizeof(struct pthread_cond_attr));
+		       sizeof(struct __pthread_condattr_s));
 		*attr = pattr;
 		ret = 0;
 	}
