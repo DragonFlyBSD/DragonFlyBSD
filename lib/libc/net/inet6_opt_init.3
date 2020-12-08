@@ -28,9 +28,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/net/inet6_opt_init.3,v 1.10 2005/11/23 16:07:54 ru Exp $
-.\" $DragonFly: src/lib/libc/net/inet6_opt_init.3,v 1.2 2008/09/05 20:43:08 swildner Exp $
 .\"
-.Dd September 4, 2008
+.Dd December 8, 2020
 .Dt INET6_OPT_INIT 3
 .Os
 .\"
@@ -51,15 +50,15 @@
 .Ft "int"
 .Fn inet6_opt_init "void *extbuf" "socklen_t extlen"
 .Ft "int"
-.Fn inet6_opt_append "void *extbuf" "socklen_t extlen" "int offset" "u_int8_t type" "socklen_t len" "u_int8_t align" "void **databufp"
+.Fn inet6_opt_append "void *extbuf" "socklen_t extlen" "int offset" "uint8_t type" "socklen_t len" "uint8_t align" "void **databufp"
 .Ft "int"
 .Fn inet6_opt_finish "void *extbuf" "socklen_t extlen" "int offset"
 .Ft "int"
 .Fn inet6_opt_set_val "void *databuf" "int offset" "void *val" "socklen_t vallen"
 .Ft "int"
-.Fn inet6_opt_next "void *extbuf" "socklen_t extlen" "int offset" "u_int8_t *typep" "socklen_t *lenp" "void **databufp"
+.Fn inet6_opt_next "void *extbuf" "socklen_t extlen" "int offset" "uint8_t *typep" "socklen_t *lenp" "void **databufp"
 .Ft "int"
-.Fn inet6_opt_find "void *extbuf" "socklen_t extlen" "int offset" "u_int8_t type" "socklen_t *lenp" "void **databufp"
+.Fn inet6_opt_find "void *extbuf" "socklen_t extlen" "int offset" "uint8_t type" "socklen_t *lenp" "void **databufp"
 .Ft "int"
 .Fn inet6_opt_get_val "void *databuf" "int offset" "void *val" "socklen_t vallen"
 .\"
