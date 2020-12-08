@@ -224,8 +224,8 @@ typedef	__timer_t	timer_t;
 #include <sys/_timeval.h>
 #endif /* __BSD_VISIBLE */
 
-#ifndef _KERNEL
+#if !defined(_KERNEL) && !defined(_STANDALONE)
 #include <sys/_pthreadtypes.h>		/* now POSIX thread types */
-#endif	/* !_KERNEL */
+#endif	/* !_KERNEL && !_STANDALONE */
 
 #endif /* !_SYS_TYPES_H_ */
