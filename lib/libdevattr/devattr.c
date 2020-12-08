@@ -52,7 +52,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <libprop/proplib.h>
 #include <sys/udev.h>
