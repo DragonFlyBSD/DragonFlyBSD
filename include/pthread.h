@@ -39,9 +39,8 @@
  * Header files.
  */
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <sys/_pthreadtypes.h>
 #include <sys/time.h>
-#include <sys/signal.h>
 #include <machine/limits.h>
 #include <sys/sched.h>
 

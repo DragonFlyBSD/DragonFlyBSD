@@ -32,8 +32,8 @@
 #define _PTHREAD_NP_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
 #include <sys/cpumask.h>
+#include <sys/_pthreadtypes.h>
 #include <sys/_timespec.h>
 #include <time.h>
 
