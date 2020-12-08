@@ -49,6 +49,12 @@ extern const char * const sys_siglist[NSIG];
 extern const int sys_nsig;
 #endif
 
+#ifndef _PTHREAD_T_DECLARED
+struct __pthread_s;
+typedef	struct __pthread_s	*pthread_t;
+#define	_PTHREAD_T_DECLARED
+#endif
+
 __BEGIN_DECLS
 int	raise(int);
 

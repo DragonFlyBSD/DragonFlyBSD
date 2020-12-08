@@ -163,7 +163,11 @@ typedef	void __sighandler_t (int);
 
 #if __POSIX_VISIBLE >= 199309
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
-#include <sys/_pthreadtypes.h>
+#ifndef _PTHREAD_ATTR_T_DECLARED
+struct __pthread_attr_s;
+typedef	struct __pthread_attr_s		*pthread_attr_t;
+#define	_PTHREAD_ATTR_T_DECLARED
+#endif
 #endif
 
 struct sigevent {

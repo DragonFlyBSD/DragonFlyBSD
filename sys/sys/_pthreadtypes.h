@@ -49,8 +49,14 @@ struct __pthread_spinlock_s;
 /*
  * Basic pthread types to be used in function prototypes.
  */
+#ifndef _PTHREAD_T_DECLARED
 typedef	struct __pthread_s		*pthread_t;
+#define	_PTHREAD_T_DECLARED
+#endif
+#ifndef _PTHREAD_ATTR_T_DECLARED
 typedef	struct __pthread_attr_s		*pthread_attr_t;
+#define	_PTHREAD_ATTR_T_DECLARED
+#endif
 typedef	struct __pthread_barrier_s	*pthread_barrier_t;
 typedef	struct __pthread_barrierattr_s	*pthread_barrierattr_t;
 typedef	struct __pthread_cond_s		*pthread_cond_t;
