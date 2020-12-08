@@ -19,9 +19,6 @@
 #ifndef _SYS_AIO_H_
 #define	_SYS_AIO_H_
 
-#ifndef _KERNEL
-#include <sys/_pthreadtypes.h>
-#endif
 #include <sys/_timespec.h>
 #include <sys/signal.h>
 #include <machine/stdint.h>
@@ -39,6 +36,14 @@ typedef	__size_t	size_t;
 #ifndef _SSIZE_T_DECLARED
 #define	_SSIZE_T_DECLARED
 typedef	__ssize_t	ssize_t;
+#endif
+
+#ifndef _KERNEL
+#ifndef _PTHREAD_ATTR_T_DECLARED
+struct __pthread_attr_s;
+typedef	struct __pthread_attr_s	*pthread_attr_t;
+#define	_PTHREAD_ATTR_T_DECLARED
+#endif
 #endif
 
 /*
