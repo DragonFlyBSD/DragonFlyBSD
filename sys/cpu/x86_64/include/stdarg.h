@@ -56,7 +56,7 @@ typedef __va_list		__gnuc_va_list;	/* compatibility w/GNU headers*/
 	__builtin_va_start(ap, last)
 #define __va_arg(ap, type) \
 	__builtin_va_arg((ap), type)
-#define __va_copy(dest, src) \
+#define ___va_copy(dest, src) \
 	__builtin_va_copy((dest), (src))
 #define __va_end(ap) \
 	__builtin_va_end(ap)
@@ -71,7 +71,7 @@ typedef __va_list		__gnuc_va_list;	/* compatibility w/GNU headers*/
 #define __va_arg(ap, type) \
 	(*(type *)((ap) += __va_size(type), (ap) - __va_size(type)))
 /* This assumes a typical stack machine */
-#define __va_copy(dest, src) \
+#define ___va_copy(dest, src) \
 	((void)((dest) = (src)))
 #define __va_end(ap)
 

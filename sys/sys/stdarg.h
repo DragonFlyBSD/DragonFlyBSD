@@ -42,8 +42,11 @@ typedef	__va_list	va_list;
 #if defined(_KERNEL) || __ISO_C_VISIBLE >= 1999 || \
     (defined(__cplusplus) && __cplusplus >= 201103L) || \
     !defined(__STRICT_ANSI__)
-#define va_copy(dest, src)	__va_copy(dest, src)
+#define va_copy(dest, src)	___va_copy(dest, src)
 #endif
 #define va_end(ap)		__va_end(ap)
+
+/* Legacy draft name for compatibility with gcc and clang headers */
+#define __va_copy(dest, src)	___va_copy(dest, src)
 
 #endif /* !_SYS_STDARG_H_ */
