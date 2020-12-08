@@ -44,6 +44,9 @@
 #ifndef _NET_ETHERNET_H_
 #include <net/ethernet.h>
 #endif
+#ifndef _SYS__PTHREADTYPES_H_
+#include <sys/_pthreadtypes.h>
+#endif
 
 #define VKNETIF_MAX	16
 #define VKDISK_MAX	16

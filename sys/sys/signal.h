@@ -39,7 +39,6 @@
 #define	_SYS_SIGNAL_H_
 
 #include <sys/cdefs.h>
-#include <sys/_pthreadtypes.h>
 #include <sys/_siginfo.h>
 #include <sys/_sigset.h>
 #include <machine/stdint.h>
@@ -163,12 +162,20 @@ typedef	void __sighandler_t (int);
 #define	SIG_ERR		((__sighandler_t *)-1)
 
 #if __POSIX_VISIBLE >= 199309
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
+#include <sys/_pthreadtypes.h>
+#endif
+
 struct sigevent {
 	int	sigev_notify;		/* Notification type */
 	union {
 		int	__sigev_signo;	/* Signal number */
 		int	__sigev_notify_kqueue;
+#ifdef _KERNEL
+		void	*__sigev_notify_attributes;
+#else
 		pthread_attr_t *__sigev_notify_attributes;
+#endif
 	} __sigev_u;
 	union sigval sigev_value;	/* Signal value */
 	void (*sigev_notify_function)(union sigval);
@@ -195,7 +202,7 @@ typedef	struct __sigset	sigset_t;
 /*
  * XXX - there are some nasty dependencies on include file order. Now that
  * sigset_t has been defined we can include the MD header.
- */     
+ */
 #include <machine/signal.h>     /* sig_atomic_t; trap codes; sigcontext */
 
 #if __POSIX_VISIBLE

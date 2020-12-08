@@ -19,7 +19,9 @@
 #ifndef _SYS_AIO_H_
 #define	_SYS_AIO_H_
 
+#ifndef _KERNEL
 #include <sys/_pthreadtypes.h>
+#endif
 #include <sys/_timespec.h>
 #include <sys/signal.h>
 #include <machine/stdint.h>
