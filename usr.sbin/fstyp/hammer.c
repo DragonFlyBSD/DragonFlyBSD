@@ -139,12 +139,12 @@ fail:
 static int
 test_volume(const char *volpath)
 {
-	hammer_volume_ondisk_t ondisk;
+	hammer_volume_ondisk_t ondisk = NULL;
 	FILE *fp;
 	int volno = -1;
 
 	if ((fp = fopen(volpath, "r")) == NULL)
-		err(1, "failed to open %s", volpath);
+		goto fail;
 
 	ondisk = read_ondisk(fp);
 	fclose(fp);
@@ -194,7 +194,7 @@ __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 	else if (!partial || !volpath)
 		goto fail;
 	if ((fp = fopen(volpath, "r")) == NULL)
-		err(1, "failed to open %s", volpath);
+		goto fail;
 	ondisk = read_ondisk(fp);
 	fclose(fp);
 
