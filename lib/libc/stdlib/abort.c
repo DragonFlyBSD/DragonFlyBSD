@@ -28,7 +28,6 @@
  *
  * @(#)abort.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/abort.c,v 1.11 2007/01/09 00:28:09 imp Exp $
- * $DragonFly: src/lib/libc/stdlib/abort.c,v 1.4 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include "namespace.h"
@@ -36,7 +35,6 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <unistd.h>
-#include <pthread.h>
 #include "un-namespace.h"
 
 #include "libc_private.h"

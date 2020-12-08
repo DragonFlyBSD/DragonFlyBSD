@@ -27,7 +27,6 @@
 #include <sys/queue.h>
 #include "namespace.h"
 #include <link.h>
-#include <pthread.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <unistd.h>

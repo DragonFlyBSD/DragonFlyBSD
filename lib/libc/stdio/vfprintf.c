@@ -50,6 +50,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <pthread.h> /* for FAKE_FILE PTHREAD_MUTEX_INITIALIZER */
 #include <locale.h>
 #include <stddef.h>
 #include <stdint.h>

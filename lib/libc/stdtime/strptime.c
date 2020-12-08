@@ -45,7 +45,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include "un-namespace.h"
 #include "libc_private.h"
 #include "timelocal.h"

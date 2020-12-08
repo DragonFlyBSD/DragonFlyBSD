@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <pthread.h> /* for FAKE_FILE PTHREAD_MUTEX_INITIALIZER */
 #include "xlocale_private.h"
 #include "local.h"
 

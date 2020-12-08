@@ -36,6 +36,7 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <pthread.h> /* for FAKE_FILE PTHREAD_MUTEX_INITIALIZER */
 #include <stdio.h>
 #include <stdlib.h>
 #include <wchar.h>

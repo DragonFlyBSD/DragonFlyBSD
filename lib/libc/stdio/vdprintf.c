@@ -34,6 +34,7 @@
 #include "namespace.h"
 #include <errno.h>
 #include <limits.h>
+#include <pthread.h> /* for FAKE_FILE PTHREAD_MUTEX_INITIALIZER */
 #include <stdarg.h>
 #include <stdio.h>
 #include "un-namespace.h"
