@@ -3,7 +3,6 @@
  * Simple sequence mode test.
  *
  * $FreeBSD: src/lib/libc_r/test/hello_s.c,v 1.1.2.1 2000/07/17 22:18:32 jasone Exp $
- * $DragonFly: src/lib/libc_r/test/hello_s.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  *
  ****************************************************************************/
 
@@ -28,9 +27,9 @@ main()
 	int error;
 
 	fprintf(stderr, "1..3\n");
-	
+
 	fprintf(stderr, "Some random text\n");
-	
+
 	error = pthread_create(&thread, NULL, entry, NULL);
 	fprintf(stderr, "More unimportant text\n");
 	if (error)
