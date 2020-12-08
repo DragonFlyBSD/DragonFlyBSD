@@ -28,7 +28,7 @@
 #include "thr_private.h"
 
 int		_thread_event_mask;
-struct pthread	*_thread_last_event;
+pthread_t	_thread_last_event;
 umtx_t		_thr_event_lock;
 
 void
@@ -42,7 +42,7 @@ _thread_bp_death(void)
 }
 
 void
-_thr_report_creation(struct pthread *curthread, struct pthread *newthread)
+_thr_report_creation(pthread_t curthread, pthread_t newthread)
 {
 	curthread->event_buf.event = TD_CREATE;
 	curthread->event_buf.th_p = (td_thrhandle_t *)newthread;
@@ -55,7 +55,7 @@ _thr_report_creation(struct pthread *curthread, struct pthread *newthread)
 }
 
 void
-_thr_report_death(struct pthread *curthread)
+_thr_report_death(pthread_t curthread)
 {
 	curthread->event_buf.event = TD_DEATH;
 	curthread->event_buf.th_p = (td_thrhandle_t *)curthread;

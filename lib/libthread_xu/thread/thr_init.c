@@ -180,7 +180,7 @@ STATIC_LIB_REQUIRE(__wait4);
 STATIC_LIB_REQUIRE(_pthread_yield);
 
 char		*_usrstack;
-struct pthread	*_thr_initial;
+pthread_t	_thr_initial;
 static void	*_thr_main_redzone;
 
 pid_t		_thr_pid;
@@ -191,7 +191,7 @@ int		_thr_page_size;
 
 static void	init_private(void);
 static void	_libpthread_uninit(void);
-static void	init_main_thread(struct pthread *thread);
+static void	init_main_thread(pthread_t thread);
 
 void	_thread_init(void) __attribute__ ((constructor));
 void
@@ -231,7 +231,7 @@ _pthread_init_early(void)
  *      by curthread != NULL)
  */
 void
-_libpthread_init(struct pthread *curthread)
+_libpthread_init(pthread_t curthread)
 {
 	int fd, first = 0;
 	sigset_t sigset, oldset;
@@ -315,7 +315,7 @@ _libpthread_uninit(void)
  * It'd be nice to consolidate the common stuff in one place.
  */
 static void
-init_main_thread(struct pthread *thread)
+init_main_thread(pthread_t thread)
 {
 	/* Setup the thread attributes. */
 	thread->tid = _thr_get_tid();

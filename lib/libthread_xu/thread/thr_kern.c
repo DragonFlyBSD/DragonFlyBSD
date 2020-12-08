@@ -63,7 +63,7 @@ _thr_setthreaded(int threaded)
 }
 
 void
-_thr_signal_block(struct pthread *curthread)
+_thr_signal_block(pthread_t curthread)
 {
 	sigset_t set;
 
@@ -82,7 +82,7 @@ _thr_signal_block(struct pthread *curthread)
 }
 
 void
-_thr_signal_unblock(struct pthread *curthread)
+_thr_signal_unblock(pthread_t curthread)
 {
 	if (--curthread->sigblock == 0)
 		__sys_sigprocmask(SIG_SETMASK, &curthread->sigmask, NULL);
@@ -95,7 +95,7 @@ _thr_assert_lock_level(void)
 }
 
 int
-_thr_send_sig(struct pthread *thread, int sig)
+_thr_send_sig(pthread_t thread, int sig)
 {
 	return (lwp_kill(-1, thread->tid, sig));
 }
@@ -114,7 +114,7 @@ _thr_get_tid(void)
  * falls into implementation defined behavior or not.
  */
 int
-_thr_set_sched_other_prio(struct pthread *pth __unused, int prio)
+_thr_set_sched_other_prio(pthread_t pth __unused, int prio)
 {
 	static int max, min, init_status;
 
@@ -192,7 +192,7 @@ _schedparam_to_rtp(int policy, const struct sched_param *param,
 int
 _thr_getscheduler(lwpid_t lwpid, int *policy, struct sched_param *param)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	struct rtprio rtp;
 	int ret;
 
@@ -208,7 +208,7 @@ _thr_getscheduler(lwpid_t lwpid, int *policy, struct sched_param *param)
 int
 _thr_setscheduler(lwpid_t lwpid, int policy, const struct sched_param *param)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	struct rtprio rtp;
 
 	if (lwpid == curthread->tid)

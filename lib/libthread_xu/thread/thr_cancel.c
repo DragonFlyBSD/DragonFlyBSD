@@ -35,7 +35,7 @@
 int
 _pthread_cancel(pthread_t pthread)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldval, newval = 0;
 	int oldtype;
 	int ret;
@@ -66,7 +66,7 @@ _pthread_cancel(pthread_t pthread)
 }
 
 static inline void
-testcancel(struct pthread *curthread)
+testcancel(pthread_t curthread)
 {
 	int newval;
 
@@ -78,7 +78,7 @@ testcancel(struct pthread *curthread)
 int
 _pthread_setcancelstate(int state, int *oldstate)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldval;
 
 	oldval = curthread->cancelflags;
@@ -103,7 +103,7 @@ _pthread_setcancelstate(int state, int *oldstate)
 int
 _pthread_setcanceltype(int type, int *oldtype)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldval;
 
 	oldval = curthread->cancelflags;
@@ -133,7 +133,7 @@ _pthread_testcancel(void)
 }
 
 int
-_thr_cancel_enter(struct pthread *curthread)
+_thr_cancel_enter(pthread_t curthread)
 {
 	int oldval;
 
@@ -146,7 +146,7 @@ _thr_cancel_enter(struct pthread *curthread)
 }
 
 void
-_thr_cancel_leave(struct pthread *curthread, int previous)
+_thr_cancel_leave(pthread_t curthread, int previous)
 {
 	if (!(previous & THR_CANCEL_AT_POINT))
 		atomic_clear_int(&curthread->cancelflags, THR_CANCEL_AT_POINT);

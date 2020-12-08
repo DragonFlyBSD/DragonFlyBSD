@@ -78,7 +78,7 @@ _thread_exit(const char *fname, int lineno, const char *msg)
 void
 _thr_exit_cleanup(void)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 
 	/*
 	 * POSIX states that cancellation/termination of a thread should
@@ -99,7 +99,7 @@ _thr_exit_cleanup(void)
 void
 _pthread_exit(void *status)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 
 	/* Check if this thread is already in the process of exiting: */
 	if ((curthread->cancelflags & THR_CANCEL_EXITING) != 0) {
@@ -129,7 +129,7 @@ __strong_reference(_pthread_exit, pthread_exit);
 static void
 exit_thread(void)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 
 	/* Check if there is thread specific data: */
 	if (curthread->specific != NULL) {

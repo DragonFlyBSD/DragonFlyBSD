@@ -162,7 +162,7 @@ pid_t	_wait(int *);
 int
 __accept(int s, struct sockaddr *addr, socklen_t *addrlen)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	int oldcancel;
 	int ret;
 
@@ -180,7 +180,7 @@ int
 _aio_suspend(const struct aiocb * const iocbs[], int niocb, const struct
     timespec *timeout)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	int ret;
 
@@ -196,7 +196,7 @@ __strong_reference(_aio_suspend, aio_suspend);
 int
 __close(int fd)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	int	ret;
 
@@ -212,7 +212,7 @@ __strong_reference(__close, close);
 int
 __connect(int fd, const struct sockaddr *name, socklen_t namelen)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	int ret;
 
@@ -228,7 +228,7 @@ __strong_reference(__connect, connect);
 int
 ___creat(const char *path, mode_t mode)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	int ret;
 
@@ -244,7 +244,7 @@ __strong_reference(___creat, creat);
 int
 __fcntl(int fd, int cmd,...)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	int	ret;
 	va_list	ap;
@@ -279,7 +279,7 @@ __strong_reference(__fcntl, fcntl);
 int
 __fsync(int fd)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	int	ret;
 
@@ -295,7 +295,7 @@ __strong_reference(__fsync, fsync);
 int
 __msync(void *addr, size_t len, int flags)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	int	ret;
 
@@ -312,7 +312,7 @@ int
 __nanosleep(const struct timespec *time_to_sleep,
     struct timespec *time_remaining)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int		oldcancel;
 	int		ret;
 
@@ -328,7 +328,7 @@ __strong_reference(__nanosleep, nanosleep);
 int
 __open(const char *path, int flags,...)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	int	ret;
 	int	mode = 0;
@@ -356,7 +356,7 @@ __strong_reference(__open, open);
 int
 __openat(int fd, const char *path, int flags,...)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	int	ret;
 	int	mode = 0;
@@ -384,7 +384,7 @@ __strong_reference(__openat, openat);
 int
 _pause(void)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	int	ret;
 
@@ -400,7 +400,7 @@ __strong_reference(_pause, pause);
 int
 __poll(struct pollfd *fds, unsigned int nfds, int timeout)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	int ret;
 
@@ -417,7 +417,7 @@ int
 __ppoll(struct pollfd *fds, unsigned int nfds, const struct timespec *ts,
 	const sigset_t *mask)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	int ret;
 
@@ -434,7 +434,7 @@ int
 __pselect(int count, fd_set *rfds, fd_set *wfds, fd_set *efds,
 	const struct timespec *timo, const sigset_t *mask)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	int ret;
 
@@ -464,7 +464,7 @@ __strong_reference(_raise, raise);
 ssize_t
 __read(int fd, void *buf, size_t nbytes)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	ssize_t	ret;
 
@@ -479,7 +479,7 @@ __strong_reference(__read, read);
 ssize_t
 __readv(int fd, const struct iovec *iov, int iovcnt)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	ssize_t ret;
 
@@ -495,7 +495,7 @@ ssize_t
 __recvfrom(int s, void *b, size_t l, int f, struct sockaddr *from,
     socklen_t *fl)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	ssize_t ret;
 
@@ -510,7 +510,7 @@ __strong_reference(__recvfrom, recvfrom);
 ssize_t
 __recvmsg(int s, struct msghdr *m, int f)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	ssize_t ret;
 	int oldcancel;
 
@@ -526,7 +526,7 @@ int
 __select(int numfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 	struct timeval *timeout)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	int ret;
 
@@ -541,7 +541,7 @@ __strong_reference(__select, select);
 ssize_t
 __sendmsg(int s, const struct msghdr *m, int f)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	ssize_t ret;
 	int oldcancel;
 
@@ -557,7 +557,7 @@ ssize_t
 __sendto(int s, const void *m, size_t l, int f, const struct sockaddr *t,
     socklen_t tl)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	ssize_t ret;
 	int oldcancel;
 
@@ -572,7 +572,7 @@ __strong_reference(__sendto, sendto);
 unsigned int
 _sleep(unsigned int seconds)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t	curthread = tls_get_curthread();
 	int		oldcancel;
 	unsigned int	ret;
 
@@ -587,7 +587,7 @@ __strong_reference(_sleep, sleep);
 int
 _system(const char *string)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	int	ret;
 
@@ -602,7 +602,7 @@ __strong_reference(_system, system);
 int
 _tcdrain(int fd)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	int	ret;
 
@@ -617,7 +617,7 @@ __strong_reference(_tcdrain, tcdrain);
 int
 ___usleep(unsigned int useconds)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t	curthread = tls_get_curthread();
 	int		oldcancel;
 	int		ret;
 
@@ -646,7 +646,7 @@ __strong_reference(_vfork, vfork);
 pid_t
 _wait(int *istat)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	pid_t	ret;
 
@@ -661,7 +661,7 @@ __strong_reference(_wait, wait);
 pid_t
 __wait4(pid_t pid, int *istat, int options, struct rusage *rusage)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int oldcancel;
 	pid_t ret;
 
@@ -676,7 +676,7 @@ __strong_reference(__wait4, wait4);
 pid_t
 _waitpid(pid_t wpid, int *status, int options)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	pid_t	ret;
 
@@ -691,7 +691,7 @@ __strong_reference(_waitpid, waitpid);
 ssize_t
 __write(int fd, const void *buf, size_t nbytes)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	ssize_t	ret;
 
@@ -706,7 +706,7 @@ __strong_reference(__write, write);
 ssize_t
 __writev(int fd, const struct iovec *iov, int iovcnt)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	oldcancel;
 	ssize_t ret;
 

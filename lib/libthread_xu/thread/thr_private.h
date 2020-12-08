@@ -610,12 +610,12 @@ extern int __isthreaded;
  * Global variables for the pthread library.
  */
 extern char		*_usrstack;
-extern struct pthread	*_thr_initial;
+extern pthread_t	_thr_initial;
 
 /* For debugger */
 extern int		_libthread_xu_debug;
 extern int		_thread_event_mask;
-extern struct pthread	*_thread_last_event;
+extern pthread_t	_thread_last_event;
 
 /* List of all threads */
 extern struct thread_head	_thread_list;
@@ -659,9 +659,9 @@ __BEGIN_DECLS
 int	_thr_setthreaded(int);
 int	_mutex_cv_lock(pthread_mutex_t *, int count);
 int	_mutex_cv_unlock(pthread_mutex_t *, int *count);
-void	_mutex_notify_priochange(struct pthread *, struct pthread *, int);
-void	_mutex_fork(struct pthread *curthread, lwpid_t tid);
-void	_mutex_unlock_private(struct pthread *);
+void	_mutex_notify_priochange(pthread_t, pthread_t, int);
+void	_mutex_fork(pthread_t, lwpid_t tid);
+void	_mutex_unlock_private(pthread_t);
 
 #if 0
 int	_mutex_reinit(pthread_mutex_t *);
@@ -669,58 +669,57 @@ void	_cond_reinit(pthread_cond_t pcond);
 void	_rwlock_reinit(pthread_rwlock_t prwlock);
 #endif
 
-void	_libpthread_init(struct pthread *);
-struct pthread *_thr_alloc(struct pthread *);
+void	_libpthread_init(pthread_t);
+pthread_t _thr_alloc(pthread_t);
 void	_thread_exit(const char *, int, const char *) __dead2;
 void	_thread_exitf(const char *, int, const char *, ...) __dead2
 	    __printflike(3, 4);
 void	_thr_exit_cleanup(void);
 void	_thr_atfork_kern(void (*prepare)(void), void (*parent)(void),
 			void (*child)(void));
-int	_thr_ref_add(struct pthread *, struct pthread *, int);
-void	_thr_ref_delete(struct pthread *, struct pthread *);
-void	_thr_ref_delete_unlocked(struct pthread *, struct pthread *);
-int	_thr_find_thread(struct pthread *, struct pthread *, int);
+int	_thr_ref_add(pthread_t, pthread_t, int);
+void	_thr_ref_delete(pthread_t, pthread_t);
+void	_thr_ref_delete_unlocked(pthread_t, pthread_t);
+int	_thr_find_thread(pthread_t, pthread_t, int);
 void	_thr_malloc_init(void);
 void	_rtld_setthreaded(int);
 void	_thr_rtld_init(void);
 void	_thr_rtld_fini(void);
-int	_thr_stack_alloc(struct pthread_attr *);
-void	_thr_stack_free(struct pthread_attr *);
+int	_thr_stack_alloc(pthread_attr_t);
+void	_thr_stack_free(pthread_attr_t);
 void	_thr_stack_cleanup(void);
 void	_thr_sem_init(void);
-void	_thr_free(struct pthread *, struct pthread *);
-void	_thr_gc(struct pthread *);
+void	_thr_free(pthread_t, pthread_t);
+void	_thr_gc(pthread_t);
 void	_thread_cleanupspecific(void);
 void	_thread_dump_info(void);
 void	_thread_printf(int, const char *, ...) __printflike(2, 3);
 void	_thread_vprintf(int, const char *, va_list);
 void	_thr_spinlock_init(void);
-int	_thr_cancel_enter(struct pthread *);
-void	_thr_cancel_leave(struct pthread *, int);
-void	_thr_signal_block(struct pthread *);
-void	_thr_signal_unblock(struct pthread *);
+int	_thr_cancel_enter(pthread_t);
+void	_thr_cancel_leave(pthread_t, int);
+void	_thr_signal_block(pthread_t);
+void	_thr_signal_unblock(pthread_t);
 void	_thr_signal_init(void);
 void	_thr_signal_deinit(void);
-int	_thr_send_sig(struct pthread *, int sig);
+int	_thr_send_sig(pthread_t, int sig);
 void	_thr_list_init(void);
-void	_thr_hash_add(struct pthread *);
-void	_thr_hash_remove(struct pthread *);
-struct pthread *_thr_hash_find(struct pthread *);
-void	_thr_link(struct pthread *curthread, struct pthread *thread);
-void	_thr_unlink(struct pthread *curthread, struct pthread *thread);
-void	_thr_suspend_check(struct pthread *curthread);
+void	_thr_hash_add(pthread_t);
+void	_thr_hash_remove(pthread_t);
+pthread_t _thr_hash_find(pthread_t);
+void	_thr_link(pthread_t, pthread_t);
+void	_thr_unlink(pthread_t, pthread_t);
+void	_thr_suspend_check(pthread_t);
 void	_thr_assert_lock_level(void) __dead2;
-void	_thr_ast(struct pthread *);
+void	_thr_ast(pthread_t);
 int	_thr_get_tid(void);
-void	_thr_report_creation(struct pthread *curthread,
-			   struct pthread *newthread);
-void	_thr_report_death(struct pthread *curthread);
+void	_thr_report_creation(pthread_t, pthread_t);
+void	_thr_report_death(pthread_t);
 void	_thread_bp_create(void);
 void	_thread_bp_death(void);
 int	_thr_getscheduler(lwpid_t, int *, struct sched_param *);
 int	_thr_setscheduler(lwpid_t, int, const struct sched_param *);
-int	_thr_set_sched_other_prio(struct pthread *, int);
+int	_thr_set_sched_other_prio(pthread_t, int);
 int	_rtp_to_schedparam(const struct rtprio *rtp, int *policy,
 	    struct sched_param *param);
 int	_schedparam_to_rtp(int policy, const struct sched_param *param,

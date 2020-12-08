@@ -40,7 +40,7 @@
 int
 _pthread_spin_init(pthread_spinlock_t *lock, int pshared)
 {
-	struct pthread_spinlock	*lck;
+	pthread_spinlock_t lck;
 
 	if (lock == NULL || pshared != PTHREAD_PROCESS_PRIVATE)
 		return (EINVAL);
@@ -72,8 +72,8 @@ _pthread_spin_destroy(pthread_spinlock_t *lock)
 int
 _pthread_spin_trylock(pthread_spinlock_t *lock)
 {
-	struct pthread *curthread = tls_get_curthread();
-	struct pthread_spinlock	*lck;
+	pthread_t curthread = tls_get_curthread();
+	pthread_spinlock_t lck;
 
 	if (lock == NULL || (lck = *lock) == NULL)
 		return (EINVAL);
@@ -83,8 +83,8 @@ _pthread_spin_trylock(pthread_spinlock_t *lock)
 int
 _pthread_spin_lock(pthread_spinlock_t *lock)
 {
-	struct pthread *curthread;
-	struct pthread_spinlock	*lck;
+	pthread_t curthread;
+	pthread_spinlock_t lck;
 	int count;
 
 	if (lock == NULL || (lck = *lock) == NULL)
@@ -107,8 +107,8 @@ _pthread_spin_lock(pthread_spinlock_t *lock)
 int
 _pthread_spin_unlock(pthread_spinlock_t *lock)
 {
-	struct pthread *curthread = tls_get_curthread();
-	struct pthread_spinlock	*lck;
+	pthread_t curthread = tls_get_curthread();
+	pthread_spinlock_t lck;
 
 	if (lock == NULL || (lck = *lock) == NULL)
 		return (EINVAL);

@@ -35,7 +35,7 @@
 int
 _pthread_getthreadid_np(void)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	return curthread->tid;
 }
 

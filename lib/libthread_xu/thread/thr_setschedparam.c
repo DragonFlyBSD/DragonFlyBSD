@@ -44,7 +44,7 @@ int
 _pthread_setschedparam(pthread_t pthread, int policy,
 	const struct sched_param *param)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	ret = 0;
 
 	if (pthread == curthread) {

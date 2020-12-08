@@ -82,9 +82,9 @@ round_up(size_t size)
 }
 
 int
-_thr_stack_alloc(struct pthread_attr *attr)
+_thr_stack_alloc(pthread_attr_t attr)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	struct stack *spare_stack;
 	size_t stacksize;
 	size_t guardsize;
@@ -200,7 +200,7 @@ _thr_stack_alloc(struct pthread_attr *attr)
 
 /* This function must be called with _thread_list_lock held. */
 void
-_thr_stack_free(struct pthread_attr *attr)
+_thr_stack_free(pthread_attr_t attr)
 {
 	struct stack *spare_stack;
 

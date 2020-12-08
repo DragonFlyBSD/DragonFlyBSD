@@ -44,7 +44,7 @@
 #include "libc_private.h"
 #include "thr_private.h"
 
-static int  create_stack(struct pthread_attr *pattr);
+static int  create_stack(pthread_attr_t pattr);
 static void thread_start(void *);
 
 int
@@ -55,7 +55,7 @@ _pthread_create(pthread_t * __restrict thread,
 	struct lwp_params create_params;
 	void *stack;
 	sigset_t sigmask, oldsigmask;
-	struct pthread *curthread, *new_thread;
+	pthread_t curthread, new_thread;
 	const cpu_set_t *cpumask = NULL;
 	int ret = 0, locked;
 
@@ -197,7 +197,7 @@ _pthread_create(pthread_t * __restrict thread,
 }
 
 static int
-create_stack(struct pthread_attr *pattr)
+create_stack(pthread_attr_t pattr)
 {
 	int ret;
 
@@ -215,7 +215,7 @@ create_stack(struct pthread_attr *pattr)
 static void
 thread_start(void *arg)
 {
-	struct pthread *curthread = (struct pthread *)arg;
+	pthread_t curthread = (pthread_t)arg;
 
 	tls_set_tcb(curthread->tcb);
 

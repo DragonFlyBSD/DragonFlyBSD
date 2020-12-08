@@ -86,7 +86,7 @@ int
 _pthread_atfork(void (*prepare)(void), void (*parent)(void),
 		void (*child)(void))
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	struct pthread_atfork *af;
 
 	af = __malloc(sizeof(struct pthread_atfork));
@@ -117,7 +117,7 @@ void
 _thr_atfork_kern(void (*prepare)(void), void (*parent)(void),
 		 void (*child)(void))
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	struct pthread_atfork *af;
 
 	af = __malloc(sizeof(struct pthread_atfork));
@@ -134,7 +134,7 @@ _thr_atfork_kern(void (*prepare)(void), void (*parent)(void),
 void
 __pthread_cxa_finalize(struct dl_phdr_info *phdr_info)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	struct pthread_atfork *af, *af1;
 
 	curthread = tls_get_curthread();
@@ -165,7 +165,7 @@ _fork(void)
 	static int waiters;
 	umtx_t tmp;
 
-	struct pthread *curthread;
+	pthread_t curthread;
 	struct pthread_atfork *af;
 	pid_t ret;
 	int errsave;

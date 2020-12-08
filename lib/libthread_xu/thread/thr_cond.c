@@ -126,7 +126,7 @@ _cond_reinit(pthread_cond_t cond)
 #endif
 
 static int
-init_static(struct pthread *thread, pthread_cond_t *cond)
+init_static(pthread_t thread, pthread_cond_t *cond)
 {
 	int ret;
 
@@ -153,9 +153,9 @@ _pthread_cond_init(pthread_cond_t * __restrict cond,
 int
 _pthread_cond_destroy(pthread_cond_t *cond)
 {
-	struct pthread_cond	*cv;
-	struct pthread		*curthread = tls_get_curthread();
-	int			rval = 0;
+	pthread_cond_t	cv;
+	pthread_t	curthread = tls_get_curthread();
+	int		rval = 0;
 
 	if (cond == NULL) {
 		rval = EINVAL;
@@ -203,7 +203,7 @@ struct cond_cancel_info {
 static void
 cond_cancel_handler(void *arg)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	struct cond_cancel_info *info = (struct cond_cancel_info *)arg;
 	pthread_cond_t cv;
 
@@ -231,7 +231,7 @@ static int
 cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		 const struct timespec *abstime, int cancel)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	struct timespec ts, ts2, *tsp;
 	struct cond_cancel_info info;
 	pthread_cond_t  cv;
@@ -360,7 +360,7 @@ __pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 static int
 cond_signal_common(pthread_cond_t *cond, int broadcast)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t	curthread = tls_get_curthread();
 	struct cond_cancel_info *info;
 	pthread_cond_t	cv;
 	int		ret = 0;

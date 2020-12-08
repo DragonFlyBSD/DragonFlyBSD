@@ -36,7 +36,7 @@
 int
 _pthread_detach(pthread_t pthread)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int rval;
 
 	if (pthread == NULL)

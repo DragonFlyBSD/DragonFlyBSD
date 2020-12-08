@@ -62,7 +62,7 @@ static void	init_spinlock(spinlock_t *lck);
 void
 _spinunlock(spinlock_t *lck)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 
 	THR_UMTX_UNLOCK(curthread, (volatile umtx_t *)&lck->access_lock);
 }
@@ -70,7 +70,7 @@ _spinunlock(spinlock_t *lck)
 void
 _spinlock(spinlock_t *lck)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 
 	if (!__isthreaded)
 		PANIC("Spinlock called when not threaded.");
@@ -89,7 +89,7 @@ _spinlock(spinlock_t *lck)
 int
 _spintrylock(spinlock_t *lck)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 
 	if (!__isthreaded)
 		PANIC("Spinlock called when not threaded.");
@@ -113,7 +113,7 @@ static void
 init_spinlock(spinlock_t *lck)
 {
 	static int count = 0;
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 
 	THR_UMTX_LOCK(curthread, &spinlock_static_lock);
 	if ((lck->fname == NULL) && (spinlock_count < MAX_SPINLOCKS)) {

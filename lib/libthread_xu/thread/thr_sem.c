@@ -296,7 +296,7 @@ _sem_trywait(sem_t *sem)
 int
 _sem_wait(sem_t *sem)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	int val, oldcancel, retval;
 
 	if (sem_check_validity(sem) != 0) {
@@ -338,7 +338,7 @@ int
 _sem_timedwait(sem_t * __restrict sem, const struct timespec * __restrict abstime)
 {
 	struct timespec ts, ts2;
-	struct pthread *curthread;
+	pthread_t curthread;
 	int val, oldcancel, retval;
 
 	if (sem_check_validity(sem) != 0)

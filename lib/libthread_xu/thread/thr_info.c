@@ -44,7 +44,7 @@
 void
 _pthread_set_name_np(pthread_t thread, const char *name)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 
 	if (curthread == thread) {
 		lwp_setname(thread->tid, name);
@@ -63,7 +63,7 @@ _pthread_set_name_np(pthread_t thread, const char *name)
 void
 _pthread_get_name_np(pthread_t thread, char *name, size_t len)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 
 	if (curthread == thread) {
 		lwp_getname(thread->tid, name, len);

@@ -37,13 +37,13 @@
 
 #include "thr_private.h"
 
-static void resume_common(struct pthread *thread);
+static void resume_common(pthread_t thread);
 
 /* Resume a thread: */
 int
 _pthread_resume_np(pthread_t thread)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int ret;
 
 	/* Add a reference to the thread: */
@@ -60,8 +60,8 @@ _pthread_resume_np(pthread_t thread)
 void
 _pthread_resume_all_np(void)
 {
-	struct pthread *curthread = tls_get_curthread();
-	struct pthread *thread;
+	pthread_t curthread = tls_get_curthread();
+	pthread_t thread;
 
 	/* Take the thread list lock: */
 	THREAD_LIST_LOCK(curthread);
@@ -79,7 +79,7 @@ _pthread_resume_all_np(void)
 }
 
 static void
-resume_common(struct pthread *thread)
+resume_common(pthread_t thread)
 {
 	/* Clear the suspend flag: */
 	thread->flags &= ~THR_FLAGS_NEED_SUSPEND;

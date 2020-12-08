@@ -28,8 +28,8 @@ void
 _libthread_distribute_static_tls(size_t offset, void *src,
 				 size_t len, size_t total_len)
 {
-	struct pthread *curthread = tls_get_curthread();
-	struct pthread *td;
+	pthread_t curthread = tls_get_curthread();
+	pthread_t td;
 	char *tlsbase;
 
 	THREAD_LIST_LOCK(curthread);

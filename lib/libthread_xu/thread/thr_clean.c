@@ -41,7 +41,7 @@
 void
 _pthread_cleanup_push(void (*routine) (void *), void *routine_arg)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	struct pthread_cleanup *new;
 
 	new = __malloc(sizeof(struct pthread_cleanup));
@@ -58,7 +58,7 @@ _pthread_cleanup_push(void (*routine) (void *), void *routine_arg)
 void
 _pthread_cleanup_pop(int execute)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	struct pthread_cleanup *old;
 
 	if ((old = curthread->cleanup) != NULL) {

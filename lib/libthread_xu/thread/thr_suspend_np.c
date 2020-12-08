@@ -36,14 +36,13 @@
 
 #include "thr_private.h"
 
-static int suspend_common(struct pthread *, struct pthread *,
-		int);
+static int suspend_common(pthread_t, pthread_t, int);
 
 /* Suspend a thread: */
 int
 _pthread_suspend_np(pthread_t thread)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int ret;
 
 	/* Suspending the current thread doesn't make sense. */
@@ -68,8 +67,8 @@ _pthread_suspend_np(pthread_t thread)
 void
 _pthread_suspend_all_np(void)
 {
-	struct pthread *curthread = tls_get_curthread();
-	struct pthread *thread;
+	pthread_t curthread = tls_get_curthread();
+	pthread_t thread;
 	int ret;
 
 	THREAD_LIST_LOCK(curthread);
@@ -114,8 +113,7 @@ restart:
 }
 
 static int
-suspend_common(struct pthread *curthread, struct pthread *thread,
-	int waitok)
+suspend_common(pthread_t curthread, pthread_t thread, int waitok)
 {
 	umtx_t tmp;
 

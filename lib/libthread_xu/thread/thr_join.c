@@ -40,8 +40,8 @@ static int join_common(pthread_t, void **, const struct timespec *);
 
 static void backout_join(void *arg)
 {
-	struct pthread *curthread = tls_get_curthread();
-	struct pthread *pthread = (struct pthread *)arg;
+	pthread_t curthread = tls_get_curthread();
+	pthread_t pthread = (pthread_t)arg;
 
 	THREAD_LIST_LOCK(curthread);
 	pthread->joiner = NULL;
@@ -69,7 +69,7 @@ static int
 join_common(pthread_t pthread, void **thread_return,
 	const struct timespec *abstime)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	struct timespec ts, ts2, *tsp;
 	void *tmp;
 	long state;

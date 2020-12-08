@@ -80,7 +80,7 @@ LIST_HEAD(thread_hash_head, pthread);
 static struct thread_hash_head	thr_hashtable[HASH_QUEUES];
 #define	THREAD_HASH(thrd)	(((unsigned long)thrd >> 12) % HASH_QUEUES)
 
-static void thr_destroy(struct pthread *curthread, struct pthread *thread);
+static void thr_destroy(pthread_t curthread, pthread_t thread);
 
 void
 _thr_list_init(void)
@@ -101,7 +101,7 @@ _thr_list_init(void)
 }
 
 void
-_thr_gc(struct pthread *curthread)
+_thr_gc(pthread_t curthread)
 {
 	struct pthread *td, *td_next;
 	TAILQ_HEAD(, pthread) worklist;
@@ -146,10 +146,10 @@ _thr_gc(struct pthread *curthread)
 	}
 }
 
-struct pthread *
-_thr_alloc(struct pthread *curthread)
+pthread_t
+_thr_alloc(pthread_t curthread)
 {
-	struct pthread	*thread = NULL;
+	pthread_t	thread = NULL;
 	struct tls_tcb	*tcb;
 
 	if (curthread != NULL) {
@@ -187,7 +187,7 @@ _thr_alloc(struct pthread *curthread)
 }
 
 void
-_thr_free(struct pthread *curthread, struct pthread *thread)
+_thr_free(pthread_t curthread, pthread_t thread)
 {
 	DBG_MSG("Freeing thread %p\n", thread);
 	if (thread->name) {
@@ -222,7 +222,7 @@ _thr_free(struct pthread *curthread, struct pthread *thread)
 }
 
 static void
-thr_destroy(struct pthread *curthread __unused, struct pthread *thread)
+thr_destroy(pthread_t curthread __unused, pthread_t thread)
 {
 	__free(thread);
 }
@@ -236,7 +236,7 @@ thr_destroy(struct pthread *curthread __unused, struct pthread *thread)
  *     number of active threads.
  */
 void
-_thr_link(struct pthread *curthread, struct pthread *thread)
+_thr_link(pthread_t curthread, pthread_t thread)
 {
 	THREAD_LIST_LOCK(curthread);
 	/*
@@ -254,7 +254,7 @@ _thr_link(struct pthread *curthread, struct pthread *thread)
  * Remove an active thread.
  */
 void
-_thr_unlink(struct pthread *curthread, struct pthread *thread)
+_thr_unlink(pthread_t curthread, pthread_t thread)
 {
 	THREAD_LIST_LOCK(curthread);
 	THR_LIST_REMOVE(thread);
@@ -263,7 +263,7 @@ _thr_unlink(struct pthread *curthread, struct pthread *thread)
 }
 
 void
-_thr_hash_add(struct pthread *thread)
+_thr_hash_add(pthread_t thread)
 {
 	struct thread_hash_head *head;
 
@@ -272,15 +272,15 @@ _thr_hash_add(struct pthread *thread)
 }
 
 void
-_thr_hash_remove(struct pthread *thread)
+_thr_hash_remove(pthread_t thread)
 {
 	LIST_REMOVE(thread, hle);
 }
 
-struct pthread *
-_thr_hash_find(struct pthread *thread)
+pthread_t
+_thr_hash_find(pthread_t thread)
 {
-	struct pthread *td;
+	pthread_t td;
 	struct thread_hash_head *head;
 
 	head = &thr_hashtable[THREAD_HASH(thread)];
@@ -297,7 +297,7 @@ _thr_hash_find(struct pthread *thread)
  * until all references are released.
  */
 int
-_thr_ref_add(struct pthread *curthread, struct pthread *thread,
+_thr_ref_add(pthread_t curthread, pthread_t thread,
     int include_dead)
 {
 	int ret;
@@ -317,7 +317,7 @@ _thr_ref_add(struct pthread *curthread, struct pthread *thread,
 }
 
 void
-_thr_ref_delete(struct pthread *curthread, struct pthread *thread)
+_thr_ref_delete(pthread_t curthread, pthread_t thread)
 {
 	THREAD_LIST_LOCK(curthread);
 	_thr_ref_delete_unlocked(curthread, thread);
@@ -325,8 +325,7 @@ _thr_ref_delete(struct pthread *curthread, struct pthread *thread)
 }
 
 void
-_thr_ref_delete_unlocked(struct pthread *curthread __unused,
-	struct pthread *thread)
+_thr_ref_delete_unlocked(pthread_t curthread __unused, pthread_t thread)
 {
 	if (thread != NULL) {
 		thread->refcount--;
@@ -337,10 +336,10 @@ _thr_ref_delete_unlocked(struct pthread *curthread __unused,
 }
 
 int
-_thr_find_thread(struct pthread *curthread __unused, struct pthread *thread,
+_thr_find_thread(pthread_t curthread __unused, pthread_t thread,
     int include_dead)
 {
-	struct pthread *pthread;
+	pthread_t pthread;
 
 	if (thread == NULL)
 		return (EINVAL);

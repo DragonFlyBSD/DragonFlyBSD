@@ -40,7 +40,7 @@
 int
 _pthread_kill(pthread_t pthread, int sig)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	int ret;
 
 	/* Check for invalid signal numbers: */

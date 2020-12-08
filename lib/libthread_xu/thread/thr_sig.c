@@ -60,7 +60,7 @@ static void
 sigcancel_handler(int sig __unused, siginfo_t *info __unused,
 	ucontext_t *ucp __unused)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 
 	if (curthread->cancelflags & THR_CANCEL_AT_POINT)
 		_pthread_testcancel();
@@ -68,7 +68,7 @@ sigcancel_handler(int sig __unused, siginfo_t *info __unused,
 }
 
 void
-_thr_ast(struct pthread *curthread)
+_thr_ast(pthread_t curthread)
 {
 	if (!THR_IN_CRITICAL(curthread)) {
 		if (__predict_false((curthread->flags &
@@ -79,7 +79,7 @@ _thr_ast(struct pthread *curthread)
 }
 
 void
-_thr_suspend_check(struct pthread *curthread)
+_thr_suspend_check(pthread_t curthread)
 {
 	umtx_t cycle;
 
@@ -195,7 +195,7 @@ __strong_reference(_pthread_sigmask, pthread_sigmask);
 int
 _sigsuspend(const sigset_t * set)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	sigset_t newset;
 	const sigset_t *pset;
 	int oldcancel;
@@ -221,7 +221,7 @@ int
 __sigtimedwait(const sigset_t *set, siginfo_t *info,
 	const struct timespec * timeout)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	sigset_t newset;
 	const sigset_t *pset;
 	int oldcancel;
@@ -244,7 +244,7 @@ __strong_reference(__sigtimedwait, sigtimedwait);
 int
 __sigwaitinfo(const sigset_t *set, siginfo_t *info)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	sigset_t newset;
 	const sigset_t *pset;
 	int oldcancel;
@@ -291,7 +291,7 @@ unsigned long LogWIndex;
 void
 _thr_log(const char *buf, size_t bytes)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	unsigned long i;
 	char prefix[32];
 	size_t plen;

@@ -46,7 +46,7 @@ static size_t _pthread_specific_bytes;
 int
 _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	int i;
 
 	/* User program might be preparing to call pthread_create() */
@@ -78,7 +78,7 @@ _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
 int
 _pthread_key_delete(pthread_key_t key)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int ret = 0;
 
 	if ((unsigned int)key < PTHREAD_KEYS_MAX) {
@@ -100,7 +100,7 @@ _pthread_key_delete(pthread_key_t key)
 void
 _thread_cleanupspecific(void)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t	curthread = tls_get_curthread();
 	void		(*destructor)( void *);
 	const void	*data = NULL;
 	int		key;
@@ -190,7 +190,7 @@ pthread_key_allocate_data(void)
 int
 _pthread_setspecific(pthread_key_t key, const void *value)
 {
-	struct pthread	*pthread;
+	pthread_t	pthread;
 	int		ret = 0;
 
 	/* Point to the running thread: */
@@ -224,7 +224,7 @@ _pthread_setspecific(pthread_key_t key, const void *value)
 void *
 _pthread_getspecific(pthread_key_t key)
 {
-	struct pthread	*pthread;
+	pthread_t	pthread;
 	const void	*data;
 
 	/* Point to the running thread: */

@@ -112,7 +112,7 @@ mutex_log(const char *ctl __unused, ...)
 #ifdef _PTHREADS_DEBUGGING2
 
 static void
-mutex_log2(struct pthread *curthread, struct pthread_mutex *m, int op)
+mutex_log2(pthread_t curthread, pthread_mutex_t m, int op)
 {
 	if (curthread) {
 		if (curthread->tid < 32)
@@ -128,8 +128,8 @@ mutex_log2(struct pthread *curthread, struct pthread_mutex *m, int op)
 
 static __inline
 void
-mutex_log2(struct pthread *curthread __unused,
-	   struct pthread_mutex *m __unused, int op __unused)
+mutex_log2(pthread_t curthread __unused,
+	   pthread_mutex_t m __unused, int op __unused)
 {
 }
 
@@ -211,7 +211,7 @@ mutex_init(pthread_mutex_t *mutex,
 }
 
 static int
-init_static(struct pthread *thread, pthread_mutex_t *mutex)
+init_static(pthread_t thread, pthread_mutex_t *mutex)
 {
 	int ret;
 
@@ -227,7 +227,7 @@ init_static(struct pthread *thread, pthread_mutex_t *mutex)
 }
 
 static int
-init_static_private(struct pthread *thread, pthread_mutex_t *mutex)
+init_static_private(pthread_t thread, pthread_mutex_t *mutex)
 {
 	int ret;
 
@@ -278,9 +278,9 @@ _mutex_reinit(pthread_mutex_t *mutexp)
 #endif
 
 void
-_mutex_fork(struct pthread *curthread, lwpid_t tid)
+_mutex_fork(pthread_t curthread, lwpid_t tid)
 {
-	struct pthread_mutex *m;
+	pthread_mutex_t m;
 
 	TAILQ_FOREACH(m, &curthread->mutexq, m_qe)
 		m->m_lock = tid;
@@ -289,7 +289,7 @@ _mutex_fork(struct pthread *curthread, lwpid_t tid)
 int
 _pthread_mutex_destroy(pthread_mutex_t *mutex)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	pthread_mutex_t m;
 	int ret = 0;
 
@@ -341,9 +341,9 @@ _pthread_mutex_destroy(pthread_mutex_t *mutex)
 }
 
 static int
-mutex_trylock_common(struct pthread *curthread, pthread_mutex_t *mutex)
+mutex_trylock_common(pthread_t curthread, pthread_mutex_t *mutex)
 {
-	struct pthread_mutex *m;
+	pthread_mutex_t m;
 	int ret;
 
 	m = *mutex;
@@ -367,7 +367,7 @@ mutex_trylock_common(struct pthread *curthread, pthread_mutex_t *mutex)
 int
 __pthread_mutex_trylock(pthread_mutex_t *m)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int ret;
 
 	if (__predict_false(m == NULL))
@@ -387,7 +387,7 @@ __pthread_mutex_trylock(pthread_mutex_t *m)
 int
 _pthread_mutex_trylock(pthread_mutex_t *m)
 {
-	struct pthread	*curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int	ret = 0;
 
 	/*
@@ -403,11 +403,11 @@ _pthread_mutex_trylock(pthread_mutex_t *m)
 }
 
 static int
-mutex_lock_common(struct pthread *curthread, pthread_mutex_t *mutex,
+mutex_lock_common(pthread_t curthread, pthread_mutex_t *mutex,
 	const struct timespec * abstime)
 {
 	struct  timespec ts, ts2;
-	struct  pthread_mutex *m;
+	pthread_mutex_t m;
 	int	ret = 0;
 
 	m = *mutex;
@@ -451,7 +451,7 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *mutex,
 int
 __pthread_mutex_lock(pthread_mutex_t *m)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	int	ret;
 
 	if (__predict_false(m == NULL))
@@ -473,7 +473,7 @@ __pthread_mutex_lock(pthread_mutex_t *m)
 int
 _pthread_mutex_lock(pthread_mutex_t *m)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	int	ret;
 
 	_thr_check_init();
@@ -498,7 +498,7 @@ int
 __pthread_mutex_timedlock(pthread_mutex_t * __restrict m,
     const struct timespec * __restrict abs_timeout)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	int	ret;
 
 	_thr_check_init();
@@ -523,7 +523,7 @@ int
 _pthread_mutex_timedlock(pthread_mutex_t *m,
 	const struct timespec *abs_timeout)
 {
-	struct pthread *curthread;
+	pthread_t curthread;
 	int	ret;
 
 	if (__predict_false(m == NULL))
@@ -642,8 +642,8 @@ mutex_self_lock(pthread_mutex_t m, const struct timespec *abstime)
 static int
 mutex_unlock_common(pthread_mutex_t *mutex)
 {
-	struct pthread *curthread = tls_get_curthread();
-	struct pthread_mutex *m;
+	pthread_t curthread = tls_get_curthread();
+	pthread_mutex_t m;
 
 	if (__predict_false((m = *mutex) == NULL)) {
 		mutex_log2(curthread, m, 252);
@@ -732,8 +732,8 @@ _mutex_cv_lock(pthread_mutex_t *m, int count)
 int
 _mutex_cv_unlock(pthread_mutex_t *mutex, int *count)
 {
-	struct pthread *curthread = tls_get_curthread();
-	struct pthread_mutex *m;
+	pthread_t curthread = tls_get_curthread();
+	pthread_mutex_t m;
 
 	if (__predict_false(mutex == NULL))
 		return (EINVAL);
@@ -759,7 +759,7 @@ _mutex_cv_unlock(pthread_mutex_t *mutex, int *count)
 void
 _mutex_unlock_private(pthread_t pthread)
 {
-	struct pthread_mutex	*m, *m_next;
+	pthread_mutex_t	m, m_next;
 
 	for (m = TAILQ_FIRST(&pthread->mutexq); m != NULL; m = m_next) {
 		m_next = TAILQ_NEXT(m, m_qe);

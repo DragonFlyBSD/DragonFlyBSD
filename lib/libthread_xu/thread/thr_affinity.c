@@ -41,7 +41,7 @@ int
 _pthread_getaffinity_np(pthread_t thread, size_t cpusetsize,
     cpu_set_t *mask)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	cpu_set_t mask1;
 	int ret;
 
@@ -79,7 +79,7 @@ int
 _pthread_setaffinity_np(pthread_t thread, size_t cpusetsize,
     const cpu_set_t *mask)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	size_t cplen = cpusetsize;
 	cpu_set_t mask1;
 	int ret;

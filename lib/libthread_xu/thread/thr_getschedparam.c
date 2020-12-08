@@ -43,7 +43,7 @@ int
 _pthread_getschedparam(pthread_t pthread, int * __restrict policy,
     struct sched_param * __restrict param)
 {
-	struct pthread *curthread = tls_get_curthread();
+	pthread_t curthread = tls_get_curthread();
 	int ret = 0;
 
 	if (policy == NULL || param == NULL)
