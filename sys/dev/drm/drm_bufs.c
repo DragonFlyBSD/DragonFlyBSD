@@ -1498,14 +1498,14 @@ int drm_legacy_mapbufs(struct drm_device *dev, void *data,
 					  VM_PROT_ALL,
 					  MAP_SHARED,
 					  SLIST_FIRST(&dev->devnode->si_hlist),
-					  token);
+					  token, NULL);
 		} else {
 			virtual = vm_mmap(&vms->vm_map, 0, dma->byte_count,
 					  PROT_READ | PROT_WRITE,
 					  VM_PROT_ALL,
 					  MAP_SHARED,
 					  SLIST_FIRST(&dev->devnode->si_hlist),
-					  0);
+					  0, NULL);
 		}
 		if (virtual > -1024UL) {
 			/* Real error */
