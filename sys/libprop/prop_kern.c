@@ -522,7 +522,7 @@ _prop_object_copyout(struct plistref *pref, prop_object_t obj)
 			 VM_PROT_READ|VM_PROT_WRITE,
 			 VM_PROT_READ|VM_PROT_WRITE,
 			 MAP_PRIVATE|MAP_ANON,
-			 NULL, 0);
+			 NULL, 0, NULL);
 	if (error == 0) {
 		error = copyout(buf, (char *)uaddr, len);
 		if (error == 0) {

@@ -380,7 +380,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	}
 
 	error = vm_mmap(&vms->vm_map, &addr, size, prot, maxprot,
-			flags, handle, pos);
+			flags, handle, pos, fp);
 	if (error == 0)
 		*res = (void *)(addr + pageoff);
 
@@ -1180,7 +1180,8 @@ sys_munlock(struct sysmsg *sysmsg, const struct munlock_args *uap)
  */
 int
 vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
-	vm_prot_t maxprot, int flags, void *handle, vm_ooffset_t foff)
+	vm_prot_t maxprot, int flags, void *handle, vm_ooffset_t foff,
+	struct file *fp)
 {
 	boolean_t fitit;
 	vm_object_t object;
@@ -1342,7 +1343,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			 * Force them to be shared.
 			 */
 			error = dev_dmmap_single(vp->v_rdev, &foff, objsize,
-						&object, prot, NULL);
+						&object, prot, fp);
 
 			if (error == ENODEV) {
 				handle = (void *)(intptr_t)vp->v_rdev;
