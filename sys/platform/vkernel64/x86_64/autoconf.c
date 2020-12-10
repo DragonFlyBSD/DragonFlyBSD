@@ -184,13 +184,13 @@ cpu_startup(void *dummy)
 
 	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
 		      (nbuf * MAXBSIZE * 2) +
-		      (nswbuf_mem + nswbuf_kva) *MAXPHYS +
+		      (nswbuf_mem + nswbuf_kva) * MAXPHYS +
 		      pager_map_size);
 	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
 		      (nbuf * MAXBSIZE * 2));
 	buffer_map.system_map = 1;
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
-		      (nswbuf_mem + nswbuf_kva) *MAXPHYS +
+		      (nswbuf_mem + nswbuf_kva) * MAXPHYS +
 		      pager_map_size);
 	pager_map.system_map = 1;
 	kprintf("avail memory = %lu (%luK bytes)\n", ptoa(vmstats.v_free_count),
