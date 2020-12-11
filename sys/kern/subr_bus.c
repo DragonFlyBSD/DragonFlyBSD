@@ -1148,8 +1148,11 @@ devclass_delete_device(devclass_t dc, device_t dev)
 
 	PDEBUG(("%s in devclass %s", DEVICENAME(dev), DEVCLANAME(dc)));
 
-	if (dev->devclass != dc || dc->devices[dev->unit] != dev)
-		panic("devclass_delete_device: inconsistent device class");
+	if (dev->devclass != dc || dc->devices[dev->unit] != dev) {
+		panic("devclass_delete_device: inconsistent device class: "
+		      "%p/%p %d %p/%p\n", dev->devclass, dc, dev->unit,
+		      dc->devices[dev->unit], dev);
+	}
 	dc->devices[dev->unit] = NULL;
 	if (dev->flags & DF_WILDCARD)
 		dev->unit = -1;

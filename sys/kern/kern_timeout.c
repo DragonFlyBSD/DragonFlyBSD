@@ -532,10 +532,18 @@ loop:
 			 * Double check the validity of the callout, detect
 			 * if the originator's structure has been ripped out.
 			 */
+			if ((uintptr_t)c->verifier < VM_MAX_USER_ADDRESS) {
+				spin_unlock(&wheel->spin);
+				panic("_callout %p verifier %p failed "
+				      "func %p/%p\n",
+				      c, c->verifier, c->rfunc, c->qfunc);
+			}
+
 			if (c->verifier->toc != c) {
 				spin_unlock(&wheel->spin);
-				panic("_callout %p verifier %p failed",
-				      c, c->verifier);
+				panic("_callout %p verifier %p failed "
+				      "func %p/%p\n",
+				      c, c->verifier, c->rfunc, c->qfunc);
 			}
 
 			/*
