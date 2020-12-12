@@ -551,3 +551,18 @@ _pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize)
 }
 
 __strong_reference(_pthread_attr_setstacksize, pthread_attr_setstacksize);
+
+int
+_pthread_getattr_np(pthread_t thread, pthread_attr_t *attr)
+{
+	int ret;
+
+	if ((ret = pthread_attr_init(attr)) != 0)
+		return ret;
+        if ((ret = pthread_attr_get_np(thread, attr)) != 0) {
+		pthread_attr_destroy(attr);
+		return ret;
+	}
+	return 0;
+}
+__strong_reference(_pthread_getattr_np, pthread_getattr_np);

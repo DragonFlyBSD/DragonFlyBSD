@@ -104,6 +104,7 @@ MLINKS+= \
 	pthread_attr.3 pthread_attr_setstack.3 \
 	pthread_attr.3 pthread_attr_setstackaddr.3 \
 	pthread_attr.3 pthread_attr_setstacksize.3 \
+	pthread_attr_get_np.3 pthread_getattr_np.3 \
 	pthread_attr_setaffinity_np.3 pthread_attr_getaffinity_np.3 \
 	pthread_barrierattr.3 pthread_barrierattr_destroy.3 \
 	pthread_barrierattr.3 pthread_barrierattr_getpshared.3 \

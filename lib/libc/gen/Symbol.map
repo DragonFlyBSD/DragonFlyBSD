@@ -495,6 +495,10 @@ DF508.0 {
     getutxuser;
 };
 
+DF510.0 {
+    pthread_getattr_np;
+};
+
 DFprivate_1.0 {
 	/* pthread stubs */
     _pthread_atfork;
@@ -549,6 +553,7 @@ DFprivate_1.0 {
     _pthread_equal;
     _pthread_exit;
     _pthread_getaffinity_np;
+    _pthread_getattr_np;
     _pthread_getconcurrency;
     _pthread_getcpuclockid;
     _pthread_getprio;

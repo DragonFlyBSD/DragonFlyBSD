@@ -24,23 +24,29 @@
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_attr_get_np.3,v 1.14 2007/10/22 10:08:00 ru Exp $
 .\"
-.Dd July 10, 2009
+.Dd December 12, 2020
 .Dt PTHREAD_ATTR_GET_NP 3
 .Os
 .Sh NAME
-.Nm pthread_attr_get_np
-.Nd get attributes of existent thread
+.Nm pthread_attr_get_np ,
+.Nm pthread_getattr_np
+.Nd get attributes of existing thread
 .Sh LIBRARY
 .Lb libpthread
 .Sh SYNOPSIS
 .In pthread.h
 .In pthread_np.h
 .Ft int
-.Fn pthread_attr_get_np "pthread_t pid" "pthread_attr_t *dst"
+.Fn pthread_attr_get_np "pthread_t thread" "pthread_attr_t *attr"
+.Ft int
+.Fn pthread_getattr_np "pthread_t thread" "pthread_attr_t *attr"
 .Sh DESCRIPTION
 The
 .Fn pthread_attr_get_np
-function is used to get existent thread's attributes.
+and
+.Fn pthread_getattr_np
+functions can be used to retrieve attributes of a running
+.Fa thread .
 Most fields of
 .Vt pthread_attr_t
 structure are exact values of attributes provided at thread creation
@@ -49,19 +55,21 @@ time (as parameter to
 function), except for the stack address.
 .Pp
 Value returned as
-.Fa dst
+.Fa attr
 is supposed to be used in conjunction with
 .Fn pthread_attr_get*
 functions to retrieve individual values from
 .Vt pthread_attr_t
 structure.
 Parameter
-.Fa dst
+.Fa attr
 should point to allocated memory area big enough to fit this structure.
 .Pp
 It is HIGHLY RECOMMENDED to use
 .Xr pthread_attr_init 3
 function to allocate attribute storage.
+.Fn pthread_getattr_np
+does this automatically.
 .Sh IMPLEMENTATION NOTES
 The
 .Fn pthread_attr_get_np
@@ -70,7 +78,9 @@ regardless of its value in the original attributes structure.
 .Sh RETURN VALUES
 If successful,
 .Fn pthread_attr_get_np
-function returns 0.
+and
+.Fn pthread_getattr_np
+return 0.
 Otherwise, an error number is returned to indicate the error.
 .Sh EXAMPLES
 .Bd -literal
