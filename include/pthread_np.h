@@ -60,6 +60,7 @@ int pthread_attr_setcreatesuspend_np(pthread_attr_t *);
 int pthread_getaffinity_np(pthread_t, size_t, cpu_set_t *);
 int pthread_getattr_np(pthread_t, pthread_attr_t *);
 int pthread_getthreadid_np(void);
+int pthread_is_threaded_np(void);
 int pthread_main_np(void);
 int pthread_multi_np(void);
 int pthread_mutexattr_getkind_np(pthread_mutexattr_t);

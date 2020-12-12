@@ -113,6 +113,7 @@ WR(stub_zero, pthread_getschedparam);
 WR(stub_null, pthread_getspecific);
 WR(stub_zero, pthread_getthreadid_np);
 WR(stub_empty, pthread_init_early);
+WR(stub_isthreaded, pthread_is_threaded_np);
 WR(stub_zero, pthread_join);
 WR(stub_zero, pthread_key_create);
 WR(stub_zero, pthread_key_delete);
@@ -287,4 +288,10 @@ __atfork(void (*prepare)(void), void (*parent)(void),
 	cb_parent = parent;
 	cb_child = child;
 	return (0);
+}
+
+static int __used
+stub_isthreaded(void)
+{
+	return (__isthreaded != 0);
 }

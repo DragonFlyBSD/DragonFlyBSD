@@ -399,7 +399,9 @@ global:
 	_pthread_getattr_np;
 	_pthread_getcpuclockid;
 	_pthread_getthreadid_np;
+	_pthread_is_threaded_np;
 	pthread_getattr_np;
 	pthread_getcpuclockid;
 	pthread_getthreadid_np;
+	pthread_is_threaded_np;
 };

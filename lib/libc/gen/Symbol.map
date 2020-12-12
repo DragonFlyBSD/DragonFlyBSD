@@ -497,6 +497,7 @@ DF508.0 {
 
 DF510.0 {
     pthread_getattr_np;
+    pthread_is_threaded_np;
 };
 
 DFprivate_1.0 {
@@ -562,6 +563,7 @@ DFprivate_1.0 {
     _pthread_getthreadid_np;
     _pthread_init;
     _pthread_init_early;
+    _pthread_is_threaded_np;
     _pthread_join;
     _pthread_key_create;
     _pthread_key_delete;

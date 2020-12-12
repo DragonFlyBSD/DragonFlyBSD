@@ -26,6 +26,7 @@ SRCS+= \
 	thr_getthreadid_np.c \
 	thr_info.c \
 	thr_init.c \
+	thr_isthreaded_np.c \
 	thr_join.c \
 	thr_list.c \
 	thr_kern.c \
