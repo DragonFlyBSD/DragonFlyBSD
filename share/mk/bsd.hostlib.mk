@@ -33,7 +33,7 @@ _LIBS=		lib${LIB}.na
 lib${LIB}.na: ${OBJS} ${STATICOBJS}
 	@${ECHO} building native static ${LIB} library
 	rm -f ${.TARGET}
-	${NXAR} cq ${.TARGET} `lorder ${OBJS} ${STATICOBJS} | tsort -q` ${ARADD}
+	${NXAR} ${ARFLAGS} ${.TARGET} `lorder ${OBJS} ${STATICOBJS} | tsort -q` ${ARADD}
 	${NXRANLIB} ${.TARGET}
 .endif
 
