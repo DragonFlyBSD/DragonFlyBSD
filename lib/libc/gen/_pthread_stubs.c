@@ -27,7 +27,14 @@
  */
 
 #include <sys/cdefs.h>
+#include "namespace.h"
+/* following should not be included in namespace here */
+#undef pthread_kill
+#undef pthread_sigmask
+#include <errno.h>
 #include <stdlib.h>
+#include <signal.h>
+#include "un-namespace.h"
 #include <pthread.h>
 
 /*
@@ -158,7 +165,7 @@ WR(stub_zero, pthread_setconcurrency);
 WR(stub_zero, pthread_setprio);
 WR(stub_zero, pthread_setschedparam);
 WR(stub_zero, pthread_setspecific);
-WR(stub_zero, pthread_sigmask);
+WR(stub_sigmask, pthread_sigmask);
 WR(stub_zero, pthread_single_np);
 WR(stub_zero, pthread_spin_destroy);
 WR(stub_zero, pthread_spin_init);
@@ -236,6 +243,14 @@ static void __used
 stub_exit(void)
 {
 	exit(0);
+}
+
+static int __used
+stub_sigmask(int how, const sigset_t *set, sigset_t *oset)
+{
+	if (_sigprocmask(how, set, oset))
+		return (errno);
+	return (0);
 }
 
 static void __used
