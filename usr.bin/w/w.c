@@ -73,7 +73,6 @@
 
 #include "extern.h"
 
-static struct timeval	boottime;
 static struct winsize	ws;
 static kvm_t	*kd;
 static time_t	now;		/* the current time of day */
@@ -428,11 +427,10 @@ main(int argc, char **argv)
 static void
 pr_header(time_t *nowp, int nusers)
 {
+	struct timespec boot_ts;
 	double avenrun[3];
 	time_t uptime;
 	int days, hrs, i, mins, secs;
-	int mib[2];
-	size_t size;
 	char buf[256];
 
 	/*
@@ -446,14 +444,13 @@ pr_header(time_t *nowp, int nusers)
 
 	/*
 	 * Print how long system has been up.
-	 * (Found by looking at "boottime" from the kernel)
+	 *
+	 * Use clock_gettime() rather than trying to calculate
+	 * a realtime delta that would be subject to time and date
+	 * changes.
 	 */
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_BOOTTIME;
-	size = sizeof(boottime);
-	if (sysctl(mib, 2, &boottime, &size, NULL, 0) != -1 &&
-	    boottime.tv_sec != 0) {
-		uptime = now - boottime.tv_sec;
+	if (clock_gettime(CLOCK_UPTIME, &boot_ts) == 0) {
+		uptime = boot_ts.tv_sec;
 		if (uptime > 60)
 			uptime += 30;
 		days = uptime / 86400;
