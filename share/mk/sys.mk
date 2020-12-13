@@ -31,7 +31,7 @@ NXAR		?=	${NXENV} ${AR}
 .if defined(%POSIX)
 ARFLAGS		?=	-rv
 .else
-ARFLAGS		?=	rc
+ARFLAGS		?=	rcs
 .endif
 RANLIB		?=	ranlib
 NXRANLIB	?=	${NXENV} ${RANLIB}

@@ -143,8 +143,7 @@ _LIBS=		lib${LIB}.a
 lib${LIB}.a: ${OBJS} ${STATICOBJS}
 	@${ECHO} building static ${LIB} library
 	rm -f ${.TARGET}
-	${AR} ${ARFLAGS} ${.TARGET} `lorder ${OBJS} ${STATICOBJS} | tsort -q` ${ARADD}
-	${RANLIB} ${.TARGET}
+	${AR} ${ARFLAGS} ${.TARGET} ${OBJS} ${STATICOBJS} ${ARADD}
 . endif
 .endif
 
@@ -157,8 +156,7 @@ POBJS+=		${OBJS:.o=.po} ${STATICOBJS:.o=.po}
 lib${LIB}_p.a: ${POBJS}
 	@${ECHO} building profiled ${LIB} library
 	rm -f ${.TARGET}
-	${AR} ${ARFLAGS} ${.TARGET} `lorder ${POBJS} | tsort -q` ${ARADD}
-	${RANLIB} ${.TARGET}
+	${AR} ${ARFLAGS} ${.TARGET} ${POBJS} ${ARADD}
 .  endif
 . endif
 .endif
@@ -189,7 +187,6 @@ lib${LIB}_pic.a: ${SOBJS}
 	@${ECHO} building special pic ${LIB} library
 	rm -f ${.TARGET}
 	${AR} ${ARFLAGS} ${.TARGET} ${SOBJS} ${ARADD}
-	${RANLIB} ${.TARGET}
 .endif
 
 all: ${_LIBS}
