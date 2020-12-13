@@ -240,20 +240,14 @@ int
 machine_init(struct statics *statics)
 {
 	int pagesize;
-	size_t modelen, prmlen;
+	size_t prmlen;
 	struct passwd *pw;
-	struct timeval boottime;
 
 	if (n_cpus < 1) {
 		if (kinfo_get_cpus(&n_cpus))
 			err(1, "kinfo_get_cpus failed");
 	}
 	/* get boot time */
-	modelen = sizeof(boottime);
-	if (sysctlbyname("kern.boottime", &boottime, &modelen, NULL, 0) == -1) {
-		/* we have no boottime to report */
-		boottime.tv_sec = -1;
-	}
 
 	prmlen = sizeof(fscale);
 	if (sysctlbyname("kern.fscale", &fscale, &prmlen, NULL, 0) == -1)
@@ -297,7 +291,7 @@ machine_init(struct statics *statics)
 	statics->procstate_names = procstatenames;
 	statics->cpustate_names = cpustatenames;
 	statics->memory_names = memorynames;
-	statics->boottime = boottime.tv_sec;
+	statics->unused01 = 0;
 	statics->swap_names = swapnames;
 	statics->order_names = ordernames;
 	/* we need kvm descriptor in order to show full commands */

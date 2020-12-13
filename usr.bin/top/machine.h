@@ -54,7 +54,7 @@ struct statics
     char **order_names;		/* optional */
     char **top_color_names;	/* optional */
     char **kernel_names;	/* optional */
-    time_t boottime;		/* optional */
+    time_t unused01;		/* optional */
     int modemax;		/* optional */
     struct {
 	unsigned int fullcmds : 1;

@@ -197,14 +197,13 @@ main(int argc, char *argv[])
 static void
 print_boottime(void)
 {
-	struct timeval boottime;
-	size_t size;
+	struct timespec uts;
+	time_t t;
 
-	size = sizeof(boottime);
-	if (sysctlbyname("kern.boottime", &boottime, &size, NULL, 0) != -1 &&
-	    boottime.tv_sec != 0) {
-		printf("%s", ctime(&boottime.tv_sec));
-	}
+	clock_gettime(CLOCK_UPTIME, &uts);
+	t = time(NULL) - uts.tv_sec;
+
+	printf("%s", ctime(&t));
 }
 
 

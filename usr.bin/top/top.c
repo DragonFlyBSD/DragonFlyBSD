@@ -528,9 +528,12 @@ do_display(globalstate *gstate)
     /* full screen or update? */
     if (gstate->fulldraw)
     {
+	struct timespec uts;
+
+	clock_gettime(CLOCK_UPTIME, &uts);
 	display_clear();
 	i_loadave(system_info.last_pid, system_info.load_avg);
-	i_uptime(&(gstate->statics->boottime), &curr_time);
+	i_uptime(uts.tv_sec);
 	i_timeofday(&curr_time);
 	i_procstates(system_info.p_total, system_info.procstates, gstate->pselect.threads);
 	if (gstate->show_cpustates)
@@ -562,8 +565,11 @@ do_display(globalstate *gstate)
     }
     else
     {
+	struct timespec uts;
+
+	clock_gettime(CLOCK_UPTIME, &uts);
 	u_loadave(system_info.last_pid, system_info.load_avg);
-	u_uptime(&(gstate->statics->boottime), &curr_time);
+	u_uptime(uts.tv_sec);
 	i_timeofday(&curr_time);
 	u_procstates(system_info.p_total, system_info.procstates, gstate->pselect.threads);
 	u_cpustates(system_info.cpustates);
@@ -801,7 +807,6 @@ main(int argc, char *argv[])
        machine_init.  This way fields that a module does not know about
        will retain their default values */
     memzero((void *)&statics, sizeof(statics));
-    statics.boottime = -1;
 
     /* call the platform-specific init */
     if (machine_init(&statics) == -1)

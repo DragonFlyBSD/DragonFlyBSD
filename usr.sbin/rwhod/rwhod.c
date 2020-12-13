@@ -513,17 +513,10 @@ send_host_information(void)
 static void
 getboottime(void)
 {
-	int mib[2];
-	size_t size;
-	struct timeval tm;
+	struct timespec uts;
 
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_BOOTTIME;
-	size = sizeof(tm);
-	if (sysctl(mib, 2, &tm, &size, NULL, 0) == -1)
-		quit("cannot get boottime", WITH_ERRNO);
-
-	mywd.wd_boottime = htonl(tm.tv_sec);
+	clock_gettime(CLOCK_UPTIME, &uts);
+	mywd.wd_boottime = htonl(time(NULL) - uts.tv_sec);
 }
 
 /*

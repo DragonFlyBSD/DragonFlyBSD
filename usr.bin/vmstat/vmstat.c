@@ -397,16 +397,11 @@ getdrivedata(char **argv)
 static long
 getuptime(void)
 {
-	static time_t now, boottime;
-	time_t uptime;
+	struct timespec ts;
 
-	if (boottime == 0)
-		kread(X_BOOTTIME, &boottime, sizeof(boottime));
-	time(&now);
-	uptime = now - boottime;
-	if (uptime <= 0 || uptime > 60*60*24*365*10)
-		errx(1, "time makes no sense; namelist must be wrong");
-	return(uptime);
+	clock_gettime(CLOCK_UPTIME, &ts);
+
+	return ts.tv_sec;
 }
 
 int	hdrcnt;

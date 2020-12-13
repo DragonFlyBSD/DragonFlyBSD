@@ -979,37 +979,29 @@ static int uptime_mins;
 static int uptime_secs;
 
 void
-i_uptime(time_t *bt, time_t *tod)
-
+i_uptime(time_t uptime)
 {
-    time_t uptime;
+    uptime += 30;
+    uptime_days = uptime / 86400;
+    uptime %= 86400;
+    uptime_hours = uptime / 3600;
+    uptime %= 3600;
+    uptime_mins = uptime / 60;
+    uptime_secs = uptime % 60;
 
-    if (*bt != -1)
-    {
-	uptime = *tod - *bt;
-	uptime += 30;
-	uptime_days = uptime / 86400;
-	uptime %= 86400;
-	uptime_hours = uptime / 3600;
-	uptime %= 3600;
-	uptime_mins = uptime / 60;
-	uptime_secs = uptime % 60;
+    /*
+     *  Display the uptime.
+     */
 
-	/*
-	 *  Display the uptime.
-	 */
-
-	display_fmt(x_uptime, y_uptime, 0, 0,
-		    "  up %d+%02d:%02d:%02d",
-		    uptime_days, uptime_hours, uptime_mins, uptime_secs);
-    }
+    display_fmt(x_uptime, y_uptime, 0, 0,
+		"  up %d+%02d:%02d:%02d",
+		uptime_days, uptime_hours, uptime_mins, uptime_secs);
 }
 
 void
-u_uptime(time_t *bt, time_t *tod)
-
+u_uptime(time_t uptime)
 {
-    i_uptime(bt, tod);
+    i_uptime(uptime);
 }
 
 
