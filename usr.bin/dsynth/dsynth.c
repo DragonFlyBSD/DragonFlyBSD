@@ -306,6 +306,7 @@ main(int ac, char **av)
 		DoRebuildRepo(0);
 		DoUpgradePkgs(pkgs, 0);
 	} else if (strcmp(av[0], "prepare-system") == 0) {
+		DeleteObsoletePkgs = 1;
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = GetLocalPackageList();
