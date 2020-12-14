@@ -321,6 +321,7 @@ HtmlUpdateTop(topinfo_t *info)
 			"    ,\"ignored\":%d\n"
 			"    ,\"skipped\":%d\n"
 			"    ,\"remains\":%d\n"
+			"    ,\"meta\":%d\n"
 			"    ,\"elapsed\":\"%s\"\n"
 			"    ,\"pkghour\":%d\n"
 			"    ,\"impulse\":%d\n"
@@ -338,6 +339,7 @@ HtmlUpdateTop(topinfo_t *info)
 			info->ignored,		/* ignored */
 			info->skipped,		/* skipped */
 			info->remaining,	/* remaining */
+			info->meta,		/* meta-nodes */
 			elapsed_buf,		/* elapsed */
 			info->pkgrate,		/* pkghour */
 			info->pkgimpulse,	/* impulse */
@@ -417,7 +419,10 @@ HtmlUpdateCompletion(worker_t *work, int dlogid, pkg_t *pkg,
 
 	switch(dlogid) {
 	case DLOG_SUCC:
-		result = "built";
+		if (pkg->flags & PKGF_DUMMY)
+			result = "meta";
+		else
+			result = "built";
 		break;
 	case DLOG_FAIL:
 		result = "failed";

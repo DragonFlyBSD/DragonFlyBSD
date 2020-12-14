@@ -468,6 +468,7 @@ typedef struct topinfo {
 	int remaining;
 	int failed;
 	int skipped;
+	int meta;
 	int dynmaxworkers;
 	double dswap;
 	double dload[3];
@@ -507,6 +508,7 @@ extern int BuildSkipCount;
 extern int BuildIgnoreCount;
 extern int BuildSuccessCount;
 extern int BuildMissingCount;
+extern int BuildMetaCount;
 extern int DynamicMaxWorkers;
 
 extern buildenv_t *BuildEnv;

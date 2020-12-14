@@ -58,6 +58,7 @@ function minidraw(x, context, color, queued, variable, mcw) {
 function update_canvas(stats) {
 	var queued = stats.queued;
 	var built = stats.built;
+	var meta = stats.meta;
 	var failed = stats.failed;
 	var skipped = stats.skipped;
 	var ignored = stats.ignored;
@@ -73,8 +74,9 @@ function update_canvas(stats) {
 	context.fillStyle = '#D8D8D8';
 	context.fillRect(0, progtop + 1, progwidth, progheight + 2);
 	var x = 0;
-	var mcw = maxcatwidth (built, failed, ignored, skipped, queued);
+	var mcw = maxcatwidth (built, meta, failed, ignored, skipped, queued);
 	x += minidraw(x, context, "#339966", queued, built, mcw);
+	x += minidraw(x, context, "#A577E1", queued, meta, mcw);
 	x += minidraw(x, context, "#CC0033", queued, failed, mcw);
 	x += minidraw(x, context, "#FFCC33", queued, ignored, mcw);
 	x += minidraw(x, context, "#CC6633", queued, skipped, mcw);
@@ -140,7 +142,9 @@ function format_entry (entry, origin) {
 
 function information (result, origin, info) {
 	var parts;
-	if (result == "built") {
+	if (result == "meta") {
+		return 'meta-node complete.';
+	} else if (result == "built") {
 		return '<a href="' + logfile (origin) + '">logfile</a>';
 	} else if (result == "failed") {
 		parts = info.split(':');

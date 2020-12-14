@@ -93,6 +93,7 @@ int BuildIgnoreCount;
 int BuildFailCount;
 int BuildSuccessCount;
 int BuildMissingCount;
+int BuildMetaCount;
 
 /*
  * Initialize the WorkerAry[]
@@ -361,6 +362,7 @@ DoBuild(pkg_t *pkgs)
 		"           skipped: %d\n"
 		"            failed: %d\n"
 		"           missing: %d\n"
+		"        meta-nodes: %d\n"
 		"\n"
 		"Duration: %02d:%02d:%02d\n"
 		"\n",
@@ -370,6 +372,7 @@ DoBuild(pkg_t *pkgs)
 		BuildSkipCount,
 		BuildFailCount,
 		BuildMissingCount,
+		BuildMetaCount,
 		h, m, s);
 }
 
@@ -659,6 +662,7 @@ skip_to_flavor:
 			dlog(DLOG_SUCC, "[XXX] %s meta-node complete\n",
 			     pkg->portdir);
 			RunStatsUpdateCompletion(NULL, DLOG_SUCC, pkg, "", "");
+			++BuildMetaCount;   /* Only for not built meta nodes */
 		}
 	} else if (pkg->flags & PKGF_PACKAGED) {
 		/*

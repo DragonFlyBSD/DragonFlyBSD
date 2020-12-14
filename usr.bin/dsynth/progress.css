@@ -37,6 +37,10 @@ th, td { border: 1px solid black; }
         background-color: #FFCC33;
         color: #202020;
 }
+.meta {
+        background-color: #A577E1;
+        color: #F0F0F0;
+}
 .timehack {
 	color: #CC0033;
 	font-weight: 400;
@@ -88,6 +92,7 @@ th, td { border: 1px solid black; }
 .entry,
 #stats_queued,
 #stats_built,
+#stats_meta,
 #stats_failed,
 #stats_ignored,
 #stats_skipped,

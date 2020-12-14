@@ -120,6 +120,7 @@ RunStatsUpdateTop(int active)
 	info.remaining = BuildTotal - BuildCount;
 	info.failed = BuildFailCount;
 	info.skipped = BuildSkipCount;
+	info.meta = BuildMetaCount;
 
 	/*
 	 * Load and swap
