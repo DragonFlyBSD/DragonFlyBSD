@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/single_threaded.h>
 #include <sys/types.h>
 #include <sys/signalvar.h>
 #include <sys/rtprio.h>
@@ -51,6 +52,8 @@ _thr_setthreaded(int threaded)
 	if (((threaded == 0) ^ (__isthreaded == 0)) == 0)
 		return (0);
 	__isthreaded = threaded;
+	if (__libc_single_threaded != 0)
+		__libc_single_threaded = 0;	/* sticky version */
 	_rtld_setthreaded(threaded);
 #if 0
 	/* save for later. */

@@ -31,6 +31,7 @@
  */
 
 #include "namespace.h"
+#include <sys/single_threaded.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "un-namespace.h"
@@ -39,6 +40,12 @@
 #include "libc_private.h"
 
 void (*__cleanup)(void);
+
+/*
+ * Publicly exported __isthreaded inverted sticky version for use in
+ * third-party libraries to optimize non-threaded programs.
+ */
+char __libc_single_threaded = 1;
 
 /*
  * This variable is zero until a process has created a thread.

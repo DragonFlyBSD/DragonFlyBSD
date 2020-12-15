@@ -496,6 +496,7 @@ DF508.0 {
 };
 
 DF510.0 {
+    __libc_single_threaded;
     pthread_getattr_np;
     pthread_is_threaded_np;
 };
