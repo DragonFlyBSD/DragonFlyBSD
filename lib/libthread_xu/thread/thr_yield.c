@@ -42,3 +42,5 @@ _pthread_yield(void)
 }
 
 __strong_reference(_pthread_yield, pthread_yield);
+__strong_reference(_pthread_yield, pthread_yield_np);
+__strong_reference(_pthread_yield, _pthread_yield_np);

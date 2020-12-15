@@ -499,6 +499,7 @@ DF510.0 {
     __libc_single_threaded;
     pthread_getattr_np;
     pthread_is_threaded_np;
+    pthread_yield_np;
 };
 
 DFprivate_1.0 {
@@ -631,6 +632,7 @@ DFprivate_1.0 {
     _pthread_testcancel;
     _pthread_timedjoin_np;
     _pthread_yield;
+    _pthread_yield_np;
     _sem_close;
     _sem_destroy;
     _sem_getvalue;
