@@ -38,13 +38,7 @@
 static hammer_volume_ondisk_t
 read_ondisk(FILE *fp)
 {
-	hammer_volume_ondisk_t ondisk;
-
-	ondisk = read_buf(fp, 0, sizeof(*ondisk));
-	if (ondisk == NULL)
-		err(1, "failed to read ondisk");
-
-	return (ondisk);
+	return (read_buf(fp, 0, sizeof(struct hammer_volume_ondisk)));
 }
 
 static int
@@ -109,6 +103,8 @@ fstyp_hammer(FILE *fp, char *label, size_t size, const char *devpath)
 	const char *p;
 #endif
 	ondisk = read_ondisk(fp);
+	if (!ondisk)
+		goto fail;
 	if (ondisk->vol_no != HAMMER_ROOT_VOLNO)
 		goto fail;
 	if (ondisk->vol_count != 1)
@@ -147,12 +143,15 @@ test_volume(const char *volpath)
 		goto fail;
 
 	ondisk = read_ondisk(fp);
-	fclose(fp);
+	if (!ondisk)
+		goto fail;
 	if (test_ondisk(ondisk))
 		goto fail;
 
 	volno = ondisk->vol_no;
 fail:
+	if (fp)
+		fclose(fp);
 	free(ondisk);
 	return (volno);
 }
@@ -161,7 +160,7 @@ static int
 __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 {
 	hammer_volume_ondisk_t ondisk = NULL;
-	FILE *fp;
+	FILE *fp = NULL;
 	char *dup = NULL, *p, *volpath, *rootvolpath, x[HAMMER_MAX_VOLUMES];
 	int i, volno, error = 1;
 
@@ -196,7 +195,8 @@ __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 	if ((fp = fopen(volpath, "r")) == NULL)
 		goto fail;
 	ondisk = read_ondisk(fp);
-	fclose(fp);
+	if (!ondisk)
+		goto fail;
 
 	if (volno == -1)
 		goto fail;
@@ -223,6 +223,8 @@ success:
 		strlcpy(label, ondisk->vol_label, size);
 	error = 0;
 fail:
+	if (fp)
+		fclose(fp);
 	free(ondisk);
 	free(dup);
 	return (error);
