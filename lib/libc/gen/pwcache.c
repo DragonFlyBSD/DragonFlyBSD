@@ -70,7 +70,9 @@
 #undef user_from_uid
 #endif
 
+#ifndef EMBED_LIB_SRC
 #include "namespace.h"
+#endif
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -82,7 +84,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifndef EMBED_LIB_SRC
 #include "un-namespace.h"
+#endif
 
 #if HAVE_NBTOOL_CONFIG_H
 /* XXX Now, re-apply the renaming that we undid above. */
