@@ -1803,7 +1803,7 @@ xlink(const char *src, const char *dst, u_long flags)
     if ((r = hc_link(&DstHost, src, dst)) < 0) {
 #ifdef _ST_FLAGS_PRESENT_
 	if (DstHost.version >= HCPROTO_VERSION_LUCC)
-	    hc_lchflags(&DstHost, dst, 0);
+	    hc_lchflags(&DstHost, src, 0);
 	else
 	    hc_chflags(&DstHost, src, 0);
 	r = hc_link(&DstHost, src, dst);
