@@ -644,7 +644,7 @@ AcpiDbGetNextToken (
 
     /* Remove any spaces at the beginning, ignore blank lines */
 
-    while (*String && isspace (*String))
+    while (*String && isspace ((int) *String))
     {
         String++;
     }
@@ -756,7 +756,7 @@ AcpiDbGetNextToken (
 
         /* Find end of token */
 
-        while (*String && !isspace (*String))
+        while (*String && !isspace ((int) *String))
         {
             String++;
         }
