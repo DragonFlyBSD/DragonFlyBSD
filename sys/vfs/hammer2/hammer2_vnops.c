@@ -1514,6 +1514,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	const uint8_t *name;
 	size_t name_len;
 	int error;
+	uint64_t cmtime;
 
 	if (ap->a_dvp->v_mount != ap->a_vp->v_mount)
 		return(EXDEV);
@@ -1557,24 +1558,26 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	hammer2_inode_lock4(tdip, ip, NULL, NULL);
 
+	hammer2_update_time(&cmtime);
+
 	/*
 	 * Create the directory entry and bump nlinks.
+	 * Also update ip's ctime.
 	 */
 	if (error == 0) {
 		error = hammer2_dirent_create(tdip, name, name_len,
 					      ip->meta.inum, ip->meta.type);
 		hammer2_inode_modify(ip);
 		++ip->meta.nlinks;
+		ip->meta.ctime = cmtime;
 	}
 	if (error == 0) {
 		/*
-		 * Update dip's mtime
+		 * Update dip's [cm]time
 		 */
-		uint64_t mtime;
-
-		hammer2_update_time(&mtime);
 		hammer2_inode_modify(tdip);
-		tdip->meta.mtime = mtime;
+		tdip->meta.mtime = cmtime;
+		tdip->meta.ctime = cmtime;
 
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
