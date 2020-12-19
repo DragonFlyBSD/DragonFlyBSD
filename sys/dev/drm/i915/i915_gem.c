@@ -1716,6 +1716,14 @@ i915_gem_sw_finish_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
+static int
+vm_object_map_wc_callback(vm_page_t p, void *data)
+{
+	pmap_page_set_memattr(p, VM_MEMATTR_WRITE_COMBINING);
+
+	return 0;
+}
+
 /**
  * i915_gem_mmap_ioctl - Maps the contents of an object, returning the address
  *			 it is mapped to.
@@ -1748,6 +1756,8 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	vm_map_t map = &p->p_vmspace->vm_map;
 	vm_size_t size;
 	int error = 0, rv;
+	struct vm_object *vm_obj;
+	struct rb_vm_page_scan_info info;
 #endif
 
 	if (args->flags & ~(I915_MMAP_WC))
@@ -1768,6 +1778,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
+#ifdef __DragonFly__
 	if (args->size == 0)
 		goto out;
 
@@ -1809,28 +1820,44 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	} else {
 		args->addr_ptr = (uint64_t)addr;
 	}
-
-	if (args->flags & I915_MMAP_WC) {	/* I915_PARAM_MMAP_VERSION */
-#if 0
+#else
 	addr = vm_mmap(obj->base.filp, 0, args->size,
 		       PROT_READ | PROT_WRITE, MAP_SHARED,
 		       args->offset);
-	if (args->flags & I915_MMAP_WC) {
+#endif	/* __DragonFly__ */
+	if (args->flags & I915_MMAP_WC) {	/* I915_PARAM_MMAP_VERSION */
 		struct mm_struct *mm = current->mm;
+#if 0
 		struct vm_area_struct *vma;
+#endif
 
 		if (down_write_killable(&mm->mmap_sem)) {
 			i915_gem_object_put(obj);
 			return -EINTR;
 		}
+#ifdef __DragonFly__
+		vm_obj = obj->base.filp;
+		vm_object_hold(vm_obj);
+		vm_obj->memattr = pgprot_writecombine(vm_obj->memattr);
+		/* Change attributes of all pages in the mapping here */
+		info.error = 0;
+		info.count = 0;
+		vm_page_rb_tree_RB_SCAN(
+			&vm_obj->rb_memq,		/* *head */
+			NULL, 				/* *scancmp */
+			vm_object_map_wc_callback,	/* *callback */
+			&info				/* *data */
+		);
+		vm_object_drop(vm_obj);
+#else
 		vma = find_vma(mm, addr);
 		if (vma)
 			vma->vm_page_prot =
 				pgprot_writecombine(vm_get_page_prot(vma->vm_flags));
 		else
 			addr = -ENOMEM;
+#endif	/* __DragonFly__ */
 		up_write(&mm->mmap_sem);
-#endif
 
 		/* This may race, but that's ok, it only gets set */
 		WRITE_ONCE(obj->frontbuffer_ggtt_origin, ORIGIN_CPU);

@@ -388,10 +388,8 @@ static int i915_getparam(struct drm_device *dev, void *data,
 				value |= I915_SCHEDULER_CAP_PREEMPTION;
 		}
 		break;
-#if 0
 	case I915_PARAM_MMAP_VERSION:
 		/* Remember to bump this if the version changes! */
-#endif
 	case I915_PARAM_HAS_GEM:
 	case I915_PARAM_HAS_PAGEFLIPPING:
 	case I915_PARAM_HAS_EXECBUF2: /* depends on GEM */
