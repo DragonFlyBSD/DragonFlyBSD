@@ -53,4 +53,6 @@ memchr_inv(const void *buffer, int c, size_t len)
 
 void *kmemdup(const void *src, size_t len, gfp_t gfp);
 
+#include <asm/string_64.h>	/* for memset64() */
+
 #endif	/* _LINUX_STRING_H_ */

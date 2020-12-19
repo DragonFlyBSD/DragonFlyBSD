@@ -113,7 +113,6 @@ static inline bool radeon_is_atpx_hybrid(void) { return false; }
 #endif
 
 #define RADEON_PX_QUIRK_DISABLE_PX  (1 << 0)
-#define RADEON_PX_QUIRK_LONG_WAKEUP (1 << 1)
 
 struct radeon_px_quirk {
 	u32 chip_vendor;
@@ -139,9 +138,7 @@ static struct radeon_px_quirk radeon_px_quirk_list[] = {
 	/* Asus K53TK laptop with AMD A6-3420M APU and Radeon 7670m GPU
 	 * https://bugs.freedesktop.org/show_bug.cgi?id=101491
 	 */
-	{ PCI_VENDOR_ID_ATI, 0x6741, 0x1043, 0x2122, RADEON_PX_QUIRK_DISABLE_PX },
-	/* macbook pro 8.2 */
-	{ PCI_VENDOR_ID_ATI, 0x6741, PCI_VENDOR_ID_APPLE, 0x00e2, RADEON_PX_QUIRK_LONG_WAKEUP },
+	{ PCI_VENDOR_ID_ATI, 0x6840, 0x1043, 0x2122, RADEON_PX_QUIRK_DISABLE_PX },
 	{ 0, 0, 0, 0, 0 },
 };
 
@@ -1243,24 +1240,16 @@ static void radeon_check_arguments(struct radeon_device *rdev)
 static void radeon_switcheroo_set_state(struct pci_dev *pdev, enum vga_switcheroo_state state)
 {
 	struct drm_device *dev = pci_get_drvdata(pdev);
-	struct radeon_device *rdev = dev->dev_private;
 
 	if (radeon_is_px(dev) && state == VGA_SWITCHEROO_OFF)
 		return;
 
 	if (state == VGA_SWITCHEROO_ON) {
-		unsigned d3_delay = dev->pdev->d3_delay;
-
 		pr_info("radeon: switched on\n");
 		/* don't suspend or resume card normally */
 		dev->switch_power_state = DRM_SWITCH_POWER_CHANGING;
 
-		if (d3_delay < 20 && (rdev->px_quirk_flags & RADEON_PX_QUIRK_LONG_WAKEUP))
-			dev->pdev->d3_delay = 20;
-
 		radeon_resume_kms(dev, true, true);
-
-		dev->pdev->d3_delay = d3_delay;
 
 		dev->switch_power_state = DRM_SWITCH_POWER_ON;
 		drm_kms_helper_poll_enable(dev);
@@ -1411,6 +1400,10 @@ int radeon_device_init(struct radeon_device *rdev,
 	if ((rdev->flags & RADEON_IS_PCI) &&
 	    (rdev->family <= CHIP_RS740))
 		rdev->need_dma32 = true;
+#ifdef CONFIG_PPC64
+	if (rdev->family == CHIP_CEDAR)
+		rdev->need_dma32 = true;
+#endif
 
 	dma_bits = rdev->need_dma32 ? 32 : 40;
 	r = pci_set_dma_mask(rdev->pdev, DMA_BIT_MASK(dma_bits));
@@ -1711,16 +1704,18 @@ int radeon_suspend_kms(struct drm_device *dev, bool suspend,
 	radeon_agp_suspend(rdev);
 
 	pci_save_state(device_get_parent(rdev->dev->bsddev));
-#ifdef DUMBBELL_WIP
-	if (freeze && rdev->family >= CHIP_CEDAR) {
+	if (freeze && rdev->family >= CHIP_CEDAR && !(rdev->flags & RADEON_IS_IGP)) {
 		rdev->asic->asic_reset(rdev, true);
+#if 0
 		pci_restore_state(dev->pdev);
+#endif
 	} else if (suspend) {
 		/* Shut down the device */
+#if 0
 		pci_disable_device(dev->pdev);
-		pci_set_powerstate(dev->dev->bsddev, PCI_POWERSTATE_D3);
-	}
+		pci_set_power_state(dev->pdev, PCI_D3hot);
 #endif
+	}
 
 	if (fbcon) {
 #ifdef DUMBBELL_WIP

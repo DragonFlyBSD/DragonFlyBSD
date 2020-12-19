@@ -35,4 +35,7 @@
 
 #define __ratelimit(x)	(1)
 
+struct ratelimit_state {
+};
+
 #endif	/* _LINUX_RATELIMIT_H_ */

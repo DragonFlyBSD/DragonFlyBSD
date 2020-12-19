@@ -91,3 +91,26 @@ shmem_read_mapping_page_gfp(struct vm_object *mapping,
 {
 	return shmem_read_mapping_page(mapping, index);
 }
+
+#include <linux/fs.h>
+
+int
+pagecache_write_begin(struct vm_object *obj, struct address_space *mapping,
+    loff_t pos, unsigned len, unsigned flags, struct page **pagep, void **fsdata)
+{
+	*pagep = shmem_read_mapping_page(obj, OFF_TO_IDX(pos));
+
+	return 0;
+}
+
+/* This is really shmem_write_end() for the i915 gem code */
+int
+pagecache_write_end(struct vm_object *obj, struct address_space *mapping,
+    loff_t pos, unsigned len, unsigned copied, struct page *page, void *fsdata)
+{
+	set_page_dirty(page);
+	put_page(page);
+
+	return copied;
+}
+

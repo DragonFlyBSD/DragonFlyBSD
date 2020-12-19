@@ -33,4 +33,12 @@
 #include <linux/mm_types.h>
 #include <linux/gfp.h>
 
+static inline bool
+mmget_not_zero(struct mm_struct *mm)
+{
+	return atomic_inc_not_zero(&mm->mm_users);
+}
+
+void mmput(struct mm_struct *);
+
 #endif	/* _LINUX_SCHED_MM_H_ */

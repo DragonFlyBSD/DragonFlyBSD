@@ -35,6 +35,8 @@
 #ifndef _LINUX_CAPABILITY_H
 #define _LINUX_CAPABILITY_H
 
+#include <uapi/linux/capability.h>
+
 #include <sys/globaldata.h>
 #include <sys/thread.h>
 #include <sys/priv.h>

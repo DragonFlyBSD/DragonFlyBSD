@@ -27,7 +27,7 @@
 #ifndef _LINUX_FS_H_
 #define _LINUX_FS_H_
 
-#include <linux/wait.h>
+#include <linux/wait_bit.h>
 #include <linux/cache.h>
 #include <linux/stat.h>
 #include <linux/list.h>
@@ -42,6 +42,8 @@
 #include <linux/atomic.h>
 #include <linux/shrinker.h>
 #include <linux/lockdep.h>
+#include <linux/workqueue.h>
+#include <linux/uuid.h>
 
 #include <sys/file.h>	/* for struct file */
 #include <sys/vnode.h>	/* for struct vnode */
@@ -99,5 +101,11 @@ invalidate_mapping_pages(struct vm_object *obj, pgoff_t start, pgoff_t end)
 	VM_OBJECT_UNLOCK(obj);
 	return (start_count - end_count);
 }
+
+int pagecache_write_begin(struct vm_object *obj, struct address_space *mapping,
+    loff_t pos, unsigned len, unsigned flags, struct page **pagep, void **fsdata);
+
+int pagecache_write_end(struct vm_object *obj, struct address_space *mapping,
+    loff_t pos, unsigned len, unsigned copied, struct page *page, void *fsdata);
 
 #endif	/* _LINUX_FS_H_ */

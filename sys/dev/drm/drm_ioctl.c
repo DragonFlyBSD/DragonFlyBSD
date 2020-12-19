@@ -107,40 +107,54 @@
  *
  * Copies the bus id from drm_device::unique into user space.
  */
-static int drm_getunique(struct drm_device *dev, void *data,
+int drm_getunique(struct drm_device *dev, void *data,
 		  struct drm_file *file_priv)
 {
 	struct drm_unique *u = data;
+	struct drm_master *master = file_priv->master;
 
-	mutex_lock(&dev->master_mutex);
-	if (u->unique_len >= dev->unique_len) {
-		if (copy_to_user(u->unique, dev->unique, dev->unique_len)) {
-			mutex_unlock(&dev->master_mutex);
+	mutex_lock(&master->dev->master_mutex);
+	if (u->unique_len >= master->unique_len) {
+		if (copy_to_user(u->unique, master->unique, master->unique_len)) {
+			mutex_unlock(&master->dev->master_mutex);
 			return -EFAULT;
 		}
 	}
-	u->unique_len = dev->unique_len;
-	mutex_unlock(&dev->master_mutex);
+	u->unique_len = master->unique_len;
+	mutex_unlock(&master->dev->master_mutex);
 
 	return 0;
 }
 
+static void
+drm_unset_busid(struct drm_device *dev,
+		struct drm_master *master)
+{
+	kfree(master->unique);
+	master->unique = NULL;
+	master->unique_len = 0;
+}
+
 static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 {
+	struct drm_master *master = file_priv->master;
+	int ret;
 
-	DRM_LOCK(dev);
+	if (master->unique != NULL)
+		drm_unset_busid(dev, master);
 
-	dev->unique_len = 20;
-	dev->unique = kmalloc(dev->unique_len + 1, M_DRM, M_WAITOK | M_NULLOK);
-	if (dev->unique == NULL) {
-		DRM_UNLOCK(dev);
-		return -ENOMEM;
+	if (dev->dev) {
+		ret = drm_pci_set_busid(dev, master);
+		if (ret) {
+			drm_unset_busid(dev, master);
+			return ret;
+		}
+	} else {
+		WARN_ON(!dev->unique);
+		master->unique = kstrdup(dev->unique, M_DRM);
+		if (master->unique)
+			master->unique_len = strlen(dev->unique);
 	}
-
-	ksnprintf(dev->unique, dev->unique_len, "pci:%04x:%02x:%02x.%1x",
-	    dev->pci_domain, dev->pci_bus, dev->pci_slot, dev->pci_func);
-
-	DRM_UNLOCK(dev);
 
 	return 0;
 }
@@ -158,7 +172,7 @@ static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
  * Searches for the client with the specified index and copies its information
  * into userspace
  */
-static int drm_getclient(struct drm_device *dev, void *data,
+int drm_getclient(struct drm_device *dev, void *data,
 		  struct drm_file *file_priv)
 {
 	struct drm_client *client = data;
@@ -221,7 +235,7 @@ static int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_
 	/* Only some caps make sense with UMS/render-only drivers. */
 	switch (req->capability) {
 	case DRM_CAP_TIMESTAMP_MONOTONIC:
-		req->value = drm_timestamp_monotonic;
+		req->value = 1;
 		return 0;
 	case DRM_CAP_PRIME:
 #ifdef __DragonFly__
@@ -451,7 +465,7 @@ static int drm_copy_field(char __user *buf, size_t *buf_len, const char *value)
  *
  * Fills in the version information in \p arg.
  */
-static int drm_version(struct drm_device *dev, void *data,
+int drm_version(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv)
 {
 	static int drm_version_initial;
@@ -499,13 +513,24 @@ int drm_ioctl_permit(u32 flags, struct drm_file *file_priv)
 		return -EACCES;
 
 	/* AUTH is only for authenticated or render client */
-	if (unlikely((flags & DRM_AUTH) && !file_priv->authenticated))
+	if (unlikely((flags & DRM_AUTH) && !drm_is_render_client(file_priv) &&
+		     !file_priv->authenticated))
 		return -EACCES;
 
 	/* MASTER is only for master or control clients */
-	if (unlikely((flags & DRM_MASTER) &&
+	if (unlikely((flags & DRM_MASTER) && 
 		     !drm_is_current_master(file_priv) &&
 		     !drm_is_control_client(file_priv)))
+		return -EACCES;
+
+	/* Control clients must be explicitly allowed */
+	if (unlikely(!(flags & DRM_CONTROL_ALLOW) &&
+		     drm_is_control_client(file_priv)))
+		return -EACCES;
+
+	/* Render clients must be explicitly allowed */
+	if (unlikely(!(flags & DRM_RENDER_ALLOW) &&
+		     drm_is_render_client(file_priv)))
 		return -EACCES;
 
 	return 0;
@@ -591,9 +616,9 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_SG_ALLOC, drm_legacy_sg_alloc, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF(DRM_IOCTL_SG_FREE, drm_legacy_sg_free, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 
-	DRM_IOCTL_DEF(DRM_IOCTL_WAIT_VBLANK, drm_wait_vblank, DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_WAIT_VBLANK, drm_wait_vblank_ioctl, DRM_UNLOCKED),
 
-	DRM_IOCTL_DEF(DRM_IOCTL_MODESET_CTL, drm_legacy_modeset_ctl, 0),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODESET_CTL, drm_legacy_modeset_ctl_ioctl, 0),
 
 	DRM_IOCTL_DEF(DRM_IOCTL_UPDATE_DRAW, drm_noop, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 
@@ -636,6 +661,29 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_ATOMIC, drm_mode_atomic_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_CREATEPROPBLOB, drm_mode_createblob_ioctl, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_DESTROYPROPBLOB, drm_mode_destroyblob_ioctl, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_CREATE, drm_syncobj_create_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_DESTROY, drm_syncobj_destroy_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, drm_syncobj_handle_to_fd_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, drm_syncobj_fd_to_handle_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_WAIT, drm_syncobj_wait_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_RESET, drm_syncobj_reset_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_SIGNAL, drm_syncobj_signal_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_CRTC_GET_SEQUENCE, drm_crtc_get_sequence_ioctl, DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_CRTC_QUEUE_SEQUENCE, drm_crtc_queue_sequence_ioctl, DRM_UNLOCKED),
+#if 0
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_CREATE_LEASE, drm_mode_create_lease_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_LIST_LESSEES, drm_mode_list_lessees_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GET_LEASE, drm_mode_get_lease_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_REVOKE_LEASE, drm_mode_revoke_lease_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+#endif
 };
 
 #define DRM_CORE_IOCTL_COUNT	ARRAY_SIZE( drm_ioctls )
@@ -674,7 +722,7 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
  * 
  * DRM driver private IOCTL must be in the range from DRM_COMMAND_BASE to
  * DRM_COMMAND_END. Finally you need an array of &struct drm_ioctl_desc to wire
- * up the handlers and set the access rights:
+ * up the handlers and set the access rights::
  *
  *     static const struct drm_ioctl_desc my_driver_ioctls[] = {
  *         DRM_IOCTL_DEF_DRV(MY_DRIVER_OPERATION, my_driver_operation,
@@ -683,7 +731,39 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
  *
  * And then assign this to the &drm_driver.ioctls field in your driver
  * structure.
+ *
+ * See the separate chapter on :ref:`file operations<drm_driver_fops>` for how
+ * the driver-specific IOCTLs are wired up.
  */
+
+#if 0
+long drm_ioctl_kernel(struct file *file, drm_ioctl_t *func, void *kdata,
+		      u32 flags)
+{
+	struct drm_file *file_priv = file->private_data;
+	struct drm_device *dev = file_priv->minor->dev;
+	int retcode;
+
+	if (drm_dev_is_unplugged(dev))
+		return -ENODEV;
+
+	retcode = drm_ioctl_permit(flags, file_priv);
+	if (unlikely(retcode))
+		return retcode;
+
+	/* Enforce sane locking for modern driver ioctls. */
+	if (!drm_core_check_feature(dev, DRIVER_LEGACY) ||
+	    (flags & DRM_UNLOCKED))
+		retcode = func(dev, kdata, file_priv);
+	else {
+		mutex_lock(&drm_global_mutex);
+		retcode = func(dev, kdata, file_priv);
+		mutex_unlock(&drm_global_mutex);
+	}
+	return retcode;
+}
+EXPORT_SYMBOL(drm_ioctl_kernel);
+#endif
 
 /**
  * drm_ioctl - ioctl callback implementation for DRM drivers
@@ -711,9 +791,9 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	caddr_t data = ap->a_data;
 	bool is_driver_ioctl;
 
-	dev = drm_get_device_from_kdev(ap->a_head.a_dev);
+	dev = file_priv->minor->dev;
 
-	if (drm_device_is_unplugged(dev))
+	if (drm_dev_is_unplugged(dev))
 		return -ENODEV;
 
 	is_driver_ioctl = nr >= DRM_COMMAND_BASE && nr < DRM_COMMAND_END;
@@ -757,6 +837,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		retcode = -func(dev, data, file_priv);
 		mutex_unlock(&drm_global_mutex);
 	}
+
 	if (retcode == ERESTARTSYS)
 			retcode = EINTR;
 

@@ -54,6 +54,16 @@ STAILQ_HEAD(tasklet_hi_list_head, tasklet_entry) tlist_hi = STAILQ_HEAD_INITIALI
 
 static int tasklet_pending = 0;
 
+/*
+ * Linux does:
+ * 1 - copy list locally
+ * 2 - empty global list
+ * 3 - process local list from head to tail
+ *****
+ * local list processing:
+ * - if element cannot be run, put it at the tail
+ * - last element == null
+ */
 #define PROCESS_TASKLET_LIST(which_list) do { \
 	STAILQ_FOREACH_MUTABLE(te, &which_list, tasklet_entries, tmp_te) { \
 		struct tasklet_struct *t = te->ts;			\

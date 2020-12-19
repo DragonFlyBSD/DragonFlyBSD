@@ -49,6 +49,11 @@ struct ida {
 	struct ida_bitmap	*free_bitmap;
 };
 
+#define DEFINE_IDA(name)		\
+	struct ida name = {		\
+		.free_bitmap = NULL	\
+	}				\
+
 static inline void
 ida_init(struct ida *ida)
 {

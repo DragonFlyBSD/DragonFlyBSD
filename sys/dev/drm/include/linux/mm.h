@@ -62,6 +62,7 @@ nth_page(struct page *page, int n)
 #define FAULT_FLAG_RETRY_NOWAIT		0x08
 
 struct vm_fault {
+	struct vm_area_struct *vma;
 	unsigned int flags;
 	void __user *virtual_address;
 };
@@ -79,6 +80,8 @@ struct vm_operations_struct {
 	int (*fault)(struct vm_area_struct *vma, struct vm_fault *vmf);
 	void (*open)(struct vm_area_struct *vma);
 	void (*close)(struct vm_area_struct *vma);
+	int (*access)(struct vm_area_struct *vma, unsigned long addr,
+		      void *buf, int len, int write);
 };
 
 /*
@@ -182,5 +185,7 @@ page_address(const struct page *page)
 void * kvmalloc_array(size_t n, size_t size, gfp_t flags);
 
 #define kvfree(addr)	kfree(addr)
+
+#define FOLL_WRITE	0x01
 
 #endif	/* _LINUX_MM_H_ */

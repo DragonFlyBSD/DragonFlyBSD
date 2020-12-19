@@ -27,8 +27,12 @@
 #ifndef _LINUX_LIMITS_H_
 #define _LINUX_LIMITS_H_
 
+#include <uapi/linux/limits.h>
 #include <linux/types.h>
 
 #define SIZE_MAX	(~(size_t)0)
+
+#define INT_MAX		((int)(~0U >> 1))
+#define INT_MIN		(-INT_MAX - 1)
 
 #endif /* _LINUX_LIMITS_H_ */

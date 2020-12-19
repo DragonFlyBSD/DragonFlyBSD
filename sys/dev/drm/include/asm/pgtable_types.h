@@ -42,6 +42,8 @@
 #define _PAGE_CACHE_WC		_PAGE_PWT
 #define _PAGE_CACHE_UC_MINUS	_PAGE_PCD
 
+#define _PAGE_CACHE_MASK	(_PAGE_PWT | _PAGE_PCD | _PAGE_PAT)
+
 #define __PAGE_KERNEL_EXEC						\
 	(_PAGE_PRESENT | _PAGE_RW | _PAGE_DIRTY | _PAGE_ACCESSED | _PAGE_GLOBAL)
 #define __PAGE_KERNEL	(__PAGE_KERNEL_EXEC | _PAGE_NX)
@@ -54,5 +56,8 @@ pgprot_writecombine(pgprot_t prot)
 {
 	return (prot | VM_MEMATTR_WRITE_COMBINING);
 }
+
+#define __pgprot(value)	((pgprot_t) {(value)})
+#define pgprot_val(x)	(x)
 
 #endif	/* _ASM_PGTABLE_TYPES_H_ */

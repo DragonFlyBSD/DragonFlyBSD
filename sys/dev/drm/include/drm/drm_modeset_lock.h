@@ -34,6 +34,7 @@ struct drm_modeset_lock;
  * @contended: used internally for -EDEADLK handling
  * @locked: list of held locks
  * @trylock_only: trylock mode used in atomic contexts/panic notifiers
+ * @interruptible: whether interruptible locking should be used.
  *
  * Each thread competing for a set of locks must use one acquire
  * ctx.  And if any lock fxn returns -EDEADLK, it must backoff and
@@ -55,10 +56,13 @@ struct drm_modeset_acquire_ctx {
 	 */
 	struct list_head locked;
 
-	/**
+	/*
 	 * Trylock mode, use only for panic handlers!
 	 */
 	bool trylock_only;
+
+	/* Perform interruptible waits on this context. */
+	bool interruptible;
 };
 
 /*
@@ -92,12 +96,13 @@ struct drm_modeset_lock {
 	struct list_head head;
 };
 
+#define DRM_MODESET_ACQUIRE_INTERRUPTIBLE BIT(0)
+
 void drm_modeset_acquire_init(struct drm_modeset_acquire_ctx *ctx,
 		uint32_t flags);
 void drm_modeset_acquire_fini(struct drm_modeset_acquire_ctx *ctx);
 void drm_modeset_drop_locks(struct drm_modeset_acquire_ctx *ctx);
-void drm_modeset_backoff(struct drm_modeset_acquire_ctx *ctx);
-int drm_modeset_backoff_interruptible(struct drm_modeset_acquire_ctx *ctx);
+int drm_modeset_backoff(struct drm_modeset_acquire_ctx *ctx);
 
 void drm_modeset_lock_init(struct drm_modeset_lock *lock);
 
@@ -121,8 +126,7 @@ static inline bool drm_modeset_is_locked(struct drm_modeset_lock *lock)
 
 int drm_modeset_lock(struct drm_modeset_lock *lock,
 		struct drm_modeset_acquire_ctx *ctx);
-int drm_modeset_lock_interruptible(struct drm_modeset_lock *lock,
-		struct drm_modeset_acquire_ctx *ctx);
+int __must_check drm_modeset_lock_single_interruptible(struct drm_modeset_lock *lock);
 void drm_modeset_unlock(struct drm_modeset_lock *lock);
 
 struct drm_device;
@@ -130,7 +134,6 @@ struct drm_crtc;
 struct drm_plane;
 
 void drm_modeset_lock_all(struct drm_device *dev);
-int __drm_modeset_lock_all(struct drm_device *dev, bool trylock);
 void drm_modeset_unlock_all(struct drm_device *dev);
 void drm_warn_on_modeset_not_all_locked(struct drm_device *dev);
 

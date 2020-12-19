@@ -73,8 +73,6 @@
 
 #define barrier()	cpu_ccfence()
 
-#define ACCESS_ONCE(x)	(*(volatile typeof(x) *)&(x))
-
 #ifdef _KERNEL		/* This file is included by kdump(1) */
 
 #include <sys/param.h>
@@ -158,5 +156,13 @@ __volatile_write(volatile void *var, int size, void *value)
 
 #define GCC_VERSION	\
 	(__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+
+#ifndef unreachable
+#define unreachable()			\
+do {					\
+	__asm __volatile("");		\
+	__builtin_unreachable();	\
+} while (0)
+#endif
 
 #endif	/* _LINUX_COMPILER_H_ */

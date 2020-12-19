@@ -28,6 +28,8 @@
 #define _LINUX_MOD_DEVICETABLE_H_
 
 #include <linux/types.h>
+#include <linux/uuid.h>
+
 typedef unsigned long kernel_ulong_t;
 
 #define I2C_NAME_SIZE	20

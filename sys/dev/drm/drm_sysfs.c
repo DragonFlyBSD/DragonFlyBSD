@@ -73,3 +73,40 @@ int drm_class_device_register(struct device *dev)
 void drm_class_device_unregister(struct device *dev)
 {
 }
+
+extern struct dev_ops drm_cdevsw;
+
+struct device *drm_sysfs_minor_alloc(struct drm_minor *minor)
+{
+	const char dev_str[12];
+	struct device *kdev;
+	int r;
+	struct cdev *devnode;
+
+	if (minor->type == DRM_MINOR_PRIMARY)
+		ksnprintf(dev_str, sizeof(dev_str), "card%d", minor->index);
+	else if (minor->type == DRM_MINOR_RENDER)
+		ksnprintf(dev_str, sizeof(dev_str), "renderD%d", minor->index);
+	else
+		return NULL;
+
+	kdev = kzalloc(sizeof(*kdev), GFP_KERNEL);
+	if (!kdev)
+		return ERR_PTR(-ENOMEM);
+
+	devnode = make_dev(&drm_cdevsw, minor->index,
+		DRM_DEV_UID, DRM_DEV_GID, DRM_DEV_MODE, "dri/%s", dev_str);
+
+	kdev->parent = minor->dev->dev;
+	dev_set_drvdata(kdev, minor);
+
+	r = dev_set_name(kdev, dev_str);
+	if (r < 0)
+		goto err_free;
+
+	return kdev;
+
+err_free:
+	return ERR_PTR(r);
+}
+

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2008 Intel Corporation
+ * Copyright © 2017 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,43 +20,14 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- * Authors:
- *     Jesse Barnes <jbarnes@virtuousgeek.org>
- *
  */
-#ifndef _DRM_MEM_UTIL_H_
-#define _DRM_MEM_UTIL_H_
 
-#include <linux/vmalloc.h>
+#ifndef _INTEL_GUC_FW_H_
+#define _INTEL_GUC_FW_H_
 
-static __inline__ void *drm_calloc_large(size_t nmemb, size_t size)
-{
-	if (size != 0 && nmemb > SIZE_MAX / size)
-		return NULL;
+struct intel_guc;
 
-	return kmalloc(nmemb * size, M_DRM, M_WAITOK | M_ZERO);
-}
-
-/* Modeled after cairo's malloc_ab, it's like calloc but without the zeroing. */
-static __inline__ void *drm_malloc_ab(size_t nmemb, size_t size)
-{
-	if (size != 0 && nmemb > SIZE_MAX / size)
-		return NULL;
-
-	return kmalloc(nmemb * size, M_DRM, M_WAITOK);
-}
-
-static __inline__ void *drm_malloc_gfp(size_t nmemb, size_t size, gfp_t gfp)
-{
-	if (size != 0 && nmemb > SIZE_MAX / size)
-		return NULL;
-
-	return kmalloc(nmemb * size, M_DRM, gfp);
-}
-
-static __inline void drm_free_large(void *ptr)
-{
-	kfree(ptr);
-}
+int intel_guc_fw_select(struct intel_guc *guc);
+int intel_guc_fw_upload(struct intel_guc *guc);
 
 #endif

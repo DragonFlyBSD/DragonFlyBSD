@@ -43,7 +43,8 @@
  *
  *	Setting this to NULL (blob property value set to 0) means a
  *	linear/pass-thru gamma table should be used. This is generally the
- *	driver boot-up state too.
+ *	driver boot-up state too. Drivers can access this blob through
+ *	&drm_crtc_state.degamma_lut.
  *
  * “DEGAMMA_LUT_SIZE”:
  *	Unsinged range property to give the size of the lookup table to be set
@@ -60,7 +61,8 @@
  *
  *	Setting this to NULL (blob property value set to 0) means a
  *	unit/pass-thru matrix should be used. This is generally the driver
- *	boot-up state too.
+ *	boot-up state too. Drivers can access the blob for the color conversion
+ *	matrix through &drm_crtc_state.ctm.
  *
  * “GAMMA_LUT”:
  *	Blob property to set the gamma lookup table (LUT) mapping pixel data
@@ -72,7 +74,8 @@
  *
  *	Setting this to NULL (blob property value set to 0) means a
  *	linear/pass-thru gamma table should be used. This is generally the
- *	driver boot-up state too.
+ *	driver boot-up state too. Drivers can access this blob through
+ *	&drm_crtc_state.gamma_lut.
  *
  * “GAMMA_LUT_SIZE”:
  *	Unsigned range property to give the size of the lookup table to be set
@@ -88,6 +91,30 @@
  */
 
 /**
+ * drm_color_lut_extract - clamp and round LUT entries
+ * @user_input: input value
+ * @bit_precision: number of bits the hw LUT supports
+ *
+ * Extract a degamma/gamma LUT value provided by user (in the form of
+ * &drm_color_lut entries) and round it to the precision supported by the
+ * hardware.
+ */
+uint32_t drm_color_lut_extract(uint32_t user_input, uint32_t bit_precision)
+{
+	uint32_t val = user_input;
+	uint32_t max = 0xffff >> (16 - bit_precision);
+
+	/* Round only if we're not using full precision. */
+	if (bit_precision < 16) {
+		val += 1UL << (16 - bit_precision - 1);
+		val >>= 16 - bit_precision;
+	}
+
+	return clamp_val(val, 0, max);
+}
+EXPORT_SYMBOL(drm_color_lut_extract);
+
+/**
  * drm_crtc_enable_color_mgmt - enable color management properties
  * @crtc: DRM CRTC
  * @degamma_lut_size: the size of the degamma lut (before CSC)
@@ -101,6 +128,9 @@
  * optional. The gamma and degamma properties are only attached if
  * their size is not 0 and ctm_property is only attached if has_ctm is
  * true.
+ *
+ * Drivers should use drm_atomic_helper_legacy_gamma_set() to implement the
+ * legacy &drm_crtc_funcs.gamma_set callback.
  */
 void drm_crtc_enable_color_mgmt(struct drm_crtc *crtc,
 				uint degamma_lut_size,
@@ -200,7 +230,7 @@ int drm_mode_gamma_set_ioctl(struct drm_device *dev,
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
 
-	crtc = drm_crtc_find(dev, crtc_lut->crtc_id);
+	crtc = drm_crtc_find(dev, file_priv, crtc_lut->crtc_id);
 	if (!crtc)
 		return -ENOENT;
 
@@ -278,7 +308,7 @@ int drm_mode_gamma_get_ioctl(struct drm_device *dev,
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
 
-	crtc = drm_crtc_find(dev, crtc_lut->crtc_id);
+	crtc = drm_crtc_find(dev, file_priv, crtc_lut->crtc_id);
 	if (!crtc)
 		return -ENOENT;
 

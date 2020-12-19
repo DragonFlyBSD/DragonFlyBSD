@@ -26,50 +26,47 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #ifndef _LINUX_KREF_H_
 #define _LINUX_KREF_H_
 
 #include <linux/spinlock.h>
-
-#include <linux/mutex.h>
-
-#include <sys/refcount.h>
+#include <linux/refcount.h>
 
 struct kref {
-	atomic_t refcount;
+	refcount_t refcount;
 };
 
 static inline void
 kref_init(struct kref *kref)
 {
-
-	refcount_init(&kref->refcount.counter, 1);
+	atomic_set(&kref->refcount.refs, 1);
 }
 
 static inline unsigned int
 kref_read(const struct kref *kref)
 {
-	return atomic_read(&kref->refcount);
+	return atomic_read(&kref->refcount.refs);
 }
 
 static inline void
 kref_get(struct kref *kref)
 {
-
-	refcount_acquire(&kref->refcount.counter);
+	refcount_inc(&kref->refcount);
 }
 
 static inline int
-kref_put(struct kref *kref, void (*rel)(struct kref *kref))
+kref_put(struct kref *kref, void (*release)(struct kref *kref))
 {
-
-	if (refcount_release(&kref->refcount.counter)) {
-		rel(kref);
+	if (atomic_dec_and_test(&kref->refcount.refs)) {
+		release(kref);
 		return 1;
 	}
+
 	return 0;
 }
 
+#if 0
 static inline int
 kref_sub(struct kref *kref, unsigned int count,
 	     void (*rel)(struct kref *kref))
@@ -80,22 +77,23 @@ kref_sub(struct kref *kref, unsigned int count,
 	}
 	return 0;
 }
+#endif
 
 /*
  * kref_get_unless_zero: Increment refcount for object unless it is zero.
  */
 static inline int __must_check kref_get_unless_zero(struct kref *kref)
 {
-	return atomic_add_unless(&kref->refcount, 1, 0);
+	return atomic_add_unless(&kref->refcount.refs, 1, 0);
 }
 
 static inline int kref_put_mutex(struct kref *kref,
 				 void (*release)(struct kref *kref),
 				 struct lock *lock)
 {
-	if (!atomic_add_unless(&kref->refcount, -1, 1)) {
+	if (!atomic_add_unless(&kref->refcount.refs, -1, 1)) {
 		mutex_lock(lock);
-		if (likely(atomic_dec_and_test(&kref->refcount))) {
+		if (likely(atomic_dec_and_test(&kref->refcount.refs))) {
 			release(kref);
 			return 1;
 		}

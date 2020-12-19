@@ -113,6 +113,8 @@ __wait_for_completion_generic(struct completion *c,
 	return ret;
 }
 
+int wait_for_completion_interruptible(struct completion *c);
+
 static inline long
 wait_for_completion_interruptible_timeout(struct completion *c,
 		unsigned long timeout)

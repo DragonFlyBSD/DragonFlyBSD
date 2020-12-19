@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017 François Tigeot
+ * Copyright (c) 2014-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,9 @@
 #define NSEC_PER_SEC	1000000000L
 
 #include <linux/cache.h>
+#include <linux/seqlock.h>
 #include <linux/math64.h>
+#include <linux/time64.h>
 
 #include <sys/time.h>
 

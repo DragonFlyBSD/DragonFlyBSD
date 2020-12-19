@@ -40,6 +40,7 @@
 #include <linux/rbtree.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
+#include <linux/mem_encrypt.h>
 
 #include <sys/sysctl.h>
 #include <vm/vm.h>
@@ -318,10 +319,88 @@ static void ttm_bo_vm_close(struct vm_area_struct *vma)
 	vma->vm_private_data = NULL;
 }
 
+static int ttm_bo_vm_access_kmap(struct ttm_buffer_object *bo,
+				 unsigned long offset,
+				 uint8_t *buf, int len, int write)
+{
+	unsigned long page = offset >> PAGE_SHIFT;
+	unsigned long bytes_left = len;
+	int ret;
+
+	/* Copy a page at a time, that way no extra virtual address
+	 * mapping is needed
+	 */
+	offset -= page << PAGE_SHIFT;
+	do {
+		unsigned long bytes = min(bytes_left, PAGE_SIZE - offset);
+		struct ttm_bo_kmap_obj map;
+		void *ptr;
+		bool is_iomem;
+
+		ret = ttm_bo_kmap(bo, page, 1, &map);
+		if (ret)
+			return ret;
+
+		ptr = (uint8_t *)ttm_kmap_obj_virtual(&map, &is_iomem) + offset;
+		WARN_ON_ONCE(is_iomem);
+		if (write)
+			memcpy(ptr, buf, bytes);
+		else
+			memcpy(buf, ptr, bytes);
+		ttm_bo_kunmap(&map);
+
+		page++;
+		buf += bytes;
+		bytes_left -= bytes;
+		offset = 0;
+	} while (bytes_left);
+
+	return len;
+}
+
+static int ttm_bo_vm_access(struct vm_area_struct *vma, unsigned long addr,
+			    void *buf, int len, int write)
+{
+	unsigned long offset = (addr) - vma->vm_start;
+	struct ttm_buffer_object *bo = vma->vm_private_data;
+	int ret;
+
+	if (len < 1 || (offset + len) >> PAGE_SHIFT > bo->num_pages)
+		return -EIO;
+
+	ret = ttm_bo_reserve(bo, true, false, NULL);
+	if (ret)
+		return ret;
+
+	switch (bo->mem.mem_type) {
+	case TTM_PL_SYSTEM:
+		if (unlikely(bo->ttm->page_flags & TTM_PAGE_FLAG_SWAPPED)) {
+			ret = ttm_tt_swapin(bo->ttm);
+			if (unlikely(ret != 0))
+				return ret;
+		}
+		/* fall through */
+	case TTM_PL_TT:
+		ret = ttm_bo_vm_access_kmap(bo, offset, buf, len, write);
+		break;
+	default:
+		if (bo->bdev->driver->access_memory)
+			ret = bo->bdev->driver->access_memory(
+				bo, offset, buf, len, write);
+		else
+			ret = -EIO;
+	}
+
+	ttm_bo_unreserve(bo);
+
+	return ret;
+}
+
 static const struct vm_operations_struct ttm_bo_vm_ops = {
 	.fault = ttm_bo_vm_fault,
 	.open = ttm_bo_vm_open,
-	.close = ttm_bo_vm_close
+	.close = ttm_bo_vm_close,
+	.access = ttm_bo_vm_access
 };
 
 static struct ttm_buffer_object *ttm_bo_vm_lookup(struct ttm_bo_device *bdev,
@@ -451,6 +530,9 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 
 	memset(vma, 0, sizeof(*vma));
 	memset(vmf, 0, sizeof(*vmf));
+
+	vma->vm_mm = current->mm;
+	vmf->vma = vma;
 #endif
 
 	vm_object_pip_add(vm_obj, 1);
@@ -461,6 +543,9 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 	KKASSERT(*mres == NULL);
 
 retry:
+	/* The Linux page fault handler acquires mmap_sem */
+	down_read(&vma->vm_mm->mmap_sem);
+
 	m = NULL;
 
 	/*
@@ -476,14 +561,19 @@ retry:
 			goto out_unlock2;
 		}
 
-		if ((vmf->flags & FAULT_FLAG_ALLOW_RETRY) || 1) {
+		if (vmf->flags & FAULT_FLAG_ALLOW_RETRY || 1) {
 			if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
 				up_read(&vma->vm_mm->mmap_sem);
 				(void) ttm_bo_wait_unreserved(bo);
 			}
 
+#ifndef __DragonFly__
+			return VM_FAULT_RETRY;
+#else
+			up_read(&vma->vm_mm->mmap_sem);
 			lwkt_yield();
 			goto retry;
+#endif
 		}
 
 		/*
@@ -600,6 +690,7 @@ retry:
 		vm_page_sleep_busy(m, FALSE, "ttmvmf");
 		ttm_mem_io_unlock(man);
 		ttm_bo_unreserve(bo);
+		up_read(&vma->vm_mm->mmap_sem);
 		goto retry;
 	}
 
@@ -721,7 +812,25 @@ ttm_bo_release_mmap(struct ttm_buffer_object *bo)
 		return;
 
 	VM_OBJECT_LOCK(vm_obj);
+#if 1
 	vm_object_page_remove(vm_obj, 0, 0, false);
+#else
+	/*
+	 * XXX REMOVED
+	 *
+	 * We no longer manage the vm pages inside the MGTDEVICE
+	 * objects.
+	 */
+	vm_page_t m;
+	int i;
+
+	for (i = 0; i < bo->num_pages; i++) {
+		m = vm_page_lookup_busy_wait(vm_obj, i, TRUE, "ttm_unm");
+		if (m == NULL)
+			continue;
+		cdev_pager_free_page(vm_obj, m);
+	}
+#endif
 	VM_OBJECT_UNLOCK(vm_obj);
 
 	vm_object_deallocate(vm_obj);

@@ -29,16 +29,6 @@
 
 #include <linux/typecheck.h>
 
-#if 0
-/*
- * local_irq_disable/enable functions prevent interrupts to run on the
- * current CPU in critical sections of code.
- * This maps nicely to crit_enter/exit sequences in the DragonFly kernel
- */
-#define local_irq_disable()	crit_enter()
-#define local_irq_enable()	crit_exit()
-#endif
-
 static inline void
 local_irq_disable(void)
 {
@@ -55,6 +45,18 @@ static inline bool
 irqs_disabled(void)
 {
 	return !(read_rflags() & 0x200UL);
+}
+
+#define local_irq_save(flags)	\
+({				\
+	flags = read_rflags();	\
+	local_irq_disable();	\
+})
+
+static inline void
+local_irq_restore(unsigned long flags)
+{
+	write_rflags(flags);
 }
 
 #endif	/* _LINUX_IRQFLAGS_H_ */

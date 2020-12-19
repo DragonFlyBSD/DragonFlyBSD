@@ -40,26 +40,26 @@
  * Frame buffers rely on the underlying memory manager for allocating backing
  * storage. When creating a frame buffer applications pass a memory handle
  * (or a list of memory handles for multi-planar formats) through the
- * struct &drm_mode_fb_cmd2 argument. For drivers using GEM as their userspace
+ * &struct drm_mode_fb_cmd2 argument. For drivers using GEM as their userspace
  * buffer management interface this would be a GEM handle.  Drivers are however
  * free to use their own backing storage object handles, e.g. vmwgfx directly
  * exposes special TTM handles to userspace and so expects TTM handles in the
  * create ioctl and not GEM handles.
  *
- * Framebuffers are tracked with struct &drm_framebuffer. They are published
+ * Framebuffers are tracked with &struct drm_framebuffer. They are published
  * using drm_framebuffer_init() - after calling that function userspace can use
  * and access the framebuffer object. The helper function
  * drm_helper_mode_fill_fb_struct() can be used to pre-fill the required
  * metadata fields.
  *
  * The lifetime of a drm framebuffer is controlled with a reference count,
- * drivers can grab additional references with drm_framebuffer_reference() and
- * drop them again with drm_framebuffer_unreference(). For driver-private
- * framebuffers for which the last reference is never dropped (e.g. for the
- * fbdev framebuffer when the struct struct &drm_framebuffer is embedded into
- * the fbdev helper struct) drivers can manually clean up a framebuffer at
- * module unload time with drm_framebuffer_unregister_private(). But doing this
- * is not recommended, and it's better to have a normal free-standing &struct
+ * drivers can grab additional references with drm_framebuffer_get() and drop
+ * them again with drm_framebuffer_put(). For driver-private framebuffers for
+ * which the last reference is never dropped (e.g. for the fbdev framebuffer
+ * when the struct &struct drm_framebuffer is embedded into the fbdev helper
+ * struct) drivers can manually clean up a framebuffer at module unload time
+ * with drm_framebuffer_unregister_private(). But doing this is not
+ * recommended, and it's better to have a normal free-standing &struct
  * drm_framebuffer.
  */
 
@@ -117,6 +117,10 @@ int drm_mode_addfb(struct drm_device *dev,
 	r.pitches[0] = or->pitch;
 	r.pixel_format = drm_mode_legacy_fb_format(or->bpp, or->depth);
 	r.handles[0] = or->handle;
+
+	if (r.pixel_format == DRM_FORMAT_XRGB2101010 &&
+	    dev->driver->driver_features & DRIVER_PREFER_XBGR_30BPP)
+		r.pixel_format = DRM_FORMAT_XBGR2101010;
 
 	ret = drm_mode_addfb2(dev, &r, file_priv);
 	if (ret)
@@ -381,7 +385,7 @@ int drm_mode_rmfb(struct drm_device *dev,
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
 
-	fb = drm_framebuffer_lookup(dev, *id);
+	fb = drm_framebuffer_lookup(dev, file_priv, *id);
 	if (!fb)
 		return -ENOENT;
 
@@ -450,9 +454,15 @@ int drm_mode_getfb(struct drm_device *dev,
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
 
-	fb = drm_framebuffer_lookup(dev, r->fb_id);
+	fb = drm_framebuffer_lookup(dev, file_priv, r->fb_id);
 	if (!fb)
 		return -ENOENT;
+
+	/* Multi-planar framebuffers need getfb2. */
+	if (fb->format->num_planes > 1) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	r->height = fb->height;
 	r->width = fb->width;
@@ -477,6 +487,7 @@ int drm_mode_getfb(struct drm_device *dev,
 		ret = -ENODEV;
 	}
 
+out:
 	drm_framebuffer_put(fb);
 
 	return ret;
@@ -515,7 +526,7 @@ int drm_mode_dirtyfb_ioctl(struct drm_device *dev,
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
 
-	fb = drm_framebuffer_lookup(dev, r->fb_id);
+	fb = drm_framebuffer_lookup(dev, file_priv, r->fb_id);
 	if (!fb)
 		return -ENOENT;
 
@@ -681,6 +692,7 @@ EXPORT_SYMBOL(drm_framebuffer_init);
 /**
  * drm_framebuffer_lookup - look up a drm framebuffer and grab a reference
  * @dev: drm device
+ * @file_priv: drm file to check for lease against.
  * @id: id of the fb object
  *
  * If successful, this grabs an additional reference to the framebuffer -
@@ -688,12 +700,13 @@ EXPORT_SYMBOL(drm_framebuffer_init);
  * again, using drm_framebuffer_put().
  */
 struct drm_framebuffer *drm_framebuffer_lookup(struct drm_device *dev,
+					       struct drm_file *file_priv,
 					       uint32_t id)
 {
 	struct drm_mode_object *obj;
 	struct drm_framebuffer *fb = NULL;
 
-	obj = __drm_mode_object_find(dev, id, DRM_MODE_OBJECT_FB);
+	obj = __drm_mode_object_find(dev, file_priv, id, DRM_MODE_OBJECT_FB);
 	if (obj)
 		fb = obj_to_fb(obj);
 	return fb;
@@ -817,7 +830,7 @@ retry:
 		plane->old_fb = plane->fb;
 	}
 
-	for_each_connector_in_state(state, conn, conn_state, i) {
+	for_each_new_connector_in_state(state, conn, conn_state, i) {
 		ret = drm_atomic_set_crtc_for_connector(conn_state, NULL);
 
 		if (ret)

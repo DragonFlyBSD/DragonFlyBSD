@@ -127,8 +127,7 @@ SRCS	+=								\
 SRCS	+=								\
 	radeon_vce.c							\
 	vce_v1_0.c							\
-	vce_v2_0.c \
-	radeon_kfd.c
+	vce_v2_0.c
 
 #radeon_ioc32.c
 #--radeon_trace_points.c
@@ -143,7 +142,6 @@ SRCS	+=								\
 	pci_if.h
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
-KCFLAGS+= -I${SYSDIR}/dev/drm/include/drm
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/uapi
 KCFLAGS+= -I${SYSDIR}/dev/drm/amd/include
 KCFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include

@@ -21,8 +21,11 @@
  * IN THE SOFTWARE.
  *
  */
+
 #include <linux/debugfs.h>
 #include <linux/relay.h>
+
+#include "intel_guc_log.h"
 #include "i915_drv.h"
 
 #if 0
@@ -145,7 +148,7 @@ static int guc_log_relay_file_create(struct intel_guc *guc)
 	struct dentry *log_dir;
 	int ret;
 
-	if (i915.guc_log_level < 0)
+	if (i915_modparams.guc_log_level < 0)
 		return 0;
 
 	/* For now create the log file in /sys/kernel/debug/dri/0 dir */
@@ -360,11 +363,15 @@ static int guc_log_runtime_create(struct intel_guc *guc)
 	void *vaddr;
 	struct rchan *guc_log_relay_chan;
 	size_t n_subbufs, subbuf_size;
-	int ret = 0;
+	int ret;
 
 	lockdep_assert_held(&dev_priv->drm.struct_mutex);
 
 	GEM_BUG_ON(guc_log_has_runtime(guc));
+
+	ret = i915_gem_object_set_to_wc_domain(guc->log.vma->obj, true);
+	if (ret)
+		return ret;
 
 	/* Create a WC (Uncached for read) vmalloc mapping of log
 	 * buffer pages, so that we can directly get the data
@@ -477,7 +484,7 @@ err_runtime:
 	guc_log_runtime_destroy(guc);
 err:
 	/* logging will remain off */
-	i915.guc_log_level = -1;
+	i915_modparams.guc_log_level = -1;
 	return ret;
 }
 
@@ -499,7 +506,8 @@ static void guc_flush_logs(struct intel_guc *guc)
 {
 	struct drm_i915_private *dev_priv = guc_to_i915(guc);
 
-	if (!i915.enable_guc_submission || (i915.guc_log_level < 0))
+	if (!i915_modparams.enable_guc_submission ||
+	    (i915_modparams.guc_log_level < 0))
 		return;
 
 	/* First disable the interrupts, will be renabled afterwards */
@@ -522,13 +530,14 @@ int intel_guc_log_create(struct intel_guc *guc)
 {
 	struct i915_vma *vma;
 	unsigned long offset;
-	uint32_t size, flags;
+	u32 flags;
+	u32 size;
 	int ret;
 
 	GEM_BUG_ON(guc->log.vma);
 
-	if (i915.guc_log_level > GUC_LOG_VERBOSITY_MAX)
-		i915.guc_log_level = GUC_LOG_VERBOSITY_MAX;
+	if (i915_modparams.guc_log_level > GUC_LOG_VERBOSITY_MAX)
+		i915_modparams.guc_log_level = GUC_LOG_VERBOSITY_MAX;
 
 	/* The first page is to save log buffer state. Allocate one
 	 * extra page for others in case for overlap */
@@ -578,7 +587,7 @@ err_vma:
 #endif
 err:
 	/* logging will be off */
-	i915.guc_log_level = -1;
+	i915_modparams.guc_log_level = -1;
 	return ret;
 }
 
@@ -605,7 +614,7 @@ int i915_guc_log_control(struct drm_i915_private *dev_priv, u64 control_val)
 		return -EINVAL;
 
 	/* This combination doesn't make sense & won't have any effect */
-	if (!log_param.logging_enabled && (i915.guc_log_level < 0))
+	if (!log_param.logging_enabled && (i915_modparams.guc_log_level < 0))
 		return 0;
 
 	ret = guc_log_control(guc, log_param.value);
@@ -615,7 +624,7 @@ int i915_guc_log_control(struct drm_i915_private *dev_priv, u64 control_val)
 	}
 
 	if (log_param.logging_enabled) {
-		i915.guc_log_level = log_param.verbosity;
+		i915_modparams.guc_log_level = log_param.verbosity;
 
 		/* If log_level was set as -1 at boot time, then the relay channel file
 		 * wouldn't have been created by now and interrupts also would not have
@@ -638,7 +647,7 @@ int i915_guc_log_control(struct drm_i915_private *dev_priv, u64 control_val)
 		guc_flush_logs(guc);
 
 		/* As logging is disabled, update log level to reflect that */
-		i915.guc_log_level = -1;
+		i915_modparams.guc_log_level = -1;
 	}
 
 	return ret;
@@ -647,7 +656,8 @@ int i915_guc_log_control(struct drm_i915_private *dev_priv, u64 control_val)
 
 void i915_guc_log_register(struct drm_i915_private *dev_priv)
 {
-	if (!i915.enable_guc_submission || i915.guc_log_level < 0)
+	if (!i915_modparams.enable_guc_submission ||
+	    (i915_modparams.guc_log_level < 0))
 		return;
 
 	mutex_lock(&dev_priv->drm.struct_mutex);
@@ -659,7 +669,7 @@ void i915_guc_log_register(struct drm_i915_private *dev_priv)
 
 void i915_guc_log_unregister(struct drm_i915_private *dev_priv)
 {
-	if (!i915.enable_guc_submission)
+	if (!i915_modparams.enable_guc_submission)
 		return;
 
 	mutex_lock(&dev_priv->drm.struct_mutex);

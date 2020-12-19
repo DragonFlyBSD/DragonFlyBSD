@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Jonathan Gray <jsg@openbsd.org>
+ * Copyright (c) 2019-2020 Jonathan Gray <jsg@openbsd.org>
  * Copyright (c) 2020 François Tigeot <ftigeot@wolfpond.org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -62,12 +62,12 @@ dma_fence_wait_timeout(struct dma_fence *fence, bool intr, long timeout)
 		return dma_fence_default_wait(fence, intr, timeout);
 }
 
-u64
-dma_fence_context_alloc(unsigned n)
-{
-	static atomic64_t next_context = { 0 };
+static atomic64_t drm_fence_context_count = ATOMIC_INIT(1);
 
-	return atomic64_add_return(n, &next_context) - n;
+u64
+dma_fence_context_alloc(unsigned num)
+{
+	return atomic64_add_return(num, &drm_fence_context_count) - num;
 }
 
 struct default_wait_cb {
@@ -95,9 +95,6 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
 	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return ret;
 
-	if (intr && signal_pending(current))
-		return -ERESTARTSYS;
-
 	lockmgr(fence->lock, LK_EXCLUSIVE);
 
 	was_set = test_and_set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT,
@@ -113,19 +110,16 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
 		}
 	}
 
+	if (timeout == 0) {
+		ret = 0;
+		goto out;
+	}
+
 	cb.base.func = dma_fence_default_wait_cb;
 	cb.task = current;
 	list_add(&cb.base.node, &fence->cb_list);
 
-	if (timeout <= 0)
-		timeout = 1;
-
 	while (!test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
-		if (intr) {
-			__set_current_state(TASK_INTERRUPTIBLE);
-		} else {
-			__set_current_state(TASK_UNINTERRUPTIBLE);
-		}
 		/* wake_up_process() directly uses task_struct pointers as sleep identifiers */
 		err = lksleep(current, fence->lock, intr ? PCATCH : 0, "dmafence", timeout);
 		if (err == EINTR || err == ERESTART) {
@@ -139,8 +133,6 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
 
 	if (!list_empty(&cb.base.node))
 		list_del(&cb.base.node);
-	__set_current_state(TASK_RUNNING);
-
 out:
 	lockmgr(fence->lock, LK_RELEASE);
 	
@@ -151,6 +143,7 @@ int
 dma_fence_signal_locked(struct dma_fence *fence)
 {
 	struct dma_fence_cb *cur, *tmp;
+	struct list_head cb_list;
 
 	if (fence == NULL)
 		return -EINVAL;
@@ -158,8 +151,13 @@ dma_fence_signal_locked(struct dma_fence *fence)
 	if (test_and_set_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return -EINVAL;
 
-	list_for_each_entry_safe(cur, tmp, &fence->cb_list, node) {
-		list_del_init(&cur->node);
+	list_replace(&fence->cb_list, &cb_list);
+
+	fence->timestamp = ktime_get();
+	set_bit(DMA_FENCE_FLAG_TIMESTAMP_BIT, &fence->flags);
+
+	list_for_each_entry_safe(cur, tmp, &cb_list, node) {
+		INIT_LIST_HEAD(&cur->node);
 		cur->func(fence, cur);
 	}
 
@@ -169,24 +167,16 @@ dma_fence_signal_locked(struct dma_fence *fence)
 int
 dma_fence_signal(struct dma_fence *fence)
 {
+	int r;
+
 	if (fence == NULL)
 		return -EINVAL;
 
-	if (test_and_set_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
-		return -EINVAL;
+	lockmgr(fence->lock, LK_EXCLUSIVE);
+	r = dma_fence_signal_locked(fence);
+	lockmgr(fence->lock, LK_RELEASE);
 
-	if (test_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags)) {
-		struct dma_fence_cb *cur, *tmp;
-
-		lockmgr(fence->lock, LK_EXCLUSIVE);
-		list_for_each_entry_safe(cur, tmp, &fence->cb_list, node) {
-			list_del_init(&cur->node);
-			cur->func(fence, cur);
-		}
-		lockmgr(fence->lock, LK_RELEASE);
-	}
-
-	return 0;
+	return r;
 }
 
 void

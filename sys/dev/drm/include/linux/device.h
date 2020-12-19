@@ -59,6 +59,9 @@ struct device_driver {
 
 struct device_node;
 
+struct device_attribute {
+};
+
 #define	dev_dbg(dev, fmt, ...)						\
 	device_printf((dev)->bsddev, "debug: " fmt, ## __VA_ARGS__)
 #define	dev_err(dev, fmt, ...)						\
@@ -104,5 +107,7 @@ dev_set_name(struct device *dev, const char *name, ...)
 {
 	return 0;
 }
+
+#define dev_pm_set_driver_flags(dev, flags)
 
 #endif	/* _LINUX_DEVICE_H_ */

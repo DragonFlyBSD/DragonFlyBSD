@@ -6,6 +6,7 @@
 #include <linux/interrupt.h>	/* For task queue support */
 #include <linux/sched/signal.h>
 #include <linux/delay.h>
+#include <linux/io-64-nonatomic-lo-hi.h>
 
 /* Handle the DRM options from kernel config. */
 #ifdef __DragonFly__
@@ -21,19 +22,6 @@
 #  define DRM_DEBUG_DEFAULT_ON 0
 #endif /* DRM_DEBUG */
 #endif /* __DragonFly__ */
-
-#ifndef readq
-static inline u64 readq(void __iomem *reg)
-{
-	return ((u64) readl(reg)) | (((u64) readl(reg + 4UL)) << 32);
-}
-
-static inline void writeq(u64 val, void __iomem *reg)
-{
-	writel(val & 0xffffffff, reg);
-	writel(val >> 32, reg + 0x4UL);
-}
-#endif
 
 /** Current process ID */
 #define DRM_CURRENTPID			(curproc != NULL ? curproc->p_pid : -1)
@@ -58,7 +46,7 @@ static inline void writeq(u64 val, void __iomem *reg)
 
 #define DRM_WAIT_ON( ret, queue, timeout, condition )		\
 do {								\
-	wait_queue_t entry = {					\
+	wait_queue_entry_t entry = {				\
 		.private	= current,			\
 		.func		= default_wake_function,	\
 	};							\

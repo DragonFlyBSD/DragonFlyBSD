@@ -33,23 +33,25 @@
 #include <linux/spinlock.h>
 #include <asm/current.h>
 
-typedef struct __wait_queue wait_queue_t;
+typedef struct wait_queue_entry wait_queue_entry_t;
 
-typedef int (*wait_queue_func_t)(wait_queue_t *wait, unsigned mode, int flags, void *key);
+typedef int (*wait_queue_func_t)(wait_queue_entry_t *wait, unsigned mode, int flags, void *key);
 
-int default_wake_function(wait_queue_t *wait, unsigned mode, int flags, void *key);
-int autoremove_wake_function(wait_queue_t *wait, unsigned mode, int sync, void *key);
+int default_wake_function(wait_queue_entry_t *wait, unsigned mode, int flags, void *key);
+int autoremove_wake_function(wait_queue_entry_t *wait, unsigned mode, int sync, void *key);
 
-struct __wait_queue {
+struct wait_queue_entry {
 	unsigned int flags;
 	void *private;
 	wait_queue_func_t func;
-	struct list_head task_list;
+	struct list_head entry;
 };
+
+void init_wait_entry(struct wait_queue_entry *wq_entry, int flags);
 
 typedef struct {
 	struct lock		lock;
-	struct list_head	task_list;
+	struct list_head	head;
 } wait_queue_head_t;
 
 void __init_waitqueue_head(wait_queue_head_t *q, const char *name, struct lock_class_key *);
@@ -88,8 +90,8 @@ void wake_up_bit(void *, int);
 #define wake_up_interruptible_all(eq)	wake_up_all(eq)
 
 void __wait_event_prefix(wait_queue_head_t *wq, int flags);
-void prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state);
-void finish_wait(wait_queue_head_t *q, wait_queue_t *wait);
+void prepare_to_wait(wait_queue_head_t *q, wait_queue_entry_t *wait, int state);
+void finish_wait(wait_queue_head_t *q, wait_queue_entry_t *wait);
 
 /*
  * wait_event_interruptible_timeout:
@@ -198,51 +200,47 @@ void finish_wait(wait_queue_head_t *q, wait_queue_t *wait);
 static inline int
 waitqueue_active(wait_queue_head_t *q)
 {
-	return !list_empty(&q->task_list);
+	return !list_empty(&q->head);
 }
 
-#define DEFINE_WAIT(name)					\
-	wait_queue_t name = {					\
-		.private = current,				\
-		.task_list = LIST_HEAD_INIT((name).task_list),	\
-		.func = autoremove_wake_function,		\
-	}
-
 #define DEFINE_WAIT_FUNC(name, _function)			\
-	wait_queue_t name = {					\
+	wait_queue_entry_t name = {				\
 		.private = current,				\
-		.task_list = LIST_HEAD_INIT((name).task_list),	\
+		.entry = LIST_HEAD_INIT((name).entry),	\
 		.func = _function,				\
 	}
 
+#define DEFINE_WAIT(name)	\
+	DEFINE_WAIT_FUNC((name), autoremove_wake_function)
+
 static inline void
-__add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
+__add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 {
-	list_add(&new->task_list, &head->task_list);
+	list_add(&new->entry, &head->head);
 }
 
 static inline void
-add_wait_queue(wait_queue_head_t *head, wait_queue_t *wq)
+add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *wait)
 {
 	lockmgr(&head->lock, LK_EXCLUSIVE);
-	__add_wait_queue(head, wq);
+	__add_wait_queue(head, wait);
 	lockmgr(&head->lock, LK_RELEASE);
 }
 
 #define DECLARE_WAIT_QUEUE_HEAD(name)					\
 	wait_queue_head_t name = {					\
 		.lock = LOCK_INITIALIZER("name", 0, LK_CANRECURSE),	\
-		.task_list = { &(name).task_list, &(name).task_list }	\
+		.head = { &(name).head, &(name).head }	\
 	}
 
 static inline void
-__remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
+__remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
 {
-	list_del(&old->task_list);
+	list_del(&old->entry);
 }
 
 static inline void
-remove_wait_queue(wait_queue_head_t *head, wait_queue_t *wq)
+remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *wq)
 {
 	lockmgr(&head->lock, LK_EXCLUSIVE);
 	__remove_wait_queue(head, wq);
@@ -250,12 +248,9 @@ remove_wait_queue(wait_queue_head_t *head, wait_queue_t *wq)
 }
 
 static inline void
-__add_wait_queue_tail(wait_queue_head_t *wqh, wait_queue_t *wq)
+__add_wait_queue_entry_tail(wait_queue_head_t *wqh, wait_queue_entry_t *wq)
 {
-	list_add_tail(&wq->task_list, &wqh->task_list);
+	list_add_tail(&wq->entry, &wqh->head);
 }
-
-int wait_on_bit_timeout(unsigned long *word, int bit,
-			unsigned mode, unsigned long timeout);
 
 #endif	/* _LINUX_WAIT_H_ */

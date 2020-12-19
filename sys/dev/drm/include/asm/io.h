@@ -152,11 +152,7 @@ void iounmap(void __iomem *ptr);
 
 #define mmiowb cpu_sfence
 
-static inline int
-arch_io_reserve_memtype_wc(resource_size_t start, resource_size_t size)
-{
-	return 0;
-}
+int arch_io_reserve_memtype_wc(resource_size_t start, resource_size_t size);
 
 static inline void
 arch_io_free_memtype_wc(resource_size_t start, resource_size_t size)

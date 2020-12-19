@@ -42,14 +42,16 @@
 #define GFP_USER	GFP_KERNEL
 #define GFP_HIGHUSER	GFP_KERNEL
 
-#define __GFP_ZERO	M_ZERO
-#define __GFP_NORETRY	M_NULLOK
+#define __GFP_ZERO		M_ZERO
+#define __GFP_NORETRY		M_NULLOK
+#define __GFP_RETRY_MAYFAIL	M_NULLOK
 
 #define __GFP_HIGHMEM		0u	/* No particular meaning on DragonFly */
 #define __GFP_IO		0u	/* No particular meaning on DragonFly */
 #define __GFP_RECLAIM		0u
 #define __GFP_RECLAIMABLE	0u
 #define __GFP_NOWARN		0u
+#define __GFP_NOFAIL		0u
 
 #define __GFP_DMA32	0x10000u	/* XXX: MUST NOT collide with the M_XXX definitions */
 #define GFP_DMA32	__GFP_DMA32

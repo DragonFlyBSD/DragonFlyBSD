@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,4 +31,16 @@ void
 wait_for_completion(struct completion *c)
 {
 	__wait_for_completion_generic(c, MAX_SCHEDULE_TIMEOUT, 0);
+}
+
+/* This function can only return 0 or -ERESTARTSYS */
+int
+wait_for_completion_interruptible(struct completion *c)
+{
+	long rv = __wait_for_completion_generic(c, MAX_SCHEDULE_TIMEOUT, PCATCH);
+
+	if (rv == -ERESTARTSYS)
+		return -ERESTARTSYS;
+
+	return 0;
 }

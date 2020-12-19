@@ -26,8 +26,8 @@
 #include <linux/errno.h>
 #include <linux/export.h>
 #include <linux/hdmi.h>
+#include <linux/string.h>
 #include <linux/device.h>
-#include <linux/kernel.h>
 
 #define hdmi_log(fmt, ...) dev_printk(level, dev, fmt, ##__VA_ARGS__)
 
@@ -533,6 +533,10 @@ hdmi_picture_aspect_get_name(enum hdmi_picture_aspect picture_aspect)
 		return "4:3";
 	case HDMI_PICTURE_ASPECT_16_9:
 		return "16:9";
+	case HDMI_PICTURE_ASPECT_64_27:
+		return "64:27";
+	case HDMI_PICTURE_ASPECT_256_135:
+		return "256:135";
 	case HDMI_PICTURE_ASPECT_RESERVED:
 		return "Reserved";
 	}

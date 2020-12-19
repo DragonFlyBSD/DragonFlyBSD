@@ -54,34 +54,52 @@ typedef struct lock spinlock_t;
 /*
  * The spin_lock_irq() family of functions stop hardware interrupts
  * from being delivered to the local CPU.
- * A crit_enter()/crit_exit() sequence does the same thing on the
- * DragonFly kernel
  */
-static inline void spin_lock_irq(struct lock *lock)
+static inline void spin_lock_irq(spinlock_t *lock)
+{
+	local_irq_disable();
+	preempt_disable();
+	lockmgr(lock, LK_EXCLUSIVE);
+}
+
+static inline void spin_unlock_irq(spinlock_t *lock)
+{
+	lockmgr(lock, LK_RELEASE);
+	local_irq_enable();
+	preempt_enable();
+}
+
+#define spin_lock_irqsave(lock, flags)	\
+({					\
+	local_irq_save(flags);		\
+	preempt_disable();		\
+	lockmgr(lock, LK_EXCLUSIVE);	\
+})
+
+static inline void
+spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)
+{
+	lockmgr(lock, LK_RELEASE);
+	local_irq_restore(flags);
+	preempt_enable();
+}
+
+/*
+  XXX: the spin_lock_bh() and spin_unlock_bh() functions are possibly incorrect
+  XXX: see also in_interrupt()
+*/
+static inline void
+spin_lock_bh(struct lock *lock)
 {
 	crit_enter();
 	lockmgr(lock, LK_EXCLUSIVE);
 }
 
-static inline void spin_unlock_irq(struct lock *lock)
-{
-	lockmgr(lock, LK_RELEASE);
-	crit_exit();
-}
-
-#define spin_lock_irqsave(lock, flags)		do { flags = 0; spin_lock_irq(lock); } while(0)
-#define spin_unlock_irqrestore(lock, flags)	do { flags = 0; spin_unlock_irq(lock); } while(0)
-
-static inline void
-spin_lock_bh(struct lock *lock)
-{
-	spin_lock_irq(lock);
-}
-
 static inline void
 spin_unlock_bh(struct lock *lock)
 {
-	spin_unlock_irq(lock);
+	lockmgr(lock, LK_RELEASE);
+	crit_exit();
 }
 
 #define DEFINE_SPINLOCK(x)	struct lock x = LOCK_INITIALIZER("ds##x", 0, 0)
