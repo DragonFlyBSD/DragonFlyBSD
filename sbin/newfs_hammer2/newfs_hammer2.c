@@ -478,7 +478,7 @@ void
 format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 {
 	char *buf = malloc(HAMMER2_PBUFSIZE);
-	hammer2_volume_data_t *vol;
+	hammer2_volume_data_t *voldata;
 	hammer2_inode_data_t *rawip;
 	hammer2_blockref_t sroot_blockref;
 	hammer2_blockref_t root_blockref[MAXLABELS];
@@ -712,31 +712,31 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 */
 	assert(HAMMER2_VOLUME_BYTES <= HAMMER2_PBUFSIZE);
 	bzero(buf, HAMMER2_PBUFSIZE);
-	vol = (void *)buf;
+	voldata = (void *)buf;
 
-	vol->magic = HAMMER2_VOLUME_ID_HBO;
-	vol->boot_beg = boot_base;
-	vol->boot_end = boot_base + BootAreaSize;
-	vol->aux_beg = aux_base;
-	vol->aux_end = aux_base + AuxAreaSize;
-	vol->volu_size = total_space;
-	vol->version = Hammer2Version;
-	vol->flags = 0;
+	voldata->magic = HAMMER2_VOLUME_ID_HBO;
+	voldata->boot_beg = boot_base;
+	voldata->boot_end = boot_base + BootAreaSize;
+	voldata->aux_beg = aux_base;
+	voldata->aux_end = aux_base + AuxAreaSize;
+	voldata->volu_size = total_space;
+	voldata->version = Hammer2Version;
+	voldata->flags = 0;
 
-	vol->fsid = Hammer2_VolFSID;
-	vol->fstype = Hammer2_FSType;
+	voldata->fsid = Hammer2_VolFSID;
+	voldata->fstype = Hammer2_FSType;
 
-	vol->peer_type = DMSG_PEER_HAMMER2;	/* LNK_CONN identification */
+	voldata->peer_type = DMSG_PEER_HAMMER2;	/* LNK_CONN identification */
 
-	vol->allocator_size = free_space;
-	vol->allocator_free = free_space;
-	vol->allocator_beg = alloc_base;
+	voldata->allocator_size = free_space;
+	voldata->allocator_free = free_space;
+	voldata->allocator_beg = alloc_base;
 
-	vol->sroot_blockset.blockref[0] = sroot_blockref;
-	vol->mirror_tid = 16;	/* all blockref mirror TIDs set to 16 */
-	vol->freemap_tid = 16;	/* all blockref mirror TIDs set to 16 */
-	vol->icrc_sects[HAMMER2_VOL_ICRC_SECT1] =
-			hammer2_icrc32((char *)vol + HAMMER2_VOLUME_ICRC1_OFF,
+	voldata->sroot_blockset.blockref[0] = sroot_blockref;
+	voldata->mirror_tid = 16;	/* all blockref mirror TIDs set to 16 */
+	voldata->freemap_tid = 16;	/* all blockref mirror TIDs set to 16 */
+	voldata->icrc_sects[HAMMER2_VOL_ICRC_SECT1] =
+			hammer2_icrc32((char *)voldata + HAMMER2_VOLUME_ICRC1_OFF,
 				       HAMMER2_VOLUME_ICRC1_SIZE);
 
 	/*
@@ -744,11 +744,11 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * populated in the volume header.  Note hat ICRC_SECT* (except for
 	 * SECT0) are part of sect0.
 	 */
-	vol->icrc_sects[HAMMER2_VOL_ICRC_SECT0] =
-			hammer2_icrc32((char *)vol + HAMMER2_VOLUME_ICRC0_OFF,
+	voldata->icrc_sects[HAMMER2_VOL_ICRC_SECT0] =
+			hammer2_icrc32((char *)voldata + HAMMER2_VOLUME_ICRC0_OFF,
 				       HAMMER2_VOLUME_ICRC0_SIZE);
-	vol->icrc_volheader =
-			hammer2_icrc32((char *)vol + HAMMER2_VOLUME_ICRCVH_OFF,
+	voldata->icrc_volheader =
+			hammer2_icrc32((char *)voldata + HAMMER2_VOLUME_ICRCVH_OFF,
 				       HAMMER2_VOLUME_ICRCVH_SIZE);
 
 	/*
