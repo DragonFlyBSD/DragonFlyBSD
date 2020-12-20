@@ -316,7 +316,7 @@ struct in_addr {
 #define	INADDR_UNSPEC_GROUP	(uint32_t)0xe0000000	/* 224.0.0.0 */
 #define	INADDR_ALLHOSTS_GROUP	(uint32_t)0xe0000001	/* 224.0.0.1 */
 #define	INADDR_ALLRTRS_GROUP	(uint32_t)0xe0000002	/* 224.0.0.2 */
-#define	INADDR_CARP_GROUP       (uint32_t)0xe0000012   /* 224.0.0.18 */
+#define	INADDR_CARP_GROUP       (uint32_t)0xe0000012	/* 224.0.0.18 */
 #define	INADDR_PFSYNC_GROUP	(uint32_t)0xe00000f0	/* 224.0.0.240 */
 #define	INADDR_ALLMDNS_GROUP	(uint32_t)0xe00000fb	/* 224.0.0.251 */
 #define	INADDR_MAX_LOCAL_GROUP	(uint32_t)0xe00000ff	/* 224.0.0.255 */
