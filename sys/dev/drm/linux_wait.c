@@ -25,22 +25,23 @@
  */
 
 #include <linux/wait.h>
+#include <linux/wait_bit.h>
 #include <linux/sched.h>
 
 int
-default_wake_function(wait_queue_t *q, unsigned mode, int wake_flags, void *key)
+default_wake_function(wait_queue_entry_t *q, unsigned mode, int wake_flags, void *key)
 {
 	return wake_up_process(q->private);
 }
 
 int
-autoremove_wake_function(wait_queue_t *wait, unsigned mode, int sync, void *key)
+autoremove_wake_function(wait_queue_entry_t *wait, unsigned mode, int sync, void *key)
 {
 	int ret = default_wake_function(wait, mode, sync, key);
 
 	/* Was the process woken up ? */
 	if (ret)
-		list_del_init(&wait->task_list);
+		list_del_init(&wait->entry);
 
 	return ret;
 }
@@ -48,10 +49,10 @@ autoremove_wake_function(wait_queue_t *wait, unsigned mode, int sync, void *key)
 void
 __wake_up_core(wait_queue_head_t *q, int num_to_wake_up)
 {
-	wait_queue_t *curr, *next;
+	wait_queue_entry_t *curr, *next;
 	int mode = TASK_NORMAL;
 
-	list_for_each_entry_safe(curr, next, &q->task_list, task_list) {
+	list_for_each_entry_safe(curr, next, &q->head, entry) {
 		if (curr->func(curr, mode, 0, NULL))
 			num_to_wake_up--;
 
@@ -73,23 +74,23 @@ __wait_event_prefix(wait_queue_head_t *wq, int flags)
 }
 
 void
-prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
+prepare_to_wait(wait_queue_head_t *q, wait_queue_entry_t *wait, int state)
 {
 	lockmgr(&q->lock, LK_EXCLUSIVE);
-	if (list_empty(&wait->task_list))
+	if (list_empty(&wait->entry))
 		__add_wait_queue(q, wait);
 	set_current_state(state);
 	lockmgr(&q->lock, LK_RELEASE);
 }
 
 void
-finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
+finish_wait(wait_queue_head_t *q, wait_queue_entry_t *wait)
 {
 	set_current_state(TASK_RUNNING);
 
 	lockmgr(&q->lock, LK_EXCLUSIVE);
-	if (!list_empty(&wait->task_list))
-		list_del_init(&wait->task_list);
+	if (!list_empty(&wait->entry))
+		list_del_init(&wait->entry);
 	lockmgr(&q->lock, LK_RELEASE);
 }
 
@@ -133,5 +134,20 @@ void __init_waitqueue_head(wait_queue_head_t *q,
 			   const char *name, struct lock_class_key *key)
 {
 	lockinit(&q->lock, "lwq", 0, 0);
-	INIT_LIST_HEAD(&q->task_list);
+	INIT_LIST_HEAD(&q->head);
+}
+
+int
+wait_on_bit(unsigned long *word, int bit, unsigned mode)
+{
+	return wait_on_bit_timeout(word, bit, mode, MAX_SCHEDULE_TIMEOUT);
+}
+
+void
+init_wait_entry(struct wait_queue_entry *wq_entry, int flags)
+{
+	INIT_LIST_HEAD(&wq_entry->entry);
+	wq_entry->flags = flags;
+	wq_entry->private = current;
+	wq_entry->func = autoremove_wake_function;
 }

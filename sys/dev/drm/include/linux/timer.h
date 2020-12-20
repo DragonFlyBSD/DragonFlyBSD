@@ -124,4 +124,17 @@ round_jiffies_up_relative(unsigned long j)
 
 #define TIMER_IRQSAFE	0x00200000
 
+#define from_timer(var, arg, field)			\
+        container_of(arg, typeof(*(var)), field)
+
+static inline void
+timer_setup(struct timer_list *timer,
+	    void (*callback)(struct timer_list *),
+	    unsigned int flags)
+{
+	setup_timer(timer,
+	    (void (*)(unsigned long))callback,
+	    (unsigned long)timer);
+}
+
 #endif /* _LINUX_TIMER_H_ */

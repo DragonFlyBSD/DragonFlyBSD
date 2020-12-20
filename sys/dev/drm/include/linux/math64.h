@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2007 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2014-2015 Mellanox Technologies, Ltd. All rights reserved.
- * Copyright (c) 2016-2017 François Tigeot
+ * Copyright (c) 2016-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -77,6 +77,12 @@ div64_u64_rem(u64 dividend, u64 divisor, u64 *remainder)
 {
 	*remainder = dividend % divisor;
 	return (dividend / divisor);
+}
+
+static inline u64
+mul_u32_u32(u32 a, u32 b)
+{
+	return (uint64_t)a * b;
 }
 
 #endif	/* _LINUX_MATH64_H */

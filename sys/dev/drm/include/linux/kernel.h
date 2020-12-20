@@ -46,6 +46,7 @@
 #include <sys/endian.h>
 
 #define U8_MAX		((u8)~0U)
+#define U16_MAX		((u16)~0U)
 #define U32_MAX		((u32)~0U)
 #define U64_MAX		((u64)~0ULL)
 

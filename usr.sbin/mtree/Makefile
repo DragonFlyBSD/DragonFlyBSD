@@ -26,8 +26,10 @@ CFLAGS+=-DNO_MD5 -DNO_SHA -DNO_RMD160
 CFLAGS+=-DBOOTSTRAPPING
 .if ${WORLD_VERSION} < 500302 # pwcache(3)/vis(3) upgrades came in about here
 .PATH: ${.CURDIR}/../../lib/libc/gen
-SRCS+=	vis.c
+SRCS+=	vis.c pwcache.c
 CFLAGS+=-include ${.CURDIR}/../../include/vis.h
+CFLAGS+=-I${.CURDIR}/../../lib/libc/gen
+CFLAGS+=-DEMBED_LIB_SRC
 .endif
 .if ${WORLD_VERSION} < 500901 # fparseln(3) was moved from libutil to libc
 DPADD+=	${LIBUTIL}

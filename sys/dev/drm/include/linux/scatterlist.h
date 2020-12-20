@@ -78,6 +78,7 @@ struct sg_page_iter {
 	int			__pg_advance;
 };
 
+#define SCATTERLIST_MAX_SEGMENT	(UINT_MAX & LINUX_PAGE_MASK)
 
 /*
  * Maximum number of entries that will be allocated in one piece, if
@@ -392,5 +393,10 @@ sg_alloc_table_from_pages(struct sg_table *sgt,
 	kprintf("sg_alloc_table_from_pages: Not implemented\n");
 	return -EINVAL;
 }
+
+int __sg_alloc_table_from_pages(struct sg_table *sgt, struct page **pages,
+				unsigned int n_pages, unsigned int offset,
+				unsigned long size, unsigned int max_segment,
+				gfp_t gfp_mask);
 
 #endif	/* _LINUX_SCATTERLIST_H_ */

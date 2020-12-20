@@ -32,6 +32,7 @@ MAN+=	\
 	pthread_getcpuclockid.3 \
 	pthread_getspecific.3 \
 	pthread_getthreadid_np.3 \
+	pthread_is_threaded_np.3 \
 	pthread_join.3 \
 	pthread_key_create.3 \
 	pthread_key_delete.3 \
@@ -145,6 +146,7 @@ MLINKS+= \
 	pthread_switch_add_np.3 pthread_switch_delete_np.3 \
 	pthread_testcancel.3 pthread_setcancelstate.3 \
 	pthread_testcancel.3 pthread_setcanceltype.3 \
+	pthread_yield.3 pthread_yield_np.3 \
 	sem_open.3 sem_close.3 \
 	sem_open.3 sem_unlink.3 \
 	sem_wait.3 sem_trywait.3

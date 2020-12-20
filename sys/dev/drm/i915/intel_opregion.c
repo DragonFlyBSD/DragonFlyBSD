@@ -25,7 +25,10 @@
  *
  */
 
+#include <linux/acpi.h>
 #include <linux/dmi.h>
+#include <linux/firmware.h>
+#include <acpi/video.h>
 
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
@@ -465,7 +468,7 @@ static u32 asle_set_backlight(struct drm_i915_private *dev_priv, u32 bclp)
 	DRM_DEBUG_KMS("updating opregion backlight %d/255\n", bclp);
 	drm_connector_list_iter_begin(dev, &conn_iter);
 	for_each_intel_connector_iter(connector, &conn_iter)
-		intel_panel_set_backlight_acpi(connector, bclp, 255);
+		intel_panel_set_backlight_acpi(connector->base.state, bclp, 255);
 	drm_connector_list_iter_end(&conn_iter);
 	asle->cblv = DIV_ROUND_UP(bclp * 100, 255) | ASLE_CBLV_VALID;
 
@@ -833,6 +836,10 @@ void intel_opregion_unregister(struct drm_i915_private *dev_priv)
 		iounmap(opregion->rvda);
 		opregion->rvda = NULL;
 	}
+	if (opregion->vbt_firmware) {
+		kfree(opregion->vbt_firmware);
+		opregion->vbt_firmware = NULL;
+	}
 	opregion->header = NULL;
 	opregion->acpi = NULL;
 	opregion->swsci = NULL;
@@ -916,6 +923,43 @@ static const struct dmi_system_id intel_no_opregion_vbt[] = {
 	{ }
 };
 
+static int intel_load_vbt_firmware(struct drm_i915_private *dev_priv)
+{
+	struct intel_opregion *opregion = &dev_priv->opregion;
+	const struct firmware *fw = NULL;
+	const char *name = i915_modparams.vbt_firmware;
+	int ret;
+
+	if (!name || !*name)
+		return -ENOENT;
+
+	ret = request_firmware(&fw, name, &dev_priv->drm.pdev->dev);
+	if (ret) {
+		DRM_ERROR("Requesting VBT firmware \"%s\" failed (%d)\n",
+			  name, ret);
+		return ret;
+	}
+
+	if (intel_bios_is_valid_vbt(fw->data, fw->datasize)) {
+		opregion->vbt_firmware = kmemdup(fw->data, fw->datasize, GFP_KERNEL);
+		if (opregion->vbt_firmware) {
+			DRM_DEBUG_KMS("Found valid VBT firmware \"%s\"\n", name);
+			opregion->vbt = opregion->vbt_firmware;
+			opregion->vbt_size = fw->datasize;
+			ret = 0;
+		} else {
+			ret = -ENOMEM;
+		}
+	} else {
+		DRM_DEBUG_KMS("Invalid VBT firmware \"%s\"\n", name);
+		ret = -EINVAL;
+	}
+
+	release_firmware(fw);
+
+	return ret;
+}
+
 int intel_opregion_setup(struct drm_i915_private *dev_priv)
 {
 	struct intel_opregion *opregion = &dev_priv->opregion;
@@ -977,6 +1021,9 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 
 	if (mboxes & MBOX_ASLE_EXT)
 		DRM_DEBUG_DRIVER("ASLE extension supported\n");
+
+	if (intel_load_vbt_firmware(dev_priv) == 0)
+		goto out;
 
 	if (dmi_check_system(intel_no_opregion_vbt))
 		goto out;

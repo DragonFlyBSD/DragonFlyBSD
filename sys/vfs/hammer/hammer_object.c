@@ -740,7 +740,8 @@ hammer_ip_add_direntry(hammer_transaction_t trans,
 	error = hammer_mem_add(record);
 	if (error == 0) {
 		dip->ino_data.mtime = trans->time;
-		hammer_modify_inode(trans, dip, HAMMER_INODE_MTIME);
+		dip->ino_data.ctime = trans->time;
+		hammer_modify_inode(trans, dip, HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY);
 	}
 failed:
 	hammer_done_cursor(&cursor);

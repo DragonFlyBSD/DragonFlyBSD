@@ -143,7 +143,7 @@ int radeon_uvd_init(struct radeon_device *rdev)
 			dev_err(rdev->dev, "radeon_uvd: Can't load firmware \"%s\"\n",
 				fw_name);
 		} else {
-			const struct common_firmware_header *hdr = (const void *)rdev->uvd_fw->data;
+			struct common_firmware_header *hdr = (void *)rdev->uvd_fw->data;
 			unsigned version_major, version_minor, family_id;
 
 			r = radeon_ucode_validate(rdev->uvd_fw);
@@ -281,7 +281,7 @@ int radeon_uvd_suspend(struct radeon_device *rdev)
 int radeon_uvd_resume(struct radeon_device *rdev)
 {
 	unsigned size;
-	char *ptr;
+	void *ptr;
 
 	if (rdev->uvd.vcpu_bo == NULL)
 		return -EINVAL;
@@ -492,7 +492,7 @@ static int radeon_uvd_cs_msg(struct radeon_cs_parser *p, struct radeon_bo *bo,
 		return r;
 	}
 
-	msg = (uint32_t*)((uint8_t*)ptr + offset);
+	msg = ptr + offset;
 
 	msg_type = msg[1];
 	handle = msg[2];
@@ -781,7 +781,7 @@ int radeon_uvd_get_create_msg(struct radeon_device *rdev, int ring,
 	uint64_t offs = radeon_bo_size(rdev->uvd.vcpu_bo) -
 		RADEON_GPU_PAGE_SIZE;
 
-	uint32_t *msg = (uint32_t*)((uint8_t*)rdev->uvd.cpu_addr + offs);
+	uint32_t *msg = rdev->uvd.cpu_addr + offs;
 	uint64_t addr = rdev->uvd.gpu_addr + offs;
 
 	int r, i;
@@ -817,7 +817,7 @@ int radeon_uvd_get_destroy_msg(struct radeon_device *rdev, int ring,
 	uint64_t offs = radeon_bo_size(rdev->uvd.vcpu_bo) -
 		RADEON_GPU_PAGE_SIZE;
 
-	uint32_t *msg = (uint32_t*)((uint8_t*)rdev->uvd.cpu_addr + offs);
+	uint32_t *msg = rdev->uvd.cpu_addr + offs;
 	uint64_t addr = rdev->uvd.gpu_addr + offs;
 
 	int r, i;

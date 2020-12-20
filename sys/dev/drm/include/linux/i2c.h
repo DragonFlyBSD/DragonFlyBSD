@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2013-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,8 +62,8 @@ struct i2c_client {
 	struct i2c_adapter *adapter;
 };
 
-extern int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs,
-			int num);
+int __i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num);
+int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num);
 
 struct i2c_algorithm {
 	int (*master_xfer)(struct i2c_adapter *adap, struct i2c_msg *msgs,

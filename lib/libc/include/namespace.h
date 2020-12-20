@@ -204,6 +204,7 @@
 #define		pthread_testcancel		_pthread_testcancel
 #define		pthread_timedjoin_np		_pthread_timedjoin_np
 #define		pthread_yield			_pthread_yield
+#define		pthread_yield_np		_pthread_yield_np
 #define		read				_read
 #define		readv				_readv
 #define		recvfrom			_recvfrom

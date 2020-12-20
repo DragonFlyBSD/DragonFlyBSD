@@ -300,7 +300,7 @@ static int drm_context_switch_complete(struct drm_device *dev,
 {
 	dev->last_context = new;	/* PRE/POST: This is the _only_ writer. */
 
-	if (!_DRM_LOCK_IS_HELD(dev->lock.hw_lock->lock)) {
+	if (!_DRM_LOCK_IS_HELD(file_priv->master->lock.hw_lock->lock)) {
 		DRM_ERROR("Lock isn't held after context switch\n");
 	}
 
@@ -378,7 +378,7 @@ int drm_legacy_addctx(struct drm_device *dev, void *data,
 		return -ENOMEM;
 	}
 
-	ctx_entry = kmalloc(sizeof(*ctx_entry), M_DRM, M_WAITOK);
+	ctx_entry = kmalloc(sizeof(*ctx_entry), M_DRM, GFP_KERNEL);
 	if (!ctx_entry) {
 		DRM_DEBUG("out of memory\n");
 		return -ENOMEM;

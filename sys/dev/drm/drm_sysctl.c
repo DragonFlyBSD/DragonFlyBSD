@@ -131,8 +131,7 @@ static int drm_name_info DRM_SYSCTL_HANDLER_ARGS
 	int retcode;
 	int hasunique = 0;
 
-	DRM_SYSCTL_PRINT("%s 0x%x", dev->driver->name,
-	    devid_from_dev(dev->devnode));
+	DRM_SYSCTL_PRINT("%s", dev->driver->name);
 	
 	DRM_LOCK(dev);
 	if (dev->unique) {
@@ -282,12 +281,11 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 	DRM_UNLOCK(dev);
 
 	DRM_SYSCTL_PRINT(
-	    "\na dev            pid      magic     ioctls\n");
+	    "\na pid      magic     ioctls\n");
 	for (i = 0; i < privcount; i++) {
 		priv = &tempprivs[i];
-		DRM_SYSCTL_PRINT("%c %-12s %5d %10u %10lu\n",
+		DRM_SYSCTL_PRINT("%c %5d %10u %10lu\n",
 			       priv->authenticated ? 'y' : 'n',
-			       devtoname(priv->dev->devnode),
 			       priv->pid,
 			       priv->magic,
 			       0UL);

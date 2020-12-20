@@ -53,6 +53,7 @@ struct dma_fence {
 
 enum dma_fence_flag_bits {
 	DMA_FENCE_FLAG_SIGNALED_BIT,
+	DMA_FENCE_FLAG_TIMESTAMP_BIT,
 	DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT,
 	DMA_FENCE_FLAG_USER_BITS, /* must always be last member */
 };

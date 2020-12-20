@@ -37,6 +37,8 @@
 
 #define trace_dma_fence_enable_signal(fence)
 
+#define trace_g4x_wm(a,b)
+
 #define trace_i915_flip_complete(a,b)
 #define trace_i915_flip_request(a,b)
 

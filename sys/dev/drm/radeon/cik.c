@@ -22,8 +22,9 @@
  * Authors: Alex Deucher
  */
 #include <linux/firmware.h>
+#include <linux/slab.h>
 #include <linux/module.h>
-#include "drmP.h"
+#include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "radeon_audio.h"
@@ -32,7 +33,6 @@
 #include "cik_blit_shaders.h"
 #include "radeon_ucode.h"
 #include "clearstate_ci.h"
-#include "radeon_kfd.h"
 
 #define SH_MEM_CONFIG_GFX_DEFAULT \
 	ALIGNMENT_MODE(SH_MEM_ALIGNMENT_MODE_UNALIGNED)
@@ -169,21 +169,24 @@ int cik_get_allowed_info_register(struct radeon_device *rdev,
  */
 u32 cik_didt_rreg(struct radeon_device *rdev, u32 reg)
 {
+	unsigned long flags;
 	u32 r;
 
-	lockmgr(&rdev->didt_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->didt_idx_lock, flags);
 	WREG32(CIK_DIDT_IND_INDEX, (reg));
 	r = RREG32(CIK_DIDT_IND_DATA);
-	lockmgr(&rdev->didt_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->didt_idx_lock, flags);
 	return r;
 }
 
 void cik_didt_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	lockmgr(&rdev->didt_idx_lock, LK_EXCLUSIVE);
+	unsigned long flags;
+
+	spin_lock_irqsave(&rdev->didt_idx_lock, flags);
 	WREG32(CIK_DIDT_IND_INDEX, (reg));
 	WREG32(CIK_DIDT_IND_DATA, (v));
-	lockmgr(&rdev->didt_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->didt_idx_lock, flags);
 }
 
 /* get temperature in millidegrees */
@@ -228,24 +231,27 @@ int kv_get_temp(struct radeon_device *rdev)
  */
 u32 cik_pciep_rreg(struct radeon_device *rdev, u32 reg)
 {
+	unsigned long flags;
 	u32 r;
 
-	lockmgr(&rdev->pciep_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->pciep_idx_lock, flags);
 	WREG32(PCIE_INDEX, reg);
 	(void)RREG32(PCIE_INDEX);
 	r = RREG32(PCIE_DATA);
-	lockmgr(&rdev->pciep_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->pciep_idx_lock, flags);
 	return r;
 }
 
 void cik_pciep_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	lockmgr(&rdev->pciep_idx_lock, LK_EXCLUSIVE);
+	unsigned long flags;
+
+	spin_lock_irqsave(&rdev->pciep_idx_lock, flags);
 	WREG32(PCIE_INDEX, reg);
 	(void)RREG32(PCIE_INDEX);
 	WREG32(PCIE_DATA, v);
 	(void)RREG32(PCIE_DATA);
-	lockmgr(&rdev->pciep_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->pciep_idx_lock, flags);
 }
 
 static const u32 spectre_rlc_save_restore_register_list[] =
@@ -2051,8 +2057,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		if (err)
 			goto out;
 		if (rdev->pfp_fw->datasize != pfp_req_size) {
-			printk(KERN_ERR
-			       "cik_cp: Bogus length %zu in firmware \"%s\"\n",
+			pr_err("cik_cp: Bogus length %zu in firmware \"%s\"\n",
 			       rdev->pfp_fw->datasize, fw_name);
 			err = -EINVAL;
 			goto out;
@@ -2076,16 +2081,14 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		if (err)
 			goto out;
 		if (rdev->me_fw->datasize != me_req_size) {
-			printk(KERN_ERR
-			       "cik_cp: Bogus length %zu in firmware \"%s\"\n",
+			pr_err("cik_cp: Bogus length %zu in firmware \"%s\"\n",
 			       rdev->me_fw->datasize, fw_name);
 			err = -EINVAL;
 		}
 	} else {
 		err = radeon_ucode_validate(rdev->me_fw);
 		if (err) {
-			printk(KERN_ERR
-			       "cik_fw: validation failed for firmware \"%s\"\n",
+			pr_err("cik_fw: validation failed for firmware \"%s\"\n",
 			       fw_name);
 			goto out;
 		} else {
@@ -2101,16 +2104,14 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		if (err)
 			goto out;
 		if (rdev->ce_fw->datasize != ce_req_size) {
-			printk(KERN_ERR
-			       "cik_cp: Bogus length %zu in firmware \"%s\"\n",
+			pr_err("cik_cp: Bogus length %zu in firmware \"%s\"\n",
 			       rdev->ce_fw->datasize, fw_name);
 			err = -EINVAL;
 		}
 	} else {
 		err = radeon_ucode_validate(rdev->ce_fw);
 		if (err) {
-			printk(KERN_ERR
-			       "cik_fw: validation failed for firmware \"%s\"\n",
+			pr_err("cik_fw: validation failed for firmware \"%s\"\n",
 			       fw_name);
 			goto out;
 		} else {
@@ -2126,16 +2127,14 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		if (err)
 			goto out;
 		if (rdev->mec_fw->datasize != mec_req_size) {
-			printk(KERN_ERR
-			       "cik_cp: Bogus length %zu in firmware \"%s\"\n",
+			pr_err("cik_cp: Bogus length %zu in firmware \"%s\"\n",
 			       rdev->mec_fw->datasize, fw_name);
 			err = -EINVAL;
 		}
 	} else {
 		err = radeon_ucode_validate(rdev->mec_fw);
 		if (err) {
-			printk(KERN_ERR
-			       "cik_fw: validation failed for firmware \"%s\"\n",
+			pr_err("cik_fw: validation failed for firmware \"%s\"\n",
 			       fw_name);
 			goto out;
 		} else {
@@ -2166,16 +2165,14 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		if (err)
 			goto out;
 		if (rdev->rlc_fw->datasize != rlc_req_size) {
-			printk(KERN_ERR
-			       "cik_rlc: Bogus length %zu in firmware \"%s\"\n",
+			pr_err("cik_rlc: Bogus length %zu in firmware \"%s\"\n",
 			       rdev->rlc_fw->datasize, fw_name);
 			err = -EINVAL;
 		}
 	} else {
 		err = radeon_ucode_validate(rdev->rlc_fw);
 		if (err) {
-			printk(KERN_ERR
-			       "cik_fw: validation failed for firmware \"%s\"\n",
+			pr_err("cik_fw: validation failed for firmware \"%s\"\n",
 			       fw_name);
 			goto out;
 		} else {
@@ -2191,16 +2188,14 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		if (err)
 			goto out;
 		if (rdev->sdma_fw->datasize != sdma_req_size) {
-			printk(KERN_ERR
-			       "cik_sdma: Bogus length %zu in firmware \"%s\"\n",
+			pr_err("cik_sdma: Bogus length %zu in firmware \"%s\"\n",
 			       rdev->sdma_fw->datasize, fw_name);
 			err = -EINVAL;
 		}
 	} else {
 		err = radeon_ucode_validate(rdev->sdma_fw);
 		if (err) {
-			printk(KERN_ERR
-			       "cik_fw: validation failed for firmware \"%s\"\n",
+			pr_err("cik_fw: validation failed for firmware \"%s\"\n",
 			       fw_name);
 			goto out;
 		} else {
@@ -2223,8 +2218,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 			}
 			if ((rdev->mc_fw->datasize != mc_req_size) &&
 			    (rdev->mc_fw->datasize != mc2_req_size)){
-				printk(KERN_ERR
-				       "cik_mc: Bogus length %zu in firmware \"%s\"\n",
+				pr_err("cik_mc: Bogus length %zu in firmware \"%s\"\n",
 				       rdev->mc_fw->datasize, fw_name);
 				err = -EINVAL;
 			}
@@ -2249,23 +2243,20 @@ static int cik_init_microcode(struct radeon_device *rdev)
 			ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", chip_name);
 			err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
 			if (err) {
-				printk(KERN_ERR
-				       "smc: error loading firmware \"%s\"\n",
+				pr_err("smc: error loading firmware \"%s\"\n",
 				       fw_name);
 				release_firmware(rdev->smc_fw);
 				rdev->smc_fw = NULL;
 				err = 0;
 			} else if (rdev->smc_fw->datasize != smc_req_size) {
-				printk(KERN_ERR
-				       "cik_smc: Bogus length %zu in firmware \"%s\"\n",
+				pr_err("cik_smc: Bogus length %zu in firmware \"%s\"\n",
 				       rdev->smc_fw->datasize, fw_name);
 				err = -EINVAL;
 			}
 		} else {
 			err = radeon_ucode_validate(rdev->smc_fw);
 			if (err) {
-				printk(KERN_ERR
-				       "cik_fw: validation failed for firmware \"%s\"\n",
+				pr_err("cik_fw: validation failed for firmware \"%s\"\n",
 				       fw_name);
 				goto out;
 			} else {
@@ -3253,35 +3244,8 @@ static void cik_gpu_init(struct radeon_device *rdev)
 	case CHIP_KAVERI:
 		rdev->config.cik.max_shader_engines = 1;
 		rdev->config.cik.max_tile_pipes = 4;
-		if ((rdev->pdev->device == 0x1304) ||
-		    (rdev->pdev->device == 0x1305) ||
-		    (rdev->pdev->device == 0x130C) ||
-		    (rdev->pdev->device == 0x130F) ||
-		    (rdev->pdev->device == 0x1310) ||
-		    (rdev->pdev->device == 0x1311) ||
-		    (rdev->pdev->device == 0x131C)) {
-			rdev->config.cik.max_cu_per_sh = 8;
-			rdev->config.cik.max_backends_per_se = 2;
-		} else if ((rdev->pdev->device == 0x1309) ||
-			   (rdev->pdev->device == 0x130A) ||
-			   (rdev->pdev->device == 0x130D) ||
-			   (rdev->pdev->device == 0x1313) ||
-			   (rdev->pdev->device == 0x131D)) {
-			rdev->config.cik.max_cu_per_sh = 6;
-			rdev->config.cik.max_backends_per_se = 2;
-		} else if ((rdev->pdev->device == 0x1306) ||
-			   (rdev->pdev->device == 0x1307) ||
-			   (rdev->pdev->device == 0x130B) ||
-			   (rdev->pdev->device == 0x130E) ||
-			   (rdev->pdev->device == 0x1315) ||
-			   (rdev->pdev->device == 0x1318) ||
-			   (rdev->pdev->device == 0x131B)) {
-			rdev->config.cik.max_cu_per_sh = 4;
-			rdev->config.cik.max_backends_per_se = 1;
-		} else {
-			rdev->config.cik.max_cu_per_sh = 3;
-			rdev->config.cik.max_backends_per_se = 1;
-		}
+		rdev->config.cik.max_cu_per_sh = 8;
+		rdev->config.cik.max_backends_per_se = 2;
 		rdev->config.cik.max_sh_per_se = 1;
 		rdev->config.cik.max_texture_channel_caches = 4;
 		rdev->config.cik.max_gprs = 256;
@@ -4604,23 +4568,24 @@ static int cik_cp_compute_resume(struct radeon_device *rdev)
 	/* init the pipes */
 	mutex_lock(&rdev->srbm_mutex);
 
-	eop_gpu_addr = rdev->mec.hpd_eop_gpu_addr;
+	for (i = 0; i < rdev->mec.num_pipe; ++i) {
+		cik_srbm_select(rdev, 0, i, 0, 0);
 
-	cik_srbm_select(rdev, 0, 0, 0, 0);
+		eop_gpu_addr = rdev->mec.hpd_eop_gpu_addr + (i * MEC_HPD_SIZE * 2) ;
+		/* write the EOP addr */
+		WREG32(CP_HPD_EOP_BASE_ADDR, eop_gpu_addr >> 8);
+		WREG32(CP_HPD_EOP_BASE_ADDR_HI, upper_32_bits(eop_gpu_addr) >> 8);
 
-	/* write the EOP addr */
-	WREG32(CP_HPD_EOP_BASE_ADDR, eop_gpu_addr >> 8);
-	WREG32(CP_HPD_EOP_BASE_ADDR_HI, upper_32_bits(eop_gpu_addr) >> 8);
+		/* set the VMID assigned */
+		WREG32(CP_HPD_EOP_VMID, 0);
 
-	/* set the VMID assigned */
-	WREG32(CP_HPD_EOP_VMID, 0);
+		/* set the EOP size, register value is 2^(EOP_SIZE+1) dwords */
+		tmp = RREG32(CP_HPD_EOP_CONTROL);
+		tmp &= ~EOP_SIZE_MASK;
+		tmp |= order_base_2(MEC_HPD_SIZE / 8);
+		WREG32(CP_HPD_EOP_CONTROL, tmp);
 
-	/* set the EOP size, register value is 2^(EOP_SIZE+1) dwords */
-	tmp = RREG32(CP_HPD_EOP_CONTROL);
-	tmp &= ~EOP_SIZE_MASK;
-	tmp |= order_base_2(MEC_HPD_SIZE / 8);
-	WREG32(CP_HPD_EOP_CONTROL, tmp);
-
+	}
 	mutex_unlock(&rdev->srbm_mutex);
 
 	/* init the queues.  Just two for now. */
@@ -5475,28 +5440,6 @@ void cik_pcie_gart_tlb_flush(struct radeon_device *rdev)
 	WREG32(VM_INVALIDATE_REQUEST, 0x1);
 }
 
-static void cik_pcie_init_compute_vmid(struct radeon_device *rdev)
-{
-	int i;
-	uint32_t sh_mem_bases, sh_mem_config;
-
-	sh_mem_bases = 0x6000 | 0x6000 << 16;
-	sh_mem_config = ALIGNMENT_MODE(SH_MEM_ALIGNMENT_MODE_UNALIGNED);
-	sh_mem_config |= DEFAULT_MTYPE(MTYPE_NONCACHED);
-
-	mutex_lock(&rdev->srbm_mutex);
-	for (i = 8; i < 16; i++) {
-		cik_srbm_select(rdev, 0, 0, 0, i);
-		/* CP and shaders */
-		WREG32(SH_MEM_CONFIG, sh_mem_config);
-		WREG32(SH_MEM_APE1_BASE, 1);
-		WREG32(SH_MEM_APE1_LIMIT, 0);
-		WREG32(SH_MEM_BASES, sh_mem_bases);
-	}
-	cik_srbm_select(rdev, 0, 0, 0, 0);
-	mutex_unlock(&rdev->srbm_mutex);
-}
-
 /**
  * cik_pcie_gart_enable - gart enable
  *
@@ -5610,8 +5553,6 @@ static int cik_pcie_gart_enable(struct radeon_device *rdev)
 	cik_srbm_select(rdev, 0, 0, 0, 0);
 	mutex_unlock(&rdev->srbm_mutex);
 
-	cik_pcie_init_compute_vmid(rdev);
-
 	cik_pcie_gart_tlb_flush(rdev);
 	DRM_INFO("PCIE GART of %uM enabled (table at 0x%016llX).\n",
 		 (unsigned)(rdev->mc.gtt_size >> 20),
@@ -5707,10 +5648,9 @@ int cik_vm_init(struct radeon_device *rdev)
 	/*
 	 * number of VMs
 	 * VMID 0 is reserved for System
-	 * radeon graphics/compute will use VMIDs 1-7
-	 * amdkfd will use VMIDs 8-15
+	 * radeon graphics/compute will use VMIDs 1-15
 	 */
-	rdev->vm_manager.nvm = RADEON_NUM_OF_VMIDS;
+	rdev->vm_manager.nvm = 16;
 	/* base offset of vram pages */
 	if (rdev->flags & RADEON_IS_IGP) {
 		u64 tmp = RREG32(MC_VM_FB_OFFSET);
@@ -7612,12 +7552,6 @@ restart_ih:
 		/* wptr/rptr are in bytes! */
 		ring_index = rptr / 4;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
-		radeon_kfd_interrupt(rdev,
-				(const void *) &rdev->ih.ring[ring_index]);
-#pragma GCC diagnostic pop
-
 		src_id =  le32_to_cpu(rdev->ih.ring[ring_index]) & 0xff;
 		src_data = le32_to_cpu(rdev->ih.ring[ring_index + 1]) & 0xfffffff;
 		ring_id = le32_to_cpu(rdev->ih.ring[ring_index + 2]) & 0xff;
@@ -7747,7 +7681,7 @@ restart_ih:
 			switch (src_data) {
 			case 0: /* D5 vblank */
 				if (!(rdev->irq.stat_regs.cik.disp_int_cont4 & LB_D5_VBLANK_INTERRUPT))
-					DRM_DEBUG_VBLANK("IH: IH event w/o asserted irq bit?\n");
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
 
 				if (rdev->irq.crtc_vblank_int[4]) {
 					drm_handle_vblank(rdev->ddev, 4);
@@ -7809,7 +7743,7 @@ restart_ih:
 		case 14: /* D4 page flip */
 		case 16: /* D5 page flip */
 		case 18: /* D6 page flip */
-			DRM_DEBUG_VBLANK("IH: D%d flip\n", ((src_id - 8) >> 1) + 1);
+			DRM_DEBUG("IH: D%d flip\n", ((src_id - 8) >> 1) + 1);
 			if (radeon_use_pflipirq > 0)
 				radeon_crtc_handle_flip(rdev, (src_id - 8) >> 1);
 			break;
@@ -8512,10 +8446,6 @@ static int cik_startup(struct radeon_device *rdev)
 	if (r)
 		return r;
 
-	r = radeon_kfd_resume(rdev);
-	if (r)
-		return r;
-
 	return 0;
 }
 
@@ -8564,7 +8494,6 @@ int cik_resume(struct radeon_device *rdev)
  */
 int cik_suspend(struct radeon_device *rdev)
 {
-	radeon_kfd_suspend(rdev);
 	radeon_pm_suspend(rdev);
 	radeon_audio_fini(rdev);
 	radeon_vm_manager_fini(rdev);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -66,6 +66,12 @@ static inline ktime_t ktime_add_ns(ktime_t kt, int64_t ns)
 	return kt + ns;
 }
 
+static inline ktime_t
+ktime_add_ms(const ktime_t kt, const u64 ms)
+{
+	return ktime_add_ns(kt, NSEC_PER_MSEC * ms);
+}
+
 static inline ktime_t ktime_sub_ns(ktime_t kt, int64_t ns)
 {
 	return kt - ns;
@@ -90,6 +96,20 @@ ns_to_ktime(u64 ns)
 {
 	return ns;
 }
+
+static inline bool
+ktime_before(const ktime_t cmp1, const ktime_t cmp2)
+{
+	return (cmp1 < cmp2);
+}
+
+static inline bool
+ktime_after(const ktime_t cmp1, const ktime_t cmp2)
+{
+	return (cmp1 > cmp2);
+}
+
+#define ktime_to_timespec64(kt)		ns_to_timespec((kt))
 
 #include <linux/timekeeping.h>
 

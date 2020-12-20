@@ -56,7 +56,7 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 	if (align > size)
 		return NULL;
 
-	dmah = kmalloc(sizeof(drm_dma_handle_t), M_DRM, M_WAITOK | M_NULLOK);
+	dmah = kmalloc(sizeof(drm_dma_handle_t), M_DRM, GFP_KERNEL);
 	if (!dmah)
 		return NULL;
 
@@ -157,13 +157,12 @@ int drm_pci_set_busid(struct drm_device *dev, struct drm_master *master)
 	master->unique_len = strlen(master->unique);
 	return 0;
 }
-EXPORT_SYMBOL(drm_pci_set_busid);
 
 static int drm_pci_irq_by_busid(struct drm_device *dev, struct drm_irq_busid *p)
 {
-	if ((p->busnum >> 8) != dev->pci_domain ||
-	    (p->busnum & 0xff) != dev->pci_bus ||
-	    p->devnum != dev->pci_slot || p->funcnum != dev->pci_func)
+	if ((p->busnum >> 8) != drm_get_pci_domain(dev) ||
+	    (p->busnum & 0xff) != dev->pdev->bus->number ||
+	    p->devnum != PCI_SLOT(dev->pdev->devfn) || p->funcnum != PCI_FUNC(dev->pdev->devfn))
 		return -EINVAL;
 
 	p->irq = dev->pdev->irq;
@@ -172,26 +171,6 @@ static int drm_pci_irq_by_busid(struct drm_device *dev, struct drm_irq_busid *p)
 		  p->irq);
 	return 0;
 }
-
-#ifdef __DragonFly__
-int
-drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
-{
-	struct drm_pciinfo *info = data;
-
-	info->domain = 0;
-	info->bus = dev->pci_bus;
-	info->dev = PCI_SLOT(dev->pdev->devfn);
-	info->func = PCI_FUNC(dev->pdev->devfn);
-	info->vendor_id = dev->pdev->vendor;
-	info->device_id = dev->pdev->device;
-	info->subvendor_id = dev->pdev->subsystem_vendor;
-	info->subdevice_id = dev->pdev->subsystem_device;
-	info->revision_id = 0;
-
-	return 0;
-}
-#endif
 
 /**
  * drm_irq_by_busid - Get interrupt from bus ID
@@ -222,6 +201,26 @@ int drm_irq_by_busid(struct drm_device *dev, void *data,
 
 	return drm_pci_irq_by_busid(dev, p);
 }
+
+#ifdef __DragonFly__
+int
+drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
+{
+	struct drm_pciinfo *info = data;
+
+	info->domain = 0;
+	info->bus = dev->pci_bus;
+	info->dev = PCI_SLOT(dev->pdev->devfn);
+	info->func = PCI_FUNC(dev->pdev->devfn);
+	info->vendor_id = dev->pdev->vendor;
+	info->device_id = dev->pdev->device;
+	info->subvendor_id = dev->pdev->subsystem_vendor;
+	info->subdevice_id = dev->pdev->subsystem_device;
+	info->revision_id = 0;
+
+	return 0;
+}
+#endif
 
 /**
  * drm_get_pci_dev - Register a PCI device with the DRM subsystem
@@ -291,20 +290,15 @@ err_free:
 EXPORT_SYMBOL(drm_get_pci_dev);
 
 /**
- * drm_pci_init - Register matching PCI devices with the DRM subsystem
+ * drm_legacy_pci_init - shadow-attach a legacy DRM PCI driver
  * @driver: DRM device driver
  * @pdriver: PCI device driver
  *
- * Initializes a drm_device structures, registering the stubs and initializing
- * the AGP device.
- *
- * NOTE: This function is deprecated. Modern modesetting drm drivers should use
- * pci_register_driver() directly, this function only provides shadow-binding
- * support for old legacy drivers on top of that core pci function.
+ * This is only used by legacy dri1 drivers and deprecated.
  *
  * Return: 0 on success or a negative error code on failure.
  */
-int drm_pci_init(struct drm_driver *driver, struct pci_driver *pdriver)
+int drm_legacy_pci_init(struct drm_driver *driver, struct pci_driver *pdriver)
 {
 #if 0
 	struct pci_dev *pdev = NULL;
@@ -314,8 +308,8 @@ int drm_pci_init(struct drm_driver *driver, struct pci_driver *pdriver)
 
 	DRM_DEBUG("\n");
 
-	if (!(driver->driver_features & DRIVER_LEGACY))
-		return pci_register_driver(pdriver);
+	if (WARN_ON(!(driver->driver_features & DRIVER_LEGACY)))
+		return -EINVAL;
 
 #if 0
 	/* If not using KMS, fall back to stealth mode manual scanning. */
@@ -344,40 +338,26 @@ int drm_pci_init(struct drm_driver *driver, struct pci_driver *pdriver)
 #endif
 	return 0;
 }
+EXPORT_SYMBOL(drm_legacy_pci_init);
 
 int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 {
-	device_t root;
-	int pos;
-	u32 lnkcap = 0, lnkcap2 = 0;
+	struct pci_dev *root;
+	u32 lnkcap, lnkcap2;
 
 	*mask = 0;
 	if (!dev->pdev)
 		return -EINVAL;
 
-	root = device_get_parent(dev->dev->bsddev);
+	root = dev->pdev->bus->self;
 
 	/* we've been informed via and serverworks don't make the cut */
-	if (pci_get_vendor(root) == PCI_VENDOR_ID_VIA ||
-	    pci_get_vendor(root) == PCI_VENDOR_ID_SERVERWORKS)
+	if (root->vendor == PCI_VENDOR_ID_VIA ||
+	    root->vendor == PCI_VENDOR_ID_SERVERWORKS)
 		return -EINVAL;
 
-	pos = 0;
-	pci_find_extcap(root, PCIY_EXPRESS, &pos);
-	if (!pos)
-		return -EINVAL;
-
-	lnkcap = pci_read_config(root, pos + PCIER_LINKCAP, 4);
-	lnkcap2 = pci_read_config(root, pos + PCIER_LINK_CAP2, 4);
-
-	lnkcap &= PCIEM_LNKCAP_SPEED_MASK;
-	lnkcap2 &= 0xfe;
-
-#define	PCI_EXP_LNKCAP_SLS_2_5GB	PCIEM_LNKCAP_SPEED_2_5
-#define	PCI_EXP_LNKCAP_SLS_5_0GB	PCIEM_LNKCAP_SPEED_5
-#define	PCI_EXP_LNKCAP2_SLS_2_5GB 0x02	/* Supported Link Speed 2.5GT/s */
-#define	PCI_EXP_LNKCAP2_SLS_5_0GB 0x04	/* Supported Link Speed 5.0GT/s */
-#define	PCI_EXP_LNKCAP2_SLS_8_0GB 0x08	/* Supported Link Speed 8.0GT/s */
+	pcie_capability_read_dword(root, PCI_EXP_LNKCAP, &lnkcap);
+	pcie_capability_read_dword(root, PCI_EXP_LNKCAP2, &lnkcap2);
 
 	if (lnkcap2) {	/* PCIe r3.0-compliant */
 		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_2_5GB)
@@ -393,27 +373,15 @@ int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 			*mask |= (DRM_PCIE_SPEED_25 | DRM_PCIE_SPEED_50);
 	}
 
-	DRM_INFO("probing gen 2 caps for device %x:%x = %x/%x\n", pci_get_vendor(root), pci_get_device(root), lnkcap, lnkcap2);
+	DRM_INFO("probing gen 2 caps for device %x:%x = %x/%x\n", root->vendor, root->device, lnkcap, lnkcap2);
 	return 0;
 }
 EXPORT_SYMBOL(drm_pcie_get_speed_cap_mask);
 
-static int
-pcie_capability_read_dword(struct pci_dev *dev, int pos, u32 *dst)
-{
-	if (pos & 3)
-		return -EINVAL;
-
-	if (!pcie_capability_reg_implemented(dev, pos))
-		return -EINVAL;
-
-	return pci_read_config_dword(dev, pci_pcie_cap(dev) + pos, dst);
-}
-
 int drm_pcie_get_max_link_width(struct drm_device *dev, u32 *mlw)
 {
 	struct pci_dev *root;
-	u32 lnkcap = 0;
+	u32 lnkcap;
 
 	*mlw = 0;
 	if (!dev->pdev)
@@ -432,12 +400,6 @@ EXPORT_SYMBOL(drm_pcie_get_max_link_width);
 
 #else
 
-
-int drm_pci_init(struct drm_driver *driver, struct pci_driver *pdriver)
-{
-	return -1;
-}
-
 void drm_pci_agp_destroy(struct drm_device *dev) {}
 
 int drm_irq_by_busid(struct drm_device *dev, void *data,
@@ -447,27 +409,21 @@ int drm_irq_by_busid(struct drm_device *dev, void *data,
 }
 #endif
 
-EXPORT_SYMBOL(drm_pci_init);
-
 /**
- * drm_pci_exit - Unregister matching PCI devices from the DRM subsystem
+ * drm_legacy_pci_exit - unregister shadow-attach legacy DRM driver
  * @driver: DRM device driver
  * @pdriver: PCI device driver
  *
- * Unregisters one or more devices matched by a PCI driver from the DRM
- * subsystem.
- *
- * NOTE: This function is deprecated. Modern modesetting drm drivers should use
- * pci_unregister_driver() directly, this function only provides shadow-binding
- * support for old legacy drivers on top of that core pci function.
+ * Unregister a DRM driver shadow-attached through drm_legacy_pci_init(). This
+ * is deprecated and only used by dri1 drivers.
  */
-void drm_pci_exit(struct drm_driver *driver, struct pci_driver *pdriver)
+void drm_legacy_pci_exit(struct drm_driver *driver, struct pci_driver *pdriver)
 {
 	struct drm_device *dev, *tmp;
 	DRM_DEBUG("\n");
 
 	if (!(driver->driver_features & DRIVER_LEGACY)) {
-		pci_unregister_driver(pdriver);
+		WARN_ON(1);
 	} else {
 		list_for_each_entry_safe(dev, tmp, &driver->legacy_dev_list,
 					 legacy_dev_list) {
@@ -479,4 +435,4 @@ void drm_pci_exit(struct drm_driver *driver, struct pci_driver *pdriver)
 	}
 	DRM_INFO("Module unloaded\n");
 }
-EXPORT_SYMBOL(drm_pci_exit);
+EXPORT_SYMBOL(drm_legacy_pci_exit);

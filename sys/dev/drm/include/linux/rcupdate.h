@@ -78,7 +78,13 @@ do {					\
 	p = v;				\
 } while (0)
 
-extern void kfree_rcu(void *ptr, void *rcu_head __unused);
+extern void __kfree_rcu(void *ptr);
+
+#define kfree_rcu(ptr, rcu_head)	\
+do {					\
+	__kfree_rcu(ptr);		\
+} while (0)
+
 extern void call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *));
 
 #define rcu_access_pointer(p)	((typeof(*p) *)READ_ONCE(p))

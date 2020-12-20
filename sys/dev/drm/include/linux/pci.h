@@ -96,6 +96,8 @@ struct pci_bus {
 	struct device *dev;		/* handle to dev */
 
 	unsigned char number;		/* bus addr number */
+
+	unsigned char max_bus_speed;
 };
 
 struct pci_driver {
@@ -509,6 +511,15 @@ pci_resource_flags(struct pci_dev *pdev, int bar)
 		return IORESOURCE_MEM;
 	}
 }
+
+enum pci_bus_speed {
+	PCIE_SPEED_2_5GT	= 0x14,
+	PCIE_SPEED_5_0GT	= 0x15,
+	PCIE_SPEED_8_0GT	= 0x16,
+	PCI_SPEED_UNKNOWN	= 0xff,
+};
+
+int pcie_capability_read_dword(struct pci_dev *dev, int pos, u32 *val);
 
 #include <linux/pci-dma-compat.h>
 

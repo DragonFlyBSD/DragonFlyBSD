@@ -64,8 +64,11 @@ linux_task_alloc(struct thread *td)
 
 	task = kzalloc(sizeof(*task), GFP_KERNEL);
 	task->dfly_td = td;
+	task->pid = -1;
+	spin_init(&task->kt_spin, "tspin2");
 
 	if ((p = td->td_proc) != NULL) {
+		task->pid = td->td_proc->p_pid;
 		if ((mm = p->p_linux_mm) == NULL) {
 			mm = kzalloc(sizeof(*mm), GFP_KERNEL);
 			mm->refs = 1;

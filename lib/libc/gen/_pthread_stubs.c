@@ -180,6 +180,7 @@ WR(stub_zero, pthread_switch_delete_np);
 WR(stub_zero, pthread_testcancel);
 WR(stub_zero, pthread_timedjoin_np);
 WR(stub_zero, pthread_yield);
+WR(stub_zero, pthread_yield_np);
 WR(stub_zero, sem_close);
 WR(stub_zero, sem_destroy);
 WR(stub_zero, sem_getvalue);

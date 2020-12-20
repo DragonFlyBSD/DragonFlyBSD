@@ -205,7 +205,7 @@ static struct radeon_mn *radeon_mn_get(struct radeon_device *rdev)
 	rmn->mm = mm;
 	rmn->mn.ops = &radeon_mn_ops;
 	mutex_init(&rmn->lock);
-	rmn->objects = RB_ROOT;
+	rmn->objects = LINUX_RB_ROOT;
 	
 	r = __mmu_notifier_register(&rmn->mn, mm);
 	if (r)
@@ -263,7 +263,8 @@ int radeon_mn_register(struct radeon_bo *bo, unsigned long addr)
 	}
 
 	if (!node) {
-		node = kmalloc(sizeof(struct radeon_mn_node), GFP_KERNEL);
+		node = kmalloc(sizeof(struct radeon_mn_node), M_DRM,
+			       GFP_KERNEL);
 		if (!node) {
 			mutex_unlock(&rmn->lock);
 			return -ENOMEM;

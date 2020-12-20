@@ -4,7 +4,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_yield.3,v 1.2 2007/10/22 10:08:01 ru Exp $
 .\"
-.Dd July 10, 2009
+.Dd December 16, 2020
 .Dt PTHREAD_YIELD 3
 .Os
 .Sh NAME
@@ -16,6 +16,9 @@
 .In pthread.h
 .Ft void
 .Fn pthread_yield void
+.In pthread_np.h
+.Ft void
+.Fn pthread_yield_np void
 .Sh DESCRIPTION
 The
 .Fn pthread_yield

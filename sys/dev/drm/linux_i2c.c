@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2016-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,6 +60,25 @@ i2c_del_adapter(struct i2c_adapter *adapter)
 	/* Linux deletes a unique bus number here */
 }
 
+int
+__i2c_transfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int num)
+{
+	uint64_t start_ticks;
+	int ret, tries = 0;
+
+	start_ticks = ticks;
+	do {
+		ret = adapter->algo->master_xfer(adapter, msgs, num);
+		if (ticks > start_ticks + adapter->timeout)
+			break;
+		if (ret != -EAGAIN)
+			break;
+		tries++;
+	} while (tries < adapter->retries);
+
+	return ret;
+}
+
 /*
  * i2c_transfer()
  * The original Linux implementation does:
@@ -72,22 +91,13 @@ i2c_del_adapter(struct i2c_adapter *adapter)
 int
 i2c_transfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int num)
 {
-	uint64_t start_ticks;
-	int ret, tries = 0;
+	int ret;
 
 	if (adapter->algo->master_xfer == NULL)
 		return -EOPNOTSUPP;
 
 	adapter->lock_ops->lock_bus(adapter, I2C_LOCK_SEGMENT);
-	start_ticks = ticks;
-	do {
-		ret = adapter->algo->master_xfer(adapter, msgs, num);
-		if (ticks > start_ticks + adapter->timeout)
-			break;
-		if (ret != -EAGAIN)
-			break;
-		tries++;
-	} while (tries < adapter->retries);
+	ret = __i2c_transfer(adapter, msgs, num);
 	adapter->lock_ops->unlock_bus(adapter, I2C_LOCK_SEGMENT);
 
 	return ret;

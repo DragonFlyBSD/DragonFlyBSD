@@ -238,6 +238,7 @@ int	dev_is_good(cdev_t dev);
 #define		GID_OPERATOR	5
 #define		GID_BIN		7
 #define		GID_GAMES	13
+#define		GID_VIDEO	44
 #define		GID_DIALER	68
 
 #endif /* _KERNEL */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -68,5 +68,12 @@
 #define PCI_EXP_LNKCAP2		44
 
 #define PCI_EXP_LNKCAP_MLW	0x000003f0
+
+#define PCI_EXP_LNKCAP_SLS_2_5GB	0x01
+#define PCI_EXP_LNKCAP_SLS_5_0GB	0x02
+
+#define PCI_EXP_LNKCAP2_SLS_2_5GB	0x02	/* Supported Link Speed 2.5GT/s */
+#define PCI_EXP_LNKCAP2_SLS_5_0GB	0x04	/* Supported Link Speed 5.0GT/s */
+#define PCI_EXP_LNKCAP2_SLS_8_0GB	0x08	/* Supported Link Speed 8.0GT/s */
 
 #endif /* UAPI_LINUX_PCIREGS_H */

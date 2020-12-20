@@ -159,7 +159,7 @@ rcu_expand(rcu_pcpu_t *rcu)
 }
 
 void
-kfree_rcu(void *ptr, void *rcu_head __unused)
+__kfree_rcu(void *ptr)
 {
 	rcu_pcpu_t *rcu;
 	rcu_elm_t *elm;

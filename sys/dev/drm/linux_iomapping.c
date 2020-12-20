@@ -101,3 +101,19 @@ void iounmap(void __iomem *ptr)
 
 	kfree(imp);
 }
+
+#include <sys/memrange.h>
+
+int
+arch_io_reserve_memtype_wc(resource_size_t start, resource_size_t size)
+{
+	int act;
+	struct mem_range_desc mrdesc;
+
+	mrdesc.mr_base = start;
+	mrdesc.mr_len = size;
+	mrdesc.mr_flags = MDF_WRITECOMBINE;
+	act = MEMRANGE_SET_UPDATE;
+	strlcpy(mrdesc.mr_owner, "drm", sizeof(mrdesc.mr_owner));
+	return mem_range_attr_set(&mrdesc, &act);
+}

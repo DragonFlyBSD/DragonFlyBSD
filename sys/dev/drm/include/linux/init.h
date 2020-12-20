@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2020 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,5 +29,7 @@
 
 #include <linux/compiler.h>
 #include <linux/types.h>
+
+#define __initconst
 
 #endif	/* _LINUX_INIT_H_ */

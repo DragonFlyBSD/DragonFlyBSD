@@ -25,6 +25,7 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
+#include <linux/slab.h>
 #include <linux/seq_file.h>
 #include <linux/firmware.h>
 #include <linux/module.h>
@@ -108,40 +109,46 @@ static void r600_pcie_gen2_enable(struct radeon_device *rdev);
  */
 u32 r600_rcu_rreg(struct radeon_device *rdev, u32 reg)
 {
+	unsigned long flags;
 	u32 r;
 
-	lockmgr(&rdev->rcu_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->rcu_idx_lock, flags);
 	WREG32(R600_RCU_INDEX, ((reg) & 0x1fff));
 	r = RREG32(R600_RCU_DATA);
-	lockmgr(&rdev->rcu_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->rcu_idx_lock, flags);
 	return r;
 }
 
 void r600_rcu_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	lockmgr(&rdev->rcu_idx_lock, LK_EXCLUSIVE);
+	unsigned long flags;
+
+	spin_lock_irqsave(&rdev->rcu_idx_lock, flags);
 	WREG32(R600_RCU_INDEX, ((reg) & 0x1fff));
 	WREG32(R600_RCU_DATA, (v));
-	lockmgr(&rdev->rcu_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->rcu_idx_lock, flags);
 }
 
 u32 r600_uvd_ctx_rreg(struct radeon_device *rdev, u32 reg)
 {
+	unsigned long flags;
 	u32 r;
 
-	lockmgr(&rdev->uvd_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->uvd_idx_lock, flags);
 	WREG32(R600_UVD_CTX_INDEX, ((reg) & 0x1ff));
 	r = RREG32(R600_UVD_CTX_DATA);
-	lockmgr(&rdev->uvd_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->uvd_idx_lock, flags);
 	return r;
 }
 
 void r600_uvd_ctx_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	lockmgr(&rdev->uvd_idx_lock, LK_EXCLUSIVE);
+	unsigned long flags;
+
+	spin_lock_irqsave(&rdev->uvd_idx_lock, flags);
 	WREG32(R600_UVD_CTX_INDEX, ((reg) & 0x1ff));
 	WREG32(R600_UVD_CTX_DATA, (v));
-	lockmgr(&rdev->uvd_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->uvd_idx_lock, flags);
 }
 
 /**
@@ -1260,24 +1267,27 @@ int r600_mc_wait_for_idle(struct radeon_device *rdev)
 
 uint32_t rs780_mc_rreg(struct radeon_device *rdev, uint32_t reg)
 {
+	unsigned long flags;
 	uint32_t r;
 
-	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->mc_idx_lock, flags);
 	WREG32(R_0028F8_MC_INDEX, S_0028F8_MC_IND_ADDR(reg));
 	r = RREG32(R_0028FC_MC_DATA);
 	WREG32(R_0028F8_MC_INDEX, ~C_0028F8_MC_IND_ADDR);
-	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->mc_idx_lock, flags);
 	return r;
 }
 
 void rs780_mc_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	lockmgr(&rdev->mc_idx_lock, LK_EXCLUSIVE);
+	unsigned long flags;
+
+	spin_lock_irqsave(&rdev->mc_idx_lock, flags);
 	WREG32(R_0028F8_MC_INDEX, S_0028F8_MC_IND_ADDR(reg) |
 		S_0028F8_MC_IND_WR_EN(1));
 	WREG32(R_0028FC_MC_DATA, v);
 	WREG32(R_0028F8_MC_INDEX, 0x7F);
-	lockmgr(&rdev->mc_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->mc_idx_lock, flags);
 }
 
 static void r600_mc_program(struct radeon_device *rdev)
@@ -1488,7 +1498,6 @@ static int r600_mc_init(struct radeon_device *rdev)
 int r600_vram_scratch_init(struct radeon_device *rdev)
 {
 	int r;
-	void *vram_scratch_ptr_ptr = &rdev->vram_scratch.ptr;
 
 	if (rdev->vram_scratch.robj == NULL) {
 		r = radeon_bo_create(rdev, RADEON_GPU_PAGE_SIZE,
@@ -1509,7 +1518,7 @@ int r600_vram_scratch_init(struct radeon_device *rdev)
 		return r;
 	}
 	r = radeon_bo_kmap(rdev->vram_scratch.robj,
-				vram_scratch_ptr_ptr);
+				(void **)&rdev->vram_scratch.ptr);
 	if (r)
 		radeon_bo_unpin(rdev->vram_scratch.robj);
 	radeon_bo_unreserve(rdev->vram_scratch.robj);
@@ -2376,24 +2385,27 @@ static void r600_gpu_init(struct radeon_device *rdev)
  */
 u32 r600_pciep_rreg(struct radeon_device *rdev, u32 reg)
 {
+	unsigned long flags;
 	u32 r;
 
-	lockmgr(&rdev->pciep_idx_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->pciep_idx_lock, flags);
 	WREG32(PCIE_PORT_INDEX, ((reg) & 0xff));
 	(void)RREG32(PCIE_PORT_INDEX);
 	r = RREG32(PCIE_PORT_DATA);
-	lockmgr(&rdev->pciep_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->pciep_idx_lock, flags);
 	return r;
 }
 
 void r600_pciep_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
-	lockmgr(&rdev->pciep_idx_lock, LK_EXCLUSIVE);
+	unsigned long flags;
+
+	spin_lock_irqsave(&rdev->pciep_idx_lock, flags);
 	WREG32(PCIE_PORT_INDEX, ((reg) & 0xff));
 	(void)RREG32(PCIE_PORT_INDEX);
 	WREG32(PCIE_PORT_DATA, (v));
 	(void)RREG32(PCIE_PORT_DATA);
-	lockmgr(&rdev->pciep_idx_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->pciep_idx_lock, flags);
 }
 
 /*
@@ -2534,8 +2546,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->pfp_fw->datasize != pfp_req_size) {
-		printk(KERN_ERR
-		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
+		pr_err("r600_cp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->pfp_fw->datasize, fw_name);
 		err = -EINVAL;
 		goto out;
@@ -2546,8 +2557,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->me_fw->datasize != me_req_size) {
-		printk(KERN_ERR
-		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
+		pr_err("r600_cp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->me_fw->datasize, fw_name);
 		err = -EINVAL;
 	}
@@ -2557,26 +2567,21 @@ int r600_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->rlc_fw->datasize != rlc_req_size) {
-		printk(KERN_ERR
-		       "r600_rlc: Bogus length %zu in firmware \"%s\"\n",
+		pr_err("r600_rlc: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->rlc_fw->datasize, fw_name);
 		err = -EINVAL;
 	}
 
 	if ((rdev->family >= CHIP_RV770) && (rdev->family <= CHIP_HEMLOCK)) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", smc_chip_name);
-
 		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
 		if (err) {
-			printk(KERN_ERR
-			       "smc: error loading firmware \"%s\"\n",
-			       fw_name);
+			pr_err("smc: error loading firmware \"%s\"\n", fw_name);
 			release_firmware(rdev->smc_fw);
 			rdev->smc_fw = NULL;
 			err = 0;
 		} else if (rdev->smc_fw->datasize != smc_req_size) {
-			printk(KERN_ERR
-			       "smc: Bogus length %zu in firmware \"%s\"\n",
+			pr_err("smc: Bogus length %zu in firmware \"%s\"\n",
 			       rdev->smc_fw->datasize, fw_name);
 			err = -EINVAL;
 		}
@@ -3487,7 +3492,6 @@ void r600_ih_ring_init(struct radeon_device *rdev, unsigned ring_size)
 int r600_ih_ring_alloc(struct radeon_device *rdev)
 {
 	int r;
-	void *ring_ptr = &rdev->ih.ring;
 
 	/* Allocate ring buffer */
 	if (rdev->ih.ring_obj == NULL) {
@@ -3511,7 +3515,7 @@ int r600_ih_ring_alloc(struct radeon_device *rdev)
 			return r;
 		}
 		r = radeon_bo_kmap(rdev->ih.ring_obj,
-				   ring_ptr);
+				   (void **)&rdev->ih.ring);
 		radeon_bo_unreserve(rdev->ih.ring_obj);
 		if (r) {
 			DRM_ERROR("radeon: failed to map ih ring buffer (%d).\n", r);
@@ -4396,11 +4400,11 @@ void r600_mmio_hdp_flush(struct radeon_device *rdev)
 	 */
 	if ((rdev->family >= CHIP_RV770) && (rdev->family <= CHIP_RV740) &&
 	    rdev->vram_scratch.ptr && !(rdev->flags & RADEON_IS_AGP)) {
-		volatile void __iomem *ptr = (volatile void *)rdev->vram_scratch.ptr;
+		void __iomem *ptr = (void *)rdev->vram_scratch.ptr;
 		u32 tmp;
 
 		WREG32(HDP_DEBUG1, 0);
-		tmp = readl((volatile void __iomem *)ptr);
+		tmp = readl((void __iomem *)ptr);
 	} else
 		WREG32(R_005480_HDP_MEM_COHERENCY_FLUSH_CNTL, 0x1);
 }
@@ -4521,9 +4525,11 @@ static void r600_pcie_gen2_enable(struct radeon_device *rdev)
 #ifdef __DragonFly__
 	if (drm_pcie_get_speed_cap_mask(rdev->ddev, &mask) != 0)
 		return;
+	rdev->pdev->bus->max_bus_speed = (mask & 0xff);
 #endif
 
-	if (!(mask & DRM_PCIE_SPEED_50))
+	if ((rdev->pdev->bus->max_bus_speed != PCIE_SPEED_5_0GT) &&
+		(rdev->pdev->bus->max_bus_speed != PCIE_SPEED_8_0GT))
 		return;
 
 	speed_cntl = RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL);

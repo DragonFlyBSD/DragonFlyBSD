@@ -185,6 +185,7 @@
 #undef		pthread_testcancel
 #undef		pthread_timedjoin_np
 #undef		pthread_yield
+#undef		pthread_yield_np
 #undef		read
 #undef		readv
 #undef		recvfrom

@@ -168,6 +168,7 @@ void drm_print_pdev(struct pci_dev *pdev)
 		 pdev->subsystem_vendor, pdev->subsystem_device, pdev->irq);
 }
 
+#if 0
 /* Allocation of PCI memory resources (framebuffer, registers, etc.) for
  * drm_get_resource_*.  Note that they are not RF_ACTIVE, so there's no virtual
  * address for accessing them.  Cleaned up at unload.
@@ -223,6 +224,7 @@ unsigned long drm_get_resource_len(struct drm_device *dev,
 
 	return rman_get_size(dev->pcir[resource]);
 }
+#endif
 
 /* Former drm_release() in the legacy DragonFly BSD drm codebase */
 int drm_device_detach(device_t kdev)
@@ -231,10 +233,9 @@ int drm_device_detach(device_t kdev)
 	struct drm_device *dev = softc->drm_driver_data;
 
 	drm_sysctl_cleanup(dev);
-	if (dev->devnode != NULL)
-		destroy_dev(dev->devnode);
 
 #ifdef __DragonFly__
+#if 0
 	/* Clean up PCI resources allocated by drm_bufs.c.  We're not really
 	 * worried about resource consumption while the DRM is inactive (between
 	 * lastclose and firstopen or unload) because these aren't actually
@@ -247,6 +248,7 @@ int drm_device_detach(device_t kdev)
 		    dev->pcirid[i], dev->pcir[i]);
 		dev->pcir[i] = NULL;
 	}
+#endif
 
 	if (dev->agp) {
 		kfree(dev->agp);

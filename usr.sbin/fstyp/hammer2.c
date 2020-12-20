@@ -35,24 +35,40 @@
 
 #include "fstyp.h"
 
+static ssize_t
+get_file_size(FILE *fp)
+{
+	ssize_t siz;
+
+	if (fseek(fp, 0, SEEK_END) == -1) {
+		warnx("hammer2: failed to seek media end");
+		return (-1);
+	}
+
+	siz = ftell(fp);
+	if (siz == -1) {
+		warnx("hammer2: failed to tell media end");
+		return (-1);
+	}
+
+	return (siz);
+}
+
 static int
 test_voldata(FILE *fp)
 {
 	hammer2_volume_data_t *voldata;
-	int i, num, fail = 0;
+	int i, fail = 0;
 
-	for (num = 0; num < HAMMER2_NUM_VOLHDRS; num++) {
-		if (fseek(fp, num * HAMMER2_ZONE_BYTES64, SEEK_SET))
+	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
+		if (i * HAMMER2_ZONE_BYTES64 >= get_file_size(fp))
 			break;
-	}
-	if (num < 1)
-		return (1);
-
-	for (i = 0; i < num; i++) {
 		voldata = read_buf(fp, i * HAMMER2_ZONE_BYTES64,
 		    sizeof(*voldata));
-		if (voldata == NULL)
-			err(1, "failed to read volume data");
+		if (voldata == NULL) {
+			warnx("hammer2: failed to read volume data");
+			return (1);
+		}
 		if (voldata->magic != HAMMER2_VOLUME_ID_HBO &&
 		    voldata->magic != HAMMER2_VOLUME_ID_ABO)
 			fail++;
@@ -76,7 +92,7 @@ read_media(FILE *fp, const hammer2_blockref_t *bref, size_t *media_bytes)
 	*media_bytes = bytes;
 
 	if (!bytes) {
-		warnx("blockref has no data");
+		warnx("hammer2: blockref has no data");
 		return (NULL);
 	}
 
@@ -89,17 +105,17 @@ read_media(FILE *fp, const hammer2_blockref_t *bref, size_t *media_bytes)
 		io_bytes <<= 1;
 
 	if (io_bytes > sizeof(hammer2_media_data_t)) {
-		warnx("invalid I/O bytes");
+		warnx("hammer2: invalid I/O bytes");
 		return (NULL);
 	}
 
 	if (fseek(fp, io_base, SEEK_SET) == -1) {
-		warnx("failed to seek media");
+		warnx("hammer2: failed to seek media");
 		return (NULL);
 	}
 	media = read_buf(fp, io_base, io_bytes);
 	if (media == NULL) {
-		warnx("failed to read media");
+		warnx("hammer2: failed to read media");
 		return (NULL);
 	}
 	if (boff)
@@ -211,14 +227,21 @@ read_label(FILE *fp, char *label, size_t size, const char *devpath)
 	char *devname;
 
 	best_i = -1;
+	memset(vols, 0, sizeof(vols));
 	memset(&best, 0, sizeof(best));
 
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
+		if (i * HAMMER2_ZONE_BYTES64 >= get_file_size(fp))
+			break;
 		memset(&broot, 0, sizeof(broot));
 		broot.type = HAMMER2_BREF_TYPE_VOLUME;
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
 		vols[i] = read_buf(fp, broot.data_off & ~HAMMER2_OFF_MASK_RADIX,
 		    sizeof(*vols[i]));
+		if (vols[i] == NULL) {
+			warnx("hammer2: failed to read volume data");
+			goto fail;
+		}
 		broot.mirror_tid = vols[i]->voldata.mirror_tid;
 		if (best_i < 0 || best.mirror_tid < broot.mirror_tid) {
 			best_i = i;
@@ -228,7 +251,7 @@ read_label(FILE *fp, char *label, size_t size, const char *devpath)
 
 	bref = &vols[best_i]->voldata.sroot_blockset.blockref[0];
 	if (bref->type != HAMMER2_BREF_TYPE_INODE) {
-		warnx("blockref type is not inode");
+		warnx("hammer2: blockref type is not inode");
 		goto fail;
 	}
 

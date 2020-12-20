@@ -25,16 +25,15 @@
  */
 
 #include "namespace.h"
+#include <sys/single_threaded.h>
 #include <pthread.h>
 #include <pthread_np.h>
 #include "un-namespace.h"
 
-#include "thr_private.h"
-
 int
 _pthread_is_threaded_np(void)
 {
-        return _thr_isthreaded();
+        return (__libc_single_threaded == 0);
 }
 
 __strong_reference(_pthread_is_threaded_np, pthread_is_threaded_np);

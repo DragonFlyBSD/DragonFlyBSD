@@ -71,7 +71,7 @@
  *
  * These legacy modeset helpers use the same function table structures as
  * all other modesetting helpers. See the documentation for struct
- * &drm_crtc_helper_funcs, struct &drm_encoder_helper_funcs and struct
+ * &drm_crtc_helper_funcs, &struct drm_encoder_helper_funcs and struct
  * &drm_connector_helper_funcs.
  */
 
@@ -478,12 +478,12 @@ drm_crtc_helper_disable(struct drm_crtc *crtc)
  * @set: mode set configuration
  * @ctx: lock acquire context, not used here
  *
- * The drm_crtc_helper_set_config() helper function implements the set_config
- * callback of struct &drm_crtc_funcs for drivers using the legacy CRTC helpers.
+ * The drm_crtc_helper_set_config() helper function implements the of
+ * &drm_crtc_funcs.set_config callback for drivers using the legacy CRTC
+ * helpers.
  *
  * It first tries to locate the best encoder for each connector by calling the
- * connector ->best_encoder() (struct &drm_connector_helper_funcs) helper
- * operation.
+ * connector @drm_connector_helper_funcs.best_encoder helper operation.
  *
  * After locating the appropriate encoders, the helper function will call the
  * mode_fixup encoder and CRTC helper operations to adjust the requested mode,
@@ -494,15 +494,14 @@ drm_crtc_helper_disable(struct drm_crtc *crtc)
  *
  * If the adjusted mode is identical to the current mode but changes to the
  * frame buffer need to be applied, the drm_crtc_helper_set_config() function
- * will call the CRTC ->mode_set_base() (struct &drm_crtc_helper_funcs) helper
- * operation.
+ * will call the CRTC &drm_crtc_helper_funcs.mode_set_base helper operation.
  *
  * If the adjusted mode differs from the current mode, or if the
  * ->mode_set_base() helper operation is not provided, the helper function
  * performs a full mode set sequence by calling the ->prepare(), ->mode_set()
  * and ->commit() CRTC and encoder helper operations, in that order.
  * Alternatively it can also use the dpms and disable helper operations. For
- * details see struct &drm_crtc_helper_funcs and struct
+ * details see &struct drm_crtc_helper_funcs and struct
  * &drm_encoder_helper_funcs.
  *
  * This function is deprecated.  New drivers must implement atomic modeset
@@ -563,12 +562,12 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set,
 	 * Allocate space for the backup of all (non-pointer) encoder and
 	 * connector data.
 	 */
-	save_encoder_crtcs = kzalloc(dev->mode_config.num_encoder *
+	save_encoder_crtcs = kcalloc(dev->mode_config.num_encoder,
 				sizeof(struct drm_crtc *), GFP_KERNEL);
 	if (!save_encoder_crtcs)
 		return -ENOMEM;
 
-	save_connector_encoders = kzalloc(dev->mode_config.num_connector *
+	save_connector_encoders = kcalloc(dev->mode_config.num_connector,
 				sizeof(struct drm_encoder *), GFP_KERNEL);
 	if (!save_connector_encoders) {
 		kfree(save_encoder_crtcs);
@@ -853,18 +852,18 @@ static int drm_helper_choose_crtc_dpms(struct drm_crtc *crtc)
  * @connector: affected connector
  * @mode: DPMS mode
  *
- * The drm_helper_connector_dpms() helper function implements the ->dpms()
- * callback of struct &drm_connector_funcs for drivers using the legacy CRTC helpers.
+ * The drm_helper_connector_dpms() helper function implements the
+ * &drm_connector_funcs.dpms callback for drivers using the legacy CRTC
+ * helpers.
  *
  * This is the main helper function provided by the CRTC helper framework for
  * implementing the DPMS connector attribute. It computes the new desired DPMS
- * state for all encoders and CRTCs in the output mesh and calls the ->dpms()
- * callbacks provided by the driver in struct &drm_crtc_helper_funcs and struct
- * &drm_encoder_helper_funcs appropriately.
+ * state for all encoders and CRTCs in the output mesh and calls the
+ * &drm_crtc_helper_funcs.dpms and &drm_encoder_helper_funcs.dpms callbacks
+ * provided by the driver.
  *
  * This function is deprecated.  New drivers must implement atomic modeset
- * support, for which this function is unsuitable. Instead drivers should use
- * drm_atomic_helper_connector_dpms().
+ * support, where DPMS is handled in the DRM core.
  *
  * Returns:
  * Always returns 0.

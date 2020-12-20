@@ -55,8 +55,10 @@ SRCS	= \
 	drm_rect.c \
 	drm_scatter.c \
 	drm_scdc_helper.c \
+	drm_syncobj.c \
 	drm_sysctl.c \
 	drm_sysfs.c \
+	drm_vblank.c \
 	drm_vm.c \
 	drm_vma_manager.c \
 	linux_async.c \
@@ -75,6 +77,7 @@ SRCS	= \
 	linux_kobject.c \
 	linux_kthread.c \
 	linux_list_sort.c \
+	linux_pci.c \
 	linux_printf.c \
 	linux_radix.c \
 	linux_rcu.c \

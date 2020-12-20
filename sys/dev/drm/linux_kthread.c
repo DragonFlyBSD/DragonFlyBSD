@@ -68,6 +68,7 @@ kthread_run(int (*lfn)(void *), void *data, const char *namefmt, ...)
 
 	task->kt_fn = lfn;
 	task->kt_fndata = data;
+	spin_init(&task->kt_spin, "tspin1");
 
 	/* Start the thread here */
 	lwkt_schedule(td);
@@ -89,7 +90,12 @@ kthread_stop(struct task_struct *ts)
 {
 	set_bit(KTHREAD_SHOULD_STOP, &ts->kt_flags);
 
+	kthread_unpark(ts);
 	wake_up_process(ts);
+
+	/* XXX use a better mechanism to wait for the thread to finish running */
+	tsleep(kthread_stop, 0, "kstop", hz);
+	lwkt_free_thread(ts->dfly_td);
 
 	return ts->kt_exitvalue;
 }

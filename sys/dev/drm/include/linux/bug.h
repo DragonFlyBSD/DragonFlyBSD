@@ -45,4 +45,6 @@
 
 #define BUILD_BUG_ON_INVALID(expr)	((void)(expr))
 
+#define BUILD_BUG_ON_ZERO(x)	0
+
 #endif /* LINUX_BUG_H */

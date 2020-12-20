@@ -29,6 +29,7 @@
 
 #include <linux/errno.h>
 #include <linux/ioport.h>
+#include <linux/uuid.h>
 #include <linux/device.h>
 #include <linux/list.h>
 #include <linux/mod_devicetable.h>

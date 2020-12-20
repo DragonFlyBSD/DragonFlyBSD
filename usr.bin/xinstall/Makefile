@@ -14,4 +14,12 @@ SRCS+=		getid.c
 CFLAGS+=        -DHAVE_NETDB_H -I${.CURDIR}/../../usr.sbin/mtree
 .endif
 
+.if ${WORLD_VERSION} < 500302 # pwcache(3)/vis(3) upgrades came in about here
+.PATH: ${.CURDIR}/../../lib/libc/gen
+SRCS+=  pwcache.c
+#CFLAGS+=-include ${.CURDIR}/../../include/pwcache.h
+CFLAGS+=-I${.CURDIR}/../../lib/libc/gen
+CFLAGS+=-DEMBED_LIB_SRC
+.endif
+
 .include <bsd.prog.mk>

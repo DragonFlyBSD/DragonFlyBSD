@@ -56,7 +56,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef EMBED_LIB_SRC
 #include "namespace.h"
+#endif
 #include <sys/types.h>
 #include <sys/param.h>
 
@@ -66,19 +68,25 @@
 #include <stdlib.h>
 #include <wchar.h>
 #include <wctype.h>
+#ifndef EMBED_LIB_SRC
 #include "un-namespace.h"
+#endif
 
 #ifdef __weak_alias
 __weak_alias(strvisx,_strvisx)
 #endif
 
 #if !HAVE_VIS || !HAVE_SVIS
+#ifndef EMBED_LIB_SRC
 #include "namespace.h"
+#endif
 #include <ctype.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef EMBED_LIB_SRC
 #include "un-namespace.h"
+#endif
 
 /*
  * The reason for going through the trouble to deal with character encodings

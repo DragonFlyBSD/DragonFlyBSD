@@ -8,6 +8,7 @@ SRCS =	i915_drv.c \
 	i915_params.c \
 	i915_pci.c \
 	i915_suspend.c \
+	i915_syncmap.c \
 	i915_sw_fence.c \
 	i915_sysfs.c \
 	intel_csr.c \
@@ -30,6 +31,7 @@ SRCS +=	i915_cmd_parser.c \
 	i915_gem_gtt.c \
 	i915_gem_internal.c \
 	i915_gem.c \
+	i915_gem_object.c \
 	i915_gem_render_state.c \
 	i915_gem_request.c \
 	i915_gem_shrinker.c \
@@ -48,8 +50,11 @@ SRCS +=	i915_cmd_parser.c \
 
 # general-purpose microcontroller (GuC) support
 SRCS += intel_uc.c \
+	intel_uc_fw.c \
+	intel_guc.c \
+	intel_guc_ct.c \
 	intel_guc_log.c \
-	intel_guc_loader.c \
+	intel_guc_fw.c \
 	intel_huc.c \
 	i915_guc_submission.c
 

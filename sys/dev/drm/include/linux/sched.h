@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2020 François Tigeot <ftigeot@wolfpond.org>
- * Copyright (c) 2019 Matthew Dillon <dillon@backplane.com>
+ * Copyright (c) 2019-2020 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -93,6 +93,10 @@ struct task_struct {
 
 	/* executable name without path */
 	char			comm[TASK_COMM_LEN];
+
+	atomic_t usage_counter;
+	pid_t pid;
+	struct spinlock		kt_spin;
 };
 
 #define __set_current_state(state_value)	current->state = (state_value);
@@ -129,10 +133,12 @@ schedule_timeout(signed long timeout)
 	else
 		timo = timeout;
 
+	spin_lock(&current->kt_spin);
+
 	switch (current->state) {
 	case TASK_INTERRUPTIBLE:
 		time_before = ticks;
-		tsleep(current, PCATCH, "lstim", timo);
+		ssleep(current, &current->kt_spin, PCATCH, "lstim", timo);
 		time_after = ticks;
 		slept = time_after - time_before;
 		ret = timeout - slept;
@@ -140,11 +146,22 @@ schedule_timeout(signed long timeout)
 			ret = 0;
 		break;
 	case TASK_UNINTERRUPTIBLE:
-		tsleep(current, 0, "lstim", timo);
+		ssleep(current, &current->kt_spin, 0, "lstim", timo);
 		break;
 	default:
+		/*
+		 * Task has been flagged running before we could
+		 * enter the sleep.
+		 *
+		 * XXX should be able to remove this ssleep(), have it
+		 * here to protect against live-locks in case we mess
+		 * up the task->state.
+		 */
+		ssleep(current, &current->kt_spin, 0, "lst1", 1);
 		break;
 	}
+
+	spin_unlock(&current->kt_spin);
 
 done:
 	if (timeout == MAX_SCHEDULE_TIMEOUT)
@@ -194,10 +211,19 @@ yield(void)
 static inline int
 wake_up_process(struct task_struct *tsk)
 {
-	/* Among other things, this function is supposed to act as
-	 * a barrier */
+	long ostate;
+
+	/*
+	 * Among other things, this function is supposed to act as
+	 * a barrier
+	 */
 	smp_wmb();
-	wakeup(tsk);
+	spin_lock(&tsk->kt_spin);
+	ostate = tsk->state;
+	tsk->state = TASK_RUNNING;
+	spin_unlock(&tsk->kt_spin);
+	if (ostate != TASK_RUNNING)
+		wakeup(tsk);
 
 	return 1;	/* Always indicate the process was woken up */
 }
