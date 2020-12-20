@@ -214,10 +214,8 @@ find_best_zone(int fd)
 		hammer2_blockref_t broot;
 		ssize_t ret;
 
-		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
-			tfprintf(stderr, 0, "zone.%d exceeds volume size\n", i);
+		if (i * HAMMER2_ZONE_BYTES64 >= volume_size)
 			break;
-		}
 		init_root_blockref(fd, i, HAMMER2_BREF_TYPE_EMPTY, &broot);
 		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
