@@ -166,7 +166,7 @@ struct in6_addr {
 /*
  * Socket address for IPv6
  */
-#ifndef _XOPEN_SOURCE
+#if __BSD_VISIBLE
 #define SIN6_LEN
 #endif
 struct sockaddr_in6 {
@@ -404,7 +404,7 @@ extern const struct in6_addr in6addr_linklocal_allnodes;
 /*
  * IP6 route structure
  */
-#ifndef _XOPEN_SOURCE
+#if __BSD_VISIBLE
 struct route_in6 {
 	struct rtentry		*ro_rt;
 	struct sockaddr_in6	ro_dst;
@@ -549,7 +549,7 @@ struct ip6_mtuinfo {
 #define	IPV6_PORTRANGE_HIGH	1	/* "high" - request firewall bypass */
 #define	IPV6_PORTRANGE_LOW	2	/* "low" - vouchsafe security */
 
-#ifndef _XOPEN_SOURCE
+#if __BSD_VISIBLE
 /*
  * Definitions for inet6 sysctl operations.
  *
@@ -608,7 +608,7 @@ struct ip6_mtuinfo {
 
 #define	ICMPV6CTL_ND6_ONLINKNSRFC4861	47
 #define IPV6CTL_MAXID		48
-#endif /* !_XOPEN_SOURCE */
+#endif /* __BSD_VISIBLE */
 
 /*
  * Redefinition of mbuf flags

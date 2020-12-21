@@ -38,9 +38,9 @@
 #include <sys/ucred.h>
 
 #ifndef _KERNEL
-#if !defined(_POSIX_C_SOURCE) && !defined(_XOPEN_SOURCE)
+#if __BSD_VISIBLE
 #include <sys/stat.h>
-#endif /* !_POSIX_C_SOURCE */
+#endif /* __BSD_VISIBLE */
 #endif /* !_KERNEL */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
