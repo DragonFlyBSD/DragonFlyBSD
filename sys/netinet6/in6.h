@@ -158,6 +158,7 @@ struct in6_addr {
 
 #define s6_addr		__u6_addr.__u6_addr8
 #define _s6_addr16	__u6_addr.__u6_addr16		/* internal use */
+#define _s6_addr32	__u6_addr.__u6_addr32		/* internal use */
 #if __BSD_VISIBLE					/* XXX nonstandard */
 #define s6_addr8	__u6_addr.__u6_addr8
 #define s6_addr16	__u6_addr.__u6_addr16
@@ -298,38 +299,32 @@ extern const struct in6_addr in6addr_linklocal_allnodes;
 /*
  * Unspecified
  */
-#define IN6_IS_ADDR_UNSPECIFIED(a)		\
-	((a)->__u6_addr.__u6_addr32[0] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[1] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[2] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[3] == 0)
+#define IN6_IS_ADDR_UNSPECIFIED(a)					\
+	((a)->_s6_addr32[0] == 0 && (a)->_s6_addr32[1] == 0 &&		\
+	 (a)->_s6_addr32[2] == 0 && (a)->_s6_addr32[3] == 0)
 
 /*
  * Loopback
  */
-#define IN6_IS_ADDR_LOOPBACK(a)			\
-	((a)->__u6_addr.__u6_addr32[0] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[1] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[2] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[3] == ntohl(1))
+#define IN6_IS_ADDR_LOOPBACK(a)						\
+	((a)->_s6_addr32[0] == 0 && (a)->_s6_addr32[1] == 0 &&	\
+	 (a)->_s6_addr32[2] == 0 && (a)->_s6_addr32[3] == ntohl(1))
 
 /*
  * Mapped
  */
-#define IN6_IS_ADDR_V4MAPPED(a)			\
-	((a)->__u6_addr.__u6_addr32[0] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[1] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[2] == ntohl(0x0000ffff))
+#define IN6_IS_ADDR_V4MAPPED(a)						\
+	((a)->_s6_addr32[0] == 0 && (a)->_s6_addr32[1] == 0 &&		\
+	 (a)->_s6_addr32[2] == ntohl(0x0000ffff))
 
 /*
  * IPv4 compatible.  Deprecated by RFC4291.
  */
-#define IN6_IS_ADDR_V4COMPAT(a)			\
-	((a)->__u6_addr.__u6_addr32[0] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[1] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[2] == 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[3] != 0 &&	\
-	 (a)->__u6_addr.__u6_addr32[3] != ntohl(1))
+#define IN6_IS_ADDR_V4COMPAT(a)						\
+	((a)->_s6_addr32[0] == 0 &&					\
+	 (a)->_s6_addr32[1] == 0 &&					\
+	 (a)->_s6_addr32[2] == 0 &&					\
+	 (a)->_s6_addr32[3] != 0 && (a)->_s6_addr32[3] != ntohl(1))
 
 /*
  * KAME Scope Values
