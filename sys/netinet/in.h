@@ -46,22 +46,66 @@
 #endif
 #endif
 
+#ifndef _IN_ADDR_T_DECLARED
+typedef	__uint32_t	in_addr_t;	/* base type for internet address */
+#define	_IN_ADDR_T_DECLARED
+#endif
+
+#ifndef _IN_PORT_T_DECLARED
+typedef	__uint16_t	in_port_t;
+#define	_IN_PORT_T_DECLARED
+#endif
+
+#ifndef _SA_FAMILY_T_DECLARED
+typedef	__uint8_t	sa_family_t;
+#define	_SA_FAMILY_T_DECLARED
+#endif
+
+#ifndef _UINT8_T_DECLARED
+typedef	__uint8_t	uint8_t;
+#define	_UINT8_T_DECLARED
+#endif
+#ifndef _UINT32_T_DECLARED
+typedef	__uint32_t	uint32_t;
+#define	_UINT32_T_DECLARED
+#endif
+
+#ifndef _STRUCT_IN_ADDR_DECLARED
+#define	_STRUCT_IN_ADDR_DECLARED
+/*
+ * Internet address (a structure for historical reasons)
+ */
+struct in_addr {
+	in_addr_t s_addr;
+};
+#endif
+
 /*
  * Constants and structures defined by the internet system,
  * Per RFC 790, September 1981, and numerous additions.
  */
 
 /*
- * Protocols (RFC 1700)
+ * Protocols (RFC 1700) that are part of standards
  */
 #define	IPPROTO_IP		0		/* dummy for IP */
-#define	IPPROTO_HOPOPTS		0		/* IP6 hop-by-hop options */
 #define	IPPROTO_ICMP		1		/* control message protocol */
+#define	IPPROTO_TCP		6		/* tcp */
+#define	IPPROTO_UDP		17		/* user datagram protocol */
+#define	IPPROTO_IPV6		41		/* IP6 header */
+#if __POSIX_VISIBLE >= 200112
+#define	IPPROTO_RAW		255		/* raw IP packet */
+#endif
+
+#if __BSD_VISIBLE
+/*
+ * Protocols (RFC 1700)
+ */
+#define	IPPROTO_HOPOPTS		0		/* IP6 hop-by-hop options */
 #define	IPPROTO_IGMP		2		/* group mgmt protocol */
 #define	IPPROTO_GGP		3		/* gateway^2 (deprecated) */
 #define	IPPROTO_IPV4		4		/* IPv4 encapsulation */
 #define	IPPROTO_IPIP		IPPROTO_IPV4	/* for compatibility */
-#define	IPPROTO_TCP		6		/* tcp */
 #define	IPPROTO_ST		7		/* Stream protocol II */
 #define	IPPROTO_EGP		8		/* exterior gateway protocol */
 #define	IPPROTO_PIGP		9		/* private interior gateway */
@@ -72,7 +116,6 @@
 #define	IPPROTO_EMCON		14		/* EMCON */
 #define	IPPROTO_XNET		15		/* Cross Net Debugger */
 #define	IPPROTO_CHAOS		16		/* Chaos*/
-#define	IPPROTO_UDP		17		/* user datagram protocol */
 #define	IPPROTO_MUX		18		/* Multiplexing */
 #define	IPPROTO_MEAS		19		/* DCN Measurement Subsystems */
 #define	IPPROTO_HMP		20		/* Host Monitoring */
@@ -96,7 +139,6 @@
 #define	IPPROTO_CMTP		38		/* Control Message Transport */
 #define	IPPROTO_TPXX		39		/* TP++ Transport */
 #define	IPPROTO_IL		40		/* IL transport protocol */
-#define	IPPROTO_IPV6		41		/* IP6 header */
 #define	IPPROTO_SDRP		42		/* Source Demand Routing */
 #define	IPPROTO_ROUTING		43		/* IP6 routing header */
 #define	IPPROTO_FRAGMENT	44		/* IP6 fragmentation header */
@@ -165,7 +207,6 @@
 /* 255: Reserved */
 /* BSD Private, local use, namespace incursion */
 #define	IPPROTO_DIVERT		254		/* divert pseudo-protocol */
-#define	IPPROTO_RAW		255		/* raw IP packet */
 #define	IPPROTO_MAX		256
 
 /* last return value of *_input(), meaning "all job for this pkt is done".  */
@@ -241,40 +282,6 @@
 
 #define	IPPORT_MAX		65535
 
-#ifndef _IN_ADDR_T_DECLARED
-typedef	__uint32_t	in_addr_t;	/* base type for internet address */
-#define	_IN_ADDR_T_DECLARED
-#endif
-
-#ifndef _IN_PORT_T_DECLARED
-typedef	__uint16_t	in_port_t;
-#define	_IN_PORT_T_DECLARED
-#endif
-
-#ifndef _SA_FAMILY_T_DECLARED
-typedef	__uint8_t	sa_family_t;
-#define	_SA_FAMILY_T_DECLARED
-#endif
-
-#ifndef _UINT8_T_DECLARED
-typedef	__uint8_t	uint8_t;
-#define	_UINT8_T_DECLARED
-#endif
-#ifndef _UINT32_T_DECLARED
-typedef	__uint32_t	uint32_t;
-#define	_UINT32_T_DECLARED
-#endif
-
-#ifndef _STRUCT_IN_ADDR_DECLARED
-#define	_STRUCT_IN_ADDR_DECLARED
-/*
- * Internet address (a structure for historical reasons)
- */
-struct in_addr {
-	in_addr_t s_addr;
-};
-#endif
-
 /*
  * Definitions of bits in internet address integers.
  * On subnets, the decomposition of addresses to host and net parts
@@ -305,14 +312,18 @@ struct in_addr {
 
 #define	IN_EXPERIMENTAL(i)	(((uint32_t)(i) & 0xf0000000) == 0xf0000000)
 #define	IN_BADCLASS(i)		(((uint32_t)(i) & 0xf0000000) == 0xf0000000)
+#endif /* __BSD_VISIBLE */
 
 #define	INADDR_ANY		(uint32_t)0x00000000
+#if __BSD_VISIBLE
 #define	INADDR_LOOPBACK		(uint32_t)0x7f000001
+#endif
 #define	INADDR_BROADCAST	(uint32_t)0xffffffff	/* must be masked */
 #ifndef _KERNEL
 #define	INADDR_NONE		0xffffffff		/* -1 return */
 #endif
 
+#if __BSD_VISIBLE
 #define	INADDR_UNSPEC_GROUP	(uint32_t)0xe0000000	/* 224.0.0.0 */
 #define	INADDR_ALLHOSTS_GROUP	(uint32_t)0xe0000001	/* 224.0.0.1 */
 #define	INADDR_ALLRTRS_GROUP	(uint32_t)0xe0000002	/* 224.0.0.2 */
@@ -324,6 +335,7 @@ struct in_addr {
 #define	IN_LOOPBACKNET		127			/* official! */
 
 #define	IN_RFC3021_MASK		(uint32_t)0xfffffffe
+#endif
 
 /*
  * Socket address, internet style.
@@ -338,6 +350,7 @@ struct sockaddr_in {
 
 #define	INET_ADDRSTRLEN		16
 
+#if __BSD_VISIBLE
 /*
  * Options for use with [gs]etsockopt at the IP level.
  * First word of comment is data type; bool is stored in int.
@@ -544,6 +557,7 @@ struct ip_mreqn {
 	{ "accept_sourceroute", CTLTYPE_INT }, \
 	{ "fastforwarding", CTLTYPE_INT }, \
 }
+#endif /* __BSD_VISIBLE */
 
 #ifdef _KERNEL
 struct ifnet; struct mbuf;	/* forward declarations for Standard C */
