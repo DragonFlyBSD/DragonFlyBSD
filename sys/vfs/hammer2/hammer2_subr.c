@@ -465,6 +465,8 @@ hammer2_bref_type_str(int btype)
 		return("freemap_node");
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		return("freemap_leaf");
+	case HAMMER2_BREF_TYPE_INVALID:
+		return("invalid");
 	case HAMMER2_BREF_TYPE_FREEMAP:
 		return("freemap");
 	case HAMMER2_BREF_TYPE_VOLUME:

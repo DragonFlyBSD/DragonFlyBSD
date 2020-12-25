@@ -66,6 +66,7 @@ static int hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data,
 //static int hammer2_ioctl_inode_comp_rec_set2(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_volume_list(hammer2_inode_t *ip, void *data);
 
 int
 hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
@@ -158,6 +159,10 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_GROWFS:
 		if (error == 0)
 			error = hammer2_ioctl_growfs(ip, data, cred);
+		break;
+	case HAMMER2IOC_VOLUME_LIST:
+		if (error == 0)
+			error = hammer2_ioctl_volume_list(ip, data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -1259,6 +1264,11 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 
 	hmp = ip->pmp->pfs_hmps[0];
 
+	if (hmp->nvolumes > 1) {
+		kprintf("hammer2: growfs unsupported with multiple volumes\n");
+		return EOPNOTSUPP;
+	}
+
 	/*
 	 * Extract from disklabel
 	 */
@@ -1356,4 +1366,47 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 	grow->modified = 1;
 
 	return 0;
+}
+
+/*
+ * Get a list of volumes.
+ */
+static int
+hammer2_ioctl_volume_list(hammer2_inode_t *ip, void *data)
+{
+	hammer2_ioc_volume_list_t *vollist = data;
+	hammer2_ioc_volume_t entry;
+	hammer2_volume_t *vol;
+	hammer2_dev_t *hmp;
+	hammer2_pfs_t *pmp;
+	int i, error = 0, cnt = 0;
+
+	pmp = ip->pmp;
+	hmp = pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
+
+	hammer2_voldata_lock(hmp);
+	for (i = 0; i < hmp->nvolumes; ++i) {
+		if (cnt >= vollist->nvolumes)
+			break;
+		vol = &hmp->volumes[i];
+		bzero(&entry, sizeof(entry));
+		/* copy hammer2_volume_t fields */
+		entry.id = vol->id;
+		bcopy(vol->dev->path, entry.path, sizeof(entry.path));
+		entry.offset = vol->offset;
+		entry.size = vol->size;
+		error = copyout(&entry, &vollist->volumes[cnt], sizeof(entry));
+		if (error)
+			goto failed;
+		cnt++;
+	}
+	vollist->nvolumes = cnt;
+	vollist->version = hmp->voldata.version;
+	bcopy(pmp->pfs_names[0], vollist->pfs_name, sizeof(vollist->pfs_name));
+failed:
+	hammer2_voldata_unlock(hmp);
+
+	return error;
 }

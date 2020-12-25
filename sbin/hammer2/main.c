@@ -437,6 +437,16 @@ main(int ac, char **av)
 		} else {
 			cmd_show(av[1], 2);
 		}
+	} else if (strcmp(av[0], "volume-list") == 0) {
+		/*
+		 * List all volumes
+		 */
+		if (ac >= 2) {
+			ecode = cmd_volume_list(ac - 1,
+					     (char **)(void *)&av[1]);
+		} else {
+			ecode = cmd_volume_list(1, &sel_path);
+		}
 	} else if (strcmp(av[0], "setcomp") == 0) {
 		if (ac < 3) {
 			/*
@@ -593,6 +603,8 @@ usage(int code)
 			"Raw hammer2 media dump for freemap\n"
 		"    volhdr <devpath>                  "
 			"Raw hammer2 media dump for the volume header(s)\n"
+		"    volume-list [<path>...]           "
+			"List volumes\n"
 		"    setcomp <comp[:level]> <path>...  "
 			"Set comp algo {none, autozero, lz4, zlib} & level\n"
 		"    setcheck <check> <path>...        "

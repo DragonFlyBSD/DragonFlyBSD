@@ -125,27 +125,26 @@ typedef struct {
 	long count;
 } delta_stats_t;
 
-static void print_blockref_entry(int, struct blockref_tree *);
+static void print_blockref_entry(struct blockref_tree *);
 static void init_blockref_stats(blockref_stats_t *, uint8_t);
 static void cleanup_blockref_stats(blockref_stats_t *);
 static void init_delta_root(struct blockref_tree *);
 static void cleanup_delta_root(struct blockref_tree *);
 static void print_blockref_stats(const blockref_stats_t *, bool);
 static int verify_volume_header(const hammer2_volume_data_t *);
-static int read_media(int, const hammer2_blockref_t *, hammer2_media_data_t *,
+static int read_media(const hammer2_blockref_t *, hammer2_media_data_t *,
     size_t *);
-static int verify_blockref(int, const hammer2_volume_data_t *,
+static int verify_blockref(const hammer2_volume_data_t *,
     const hammer2_blockref_t *, bool, blockref_stats_t *,
     struct blockref_tree *, delta_stats_t *, int, int);
 static void print_pfs(const hammer2_inode_data_t *);
 static char *get_inode_filename(const hammer2_inode_data_t *);
-static int init_pfs_blockref(int, const hammer2_volume_data_t *,
+static int init_pfs_blockref(const hammer2_volume_data_t *,
     const hammer2_blockref_t *, struct blockref_list *);
 static void cleanup_pfs_blockref(struct blockref_list *);
 static void print_media(FILE *, int, const hammer2_blockref_t *,
     const hammer2_media_data_t *, size_t);
 
-static hammer2_off_t volume_size;
 static int best_zone = -1;
 
 #define TAB 8
@@ -189,20 +188,24 @@ tprintf_zone(int tab, int i, const hammer2_blockref_t *bref)
 }
 
 static int
-init_root_blockref(int fd, int i, uint8_t type, hammer2_blockref_t *bref)
+init_root_blockref(int i, uint8_t type, hammer2_blockref_t *bref)
 {
+	hammer2_off_t off;
+
 	assert(type == HAMMER2_BREF_TYPE_EMPTY ||
 		type == HAMMER2_BREF_TYPE_VOLUME ||
 		type == HAMMER2_BREF_TYPE_FREEMAP);
 	memset(bref, 0, sizeof(*bref));
 	bref->type = type;
 	bref->data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
+	off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
 
-	return lseek(fd, bref->data_off & ~HAMMER2_OFF_MASK_RADIX, SEEK_SET);
+	return lseek(hammer2_get_root_volume_fd(),
+	    off - hammer2_get_root_volume_offset(), SEEK_SET);
 }
 
 static int
-find_best_zone(int fd)
+find_best_zone(void)
 {
 	hammer2_blockref_t best;
 	int i, best_i = -1;
@@ -214,10 +217,12 @@ find_best_zone(int fd)
 		hammer2_blockref_t broot;
 		ssize_t ret;
 
-		if (i * HAMMER2_ZONE_BYTES64 >= volume_size)
+		if (i * HAMMER2_ZONE_BYTES64 >=
+		    hammer2_get_root_volume_size())
 			break;
-		init_root_blockref(fd, i, HAMMER2_BREF_TYPE_EMPTY, &broot);
-		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
+		init_root_blockref(i, HAMMER2_BREF_TYPE_EMPTY, &broot);
+		ret = read(hammer2_get_root_volume_fd(), &voldata,
+		    HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
 			if ((voldata.magic != HAMMER2_VOLUME_ID_HBO) &&
 			    (voldata.magic != HAMMER2_VOLUME_ID_ABO))
@@ -240,7 +245,7 @@ find_best_zone(int fd)
 }
 
 static int
-test_volume_header(int fd)
+test_volume_header(void)
 {
 	bool failed = false;
 	int i;
@@ -252,12 +257,14 @@ test_volume_header(int fd)
 
 		if (ScanBest && i != best_zone)
 			continue;
-		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
+		if (i * HAMMER2_ZONE_BYTES64 >=
+		    hammer2_get_root_volume_size()) {
 			tfprintf(stderr, 0, "zone.%d exceeds volume size\n", i);
 			break;
 		}
-		init_root_blockref(fd, i, HAMMER2_BREF_TYPE_EMPTY, &broot);
-		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
+		init_root_blockref(i, HAMMER2_BREF_TYPE_EMPTY, &broot);
+		ret = read(hammer2_get_root_volume_fd(), &voldata,
+		    HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
 			tprintf_zone(0, i, &broot);
 			if (verify_volume_header(&voldata) == -1)
@@ -275,7 +282,7 @@ test_volume_header(int fd)
 }
 
 static int
-test_blockref(int fd, uint8_t type)
+test_blockref(uint8_t type)
 {
 	struct blockref_tree droot;
 	bool failed = false;
@@ -289,23 +296,25 @@ test_blockref(int fd, uint8_t type)
 
 		if (ScanBest && i != best_zone)
 			continue;
-		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
+		if (i * HAMMER2_ZONE_BYTES64 >=
+		    hammer2_get_root_volume_size()) {
 			tfprintf(stderr, 0, "zone.%d exceeds volume size\n", i);
 			break;
 		}
-		init_root_blockref(fd, i, type, &broot);
-		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
+		init_root_blockref(i, type, &broot);
+		ret = read(hammer2_get_root_volume_fd(), &voldata,
+		    HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
 			blockref_stats_t bstats;
 			init_blockref_stats(&bstats, type);
 			delta_stats_t ds;
 			memset(&ds, 0, sizeof(ds));
 			tprintf_zone(0, i, &broot);
-			if (verify_blockref(fd, &voldata, &broot, false,
-			    &bstats, &droot, &ds, 0, 0) == -1)
+			if (verify_blockref(&voldata, &broot, false, &bstats,
+			    &droot, &ds, 0, 0) == -1)
 				failed = true;
 			print_blockref_stats(&bstats, true);
-			print_blockref_entry(fd, &bstats.root);
+			print_blockref_entry(&bstats.root);
 			cleanup_blockref_stats(&bstats);
 		} else if (ret == -1) {
 			perror("read");
@@ -323,7 +332,7 @@ end:
 }
 
 static int
-test_pfs_blockref(int fd)
+test_pfs_blockref(void)
 {
 	struct blockref_tree droot;
 	uint8_t type = HAMMER2_BREF_TYPE_VOLUME;
@@ -338,12 +347,14 @@ test_pfs_blockref(int fd)
 
 		if (ScanBest && i != best_zone)
 			continue;
-		if (i * HAMMER2_ZONE_BYTES64 >= volume_size) {
+		if (i * HAMMER2_ZONE_BYTES64 >=
+		    hammer2_get_root_volume_size()) {
 			tfprintf(stderr, 0, "zone.%d exceeds volume size\n", i);
 			break;
 		}
-		init_root_blockref(fd, i, type, &broot);
-		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
+		init_root_blockref(i, type, &broot);
+		ret = read(hammer2_get_root_volume_fd(), &voldata,
+		    HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
 			struct blockref_list blist;
 			struct blockref_msg *p;
@@ -351,8 +362,7 @@ test_pfs_blockref(int fd)
 
 			tprintf_zone(0, i, &broot);
 			TAILQ_INIT(&blist);
-			if (init_pfs_blockref(fd, &voldata, &broot, &blist) ==
-			    -1) {
+			if (init_pfs_blockref(&voldata, &broot, &blist) == -1) {
 				tfprintf(stderr, 1, "Failed to read PFS "
 				    "blockref\n");
 				failed = true;
@@ -390,11 +400,11 @@ test_pfs_blockref(int fd)
 				init_blockref_stats(&bstats, type);
 				delta_stats_t ds;
 				memset(&ds, 0, sizeof(ds));
-				if (verify_blockref(fd, &voldata, &p->bref,
-				    false, &bstats, &droot, &ds, 0, 0) == -1)
+				if (verify_blockref(&voldata, &p->bref, false,
+				    &bstats, &droot, &ds, 0, 0) == -1)
 					failed = true;
 				print_blockref_stats(&bstats, true);
-				print_blockref_entry(fd, &bstats.root);
+				print_blockref_entry(&bstats.root);
 				cleanup_blockref_stats(&bstats);
 			}
 			cleanup_pfs_blockref(&blist);
@@ -538,17 +548,17 @@ print_blockref_debug(FILE *fp, int depth, int index,
 }
 
 static void
-print_blockref_msg(int fd, const struct blockref_list *head)
+print_blockref_msg(const struct blockref_list *head)
 {
 	struct blockref_msg *m;
 
 	TAILQ_FOREACH(m, head, entry) {
 		hammer2_blockref_t *bref = &m->bref;
 		print_blockref(stderr, bref, m->msg);
-		if (fd != -1 && VerboseOpt > 0) {
+		if (VerboseOpt > 0) {
 			hammer2_media_data_t media;
 			size_t bytes;
-			if (!read_media(fd, bref, &media, &bytes))
+			if (!read_media(bref, &media, &bytes))
 				print_media(stderr, 2, bref, &media, bytes);
 			else
 				tfprintf(stderr, 2, "Failed to read media\n");
@@ -557,12 +567,12 @@ print_blockref_msg(int fd, const struct blockref_list *head)
 }
 
 static void
-print_blockref_entry(int fd, struct blockref_tree *root)
+print_blockref_entry(struct blockref_tree *root)
 {
 	struct blockref_entry *e;
 
 	RB_FOREACH(e, blockref_tree, root)
-		print_blockref_msg(fd, &e->head);
+		print_blockref_msg(&e->head);
 }
 
 static void
@@ -684,11 +694,12 @@ verify_volume_header(const hammer2_volume_data_t *voldata)
 }
 
 static int
-read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
+read_media(const hammer2_blockref_t *bref, hammer2_media_data_t *media,
     size_t *media_bytes)
 {
 	hammer2_off_t io_off, io_base;
 	size_t bytes, io_bytes, boff;
+	int fd;
 
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
@@ -709,7 +720,9 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 
 	if (io_bytes > sizeof(*media))
 		return -1;
-	if (lseek(fd, io_base, SEEK_SET) == -1)
+	fd = hammer2_get_volume_fd(io_off);
+	if (lseek(fd, io_base - hammer2_get_volume_offset(io_base), SEEK_SET)
+	    == -1)
 		return -2;
 	if (read(fd, media, io_bytes) != (ssize_t)io_bytes)
 		return -2;
@@ -764,7 +777,7 @@ accumulate_delta_stats(delta_stats_t *dst, const delta_stats_t *src)
 }
 
 static int
-verify_blockref(int fd, const hammer2_volume_data_t *voldata,
+verify_blockref(const hammer2_volume_data_t *voldata,
     const hammer2_blockref_t *bref, bool norecurse, blockref_stats_t *bstats,
     struct blockref_tree *droot, delta_stats_t *dstats, int depth, int index)
 {
@@ -862,7 +875,7 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 		break;
 	}
 
-	switch (read_media(fd, bref, &media, &bytes)) {
+	switch (read_media(bref, &media, &bytes)) {
 	case -1:
 		strlcpy(msg, "Bad I/O bytes", sizeof(msg));
 		add_blockref_entry(&bstats->root, bref, msg, strlen(msg) + 1);
@@ -985,8 +998,8 @@ verify_blockref(int fd, const hammer2_volume_data_t *voldata,
 	for (i = 0; norecurse == false && i < bcount; ++i) {
 		delta_stats_t ds;
 		memset(&ds, 0, sizeof(ds));
-		if (verify_blockref(fd, voldata, &bscan[i], failed, bstats,
-		    droot, &ds, depth + 1, i) == -1)
+		if (verify_blockref(voldata, &bscan[i], failed, bstats, droot,
+		    &ds, depth + 1, i) == -1)
 			return -1;
 		if (!failed)
 			accumulate_delta_stats(dstats, &ds);
@@ -1070,7 +1083,7 @@ __add_pfs_blockref(const hammer2_blockref_t *bref, struct blockref_list *blist,
 }
 
 static int
-init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
+init_pfs_blockref(const hammer2_volume_data_t *voldata,
     const hammer2_blockref_t *bref, struct blockref_list *blist)
 {
 	hammer2_media_data_t media;
@@ -1079,7 +1092,7 @@ init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
 	int i, bcount;
 	size_t bytes;
 
-	if (read_media(fd, bref, &media, &bytes))
+	if (read_media(bref, &media, &bytes))
 		return -1;
 	if (!bytes)
 		return 0;
@@ -1114,7 +1127,7 @@ init_pfs_blockref(int fd, const hammer2_volume_data_t *voldata,
 	}
 
 	for (i = 0; i < bcount; ++i)
-		if (init_pfs_blockref(fd, voldata, &bscan[i], blist) == -1)
+		if (init_pfs_blockref(voldata, &bscan[i], blist) == -1)
 			return -1;
 	return 0;
 }
@@ -1283,111 +1296,52 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 		free(str);
 }
 
-static hammer2_off_t
-check_volume(int fd)
-{
-	struct partinfo pinfo;
-	hammer2_off_t size;
-
-	if (ioctl(fd, DIOCGPART, &pinfo) < 0) {
-		struct stat st;
-		if (fstat(fd, &st) < 0) {
-			perror("fstat");
-			return -1;
-		}
-		if (!S_ISREG(st.st_mode)) {
-			fprintf(stderr, "Unsupported file type\n");
-			return -1;
-		}
-		size = st.st_size;
-	} else {
-		if (pinfo.reserved_blocks) {
-			fprintf(stderr, "HAMMER2 cannot be placed in a "
-			    "partition which overlaps the disklabel or MBR\n");
-			return -1;
-		}
-		if (pinfo.media_blksize > HAMMER2_PBUFSIZE ||
-		    HAMMER2_PBUFSIZE % pinfo.media_blksize) {
-			fprintf(stderr, "A media sector size of %d is not "
-			    "supported\n", pinfo.media_blksize);
-			return -1;
-		}
-		size = pinfo.media_size;
-	}
-	return size;
-}
-
 int
 test_hammer2(const char *devpath)
 {
-	struct stat st;
 	bool failed = false;
-	int fd;
 
-	fd = open(devpath, O_RDONLY);
-	if (fd == -1) {
-		perror("open");
-		return -1;
-	}
+	hammer2_init_volumes(devpath, 1);
 
-	if (fstat(fd, &st) == -1) {
-		perror("fstat");
-		failed = true;
-		goto end;
-	}
-	if (!S_ISCHR(st.st_mode) && !S_ISREG(st.st_mode)) {
-		fprintf(stderr, "Unsupported file type\n");
-		failed = true;
-		goto end;
-	}
-
-	volume_size = check_volume(fd);
-	if (volume_size == (hammer2_off_t)-1) {
-		fprintf(stderr, "Failed to find volume size\n");
-		failed = true;
-		goto end;
-	}
-	volume_size &= ~HAMMER2_VOLUME_ALIGNMASK64;
-
-	best_zone = find_best_zone(fd);
+	best_zone = find_best_zone();
 	if (best_zone == -1)
 		fprintf(stderr, "Failed to find best zone\n");
 
 	if (PrintPFS) {
-		if (test_pfs_blockref(fd) == -1)
+		if (test_pfs_blockref() == -1)
 			failed = true;
 		goto end; /* print PFS info and exit */
 	}
 
 	printf("volume header\n");
-	if (test_volume_header(fd) == -1) {
+	if (test_volume_header() == -1) {
 		failed = true;
 		if (!ForceOpt)
 			goto end;
 	}
 
 	printf("freemap\n");
-	if (test_blockref(fd, HAMMER2_BREF_TYPE_FREEMAP) == -1) {
+	if (test_blockref(HAMMER2_BREF_TYPE_FREEMAP) == -1) {
 		failed = true;
 		if (!ForceOpt)
 			goto end;
 	}
 	printf("volume\n");
 	if (!ScanPFS) {
-		if (test_blockref(fd, HAMMER2_BREF_TYPE_VOLUME) == -1) {
+		if (test_blockref(HAMMER2_BREF_TYPE_VOLUME) == -1) {
 			failed = true;
 			if (!ForceOpt)
 				goto end;
 		}
 	} else {
-		if (test_pfs_blockref(fd) == -1) {
+		if (test_pfs_blockref() == -1) {
 			failed = true;
 			if (!ForceOpt)
 				goto end;
 		}
 	}
 end:
-	close(fd);
+	hammer2_cleanup_volumes();
 
 	return failed ? -1 : 0;
 }

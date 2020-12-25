@@ -308,6 +308,7 @@ h2disk_check(const char *devpath, cmd_callback callback1)
 	hammer2_blockref_t broot;
 	hammer2_blockref_t best;
 	hammer2_media_data_t media;
+	hammer2_volume_data_t *voldata;
 	struct partinfo partinfo;
 	int fd;
 	int i;
@@ -352,14 +353,19 @@ h2disk_check(const char *devpath, cmd_callback callback1)
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) |
 				 HAMMER2_PBUFRADIX;
 		lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX, SEEK_SET);
-		if (read(fd, &media, HAMMER2_PBUFSIZE) ==
-		    (ssize_t)HAMMER2_PBUFSIZE &&
-		    media.voldata.magic == HAMMER2_VOLUME_ID_HBO) {
-			broot.mirror_tid = media.voldata.mirror_tid;
-			if (best_i < 0 || best.mirror_tid < broot.mirror_tid) {
-				best_i = i;
-				best = broot;
-			}
+		if (read(fd, &media, HAMMER2_PBUFSIZE) !=
+		    (ssize_t)HAMMER2_PBUFSIZE)
+			continue;
+		voldata = &media.voldata;
+		if (voldata->magic != HAMMER2_VOLUME_ID_HBO)
+			continue;
+		/* XXX multiple volumes currently unsupported */
+		if (voldata->nvolumes > 1)
+			break;
+		broot.mirror_tid = voldata->mirror_tid;
+		if (best_i < 0 || best.mirror_tid < broot.mirror_tid) {
+			best_i = i;
+			best = broot;
 		}
 	}
 	if (best_i >= 0)

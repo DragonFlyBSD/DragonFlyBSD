@@ -65,5 +65,7 @@ int	fstyp_hammer2(FILE *fp, char *label, size_t size, const char *devpath);
 
 int	fsvtyp_hammer(const char *blkdevs, char *label, size_t size);
 int	fsvtyp_hammer_partial(const char *blkdevs, char *label, size_t size);
+int	fsvtyp_hammer2(const char *blkdevs, char *label, size_t size);
+int	fsvtyp_hammer2_partial(const char *blkdevs, char *label, size_t size);
 
 #endif /* !FSTYP_H */

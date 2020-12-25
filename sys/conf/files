@@ -2031,6 +2031,7 @@ vfs/hammer2/hammer2_flush.c	optional hammer2
 vfs/hammer2/hammer2_msgops.c	optional hammer2
 vfs/hammer2/hammer2_freemap.c	optional hammer2
 vfs/hammer2/hammer2_strategy.c	optional hammer2
+vfs/hammer2/hammer2_ondisk.c	optional hammer2
 vfs/hammer2/xxhash/xxhash.c	optional hammer2
 vfs/hammer2/zlib/hammer2_zlib_adler32.c	optional hammer2
 vfs/hammer2/zlib/hammer2_zlib_inflate.c	optional hammer2

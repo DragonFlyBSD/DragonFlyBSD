@@ -291,7 +291,9 @@ RB_HEAD(hammer2_io_tree, hammer2_io);
 struct hammer2_io {
 	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
 	struct hammer2_dev *hmp;
+	struct vnode	*devvp;
 	struct buf	*bp;
+	off_t		dbase;		/* offset of devvp within volumes */
 	off_t		pbase;
 	uint64_t	refs;
 	int		psize;
@@ -1102,6 +1104,34 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
 #define HAMMER2_XOP_IROOT		0x00000020
 
 /*
+ * Device vnode management structure
+ */
+struct hammer2_devvp {
+	TAILQ_ENTRY(hammer2_devvp) entry;
+	struct vnode	*devvp;		/* device vnode */
+	char		*path;		/* device vnode path */
+	int		open;		/* 1 if devvp open */
+};
+
+typedef struct hammer2_devvp hammer2_devvp_t;
+
+TAILQ_HEAD(hammer2_devvp_list, hammer2_devvp);
+
+typedef struct hammer2_devvp_list hammer2_devvp_list_t;
+
+/*
+ * Volume management structure
+ */
+struct hammer2_volume {
+	hammer2_devvp_t *dev;		/* device vnode management */
+	int		id;		/* volume id */
+	hammer2_off_t	offset;		/* offset within volumes */
+	hammer2_off_t	size;		/* volume size */
+};
+
+typedef struct hammer2_volume hammer2_volume_t;
+
+/*
  * Global (per partition) management structure, represents a hard block
  * device.  Typically referenced by hammer2_chain structures when applicable.
  * Typically not used for network-managed elements.
@@ -1113,7 +1143,7 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
  * the set of available clusters.
  */
 struct hammer2_dev {
-	struct vnode	*devvp;		/* device vnode */
+	struct vnode	*devvp;		/* device vnode for root volume */
 	int		ronly;		/* read-only mount */
 	int		mount_count;	/* number of actively mounted PFSs */
 	TAILQ_ENTRY(hammer2_dev) mntentry; /* hammer2_mntlist */
@@ -1138,11 +1168,16 @@ struct hammer2_dev {
 	int		volhdrno;	/* last volhdrno written */
 	uint32_t	hflags;		/* HMNT2 flags applicable to device */
 	hammer2_off_t	free_reserved;	/* nominal free reserved */
+	hammer2_off_t	total_size;	/* total size of volumes */
+	int		nvolumes;	/* total number of volumes */
 	hammer2_thread_t bfthr;		/* bulk-free thread */
 	char		devrepname[64];	/* for kprintf */
 	hammer2_ioc_bulkfree_t bflast;	/* stats for last bulkfree run */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
+
+	hammer2_devvp_list_t devvpl;	/* list of device vnodes including *devvp */
+	hammer2_volume_t volumes[HAMMER2_MAX_VOLUMES]; /* list of volumes */
 };
 
 typedef struct hammer2_dev hammer2_dev_t;
@@ -1944,6 +1979,20 @@ void hammer2_bioq_sync(hammer2_pfs_t *pmp);
 void hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio,
 				const char *data);
 void hammer2_dedup_clear(hammer2_dev_t *hmp);
+
+/*
+ * hammer2_ondisk.c
+ */
+int hammer2_open_devvp(const hammer2_devvp_list_t *devvpl, int ronly);
+int hammer2_close_devvp(const hammer2_devvp_list_t *devvpl, int ronly);
+int hammer2_init_devvp(const char *blkdevs, int rootmount,
+			hammer2_devvp_list_t *devvpl);
+void hammer2_cleanup_devvp(hammer2_devvp_list_t *devvpl);
+int hammer2_init_volumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
+			hammer2_volume_t *volumes,
+			hammer2_volume_data_t *rootvoldata,
+			struct vnode **rootvoldevvp);
+hammer2_volume_t *hammer2_get_volume(hammer2_dev_t *hmp, hammer2_off_t offset);
 
 /*
  * More complex inlines

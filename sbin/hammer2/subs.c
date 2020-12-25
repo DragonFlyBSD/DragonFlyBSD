@@ -38,12 +38,14 @@
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/statvfs.h>
+#include <sys/diskslice.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <err.h>
 #include <uuid.h>
 
 #include <vfs/hammer2/hammer2_disk.h>
@@ -192,6 +194,8 @@ hammer2_breftype_to_str(uint8_t type)
 		return("freemap_node");
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		return("freemap_leaf");
+	case HAMMER2_BREF_TYPE_INVALID:
+		return("invalid");
 	case HAMMER2_BREF_TYPE_FREEMAP:
 		return("freemap");
 	case HAMMER2_BREF_TYPE_VOLUME:
@@ -246,6 +250,46 @@ counttostr(hammer2_off_t size)
 			 (double)(size / (1024 * 1024 * 1024LL * 1024LL)));
 	}
 	return(buf);
+}
+
+hammer2_off_t
+check_volume(int fd)
+{
+	struct partinfo pinfo;
+	struct stat st;
+	hammer2_off_t size;
+
+	/*
+	 * Get basic information about the volume
+	 */
+	if (ioctl(fd, DIOCGPART, &pinfo) < 0) {
+		/*
+		 * Allow the formatting of regular files as HAMMER2 volumes
+		 */
+		if (fstat(fd, &st) < 0)
+			err(1, "Unable to stat fd %d", fd);
+		if (!S_ISREG(st.st_mode))
+			errx(1, "Unsupported file type for fd %d", fd);
+		size = st.st_size;
+	} else {
+		/*
+		 * When formatting a block device as a HAMMER2 volume the
+		 * sector size must be compatible.  HAMMER2 uses 64K
+		 * filesystem buffers but logical buffers for direct I/O
+		 * can be as small as HAMMER2_LOGSIZE (16KB).
+		 */
+		if (pinfo.reserved_blocks) {
+			errx(1, "HAMMER2 cannot be placed in a partition "
+				"which overlaps the disklabel or MBR");
+		}
+		if (pinfo.media_blksize > HAMMER2_PBUFSIZE ||
+		    HAMMER2_PBUFSIZE % pinfo.media_blksize) {
+			errx(1, "A media sector size of %d is not supported",
+			     pinfo.media_blksize);
+		}
+		size = pinfo.media_size;
+	}
+	return(size);
 }
 
 /*

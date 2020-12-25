@@ -173,7 +173,7 @@ main(int ac, char *av[])
 	/*
 	 * Try to mount it, prefix if necessary.
 	 */
-	if (devpath[0] != '/' && devpath[0] != '@') {
+	if (!strchr(devpath, ':') && devpath[0] != '/' && devpath[0] != '@') {
 		char *p2;
 		asprintf(&p2, "/dev/%s", devpath);
 		free(devpath);
@@ -189,6 +189,10 @@ main(int ac, char *av[])
 				info.volume, mountpt);
 		} else if (errno == ENOENT) {
 			fprintf(stderr, "mount_hammer2: %s not found\n",
+				info.volume);
+		} else if (errno == ENXIO) {
+			fprintf(stderr, "mount_hammer2: incorrect volume "
+				"specification %s\n",
 				info.volume);
 		} else {
 			perror("mount");

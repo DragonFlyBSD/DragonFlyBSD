@@ -479,8 +479,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	 * Cap at the size needed to cover the whole volume to avoid
 	 * making an unnecessarily large allocation.
 	 */
-	if (size > hmp->voldata.volu_size / HAMMER2_FREEMAP_SIZEDIV) {
-		size = (hmp->voldata.volu_size + HAMMER2_FREEMAP_SIZEMASK) /
+	if (size > hmp->total_size / HAMMER2_FREEMAP_SIZEDIV) {
+		size = (hmp->total_size + HAMMER2_FREEMAP_SIZEMASK) /
 			HAMMER2_FREEMAP_SIZEDIV;
 	}
 
@@ -508,8 +508,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	 * 64KB leaf bitmap boundary which represents 2GB of storage.
 	 */
 	cbinfo.sbase = bfi->sbase;
-	if (cbinfo.sbase > hmp->voldata.volu_size)
-		cbinfo.sbase = hmp->voldata.volu_size;
+	if (cbinfo.sbase > hmp->total_size)
+		cbinfo.sbase = hmp->total_size;
 	cbinfo.sbase &= ~HAMMER2_FREEMAP_LEVEL1_MASK;
 	TAILQ_INIT(&cbinfo.list);
 
@@ -520,7 +520,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	 * get through all available storage.
 	 */
 	error = 0;
-	while (cbinfo.sbase < hmp->voldata.volu_size) {
+	while (cbinfo.sbase < hmp->total_size) {
 		/*
 		 * We have enough ram to represent (incr) bytes of storage.
 		 * Each 64KB of ram represents 2GB of storage.
@@ -545,8 +545,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 
 		incr = size / HAMMER2_FREEMAP_LEVELN_PSIZE *
 		       HAMMER2_FREEMAP_LEVEL1_SIZE;
-		if (hmp->voldata.volu_size - cbinfo.sbase <= incr) {
-			cbinfo.sstop = hmp->voldata.volu_size;
+		if (hmp->total_size - cbinfo.sbase <= incr) {
+			cbinfo.sstop = hmp->total_size;
 			allmedia = 1;
 		} else {
 			cbinfo.sstop = cbinfo.sbase + incr;
@@ -650,7 +650,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 
 	bfi->sstop = cbinfo.sbase;
 
-	incr = bfi->sstop / (hmp->voldata.volu_size / 10000);
+	incr = bfi->sstop / (hmp->total_size / 10000);
 	if (incr > 10000)
 		incr = 10000;
 
@@ -690,7 +690,7 @@ cbinfo_bmap_init(hammer2_bulkfree_info_t *cbinfo, size_t size)
 
 	lokey = (cbinfo->hmp->voldata.allocator_beg + HAMMER2_SEGMASK64) &
 		~HAMMER2_SEGMASK64;
-	hikey = cbinfo->hmp->voldata.volu_size & ~HAMMER2_SEGMASK64;
+	hikey = cbinfo->hmp->total_size & ~HAMMER2_SEGMASK64;
 
 	bzero(bmap, size);
 	while (size) {
@@ -759,7 +759,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 		return 0;
 	if (data_off < cbinfo->hmp->voldata.allocator_beg)
 		return 0;
-	if (data_off >= cbinfo->hmp->voldata.volu_size)
+	if (data_off >= cbinfo->hmp->total_size)
 		return 0;
 
 	/*
@@ -920,9 +920,9 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		kprintf("%016jx-",
 			(intmax_t)cbinfo->sbase);
 
-	if (cbinfo->sstop > cbinfo->hmp->voldata.volu_size)
+	if (cbinfo->sstop > cbinfo->hmp->total_size)
 		kprintf("%016jx\n",
-			(intmax_t)cbinfo->hmp->voldata.volu_size);
+			(intmax_t)cbinfo->hmp->total_size);
 	else
 		kprintf("%016jx\n",
 			(intmax_t)cbinfo->sstop);
@@ -943,12 +943,12 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	while (data_off < cbinfo->sstop) {
 		/*
 		 * The freemap is not used below allocator_beg or beyond
-		 * volu_size.
+		 * total_size.
 		 */
 
 		if (data_off < cbinfo->hmp->voldata.allocator_beg)
 			goto next;
-		if (data_off >= cbinfo->hmp->voldata.volu_size)
+		if (data_off >= cbinfo->hmp->total_size)
 			goto next;
 
 		/*

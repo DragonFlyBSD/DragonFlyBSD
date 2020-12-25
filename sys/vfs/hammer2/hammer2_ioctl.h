@@ -170,6 +170,27 @@ struct hammer2_ioc_growfs {
 typedef struct hammer2_ioc_growfs hammer2_ioc_growfs_t;
 
 /*
+ * Ioctls to manage volumes
+ */
+struct hammer2_ioc_volume {
+	char			path[MAXPATHLEN];
+	int			id;
+	hammer2_off_t		offset;
+	hammer2_off_t		size;
+};
+
+typedef struct hammer2_ioc_volume hammer2_ioc_volume_t;
+
+struct hammer2_ioc_volume_list {
+	hammer2_ioc_volume_t	*volumes;
+	int			nvolumes;
+	int			version;
+	char			pfs_name[HAMMER2_INODE_MAXNAME];
+};
+
+typedef struct hammer2_ioc_volume_list hammer2_ioc_volume_list_t;
+
+/*
  * Ioctl list
  */
 
@@ -205,5 +226,6 @@ typedef struct hammer2_ioc_growfs hammer2_ioc_growfs_t;
 #define HAMMER2IOC_DESTROY	_IOWR('h', 94, struct hammer2_ioc_destroy)
 #define HAMMER2IOC_EMERG_MODE	_IOWR('h', 95, int)
 #define HAMMER2IOC_GROWFS	_IOWR('h', 96, struct hammer2_ioc_growfs)
+#define HAMMER2IOC_VOLUME_LIST	_IOWR('h', 97, struct hammer2_ioc_volume_list)
 
 #endif /* !_VFS_HAMMER2_IOCTL_H_ */

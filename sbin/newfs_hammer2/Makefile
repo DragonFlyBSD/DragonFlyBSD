@@ -8,6 +8,6 @@ CFLAGS+= -DXXH_NAMESPACE=h2_
 .PATH: ${.CURDIR}/../../sys/libkern ${.CURDIR}/../../sys/vfs/hammer2/xxhash
 SRCS+= icrc32.c xxhash.c
 .PATH: ${.CURDIR}/../hammer2
-SRCS+= subs.c
+SRCS+= subs.c ondisk.c
 
 .include <bsd.prog.mk>

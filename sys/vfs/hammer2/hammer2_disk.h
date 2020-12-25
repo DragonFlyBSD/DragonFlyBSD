@@ -713,6 +713,7 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_BREF_TYPE_DIRENT	4
 #define HAMMER2_BREF_TYPE_FREEMAP_NODE	5
 #define HAMMER2_BREF_TYPE_FREEMAP_LEAF	6
+#define HAMMER2_BREF_TYPE_INVALID	7
 #define HAMMER2_BREF_TYPE_FREEMAP	254	/* pseudo-type */
 #define HAMMER2_BREF_TYPE_VOLUME	255	/* pseudo-type */
 
@@ -1144,6 +1145,16 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_VOLUME_ID_HBO	0x48414d3205172011LLU
 #define HAMMER2_VOLUME_ID_ABO	0x11201705324d4148LLU
 
+/*
+ * If volume version is HAMMER2_VOL_VERSION_MULTI_VOLUMES or above, max
+ * HAMMER2_MAX_VOLUMES volumes are supported. There must be 1 (and only 1)
+ * volume with volume id HAMMER2_ROOT_VOLUME.
+ * Otherwise filesystem only supports 1 volume, and that volume must have
+ * volume id HAMMER2_ROOT_VOLUME(0) which was a reserved field then.
+ */
+#define HAMMER2_MAX_VOLUMES	64
+#define HAMMER2_ROOT_VOLUME	0
+
 struct hammer2_volume_data {
 	/*
 	 * sector #0 - 512 bytes
@@ -1160,8 +1171,10 @@ struct hammer2_volume_data {
 	uint8_t		copyid;			/* 0038 copyid of phys vol */
 	uint8_t		freemap_version;	/* 0039 freemap algorithm */
 	uint8_t		peer_type;		/* 003A HAMMER2_PEER_xxx */
-	uint8_t		reserved003B;		/* 003B */
-	uint32_t	reserved003C;		/* 003C */
+	uint8_t		volu_id;		/* 003B */
+	uint8_t		nvolumes;		/* 003C */
+	uint8_t		reserved003D;		/* 003D */
+	uint16_t	reserved003E;		/* 003E */
 
 	uuid_t		fsid;			/* 0040 */
 	uuid_t		fstype;			/* 0050 */
@@ -1192,7 +1205,9 @@ struct hammer2_volume_data {
 	hammer2_tid_t	reserved0088;		/* 0088 */
 	hammer2_tid_t	freemap_tid;		/* 0090 committed tid (fmap) */
 	hammer2_tid_t	bulkfree_tid;		/* 0098 bulkfree incremental */
-	hammer2_tid_t	reserved00A0[5];	/* 00A0-00C7 */
+	hammer2_tid_t	reserved00A0[4];	/* 00A0-00BF */
+
+	hammer2_off_t	total_size;		/* 00C0 Total volume size, bytes */
 
 	/*
 	 * Copyids are allocated dynamically from the copyexists bitmap.
@@ -1228,14 +1243,19 @@ struct hammer2_volume_data {
 	hammer2_blockset_t sroot_blockset;	/* 0200-03FF Superroot dir */
 
 	/*
-	 * sector #2-7
+	 * sector #2-6
 	 */
 	char	sector2[512];			/* 0400-05FF reserved */
 	char	sector3[512];			/* 0600-07FF reserved */
 	hammer2_blockset_t freemap_blockset;	/* 0800-09FF freemap  */
 	char	sector5[512];			/* 0A00-0BFF reserved */
 	char	sector6[512];			/* 0C00-0DFF reserved */
-	char	sector7[512];			/* 0E00-0FFF reserved */
+
+	/*
+	 * sector #7 - 512 bytes
+	 * Maximum 64 volume offsets within logical offset.
+	 */
+	hammer2_off_t volu_loff[HAMMER2_MAX_VOLUMES];
 
 	/*
 	 * sector #8-71	- 32768 bytes
@@ -1287,9 +1307,11 @@ typedef struct hammer2_volume_data hammer2_volume_data_t;
 #define HAMMER2_VOLUME_ICRC1_SIZE	(512)
 #define HAMMER2_VOLUME_ICRCVH_SIZE	(65536 - 4)
 
+#define HAMMER2_VOL_VERSION_MULTI_VOLUMES	2
+
 #define HAMMER2_VOL_VERSION_MIN		1
-#define HAMMER2_VOL_VERSION_DEFAULT	1
-#define HAMMER2_VOL_VERSION_WIP		2
+#define HAMMER2_VOL_VERSION_DEFAULT	HAMMER2_VOL_VERSION_MULTI_VOLUMES
+#define HAMMER2_VOL_VERSION_WIP		(HAMMER2_VOL_VERSION_MULTI_VOLUMES + 1)
 
 #define HAMMER2_NUM_VOLHDRS		4
 

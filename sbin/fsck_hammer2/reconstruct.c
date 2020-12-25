@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  */
 
-// # gcc -Wall -g -I../../sys -I../hammer2 ../../sys/vfs/hammer2/xxhash/xxhash.c
-// ../../sys/libkern/icrc32.c ../hammer2/subs.c ./reconstruct.c -o reconstruct
+// # gcc -Wall -g -I../../sys -I../hammer2 ../../sys/vfs/hammer2/xxhash/xxhash.c ../../sys/libkern/icrc32.c ../hammer2/subs.c ../hammer2/ondisk.c ./reconstruct.c -o reconstruct
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -54,17 +53,17 @@
 
 #include "hammer2_subs.h"
 
-static int modify_volume_header(int, hammer2_volume_data_t *,
+static int modify_volume_header(hammer2_volume_data_t *,
     const hammer2_blockref_t *);
-static int modify_blockref(int, const hammer2_volume_data_t *, int,
+static int modify_blockref(const hammer2_volume_data_t *, int,
     hammer2_blockref_t *, hammer2_blockref_t *, int);
-static int modify_check(int, int, hammer2_blockref_t *,
-    const hammer2_blockref_t *, hammer2_media_data_t *, size_t, int);
+static int modify_check(int, hammer2_blockref_t *, const hammer2_blockref_t *,
+    hammer2_media_data_t *, size_t, int);
 
 static bool ForceOpt = false;
 
 static int
-reconstruct_volume_header(int fd)
+reconstruct_volume_header(void)
 {
 	bool failed = false;
 	int i;
@@ -72,21 +71,24 @@ reconstruct_volume_header(int fd)
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		hammer2_volume_data_t voldata;
 		hammer2_blockref_t broot;
+		hammer2_off_t off;
 		ssize_t ret;
 
 		memset(&broot, 0, sizeof(broot));
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
-		if (lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX,
-		    SEEK_SET) == -1) {
+		off = broot.data_off & ~HAMMER2_OFF_MASK_RADIX;
+		if (lseek(hammer2_get_root_volume_fd(),
+		    off - hammer2_get_root_volume_offset(), SEEK_SET) == -1) {
 			perror("lseek");
 			return -1;
 		}
 
-		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
+		ret = read(hammer2_get_root_volume_fd(), &voldata,
+		    HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
 			fprintf(stdout, "zone.%d %016jx\n",
 			    i, (uintmax_t)broot.data_off);
-			if (modify_volume_header(fd, &voldata, &broot) == -1)
+			if (modify_volume_header(&voldata, &broot) == -1)
 				failed = true;
 		} else if (ret == -1) {
 			perror("read");
@@ -101,7 +103,7 @@ reconstruct_volume_header(int fd)
 }
 
 static int
-reconstruct_blockref(int fd, uint8_t type)
+reconstruct_blockref(uint8_t type)
 {
 	bool failed = false;
 	int i;
@@ -109,23 +111,26 @@ reconstruct_blockref(int fd, uint8_t type)
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
 		hammer2_volume_data_t voldata;
 		hammer2_blockref_t broot;
+		hammer2_off_t off;
 		ssize_t ret;
 
 		memset(&broot, 0, sizeof(broot));
 		broot.type = type;
 		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
-		if (lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX,
-		    SEEK_SET) == -1) {
+		off = broot.data_off & ~HAMMER2_OFF_MASK_RADIX;
+		if (lseek(hammer2_get_root_volume_fd(),
+		    off - hammer2_get_root_volume_offset(), SEEK_SET) == -1) {
 			perror("lseek");
 			return -1;
 		}
 
-		ret = read(fd, &voldata, HAMMER2_PBUFSIZE);
+		ret = read(hammer2_get_root_volume_fd(), &voldata,
+		    HAMMER2_PBUFSIZE);
 		if (ret == HAMMER2_PBUFSIZE) {
 			fprintf(stdout, "zone.%d %016jx\n",
 			    i, (uintmax_t)broot.data_off);
-			if (modify_blockref(fd, &voldata, -1, &broot, NULL, -1)
-			    == -1)
+			if (modify_blockref(&voldata, -1, &broot, NULL, -1) ==
+			    -1)
 				failed = true;
 		} else if (ret == -1) {
 			perror("read");
@@ -140,7 +145,7 @@ reconstruct_blockref(int fd, uint8_t type)
 }
 
 static int
-modify_volume_header(int fd, hammer2_volume_data_t *voldata,
+modify_volume_header(hammer2_volume_data_t *voldata,
     const hammer2_blockref_t *bref)
 {
 	hammer2_crc32_t crc0, crc1;
@@ -195,8 +200,10 @@ modify_volume_header(int fd, hammer2_volume_data_t *voldata,
 
 	if (found && ForceOpt) {
 		ssize_t ret;
-		if (lseek(fd, bref->data_off & ~HAMMER2_OFF_MASK_RADIX,
-		    SEEK_SET) == -1) {
+		int fd = hammer2_get_root_volume_fd();
+		hammer2_off_t off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
+		if (lseek(fd, off - hammer2_get_root_volume_offset(), SEEK_SET)
+		    == -1) {
 			perror("lseek");
 			return -1;
 		}
@@ -218,12 +225,13 @@ modify_volume_header(int fd, hammer2_volume_data_t *voldata,
 }
 
 static int
-read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
+read_media(const hammer2_blockref_t *bref, hammer2_media_data_t *media,
     size_t *media_bytes)
 {
 	hammer2_off_t io_off, io_base;
 	size_t bytes, io_bytes, boff;
 	ssize_t ret;
+	int fd;
 
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
@@ -246,7 +254,9 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 		fprintf(stderr, "Bad I/O bytes\n");
 		return -1;
 	}
-	if (lseek(fd, io_base, SEEK_SET) == -1) {
+	fd = hammer2_get_volume_fd(io_off);
+	if (lseek(fd, io_base - hammer2_get_volume_offset(io_base), SEEK_SET)
+	    == -1) {
 		perror("lseek");
 		return -1;
 	}
@@ -265,13 +275,14 @@ read_media(int fd, const hammer2_blockref_t *bref, hammer2_media_data_t *media,
 }
 
 static int
-write_media(int fd, const hammer2_blockref_t *bref,
-    const hammer2_media_data_t *media, size_t media_bytes)
+write_media(const hammer2_blockref_t *bref, const hammer2_media_data_t *media,
+    size_t media_bytes)
 {
 	hammer2_off_t io_off, io_base;
 	char buf[HAMMER2_PBUFSIZE];
 	size_t bytes, io_bytes, boff;
 	ssize_t ret;
+	int fd;
 
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
@@ -291,7 +302,9 @@ write_media(int fd, const hammer2_blockref_t *bref,
 		fprintf(stderr, "Bad I/O bytes\n");
 		return -1;
 	}
-	if (lseek(fd, io_base, SEEK_SET) == -1) {
+	fd = hammer2_get_volume_fd(io_off);
+	if (lseek(fd, io_base - hammer2_get_volume_offset(io_base), SEEK_SET)
+	    == -1) {
 		perror("lseek");
 		return -1;
 	}
@@ -301,7 +314,8 @@ write_media(int fd, const hammer2_blockref_t *bref,
 	}
 
 	memcpy(buf + boff, media, media_bytes);
-	if (lseek(fd, io_base, SEEK_SET) == -1) {
+	if (lseek(fd, io_base - hammer2_get_volume_offset(io_base), SEEK_SET)
+	    == -1) {
 		perror("lseek");
 		return -1;
 	}
@@ -322,7 +336,7 @@ write_media(int fd, const hammer2_blockref_t *bref,
 }
 
 static int
-modify_blockref(int fd, const hammer2_volume_data_t *voldata, int bi,
+modify_blockref(const hammer2_volume_data_t *voldata, int bi,
     hammer2_blockref_t *bref, hammer2_blockref_t *prev_bref, int depth)
 {
 	hammer2_media_data_t media;
@@ -330,7 +344,7 @@ modify_blockref(int fd, const hammer2_volume_data_t *voldata, int bi,
 	int i, bcount;
 	size_t bytes;
 
-	if (read_media(fd, bref, &media, &bytes) == -1)
+	if (read_media(bref, &media, &bytes) == -1)
 		return -1;
 
 	if (!bytes)
@@ -370,21 +384,21 @@ modify_blockref(int fd, const hammer2_volume_data_t *voldata, int bi,
 
 	for (i = 0; i < bcount; ++i)
 		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY)
-			if (modify_blockref(fd, voldata, i, &bscan[i], bref,
+			if (modify_blockref(voldata, i, &bscan[i], bref,
 			    depth + 1) == -1)
 				return -1;
 
 	if (ForceOpt)
-		if (read_media(fd, bref, &media, &bytes) == -1)
+		if (read_media(bref, &media, &bytes) == -1)
 			return -1;
-	if (modify_check(fd, bi, prev_bref, bref, &media, bytes, depth) == -1)
+	if (modify_check(bi, prev_bref, bref, &media, bytes, depth) == -1)
 		return -1;
 
 	return 0;
 }
 
 static int
-modify_check(int fd, int bi, hammer2_blockref_t *prev_bref,
+modify_check(int bi, hammer2_blockref_t *prev_bref,
     const hammer2_blockref_t *bref, hammer2_media_data_t *media,
     size_t media_bytes, int depth)
 {
@@ -404,7 +418,7 @@ modify_check(int fd, int bi, hammer2_blockref_t *prev_bref,
 
 	if (!prev_bref)
 		return 0;
-	if (read_media(fd, prev_bref, &bscan_media, &bytes) == -1)
+	if (read_media(prev_bref, &bscan_media, &bytes) == -1)
 		return -1;
 	assert(bytes);
 
@@ -484,8 +498,7 @@ modify_check(int fd, int bi, hammer2_blockref_t *prev_bref,
 
 	if (found) {
 		if (ForceOpt) {
-			if (write_media(fd, prev_bref, &bscan_media, bytes)
-			    == -1)
+			if (write_media(prev_bref, &bscan_media, bytes) == -1)
 				return -1;
 		}
 		/* If !ForceOpt, only first bad blockref is printed. */
@@ -502,8 +515,7 @@ modify_check(int fd, int bi, hammer2_blockref_t *prev_bref,
 int
 main(int argc, char **argv)
 {
-	struct stat st;
-	int ch, fd;
+	int ch;
 	const char *binpath = argv[0];
 	const char *devpath;
 
@@ -524,34 +536,20 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	devpath = argv[0];
-
-	fd = open(devpath, O_RDWR);
-	if (fd == -1) {
-		perror("open");
-		exit(1);
-	}
-
-	if (fstat(fd, &st) == -1) {
-		perror("fstat");
-		exit(1);
-	}
-	if (!S_ISCHR(st.st_mode) && !S_ISREG(st.st_mode)) {
-		fprintf(stderr, "Unsupported file type\n");
-		exit(1);
-	}
+	hammer2_init_volumes(devpath, 0);
 
 	printf("freemap\n");
-	if (reconstruct_blockref(fd, HAMMER2_BREF_TYPE_FREEMAP) == -1)
+	if (reconstruct_blockref(HAMMER2_BREF_TYPE_FREEMAP) == -1)
 		exit(1);
 	printf("volume\n");
-	if (reconstruct_blockref(fd, HAMMER2_BREF_TYPE_VOLUME) == -1)
+	if (reconstruct_blockref(HAMMER2_BREF_TYPE_VOLUME) == -1)
 		exit(1);
 
 	printf("volume header\n");
-	if (reconstruct_volume_header(fd) == -1)
+	if (reconstruct_volume_header() == -1)
 		exit(1);
 
-	close(fd);
+	hammer2_cleanup_volumes();
 
 	return 0;
 }

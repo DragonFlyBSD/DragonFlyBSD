@@ -81,6 +81,8 @@ static struct {
 } fsvtypes[] = {
 	{ "hammer", &fsvtyp_hammer, false, NULL }, /* Must be before partial */
 	{ "hammer(partial)", &fsvtyp_hammer_partial, true, NULL },
+	{ "hammer2", &fsvtyp_hammer2, false, NULL }, /* Must be before partial */
+	{ "hammer2(partial)", &fsvtyp_hammer2_partial, true, NULL },
 	{ NULL, NULL, NULL, NULL }
 };
 

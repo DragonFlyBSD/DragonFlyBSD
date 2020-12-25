@@ -272,8 +272,8 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 	 * Make sure bpref is in-bounds.  It's ok if bpref covers a zone's
 	 * reserved area, the try code will iterate past it.
 	 */
-	if (iter.bpref > hmp->voldata.volu_size)
-		iter.bpref = hmp->voldata.volu_size - 1;
+	if (iter.bpref > hmp->total_size)
+		iter.bpref = hmp->total_size - 1;
 
 	/*
 	 * Iterate the freemap looking for free space before and after.
@@ -515,7 +515,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 		 * reserved segment area for a zone.
 		 */
 		KKASSERT(key >= hmp->voldata.allocator_beg &&
-			 key + bytes <= hmp->voldata.volu_size);
+			 key + bytes <= hmp->total_size);
 		KKASSERT((key & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 		bref->data_off = key | radix;
 
@@ -878,8 +878,8 @@ hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
 	 *     allocated.
 	 */
 	hikey = key + HAMMER2_FREEMAP_LEVEL1_SIZE;
-	if (hikey > hmp->voldata.volu_size) {
-		hikey = hmp->voldata.volu_size & ~HAMMER2_SEGMASK64;
+	if (hikey > hmp->total_size) {
+		hikey = hmp->total_size & ~HAMMER2_SEGMASK64;
 	}
 
 	/*
@@ -927,7 +927,7 @@ hammer2_freemap_iterate(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 
 	iter->bnext &= ~HAMMER2_FREEMAP_LEVEL1_MASK;
 	iter->bnext += HAMMER2_FREEMAP_LEVEL1_SIZE;
-	if (iter->bnext >= hmp->voldata.volu_size) {
+	if (iter->bnext >= hmp->total_size) {
 		iter->bnext = 0;
 		if (++iter->loops >= 2) {
 			if (iter->relaxed == 0)

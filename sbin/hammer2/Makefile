@@ -1,10 +1,10 @@
 PROG=	hammer2
-SRCS=	main.c subs.c
+SRCS=	main.c subs.c ondisk.c
 SRCS+=	cmd_remote.c cmd_snapshot.c cmd_pfs.c
 SRCS+=	cmd_service.c cmd_leaf.c cmd_debug.c
 SRCS+=	cmd_rsa.c cmd_stat.c cmd_setcomp.c cmd_setcheck.c
 SRCS+=	cmd_bulkfree.c cmd_cleanup.c cmd_info.c cmd_destroy.c
-SRCS+=	cmd_emergency.c cmd_growfs.c
+SRCS+=	cmd_emergency.c cmd_growfs.c cmd_volume.c
 SRCS+=	print_inode.c
 MAN=	hammer2.8
 

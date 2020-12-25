@@ -33,9 +33,9 @@
  */
 
 #include <sys/types.h>
+#include <sys/param.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
-#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/sysctl.h>
 #include <sys/ioctl.h>
@@ -58,14 +58,12 @@
 
 #define MAXLABELS	HAMMER2_SET_COUNT
 
-static hammer2_off_t check_volume(const char *path, int *fdp);
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static uint64_t nowtime(void);
 static int blkrefary_cmp(const void *b1, const void *b2);
 static void usage(void);
 
-static void format_hammer2(int fd, hammer2_off_t total_space,
-				hammer2_off_t free_space);
+static void format_hammer2(hammer2_ondisk_t *fso, int index);
 static void alloc_direct(hammer2_off_t *basep, hammer2_blockref_t *bref,
 				size_t bytes);
 
@@ -80,16 +78,15 @@ static const char *Label[MAXLABELS];
 static hammer2_off_t BootAreaSize;
 static hammer2_off_t AuxAreaSize;
 static int NLabels;
+static int DebugOpt;
 
 int
 main(int ac, char **av)
 {
 	uint32_t status;
-	hammer2_off_t total_space;
-	hammer2_off_t free_space;
-	hammer2_off_t reserved_space;
+	hammer2_off_t reserved_size;
+	hammer2_ondisk_t fso;
 	int ch;
-	int fd = -1;
 	int i;
 	int defaultlabels = 1;
 	char *vol_fsid = NULL;
@@ -125,7 +122,7 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "L:b:r:V:")) != -1) {
+	while ((ch = getopt(ac, av, "L:b:r:V:d")) != -1) {
 		switch(ch) {
 		case 'L':
 			defaultlabels = 0;
@@ -167,6 +164,9 @@ main(int ac, char **av)
 				     Hammer2Version);
 			}
 			break;
+		case 'd':
+			DebugOpt = 1;
+			break;
 		default:
 			usage();
 			break;
@@ -202,10 +202,11 @@ main(int ac, char **av)
 	ac -= optind;
 	av += optind;
 
-	if (ac != 1 || av[0][0] == 0) {
-		fprintf(stderr, "Exactly one disk device must be specified\n");
-		exit(1);
-	}
+	if (ac == 0)
+		errx(1, "You must specify at least one disk device");
+	if (ac > HAMMER2_MAX_VOLUMES)
+		errx(1, "The maximum number of volumes is %d",
+		     HAMMER2_MAX_VOLUMES);
 
 	/*
 	 * Adjust Label[] and NLabels.
@@ -221,15 +222,38 @@ main(int ac, char **av)
 	}
 
 	/*
-	 * Collect volume information.
+	 * Construct volumes information.
+	 * 1GB alignment (level1 freemap size) for volumes except for the last.
+	 * For the last volume, typically 8MB alignment to avoid edge cases for
+	 * reserved blocks and so raid stripes (if any) operate efficiently.
 	 */
-	total_space = check_volume(av[0], &fd);
+	hammer2_init_ondisk(&fso);
+	fso.version = Hammer2Version;
+	fso.nvolumes = ac;
+	for (i = 0; i < fso.nvolumes; ++i) {
+		hammer2_volume_t *vol = &fso.volumes[i];
+		hammer2_off_t size;
+		int fd = open(av[i], O_RDWR);
+		if (fd < 0)
+			err(1, "Unable to open %s R+W", av[i]);
+		size = check_volume(fd);
+		if (i == fso.nvolumes - 1)
+			size &= ~HAMMER2_VOLUME_ALIGNMASK64;
+		else
+			size &= ~HAMMER2_FREEMAP_LEVEL1_MASK;
+		hammer2_install_volume(vol, fd, i, av[i], fso.total_size, size);
+		fso.total_size += size;
+	}
 
 	/*
-	 * ~typically 8MB alignment to avoid edge cases for reserved blocks
-	 * and so raid stripes (if any) operate efficiently.
+	 * Verify volumes constructed above.
 	 */
-	total_space &= ~HAMMER2_VOLUME_ALIGNMASK64;
+	for (i = 0; i < fso.nvolumes; ++i) {
+		hammer2_volume_t *vol = &fso.volumes[i];
+		printf("Volume %-15s size %s\n", vol->path,
+		       sizetostr(vol->size));
+	}
+	hammer2_verify_volumes(&fso, NULL);
 
 	/*
 	 * Calculate defaults for the boot area size and round to the
@@ -240,7 +264,7 @@ main(int ac, char **av)
 	 */
 	if (BootAreaSize == 0) {
 		BootAreaSize = HAMMER2_BOOT_NOM_BYTES;
-		while (BootAreaSize > total_space / 20)
+		while (BootAreaSize > fso.total_size / 20)
 			BootAreaSize >>= 1;
 		if (BootAreaSize < HAMMER2_BOOT_MIN_BYTES)
 			BootAreaSize = HAMMER2_BOOT_MIN_BYTES;
@@ -259,7 +283,7 @@ main(int ac, char **av)
 	 */
 	if (AuxAreaSize == 0) {
 		AuxAreaSize = HAMMER2_AUX_NOM_BYTES;
-		while (AuxAreaSize > total_space / 20)
+		while (AuxAreaSize > fso.total_size / 20)
 			AuxAreaSize >>= 1;
 		if (AuxAreaSize < HAMMER2_AUX_MIN_BYTES)
 			AuxAreaSize = HAMMER2_AUX_MIN_BYTES;
@@ -290,28 +314,38 @@ main(int ac, char **av)
 	 *     boundaries rather than 2GB boundaries.  Stick with the LEVEL1
 	 *     boundary.
 	 */
-	reserved_space = ((total_space + HAMMER2_FREEMAP_LEVEL1_MASK) /
+	reserved_size = ((fso.total_size + HAMMER2_FREEMAP_LEVEL1_MASK) /
 			  HAMMER2_FREEMAP_LEVEL1_SIZE) * HAMMER2_ZONE_SEG64;
 
-	free_space = total_space - reserved_space - BootAreaSize - AuxAreaSize;
-	if ((int64_t)free_space < 0) {
+	fso.free_size = fso.total_size - reserved_size - BootAreaSize - AuxAreaSize;
+	if ((int64_t)fso.free_size < 0) {
 		fprintf(stderr, "Not enough free space\n");
 		exit(1);
 	}
 
-	format_hammer2(fd, total_space, free_space);
-	fsync(fd);
-	close(fd);
+	/*
+	 * Format HAMMER2 volumes.
+	 */
+	for (i = 0; i < fso.nvolumes; ++i)
+		format_hammer2(&fso, i);
 
 	printf("---------------------------------------------\n");
 	printf("version:          %d\n", Hammer2Version);
 	printf("total-size:       %s (%jd bytes)\n",
-	       sizetostr(total_space),
-	       (intmax_t)total_space);
-	printf("boot-area-size:   %s\n", sizetostr(BootAreaSize));
-	printf("aux-area-size:    %s\n", sizetostr(AuxAreaSize));
-	printf("topo-reserved:    %s\n", sizetostr(reserved_space));
-	printf("free-space:       %s\n", sizetostr(free_space));
+	       sizetostr(fso.total_size),
+	       (intmax_t)fso.total_size);
+	printf("boot-area-size:   %s (%jd bytes)\n",
+	       sizetostr(BootAreaSize),
+	       (intmax_t)BootAreaSize);
+	printf("aux-area-size:    %s (%jd bytes)\n",
+	       sizetostr(AuxAreaSize),
+	       (intmax_t)AuxAreaSize);
+	printf("topo-reserved:    %s (%jd bytes)\n",
+	       sizetostr(reserved_size),
+	       (intmax_t)reserved_size);
+	printf("free-size:        %s (%jd bytes)\n",
+	       sizetostr(fso.free_size),
+	       (intmax_t)fso.free_size);
 	printf("vol-fsid:         %s\n", vol_fsid);
 	printf("sup-clid:         %s\n", sup_clid_name);
 	printf("sup-fsid:         %s\n", sup_fsid_name);
@@ -322,12 +356,19 @@ main(int ac, char **av)
 		printf("    clid %s\n", pfs_clid_name);
 		printf("    fsid %s\n", pfs_fsid_name);
 	}
+	if (DebugOpt) {
+		printf("---------------------------------------------\n");
+		hammer2_print_volumes(&fso);
+	}
 
 	free(vol_fsid);
 	free(sup_clid_name);
 	free(sup_fsid_name);
 	free(pfs_clid_name);
 	free(pfs_fsid_name);
+
+	for (i = 0; i < fso.nvolumes; ++i)
+		hammer2_uninstall_volume(&fso.volumes[i]);
 
 	return(0);
 }
@@ -338,7 +379,7 @@ usage(void)
 {
 	fprintf(stderr,
 		"usage: newfs_hammer2 [-b bootsize] [-r auxsize] "
-		"[-V version] [-L label ...] special\n"
+		"[-V version] [-L label ...] special ...\n"
 	);
 	exit(1);
 }
@@ -411,106 +452,29 @@ nowtime(void)
 	return(xtime);
 }
 
-/*
- * Figure out how big the volume is.
- */
 static
 hammer2_off_t
-check_volume(const char *path, int *fdp)
-{
-	struct partinfo pinfo;
-	struct stat st;
-	hammer2_off_t size;
-
-	/*
-	 * Get basic information about the volume
-	 */
-	*fdp = open(path, O_RDWR);
-	if (*fdp < 0)
-		err(1, "Unable to open %s R+W", path);
-	if (ioctl(*fdp, DIOCGPART, &pinfo) < 0) {
-		/*
-		 * Allow the formatting of regular files as HAMMER2 volumes
-		 */
-		if (fstat(*fdp, &st) < 0)
-			err(1, "Unable to stat %s", path);
-		if (!S_ISREG(st.st_mode))
-			errx(1, "Unsupported file type for %s", path);
-		size = st.st_size;
-	} else {
-		/*
-		 * When formatting a block device as a HAMMER2 volume the
-		 * sector size must be compatible.  HAMMER2 uses 64K
-		 * filesystem buffers but logical buffers for direct I/O
-		 * can be as small as HAMMER2_LOGSIZE (16KB).
-		 */
-		if (pinfo.reserved_blocks) {
-			errx(1, "HAMMER2 cannot be placed in a partition "
-				"which overlaps the disklabel or MBR");
-		}
-		if (pinfo.media_blksize > HAMMER2_PBUFSIZE ||
-		    HAMMER2_PBUFSIZE % pinfo.media_blksize) {
-			errx(1, "A media sector size of %d is not supported",
-			     pinfo.media_blksize);
-		}
-		size = pinfo.media_size;
-	}
-	printf("Volume %-15s size %s\n", path, sizetostr(size));
-	return (size);
-}
-
-/*
- * Create the volume header, the super-root directory inode, and
- * the writable snapshot subdirectory (named via the label) which
- * is to be the initial mount point, or at least the first mount point.
- * newfs_hammer2 doesn't format the freemap bitmaps for these.
- *
- * 0                      4MB
- * [----reserved_area----][boot_area][aux_area]
- * [[vol_hdr][freemap]...]                     [sroot][root][root]...
- *     \                                        ^\     ^     ^
- *      \--------------------------------------/  \---/-----/---...
- *
- * NOTE: The passed total_space is 8MB-aligned to avoid edge cases.
- */
-static
-void
-format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
+format_hammer2_misc(hammer2_volume_t *vol, hammer2_off_t boot_base,
+		    hammer2_off_t aux_base)
 {
 	char *buf = malloc(HAMMER2_PBUFSIZE);
-	hammer2_volume_data_t *voldata;
-	hammer2_inode_data_t *rawip;
-	hammer2_blockref_t sroot_blockref;
-	hammer2_blockref_t root_blockref[MAXLABELS];
-	uint64_t now;
-	hammer2_off_t volu_base = 0;
-	hammer2_off_t boot_base = HAMMER2_ZONE_SEG;
-	hammer2_off_t aux_base = boot_base + BootAreaSize;
 	hammer2_off_t alloc_base = aux_base + AuxAreaSize;
 	hammer2_off_t tmp_base;
 	size_t n;
 	int i;
 
 	/*
-	 * Clear the entire 4MB reserve for the first 2G zone and
-	 * make sure we can write to the last block.
+	 * Clear the entire 4MB reserve for the first 2G zone.
 	 */
 	bzero(buf, HAMMER2_PBUFSIZE);
-	tmp_base = volu_base;
+	tmp_base = 0;
 	for (i = 0; i < HAMMER2_ZONE_BLOCKS_SEG; ++i) {
-		n = pwrite(fd, buf, HAMMER2_PBUFSIZE, tmp_base);
+		n = pwrite(vol->fd, buf, HAMMER2_PBUFSIZE, tmp_base);
 		if (n != HAMMER2_PBUFSIZE) {
 			perror("write");
 			exit(1);
 		}
 		tmp_base += HAMMER2_PBUFSIZE;
-	}
-
-	n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
-		   volu_base + total_space - HAMMER2_PBUFSIZE);
-	if (n != HAMMER2_PBUFSIZE) {
-		perror("write (at-end-of-volume)");
-		exit(1);
 	}
 
 	/*
@@ -528,13 +492,32 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 */
 	for (tmp_base = boot_base; tmp_base < alloc_base;
 	     tmp_base += HAMMER2_PBUFSIZE) {
-		n = pwrite(fd, buf, HAMMER2_PBUFSIZE, tmp_base);
+		n = pwrite(vol->fd, buf, HAMMER2_PBUFSIZE, tmp_base);
 		if (n != HAMMER2_PBUFSIZE) {
 			perror("write (boot/aux)");
 			exit(1);
 		}
 	}
 
+	free(buf);
+	return(alloc_base);
+}
+
+static
+hammer2_off_t
+format_hammer2_inode(hammer2_volume_t *vol, hammer2_blockref_t *sroot_blockrefp,
+		     hammer2_off_t alloc_base)
+{
+	char *buf = malloc(HAMMER2_PBUFSIZE);
+	hammer2_inode_data_t *rawip;
+	hammer2_blockref_t sroot_blockref;
+	hammer2_blockref_t root_blockref[MAXLABELS];
+	uint64_t now;
+	size_t n;
+	int i;
+
+	bzero(&sroot_blockref, sizeof(sroot_blockref));
+	bzero(root_blockref, sizeof(root_blockref));
 	now = nowtime();
 	alloc_base &= ~HAMMER2_PBUFMASK64;
 	alloc_direct(&alloc_base, &sroot_blockref, HAMMER2_INODE_BYTES);
@@ -697,42 +680,118 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 */
 	assert((sroot_blockref.data_off & ~HAMMER2_PBUFMASK64) ==
 		((alloc_base - 1) & ~HAMMER2_PBUFMASK64));
-	n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
+	n = pwrite(vol->fd, buf, HAMMER2_PBUFSIZE,
 		   sroot_blockref.data_off & ~HAMMER2_PBUFMASK64);
 	if (n != HAMMER2_PBUFSIZE) {
 		perror("write");
 		exit(1);
 	}
+	*sroot_blockrefp = sroot_blockref;
+
+	free(buf);
+	return(alloc_base);
+}
+
+/*
+ * Create the volume header, the super-root directory inode, and
+ * the writable snapshot subdirectory (named via the label) which
+ * is to be the initial mount point, or at least the first mount point.
+ * newfs_hammer2 doesn't format the freemap bitmaps for these.
+ *
+ * 0                      4MB
+ * [----reserved_area----][boot_area][aux_area]
+ * [[vol_hdr][freemap]...]                     [sroot][root][root]...
+ *     \                                        ^\     ^     ^
+ *      \--------------------------------------/  \---/-----/---...
+ *
+ * NOTE: The total size is 8MB-aligned to avoid edge cases.
+ */
+static
+void
+format_hammer2(hammer2_ondisk_t *fso, int index)
+{
+	char *buf = malloc(HAMMER2_PBUFSIZE);
+	hammer2_volume_t *vol = &fso->volumes[index];
+	hammer2_volume_data_t *voldata;
+	hammer2_blockset_t sroot_blockset;
+	hammer2_off_t boot_base = HAMMER2_ZONE_SEG;
+	hammer2_off_t aux_base = boot_base + BootAreaSize;
+	hammer2_off_t alloc_base;
+	size_t n;
+	int i;
+
+	/*
+	 * Make sure we can write to the last usable block.
+	 */
+	bzero(buf, HAMMER2_PBUFSIZE);
+	n = pwrite(vol->fd, buf, HAMMER2_PBUFSIZE,
+		   vol->size - HAMMER2_PBUFSIZE);
+	if (n != HAMMER2_PBUFSIZE) {
+		perror("write (at-end-of-volume)");
+		exit(1);
+	}
+
+	/*
+	 * Format misc area and sroot/root inodes for the root volume.
+	 */
+	bzero(&sroot_blockset, sizeof(sroot_blockset));
+	if (vol->id == HAMMER2_ROOT_VOLUME) {
+		alloc_base = format_hammer2_misc(vol, boot_base, aux_base);
+		alloc_base = format_hammer2_inode(vol,
+						  &sroot_blockset.blockref[0],
+						  alloc_base);
+	} else {
+		alloc_base = 0;
+		for (i = 0; i < HAMMER2_SET_COUNT; ++i)
+			sroot_blockset.blockref[i].type = HAMMER2_BREF_TYPE_INVALID;
+	}
 
 	/*
 	 * Format the volume header.
 	 *
-	 * The volume header points to sroot_blockref.  Also be absolutely
-	 * sure that allocator_beg is set.
+	 * The volume header points to sroot_blockset.  Also be absolutely
+	 * sure that allocator_beg is set for the root volume.
 	 */
 	assert(HAMMER2_VOLUME_BYTES <= HAMMER2_PBUFSIZE);
 	bzero(buf, HAMMER2_PBUFSIZE);
 	voldata = (void *)buf;
 
 	voldata->magic = HAMMER2_VOLUME_ID_HBO;
-	voldata->boot_beg = boot_base;
-	voldata->boot_end = boot_base + BootAreaSize;
-	voldata->aux_beg = aux_base;
-	voldata->aux_end = aux_base + AuxAreaSize;
-	voldata->volu_size = total_space;
+	if (vol->id == HAMMER2_ROOT_VOLUME) {
+		voldata->boot_beg = boot_base;
+		voldata->boot_end = boot_base + BootAreaSize;
+		voldata->aux_beg = aux_base;
+		voldata->aux_end = aux_base + AuxAreaSize;
+	}
+	voldata->volu_size = vol->size;
 	voldata->version = Hammer2Version;
 	voldata->flags = 0;
+
+	if (voldata->version >= HAMMER2_VOL_VERSION_MULTI_VOLUMES) {
+		voldata->volu_id = vol->id;
+		voldata->nvolumes = fso->nvolumes;
+		voldata->total_size = fso->total_size;
+		for (i = 0; i < HAMMER2_MAX_VOLUMES; ++i) {
+			if (i < fso->nvolumes)
+				voldata->volu_loff[i] = fso->volumes[i].offset;
+			else
+				voldata->volu_loff[i] = (hammer2_off_t)-1;
+		}
+	}
 
 	voldata->fsid = Hammer2_VolFSID;
 	voldata->fstype = Hammer2_FSType;
 
 	voldata->peer_type = DMSG_PEER_HAMMER2;	/* LNK_CONN identification */
 
-	voldata->allocator_size = free_space;
-	voldata->allocator_free = free_space;
-	voldata->allocator_beg = alloc_base;
+	assert(vol->id == HAMMER2_ROOT_VOLUME || alloc_base == 0);
+	voldata->allocator_size = fso->free_size;
+	if (vol->id == HAMMER2_ROOT_VOLUME) {
+		voldata->allocator_free = fso->free_size;
+		voldata->allocator_beg = alloc_base;
+	}
 
-	voldata->sroot_blockset.blockref[0] = sroot_blockref;
+	voldata->sroot_blockset = sroot_blockset;
 	voldata->mirror_tid = 16;	/* all blockref mirror TIDs set to 16 */
 	voldata->freemap_tid = 16;	/* all blockref mirror TIDs set to 16 */
 	voldata->icrc_sects[HAMMER2_VOL_ICRC_SECT1] =
@@ -755,15 +814,16 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * Write the volume header and all alternates.
 	 */
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
-		if (i * HAMMER2_ZONE_BYTES64 >= total_space)
+		if (i * HAMMER2_ZONE_BYTES64 >= vol->size)
 			break;
-		n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
-			   volu_base + i * HAMMER2_ZONE_BYTES64);
+		n = pwrite(vol->fd, buf, HAMMER2_PBUFSIZE,
+			   i * HAMMER2_ZONE_BYTES64);
 		if (n != HAMMER2_PBUFSIZE) {
 			perror("write");
 			exit(1);
 		}
 	}
+	fsync(vol->fd);
 
 	/*
 	 * Cleanup

@@ -1323,6 +1323,8 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 	hammer2_inode_t *ip;
 	hammer2_dev_t *hmp;
 	hammer2_pfs_t *pmp;
+	hammer2_devvp_t *e;
+	struct vnode *devvp;
 	int flush_error = 0;
 	int fsync_error = 0;
 	int total_error = 0;
@@ -1484,12 +1486,16 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 	 *
 	 * XXX this isn't being incremental
 	 */
-	vn_lock(hmp->devvp, LK_EXCLUSIVE | LK_RETRY);
-	fsync_error = VOP_FSYNC(hmp->devvp, MNT_WAIT, 0);
-	vn_unlock(hmp->devvp);
-	if (fsync_error || flush_error) {
-		kprintf("hammer2: sync error fsync=%d h2flush=0x%04x dev=%s\n",
-			fsync_error, flush_error, hmp->devrepname);
+	TAILQ_FOREACH(e, &hmp->devvpl, entry) {
+		devvp = e->devvp;
+		KKASSERT(devvp);
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+		fsync_error = VOP_FSYNC(devvp, MNT_WAIT, 0);
+		vn_unlock(devvp);
+		if (fsync_error || flush_error) {
+			kprintf("hammer2: sync error fsync=%d h2flush=0x%04x dev=%s\n",
+				fsync_error, flush_error, e->path);
+		}
 	}
 
 	/*
