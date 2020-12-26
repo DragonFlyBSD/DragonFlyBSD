@@ -998,9 +998,12 @@ _callout_cancel_quick(struct _callout *c)
 
 		/*
 		 * NOTE: We must still spin-lock the wheel because other
-		 *	 cpus can manipulate the list.
+		 *	 cpus can manipulate the list, and adjust sc->next
+		 *	 if necessary.
 		 */
 		spin_lock(&wheel->spin);
+		if (sc->next == c)
+			sc->next = TAILQ_NEXT(c, entry);
 		TAILQ_REMOVE(&wheel->list, c, entry);
 		c->flags &= ~(CALLOUT_SET | CALLOUT_STOP |
 			      CALLOUT_CANCEL | CALLOUT_RESET);
