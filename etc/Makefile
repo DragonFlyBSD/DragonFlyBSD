@@ -129,34 +129,10 @@ check-deprecated-files:
 	fi;
 
 preupgrade:
-	(pw -V ${DESTDIR}/etc usershow mail -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc useradd mail -u 6 -g 6 \
-		   -c "Mail user" \
-		   -d /nonexistent -s /sbin/nologin
-	(pw -V ${DESTDIR}/etc usershow _pflogd -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc useradd _pflogd -u 64 \
-		   -c "pflogd privsep user" \
-		   -d /var/empty -s /sbin/nologin
-	(pw -V ${DESTDIR}/etc usershow _sdpd -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc useradd _sdpd -u 70 \
-		   -c "sdpd privsep user" \
-		   -d /var/empty -s /sbin/nologin
-	(pw -V ${DESTDIR}/etc usershow _dhcp -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc useradd _dhcp -u 77 \
-		   -c "DHCP programs" \
-		   -d /var/empty -s /sbin/nologin
-	(pw -V ${DESTDIR}/etc groupshow input -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc groupadd input -g 43
-	(pw -V ${DESTDIR}/etc groupshow video -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc groupadd video -g 44
-	(pw -V ${DESTDIR}/etc groupshow authpf -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc groupadd authpf -g 63
-	(pw -V ${DESTDIR}/etc groupshow _pflogd -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc groupadd _pflogd -g 64
-	(pw -V ${DESTDIR}/etc groupshow _sdpd -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc groupadd _sdpd -g 70
-	(pw -V ${DESTDIR}/etc groupshow _dhcp -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc groupadd _dhcp -g 77
+	sh ${.CURDIR}/../tools/pw-update.sh \
+		-d ${DESTDIR}/etc \
+		-g ${.CURDIR}/group \
+		-p ${.CURDIR}/master.passwd
 
 upgrade_check:
 	@if [ -n "`grep '^sendmail.*/usr/libexec/sendmail/sendmail' ${DESTDIR}/etc/mail/mailer.conf`" ]; then \
