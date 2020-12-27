@@ -4,10 +4,10 @@ OPENRESOLV
 Original source can be downloaded from:
 https://roy.marples.name/downloads/openresolv/
 
-file = openresolv-3.9.2.tar.gz
-date = 2019 September 8
-size = 20200
-SHA256 = 14d7e241682e5566f6b8bf4c7316c86d7a9b8e7ed48e1de4967dbf1ea84ed373
+file = openresolv-3.12.0.tar.gz
+date = 2020 December 27
+size = 21008
+SHA256 = 42b30508e857a228535c631eaac936862d86eca68c14b5c0bf387ba176b91b97
 
 The source is imported via a Makefile target rather than by hand.
 There is no README.DELETED for this import as it's all automated.
