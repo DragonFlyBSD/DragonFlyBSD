@@ -4,6 +4,7 @@ DISTDIR=	${.CURDIR}/../../contrib/openresolv
 SCRIPTS=	resolvconf
 
 FILES=		libc dnsmasq named pdnsd pdns_recursor unbound
+FILES+=		avahi-daemon mdnsd
 FILESDIR=	/usr/libexec/resolvconf
 
 MAN=		resolvconf.conf.5 resolvconf.8
