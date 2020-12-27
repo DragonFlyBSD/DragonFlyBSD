@@ -26,7 +26,7 @@ BINUPDATE+=${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 BIN1=	auth.conf \
 	crontab csh.cshrc csh.login csh.logout \
 	devtab dhclient.conf dntpd.conf \
-	ftpusers gettytab group \
+	ftpusers gettytab \
 	hosts hosts.allow hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
 	motd modems netconfig networks newsyslog.conf \
@@ -278,7 +278,7 @@ distribution:
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 		${BINUPDATE} ${DESTDIR}/etc; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-		${BIN1} ${DESTDIR}/etc; \
+		${BIN1} group ${DESTDIR}/etc; \
 	    cap_mkdb ${DESTDIR}/etc/login.conf; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 		${BIN2} ${DESTDIR}/etc; \
