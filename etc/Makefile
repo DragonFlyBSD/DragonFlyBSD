@@ -164,9 +164,10 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 			$$f ${DESTDIR}/etc; \
 	    done; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
-		${BIN2} ${DESTDIR}/etc;
-	cd ${UPGRADE_SRCDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${DEFAULTS} ${DESTDIR}/etc/defaults
+		${BIN2} ${DESTDIR}/etc
+	cd ${UPGRADE_SRCDIR}/defaults; \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+		${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${UPGRADE_SRCDIR}/periodic; ${MAKE} install
 	mkdir -p ${DESTDIR}/etc/rc.d
 	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install
@@ -175,30 +176,36 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 	${LN} -fs /usr/share/misc/termcap ${DESTDIR}/etc/termcap
 	# "../usr.sbin/rmt/make etc-rmt" expanded inline here:
 	${LN} -fs /usr/sbin/rmt ${DESTDIR}/etc/rmt
-	cd ${UPGRADE_SRCDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${MTREE} ${DESTDIR}/etc/mtree
+	cd ${UPGRADE_SRCDIR}/mtree; \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+		${MTREE} ${DESTDIR}/etc/mtree
 	cd ${UPGRADE_SRCDIR}/bluetooth; ${MAKE} install
 	cd ${UPGRADE_SRCDIR}/calendar; ${MAKE} install
-	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 Makefile.usr ${DESTDIR}/usr/Makefile
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+	    ${UPGRADE_SRCDIR}/Makefile.usr ${DESTDIR}/usr/Makefile
 .if !exists(${DESTDIR}/etc/pam.d)
 	mkdir -p ${DESTDIR}/etc/pam.d
 	cd ${UPGRADE_SRCDIR}/pam.d; ${MAKE} install
-	sh ${DESTDIR}/etc/pam.d/convert.sh ${DESTDIR}/etc/pam.d ${DESTDIR}/etc/pam.conf
+	sh ${DESTDIR}/etc/pam.d/convert.sh ${DESTDIR}/etc/pam.d \
+	    ${DESTDIR}/etc/pam.conf
 .else
 .for pamconf in README convert.sh atrun cron passwd su system
 .if !exists(${DESTDIR}/etc/pam.d/${pamconf})
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
+	    ${UPGRADE_SRCDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
 .endif
 .endfor
 .endif
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
-	cd ${UPGRADE_SRCDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    COPYRIGHT ${DESTDIR}/
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+	    ${UPGRADE_SRCDIR}/../COPYRIGHT ${DESTDIR}/
 .endif
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
-	${LN} -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
-	${LN} -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
+	${LN} -s "../dev/video/bktr/ioctl_bt848.h" \
+	    ${DESTDIR}/usr/include/machine/ioctl_bt848.h
+	${LN} -s "../dev/video/meteor/ioctl_meteor.h" \
+	    ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 .if exists(${DESTDIR}/usr/lib/gcc2)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
 .endif
@@ -285,8 +292,9 @@ distribution:
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 600 \
 		master.passwd nsmb.conf ${DESTDIR}/etc; \
 	    pwd_mkdb -p -d ${DESTDIR}/etc ${DESTDIR}/etc/master.passwd
-	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    ${DEFAULTS} ${DESTDIR}/etc/defaults
+	cd ${.CURDIR}/defaults; \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
+		${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${.CURDIR}/pam.d; ${MAKE} install
 	cd ${.CURDIR}/bluetooth; ${MAKE} install
 	cd ${.CURDIR}/calendar; ${MAKE} install
@@ -354,12 +362,14 @@ distribution:
 	    ${DESTDIR}/var/run/utmpx
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${.CURDIR}/minfree \
 	    ${DESTDIR}/var/crash
-	cd ${.CURDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    COPYRIGHT ${DESTDIR}/
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+	    ${.CURDIR}/../COPYRIGHT ${DESTDIR}/
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
-	${LN} -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
-	${LN} -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
+	${LN} -s "../dev/video/bktr/ioctl_bt848.h" \
+	    ${DESTDIR}/usr/include/machine/ioctl_bt848.h
+	${LN} -s "../dev/video/meteor/ioctl_meteor.h" \
+	    ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 .if !defined(NOMAN)
 	cd ${.CURDIR}/../share/man; ${MAKE} makedb
 .endif
