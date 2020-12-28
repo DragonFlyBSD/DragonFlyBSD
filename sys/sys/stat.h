@@ -50,11 +50,6 @@
 #include <sys/_timespec.h>
 #endif
 
-/*
- * stat structure notes:
- *
- * NOTE: st_fsmid removed in DragonFly 2.5.x.
- */
 struct stat {
 	ino_t		st_ino;		/* inode's number */
 	nlink_t		st_nlink;	/* number of hard links */
@@ -77,7 +72,6 @@ struct stat {
 	int64_t		st_qspare2;
 };
 
-/*#define _ST_FSMID_PRESENT_*/
 #define	_ST_FLAGS_PRESENT_
 
 #define	st_atime st_atim.tv_sec

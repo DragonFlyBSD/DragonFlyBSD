@@ -2,7 +2,7 @@
 .\"    Permission to use and distribute based on the DragonFly copyright.
 .\"    Supplied as-is, USE WITH CAUTION.
 .\"
-.Dd November 24, 2009
+.Dd December 28, 2020
 .Dt CPDUP 1
 .Os
 .Sh NAME
@@ -31,8 +31,6 @@
 .Op Fl VV
 .Op Fl S
 .Op Fl R
-.Op Fl k
-.Op Fl K Ar file
 .Op Fl X Ar file
 .Op Fl x
 .Oo Oo Ar user Ns Li @ Oc Ns Ar host : Oc Ns Ar source_dir
@@ -203,33 +201,6 @@ This option is not intended to be used by humans.
 Place the slave into read-only mode.
 Can only be used when the source is remote.
 Useful for unattended backups via SSH keys.
-.It Fl k
-Generate and maintain a FSMID checkfile called
-.Pa \& .FSMID.CHECK
-in each directory on the target.
-.Nm
-will check the FSMID for each source file or directory against the checkfile
-on the target and will not copy the file or recurse through the directory
-when a match occurs.  Any source file or directory with the same name as the
-checkfile will be ignored.  The FSMID will be re-checked after the copy
-has been completed and
-.Nm
-will loop on that directory or file until it is sure it has an exact copy.
-.Pp
-Warning: FSMID is not always supported by a filesystem and may not be
-synchronized if a crash occurs.
-.Dx
-will simulate an FSMID when
-it is otherwise not supported by the filesystem, and users should be aware
-that simulated FSMIDs may change state in such cases even if the underlying
-hierarchy does not due to cache flushes.
-Additionally, the FSMID may not reflect changes made to remote filesystems
-by other hosts.  For example, using these options with NFS mounted sources
-will not work well.
-.It Fl K Ar file
-Works the same as
-.Fl k
-but allows you to specify the name of the FSMID checkfile.
 .It Fl x
 Causes
 .Nm

@@ -94,7 +94,6 @@ int termwidth = 80;		/* default terminal width */
 /* flags */
        int f_accesstime;	/* use time of last access */
        int f_flags;		/* show flags associated with a file */
-       int f_fsmid;		/* show FSMID associated with a file */
        int f_humanval;		/* show human-readable file sizes */
        int f_inode;		/* print inode */
 static int f_kblocks;		/* print size in kilobytes */
@@ -175,7 +174,7 @@ main(int argc, char *argv[])
 
 	fts_options = FTS_PHYSICAL;
 	while ((ch = getopt(argc, argv,
-	    "1ABCD:FGHILPRSTW_abcdfghiklmnopqrstuwxy")) != -1) {
+	    "1ABCD:FGHILPRSTW_abcdfghiklmnopqrstuwx")) != -1) {
 		switch (ch) {
 		/*
 		 * The -1, -C, -x and -l options all override each other so
@@ -203,11 +202,6 @@ main(int argc, char *argv[])
 			f_sortacross = 1;
 			f_longform = 0;
 			f_singlecol = 0;
-			break;
-		case 'y':
-#ifdef _ST_FSMID_PRESENT_
-			f_fsmid = 1;
-#endif
 			break;
 		/* The -c and -u options override each other. */
 		case 'c':
@@ -554,14 +548,11 @@ display(const FTSENT *p, FTSENT *list)
 	int bcfile, maxflags;
 	gid_t maxgroup;
 	uid_t maxuser;
-	size_t fsmidlen, flen, ulen, glen;
+	size_t flen, ulen, glen;
 	char *initmax;
 	int entries, needstats;
 	const char *user, *group;
 	char *flags;
-#ifdef _ST_FSMID_PRESENT_
-	int64_t fsmid;
-#endif
 	char buf[STRBUF_SIZEOF(u_quad_t) + 1];
 	char ngroup[STRBUF_SIZEOF(uid_t) + 1];
 	char nuser[STRBUF_SIZEOF(gid_t) + 1];
@@ -719,20 +710,9 @@ display(const FTSENT *p, FTSENT *list)
 				} else {
 					flen = 0;
 				}
-#ifdef _ST_FSMID_PRESENT_
-				if (f_fsmid) {
-					fsmid = sp->st_fsmid;
-					fsmidlen = 18;
-				} else {
-					fsmid = 0;
-					fsmidlen = 0;
-				}
-#else
-				fsmidlen = 0;
-#endif
 
 				if ((np = malloc(sizeof(NAMES) +
-				    ulen + glen + flen + fsmidlen + 4)) == NULL)
+				    ulen + glen + flen + 3)) == NULL)
 					err(1, "malloc");
 
 				np->user = &np->data[0];
@@ -749,13 +729,6 @@ display(const FTSENT *p, FTSENT *list)
 					strcpy(np->flags, flags);
 					free(flags);
 				}
-#ifdef _ST_FSMID_PRESENT_
-				if (f_fsmid) {
-					np->fsmid = np->data + ulen + glen + flen + 3;
-					snprintf(np->fsmid, fsmidlen + 1,
-						 "%016jx", (intmax_t)fsmid);
-				}
-#endif
 				cur->fts_pointer = np;
 			}
 		}

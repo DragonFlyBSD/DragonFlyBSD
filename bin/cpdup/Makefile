@@ -1,5 +1,5 @@
 PROG=	cpdup
-SRCS=	cpdup.c hcproto.c hclink.c misc.c fsmid.c
+SRCS=	cpdup.c hcproto.c hclink.c misc.c
 
 .if defined(BOOTSTRAPPING) || defined(RESCUE)
 # For boostrapping buildworld the md5 functionality is not needed

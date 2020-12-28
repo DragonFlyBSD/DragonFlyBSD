@@ -178,9 +178,6 @@ fatal(const char *ctl, ...)
 	     "    -I          display performance summary\n"
 	     "    -i0         do NOT confirm when removing something\n"
 	     "    -j0         do not try to recreate CHR or BLK devices\n"
-	     "    -k          maintain/generate FSMID checkfile on target,\n"
-	     "                and compare source FSMIDs against the checkfiles\n"
-	     "    -K file     -k+specify FSMID checkfile, else .FSMID.CHECK\n"
 	     "    -l          force line-buffered stdout/stderr"
 	);
 #ifndef NOMD5

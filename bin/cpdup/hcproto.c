@@ -2,8 +2,6 @@
  * HCPROTO.C
  *
  * This module implements a simple remote control protocol
- *
- * $DragonFly: src/bin/cpdup/hcproto.c,v 1.8 2008/11/11 04:36:00 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -319,11 +317,6 @@ hc_decode_stat_item(struct stat *st, struct HCLeaf *item)
     case LC_BLKSIZE:
 	st->st_blksize = HCC_INT32(item);
 	break;
-#ifdef _ST_FSMID_PRESENT_
-    case LC_FSMID:
-	st->st_fsmid = HCC_INT64(item);
-	break;
-#endif
 #ifdef _ST_FLAGS_PRESENT_
     case LC_FILEFLAGS:
 	st->st_flags = (uint32_t)HCC_INT64(item);
@@ -397,9 +390,6 @@ rc_encode_stat(hctransaction_t trans, struct stat *st)
     hcc_leaf_int64(trans, LC_FILESIZE, st->st_size);
     hcc_leaf_int64(trans, LC_FILEBLKS, st->st_blocks);
     hcc_leaf_int32(trans, LC_BLKSIZE, st->st_blksize);
-#ifdef _ST_FSMID_PRESENT_
-    hcc_leaf_int64(trans, LC_FSMID, st->st_fsmid);
-#endif
 #ifdef _ST_FLAGS_PRESENT_
     hcc_leaf_int64(trans, LC_FILEFLAGS, st->st_flags);
 #endif

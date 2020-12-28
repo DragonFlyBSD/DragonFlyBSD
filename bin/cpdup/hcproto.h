@@ -1,7 +1,5 @@
 /*
  * HCPROTO.H
- *
- * $DragonFly: src/bin/cpdup/hcproto.h,v 1.4 2008/04/16 17:38:19 dillon Exp $
  */
 
 #ifndef _HCPROTO_H_
@@ -64,7 +62,7 @@
 #define LC_FILESIZE	(0x0020|LCF_INT64)
 #define LC_FILEBLKS	(0x0021|LCF_INT64)
 #define LC_FILEFLAGS	(0x0022|LCF_INT64)
-#define LC_FSMID	(0x0023|LCF_INT64)
+#define LC_UNUSED23	(0x0023|LCF_INT64)
 #define LC_DESCRIPTOR	(0x0024|LCF_INT32)
 #define LC_DATA		(0x0025|LCF_BINARY)
 #define LC_TYPE		(0x0026|LCF_INT32)

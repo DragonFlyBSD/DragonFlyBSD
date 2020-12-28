@@ -39,7 +39,6 @@ extern long blocksize;		/* block size units */
 
 extern int f_accesstime;	/* use time of last access */
 extern int f_flags;		/* show flags associated with a file */
-extern int f_fsmid;		/* show FSMID associated with a file */
 extern int f_humanval;		/* show human-readable file sizes */
 extern int f_inode;		/* print inode */
 extern int f_longform;		/* long listing format */
@@ -67,7 +66,6 @@ typedef struct {
 	int maxlen;
 	u_int s_block;
 	u_int s_flags;
-	u_int s_fsmid;
 	u_int s_group;
 	u_int s_inode;
 	u_int s_nlink;
@@ -79,6 +77,5 @@ typedef struct {
 	char *user;
 	char *group;
 	char *flags;
-	char *fsmid;
 	char data[1];
 } NAMES;

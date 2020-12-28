@@ -61,8 +61,6 @@ int16_t hc_bswap16(int16_t var);
 int32_t hc_bswap32(int32_t var);
 int64_t hc_bswap64(int64_t var);
 
-int fsmid_check(int64_t fsmid, const char *dpath);
-void fsmid_flush(void);
 #ifndef NOMD5
 int md5_check(const char *spath, const char *dpath);
 void md5_flush(void);
@@ -70,7 +68,6 @@ void md5_flush(void);
 
 extern const char *UseCpFile;
 extern const char *MD5CacheFile;
-extern const char *FSMIDCacheFile;
 extern const char *UseHLPath;
 
 extern int AskConfirmation;
@@ -83,7 +80,6 @@ extern int QuietOpt;
 extern int NotForRealOpt;
 extern int NoRemoveOpt;
 extern int UseMD5Opt;
-extern int UseFSMIDOpt;
 extern int SlaveOpt;
 extern int SummaryOpt;
 extern int CompressOpt;

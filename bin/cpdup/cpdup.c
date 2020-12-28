@@ -44,8 +44,6 @@
  *
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
- *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.32 2008/11/11 04:36:00 dillon Exp $
  */
 
 /*-
@@ -149,7 +147,6 @@ int NotForRealOpt;
 int QuietOpt;
 int NoRemoveOpt;
 int UseMD5Opt;
-int UseFSMIDOpt;
 int SummaryOpt;
 int CompressOpt;
 int SlaveOpt;
@@ -161,7 +158,6 @@ int DstRootPrivs;
 
 const char *UseCpFile;
 const char *MD5CacheFile;
-const char *FSMIDCacheFile;
 const char *UseHLPath;
 
 static int DstBaseLen;
@@ -196,7 +192,7 @@ main(int ac, char **av)
 
     gettimeofday(&start, NULL);
     opterr = 0;
-    while ((opt = getopt(ac, av, ":CdF:fH:hIi:j:K:klM:mnoqRSs:uVvX:x")) != -1) {
+    while ((opt = getopt(ac, av, ":CdF:fH:hIi:j:lM:mnoqRSs:uVvX:x")) != -1) {
 	switch (opt) {
 	case 'C':
 	    CompressOpt = 1;
@@ -227,14 +223,6 @@ main(int ac, char **av)
 	    break;
 	case 'j':
 	    DeviceOpt = getbool(optarg);
-	    break;
-	case 'K':
-	    UseFSMIDOpt = 1;
-	    FSMIDCacheFile = optarg;
-	    break;
-	case 'k':
-	    UseFSMIDOpt = 1;
-	    FSMIDCacheFile = ".FSMID.CHECK";
 	    break;
 	case 'l':
 	    setlinebuf(stdout);
@@ -333,8 +321,6 @@ main(int ac, char **av)
     if (dst && (ptr = SplitRemote(&dst)) != NULL) {
 	DstHost.host = dst;
 	dst = ptr;
-	if (UseFSMIDOpt)
-	    fatal("The FSMID options are not currently supported for remote targets");
 	if (hc_connect(&DstHost, 0) < 0)
 	    exit(1);
     } else {
@@ -381,7 +367,6 @@ main(int ac, char **av)
 #ifndef NOMD5
     md5_flush();
 #endif
-    fsmid_flush();
 
     if (SummaryOpt && i == 0) {
 	double duration;
@@ -815,8 +800,7 @@ relink:
 
     /*
      * Do we need to copy the file/dir/link/whatever?  Early termination
-     * if we do not.  Always redo links.  Directories are always traversed
-     * except when the FSMID options are used.
+     * if we do not.  Always traverse directories.  Always redo links.
      *
      * NOTE: st2Valid is true only if dpath != NULL *and* dpath stats good.
      */
@@ -827,24 +811,7 @@ relink:
 	&& FlagsMatch(stat1, &st2)
     ) {
 	if (S_ISLNK(stat1->st_mode) || S_ISDIR(stat1->st_mode)) {
-	    /*
-	     * If FSMID tracking is turned on we can avoid recursing through
-	     * an entire directory subtree if the FSMID matches.
-	     */
-#ifdef _ST_FSMID_PRESENT_
-	    if (ForceOpt == 0 &&
-		(UseFSMIDOpt && (fres = fsmid_check(stat1->st_fsmid, dpath)) == 0)
-	    ) {
-		if (VerboseOpt >= 3) {
-		    if (UseFSMIDOpt) /* always true!?! */
-			logstd("%-32s fsmid-nochange\n", (dpath ? dpath : spath));
-		    else
-			logstd("%-32s nochange\n", (dpath ? dpath : spath));
-		}
-		r = 0;
-		goto done;
-	    }
-#endif
+	    ;
 	} else {
 	    if (ForceOpt == 0 &&
 		stat1->st_size == st2.st_size &&
@@ -853,10 +820,6 @@ relink:
 #ifndef NOMD5
 		&& (UseMD5Opt == 0 || !S_ISREG(stat1->st_mode) ||
 		    (mres = md5_check(spath, dpath)) == 0)
-#endif
-#ifdef _ST_FSMID_PRESENT_
-		&& (UseFSMIDOpt == 0 ||
-		    (fres = fsmid_check(stat1->st_fsmid, dpath)) == 0)
 #endif
 		&& (ValidateOpt == 0 || !S_ISREG(stat1->st_mode) ||
 		    validate_check(spath, dpath) == 0)
@@ -888,10 +851,7 @@ relink:
 				(dpath ? dpath : spath));
 		    } else
 #endif
-		    if (UseFSMIDOpt) {
-			logstd("%-32s fsmid-nochange",
-				(dpath ? dpath : spath));
-		    } else if (ValidateOpt) {
+		    if (ValidateOpt) {
 			logstd("%-32s nochange (contents validated)",
 				(dpath ? dpath : spath));
 		    } else {
@@ -934,9 +894,6 @@ relink:
      */
     if (S_ISDIR(stat1->st_mode)) {
 	int skipdir = 0;
-
-	if (fres < 0)
-	    logerr("%-32s/ fsmid-CHECK-FAILED\n", (dpath) ? dpath : spath);
 
 	if (dpath) {
 	    if (!st2Valid || S_ISDIR(st2.st_mode) == 0) {
@@ -1128,10 +1085,7 @@ relink:
 #ifndef NOMD5
 	if (mres < 0)
 	    logerr("%-32s md5-CHECK-FAILED\n", (dpath) ? dpath : spath);
-	else
 #endif
-	if (fres < 0)
-	    logerr("%-32s fsmid-CHECK-FAILED\n", (dpath) ? dpath : spath);
 
 	/*
 	 * Not quite ready to do the copy yet.  If UseHLPath is defined,
@@ -1477,14 +1431,9 @@ ScanDir(List *list, struct HostConf *host, const char *path,
 	/*
 	 * Automatically exclude MD5CacheFile that we create on the
 	 * source from the copy to the destination.
-	 *
-	 * Automatically exclude a FSMIDCacheFile on the source that
-	 * would otherwise overwrite the one we maintain on the target.
 	 */
 	if (UseMD5Opt)
 	    AddList(list, MD5CacheFile, 1, NULL);
-	if (UseFSMIDOpt)
-	    AddList(list, FSMIDCacheFile, 1, NULL);
     }
 
     if ((dir = hc_opendir(host, path)) == NULL)

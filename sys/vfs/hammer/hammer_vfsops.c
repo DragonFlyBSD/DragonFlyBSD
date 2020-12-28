@@ -625,7 +625,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * root vnode.
 	 */
 	mp->mnt_iosize_max = MAXPHYS;
-	mp->mnt_kern_flag |= MNTK_FSMID;
 	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* new vsyncscan semantics */
 
 	/*

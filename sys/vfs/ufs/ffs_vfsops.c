@@ -626,11 +626,6 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 		mp->mnt_iosize_max = MAXPHYS;
 
 	/*
-	 * Filesystem supports native FSMIDs
-	 */
-	mp->mnt_kern_flag |= MNTK_FSMID;
-
-	/*
 	 * The backing device must be VMIO-capable because we use getblk().
 	 * NOTE: the MFS driver now returns a VMIO-enabled descriptor.
 	 * The VOP_OPEN() call above should have associated a VM object

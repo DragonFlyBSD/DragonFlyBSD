@@ -153,8 +153,6 @@ printlong(const DISPLAY *dp)
 		printf("%s %*u %-*s  %-*s  ", buf, dp->s_nlink,
 		    sp->st_nlink, dp->s_user, np->user, dp->s_group,
 		    np->group);
-		if (f_fsmid)
-			printf("%s ", np->fsmid);
 		if (f_flags)
 			printf("%-*s ", dp->s_flags, np->flags);
 		if (S_ISCHR(sp->st_mode) || S_ISBLK(sp->st_mode))

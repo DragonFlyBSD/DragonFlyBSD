@@ -356,7 +356,6 @@ struct mount {
 #define MNTK_UNMOUNT	0x01000000	/* unmount in progress */
 #define	MNTK_MWAIT	0x02000000	/* waiting for unmount to finish */
 #define MNTK_WANTRDWR	0x04000000	/* upgrade to read/write requested */
-#define MNTK_FSMID	0x08000000	/* getattr supports FSMIDs */
 #define MNTK_NOSTKMNT	0x10000000	/* no stacked mount point allowed */
 #define MNTK_NOMSYNC	0x20000000	/* used by tmpfs */
 #define MNTK_THR_SYNC	0x40000000	/* fs sync thread requested */
