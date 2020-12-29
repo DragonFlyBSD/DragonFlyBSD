@@ -65,12 +65,6 @@ void	init_secondary		(void);
 int	stop_cpus		(cpumask_t);
 void	ap_init			(void);
 int	restart_cpus		(cpumask_t);
-void	forward_signal		(struct proc *);
-
-#if defined(READY)
-void	clr_io_apic_mask24	(int, u_int32_t);
-void	set_io_apic_mask24	(int, u_int32_t);
-#endif /* READY */
 
 void	cpu_send_ipiq		(int);
 int	cpu_send_ipiq_passive	(int);
