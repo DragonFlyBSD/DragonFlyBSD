@@ -212,6 +212,3 @@ else
 		update_user "${UPDATE_USER}" "${ETC_DIR}" "${PASSWD_FILE}"
 	fi
 fi
-
-echo "Update password databases ..."
-pwd_mkdb -p -d "${ETC_DIR}" "${ETC_DIR}/master.passwd"
