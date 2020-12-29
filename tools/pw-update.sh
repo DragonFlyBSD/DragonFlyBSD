@@ -36,7 +36,7 @@ set -e
 # Exit when an undefined variable is referenced
 set -u
 
-# usage: add_users <etcdir> <master.passwd> <group>
+# Usage: add_users <etcdir> <master.passwd> <group>
 #
 # Add new users and groups in <etcdir> according to the given <master.passwd>
 # and <group> files.
@@ -98,11 +98,69 @@ add_users() {
 	done
 }
 
+# Usage: update_user <user> <etcdir> <master.passwd>
+#
+# Update an existing user in <etcdir> according to the given <master.passwd>.
+#
+update_user() {
+	local user="$1"
+	local etcdir="$2"
+	local fpasswd="$3"
+	local _line
+	local _name _pw _uid _gid _class _change _expire _gecos _home _shell
+
+	_line=$(grep "^${user}:" ${fpasswd}) || true
+	if [ -z "${_line}" ]; then
+		echo "ERROR: no such user '${user}'" >&2
+		exit 1
+	fi
+
+	echo "${_line}" | {
+		IFS=':' read -r _name _pw _uid _gid _class \
+			_change _expire _gecos _home _shell
+		echo "===> Updating user ${user} ..."
+		echo "   * ${_name}: ${_uid}, ${_gid}, ${_gecos}, ${_home}, ${_shell}"
+		pw -V ${etcdir} usermod ${user} \
+			-u ${_uid} \
+			-g ${_gid} \
+			-d ${_home} \
+			-s ${_shell} \
+			-L "${_class}" \
+			-c "${_gecos}"
+	}
+}
+
+# Usage: update_group <group> <etcdir> <group>
+#
+# Update an existing group in <etcdir> according to the given <group> file.
+#
+update_group() {
+	local group="$1"
+	local etcdir="$2"
+	local fgroup="$3"
+	local _line
+	local _name _pw _gid _members
+
+	_line=$(grep "^${group}:" ${fgroup}) || true
+	if [ -z "${_line}" ]; then
+		echo "ERROR: no such group '${group}'" >&2
+		exit 1
+	fi
+
+	echo "${_line}" | {
+		IFS=':' read -r _name _pw _gid _members
+		echo "===> Updating group ${group} ..."
+		echo "   * ${_name}: ${_gid}, ${_members}"
+		pw -V ${etcdir} groupmod ${group} -g ${_gid} -M "${_members}"
+	}
+}
+
 usage() {
 	cat > /dev/stderr << _EOF_
-Add new users and groups.
+Add/update users and groups.
 
 Usage: ${0##*/} -d <etc-dir> -g <group-file> -p <master.passwd-file>
+	[-G group] [-U user]
 
 _EOF_
 
@@ -112,17 +170,25 @@ _EOF_
 ETC_DIR=
 GROUP_FILE=
 PASSWD_FILE=
+UPDATE_GROUP=
+UPDATE_USER=
 
-while getopts :d:g:hp: opt; do
+while getopts :d:G:g:hp:U: opt; do
 	case ${opt} in
 	d)
 		ETC_DIR=${OPTARG}
+		;;
+	G)
+		UPDATE_GROUP=${OPTARG}
 		;;
 	g)
 		GROUP_FILE=${OPTARG}
 		;;
 	p)
 		PASSWD_FILE=${OPTARG}
+		;;
+	U)
+		UPDATE_USER=${OPTARG}
 		;;
 	h | \? | :)
 		usage
@@ -136,7 +202,16 @@ shift $((OPTIND - 1))
 [ -n "${GROUP_FILE}" ] || usage
 [ -n "${PASSWD_FILE}" ] || usage
 
-add_users "${ETC_DIR}" "${PASSWD_FILE}" "${GROUP_FILE}"
+if [ -z "${UPDATE_GROUP}" ] && [ -z "${UPDATE_USER}" ]; then
+	add_users "${ETC_DIR}" "${PASSWD_FILE}" "${GROUP_FILE}"
+else
+	if [ -n "${UPDATE_GROUP}" ]; then
+		update_group "${UPDATE_GROUP}" "${ETC_DIR}" "${GROUP_FILE}"
+	fi
+	if [ -n "${UPDATE_USER}" ]; then
+		update_user "${UPDATE_USER}" "${ETC_DIR}" "${PASSWD_FILE}"
+	fi
+fi
 
 echo "Update password databases ..."
 pwd_mkdb -p -d "${ETC_DIR}" "${ETC_DIR}/master.passwd"
