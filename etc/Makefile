@@ -250,7 +250,7 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 	mkdir -p ${DESTDIR}/var/run/sem
 	chmod 1777 ${DESTDIR}/var/run/sem
 
-# The existence of cleartext_pass_ok means pam config files are out of date.
+	# The existence of cleartext_pass_ok means pam config files are out of date.
 	@set - `fgrep -e cleartext_pass_ok -e pam_opie ${DESTDIR}/etc/pam.d/*`; \
 	if [ $$# -gt 0 ] ; \
 	then \
@@ -260,22 +260,23 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 		echo "	make install"; \
 	fi
 
-# Move the dhcpcd duid, secret and lease files back outside the chroot.
-# Then ensure the chroot is empty.
+	# dhcpcd had been made to chroot into /var/chroot/dhcp, which however
+	# is inappropriate, so move the dhcpcd duid, secret and lease files
+	# back and ensure the chroot (/var/empty) is empty.
 	DHCPCD_DB="${DESTDIR}/var/db/dhcpcd"; \
-	DHCPCD_CHROOT=`pw -V ${DESTDIR}/etc usershow _dhcp | cut -d: -f9`; \
+	DHCPCD_CHROOT="/var/chroot/dhcp"; \
 	DHCPCD_CHROOT_DB="${DESTDIR}$$DHCPCD_CHROOT/var/db/dhcpcd"; \
 	if [ -f "$$DHCPCD_CHROOT_DB/duid" ] && \
 	    [ ! -f "$$DHCPCD_DB/duid" ]; then \
-		mkdir -p "$$DHCPCD_DB" && \
 		mv "$$DHCPCD_CHROOT_DB"/* "$$DHCPCD_DB"; \
 		chown -R root:wheel "$$DHCPCD_DB"; \
-		rm -rf "$$DHCPCD_CHROOT"/*; \
-	fi; \
-	if [ "$$DHCPCD_CHROOT" != /var/empty ]; then \
-		pw -V ${DESTDIR}/etc usermod _dhcp -d /var/empty; \
 		rm -rf "$$DHCPCD_CHROOT"; \
 	fi
+	sh ${.CURDIR}/../tools/pw-update.sh \
+		-d ${DESTDIR}/etc \
+		-g ${.CURDIR}/group \
+		-p ${.CURDIR}/master.passwd \
+		-U _dhcp
 
 upgrade_etc:	upgrade_base remove-deprecated-files
 	@echo "Upgrade was successful"
