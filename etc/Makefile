@@ -399,7 +399,8 @@ distrib-dirs:
 
 etc-examples:
 	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${BINUPDATE} ${BIN1} ${BIN2} nsmb.conf \
+	    ${BINUPDATE} ${BIN1} ${BIN2} \
+	    group master.passwd nsmb.conf \
 	    ${DESTDIR}/usr/share/examples/etc
 	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${DEFAULTS} ${DESTDIR}/usr/share/examples/etc/defaults

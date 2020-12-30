@@ -3895,7 +3895,6 @@ TO_REMOVE+=/usr/share/man/man8/acpinames.8.gz
 TO_REMOVE+=/var/chroot
 TO_REMOVE+=/usr/share/mk/bsd.doc.mk
 TO_REMOVE+=/boot/kernel/fuse.ko
-TO_REMOVE+=/usr/share/examples/etc/group
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
