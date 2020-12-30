@@ -83,12 +83,12 @@ static struct sigacts sigacts0;
 static struct filedesc filedesc0;
 static struct plimit limit0;
 static struct vmspace vmspace0;
+static struct sysreaper initreaper;
 struct proc *initproc;
 struct proc proc0;
 struct lwp lwp0;
 struct thread thread0;
 struct sys_kpmap *kpmap;
-struct sysreaper initreaper;
 
 int cmask = CMASK;
 u_int cpu_mi_feature;
@@ -114,8 +114,8 @@ SYSINIT(placeholder, SI_SPECIAL_DUMMY, SI_ORDER_ANY, NULL, NULL);
  * If we want to register new sysinit types, add them to newsysinit.
  */
 SET_DECLARE(sysinit_set, struct sysinit);
-struct sysinit **sysinit, **sysinit_end;
-struct sysinit **newsysinit, **newsysinit_end;
+static struct sysinit **sysinit, **sysinit_end;
+static struct sysinit **newsysinit, **newsysinit_end;
 
 
 /*
