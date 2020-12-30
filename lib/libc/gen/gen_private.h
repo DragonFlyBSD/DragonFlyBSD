@@ -32,6 +32,8 @@
 #ifndef _GEN_PRIVATE_H_
 #define	_GEN_PRIVATE_H_
 
+#include <sys/types.h>
+
 struct __pthread_mutex_s;
 
 /*
