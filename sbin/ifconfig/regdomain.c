@@ -69,6 +69,7 @@ iseq(const char *a, const char *b)
 static void
 start_element(void *data, const char *name, const char **attr)
 {
+	static netband_head bands_unknown;  /* marker for unknown netband */
 	struct mystate *mt;
 	const void *id, *ref, *mode;
 	int i;
@@ -121,10 +122,17 @@ start_element(void *data, const char *name, const char **attr)
 			mt->curband = &mt->rd->bands_11ng;
 		else if (iseq(mode, "11na"))
 			mt->curband = &mt->rd->bands_11na;
-		else
-			warnx("unknown mode \"%s\" at line %ld",
+		else {
+			mt->curband = &bands_unknown;
+			warnx("unknown netband mode \"%s\" at line %ld",
 			    __DECONST(char *, mode),
 			    XML_GetCurrentLineNumber(mt->parser));
+		}
+		return;
+	}
+	if (mt->curband == &bands_unknown) {
+		warnx("ignore \"%s\" of unknown netband at line %ld",
+		    name, XML_GetCurrentLineNumber(mt->parser));
 		return;
 	}
 	if (iseq(name, "band") && mt->netband == NULL) {
