@@ -25,7 +25,6 @@
 #ifndef	_FTW_H
 #define	_FTW_H
 
-#include <sys/types.h>
 #include <sys/stat.h>
 
 /*
