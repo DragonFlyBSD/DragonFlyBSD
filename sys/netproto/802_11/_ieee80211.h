@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 2001 Atsushi Onoe
  * Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
@@ -45,6 +47,7 @@ enum ieee80211_phytype {
 	IEEE80211_T_HT,			/* high throughput */
 	IEEE80211_T_OFDM_HALF,		/* 1/2 rate OFDM */
 	IEEE80211_T_OFDM_QUARTER,	/* 1/4 rate OFDM */
+	IEEE80211_T_VHT,		/* VHT PHY */
 };
 #define	IEEE80211_T_CCK	IEEE80211_T_DS	/* more common nomenclature */
 
@@ -68,9 +71,11 @@ enum ieee80211_phymode {
 	IEEE80211_MODE_11NG	= 9,	/* 2GHz, w/ HT */
 	IEEE80211_MODE_HALF	= 10,	/* OFDM, 1/2x clock */
 	IEEE80211_MODE_QUARTER	= 11,	/* OFDM, 1/4x clock */
+	IEEE80211_MODE_VHT_2GHZ	= 12,	/* 2GHz, VHT */
+	IEEE80211_MODE_VHT_5GHZ	= 13,	/* 5GHz, VHT */
 };
-#define	IEEE80211_MODE_MAX	(IEEE80211_MODE_QUARTER+1)
-#define IEEE80211_MODE_BYTES	howmany(IEEE80211_MODE_MAX, NBBY)
+#define	IEEE80211_MODE_MAX	(IEEE80211_MODE_VHT_5GHZ+1)
+#define	IEEE80211_MODE_BYTES	howmany(IEEE80211_MODE_MAX, NBBY)
 
 /*
  * Operating mode.  Devices do not necessarily support
@@ -78,7 +83,7 @@ enum ieee80211_phymode {
  * capabilities.
  */
 enum ieee80211_opmode {
-	IEEE80211_M_IBSS 	= 0,	/* IBSS (adhoc) station */
+	IEEE80211_M_IBSS	= 0,	/* IBSS (adhoc) station */
 	IEEE80211_M_STA		= 1,	/* infrastructure station */
 	IEEE80211_M_WDS		= 2,	/* WDS link */
 	IEEE80211_M_AHDEMO	= 3,	/* Old lucent compatible adhoc demo */
@@ -134,7 +139,7 @@ enum ieee80211_roamingmode {
  */
 struct ieee80211_channel {
 	uint32_t	ic_flags;	/* see below */
-	uint16_t	ic_freq;	/* setting in MHz */
+	uint16_t	ic_freq;	/* primary centre frequency in MHz */
 	uint8_t		ic_ieee;	/* IEEE channel number */
 	int8_t		ic_maxregpower;	/* maximum regulatory tx power in dBm */
 	int8_t		ic_maxpower;	/* maximum tx power in .5 dBm */
@@ -177,14 +182,27 @@ struct ieee80211_channel {
 #define	IEEE80211_CHAN_NOADHOC	0x00200000 /* adhoc mode not allowed */
 #define	IEEE80211_CHAN_NOHOSTAP	0x00400000 /* hostap mode not allowed */
 #define	IEEE80211_CHAN_11D	0x00800000 /* 802.11d required */
+#define	IEEE80211_CHAN_VHT20	0x01000000 /* VHT20 channel */
+#define	IEEE80211_CHAN_VHT40U	0x02000000 /* VHT40 channel, ext above */
+#define	IEEE80211_CHAN_VHT40D	0x04000000 /* VHT40 channel, ext below */
+#define	IEEE80211_CHAN_VHT80	0x08000000 /* VHT80 channel */
+#define	IEEE80211_CHAN_VHT160	0x10000000 /* VHT160 channel */
+#define	IEEE80211_CHAN_VHT80P80	0x20000000 /* VHT80+80 channel */
+/* XXX note: 0x80000000 is used in src/sbin/ifconfig/ifieee80211.c :( */
 
 #define	IEEE80211_CHAN_HT40	(IEEE80211_CHAN_HT40U | IEEE80211_CHAN_HT40D)
 #define	IEEE80211_CHAN_HT	(IEEE80211_CHAN_HT20 | IEEE80211_CHAN_HT40)
 
+#define	IEEE80211_CHAN_VHT40	(IEEE80211_CHAN_VHT40U | IEEE80211_CHAN_VHT40D)
+#define	IEEE80211_CHAN_VHT	(IEEE80211_CHAN_VHT20 | IEEE80211_CHAN_VHT40 \
+				| IEEE80211_CHAN_VHT80 | IEEE80211_CHAN_VHT160 \
+				| IEEE80211_CHAN_VHT80P80)
+
 #define	IEEE80211_CHAN_BITS \
 	"\20\1PRIV0\2PRIV2\3PRIV3\4PRIV4\5TURBO\6CCK\7OFDM\0102GHZ\0115GHZ" \
 	"\12PASSIVE\13DYN\14GFSK\15GSM\16STURBO\17HALF\20QUARTER\21HT20" \
-	"\22HT40U\23HT40D\24DFS\0254MSXMIT\26NOADHOC\27NOHOSTAP\03011D"
+	"\22HT40U\23HT40D\24DFS\0254MSXMIT\26NOADHOC\27NOHOSTAP\03011D" \
+	"\031VHT20\032VHT40U\033VHT40D\034VHT80\035VHT160\036VHT80P80"
 
 /*
  * Useful combinations of channel characteristics.
@@ -210,7 +228,7 @@ struct ieee80211_channel {
 	(IEEE80211_CHAN_2GHZ | IEEE80211_CHAN_5GHZ | IEEE80211_CHAN_GFSK | \
 	 IEEE80211_CHAN_CCK | IEEE80211_CHAN_OFDM | IEEE80211_CHAN_DYN | \
 	 IEEE80211_CHAN_HALF | IEEE80211_CHAN_QUARTER | \
-	 IEEE80211_CHAN_HT)
+	 IEEE80211_CHAN_HT | IEEE80211_CHAN_VHT)
 #define	IEEE80211_CHAN_ALLTURBO \
 	(IEEE80211_CHAN_ALL | IEEE80211_CHAN_TURBO | IEEE80211_CHAN_STURBO)
 
@@ -286,6 +304,35 @@ struct ieee80211_channel {
 	(((_c)->ic_flags & IEEE80211_CHAN_NOHOSTAP) != 0)
 #define	IEEE80211_IS_CHAN_11D(_c) \
 	(((_c)->ic_flags & IEEE80211_CHAN_11D) != 0)
+
+#define	IEEE80211_IS_CHAN_VHT(_c) \
+	(((_c)->ic_flags & IEEE80211_CHAN_VHT) != 0)
+#define	IEEE80211_IS_CHAN_VHT_2GHZ(_c) \
+	(IEEE80211_IS_CHAN_2GHZ(_c) && \
+	 ((_c)->ic_flags & IEEE80211_CHAN_VHT) != 0)
+#define	IEEE80211_IS_CHAN_VHT_5GHZ(_c) \
+	(IEEE80211_IS_CHAN_5GHZ(_c) && \
+	 ((_c)->ic_flags & IEEE80211_CHAN_VHT) != 0)
+#define	IEEE80211_IS_CHAN_VHT20(_c) \
+	(((_c)->ic_flags & IEEE80211_CHAN_VHT20) != 0)
+#define	IEEE80211_IS_CHAN_VHT40(_c) \
+	(((_c)->ic_flags & IEEE80211_CHAN_VHT40) != 0)
+#define	IEEE80211_IS_CHAN_VHT40U(_c) \
+	(((_c)->ic_flags & IEEE80211_CHAN_VHT40U) != 0)
+#define	IEEE80211_IS_CHAN_VHT40D(_c) \
+	(((_c)->ic_flags & IEEE80211_CHAN_VHT40D) != 0)
+#define	IEEE80211_IS_CHAN_VHTA(_c) \
+	(IEEE80211_IS_CHAN_5GHZ(_c) && \
+	 ((_c)->ic_flags & IEEE80211_CHAN_VHT) != 0)
+#define	IEEE80211_IS_CHAN_VHTG(_c) \
+	(IEEE80211_IS_CHAN_2GHZ(_c) && \
+	 ((_c)->ic_flags & IEEE80211_CHAN_VHT) != 0)
+#define	IEEE80211_IS_CHAN_VHT80(_c) \
+	(((_c)->ic_flags & IEEE80211_CHAN_VHT80) != 0)
+#define	IEEE80211_IS_CHAN_VHT160(_c) \
+	(((_c)->ic_flags & IEEE80211_CHAN_VHT160) != 0)
+#define	IEEE80211_IS_CHAN_VHT80P80(_c) \
+	(((_c)->ic_flags & IEEE80211_CHAN_VHT80P80) != 0)
 
 #define	IEEE80211_CHAN2IEEE(_c)		(_c)->ic_ieee
 

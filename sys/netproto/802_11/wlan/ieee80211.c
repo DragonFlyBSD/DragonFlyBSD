@@ -70,6 +70,8 @@ const char *ieee80211_phymode_name[IEEE80211_MODE_MAX] = {
 	[IEEE80211_MODE_QUARTER]  = "quarter",
 	[IEEE80211_MODE_11NA]	  = "11na",
 	[IEEE80211_MODE_11NG]	  = "11ng",
+	[IEEE80211_MODE_VHT_2GHZ] = "11acg",
+	[IEEE80211_MODE_VHT_5GHZ] = "11ac",
 };
 /* map ieee80211_opmode to the corresponding capability bit */
 const int ieee80211_opcap[IEEE80211_OPMODE_MAX] = {
@@ -2107,6 +2109,10 @@ ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode m
 	case IEEE80211_MODE_11NG:
 	case IEEE80211_MODE_TURBO_G:
 		return findmedia(rates, nitems(rates), rate | IFM_IEEE80211_11G);
+	case IEEE80211_MODE_VHT_2GHZ:
+	case IEEE80211_MODE_VHT_5GHZ:
+		/* XXX TODO: need to figure out mapping for VHT rates */
+		return IFM_AUTO;
 	}
 	return IFM_AUTO;
 }
