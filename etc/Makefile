@@ -10,7 +10,7 @@ BINUPDATE= devd.conf fbtab network.subr \
 	protocols \
 	rc rc.firewall rc.firewall6 \
 	rc.sendmail rc.shutdown \
-	rc.subr rpc \
+	rc.subr regdomain.xml rpc \
 	etc.${MACHINE_ARCH}/disktab
 .if defined(BINARY_UPGRADE) # location of these depends on upgrade method
 BINUPDATE+=mail.rc locate.rc
@@ -31,7 +31,7 @@ BIN1=	auth.conf \
 	inetd.conf login.access login.conf \
 	motd modems netconfig networks newsyslog.conf \
 	nscd.conf pf.conf phones printcap profile \
-	regdomain.xml remote sensorsd.conf services \
+	remote sensorsd.conf services \
 	shells sysctl.conf syslog.conf \
 	wpa_supplicant.conf \
 	etc.${MACHINE_ARCH}/ttys
