@@ -39,15 +39,62 @@
 #define	_SYS_STAT_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
 
 #if !defined(_KERNEL) && __BSD_VISIBLE
-/*
- * XXX We get miscellaneous namespace pollution with this.
- */
 #include <sys/time.h>
 #else
 #include <sys/_timespec.h>
+#endif
+
+#ifndef _BLKCNT_T_DECLARED
+typedef	__int64_t	blkcnt_t;	/* file block count */
+#define	_BLKCNT_T_DECLARED
+#endif
+
+#ifndef _BLKSIZE_T_DECLARED
+typedef	__int64_t	blksize_t;	/* block size */
+#define	_BLKSIZE_T_DECLARED
+#endif
+
+#ifndef _DEV_T_DECLARED
+typedef	__uint32_t	dev_t;		/* device number */
+#define	_DEV_T_DECLARED
+#endif
+
+#ifndef _GID_T_DECLARED
+typedef	__uint32_t	gid_t;		/* group id */
+#define	_GID_T_DECLARED
+#endif
+
+#ifndef _INO_T_DECLARED
+typedef	__uint64_t	ino_t;		/* inode number */
+#define	_INO_T_DECLARED
+#endif
+
+#ifndef _MODE_T_DECLARED
+typedef	__uint16_t	mode_t;		/* permissions */
+#define	_MODE_T_DECLARED
+#endif
+
+#ifndef _NLINK_T_DECLARED
+typedef	__uint32_t	nlink_t;	/* link count */
+#define	_NLINK_T_DECLARED
+#endif
+
+#ifndef _OFF_T_DECLARED
+typedef	__off_t		off_t;		/* file offset */
+#define	_OFF_T_DECLARED
+#endif
+
+#ifndef _TIME_T_DECLARED
+typedef	__time_t	time_t;
+#define	_TIME_T_DECLARED
+#endif
+
+#ifndef _UID_T_DECLARED
+typedef	__uint32_t	uid_t;		/* user id */
+#define	_UID_T_DECLARED
 #endif
 
 struct stat {
@@ -55,21 +102,21 @@ struct stat {
 	nlink_t		st_nlink;	/* number of hard links */
 	dev_t		st_dev;		/* inode's device */
 	mode_t		st_mode;	/* inode protection mode */
-	uint16_t	st_padding1;
+	__uint16_t	st_padding1;
 	uid_t		st_uid;		/* user ID of the file's owner */
 	gid_t		st_gid;		/* group ID of the file's group */
-	dev_t		st_rdev;		/* device type */
+	dev_t		st_rdev;	/* device type */
 	struct timespec	st_atim;	/* time of last access */
 	struct timespec	st_mtim;	/* time of last data modification */
 	struct timespec	st_ctim;	/* time of last file status change */
 	off_t		st_size;	/* file size, in bytes */
 	blkcnt_t	st_blocks;	/* blocks allocated for file */
-	u_int32_t	__old_st_blksize; /* old ABI compatibility only */
-	u_int32_t	st_flags;	/* user defined flags for file */
-	u_int32_t	st_gen;		/* file generation number */
-	int32_t		st_lspare;
+	__uint32_t	__old_st_blksize; /* old ABI compatibility only */
+	__uint32_t	st_flags;	/* user defined flags for file */
+	__uint32_t	st_gen;		/* file generation number */
+	__int32_t	st_lspare;
 	blksize_t	st_blksize;	/* optimal blocksize for I/O */
-	int64_t		st_qspare2;
+	__int64_t	st_qspare2;
 };
 
 #define	_ST_FLAGS_PRESENT_

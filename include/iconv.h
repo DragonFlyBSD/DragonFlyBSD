@@ -33,16 +33,25 @@
 #define _ICONV_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
 
+#if __BSD_VISIBLE
 #include <wchar.h>
+#endif
 
+#ifndef _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
+#endif
+
+#if __BSD_VISIBLE
 #ifdef __cplusplus
 typedef	bool	__iconv_bool;
 #elif __STDC_VERSION__ >= 199901L
 typedef	_Bool	__iconv_bool;
 #else
 typedef	int	__iconv_bool;
+#endif
 #endif
 
 struct __tag_iconv_t;
@@ -56,6 +65,7 @@ size_t	iconv(iconv_t, char ** __restrict,
 	      size_t * __restrict);
 int	iconv_close(iconv_t);
 #endif
+#if __BSD_VISIBLE
 /*
  * non-portable interfaces for iconv
  */
@@ -131,6 +141,8 @@ void		 iconvlist(int (*do_one) (unsigned int, const char * const *,
 		    void *), void *);
 const char	*iconv_canonicalize(const char *);
 int		 iconvctl(iconv_t, int, void *);
+#endif /* __BSD_VISIBLE */
+
 __END_DECLS
 
 #endif /* !_ICONV_H_ */

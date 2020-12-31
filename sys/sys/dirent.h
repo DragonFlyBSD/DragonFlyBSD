@@ -54,7 +54,12 @@
  */
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
+
+#ifndef _INO_T_DECLARED
+typedef	__uint64_t	ino_t;		/* inode number */
+#define	_INO_T_DECLARED
+#endif
 
 struct dirent {
 #if defined(_KERNEL) || !__BSD_VISIBLE
@@ -62,21 +67,22 @@ struct dirent {
 #else
 	ino_t		d_fileno;	/* file number of entry */
 #endif
-	uint16_t	d_namlen;	/* strlen(d_name) */
-	uint8_t		d_type;		/* file type, see blow */
-	uint8_t		d_unused1;	/* padding, reserved */
-	uint32_t	d_unused2;	/* reserved */
+	__uint16_t	d_namlen;	/* strlen(d_name) */
+	__uint8_t	d_type;		/* file type, see blow */
+	__uint8_t	d_unused1;	/* padding, reserved */
+	__uint32_t	d_unused2;	/* reserved */
 	char		d_name[255 + 1];
 					/* name, NUL-terminated */
 };
 
+#if __BSD_VISIBLE
 /*
  * Linux compatibility, but its a good idea anyhow
  */
 #define _DIRENT_HAVE_D_NAMLEN
 #define _DIRENT_HAVE_D_TYPE
 
-#if !defined(_KERNEL) && __BSD_VISIBLE
+#if !defined(_KERNEL)
 #define	d_ino		d_fileno
 #endif
 
@@ -109,6 +115,7 @@ struct dirent {
 	((__offsetof(struct dirent, d_name) + (namelen) + 1 + 7) & ~7)
 #define	_DIRENT_DIRSIZ(dp)	_DIRENT_RECLEN((dp)->d_namlen)
 #define	_DIRENT_NEXT(dp) \
-	((struct dirent *)((uint8_t *)(dp) + _DIRENT_DIRSIZ(dp)))
+	((struct dirent *)((__uint8_t *)(dp) + _DIRENT_DIRSIZ(dp)))
+#endif /* __BSD_VISIBLE */
 
 #endif /* !_SYS_DIRENT_H_ */
