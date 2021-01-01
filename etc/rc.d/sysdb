@@ -2,8 +2,6 @@
 #
 # $NetBSD: sysdb,v 1.9 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/sysdb,v 1.2 2002/06/13 22:14:36 gordon Exp $
-#
-# Note: dev_mkdb is required for 'ps' to work without complaining.
 
 # PROVIDE: sysdb
 # REQUIRE: mountcritremote
@@ -18,7 +16,6 @@ stop_cmd=":"
 sysdb_start()
 {
 	echo "Building databases..."
-	dev_mkdb
 	install -c -m 644 -g wheel /dev/null /var/run/utmpx
 }
 

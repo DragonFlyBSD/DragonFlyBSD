@@ -188,7 +188,6 @@ buildiso:
 	ln -sf kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
 	mtree ${MTREE_FSCHG} -deU -f ${SRCDIR}/etc/mtree/BSD.var.dist \
 		-p ${ISOROOT}/var
-	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 	${CHROOT_CMD} "rcrestart ldconfig"
 
 # The GUI build includes the full system source (~500 MB) and the full

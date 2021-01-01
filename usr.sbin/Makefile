@@ -30,7 +30,6 @@ SUBDIR= 802_11 \
 	daemon \
 	dconschat \
 	devinfo \
-	dev_mkdb \
 	dntpd \
 	edquota \
 	efibootmgr \
