@@ -186,6 +186,7 @@ SUBDIR=	alias \
 	ssh-keygen \
 	ssh-keyscan \
 	stat \
+	stdbuf \
 	strfile \
 	su \
 	systat \
