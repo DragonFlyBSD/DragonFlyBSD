@@ -72,13 +72,11 @@ fi
 
 
 year=`date '+%Y'`
-if [ X"$COPYRIGHT" = X ]; then
-	COPYRIGHT="/*
+COPYRIGHT="/*-
  * Copyright (c) $year The DragonFly Project
  * All rights reserved.
  */
 "
-fi
 
 LC_ALL=C; export LC_ALL
 if [ ! -r version ]
