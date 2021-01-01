@@ -3897,6 +3897,7 @@ TO_REMOVE+=/usr/share/mk/bsd.doc.mk
 TO_REMOVE+=/boot/kernel/fuse.ko
 TO_REMOVE+=/usr/sbin/dev_mkdb
 TO_REMOVE+=/usr/share/man/man8/dev_mkdb.8.gz
+TO_REMOVE+=/usr/share/examples/etc/bsd-style-copyright
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

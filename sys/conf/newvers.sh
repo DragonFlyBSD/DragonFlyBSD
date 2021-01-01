@@ -72,27 +72,13 @@ fi
 
 
 year=`date '+%Y'`
-# look for copyright template
-if [ -r ${SRCDIR}/share/examples/etc/bsd-style-copyright ]; then
-    COPYRIGHT=`sed \
-	-e "s/\[year\]/$year/" \
-	-e 's/\[your name\]\.*/The DragonFly Project/' \
-	-e '/\[id for your version control system, if any\]/d' \
-	${SRCDIR}/share/examples/etc/bsd-style-copyright`
-fi
-
-# no copyright found, use a dummy
 if [ X"$COPYRIGHT" = X ]; then
 	COPYRIGHT="/*
  * Copyright (c) $year The DragonFly Project
  * All rights reserved.
- *
- */"
-fi
-
-# add newline
-COPYRIGHT="$COPYRIGHT
+ */
 "
+fi
 
 LC_ALL=C; export LC_ALL
 if [ ! -r version ]
