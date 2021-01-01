@@ -28,7 +28,7 @@
 .\"     @(#)devname.3	8.2 (Berkeley) 4/29/95
 .\" $FreeBSD: src/lib/libc/gen/devname.3,v 1.7.2.7 2003/03/15 15:11:05 trhodes Exp $
 .\"
-.Dd December 27, 2020
+.Dd January 1, 2021
 .Dt DEVNAME 3
 .Os
 .Sh NAME
@@ -70,12 +70,10 @@ To find the right name,
 .Fn devname
 and
 .Fn devname_r
-first asks the kernel via the
+asks the kernel via the
 .Va kern.devname
-sysctl,
-and falls back to search the device database created by
-.Xr dev_mkdb 8 .
-If both fail, it will format the information encapsulated in
+sysctl.
+If it fails, it will format the information encapsulated in
 .Fa dev
 and
 .Fa type
@@ -151,7 +149,7 @@ argument is smaller than the length of the string to be returned.
 .El
 .Sh SEE ALSO
 .Xr stat 2 ,
-.Xr dev_mkdb 8
+.Xr devfs 5
 .Sh HISTORY
 The
 .Fn devname

@@ -54,7 +54,6 @@
 #define	_PATH_CSHELL	"/bin/csh"
 #define	_PATH_CSMAPPER	"/usr/share/i18n/csmapper"
 #define	_PATH_DEFTAPE	__SYS_PATH_DEFTAPE
-#define	_PATH_DEVDB	"/var/run/dev.db"
 #define	_PATH_DEVNULL	__SYS_PATH_DEVNULL
 #define	_PATH_DEVZERO	__SYS_PATH_DEVZERO
 #define	_PATH_DRUM	__SYS_PATH_DRUM

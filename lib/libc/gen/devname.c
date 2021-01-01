@@ -45,64 +45,15 @@
 #include <string.h>
 #include "un-namespace.h"
 
-#include <db.h>
-
-#define DEVNAME_DEVFS_COMPAT 1
-
-#ifdef DEVNAME_DEVFS_COMPAT
-static char *
-xdevname(dev_t dev, mode_t type)
-{
-	struct {
-		mode_t type;
-		dev_t dev;
-	} bkey;
-	static DB *db;
-	static int failure;
-	DBT data, key;
-
-	if (!db && !failure &&
-	    !(db = dbopen(_PATH_DEVDB, O_RDONLY, 0, DB_HASH, NULL))) {
-		_warn("warning: %s", _PATH_DEVDB);
-		failure = 1;
-	}
-	if (failure)
-		return (NULL);
-
-	/*
-	 * Keys are a mode_t followed by a dev_t.  The former is the type of
-	 * the file (mode & S_IFMT), the latter is the st_rdev field.  Be
-	 * sure to clear any padding that may be found in bkey.
-	 */
-	memset(&bkey, 0, sizeof(bkey));
-	bkey.dev = dev;
-	bkey.type = type;
-	key.data = &bkey;
-	key.size = sizeof(bkey);
-	return ((db->get)(db, &key, &data, 0) ? NULL : (char *)data.data);
-}
-#endif
-
 char *
 devname_r(dev_t dev, mode_t type, char *buf, size_t len)
 {
-	char *r;
 	size_t n = len;
 
 	if (sysctlbyname("kern.devname", buf, &n, &dev, sizeof(dev)) == 0)
 		return buf;
 
-#ifdef DEVNAME_DEVFS_COMPAT
-	/* Fall back to old method if compat for devfs is set */
-	/* First check the DB file. */
-	r = xdevname(dev, type);
-	if (r != NULL) {
-		strlcpy(buf, r, len);
-		return (buf);
-	}
-#endif
-
-	/* Finally just format it */
+	/* Just format it if failed to get its name */
 	snprintf(buf, len, "#%c%d:0x%x",
 	    (type & S_IFMT) == S_IFCHR ? 'C' : 'B',
 	    major(dev), minor(dev));
