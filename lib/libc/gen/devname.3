@@ -121,6 +121,21 @@ The
 .Fn fdevname_r
 function returns 0 if successful.
 Otherwise an error number is returned.
+.Sh EXAMPLES
+The following code fragment determines the name of the cloned
+.Xr tun 4
+device that is created by opening
+.Pa /dev/tun .
+.Bd -literal -offset indent
+int fd;
+struct stat st;
+
+fd = open("/dev/tun", O_RDONLY);
+fstat(fd, &st);
+printf("devname is /dev/%s\en", devname(st.st_rdev, S_IFCHR));
+printf("fdevname is /dev/%s\en", fdevname(fd));
+close(fd);
+.Ed
 .Sh ERRORS
 The
 .Fn fdevname
