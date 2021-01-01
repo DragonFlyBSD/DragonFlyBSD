@@ -507,7 +507,6 @@ void	 sync(void);
 
 #if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 600)
 int	 chroot(const char *);
-int	 chroot_kernel(const char *);
 int	 getdtablesize(void);
 int	 getpagesize(void) __pure2;
 char	*getpass(const char *);
@@ -526,6 +525,7 @@ pid_t	 vfork(void) __returns_twice;
 struct iovec;
 int	 acct(const char *);
 int	 async_daemon(void);
+int	 chroot_kernel(const char *);
 int	 closefrom(int);
 const char *
 	 crypt_get_format(void);
