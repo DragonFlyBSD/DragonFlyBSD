@@ -39,7 +39,6 @@
 
 #include <err.h>
 #include <fcntl.h>
-#include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
