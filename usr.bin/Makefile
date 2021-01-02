@@ -70,6 +70,7 @@ SUBDIR=	alias \
 	ftp \
 	gcore \
 	gencat \
+	getaddrinfo \
 	getconf \
 	getent \
 	getopt \
