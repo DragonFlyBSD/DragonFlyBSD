@@ -1336,8 +1336,9 @@ va_list_from_blob(machine_va_list *_valist, const char *fmt, char *blob, size_t 
 {
 	machine_va_list valist;
 	struct reg_save_area *regs;
+	enum argument_class argclass;
 	const char *f;
-	size_t sz;
+	size_t stacksize, sz;
 
 	if (!(valist = malloc(sizeof(*valist))))
 		return -1;
@@ -1350,8 +1351,7 @@ va_list_from_blob(machine_va_list *_valist, const char *fmt, char *blob, size_t 
 		.reg_save_area = regs,
 		.overflow_arg_area_save = NULL,
 	};
-	enum argument_class argclass;
-	size_t stacksize = 0;
+	stacksize = 0;
 
 	for (f = fmt; *f != '\0'; ++f) {
 		if (*f != '%')

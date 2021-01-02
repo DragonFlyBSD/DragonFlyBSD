@@ -176,6 +176,7 @@ backtrace_symbols_fmt(void *const *trace, size_t len, const char *fmt)
 {
 
 	static const size_t slen = sizeof(char *) + 64;	/* estimate */
+	size_t psize, offs;
 	char *ptr;
 	symtab_t *st;
 	int fd;
@@ -188,8 +189,8 @@ backtrace_symbols_fmt(void *const *trace, size_t len, const char *fmt)
 	if ((ptr = calloc(len, slen)) == NULL)
 		goto out;
 
-	size_t psize = len * slen;
-	size_t offs = len * sizeof(char *);
+	psize = len * slen;
+	offs = len * sizeof(char *);
 
 	/* We store only offsets in the first pass because of realloc */
 	for (size_t i = 0; i < len; i++) {

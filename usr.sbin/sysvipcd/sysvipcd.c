@@ -80,7 +80,7 @@ static int
 daemon_init(void)
 {
 	int error;
-	int socket_fd;
+	int socket_fd, fd_tmp;
 
 	/* Create and init structures used for clients. */
 	clientshash = _hash_init(MAX_CLIENTS);
@@ -98,7 +98,7 @@ daemon_init(void)
 	/* Open socket used to receive connections. */
 	unlink(LISTEN_SOCKET_FILE);
 	umask(0);
-	int fd_tmp = open(LISTEN_SOCKET_FILE, O_EXCL | O_CREAT, 0666);
+	fd_tmp = open(LISTEN_SOCKET_FILE, O_EXCL | O_CREAT, 0666);
 	if (fd_tmp < 0) {
 		sysvd_print_err("Could not open %s\n", LISTEN_SOCKET_FILE);
 		goto err;
