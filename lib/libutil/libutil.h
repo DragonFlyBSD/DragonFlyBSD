@@ -100,6 +100,8 @@ properties
 	properties_read(int fd);
 int	realhostname(char *, size_t, const struct in_addr *);
 int	realhostname_sa(char *, size_t, struct sockaddr *, int);
+int	sockaddr_snprintf(char *, size_t, const char *,
+	    const struct sockaddr *);
 
 #ifdef _PWD_H_
 int	pw_copy(int _ffd, int _tfd, const struct passwd *_pw,
