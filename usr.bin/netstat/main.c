@@ -58,79 +58,47 @@
 static struct nlist nl[] = {
 #define	N_IFNET		0
 	{ .n_name = "_ifnet" },
-#define	N_IMP		1
-	{ .n_name = "_imp_softc" },
-#define	N_RTSTAT	2
-	{ .n_name = "_rtstat" },
-#define	N_UNIXSW	3
+#define	N_UNIXSW	1
 	{ .n_name = "_localsw" },
-#define N_IDP		4
-	{ .n_name = "_nspcb"},
-#define N_IDPSTAT	5
-	{ .n_name = "_idpstat"},
-#define N_SPPSTAT	6
-	{ .n_name = "_spp_istat"},
-#define N_NSERR		7
-	{ .n_name = "_ns_errstat"},
-#define	N_CLNPSTAT	8
-	{ .n_name = "_clnp_stat"},
-#define	IN_NOTUSED	9
-	{ .n_name = "_tp_inpcb" },
-#define	ISO_TP		10
-	{ .n_name = "_tp_refinfo" },
-#define	N_TPSTAT	11
-	{ .n_name = "_tp_stat" },
-#define	N_ESISSTAT	12
-	{ .n_name = "_esis_stat"},
-#define N_NIMP		13
-	{ .n_name = "_nimp"},
-#define N_RTREE		14
+#define N_RTREE		2
 	{ .n_name = "_rt_tables"},
-#define N_CLTP		15
-	{ .n_name = "_cltb"},
-#define N_CLTPSTAT	16
+#define N_CLTPSTAT	3
 	{ .n_name = "_cltpstat"},
-#define	N_NFILE		17
-	{ .n_name = "_nfile" },
-#define	N_FILE		18
-	{ .n_name = "_file" },
-#define N_MRTSTAT	19
+#define N_MRTSTAT	4
 	{ .n_name = "_mrtstat" },
-#define N_MFCTABLE	20
+#define N_MFCTABLE	5
 	{ .n_name = "_mfctable" },
-#define N_VIFTABLE	21
+#define N_VIFTABLE	6
 	{ .n_name = "_viftable" },
-#define N_NGSOCKS	22
+#define N_NGSOCKS	7
 	{ .n_name = "_ngsocklist"},
-#define N_IP6STAT	23
+#define N_IP6STAT	8
 	{ .n_name = "_ip6stat" },
-#define N_ICMP6STAT	24
+#define N_ICMP6STAT	9
 	{ .n_name = "_icmp6stat" },
-#define N_PIM6STAT	25
+#define N_PIM6STAT	10
 	{ .n_name = "_pim6stat" },
-#define N_MRT6PROTO	26
+#define N_MRT6PROTO	11
 	{ .n_name = "_ip6_mrtproto" },
-#define N_MRT6STAT	27
+#define N_MRT6STAT	12
 	{ .n_name = "_mrt6stat" },
-#define N_MF6CTABLE	28
+#define N_MF6CTABLE	13
 	{ .n_name = "_mf6ctable" },
-#define N_MIF6TABLE	29
+#define N_MIF6TABLE	14
 	{ .n_name = "_mif6table" },
-#define N_MBSTAT	30
+#define N_MBSTAT	15
 	{ .n_name = "_mbstat" },
-#define N_MBTYPES	31
+#define N_MBTYPES	16
 	{ .n_name = "_mbtypes" },
-#define N_NMBCLUSTERS	32
+#define N_NMBCLUSTERS	17
 	{ .n_name = "_nmbclusters" },
-#define N_NMBUFS	33
+#define N_NMBUFS	18
 	{ .n_name = "_nmbufs" },
-#define	N_RTTRASH	34
-	{ .n_name = "_rttrash" },
-#define	N_NCPUS		35
+#define	N_NCPUS		19
 	{ .n_name = "_ncpus" },
-#define	N_CARPSTAT	36
+#define	N_CARPSTAT	20
 	{ .n_name = "_carpstats" },
-#define N_NMBJCLUSTERS	37
+#define N_NMBJCLUSTERS	21
 	{ .n_name = "_nmbjclusters" },
 	{ .n_name = NULL },
 };
