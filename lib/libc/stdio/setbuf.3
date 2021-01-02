@@ -31,9 +31,8 @@
 .\"
 .\"     @(#)setbuf.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdio/setbuf.3,v 1.17 2007/01/09 00:28:07 imp Exp $
-.\" $DragonFly: src/lib/libc/stdio/setbuf.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd January 2, 2021
 .Dt SETBUF 3
 .Os
 .Sh NAME
@@ -84,6 +83,9 @@ normally does) it is line buffered.
 The standard error stream
 .Dv stderr
 is always unbuffered.
+Note that these defaults may be altered using the
+.Xr stdbuf 1
+utility.
 .Pp
 The
 .Fn setvbuf
@@ -178,6 +180,7 @@ function returns what the equivalent
 .Fn setvbuf
 would have returned.
 .Sh SEE ALSO
+.Xr stdbuf 1 ,
 .Xr fclose 3 ,
 .Xr fopen 3 ,
 .Xr fread 3 ,
@@ -192,19 +195,23 @@ and
 functions
 conform to
 .St -isoC .
-.Sh BUGS
+.Sh HISTORY
+The
+.Fn setbuf
+function first appeared in
+.At v7 .
 The
 .Fn setbuffer
-and
+function first appeared in
+.Bx 4.1c .
+The
 .Fn setlinebuf
-functions are not portable to versions of
-.Bx
-before
+function first appeared in
 .Bx 4.2 .
-On
-.Bx 4.2
-and
-.Bx 4.3
-systems,
+The
+.Fn setvbuf
+function first appeared in
+.Bx 4.4 .
+.Sh BUGS
 .Fn setbuf
-always uses a suboptimal buffer size and should be avoided.
+usually uses a suboptimal buffer size and should be avoided.
