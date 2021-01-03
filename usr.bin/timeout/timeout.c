@@ -302,34 +302,22 @@ main(int argc, char **argv)
 				}
 			}
 
-		} else if (sig_alrm) {
-			sig_alrm = 0;
+		} else if (sig_alrm || sig_term) {
+			int signo = (int)sig_term;
 
-			timedout = true;
+			if (sig_alrm) {
+				signo = killsig;
+				sig_alrm = 0;
+				timedout = true;
+			}
+
 			if (!foreground) {
 				procctl(P_PID, getpid(), PROC_REAP_STATUS,
 					&info);
 				if (info.status.pid_head > 0)
-					kill(info.status.pid_head, killsig);
+					kill(info.status.pid_head, signo);
 			} else
-				kill(pid, killsig);
-
-			if (do_second_kill) {
-				set_interval(second_kill);
-				do_second_kill = false;
-				sig_ign = killsig;
-				killsig = SIGKILL;
-			} else
-				break;
-
-		} else if (sig_term) {
-			if (!foreground) {
-				procctl(P_PID, getpid(), PROC_REAP_STATUS,
-					&info);
-				if (info.status.pid_head > 0)
-					kill(info.status.pid_head, sig_term);
-			} else
-				kill(pid, sig_term);
+				kill(pid, signo);
 
 			if (do_second_kill) {
 				set_interval(second_kill);
