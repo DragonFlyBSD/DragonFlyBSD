@@ -200,6 +200,7 @@ SUBDIR=	alias \
 	telnet \
 	tftp \
 	time \
+	timeout \
 	tic \
 	tip \
 	top \

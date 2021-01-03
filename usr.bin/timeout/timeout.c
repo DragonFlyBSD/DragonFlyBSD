@@ -25,9 +25,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 #include <sys/procctl.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -174,8 +171,7 @@ main(int argc, char **argv)
 	bool do_second_kill = false;
 	bool child_done = false;
 	struct sigaction signals;
-	struct procctl_reaper_status info;
-	struct procctl_reaper_kill killemall;
+	union reaper_info info;
 	int signums[] = {
 		-1,
 		SIGTERM,
@@ -299,7 +295,7 @@ main(int argc, char **argv)
 				} else {
 					procctl(P_PID, getpid(),
 					    PROC_REAP_STATUS, &info);
-					if (info.rs_children == 0)
+					if (info.status.refs == 0)
 						break;
 				}
 			}
@@ -308,10 +304,10 @@ main(int argc, char **argv)
 
 			timedout = true;
 			if (!foreground) {
-				killemall.rk_sig = killsig;
-				killemall.rk_flags = 0;
-				procctl(P_PID, getpid(), PROC_REAP_KILL,
-				    &killemall);
+				procctl(P_PID, getpid(), PROC_REAP_STATUS,
+					&info);
+				if (info.status.pid_head > 0)
+					kill(info.status.pid_head, killsig);
 			} else
 				kill(pid, killsig);
 
@@ -325,10 +321,10 @@ main(int argc, char **argv)
 
 		} else if (sig_term) {
 			if (!foreground) {
-				killemall.rk_sig = sig_term;
-				killemall.rk_flags = 0;
-				procctl(P_PID, getpid(), PROC_REAP_KILL,
-				    &killemall);
+				procctl(P_PID, getpid(), PROC_REAP_STATUS,
+					&info);
+				if (info.status.pid_head > 0)
+					kill(info.status.pid_head, sig_term);
 			} else
 				kill(pid, sig_term);
 
