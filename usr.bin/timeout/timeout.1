@@ -34,10 +34,10 @@
 .Nd run a command with a time limit
 .Sh SYNOPSIS
 .Nm
-.Op Fl -signal Ar sig | Fl s Ar sig
-.Op Fl -preserve-status
-.Op Fl -kill-after Ar time | Fl k Ar time
+.Op Fl k Ar time | Fl -kill-after Ar time
+.Op Fl s Ar sig | Fl -signal Ar sig
 .Op Fl -foreground
+.Op Fl -preserve-status
 .Ar duration
 .Ar command
 .Op Ar args ...
@@ -64,18 +64,6 @@ is 0.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
-.It Fl -preserve-status
-Exit with the same status as
-.Ar command ,
-even if it times out and is killed.
-.It Fl -foreground
-Do not propagate timeout to the children of
-.Ar command .
-.It Fl s Ar sig , Fl -signal Ar sig
-Specify the signal to send on timeout.
-By default,
-.Dv SIGTERM
-is sent.
 .It Fl k Ar time , Fl -kill-after Ar time
 Send a
 .Dv SIGKILL
@@ -84,8 +72,21 @@ signal if
 is still running after
 .Ar time
 after the first signal was sent.
+.It Fl s Ar sig , Fl -signal Ar sig
+Specify the signal to send on timeout.
+By default,
+.Dv SIGTERM
+is sent.
+.It Fl -foreground
+Do not propagate timeout to the children of
+.Ar command .
+.It Fl -preserve-status
+Exit with the same status as
+.Ar command ,
+even if it times out and is killed.
 .El
 .Sh DURATION FORMAT
+The
 .Ar duration
 and
 .Ar time
@@ -94,7 +95,7 @@ unit-specifying suffix.
 Values without an explicit unit are interpreted as seconds.
 .Pp
 Supported unit symbols are:
-.Bl -tag -width indent -compact
+.Bl -tag -offset indent -width indent -compact
 .It Cm s
 seconds
 .It Cm m
@@ -118,10 +119,15 @@ If
 .Fl -preserve-status
 is not set, an exit status of 124 is returned.
 .Pp
+If an invalid parameter is passed to
+.Fl s
+or
+.Fl k ,
+the exit status returned is 125.
+.Pp
 If
 .Ar command
-exits after receiving a signal, the exit status returned is the signal number
-plus 128.
+is an otherwise invalid program, the exit status returned is 126.
 .Pp
 If
 .Ar command
@@ -129,13 +135,8 @@ refers to a non-existing program, the exit status returned is 127.
 .Pp
 If
 .Ar command
-is an otherwise invalid program, the exit status returned is 126.
-.Pp
-If an invalid parameter is passed to
-.Fl s
-or
-.Fl k ,
-the exit status returned is 125.
+exits after receiving a signal, the exit status returned is the signal number
+plus 128.
 .Sh EXAMPLES
 Run
 .Xr sleep 1
@@ -202,6 +203,15 @@ command first appeared in
 .Fx 10.3 ,
 and was imported into
 .Dx 5.9 .
+.Pp
+The FreeBSD work is compatible with GNU
+.Nm
+by
+.An Padraig Brady ,
+from GNU Coreutils 8.21.
+The
+.Nm
+utility first appeared in GNU Coreutils 7.0.
 .Sh AUTHORS
 .An Baptiste Daroussin Aq Mt bapt@FreeBSD.org
 and

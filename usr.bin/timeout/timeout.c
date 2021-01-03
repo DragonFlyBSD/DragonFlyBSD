@@ -40,20 +40,22 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#define EXIT_TIMEOUT 124
+#define EXIT_TIMEOUT	124
+#define EXIT_INVALID	125
+#define EXIT_CMD_ERROR	126
+#define EXIT_CMD_NOENT	127
 
 static sig_atomic_t sig_chld = 0;
 static sig_atomic_t sig_term = 0;
 static sig_atomic_t sig_alrm = 0;
 static sig_atomic_t sig_ign = 0;
 
-static void
+static void __dead2
 usage(void)
 {
-
-	fprintf(stderr, "Usage: %s [--signal sig | -s sig] [--preserve-status]"
-	    " [--kill-after time | -k time] [--foreground] <duration> <command>"
-	    " <arg ...>\n", getprogname());
+	fprintf(stderr, "Usage: %s [-k time | --kill-after time]"
+	    " [-s sig | --signal sig] [--foreground] [--preserve-status]"
+	    " <duration> <command> <arg ...>\n", getprogname());
 
 	exit(EX_USAGE);
 }
@@ -66,13 +68,13 @@ parse_duration(const char *duration)
 
 	ret = strtod(duration, &end);
 	if (ret == 0 && end == duration)
-		errx(125, "invalid duration");
+		errx(EXIT_INVALID, "invalid duration");
 
 	if (end == NULL || *end == '\0')
 		return (ret);
 
 	if (end != NULL && *(end + 1) != '\0')
-		errx(EX_USAGE, "invalid duration");
+		errx(EXIT_INVALID, "invalid duration");
 
 	switch (*end) {
 	case 's':
@@ -87,11 +89,11 @@ parse_duration(const char *duration)
 		ret *= 60 * 60 * 24;
 		break;
 	default:
-		errx(125, "invalid duration");
+		errx(EXIT_INVALID, "invalid duration");
 	}
 
 	if (ret < 0 || ret >= 100000000UL)
-		errx(125, "invalid duration");
+		errx(EXIT_INVALID, "invalid duration");
 
 	return (ret);
 }
@@ -103,18 +105,17 @@ parse_signal(const char *str)
 	const char *errstr;
 
 	sig = strtonum(str, 1, sys_nsig - 1, &errstr);
-
 	if (errstr == NULL)
 		return (sig);
+
 	if (strncasecmp(str, "SIG", 3) == 0)
 		str += 3;
-
 	for (i = 1; i < sys_nsig; i++) {
 		if (strcasecmp(str, sys_signame[i]) == 0)
 			return (i);
 	}
 
-	errx(125, "invalid signal");
+	errx(EXIT_INVALID, "invalid signal");
 }
 
 static void
@@ -125,7 +126,7 @@ sig_handler(int signo)
 		return;
 	}
 
-	switch(signo) {
+	switch (signo) {
 	case 0:
 	case SIGINT:
 	case SIGHUP:
@@ -149,7 +150,7 @@ set_interval(double iv)
 
 	memset(&tim, 0, sizeof(tim));
 	tim.it_value.tv_sec = (time_t)iv;
-	iv -= (time_t)iv;
+	iv -= (double)tim.it_value.tv_sec;
 	tim.it_value.tv_usec = (suseconds_t)(iv * 1000000UL);
 
 	if (setitimer(ITIMER_REAL, &tim, NULL) == -1)
@@ -160,10 +161,10 @@ int
 main(int argc, char **argv)
 {
 	int ch;
-	unsigned long i;
 	int foreground, preserve;
 	int error, pstat, status;
 	int killsig = SIGTERM;
+	size_t i;
 	pid_t pid, cpid;
 	double first_kill;
 	double second_kill;
@@ -196,25 +197,24 @@ main(int argc, char **argv)
 
 	while ((ch = getopt_long(argc, argv, "+k:s:h", longopts, NULL)) != -1) {
 		switch (ch) {
-			case 'k':
-				do_second_kill = true;
-				second_kill = parse_duration(optarg);
-				break;
-			case 's':
-				killsig = parse_signal(optarg);
-				break;
-			case 0:
-				break;
-			case 'h':
-			default:
-				usage();
-				break;
+		case 'k':
+			do_second_kill = true;
+			second_kill = parse_duration(optarg);
+			break;
+		case 's':
+			killsig = parse_signal(optarg);
+			break;
+		case 0:
+			break;
+		case 'h':
+		default:
+			usage();
+			break;
 		}
 	}
 
 	argc -= optind;
 	argv += optind;
-
 	if (argc < 2)
 		usage();
 
@@ -240,11 +240,13 @@ main(int argc, char **argv)
 	signals.sa_handler = sig_handler;
 	signals.sa_flags = SA_RESTART;
 
-	for (i = 0; i < sizeof(signums) / sizeof(signums[0]); i ++)
+	for (i = 0; i < sizeof(signums) / sizeof(signums[0]); i ++) {
 		if (signums[i] != -1 && signums[i] != 0 &&
 		    sigaction(signums[i], &signals, NULL) == -1)
 			err(EX_OSERR, "sigaction()");
+	}
 
+	/* Don't stop if background child needs TTY */
 	signal(SIGTTIN, SIG_IGN);
 	signal(SIGTTOU, SIG_IGN);
 
@@ -259,9 +261,9 @@ main(int argc, char **argv)
 		error = execvp(argv[0], argv);
 		if (error == -1) {
 			if (errno == ENOENT)
-				err(127, "exec(%s)", argv[0]);
+				err(EXIT_CMD_NOENT, "exec(%s)", argv[0]);
 			else
-				err(126, "exec(%s)", argv[0]);
+				err(EXIT_CMD_ERROR, "exec(%s)", argv[0]);
 		}
 	}
 
@@ -294,11 +296,12 @@ main(int argc, char **argv)
 					break;
 				} else {
 					procctl(P_PID, getpid(),
-					    PROC_REAP_STATUS, &info);
+						PROC_REAP_STATUS, &info);
 					if (info.status.refs == 0)
 						break;
 				}
 			}
+
 		} else if (sig_alrm) {
 			sig_alrm = 0;
 
@@ -313,7 +316,7 @@ main(int argc, char **argv)
 
 			if (do_second_kill) {
 				set_interval(second_kill);
-				second_kill = 0;
+				do_second_kill = false;
 				sig_ign = killsig;
 				killsig = SIGKILL;
 			} else
@@ -330,7 +333,7 @@ main(int argc, char **argv)
 
 			if (do_second_kill) {
 				set_interval(second_kill);
-				second_kill = 0;
+				do_second_kill = false;
 				sig_ign = killsig;
 				killsig = SIGKILL;
 			} else
@@ -348,7 +351,7 @@ main(int argc, char **argv)
 
 	if (WEXITSTATUS(pstat))
 		pstat = WEXITSTATUS(pstat);
-	else if(WIFSIGNALED(pstat))
+	else if (WIFSIGNALED(pstat))
 		pstat = 128 + WTERMSIG(pstat);
 
 	if (timedout && !preserve)
