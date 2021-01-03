@@ -36,6 +36,7 @@
 .Nm
 .Op Fl k Ar time | Fl -kill-after Ar time
 .Op Fl s Ar sig | Fl -signal Ar sig
+.Op Fl v | Fl -verbose
 .Op Fl -foreground
 .Op Fl -preserve-status
 .Ar duration
@@ -77,6 +78,8 @@ Specify the signal to send on timeout.
 By default,
 .Dv SIGTERM
 is sent.
+.It Fl v , Fl -verbose
+Show information to stderr about any signal sent on timeout.
 .It Fl -foreground
 Do not propagate timeout to the children of
 .Ar command .
