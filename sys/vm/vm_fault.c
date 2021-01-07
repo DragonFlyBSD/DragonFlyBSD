@@ -196,11 +196,6 @@ static int vm_fault_bypass(struct faultstate *fs, vm_pindex_t first_pindex,
 			vm_pindex_t first_count, int *mextcountp,
 			vm_prot_t fault_type);
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t, int);
-static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *,
-			vpte_t, int, int);
-#if 0
-static int vm_fault_additional_pages (vm_page_t, int, int, vm_page_t *, int *);
-#endif
 static void vm_set_nosync(vm_page_t m, vm_map_entry_t entry);
 static void vm_prefault(pmap_t pmap, vm_offset_t addra,
 			vm_map_entry_t entry, int prot, int fault_flags);
@@ -266,8 +261,8 @@ cleanup_fault(struct faultstate *fs)
 		fs->first_m = NULL;
 
 		/*
-		 * Reset fs->ba (used by vm_fault_vpagetahble() without
-		 * calling unlock_map(), so we need a little duplication.
+		 * Reset fs->ba without calling unlock_map(), so we need a
+		 * little duplication.
 		 */
 		vm_object_drop(fs->ba->object);
 		fs->ba = fs->first_ba;
@@ -396,9 +391,7 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	struct lwp *lp;
 	struct proc *p;
 	thread_t td;
-	struct vm_map_ilock ilock;
 	int mextcount;
-	int didilock;
 	int growstack;
 	int retry = 0;
 	int inherit_prot;
@@ -640,7 +633,6 @@ RetryFault:
 	if (vm_fault_bypass_count &&
 	    vm_fault_bypass(&fs, first_pindex, first_count,
 			   &mextcount, fault_type) == KERN_SUCCESS) {
-		didilock = 0;
 		fault_flags &= ~VM_FAULT_BURST;
 		goto success;
 	}
@@ -667,32 +659,8 @@ RetryFault:
 	fs.first_ba_held = 1;
 
 	/*
-	 * The page we want is at (first_object, first_pindex), but if the
-	 * vm_map_entry is VM_MAPTYPE_VPAGETABLE we have to traverse the
-	 * page table to figure out the actual pindex.
+	 * The page we want is at (first_object, first_pindex).
 	 *
-	 * NOTE!  DEVELOPMENT IN PROGRESS, THIS IS AN INITIAL IMPLEMENTATION
-	 * ONLY
-	 */
-	didilock = 0;
-	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-		vm_map_interlock(fs.map, &ilock, vaddr, vaddr + PAGE_SIZE);
-		didilock = 1;
-		result = vm_fault_vpagetable(&fs, &first_pindex,
-					     fs.entry->aux.master_pde,
-					     fault_type, 1);
-		if (result == KERN_TRY_AGAIN) {
-			vm_map_deinterlock(fs.map, &ilock);
-			++retry;
-			goto RetryFault;
-		}
-		if (result != KERN_SUCCESS) {
-			vm_map_deinterlock(fs.map, &ilock);
-			goto done;
-		}
-	}
-
-	/*
 	 * Now we have the actual (object, pindex), fault in the page.  If
 	 * vm_fault_object() fails it will unlock and deallocate the FS
 	 * data.   If it succeeds everything remains locked and fs->ba->object
@@ -718,14 +686,10 @@ RetryFault:
 	}
 
 	if (result == KERN_TRY_AGAIN) {
-		if (didilock)
-			vm_map_deinterlock(fs.map, &ilock);
 		++retry;
 		goto RetryFault;
 	}
 	if (result != KERN_SUCCESS) {
-		if (didilock)
-			vm_map_deinterlock(fs.map, &ilock);
 		goto done;
 	}
 
@@ -747,9 +711,6 @@ success:
 			   fs.mary[n], fs.prot | inherit_prot,
 			   fs.wflags & FW_WIRED, fs.entry);
 	}
-
-	if (didilock)
-		vm_map_deinterlock(fs.map, &ilock);
 
 	/*
 	 * If the page is not wired down, then put it where the pageout daemon
@@ -902,16 +863,6 @@ vm_fault_bypass(struct faultstate *fs, vm_pindex_t first_pindex,
 	 */
 	if (fs->fault_flags & VM_FAULT_WIRE_MASK)
 		return KERN_FAILURE;
-
-	/*
-	 * Ick, can't handle this
-	 */
-	if (fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-#ifdef VM_FAULT_QUICK_DEBUG
-		++vm_fault_bypass_failure_count1;
-#endif
-		return KERN_FAILURE;
-	}
 
 	/*
 	 * Ok, try to get the vm_page quickly via the hash table.  The
@@ -1304,30 +1255,8 @@ RetryFault:
 		fs.vp = vnode_pager_lock(fs.first_ba);	/* shared */
 
 	/*
-	 * The page we want is at (first_object, first_pindex), but if the
-	 * vm_map_entry is VM_MAPTYPE_VPAGETABLE we have to traverse the
-	 * page table to figure out the actual pindex.
+	 * The page we want is at (first_object, first_pindex).
 	 *
-	 * NOTE!  DEVELOPMENT IN PROGRESS, THIS IS AN INITIAL IMPLEMENTATION
-	 * ONLY
-	 */
-	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-		result = vm_fault_vpagetable(&fs, &first_pindex,
-					     fs.entry->aux.master_pde,
-					     fault_type, 1);
-		first_count = 1;
-		if (result == KERN_TRY_AGAIN) {
-			++retry;
-			goto RetryFault;
-		}
-		if (result != KERN_SUCCESS) {
-			*errorp = result;
-			fs.mary[0] = NULL;
-			goto done;
-		}
-	}
-
-	/*
 	 * Now we have the actual (object, pindex), fault in the page.  If
 	 * vm_fault_object() fails it will unlock and deallocate the FS
 	 * data.   If it succeeds everything remains locked and fs->ba->object
@@ -1519,24 +1448,6 @@ RetryFault:
 	fs.lookup_still_valid = 1;
 	fs.first_m = NULL;
 
-#if 0
-	/* XXX future - ability to operate on VM object using vpagetable */
-	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-		result = vm_fault_vpagetable(&fs, &first_pindex,
-					     fs.entry->aux.master_pde,
-					     fault_type, 0);
-		if (result == KERN_TRY_AGAIN) {
-			if (fs.first_shared == 0 && *sharedp)
-				vm_object_upgrade(object);
-			goto RetryFault;
-		}
-		if (result != KERN_SUCCESS) {
-			*errorp = result;
-			return (NULL);
-		}
-	}
-#endif
-
 	/*
 	 * Now we have the actual (object, pindex), fault in the page.  If
 	 * vm_fault_object() fails it will unlock and deallocate the FS
@@ -1608,149 +1519,6 @@ RetryFault:
 }
 
 /*
- * Translate the virtual page number (first_pindex) that is relative
- * to the address space into a logical page number that is relative to the
- * backing object.  Use the virtual page table pointed to by (vpte).
- *
- * Possibly downgrade the protection based on the vpte bits.
- *
- * This implements an N-level page table.  Any level can terminate the
- * scan by setting VPTE_PS.   A linear mapping is accomplished by setting
- * VPTE_PS in the master page directory entry set via mcontrol(MADV_SETMAP).
- */
-static
-int
-vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
-		    vpte_t vpte, int fault_type, int allow_nofault)
-{
-	struct lwbuf *lwb;
-	struct lwbuf lwb_cache;
-	int vshift = VPTE_FRAME_END - PAGE_SHIFT; /* index bits remaining */
-	int result;
-	vpte_t *ptep;
-
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(fs->first_ba->object));
-	for (;;) {
-		/*
-		 * We cannot proceed if the vpte is not valid, not readable
-		 * for a read fault, not writable for a write fault, or
-		 * not executable for an instruction execution fault.
-		 */
-		if ((vpte & VPTE_V) == 0) {
-			unlock_things(fs);
-			return (KERN_FAILURE);
-		}
-		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_RW) == 0) {
-			unlock_things(fs);
-			return (KERN_FAILURE);
-		}
-		if ((fault_type & VM_PROT_EXECUTE) && (vpte & VPTE_NX)) {
-			unlock_things(fs);
-			return (KERN_FAILURE);
-		}
-		if ((vpte & VPTE_PS) || vshift == 0)
-			break;
-
-		/*
-		 * Get the page table page.  Nominally we only read the page
-		 * table, but since we are actively setting VPTE_M and VPTE_A,
-		 * tell vm_fault_object() that we are writing it. 
-		 *
-		 * There is currently no real need to optimize this.
-		 */
-		result = vm_fault_object(fs, (vpte & VPTE_FRAME) >> PAGE_SHIFT,
-					 VM_PROT_READ|VM_PROT_WRITE,
-					 allow_nofault);
-		if (result != KERN_SUCCESS)
-			return (result);
-
-		/*
-		 * Process the returned fs.mary[0] and look up the page table
-		 * entry in the page table page.
-		 */
-		vshift -= VPTE_PAGE_BITS;
-		lwb = lwbuf_alloc(fs->mary[0], &lwb_cache);
-		ptep = ((vpte_t *)lwbuf_kva(lwb) +
-		        ((*pindex >> vshift) & VPTE_PAGE_MASK));
-		vm_page_activate(fs->mary[0]);
-
-		/*
-		 * Page table write-back - entire operation including
-		 * validation of the pte must be atomic to avoid races
-		 * against the vkernel changing the pte.
-		 *
-		 * If the vpte is valid for the* requested operation, do
-		 * a write-back to the page table.
-		 *
-		 * XXX VPTE_M is not set properly for page directory pages.
-		 * It doesn't get set in the page directory if the page table
-		 * is modified during a read access.
-		 */
-		for (;;) {
-			vpte_t nvpte;
-
-			/*
-			 * Reload for the cmpset, but make sure the pte is
-			 * still valid.
-			 */
-			vpte = *ptep;
-			cpu_ccfence();
-			nvpte = vpte;
-
-			if ((vpte & VPTE_V) == 0)
-				break;
-
-			if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_RW))
-				nvpte |= VPTE_M | VPTE_A;
-			if (fault_type & (VM_PROT_READ | VM_PROT_EXECUTE))
-				nvpte |= VPTE_A;
-			if (vpte == nvpte)
-				break;
-			if (atomic_cmpset_long(ptep, vpte, nvpte)) {
-				vm_page_dirty(fs->mary[0]);
-				break;
-			}
-		}
-		lwbuf_free(lwb);
-		vm_page_flag_set(fs->mary[0], PG_REFERENCED);
-		vm_page_wakeup(fs->mary[0]);
-		fs->mary[0] = NULL;
-		cleanup_fault(fs);
-	}
-
-	/*
-	 * When the vkernel sets VPTE_RW it expects the real kernel to
-	 * reflect VPTE_M back when the page is modified via the mapping.
-	 * In order to accomplish this the real kernel must map the page
-	 * read-only for read faults and use write faults to reflect VPTE_M
-	 * back.
-	 *
-	 * Once VPTE_M has been set, the real kernel's pte allows writing.
-	 * If the vkernel clears VPTE_M the vkernel must be sure to
-	 * MADV_INVAL the real kernel's mappings to force the real kernel
-	 * to re-fault on the next write so oit can set VPTE_M again.
-	 */
-	if ((fault_type & VM_PROT_WRITE) == 0 &&
-	    (vpte & (VPTE_RW | VPTE_M)) != (VPTE_RW | VPTE_M)) {
-		fs->first_prot &= ~VM_PROT_WRITE;
-	}
-
-	/*
-	 * Disable EXECUTE perms if NX bit is set.
-	 */
-	if (vpte & VPTE_NX)
-		fs->first_prot &= ~VM_PROT_EXECUTE;
-
-	/*
-	 * Combine remaining address bits with the vpte.
-	 */
-	*pindex = ((vpte & VPTE_FRAME) >> PAGE_SHIFT) +
-		  (*pindex & ((1L << vshift) - 1));
-	return (KERN_SUCCESS);
-}
-
-
-/*
  * This is the core of the vm_fault code.
  *
  * Do all operations required to fault-in (fs.first_ba->object, pindex).
@@ -1800,25 +1568,12 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 	 * (1) The mapping is read-only or the VM object is read-only,
 	 *     fs->prot above will simply not have VM_PROT_WRITE set.
 	 *
-	 * (2) If the mapping is a virtual page table fs->first_prot will
-	 *     have already been properly adjusted by vm_fault_vpagetable().
-	 *     to detect writes so we can set VPTE_M in the virtual page
-	 *     table.  Used by vkernels.
-	 *
-	 * (3) If the VM page is read-only or copy-on-write, upgrading would
+	 * (2) If the VM page is read-only or copy-on-write, upgrading would
 	 *     just result in an unnecessary COW fault.
 	 *
-	 * (4) If the pmap specifically requests A/M bit emulation, downgrade
+	 * (3) If the pmap specifically requests A/M bit emulation, downgrade
 	 *     here.
 	 */
-#if 0
-	/* see vpagetable code */
-	if (fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-		if ((fault_type & VM_PROT_WRITE) == 0)
-			fs->prot &= ~VM_PROT_WRITE;
-	}
-#endif
-
 	if (curthread->td_lwp && curthread->td_lwp->lwp_vmspace &&
 	    pmap_emulate_ad_bits(&curthread->td_lwp->lwp_vmspace->vm_pmap)) {
 		if ((fault_type & VM_PROT_WRITE) == 0)
@@ -2548,7 +2303,6 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
 
 	switch(entry->maptype) {
 	case VM_MAPTYPE_NORMAL:
-	case VM_MAPTYPE_VPAGETABLE:
 		fictitious = entry->ba.object &&
 			    ((entry->ba.object->type == OBJT_DEVICE) ||
 			     (entry->ba.object->type == OBJT_MGTDEVICE));

@@ -98,7 +98,6 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 
 		switch(entry->maptype) {
 		case VM_MAPTYPE_NORMAL:
-		case VM_MAPTYPE_VPAGETABLE:
 			ba = &entry->ba;
 			break;
 		case VM_MAPTYPE_UKSMAP:
@@ -189,9 +188,6 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 				break;
 			case VM_MAPTYPE_NORMAL:
 				type = "none";
-				break;
-			case VM_MAPTYPE_VPAGETABLE:
-				type = "vpgtbl";
 				break;
 			case VM_MAPTYPE_SUBMAP:
 				type = "submap";

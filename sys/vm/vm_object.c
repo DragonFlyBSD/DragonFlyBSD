@@ -1760,7 +1760,6 @@ _vm_object_in_map(vm_map_t map, vm_object_t object, vm_map_entry_t entry)
 		}
 		break;
 	case VM_MAPTYPE_NORMAL:
-	case VM_MAPTYPE_VPAGETABLE:
 		ba = &entry->ba;
 		while (ba) {
 			if (ba->object == object)

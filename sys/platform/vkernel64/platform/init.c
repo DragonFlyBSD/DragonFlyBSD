@@ -604,6 +604,9 @@ init_sys_memory(char *imageFile)
 /*
  * Initialize kernel memory.  This reserves kernel virtual memory by using
  * MAP_VPAGETABLE
+ *
+ * XXX NOTE!  MAP_VPAGETABLE is being ripped out and will break VKERNELs
+ *	      for a while, until we get hardware virtualization working.
  */
 
 static

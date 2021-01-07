@@ -71,8 +71,7 @@ static MALLOC_DEFINE(M_VKERNEL, "vkernel", "VKernel structures");
  * be 0.
  *
  * The vmspace starts out completely empty.  Memory may be mapped into the
- * VMSPACE with vmspace_mmap() and MAP_VPAGETABLE section(s) controlled
- * with vmspace_mcontrol().
+ * VMSPACE with vmspace_mmap().
  *
  * No requirements.
  */
@@ -284,8 +283,7 @@ done:
  * vmspace_mmap(id, addr, len, prot, flags, fd, offset)
  *
  * map memory within a VMSPACE.  This function is just like a normal mmap()
- * but operates on the vmspace's memory map.  Most callers use this to create
- * a MAP_VPAGETABLE mapping.
+ * but operates on the vmspace's memory map.
  *
  * No requirements.
  */

@@ -163,21 +163,11 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	}
 
 	/*
-	 * Virtual page tables cannot be used with MAP_STACK.  Apart from
-	 * it not making any sense, the aux union is used by both
-	 * types.
-	 *
-	 * Because the virtual page table is stored in the backing object
-	 * and might be updated by the kernel, the mapping must be R+W.
+	 * Virtual page table support has been removed and now always
+	 * returns EOPNOTSUPP.
 	 */
-	if (flags & MAP_VPAGETABLE) {
-		if (vkernel_enable == 0)
-			return (EOPNOTSUPP);
-		if (flags & MAP_STACK)
-			return (EINVAL);
-		if ((prot & (PROT_READ|PROT_WRITE)) != (PROT_READ|PROT_WRITE))
-			return (EINVAL);
-	}
+	if (flags & MAP_VPAGETABLE)
+		return (EOPNOTSUPP);
 
 	/*
 	 * Align the file position to a page boundary,
@@ -824,10 +814,8 @@ RestartScan:
 		/*
 		 * ignore submaps (for now) or null objects
 		 */
-		if (current->maptype != VM_MAPTYPE_NORMAL &&
-		    current->maptype != VM_MAPTYPE_VPAGETABLE) {
+		if (current->maptype != VM_MAPTYPE_NORMAL)
 			continue;
-		}
 		if (current->ba.object == NULL)
 			continue;
 		
@@ -1312,10 +1300,10 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 
 		/*
 		 * Non-anonymous mappings of VCHR (aka not /dev/zero)
-		 * cannot specify MAP_STACK or MAP_VPAGETABLE.
+		 * cannot specify MAP_STACK.
 		 */
 		if (vp->v_type == VCHR) {
-			if (flags & (MAP_STACK | MAP_VPAGETABLE)) {
+			if (flags & MAP_STACK) {
 				lwkt_reltoken(&map->token);
 				return(EINVAL);
 			}
@@ -1428,12 +1416,6 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	} else if (flags & MAP_STACK) {
 		rv = vm_map_stack(map, addr, size, flags,
 				  prot, maxprot, docow);
-	} else if (flags & MAP_VPAGETABLE) {
-		rv = vm_map_find(map, object, NULL,
-				 foff, addr, size,
-				 align, fitit,
-				 VM_MAPTYPE_VPAGETABLE, VM_SUBSYS_MMAP,
-				 prot, maxprot, docow);
 	} else {
 		rv = vm_map_find(map, object, NULL,
 				 foff, addr, size,

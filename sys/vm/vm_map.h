@@ -219,9 +219,6 @@ typedef struct vm_map_backing *vm_map_backing_t;
  *
  * When used with MAP_STACK, avail_ssize is used to determine the limits
  * of stack growth.
- *
- * When used with VM_MAPTYPE_VPAGETABLE, avail_ssize stores the page
- * directory index.
  */
 struct vm_map_entry {
 	RB_ENTRY(vm_map_entry) rb_entry;
@@ -292,7 +289,10 @@ vm_map_entry_set_behavior(struct vm_map_entry *entry, u_char behavior)
 }                       
 
 /*
- * VA interlock for map (VPAGETABLE / vkernel support)
+ * Virtual address range interlock
+ *
+ * Used by MADV_INVAL in vm_map.c, but it is unclear whether we still
+ * need it with the vpagetable support removed.
  */
 struct vm_map_ilock {
 	struct vm_map_ilock *next;

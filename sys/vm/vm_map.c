@@ -557,7 +557,6 @@ vmspace_swap_count(struct vmspace *vm)
 	RB_FOREACH(cur, vm_map_rb_tree, &map->rb_root) {
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
-		case VM_MAPTYPE_VPAGETABLE:
 			if ((object = cur->ba.object) == NULL)
 				break;
 			if (object->swblock_count) {
@@ -594,7 +593,6 @@ vmspace_anonymous_count(struct vmspace *vm)
 	RB_FOREACH(cur, vm_map_rb_tree, &map->rb_root) {
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
-		case VM_MAPTYPE_VPAGETABLE:
 			if ((object = cur->ba.object) == NULL)
 				break;
 			if (object->type != OBJT_DEFAULT &&
@@ -736,10 +734,10 @@ vm_map_entry_shadow(vm_map_entry_t entry)
 	vm_object_t source;
 	vm_object_t result;
 
-	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
-		length = 0x7FFFFFFF;
-	else
-		length = atop(entry->ba.end - entry->ba.start);
+	/*
+	 * Number of bytes we have to shadow
+	 */
+	length = atop(entry->ba.end - entry->ba.start);
 
 	/*
 	 * Don't create the new object if the old object isn't shared.
@@ -851,14 +849,9 @@ vm_map_entry_allocate_object(vm_map_entry_t entry)
 	 */
 	entry->ba.offset = 0;
 
-	if (entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-		/* XXX */
-		obj = vm_object_allocate(OBJT_DEFAULT, 0x7FFFFFFF);
-	} else {
-		obj = vm_object_allocate(OBJT_DEFAULT,
-					 atop(entry->ba.end - entry->ba.start) +
-					 entry->ba.offset);
-	}
+	obj = vm_object_allocate(OBJT_DEFAULT,
+				 atop(entry->ba.end - entry->ba.start) +
+				 entry->ba.offset);
 	entry->ba.object = obj;
 	vm_map_backing_attach(entry, &entry->ba);
 }
@@ -1051,7 +1044,6 @@ vm_map_backing_attach(vm_map_entry_t entry, vm_map_backing_t ba)
 	vm_object_t obj;
 
 	switch(entry->maptype) {
-	case VM_MAPTYPE_VPAGETABLE:
 	case VM_MAPTYPE_NORMAL:
 		obj = ba->object;
 		lockmgr(&obj->backing_lk, LK_EXCLUSIVE);
@@ -1070,7 +1062,6 @@ vm_map_backing_detach(vm_map_entry_t entry, vm_map_backing_t ba)
 	vm_object_t obj;
 
 	switch(entry->maptype) {
-	case VM_MAPTYPE_VPAGETABLE:
 	case VM_MAPTYPE_NORMAL:
 		obj = ba->object;
 		lockmgr(&obj->backing_lk, LK_EXCLUSIVE);
@@ -1124,7 +1115,6 @@ vm_map_entry_dispose(vm_map_t map, vm_map_entry_t entry, int *countp)
 	 */
 	switch(entry->maptype) {
 	case VM_MAPTYPE_NORMAL:
-	case VM_MAPTYPE_VPAGETABLE:
 		if (entry->ba.map_object) {
 			vm_map_backing_detach(entry, &entry->ba);
 			vm_object_deallocate(entry->ba.object);
@@ -1422,7 +1412,6 @@ vm_map_insert(vm_map_t map, int *countp,
 	 * don't try.
 	 */
 	if ((cow & (MAP_PREFAULT|MAP_PREFAULT_PARTIAL)) &&
-	    maptype != VM_MAPTYPE_VPAGETABLE &&
 	    maptype != VM_MAPTYPE_UKSMAP) {
 		int dorelock = 0;
 		if (vm_map_relock_enable && (cow & MAP_PREFAULT_RELOCK)) {
@@ -2181,8 +2170,7 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		 */
 		if (new_prot & PROT_WRITE &&
 		    (current->eflags & MAP_ENTRY_NEEDS_COPY) == 0 &&
-		    (current->maptype == VM_MAPTYPE_NORMAL ||
-		     current->maptype == VM_MAPTYPE_VPAGETABLE) &&
+		    current->maptype == VM_MAPTYPE_NORMAL &&
 		    current->ba.object &&
 		    current->ba.object->type == OBJT_VNODE) {
 			struct vnode *vp;
@@ -2347,26 +2335,13 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			case MADV_SETMAP:
 				/*
 				 * Set the page directory page for a map
-				 * governed by a virtual page table.  Mark
-				 * the entry as being governed by a virtual
-				 * page table if it is not.
+				 * governed by a virtual page table.
 				 *
-				 * XXX the page directory page is stored
-				 * in the avail_ssize field if the map_entry.
-				 *
-				 * XXX the map simplification code does not
-				 * compare this field so weird things may
-				 * happen if you do not apply this function
-				 * to the entire mapping governed by the
-				 * virtual page table.
+				 * Software virtual page table support has
+				 * been removed, this MADV is no longer
+				 * supported.
 				 */
-				if (current->maptype != VM_MAPTYPE_VPAGETABLE) {
-					error = EINVAL;
-					break;
-				}
-				current->aux.master_pde = value;
-				pmap_remove(map->pmap,
-					    current->ba.start, current->ba.end);
+				error = EINVAL;
 				break;
 			case MADV_INVAL:
 				/*
@@ -2400,9 +2375,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		 * Since we don't clip the vm_map_entry, we have to clip
 		 * the vm_object pindex and count.
 		 *
-		 * NOTE!  These functions are only supported on normal maps,
-		 *	  except MADV_INVAL which is also supported on
-		 *	  virtual page tables.
+		 * NOTE!  These functions are only supported on normal maps.
 		 *
 		 * NOTE!  These functions only apply to the top-most object.
 		 *	  It is not applicable to backing objects.
@@ -2412,11 +2385,8 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		     current = vm_map_rb_tree_RB_NEXT(current)) {
 			vm_offset_t useStart;
 
-			if (current->maptype != VM_MAPTYPE_NORMAL &&
-			    (current->maptype != VM_MAPTYPE_VPAGETABLE ||
-			     behav != MADV_INVAL)) {
+			if (current->maptype != VM_MAPTYPE_NORMAL)
 				continue;
-			}
 
 			pindex = OFF_TO_IDX(current->ba.offset);
 			delta = atop(current->ba.end - current->ba.start);
@@ -2465,12 +2435,9 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			}
 
 			/*
-			 * Try to populate the page table.  Mappings governed
-			 * by virtual page tables cannot be pre-populated
-			 * without a lot of work so don't try.
+			 * Try to pre-populate the page table.
 			 */
-			if (behav == MADV_WILLNEED &&
-			    current->maptype != VM_MAPTYPE_VPAGETABLE) {
+			if (behav == MADV_WILLNEED) {
 				pmap_object_init_pt(
 				    map->pmap, current,
 				    useStart,
@@ -2587,8 +2554,7 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			 * management structures and the faulting in of the
 			 * page.
 			 */
-			if (entry->maptype == VM_MAPTYPE_NORMAL ||
-			    entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+			if (entry->maptype == VM_MAPTYPE_NORMAL) {
 				int copyflag = entry->eflags &
 					       MAP_ENTRY_NEEDS_COPY;
 				if (copyflag && ((entry->protection &
@@ -2788,8 +2754,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 			 * do not have to do this for entries that point to sub
 			 * maps because we won't hold the lock on the sub map.
 			 */
-			if (entry->maptype == VM_MAPTYPE_NORMAL ||
-			    entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+			if (entry->maptype == VM_MAPTYPE_NORMAL) {
 				int copyflag = entry->eflags &
 					       MAP_ENTRY_NEEDS_COPY;
 				if (copyflag && ((entry->protection &
@@ -3031,7 +2996,6 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			break;
 		}
 		case VM_MAPTYPE_NORMAL:
-		case VM_MAPTYPE_VPAGETABLE:
 			ba = &current->ba;
 			break;
 		default:
@@ -3103,21 +3067,11 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			flags = (syncio || invalidate) ? OBJPC_SYNC : 0;
 			flags |= invalidate ? OBJPC_INVAL : 0;
 
-			/*
-			 * When operating on a virtual page table just
-			 * flush the whole object.  XXX we probably ought
-			 * to 
-			 */
-			switch(current->maptype) {
-			case VM_MAPTYPE_NORMAL:
+			if (current->maptype == VM_MAPTYPE_NORMAL) {
 				vm_object_page_clean(object,
 				    OFF_TO_IDX(offset),
 				    OFF_TO_IDX(offset + size + PAGE_MASK),
 				    flags);
-				break;
-			case VM_MAPTYPE_VPAGETABLE:
-				vm_object_page_clean(object, 0, 0, flags);
-				break;
 			}
 			vn_unlock(((struct vnode *)object->handle));
 			vm_object_deallocate_locked(object);
@@ -3131,16 +3085,11 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 				(object->type == OBJT_MGTDEVICE)) ? FALSE : TRUE;
 			/* no chain wait needed for vnode/device objects */
 			vm_object_reference_locked(object);
-			switch(current->maptype) {
-			case VM_MAPTYPE_NORMAL:
+			if (current->maptype == VM_MAPTYPE_NORMAL) {
 				vm_object_page_remove(object,
 				    OFF_TO_IDX(offset),
 				    OFF_TO_IDX(offset + size + PAGE_MASK),
 				    clean_only);
-				break;
-			case VM_MAPTYPE_VPAGETABLE:
-				vm_object_page_remove(object, 0, 0, clean_only);
-				break;
 			}
 			vm_object_deallocate_locked(object);
 		}
@@ -3264,7 +3213,6 @@ again:
 
 		switch(entry->maptype) {
 		case VM_MAPTYPE_NORMAL:
-		case VM_MAPTYPE_VPAGETABLE:
 		case VM_MAPTYPE_SUBMAP:
 			object = entry->ba.object;
 			break;
@@ -3470,7 +3418,6 @@ vm_map_backing_replicated(vm_map_t map, vm_map_entry_t entry, int flags)
 
 		if (ba->map_object) {
 			switch(entry->maptype) {
-			case VM_MAPTYPE_VPAGETABLE:
 			case VM_MAPTYPE_NORMAL:
 				object = ba->object;
 				if (ba != &entry->ba ||
@@ -3514,8 +3461,7 @@ vm_map_backing_adjust_start(vm_map_entry_t entry, vm_ooffset_t start)
 {
 	vm_map_backing_t ba;
 
-	if (entry->maptype == VM_MAPTYPE_VPAGETABLE ||
-	    entry->maptype == VM_MAPTYPE_NORMAL) {
+	if (entry->maptype == VM_MAPTYPE_NORMAL) {
 		for (ba = &entry->ba; ba; ba = ba->backing_ba) {
 			if (ba->object) {
 				lockmgr(&ba->object->backing_lk, LK_EXCLUSIVE);
@@ -3538,8 +3484,7 @@ vm_map_backing_adjust_end(vm_map_entry_t entry, vm_ooffset_t end)
 {
 	vm_map_backing_t ba;
 
-	if (entry->maptype == VM_MAPTYPE_VPAGETABLE ||
-	    entry->maptype == VM_MAPTYPE_NORMAL) {
+	if (entry->maptype == VM_MAPTYPE_NORMAL) {
 		for (ba = &entry->ba; ba; ba = ba->backing_ba) {
 			if (ba->object) {
 				lockmgr(&ba->object->backing_lk, LK_EXCLUSIVE);
@@ -3549,9 +3494,7 @@ vm_map_backing_adjust_end(vm_map_entry_t entry, vm_ooffset_t end)
 				ba->end = end;
 			}
 		}
-	} else {
-		/* not an object and can't be shadowed */
-	}
+	} /* else not an object and/or can't be shadowed */
 }
 
 /*
@@ -3570,11 +3513,9 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 {
 	vm_object_t obj;
 
-	KKASSERT(dst_entry->maptype == VM_MAPTYPE_NORMAL ||
-		 dst_entry->maptype == VM_MAPTYPE_VPAGETABLE);
+	KKASSERT(dst_entry->maptype == VM_MAPTYPE_NORMAL);
 
-	if (src_entry->wired_count &&
-	    src_entry->maptype != VM_MAPTYPE_VPAGETABLE) {
+	if (src_entry->wired_count) {
 		/*
 		 * Of course, wired down pages can't be set copy-on-write.
 		 * Cause wired pages to be copied into the new map by
@@ -3702,9 +3643,11 @@ vmspace_fork(struct vmspace *vm1, struct proc *p2, struct lwp *lp2)
 						  old_entry, &count);
 			break;
 		case VM_MAPTYPE_NORMAL:
-		case VM_MAPTYPE_VPAGETABLE:
 			vmspace_fork_normal_entry(old_map, new_map,
 						  old_entry, &count);
+			break;
+		default:
+			/* nothing to do */
 			break;
 		}
 	}
@@ -3739,13 +3682,9 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 	 * resident_page_count for a really cheap (but probably not perfect)
 	 * all-shadowed test, allowing us to disconnect the backing_ba
 	 * link list early.
-	 *
-	 * XXX Currently doesn't work for VPAGETABLEs (the entire object
-	 *     would have to be copied).
 	 */
 	object = old_entry->ba.object;
 	if (old_entry->ba.backing_ba &&
-	    old_entry->maptype != VM_MAPTYPE_VPAGETABLE &&
 	    (old_entry->ba.backing_count >= vm_map_backing_limit ||
 	     (vm_map_backing_shadow_test && object &&
 	      object->size == object->resident_page_count))) {
@@ -4481,17 +4420,6 @@ RetryLookup:
 		prot = fault_type = entry->protection;
 	}
 
-	/*
-	 * Virtual page tables may need to update the accessed (A) bit
-	 * in a page table entry.  Upgrade the fault to a write fault for
-	 * that case if the map will support it.  If the map does not support
-	 * it the page table entry simply will not be updated.
-	 */
-	if (entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-		if (prot & VM_PROT_WRITE)
-			fault_type |= VM_PROT_WRITE;
-	}
-
 	if (curthread->td_lwp && curthread->td_lwp->lwp_vmspace &&
 	    pmap_emulate_ad_bits(&curthread->td_lwp->lwp_vmspace->vm_pmap)) {
 		if ((prot & VM_PROT_WRITE) == 0)
@@ -4499,10 +4427,9 @@ RetryLookup:
 	}
 
 	/*
-	 * Only NORMAL and VPAGETABLE maps are object-based.  UKSMAPs are not.
+	 * Only NORMAL maps are object-based.  UKSMAPs are not.
 	 */
-	if (entry->maptype != VM_MAPTYPE_NORMAL &&
-	    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
+	if (entry->maptype != VM_MAPTYPE_NORMAL) {
 		*bap = NULL;
 		goto skip;
 	}
@@ -4749,14 +4676,14 @@ DB_SHOW_COMMAND(map, vm_map_print)
 			db_indent -= 2;
 			break;
 		case VM_MAPTYPE_NORMAL:
-		case VM_MAPTYPE_VPAGETABLE:
 			/* XXX no %qd in kernel.  Truncate entry->ba.offset. */
 			db_printf(", object=%p, offset=0x%lx",
 			    (void *)entry->ba.object,
 			    (long)entry->ba.offset);
 			if (entry->eflags & MAP_ENTRY_COW)
 				db_printf(", copy (%s)",
-				    (entry->eflags & MAP_ENTRY_NEEDS_COPY) ? "needed" : "done");
+				    ((entry->eflags & MAP_ENTRY_NEEDS_COPY) ?
+				     "needed" : "done"));
 			db_printf("\n");
 			nlines++;
 
