@@ -163,6 +163,20 @@ hammer2_read_volume_header(int fd, const char *path,
 }
 
 static void
+hammer2_err_uuid_mismatch(uuid_t *uuid1, uuid_t *uuid2, const char *id)
+{
+	char *p1 = NULL, *p2 = NULL;
+
+	hammer2_uuid_to_str(uuid1, &p1);
+	hammer2_uuid_to_str(uuid2, &p2);
+
+	errx(1, "%s uuid mismatch %s vs %s", id, p1, p2);
+
+	free(p1);
+	free(p2);
+}
+
+static void
 hammer2_add_volume(const char *path, int rdonly)
 {
 	hammer2_volume_data_t voldata;
@@ -200,9 +214,13 @@ hammer2_add_volume(const char *path, int rdonly)
 				errx(1, "Volume count mismatch %d vs %d",
 				     fso.nvolumes, voldata.nvolumes);
 			if (!uuid_equal(&fso.fsid, &voldata.fsid, NULL))
-				errx(1, "fsid uuid mismatch");
+				hammer2_err_uuid_mismatch(&fso.fsid,
+							  &voldata.fsid,
+							  "fsid");
 			if (!uuid_equal(&fso.fstype, &voldata.fstype, NULL))
-				errx(1, "fstype uuid mismatch");
+				hammer2_err_uuid_mismatch(&fso.fstype,
+							  &voldata.fstype,
+							  "fstype");
 		}
 		/* all per-volume tests passed */
 		hammer2_install_volume(vol, fd, i, path,

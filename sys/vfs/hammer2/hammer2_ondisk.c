@@ -112,8 +112,7 @@ hammer2_open_devvp(const hammer2_devvp_list_t *devvpl, int ronly)
 		error = vinvalbuf(devvp, V_SAVE, 0, 0);
 		if (error == 0) {
 			KKASSERT(!e->open);
-			error = VOP_OPEN(devvp,
-					 (ronly ? FREAD : FREAD | FWRITE),
+			error = VOP_OPEN(devvp, (ronly ? FREAD : FREAD|FWRITE),
 					 FSCRED, NULL);
 			if (error == 0)
 				e->open = 1;
@@ -561,6 +560,17 @@ hammer2_read_volume_header(struct vnode *devvp, const char *path,
 	return zone;
 }
 
+static void
+hammer2_print_uuid_mismatch(uuid_t *uuid1, uuid_t *uuid2, const char *id)
+{
+	char buf1[64], buf2[64];
+
+	snprintf_uuid(buf1, sizeof(buf1), uuid1);
+	snprintf_uuid(buf2, sizeof(buf2), uuid2);
+
+	hprintf("%s uuid mismatch %s vs %s\n", id, buf1, buf2);
+}
+
 int
 hammer2_init_volumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
 		     hammer2_volume_t *volumes,
@@ -635,12 +645,14 @@ hammer2_init_volumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
 				goto done;
 			}
 			if (bcmp(&fsid, &voldata->fsid, sizeof(fsid))) {
-				hprintf("fsid uuid mismatch\n");
+				hammer2_print_uuid_mismatch(&fsid,
+							    &voldata->fsid, "fsid");
 				error = ENXIO;
 				goto done;
 			}
 			if (bcmp(&fstype, &voldata->fstype, sizeof(fstype))) {
-				hprintf("fstype uuid mismatch\n");
+				hammer2_print_uuid_mismatch(&fstype,
+							    &voldata->fstype, "fstype");
 				error = ENXIO;
 				goto done;
 			}
