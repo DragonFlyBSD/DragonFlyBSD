@@ -216,7 +216,7 @@ find_pfs(FILE *fp, const hammer2_blockref_t *bref, const char *pfs, bool *res)
 						*res = true;
 				}
 			} else
-				assert(0);
+				return (-1);
 		}
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
@@ -435,8 +435,8 @@ __fsvtyp_hammer2(const char *blkdevs, char *label, size_t size, int partial)
 		volid = voldata->volu_id;
 		free(voldata);
 		voldata = NULL;
-		assert(volid >= 0);
-		assert(volid < HAMMER2_MAX_VOLUMES);
+		if (volid < 0 || volid >= HAMMER2_MAX_VOLUMES)
+			goto fail;
 		x[volid]++;
 		if (volid == HAMMER2_ROOT_VOLUME)
 			rootvolpath = volpath;

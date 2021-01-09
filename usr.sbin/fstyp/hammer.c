@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <err.h>
-#include <assert.h>
 #include <uuid.h>
 #include <vfs/hammer/hammer_disk.h>
 
@@ -52,27 +51,28 @@ test_ondisk(const hammer_volume_ondisk_t ondisk)
 	    ondisk->vol_signature != HAMMER_FSBUF_VOLUME_REV)
 		return (1);
 	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO)
-		return (2);
+		return (1);
 	if (ondisk->vol_no < 0 || ondisk->vol_no > HAMMER_MAX_VOLUMES - 1)
-		return (3);
+		return (1);
 	if (ondisk->vol_count < 1 || ondisk->vol_count > HAMMER_MAX_VOLUMES)
-		return (4);
+		return (1);
 
 	if (count == 0) {
 		count = ondisk->vol_count;
-		assert(count != 0);
+		if (count == 0)
+			return (1);
 		memcpy(&fsid, &ondisk->vol_fsid, sizeof(fsid));
 		memcpy(&fstype, &ondisk->vol_fstype, sizeof(fstype));
 		strlcpy(label, ondisk->vol_label, sizeof(label));
 	} else {
 		if (ondisk->vol_count != count)
-			return (5);
+			return (1);
 		if (!uuid_equal(&ondisk->vol_fsid, &fsid, NULL))
-			return (6);
+			return (1);
 		if (!uuid_equal(&ondisk->vol_fstype, &fstype, NULL))
-			return (7);
+			return (1);
 		if (strcmp(ondisk->vol_label, label))
-			return (8);
+			return (1);
 	}
 
 	return (0);
@@ -180,8 +180,8 @@ __fsvtyp_hammer(const char *blkdevs, char *label, size_t size, int partial)
 			*p++ = '\0';
 		if ((volno = test_volume(volpath)) == -1)
 			break;
-		assert(volno >= 0);
-		assert(volno < HAMMER_MAX_VOLUMES);
+		if (volno < 0 || volno >= HAMMER_MAX_VOLUMES)
+			goto fail;
 		x[volno]++;
 		if (volno == HAMMER_ROOT_VOLNO)
 			rootvolpath = volpath;
