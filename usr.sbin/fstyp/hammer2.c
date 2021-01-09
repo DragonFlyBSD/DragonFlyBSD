@@ -215,8 +215,10 @@ find_pfs(FILE *fp, const hammer2_blockref_t *bref, const char *pfs, bool *res)
 					    strlen(pfs)))
 						*res = true;
 				}
-			} else
+			} else {
+				free(media);
 				return (-1);
+			}
 		}
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
