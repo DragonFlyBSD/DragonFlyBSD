@@ -1,6 +1,6 @@
 DFprivate_1.0 {
     _citrus_NONE_stdenc_ops;
-    _citrus_NONE_stdenc_trait;
+    _citrus_NONE_stdenc_traits;
     _citrus_bcs_convert_to_lower;
     _citrus_bcs_convert_to_upper;
     _citrus_bcs_isalnum;
@@ -53,12 +53,12 @@ DFprivate_1.0 {
     _citrus_esdb_get_list;
     _citrus_esdb_open;
     _citrus_find_getops;
-    _citrus_iconv_canonicaliz;
+    _citrus_iconv_canonicalize;
     _citrus_iconv_close;
     _citrus_iconv_open;
     _citrus_load_module;
     _citrus_lookup_factory_convert;
-    _citrus_lookup_get_number;
+    _citrus_lookup_get_number_of_entries;
     _citrus_lookup_seq_close;
     _citrus_lookup_seq_lookup;
     _citrus_lookup_seq_next;
