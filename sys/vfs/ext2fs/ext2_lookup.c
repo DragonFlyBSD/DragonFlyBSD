@@ -931,9 +931,10 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 	 * successful case.  e2fsck says ext2 is clean with correct number of
 	 * files.
 	 *
-	 * On Linux, e2fsck doesn't complain either, but some files are visible
-	 * when mounted.  After unmount, e2fsck starts to complain and files get
-	 * recovered with a few sent to lost+found.
+	 * If that same image is mounted on Linux, some of the lost files are
+	 * visible.  E2fsck initially doesn't complain on Linux either, but
+	 * after unmount, e2fsck starts to complain and files get recovered with
+	 * a few sent to lost+found.
 	 */
 #if 0
 	if (ext2_htree_has_idx(dp)) {
