@@ -478,7 +478,7 @@ __fsvtyp_hammer2(const char *blkdevs, char *label, size_t size, int partial)
 success:
 	/* Reconstruct @label format path using only root volume. */
 	if (target_label) {
-		int siz = strlen(volpath) + strlen(target_label) + 2;
+		size_t siz = strlen(volpath) + strlen(target_label) + 2;
 		p = calloc(1, siz);
 		snprintf(p, siz, "%s@%s", volpath, target_label);
 		volpath = p;
