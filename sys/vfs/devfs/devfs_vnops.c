@@ -1424,15 +1424,15 @@ devfs_fo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 		if (dev != NULL) {
 			if (dev->si_lastread) {
 				sb->st_atimespec.tv_sec = time_second +
-							  (time_uptime -
-							   dev->si_lastread);
+							  (dev->si_lastread -
+							   time_uptime);
 				sb->st_atimespec.tv_nsec = 0;
 			}
 			if (dev->si_lastwrite) {
-				sb->st_atimespec.tv_sec = time_second +
-							  (time_uptime -
-							   dev->si_lastwrite);
-				sb->st_atimespec.tv_nsec = 0;
+				sb->st_mtimespec.tv_sec = time_second +
+							  (dev->si_lastwrite -
+							   time_uptime);
+				sb->st_mtimespec.tv_nsec = 0;
 			}
 		}
 	}
