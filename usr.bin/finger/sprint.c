@@ -77,7 +77,8 @@ sflag_print(void)
 	 */
 #define	MAXREALNAME	20
 #define MAXHOSTNAME     17      /* in reality, hosts are never longer than 16 */
-	(void)printf("%-*s %-*s%s  %s\n", MAXLOGNAME, "Login", MAXREALNAME,
+#define USEMAXLOGNAME	14	/* keep it reasonable */
+	(void)printf("%-*s %-*s%s  %s\n", USEMAXLOGNAME, "Login", MAXREALNAME,
 	    "Name", " TTY      Idle  Login  Time ", (gflag) ? "" :
 	    oflag ? "Office  Phone" : "Where");
 
@@ -94,7 +95,7 @@ sflag_print(void)
 			namelen = MAXREALNAME;
 			if (w->info == LOGGEDIN && !w->writable)
 				--namelen;	/* leave space before `*' */
-			(void)printf("%-*.*s %-*.*s", MAXLOGNAME, MAXLOGNAME,
+			(void)printf("%-*.*s %-*.*s", USEMAXLOGNAME, USEMAXLOGNAME,
 				pn->name, MAXREALNAME, namelen,
 				pn->realname ? pn->realname : "");
 			if (!w->loginat) {
