@@ -138,8 +138,7 @@ do_protocol(const char *name, const struct addrinfo *ai)
 	 * hosts.  Also, the implicit-open API is broken on IPv6, so do
 	 * the explicit connect there, too.
 	 */
-	if ((Tflag || ai->ai_addr->sa_family == AF_INET6)
-	    && connect(s, ai->ai_addr, ai->ai_addrlen) < 0) {
+	if (connect(s, ai->ai_addr, ai->ai_addrlen) < 0) {
 		warn("connect");
 		close(s);
 		return -1;

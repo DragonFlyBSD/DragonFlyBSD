@@ -77,7 +77,7 @@
 
 DB *db;
 time_t now;
-int entries, gflag, lflag, mflag, pplan, sflag, oflag, Tflag, eightflag;
+int entries, gflag, lflag, mflag, pplan, sflag, oflag, eightflag;
 sa_family_t family = PF_UNSPEC;
 int d_first = -1;
 char tbuf[1024];
@@ -94,7 +94,7 @@ option(int argc, char **argv)
 
 	optind = 1;		/* reset getopt */
 
-	while ((ch = getopt(argc, argv, "468glmpshoT")) != -1)
+	while ((ch = getopt(argc, argv, "468glmpsho")) != -1)
 		switch(ch) {
 		case '4':
 			family = AF_INET;
@@ -125,9 +125,6 @@ option(int argc, char **argv)
 			break;
 		case 'o':
 			oflag = 1;		/* office info */
-			break;
-		case 'T':
-			Tflag = 1;		/* disable T/TCP */
 			break;
 		case '?':
 		default:

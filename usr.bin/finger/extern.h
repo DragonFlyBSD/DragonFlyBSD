@@ -44,7 +44,6 @@ extern int pplan;
 extern time_t now;
 extern int oflag;
 extern int lflag;
-extern int Tflag;
 extern sa_family_t family;
 struct utmpentry;
 
