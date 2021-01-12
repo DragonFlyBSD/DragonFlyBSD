@@ -100,18 +100,18 @@ void
 enter_lastlog(PERSON *pn)
 {
 	WHERE *w;
-	struct utmpx *ut = NULL;
 	char doit = 0;
+	struct lastlogx ll;
 
-	if (setutxdb(UTX_DB_LASTLOGX, NULL) == 0)
-		ut = getutxuser(pn->name);
+	memset(&ll, 0, sizeof(ll));
+	getlastlogx(_PATH_LASTLOGX, pn->uid, &ll);
 	if ((w = pn->whead) == NULL)
 		doit = 1;
-	else if (ut != NULL && ut->ut_type == USER_PROCESS) {
+	else {
 		/* if last login is earlier than some current login */
 		for (; !doit && w != NULL; w = w->next)
 			if (w->info == LOGGEDIN &&
-			    w->loginat < ut->ut_tv.tv_sec)
+			    w->loginat < ll.ll_tv.tv_sec)
 				doit = 1;
 		/*
 		 * and if it's not any of the current logins
@@ -120,17 +120,17 @@ enter_lastlog(PERSON *pn)
 		 */
 		for (w = pn->whead; doit && w != NULL; w = w->next)
 			if (w->info == LOGGEDIN &&
-			    strcmp(w->tty, ut->ut_line) == 0)
+			    strcmp(w->tty, ll.ll_line) == 0)
 				doit = 0;
 	}
-	if (ut != NULL && doit) {
+	if (doit) {
 		w = walloc(pn);
 		w->info = LASTLOG;
-		strcpy(w->tty, ut->ut_line);
-		strcpy(w->host, ut->ut_host);
-		w->loginat = ut->ut_tv.tv_sec;
+		strlcpy(w->tty, ll.ll_line, sizeof(w->tty));
+		strlcpy(w->host, ll.ll_host, sizeof(w->host));
+		w->host[_UTX_HOSTSIZE] = '\0';
+		w->loginat = ll.ll_tv.tv_sec;
 	}
-	endutxent();
 }
 
 void
@@ -140,8 +140,8 @@ enter_where(struct utmpentry *ep, PERSON *pn)
 
 	w = walloc(pn);
 	w->info = LOGGEDIN;
-	w->tty = ep->line;
-	w->host = ep->host;
+	strlcpy(w->tty, ep->line, sizeof(w->tty));
+	strlcpy(w->host, ep->host, sizeof(w->host));
 	w->loginat = (time_t)ep->tv.tv_sec;
 	find_idle_and_ttywrite(w);
 }

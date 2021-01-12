@@ -34,6 +34,8 @@
  * $DragonFly: src/usr.bin/finger/finger.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
+#include <utmpx.h>
+
 typedef struct person {
 	uid_t uid;			/* user id */
 	char *dir;			/* user's home directory */
@@ -56,8 +58,8 @@ typedef struct where {
 	short writable;			/* tty is writable */
 	time_t loginat;			/* time of (last) login */
 	time_t idletime;		/* how long idle (if logged in) */
-	char *tty;	/* null terminated tty line */
-	char *host;	/* null terminated remote host name */
+	char tty[_UTX_LINESIZE + 1];	/* null terminated tty line */
+	char host[_UTX_HOSTSIZE + 1];	/* null terminated remote host name */
 } WHERE;
 
 #define UNPRIV_NAME	"nobody"	/* Preferred privilege level */
