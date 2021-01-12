@@ -269,7 +269,14 @@ main(int argc, char **argv)
 	if ((kp = kvm_getprocs(kd, KERN_PROC_ALL, 0, &nentries)) == NULL)
 		err(1, "%s", kvm_geterr(kd));
 	for (i = 0; i < nentries; i++, kp++) {
+		/*
+		 * login(1) is a special case.
+		 */
+		if (strcmp(kp->kp_comm, "login") == 0)
+			continue;
 		if (kp->kp_stat == SIDL || kp->kp_stat == SZOMB)
+			continue;
+		if (kp->kp_sid != kp->kp_tsid)
 			continue;
 		for (ep = ehead; ep != NULL; ep = ep->next) {
 			if (ep->tdev == kp->kp_tdev) {
