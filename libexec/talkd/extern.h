@@ -30,7 +30,7 @@ int	delete_invite(unsigned int);
 void	do_announce(CTL_MSG *, CTL_RESPONSE *);
 CTL_MSG	*find_match(CTL_MSG *request);
 CTL_MSG	*find_request(CTL_MSG *request);
-int	find_user(const char *name, char *tty);
+int	find_user(const char *name, char *tty, size_t ttylen);
 void	insert_table(CTL_MSG *, CTL_RESPONSE *);
 int	new_id(void);
 int	print_mesg(const char *, CTL_MSG *, const char *);

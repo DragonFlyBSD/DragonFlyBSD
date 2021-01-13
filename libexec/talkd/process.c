@@ -50,7 +50,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
-#include "utmpentry.h"
+#include <utmpx.h>
 
 #include "extern.h"
 
@@ -140,7 +140,7 @@ do_announce(CTL_MSG *mp, CTL_RESPONSE *rp)
 	int result;
 
 	/* see if the user is logged */
-	result = find_user(mp->r_name, mp->r_tty);
+	result = find_user(mp->r_name, mp->r_tty, sizeof(mp->r_tty));
 	if (result != SUCCESS) {
 		rp->answer = result;
 		return;
@@ -177,43 +177,48 @@ do_announce(CTL_MSG *mp, CTL_RESPONSE *rp)
  * Search utmpx for the local user
  */
 int
-find_user(const char *name, char *tty)
+find_user(const char *name, char *tty, size_t ttylen)
 {
-	struct utmpentry *ep = NULL;	/* avoid gcc warnings */
+	struct utmpx *ut;	/* avoid gcc warnings */
 	int status;
 	struct stat statb;
-	time_t best = 0;
-	char ftty[sizeof(_PATH_DEV) + sizeof(ep->line)];
+	time_t best;
+	char ftty[sizeof(_PATH_DEV) + _UTX_LINESIZE];
 
-	getutentries(NULL, &ep);
+	if (ttylen > sizeof(ftty))
+		ttylen = sizeof(ftty);
 
-#define SCMPN(a, b)	strncmp(a, b, sizeof (a))
+	best = 0;
 	status = NOT_HERE;
-	(void) strcpy(ftty, _PATH_DEV);
-	for (; ep; ep = ep->next)
-		if (SCMPN(ep->name, name) == 0) {
-			if (*tty == '\0' || best != 0) {
-				if (best == 0)
-					status = PERMISSION_DENIED;
-				/* no particular tty was requested */
-				(void) strcpy(ftty + sizeof(_PATH_DEV) - 1,
-				    ep->line);
-				if (stat(ftty, &statb) == 0) {
-					if (!(statb.st_mode & 020))
-						continue;
-					if (statb.st_atime > best) {
-						best = statb.st_atime;
-						(void) strcpy(tty, ep->line);
-						status = SUCCESS;
-						continue;
-					}
+	strlcpy(ftty, _PATH_DEV, sizeof(ftty));
+	setutxent();
+	while ((ut = getutxent()) != NULL) {
+		if (ut->ut_type != USER_PROCESS)
+			continue;
+		if (strncmp(ut->ut_name, name, sizeof(ut->ut_name)) != 0)
+			continue;
+		if (*tty == '\0' || best != 0) {
+			if (best == 0)
+				status = PERMISSION_DENIED;
+			/* no particular tty was requested */
+			strlcat(ftty, ut->ut_line, sizeof(ftty));
+			if (stat(ftty, &statb) == 0) {
+				if (!(statb.st_mode & 020))
+					continue;
+				if (statb.st_atime > best) {
+					best = statb.st_atime;
+					strlcpy(tty, ut->ut_line, ttylen);
+					status = SUCCESS;
+					continue;
 				}
 			}
-			if (strcmp(ep->line, tty) == 0) {
-				status = SUCCESS;
-				break;
-			}
 		}
+		if (strcmp(ut->ut_line, tty) == 0) {
+			status = SUCCESS;
+			break;
+		}
+	}
+	endutxent();
 
 	return (status);
 }
