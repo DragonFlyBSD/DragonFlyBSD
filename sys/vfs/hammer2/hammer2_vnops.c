@@ -540,7 +540,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 
 		error = vop_helper_chmod(ap->a_vp, vap->va_mode, ap->a_cred,
 					 cur_uid, cur_gid, &cur_mode);
-		if (error == 0 && ip->meta.mode != cur_mode) {
+		if (error == 0) {
 			hammer2_inode_modify(ip);
 			spin_lock_update(&ip->cluster_spin);
 			ip->meta.mode = cur_mode;
