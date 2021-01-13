@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)operator.7	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/share/man/man7/operator.7,v 1.3.2.1 2000/12/29 10:18:05 ru Exp $
-.\" $DragonFly: src/share/man/man7/operator.7,v 1.2 2003/06/17 04:37:00 dillon Exp $
 .\"
 .Dd June 9, 1993
 .Dt OPERATOR 7
@@ -38,23 +37,23 @@
 .Sh DESCRIPTION
 .Bd -ragged -offset indent -compact
 .Bl -column "! ~ ++ -- - (type) * & sizeof"
-.It Sy "Operator	Associativity"
-.It "--------	-------------"
-.It "\&() [] -> .	left to right"
-.It "! ~ ++ -- - (type) * & sizeof	right to left"
-.It "\&* / %	left to right"
-.It "\&+ -	left to right"
-.It "\&<< >>	left to right"
-.It "\&< <= > >=	left to right"
-.It "\&== !=	left to right"
-.It "\&&	left to right"
-.It "\&^	left to right"
-.It "\&|	left to right"
-.It "\&&&	left to right"
-.It "\&||	left to right"
-.It "\&?:	right to left"
-.It "\&= += -= etc.	right to left"
-.It "\&,	left to right"
+.It Sy "Operator" Ta "Associativity"
+.It "--------" Ta "-------------"
+.It "\&() [] -> ." Ta "left to right"
+.It "! ~ ++ -- - (type) * & sizeof" Ta "right to left"
+.It "\&* / %" Ta "left to right"
+.It "\&+ -" Ta "left to right"
+.It "\&<< >>" Ta "left to right"
+.It "\&< <= > >=" Ta "left to right"
+.It "\&== !=" Ta "left to right"
+.It "\&&" Ta "left to right"
+.It "\&^" Ta "left to right"
+.It "\&|" Ta "left to right"
+.It "\&&&" Ta "left to right"
+.It "\&||" Ta "left to right"
+.It "\&?:" Ta "right to left"
+.It "\&= += -= etc." Ta "right to left"
+.It "\&," Ta "left to right"
 .El
 .Ed
 .Sh FILES
