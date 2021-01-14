@@ -537,12 +537,13 @@ sys_nanosleep(struct sysmsg *sysmsg, const struct nanosleep_args *uap)
 	if (error)
 		return (error);
 
+	bzero(&rmt, sizeof(rmt));
 	error = nanosleep1(&rqt, &rmt);
 
 	/*
 	 * copyout the residual if nanosleep was interrupted.
 	 */
-	if (error && uap->rmtp) {
+	if (error == EINTR && uap->rmtp) {
 		int error2;
 
 		error2 = copyout(&rmt, uap->rmtp, sizeof(rmt));
