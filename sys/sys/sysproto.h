@@ -1426,12 +1426,14 @@ struct	__realpath_args {
 	size_t	len;	char len_[PAD_(size_t)];
 };
 
+#undef PAD_
+
 #ifdef _KERNEL
 
 struct sysmsg;
 
 
-#endif /* _KERNEL */
+#endif /* !_KERNEL */
 
 #ifdef _KERNEL
 
@@ -1748,7 +1750,6 @@ int	sys_lwp_getname (struct sysmsg *sysmsg, const struct lwp_getname_args *);
 int	sys_getrandom (struct sysmsg *sysmsg, const struct getrandom_args *);
 int	sys___realpath (struct sysmsg *sysmsg, const struct __realpath_args *);
 
-#endif /* !_SYS_SYSPROTO_H_ */
-#undef PAD_
+#endif /* !_KERNEL */
 
-#endif /* _KERNEL */
+#endif /* !_SYS_SYSPROTO_H_ */
