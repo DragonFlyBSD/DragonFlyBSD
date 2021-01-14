@@ -340,15 +340,15 @@ s/\$//g
 		if (ncompat != 0)
 			printf "#define compat(n, name) 0, (sy_call_t *)sys_nosys\n" > sysinc
 
-		printf("\n#endif /* _KERNEL */\n") > syscompatdcl
+		printf("\n#undef PAD_\n") > sysarg
+		printf("\n#endif /* !_KERNEL */\n") > syscompatdcl
+		printf("\n#endif /* !_KERNEL */\n") > sysdcl
+		printf("\n#endif /* !%s */\n", sysproto_h) > sysdcl
 
 		printf("\n") > sysmk
 		printf("};\n") > sysent
 		printf("};\n") > sysnames
 		printf("};\n") > sysun
-		printf("\n#endif /* !%s */\n", sysproto_h) > sysdcl
-		printf("#undef PAD_\n") > sysdcl
-		printf("\n#endif /* _KERNEL */\n") > sysdcl
 		printf("#define\t%sMAXSYSCALL\t%d\n", syscallprefix, syscall) \
 		    > syshdr
 	} '
