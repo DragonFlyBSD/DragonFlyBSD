@@ -33,7 +33,9 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <protocols/talkd.h>
+#include <netinet/in.h>
 #include <errno.h>
+#include <string.h>
 #include "talk_ctl.h"
 #include "talk.h"
 
@@ -63,11 +65,19 @@ check_local(void)
 	 */
 	current_state = "Waiting to connect with caller";
 	do {
+		struct sockaddr_in addr;
+		struct sockaddr_in *raddr;
+
 		if (rp->addr.sa_family != AF_INET)
 			p_error("Response uses invalid network address");
+		raddr = (struct sockaddr_in *)&rp->addr;
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = raddr->sin_port;
+		addr.sin_addr = raddr->sin_addr;
 		errno = 0;
 		if (connect(sockt,
-		    (struct sockaddr *)&rp->addr, sizeof (rp->addr)) != -1)
+		    (struct sockaddr *)&addr, sizeof(addr)) != -1)
 			return (1);
 	} while (errno == EINTR);
 	if (errno == ECONNREFUSED) {
