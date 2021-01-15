@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -34,10 +36,8 @@
 #include <sys/types.h>
 
 #include <err.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "extern.h"
 
@@ -96,6 +96,8 @@ eof:	if (ferror(fp1))
 	} else
 		if (feof(fp2))
 			eofmsg(file2);
+	fclose(fp2);
+	fclose(fp1);
 	if (dfound)
 		exit(DIFF_EXIT);
 }
