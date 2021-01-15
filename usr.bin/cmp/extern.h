@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -31,6 +33,8 @@
  * $FreeBSD: head/usr.bin/cmp/extern.h 227156 2011-11-06 08:14:16Z ed $
  */
 
+#include <stdbool.h>
+
 #define OK_EXIT		0
 #define DIFF_EXIT	1
 #define ERR_EXIT	2	/* error exit code */
@@ -41,4 +45,4 @@ void	c_special(int, const char *, off_t, int, const char *, off_t);
 void	diffmsg(const char *, const char *, off_t, off_t) __dead2;
 void	eofmsg(const char *) __dead2;
 
-extern int lflag, sflag, xflag, zflag;
+extern bool lflag, sflag, xflag, zflag;

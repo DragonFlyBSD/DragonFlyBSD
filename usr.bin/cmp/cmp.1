@@ -31,7 +31,7 @@
 .\"     @(#)cmp.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: head/usr.bin/cmp/cmp.1 216370 2010-12-11 08:32:16Z joel $
 .\"
-.Dd November 18, 2013
+.Dd January 15, 2021
 .Dt CMP 1
 .Os
 .Sh NAME
@@ -39,7 +39,7 @@
 .Nd compare two files
 .Sh SYNOPSIS
 .Nm
-.Op Fl l | s | x
+.Op Fl l , -verbose | s , -silent , -quiet | x
 .Op Fl hz
 .Ar file1 file2
 .Op Ar skip1 Op Ar skip2
@@ -59,10 +59,10 @@ The following options are available:
 .Bl -tag -width indent
 .It Fl h
 Do not follow symbolic links.
-.It Fl l
+.It Fl l , Fl -verbose
 Print the byte number (decimal) and the differing
 byte values (octal) for each difference.
-.It Fl s
+.It Fl s , Fl -silent , Fl -quiet
 Print nothing for differing files; return exit
 status only.
 .It Fl x
@@ -106,6 +106,49 @@ file (before any differences were found).
 .It >1
 An error occurred.
 .El
+.Sh EXAMPLES
+Assuming a file named
+.Pa example.txt
+with the following contents:
+.Bd -literal -offset indent
+a
+b
+c
+.Ed
+.Pp
+Compare stdin with
+.Pa example.txt :
+.Bd -literal -offset indent
+$ echo -e "a\\nb\\nc" | cmp - example.txt
+.Ed
+.Pp
+Same as above but introducing a change in the third byte of stdin.
+Show the byte number (decimal) and differing byte (octal):
+.Bd -literal -offset indent
+$ echo -e "a\\nR\\nc" | cmp -l - example.txt
+     3 122 142
+.Ed
+.Pp
+Compare file sizes of
+.Pa example.txt
+and
+.Pa /boot/loader.conf
+and return 1 if they are not equal.
+Note that
+.Fl z
+can only be used with regular files:
+.Bd -literal -offset indent
+$ cmp -z example.txt /boot/loader.conf
+example.txt /boot/loader.conf differ: size
+.Ed
+.Pp
+Compare stdin with
+.Pa example.txt
+omitting the first 4 bytes from stdin and the first 2 bytes from
+.Pa example.txt :
+.Bd -literal -offset indent
+$ echo -e "a\\nR\\nb\\nc" | cmp - example.txt 4 2
+.Ed
 .Sh SEE ALSO
 .Xr diff 1 ,
 .Xr diff3 1
