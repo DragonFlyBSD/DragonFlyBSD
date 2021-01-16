@@ -3,6 +3,7 @@
 
 MAN=	acct.5 \
 	a.out.5 \
+	autofs.5 \
 	compilers.conf.5 \
 	core.5 \
 	crypttab.5 \
@@ -52,9 +53,9 @@ MAN=	acct.5 \
 	resolver.5 \
 	services.5 \
 	shells.5 \
+	smbfs.5 \
 	sysctl.conf.5 \
 	tmpfs.5 \
-	autofs.5 \
 	utmpx.5 \
 	uuids.5 \
 	varsym.conf.5
