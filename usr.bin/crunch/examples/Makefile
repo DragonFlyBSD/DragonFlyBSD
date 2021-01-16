@@ -2,32 +2,32 @@
 
 CRUNCHED=	fixit
 
-# below is boiler-plate to make $(CRUNCHED) from $(CRUNCHED).conf
+# below is boiler-plate to make ${CRUNCHED} from ${CRUNCHED}.conf
 # I'd use PROG instead of CRUNCHED, but the system makefiles REALLY want
 # to build things in the normal way if you use PROG.
 
-CONF=	$(CRUNCHED).conf
+CONF=	${CRUNCHED}.conf
 
-OUTMK=	$(CRUNCHED).mk
-OUTPUTS= $(OUTMK) $(CRUNCHED).c $(CRUNCHED).cache
+OUTMK=	${CRUNCHED}.mk
+OUTPUTS= ${OUTMK} ${CRUNCHED}.c ${CRUNCHED}.cache
 
 NOMAN=
-CLEANFILES+= $(CRUNCHED) *.o *.lo *.c *.mk *.cache
-CLEANDIRFILES+= $(OUTPUTS)
+CLEANFILES+= ${CRUNCHED} *.o *.lo *.c *.mk *.cache
+CLEANDIRFILES+= ${OUTPUTS}
 
-all: $(CRUNCHED)
-exe: $(CRUNCHED)
+all: ${CRUNCHED}
+exe: ${CRUNCHED}
 
-$(OUTPUTS): $(CONF)
-	MAKE=${MAKE} crunchgen ${.CURDIR}/$(CONF)
+${OUTPUTS}: ${CONF}
+	MAKE=${MAKE} crunchgen ${.CURDIR}/${CONF}
 
-$(CRUNCHED): $(OUTPUTS) submake
+${CRUNCHED}: ${OUTPUTS} submake
 
 submake:
-	${MAKE} -f $(OUTMK)
+	${MAKE} -f ${OUTMK}
 objs:
-	${MAKE} -f $(OUTMK) objs
+	${MAKE} -f ${OUTMK} objs
 cleandir:
-	rm -f $(CLEANDIRFILES)
+	rm -f ${CLEANDIRFILES}
 
 .include <bsd.prog.mk>

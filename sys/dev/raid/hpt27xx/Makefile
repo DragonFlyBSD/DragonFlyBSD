@@ -6,7 +6,7 @@ SRCS+=	opt_cam.h
 SRCS+=	hpt27xx_os_bsd.c hpt27xx_osm_bsd.c hpt27xx_config.c
 OBJS+=	hpt27xx_lib.bo
 
-hpt27xx_lib.bo:	$(MACHINE_ARCH)-elf.hpt27xx_lib.o.uu
+hpt27xx_lib.bo:	${MACHINE_ARCH}-elf.hpt27xx_lib.o.uu
 	uudecode -o ${.TARGET} < ${.ALLSRC}
 	elfedit --output-osabi none ${.TARGET}
 

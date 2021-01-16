@@ -265,7 +265,7 @@ perfsqr.h: gen-psqr.nx
 	${.OBJDIR}/gen-psqr.nx ${LONG_INT_BITS} 0 > ${.TARGET}
 
 trialdivtab.h: gen-trialdivtab.nx
-	${.OBJDIR}/gen-trialdivtab.nx $(LONG_INT_BITS) 8000 > ${.TARGET}
+	${.OBJDIR}/gen-trialdivtab.nx ${LONG_INT_BITS} 8000 > ${.TARGET}
 
 .for _gen in fac_ui fib bases psqr trialdivtab
 gen-${_gen}.nx: gen-${_gen}.c dumbmp.c

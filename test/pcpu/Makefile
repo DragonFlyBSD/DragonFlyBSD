@@ -1,18 +1,15 @@
-# $DragonFly: src/test/pcpu/Makefile,v 1.2 2005/08/08 03:31:00 hmp Exp $
-#
-
 DESTDIR=	/usr/local/bin
-TARGETS=	$(DESTDIR)/ncache-stats $(DESTDIR)/cpustat
+TARGETS=	${DESTDIR}/ncache-stats ${DESTDIR}/cpustat
 
 CFLAGS= 	-O -g -I/usr/src/sys
 
-all:	$(TARGETS)
+all:	${TARGETS}
 
-$(DESTDIR)/ncache-stats: ncache-stats.c
-	$(CC) $(CFLAGS) -lkvm ncache-stats.c -o ${.TARGET}
+${DESTDIR}/ncache-stats: ncache-stats.c
+	${CC} ${CFLAGS} ${.ALLSRC} -lkvm -o ${.TARGET}
 
-$(DESTDIR)/cpustat:	cpustat.c
-	$(CC) $(CFLAGS) -lkinfo cpustat.c -o ${.TARGET}
+${DESTDIR}/cpustat: cpustat.c
+	${CC} ${CFLAGS} ${.ALLSRC} -lkinfo -o ${.TARGET}
 
 clean:
-	rm -f $(TARGETS)
+	rm -f ${TARGETS}

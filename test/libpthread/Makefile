@@ -18,8 +18,8 @@ BTESTS := hello_b.c
 PTESTS := propagate_s.pl
 
 # Munge the file lists to their final executable names (strip the .c).
-CTESTS := $(CTESTS:R)
-BTESTS := $(BTESTS:R)
+CTESTS := ${CTESTS:R}
+BTESTS := ${BTESTS:R}
 
 CPPFLAGS := -D_REENTRANT
 CFLAGS := -Wall -pipe -g3
@@ -43,60 +43,60 @@ all : default
 .PATH : .
 
 # Build the C programs.
-.for bin in $(CTESTS) $(BTESTS)
-$(bin)_a : $(bin:S/$/&.c/)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(bin:S/$/&.c/) -o $(@:S/$/&.o/)
-	$(CC) -o $@ $(@:S/$/&.o/) $(LDFLAGS_A) $(LIBS)
-	@$(SHELL) -ec "$(CC) -M $(CPPFLAGS) $(bin:S/$/&.c/) | sed \"s/\($(bin:T)\)\.o\([ :]*\)/$(bin:H:S!/!\\/!g)\/\1_a.o \2/g\" > $(@:R:S/$/&.d/)"
+.for bin in ${CTESTS} ${BTESTS}
+${bin}_a : ${bin:S/$/&.c/}
+	${CC} ${CFLAGS} ${CPPFLAGS} -c ${bin:S/$/&.c/} -o ${@:S/$/&.o/}
+	${CC} -o $@ ${@:S/$/&.o/} ${LDFLAGS_A} ${LIBS}
+	@${SHELL} -ec "${CC} -M ${CPPFLAGS} ${bin:S/$/&.c/} | sed \"s/\(${bin:T}\)\.o\([ :]*\)/${bin:H:S!/!\\/!g}\/\1_a.o \2/g\" > ${@:R:S/$/&.d/}"
 
-$(bin)_p : $(bin:S/$/&.c/)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(bin:S/$/&.c/) -o $(@:S/$/&.o/)
-	$(CC) -o $@ $(@:S/$/&.o/) $(LDFLAGS_P) $(LIBS)
-	@$(SHELL) -ec "$(CC) -M $(CPPFLAGS) $(bin:S/$/&.c/) | sed \"s/\($(bin:T)\)\.o\([ :]*\)/$(bin:H:S!/!\\/!g)\/\1_p.o \2/g\" > $(@:R:S/$/&.d/)"
+${bin}_p : ${bin:S/$/&.c/}
+	${CC} ${CFLAGS} ${CPPFLAGS} -c ${bin:S/$/&.c/} -o ${@:S/$/&.o/}
+	${CC} -o $@ ${@:S/$/&.o/} ${LDFLAGS_P} ${LIBS}
+	@${SHELL} -ec "${CC} -M ${CPPFLAGS} ${bin:S/$/&.c/} | sed \"s/\(${bin:T}\)\.o\([ :]*\)/${bin:H:S!/!\\/!g}\/\1_p.o \2/g\" > ${@:R:S/$/&.d/}"
 
-$(bin)_s : $(bin:S/$/&.c/)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(bin:S/$/&.c/) -o $(@:S/$/&.o/)
-	$(CC) -o $@ $(@:S/$/&.o/) $(LDFLAGS_S) $(LIBS)
-	@$(SHELL) -ec "$(CC) -M $(CPPFLAGS) $(bin:S/$/&.c/) | sed \"s/\($(bin:T)\)\.o\([ :]*\)/$(bin:H:S!/!\\/!g)\/\1_s.o \2/g\" > $(@:R:S/$/&.d/)"
+${bin}_s : ${bin:S/$/&.c/}
+	${CC} ${CFLAGS} ${CPPFLAGS} -c ${bin:S/$/&.c/} -o ${@:S/$/&.o/}
+	${CC} -o $@ ${@:S/$/&.o/} ${LDFLAGS_S} ${LIBS}
+	@${SHELL} -ec "${CC} -M ${CPPFLAGS} ${bin:S/$/&.c/} | sed \"s/\(${bin:T}\)\.o\([ :]*\)/${bin:H:S!/!\\/!g}\/\1_s.o \2/g\" > ${@:R:S/$/&.d/}"
 .endfor
 
 # Dependency file inclusion.
-.for depfile in $(CTESTS:R:S/$/&_a.d/) $(BTESTS:R:S/$/&_a.d/) \
-		$(CTESTS:R:S/$/&_p.d/) $(BTESTS:R:S/$/&_p.d/) \
-		$(CTESTS:R:S/$/&_s.d/) $(BTESTS:R:S/$/&_s.d/)
-.if exists($(depfile))
-.include "$(depfile)"
+.for depfile in ${CTESTS:R:S/$/&_a.d/} ${BTESTS:R:S/$/&_a.d/} \
+		${CTESTS:R:S/$/&_p.d/} ${BTESTS:R:S/$/&_p.d/} \
+		${CTESTS:R:S/$/&_s.d/} ${BTESTS:R:S/$/&_s.d/}
+.if exists(${depfile})
+.include "${depfile}"
 .endif
 .endfor
 
 default : check
 
-tests_a : $(CTESTS:S/$/&_a/) $(BTESTS:S/$/&_a/)
-tests_p : $(CTESTS:S/$/&_p/) $(BTESTS:S/$/&_p/)
-tests_s : $(CTESTS:S/$/&_s/) $(BTESTS:S/$/&_s/)
+tests_a : ${CTESTS:S/$/&_a/} ${BTESTS:S/$/&_a/}
+tests_p : ${CTESTS:S/$/&_p/} ${BTESTS:S/$/&_p/}
+tests_s : ${CTESTS:S/$/&_s/} ${BTESTS:S/$/&_s/}
 
 tests : tests_a tests_p tests_s
 
 check_a : tests_a
-.for bin in $(CTESTS) $(BTESTS)
-	@cp $(bin)_a $(bin)
+.for bin in ${CTESTS} ${BTESTS}
+	@cp ${bin}_a ${bin}
 .endfor
 	@echo "Test static library:"
-	@./verify $(VFLAGS) $(CTESTS) $(PTESTS)
+	@./verify ${VFLAGS} ${CTESTS} ${PTESTS}
 
 check_p : tests_p
-.for bin in $(CTESTS) $(BTESTS)
-	@cp $(bin)_p $(bin)
+.for bin in ${CTESTS} ${BTESTS}
+	@cp ${bin}_p ${bin}
 .endfor
 	@echo "Test profile library:"
-	@./verify $(VFLAGS) $(CTESTS) $(PTESTS)
+	@./verify ${VFLAGS} ${CTESTS} ${PTESTS}
 
 check_s : tests_s
-.for bin in $(CTESTS) $(BTESTS)
-	@cp $(bin)_s $(bin)
+.for bin in ${CTESTS} ${BTESTS}
+	@cp ${bin}_s ${bin}
 .endfor
 	@echo "Test shared library:"
-	@./verify $(VFLAGS) $(CTESTS) $(PTESTS)
+	@./verify ${VFLAGS} ${CTESTS} ${PTESTS}
 
 check : check_a check_p check_s
 
@@ -107,9 +107,9 @@ clean :
 	rm -f *.perf
 	rm -f *.diff
 	rm -f *.gmon
-	rm -f $(CTESTS) $(BTESTS)
-	rm -f $(CTESTS:S/$/&_a/) $(BTESTS:S/$/&_a/)
-	rm -f $(CTESTS:S/$/&_p/) $(BTESTS:S/$/&_p/)
-	rm -f $(CTESTS:S/$/&_s/) $(BTESTS:S/$/&_s/)
+	rm -f ${CTESTS} ${BTESTS}
+	rm -f ${CTESTS:S/$/&_a/} ${BTESTS:S/$/&_a/}
+	rm -f ${CTESTS:S/$/&_p/} ${BTESTS:S/$/&_p/}
+	rm -f ${CTESTS:S/$/&_s/} ${BTESTS:S/$/&_s/}
 	rm -f *.d
 	rm -f *.o

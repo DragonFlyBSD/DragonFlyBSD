@@ -6,7 +6,7 @@ SRCS = opt_cam.h bus_if.h device_if.h pci_if.h
 SRCS+= hptrr_os_bsd.c hptrr_osm_bsd.c hptrr_config.c
 OBJS = hptrr_lib.bo
 
-hptrr_lib.bo:	$(MACHINE_ARCH)-elf.hptrr_lib.o.uu
+hptrr_lib.bo:	${MACHINE_ARCH}-elf.hptrr_lib.o.uu
 	uudecode -o ${.TARGET} < ${.ALLSRC}
 	elfedit --output-osabi none ${.TARGET}
 

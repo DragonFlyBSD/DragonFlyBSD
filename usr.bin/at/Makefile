@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.bin/at/Makefile,v 1.13 2001/09/13 06:48:16 ru Exp $
-# $DragonFly: src/usr.bin/at/Makefile,v 1.5 2007/08/27 16:50:51 pavalos Exp $
 
 .include "${.CURDIR}/Makefile.inc"
 
@@ -17,15 +16,14 @@ BINMODE= 4555
 CLEANFILES+= at.1
 
 at.1: at.man
-	@${ECHO} Making ${.TARGET:T} from ${.ALLSRC:T}; \
-	sed -e \
-		"s@_ATSPOOL_DIR@$(ATSPOOL_DIR)@g; \
-		s@_ATJOB_DIR@$(ATJOB_DIR)@g; \
-		s@_DEFAULT_BATCH_QUEUE@$(DEFAULT_BATCH_QUEUE)@g; \
-		s@_DEFAULT_AT_QUEUE@$(DEFAULT_AT_QUEUE)@g; \
-		s@_LOADAVG_MX@$(LOADAVG_MX)@g; \
-		s@_PERM_PATH@$(PERM_PATH)@g; \
-		s@_LOCKFILE@$(LOCKFILE)@g" \
+	@${ECHO} "Making ${.TARGET:T} from ${.ALLSRC:T}"
+	@sed	-e 's@_ATSPOOL_DIR@${ATSPOOL_DIR}@g' \
+		-e 's@_ATJOB_DIR@${ATJOB_DIR}@g' \
+		-e 's@_DEFAULT_BATCH_QUEUE@${DEFAULT_BATCH_QUEUE}@g' \
+		-e 's@_DEFAULT_AT_QUEUE@${DEFAULT_AT_QUEUE}@g' \
+		-e 's@_LOADAVG_MX@${LOADAVG_MX}@g' \
+		-e 's@_PERM_PATH@${PERM_PATH}@g' \
+		-e 's@_LOCKFILE@${LOCKFILE}@g' \
 		< ${.ALLSRC} > ${.TARGET}
 
 .include <bsd.prog.mk>

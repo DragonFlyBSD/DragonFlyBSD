@@ -10,7 +10,7 @@ SRCS+= bus_if.h device_if.h pci_if.h
 SRCS+= mv.c entry.c ioctl.c hptproc.c gui_lib.c
 OBJS+= hptmvraid.bo
 
-hptmvraid.bo:	$(MACHINE_ARCH)-elf.raid.o.uu
+hptmvraid.bo:	${MACHINE_ARCH}-elf.raid.o.uu
 	uudecode -o ${.TARGET} < ${.ALLSRC}
 	elfedit --output-osabi none ${.TARGET}
 
@@ -28,16 +28,16 @@ CLEANFILES+= hptmvraid.bo
 #
 #DEBUGOPT = -O2
 
-.if defined(DEBUG) && $(DEBUG) == 1
+.if defined(DEBUG) && ${DEBUG} == 1
 DEBUGOPT += -DDEBUG
 .if defined(DEBUG_LEVEL)
-DEBUGOPT += -DDEBUG_LEVEL=$(DEBUG_LEVEL)
+DEBUGOPT += -DDEBUG_LEVEL=${DEBUG_LEVEL}
 .else
 DEBUGOPT += -DDEBUG_LEVEL=1
 .endif
 .endif
 
-.if defined(FOR_DEMO) && $(FOR_DEMO) == 1
+.if defined(FOR_DEMO) && ${FOR_DEMO} == 1
 DEBUGOPT += -DFOR_DEMO
 .endif
 

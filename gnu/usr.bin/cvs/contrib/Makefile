@@ -17,7 +17,7 @@ EXAMPDIR=	${SHAREDIR}/examples/cvs
 FILESDIR=	${EXAMPDIR}/contrib
 SCRIPTSDIR=	${FILESDIR}
 PERLPATH=	/usr/bin/env perl
-CLEANFILES+=	$(SCRIPTS)
+CLEANFILES+=	${SCRIPTS}
 
 .SUFFIXES: .sh .pl .in
 
@@ -25,9 +25,9 @@ CLEANFILES+=	$(SCRIPTS)
 	cp $< $@
 
 .pl:
-	sed -e 's,xPERL_PATHx,$(PERLPATH),' $< > $@
+	sed -e 's,xPERL_PATHx,${PERLPATH},' $< > $@
 
 .in:
-	sed -e 's,@CSH@,/bin/csh,' -e 's,@PERL@,$(PERLPATH),' $< > $@
+	sed -e 's,@CSH@,/bin/csh,' -e 's,@PERL@,${PERLPATH},' $< > $@
 
 .include <bsd.prog.mk>

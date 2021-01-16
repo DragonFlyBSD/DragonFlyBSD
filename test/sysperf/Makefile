@@ -21,133 +21,133 @@ COPTFLAGS= -O2
 .endif
 CFLAGS= ${COPTFLAGS} -g -I/usr/src/sys
 
-all:	$(TARGETS)
+all:	${TARGETS}
 
 /tmp/cld1: cld1.c blib.c
-	$(CC) $(CFLAGS) cld1.c blib.c -o /tmp/cld1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sc1: syscall1.c blib.c
-	$(CC) $(CFLAGS) syscall1.c blib.c -o /tmp/sc1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sc2: syscall2.c blib.c
-	$(CC) $(CFLAGS) syscall2.c blib.c -o /tmp/sc2
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sc3: syscall3.c blib.c
-	$(CC) $(CFLAGS) syscall3.c blib.c -o /tmp/sc3
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sc4: syscall4.c blib.c
-	$(CC) $(CFLAGS) syscall4.c blib.c -o /tmp/sc4
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sc5: syscall5.c blib.c
-	$(CC) $(CFLAGS) syscall5.c blib.c -o /tmp/sc5
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sc6: syscall6.c blib.c
-	$(CC) $(CFLAGS) syscall6.c blib.c -o /tmp/sc6
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sc7: syscall7.c blib.c
-	$(CC) $(CFLAGS) syscall7.c blib.c -o /tmp/sc7
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/fork1: fork1.c blib.c
-	$(CC) $(CFLAGS) fork1.c blib.c -o /tmp/fork1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/pipe1: pipe1.c blib.c
-	$(CC) $(CFLAGS) pipe1.c blib.c -o /tmp/pipe1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/pipe2: pipe2.c blib.c
-	$(CC) $(CFLAGS) pipe2.c blib.c -o /tmp/pipe2
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/pipe3: pipe3.c blib.c
-	$(CC) $(CFLAGS) pipe3.c blib.c -pthread -o /tmp/pipe3
+	${CC} ${CFLAGS} ${.ALLSRC} -pthread -o ${.TARGET}
 
 /tmp/umtx1: umtx1.c blib.c
-	$(CC) $(CFLAGS) umtx1.c blib.c -pthread -o /tmp/umtx1
+	${CC} ${CFLAGS} ${.ALLSRC} -pthread -o ${.TARGET}
 
 /tmp/sp1: socketpair.c blib.c
-	$(CC) $(CFLAGS) socketpair.c blib.c -o /tmp/sp1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/loop1: loop1.c blib.c
-	$(CC) $(CFLAGS) loop1.c blib.c -o /tmp/loop1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/loop2: loop2.c blib.c
-	$(CC) $(CFLAGS) loop2.c blib.c -o /tmp/loop2
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/loop3: loop3.c blib.c
-	$(CC) $(CFLAGS) loop3.c blib.c -o /tmp/loop3
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/loop4: loop4.c blib.c
-	$(CC) $(CFLAGS) loop4.c blib.c -o /tmp/loop4
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/call1: call1.c blib.c
-	$(CC) $(CFLAGS) call1.c blib.c -o /tmp/call1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/call2: call2.c blib.c
-	$(CC) $(CFLAGS) call2.c blib.c -o /tmp/call2
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/call3: call3.c blib.c
-	$(CC) $(CFLAGS) call3.c blib.c -o /tmp/call3
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/cmp: cmp.c blib.c
-	    $(CC) $(CFLAGS) cmp.c blib.c -o /tmp/cmp
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/mbw1: mbwtest.c
-	$(CC) -O mbwtest.c -o /tmp/mbw1
+	${CC} -O ${.ALLSRC} -o ${.TARGET}
 
 /tmp/mt1: mutex1.c blib.c mtx.s
-	$(CC) $(CFLAGS) mutex1.c blib.c mtx.s -o /tmp/mt1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/mt2: mutex2.c blib.c mtx.s
-	$(CC) $(CFLAGS) mutex2.c blib.c mtx.s -o /tmp/mt2
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/mt3: mutex3.c blib.c mtx.s
-	$(CC) $(CFLAGS) mutex3.c blib.c mtx.s -o /tmp/mt3
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/mt4: mutex4.c blib.c mtx.s
-	$(CC) $(CFLAGS) mutex4.c blib.c mtx.s -o /tmp/mt4
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sw1: quicksw1.c blib.c sw.S
-	$(CC) $(CFLAGS) -DUSE_ALL quicksw1.c blib.c sw.S -o /tmp/sw1
+	${CC} ${CFLAGS} -DUSE_ALL ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sw2: quicksw1.c blib.c sw.S
-	$(CC) $(CFLAGS) -DUSE_CALLU1 quicksw1.c blib.c sw.S -o /tmp/sw2
+	${CC} ${CFLAGS} -DUSE_CALLU1 ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sw3: quicksw1.c blib.c sw.S
-	$(CC) $(CFLAGS) -DUSE_CALLU2 quicksw1.c blib.c sw.S -o /tmp/sw3
+	${CC} ${CFLAGS} -DUSE_CALLU2 ${.ALLSRC} -o ${.TARGET}
 
 /tmp/exec1: exec1.c blib.c
-	$(CC) $(CFLAGS) -static -DISSTATIC exec1.c blib.c -o /tmp/exec1
+	${CC} ${CFLAGS} -static -DISSTATIC ${.ALLSRC} -o ${.TARGET}
 
 /tmp/exec2: exec1.c blib.c
-	$(CC) $(CFLAGS) exec1.c blib.c -o /tmp/exec2
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/mem1: memcpy.c blib.c
-	$(CC) $(CFLAGS) memcpy.c blib.c -o /tmp/mem1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/mem2: memzero.c blib.c
-	$(CC) $(CFLAGS) memzero.c blib.c -o /tmp/mem2
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/read1: read1.c blib.c
-	$(CC) $(CFLAGS) read1.c blib.c -o /tmp/read1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/rr1: randread.c blib.c
-	$(CC) $(CFLAGS) randread.c blib.c -o /tmp/rr1
+	${CC} ${CFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/lockmgr1: lockmgr1.c blib.c
-	$(CC) lockmgr1.c blib.c -o /tmp/lockmgr1
+	${CC} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/lockmgr2: lockmgr2.c blib.c
-	$(CC) lockmgr2.c blib.c -o /tmp/lockmgr2
+	${CC} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/lockmgr3: lockmgr3.c blib.c
-	$(CC) lockmgr3.c blib.c -o /tmp/lockmgr3
+	${CC} ${.ALLSRC} -o ${.TARGET}
 
 /tmp/loop900k: loop900k.c
-	$(CC) $(CFLAGS) loop900k.c -o /tmp/loop900k -static
+	${CC} ${CFLAGS} -static ${.ALLSRC} -o ${.TARGET}
 
 /tmp/pipe900k: pipe900k.c
-	$(CC) $(CFLAGS) pipe900k.c -o /tmp/pipe900k -static
+	${CC} ${CFLAGS} -static ${.ALLSRC} -o ${.TARGET}
 
 /tmp/sleep900k: sleep900k.c
-	$(CC) $(CFLAGS) sleep900k.c -o /tmp/sleep900k -static
+	${CC} ${CFLAGS} -static ${.ALLSRC} -o ${.TARGET}
 
 clean:
-	rm -f $(TARGETS)
+	rm -f ${TARGETS}

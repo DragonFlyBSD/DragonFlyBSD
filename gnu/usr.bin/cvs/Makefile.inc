@@ -3,7 +3,7 @@
 
 .if !defined(CVSDIR)
 
-CVSDIR=		$(.CURDIR)/../../../../contrib/cvs-1.12
+CVSDIR=		${.CURDIR}/../../../../contrib/cvs-1.12
 CVSVERSION=	1.12.13
 
 CFLAGS+= -I${.OBJDIR}/../lib -I${CVSDIR}/lib

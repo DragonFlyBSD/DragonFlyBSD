@@ -33,7 +33,7 @@ SRCS+=${MDASM}
 .for _asm in ${MIASM}
 .if (${MDASM:R:M${_asm:R}} == "")
 .if (${NOASM:R:M${_asm:R}} == "")
-ASM+=$(_asm)
+ASM+=	${_asm}
 .endif
 .endif
 .endfor
