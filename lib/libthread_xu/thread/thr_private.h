@@ -758,6 +758,8 @@ int     __sys_sigaltstack(const stack_t *, stack_t *);
 /* #include <time.h> */
 #ifdef	_TIME_H_
 int	__sys_nanosleep(const struct timespec *, struct timespec *);
+int	__sys_clock_nanosleep(clockid_t, int, const struct timespec *,
+		struct timespec *);
 #endif
 
 /* #include <unistd.h> */

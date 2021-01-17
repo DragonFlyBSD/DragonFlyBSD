@@ -651,6 +651,12 @@ struct	nanosleep_args {
 	const struct timespec *	rqtp;	char rqtp_[PAD_(const struct timespec *)];
 	struct timespec *	rmtp;	char rmtp_[PAD_(struct timespec *)];
 };
+struct	clock_nanosleep_args {
+	clockid_t	clock_id;	char clock_id_[PAD_(clockid_t)];
+	int	flags;	char flags_[PAD_(int)];
+	const struct timespec *	rqtp;	char rqtp_[PAD_(const struct timespec *)];
+	struct timespec *	rmtp;	char rmtp_[PAD_(struct timespec *)];
+};
 struct	minherit_args {
 	void *	addr;	char addr_[PAD_(void *)];
 	size_t	len;	char len_[PAD_(size_t)];
@@ -1586,6 +1592,7 @@ int	sys_clock_gettime (struct sysmsg *sysmsg, const struct clock_gettime_args *)
 int	sys_clock_settime (struct sysmsg *sysmsg, const struct clock_settime_args *);
 int	sys_clock_getres (struct sysmsg *sysmsg, const struct clock_getres_args *);
 int	sys_nanosleep (struct sysmsg *sysmsg, const struct nanosleep_args *);
+int	sys_clock_nanosleep (struct sysmsg *sysmsg, const struct clock_nanosleep_args *);
 int	sys_minherit (struct sysmsg *sysmsg, const struct minherit_args *);
 int	sys_rfork (struct sysmsg *sysmsg, const struct rfork_args *);
 int	sys_openbsd_poll (struct sysmsg *sysmsg, const struct openbsd_poll_args *);

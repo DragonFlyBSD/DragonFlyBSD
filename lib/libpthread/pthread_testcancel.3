@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/share/man/man3/pthread_testcancel.3,v 1.15 2007/10/22 10:08:01 ru Exp $
-.Dd July 10, 2009
+.Dd January 17, 2021
 .Dt PTHREAD_TESTCANCEL 3
 .Os
 .Sh NAME
@@ -99,6 +99,7 @@ type will be in effect.
 .Ss Cancellation Points
 Cancellation points will occur when a thread is executing the following
 functions:
+.Fn clock_nanosleep ,
 .Fn close ,
 .Fn creat ,
 .Fn fcntl ,

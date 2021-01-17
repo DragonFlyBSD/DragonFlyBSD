@@ -17,7 +17,7 @@ CMAPS+=	${.CURDIR}/sys/Symbol.map
 #
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/sys/Makefile.inc"
 
-SRCS+= fork.c
+SRCS+=	fork.c
 
 # Sources common to both syscall interfaces:
 SRCS+=	ftruncate.c lseek.c mmap.c truncate.c
@@ -25,7 +25,7 @@ SRCS+=	pread.c pwrite.c preadv.c pwritev.c
 SRCS+=	sched_getaffinity.c sched_getcpu.c sched_setaffinity.c
 
 # Add machine dependent asm sources:
-SRCS+=${MDASM}
+SRCS+=	${MDASM}
 
 # Look through the complete list of syscalls (MIASM) for names that are
 # not defined with machine dependent implementations (MDASM) and are
@@ -163,6 +163,7 @@ MLINKS+=msgctl.2 msgctl.3
 MLINKS+=msgget.2 msgget.3
 MLINKS+=msgrcv.2 msgrcv.3
 MLINKS+=msgsnd.2 msgsnd.3
+MLINKS+=nanosleep.2 clock_nanosleep.2
 MLINKS+=open.2 openat.2
 MLINKS+=pathconf.2 fpathconf.2 \
 	pathconf.2 lpathconf.2

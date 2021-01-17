@@ -203,6 +203,7 @@
 #define	SYS_clock_settime	233
 #define	SYS_clock_getres	234
 #define	SYS_nanosleep	240
+#define	SYS_clock_nanosleep	241
 #define	SYS_minherit	250
 #define	SYS_rfork	251
 #define	SYS_openbsd_poll	252

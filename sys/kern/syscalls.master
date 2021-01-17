@@ -345,7 +345,9 @@
 239	UNIMPL	timer_getoverrun
 240	STD	{ int nanosleep(const struct timespec *rqtp, \
 			    struct timespec *rmtp); }
-241	UNIMPL	nosys
+241	STD	{ int clock_nanosleep(clockid_t clock_id, int flags, \
+			    const struct timespec *rqtp, \
+			    struct timespec *rmtp); }
 242	UNIMPL	nosys
 243	UNIMPL	nosys
 244	UNIMPL	nosys

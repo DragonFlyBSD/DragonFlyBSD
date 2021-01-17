@@ -220,12 +220,14 @@ int	tstohz_high(struct timespec *);
 int	tstohz_low(struct timespec *);
 int	tsc_test_target(int64_t target);
 void	tsc_delay(int ns);
+int	clock_nanosleep1(clockid_t clock_id, int flags,
+		struct timespec *rqt, struct timespec *rmt);
 int	nanosleep1(struct timespec *rqt, struct timespec *rmt);
 
-void timespec2fattime(const struct timespec *tsp, int utc, u_int16_t *ddp,
-    u_int16_t *dtp, u_int8_t *dhp);
-void fattime2timespec(unsigned dd, unsigned dt, unsigned dh, int utc,
-    struct timespec *tsp);
+void	timespec2fattime(const struct timespec *tsp, int utc, u_int16_t *ddp,
+		u_int16_t *dtp, u_int8_t *dhp);
+void	fattime2timespec(unsigned dd, unsigned dt, unsigned dh, int utc,
+		struct timespec *tsp);
 
 tsc_uclock_t tsc_get_target(int ns);
 

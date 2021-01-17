@@ -149,6 +149,7 @@ MIASM =  \
 	clock_settime.o \
 	clock_getres.o \
 	nanosleep.o \
+	clock_nanosleep.o \
 	minherit.o \
 	rfork.o \
 	openbsd_poll.o \

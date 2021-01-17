@@ -50,6 +50,7 @@
  */
 #define		accept				_accept
 #define		bind				_bind
+#define		clock_nanosleep			_clock_nanosleep
 #define		close				_close
 #define		connect				_connect
 #define		dup				_dup

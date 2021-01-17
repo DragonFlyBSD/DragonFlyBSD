@@ -129,6 +129,8 @@ int	__fcntl(int, int,...);
 int	__fsync(int);
 int	__msync(void *, size_t, int);
 int	__nanosleep(const struct timespec *, struct timespec *);
+int	__clock_nanosleep(clock_t, int, const struct timespec *,
+		struct timespec *);
 int	__open(const char *, int,...);
 int	__openat(int fd, const char *, int,...);
 int	__poll(struct pollfd *, unsigned int, int);
@@ -324,6 +326,24 @@ __nanosleep(const struct timespec *time_to_sleep,
 }
 
 __strong_reference(__nanosleep, nanosleep);
+
+int
+__clock_nanosleep(clock_t clock_id, int flags,
+    const struct timespec *time_to_sleep, struct timespec *time_remaining)
+{
+	pthread_t curthread = tls_get_curthread();
+	int		oldcancel;
+	int		ret;
+
+	oldcancel = _thr_cancel_enter(curthread);
+	ret = __sys_clock_nanosleep(clock_id, flags, time_to_sleep,
+			time_remaining);
+	_thr_cancel_leave(curthread, oldcancel);
+
+	return (ret);
+}
+
+__strong_reference(__clock_nanosleep, clock_nanosleep);
 
 int
 __open(const char *path, int flags,...)

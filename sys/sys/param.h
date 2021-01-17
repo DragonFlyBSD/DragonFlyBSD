@@ -223,9 +223,10 @@
  * 500905 - add IPPROTO_IP/IP_SENDSRCADDR and IP_TOS control message.
  * 500906 - add struct ip_mreqn for IPPROTO_IP/IP_MULTICAST_IF,
  *          IP_ADD_MEMBERSHIP and IP_DROP_MEMBERSHIP.
+ * 500907 - add clock_nanosleep()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500906	/* propagated to newvers */
+#define __DragonFly_version 500907	/* propagated to newvers */
 
 #include <sys/_null.h>
 

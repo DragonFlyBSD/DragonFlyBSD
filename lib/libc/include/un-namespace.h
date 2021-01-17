@@ -31,6 +31,7 @@
 
 #undef		accept
 #undef		bind
+#undef		clock_nanosleep
 #undef		close
 #undef		connect
 #undef		dup

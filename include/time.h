@@ -178,9 +178,9 @@ struct tm *localtime_r(const time_t * __restrict, struct tm * __restrict);
 
 #if __POSIX_VISIBLE >= 200112
 int clock_getcpuclockid(pid_t, clockid_t *);
+int clock_nanosleep(clockid_t, int, const struct timespec *, struct timespec *);
 #if 0 /* XXX missing */
 struct sigevent;
-int clock_nanosleep(clockid_t, int, const struct timespec *, struct timespec *);
 int timer_create(clockid_t, struct sigevent *__restrict, timer_t *__restrict);
 int timer_delete(timer_t);
 int timer_gettime(timer_t, struct itimerspec *);

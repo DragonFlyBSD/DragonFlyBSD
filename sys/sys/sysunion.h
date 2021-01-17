@@ -151,6 +151,7 @@ union sysunion {
 	struct	clock_settime_args clock_settime;
 	struct	clock_getres_args clock_getres;
 	struct	nanosleep_args nanosleep;
+	struct	clock_nanosleep_args clock_nanosleep;
 	struct	minherit_args minherit;
 	struct	rfork_args rfork;
 	struct	openbsd_poll_args openbsd_poll;
