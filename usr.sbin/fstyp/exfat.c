@@ -323,15 +323,15 @@ fstyp_exfat(FILE *fp, char *label, size_t size, const char *devpath)
 	uint32_t chksum;
 	int error;
 
+	error = 1;
 	cksect = NULL;
-
 	ev = (struct exfat_vbr *)read_buf(fp, 0, 512);
 	if (ev == NULL || strncmp(ev->ev_fsname, "EXFAT   ", 8) != 0)
-		goto fail;
+		goto out;
 
 	if (ev->ev_log_bytes_per_sect < 9 || ev->ev_log_bytes_per_sect > 12) {
 		warnx("exfat: Invalid BytesPerSectorShift");
-		goto done;
+		goto out;
 	}
 
 	bytespersec = (1u << ev->ev_log_bytes_per_sect);
@@ -339,7 +339,7 @@ fstyp_exfat(FILE *fp, char *label, size_t size, const char *devpath)
 	error = exfat_compute_boot_chksum(fp, MAIN_BOOT_REGION_SECT,
 	    bytespersec, &chksum);
 	if (error != 0)
-		goto done;
+		goto out;
 
 	cksect = read_sect(fp, MAIN_BOOT_REGION_SECT + SUBREGION_CHKSUM_SECT,
 	    bytespersec);
@@ -351,18 +351,15 @@ fstyp_exfat(FILE *fp, char *label, size_t size, const char *devpath)
 	if (chksum != le32toh(cksect[0])) {
 		warnx("exfat: Found checksum 0x%08x != computed 0x%08x",
 		    le32toh(cksect[0]), chksum);
-		goto done;
+		error = 1;
+		goto out;
 	}
 
 	if (show_label)
 		exfat_find_label(fp, ev, bytespersec, label, size);
 
-done:
+out:
 	free(cksect);
 	free(ev);
-	return (0);
-
-fail:
-	free(ev);
-	return (1);
+	return (error != 0);
 }
