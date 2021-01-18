@@ -466,11 +466,11 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	struct timeval tv;
 	int error;
 
-	if (rqt->tv_nsec < 0 || rqt->tv_nsec >= 1000000000)
+	if (rqt->tv_sec < 0 || rqt->tv_nsec < 0 || rqt->tv_nsec >= 1000000000)
 		return (EINVAL);
-	/* XXX: imho this should return EINVAL at least for tv_sec < 0 */
-	if (rqt->tv_sec < 0 || (rqt->tv_sec == 0 && rqt->tv_nsec == 0))
+	if (rqt->tv_sec == 0 && rqt->tv_nsec == 0)
 		return (0);
+
 	nanouptime(&ts);
 	timespecadd(&ts, rqt, &ts);	/* ts = target timestamp compare */
 	TIMESPEC_TO_TIMEVAL(&tv, rqt);	/* tv = sleep interval */
