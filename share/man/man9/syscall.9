@@ -23,12 +23,12 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 22, 2020
+.Dd January 19, 2021
 .Dt SYSCALL 9
 .Os
 .Sh NAME
 .Nm syscall
-.Nd "system calls overview"
+.Nd system calls overview
 .Sh DESCRIPTION
 A system call is an explicit request to the kernel made via a software
 interrupt by some program.
@@ -96,31 +96,27 @@ For other types the rest of the line is a comment.
 To generate the header and code files from the
 .Dq master
 file,
-.Li make sysent
+.Cm make sysent
 has to be run from the directory containing the
 .Dq master
 file.
 Please mind that the string
-.Li sys_
+.Dq sys_
 is prepended to all system call names, but not to the structures
 holding the arguments.
-So, if one has added the line:
+So, if one has added this line to the system call
+.Dq master
+file:
 .Bd -literal
-503	STD	BSD	{ int mycall(int x, int y); }
+503	STD	{ int mycall(int x, int y); }
 .Ed
 .Pp
-to the system call master file, the generated prototype would be:
+the generated prototype would be:
 .Pp
 .Ft int
-.Fn sys_mycall "struct mycall_args *uap" ;
+.Fn sys_mycall "struct sysmsg *sysmsg" "const struct mycall_args *uap" ;
 .Pp
-It is customary to extract system call arguments with the
-.Fn SCARG uap member
-macro, which is defined in
-.Pa sys/sys/sysent.h
-file.
-.Pp
-Any value which the
+Any value that the
 .Fn sys_mycall
 kernel function returns ends up in
 .Va errno
@@ -133,20 +129,49 @@ is automatically -1 or 0 depending on whether
 was set or not.
 A function that needs to return a different value to userland, e.g.\& a
 file descriptor, must override the default value in
-.Fa uap->sysmsg_result ,
-as defined in
-.Pa sys/sys/sysmsg.h .
+.Fa sysmsg->sysmsg_result
+(as defined in
+.Pa sys/sys/sysmsg.h )
+and return 0.
+.Pp
+In the
+.Lb libc ,
+the assembly wrapper (as described below) will create these symbols:
+.Sy mycall ,
+.Sy _mycall
+and
+.Sy __sys_mycall .
+To export the syscall for external use, add symbol
+.Sy mycall
+to the appropriate
+.Dv DFxxx.0
+section in the
+.Pa lib/libc/sys/Symbol.map
+file.
+In addition, add symbols
+.Sy _mycall
+and
+.Sy __sys_mycall
+to the
+.Dv DFprivate_1.0
+section in the same file for internal use.
 .Sh IMPLEMENTATION NOTES
-In the kernel, a syscall is implemented by a
+In the kernel, the syscall entry point is implemented in platform-dependent
+assembly code (e.g.,
+.Pa sys/platform/pc64/x86_64/exception.S
+for x86_64 machines),
+and the syscall itself is implemented by a
 .Fn sys_syscallname
 function.
+.Pp
 In userspace, the function that executes a syscall is automatically generated
 using the description in
 .Pa syscalls.master .
 The symbols in the
 .Lb libc
 are assembly wrappers generated in
-.Pa lib/libc/${MACHINE_ARCH} Pq e.g.\& x86_64 ,
+.Pa lib/libc/${MACHINE_ARCH}
+.Pq e.g.\& x86_64 ,
 again using the description in
 .Pa syscalls.master .
 These wrappers use macros provided by the platform-dependent
@@ -157,22 +182,26 @@ header file which take care of putting the syscall arguments into registers
 instruction (on x86_64).
 .Sh FILES
 .Bl -tag -width sys/kern/syscalls.master -compact
+.It Pa sys/kern/syscalls.master
+the
+.Dq master
+file describing names and numbers for the system calls;
 .It Pa sys/kern/makesyscalls.sh
 a
 .Xr sh 1
-script for generating C files out of the syscall master file;
-.It Pa sys/kern/syscalls.conf
-a configuration file for the shell script above;
-.It Pa sys/kern/syscalls.master
-master files describing names and numbers for the system calls;
+script for generating C files out of the syscall master file above;
 .It Pa sys/kern/syscalls.c
 system call names lists;
 .It Pa sys/kern/init_sysent.c
 system call switch tables;
+.It Pa sys/sys/syscall.h
+system call numbers;
+.It Pa sys/sys/sysmsg.h
+system call message structure;
 .It Pa sys/sys/sysproto.h
 system call argument lists;
-.It Pa sys/sys/syscall.h
-system call numbers.
+.It Pa sys/sys/sysunion.h
+system call argument union.
 .El
 .Sh SEE ALSO
 .Xr ktrace 2 ,
