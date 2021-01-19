@@ -1433,7 +1433,7 @@ struct	__realpath_args {
 struct sysmsg;
 
 
-#endif /* !_KERNEL */
+#endif /* _KERNEL */
 
 #ifdef _KERNEL
 
@@ -1750,6 +1750,6 @@ int	sys_lwp_getname (struct sysmsg *sysmsg, const struct lwp_getname_args *);
 int	sys_getrandom (struct sysmsg *sysmsg, const struct getrandom_args *);
 int	sys___realpath (struct sysmsg *sysmsg, const struct __realpath_args *);
 
-#endif /* !_KERNEL */
+#endif /* _KERNEL */
 
 #endif /* !_SYS_SYSPROTO_H_ */

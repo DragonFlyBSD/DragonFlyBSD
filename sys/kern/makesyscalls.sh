@@ -341,8 +341,8 @@ s/\$//g
 			printf "#define compat(n, name) 0, (sy_call_t *)sys_nosys\n" > sysinc
 
 		printf("\n#undef PAD_\n") > sysarg
-		printf("\n#endif /* !_KERNEL */\n") > syscompatdcl
-		printf("\n#endif /* !_KERNEL */\n") > sysdcl
+		printf("\n#endif /* _KERNEL */\n") > syscompatdcl
+		printf("\n#endif /* _KERNEL */\n") > sysdcl
 		printf("\n#endif /* !%s */\n", sysproto_h) > sysdcl
 
 		printf("\n") > sysmk
