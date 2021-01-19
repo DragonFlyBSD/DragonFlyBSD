@@ -138,7 +138,7 @@ plus the size of the array of file descriptors.
 .Pp
 The received descriptor is a
 .Em duplicate
-of the sender's descriptor, as if it were created via
+of the sender's descriptor, as if it was created via
 .Li dup(fd)
 or
 .Li fcntl(fd, F_DUPFD_CLOEXEC, 0)
