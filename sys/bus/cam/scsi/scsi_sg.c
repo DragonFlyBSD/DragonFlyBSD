@@ -489,7 +489,7 @@ sgioctl(struct dev_ioctl_args *ap)
 		/*
 		 * The value is returned directly to the syscall.
 		 */
-		ap->a_sysmsg->sm_result.iresult = softc->sg_user_timeout;
+		ap->a_sysmsg->sysmsg_result = softc->sg_user_timeout;
 		error = 0;
 		break;
 	case SG_IO:

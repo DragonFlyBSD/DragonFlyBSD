@@ -544,7 +544,7 @@ amr_linux_ioctl_int(struct cdev *dev, u_long cmd, caddr_t addr, int32_t flag,
 	case 'm':
 	    copyout(&linux_no_adapter, (void *)(uintptr_t)ali.data,
 		sizeof(linux_no_adapter));
-	    sm->sm_result.iresult = linux_no_adapter;
+	    sm->sysmsg_result = linux_no_adapter;
 	    error = 0;
 	    break;
 
