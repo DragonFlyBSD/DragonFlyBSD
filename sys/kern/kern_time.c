@@ -292,7 +292,7 @@ kern_clock_settime(clockid_t clock_id, struct timespec *ats)
 		return (error);
 	if (clock_id != CLOCK_REALTIME)
 		return (EINVAL);
-	if (ats->tv_nsec < 0 || ats->tv_nsec >= 1000000000)
+	if (ats->tv_sec < 0 || ats->tv_nsec < 0 || ats->tv_nsec >= 1000000000)
 		return (EINVAL);
 
 	lockmgr(&masterclock_lock, LK_EXCLUSIVE);
