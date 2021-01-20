@@ -55,8 +55,6 @@
  * WARNING: fds must be long so it translates to two 64 bit registers
  * on 64 bit architectures.
  */
-union sysunion;
-
 struct sysmsg {
 	union {
 	    void    *resultp;		/* misc pointer data or result */
@@ -74,12 +72,6 @@ struct sysmsg {
 	union sysunion extargs;		/* if more than 6 args */
 } __packed;
 
-struct lwp;
-union sysunion;
-
-#endif
-
-#ifdef _KERNEL
 #define sysmsg_result	sm_result.result
 #define sysmsg_iresult	sm_result.iresult
 #define sysmsg_lresult	sm_result.lresult
@@ -91,7 +83,7 @@ union sysunion;
 #define sysmsg_result64	sm_result.result64
 #define sysmsg_reg	sm_result.reg
 #define sysmsg_frame	sm_frame
-#endif
 
-#endif
+#endif /* _KERNEL */
 
+#endif /* !_SYS_SYSMSG_H_ */
