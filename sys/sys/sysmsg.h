@@ -58,7 +58,6 @@
 struct sysmsg {
 	union {
 	    void    *resultp;		/* misc pointer data or result */
-	    int     result;		/* DEPRECATED - AUDIT -> iresult */
 	    int     iresult;		/* standard 'int'eger result */
 	    long    lresult;		/* long result */
 	    size_t  szresult;		/* size_t result */
@@ -72,7 +71,7 @@ struct sysmsg {
 	union sysunion extargs;		/* if more than 6 args */
 } __packed;
 
-#define sysmsg_result	sm_result.result
+#define sysmsg_result	sm_result.iresult
 #define sysmsg_iresult	sm_result.iresult
 #define sysmsg_lresult	sm_result.lresult
 #define sysmsg_szresult	sm_result.szresult
