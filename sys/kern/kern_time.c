@@ -358,10 +358,14 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 		ts->tv_nsec = 1000;
 		break;
 	default:
-		if ((clock_id & CPUCLOCK_BIT) != 0)
+		if ((clock_id & CPUCLOCK_BIT) == CPUCLOCK_BIT) {
+			pid_t pid = CPUCLOCK2PID(clock_id);
+			if (pid < 2 || pid > PID_MAX)
+				return (EINVAL);
 			ts->tv_nsec = 1000;
-		else
+		} else {
 			return (EINVAL);
+		}
 	}
 
 	return (0);
