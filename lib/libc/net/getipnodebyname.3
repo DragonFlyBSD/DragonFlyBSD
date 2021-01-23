@@ -154,7 +154,7 @@ If
 is 0 and if
 .Fa af
 is
-.Li AF_INET6 ,
+.Dv AF_INET6 ,
 then the caller wants only IPv6 addresses.
 A query is made for
 .Li AAAA
@@ -223,8 +223,10 @@ Only if both queries fail does the function
 return a
 .Dv NULL
 pointer.
-This flag is ignored unless af equals
-AF_INET6.
+This flag is ignored unless
+.Fa af
+equals
+.Dv AF_INET6.
 If both
 .Dv AI_ALL
 and
@@ -247,7 +249,9 @@ configured.
 For example, if the node has no IPv6 source addresses configured,
 and
 .Fa af
-equals AF_INET6, and the node name being looked up has both
+equals
+.Dv AF_INET6 ,
+and the node name being looked up has both
 .Li AAAA
 and
 .Li A
