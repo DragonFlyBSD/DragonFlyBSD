@@ -28,7 +28,7 @@
 .\"     @(#)execve.2	8.5 (Berkeley) 6/1/94
 .\" $FreeBSD: src/lib/libc/sys/execve.2,v 1.16.2.10 2001/12/22 01:21:30 jwd Exp $
 .\"
-.Dd December 21, 2007
+.Dd January 23, 2021
 .Dt EXECVE 2
 .Os
 .Sh NAME
@@ -118,6 +118,13 @@ flag is set (see
 and
 .Xr fcntl 2 ) .
 Descriptors that remain open are unaffected by
+.Fn execve .
+If any of the standard descriptors (0, 1, and/or 2) are closed at the time
+.Fn execve
+is called, and the process will gain privilege as a result of set-id
+semantics, those descriptors will be reopened automatically.
+No programs, whether privileged or not, should assume that these descriptors
+will remain closed across a call to
 .Fn execve .
 .Pp
 Signals set to be ignored in the calling process are set to be ignored in
@@ -276,6 +283,13 @@ of a super-user as well.
 .Xr environ 7 ,
 .Xr script 7 ,
 .Xr mount 8
+.Sh STANDARDS
+The
+.Fn execve
+system call conforms to
+.St -p1003.1-2004 .
+.Pp
+The support for executing interpreted programs is an extension.
 .Sh HISTORY
 The
 .Fn execve
