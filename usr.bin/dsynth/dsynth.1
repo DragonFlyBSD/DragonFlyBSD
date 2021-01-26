@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2020 The DragonFly Project.  All rights reserved.
+.\" Copyright (c) 2021 The DragonFly Project.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthew Dillon <dillon@backplane.com>
@@ -32,7 +32,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd October 24, 2019
+.Dd January 26, 2021
 .Dt DSYNTH 1
 .Os
 .Sh NAME
@@ -170,19 +170,6 @@ Some paging
 is necessary to maintain maximum CPU utilization, but excessive paging
 can cause the whole machine to essentially become idle for extended
 periods of time.
-.It Fl v
-Quickly output the version and exit.
-.It Fl x
-.It Fl xx
-Normally dsynth builds a package for any of three reasons: (1) If the contents
-of the ports directory changes, (2) If anything the port depends on requires
-rebuilding so to will the port be rebuilt, (3) If there is no binary package
-already built for the port.
-.Pp
-If this option is specified, the first test is ignored.  If this
-option is specified twice, the first and second tests are ignored.
-.It Fl y
-Automatically answer 'y'es to any questions.
 .It Fl p Ar profile
 Override the global profile default in
 .Pa /etc/dsynth/dsynth.ini ,
@@ -205,8 +192,26 @@ This gives
 a slower ramp that it can load manage against.
 Specifying 0 disables the slow-start feature and the maximum number of
 worker slots (limited by the dependency graph) will be loaded immediately.
+.It Fl v
+Quickly output the version and exit.
+.It Fl x
+.It Fl xx
+Normally dsynth builds a package for any of three reasons: (1) If the contents
+of the ports directory changes, (2) If anything the port depends on requires
+rebuilding so to will the port be rebuilt, (3) If there is no binary package
+already built for the port.
+.Pp
+If this option is specified, the first test is ignored.
+If this option is specified twice, the first and second tests are ignored.
+.It Fl y
+Automatically answer 'y'es to any questions.
 .It Fl D
 Turn on DEVELOPER mode when building ports.
+.It Fl P
+Include the check-plist stage.
+This is the default for the
+.Cm everything
+directive.
 .It Fl S[S]
 Turn off curses for script friendliness.
 The output will be log 00 and
@@ -232,15 +237,6 @@ This list should be space-delimited in DIR/SUBDIR format, for example:
 For directives with an optional ports list, your current installed set
 of ports will be used if you do not specify a list.
 .Bl -tag -width indent
-.It Cm status
-This will do a dry-run of
-.Cm upgrade-system
-but not actually build anything.
-.It Cm cleanup
-This will clean up any left-over mounts from prior builds.
-.Nm
-attempts to clean up all processes and mounts when you interrupt
-a build but doesn't always succeed.
 .It Cm init
 Creates and initializes the
 .Pa /etc/dsynth
@@ -253,6 +249,15 @@ exists.
 It will not create
 .Pa /etc/dsynth
 in this situation.
+.It Cm status
+This will do a dry-run of
+.Cm upgrade-system
+but not actually build anything.
+.It Cm cleanup
+This will clean up any left-over mounts from prior builds.
+.Nm
+attempts to clean up all processes and mounts when you interrupt
+a build but doesn't always succeed.
 .It Cm configure
 NOT CURRENTLY IMPLEMENTED
 .It Cm upgrade-system
@@ -267,9 +272,9 @@ Build or rebuild the database files for the configured repository.
 .It Cm purge-distfiles
 Delete any obsolete source distribution files.
 .It Cm reset-db
-Delete ports_crc.db from the build directory.  This database is used
-to detect changes made to the dports tree.  It will be regenerated
-on your next build without forcing any packages to be rebuilt.
+Delete ports_crc.db from the build directory.
+This database is used to detect changes made to the dports tree.
+It will be regenerated on your next build without forcing any packages to be rebuilt.
 .It Cm status-everything
 This will do a dry-run of a full bulk build of everything,
 but not actually build anything.
@@ -310,6 +315,8 @@ Dependencies are not deleted unless they are out of date.
 .It Cm debug Op Ar ports
 This is the same as 'build' but leaves the chroot mounts intact
 upon completion.
+.It Cm monitor Op Ar datfile
+Monitors a running dsynth instance.
 .El
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
