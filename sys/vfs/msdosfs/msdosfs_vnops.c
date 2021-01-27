@@ -514,8 +514,9 @@ msdosfs_read(struct vop_read_args *ap)
 		} else if (de_cn2off(pmp, rablock) >= dep->de_FileSize) {
 			error = bread(vp, loffset, blsize, &bp);
 		} else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
-			error = cluster_readx(vp, dep->de_FileSize, loffset,
-			    blsize, B_NOTMETA, on + uio->uio_resid,
+			error = cluster_readx(vp,
+			    ((dep->de_FileSize + blsize - 1) / blsize) * blsize,
+			    loffset, blsize, B_NOTMETA, on + uio->uio_resid,
 			    seqcount * MAXBSIZE, &bp);
 			bp->b_flags |= B_CLUSTEROK;
 		} else if (seqcount > 1) {
