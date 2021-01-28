@@ -594,7 +594,10 @@ wrmsr(u_int msr, u_int64_t newval)
 
 	low = newval;
 	high = newval >> 32;
-	__asm __volatile("wrmsr" : : "a" (low), "d" (high), "c" (msr));
+	__asm __volatile("wrmsr"
+	    :
+	    : "a" (low), "d" (high), "c" (msr)
+	    : "memory");
 }
 
 static __inline void
@@ -602,14 +605,15 @@ xsetbv(u_int ecx, u_int eax, u_int edx)
 {
 	__asm __volatile(".byte 0x0f,0x01,0xd1"
 	    :
-	    : "a" (eax), "c" (ecx), "d" (edx));
+	    : "a" (eax), "c" (ecx), "d" (edx)
+	    : "memory");
 }
 
 static __inline void
 load_cr0(u_long data)
 {
 
-	__asm __volatile("movq %0,%%cr0" : : "r" (data));
+	__asm __volatile("movq %0,%%cr0" : : "r" (data) : "memory");
 }
 
 static __inline u_long
@@ -649,7 +653,7 @@ rcr3(void)
 static __inline void
 load_cr4(u_long data)
 {
-	__asm __volatile("movq %0,%%cr4" : : "r" (data));
+	__asm __volatile("movq %0,%%cr4" : : "r" (data) : "memory");
 }
 
 static __inline u_long
@@ -784,7 +788,7 @@ rdr0(void)
 static __inline void
 load_dr0(u_int64_t dr0)
 {
-	__asm __volatile("movq %0,%%dr0" : : "r" (dr0));
+	__asm __volatile("movq %0,%%dr0" : : "r" (dr0) : "memory");
 }
 
 static __inline u_int64_t
@@ -798,7 +802,7 @@ rdr1(void)
 static __inline void
 load_dr1(u_int64_t dr1)
 {
-	__asm __volatile("movq %0,%%dr1" : : "r" (dr1));
+	__asm __volatile("movq %0,%%dr1" : : "r" (dr1) : "memory");
 }
 
 static __inline u_int64_t
@@ -812,7 +816,7 @@ rdr2(void)
 static __inline void
 load_dr2(u_int64_t dr2)
 {
-	__asm __volatile("movq %0,%%dr2" : : "r" (dr2));
+	__asm __volatile("movq %0,%%dr2" : : "r" (dr2) : "memory");
 }
 
 static __inline u_int64_t
@@ -826,7 +830,7 @@ rdr3(void)
 static __inline void
 load_dr3(u_int64_t dr3)
 {
-	__asm __volatile("movq %0,%%dr3" : : "r" (dr3));
+	__asm __volatile("movq %0,%%dr3" : : "r" (dr3) : "memory");
 }
 
 static __inline u_int64_t
@@ -840,7 +844,7 @@ rdr4(void)
 static __inline void
 load_dr4(u_int64_t dr4)
 {
-	__asm __volatile("movq %0,%%dr4" : : "r" (dr4));
+	__asm __volatile("movq %0,%%dr4" : : "r" (dr4) : "memory");
 }
 
 static __inline u_int64_t
@@ -854,7 +858,7 @@ rdr5(void)
 static __inline void
 load_dr5(u_int64_t dr5)
 {
-	__asm __volatile("movq %0,%%dr5" : : "r" (dr5));
+	__asm __volatile("movq %0,%%dr5" : : "r" (dr5) : "memory");
 }
 
 static __inline u_int64_t
@@ -868,7 +872,7 @@ rdr6(void)
 static __inline void
 load_dr6(u_int64_t dr6)
 {
-	__asm __volatile("movq %0,%%dr6" : : "r" (dr6));
+	__asm __volatile("movq %0,%%dr6" : : "r" (dr6) : "memory");
 }
 
 static __inline u_int64_t
@@ -882,7 +886,7 @@ rdr7(void)
 static __inline void
 load_dr7(u_int64_t dr7)
 {
-	__asm __volatile("movq %0,%%dr7" : : "r" (dr7));
+	__asm __volatile("movq %0,%%dr7" : : "r" (dr7) : "memory");
 }
 
 static __inline register_t
