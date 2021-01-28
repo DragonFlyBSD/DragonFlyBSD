@@ -222,6 +222,7 @@ struct proc;
 struct trapframe;
 
 extern uint32_t npx_mxcsr_mask; 
+extern uint64_t npx_xcr0_mask;
 
 void	npxprobemask (void);
 void	npxexit (void);

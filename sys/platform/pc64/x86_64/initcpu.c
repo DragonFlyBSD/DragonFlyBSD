@@ -66,7 +66,7 @@ u_int	cpu_procinfo2;		/* Multicore info */
 char	cpu_vendor[20];		/* CPU Origin code */
 u_int	cpu_vendor_id;		/* CPU vendor ID */
 u_int	cpu_fxsr;		/* SSE enabled */
-u_int	cpu_xsave;		/* AVX enabled by OS*/
+u_int	cpu_xsave;		/* Using XSAVE */
 u_int	cpu_clflush_line_size = 32;	/* Default CLFLUSH line size */
 u_int	cpu_stdext_feature;
 u_int	cpu_stdext_feature2;
@@ -222,13 +222,16 @@ initializecpu(int cpu)
 	}
 
 #if !defined(CPU_DISABLE_AVX)
-	/*Check for XSAVE and AVX support and enable if available.*/
-	if ((cpu_feature2 & CPUID2_AVX) && (cpu_feature2 & CPUID2_XSAVE)
-	     && (cpu_feature & CPUID_SSE)) {
+	/* Use XSAVE if supported */
+	if (cpu_feature2 & CPUID2_XSAVE) {
 		load_cr4(rcr4() | CR4_XSAVE);
 
 		/* Adjust size of savefpu in npx.h before adding to mask.*/
-		xsetbv(0, CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM, 0);
+		npx_xcr0_mask = CPU_XFEATURE_X87 | CPU_XFEATURE_SSE;
+		if (cpu_feature2 & CPUID2_AVX)
+			npx_xcr0_mask |= CPU_XFEATURE_YMM;
+
+		xsetbv(0, npx_xcr0_mask);
 		cpu_xsave = 1;
 	}
 #endif

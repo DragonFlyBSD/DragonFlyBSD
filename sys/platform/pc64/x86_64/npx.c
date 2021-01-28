@@ -71,8 +71,26 @@
 #define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
 #define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
 #ifndef  CPU_DISABLE_AVX
-#define xrstor(eax,edx,addr)	__asm __volatile(".byte 0x0f,0xae,0x2f" : : "D" (addr), "a" (eax), "d" (edx))
-#define xsave(eax,edx,addr)	__asm __volatile(".byte 0x0f,0xae,0x27" : : "D" (addr), "a" (eax), "d" (edx) : "memory")
+static inline void
+xrstor(const void *addr, uint64_t mask)
+{
+	uint32_t low, high;
+
+	low = mask;
+	high = mask >> 32;
+
+	__asm __volatile(".byte 0x0f,0xae,0x2f" : : "D" (addr), "a" (low), "d" (high));
+}
+static inline void
+xsave(void *addr, uint64_t mask)
+{
+	uint32_t low, high;
+
+	low = mask;
+	high = mask >> 32;
+
+	__asm __volatile(".byte 0x0f,0xae,0x27" : : "D" (addr), "a" (low), "d" (high) : "memory");
+}
 #endif
 #define start_emulating()       __asm("smsw %%ax; orb %0,%%al; lmsw %%ax" \
 				      : : "n" (CR0_TS) : "ax")
@@ -88,6 +106,7 @@ static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
 
 __read_mostly uint32_t npx_mxcsr_mask = 0xFFBF;	/* this is the default */
+__read_mostly uint64_t npx_xcr0_mask = 0;
 
 /*
  * Probe the npx_mxcsr_mask as described in the intel document
@@ -470,7 +489,7 @@ fpusave(union savefpu *addr)
 {
 #ifndef CPU_DISABLE_AVX
 	if (cpu_xsave)
-		xsave(CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM, 0, addr);
+		xsave(addr, npx_xcr0_mask);
 	else
 #endif
 	if (cpu_fxsr)
@@ -508,7 +527,7 @@ npxpush(mcontext_t *mctx)
 		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(*td->td_savefpu));
 		td->td_flags &= ~TDF_USINGFP;
 #ifndef CPU_DISABLE_AVX
-		if (cpu_xsave)
+		if (npx_xcr0_mask & CPU_XFEATURE_YMM)
 			mctx->mc_fpformat = _MC_FPFMT_YMM;
 		else
 #endif
@@ -616,7 +635,7 @@ fpurstor(union savefpu *addr)
 {
 #ifndef CPU_DISABLE_AVX
 	if (cpu_xsave)
-		xrstor(CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM, 0, addr);
+		xrstor(addr, npx_xcr0_mask);
 	else
 #endif
 	if (cpu_fxsr) {
