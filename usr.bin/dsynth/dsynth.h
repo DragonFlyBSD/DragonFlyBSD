@@ -75,7 +75,7 @@
 
 struct pkglink;
 
-#define DSYNTH_VERSION	"1.02"
+#define DSYNTH_VERSION	"1.0.2"
 #define MAXWORKERS	1024
 #define MAXLOGLINES	1024
 #define MAXJOBS		8192	/* just used for -j sanity */
