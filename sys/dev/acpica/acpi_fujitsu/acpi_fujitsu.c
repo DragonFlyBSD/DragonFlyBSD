@@ -371,8 +371,6 @@ acpi_fujitsu_init(struct acpi_fujitsu_softc *sc)
 	sc->gmou.name = "GMOU";
 	sc->gsif.name = "GSIF";
 	sc->gvol.name = "GVOL";
-	sc->ghks.name = "GHKS";
-	sc->gsif.name = "GSIF";
 	sc->rbll.name = "RBLL";
 	sc->rvol.name = "RVOL";
 
