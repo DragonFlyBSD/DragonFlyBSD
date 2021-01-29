@@ -291,15 +291,15 @@ static struct {
 /*
  * Per-model default list of event mask.
  */
-#define	ACPI_THINKPAD_HKEY_RFKILL_MASK		(1 << 4)
-#define	ACPI_THINKPAD_HKEY_DSWITCH_MASK		(1 << 6)
-#define	ACPI_THINKPAD_HKEY_BRIGHTNESS_UP_MASK	(1 << 15)
-#define	ACPI_THINKPAD_HKEY_BRIGHTNESS_DOWN_MASK	(1 << 16)
-#define	ACPI_THINKPAD_HKEY_SEARCH_MASK		(1 << 18)
-#define	ACPI_THINKPAD_HKEY_MICMUTE_MASK		(1 << 26)
-#define	ACPI_THINKPAD_HKEY_SETTINGS_MASK	(1 << 28)
-#define	ACPI_THINKPAD_HKEY_VIEWOPEN_MASK	(1 << 30)
-#define	ACPI_THINKPAD_HKEY_VIEWALL_MASK		(1 << 31)
+#define	ACPI_THINKPAD_HKEY_RFKILL_MASK		(1U << 4)
+#define	ACPI_THINKPAD_HKEY_DSWITCH_MASK		(1U << 6)
+#define	ACPI_THINKPAD_HKEY_BRIGHTNESS_UP_MASK	(1U << 15)
+#define	ACPI_THINKPAD_HKEY_BRIGHTNESS_DOWN_MASK	(1U << 16)
+#define	ACPI_THINKPAD_HKEY_SEARCH_MASK		(1U << 18)
+#define	ACPI_THINKPAD_HKEY_MICMUTE_MASK		(1U << 26)
+#define	ACPI_THINKPAD_HKEY_SETTINGS_MASK	(1U << 28)
+#define	ACPI_THINKPAD_HKEY_VIEWOPEN_MASK	(1U << 30)
+#define	ACPI_THINKPAD_HKEY_VIEWALL_MASK		(1U << 31)
 
 struct acpi_thinkpad_models {
 	const char *maker;
@@ -706,7 +706,7 @@ acpi_thinkpad_eventmask_set(struct acpi_thinkpad_softc *sc, int val)
 
 	for (i = 0; i < 32; ++i) {
 		arg[0].Integer.Value = i + 1;
-		arg[1].Integer.Value = (((1 << i) & val) != 0);
+		arg[1].Integer.Value = (((1U << i) & val) != 0);
 		status = AcpiEvaluateObject(sc->handle,
 		    THINKPAD_NAME_EVENTS_MASK_SET, &args, NULL);
 
@@ -1137,7 +1137,7 @@ acpi_thinkpad_handlerevents_sysctl(SYSCTL_HANDLER_ARGS)
 	/* Get old values if this is a get request. */
 	if (req->newptr == NULL) {
 		for (int i = 0; i < 8 * sizeof(sc->handler_events); i++)
-			if (sc->handler_events & (1 << i))
+			if (sc->handler_events & (1U << i))
 				sbuf_printf(&sb, "0x%02x ", i + 1);
 		if (sbuf_len(&sb) == 0)
 			sbuf_printf(&sb, "NONE");
