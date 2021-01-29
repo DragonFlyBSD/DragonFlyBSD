@@ -37,10 +37,6 @@
 #include <sys/wait.h>
 #include <sys/_uio.h>
 
-#define DUP_FIXED	0x1	/* Copy to specific fd even if in use */
-#define DUP_VARIABLE	0x2	/* Copy fd to an unused fd */
-#define DUP_CLOEXEC	0x4	/* Set fd close on exec flag */
-#define DUP_FCNTL	0x8	/* Set for F_DUPFD and F_DUPFD_CLOEXEC */
 union fcntl_dat;
 struct image_args;
 struct plimit;

@@ -28,7 +28,6 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.20 2006/10/27 04:56:33 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -144,6 +143,12 @@ struct	sigio {
 SLIST_HEAD(sigiolst, sigio);
 
 #ifdef _KERNEL
+
+/* Type flags for kern_dup(). */
+#define DUP_FIXED	0x1	/* Copy to specific fd even if in use */
+#define DUP_VARIABLE	0x2	/* Copy fd to an unused fd */
+#define DUP_CLOEXEC	0x4	/* Set fd close on exec flag */
+#define DUP_FCNTL	0x8	/* Set for F_DUPFD and F_DUPFD_CLOEXEC */
 
 struct thread;
 struct proc;
