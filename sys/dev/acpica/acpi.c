@@ -916,8 +916,7 @@ acpi_child_pnpinfo_str_method(device_t cbdev, device_t child, char *buf,
 		  adinfo->HardwareId.String : "none",
 		 (adinfo->Valid & ACPI_VALID_UID) ?
 		  adinfo->UniqueId.String : "0");
-	if (adinfo)
-	    AcpiOsFree(adinfo);
+	AcpiOsFree(adinfo);
     }
     return (0);
 }
