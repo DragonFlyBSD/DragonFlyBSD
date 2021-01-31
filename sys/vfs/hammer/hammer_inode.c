@@ -2062,7 +2062,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record, int depth,
 		 *
 		 * Otherwise it is probably a directory-delete or
 		 * delete-on-disk record and does not contribute to our
-		 * visbility (but we can still flush it).
+		 * visibility (but we can still flush it).
 		 */
 		if (record->type == HAMMER_MEM_RECORD_ADD)
 			return(1);

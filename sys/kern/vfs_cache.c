@@ -418,7 +418,7 @@ cache_clearmntcache(struct mount *target __unused)
  * Namespace locking.  The caller must already hold a reference to the
  * namecache structure in order to lock/unlock it.  The controlling entity
  * in a 1->0 transition does not need to lock the ncp to dispose of it,
- * as nobody else will have visiblity to it at that point.
+ * as nobody else will have visibility to it at that point.
  *
  * Note that holding a locked namecache structure prevents other threads
  * from making namespace changes (e.g. deleting or creating), prevents
