@@ -1958,8 +1958,13 @@ WorkerProcess(int ac, char **av)
 	addbuildenv("UID", "0", BENV_MAKECONF);
 	addbuildenv("ARCH", ArchitectureName, BENV_MAKECONF);
 
+	/*
+	 * Always honor either the operating system detection or the
+	 * operating system selection in the config file.
+	 */
+	addbuildenv("OPSYS", OperatingSystemName, BENV_MAKECONF);
+
 #ifdef __DragonFly__
-	addbuildenv("OPSYS", "DragonFly", BENV_MAKECONF);
 	addbuildenv("DFLYVERSION", VersionFromParamHeader, BENV_MAKECONF);
 	addbuildenv("OSVERSION", "9999999", BENV_MAKECONF);
 #else
