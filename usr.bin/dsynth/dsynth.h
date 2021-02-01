@@ -269,7 +269,11 @@ enum worker_phase { PHASE_PENDING,
 		    PHASE_CHECK_PLIST,
 		    PHASE_PACKAGE,
 		    PHASE_INSTALL,
-		    PHASE_DEINSTALL
+		    PHASE_DEINSTALL,
+		    PHASE_DUMP_ENV,
+		    PHASE_DUMP_VAR,
+		    PHASE_SHOW_CONFIG,
+		    PHASE_DUMP_MAKECONF
 		};
 
 typedef enum worker_phase worker_phase_t;

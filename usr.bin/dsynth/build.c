@@ -2111,6 +2111,34 @@ WorkerProcess(int ac, char **av)
 		dophase(work, &wmsg,
 			WDOG5, PHASE_PACKAGE, "package");
 	} else {
+		/*
+		 * Dump as much information of the build process as possible.
+		 * Will help troubleshooting port build breakages.
+		 * Only enabled when DEVELOPER is set.
+		 *
+		 * This sort of mimics what synth did.
+		 */
+		if (WorkerProcFlags & WORKER_PROC_DEVELOPER) {
+			dophase(work, &wmsg,
+			    WDOG2, PHASE_DUMP_ENV, "Environment");
+			dophase(work, &wmsg,
+			    WDOG2, PHASE_SHOW_CONFIG, "showconfig");
+			dophase(work, &wmsg,
+			    WDOG2, PHASE_DUMP_VAR, "CONFIGURE_ENV");
+			dophase(work, &wmsg,
+			    WDOG2, PHASE_DUMP_VAR, "CONFIGURE_ARGS");
+			dophase(work, &wmsg,
+			    WDOG2, PHASE_DUMP_VAR, "MAKE_ENV");
+			dophase(work, &wmsg,
+			    WDOG2, PHASE_DUMP_VAR, "MAKE_ARGS");
+			dophase(work, &wmsg,
+			    WDOG2, PHASE_DUMP_VAR, "PLIST_SUB");
+			dophase(work, &wmsg,
+			    WDOG2, PHASE_DUMP_VAR, "SUB_LIST");
+			dophase(work, &wmsg,
+			    WDOG2, PHASE_DUMP_MAKECONF, "/etc/make.conf");
+		}
+
 		if (do_install_phase) {
 			dophase(work, &wmsg,
 				WDOG4, PHASE_INSTALL_PKGS, "setup");
@@ -2429,6 +2457,21 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 			snprintf(buf, sizeof(buf), "/tmp/dsynth_install_pkgs");
 			execl(buf, buf, NULL);
 			break;
+		case PHASE_DUMP_ENV:
+			snprintf(buf, sizeof(buf), "/usr/bin/env");
+			execl(buf, buf, NULL);
+			break;
+		case PHASE_DUMP_VAR:
+			snprintf(buf, sizeof(buf), "/xports/%s", pkg->portdir);
+			execl(MAKE_BINARY, MAKE_BINARY, "-C", buf, "-V", phase,
+			    NULL);
+			break;
+		case PHASE_DUMP_MAKECONF:
+			snprintf(buf, sizeof(buf), "/bin/cat");
+			execl(buf, buf, "/etc/make.conf", NULL);
+			break;
+		case PHASE_SHOW_CONFIG:
+			/* fall-through */
 		default:
 			snprintf(buf, sizeof(buf), "/xports/%s", pkg->portdir);
 			execl(MAKE_BINARY, MAKE_BINARY, "-C", buf, phase, NULL);
