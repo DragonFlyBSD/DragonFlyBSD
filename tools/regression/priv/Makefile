@@ -4,7 +4,7 @@ run: compile
 	./test_acct
 
 clean:
-	rm *.o test_acct
+	rm -f *.o test_acct
 
 test.o: test.c
 	${CC} -c test.c
