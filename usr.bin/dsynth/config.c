@@ -57,6 +57,7 @@ const char *MachineName = "unknown";		/* e.g. "x86_64" */
 const char *VersionName = "unknown";		/* e.g. "DragonFly 5.7-SYNTH" */
 const char *VersionOnlyName = "unknown";	/* e.g. "5.7-SYNTH" */
 const char *VersionFromParamHeader = "unknown";	/* e.g. "500704" */
+const char *VersionFromSysctl = "unknown";	/* e.g. "500704" */
 const char *ReleaseName = "unknown";		/* e.g. "5.7" */
 const char *DPortsPath = "/usr/dports";
 const char *CCachePath = DISABLED_STR;
@@ -105,6 +106,7 @@ ParseConfiguration(int isworker)
 	int reln;
 	char *synth_config;
 	char *buf;
+	char *osreldate;
 
 	/*
 	 * Get the default OperatingSystemName, ArchitectureName, and
@@ -114,6 +116,8 @@ ParseConfiguration(int isworker)
 	ArchitectureName = dokernsysctl(CTL_HW, HW_MACHINE_ARCH);
 	MachineName = dokernsysctl(CTL_HW, HW_MACHINE);
 	ReleaseName = dokernsysctl(CTL_KERN, KERN_OSRELEASE);
+	asprintf(&osreldate, "%d", getosreldate());
+	VersionFromSysctl = osreldate;
 
 	/*
 	 * Retrieve resource information from the system.  Note that
@@ -292,6 +296,12 @@ ParseConfiguration(int isworker)
 			break;
 		}
 		fclose(fp);
+
+		/* Warn the user that World/kernel are out of sync */
+		if (strcmp(VersionFromParamHeader, VersionFromSysctl)) {
+			dlog(DLOG_ALL, "Kernel (%s) out of sync with world (%s) on %s\n",
+			    VersionFromParamHeader, VersionFromSysctl, SystemPath);
+		}
 	}
 
 	/*
