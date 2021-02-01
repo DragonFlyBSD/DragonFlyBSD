@@ -1,0 +1,10 @@
+# Testcase                              	type            Options                 Command line arguments
+usr.sbin/installer/libaura/dict1/dict1		userland	defaults
+usr.sbin/installer/libaura/dict2/dict2		userland	defaults
+usr.sbin/installer/libaura/dict3/dict3		userland	defaults
+usr.sbin/installer/libaura/fspred1/fspred1	userland	defaults
+
+lib/libc/gen/test-wordexp			userland	defaults
+
+priv/test_acct					userland	defaults
+
