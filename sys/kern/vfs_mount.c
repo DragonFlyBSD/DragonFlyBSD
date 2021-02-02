@@ -96,10 +96,6 @@ struct vmntvnodescan_info {
 	struct vnode *vp;
 };
 
-struct vnlru_info {
-	int	pass;
-};
-
 static int
 mount_cmp(struct mount *mnt1, struct mount *mnt2)
 {

@@ -43,8 +43,6 @@
 static void sf_buf_init(void *arg);
 SYSINIT(sock_sf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, sf_buf_init, NULL);
 
-LIST_HEAD(sf_buf_list, sf_buf);
-
 static struct objcache *sf_buf_cache;
 
 MALLOC_DEFINE(M_SFBUF, "sfbuf", "Sendfile buffer structures");
