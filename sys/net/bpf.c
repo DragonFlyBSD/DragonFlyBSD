@@ -73,14 +73,6 @@
 
 #include <sys/devfs.h>
 
-struct netmsg_bpf_output {
-	struct netmsg_base base;
-	struct mbuf	*nm_mbuf;
-	struct ifnet	*nm_ifp;
-	struct sockaddr	*nm_dst;
-	boolean_t 	nm_feedback;
-};
-
 MALLOC_DEFINE(M_BPF, "BPF", "BPF data");
 DEVFS_DEFINE_CLONE_BITMAP(bpf);
 
@@ -91,6 +83,14 @@ DEVFS_DEFINE_CLONE_BITMAP(bpf);
 #endif
 
 #if NBPF > 0
+
+struct netmsg_bpf_output {
+	struct netmsg_base base;
+	struct mbuf	*nm_mbuf;
+	struct ifnet	*nm_ifp;
+	struct sockaddr	*nm_dst;
+	boolean_t 	nm_feedback;
+};
 
 /*
  * The default read buffer size is patchable.
