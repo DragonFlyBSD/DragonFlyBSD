@@ -130,20 +130,22 @@ is_program(const char *fmt, ...)
 	uid = getuid();
 	gid = getgid();
 
-	/* Try to be more precise when identifying executable programs.
-	 * Still this is subject to race conditions where the regular file
-	 * might have its permissions/ownership changed during the test and
-	 * thus provide inaccurate results.
-	 * Also, effective uid/gid is not being checked.
-	 */
-	if ((S_ISREG(sb.st_mode)) &&
-	    ((sb.st_uid == uid && sb.st_mode & S_IXUSR) ||
-		(sb.st_gid == gid && sb.st_mode & S_IXGRP) ||
-		(sb.st_mode & S_IXOTH))) {
-		return 1;
-	} else {
-		return 0;
+	if (error == 0) {
+		/* Try to be more precise when identifying executable programs.
+		 * Still this is subject to race conditions where the regular file
+		 * might have its permissions/ownership changed during the test and
+		 * thus provide inaccurate results.
+		 * Also, effective uid/gid is not being checked.
+		 */
+		if ((S_ISREG(sb.st_mode)) &&
+		    ((sb.st_uid == uid && sb.st_mode & S_IXUSR) ||
+			(sb.st_gid == gid && sb.st_mode & S_IXGRP) ||
+			(sb.st_mode & S_IXOTH))) {
+			return 1;
+		}
 	}
+
+	return 0;
 }
 
 int
