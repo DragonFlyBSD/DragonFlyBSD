@@ -47,6 +47,7 @@ main(void)
 		return EXIT_FAILURE;
 	}
 
+	unlink(TPIPE);
 	if (mkfifo(TPIPE, 0600) == -1) {
 		perror("mkfifo");
 		return EXIT_FAILURE;
@@ -62,19 +63,17 @@ main(void)
 		return EXIT_FAILURE;
 	}
 
-	unlink(TPIPE);
-
 	if (is_mountpoint_mounted(TMOUNTP)) {
 		printf("is_mountpoint_mounted(%s) failed\n", TMOUNTP);
 		return EXIT_FAILURE;
 	}
 
-	if (is_device_mounted(TDEVM)) {
+	if (!is_device_mounted(TDEVM)) {
 		printf("is_device_mounted(%s) failed\n", TDEVM);
 		return EXIT_FAILURE;
 	}
 
-	/* XXX Any reasonable way of testing is_any_slice_mounted */
+	/* XXX Any reasonable way of testing is_any_slice_mounted? */
 
 	return EXIT_SUCCESS;
 }
