@@ -36,7 +36,6 @@
 /*
  * fspred.c
  * Filesystem predicates.
- * $Id: fspred.c,v 1.3 2005/02/10 03:33:49 cpressey Exp $
  */
 
 #include <sys/stat.h>
@@ -48,28 +47,47 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "fspred.h"
 
 /** PREDICATES **/
 
+static void
+vstatmod(mode_t *m, int *error, const char *fmt, ...)
+{
+	char *filename;
+	struct stat sb;
+	va_list vap;
+
+	memset(&sb, 0, sizeof(sb));
+
+	va_start(vap, fmt);
+	vasprintf(&filename, fmt, vap);
+	va_end(vap);
+
+	*error = stat(filename, &sb);
+	free(filename);
+
+	if (*error)
+		*m = 0;	/* Do not leak fake mode */
+	else
+		*m = sb.st_mode;
+}
+
 int
 is_dir(const char *fmt, ...)
 {
-	va_list args;
-	char *filename;
-	int result;
-	struct stat sb;
+	va_list vap;
+	int error;
+	mode_t m;
 
-	va_start(args, fmt);
-	vasprintf(&filename, fmt, args);
-	va_end(args);
+	va_start(vap, fmt);
+	vstatmod(&m, &error, fmt, vap);
+	va_end(vap);
 
-	result = stat(filename, &sb);
-	free(filename);
-
-	if (result == 0)
-		return(sb.st_mode & S_IFDIR);
+	if (error == 0)
+		return(S_ISDIR(m));
 	else
 		return(0);
 }
@@ -77,62 +95,70 @@ is_dir(const char *fmt, ...)
 int
 is_file(const char *fmt, ...)
 {
-	va_list args;
-	char *filename;
-	int result;
-	struct stat sb;
+	va_list vap;
+	int error;
+	mode_t m;
 
-	va_start(args, fmt);
-	vasprintf(&filename, fmt, args);
-	va_end(args);
+	va_start(vap, fmt);
+	vstatmod(&m, &error, fmt, vap);
+	va_end(vap);
 
-	result = stat(filename, &sb);
-	free(filename);
-
-	if (result == 0)
-		return(sb.st_mode & S_IFREG);
+	if (error == 0)
+		return(S_ISREG(m) );
 	else
 		return(0);
+
 }
 
 int
 is_program(const char *fmt, ...)
 {
-	va_list args;
 	char *filename;
-	int result;
 	struct stat sb;
+	va_list vap;
+	int error;
+	uid_t uid;
+	gid_t gid;
 
-	va_start(args, fmt);
-	vasprintf(&filename, fmt, args);
-	va_end(args);
+	va_start(vap, fmt);
+	vasprintf(&filename, fmt, vap);
+	va_end(vap);
 
-	result = stat(filename, &sb);
+	error = stat(filename, &sb);
 	free(filename);
 
-	if (result == 0)
-		return((sb.st_mode & S_IFREG) && (sb.st_mode & S_IXOTH));
-	else
-		return(0);
+	uid = getuid();
+	gid = getgid();
+
+	/* Try to be more precise when identifying executable programs.
+	 * Still this is subject to race conditions where the regular file
+	 * might have its permissions/ownership changed during the test and
+	 * thus provide inaccurate results.
+	 * Also, effective uid/gid is not being checked.
+	 */
+	if ((S_ISREG(sb.st_mode)) &&
+	    ((sb.st_uid == uid && sb.st_mode & S_IXUSR) ||
+		(sb.st_gid == gid && sb.st_mode & S_IXGRP) ||
+		(sb.st_mode & S_IXOTH))) {
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 int
 is_device(const char *fmt, ...)
 {
-	va_list args;
-	char *filename;
-	int result;
-	struct stat sb;
+	va_list vap;
+	int error;
+	mode_t m;
 
-	va_start(args, fmt);
-	vasprintf(&filename, fmt, args);
-	va_end(args);
+	va_start(vap, fmt);
+	vstatmod(&m, &error, fmt, vap);
+	va_end(vap);
 
-	result = stat(filename, &sb);
-	free(filename);
-
-	if (result == 0)
-		return((sb.st_mode & S_IFCHR) | (sb.st_mode & S_IFBLK));
+	if (error == 0)
+		return(S_ISBLK(m) || S_ISCHR(m));
 	else
 		return(0);
 }
@@ -140,21 +166,16 @@ is_device(const char *fmt, ...)
 int
 is_named_pipe(const char *fmt, ...)
 {
-	va_list args;
-	char *filename;
-	int result;
-	struct stat sb;
+	va_list vap;
+	int error;
+	mode_t m;
 
-	va_start(args, fmt);
-	vasprintf(&filename, fmt, args);
-	va_end(args);
+	va_start(vap, fmt);
+	vstatmod(&m, &error, fmt, vap);
+	va_end(vap);
 
-	result = stat(filename, &sb);
-
-	free(filename);
-
-	if (result == 0)
-		return(sb.st_mode & S_IFIFO);
+	if (error == 0)
+		return(S_ISFIFO(m));
 	else
 		return(0);
 }
