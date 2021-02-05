@@ -59,13 +59,13 @@ vstatmod(mode_t *m, int *error, const char *fmt, ...)
 {
 	char *filename;
 	struct stat sb;
-	va_list vap;
+	va_list args;
 
 	memset(&sb, 0, sizeof(sb));
 
-	va_start(vap, fmt);
-	vasprintf(&filename, fmt, vap);
-	va_end(vap);
+	va_start(args, fmt);
+	vasprintf(&filename, fmt, args);
+	va_end(args);
 
 	*error = stat(filename, &sb);
 	free(filename);
@@ -79,13 +79,13 @@ vstatmod(mode_t *m, int *error, const char *fmt, ...)
 int
 is_dir(const char *fmt, ...)
 {
-	va_list vap;
+	va_list args;
 	int error;
 	mode_t m;
 
-	va_start(vap, fmt);
-	vstatmod(&m, &error, fmt, vap);
-	va_end(vap);
+	va_start(args, fmt);
+	vstatmod(&m, &error, fmt, args);
+	va_end(args);
 
 	if (error == 0)
 		return(S_ISDIR(m));
@@ -96,13 +96,13 @@ is_dir(const char *fmt, ...)
 int
 is_file(const char *fmt, ...)
 {
-	va_list vap;
+	va_list args;
 	int error;
 	mode_t m;
 
-	va_start(vap, fmt);
-	vstatmod(&m, &error, fmt, vap);
-	va_end(vap);
+	va_start(args, fmt);
+	vstatmod(&m, &error, fmt, args);
+	va_end(args);
 
 	if (error == 0)
 		return(S_ISREG(m) );
@@ -116,14 +116,14 @@ is_program(const char *fmt, ...)
 {
 	char *filename;
 	struct stat sb;
-	va_list vap;
+	va_list args;
 	int error;
 	uid_t uid;
 	gid_t gid;
 
-	va_start(vap, fmt);
-	vasprintf(&filename, fmt, vap);
-	va_end(vap);
+	va_start(args, fmt);
+	vasprintf(&filename, fmt, args);
+	va_end(args);
 
 	error = stat(filename, &sb);
 	free(filename);
@@ -152,13 +152,13 @@ is_program(const char *fmt, ...)
 int
 is_device(const char *fmt, ...)
 {
-	va_list vap;
+	va_list args;
 	int error;
 	mode_t m;
 
-	va_start(vap, fmt);
-	vstatmod(&m, &error, fmt, vap);
-	va_end(vap);
+	va_start(args, fmt);
+	vstatmod(&m, &error, fmt, args);
+	va_end(args);
 
 	if (error == 0)
 		return(S_ISBLK(m) || S_ISCHR(m));
@@ -169,13 +169,13 @@ is_device(const char *fmt, ...)
 int
 is_named_pipe(const char *fmt, ...)
 {
-	va_list vap;
+	va_list args;
 	int error;
 	mode_t m;
 
-	va_start(vap, fmt);
-	vstatmod(&m, &error, fmt, vap);
-	va_end(vap);
+	va_start(args, fmt);
+	vstatmod(&m, &error, fmt, args);
+	va_end(args);
 
 	if (error == 0)
 		return(S_ISFIFO(m));
