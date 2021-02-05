@@ -191,7 +191,7 @@ is_mountpoint_mounted(const char *mtpt)
 
 	count = getmntinfo(&mt_array, MNT_WAIT);
 	for (mt_ptr = mt_array; count > 0; mt_ptr++, count--) {
-		if (strcmp(mt_ptr->f_mntonname, mtpt) == 0)
+		if (strncmp(mt_ptr->f_mntonname, mtpt, PATH_MAX) == 0)
 			return(1);
 	}
 	return(0);
@@ -205,7 +205,7 @@ is_device_mounted(const char *device)
 
 	count = getmntinfo(&mt_array, MNT_WAIT);
 	for (mt_ptr = mt_array; count > 0; mt_ptr++, count--) {
-		if (strcmp(mt_ptr->f_mntfromname, device) == 0)
+		if (strncmp(mt_ptr->f_mntfromname, device, PATH_MAX) == 0)
 			return(1);
 	}
 	return(0);
