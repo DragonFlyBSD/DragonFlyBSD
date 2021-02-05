@@ -8,7 +8,8 @@ CFLAGS+=	-I${.CURDIR}
 
 SHLIB_MAJOR?= 2
 
-MLINKS=	kinfo.3 kinfo_get_cpus.3 \
+MLINKS= kindo.3 cputime_pcpu_statistics.3 \
+	kinfo.3 kinfo_get_cpus.3 \
 	kinfo.3 kinfo_get_files.3 \
 	kinfo.3 kinfo_get_maxfiles.3 \
 	kinfo.3 kinfo_get_net_rtstatistics.3 \
@@ -19,6 +20,7 @@ MLINKS=	kinfo.3 kinfo_get_cpus.3 \
 	kinfo.3 kinfo_get_sched_stathz.3 \
 	kinfo.3 kinfo_get_tty_tk_nin.3 \
 	kinfo.3 kinfo_get_tty_tk_nout.3 \
-	kinfo.3 kinfo_get_vfs_bufspace.3
+	kinfo.3 kinfo_get_vfs_bufspace.3 \
+	kinfo.3 route_pcpu_statistics.3
 
 .include <bsd.lib.mk>
