@@ -24,7 +24,7 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 term.h:
 	awk -f ${.CURDIR}/../../lib/libncurses/include/MKterm.h.awk ${TERMINFO_CAPS} \
 	  > ${.TARGET}.new
-	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../../libncurses/include/ncurses_cfg.h \
+	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../../lib/libncurses/include/ncurses_cfg.h \
 	  ${.TARGET}.new
 	mv -f ${.TARGET}.new ${.TARGET}
 
