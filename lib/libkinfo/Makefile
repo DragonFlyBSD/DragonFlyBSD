@@ -8,7 +8,7 @@ CFLAGS+=	-I${.CURDIR}
 
 SHLIB_MAJOR?= 2
 
-MLINKS= kindo.3 cputime_pcpu_statistics.3 \
+MLINKS= kinfo.3 cputime_pcpu_statistics.3 \
 	kinfo.3 kinfo_get_cpus.3 \
 	kinfo.3 kinfo_get_files.3 \
 	kinfo.3 kinfo_get_maxfiles.3 \
