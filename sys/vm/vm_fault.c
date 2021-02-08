@@ -1320,7 +1320,7 @@ RetryFault:
 	if (curthread->td_lwp)
 		++curthread->td_lwp->lwp_ru.ru_minflt;
 #endif
-	if ((fs.wflags | didcow) | FW_DIDCOW) {
+	if ((fs.wflags | didcow) & FW_DIDCOW) {
 		pmap_remove(fs.map->pmap,
 			    vaddr & ~PAGE_MASK,
 			    (vaddr & ~PAGE_MASK) + PAGE_SIZE);
