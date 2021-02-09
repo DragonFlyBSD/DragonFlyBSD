@@ -84,6 +84,8 @@ struct iconv_add_out {
 
 #ifndef _KERNEL
 
+#include <sys/cdefs.h>
+
 __BEGIN_DECLS
 
 #define	KICONV_VENDOR_MICSFT	1	/* Microsoft Vendor Code for quirk */
