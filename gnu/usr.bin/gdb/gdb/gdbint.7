@@ -2756,7 +2756,7 @@ gdbarch_init_ftype      *INIT_FUNC,
 gdbarch_dump_tdep_ftype *TDEP_DUMP_FUNC);
 .PP
 The \s-1ARCHITECTURE\s0 will identify the unique \s-1BFD\s0 to be associated with
-this `\fBgdbarch\fR'.  The \s-1INIT_FUNC\s0 funciton is called to create and return
+this `\fBgdbarch\fR'.  The \s-1INIT_FUNC\s0 function is called to create and return
 the new `\fBstruct gdbarch\fR'.  The \s-1TDEP_DUMP_FUNC\s0 function will dump the
 target specific details associated with this architecture.
 .PP
@@ -3161,7 +3161,7 @@ This specifies the register holding the stack pointer, which may
 be a raw or pseudo-register.  It defaults to \-1 (not defined), but
 it is an error for it not to be defined.
 .PP
-The value of the stack pointer register can be accessed withing
+The value of the stack pointer register can be accessed within
 \&\s-1GDB\s0 as the variable `\fB\f(CB$sp\fB\fR'.
 .PP
 \&\-\- Architecture Variable: int pc_regnum
@@ -3171,7 +3171,7 @@ be a raw or pseudo-register.  It defaults to \-1 (not defined).  If
 `\fBwrite_pc\fR' (see above) must be defined.
 .PP
 The value of the program counter (whether defined as a register, or
-through `\fBread_pc\fR' and `\fBwrite_pc\fR') can be accessed withing \s-1GDB\s0 as
+through `\fBread_pc\fR' and `\fBwrite_pc\fR') can be accessed within \s-1GDB\s0 as
 the variable `\fB\f(CB$pc\fB\fR'.
 .PP
 \&\-\- Architecture Variable: int ps_regnum
@@ -3179,7 +3179,7 @@ This specifies the register holding the processor status (often
 called the status register), which may be a raw or
 pseudo-register.  It defaults to \-1 (not defined).
 .PP
-If defined, the value of this register can be accessed withing \s-1GDB\s0
+If defined, the value of this register can be accessed within \s-1GDB\s0
 as the variable `\fB\f(CB$ps\fB\fR'.
 .PP
 \&\-\- Architecture Variable: int fp0_regnum
@@ -3956,7 +3956,7 @@ executed.  Some Harvard architectures may not allow this.
 The prerequisite for adding core file support in \s-1GDB\s0 is to have core
 file support in \s-1BFD.\s0
 .PP
-Once \s-1BFD\s0 support is available, writing the apropriate
+Once \s-1BFD\s0 support is available, writing the appropriate
 `\fBregset_from_core_section\fR' architecture function should be all that is
 needed in order to add support for core files in \s-1GDB.\s0
 .PP

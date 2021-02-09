@@ -57,7 +57,7 @@ initialization()
     comp_rate=6	  # Compression rate
     verbose=0	  # Verbosity on/off
     list_opt=0	  # List backups
-    checksum_opt=0 # Perfom a checksum of all backups
+    checksum_opt=0 # Perform a checksum of all backups
     find_last=0	  # Find last full backup
     timestamp=$(date +'%Y%m%d%H%M%S')
     memlimit="10%"

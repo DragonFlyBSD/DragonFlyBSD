@@ -395,7 +395,7 @@ SOUND SYSTEM UPDATED FROM FreeBSD 11-CURRENT
 
 Many more sound devices may be detected.
 
-If the default device choosen isn't to your liking, setting the sysctl
+If the default device chosen isn't to your liking, setting the sysctl
 hw.snd.default_unit to a different number will change it.
 
 SCTP SUPPORT DROPPED
@@ -857,7 +857,7 @@ intervention:
 	
  * When using a boot-only partition, /boot/loader.rc needs to be edited:
    delete occurrences of '/boot/'.
-   These occurences can normally be deleted in any case, see loader(8).
+   These occurrences can normally be deleted in any case, see loader(8).
 
 +-----------------------------------------------------------------------+
 +         UPGRADING FROM DRAGONFLY <= 1.8 TO DRAGONFLY >= 1.9		+

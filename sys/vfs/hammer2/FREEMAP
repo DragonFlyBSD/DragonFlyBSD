@@ -258,7 +258,7 @@
 
     NOTE! The meta-data scanning passes must also explicitly scan blocks
 	  associated with any open files, since these might represent
-	  open-but-deleted files.  These blocks must not be accidently freed
+	  open-but-deleted files.  These blocks must not be accidentally freed
 	  while the system is still using the file.  Again, since this is
 	  done in two passes it does not have to be synchronized against
 	  frontend operations.  So in total:

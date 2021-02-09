@@ -215,7 +215,7 @@
 			  (not yet implemented)
 
 * Constructing a filesystem across multiple nodes.  Each low-level H2 device
-  would be able to accomodate nodes belonging to multiple cluster components
+  would be able to accommodate nodes belonging to multiple cluster components
   as well as nodes that are simply local to the device or machine.
 
   CURRENT STATUS: Not yet operational.
@@ -319,7 +319,7 @@
   check code.
 
   The Unverified dedup feature is intended only for those files where
-  occassional corruption is ok, such as in a web-crawler data store or
+  occasional corruption is ok, such as in a web-crawler data store or
   other situations where the data content is not critically important
   or can be externally recovered if it becomes corrupt.
 
@@ -360,7 +360,7 @@ HAMMER2 implements several space optimizations:
 
   2. Inodes embed 4 blockrefs, so files up to 256KB and directories with
      up to four directory entries (not including "." or "..") can be
-     accomodated without requiring any indirecct blocks.
+     accommodated without requiring any indirecct blocks.
 
   3. Indirect blocks can be sized to any power of two up to 65536 bytes,
      and H2 typically uses 16384 and 65536 bytes.  The smaller size is
@@ -546,7 +546,7 @@ not propagate up, instead serving as a seed for update_tid.
 There are several other stored transaction ids in HAMMER2.  There is a
 separate freemap_tid in the volume header that is used to allow freemap
 flushes to be deferred, and inodes have a pfs_psnap_tid which is used in
-conjuction with CHECK_NONE to allow blocks without a check code which do
+conjunction with CHECK_NONE to allow blocks without a check code which do
 not violate the most recent snapshot to be overwritten in-place.
 
 Remember that since this is a copy-on-write filesystem, we can propagate
@@ -595,7 +595,7 @@ The filesystem is then ready for use.
 			    DISK I/O OPTIMIZATIONS
 
 The freemap implements a 1KB allocation resolution.  Each 2MB segment managed
-by the freemap is zoned and has a tendancy to collect inodes, small data,
+by the freemap is zoned and has a tendency to collect inodes, small data,
 indirect blocks, and larger data blocks into separate segments.  The idea is
 to greatly improve I/O performance (particularly by laying inodes down next
 to each other which has a huge effect on directory scans).
@@ -730,7 +730,7 @@ and would be able to make the change with relatively low downtime.
 
 Clustering, as always, is the most difficult bit but we have some advantages
 with HAMMER2 that we did not have with HAMMER1.  First, HAMMER2's media
-structures generally follow the kernel's filesystem hiearchy which allows
+structures generally follow the kernel's filesystem hierarchy which allows
 cluster operations to use topology cache and lock state.  Second,
 HAMMER2's writable snapshots make it possible to implement several forms
 of multi-master clustering.
@@ -867,7 +867,7 @@ copied to a new inode and poof, we have an unchanging snapshot to work with.
 	- A snapshot can be forked off from its parent cluster entirely and
 	  turned into its own writable filesystem, either as a single MASTER
 	  or this can be done across the cluster by forking a quorum+ of
-	  existing MASTERs and transfering them all to a new cluster id.
+	  existing MASTERs and transferring them all to a new cluster id.
 
 More complex is reintegrating the target once the synchronization is complete.
 For SLAVEs we just delete the old SLAVE and rename the copy to the same name.

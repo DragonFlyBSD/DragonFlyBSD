@@ -90,7 +90,7 @@ IDENTIFY DEVICE Changed in SATA 2:
 
 	Device configuration overlay
 	Word 0-7	Defined by ATA
-	Word 8		3	suports async notification
+	Word 8		3	supports async notification
 			2	supports IPM
 			1	supports nz buffer offsets in DMA setup FIS
 			0	supports NCQ

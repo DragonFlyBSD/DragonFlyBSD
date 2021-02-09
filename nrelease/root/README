@@ -92,7 +92,7 @@
 	# DragonFly, skip this step.  However, sometimes old boot
 	# blocks or cruft in the boot area can interfere with the
 	# initialization process.  A cure is to zero out the start of
-	# the disk before running fdisk.  Replace 'ad0' with the choosen disk.
+	# the disk before running fdisk.  Replace 'ad0' with the chosen disk.
 	#
 	# WARNING: This COMPLETELY WIPES and repartitions your hard drive.
 	#

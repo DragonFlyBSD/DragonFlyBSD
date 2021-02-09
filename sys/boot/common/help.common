@@ -704,7 +704,7 @@
 
 	menuitem <key> <description text>
 
-	Start new menu bullet, when running menu system bullet is choosen by
+	Start new menu bullet, when running menu system bullet is chosen by
 	pressing <key>.  E.g.:
 
 		menuitem a "Boot Backup kernel kernel.alt"

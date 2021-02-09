@@ -1,5 +1,3 @@
-$DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
-
 			    INCREMENTAL BACKUP HOWTO
 
     This document describes one of several ways to set up a LAN backup and
@@ -35,7 +33,7 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
     Before you actually do the NFS mount, create a dummy file for each
     mount point that can be used by scripts to detect when an NFS mount
     has not been done.  Scripts can thus avoid a common failure scenario
-    and not accidently cpdup an empty mount point to the backup partition
+    and not accidentally cpdup an empty mount point to the backup partition
     (destroying that day's backup in the process).
 
 	touch /nfs/box1/home/NOT_MOUNTED
@@ -137,7 +135,7 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
     will have a distinct copy of all the file data and you will quickly
     run out of space in your /backup partition.
 
-		    MAINTAINANCE OF THE "/backup" DIRECTORY
+		    MAINTENANCE OF THE "/backup" DIRECTORY
 
     Now, clearly you are going to run out of space in /backup if you keep
     doing this, but you may be surprised at just how many daily incrementals
@@ -338,6 +336,6 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
 
     If your OpenSSH version has been patched to support unencrypted transfers
     *AND* you trust the physical network between the machines involved, you
-    might want to disable encryption alltogether:
+    might want to disable encryption altogether:
 
 	cpdup -F -cnone ...
