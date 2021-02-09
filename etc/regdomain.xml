@@ -1567,13 +1567,13 @@
   <isocc>440</isocc> <name>Lithuania</name> <rd ref="etsi"/>
 </country>
 <country id="LU">
-  <isocc>442</isocc> <name>Luxemborg</name> <rd ref="etsi"/>
+  <isocc>442</isocc> <name>Luxembourg</name> <rd ref="etsi"/>
 </country>
 <country id="MO">
   <isocc>446</isocc> <name>Macau</name> <rd ref="none"/>
 </country>
 <country id="MK">
-  <isocc>807</isocc> <name>Macedonia</name> <rd ref="none"/>
+  <isocc>807</isocc> <name>North Macedonia</name> <rd ref="none"/>
 </country>
 <country id="MY">
   <isocc>458</isocc> <name>Malaysia</name> <rd ref="apac3"/>
@@ -1615,7 +1615,7 @@
   <isocc>604</isocc> <name>Peru</name> <rd ref="none"/>
 </country>
 <country id="PH">
-  <isocc>608</isocc> <name>Phillipines</name> <rd ref="apac2"/>
+  <isocc>608</isocc> <name>Philippines</name> <rd ref="apac2"/>
 </country>
 <country id="PL">
   <isocc>616</isocc> <name>Poland</name> <rd ref="etsi"/>
@@ -1627,7 +1627,7 @@
   <isocc>630</isocc> <name>Puerto Rico</name> <rd ref="fcc"/>
 </country>
 <country id="QA">
-  <isocc>634</isocc> <name>Quatar</name> <rd ref="none"/>
+  <isocc>634</isocc> <name>Qatar</name> <rd ref="none"/>
 </country>
 <country id="RO">
   <isocc>642</isocc> <name>Romania</name> <rd ref="etsi"/>
@@ -1672,7 +1672,7 @@
   <isocc>764</isocc> <name>Thailand</name> <rd ref="none"/>
 </country>
 <country id="TT">
-  <isocc>780</isocc> <name>Tobago</name> <rd ref="none"/>
+  <isocc>780</isocc> <name>Trinidad and Tobago</name> <rd ref="none"/>
 </country>
 <country id="TN">
   <isocc>788</isocc> <name>Tunisia</name> <rd ref="none"/>
