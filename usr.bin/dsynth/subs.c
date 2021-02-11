@@ -816,6 +816,18 @@ getphasestr(worker_phase_t phaseid)
 	case PHASE_DEINSTALL:
 		phase = "deinstall";
 		break;
+	case PHASE_DUMP_ENV:
+		phase = "dump-env";
+		break;
+	case PHASE_DUMP_VAR:
+		phase = "dump-var";
+		break;
+	case PHASE_SHOW_CONFIG:
+		phase = "show-config";
+		break;
+	case PHASE_DUMP_MAKECONF:
+		phase = "make-conf";
+		break;
 	default:
 		phase = "Run-Unknown";
 		break;
