@@ -85,6 +85,7 @@ struct iconv_add_out {
 #ifndef _KERNEL
 
 #include <sys/cdefs.h>
+#include <sys/types.h>
 
 __BEGIN_DECLS
 
@@ -100,7 +101,7 @@ const char *kiconv_quirkcs(const char *, int);
 
 __END_DECLS
 
-#else /* !_KERNEL */
+#else /* _KERNEL */
 
 #include <sys/kobj.h>
 #include <sys/module.h>			/* can't avoid that */
