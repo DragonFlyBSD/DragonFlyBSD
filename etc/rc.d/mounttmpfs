@@ -10,6 +10,12 @@ name="mounttmpfs"
 start_cmd="mounttmpfs_start"
 stop_cmd=":"
 
+is_mountpoint()
+{
+	local mp="$1"
+	mount | awk '{ print $3 }' | grep -q "^${mp}$"
+}
+
 mounttmpfs_start()
 {
 	if checkyesno tmpfs_var_run; then
@@ -28,9 +34,13 @@ mounttmpfs_start()
 	fi
 
 	if checkyesno tmpfs_tmp; then
-		echo -n "Mounting tmpfs at /tmp"
-		mount_tmpfs -m 01777 dummy /tmp
-		echo "."
+		if is_mountpoint "/tmp"; then
+			echo "/tmp has been already mounted a filesystem."
+		else
+			echo -n "Mounting tmpfs at /tmp"
+			mount_tmpfs -m 01777 dummy /tmp
+			echo "."
+		fi
 	fi
 }
 
