@@ -39,10 +39,6 @@ typedef uint64_t loff_t;
 #define DECLARE_BITMAP(n, bits) \
 	unsigned long n[howmany(bits, sizeof(long) * 8)]
 
-#if !defined(__cplusplus) && !defined(bool)
-typedef _Bool	bool;
-#endif
-
 typedef unsigned short umode_t;
 
 typedef unsigned long pgoff_t;

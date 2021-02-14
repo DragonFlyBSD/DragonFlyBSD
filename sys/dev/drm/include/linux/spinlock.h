@@ -49,8 +49,6 @@
 
 #define assert_spin_locked(x)	KKASSERT(lockinuse(x))
 
-typedef struct lock spinlock_t;
-
 /*
  * The spin_lock_irq() family of functions stop hardware interrupts
  * from being delivered to the local CPU.
