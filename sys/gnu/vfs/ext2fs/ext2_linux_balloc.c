@@ -496,7 +496,6 @@ ext2_count_free_blocks(struct mount *mp)
 	return sb->s_es->s_free_blocks_count;
 #endif
 }
-#endif /* unused */
 
 static __inline int
 block_in_use (unsigned long block, struct ext2_sb_info *sb,
@@ -505,6 +504,7 @@ block_in_use (unsigned long block, struct ext2_sb_info *sb,
 	return test_bit ((block - sb->s_es->s_first_data_block) %
 			 EXT2_BLOCKS_PER_GROUP(sb), map);
 }
+#endif /* unused */
 
 static int
 test_root(int a, int b)

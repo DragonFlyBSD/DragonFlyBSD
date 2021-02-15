@@ -1535,6 +1535,7 @@ carp_send_na(struct carp_softc *sc)
 }
 #endif /* INET6 */
 
+#ifdef notyet
 static __inline const struct carp_vhaddr *
 carp_find_addr(const struct carp_softc *sc, const struct in_addr *addr)
 {
@@ -1550,7 +1551,6 @@ carp_find_addr(const struct carp_softc *sc, const struct in_addr *addr)
 	return NULL;
 }
 
-#ifdef notyet
 static int
 carp_iamatch_balance(const struct carp_if *cif, const struct in_addr *itaddr,
 		     const struct in_addr *isaddr, uint8_t **enaddr)
