@@ -1202,6 +1202,7 @@ nfs_request_auth(struct nfsreq *rep)
 	 * Get the RPC header with authorization.
 	 */
 	verf_str = auth_str = NULL;
+	verf_len = 0;
 	if (nmp->nm_flag & NFSMNT_KERB) {
 		verf_str = nickv;
 		verf_len = sizeof (nickv);
