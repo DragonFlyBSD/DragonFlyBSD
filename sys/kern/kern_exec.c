@@ -918,6 +918,7 @@ exec_copyin_args(struct image_args *args, char *fname,
 	args->buf = objcache_get(exec_objcache, M_WAITOK);
 	if (args->buf == NULL)
 		return (ENOMEM);
+
 	args->begin_argv = args->buf;
 	args->endp = args->begin_argv;
 	args->space = ARG_MAX;
@@ -927,11 +928,12 @@ exec_copyin_args(struct image_args *args, char *fname,
 	/*
 	 * Copy the file name.
 	 */
-	if (segflg == PATH_SYSSPACE) {
+	if (segflg == PATH_SYSSPACE)
 		error = copystr(fname, args->fname, PATH_MAX, &length);
-	} else if (segflg == PATH_USERSPACE) {
+	else
 		error = copyinstr(fname, args->fname, PATH_MAX, &length);
-	}
+	if (error)
+		return (error);
 
 	/*
 	 * Extract argument strings.  argv may not be NULL.  The argv
