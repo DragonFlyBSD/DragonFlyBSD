@@ -111,7 +111,7 @@ struct utmpx {
 	char ut_id[_UTX_IDSIZE];	/* inittab id */
 	char ut_line[_UTX_LINESIZE];	/* tty name */
 	char ut_host[_UTX_HOSTSIZE];	/* host name */
-	__uint8_t	ut_unused[16];	/* reserved for future use */
+	__uint8_t ut_unused[16];	/* reserved for future use */
 	__uint16_t ut_session;		/* session id used for windowing */
 	short ut_type;			/* type of this entry */
 	pid_t ut_pid;			/* process id creating the entry */
