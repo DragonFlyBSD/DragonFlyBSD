@@ -199,17 +199,19 @@ __read_mostly static const struct execsw **execsw;
 int
 kern_execve(struct nlookupdata *nd, struct image_args *args)
 {
+	register_t *stack_base;
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 	struct vnode *ovp;
-	register_t *stack_base;
 	struct pargs *pa;
 	struct sigacts *ops;
 	struct sigacts *nps;
-	int error, len, i;
 	struct image_params image_params, *imgp;
+	struct filedesc *fds;
+	struct nchandle *nch;
 	struct vattr_lite lva;
+	int error, len, i;
 	int (*img_first) (struct image_params *);
 
 	if (debug_execve_args) {
@@ -254,30 +256,34 @@ interpret:
 	 * Translate the file name to a vnode.  Unlock the cache entry to
 	 * improve parallelism for programs exec'd in parallel.
 	 */
+	nch = &nd->nl_nch;
 	nd->nl_flags |= NLC_SHAREDLOCK;
 	if ((error = nlookup(nd)) != 0)
-		goto exec_fail;
-	error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_SHARED, &imgp->vp);
+		goto failed;
+
+	error = cache_vget(nch, nd->nl_cred, LK_SHARED, &imgp->vp);
 	KKASSERT(nd->nl_flags & NLC_NCPISLOCKED);
 	nd->nl_flags &= ~NLC_NCPISLOCKED;
-	cache_unlock(&nd->nl_nch);
-	if (error)
-		goto exec_fail;
+	cache_unlock(nch);
+	if (error) {
+		imgp->vp = NULL;
+		goto failed;
+	}
 
 	/*
 	 * Check file permissions (also 'opens' file).
 	 * Include also the top level mount in the check.
 	 */
-	error = exec_check_permissions(imgp, nd->nl_nch.mount);
+	error = exec_check_permissions(imgp, nch->mount);
 	if (error) {
 		vn_unlock(imgp->vp);
-		goto exec_fail_dealloc;
+		goto failed;
 	}
 
 	error = exec_map_first_page(imgp);
 	vn_unlock(imgp->vp);
 	if (error)
-		goto exec_fail_dealloc;
+		goto failed;
 
 	imgp->proc->p_osrel = 0;
 
@@ -289,7 +295,7 @@ interpret:
 
 	/*
 	 *	If the current process has a special image activator it
-	 *	wants to try first, call it.   For example, emulating shell 
+	 *	wants to try first, call it.  For example, emulating shell
 	 *	scripts differently.
 	 */
 	error = -1;
@@ -299,9 +305,8 @@ interpret:
 	/*
 	 *	If the vnode has a registered vmspace, exec the vmspace
 	 */
-	if (error == -1 && imgp->vp->v_resident) {
+	if (error == -1 && imgp->vp->v_resident)
 		error = exec_resident_imgact(imgp);
-	}
 
 	/*
 	 *	Loop through the list of image activators, calling each one.
@@ -319,7 +324,7 @@ interpret:
 	if (error) {
 		if (error == -1)
 			error = ENOEXEC;
-		goto exec_fail_dealloc;
+		goto failed;
 	}
 
 	/*
@@ -334,7 +339,8 @@ interpret:
 		error = nlookup_init(nd, imgp->interpreter_name, UIO_SYSSPACE,
 					NLC_FOLLOW);
 		if (error)
-			goto exec_fail;
+			goto failed;
+
 		goto interpret;
 	}
 
@@ -342,13 +348,12 @@ interpret:
 	 * Do the best to calculate the full path to the image file
 	 */
 	if (imgp->auxargs != NULL &&
-	   ((args->fname != NULL && args->fname[0] == '/') ||
-	    vn_fullpath(imgp->proc,
-			imgp->vp,
-			&imgp->execpath,
-			&imgp->freepath,
-			0) != 0))
+	    ((args->fname != NULL && args->fname[0] == '/') ||
+	     vn_fullpath(imgp->proc, imgp->vp, &imgp->execpath,
+			 &imgp->freepath, 0) != 0))
+	{
 		imgp->execpath = args->fname;
+	}
 
 	/*
 	 * Copy out strings (args and env) and initialize stack base
@@ -374,12 +379,10 @@ interpret:
 	 * be shared after an exec.
 	 */
 	if (p->p_fd->fd_refcnt > 1) {
-		struct filedesc *tmp;
+		if ((error = fdcopy(p, &fds)) != 0)
+			goto failed;
 
-		error = fdcopy(p, &tmp);
-		if (error != 0)
-			goto exec_fail;
-		fdfree(p, tmp);
+		fdfree(p, fds);
 	}
 
 	/*
@@ -426,9 +429,9 @@ interpret:
 	/* reset caught signals */
 	execsigs(p);
 
-	/* name this process - nameiexec(p, ndp) */
-	len = min(nd->nl_nch.ncp->nc_nlen, MAXCOMLEN);
-	bcopy(nd->nl_nch.ncp->nc_name, p->p_comm, len);
+	/* name this process */
+	len = min(nch->ncp->nc_nlen, MAXCOMLEN);
+	bcopy(nch->ncp->nc_name, p->p_comm, len);
 	p->p_comm[len] = 0;
 	bcopy(p->p_comm, lp->lwp_thread->td_comm, MAXCOMLEN+1);
 
@@ -477,7 +480,8 @@ interpret:
 		/* Make sure file descriptors 0..2 are in use. */
 		error = fdcheckstd(lp);
 		if (error != 0)
-			goto exec_fail_dealloc;
+			goto failed;
+
 		/*
 		 * Set the new credentials.
 		 */
@@ -487,9 +491,7 @@ interpret:
 		if (lva.va_mode & VSGID)
 			p->p_ucred->cr_gid = lva.va_gid;
 
-		/*
-		 * Clear local varsym variables
-		 */
+		/* Clear local varsym variables */
 		varsymset_clean(&p->p_varsymset);
 	} else {
 		if (p->p_ucred->cr_uid == p->p_ucred->cr_ruid &&
@@ -520,9 +522,8 @@ interpret:
 	/* Release old namecache handle to text file */
 	if (p->p_textnch.ncp)
 		cache_drop(&p->p_textnch);
-
-	if (nd->nl_nch.mount)
-		cache_copy(&nd->nl_nch, &p->p_textnch);
+	if (nch->mount)
+		cache_copy(nch, &p->p_textnch);
 
         /*
          * Notify others that we exec'd, and clear the P_INEXEC flag
@@ -575,19 +576,15 @@ interpret:
 		p->p_args = pa;
 	}
 
-exec_fail_dealloc:
+failed:
 
 	/*
 	 * free various allocated resources
 	 */
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
-
-	if (imgp->vp) {
+	if (imgp->vp)
 		vrele(imgp->vp);
-		imgp->vp = NULL;
-	}
-
 	if (imgp->freepath)
 		kfree(imgp->freepath, M_TEMP);
 
@@ -597,7 +594,6 @@ exec_fail_dealloc:
 		return (0);
 	}
 
-exec_fail:
 	/*
 	 * we're done here, clear P_INEXEC if we were the ones that
 	 * set it.  Otherwise if vmspace_destroyed is still set we
@@ -617,9 +613,9 @@ exec_fail:
 		 * caller might have to clean up, so indicate a
 		 * lethal error by returning -1.
 		 */
-		return(-1);
+		return (-1);
 	} else {
-		return(error);
+		return (error);
 	}
 }
 
