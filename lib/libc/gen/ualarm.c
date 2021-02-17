@@ -39,8 +39,8 @@
  * If ``reload'' is non-zero, keep generating SIGALRM
  * every ``reload'' microseconds after the first signal.
  */
-unsigned
-ualarm(unsigned usecs, unsigned reload)
+useconds_t
+ualarm(useconds_t usecs, useconds_t reload)
 {
 	struct itimerval new, old;
 

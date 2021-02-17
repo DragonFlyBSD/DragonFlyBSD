@@ -515,9 +515,9 @@ void	*sbrk(intptr_t);
 
 #if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
 char	*getwd(char *);			/* LEGACY (obsoleted by getcwd()) */
-unsigned int
-	 ualarm(unsigned int, unsigned int);
-int	 usleep(unsigned int);
+useconds_t
+	 ualarm(useconds_t, useconds_t);
+int	 usleep(useconds_t);
 pid_t	 vfork(void) __returns_twice;
 #endif
 

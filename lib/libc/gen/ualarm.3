@@ -28,7 +28,7 @@
 .\"     From: @(#)ualarm.3	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/ualarm.3,v 1.9.2.5 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd April 19, 1994
+.Dd February 17, 2021
 .Dt UALARM 3
 .Os
 .Sh NAME
@@ -38,8 +38,8 @@
 .Lb libc
 .Sh SYNOPSIS
 .In unistd.h
-.Ft u_int
-.Fn ualarm "u_int microseconds" "u_int interval"
+.Ft useconds_t
+.Fn ualarm "useconds_t microseconds" "useconds_t interval"
 .Sh DESCRIPTION
 .Bf -symbolic
 This is a simplified interface to

@@ -96,7 +96,7 @@ extern int	__sys_pselect(int, fd_set *, fd_set *, fd_set *,
 extern unsigned	__sleep(unsigned int);
 extern int	__system(const char *);
 extern int	__tcdrain(int);
-extern int	__usleep(unsigned);
+extern int	__usleep(useconds_t);
 extern pid_t	__wait(int *);
 extern pid_t	__waitpid(pid_t, int *, int);
 extern int	__sys_aio_suspend(const struct aiocb * const[], int,
@@ -121,7 +121,7 @@ extern pid_t	__sys_wait4(pid_t, int *, int, struct rusage *);
 extern ssize_t	__sys_writev(int, const struct iovec *, int);
 
 int	___creat(const char *, mode_t);
-int	___usleep(unsigned);
+int	___usleep(useconds_t);
 int	__accept(int, struct sockaddr *, socklen_t *);
 int	__close(int);
 int	__connect(int, const struct sockaddr *, socklen_t);
@@ -635,7 +635,7 @@ _tcdrain(int fd)
 __strong_reference(_tcdrain, tcdrain);
 
 int
-___usleep(unsigned int useconds)
+___usleep(useconds_t useconds)
 {
 	pthread_t	curthread = tls_get_curthread();
 	int		oldcancel;

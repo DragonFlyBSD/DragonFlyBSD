@@ -35,10 +35,10 @@
 #include <unistd.h>
 #include "un-namespace.h"
 
-int __usleep(unsigned int);
+int __usleep(useconds_t);
 
 int
-__usleep(unsigned int useconds)
+__usleep(useconds_t useconds)
 {
 	struct timespec time_to_sleep;
 
