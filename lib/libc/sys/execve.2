@@ -183,16 +183,15 @@ When a program is executed as a result of an
 .Fn execve
 call, it is entered as follows:
 .Bd -literal -offset indent
-main(argc, argv, envp)
-int argc;
-char **argv, **envp;
+.Fn main "int argc" "char **argv" "char **envp" ;
 .Ed
 .Pp
 where
 .Fa argc
 is the number of elements in
 .Fa argv
-(the ``arg count'')
+(the
+.Dq argument count )
 and
 .Fa argv
 points to the array of character pointers
@@ -269,7 +268,9 @@ If a program is
 to a non-super-user, but is executed when
 the real
 .Em uid
-is ``root'', then the program has some of the powers
+is
+.Dq root ,
+then the program has some of the powers
 of a super-user as well.
 .Sh SEE ALSO
 .Xr ktrace 1 ,
