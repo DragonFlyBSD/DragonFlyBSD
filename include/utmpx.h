@@ -34,6 +34,11 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#ifndef _PID_T_DECLARED
+typedef	__pid_t		pid_t;		/* process id */
+#define	_PID_T_DECLARED
+#endif
+
 #define	_PATH_UTMPX		"/var/run/utmpx"
 #define	_PATH_WTMPX		"/var/log/wtmpx"
 #define	_PATH_LASTLOGX		"/var/log/lastlogx"
@@ -87,8 +92,8 @@ typedef enum {
 
 struct exit_status
 {
-	uint16_t e_termination;		/* termination status */
-	uint16_t e_exit;		/* exit status */
+	__uint16_t e_termination;	/* termination status */
+	__uint16_t e_exit;		/* exit status */
 };
 
 /*
@@ -106,14 +111,14 @@ struct utmpx {
 	char ut_id[_UTX_IDSIZE];	/* inittab id */
 	char ut_line[_UTX_LINESIZE];	/* tty name */
 	char ut_host[_UTX_HOSTSIZE];	/* host name */
-	uint8_t	ut_unused[16];		/* reserved for future use */
-	uint16_t ut_session;		/* session id used for windowing */
+	__uint8_t	ut_unused[16];	/* reserved for future use */
+	__uint16_t ut_session;		/* session id used for windowing */
 	short ut_type;			/* type of this entry */
 	pid_t ut_pid;			/* process id creating the entry */
 	struct exit_status ut_exit;	/* process termination/exit status */
 	struct sockaddr_storage ut_ss;	/* address where entry was made from */
 	struct timeval ut_tv;		/* time entry was created */
-	uint8_t ut_unused2[16];		/* reserved for future use */
+	__uint8_t ut_unused2[16];	/* reserved for future use */
 };
 
 #if __BSD_VISIBLE
@@ -145,4 +150,3 @@ int setutxdb(utx_db_t, const char *);
 __END_DECLS
 
 #endif /* _UTMPX_H_ */
-
