@@ -28,11 +28,12 @@
 .\"     @(#)execve.2	8.5 (Berkeley) 6/1/94
 .\" $FreeBSD: src/lib/libc/sys/execve.2,v 1.16.2.10 2001/12/22 01:21:30 jwd Exp $
 .\"
-.Dd January 23, 2021
+.Dd February 17, 2021
 .Dt EXECVE 2
 .Os
 .Sh NAME
-.Nm execve
+.Nm execve ,
+.Nm fexecve
 .Nd execute a file
 .Sh LIBRARY
 .Lb libc
@@ -40,6 +41,8 @@
 .In unistd.h
 .Ft int
 .Fn execve "const char *path" "char *const argv[]" "char *const envp[]"
+.Ft int
+.Fn fexecve "int fd" "char *const argv[]" "char *const envp[]"
 .Sh DESCRIPTION
 .Fn Execve
 transforms the calling process into a new process.
@@ -48,7 +51,17 @@ whose name is pointed to by
 .Fa path ,
 called the
 .Em new process file .
-This file is either an executable object file,
+The
+.Fn fexecve
+system call is equivalent to
+.Fn execve
+except that the file to be executed is determined by the file descriptor
+.Fa fd
+instead of a
+.Fa path .
+This
+.Em new process file
+is either an executable object file,
 or a file of data for an interpreter.
 An executable object file consists of an identifying header,
 followed by pages of data representing the initial program (text)
@@ -196,10 +209,32 @@ and
 .Fa argv
 points to the array of character pointers
 to the arguments themselves.
+.Pp
+The
+.Fn fexecve
+function ignores the file offset of
+.Fa fd .
+Since the execute permission is checked by
+.Fn fexecve ,
+the file descriptor
+.Fa fd
+need not have been opened with the
+.Dv O_EXEC
+flag.
+However, if the file to be executed denies read permission for the process
+preparing to do the exec, the only way to provide the
+.Fa fd
+to
+.Fn fexecve
+is to use the
+.Dv O_EXEC
+flag when opening
+.Fa fd .
+Note that the file to be executed can not be open for writing.
 .Sh RETURN VALUES
-As the
+As
 .Fn execve
-function overlays the current process image
+overlays the current process image
 with a new process image the successful call
 has no process to return to.
 If
@@ -208,6 +243,10 @@ does return to the calling process an error has occurred; the
 return value will be -1 and the global variable
 .Va errno
 is set to indicate the error.
+.Pp
+.Fn Fexecve
+has the same return values as
+.Fn execve .
 .Sh ERRORS
 .Fn Execve
 will fail and return to the calling process if:
@@ -262,6 +301,16 @@ to an illegal address.
 .It Bq Er EIO
 An I/O error occurred while reading from the file system.
 .El
+.Pp
+In addition, the
+.Fn fexecve
+system call will fail and return to the calling process if:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa fd
+argument is not a valid file descriptor open for executing.
+.El
 .Sh CAVEATS
 If a program is
 .Em setuid
@@ -289,10 +338,18 @@ The
 .Fn execve
 system call conforms to
 .St -p1003.1-2004 .
+The
+.Fn fexecve
+system call conforms to
+.St -p1003.1-2008 .
 .Pp
 The support for executing interpreted programs is an extension.
 .Sh HISTORY
 The
 .Fn execve
-function call appeared in
-.Bx 4.2 .
+system call appeared in
+.At v7 .
+The
+.Fn fexecve
+system call first appeared in
+.Dx 5.9 .

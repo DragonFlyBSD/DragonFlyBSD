@@ -314,4 +314,5 @@ MIASM =  \
 	wait6.o \
 	lwp_getname.o \
 	getrandom.o \
-	__realpath.o
+	__realpath.o \
+	fexecve.o

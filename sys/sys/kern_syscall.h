@@ -73,7 +73,8 @@ int kern_fstat(int fd, struct stat *st);
 /*
  * Prototypes for syscalls in kern/kern_exec.c
  */
-int kern_execve(struct nlookupdata *nd, struct image_args *args);
+int kern_execve(struct nlookupdata *nd, struct file *fp,
+		struct image_args *args);
 
 /*
  * Prototypes for syscalls in kern/kern_exit.c

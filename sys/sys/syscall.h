@@ -387,4 +387,5 @@
 #define	SYS_lwp_getname	549
 #define	SYS_getrandom	550
 #define	SYS___realpath	551
-#define	SYS_MAXSYSCALL	552
+#define	SYS_fexecve	552
+#define	SYS_MAXSYSCALL	553

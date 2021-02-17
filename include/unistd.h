@@ -474,9 +474,7 @@ int	 truncate(const char *, off_t);
 #if __POSIX_VISIBLE >= 200809
 int	faccessat(int, const char *, int, int);
 int	fchownat(int, const char *, uid_t, gid_t, int);
-#if 0 /* XXX missing */
 int	fexecve(int, char *const [], char *const []);
-#endif
 int	linkat(int, const char *, int, const char *, int);
 ssize_t	readlinkat(int, const char * __restrict, char * __restrict, size_t);
 int	symlinkat(const char *, int, const char *);

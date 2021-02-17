@@ -224,9 +224,10 @@
  * 500906 - add struct ip_mreqn for IPPROTO_IP/IP_MULTICAST_IF,
  *          IP_ADD_MEMBERSHIP and IP_DROP_MEMBERSHIP.
  * 500907 - add clock_nanosleep()
+ * 500908 - add fexecve()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500907	/* propagated to newvers */
+#define __DragonFly_version 500908	/* propagated to newvers */
 
 #include <sys/_null.h>
 

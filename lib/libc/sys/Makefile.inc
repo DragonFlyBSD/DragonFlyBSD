@@ -120,6 +120,7 @@ MLINKS+=clock_gettime.2 clock_getres.2 \
 	clock_gettime.2 clock_settime.2
 MLINKS+=dup.2 dup2.2
 MLINKS+=exec_sys_register.2 exec_sys_unregister.2
+MLINKS+=execve.2 fexecve.2
 MLINKS+=extattr.2 extattr_delete_file.2 \
 	extattr.2 extattr_get_file.2 \
 	extattr.2 extattr_set_file.2

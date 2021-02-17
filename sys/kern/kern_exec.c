@@ -197,8 +197,10 @@ __read_mostly static const struct execsw **execsw;
  * process!
  */
 int
-kern_execve(struct nlookupdata *nd, struct image_args *args)
+kern_execve(struct nlookupdata *nd, struct file *fp,
+	    struct image_args *args)
 {
+	static const char *proctitle = "(execve)";
 	register_t *stack_base;
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
@@ -210,6 +212,7 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	struct image_params image_params, *imgp;
 	struct filedesc *fds;
 	struct nchandle *nch;
+	struct nlookupdata nd_interpreter;
 	struct vattr_lite lva;
 	int error, len, i;
 	int (*img_first) (struct image_params *);
@@ -252,19 +255,26 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 
 interpret:
 
-	/*
-	 * Translate the file name to a vnode.  Unlock the cache entry to
-	 * improve parallelism for programs exec'd in parallel.
-	 */
-	nch = &nd->nl_nch;
-	nd->nl_flags |= NLC_SHAREDLOCK;
-	if ((error = nlookup(nd)) != 0)
-		goto failed;
+	if (nd) {
+		/*
+		 * Translate the file name to a vnode.  Unlock the cache
+		 * entry to improve parallelism for programs exec'd in
+		 * parallel.
+		 */
+		nch = &nd->nl_nch;
+		nd->nl_flags |= NLC_SHAREDLOCK;
+		if ((error = nlookup(nd)) != 0)
+			goto failed;
 
-	error = cache_vget(nch, nd->nl_cred, LK_SHARED, &imgp->vp);
-	KKASSERT(nd->nl_flags & NLC_NCPISLOCKED);
-	nd->nl_flags &= ~NLC_NCPISLOCKED;
-	cache_unlock(nch);
+		error = cache_vget(nch, nd->nl_cred, LK_SHARED, &imgp->vp);
+		KKASSERT(nd->nl_flags & NLC_NCPISLOCKED);
+		nd->nl_flags &= ~NLC_NCPISLOCKED;
+		cache_unlock(nch);
+	} else {
+		nch = &fp->f_nchandle;
+		imgp->vp = fp->f_data;
+		error = vget(imgp->vp, LK_SHARED);
+	}
 	if (error) {
 		imgp->vp = NULL;
 		goto failed;
@@ -333,11 +343,12 @@ interpret:
 	 */
 	if (imgp->interpreted) {
 		exec_unmap_first_page(imgp);
-		nlookup_done(nd);
 		vrele(imgp->vp);
 		imgp->vp = NULL;
-		error = nlookup_init(nd, imgp->interpreter_name, UIO_SYSSPACE,
-					NLC_FOLLOW);
+
+		nd = &nd_interpreter;
+		error = nlookup_init(nd, imgp->interpreter_name,
+				     UIO_SYSSPACE, NLC_FOLLOW);
 		if (error)
 			goto failed;
 
@@ -430,8 +441,13 @@ interpret:
 	execsigs(p);
 
 	/* name this process */
-	len = min(nch->ncp->nc_nlen, MAXCOMLEN);
-	bcopy(nch->ncp->nc_name, p->p_comm, len);
+	if (nch->ncp) {
+		len = min(nch->ncp->nc_nlen, MAXCOMLEN);
+		bcopy(nch->ncp->nc_name, p->p_comm, len);
+	} else {
+		len = sizeof(proctitle) - 1;
+		bcopy(proctitle, p->p_comm, len);
+	}
 	p->p_comm[len] = 0;
 	bcopy(p->p_comm, lp->lwp_thread->td_comm, MAXCOMLEN+1);
 
@@ -587,6 +603,8 @@ failed:
 		vrele(imgp->vp);
 	if (imgp->freepath)
 		kfree(imgp->freepath, M_TEMP);
+	if (nd == &nd_interpreter)
+		nlookup_done(nd);
 
 	if (error == 0) {
 		++mycpu->gd_cnt.v_exec;
@@ -634,10 +652,10 @@ sys_execve(struct sysmsg *sysmsg, const struct execve_args *uap)
 	error = nlookup_init(&nd, uap->fname, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = exec_copyin_args(&args, uap->fname, PATH_USERSPACE,
-					uap->argv, uap->envv);
+					 uap->argv, uap->envv);
 	}
 	if (error == 0)
-		error = kern_execve(&nd, &args);
+		error = kern_execve(&nd, NULL, &args);
 	nlookup_done(&nd);
 	exec_free_args(&args);
 
@@ -655,6 +673,62 @@ sys_execve(struct sysmsg *sysmsg, const struct execve_args *uap)
 	if (error == 0)
 		sysmsg->sysmsg_result64 = 0;
 
+	return (error);
+}
+
+/*
+ * fexecve() system call.
+ */
+int
+sys_fexecve(struct sysmsg *sysmsg, const struct fexecve_args *uap)
+{
+	struct image_args args;
+	struct thread *td = curthread;
+	struct file *fp;
+	char fname[32]; /* "/dev/fd/xxx" */
+	int error;
+
+	if ((error = holdvnode(td, uap->fd, &fp)) != 0)
+		return (error);
+
+	/*
+	 * Require a descriptor opened only with O_RDONLY or O_EXEC.
+	 * XXX: missing O_EXEC support
+	 */
+	if ((fp->f_flag & FWRITE) != 0 || (fp->f_flag & FREAD) == 0) {
+		error = EBADF;
+		goto done;
+	}
+
+	/*
+	 * The 'fname' argument is required when executing an
+	 * interpreted program because the interpreter must know
+	 * the script path.  Supply it with '/dev/fd/xxx'.
+	 */
+	ksnprintf(fname, sizeof(fname), "/dev/fd/%d", uap->fd);
+	bzero(&args, sizeof(args));
+	error = exec_copyin_args(&args, fname, PATH_SYSSPACE,
+				 uap->argv, uap->envv);
+	if (error == 0)
+		error = kern_execve(NULL, fp, &args);
+	exec_free_args(&args);
+
+	if (error < 0) {
+		/* We hit a lethal error condition.  Let's die now. */
+		exit1(W_EXITCODE(0, SIGABRT));
+		/* NOTREACHED */
+	}
+
+	/*
+	 * The syscall result is returned in registers to the new program.
+	 * Linux will register %edx as an atexit function and we must be
+	 * sure to set it to 0.  XXX
+	 */
+	if (error == 0)
+		sysmsg->sysmsg_result64 = 0;
+
+done:
+	fdrop(fp);
 	return (error);
 }
 

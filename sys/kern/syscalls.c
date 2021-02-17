@@ -558,4 +558,5 @@ const char *syscallnames[] = {
 	"lwp_getname",			/* 549 = lwp_getname */
 	"getrandom",			/* 550 = getrandom */
 	"__realpath",			/* 551 = __realpath */
+	"fexecve",			/* 552 = fexecve */
 };

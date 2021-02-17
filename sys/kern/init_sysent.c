@@ -566,4 +566,5 @@ struct sysent sysent[] = {
 	{ AS(lwp_getname_args), (sy_call_t *)sys_lwp_getname },	/* 549 = lwp_getname */
 	{ AS(getrandom_args), (sy_call_t *)sys_getrandom },	/* 550 = getrandom */
 	{ AS(__realpath_args), (sy_call_t *)sys___realpath },	/* 551 = __realpath */
+	{ AS(fexecve_args), (sy_call_t *)sys_fexecve },	/* 552 = fexecve */
 };

@@ -315,4 +315,5 @@ union sysunion {
 	struct	lwp_getname_args lwp_getname;
 	struct	getrandom_args getrandom;
 	struct	__realpath_args __realpath;
+	struct	fexecve_args fexecve;
 };
