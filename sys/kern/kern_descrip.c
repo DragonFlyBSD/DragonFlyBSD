@@ -473,6 +473,40 @@ done:
 }
 
 /*
+ * holdfp(), bypassing the cache in order to also be able to return
+ * the descriptor flags.  A bit of a hack.
+ */
+static
+struct file *
+_holdfp2(thread_t td, int fd, char *fflagsp)
+{
+	struct filedesc *fdp;
+	struct file *fp;
+
+	/*
+	 * Lookup the descriptor the slow way.  This can contend against
+	 * modifying operations in a multi-threaded environment and cause
+	 * cache line ping ponging otherwise.
+	 */
+	fdp = td->td_proc->p_fd;
+	spin_lock_shared(&fdp->fd_spin);
+
+	if (((u_int)fd) < fdp->fd_nfiles) {
+		fp = fdp->fd_files[fd].fp;	/* can be NULL */
+		if (fp) {
+			*fflagsp = fdp->fd_files[fd].fileflags;
+			fhold(fp);
+		}
+	} else {
+		fp = NULL;
+	}
+	spin_unlock_shared(&fdp->fd_spin);
+
+	return fp;
+}
+
+
+/*
  * Drop the file pointer and return to the thread cache if possible.
  *
  * Caller must not hold fdp's spin lock.
@@ -2699,6 +2733,34 @@ holdvnode(thread_t td, int fd, struct file **fpp)
 	int error;
 
 	fp = _holdfp_cache(td, fd);
+	if (fp) {
+		if (fp->f_type != DTYPE_VNODE && fp->f_type != DTYPE_FIFO) {
+			fdrop(fp);
+			fp = NULL;
+			error = EINVAL;
+		} else {
+			error = 0;
+		}
+	} else {
+		error = EBADF;
+	}
+	*fpp = fp;
+
+	return (error);
+}
+
+/*
+ * Convert a user file descriptor to a held file pointer.
+ *
+ * td must be the current thread.
+ */
+int
+holdvnode2(thread_t td, int fd, struct file **fpp, char *fflagsp)
+{
+	struct file *fp;
+	int error;
+
+	fp = _holdfp2(td, fd, fflagsp);
 	if (fp) {
 		if (fp->f_type != DTYPE_VNODE && fp->f_type != DTYPE_FIFO) {
 			fdrop(fp);

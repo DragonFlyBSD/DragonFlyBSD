@@ -180,6 +180,8 @@ struct	file *holdfp_fdp (struct filedesc *fdp, int fd, int flag);
 struct	file *holdfp_fdp_locked (struct filedesc *fdp, int fd, int flag);
 int	holdsock (struct thread *td, int fdes, struct file **fpp);
 int	holdvnode (struct thread *td, int fd, struct file **fpp);
+int	holdvnode2 (struct thread *td, int fd, struct file **fpp,
+			char *fflagsp);
 void	dropfp(struct thread *td, int fd, struct file *fp);
 int	fdissequential (struct file *);
 void	fdsequential (struct file *, int);

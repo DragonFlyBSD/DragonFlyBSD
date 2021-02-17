@@ -321,6 +321,18 @@ is
 .Dq root ,
 then the program has some of the powers
 of a super-user as well.
+.Pp
+If the
+.Fa fd
+refers to to an interpreter file and the
+.Dv O_CLOEXEC
+flag has been set,
+.Fn fexecve
+fails with the
+.Er ENOENT
+error; because the
+.Fa fd
+has already been closed by the time the interpreter is executed.
 .Sh SEE ALSO
 .Xr ktrace 1 ,
 .Xr _exit 2 ,

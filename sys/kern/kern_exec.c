@@ -197,7 +197,7 @@ __read_mostly static const struct execsw **execsw;
  * process!
  */
 int
-kern_execve(struct nlookupdata *nd, struct file *fp,
+kern_execve(struct nlookupdata *nd, struct file *fp, char fileflags,
 	    struct image_args *args)
 {
 	static const char *proctitle = "(execve)";
@@ -351,6 +351,15 @@ interpret:
 				     UIO_SYSSPACE, NLC_FOLLOW);
 		if (error)
 			goto failed;
+
+		if (fp && (fileflags & UF_EXCLOSE)) {
+			/*
+			 * Fexecve'ing an interpreted file opened with
+			 * O_CLOEXEC flag, return ENOENT.
+			 */
+			error = ENOENT;
+			goto failed;
+		}
 
 		goto interpret;
 	}
@@ -655,7 +664,7 @@ sys_execve(struct sysmsg *sysmsg, const struct execve_args *uap)
 					 uap->argv, uap->envv);
 	}
 	if (error == 0)
-		error = kern_execve(&nd, NULL, &args);
+		error = kern_execve(&nd, NULL, 0, &args);
 	nlookup_done(&nd);
 	exec_free_args(&args);
 
@@ -685,10 +694,11 @@ sys_fexecve(struct sysmsg *sysmsg, const struct fexecve_args *uap)
 	struct image_args args;
 	struct thread *td = curthread;
 	struct file *fp;
+	char fileflags;
 	char fname[32]; /* "/dev/fd/xxx" */
 	int error;
 
-	if ((error = holdvnode(td, uap->fd, &fp)) != 0)
+	if ((error = holdvnode2(td, uap->fd, &fp, &fileflags)) != 0)
 		return (error);
 
 	/*
@@ -710,7 +720,7 @@ sys_fexecve(struct sysmsg *sysmsg, const struct fexecve_args *uap)
 	error = exec_copyin_args(&args, fname, PATH_SYSSPACE,
 				 uap->argv, uap->envv);
 	if (error == 0)
-		error = kern_execve(NULL, fp, &args);
+		error = kern_execve(NULL, fp, fileflags, &args);
 	exec_free_args(&args);
 
 	if (error < 0) {
