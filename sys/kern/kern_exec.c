@@ -77,7 +77,16 @@
 MALLOC_DEFINE(M_PARGS, "proc-args", "Process arguments");
 MALLOC_DEFINE(M_EXECARGS, "exec-args", "Exec arguments");
 
-static register_t *exec_copyout_strings (struct image_params *);
+enum exec_path_segflg {
+	PATH_SYSSPACE,
+	PATH_USERSPACE,
+};
+
+static register_t *exec_copyout_strings(struct image_params *);
+static int	exec_copyin_args(struct image_args *, char *,
+				 enum exec_path_segflg, char **, char **);
+static void	exec_free_args(struct image_args *);
+static void	print_execve_args(struct image_args *args);
 
 /* XXX This should be vm_size_t. */
 __read_mostly static u_long ps_strings = PS_STRINGS;
@@ -97,8 +106,7 @@ SYSCTL_INT(_kern, OID_AUTO, ps_argsopen, CTLFLAG_RW, &ps_argsopen, 0, "");
 __read_mostly static int ktrace_suid = 0;
 SYSCTL_INT(_kern, OID_AUTO, ktrace_suid, CTLFLAG_RW, &ktrace_suid, 0, "");
 
-void print_execve_args(struct image_args *args);
-__read_mostly int debug_execve_args = 0;
+__read_mostly static int debug_execve_args = 0;
 SYSCTL_INT(_kern, OID_AUTO, debug_execve_args, CTLFLAG_RW, &debug_execve_args,
     0, "");
 
@@ -159,7 +167,7 @@ SYSCTL_PROC(_kern, OID_AUTO, stackgap_random, CTLFLAG_RW|CTLTYPE_INT,
 	0, 0, sysctl_kern_stackgap, "I",
 	"Max random stack gap (power of 2), static gap if negative");
 
-void
+static void
 print_execve_args(struct image_args *args)
 {
 	char *cp;
@@ -899,9 +907,9 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
  * Copy out argument and environment strings from the old process
  *	address space into the temporary string buffer.
  */
-int
+static int
 exec_copyin_args(struct image_args *args, char *fname,
-		enum exec_path_segflg segflg, char **argv, char **envv)
+		 enum exec_path_segflg segflg, char **argv, char **envv)
 {
 	char	*argp, *envp;
 	int	error = 0;
@@ -993,10 +1001,11 @@ exec_copyin_args(struct image_args *args, char *fname,
 			args->envc++;
 		}
 	}
+
 	return (error);
 }
 
-void
+static void
 exec_free_args(struct image_args *args)
 {
 	if (args->buf) {

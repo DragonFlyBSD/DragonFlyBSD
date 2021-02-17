@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/imgact.h,v 1.22.2.2 2001/12/22 01:21:44 jwd Exp $
- * $DragonFly: src/sys/sys/imgact.h,v 1.6 2004/04/11 00:10:34 dillon Exp $
  */
 
 #ifndef _SYS_IMGACT_H_
@@ -43,7 +42,7 @@ struct image_args {
 	char *begin_argv;	/* beginning of argv in buf */
 	char *begin_envv;	/* beginning of envv in buf */
 	char *endp;		/* current `end' pointer of arg & env strings */
-	char *fname;		/* beginning of file name */
+	char *fname;		/* file name of the executable */
 	int space;		/* space left in arg & env buffer */
 	int argc;		/* count of argument strings */
 	int envc;		/* count of environment strings */
@@ -70,16 +69,12 @@ struct image_params {
 };
 
 #ifdef _KERNEL
-enum	exec_path_segflg {PATH_SYSSPACE, PATH_USERSPACE};
-
 struct vmspace;
+
 int	exec_resident_imgact (struct image_params *);
 int	exec_check_permissions (struct image_params *, struct mount *);
 int	exec_new_vmspace (struct image_params *, struct vmspace *vmres);
 int	exec_shell_imgact (struct image_params *);
-int	exec_copyin_args(struct image_args *, char *, enum exec_path_segflg,
-	char **, char **);
-void	exec_free_args(struct image_args *);
 #endif
 
 #endif /* !_SYS_IMGACT_H_ */
