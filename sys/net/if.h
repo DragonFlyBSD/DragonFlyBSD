@@ -44,6 +44,7 @@
 #ifndef _KERNEL
 #include <sys/time.h>
 #endif /* !_KERNEL */
+#include <sys/types.h>
 #endif /* __BSD_VISIBLE */
 
 /*
