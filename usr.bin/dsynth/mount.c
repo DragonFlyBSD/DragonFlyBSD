@@ -284,10 +284,10 @@ void
 domount(worker_t *work, int type, const char *spath, const char *dpath,
 	const char *discretefmt)
 {
-	const char *prog;
 	const char *sbase;
 	const char *rwstr;
 	const char *optstr;
+	const char *typestr;
 	struct stat st;
 	char *buf;
 	char *tmp;
@@ -312,28 +312,32 @@ domount(worker_t *work, int type, const char *spath, const char *dpath,
 	 */
 	rwstr = (type & MOUNT_TYPE_RW) ? "rw" : "ro";
 	optstr = "";
+	typestr = "";
 
 	switch(type & MOUNT_TYPE_MASK) {
 	case MOUNT_TYPE_TMPFS:
-		prog = MOUNT_TMPFS_BINARY;
+		typestr = "tmpfs";
 		if (type & MOUNT_TYPE_BIG)
-			optstr = " -s 64g";
+			optstr = " -o size=64g";
 		else
-			optstr = " -s 16g";
+			optstr = " -o size=16g";
 		break;
 	case MOUNT_TYPE_NULLFS:
-		prog = MOUNT_NULLFS_BINARY;
+#if defined(__DragonFly__)
+		typestr = "null";
+#else
+		typestr = "nullfs";
+#endif
 		break;
 	case MOUNT_TYPE_DEVFS:
-		prog = MOUNT_DEVFS_BINARY;
+		typestr = "devfs";
 		break;
 	case MOUNT_TYPE_PROCFS:
-		prog = MOUNT_PROCFS_BINARY;
+		typestr = "procfs";
 		break;
 	default:
 		dfatal("Illegal mount type: %08x", type);
 		/* NOT REACHED */
-		prog = "/bin/hell";
 		break;
 	}
 
@@ -355,9 +359,9 @@ domount(worker_t *work, int type, const char *spath, const char *dpath,
 		}
 		tmp = NULL;
 	}
-	asprintf(&buf, "%s%s -o %s %s%s %s%s",
-		 prog, optstr, rwstr,
-		 sbase, spath, work->basedir, dpath);
+	asprintf(&buf, "%s%s -t %s -o %s %s%s %s%s",
+		MOUNT_BINARY, optstr, typestr, rwstr,
+		sbase, spath, work->basedir, dpath);
 	rc = system(buf);
 	if (rc) {
 		fprintf(stderr, "Command failed: %s\n", buf);

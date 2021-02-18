@@ -84,10 +84,6 @@ struct pkglink;
 #define MAKE_BINARY		"/usr/bin/make"
 #define PKG_BINARY		"/usr/local/sbin/pkg"
 #define MOUNT_BINARY		"/sbin/mount"
-#define MOUNT_NULLFS_BINARY	"/sbin/mount_null"
-#define MOUNT_TMPFS_BINARY	"/sbin/mount_tmpfs"
-#define MOUNT_DEVFS_BINARY	"/sbin/mount_devfs"
-#define MOUNT_PROCFS_BINARY	"/sbin/mount_procfs"
 #define UMOUNT_BINARY		"/sbin/umount"
 
 #define STATS_FILE		"monitor.dat"		/* under LogsPath */
