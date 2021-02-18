@@ -746,13 +746,9 @@ int	__sys_sched_yield(void);
 
 /* #include <signal.h> */
 #ifdef _SIGNAL_H_
-int	__sys_kill(pid_t, int);
 int     __sys_sigaction(int, const struct sigaction *, struct sigaction *);
-int     __sys_sigpending(sigset_t *);
 int     __sys_sigprocmask(int, const sigset_t *, sigset_t *);
 int     __sys_sigsuspend(const sigset_t *);
-int     __sys_sigreturn(ucontext_t *);
-int     __sys_sigaltstack(const stack_t *, stack_t *);
 #endif
 
 /* #include <time.h> */
@@ -765,12 +761,9 @@ int	__sys_clock_nanosleep(clockid_t, int, const struct timespec *,
 /* #include <unistd.h> */
 #ifdef  _UNISTD_H_
 int	__sys_close(int);
-int	__sys_execve(const char *, char * const *, char * const *);
 pid_t	__sys_getpid(void);
 ssize_t __sys_read(int, void *, size_t);
 ssize_t __sys_write(int, const void *, size_t);
-void	__sys_exit(int);
-int	__sys_sigwait(const sigset_t *, int *);
 int	__sys_sigtimedwait(const sigset_t *, siginfo_t *,
 		const struct timespec *);
 int	__sys_sigwaitinfo(const sigset_t *set, siginfo_t *info);
