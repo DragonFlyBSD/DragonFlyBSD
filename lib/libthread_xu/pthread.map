@@ -407,3 +407,9 @@ global:
 	pthread_is_threaded_np;
 	pthread_yield_np;
 };
+
+LIBTHREAD_1_3 {
+global:
+	_clock_nanosleep
+	clock_nanosleep
+};
