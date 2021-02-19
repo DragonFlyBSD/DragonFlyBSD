@@ -1,14 +1,14 @@
-# $Id: meta.stage.mk,v 1.59 2020/04/25 18:18:27 sjg Exp $
+# $Id: meta.stage.mk,v 1.61 2021/01/31 04:43:12 sjg Exp $
 #
 #	@(#) Copyright (c) 2011-2017, Simon J. Gerraty
 #
 #	This file is provided in the hope that it will
 #	be of use.  There is absolutely NO WARRANTY.
 #	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that 
+#	use this file is hereby granted provided that
 #	the above copyright notice and this notice are
-#	left intact. 
-#      
+#	left intact.
+#
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
 #
@@ -30,8 +30,11 @@ _dirdep ?= ${RELDIR}
 CLEANFILES+= .dirdep
 
 # this allows us to trace dependencies back to their src dir
-.dirdep:	.NOPATH
+.dirdep: .NOPATH
+.if !commands(.dirdep)
+.dirdep:
 	@echo '${_dirdep}' > $@
+.endif
 
 .if defined(NO_POSIX_SHELL) || ${type printf:L:sh:Mbuiltin} == ""
 _stage_file_basename = `basename $$f`

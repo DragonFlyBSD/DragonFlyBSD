@@ -1,14 +1,14 @@
-# $Id: init.mk,v 1.17 2020/05/25 20:15:07 sjg Exp $
+# $Id: init.mk,v 1.25 2020/11/27 17:59:46 sjg Exp $
 #
 #	@(#) Copyright (c) 2002, Simon J. Gerraty
 #
 #	This file is provided in the hope that it will
 #	be of use.  There is absolutely NO WARRANTY.
 #	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that 
+#	use this file is hereby granted provided that
 #	the above copyright notice and this notice are
-#	left intact. 
-#      
+#	left intact.
+#
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
 #
@@ -65,9 +65,14 @@ CC_PIC?= -DPIC
 CXX_PIC?= ${CC_PIC}
 PROFFLAGS?= -DGPROF -DPROF
 
-.if ${.MAKE.LEVEL:U1} == 0 && ${BUILD_AT_LEVEL0:Uyes:tl} == "no"
+.if ${.MAKE.LEVEL:U1} == 0 && ${MK_DIRDEPS_BUILD:Uno} == "yes"
+# targets that are ok at level 0
+DIRDEPS_BUILD_LEVEL0_TARGETS += clean* destroy*
+M_ListToSkip?= O:u:S,^,N,:ts:
+.if ${.TARGETS:Uall:${DIRDEPS_BUILD_LEVEL0_TARGETS:${M_ListToSkip}}} != ""
 # this tells lib.mk and prog.mk to not actually build anything
 _SKIP_BUILD = not building at level 0
+.endif
 .endif
 
 .if !defined(.PARSEDIR)
@@ -76,12 +81,14 @@ _SKIP_BUILD = not building at level 0
 .endif
 
 # define this once for consistency
-.if empty(_SKIP_BUILD)
+.if !defined(_SKIP_BUILD)
 # beforebuild is a hook for things that must be done early
 all: beforebuild .WAIT realbuild
 .else
 all: .PHONY
+.if !empty(_SKIP_BUILD) && ${.MAKEFLAGS:M-V} == ""
 .warning ${_SKIP_BUILD}
+.endif
 .endif
 beforebuild:
 realbuild:

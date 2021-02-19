@@ -1,14 +1,14 @@
-# $Id: sys.mk,v 1.47 2020/04/17 21:08:17 sjg Exp $
+# $Id: sys.mk,v 1.52 2020/12/22 20:44:24 sjg Exp $
 #
 #	@(#) Copyright (c) 2003-2009, Simon J. Gerraty
 #
 #	This file is provided in the hope that it will
 #	be of use.  There is absolutely NO WARRANTY.
 #	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that 
+#	use this file is hereby granted provided that
 #	the above copyright notice and this notice are
-#	left intact. 
-#      
+#	left intact.
+#
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
 #
@@ -77,6 +77,7 @@ OPTIONS_DEFAULT_DEPENDENT += \
 	AUTO_OBJ/DIRDEPS_BUILD \
 	META_MODE/DIRDEPS_BUILD \
 	STAGING/DIRDEPS_BUILD \
+	STATIC_DIRDEPS_CACHE/DIRDEPS_CACHE \
 
 .-include <options.mk>
 
@@ -116,9 +117,9 @@ ROOT_GROUP != sed -n /:0:/s/:.*//p /etc/group
 
 unix ?= We run ${_HOST_OSNAME}.
 
-# We need a Bourne/POSIX shell 
-MAKE_SHELL ?= sh
-SHELL ?= ${MAKE_SHELL}
+# We need a Bourne/POSIX shell
+MAKE_SHELL ?= ${.SHELL:Ush}
+SHELL := ${MAKE_SHELL}
 
 # A race condition in mkdir, means that it can bail if another
 # process made a dir that mkdir expected to.

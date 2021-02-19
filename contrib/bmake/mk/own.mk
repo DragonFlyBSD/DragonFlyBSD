@@ -1,4 +1,4 @@
-# $Id: own.mk,v 1.40 2018/04/23 04:53:57 sjg Exp $
+# $Id: own.mk,v 1.42 2020/11/27 18:00:08 sjg Exp $
 
 .if !target(__${.PARSEFILE}__)
 __${.PARSEFILE}__:
@@ -61,7 +61,7 @@ YACC.y?=	${YACC} ${YFLAGS}
 
 # for suffix rules
 IMPFLAGS?=	${COPTS.${.IMPSRC:T}} ${CPUFLAGS.${.IMPSRC:T}} ${CPPFLAGS.${.IMPSRC:T}}
-.for s in .c .cc 
+.for s in .c .cc
 COMPILE.$s += ${IMPFLAGS}
 LINK.$s +=  ${IMPFLAGS}
 .endfor
@@ -125,10 +125,10 @@ OPTIONS_DEFAULT_DEPENDENT+= \
 
 .if ${MK_INSTALL_AS_USER} == "yes"
 # We ignore this if user is root.
-_uid!=  id -u
+_uid:= ${.MAKE.UID:U${id -u:L:sh}}
 .if ${_uid} != 0
 .if !defined(USERGRP)
-USERGRP!=  id -g
+USERGRP:=  ${.MAKE.GID:U${id -g:L:sh}}
 .export USERGRP
 .endif
 .for x in BIN CONF DOC INC INFO FILES KMOD LIB MAN NLS PROG SHARE
@@ -211,8 +211,8 @@ CFLAGS+= ${CPPFLAGS}
 
 # allow for per target flags
 # apply the :T:R first, so the more specific :T can override if needed
-CPPFLAGS += ${CPPFLAGS_${.TARGET:T:R}} ${CPPFLAGS_${.TARGET:T}} 
-CFLAGS += ${CFLAGS_${.TARGET:T:R}} ${CFLAGS_${.TARGET:T}} 
+CPPFLAGS += ${CPPFLAGS_${.TARGET:T:R}} ${CPPFLAGS_${.TARGET:T}}
+CFLAGS += ${CFLAGS_${.TARGET:T:R}} ${CFLAGS_${.TARGET:T}}
 
 # Define SYS_INCLUDE to indicate whether you want symbolic links to the system
 # source (``symlinks''), or a separate copy (``copies''); (latter useful
