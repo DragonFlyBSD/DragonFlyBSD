@@ -96,6 +96,8 @@
             elf
             ..
         ..
+        ching
+        ..
         custom
         ..
         dhcpcd-hooks
@@ -274,6 +276,8 @@
             atc
             ..
             boggle
+            ..
+            ching
             ..
             fortune
             ..
