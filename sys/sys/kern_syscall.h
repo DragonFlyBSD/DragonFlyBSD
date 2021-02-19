@@ -98,7 +98,7 @@ int kern_preadv(int fd, struct uio *auio, int flags, size_t *res);
 int kern_pwritev(int fd, struct uio *auio, int flags, size_t *res);
 
 /*
- * Prototypes for syscalls in kern/kern_resource.c
+ * Prototypes for syscalls in kern/kern_plimit.c
  */
 int kern_setrlimit(u_int which, struct rlimit *limp);
 int kern_getrlimit(u_int which, struct rlimit *limp);

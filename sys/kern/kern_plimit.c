@@ -74,6 +74,7 @@
 #include <sys/lockf.h>
 #include <sys/kern_syscall.h>
 #include <sys/malloc.h>
+#include <sys/sysmsg.h>
 
 #include <vm/vm_param.h>
 #include <vm/vm.h>
@@ -383,6 +384,21 @@ kern_setrlimit(u_int which, struct rlimit *limp)
         return (0);
 }
 
+int
+sys_setrlimit(struct sysmsg *sysmsg, const struct __setrlimit_args *uap)
+{
+	struct rlimit alim;
+	int error;
+
+	error = copyin(uap->rlp, &alim, sizeof(alim));
+	if (error)
+		return (error);
+
+	error = kern_setrlimit(uap->which, &alim);
+
+	return (error);
+}
+
 /*
  * The rlimit indexed by which is returned in the second argument.
  */
@@ -407,6 +423,19 @@ kern_getrlimit(u_int which, struct rlimit *limp)
         *limp = limit->pl_rlimit[which];
 
         return (0);
+}
+
+int
+sys_getrlimit(struct sysmsg *sysmsg, const struct __getrlimit_args *uap)
+{
+	struct rlimit lim;
+	int error;
+
+	error = kern_getrlimit(uap->which, &lim);
+
+	if (error == 0)
+		error = copyout(&lim, uap->rlp, sizeof(*uap->rlp));
+	return error;
 }
 
 /*
