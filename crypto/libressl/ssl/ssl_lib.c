@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_lib.c,v 1.234 2020/09/24 18:12:00 jsing Exp $ */
+/* $OpenBSD: ssl_lib.c,v 1.234.4.1 2021/02/03 07:06:13 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -1710,8 +1710,17 @@ SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,
     const char *label, size_t llen, const unsigned char *p, size_t plen,
     int use_context)
 {
-	return (tls1_export_keying_material(s, out, olen,
-	    label, llen, p, plen, use_context));
+	if (s->internal->tls13 != NULL && s->version == TLS1_3_VERSION) {
+		if (!use_context) {
+			p = NULL;
+			plen = 0;
+		}
+		return tls13_exporter(s->internal->tls13, label, llen, p, plen,
+		    out, olen);
+	}
+
+	return (tls1_export_keying_material(s, out, olen, label, llen, p, plen,
+	    use_context));
 }
 
 static unsigned long

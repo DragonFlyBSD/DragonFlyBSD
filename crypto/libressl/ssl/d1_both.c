@@ -1,4 +1,4 @@
-/* $OpenBSD: d1_both.c,v 1.60 2020/09/26 14:43:17 jsing Exp $ */
+/* $OpenBSD: d1_both.c,v 1.60.4.1 2021/02/03 07:06:13 tb Exp $ */
 /*
  * DTLS implementation written by Nagendra Modadugu
  * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.
@@ -1060,18 +1060,18 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 	    frag->msg_header.frag_len);
 
 	/* save current state */
-	saved_state.enc_write_ctx = s->internal->enc_write_ctx;
-	saved_state.write_hash = s->internal->write_hash;
 	saved_state.session = s->session;
 	saved_state.epoch = D1I(s)->w_epoch;
 
 	D1I(s)->retransmitting = 1;
 
 	/* restore state in which the message was originally sent */
-	s->internal->enc_write_ctx = frag->msg_header.saved_retransmit_state.enc_write_ctx;
-	s->internal->write_hash = frag->msg_header.saved_retransmit_state.write_hash;
 	s->session = frag->msg_header.saved_retransmit_state.session;
 	D1I(s)->w_epoch = frag->msg_header.saved_retransmit_state.epoch;
+	if (!tls12_record_layer_set_write_cipher_hash(s->internal->rl,
+	    frag->msg_header.saved_retransmit_state.enc_write_ctx,
+	    frag->msg_header.saved_retransmit_state.write_hash, 0))
+		return 0;
 
 	if (frag->msg_header.saved_retransmit_state.epoch ==
 	    saved_state.epoch - 1) {
@@ -1085,10 +1085,11 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 	    SSL3_RT_CHANGE_CIPHER_SPEC : SSL3_RT_HANDSHAKE);
 
 	/* restore current state */
-	s->internal->enc_write_ctx = saved_state.enc_write_ctx;
-	s->internal->write_hash = saved_state.write_hash;
 	s->session = saved_state.session;
 	D1I(s)->w_epoch = saved_state.epoch;
+	if (!tls12_record_layer_set_write_cipher_hash(s->internal->rl,
+	    s->internal->enc_write_ctx, s->internal->write_hash, 0))
+		return 0;
 
 	if (frag->msg_header.saved_retransmit_state.epoch ==
 	    saved_state.epoch - 1) {
