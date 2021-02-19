@@ -3,25 +3,36 @@
 #	$Id: Makefile.in,v 1.174 2012/10/10 18:46:24 sjg Exp $
 
 PROG=	make
-SRCS=	arch.c buf.c compat.c cond.c dir.c for.c hash.c job.c main.c \
-	make.c parse.c str.c suff.c targ.c trace.c var.c util.c 
-SRCS+=  strlist.c
-SRCS+=  make_malloc.c
-SRCS+=	lstAppend.c lstAtEnd.c lstAtFront.c lstClose.c lstConcat.c \
-	lstDatum.c lstDeQueue.c lstDestroy.c lstDupl.c lstEnQueue.c \
-	lstFind.c lstFindFrom.c lstFirst.c lstForEach.c lstForEachFrom.c \
-	lstInit.c lstInsert.c lstIsAtEnd.c lstIsEmpty.c lstLast.c \
-	lstMember.c lstNext.c lstOpen.c lstRemove.c lstReplace.c lstSucc.c
-SRCS += lstPrev.c
-
-SRCS+=	stresep.c
-SRCS+=	meta.c metachar.c
+SRCS=	\
+	arch.c		\
+	buf.c		\
+	compat.c	\
+	cond.c		\
+	dir.c		\
+	enum.c		\
+	for.c		\
+	hash.c		\
+	job.c		\
+	lst.c		\
+	main.c		\
+	make.c		\
+	make_malloc.c	\
+	meta.c		\
+	metachar.c	\
+	parse.c		\
+	str.c		\
+	stresep.c	\
+	suff.c		\
+	targ.c		\
+	trace.c		\
+	util.c		\
+	var.c
 
 # you can use this Makefile if you have an earlier version of bmake.
 srcdir= ${.CURDIR}/../../contrib/bmake
 
 # Base version on src date
-MAKE_VERSION= 20200710
+MAKE_VERSION= 20210206
 .if defined(BOOTSTRAPPING)
 DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
 .else
@@ -56,10 +67,7 @@ COPTS.job.c=	-Wno-format-nonliteral
 COPTS.parse.c=	-Wno-format-nonliteral
 COPTS.var.c=	-Wno-format-nonliteral
 
-# XXX pending bmake update
-.if !defined(WARNS_AUDIT)
-WARNS=	1
-.endif
+WARNS=	3
 
 .PATH:	${srcdir}
 .PATH:	${srcdir}/lst.lib
