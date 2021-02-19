@@ -298,9 +298,9 @@ ParseConfiguration(int isworker)
 		fclose(fp);
 
 		/* Warn the user that World/kernel are out of sync */
-		if (strcmp(VersionFromParamHeader, VersionFromSysctl)) {
+		if (strcmp(VersionFromSysctl, VersionFromParamHeader)) {
 			dlog(DLOG_ALL, "Kernel (%s) out of sync with world (%s) on %s\n",
-			    VersionFromParamHeader, VersionFromSysctl, SystemPath);
+			    VersionFromSysctl, VersionFromParamHeader, SystemPath);
 		}
 	}
 
