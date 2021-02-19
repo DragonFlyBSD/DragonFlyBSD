@@ -69,6 +69,17 @@
 SHARE=/usr/share/games/ching
 PROGS=/usr/libexec/ching
 
+format()
+{
+	if command -v nroff >/dev/null 2>&1 ; then
+		# Prefer nroff(1); require the 'groff' package.
+		nroff -
+	else
+		# Adjust mandoc(1)'s output to mimic nroff(1)'s.
+		mandoc -Wunsupp | sed -e '1,3d;$d' -e 's/.*/\t&/'
+	fi
+}
+
 case $1 in
 	[6-9]*)	HEXAGRAM=$1; shift;;
 esac
@@ -78,4 +89,4 @@ if [ -z "$HEXAGRAM" ]; then
 	echo
 fi
 
-$PROGS/printching $HEXAGRAM | nroff $SHARE/macros - | ${PAGER-more}
+{ cat $SHARE/macros; $PROGS/printching $HEXAGRAM; } | format | ${PAGER-more}
