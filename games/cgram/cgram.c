@@ -143,7 +143,7 @@ encode(void)
 	}
 
 	for (int y = 0; y < lines.num; y++) {
-		for (unsigned x = 0; lines.v[y][x]; x++) {
+		for (int x = 0; lines.v[y][x]; x++) {
 			if (islower((unsigned char)lines.v[y][x])) {
 				int q = lines.v[y][x] - 'a';
 				lines.v[y][x] = 'a' + key[q];
@@ -165,19 +165,19 @@ substitute(int ch)
 		return -1;
 	}
 
-	int och = lines.v[cury][curx];
-	if (!isalpha((unsigned char)och)) {
+	int och = (unsigned char)lines.v[cury][curx];
+	if (!isalpha(och)) {
 		beep();
 		return -1;
 	}
 
-	int loch = tolower((unsigned char)och);
-	int uoch = toupper((unsigned char)och);
-	int lch = tolower((unsigned char)ch);
-	int uch = toupper((unsigned char)ch);
+	int loch = tolower(och);
+	int uoch = toupper(och);
+	int lch = tolower(ch);
+	int uch = toupper(ch);
 
 	for (int y = 0; y < lines.num; y++) {
-		for (unsigned x = 0; lines.v[y][x]; x++) {
+		for (int x = 0; lines.v[y][x]; x++) {
 			if (lines.v[y][x] == loch)
 				lines.v[y][x] = lch;
 			else if (lines.v[y][x] == uoch)
@@ -200,25 +200,21 @@ redraw(void)
 	erase();
 
 	bool won = true;
+
 	for (int i = 0; i < LINES - 1; i++) {
 		move(i, 0);
 		int ln = i + scrolldown;
 		if (ln < lines.num) {
-			for (unsigned j = 0; lines.v[i][j]; j++) {
-				int ch = lines.v[i][j];
-				if (ch != sollines.v[i][j] &&
-				    isalpha((unsigned char)ch)) {
+			for (int j = 0; lines.v[i][j]; j++) {
+				int ch = (unsigned char)lines.v[i][j];
+				int solch = (unsigned char)sollines.v[i][j];
+				if (ch != solch && isalpha(ch))
 					won = false;
-				}
-				bool bold = false;
-				if (hinting && ch == sollines.v[i][j] &&
-				    isalpha((unsigned char)ch)) {
-					bold = true;
-					attron(A_BOLD);
-				}
-				addch(lines.v[i][j]);
-				if (bold)
-					attroff(A_BOLD);
+
+				int attr = 0;
+				if (hinting && ch == solch && isalpha(ch))
+					attr = A_BOLD;
+				addch(ch | attr);
 			}
 		}
 		clrtoeol();
@@ -229,7 +225,6 @@ redraw(void)
 		addstr("*solved* ");
 	addstr("~ to quit, * to cheat, ^pnfb to move");
 
-	move(LINES - 1, 0);
 	move(cury - scrolldown, curx);
 
 	refresh();
@@ -241,6 +236,7 @@ opencurses(void)
 	initscr();
 	cbreak();
 	noecho();
+	keypad(stdscr, TRUE);
 }
 
 static void
@@ -353,7 +349,6 @@ main(void)
 	encode();
 
 	opencurses();
-	keypad(stdscr, TRUE);
 	loop();
 	closecurses();
 
