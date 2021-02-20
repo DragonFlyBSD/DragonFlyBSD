@@ -18,6 +18,7 @@ SUBDIR= adventure \
 	factor \
 	fish \
 	fortune \
+	gomoku \
 	grdc \
 	hack \
 	hals_end \
