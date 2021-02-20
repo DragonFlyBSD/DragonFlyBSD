@@ -26,6 +26,7 @@ SUBDIR= adventure \
 	hunt \
 	larn \
 	mille \
+	monop \
 	morse \
 	number \
 	phantasia \
