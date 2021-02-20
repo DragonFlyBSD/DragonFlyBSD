@@ -76,7 +76,7 @@ format()
 		nroff -
 	else
 		# Adjust mandoc(1)'s output to mimic nroff(1)'s.
-		mandoc -Wunsupp | sed -e '1,3d;$d' -e 's/.*/\t&/'
+		mandoc -Wunsupp | sed '1,3d;$d;s/^/\t/'
 	fi
 }
 
