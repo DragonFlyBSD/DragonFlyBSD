@@ -12,6 +12,7 @@ SUBDIR= adventure \
 	boggle \
 	caesar \
 	canfield \
+	cgram \
 	ching \
 	cribbage \
 	colorbars \
