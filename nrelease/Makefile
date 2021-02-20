@@ -383,7 +383,7 @@ mkimg:
 	disklabel -r `cat ${ISODIR}/vn.which`s2 > ${IMGFILE}.label
 	@echo "STEP: set disklabel name"
 	echo "label: ${LABEL}" >> ${IMGFILE}.label
-	@echo "STEP: add slice parition"
+	@echo "STEP: add slice partition"
 	echo "a: * * 4.2BSD" >> ${IMGFILE}.label;
 	@echo "STEP: write modified disklabel back"
 	disklabel -R -r `cat ${ISODIR}/vn.which`s2 ${IMGFILE}.label
