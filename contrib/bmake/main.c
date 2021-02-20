@@ -1472,6 +1472,23 @@ main_Init(int argc, char **argv)
 		Global_Set(".MAKE.UID", tmp);
 		snprintf(tmp, sizeof tmp, "%u", getgid());
 		Global_Set(".MAKE.GID", tmp);
+
+		/* DragonFly BSD specific global variables */
+
+		/*
+		 * It was used to identify the compiler that built world so that
+		 * a c++ issue during an ABI change could be worked around.
+		 * More info on commit: 673bdc16bff3eec8
+		 */
+		Global_Set(".MAKE.BUILT.BY", CCVER);
+
+		/*
+		 * Added to speed up dports builds since there would be no
+		 * evaluation needed if already defined.
+		 * More info on commit: a4cce4724800c918
+		 */
+		Global_Set(".MAKE.DF.VERSION", DFVER);
+		Global_Set(".MAKE.DF.OSREL", OSREL);
 	}
 	if (makelevel > 0) {
 		char pn[1024];

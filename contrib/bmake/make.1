@@ -29,7 +29,7 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\"
-.Dd December 22, 2020
+.Dd February 20, 2021
 .Dt MAKE 1
 .Os
 .Sh NAME
@@ -1006,6 +1006,19 @@ The process-id of
 .It Va .MAKE.PPID
 The parent process-id of
 .Nm .
+.It Va .MAKE.BUILT.BY
+The compiler CCVER that built the
+.Dx
+world.
+.It Va .MAKE.DF.OSREL
+The
+.Dx
+version when the world was built.  It is in the "<major>.<minor>"
+format and it used by DPorts.
+.It Va .MAKE.DF.VERSION
+The value of __DragonFly_version when the
+.Dx
+world was built.  It is used by DPorts.
 .It Va .MAKE.SAVE_DOLLARS
 value should be a boolean that controls whether
 .Ql $$
@@ -1013,7 +1026,7 @@ are preserved when doing
 .Ql :=
 assignments.
 The default is false, for backwards compatibility.
-Set to true for compatability with other makes.
+Set to true for compatibility with other makes.
 If set to false,
 .Ql $$
 becomes
@@ -1780,8 +1793,8 @@ PATH := ${PATH}
 .Li .unexport-env
 .Li .export PATH
 .Li .endif
-.Pp
 .Ed
+.Pp
 Would result in an environment containing only
 .Ql Ev PATH ,
 which is the minimal useful environment.
