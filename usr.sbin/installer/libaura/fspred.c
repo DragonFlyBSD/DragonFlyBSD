@@ -55,17 +55,14 @@
 /** PREDICATES **/
 
 static void
-vstatmod(mode_t *m, int *error, const char *fmt, ...)
+vstatmod(mode_t *m, int *error, const char *fmt, va_list args)
 {
 	char *filename;
 	struct stat sb;
-	va_list args;
 
 	memset(&sb, 0, sizeof(sb));
 
-	va_start(args, fmt);
 	vasprintf(&filename, fmt, args);
-	va_end(args);
 
 	*error = stat(filename, &sb);
 	free(filename);
