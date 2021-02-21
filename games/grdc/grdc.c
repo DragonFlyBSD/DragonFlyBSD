@@ -1,5 +1,9 @@
 /*
+ * Copyright (c) 2002 Amos Shapir.
+ * Public domain.
+ *
  * Grand digital clock for curses compatible terminals
+ *
  * Usage: grdc [-s] [-d msecs] [n]   -- run for n seconds (default infinity)
  * Flags:	-s: scroll (default scroll duration 120msec)
  *		-d msecs: specify scroll duration (implies -s)
@@ -12,40 +16,29 @@
  */
 
 #include <err.h>
-#include <time.h>
-#include <signal.h>
 #include <ncurses.h>
+#include <signal.h>
 #include <stdlib.h>
-#ifndef NONPOSIX
+#include <time.h>
 #include <unistd.h>
-#endif
 
 #define XLENGTH 58
 #define YDEPTH  7
 
-time_t now;
-struct tm *tm;
+static int hascolor = 0;
+static int xbase, ybase, xmax, ymax;
+static long old[6], next[6], new[6], mask;
+static volatile sig_atomic_t sigtermed;
 
-short disp[11] = {
-	075557, 011111, 071747, 071717, 055711,
-	074717, 074757, 071111, 075757, 075717, 002020
-};
-long old[6], next[6], new[6], mask;
-
-volatile sig_atomic_t sigtermed;
-
-int hascolor = 0;
-long int scroll_msecs = 120;
-int xbase, ybase, xmax, ymax;
-
-static void set(int, int);
-static void standt(int);
-static void sighndl(int);
-static void usage(void);
+static void cleanup(void);
 static void draw_row(int, int);
-static void snooze(long int);
+static void set(int, int);
+static void sighndl(int);
+static void snooze(long);
+static void standt(int);
+static void usage(void) __dead2;
 
-void
+static void
 sighndl(int signo)
 {
 	sigtermed = signo;
@@ -57,13 +50,17 @@ main(int argc, char **argv)
 	int i, s, k;
 	int n;
 	int ch;
-	int scrol;
-	int forever;
+	bool scrol, forever;
+	long scroll_msecs;
+	time_t now;
+	struct tm *tm;
 
-	n = scrol = 0;
-	forever = 1;
+	n = 0;
+	forever = true;
+	scrol = false;
+	scroll_msecs = 120;
 
-	while ((ch = getopt(argc, argv, "d:s")) != -1)
+	while ((ch = getopt(argc, argv, "d:s")) != -1) {
 		switch (ch) {
 		case 'd':
 			scroll_msecs = atol(optarg);
@@ -71,13 +68,14 @@ main(int argc, char **argv)
 				errx(1, "scroll duration may not be negative");
 			/* FALLTHROUGH */
 		case 's':
-			scrol = 1;
+			scrol = true;
 			break;
 		case '?':
 		default:
 			usage();
 			/* NOTREACHED */
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -88,7 +86,7 @@ main(int argc, char **argv)
 
 	if (argc > 0) {
 		n = atoi(*argv);
-		forever = 0;
+		forever = false;
 	}
 
 	initscr();
@@ -142,6 +140,7 @@ main(int argc, char **argv)
 		attrset(COLOR_PAIR(2));
 		refresh();
 	}
+
 	do {
 		mask = 0;
 		time(&now);
@@ -154,21 +153,22 @@ main(int argc, char **argv)
 		set(tm->tm_hour / 10, 24);
 		set(10, 7);
 		set(10, 17);
-		for(k = 0; k < 6; k++) {
+		for (k = 0; k < 6; k++) {
 			if (scrol) {
 				snooze(scroll_msecs / 6);
-				for(i = 0; i < 5; i++)
+				for(i = 0; i < 5; i++) {
 					new[i] = (new[i] & ~mask) |
 						 (new[i+1] & mask);
+				}
 				new[5] = (new[5] & ~mask) | (next[k] & mask);
-			} else
+			} else {
 				new[k] = (new[k] & ~mask) | (next[k] & mask);
+			}
 			next[k] = 0;
 			for (s = 1; s >= 0; s--) {
 				standt(s);
-				for (i = 0; i < 6; i++) {
+				for (i = 0; i < 6; i++)
 					draw_row(i, s);
-				}
 				if (!s) {
 					move(ybase, 0);
 					refresh();
@@ -179,15 +179,14 @@ main(int argc, char **argv)
 		refresh();
 		snooze(1000 - (scrol ? scroll_msecs : 0));
 	} while (forever ? 1 : --n);
-	standend();
-	clear();
-	refresh();
-	endwin();
-	return(0);
+
+	cleanup();
+
+	return (0);
 }
 
-void
-snooze(long int msecs)
+static void
+snooze(long msecs)
 {
 	struct timespec ts;
 
@@ -202,15 +201,21 @@ snooze(long int msecs)
 	nanosleep(&ts, NULL);
 
 	if (sigtermed) {
-		standend();
-		clear();
-		refresh();
-		endwin();
+		cleanup();
 		errx(1, "terminated by signal %d", (int)sigtermed);
 	}
 }
 
-void
+static void
+cleanup(void)
+{
+	standend();
+	clear();
+	refresh();
+	endwin();
+}
+
+static void
 draw_row(int i, int s)
 {
 	long a, t;
@@ -231,9 +236,13 @@ draw_row(int i, int s)
 	}
 }
 
-void
+static void
 set(int t, int n)
 {
+	static short disp[11] = {
+		075557, 011111, 071747, 071717, 055711,
+		074717, 074757, 071111, 075757, 075717, 002020
+	};
 	int i, m;
 
 	m = 7 << n;
@@ -245,7 +254,7 @@ set(int t, int n)
 		mask |= m;
 }
 
-void
+static void
 standt(int on)
 {
 	if (on) {
@@ -263,7 +272,7 @@ standt(int on)
 	}
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: grdc [-s] [-d msecs] [n]\n");
