@@ -8,72 +8,122 @@
 
 #define TDIR	"/bin"
 #define TEXE	"/bin/ls"
-#define TREG	"/boot/kernel/kernel"
 #define TDEV	"/dev/zero"
 #define TPIPE	"/tmp/myfifo123"
-#define TMOUNTP	"/dev/"
+#define TMOUNTP	"/dev"
 #define TDEVM	"devfs"
+#define TEXIST	"/nonexistent"
 
-int
-main(void)
+#define NTESTS	6
+
+static int
+test_is_dir(void)
 {
-	if (!is_dir(TDIR)) {
-		printf("is_dir(%s) failed\n", TDIR);
-		return EXIT_FAILURE;
-	}
+	int pass = 0;
 
-	if (is_dir(TEXE)) {
-		printf("is_dir(%s) failed\n", TEXE);
-		return EXIT_FAILURE;
-	}
+	pass = is_dir("%s", TDIR);
+	pass = pass && !is_dir("%s", TEXIST);
+	pass = pass && !is_dir("%s", TEXE);
 
-	if (!is_program(TEXE)) {
-		printf("is_program(%s) failed\n", TEXE);
-		return EXIT_FAILURE;
-	}
+	return pass;
+}
 
-	if (is_program(TDIR)) {
-		printf("is_program(%s) failed\n", TDIR);
-		return EXIT_FAILURE;
-	}
+static int
+test_is_program(void)
+{
+	int pass;
 
-	if (!is_device(TDEV)) {
-		printf("is_device(%s) failed\n", TDEV);
-		return EXIT_FAILURE;
-		}
+	pass = is_program(TEXE);
+	pass = pass && !is_program("%s", TEXIST);
+	pass = pass && !is_program(TDIR);
 
-	if (is_device(TDIR)) {
-		printf("is_device(%s) failed\n", TDIR);
-		return EXIT_FAILURE;
-	}
+	return pass;
+}
 
+static int
+test_is_device(void)
+{
+	int pass;
+
+	pass = is_device(TDEV);
+	pass = pass && !is_device("%s", TEXIST);
+	pass = pass && !is_device(TDIR);
+
+	return pass;
+}
+
+
+static int
+test_is_named_pipe(void)
+{
+	int pass;
+
+	/* Need to make a named pipe */
 	unlink(TPIPE);
 	if (mkfifo(TPIPE, 0600) == -1) {
 		perror("mkfifo");
 		return EXIT_FAILURE;
 	}
 
-	if (!is_named_pipe(TPIPE)) {
-		printf("is_named_pipe(%s) failed\n", TPIPE);
-		return EXIT_FAILURE;
-	}
+	pass = is_named_pipe(TPIPE);
+	pass = pass && !is_named_pipe("%s", TEXIST);
+	pass = pass && !is_named_pipe(TEXE);
 
-	if (is_named_pipe(TEXE)) {
-		printf("is_named_pipe(%s) failed\n", TEXE);
-		return EXIT_FAILURE;
-	}
+	return pass;
+}
 
-	if (is_mountpoint_mounted(TMOUNTP)) {
-		printf("is_mountpoint_mounted(%s) failed\n", TMOUNTP);
-		return EXIT_FAILURE;
-	}
+static int
+test_is_mountpoint_mounted(void)
+{
+	int pass;
 
-	if (!is_device_mounted(TDEVM)) {
-		printf("is_device_mounted(%s) failed\n", TDEVM);
-		return EXIT_FAILURE;
+	pass = is_mountpoint_mounted(TMOUNTP);
+	pass = pass && !is_mountpoint_mounted(TEXIST);
+
+	return pass;
+}
+
+static int
+test_is_device_mounted(void)
+{
+	int pass;
+
+	pass = is_device_mounted(TDEVM);
+	pass = pass && !is_device_mounted(TEXIST);
+
+	return pass;
+}
+
+typedef struct {
+	const char *name;
+	int (*fn)(void);
+} fspred_test;
+
+fspred_test all_tests[NTESTS] = {
+	"is_dir", test_is_dir,
+	"is_program", test_is_program,
+	"is_device", test_is_device,
+	"is_named_pipe", test_is_named_pipe,
+	"is_mountpoint_mounted", test_is_mountpoint_mounted,
+	"is_device_mounted", test_is_device_mounted
+};
+
+int
+main(void)
+{
+	int pass = 1;
+	int ret;
+
+	for (int i = 0; i < NTESTS; i++) {
+		ret = all_tests[i].fn();
+		printf("%s ..... %s\n", all_tests[i].name,
+		    (ret) ? "pass" : "fail");
+
+		if (ret == 0)
+			pass = 0;
 	}
 
 	/* XXX Any reasonable way of testing is_any_slice_mounted? */
 
-	return EXIT_SUCCESS;
+	return (pass) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
