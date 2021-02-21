@@ -15,6 +15,8 @@
  * $FreeBSD: src/games/grdc/grdc.c,v 1.8.2.1 2001/10/02 11:51:49 ru Exp $
  */
 
+#include <sys/time.h>
+
 #include <err.h>
 #include <ncurses.h>
 #include <poll.h>
@@ -50,8 +52,8 @@ main(int argc, char **argv)
 {
 	int i, s, k, n, ch;
 	bool scrol, forever;
-	long scroll_msecs;
-	time_t now;
+	long scroll_msecs, delay_msecs;
+	struct timespec now, scroll_ts;
 	struct tm *tm;
 
 	n = 0;
@@ -140,12 +142,16 @@ main(int argc, char **argv)
 		refresh();
 	}
 
+	scroll_ts.tv_sec = scroll_msecs / 1000;
+	scroll_ts.tv_nsec = 1000000 * (scroll_msecs % 1000);
+
 	do {
-		mask = 0;
-		time(&now);
+		clock_gettime(CLOCK_REALTIME_FAST, &now);
 		if (scrol)
-			now += scroll_msecs / 1000;
-		tm = localtime(&now);
+			timespecadd(&now, &scroll_ts, &now);
+		tm = localtime(&now.tv_sec);
+
+		mask = 0;
 		set(tm->tm_sec % 10, 0);
 		set(tm->tm_sec / 10, 4);
 		set(tm->tm_min % 10, 10);
@@ -154,6 +160,7 @@ main(int argc, char **argv)
 		set(tm->tm_hour / 10, 24);
 		set(10, 7);
 		set(10, 17);
+
 		for (k = 0; k < 6; k++) {
 			if (scrol) {
 				if (snooze(scroll_msecs / 6) == 1)
@@ -179,8 +186,16 @@ main(int argc, char **argv)
 		}
 		move(ybase, 0);
 		refresh();
-		if (snooze(1000 - (scrol ? scroll_msecs : 0)) == 1)
-			goto out;
+
+		clock_gettime(CLOCK_REALTIME_FAST, &now);
+		delay_msecs = 1000 - now.tv_nsec / 1000000;
+		/* want scrolling to end on the second */
+		if (scrol)
+			delay_msecs -= scroll_msecs;
+		if (delay_msecs > 0) {
+			if (snooze(delay_msecs) == 1)
+				goto out;
+		}
 	} while (forever ? 1 : --n);
 
 out:
@@ -200,9 +215,7 @@ snooze(long msecs)
 	char c;
 	int rv;
 
-	if (msecs <= 0) {
-		goto out;
-	} else if (msecs < 1000) {
+	if (msecs < 1000) {
 		ts.tv_sec = 0;
 		ts.tv_nsec = 1000000 * msecs;
 	} else {
@@ -217,7 +230,6 @@ snooze(long msecs)
 			return (1);
 	}
 
-out:
 	if (sigtermed) {
 		cleanup();
 		errx(1, "terminated by signal %d", (int)sigtermed);
