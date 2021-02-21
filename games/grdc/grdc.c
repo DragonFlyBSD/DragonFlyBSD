@@ -4,8 +4,9 @@
  *
  * Grand digital clock for curses compatible terminals
  *
- * Usage: grdc [-s] [-d msecs] [n]   -- run for n seconds (default infinity)
+ * Usage: grdc [-st] [-d msecs] [n]   -- run for n seconds (default infinity)
  * Flags:	-s: scroll (default scroll duration 120msec)
+ *		-t: show time in 12-hour format
  *		-d msecs: specify scroll duration (implies -s)
  *
  * modified 10-18-89 for curses (jrl)
@@ -51,17 +52,18 @@ int
 main(int argc, char **argv)
 {
 	int i, s, k, n, ch;
-	bool scrol, forever;
+	bool t12, scrol, forever;
 	long scroll_msecs, delay_msecs;
 	struct timespec now, scroll_ts;
 	struct tm *tm;
 
 	n = 0;
+	t12 = false;
 	forever = true;
 	scrol = false;
 	scroll_msecs = 120;
 
-	while ((ch = getopt(argc, argv, "d:s")) != -1) {
+	while ((ch = getopt(argc, argv, "d:st")) != -1) {
 		switch (ch) {
 		case 'd':
 			scroll_msecs = atol(optarg);
@@ -70,6 +72,9 @@ main(int argc, char **argv)
 			/* FALLTHROUGH */
 		case 's':
 			scrol = true;
+			break;
+		case 't':
+			t12 = true;
 			break;
 		case '?':
 		default:
@@ -156,6 +161,19 @@ main(int argc, char **argv)
 		set(tm->tm_sec / 10, 4);
 		set(tm->tm_min % 10, 10);
 		set(tm->tm_min / 10, 14);
+		if (t12) {
+			if (tm->tm_hour == 0) {
+				tm->tm_hour = 12;
+				mvaddstr(ybase - 1, xbase, "AM");
+			} else if (tm->tm_hour < 12) {
+				mvaddstr(ybase - 1, xbase, "AM");
+			} else if (tm->tm_hour == 12) {
+				mvaddstr(ybase - 1, xbase, "PM");
+			} else {
+				tm->tm_hour -= 12;
+				mvaddstr(ybase - 1, xbase, "PM");
+			}
+		}
 		set(tm->tm_hour % 10, 20);
 		set(tm->tm_hour / 10, 24);
 		set(10, 7);
@@ -307,6 +325,6 @@ standt(int on)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: grdc [-s] [-d msecs] [n]\n");
+	fprintf(stderr, "usage: grdc [-st] [-d msecs] [n]\n");
 	exit(1);
 }

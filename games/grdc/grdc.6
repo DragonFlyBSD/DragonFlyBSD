@@ -8,7 +8,7 @@
 .Nd grand digital clock (curses)
 .Sh SYNOPSIS
 .Nm
-.Op Fl s
+.Op Fl st
 .Op Fl d Ar msecs
 .Op Ar n
 .Sh DESCRIPTION
@@ -39,6 +39,10 @@ option, which implies
 .Fl s ,
 may be given to explicitly set the scroll duration.
 The maximum scroll duration is effectively 5 seconds.
+.Pp
+The optional
+.Fl t
+flag makes the time shown in an 12-hour clock format.
 .Sh AUTHORS
 .An -nosplit
 .An Amos Shapir ,
