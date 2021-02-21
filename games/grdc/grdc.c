@@ -144,6 +144,8 @@ main(int argc, char **argv)
 	do {
 		mask = 0;
 		time(&now);
+		if (scrol)
+			now += scroll_msecs / 1000;
 		tm = localtime(&now);
 		set(tm->tm_sec % 10, 0);
 		set(tm->tm_sec / 10, 4);
@@ -190,7 +192,9 @@ snooze(long msecs)
 {
 	struct timespec ts;
 
-	if (msecs < 1000) {
+	if (msecs <= 0) {
+		goto out;
+	} else if (msecs < 1000) {
 		ts.tv_sec = 0;
 		ts.tv_nsec = 1000000 * msecs;
 	} else {
@@ -200,6 +204,7 @@ snooze(long msecs)
 
 	nanosleep(&ts, NULL);
 
+out:
 	if (sigtermed) {
 		cleanup();
 		errx(1, "terminated by signal %d", (int)sigtermed);
