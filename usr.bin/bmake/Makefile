@@ -70,7 +70,6 @@ COPTS.var.c=	-Wno-format-nonliteral
 WARNS=	3
 
 .PATH:	${srcdir}
-.PATH:	${srcdir}/lst.lib
 
 MAN=	make.1
 make.1:	bmake.1
