@@ -17,6 +17,7 @@
 
 #include <err.h>
 #include <ncurses.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <time.h>
@@ -34,7 +35,7 @@ static void cleanup(void);
 static void draw_row(int, int);
 static void set(int, int);
 static void sighndl(int);
-static void snooze(long);
+static int  snooze(long);
 static void standt(int);
 static void usage(void) __dead2;
 
@@ -47,9 +48,7 @@ sighndl(int signo)
 int
 main(int argc, char **argv)
 {
-	int i, s, k;
-	int n;
-	int ch;
+	int i, s, k, n, ch;
 	bool scrol, forever;
 	long scroll_msecs;
 	time_t now;
@@ -157,7 +156,8 @@ main(int argc, char **argv)
 		set(10, 17);
 		for (k = 0; k < 6; k++) {
 			if (scrol) {
-				snooze(scroll_msecs / 6);
+				if (snooze(scroll_msecs / 6) == 1)
+					goto out;
 				for(i = 0; i < 5; i++) {
 					new[i] = (new[i] & ~mask) |
 						 (new[i+1] & mask);
@@ -179,18 +179,26 @@ main(int argc, char **argv)
 		}
 		move(ybase, 0);
 		refresh();
-		snooze(1000 - (scrol ? scroll_msecs : 0));
+		if (snooze(1000 - (scrol ? scroll_msecs : 0)) == 1)
+			goto out;
 	} while (forever ? 1 : --n);
 
+out:
 	cleanup();
 
 	return (0);
 }
 
-static void
+static int
 snooze(long msecs)
 {
+	static struct pollfd pfd = {
+		.fd = STDIN_FILENO,
+		.events = POLLIN,
+	};
 	struct timespec ts;
+	char c;
+	int rv;
 
 	if (msecs <= 0) {
 		goto out;
@@ -202,13 +210,20 @@ snooze(long msecs)
 		ts.tv_nsec = 1000000 * (msecs % 1000);
 	}
 
-	nanosleep(&ts, NULL);
+	rv = ppoll(&pfd, 1, &ts, NULL);
+	if (rv == 1) {
+		read(pfd.fd, &c, 1);
+		if (c == 'q')
+			return (1);
+	}
 
 out:
 	if (sigtermed) {
 		cleanup();
 		errx(1, "terminated by signal %d", (int)sigtermed);
 	}
+
+	return (0);
 }
 
 static void
