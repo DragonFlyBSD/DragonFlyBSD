@@ -428,7 +428,7 @@ sys_mq_open(struct sysmsg *sysmsg, const struct mq_open_args *uap)
 	int mqd, error, oflag;
 
 	/* Check access mode flags */
-	oflag = SCARG(uap, oflag);
+	oflag = uap->oflag;
 	if ((oflag & O_ACCMODE) == (O_WRONLY | O_RDWR)) {
 		return EINVAL;
 	}
@@ -437,7 +437,7 @@ sys_mq_open(struct sysmsg *sysmsg, const struct mq_open_args *uap)
 	name = kmalloc(MQ_NAMELEN, M_MQBUF, M_WAITOK | M_ZERO | M_NULLOK);
 	if (name == NULL)
 		return (ENOMEM);
-	error = copyinstr(SCARG(uap, name), name, MQ_NAMELEN - 1, NULL);
+	error = copyinstr(uap->name, name, MQ_NAMELEN - 1, NULL);
 	if (error) {
 		kfree(name, M_MQBUF);
 		return error;
@@ -460,8 +460,8 @@ sys_mq_open(struct sysmsg *sysmsg, const struct mq_open_args *uap)
 		}
 
 		/* Check for mqueue attributes */
-		if (SCARG(uap, attr)) {
-			error = copyin(SCARG(uap, attr), &attr,
+		if (uap->attr) {
+			error = copyin(uap->attr, &attr,
 				sizeof(struct mq_attr));
 			if (error) {
 				kfree(name, M_MQBUF);
@@ -506,7 +506,7 @@ sys_mq_open(struct sysmsg *sysmsg, const struct mq_open_args *uap)
 		mq_new->mq_attrib.mq_flags = oflag;
 
 		/* Store mode and effective UID with GID */
-		mq_new->mq_mode = ((SCARG(uap, mode) &
+		mq_new->mq_mode = ((uap->mode &
 		    ~p->p_fd->fd_cmask) & ALLPERMS) & ~S_ISTXT;
 		mq_new->mq_euid = td->td_ucred->cr_uid;
 		mq_new->mq_egid = td->td_ucred->cr_svgid;
@@ -735,8 +735,8 @@ sys_mq_receive(struct sysmsg *sysmsg, const struct mq_receive_args *uap)
 	ssize_t mlen;
 	int error;
 
-	error = mq_receive1(curthread->td_lwp, SCARG(uap, mqdes), SCARG(uap, msg_ptr),
-	    SCARG(uap, msg_len), SCARG(uap, msg_prio), 0, &mlen);
+	error = mq_receive1(curthread->td_lwp, uap->mqdes, uap->msg_ptr,
+	    uap->msg_len, uap->msg_prio, 0, &mlen);
 	if (error == 0)
 		sysmsg->sysmsg_result = mlen;
 
@@ -758,8 +758,8 @@ sys_mq_timedreceive(struct sysmsg *sysmsg, const struct mq_timedreceive_args *ua
 	struct timespec ts, *tsp;
 
 	/* Get and convert time value */
-	if (SCARG(uap, abs_timeout)) {
-		error = copyin(SCARG(uap, abs_timeout), &ts, sizeof(ts));
+	if (uap->abs_timeout) {
+		error = copyin(uap->abs_timeout, &ts, sizeof(ts));
 		if (error)
 			return error;
 		tsp = &ts;
@@ -767,8 +767,8 @@ sys_mq_timedreceive(struct sysmsg *sysmsg, const struct mq_timedreceive_args *ua
 		tsp = NULL;
 	}
 
-	error = mq_receive1(curthread->td_lwp, SCARG(uap, mqdes), SCARG(uap, msg_ptr),
-	    SCARG(uap, msg_len), SCARG(uap, msg_prio), tsp, &mlen);
+	error = mq_receive1(curthread->td_lwp, uap->mqdes, uap->msg_ptr,
+	    uap->msg_len, uap->msg_prio, tsp, &mlen);
 	if (error == 0)
 		sysmsg->sysmsg_result = mlen;
 
@@ -921,8 +921,8 @@ sys_mq_send(struct sysmsg *sysmsg, const struct mq_send_args *uap)
 		syscallarg(unsigned) msg_prio;
 	} */
 
-	return mq_send1(curthread->td_lwp, SCARG(uap, mqdes), SCARG(uap, msg_ptr),
-	    SCARG(uap, msg_len), SCARG(uap, msg_prio), 0);
+	return mq_send1(curthread->td_lwp, uap->mqdes, uap->msg_ptr,
+	    uap->msg_len, uap->msg_prio, 0);
 }
 
 int
@@ -939,8 +939,8 @@ sys_mq_timedsend(struct sysmsg *sysmsg, const struct mq_timedsend_args *uap)
 	int error;
 
 	/* Get and convert time value */
-	if (SCARG(uap, abs_timeout)) {
-		error = copyin(SCARG(uap, abs_timeout), &ts, sizeof(ts));
+	if (uap->abs_timeout) {
+		error = copyin(uap->abs_timeout, &ts, sizeof(ts));
 		if (error)
 			return error;
 		tsp = &ts;
@@ -948,8 +948,8 @@ sys_mq_timedsend(struct sysmsg *sysmsg, const struct mq_timedsend_args *uap)
 		tsp = NULL;
 	}
 
-	return mq_send1(curthread->td_lwp, SCARG(uap, mqdes), SCARG(uap, msg_ptr),
-	    SCARG(uap, msg_len), SCARG(uap, msg_prio), tsp);
+	return mq_send1(curthread->td_lwp, uap->mqdes, uap->msg_ptr,
+	    uap->msg_len, uap->msg_prio, tsp);
 }
 
 int
@@ -964,9 +964,9 @@ sys_mq_notify(struct sysmsg *sysmsg, const struct mq_notify_args *uap)
 	struct sigevent sig;
 	int error;
 
-	if (SCARG(uap, notification)) {
+	if (uap->notification) {
 		/* Get the signal from user-space */
-		error = copyin(SCARG(uap, notification), &sig,
+		error = copyin(uap->notification, &sig,
 		    sizeof(struct sigevent));
 		if (error)
 			return error;
@@ -975,12 +975,12 @@ sys_mq_notify(struct sysmsg *sysmsg, const struct mq_notify_args *uap)
 			return EINVAL;
 	}
 
-	error = mqueue_get(curthread->td_lwp, SCARG(uap, mqdes), &fp);
+	error = mqueue_get(curthread->td_lwp, uap->mqdes, &fp);
 	if (error)
 		return error;
 	mq = fp->f_data;
 
-	if (SCARG(uap, notification)) {
+	if (uap->notification) {
 		/* Register notification: set the signal and target process */
 		if (mq->mq_notify_proc == NULL) {
 			memcpy(&mq->mq_sig_notify, &sig,
@@ -1013,7 +1013,7 @@ sys_mq_getattr(struct sysmsg *sysmsg, const struct mq_getattr_args *uap)
 	int error;
 
 	/* Get the message queue */
-	error = mqueue_get(curthread->td_lwp, SCARG(uap, mqdes), &fp);
+	error = mqueue_get(curthread->td_lwp, uap->mqdes, &fp);
 	if (error)
 		return error;
 	mq = fp->f_data;
@@ -1021,7 +1021,7 @@ sys_mq_getattr(struct sysmsg *sysmsg, const struct mq_getattr_args *uap)
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 	fdrop(fp);
 
-	return copyout(&attr, SCARG(uap, mqstat), sizeof(struct mq_attr));
+	return copyout(&attr, uap->mqstat, sizeof(struct mq_attr));
 }
 
 int
@@ -1037,19 +1037,19 @@ sys_mq_setattr(struct sysmsg *sysmsg, const struct mq_setattr_args *uap)
 	struct mq_attr attr;
 	int error, nonblock;
 
-	error = copyin(SCARG(uap, mqstat), &attr, sizeof(struct mq_attr));
+	error = copyin(uap->mqstat, &attr, sizeof(struct mq_attr));
 	if (error)
 		return error;
 	nonblock = (attr.mq_flags & O_NONBLOCK);
 
 	/* Get the message queue */
-	error = mqueue_get(curthread->td_lwp, SCARG(uap, mqdes), &fp);
+	error = mqueue_get(curthread->td_lwp, uap->mqdes, &fp);
 	if (error)
 		return error;
 	mq = fp->f_data;
 
 	/* Copy the old attributes, if needed */
-	if (SCARG(uap, omqstat)) {
+	if (uap->omqstat) {
 		memcpy(&attr, &mq->mq_attrib, sizeof(struct mq_attr));
 	}
 
@@ -1067,9 +1067,8 @@ sys_mq_setattr(struct sysmsg *sysmsg, const struct mq_setattr_args *uap)
 	 * Note: According to POSIX, the new attributes should not be set in
 	 * case of fail - this would be violated.
 	 */
-	if (SCARG(uap, omqstat))
-		error = copyout(&attr, SCARG(uap, omqstat),
-		    sizeof(struct mq_attr));
+	if (uap->omqstat)
+		error = copyout(&attr, uap->omqstat, sizeof(struct mq_attr));
 
 	return error;
 }
@@ -1089,7 +1088,7 @@ sys_mq_unlink(struct sysmsg *sysmsg, const struct mq_unlink_args *uap)
 	name = kmalloc(MQ_NAMELEN, M_MQBUF, M_WAITOK | M_ZERO | M_NULLOK);
 	if (name == NULL)
 		return (ENOMEM);
-	error = copyinstr(SCARG(uap, name), name, MQ_NAMELEN - 1, NULL);
+	error = copyinstr(uap->name, name, MQ_NAMELEN - 1, NULL);
 	if (error) {
 		kfree(name, M_MQBUF);
 		return error;

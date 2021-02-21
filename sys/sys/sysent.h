@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
- * $DragonFly: src/sys/sys/sysent.h,v 1.12 2007/02/21 15:45:37 corecode Exp $
  */
 
 #ifndef _SYS_SYSENT_H_
@@ -47,9 +46,6 @@ struct sysent {		/* system call table */
 	sy_call_t *sy_call;	/* start function */
 	sy_call_t *sy_abort;	/* abort function (only if start was async) */
 };
-
-#define SCARG(p,k)	((p)->k)	/* get arg from args pointer */
-  /* placeholder till we integrate rest of lite2 syscallargs changes XXX */
 
 struct image_params;
 struct __sigset;
