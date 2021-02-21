@@ -191,8 +191,13 @@ snooze(long int msecs)
 {
 	struct timespec ts;
 
-	ts.tv_sec = 0;
-	ts.tv_nsec = 1000000 * msecs;
+	if (msecs < 1000) {
+		ts.tv_sec = 0;
+		ts.tv_nsec = 1000000 * msecs;
+	} else {
+		ts.tv_sec = msecs / 1000;
+		ts.tv_nsec = 1000000 * (msecs % 1000);
+	}
 
 	nanosleep(&ts, NULL);
 
