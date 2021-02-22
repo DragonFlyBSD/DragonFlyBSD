@@ -1,9 +1,11 @@
+/* $NetBSD: cgram.c,v 1.11 2021/02/21 22:21:56 rillig Exp $ */
+
 /*-
- * Copyright (c) 2013 The NetBSD Foundation, Inc.
+ * Copyright (c) 2013, 2021 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
- * by David A. Holland.
+ * by David A. Holland and Roland Illig.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +31,9 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <err.h>
 #include <curses.h>
+#include <err.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,25 +43,87 @@
 
 ////////////////////////////////////////////////////////////
 
-static char *
-xstrdup(const char *s)
+static char
+ch_toupper(char ch)
 {
-	char *ret;
+	return (char)toupper((unsigned char)ch);
+}
 
-	ret = malloc(strlen(s) + 1);
-	if (ret == NULL)
-		errx(1, "Out of memory");
+static char
+ch_tolower(char ch)
+{
+	return (char)tolower((unsigned char)ch);
+}
 
-	strcpy(ret, s);
-	return ret;
+static bool
+ch_isalpha(char ch)
+{
+	return isalpha((unsigned char)ch) != 0;
+}
+
+static bool
+ch_islower(char ch)
+{
+	return islower((unsigned char)ch) != 0;
+}
+
+static bool
+ch_isupper(char ch)
+{
+	return isupper((unsigned char)ch) != 0;
+}
+
+static int
+imax(int a, int b)
+{
+	return a > b ? a : b;
+}
+
+static int
+imin(int a, int b)
+{
+	return a < b ? a : b;
 }
 
 ////////////////////////////////////////////////////////////
 
-struct stringarray {
-	char	**v;
-	int	num;
+struct string {
+	char *s;
+	size_t len;
+	size_t cap;
 };
+
+struct stringarray {
+	struct string *v;
+	size_t num;
+};
+
+static void
+string_init(struct string *s)
+{
+	s->s = NULL;
+	s->len = 0;
+	s->cap = 0;
+}
+
+static void
+string_add(struct string *s, char ch)
+{
+	if (s->len >= s->cap) {
+		s->cap = 2 * s->cap + 16;
+		s->s = realloc(s->s, s->cap);
+		if (s->s == NULL)
+			errx(1, "Out of memory");
+	}
+	s->s[s->len++] = ch;
+}
+
+static void
+string_finish(struct string *s)
+{
+	string_add(s, '\0');
+	s->len--;
+}
 
 static void
 stringarray_init(struct stringarray *a)
@@ -70,60 +135,92 @@ stringarray_init(struct stringarray *a)
 static void
 stringarray_cleanup(struct stringarray *a)
 {
+	for (size_t i = 0; i < a->num; i++)
+		free(a->v[i].s);
 	free(a->v);
 }
 
 static void
-stringarray_add(struct stringarray *a, const char *s)
+stringarray_add(struct stringarray *a, struct string *s)
 {
-	a->v = realloc(a->v, (a->num + 1) * sizeof(a->v[0]));
+	size_t num = a->num++;
+	a->v = realloc(a->v, a->num * sizeof a->v[0]);
 	if (a->v == NULL)
 		errx(1, "Out of memory");
+	a->v[num] = *s;
+}
 
-	a->v[a->num] = xstrdup(s);
-	a->num++;
+static void
+stringarray_dup(struct stringarray *dst, const struct stringarray *src)
+{
+	assert(dst->num == 0);
+	for (size_t i = 0; i < src->num; i++) {
+		struct string str;
+		string_init(&str);
+		for (const char *p = src->v[i].s; *p != '\0'; p++)
+			string_add(&str, *p);
+		string_finish(&str);
+		stringarray_add(dst, &str);
+	}
 }
 
 ////////////////////////////////////////////////////////////
 
 static struct stringarray lines;
 static struct stringarray sollines;
-static bool	hinting;
-static int	scrolldown;
-static unsigned	curx;
-static int	cury;
+static bool hinting;
+static int extent_x;
+static int extent_y;
+static int offset_x;
+static int offset_y;
+static int cursor_x;
+static int cursor_y;
+
+static int
+cur_max_x(void)
+{
+	return (int)lines.v[cursor_y].len;
+}
+
+static int
+cur_max_y(void)
+{
+	return extent_y - 1;
+}
 
 static void
 readquote(void)
 {
 	FILE *f = popen(_PATH_FORTUNE, "r");
-	if (!f)
+	if (f == NULL)
 		err(1, "%s", _PATH_FORTUNE);
 
-	char buf[128], buf2[8 * sizeof(buf)];
-	while (fgets(buf, sizeof(buf), f)) {
-		char *s = strrchr(buf, '\n');
-		assert(s && strlen(s) == 1);
-		*s = '\0';
+	struct string line;
+	string_init(&line);
 
-		int i, j;
-		for (i = j = 0; buf[i]; i++) {
-			if (buf[i] == '\t') {
-				buf2[j++] = ' ';
-				while (j % 8)
-					buf2[j++] = ' ';
-			} else if (buf[i] == '\b') {
-				if (j > 0)
-					j--;
-			} else {
-				buf2[j++] = buf[i];
-			}
+	int ch;
+	while ((ch = fgetc(f)) != EOF) {
+		if (ch == '\n') {
+			string_finish(&line);
+			stringarray_add(&lines, &line);
+			string_init(&line);
+		} else if (ch == '\t') {
+			string_add(&line, ' ');
+			while (line.len % 8 != 0)
+				string_add(&line, ' ');
+		} else if (ch == '\b') {
+			if (line.len > 0)
+				line.len--;
+		} else {
+			string_add(&line, (char)ch);
 		}
-		buf2[j] = 0;
-
-		stringarray_add(&lines, buf2);
-		stringarray_add(&sollines, buf2);
 	}
+
+	stringarray_dup(&sollines, &lines);
+
+	extent_y = (int)lines.num;
+	for (int i = 0; i < extent_y; i++)
+		extent_x = imax(extent_x, (int)lines.v[i].len);
 
 	pclose(f);
 }
@@ -135,97 +232,106 @@ encode(void)
 
 	for (int i = 0; i < 26; i++)
 		key[i] = i;
+
 	for (int i = 26; i > 1; i--) {
-		int c = random() % i;
+		int c = (int)(random() % i);
 		int t = key[i - 1];
 		key[i - 1] = key[c];
 		key[c] = t;
 	}
 
-	for (int y = 0; y < lines.num; y++) {
-		for (int x = 0; lines.v[y][x]; x++) {
-			if (islower((unsigned char)lines.v[y][x])) {
-				int q = lines.v[y][x] - 'a';
-				lines.v[y][x] = 'a' + key[q];
-			}
-			if (isupper((unsigned char)lines.v[y][x])) {
-				int q = lines.v[y][x] - 'A';
-				lines.v[y][x] = 'A' + key[q];
-			}
+	for (int y = 0; y < extent_y; y++) {
+		for (char *p = lines.v[y].s; *p != '\0'; p++) {
+			if (ch_islower(*p))
+				*p = (char)('a' + key[*p - 'a']);
+			if (ch_isupper(*p))
+				*p = (char)('A' + key[*p - 'A']);
 		}
 	}
 }
 
-static int
-substitute(int ch)
+static bool
+substitute(char ch)
 {
-	assert(cury >= 0 && cury < lines.num);
-	if (curx >= strlen(lines.v[cury])) {
+	assert(cursor_x >= 0 && cursor_x < extent_x);
+	assert(cursor_y >= 0 && cursor_y < extent_y);
+	if (cursor_x >= cur_max_x()) {
 		beep();
-		return -1;
+		return false;
 	}
 
-	int och = (unsigned char)lines.v[cury][curx];
-	if (!isalpha(och)) {
+	char och = lines.v[cursor_y].s[cursor_x];
+	if (!ch_isalpha(och)) {
 		beep();
-		return -1;
+		return false;
 	}
 
-	int loch = tolower(och);
-	int uoch = toupper(och);
-	int lch = tolower(ch);
-	int uch = toupper(ch);
+	char loch = ch_tolower(och);
+	char uoch = ch_toupper(och);
+	char lch = ch_tolower(ch);
+	char uch = ch_toupper(ch);
 
-	for (int y = 0; y < lines.num; y++) {
-		for (int x = 0; lines.v[y][x]; x++) {
-			if (lines.v[y][x] == loch)
-				lines.v[y][x] = lch;
-			else if (lines.v[y][x] == uoch)
-				lines.v[y][x] = uch;
-			else if (lines.v[y][x] == lch)
-				lines.v[y][x] = loch;
-			else if (lines.v[y][x] == uch)
-				lines.v[y][x] = uoch;
+	for (int y = 0; y < (int)lines.num; y++) {
+		for (char *p = lines.v[y].s; *p != '\0'; p++) {
+			if (*p == loch)
+				*p = lch;
+			else if (*p == uoch)
+				*p = uch;
+			else if (*p == lch)
+				*p = loch;
+			else if (*p == uch)
+				*p = uoch;
 		}
 	}
-
-	return 0;
+	return true;
 }
 
 ////////////////////////////////////////////////////////////
+
+static bool
+is_solved(void)
+{
+	for (size_t i = 0; i < lines.num; i++)
+		if (strcmp(lines.v[i].s, sollines.v[i].s) != 0)
+			return false;
+	return true;
+}
 
 static void
 redraw(void)
 {
 	erase();
 
-	bool won = true;
+	int max_y = imin(LINES - 1, extent_y - offset_y);
+	for (int y = 0; y < max_y; y++) {
+		move(y, 0);
 
-	for (int i = 0; i < LINES - 1; i++) {
-		move(i, 0);
-		int ln = i + scrolldown;
-		if (ln < lines.num) {
-			for (int j = 0; lines.v[i][j]; j++) {
-				int ch = (unsigned char)lines.v[i][j];
-				int solch = (unsigned char)sollines.v[i][j];
-				if (ch != solch && isalpha(ch))
-					won = false;
+		int len = (int)lines.v[offset_y + y].len;
+		int max_x = imin(COLS - 1, len - offset_x);
+		const char *line = lines.v[offset_y + y].s;
+		const char *solline = sollines.v[offset_y + y].s;
 
-				int attr = 0;
-				if (hinting && ch == solch && isalpha(ch))
-					attr = A_BOLD;
-				addch(ch | attr);
-			}
+		for (int x = 0; x < max_x; x++) {
+			char ch = line[offset_x + x];
+			bool bold = hinting &&
+			    ch == solline[offset_x + x] &&
+			    ch_isalpha(ch);
+
+			if (bold)
+				attron(A_BOLD);
+			addch(ch);
+			if (bold)
+				attroff(A_BOLD);
 		}
 		clrtoeol();
 	}
 
 	move(LINES - 1, 0);
-	if (won)
+	if (is_solved())
 		addstr("*solved* ");
 	addstr("~ to quit, * to cheat, ^pnfb to move");
 
-	move(cury - scrolldown, curx);
+	move(cursor_y - offset_y, cursor_x - offset_x);
 
 	refresh();
 }
@@ -236,7 +342,7 @@ opencurses(void)
 	initscr();
 	cbreak();
 	noecho();
-	keypad(stdscr, TRUE);
+	keypad(stdscr, true);
 }
 
 static void
@@ -248,93 +354,145 @@ closecurses(void)
 ////////////////////////////////////////////////////////////
 
 static void
+saturate_cursor(void)
+{
+	cursor_y = imax(cursor_y, 0);
+	cursor_y = imin(cursor_y, cur_max_y());
+
+	assert(cursor_x >= 0);
+	cursor_x = imin(cursor_x, cur_max_x());
+}
+
+static void
+scroll_into_view(void)
+{
+	if (cursor_x < offset_x)
+		offset_x = cursor_x;
+	if (cursor_x > offset_x + COLS - 1)
+		offset_x = cursor_x - (COLS - 1);
+
+	if (cursor_y < offset_y)
+		offset_y = cursor_y;
+	if (cursor_y > offset_y + LINES - 2)
+		offset_y = cursor_y - (LINES - 2);
+}
+
+static void
+handle_char_input(int ch)
+{
+	if (isascii(ch) && ch_isalpha((char)ch)) {
+		if (substitute((char)ch)) {
+			if (cursor_x < cur_max_x())
+				cursor_x++;
+			if (cursor_x == cur_max_x() &&
+			    cursor_y < cur_max_y()) {
+				cursor_x = 0;
+				cursor_y++;
+			}
+		}
+	} else if (cursor_x < cur_max_x() &&
+	    ch == lines.v[cursor_y].s[cursor_x]) {
+		cursor_x++;
+		if (cursor_x == cur_max_x() &&
+		    cursor_y < cur_max_y()) {
+			cursor_x = 0;
+			cursor_y++;
+		}
+	} else {
+		beep();
+	}
+}
+
+static bool
+handle_key(void)
+{
+	int ch = getch();
+
+	switch (ch) {
+	case 1:			/* ^A */
+	case KEY_HOME:
+		cursor_x = 0;
+		break;
+	case 2:			/* ^B */
+	case KEY_LEFT:
+		if (cursor_x > 0) {
+			cursor_x--;
+		} else if (cursor_y > 0) {
+			cursor_y--;
+			cursor_x = cur_max_x();
+		}
+		break;
+	case 5:			/* ^E */
+	case KEY_END:
+		cursor_x = cur_max_x();
+		break;
+	case 6:			/* ^F */
+	case KEY_RIGHT:
+		if (cursor_x < cur_max_x()) {
+			cursor_x++;
+		} else if (cursor_y < cur_max_y()) {
+			cursor_y++;
+			cursor_x = 0;
+		}
+		break;
+	case 12:		/* ^L */
+		clear();
+		break;
+	case 14:		/* ^N */
+	case KEY_DOWN:
+		cursor_y++;
+		break;
+	case 16:		/* ^P */
+	case KEY_UP:
+		cursor_y--;
+		break;
+	case KEY_PPAGE:
+		cursor_y -= LINES - 2;
+		break;
+	case KEY_NPAGE:
+		cursor_y += LINES - 2;
+		break;
+	case '*':
+		hinting = !hinting;
+		break;
+	case '~':
+		return false;
+	default:
+		handle_char_input(ch);
+		break;
+	}
+	return true;
+}
+
+static void
+init(void)
+{
+	stringarray_init(&lines);
+	stringarray_init(&sollines);
+	srandom((unsigned int)time(NULL));
+	readquote();
+	encode();
+	opencurses();
+}
+
+static void
 loop(void)
 {
-	bool done = false;
-
-	while (!done) {
+	for (;;) {
 		redraw();
-
-		int ch = getch();
-		switch (ch) {
-		case 1:		/* ^A */
-		case KEY_HOME:
-			curx = 0;
+		if (!handle_key())
 			break;
-		case 2:		/* ^B */
-		case KEY_LEFT:
-			if (curx > 0) {
-				curx--;
-			} else if (cury > 0) {
-				cury--;
-				curx = strlen(lines.v[cury]);
-			}
-			break;
-		case 5:		/* ^E */
-		case KEY_END:
-			curx = strlen(lines.v[cury]);
-			break;
-		case 6:		/* ^F */
-		case KEY_RIGHT:
-			if (curx < strlen(lines.v[cury])) {
-				curx++;
-			} else if (cury < lines.num - 1) {
-				cury++;
-				curx = 0;
-			}
-			break;
-		case 12:	/* ^L */
-			clear();
-			break;
-		case 14:	/* ^N */
-		case KEY_DOWN:
-			if (cury < lines.num - 1)
-				cury++;
-			if (curx > strlen(lines.v[cury]))
-				curx = strlen(lines.v[cury]);
-			if (scrolldown < cury - (LINES - 2))
-				scrolldown = cury - (LINES - 2);
-			break;
-		case 16:	/* ^P */
-		case KEY_UP:
-			if (cury > 0)
-				cury--;
-			if (curx > strlen(lines.v[cury]))
-				curx = strlen(lines.v[cury]);
-			if (scrolldown > cury)
-				scrolldown = cury;
-			break;
-		case '*':
-			hinting = !hinting;
-			break;
-		case '~':
-			done = true;
-			break;
-		default:
-			if (isalpha(ch)) {
-				if (!substitute(ch)) {
-					if (curx < strlen(lines.v[cury]))
-						curx++;
-					if (curx == strlen(lines.v[cury]) &&
-					    cury < lines.num - 1) {
-						curx = 0;
-						cury++;
-					}
-				}
-			} else if (curx < strlen(lines.v[cury]) &&
-				   ch == lines.v[cury][curx]) {
-				curx++;
-				if (curx == strlen(lines.v[cury]) &&
-				    cury < lines.num - 1) {
-					curx = 0;
-					cury++;
-				}
-			} else {
-				beep();
-			}
-			break;
-		}
+		saturate_cursor();
+		scroll_into_view();
 	}
+}
+
+static void
+clean_up(void)
+{
+	closecurses();
+	stringarray_cleanup(&sollines);
+	stringarray_cleanup(&lines);
 }
 
 ////////////////////////////////////////////////////////////
@@ -342,18 +500,7 @@ loop(void)
 int
 main(void)
 {
-	stringarray_init(&lines);
-	stringarray_init(&sollines);
-	srandom(time(NULL));
-	readquote();
-	encode();
-
-	opencurses();
+	init();
 	loop();
-	closecurses();
-
-	stringarray_cleanup(&sollines);
-	stringarray_cleanup(&lines);
-
-	return 0;
+	clean_up();
 }
