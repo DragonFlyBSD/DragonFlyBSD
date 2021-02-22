@@ -179,7 +179,7 @@ static int cursor_y;
 static int
 cur_max_x(void)
 {
-	return (int)lines.v[cursor_y].len;
+	return (int)lines.v[cursor_y].len - 1;
 }
 
 static int
@@ -255,7 +255,7 @@ substitute(char ch)
 {
 	assert(cursor_x >= 0 && cursor_x < extent_x);
 	assert(cursor_y >= 0 && cursor_y < extent_y);
-	if (cursor_x >= cur_max_x()) {
+	if (cursor_x > cur_max_x()) {
 		beep();
 		return false;
 	}
@@ -382,18 +382,18 @@ handle_char_input(int ch)
 {
 	if (isascii(ch) && ch_isalpha((char)ch)) {
 		if (substitute((char)ch)) {
-			if (cursor_x < cur_max_x())
+			if (cursor_x <= cur_max_x())
 				cursor_x++;
-			if (cursor_x == cur_max_x() &&
+			if (cursor_x > cur_max_x() &&
 			    cursor_y < cur_max_y()) {
 				cursor_x = 0;
 				cursor_y++;
 			}
 		}
-	} else if (cursor_x < cur_max_x() &&
+	} else if (cursor_x <= cur_max_x() &&
 	    ch == lines.v[cursor_y].s[cursor_x]) {
 		cursor_x++;
-		if (cursor_x == cur_max_x() &&
+		if (cursor_x > cur_max_x() &&
 		    cursor_y < cur_max_y()) {
 			cursor_x = 0;
 			cursor_y++;
