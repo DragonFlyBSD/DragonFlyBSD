@@ -1,4 +1,4 @@
-/* $NetBSD: cgram.c,v 1.11 2021/02/21 22:21:56 rillig Exp $ */
+/* $NetBSD: cgram.c,v 1.17 2021/02/26 15:18:40 rillig Exp $ */
 
 /*-
  * Copyright (c) 2013, 2021 The NetBSD Foundation, Inc.
@@ -65,6 +65,12 @@ static bool
 ch_islower(char ch)
 {
 	return islower((unsigned char)ch) != 0;
+}
+
+static bool
+ch_isspace(char ch)
+{
+	return isspace((unsigned char)ch) != 0;
 }
 
 static bool
@@ -179,13 +185,30 @@ static int cursor_y;
 static int
 cur_max_x(void)
 {
-	return (int)lines.v[cursor_y].len - 1;
+	return (int)lines.v[cursor_y].len;
 }
 
 static int
 cur_max_y(void)
 {
 	return extent_y - 1;
+}
+
+static char
+char_left_of_cursor(void)
+{
+	if (cursor_x > 0)
+		return lines.v[cursor_y].s[cursor_x - 1];
+	assert(cursor_y > 0);
+	return '\n'; /* eol of previous line */
+}
+
+static char
+char_at_cursor(void)
+{
+	if (cursor_x == cur_max_x())
+		return '\n';
+	return lines.v[cursor_y].s[cursor_x];
 }
 
 static void
@@ -222,7 +245,8 @@ readquote(void)
 	for (int i = 0; i < extent_y; i++)
 		extent_x = imax(extent_x, (int)lines.v[i].len);
 
-	pclose(f);
+	if (pclose(f) != 0)
+		exit(1); /* error message must come from child process */
 }
 
 static void
@@ -250,43 +274,27 @@ encode(void)
 	}
 }
 
-static bool
-substitute(char ch)
+static void
+substitute(char a, char b)
 {
-	assert(cursor_x >= 0 && cursor_x < extent_x);
-	assert(cursor_y >= 0 && cursor_y < extent_y);
-	if (cursor_x > cur_max_x()) {
-		beep();
-		return false;
-	}
-
-	char och = lines.v[cursor_y].s[cursor_x];
-	if (!ch_isalpha(och)) {
-		beep();
-		return false;
-	}
-
-	char loch = ch_tolower(och);
-	char uoch = ch_toupper(och);
-	char lch = ch_tolower(ch);
-	char uch = ch_toupper(ch);
+	char la = ch_tolower(a);
+	char ua = ch_toupper(a);
+	char lb = ch_tolower(b);
+	char ub = ch_toupper(b);
 
 	for (int y = 0; y < (int)lines.num; y++) {
 		for (char *p = lines.v[y].s; *p != '\0'; p++) {
-			if (*p == loch)
-				*p = lch;
-			else if (*p == uoch)
-				*p = uch;
-			else if (*p == lch)
-				*p = loch;
-			else if (*p == uch)
-				*p = uoch;
+			if (*p == la)
+				*p = lb;
+			else if (*p == ua)
+				*p = ub;
+			else if (*p == lb)
+				*p = la;
+			else if (*p == ub)
+				*p = ua;
 		}
 	}
-	return true;
 }
-
-////////////////////////////////////////////////////////////
 
 static bool
 is_solved(void)
@@ -296,6 +304,8 @@ is_solved(void)
 			return false;
 	return true;
 }
+
+////////////////////////////////////////////////////////////
 
 static void
 redraw(void)
@@ -327,28 +337,21 @@ redraw(void)
 	}
 
 	move(LINES - 1, 0);
-	if (is_solved())
-		addstr("*solved* ");
 	addstr("~ to quit, * to cheat, ^pnfb to move");
+
+	if (is_solved()) {
+		if (extent_y + 1 - offset_y < LINES - 2)
+			move(extent_y + 1 - offset_y, 0);
+		else
+			addch(' ');
+		attron(A_BOLD | A_STANDOUT);
+		addstr("*solved*");
+		attroff(A_BOLD | A_STANDOUT);
+	}
 
 	move(cursor_y - offset_y, cursor_x - offset_x);
 
 	refresh();
-}
-
-static void
-opencurses(void)
-{
-	initscr();
-	cbreak();
-	noecho();
-	keypad(stdscr, true);
-}
-
-static void
-closecurses(void)
-{
-	endwin();
 }
 
 ////////////////////////////////////////////////////////////
@@ -377,30 +380,91 @@ scroll_into_view(void)
 		offset_y = cursor_y - (LINES - 2);
 }
 
+static bool
+can_go_left(void)
+{
+	return cursor_y > 0 ||
+	    (cursor_y == 0 && cursor_x > 0);
+}
+
+static bool
+can_go_right(void)
+{
+	return cursor_y < cur_max_y() ||
+	    (cursor_y == cur_max_y() && cursor_x < cur_max_x());
+}
+
+static void
+go_to_prev_line(void)
+{
+	cursor_y--;
+	cursor_x = cur_max_x();
+}
+
+static void
+go_to_next_line(void)
+{
+	cursor_x = 0;
+	cursor_y++;
+}
+
+static void
+go_left(void)
+{
+	if (cursor_x > 0)
+		cursor_x--;
+	else if (cursor_y > 0)
+		go_to_prev_line();
+}
+
+static void
+go_right(void)
+{
+	if (cursor_x < cur_max_x())
+		cursor_x++;
+	else if (cursor_y < cur_max_y())
+		go_to_next_line();
+}
+
+static void
+go_to_prev_word(void)
+{
+	while (can_go_left() && ch_isspace(char_left_of_cursor()))
+		go_left();
+
+	while (can_go_left() && !ch_isspace(char_left_of_cursor()))
+		go_left();
+}
+
+static void
+go_to_next_word(void)
+{
+	while (can_go_right() && !ch_isspace(char_at_cursor()))
+		go_right();
+
+	while (can_go_right() && ch_isspace(char_at_cursor()))
+		go_right();
+}
+
+static bool
+can_substitute_here(int ch)
+{
+	return isascii(ch) &&
+	    ch_isalpha((char)ch) &&
+	    cursor_x < cur_max_x() &&
+	    ch_isalpha(char_at_cursor());
+}
+
 static void
 handle_char_input(int ch)
 {
-	if (isascii(ch) && ch_isalpha((char)ch)) {
-		if (substitute((char)ch)) {
-			if (cursor_x <= cur_max_x())
-				cursor_x++;
-			if (cursor_x > cur_max_x() &&
-			    cursor_y < cur_max_y()) {
-				cursor_x = 0;
-				cursor_y++;
-			}
-		}
-	} else if (cursor_x <= cur_max_x() &&
-	    ch == lines.v[cursor_y].s[cursor_x]) {
-		cursor_x++;
-		if (cursor_x > cur_max_x() &&
-		    cursor_y < cur_max_y()) {
-			cursor_x = 0;
-			cursor_y++;
-		}
-	} else {
+	if (ch == char_at_cursor())
+		go_right();
+	else if (can_substitute_here(ch)) {
+		substitute(char_at_cursor(), (char)ch);
+		go_right();
+	} else
 		beep();
-	}
 }
 
 static bool
@@ -415,12 +479,7 @@ handle_key(void)
 		break;
 	case 2:			/* ^B */
 	case KEY_LEFT:
-		if (cursor_x > 0) {
-			cursor_x--;
-		} else if (cursor_y > 0) {
-			cursor_y--;
-			cursor_x = cur_max_x();
-		}
+		go_left();
 		break;
 	case 5:			/* ^E */
 	case KEY_END:
@@ -428,12 +487,16 @@ handle_key(void)
 		break;
 	case 6:			/* ^F */
 	case KEY_RIGHT:
-		if (cursor_x < cur_max_x()) {
-			cursor_x++;
-		} else if (cursor_y < cur_max_y()) {
-			cursor_y++;
-			cursor_x = 0;
-		}
+		go_right();
+		break;
+	case '\t':
+		go_to_next_word();
+		break;
+	case KEY_BTAB:
+		go_to_prev_word();
+		break;
+	case '\n':
+		go_to_next_line();
 		break;
 	case 12:		/* ^L */
 		clear();
@@ -457,6 +520,8 @@ handle_key(void)
 		break;
 	case '~':
 		return false;
+	case KEY_RESIZE:
+		break;
 	default:
 		handle_char_input(ch);
 		break;
@@ -472,7 +537,11 @@ init(void)
 	srandom((unsigned int)time(NULL));
 	readquote();
 	encode();
-	opencurses();
+
+	initscr();
+	cbreak();
+	noecho();
+	keypad(stdscr, true);
 }
 
 static void
@@ -490,7 +559,8 @@ loop(void)
 static void
 clean_up(void)
 {
-	closecurses();
+	endwin();
+
 	stringarray_cleanup(&sollines);
 	stringarray_cleanup(&lines);
 }
