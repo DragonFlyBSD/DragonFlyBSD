@@ -71,6 +71,9 @@ struct atexit {
 };
 
 static struct atexit *__atexit;		/* points to head of LIFO stack */
+static int nested_atexit;		/* nested atexit() status */
+
+#define	CXA_DTORS_ITERATIONS	16	/* give up after nested iterations */
 
 /*
  * Register the function described by 'fptr' to be called at application
@@ -106,6 +109,8 @@ atexit_register(struct atexit_fn *fptr)
 		__atexit = p;
 	}
 	p->fns[p->ind++] = *fptr;
+	if (nested_atexit == 1)
+		nested_atexit = 2;
 	_MUTEX_UNLOCK(&atexit_mutex);
 	return 0;
 }
@@ -156,6 +161,8 @@ static int global_exit;
  * Call all handlers registered with __cxa_atexit for the shared
  * object owning 'dso'.  Note: if 'dso' is NULL, then all remaining
  * handlers are called.
+ * Attempt to support additional static c++ destructors added from within
+ * destructors in a LIFO manner by relooping.
  */
 void
 __cxa_finalize(void *dso)
@@ -163,7 +170,7 @@ __cxa_finalize(void *dso)
 	struct dl_phdr_info phdr_info;
 	struct atexit *p;
 	struct atexit_fn fn;
-	int n, has_phdr;
+	int n, ni, has_phdr;
 
 	if (dso != NULL) {
 		has_phdr = _rtld_addr_phdr(dso, &phdr_info);
@@ -173,6 +180,9 @@ __cxa_finalize(void *dso)
 	}
 
 	_MUTEX_LOCK(&atexit_mutex);
+	ni = CXA_DTORS_ITERATIONS;
+again:
+	nested_atexit = 1;
 	for (p = __atexit; p; p = p->next) {
 		for (n = p->ind; --n >= 0;) {
 			if (p->fns[n].fn_type == ATEXIT_FN_EMPTY)
@@ -198,6 +208,14 @@ __cxa_finalize(void *dso)
 			else if (fn.fn_type == ATEXIT_FN_STD)
 				fn.fn_ptr.std_func();
 			_MUTEX_LOCK(&atexit_mutex);
+
+			/*
+			 * Reloop if we got more atexit() destructors.
+			 */
+			if (nested_atexit == 2 && ni > 0) {
+				ni--;
+				goto again;
+			}
 		}
 	}
 	_MUTEX_UNLOCK(&atexit_mutex);
