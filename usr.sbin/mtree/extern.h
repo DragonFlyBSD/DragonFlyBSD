@@ -33,10 +33,7 @@
 
 #include "mtree.h"
 
-#ifdef __DragonFly__
-#define HAVE_STRUCT_STAT_ST_FLAGS 1
-#endif
-
+#include <sys/param.h>
 #include <err.h>
 #include <fts.h>
 #if defined(BOOTSTRAPPING) && __DragonFly_version < 500901

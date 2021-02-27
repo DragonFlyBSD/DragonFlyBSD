@@ -9,7 +9,9 @@ SRCS=	compare.c crc.c create.c excludes.c misc.c mtree.c spec.c verify.c
 SRCS+=	specspec.c only.c
 
 SRCS+=	pack_dev.c stat_flags.c
+
 CFLAGS+=-DHAVE_NETDB_H
+CFLAGS+=-DHAVE_STRUCT_STAT_ST_FLAGS
 
 .if !defined(BOOTSTRAPPING)
 SRCS+= getid.c
