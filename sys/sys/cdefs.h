@@ -58,7 +58,7 @@
 /*
  * Macro to test if we are using a specific version of gcc or later.
  */
-#if defined(__GNUC__) && !defined(__INTEL_COMPILER)
+#if defined(__GNUC__)
 #define	__GNUC_PREREQ__(ma, mi)	\
         (__GNUC__ > (ma) || __GNUC__ == (ma) && __GNUC_MINOR__ >= (mi))
 #else

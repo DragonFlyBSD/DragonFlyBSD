@@ -254,7 +254,7 @@ extern void (*_malloc_message)(const char *, const char *, const char *,
  * On platforms where alloca() is not in libc, programs which use it
  * will fail to link when compiled with non-GNU compilers.
  */
-#if __GNUC__ >= 2 || defined(__INTEL_COMPILER)
+#if __GNUC__ >= 2
 #undef  alloca	/* some GNU bits try to get cute and define this on their own */
 #define alloca(sz) __builtin_alloca(sz)
 #endif
