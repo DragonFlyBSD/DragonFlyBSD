@@ -123,6 +123,9 @@ CFLAGS+= -DHAVE_CONFIG_H -DTUKLIB_SYMBOL_PREFIX=lzma_ \
 	-I${LZMADIR}/simple \
 	-I${LZMADIR}/../common
 
+FILES=		liblzma.pc
+FILESDIR=	${LIBDATADIR}/pkgconfig
+
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 
