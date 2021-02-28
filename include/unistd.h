@@ -34,16 +34,19 @@
 #define	_UNISTD_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>			/* XXX adds too much pollution. */
 #include <sys/unistd.h>
 #include <sys/_null.h>
 
-#if __XSI_VISIBLE
+#if __BSD_VISIBLE
+#include <sys/types.h>
+#else
+#include <machine/stdint.h>
+#endif
+
 #ifndef _INTPTR_T_DECLARED
 typedef	__intptr_t	intptr_t;
 #define	_INTPTR_T_DECLARED
 #endif
-#endif /* __XSI_VISIBLE */
 
 #ifndef _GID_T_DECLARED
 typedef	__uint32_t	gid_t;		/* XXX __gid_t */
@@ -73,6 +76,13 @@ typedef	__ssize_t	ssize_t;
 #ifndef _UID_T_DECLARED
 typedef	__uint32_t	uid_t;		/* XXX __uid_t */
 #define	_UID_T_DECLARED
+#endif
+
+#if __XSI_VISIBLE && __XSI_VISIBLE < 700
+#ifndef _USECONDS_T_DECLARED
+typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
+#define	_USECONDS_T_DECLARED
+#endif
 #endif
 
 #define	 STDIN_FILENO	0	/* standard input file descriptor */

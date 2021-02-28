@@ -33,17 +33,38 @@
 #ifndef _SYS_SOCKET_H_
 #define	_SYS_SOCKET_H_
 
-#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
-#endif
-
 #include <sys/_iovec.h>
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
 #include <machine/alignbytes.h>
 #include <machine/stdint.h>
+
+#ifndef _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
+#endif
+
+#ifndef _SSIZE_T_DECLARED
+typedef	__ssize_t	ssize_t;
+#define	_SSIZE_T_DECLARED
+#endif
+
+#if __BSD_VISIBLE
+#ifndef _GID_T_DECLARED
+typedef	__uint32_t	gid_t;		/* group id */
+#define	_GID_T_DECLARED
+#endif
+
+#ifndef _UID_T_DECLARED
+typedef	__uint32_t	uid_t;		/* user id */
+#define	_UID_T_DECLARED
+#endif
+
+#ifndef _OFF_T_DECLARED
+typedef	__off_t		off_t;		/* file offset */
+#define	_OFF_T_DECLARED
+#endif
+#endif /* __BSD_VISIBLE */
 
 /*
  * Definitions related to sockets: types, address families, options.
@@ -68,9 +89,12 @@ typedef __socklen_t	socklen_t;
 #define	SOCK_STREAM	1		/* stream socket */
 #define	SOCK_DGRAM	2		/* datagram socket */
 #define	SOCK_RAW	3		/* raw-protocol interface */
+#if __BSD_VISIBLE
 #define	SOCK_RDM	4		/* reliably-delivered message */
+#endif
 #define	SOCK_SEQPACKET	5		/* sequenced packet stream */
 
+#if __BSD_VISIBLE
 /*
  * Creation flags, OR'ed into socket() and socketpair() type argument.
  */
@@ -82,6 +106,7 @@ typedef __socklen_t	socklen_t;
  */
 #define SOCK_KERN_NOINHERIT 0x00100000
 #endif
+#endif
 
 /*
  * Option flags per-socket.
@@ -92,15 +117,19 @@ typedef __socklen_t	socklen_t;
 #define	SO_KEEPALIVE	0x0008		/* keep connections alive */
 #define	SO_DONTROUTE	0x0010		/* just use interface addresses */
 #define	SO_BROADCAST	0x0020		/* permit sending of broadcast msgs */
+#if __BSD_VISIBLE
 #define	SO_USELOOPBACK	0x0040		/* bypass hardware when possible */
+#endif
 #define	SO_LINGER	0x0080		/* linger on close if data present */
 #define	SO_OOBINLINE	0x0100		/* leave received OOB data in line */
+#if __BSD_VISIBLE
 #define	SO_REUSEPORT	0x0200		/* allow local address & port reuse */
 #define	SO_TIMESTAMP	0x0400		/* timestamp received dgram traffic */
 #define	SO_NOSIGPIPE	0x0800		/* no SIGPIPE from EPIPE */
 #define	SO_ACCEPTFILTER	0x1000		/* there is an accept filter */
 #define	SO_RERROR	0x2000		/* Keep track of receive errors */
 #define SO_PASSCRED	0x4000		/* receive credentials */
+#endif
 
 /*
  * Additional options, not kept in so_options.
@@ -113,10 +142,12 @@ typedef __socklen_t	socklen_t;
 #define	SO_RCVTIMEO	0x1006		/* receive timeout */
 #define	SO_ERROR	0x1007		/* get error status and clear */
 #define	SO_TYPE		0x1008		/* get socket type */
+#if __BSD_VISIBLE
 /* 0x1009 reserved for FreeBSD compat */
 #define	SO_SNDSPACE	0x100a		/* get appr. send buffer free space */
 /* 0x1010 ~ 0x102f reserved for FreeBSD compat */
 #define	SO_CPUHINT	0x1030		/* get socket's owner cpuid hint */
+#endif
 
 /*
  * Structure used for manipulating linger option.
@@ -126,10 +157,12 @@ struct	linger {
 	int	l_linger;		/* linger time */
 };
 
+#if __BSD_VISIBLE
 struct	accept_filter_arg {
 	char	af_name[16];
 	char	af_arg[256-16];
 };
+#endif
 
 /*
  * Level number for (get/set)sockopt() to apply to socket itself.
@@ -140,9 +173,11 @@ struct	accept_filter_arg {
  * Address families.
  */
 #define	AF_UNSPEC	0		/* unspecified */
-#define	AF_LOCAL	1		/* local to host (pipes, portals) */
-#define	AF_UNIX		AF_LOCAL	/* backward compatibility */
+#define	AF_UNIX		1		/* local to host (pipes, portals) */
 #define	AF_INET		2		/* internetwork: UDP, TCP, etc. */
+#define	AF_INET6	28		/* IPv6 */
+#if __BSD_VISIBLE
+#define	AF_LOCAL	AF_UNIX
 #define	AF_IMPLINK	3		/* arpanet imp addresses */
 #define	AF_PUP		4		/* pup protocols: e.g. BSP */
 #define	AF_CHAOS	5		/* mit CHAOS protocols */
@@ -170,7 +205,6 @@ struct	accept_filter_arg {
 #define	AF_ISDN		26		/* Integrated Services Digital Network*/
 #define	AF_E164		AF_ISDN		/* CCITT E.164 recommendation */
 #define	pseudo_AF_KEY	27		/* Internal key-management function */
-#define	AF_INET6	28		/* IPv6 */
 #define	AF_NATM		29		/* native ATM access */
 #define	AF_ATM		30		/* ATM */
 #define	pseudo_AF_HDRCMPLT 31		/* Used by BPF to not rewrite headers
@@ -182,6 +216,7 @@ struct	accept_filter_arg {
 #define	AF_IEEE80211	35		/* IEEE 802.11 protocol */
 
 #define	AF_MAX		36
+#endif /* __BSD_VISIBLE */
 
 /*
  * Structure used by kernel to store most
@@ -192,7 +227,9 @@ struct sockaddr {
 	sa_family_t	sa_family;	/* address family */
 	char		sa_data[14];	/* actually longer; address value */
 };
+#if __BSD_VISIBLE
 #define	SOCK_MAXADDRLEN	255		/* longest possible addresses */
+#endif
 
 #ifdef _KERNEL
 
@@ -207,6 +244,7 @@ sa_equal(const struct sockaddr *a1, const struct sockaddr *a2)
 }
 #endif
 
+#if __BSD_VISIBLE
 /*
  * Structure used by kernel to pass protocol
  * information in raw sockets.
@@ -215,6 +253,7 @@ struct sockproto {
 	__uint16_t	sp_family;		/* address family */
 	__uint16_t	sp_protocol;		/* protocol */
 };
+#endif /* __BSD_VISIBLE */
 
 /*
  * RFC 2553: protocol-independent placeholder for socket addresses
@@ -233,6 +272,7 @@ struct sockaddr_storage {
 	char		__ss_pad2[_SS_PAD2SIZE];
 };
 
+#if __BSD_VISIBLE
 /*
  * Protocol families, same as address families for now.
  */
@@ -340,17 +380,20 @@ struct sockaddr_storage {
 	{ "flags", CTLTYPE_STRUCT }, \
 	{ "iflist", CTLTYPE_STRUCT }, \
 }
+#endif /* __BSD_VISIBLE */
 
 /*
  * Maximum queue length specifiable by listen.
  */
 #define	SOMAXCONN	128
 
+#if __BSD_VISIBLE
 /*
  * Maximum setsockopt buffer size
  */
 #define	SOMAXOPT_SIZE	65536
 #define	SOMAXOPT_SIZE0	(32 * 1024 * 1024)	/* for root getsockopt */
+#endif
 
 /*
  * Message header for recvmsg and sendmsg calls.
@@ -373,10 +416,13 @@ struct msghdr {
 #define	MSG_TRUNC	0x00000010	/* data discarded before delivery */
 #define	MSG_CTRUNC	0x00000020	/* control data lost before delivery */
 #define	MSG_WAITALL	0x00000040	/* wait for full request or error */
+#if __BSD_VISIBLE
 #define	MSG_DONTWAIT	0x00000080	/* this message should be nonblocking */
 #define	MSG_EOF		0x00000100	/* data completes connection */
 #define	MSG_UNUSED09	0x00000200	/* was: notification message (SCTP) */
+#endif
 #define	MSG_NOSIGNAL	0x00000400	/* No SIGPIPE to unconnected socket stream */
+#if __BSD_VISIBLE
 #define	MSG_SYNC	0x00000800	/* No asynchronized pru_send */
 #define	MSG_CMSG_CLOEXEC 0x00001000	/* make received fds close-on-exec */
 /* 0x2000 unused */
@@ -389,6 +435,7 @@ struct msghdr {
 #define	MSG_FBLOCKING	0x00010000	/* force blocking operation */
 #define	MSG_FNONBLOCKING 0x00020000	/* force non-blocking operation */
 #define	MSG_FMASK	0xFFFF0000	/* force mask */
+#endif
 
 /*
  * Header for ancillary data objects in msg_control buffer.
@@ -403,6 +450,7 @@ struct cmsghdr {
 /* followed by	u_char  cmsg_data[]; */
 };
 
+#if __BSD_VISIBLE
 /*
  * While we may have more groups than this, the cmsgcred struct must
  * be able to fit in an mbuf, and NGROUPS_MAX is too large to allow
@@ -418,7 +466,7 @@ struct cmsghdr {
  * is the effective GID.)
  */
 struct cmsgcred {
-	pid_t	cmcred_pid;		/* PID of sending process */
+	__pid_t	cmcred_pid;		/* PID of sending process */
 	uid_t	cmcred_uid;		/* real UID of sending process */
 	uid_t	cmcred_euid;		/* effective UID of sending process */
 	gid_t	cmcred_gid;		/* real GID of sending process */
@@ -432,6 +480,7 @@ struct cmsgcred {
 #ifdef _KERNEL
 #define	CMSG_ALIGN(n)		_CMSG_ALIGN(n)
 #endif
+#endif /* __BSD_VISIBLE */
 
 /* given pointer to struct cmsghdr, return pointer to data */
 #define	CMSG_DATA(cmsg)		((unsigned char *)(cmsg) + \
@@ -454,15 +503,19 @@ struct cmsgcred {
 	 (struct cmsghdr *)(mhdr)->msg_control : \
 	 NULL)
 
+#if __BSD_VISIBLE
 /* RFC 2292 additions */
 
 #define	CMSG_SPACE(l)		(_CMSG_ALIGN(sizeof(struct cmsghdr)) + _CMSG_ALIGN(l))
 #define	CMSG_LEN(l)		(_CMSG_ALIGN(sizeof(struct cmsghdr)) + (l))
+#endif
 
 /* "Socket"-level control message types: */
 #define	SCM_RIGHTS	0x01		/* access rights (array of int) */
+#if __BSD_VISIBLE
 #define	SCM_TIMESTAMP	0x02		/* timestamp (struct timeval) */
 #define	SCM_CREDS	0x03		/* process creds (struct cmsgcred) */
+#endif
 
 /*
  * howto arguments for shutdown(2), specified by Posix.1g.
@@ -471,6 +524,7 @@ struct cmsgcred {
 #define	SHUT_WR		1		/* shut down the writing side */
 #define	SHUT_RDWR	2		/* shut down both sides */
 
+#if __BSD_VISIBLE
 /*
  * sendfile(2) header/trailer struct
  */
@@ -480,16 +534,14 @@ struct sf_hdtr {
 	struct iovec *trailers;	/* pointer to an array of trailer struct iovec's */
 	int trl_cnt;		/* number of trailer iovec's */
 };
+#endif
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
 __BEGIN_DECLS
 int	accept(int, struct sockaddr * __restrict, socklen_t * __restrict);
-int	accept4(int, struct sockaddr *, socklen_t *, int);
-int	extaccept(int, int, struct sockaddr *, socklen_t *);
 int	bind(int, const struct sockaddr *, socklen_t);
 int	connect(int, const struct sockaddr *, socklen_t);
-int	extconnect(int, int, struct sockaddr *, socklen_t);
 int	getpeername(int, struct sockaddr * __restrict, socklen_t * __restrict);
 int	getsockname(int, struct sockaddr * __restrict, socklen_t * __restrict);
 int	getsockopt(int, int, int, void * __restrict, socklen_t * __restrict);
@@ -499,17 +551,24 @@ ssize_t	recvfrom(int, void * __restrict, size_t, int,
 	    struct sockaddr * __restrict, socklen_t * __restrict);
 ssize_t	recvmsg(int, struct msghdr *, int);
 ssize_t	send(int, const void *, size_t, int);
+ssize_t	sendmsg(int, const struct msghdr *, int);
 ssize_t	sendto(int, const void *,
 	    size_t, int, const struct sockaddr *, socklen_t);
-ssize_t	sendmsg(int, const struct msghdr *, int);
-int	sendfile(int, int, off_t, size_t, struct sf_hdtr *, off_t *, int);
 int	setsockopt(int, int, int, const void *, socklen_t);
 int	shutdown(int, int);
+#if __POSIX_VISIBLE >= 200112
 int	sockatmark(int);
+#endif
 int	socket(int, int, int);
 int	socketpair(int, int, int, int *);
 
+#if __BSD_VISIBLE
+int	accept4(int, struct sockaddr *, socklen_t *, int);
+int	extaccept(int, int, struct sockaddr *, socklen_t *);
+int	extconnect(int, int, struct sockaddr *, socklen_t);
 void	pfctlinput(int, struct sockaddr *);
+int	sendfile(int, int, off_t, size_t, struct sf_hdtr *, off_t *, int);
+#endif
 __END_DECLS
 
 #endif	/* !_KERNEL || _KERNEL_VIRTUAL */

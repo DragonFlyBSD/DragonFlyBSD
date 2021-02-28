@@ -34,7 +34,6 @@
 #define	_SYS_UNISTD_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
 
 /*
  * POSIX options and option groups we unconditionally do or don't

@@ -146,7 +146,10 @@ typedef	__suseconds_t	suseconds_t;	/* microseconds (signed) */
 typedef	__uint32_t	uid_t;		/* user id */
 #define	_UID_T_DECLARED
 #endif
+#ifndef _USECONDS_T_DECLARED
 typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
+#define	_USECONDS_T_DECLARED
+#endif
 
 /*
  * The kernel uses dev_t or cdev_t.  Userland uses dev_t.
