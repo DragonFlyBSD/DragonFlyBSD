@@ -643,7 +643,7 @@ atomic_testandset_long(volatile u_long *p, u_long v)
 	"	" MPLOCKED "		"
 	"	btsq	%2,%1 ;		"
 	"	setc	%0 ;		"
-	"# atomic_testandset_int"
+	"# atomic_testandset_long"
 	: "=q" (res),			/* 0 */
 	  "+m" (*p)			/* 1 */
 	: "Ir" (v & 0x3f)		/* 2 */
@@ -677,7 +677,7 @@ atomic_testandclear_long(volatile u_long *p, u_long v)
 	"	" MPLOCKED "		"
 	"	btrq	%2,%1 ;		"
 	"	setc	%0 ;		"
-	"# atomic_testandclear_int"
+	"# atomic_testandclear_long"
 	: "=q" (res),			/* 0 */
 	  "+m" (*p)			/* 1 */
 	: "Ir" (v & 0x3f)		/* 2 */
