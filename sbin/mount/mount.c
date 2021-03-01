@@ -107,9 +107,14 @@ restart_mountd(void)
 		/* Cannot open pidfile for some reason. */
 		return;
 	}
-	/* We have mountd(8) PID in mountdpid varible, let's signal it. */
-	if (kill(mountdpid, SIGUSR1) == -1)
-		err(1, "signal mountd");
+
+	/*
+	 * We have mountd(8) PID in mountdpid varible, let's signal it.
+	 * Silently ignore any error.  mountd might not be signalable for
+	 * various reasons (jail, different reaper, bad /var/run/mountd.pid
+	 * file, etc)
+	 */
+	kill(mountdpid, SIGUSR1);
 }
 
 int
