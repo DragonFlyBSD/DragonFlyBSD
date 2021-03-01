@@ -2249,6 +2249,8 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		xop4->ip_key = ip->meta.name_key;
 		hammer2_xop_setip2(&xop4->head, ip);
 		hammer2_xop_setip3(&xop4->head, tdip);
+		if (tip && tip->meta.type == HAMMER2_OBJTYPE_DIRECTORY)
+		    hammer2_xop_setip4(&xop4->head, tip);
 		hammer2_xop_setname(&xop4->head, fname, fname_len);
 		hammer2_xop_setname2(&xop4->head, tname, tname_len);
 		hammer2_xop_start(&xop4->head, &hammer2_nrename_desc);

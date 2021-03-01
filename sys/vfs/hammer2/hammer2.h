@@ -923,6 +923,7 @@ struct hammer2_xop_head {
 	struct hammer2_inode	*ip1;
 	struct hammer2_inode	*ip2;
 	struct hammer2_inode	*ip3;
+	struct hammer2_inode	*ip4;
 	uint64_t		run_mask;
 	uint64_t		chk_mask;
 	int			flags;
@@ -1786,6 +1787,7 @@ void hammer2_xop_setname2(hammer2_xop_head_t *xop,
 size_t hammer2_xop_setname_inum(hammer2_xop_head_t *xop, hammer2_key_t inum);
 void hammer2_xop_setip2(hammer2_xop_head_t *xop, hammer2_inode_t *ip2);
 void hammer2_xop_setip3(hammer2_xop_head_t *xop, hammer2_inode_t *ip3);
+void hammer2_xop_setip4(hammer2_xop_head_t *xop, hammer2_inode_t *ip4);
 void hammer2_xop_reinit(hammer2_xop_head_t *xop);
 void hammer2_xop_helper_create(hammer2_pfs_t *pmp);
 void hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp);

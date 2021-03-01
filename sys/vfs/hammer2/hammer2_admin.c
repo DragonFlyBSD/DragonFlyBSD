@@ -401,6 +401,13 @@ hammer2_xop_setip3(hammer2_xop_head_t *xop, hammer2_inode_t *ip3)
 }
 
 void
+hammer2_xop_setip4(hammer2_xop_head_t *xop, hammer2_inode_t *ip4)
+{
+	xop->ip4 = ip4;
+	hammer2_inode_ref(ip4);
+}
+
+void
 hammer2_xop_reinit(hammer2_xop_head_t *xop)
 {
 	xop->state = 0;
@@ -688,6 +695,10 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint64_t mask)
 	if (xop->ip3) {
 		hammer2_inode_drop(xop->ip3);
 		xop->ip3 = NULL;
+	}
+	if (xop->ip4) {
+		hammer2_inode_drop(xop->ip4);
+		xop->ip4 = NULL;
 	}
 	if (xop->name1) {
 		kfree(xop->name1, M_HAMMER2);
@@ -1032,7 +1043,9 @@ hammer2_xop_next(hammer2_thread_t *thr)
 		 */
 		if (xop_testhash(thr, xop->ip1, hash) ||
 		    (xop->ip2 && xop_testhash(thr, xop->ip2, hash)) ||
-		    (xop->ip3 && xop_testhash(thr, xop->ip3, hash))) {
+		    (xop->ip3 && xop_testhash(thr, xop->ip3, hash)) ||
+		    (xop->ip4 && xop_testhash(thr, xop->ip4, hash)))
+		{
 			continue;
 		}
 		xop_sethash(thr, xop->ip1, hash);
@@ -1040,6 +1053,8 @@ hammer2_xop_next(hammer2_thread_t *thr)
 			xop_sethash(thr, xop->ip2, hash);
 		if (xop->ip3)
 			xop_sethash(thr, xop->ip3, hash);
+		if (xop->ip4)
+			xop_sethash(thr, xop->ip4, hash);
 
 		/*
 		 * Check already running

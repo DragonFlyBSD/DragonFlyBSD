@@ -522,6 +522,33 @@ hammer2_xop_nrename(hammer2_xop_t *arg, void *scratch, int clindex)
 	int error;
 
 	/*
+	 * If ip4 is non-NULL we must check to see if the entry being
+	 * overwritten is a non-empty directory.
+	 */
+	ip = xop->head.ip4;
+	if (ip) {
+		uint8_t type;
+
+		chain = hammer2_inode_chain(ip, clindex,
+					    HAMMER2_RESOLVE_ALWAYS);
+		if (chain == NULL) {
+			error = HAMMER2_ERROR_EIO;
+			parent = NULL;
+			goto done;
+		}
+		type = chain->data->ipdata.meta.type;
+		if (type == HAMMER2_OBJTYPE_DIRECTORY &&
+		    (error = checkdirempty(NULL, chain, clindex)) != 0)
+		{
+		    KKASSERT(error != HAMMER2_ERROR_EAGAIN);
+		    parent = NULL;
+		    goto done;
+		}
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+
+	/*
 	 * We need the precise parent chain to issue the deletion.
 	 *
 	 * If this is a directory entry we must locate the underlying
