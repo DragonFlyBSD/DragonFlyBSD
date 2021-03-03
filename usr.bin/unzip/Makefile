@@ -5,7 +5,7 @@ LDADD=	-larchive
 DPADD=	${LIBARCHIVE}
 
 # for static libarchive.a
-DPADD+=		${LIBBZ2} ${LIBZ} ${{LIBCRYPTO}
+DPADD+=		${LIBBZ2} ${LIBZ} ${LIBCRYPTO}
 LDADD+=		-lbz2 -lz -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
