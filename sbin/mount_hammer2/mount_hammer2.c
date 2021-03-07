@@ -135,10 +135,7 @@ main(int ac, char *av[])
 	 * based on the slice.
 	 */
 	if (strchr(devpath, '@') == NULL) {
-		char slice;
-
-		slice = devpath[strlen(devpath)-1];
-
+		char slice = devpath[strlen(devpath)-1];
 		switch(slice) {
 		case 'a':
 			asprintf(&devpath, "%s@BOOT", devpath);
@@ -203,7 +200,7 @@ main(int ac, char *av[])
 
 	/*
 	 * XXX fork a backgrounded reconnector process to handle connection
-	 *     failures. XXX
+	 *     failures.
 	 */
 
 	return (0);
