@@ -84,8 +84,7 @@ MAN+=	\
 	sem_wait.3 \
 	sigwait.3
 
-MLINKS+= \
-	pthread_attr.3 pthread_attr_destroy.3 \
+MLINKS+=pthread_attr.3 pthread_attr_destroy.3 \
 	pthread_attr.3 pthread_attr_getdetachstate.3 \
 	pthread_attr.3 pthread_attr_getguardsize.3 \
 	pthread_attr.3 pthread_attr_getinheritsched.3 \
@@ -104,26 +103,26 @@ MLINKS+= \
 	pthread_attr.3 pthread_attr_setscope.3 \
 	pthread_attr.3 pthread_attr_setstack.3 \
 	pthread_attr.3 pthread_attr_setstackaddr.3 \
-	pthread_attr.3 pthread_attr_setstacksize.3 \
-	pthread_attr_get_np.3 pthread_getattr_np.3 \
-	pthread_attr_setaffinity_np.3 pthread_attr_getaffinity_np.3 \
-	pthread_barrierattr.3 pthread_barrierattr_destroy.3 \
+	pthread_attr.3 pthread_attr_setstacksize.3
+MLINKS+=pthread_attr_get_np.3 pthread_getattr_np.3
+MLINKS+=pthread_attr_setaffinity_np.3 pthread_attr_getaffinity_np.3
+MLINKS+=pthread_barrierattr.3 pthread_barrierattr_destroy.3 \
 	pthread_barrierattr.3 pthread_barrierattr_getpshared.3 \
 	pthread_barrierattr.3 pthread_barrierattr_init.3 \
-	pthread_barrierattr.3 pthread_barrierattr_setpshared.3 \
-	pthread_barrier_destroy.3 pthread_barrier_init.3 \
-	pthread_barrier_destroy.3 pthread_barrier_wait.3 \
-	pthread_condattr.3 pthread_condattr_destroy.3 \
+	pthread_barrierattr.3 pthread_barrierattr_setpshared.3
+MLINKS+=pthread_barrier_destroy.3 pthread_barrier_init.3 \
+	pthread_barrier_destroy.3 pthread_barrier_wait.3
+MLINKS+=pthread_condattr.3 pthread_condattr_destroy.3 \
 	pthread_condattr.3 pthread_condattr_init.3 \
 	pthread_condattr.3 pthread_condattr_getclock.3 \
 	pthread_condattr.3 pthread_condattr_getpshared.3 \
 	pthread_condattr.3 pthread_condattr_setclock.3 \
-	pthread_condattr.3 pthread_condattr_setpshared.3 \
-	pthread_getconcurrency.3 pthread_setconcurrency.3 \
-	pthread_join.3 pthread_timedjoin_np.3 \
-	pthread_multi_np.3 pthread_single_np.3 \
-	pthread_mutex_getprioceiling.3 pthread_mutex_setprioceiling.3 \
-	pthread_mutexattr.3 pthread_mutexattr_destroy.3 \
+	pthread_condattr.3 pthread_condattr_setpshared.3
+MLINKS+=pthread_getconcurrency.3 pthread_setconcurrency.3
+MLINKS+=pthread_join.3 pthread_timedjoin_np.3
+MLINKS+=pthread_multi_np.3 pthread_single_np.3
+MLINKS+=pthread_mutex_getprioceiling.3 pthread_mutex_setprioceiling.3
+MLINKS+=pthread_mutexattr.3 pthread_mutexattr_destroy.3 \
 	pthread_mutexattr.3 pthread_mutexattr_getprioceiling.3 \
 	pthread_mutexattr.3 pthread_mutexattr_getprotocol.3 \
 	pthread_mutexattr.3 pthread_mutexattr_getpshared.3 \
@@ -132,24 +131,24 @@ MLINKS+= \
 	pthread_mutexattr.3 pthread_mutexattr_setprioceiling.3 \
 	pthread_mutexattr.3 pthread_mutexattr_setprotocol.3 \
 	pthread_mutexattr.3 pthread_mutexattr_setpshared.3 \
-	pthread_mutexattr.3 pthread_mutexattr_settype.3 \
-	pthread_mutexattr_getkind_np.3 pthread_mutexattr_setkind_np.3 \
-	pthread_rwlock_rdlock.3 pthread_rwlock_tryrdlock.3 \
-	pthread_rwlock_wrlock.3 pthread_rwlock_trywrlock.3 \
-	pthread_schedparam.3 pthread_getschedparam.3 \
-	pthread_schedparam.3 pthread_setschedparam.3 \
-	pthread_setaffinity_np.3 pthread_getaffinity_np.3 \
-	pthread_set_name_np.3 pthread_get_name_np.3 \
-	pthread_spin_init.3 pthread_spin_destroy.3 \
-	pthread_spin_lock.3 pthread_spin_trylock.3 \
-	pthread_spin_lock.3 pthread_spin_unlock.3 \
-	pthread_switch_add_np.3 pthread_switch_delete_np.3 \
-	pthread_testcancel.3 pthread_setcancelstate.3 \
-	pthread_testcancel.3 pthread_setcanceltype.3 \
-	pthread_yield.3 pthread_yield_np.3 \
-	sem_open.3 sem_close.3 \
-	sem_open.3 sem_unlink.3 \
-	sem_wait.3 sem_trywait.3
+	pthread_mutexattr.3 pthread_mutexattr_settype.3
+MLINKS+=pthread_mutexattr_getkind_np.3 pthread_mutexattr_setkind_np.3
+MLINKS+=pthread_rwlock_rdlock.3 pthread_rwlock_tryrdlock.3
+MLINKS+=pthread_rwlock_wrlock.3 pthread_rwlock_trywrlock.3
+MLINKS+=pthread_schedparam.3 pthread_getschedparam.3 \
+	pthread_schedparam.3 pthread_setschedparam.3
+MLINKS+=pthread_setaffinity_np.3 pthread_getaffinity_np.3
+MLINKS+=pthread_set_name_np.3 pthread_get_name_np.3
+MLINKS+=pthread_spin_init.3 pthread_spin_destroy.3
+MLINKS+=pthread_spin_lock.3 pthread_spin_trylock.3 \
+	pthread_spin_lock.3 pthread_spin_unlock.3
+MLINKS+=pthread_switch_add_np.3 pthread_switch_delete_np.3
+MLINKS+=pthread_testcancel.3 pthread_setcancelstate.3 \
+	pthread_testcancel.3 pthread_setcanceltype.3
+MLINKS+=pthread_yield.3 pthread_yield_np.3
+MLINKS+=sem_open.3 sem_close.3 \
+	sem_open.3 sem_unlink.3
+MLINKS+=sem_wait.3 sem_trywait.3
 
 realinstall: linkinstall
 linkinstall:
