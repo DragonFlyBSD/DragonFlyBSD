@@ -111,10 +111,12 @@
 #undef		pthread_detach
 #undef		pthread_equal
 #undef		pthread_exit
+#undef		pthread_get_name_np
 #undef		pthread_getaffinity_np
 #undef		pthread_getattr_np
 #undef		pthread_getconcurrency
 #undef		pthread_getcpuclockid
+#undef		pthread_getname_np
 #undef		pthread_getprio
 #undef		pthread_getschedparam
 #undef		pthread_getspecific
@@ -163,12 +165,12 @@
 #undef		pthread_rwlockattr_init
 #undef		pthread_rwlockattr_setpshared
 #undef		pthread_self
-#undef		pthread_get_name_np
 #undef		pthread_set_name_np
 #undef		pthread_setaffinity_np
 #undef		pthread_setcancelstate
 #undef		pthread_setcanceltype
 #undef		pthread_setconcurrency
+#undef		pthread_setname_np
 #undef		pthread_setprio
 #undef		pthread_setschedparam
 #undef		pthread_setspecific

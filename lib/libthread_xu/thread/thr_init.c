@@ -121,7 +121,11 @@ STATIC_LIB_REQUIRE(_pthread_getthreadid_np);
 /* thr_info.c */
 STATIC_LIB_REQUIRE(_pthread_get_name_np);
 /* thr_info.c */
+STATIC_LIB_REQUIRE(_pthread_getname_np);
+/* thr_info.c */
 STATIC_LIB_REQUIRE(_pthread_set_name_np);
+/* thr_info.c */
+STATIC_LIB_REQUIRE(_pthread_setname_np);
 /* thr_init.c */
 STATIC_LIB_REQUIRE(_pthread_init_early);
 /* thr_join.c */

@@ -24,12 +24,14 @@
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_set_name_np.3,v 1.6 2007/10/22 10:08:01 ru Exp $
 .\"
-.Dd May 2, 2019
+.Dd March 8, 2021
 .Dt PTHREAD_SET_NAME_NP 3
 .Os
 .Sh NAME
-.Nm pthread_set_name_np
-.Nm pthread_get_name_np
+.Nm pthread_set_name_np ,
+.Nm pthread_setname_np ,
+.Nm pthread_get_name_np ,
+.Nm pthread_getname_np
 .Nd set and get the thread name
 .Sh LIBRARY
 .Lb libpthread
@@ -38,12 +40,18 @@
 .In pthread_np.h
 .Ft void
 .Fn pthread_set_name_np "pthread_t tid" "const char *name"
+.Ft int
+.Fn pthread_setname_np "pthread_t tid" "const char *name"
 .Ft void
 .Fn pthread_get_name_np "pthread_t tid" "char *name" "size_t len"
+.Ft int
+.Fn pthread_getname_np "pthread_t tid" "char *name" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn pthread_set_name_np
-function sets the internal name of the thread specified by the
+and
+.Fn pthread_setname_np
+functions set the internal name of the thread specified by the
 .Fa tid
 argument to the string value specified by the
 .Fa name
@@ -51,13 +59,60 @@ argument.
 .Pp
 The
 .Fn pthread_get_name_np
-function gets the internal name of the thread specified by the
+and
+.Fn pthread_getname_np
+functions get the internal name of the thread specified by the
 .Fa tid
-argument and stores it in the buffer.
+argument and store it in the buffer.
 If the thread does not exist, the buffer is written as an empty line.
+.Sh RETURN VALUES
+Upon successful completion,
+.Fn pthread_getname_np
+and
+.Fn pthread_setname_np
+will return 0.
+Otherwise, an error is returned.
 .Sh ERRORS
-All errors that may appear inside are silently ignored.
+The
+.Fn pthread_getname_np
+and
+.Fn pthread_setname_np
+functions will fail if
+.Bl -tag -width Er
+.It Bq Er EFAULT
+The
+.Fa name
+parameter is outside the process's allocated address space.
+.It Bq Er EINVAL
+The
+.Fa tid
+argument specifies an invalid thread.
+.It Bq Er ESRCH
+No thread could be found in the current process corresponding to that
+specified by the given thread ID
+.Fa tid .
+.El
+.Pp
+Because of the debugging nature of the
+.Nm pthread_get_name_np
+and
+.Nm pthread_set_name_np
+functions, all errors that may appear inside are silently ignored.
 However, errno may still be set.
+.Sh SEE ALSO
+.Xr lwp_setname 2
+.Sh STANDARDS
+The
+.Fn pthread_set_name_np
+and
+.Fn pthread_get_name_np
+functions are non-standard extensions.
+While also non-standard,
+.Fn pthread_setname_np
+and
+.Fn pthread_getname_np
+are implemented by a larger number of operating
+systems so they are in fact more portable.
 .Sh AUTHORS
 This manual page was written by
 .An Alexey Zelkin Aq Mt phantom@FreeBSD.org .

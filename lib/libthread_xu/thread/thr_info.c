@@ -41,47 +41,79 @@
 #include "thr_private.h"
 
 /* Set the thread name for debug. */
+int
+_pthread_setname_np(pthread_t thread, const char *name)
+{
+	pthread_t curthread = tls_get_curthread();
+	int error;
+	int result;
+
+	result = 0;
+	if (curthread == thread) {
+		if (lwp_setname(thread->tid, name) == -1)
+			result = errno;
+	} else {
+		if ((error = _thr_ref_add(curthread, thread, 0)) == 0) {
+			THR_THREAD_LOCK(curthread, thread);
+			if (thread->state != PS_DEAD) {
+				if (lwp_setname(thread->tid, name) == -1)
+					result = errno;
+			}
+			THR_THREAD_UNLOCK(curthread, thread);
+			_thr_ref_delete(curthread, thread);
+		} else {
+			result = error;
+		}
+	}
+	return (result);
+}
+
 void
 _pthread_set_name_np(pthread_t thread, const char *name)
 {
-	pthread_t curthread = tls_get_curthread();
-
-	if (curthread == thread) {
-		lwp_setname(thread->tid, name);
-	} else {
-		if (_thr_ref_add(curthread, thread, 0) == 0) {
-			THR_THREAD_LOCK(curthread, thread);
-			if (thread->state != PS_DEAD)
-				lwp_setname(thread->tid, name);
-			THR_THREAD_UNLOCK(curthread, thread);
-			_thr_ref_delete(curthread, thread);
-		}
-	}
+	(void)_pthread_setname_np(thread, name);
 }
 
 /* Set the thread name for debug. */
-void
-_pthread_get_name_np(pthread_t thread, char *name, size_t len)
+int
+_pthread_getname_np(pthread_t thread, char *name, size_t len)
 {
 	pthread_t curthread = tls_get_curthread();
+	int error;
+	int result;
 
+	result = 0;
 	if (curthread == thread) {
-		lwp_getname(thread->tid, name, len);
+		if (lwp_getname(thread->tid, name, len) == -1)
+			result = errno;
 	} else {
-		if (_thr_ref_add(curthread, thread, 0) == 0) {
+		if ((error = _thr_ref_add(curthread, thread, 0)) == 0) {
 			THR_THREAD_LOCK(curthread, thread);
-			if (thread->state != PS_DEAD)
-				lwp_getname(thread->tid, name, len);
-			else if (len)
+			if (thread->state != PS_DEAD) {
+				if (lwp_getname(thread->tid, name, len) == -1)
+					result = errno;
+			} else if (len) {
 				name[0] = 0;
+			}
 			THR_THREAD_UNLOCK(curthread, thread);
 			_thr_ref_delete(curthread, thread);
 		} else if (len) {
-			errno = EINVAL;
+			result = errno = EINVAL;
 			name[0] = 0;
+		} else {
+			result = error;
 		}
 	}
+	return (result);
+}
+
+void
+_pthread_get_name_np(pthread_t thread, char *buf, size_t len)
+{
+	(void)_pthread_getname_np(thread, buf, len);
 }
 
 __strong_reference(_pthread_get_name_np, pthread_get_name_np);
+__strong_reference(_pthread_getname_np, pthread_getname_np);
 __strong_reference(_pthread_set_name_np, pthread_set_name_np);
+__strong_reference(_pthread_setname_np, pthread_setname_np);

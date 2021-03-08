@@ -158,7 +158,9 @@ WR(stub_zero, pthread_rwlockattr_init);
 WR(stub_zero, pthread_rwlockattr_setpshared);
 WR(stub_self, pthread_self);
 WR(stub_pthread_get_name_np, pthread_get_name_np);
+WR(stub_pthread_getname_np, pthread_getname_np);
 WR(stub_zero, pthread_set_name_np);
+WR(stub_zero, pthread_setname_np);
 WR(stub_zero, pthread_setaffinity_np);
 WR(stub_zero, pthread_setcancelstate);
 WR(stub_zero, pthread_setcanceltype);
@@ -260,6 +262,14 @@ stub_pthread_get_name_np(pthread_t a, char *name, size_t len)
 {
 	if (len)
 		name[0] = 0;
+}
+
+static int __used
+stub_pthread_getname_np(pthread_t a, char *name, size_t len)
+{
+	if (len)
+		name[0] = 0;
+	return (0);
 }
 
 /*

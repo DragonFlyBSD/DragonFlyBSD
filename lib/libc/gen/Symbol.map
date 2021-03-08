@@ -498,7 +498,9 @@ DF508.0 {
 DF510.0 {
     __libc_single_threaded;
     pthread_getattr_np;
+    pthread_getname_np;
     pthread_is_threaded_np;
+    pthread_setname_np;
     pthread_yield_np;
 };
 
@@ -610,7 +612,9 @@ DFprivate_1.0 {
     _pthread_rwlockattr_setpshared;
     _pthread_self;
     _pthread_get_name_np;
+    _pthread_getname_np;
     _pthread_set_name_np;
+    _pthread_setname_np;
     _pthread_setaffinity_np;
     _pthread_setcancelstate;
     _pthread_setcanceltype;
