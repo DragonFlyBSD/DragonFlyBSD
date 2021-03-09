@@ -225,9 +225,10 @@
  *          IP_ADD_MEMBERSHIP and IP_DROP_MEMBERSHIP.
  * 500907 - add clock_nanosleep()
  * 500908 - add fexecve()
+ * 500909 - add AF_ARP
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500908	/* propagated to newvers */
+#define __DragonFly_version 500909	/* propagated to newvers */
 
 #include <sys/_null.h>
 

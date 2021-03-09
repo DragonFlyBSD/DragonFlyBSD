@@ -257,6 +257,32 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #endif
 			eh->ether_type = htons(ETHERTYPE_IP);
 		break;
+	case AF_ARP:
+	{
+		struct arphdr *ah;
+
+		ah = mtod(m, struct arphdr *);
+		ah->ar_hrd = htons(ARPHRD_ETHER);
+
+		loop_copy = -1;	/* if this is for us, don't do it */
+
+		switch(ntohs(ah->ar_op)) {
+		case ARPOP_REVREQUEST:
+		case ARPOP_REVREPLY:
+			eh->ether_type = htons(ETHERTYPE_REVARP);
+			break;
+		case ARPOP_REQUEST:
+		case ARPOP_REPLY:
+		default:
+			eh->ether_type = htons(ETHERTYPE_ARP);
+			break;
+		}
+
+		if (m->m_flags & M_BCAST)
+			bcopy(ifp->if_broadcastaddr, edst, ETHER_ADDR_LEN);
+		else
+			bcopy(ar_tha(ah), edst, ETHER_ADDR_LEN);
+	}
 #endif
 #ifdef INET6
 	case AF_INET6:

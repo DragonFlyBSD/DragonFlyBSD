@@ -214,8 +214,9 @@ struct	accept_filter_arg {
 #define	AF_BLUETOOTH	33		/* Bluetooth */
 #define	AF_MPLS		34		/* Multi-Protocol Label Switching */
 #define	AF_IEEE80211	35		/* IEEE 802.11 protocol */
+#define	AF_ARP		36		/* (rev.) addr. res. prot. (RFC 826) */
 
-#define	AF_MAX		36
+#define	AF_MAX		37
 #endif /* __BSD_VISIBLE */
 
 /*
@@ -311,6 +312,7 @@ struct sockaddr_storage {
 #define	PF_ATM		AF_ATM
 #define	PF_NETGRAPH	AF_NETGRAPH
 #define	PF_BLUETOOTH	AF_BLUETOOTH
+#define	PF_ARP		AF_ARP
 
 #define	PF_MAX		AF_MAX
 
