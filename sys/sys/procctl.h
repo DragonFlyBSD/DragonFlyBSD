@@ -35,6 +35,7 @@
 #ifndef _SYS_PROCCTL_H_
 #define _SYS_PROCCTL_H_
 
+#include <sys/cdefs.h>
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #include <sys/lock.h>
 #else
@@ -113,7 +114,9 @@ struct sysreaper {
 
 #if !defined(_KERNEL)
 
+__BEGIN_DECLS
 int procctl(idtype_t idtype, id_t id, int cmd, void *arg);
+__END_DECLS
 
 #endif
 
