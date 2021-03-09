@@ -39,7 +39,7 @@
 #define	_TIMECONV_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
 
 #ifndef _TIME_T_DECLARED
 typedef	__time_t	time_t;
