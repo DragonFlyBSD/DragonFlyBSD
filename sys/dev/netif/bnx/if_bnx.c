@@ -3359,8 +3359,8 @@ bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
 		maxsegs = BNX_NSEG_NEW;
 
 	/*
-	 * Pad outbound frame to BGE_MIN_FRAMELEN for an unusual reason.
-	 * The bge hardware will pad out Tx runts to BGE_MIN_FRAMELEN,
+	 * Pad outbound frame to BNX_MIN_FRAMELEN for an unusual reason.
+	 * The bge hardware will pad out Tx runts to BNX_MIN_FRAMELEN,
 	 * but when such padded frames employ the bge IP/TCP checksum
 	 * offload, the hardware checksum assist gives incorrect results
 	 * (possibly from incorporating its own padding into the UDP/TCP
