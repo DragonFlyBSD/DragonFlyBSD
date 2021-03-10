@@ -93,13 +93,14 @@ struct pkglink;
 #define DISABLED_STR	"disabled"
 
 /*
- * This can be ".tar", ".tgz", ".txz", or ".tbz".
+ * This can be ".tar", ".tgz", ".txz", ".tbz", "tzst".
  *
  * .tar	- very fast but you'll need 1TB+ of storage just for the package files.
  * .txz - very compact but decompression speed is horrible.
  * .tgz - reasonable compression, extremely fast decompression.  Roughly
  *	  1.1x to 2.0x the size of a .txz, but decompresses 10x faster.
  * .tbz - worse than .tgz generally
+ * .tzst - slightly worse compression ratio to .txz, decompresses 13x faster.
  *
  * NOTE: Decompression speed does effect bulk builds since each slot has
  *	 to install pre-reqs before building any particular package.  Set

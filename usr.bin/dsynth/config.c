@@ -451,9 +451,10 @@ parseConfigFile(const char *path)
 				dassert(strcmp(l2, ".tgz") == 0 ||
 					strcmp(l2, ".tar") == 0 ||
 					strcmp(l2, ".txz") == 0 ||
+					strcmp(l2, ".tzst") == 0 ||
 					strcmp(l2, ".tbz") == 0,
 					"Config: Unknown Package_suffix,"
-					"specify .tgz .tar .txz or .tbz");
+					"specify .tgz .tar .txz .tbz or .tzst");
 			} else if (strcmp(l1, "Number_of_builders") == 0) {
 				MaxWorkers = strtol(l2, NULL, 0);
 				if (MaxWorkers == 0)

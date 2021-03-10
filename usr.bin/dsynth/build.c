@@ -1792,6 +1792,8 @@ childInstallPkgDeps_recurse(FILE *fp, pkglink_t *list, int undoit,
 					tot += st.st_size * 3;
 				else if (strcmp(ptr, ".txz") == 0)
 					tot += st.st_size * 5;
+				else if (strcmp(ptr, ".tzst") == 0)
+					tot += st.st_size * 5;
 				else if (strcmp(ptr, ".tbz") == 0)
 					tot += st.st_size * 3;
 				else

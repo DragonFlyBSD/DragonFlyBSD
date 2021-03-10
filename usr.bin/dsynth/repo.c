@@ -194,6 +194,9 @@ childRebuildRepo(bulk_t *bulk)
 		} else if (strcmp(UsePkgSufx, ".tbz") == 0) {
 			decomp = "unxz";
 			comp = "bzip";
+		} else if (strcmp(UsePkgSufx, ".tzst") == 0) {
+			decomp = "unxz";
+			comp = "zstd";
 		} else {
 			dfatal("recompressing as %s not supported",
 			       UsePkgSufx);
@@ -220,6 +223,9 @@ childRebuildRepo(bulk_t *bulk)
 			comp = "xz";
 		} else if (strcmp(UsePkgSufx, ".tbz") == 0) {
 			decomp = "bunzip2";
+			comp = "xz";
+		} else if (strcmp(UsePkgSufx, ".tzst") == 0) {
+			decomp = "unzstd";
 			comp = "xz";
 		} else {
 			dfatal("recompressing from %s not supported",
