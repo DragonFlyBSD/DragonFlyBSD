@@ -63,9 +63,9 @@ static void __dead2
 usage(void)
 {
 
-	fprintf(stderr, "usage: %s [-l] [-v] [-m] [-sig] "
-			"[-u user] [-j jail] [-t tty] [-T] "
-			"[-c cmd] [cmd]...\n", prog);
+	fprintf(stderr, "usage: %s [-c cmd] [-d|-v] [-h|-?|-help] [-j jail] "
+			"[-l] [-m] [-q] [-s] [-t tty] [-T] [-u user] "
+			"[-sig] [cmd]...\n", prog);
 	fprintf(stderr, "At least one option or argument to specify "
 			"processes must be given.\n");
 	exit(1);
@@ -163,6 +163,10 @@ main(int ac, char **av)
 		if (**av == '-') {
 			++*av;
 			switch (**av) {
+			case 'h':
+			case '?':
+				usage();
+				/* NOTREACHED */
 			case 'u':
 				++*av;
 				if (**av == '\0')
