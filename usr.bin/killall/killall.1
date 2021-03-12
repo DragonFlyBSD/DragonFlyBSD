@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/usr.bin/killall/killall.1,v 1.11.2.11 2003/02/25 20:31:18 trhodes Exp $
 .\"
-.Dd June 25, 1995
+.Dd March 12, 2021
 .Dt KILLALL 1
 .Os
 .Sh NAME
@@ -34,8 +34,7 @@
 .Nm
 .Op Fl d | v
 .Op Fl q
-.Op Fl h | ?\&
-.Op Fl help
+.Op Fl h | ?\& | help
 .Op Fl l
 .Op Fl m
 .Op Fl s
@@ -71,8 +70,7 @@ Be more verbose about what will be done.  For a single
 option, a list of the processes that will be sent the signal will be
 printed, or a message indicating that no matching processes have been
 found.
-.It Fl h | ?\&
-.It Fl help
+.It Fl h | ?\& | help
 Give a help on the command usage and exit.
 .It Fl l
 List the names of the available signals and exit, like in
@@ -139,6 +137,7 @@ Diagnostic messages will only be printed if requested by
 options.
 .Sh SEE ALSO
 .Xr kill 1 ,
+.Xr pkill 1 ,
 .Xr sysctl 3
 .Sh HISTORY
 The
