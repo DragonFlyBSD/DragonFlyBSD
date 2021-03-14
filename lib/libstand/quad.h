@@ -55,12 +55,6 @@ union uu {
 	u_int	ul[2];		/* as two unsigned ints */
 };
 
-/*
- * Define high and low longwords.
- */
-#define	H		_QUAD_HIGHWORD
-#define	L		_QUAD_LOWWORD
-
 #define	HALF_BITS	(sizeof(int) * CHAR_BIT / 2)
 
 #define	HHALF(x)	((x) >> HALF_BITS)

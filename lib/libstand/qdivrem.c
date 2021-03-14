@@ -44,6 +44,12 @@
 
 #define	B	(1 << HALF_BITS)	/* digit base */
 
+/*
+ * Define high and low longwords.
+ */
+#define	H	_QUAD_HIGHWORD
+#define	L	_QUAD_LOWWORD
+
 /* Combine two `digits' to make a single two-digit number. */
 #define	COMBINE(a, b) (((u_int)(a) << HALF_BITS) | (b))
 
