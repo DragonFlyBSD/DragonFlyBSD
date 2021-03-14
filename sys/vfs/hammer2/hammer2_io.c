@@ -335,6 +335,7 @@ _hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase,
 						dio->psize, bflags,
 					        NULL, NULL, 0, &dio->bp);
 			}
+			break;
 		}
 	} else {
 		if (hce > 0) {
