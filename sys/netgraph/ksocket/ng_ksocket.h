@@ -1,4 +1,3 @@
-
 /*
  * ng_ksocket.h
  *
@@ -37,13 +36,13 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.h,v 1.2.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.h,v 1.2 2003/06/17 04:28:50 dillon Exp $
  * $Whistle: ng_ksocket.h,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
 #ifndef _NETGRAPH_KSOCKET_H_
 #define _NETGRAPH_KSOCKET_H_
 
+#include <sys/types.h>
 #include <sys/socket.h>
 
 /* Node type name and magic cookie */

@@ -114,6 +114,7 @@ s/\$//g
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysun
 		printf " *               by running make sysent in the same directory.\n" > sysun
 		printf " */\n\n" > sysun
+		printf "#include <sys/sysproto.h>\n\n" > sysun
 		printf "union sysunion {\n" > sysun
 
 		printf "\n/* The casts are bogus but will do for now. */\n" > sysent

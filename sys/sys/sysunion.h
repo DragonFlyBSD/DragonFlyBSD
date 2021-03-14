@@ -5,6 +5,8 @@
  *               by running make sysent in the same directory.
  */
 
+#include <sys/sysproto.h>
+
 union sysunion {
 	struct	exit_args exit;
 	struct	fork_args fork;
