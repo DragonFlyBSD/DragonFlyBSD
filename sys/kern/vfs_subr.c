@@ -48,6 +48,7 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/dirent.h>
+#include <sys/endian.h>
 #include <sys/eventhandler.h>
 #include <sys/fcntl.h>
 #include <sys/file.h>

@@ -40,6 +40,7 @@
  */
 
 #include "quad.h"
+#include <sys/endian.h> /* _QUAD_HIGHWORD */
 
 #define	B	(1 << HALF_BITS)	/* digit base */
 

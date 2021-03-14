@@ -33,17 +33,8 @@
 #ifndef _CPU_ENDIAN_H_
 #define	_CPU_ENDIAN_H_
 
-#ifndef _KERNEL
 #include <sys/cdefs.h>
-#endif
-
 #include <machine/stdint.h>
-
-/*
- * Define the order of 32-bit words in 64-bit words.
- */
-#define	_QUAD_HIGHWORD 1
-#define	_QUAD_LOWWORD 0
 
 /*
  * Definitions for byte order, according to byte significance from low
