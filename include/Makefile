@@ -8,8 +8,8 @@
 
 CLEANFILES= osreldate.h version vers.c vers.txt
 SUBDIR= arpa protocols rpc rpcsvc xlocale
-INCS=	a.out.h alloca.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
-	dirent.h disktab.h \
+INCS=	a.out.h alloca.h ar.h assert.h bitstring.h byteswap.h \
+	cpio.h ctype.h db.h dirent.h disktab.h \
 	dlfcn.h elf.h elf-hints.h endian.h err.h \
 	float.h fmtmsg.h fnmatch.h fstab.h fts.h ftw.h \
 	getopt.h glob.h grp.h \
