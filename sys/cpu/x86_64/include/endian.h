@@ -195,4 +195,15 @@ __bswap16(__uint16_t _x)
 
 #endif /* __GNUC__ */
 
+/*
+ * Userland compatibility double underscore variants to help with DPorts
+ * (injected through <sys/types.h>).
+ */
+#ifndef _KERNEL
+#define	__LITTLE_ENDIAN	_LITTLE_ENDIAN
+#define	__BIG_ENDIAN	_BIG_ENDIAN
+#define	__PDP_ENDIAN	_PDP_ENDIAN
+#define	__BYTE_ORDER	_BYTE_ORDER
+#endif
+
 #endif /* !_CPU_ENDIAN_H_ */
