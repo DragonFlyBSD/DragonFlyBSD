@@ -80,6 +80,7 @@ void	ieee80211_ssid_mismatch(struct ieee80211vap *, const char *tag,
 #endif /* !IEEE80211_DEBUG */
 
 #include <sys/endian.h>		/* For le16toh() / le32dec() */
+#include <sys/types.h>
 
 static __inline int
 iswpaoui(const uint8_t *frm)

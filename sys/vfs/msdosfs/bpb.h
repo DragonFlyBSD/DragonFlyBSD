@@ -20,6 +20,8 @@
 #ifndef _FS_MSDOSFS_BPB_H_
 #define	_FS_MSDOSFS_BPB_H_
 
+#include <sys/types.h>
+
 /*
  * BIOS Parameter Block (BPB) for DOS 3.3
  */

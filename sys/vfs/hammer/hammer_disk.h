@@ -30,14 +30,13 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.55 2008/11/13 02:18:43 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
 #define VFS_HAMMER_DISK_H_
 
 #include <sys/endian.h>
+#include <sys/types.h>
 
 #ifndef _SYS_UUID_H_
 #include <sys/uuid.h>
