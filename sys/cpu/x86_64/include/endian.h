@@ -152,22 +152,31 @@ __extension__ ({ __uint16_t __X = (x); \
 static __inline __always_inline __uint64_t
 __bswap64(__uint64_t _x)
 {
-
+#if __GNUC_PREREQ__(4, 8) && defined(__cplusplus)
+	return (__builtin_bswap64(_x));
+#else
 	return (__byte_swap_long(_x));
+#endif
 }
 
 static __inline __always_inline __uint32_t
 __bswap32(__uint32_t _x)
 {
-
+#if __GNUC_PREREQ__(4, 8) && defined(__cplusplus)
+	return (__builtin_bswap32(_x));
+#else
 	return (__byte_swap_int(_x));
+#endif
 }
 
 static __inline __always_inline __uint16_t
 __bswap16(__uint16_t _x)
 {
-
+#if __GNUC_PREREQ__(4, 8) && defined(__cplusplus)
+	return (__builtin_bswap16(_x));
+#else
 	return (__byte_swap_word(_x));
+#endif
 }
 
 #define	__htonl(x)	__bswap32(x)
