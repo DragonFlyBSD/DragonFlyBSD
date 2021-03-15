@@ -28,7 +28,6 @@
  *
  * @(#)parse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/parse.c,v 1.4.2.1 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/parse.c,v 1.6 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -278,14 +277,14 @@ isint:				cs[2] = '\0';
 				cs[1] = cs[0];
 				cs[0] = 'q';
 				switch(fu->bcnt) {
-				case 0: case 4:
+				case 0:
 					pr->bcnt = 4;
 					break;
 				case 1:
-					pr->bcnt = 1;
-					break;
 				case 2:
-					pr->bcnt = 2;
+				case 4:
+				case 8:
+					pr->bcnt = fu->bcnt;
 					break;
 				default:
 					p1[1] = '\0';

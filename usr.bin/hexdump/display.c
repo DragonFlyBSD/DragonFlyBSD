@@ -28,7 +28,6 @@
  *
  * @(#)display.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/display.c,v 1.4.2.2 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/display.c,v 1.6 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -56,8 +55,8 @@ print(PR *pr, u_char *bp)
 	   double f8;
 	    float f4;
 	  int16_t s2;
-	   int8_t s8;
 	  int32_t s4;
+	  int64_t s8;
 	u_int16_t u2;
 	u_int32_t u4;
 	u_int64_t u8;
