@@ -258,8 +258,10 @@ static inline int modeset_lock(struct drm_modeset_lock *lock,
 	} else if (interruptible) {
 		ret = ww_mutex_lock_interruptible(&lock->mutex, &ctx->ww_ctx);
 	} else if (slow) {
-		ww_mutex_lock_slow(&lock->mutex, &ctx->ww_ctx);
-		ret = 0;
+		ret = ww_mutex_lock_slow(&lock->mutex, &ctx->ww_ctx);
+		if (ret)
+		    kprintf("DRM: Warning: modeset_lock SLOW failed %d\n", ret);
+		// ret = 0;
 	} else {
 		ret = ww_mutex_lock(&lock->mutex, &ctx->ww_ctx);
 	}
