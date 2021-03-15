@@ -28,7 +28,6 @@
  *
  * @(#)odsyntax.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/hexdump/odsyntax.c,v 1.8.2.1 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/odsyntax.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -37,6 +36,7 @@
 #include <err.h>
 #include <errno.h>
 #include <float.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -403,7 +403,7 @@ odformatint(char fchar, const char *fmt)
 	 * base 8. We need one extra space for signed numbers
 	 * to store the sign.
 	 */
-	n = (1ULL << (8 * isize)) - 1;
+	n = (isize >= sizeof(n)) ? ULLONG_MAX : (1ULL << (8 * isize)) - 1;
 	digits = 0;
 	while (n != 0) {
 		digits++;
