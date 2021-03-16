@@ -69,7 +69,7 @@ oldsyntax(int argc, char ***argvp)
 
 	odmode = 1;
 	argv = *argvp;
-	while ((ch = getopt(argc, argv, "A:aBbcDdeFfHhIij:LlN:Oost:vXx")) != -1)
+	while ((ch = getopt(argc, argv, "A:aBbcDdeFfHhIij:LlN:Oost:vXx")) != -1) {
 		switch (ch) {
 		case 'A':
 			switch (*optarg) {
@@ -160,6 +160,7 @@ oldsyntax(int argc, char ***argvp)
 		default:
 			odusage();
 		}
+	}
 
 	if (fshead->nextfs->nextfs == NULL)
 		odformat("oS");
@@ -306,7 +307,7 @@ static const char *
 odformatfp(char fchar __unused, const char *fmt)
 {
 	size_t isize;
-	int digits;
+	int digits, width;
 	char *end, *hdfmt;
 
 	isize = sizeof(double);
@@ -335,20 +336,24 @@ odformatfp(char fchar __unused, const char *fmt)
 	switch (isize) {
 	case sizeof(float):
 		digits = FLT_DIG;
+		width = digits + 7; /* -x.*e[+-]xx */
 		break;
 	case sizeof(double):
 		digits = DBL_DIG;
+		width = digits + 8; /* -x.*e[+-]xxx */
 		break;
 	default:
-		if (isize == sizeof(long double))
+		if (isize == sizeof(long double)) {
 			digits = LDBL_DIG;
-		else
+			width = digits + 9; /* -x.*e[+-]xxxx */
+		} else {
 			errx(1, "unsupported floating point size %lu",
 			    (u_long)isize);
+		}
 	}
 
 	asprintf(&hdfmt, "%lu/%lu \" %%%d.%de \" \"\\n\"",
-	    16UL / (u_long)isize, (u_long)isize, digits + 8, digits);
+	    16UL / (u_long)isize, (u_long)isize, width, digits);
 	if (hdfmt == NULL)
 		err(1, NULL);
 	odadd(hdfmt);
