@@ -253,8 +253,8 @@ get(void)
 				errx(1, "cannot skip past end of input");
 			if (need == blocksize)
 				return(NULL);
-			if (vflag != ALL && 
-			    valid_save && 
+			if (vflag != ALL &&
+			    valid_save &&
 			    bcmp(curp, savp, nread) == 0) {
 				if (vflag != DUP)
 					(void)printf("*\n");

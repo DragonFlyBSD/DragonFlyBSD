@@ -391,8 +391,10 @@ isint2:					switch(fu->bcnt) {
 			fmtp = p2;
 
 			/* Only one conversion character if byte count. */
-			if (!(pr->flags&F_ADDRESS) && fu->bcnt && nconv++)
-	    errx(1, "byte count with multiple conversion characters");
+			if (!(pr->flags&F_ADDRESS) && fu->bcnt && nconv++) {
+				errx(1, "byte count with multiple "
+					"conversion characters");
+			}
 		}
 		/*
 		 * If format unit byte count not specified, figure it out
