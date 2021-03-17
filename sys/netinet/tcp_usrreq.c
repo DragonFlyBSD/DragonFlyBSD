@@ -1149,7 +1149,6 @@ tcp_connect(netmsg_t msg)
 		in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 	} else {
 		if (inp->inp_faddr.s_addr != INADDR_ANY) {
-			kprintf("inpcb %p, double-connect race\n", inp);
 			error = EISCONN;
 			if (so->so_state & SS_ISCONNECTING)
 				error = EALREADY;
