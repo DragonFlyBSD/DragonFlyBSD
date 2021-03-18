@@ -224,8 +224,8 @@ int	clock_nanosleep1(clockid_t clock_id, int flags,
 		struct timespec *rqt, struct timespec *rmt);
 int	nanosleep1(struct timespec *rqt, struct timespec *rmt);
 
-void	timespec2fattime(const struct timespec *tsp, int utc, u_int16_t *ddp,
-		u_int16_t *dtp, u_int8_t *dhp);
+void	timespec2fattime(const struct timespec *tsp, int utc, uint16_t *ddp,
+		uint16_t *dtp, uint8_t *dhp);
 void	fattime2timespec(unsigned dd, unsigned dt, unsigned dh, int utc,
 		struct timespec *tsp);
 
@@ -236,7 +236,7 @@ tsc_uclock_t tsc_get_target(int ns);
 #include <time.h>
 #include <sys/cdefs.h>
 
-#endif /* !_KERNEL */
+#endif /* _KERNEL */
 
 __BEGIN_DECLS
 
