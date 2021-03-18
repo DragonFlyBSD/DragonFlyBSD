@@ -29,6 +29,7 @@
 #ifndef _CPUCTL_H_
 #define	_CPUCTL_H_
 
+#include <sys/types.h>
 #include <sys/ioccom.h>
 
 typedef struct {
