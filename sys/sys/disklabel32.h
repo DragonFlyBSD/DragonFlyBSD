@@ -28,7 +28,6 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel32.h,v 1.28 2007/08/21 20:04:09 corecode Exp $
  */
 
 #ifndef _SYS_DISKLABEL32_H_
@@ -177,7 +176,7 @@ extern struct disklabel_ops disklabel32_ops;
 	.set	d_secpercyl,56
 	.set	d_secperunit,60
 	.set	d_end_,276		/* size of disk label */
-#endif /* LOCORE */
+#endif /* !LOCORE */
 
 #ifndef LOCORE
 
@@ -189,6 +188,6 @@ extern struct disklabel_ops disklabel32_ops;
 #define DIOCWDINFO32	_IOW('d', 103, struct disklabel32) /* set, update disk */
 #define DIOCGDVIRGIN32	_IOR('d', 105, struct disklabel32) /* get virgin label */
 
-#endif /* LOCORE */
+#endif /* !LOCORE */
 
 #endif /* !_SYS_DISKLABEL32_H_ */

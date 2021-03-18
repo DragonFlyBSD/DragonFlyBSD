@@ -118,6 +118,6 @@ void	*shmat(int, const void *, int);
 int	 shmdt(const void *);
 __END_DECLS
 
-#endif /* !_KERNEL */
+#endif /* _KERNEL */
 
 #endif /* !_SYS_SHM_H_ */

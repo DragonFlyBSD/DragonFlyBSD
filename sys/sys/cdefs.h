@@ -176,7 +176,7 @@
 #define	volatile
 #endif	/* !NO_ANSI_KEYWORDS */
 #endif	/* !__GNUC__ */
-#endif	/* !(__STDC__ || __cplusplus) */
+#endif	/* __STDC__ || __cplusplus */
 
 /*
  * Compiler-dependent macros to help declare dead (non-returning) and

@@ -28,7 +28,6 @@
  *
  *	@(#)ptrace.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/ptrace.h,v 1.10.2.2 2003/01/02 20:39:13 kan Exp $
- * $DragonFly: src/sys/sys/ptrace.h,v 1.9 2007/02/03 17:05:59 corecode Exp $
  */
 
 #ifndef	_SYS_PTRACE_H_
@@ -95,6 +94,6 @@ __BEGIN_DECLS
 int	ptrace (int, pid_t, caddr_t, int);
 __END_DECLS
 
-#endif /* !_KERNEL */
+#endif /* _KERNEL */
 
 #endif	/* !_SYS_PTRACE_H_ */

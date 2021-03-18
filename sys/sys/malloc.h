@@ -230,7 +230,7 @@ char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
 	kstrdup(str, type)
 #define kstrndup_debug(str, maxlen, type, file, line)		\
 	kstrndup(str, maxlen, type)
-#endif
+#endif /* SLAB_DEBUG */
 void	kfree(void *addr, struct malloc_type *type) __nonnull(2);
 long	kmalloc_limit(struct malloc_type *type);
 void	slab_cleanup(void);
