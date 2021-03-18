@@ -1721,6 +1721,35 @@ bnx_blockinit(struct bnx_softc *sc)
 	CSR_WRITE_4(sc, BGE_RDMA_MODE, val);
 	DELAY(40);
 
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	    	uint32_t thresh;
+
+		thresh = ETHERMTU_JUMBO;
+		if (sc->bnx_chipid == BGE_CHIPID_BCM5719_A0)
+			thresh = ETHERMTU;
+
+		for (i = 0; i < BGE_RDMA_NCHAN; ++i) {
+			if (CSR_READ_4(sc, BGE_RDMA_LENGTH + (i << 2)) > thresh)
+				break;
+		}
+		if (i < BGE_RDMA_NCHAN) {
+			if (bootverbose) {
+				if_printf(&sc->arpcom.ac_if,
+				    "enable RDMA WA\n");
+			}
+			if (sc->bnx_asicrev == BGE_ASICREV_BCM5719)
+				sc->bnx_rdma_wa = BGE_RDMA_TX_LENGTH_WA_5719;
+			else
+				sc->bnx_rdma_wa = BGE_RDMA_TX_LENGTH_WA_5720;
+			CSR_WRITE_4(sc, BGE_RDMA_LSO_CRPTEN_CTRL,
+			    CSR_READ_4(sc, BGE_RDMA_LSO_CRPTEN_CTRL) |
+			    sc->bnx_rdma_wa);
+		} else {
+			sc->bnx_rdma_wa = 0;
+		}
+	}
+
 	/* Turn on RX data completion state machine */
 	CSR_WRITE_4(sc, BGE_RDC_MODE, BGE_RDCMODE_ENABLE);
 
@@ -3297,6 +3326,18 @@ bnx_stats_update_regs(struct bnx_softc *sc)
 
 	val = CSR_READ_4(sc, BGE_RXLP_LOCSTAT_OUT_OF_BDS);
 	sc->bnx_norxbds += val;
+
+	if (sc->bnx_rdma_wa != 0) {
+		if (stats.ifHCOutUcastPkts + stats.ifHCOutMulticastPkts +
+		    stats.ifHCOutBroadcastPkts > BGE_RDMA_NCHAN) {
+			CSR_WRITE_4(sc, BGE_RDMA_LSO_CRPTEN_CTRL,
+			    CSR_READ_4(sc, BGE_RDMA_LSO_CRPTEN_CTRL) &
+			    ~sc->bnx_rdma_wa);
+			sc->bnx_rdma_wa = 0;
+			if (bootverbose)
+				if_printf(ifp, "disable RDMA WA\n");
+		}
+	}
 }
 
 /*

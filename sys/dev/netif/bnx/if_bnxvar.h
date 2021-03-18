@@ -372,6 +372,7 @@ struct bnx_softc {
 	uint32_t		bnx_mi_mode;
 	int			bnx_if_flags;
 	int			bnx_link;
+	uint32_t		bnx_rdma_wa;
 	int			bnx_tick_cpuid;
 	struct callout		bnx_tick_timer;
 
