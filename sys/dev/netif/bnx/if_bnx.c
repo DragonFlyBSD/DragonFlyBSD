@@ -3641,6 +3641,8 @@ bnx_init(void *xsc)
 
 	/* Initialize RSS */
 	mode = BGE_RXMODE_ENABLE | BGE_RXMODE_IPV6_ENABLE;
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5762)
+		mode |= BGE_RXMODE_IPV4_FRAG_FIX;
 	if (BNX_RSS_ENABLED(sc)) {
 		bnx_init_rss(sc);
 		mode |= BGE_RXMODE_RSS_ENABLE |
