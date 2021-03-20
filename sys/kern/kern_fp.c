@@ -96,22 +96,20 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 {
     struct nlookupdata nd;
     struct thread *td;
-    struct file *fp;
     int error;
 
     if ((error = falloc(NULL, fpp, NULL)) != 0)
 	return (error);
-    fp = *fpp;
     td = curthread;
     if (td->td_proc)
-	fsetcred(fp, td->td_proc->p_ucred);
+	fsetcred(*fpp, td->td_proc->p_ucred);
     error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_LOCKVP);
     flags = FFLAGS(flags);
     if (error == 0)
-	error = vn_open(&nd, fp, flags, mode);
+	error = vn_open(&nd, fpp, flags, mode);
     nlookup_done(&nd);
     if (error) {
-	fdrop(fp);
+	fdrop(*fpp);
 	*fpp = NULL;
     }
     return(error);
@@ -174,23 +172,26 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
      */
     if ((error = falloc(NULL, fpp, NULL)) != 0)
 	goto bad2;
-    fp = *fpp;
     if (td->td_proc)
-	fsetcred(fp, td->td_proc->p_ucred);
+	fsetcred(*fpp, td->td_proc->p_ucred);
 
-    error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, fp);
+    error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, fpp);
+
     if (error)
 	goto bad1;
 
     vput(vp);
     return (0);
+
 bad1:
+    fp = *fpp;
     fp->f_ops = &badfileops;	/* open failed, don't close */
     fp->f_data = NULL;
     fdrop(fp);
     /* leave the vnode intact, but fall through and unlock it anyway */
 bad2:
     *fpp = NULL;
+
     return (error);
 }
 

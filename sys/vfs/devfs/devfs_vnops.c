@@ -880,7 +880,7 @@ devfs_spec_open(struct vop_open_args *ap)
 	if (dev_dflags(dev) & D_QUICK) {
 		vn_unlock(vp);
 		error = dev_dopen(dev, ap->a_mode, S_IFCHR,
-				  ap->a_cred, ap->a_fp, vp);
+				  ap->a_cred, ap->a_fpp, vp);
 		vn_lock(vp, LK_SHARED | LK_RETRY);
 		vop_stdopen(ap);
 		goto skip;
@@ -890,7 +890,7 @@ devfs_spec_open(struct vop_open_args *ap)
 	 * Slow code
 	 */
 	vn_lock(vp, LK_UPGRADE | LK_RETRY);
-	if (node && ap->a_fp) {
+	if (node && ap->a_fpp) {
 		int exists;
 
 		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open: -1.1-\n");
@@ -961,16 +961,31 @@ devfs_spec_open(struct vop_open_args *ap)
 		vsetflags(vp, VISTTY);
 
 	/*
-	 * Open the underlying device
+	 * Open the underlying device.
+	 *
+	 * NOTE: If the dev open returns EALREADY it has completed the open
+	 *	 operation and is returning a fully initialized *a->a_fpp
+	 *	 (which it may also have replaced).  This includes issuing
+	 *	 any necessary VOP_OPEN().
+	 *
+	 *	 Also, the returned ap->a_fpp might not be DTYPE_VNODE and
+	 *	 if it is might not be using the vp we supplied to it.
 	 */
 	vn_unlock(vp);
-	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_cred, ap->a_fp, vp);
+	error = dev_dopen(dev, ap->a_mode, S_IFCHR,
+			  ap->a_cred, ap->a_fpp, vp);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+
+	if (__predict_false(error == EALREADY)) {
+		if (orig_vp)
+			vput(vp);
+		return 0;
+	}
 
 	/*
 	 * Clean up any cloned vp if we error out.
 	 */
-	if (error) {
+	if (__predict_false(error != 0)) {
 		if (orig_vp) {
 			vput(vp);
 			ap->a_vp = orig_vp;
@@ -1051,11 +1066,13 @@ devfs_spec_open(struct vop_open_args *ap)
 	}
 
 skip:
-	if (ap->a_fp) {
-		KKASSERT(ap->a_fp->f_type == DTYPE_VNODE);
-		KKASSERT((ap->a_fp->f_flag & FMASK) == (ap->a_mode & FMASK));
-		ap->a_fp->f_ops = &devfs_dev_fileops;
-		KKASSERT(ap->a_fp->f_data == (void *)vp);
+	if (ap->a_fpp) {
+		struct file *fp = *ap->a_fpp;
+
+		KKASSERT(fp->f_type == DTYPE_VNODE);
+		KKASSERT((fp->f_flag & FMASK) == (ap->a_mode & FMASK));
+		fp->f_ops = &devfs_dev_fileops;
+		KKASSERT(fp->f_data == (void *)vp);
 	}
 
 	return 0;

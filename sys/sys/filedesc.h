@@ -157,7 +157,6 @@ struct lwp;
 /*
  * Kernel global variables and routines.
  */
-int	dupfdopen (struct thread *, int, int, int, int);
 int	fdalloc (struct proc *p, int want, int *result);
 int	fdavail (struct proc *p, int n);
 int	falloc (struct lwp *lp, struct file **resultfp, int *resultfd);

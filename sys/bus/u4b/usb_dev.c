@@ -871,6 +871,7 @@ usb_open(struct dev_open_args *ap)
 	struct usb_fs_privdata* pd = (struct usb_fs_privdata*)dev->si_drv1;
 	struct usb_cdev_refdata refs;
 	struct usb_cdev_privdata *cpd;
+	struct file *fp;
 	int err, ep;
 
 	DPRINTFN(2, "%s fflags=0x%08x\n", devtoname(dev), fflags);
@@ -925,8 +926,9 @@ usb_open(struct dev_open_args *ap)
 		}
 	}
 	usb_unref_device(cpd, &refs);
-	err = devfs_set_cdevpriv(ap->a_fp, cpd, &usb_cdevpriv_dtor);
-	DPRINTFN(2, "fp=%p cpd=%p\n", ap->a_fp, cpd);
+	fp = ap->a_fpp ? *ap->a_fpp : NULL;
+	err = devfs_set_cdevpriv(fp, cpd, &usb_cdevpriv_dtor);
+	DPRINTFN(2, "fp=%p cpd=%p\n", (ap->a_fpp ? *ap->a_fpp : NULL), cpd);
 	if(err) {
 		DPRINTFN(2, "devfs_set_cdevpriv failed in %s\n", __func__);
 		kfree(cpd, M_USBDEV);

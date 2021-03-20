@@ -172,7 +172,7 @@ struct lwp {
 	enum lwpstat	lwp_stat;	/* LS* lwp status */
 	int		lwp_lock;	/* lwp lock (prevent destruct) count */
 
-	int		lwp_dupfd;	/* Sideways return value from fdopen */
+	int		lwp_unused01;	/* (previously lwp_dupfd) */
 
 	/*
 	 * The following two fields are marked XXX since (at least) the

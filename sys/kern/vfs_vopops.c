@@ -266,7 +266,7 @@ vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
  */
 int
 vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
-	struct file *fp)
+	struct file **fpp)
 {
 	struct vop_open_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -285,7 +285,7 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	ap.a_head.a_desc = &vop_open_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_fp = fp;
+	ap.a_fpp = fpp;
 	ap.a_mode = mode;
 	ap.a_cred = cred;
 
@@ -300,8 +300,7 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
  * MPSAFE
  */
 int
-vop_close(struct vop_ops *ops, struct vnode *vp, int fflag,
-         struct file *fp)
+vop_close(struct vop_ops *ops, struct vnode *vp, int fflag, struct file *fp)
 {
 	struct vop_close_args ap;
 	VFS_MPLOCK_DECLARE;

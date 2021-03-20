@@ -667,7 +667,8 @@ setdumpdev(cdev_t dev)
 	 */
 	doopen = (dev->si_sysref.refcnt == 1);
 	if (doopen) {
-		error = dev_dopen(dev, FREAD, S_IFCHR, proc0.p_ucred, NULL, NULL);
+		error = dev_dopen(dev, FREAD, S_IFCHR,
+				  proc0.p_ucred, NULL, NULL);
 		if (error)
 			return (error);
 	}

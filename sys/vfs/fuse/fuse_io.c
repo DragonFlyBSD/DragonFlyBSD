@@ -98,7 +98,7 @@ fuse_read(struct vop_read_args *ap)
 				fuse_brelse(bp);
 				break;
 			}
-			error = VOP_OPEN(vp, FREAD | FWRITE, ap->a_cred, fp);
+			error = VOP_OPEN(vp, FREAD | FWRITE, ap->a_cred, &fp);
 			if (error) {
 				fuse_brelse(bp);
 				break;
@@ -244,7 +244,7 @@ fuse_dio_write(struct vop_write_args *ap)
 				break;
 			}
 			/* XXX can panic at vref() in vop_stdopen() */
-			error = VOP_OPEN(vp, FREAD | FWRITE, ap->a_cred, fp);
+			error = VOP_OPEN(vp, FREAD | FWRITE, ap->a_cred, &fp);
 			if (error) {
 				fuse_brelse(bp);
 				fuse_fix_size(fnp, fixsize, oldsize);

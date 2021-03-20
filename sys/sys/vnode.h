@@ -505,7 +505,7 @@ void	debug_vn_unlock (struct vnode *vp,
 int	vn_get_namelen(struct vnode *, int *);
 void	vn_setspecops (struct file *fp);
 int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf, int guess);
-int	vn_open (struct nlookupdata *ndp, struct file *fp, int fmode, int cmode);
+int	vn_open (struct nlookupdata *ndp, struct file **fpp, int fmode, int cmode);
 int	vn_opendisk (const char *devname, int fmode, struct vnode **vpp);
 int 	vn_rdwr (enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,

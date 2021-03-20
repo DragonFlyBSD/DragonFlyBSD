@@ -1162,7 +1162,9 @@ vop_stdopen(struct vop_open_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct file *fp;
 
-	if ((fp = ap->a_fp) != NULL) {
+	if (ap->a_fpp) {
+		fp = *ap->a_fpp;
+
 		switch(vp->v_type) {
 		case VFIFO:
 			fp->f_type = DTYPE_FIFO;

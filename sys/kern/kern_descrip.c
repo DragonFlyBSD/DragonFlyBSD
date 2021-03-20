@@ -2909,7 +2909,7 @@ fdcheckstd(struct lwp *lp)
 						NLC_FOLLOW|NLC_LOCKVP);
 			flags = FREAD | FWRITE;
 			if (error == 0)
-				error = vn_open(&nd, fp, flags, 0);
+				error = vn_open(&nd, &fp, flags, 0);
 			if (error == 0)
 				fsetfd(fdp, fp, devnull);
 			else
@@ -3143,44 +3143,32 @@ done:
 }
 
 /*
- * File Descriptor pseudo-device driver (/dev/fd/).
+ * File Descriptor pseudo-device driver ( /dev/fd/N ).
  *
- * Opening minor device N dup()s the file (if any) connected to file
- * descriptor N belonging to the calling process.  Note that this driver
- * consists of only the ``open()'' routine, because all subsequent
- * references to this file will be direct to the other driver.
+ * This interface is now a bit more linux-compatible and attempts to not
+ * share seek positions by not sharing the fp of the descriptor when
+ * possible.
+ *
+ * Probably a good idea anyhow, but now particularly important for
+ * fexecve() which uses /dev/fd/N.
+ *
+ * The original interface effectively dup()d the descriptor.
  */
 static int
 fdopen(struct dev_open_args *ap)
 {
-	thread_t td = curthread;
+	struct file *wfp;
+	thread_t td;
+	int error;
+	int sfd;
 
+	td = curthread;
 	KKASSERT(td->td_lwp != NULL);
 
 	/*
-	 * XXX Kludge: set curlwp->lwp_dupfd to contain the value of the
-	 * the file descriptor being sought for duplication. The error
-	 * return ensures that the vnode for this device will be released
-	 * by vn_open. Open will detect this special error and take the
-	 * actions in dupfdopen below. Other callers of vn_open or VOP_OPEN
-	 * will simply report the error.
+	 * Get the fp for /dev/fd/N
 	 */
-	td->td_lwp->lwp_dupfd = minor(ap->a_head.a_dev);
-	return (ENODEV);
-}
-
-/*
- * The caller has reserved the file descriptor dfd for us.  On success we
- * must fsetfd() it.  On failure the caller will clean it up.
- */
-int
-dupfdopen(thread_t td, int dfd, int sfd, int mode, int error)
-{
-	struct filedesc *fdp;
-	struct file *wfp;
-	struct file *xfp;
-	int werror;
-
+	sfd = minor(ap->a_head.a_dev);
 	if ((wfp = holdfp(td, sfd, -1)) == NULL)
 		return (EBADF);
 
@@ -3192,59 +3180,69 @@ dupfdopen(thread_t td, int dfd, int sfd, int mode, int error)
 		kprintf("Warning: attempt to dup() a revoked descriptor\n");
 		fdrop(wfp);
 		wfp = NULL;
-		werror = falloc(NULL, &wfp, NULL);
-		if (werror)
-			return (werror);
+		error = falloc(NULL, &wfp, NULL);
+		if (error)
+			return (error);
 	}
-
-	fdp = td->td_proc->p_fd;
 
 	/*
-	 * There are two cases of interest here.
-	 *
-	 * For ENODEV simply dup sfd to file descriptor dfd and return.
-	 *
-	 * For ENXIO steal away the file structure from sfd and store it
-	 * dfd.  sfd is effectively closed by this operation.
-	 *
-	 * Any other error code is just returned.
+	 * Check that the mode the file is being opened for is a
+	 * subset of the mode of the existing descriptor.
 	 */
-	switch (error) {
-	case ENODEV:
-		/*
-		 * Check that the mode the file is being opened for is a
-		 * subset of the mode of the existing descriptor.
-		 */
-		if (((mode & (FREAD|FWRITE)) | wfp->f_flag) != wfp->f_flag) {
-			error = EACCES;
-			break;
-		}
-		spin_lock(&fdp->fd_spin);
-		fdp->fd_files[dfd].fileflags = fdp->fd_files[sfd].fileflags;
-		fsetfd_locked(fdp, wfp, dfd);
-		spin_unlock(&fdp->fd_spin);
-		error = 0;
-		break;
-	case ENXIO:
-		/*
-		 * Steal away the file pointer from dfd, and stuff it into indx.
-		 */
-		spin_lock(&fdp->fd_spin);
-		fdp->fd_files[dfd].fileflags = fdp->fd_files[sfd].fileflags;
-		fsetfd(fdp, wfp, dfd);
-		if ((xfp = funsetfd_locked(fdp, sfd)) != NULL) {
-			spin_unlock(&fdp->fd_spin);
-			fdrop(xfp);
-		} else {
-			spin_unlock(&fdp->fd_spin);
-		}
-		error = 0;
-		break;
-	default:
-		break;
+	if (ap->a_fpp == NULL) {
+		fdrop(wfp);
+		return EINVAL;
 	}
-	fdrop(wfp);
-	return (error);
+	if (((ap->a_oflags & (FREAD|FWRITE)) | wfp->f_flag) != wfp->f_flag) {
+		fdrop(wfp);
+		return EACCES;
+	}
+	if (wfp->f_type == DTYPE_VNODE && wfp->f_data) {
+		/*
+		 * If wfp is a vnode create a new fp so things like the
+		 * seek position (etc) are not shared with the original.
+		 *
+		 * Don't try to call VOP_OPEN().  Adjust the open-count
+		 * ourselves.
+		 */
+		struct vnode *vp;
+		struct file *fp;
+
+		vp = wfp->f_data;
+                fp = *ap->a_fpp;
+
+		/*
+		 * Yah... this wouldn't be good.
+		 */
+		if ((ap->a_oflags & (FWRITE|O_TRUNC)) && vp->v_type == VDIR) {
+			fdrop(wfp);
+			return EISDIR;
+		}
+
+		/*
+		 * Setup the new fp and simulate an open(), but for now do
+		 * not actually call VOP_OPEN() though we probably could.
+		 */
+		fp->f_type = DTYPE_VNODE;
+                /* retain flags not to be copied */
+                fp->f_flag = (fp->f_flag & ~FMASK) | (ap->a_oflags & FMASK);
+                fp->f_ops = &vnode_fileops;
+                fp->f_data = vp;
+                vref(vp);
+
+		if (ap->a_oflags & FWRITE)
+			atomic_add_int(&vp->v_writecount, 1);
+		KKASSERT(vp->v_opencount >= 0 && vp->v_opencount != INT_MAX);
+		atomic_add_int(&vp->v_opencount, 1);
+		fdrop(wfp);
+	} else {
+		/*
+		 * If wfp is not a vnode we have to share it directly.
+		 */
+		fdrop(*ap->a_fpp);
+		*ap->a_fpp = wfp;	/* transfer hold count */
+	}
+	return EALREADY;
 }
 
 /*

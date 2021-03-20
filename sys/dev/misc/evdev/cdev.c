@@ -136,8 +136,12 @@ evdev_open(struct dev_open_args *ap)
 	 */
 	EVDEV_UNLOCK(evdev);
 
-	if (!ret)
-		ret = devfs_set_cdevpriv(ap->a_fp, client, &evdev_dtor);
+	if (ret == 0) {
+		struct file *fp;
+
+		fp = (ap->a_fpp) ? *ap->a_fpp : NULL;
+		ret = devfs_set_cdevpriv(fp, client, &evdev_dtor);
+	}
 
 	if (ret != 0) {
 		debugf(client, "cannot register evdev client");

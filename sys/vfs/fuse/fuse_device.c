@@ -48,12 +48,13 @@ static int
 fuse_device_open(struct dev_open_args *ap)
 {
 	struct fuse_mount *fmp;
+	struct file *fp = ap->a_fpp ? *ap->a_fpp : NULL;
 
 	fmp = kmalloc(sizeof(*fmp), M_TEMP, M_WAITOK | M_ZERO);
 	KKASSERT(fmp);
 
 	refcount_init(&fmp->refcnt, 1);
-	devfs_set_cdevpriv(ap->a_fp, fmp, fuse_cdevpriv_dtor);
+	devfs_set_cdevpriv(fp, fmp, fuse_cdevpriv_dtor);
 	fuse_dbg("open %s\n", ap->a_head.a_dev->si_name);
 
 	return 0;

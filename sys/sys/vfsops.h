@@ -128,7 +128,7 @@ struct vop_open_args {
 	struct vnode *a_vp;
 	int a_mode;
 	struct ucred *a_cred;
-	struct file *a_fp;		/* optional fp for fileops override */
+	struct file **a_fpp;		/* optional *fpp for fileops override */
 };
 
 struct vop_close_args {
@@ -757,7 +757,7 @@ int vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
 int vop_open(struct vop_ops *ops, struct vnode *vp, int mode,
-		struct ucred *cred, struct file *file);
+		struct ucred *cred, struct file **fpp);
 int vop_close(struct vop_ops *ops, struct vnode *vp, int fflag,
 		struct file *file);
 int vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
@@ -1004,8 +1004,8 @@ extern struct syslink_desc vop_nrename_desc;
  * vop_*() call.
  */
 #ifdef _KERNEL
-#define VOP_OPEN(vp, mode, cred, fp)			\
-	vop_open(*(vp)->v_ops, vp, mode, cred, fp)
+#define VOP_OPEN(vp, mode, cred, fpp)			\
+	vop_open(*(vp)->v_ops, vp, mode, cred, fpp)
 #define VOP_CLOSE(vp, fflag, fp)			\
 	vop_close(*(vp)->v_ops, vp, fflag, fp)
 #define VOP_ACCESS(vp, mode, cred)			\

@@ -2071,7 +2071,6 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	int cmode, flags;
 	struct file *nfp;
 	struct file *fp;
-	struct vnode *vp;
 	int type, indx, error = 0;
 	struct flock lf;
 
@@ -2083,13 +2082,6 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		return (error);
 	fp = nfp;
 	cmode = ((mode &~ fdp->fd_cmask) & ALLPERMS) & ~S_ISTXT;
-
-	/*
-	 * XXX p_dupfd is a real mess.  It allows a device to return a
-	 * file descriptor to be duplicated rather then doing the open
-	 * itself.
-	 */
-	lp->lwp_dupfd = -1;
 
 	/*
 	 * Call vn_open() to do the lookup and assign the vnode to the 
@@ -2114,30 +2106,20 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			nd->nl_flags |= NLC_EXCLLOCK_IFEXEC;
 	}
 
-	error = vn_open(nd, fp, flags, cmode);
+	/*
+	 * Issue the vn_open, passing in the referenced fp.  the vn_open()
+	 * is allowed to replace fp by fdrop()ing it and returning its own
+	 * referenced fp.
+	 */
+	nfp = fp;
+	error = vn_open(nd, &nfp, flags, cmode);
+	fp = nfp;
 	nlookup_done(nd);
 
+	/*
+	 * Deal with any error condition
+	 */
 	if (error) {
-		/*
-		 * handle special fdopen() case.  bleh.  dupfdopen() is
-		 * responsible for dropping the old contents of ofiles[indx]
-		 * if it succeeds.
-		 *
-		 * Note that fsetfd() will add a ref to fp which represents
-		 * the fd_files[] assignment.  We must still drop our
-		 * reference.
-		 */
-		if ((error == ENODEV || error == ENXIO) && lp->lwp_dupfd >= 0) {
-			if (fdalloc(p, 0, &indx) == 0) {
-				error = dupfdopen(td, indx, lp->lwp_dupfd, flags, error);
-				if (error == 0) {
-					*res = indx;
-					fdrop(fp);	/* our ref */
-					return (0);
-				}
-				fsetfd(fdp, NULL, indx);
-			}
-		}
 		fdrop(fp);	/* our ref */
 		if (error == ERESTART)
 			error = EINTR;
@@ -2145,28 +2127,23 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	}
 
 	/*
-	 * ref the vnode for ourselves so it can't be ripped out from under
-	 * is.  XXX need an ND flag to request that the vnode be returned
-	 * anyway.
-	 *
-	 * Reserve a file descriptor but do not assign it until the open
-	 * succeeds.
+	 * Reserve a file descriptor.
 	 */
-	vp = (struct vnode *)fp->f_data;
-	vref(vp);
 	if ((error = fdalloc(p, 0, &indx)) != 0) {
 		fdrop(fp);
-		vrele(vp);
 		return (error);
 	}
 
 	/*
-	 * If no error occurs the vp will have been assigned to the file
-	 * pointer.
+	 * Handle advisory lock flags.  This is only supported with vnodes.
+	 * For things like /dev/fd/N we might not actually get a vnode.
 	 */
-	lp->lwp_dupfd = 0;
+	if ((flags & (O_EXLOCK | O_SHLOCK)) && fp->f_type == DTYPE_VNODE) {
+		struct vnode *vp;
 
-	if (flags & (O_EXLOCK | O_SHLOCK)) {
+		vp = (struct vnode *)fp->f_data;
+		vref(vp);
+
 		lf.l_whence = SEEK_SET;
 		lf.l_start = 0;
 		lf.l_len = 0;
@@ -2179,7 +2156,8 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		else
 			type = F_WAIT;
 
-		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
+		error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type);
+		if (error) {
 			/*
 			 * lock request failed.  Clean up the reserved
 			 * descriptor.
@@ -2190,16 +2168,8 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			return (error);
 		}
 		atomic_set_int(&fp->f_flag, FHASLOCK); /* race ok */
+		vrele(vp);
 	}
-#if 0
-	/*
-	 * Assert that all regular file vnodes were created with a object.
-	 */
-	KASSERT(vp->v_type != VREG || vp->v_object != NULL,
-		("open: regular file has no backing object after vn_open"));
-#endif
-
-	vrele(vp);
 
 	/*
 	 * release our private reference, leaving the one associated with the
@@ -4800,9 +4770,9 @@ sys_fhopen(struct sysmsg *sysmsg, const struct fhopen_args *uap)
 	 */
 	if ((error = falloc(td->td_lwp, &nfp, &indx)) != 0)
 		goto bad;
+	error = VOP_OPEN(vp, fmode, td->td_ucred, &nfp);
 	fp = nfp;
 
-	error = VOP_OPEN(vp, fmode, td->td_ucred, fp);
 	if (error) {
 		/*
 		 * setting f_ops this way prevents VOP_CLOSE from being

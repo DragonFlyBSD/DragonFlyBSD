@@ -71,7 +71,7 @@ struct dev_open_args {
 	int		a_oflags;
 	int		a_devtype;
 	struct ucred	*a_cred;
-	struct file	*a_fp;
+	struct file	**a_fpp;
 };
 
 /*
@@ -335,7 +335,7 @@ struct disk;
 struct sysmsg;
 
 int dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred,
-    struct file *fp, struct vnode *vp);
+    struct file **fpp, struct vnode *vp);
 int dev_dclose(cdev_t dev, int fflag, int devtype, struct file *fp);
 void dev_dstrategy(cdev_t dev, struct bio *bio);
 void dev_dstrategy_chain(cdev_t dev, struct bio *bio);

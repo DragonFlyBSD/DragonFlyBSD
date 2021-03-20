@@ -85,7 +85,7 @@ static MALLOC_DEFINE(M_IPMI, "ipmi", "ipmi");
 static int
 ipmi_open(struct dev_open_args *ap)
 {
-	struct file *fp = ap->a_fp;
+	struct file *fp = ap->a_fpp ? *ap->a_fpp : NULL;
 	cdev_t cdev = ap->a_head.a_dev;
 	struct ipmi_device *dev;
 	struct ipmi_softc *sc;

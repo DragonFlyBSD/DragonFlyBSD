@@ -149,6 +149,7 @@ fuse_vop_open(struct vop_open_args *ap)
 	struct fuse_ipc *fip;
 	struct fuse_open_in *foi;
 	struct fuse_open_out *foo;
+	struct file *fp;
 	int error, op;
 
 	if (fuse_test_dead(fmp))
@@ -188,15 +189,17 @@ fuse_vop_open(struct vop_open_args *ap)
 
 	fnp->closed = false;
 	fuse_get_nfh(VTOI(vp), foo->fh);
-	if (ap->a_fp) {
+	fp = ap->a_fpp ? *ap->a_fpp : NULL;
+
+	if (fp) {
 #if 1
-		fuse_get_fh(ap->a_fp, foo->fh);
+		fuse_get_fh(fp, foo->fh);
 #else
 		/* see #if0'd code in fuse_vop_setattr() */
-		if (!ap->a_fp->private_data)
-			fuse_get_fh(ap->a_fp, foo->fh);
+		if (!fp->private_data)
+			fuse_get_fh(fp, foo->fh);
 		else {
-			uint64_t *fhp = ap->a_fp->private_data;
+			uint64_t *fhp = fp->private_data;
 			*fhp = foo->fh;
 		}
 #endif

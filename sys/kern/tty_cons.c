@@ -271,8 +271,8 @@ sysctl_kern_consmute(SYSCTL_HANDLER_ARGS)
 			cninit_finish();
 			if (cn_is_open) {
 				/* XXX curproc is not what we want really */
-				error = dev_dopen(cn_dev, openflag,
-						openmode, curproc->p_ucred, NULL, NULL);
+				error = dev_dopen(cn_dev, openflag, openmode,
+						  curproc->p_ucred, NULL, NULL);
 			}
 			/* if it failed, back it out */
 			if ( error != 0) cnuninit();

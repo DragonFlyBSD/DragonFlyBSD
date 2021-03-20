@@ -143,7 +143,7 @@ static int drm_setup(struct drm_device * dev)
 int drm_open(struct dev_open_args *ap)
 {
 #ifdef __DragonFly__
-	struct file *filp = ap->a_fp;
+	struct file *filp = ap->a_fpp ? *ap->a_fpp : NULL;
 	struct inode *inode = filp->f_data;	/* A Linux inode is a Unix vnode */
 	struct cdev *kdev = ap->a_head.a_dev;
 	int flags = ap->a_oflags;
@@ -166,7 +166,11 @@ int drm_open(struct dev_open_args *ap)
 	filp->f_mapping = dev->anon_inode->i_mapping;
 #endif
 
+#ifdef __DragonFly__
+	retcode = drm_open_helper(kdev, flags, filp, minor);
+#else
 	retcode = drm_open_helper(kdev, flags, ap->a_fp, minor);
+#endif
 	if (retcode)
 		goto err_undo;
 	if (need_setup) {

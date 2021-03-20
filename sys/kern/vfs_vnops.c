@@ -95,8 +95,9 @@ struct fileops vnode_fileops = {
  *	 is also installed in the file pointer.
  */
 int
-vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
+vn_open(struct nlookupdata *nd, struct file **fpp, int fmode, int cmode)
 {
+	struct file *fp = fpp ? *fpp : NULL;
 	struct vnode *vp;
 	struct ucred *cred = nd->nl_cred;
 	struct vattr vat;
@@ -334,14 +335,21 @@ again:
 
 	/*
 	 * Get rid of nl_nch.  vn_open does not return it (it returns the
-	 * vnode or the file pointer).  Note: we can't leave nl_nch locked
-	 * through the VOP_OPEN anyway since the VOP_OPEN may block, e.g.
-	 * on /dev/ttyd0
+	 * vnode or the file pointer).
+	 *
+	 * NOTE: We can't leave nl_nch locked through the VOP_OPEN anyway
+	 *	 since the VOP_OPEN may block, e.g. on /dev/ttyd0
+	 *
+	 * NOTE: The VOP_OPEN() can replace the *fpp we supply with its own
+	 *	 (it will fdrop/fhold), and can also set the *fpp up however
+	 *	 it wants, not necessarily using DTYPE_VNODE.
 	 */
 	if (nd->nl_nch.ncp)
 		cache_put(&nd->nl_nch);
 
-	error = VOP_OPEN(vp, fmode, cred, fp);
+	error = VOP_OPEN(vp, fmode, cred, fpp);
+	fp = fpp ? *fpp : NULL;
+
 	if (error) {
 		/*
 		 * setting f_ops to &badfileops will prevent the descriptor
@@ -366,6 +374,8 @@ again:
 	/*
 	 * Return the vnode.  XXX needs some cleaning up.  The vnode is
 	 * only returned in the fp == NULL case.
+	 *
+	 * NOTE: vnode stored in fp may be different
 	 */
 	if (fp == NULL) {
 		nd->nl_open_vp = vp;
