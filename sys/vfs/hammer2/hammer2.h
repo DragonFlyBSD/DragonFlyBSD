@@ -1149,7 +1149,8 @@ struct hammer2_dev {
 	int		mount_count;	/* number of actively mounted PFSs */
 	TAILQ_ENTRY(hammer2_dev) mntentry; /* hammer2_mntlist */
 
-	struct malloc_type *mchain;
+	struct malloc_type *mchain_obj;
+	struct malloc_type *mmsg;
 	int		nipstacks;
 	int		maxipstacks;
 	kdmsg_iocom_t	iocom;		/* volume-level dmsg interface */
@@ -1254,8 +1255,7 @@ struct hammer2_pfs {
 	int			unused00;
 	int			ronly;		/* read-only mount */
 	int			hflags;		/* pfs-specific mount flags */
-	struct malloc_type	*minode;
-	struct malloc_type	*mmsg;
+	struct malloc_type	*minode_obj;
 	hammer2_spin_t		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
 	long			inum_count;	/* #of inodes in inum_tree */

@@ -410,8 +410,8 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 		pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
 		pmp->force_local = force_local;
 		hammer2_trans_manage_init(pmp);
-		kmalloc_create(&pmp->minode, "HAMMER2-inodes");
-		kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
+		kmalloc_create_obj(&pmp->minode, "HAMMER2-inodes",
+				   sizeof(struct hammer2_inode));
 		lockinit(&pmp->lock, "pfslk", 0, 0);
 		lockinit(&pmp->lock_nlink, "h2nlink", 0, 0);
 		spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
@@ -738,8 +738,7 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 	if (chains_still_present) {
 		kprintf("hammer2: cannot free pmp %p, still in use\n", pmp);
 	} else {
-		kmalloc_destroy(&pmp->mmsg);
-		kmalloc_destroy(&pmp->minode);
+		kmalloc_destroy_obj(&pmp->minode);
 		kfree(pmp, M_HAMMER2);
 	}
 }
@@ -1195,7 +1194,9 @@ next_hmp:
 		ksnprintf(hmp->devrepname, sizeof(hmp->devrepname), "%s", dev);
 		hmp->ronly = ronly;
 		hmp->hflags = info.hflags & HMNT2_DEVFLAGS;
-		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
+		kmalloc_create_obj(&hmp->mchain, "HAMMER2-chains",
+				   sizeof(struct hammer2_chain));
+		kmalloc_create(&hmp->mmsg, "HAMMER2-msg");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
 		RB_INIT(&hmp->iotree);
 		spin_init(&hmp->io_spin, "h2mount_io");
@@ -1903,7 +1904,8 @@ again:
 	}
 
 	TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
-	kmalloc_destroy(&hmp->mchain);
+	kmalloc_destroy_obj(&hmp->mchain);
+	kmalloc_destroy(&hmp->mmsg);
 	kfree(hmp, M_HAMMER2);
 }
 

@@ -42,6 +42,7 @@
 #include <sys/systm.h>
 #include <sys/vnode.h>
 #include <sys/vmmeter.h>
+#include <sys/malloc.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -106,9 +107,11 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	if (tmp->tm_nodes_inuse >= tmp->tm_nodes_max)
 		return (ENOSPC);
 
-	nnode = objcache_get(tmp->tm_node_pool, M_WAITOK | M_NULLOK);
+	nnode = kmalloc_obj(sizeof(struct tmpfs_node), tmp->tm_node_zone,
+			    M_WAITOK | M_ZERO | M_NULLOK);
 	if (nnode == NULL)
 		return (ENOSPC);
+	tmpfs_node_init(nnode);
 
 	/* Generic initialization. */
 	nnode->tn_type = type;
@@ -130,7 +133,8 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	case VCHR:
 		rdev = makeudev(rmajor, rminor);
 		if (rdev == NOUDEV) {
-			objcache_put(tmp->tm_node_pool, nnode);
+			tmpfs_node_uninit(nnode);
+			kfree_obj(nnode, tmp->tm_node_zone);
 			return(EINVAL);
 		}
 		nnode->tn_rdev = rdev;
@@ -153,7 +157,8 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 		nnode->tn_link = kmalloc(nnode->tn_size + 1, tmp->tm_name_zone,
 					 M_WAITOK | M_NULLOK);
 		if (nnode->tn_link == NULL) {
-			objcache_put(tmp->tm_node_pool, nnode);
+			tmpfs_node_uninit(nnode);
+			kfree_obj(nnode, tmp->tm_node_zone);
 			return (ENOSPC);
 		}
 		bcopy(target, nnode->tn_link, nnode->tn_size);
@@ -213,7 +218,6 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 	TMPFS_ASSERT_ELOCKED(node);
 	KKASSERT(node->tn_vnode == NULL);
 #endif
-
 	TMPFS_LOCK(tmp);
 	LIST_REMOVE(node, tn_entries);
 	tmp->tm_nodes_inuse--;
@@ -272,11 +276,10 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 	}
 
 	/*
-	 * Clean up fields for the next allocation.  The objcache only ctors
-	 * new allocations.
+	 * Clean up fields as a safety before destroying the entry.
 	 */
-	tmpfs_node_ctor(node, NULL, 0);
-	objcache_put(tmp->tm_node_pool, node);
+	tmpfs_node_uninit(node);
+	kfree_obj(node, tmp->tm_node_zone);
 	/* node is now invalid */
 
 	if (pages)
@@ -300,10 +303,11 @@ tmpfs_alloc_dirent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 {
 	struct tmpfs_dirent *nde;
 
-	nde = objcache_get(tmp->tm_dirent_pool, M_WAITOK);
+	nde = kmalloc_obj(sizeof(struct tmpfs_dirent),
+			  tmp->tm_dirent_zone, M_WAITOK);
 	nde->td_name = kmalloc(len + 1, tmp->tm_name_zone, M_WAITOK | M_NULLOK);
 	if (nde->td_name == NULL) {
-		objcache_put(tmp->tm_dirent_pool, nde);
+		kfree_obj(nde, tmp->tm_dirent_zone);
 		*de = NULL;
 		return (ENOSPC);
 	}
@@ -345,7 +349,7 @@ tmpfs_free_dirent(struct tmpfs_mount *tmp, struct tmpfs_dirent *de)
 	de->td_namelen = 0;
 	de->td_name = NULL;
 	de->td_node = NULL;
-	objcache_put(tmp->tm_dirent_pool, de);
+	kfree_obj(de, tmp->tm_dirent_zone);
 }
 
 /* --------------------------------------------------------------------- */

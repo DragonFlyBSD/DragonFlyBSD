@@ -34,9 +34,10 @@ MALLOC_DECLARE(M_DRM);
 
 #define kzalloc(size, flags)	kmalloc(size, M_DRM, flags | M_ZERO)
 
+#undef kfree
 #define kfree(ptr)	do {			\
 	if (ptr != NULL)			\
-		kfree((void *)ptr, M_DRM);	\
+		_kfree((void *)ptr, M_DRM);	\
 } while (0)
 
 #define kcalloc(n, size, flags)	kzalloc((n) * (size), flags)

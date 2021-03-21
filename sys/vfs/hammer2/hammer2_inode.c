@@ -623,7 +623,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				 */
 				hammer2_inode_repoint(ip, NULL);
 
-				kfree(ip, pmp->minode);
+				kfree_obj(ip, pmp->minode);
 				atomic_add_long(&pmp->inmem_inodes, -1);
 				ip = NULL;	/* will terminate loop */
 			} else {
@@ -892,7 +892,7 @@ again:
 	 * We couldn't find the inode number, create a new inode and try to
 	 * insert it, handle insertion races.
 	 */
-	nip = kmalloc(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
+	nip = kmalloc_obj(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
 	spin_init(&nip->cluster_spin, "h2clspin");
 	atomic_add_long(&pmp->inmem_inodes, 1);
 	if (pmp->spmp_hmp)

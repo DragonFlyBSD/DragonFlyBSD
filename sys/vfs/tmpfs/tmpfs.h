@@ -46,7 +46,6 @@
 #include <sys/lock.h>
 #include <sys/lockf.h>
 #include <sys/mutex.h>
-#include <sys/objcache.h>
 
 /* --------------------------------------------------------------------- */
 #include <sys/malloc.h>
@@ -351,16 +350,9 @@ struct tmpfs_mount {
 	struct tmpfs_node_list	tm_nodes_used;
 
 	/* Per-mount malloc zones for tmpfs nodes, names, and dirents */
-	struct malloc_type	*tm_node_zone;
-	struct malloc_type	*tm_dirent_zone;
+	struct malloc_type	*tm_node_zone_obj;
+	struct malloc_type	*tm_dirent_zone_obj;
 	struct malloc_type	*tm_name_zone;
-
-	struct objcache_malloc_args tm_node_zone_malloc_args;
-	struct objcache_malloc_args tm_dirent_zone_malloc_args;
-
-	/* Pools used to store file system meta data. */
-	struct objcache		*tm_dirent_pool;
-	struct objcache		*tm_node_pool;
 
 	ino_t			tm_ino;
 	int			tm_flags;
@@ -423,9 +415,10 @@ int	tmpfs_chtimes(struct vnode *, struct timespec *, struct timespec *,
 void	tmpfs_itimes(struct vnode *, const struct timespec *,
 	    const struct timespec *);
 
+void	tmpfs_node_init(struct tmpfs_node *node);
+void	tmpfs_node_uninit(struct tmpfs_node *node);
 void	tmpfs_update(struct vnode *);
 int	tmpfs_truncate(struct vnode *, off_t);
-boolean_t tmpfs_node_ctor(void *obj, void *privdata, int flags);
 void	tmpfs_lock4(struct tmpfs_node *node1, struct tmpfs_node *node2,
 		struct tmpfs_node *node3, struct tmpfs_node *node4);
 void	tmpfs_unlock4(struct tmpfs_node *node1, struct tmpfs_node *node2,

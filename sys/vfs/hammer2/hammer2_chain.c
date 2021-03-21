@@ -203,7 +203,8 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	case HAMMER2_BREF_TYPE_FREEMAP:
 	case HAMMER2_BREF_TYPE_VOLUME:
-		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
+		chain = kmalloc_obj(sizeof(*chain), hmp->mchain,
+				    M_WAITOK | M_ZERO);
 		atomic_add_long(&hammer2_chain_allocs, 1);
 		break;
 	case HAMMER2_BREF_TYPE_EMPTY:
@@ -824,7 +825,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 	if (chain->flags & HAMMER2_CHAIN_ALLOCATED) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ALLOCATED);
 		chain->hmp = NULL;
-		kfree(chain, hmp->mchain);
+		kfree_obj(chain, hmp->mchain);
 	}
 
 	/*
@@ -6054,8 +6055,7 @@ hammer2_chain_bulksnap(hammer2_dev_t *hmp)
 
 	copy = hammer2_chain_alloc(hmp, hmp->spmp, &hmp->vchain.bref);
 	copy->data = kmalloc(sizeof(copy->data->voldata),
-			     hmp->mchain,
-			     M_WAITOK | M_ZERO);
+			     hmp->mmsg, M_WAITOK | M_ZERO);
 	hammer2_voldata_lock(hmp);
 	copy->data->voldata = hmp->volsync;
 	hammer2_voldata_unlock(hmp);
@@ -6068,7 +6068,7 @@ hammer2_chain_bulkdrop(hammer2_chain_t *copy)
 {
 	KKASSERT(copy->bref.type == HAMMER2_BREF_TYPE_VOLUME);
 	KKASSERT(copy->data);
-	kfree(copy->data, copy->hmp->mchain);
+	kfree(copy->data, copy->hmp->mmsg);
 	copy->data = NULL;
 	atomic_add_long(&hammer2_chain_allocs, -1);
 	hammer2_chain_drop(copy);

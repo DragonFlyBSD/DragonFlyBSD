@@ -69,7 +69,7 @@ hammer2_iocom_init(hammer2_dev_t *hmp)
 	kdmsg_iocom_init(&hmp->iocom, hmp,
 			 KDMSG_IOCOMF_AUTOCONN |
 			 KDMSG_IOCOMF_AUTORXSPAN,
-			 hmp->mchain, hammer2_rcvdmsg);
+			 hmp->mmsg, hammer2_rcvdmsg);
 }
 
 void

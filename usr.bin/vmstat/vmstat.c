@@ -74,20 +74,22 @@ static struct nlist namelist[] = {
 	{ "_ncpus",	0, 0, 0, 0 },
 #define	X_ZLIST		4
 	{ "_zlist",	0, 0, 0, 0 },
+#define	X_KSLAB_DUMMY	5
+	{ "_kslab_dummy", 0, 0, 0, 0 },
 #ifdef notyet
-#define	X_DEFICIT	5
+#define	X_DEFICIT	6
 	{ "_deficit",	0, 0, 0, 0 },
-#define	X_FORKSTAT	6
+#define	X_FORKSTAT	7
 	{ "_forkstat",	0, 0, 0, 0 },
-#define X_REC		7
+#define X_REC		8
 	{ "_rectime",	0, 0, 0, 0 },
-#define X_PGIN		8
+#define X_PGIN		9
 	{ "_pgintime",	0, 0, 0, 0 },
-#define	X_XSTATS	9
+#define	X_XSTATS	10
 	{ "_xstats",	0, 0, 0, 0 },
-#define X_END		10
+#define X_END		11
 #else
-#define X_END		5
+#define X_END		6
 #endif
 	{ "", 0, 0, 0, 0 },
 };
@@ -964,7 +966,7 @@ dointr(void)
 
 #define	MAX_KMSTATS	16384
 
-enum ksuse { KSINUSE, KSMEMUSE, KSCALLS };
+enum ksuse { KSINUSE, KSMEMUSE, KSOBJUSE, KSCALLS };
 
 static long
 cpuagg(struct malloc_type *ks, enum ksuse use)
@@ -983,6 +985,24 @@ cpuagg(struct malloc_type *ks, enum ksuse use)
 	for (i = 0; i < ncpus; ++i)
 	    ttl += ks->ks_use[i].memuse;
 	break;
+    case KSOBJUSE:
+	ttl = (ks->ks_mgt.npartial + ks->ks_mgt.nfull + ks->ks_mgt.nempty) *
+	      KMALLOC_SLAB_SIZE;
+	for (i = 0; i < ncpus; ++i) {
+	    struct kmalloc_use *kuse = &ks->ks_use[i];
+
+	    if (kuse->mgt.active &&
+		kuse->mgt.active != (void *)namelist[X_KSLAB_DUMMY].n_value)
+	    {
+		ttl += KMALLOC_SLAB_SIZE;
+	    }
+	    if (kuse->mgt.alternate &&
+		kuse->mgt.alternate != (void *)namelist[X_KSLAB_DUMMY].n_value)
+	    {
+		ttl += KMALLOC_SLAB_SIZE;
+	    }
+	}
+	break;
     case KSCALLS:
 	for (i = 0; i < ncpus; ++i)
 	    ttl += ks->ks_use[i].calls;
@@ -997,44 +1017,56 @@ domem(void)
 	struct malloc_type *ks;
 	int i;
 	int nkms;
-	long totuse = 0, totreq = 0;
+	long totuse = 0;
+	long totreq = 0;
+	long totobj = 0;
 	struct malloc_type kmemstats[MAX_KMSTATS], *kmsp;
 	char buf[1024];
 
 	kread(X_KMEMSTATISTICS, &kmsp, sizeof(kmsp));
 	for (nkms = 0; nkms < MAX_KMSTATS && kmsp != NULL; nkms++) {
-		if (sizeof(kmemstats[0]) != kvm_read(kd, (u_long)kmsp,
-		    &kmemstats[nkms], sizeof(kmemstats[0])))
+		struct malloc_type *ss;
+
+		ss = &kmemstats[nkms];
+
+		if (sizeof(kmemstats[0]) != kvm_read(kd, (u_long)kmsp, ss,
+						     sizeof(kmemstats[0])))
+		{
 			err(1, "kvm_read(%p)", (void *)kmsp);
-		if (sizeof(buf) !=  kvm_read(kd,
-	            (u_long)kmemstats[nkms].ks_shortdesc, buf, sizeof(buf)))
-			err(1, "kvm_read(%p)",
-			    kmemstats[nkms].ks_shortdesc);
+		}
+		if (sizeof(buf) != kvm_read(kd, (u_long)ss->ks_shortdesc,
+					    buf, sizeof(buf)))
+		{
+			err(1, "kvm_read(%p)", kmemstats[nkms].ks_shortdesc);
+		}
 		buf[sizeof(buf) - 1] = '\0';
-		kmemstats[nkms].ks_shortdesc = strdup(buf);
-		if (kmemstats[nkms].ks_use) {
+		ss->ks_shortdesc = strdup(buf);
+
+		if (ss->ks_use) {
 			size_t usebytes;
 			void *use;
 
-			usebytes = ncpus * sizeof(kmemstats[nkms].ks_use[0]);
+			usebytes = ncpus * sizeof(ss->ks_use[0]);
 			use = malloc(usebytes);
-			if (kvm_read(kd, (u_long)kmemstats[nkms].ks_use,
-				     use, usebytes) != (ssize_t)usebytes) {
-				err(1, "kvm_read(%p)", kmemstats[nkms].ks_use);
+			if (kvm_read(kd, (u_long)ss->ks_use, use, usebytes) !=
+			    (ssize_t)usebytes)
+			{
+				err(1, "kvm_read(%p)", ss->ks_use);
 			}
-			kmemstats[nkms].ks_use = use;
+			ss->ks_use = use;
 		}
-		kmsp = kmemstats[nkms].ks_next;
+		kmsp = ss->ks_next;
 	}
 	if (kmsp != NULL)
 		warnx("truncated to the first %d memory types", nkms);
 
 	printf(
 	    "\nMemory statistics by type\n");
-	printf("               Type   Count  MemUse   Limit Requests\n");
+	printf("\t       Type   Count  MemUse SlabUse   Limit Requests\n");
 	for (i = 0, ks = &kmemstats[0]; i < nkms; i++, ks++) {
 		long ks_inuse;
 		long ks_memuse;
+		long ks_objuse;
 		long ks_calls;
 
 		ks_calls = cpuagg(ks, KSCALLS);
@@ -1043,20 +1075,24 @@ domem(void)
 
 		ks_inuse = cpuagg(ks, KSINUSE);
 		ks_memuse = cpuagg(ks, KSMEMUSE);
+		ks_objuse = cpuagg(ks, KSOBJUSE);
 
-		printf("%19s   %s   %s   %s    %s\n",
+		printf("%19s   %s   %s   %s   %s    %s\n",
 			ks->ks_shortdesc,
 			formatnum(ks_inuse, 5, 1),
 			formatnum(ks_memuse, 5, 1),
+			formatnum(ks_objuse, 5, 1),
 			formatnum(ks->ks_limit, 5, 1),
 			formatnum(ks_calls, 5, 1));
 
 		totuse += ks_memuse;
+		totobj += ks_objuse;
 		totreq += ks_calls;
 	}
-	printf("\nMemory Totals:  In Use  Requests\n");
-	printf("                 %s  %s\n",
+	printf("\nMemory Totals:  In-Use  Slab-Use Requests\n");
+	printf("                 %s  %s   %s\n",
 		formatnum(totuse, 5, 1),
+		formatnum(totobj, 5, 1),
 		formatnum(totreq, 5, 1));
 }
 

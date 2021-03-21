@@ -140,7 +140,9 @@
 #define NCMOUNT_NUMCACHE	(16384)	/* power of 2 */
 #define NCMOUNT_SET		(8)	/* power of 2 */
 
-MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
+MALLOC_DEFINE_OBJ(M_VFSCACHE, sizeof(struct namecache),
+		  "namecache", "namecache entries");
+MALLOC_DEFINE(M_VFSCACHEAUX, "namecachestr", "namecache strings");
 
 TAILQ_HEAD(nchash_list, namecache);
 
@@ -699,8 +701,8 @@ _cache_drop(struct namecache *ncp)
 		 */
 		ncp->nc_refs = -1;	/* safety */
 		if (ncp->nc_name)
-			kfree(ncp->nc_name, M_VFSCACHE);
-		kfree(ncp, M_VFSCACHE);
+			kfree(ncp->nc_name, M_VFSCACHEAUX);
+		kfree_obj(ncp, M_VFSCACHE);
 	}
 }
 
@@ -831,9 +833,9 @@ cache_alloc(int nlen)
 {
 	struct namecache *ncp;
 
-	ncp = kmalloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
+	ncp = kmalloc_obj(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
 	if (nlen)
-		ncp->nc_name = kmalloc(nlen + 1, M_VFSCACHE, M_WAITOK);
+		ncp->nc_name = kmalloc(nlen + 1, M_VFSCACHEAUX, M_WAITOK);
 	ncp->nc_nlen = nlen;
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
@@ -854,8 +856,8 @@ _cache_free(struct namecache *ncp)
 {
 	KKASSERT(ncp->nc_refs == 1);
 	if (ncp->nc_name)
-		kfree(ncp->nc_name, M_VFSCACHE);
-	kfree(ncp, M_VFSCACHE);
+		kfree(ncp->nc_name, M_VFSCACHEAUX);
+	kfree_obj(ncp, M_VFSCACHE);
 }
 
 /*
@@ -1801,7 +1803,7 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 	++fncp->nc_generation;
 	++tncp->nc_generation;
 	if (tncp->nc_nlen) {
-		nname = kmalloc(tncp->nc_nlen + 1, M_VFSCACHE, M_WAITOK);
+		nname = kmalloc(tncp->nc_nlen + 1, M_VFSCACHEAUX, M_WAITOK);
 		bcopy(tncp->nc_name, nname, tncp->nc_nlen);
 		nname[tncp->nc_nlen] = 0;
 	} else {
@@ -1816,7 +1818,7 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 	fncp->nc_name = nname;
 	fncp->nc_nlen = tncp->nc_nlen;
 	if (oname)
-		kfree(oname, M_VFSCACHE);
+		kfree(oname, M_VFSCACHEAUX);
 
 	tncp_par = tncp->nc_parent;
 	KKASSERT(tncp_par->nc_lock.lk_lockholder == curthread);
@@ -2693,8 +2695,8 @@ again:
 	/* _cache_unlock(ncp) not required */
 	ncp->nc_refs = -1;	/* safety */
 	if (ncp->nc_name)
-		kfree(ncp->nc_name, M_VFSCACHE);
-	kfree(ncp, M_VFSCACHE);
+		kfree(ncp->nc_name, M_VFSCACHEAUX);
+	kfree_obj(ncp, M_VFSCACHE);
 
 	/*
 	 * Delayed drop (we had to release our spinlocks)
@@ -4218,7 +4220,7 @@ nchinit(void)
 	 * Per-cpu accounting and negative hit list
 	 */
 	pcpu_ncache = kmalloc(sizeof(*pcpu_ncache) * ncpus,
-			      M_VFSCACHE, M_WAITOK|M_ZERO);
+			      M_VFSCACHEAUX, M_WAITOK|M_ZERO);
 	for (i = 0; i < ncpus; ++i) {
 		pn = &pcpu_ncache[i];
 		TAILQ_INIT(&pn->neg_list);
@@ -4239,7 +4241,7 @@ nchinit(void)
 	 */
 	nchashtbl = hashinit_ext(vfs_inodehashsize(),
 				 sizeof(struct nchash_head),
-				 M_VFSCACHE, &nchash);
+				 M_VFSCACHEAUX, &nchash);
 	for (i = 0; i <= (int)nchash; ++i) {
 		TAILQ_INIT(&nchashtbl[i].list);
 		spin_init(&nchashtbl[i].spin, "nchinit_hash");

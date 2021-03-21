@@ -48,7 +48,6 @@
 #include <sys/stat.h>
 #include <sys/systm.h>
 #include <sys/sysctl.h>
-#include <sys/objcache.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -77,54 +76,21 @@ static int	tmpfs_fhtovp(struct mount *, struct vnode *, struct fid *, struct vno
 static int	tmpfs_statfs(struct mount *, struct statfs *, struct ucred *cred);
 
 /* --------------------------------------------------------------------- */
-boolean_t
-tmpfs_node_ctor(void *obj, void *privdata, int flags)
+
+void
+tmpfs_node_init(struct tmpfs_node *node)
 {
-	struct tmpfs_node *node = obj;
-
-	node->tn_gen++;
-	node->tn_size = 0;
-	node->tn_status = 0;
-	node->tn_flags = 0;
-	node->tn_links = 0;
-	node->tn_vnode = NULL;
-	node->tn_vpstate = 0;
-	bzero(&node->tn_spec, sizeof(node->tn_spec));
-
-	return (TRUE);
-}
-
-static void
-tmpfs_node_dtor(void *obj, void *privdata)
-{
-	struct tmpfs_node *node = (struct tmpfs_node *)obj;
-	node->tn_type = VNON;
-	node->tn_vpstate = TMPFS_VNODE_DOOMED;
-}
-
-static void *
-tmpfs_node_init(void *args, int flags)
-{
-	struct tmpfs_node *node;
-
-	node = objcache_malloc_alloc(args, flags);
-	if (node == NULL)
-		return (NULL);
-	node->tn_id = 0;
 	node->tn_blksize = PAGE_SIZE;	/* start small */
-
 	lockinit(&node->tn_interlock, "tmpfs node interlock", 0, LK_CANRECURSE);
 	node->tn_gen = karc4random();
-
-	return node;
 }
 
-static void
-tmpfs_node_fini(void *obj, void *args)
+void
+tmpfs_node_uninit(struct tmpfs_node *node)
 {
-	struct tmpfs_node *node = (struct tmpfs_node *)obj;
+	node->tn_type = VNON;
+	node->tn_vpstate = TMPFS_VNODE_DOOMED;
 	lockuninit(&node->tn_interlock);
-	objcache_malloc_free(obj, args);
 }
 
 static int
@@ -231,29 +197,14 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	tmp->tm_pages_max = pages;
 	tmp->tm_pages_used = 0;
 
-	kmalloc_create(&tmp->tm_node_zone, "tmpfs node");
-	kmalloc_create(&tmp->tm_dirent_zone, "tmpfs dirent");
+	kmalloc_create_obj(&tmp->tm_node_zone, "tmpfs node",
+			sizeof(struct tmpfs_node));
+	kmalloc_create_obj(&tmp->tm_dirent_zone, "tmpfs dirent",
+			sizeof(struct tmpfs_dirent));
 	kmalloc_create(&tmp->tm_name_zone, "tmpfs name zone");
 
-	kmalloc_raise_limit(tmp->tm_node_zone, sizeof(struct tmpfs_node) *
-			    tmp->tm_nodes_max);
-
-	tmp->tm_node_zone_malloc_args.objsize = sizeof(struct tmpfs_node);
-	tmp->tm_node_zone_malloc_args.mtype = tmp->tm_node_zone;
-
-	tmp->tm_dirent_zone_malloc_args.objsize = sizeof(struct tmpfs_dirent);
-	tmp->tm_dirent_zone_malloc_args.mtype = tmp->tm_dirent_zone;
-
-	tmp->tm_dirent_pool =  objcache_create( "tmpfs dirent cache",
-	    0, 0,
-	    NULL, NULL, NULL,
-	    objcache_malloc_alloc, objcache_malloc_free,
-	    &tmp->tm_dirent_zone_malloc_args);
-	tmp->tm_node_pool = objcache_create( "tmpfs node cache",
-	    0, 0,
-	    tmpfs_node_ctor, tmpfs_node_dtor, NULL,
-	    tmpfs_node_init, tmpfs_node_fini,
-	    &tmp->tm_node_zone_malloc_args);
+	kmalloc_obj_raise_limit(tmp->tm_node_zone,
+				sizeof(struct tmpfs_node) * tmp->tm_nodes_max);
 
 	tmp->tm_ino = TMPFS_ROOTINO;
 
@@ -269,8 +220,9 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	root->tn_flags = SF_NOCACHE;
 
 	if (error != 0 || root == NULL) {
-	    objcache_destroy(tmp->tm_node_pool);
-	    objcache_destroy(tmp->tm_dirent_pool);
+	    kmalloc_destroy(&tmp->tm_name_zone);
+	    kmalloc_destroy(&tmp->tm_dirent_zone_obj);
+	    kmalloc_destroy(&tmp->tm_node_zone_obj);
 	    kfree(tmp, M_TMPFSMNT);
 	    return error;
 	}
@@ -422,9 +374,10 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	 * link count of 0.  The root is not necessarily going to be last.
 	 */
 	while ((node = LIST_FIRST(&tmp->tm_nodes_used)) != NULL) {
-		if (node->tn_links)
+		if (node->tn_links) {
 			panic("tmpfs: Dangling nodes during umount (%p)!\n",
 			      node);
+		}
 
 		TMPFS_NODE_LOCK(node);
 		tmpfs_free_node(tmp, node);
@@ -433,14 +386,12 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	}
 	KKASSERT(tmp->tm_root == NULL);
 
-	objcache_destroy(tmp->tm_dirent_pool);
-	objcache_destroy(tmp->tm_node_pool);
-
 	kmalloc_destroy(&tmp->tm_name_zone);
-	kmalloc_destroy(&tmp->tm_dirent_zone);
-	kmalloc_destroy(&tmp->tm_node_zone);
+	kmalloc_destroy(&tmp->tm_dirent_zone_obj);
+	kmalloc_destroy(&tmp->tm_node_zone_obj);
 
-	tmp->tm_node_zone = tmp->tm_dirent_zone = NULL;
+	tmp->tm_node_zone_obj = NULL;
+	tmp->tm_dirent_zone_obj = NULL;
 
 	KKASSERT(tmp->tm_pages_used == 0);
 	KKASSERT(tmp->tm_nodes_inuse == 0);

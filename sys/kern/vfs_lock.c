@@ -72,7 +72,8 @@
 
 static void vnode_terminate(struct vnode *vp);
 
-static MALLOC_DEFINE(M_VNODE, "vnodes", "vnode structures");
+static MALLOC_DEFINE_OBJ(M_VNODE, sizeof(struct vnode), "vnodes", "vnodes");
+static MALLOC_DEFINE(M_VNODE_HASH, "vnodelsthash", "vnode list hash");
 
 /*
  * The vnode free list hold inactive vnodes.  Aged inactive vnodes
@@ -118,9 +119,9 @@ vfs_lock_init(void)
 {
 	int i;
 
-	kmalloc_raise_limit(M_VNODE, 0);	/* unlimited */
+	kmalloc_obj_raise_limit(M_VNODE, 0);	/* unlimited */
 	vnode_list_hash = kmalloc(sizeof(*vnode_list_hash) * ncpus,
-				  M_VNODE, M_ZERO | M_WAITOK);
+				  M_VNODE_HASH, M_ZERO | M_WAITOK);
 	for (i = 0; i < ncpus; ++i) {
 		struct vnode_index *vi = &vnode_list_hash[i];
 
@@ -1120,7 +1121,7 @@ allocvnode(int lktimeout, int lkflags)
 	} else {
 		spin_unlock(&vi->spin);
 slower:
-		vp = kmalloc(sizeof(*vp), M_VNODE, M_ZERO | M_WAITOK);
+		vp = kmalloc_obj(sizeof(*vp), M_VNODE, M_ZERO | M_WAITOK);
 		atomic_add_int(&numvnodes, 1);
 	}
 
@@ -1190,7 +1191,7 @@ freesomevnodes(int n)
 		vx_unlock(vp);
 		--n;
 		++count;
-		kfree(vp, M_VNODE);
+		kfree_obj(vp, M_VNODE);
 		atomic_add_int(&numvnodes, -1);
 	}
 	return(count);

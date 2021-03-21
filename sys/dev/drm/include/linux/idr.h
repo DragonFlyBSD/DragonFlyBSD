@@ -78,7 +78,7 @@ ida_destroy(struct ida *ida)
 	idr_destroy(&ida->idr);
 	if (ida->free_bitmap != NULL) {
 		/* kfree() is a linux macro! Work around the cpp pass */
-		(kfree)(ida->free_bitmap, M_IDR);
+		_kfree(ida->free_bitmap, M_IDR);
 	}
 }
 

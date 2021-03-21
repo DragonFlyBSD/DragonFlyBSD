@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1987, 1993
+ * Copyright (c) 1987, 1993, 2021
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -103,11 +103,30 @@
 	    malloc_init, type);						\
 	SYSUNINIT(type##_uninit, SI_BOOT1_KMALLOC, SI_ORDER_ANY,	\
 	    malloc_uninit, type)
+
+#define	MALLOC_DEFINE_OBJ(type, size, shortdesc, longdesc)		\
+	struct malloc_type type##_obj[1] = {				\
+	    { NULL, 0, 0, 0, KSF_OBJSIZE, M_MAGIC, shortdesc,		\
+	      __VM_CACHELINE_ALIGN((size)),				\
+	      &type##_obj[0].ks_use0, { 0, 0, 0, 0 } }			\
+	};								\
+	SYSINIT(type##_init, SI_BOOT1_KMALLOC, SI_ORDER_ANY,		\
+	    malloc_init, type##_obj);					\
+	SYSUNINIT(type##_uninit, SI_BOOT1_KMALLOC, SI_ORDER_ANY,	\
+	    malloc_uninit, type##_obj)
+
 #else
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)			\
 	struct malloc_type type[1] = {					\
 	    { NULL, 0, 0, 0, 0, M_MAGIC, shortdesc, 0,			\
 	      &type[0].ks_use0, { 0, 0, 0, 0 } 				\
+	}
+
+#define	MALLOC_DEFINE_OBJ(type, size, shortdesc, longdesc)		\
+	struct malloc_type type##_obj[1] = {				\
+	    { NULL, 0, 0, 0, KSF_OBJSIZE, M_MAGIC, shortdesc,		\
+	      __VM_CACHELINE_ALIGN((size)),				\
+	      &type##_obj[0].ks_use0, { 0, 0, 0, 0 } 			\
 	}
 #endif
 
@@ -126,8 +145,13 @@ MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
 
 #define	MINALLOCSIZE	sizeof(void *)
 
+struct globaldata;
+
 /* XXX struct malloc_type is unused for contig*(). */
 size_t  kmem_lim_size(void);
+void	*kmem_slab_alloc(vm_size_t bytes, vm_offset_t align, int flags);
+void	kmem_slab_free(void *ptr, vm_size_t bytes);
+
 void	contigfree(void *addr, unsigned long size, struct malloc_type *type)
 	    __nonnull(1);
 void	*contigmalloc(unsigned long size, struct malloc_type *type, int flags,
@@ -136,11 +160,30 @@ void	*contigmalloc(unsigned long size, struct malloc_type *type, int flags,
 		      __alloc_size(1) __alloc_align(6);
 void	malloc_init(void *);
 void	malloc_uninit(void *);
+void	malloc_kmemstats_poll(void);
+void	malloc_mgt_init(struct malloc_type *type, struct kmalloc_mgt *mgt,
+			size_t bytes);
+void	malloc_mgt_uninit(struct malloc_type *type, struct kmalloc_mgt *mgt);
+void	malloc_mgt_relocate(struct kmalloc_mgt *smgt, struct kmalloc_mgt *dmgt);
+int	malloc_mgt_poll(struct malloc_type *type);
 void	malloc_reinit_ncpus(void);
 void	kmalloc_raise_limit(struct malloc_type *type, size_t bytes);
 void	kmalloc_set_unlimited(struct malloc_type *type);
 void	kmalloc_create(struct malloc_type **typep, const char *descr);
 void	kmalloc_destroy(struct malloc_type **typep);
+
+/*
+ * NOTE: kmalloc_obj*() functiions use distinct malloc_type structures
+ *	 which should not be mixed with non-obj functions.  For this reason,
+ *	 all kmalloc_obj*() functions postpend the '_obj' to the variable
+ *	 name passed into them.  This guarantees that a programmer mistake
+ *	 will cause the compile to fail.
+ */
+void	_kmalloc_create_obj(struct malloc_type **typep, const char *descr,
+			size_t objsize);
+#define kmalloc_create_obj(typep, descr, objsize)	\
+		_kmalloc_create_obj((typep##_obj), (descr), (objsize))
+#define kmalloc_destroy_obj(type) kmalloc_destroy((type##_obj))
 
 /*
  * Debug and non-debug kmalloc() prototypes.
@@ -151,9 +194,12 @@ void	kmalloc_destroy(struct malloc_type **typep);
  * for M_ZERO based kmalloc() calls.
  */
 #ifdef SLAB_DEBUG
-void	*kmalloc_debug(unsigned long size, struct malloc_type *type, int flags,
-			const char *file, int line) __malloclike __heedresult
-			__alloc_size(1);
+void	*kmalloc_debug(unsigned long size, struct malloc_type *type,
+			int flags, const char *file, int line)
+			__malloclike __heedresult __alloc_size(1);
+void	*kmalloc_obj_debug(unsigned long size, struct malloc_type *type,
+			int flags, const char *file, int line)
+			__malloclike __heedresult __alloc_size(1);
 void	*krealloc_debug(void *addr, unsigned long size,
 			struct malloc_type *type, int flags,
 			const char *file, int line) __heedresult __alloc_size(2);
@@ -161,7 +207,7 @@ char	*kstrdup_debug(const char *, struct malloc_type *,
 			const char *file, int line) __malloclike __heedresult;
 char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 			const char *file, int line) __malloclike __heedresult;
-#if 1
+
 #define _kmalloc(size, type, flags) ({					\
 	void *_malloc_item;						\
 	size_t _size = (size);						\
@@ -182,11 +228,34 @@ char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 	}								\
 	_malloc_item;							\
 })
-#else
-#define _kmalloc(size, type, flags)	\
-	kmalloc_debug(_size, type, flags, __FILE__, __LINE__);
-#endif
+
+#define _kmalloc_obj(size, type, flags) ({				\
+	void *_malloc_item;						\
+	size_t _size = __VM_CACHELINE_ALIGN(size);			\
+									\
+	if (__builtin_constant_p(size) &&				\
+	    __builtin_constant_p(flags) &&				\
+	    ((flags) & M_ZERO)) {					\
+		_malloc_item = kmalloc_obj_debug(_size, type##_obj,	\
+					    (flags) & ~M_ZERO,		\
+					    __FILE__, __LINE__);	\
+		if (((flags) & (M_WAITOK|M_NULLOK)) == M_WAITOK ||	\
+		    __predict_true(_malloc_item != NULL)) {		\
+			__builtin_memset(_malloc_item, 0, _size);	\
+		}							\
+	} else {							\
+	    _malloc_item = kmalloc_obj_debug(_size, type##_obj, flags,	\
+				   __FILE__, __LINE__);			\
+	}								\
+	_malloc_item;							\
+})
+
 #define kmalloc(size, type, flags)	_kmalloc(size, type, flags)
+#define kmalloc_obj(size, type, flags)	_kmalloc_obj(size, type##_obj, flags)
+
+/*
+ * These only operate on normal mixed-size zones
+ */
 #define krealloc(addr, size, type, flags)	\
 	krealloc_debug(addr, size, type, flags, __FILE__, __LINE__)
 #define kstrdup(str, type)			\
@@ -196,34 +265,66 @@ char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 
 #else	/* !SLAB_DEBUG */
 
-void	*kmalloc(unsigned long size, struct malloc_type *type, int flags)
+void	*_kmalloc(unsigned long size, struct malloc_type *type, int flags)
 		 __malloclike __heedresult __alloc_size(1);
+void	*_kmalloc_obj(unsigned long size, struct malloc_type *type, int flags)
+		 __malloclike __heedresult __alloc_size(1);
+
 static __inline __always_inline void *
-_kmalloc(size_t _size, struct malloc_type *_type, int _flags)
+__kmalloc(size_t _size, struct malloc_type *_type, int _flags)
 {
-#if 1
 	if (__builtin_constant_p(_size) && __builtin_constant_p(_flags) &&
 	    (_flags & M_ZERO)) {
 		void *_malloc_item;
-		_malloc_item = kmalloc(_size, _type, _flags & ~M_ZERO);
+		_malloc_item = _kmalloc(_size, _type, _flags & ~M_ZERO);
 		if ((_flags & (M_WAITOK|M_NULLOK)) == M_WAITOK ||
 		    __predict_true(_malloc_item != NULL)) {
 			__builtin_memset(_malloc_item, 0, _size);
 		}
 		return _malloc_item;
 	}
-#endif
-	return (kmalloc(_size, _type, _flags));
+	return (_kmalloc(_size, _type, _flags));
 }
-#define kmalloc(size, type, flags)	_kmalloc((size), (type), (flags))
+
+static __inline __always_inline void *
+__kmalloc_obj(size_t _size, struct malloc_type *_type, int _flags)
+{
+	if (__builtin_constant_p(_size) && __builtin_constant_p(_flags) &&
+	    (_flags & M_ZERO)) {
+		void *_malloc_item;
+		_malloc_item = _kmalloc_obj(__VM_CACHELINE_ALIGN(_size),
+					   _type, _flags & ~M_ZERO);
+		if ((_flags & (M_WAITOK|M_NULLOK)) == M_WAITOK ||
+		    __predict_true(_malloc_item != NULL)) {
+			__builtin_memset(_malloc_item, 0, _size);
+		}
+		return _malloc_item;
+	}
+	return (_kmalloc_obj(__VM_CACHELINE_ALIGN(_size), _type, _flags));
+}
+
+#define kmalloc(size, type, flags)	\
+		__kmalloc((size), type, (flags))
+#define kmalloc_obj(size, type, flags)	\
+		__kmalloc_obj((size), type##_obj, (flags))
+
+/*
+ * These only operate on normal mixed-size zones
+ */
 void	*krealloc(void *addr, unsigned long size, struct malloc_type *type,
 		  int flags) __heedresult __alloc_size(2);
 char	*kstrdup(const char *, struct malloc_type *)
 		 __malloclike __heedresult;
 char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
 		  __malloclike __heedresult;
+
+/*
+ * Just macro the debug versions over to the non-debug versions
+ */
 #define kmalloc_debug(size, type, flags, file, line)		\
-	kmalloc(size, type, flags)
+	__kmalloc((size), type, (flags))
+#define kmalloc_obj_debug(size, type, flags, file, line)	\
+	__kmalloc_obj((size), type##_obj, (flags))
 #define krealloc_debug(addr, size, type, flags, file, line)	\
 	krealloc(addr, size, type, flags)
 #define kstrdup_debug(str, type, file, line)			\
@@ -231,9 +332,17 @@ char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
 #define kstrndup_debug(str, maxlen, type, file, line)		\
 	kstrndup(str, maxlen, type)
 #endif /* SLAB_DEBUG */
-void	kfree(void *addr, struct malloc_type *type) __nonnull(2);
+
+#define kmalloc_obj_raise_limit(type, bytes)	\
+		kmalloc_raise_limit(type##_obj, bytes)
+
+void	_kfree(void *addr, struct malloc_type *type) __nonnull(2);
+void	_kfree_obj(void *addr, struct malloc_type *type) __nonnull(2);
 long	kmalloc_limit(struct malloc_type *type);
 void	slab_cleanup(void);
+
+#define kfree(addr, type)	_kfree(addr, type)
+#define kfree_obj(addr, type)	_kfree_obj(addr, type##_obj)
 
 #endif /* _KERNEL */
 

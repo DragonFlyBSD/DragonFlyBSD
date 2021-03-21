@@ -161,6 +161,7 @@ struct globaldata {
 	};
 	struct thread	gd_idlethread;
 	SLGlobalData	gd_slab;		/* slab allocator */
+	KMGlobalData	gd_kmslab;		/* kmalloc slab cache */
 	int		gd_trap_nesting_level;	/* track traps */
 	int		gd_vme_avail;		/* vm_map_entry reservation */
 	struct vm_map_entry *gd_vme_base;	/* vm_map_entry reservation */

@@ -107,6 +107,7 @@
 #include <sys/globaldata.h>
 #include <sys/sysctl.h>
 #include <sys/ktr.h>
+#include <sys/kthread.h>
 #include <sys/malloc.h>
 
 #include <vm/vm.h>
@@ -169,9 +170,6 @@ __read_frequently static int ZonePageCount;
 __read_frequently static uintptr_t ZoneMask;
 __read_frequently struct malloc_type *kmemstatistics;	/* exported to vmstat */
 
-static void *kmem_slab_alloc(vm_size_t bytes, vm_offset_t align, int flags);
-static void kmem_slab_free(void *ptr, vm_size_t bytes);
-
 #if defined(INVARIANTS)
 static void chunk_mark_allocated(SLZone *z, void *chunk);
 static void chunk_mark_free(SLZone *z, void *chunk);
@@ -229,14 +227,14 @@ SYSINIT(kmem2, SI_BOOT2_POST_SMP, SI_ORDER_FIRST, kmemfinishinit, NULL);
  */
 __read_frequently static int  use_malloc_pattern;
 SYSCTL_INT(_debug, OID_AUTO, use_malloc_pattern, CTLFLAG_RW,
-    &use_malloc_pattern, 0,
-    "Initialize memory to -1 if M_ZERO not specified");
+	   &use_malloc_pattern, 0,
+	   "Initialize memory to -1 if M_ZERO not specified");
 
 __read_frequently static int32_t weirdary[16];
 __read_frequently static int  use_weird_array;
 SYSCTL_INT(_debug, OID_AUTO, use_weird_array, CTLFLAG_RW,
-    &use_weird_array, 0,
-    "Initialize memory to weird values on kfree()");
+	   &use_weird_array, 0,
+	   "Initialize memory to weird values on kfree()");
 #endif
 
 __read_frequently static int ZoneRelsThresh = ZONE_RELS_THRESH;
@@ -244,6 +242,7 @@ SYSCTL_INT(_kern, OID_AUTO, zone_cache, CTLFLAG_RW, &ZoneRelsThresh, 0, "");
 
 static struct spinlock kmemstat_spin =
 			SPINLOCK_INITIALIZER(&kmemstat_spin, "malinit");
+static struct malloc_type *kmemstat_poll;
 
 /*
  * Returns the kernel memory size limit for the purposes of initializing
@@ -358,6 +357,7 @@ malloc_init(void *data)
     struct malloc_type *type = data;
     struct kmalloc_use *use;
     size_t limsize;
+    int n;
 
     if (type->ks_magic != M_MAGIC)
 	panic("malloc type lacks magic");
@@ -370,11 +370,17 @@ malloc_init(void *data)
 
     limsize = kmem_lim_size() * (1024 * 1024);
     type->ks_limit = limsize / 10;
+    if (type->ks_flags & KSF_OBJSIZE)
+	    malloc_mgt_init(type, &type->ks_mgt, type->ks_objsize);
 
     if (ncpus == 1)
 	use = &type->ks_use0;
     else
 	use = kmalloc(ncpus * sizeof(*use), M_TEMP, M_WAITOK | M_ZERO);
+    if (type->ks_flags & KSF_OBJSIZE) {
+	for (n = 0; n < ncpus; ++n)
+	    malloc_mgt_init(type, &use[n].mgt, type->ks_objsize);
+    }
 
     spin_lock(&kmemstat_spin);
     type->ks_next = kmemstatistics;
@@ -405,21 +411,20 @@ malloc_uninit(void *data)
     /* Make sure that all pending kfree()s are finished. */
     lwkt_synchronize_ipiqs("muninit");
 
-#ifdef INVARIANTS
     /*
-     * memuse is only correct in aggregation.  Due to memory being allocated
-     * on one cpu and freed on another individual array entries may be
-     * negative or positive (canceling each other out).
+     * Remove from the kmemstatistics list, blocking if the removal races
+     * the kmalloc poller.
+     *
+     * Advance kmemstat_poll if necessary.
      */
-    for (i = ttl = 0; i < ncpus; ++i)
-	ttl += type->ks_use[i].memuse;
-    if (ttl) {
-	kprintf("malloc_uninit: %ld bytes of '%s' still allocated on cpu %d\n",
-	    ttl, type->ks_shortdesc, i);
-    }
-#endif
     spin_lock(&kmemstat_spin);
-    if (type == kmemstatistics) {
+    while (type->ks_flags & KSF_POLLING)
+	ssleep(type, &kmemstat_spin, 0, "kmuninit", 0);
+
+    if (kmemstat_poll == type)
+	kmemstat_poll = type->ks_next;
+
+    if (kmemstatistics == type) {
 	kmemstatistics = type->ks_next;
     } else {
 	for (t = kmemstatistics; t->ks_next != NULL; t = t->ks_next) {
@@ -433,11 +438,84 @@ malloc_uninit(void *data)
     type->ks_limit = 0;
     spin_unlock(&kmemstat_spin);
 
+    /*
+     * memuse is only correct in aggregation.  Due to memory being allocated
+     * on one cpu and freed on another individual array entries may be
+     * negative or positive (canceling each other out).
+     */
+#ifdef INVARIANTS
+    ttl = 0;
+#endif
+    for (i = 0; i < ncpus; ++i) {
+#ifdef INVARIANTS
+	ttl += type->ks_use[i].memuse;
+#endif
+	if (type->ks_flags & KSF_OBJSIZE)
+	    malloc_mgt_uninit(type, &type->ks_use[i].mgt);
+    }
+    if (type->ks_flags & KSF_OBJSIZE)
+	malloc_mgt_uninit(type, &type->ks_mgt);
+#ifdef INVARIANTS
+    if (ttl) {
+	kprintf("malloc_uninit: %ld bytes of '%s' still allocated on cpu %d\n",
+	    ttl, type->ks_shortdesc, i);
+    }
+#endif
+
     if (type->ks_use != &type->ks_use0) {
 	kfree(type->ks_use, M_TEMP);
 	type->ks_use = NULL;
     }
 }
+
+/*
+ * Slowly polls all kmalloc zones for cleanup
+ */
+static void
+kmalloc_poller_thread(void)
+{
+    struct malloc_type *type;
+
+    for (;;) {
+	/*
+	 * Very slow poll
+	 */
+	tsleep((caddr_t)&lbolt, 0, "kmslp", 0);
+
+	/*
+	 * poll one
+	 */
+	spin_lock(&kmemstat_spin);
+	type = kmemstat_poll;
+
+	if (type == NULL)
+		type = kmemstatistics;
+	if (type) {
+		atomic_set_int(&type->ks_flags, KSF_POLLING);
+		spin_unlock(&kmemstat_spin);
+		if (malloc_mgt_poll(type)) {
+			spin_lock(&kmemstat_spin);
+			kmemstat_poll = type->ks_next;
+		} else {
+			spin_lock(&kmemstat_spin);
+		}
+		atomic_clear_int(&type->ks_flags, KSF_POLLING);
+		wakeup(type);
+	} else {
+		kmemstat_poll = NULL;
+	}
+	spin_unlock(&kmemstat_spin);
+    }
+}
+
+static struct thread *kmalloc_poller_td;
+static struct kproc_desc kmalloc_poller_kp = {
+        "kmalloc_poller",
+	kmalloc_poller_thread,
+	&kmalloc_poller_td
+};
+SYSINIT(kmalloc_polller, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST,
+	kproc_start, &kmalloc_poller_kp);
 
 /*
  * Reinitialize all installed malloc regions after ncpus has been
@@ -449,6 +527,7 @@ malloc_reinit_ncpus(void)
 {
     struct malloc_type *t;
     struct kmalloc_use *use;
+    int n;
 
     /*
      * If only one cpu we can leave ks_use set to ks_use0
@@ -463,6 +542,11 @@ malloc_reinit_ncpus(void)
 	KKASSERT(t->ks_use == &t->ks_use0);
 	t->ks_use = kmalloc(sizeof(*use) * ncpus, M_TEMP, M_WAITOK|M_ZERO);
 	t->ks_use[0] = t->ks_use0;
+	if (t->ks_flags & KSF_OBJSIZE) {
+	    malloc_mgt_relocate(&t->ks_use0.mgt, &t->ks_use[0].mgt);
+	    for (n = 1; n < ncpus; ++n)
+		malloc_mgt_init(t, &t->ks_use[n].mgt, t->ks_objsize);
+	}
     }
 }
 
@@ -499,6 +583,23 @@ kmalloc_create(struct malloc_type **typep, const char *descr)
 		type = kmalloc(sizeof(*type), M_TEMP, M_WAITOK | M_ZERO);
 		type->ks_magic = M_MAGIC;
 		type->ks_shortdesc = descr;
+		malloc_init(type);
+		*typep = type;
+	}
+}
+
+void
+_kmalloc_create_obj(struct malloc_type **typep, const char *descr,
+		    size_t objsize)
+{
+	struct malloc_type *type;
+
+	if (*typep == NULL) {
+		type = kmalloc(sizeof(*type), M_TEMP, M_WAITOK | M_ZERO);
+		type->ks_magic = M_MAGIC;
+		type->ks_shortdesc = descr;
+		type->ks_flags = KSF_OBJSIZE;
+		type->ks_objsize = __VM_CACHELINE_ALIGN(objsize);
 		malloc_init(type);
 		*typep = type;
 	}
@@ -696,11 +797,11 @@ powerof2_size(unsigned long size)
 
 #ifdef SLAB_DEBUG
 void *
-kmalloc_debug(unsigned long size, struct malloc_type *type, int flags,
+_kmalloc_debug(unsigned long size, struct malloc_type *type, int flags,
 	      const char *file, int line)
 #else
 void *
-kmalloc(unsigned long size, struct malloc_type *type, int flags)
+_kmalloc(unsigned long size, struct malloc_type *type, int flags)
 #endif
 {
     SLZone *z;
@@ -1245,7 +1346,7 @@ kfree_remote(void *ptr)
  * MPSAFE
  */
 void
-kfree(void *ptr, struct malloc_type *type)
+_kfree(void *ptr, struct malloc_type *type)
 {
     SLZone *z;
     SLChunk *chunk;
@@ -1559,7 +1660,7 @@ chunk_mark_free(SLZone *z, void *chunk)
  *	non-preemptively or blocks and then runs non-preemptively, then
  *	it is free to use PQ_CACHE pages.  <--- may not apply any longer XXX
  */
-static void *
+void *
 kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 {
     vm_size_t i;
@@ -1722,7 +1823,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 /*
  * kmem_slab_free()
  */
-static void
+void
 kmem_slab_free(void *ptr, vm_size_t size)
 {
     crit_enter();
