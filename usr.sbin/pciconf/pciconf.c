@@ -100,7 +100,7 @@ main(int argc, char **argv)
 	attachedmode = bars = caps = verbose = byte = isshort = 0;
 	errors = bridge = 0;
 
-	while ((c = getopt(argc, argv, "abchlrwv")) != -1) {
+	while ((c = getopt(argc, argv, "aBbcehlrwv")) != -1) {
 		switch(c) {
 		case 'a':
 			attachedmode = 1;
