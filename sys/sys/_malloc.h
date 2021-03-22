@@ -102,6 +102,9 @@ struct kmalloc_mgt {
 	size_t			npartial;	/* counts */
 	size_t			nfull;
 	size_t			nempty;
+	size_t			gcache_count;	/* #slabs returned to gcache */
+	size_t			unused01;
+	size_t			unused02;
 } __cachealign;
 
 /*

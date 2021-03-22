@@ -239,6 +239,8 @@ SYSCTL_INT(_debug, OID_AUTO, use_weird_array, CTLFLAG_RW,
 
 __read_frequently static int ZoneRelsThresh = ZONE_RELS_THRESH;
 SYSCTL_INT(_kern, OID_AUTO, zone_cache, CTLFLAG_RW, &ZoneRelsThresh, 0, "");
+__read_frequently static int kzone_pollfreq = 1;
+SYSCTL_INT(_kern, OID_AUTO, kzone_pollfreq, CTLFLAG_RW, &kzone_pollfreq, 0, "");
 
 static struct spinlock kmemstat_spin =
 			SPINLOCK_INITIALIZER(&kmemstat_spin, "malinit");
@@ -478,12 +480,20 @@ kmalloc_poller_thread(void)
 
     for (;;) {
 	/*
-	 * Very slow poll
+	 * Very slow poll by default, adjustable with sysctl
 	 */
-	tsleep((caddr_t)&lbolt, 0, "kmslp", 0);
+	int sticks;
+
+	sticks = kzone_pollfreq;
+	cpu_ccfence();
+	if (sticks > 0)
+		sticks = hz / sticks + 1;	/* approximate */
+	else
+		sticks = hz;			/* safety */
+	tsleep((caddr_t)&sticks, 0, "kmslp", sticks);
 
 	/*
-	 * poll one
+	 * [re]poll one zone each period.
 	 */
 	spin_lock(&kmemstat_spin);
 	type = kmemstat_poll;

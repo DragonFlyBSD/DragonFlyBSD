@@ -116,6 +116,8 @@ KTR_INFO(KTR_MEMORY, mem_obj, free_end, 10, "kfree_obj end");
 
 __read_frequently static int KMGDMaxFreeSlabs = KMGD_MAXFREESLABS;
 SYSCTL_INT(_kern, OID_AUTO, kzone_cache, CTLFLAG_RW, &KMGDMaxFreeSlabs, 0, "");
+__read_frequently static int kzone_bretire = 4;
+SYSCTL_INT(_kern, OID_AUTO, kzone_bretire, CTLFLAG_RW, &kzone_bretire, 0, "");
 __read_frequently static int kzone_debug;
 SYSCTL_INT(_kern, OID_AUTO, kzone_debug, CTLFLAG_RW, &kzone_debug, 0, "");
 
@@ -561,7 +563,8 @@ malloc_mgt_poll(struct malloc_type *type)
 				*basep = slab;
 				basep = &slab->next;
 				--ggm->nfull;
-				if (++retired == 4)
+				++ggm->gcache_count;
+				if (++retired == kzone_bretire)
 					break;
 			} else {
 				slabp = &slab->next;
