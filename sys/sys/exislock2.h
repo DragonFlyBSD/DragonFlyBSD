@@ -42,10 +42,17 @@
 #endif
 
 /*
- * Initialize the structure
+ * Initialize the structure.  To reduce confusion we also have exis_setlive()
+ * when repurposing a structure, which does the same thing.
  */
 static __inline void
 exis_init(exislock_t *xlk)
+{
+	xlk->pseudo_ticks = 0;
+}
+
+static __inline void
+exis_setlive(exislock_t *xlk)
 {
 	xlk->pseudo_ticks = 0;
 }
@@ -184,44 +191,22 @@ exis_cache(exislock_t *xlk, long n)
 }
 
 /*
- * Termination sequencing.
+ * The current state of the structure is ignored and the srtucture is
+ * placed in a CACHED(0) state.  It will automatically sequence through
+ * the NOTCACHED and TERMINATE states as psuedo_ticks increments.
  *
- * The structure is placed in a CACHED(0) state if LIVE or CACHED.
- * The NOTCACHED state should not be acted upon by the caller until
- * and unless it transitions to TERMINATE.
+ * The NOTCACHED state is an indeterminant state, since the pseudo_ticks
+ * counter might already be armed for increment, it can increment at least
+ * once while code is inside an exis_hold().  The TERMINATE state occurs
+ * at the second tick.
  *
- * Upon returning EXIS_TERMINATE, the structure is returned to a
- * NOTCACHED state and another 1-2 pseudo ticks will pass until it goes
- * back to EXIS_TERMINATE (if needed by the caller).  Once the caller
- * is fully satisfied, it may repurpose or destroy the structure.
- *
- * Caller should hold a strong interlock on the structure in addition
- * to being in a type-safe critical section.
+ * If the caller repurposes the structure, it is usually a good idea to
+ * place it back into a LIVE state by calling exis_setlive().
  */
-static __inline exis_state_t
+static __inline void
 exis_terminate(exislock_t *xlk)
 {
-	exis_state_t state;
-
-	state = exis_state(xlk);
-	switch(state) {
-	case EXIS_TERMINATE:
-		/*
-		 * Set to NOTCACHED state and return EXIS_TERMINATE.
-		 * due to pseudo_ticks races, the NOTCACHED state will
-		 * persist for 1-2 pseudo ticks.
-		 */
-		xlk->pseudo_ticks = pseudo_ticks - 1;
-		state = EXIS_TERMINATE;
-		break;
-	case EXIS_NOTCACHED:
-		break;
-	case EXIS_CACHED:
-	case EXIS_LIVE:
-		xlk->pseudo_ticks = pseudo_ticks;
-		break;
-	}
-	return state;
+	xlk->pseudo_ticks = pseudo_ticks - 1;
 }
 
 #endif /* !_SYS_EXISLOCK2_H_ */
