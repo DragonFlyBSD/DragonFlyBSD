@@ -94,9 +94,6 @@ LSUBDIRS= \
 # For SHARED=symlinks, bus/cam is a symlink, so cam/scsi is taken care of
 LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnet/*:Nnetgraph/*:Nnetgraph7/*}
 
-# For obsolete headers which need to be removed
-RMHEADERS=	machine/ansi.h sys/inttypes.h
-
 # Define SHARED to indicate whether you want symbolic links to the system
 # source (``symlinks''), or a separate copy (``copies'').  ``symlinks'' is
 # probably only useful for developers and should be avoided if you do not
@@ -219,9 +216,6 @@ copies:		mtree_setup
 .endif
 .for i in ${SHDRS}
 	${LN} -sf ../sys/$i ${DESTDIR}/usr/include/machine/$i
-.endfor
-.for i in ${RMHEADERS}
-	rm -f ${DESTDIR}/usr/include/$i
 .endfor
 
 symlinks:	mtree_setup
