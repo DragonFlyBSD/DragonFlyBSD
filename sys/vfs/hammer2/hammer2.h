@@ -1150,6 +1150,7 @@ struct hammer2_dev {
 	TAILQ_ENTRY(hammer2_dev) mntentry; /* hammer2_mntlist */
 
 	struct malloc_type *mchain_obj;
+	struct malloc_type *mio_obj;
 	struct malloc_type *mmsg;
 	int		nipstacks;
 	int		maxipstacks;

@@ -65,6 +65,7 @@ struct	nfsmount {
 	enum nfssvc_state nm_rxstate;
 	enum nfssvc_state nm_txstate;
 	struct	mount *nm_mountp;	/* Vfs structure for this filesystem */
+	struct	malloc_type *nm_mnode_obj; /* kmalloc store for nfsnode */
 	int	nm_numgrps;		/* Max. size of groupslist */
 	u_char	nm_fh[NFSX_V3FHMAX];	/* File handle of root dir */
 	int	nm_fhsize;		/* Size of root file handle */

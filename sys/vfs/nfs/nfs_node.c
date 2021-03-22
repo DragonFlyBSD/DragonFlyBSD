@@ -50,12 +50,9 @@
 #include "nfsmount.h"
 #include "nfsnode.h"
 
-static MALLOC_DEFINE(M_NFSNODE, "NFS node", "NFS node");
-
 static struct lwkt_token nfsnhash_token =
 			LWKT_TOKEN_INITIALIZER(nfsnhash_token);
 static struct lock nfsnhash_lock;
-__read_mostly static struct objcache *nfsnode_objcache;
 __read_mostly static LIST_HEAD(nfsnodehashhead, nfsnode) *nfsnodehashtbl;
 __read_mostly static u_long nfsnodehash;
 
@@ -73,17 +70,14 @@ nfs_nhinit(void)
 {
 	int hsize = vfs_inodehashsize();
 
-	nfsnode_objcache = objcache_create_simple(M_NFSNODE,
-						  sizeof(struct nfsnode));
-	nfsnodehashtbl = hashinit(hsize, M_NFSHASH, &nfsnodehash);
+	nfsnodehashtbl = hashinit(hsize, M_NFS, &nfsnodehash);
 	lockinit(&nfsnhash_lock, "nfsnht", 0, 0);
 }
 
 void
 nfs_nhdestroy(void)
 {
-	hashdestroy(nfsnodehashtbl, M_NFSHASH, nfsnodehash);
-	objcache_destroy(nfsnode_objcache);
+	hashdestroy(nfsnodehashtbl, M_NFS, nfsnodehash);
 }
 
 /*
@@ -163,13 +157,14 @@ loop:
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if objcache should block.
 	 */
-	np = objcache_get(nfsnode_objcache, M_WAITOK);
+	np = kmalloc_obj(sizeof(struct nfsnode), nmp->nm_mnode,
+			 M_WAITOK|M_ZERO);
 		
 	error = getnewvnode(VT_NFS, mntp, &vp, 0, 0);
 	if (error) {
 		lockmgr(&nfsnhash_lock, LK_RELEASE);
 		*npp = NULL;
-		objcache_put(nfsnode_objcache, np);
+		kfree_obj(np, nmp->nm_mnode);
 		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
@@ -202,7 +197,7 @@ loop:
 		if (np->n_fhsize > NFS_SMALLFH)
 			kfree((caddr_t)np->n_fhp, M_NFSBIGFH);
 		np->n_fhp = NULL;
-		objcache_put(nfsnode_objcache, np);
+		kfree_obj(np, nmp->nm_mnode);
 		goto retry;
 	}
 
@@ -305,12 +300,13 @@ loop:
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if objcache should block.
 	 */
-	np = objcache_get(nfsnode_objcache, M_WAITOK);
+	np = kmalloc_obj(sizeof(struct nfsnode), nmp->nm_mnode,
+			 M_WAITOK|M_ZERO);
 
 	error = getnewvnode(VT_NFS, mntp, &vp, 0, 0);
 	if (error) {
 		lockmgr(&nfsnhash_lock, LK_RELEASE);
-		objcache_put(nfsnode_objcache, np);
+		kfree_obj(np, nmp->nm_mnode);
 		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
@@ -343,7 +339,7 @@ loop:
 		if (np->n_fhsize > NFS_SMALLFH)
 			kfree((caddr_t)np->n_fhp, M_NFSBIGFH);
 		np->n_fhp = NULL;
-		objcache_put(nfsnode_objcache, np);
+		kfree_obj(np, nmp->nm_mnode);
 
 		/*
 		 * vp state is retained on retry/loop so we must NULL it
@@ -440,7 +436,7 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
 	struct nfsdmap *dp, *dp2;
-/*	struct nfsmount *nmp = VFSTONFS(vp->v_mount);*/
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 
 	if (prtactive && VREFCNT(vp) > 1)
 		vprint("nfs_reclaim: pushing active", vp);
@@ -486,7 +482,7 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 		crfree(np->n_wucred);
 		np->n_wucred = NULL;
 	}
-	objcache_put(nfsnode_objcache, np);
+	kfree_obj(np, nmp->nm_mnode);
 
 	return (0);
 }

@@ -565,7 +565,6 @@ int
 nfs_init(struct vfsconf *vfsp)
 {
 	callout_init_mp(&nfs_timer_handle);
-	nfsmount_objcache = objcache_create_simple(M_NFSMOUNT, sizeof(struct nfsmount));
 
 	nfs_mount_type = vfsp->vfc_typenum;
 	nfsrtt.pos = 0;
@@ -627,7 +626,6 @@ nfs_uninit(struct vfsconf *vfsp)
 #ifndef NFS_NOSERVER
 	nfsrv_destroycache();		/* Destroy the server request cache */
 #endif
-	objcache_destroy(nfsmount_objcache);
 	return (0);
 }
 

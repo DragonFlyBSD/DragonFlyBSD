@@ -136,10 +136,6 @@ LIST_HEAD(filelist, file);
 
 #ifdef _KERNEL
 
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_FILE);
-#endif
-
 void fhold(struct file *);
 int fdrop(struct file *);
 int checkfdclosed(thread_t, struct filedesc *, int, struct file *, int);

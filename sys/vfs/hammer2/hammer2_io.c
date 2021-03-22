@@ -174,7 +174,7 @@ hammer2_io_alloc(hammer2_dev_t *hmp, hammer2_key_t data_off, uint8_t btype,
 		refs = 0;
 		hammer2_spin_unsh(&hmp->io_spin);
 		vol = hammer2_get_volume(hmp, pbase);
-		dio = kmalloc(sizeof(*dio), M_HAMMER2, M_INTWAIT | M_ZERO);
+		dio = kmalloc_obj(sizeof(*dio), hmp->mio, M_INTWAIT | M_ZERO);
 		dio->hmp = hmp;
 		dio->devvp = vol->dev->devvp;
 		dio->dbase = vol->offset;
@@ -196,7 +196,7 @@ hammer2_io_alloc(hammer2_dev_t *hmp, hammer2_key_t data_off, uint8_t btype,
 			if (refs & HAMMER2_DIO_GOOD)
 				*isgoodp = 1;
 			hammer2_spin_unex(&hmp->io_spin);
-			kfree(dio, M_HAMMER2);
+			kfree_obj(dio, hmp->mio);
 			dio = xio;
 		}
 	} else {
@@ -652,7 +652,7 @@ hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree)
 				"%016jx/%d (bp=%p)\n",
 				dio->pbase, dio->psize, dio->bp);
 		}
-		kfree(dio, M_HAMMER2);
+		kfree_obj(dio, hmp->mio);
 		atomic_add_int(&hammer2_dio_count, -1);
 		atomic_add_int(&hmp->iofree_count, -1);
 	}

@@ -79,15 +79,13 @@ extern struct vop_ops nfsv2_vnode_vops;
 extern struct vop_ops nfsv2_fifo_vops;
 extern struct vop_ops nfsv2_spec_vops;
 
+MALLOC_DEFINE(M_NFS, "NFS gen", "NFS general");
 MALLOC_DEFINE(M_NFSREQ, "NFS req", "NFS request header");
 MALLOC_DEFINE(M_NFSBIGFH, "NFSV3 bigfh", "NFS version 3 file handle");
 MALLOC_DEFINE(M_NFSD, "NFS daemon", "Nfs server daemon structure");
 MALLOC_DEFINE(M_NFSDIROFF, "NFSV3 diroff", "NFS directory offset data");
 MALLOC_DEFINE(M_NFSRVDESC, "NFSV3 srvdesc", "NFS server socket descriptor");
 MALLOC_DEFINE(M_NFSUID, "NFS uid", "Nfs uid mapping structure");
-MALLOC_DEFINE(M_NFSHASH, "NFS hash", "NFS hash tables");
-
-struct objcache *nfsmount_objcache;
 
 struct nfsstats	nfsstats;
 SYSCTL_NODE(_vfs, OID_AUTO, nfs, CTLFLAG_RW, 0, "NFS filesystem");
@@ -1031,8 +1029,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		kfree(nam, M_SONAME);
 		return (0);
 	} else {
-		nmp = objcache_get(nfsmount_objcache, M_WAITOK);
-		bzero((caddr_t)nmp, sizeof (struct nfsmount));
+		nmp = kmalloc(sizeof(*nmp), M_NFS, M_WAITOK|M_ZERO);
 		mtx_init_flags(&nmp->nm_rxlock, "nfsrx", MTXF_NOCOLLSTATS);
 		mtx_init_flags(&nmp->nm_txlock, "nfstx", MTXF_NOCOLLSTATS);
 		TAILQ_INIT(&nmp->nm_uidlruhead);
@@ -1042,6 +1039,8 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		TAILQ_INIT(&nmp->nm_reqrxq);
 		mp->mnt_data = (qaddr_t)nmp;
 		lwkt_token_init(&nmp->nm_token, "nfs_token");
+		kmalloc_create_obj(&nmp->nm_mnode, "NFS inodes",
+				   sizeof(struct nfsnode));
 	}
 	vfs_getnewfsid(mp);
 	nmp->nm_mountp = mp;
@@ -1257,7 +1256,9 @@ nfs_free_mount(struct nfsmount *nmp)
 		kfree(nmp->nm_nam, M_SONAME);
 		nmp->nm_nam = NULL;
 	}
-	objcache_put(nfsmount_objcache, nmp);
+	if (nmp->nm_mnode_obj)
+		kmalloc_destroy_obj(&nmp->nm_mnode);
+	kfree(nmp, M_NFS);
 }
 
 /*

@@ -108,8 +108,9 @@ static void ffree(struct file *fp);
 
 static MALLOC_DEFINE(M_FILEDESC, "file desc", "Open file descriptor table");
 static MALLOC_DEFINE(M_FILEDESC_TO_LEADER, "file desc to leader",
-		     "file desc to leader structures");
-MALLOC_DEFINE(M_FILE, "file", "Open file structure");
+			"file desc to leader structures");
+static MALLOC_DEFINE_OBJ(M_FILE, sizeof(struct file),
+			"file", "Open file structure");
 static MALLOC_DEFINE(M_SIGIO, "sigio", "sigio structures");
 
 static struct krate krate_uidinfo = { .freq = 1 };
@@ -141,13 +142,6 @@ static int nfiles;		/* actual number of open files */
 extern int cmask;	
 
 struct lwkt_token revoke_token = LWKT_TOKEN_INITIALIZER(revoke_token);
-
-static struct objcache		*file_objcache;
-
-static struct objcache_malloc_args file_malloc_args = {
-	.objsize	= sizeof(struct file),
-	.mtype		= M_FILE
-};
 
 /*
  * Fixup fd_freefile and fd_lastfile after a descriptor has been cleared.
@@ -2049,8 +2043,7 @@ falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
 	/*
 	 * Allocate a new file descriptor.
 	 */
-	fp = objcache_get(file_objcache, M_WAITOK);
-	bzero(fp, sizeof(*fp));
+	fp = kmalloc_obj(sizeof(*fp), M_FILE, M_WAITOK|M_ZERO);
 	spin_init(&fp->f_spin, "falloc");
 	SLIST_INIT(&fp->f_klist);
 	fp->f_count = 1;
@@ -2290,7 +2283,7 @@ ffree(struct file *fp)
 	fsetcred(fp, NULL);
 	if (fp->f_nchandle.ncp)
 	    cache_drop(&fp->f_nchandle);
-	objcache_put(file_objcache, fp);
+	kfree_obj(fp, M_FILE);
 }
 
 /*
@@ -3519,14 +3512,4 @@ filelist_heads_init(void *arg __unused)
 	}
 }
 
-SYSINIT(filelistheads, SI_BOOT1_LOCK, SI_ORDER_ANY,
-    filelist_heads_init, NULL);
-
-static void
-file_objcache_init(void *dummy __unused)
-{
-	file_objcache = objcache_create("file", maxfiles, maxfiles / 8,
-	    NULL, NULL, NULL, /* TODO: ctor/dtor */
-	    objcache_malloc_alloc, objcache_malloc_free, &file_malloc_args);
-}
-SYSINIT(fpobjcache, SI_BOOT2_POST_SMP, SI_ORDER_ANY, file_objcache_init, NULL);
+SYSINIT(filelistheads, SI_BOOT1_LOCK, SI_ORDER_ANY, filelist_heads_init, NULL);

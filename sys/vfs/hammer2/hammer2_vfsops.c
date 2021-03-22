@@ -1196,6 +1196,8 @@ next_hmp:
 		hmp->hflags = info.hflags & HMNT2_DEVFLAGS;
 		kmalloc_create_obj(&hmp->mchain, "HAMMER2-chains",
 				   sizeof(struct hammer2_chain));
+		kmalloc_create_obj(&hmp->mio, "HAMMER2-dio",
+				   sizeof(struct hammer2_io));
 		kmalloc_create(&hmp->mmsg, "HAMMER2-msg");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
 		RB_INIT(&hmp->iotree);
@@ -1905,6 +1907,7 @@ again:
 
 	TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
 	kmalloc_destroy_obj(&hmp->mchain);
+	kmalloc_destroy_obj(&hmp->mio);
 	kmalloc_destroy(&hmp->mmsg);
 	kfree(hmp, M_HAMMER2);
 }

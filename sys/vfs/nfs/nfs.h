@@ -295,16 +295,14 @@ struct nfsstats {
 #ifdef _KERNEL
 
 #ifdef MALLOC_DECLARE
+MALLOC_DECLARE(M_NFS);
 MALLOC_DECLARE(M_NFSREQ);
 MALLOC_DECLARE(M_NFSDIROFF);
 MALLOC_DECLARE(M_NFSRVDESC);
 MALLOC_DECLARE(M_NFSUID);
 MALLOC_DECLARE(M_NFSD);
 MALLOC_DECLARE(M_NFSBIGFH);
-MALLOC_DECLARE(M_NFSHASH);
 #endif
-
-extern struct objcache *nfsmount_objcache;
 
 extern struct callout nfs_timer_handle;
 extern int nfs_async;
