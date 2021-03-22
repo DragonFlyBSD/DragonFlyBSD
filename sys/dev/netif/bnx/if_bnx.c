@@ -2631,6 +2631,18 @@ bnx_reset(struct bnx_softc *sc)
 		reset |= (1<<29);
 	}
 
+	/*
+	 * Set the clock to the highest frequency to avoid timeout.
+	 */
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717) {
+		BNX_SETBIT(sc, BGE_CPMU_CLCK_ORIDE_ENABLE,
+		    BGE_CPMU_MAC_ORIDE_ENABLE);
+	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
+	    sc->bnx_asicrev ==  BGE_ASICREV_BCM5720) {
+		BNX_SETBIT(sc, BGE_CPMU_CLCK_ORIDE,
+		    CPMU_CLCK_ORIDE_MAC_ORIDE_EN);
+	}
+
 	/* 
 	 * Set GPHY Power Down Override to leave GPHY
 	 * powered up in D0 uninitialized.
@@ -2749,9 +2761,20 @@ bnx_reset(struct bnx_softc *sc)
 
 	DELAY(10000);
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717) {
+		BNX_CLRBIT(sc, BGE_CPMU_CLCK_ORIDE_ENABLE,
+		    BGE_CPMU_MAC_ORIDE_ENABLE);
+	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
+	    sc->bnx_asicrev ==  BGE_ASICREV_BCM5720) {
 		BNX_CLRBIT(sc, BGE_CPMU_CLCK_ORIDE,
 		    CPMU_CLCK_ORIDE_MAC_ORIDE_EN);
+	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM5762) {
+		/*
+		 * Increase the core clock speed to fix TX timeout for
+		 * 5762 on 100Mbps link.
+		 */
+		BNX_SETBIT(sc, BGE_CPMU_CLCK_ORIDE_ENABLE,
+		    BGE_CPMU_MAC_ORIDE_ENABLE);
 	}
 }
 
