@@ -194,10 +194,10 @@ void	_kmalloc_create_obj(struct malloc_type **typep, const char *descr,
  * for M_ZERO based kmalloc() calls.
  */
 #ifdef SLAB_DEBUG
-void	*kmalloc_debug(unsigned long size, struct malloc_type *type,
+void	*_kmalloc_debug(unsigned long size, struct malloc_type *type,
 			int flags, const char *file, int line)
 			__malloclike __heedresult __alloc_size(1);
-void	*kmalloc_obj_debug(unsigned long size, struct malloc_type *type,
+void	*_kmalloc_obj_debug(unsigned long size, struct malloc_type *type,
 			int flags, const char *file, int line)
 			__malloclike __heedresult __alloc_size(1);
 void	*krealloc_debug(void *addr, unsigned long size,
@@ -208,14 +208,14 @@ char	*kstrdup_debug(const char *, struct malloc_type *,
 char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 			const char *file, int line) __malloclike __heedresult;
 
-#define _kmalloc(size, type, flags) ({					\
+#define __kmalloc(size, type, flags) ({					\
 	void *_malloc_item;						\
 	size_t _size = (size);						\
 									\
 	if (__builtin_constant_p(size) &&				\
 	    __builtin_constant_p(flags) &&				\
 	    ((flags) & M_ZERO)) {					\
-		_malloc_item = kmalloc_debug(_size, type,		\
+		_malloc_item = _kmalloc_debug(_size, type,		\
 					    (flags) & ~M_ZERO,		\
 					    __FILE__, __LINE__);	\
 		if (((flags) & (M_WAITOK|M_NULLOK)) == M_WAITOK ||	\
@@ -223,20 +223,20 @@ char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 			__builtin_memset(_malloc_item, 0, _size);	\
 		}							\
 	} else {							\
-	    _malloc_item = kmalloc_debug(_size, type, flags,		\
+	    _malloc_item = _kmalloc_debug(_size, type, flags,		\
 				   __FILE__, __LINE__);			\
 	}								\
 	_malloc_item;							\
 })
 
-#define _kmalloc_obj(size, type, flags) ({				\
+#define __kmalloc_obj(size, type, flags) ({				\
 	void *_malloc_item;						\
 	size_t _size = __VM_CACHELINE_ALIGN(size);			\
 									\
 	if (__builtin_constant_p(size) &&				\
 	    __builtin_constant_p(flags) &&				\
 	    ((flags) & M_ZERO)) {					\
-		_malloc_item = kmalloc_obj_debug(_size, type##_obj,	\
+		_malloc_item = _kmalloc_obj_debug(_size, type,		\
 					    (flags) & ~M_ZERO,		\
 					    __FILE__, __LINE__);	\
 		if (((flags) & (M_WAITOK|M_NULLOK)) == M_WAITOK ||	\
@@ -244,14 +244,14 @@ char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 			__builtin_memset(_malloc_item, 0, _size);	\
 		}							\
 	} else {							\
-	    _malloc_item = kmalloc_obj_debug(_size, type##_obj, flags,	\
+	    _malloc_item = _kmalloc_obj_debug(_size, type, flags,	\
 				   __FILE__, __LINE__);			\
 	}								\
 	_malloc_item;							\
 })
 
-#define kmalloc(size, type, flags)	_kmalloc(size, type, flags)
-#define kmalloc_obj(size, type, flags)	_kmalloc_obj(size, type##_obj, flags)
+#define kmalloc(size, type, flags)	__kmalloc(size, type, flags)
+#define kmalloc_obj(size, type, flags)	__kmalloc_obj(size, type##_obj, flags)
 
 /*
  * These only operate on normal mixed-size zones
@@ -319,11 +319,12 @@ char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
 		  __malloclike __heedresult;
 
 /*
- * Just macro the debug versions over to the non-debug versions
+ * Just macro the debug versions over to the non-debug versions, this
+ * reduces the need for #ifdef's in kern_slaballoc.c and kern_kmalloc.c.
  */
-#define kmalloc_debug(size, type, flags, file, line)		\
+#define _kmalloc_debug(size, type, flags, file, line)		\
 	__kmalloc((size), type, (flags))
-#define kmalloc_obj_debug(size, type, flags, file, line)	\
+#define _kmalloc_obj_debug(size, type, flags, file, line)	\
 	__kmalloc_obj((size), type##_obj, (flags))
 #define krealloc_debug(addr, size, type, flags, file, line)	\
 	krealloc(addr, size, type, flags)

@@ -96,6 +96,7 @@
 KTR_INFO_MASTER(mem_obj);
 KTR_INFO(KTR_MEMORY, mem_obj, malloc_beg, 0, "kmalloc_obj begin");
 KTR_INFO(KTR_MEMORY, mem_obj, malloc_end, 1, MEMORY_STRING, MEMORY_ARGS);
+#if 0
 KTR_INFO(KTR_MEMORY, mem_obj, free_zero, 2, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, mem_obj, free_ovsz, 3, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, mem_obj, free_ovsz_delayed, 4, MEMORY_STRING, MEMORY_ARGS);
@@ -103,13 +104,14 @@ KTR_INFO(KTR_MEMORY, mem_obj, free_chunk, 5, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, mem_obj, free_request, 6, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, mem_obj, free_rem_beg, 7, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, mem_obj, free_rem_end, 8, MEMORY_STRING, MEMORY_ARGS);
+#endif
 KTR_INFO(KTR_MEMORY, mem_obj, free_beg, 9, "kfree_obj begin");
 KTR_INFO(KTR_MEMORY, mem_obj, free_end, 10, "kfree_obj end");
 
 #define logmemory(name, ptr, type, size, flags)				\
-	KTR_LOG(mem_obj ## name, ptr, type, size, flags)
+	KTR_LOG(mem_obj_ ## name, ptr, type, size, flags)
 #define logmemory_quick(name)						\
-	KTR_LOG(mem_obj ## name)
+	KTR_LOG(mem_obj_ ## name)
 
 __read_frequently static int KMGDMaxFreeSlabs = KMGD_MAXFREESLABS;
 SYSCTL_INT(_kern, OID_AUTO, kzone_cache, CTLFLAG_RW, &KMGDMaxFreeSlabs, 0, "");

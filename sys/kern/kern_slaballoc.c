@@ -1176,7 +1176,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     KKASSERT((flags & M_ZERO) == 0);	/* not supported */
 
     if (ptr == NULL || ptr == ZERO_LENGTH_PTR)
-	return(kmalloc_debug(size, type, flags, file, line));
+	return(_kmalloc_debug(size, type, flags, file, line));
     if (size == 0) {
 	kfree(ptr, type);
 	return(NULL);
@@ -1191,7 +1191,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 	osize = *kup << PAGE_SHIFT;
 	if (osize == round_page(size))
 	    return(ptr);
-	if ((nptr = kmalloc_debug(size, type, flags, file, line)) == NULL)
+	if ((nptr = _kmalloc_debug(size, type, flags, file, line)) == NULL)
 	    return(NULL);
 	bcopy(ptr, nptr, min(size, osize));
 	kfree(ptr, type);
@@ -1223,7 +1223,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 	if (z->z_ChunkSize == size)
 	    return(ptr);
     }
-    if ((nptr = kmalloc_debug(size, type, flags, file, line)) == NULL)
+    if ((nptr = _kmalloc_debug(size, type, flags, file, line)) == NULL)
 	return(NULL);
     bcopy(ptr, nptr, min(size, z->z_ChunkSize));
     kfree(ptr, type);
@@ -1260,7 +1260,7 @@ kstrdup(const char *str, struct malloc_type *type)
     if (str == NULL)
 	return(NULL);
     zlen = strlen(str) + 1;
-    nstr = kmalloc_debug(zlen, type, M_WAITOK, file, line);
+    nstr = _kmalloc_debug(zlen, type, M_WAITOK, file, line);
     bcopy(str, nstr, zlen);
     return(nstr);
 }
@@ -1280,7 +1280,7 @@ kstrndup(const char *str, size_t maxlen, struct malloc_type *type)
     if (str == NULL)
 	return(NULL);
     zlen = strnlen(str, maxlen) + 1;
-    nstr = kmalloc_debug(zlen, type, M_WAITOK, file, line);
+    nstr = _kmalloc_debug(zlen, type, M_WAITOK, file, line);
     bcopy(str, nstr, zlen);
     nstr[zlen - 1] = '\0';
     return(nstr);
