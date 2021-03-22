@@ -85,6 +85,7 @@
 
 #include <sys/spinlock2.h>
 #include <sys/thread2.h>
+#include <sys/exislock2.h>
 #include <vm/vm_page2.h>
 
 #define MEMORY_STRING	"ptr=%p type=%p size=%lu flags=%04x"
@@ -419,7 +420,7 @@ malloc_slab_destroy(struct malloc_type *type, struct kmalloc_slab **slabp)
  * allocation.
  */
 static int
-malloc_mgt_poll_empty_locked(struct kmalloc_mgt *ggm, int count, int gcache)
+malloc_mgt_poll_empty_locked(struct kmalloc_mgt *ggm, int count)
 {
 	struct kmalloc_slab *marker;
 	struct kmalloc_slab *slab;
@@ -452,22 +453,15 @@ malloc_mgt_poll_empty_locked(struct kmalloc_mgt *ggm, int count, int gcache)
 		delta = slab->findex - slab->aindex;
 		if (delta == slab->ncount) {
 			/*
-			 * Full and possibly freeable.
+			 * Stuff into the full list.  This requires setting
+			 * the exis sequence number via exis_terminate().
 			 */
-			if (gcache &&
-			    ggm->nfull >= KMALLOC_MAXFREEMAGS &&
-			    slab->xindex == slab->findex)
-			{
-				KKASSERT(slab->next == NULL);
-				slab = gslab_cache(slab);
-			}
-			if (slab) {
-				KKASSERT(slab->next == NULL);
-				slab->next = ggm->full;
-				ggm->full = slab;
-				got_something = 1;
-				++ggm->nfull;
-			}
+			KKASSERT(slab->next == NULL);
+			exis_terminate(&slab->exis);
+			slab->next = ggm->full;
+			ggm->full = slab;
+			got_something = 1;
+			++ggm->nfull;
 		} else if (delta) {
 			/*
 			 * Partially full
@@ -526,7 +520,7 @@ malloc_mgt_poll(struct malloc_type *type)
 	 * don't bother checking partial slabs to see if they are full
 	 * for now.
 	 */
-	malloc_mgt_poll_empty_locked(ggm, 16, 0);
+	malloc_mgt_poll_empty_locked(ggm, 16);
 
 	/*
 	 * Ok, cleanout some of the full mags from the full list
@@ -546,8 +540,23 @@ malloc_mgt_poll(struct malloc_type *type)
 		while (count && (slab = *slabp) != NULL) {
 			delta = slab->findex - slab->aindex;
 			if (delta == slab->ncount &&
-			    slab->xindex == slab->findex)
+			    slab->xindex == slab->findex &&
+			    exis_freeable(&slab->exis))
 			{
+				/*
+				 * (1) No allocated entries in the structure,
+				 *     this should always be the case from the
+				 *     full list.
+				 *
+				 * (2) kfree_obj() has fully completed.  Just
+				 *     checking findex is not sufficient since
+				 *     it is incremented to reserve the slot
+				 *     before the element is loaded into it.
+				 *
+				 * (3) The slab has been on the full list for
+				 *     a sufficient number of EXIS
+				 *     pseudo_ticks, for type-safety.
+				 */
 				*slabp = slab->next;
 				*basep = slab;
 				basep = &slab->next;
@@ -777,6 +786,7 @@ rerotate:
 		ggm->full = ggm->full->next;
 		mgt->active->next = NULL;
 		--ggm->nfull;
+		exis_setlive(&mgt->active->exis);
 		if (slab != &kslab_dummy) {
 			KKASSERT(slab->next == NULL);
 			*ggm->empty_tailp = slab;
@@ -789,16 +799,18 @@ rerotate:
 
 	/*
 	 * We couldn't find anything, scan a limited number of empty entries
-	 * looking for something with objects.
+	 * looking for something with objects.  This will also free excess
+	 * full lists that meet requirements.
 	 */
-	if (malloc_mgt_poll_empty_locked(ggm, 16, 1))
+	if (malloc_mgt_poll_empty_locked(ggm, 16))
 		goto rerotate;
 
 	/*
 	 * Absolutely nothing is available, allocate a new slab and
 	 * rotate it in.
 	 *
-	 * Try to get a slab from the global pcpu slab cache.
+	 * Try to get a slab from the global pcpu slab cache (very cheap).
+	 * If that fails, allocate a new slab (very expensive).
 	 */
 	spin_unlock(&ggm->spin);
 

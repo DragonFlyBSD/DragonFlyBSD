@@ -608,6 +608,9 @@ _kmalloc_create_obj(struct malloc_type **typep, const char *descr,
 /*
  * Destroy a dynamically created malloc pool.  This function is a NOP if
  * the pool has already been destroyed.
+ *
+ * WARNING! For kmalloc_obj's, the exis state for related slabs is ignored,
+ *	    only call once all references are 100% known to be gone.
  */
 void
 kmalloc_destroy(struct malloc_type **typep)

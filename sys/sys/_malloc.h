@@ -38,6 +38,7 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #include <sys/cdefs.h>		/* for __cache_align */
 #include <sys/spinlock.h>	/* for spinlock */
+#include <sys/exislock.h>	/* for exislock_t */
 #include <machine/stdint.h>	/* for __* types */
 #include <machine/param.h>	/* for SMP_MAXCPU */
 
@@ -68,6 +69,7 @@ struct kmalloc_slab {
 	size_t			aindex;		/* start of allocations */
 	size_t			findex;		/* end of frees */
 	size_t			xindex;		/* synchronizer */
+	exislock_t		exis;		/* existential lock state */
 	struct kmalloc_mgt	*mgt;
 	uint64_t		bmap[(KMALLOC_SLAB_MAXOBJS + 63) / 64];
 	void			*fobjs[1];	/* list of free objects */
