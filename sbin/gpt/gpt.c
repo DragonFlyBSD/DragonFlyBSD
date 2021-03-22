@@ -554,7 +554,7 @@ int
 gpt_open(const char *dev)
 {
 	struct stat sb;
-	char device_path[MAXPATHLEN];
+	static char device_path[MAXPATHLEN];
 	int fd, mode;
 
 	mode = readonly ? O_RDONLY : O_RDWR|O_EXCL;
