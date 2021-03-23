@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2016, Intel Corporation
+  Copyright (c) 2001-2019, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -103,6 +103,7 @@ void e1000_init_phy_ops_generic(struct e1000_hw *hw)
 /**
  *  e1000_null_set_page - No-op function, return 0
  *  @hw: pointer to the HW structure
+ *  @data: dummy variable
  **/
 s32 e1000_null_set_page(struct e1000_hw E1000_UNUSEDARG *hw,
 			u16 E1000_UNUSEDARG data)
@@ -114,6 +115,8 @@ s32 e1000_null_set_page(struct e1000_hw E1000_UNUSEDARG *hw,
 /**
  *  e1000_null_read_reg - No-op function, return 0
  *  @hw: pointer to the HW structure
+ *  @offset: dummy variable
+ *  @data: dummy variable
  **/
 s32 e1000_null_read_reg(struct e1000_hw E1000_UNUSEDARG *hw,
 			u32 E1000_UNUSEDARG offset, u16 E1000_UNUSEDARG *data)
@@ -135,6 +138,7 @@ void e1000_null_phy_generic(struct e1000_hw E1000_UNUSEDARG *hw)
 /**
  *  e1000_null_lplu_state - No-op function, return 0
  *  @hw: pointer to the HW structure
+ *  @active: dummy variable
  **/
 s32 e1000_null_lplu_state(struct e1000_hw E1000_UNUSEDARG *hw,
 			  bool E1000_UNUSEDARG active)
@@ -146,6 +150,8 @@ s32 e1000_null_lplu_state(struct e1000_hw E1000_UNUSEDARG *hw,
 /**
  *  e1000_null_write_reg - No-op function, return 0
  *  @hw: pointer to the HW structure
+ *  @offset: dummy variable
+ *  @data: dummy variable
  **/
 s32 e1000_null_write_reg(struct e1000_hw E1000_UNUSEDARG *hw,
 			 u32 E1000_UNUSEDARG offset, u16 E1000_UNUSEDARG data)
@@ -3086,6 +3092,7 @@ s32 e1000_determine_phy_address(struct e1000_hw *hw)
 /**
  *  e1000_get_phy_addr_for_bm_page - Retrieve PHY page address
  *  @page: page to access
+ *  @reg: register to access
  *
  *  Returns the phy address for the page requested.
  **/
@@ -3523,6 +3530,7 @@ void e1000_power_down_phy_copper(struct e1000_hw *hw)
  *  @offset: register offset to be read
  *  @data: pointer to the read data
  *  @locked: semaphore has already been acquired or not
+ *  @page_set: BM_WUC_PAGE already set and access enabled
  *
  *  Acquires semaphore, if necessary, then reads the PHY register at offset
  *  and stores the retrieved information in data.  Release any acquired
@@ -3633,6 +3641,7 @@ s32 e1000_read_phy_reg_page_hv(struct e1000_hw *hw, u32 offset, u16 *data)
  *  @offset: register offset to write to
  *  @data: data to write at register offset
  *  @locked: semaphore has already been acquired or not
+ *  @page_set: BM_WUC_PAGE already set and access enabled
  *
  *  Acquires semaphore, if necessary, then writes the data to PHY register
  *  at the offset.  Release any acquired semaphores before exiting.

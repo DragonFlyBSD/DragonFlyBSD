@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2016, Intel Corporation
+  Copyright (c) 2001-2019, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -35,6 +35,7 @@
 #ifndef _E1000_REGS_H_
 #define _E1000_REGS_H_
 
+/* General Register Descriptions */
 #define E1000_CTRL	0x00000  /* Device Control - RW */
 #define E1000_CTRL_DUP	0x00004  /* Device Control Duplicate (Shadow) - RW */
 #define E1000_STATUS	0x00008  /* Device Status - RO */
@@ -63,6 +64,7 @@
 #define E1000_FEXTNVM	0x00028  /* Future Extended NVM - RW */
 #define E1000_FEXTNVM3	0x0003C  /* Future Extended NVM 3 - RW */
 #define E1000_FEXTNVM4	0x00024  /* Future Extended NVM 4 - RW */
+#define E1000_FEXTNVM5	0x00014  /* Future Extended NVM 5 - RW */
 #define E1000_FEXTNVM6	0x00010  /* Future Extended NVM 6 - RW */
 #define E1000_FEXTNVM7	0x000E4  /* Future Extended NVM 7 - RW */
 #define E1000_FEXTNVM9	0x5BB4  /* Future Extended NVM 9 - RW */
@@ -177,6 +179,12 @@
 
 #define E1000_I210_FLA		0x1201C
 
+#define E1000_EEC_REG		0x12010
+
+
+#define E1000_SHADOWINF		0x12068
+#define E1000_FLFWUPDATE	0x12108
+
 #define E1000_INVM_DATA_REG(_n)	(0x12120 + 4*(_n))
 #define E1000_INVM_SIZE		64 /* Number of INVM Data Registers */
 
@@ -280,6 +288,7 @@
 				 (0x054E0 + ((_i - 16) * 8)))
 #define E1000_RAH(_i)		(((_i) <= 15) ? (0x05404 + ((_i) * 8)) : \
 				 (0x054E4 + ((_i - 16) * 8)))
+
 #define E1000_SHRAL(_i)		(0x05438 + ((_i) * 8))
 #define E1000_SHRAH(_i)		(0x0543C + ((_i) * 8))
 #define E1000_IP4AT_REG(_i)	(0x05840 + ((_i) * 8))
@@ -311,6 +320,7 @@
 #define E1000_TIDV	0x03820  /* Tx Interrupt Delay Value - RW */
 #define E1000_TADV	0x0382C  /* Tx Interrupt Absolute Delay Val - RW */
 #define E1000_TSPMT	0x03830  /* TCP Segmentation PAD & Min Threshold - RW */
+/* Statistics Register Descriptions */
 #define E1000_CRCERRS	0x04000  /* CRC Error Count - R/clr */
 #define E1000_ALGNERRC	0x04004  /* Alignment Error Count - R/clr */
 #define E1000_SYMERRS	0x04008  /* Symbol Error Count - R/clr */
@@ -370,6 +380,7 @@
 #define E1000_TSCTC	0x040F8  /* TCP Segmentation Context Tx - R/clr */
 #define E1000_TSCTFC	0x040FC  /* TCP Segmentation Context Tx Fail - R/clr */
 #define E1000_IAC	0x04100  /* Interrupt Assertion Count */
+/* Interrupt Cause */
 #define E1000_ICRXPTC	0x04104  /* Interrupt Cause Rx Pkt Timer Expire Count */
 #define E1000_ICRXATC	0x04108  /* Interrupt Cause Rx Abs Timer Expire Count */
 #define E1000_ICTXPTC	0x0410C  /* Interrupt Cause Tx Pkt Timer Expire Count */
@@ -492,6 +503,7 @@
 #define E1000_WUC	0x05800  /* Wakeup Control - RW */
 #define E1000_WUFC	0x05808  /* Wakeup Filter Control - RW */
 #define E1000_WUS	0x05810  /* Wakeup Status - RO */
+/* Management registers */
 #define E1000_MANC	0x05820  /* Management Control - RW */
 #define E1000_IPAV	0x05838  /* IP Address Valid - RW */
 #define E1000_IP4AT	0x05840  /* IPv4 Address Table - RW Array */
@@ -516,13 +528,15 @@
 #define E1000_CCMCTL	0x05B48 /* CCM Control Register */
 #define E1000_GIOCTL	0x05B44 /* GIO Analog Control Register */
 #define E1000_SCCTL	0x05B4C /* PCIc PLL Configuration Register */
+/* PCIe Register Description */
 #define E1000_GCR	0x05B00 /* PCI-Ex Control */
 #define E1000_GCR2	0x05B64 /* PCI-Ex Control #2 */
 #define E1000_GSCL_1	0x05B10 /* PCI-Ex Statistic Control #1 */
 #define E1000_GSCL_2	0x05B14 /* PCI-Ex Statistic Control #2 */
 #define E1000_GSCL_3	0x05B18 /* PCI-Ex Statistic Control #3 */
 #define E1000_GSCL_4	0x05B1C /* PCI-Ex Statistic Control #4 */
-#define E1000_FACTPS	0x05B30 /* Function Active and Power State to MNG */
+/* Function Active and Power State to MNG */
+#define E1000_FACTPS	0x05B30
 #define E1000_SWSM	0x05B50 /* SW Semaphore */
 #define E1000_FWSM	0x05B54 /* FW Semaphore */
 /* Driver-only SW semaphore (not used by BOOT agents) */
@@ -541,8 +555,10 @@
 #define E1000_IMIREXT(_i)	(0x05AA0 + ((_i) * 4)) /* Immediate INTR Ext*/
 #define E1000_IMIRVP		0x05AC0 /* Immediate INT Rx VLAN Priority -RW */
 #define E1000_MSIXBM(_i)	(0x01600 + ((_i) * 4)) /* MSI-X Alloc Reg -RW */
-#define E1000_RETA(_i)	(0x05C00 + ((_i) * 4)) /* Redirection Table - RW */
-#define E1000_RSSRK(_i)	(0x05C80 + ((_i) * 4)) /* RSS Random Key - RW */
+/* Redirection Table - RW Array */
+#define E1000_RETA(_i)	(0x05C00 + ((_i) * 4))
+/* RSS Random Key - RW Array */
+#define E1000_RSSRK(_i)	(0x05C80 + ((_i) * 4))
 #define E1000_RSSIM	0x05864 /* RSS Interrupt Mask */
 #define E1000_RSSIR	0x05868 /* RSS Interrupt Request */
 /* VT Registers */

@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2015, Intel Corporation 
+  Copyright (c) 2001-2019, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -123,7 +123,8 @@
 #define NVM_SIZE_MULTIPLIER 4096  /*multiplier for NVMS field*/
 #define E1000_FLASH_BASE_ADDR 0xE000 /*offset of NVM access regs*/
 #define E1000_CTRL_EXT_NVMVS 0x3 /*NVM valid sector */
-#define E1000_TARC0_CB_MULTIQ_3_REQ	(1 << 28 | 1 << 29)
+#define E1000_TARC0_CB_MULTIQ_3_REQ	0x30000000
+#define E1000_TARC0_CB_MULTIQ_2_REQ	0x20000000
 #define PCIE_ICH8_SNOOP_ALL	PCIE_NO_SNOOP_ALL
 
 #define E1000_ICH_RAR_ENTRIES	7
@@ -326,6 +327,8 @@
 #define E1000_SVCR_OFF_TIMER_MASK	0xFFFF0000
 #define E1000_SVCR_OFF_TIMER_SHIFT	16
 #define E1000_SVT_OFF_HWM_MASK		0x0000001F
+
+#define E1000_PCI_VENDOR_ID_REGISTER	0x00
 
 void e1000_set_kmrn_lock_loss_workaround_ich8lan(struct e1000_hw *hw,
 						 bool state);

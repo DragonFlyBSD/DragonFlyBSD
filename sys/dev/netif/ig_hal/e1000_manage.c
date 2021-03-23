@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2016, Intel Corporation
+  Copyright (c) 2001-2019, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -33,6 +33,8 @@
 /*$FreeBSD$*/
 
 #include "e1000_api.h"
+#include "e1000_manage.h"
+
 /**
  *  e1000_calculate_checksum - Calculate checksum for buffer
  *  @buffer: pointer to EEPROM

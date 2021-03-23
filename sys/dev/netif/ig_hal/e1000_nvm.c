@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2016, Intel Corporation
+  Copyright (c) 2001-2019, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -62,6 +62,9 @@ void e1000_init_nvm_ops_generic(struct e1000_hw *hw)
 /**
  *  e1000_null_nvm_read - No-op function, return 0
  *  @hw: pointer to the HW structure
+ *  @a: dummy variable
+ *  @b: dummy variable
+ *  @c: dummy variable
  **/
 s32 e1000_null_read_nvm(struct e1000_hw E1000_UNUSEDARG *hw,
 			u16 E1000_UNUSEDARG a, u16 E1000_UNUSEDARG b,
@@ -84,6 +87,7 @@ void e1000_null_nvm_generic(struct e1000_hw E1000_UNUSEDARG *hw)
 /**
  *  e1000_null_led_default - No-op function, return 0
  *  @hw: pointer to the HW structure
+ *  @data: dummy variable
  **/
 s32 e1000_null_led_default(struct e1000_hw E1000_UNUSEDARG *hw,
 			   u16 E1000_UNUSEDARG *data)
@@ -95,6 +99,9 @@ s32 e1000_null_led_default(struct e1000_hw E1000_UNUSEDARG *hw,
 /**
  *  e1000_null_write_nvm - No-op function, return 0
  *  @hw: pointer to the HW structure
+ *  @a: dummy variable
+ *  @b: dummy variable
+ *  @c: dummy variable
  **/
 s32 e1000_null_write_nvm(struct e1000_hw E1000_UNUSEDARG *hw,
 			 u16 E1000_UNUSEDARG a, u16 E1000_UNUSEDARG b,
@@ -570,7 +577,7 @@ s32 e1000_read_nvm_eerd(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 	}
 
 	for (i = 0; i < words; i++) {
-		eerd = ((offset+i) << E1000_NVM_RW_ADDR_SHIFT) +
+		eerd = ((offset + i) << E1000_NVM_RW_ADDR_SHIFT) +
 		       E1000_NVM_RW_REG_START;
 
 		E1000_WRITE_REG(hw, E1000_EERD, eerd);
