@@ -396,8 +396,8 @@ malloc_uninit(void *data)
 {
     struct malloc_type *type = data;
     struct malloc_type *t;
-#ifdef INVARIANTS
     int i;
+#ifdef INVARIANTS
     long ttl;
 #endif
 
