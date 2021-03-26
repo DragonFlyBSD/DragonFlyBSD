@@ -1,4 +1,4 @@
-/* $OpenBSD: s3_lib.c,v 1.198 2020/09/17 15:42:14 jsing Exp $ */
+/* $OpenBSD: s3_lib.c,v 1.198.4.1 2021/03/15 15:59:04 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -1577,6 +1577,10 @@ ssl3_free(SSL *s)
 
 	free(S3I(s)->alpn_selected);
 
+	/* Clear reference to sequence numbers. */
+	tls12_record_layer_clear_read_state(s->internal->rl);
+	tls12_record_layer_clear_write_state(s->internal->rl);
+
 	freezero(S3I(s), sizeof(*S3I(s)));
 	freezero(s->s3, sizeof(*s->s3));
 
@@ -1648,6 +1652,11 @@ ssl3_clear(SSL *s)
 
 	s->internal->packet_length = 0;
 	s->version = TLS1_VERSION;
+
+	tls12_record_layer_set_read_seq_num(s->internal->rl,
+	    S3I(s)->read_sequence);
+	tls12_record_layer_set_write_seq_num(s->internal->rl,
+	    S3I(s)->write_sequence);
 
 	S3I(s)->hs.state = SSL_ST_BEFORE|((s->server) ? SSL_ST_ACCEPT : SSL_ST_CONNECT);
 }

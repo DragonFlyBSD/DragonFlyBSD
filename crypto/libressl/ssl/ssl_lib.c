@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_lib.c,v 1.234.4.1 2021/02/03 07:06:13 tb Exp $ */
+/* $OpenBSD: ssl_lib.c,v 1.234.4.2 2021/03/15 15:59:04 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -253,6 +253,8 @@ SSL_new(SSL_CTX *ctx)
 		goto err;
 	if ((s->internal = calloc(1, sizeof(*s->internal))) == NULL)
 		goto err;
+	if ((s->internal->rl = tls12_record_layer_new()) == NULL)
+		goto err;
 
 	s->internal->min_version = ctx->internal->min_version;
 	s->internal->max_version = ctx->internal->max_version;
@@ -339,9 +341,6 @@ SSL_new(SSL_CTX *ctx)
 	s->method = ctx->method;
 
 	if (!s->method->internal->ssl_new(s))
-		goto err;
-
-	if ((s->internal->rl = tls12_record_layer_new()) == NULL)
 		goto err;
 
 	s->references = 1;
