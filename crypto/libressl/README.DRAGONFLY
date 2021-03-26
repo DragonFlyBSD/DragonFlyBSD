@@ -4,10 +4,10 @@ LIBRESSL
 Original source can be downloaded from:
 https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/
 
-file = libressl-3.2.4.tar.gz
-date = 8 Feb 2021
-size = 3841822
-sha1 = 9ce82146cd48ed620ad065d9219efc3cb65e09d8
+file = libressl-3.2.5.tar.gz
+date = 17 Mar 2021
+size = 3842149
+sha1 = 51aad1e467dc51252ce4bd1755bde39acc007754
 
 The file README.DELETED contains a list of deleted files and directories.
 
