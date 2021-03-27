@@ -1,4 +1,4 @@
-# $Id: dirdeps.mk,v 1.133 2021/01/31 04:39:22 sjg Exp $
+# $Id: dirdeps.mk,v 1.134 2021/03/20 16:57:31 sjg Exp $
 
 # Copyright (c) 2010-2021, Simon J. Gerraty
 # Copyright (c) 2010-2018, Juniper Networks, Inc.
@@ -653,6 +653,11 @@ _new_dirdeps := ${_build_all_dirs:@x@${target($x):?:$x}@}
 # Handle it here rather than explain how.
 x!= echo; { echo; ${DEP_EXPORT_VARS:@v@echo '$v=${$v}';@} echo '.export ${DEP_EXPORT_VARS}'; echo; } >&3
 .endif
+# We only need dirdeps: ${_this_dir} for the initial Makefile.depend*
+.if !target(dirdeps0) && ${.INCLUDEDFROMFILE:U:N${.MAKE.DEPENDFILE_PREFIX}*} == ""
+dirdeps0:
+x!= echo; { echo; echo "dirdeps: ${_this_dir}.${DEP_TARGET_SPEC}"; } >&3
+.endif
 .else
 # this makes it all happen
 dirdeps: ${_build_all_dirs}
@@ -697,9 +702,10 @@ _cache_deps += ${_build_dirs:M*.$m:N${_this_dir}.$m}
 .export _cache_deps
 x!= echo; for x in $$_cache_deps; do echo "	$$x \\"; done >&3
 .endif
+# anything in _build_xtra_dirs is hooked to dirdeps:
 x!= echo; { echo; echo '${_this_dir}.$m: $${DIRDEPS.${_this_dir}.$m}'; \
-	echo; echo 'dirdeps: ${_this_dir}.$m \'; \
-	for x in $$_build_xtra_dirs; do echo "	$$x \\"; done; \
+	echo; dirdeps_=dirdeps:; \
+	for x in $$_build_xtra_dirs; do echo "$$dirdeps_	$$x \\"; dirdeps_=; done; \
 	echo; for x in $$_new_dirdeps; do echo "$$x: _DIRDEP_USE"; done; } >&3
 .endif
 .else
