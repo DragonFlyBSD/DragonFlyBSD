@@ -1,4 +1,4 @@
-/*	$NetBSD: nonints.h,v 1.202 2021/02/05 05:15:12 rillig Exp $	*/
+/*	$NetBSD: nonints.h,v 1.203 2021/02/14 21:32:58 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -207,6 +207,10 @@ MAKE_INLINE void
 FStr_Done(FStr *fstr)
 {
 	free(fstr->freeIt);
+#ifdef CLEANUP
+	fstr->str = NULL;
+	fstr->freeIt = NULL;
+#endif
 }
 
 /* Return a string that is the sole owner of str. */
@@ -227,6 +231,10 @@ MAKE_INLINE void
 MFStr_Done(MFStr *mfstr)
 {
 	free(mfstr->freeIt);
+#ifdef CLEANUP
+	mfstr->str = NULL;
+	mfstr->freeIt = NULL;
+#endif
 }
 
 Words Str_Words(const char *, Boolean);

@@ -1,3 +1,13 @@
+2021-03-20  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20210321
+
+	* dirdeps.mk: when generating dirdeps.cache
+	we only need to hook the initial DIRDEPS to the
+	dirdeps target.  That and any _build_xtra_dirs (like tests which
+	should not be hooked directly to the dependency graph - to avoid
+	cycles)
+
 2021-01-30  Simon J Gerraty  <sjg@beast.crufty.net>
 
 	* install-mk (MK_VERSION): 20210130

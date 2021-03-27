@@ -627,6 +627,8 @@ unit-tests/var-class-local.exp
 unit-tests/var-class-local.mk
 unit-tests/var-class.exp
 unit-tests/var-class.mk
+unit-tests/var-eval-short.exp
+unit-tests/var-eval-short.mk
 unit-tests/var-op-append.exp
 unit-tests/var-op-append.mk
 unit-tests/var-op-assign.exp
@@ -709,6 +711,8 @@ unit-tests/varmod-subst-regex.exp
 unit-tests/varmod-subst-regex.mk
 unit-tests/varmod-subst.exp
 unit-tests/varmod-subst.mk
+unit-tests/varmod-sun-shell.exp
+unit-tests/varmod-sun-shell.mk
 unit-tests/varmod-sysv.exp
 unit-tests/varmod-sysv.mk
 unit-tests/varmod-tail.exp
