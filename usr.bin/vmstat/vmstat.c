@@ -116,6 +116,7 @@ struct	vmstats vms, ovms;
 
 int	winlines = 20;
 int	nflag = 0;
+int	mflag = 0;
 int	verbose = 0;
 int	unformatted_opt = 0;
 int	brief_opt = 0;
@@ -190,6 +191,7 @@ main(int argc, char **argv)
 			memf = optarg;
 			break;
 		case 'm':
+			++mflag;
 			todo |= MEMSTAT;
 			break;
 		case 'N':
@@ -969,7 +971,7 @@ dointr(void)
 enum ksuse { KSINUSE, KSMEMUSE, KSOBJUSE, KSCALLS };
 
 static long
-cpuagg(struct malloc_type *ks, enum ksuse use)
+cpuagg(const struct malloc_type *ks, enum ksuse use)
 {
     int i;
     long ttl;
@@ -1011,18 +1013,39 @@ cpuagg(struct malloc_type *ks, enum ksuse use)
     return(ttl);
 }
 
+static int
+mcompare(const void *arg1, const void *arg2)
+{
+	const struct malloc_type *m1 = arg1;
+	const struct malloc_type *m2 = arg2;
+	long total1;
+	long total2;
+
+	total1 = cpuagg(m1, KSMEMUSE) + cpuagg(m1, KSOBJUSE);
+	total2 = cpuagg(m2, KSMEMUSE) + cpuagg(m2, KSOBJUSE);
+	if (total1 < total2)
+		return -1;
+	if (total1 > total2)
+		return 1;
+	return 0;
+}
+
 static void
 domem(void)
 {
 	struct malloc_type *ks;
-	int i;
 	int nkms;
+	int i;
+	int n;
 	long totuse = 0;
 	long totreq = 0;
 	long totobj = 0;
 	struct malloc_type kmemstats[MAX_KMSTATS], *kmsp;
 	char buf[1024];
 
+	/*
+	 * Collect
+	 */
 	kread(X_KMEMSTATISTICS, &kmsp, sizeof(kmsp));
 	for (nkms = 0; nkms < MAX_KMSTATS && kmsp != NULL; nkms++) {
 		struct malloc_type *ss;
@@ -1060,6 +1083,16 @@ domem(void)
 	if (kmsp != NULL)
 		warnx("truncated to the first %d memory types", nkms);
 
+	/*
+	 * Sort (-mm)
+	 */
+	if (mflag > 1) {
+		qsort(kmemstats, nkms, sizeof(struct malloc_type), mcompare);
+	}
+
+	/*
+	 * Dump output
+	 */
 	printf(
 	    "\nMemory statistics by type\n");
 	printf("\t       Type   Count  MemUse SlabUse   Limit Requests\n");
@@ -1068,6 +1101,7 @@ domem(void)
 		long ks_memuse;
 		long ks_objuse;
 		long ks_calls;
+		char idbuf[64];
 
 		ks_calls = cpuagg(ks, KSCALLS);
 		if (ks_calls == 0 && verbose == 0)
@@ -1077,8 +1111,14 @@ domem(void)
 		ks_memuse = cpuagg(ks, KSMEMUSE);
 		ks_objuse = cpuagg(ks, KSOBJUSE);
 
+		snprintf(idbuf, sizeof(idbuf), "%s", ks->ks_shortdesc);
+		for (n = 0; idbuf[n]; ++n) {
+			if (idbuf[n] == ' ')
+				idbuf[n] = '_';
+		}
+
 		printf("%19s   %s   %s   %s   %s    %s\n",
-			ks->ks_shortdesc,
+			idbuf,
 			formatnum(ks_inuse, 5, 1),
 			formatnum(ks_memuse, 5, 1),
 			formatnum(ks_objuse, 5, 1),
