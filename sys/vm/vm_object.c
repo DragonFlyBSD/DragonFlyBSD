@@ -130,7 +130,8 @@ struct vm_object kernel_object;
 
 struct vm_object_hash vm_object_hash[VMOBJ_HSIZE];
 
-MALLOC_DEFINE(M_VM_OBJECT, "vm_object", "vm_object structures");
+static MALLOC_DEFINE_OBJ(M_VM_OBJECT, sizeof(struct vm_object),
+		"vm_object", "vm_object structures");
 
 #define VMOBJ_HASH_PRIME1	66555444443333333ULL
 #define VMOBJ_HASH_PRIME2	989042931893ULL
@@ -306,7 +307,7 @@ VMOBJDEBUG(vm_object_hold_try)(vm_object_t obj VMOBJDBARGS)
 	if (vm_object_lock_try(obj) == 0) {
 		if (refcount_release(&obj->hold_count)) {
 			if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD))
-				kfree(obj, M_VM_OBJECT);
+				kfree_obj(obj, M_VM_OBJECT);
 		}
 		return(0);
 	}
@@ -359,7 +360,7 @@ VMOBJDEBUG(vm_object_drop)(vm_object_t obj VMOBJDBARGS)
 
 		if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD)) {
 			vm_object_unlock(obj);
-			kfree(obj, M_VM_OBJECT);
+			kfree_obj(obj, M_VM_OBJECT);
 		} else {
 			vm_object_unlock(obj);
 		}
@@ -452,7 +453,7 @@ vm_object_init1(void)
 void
 vm_object_init2(void)
 {
-	kmalloc_set_unlimited(M_VM_OBJECT);
+	kmalloc_obj_set_unlimited(M_VM_OBJECT);
 }
 
 /*
@@ -465,7 +466,7 @@ vm_object_allocate(objtype_t type, vm_pindex_t size)
 {
 	vm_object_t obj;
 
-	obj = kmalloc(sizeof(*obj), M_VM_OBJECT, M_INTWAIT|M_ZERO);
+	obj = kmalloc_obj(sizeof(*obj), M_VM_OBJECT, M_INTWAIT|M_ZERO);
 	_vm_object_allocate(type, size, obj, "vmobj");
 	vm_object_drop(obj);
 
@@ -481,7 +482,7 @@ vm_object_allocate_hold(objtype_t type, vm_pindex_t size)
 {
 	vm_object_t obj;
 
-	obj = kmalloc(sizeof(*obj), M_VM_OBJECT, M_INTWAIT|M_ZERO);
+	obj = kmalloc_obj(sizeof(*obj), M_VM_OBJECT, M_INTWAIT|M_ZERO);
 	_vm_object_allocate(type, size, obj, "vmobj");
 
 	return (obj);

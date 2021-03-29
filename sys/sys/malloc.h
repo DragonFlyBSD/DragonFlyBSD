@@ -336,6 +336,8 @@ char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
 
 #define kmalloc_obj_raise_limit(type, bytes)	\
 		kmalloc_raise_limit(type##_obj, bytes)
+#define kmalloc_obj_set_unlimited(type)		\
+		kmalloc_set_unlimited(type##_obj)
 
 void	_kfree(void *addr, struct malloc_type *type) __nonnull(2);
 void	_kfree_obj(void *addr, struct malloc_type *type) __nonnull(2);
