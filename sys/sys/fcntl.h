@@ -207,6 +207,7 @@
 #endif
 #if __BSD_VISIBLE
 #define	F_DUP2FD_CLOEXEC 18		/* Like F_DUP2FD with FD_CLOEXEC set */
+#define	F_GETPATH	19		/* retrieve full path to file associated with fd */
 #endif
 
 /* file descriptor flags (F_GETFD, F_SETFD) */
@@ -243,6 +244,10 @@ union fcntl_dat {
 	int		fc_flags;	/* F_GETFL/F_SETFL */
 	int		fc_owner;	/* F_GETOWN/F_SETOWN */
 	struct flock	fc_flock;	/* F_GETLK/F_SETLK */
+	struct {
+		char	*ptr;
+		char	*buf;
+	} fc_path; 			/* F_GETPATH */
 };
 #endif /* _KERNEL */
 

@@ -881,6 +881,16 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_GETLK,
 				    &dat->fc_flock, F_POSIX);
 		break;
+
+	case F_GETPATH:
+		if (fp->f_type != DTYPE_VNODE) {
+			error = EBADF;
+			break;
+		}
+		error = cache_fullpath(p, &fp->f_nchandle, NULL, &dat->fc_path.ptr,
+			&dat->fc_path.buf, 1);
+		break;
+
 	default:
 		error = EINVAL;
 		break;
@@ -947,6 +957,11 @@ sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 		case F_GETLK:
 			error = copyout(&dat.fc_flock, (caddr_t)uap->arg,
 			    sizeof(struct flock));
+			break;
+		case F_GETPATH:
+			error = copyout(dat.fc_path.ptr, (caddr_t)uap->arg,
+				strlen(dat.fc_path.ptr) + 1);
+			kfree(dat.fc_path.buf, M_TEMP);
 			break;
 		}
 	}
