@@ -567,6 +567,13 @@ is
 and
 the process ID or process group given as an argument is in a
 different session than the caller.
+.It Bq Er ERANGE
+The
+.Fa cmd
+argument is
+.Dv F_GETPATH
+and the resulting path, inclusive of the terminator, would be greater
+than MAXPATHLEN.
 .It Bq Er ESRCH
 The
 .Fa cmd

@@ -887,8 +887,16 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 			error = EBADF;
 			break;
 		}
-		error = cache_fullpath(p, &fp->f_nchandle, NULL, &dat->fc_path.ptr,
-			&dat->fc_path.buf, 1);
+
+		/*
+		 * cache_fullpath() itself is limited to MAXPATHLEN so we
+		 * do not need an explicit length check, but we do have
+		 * to munge the error to ERANGE as per fcntl.2
+		 */
+		error = cache_fullpath(p, &fp->f_nchandle, NULL,
+				       &dat->fc_path.ptr, &dat->fc_path.buf, 1);
+		if (error == ENOMEM)
+			error = ERANGE;
 		break;
 
 	default:
@@ -960,7 +968,7 @@ sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 			break;
 		case F_GETPATH:
 			error = copyout(dat.fc_path.ptr, (caddr_t)uap->arg,
-				strlen(dat.fc_path.ptr) + 1);
+					strlen(dat.fc_path.ptr) + 1);
 			kfree(dat.fc_path.buf, M_TEMP);
 			break;
 		}
