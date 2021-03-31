@@ -45,11 +45,11 @@ uname(struct utsname *name)
 	int mib[2], rval;
 	size_t len;
 	char *p;
-	char buf[MAXVARSYM_DATA];
 	int oerrno;
 
 	rval = 0;
 
+	bzero(name->sysname, sizeof(name->sysname));
 	if ((p = getenv("UNAME_s"))) {
 		strlcpy(name->sysname, p, sizeof(name->sysname));
 	} else {
@@ -57,7 +57,7 @@ uname(struct utsname *name)
 		mib[1] = KERN_OSTYPE;
 		len = sizeof(name->sysname);
 		oerrno = errno;
-		if (sysctl(mib, 2, &name->sysname, &len, NULL, 0) == -1) {
+		if (sysctl(mib, 2, name->sysname, &len, NULL, 0) == -1) {
 			if(errno == ENOMEM)
 				errno = oerrno;
 			else
@@ -66,11 +66,12 @@ uname(struct utsname *name)
 		name->sysname[sizeof(name->sysname) - 1] = '\0';
 	}
 
+	bzero(name->nodename, sizeof(name->nodename));
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_HOSTNAME;
 	len = sizeof(name->nodename);
 	oerrno = errno;
-	if (sysctl(mib, 2, &name->nodename, &len, NULL, 0) == -1) {
+	if (sysctl(mib, 2, name->nodename, &len, NULL, 0) == -1) {
 		if(errno == ENOMEM)
 			errno = oerrno;
 		else
@@ -85,7 +86,7 @@ uname(struct utsname *name)
 		mib[1] = KERN_OSRELEASE;
 		len = sizeof(name->release);
 		oerrno = errno;
-		if (sysctl(mib, 2, &name->release, &len, NULL, 0) == -1) {
+		if (sysctl(mib, 2, name->release, &len, NULL, 0) == -1) {
 			if(errno == ENOMEM)
 				errno = oerrno;
 			else
@@ -94,6 +95,7 @@ uname(struct utsname *name)
 		name->release[sizeof(name->release) - 1] = '\0';
 	}
 
+	bzero(name->version, sizeof(name->version));
 	if ((p = getenv("UNAME_v"))) {
 		strlcpy(name->version, p, sizeof(name->version));
 	} else {
@@ -102,7 +104,7 @@ uname(struct utsname *name)
 		mib[1] = KERN_VERSION;
 		len = sizeof(name->version);
 		oerrno = errno;
-		if (sysctl(mib, 2, &name->version, &len, NULL, 0) == -1) {
+		if (sysctl(mib, 2, name->version, &len, NULL, 0) == -1) {
 			if (errno == ENOMEM)
 				errno = oerrno;
 			else
@@ -119,6 +121,7 @@ uname(struct utsname *name)
 		}
 	}
 
+	bzero(name->machine, sizeof(name->machine));
 	if ((p = getenv("UNAME_m"))) {
 		strlcpy(name->machine, p, sizeof(name->machine));
 	} else {
@@ -126,7 +129,7 @@ uname(struct utsname *name)
 		mib[1] = HW_MACHINE;
 		mib[0] = CTL_HW;
 		len = sizeof(name->machine);
-		if (sysctl(mib, 2, &name->machine, &len, NULL, 0) == -1) {
+		if (sysctl(mib, 2, name->machine, &len, NULL, 0) == -1) {
 			if (errno == ENOMEM) {
 				errno = oerrno;
 			} else {
