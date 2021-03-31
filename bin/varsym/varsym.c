@@ -133,6 +133,12 @@ main(int ac, char **av)
 			if (error)
 				ret = 2;
 		} else {
+			/*
+			 * NOTE: System call returns 0 on success now,
+			 *	 but older versions returns the content
+			 *	 strlen() + 1, and that had to be tested
+			 *	 for overflow conditions.
+			 */
 			error = varsym_get(mask, name, buf, sizeof(buf));
 			if (error >= 0 && error <= (int)sizeof(buf)) {
 				if (verboseOpt)

@@ -201,11 +201,12 @@ sys_varsym_get(struct sysmsg *sysmsg, const struct varsym_get_args *uap)
     }
     dlen = strlen(sym->vs_data);
     if (dlen < uap->bufsize) {
-	copyout(sym->vs_data, uap->buf, dlen + 1);
+	error = copyout(sym->vs_data, uap->buf, dlen + 1);
     } else if (uap->bufsize) {
 	copyout("", uap->buf, 1);
+	error = EOVERFLOW;
     }
-    sysmsg->sysmsg_result = dlen + 1;
+    sysmsg->sysmsg_result = 0;
     varsymdrop(sym);
 done:
 
