@@ -1257,7 +1257,6 @@ scan_binary_repo(const char *path)
 {
 	DIR *dir;
 	struct dirent *den;
-	size_t len;
 	int count;
 
 	count = 0;
@@ -1268,9 +1267,11 @@ scan_binary_repo(const char *path)
 	 * NOTE: Test includes the '.' in the suffix.
 	 */
 	while ((den = readdir(dir)) != NULL) {
-		len = strlen(den->d_name);
-		if (len > 4 &&
-		    strcmp(den->d_name + len - 4, UsePkgSufx) == 0) {
+		const char *suffix;
+
+		suffix = strrchr(den->d_name, '.');
+		if (suffix && suffix != den->d_name &&
+		    strcmp(suffix, UsePkgSufx) == 0) {
 			queuebulk(den->d_name, NULL, NULL, NULL);
 			++count;
 		}

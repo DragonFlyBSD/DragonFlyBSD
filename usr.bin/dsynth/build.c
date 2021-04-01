@@ -3153,8 +3153,15 @@ adjloadavg(double *dload)
 }
 
 /*
- * Check if the ports directory contents has changed and force a
- * package to be rebuilt if it has by clearing the PACKAGED bit.
+ * The list of pkgs has already been flagged PKGF_PACKAGED if a pkg
+ * file exists.  Check if the ports directory contents for such packages
+ * has changed by comparing against a small DBM database that we maintain.
+ *
+ * Force-clear PKGF_PACKAGED if the ports directory content has changed.
+ *
+ * If no DBM database entry is present, update the entry and assume that
+ * the package does not need to be rebuilt (allows the .dbm file to be
+ * manually deleted without forcing a complete rebuild).
  */
 static
 void
