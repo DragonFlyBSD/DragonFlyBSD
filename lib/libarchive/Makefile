@@ -8,13 +8,15 @@ CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/libarchive
 SHLIB_MAJOR=	5
 CFLAGS+=	-DHAVE_CONFIG_H
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR}
+CFLAGS+=	-I${.CURDIR}/../../contrib/zstd/lib
+
 # This can be changed back to CFLAGS once iconv works correctly with
 # statically linked libraries (iconv uses dynamic-only dlopen(3))
 SHARED_CFLAGS+=	-DHAVE_ICONV=1 -DHAVE_ICONV_H=1
 WARNS?=	2
 
-DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBCRYPTO} ${LIBZ}
-LDADD=	-lbz2 -llzma -lprivate_crypto -lz
+DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBCRYPTO} ${LIBZ} ${LIBZSTD}
+LDADD=	-lbz2 -llzma -lprivate_crypto -lz -lprivate_zstd
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
@@ -317,6 +319,7 @@ MLINKS=	archive_entry.3 archive_entry_clear.3 \
 	archive_read_extract.3 archive_read_extract_set_progress_callback.3 \
 	archive_read_filter.3 archive_read_support_filter_all.3 \
 	archive_read_filter.3 archive_read_support_filter_bzip2.3 \
+	archive_read_filter.3 archive_read_support_filter_zstd.3 \
 	archive_read_filter.3 archive_read_support_filter_compress.3 \
 	archive_read_filter.3 archive_read_support_filter_gzip.3 \
 	archive_read_filter.3 archive_read_support_filter_lzma.3 \
@@ -383,6 +386,7 @@ MLINKS=	archive_entry.3 archive_entry_clear.3 \
 	archive_write_disk.3 archive_write_finish.3 \
 	archive_write_disk.3 archive_write_free.3 \
 	archive_write_filter.3 archive_write_add_filter_bzip2.3 \
+	archive_write_filter.3 archive_write_add_filter_zstd.3 \
 	archive_write_filter.3 archive_write_add_filter_compress.3 \
 	archive_write_filter.3 archive_write_add_filter_gzip.3 \
 	archive_write_filter.3 archive_write_add_filter_lzip.3 \

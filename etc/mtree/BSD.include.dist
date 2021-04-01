@@ -422,6 +422,8 @@
         ..
         readline
         ..
+	zstd
+	..
     ..
     protocols
     ..

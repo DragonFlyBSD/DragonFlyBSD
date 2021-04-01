@@ -10,6 +10,7 @@
 #
 # libcrypt must be built before libfetch, libarchive.
 # libz must be built before libarchive, libmagic, libssh.
+# libzstd must be built before libarchive
 # libbz2 must be built before libarchive
 # liblmza must be built before libarchive.
 # libncurses must be built before libedit.
@@ -26,6 +27,7 @@ SUBDIR_ORDERED= \
 	libressl \
 	libcrypt \
 	libbz2 \
+	libzstd \
 	liblzma \
 	libz \
 	libutil \

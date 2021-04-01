@@ -86,6 +86,7 @@ LIBWRAP?=	${DESTDIR}${LIBDIR}/libwrap.a
 LIBY?=		${DESTDIR}${LIBDIR}/liby.a
 LIBYPCLNT?=	${DESTDIR}${LIBDIR}/libypclnt.a
 LIBZ?=		${DESTDIR}${LIBDIR}/libz.a
+LIBZSTD?=	${DESTDIR}${LIBDIR}/priv/libprivate_zstd.a
 
 LIBGCC?=	${DESTDIR}${GCCLIBDIR}/libgcc.a
 LIBGCC_PIC?=	${DESTDIR}${GCCLIBDIR}/libgcc_pic.a

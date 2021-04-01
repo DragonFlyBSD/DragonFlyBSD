@@ -253,7 +253,8 @@ SUBDIR=	alias \
 	yes \
 	ypcat \
 	ypmatch \
-	ypwhich
+	ypwhich \
+	zstd
 
 .if defined(WANT_HESIOD)
 SUBDIR+=hesinfo

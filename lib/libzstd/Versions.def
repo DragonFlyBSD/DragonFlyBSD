@@ -1,0 +1,5 @@
+ZSTDLIB_1.1.1 {
+};
+
+ZSTDLIBprivate_1.0 {
+} ZSTDLIB_1.1.1;
