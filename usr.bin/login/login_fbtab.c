@@ -11,7 +11,7 @@
 *
 * This software is provided "as is" and without any expressed or implied
 * warranties, including, without limitation, the implied warranties of
-* merchantibility and fitness for any particular purpose.
+* merchantability and fitness for any particular purpose.
 ************************************************************************/
 /* $FreeBSD: src/usr.bin/login/login_fbtab.c,v 1.18 2007/09/21 01:55:11 kevlo Exp $ */
 /*

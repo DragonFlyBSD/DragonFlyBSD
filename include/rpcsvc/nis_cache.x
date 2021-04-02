@@ -8,7 +8,7 @@
 % * Sun Microsystems, Inc.
 % *
 % * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
-% * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+% * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 % * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
 % *
 % * Sun RPC is provided with no support and without any obligation on the
@@ -29,7 +29,6 @@
 % *
 % * @(#)nis_cache.x	1.11	94/05/03 SMI
 % * $FreeBSD: src/include/rpcsvc/nis_cache.x,v 1.3 1999/08/27 23:45:09 peter Exp $
-% * $DragonFly: src/include/rpcsvc/nis_cache.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 
 /*

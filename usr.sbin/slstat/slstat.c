@@ -15,13 +15,12 @@
  * from this software without specific prior written permission.
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
- * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  *	Van Jacobson (van@ee.lbl.gov), Dec 31, 1989:
  *	- Initial distribution.
  *
  * $FreeBSD: src/usr.sbin/slstat/slstat.c,v 1.14 1999/08/28 01:20:00 peter Exp $
- * $DragonFly: src/usr.sbin/slstat/slstat.c,v 1.5 2004/03/20 17:46:48 cpressey Exp $
  */
 
 #define _KERNEL_STRUCTURES

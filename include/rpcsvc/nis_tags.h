@@ -7,7 +7,7 @@
  * program developed by the user.
  * 
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  * 
  * Sun RPC is provided with no support and without any obligation on the
@@ -25,8 +25,6 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
- *
- * $DragonFly: src/include/rpcsvc/nis_tags.h,v 1.2 2004/02/25 15:12:54 joerg Exp $
  */
 
 /*

@@ -7,7 +7,7 @@
  * program developed by the user.
  * 
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  * 
  * Sun RPC is provided with no support and without any obligation on the
@@ -29,7 +29,6 @@
  * @(#)sm_inter.x	2.2 88/08/01 4.0 RPCSRC
  * @(#)sm_inter.x 1.7 87/06/24 Copyr 1987 Sun Micro
  * $FreeBSD: src/include/rpcsvc/sm_inter.x,v 1.8.2.1 2002/04/11 17:08:33 alfred Exp $
- * $DragonFly: src/include/rpcsvc/sm_inter.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*

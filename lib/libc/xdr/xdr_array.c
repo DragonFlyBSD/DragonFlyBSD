@@ -7,7 +7,7 @@
  * program developed by the user.
  *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  *
  * Sun RPC is provided with no support and without any obligation on the
@@ -30,7 +30,6 @@
  * @(#)xdr_array.c	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: xdr_array.c,v 1.12 2000/01/22 22:19:18 mycroft Exp $
  * $FreeBSD: src/lib/libc/xdr/xdr_array.c,v 1.15 2004/10/16 06:32:43 obrien Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_array.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*

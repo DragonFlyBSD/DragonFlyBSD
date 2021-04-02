@@ -8,7 +8,7 @@
  * Sun Microsystems, Inc.
  *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  *
  * Sun RPC is provided with no support and without any obligation on the
@@ -29,7 +29,6 @@
  *
  * @(#)secretkey.c 1.8 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/lib/librpcsvc/secretkey.c,v 1.3 2002/03/21 23:53:40 obrien Exp $
- * $DragonFly: src/lib/librpcsvc/secretkey.c,v 1.5 2007/11/25 14:33:02 swildner Exp $
  */
 
 /*

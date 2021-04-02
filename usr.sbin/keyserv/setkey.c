@@ -7,7 +7,7 @@
  * program developed by the user.
  * 
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  * 
  * Sun RPC is provided with no support and without any obligation on the
@@ -28,7 +28,6 @@
  *
  * @(#)setkey.c	1.11	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/setkey.c,v 1.3 1999/08/28 01:16:41 peter Exp $
- * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.10 2008/06/05 18:06:33 swildner Exp $
  */
 
 /*

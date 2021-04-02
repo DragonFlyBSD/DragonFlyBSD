@@ -8,7 +8,7 @@
  * program developed by the user.
  *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  *
  * Sun RPC is provided with no support and without any obligation on the
@@ -30,7 +30,6 @@
  * @(#)rpcinfo.c	1.18	93/07/05 SMI; 1.16 89/04/05 Copyr 1986 Sun Micro
  * $NetBSD: rpcinfo.c,v 1.15 2000/10/04 20:09:05 mjl Exp $
  * $FreeBSD: src/usr.bin/rpcinfo/rpcinfo.c,v 1.17 2004/03/11 10:22:25 bde Exp $
- * $DragonFly: src/usr.bin/rpcinfo/rpcinfo.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
  */
 
 /*

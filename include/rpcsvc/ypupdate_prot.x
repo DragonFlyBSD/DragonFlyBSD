@@ -8,7 +8,7 @@
 % * Sun Microsystems, Inc.
 % *
 % * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
-% * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+% * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 % * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
 % *
 % * Sun RPC is provided with no support and without any obligation on the
@@ -29,7 +29,6 @@
 % *
 % * from @(#)ypupdate_prot.x	1.3 91/03/11 TIRPC 1.0
 % * $FreeBSD: src/include/rpcsvc/ypupdate_prot.x,v 1.3 1999/08/27 23:45:13 peter Exp $
-% * $DragonFly: src/include/rpcsvc/ypupdate_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 
 %/*

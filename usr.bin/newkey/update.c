@@ -8,7 +8,7 @@
  * Sun Microsystems, Inc.
  *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  *
  * Sun RPC is provided with no support and without any obligation on the
@@ -29,7 +29,6 @@
  *
  * @(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/update.c,v 1.5 1999/08/28 01:04:35 peter Exp $
- * $DragonFly: src/usr.bin/newkey/update.c,v 1.4 2005/01/11 00:29:12 joerg Exp $
  */
 
 /*

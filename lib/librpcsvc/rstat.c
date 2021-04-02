@@ -8,7 +8,7 @@
  * Sun Microsystems, Inc.
  *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  *
  * Sun RPC is provided with no support and without any obligation on the
@@ -29,7 +29,6 @@
  *
  * @(#)rstat.c	1.2 91/03/11 TIRPC 1.0; from 1.6 89/03/24 SMI
  * $FreeBSD: src/lib/librpcsvc/rstat.c,v 1.4 2003/10/26 03:43:35 peter Exp $
- * $DragonFly: src/lib/librpcsvc/rstat.c,v 1.3 2007/11/25 14:33:02 swildner Exp $
  */
 
 /*

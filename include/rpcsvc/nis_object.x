@@ -8,7 +8,7 @@
 % * Sun Microsystems, Inc.
 % *
 % * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
-% * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+% * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 % * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
 % *
 % * Sun RPC is provided with no support and without any obligation on the
@@ -28,7 +28,6 @@
 % * Mountain View, California  94043
 % *
 % * @(#)nis_object.x	1.10	94/05/03 SMI
-% * $DragonFly: src/include/rpcsvc/nis_object.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 
 /*

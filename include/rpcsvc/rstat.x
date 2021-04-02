@@ -7,7 +7,7 @@
  * program developed by the user.
  * 
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  * 
  * Sun RPC is provided with no support and without any obligation on the
@@ -29,7 +29,6 @@
  * @(#)rstat.x 1.2 87/09/18 Copyr 1987 Sun Micro
  * @(#)rstat.x	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/include/rpcsvc/rstat.x,v 1.8 2003/05/04 02:51:42 obrien Exp $
- * $DragonFly: src/include/rpcsvc/rstat.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*

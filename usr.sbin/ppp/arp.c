@@ -15,10 +15,9 @@
  * from this software without specific prior written permission.
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
- * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/ppp/arp.c,v 1.37.2.3 2002/09/01 02:12:22 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/arp.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  *
  */
 

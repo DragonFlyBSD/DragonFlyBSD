@@ -7,7 +7,7 @@
  * program developed by the user.
  * 
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  * 
  * Sun RPC is provided with no support and without any obligation on the
@@ -29,7 +29,6 @@
  * @(#)bootparam_prot.x 1.2 87/06/24 Copyr 1987 Sun Micro
  * @(#)bootparam_prot.x	2.1 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/include/rpcsvc/bootparam_prot.x,v 1.7 2003/05/04 02:51:42 obrien Exp $
- * $DragonFly: src/include/rpcsvc/bootparam_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*

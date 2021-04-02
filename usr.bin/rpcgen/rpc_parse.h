@@ -7,7 +7,7 @@
  * program developed by the user.
  *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+ * WARRANTIES OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
  *
  * Sun RPC is provided with no support and without any obligation on the
@@ -28,7 +28,6 @@
  *
  * @(#)rpc_parse.h 1.10     94/05/15 SMI; 1.3  90/08/29  (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_parse.h,v 1.7 2005/11/13 21:17:24 dwmalone Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_parse.h,v 1.2 2004/06/19 16:40:36 joerg Exp $
  */
 
 /*	Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T	*/

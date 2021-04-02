@@ -44,7 +44,7 @@
  *
  * 2.  This software is supplied "as is" with no warranty of any kind,
  * expressed or implied, for any purpose, including any warranty of fitness
- * or merchantibility.  DIGITAL assumes no responsibility for the use or
+ * or merchantability.  DIGITAL assumes no responsibility for the use or
  * reliability of this software, nor promises to provide any form of
  * support for it on any basis.
  *
