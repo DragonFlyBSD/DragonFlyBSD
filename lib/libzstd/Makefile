@@ -68,7 +68,9 @@ SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 # that neither attribute nor command-line flag were entirely successful in
 # turning off vectorization, which is why there were both."
 .if (${CCVER:Mgcc*})
-CFLAGS.zstd_decompress_block.c+=	-fno-tree-vectorize
+FLAGS_GROUPS=	autovec
+autovec_FLAGS=	-fno-tree-vectorize
+autovec_FLAGS_FILES=zstd_decompress_block.c
 .endif
 
 .include <bsd.lib.mk>
