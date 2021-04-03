@@ -1,0 +1,14 @@
+ZSTD
+====
+
+Original source can be downloaded from:
+https://github.com/facebook/zstd/releases
+
+file = zstd-1.4.8.tar.gz
+date = 19 December 2020
+size = 1803550
+sha1 = 2b79c836ed2e11956ebd112ddc731f1954b4074c
+
+The file README.DELETED contains a list of deleted files and directories.
+
+Use "git diff vendor/ZSTD contrib/zstd" to see local modifications.
