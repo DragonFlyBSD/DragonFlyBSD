@@ -2,7 +2,7 @@
 
 LIB=		private_zstd
 SHLIBDIR?=	/lib
-WARNS?=		2
+WARNS?=		4
 PRIVATELIB=
 
 SRCS=	entropy_common.c \
