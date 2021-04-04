@@ -10,6 +10,9 @@ SRCS=	\
 	timefn.c \
 	util.c \
 	zstdcli.c
+SCRIPTS=zstdgrep
+MAN=	zstd.1 \
+	zstdgrep.1
 
 # Subset of libzstd with threading enabled
 ZSMT_SRCS=	cover.c divsufsort.c entropy_common.c error_private.c
