@@ -41,21 +41,13 @@ SRCS=	entropy_common.c \
 INCS=		zstd.h
 INCSDIR=	${INCLUDEDIR}/priv/zstd
 
-#CFLAGS+=	-I${ZSTDDIR}/lib -I${ZSTDDIR}/lib/common -DXXH_NAMESPACE=ZSTD_ \
-#		-DZSTD_MULTITHREAD=1 -fvisibility=hidden
 CFLAGS+=	-I${ZSTDDIR}/lib -I${ZSTDDIR}/lib/common -DXXH_NAMESPACE=ZSTD_ \
 		-fvisibility=hidden
-LIBADD=	pthread
-
-# PRIVATELIB=	yes
-# PACKAGE=	runtime
 
 ZSTDDIR=	${.CURDIR}/../../contrib/zstd
 .PATH:	${ZSTDDIR}/lib/common ${ZSTDDIR}/lib/compress \
 	${ZSTDDIR}/lib/decompress ${ZSTDDIR}/lib/deprecated \
 	${ZSTDDIR}/lib/dictBuilder ${ZSTDDIR}/lib
-
-# .include <bsd.compiler.mk>
 
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
