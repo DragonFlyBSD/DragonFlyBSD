@@ -22,7 +22,13 @@ LINKS=	${BINDIR}/less ${BINDIR}/more \
 	${BINDIR}/zless ${BINDIR}/xzless \
 	${BINDIR}/zless ${BINDIR}/lzless \
 	${BINDIR}/zless ${BINDIR}/zstdless
-MLINKS=	less.1 more.1
+MLINKS=	less.1 more.1 \
+	less.1 zless.1 \
+	less.1 bzless.1 \
+	less.1 xzless.1 \
+	less.1 lzless.1 \
+	less.1 zstdless.1
+
 CLEANFILES= less.1
 
 WARNS?=	2

@@ -74,7 +74,7 @@ XZMT_SRCS+=	simple_coder.c simple_decoder.c simple_encoder.c \
 		arm.c armthumb.c ia64.c powerpc.c sparc.c x86.c
 
 .PATH: ${XZDIR}/scripts
-SCRIPTS=	xzdiff xzgrep xzless xzmore
+SCRIPTS=	xzdiff xzgrep xzmore
 MAN+=	${SCRIPTS:S/$/.1/g}
 PKG_NAME!=	grep -w PACKAGE_NAME ${LIBLZMADIR}/config.h | awk -F\" '{print $$2}'
 VERSION!=	grep -w VERSION ${LIBLZMADIR}/config.h | awk -F\" '{print $$2}'
@@ -96,8 +96,7 @@ LINKS+=	${SCRIPTSDIR}/xzdiff ${SCRIPTSDIR}/xzcmp \
 	${SCRIPTSDIR}/xzgrep ${SCRIPTSDIR}/lzgrep \
 	${SCRIPTSDIR}/xzgrep ${SCRIPTSDIR}/lzegrep \
 	${SCRIPTSDIR}/xzgrep ${SCRIPTSDIR}/lzfgrep \
-	${SCRIPTSDIR}/xzmore ${SCRIPTSDIR}/lzmore \
-	${SCRIPTSDIR}/xzless ${SCRIPTSDIR}/lzless
+	${SCRIPTSDIR}/xzmore ${SCRIPTSDIR}/lzmore
 MLINKS+=xzdiff.1 xzcmp.1 \
 	xzgrep.1 xzegrep.1 \
 	xzgrep.1 xzfgrep.1 \
@@ -106,7 +105,6 @@ MLINKS+=xzdiff.1 xzcmp.1 \
 	xzgrep.1 lzgrep.1 \
 	xzgrep.1 lzegrep.1 \
 	xzgrep.1 lzfgrep.1 \
-	xzmore.1 lzmore.1 \
-	xzless.1 lzless.1
+	xzmore.1 lzmore.1
 
 .include <bsd.prog.mk>

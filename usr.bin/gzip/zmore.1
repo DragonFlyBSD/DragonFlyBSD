@@ -1,6 +1,5 @@
 .\"	$NetBSD: zmore.1,v 1.2 2003/12/28 12:43:43 wiz Exp $
 .\"	$OpenBSD: zmore.1,v 1.9 2007/05/31 19:20:09 jmc Exp $
-.\"	$DragonFly: src/usr.bin/gzip/zmore.1,v 1.2 2007/07/29 17:27:45 swildner Exp $
 .\"
 .\" Copyright (c) 2003 Todd C. Miller <Todd.Miller@courtesan.com>
 .\"
@@ -24,14 +23,10 @@
 .Dt ZMORE 1
 .Os
 .Sh NAME
-.Nm zmore ,
-.Nm zless
+.Nm zmore
 .Nd view compressed files
 .Sh SYNOPSIS
 .Nm
-.Op Ar flags
-.Op Ar file ...
-.Nm zless
 .Op Ar flags
 .Op Ar file ...
 .Sh DESCRIPTION
@@ -54,14 +49,6 @@ that are specified are passed to the user's preferred
 (which is
 .Pa /usr/bin/more
 by default).
-.Pp
-.Nm zless
-is equivalent to
-.Nm zmore
-but uses
-.Xr less 1
-as a pager instead of
-.Xr more 1 .
 .Pp
 When multiple files are specified,
 .Nm
@@ -98,11 +85,7 @@ style compression since there is no suffix on which to make a decision.
 Program used to display files.
 If unset,
 .Pa /usr/bin/more
-is used
-.Pq Nm zmore
-or
-.Pa /usr/bin/less
-.Pq Nm zless .
+is used.
 .El
 .Sh SEE ALSO
 .Xr gzip 1 ,

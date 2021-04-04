@@ -1,7 +1,6 @@
 #!/bin/sh -
 #
 # $NetBSD: zmore,v 1.2 2003/12/28 12:43:43 wiz Exp $
-# $DragonFly: src/usr.bin/gzip/zmore,v 1.1 2004/10/26 11:19:31 joerg Exp $
 # $OpenBSD: zmore,v 1.4 2003/07/29 07:42:45 otto Exp $
 #
 # Copyright (c) 2003 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -41,11 +40,7 @@ while test $# -ne 0; do
 	esac
 done
 
-if [ `basename $0` = "zless" ] ; then
-	pager=${PAGER-less}
-else
-	pager=${PAGER-more}
-fi
+pager=${PAGER-more}
 
 # No files means read from stdin
 if [ $# -eq 0 ]; then
