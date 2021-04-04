@@ -30,6 +30,8 @@ programs/README.md
 programs/windres/
 programs/zstd.1.md
 programs/zstdgrep.1.md
+programs/zstdless
+programs/zstdless.1
 programs/zstdless.1.md
 tests/
 zlibWrapper/
