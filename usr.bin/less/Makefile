@@ -14,14 +14,18 @@ LDADD=	-lprivate_ncurses
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-SCRIPTS= lesspipe.sh
-SCRIPTSNAME= lesspipe.sh
+SCRIPTS= lesspipe.sh zless.sh
+SCRIPTSNAME_lesspipe.sh=lesspipe.sh
 
-LINKS=	${BINDIR}/less ${BINDIR}/more
+LINKS=	${BINDIR}/less ${BINDIR}/more \
+	${BINDIR}/zless ${BINDIR}/bzless \
+	${BINDIR}/zless ${BINDIR}/xzless \
+	${BINDIR}/zless ${BINDIR}/lzless \
+	${BINDIR}/zless ${BINDIR}/zstdless
 MLINKS=	less.1 more.1
 CLEANFILES= less.1
 
 WARNS?=	2
 
-.include <Makefile.common>
+.include "Makefile.common"
 .include <bsd.prog.mk>
