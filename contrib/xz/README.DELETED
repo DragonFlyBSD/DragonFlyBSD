@@ -58,6 +58,8 @@ src/lzmainfo/Makefile.in
 src/lzmainfo/lzmainfo_w32res.rc
 src/scripts/Makefile.am
 src/scripts/Makefile.in
+src/scripts/xzless.1
+src/scripts/xzless.in
 src/xz/Makefile.am
 src/xz/Makefile.in
 src/xz/xz_w32res.rc
