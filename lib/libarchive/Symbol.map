@@ -264,7 +264,6 @@ ARCHIVE_3.1.2 {
     archive_read_support_compression_rpm;
     archive_read_support_compression_uu;
     archive_read_support_compression_xz;
-    archive_read_support_compression_zstd;
     archive_read_support_filter_all;
     archive_read_support_filter_bzip2;
     archive_read_support_filter_compress;
@@ -372,7 +371,6 @@ ARCHIVE_3.1.2 {
     archive_write_set_compression_none;
     archive_write_set_compression_program;
     archive_write_set_compression_xz;
-    archive_write_set_compression_zstd;
     archive_write_set_filter_option;
     archive_write_set_format;
     archive_write_set_format_7zip;
