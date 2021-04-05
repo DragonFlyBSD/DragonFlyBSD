@@ -39,7 +39,7 @@
 
 #include <sys/types.h>
 
-typedef	u_int32_t	tcp_seq;
+typedef	uint32_t	tcp_seq;
 typedef	int32_t		tcp_seq_diff_t;
 
 #define	tcp6_seq	tcp_seq	/* for KAME src sync over BSD*'s */

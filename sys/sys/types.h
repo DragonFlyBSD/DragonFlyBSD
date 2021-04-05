@@ -158,7 +158,7 @@ typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 struct cdev;
 typedef	struct cdev	*cdev_t;
-typedef	u_int64_t	uoff_t;		/* uio offset */
+typedef	__uint64_t	uoff_t;		/* uio offset */
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 #if __BSD_VISIBLE && !defined(_KERNEL)
