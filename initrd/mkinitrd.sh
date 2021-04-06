@@ -151,6 +151,8 @@ make_hier() {
 	    error 1 "Failed to mkdir ${BUILD_DIR}/new_root"
 	# Symlink 'sbin' to 'bin'
 	ln -sf bin ${BUILD_DIR}/sbin
+	ln -sf usr/bin ${BUILD_DIR}/sbin
+	ln -sf usr/sbin ${BUILD_DIR}/sbin
 	# Symlink 'tmp' to 'var/tmp', as '/var' will be mounted with
 	# tmpfs, saving a second tmpfs been mounted on '/tmp'.
 	ln -sf var/tmp ${BUILD_DIR}/tmp
