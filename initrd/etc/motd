@@ -13,5 +13,5 @@ this shell to continue the normal boot.
   # dhclient <ifname>
 * Connect to WiFi:
   # dowpa <ifname> <ssid> <password>
-  (Onced connected, use `dhclient' to do DHCP)
+  (Once connected, use `dhclient' to do DHCP)
 
