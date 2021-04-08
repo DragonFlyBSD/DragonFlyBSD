@@ -165,9 +165,6 @@ main(int argc, char **argv)
 	if (argc < 1)
 		usage(NULL);
 
-#ifdef RESCUE
-	oflag = 1;
-#endif
 	if (killflg + doreboot + dohalt + dopower > 1)
 		usage("incompatible switches -h, -k, -p and -r");
 
