@@ -162,6 +162,10 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+#ifdef RESCUE
+	oflag = 1;
+#endif
+
 	if (argc < 1)
 		usage(NULL);
 

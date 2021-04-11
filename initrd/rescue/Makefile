@@ -98,6 +98,7 @@ CRUNCH_PROGS_usr.bin=	\
 	undo		\
 	uniq		\
 	vi		\
+	wall		\
 	wc		\
 	xz		\
 	yes

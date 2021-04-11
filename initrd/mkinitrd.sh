@@ -49,10 +49,10 @@
 # Directory hierarchy on the initrd
 #
 # * 'new_root' will always be created
-# * 'sbin' will be symlinked to 'bin'
+# * 'sbin', 'usr.bin', and 'usr.sbin' will be symlinked to 'bin'
 # * 'tmp' will be symlinked to 'var/tmp'
 #
-INITRD_DIRS="bin dev etc mnt var"
+INITRD_DIRS="bin dev etc mnt usr var"
 
 # Directory of the statically linked rescue tools which will be copied
 # onto the initrd.
@@ -158,6 +158,9 @@ make_hier() {
 		[ ! -d "${BUILD_DIR}/${_dir}" ] &&
 		    mkdir -p ${BUILD_DIR}/${_dir}
 	done
+	# Symlink 'usr/bin' and 'usr/sbin' to 'bin'
+	ln -sf ../bin ${BUILD_DIR}/usr/bin
+	ln -sf ../bin ${BUILD_DIR}/usr/sbin
 	echo "Created directory structure"
 }
 

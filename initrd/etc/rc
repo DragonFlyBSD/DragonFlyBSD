@@ -23,6 +23,7 @@ fi
 echo "Setting up /var directories ..."
 mount_tmpfs tmpfs /var
 mkdir /var/db /var/empty /var/home /var/run /var/tmp
+touch /var/run/utmpx
 
 echo "Starting udevd for LVM ..."
 udevd
