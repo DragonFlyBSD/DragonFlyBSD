@@ -267,7 +267,7 @@ SRCS_NWt+=	trace_xnames.c
 SRCS_NWt+=	varargs.c
 SRCS_NWB+=	visbuf.c
 
-# Whidechar
+# Widechar
 SRCS_W+=	charable.c
 SRCS_W+=	lib_add_wch.c
 SRCS_W+=	lib_box_set.c
