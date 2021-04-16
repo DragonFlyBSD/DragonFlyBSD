@@ -1,5 +1,6 @@
 ETC_SCRIPTS=	rc rc.lvm2 rcmount_crypt rcmount_tcplay
 ETC_FILES=	${.CURDIR}/motd \
+		${.CURDIR}/termcap \
 		${.CURDIR}/../../etc/group \
 		${.CURDIR}/../../etc/master.passwd \
 		${.CURDIR}/../../etc/protocols \

@@ -2,6 +2,7 @@
 
 export PATH=/bin:/sbin
 export HOME=/var/home
+export TERM=cons25
 
 # Where to mount the real root partition
 export NEW_ROOT=/new_root
