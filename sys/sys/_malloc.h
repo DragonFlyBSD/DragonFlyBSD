@@ -46,8 +46,8 @@
  * A kmalloc slab (used with KSF_OBJSIZE) holds N fixed-size objects
  * in a fixed (typically 32KB) block of memory prefaced by the structure.
  */
-#define KMALLOC_SLAB_SIZE	(size_t)(128 * 1024)
-#define KMALLOC_SLAB_MASK	((size_t)(KMALLOC_SLAB_SIZE - 1))
+#define KMALLOC_SLAB_SIZE	(__size_t)(128 * 1024)
+#define KMALLOC_SLAB_MASK	((__size_t)(KMALLOC_SLAB_SIZE - 1))
 
 #define KMALLOC_SLAB_MAXOBJS	(KMALLOC_SLAB_SIZE / __VM_CACHELINE_SIZE)
 #define KMALLOC_LOOSE_SIZE	(KMALLOC_SLAB_SIZE * 4)
@@ -61,17 +61,17 @@ struct kmalloc_slab {
 	struct spinlock		spin;
 	struct kmalloc_slab	*next;		/* next mag in list */
 	struct malloc_type	*type;		/* who does this belong to */
-	uint32_t		magic;
-	uint32_t		orig_cpuid;	/* originally allocated on */
-	size_t			offset;		/* copied from kmalloc_mgt */
-	size_t			objsize;	/* copied from malloc_type */
-	size_t			ncount;		/* copied from kmalloc_mgt */
-	size_t			aindex;		/* start of allocations */
-	size_t			findex;		/* end of frees */
-	size_t			xindex;		/* synchronizer */
+	__uint32_t		magic;
+	__uint32_t		orig_cpuid;	/* originally allocated on */
+	__size_t		offset;		/* copied from kmalloc_mgt */
+	__size_t		objsize;	/* copied from malloc_type */
+	__size_t		ncount;		/* copied from kmalloc_mgt */
+	__size_t		aindex;		/* start of allocations */
+	__size_t		findex;		/* end of frees */
+	__size_t		xindex;		/* synchronizer */
 	exislock_t		exis;		/* existential lock state */
 	struct kmalloc_mgt	*mgt;
-	uint64_t		bmap[(KMALLOC_SLAB_MAXOBJS + 63) / 64];
+	__uint64_t		bmap[(KMALLOC_SLAB_MAXOBJS + 63) / 64];
 	void			*fobjs[1];	/* list of free objects */
 } __cachealign;
 
@@ -97,14 +97,14 @@ struct kmalloc_mgt {
 	struct kmalloc_slab	*full;		/* global */
 	struct kmalloc_slab	*empty;		/* global */
 	struct kmalloc_slab	**empty_tailp;	/* global */
-	size_t			slab_offset;	/* first object in slab */
-	size_t			slab_count;	/* objects per slab */
-	size_t			npartial;	/* counts */
-	size_t			nfull;
-	size_t			nempty;
-	size_t			gcache_count;	/* #slabs returned to gcache */
-	size_t			unused01;
-	size_t			unused02;
+	__size_t		slab_offset;	/* first object in slab */
+	__size_t		slab_count;	/* objects per slab */
+	__size_t		npartial;	/* counts */
+	__size_t		nfull;
+	__size_t		nempty;
+	__size_t		gcache_count;	/* #slabs returned to gcache */
+	__size_t		unused01;
+	__size_t		unused02;
 } __cachealign;
 
 /*
@@ -159,7 +159,7 @@ typedef	struct malloc_type	*malloc_type_t;
 typedef struct KMGlobalData {
 	struct kmalloc_slab *free_slabs;
 	struct kmalloc_slab *remote_free_slabs;
-	size_t		free_count;
+	__size_t	free_count;
 	void		*reserved[5];
 } KMGlobalData;
 
