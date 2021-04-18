@@ -194,7 +194,16 @@ ParsePackageList(int n, char **ary, int debugstop)
 		l3 = strchr(l2, '@');
 		if (l3)
 			*l3++ = 0;
-		queuebulk(l1, l2, l3, (debugstop ? "d" : NULL));
+
+		/*
+		 * Silently ignore any manually specified ports-mgmt/pkg,
+		 * which we already auto-added.
+		 */
+		if (strcmp(l1, "ports-mgmt") != 0 ||
+		    strcmp(l2, "pkg") != 0)
+		{
+			queuebulk(l1, l2, l3, (debugstop ? "d" : NULL));
+		}
 		++total;
 		free(l1);
 	}
