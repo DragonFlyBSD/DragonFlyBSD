@@ -226,9 +226,10 @@
  * 500907 - add clock_nanosleep()
  * 500908 - add fexecve()
  * 500909 - add AF_ARP
+ * 600000 - 6.0 release
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500909	/* propagated to newvers */
+#define __DragonFly_version 600000	/* propagated to newvers */
 
 #include <sys/_null.h>
 
