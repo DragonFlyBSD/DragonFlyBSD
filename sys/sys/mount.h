@@ -33,6 +33,7 @@
 #ifndef _SYS_MOUNT_H_
 #define _SYS_MOUNT_H_
 
+#include <sys/cdefs.h>
 #include <sys/queue.h>
 #include <sys/tree.h>
 #include <sys/ucred.h>
@@ -809,8 +810,6 @@ int	mountlist_exists(struct mount *mp);
 int	mountlist_scan(int (*callback)(struct mount *, void *), void *, int);
 struct mount *mount_get_by_nc(struct namecache *ncp);
 #else /* !_KERNEL */
-
-#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 int	fstatfs (int, struct statfs *);
