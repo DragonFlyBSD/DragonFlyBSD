@@ -40,12 +40,12 @@
  * ELF definitions common to all 32-bit architectures.
  */
 
-typedef u_int32_t	Elf32_Addr;
-typedef u_int16_t	Elf32_Half;
-typedef u_int32_t	Elf32_Off;
+typedef uint32_t	Elf32_Addr;
+typedef uint16_t	Elf32_Half;
+typedef uint32_t	Elf32_Off;
 typedef int32_t		Elf32_Sword;
-typedef u_int32_t	Elf32_Word;
-typedef u_int32_t	Elf32_Size;
+typedef uint32_t	Elf32_Word;
+typedef uint32_t	Elf32_Size;
 typedef Elf32_Off	Elf32_Hashelt;
 
 /*
