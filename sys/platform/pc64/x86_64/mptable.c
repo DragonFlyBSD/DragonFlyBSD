@@ -66,7 +66,7 @@
 #include <machine_base/apic/ioapic_abi.h>
 #include <machine/intr_machdep.h>	/* IPIs */
 
-extern u_int	base_memory;
+extern u_int	base_memory;		/* in kilobytes, see machdep.c */
 extern u_long	ebda_addr;
 extern int	imcr_present;
 extern int	naps;
@@ -281,7 +281,7 @@ mptable_search(void)
 			return x;
 	} else {
 		/* last 1K of base memory, effective 'top of base' passed in */
-		target = (u_int32_t)(base_memory - 0x400);
+		target = (u_int32_t)((base_memory - 1) * 1024);
 		if ((x = mptable_search_sig(target, 1024 / 4)) > 0)
 			return x;
 	}
