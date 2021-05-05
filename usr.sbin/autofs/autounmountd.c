@@ -171,7 +171,8 @@ do_unmount(const fsid_t fsid __unused, const char *mountpoint)
 		} else {
 			log_warn("cannot unmount %s", mountpoint);
 		}
-	}
+	} else
+		rpc_umntall();
 
 	return (error);
 }

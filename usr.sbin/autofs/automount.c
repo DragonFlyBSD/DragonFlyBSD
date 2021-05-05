@@ -54,6 +54,8 @@ unmount_by_statfs(const struct statfs *sb, bool force)
 	error = unmount(sb->f_mntonname, flags);
 	if (error != 0)
 		log_warn("cannot unmount %s", sb->f_mntonname);
+	else
+		rpc_umntall();
 
 	return (error);
 }

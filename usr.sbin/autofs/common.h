@@ -113,6 +113,7 @@ char	*defined_expand(const char *string);
 void	defined_init(void);
 void	defined_parse_and_add(char *def);
 void	lesser_daemon(void);
+void	rpc_umntall(void);
 
 int	main_automount(int argc, char **argv);
 void	main_automountd(int argc, char **argv) __dead2;
