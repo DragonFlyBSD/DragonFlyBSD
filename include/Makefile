@@ -64,6 +64,7 @@ LSUBDIRS= \
 	dev/raid/ciss dev/raid/mfi \
 	dev/smbus/smb \
 	dev/video/bktr dev/video/meteor \
+	dev/virtual/nvmm dev/virtual/nvmm/x86 \
 	gnu/vfs/ext2fs \
 	libprop \
 	net/bridge net/tap net/tun net/ppp_layer net/sl \
@@ -99,6 +100,7 @@ LSUBDIRS= \
 # is also taken care of.
 LSYMSUBDIRS:=	${LSUBDIRS:Nnet/*:Nnetgraph/*:Nnetgraph7/*}
 LSYMSUBDIRS:=	${LSYMSUBDIRS:Nbus/cam/scsi}
+LSYMSUBDIRS:=	${LSYMSUBDIRS:Ndev/virtual/nvmm/x86}
 
 # Define SHARED to indicate whether you want symbolic links to the system
 # source (``symlinks''), or a separate copy (``copies'').  ``symlinks'' is

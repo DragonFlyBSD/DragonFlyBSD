@@ -32,6 +32,10 @@
 #ifndef _NVMM_INTERNAL_H_
 #define _NVMM_INTERNAL_H_
 
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
+
 #define NVMM_MAX_MACHINES	128
 #define NVMM_MAX_VCPUS		256
 #define NVMM_MAX_HMAPPINGS	32

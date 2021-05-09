@@ -1,13 +1,13 @@
-#	$NetBSD: Makefile,v 1.1 2018/11/07 07:43:08 maxv Exp $
+KMOD=	nvmm
+SRCS=	nvmm.c
 
 .if ${MACHINE_ARCH} == "x86_64"
-SUBDIR= x86
+.PATH:	${.CURDIR}/x86
+SRCS+=	nvmm_x86.c
+SRCS+=	nvmm_x86_svm.c nvmm_x86_svmfunc.S
+SRCS+=	nvmm_x86_vmx.c nvmm_x86_vmxfunc.S
 .endif
 
-.include <bsd.own.mk>
+# Header files are installed by 'include/Makefile'.
 
-INCSDIR= /usr/include/dev/nvmm
-
-INCS=	nvmm.h nvmm_ioctl.h
-
-.include <bsd.kinc.mk>
+.include <bsd.kmod.mk>

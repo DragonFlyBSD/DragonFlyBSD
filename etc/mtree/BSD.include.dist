@@ -228,6 +228,12 @@
             meteor
             ..
         ..
+        virtual
+            nvmm
+                x86
+                ..
+            ..
+        ..
     ..
     gnu
         vfs

@@ -41,6 +41,10 @@
 #ifndef _NVMM_COMPAT_H_
 #define _NVMM_COMPAT_H_
 
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
+
 #include <sys/param.h>
 #include <sys/bitops.h>
 #include <sys/lock.h>
