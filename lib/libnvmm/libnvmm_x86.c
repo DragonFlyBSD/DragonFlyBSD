@@ -30,6 +30,8 @@
  */
 
 #include <sys/cdefs.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,16 +39,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <machine/vmparam.h>
-#include <machine/pte.h>
+
 #include <machine/psl.h>
-
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#define __cacheline_aligned __attribute__((__aligned__(64)))
-
-#include <x86/specialreg.h>
+#include <machine/specialreg.h>
 
 /* -------------------------------------------------------------------------- */
 
@@ -1805,7 +1800,7 @@ static const int gpr_dual_reg1_rm[8] __cacheline_aligned = {
 };
 
 static int
-node_overflow(struct x86_decode_fsm *fsm, struct x86_instr *instr)
+node_overflow(struct x86_decode_fsm *fsm, struct x86_instr *instr __unused)
 {
 	fsm->fn = NULL;
 	return -1;
@@ -2155,7 +2150,7 @@ node_sib(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 }
 
 static const struct x86_reg *
-get_register_reg(struct x86_instr *instr, const struct x86_opcode *opcode)
+get_register_reg(struct x86_instr *instr, const struct x86_opcode *opcode __unused)
 {
 	uint8_t enc = instr->regmodrm.reg;
 	const struct x86_reg *reg;
@@ -2172,7 +2167,7 @@ get_register_reg(struct x86_instr *instr, const struct x86_opcode *opcode)
 }
 
 static const struct x86_reg *
-get_register_rm(struct x86_instr *instr, const struct x86_opcode *opcode)
+get_register_rm(struct x86_instr *instr, const struct x86_opcode *opcode __unused)
 {
 	uint8_t enc = instr->regmodrm.rm;
 	const struct x86_reg *reg;
@@ -2219,7 +2214,7 @@ is_disp32_only(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 }
 
 static inline bool
-is_disp16_only(struct x86_decode_fsm *fsm, struct x86_instr *instr)
+is_disp16_only(struct x86_decode_fsm *fsm __unused, struct x86_instr *instr)
 {
 	return (instr->address_size == 2 && /* disp16-only only in 16bit addr */
 	    instr->regmodrm.mod == 0b00 &&
@@ -2227,7 +2222,7 @@ is_disp16_only(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 }
 
 static inline bool
-is_dual(struct x86_decode_fsm *fsm, struct x86_instr *instr)
+is_dual(struct x86_decode_fsm *fsm __unused, struct x86_instr *instr)
 {
 	return (instr->address_size == 2 &&
 	    instr->regmodrm.mod != 0b11 &&
@@ -2794,7 +2789,7 @@ x86_func_and(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 }
 
 static void
-x86_func_xchg(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
+x86_func_xchg(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs __unused)
 {
 	uint64_t *op1, op2;
 
@@ -2929,7 +2924,7 @@ x86_func_test(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 }
 
 static void
-x86_func_mov(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
+x86_func_mov(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs __unused)
 {
 	/*
 	 * Nothing special, just move without emulation.
@@ -2968,7 +2963,7 @@ x86_func_lods(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 }
 
 static void
-x86_func_movs(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
+x86_func_movs(struct nvmm_vcpu *vcpu __unused, struct nvmm_mem *mem, uint64_t *gprs)
 {
 	/*
 	 * Special instruction: double memory operand. Don't call the cb,

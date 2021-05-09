@@ -35,8 +35,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <dev/nvmm/nvmm.h>
-#include <dev/nvmm/nvmm_ioctl.h>
+#include <dev/virtual/nvmm/nvmm.h>
+#include <dev/virtual/nvmm/nvmm_ioctl.h>
 
 #define NVMM_USER_VERSION	1
 

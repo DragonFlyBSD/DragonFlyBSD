@@ -30,19 +30,20 @@
  */
 
 #include <sys/cdefs.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/queue.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <sys/queue.h>
-#include <machine/vmparam.h>
 
 #include "nvmm.h"
+#include "nvmm_compat.h"
 
 static struct nvmm_capability __capability;
 
@@ -65,7 +66,7 @@ static int nvmm_fd = -1;
 /* -------------------------------------------------------------------------- */
 
 static bool
-__area_isvalid(struct nvmm_machine *mach, uintptr_t hva, gpaddr_t gpa,
+__area_isvalid(struct nvmm_machine *mach, uintptr_t hva __unused, gpaddr_t gpa,
     size_t size)
 {
 	area_list_t *areas = mach->areas;

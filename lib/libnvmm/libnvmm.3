@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd February 9, 2020
+.Dd May 25, 2021
 .Dt LIBNVMM 3
 .Os
 .Sh NAME
@@ -416,7 +416,7 @@ struct nvmm_x64_state {
 	uint64_t drs[NVMM_X64_NDR];
 	uint64_t msrs[NVMM_X64_NMSR];
 	struct nvmm_x64_state_intr intr;
-	struct fxsave fpu;
+	union savefpu fpu;
 };
 #define nvmm_vcpu_state nvmm_x64_state
 .Ed
@@ -707,8 +707,10 @@ Functional example (demonstrator).
 Contains an emulator that uses the
 .Nm
 API, and a small kernel that exercises this emulator.
-.It Pa src/sys/dev/nvmm/
-Source code of the kernel NVMM driver.
+.It Pa src/sys/dev/virtual/nvmm/
+Source code of the kernel
+.Xr nvmm 4
+driver.
 .It Pa src/lib/libnvmm/
 Source code of the
 .Nm
