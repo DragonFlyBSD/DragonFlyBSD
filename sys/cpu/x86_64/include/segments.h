@@ -119,14 +119,23 @@ struct	gate_descriptor {
 
 /* system segments and gate types */
 #define	SDT_SYSNULL	 0	/* system null */
+#define	SDT_SYS286TSS	 1	/* system 286 TSS available */
 #define	SDT_SYSLDT	 2	/* system 64-bit local descriptor table */
-#define	SDT_SYSTSS	 9	/* system available 64-bit TSS */
-#define	SDT_SYSBSY	11	/* system busy 64-bit TSS */
+#define	SDT_SYS286BSY	 3	/* system 286 TSS busy */
+#define	SDT_SYS286CGT	 4	/* system 286 call gate */
+#define	SDT_SYSTASKGT	 5	/* system task gate */
+#define	SDT_SYS286IGT	 6	/* system 286 interrupt gate */
+#define	SDT_SYS286TGT	 7	/* system 286 trap gate */
+#define	SDT_SYSNULL2	 8	/* system null again */
+#define	SDT_SYSTSS	 9	/* system 64-bit TSS available */
+#define	SDT_SYSNULL3	10	/* system null again */
+#define	SDT_SYSBSY	11	/* system 64-bit TSS busy */
 #define	SDT_SYSCGT	12	/* system 64-bit call gate */
+#define	SDT_SYSNULL4	13	/* system null again */
 #define	SDT_SYSIGT	14	/* system 64-bit interrupt gate */
 #define	SDT_SYSTGT	15	/* system 64-bit trap gate */
 
-	/* memory segment types */
+/* memory segment types */
 #define	SDT_MEMRO	16	/* memory read only */
 #define	SDT_MEMROA	17	/* memory read only accessed */
 #define	SDT_MEMRW	18	/* memory read write */
