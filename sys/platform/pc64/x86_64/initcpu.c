@@ -231,7 +231,7 @@ initializecpu(int cpu)
 		if (cpu_feature2 & CPUID2_AVX)
 			npx_xcr0_mask |= CPU_XFEATURE_YMM;
 
-		xsetbv(0, npx_xcr0_mask);
+		load_xcr(0, npx_xcr0_mask);
 		cpu_xsave = 1;
 	}
 #endif

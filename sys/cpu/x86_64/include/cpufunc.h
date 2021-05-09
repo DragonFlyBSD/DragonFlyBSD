@@ -601,17 +601,26 @@ wrmsr(u_int msr, u_int64_t newval)
 }
 
 static __inline void
-xsetbv(u_int xcr, u_int64_t newval)
+load_xcr(u_int xcr, uint64_t newval)
 {
 	uint32_t low, high;
 
 	low = newval;
 	high = newval >> 32;
 
-	__asm __volatile(".byte 0x0f,0x01,0xd1"
+	__asm __volatile("xsetbv"
 	    :
 	    : "a" (low), "d" (high), "c" (xcr)
 	    : "memory");
+}
+
+static __inline uint64_t
+rxcr(u_int xcr)
+{
+	uint32_t low, high;
+
+	__asm __volatile("xgetbv" : "=a" (low), "=d" (high) : "c" (xcr));
+	return (low | ((uint64_t)high << 32));
 }
 
 static __inline void
