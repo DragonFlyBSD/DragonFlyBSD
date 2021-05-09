@@ -226,6 +226,7 @@ MAN=	aac.4 \
 	nsclpcsio.4 \
 	null.4 \
 	nvme.4 \
+	nvmm.4 \
 	oce.4 \
 	ohci.4 \
 	orm.4 \
