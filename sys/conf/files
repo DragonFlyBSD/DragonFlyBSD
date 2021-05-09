@@ -3024,6 +3024,16 @@ dev/virtual/amazon/ena/ena-com/ena_eth_com.c optional ena
 dev/virtual/hyperv/vmbus/vmbus.c	optional vmbus
 
 #
+# NVMM support
+#
+dev/virtual/nvmm/nvmm.c			optional nvmm
+dev/virtual/nvmm/x86/nvmm_x86.c		optional nvmm
+dev/virtual/nvmm/x86/nvmm_x86_svm.c	optional nvmm
+dev/virtual/nvmm/x86/nvmm_x86_svmfunc.S	optional nvmm
+dev/virtual/nvmm/x86/nvmm_x86_vmx.c	optional nvmm
+dev/virtual/nvmm/x86/nvmm_x86_vmxfunc.S	optional nvmm
+
+#
 # virtio support
 #
 dev/virtual/virtio/balloon/virtio_balloon.c optional virtio_balloon virtio
