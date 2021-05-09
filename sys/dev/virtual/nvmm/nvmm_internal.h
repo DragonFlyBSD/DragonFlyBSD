@@ -127,13 +127,7 @@ extern const struct nvmm_impl nvmm_x86_vmx;
 static inline bool
 nvmm_return_needed(void)
 {
-	lwp_t *l = curlwp;
-	int needed;
-
-	KPREEMPT_DISABLE(l);
-	needed = l->l_cpu->ci_want_resched;
-	KPREEMPT_ENABLE(l);
-	if (needed) {
+	if (preempt_needed()) {
 		return true;
 	}
 	if (curlwp->l_flag & LW_USERRET) {

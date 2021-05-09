@@ -1281,7 +1281,7 @@ svm_exit_npf(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->reason = NVMM_VCPU_EXIT_MEMORY;
 	if (cpudata->vmcb->ctrl.exitinfo1 & PGEX_W)
 		exit->u.mem.prot = PROT_WRITE;
-	else if (cpudata->vmcb->ctrl.exitinfo1 & PGEX_X)
+	else if (cpudata->vmcb->ctrl.exitinfo1 & PGEX_I)
 		exit->u.mem.prot = PROT_EXEC;
 	else
 		exit->u.mem.prot = PROT_READ;
