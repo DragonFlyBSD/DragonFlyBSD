@@ -626,7 +626,6 @@ rxcr(u_int xcr)
 static __inline void
 load_cr0(u_long data)
 {
-
 	__asm __volatile("movq %0,%%cr0" : : "r" (data) : "memory");
 }
 
@@ -637,6 +636,12 @@ rcr0(void)
 
 	__asm __volatile("movq %%cr0,%0" : "=r" (data));
 	return (data);
+}
+
+static __inline void
+load_cr2(u_long data)
+{
+	__asm __volatile("movq %0,%%cr2" : : "r" (data) : "memory");
 }
 
 static __inline u_long
@@ -651,7 +656,6 @@ rcr2(void)
 static __inline void
 load_cr3(u_long data)
 {
-
 	__asm __volatile("movq %0,%%cr3" : : "r" (data) : "memory");
 }
 
@@ -941,6 +945,7 @@ void	invlpg_range(u_int start, u_int end);
 void	cpu_invltlb(void);
 u_short	inw(u_int port);
 void	load_cr0(u_int cr0);
+void	load_cr2(u_int cr2);
 void	load_cr3(u_int cr3);
 void	load_cr4(u_int cr4);
 void	load_fs(u_int sel);
