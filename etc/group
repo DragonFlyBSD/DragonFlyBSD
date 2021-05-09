@@ -28,5 +28,6 @@ _sdpd:*:70:
 _dhcp:*:77:
 www:*:80:
 vknet:*:85:
+nvmm:*:90:root
 nogroup:*:65533:
 nobody:*:65534:
