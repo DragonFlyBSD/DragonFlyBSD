@@ -77,6 +77,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libm \
 	libmagic \
 	${_libnetgraph} \
+	libnvmm \
 	libpam \
 	libposix1e \
 	librpcsvc \
@@ -99,7 +100,7 @@ SUBDIR:=	libc ${SUBDIR:Nlibc}
 
 _libdmsg=	libdmsg
 
-.if defined(WANT_NETGRAPH7) 
+.if defined(WANT_NETGRAPH7)
 _libnetgraph=	libnetgraph7
 .else
 _libnetgraph=	libnetgraph

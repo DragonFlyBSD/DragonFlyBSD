@@ -53,6 +53,7 @@ LIBMYTINFO?=	"don't use LIBMYTINFO, use LIBNCURSES"
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/priv/libprivate_ncurses.a
 LIBNCURSESW?=	${DESTDIR}${LIBDIR}/priv/libprivate_ncursesw.a
 LIBNETGRAPH?=	${DESTDIR}${LIBDIR}/libnetgraph.a
+LIBNVMM?=	${DESTDIR}${LIBDIR}/libnvmm.a
 
 # The static PAM library doesn't know its secondary dependencies,
 # so we have to specify them explictly.
