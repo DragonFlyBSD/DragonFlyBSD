@@ -59,8 +59,8 @@
 
 #include <bus/smbus/smbconf.h>
 
-#include "ichsmb_var.h"
-#include "ichsmb_reg.h"
+#include <bus/smbus/ichsmb/ichsmb_var.h>
+#include <bus/smbus/ichsmb/ichsmb_reg.h>
 
 /* PCI unique identifiers */
 #define PCI_VENDOR_INTEL		0x8086
@@ -69,7 +69,6 @@
 #define ID_82801BA			0x2443
 #define ID_82801CA			0x2483
 #define ID_82801DC			0x24C3
-#define ID_82801E			0x2453
 #define ID_82801EB			0x24D3
 #define ID_82801FB			0x266A
 #define ID_82801GB			0x27da
@@ -80,7 +79,7 @@
 #define ID_82801JD			0x3a60
 #define ID_PCH				0x3b30
 #define ID_6300ESB			0x25a4
-#define	ID_631xESB			0x269b
+#define ID_631xESB			0x269b
 #define ID_DH89XXCC			0x2330
 #define ID_PATSBURG			0x1d22
 #define ID_CPT				0x1c22
@@ -101,6 +100,12 @@
 #define ID_LEWISBURG			0xa1a3
 #define ID_LEWISBURG2			0xa223
 #define ID_KABYLAKE			0xa2a3
+#define ID_CANNONLAKE			0xa323
+#define ID_COMETLAKE			0x02a3
+#define ID_COMETLAKE2			0x06a3
+#define ID_TIGERLAKE			0xa0a3
+#define ID_TIGERLAKE2			0x43a3
+#define ID_GEMINILAKE			0x31d4
 
 static const struct ichsmb_device {
 	uint16_t	id;
@@ -145,10 +150,14 @@ static const struct ichsmb_device {
 	{ ID_LEWISBURG,	"Intel Lewisburg SMBus controller"		},
 	{ ID_LEWISBURG2,"Intel Lewisburg SMBus controller"		},
 	{ ID_KABYLAKE,	"Intel Kaby Lake SMBus controller"		},
+	{ ID_CANNONLAKE,"Intel Cannon Lake SMBus controller"		},
+	{ ID_COMETLAKE,	"Intel Comet Lake SMBus controller"		},
+	{ ID_COMETLAKE2,"Intel Comet Lake SMBus controller"		},
+	{ ID_TIGERLAKE,	"Intel Tiger Lake SMBus controller"		},
+	{ ID_TIGERLAKE2,"Intel Tiger Lake SMBus controller"		},
+	{ ID_GEMINILAKE,"Intel Gemini Lake SMBus controller"		},
 	{ 0, NULL },
 };
-
-#define PCIS_SERIALBUS_SMBUS_PROGIF	0x00
 
 /* Internal functions */
 static int	ichsmb_pci_probe(device_t dev);

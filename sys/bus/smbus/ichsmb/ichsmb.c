@@ -59,8 +59,8 @@
 
 #include <bus/smbus/smbconf.h>
 
-#include "ichsmb_var.h"
-#include "ichsmb_reg.h"
+#include <bus/smbus/ichsmb/ichsmb_var.h>
+#include <bus/smbus/ichsmb/ichsmb_reg.h>
 
 /*
  * Enable debugging by defining ICHSMB_DEBUG to a non-zero value.
@@ -121,7 +121,7 @@ ichsmb_attach(device_t dev)
 	bus_write_1(sc->io_res, ICH_HST_STA, 0xff);
 
 	/* Set up interrupt handler */
-	error = bus_setup_intr(dev, sc->irq_res, 0,
+	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 	    ichsmb_device_intr, sc, &sc->irq_handle, NULL);
 	if (error != 0) {
 		device_printf(dev, "can't setup irq\n");
