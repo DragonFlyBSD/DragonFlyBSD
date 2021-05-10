@@ -77,6 +77,14 @@
 #define	CR4_PKS		0x01000000	/* Protection Keys Enable for kern pages */
 
 /*
+ * Extended Control Register XCR0
+ */
+#define	CPU_XFEATURE_X87	0x00000001	/* x87 FPU/MMX state */
+#define	CPU_XFEATURE_SSE	0x00000002	/* SSE state */
+#define	CPU_XFEATURE_YMM	0x00000004	/* AVX-256 (YMMn registers) */
+#define	CPU_XFEATURE_AVX	CPU_XFEATURE_YMM
+
+/*
  * CPUID "features" bits
  */
 
@@ -147,11 +155,6 @@
 #define	CPUID2_F16C	0x20000000	/* F16C (half-precision) FP support */
 #define	CPUID2_RDRAND	0x40000000	/* RDRAND (hardware random number) */
 #define	CPUID2_VMM	0x80000000	/* Hypervisor present */
-
-/*Bits related to the XFEATURE_ENABLED_MASK control register*/
-#define	CPU_XFEATURE_X87	0x00000001
-#define	CPU_XFEATURE_SSE	0x00000002
-#define	CPU_XFEATURE_YMM	0x00000004
 
 /*
  * Important bits in the AMD extended cpuid flags
