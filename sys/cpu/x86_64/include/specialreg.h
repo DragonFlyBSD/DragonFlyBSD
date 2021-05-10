@@ -63,12 +63,18 @@
 #define	CR4_PCE		0x00000100	/* Performance monitoring counter enable */
 #define	CR4_FXSR	0x00000200	/* Fast FPU save/restore used by OS */
 #define	CR4_XMM		0x00000400	/* Enable SIMD/MMX2 to use except 16 */
-#define	CR4_VMXE	0x00002000	/* Enables VMX - Intel specific */
+#define	CR4_UMIP	0x00000800	/* User Mode Instruction Prevention */
+#define	CR4_LA57	0x00001000	/* Enable 57-bit linear address */
+#define	CR4_VMXE	0x00002000	/* Enable VMX - Intel specific */
+#define	CR4_SMXE	0x00004000	/* Enable SMX - Intel specific */
+#define	CR4_FSGSBASE	0x00010000	/* Enable *FSBASE and *GSBASE instructions */
+#define	CR4_PCIDE	0x00020000	/* Enable Process Context IDentifiers */
 #define	CR4_XSAVE	0x00040000	/* Enable XSave (for AVX Instructions)*/
 #define	CR4_SMEP	0x00100000	/* Supervisor-Mode Execution Prevent */
 #define	CR4_SMAP	0x00200000	/* Supervisor-Mode Access Prevent */
-#define	CR4_PKE		0x00400000	/* Protection Keys Enable */
-
+#define	CR4_PKE		0x00400000	/* Protection Keys Enable for user pages */
+#define	CR4_CET		0x00800000	/* Enable CET */
+#define	CR4_PKS		0x01000000	/* Protection Keys Enable for kern pages */
 
 /*
  * Bits in x86_64 special registers.  EFER is 64 bits wide.
