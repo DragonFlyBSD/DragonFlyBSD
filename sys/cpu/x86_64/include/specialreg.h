@@ -312,6 +312,20 @@
 #define	CPUID_STDEXT3_SSBD		0x80000000 /* Speculative Store Bypass Disable */
 
 /*
+ * Intel x2APIC Features / Processor topology
+ * CPUID Fn0000_000B
+ */
+#define	FUNC_B_THREAD_LEVEL	0
+
+#define	FUNC_B_INVALID_TYPE	0
+#define	FUNC_B_THREAD_TYPE	1
+#define	FUNC_B_CORE_TYPE	2
+
+#define	FUNC_B_TYPE(ecx)			(((ecx) >> 8) & 0xff)
+#define	FUNC_B_BITS_SHIFT_NEXT_LEVEL(eax)	((eax) & 0x1f)
+#define	FUNC_B_LEVEL_MAX_SIBLINGS(ebx)		((ebx) & 0xffff)
+
+/*
  * Important bits in the AMD extended cpuid flags
  */
 #define	AMDID_SYSCALL	0x00000800
@@ -361,20 +375,6 @@
 #define	AMDID_CMP_CORES		0x000000ff
 #define	AMDID_COREID_SIZE	0x0000f000
 #define	AMDID_COREID_SIZE_SHIFT	12
-
-/*
- * INTEL x2APIC Features / Processor topology
- * (Function 0Bh) 
- */
-#define	FUNC_B_THREAD_LEVEL	0
-
-#define	FUNC_B_INVALID_TYPE	0
-#define	FUNC_B_THREAD_TYPE	1
-#define	FUNC_B_CORE_TYPE	2
-
-#define	FUNC_B_TYPE(ecx)	(((ecx) >> 8) & 0xff)
-#define	FUNC_B_BITS_SHIFT_NEXT_LEVEL(eax)	((eax) & 0x1f)
-#define	FUNC_B_LEVEL_MAX_SIBLINGS(ebx)	((ebx) & 0xffff)
 
 /*
  * CPUID manufacturers identifiers
