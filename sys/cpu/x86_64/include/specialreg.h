@@ -351,34 +351,77 @@
 #define	CPUID_PES1_XSAVES	0x00000008	/* xsaves/xrstors, IA32_XSS */
 
 /*
- * Important bits in the AMD extended cpuid flags
+ * Extended Features
+ * CPUID Fn8000_0001
  */
-#define	AMDID_SYSCALL	0x00000800
-#define	AMDID_MP	0x00080000
-#define	AMDID_NX	0x00100000
-#define	AMDID_EXT_MMX	0x00400000
-#define	AMDID_FFXSR	0x01000000
-#define	AMDID_PAGE1GB	0x04000000
-#define	AMDID_RDTSCP	0x08000000
-#define	AMDID_LM	0x20000000
-#define	AMDID_EXT_3DNOW	0x40000000
-#define	AMDID_3DNOW	0x80000000
-
-#define	AMDID2_LAHF	0x00000001
-#define	AMDID2_CMP	0x00000002
-#define	AMDID2_SVM	0x00000004
-#define	AMDID2_EXT_APIC	0x00000008
-#define	AMDID2_CR8	0x00000010
-#define	AMDID2_ABM	0x00000020
-#define	AMDID2_SSE4A	0x00000040
-#define	AMDID2_MAS	0x00000080
-#define	AMDID2_PREFETCH	0x00000100
-#define	AMDID2_OSVW	0x00000200
-#define	AMDID2_IBS	0x00000400
-#define	AMDID2_SSE5	0x00000800
-#define	AMDID2_SKINIT	0x00001000
-#define	AMDID2_WDT	0x00002000
-#define	AMDID2_TOPOEXT	0x00400000
+/* %edx */
+#define	CPUID_SYSCALL	0x00000800	/* (Intel/AMD) SYSCALL/SYSRET */
+#define	CPUID_MPC	0x00080000	/* (AMD) Multiprocessing Capable */
+#define	CPUID_XD	0x00100000	/* (Intel) Execute Disable */
+#define	CPUID_NOX	CPUID_XD	/* (AMD) No Execute Page Protection */
+#define	CPUID_MMXX	0x00400000	/* (AMD) MMX Extensions */
+#define	CPUID_FFXSR	0x02000000	/* (AMD) FXSAVE/FXSTOR Extensions */
+#define	CPUID_PAGE1GB	0x04000000	/* (Intel) 1GB Large Page Support */
+#define	CPUID_RDTSCP	0x08000000	/* (Intel) Read TSC Pair Instruction */
+#define	CPUID_EM64T	0x20000000	/* (Intel) EM64T long mode */
+#define	CPUID_3DNOW2	0x40000000	/* (AMD) 3DNow! Instruction Extension */
+#define	CPUID_3DNOW	0x80000000	/* (AMD) 3DNow! Instructions */
+	/* compatibility defines */
+#define	AMDID_SYSCALL	CPUID_SYSCALL
+#define	AMDID_MP	CPUID_MPC
+#define	AMDID_NX	CPUID_NOX
+#define	AMDID_EXT_MMX	CPUID_MMXX
+#define	AMDID_FFXSR	CPUID_FFXSR
+#define	AMDID_PAGE1GB	CPUID_PAGE1GB
+#define	AMDID_RDTSCP	CPUID_RDTSCP
+#define	AMDID_LM	CPUID_EM64T
+#define	AMDID_EXT_3DNOW	CPUID_3DNOW2
+#define	AMDID_3DNOW	CPUID_3DNOW
+/* %ecx */
+#define	CPUID_LAHF	0x00000001	/* (Intel/AMD) LAHF/SAHF in 64-bit mode */
+#define	CPUID_CMPLEGACY	0x00000002	/* (AMD) Core multi-processing legacy mode */
+#define	CPUID_SVM	0x00000004	/* (AMD) Secure Virtual Machine */
+#define	CPUID_EAPIC	0x00000008	/* (AMD) Extended APIC space */
+#define	CPUID_ALTMOVCR0	0x00000010	/* (AMD) LOCK MOV CR0 means MOV CR8 */
+#define	CPUID_ABM	0x00000020	/* (AMD) LZCNT instruction */
+#define	CPUID_SSE4A	0x00000040	/* (AMD) SSE4A instruction set */
+#define	CPUID_MISALIGNSSE 0x00000080	/* (AMD) Misaligned SSE mode */
+#define	CPUID_PREFETCHW	0x00000100	/* (Intel/AMD) PREFETCHW */
+#define	CPUID_3DNOWPF	CPUID_PREFETCHW	/* 3DNow Prefetch */
+#define	CPUID_OSVW	0x00000200	/* (AMD) OS visible workaround */
+#define	CPUID_IBS	0x00000400	/* (AMD) Instruction Based Sampling */
+#define	CPUID_XOP	0x00000800	/* (AMD) XOP instruction set */
+#define	CPUID_SKINIT	0x00001000	/* (AMD) SKINIT and STGI */
+#define	CPUID_WDT	0x00002000	/* (AMD) Watchdog timer support */
+#define	CPUID_LWP	0x00008000	/* (AMD) Light Weight Profiling */
+#define	CPUID_FMA4	0x00010000	/* (AMD) FMA4 instructions */
+#define	CPUID_TCE	0x00020000	/* (AMD) Translation cache Extension */
+#define	CPUID_NODEID	0x00080000	/* (AMD) NodeID MSR available*/
+#define	CPUID_TBM	0x00200000	/* (AMD) TBM instructions */
+#define	CPUID_TOPOEXT	0x00400000	/* (AMD) CPUID Topology Extension */
+#define	CPUID_PCEC	0x00800000	/* (AMD) Processor Perf Counter Extension */
+#define	CPUID_PCENB	0x01000000	/* (AMD) NB Perf Counter Extension */
+#define	CPUID_SPM	0x02000000	/* (AMD) Stream Perf Mon */
+#define	CPUID_DBE	0x04000000	/* (AMD) Data access breakpoint extension */
+#define	CPUID_PTSC	0x08000000	/* (AMD) Performance time-stamp counter */
+#define	CPUID_L2IPERFC	0x10000000	/* (AMD) L2I performance counter extension */
+#define	CPUID_MWAITX	0x20000000	/* (AMD) MWAITX/MONITORX support */
+	/* compatibility defines */
+#define	AMDID2_LAHF	CPUID_LAHF
+#define	AMDID2_CMP	CPUID_CMPLEGACY
+#define	AMDID2_SVM	CPUID_SVM
+#define	AMDID2_EXT_APIC	CPUID_EAPIC
+#define	AMDID2_CR8	CPUID_ALTMOVCR0
+#define	AMDID2_ABM	CPUID_ABM
+#define	AMDID2_SSE4A	CPUID_SSE4A
+#define	AMDID2_MAS	CPUID_MISALIGNSSE
+#define	AMDID2_PREFETCH	CPUID_PREFETCHW
+#define	AMDID2_OSVW	CPUID_OSVW
+#define	AMDID2_IBS	CPUID_IBS
+#define	AMDID2_SSE5	CPUID_XOP
+#define	AMDID2_SKINIT	CPUID_SKINIT
+#define	AMDID2_WDT	CPUID_WDT
+#define	AMDID2_TOPOEXT	CPUID_TOPOEXT
 
 /*
  * AMD extended function 8000_0007h edx info
