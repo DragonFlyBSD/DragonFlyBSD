@@ -335,7 +335,7 @@ initializecpu(int cpu)
 
 	/* Set TSC_AUX register to the cpuid, for using rdtscp in userland. */
 	if ((amd_feature & AMDID_RDTSCP) != 0)
-		wrmsr(MSR_TSCAUX, cpu);
+		wrmsr(MSR_TSC_AUX, cpu);
 }
 
 /*
