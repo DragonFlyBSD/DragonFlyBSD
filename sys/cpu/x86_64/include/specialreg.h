@@ -424,18 +424,36 @@
 #define	AMDID2_TOPOEXT	CPUID_TOPOEXT
 
 /*
- * AMD extended function 8000_0007h edx info
+ * Advanced Power Management
+ * CPUID Fn8000_0007 %edx
+ * Only ITSC is for both Intel and AMD; others are for AMD only.
  */
-#define	AMDPM_TS		0x00000001
-#define	AMDPM_FID		0x00000002
-#define	AMDPM_VID		0x00000004
-#define	AMDPM_TTP		0x00000008
-#define	AMDPM_TM		0x00000010
-#define	AMDPM_STC		0x00000020
-#define	AMDPM_100MHZ_STEPS	0x00000040
-#define	AMDPM_HW_PSTATE		0x00000080
-#define	AMDPM_TSC_INVARIANT	0x00000100
-#define	AMDPM_CPB		0x00000200
+#define	CPUID_APM_TS		0x00000001	/* Temperature Sensor */
+#define	CPUID_APM_FID		0x00000002	/* Frequency ID control */
+#define	CPUID_APM_VID		0x00000004	/* Voltage ID control */
+#define	CPUID_APM_TTP		0x00000008	/* THERMTRIP (PCI F3xE4 register) */
+#define	CPUID_APM_HTC		0x00000010	/* Hardware Thermal Control (TM) */
+#define	CPUID_APM_STC		0x00000020	/* Software Thermal Control */
+#define	CPUID_APM_100		0x00000040	/* 100MHz multiplier control */
+#define	CPUID_APM_HWP		0x00000080	/* Hardware P-State control */
+#define	CPUID_APM_ITSC		0x00000100	/* (Intel/AMD) Invariant TSC */
+#define	CPUID_APM_CPB		0x00000200	/* Core Performance Boost */
+#define	CPUID_APM_EFF		0x00000400	/* Effective Frequency (read-only) */
+#define	CPUID_APM_PROCFI	0x00000800	/* Processor Feedback */
+#define	CPUID_APM_PROCPR	0x00001000	/* Processor Power Reporting */
+#define	CPUID_APM_CONNSTBY	0x00002000	/* Connected Standby */
+#define	CPUID_APM_RAPL		0x00004000	/* Running Average Power Limit */
+	/* compatibility defines */
+#define	AMDPM_TS		CPUID_APM_TS
+#define	AMDPM_FID		CPUID_APM_FID
+#define	AMDPM_VID		CPUID_APM_VID
+#define	AMDPM_TTP		CPUID_APM_TTP
+#define	AMDPM_TM		CPUID_APM_HTC
+#define	AMDPM_STC		CPUID_APM_STC
+#define	AMDPM_100MHZ_STEPS	CPUID_APM_100
+#define	AMDPM_HW_PSTATE		CPUID_APM_HWP
+#define	AMDPM_TSC_INVARIANT	CPUID_APM_ITSC
+#define	AMDPM_CPB		CPUID_APM_CPB
 
 /*
  * AMD extended function 8000_0008h ecx info
