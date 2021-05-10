@@ -77,15 +77,6 @@
 #define	CR4_PKS		0x01000000	/* Protection Keys Enable for kern pages */
 
 /*
- * Bits in x86_64 special registers.  EFER is 64 bits wide.
- */
-#define	EFER_SCE	0x000000001	/* System Call Extensions (R/W) */
-#define	EFER_LME	0x000000100	/* Long mode enable (R/W) */
-#define	EFER_LMA	0x000000400	/* Long mode active (R) */
-#define	EFER_NXE	0x000000800	/* PTE No-Execute bit enable (R/W) */
-#define	EFER_SVME	0x000001000	/* SVM Enable (R/W) */
-
-/*
  * CPUID instruction features register
  */
 #define	CPUID_FPU	0x00000001
@@ -636,8 +627,21 @@
 #define	AMD_WT_ALLOC_PRE	0x20000	/* programmable range enable */
 #define	AMD_WT_ALLOC_FRE	0x10000	/* fixed (A0000-FFFFF) range enable */
 
-/* x86_64 MSR's */
-#define	MSR_EFER	0xc0000080	/* extended features */
+/*
+ * x86_64 MSR's
+ */
+#define	MSR_EFER	0xc0000080	/* Extended Feature Enable Register */
+#define		EFER_SCE	0x00000001	/* System Call Extensions (R/W) */
+#define		EFER_LME	0x00000100	/* Long Mode Enable (R/W) */
+#define		EFER_LMA	0x00000400	/* Long Mode Active (R) */
+#define		EFER_NXE	0x00000800	/* PTE No-Execute Enable (R/W) */
+#define		EFER_SVME	0x00001000	/* SVM Enable (R/W) */
+#define		EFER_LMSLE	0x00002000	/* Long Mode Segment Limit Enable */
+#define		EFER_FFXSR	0x00004000	/* Fast FXSAVE/FXRSTOR Enable */
+#define		EFER_TCE	0x00008000	/* Translation Cache Extension */
+#define		EFER_MCOMMIT	0x00020000	/* MCOMMIT Enable */
+#define		EFER_INTWB	0x00040000	/* Intr WBINVD/WBNOINVD Enable */
+
 #define	MSR_STAR	0xc0000081	/* legacy mode SYSCALL target/cs/ss */
 #define	MSR_LSTAR	0xc0000082	/* long mode SYSCALL target rip */
 #define	MSR_CSTAR	0xc0000083	/* compat mode SYSCALL target rip */
