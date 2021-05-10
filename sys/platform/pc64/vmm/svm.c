@@ -39,7 +39,7 @@ svm_init(void)
 
 	/* Processor may support SVM, but it may be disabled. */
 	vm_cr = rdmsr(MSR_AMD_VM_CR);
-	if (vm_cr & MSR_AMD_VM_CR_SVMDIS)
+	if (vm_cr & VM_CR_SVMDIS)
 		return (ENODEV);
 
 	svm_available = 1;

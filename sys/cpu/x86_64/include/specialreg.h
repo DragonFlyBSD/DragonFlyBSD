@@ -886,15 +886,15 @@
 #define	MSR_TOP_MEM2	0xc001001d	/* boundary for ram above 4G */
 #define	MSR_K8_UCODE_UPDATE	0xc0010020	/* update microcode */
 
-/* AMD MSRs */
-#define MSR_AMD_DE_CFG	0xc0011029
+#define	MSR_AMD_VM_CR	0xc0010114	/* SVM: feature control */
+#define		VM_CR_DPD		0x00000001 /* Debug Port Disable */
+#define		VM_CR_R_INIT		0x00000002 /* Intercept INIT signals */
+#define		VM_CR_DIS_A20M		0x00000004 /* Disable A20 masking */
+#define		VM_CR_LOCK		0x00000008 /* SVM Lock */
+#define		VM_CR_SVMDIS		0x00000010 /* SVM Disable */
 
-/* AMD SVM MSRs */
-#define MSR_AMD_VM_CR		0xc0010114
-#define MSR_AMD_VM_HSAVE_PA	0xc0010117
-
-/* AMD MSR_AMD_VM_CR fields */
-#define MSR_AMD_VM_CR_SVMDIS	0x00000010	/* SVM Disabled */
+#define	MSR_AMD_VM_HSAVE_PA	0xc0010117	/* SVM: host save area address */
+#define	MSR_AMD_DE_CFG	0xc0011029	/* Decode Configuration */
 
 /* VIA ACE crypto featureset: for via_feature_rng */
 #define	VIA_HAS_RNG		1	/* cpu has RNG */
