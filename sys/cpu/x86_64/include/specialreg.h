@@ -77,69 +77,77 @@
 #define	CR4_PKS		0x01000000	/* Protection Keys Enable for kern pages */
 
 /*
- * CPUID instruction features register
+ * CPUID "features" bits
  */
-#define	CPUID_FPU	0x00000001
-#define	CPUID_VME	0x00000002
-#define	CPUID_DE	0x00000004
-#define	CPUID_PSE	0x00000008
-#define	CPUID_TSC	0x00000010
-#define	CPUID_MSR	0x00000020
-#define	CPUID_PAE	0x00000040
-#define	CPUID_MCE	0x00000080
-#define	CPUID_CX8	0x00000100
-#define	CPUID_APIC	0x00000200
-#define	CPUID_B10	0x00000400
-#define	CPUID_SEP	0x00000800
-#define	CPUID_MTRR	0x00001000
-#define	CPUID_PGE	0x00002000
-#define	CPUID_MCA	0x00004000
-#define	CPUID_CMOV	0x00008000
-#define	CPUID_PAT	0x00010000
-#define	CPUID_PSE36	0x00020000
-#define	CPUID_PSN	0x00040000
-#define	CPUID_CLFSH	0x00080000
-#define	CPUID_B20	0x00100000
-#define	CPUID_DS	0x00200000
-#define	CPUID_ACPI	0x00400000
-#define	CPUID_MMX	0x00800000
-#define	CPUID_FXSR	0x01000000
-#define	CPUID_SSE	0x02000000
-#define	CPUID_XMM	0x02000000
-#define	CPUID_SSE2	0x04000000
-#define	CPUID_SS	0x08000000
-#define	CPUID_HTT	0x10000000
-#define	CPUID_TM	0x20000000
-#define	CPUID_IA64	0x40000000
-#define	CPUID_PBE	0x80000000
 
-#define	CPUID2_SSE3	0x00000001
-#define	CPUID2_PCLMULQDQ 0x00000002
-#define	CPUID2_DTES64	0x00000004
-#define	CPUID2_MON	0x00000008
-#define	CPUID2_DS_CPL	0x00000010
-#define	CPUID2_VMX	0x00000020
-#define	CPUID2_SMX	0x00000040
-#define	CPUID2_EST	0x00000080
-#define	CPUID2_TM2	0x00000100
-#define	CPUID2_SSSE3	0x00000200
-#define	CPUID2_CNXTID	0x00000400
-#define	CPUID2_CX16	0x00002000
-#define	CPUID2_XTPR	0x00004000
-#define	CPUID2_PDCM	0x00008000
-#define	CPUID2_DCA	0x00040000
-#define	CPUID2_SSE41	0x00080000
-#define	CPUID2_SSE42	0x00100000
-#define	CPUID2_X2APIC	0x00200000
-#define	CPUID2_POPCNT	0x00800000
+/* CPUID Fn0000_0001 %edx features */
+#define	CPUID_FPU	0x00000001	/* processor has an FPU? */
+#define	CPUID_VME	0x00000002	/* has virtual mode (%cr4's VME/PVI) */
+#define	CPUID_DE	0x00000004	/* has debugging extension */
+#define	CPUID_PSE	0x00000008	/* has 4MB page size extension */
+#define	CPUID_TSC	0x00000010	/* has time stamp counter */
+#define	CPUID_MSR	0x00000020	/* has model specific registers */
+#define	CPUID_PAE	0x00000040	/* has physical address extension */
+#define	CPUID_MCE	0x00000080	/* has machine check exception */
+#define	CPUID_CX8	0x00000100	/* has CMPXCHG8B instruction */
+#define	CPUID_APIC	0x00000200	/* has enabled APIC */
+/* Bit 10 reserved	0x00000400 */
+#define	CPUID_SEP	0x00000800	/* has SYSENTER/SYSEXIT extension */
+#define	CPUID_MTRR	0x00001000	/* has memory type range register */
+#define	CPUID_PGE	0x00002000	/* has page global extension */
+#define	CPUID_MCA	0x00004000	/* has machine check architecture */
+#define	CPUID_CMOV	0x00008000	/* has CMOVcc instruction */
+#define	CPUID_PAT	0x00010000	/* Page Attribute Table */
+#define	CPUID_PSE36	0x00020000	/* 36-bit PSE */
+#define	CPUID_PSN	0x00040000	/* Processor Serial Number */
+#define	CPUID_CLFSH	0x00080000	/* CLFLUSH instruction supported */
+/* Bit 20 reserved	0x00100000 */
+#define	CPUID_DS	0x00200000	/* Debug Store */
+#define	CPUID_ACPI	0x00400000	/* ACPI performance modulation regs */
+#define	CPUID_MMX	0x00800000	/* MMX supported */
+#define	CPUID_FXSR	0x01000000	/* Fast FP/MMX Save/Restore */
+#define	CPUID_SSE	0x02000000	/* Streaming SIMD Extensions */
+#define	CPUID_XMM	CPUID_SSE
+#define	CPUID_SSE2	0x04000000	/* Streaming SIMD Extensions 2 */
+#define	CPUID_SS	0x08000000	/* Self-Snoop */
+#define	CPUID_HTT	0x10000000	/* Hyper-Threading Technology */
+#define	CPUID_TM	0x20000000	/* Thermal Monitor (TCC) */
+#define	CPUID_IA64	0x40000000	/* IA64 processor emulating x86 */
+#define	CPUID_PBE	0x80000000	/* Pending Break Enable */
+
+/* CPUID Fn0000_0001 %ecx features */
+#define	CPUID2_SSE3	0x00000001	/* Streaming SIMD Extensions 3 */
+#define	CPUID2_PCLMULQDQ 0x00000002	/* PCLMULQDQ instructions */
+#define	CPUID2_DTES64	0x00000004	/* 64-bit Debug Trace */
+#define	CPUID2_MON	0x00000008	/* MONITOR/MWAIT instructions */
+#define	CPUID2_DS_CPL	0x00000010	/* CPL Qualified Debug Store */
+#define	CPUID2_VMX	0x00000020	/* Virtual Machine eXtensions */
+#define	CPUID2_SMX	0x00000040	/* Safer Mode eXtensions */
+#define	CPUID2_EST	0x00000080	/* Enhanced SpeedStep Technology */
+#define	CPUID2_TM2	0x00000100	/* Thermal Monitor 2 */
+#define	CPUID2_SSSE3	0x00000200	/* Supplemental SSE3 */
+#define	CPUID2_CNXTID	0x00000400	/* Context ID */
+#define	CPUID2_SDBG	0x00000800	/* Silicon Debug */
+#define	CPUID2_FMA	0x00001000	/* Fused Multiply Add */
+#define	CPUID2_CX16	0x00002000	/* CMPXCHG16B instruction */
+#define	CPUID2_XTPR	0x00004000	/* Task Priority Messages disabled? */
+#define	CPUID2_PDCM	0x00008000	/* Perf/Debug Capability MSR */
+/* Bit 16 reserved	0x00010000 */
+#define	CPUID2_PCID	0x00020000	/* Process Context ID */
+#define	CPUID2_DCA	0x00040000	/* Direct Cache Access */
+#define	CPUID2_SSE41	0x00080000	/* Streaming SIMD Extensions 4.1 */
+#define	CPUID2_SSE42	0x00100000	/* Streaming SIMD Extensions 4.2 */
+#define	CPUID2_X2APIC	0x00200000	/* xAPIC Extensions */
+#define	CPUID2_MOVBE	0x00400000	/* MOVBE (move after byteswap) */
+#define	CPUID2_POPCNT	0x00800000	/* POPCOUNT instruction available */
 #define	CPUID2_TSCDLT	0x01000000	/* LAPIC TSC-Deadline Mode support */
 #define	CPUID2_AESNI	0x02000000	/* AES Instruction Set */
-#define	CPUID2_XSAVE    0x04000000	/* XSave supported by CPU */
-#define	CPUID2_OSXSAVE  0x08000000      /* XSave and AVX supported by OS */
-#define	CPUID2_AVX	0x10000000      /* AVX instruction set support */
-#define	CPUID2_F16C	0x20000000	/* CVT16 instruction set support */
-#define	CPUID2_RDRAND	0x40000000	/* RdRand. On chip random numbers */
-#define	CPUID2_VMM	0x80000000	/* AMD 25481 2.34 page 11 */
+#define	CPUID2_XSAVE	0x04000000	/* XSave supported by CPU */
+#define	CPUID2_OSXSAVE	0x08000000	/* XSave and AVX supported by OS */
+#define	CPUID2_AVX	0x10000000	/* AVX instruction set support */
+#define	CPUID2_F16C	0x20000000	/* F16C (half-precision) FP support */
+#define	CPUID2_RDRAND	0x40000000	/* RDRAND (hardware random number) */
+#define	CPUID2_VMM	0x80000000	/* Hypervisor present */
 
 /*Bits related to the XFEATURE_ENABLED_MASK control register*/
 #define	CPU_XFEATURE_X87	0x00000001
