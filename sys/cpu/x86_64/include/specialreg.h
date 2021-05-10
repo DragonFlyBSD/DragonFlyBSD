@@ -32,25 +32,22 @@
  */
 
 #ifndef _CPU_SPECIALREG_H_
-#define	_CPU_SPECIALREG_H_
+#define _CPU_SPECIALREG_H_
 
 /*
- * Bits in 386 special registers:
+ * Bits in CR0 special register
  */
 #define	CR0_PE	0x00000001	/* Protected mode Enable */
-#define	CR0_MP	0x00000002	/* "Math" (fpu) Present */
-#define	CR0_EM	0x00000004	/* EMulate FPU instructions. (trap ESC only) */
+#define	CR0_MP	0x00000002	/* "Math" Present (NPX or NPX emulator) */
+#define	CR0_EM	0x00000004	/* EMulate non-NPX coproc. (trap ESC only) */
 #define	CR0_TS	0x00000008	/* Task Switched (if MP, trap ESC and WAIT) */
-#define	CR0_PG	0x80000000	/* Paging enable */
-
-/*
- * Bits in 486 special registers:
- */
+#define	CR0_ET	0x00000010	/* Extension Type (387 (if set) vs 287) */
 #define	CR0_NE	0x00000020	/* Numeric Error enable (EX16 vs IRQ13) */
-#define	CR0_WP	0x00010000	/* Write Protect (honor page protect in	all modes) */
+#define	CR0_WP	0x00010000	/* Write Protect (honor page protect in all modes) */
 #define	CR0_AM	0x00040000	/* Alignment Mask (set to enable AC flag) */
-#define	CR0_NW  0x20000000	/* Not Write-through */
-#define	CR0_CD  0x40000000	/* Cache Disable */
+#define	CR0_NW	0x20000000	/* Not Write-through */
+#define	CR0_CD	0x40000000	/* Cache Disable */
+#define	CR0_PG	0x80000000	/* PaGing enable */
 
 /*
  * Bits in CR4 special register
