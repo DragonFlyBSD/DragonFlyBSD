@@ -156,6 +156,66 @@
 #define	CPUID2_RDRAND	0x40000000	/* RDRAND (hardware random number) */
 #define	CPUID2_VMM	0x80000000	/* Hypervisor present */
 
+/* CPUID Fn0000_0001 %eax info */
+#define	CPUID_STEPPING		0x0000000f
+#define	CPUID_MODEL		0x000000f0
+#define	CPUID_FAMILY		0x00000f00
+#define	CPUID_EXT_MODEL		0x000f0000
+#define	CPUID_EXT_FAMILY	0x0ff00000
+
+#define	CPUID_TO_MODEL(id) \
+	((((id) & CPUID_MODEL) >> 4) | (((id) & CPUID_EXT_MODEL) >> 12))
+#define	CPUID_TO_FAMILY(id) \
+	((((id) & CPUID_FAMILY) >> 8) + (((id) & CPUID_EXT_FAMILY) >> 20))
+
+/* CPUID Fn0000_0001 %ebx info */
+#define	CPUID_BRAND_INDEX	0x000000ff
+#define	CPUID_CLFUSH_SIZE	0x0000ff00
+#define	CPUID_HTT_CORES		0x00ff0000
+#define	CPUID_HTT_CORE_SHIFT	16
+#define	CPUID_LOCAL_APIC_ID	0xff000000
+
+/*
+ * Intel Deterministic Cache Parameters
+ * CPUID Fn0000_0004
+ */
+#define	FUNC_4_MAX_CORE_NO(eax)	((((eax) >> 26) & 0x3f))
+
+/*
+ * Intel/AMD MONITOR/MWAIT
+ * CPUID Fn0000_0005
+ */
+/* %ecx */
+#define	CPUID_MWAIT_EXT		0x00000001	/* MONITOR/MWAIT Extensions */
+#define	CPUID_MWAIT_INTBRK	0x00000002	/* Interrupt as Break Event */
+/* %edx: number of substates for specific C-state */
+#define	CPUID_MWAIT_CX_SUBCNT(edx, cstate) \
+	(((edx) >> ((cstate) * 4)) & 0xf)
+
+/* MWAIT EAX to Cx and its substate */
+#define	MWAIT_EAX_TO_CX(x)	((((x) >> 4) + 1) & 0xf)
+#define	MWAIT_EAX_TO_CX_SUB(x)	((x) & 0xf)
+
+/* MWAIT EAX hint and ECX extension */
+#define	MWAIT_EAX_HINT(cx, sub) \
+	(((((uint32_t)(cx) - 1) & 0xf) << 4) | ((sub) & 0xf))
+#define	MWAIT_ECX_INTBRK	0x1
+
+/*
+ * Intel/AMD Digital Thermal Sensor and Power Management
+ * CPUID Fn0000_0006
+ */
+/* %eax */
+#define	CPUID_THERMAL_SENSOR	0x00000001	/* Digital thermal sensor */
+#define	CPUID_THERMAL_TURBO	0x00000002	/* Intel Turbo boost */
+#define	CPUID_THERMAL_ARAT	0x00000004	/* Always running APIC timer */
+#define	CPUID_THERMAL_PLN	0x00000010	/* Power limit notification */
+#define	CPUID_THERMAL_ECMD	0x00000020	/* Clock modulation extension */
+#define	CPUID_THERMAL_PTM	0x00000040	/* Package thermal management */
+#define	CPUID_THERMAL_HWP	0x00000080	/* Hardware P-states */
+/* %ecx */
+#define	CPUID_THERMAL2_SETBH	0x00000008	/* Energy performance bias */
+
 /*
  * Important bits in the AMD extended cpuid flags
  */
@@ -187,30 +247,6 @@
 #define	AMDID2_TOPOEXT	0x00400000
 
 /*
- * CPUID instruction 1 eax info
- */
-#define	CPUID_STEPPING		0x0000000f
-#define	CPUID_MODEL		0x000000f0
-#define	CPUID_FAMILY		0x00000f00
-#define	CPUID_EXT_MODEL		0x000f0000
-#define	CPUID_EXT_FAMILY	0x0ff00000
-#define	CPUID_TO_MODEL(id) \
-    ((((id) & CPUID_MODEL) >> 4) | \
-    (((id) & CPUID_EXT_MODEL) >> 12))
-#define	CPUID_TO_FAMILY(id) \
-    ((((id) & CPUID_FAMILY) >> 8) + \
-    (((id) & CPUID_EXT_FAMILY) >> 20))
-
-/*
- * CPUID instruction 1 ebx info
- */
-#define	CPUID_BRAND_INDEX	0x000000ff
-#define	CPUID_CLFUSH_SIZE	0x0000ff00
-#define	CPUID_HTT_CORES		0x00ff0000
-#define	CPUID_HTT_CORE_SHIFT	16
-#define	CPUID_LOCAL_APIC_ID	0xff000000
-
-/*
  * AMD extended function 8000_0007h edx info
  */
 #define	AMDPM_TS		0x00000001
@@ -230,12 +266,6 @@
 #define	AMDID_CMP_CORES		0x000000ff
 #define	AMDID_COREID_SIZE	0x0000f000
 #define	AMDID_COREID_SIZE_SHIFT	12
-
-/*
- * INTEL Deterministic Cache Parameters
- * (Function 04h)
- */
-#define	FUNC_4_MAX_CORE_NO(eax)	((((eax) >> 26) & 0x3f))
 
 /*
  * INTEL x2APIC Features / Processor topology
@@ -271,35 +301,6 @@
 
 /* ECX */
 #define	CPUID_STDEXT2_RDPID	0x00400000
-
-/*
- * Thermal and PM Features
- */
-#define CPUID_THERMAL_SENSOR	0x00000001
-#define CPUID_THERMAL_TURBO	0x00000002
-#define CPUID_THERMAL_ARAT	0x00000004
-#define CPUID_THERMAL_PLN	0x00000010
-#define CPUID_THERMAL_ECMD	0x00000020
-#define CPUID_THERMAL_PTM	0x00000040
-#define CPUID_THERMAL_HWP	0x00000080	/* Hardware P-states */
-
-#define CPUID_THERMAL2_SETBH	0x00000008
-
-/*
- * MONITOR/MWAIT
- */
-#define CPUID_MWAIT_EXT		0x00000001
-#define CPUID_MWAIT_INTBRK	0x00000002
-#define CPUID_MWAIT_CX_SUBCNT(emu, i) (((emu) >> ((i) * 4)) & 0xf)
-
-/* MWAIT EAX to Cx and its sub state */
-#define MWAIT_EAX_TO_CX(x)	((((x) >> 4) + 1) & 0xf)
-#define MWAIT_EAX_TO_CX_SUB(x)	((x) & 0xf)
-
-/* MWAIT EAX hint and ECX extension */
-#define MWAIT_EAX_HINT(cx, sub) \
-    (((((uint32_t)(cx) - 1) & 0xf) << 4) | ((sub) & 0xf))
-#define MWAIT_ECX_INTBRK	0x1
 
 /*
  * CPUID manufacturers identifiers
