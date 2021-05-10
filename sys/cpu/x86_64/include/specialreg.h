@@ -316,8 +316,30 @@
 #define	AMDPM_CPB		0x00000200
 
 /*
- * AMD extended function 8000_0008h ecx info
+ * AMD Processor Capacity Parameters and Extended Features
+ * CPUID Fn8000_0008
+ * %eax: Long Mode Size Identifiers
+ * %ebx: Extended Feature Identifiers
+ * %ecx: Size Identifiers
+ * %edx: RDPRU Register Identifier Range
  */
+/* %ebx */
+#define	CPUID_CAPEX_CLZERO	0x00000001	/* CLZERO instruction */
+#define	CPUID_CAPEX_IRPERF	0x00000002	/* InstRetCntMsr */
+#define	CPUID_CAPEX_XSAVEERPTR	0x00000004	/* RstrFpErrPtrs by XRSTOR */
+#define	CPUID_CAPEX_RDPRU	0x00000010	/* RDPRU instruction */
+#define	CPUID_CAPEX_MCOMMIT	0x00000100	/* MCOMMIT instruction */
+#define	CPUID_CAPEX_WBNOINVD	0x00000200	/* WBNOINVD instruction */
+#define	CPUID_CAPEX_IBPB	0x00001000	/* Speculation Control IBPB */
+#define	CPUID_CAPEX_IBRS	0x00004000	/* Speculation Control IBRS */
+#define	CPUID_CAPEX_STIBP	0x00008000	/* Speculation Control STIBP */
+#define	CPUID_CAPEX_IBRS_ALWAYSON  0x00010000	/* IBRS always on mode */
+#define	CPUID_CAPEX_STIBP_ALWAYSON 0x00020000	/* STIBP always on mode */
+#define	CPUID_CAPEX_PREFER_IBRS	0x00040000	/* IBRS preferred */
+#define	CPUID_CAPEX_SSBD	0x01000000	/* Speculation Control SSBD */
+#define	CPUID_CAPEX_VIRT_SSBD	0x02000000	/* Virt Spec Control SSBD */
+#define	CPUID_CAPEX_SSB_NO	0x04000000	/* SSBD not required */
+/* %ecx info */
 #define	AMDID_CMP_CORES		0x000000ff
 #define	AMDID_COREID_SIZE	0x0000f000
 #define	AMDID_COREID_SIZE_SHIFT	12
