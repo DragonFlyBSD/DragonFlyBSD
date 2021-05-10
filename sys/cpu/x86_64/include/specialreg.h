@@ -326,6 +326,31 @@
 #define	FUNC_B_LEVEL_MAX_SIBLINGS(ebx)		((ebx) & 0xffff)
 
 /*
+ * Intel/AMD CPUID Processor Extended State Enumeration
+ * CPUID Fn0000_000D
+ * %ecx == 0: supported features info:
+ *	%eax: Valid bits of lower 32bits of XCR0
+ *	%ebx: Maximum save area size for features enabled in XCR0
+ *	%ecx: Maximum save area size for all cpu features
+ *	%edx: Valid bits of upper 32bits of XCR0
+ * %ecx == 1:
+ *	%eax: Bit 0 => xsaveopt instruction available (sandy bridge onwards)
+ *	%ebx: Save area size for features enabled by XCR0 | IA32_XSS
+ *	%ecx: Valid bits of lower 32bits of IA32_XSS
+ *	%edx: Valid bits of upper 32bits of IA32_XSS
+ * %ecx >= 2: Save area details for XCR0 bit n
+ *	%eax: size of save area for this feature
+ *	%ebx: offset of save area for this feature
+ *	%ecx, %edx: reserved
+ *	All of %eax, %ebx, %ecx and %edx are zero for unsupported features.
+ */
+/* %ecx = 1, %eax */
+#define	CPUID_PES1_XSAVEOPT	0x00000001	/* xsaveopt instruction */
+#define	CPUID_PES1_XSAVEC	0x00000002	/* xsavec & compacted XRSTOR */
+#define	CPUID_PES1_XGETBV	0x00000004	/* xgetbv with ECX = 1 */
+#define	CPUID_PES1_XSAVES	0x00000008	/* xsaves/xrstors, IA32_XSS */
+
+/*
  * Important bits in the AMD extended cpuid flags
  */
 #define	AMDID_SYSCALL	0x00000800
