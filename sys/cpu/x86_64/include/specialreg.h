@@ -485,6 +485,30 @@
 #define	AMDID_COREID_SIZE_SHIFT	12
 
 /*
+ * AMD SVM Revision and Feature Identification
+ * CPUID Fn8000_000A
+ */
+/* %eax - SVM revision */
+#define	CPUID_AMD_SVM_REV		0x000000ff /* (bits 7-0) SVM revision number */
+/* %edx - SVM features */
+#define	CPUID_AMD_SVM_NP		0x00000001 /* Nested Paging */
+#define	CPUID_AMD_SVM_LbrVirt		0x00000002 /* LBR virtualization */
+#define	CPUID_AMD_SVM_SVML		0x00000004 /* SVM Lock */
+#define	CPUID_AMD_SVM_NRIPS		0x00000008 /* NRIP Save on #VMEXIT */
+#define	CPUID_AMD_SVM_TSCRateCtrl	0x00000010 /* MSR-based TSC rate control */
+#define	CPUID_AMD_SVM_VMCBCleanBits	0x00000020 /* VMCB Clean Bits support */
+#define	CPUID_AMD_SVM_FlushByASID	0x00000040 /* Flush by ASID */
+#define	CPUID_AMD_SVM_DecodeAssist	0x00000080 /* Decode Assists support */
+#define	CPUID_AMD_SVM_PauseFilter	0x00000400 /* PAUSE intercept filter */
+#define	CPUID_AMD_SVM_PFThreshold	0x00001000 /* PAUSE filter threshold */
+#define	CPUID_AMD_SVM_AVIC		0x00002000 /* Advanced Virtual Interrupt Controller */
+#define	CPUID_AMD_SVM_V_VMSAVE_VMLOAD	0x00008000 /* VMSAVE/VMLOAD virtualization */
+#define	CPUID_AMD_SVM_vGIF		0x00010000 /* Global Interrupt Flag virtualization */
+#define	CPUID_AMD_SVM_GMET		0x00020000 /* Guest Mode Execution Trap */
+#define	CPUID_AMD_SVM_SPEC_CTRL		0x00100000 /* SPEC_CTRL virtualization */
+#define	CPUID_AMD_SVM_TLBICTL		0x01000000 /* TLB Intercept Control */
+
+/*
  * CPUID manufacturers identifiers
  */
 #define	AMD_VENDOR_ID		"AuthenticAMD"
