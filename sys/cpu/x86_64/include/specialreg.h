@@ -153,6 +153,101 @@
 #define	CPU_XFEATURE_YMM	0x00000004
 
 /*
+ * Intel/AMD Structured Extended Feature
+ * CPUID Fn0000_0007
+ * %ecx == 0: Subleaf 0
+ *	%eax: The Maximum input value for supported subleaf.
+ *	%ebx: Feature bits.
+ *	%ecx: Feature bits.
+ *	%edx: Feature bits.
+ * %ecx == 1: Structure Extendede Feature Enumeration Sub-leaf
+ *	%eax: See below.
+ */
+/* %ecx = 0, %ebx */
+#define	CPUID_STDEXT_FSGSBASE	0x00000001 /* {RD,WR}{FS,GS}BASE */
+#define	CPUID_STDEXT_TSC_ADJUST	0x00000002 /* IA32_TSC_ADJUST MSR support */
+#define	CPUID_STDEXT_SGX	0x00000004 /* Software Guard Extensions */
+#define	CPUID_STDEXT_BMI1	0x00000008 /* Advanced bit manipulation ext. 1st grp */
+#define	CPUID_STDEXT_HLE	0x00000010 /* Hardware Lock Elision */
+#define	CPUID_STDEXT_AVX2	0x00000020 /* Advanced Vector Extensions 2 */
+#define	CPUID_STDEXT_FDP_EXC	0x00000040 /* x87FPU Data ptr updated only on x87exp */
+#define	CPUID_STDEXT_SMEP	0x00000080 /* Supervisor-Mode Execution Prevention */
+#define	CPUID_STDEXT_BMI2	0x00000100 /* Advanced bit manipulation ext. 2nd grp */
+#define	CPUID_STDEXT_ERMS	0x00000200 /* Enhanced REP MOVSB/STOSB */
+#define	CPUID_STDEXT_INVPCID	0x00000400 /* INVPCID instruction */
+#define	CPUID_STDEXT_RTM	0x00000800 /* Restricted Transactional Memory */
+#define	CPUID_STDEXT_PQM	0x00001000 /* Platform Quality of Service Monitoring */
+#define	CPUID_STDEXT_NFPUSG	0x00002000 /* Deprecate FPU CS and FPU DS values */
+#define	CPUID_STDEXT_MPX	0x00004000 /* Memory Protection Extensions */
+#define	CPUID_STDEXT_PQE	0x00008000 /* Platform Quality of Service Enforcement */
+#define	CPUID_STDEXT_AVX512F	0x00010000 /* AVX-512 Foundation */
+#define	CPUID_STDEXT_AVX512DQ	0x00020000 /* AVX-512 Double/Quadword */
+#define	CPUID_STDEXT_RDSEED	0x00040000 /* RDSEED instruction */
+#define	CPUID_STDEXT_ADX	0x00080000 /* ADCX/ADOX instructions */
+#define	CPUID_STDEXT_SMAP	0x00100000 /* Supervisor-Mode Access Prevention */
+#define	CPUID_STDEXT_AVX512IFMA	0x00200000 /* AVX-512 Integer Fused Multiply Add */
+/* Bit 22: reserved; was PCOMMIT */
+#define	CPUID_STDEXT_CLFLUSHOPT	0x00800000 /* Cache Line FLUSH OPTimized */
+#define	CPUID_STDEXT_CLWB	0x01000000 /* Cache Line Write Back */
+#define	CPUID_STDEXT_PROCTRACE	0x02000000 /* Processor Trace */
+#define	CPUID_STDEXT_AVX512PF	0x04000000 /* AVX-512 PreFetch */
+#define	CPUID_STDEXT_AVX512ER	0x08000000 /* AVX-512 Exponential and Reciprocal */
+#define	CPUID_STDEXT_AVX512CD	0x10000000 /* AVX-512 Conflict Detection */
+#define	CPUID_STDEXT_SHA	0x20000000 /* SHA Extensions */
+#define	CPUID_STDEXT_AVX512BW	0x40000000 /* AVX-512 Byte and Word */
+#define	CPUID_STDEXT_AVX512VL	0x80000000 /* AVX-512 Vector Length */
+
+/* %ecx = 0, %ecx */
+#define	CPUID_STDEXT2_PREFETCHWT1	0x00000001 /* PREFETCHWT1 instruction */
+#define	CPUID_STDEXT2_AVX512VBMI	0x00000002 /* AVX-512 Vector Byte Manipulation */
+#define	CPUID_STDEXT2_UMIP		0x00000004 /* User-Mode Instruction prevention */
+#define	CPUID_STDEXT2_PKU		0x00000008 /* Protection Keys for User-mode pages */
+#define	CPUID_STDEXT2_OSPKE		0x00000010 /* PKU enabled by OS */
+#define	CPUID_STDEXT2_WAITPKG		0x00000020 /* Timed pause and user-level monitor/wait */
+#define	CPUID_STDEXT2_AVX512VBMI2	0x00000040 /* AVX-512 Vector Byte Manipulation 2 */
+#define	CPUID_STDEXT2_CET_SS		0x00000080 /* CET Shadow Stack */
+#define	CPUID_STDEXT2_GFNI		0x00000100 /* Galois Field instructions */
+#define	CPUID_STDEXT2_VAES		0x00000200 /* Vector AES instruction set */
+#define	CPUID_STDEXT2_VPCLMULQDQ	0x00000400 /* CLMUL instruction set */
+#define	CPUID_STDEXT2_AVX512VNNI	0x00000800 /* Vector Neural Network instructions */
+#define	CPUID_STDEXT2_AVX512BITALG	0x00001000 /* BITALG instructions */
+/* Bit 13: reserved */
+#define	CPUID_STDEXT2_AVX512VPOPCNTDQ	0x00004000 /* Vector Population Count Double/Quadword */
+/* Bit 15: reserved */
+#define	CPUID_STDEXT2_LA57		0x00010000 /* 57-bit linear addr & 5-level paging */
+/* Bits 21-17: MAWAU value for BNDLDX/BNDSTX */
+#define	CPUID_STDEXT2_RDPID		0x00400000 /* RDPID and IA32_TSC_AUX */
+#define	CPUID_STDEXT2_KL		0x00800000 /* Key Locker */
+/* Bit 24: reserved */
+#define	CPUID_STDEXT2_CLDEMOTE		0x02000000 /* Cache line demote */
+/* Bit 26: reserved */
+#define	CPUID_STDEXT2_MOVDIRI		0x08000000 /* MOVDIRI instruction */
+#define	CPUID_STDEXT2_MOVDIR64B		0x10000000 /* MOVDIR64B instruction */
+#define	CPUID_STDEXT2_ENQCMD		0x20000000 /* Enqueue Stores */
+#define	CPUID_STDEXT2_SGXLC		0x40000000 /* SGX Launch Configuration */
+#define	CPUID_STDEXT2_PKS		0x80000000 /* Protection Keys for kern-mode pages */
+
+/* %ecx = 0, %edx */
+#define	CPUID_STDEXT3_AVX5124VNNIW	0x00000004 /* AVX512 4-reg Neural Network instructions */
+#define	CPUID_STDEXT3_AVX5124FMAPS	0x00000008 /* AVX512 4-reg Multiply Accumulation Single precision */
+#define	CPUID_STDEXT3_FSRM		0x00000010 /* Fast Short REP MOVE */
+#define	CPUID_STDEXT3_AVX512VP2INTERSECT 0x00000100 /* AVX512 VP2INTERSECT */
+#define	CPUID_STDEXT3_MCUOPT		0x00000200 /* IA32_MCU_OPT_CTRL */
+#define	CPUID_STDEXT3_MD_CLEAR		0x00000400 /* VERW clears CPU buffers */
+#define	CPUID_STDEXT3_TSXFA		0x00002000 /* MSR_TSX_FORCE_ABORT bit 0 */
+#define	CPUID_STDEXT3_SERIALIZE		0x00004000 /* SERIALIZE instruction */
+#define	CPUID_STDEXT3_HYBRID		0x00008000 /* Hybrid part */
+#define	CPUID_STDEXT3_TSXLDTRK		0x00010000 /* TSX suspend load addr tracking */
+#define	CPUID_STDEXT3_PCONFIG		0x00040000 /* Platform configuration */
+#define	CPUID_STDEXT3_CET_IBT		0x00100000 /* CET Indirect Branch Tracking */
+#define	CPUID_STDEXT3_IBPB		0x04000000 /* IBRS / IBPB Speculation Control */
+#define	CPUID_STDEXT3_STIBP		0x08000000 /* STIBP Speculation Control */
+#define	CPUID_STDEXT3_L1D_FLUSH		0x10000000 /* IA32_FLUSH_CMD MSR */
+#define	CPUID_STDEXT3_ARCH_CAP		0x20000000 /* IA32_ARCH_CAPABILITIES */
+#define	CPUID_STDEXT3_CORE_CAP		0x40000000 /* IA32_CORE_CAPABILITIES */
+#define	CPUID_STDEXT3_SSBD		0x80000000 /* Speculative Store Bypass Disable */
+
+/*
  * Important bits in the AMD extended cpuid flags
  */
 #define	AMDID_SYSCALL	0x00000800
@@ -246,27 +341,6 @@
 #define	FUNC_B_TYPE(ecx)	(((ecx) >> 8) & 0xff)
 #define	FUNC_B_BITS_SHIFT_NEXT_LEVEL(eax)	((eax) & 0x1f)
 #define	FUNC_B_LEVEL_MAX_SIBLINGS(ebx)	((ebx) & 0xffff)
-
-/*
- * Structured Extended Features
- */
-/* EBX */
-#define	CPUID_STDEXT_FSGSBASE	0x00000001
-#define	CPUID_STDEXT_TSC_ADJUST	0x00000002
-#define	CPUID_STDEXT_BMI1	0x00000008
-#define	CPUID_STDEXT_HLE	0x00000010
-#define	CPUID_STDEXT_AVX2	0x00000020
-#define	CPUID_STDEXT_SMEP	0x00000080
-#define	CPUID_STDEXT_BMI2	0x00000100
-#define	CPUID_STDEXT_ENH_MOVSB	0x00000200
-#define	CPUID_STDEXT_RTM	0x00000800
-#define	CPUID_STDEXT_INVPCID	0x00000400
-#define	CPUID_STDEXT_RDSEED	0x00040000
-#define	CPUID_STDEXT_ADX	0x00080000
-#define	CPUID_STDEXT_SMAP	0x00100000
-
-/* ECX */
-#define	CPUID_STDEXT2_RDPID	0x00400000
 
 /*
  * Thermal and PM Features
