@@ -142,4 +142,17 @@
 #define CPUID_SEF_CORE_CAP	CPUID_STDEXT3_CORE_CAP
 #define CPUID_SEF_SSBD		CPUID_STDEXT3_SSBD
 
+/*
+ * Intel CPUID Extended Topology Enumeration
+ * CPUID Fn0000_000B
+ */
+/* %eax */
+#define CPUID_TOP_SHIFTNUM	__BITS(4, 0)	/* Topology ID shift value */
+/* %ecx */
+#define CPUID_TOP_LVLNUM	__BITS(7, 0)	/* Level number */
+#define CPUID_TOP_LVLTYPE	__BITS(15, 8)	/* Level type */
+#define CPUID_TOP_LVLTYPE_INVAL	0		/* Invalid */
+#define CPUID_TOP_LVLTYPE_SMT	1		/* SMT */
+#define CPUID_TOP_LVLTYPE_CORE	2		/* Core */
+
 #endif /* _NVMM_COMPAT_H_ */
