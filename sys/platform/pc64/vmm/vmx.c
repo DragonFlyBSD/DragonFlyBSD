@@ -898,8 +898,8 @@ vmx_vminit(struct vmm_guest_options *options)
 	/* Set the CR0/CR4 registers, removing the unsupported bits */
 	vti->guest_cr0 = (CR0_PE | CR0_PG | cr0_fixed_to_1) & ~cr0_fixed_to_0;
 	ERROR_IF(vmwrite(VMCS_GUEST_CR0, vti->guest_cr0));
-	ERROR_IF(vmwrite(VMCS_GUEST_CR4, (CR4_PAE | CR4_FXSR | CR4_XMM | CR4_XSAVE |
-	    cr4_fixed_to_1) & ~cr4_fixed_to_0));
+	ERROR_IF(vmwrite(VMCS_GUEST_CR4, (CR4_PAE | CR4_OSFXSR | CR4_OSXMMEXCPT |
+	    CR4_OSXSAVE | cr4_fixed_to_1) & ~cr4_fixed_to_0));
 
 	/* Don't set EFER_SCE for catching "syscall" instructions */
 	ERROR_IF(vmwrite(VMCS_GUEST_IA32_EFER, (EFER_LME | EFER_LMA)));

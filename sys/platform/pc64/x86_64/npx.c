@@ -124,7 +124,7 @@ void npxprobemask(void)
 
 	crit_enter();
 	stop_emulating();
-	load_cr4(rcr4() | CR4_FXSR);
+	load_cr4(rcr4() | CR4_OSFXSR);
 	fxsave(&dummy);
 	npx_mxcsr_mask = ((uint32_t *)&dummy)[7];
 	start_emulating();

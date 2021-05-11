@@ -212,7 +212,7 @@ initializecpu(int cpu)
 	 * Check for FXSR and SSE support and enable if available
 	 */
 	if ((cpu_feature & CPUID_SSE) && (cpu_feature & CPUID_FXSR)) {
-		load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
+		load_cr4(rcr4() | CR4_OSFXSR | CR4_OSXMMEXCPT);
 		cpu_fxsr = hw_instruction_sse = 1;
 	}
 
@@ -224,7 +224,7 @@ initializecpu(int cpu)
 #if !defined(CPU_DISABLE_AVX)
 	/* Use XSAVE if supported */
 	if (cpu_feature2 & CPUID2_XSAVE) {
-		load_cr4(rcr4() | CR4_XSAVE);
+		load_cr4(rcr4() | CR4_OSXSAVE);
 
 		/* Adjust size of savefpu in npx.h before adding to mask.*/
 		npx_xcr0_mask = CPU_XFEATURE_X87 | CPU_XFEATURE_SSE;
