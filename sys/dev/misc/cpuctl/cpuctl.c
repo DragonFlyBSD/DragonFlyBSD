@@ -351,7 +351,7 @@ update_amd(int cpu, cpuctl_update_args_t *args)
 	/*
 	 * Perform update.
 	 */
-	wrmsr_safe(MSR_K8_UCODE_UPDATE, (uintptr_t)ptr);
+	wrmsr_safe(MSR_AMD_PATCH_LOADER, (uintptr_t)ptr);
 
 	/*
 	 * Serialize instruction flow.

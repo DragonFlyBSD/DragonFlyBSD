@@ -558,6 +558,9 @@
 #define		IA32_ARCH_CAP_TSX_CTRL	0x00000080
 #define		IA32_ARCH_CAP_TAA_NO	0x00000100
 
+#define	MSR_IA32_FLUSH_CMD	0x10b
+#define		IA32_FLUSH_CMD_L1D	0x01
+
 #define	MSR_BBL_CR_ADDR		0x116
 #define	MSR_BBL_CR_DECC		0x118
 #define	MSR_BBL_CR_CTL		0x119
@@ -575,7 +578,19 @@
 #define	MSR_THERM_CONTROL	0x19a
 #define	MSR_THERM_INTERRUPT	0x19b
 #define	MSR_THERM_STATUS	0x19c
-#define	MSR_IA32_MISC_ENABLE	0x1a0
+
+#define	MSR_IA32_MISC_ENABLE	0x1a0	/* Enable Misc. Processor Features */
+#define		IA32_MISC_FAST_STR_EN	(1ULL <<  0)
+#define		IA32_MISC_ATCC_EN	(1ULL <<  3)
+#define		IA32_MISC_PERFMON_EN	(1ULL <<  7)
+#define		IA32_MISC_BTS_UNAVAIL	(1ULL << 11)
+#define		IA32_MISC_PEBS_UNAVAIL	(1ULL << 12)
+#define		IA32_MISC_EISST_EN	(1ULL << 16)
+#define		IA32_MISC_MWAIT_EN	(1ULL << 18)
+#define		IA32_MISC_LIMIT_CPUID	(1ULL << 22)
+#define		IA32_MISC_XTPR_DIS	(1ULL << 23)
+#define		IA32_MISC_XD_DIS	(1ULL << 34)
+
 #define	MSR_IA32_TEMPERATURE_TARGET 0x1a2
 #define	MSR_PKG_THERM_STATUS	0x1b1
 #define	MSR_PKG_THERM_INTR	0x1b2
@@ -887,7 +902,12 @@
 #define	MSR_IORRMASK1	0xc0010019
 #define	MSR_TOP_MEM	0xc001001a	/* boundary for ram below 4G */
 #define	MSR_TOP_MEM2	0xc001001d	/* boundary for ram above 4G */
-#define	MSR_K8_UCODE_UPDATE	0xc0010020	/* update microcode */
+
+#define	MSR_AMD_NB_CFG	0xc001001f	/* Northbridge Configuration */
+#define		NB_CFG_INITAPICCPUIDLO	(1ULL << 54)
+
+#define	MSR_AMD_PATCH_LEVEL	0x0000008b
+#define	MSR_AMD_PATCH_LOADER	0xc0010020	/* update microcode */
 
 #define	MSR_AMD_VM_CR	0xc0010114	/* SVM: feature control */
 #define		VM_CR_DPD		0x00000001 /* Debug Port Disable */
@@ -897,6 +917,8 @@
 #define		VM_CR_SVMDIS		0x00000010 /* SVM Disable */
 
 #define	MSR_AMD_VM_HSAVE_PA	0xc0010117	/* SVM: host save area address */
+#define	MSR_AMD_LS_CFG	0xc0011020	/* Load-Store Configuration */
+#define	MSR_AMD_IC_CFG	0xc0011021	/* Instruction Cache Configuration */
 #define	MSR_AMD_DE_CFG	0xc0011029	/* Decode Configuration */
 
 /* VIA ACE crypto featureset: for via_feature_rng */
