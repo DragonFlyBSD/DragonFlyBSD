@@ -29,19 +29,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* Override user-land alignment before including asm.h */
-#define	ALIGN_DATA	.align	8
-#define ALIGN_TEXT	.align 16,0x90
-#define _ALIGN_TEXT	ALIGN_TEXT
+#define LOCORE
+#include <machine/asmacros.h>
+#include "assym.s"
 
-#define _LOCORE
-#include "assym.h"
-#include <machine/asm.h>
-#include <machine/segments.h>
-#include <x86/specialreg.h>
+#define _C_LABEL(x)	x
 
 #define ASM_NVMM
-#include <dev/nvmm/x86/nvmm_x86.h>
+#include <dev/virtual/nvmm/x86/nvmm_x86.h>
 
 	.text
 

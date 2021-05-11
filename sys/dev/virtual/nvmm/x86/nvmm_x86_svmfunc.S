@@ -29,19 +29,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* Override user-land alignment before including asm.h */
-#define	ALIGN_DATA	.align	8
-#define ALIGN_TEXT	.align 16,0x90
-#define _ALIGN_TEXT	ALIGN_TEXT
-
-#define _LOCORE
-#include "assym.h"
-#include <machine/asm.h>
+#define LOCORE
+#include <machine/asmacros.h>
 #include <machine/segments.h>
-#include <x86/specialreg.h>
+#include "assym.s"
 
 #define ASM_NVMM
-#include <dev/nvmm/x86/nvmm_x86.h>
+#include <dev/virtual/nvmm/x86/nvmm_x86.h>
 
 	.text
 
@@ -80,7 +74,7 @@
 #define HOST_RESTORE_TR				\
 	popq	%rax				;\
 	movzwq	%ax,%rdx			;\
-	movq	CPUVAR(GDT),%rax		;\
+	movq	PCPU(tss_gdt),%rax		;\
 	andq	$~0x0200,4(%rax,%rdx, 1)	;\
 	ltrw	%dx
 
