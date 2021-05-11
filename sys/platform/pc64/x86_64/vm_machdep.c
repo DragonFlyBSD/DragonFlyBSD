@@ -904,7 +904,7 @@ mds_check_support(void)
 		cpuid_count(7, 0, p);
 		if (p[3] & CPUID_SEF_ARCH_CAP) {
 			msr = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
-			if (msr & IA32_ARCH_MDS_NO)
+			if (msr & IA32_ARCH_CAP_MDS_NO)
 				rv = MDS_NOT_REQUIRED;
 		}
 		if (p[3] & CPUID_SEF_AVX512_4VNNIW)
