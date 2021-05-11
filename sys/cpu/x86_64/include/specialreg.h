@@ -516,7 +516,7 @@
 #define	INTEL_VENDOR_ID		"GenuineIntel"
 
 /*
- * Model-specific registers for the i386 family
+ * Model-Specific Registers
  */
 #define	MSR_P5_MC_ADDR		0x000
 #define	MSR_P5_MC_TYPE		0x001
@@ -525,11 +525,18 @@
 #define	MSR_P5_CTR0		0x012
 #define	MSR_P5_CTR1		0x013
 #define	MSR_IA32_PLATFORM_ID	0x017
+
 #define	MSR_APICBASE		0x01b
+#define		APICBASE_RESERVED	0x000006ff
+#define		APICBASE_BSP		0x00000100 /* bootstrap processor */
+#define		APICBASE_X2APIC		0x00000400 /* x2APIC mode */
+#define		APICBASE_ENABLED	0x00000800 /* software enable */
+#define		APICBASE_ADDRESS	0xfffff000 /* physical address */
+
 #define	MSR_EBL_CR_POWERON	0x02a
 #define	MSR_TEST_CTL		0x033
-#define MSR_SPEC_CTRL		0x048	/* IBRS Spectre mitigation */
-#define MSR_PRED_CMD		0x049	/* IBPB Spectre mitigation */
+#define	MSR_SPEC_CTRL		0x048	/* IBRS Spectre mitigation */
+#define	MSR_PRED_CMD		0x049	/* IBPB Spectre mitigation */
 #define	MSR_BIOS_UPDT_TRIG	0x079
 #define	MSR_BBL_CR_D0		0x088
 #define	MSR_BBL_CR_D1		0x089
@@ -539,7 +546,18 @@
 #define	MSR_PERFCTR1		0x0c2
 #define	MSR_IA32_EXT_CONFIG	0x0ee	/* Undocumented. Core Solo/Duo only */
 #define	MSR_MTRRcap		0x0fe
-#define MSR_IA32_ARCH_CAPABILITIES 0x10a
+
+#define	MSR_IA32_ARCH_CAPABILITIES 0x10a
+#define		IA32_ARCH_CAP_RDCL_NO	0x00000001
+#define		IA32_ARCH_CAP_IBRS_ALL	0x00000002
+#define		IA32_ARCH_CAP_RSBA	0x00000004
+#define		IA32_ARCH_CAP_SKIP_L1DFL_VMENTRY 0x00000008
+#define		IA32_ARCH_SSB_NO	0x00000010
+#define		IA32_ARCH_MDS_NO	0x00000020
+#define		IA32_ARCH_CAP_IF_PSCHANGE_MC_NO 0x00000040
+#define		IA32_ARCH_CAP_TSX_CTRL	0x00000080
+#define		IA32_ARCH_CAP_TAA_NO	0x00000100
+
 #define	MSR_BBL_CR_ADDR		0x116
 #define	MSR_BBL_CR_DECC		0x118
 #define	MSR_BBL_CR_CTL		0x119
@@ -599,15 +617,17 @@
 #define	MSR_PP0_ENERGY_STATUS	0x639
 #define	MSR_PP1_ENERGY_STATUS	0x641
 #define	MSR_PLATFORM_ENERGY_COUNTER 0x64d /* Skylake and later */
+#define	MSR_PPERF		0x64e /* Productive Performance Count */
+#define	MSR_PERF_LIMIT_REASONS	0x64f /* Indicator of Frequency Clipping */
+#define	MSR_TSC_DEADLINE	0x6e0 /* LAPIC TSC Deadline Mode Target count */
 
-/*
- * Constants related to MSR's.
- */
-#define	APICBASE_RESERVED	0x000006ff
-#define	APICBASE_BSP		0x00000100
-#define	APICBASE_X2APIC		0x00000400
-#define	APICBASE_ENABLED	0x00000800
-#define	APICBASE_ADDRESS	0xfffff000
+/* Hardware P-states interface */
+#define	MSR_PM_ENABLE		0x770 /* Enable/disable HWP */
+#define	MSR_HWP_CAPABILITIES	0x771 /* HWP Performance Range Enumeration */
+#define	MSR_HWP_REQUEST_PKG	0x772 /* Control hints to all logical proc */
+#define	MSR_HWP_INTERRUPT	0x773 /* Control HWP Native Interrupts */
+#define	MSR_HWP_REQUEST		0x774 /* Control hints to a logical proc */
+#define	MSR_HWP_STATUS		0x777
 
 /*
  * IBRS and IBPB Spectre mitigation
@@ -658,21 +678,7 @@
 #define CPUID_SEF_AVX512_4FMAPS		0x00000008
 #define CPUID_SEF_MD_CLEAR		0x00000400
 #define CPUID_SEF_TSX_FORCE_ABORT	0x00002000
-
 #define CPUID_SEF_ARCH_CAP		0x20000000
-
-/*
- * MSR_IA32_ARCH_CAPABILITIES
- */
-#define IA32_ARCH_CAP_RDCL_NO	0x00000001
-#define IA32_ARCH_CAP_IBRS_ALL	0x00000002
-#define IA32_ARCH_CAP_RSBA	0x00000004
-#define IA32_ARCH_CAP_SKIP_L1DFL_VMENTRY	0x00000008
-#define IA32_ARCH_SSB_NO	0x00000010
-#define IA32_ARCH_MDS_NO	0x00000020
-#define IA32_ARCH_CAP_IF_PSCHANGE_MC_NO		0x00000040
-#define IA32_ARCH_CAP_TSX_CTRL	0x00000080
-#define IA32_ARCH_CAP_TAA_NO	0x00000100
 
 /*
  * PAT modes.
@@ -713,8 +719,7 @@
 #define	PCR0_RSTK		0x01	/* Enables return stack */
 #define	PCR0_BTB		0x02	/* Enables branch target buffer */
 #define	PCR0_LOOP		0x04	/* Enables loop */
-#define	PCR0_AIS		0x08	/* Enables all instrcutions stalled to
-								   serialize pipe. */
+#define	PCR0_AIS		0x08	/* Enables all instrcutions stalled to serialize pipe. */
 #define	PCR0_MLR		0x10	/* Enables reordering of misaligned loads */
 #define	PCR0_BTBRT		0x40	/* Enables BTB test register. */
 #define	PCR0_LSSER		0x80	/* Disable reorder */
@@ -801,22 +806,22 @@
 #define	ARR6	0xd6
 #define	ARR7	0xd9
 
-#define	ARR_SIZE_0K		0
-#define	ARR_SIZE_4K		1
-#define	ARR_SIZE_8K		2
+#define	ARR_SIZE_0K	0
+#define	ARR_SIZE_4K	1
+#define	ARR_SIZE_8K	2
 #define	ARR_SIZE_16K	3
 #define	ARR_SIZE_32K	4
 #define	ARR_SIZE_64K	5
 #define	ARR_SIZE_128K	6
 #define	ARR_SIZE_256K	7
 #define	ARR_SIZE_512K	8
-#define	ARR_SIZE_1M		9
-#define	ARR_SIZE_2M		10
-#define	ARR_SIZE_4M		11
-#define	ARR_SIZE_8M		12
+#define	ARR_SIZE_1M	9
+#define	ARR_SIZE_2M	10
+#define	ARR_SIZE_4M	11
+#define	ARR_SIZE_8M	12
 #define	ARR_SIZE_16M	13
 #define	ARR_SIZE_32M	14
-#define	ARR_SIZE_4G		15
+#define	ARR_SIZE_4G	15
 
 /*
  * The region control registers specify the attributes associated with
@@ -914,18 +919,5 @@
 #define	VIA_CPUID_DO_PHE	0x000800
 #define	VIA_CPUID_HAS_PMM	0x001000
 #define	VIA_CPUID_DO_PMM	0x002000
-
-/* Hardware P-states interface */
-#define MSR_PPERF		0x0000064e
-#define MSR_PERF_LIMIT_REASONS	0x0000064f
-#define MSR_PM_ENABLE		0x00000770
-#define MSR_HWP_CAPABILITIES	0x00000771
-#define MSR_HWP_REQUEST_PKG	0x00000772
-#define MSR_HWP_INTERRUPT	0x00000773
-#define MSR_HWP_REQUEST		0x00000774
-#define MSR_HWP_STATUS		0x00000777
-
-/* Local APIC TSC Deadline Mode Target count */
-#define MSR_TSC_DEADLINE	0x000006e0
 
 #endif /* !_CPU_SPECIALREG_H_ */
