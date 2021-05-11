@@ -43,7 +43,9 @@
 
 #include <sys/param.h>
 #include <sys/bitops.h>
+#include <sys/lock.h>
 #include <sys/systm.h>
+
 #include <machine/cpufunc.h>
 #include <machine/specialreg.h>
 
@@ -235,5 +237,29 @@
 
 #define x86_cpuid(eax, regs)		do_cpuid(eax, regs)
 #define x86_cpuid2(eax, ecx, regs)	cpuid_count(eax, ecx, regs)
+
+/*
+ * Mutex lock
+ */
+#define kmutex_t		struct lock
+#define mutex_init(lock, type, ipl)	lockinit(lock, "nvmmmtx", 0, 0)
+#define mutex_destroy(lock)	lockuninit(lock)
+#define mutex_enter(lock)	lockmgr(lock, LK_EXCLUSIVE)
+#define mutex_exit(lock)	lockmgr(lock, LK_RELEASE)
+#define mutex_owned(lock)	(lockstatus(lock, curthread) == LK_EXCLUSIVE)
+
+/*
+ * Reader/writer lock
+ */
+typedef enum krw_t {
+	RW_READER = LK_SHARED,
+	RW_WRITER = LK_EXCLUSIVE,
+} krw_t;
+#define krwlock_t		struct lock
+#define rw_init(lock)		lockinit(lock, "nvmmrw", 0, 0)
+#define rw_destroy(lock)	lockuninit(lock)
+#define rw_enter(lock, op)	lockmgr(lock, op)
+#define rw_exit(lock)		lockmgr(lock, LK_RELEASE)
+#define rw_write_held(lock)	(lockstatus(lock, curthread) == LK_EXCLUSIVE)
 
 #endif /* _NVMM_COMPAT_H_ */
