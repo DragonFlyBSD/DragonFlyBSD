@@ -37,6 +37,8 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_vmx.c,v 1.36.2.15 2020/09/13 11:56:44 marti
 #include <sys/kernel.h>
 #include <sys/kmem.h>
 #include <sys/cpu.h>
+#include <sys/cpumask.h>
+#include <sys/smp.h> /* smp_active_mask */
 #include <sys/xcall.h>
 #include <sys/mman.h>
 #include <sys/bitops.h>
@@ -770,7 +772,7 @@ struct vmx_cpudata {
 	bool gtlb_want_flush;
 	bool gtsc_want_update;
 	uint64_t vcpu_htlb_gen;
-	kcpuset_t *htlb_want_flush;
+	cpumask_t htlb_want_flush;
 
 	/* VMCS */
 	struct vmcs *vmcs;
@@ -2094,14 +2096,14 @@ vmx_htlb_catchup(struct nvmm_cpu *vcpu, int hcpu)
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	struct ept_desc ept_desc;
 
-	if (__predict_true(!kcpuset_isset(cpudata->htlb_want_flush, hcpu))) {
+	if (__predict_true(!CPUMASK_TESTBIT(cpudata->htlb_want_flush, hcpu))) {
 		return;
 	}
 
 	ept_desc.eptp = vmx_vmread(VMCS_EPTP);
 	ept_desc.mbz = 0;
 	vmx_invept(vmx_ept_flush_op, &ept_desc);
-	kcpuset_clear(cpudata->htlb_want_flush, hcpu);
+	ATOMIC_CPUMASK_NANDBIT(cpudata->htlb_want_flush, hcpu);
 }
 
 static inline uint64_t
@@ -2115,7 +2117,7 @@ vmx_htlb_flush(struct vmx_machdata *machdata, struct vmx_cpudata *cpudata)
 		return machgen;
 	}
 
-	kcpuset_copy(cpudata->htlb_want_flush, kcpuset_running);
+	ATOMIC_CPUMASK_ORMASK(cpudata->htlb_want_flush, smp_active_mask);
 
 	ept_desc.eptp = vmx_vmread(VMCS_EPTP);
 	ept_desc.mbz = 0;
@@ -2128,7 +2130,7 @@ static inline void
 vmx_htlb_flush_ack(struct vmx_cpudata *cpudata, uint64_t machgen)
 {
 	cpudata->vcpu_htlb_gen = machgen;
-	kcpuset_clear(cpudata->htlb_want_flush, cpu_number());
+	ATOMIC_CPUMASK_NANDBIT(cpudata->htlb_want_flush, mycpuid);
 }
 
 static inline void
@@ -2975,7 +2977,7 @@ vmx_vcpu_create(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	if (error)
 		goto error;
 
-	kcpuset_create(&cpudata->htlb_want_flush, true);
+	CPUMASK_ASSZERO(cpudata->htlb_want_flush);
 
 	/* Init the VCPU info. */
 	vmx_vcpu_init(mach, vcpu);
@@ -3008,7 +3010,9 @@ vmx_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmx_asid_free(vcpu);
 	vmx_vmcs_destroy(vcpu);
 
+#ifdef __NetBSD__
 	kcpuset_destroy(cpudata->htlb_want_flush);
+#endif
 
 	vmx_memfree(cpudata->vmcs_pa, (vaddr_t)cpudata->vmcs, VMCS_NPAGES);
 	vmx_memfree(cpudata->msrbm_pa, (vaddr_t)cpudata->msrbm, MSRBM_NPAGES);
