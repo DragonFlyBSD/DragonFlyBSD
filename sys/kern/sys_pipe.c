@@ -1377,7 +1377,7 @@ filt_piperead(struct knote *kn, long hint)
 		 */
 		if (kn->kn_data == 0)
 			kn->kn_flags |= EV_NODATA;
-		kn->kn_flags |= EV_EOF; 
+		kn->kn_flags |= EV_EOF | EV_HUP;
 		ready = 1;
 	}
 
@@ -1412,7 +1412,7 @@ filt_pipewrite(struct knote *kn, long hint)
 
 	kn->kn_data = 0;
 	if (wpb->state & PIPE_CLOSED) {
-		kn->kn_flags |= (EV_EOF | EV_NODATA);
+		kn->kn_flags |= EV_EOF | EV_HUP | EV_NODATA;
 		return (1);
 	}
 
@@ -1427,7 +1427,7 @@ filt_pipewrite(struct knote *kn, long hint)
 #endif
 
 	if (wpb->state & PIPE_WEOF) {
-		kn->kn_flags |= (EV_EOF | EV_NODATA);
+		kn->kn_flags |= EV_EOF | EV_HUP | EV_NODATA;
 		ready = 1;
 	}
 
