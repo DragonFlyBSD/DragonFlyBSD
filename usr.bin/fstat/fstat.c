@@ -111,7 +111,7 @@ int	mflg;	/* include memory-mapped files */
 int	wflg_mnt = 16;
 int	wflg_cmd = 10;
 int	pid_width = 5;
-int	ino_width = 6;
+int	ino_width = 9;
 
 const char *Uname;
 char	*Comm;
@@ -134,6 +134,7 @@ kvm_t *kd;
 
 static void dofiles(struct kinfo_proc *, struct proc *);
 static void dommap(struct proc *);
+static void vtrans_reset(void);
 static void vtrans(struct vnode *, struct nchandle *, int, int, off_t);
 static int  ufs_filestat(struct vnode *, struct filestat *);
 static int  nfs_filestat(struct vnode *, struct filestat *);
@@ -317,6 +318,9 @@ dofiles(struct kinfo_proc *kp, struct proc *p)
 		    (void *)p->p_fd, Pid);
 		return;
 	}
+
+	vtrans_reset();
+
 	/*
 	 * root directory vnode, if one
 	 */
@@ -450,6 +454,14 @@ dommap(struct proc *p)
 	}
 }
 
+static int last_name_width;
+
+static void
+vtrans_reset(void)
+{
+	last_name_width = 0;
+}
+
 static void
 vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 {
@@ -458,6 +470,8 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 	char rw[3], mode[15];
 	const char *badtype = NULL, *filename;
 	char *name;
+	int len;
+	int extra_space;
 
 	fst.offset = off;
 	filename = badtype = NULL;
@@ -466,11 +480,11 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 		    (void *)vp, Pid);
 		return;
 	}
-	if (vn.v_type == VNON || vn.v_tag == VT_NON)
+	if (vn.v_type == VNON || vn.v_tag == VT_NON) {
 		badtype = "none";
-	else if (vn.v_type == VBAD)
+	} else if (vn.v_type == VBAD) {
 		badtype = "bad";
-	else
+	} else {
 		switch (vn.v_tag) {
 		case VT_HAMMER:
 			if (!hammer_filestat(&vn, &fst))
@@ -520,11 +534,14 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 				badtype = "error";
 			break;
 
-		default: {
-			static char unknown[10];
-			sprintf(unknown, "?(%x)", vn.v_tag);
-			badtype=unknown;
-			break;
+		default:
+			{
+				static char unknown[10];
+
+				sprintf(unknown, "?(%x)", vn.v_tag);
+				badtype = unknown;
+				break;
+			}
 		}
 	}
 	if (checkfile) {
@@ -545,41 +562,72 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 			return;
 	}
 	PREFIX(i);
+
+	/*
+	 * Retrieve variable-length file path and try to make
+	 * indentation human-readable.
+	 */
 	if (badtype) {
-		(void)printf(" %-*s  %10s    %jd\n",
-			     wflg_mnt,
-			     getmnton(vn.v_mount, &vn.v_namecache, ncr),
-			     badtype,
-			     (intmax_t)off);
+		asprintf(&name, "%s",
+			 getmnton(vn.v_mount, &vn.v_namecache, ncr));
+	} else if (nflg) {
+		asprintf(&name, "%3u,%-9u",
+		         major(fst.fsid), minor(fst.fsid));
+	} else {
+		asprintf(&name, "%s",
+		         getmnton(vn.v_mount, &vn.v_namecache, ncr));
+	}
+	len = (int)strlen(name);
+
+	/*
+	 * Nominal extra-space indented in multiples of 4
+	 */
+	extra_space = wflg_mnt - len;
+	if (extra_space < 0)
+		extra_space = 4 - -extra_space % 4;
+
+	if (len + extra_space < last_name_width)
+		extra_space = last_name_width - len;
+	last_name_width = len + extra_space;
+
+	printf(" %s%*.*s ", name, extra_space, extra_space, "");
+	free(name);
+	name = NULL;
+
+	/*
+	 * Remaining sections
+	 */
+	if (badtype) {
+		printf("%10s    %8s:%jd\n",
+		       badtype, "offset", (intmax_t)off);
 		return;
 	}
-	if (nflg)
-		printf(" %3u,%-9u   ",
-		       major(fst.fsid), minor(fst.fsid));
-	else
-		printf(" %-*s",
-		       wflg_mnt, getmnton(vn.v_mount, &vn.v_namecache, ncr));
-	if (nflg)
-		sprintf(mode, "%o", fst.mode);
-	else
-		strmode(fst.mode, mode);
 
-	printf(" %*ld %10s", ino_width, fst.fileid, mode);
+	if (nflg) {
+		sprintf(mode, "%06o", fst.mode);
+		printf("%*ld %s", ino_width, fst.fileid, mode);
+	} else {
+		strmode(fst.mode, mode);
+		printf("%*ld %10s", ino_width, fst.fileid, mode);
+	}
 
 	switch (vn.v_type) {
 	case VBLK:
 	case VCHR:
-		if (nflg || ((name = devname(fst.rdev, vn.v_type == VCHR ?
-		    S_IFCHR : S_IFBLK)) == NULL))
+		if (nflg ||
+		    ((name = devname(fst.rdev, vn.v_type == VCHR ?
+				      S_IFCHR : S_IFBLK)) == NULL)) {
 			printf(" %3u,%-4u", major(fst.rdev), minor(fst.rdev));
-		else
+		} else {
 			printf(" %8s", name);
+		}
+		printf(":%jd", (intmax_t)fst.offset);
 		break;
 	case VREG:
-		printf(" %jd", (intmax_t)fst.offset);
+		printf(" %8s:%ju", "offset", (intmax_t)fst.offset);
 		break;
 	default:
-		printf(" %8ju", (uintmax_t)fst.size);
+		printf(" %8s:%ju", "offset", (uintmax_t)fst.size);
 	}
 	rw[0] = '\0';
 	if (flag & FREAD)
@@ -804,9 +852,9 @@ socktrans(struct socket *sock, int i)
 	static const char *stypename[] = {
 		"unused",	/* 0 */
 		"stream", 	/* 1 */
-		"dgram",	/* 2 */
-		"raw",		/* 3 */
-		"rdm",		/* 4 */
+		"dgram ",	/* 2 */
+		"raw   ",	/* 3 */
+		"rdm   ",	/* 4 */
 		"seqpak"	/* 5 */
 	};
 #define	STYPEMAX 5
@@ -850,9 +898,9 @@ socktrans(struct socket *sock, int i)
 		dname[len] = '\0';
 
 	if ((u_short)so.so_type > STYPEMAX)
-		printf("* %s ?%d", dname, so.so_type);
+		printf("* %-9s ?%d", dname, so.so_type);
 	else
-		printf("* %s %s", dname, stypename[so.so_type]);
+		printf("* %-9s %s", dname, stypename[so.so_type]);
 
 	/*
 	 * protocol specific formatting
