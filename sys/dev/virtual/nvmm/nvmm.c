@@ -56,6 +56,8 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm.c,v 1.22.2.7 2020/08/29 17:00:28 martin Exp $")
 #include <dev/nvmm/nvmm_internal.h>
 #include <dev/nvmm/nvmm_ioctl.h>
 
+MALLOC_DEFINE(M_NVMM, "nvmm", "NVMM data");
+
 static struct nvmm_machine machines[NVMM_MAX_MACHINES];
 static volatile unsigned int nmachines __cacheline_aligned;
 

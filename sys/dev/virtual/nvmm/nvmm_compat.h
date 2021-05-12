@@ -44,6 +44,7 @@
 #include <sys/param.h>
 #include <sys/bitops.h>
 #include <sys/lock.h>
+#include <sys/malloc.h>
 #include <sys/systm.h>
 
 #include <machine/cpufunc.h>
@@ -261,5 +262,25 @@ typedef enum krw_t {
 #define rw_enter(lock, op)	lockmgr(lock, op)
 #define rw_exit(lock)		lockmgr(lock, LK_RELEASE)
 #define rw_write_held(lock)	(lockstatus(lock, curthread) == LK_EXCLUSIVE)
+
+/*
+ * Memory allocation
+ */
+MALLOC_DECLARE(M_NVMM);
+enum {
+	KM_SLEEP   = M_WAITOK,
+	KM_NOSLEEP = M_NOWAIT,
+};
+#define kmem_alloc(size, flags) \
+	({								\
+		KKASSERT((flags & ~(KM_SLEEP|KM_NOSLEEP)) == 0);	\
+		kmalloc(size, M_NVMM, flags);				\
+	})
+#define kmem_zalloc(size, flags) \
+	({								\
+		KKASSERT((flags & ~(KM_SLEEP|KM_NOSLEEP)) == 0);	\
+		kmalloc(size, M_NVMM, flags|M_ZERO);			\
+	})
+#define kmem_free(data, size)	kfree(data, M_NVMM)
 
 #endif /* _NVMM_COMPAT_H_ */
