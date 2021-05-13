@@ -1344,8 +1344,12 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 		 */
 		kev = &kevp[*events];
 		if (pfd->events & (POLLIN | POLLHUP | POLLRDNORM)) {
+			int notes = NOTE_OLDAPI;
+			if ((pfd->events & (POLLIN | POLLRDNORM)) == 0)
+				notes |= NOTE_HUPONLY;
+
 			EV_SET(kev++, pfd->fd, EVFILT_READ, EV_ADD|EV_ENABLE,
-			       NOTE_OLDAPI, 0, (void *)(uintptr_t)
+			       notes, 0, (void *)(uintptr_t)
 				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
 		}
 		if (pfd->events & (POLLOUT | POLLWRNORM)) {
@@ -1485,10 +1489,12 @@ deregister:
 				 * issuing a read() and getting 0 bytes back.
 				 *
 				 * If EV_HUP is set the peer completely
-				 * disconnected and we can set POLLHUP
-				 * once data is exhausted.
+				 * disconnected and we can set POLLHUP.
+				 * Linux can return POLLHUP even if read
+				 * data has not been drained, so we should
+				 * too.
 				 */
-				if (kevp[i].flags & EV_NODATA) {
+				/* if (kevp[i].flags & EV_NODATA) */ {
 					if (kevp[i].flags & EV_HUP)
 						pfd->revents |= POLLHUP;
 				}

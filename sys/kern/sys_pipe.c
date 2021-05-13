@@ -1386,7 +1386,7 @@ filt_piperead(struct knote *kn, long hint)
 	lwkt_reltoken(&rpb->rlock);
 #endif
 
-	if (!ready)
+	if (!ready && (kn->kn_sfflags & NOTE_HUPONLY) == 0)
 		ready = kn->kn_data > 0;
 
 	return (ready);
