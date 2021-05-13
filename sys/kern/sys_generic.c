@@ -1328,7 +1328,7 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 		}
 
 		kev_count = 0;
-		if (pfd->events & (POLLIN | POLLRDNORM))
+		if (pfd->events & (POLLIN | POLLHUP | POLLRDNORM))
 			kev_count++;
 		if (pfd->events & (POLLOUT | POLLWRNORM))
 			kev_count++;
@@ -1343,7 +1343,7 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 		 * stored in kev->udata.
 		 */
 		kev = &kevp[*events];
-		if (pfd->events & (POLLIN | POLLRDNORM)) {
+		if (pfd->events & (POLLIN | POLLHUP | POLLRDNORM)) {
 			EV_SET(kev++, pfd->fd, EVFILT_READ, EV_ADD|EV_ENABLE,
 			       NOTE_OLDAPI, 0, (void *)(uintptr_t)
 				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
