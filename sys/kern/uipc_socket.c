@@ -2586,21 +2586,44 @@ filt_soread(struct knote *kn, long hint __unused)
 	if (so->so_state & SS_CANTRCVMORE) {
 		/*
 		 * Only set NODATA if all data has been exhausted.
+		 *
+		 * If HUPONLY is flagged, linux only issues the HUP on
+		 * a fully closed socket, not a half-closed socket.
+		 *
+		 * LOWAT is not applicable with a pending EOF.
+		 *
+		 * WARNING: If we issue a spurious event to poll() it will
+		 *	    de-register the event.
 		 */
 		if (kn->kn_data == 0)
 			kn->kn_flags |= EV_NODATA;
 		kn->kn_flags |= EV_EOF; 
-		if (so->so_state & SS_CANTSENDMORE)
-			kn->kn_flags |= EV_HUP;
 		kn->kn_fflags = so->so_error;
-		return (1);
+		if (so->so_state & SS_CANTSENDMORE) {
+			kn->kn_flags |= EV_HUP;
+			return (1);
+		}
+		if ((kn->kn_sfflags & NOTE_HUPONLY) == 0)
+			return (1);
+		return 0;
 	}
 	if (so->so_error || so->so_rerror)
 		return (1);
-	if (kn->kn_sfflags & NOTE_LOWAT)
-		return (kn->kn_data >= kn->kn_sdata);
-	return ((kn->kn_data >= so->so_rcv.ssb_lowat) ||
-		!TAILQ_EMPTY(&so->so_comp));
+
+	/*
+	 * Normal operation if HUPONLY is not set.  If HUPONLY is set
+	 * we only return positive on EOF/HUP above.
+	 *
+	 * WARNING: If we issue a spurious event to poll() it will de-register
+	 *	    the event.
+	 */
+	if ((kn->kn_sfflags & NOTE_HUPONLY) == 0) {
+		if (kn->kn_sfflags & NOTE_LOWAT)
+			return (kn->kn_data >= kn->kn_sdata);
+		return ((kn->kn_data >= so->so_rcv.ssb_lowat) ||
+			!TAILQ_EMPTY(&so->so_comp));
+	}
+	return 0;
 }
 
 static void

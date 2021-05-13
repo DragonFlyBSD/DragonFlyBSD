@@ -526,7 +526,9 @@ filt_fiforead(struct knote *kn, long hint)
 	}
 	kn->kn_flags &= ~(EV_EOF | EV_HUP | EV_NODATA);
 	lwkt_reltoken(&vp->v_token);
-	return (kn->kn_data > 0);
+	if ((kn->kn_sfflags & NOTE_HUPONLY) == 0)
+		return (kn->kn_data > 0);
+	return 0;
 }
 
 static void

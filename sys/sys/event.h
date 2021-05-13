@@ -171,11 +171,16 @@ struct kqinfo {
  * Flag indicating hint is a signal.  Used by EVFILT_SIGNAL, and also
  * shared by EVFILT_PROC  (all knotes attached to p->p_klist)
  *
- * NOTE_OLDAPI is used to signal that standard filters are being called
- * from the select/poll wrapper.
+ * NOTE_OLDAPI - Indicate that standard filters are being called from the
+ *		 select/poll wrapper.
+ *
+ * NOTE_HUPONLY - Indicate that an EVFILT_READ should not trigger on
+ *		  read data present, only on a HUP/EOF.  Used by kernel
+ *		  poll() handler.
  */
 #define NOTE_SIGNAL	0x08000000
 #define NOTE_OLDAPI	0x04000000	/* select/poll note */
+#define NOTE_HUPONLY	0x02000000	/* select/poll note */
 
 #define FILTEROP_ISFD	0x0001		/* if ident == filedescriptor */
 #define FILTEROP_MPSAFE	0x0002
