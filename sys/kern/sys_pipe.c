@@ -1377,8 +1377,17 @@ filt_piperead(struct knote *kn, long hint)
 		 */
 		if (kn->kn_data == 0)
 			kn->kn_flags |= EV_NODATA;
-		kn->kn_flags |= EV_EOF | EV_HUP;
-		ready = 1;
+		kn->kn_flags |= EV_EOF;
+
+		/*
+		 * Only set HUP if the pipe is completely closed.
+		 * half-closed does not count (to make the behavior
+		 * the same as linux).
+		 */
+		if (wpb->state & PIPE_CLOSED) {
+			kn->kn_flags |= EV_HUP;
+			ready = 1;
+		}
 	}
 
 #if 0
