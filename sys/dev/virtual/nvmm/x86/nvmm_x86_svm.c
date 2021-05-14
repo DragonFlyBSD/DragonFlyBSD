@@ -34,6 +34,7 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_svm.c,v 1.46.4.13 2020/09/13 11:56:44 marti
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/globaldata.h>
 #include <sys/kernel.h>
 #include <sys/kmem.h>
 #include <sys/cpu.h>
@@ -1498,7 +1499,7 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	}
 
 	kpreempt_disable();
-	hcpu = cpu_number();
+	hcpu = mycpuid;
 
 	svm_gtlb_catchup(vcpu, hcpu);
 	svm_htlb_catchup(vcpu, hcpu);
@@ -2514,18 +2515,17 @@ svm_change_cpu(void *arg1, void *arg2)
 	wrmsr(MSR_EFER, msr);
 
 	if (enable) {
-		wrmsr(MSR_VM_HSAVE_PA, hsave[cpu_index(curcpu())].pa);
+		wrmsr(MSR_VM_HSAVE_PA, hsave[mycpuid].pa);
 	}
 }
 
 static void
 svm_init(void)
 {
-	CPU_INFO_ITERATOR cii;
-	struct cpu_info *ci;
 	struct vm_page *pg;
 	u_int descs[4];
 	uint64_t xc;
+	int i;
 
 	x86_cpuid(0x8000000a, descs);
 
@@ -2550,9 +2550,9 @@ svm_init(void)
 	svm_cpuid_max_extended = uimin(descs[0], SVM_CPUID_MAX_EXTENDED);
 
 	memset(hsave, 0, sizeof(hsave));
-	for (CPU_INFO_FOREACH(cii, ci)) {
+	for (i = 0; i < ncpus; i++) {
 		pg = uvm_pagealloc(NULL, 0, NULL, UVM_PGA_ZERO);
-		hsave[cpu_index(ci)].pa = VM_PAGE_TO_PHYS(pg);
+		hsave[i].pa = VM_PAGE_TO_PHYS(pg);
 	}
 
 	xc = xc_broadcast(0, svm_change_cpu, (void *)true, NULL);

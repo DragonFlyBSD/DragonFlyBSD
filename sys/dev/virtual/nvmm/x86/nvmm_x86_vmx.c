@@ -34,6 +34,7 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_vmx.c,v 1.36.2.15 2020/09/13 11:56:44 marti
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/globaldata.h>
 #include <sys/kernel.h>
 #include <sys/kmem.h>
 #include <sys/cpu.h>
@@ -778,7 +779,7 @@ struct vmx_cpudata {
 	struct vmcs *vmcs;
 	paddr_t vmcs_pa;
 	size_t vmcs_refcnt;
-	struct cpu_info *vmcs_ci;
+	struct globaldata *vmcs_ci; /* struct cpu_info in NetBSD */
 	bool vmcs_launched;
 
 	/* MSR bitmap */
@@ -907,7 +908,7 @@ vmx_vmclear_ipi(void *arg1, void *arg2)
 }
 
 static void
-vmx_vmclear_remote(struct cpu_info *ci, paddr_t vmcs_pa)
+vmx_vmclear_remote(struct globaldata *ci, paddr_t vmcs_pa)
 {
 	uint64_t xc;
 	int bound;
@@ -928,7 +929,7 @@ static void
 vmx_vmcs_enter(struct nvmm_cpu *vcpu)
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
-	struct cpu_info *vmcs_ci;
+	struct globaldata *vmcs_ci;
 
 	cpudata->vmcs_refcnt++;
 	if (cpudata->vmcs_refcnt > 1) {
@@ -946,7 +947,7 @@ vmx_vmcs_enter(struct nvmm_cpu *vcpu)
 		/* This VMCS is loaded for the first time. */
 		vmx_vmclear(&cpudata->vmcs_pa);
 		cpudata->vmcs_launched = false;
-	} else if (vmcs_ci != curcpu()) {
+	} else if (vmcs_ci != mycpu) {
 		/* This VMCS is active on a remote CPU. */
 		vmx_vmclear_remote(vmcs_ci, cpudata->vmcs_pa);
 		cpudata->vmcs_launched = false;
@@ -971,7 +972,7 @@ vmx_vmcs_leave(struct nvmm_cpu *vcpu)
 		return;
 	}
 
-	cpudata->vmcs_ci = curcpu();
+	cpudata->vmcs_ci = mycpu;
 	kpreempt_enable();
 }
 
@@ -2168,7 +2169,7 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	struct vmx_machdata *machdata = mach->machdata;
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	struct vpid_desc vpid_desc;
-	struct cpu_info *ci;
+	struct globaldata *gd;
 	uint64_t exitcode;
 	uint64_t intstate;
 	uint64_t machgen;
@@ -2185,17 +2186,24 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		return EINVAL;
 	}
 
-	ci = curcpu();
-	hcpu = cpu_number();
+	gd = mycpu;
+	hcpu = gd->gd_cpuid;
 	launched = cpudata->vmcs_launched;
 
 	vmx_gtlb_catchup(vcpu, hcpu);
 	vmx_htlb_catchup(vcpu, hcpu);
 
 	if (vcpu->hcpu_last != hcpu) {
+#ifdef __NetBSD__
 		vmx_vmwrite(VMCS_HOST_TR_SELECTOR, ci->ci_tss_sel);
 		vmx_vmwrite(VMCS_HOST_TR_BASE, (uint64_t)ci->ci_tss);
 		vmx_vmwrite(VMCS_HOST_GDTR_BASE, (uint64_t)ci->ci_gdt);
+#else /* DragonFly */
+		vmx_vmwrite(VMCS_HOST_TR_SELECTOR, GSEL(GPROC0_SEL, SEL_KPL));
+		vmx_vmwrite(VMCS_HOST_TR_BASE,
+		    (uint64_t)&gd->gd_prvspace->common_tss);
+		vmx_vmwrite(VMCS_HOST_GDTR_BASE, (uint64_t)&gdt[hcpu * NGDT]);
+#endif /* __NetBSD__ */
 		vmx_vmwrite(VMCS_HOST_GS_BASE, rdmsr(MSR_GSBASE));
 		cpudata->gtsc_want_update = true;
 		vcpu->hcpu_last = hcpu;
@@ -2905,7 +2913,11 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmx_vmwrite(VMCS_HOST_IA32_SYSENTER_CS, 0);
 	vmx_vmwrite(VMCS_HOST_IA32_SYSENTER_ESP, 0);
 	vmx_vmwrite(VMCS_HOST_IA32_SYSENTER_EIP, 0);
+#ifdef __NetBSD__
 	vmx_vmwrite(VMCS_HOST_IDTR_BASE, (uint64_t)idt);
+#else /* DragonFly */
+	vmx_vmwrite(VMCS_HOST_IDTR_BASE, (uint64_t)r_idt_arr[mycpuid].rd_base);
+#endif /* __NetBSD__ */
 	vmx_vmwrite(VMCS_HOST_IA32_PAT, rdmsr(MSR_CR_PAT));
 	vmx_vmwrite(VMCS_HOST_IA32_EFER, rdmsr(MSR_EFER));
 	vmx_vmwrite(VMCS_HOST_CR0, rcr0());
@@ -3372,7 +3384,6 @@ vmx_init_asid(uint32_t maxasid)
 static void
 vmx_change_cpu(void *arg1, void *arg2)
 {
-	struct cpu_info *ci = curcpu();
 	bool enable = arg1 != NULL;
 	uint64_t msr, cr4;
 
@@ -3399,7 +3410,7 @@ vmx_change_cpu(void *arg1, void *arg2)
 	lcr4(cr4);
 
 	if (enable) {
-		vmx_vmxon(&vmxoncpu[cpu_index(ci)].pa);
+		vmx_vmxon(&vmxoncpu[mycpuid].pa);
 	}
 }
 
@@ -3432,15 +3443,13 @@ vmx_init_l1tf(void)
 static void
 vmx_init(void)
 {
-	CPU_INFO_ITERATOR cii;
-	struct cpu_info *ci;
 	uint64_t xc, msr;
 	struct vmxon *vmxon;
 	uint32_t revision;
 	u_int descs[4];
 	paddr_t pa;
 	vaddr_t va;
-	int error;
+	int i, error;
 
 	/* Init the ASID bitmap (VPID). */
 	vmx_init_asid(VPID_MAX);
@@ -3479,15 +3488,15 @@ vmx_init(void)
 	memset(vmxoncpu, 0, sizeof(vmxoncpu));
 	revision = vmx_get_revision();
 
-	for (CPU_INFO_FOREACH(cii, ci)) {
+	for (i = 0; i < ncpus; i++) {
 		error = vmx_memalloc(&pa, &va, 1);
 		if (error) {
 			panic("%s: out of memory", __func__);
 		}
-		vmxoncpu[cpu_index(ci)].pa = pa;
-		vmxoncpu[cpu_index(ci)].va = va;
+		vmxoncpu[i].pa = pa;
+		vmxoncpu[i].va = va;
 
-		vmxon = (struct vmxon *)vmxoncpu[cpu_index(ci)].va;
+		vmxon = (struct vmxon *)vmxoncpu[i].va;
 		vmxon->ident = __SHIFTIN(revision, VMXON_IDENT_REVISION);
 	}
 
