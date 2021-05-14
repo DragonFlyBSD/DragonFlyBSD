@@ -1338,7 +1338,7 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->gprs[NVMM_X64_GPR_RDX] = vcpu->cpuid;
 			break;
 		case 1: /* Cores */
-			ncpus = atomic_load_relaxed(&mach->ncpus);
+			ncpus = atomic_load_acq_int(&mach->ncpus);
 			cpudata->gprs[NVMM_X64_GPR_RAX] = ilog2(ncpus);
 			cpudata->gprs[NVMM_X64_GPR_RBX] = ncpus;
 			cpudata->gprs[NVMM_X64_GPR_RCX] =

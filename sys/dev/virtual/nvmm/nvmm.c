@@ -1213,7 +1213,7 @@ nvmm_attach(device_t parent, device_t self, void *aux)
 static int
 nvmm_detach(device_t self, int flags)
 {
-	if (atomic_load_relaxed(&nmachines) > 0)
+	if (atomic_load_acq_int(&nmachines) > 0)
 		return EBUSY;
 	nvmm_fini();
 	return 0;

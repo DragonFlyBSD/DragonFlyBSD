@@ -47,6 +47,7 @@
 #include <sys/malloc.h>
 #include <sys/systm.h>
 
+#include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <machine/specialreg.h>
 
@@ -282,5 +283,12 @@ enum {
 		kmalloc(size, M_NVMM, flags|M_ZERO);			\
 	})
 #define kmem_free(data, size)	kfree(data, M_NVMM)
+
+/*
+ * Atomic operations
+ */
+#define atomic_inc_64(p)	atomic_add_64(p, 1)
+#define atomic_inc_uint(p)	atomic_add_int(p, 1)
+#define atomic_dec_uint(p)	atomic_subtract_int(p, 1)
 
 #endif /* _NVMM_COMPAT_H_ */
