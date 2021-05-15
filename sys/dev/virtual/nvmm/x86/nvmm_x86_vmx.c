@@ -53,6 +53,7 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_vmx.c,v 1.36.2.15 2020/09/13 11:56:44 marti
 #include <x86/dbregs.h>
 #include <x86/cpu_counter.h>
 #include <machine/cpuvar.h>
+#include <machine/md_var.h> /* cpu_* */
 
 #include <dev/nvmm/nvmm.h>
 #include <dev/nvmm/nvmm_internal.h>
@@ -3254,7 +3255,7 @@ vmx_ident(void)
 	uint64_t msr;
 	int ret;
 
-	if (!(cpu_feature[1] & CPUID2_VMX)) {
+	if (!(cpu_feature2 & CPUID2_VMX)) {
 		return false;
 	}
 

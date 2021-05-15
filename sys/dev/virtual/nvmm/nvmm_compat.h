@@ -49,6 +49,7 @@
 
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
+#include <machine/md_var.h> /* cpu_high */
 #include <machine/specialreg.h>
 
 #ifdef __x86_64__
@@ -237,8 +238,13 @@
 #define rdxcr(xcr)		rxcr(xcr)
 #define wrxcr(xcr, val)		load_xcr(xcr, val)
 
-#define x86_cpuid(eax, regs)		do_cpuid(eax, regs)
-#define x86_cpuid2(eax, ecx, regs)	cpuid_count(eax, ecx, regs)
+/*
+ * CPUID features/level
+ */
+#define cpuid_level		cpu_high
+#define x86_cpuid(eax, regs)	do_cpuid(eax, regs)
+#define x86_cpuid2(eax, ecx, regs) \
+	cpuid_count(eax, ecx, regs)
 
 /*
  * Mutex lock

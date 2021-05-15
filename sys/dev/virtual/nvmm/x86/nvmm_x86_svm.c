@@ -49,7 +49,9 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_svm.c,v 1.46.4.13 2020/09/13 11:56:44 marti
 #include <x86/pmap.h>
 #include <x86/dbregs.h>
 #include <x86/cpu_counter.h>
+#include <machine/cputypes.h> /* CPU_VENDOR_* */
 #include <machine/cpuvar.h>
+#include <machine/md_var.h> /* cpu_*, amd_feature2 */
 
 #include <dev/nvmm/nvmm.h>
 #include <dev/nvmm/nvmm_internal.h>
@@ -2425,15 +2427,15 @@ svm_ident(void)
 	u_int descs[4];
 	uint64_t msr;
 
-	if (cpu_vendor != CPUVENDOR_AMD) {
+	if (cpu_vendor_id != CPU_VENDOR_AMD) {
 		return false;
 	}
-	if (!(cpu_feature[3] & CPUID_SVM)) {
+	if (!(amd_feature2 & CPUID_SVM)) {
 		printf("NVMM: SVM not supported\n");
 		return false;
 	}
 
-	if (curcpu()->ci_max_ext_cpuid < 0x8000000a) {
+	if (cpu_exthigh < 0x8000000a) {
 		printf("NVMM: CPUID leaf not available\n");
 		return false;
 	}
