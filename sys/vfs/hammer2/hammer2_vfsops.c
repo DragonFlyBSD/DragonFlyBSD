@@ -1754,7 +1754,7 @@ hammer2_unmount_helper(struct mount *mp, hammer2_pfs_t *pmp, hammer2_dev_t *hmp)
 	 */
 	if (pmp) {
 		KKASSERT(hmp == NULL);
-		KKASSERT((void *)(intptr_t)mp->mnt_data == pmp);
+		KKASSERT(MPTOPMP(mp) == pmp);
 		pmp->mp = NULL;
 		mp->mnt_data = NULL;
 
