@@ -135,6 +135,7 @@ typedef struct spinlock			hammer2_spin_t;
 #define hammer2_mtx_sh_again		mtx_lock_sh_again
 #define hammer2_mtx_sh_try		mtx_lock_sh_try
 #define hammer2_mtx_unlock		mtx_unlock
+#define hammer2_mtx_upgrade_try		mtx_upgrade_try
 #define hammer2_mtx_downgrade		mtx_downgrade
 #define hammer2_mtx_owned		mtx_owned
 #define hammer2_mtx_init		mtx_init
@@ -152,18 +153,6 @@ TAILQ_HEAD(hammer2_xop_list, hammer2_xop_head);
 TAILQ_HEAD(hammer2_chain_list, hammer2_chain);
 
 typedef struct hammer2_xop_list	hammer2_xop_list_t;
-
-#ifdef _KERNEL
-/*
- * General lock support
- */
-static __inline
-int
-hammer2_mtx_upgrade_try(hammer2_mtx_t *mtx)
-{
-	return mtx_upgrade_try(mtx);
-}
-#endif
 
 /*
  * Cap the dynamic calculation for the maximum number of dirty
