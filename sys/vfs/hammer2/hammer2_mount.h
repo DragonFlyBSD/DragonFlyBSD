@@ -49,11 +49,11 @@ struct hammer2_mount_info {
 	char		reserved1[112];
 };
 
-#define HMNT2_NOAUTOSNAP	0x00000001
+#define HMNT2_UNUSED01		0x00000001
 #define HMNT2_LOCAL		0x00000002
 #define HMNT2_EMERG		0x00000004	/* emergency mode */
 
-#define HMNT2_USERFLAGS		(HMNT2_NOAUTOSNAP | HMNT2_LOCAL)
+#define HMNT2_USERFLAGS		(HMNT2_LOCAL)
 #define HMNT2_DEVFLAGS		(HMNT2_LOCAL)
 
 #endif
