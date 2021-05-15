@@ -163,18 +163,7 @@ hammer2_mtx_upgrade_try(hammer2_mtx_t *mtx)
 {
 	return mtx_upgrade_try(mtx);
 }
-
 #endif
-
-/*
- * The xid tracks internal transactional updates.
- *
- * XXX fix-me, really needs to be 64-bits
- */
-typedef uint32_t hammer2_xid_t;
-
-#define HAMMER2_XID_MIN			0x00000000U
-#define HAMMER2_XID_MAX			0x7FFFFFFFU
 
 /*
  * Cap the dynamic calculation for the maximum number of dirty

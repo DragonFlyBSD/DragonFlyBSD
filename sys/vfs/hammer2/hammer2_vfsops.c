@@ -1152,7 +1152,6 @@ next_hmp:
 	 */
 	if (hmp == NULL) {
 		hammer2_chain_t *schain;
-		hammer2_xid_t xid;
 		hammer2_xop_head_t xop;
 
 		/*
@@ -1287,7 +1286,6 @@ next_hmp:
 		 * Dummy-up vchain and fchain's modify_tid.  mirror_tid
 		 * is inherited from the volume header.
 		 */
-		xid = 0;
 		hmp->vchain.bref.mirror_tid = hmp->voldata.mirror_tid;
 		hmp->vchain.bref.modify_tid = hmp->vchain.bref.mirror_tid;
 		hmp->vchain.pmp = spmp;
