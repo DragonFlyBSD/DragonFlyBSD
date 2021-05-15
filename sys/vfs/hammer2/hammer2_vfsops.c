@@ -58,8 +58,6 @@
 
 #include "zlib/hammer2_zlib.h"
 
-#define REPORT_REFS_ERRORS 1	/* XXX remove me */
-
 MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
 
 struct hammer2_sync_info {
@@ -720,13 +718,9 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 				chains_still_present = 1;
 			}
 		}
-#if REPORT_REFS_ERRORS
-		if (iroot->refs != 1)
-			kprintf("PMP->IROOT %p REFS WRONG %d\n",
-				iroot, iroot->refs);
-#else
-		KKASSERT(iroot->refs == 1);
-#endif
+		KASSERT(iroot->refs == 1,
+			("PMP->IROOT %p REFS WRONG %d", iroot, iroot->refs));
+
 		/* ref for iroot */
 		hammer2_inode_drop(iroot);
 		pmp->iroot = NULL;
