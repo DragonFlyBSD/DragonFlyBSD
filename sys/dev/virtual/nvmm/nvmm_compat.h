@@ -45,6 +45,7 @@
 #include <sys/bitops.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
+#include <sys/proc.h> /* lwp */
 #include <sys/systm.h>
 
 #include <machine/atomic.h>
@@ -305,5 +306,48 @@ enum {
 #define x86_fpu_mxcsr_mask	npx_mxcsr_mask
 #define stts()			load_cr0(rcr0() | CR0_TS)
 #define clts()			__asm__("clts")
+
+/*
+ * Debug registers
+ */
+#define curlwp			(curthread->td_lwp)
+
+static __inline void
+x86_dbregs_save(struct lwp *lp)
+{
+	struct pcb *pcb;
+
+	KKASSERT(lp != NULL && lp->lwp_thread != NULL);
+	pcb = lp->lwp_thread->td_pcb;
+
+	if (!(pcb->pcb_flags & PCB_DBREGS))
+		return;
+
+	pcb->pcb_dr0 = rdr0();
+	pcb->pcb_dr1 = rdr1();
+	pcb->pcb_dr2 = rdr2();
+	pcb->pcb_dr3 = rdr3();
+	pcb->pcb_dr6 = rdr6();
+	pcb->pcb_dr7 = rdr7();
+}
+
+static __inline void
+x86_dbregs_restore(struct lwp *lp)
+{
+	struct pcb *pcb;
+
+	KKASSERT(lp != NULL && lp->lwp_thread != NULL);
+	pcb = lp->lwp_thread->td_pcb;
+
+	if (!(pcb->pcb_flags & PCB_DBREGS))
+		return;
+
+	load_dr0(pcb->pcb_dr0);
+	load_dr1(pcb->pcb_dr1);
+	load_dr2(pcb->pcb_dr2);
+	load_dr3(pcb->pcb_dr3);
+	load_dr6(pcb->pcb_dr6);
+	load_dr7(pcb->pcb_dr7);
+}
 
 #endif /* _NVMM_COMPAT_H_ */
