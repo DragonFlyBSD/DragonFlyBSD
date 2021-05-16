@@ -102,9 +102,6 @@ static	void	fpu_clean_state(void);
 
 static struct krate badfprate = { 1 };
 
-static	void	fpusave		(union savefpu *);
-static	void	fpurstor	(union savefpu *);
-
 __read_mostly uint32_t npx_mxcsr_mask = 0xFFBF;	/* this is the default */
 __read_mostly uint64_t npx_xcr0_mask = 0;
 
@@ -484,7 +481,7 @@ npxsave(union savefpu *addr)
 	crit_exit();
 }
 
-static void
+void
 fpusave(union savefpu *addr)
 {
 #ifndef CPU_DISABLE_AVX
@@ -630,7 +627,7 @@ fpu_clean_state(void)
 	__asm __volatile("ffree %%st(7); flds %0" : : "m" (dummy_variable));
 }
 
-static void
+void
 fpurstor(union savefpu *addr)
 {
 #ifndef CPU_DISABLE_AVX
