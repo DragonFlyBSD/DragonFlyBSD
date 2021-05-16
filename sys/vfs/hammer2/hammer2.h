@@ -1153,7 +1153,6 @@ struct hammer2_dev {
 	int		nvolumes;	/* total number of volumes */
 	hammer2_thread_t bfthr;		/* bulk-free thread */
 	char		devrepname[64];	/* for kprintf */
-	hammer2_ioc_bulkfree_t bflast;	/* stats for last bulkfree run */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
 
