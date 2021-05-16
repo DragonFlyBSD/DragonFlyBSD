@@ -124,7 +124,6 @@ union hammer2_xop;
  * synchronous non-abortable locks can be substituted for spinlocks.
  */
 typedef mtx_t				hammer2_mtx_t;
-typedef mtx_link_t			hammer2_mtx_link_t;
 typedef mtx_state_t			hammer2_mtx_state_t;
 
 typedef struct spinlock			hammer2_spin_t;
