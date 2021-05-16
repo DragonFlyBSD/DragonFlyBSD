@@ -1129,8 +1129,6 @@ struct hammer2_dev {
 	struct malloc_type *mchain_obj;
 	struct malloc_type *mio_obj;
 	struct malloc_type *mmsg;
-	int		nipstacks;
-	int		maxipstacks;
 	kdmsg_iocom_t	iocom;		/* volume-level dmsg interface */
 	hammer2_spin_t	io_spin;	/* iotree, iolruq access */
 	struct hammer2_io_tree iotree;
