@@ -978,9 +978,11 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 		atomic_add_long(&tmp->tm_pages_used, (newpages - oldpages));
 
 	/*
-	 * nvextflags to pass along for bdwrite() vs buwrite()
+	 * nvextflags to pass along for bdwrite() vs buwrite(), this is
+	 * so tmpfs activity doesn't eat memory being freed by the pageout
+	 * daemon.
 	 */
-	if (vm_pages_needed || vm_paging_needed(0) ||
+	if (vm_pages_needed || vm_paging_start(0) ||
 	    tmpfs_bufcache_mode >= 2) {
 		nvextflags = 0;
 	} else {

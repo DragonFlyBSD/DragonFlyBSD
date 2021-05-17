@@ -750,7 +750,7 @@ msdosfs_write(struct vop_write_args *ap)
 		 */
 		if (ioflag & IO_SYNC)
 			bwrite(bp);
-		else if (vm_page_count_severe() || buf_dirty_count_severe())
+		else if (vm_paging_severe() || buf_dirty_count_severe())
 			bawrite(bp);
 		else if (n + croffset == pmp->pm_bpcluster) {
 			if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0)

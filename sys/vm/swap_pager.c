@@ -2069,7 +2069,7 @@ swp_pager_async_iodone(struct bio *bio)
 				vm_page_undirty(m);
 			vm_page_flag_set(m, PG_SWAPPED);
 			atomic_clear_int(&m->busy_count, PBUSY_SWAPINPROG);
-			if (vm_page_count_severe())
+			if (vm_paging_severe())
 				vm_page_deactivate(m);
 			vm_page_io_finish(m);
 			if (bio->bio_caller_info1.index & SWBIO_TTC)

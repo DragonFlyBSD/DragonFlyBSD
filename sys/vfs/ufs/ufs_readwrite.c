@@ -369,7 +369,7 @@ ffs_write(struct vop_write_args *ap)
 
 		if (ioflag & IO_SYNC) {
 			(void)bwrite(bp);
-		} else if (vm_page_count_severe() || 
+		} else if (vm_paging_severe() ||
 			    buf_dirty_count_severe() ||
 			    (ioflag & IO_ASYNC)) {
 			bp->b_flags |= B_CLUSTEROK;

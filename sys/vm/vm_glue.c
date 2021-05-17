@@ -248,7 +248,7 @@ vm_fork(struct proc *p1, struct proc *p2, struct lwp *lp2, int flags)
 		p2->p_vmspace = p1->p_vmspace;
 	}
 
-	while (vm_page_count_severe()) {
+	while (vm_paging_severe()) {
 		vm_wait(0);
 	}
 

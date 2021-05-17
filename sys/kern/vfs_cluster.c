@@ -1391,7 +1391,7 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 					  cc->v_clen + blksize);
 		cc->v_clen = 0;
 		cc->v_cstart = loffset;
-	} else if (vm_page_count_severe() &&
+	} else if (vm_paging_severe() &&
 		   bp->b_loffset + blksize < filesize) {
 		/*
 		 * We are low on memory, get it going NOW.  However, do not

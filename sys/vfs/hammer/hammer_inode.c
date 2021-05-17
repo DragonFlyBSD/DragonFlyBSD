@@ -2889,7 +2889,7 @@ done:
 	 * WARNING: See warnings in hammer_unlock_cursor() function.
 	 */
         if (hammer_flusher_meta_limit(hmp) ||
-	    vm_page_count_severe()) {
+	    vm_paging_severe()) {
 		hammer_unlock_cursor(cursor);
                 hammer_flusher_finalize(trans, 0);
 		hammer_lock_cursor(cursor);

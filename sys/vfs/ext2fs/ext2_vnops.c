@@ -2043,9 +2043,10 @@ ext2_write(struct vop_write_args *ap)
 		 */
 		if (ioflag & IO_SYNC) {
 			(void)bwrite(bp);
-		} else if (vm_page_count_severe() ||
-			    buf_dirty_count_severe() ||
-		    (ioflag & IO_ASYNC)) {
+		} else if (vm_paging_severe() ||
+			   buf_dirty_count_severe() ||
+			   (ioflag & IO_ASYNC))
+		{
 			bp->b_flags |= B_CLUSTEROK;
 			bawrite(bp);
 		} else if (xfersize + blkoffset == fs->e2fs_fsize) {

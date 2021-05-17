@@ -116,7 +116,7 @@ ffs_update(struct vnode *vp, int waitfor)
 	    ino_to_fsbo(fs, ip->i_number)) = ip->i_din;
 	if (waitfor && !DOINGASYNC(vp)) {
 		return (bwrite(bp));
-	} else if (vm_page_count_severe() || buf_dirty_count_severe()) {
+	} else if (vm_paging_severe() || buf_dirty_count_severe()) {
 		return (bwrite(bp));
 	} else {
 		if (bp->b_bufsize == fs->fs_bsize)

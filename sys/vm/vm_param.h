@@ -84,12 +84,16 @@
 #define VM_V_FREE_TARGET	4	/* cnt.v_free_target */
 #define VM_V_FREE_RESERVED	5	/* cnt.v_free_reserved */
 #define VM_V_INACTIVE_TARGET	6	/* cnt.v_inactive_target */
-#define VM_V_CACHE_MIN		7	/* cnt.v_cache_max */
-#define VM_V_CACHE_MAX		8	/* cnt.v_cache_min */
-#define VM_V_PAGEOUT_FREE_MIN	9	/* cnt.v_pageout_free_min */
-#define	VM_PAGEOUT_ALGORITHM	10	/* pageout algorithm */
-#define VM_SWAPPING_ENABLED	11	/* swapping enabled */
-#define	VM_MAXID		12	/* number of valid vm ids */
+#define VM_V_PAGEOUT_FREE_MIN	7	/* cnt.v_pageout_free_min */
+#define	VM_PAGEOUT_ALGORITHM	8	/* pageout algorithm */
+#define VM_SWAPPING_ENABLED	9	/* swapping enabled */
+
+#define VM_V_PAGING_WAIT	10
+#define VM_V_PAGING_START	11
+#define VM_V_PAGING_TARGET1	12
+#define VM_V_PAGING_TARGET2	13
+
+#define	VM_MAXID		14	/* number of valid vm ids */
 
 #define CTL_VM_NAMES { \
 	{ 0, 0 }, \
@@ -99,11 +103,13 @@
 	{ "v_free_target", CTLTYPE_INT }, \
 	{ "v_free_reserved", CTLTYPE_INT }, \
 	{ "v_inactive_target", CTLTYPE_INT }, \
-	{ "v_cache_min", CTLTYPE_INT }, \
-	{ "v_cache_max", CTLTYPE_INT }, \
 	{ "v_pageout_free_min", CTLTYPE_INT}, \
 	{ "pageout_algorithm", CTLTYPE_INT}, \
-	{ "swapping_enabled", CTLTYPE_INT},\
+	{ "swapping_enabled", CTLTYPE_INT}, \
+	{ "v_paging_wait", CTLTYPE_INT}, \
+	{ "v_paging_start", CTLTYPE_INT}, \
+	{ "v_paging_target1", CTLTYPE_INT}, \
+	{ "v_paging_target2", CTLTYPE_INT}, \
 }
 
 /*

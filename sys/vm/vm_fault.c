@@ -1626,7 +1626,7 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 			vm_page_unqueue_nowakeup(fs->mary[0]);
 
 			if ((queue - fs->mary[0]->pc) == PQ_CACHE &&
-			    vm_page_count_severe()) {
+			    vm_paging_severe()) {
 				vm_page_activate(fs->mary[0]);
 				vm_page_wakeup(fs->mary[0]);
 				fs->mary[0] = NULL;
@@ -1735,7 +1735,7 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 			if (fs->ba->object->type == OBJT_MGTDEVICE)
 				goto readrest;
 
-			if (!vm_page_count_severe()) {
+			if (!vm_paging_severe()) {
 				fs->mary[0] = vm_page_alloc(fs->ba->object,
 				    pindex,
 				    ((fs->vp || fs->ba->backing_ba) ?
@@ -2889,7 +2889,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 				if (vm_fast_fault == 0)
 					break;
 				if ((prot & VM_PROT_WRITE) == 0 ||
-				    vm_page_count_min(0)) {
+				    vm_paging_min()) {
 					break;
 				}
 

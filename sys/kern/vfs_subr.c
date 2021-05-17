@@ -921,7 +921,7 @@ vfsync_bp(struct buf *bp, void *data)
 		 */
 		vp->v_lazyw = bp->b_loffset;
 		bremfree(bp);
-		if (vm_page_count_min(0)) {
+		if (vm_paging_min()) {
 			/* low memory */
 			info->lazycount += bp->b_bufsize;
 			bwrite(bp);

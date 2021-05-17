@@ -190,9 +190,12 @@ vm_page_queue_init(void)
 	/* PQ_NONE has no queue */
 
 	for (i = 0; i < PQ_COUNT; i++) {
-		vm_page_queues[i].lastq = -1;
-		TAILQ_INIT(&vm_page_queues[i].pl);
-		spin_init(&vm_page_queues[i].spin, "vm_page_queue_init");
+		struct vpgqueues *vpq;
+
+		vpq = &vm_page_queues[i];
+		vpq->lastq = -1;
+		TAILQ_INIT(&vpq->pl);
+		spin_init(&vpq->spin, "vm_page_queue_init");
 	}
 }
 
@@ -1056,7 +1059,7 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		atomic_add_long(cnt_adj, -1);
 		atomic_add_long(cnt_gd, -1);
 
-		if (*cnt_adj < -1024 && vm_paging_needed(-1024 * ncpus)) {
+		if (*cnt_adj < -1024 && vm_paging_start(-1024 * ncpus)) {
 			u_long copy = atomic_swap_long(cnt_adj, 0);
 			cnt_adj = (long *)((char *)&vmstats + pq->cnt_offset);
 			atomic_add_long(cnt_adj, copy);
@@ -2567,9 +2570,8 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 		page_req |= VM_ALLOC_SYSTEM;
 
 	/*
-	 * Impose various limitations.  Note that the v_free_reserved test
-	 * must match the opposite of vm_page_count_target() to avoid
-	 * livelocks, be careful.
+	 * To avoid live-locks only compare against v_free_reserved.  The
+	 * pageout daemon has extra tests for this.
 	 */
 loop:
 	gd = mycpu;
@@ -2884,7 +2886,7 @@ vm_page_free_contig(vm_page_t m, unsigned long size)
 void
 vm_wait_nominal(void)
 {
-	while (vm_page_count_min(0))
+	while (vm_paging_min())
 		vm_wait(0);
 }
 
@@ -2894,17 +2896,18 @@ vm_wait_nominal(void)
 int
 vm_test_nominal(void)
 {
-	if (vm_page_count_min(0))
+	if (vm_paging_min())
 		return(1);
 	return(0);
 }
 
 /*
  * Block until free pages are available for allocation, called in various
- * places before memory allocations.
+ * places before memory allocations, and occurs before the minimum is reached.
+ * Typically in the I/O path.
  *
- * The caller may loop if vm_page_count_min() == FALSE so we cannot be
- * more generous then that.
+ * The caller may loop if vm_paging_min() is TRUE (free pages below minimum),
+ * so we cannot be more generous then that.
  */
 void
 vm_wait(int timo)
@@ -2921,7 +2924,7 @@ vm_wait(int timo)
 		/*
 		 * The pageout daemon itself needs pages, this is bad.
 		 */
-		if (vm_page_count_min(0)) {
+		if (vm_paging_min()) {
 			vm_pageout_pages_needed = 1;
 			tsleep(&vm_pageout_pages_needed, 0, "VMWait", timo);
 		}
@@ -2934,8 +2937,10 @@ vm_wait(int timo)
 		 * But wait a little to try to slow down page allocations
 		 * and to give more important threads (the pagedaemon)
 		 * allocation priority.
+		 *
+		 * The vm_paging_min() test is a safety.
 		 */
-		if (vm_page_count_target()) {
+		if (vm_paging_wait() || vm_paging_min()) {
 			if (vm_pages_needed <= 1) {
 				++vm_pages_needed;
 				wakeup(&vm_pages_needed);
@@ -2948,7 +2953,9 @@ vm_wait(int timo)
 }
 
 /*
- * Block until free pages are available for allocation
+ * Block until free pages are available for allocation, called in the
+ * page-fault code.  We must stall indefinitely (except for certain
+ * conditions) when the free page count becomes severe.
  *
  * Called only from vm_fault so that processes page faulting can be
  * easily tracked.
@@ -2959,32 +2966,37 @@ vm_wait_pfault(void)
 	/*
 	 * Wakeup the pageout daemon if necessary and wait.
 	 *
+	 * Allow VM faults down to the minimum free page count, but only
+	 * stall once paging becomes severe.
+	 *
 	 * Do not wait indefinitely for the target to be reached,
 	 * as load might prevent it from being reached any time soon.
 	 * But wait a little to try to slow down page allocations
 	 * and to give more important threads (the pagedaemon)
 	 * allocation priority.
 	 */
-	if (vm_page_count_min(0)) {
+	if (vm_paging_min()) {
 		lwkt_gettoken(&vm_token);
-		while (vm_page_count_severe()) {
-			if (vm_page_count_target()) {
-				thread_t td;
+		while (vm_paging_severe()) {
+			thread_t td;
 
-				if (vm_pages_needed <= 1) {
-					++vm_pages_needed;
-					wakeup(&vm_pages_needed);
-				}
-				++vm_pages_waiting;	/* SMP race ok */
-				tsleep(&vmstats.v_free_count, 0, "pfault", hz);
+			if (vm_pages_needed <= 1) {
+				++vm_pages_needed;
+				wakeup(&vm_pages_needed);
+			}
+			++vm_pages_waiting;	/* SMP race ok */
+			tsleep(&vmstats.v_free_count, 0, "pfault",
+				hz / 10 + 1);
 
-				/*
-				 * Do not stay stuck in the loop if the system is trying
-				 * to kill the process.
-				 */
-				td = curthread;
-				if (td->td_proc && (td->td_proc->p_flags & P_LOWMEMKILL))
-					break;
+			/*
+			 * Do not stay stuck in the loop if the system
+			 * is trying to kill the process.
+			 */
+			td = curthread;
+			if (td->td_proc &&
+			    (td->td_proc->p_flags & P_LOWMEMKILL))
+			{
+				break;
 			}
 		}
 		lwkt_reltoken(&vm_token);
@@ -3081,37 +3093,19 @@ vm_page_free_wakeup(void)
 	 * Generally speaking we want to wakeup stuck processes as soon as
 	 * possible.  !vm_page_count_min(0) is the absolute minimum point
 	 * where we can do this.  Wait a bit longer to reduce degenerate
-	 * re-blocking (vm_page_free_hysteresis).  The target check is just
-	 * to make sure the min-check w/hysteresis does not exceed the
-	 * normal target.
+	 * re-blocking (vm_page_free_hysteresis).
+	 *
+	 * The target check is a safety to make sure the min-check
+	 * w/hysteresis does not exceed the normal target1.
 	 */
 	if (vm_pages_waiting) {
-		if (!vm_page_count_min(vm_page_free_hysteresis) ||
-		    !vm_page_count_target()) {
+		if (!vm_paging_min_dnc(vm_page_free_hysteresis) ||
+		    !vm_paging_target1())
+		{
 			vm_pages_waiting = 0;
 			wakeup(&vmstats.v_free_count);
 			++mycpu->gd_cnt.v_ppwakeups;
 		}
-#if 0
-		if (!vm_page_count_target()) {
-			/*
-			 * Plenty of pages are free, wakeup everyone.
-			 */
-			vm_pages_waiting = 0;
-			wakeup(&vmstats.v_free_count);
-			++mycpu->gd_cnt.v_ppwakeups;
-		} else if (!vm_page_count_min(0)) {
-			/*
-			 * Some pages are free, wakeup someone.
-			 */
-			int wcount = vm_pages_waiting;
-			if (wcount > 0)
-				--wcount;
-			vm_pages_waiting = wcount;
-			wakeup_one(&vmstats.v_free_count);
-			++mycpu->gd_cnt.v_ppwakeups;
-		}
-#endif
 	}
 }
 
@@ -4089,9 +4083,12 @@ DB_SHOW_COMMAND(page, vm_page_print_page_info)
 	db_printf("vmstats.v_free_reserved: %ld\n", vmstats.v_free_reserved);
 	db_printf("vmstats.v_free_min: %ld\n", vmstats.v_free_min);
 	db_printf("vmstats.v_free_target: %ld\n", vmstats.v_free_target);
-	db_printf("vmstats.v_cache_min: %ld\n", vmstats.v_cache_min);
 	db_printf("vmstats.v_inactive_target: %ld\n",
 		  vmstats.v_inactive_target);
+	db_printf("vmstats.v_paging_wait: %ld\n", vmstats.v_paging_wait);
+	db_printf("vmstats.v_paging_start: %ld\n", vmstats.v_paging_start);
+	db_printf("vmstats.v_paging_target1: %ld\n", vmstats.v_paging_target1);
+	db_printf("vmstats.v_paging_target2: %ld\n", vmstats.v_paging_target2);
 }
 
 DB_SHOW_COMMAND(pageq, vm_page_print_pageq_info)

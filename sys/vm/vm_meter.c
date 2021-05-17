@@ -70,21 +70,24 @@ static int maxslp = MAXSLP;
 SYSCTL_ULONG(_vm, VM_V_FREE_MIN, v_free_min,
 	CTLFLAG_RW, &vmstats.v_free_min, 0,
 	"Minimum number of pages desired free");
-SYSCTL_ULONG(_vm, VM_V_FREE_TARGET, v_free_target,
-	CTLFLAG_RW, &vmstats.v_free_target, 0,
-	"Number of pages desired free");
+SYSCTL_ULONG(_vm, VM_V_PAGING_WAIT, v_paging_wait,
+	CTLFLAG_RW, &vmstats.v_paging_wait, 0,
+	"Userland slows down allocations");
+SYSCTL_ULONG(_vm, VM_V_PAGING_START, v_paging_start,
+	CTLFLAG_RW, &vmstats.v_paging_start, 0,
+	"Pageout daemon begins running");
+SYSCTL_ULONG(_vm, VM_V_PAGING_TARGET1, v_paging_target1,
+	CTLFLAG_RW, &vmstats.v_paging_target1, 0,
+	"Mid pageout daemon target");
+SYSCTL_ULONG(_vm, VM_V_PAGING_TARGET2, v_paging_target2,
+	CTLFLAG_RW, &vmstats.v_paging_target2, 0,
+	"Final pageout daemon target");
 SYSCTL_ULONG(_vm, VM_V_FREE_RESERVED, v_free_reserved,
 	CTLFLAG_RW, &vmstats.v_free_reserved, 0,
 	"Number of pages reserved for deadlock");
 SYSCTL_ULONG(_vm, VM_V_INACTIVE_TARGET, v_inactive_target,
 	CTLFLAG_RW, &vmstats.v_inactive_target, 0,
-	"Number of pages desired inactive");
-SYSCTL_ULONG(_vm, VM_V_CACHE_MIN, v_cache_min,
-	CTLFLAG_RW, &vmstats.v_cache_min, 0,
-	"Min number of pages desired on cache queue");
-SYSCTL_ULONG(_vm, VM_V_CACHE_MAX, v_cache_max,
-	CTLFLAG_RW, &vmstats.v_cache_max, 0,
-	"Max number of pages in cached obj");
+	"Maximum inactive pages during pageout");
 SYSCTL_ULONG(_vm, VM_V_PAGEOUT_FREE_MIN, v_pageout_free_min,
 	CTLFLAG_RW, &vmstats.v_pageout_free_min, 0,
 	"Min number pages reserved for kernel");
@@ -377,11 +380,20 @@ SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_free_reserved, CTLFLAG_RD, &vmstats.v_free_reserved, 0,
 	"Number of pages reserved for deadlock");
 SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
-	v_free_target, CTLFLAG_RD, &vmstats.v_free_target, 0,
-	"Number of pages desired free");
-SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_free_min, CTLFLAG_RD, &vmstats.v_free_min, 0,
 	"Minimum number of pages desired free");
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
+	v_paging_wait, CTLFLAG_RW, &vmstats.v_paging_wait, 0,
+	"Userland slows down allocations");
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
+	v_paging_start, CTLFLAG_RW, &vmstats.v_paging_start, 0,
+	"Pageout daemon begins running");
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
+	v_paging_target1, CTLFLAG_RW, &vmstats.v_paging_target1, 0,
+	"Mid pageout daemon target");
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
+	v_paging_target2, CTLFLAG_RW, &vmstats.v_paging_target2, 0,
+	"Final pageout daemon target");
 SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_free_count, CTLFLAG_RD, &vmstats.v_free_count, 0,
 	"Number of pages free");
@@ -393,19 +405,13 @@ SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	"Number of pages active");
 SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_inactive_target, CTLFLAG_RD, &vmstats.v_inactive_target, 0,
-	"Number of pages desired inactive");
+	"Maximum inactive pages during pageout");
 SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_inactive_count, CTLFLAG_RD, &vmstats.v_inactive_count, 0,
 	"Number of pages inactive");
 SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_cache_count, CTLFLAG_RD, &vmstats.v_cache_count, 0,
 	"Number of pages on buffer cache queue");
-SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
-	v_cache_min, CTLFLAG_RD, &vmstats.v_cache_min, 0,
-	"Min number of pages desired on cache queue");
-SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
-	v_cache_max, CTLFLAG_RD, &vmstats.v_cache_max, 0,
-	"Max number of pages in cached obj");
 SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_pageout_free_min, CTLFLAG_RD, &vmstats.v_pageout_free_min, 0,
 	"Min number pages reserved for kernel");

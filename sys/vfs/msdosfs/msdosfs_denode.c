@@ -465,7 +465,7 @@ deupdat(struct denode *dep, int waitfor)
 		bp->b_flags |= B_CLUSTEROK;
 	if (waitfor)
 		error = bwrite(bp);
-	else if (vm_page_count_severe() || buf_dirty_count_severe())
+	else if (vm_paging_min() || buf_dirty_count_severe())
 		bawrite(bp);
 	else
 		bdwrite(bp);

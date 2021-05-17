@@ -72,98 +72,257 @@
  * This causes user processes to stall to avoid exhausting memory that
  * the kernel might need.
  *
- * reserved < severe < minimum < target < paging_target
+ * reserved < severe < minimum < wait < start < target1 < target2
  */
 static __inline 
 int
-vm_page_count_severe(void)
+vm_paging_severe(void)
 {
-    globaldata_t gd = mycpu;
+	globaldata_t gd = mycpu;
 
-    return (gd->gd_vmstats.v_free_severe >
-	    gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count ||
-	    gd->gd_vmstats.v_free_reserved > gd->gd_vmstats.v_free_count);
+	if (__predict_false(gd->gd_vmstats.v_free_severe >
+			    gd->gd_vmstats.v_free_count +
+			    gd->gd_vmstats.v_cache_count))
+	{
+		return 1;
+	}
+	if (__predict_false(gd->gd_vmstats.v_free_reserved >
+			    gd->gd_vmstats.v_free_count))
+	{
+		return 1;
+	}
+	return 0;
 }
 
 /*
- * Return TRUE if we are under our minimum low-free-pages threshold.
- * This activates the pageout demon.  The pageout demon tries to
- * reach the target but may stop once it satisfies the minimum.
+ * Return TRUE if we are under our minimum low-free-pages threshold.  We
+ * will not count (donotcount) free pages as being free (used mainly for
+ * hystersis tests).
  *
- * reserved < severe < minimum < target < paging_target
+ * This will cause most normal page faults to block and activate the
+ * pageout daemon.
+ *
+ * The pageout daemon should already be active due to vm_paging_start(n)
+ * and will typically continue running until it hits target2
+ *
+ * reserved < severe < minimum < wait < start < target1 < target2
  */
 static __inline 
 int
-vm_page_count_min(long donotcount)
+vm_paging_min_dnc(long donotcount)
 {
-    globaldata_t gd = mycpu;
+	globaldata_t gd = mycpu;
 
-    return (gd->gd_vmstats.v_free_min + donotcount >
-	    (gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count) ||
-	    gd->gd_vmstats.v_free_reserved > gd->gd_vmstats.v_free_count);
+	if (__predict_false(gd->gd_vmstats.v_free_min + donotcount >
+			    (gd->gd_vmstats.v_free_count +
+			     gd->gd_vmstats.v_cache_count)))
+	{
+		return 1;
+	}
+	if (__predict_false(gd->gd_vmstats.v_free_reserved >
+			    gd->gd_vmstats.v_free_count))
+	{
+		return 1;
+	}
+	return 0;
 }
 
-/*
- * Return TRUE if we are under our free page target.  The pageout demon
- * tries to reach the target but may stop once it gets past the min.
- *
- * User threads doing normal allocations might wait based on this
- * function but MUST NOT wait in a loop based on this function as the
- * VM load may prevent the target from being reached.
- */
-static __inline 
+static __inline
 int
-vm_page_count_target(void)
+vm_paging_min(void)
 {
-    globaldata_t gd = mycpu;
-
-    return (gd->gd_vmstats.v_free_target >
-	    (gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count) ||
-	    gd->gd_vmstats.v_free_reserved > gd->gd_vmstats.v_free_count);
+	return vm_paging_min_dnc(0);
 }
 
 /*
- * Return the number of pages the pageout daemon needs to move into the
- * cache or free lists.  A negative number means we have sufficient free
- * pages.
+ * Return TRUE if nominal userland / VM-system allocations should slow
+ * down (but not stop) due to low free pages in the system.  This is
+ * typically 1/2 way between min and start.
  *
- * The target free+cache is greater than vm_page_count_target().  The
- * frontend uses vm_page_count_target() while the backend continue freeing
- * based on vm_paging_target().
- *
- * This function DOES NOT return TRUE or FALSE.
+ * reserved < severe < minimum < wait < start < target1 < target2
  */
-static __inline 
+static __inline
+int
+vm_paging_wait(void)
+{
+	globaldata_t gd = mycpu;
+
+	if (__predict_false(gd->gd_vmstats.v_paging_wait >
+			    (gd->gd_vmstats.v_free_count +
+			     gd->gd_vmstats.v_cache_count)))
+        {
+		return 1;
+	}
+	if (__predict_false(gd->gd_vmstats.v_free_reserved >
+			    gd->gd_vmstats.v_free_count))
+	{
+		return 1;
+	}
+	return 0;
+}
+
+/*
+ * Return TRUE if the pageout daemon should be started up or continue
+ * running.  Available pages have dropped to a level where we need to
+ * think about freeing some up.
+ *
+ * Also handles edge cases for required 'actually-free' pages.
+ *
+ * reserved < severe < minimum < wait < start < target1 < target2
+ */
+static __inline
+int
+vm_paging_start(int adj)
+{
+	globaldata_t gd = mycpu;
+
+	if (__predict_false(gd->gd_vmstats.v_paging_start >
+			    (gd->gd_vmstats.v_free_count +
+			     gd->gd_vmstats.v_cache_count + adj)))
+	{
+		return 1;
+	}
+	if (__predict_false(gd->gd_vmstats.v_free_min >
+			    gd->gd_vmstats.v_free_count + adj))
+	{
+		return 1;
+	}
+	if (__predict_false(gd->gd_vmstats.v_free_reserved >
+			    gd->gd_vmstats.v_free_count))
+	{
+		return 1;
+	}
+	return 0;
+}
+
+/*
+ * Return TRUE if the pageout daemon has not yet reached its initial target.
+ * The pageout daemon works hard to reach target1.
+ *
+ * reserved < severe < minimum < wait < start < target1 < target2
+ */
+static __inline
+int
+vm_paging_target1(void)
+{
+	globaldata_t gd = mycpu;
+
+	if (__predict_false(gd->gd_vmstats.v_paging_target1 >
+			    (gd->gd_vmstats.v_free_count +
+			     gd->gd_vmstats.v_cache_count)))
+	{
+		return 1;
+	}
+	if (__predict_false(gd->gd_vmstats.v_free_reserved >
+			    gd->gd_vmstats.v_free_count))
+	{
+		return 1;
+	}
+	return 0;
+}
+
+static __inline
 long
-vm_paging_target(void)
+vm_paging_target1_count(void)
 {
-    globaldata_t gd = mycpu;
+	globaldata_t gd = mycpu;
+	long delta;
 
-    return ((gd->gd_vmstats.v_free_target + gd->gd_vmstats.v_cache_min) -
-	    (gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count));
+	delta = gd->gd_vmstats.v_paging_target1 -
+		(gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count);
+	return delta;
 }
 
 /*
- * Return TRUE if hysteresis dictates we should nominally wakeup the
- * pageout daemon to start working on freeing up some memory.  This
- * routine should NOT be used to determine when to block on the VM system.
- * We want to wakeup the pageout daemon before we might otherwise block.
+ * Return TRUE if the pageout daemon has not yet reached its final target.
+ * The pageout daemon takes it easy on its way between target1 and target2.
  *
- * Paging begins when cache+free drops below cache_min + free_min.
+ * reserved < severe < minimum < wait < start < target1 < target2
  */
-static __inline 
+static __inline
 int
-vm_paging_needed(int adj)
+vm_paging_target2(void)
 {
-    globaldata_t gd = mycpu;
+	globaldata_t gd = mycpu;
 
-    if (gd->gd_vmstats.v_free_min + gd->gd_vmstats.v_cache_min >
-	gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count + adj) {
+	if (__predict_false(gd->gd_vmstats.v_paging_target2 >
+			    (gd->gd_vmstats.v_free_count +
+			     gd->gd_vmstats.v_cache_count)))
+	{
 		return 1;
-    }
-    if (gd->gd_vmstats.v_free_min > gd->gd_vmstats.v_free_count + adj)
+	}
+	if (__predict_false(gd->gd_vmstats.v_free_reserved >
+			    gd->gd_vmstats.v_free_count))
+	{
 		return 1;
-    return 0;
+	}
+	return 0;
+}
+
+static __inline
+long
+vm_paging_target2_count(void)
+{
+	globaldata_t gd = mycpu;
+	long delta;
+
+	delta = gd->gd_vmstats.v_paging_target2 -
+		(gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count);
+	return delta;
+}
+
+/*
+ * Returns TRUE if additional pages must be deactivated, either during a
+ * pageout operation or during the page stats scan.
+ *
+ * Inactive tests are used in two places.  During heavy paging the
+ * inactive_target is used to refill the inactive queue in staged.
+ * Those pages are then ultimately flushed and moved to the cache or free
+ * queues.
+ *
+ * The inactive queue is also used to manage scans to update page stats
+ * (m->act_count).  The page stats scan occurs lazily in small batches to
+ * update m->act_count for pages in the active queue and to move pages
+ * (limited by inactive_target) to the inactive queue.  Page stats scanning
+ * and active deactivations only run while the inactive queue is below target.
+ * After this, additional page stats scanning just to update m->act_count
+ * (but not do further deactivations) continues to run for a limited period
+ * of time after any pageout daemon activity.
+ */
+static __inline
+int
+vm_paging_inactive(void)
+{
+	globaldata_t gd = mycpu;
+
+	if (__predict_false((gd->gd_vmstats.v_free_count +
+			     gd->gd_vmstats.v_cache_count +
+			     gd->gd_vmstats.v_inactive_count) <
+			    (gd->gd_vmstats.v_free_min +
+			     gd->gd_vmstats.v_inactive_target)))
+	{
+		return 1;
+	}
+	return 0;
+}
+
+/*
+ * Return number of pages that need to be deactivated to achieve the inactive
+ * target as a positive number.  A negative number indicates that there are
+ * already a sufficient number of inactive pages.
+ */
+static __inline
+long
+vm_paging_inactive_count(void)
+{
+	globaldata_t gd = mycpu;
+	long delta;
+
+	delta = (gd->gd_vmstats.v_free_min + gd->gd_vmstats.v_inactive_target) -
+		(gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count +
+		 gd->gd_vmstats.v_inactive_count);
+
+	return delta;
 }
 
 /*

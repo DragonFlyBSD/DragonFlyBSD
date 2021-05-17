@@ -119,23 +119,46 @@ struct vmstats {
 	u_int v_page_size;	/* page size in bytes */
 	u_int v_unused01;
 	long v_page_count;	/* total number of pages in system */
+	long v_free_severe;	/* severe depletion of pages below this pt */
 	long v_free_reserved;	/* number of pages reserved for deadlock */
-	long v_free_target;	/* number of pages desired free */
-	long v_free_min;	/* minimum number of pages desired free */
 
-	long v_cache_min;	/* min number of pages desired on cache queue */
-	long v_cache_max;	/* max number of pages in cached obj */
+	/*
+	 * Free page queues, pageout daemon starts below when v_free_count
+	 * goes below v_free_min.
+	 */
+	long v_free_min;	/* minimum free pages to maintain */
+	long v_free_target;	/* pageout daemon loop target */
+
+	/*
+	 * While operating, the pageout daemon pipelines up to N pages per
+	 * loop, relooping as needed until all targets are achieved.
+	 *
+	 * active   -> inactive
+	 * inactive -> cache	(1/4 of v_inactive_target)
+	 */
+	long v_inactive_target;	/* active -> inactive */
+
+	/*
+	 * The pageout daemon also starts when (v_free_count + v_cache_count)
+	 * goes below v_paging_start, and generally continues until it
+	 * goes above v_paging_target2.
+	 */
+	long v_paging_wait;	/* vs (free + cache), stall user-land */
+	long v_paging_start;	/* vs (free + cache), start paging */
+	long v_paging_target1;	/* vs (free + cache), slow down paging */
+	long v_paging_target2;	/* vs (free + cache), stop paging */
+
 	long v_pageout_free_min; /* min number pages reserved for kernel */
 	long v_interrupt_free_min; /* reserved number of pages for int code */
-	long v_free_severe;	/* severe depletion of pages below this pt */
 	long v_dma_pages;	/* total dma-reserved pages */
 
-	long v_unused_fixed[5];
+	long v_unused_fixed01;
+	long v_unused_fixed02;
+	long v_unused_fixed03;
 
 	long v_free_count;	/* number of pages free */
 	long v_wire_count;	/* number of pages wired down */
 	long v_active_count;	/* number of pages active */
-	long v_inactive_target;	/* number of pages desired inactive */
 	long v_inactive_count;	/* number of pages inactive */
 	long v_cache_count;	/* number of pages on buffer cache queue */
 	long v_dma_avail;	/* free dma-reserved pages */

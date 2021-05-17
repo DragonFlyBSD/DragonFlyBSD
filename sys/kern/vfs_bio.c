@@ -1344,7 +1344,7 @@ brelse(struct buf *bp)
 	 */
 	if ((bp->b_flags & (B_DELWRI | B_LOCKED)) || bp->b_refs) {
 		bp->b_flags &= ~B_RELBUF;
-	} else if (vm_page_count_min(0)) {
+	} else if (vm_paging_min()) {
 		if (LIST_FIRST(&bp->b_dep) != NULL)
 			buf_deallocate(bp);		/* can set B_LOCKED */
 		if (bp->b_flags & (B_DELWRI | B_LOCKED))
@@ -1676,7 +1676,7 @@ bqrelse(struct buf *bp)
 			       BQUEUE_DIRTY_HW : BQUEUE_DIRTY;
 		TAILQ_INSERT_TAIL(&pcpu->bufqueues[bp->b_qindex],
 				  bp, b_freelist);
-	} else if (vm_page_count_min(0)) {
+	} else if (vm_paging_min()) {
 		/*
 		 * We are too low on memory, we have to try to free the
 		 * buffer (most importantly: the wired pages making up its
@@ -1813,7 +1813,7 @@ vfs_vmio_release(struct buf *bp)
 				vm_page_wakeup(m);
 				vm_page_try_to_free(m);
 			} else if ((bp->b_flags & (B_NOTMETA | B_TTC)) ||
-				   vm_page_count_min(0)) {
+				   vm_paging_min()) {
 				/*
 				 * Attempt to move the page to PQ_CACHE
 				 * if B_NOTMETA is set.  This flag is set
@@ -4308,7 +4308,7 @@ bio_page_alloc(struct buf *bp, vm_object_t obj, vm_pindex_t pg, int deficit)
 	/*
 	 * Wait for memory to free up and try again
 	 */
-	if (vm_page_count_severe())
+	if (vm_paging_severe())
 		++lowmempgallocs;
 	vm_wait(hz / 20 + 1);
 

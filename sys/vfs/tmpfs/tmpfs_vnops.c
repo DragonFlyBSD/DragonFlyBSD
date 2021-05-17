@@ -852,9 +852,9 @@ tmpfs_write(struct vop_write_args *ap)
 			 * quickly under extreme tmpfs write load.
 			 */
 			if (tmpfs_bufcache_mode >= 2) {
-				if (vm_page_count_min(vm_page_free_hysteresis))
+				if (vm_paging_min_dnc(vm_page_free_hysteresis))
 					bp->b_flags |= B_DIRECT | B_TTC;
-				if (vm_pages_needed || vm_paging_needed(0))
+				if (vm_pages_needed || vm_paging_start(0))
 					bp->b_flags |= B_AGE;
 			}
 			bp->b_flags |= B_RELBUF;
@@ -866,8 +866,8 @@ tmpfs_write(struct vop_write_args *ap)
 			} else {
 				cluster_awrite(bp);
 			}
-		} else if (vm_page_count_min(0) ||
-			   ((vm_pages_needed || vm_paging_needed(0)) &&
+		} else if (vm_paging_min() ||
+			   ((vm_pages_needed || vm_paging_start(0)) &&
 			    tmpfs_bufcache_mode >= 1)) {
 			/*
 			 * If the pageout daemon is running we cycle the
