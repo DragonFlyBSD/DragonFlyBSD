@@ -48,6 +48,7 @@ int ColorOpt = 1;
 int NullStdinOpt = 1;
 int SlowStartOpt = -1;
 long PkgDepMemoryTarget;
+long PkgDepScaleTarget = 100;	/* 1.00 */
 char *DSynthExecPath;
 char *ProfileOverrideOpt;
 int NiceOpt = 10;
@@ -87,7 +88,7 @@ main(int ac, char **av)
 	 * Process options and make sure the directive is present
 	 */
 	sopt = 0;
-	while ((c = getopt(ac, av, "dhm:p:vxys:DPSN")) != -1) {
+	while ((c = getopt(ac, av, "dhm:p:vxys:DPM:NS")) != -1) {
 		switch(c) {
 		case 'x':
 			++OverridePkgDeleteOpt;
@@ -132,6 +133,13 @@ main(int ac, char **av)
 		case 'm':
 			PkgDepMemoryTarget = strtoul(optarg, NULL, 0);
 			PkgDepMemoryTarget *= ONEGB;
+			break;
+		case 'M':
+			PkgDepScaleTarget = strtod(optarg, NULL) * 100;
+			if (PkgDepScaleTarget < 1)
+				PkgDepScaleTarget = 1;
+			if (PkgDepScaleTarget > 9900)
+				PkgDepScaleTarget = 9900;
 			break;
 		case 'p':
 			ProfileOverrideOpt = optarg;

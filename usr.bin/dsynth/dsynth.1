@@ -44,6 +44,7 @@
 .Op Fl p Ar profile
 .Op Fl s Ar n
 .Op Fl m Ar gb
+.Op Fl M Ar scale
 .Ar directive
 .Op origins
 .Nm
@@ -170,6 +171,13 @@ Some paging
 is necessary to maintain maximum CPU utilization, but excessive paging
 can cause the whole machine to essentially become idle for extended
 periods of time.
+.It Fl M Ar scale
+Override dynamic workers calculation by a specific scale factor.
+Specifying 1.0 leaves it unchanged, 0.8 will reduce the number of jobs by
+20%, and 1.2 will increase the number of jobs by 20%.  And so forth.
+.Pp
+This option may be specified in the range 0.01 to 99.0.  Out of range values
+will simply be clipped.
 .It Fl p Ar profile
 Override the global profile default in
 .Pa /etc/dsynth/dsynth.ini ,
