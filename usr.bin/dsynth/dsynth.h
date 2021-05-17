@@ -529,6 +529,7 @@ extern int UseTmpfs;
 extern int NumCores;
 extern long PhysMem;
 extern long PkgDepMemoryTarget;
+extern long PkgDepScaleTarget;
 extern int MaxBulk;
 extern int MaxWorkers;
 extern int MaxJobs;

@@ -1351,6 +1351,16 @@ waitbuild(int whilematch, int dynamicmax)
 			}
 
 			/*
+			 * Dynamic scale adjustment
+			 */
+
+			if (PkgDepScaleTarget != 100) {
+				max1 = max1 * (PkgDepScaleTarget + 50) / 100;
+				max2 = max2 * (PkgDepScaleTarget + 50) / 100;
+				max3 = max3 * (PkgDepScaleTarget + 50) / 100;
+			}
+
+			/*
 			 * Priority reduction, convert to DynamicMaxWorkers
 			 */
 			max_sel = max1;
