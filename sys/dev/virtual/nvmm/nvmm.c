@@ -39,13 +39,12 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm.c,v 1.22.2.7 2020/08/29 17:00:28 martin Exp $")
 #include <sys/atomic.h>
 #include <sys/cpu.h>
 #include <sys/conf.h>
+#include <sys/devfs.h>
+#include <sys/device.h>
 #include <sys/kmem.h>
 #include <sys/module.h>
 #include <sys/proc.h>
 #include <sys/mman.h>
-#include <sys/file.h>
-#include <sys/filedesc.h>
-#include <sys/device.h>
 
 #include <uvm/uvm.h>
 #include <uvm/uvm_page.h>
@@ -1013,92 +1012,76 @@ nvmm_fini(void)
 
 /* -------------------------------------------------------------------------- */
 
-static dev_type_open(nvmm_open);
+static d_open_t nvmm_open;
+static d_ioctl_t nvmm_ioctl;
+static d_mmap_single_t nvmm_mmap_single;
+static d_priv_dtor_t nvmm_dtor;
 
-const struct cdevsw nvmm_cdevsw = {
-	.d_open = nvmm_open,
-	.d_close = noclose,
-	.d_read = noread,
-	.d_write = nowrite,
-	.d_ioctl = noioctl,
-	.d_stop = nostop,
-	.d_tty = notty,
-	.d_poll = nopoll,
-	.d_mmap = nommap,
-	.d_kqfilter = nokqfilter,
-	.d_discard = nodiscard,
-	.d_flag = D_OTHER | D_MPSAFE
-};
-
-static int nvmm_ioctl(file_t *, u_long, void *);
-static int nvmm_close(file_t *);
-static int nvmm_mmap(file_t *, off_t *, size_t, int, int *, int *,
-    struct uvm_object **, int *);
-
-static const struct fileops nvmm_fileops = {
-	.fo_read = fbadop_read,
-	.fo_write = fbadop_write,
-	.fo_ioctl = nvmm_ioctl,
-	.fo_fcntl = fnullop_fcntl,
-	.fo_poll = fnullop_poll,
-	.fo_stat = fbadop_stat,
-	.fo_close = nvmm_close,
-	.fo_kqfilter = fnullop_kqfilter,
-	.fo_restart = fnullop_restart,
-	.fo_mmap = nvmm_mmap,
+static struct dev_ops nvmm_ops = {
+	{ "nvmm", 0, D_MPSAFE },
+	.d_open		= nvmm_open,
+	.d_ioctl	= nvmm_ioctl,
+	.d_mmap_single	= nvmm_mmap_single,
 };
 
 static int
-nvmm_open(dev_t dev, int flags, int type, struct lwp *l)
+nvmm_open(struct dev_open_args *ap)
 {
+	int flags = ap->a_oflags;
 	struct nvmm_owner *owner;
 	struct file *fp;
-	int error, fd;
+	int error;
 
 	if (__predict_false(nvmm_impl == NULL))
 		return ENXIO;
-	if (minor(dev) != 0)
-		return EXDEV;
 	if (!(flags & O_CLOEXEC))
 		return EINVAL;
-	error = fd_allocfile(&fp, &fd);
-	if (error)
-		return error;
 
 	if (OFLAGS(flags) & O_WRONLY) {
 		owner = &root_owner;
 	} else {
 		owner = kmem_alloc(sizeof(*owner), KM_SLEEP);
-		owner->pid = l->l_proc->p_pid;
+		owner->pid = curthread->td_proc->p_pid;
 	}
 
-	return fd_clone(fp, fd, flags, &nvmm_fileops, owner);
+	fp = ap->a_fpp ? *ap->a_fpp : NULL;
+	error = devfs_set_cdevpriv(fp, owner, nvmm_dtor);
+	if (error) {
+		nvmm_dtor(owner);
+		return error;
+	}
+
+	return 0;
 }
 
-static int
-nvmm_close(file_t *fp)
+static void
+nvmm_dtor(void *arg)
 {
-	struct nvmm_owner *owner = fp->f_data;
+	struct nvmm_owner *owner = arg;
 
 	KASSERT(owner != NULL);
 	nvmm_kill_machines(owner);
 	if (owner != &root_owner) {
 		kmem_free(owner, sizeof(*owner));
 	}
-	fp->f_data = NULL;
-
-   	return 0;
 }
 
 static int
-nvmm_mmap(file_t *fp, off_t *offp, size_t size, int prot, int *flagsp,
-    int *advicep, struct uvm_object **uobjp, int *maxprotp)
+nvmm_mmap_single(struct dev_mmap_single_args *ap)
 {
-	struct nvmm_owner *owner = fp->f_data;
+	vm_ooffset_t *offp = ap->a_offset;
+	size_t size = ap->a_size;
+	int prot = ap->a_nprot;
+	struct vm_object **uobjp = ap->a_object;
+	struct file *fp = ap->a_fp;
+	struct nvmm_owner *owner = NULL;
 	struct nvmm_machine *mach;
 	nvmm_machid_t machid;
 	nvmm_cpuid_t cpuid;
 	int error;
+
+	devfs_get_cdevpriv(fp, (void **)&owner);
+	KASSERT(owner != NULL);
 
 	if (prot & PROT_EXEC)
 		return EACCES;
@@ -1117,18 +1100,20 @@ nvmm_mmap(file_t *fp, off_t *offp, size_t size, int prot, int *flagsp,
 	uao_reference(mach->commuobj);
 	*uobjp = mach->commuobj;
 	*offp = cpuid * PAGE_SIZE;
-	*maxprotp = prot;
-	*advicep = UVM_ADV_RANDOM;
 
 	nvmm_machine_put(mach);
 	return 0;
 }
 
 static int
-nvmm_ioctl(file_t *fp, u_long cmd, void *data)
+nvmm_ioctl(struct dev_ioctl_args *ap)
 {
-	struct nvmm_owner *owner = fp->f_data;
+	unsigned long cmd = ap->a_cmd;
+	void *data = ap->a_data;
+	struct file *fp = ap->a_fp;
+	struct nvmm_owner *owner = NULL;
 
+	devfs_get_cdevpriv(fp, (void **)&owner);
 	KASSERT(owner != NULL);
 
 	switch (cmd) {
@@ -1171,140 +1156,77 @@ nvmm_ioctl(file_t *fp, u_long cmd, void *data)
 
 /* -------------------------------------------------------------------------- */
 
-static int nvmm_match(device_t, cfdata_t, void *);
-static void nvmm_attach(device_t, device_t, void *);
-static int nvmm_detach(device_t, int);
-
-extern struct cfdriver nvmm_cd;
-
-CFATTACH_DECL_NEW(nvmm, 0, nvmm_match, nvmm_attach, nvmm_detach, NULL);
-
-static struct cfdata nvmm_cfdata[] = {
-	{
-		.cf_name = "nvmm",
-		.cf_atname = "nvmm",
-		.cf_unit = 0,
-		.cf_fstate = FSTATE_STAR,
-		.cf_loc = NULL,
-		.cf_flags = 0,
-		.cf_pspec = NULL,
-	},
-	{ NULL, NULL, 0, FSTATE_NOTFOUND, NULL, 0, NULL }
-};
-
 static int
-nvmm_match(device_t self, cfdata_t cfdata, void *arg)
-{
-	return 1;
-}
-
-static void
-nvmm_attach(device_t parent, device_t self, void *aux)
+nvmm_attach(void)
 {
 	int error;
 
 	error = nvmm_init();
 	if (error)
 		panic("%s: impossible", __func__);
-	aprint_normal_dev(self, "attached, using backend %s\n",
-	    nvmm_impl->name);
+	printf("nvmm: attached, using backend %s\n", nvmm_impl->name);
+
+	return 0;
 }
 
 static int
-nvmm_detach(device_t self, int flags)
+nvmm_detach(void)
 {
 	if (atomic_load_acq_int(&nmachines) > 0)
 		return EBUSY;
+
 	nvmm_fini();
 	return 0;
 }
 
-void
-nvmmattach(int nunits)
-{
-	/* nothing */
-}
-
-MODULE(MODULE_CLASS_MISC, nvmm, NULL);
-
-#if defined(_MODULE)
-CFDRIVER_DECL(nvmm, DV_VIRTUAL, NULL);
-#endif
-
 static int
-nvmm_modcmd(modcmd_t cmd, void *arg)
+nvmm_modevent(module_t mod __unused, int type, void *data __unused)
 {
-#if defined(_MODULE)
-	devmajor_t bmajor = NODEVMAJOR;
-	devmajor_t cmajor = 345;
-#endif
+	static cdev_t dev = NULL;
 	int error;
 
-	switch (cmd) {
-	case MODULE_CMD_INIT:
+	switch (type) {
+	case MOD_LOAD:
 		if (nvmm_ident() == NULL) {
-			aprint_error("%s: cpu not supported\n",
-			    nvmm_cd.cd_name);
+			printf("nvmm: cpu not supported\n");
 			return ENOTSUP;
 		}
-#if defined(_MODULE)
-		error = config_cfdriver_attach(&nvmm_cd);
+		error = nvmm_attach();
 		if (error)
 			return error;
-#endif
-		error = config_cfattach_attach(nvmm_cd.cd_name, &nvmm_ca);
-		if (error) {
-			config_cfdriver_detach(&nvmm_cd);
-			aprint_error("%s: config_cfattach_attach failed\n",
-			    nvmm_cd.cd_name);
-			return error;
-		}
 
-		error = config_cfdata_attach(nvmm_cfdata, 1);
-		if (error) {
-			config_cfattach_detach(nvmm_cd.cd_name, &nvmm_ca);
-			config_cfdriver_detach(&nvmm_cd);
-			aprint_error("%s: unable to register cfdata\n",
-			    nvmm_cd.cd_name);
-			return error;
+		dev = make_dev(&nvmm_ops, 0, UID_ROOT, GID_NVMM, 0640, "nvmm");
+		if (dev == NULL) {
+			printf("nvmm: unable to create device\n");
+			error = ENOMEM;
 		}
+		break;
 
-		if (config_attach_pseudo(nvmm_cfdata) == NULL) {
-			aprint_error("%s: config_attach_pseudo failed\n",
-			    nvmm_cd.cd_name);
-			config_cfattach_detach(nvmm_cd.cd_name, &nvmm_ca);
-			config_cfdriver_detach(&nvmm_cd);
-			return ENXIO;
-		}
+	case MOD_UNLOAD:
+		if (dev == NULL)
+			return 0;
+		error = nvmm_detach();
+		if (error == 0)
+			destroy_dev(dev);
+		break;
 
-#if defined(_MODULE)
-		/* mknod /dev/nvmm c 345 0 */
-		error = devsw_attach(nvmm_cd.cd_name, NULL, &bmajor,
-			&nvmm_cdevsw, &cmajor);
-		if (error) {
-			aprint_error("%s: unable to register devsw\n",
-			    nvmm_cd.cd_name);
-			config_cfattach_detach(nvmm_cd.cd_name, &nvmm_ca);
-			config_cfdriver_detach(&nvmm_cd);
-			return error;
-		}
-#endif
-		return 0;
-	case MODULE_CMD_FINI:
-		error = config_cfdata_detach(nvmm_cfdata);
-		if (error)
-			return error;
-		error = config_cfattach_detach(nvmm_cd.cd_name, &nvmm_ca);
-		if (error)
-			return error;
-#if defined(_MODULE)
-		config_cfdriver_detach(&nvmm_cd);
-		devsw_detach(NULL, &nvmm_cdevsw);
-#endif
-		return 0;
-	case MODULE_CMD_AUTOUNLOAD:
-		return EBUSY;
+	case MOD_SHUTDOWN:
+		error = 0;
+		break;
+
 	default:
-		return ENOTTY;
+		error = EOPNOTSUPP;
+		break;
 	}
+
+	return error;
 }
+
+static moduledata_t nvmm_moddata = {
+	.name = "nvmm",
+	.evhand = nvmm_modevent,
+	.priv = NULL,
+};
+
+DECLARE_MODULE(nvmm, nvmm_moddata, SI_SUB_PSEUDO, SI_ORDER_ANY);
+MODULE_VERSION(nvmm, NVMM_KERN_VERSION);
