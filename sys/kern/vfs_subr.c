@@ -153,7 +153,8 @@ rb_buf_compare(struct buf *b1, struct buf *b2)
  *
  * Called from vfsinit()
  */
-#define MAXVNBREAKMEM	(1L * 1024 * 1024 * 1024)
+#define VNBREAKMEM1	(1L * 1024 * 1024 * 1024)
+#define VNBREAKMEM2	(7L * 1024 * 1024 * 1024)
 #define MINVNODES	2000
 #define MAXVNODES	4000000
 
@@ -161,34 +162,51 @@ void
 vfs_subr_init(void)
 {
 	int factor1;	/* Limit based on ram (x 2 above 1GB) */
-	int factor2;	/* Limit based on available KVM */
 	size_t freemem;
 
 	/*
-	 * Size maxvnodes to available memory.  Size significantly
-	 * smaller on low-memory systems (calculations for the first
-	 * 1GB of ram), and pump it up a bit when free memory is
-	 * above 1GB.
+	 * Size maxvnodes non-linearly to available memory.  Don't bloat
+	 * the count on low-memory systems.  Scale up for systems with
+	 * more than 1G and more than 8G of ram, but do so non-linearly
+	 * because the value of a large maxvnodes count diminishes
+	 * significantly beyond a certain point.
 	 *
 	 * The general minimum is maxproc * 8 (we want someone pushing
 	 * up maxproc a lot to also get more vnodes).  Usually maxproc
-	 * does not affect this calculation.
+	 * does not affect this calculation.  The KvaSize limitation also
+	 * typically does not affect this calculation (it is just in case
+	 * the kernel VM space is made much smaller than main memory, which
+	 * should no longer happen on 64-bit systems).
 	 *
 	 * There isn't much of a point allowing maxvnodes to exceed a
-	 * few million as our modern filesystems cache pages in the
+	 * few million as modern filesystems cache pages in the
 	 * underlying block device and not so much hanging off of VM
 	 * objects.
+	 *
+	 * Also, VM objects, vnodes, and filesystem inode and other related
+	 * structures have gotten a lot larger in recent years and the kernel
+	 * memory use tends to scale with maxvnodes, so we don't want to bloat
+	 * it too much.  But neither do we want the max set too low because
+	 * systems with large amounts of memory and cores are capable of
+	 * doing a hell of a lot.
 	 */
-	factor1 = 50 * (sizeof(struct vm_object) + sizeof(struct vnode));
-	factor2 = 30 * (sizeof(struct vm_object) + sizeof(struct vnode));
+	factor1 = 80 * (sizeof(struct vm_object) + sizeof(struct vnode));
 
 	freemem = (int64_t)vmstats.v_page_count * PAGE_SIZE;
 
 	maxvnodes = freemem / factor1;
-	if (freemem > MAXVNBREAKMEM)
-		maxvnodes += (freemem - MAXVNBREAKMEM) / factor1;
+	if (freemem > VNBREAKMEM1) {
+		freemem -= VNBREAKMEM1;
+		if (freemem < VNBREAKMEM2) {
+			maxvnodes += freemem / factor1 / 2;
+		} else {
+			maxvnodes += VNBREAKMEM2 / factor1 / 2;
+			freemem -= VNBREAKMEM2;
+			maxvnodes += freemem / factor1 / 4;
+		}
+	}
 	maxvnodes = imax(maxvnodes, maxproc * 8);
-	maxvnodes = imin(maxvnodes, KvaSize / factor2);
+	maxvnodes = imin(maxvnodes, KvaSize / factor1);
 	maxvnodes = imin(maxvnodes, MAXVNODES);
 	maxvnodes = imax(maxvnodes, MINVNODES);
 
