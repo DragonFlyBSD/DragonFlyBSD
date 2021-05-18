@@ -112,7 +112,7 @@ struct	gate_descriptor {
 	u_int64_t gd_dpl:2;		/* segment descriptor priority level */
 	u_int64_t gd_p:1;		/* segment descriptor present */
 	u_int64_t gd_hioffset:48 __packed;	/* gate offset (msb) */
-	u_int64_t sd_xx1:32;
+	u_int64_t gd_xx1:32;
 } __packed;
 
 #endif /* LOCORE */
