@@ -1998,6 +1998,10 @@ vm_page_unqueue(vm_page_t m)
  * NOTE:  This routine assumes that the vm_pages found in PQ_CACHE and PQ_FREE
  *	  represent stable storage, allowing us to order our locks vm_page
  *	  first, then queue.
+ *
+ * WARNING! The returned page is not busied and may race other busying
+ *	  operations, callers must check that the page is in the state they
+ *	  want after busying.
  */
 static __inline
 vm_page_t
@@ -2325,9 +2329,11 @@ vm_page_select_cache(u_short pg_color)
 			vm_page_spin_unlock(m);
 		} else {
 			/*
-			 * We successfully busied the page
+			 * We successfully busied the page.  This can race
+			 * vm_page_lookup() + busy ops so make sure the
+			 * page is in the state we want.
 			 */
-			if ((m->flags & PG_NEED_COMMIT) == 0 &&
+			if ((m->flags & (PG_NEED_COMMIT | PG_MAPPED)) == 0 &&
 			    m->hold_count == 0 &&
 			    m->wire_count == 0 &&
 			    (m->dirty & m->valid) == 0) {
@@ -2453,9 +2459,12 @@ vm_page_select_free_or_cache(u_short pg_color, int *fromcachep)
 		} else {
 			/*
 			 * We successfully busied the page, PQ_CACHE case
+			 *
+			 * This can race vm_page_lookup() + busy ops, so make
+			 * sure the page is in the state we want.
 			 */
 			_vm_page_rem_queue_spinlocked(m);
-			if ((m->flags & PG_NEED_COMMIT) == 0 &&
+			if ((m->flags & (PG_NEED_COMMIT | PG_MAPPED)) == 0 &&
 			    m->hold_count == 0 &&
 			    m->wire_count == 0 &&
 			    (m->dirty & m->valid) == 0) {
@@ -2939,8 +2948,16 @@ vm_wait(int timo)
 		 * allocation priority.
 		 *
 		 * The vm_paging_min() test is a safety.
+		 *
+		 * I/O waits are given a slightly lower priority (higher nice)
+		 * than VM waits.
 		 */
-		if (vm_paging_wait() || vm_paging_min()) {
+		int nice;
+
+		nice = curthread->td_proc ? curthread->td_proc->p_nice : 0;
+		/*if (vm_paging_wait() || vm_paging_min())*/
+		if (vm_paging_min_nice(nice + 1))
+		{
 			if (vm_pages_needed <= 1) {
 				++vm_pages_needed;
 				wakeup(&vm_pages_needed);
@@ -2959,10 +2976,16 @@ vm_wait(int timo)
  *
  * Called only from vm_fault so that processes page faulting can be
  * easily tracked.
+ *
+ * The process nice value determines the trip point.  This way niced
+ * processes which are heavy memory users do not completely mess the
+ * machine up for normal processes.
  */
 void
 vm_wait_pfault(void)
 {
+	int nice;
+
 	/*
 	 * Wakeup the pageout daemon if necessary and wait.
 	 *
@@ -2975,9 +2998,11 @@ vm_wait_pfault(void)
 	 * and to give more important threads (the pagedaemon)
 	 * allocation priority.
 	 */
-	if (vm_paging_min()) {
+	nice = curthread->td_proc ? curthread->td_proc->p_nice : 0;
+
+	if (vm_paging_min_nice(nice)) {
 		lwkt_gettoken(&vm_token);
-		while (vm_paging_severe()) {
+		do {
 			thread_t td;
 
 			if (vm_pages_needed <= 1) {
@@ -2998,7 +3023,7 @@ vm_wait_pfault(void)
 			{
 				break;
 			}
-		}
+		} while (vm_paging_severe());
 		lwkt_reltoken(&vm_token);
 	}
 }

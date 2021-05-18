@@ -127,6 +127,33 @@ vm_paging_min_dnc(long donotcount)
 	return 0;
 }
 
+/*
+ * Returns TRUE if the number of FREE+CACHE pages falls below vm_paging_wait,
+ * based on the nice value the trip point can be between vm_paging_min and
+ * vm_paging_wait.
+ *
+ * Used by vm_fault (see vm_wait_pfault()) to block a process on low-memory
+ * based on the process 'nice' value (-20 to +20).
+ */
+static __inline
+int
+vm_paging_min_nice(int nice)
+{
+	long count;
+	long delta;
+
+	count = 0;
+	if (nice) {
+		delta = vmstats.v_paging_wait - vmstats.v_free_min - 1;
+		delta = delta >> 1;
+		if (delta > 0) {
+			/* range 0-40, 0 is high priority, 40 is low */
+			count = (nice + 20) * delta / 40;
+		}
+	}
+	return vm_paging_min_dnc(count);
+}
+
 static __inline
 int
 vm_paging_min(void)

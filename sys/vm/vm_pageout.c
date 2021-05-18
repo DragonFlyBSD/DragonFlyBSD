@@ -816,8 +816,6 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 	int vmflush_flags;
 
 	isep = (curthread == emergpager);
-	if ((unsigned)pass > 1000)
-		pass = 1000;
 
 	/*
 	 * This routine is called for each of PQ_L2_SIZE inactive queues.
@@ -828,11 +826,10 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 	 * allow the per-queue max_launder to increase up to a maximum of
 	 * vm_max_launder / 16.
 	 */
+	max_launder = (long)vm_max_launder / PQ_L2_SIZE;
 	if (pass)
-		max_launder = (long)vm_max_launder * (pass + 1) / PQ_L2_SIZE;
-	else
-		max_launder = (long)vm_max_launder / PQ_L2_SIZE;
-	max_launder /= MAXSCAN_DIVIDER;
+		max_launder *= 2;
+	max_launder = (max_launder + MAXSCAN_DIVIDER - 1) / MAXSCAN_DIVIDER;
 
 	if (max_launder <= 1)
 		max_launder = 1;
@@ -875,7 +872,8 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 
 	vm_page_queues_spin_lock(PQ_INACTIVE + q);
 	TAILQ_INSERT_HEAD(&vm_page_queues[PQ_INACTIVE + q].pl, &marker, pageq);
-	maxscan = vm_page_queues[PQ_INACTIVE + q].lcnt / MAXSCAN_DIVIDER + 1;
+	maxscan = (vm_page_queues[PQ_INACTIVE + q].lcnt + MAXSCAN_DIVIDER - 1) /
+		  MAXSCAN_DIVIDER + 1;
 
 	/*
 	 * Queue locked at top of loop to avoid stack marker issues.
@@ -1007,7 +1005,7 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 		vm_page_queues_spin_lock(PQ_INACTIVE + q);
 
 		/* if (vm_paging_target() < -vm_max_launder) */
-		if (vm_paging_target2()) {
+		if (!vm_paging_target2()) {
 			/*
 			 * Stopping early, return full completion to caller.
 			 */
@@ -1442,7 +1440,8 @@ vm_pageout_scan_active(int pass, int q,
 	 */
 
 	vm_page_queues_spin_lock(PQ_ACTIVE + q);
-	maxscan = vm_page_queues[PQ_ACTIVE + q].lcnt / MAXSCAN_DIVIDER + 1;
+	maxscan = (vm_page_queues[PQ_ACTIVE + q].lcnt + MAXSCAN_DIVIDER - 1) /
+		  MAXSCAN_DIVIDER + 1;
 
 	/*
 	 * Queue locked at top of loop to avoid stack marker issues.
@@ -1707,7 +1706,7 @@ vm_pageout_scan_cache(long avail_shortage, int pass,
 		if (m == NULL)
 			break;
 		/*
-		 * page is returned removed from its queue and spinlocked
+		 * page is returned removed from its queue and spinlocked.
 		 *
 		 * If the busy attempt fails we can still deactivate the page.
 		 */
@@ -1721,12 +1720,26 @@ vm_pageout_scan_cache(long avail_shortage, int pass,
 		lwkt_yield();
 
 		/*
+		 * Report a possible edge case.  This shouldn't happen but
+		 * actually I think it can race against e.g.
+		 * vm_page_lookup()/busy sequences.  If the page isn't
+		 * in a cache-like state we will deactivate and skip it.
+		 */
+		if ((m->flags & PG_MAPPED) || (m->valid & m->dirty)) {
+			kprintf("WARNING! page race during find/busy: %p "
+				"queue == %d dirty=%02x\n",
+				m, m->queue - m->pc, m->dirty);
+		}
+
+		/*
 		 * Remaining operations run with the page busy and neither
 		 * the page or the queue will be spin-locked.
 		 */
-		if ((m->flags & (PG_UNQUEUED | PG_NEED_COMMIT)) ||
+		if ((m->flags & (PG_UNQUEUED | PG_NEED_COMMIT | PG_MAPPED)) ||
 		    m->hold_count ||
-		    m->wire_count) {
+		    m->wire_count ||
+		    (m->valid & m->dirty))
+		{
 			vm_page_deactivate(m);
 			vm_page_wakeup(m);
 			continue;
@@ -1802,7 +1815,8 @@ next_rover:
 	    isep == 0 &&
 	    avail_shortage > 0 &&
 	    vm_paging_target1() &&
-	    (unsigned int)(ticks - lastkillticks) >= hz) {
+	    (unsigned int)(ticks - lastkillticks) >= hz)
+	{
 		/*
 		 * Kill something, maximum rate once per second to give
 		 * the process time to free up sufficient memory.
@@ -2201,6 +2215,7 @@ vm_pageout_thread(void)
 	enum { PAGING_IDLE, PAGING_TARGET1, PAGING_TARGET2 } state;
 	struct markers *markers;
 	long scounter[2] = { 0, 0 };
+	time_t warn_time;
 
 	curthread->td_flags |= TDF_SYSTHREAD;
 	state = PAGING_IDLE;
@@ -2340,7 +2355,6 @@ vm_pageout_thread(void)
 	vm_pagedaemon_uptime = time_uptime;
 
 	swap_pager_swap_init();
-	pass = 0;
 
 	atomic_swap_int(&sequence_emerg_pager, 1);
 	wakeup(&sequence_emerg_pager);
@@ -2353,6 +2367,9 @@ skip_setup:
 		while (sequence_emerg_pager == 0)
 			tsleep(&sequence_emerg_pager, 0, "pstartup", hz);
 	}
+
+	pass = 0;
+	warn_time = time_uptime;
 
 	/*
 	 * The pageout daemon is never done, so loop forever.
@@ -2369,6 +2386,12 @@ skip_setup:
 		long tmp;
 
 		/*
+		 * Don't let pass overflow
+		 */
+		if (pass > 0x7FFF0000)
+			pass = 0x70000000;
+
+		/*
 		 * Wait for an action request.  If we timeout check to
 		 * see if paging is needed (in case the normal wakeup
 		 * code raced us).
@@ -2380,7 +2403,8 @@ skip_setup:
 			 *
 			 * The emergency pagedaemon only runs if VM paging
 			 * is needed and the primary pagedaemon has not
-			 * updated vm_pagedaemon_uptime for more than 2 seconds.
+			 * updated vm_pagedaemon_uptime for more than 2
+			 * seconds.
 			 */
 			if (vm_pages_needed)
 				tsleep(&vm_pagedaemon_uptime, 0, "psleep", hz);
@@ -2485,8 +2509,13 @@ skip_setup:
 			int qq;
 
 			if (vm_pageout_debug) {
-				kprintf("scan_inactive pass %d isep=%d\t",
-					pass / MAXSCAN_DIVIDER, isep);
+				static time_t save_time3;
+				if (save_time3 != time_uptime) {
+					save_time3 = time_uptime;
+					kprintf("scan_inactive "
+						"pass %d isep=%d\n",
+						pass, isep);
+				}
 			}
 
 			/*
@@ -2529,12 +2558,16 @@ skip_setup:
 				}
 			}
 			if (vm_pageout_debug) {
-				kprintf("flushed %ld cleaned %ld "
-					"lru2 %ld react %ld "
-					"delta %ld\n",
-					counts[0], counts[1],
-					counts[2], counts[3],
-					delta);
+				static time_t save_time2;
+				if (save_time2 != time_uptime) {
+					save_time2 = time_uptime;
+					kprintf("flsh %ld cln %ld "
+						"lru2 %ld react %ld "
+						"delta %ld\n",
+						counts[0], counts[1],
+						counts[2], counts[3],
+						delta);
+				}
 			}
 			avail_shortage -= delta;
 			q1iterator = qq;
@@ -2664,11 +2697,22 @@ skip_setup:
 			 * pageout operation until we are able to.  It
 			 * takes MAXSCAN_DIVIDER passes to cover the entire
 			 * inactive list.
+			 *
+			 * We used to throw delays in here if paging went on
+			 * continuously but that really just makes things
+			 * worse.  Just keep going.
 			 */
+			if (pass == 0)
+				warn_time = time_uptime;
 			++pass;
+			if (isep == 0 && time_uptime - warn_time >= 60) {
+				kprintf("pagedaemon: WARNING! Continuous "
+					"paging for %ld minutes\n",
+					(time_uptime - warn_time ) / 60);
+				warn_time = time_uptime;
+			}
 
-			if (pass / MAXSCAN_DIVIDER < 10 &&
-			    vm_pages_needed > 1) {
+			if (vm_pages_needed) {
 				/*
 				 * Normal operation, additional processes
 				 * have already kicked us.  Retry immediately
@@ -2678,30 +2722,8 @@ skip_setup:
 				if (swap_pager_full) {
 					tsleep(&vm_pages_needed, 0, "pdelay",
 						hz / 5);
-				} /* else immediate retry */
-			} else if (pass / MAXSCAN_DIVIDER < 10) {
-				/*
-				 * Do a short sleep for the first 10 passes,
-				 * allow the sleep to be woken up by resetting
-				 * vm_pages_needed to 1 (NOTE: we are still
-				 * active paging!).
-				 */
-				if (isep == 0)
-					vm_pages_needed = 1;
-				tsleep(&vm_pages_needed, 0, "pdelay", 2);
-			} else if (swap_pager_full == 0) {
-				/*
-				 * We've taken too many passes, force a
-				 * longer delay.
-				 */
-				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
-			} else {
-				/*
-				 * Running out of memory, catastrophic
-				 * back-off to one-second intervals.
-				 */
-				tsleep(&vm_pages_needed, 0, "pdelay", hz);
-			}
+				} /* else immediate loop */
+			} /* else immediate loop */
 		} else {
 			/*
 			 * Reset pass
