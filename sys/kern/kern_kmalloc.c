@@ -288,21 +288,30 @@ malloc_mgt_init(struct malloc_type *type __unused,
 
 	/*
 	 * Figure out the count by taking into account the size of the fobjs[]
-	 * array by adding it to the object size.
+	 * array by adding it to the object size.  This initial calculation
+	 * ignores alignment edge-cases that might require the count to be
+	 * reduced.
 	 */
 	offset = offsetof(struct kmalloc_slab, fobjs[0]);
-	offset = __VM_CACHELINE_ALIGN(offset);
 	count = (KMALLOC_SLAB_SIZE - offset) / (size + sizeof(void *));
 
 	/*
-	 * However, the fobj[] array itself must be aligned, so we might
-	 * have to reduce the count by 1.  (We can do this becaues 'size'
-	 * is already aligned as well).
+	 * Recalculate the offset of the first object, this time including
+	 * the required alignment.  (size) should already be aligned.  This
+	 * may push the last object beyond the slab so check and loop with
+	 * a reduced count as necessary.
+	 *
+	 * Ok, theoretically the count should not actually change since the
+	 * division above rounds-down (that is, any mis-alignment is already
+	 * not included in the count calculation).  But I'm not going to take
+	 * any chances and check anyway as a safety in case some programmer
+	 * changes the code above later.  This is not a time-critical code
+	 * path.
 	 */
 	offset = offsetof(struct kmalloc_slab, fobjs[count]);
 	offset = __VM_CACHELINE_ALIGN(offset);
 
-	if (offset + size * count > KMALLOC_SLAB_SIZE) {
+	while (offset + size * count > KMALLOC_SLAB_SIZE) {
 		--count;
 		offset = offsetof(struct kmalloc_slab, fobjs[count]);
 		offset = __VM_CACHELINE_ALIGN(offset);
