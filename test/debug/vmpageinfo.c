@@ -44,6 +44,7 @@
 #define _KERNEL_STRUCTURES_
 #include <sys/param.h>
 #include <sys/user.h>
+#include <sys/buf.h>
 #include <sys/malloc.h>
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
@@ -227,9 +228,11 @@ main(int ac, char **av)
 				break;
 			case OBJT_DEFAULT:
 			case OBJT_SWAP:
+				/*
 				if (m.md.pmap_count)
 					++count_wired_in_pmap;
 				else
+				*/
 					++count_wired_anon;
 				break;
 			default:
@@ -237,7 +240,9 @@ main(int ac, char **av)
 				break;
 			}
 		}
-	} else if (m.md.pmap_count) {
+	} else
+#if 0
+	if (m.md.pmap_count) {
 		if (m.object && m.object != kernel_object_ptr) {
 			switch(obj.type) {
 			case OBJT_DEFAULT:
@@ -249,6 +254,7 @@ main(int ac, char **av)
 			}
 		}
 	}
+#endif
 
 	if (verboseopt) {
 	    printf("page %p obj %p/%-8ju(%016jx) val=%02x dty=%02x hold=%d "
@@ -263,8 +269,8 @@ main(int ac, char **av)
 		m.wire_count,
 		m.act_count,
 		m.busy_count,
-		m.md.writeable_count,
-		m.md.pmap_count,
+		0 /* m.md.writeable_count */,
+		0 /*m.md.pmap_count*/,
 		qstr
 	    );
 	}
