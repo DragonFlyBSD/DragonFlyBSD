@@ -418,9 +418,18 @@ malloc_slab_destroy(struct malloc_type *type, struct kmalloc_slab **slabp)
 }
 
 /*
+ * Objects can be freed to an empty slab at any time, causing it to no
+ * longer be empty.  To improve performance, we do not try to pro-actively
+ * move such slabs to the appropriate partial or full list upon kfree_obj().
+ * Instead, a poller comes along and tests the slabs on the empty list
+ * periodically, and moves slabs that are no longer empty to the appropriate
+ * list.
+ *
+ * --
+ *
  * Poll a limited number of slabs on the empty list and move them
  * to the appropriate full or partial list.  Slabs left on the empty
- * list or rotated to the tail.
+ * list are rotated to the tail.
  *
  * If gcache is non-zero this function will try to place full slabs into
  * the globaldata cache, if it isn't already too full.

@@ -70,7 +70,7 @@ struct kmalloc_slab {
 	__size_t		findex;		/* end of frees */
 	__size_t		xindex;		/* synchronizer */
 	exislock_t		exis;		/* existential lock state */
-	struct kmalloc_mgt	*mgt;
+	void			*unused01;
 	__uint64_t		bmap[(KMALLOC_SLAB_MAXOBJS + 63) / 64];
 	void			*fobjs[1];	/* list of free objects */
 } __cachealign;
@@ -79,15 +79,16 @@ struct kmalloc_slab {
  * pcpu slab management structure for kmalloc zone.
  *
  * The intent is to try to improve cache characteristics and to reduce
- * fragmentation by keeping collections localized.  The curmag list
- * used for allocations is loosely sorted by fullness, with the most-full
- * magazine at the head and the least-full magazine at the tail.
+ * fragmentation by keeping collections localized.  See the code for
+ * more information.
  *
- * Loosely speaking we want to allocate from the most-full magazine to best
- * reduce fragmentation.
+ * 'active' and 'alternate' are single slabs while 'partial', 'full', and
+ * 'empty' are lists of slabs.
  *
  * The kmalloc zone also uses one of these as a global management structure
- * excess emptymags are regularly moved to the global structure.
+ * excess emptymags are regularly moved to the global structure.  This mgt
+ * structure is used GLOBALLY (per-zone) as well as PCPU (per-zone).  The
+ * fields are utilized differently (or not at all), depending on the use case.
  */
 struct kmalloc_mgt {
 	struct spinlock		spin;
