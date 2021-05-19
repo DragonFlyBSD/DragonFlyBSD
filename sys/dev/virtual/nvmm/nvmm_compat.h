@@ -48,6 +48,9 @@
 #include <sys/proc.h> /* lwp */
 #include <sys/systm.h>
 
+#include <vm/vm_object.h>
+#include <vm/vm_pager.h>
+
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <machine/md_var.h> /* cpu_high */
@@ -348,6 +351,43 @@ x86_dbregs_restore(struct lwp *lp)
 	load_dr3(pcb->pcb_dr3);
 	load_dr6(pcb->pcb_dr6);
 	load_dr7(pcb->pcb_dr7);
+}
+
+/*
+ * Virtual address space management
+ */
+#define uvm_object		vm_object
+
+/* Anonymous object allocation */
+
+static __inline struct vm_object *
+uao_create(size_t size, int flags)
+{
+	struct vm_object *object;
+
+	KKASSERT(flags == 0);
+
+	/* The object should be pageable (e.g., object of guest physical
+	 * memory), so choose default_pager. */
+	object = default_pager_alloc(NULL, size, VM_PROT_DEFAULT, 0);
+	vm_object_set_flag(object, OBJ_NOSPLIT);
+
+	return object;
+}
+
+/* Create an additional reference to the named anonymous memory object. */
+static __inline void
+uao_reference(struct vm_object *object)
+{
+	vm_object_reference_quick(object);
+}
+
+/* Remove a reference from the named anonymous memory object, destroying it
+ * if the last reference is removed. */
+static __inline void
+uao_detach(struct vm_object *object)
+{
+	vm_object_deallocate(object);
 }
 
 #endif /* _NVMM_COMPAT_H_ */
