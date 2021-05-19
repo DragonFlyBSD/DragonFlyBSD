@@ -2096,10 +2096,15 @@ sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
 		if (p == NULL)
 			return (ESRCH);
 	}
-
-	cache_copy(&p->p_textnch, &nch);
-	error = cache_fullpath(p, &nch, NULL, &retbuf, &freebuf, 0);
-	cache_drop(&nch);
+	lwkt_gettoken_shared(&p->p_token);	/* deal with exit race */
+	if (p->p_textnch.ncp) {
+		cache_copy(&p->p_textnch, &nch);
+		error = cache_fullpath(p, &nch, NULL, &retbuf, &freebuf, 0);
+		cache_drop(&nch);
+	} else {
+		error = EINVAL;
+	}
+	lwkt_reltoken(&p->p_token);
 	if (error)
 		goto done;
 	error = SYSCTL_OUT(req, retbuf, strlen(retbuf) + 1);
