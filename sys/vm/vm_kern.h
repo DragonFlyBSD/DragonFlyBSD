@@ -99,9 +99,9 @@ typedef struct kmem_anon_desc kmem_anon_desc_t;
 #define KM_GETCPU(flags) ((flags) >> KM_CPU_SHIFT)
 
 /* Kernel memory management definitions. */
-extern struct vm_map buffer_map;
+extern struct vm_map *buffer_map;
 extern struct vm_map *kernel_map;
-extern struct vm_map clean_map;
+extern struct vm_map *clean_map;
 extern u_int vm_kmem_size;
 
 extern vm_offset_t kernel_vm_end;

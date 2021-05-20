@@ -495,16 +495,16 @@ again:
 	if ((vm_size_t)(v - firstaddr) != size)
 		panic("startup: table size inconsistency");
 
-	kmem_suballoc(kernel_map, &clean_map, &clean_sva, &clean_eva,
+	kmem_suballoc(kernel_map, clean_map, &clean_sva, &clean_eva,
 		      ((vm_offset_t)(nbuf + 16) * MAXBSIZE) +
 		      ((nswbuf_mem + nswbuf_kva) * MAXPHYS) + pager_map_size);
-	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
+	kmem_suballoc(clean_map, buffer_map, &buffer_sva, &buffer_eva,
 		      ((vm_offset_t)(nbuf + 16) * MAXBSIZE));
-	buffer_map.system_map = 1;
-	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
+	buffer_map->system_map = 1;
+	kmem_suballoc(clean_map, pager_map, &pager_sva, &pager_eva,
 		      ((vm_offset_t)(nswbuf_mem + nswbuf_kva) * MAXPHYS) +
 		      pager_map_size);
-	pager_map.system_map = 1;
+	pager_map->system_map = 1;
 	kprintf("avail memory = %ju (%ju MB)\n",
 		(uintmax_t)ptoa(vmstats.v_free_count + vmstats.v_dma_pages),
 		(uintmax_t)ptoa(vmstats.v_free_count + vmstats.v_dma_pages) /

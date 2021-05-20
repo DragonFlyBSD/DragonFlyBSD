@@ -91,7 +91,7 @@ struct pagerops {
 
 struct vnode;
 
-extern struct vm_map pager_map;
+extern struct vm_map *pager_map;
 extern int pager_map_size;
 extern struct pagerops *pagertab[];
 

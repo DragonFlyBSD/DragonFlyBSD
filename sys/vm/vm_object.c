@@ -1797,9 +1797,9 @@ vm_object_in_map(vm_object_t object)
 		return 1;
 	if( _vm_object_in_map(kernel_map, object, 0))
 		return 1;
-	if( _vm_object_in_map(&pager_map, object, 0))
+	if( _vm_object_in_map(pager_map, object, 0))
 		return 1;
-	if( _vm_object_in_map(&buffer_map, object, 0))
+	if( _vm_object_in_map(buffer_map, object, 0))
 		return 1;
 	return 0;
 }

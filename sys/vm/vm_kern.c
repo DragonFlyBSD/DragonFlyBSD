@@ -85,10 +85,12 @@
 #include <vm/vm_extern.h>
 
 static struct vm_map kernel_map_store;
-struct vm_map *kernel_map = &kernel_map_store;
+static struct vm_map clean_map_store;
+static struct vm_map buffer_map_store;
 
-struct vm_map clean_map;
-struct vm_map buffer_map;
+struct vm_map *kernel_map = &kernel_map_store;
+struct vm_map *clean_map = &clean_map_store;
+struct vm_map *buffer_map = &buffer_map_store;
 
 static __inline
 int

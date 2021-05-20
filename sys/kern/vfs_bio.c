@@ -635,7 +635,7 @@ bufinit(void *dummy __unused)
 		bp->b_cmd = BUF_CMD_DONE;
 		bp->b_qindex = BQUEUE_EMPTY;
 		bp->b_qcpu = i;
-		bp->b_kvabase = (void *)(vm_map_min(&buffer_map) +
+		bp->b_kvabase = (void *)(vm_map_min(buffer_map) +
 					 MAXBSIZE * n);
 		bp->b_kvasize = MAXBSIZE;
 		initbufbio(bp);

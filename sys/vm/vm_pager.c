@@ -177,7 +177,9 @@ int npagers = NELEM(pagertab);
 TAILQ_HEAD(swqueue, buf);
 
 int pager_map_size = PAGER_MAP_SIZE;
-struct vm_map pager_map;
+
+static struct vm_map pager_map_store;
+struct vm_map *pager_map = &pager_map_store;
 
 static vm_offset_t swapbkva_mem;	/* swap buffers kva */
 static vm_offset_t swapbkva_kva;	/* swap buffers kva */
@@ -232,11 +234,11 @@ vm_pager_bufferinit(void *dummy __unused)
 	/*
 	 * Reserve KVM space for pbuf data.
 	 */
-	swapbkva_mem = kmem_alloc_pageable(&pager_map, nswbuf_mem * MAXPHYS,
+	swapbkva_mem = kmem_alloc_pageable(pager_map, nswbuf_mem * MAXPHYS,
 					   VM_SUBSYS_BUFDATA);
 	if (!swapbkva_mem)
 		panic("Not enough pager_map VM space for physical buffers");
-	swapbkva_kva = kmem_alloc_pageable(&pager_map, nswbuf_kva * MAXPHYS,
+	swapbkva_kva = kmem_alloc_pageable(pager_map, nswbuf_kva * MAXPHYS,
 					   VM_SUBSYS_BUFDATA);
 	if (!swapbkva_kva)
 		panic("Not enough pager_map VM space for physical buffers");
