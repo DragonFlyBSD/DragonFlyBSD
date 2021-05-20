@@ -1684,13 +1684,13 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     thread_t td;
 
     size = round_page(size);
-    addr = vm_map_min(&kernel_map);
+    addr = vm_map_min(kernel_map);
 
     count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
     crit_enter();
-    vm_map_lock(&kernel_map);
-    if (vm_map_findspace(&kernel_map, addr, size, align, 0, &addr)) {
-	vm_map_unlock(&kernel_map);
+    vm_map_lock(kernel_map);
+    if (vm_map_findspace(kernel_map, addr, size, align, 0, &addr)) {
+	vm_map_unlock(kernel_map);
 	if ((flags & M_NULLOK) == 0)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	vm_map_entry_release(count);
@@ -1703,7 +1703,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
      */
     vm_object_hold(&kernel_object);
     vm_object_reference_locked(&kernel_object);
-    vm_map_insert(&kernel_map, &count,
+    vm_map_insert(kernel_map, &count,
 		  &kernel_object, NULL,
 		  addr, NULL,
 		  addr, addr + size,
@@ -1711,8 +1711,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 		  VM_SUBSYS_KMALLOC,
 		  VM_PROT_ALL, VM_PROT_ALL, 0);
     vm_object_drop(&kernel_object);
-    vm_map_set_wired_quick(&kernel_map, addr, size, &count);
-    vm_map_unlock(&kernel_map);
+    vm_map_set_wired_quick(kernel_map, addr, size, &count);
+    vm_map_unlock(kernel_map);
 
     td = curthread;
 
@@ -1784,9 +1784,9 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    /* page should already be busy */
 	    vm_page_free(m);
 	}
-	vm_map_lock(&kernel_map);
-	vm_map_delete(&kernel_map, addr, addr + size, &count);
-	vm_map_unlock(&kernel_map);
+	vm_map_lock(kernel_map);
+	vm_map_delete(kernel_map, addr, addr + size, &count);
+	vm_map_unlock(kernel_map);
 	vm_object_drop(&kernel_object);
 
 	vm_map_entry_release(count);
@@ -1840,6 +1840,6 @@ void
 kmem_slab_free(void *ptr, vm_size_t size)
 {
     crit_enter();
-    vm_map_remove(&kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
+    vm_map_remove(kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
     crit_exit();
 }

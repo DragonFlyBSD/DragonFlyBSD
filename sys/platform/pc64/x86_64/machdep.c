@@ -476,7 +476,7 @@ again:
 	 */
 	if (firstaddr == 0) {
 		size = (vm_size_t)(v - firstaddr);
-		firstaddr = kmem_alloc(&kernel_map, round_page(size),
+		firstaddr = kmem_alloc(kernel_map, round_page(size),
 				       VM_SUBSYS_BUF);
 		if (firstaddr == 0)
 			panic("startup: no room for tables");
@@ -495,7 +495,7 @@ again:
 	if ((vm_size_t)(v - firstaddr) != size)
 		panic("startup: table size inconsistency");
 
-	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
+	kmem_suballoc(kernel_map, &clean_map, &clean_sva, &clean_eva,
 		      ((vm_offset_t)(nbuf + 16) * MAXBSIZE) +
 		      ((nswbuf_mem + nswbuf_kva) * MAXPHYS) + pager_map_size);
 	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,

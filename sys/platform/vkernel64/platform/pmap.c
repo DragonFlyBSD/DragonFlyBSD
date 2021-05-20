@@ -662,7 +662,7 @@ pmap_init(void)
 		initial_pvs = MINPV;
 	pvzone = &pvzone_store;
 	pvinit = (struct pv_entry *)
-		kmem_alloc(&kernel_map,
+		kmem_alloc(kernel_map,
 			   initial_pvs * sizeof (struct pv_entry),
 			   VM_SUBSYS_PVENTRY);
 	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry), pvinit,
@@ -1237,7 +1237,7 @@ pmap_pinit(struct pmap *pmap)
 	 */
 	if (pmap->pm_pml4 == NULL) {
 		pmap->pm_pml4 = (pml4_entry_t *)
-			kmem_alloc_pageable(&kernel_map, PAGE_SIZE,
+			kmem_alloc_pageable(kernel_map, PAGE_SIZE,
 					    VM_SUBSYS_PML4);
 	}
 
@@ -1299,7 +1299,7 @@ pmap_puninit(pmap_t pmap)
 		KKASSERT(pmap->pm_stats.wired_count == 0);
 	}
 	if (pmap->pm_pml4) {
-		kmem_free(&kernel_map, (vm_offset_t)pmap->pm_pml4, PAGE_SIZE);
+		kmem_free(kernel_map, (vm_offset_t)pmap->pm_pml4, PAGE_SIZE);
 		pmap->pm_pml4 = NULL;
 	}
 	if (pmap->pm_pteobj) {
@@ -1634,15 +1634,15 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			    rounddown2(kernel_vm_end + PAGE_SIZE * NPTEPG,
 				PAGE_SIZE * NPTEPG);
 			nkpt++;
-			if (kernel_vm_end - 1 >= vm_map_max(&kernel_map)) {
-				kernel_vm_end = vm_map_max(&kernel_map);
+			if (kernel_vm_end - 1 >= vm_map_max(kernel_map)) {
+				kernel_vm_end = vm_map_max(kernel_map);
 				break;
 			}
 		}
 	}
 	addr = roundup2(addr, PAGE_SIZE * NPTEPG);
-	if (addr - 1 >= vm_map_max(&kernel_map))
-		addr = vm_map_max(&kernel_map);
+	if (addr - 1 >= vm_map_max(kernel_map))
+		addr = vm_map_max(kernel_map);
 	while (kernel_vm_end < addr) {
 		pde = pmap_pde(&kernel_pmap, kernel_vm_end);
 		if (pde == NULL) {
@@ -1669,8 +1669,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			kernel_vm_end =
 			    rounddown2(kernel_vm_end + PAGE_SIZE * NPTEPG,
 				PAGE_SIZE * NPTEPG);
-			if (kernel_vm_end - 1 >= vm_map_max(&kernel_map)) {
-				kernel_vm_end = vm_map_max(&kernel_map);
+			if (kernel_vm_end - 1 >= vm_map_max(kernel_map)) {
+				kernel_vm_end = vm_map_max(kernel_map);
 				break;
 			}
 			continue;
@@ -1699,8 +1699,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		kernel_vm_end =
 		    rounddown2(kernel_vm_end + PAGE_SIZE * NPTEPG,
 			PAGE_SIZE * NPTEPG);
-		if (kernel_vm_end - 1 >= vm_map_max(&kernel_map)) {
-			kernel_vm_end = vm_map_max(&kernel_map);
+		if (kernel_vm_end - 1 >= vm_map_max(kernel_map)) {
+			kernel_vm_end = vm_map_max(kernel_map);
 			break;
 		}
 	}

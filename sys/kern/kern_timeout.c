@@ -397,14 +397,14 @@ swi_softclock_setup(void *arg)
 		softclock_pcpu_t sc;
 		int wheel_sz;
 
-		sc = (void *)kmem_alloc3(&kernel_map, sizeof(*sc),
+		sc = (void *)kmem_alloc3(kernel_map, sizeof(*sc),
 					 VM_SUBSYS_GD, KM_CPU(cpu));
 		memset(sc, 0, sizeof(*sc));
 		TAILQ_INIT(&sc->freelist);
 		softclock_pcpu_ary[cpu] = sc;
 
 		wheel_sz = sizeof(*sc->callwheel) * cwheelsize;
-		sc->callwheel = (void *)kmem_alloc3(&kernel_map, wheel_sz,
+		sc->callwheel = (void *)kmem_alloc3(kernel_map, wheel_sz,
 						    VM_SUBSYS_GD, KM_CPU(cpu));
 		memset(sc->callwheel, 0, wheel_sz);
 		for (i = 0; i < cwheelsize; ++i) {

@@ -1795,7 +1795,7 @@ vm_object_in_map(vm_object_t object)
 	allproc_scan(vm_object_in_map_callback, &info, 0);
 	if (info.rv)
 		return 1;
-	if( _vm_object_in_map(&kernel_map, object, 0))
+	if( _vm_object_in_map(kernel_map, object, 0))
 		return 1;
 	if( _vm_object_in_map(&pager_map, object, 0))
 		return 1;

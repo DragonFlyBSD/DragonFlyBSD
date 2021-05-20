@@ -467,7 +467,7 @@ start_all_aps(u_int boot_addr)
 		/* This is a bit verbose, it will go away soon.  */
 
 		pssize = sizeof(struct privatespace);
-		ps = (void *)kmem_alloc3(&kernel_map, pssize, VM_SUBSYS_GD,
+		ps = (void *)kmem_alloc3(kernel_map, pssize, VM_SUBSYS_GD,
 					 KM_CPU(x));
 		CPU_prvspace[x] = ps;
 #if 0
@@ -481,7 +481,7 @@ start_all_aps(u_int boot_addr)
 		mi_gdinit(&gd->mi, x);
 		cpu_gdinit(gd, x);
 		ipiq_size = sizeof(struct lwkt_ipiq) * (naps + 1);
-		gd->mi.gd_ipiq = (void *)kmem_alloc3(&kernel_map, ipiq_size,
+		gd->mi.gd_ipiq = (void *)kmem_alloc3(kernel_map, ipiq_size,
 						     VM_SUBSYS_IPIQ, KM_CPU(x));
 		bzero(gd->mi.gd_ipiq, ipiq_size);
 
@@ -541,7 +541,7 @@ start_all_aps(u_int boot_addr)
 	gd->gd_acpi_id = CPUID_TO_ACPIID(mycpu->gd_cpuid);
 
 	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
-	mycpu->gd_ipiq = (void *)kmem_alloc3(&kernel_map, ipiq_size,
+	mycpu->gd_ipiq = (void *)kmem_alloc3(kernel_map, ipiq_size,
 					     VM_SUBSYS_IPIQ, KM_CPU(0));
 	bzero(mycpu->gd_ipiq, ipiq_size);
 
@@ -1642,7 +1642,7 @@ mp_bsp_simple_setup(void)
 	gd->gd_acpi_id = CPUID_TO_ACPIID(mycpu->gd_cpuid);
 
 	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size,
+	mycpu->gd_ipiq = (void *)kmem_alloc(kernel_map, ipiq_size,
 					    VM_SUBSYS_IPIQ);
 	bzero(mycpu->gd_ipiq, ipiq_size);
 

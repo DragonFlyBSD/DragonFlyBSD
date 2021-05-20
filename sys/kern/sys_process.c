@@ -92,7 +92,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval)
 	vm_map_lookup_done (tmap, out_entry, 0);
 
 	/* Find space in kernel_map for the page we're interested in */
-	rv = vm_map_find (&kernel_map, object, NULL,
+	rv = vm_map_find (kernel_map, object, NULL,
 			  IDX_TO_OFF(pindex), &kva, PAGE_SIZE,
 			  PAGE_SIZE, FALSE,
 			  VM_MAPTYPE_NORMAL, VM_SUBSYS_PROC,
@@ -101,13 +101,13 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval)
 	if (!rv) {
 		vm_object_reference XXX (object);
 
-		rv = vm_map_wire (&kernel_map, kva, kva + PAGE_SIZE, 0);
+		rv = vm_map_wire (kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {
 			*retval = 0;
 			bcopy ((caddr_t)kva + page_offset,
 			       retval, sizeof *retval);
 		}
-		vm_map_remove (&kernel_map, kva, kva + PAGE_SIZE);
+		vm_map_remove (kernel_map, kva, kva + PAGE_SIZE);
 	}
 
 	return rv;
@@ -186,7 +186,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum)
 		return EFAULT;
 
 	/* Find space in kernel_map for the page we're interested in */
-	rv = vm_map_find (&kernel_map, object, NULL,
+	rv = vm_map_find (kernel_map, object, NULL,
 			  IDX_TO_OFF(pindex), &kva, PAGE_SIZE,
 			  PAGE_SIZE, FALSE,
 			  VM_MAPTYPE_NORMAL, VM_SUBSYS_PROC,
@@ -194,11 +194,11 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum)
 	if (!rv) {
 		vm_object_reference XXX (object);
 
-		rv = vm_map_wire (&kernel_map, kva, kva + PAGE_SIZE, 0);
+		rv = vm_map_wire (kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {
 		  bcopy (&datum, (caddr_t)kva + page_offset, sizeof datum);
 		}
-		vm_map_remove (&kernel_map, kva, kva + PAGE_SIZE);
+		vm_map_remove (kernel_map, kva, kva + PAGE_SIZE);
 	}
 
 	if (fix_prot)

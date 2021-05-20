@@ -217,7 +217,7 @@ netisr_init(void)
 	for (i = 0; i < ncpus; ++i) {
 		struct netisr_data *nd;
 
-		nd = (void *)kmem_alloc3(&kernel_map, sizeof(*nd),
+		nd = (void *)kmem_alloc3(kernel_map, sizeof(*nd),
 		    VM_SUBSYS_GD, KM_CPU(i));
 		memset(nd, 0, sizeof(*nd));
 		TAILQ_INIT(&nd->netrulist);

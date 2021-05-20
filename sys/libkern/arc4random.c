@@ -174,7 +174,7 @@ arc4_init_pcpu(int cpuid)
 	KASSERT(arc4_data_pcpu[cpuid] == NULL,
 	    ("arc4 was initialized on cpu%d", cpuid));
 
-	d = (void *)kmem_alloc3(&kernel_map, sizeof(*d), VM_SUBSYS_GD,
+	d = (void *)kmem_alloc3(kernel_map, sizeof(*d), VM_SUBSYS_GD,
 	    KM_CPU(cpuid));
 	memset(d, 0, sizeof(*d));
 

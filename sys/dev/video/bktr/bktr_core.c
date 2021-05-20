@@ -1664,10 +1664,10 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 			if ((int) temp > bktr->alloc_pages
 			    && bktr->video.addr == 0) {
 
-                                buf = get_bktr_mem(unit, temp*PAGE_SIZE);
-                                if (buf != 0) {
-                                        kmem_free(&kernel_map, bktr->bigbuf,
-                                          (bktr->alloc_pages * PAGE_SIZE));
+				buf = get_bktr_mem(unit, temp*PAGE_SIZE);
+				if (buf != 0) {
+					kmem_free(kernel_map, bktr->bigbuf,
+					    (bktr->alloc_pages * PAGE_SIZE));
 
 					bktr->bigbuf = buf;
 					bktr->alloc_pages = temp;

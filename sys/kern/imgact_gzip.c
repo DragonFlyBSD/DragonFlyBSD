@@ -131,7 +131,7 @@ exec_gzip_imgact(struct image_params *imgp)
 	}
 
 	if (igz.inbuf) {
-		error2 = vm_map_remove(&kernel_map, (vm_offset_t)igz.inbuf,
+		error2 = vm_map_remove(kernel_map, (vm_offset_t)igz.inbuf,
 				       (vm_offset_t)igz.inbuf + PAGE_SIZE);
 	}
 	if (igz.error || error || error2) {
@@ -287,7 +287,7 @@ NextByte(void *vp)
 		return igz->inbuf[(igz->idx++) - igz->offset];
 	}
 	if (igz->inbuf) {
-		error = vm_map_remove(&kernel_map, (vm_offset_t)igz->inbuf,
+		error = vm_map_remove(kernel_map, (vm_offset_t)igz->inbuf,
 				      (vm_offset_t)igz->inbuf + PAGE_SIZE);
 		if (error) {
 			igz->where = __LINE__;
@@ -297,7 +297,7 @@ NextByte(void *vp)
 	}
 	igz->offset = igz->idx & ~PAGE_MASK;
 
-	error = vm_mmap(&kernel_map,	/* map */
+	error = vm_mmap(kernel_map,	/* map */
 			(vm_offset_t *) & igz->inbuf,	/* address */
 			PAGE_SIZE,	/* size */
 			VM_PROT_READ,	/* protection */

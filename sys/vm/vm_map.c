@@ -1559,7 +1559,7 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 	 *	 fill 128G worth of page tables!).  Therefore we must not
 	 *	 retry.
 	 */
-	if (map == &kernel_map) {
+	if (map == kernel_map) {
 		vm_offset_t kstop;
 
 		kstop = round_page(start + length);
@@ -4506,7 +4506,7 @@ RetryLookup:
 		 * to improve concurrent fault performance.  This is only
 		 * applicable to userspace.
 		 */
-		if (map != &kernel_map &&
+		if (map != kernel_map &&
 		    entry->maptype == VM_MAPTYPE_NORMAL &&
 		    ((entry->ba.start ^ entry->ba.end) &
 		     ~MAP_ENTRY_PARTITION_MASK) &&

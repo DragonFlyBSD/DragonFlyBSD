@@ -328,7 +328,7 @@ zinitna(vm_zone_t z, char *name, size_t size, long nentries, uint32_t flags)
 		totsize = round_page((size_t)z->zsize * nentries);
 		atomic_add_long(&zone_kmem_kvaspace, totsize);
 
-		z->zkva = kmem_alloc_pageable(&kernel_map, totsize,
+		z->zkva = kmem_alloc_pageable(kernel_map, totsize,
 					      VM_SUBSYS_ZALLOC);
 		if (z->zkva == 0) {
 			LIST_REMOVE(z, zlink);
@@ -483,7 +483,7 @@ zdestroy(vm_zone_t z)
 	 */
 	KKASSERT((z->zflags & ZONE_INTERRUPT) == 0);
 	for (i = 0; i < z->zkmcur; i++) {
-		kmem_free(&kernel_map, z->zkmvec[i],
+		kmem_free(kernel_map, z->zkmvec[i],
 			  (size_t)z->zalloc * PAGE_SIZE);
 		atomic_subtract_long(&zone_kern_pages, z->zalloc);
 	}
@@ -629,7 +629,7 @@ zget(vm_zone_t z, int *tryagainp)
 		nbytes = (size_t)z->zalloc * PAGE_SIZE;
 		z->zpagecount += z->zalloc;	/* Track total memory use */
 
-		item = (void *)kmem_alloc3(&kernel_map, nbytes,
+		item = (void *)kmem_alloc3(kernel_map, nbytes,
 					   VM_SUBSYS_ZALLOC, KM_KRESERVE);
 
 		/* note: z might be modified due to blocking */
@@ -647,7 +647,7 @@ zget(vm_zone_t z, int *tryagainp)
 		nbytes = (size_t)z->zalloc * PAGE_SIZE;
 		z->zpagecount += z->zalloc;	/* Track total memory use */
 
-		item = (void *)kmem_alloc3(&kernel_map, nbytes,
+		item = (void *)kmem_alloc3(kernel_map, nbytes,
 					   VM_SUBSYS_ZALLOC, 0);
 
 		/* note: z might be modified due to blocking */

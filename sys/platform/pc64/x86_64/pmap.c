@@ -1416,7 +1416,7 @@ pmap_init(void)
 	if (initial_pvs < MINPV)
 		initial_pvs = MINPV;
 	pvzone = &pvzone_store;
-	pvinit = (void *)kmem_alloc(&kernel_map,
+	pvinit = (void *)kmem_alloc(kernel_map,
 				    initial_pvs * sizeof (struct pv_entry),
 				    VM_SUBSYS_PVENTRY);
 	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry),
@@ -2351,7 +2351,7 @@ pmap_pinit(struct pmap *pmap)
 	 */
 	if (pmap->pm_pml4 == NULL) {
 		pmap->pm_pml4 =
-		    (pml4_entry_t *)kmem_alloc_pageable(&kernel_map,
+		    (pml4_entry_t *)kmem_alloc_pageable(kernel_map,
 							PAGE_SIZE * 2,
 							VM_SUBSYS_PML4);
 		pmap->pm_pml4_iso = (void *)((char *)pmap->pm_pml4 + PAGE_SIZE);
@@ -2478,7 +2478,7 @@ pmap_puninit(pmap_t pmap)
 	}
 	if (pmap->pm_pml4) {
 		KKASSERT(pmap->pm_pml4 != (void *)(PTOV_OFFSET + KPML4phys));
-		kmem_free(&kernel_map,
+		kmem_free(kernel_map,
 			  (vm_offset_t)pmap->pm_pml4, PAGE_SIZE * 2);
 		pmap->pm_pml4 = NULL;
 		pmap->pm_pml4_iso = NULL;
@@ -3230,8 +3230,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 				break;
 			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
 					~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
-			if (kernel_vm_end - 1 >= vm_map_max(&kernel_map)) {
-				kernel_vm_end = vm_map_max(&kernel_map);
+			if (kernel_vm_end - 1 >= vm_map_max(kernel_map)) {
+				kernel_vm_end = vm_map_max(kernel_map);
 				break;                       
 			}
 		}
@@ -3254,8 +3254,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	kstart = rounddown2(kstart, (vm_offset_t)(PAGE_SIZE * NPTEPG));
 	kend = roundup2(kend, (vm_offset_t)(PAGE_SIZE * NPTEPG));
 
-	if (kend - 1 >= vm_map_max(&kernel_map))
-		kend = vm_map_max(&kernel_map);
+	if (kend - 1 >= vm_map_max(kernel_map))
+		kend = vm_map_max(kernel_map);
 
 	while (kstart < kend) {
 		pt = pmap_pt(&kernel_pmap, kstart);
@@ -3293,8 +3293,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		if ((*pt & kernel_pmap.pmap_bits[PG_V_IDX]) != 0) {
 			kstart = (kstart + PAGE_SIZE * NPTEPG) &
 				 ~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
-			if (kstart - 1 >= vm_map_max(&kernel_map)) {
-				kstart = vm_map_max(&kernel_map);
+			if (kstart - 1 >= vm_map_max(kernel_map)) {
+				kstart = vm_map_max(kernel_map);
 				break;                       
 			}
 			continue;
@@ -3324,8 +3324,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		kstart = (kstart + PAGE_SIZE * NPTEPG) &
 			  ~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
 
-		if (kstart - 1 >= vm_map_max(&kernel_map)) {
-			kstart = vm_map_max(&kernel_map);
+		if (kstart - 1 >= vm_map_max(kernel_map)) {
+			kstart = vm_map_max(kernel_map);
 			break;                       
 		}
 	}
@@ -5955,7 +5955,7 @@ pmap_mapdev_attr(vm_paddr_t pa, vm_size_t size, int mode)
 	offset = pa & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
 
-	va = kmem_alloc_nofault(&kernel_map, size, VM_SUBSYS_MAPDEV, PAGE_SIZE);
+	va = kmem_alloc_nofault(kernel_map, size, VM_SUBSYS_MAPDEV, PAGE_SIZE);
 	if (va == 0)
 		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
 
@@ -5985,7 +5985,7 @@ pmap_unmapdev(vm_offset_t va, vm_size_t size)
 	offset = va & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
 	pmap_qremove(va, size >> PAGE_SHIFT);
-	kmem_free(&kernel_map, base, size);
+	kmem_free(kernel_map, base, size);
 }
 
 /*

@@ -461,7 +461,7 @@ RetryFault:
 		    (fs.fault_flags & VM_FAULT_WIRE_MASK) != VM_FAULT_USER_WIRE)
 		{
 			if (result == KERN_INVALID_ADDRESS && growstack &&
-			    map != &kernel_map && curproc != NULL) {
+			    map != kernel_map && curproc != NULL) {
 				result = vm_map_growstack(map, vaddr);
 				if (result == KERN_SUCCESS) {
 					growstack = 0;
@@ -802,7 +802,7 @@ done2:
 	p = td->td_proc;
 	if ((fault_flags & VM_FAULT_USERMODE) && lp &&
 	    p->p_limit && map->pmap && vm_pageout_memuse_mode >= 1 &&
-	    map != &kernel_map) {
+	    map != kernel_map) {
 		vm_pindex_t limit;
 		vm_pindex_t size;
 
@@ -1101,7 +1101,7 @@ RetryFault:
 		    (fs.fault_flags & VM_FAULT_WIRE_MASK) != VM_FAULT_USER_WIRE)
 		{
 			if (result == KERN_INVALID_ADDRESS && growstack &&
-			    map != &kernel_map && curproc != NULL) {
+			    map != kernel_map && curproc != NULL) {
 				result = vm_map_growstack(map, vaddr);
 				if (result == KERN_SUCCESS) {
 					growstack = 0;
@@ -1976,7 +1976,7 @@ readrest:
 			 * around having the machine panic on a kernel space
 			 * fault w/ I/O error.
 			 */
-			if (((fs->map != &kernel_map) &&
+			if (((fs->map != kernel_map) &&
 			    (rv == VM_PAGER_ERROR)) || (rv == VM_PAGER_BAD)) {
 				if (fs->m) {
 					/* from just above */

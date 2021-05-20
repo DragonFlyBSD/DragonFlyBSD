@@ -125,14 +125,14 @@ kernacc(c_caddr_t addr, int len, int rw)
 	/*
 	 * Nominal kernel memory access - check access via kernel_map.
 	 */
-	if ((vm_offset_t)addr + len > vm_map_max(&kernel_map) ||
+	if ((vm_offset_t)addr + len > vm_map_max(kernel_map) ||
 	    (vm_offset_t)addr + len < (vm_offset_t)addr) {
 		return (FALSE);
 	}
 	prot = rw;
 	saddr = trunc_page((vm_offset_t)addr);
 	eaddr = round_page((vm_offset_t)addr + len);
-	rv = vm_map_check_protection(&kernel_map, saddr, eaddr, prot, FALSE);
+	rv = vm_map_check_protection(kernel_map, saddr, eaddr, prot, FALSE);
 
 	return (rv == TRUE);
 }

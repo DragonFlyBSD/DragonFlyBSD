@@ -1546,7 +1546,7 @@ sleep_gdinit(globaldata_t gd)
 	n = TCHASHSHIFT(slpque_tablesize) + 1;
 
 	hash_size = sizeof(struct tslpque) * n;
-	gd->gd_tsleep_hash = (void *)kmem_alloc3(&kernel_map, hash_size,
+	gd->gd_tsleep_hash = (void *)kmem_alloc3(kernel_map, hash_size,
 						 VM_SUBSYS_GD,
 						 KM_CPU(gd->gd_cpuid));
 	memset(gd->gd_tsleep_hash, 0, hash_size);

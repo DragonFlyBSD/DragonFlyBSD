@@ -645,7 +645,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	}
 	vm_object_hold(ef->object);
 	vm_object_reference_locked(ef->object);
-	ef->address = (caddr_t) vm_map_min(&kernel_map);
+	ef->address = (caddr_t) vm_map_min(kernel_map);
 	ef->bytes = 0;
 
 	/*
@@ -660,7 +660,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	vm_object_drop(ef->object);
 #else
 	mapbase = KERNBASE;
-	error = vm_map_find(&kernel_map, ef->object, NULL,
+	error = vm_map_find(kernel_map, ef->object, NULL,
 			    0, &mapbase, round_page(mapsize),
 			    PAGE_SIZE, TRUE,
 			    VM_MAPTYPE_NORMAL, VM_SUBSYS_IMGACT,
@@ -672,7 +672,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 		goto out;
 	}
 	/* Wire the pages */
-	error = vm_map_wire(&kernel_map, mapbase,
+	error = vm_map_wire(kernel_map, mapbase,
 			    mapbase + round_page(mapsize), 0);
 #endif
 	if (error != KERN_SUCCESS) {
@@ -900,7 +900,7 @@ link_elf_obj_unload_file(linker_file_t file)
 #if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 		vkernel_module_memory_free((vm_offset_t)ef->address, ef->bytes);
 #else
-		vm_map_remove(&kernel_map, (vm_offset_t) ef->address,
+		vm_map_remove(kernel_map, (vm_offset_t) ef->address,
 		    (vm_offset_t) ef->address +
 		    (ef->object->size << PAGE_SHIFT));
 #endif

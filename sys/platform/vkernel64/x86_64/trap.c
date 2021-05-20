@@ -797,7 +797,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		/*
 		 * This is a fault on kernel virtual memory.
 		 */
-		map = &kernel_map;
+		map = kernel_map;
 	} else {
 		/*
 		 * This is a fault on non-kernel virtual memory.
@@ -820,7 +820,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 	else
 		ftype = VM_PROT_READ;
 
-	if (map != &kernel_map) {
+	if (map != kernel_map) {
 		/*
 		 * Keep swapout from messing with us during this
 		 *	critical time.

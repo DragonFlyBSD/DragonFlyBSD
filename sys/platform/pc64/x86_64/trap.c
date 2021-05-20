@@ -874,7 +874,7 @@ trap_pfault(struct trapframe *frame, int usermode)
 			goto nogo;
 		}
 
-		map = &kernel_map;
+		map = kernel_map;
 	} else {
 		/*
 		 * This is a fault on non-kernel virtual memory.
@@ -940,7 +940,7 @@ trap_pfault(struct trapframe *frame, int usermode)
 
 	lwkt_tokref_t stop = td->td_toks_stop;
 
-	if (map != &kernel_map) {
+	if (map != kernel_map) {
 		/*
 		 * Keep swapout from messing with us during this
 		 *	critical time.

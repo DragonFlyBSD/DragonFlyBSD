@@ -857,7 +857,7 @@ vm_page_startup_finish(void *dummy __unused)
 	/*
 	 * hash table for vm_page_lookup_quick()
 	 */
-	mp = (void *)kmem_alloc3(&kernel_map,
+	mp = (void *)kmem_alloc3(kernel_map,
 				 (vm_page_hash_size + VM_PAGE_HASH_SET) *
 				  sizeof(*vm_page_hash),
 				 VM_SUBSYS_VMPGHASH, KM_CPU(0));

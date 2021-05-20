@@ -504,7 +504,7 @@ vm_contig_pg_free(vm_pindex_t start, u_long size)
  *
  * Map previously allocated (vm_contig_pg_alloc) range of pages from
  * vm_page_array[] into the KVA.  Once mapped, the pages are part of
- * the Kernel, and are to free'ed with kmem_free(&kernel_map, addr, size).
+ * the Kernel, and are to free'ed with kmem_free(kernel_map, addr, size).
  *
  * No requirements.
  */
@@ -519,7 +519,7 @@ vm_contig_pg_kmap(vm_pindex_t start, u_long size, vm_map_t map, int flags)
 	if (size == 0)
 		panic("vm_contig_pg_kmap: size must not be 0");
 	size = round_page(size);
-	addr = kmem_alloc_pageable(&kernel_map, size, VM_SUBSYS_CONTIG);
+	addr = kmem_alloc_pageable(kernel_map, size, VM_SUBSYS_CONTIG);
 	if (addr) {
 		pa = VM_PAGE_TO_PHYS(&pga[start]);
 		for (offset = 0; offset < size; offset += PAGE_SIZE)
@@ -545,7 +545,7 @@ contigmalloc(
 	unsigned long boundary)
 {
 	return contigmalloc_map(size, type, flags, low, high, alignment,
-			boundary, &kernel_map);
+			boundary, kernel_map);
 }
 
 /*
@@ -591,7 +591,7 @@ contigfree(void *addr, unsigned long size, struct malloc_type *type)
 
 	pa = pmap_kextract((vm_offset_t)addr);
 	pmap_qremove((vm_offset_t)addr, size / PAGE_SIZE);
-	kmem_free(&kernel_map, (vm_offset_t)addr, size);
+	kmem_free(kernel_map, (vm_offset_t)addr, size);
 
 	m = PHYS_TO_VM_PAGE(pa);
 	vm_page_free_contig(m, size);
@@ -605,5 +605,5 @@ kmem_alloc_contig(vm_offset_t size, vm_paddr_t low, vm_paddr_t high,
 		  vm_offset_t alignment)
 {
 	return ((vm_offset_t)contigmalloc_map(size, M_DEVBUF, M_NOWAIT, low,
-				high, alignment, 0ul, &kernel_map));
+				high, alignment, 0ul, kernel_map));
 }

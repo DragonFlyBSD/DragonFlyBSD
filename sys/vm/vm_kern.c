@@ -84,7 +84,9 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 
-struct vm_map kernel_map;
+static struct vm_map kernel_map_store;
+struct vm_map *kernel_map = &kernel_map_store;
+
 struct vm_map clean_map;
 struct vm_map buffer_map;
 
@@ -110,8 +112,8 @@ kmem_alloc_swapbacked(kmem_anon_desc_t *kp, vm_size_t size, vm_subsys_t id)
 	npages = size / PAGE_SIZE;
 
 	if (kp->map == NULL)
-		kp->map = &kernel_map;
-	kp->data = vm_map_min(&kernel_map);
+		kp->map = kernel_map;
+	kp->data = vm_map_min(kernel_map);
 	kp->size = size;
 	kp->object = vm_object_allocate(OBJT_DEFAULT, npages);
 
@@ -426,7 +428,7 @@ kmem_alloc_attr(vm_map_t map, vm_size_t size, vm_subsys_t id,
 		vm_map_entry_release(count);
 		return (0);
 	}
-	offset = addr - vm_map_min(&kernel_map);
+	offset = addr - vm_map_min(kernel_map);
 	vm_object_hold(&kernel_object);
 	vm_object_reference_locked(&kernel_object);
 	vm_map_insert(map, &count,
@@ -493,7 +495,7 @@ kmem_init(void)
 	vm_map_t m;
 	int count;
 
-	m = &kernel_map;
+	m = kernel_map;
 	vm_map_init(m, KvaStart, KvaEnd, &kernel_pmap);
 	vm_map_lock(m);
 	/* N.B.: cannot use kgdb to debug, starting with this assignment ... */

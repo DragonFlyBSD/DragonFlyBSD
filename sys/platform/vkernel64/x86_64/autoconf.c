@@ -172,17 +172,17 @@ cpu_startup(void *dummy)
 	/*
 	 * Allocate memory for the buffer cache
 	 */
-	buf = (void *)kmem_alloc(&kernel_map,
+	buf = (void *)kmem_alloc(kernel_map,
 				 nbuf * sizeof(struct buf),
 				 VM_SUBSYS_BUF);
-	swbuf_mem = (void *)kmem_alloc(&kernel_map,
+	swbuf_mem = (void *)kmem_alloc(kernel_map,
 				       nswbuf_mem * sizeof(struct buf),
 				       VM_SUBSYS_BUF);
-	swbuf_kva = (void *)kmem_alloc(&kernel_map,
+	swbuf_kva = (void *)kmem_alloc(kernel_map,
 				       nswbuf_kva * sizeof(struct buf),
 				       VM_SUBSYS_BUF);
 
-	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
+	kmem_suballoc(kernel_map, &clean_map, &clean_sva, &clean_eva,
 		      (nbuf * MAXBSIZE * 2) +
 		      (nswbuf_mem + nswbuf_kva) * MAXPHYS +
 		      pager_map_size);

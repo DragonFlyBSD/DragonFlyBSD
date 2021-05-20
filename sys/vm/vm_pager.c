@@ -314,7 +314,7 @@ vm_pager_bufferinit(void *dummy __unused)
 	 *	 systems.
 	 */
 	nswbuf_raw = nbuf * 2;
-	swbuf_raw = (void *)kmem_alloc3(&kernel_map,
+	swbuf_raw = (void *)kmem_alloc3(kernel_map,
 				round_page(nswbuf_raw * sizeof(struct buf)),
 				VM_SUBSYS_BUFDATA,
 				KM_NOTLBSYNC);

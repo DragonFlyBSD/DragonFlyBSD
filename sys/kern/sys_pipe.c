@@ -374,9 +374,9 @@ pipespace(struct pipe *pipe, struct pipebuf *pb, size_t size)
 	 */
 	if (object == NULL || object->size != npages) {
 		object = vm_object_allocate(OBJT_DEFAULT, npages);
-		buffer = (caddr_t)vm_map_min(&kernel_map);
+		buffer = (caddr_t)vm_map_min(kernel_map);
 
-		error = vm_map_find(&kernel_map, object, NULL,
+		error = vm_map_find(kernel_map, object, NULL,
 				    0, (vm_offset_t *)&buffer, size,
 				    PAGE_SIZE, TRUE,
 				    VM_MAPTYPE_NORMAL, VM_SUBSYS_PIPE,
@@ -1182,7 +1182,7 @@ static void
 pipe_free_kmem(struct pipebuf *pb)
 {
 	if (pb->buffer != NULL) {
-		kmem_free(&kernel_map, (vm_offset_t)pb->buffer, pb->size);
+		kmem_free(kernel_map, (vm_offset_t)pb->buffer, pb->size);
 		pb->buffer = NULL;
 		pb->object = NULL;
 	}

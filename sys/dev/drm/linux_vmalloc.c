@@ -53,7 +53,7 @@ vmap(struct page **pages, unsigned int count,
 	vmp = kmalloc(sizeof(struct vmap), M_DRM, M_WAITOK | M_ZERO);
 
 	size = count * PAGE_SIZE;
-	off = kmem_alloc_nofault(&kernel_map, size,
+	off = kmem_alloc_nofault(kernel_map, size,
 				 VM_SUBSYS_DRM_VMAP, PAGE_SIZE);
 	if (off == 0)
 		return (NULL);
@@ -79,7 +79,7 @@ vunmap(const void *addr)
 			size = vmp->npages * PAGE_SIZE;
 
 			pmap_qremove((vm_offset_t)addr, vmp->npages);
-			kmem_free(&kernel_map, (vm_offset_t)addr, size);
+			kmem_free(kernel_map, (vm_offset_t)addr, size);
 			goto found;
 		}
 	}

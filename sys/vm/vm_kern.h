@@ -100,7 +100,7 @@ typedef struct kmem_anon_desc kmem_anon_desc_t;
 
 /* Kernel memory management definitions. */
 extern struct vm_map buffer_map;
-extern struct vm_map kernel_map;
+extern struct vm_map *kernel_map;
 extern struct vm_map clean_map;
 extern u_int vm_kmem_size;
 

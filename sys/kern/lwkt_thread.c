@@ -266,7 +266,7 @@ _lwkt_thread_dtor(void *obj, void *privdata)
 	KASSERT((td->td_flags & TDF_ALLOCATED_STACK) && td->td_kstack &&
 		td->td_kstack_size > 0,
 	    ("_lwkt_thread_dtor: corrupted stack"));
-	kmem_free(&kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
+	kmem_free(kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
 	td->td_kstack = NULL;
 	td->td_flags = 0;
 }
@@ -383,16 +383,17 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
      */
     if ((stack = td->td_kstack) != NULL && td->td_kstack_size != stksize) {
 	if (flags & TDF_ALLOCATED_STACK) {
-	    kmem_free(&kernel_map, (vm_offset_t)stack, td->td_kstack_size);
+	    kmem_free(kernel_map, (vm_offset_t)stack, td->td_kstack_size);
 	    stack = NULL;
 	}
     }
     if (stack == NULL) {
-	if (cpu < 0)
-		stack = (void *)kmem_alloc_stack(&kernel_map, stksize, 0);
-	else
-		stack = (void *)kmem_alloc_stack(&kernel_map, stksize,
+	if (cpu < 0) {
+		stack = (void *)kmem_alloc_stack(kernel_map, stksize, 0);
+	} else {
+		stack = (void *)kmem_alloc_stack(kernel_map, stksize,
 						 KM_CPU(cpu));
+	}
 	flags |= TDF_ALLOCATED_STACK;
     }
     if (cpu < 0) {
@@ -515,7 +516,7 @@ lwkt_free_thread(thread_t td)
 	/* client-allocated struct with internally allocated stack */
 	KASSERT(td->td_kstack && td->td_kstack_size > 0,
 	    ("lwkt_free_thread: corrupted stack"));
-	kmem_free(&kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
+	kmem_free(kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
 	td->td_kstack = NULL;
 	td->td_kstack_size = 0;
     }
