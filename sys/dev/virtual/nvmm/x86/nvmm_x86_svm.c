@@ -37,6 +37,7 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_svm.c,v 1.46.4.13 2020/09/13 11:56:44 marti
 #include <sys/globaldata.h>
 #include <sys/kernel.h>
 #include <sys/kmem.h>
+#include <sys/malloc.h> /* contigmalloc, contigfree */
 #include <sys/cpu.h>
 #include <sys/xcall.h>
 #include <sys/mman.h>
@@ -1657,6 +1658,7 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 static int
 svm_memalloc(paddr_t *pa, vaddr_t *va, size_t npages)
 {
+#ifdef __NetBSD__
 	struct pglist pglist;
 	paddr_t _pa;
 	vaddr_t _va;
@@ -1690,11 +1692,25 @@ error:
 		uvm_pagefree(PHYS_TO_VM_PAGE(_pa + i * PAGE_SIZE));
 	}
 	return ENOMEM;
+
+#else /* DragonFly */
+	void *addr;
+
+	addr = contigmalloc(npages * PAGE_SIZE, M_NVMM, M_WAITOK | M_ZERO,
+	    0, ~0UL, PAGE_SIZE, 0);
+	if (addr == NULL)
+		return ENOMEM;
+
+	*va = (vaddr_t)addr;
+	*pa = vtophys(addr);
+	return 0;
+#endif /* __NetBSD__ */
 }
 
 static void
-svm_memfree(paddr_t pa, vaddr_t va, size_t npages)
+svm_memfree(paddr_t pa __unused, vaddr_t va, size_t npages)
 {
+#ifdef __NetBSD__
 	size_t i;
 
 	pmap_kremove(va, npages * PAGE_SIZE);
@@ -1703,6 +1719,9 @@ svm_memfree(paddr_t pa, vaddr_t va, size_t npages)
 	for (i = 0; i < npages; i++) {
 		uvm_pagefree(PHYS_TO_VM_PAGE(pa + i * PAGE_SIZE));
 	}
+#else /* DragonFly */
+	contigfree((void *)va, npages * PAGE_SIZE, M_NVMM);
+#endif /* __NetBSD__ */
 }
 
 /* -------------------------------------------------------------------------- */
