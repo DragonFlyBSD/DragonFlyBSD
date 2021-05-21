@@ -700,11 +700,11 @@ bufinit(void *dummy __unused)
 
 	bogus_offset = kmem_alloc_pageable(kernel_map, PAGE_SIZE,
 					   VM_SUBSYS_BOGUS);
-	vm_object_hold(&kernel_object);
-	bogus_page = vm_page_alloc(&kernel_object,
+	vm_object_hold(kernel_object);
+	bogus_page = vm_page_alloc(kernel_object,
 				   (bogus_offset >> PAGE_SHIFT),
 				   VM_ALLOC_NORMAL);
-	vm_object_drop(&kernel_object);
+	vm_object_drop(kernel_object);
 	vmstats.v_wire_count++;
 
 }

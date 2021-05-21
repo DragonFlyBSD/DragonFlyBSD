@@ -126,7 +126,8 @@ static void	vm_object_lock_init(vm_object_t);
  *
  */
 
-struct vm_object kernel_object;
+static struct vm_object kernel_object_store;
+struct vm_object *kernel_object = &kernel_object_store;
 
 struct vm_object_hash vm_object_hash[VMOBJ_HSIZE];
 
@@ -446,8 +447,8 @@ vm_object_init1(void)
 	}
 
 	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(KvaEnd),
-			    &kernel_object, "kobj");
-	vm_object_drop(&kernel_object);
+			    kernel_object, "kobj");
+	vm_object_drop(kernel_object);
 }
 
 void

@@ -1653,7 +1653,7 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 			 * We can release the spl once we have marked the
 			 * page busy.
 			 */
-			if (fs->mary[0]->object != &kernel_object) {
+			if (fs->mary[0]->object != kernel_object) {
 				if ((fs->mary[0]->valid & VM_PAGE_BITS_ALL) !=
 				    VM_PAGE_BITS_ALL) {
 					goto readrest;

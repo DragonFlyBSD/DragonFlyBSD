@@ -407,18 +407,18 @@ start_all_aps(u_int boot_addr)
 	ap_tids[0] = pthread_self();
 	pthread_attr_init(&attr);
 
-	vm_object_hold(&kernel_object);
+	vm_object_hold(kernel_object);
 	for (x = 1; x <= naps; ++x) {
 		/* Allocate space for the CPU's private space. */
 		for (i = 0; i < sizeof(struct mdglobaldata); i += PAGE_SIZE) {
 			va =(vm_offset_t)&CPU_prvspace[x].mdglobaldata + i;
-			m = vm_page_alloc(&kernel_object, va, VM_ALLOC_SYSTEM);
+			m = vm_page_alloc(kernel_object, va, VM_ALLOC_SYSTEM);
 			pmap_kenter_quick(va, m->phys_addr);
 		}
 
 		for (i = 0; i < sizeof(CPU_prvspace[x].idlestack); i += PAGE_SIZE) {
 			va =(vm_offset_t)&CPU_prvspace[x].idlestack + i;
-			m = vm_page_alloc(&kernel_object, va, VM_ALLOC_SYSTEM);
+			m = vm_page_alloc(kernel_object, va, VM_ALLOC_SYSTEM);
 			pmap_kenter_quick(va, m->phys_addr);
 		}
 
@@ -483,7 +483,7 @@ start_all_aps(u_int boot_addr)
 			DELAY(1000);
 		}
 	}
-	vm_object_drop(&kernel_object);
+	vm_object_drop(kernel_object);
 	pthread_attr_destroy(&attr);
 
 	return(ncpus - 1);

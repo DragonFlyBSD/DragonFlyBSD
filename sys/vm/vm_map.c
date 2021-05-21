@@ -3246,7 +3246,7 @@ again:
 
 		offidxend = offidxstart + count;
 
-		if (object == &kernel_object) {
+		if (object == kernel_object) {
 			pmap_remove(map->pmap, s, e);
 			vm_object_hold(object);
 			vm_object_page_remove(object, offidxstart,

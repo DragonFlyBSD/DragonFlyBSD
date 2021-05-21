@@ -257,7 +257,7 @@ extern struct vm_object_hash vm_object_hash[VMOBJ_HSIZE];
 
  /* lock for object list and count */
 
-extern struct vm_object kernel_object;	/* the single kernel object */
+extern struct vm_object *kernel_object;	/* the single kernel object */
 extern int vm_shared_fault;
 
 #endif				/* _KERNEL */

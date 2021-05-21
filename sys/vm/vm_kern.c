@@ -248,15 +248,15 @@ kmem_alloc3(vm_map_t map, vm_size_t size, vm_subsys_t id, int kmflags)
 			vm_map_entry_release(count);
 		return (0);
 	}
-	vm_object_hold(&kernel_object);
-	vm_object_reference_locked(&kernel_object);
+	vm_object_hold(kernel_object);
+	vm_object_reference_locked(kernel_object);
 	vm_map_insert(map, &count,
-		      &kernel_object, NULL,
+		      kernel_object, NULL,
 		      addr, NULL,
 		      addr, addr + size,
 		      VM_MAPTYPE_NORMAL, id,
 		      VM_PROT_ALL, VM_PROT_ALL, cow);
-	vm_object_drop(&kernel_object);
+	vm_object_drop(kernel_object);
 
 	vm_map_unlock(map);
 	if (kmflags & KM_KRESERVE)
@@ -281,17 +281,17 @@ kmem_alloc3(vm_map_t map, vm_size_t size, vm_subsys_t id, int kmflags)
 	 * We're intentionally not activating the pages we allocate to prevent a
 	 * race with page-out.  vm_map_wire will wire the pages.
 	 */
-	vm_object_hold(&kernel_object);
+	vm_object_hold(kernel_object);
 	for (i = gstart; i < size; i += PAGE_SIZE) {
 		vm_page_t mem;
 
-		mem = vm_page_grab(&kernel_object, OFF_TO_IDX(addr + i),
+		mem = vm_page_grab(kernel_object, OFF_TO_IDX(addr + i),
 				   VM_ALLOC_FORCE_ZERO | VM_ALLOC_NORMAL |
 				   VM_ALLOC_RETRY | KMVMCPU(kmflags));
 		vm_page_unqueue_nowakeup(mem);
 		vm_page_wakeup(mem);
 	}
-	vm_object_drop(&kernel_object);
+	vm_object_drop(kernel_object);
 
 	/*
 	 * And finally, mark the data as non-pageable.
@@ -431,26 +431,26 @@ kmem_alloc_attr(vm_map_t map, vm_size_t size, vm_subsys_t id,
 		return (0);
 	}
 	offset = addr - vm_map_min(kernel_map);
-	vm_object_hold(&kernel_object);
-	vm_object_reference_locked(&kernel_object);
+	vm_object_hold(kernel_object);
+	vm_object_reference_locked(kernel_object);
 	vm_map_insert(map, &count,
-		      &kernel_object, NULL,
+		      kernel_object, NULL,
 		      offset, NULL,
 		      addr, addr + size,
 		      VM_MAPTYPE_NORMAL, id,
 		      VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
-	vm_object_drop(&kernel_object);
+	vm_object_drop(kernel_object);
 	for (i = 0; i < size; i += PAGE_SIZE) {
 		m = vm_page_alloc_contig(low, high, PAGE_SIZE, 0,
 					 PAGE_SIZE, memattr);
 		if (!m) {
 			return (0);
 		}
-		vm_object_hold(&kernel_object);
-		vm_page_insert(m, &kernel_object, OFF_TO_IDX(offset + i));
-		vm_object_drop(&kernel_object);
+		vm_object_hold(kernel_object);
+		vm_page_insert(m, kernel_object, OFF_TO_IDX(offset + i));
+		vm_object_drop(kernel_object);
 		if (flags & M_ZERO)
 			pmap_zero_page(VM_PAGE_TO_PHYS(m));
 		m->valid = VM_PAGE_BITS_ALL;

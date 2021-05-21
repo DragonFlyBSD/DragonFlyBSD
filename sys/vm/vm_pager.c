@@ -275,9 +275,9 @@ vm_pager_bufferinit(void *dummy __unused)
 		bp->b_xio.xio_pages = bp->b_xio.xio_internal_pages;
 
 		pg = (vm_offset_t)bp->b_kvabase >> PAGE_SHIFT;
-		vm_object_hold(&kernel_object);
+		vm_object_hold(kernel_object);
 		for (j = 0; j < MAXPHYS / PAGE_SIZE; ++j) {
-			m = vm_page_alloc(&kernel_object, pg, VM_ALLOC_NORMAL |
+			m = vm_page_alloc(kernel_object, pg, VM_ALLOC_NORMAL |
 							      VM_ALLOC_SYSTEM);
 			KKASSERT(m != NULL);
 			bp->b_xio.xio_internal_pages[j] = m;
@@ -288,7 +288,7 @@ vm_pager_bufferinit(void *dummy __unused)
 			vm_page_wakeup(m);
 			++pg;
 		}
-		vm_object_drop(&kernel_object);
+		vm_object_drop(kernel_object);
 		bp->b_xio.xio_npages = j;
 	}
 

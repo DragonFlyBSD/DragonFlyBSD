@@ -508,8 +508,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 
 	vm_pager_put_pages(object, mc, count,
 			   (vmflush_flags |
-			    ((object == &kernel_object) ?
-				OBJPC_SYNC : 0)),
+			    ((object == kernel_object) ?  OBJPC_SYNC : 0)),
 			   pageout_status);
 
 	for (i = 0; i < count; i++) {
