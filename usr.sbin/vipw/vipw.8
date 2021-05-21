@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)vipw.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.sbin/vipw/vipw.8,v 1.7.2.4 2003/03/11 22:31:34 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/vipw/vipw.8,v 1.2 2003/06/17 04:30:04 dillon Exp $
 .\"
-.Dd June 6, 1993
+.Dd June 9, 2021
 .Dt VIPW 8
 .Os
 .Sh NAME
@@ -85,15 +84,12 @@ and the new information is not available to programs.
 .Sh ENVIRONMENT
 If the following environment variable exists it will be utilized by
 .Nm :
-.Bl -tag -width PW_SCAN_BIG_IDS
+.Bl -tag -width ".Ev EDITOR"
 .It Ev EDITOR
 The editor specified by the string
 .Ev EDITOR
 will be invoked instead of the default editor
 .Xr vi 1 .
-.It Ev PW_SCAN_BIG_IDS
-See
-.Xr pwd_mkdb 8 .
 .El
 .Sh SEE ALSO
 .Xr chpass 1 ,

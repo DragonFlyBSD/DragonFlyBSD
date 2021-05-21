@@ -29,7 +29,7 @@
 .\" $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.8,v 1.26 2005/02/28 21:05:30 ru Exp $
 .\" $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.8,v 1.3 2006/02/17 19:40:22 swildner Exp $
 .\"
-.Dd February 28, 2005
+.Dd June 9, 2021
 .Dt PWD_MKDB 8
 .Os
 .Sh NAME
@@ -120,15 +120,6 @@ The databases are used by the C library password routines (see
 The
 .Nm
 utility exits zero on success, non-zero on failure.
-.Sh ENVIRONMENT
-If the
-.Ev PW_SCAN_BIG_IDS
-environment variable is set,
-.Nm
-will suppress the warning messages that are
-normally generated for large user and group IDs.
-Such IDs can cause serious problems with software
-that makes assumptions about the values of IDs.
 .Sh FILES
 .Bl -tag -width Pa -compact
 .It Pa /etc/pwd.db

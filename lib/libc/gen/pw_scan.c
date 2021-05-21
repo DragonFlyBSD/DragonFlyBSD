@@ -49,25 +49,13 @@
 
 #include "pw_scan.h"
 
-/*
- * Some software assumes that IDs are short.  We should emit warnings
- * for id's which cannot be stored in a short, but we are more liberal
- * by default, warning for IDs greater than USHRT_MAX.
- *
- * If pw_big_ids_warning is -1 on entry to pw_scan(), it will be set based
- * on the existence of PW_SCAN_BIG_IDS in the environment.
- */
-static int	pw_big_ids_warning = -1;
-
 int
 __pw_scan(char *bp, struct passwd *pw, int flags)
 {
-	uid_t id;
+	long long id;
 	int root;
-	char *ep, *p, *sh;
-
-	if (pw_big_ids_warning == -1)
-		pw_big_ids_warning = getenv("PW_SCAN_BIG_IDS") == NULL ? 1 : 0;
+	char *p, *sh;
+	const char *ep;
 
 	pw->pw_fields = 0;
 	if (!(pw->pw_name = strsep(&bp, ":")))		/* login */
@@ -92,15 +80,10 @@ __pw_scan(char *bp, struct passwd *pw, int flags)
 			return (0);
 		}
 	}
-	id = strtoul(p, &ep, 10);
-	if (errno == ERANGE) {
+	id = strtonum(p, 0, UID_MAX, &ep);
+	if (ep != NULL) {
 		if (flags & _PWSCAN_WARN)
-			warnx("%s > max uid value (%lu)", p, ULONG_MAX);
-		return (0);
-	}
-	if (*ep != '\0') {
-		if (flags & _PWSCAN_WARN)
-			warnx("%s uid is incorrect", p);
+			warnx("%s uid is incorrect: %s", p, ep);
 		return (0);
 	}
 	if (root && id) {
@@ -108,11 +91,7 @@ __pw_scan(char *bp, struct passwd *pw, int flags)
 			warnx("root uid should be 0");
 		return (0);
 	}
-	if (flags & _PWSCAN_WARN && pw_big_ids_warning && id > USHRT_MAX) {
-		warnx("%s > recommended max uid value (%u)", p, USHRT_MAX);
-		/*return (0);*/ /* THIS SHOULD NOT BE FATAL! */
-	}
-	pw->pw_uid = id;
+	pw->pw_uid = (uid_t)id;
 
 	if (!(p = strsep(&bp, ":")))			/* gid */
 		goto fmt;
@@ -125,22 +104,13 @@ __pw_scan(char *bp, struct passwd *pw, int flags)
 			return (0);
 		}
 	}
-	id = strtoul(p, &ep, 10);
-	if (errno == ERANGE) {
+	id = strtonum(p, 0, GID_MAX, &ep);
+	if (ep != NULL) {
 		if (flags & _PWSCAN_WARN)
-			warnx("%s > max gid value (%lu)", p, ULONG_MAX);
+			warnx("%s gid is incorrect: %s", p, ep);
 		return (0);
 	}
-	if (*ep != '\0') {
-		if (flags & _PWSCAN_WARN)
-			warnx("%s gid is incorrect", p);
-		return (0);
-	}
-	if (flags & _PWSCAN_WARN && pw_big_ids_warning && id > USHRT_MAX) {
-		warnx("%s > recommended max gid value (%u)", p, USHRT_MAX);
-		/* return (0); This should not be fatal! */
-	}
-	pw->pw_gid = id;
+	pw->pw_gid = (gid_t)id;
 
 	if (flags & _PWSCAN_MASTER ) {
 		if (!(pw->pw_class = strsep(&bp, ":")))	/* class */
