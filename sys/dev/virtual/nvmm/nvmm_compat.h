@@ -49,6 +49,7 @@
 #include <sys/systm.h>
 
 #include <vm/vm_object.h>
+#include <vm/vm_page.h>
 #include <vm/vm_pager.h>
 
 #include <machine/atomic.h>
@@ -357,6 +358,30 @@ x86_dbregs_restore(struct lwp *lp)
  * Virtual address space management
  */
 #define uvm_object		vm_object
+
+/* Physical page allocation */
+
+struct vm_anon; /* dummy */
+enum {
+	UVM_PGA_ZERO = VM_ALLOC_ZERO,
+};
+
+static __inline struct vm_page *
+uvm_pagealloc(struct vm_object *obj, vm_offset_t off, struct vm_anon *anon,
+    int flags)
+{
+	KKASSERT(anon == NULL);
+	KKASSERT(flags == UVM_PGA_ZERO);
+
+	return vm_page_alloczwq(OFF_TO_IDX(off),
+	    VM_ALLOC_SYSTEM | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
+}
+
+static __inline void
+uvm_pagefree(struct vm_page *pg)
+{
+	vm_page_freezwq(pg);
+}
 
 /* Anonymous object allocation */
 
