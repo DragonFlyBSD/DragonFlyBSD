@@ -41,7 +41,7 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_vmx.c,v 1.36.2.15 2020/09/13 11:56:44 marti
 #include <sys/cpu.h>
 #include <sys/cpumask.h>
 #include <sys/smp.h> /* smp_active_mask */
-#include <sys/xcall.h>
+#include <sys/thread2.h> /* lwkt_send_ipiq, lwkt_send_ipiq_mask */
 #include <sys/mman.h>
 #include <sys/bitops.h>
 
@@ -903,7 +903,7 @@ vmx_get_revision(void)
 }
 
 static void
-vmx_vmclear_ipi(void *arg1, void *arg2)
+vmx_vmclear_ipi(void *arg1)
 {
 	paddr_t vmcs_pa = (paddr_t)arg1;
 	vmx_vmclear(&vmcs_pa);
@@ -912,6 +912,7 @@ vmx_vmclear_ipi(void *arg1, void *arg2)
 static void
 vmx_vmclear_remote(struct globaldata *ci, paddr_t vmcs_pa)
 {
+#ifdef __NetBSD__
 	uint64_t xc;
 	int bound;
 
@@ -925,6 +926,15 @@ vmx_vmclear_remote(struct globaldata *ci, paddr_t vmcs_pa)
 
 	kpreempt_disable();
 	curlwp_bindx(bound);
+#endif /* __NetBSD__ */
+
+	/*
+	 * No need to bind the thread, because any normal kernel thread will
+	 * not migrate to another CPU or be preempted (except by an interrupt
+	 * thread).
+	 */
+	lwkt_send_ipiq(ci, vmx_vmclear_ipi, (void *)vmcs_pa);
+	/* XXX: need any cpu fence ?? */
 }
 
 static void
@@ -3423,7 +3433,7 @@ vmx_init_asid(uint32_t maxasid)
 }
 
 static void
-vmx_change_cpu(void *arg1, void *arg2)
+vmx_change_cpu(void *arg1)
 {
 	bool enable = arg1 != NULL;
 	uint64_t msr, cr4;
@@ -3484,7 +3494,7 @@ vmx_init_l1tf(void)
 static void
 vmx_init(void)
 {
-	uint64_t xc, msr;
+	uint64_t msr;
 	struct vmxon *vmxon;
 	uint32_t revision;
 	u_int descs[4];
@@ -3541,8 +3551,14 @@ vmx_init(void)
 		vmxon->ident = __SHIFTIN(revision, VMXON_IDENT_REVISION);
 	}
 
+#ifdef __NetBSD__
+	uint64_t xc;
 	xc = xc_broadcast(0, vmx_change_cpu, (void *)true, NULL);
 	xc_wait(xc);
+#endif /* __NetBSD__ */
+
+	lwkt_send_ipiq_mask(smp_active_mask, vmx_change_cpu, (void *)true);
+	/* XXX: need any cpu fence ?? */
 }
 
 static void
@@ -3559,11 +3575,16 @@ vmx_fini_asid(void)
 static void
 vmx_fini(void)
 {
-	uint64_t xc;
 	size_t i;
 
+#ifdef __NetBSD__
+	uint64_t xc;
 	xc = xc_broadcast(0, vmx_change_cpu, (void *)false, NULL);
 	xc_wait(xc);
+#endif /* __NetBSD__ */
+
+	lwkt_send_ipiq_mask(smp_active_mask, vmx_change_cpu, (void *)false);
+	/* XXX: need any cpu fence ?? */
 
 	for (i = 0; i < MAXCPUS; i++) {
 		if (vmxoncpu[i].pa != 0)

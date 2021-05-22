@@ -39,8 +39,8 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_svm.c,v 1.46.4.13 2020/09/13 11:56:44 marti
 #include <sys/kmem.h>
 #include <sys/malloc.h> /* contigmalloc, contigfree */
 #include <sys/cpu.h>
-#include <sys/xcall.h>
 #include <sys/mman.h>
+#include <sys/thread2.h> /* lwkt_send_ipiq, lwkt_send_ipiq_mask */
 
 #include <uvm/uvm.h>
 #include <uvm/uvm_page.h>
@@ -2534,7 +2534,7 @@ svm_init_asid(uint32_t maxasid)
 }
 
 static void
-svm_change_cpu(void *arg1, void *arg2)
+svm_change_cpu(void *arg1)
 {
 	bool enable = arg1 != NULL;
 	uint64_t msr;
@@ -2566,7 +2566,6 @@ svm_init(void)
 {
 	struct vm_page *pg;
 	u_int descs[4];
-	uint64_t xc;
 	int i;
 
 	x86_cpuid(0x8000000a, descs);
@@ -2597,8 +2596,14 @@ svm_init(void)
 		hsave[i].pa = VM_PAGE_TO_PHYS(pg);
 	}
 
+#ifdef __NetBSD__
+	uint64_t xc;
 	xc = xc_broadcast(0, svm_change_cpu, (void *)true, NULL);
 	xc_wait(xc);
+#endif /* __NetBSD__ */
+
+	lwkt_send_ipiq_mask(smp_active_mask, svm_change_cpu, (void *)true);
+	/* XXX: need any cpu fence ?? */
 }
 
 static void
@@ -2615,11 +2620,16 @@ svm_fini_asid(void)
 static void
 svm_fini(void)
 {
-	uint64_t xc;
 	size_t i;
 
+#ifdef __NetBSD__
+	uint64_t xc;
 	xc = xc_broadcast(0, svm_change_cpu, (void *)false, NULL);
 	xc_wait(xc);
+#endif /* __NetBSD__ */
+
+	lwkt_send_ipiq_mask(smp_active_mask, svm_change_cpu, (void *)false);
+	/* XXX: need any cpu fence ?? */
 
 	for (i = 0; i < MAXCPUS; i++) {
 		if (hsave[i].pa != 0)
