@@ -99,6 +99,25 @@ hostname(void)
 	}
 
 local:
+	snprintf(name, sizeof(name), "%s", systemhostname());
+
+	initialized = 1;
+	return (name);
+}
+
+const char *
+systemhostname(void)
+{
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX  255
+#endif
+	static char name[HOST_NAME_MAX+1];
+	static int initialized = 0;
+	char *s;
+
+	if (initialized)
+		return (name);
+
 	if (gethostname(name, sizeof(name)) != 0)
 		*name = 0;
 	/*
