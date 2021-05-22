@@ -3008,6 +3008,9 @@ vmx_vcpu_create(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	cpudata = (struct vmx_cpudata *)uvm_km_alloc(kernel_map,
 	    roundup(sizeof(*cpudata), PAGE_SIZE), 0,
 	    UVM_KMF_WIRED|UVM_KMF_ZERO);
+	if (cpudata == NULL)
+		return ENOMEM;
+
 	vcpu->cpudata = cpudata;
 
 	/* VMCS */
@@ -3046,8 +3049,8 @@ error:
 	if (cpudata->gmsr_pa) {
 		vmx_memfree(cpudata->gmsr_pa, (vaddr_t)cpudata->gmsr, 1);
 	}
-
-	kmem_free(cpudata, sizeof(*cpudata));
+	uvm_km_free(kernel_map, (vaddr_t)cpudata,
+	    roundup(sizeof(*cpudata), PAGE_SIZE), UVM_KMF_WIRED);
 	return error;
 }
 

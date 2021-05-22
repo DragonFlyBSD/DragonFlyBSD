@@ -2286,6 +2286,9 @@ svm_vcpu_create(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	cpudata = (struct svm_cpudata *)uvm_km_alloc(kernel_map,
 	    roundup(sizeof(*cpudata), PAGE_SIZE), 0,
 	    UVM_KMF_WIRED|UVM_KMF_ZERO);
+	if (cpudata == NULL)
+		return ENOMEM;
+
 	vcpu->cpudata = cpudata;
 
 	/* VMCB */

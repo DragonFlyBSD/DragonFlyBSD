@@ -48,6 +48,7 @@
 #include <sys/proc.h> /* lwp */
 #include <sys/systm.h>
 
+#include <vm/vm_extern.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
@@ -357,7 +358,39 @@ x86_dbregs_restore(struct lwp *lp)
 /*
  * Virtual address space management
  */
+typedef vm_offset_t vaddr_t;
+typedef vm_offset_t voff_t;
+typedef vm_size_t vsize_t;
+typedef vm_paddr_t paddr_t;
+
 #define uvm_object		vm_object
+
+/* Kernel memory allocation */
+
+enum {
+	UVM_KMF_WIRED = 0x01, /* wired memory */
+	UVM_KMF_ZERO  = 0x02, /* want zero-filled memory */
+};
+
+/* NOTE: DragonFly's kmem_alloc() may return 0 ! */
+static __inline vaddr_t
+uvm_km_alloc(struct vm_map *map, vsize_t size, vsize_t align, int flags)
+{
+	KKASSERT(map == kernel_map);
+	KKASSERT(align == 0);
+	KKASSERT(flags == (UVM_KMF_WIRED | UVM_KMF_ZERO));
+
+	/* Add parentheses around 'kmem_alloc' to avoid macro expansion */
+	return (kmem_alloc)(map, size, VM_SUBSYS_NVMM);
+}
+
+static __inline void
+uvm_km_free(struct vm_map *map, vaddr_t addr, vsize_t size, int flags __unused)
+{
+	KKASSERT(map == kernel_map);
+
+	(kmem_free)(map, addr, size);
+}
 
 /* Physical page allocation */
 
