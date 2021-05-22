@@ -47,6 +47,7 @@
 #include <sys/malloc.h>
 #include <sys/proc.h> /* lwp */
 #include <sys/systm.h>
+#include <sys/thread2.h>
 
 #include <vm/vm_extern.h>
 #include <vm/vm_object.h>
@@ -54,6 +55,7 @@
 #include <vm/vm_pager.h>
 
 #include <machine/atomic.h>
+#include <machine/cpu.h>
 #include <machine/cpufunc.h>
 #include <machine/md_var.h> /* cpu_high */
 #include <machine/npx.h>
@@ -223,6 +225,7 @@
 #define DIAGNOSTIC		INVARIANTS
 #define MAXCPUS			SMP_MAXCPU
 #define asm			__asm__
+#define curlwp			(curthread->td_lwp)
 #define printf			kprintf
 #define __cacheline_aligned	__cachealign
 #define __diagused		__debugvar
@@ -305,6 +308,31 @@ enum {
 #define atomic_dec_uint(p)	atomic_subtract_int(p, 1)
 
 /*
+ * Preemption / critical sections
+ */
+#define splhigh()		({ crit_enter(); 0; })
+#define splx(x)			crit_exit()
+
+/* In DragonFly, a normal kernel thread will not migrate to another CPU or be
+ * preempted (except by an interrupt thread), so kpreempt_{disable,enable}()
+ * are not needed.  However, we can't use critical section as an instead,
+ * because that would also prevent interrupt/reschedule flags from being
+ * set, which would be a problem for nvmm_return_needed() that's called from
+ * vcpu_run() loop.
+ */
+#define kpreempt_disable()	/* nothing */
+#define kpreempt_enable()	/* nothing */
+#define kpreempt_disabled()	true
+
+static __inline bool
+preempt_needed(void)
+{
+	/* NOTE: Cannot be use in a critical section, as it would prevent
+	 *       the relevant flags from being set... */
+	return (bool)any_resched_wanted();
+}
+
+/*
  * FPU
  */
 #define x86_xsave_features	npx_xcr0_mask
@@ -315,8 +343,6 @@ enum {
 /*
  * Debug registers
  */
-#define curlwp			(curthread->td_lwp)
-
 static __inline void
 x86_dbregs_save(struct lwp *lp)
 {

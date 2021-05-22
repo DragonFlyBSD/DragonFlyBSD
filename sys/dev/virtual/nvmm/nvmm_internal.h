@@ -130,7 +130,7 @@ nvmm_return_needed(void)
 	if (preempt_needed()) {
 		return true;
 	}
-	if (curlwp->l_flag & LW_USERRET) {
+	if (curlwp->lwp_mpflags & LWP_MP_URETMASK) {
 		return true;
 	}
 	return false;
