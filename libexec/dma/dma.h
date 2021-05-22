@@ -193,7 +193,6 @@ void parse_authfile(const char *);
 void hmac_md5(unsigned char *, int, unsigned char *, int, unsigned char *);
 int smtp_auth_md5(int, char *, char *);
 int smtp_init_crypto(int, int, struct smtp_features*);
-int verify_server_fingerprint(const X509 *cert);
 
 /* dns.c */
 int dns_get_mx_list(const char *, int, struct mx_hostentry **, int);
@@ -234,6 +233,7 @@ int readmail(struct queue *, int, int);
 
 /* util.c */
 const char *hostname(void);
+const char *systemhostname(void);
 void setlogident(const char *, ...) __attribute__((__format__ (__printf__, 1, 2)));
 void errlog(int, const char *, ...) __attribute__((__format__ (__printf__, 2, 3))) __attribute__((__noreturn__));
 void errlogx(int, const char *, ...) __attribute__((__format__ (__printf__, 2, 3))) __attribute__((__noreturn__));
