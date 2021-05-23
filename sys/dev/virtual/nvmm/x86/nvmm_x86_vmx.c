@@ -45,8 +45,7 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_vmx.c,v 1.36.2.15 2020/09/13 11:56:44 marti
 #include <sys/mman.h>
 #include <sys/bitops.h>
 
-#include <uvm/uvm.h>
-#include <uvm/uvm_page.h>
+#include <vm/vm_map.h>
 
 #include <x86/cputypes.h>
 #include <x86/specialreg.h>
@@ -2976,7 +2975,7 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    __SHIFTIN(vmx_eptp_type, EPTP_TYPE) |
 	    __SHIFTIN(4-1, EPTP_WALKLEN) |
 	    (pmap_ept_has_ad ? EPTP_FLAGS_AD : 0) |
-	    mach->vm->vm_map.pmap->pm_pdirpa[0];
+	    vtophys(vmspace_pmap(mach->vm)->pm_pml4);
 	vmx_vmwrite(VMCS_EPTP, eptp);
 
 	/* Init IA32_MISC_ENABLE. */
@@ -3182,7 +3181,7 @@ vmx_tlb_flush(struct pmap *pm)
 static void
 vmx_machine_create(struct nvmm_machine *mach)
 {
-	struct pmap *pmap = mach->vm->vm_map.pmap;
+	struct pmap *pmap = vmspace_pmap(mach->vm);
 	struct vmx_machdata *machdata;
 
 	/* Convert to EPT. */

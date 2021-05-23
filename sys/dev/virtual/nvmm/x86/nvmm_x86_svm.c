@@ -42,8 +42,7 @@ __KERNEL_RCSID(0, "$NetBSD: nvmm_x86_svm.c,v 1.46.4.13 2020/09/13 11:56:44 marti
 #include <sys/mman.h>
 #include <sys/thread2.h> /* lwkt_send_ipiq, lwkt_send_ipiq_mask */
 
-#include <uvm/uvm.h>
-#include <uvm/uvm_page.h>
+#include <vm/vm_map.h>
 
 #include <x86/cputypes.h>
 #include <x86/specialreg.h>
@@ -2254,7 +2253,7 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 
 	/* Enable Nested Paging. */
 	vmcb->ctrl.enable1 = VMCB_CTRL_ENABLE_NP;
-	vmcb->ctrl.n_cr3 = mach->vm->vm_map.pmap->pm_pdirpa[0];
+	vmcb->ctrl.n_cr3 = vtophys(vmspace_pmap(mach->vm)->pm_pml4);
 
 #ifdef __NetBSD__
 	/* Init XSAVE header. */
@@ -2434,11 +2433,12 @@ svm_tlb_flush(struct pmap *pm)
 static void
 svm_machine_create(struct nvmm_machine *mach)
 {
+	struct pmap *pmap = vmspace_pmap(mach->vm);
 	struct svm_machdata *machdata;
 
 	/* Fill in pmap info. */
-	mach->vm->vm_map.pmap->pm_data = (void *)mach;
-	mach->vm->vm_map.pmap->pm_tlb_flush = svm_tlb_flush;
+	pmap->pm_data = (void *)mach;
+	pmap->pm_tlb_flush = svm_tlb_flush;
 
 	machdata = kmem_zalloc(sizeof(struct svm_machdata), KM_SLEEP);
 	mach->machdata = machdata;
