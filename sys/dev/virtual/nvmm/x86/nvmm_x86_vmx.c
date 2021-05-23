@@ -29,35 +29,28 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: nvmm_x86_vmx.c,v 1.36.2.15 2020/09/13 11:56:44 martin Exp $");
-
 #include <sys/param.h>
 #include <sys/systm.h>
+
+#include <sys/bitops.h>
+#include <sys/cpumask.h>
 #include <sys/globaldata.h>
 #include <sys/kernel.h>
-#include <sys/kmem.h>
 #include <sys/malloc.h> /* contigmalloc, contigfree */
-#include <sys/cpu.h>
-#include <sys/cpumask.h>
-#include <sys/smp.h> /* smp_active_mask */
 #include <sys/thread2.h> /* lwkt_send_ipiq, lwkt_send_ipiq_mask */
-#include <sys/mman.h>
-#include <sys/bitops.h>
 
 #include <vm/vm_map.h>
 
-#include <x86/cputypes.h>
-#include <x86/specialreg.h>
-#include <x86/pmap.h>
-#include <x86/dbregs.h>
-#include <x86/cpu_counter.h>
-#include <machine/cpuvar.h>
+#include <machine/cpufunc.h>
 #include <machine/md_var.h> /* cpu_* */
+#include <machine/segments.h>
+#include <machine/smp.h> /* smp_active_mask */
+#include <machine/specialreg.h>
 
-#include <dev/nvmm/nvmm.h>
-#include <dev/nvmm/nvmm_internal.h>
-#include <dev/nvmm/x86/nvmm_x86.h>
+#include <dev/virtual/nvmm/nvmm_compat.h>
+#include <dev/virtual/nvmm/nvmm.h>
+#include <dev/virtual/nvmm/nvmm_internal.h>
+#include <dev/virtual/nvmm/x86/nvmm_x86.h>
 
 int _vmx_vmxon(paddr_t *pa);
 int _vmx_vmxoff(void);

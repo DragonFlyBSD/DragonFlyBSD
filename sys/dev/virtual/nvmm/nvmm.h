@@ -45,7 +45,7 @@ typedef uint32_t	nvmm_machid_t;
 typedef uint32_t	nvmm_cpuid_t;
 
 #if defined(__x86_64__)
-#include <dev/nvmm/x86/nvmm_x86.h>
+#include <dev/virtual/nvmm/x86/nvmm_x86.h>
 #endif
 
 #define NVMM_KERN_VERSION		1

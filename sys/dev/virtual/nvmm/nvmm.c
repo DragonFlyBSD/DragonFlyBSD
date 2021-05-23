@@ -29,31 +29,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: nvmm.c,v 1.22.2.7 2020/08/29 17:00:28 martin Exp $");
-
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/kernel.h>
 
-#include <sys/atomic.h>
-#include <sys/cpu.h>
 #include <sys/conf.h>
 #include <sys/devfs.h>
 #include <sys/device.h>
-#include <sys/kmem.h>
+#include <sys/fcntl.h>
+#include <sys/kernel.h>
 #include <sys/module.h>
-#include <sys/proc.h>
-#include <sys/mman.h>
+#include <sys/thread.h>
 
-#include <uvm/uvm.h>
-#include <uvm/uvm_page.h>
-
-#include "ioconf.h"
-
-#include <dev/nvmm/nvmm.h>
-#include <dev/nvmm/nvmm_internal.h>
-#include <dev/nvmm/nvmm_ioctl.h>
+#include <dev/virtual/nvmm/nvmm_compat.h>
+#include <dev/virtual/nvmm/nvmm.h>
+#include <dev/virtual/nvmm/nvmm_internal.h>
+#include <dev/virtual/nvmm/nvmm_ioctl.h>
 
 MALLOC_DEFINE(M_NVMM, "nvmm", "NVMM data");
 

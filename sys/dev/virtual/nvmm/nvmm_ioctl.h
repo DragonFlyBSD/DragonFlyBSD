@@ -32,7 +32,9 @@
 #ifndef _NVMM_IOCTL_H_
 #define _NVMM_IOCTL_H_
 
-#include <dev/nvmm/nvmm.h>
+#include <sys/ioccom.h>
+
+#include <dev/virtual/nvmm/nvmm.h>
 
 struct nvmm_ioc_capability {
 	struct nvmm_capability cap;

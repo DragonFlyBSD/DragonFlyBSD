@@ -29,33 +29,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: nvmm_x86_svm.c,v 1.46.4.13 2020/09/13 11:56:44 martin Exp $");
-
 #include <sys/param.h>
 #include <sys/systm.h>
+
 #include <sys/globaldata.h>
 #include <sys/kernel.h>
-#include <sys/kmem.h>
 #include <sys/malloc.h> /* contigmalloc, contigfree */
-#include <sys/cpu.h>
-#include <sys/mman.h>
 #include <sys/thread2.h> /* lwkt_send_ipiq, lwkt_send_ipiq_mask */
 
 #include <vm/vm_map.h>
 
-#include <x86/cputypes.h>
-#include <x86/specialreg.h>
-#include <x86/pmap.h>
-#include <x86/dbregs.h>
-#include <x86/cpu_counter.h>
 #include <machine/cputypes.h> /* CPU_VENDOR_* */
-#include <machine/cpuvar.h>
 #include <machine/md_var.h> /* cpu_*, amd_feature2 */
+#include <machine/specialreg.h>
 
-#include <dev/nvmm/nvmm.h>
-#include <dev/nvmm/nvmm_internal.h>
-#include <dev/nvmm/x86/nvmm_x86.h>
+#include <dev/virtual/nvmm/nvmm_compat.h>
+#include <dev/virtual/nvmm/nvmm.h>
+#include <dev/virtual/nvmm/nvmm_internal.h>
+#include <dev/virtual/nvmm/x86/nvmm_x86.h>
 
 int svm_vmrun(paddr_t, uint64_t *);
 
@@ -781,7 +772,7 @@ svm_inject_gp(struct nvmm_cpu *vcpu)
 	KASSERT(ret == 0);
 }
 
-static inline int 
+static inline int
 svm_vcpu_event_commit(struct nvmm_cpu *vcpu)
 {
 	if (__predict_true(!vcpu->comm->event_commit)) {
