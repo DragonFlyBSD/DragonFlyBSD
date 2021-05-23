@@ -45,14 +45,18 @@
 #include <sys/bitops.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
+#include <sys/mman.h> /* MADV_RANDOM */
 #include <sys/proc.h> /* lwp */
 #include <sys/systm.h>
 #include <sys/thread2.h>
 
+#include <vm/vm.h>
 #include <vm/vm_extern.h>
+#include <vm/vm_map.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
+#include <vm/vm_param.h> /* KERN_SUCCESS, etc. */
 
 #include <machine/atomic.h>
 #include <machine/cpu.h>
@@ -390,6 +394,147 @@ typedef vm_size_t vsize_t;
 typedef vm_paddr_t paddr_t;
 
 #define uvm_object		vm_object
+
+static __inline struct vmspace *
+uvmspace_alloc(vaddr_t vmin, vaddr_t vmax, bool topdown)
+{
+	KKASSERT(topdown == false);
+	return vmspace_alloc(vmin, vmax);
+}
+
+static __inline void
+uvmspace_free(struct vmspace *space)
+{
+	vmspace_rel(space);
+}
+
+static __inline int
+uvm_fault(struct vm_map *map, vaddr_t vaddr, vm_prot_t access_type)
+{
+	int fault_flags;
+
+	if (access_type & VM_PROT_WRITE)
+		fault_flags = VM_FAULT_DIRTY;
+	else
+		fault_flags = VM_FAULT_NORMAL;
+
+	return vm_fault(map, trunc_page(vaddr), access_type, fault_flags);
+}
+
+/* NetBSD's UVM functions (e.g., uvm_fault()) return 0 on success,
+ * while DragonFly's VM functions return KERN_SUCCESS, which although
+ * defined to be 0 as well, but assert it to be future-proof. */
+CTASSERT(KERN_SUCCESS == 0);
+
+/* bits 0x07: protection codes */
+#define UVM_PROT_MASK		0x07
+#define UVM_PROT_RW		VM_PROT_RW
+#define UVM_PROT_RWX		VM_PROT_ALL
+/* bits 0x30: inherit codes */
+#define UVM_INH_MASK		0x30
+#define UVM_INH_SHARE		0x00
+#define UVM_INH_NONE		0x20
+/* bits 0x700: max protection */
+/* bits 0x7000: advice codes */
+#define UVM_ADV_MASK		0x7
+#define UVM_ADV_RANDOM		MADV_RANDOM
+/* bits 0xffff0000: mapping flags */
+#define UVM_FLAG_FIXED		0x00010000 /* find space */
+#define UVM_FLAG_UNMAP		0x08000000 /* unmap existing entries */
+
+/* encoding of flags for uvm_map() */
+#define UVM_MAPFLAG(prot, maxprot, inherit, advice, flags) \
+	(((advice) << 12) | ((maxprot) << 8) | (inherit) | (prot) | (flags))
+/* extract info from flags */
+#define UVM_PROTECTION(x)	((x) & UVM_PROT_MASK)
+#define UVM_INHERIT(x)		(((x) & UVM_INH_MASK) >> 4)
+#define UVM_MAXPROTECTION(x)	(((x) >> 8) & UVM_PROT_MASK)
+#define UVM_ADVICE(x)		(((x) >> 12) & UVM_ADV_MASK)
+
+/* Establish a pageable mapping from $obj at $offset in the map $map.
+ * The start address of the mapping will be returned in $startp.
+ */
+static __inline int
+uvm_map(struct vm_map *map, vaddr_t *startp /* IN/OUT */, vsize_t size,
+    struct vm_object *obj, voff_t offset, vsize_t align, int flags)
+{
+	vm_offset_t addr = *startp;
+	vm_inherit_t inherit = (vm_inherit_t)UVM_INHERIT(flags);
+	int advice = UVM_ADVICE(flags);
+	int rv = KERN_SUCCESS;
+	int count;
+
+	KKASSERT((size & PAGE_MASK) == 0);
+	KKASSERT((flags & UVM_FLAG_FIXED) == 0 || align == 0);
+	KKASSERT(powerof2(align));
+	KKASSERT(inherit == VM_INHERIT_SHARE || inherit == VM_INHERIT_NONE);
+	KKASSERT(advice == MADV_RANDOM);
+	KKASSERT(obj != NULL);
+
+	if (align == 0)
+		align = 1; /* any alignment */
+
+	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+	vm_map_lock(map);
+
+	if (flags & UVM_FLAG_FIXED) {
+		KKASSERT(flags & UVM_FLAG_UNMAP);
+		/* Remove any existing entries in the range, so the new
+		 * mapping can be created at the requested address. */
+		rv = vm_map_delete(map, addr, addr + size, &count);
+	} else {
+		if (vm_map_findspace(map, addr, size, align, 0, &addr))
+			rv = KERN_NO_SPACE;
+	}
+	if (rv != KERN_SUCCESS) {
+		vm_map_unlock(map);
+		vm_map_entry_release(count);
+		return rv;
+	}
+
+	vm_object_hold(obj);
+	/* obj reference has been bumped prior to calling uvm_map() */
+	rv = vm_map_insert(map, &count, obj, NULL,
+	    offset, NULL, addr, addr + size,
+	    VM_MAPTYPE_NORMAL, VM_SUBSYS_NVMM,
+	    UVM_PROTECTION(flags), UVM_MAXPROTECTION(flags), 0);
+	vm_object_drop(obj);
+	vm_map_unlock(map);
+	vm_map_entry_release(count);
+	if (rv != KERN_SUCCESS)
+		return rv;
+
+	vm_map_inherit(map, addr, addr + size, inherit);
+	vm_map_madvise(map, addr, addr + size, advice, 0);
+
+	*startp = addr;
+	return 0;
+}
+
+static __inline int
+uvm_map_pageable(struct vm_map *map, vaddr_t start, vaddr_t end,
+    bool new_pageable, int lockflags)
+{
+	KKASSERT(lockflags == 0);
+	return vm_map_wire(map, start, end, new_pageable ? KM_PAGEABLE : 0);
+}
+
+static __inline void
+uvm_unmap(struct vm_map *map, vaddr_t start, vaddr_t end)
+{
+	vm_map_remove(map, start, end);
+}
+
+static __inline void
+uvm_deallocate(struct vm_map *map, vaddr_t start, vsize_t size)
+{
+	/* Unwire kernel page before remove, because vm_map_remove() only
+	 * handles user wirings.
+	 */
+	vm_map_wire(map, trunc_page(start), round_page(start + size),
+	    KM_PAGEABLE);
+	vm_map_remove(map, trunc_page(start), round_page(start + size));
+}
 
 /* Kernel memory allocation */
 
