@@ -126,7 +126,7 @@ pmap_inval_init(pmap_t pmap)
 
 	crit_enter_id("inval");
 
-	if (pmap != &kernel_pmap) {
+	if (pmap != kernel_pmap) {
 		for (;;) {
 			olock = pmap->pm_active_lock;
 			cpu_ccfence();
@@ -146,7 +146,7 @@ pmap_inval_init(pmap_t pmap)
 static void
 pmap_inval_done(pmap_t pmap)
 {
-	if (pmap != &kernel_pmap) {
+	if (pmap != kernel_pmap) {
 		atomic_add_acq_long(&pmap->pm_invgen, 1);
 		atomic_clear_int(&pmap->pm_active_lock, CPULOCK_EXCL);
 	}
@@ -274,7 +274,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 	 * This will enter a critical section for us.
 	 */
 	if (pmap == NULL)
-		pmap = &kernel_pmap;
+		pmap = kernel_pmap;
 
 	/*
 	 * Shortcut single-cpu case if possible.
@@ -452,7 +452,7 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 * Initialize invalidation for pmap and enter critical section.
 	 */
 	if (pmap == NULL)
-		pmap = &kernel_pmap;
+		pmap = kernel_pmap;
 
 	/*
 	 * Shortcut single-cpu case if possible.
@@ -594,7 +594,7 @@ pmap_inval_bulk(pmap_inval_bulk_t *bulk, vm_offset_t va,
 	 * for user pmaps to reduce mmap/munmap overheads for heavily-loaded
 	 * threaded programs.
 	 */
-	if (bulk->pmap != &kernel_pmap) {
+	if (bulk->pmap != kernel_pmap) {
 		pte = pmap_inval_smp(bulk->pmap, va, 1, ptep, npte);
 		return pte;
 	}

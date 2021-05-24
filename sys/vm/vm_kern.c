@@ -498,7 +498,7 @@ kmem_init(void)
 	int count;
 
 	m = kernel_map;
-	vm_map_init(m, KvaStart, KvaEnd, &kernel_pmap);
+	vm_map_init(m, KvaStart, KvaEnd, kernel_pmap);
 	vm_map_lock(m);
 	/* N.B.: cannot use kgdb to debug, starting with this assignment ... */
 	m->system_map = 1;

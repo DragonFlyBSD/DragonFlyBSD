@@ -251,7 +251,7 @@ minidumpsys(struct dumperinfo *di)
 		 */
 		i = ((va - VM_MIN_KERNEL_ADDRESS) >> PDPSHIFT) &
 		    (NPML4EPG * NPDPEPG - 1);
-		if ((pdp[i] & kernel_pmap.pmap_bits[PG_V_IDX]) == 0)
+		if ((pdp[i] & kernel_pmap->pmap_bits[PG_V_IDX]) == 0)
 			continue;
 
 		/*
@@ -262,8 +262,8 @@ minidumpsys(struct dumperinfo *di)
 
 		pd = (uint64_t *)PHYS_TO_DMAP(pdp[i] & PG_FRAME);
 		j = ((va >> PDRSHIFT) & ((1ul << NPDEPGSHIFT) - 1));
-		if ((pd[j] & (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX])) ==
-		    (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX]))  {
+		if ((pd[j] & (kernel_pmap->pmap_bits[PG_PS_IDX] | kernel_pmap->pmap_bits[PG_V_IDX])) ==
+		    (kernel_pmap->pmap_bits[PG_PS_IDX] | kernel_pmap->pmap_bits[PG_V_IDX]))  {
 			/* This is an entire 2M page. */
 			lpdpttl += PAGE_SIZE * NPTEPG;
 			pa = pd[j] & PG_PS_FRAME;
@@ -272,8 +272,8 @@ minidumpsys(struct dumperinfo *di)
 					dump_add_page(pa);
 				pa += PAGE_SIZE;
 			}
-		} else if ((pd[j] & kernel_pmap.pmap_bits[PG_V_IDX]) ==
-			   kernel_pmap.pmap_bits[PG_V_IDX]) {
+		} else if ((pd[j] & kernel_pmap->pmap_bits[PG_V_IDX]) ==
+			   kernel_pmap->pmap_bits[PG_V_IDX]) {
 			/*
 			 * Add the PT page from the PD to the dump (it is no
 			 * longer included in the ptemap.
@@ -284,7 +284,8 @@ minidumpsys(struct dumperinfo *di)
 			/* set bit for each valid page in this 2MB block */
 			pt = (uint64_t *)PHYS_TO_DMAP(pd[j] & PG_FRAME);
 			for (k = 0; k < NPTEPG; k++) {
-				if ((pt[k] & kernel_pmap.pmap_bits[PG_V_IDX]) == kernel_pmap.pmap_bits[PG_V_IDX]) {
+				if ((pt[k] & kernel_pmap->pmap_bits[PG_V_IDX])
+				    == kernel_pmap->pmap_bits[PG_V_IDX]) {
 					pa = pt[k] & PG_FRAME;
 					lpdpttl += PAGE_SIZE;
 					if (is_dumpable(pa))

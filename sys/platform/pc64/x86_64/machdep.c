@@ -2432,9 +2432,9 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 * test.
 			 */
 			*pte = pa |
-			    kernel_pmap.pmap_bits[PG_V_IDX] |
-			    kernel_pmap.pmap_bits[PG_RW_IDX] |
-			    kernel_pmap.pmap_bits[PG_N_IDX];
+			    kernel_pmap->pmap_bits[PG_V_IDX] |
+			    kernel_pmap->pmap_bits[PG_RW_IDX] |
+			    kernel_pmap->pmap_bits[PG_N_IDX];
 			cpu_invlpg(__DEVOLATILE(void *, ptr));
 			cpu_mfence();
 

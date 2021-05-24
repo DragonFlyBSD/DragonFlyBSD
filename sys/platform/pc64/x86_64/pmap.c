@@ -221,8 +221,9 @@ static uint64_t protection_codes[PROTECTION_CODES_SIZE];
 		lockmgr(&iobj->backing_lk, LK_RELEASE);			\
 	}								\
 
-struct pmap kernel_pmap;
 static struct pmap iso_pmap;
+static struct pmap kernel_pmap_store;
+struct pmap *kernel_pmap = &kernel_pmap_store;
 
 vm_paddr_t avail_start;		/* PA of first available physical page */
 vm_paddr_t avail_end;		/* PA of last available physical page */
@@ -1170,13 +1171,13 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 * pmap_create, which is unlikely to work correctly at this part of
 	 * the boot sequence (XXX and which no longer exists).
 	 */
-	kernel_pmap.pm_pml4 = (pdp_entry_t *) (PTOV_OFFSET + KPML4phys);
-	kernel_pmap.pm_count = 1;
-	CPUMASK_ASSALLONES(kernel_pmap.pm_active);
-	RB_INIT(&kernel_pmap.pm_pvroot);
-	spin_init(&kernel_pmap.pm_spin, "pmapbootstrap");
+	kernel_pmap->pm_pml4 = (pdp_entry_t *) (PTOV_OFFSET + KPML4phys);
+	kernel_pmap->pm_count = 1;
+	CPUMASK_ASSALLONES(kernel_pmap->pm_active);
+	RB_INIT(&kernel_pmap->pm_pvroot);
+	spin_init(&kernel_pmap->pm_spin, "pmapbootstrap");
 	for (i = 0; i < PM_PLACEMARKS; ++i)
-		kernel_pmap.pm_placemarks[i] = PM_NOPLACEMARK;
+		kernel_pmap->pm_placemarks[i] = PM_NOPLACEMARK;
 
 	/*
 	 * Reserve some special page table entries/VA space for temporary
@@ -1227,7 +1228,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 
 	/* Initialize the PAT MSR */
 	pmap_init_pat();
-	pmap_pinit_defaults(&kernel_pmap);
+	pmap_pinit_defaults(kernel_pmap);
 
 	TUNABLE_INT_FETCH("machdep.pmap_fast_kernel_cpusync",
 			  &pmap_fast_kernel_cpusync);
@@ -1571,7 +1572,7 @@ pmap_init2_iso_pmap(void)
 	kprintf("Dump iso_pmap:\n");
 	dump_pmap(&iso_pmap, vtophys(iso_pmap.pm_pml4), 0, 0);
 	kprintf("\nDump kernel_pmap:\n");
-	dump_pmap(&kernel_pmap, vtophys(kernel_pmap.pm_pml4), 0, 0);
+	dump_pmap(kernel_pmap, vtophys(kernel_pmap->pm_pml4), 0, 0);
 #endif
 }
 
@@ -1594,9 +1595,9 @@ pmap_init_iso_range(vm_offset_t base, size_t bytes)
 	va = base & ~(vm_offset_t)PAGE_MASK;
 	while (va < base + bytes) {
 		if ((va & PDRMASK) == 0 && va + NBPDR <= base + bytes &&
-		    (ptep = pmap_pt(&kernel_pmap, va)) != NULL &&
-		    (*ptep & kernel_pmap.pmap_bits[PG_V_IDX]) &&
-		    (*ptep & kernel_pmap.pmap_bits[PG_PS_IDX])) {
+		    (ptep = pmap_pt(kernel_pmap, va)) != NULL &&
+		    (*ptep & kernel_pmap->pmap_bits[PG_V_IDX]) &&
+		    (*ptep & kernel_pmap->pmap_bits[PG_PS_IDX])) {
 			/*
 			 * Use 2MB pages if possible
 			 */
@@ -1611,10 +1612,10 @@ pmap_init_iso_range(vm_offset_t base, size_t bytes)
 			 */
 			pv = pmap_allocpte(&iso_pmap, pmap_pt_pindex(va), &pvp);
 			ptep = pv_pte_lookup(pv, (va >> PAGE_SHIFT) & 511);
-			*ptep = vtophys(va) | kernel_pmap.pmap_bits[PG_RW_IDX] |
-					      kernel_pmap.pmap_bits[PG_V_IDX] |
-					      kernel_pmap.pmap_bits[PG_A_IDX] |
-					      kernel_pmap.pmap_bits[PG_M_IDX];
+			*ptep = vtophys(va) | kernel_pmap->pmap_bits[PG_RW_IDX] |
+					      kernel_pmap->pmap_bits[PG_V_IDX] |
+					      kernel_pmap->pmap_bits[PG_A_IDX] |
+					      kernel_pmap->pmap_bits[PG_M_IDX];
 
 			va += PAGE_SIZE;
 		}
@@ -1857,7 +1858,7 @@ pmap_kextract(vm_offset_t va)
 		pa = DMAP_TO_PHYS(va);
 	} else {
 		pt = *vtopt(va);
-		if (pt & kernel_pmap.pmap_bits[PG_PS_IDX]) {
+		if (pt & kernel_pmap->pmap_bits[PG_PS_IDX]) {
 			pa = (pt & PG_PS_FRAME) | (va & PDRMASK);
 		} else {
 			/*
@@ -1889,16 +1890,16 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	pt_entry_t npte;
 
 	npte = pa |
-	       kernel_pmap.pmap_bits[PG_RW_IDX] |
-	       kernel_pmap.pmap_bits[PG_V_IDX];
+	       kernel_pmap->pmap_bits[PG_RW_IDX] |
+	       kernel_pmap->pmap_bits[PG_V_IDX];
 //	       pgeflag;
 	ptep = vtopte(va);
 #if 1
-	pmap_inval_smp(&kernel_pmap, va, 1, ptep, npte);
+	pmap_inval_smp(kernel_pmap, va, 1, ptep, npte);
 #else
 	/* FUTURE */
 	if (*ptep)
-		pmap_inval_smp(&kernel_pmap, va, ptep, npte);
+		pmap_inval_smp(kernel_pmap, va, ptep, npte);
 	else
 		*ptep = npte;
 #endif
@@ -1916,8 +1917,8 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 	pt_entry_t npte;
 	int res;
 
-	npte = pa | kernel_pmap.pmap_bits[PG_RW_IDX] |
-		    kernel_pmap.pmap_bits[PG_V_IDX];
+	npte = pa | kernel_pmap->pmap_bits[PG_RW_IDX] |
+		    kernel_pmap->pmap_bits[PG_V_IDX];
 	// npte |= pgeflag;
 	ptep = vtopte(va);
 #if 1
@@ -1945,8 +1946,8 @@ pmap_kenter_noinval(vm_offset_t va, vm_paddr_t pa)
 	int res;
 
 	npte = pa |
-	    kernel_pmap.pmap_bits[PG_RW_IDX] |
-	    kernel_pmap.pmap_bits[PG_V_IDX];
+	    kernel_pmap->pmap_bits[PG_RW_IDX] |
+	    kernel_pmap->pmap_bits[PG_V_IDX];
 //	    pgeflag;
 	ptep = vtopte(va);
 #if 1
@@ -1970,7 +1971,7 @@ pmap_kremove(vm_offset_t va)
 	pt_entry_t *ptep;
 
 	ptep = vtopte(va);
-	pmap_inval_smp(&kernel_pmap, va, 1, ptep, 0);
+	pmap_inval_smp(kernel_pmap, va, 1, ptep, 0);
 }
 
 void
@@ -2003,7 +2004,7 @@ pmap_kremove_noinval(vm_offset_t va)
 void
 pmap_kmodify_rw(vm_offset_t va)
 {
-	atomic_set_long(vtopte(va), kernel_pmap.pmap_bits[PG_RW_IDX]);
+	atomic_set_long(vtopte(va), kernel_pmap->pmap_bits[PG_RW_IDX]);
 	cpu_invlpg((void *)va);
 }
 
@@ -2129,15 +2130,15 @@ _pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count, int doinval)
 
 		ptep = vtopte(va);
 		pte = VM_PAGE_TO_PHYS(*m) |
-			kernel_pmap.pmap_bits[PG_RW_IDX] |
-			kernel_pmap.pmap_bits[PG_V_IDX] |
-			kernel_pmap.pmap_cache_bits_pte[(*m)->pat_mode];
+			kernel_pmap->pmap_bits[PG_RW_IDX] |
+			kernel_pmap->pmap_bits[PG_V_IDX] |
+			kernel_pmap->pmap_cache_bits_pte[(*m)->pat_mode];
 //		pgeflag;
 		atomic_swap_long(ptep, pte);
 		m++;
 	}
 	if (doinval)
-		pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
+		pmap_invalidate_range(kernel_pmap, beg_va, end_va);
 }
 
 void
@@ -2174,7 +2175,7 @@ pmap_qremove(vm_offset_t beg_va, int count)
 		(void)pte_load_clear(pte);
 		cpu_invlpg((void *)va);
 	}
-	pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
+	pmap_invalidate_range(kernel_pmap, beg_va, end_va);
 }
 
 /*
@@ -2550,7 +2551,7 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	/*
 	 * The kernel never uses managed PT/PD/PDP pages.
 	 */
-	KKASSERT(pmap != &kernel_pmap);
+	KKASSERT(pmap != kernel_pmap);
 
 	/*
 	 * Non-terminal PVs allocate a VM page to represent the page table,
@@ -3166,7 +3167,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		    pvp->pv_m->wire_count == 1 &&
 		    (pvp->pv_hold & PV_HOLD_MASK) == 2 &&
 		    pvp->pv_pindex < pmap_pml4_pindex()) {
-			if (pmap != &kernel_pmap) {
+			if (pmap != kernel_pmap) {
 				pmap_remove_pv_pte(pvp, NULL, bulk, 1);
 				pvp = NULL;	/* safety */
 			} else {
@@ -3223,10 +3224,10 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
 
 		for (;;) {
-			pt = pmap_pt(&kernel_pmap, kernel_vm_end);
+			pt = pmap_pt(kernel_pmap, kernel_vm_end);
 			if (pt == NULL)
 				break;
-			if ((*pt & kernel_pmap.pmap_bits[PG_V_IDX]) == 0)
+			if ((*pt & kernel_pmap->pmap_bits[PG_V_IDX]) == 0)
 				break;
 			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
 					~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
@@ -3258,7 +3259,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		kend = vm_map_max(kernel_map);
 
 	while (kstart < kend) {
-		pt = pmap_pt(&kernel_pmap, kstart);
+		pt = pmap_pt(kernel_pmap, kstart);
 		if (pt == NULL) {
 			/*
 			 * We need a new PD entry
@@ -3273,13 +3274,13 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			}
 			paddr = VM_PAGE_TO_PHYS(nkpg);
 			pmap_zero_page(paddr);
-			pd = pmap_pd(&kernel_pmap, kstart);
+			pd = pmap_pd(kernel_pmap, kstart);
 
 			newpd = (pdp_entry_t)
 			    (paddr |
-			    kernel_pmap.pmap_bits[PG_V_IDX] |
-			    kernel_pmap.pmap_bits[PG_RW_IDX] |
-			    kernel_pmap.pmap_bits[PG_A_IDX]);
+			    kernel_pmap->pmap_bits[PG_V_IDX] |
+			    kernel_pmap->pmap_bits[PG_RW_IDX] |
+			    kernel_pmap->pmap_bits[PG_A_IDX]);
 			atomic_swap_long(pd, newpd);
 
 #if 0
@@ -3290,7 +3291,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			continue; /* try again */
 		}
 
-		if ((*pt & kernel_pmap.pmap_bits[PG_V_IDX]) != 0) {
+		if ((*pt & kernel_pmap->pmap_bits[PG_V_IDX]) != 0) {
 			kstart = (kstart + PAGE_SIZE * NPTEPG) &
 				 ~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
 			if (kstart - 1 >= vm_map_max(kernel_map)) {
@@ -3316,9 +3317,9 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		ptppaddr = VM_PAGE_TO_PHYS(nkpg);
 		pmap_zero_page(ptppaddr);
 		newpt = (pd_entry_t)(ptppaddr |
-				     kernel_pmap.pmap_bits[PG_V_IDX] |
-				     kernel_pmap.pmap_bits[PG_RW_IDX] |
-				     kernel_pmap.pmap_bits[PG_A_IDX]);
+				     kernel_pmap->pmap_bits[PG_V_IDX] |
+				     kernel_pmap->pmap_bits[PG_RW_IDX] |
+				     kernel_pmap->pmap_bits[PG_A_IDX]);
 		atomic_swap_long(pt, newpt);
 
 		kstart = (kstart + PAGE_SIZE * NPTEPG) &
@@ -4698,7 +4699,7 @@ again:
 		 * Cleanup various tracking counters.  pt_pv can't go away
 		 * due to our wired ref.
 		 */
-		if (ipmap != &kernel_pmap) {
+		if (ipmap != kernel_pmap) {
 			pv_entry_t pt_pv;
 
 			spin_lock_shared(&ipmap->pm_spin);
@@ -4785,7 +4786,7 @@ pmap_remove_specific(pmap_t pmap_match, vm_page_t m)
 		 * Cleanup various tracking counters.  pt_pv can't go away
 		 * due to our wired ref.
 		 */
-		if (ipmap != &kernel_pmap) {
+		if (ipmap != kernel_pmap) {
 			pv_entry_t pt_pv;
 
 			spin_lock_shared(&ipmap->pm_spin);
@@ -4927,14 +4928,14 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		panic("pmap_enter: invalid to pmap_enter page table "
 		      "pages (va: 0x%lx)", va);
 #endif
-	if (va < UPT_MAX_ADDRESS && pmap == &kernel_pmap) {
+	if (va < UPT_MAX_ADDRESS && pmap == kernel_pmap) {
 		kprintf("Warning: pmap_enter called on UVA with "
 			"kernel_pmap\n");
 #ifdef DDB
 		db_print_backtrace();
 #endif
 	}
-	if (va >= UPT_MAX_ADDRESS && pmap != &kernel_pmap) {
+	if (va >= UPT_MAX_ADDRESS && pmap != kernel_pmap) {
 		kprintf("Warning: pmap_enter called on KVA without"
 			"kernel_pmap\n");
 #ifdef DDB
@@ -4995,7 +4996,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		newpte |= pmap->pmap_bits[PG_U_IDX];
 	if ((m->flags & PG_FICTITIOUS) == 0)
 		newpte |= pmap->pmap_bits[PG_MANAGED_IDX];
-//	if (pmap == &kernel_pmap)
+//	if (pmap == kernel_pmap)
 //		newpte |= pgeflag;
 	newpte |= pmap->pmap_cache_bits_pte[m->pat_mode];
 
@@ -5408,7 +5409,7 @@ pmap_unwire(pmap_t pmap, vm_offset_t va)
 	/*
 	 * Assume elements in the kernel pmap are stable
 	 */
-	if (pmap == &kernel_pmap) {
+	if (pmap == kernel_pmap) {
 		if (pmap_pt(pmap, va) == 0)
 			return NULL;
 		ptep = pmap_pte_quick(pmap, va);
@@ -5963,14 +5964,14 @@ pmap_mapdev_attr(vm_paddr_t pa, vm_size_t size, int mode)
 	for (tmpva = va, tmpsize = size; tmpsize > 0;) {
 		pte = vtopte(tmpva);
 		*pte = pa |
-		    kernel_pmap.pmap_bits[PG_RW_IDX] |
-		    kernel_pmap.pmap_bits[PG_V_IDX] | /* pgeflag | */
-		    kernel_pmap.pmap_cache_bits_pte[mode];
+		    kernel_pmap->pmap_bits[PG_RW_IDX] |
+		    kernel_pmap->pmap_bits[PG_V_IDX] | /* pgeflag | */
+		    kernel_pmap->pmap_cache_bits_pte[mode];
 		tmpsize -= PAGE_SIZE;
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;
 	}
-	pmap_invalidate_range(&kernel_pmap, va, va + size);
+	pmap_invalidate_range(kernel_pmap, va, va + size);
 	pmap_invalidate_cache_range(va, va + size);
 
 	return ((void *)(va + offset));
@@ -6035,8 +6036,8 @@ pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
 
 		while ((long)count > 0) {
 			*pd =
-			   (*pd & ~(pd_entry_t)(kernel_pmap.pmap_cache_mask_pde)) |
-			   kernel_pmap.pmap_cache_bits_pde[mode];
+			   (*pd & ~(pd_entry_t)(kernel_pmap->pmap_cache_mask_pde)) |
+			   kernel_pmap->pmap_cache_bits_pde[mode];
 			count -= NBPDR / PAGE_SIZE;
 			va += NBPDR;
 			++pd;
@@ -6045,8 +6046,8 @@ pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
 		while (count) {
 			pte = vtopte(va);
 			*pte =
-			   (*pte & ~(pt_entry_t)(kernel_pmap.pmap_cache_mask_pte)) |
-			   kernel_pmap.pmap_cache_bits_pte[mode];
+			   (*pte & ~(pt_entry_t)(kernel_pmap->pmap_cache_mask_pte)) |
+			   kernel_pmap->pmap_cache_bits_pte[mode];
 			--count;
 			va += PAGE_SIZE;
 		}
@@ -6059,7 +6060,7 @@ pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
 	 * shouldn't be, etc.
 	 */
 	if (changed) {
-		pmap_invalidate_range(&kernel_pmap, base, va);
+		pmap_invalidate_range(kernel_pmap, base, va);
 		pmap_invalidate_cache_range(base, va);
 	}
 }

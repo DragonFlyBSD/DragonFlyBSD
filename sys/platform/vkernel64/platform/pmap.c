@@ -128,7 +128,8 @@ static pd_entry_t *pmap_pde(pmap_t pmap, vm_offset_t va);
 	(protection_codes[p & (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)])
 static uint64_t protection_codes[8];
 
-struct pmap kernel_pmap;
+static struct pmap kernel_pmap_store;
+struct pmap *kernel_pmap = &kernel_pmap_store;
 
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 
@@ -325,7 +326,7 @@ static PMAP_INLINE pt_entry_t *
 vtopte(vm_offset_t va)
 {
 	pt_entry_t *x;
-	x = pmap_pte(&kernel_pmap, va);
+	x = pmap_pte(kernel_pmap, va);
 	assert(x != NULL);
 	return x;
 }
@@ -334,7 +335,7 @@ static __inline pd_entry_t *
 vtopde(vm_offset_t va)
 {
 	pd_entry_t *x;
-	x = pmap_pde(&kernel_pmap, va);
+	x = pmap_pde(kernel_pmap, va);
 	assert(x != NULL);
 	return x;
 }
@@ -571,13 +572,13 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	 * The kernel_pmap's pm_pteobj is used only for locking and not
 	 * for mmu pages.
 	 */
-	kernel_pmap.pm_pml4 = (pml4_entry_t *)PHYS_TO_DMAP(KPML4phys);
-	kernel_pmap.pm_count = 1;
+	kernel_pmap->pm_pml4 = (pml4_entry_t *)PHYS_TO_DMAP(KPML4phys);
+	kernel_pmap->pm_count = 1;
 	/* don't allow deactivation */
-	CPUMASK_ASSALLONES(kernel_pmap.pm_active);
-	kernel_pmap.pm_pteobj = NULL;	/* see pmap_init */
-	RB_INIT(&kernel_pmap.pm_pvroot);
-	spin_init(&kernel_pmap.pm_spin, "pmapbootstrap");
+	CPUMASK_ASSALLONES(kernel_pmap->pm_active);
+	kernel_pmap->pm_pteobj = NULL;	/* see pmap_init */
+	RB_INIT(&kernel_pmap->pm_pvroot);
+	spin_init(&kernel_pmap->pm_spin, "pmapbootstrap");
 
 	/*
 	 * Reserve some special page table entries/VA space for temporary
@@ -587,7 +588,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	v = (c)va; va += ((n)*PAGE_SIZE); p = pte; pte += (n);
 
 	va = virtual_start;
-	pte = pmap_pte(&kernel_pmap, va);
+	pte = pmap_pte(kernel_pmap, va);
 	/*
 	 * CMAP1/CMAP2 are used for zeroing and copying pages.
 	 */
@@ -640,7 +641,7 @@ pmap_init(void)
 	 */
 	/* JG I think the number can be arbitrary */
 	vm_object_init(&kptobj, 5);
-	kernel_pmap.pm_pteobj = &kptobj;
+	kernel_pmap->pm_pteobj = &kptobj;
 
 	/*
 	 * Allocate memory for random pmap data structures.  Includes the
@@ -707,7 +708,7 @@ pmap_init2(void)
 static void
 pmap_track_modified(pmap_t pmap, vm_offset_t va)
 {
-	KKASSERT(pmap != &kernel_pmap ||
+	KKASSERT(pmap != kernel_pmap ||
 		 va < clean_sva || va >= clean_eva);
 }
 
@@ -841,10 +842,10 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	ptep = vtopte(va);
 
 #if 1
-	pmap_inval_pte(ptep, &kernel_pmap, va);
+	pmap_inval_pte(ptep, kernel_pmap, va);
 #else
 	if (*pte & VPTE_V)
-		pmap_inval_pte(ptep, &kernel_pmap, va);
+		pmap_inval_pte(ptep, kernel_pmap, va);
 #endif
 	atomic_swap_long(ptep, npte);
 }
@@ -869,13 +870,13 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 	ptep = vtopte(va);
 
 #if 1
-	pmap_inval_pte_quick(ptep, &kernel_pmap, va);
+	pmap_inval_pte_quick(ptep, kernel_pmap, va);
 	res = 1;
 #else
 	/* FUTURE */
 	res = (*ptep != 0);
 	if (*pte & VPTE_V)
-		pmap_inval_pte(pte, &kernel_pmap, va);
+		pmap_inval_pte(pte, kernel_pmap, va);
 #endif
 	atomic_swap_long(ptep, npte);
 
@@ -919,7 +920,7 @@ pmap_kremove(vm_offset_t va)
 
 	ptep = vtopte(va);
 	atomic_swap_long(ptep, 0);
-	pmap_inval_pte(ptep, &kernel_pmap, va);
+	pmap_inval_pte(ptep, kernel_pmap, va);
 }
 
 /*
@@ -939,7 +940,7 @@ pmap_kremove_quick(vm_offset_t va)
 
 	ptep = vtopte(va);
 	atomic_swap_long(ptep, 0);
-	pmap_inval_pte(ptep, &kernel_pmap, va); /* NOT _quick */
+	pmap_inval_pte(ptep, kernel_pmap, va); /* NOT _quick */
 }
 
 /*
@@ -990,8 +991,8 @@ _pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count, int doinval)
 		++m;
 	}
 	if (doinval)
-		pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
-	/* pmap_inval_pte(pte, &kernel_pmap, va); */
+		pmap_invalidate_range(kernel_pmap, beg_va, end_va);
+	/* pmap_inval_pte(pte, kernel_pmap, va); */
 }
 
 void
@@ -1024,7 +1025,7 @@ pmap_qremove(vm_offset_t beg_va, int count)
 		ptep = vtopte(va);
 		atomic_swap_long(ptep, 0);
 	}
-	pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
+	pmap_invalidate_range(kernel_pmap, beg_va, end_va);
 }
 
 /*
@@ -1194,7 +1195,7 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte)
 		/*
 		 * page table pages in the kernel_pmap are not managed.
 		 */
-		if (pmap == &kernel_pmap)
+		if (pmap == kernel_pmap)
 			return(0);
 		ptepindex = pmap_pt_pindex(va);
 		if (pmap->pm_ptphint &&
@@ -1550,7 +1551,7 @@ pmap_release(struct pmap *pmap)
 	vm_object_t object = pmap->pm_pteobj;
 	struct rb_vm_page_scan_info info;
 
-	KKASSERT(pmap != &kernel_pmap);
+	KKASSERT(pmap != kernel_pmap);
 
 #if defined(DIAGNOSTIC)
 	if (object->ref_count != 1)
@@ -1629,7 +1630,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	if (kernel_vm_end == 0) {
 		kernel_vm_end = KvaStart;
 		nkpt = 0;
-		while ((*pmap_pde(&kernel_pmap, kernel_vm_end) & VPTE_V) != 0) {
+		while ((*pmap_pde(kernel_pmap, kernel_vm_end) & VPTE_V) != 0) {
 			kernel_vm_end =
 			    rounddown2(kernel_vm_end + PAGE_SIZE * NPTEPG,
 				PAGE_SIZE * NPTEPG);
@@ -1644,7 +1645,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	if (addr - 1 >= vm_map_max(kernel_map))
 		addr = vm_map_max(kernel_map);
 	while (kernel_vm_end < addr) {
-		pde = pmap_pde(&kernel_pmap, kernel_vm_end);
+		pde = pmap_pde(kernel_pmap, kernel_vm_end);
 		if (pde == NULL) {
 			/* We need a new PDP entry */
 			nkpg = vm_page_alloc(&kptobj, nkpt,
@@ -1660,8 +1661,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			newpdp = (pdp_entry_t)(paddr |
 					       VPTE_V | VPTE_RW | VPTE_U |
 					       VPTE_A | VPTE_M | VPTE_WIRED);
-			*pmap_pdpe(&kernel_pmap, kernel_vm_end) = newpdp;
-			atomic_add_long(&kernel_pmap.pm_stats.wired_count, 1);
+			*pmap_pdpe(kernel_pmap, kernel_vm_end) = newpdp;
+			atomic_add_long(&kernel_pmap->pm_stats.wired_count, 1);
 			nkpt++;
 			continue; /* try again */
 		}
@@ -1692,8 +1693,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		newpdir = (pd_entry_t)(ptppaddr |
 				       VPTE_V | VPTE_RW | VPTE_U |
 				       VPTE_A | VPTE_M | VPTE_WIRED);
-		*pmap_pde(&kernel_pmap, kernel_vm_end) = newpdir;
-		atomic_add_long(&kernel_pmap.pm_stats.wired_count, 1);
+		*pmap_pde(kernel_pmap, kernel_vm_end) = newpdir;
+		atomic_add_long(&kernel_pmap->pm_stats.wired_count, 1);
 		nkpt++;
 
 		kernel_vm_end =
@@ -2387,7 +2388,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * to cleanup.  There will already be at least one wire count from
 	 * it being mapped into its parent.
 	 */
-	if (pmap == &kernel_pmap) {
+	if (pmap == kernel_pmap) {
 		mpte = NULL;
 		pte = vtopte(va);
 	} else {
@@ -2503,7 +2504,7 @@ validate:
 
 	if (wired)
 		newpte |= VPTE_WIRED;
-//	if (pmap != &kernel_pmap)
+//	if (pmap != kernel_pmap)
 		newpte |= VPTE_U;
 	if (newpte & VPTE_RW)
 		vm_page_flag_set(m, PG_WRITEABLE);

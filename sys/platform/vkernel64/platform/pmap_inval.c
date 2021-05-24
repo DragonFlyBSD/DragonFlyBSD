@@ -118,7 +118,7 @@ static __inline
 void
 pmap_inval_cpu(struct pmap *pmap, vm_offset_t va, size_t bytes)
 {
-	if (pmap == &kernel_pmap) {
+	if (pmap == kernel_pmap) {
 		madvise((void *)va, bytes, MADV_INVAL);
 	} else {
 		vmspace_mcontrol(pmap, (void *)va, bytes, MADV_INVAL, 0);

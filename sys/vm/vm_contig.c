@@ -524,7 +524,7 @@ vm_contig_pg_kmap(vm_pindex_t start, u_long size, vm_map_t map, int flags)
 		pa = VM_PAGE_TO_PHYS(&pga[start]);
 		for (offset = 0; offset < size; offset += PAGE_SIZE)
 			pmap_kenter_noinval(addr + offset, pa + offset);
-		pmap_invalidate_range(&kernel_pmap, addr, addr + size);
+		pmap_invalidate_range(kernel_pmap, addr, addr + size);
 		if (flags & M_ZERO)
 			bzero((void *)addr, size);
 	}

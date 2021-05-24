@@ -326,7 +326,7 @@ struct pmap {
 typedef struct pmap	*pmap_t;
 
 #ifdef _KERNEL
-extern struct pmap	kernel_pmap;
+extern struct pmap	*kernel_pmap;
 #endif
 
 /*
