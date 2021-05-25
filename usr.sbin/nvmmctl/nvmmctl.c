@@ -29,11 +29,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-#ifndef lint
-__RCSID("$NetBSD: nvmmctl.c,v 1.1.2.2 2019/11/10 12:58:29 martin Exp $");
-#endif /* not lint */
-
 #include <sys/param.h>
 
 #include <err.h>
@@ -49,9 +44,9 @@ __RCSID("$NetBSD: nvmmctl.c,v 1.1.2.2 2019/11/10 12:58:29 martin Exp $");
 #include <util.h>
 #include <nvmm.h>
 
-#include <x86/specialreg.h>
+#include <machine/specialreg.h>
 
-__dead static void usage(void);
+__dead2 static void usage(void);
 static void nvmm_identify(char **);
 static void nvmm_list(char **);
 
@@ -110,9 +105,15 @@ usage(void)
 
 #define MACH_CONF_FLAGS		"\20"
 #define VCPU_CONF_FLAGS		"\20" "\1" "CPUID" "\2" "TPR"
+#define XCR0_FLAGS1		"\20" \
+	"\1" "x87"		"\2" "SSE"		"\3" "AVX"	\
+	"\4" "BNDREGS"		"\5" "BNDCSR"		"\6" "Opmask"	\
+	"\7" "ZMM_Hi256"	"\10" "Hi16_ZMM"	"\11" "PT"	\
+	"\12" "PKRU"		"\14" "CET_U"		"\15" "CET_S"	\
+	"\16" "HDC"		"\21" "HWP"
 
 static void
-nvmm_identify(char **argv)
+nvmm_identify(char **argv __unused)
 {
 	char buf[256], ram[4+1];
 
@@ -142,7 +143,7 @@ nvmm_identify(char **argv)
 }
 
 static void
-nvmm_list(char **argv)
+nvmm_list(char **argv __unused)
 {
 	struct nvmm_ctl_mach_info machinfo;
 	char ram[4+1], *ts;
