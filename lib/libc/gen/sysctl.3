@@ -28,7 +28,7 @@
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
 .\"
-.Dd January 5, 2019
+.Dd May 25, 2021
 .Dt SYSCTL 3
 .Os
 .Sh NAME
@@ -431,12 +431,29 @@ The maximum number of supplemental groups.
 .It Dv KERN_NISDOMAINNAME
 The name of the current YP/NIS domain.
 .It Dv KERN_OSRELDATE
-The system release date in YYYYMM format
-(January 1996 is encoded as 199601).
+The same as
+.Dv KERN_OSREV .
 .It Dv KERN_OSRELEASE
 The system release string.
 .It Dv KERN_OSREV
-The system revision string.
+The system revision number, in base-10 format
+.Ar M Ns Ar mmm Ns Ar pp ,
+representing the following components:
+.Bl -column "Code" "Component" -offset indent
+.It Sy "Code" Ta Sy "Component"
+.It Dv M Ta major
+.It Dv mmm Ta minor
+.It Dv pp Ta patch
+.El
+.Pp
+This is
+.Dv __DragonFly_version
+from
+.In sys/param.h .
+.Pp
+The minor component is an
+.Sy even Ns -number for release and
+.Sy odd Ns -number for development branches.
 .It Dv KERN_OSTYPE
 The system type string.
 .It Dv KERN_POSIX1
