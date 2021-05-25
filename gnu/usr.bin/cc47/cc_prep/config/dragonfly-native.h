@@ -4,7 +4,6 @@
 #define PREFIX2	PREFIX1
 #endif
 
-#define LINK_LIBGCC_SPEC ""
 #define LIBGCC_SPEC \
 "%{static|static-libgcc:-lgcc -lgcc_eh} \
  %{!static: \
