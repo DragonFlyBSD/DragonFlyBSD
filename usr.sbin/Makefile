@@ -73,6 +73,7 @@ SUBDIR= 802_11 \
 	newsyslog \
 	ngctl \
 	nghook \
+	nvmmctl \
 	pciconf \
 	periodic \
 	pfctl \
