@@ -9,10 +9,13 @@ SRCS=	flopen.c login_tty.c logwtmpx.c pty.c \
 	login_cap.c login_class.c login_auth.c login_times.c login_ok.c \
 	login_crypt.c loginx.c logoutx.c _secure_path.c uucplock.c \
 	property.c auth.c \
-	realhostname.c stub.c pidfile.c sockaddr_snprintf.c trimdomain.c \
+	realhostname.c stub.c pidfile.c snprintb.c \
+	sockaddr_snprintf.c trimdomain.c \
 	dehumanize_number.c humanize_number.c humanize_unsigned.c pw_util.c \
 	efun.c getmntopts.c
 SRCS+=	gr_util.c hexdump.c
+
+COPTS.snprintb.c= -Wno-format-nonliteral
 
 INCS=	libutil.h login_cap.h
 INCSLINKS=libutil.h ${INCLUDEDIR}/util.h
@@ -23,7 +26,8 @@ MAN+=	flopen.3 loginx.3 login_auth.3 login_tty.3 \
 	pty.3 \
 	login_cap.3 login_class.3 login_times.3 login_ok.3 \
 	_secure_path.3 uucplock.3 property.3 auth.3 realhostname.3 \
-	realhostname_sa.3 sockaddr_snprintf.3 trimdomain.3 pidfile.3 \
+	realhostname_sa.3 snprintb.3 \
+	sockaddr_snprintf.3 trimdomain.3 pidfile.3 \
 	humanize_number.3 humanize_unsigned.3 \
 	efun.3 getmntopts.3
 MAN+=	login.conf.5 auth.conf.5
@@ -95,6 +99,7 @@ MLINKS+=pw_util.3 pw_copy.3 \
 	pw_util.3 pw_scan.3 \
 	pw_util.3 pw_tempname.3 \
 	pw_util.3 pw_tmp.3
+MLINKS+=snprintb.3 snprintb_m.3
 MLINKS+=uucplock.3 uu_lock.3 \
 	uucplock.3 uu_lockerr.3 \
 	uucplock.3 uu_lock_txfr.3 \

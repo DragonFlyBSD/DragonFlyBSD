@@ -102,6 +102,9 @@ int	realhostname(char *, size_t, const struct in_addr *);
 int	realhostname_sa(char *, size_t, struct sockaddr *, int);
 int	sockaddr_snprintf(char *, size_t, const char *,
 	    const struct sockaddr *);
+int	snprintb(char *buf, size_t buflen, const char *bitfmt, uint64_t val);
+int	snprintb_m(char *buf, size_t buflen, const char *bitfmt, uint64_t val,
+	    size_t l_max);
 
 #ifdef _PWD_H_
 int	pw_copy(int _ffd, int _tfd, const struct passwd *_pw,
