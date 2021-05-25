@@ -2,37 +2,76 @@
 #	$FreeBSD: head/lib/libutil/Makefile 242381 2012-10-30 22:18:08Z bapt $
 
 LIB=	util
+
 SHLIB_MAJOR= 4
 SHLIBDIR?= /lib
-CFLAGS+=-DINET6
-SRCS=	flopen.c login_tty.c logwtmpx.c pty.c \
-	login_cap.c login_class.c login_auth.c login_times.c login_ok.c \
-	login_crypt.c loginx.c logoutx.c _secure_path.c uucplock.c \
-	property.c auth.c \
-	realhostname.c stub.c pidfile.c snprintb.c \
-	sockaddr_snprintf.c trimdomain.c \
-	dehumanize_number.c humanize_number.c humanize_unsigned.c pw_util.c \
-	efun.c getmntopts.c
-SRCS+=	gr_util.c hexdump.c
 
-COPTS.snprintb.c= -Wno-format-nonliteral
+SRCS=	_secure_path.c \
+	auth.c \
+	dehumanize_number.c \
+	efun.c \
+	flopen.c \
+	getmntopts.c \
+	gr_util.c \
+	hexdump.c \
+	humanize_number.c \
+	humanize_unsigned.c \
+	login_auth.c \
+	login_cap.c \
+	login_class.c \
+	login_crypt.c \
+	login_ok.c \
+	login_times.c \
+	login_tty.c \
+	loginx.c \
+	logoutx.c \
+	logwtmpx.c \
+	pidfile.c \
+	property.c \
+	pty.c \
+	pw_util.c \
+	realhostname.c \
+	snprintb.c \
+	sockaddr_snprintf.c \
+	stub.c \
+	trimdomain.c \
+	uucplock.c
 
 INCS=	libutil.h login_cap.h
 INCSLINKS=libutil.h ${INCLUDEDIR}/util.h
 
+CFLAGS+= -DINET6
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../libc/gen/
 
-MAN+=	flopen.3 loginx.3 login_auth.3 login_tty.3 \
+COPTS.snprintb.c= -Wno-format-nonliteral
+
+MAN+=	_secure_path.3 \
+	auth.3 \
+	efun.3 \
+	flopen.3 \
+	getmntopts.3 \
+	hexdump.3 \
+	humanize_number.3 \
+	humanize_unsigned.3 \
+	login_auth.3 \
+	login_cap.3 \
+	login_class.3 \
+	login_ok.3 \
+	login_times.3 \
+	login_tty.3 \
+	loginx.3 \
+	pidfile.3 \
+	property.3 \
 	pty.3 \
-	login_cap.3 login_class.3 login_times.3 login_ok.3 \
-	_secure_path.3 uucplock.3 property.3 auth.3 realhostname.3 \
-	realhostname_sa.3 snprintb.3 \
-	sockaddr_snprintf.3 trimdomain.3 pidfile.3 \
-	humanize_number.3 humanize_unsigned.3 \
-	efun.3 getmntopts.3
-MAN+=	login.conf.5 auth.conf.5
-MAN+=	hexdump.3
-MAN+=	pw_util.3
+	pw_util.3 \
+	realhostname.3 \
+	realhostname_sa.3 \
+	snprintb.3 \
+	sockaddr_snprintf.3 \
+	trimdomain.3 \
+	uucplock.3
+MAN+=	auth.conf.5 \
+	login.conf.5
 
 MLINKS+=auth.3 auth_getval.3
 MLINKS+=efun.3 easprintf.3 \
