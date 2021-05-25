@@ -217,7 +217,7 @@ struct nvmm_cap_md {
 #ifndef ASM_NVMM
 
 #include <sys/types.h>
-#include <x86/cpu_extended_state.h>
+#include <machine/npx.h>
 
 struct nvmm_x64_state_seg {
 	uint16_t selector;
@@ -264,7 +264,7 @@ struct nvmm_x64_state {
 	uint64_t drs[NVMM_X64_NDR];
 	uint64_t msrs[NVMM_X64_NMSR];
 	struct nvmm_x64_state_intr intr;
-	struct fxsave fpu;
+	union savefpu fpu;
 };
 
 #define NVMM_VCPU_CONF_CPUID	NVMM_VCPU_CONF_MD_BEGIN

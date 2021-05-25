@@ -50,6 +50,7 @@
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <machine/md_var.h> /* cpu_high */
+#include <machine/npx.h>
 #include <machine/specialreg.h>
 
 #ifdef __x86_64__
@@ -296,5 +297,13 @@ enum {
 #define atomic_inc_64(p)	atomic_add_64(p, 1)
 #define atomic_inc_uint(p)	atomic_add_int(p, 1)
 #define atomic_dec_uint(p)	atomic_subtract_int(p, 1)
+
+/*
+ * FPU
+ */
+#define x86_xsave_features	npx_xcr0_mask
+#define x86_fpu_mxcsr_mask	npx_mxcsr_mask
+#define stts()			load_cr0(rcr0() | CR0_TS)
+#define clts()			__asm__("clts")
 
 #endif /* _NVMM_COMPAT_H_ */

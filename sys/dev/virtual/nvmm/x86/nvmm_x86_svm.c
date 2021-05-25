@@ -555,7 +555,7 @@ struct svm_cpudata {
 	uint64_t fsbase;
 	uint64_t kernelgsbase;
 	bool ts_set;
-	struct xsave_header hfpu __aligned(64);
+	mcontext_t hmctx;
 
 	/* Intr state */
 	bool int_window_exit;
@@ -567,7 +567,7 @@ struct svm_cpudata {
 	uint64_t gprs[NVMM_X64_NGPR];
 	uint64_t drs[NVMM_X64_NDR];
 	uint64_t gtsc;
-	struct xsave_header gfpu __aligned(64);
+	union savefpu gfpu __aligned(64);
 
 	/* VCPU configuration. */
 	bool cpuidpresent[SVM_NCPUIDS];
@@ -911,12 +911,12 @@ svm_inkernel_handle_cpuid(struct nvmm_cpu *vcpu, uint64_t eax, uint64_t ecx)
 		case 0:
 			cpudata->vmcb->state.rax = svm_xcr0_mask & 0xFFFFFFFF;
 			if (cpudata->gxcr0 & XCR0_SSE) {
-				cpudata->gprs[NVMM_X64_GPR_RBX] = sizeof(struct fxsave);
+				cpudata->gprs[NVMM_X64_GPR_RBX] = sizeof(struct savexmm64);
 			} else {
 				cpudata->gprs[NVMM_X64_GPR_RBX] = sizeof(struct save87);
 			}
 			cpudata->gprs[NVMM_X64_GPR_RBX] += 64; /* XSAVE header */
-			cpudata->gprs[NVMM_X64_GPR_RCX] = sizeof(struct fxsave) + 64;
+			cpudata->gprs[NVMM_X64_GPR_RCX] = sizeof(struct savexmm64) + 64;
 			cpudata->gprs[NVMM_X64_GPR_RDX] = svm_xcr0_mask >> 32;
 			break;
 		case 1:
@@ -1346,8 +1346,18 @@ svm_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 
 	cpudata->ts_set = (rcr0() & CR0_TS) != 0;
 
+#ifdef __NetBSD__
 	fpu_area_save(&cpudata->hfpu, svm_xcr0_mask);
 	fpu_area_restore(&cpudata->gfpu, svm_xcr0_mask);
+#else /* DragonFly */
+	/*
+	 * NOTE: Host FPU state depends on whether the user program used the
+	 *       FPU or not.  Need to use npxpush()/npxpop() to handle this.
+	 */
+	npxpush(&cpudata->hmctx);
+	clts();
+	fpurstor(&cpudata->gfpu, svm_xcr0_mask);
+#endif
 
 	if (svm_xcr0_mask != 0) {
 		cpudata->hxcr0 = rdxcr(0);
@@ -1365,8 +1375,14 @@ svm_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 		wrxcr(0, cpudata->hxcr0);
 	}
 
+#ifdef __NetBSD__
 	fpu_area_save(&cpudata->gfpu, svm_xcr0_mask);
 	fpu_area_restore(&cpudata->hfpu, svm_xcr0_mask);
+#else /* DragonFly */
+	fpusave(&cpudata->gfpu, svm_xcr0_mask);
+	stts();
+	npxpop(&cpudata->hmctx);
+#endif
 
 	if (cpudata->ts_set) {
 		stts();
@@ -1801,7 +1817,7 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 	const struct nvmm_x64_state *state = &comm->state;
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
-	struct fxsave *fpustate;
+	struct savexmm64 *fpustate;
 	uint64_t flags;
 
 	flags = comm->state_wanted;
@@ -1914,19 +1930,20 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 		}
 	}
 
-	CTASSERT(sizeof(cpudata->gfpu.xsh_fxsave) == sizeof(state->fpu));
+	CTASSERT(sizeof(cpudata->gfpu) == sizeof(state->fpu));
 	if (flags & NVMM_X64_STATE_FPU) {
-		memcpy(cpudata->gfpu.xsh_fxsave, &state->fpu,
-		    sizeof(state->fpu));
+		memcpy(&cpudata->gfpu, &state->fpu, sizeof(state->fpu));
 
-		fpustate = (struct fxsave *)cpudata->gfpu.xsh_fxsave;
-		fpustate->fx_mxcsr_mask &= x86_fpu_mxcsr_mask;
-		fpustate->fx_mxcsr &= fpustate->fx_mxcsr_mask;
+		fpustate = &cpudata->gfpu.sv_xmm64;
+		fpustate->sv_env.en_mxcsr_mask &= x86_fpu_mxcsr_mask;
+		fpustate->sv_env.en_mxcsr &= fpustate->sv_env.en_mxcsr_mask;
 
+#ifdef __NetBSD__
 		if (svm_xcr0_mask != 0) {
 			/* Reset XSTATE_BV, to force a reload. */
 			cpudata->gfpu.xsh_xstate_bv = svm_xcr0_mask;
 		}
+#endif /* __NetBSD__ */
 	}
 
 	svm_vmcb_cache_update(vmcb, flags);
@@ -2028,10 +2045,9 @@ svm_vcpu_getstate(struct nvmm_cpu *vcpu)
 		state->intr.evt_pending = cpudata->evt_pending;
 	}
 
-	CTASSERT(sizeof(cpudata->gfpu.xsh_fxsave) == sizeof(state->fpu));
+	CTASSERT(sizeof(cpudata->gfpu) == sizeof(state->fpu));
 	if (flags & NVMM_X64_STATE_FPU) {
-		memcpy(&state->fpu, cpudata->gfpu.xsh_fxsave,
-		    sizeof(state->fpu));
+		memcpy(&state->fpu, &cpudata->gfpu, sizeof(state->fpu));
 	}
 
 	comm->state_wanted = 0;
@@ -2221,9 +2237,11 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmcb->ctrl.enable1 = VMCB_CTRL_ENABLE_NP;
 	vmcb->ctrl.n_cr3 = mach->vm->vm_map.pmap->pm_pdirpa[0];
 
+#ifdef __NetBSD__
 	/* Init XSAVE header. */
 	cpudata->gfpu.xsh_xstate_bv = svm_xcr0_mask;
 	cpudata->gfpu.xsh_xcomp_bv = 0;
+#endif /* __NetBSD__ */
 
 	/* These MSRs are static. */
 	cpudata->star = rdmsr(MSR_STAR);
