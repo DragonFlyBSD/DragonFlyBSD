@@ -9,7 +9,6 @@
 #define RUNPATH "--enable-new-dtags -rpath"
 #endif
 
-#define LINK_LIBGCC_SPEC ""
 #define LIBGCC_SPEC \
 "%{static|static-libgcc:-lgcc -lgcc_eh} \
  %{!static: \
