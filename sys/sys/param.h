@@ -228,9 +228,11 @@
  * 500909 - add AF_ARP
  * 600000 - 6.0 release
  * 600100 - 6.1 development
+ * 600101 - kernel_{map,pmap,object} and {buffer,clean,pager}_map globals
+ *          become pointers
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600100	/* propagated to newvers */
+#define __DragonFly_version 600101	/* propagated to newvers */
 
 #include <sys/_null.h>
 
