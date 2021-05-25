@@ -57,7 +57,7 @@ static int ipmi_ipmb_send_message(device_t, u_char, u_char, u_char,
 static d_ioctl_t ipmi_ioctl;
 static d_kqfilter_t ipmi_kqfilter;
 static d_open_t ipmi_open;
-static void ipmi_dtor(void *arg);
+static d_priv_dtor_t ipmi_dtor;
 
 static void ipmi_filter_detach(struct knote *);
 static int ipmi_filter_read(struct knote *, long);

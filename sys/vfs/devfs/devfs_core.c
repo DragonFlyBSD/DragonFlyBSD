@@ -2931,7 +2931,7 @@ wildCaseCmp(const char **mary, int d, const char *w, const char *s)
 
 struct cdev_privdata {
 	void		*cdpd_data;
-	cdevpriv_dtr_t	cdpd_dtr;
+	d_priv_dtor_t	*cdpd_dtr;
 };
 
 int
@@ -2958,7 +2958,7 @@ devfs_get_cdevpriv(struct file *fp, void **datap)
 }
 
 int
-devfs_set_cdevpriv(struct file *fp, void *priv, cdevpriv_dtr_t dtr)
+devfs_set_cdevpriv(struct file *fp, void *priv, d_priv_dtor_t *dtr)
 {
 	struct cdev_privdata *p;
 	int error;

@@ -108,8 +108,6 @@ static usb_error_t usb_ref_device(struct usb_cdev_privdata *, struct usb_cdev_re
 static usb_error_t usb_usb_ref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *);
 static void	usb_unref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *);
 
-static void	usb_cdevpriv_dtor(void *cd);
-
 static void usb_filter_detach(struct knote *kn);
 static int usb_filter_read(struct knote *kn, long hint);
 static int usb_filter_write(struct knote *kn, long hint);
@@ -120,6 +118,7 @@ static d_ioctl_t usb_ioctl;
 static d_read_t usb_read;
 static d_write_t usb_write;
 static d_kqfilter_t usb_kqfilter;
+static d_priv_dtor_t usb_cdevpriv_dtor;
 
 static d_ioctl_t usb_static_ioctl;
 static d_open_t usb_static_open;

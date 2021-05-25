@@ -71,10 +71,10 @@ static d_read_t		evdev_read;
 static d_write_t	evdev_write;
 static d_ioctl_t	evdev_ioctl;
 static d_kqfilter_t	evdev_kqfilter;
+static d_priv_dtor_t	evdev_dtor;
 
 static int evdev_kqread(struct knote *kn, long hint);
 static void evdev_kqdetach(struct knote *kn);
-static void evdev_dtor(void *);
 static int evdev_ioctl_eviocgbit(struct evdev_dev *, int, int, caddr_t);
 static void evdev_client_filter_queue(struct evdev_client *, uint16_t);
 
