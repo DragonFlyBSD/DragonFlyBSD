@@ -49,6 +49,7 @@ MAN=	accept_filter.9 \
 	devclass_get_maxunit.9 \
 	devclass_get_name.9 \
 	devclass_get_softc.9 \
+	devfs_set_cdevpriv.9 \
 	device.9 \
 	device_add_child.9 \
 	DEVICE_ATTACH.9 \
@@ -460,6 +461,8 @@ MLINKS+=DB_COMMAND.9 DB_COMMAND_FLAG.9 \
 	DB_COMMAND.9 DB_SHOW_COMMAND.9
 MLINKS+=devclass_add_driver.9 devclass_delete_driver.9 \
 	devclass_add_driver.9 devclass_find_driver.9
+MLINKS+=devfs_set_cdevpriv.9 devfs_clear_cdevpriv.9 \
+	devfs_set_cdevpriv.9 devfs_get_cdevpriv.9
 MLINKS+=device_add_child.9 device_add_child_ordered.9
 MLINKS+=device_enable.9 device_disable.9 \
 	device_enable.9 device_is_enabled.9
