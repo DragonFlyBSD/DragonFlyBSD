@@ -13,8 +13,6 @@ SRCS+=		libusb20_ugen20.c
 INCS+=		libusb20.h
 INCS+=		libusb20_desc.h
 MAN=		libusb.3 libusb20.3
-MKLINT=		no
-NOGCCERROR=
 
 WARNS?=		3
 
