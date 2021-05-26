@@ -413,8 +413,20 @@
 #define	MSR_APICBASE		0x01b
 #define	MSR_EBL_CR_POWERON	0x02a
 #define	MSR_TEST_CTL		0x033
-#define MSR_SPEC_CTRL		0x048	/* IBRS Spectre mitigation */
-#define MSR_PRED_CMD		0x049	/* IBPB Spectre mitigation */
+
+#define	MSR_SPEC_CTRL		0x048	/* IBRS Spectre mitigation */
+#define		SPEC_CTRL_IBRS		0x00000001
+#define		SPEC_CTRL_STIBP		0x00000002
+#define		SPEC_CTRL_SSBD		0x00000004
+#define		SPEC_CTRL_DUMMY1	0x00010000 /* ficticious */
+#define		SPEC_CTRL_DUMMY2	0x00020000 /* ficticious */
+#define		SPEC_CTRL_DUMMY3	0x00040000 /* ficticious */
+#define		SPEC_CTRL_DUMMY4	0x00080000 /* ficticious */
+#define		SPEC_CTRL_DUMMY5	0x00100000 /* ficticious */
+#define		SPEC_CTRL_DUMMY6	0x00200000 /* ficticious */
+
+#define	MSR_PRED_CMD		0x049	/* IBPB Spectre mitigation */
+
 #define	MSR_BIOS_UPDT_TRIG	0x079
 #define	MSR_BBL_CR_D0		0x088
 #define	MSR_BBL_CR_D1		0x089
@@ -513,15 +525,6 @@
 
 #define CPUID_7_0_I3_SPEC_CTRL		0x04000000	/* in EDX (index 3) */
 #define CPUID_7_0_I3_STIBP		0x08000000	/* in EDX (index 3) */
-
-#define SPEC_CTRL_IBRS			0x00000001
-#define SPEC_CTRL_STIBP			0x00000002
-#define SPEC_CTRL_DUMMY1		0x00010000	/* ficticious */
-#define SPEC_CTRL_DUMMY2		0x00020000	/* ficticious */
-#define SPEC_CTRL_DUMMY3		0x00040000	/* ficticious */
-#define SPEC_CTRL_DUMMY4		0x00080000	/* ficticious */
-#define SPEC_CTRL_DUMMY5		0x00100000	/* ficticious */
-#define SPEC_CTRL_DUMMY6		0x00200000	/* ficticious */
 
 /*
  * In EBX (index 1)
