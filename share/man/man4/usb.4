@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/usb.4 258618 2013-11-26 07:52:40Z lwhsu $
 .\"
-.Dd December 2, 2018
+.Dd May 27, 2021
 .Dt USB 4
 .Os
 .Sh NAME
@@ -193,6 +193,8 @@ generic driver for Human Interface Devices
 keyboards that follow the boot protocol
 .It Xr ums 4
 mouse devices
+.It Xr wsp 4
+Wellspring touchpad driver for Apple laptops
 .El
 .Sh INTRODUCTION TO USB
 The
@@ -257,7 +259,11 @@ specifications can be found at:
 .Pp
 .D1 Pa http://www.usb.org/developers/docs/
 .Pp
+.Xr usbhidaction 1 ,
+.Xr usbhidctl 1 ,
 .Xr libusb 3 ,
+.Xr libusb20 3 ,
+.Xr usbhid 3 ,
 .Xr aue 4 ,
 .Xr axe 4 ,
 .Xr axge 4 ,
@@ -285,6 +291,7 @@ specifications can be found at:
 .Xr ufm 4 ,
 .Xr ufoma 4 ,
 .Xr uftdi 4 ,
+.Xr ugen 4 ,
 .Xr ugensa 4 ,
 .Xr uhci 4 ,
 .Xr uhid 4 ,
@@ -301,10 +308,12 @@ specifications can be found at:
 .Xr urio 4 ,
 .Xr urndis 4 ,
 .Xr urtwn 4 ,
+.Xr usb_template 4 ,
 .Xr usfs 4 ,
 .Xr uslcom 4 ,
 .Xr uvisor 4 ,
 .Xr uvscom 4 ,
+.Xr wsp 4 ,
 .Xr xhci 4 ,
 .Xr usbconfig 8 ,
 .Xr usbdi 9
