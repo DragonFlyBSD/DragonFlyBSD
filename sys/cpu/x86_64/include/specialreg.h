@@ -507,49 +507,6 @@
 #define	APICBASE_ADDRESS	0xfffff000
 
 /*
- * IBRS and IBPB Spectre mitigation
- *
- * Intel: Either CPUID_80000008_I1_IBPB_SUPPORT or CPUID_7_0_I3_SPEC_CTRL
- *	  indicates IBPB support.  However, note that MSR_PRED_CMD is
- *	  a command register that may only be written, not read.
- *
- * IBPB: (barrier)
- *	  $1 is written to MSR_PRED_CMD unconditionally, writing 0
- *	  has no effect.
- *
- * IBRS and STIBP
- *	  Serves as barrier and mode, set on entry to kernel and clear
- *	  on exit.  Be sure to clear before going idle (else hyperthread
- *	  performance will drop).
- */
-
-#define CPUID_7_0_I3_SPEC_CTRL		0x04000000	/* in EDX (index 3) */
-#define CPUID_7_0_I3_STIBP		0x08000000	/* in EDX (index 3) */
-
-/*
- * In EBX (index 1)
- */
-#define CPUID_INTEL_80000008_I1_IBPB_SUPPORT	0x00001000
-
-#define CPUID_AMD_80000008_I1_IBPB_SUPPORT	0x00001000
-#define CPUID_AMD_80000008_I1_IBRS_SUPPORT	0x00004000
-#define CPUID_AMD_80000008_I1_STIBP_SUPPORT	0x00008000
-
-#define CPUID_AMD_80000008_I1_IBRS_AUTO		0x00010000
-#define CPUID_AMD_80000008_I1_STIBP_AUTO	0x00020000
-#define CPUID_AMD_80000008_I1_IBRS_REQUESTED	0x00040000
-
-/*
- * MDS mitigation in microcode (Intel only) in EDX (index 3)
- */
-#define CPUID_SEF_AVX512_4VNNIW		0x00000004
-#define CPUID_SEF_AVX512_4FMAPS		0x00000008
-#define CPUID_SEF_MD_CLEAR		0x00000400
-#define CPUID_SEF_TSX_FORCE_ABORT	0x00002000
-
-#define CPUID_SEF_ARCH_CAP		0x20000000
-
-/*
  * MSR_IA32_ARCH_CAPABILITIES
  */
 #define IA32_ARCH_CAP_RDCL_NO	0x00000001

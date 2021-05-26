@@ -428,12 +428,14 @@ spectre_check_support(void)
 	 *
 	 * IBRS		Indirect Branch Restricted Speculation   (isolation)
 	 * STIBP	Single Thread Indirect Branch Prediction (isolation)
-	 * IBPB		Branch Prediction Barrier		 (barrier)
+	 * IBPB		Branch Prediction Barrier                (barrier)
 	 *
 	 * IBRS and STIBP must be toggled (enabled on entry to kernel,
 	 * disabled on exit, as well as disabled during any MWAIT/HLT).
 	 * When *_AUTO bits are available, IBRS and STIBP may be left
 	 * turned on and do not have to be toggled on kernel entry/exit.
+	 * Be sure to clear before going idle (else hyperthread performance
+	 * will drop).
 	 *
 	 * All this shit has enormous overhead.  IBPB in particular, and
 	 * non-auto modes are disabled by default.
@@ -444,32 +446,33 @@ spectre_check_support(void)
 		p[2] = 0;
 		p[3] = 0;
 		cpuid_count(7, 0, p);
-		if (p[3] & CPUID_7_0_I3_SPEC_CTRL)
+		if (p[3] & CPUID_STDEXT3_IBPB)
 			rv |= IBRS_SUPPORTED | IBPB_SUPPORTED;
-		if (p[3] & CPUID_7_0_I3_STIBP)
+		if (p[3] & CPUID_STDEXT3_STIBP)
 			rv |= STIBP_SUPPORTED;
 
 		/*
 		 * 0x80000008 p[1] bit 12 indicates IBPB support
 		 *
-		 * This bit might be set even though SPEC_CTRL is not set.
+		 * This bit might be set even though STDEXT3_IBPB is not set.
 		 */
 		p[0] = 0;
 		p[1] = 0;
 		p[2] = 0;
 		p[3] = 0;
 		do_cpuid(0x80000008U, p);
-		if (p[1] & CPUID_INTEL_80000008_I1_IBPB_SUPPORT)
+		if (p[1] & CPUID_CAPEX_IBPB)
 			rv |= IBPB_SUPPORTED;
 	} else if (cpu_vendor_id == CPU_VENDOR_AMD) {
 		/*
-		 * 0x80000008 p[1] bit 12 indicates IBPB support
-		 *	      p[1] bit 14 indicates IBRS support
-		 *	      p[1] bit 15 indicates STIBP support
+		 * 0x80000008
+		 *	p[1] bit 12 indicates IBPB support
+		 *	p[1] bit 14 indicates IBRS support
+		 *	p[1] bit 15 indicates STIBP support
 		 *
-		 *	      p[1] bit 16 indicates IBRS auto support
-		 *	      p[1] bit 17 indicates STIBP auto support
-		 *	      p[1] bit 18 indicates processor prefers using
+		 *	p[1] bit 16 indicates IBRS auto support
+		 *	p[1] bit 17 indicates STIBP auto support
+		 *	p[1] bit 18 indicates processor prefers using
 		 *		IBRS instead of retpoline.
 		 */
 		p[0] = 0;
@@ -477,18 +480,18 @@ spectre_check_support(void)
 		p[2] = 0;
 		p[3] = 0;
 		do_cpuid(0x80000008U, p);
-		if (p[1] & CPUID_AMD_80000008_I1_IBPB_SUPPORT)
+		if (p[1] & CPUID_CAPEX_IBPB)
 			rv |= IBPB_SUPPORTED;
-		if (p[1] & CPUID_AMD_80000008_I1_IBRS_SUPPORT)
+		if (p[1] & CPUID_CAPEX_IBRS)
 			rv |= IBRS_SUPPORTED;
-		if (p[1] & CPUID_AMD_80000008_I1_STIBP_SUPPORT)
+		if (p[1] & CPUID_CAPEX_STIBP)
 			rv |= STIBP_SUPPORTED;
 
-		if (p[1] & CPUID_AMD_80000008_I1_IBRS_AUTO)
+		if (p[1] & CPUID_CAPEX_IBRS_ALWAYSON)
 			rv |= IBRS_AUTO_SUPPORTED;
-		if (p[1] & CPUID_AMD_80000008_I1_STIBP_AUTO)
+		if (p[1] & CPUID_CAPEX_STIBP_ALWAYSON)
 			rv |= STIBP_AUTO_SUPPORTED;
-		if (p[1] & CPUID_AMD_80000008_I1_IBRS_REQUESTED)
+		if (p[1] & CPUID_CAPEX_PREFER_IBRS)
 			rv |= IBRS_PREFERRED_REQUEST;
 	}
 
@@ -511,7 +514,6 @@ spectre_sysctl_changed(void)
 	int spec_mask;
 	int mode;
 	int n;
-
 
 	spec_mask = SPEC_CTRL_IBRS | SPEC_CTRL_STIBP |
 		    SPEC_CTRL_DUMMY_ENABLE | SPEC_CTRL_DUMMY_IBPB;
@@ -902,18 +904,18 @@ mds_check_support(void)
 		p[2] = 0;
 		p[3] = 0;
 		cpuid_count(7, 0, p);
-		if (p[3] & CPUID_SEF_ARCH_CAP) {
+		if (p[3] & CPUID_STDEXT3_ARCH_CAP) {
 			msr = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
 			if (msr & IA32_ARCH_CAP_MDS_NO)
 				rv = MDS_NOT_REQUIRED;
 		}
-		if (p[3] & CPUID_SEF_AVX512_4VNNIW)
+		if (p[3] & CPUID_STDEXT3_AVX5124VNNIW)
 			rv |= MDS_AVX512_4VNNIW_SUPPORTED;
-		if (p[3] & CPUID_SEF_AVX512_4FMAPS)
+		if (p[3] & CPUID_STDEXT3_AVX5124FMAPS)
 			rv |= MDS_AVX512_4FMAPS_SUPPORTED;
-		if (p[3] & CPUID_SEF_MD_CLEAR)
+		if (p[3] & CPUID_STDEXT3_MD_CLEAR)
 			rv |= MDS_MD_CLEAR_SUPPORTED;
-		if (p[3] & CPUID_SEF_TSX_FORCE_ABORT)
+		if (p[3] & CPUID_STDEXT3_TSXFA)
 			rv |= MDS_TSX_FORCE_ABORT_SUPPORTED;
 	} else {
 		rv = MDS_NOT_REQUIRED;

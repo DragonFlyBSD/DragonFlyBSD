@@ -677,7 +677,7 @@ identify_cpu(void)
 		cpu_stdext_feature2 = regs[2];
 		cpu_stdext_feature3 = regs[3];
 
-		if (cpu_stdext_feature3 & CPUID_SEF_ARCH_CAP)
+		if (cpu_stdext_feature3 & CPUID_STDEXT3_ARCH_CAP)
 			cpu_ia32_arch_caps = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
 	}
 
