@@ -56,10 +56,12 @@ humanize_unsigned(char *buf, size_t len, uint64_t bytes, const char *suffix,
 	uint64_t	umax;
 	size_t		i, suffixlen;
 
-	if (buf == NULL || suffix == NULL)
+	if (buf == NULL)
 		return (-1);
 	if (len > 0)
 		buf[0] = '\0';
+	if (suffix == NULL)
+		suffix = "";
 	suffixlen = strlen(suffix);
 	/* check if enough room for `x y' + suffix + `\0' */
 	if (len < 4 + suffixlen)

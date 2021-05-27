@@ -55,7 +55,7 @@ humanize_number(char *buf, size_t len, int64_t quotient,
 	size_t	baselen;
 
 	/* validate args */
-	if (buf == NULL || suffix == NULL)
+	if (buf == NULL)
 		return (-1);
 	if (scale < 0)
 		return (-1);
@@ -68,6 +68,9 @@ humanize_number(char *buf, size_t len, int64_t quotient,
 	/* Since so many callers don't check -1, NUL terminate the buffer */
 	if (len > 0)
 		buf[0] = '\0';
+
+	if (suffix == NULL)
+		suffix = "";
 
 	/* setup parameters */
 	remainder = 0;
