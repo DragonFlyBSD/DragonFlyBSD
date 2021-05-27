@@ -1,7 +1,7 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
 #
-# Doing a make install builds /usr/include
+# Doing a ``make install`` builds /usr/include
 #
 # The ``rm -rf''s used below are safe because rm doesn't follow symbolic
 # links.
@@ -47,14 +47,16 @@ LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h sched.h syslog.h ucontext.h
 LDIRS=	net netbt netgraph netgraph7 netinet netinet6 sys vm
 
 # Subdirectories containing header files to copy.  In symlink mode
-# the subdirectory will be symlinked.  Care must be taken to adjust
-# LSYMSUBDIRS below to remove subdirectories whos parent directories.
-# If you make a mistake, part of your source tree might get overwritten
-# when buildworld is run.
+# the subdirectory will be symlinked.
+#
+# NOTE: Care must be taken to adjust LSYMSUBDIRS below to remove
+#       subdirectories whos parent directory is also listed.
+#       If you make a mistake, part of your source tree might get
+#       overwritten when buildworld is run.
 #
 LSUBDIRS= \
 	bus/cam bus/cam/scsi \
-	bus/cam bus/pccard bus/pci bus/isa bus/ppbus bus/smbus bus/u4b \
+	bus/isa bus/pccard bus/pci bus/ppbus bus/smbus bus/u4b \
 	dev/disk/dm \
 	dev/disk/mpt/mpilib \
 	dev/misc/lpt dev/misc/ppi \
@@ -91,8 +93,12 @@ LSUBDIRS= \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2 \
 	vfs/autofs vfs/fuse vfs/tmpfs
 
-# For SHARED=symlinks, bus/cam is a symlink, so cam/scsi is taken care of
-LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnet/*:Nnetgraph/*:Nnetgraph7/*}
+# For SHARED=symlinks, adjust LSYMSUBDIRS to remove subdirectories whos
+# parent directory is also symlinked, avoiding the source tree being
+# overwritten.  For example, 'bus/cam' is a symlink, so 'bus/cam/scsi'
+# is also taken care of.
+LSYMSUBDIRS:=	${LSUBDIRS:Nnet/*:Nnetgraph/*:Nnetgraph7/*}
+LSYMSUBDIRS:=	${LSYMSUBDIRS:Nbus/cam/scsi}
 
 # Define SHARED to indicate whether you want symbolic links to the system
 # source (``symlinks''), or a separate copy (``copies'').  ``symlinks'' is
