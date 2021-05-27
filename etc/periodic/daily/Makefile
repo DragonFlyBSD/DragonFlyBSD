@@ -21,6 +21,7 @@ FILES=	100.clean-disks \
 	450.status-security \
 	460.status-mail-rejects \
 	500.queuerun \
+	510.status-world-kernel \
 	999.local
 
 LINKS=	${FILESDIR}/220.snapshot-hammer2 ${FILESDIR}/../weekly/220.snapshot-hammer2 \
