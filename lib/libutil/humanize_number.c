@@ -54,10 +54,6 @@ humanize_number(char *buf, size_t len, int64_t quotient,
 	int64_t	divisor, max;
 	size_t	baselen;
 
-	/* Since so many callers don't check -1, NUL terminate the buffer */
-	if (len > 0)
-		buf[0] = '\0';
-
 	/* validate args */
 	if (buf == NULL || suffix == NULL)
 		return (-1);
@@ -68,6 +64,10 @@ humanize_number(char *buf, size_t len, int64_t quotient,
 		return (-1);
 	if ((flags & HN_DIVISOR_1000) && (flags & HN_IEC_PREFIXES))
 		return (-1);
+
+	/* Since so many callers don't check -1, NUL terminate the buffer */
+	if (len > 0)
+		buf[0] = '\0';
 
 	/* setup parameters */
 	remainder = 0;
