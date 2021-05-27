@@ -43,7 +43,7 @@
 #include <sys/mman.h>
 #include <machine/segments.h>
 #include <machine/psl.h>
-#include <x86/specialreg.h>
+#include <machine/specialreg.h>
 #include <pthread.h>
 #include <nvmm.h>
 
@@ -77,12 +77,12 @@ static bool can_take_int = false;
 static bool can_take_nmi = false;
 static bool has_int_pending = false;
 static bool has_nmi_pending = false;
-static struct nvmm_event pending_int;
-static struct nvmm_event pending_nmi;
+static struct nvmm_vcpu_event pending_int;
+static struct nvmm_vcpu_event pending_nmi;
 
 static void
 toyvirt_event_inject(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
-    struct nvmm_event *event)
+    struct nvmm_vcpu_event *event)
 {
 	memcpy(vcpu->event, event, sizeof(*event));
 
@@ -114,9 +114,9 @@ toyvirt_event_inject(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 static void
 toyvirt_event_reinject(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
-	struct nvmm_exit *exit = vcpu->exit;
+	struct nvmm_vcpu_exit *exit = vcpu->exit;
 
-	if (exit->reason == NVMM_EXIT_INT_READY) {
+	if (exit->reason == NVMM_VCPU_EXIT_INT_READY) {
 		if (!has_int_pending)
 			errx(EXIT_FAILURE, "no INT pending!");
 		toyvirt_event_inject(mach, vcpu, &pending_int);
@@ -139,17 +139,18 @@ toyvirt_event_reinject(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 #define	PAT_UCMINUS	0x7ULL
 
 static void
-toyvirt_configure_cpuid(struct nvmm_machine *mach)
+toyvirt_configure_cpuid(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
-	struct nvmm_mach_conf_x86_cpuid cpuid;
+	struct nvmm_vcpu_conf_cpuid cpuid;
 
 	/* Disable PG_NX. No particular reason, just to demonstrate. */
 	memset(&cpuid, 0, sizeof(cpuid));
+	cpuid.mask = 1;
 	cpuid.leaf = 0x80000001;
-	cpuid.del.edx = CPUID_NOX;
+	cpuid.u.mask.del.edx = CPUID_NOX;
 
-	if (nvmm_machine_configure(mach, NVMM_MACH_CONF_X86_CPUID, &cpuid) == -1)
-		err(EXIT_FAILURE, "nvmm_machine_configure");
+	if (nvmm_vcpu_configure(mach, vcpu, NVMM_VCPU_CONF_CPUID, &cpuid) == -1)
+		err(EXIT_FAILURE, "nvmm_vcpu_configure(CPUID)");
 }
 
 static void
@@ -228,7 +229,7 @@ toyvirt_mem_callback(struct nvmm_mem *mem)
 	toydev_mmio(mem->gpa, mem->write, mem->data, mem->size);
 }
 
-static struct nvmm_callbacks callbacks = {
+static struct nvmm_assist_callbacks callbacks = {
 	.io = toycpu_io_callback,
 	.mem = toyvirt_mem_callback
 };
@@ -250,32 +251,30 @@ toyvirt_mess(void *arg)
 {
 	struct nvmm_machine *mach = toyvirt.mach;
 	struct nvmm_vcpu *vcpu = toyvirt.vcpu;
-	struct nvmm_event event;
+	struct nvmm_vcpu_event event;
 
 	while (1) {
 		sleep(3);
 
 		/* Inject a #GP */
-		event.type = NVMM_EVENT_EXCEPTION;
+		event.type = NVMM_VCPU_EVENT_EXCP;
 		event.vector = 13;
-		event.u.error = 0;
+		event.u.excp.error = 0;
 		toyvirt_event_inject(mach, vcpu, &event);
 
 		sleep(3);
 
 		/* Inject an #NMI */
-		event.type = NVMM_EVENT_INTERRUPT_HW;
+		event.type = NVMM_VCPU_EVENT_INTR;
 		event.vector = 2;
-		event.u.prio = 0;
 		toyvirt_event_inject(mach, vcpu, &event);
 
 		sleep(3);
 
 		/* Inject an interrupt */
 		if (15 > toyvirt_prio) {
-			event.type = NVMM_EVENT_INTERRUPT_HW;
+			event.type = NVMM_VCPU_EVENT_INTR;
 			event.vector = 200;
-			event.u.prio = 15;
 			toyvirt_event_inject(mach, vcpu, &event);
 		}
 	}
@@ -292,15 +291,15 @@ static int
 toycpu_msr(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
 	struct nvmm_vcpu_state *state = vcpu->state;
-	struct nvmm_exit *exit = vcpu->exit;
+	struct nvmm_vcpu_exit *exit = vcpu->exit;
 	uint64_t val;
 
-	if (exit->u.msr.msr != MSR_APICBASE) {
-		printf("Unknown MSR!\n");
+	if (exit->reason != NVMM_VCPU_EXIT_RDMSR) {
+		printf("Expected rdmsr!\n");
 		return -1;
 	}
-	if (exit->u.msr.type != NVMM_EXIT_MSR_RDMSR) {
-		printf("Expected rdmsr!\n");
+	if (exit->u.rdmsr.msr != MSR_APICBASE) {
+		printf("Unknown MSR!\n");
 		return -1;
 	}
 
@@ -311,7 +310,7 @@ toycpu_msr(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 	state->gprs[NVMM_X64_GPR_RAX] = (val & 0xFFFFFFFF);
 	state->gprs[NVMM_X64_GPR_RDX] = (val >> 32);
-	state->gprs[NVMM_X64_GPR_RIP] = exit->u.msr.npc;
+	state->gprs[NVMM_X64_GPR_RIP] = exit->u.rdmsr.npc;
 
 	if (nvmm_vcpu_setstate(mach, vcpu, NVMM_X64_STATE_GPRS) == -1)
 		err(EXIT_FAILURE, "nvmm_vcpu_setstate");
@@ -334,7 +333,7 @@ toyvirt_invalid(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 static void
 toyvirt_run(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
-	struct nvmm_exit *exit = vcpu->exit;
+	struct nvmm_vcpu_exit *exit = vcpu->exit;
 	pthread_t thid;
 	int ret;
 
@@ -346,45 +345,46 @@ toyvirt_run(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		if (nvmm_vcpu_run(mach, vcpu) == -1)
 			err(EXIT_FAILURE, "nvmm_vcpu_run");
 
-		toyvirt_prio = exit->exitstate[NVMM_X64_EXITSTATE_CR8];
-		can_take_int = !exit->exitstate[NVMM_X64_EXITSTATE_INT_WINDOW_EXIT];
-		can_take_nmi = !exit->exitstate[NVMM_X64_EXITSTATE_NMI_WINDOW_EXIT];
+		toyvirt_prio = exit->exitstate.cr8;
+		can_take_int = !exit->exitstate.int_window_exiting;
+		can_take_nmi = !exit->exitstate.nmi_window_exiting;
 
 		switch (exit->reason) {
-		case NVMM_EXIT_NONE:
+		case NVMM_VCPU_EXIT_NONE:
 			/*
 			 * A VMEXIT caused by whatever internal reason, that
 			 * we shouldn't take care of. Keep rolling.
 			 */
 			continue;
 
-		case NVMM_EXIT_IO:
+		case NVMM_VCPU_EXIT_IO:
 			ret = nvmm_assist_io(mach, vcpu);
 			if (ret == -1)
 				err(EXIT_FAILURE, "nvmm_assist_io");
 			continue;
 
-		case NVMM_EXIT_MSR:
+		case NVMM_VCPU_EXIT_RDMSR:
+		case NVMM_VCPU_EXIT_WRMSR:
 			toycpu_msr(mach, vcpu);
 			continue;
 
-		case NVMM_EXIT_MEMORY:
+		case NVMM_VCPU_EXIT_MEMORY:
 			ret = nvmm_assist_mem(mach, vcpu);
 			if (ret == -1)
 				err(EXIT_FAILURE, "nvmm_assist_mem");
 			continue;
 
-		case NVMM_EXIT_INT_READY:
-		case NVMM_EXIT_NMI_READY:
+		case NVMM_VCPU_EXIT_INT_READY:
+		case NVMM_VCPU_EXIT_NMI_READY:
 			toyvirt_event_reinject(mach, vcpu);
 			return;
 
-		case NVMM_EXIT_SHUTDOWN:
+		case NVMM_VCPU_EXIT_SHUTDOWN:
 			/* Stop the VM here. */
 			printf("[+] Machine received shutdown\n");
 			return;
 
-		case NVMM_EXIT_INVALID:
+		case NVMM_VCPU_EXIT_INVALID:
 		default:
 			toyvirt_invalid(mach, vcpu);
 			return;
@@ -395,18 +395,14 @@ toyvirt_run(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 int main(int argc, char *argv[])
 {
 	struct nvmm_machine mach;
-	struct nvmm_capability cap;
 	struct nvmm_vcpu vcpu;
 
 	if (argc != 2)
 		errx(EXIT_FAILURE, "usage: %s file-path", argv[0]);
 
-	if (nvmm_capability(&cap) == -1)
-		err(EXIT_FAILURE, "nvmm_capability");
-	if (cap.version != 1)
-		errx(EXIT_FAILURE, "wrong NVMM version");
-	if (cap.state_size != sizeof(struct nvmm_x64_state))
-		errx(EXIT_FAILURE, "wrong state size");
+	if (nvmm_init() == -1)
+		err(EXIT_FAILURE, "nvmm_init");
+	printf("[+] NVMM initialization succeeded\n");
 
 	if (nvmm_machine_create(&mach) == -1)
 		err(EXIT_FAILURE, "nvmm_machine_create");
@@ -416,8 +412,13 @@ int main(int argc, char *argv[])
 		err(EXIT_FAILURE, "nvmm_vcpu_create");
 	printf("[+] VCPU creation succeeded\n");
 
-	nvmm_machine_configure(&mach, NVMM_MACH_CONF_CALLBACKS, &callbacks);
-	toyvirt_configure_cpuid(&mach);
+	if (nvmm_vcpu_configure(&mach, &vcpu, NVMM_VCPU_CONF_CALLBACKS,
+				&callbacks) == -1) {
+		err(EXIT_FAILURE, "nvmm_vcpu_configure(CALLBACKS)");
+	};
+	printf("[+] VCPU callbacks configuration succeeded\n");
+
+	toyvirt_configure_cpuid(&mach, &vcpu);
 
 	toyvirt_init(&mach, &vcpu, argv[1]);
 	printf("[+] State set\n");

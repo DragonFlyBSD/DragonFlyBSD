@@ -21,9 +21,11 @@ Use:
 
 Expected output:
 
-	localhost# ./toyvirt/toyvirt smallkern/smallkern
+	# ./toyvirt/toyvirt smallkern/smallkern
+	[+] NVMM initialization succeeded
 	[+] Machine creation succeeded
-	[+] VCPUs creation succeeded
+	[+] VCPU creation succeeded
+	[+] VCPU callbacks configuration succeeded
 	[+] State set
 	mach>     _________               __   __   __
 	mach>    /   _____/ _____ _____  |  | |  | |  | __ ___________  ____
