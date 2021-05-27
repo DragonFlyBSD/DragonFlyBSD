@@ -3899,6 +3899,9 @@ TO_REMOVE+=/boot/kernel/fuse.ko
 TO_REMOVE+=/usr/sbin/dev_mkdb
 TO_REMOVE+=/usr/share/man/man8/dev_mkdb.8.gz
 TO_REMOVE+=/usr/share/examples/etc/bsd-style-copyright
+TO_REMOVE+=/etc/periodic/daily/220.snapshot-hammer2
+TO_REMOVE+=/etc/periodic/monthly/220.snapshot-hammer2
+TO_REMOVE+=/etc/periodic/weekly/220.snapshot-hammer2
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

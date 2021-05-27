@@ -8,9 +8,9 @@ FILES=	100.clean-disks \
 	150.clean-hoststat \
 	160.clean-hammer \
 	161.clean-hammer2 \
+	162.snapshot-hammer2 \
 	200.backup-passwd \
 	210.backup-aliases \
-	220.snapshot-hammer2 \
 	300.calendar \
 	310.accounting \
 	330.news \
@@ -24,7 +24,7 @@ FILES=	100.clean-disks \
 	510.status-world-kernel \
 	999.local
 
-LINKS=	${FILESDIR}/220.snapshot-hammer2 ${FILESDIR}/../weekly/220.snapshot-hammer2 \
-	${FILESDIR}/220.snapshot-hammer2 ${FILESDIR}/../monthly/220.snapshot-hammer2
+LINKS=	${FILESDIR}/162.snapshot-hammer2 ${FILESDIR}/../weekly/162.snapshot-hammer2 \
+	${FILESDIR}/162.snapshot-hammer2 ${FILESDIR}/../monthly/162.snapshot-hammer2
 
 .include <bsd.prog.mk>
