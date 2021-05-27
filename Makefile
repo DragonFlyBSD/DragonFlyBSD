@@ -202,14 +202,15 @@ make:
 	@cd ${.CURDIR}/usr.bin/make; \
 		make obj && make depend && make all && make install
 
+# Handle pre-installworld upgrade (e.g., creating of new users/groups).
 #
-# Handle the upgrade of /etc, post-installworld updating of static files
-# and removing obsolete files.
-#
-
+installworld: preupgrade
 preupgrade:
 	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk preupgrade
 
+# Handle the upgrade of /etc, post-installworld updating of static files
+# and removing obsolete files.
+#
 upgrade:
 	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk upgrade_etc
 .if !defined(NOMAN) && !defined(NO_MAKEDB_RUN)

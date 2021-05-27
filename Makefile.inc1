@@ -502,18 +502,6 @@ install-all:
 # Checks to be sure system is ready for installworld
 #
 installcheck: _iwinit
-.for _user in _pflogd
-	@pw usershow ${_user} >/dev/null || { \
-	    echo "You need to run 'make preupgrade' first."; \
-	    /usr/bin/false; \
-	}
-.endfor
-.for _group in _pflogd authpf
-	@pw groupshow ${_group} >/dev/null || { \
-	    echo "You need to run 'make preupgrade' first."; \
-	    /usr/bin/false; \
-	}
-.endfor
 .if !defined(OVERRIDE_CHECKS)
 .if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
 	@case `uname -r` in \
