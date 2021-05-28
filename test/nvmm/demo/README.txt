@@ -4,6 +4,8 @@ binary given as argument, the latter is an example of such binary.
 
 The goal of toyvirt and smallkern is to demonstrate the libnvmm API.
 
+Originally obtained from: https://www.netbsd.org/~maxv/nvmm/nvmm-demo.zip
+
 Folders:
 
 	toyvirt/
@@ -14,65 +16,64 @@ Folders:
 
 Use:
 
-	$ cd smallkern && make && cd ../
-	$ cd toyvirt && make
-	# ./toyvirt ../smallkern/smallkern
+	$ make
+	# ./toyvirt/toyvirt smallkern/smallkern
 
 Expected output:
 
-	localhost# ./toyvirt ../smallkern/smallkern
+	localhost# ./toyvirt/toyvirt smallkern/smallkern
 	[+] Machine creation succeeded
 	[+] VCPUs creation succeeded
 	[+] State set
-	mach>     _________               __   __   __                        
-	mach>    /   _____/ _____ _____  |  | |  | |  | __ ___________  ____  
-	mach>    \_____  \ /     \\__  \ |  | |  | |  |/ // __ \_  __ \/    \ 
+	mach>     _________               __   __   __
+	mach>    /   _____/ _____ _____  |  | |  | |  | __ ___________  ____
+	mach>    \_____  \ /     \\__  \ |  | |  | |  |/ // __ \_  __ \/    \
 	mach>    /        \  Y Y  \/ __ \|  |_|  |_|    <\  ___/|  | \/   |  \
 	mach>   /_______  /__|_|  (____  /____/____/__|_ \\___  >__|  |___|  /
-	mach>           \/      \/     \/               \/    \/           \/ 
+	mach>           \/      \/     \/               \/    \/           \/
 	mach>   [+] TSS created
 	mach>   [+] IDT created
 	mach>   [+] APICBASE is correct
 	mach>   [+] PG_NX is disabled
 	mach>   [+] Running on cpu120
 	mach>   [+] LAPIC information matches
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   privileged instruction fault
 	mach>   ****************************
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   protection fault
 	mach>   ****************************
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   non-maskable interrupt
 	mach>   ****************************
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   hardware interrupt
 	mach>   ****************************
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   protection fault
 	mach>   ****************************
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   protection fault
 	mach>   ****************************
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   protection fault
 	mach>   ****************************
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   protection fault
 	mach>   ****************************
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   protection fault
 	mach>   ****************************
-	mach>   
+	mach>
 	mach>   ****** FAULT OCCURRED ******
 	mach>   protection fault
 	mach>   ****************************
