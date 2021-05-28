@@ -30,7 +30,7 @@
 
 void outsb(int port, char *buf, size_t size);
 
-void print_ext(int color, char *buf)
+void print_ext(int color __unused, char *buf)
 {
 	size_t i;
 

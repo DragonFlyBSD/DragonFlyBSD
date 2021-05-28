@@ -119,7 +119,7 @@ static char *trap_type[] = {
 	"SSE FP exception",			/* 19 T_XMM */
 	"hardware interrupt",			/* 20 T_RESERVED */
 };
-int	trap_types = __arraycount(trap_type);
+size_t	trap_types = __arraycount(trap_type);
 
 static void
 triple_fault(void)
@@ -254,7 +254,7 @@ static void init_idt(void)
  * Main entry point of the kernel.
  */
 void
-main(paddr_t pa_start)
+main(paddr_t pa_start __unused)
 {
 	u_int descs[4];
 	uint32_t *reg, val;

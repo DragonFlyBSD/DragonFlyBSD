@@ -247,7 +247,7 @@ static struct {
  * Create mess in the VCPU. Inject random events at regular intervals.
  */
 static void *
-toyvirt_mess(void *arg)
+toyvirt_mess(void *arg __unused)
 {
 	struct nvmm_machine *mach = toyvirt.mach;
 	struct nvmm_vcpu *vcpu = toyvirt.vcpu;

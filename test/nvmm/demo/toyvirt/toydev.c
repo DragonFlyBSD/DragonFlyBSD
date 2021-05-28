@@ -78,7 +78,7 @@ toydev_lapic(gpaddr_t gpa, bool write, uint8_t *buf, size_t size)
  * Console device, IO. It retrieves a string on port 123, and we display it.
  */
 static int
-toydev_cons(int port, bool in, uint8_t *buf, size_t size)
+toydev_cons(int port __unused, bool in, uint8_t *buf, size_t size)
 {
 	static bool new_line = true;
 	size_t i;

@@ -97,7 +97,7 @@ elf_map(struct nvmm_machine *mach, const char *path, uint64_t *rip)
 	fd = open(path, O_RDONLY);
 	if (fstat(fd, &st) == -1)
 		goto out;
-	if (st.st_size < sizeof(Elf_Ehdr))
+	if ((size_t)st.st_size < sizeof(Elf_Ehdr))
 		goto out;
 	base = malloc(st.st_size);
 	pread(fd, base, st.st_size, 0);
