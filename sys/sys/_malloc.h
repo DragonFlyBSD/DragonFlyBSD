@@ -65,14 +65,25 @@ struct kmalloc_slab {
 	__uint32_t		orig_cpuid;	/* originally allocated on */
 	__size_t		offset;		/* copied from kmalloc_mgt */
 	__size_t		objsize;	/* copied from malloc_type */
-	__size_t		ncount;		/* copied from kmalloc_mgt */
+	__size_t		ncount;
+	/* copy of slab_count from kmalloc_mgt */
 	__size_t		aindex;		/* start of allocations */
 	__size_t		findex;		/* end of frees */
 	__size_t		xindex;		/* synchronizer */
 	exislock_t		exis;		/* existential lock state */
 	void			*unused01;
 	__uint64_t		bmap[(KMALLOC_SLAB_MAXOBJS + 63) / 64];
-	void			*fobjs[1];	/* list of free objects */
+	void			*fobjs[1];
+	/*
+	 * Circular buffer listing free objects. All indices modulo ncount.
+	 * Invariants:
+	 * - aindex, findex and xindex never decrease
+	 * - aindex <= xindex <= findex
+	 *
+	 * aindex <= i < xindex: fobjs[i % count] is a pointer to a free object.
+	 * xindex <= i < findex:
+	 *     Synchronization state: fobjs[i % count] is temporarily reserved.
+	 */
 } __cachealign;
 
 /*

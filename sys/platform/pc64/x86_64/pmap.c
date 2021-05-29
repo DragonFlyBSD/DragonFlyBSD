@@ -544,10 +544,8 @@ pmap_pdp_index(vm_offset_t va)
 }
 
 /*
- * Of all the layers (PTE, PT, PD, PDP, PML4) the best one to cache is
+ * Of all the layers (PT, PD, PDP, PML4) the best one to cache is
  * the PT layer.  This will speed up core pmap operations considerably.
- * We also cache the PTE layer to (hopefully) improve relative lookup
- * speeds.
  *
  * NOTE: The pmap spinlock does not need to be held but the passed-in pv
  *	 must be in a known associated state (typically by being locked when
@@ -1882,13 +1880,9 @@ pmap_kextract(vm_offset_t va)
  ***************************************************/
 
 /*
- * Routine: pmap_kenter
- * Function:
- *  	Add a wired page to the KVA
- *  	NOTE! note that in order for the mapping to take effect -- you
- *  	should do an invltlb after doing the pmap_kenter().
+ * Add a wired page to the KVA and invalidate the mapping on all CPUs.
  */
-void 
+void
 pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 {
 	pt_entry_t *ptep;
@@ -2622,7 +2616,7 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 		goto notnew;
 
 	/*
-	 * (isnew) is TRUE, pv is not terminal.
+	 * (isnew) is TRUE.
 	 *
 	 * (1) Add a wire count to the parent page table (pvp).
 	 * (2) Allocate a VM page for the page table.
@@ -2650,7 +2644,7 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	pv->pv_m = m;
 
 	/*
-	 * (isnew) is TRUE, pv is not terminal.
+	 * (isnew) is TRUE.
 	 *
 	 * Wire the page into pvp.  Bump the resident_count for the pmap.
 	 * There is no pvp for the top level, address the pm_pml4[] array
@@ -2697,10 +2691,10 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	}
 	vm_page_wakeup(m);
 
-	/*
-	 * (isnew) may be TRUE or FALSE, pv may or may not be terminal.
-	 */
 notnew:
+	/*
+	 * (isnew) may be TRUE or FALSE.
+	 */
 	if (pvp) {
 		KKASSERT(pvp->pv_m != NULL);
 		ptep = pv_pte_lookup(pvp, ptepindex);

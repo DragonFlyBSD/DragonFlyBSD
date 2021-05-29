@@ -326,16 +326,7 @@ struct vm_map_freehint {
 typedef struct vm_map_freehint vm_map_freehint_t;
 
 /*
- * Maps are doubly-linked lists of map entries, kept sorted by address.
- * A single hint is provided to start searches again from the last
- * successful search, insertion, or removal.
- *
- * NOTE: The lock structure cannot be the first element of vm_map
- *	 because this can result in a running lockup between two or more
- *	 system processes trying to kmem_alloc_wait() due to kmem_alloc_wait()
- *	 and free tsleep/waking up 'map' and the underlying lockmgr also
- *	 sleeping and waking up on 'map'.  The lockup occurs when the map fills
- *	 up.  The 'exec' map, for example.
+ * A vm_map stores a red-black tree of map entries, indexed by address.
  *
  * NOTE: The vm_map structure can be hard-locked with the lockmgr lock
  *	 or soft-serialized with the token, or both.
@@ -380,7 +371,7 @@ struct vmspace {
 	struct pmap vm_pmap;	/* private physical map */
 	int vm_flags;
 	caddr_t vm_shm;		/* SYS5 shared memory private data XXX */
-/* we copy from vm_startcopy to the end of the structure on fork */
+/* we copy from vm_startcopy on fork */
 #define vm_startcopy vm_rssize
 	segsz_t vm_rssize;	/* current resident set size in pages */
 	segsz_t vm_swrss;	/* resident set size before last swap */
