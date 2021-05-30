@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd September 29, 2020
+.Dd May 30, 2021
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -242,16 +242,6 @@ at boot time or on insertion of the card (e.g.\&
 for a fixed address or
 .Dq Li DHCP
 for a DHCP client).
-.It Va pccard_ether_delay
-.Pq Vt str
-Set the delay before starting the DHCP client (configured with
-.Va dhcp_client )
-in the
-.Pa /etc/pccard_ether
-script.
-This defaults to
-.Dq Li 5
-seconds.
 .It Va removable_interfaces
 .Pq Vt str
 List of removable network interfaces to be supported by
