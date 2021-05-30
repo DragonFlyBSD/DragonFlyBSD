@@ -38,6 +38,7 @@
 #include <sys/fcntl.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
+#include <sys/priv.h>
 #include <sys/thread.h>
 
 #include <dev/virtual/nvmm/nvmm_compat.h>
@@ -1027,7 +1028,7 @@ nvmm_open(struct dev_open_args *ap)
 	if (!(flags & O_CLOEXEC))
 		return EINVAL;
 
-	if (OFLAGS(flags) & O_WRONLY) {
+	if (priv_check_cred(ap->a_cred, PRIV_ROOT, 0) == 0) {
 		owner = &root_owner;
 	} else {
 		owner = kmem_alloc(sizeof(*owner), KM_SLEEP);
@@ -1185,7 +1186,7 @@ nvmm_modevent(module_t mod __unused, int type, void *data __unused)
 		if (error)
 			return error;
 
-		dev = make_dev(&nvmm_ops, 0, UID_ROOT, GID_NVMM, 0640, "nvmm");
+		dev = make_dev(&nvmm_ops, 0, UID_ROOT, GID_NVMM, 0660, "nvmm");
 		if (dev == NULL) {
 			printf("nvmm: unable to create device\n");
 			error = ENOMEM;

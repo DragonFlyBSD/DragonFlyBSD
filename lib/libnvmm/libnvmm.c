@@ -162,7 +162,7 @@ nvmm_init(void)
 {
 	if (nvmm_fd != -1)
 		return 0;
-	nvmm_fd = open("/dev/nvmm", O_RDONLY | O_CLOEXEC);
+	nvmm_fd = open("/dev/nvmm", O_RDWR | O_CLOEXEC);
 	if (nvmm_fd == -1)
 		return -1;
 	if (nvmm_capability(&__capability) == -1) {
@@ -183,24 +183,12 @@ nvmm_init(void)
 int
 nvmm_root_init(void)
 {
-	if (nvmm_fd != -1)
-		return 0;
-	nvmm_fd = open("/dev/nvmm", O_WRONLY | O_CLOEXEC);
-	if (nvmm_fd == -1)
-		return -1;
-	if (nvmm_capability(&__capability) == -1) {
-		close(nvmm_fd);
-		nvmm_fd = -1;
-		return -1;
-	}
-	if (__capability.version != NVMM_KERN_VERSION) {
-		close(nvmm_fd);
-		nvmm_fd = -1;
-		errno = EPROGMISMATCH;
+	if (getuid() != 0) {
+		errno = EACCES;
 		return -1;
 	}
 
-	return 0;
+	return nvmm_init();
 }
 
 int
