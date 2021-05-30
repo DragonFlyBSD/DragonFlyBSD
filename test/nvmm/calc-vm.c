@@ -67,12 +67,15 @@ int main(int argc, char *argv[])
 	/* Init NVMM. */
 	if (nvmm_init() == -1)
 		err(EXIT_FAILURE, "unable to init NVMM");
+	printf("[+] Initialized NVMM\n");
 
 	/* Create the VM. */
 	if (nvmm_machine_create(&mach) == -1)
 		err(EXIT_FAILURE, "unable to create the VM");
+	printf("[+] Created machine\n");
 	if (nvmm_vcpu_create(&mach, 0, &vcpu) == -1)
 		err(EXIT_FAILURE, "unable to create VCPU");
+	printf("[+] Created VCPU\n");
 
 	/* Allocate a HVA. The HVA is writable. */
 	hva = (uintptr_t)mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE,
@@ -81,10 +84,12 @@ int main(int argc, char *argv[])
 		err(EXIT_FAILURE, "unable to mmap");
 	if (nvmm_hva_map(&mach, hva, PAGE_SIZE) == -1)
 		err(EXIT_FAILURE, "unable to map HVA");
+	printf("[+] Mapped HVA\n");
 
 	/* Link the GPA towards the HVA. The GPA is executable. */
 	if (nvmm_gpa_map(&mach, hva, gpa, PAGE_SIZE, PROT_READ|PROT_EXEC) == -1)
 		err(EXIT_FAILURE, "unable to map GPA");
+	printf("[+] Mapped GPA\n");
 
 	/* Install the guest instructions there. */
 	memcpy((void *)hva, instr, sizeof(instr));
@@ -92,15 +97,19 @@ int main(int argc, char *argv[])
 	/* Reset the instruction pointer, and set EAX/EBX. */
 	if (nvmm_vcpu_getstate(&mach, &vcpu, NVMM_X64_STATE_GPRS) == -1)
 		err(EXIT_FAILURE, "unable to get VCPU state");
+	printf("[+] Got VCPU states\n");
 	vcpu.state->gprs[NVMM_X64_GPR_RIP] = 0;
 	vcpu.state->gprs[NVMM_X64_GPR_RAX] = num1;
 	vcpu.state->gprs[NVMM_X64_GPR_RBX] = num2;
 	nvmm_vcpu_setstate(&mach, &vcpu, NVMM_X64_STATE_GPRS);
+	printf("[+] Set VCPU states\n");
 
 	while (1) {
 		/* Run VCPU0. */
+		printf("[+] Running VCPU\n");
 		if (nvmm_vcpu_run(&mach, &vcpu) == -1)
 			err(EXIT_FAILURE, "unable to run VCPU");
+		printf("[+] VCPU exited\n");
 
 		/* Process the exit reasons. */
 		switch (vcpu.exit->reason) {
