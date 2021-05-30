@@ -204,4 +204,36 @@
 #define PAT_WB			PAT_WRITE_BACK		/* 0x6ULL */
 #define PAT_UCMINUS		PAT_UNCACHED		/* 0x7ULL */
 
+/*
+ * Constants, functions, etc.
+ */
+
+#define DIAGNOSTIC		INVARIANTS
+#define MAXCPUS			SMP_MAXCPU
+#define asm			__asm__
+#define printf			kprintf
+#define __cacheline_aligned	__cachealign
+#define __diagused		__debugvar
+
+#define __arraycount(arr)	nitems(arr)
+#define __insn_barrier()	cpu_ccfence()
+#undef  KASSERT
+#define KASSERT(x)		KKASSERT(x)
+#define ilog2(n)		((sizeof(n) > 4 ? ffsl(n) : ffs(n)) - 1)
+#define uimin(a, b)		MIN(a, b)
+
+#define lcr2(x)			load_cr2(x)
+#define lcr4(x)			load_cr4(x)
+#define ldr0(x)			load_dr0(x)
+#define ldr1(x)			load_dr1(x)
+#define ldr2(x)			load_dr2(x)
+#define ldr3(x)			load_dr3(x)
+#define ldr6(x)			load_dr6(x)
+#define ldr7(x)			load_dr7(x)
+#define rdxcr(xcr)		rxcr(xcr)
+#define wrxcr(xcr, val)		load_xcr(xcr, val)
+
+#define x86_cpuid(eax, regs)		do_cpuid(eax, regs)
+#define x86_cpuid2(eax, ecx, regs)	cpuid_count(eax, ecx, regs)
+
 #endif /* _NVMM_COMPAT_H_ */
