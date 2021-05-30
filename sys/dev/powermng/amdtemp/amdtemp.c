@@ -477,7 +477,6 @@ amdtemp_attach(device_t dev)
 			sc->sc_gettemp = amdtemp_gettemp;
 		break;
 	case 0x17:
-	case 0x18:
 	case 0x19:
 		sc->sc_ntemps = 1;
 		sc->sc_ccd_display = 1;
@@ -544,8 +543,6 @@ amdtemp_attach(device_t dev)
 
 	if (family == 0x17)
 		amdtemp_probe_ccd_sensors17h(dev, model);
-	else if (family == 0x18)
-		amdtemp_probe_ccd_sensors19h(dev, model);
 	else if (family == 0x19)
 		amdtemp_probe_ccd_sensors19h(dev, model);
 	else if (sc->sc_ntemps > 1) {
@@ -658,7 +655,6 @@ amdtemp_intrhook(void *arg)
 			scpu->regmask = 0;
 		else
 			scpu->regmask = sc->sc_probed_regmask & ~0xFU;
-		kprintf("NCORES %d/%d %08x\n", i, sc->sc_ncores, scpu->regmask);
 
 		if (scpu->regmask == 0)
 			continue;
@@ -712,7 +708,6 @@ amdtemp_intrhook(void *arg)
 					  "ccd%u temp", j - CCD_BASE);
 				break;
 			}
-			kprintf("sensor desc %s\n", scpu->sensors[j].desc);
 			scpu->sensors[j].type = SENSOR_TEMP;
 			sensor_set_unknown(&scpu->sensors[j]);
 			sensor_attach(&scpu->sensordev, &scpu->sensors[j]);
