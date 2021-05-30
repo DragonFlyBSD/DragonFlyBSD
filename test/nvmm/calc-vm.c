@@ -33,8 +33,8 @@
  * RIP=0, which means "RIP=0xFFFF0000+0". The guest therefore executes the
  * instructions at GPA 0xFFFF0000.
  *
- *     cc -Wall -Wextra -o calc-vm calc-vm.c -lnvmm
- *     ./calc-vm 3 5
+ *     $ cc -g -Wall -Wextra -o calc-vm calc-vm.c -lnvmm
+ *     $ ./calc-vm 3 5
  *     Result: 8
  *
  * Don't forget to load the nvmm(4) kernel module beforehand!
@@ -43,6 +43,7 @@
  * https://www.netbsd.org/~maxv/nvmm/calc-vm.c
  * https://blog.netbsd.org/tnf/entry/from_zero_to_nvmm
  */
+
 int main(int argc, char *argv[])
 {
 	const uint8_t instr[] = {
@@ -70,21 +71,27 @@ int main(int argc, char *argv[])
 	/* Create the VM. */
 	if (nvmm_machine_create(&mach) == -1)
 		err(EXIT_FAILURE, "unable to create the VM");
-	nvmm_vcpu_create(&mach, 0, &vcpu);
+	if (nvmm_vcpu_create(&mach, 0, &vcpu) == -1)
+		err(EXIT_FAILURE, "unable to create VCPU");
 
 	/* Allocate a HVA. The HVA is writable. */
 	hva = (uintptr_t)mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE,
 	    MAP_ANON|MAP_PRIVATE, -1, 0);
-	nvmm_hva_map(&mach, hva, PAGE_SIZE);
+	if ((void *)hva == MAP_FAILED)
+		err(EXIT_FAILURE, "unable to mmap");
+	if (nvmm_hva_map(&mach, hva, PAGE_SIZE) == -1)
+		err(EXIT_FAILURE, "unable to map HVA");
 
 	/* Link the GPA towards the HVA. The GPA is executable. */
-	nvmm_gpa_map(&mach, hva, gpa, PAGE_SIZE, PROT_READ|PROT_EXEC);
+	if (nvmm_gpa_map(&mach, hva, gpa, PAGE_SIZE, PROT_READ|PROT_EXEC) == -1)
+		err(EXIT_FAILURE, "unable to map GPA");
 
 	/* Install the guest instructions there. */
 	memcpy((void *)hva, instr, sizeof(instr));
 
 	/* Reset the instruction pointer, and set EAX/EBX. */
-	nvmm_vcpu_getstate(&mach, &vcpu, NVMM_X64_STATE_GPRS);
+	if (nvmm_vcpu_getstate(&mach, &vcpu, NVMM_X64_STATE_GPRS) == -1)
+		err(EXIT_FAILURE, "unable to get VCPU state");
 	vcpu.state->gprs[NVMM_X64_GPR_RIP] = 0;
 	vcpu.state->gprs[NVMM_X64_GPR_RAX] = num1;
 	vcpu.state->gprs[NVMM_X64_GPR_RBX] = num2;
@@ -92,7 +99,8 @@ int main(int argc, char *argv[])
 
 	while (1) {
 		/* Run VCPU0. */
-		nvmm_vcpu_run(&mach, &vcpu);
+		if (nvmm_vcpu_run(&mach, &vcpu) == -1)
+			err(EXIT_FAILURE, "unable to run VCPU");
 
 		/* Process the exit reasons. */
 		switch (vcpu.exit->reason) {
@@ -107,7 +115,8 @@ int main(int argc, char *argv[])
 			return 0;
 			/* THE PROCESS EXITS, THE VM GETS DESTROYED. */
 		default:
-			errx(EXIT_FAILURE, "unknown exit reason");
+			errx(EXIT_FAILURE, "unknown exit reason: 0x%lx",
+			    vcpu.exit->reason);
 		}
 	}
 
