@@ -43,6 +43,8 @@
 #include <sys/module.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
+#include <sys/malloc.h>
+#include <sys/sensors.h>
 
 #include <machine/cpufunc.h>
 #include <machine/md_var.h>
@@ -69,6 +71,8 @@ typedef enum {
 	CCD6,
 	CCD7,
 	CCD8,
+	MAXSENSORS,
+
 	CCD_MAX = CCD8,
 	NUM_CCDS = CCD_MAX - CCD_BASE + 1,
 } amdsensor_t;
@@ -77,6 +81,7 @@ struct amdtemp_softc {
 	int		sc_ncores;
 	int		sc_ntemps;
 	int		sc_flags;
+	int		sc_ccd_display;
 #define	AMDTEMP_FLAG_CS_SWAP	0x01	/* ThermSenseCoreSel is inverted. */
 #define	AMDTEMP_FLAG_CT_10BIT	0x02	/* CurTmp is 10-bit wide. */
 #define	AMDTEMP_FLAG_ALT_OFFSET	0x04	/* CurTmp starts at -28C. */
@@ -85,6 +90,21 @@ struct amdtemp_softc {
 	struct sysctl_oid *sc_sysctl_cpu[MAXCPU];
 	struct intr_config_hook sc_ich;
 	device_t	sc_smn;
+	uint32_t	sc_probed_regmask;
+
+	/*
+	 * NOTE: We put common sensors like the CCDs on cpu0.  Remaining
+	 *	 cores are only applicable if ntemps == 2 (with no CCDs).
+	 *	 When ntemps == 1 the temp sensors are CCD-based and shared.
+	 */
+	struct sensorcpu {
+		device_t dev;
+		struct amdtemp_softc *sc;
+		struct ksensordev    sensordev;
+		struct ksensor	     *sensors;
+		struct sensor_task   *senstask;
+		uint32_t regmask;
+	} *sc_sensorcpus;
 };
 
 /*
@@ -204,9 +224,11 @@ static int	amdtemp_detach(device_t dev);
 static int32_t	amdtemp_gettemp0f(device_t dev, amdsensor_t sensor);
 static int32_t	amdtemp_gettemp(device_t dev, amdsensor_t sensor);
 static int32_t	amdtemp_gettemp15hm60h(device_t dev, amdsensor_t sensor);
-static int32_t	amdtemp_gettemp17h(device_t dev, amdsensor_t sensor);
+static int32_t	amdtemp_gettemp17to19h(device_t dev, amdsensor_t sensor);
 static void	amdtemp_probe_ccd_sensors17h(device_t dev, uint32_t model);
+static void	amdtemp_probe_ccd_sensors19h(device_t dev, uint32_t model);
 static int	amdtemp_sysctl(SYSCTL_HANDLER_ARGS);
+static void	amdtemp_sensor_task(void *);
 
 static device_method_t amdtemp_methods[] = {
 	/* Device interface */
@@ -295,6 +317,7 @@ amdtemp_probe(device_t dev)
 	case 0x15:
 	case 0x16:
 	case 0x17:
+	case 0x19:
 		break;
 	default:
 		return (ENXIO);
@@ -408,6 +431,7 @@ amdtemp_attach(device_t dev)
 		 * There are two sensors per core.
 		 */
 		sc->sc_ntemps = 2;
+		sc->sc_ccd_display = 0;
 
 		sc->sc_gettemp = amdtemp_gettemp0f;
 		break;
@@ -439,6 +463,7 @@ amdtemp_attach(device_t dev)
 	case 0x15:
 	case 0x16:
 		sc->sc_ntemps = 1;
+		sc->sc_ccd_display = 1;
 		/*
 		 * Some later (60h+) models of family 15h use a similar SMN
 		 * network as family 17h.  (However, the register index differs
@@ -452,8 +477,11 @@ amdtemp_attach(device_t dev)
 			sc->sc_gettemp = amdtemp_gettemp;
 		break;
 	case 0x17:
+	case 0x18:
+	case 0x19:
 		sc->sc_ntemps = 1;
-		sc->sc_gettemp = amdtemp_gettemp17h;
+		sc->sc_ccd_display = 1;
+		sc->sc_gettemp = amdtemp_gettemp17to19h;
 		needsmn = true;
 		break;
 	default:
@@ -471,7 +499,11 @@ amdtemp_attach(device_t dev)
 		}
 	}
 
-	/* Find number of cores per package. */
+	/*
+	 * Find number of cores per package.  XXX this does not work
+	 * properly, it appears to be calculating the total number of cores.
+	 */
+
 	sc->sc_ncores = (amd_feature2 & AMDID2_CMP) != 0 ?
 	    (cpu_procinfo2 & AMDID_CMP_CORES) + 1 : 1;
 	if (sc->sc_ncores > MAXCPU)
@@ -508,8 +540,14 @@ amdtemp_attach(device_t dev)
 	    dev, CORE0_SENSOR0, amdtemp_sysctl, "IK",
 	    "Core 0 / Sensor 0 temperature");
 
+	sc->sc_probed_regmask |= 1U << CORE0_SENSOR0;
+
 	if (family == 0x17)
 		amdtemp_probe_ccd_sensors17h(dev, model);
+	else if (family == 0x18)
+		amdtemp_probe_ccd_sensors19h(dev, model);
+	else if (family == 0x19)
+		amdtemp_probe_ccd_sensors19h(dev, model);
 	else if (sc->sc_ntemps > 1) {
 		SYSCTL_ADD_PROC(sysctlctx,
 		    SYSCTL_CHILDREN(sysctlnode),
@@ -517,6 +555,8 @@ amdtemp_attach(device_t dev)
 		    CTLTYPE_INT | CTLFLAG_RD,
 		    dev, CORE0_SENSOR1, amdtemp_sysctl, "IK",
 		    "Core 0 / Sensor 1 temperature");
+
+		sc->sc_probed_regmask |= 1U << CORE0_SENSOR1;
 
 		if (sc->sc_ncores > 1) {
 			sysctlnode = SYSCTL_ADD_NODE(sysctlctx,
@@ -537,6 +577,9 @@ amdtemp_attach(device_t dev)
 			    CTLTYPE_INT | CTLFLAG_RD,
 			    dev, CORE1_SENSOR1, amdtemp_sysctl, "IK",
 			    "Core 1 / Sensor 1 temperature");
+
+			sc->sc_probed_regmask |= 1U << CORE1_SENSOR0;
+			sc->sc_probed_regmask |= 1U << CORE1_SENSOR1;
 		}
 	}
 
@@ -565,8 +608,11 @@ amdtemp_intrhook(void *arg)
 	device_t acpi, cpu, nexus;
 	amdsensor_t sensor;
 	int i;
+	int j;
 
 	sc = device_get_softc(dev);
+	if (sc->sc_ich.ich_arg == NULL)
+		return;
 
 	/*
 	 * dev.cpu.N.temperature.
@@ -592,8 +638,92 @@ amdtemp_intrhook(void *arg)
 			    "Current temparature");
 		}
 	}
-	if (sc->sc_ich.ich_arg != NULL)
-		config_intrhook_disestablish(&sc->sc_ich);
+	config_intrhook_disestablish(&sc->sc_ich);
+
+	/*
+	 * sensor infrastructure.  Use [ncpus] for globally shared sensors
+	 */
+	sc->sc_sensorcpus = kmalloc(sizeof(*sc->sc_sensorcpus) *
+				   (sc->sc_ncores + 1),
+				   M_DEVBUF, M_WAITOK | M_ZERO);
+
+	for (i = 0; i <= sc->sc_ncores; i++) {
+		struct sensorcpu *scpu = &sc->sc_sensorcpus[i];
+
+		if (i == 0)
+			scpu->regmask = sc->sc_probed_regmask & 0x0003U;
+		else if (i == 1)
+			scpu->regmask = sc->sc_probed_regmask & 0x000CU;
+		else if (i != sc->sc_ncores)
+			scpu->regmask = 0;
+		else
+			scpu->regmask = sc->sc_probed_regmask & ~0xFU;
+		kprintf("NCORES %d/%d %08x\n", i, sc->sc_ncores, scpu->regmask);
+
+		if (scpu->regmask == 0)
+			continue;
+
+		if (sc->sc_ccd_display) {
+			ksnprintf(scpu->sensordev.xname,
+				  sizeof(scpu->sensordev.xname),
+				  "die%d", device_get_unit(dev));
+		} else {
+			ksnprintf(scpu->sensordev.xname,
+				  sizeof(scpu->sensordev.xname),
+				  "cpu%d", i);
+		}
+
+		scpu->dev = dev;
+		scpu->sc = sc;
+		scpu->sensors = kmalloc(sizeof(*scpu->sensors) * MAXSENSORS,
+					M_DEVBUF, M_WAITOK | M_ZERO);
+		for (j = 0; j < MAXSENSORS; ++j) {
+			if ((scpu->regmask & (1U << j)) == 0)
+				continue;
+
+			switch(j) {
+			case CORE0_SENSOR0:
+			case CORE0_SENSOR1:
+			case CORE1_SENSOR0:
+			case CORE1_SENSOR1:
+				if (sc->sc_ccd_display) {
+					ksnprintf(scpu->sensors[j].desc,
+						  sizeof(scpu->sensors[0].desc),
+						  "high temp");
+				} else {
+					ksnprintf(scpu->sensors[j].desc,
+						  sizeof(scpu->sensors[0].desc),
+						  "temp%d", j & 1);
+				}
+				break;
+			case CORE0:
+				ksnprintf(scpu->sensors[j].desc,
+					  sizeof(scpu->sensors[0].desc),
+					  "core0 rollup temp");
+				break;
+			case CORE1:
+				ksnprintf(scpu->sensors[j].desc,
+					  sizeof(scpu->sensors[0].desc),
+					  "core1 rollup temp");
+				break;
+			case CCD_BASE ... CCD_MAX:
+				ksnprintf(scpu->sensors[j].desc,
+					  sizeof(scpu->sensors[0].desc),
+					  "ccd%u temp", j - CCD_BASE);
+				break;
+			}
+			kprintf("sensor desc %s\n", scpu->sensors[j].desc);
+			scpu->sensors[j].type = SENSOR_TEMP;
+			sensor_set_unknown(&scpu->sensors[j]);
+			sensor_attach(&scpu->sensordev, &scpu->sensors[j]);
+		}
+		scpu->senstask = sensor_task_register2(scpu,
+						       amdtemp_sensor_task,
+						       2,
+						       ((i < sc->sc_ncores) ?
+							i : -1));
+		sensordev_install(&scpu->sensordev);
+	}
 }
 
 int
@@ -601,10 +731,36 @@ amdtemp_detach(device_t dev)
 {
 	struct amdtemp_softc *sc = device_get_softc(dev);
 	int i;
+	int j;
 
-	for (i = 0; i < sc->sc_ncores; i++)
+	for (i = 0; i < sc->sc_ncores; i++) {
 		if (sc->sc_sysctl_cpu[i] != NULL)
 			sysctl_remove_oid(sc->sc_sysctl_cpu[i], 1, 0);
+	}
+
+	if (sc->sc_sensorcpus) {
+		for (i = 0; i <= sc->sc_ncores; i++) {
+			struct sensorcpu *scpu = &sc->sc_sensorcpus[i];
+
+			if (scpu->sensors) {
+				for (j = 0; j < MAXSENSORS; ++j) {
+					if ((scpu->regmask & (1U << j)) == 0)
+						continue;
+					sensor_detach(&scpu->sensordev,
+						      &scpu->sensors[j]);
+				}
+				if (scpu->senstask) {
+					sensor_task_unregister2(scpu->senstask);
+					scpu->senstask = NULL;
+				}
+				sensordev_deinstall(&scpu->sensordev);
+				kfree(scpu->sensors, M_DEVBUF);
+				scpu->sensors = NULL;
+			}
+		}
+		kfree(sc->sc_sensorcpus, M_DEVBUF);
+		sc->sc_sensorcpus = NULL;
+	}
 
 	/* NewBus removes the dev.amdtemp.N tree by itself. */
 
@@ -748,7 +904,7 @@ amdtemp_gettemp15hm60h(device_t dev, amdsensor_t sensor)
 }
 
 static int32_t
-amdtemp_gettemp17h(device_t dev, amdsensor_t sensor)
+amdtemp_gettemp17to19h(device_t dev, amdsensor_t sensor)
 {
 	struct amdtemp_softc *sc = device_get_softc(dev);
 	uint32_t val;
@@ -813,5 +969,72 @@ amdtemp_probe_ccd_sensors17h(device_t dev, uint32_t model)
 		    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
 		    sensor_name, CTLTYPE_INT | CTLFLAG_RD,
 		    dev, CCD_BASE + i, amdtemp_sysctl, "IK", sensor_descr);
+
+		sc->sc_probed_regmask |= 1U << (CCD_BASE + i);
+	}
+}
+
+static void
+amdtemp_probe_ccd_sensors19h(device_t dev, uint32_t model)
+{
+	char sensor_name[16], sensor_descr[32];
+	struct amdtemp_softc *sc;
+	uint32_t maxreg, i, val;
+	int error;
+
+        switch (model) {
+        case 0x00 ... 0x0f: /* Zen3 EPYC "Milan" */
+        case 0x20 ... 0x2f: /* Zen3 Ryzen "Vermeer" */
+                maxreg = 8;
+                _Static_assert((int)NUM_CCDS >= 8, "");
+                break;
+        default:
+                device_printf(dev,
+                    "Unrecognized Family 19h Model: %02xh\n", model);
+                return;
+        }
+
+	sc = device_get_softc(dev);
+	for (i = 0; i < maxreg; i++) {
+		error = amdsmn_read(sc->sc_smn, AMDTEMP_17H_CCD_TMP_BASE +
+		    (i * sizeof(val)), &val);
+		if (error != 0)
+			continue;
+		if ((val & AMDTEMP_17H_CCD_TMP_VALID) == 0)
+			continue;
+
+		ksnprintf(sensor_name, sizeof(sensor_name), "ccd%u", i);
+		ksnprintf(sensor_descr, sizeof(sensor_descr),
+		    "CCD %u temperature (Tccd%u)", i, i);
+
+		SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
+		    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
+		    sensor_name, CTLTYPE_INT | CTLFLAG_RD,
+		    dev, CCD_BASE + i, amdtemp_sysctl, "IK", sensor_descr);
+
+		sc->sc_probed_regmask |= 1U << (CCD_BASE + i);
+	}
+}
+
+static void
+amdtemp_sensor_task(void *sc_arg)
+{
+	struct sensorcpu *scpu = sc_arg;
+	struct amdtemp_softc *sc;
+	uint32_t mask;
+	int32_t temp;
+	int j;
+
+	sc = scpu->sc;
+	if (sc->sc_ich.ich_arg == NULL)
+		return;
+	mask = scpu->regmask;
+
+	for (j = 0; mask; ++j) {
+		if ((mask & (1U << j)) == 0)
+			continue;
+		temp = sc->sc_gettemp(scpu->dev, j);
+		sensor_set(&scpu->sensors[j], temp * 100000L, 0);
+		mask &= ~(1U << j);
 	}
 }
