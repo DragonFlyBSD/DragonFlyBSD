@@ -506,7 +506,6 @@ TO_REMOVE+=/usr/share/doc/handbook
 TO_REMOVE+=/usr/share/examples/BSD_daemon
 TO_REMOVE+=/usr/share/examples/FreeBSD_version
 TO_REMOVE+=/usr/share/examples/worm
-TO_REMOVE+=/usr/share/examples/tcsh/csh-mode.el
 TO_REMOVE+=/usr/share/man/man5/pbm.5.gz
 TO_REMOVE+=/usr/sbin/wicontrol
 TO_REMOVE+=/usr/share/man/man8/wicontrol.8.gz
