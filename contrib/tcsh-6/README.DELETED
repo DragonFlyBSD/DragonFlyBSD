@@ -137,7 +137,6 @@ config.h.in
 config.sub
 configure
 configure.ac
-csh-mode.el
 cygwin/
 eight-bit.me
 glob.3

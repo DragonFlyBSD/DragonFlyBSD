@@ -65,7 +65,7 @@ CLEANFILES= ${GENHDRS} csh.1
 
 .if !defined(NO_SHARE)
 FILESDIR= ${SHAREDIR}/examples/tcsh
-FILES= complete.tcsh
+FILES= complete.tcsh csh-mode.el
 
 CATALOGS=	et:et_EE.ISO8859-15 \
 		finnish:fi_FI.ISO8859-1 \
