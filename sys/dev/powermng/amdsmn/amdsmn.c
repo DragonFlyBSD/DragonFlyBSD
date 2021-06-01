@@ -188,7 +188,6 @@ amdsmn_probe(device_t dev)
 	switch (family) {
 	case 0x15:
 	case 0x17:
-	case 0x18:
 	case 0x19:
 		break;
 	default:
