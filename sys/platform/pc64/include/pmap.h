@@ -49,15 +49,6 @@
 #include <cpu/pmap.h>
 
 /*
- * Size of Kernel address space.  This is the number of page table pages
- * (2GB each) to use for the kernel.  256 pages == 512 Gigabytes.
- * This **MUST** be a multiple of 4 (eg: 252, 256, 260, etc).
- */
-#ifndef KVA_PAGES
-#define KVA_PAGES	256
-#endif
-
-/*
  * Pte related macros.  This is complicated by having to deal with
  * the sign extension of the 48th bit.
  */
