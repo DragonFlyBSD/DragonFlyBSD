@@ -63,10 +63,10 @@ typedef	__uint64_t	pt_entry_t;
  * Page-directory and page-table entries follow this format, with a few
  * of the fields not present here and there, depending on a lot of things.
  */
-				/* ---- Intel Nomenclature ---- */
+					/* ---- Intel Nomenclature ---- */
 #define	X86_PG_V		0x001	/* P	Valid			*/
 #define	X86_PG_RW		0x002	/* R/W	Read/Write		*/
-#define	X86_PG_U		0x004	/* U/S  User/Supervisor		*/
+#define	X86_PG_U		0x004	/* U/S	User/Supervisor		*/
 #define	X86_PG_NC_PWT		0x008	/* PWT	Write through		*/
 #define	X86_PG_NC_PCD		0x010	/* PCD	Cache disable		*/
 #define	X86_PG_A		0x020	/* A	Accessed		*/
@@ -78,15 +78,35 @@ typedef	__uint64_t	pt_entry_t;
 #define	X86_PG_AVAIL2		0x400	/*   <	programmers use		*/
 #define	X86_PG_AVAIL3		0x800	/*    \				*/
 #define	X86_PG_PDE_PAT		0x1000	/* PAT	PAT index		*/
-#define	X86_PG_NX		(1ul<<63) /* No-execute */
+#define	X86_PG_NX		(1UL << 63) /* No-execute */
 
+/*
+ * Intel Extended Page Table (EPT) bit definitions.
+ */
+#define	EPT_PG_READ		(1UL << 0)	/* R: Read */
+#define	EPT_PG_WRITE		(1UL << 1)	/* W: Write */
+#define	EPT_PG_EXECUTE		(1UL << 2)	/* X: Execute */
+#define	EPT_PG_IGNORE_PAT	(1UL << 6)	/* IPAT: Ignore PAT */
+#define	EPT_PG_PS		(1UL << 7)	/* PS: Page size */
+#define	EPT_PG_A		(1UL << 8)	/* A: Accessed */
+#define	EPT_PG_M		(1UL << 9)	/* D: Dirty */
+#define	EPT_PG_AVAIL1		(1UL << 10)
+#define	EPT_PG_AVAIL2		(1UL << 11)
+#define	EPT_PG_AVAIL3		(1UL << 52)
+	/* Memory Type (MT) definitions */
+#define	EPT_MEM_TYPE_UC		(0UL << 3)	/* Uncacheable */
+#define	EPT_MEM_TYPE_WC		(1UL << 3)	/* Write combining */
+#define	EPT_MEM_TYPE_WT		(4UL << 3)	/* Write through */
+#define	EPT_MEM_TYPE_WP		(5UL << 3)	/* Write protected */
+#define	EPT_MEM_TYPE_WB		(6UL << 3)	/* Write back */
+#define	EPT_MEM_TYPE_MASK	(7UL << 3)
 
 /* Our various interpretations of the above */
 //#define PG_W		PG_AVAIL1	/* "Wired" pseudoflag */
 //#define	PG_MANAGED	PG_AVAIL2
 //#define	PG_DEVICE	PG_AVAIL3
-#define	PG_FRAME	(0x000ffffffffff000ul)
-#define	PG_PS_FRAME	(0x000fffffffe00000ul)
+#define	PG_FRAME	(0x000ffffffffff000UL)
+#define	PG_PS_FRAME	(0x000fffffffe00000UL)
 //#define	PG_PROT		(PG_RW|PG_U)	/* all protection bits . */
 //#define PG_N		(PG_NC_PWT|PG_NC_PCD)	/* Non-cacheable */
 
@@ -98,10 +118,10 @@ typedef	__uint64_t	pt_entry_t;
 #define	PG_PTE_PROMOTE	(PG_NX | PG_MANAGED | PG_W | PG_G | PG_PTE_PAT | \
 	    PG_M | PG_A | PG_NC_PCD | PG_NC_PWT | PG_U | PG_RW | PG_V)
 */
+
 /*
  * Page Protection Exception bits
  */
-
 #define PGEX_P		0x01	/* Protection violation vs. not present */
 #define PGEX_W		0x02	/* during a Write cycle */
 #define PGEX_U		0x04	/* access from User mode (UPL) */
