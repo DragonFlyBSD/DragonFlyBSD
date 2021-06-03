@@ -1980,7 +1980,7 @@ pmap_kremove_quick(vm_offset_t va)
 	pt_entry_t *ptep;
 
 	ptep = vtopte(va);
-	(void)pte_load_clear(ptep);
+	atomic_readandclear_long(ptep);
 	cpu_invlpg((void *)va);
 }
 
@@ -1995,7 +1995,7 @@ pmap_kremove_noinval(vm_offset_t va)
 	pt_entry_t *ptep;
 
 	ptep = vtopte(va);
-	(void)pte_load_clear(ptep);
+	atomic_readandclear_long(ptep);
 }
 
 /*
@@ -2172,7 +2172,7 @@ pmap_qremove(vm_offset_t beg_va, int count)
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
-		(void)pte_load_clear(pte);
+		atomic_readandclear_long(pte);
 		cpu_invlpg((void *)va);
 	}
 	pmap_invalidate_range(kernel_pmap, beg_va, end_va);
@@ -2195,7 +2195,7 @@ pmap_qremove_quick(vm_offset_t beg_va, int count)
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
-		(void)pte_load_clear(pte);
+		atomic_readandclear_long(pte);
 		cpu_invlpg((void *)va);
 	}
 }
@@ -2220,7 +2220,7 @@ pmap_qremove_noinval(vm_offset_t beg_va, int count)
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
-		(void)pte_load_clear(pte);
+		atomic_readandclear_long(pte);
 	}
 }
 

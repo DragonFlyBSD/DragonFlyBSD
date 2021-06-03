@@ -117,8 +117,6 @@
 #include <machine/param.h>
 #endif
 
-#define	pte_load_clear(pte)	atomic_readandclear_long(pte)
-
 /*
  * Pmap stuff
  */

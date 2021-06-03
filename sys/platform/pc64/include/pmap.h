@@ -186,8 +186,6 @@ extern uint64_t KPDPphys;	/* phys addr of kernel level 3 */
 extern uint64_t KPML4phys;	/* physical address of kernel level 4 */
 #endif
 
-#define	pte_load_clear(pte)	atomic_readandclear_long(pte)
-
 /*
  * Pmap stuff
  */
