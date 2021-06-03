@@ -240,6 +240,8 @@ void		 pmap_object_free(vm_object_t object);
 void		 smap_smep_disable(void);
 void		 smap_smep_enable(void);
 
+#define	vtophys(va)	pmap_kextract(((vm_offset_t)(va)))
+#define	vtophys_pte(va)	((pt_entry_t)pmap_kextract(((vm_offset_t)(va))))
 
 #endif /* _KERNEL */
 

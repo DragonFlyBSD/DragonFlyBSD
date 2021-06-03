@@ -117,16 +117,6 @@
 #include <machine/param.h>
 #endif
 
-#ifdef _KERNEL
-
-/*
- * XXX
- */
-#define	vtophys(va)	pmap_kextract(((vm_offset_t)(va)))
-#define	vtophys_pte(va)	((pt_entry_t)pmap_kextract(((vm_offset_t)(va))))
-
-#endif
-
 #define	pte_load_clear(pte)	atomic_readandclear_long(pte)
 
 /*
