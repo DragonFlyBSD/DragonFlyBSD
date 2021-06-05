@@ -50,11 +50,38 @@
 #include "vmm_utils.h"
 #include "vmm.h"
 
-static uint64_t pmap_bits_ept[PG_BITS_SIZE];
-static pt_entry_t pmap_cache_bits_ept[PAT_INDEX_SIZE];
-static uint64_t ept_protection_codes[PROTECTION_CODES_SIZE];
-static pt_entry_t pmap_cache_mask_ept;
+/*
+ * PG_* bits for EPT pmap.
+ * - for PG_V - set READ and EXECUTE to preserve compatibility
+ * - for PG_U and PG_G - set 0 to preserve compatiblity
+ * - for PG_N - set the Uncacheable bit
+ */
+static uint64_t pmap_bits_ept[PG_BITS_SIZE] = {
+	[TYPE_IDX]	= EPT_PMAP,
+	[PG_V_IDX]	= EPT_PG_READ | EPT_PG_EXECUTE,
+	[PG_RW_IDX]	= EPT_PG_WRITE,
+	[PG_U_IDX]	= 0,
+	[PG_A_IDX]	= EPT_PG_A,
+	[PG_M_IDX]	= EPT_PG_M,
+	[PG_PS_IDX]	= EPT_PG_PS,
+	[PG_G_IDX]	= 0,
+	[PG_W_IDX]	= EPT_PG_AVAIL1,
+	[PG_MANAGED_IDX] = EPT_PG_AVAIL2,
+	[PG_N_IDX]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_UC,
+	[PG_NX_IDX]	= 0,	/* XXX inverted sense */
+};
 
+static pt_entry_t pmap_cache_bits_ept[PAT_INDEX_SIZE] = {
+	[PAT_UNCACHEABLE]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_UC,
+	[PAT_WRITE_COMBINING]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WC,
+	[PAT_WRITE_THROUGH]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WT,
+	[PAT_WRITE_PROTECTED]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WP,
+	[PAT_WRITE_BACK]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WB,
+	[PAT_UNCACHED]		= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_UC,
+};
+
+static uint64_t protection_codes_ept[PROTECTION_CODES_SIZE];
+static pt_entry_t pmap_cache_mask_ept = EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_MASK;
 static int pmap_pm_flags_ept = PMAP_HVM;
 static int eptp_bits;
 
@@ -62,12 +89,9 @@ int
 vmx_ept_init(void)
 {
 	int prot;
-	/* Chapter 28 VMX SUPPORT FOR ADDRESS TRANSLATION
-	 * Intel Manual 3c, page 107
-	 */
 	vmx_ept_vpid_cap = rdmsr(IA32_VMX_EPT_VPID_CAP);
 
-	if(!EPT_PWL4(vmx_ept_vpid_cap)||
+	if (!EPT_PWL4(vmx_ept_vpid_cap) ||
 	    !EPT_MEMORY_TYPE_WB(vmx_ept_vpid_cap)) {
 		return EINVAL;
 	}
@@ -81,48 +105,19 @@ vmx_ept_init(void)
 		pmap_pm_flags_ept |= PMAP_EMULATE_AD_BITS;
 	}
 
-	/* Initialize EPT bits
-	 * - for PG_V - set READ and EXECUTE to preserve compatibility
-	 * - for PG_U and PG_G - set 0 to preserve compatiblity
-	 * - for PG_N - set the Uncacheable bit
-	 */
-	pmap_bits_ept[TYPE_IDX] = EPT_PMAP;
-	pmap_bits_ept[PG_V_IDX] = EPT_PG_READ | EPT_PG_EXECUTE;
-	pmap_bits_ept[PG_RW_IDX] = EPT_PG_WRITE;
-	pmap_bits_ept[PG_PS_IDX] = EPT_PG_PS;
-	pmap_bits_ept[PG_G_IDX] = 0;
-	pmap_bits_ept[PG_U_IDX] = 0;
-	pmap_bits_ept[PG_A_IDX] = EPT_PG_A;
-	pmap_bits_ept[PG_M_IDX] = EPT_PG_M;
-	pmap_bits_ept[PG_W_IDX] = EPT_PG_AVAIL1;
-	pmap_bits_ept[PG_MANAGED_IDX] = EPT_PG_AVAIL2;
-	pmap_bits_ept[PG_UNUSED10_IDX] = EPT_PG_AVAIL3;
-	pmap_bits_ept[PG_N_IDX] = EPT_IGNORE_PAT | EPT_MEM_TYPE_UC;
-	pmap_bits_ept[PG_NX_IDX] = 0;	/* XXX inverted sense */
-
-	pmap_cache_mask_ept = EPT_IGNORE_PAT | EPT_MEM_TYPE_MASK;
-
-	pmap_cache_bits_ept[PAT_UNCACHEABLE] = EPT_IGNORE_PAT | EPT_MEM_TYPE_UC;
-	pmap_cache_bits_ept[PAT_WRITE_COMBINING] = EPT_IGNORE_PAT | EPT_MEM_TYPE_WC;
-	pmap_cache_bits_ept[PAT_WRITE_THROUGH] = EPT_IGNORE_PAT | EPT_MEM_TYPE_WT;
-	pmap_cache_bits_ept[PAT_WRITE_PROTECTED] = EPT_IGNORE_PAT | EPT_MEM_TYPE_WP;
-	pmap_cache_bits_ept[PAT_WRITE_BACK] = EPT_IGNORE_PAT | EPT_MEM_TYPE_WB;
-	pmap_cache_bits_ept[PAT_UNCACHED] = EPT_IGNORE_PAT | EPT_MEM_TYPE_UC;
-
 	for (prot = 0; prot < PROTECTION_CODES_SIZE; prot++) {
 		switch (prot) {
 		case VM_PROT_NONE | VM_PROT_NONE | VM_PROT_NONE:
 		case VM_PROT_READ | VM_PROT_NONE | VM_PROT_NONE:
 		case VM_PROT_READ | VM_PROT_NONE | VM_PROT_EXECUTE:
 		case VM_PROT_NONE | VM_PROT_NONE | VM_PROT_EXECUTE:
-			ept_protection_codes[prot] = 0;
+			protection_codes_ept[prot] = 0;
 			break;
 		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_NONE:
 		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_EXECUTE:
 		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_NONE:
 		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE:
-			ept_protection_codes[prot] = pmap_bits_ept[PG_RW_IDX];
-
+			protection_codes_ept[prot] = pmap_bits_ept[PG_RW_IDX];
 			break;
 		}
 	}
@@ -583,8 +578,8 @@ vmx_ept_pmap_pinit(pmap_t pmap)
 	pmap->pm_flags |= pmap_pm_flags_ept;
 
 	bcopy(pmap_bits_ept, pmap->pmap_bits, sizeof(pmap_bits_ept));
-	bcopy(ept_protection_codes, pmap->protection_codes,
-	      sizeof(ept_protection_codes));
+	bcopy(protection_codes_ept, pmap->protection_codes,
+	      sizeof(protection_codes_ept));
 	bcopy(pmap_cache_bits_ept, pmap->pmap_cache_bits_pte,
 	      sizeof(pmap_cache_bits_ept));
 	bcopy(pmap_cache_bits_ept, pmap->pmap_cache_bits_pde,
