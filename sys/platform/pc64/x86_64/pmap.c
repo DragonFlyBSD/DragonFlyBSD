@@ -510,38 +510,49 @@ pmap_pml4_pindex(void)
 }
 
 /*
- * Return various clipped indexes for a given VA
+ * Return various *clipped* indexes for a given VA.
  *
- * Returns the index of a pt in a page directory, representing a page
- * table.
+ * Returns the index of a PTE in a page table (PT), representing
+ * a terminal page.
+ */
+static __inline
+vm_pindex_t
+pmap_pte_index(vm_offset_t va)
+{
+	return ((va >> PAGE_SHIFT) & ((1UL << NPTEPGSHIFT) - 1));
+}
+
+/*
+ * Returns the index of a PDE in a page directory (PD) table, representing
+ * a page table (PT).
  */
 static __inline
 vm_pindex_t
 pmap_pt_index(vm_offset_t va)
 {
-	return ((va >> PDRSHIFT) & ((1ul << NPDEPGSHIFT) - 1));
+	return ((va >> PDRSHIFT) & ((1UL << NPDEPGSHIFT) - 1));
 }
 
 /*
- * Returns the index of a pd in a page directory page, representing a page
- * directory.
+ * Returns the index of a PDPE in a page directory pointer (PDP) table,
+ * representing a page directory (PD) table.
  */
 static __inline
 vm_pindex_t
 pmap_pd_index(vm_offset_t va)
 {
-	return ((va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1));
+	return ((va >> PDPSHIFT) & ((1UL << NPDPEPGSHIFT) - 1));
 }
 
 /*
- * Returns the index of a pdp in the pml4 table, representing a page
- * directory page.
+ * Returns the index of a PML4E in the PML4 table, representing a page
+ * directory pointer (PDP) table.
  */
 static __inline
 vm_pindex_t
 pmap_pdp_index(vm_offset_t va)
 {
-	return ((va >> PML4SHIFT) & ((1ul << NPML4EPGSHIFT) - 1));
+	return ((va >> PML4SHIFT) & ((1UL << NPML4EPGSHIFT) - 1));
 }
 
 /*
