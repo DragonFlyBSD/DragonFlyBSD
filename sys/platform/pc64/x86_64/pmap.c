@@ -274,23 +274,21 @@ static pt_entry_t *msgbufmap, *ptmmap;
 struct msgbuf *msgbufp=NULL;
 
 /*
- * PMAP default PG_* bits. Needed to be able to add
- * EPT/NPT pagetable pmap_bits for the VMM module
+ * PG_* bits for regular (x86) pmap.
  */
-__read_frequently static uint64_t pmap_bits_default[] = {
-		REGULAR_PMAP,			/* TYPE_IDX		0 */
-		X86_PG_V,			/* PG_V_IDX		1 */
-		X86_PG_RW,			/* PG_RW_IDX		2 */
-		X86_PG_U,			/* PG_U_IDX		3 */
-		X86_PG_A,			/* PG_A_IDX		4 */
-		X86_PG_M,			/* PG_M_IDX		5 */
-		X86_PG_PS,			/* PG_PS_IDX3		6 */
-		X86_PG_G,			/* PG_G_IDX		7 */
-		X86_PG_AVAIL1,			/* PG_AVAIL1_IDX	8 */
-		X86_PG_AVAIL2,			/* PG_AVAIL2_IDX	9 */
-		X86_PG_AVAIL3,			/* PG_AVAIL3_IDX	10 */
-		X86_PG_NC_PWT | X86_PG_NC_PCD,	/* PG_N_IDX		11 */
-		X86_PG_NX,			/* PG_NX_IDX		12 */
+__read_frequently static uint64_t pmap_bits_default[PG_BITS_SIZE] = {
+	[TYPE_IDX]	= REGULAR_PMAP,
+	[PG_V_IDX]	= X86_PG_V,
+	[PG_RW_IDX]	= X86_PG_RW,
+	[PG_U_IDX]	= X86_PG_U,
+	[PG_A_IDX]	= X86_PG_A,
+	[PG_M_IDX]	= X86_PG_M,
+	[PG_PS_IDX]	= X86_PG_PS,
+	[PG_G_IDX]	= X86_PG_G,
+	[PG_W_IDX]	= X86_PG_AVAIL1,
+	[PG_MANAGED_IDX] = X86_PG_AVAIL2,
+	[PG_N_IDX]	= X86_PG_NC_PWT | X86_PG_NC_PCD,
+	[PG_NX_IDX]	= X86_PG_NX,
 };
 
 /*

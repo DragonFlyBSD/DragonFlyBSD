@@ -235,28 +235,29 @@ struct pv_entry_rb_tree;
 RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
 	      pv_entry_compare, vm_pindex_t);
 
-/* Types of PMAP (regular, EPT Intel, NPT Amd) */
-#define	REGULAR_PMAP		0
-#define	EPT_PMAP		1
+/* Types of pmap */
+#define	REGULAR_PMAP		0	/* Regular x86 */
+#define	EPT_PMAP		1	/* Intel EPT */
 
 /* Bits indexes in pmap_bits */
-#define	TYPE_IDX		0
-#define	PG_V_IDX		1
-#define	PG_RW_IDX		2
-#define	PG_U_IDX		3
-#define	PG_A_IDX		4
-#define	PG_M_IDX		5
-#define	PG_PS_IDX		6
-#define	PG_G_IDX		7
-#define	PG_W_IDX		8
-#define	PG_MANAGED_IDX		9
-#define	PG_UNUSED10_IDX		10
-#define	PG_N_IDX		11
-#define	PG_NX_IDX		12
-#define	PG_BITS_SIZE		13
+enum {
+	TYPE_IDX = 0,		/* Pmap type */
+	PG_V_IDX,		/* Valid */
+	PG_RW_IDX,		/* Read/Write */
+	PG_U_IDX,		/* User/Supervisor */
+	PG_A_IDX,		/* Accessed */
+	PG_M_IDX,		/* Modified/Dirty */
+	PG_PS_IDX,		/* Page size */
+	PG_G_IDX,		/* Global */
+	PG_W_IDX,		/* Wired */
+	PG_MANAGED_IDX,		/* Managed */
+	PG_N_IDX,		/* Non-cacheable */
+	PG_NX_IDX,		/* Non-execute */
+	PG_BITS_SIZE,
+};
 
 #define PROTECTION_CODES_SIZE	8
-#define PAT_INDEX_SIZE  	8
+#define PAT_INDEX_SIZE		8
 
 #define PM_PLACEMARKS		64		/* 16 @ 4 zones */
 #define PM_NOPLACEMARK		((vm_pindex_t)-1)
