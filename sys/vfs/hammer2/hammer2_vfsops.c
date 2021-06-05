@@ -58,8 +58,6 @@
 
 #include "zlib/hammer2_zlib.h"
 
-MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
-
 TAILQ_HEAD(hammer2_mntlist, hammer2_dev);
 static struct hammer2_mntlist hammer2_mntlist;
 
