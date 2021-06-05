@@ -60,12 +60,6 @@
 
 MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
 
-struct hammer2_sync_info {
-	int error;
-	int waitfor;
-	int pass;
-};
-
 TAILQ_HEAD(hammer2_mntlist, hammer2_dev);
 static struct hammer2_mntlist hammer2_mntlist;
 
@@ -2463,7 +2457,6 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 {
 	struct mount *mp;
 	/*hammer2_xop_flush_t *xop;*/
-	/*struct hammer2_sync_info info;*/
 	hammer2_inode_t *ip;
 	hammer2_depend_t *depend;
 	hammer2_depend_t *depend_next;
