@@ -2508,6 +2508,73 @@ pmap_pinit2(struct pmap *pmap)
 }
 
 /*
+ * Transform an initialized pmap for Intel EPT.
+ */
+void
+pmap_ept_transform(pmap_t pmap, int flags)
+{
+	uint64_t pmap_bits_ept[PG_BITS_SIZE] = {
+		[TYPE_IDX]	= EPT_PMAP,
+		[PG_V_IDX]	= EPT_PG_READ | EPT_PG_EXECUTE,
+		[PG_RW_IDX]	= EPT_PG_WRITE,
+		[PG_U_IDX]	= 0, /* no support in EPT */
+		[PG_A_IDX]	= EPT_PG_A,
+		[PG_M_IDX]	= EPT_PG_M,
+		[PG_PS_IDX]	= EPT_PG_PS,
+		[PG_G_IDX]	= 0, /* no support in EPT */
+		[PG_W_IDX]	= EPT_PG_AVAIL1,
+		[PG_MANAGED_IDX] = EPT_PG_AVAIL2,
+		[PG_N_IDX]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_UC,
+		[PG_NX_IDX]	= 0, /* no support in EPT */
+	};
+	uint64_t protection_codes_ept[PROTECTION_CODES_SIZE] = {
+		[VM_PROT_NONE | VM_PROT_NONE  | VM_PROT_NONE   ] = 0,
+		[VM_PROT_READ | VM_PROT_NONE  | VM_PROT_NONE   ] = 0,
+		[VM_PROT_READ | VM_PROT_NONE  | VM_PROT_EXECUTE] = 0,
+		[VM_PROT_NONE | VM_PROT_NONE  | VM_PROT_EXECUTE] = 0,
+		[VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_NONE   ] =
+			pmap_bits_ept[PG_RW_IDX],
+		[VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_EXECUTE] =
+			pmap_bits_ept[PG_RW_IDX],
+		[VM_PROT_READ | VM_PROT_WRITE | VM_PROT_NONE   ] =
+			pmap_bits_ept[PG_RW_IDX],
+		[VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE] =
+			pmap_bits_ept[PG_RW_IDX],
+	};
+	pt_entry_t pmap_cache_bits_ept[PAT_INDEX_SIZE] = {
+		[PAT_UNCACHEABLE]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_UC,
+		[PAT_WRITE_COMBINING]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WC,
+		[PAT_WRITE_THROUGH]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WT,
+		[PAT_WRITE_PROTECTED]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WP,
+		[PAT_WRITE_BACK]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WB,
+		[PAT_UNCACHED]		= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_UC,
+	};
+	pt_entry_t pmap_cache_mask_ept = EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_MASK;
+
+	pmap->pm_flags |= (flags | PMAP_HVM);
+	bcopy(pmap_bits_ept, pmap->pmap_bits, sizeof(pmap_bits_ept));
+	bcopy(protection_codes_ept, pmap->protection_codes,
+	      sizeof(protection_codes_ept));
+	bcopy(pmap_cache_bits_ept, pmap->pmap_cache_bits_pte,
+	      sizeof(pmap_cache_bits_ept));
+	bcopy(pmap_cache_bits_ept, pmap->pmap_cache_bits_pde,
+	      sizeof(pmap_cache_bits_ept));
+	pmap->pmap_cache_mask_pte = pmap_cache_mask_ept;
+	pmap->pmap_cache_mask_pde = pmap_cache_mask_ept;
+
+	/*
+	 * Zero out page directories.  These are only used by the VM.  Note
+	 * that the valid area is two pages if there is a pm_pmlpv_iso PTE
+	 * installed, otherwise it is only one page.  The ISO page isn't used
+	 * either way but clean it out anyway if it exists.
+	 */
+	if (pmap->pm_pmlpv_iso != NULL)
+		bzero(pmap->pm_pml4, PAGE_SIZE * 2);
+	else
+		bzero(pmap->pm_pml4, PAGE_SIZE);
+}
+
+/*
  * This routine is called when various levels in the page table need to
  * be populated.  This routine cannot fail.
  *
