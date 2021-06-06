@@ -42,6 +42,7 @@
 #include <machine/cpufunc.h>
 #include <machine/vmm.h>
 
+#include <vm/pmap.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_map.h>
 
@@ -50,45 +51,12 @@
 #include "vmm_utils.h"
 #include "vmm.h"
 
-/*
- * PG_* bits for EPT pmap.
- * - for PG_V - set READ and EXECUTE to preserve compatibility
- * - for PG_U and PG_G - set 0 to preserve compatiblity
- * - for PG_N - set the Uncacheable bit
- */
-static uint64_t pmap_bits_ept[PG_BITS_SIZE] = {
-	[TYPE_IDX]	= EPT_PMAP,
-	[PG_V_IDX]	= EPT_PG_READ | EPT_PG_EXECUTE,
-	[PG_RW_IDX]	= EPT_PG_WRITE,
-	[PG_U_IDX]	= 0,
-	[PG_A_IDX]	= EPT_PG_A,
-	[PG_M_IDX]	= EPT_PG_M,
-	[PG_PS_IDX]	= EPT_PG_PS,
-	[PG_G_IDX]	= 0,
-	[PG_W_IDX]	= EPT_PG_AVAIL1,
-	[PG_MANAGED_IDX] = EPT_PG_AVAIL2,
-	[PG_N_IDX]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_UC,
-	[PG_NX_IDX]	= 0,	/* XXX inverted sense */
-};
-
-static pt_entry_t pmap_cache_bits_ept[PAT_INDEX_SIZE] = {
-	[PAT_UNCACHEABLE]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_UC,
-	[PAT_WRITE_COMBINING]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WC,
-	[PAT_WRITE_THROUGH]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WT,
-	[PAT_WRITE_PROTECTED]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WP,
-	[PAT_WRITE_BACK]	= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_WB,
-	[PAT_UNCACHED]		= EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_UC,
-};
-
-static uint64_t protection_codes_ept[PROTECTION_CODES_SIZE];
-static pt_entry_t pmap_cache_mask_ept = EPT_PG_IGNORE_PAT | EPT_MEM_TYPE_MASK;
-static int pmap_pm_flags_ept = PMAP_HVM;
-static int eptp_bits;
+static int pmap_pm_flags_ept = 0;
+static int eptp_bits = 0;
 
 int
 vmx_ept_init(void)
 {
-	int prot;
 	vmx_ept_vpid_cap = rdmsr(IA32_VMX_EPT_VPID_CAP);
 
 	if (!EPT_PWL4(vmx_ept_vpid_cap) ||
@@ -103,23 +71,6 @@ vmx_ept_init(void)
 		eptp_bits |= EPTP_AD_ENABLE;
 	} else {
 		pmap_pm_flags_ept |= PMAP_EMULATE_AD_BITS;
-	}
-
-	for (prot = 0; prot < PROTECTION_CODES_SIZE; prot++) {
-		switch (prot) {
-		case VM_PROT_NONE | VM_PROT_NONE | VM_PROT_NONE:
-		case VM_PROT_READ | VM_PROT_NONE | VM_PROT_NONE:
-		case VM_PROT_READ | VM_PROT_NONE | VM_PROT_EXECUTE:
-		case VM_PROT_NONE | VM_PROT_NONE | VM_PROT_EXECUTE:
-			protection_codes_ept[prot] = 0;
-			break;
-		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_NONE:
-		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_EXECUTE:
-		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_NONE:
-		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE:
-			protection_codes_ept[prot] = pmap_bits_ept[PG_RW_IDX];
-			break;
-		}
 	}
 
 	return 0;
@@ -575,17 +526,8 @@ done:
 void
 vmx_ept_pmap_pinit(pmap_t pmap)
 {
-	pmap->pm_flags |= pmap_pm_flags_ept;
+	pmap_ept_transform(pmap, pmap_pm_flags_ept);
 
-	bcopy(pmap_bits_ept, pmap->pmap_bits, sizeof(pmap_bits_ept));
-	bcopy(protection_codes_ept, pmap->protection_codes,
-	      sizeof(protection_codes_ept));
-	bcopy(pmap_cache_bits_ept, pmap->pmap_cache_bits_pte,
-	      sizeof(pmap_cache_bits_ept));
-	bcopy(pmap_cache_bits_ept, pmap->pmap_cache_bits_pde,
-	      sizeof(pmap_cache_bits_ept));
-	pmap->pmap_cache_mask_pte = pmap_cache_mask_ept;
-	pmap->pmap_cache_mask_pde = pmap_cache_mask_ept;
 	pmap->copyinstr = ept_copyinstr;
 	pmap->copyin = ept_copyin;
 	pmap->copyout = ept_copyout;
