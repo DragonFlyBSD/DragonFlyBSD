@@ -1567,7 +1567,7 @@ lwp_signotify_remote(void *arg)
  * Caller must hold p->p_token
  */
 void
-proc_stop(struct proc *p, int sig)
+proc_stop(struct proc *p, int stat)
 {
 	struct proc *q;
 	struct lwp *lp;
@@ -1577,7 +1577,7 @@ proc_stop(struct proc *p, int sig)
 	/*
 	 * If somebody raced us, be happy with it.  SCORE overrides SSTOP.
 	 */
-	if (sig == SCORE) {
+	if (stat == SCORE) {
 		if (p->p_stat == SCORE || p->p_stat == SZOMB)
 			return;
 	} else {
@@ -1586,7 +1586,7 @@ proc_stop(struct proc *p, int sig)
 			return;
 		}
 	}
-	p->p_stat = sig;
+	p->p_stat = stat;
 
 	FOREACH_LWP_IN_PROC(lp, p) {
 		LWPHOLD(lp);
@@ -1649,13 +1649,13 @@ proc_stop(struct proc *p, int sig)
  * Caller must hold p_token
  */
 void
-proc_unstop(struct proc *p, int sig)
+proc_unstop(struct proc *p, int stat)
 {
 	struct lwp *lp;
 
 	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
 
-	if (p->p_stat != sig)
+	if (p->p_stat != stat)
 		return;
 
 	p->p_stat = SACTIVE;
