@@ -29,6 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -63,8 +64,9 @@ toyvirt_mem_add(struct nvmm_machine *mach, gpaddr_t gpa, size_t size)
 	uintptr_t hva;
 	void *buf;
 
-	buf = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE,
-	    -1, 0);
+	assert(size > 0);
+
+	buf = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
 	if (buf == MAP_FAILED)
 		err(EXIT_FAILURE, "mmap");
 

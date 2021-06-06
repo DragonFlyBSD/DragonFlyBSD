@@ -79,6 +79,16 @@ elf_parse(struct nvmm_machine *mach, char *base)
 	phdr = (Elf_Phdr *)((char *)ehdr + ehdr->e_phoff);
 
 	for (i = 0; i < ehdr->e_phnum; i++) {
+		if (phdr[i].p_type != PT_LOAD) {
+			if (phdr[i].p_filesz == 0) {
+				/* Ignore zero-sized GNU_STACK segment
+				 * (found on DragonFly) */
+				continue;
+			} else {
+				errx(EXIT_FAILURE, "unsupported ELF");
+			}
+		}
+
 		hva = toyvirt_mem_add(mach, phdr[i].p_vaddr,
 		    roundup(phdr[i].p_filesz, PAGE_SIZE));
 		memcpy((void *)hva, base + phdr[i].p_offset, phdr[i].p_filesz);
