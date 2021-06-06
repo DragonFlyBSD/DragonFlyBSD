@@ -2575,6 +2575,42 @@ pmap_ept_transform(pmap_t pmap, int flags)
 }
 
 /*
+ * Transform an initialized pmap for AMD NPT/RVI.
+ */
+void
+pmap_npt_transform(pmap_t pmap, int flags)
+{
+	uint64_t protection_codes_npt[PROTECTION_CODES_SIZE] = {
+		[VM_PROT_NONE | VM_PROT_NONE  | VM_PROT_NONE   ] = 0,
+		[VM_PROT_READ | VM_PROT_NONE  | VM_PROT_NONE   ] = 0,
+		[VM_PROT_READ | VM_PROT_NONE  | VM_PROT_EXECUTE] = 0,
+		[VM_PROT_NONE | VM_PROT_NONE  | VM_PROT_EXECUTE] = 0,
+		[VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_NONE   ] =
+			pmap_bits_default[PG_RW_IDX],
+		[VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_EXECUTE] =
+			pmap_bits_default[PG_RW_IDX],
+		[VM_PROT_READ | VM_PROT_WRITE | VM_PROT_NONE   ] =
+			pmap_bits_default[PG_RW_IDX],
+		[VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE] =
+			pmap_bits_default[PG_RW_IDX],
+	};
+
+	pmap->pm_flags |= (flags | PMAP_HVM);
+	pmap->pmap_bits[TYPE_IDX] = NPT_PMAP;
+	/* Set PG_G and PG_NX bits to 0, similar to the EPT case above. */
+	pmap->pmap_bits[PG_G_IDX] = 0;
+	pmap->pmap_bits[PG_NX_IDX] = 0;
+
+	bcopy(protection_codes_npt, pmap->protection_codes,
+	      sizeof(protection_codes_npt));
+
+	if (pmap->pm_pmlpv_iso != NULL)
+		bzero(pmap->pm_pml4, PAGE_SIZE * 2);
+	else
+		bzero(pmap->pm_pml4, PAGE_SIZE);
+}
+
+/*
  * This routine is called when various levels in the page table need to
  * be populated.  This routine cannot fail.
  *

@@ -238,6 +238,7 @@ RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
 /* Types of pmap */
 #define	REGULAR_PMAP		0	/* Regular x86 */
 #define	EPT_PMAP		1	/* Intel EPT */
+#define	NPT_PMAP		2	/* AMD NPT/RVI */
 
 /* Bits indexes in pmap_bits */
 enum {

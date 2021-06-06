@@ -202,6 +202,7 @@ void		 pmap_puninit (pmap_t);
 void		 pmap_pinit0 (pmap_t);
 void		 pmap_pinit2 (pmap_t);
 void		 pmap_ept_transform (pmap_t, int);
+void		 pmap_npt_transform (pmap_t, int);
 void		 pmap_protect (pmap_t, vm_offset_t, vm_offset_t, vm_prot_t);
 void		 pmap_remove_specific (pmap_t, vm_page_t);
 void		 pmap_qenter (vm_offset_t, struct vm_page **, int);
