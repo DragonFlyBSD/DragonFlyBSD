@@ -317,6 +317,18 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 		if (pmap->pm_flags & PMAP_MULTI)
 			pmap_inval_done(pmap);
 
+		/*
+		 * Knock on NVMM flush.
+		 *
+		 * NOTE: pmap_enter() also calls this function and requires
+		 *       the old PTE be returned, so can't place this TLB
+		 *       callback at the beginning and return 0.
+		 */
+		if (__predict_false(pmap->pm_tlb_flush != NULL)) {
+			KKASSERT(pmap->pm_data != NULL);
+			pmap->pm_tlb_flush(pmap);
+		}
+
 		return opte;
 	}
 
@@ -427,6 +439,12 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 	ATOMIC_CPUMASK_NANDBIT(smp_invmask, cpu);
 	write_rflags(rflags);
 	pmap_inval_done(pmap);
+
+	/* Knock on NVMM flush. */
+	if (__predict_false(pmap->pm_tlb_flush != NULL)) {
+		KKASSERT(pmap->pm_data != NULL);
+		pmap->pm_tlb_flush(pmap);
+	}
 
 	return opte;
 }

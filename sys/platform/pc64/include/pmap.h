@@ -301,6 +301,10 @@ struct pmap {
 	uint64_t (*swapu64)(volatile uint64_t *, uint64_t v);
 	uint32_t (*fuwordadd32)(volatile uint32_t *, uint32_t v);
 	uint64_t (*fuwordadd64)(volatile uint64_t *, uint64_t v);
+
+	/* Used by NVMM */
+	void *pm_data;
+	void (*pm_tlb_flush)(struct pmap *);
 };
 
 #define PMAP_FLAG_SIMPLE	0x00000001

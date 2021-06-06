@@ -39,10 +39,12 @@
 #include <sys/malloc.h> /* contigmalloc, contigfree */
 #include <sys/thread2.h> /* lwkt_send_ipiq, lwkt_send_ipiq_mask */
 
+#include <vm/pmap.h> /* pmap_ept_transform() */
 #include <vm/vm_map.h>
 
 #include <machine/cpufunc.h>
 #include <machine/md_var.h> /* cpu_* */
+#include <machine/pmap_inval.h> /* pmap_inval_smp() */
 #include <machine/segments.h>
 #include <machine/smp.h> /* smp_active_mask */
 #include <machine/specialreg.h>
@@ -648,7 +650,7 @@ static uint64_t vmx_cr0_fixed1 __read_mostly;
 static uint64_t vmx_cr4_fixed0 __read_mostly;
 static uint64_t vmx_cr4_fixed1 __read_mostly;
 
-extern bool pmap_ept_has_ad;
+static bool pmap_ept_has_ad;
 
 #define VMX_PINBASED_CTLS_ONE	\
 	(PIN_CTLS_INT_EXITING| \
@@ -3168,7 +3170,11 @@ vmx_tlb_flush(struct pmap *pm)
 	atomic_inc_64(&machdata->mach_htlb_gen);
 
 	/* Generates IPIs, which cause #VMEXITs. */
+#ifdef __NetBSD__
 	pmap_tlb_shootdown(pmap_kernel(), -1, PTE_G, TLBSHOOT_UPDATE);
+#else /* DragonFly */
+	pmap_inval_smp(NULL, -1, 1, NULL, 0);
+#endif
 }
 
 static void
@@ -3178,7 +3184,7 @@ vmx_machine_create(struct nvmm_machine *mach)
 	struct vmx_machdata *machdata;
 
 	/* Convert to EPT. */
-	pmap_ept_transform(pmap);
+	pmap_ept_transform(pmap, pmap_ept_has_ad ? 0 : PMAP_EMULATE_AD_BITS);
 
 	/* Fill in pmap info. */
 	pmap->pm_data = (void *)mach;
