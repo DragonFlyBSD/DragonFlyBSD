@@ -89,8 +89,8 @@ struct filterops sig_filtops =
 	{ FILTEROP_MPSAFE, filt_sigattach, filt_sigdetach, filt_signal };
 
 static int	kern_logsigexit = 1;
-SYSCTL_INT(_kern, KERN_LOGSIGEXIT, logsigexit, CTLFLAG_RW, 
-    &kern_logsigexit, 0, 
+SYSCTL_INT(_kern, KERN_LOGSIGEXIT, logsigexit, CTLFLAG_RW,
+    &kern_logsigexit, 0,
     "Log processes quitting on abnormal signals to syslog(3)");
 
 /*
@@ -98,7 +98,7 @@ SYSCTL_INT(_kern, KERN_LOGSIGEXIT, logsigexit, CTLFLAG_RW,
  * the current reaper or children of the current reaper can be signaled.
  * Normally the reaper itself cannot be signalled, unless initok is set.
  */
-#define CANSIGNAL(q, sig, initok)				\
+#define	CANSIGNAL(q, sig, initok)				\
 	((!p_trespass(curproc->p_ucred, (q)->p_ucred) &&	\
 	reaper_sigtest(curproc, p, initok)) ||			\
 	((sig) == SIGCONT && (q)->p_session == curproc->p_session))
@@ -106,7 +106,7 @@ SYSCTL_INT(_kern, KERN_LOGSIGEXIT, logsigexit, CTLFLAG_RW,
 /*
  * Policy -- Can real uid ruid with ucred uc send a signal to process q?
  */
-#define CANSIGIO(ruid, uc, q) \
+#define	CANSIGIO(ruid, uc, q) \
 	((uc)->cr_uid == 0 || \
 	    (ruid) == (q)->p_ucred->cr_ruid || \
 	    (uc)->cr_uid == (q)->p_ucred->cr_ruid || \
@@ -114,7 +114,7 @@ SYSCTL_INT(_kern, KERN_LOGSIGEXIT, logsigexit, CTLFLAG_RW,
 	    (uc)->cr_uid == (q)->p_ucred->cr_uid)
 
 int sugid_coredump;
-SYSCTL_INT(_kern, OID_AUTO, sugid_coredump, CTLFLAG_RW, 
+SYSCTL_INT(_kern, OID_AUTO, sugid_coredump, CTLFLAG_RW,
 	&sugid_coredump, 0, "Enable coredumping set user/group ID processes");
 
 static int	do_coredump = 1;
@@ -133,44 +133,44 @@ SYSCTL_INT(_kern, OID_AUTO, coredump, CTLFLAG_RW,
 #define	SA_IGNORE	0x10		/* ignore by default */
 #define	SA_CONT		0x20		/* continue if suspended */
 #define	SA_CANTMASK	0x40		/* non-maskable, catchable */
-#define SA_CKPT         0x80            /* checkpoint process */
+#define	SA_CKPT		0x80		/* checkpoint process */
 
 
 static int sigproptbl[NSIG] = {
-        SA_KILL,                /* SIGHUP */
-        SA_KILL,                /* SIGINT */
-        SA_KILL|SA_CORE,        /* SIGQUIT */
-        SA_KILL|SA_CORE,        /* SIGILL */
-        SA_KILL|SA_CORE,        /* SIGTRAP */
-        SA_KILL|SA_CORE,        /* SIGABRT */
-        SA_KILL|SA_CORE,        /* SIGEMT */
-        SA_KILL|SA_CORE,        /* SIGFPE */
-        SA_KILL,                /* SIGKILL */
-        SA_KILL|SA_CORE,        /* SIGBUS */
-        SA_KILL|SA_CORE,        /* SIGSEGV */
-        SA_KILL|SA_CORE,        /* SIGSYS */
-        SA_KILL,                /* SIGPIPE */
-        SA_KILL,                /* SIGALRM */
-        SA_KILL,                /* SIGTERM */
-        SA_IGNORE,              /* SIGURG */
-        SA_STOP,                /* SIGSTOP */
-        SA_STOP|SA_TTYSTOP,     /* SIGTSTP */
-        SA_IGNORE|SA_CONT,      /* SIGCONT */
-        SA_IGNORE,              /* SIGCHLD */
-        SA_STOP|SA_TTYSTOP,     /* SIGTTIN */
-        SA_STOP|SA_TTYSTOP,     /* SIGTTOU */
-        SA_IGNORE,              /* SIGIO */
-        SA_KILL,                /* SIGXCPU */
-        SA_KILL,                /* SIGXFSZ */
-        SA_KILL,                /* SIGVTALRM */
-        SA_KILL,                /* SIGPROF */
-        SA_IGNORE,              /* SIGWINCH  */
-        SA_IGNORE,              /* SIGINFO */
-        SA_KILL,                /* SIGUSR1 */
-        SA_KILL,                /* SIGUSR2 */
-	SA_IGNORE,              /* SIGTHR */
-	SA_CKPT,                /* SIGCKPT */ 
-	SA_KILL|SA_CKPT,        /* SIGCKPTEXIT */  
+	SA_KILL,		/* SIGHUP */
+	SA_KILL,		/* SIGINT */
+	SA_KILL|SA_CORE,	/* SIGQUIT */
+	SA_KILL|SA_CORE,	/* SIGILL */
+	SA_KILL|SA_CORE,	/* SIGTRAP */
+	SA_KILL|SA_CORE,	/* SIGABRT */
+	SA_KILL|SA_CORE,	/* SIGEMT */
+	SA_KILL|SA_CORE,	/* SIGFPE */
+	SA_KILL,		/* SIGKILL */
+	SA_KILL|SA_CORE,	/* SIGBUS */
+	SA_KILL|SA_CORE,	/* SIGSEGV */
+	SA_KILL|SA_CORE,	/* SIGSYS */
+	SA_KILL,		/* SIGPIPE */
+	SA_KILL,		/* SIGALRM */
+	SA_KILL,		/* SIGTERM */
+	SA_IGNORE,		/* SIGURG */
+	SA_STOP,		/* SIGSTOP */
+	SA_STOP|SA_TTYSTOP,	/* SIGTSTP */
+	SA_IGNORE|SA_CONT,	/* SIGCONT */
+	SA_IGNORE,		/* SIGCHLD */
+	SA_STOP|SA_TTYSTOP,	/* SIGTTIN */
+	SA_STOP|SA_TTYSTOP,	/* SIGTTOU */
+	SA_IGNORE,		/* SIGIO */
+	SA_KILL,		/* SIGXCPU */
+	SA_KILL,		/* SIGXFSZ */
+	SA_KILL,		/* SIGVTALRM */
+	SA_KILL,		/* SIGPROF */
+	SA_IGNORE,		/* SIGWINCH  */
+	SA_IGNORE,		/* SIGINFO */
+	SA_KILL,		/* SIGUSR1 */
+	SA_KILL,		/* SIGUSR2 */
+	SA_IGNORE,		/* SIGTHR */
+	SA_CKPT,		/* SIGCKPT */
+	SA_KILL|SA_CKPT,	/* SIGCKPTEXIT */
 	SA_IGNORE,
 	SA_IGNORE,
 	SA_IGNORE,
@@ -201,7 +201,6 @@ static int sigproptbl[NSIG] = {
 	SA_IGNORE,
 	SA_IGNORE,
 	SA_IGNORE,
-
 };
 
 __read_mostly sigset_t sigcantmask_mask;
@@ -252,8 +251,8 @@ sigsetfrompid(thread_t td, struct proc *p, int sig)
 	}
 }
 
-/* 
- * No requirements. 
+/*
+ * No requirements.
  */
 int
 kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
@@ -728,7 +727,7 @@ dokillpg(int sig, int pgid, int all)
 		 */
 		lockmgr(&pgrp->pg_lock, LK_EXCLUSIVE);
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
-			if (p->p_pid <= 1 || 
+			if (p->p_pid <= 1 ||
 			    p->p_stat == SZOMB ||
 			    (p->p_flags & P_SYSTEM) ||
 			    !CANSIGNAL(p, sig, 0)) {
@@ -765,7 +764,7 @@ killpg_all_callback(struct proc *p, void *data)
  * Note that new signals cannot be sent if a process is exiting or already
  * a zombie, but we return success anyway as userland is likely to not handle
  * the race properly.
- * 
+ *
  * No requirements.
  */
 int
@@ -1212,7 +1211,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		SIG_STOPSIGMASK_ATOMIC(p->p_siglist);
 		lwkt_reltoken(&p->p_token);
 	}
-	
+
 	if (prop & SA_STOP) {
 		/*
 		 * If sending a tty stop signal to a member of an orphaned
@@ -1229,7 +1228,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 				lwkt_reltoken(&p->p_token);
 			}
 			PRELE(p);
-		        return;
+			return;
 		}
 		lwkt_gettoken(&p->p_token);
 		SIG_CONTSIGMASK_ATOMIC(p->p_siglist);
@@ -1240,7 +1239,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 	if (p->p_stat == SSTOP) {
 		/*
 		 * Nobody can handle this signal, add it to the lwp or
-		 * process pending list 
+		 * process pending list
 		 */
 		lwkt_gettoken(&p->p_token);
 		if (p->p_stat != SSTOP) {
@@ -1733,7 +1732,7 @@ proc_stopwait(struct proc *p)
 	}
 }
 
-/* 
+/*
  * No requirements.
  */
 static int
@@ -1936,9 +1935,9 @@ iscaught(struct lwp *lp)
 	if (p) {
 		if ((sig = CURSIG(lp)) != 0) {
 			if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
-				return (EINTR);                        
-			return (ERESTART);     
-		}                         
+				return (EINTR);
+			return (ERESTART);
+		}
 	}
 	return(EWOULDBLOCK);
 }
@@ -2047,7 +2046,7 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 			 * released by the parent.
 			 *
 			 * NOTE: SSTOP may get cleared during the loop, but
-			 *	 we do not re-notify the parent if we have 
+			 *	 we do not re-notify the parent if we have
 			 *	 to loop several times waiting for the parent
 			 *	 to let us continue.  XXX not sure if this is
 			 * 	 still true
@@ -2347,7 +2346,7 @@ postsig(int sig, int haveptok)
 void
 killproc(struct proc *p, char *why)
 {
-	log(LOG_ERR, "pid %d (%s), uid %d, was killed: %s\n", 
+	log(LOG_ERR, "pid %d (%s), uid %d, was killed: %s\n",
 		p->p_pid, p->p_comm,
 		p->p_ucred ? p->p_ucred->cr_uid : -1, why);
 	ksignal(p, SIGKILL);
@@ -2515,12 +2514,12 @@ coredump(struct lwp *lp, int sig)
 	int error, error1;
 	char *name;			/* name of corefile */
 	off_t limit;
-	
+
 	STOPEVENT(p, S_CORE, 0);
 
 	if (((sugid_coredump == 0) && p->p_flags & P_SUGID) || do_coredump == 0)
 		return (EFAULT);
-	
+
 	/*
 	 * Note that the bulk of limit checking is done after
 	 * the corefile is created.  The exception is if the limit
@@ -2615,10 +2614,10 @@ pgsigio(struct sigio *sigio, int sig, int checkctty)
 {
 	if (sigio == NULL)
 		return;
-		
+
 	if (sigio->sio_pgid > 0) {
 		if (CANSIGIO(sigio->sio_ruid, sigio->sio_ucred,
-		             sigio->sio_proc))
+			     sigio->sio_proc))
 			ksignal(sigio->sio_proc, sig);
 	} else if (sigio->sio_pgid < 0) {
 		struct proc *p;
@@ -2662,7 +2661,7 @@ filt_sigdetach(struct knote *kn)
 }
 
 /*
- * signal knotes are shared with proc knotes, so we apply a mask to 
+ * signal knotes are shared with proc knotes, so we apply a mask to
  * the hint in order to differentiate them from process hints.  This
  * could be avoided by using a signal-specific knote list, but probably
  * isn't worth the trouble.
