@@ -58,6 +58,7 @@ int _vmx_vmxon(paddr_t *pa);
 int _vmx_vmxoff(void);
 int vmx_vmlaunch(uint64_t *gprs);
 int vmx_vmresume(uint64_t *gprs);
+void vmx_resume_rip(void);
 
 #define vmx_vmxon(a) \
 	if (__predict_false(_vmx_vmxon(a) != 0)) { \
@@ -2876,7 +2877,6 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	struct vmcs *vmcs = cpudata->vmcs;
 	struct msr_entry *gmsr = cpudata->gmsr;
-	extern uint8_t vmx_resume_rip;
 	uint64_t rev, eptp;
 
 	rev = vmx_get_revision();
@@ -2943,7 +2943,7 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmx_vmwrite(VMCS_CR4_SHADOW, 0);
 
 	/* Set the Host state for resuming. */
-	vmx_vmwrite(VMCS_HOST_RIP, (uint64_t)&vmx_resume_rip);
+	vmx_vmwrite(VMCS_HOST_RIP, (uint64_t)vmx_resume_rip);
 	vmx_vmwrite(VMCS_HOST_CS_SELECTOR, GSEL(GCODE_SEL, SEL_KPL));
 	vmx_vmwrite(VMCS_HOST_SS_SELECTOR, GSEL(GDATA_SEL, SEL_KPL));
 	vmx_vmwrite(VMCS_HOST_DS_SELECTOR, GSEL(GDATA_SEL, SEL_KPL));
