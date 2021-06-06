@@ -36,7 +36,7 @@
  */
 
 #ifndef _CPU_SEGMENTS_H_
-#define	_CPU_SEGMENTS_H_
+#define _CPU_SEGMENTS_H_
 
 #ifndef LOCORE
 #include <sys/tls.h>
@@ -50,15 +50,15 @@
  * Selectors
  */
 
-#define	SEL_RPL_MASK	3	/* requester priv level */
-#define	ISPL(s)	((s)&3)		/* what is the privilege level of a selector */
-#define	SEL_KPL	0		/* kernel privilege level */
-#define	SEL_UPL	3		/* user privilege level */
-#define	ISLDT(s)	((s)&SEL_LDT)	/* is it local or global */
-#define	SEL_LDT	4		/* local descriptor table */
-#define	IDXSEL(s)	(((s)>>3) & 0x1fff)		/* index of selector */
-#define	LSEL(s,r)	(((s)<<3) | SEL_LDT | r)	/* a local selector */
-#define	GSEL(s,r)	(((s)<<3) | r)			/* a global selector */
+#define	SEL_RPL_MASK	3		/* requester's privilege level mask */
+#define	ISPL(s)		((s) & SEL_RPL_MASK)	/* privilege level of a selector */
+#define	SEL_KPL		0		/* kernel privilege level */
+#define	SEL_UPL		3		/* user privilege level */
+#define	SEL_LDT		4		/* local descriptor table */
+#define	ISLDT(s)	((s) & SEL_LDT)	/* is it local or global */
+#define	IDXSEL(s)	(((s) >> 3) & 0x1fff)		/* index of selector */
+#define	LSEL(s,r)	(((s) << 3) | r | SEL_LDT)	/* a local selector */
+#define	GSEL(s,r)	(((s) << 3) | r)		/* a global selector */
 
 #ifndef LOCORE
 
@@ -115,7 +115,7 @@ struct	gate_descriptor {
 	u_int64_t gd_xx1:32;
 } __packed;
 
-#endif /* LOCORE */
+#endif /* !LOCORE */
 
 /* system segments and gate types */
 #define	SDT_SYSNULL	 0	/* system null */
@@ -153,7 +153,6 @@ struct	gate_descriptor {
 #define	SDT_MEMERC	30	/* memory execute read conforming */
 #define	SDT_MEMERAC	31	/* memory execute read accessed conforming */
 
-
 #ifndef LOCORE
 
 struct savetls {
@@ -185,7 +184,7 @@ struct region_descriptor {
 	uint64_t rd_base:64 __packed;	/* base address  */
 } __packed;
 
-#endif /* LOCORE */
+#endif /* !LOCORE */
 
 /*
  * Segment Protection Exception code bits
@@ -195,7 +194,7 @@ struct region_descriptor {
 #define	SEGEX_IDT	0x02	/* interrupt descriptor table */
 #define	SEGEX_TI	0x04	/* local descriptor table */
 				/* other bits are affected descriptor index */
-#define SEGEX_IDX(s)	(((s)>>3)&0x1fff)
+#define	SEGEX_IDX(s)	(((s) >> 3) & 0x1fff)
 
 /*
  * Size of the IDT table.
@@ -232,13 +231,13 @@ struct region_descriptor {
 #define	GNULL_SEL	0	/* Null Descriptor */
 #define	GCODE_SEL	1	/* Kernel Code Descriptor */
 #define	GDATA_SEL	2	/* Kernel Data Descriptor */
-#define	GUCODE32_SEL	3	/* User 32 bit code Descriptor */
+#define	GUCODE32_SEL	3	/* User 32 bit Code Descriptor */
 #define	GUDATA_SEL	4	/* User 32/64 bit Data Descriptor */
 #define	GUCODE_SEL	5	/* User 64 bit Code Descriptor */
 #define	GPROC0_SEL	6	/* TSS for entering kernel etc */
 /* slot 7 is second half of GPROC0_SEL */
 #define	GUGS32_SEL	8	/* User 32 bit GS Descriptor */
-#define	NGDT 		9
+#define	NGDT		9
 
 #ifndef LOCORE
 
@@ -257,6 +256,7 @@ void	ssdtosd(struct soft_segment_descriptor *ssdp,
 void	ssdtosyssd(struct soft_segment_descriptor *ssdp,
 	    struct system_segment_descriptor *sdp);
 #endif /* _KERNEL */
-#endif /* LOCORE */
+
+#endif /* !LOCORE */
 
 #endif /* !_CPU_SEGMENTS_H_ */

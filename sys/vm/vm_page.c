@@ -3760,7 +3760,6 @@ vm_page_alloczwq(vm_pindex_t pindex, int flags)
 	vm_page_wakeup(m);
 
 	return(m);
-
 }
 
 /*
@@ -3816,7 +3815,7 @@ vm_page_freezwq(vm_page_t m)
  *				  grabs to return NULL.
  *
  * This routine may block, but if VM_ALLOC_RETRY is not set then NULL is
- * always returned if we had blocked.  
+ * always returned if we had blocked.
  *
  * This routine may not be called from an interrupt.
  *

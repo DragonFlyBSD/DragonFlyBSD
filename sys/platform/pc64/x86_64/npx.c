@@ -4,11 +4,11 @@
  * Copyright (c) 2006 The DragonFly Project.
  * Copyright (c) 2006 Matthew Dillon.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -31,7 +31,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
  */
@@ -70,7 +70,8 @@
 #define	frstor(addr)		__asm("frstor %0" : : "m" (*(addr)))
 #define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
 #define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
-#ifndef  CPU_DISABLE_AVX
+
+#ifndef CPU_DISABLE_AVX
 static inline void
 xrstor(const void *addr, uint64_t mask)
 {
@@ -79,8 +80,11 @@ xrstor(const void *addr, uint64_t mask)
 	low = mask;
 	high = mask >> 32;
 
-	__asm __volatile(".byte 0x0f,0xae,0x2f" : : "D" (addr), "a" (low), "d" (high));
+	__asm __volatile(".byte 0x0f,0xae,0x2f"
+			 :
+			 : "D" (addr), "a" (low), "d" (high));
 }
+
 static inline void
 xsave(void *addr, uint64_t mask)
 {
@@ -89,9 +93,13 @@ xsave(void *addr, uint64_t mask)
 	low = mask;
 	high = mask >> 32;
 
-	__asm __volatile(".byte 0x0f,0xae,0x27" : : "D" (addr), "a" (low), "d" (high) : "memory");
+	__asm __volatile(".byte 0x0f,0xae,0x27"
+			 :
+			 : "D" (addr), "a" (low), "d" (high)
+			 : "memory");
 }
-#endif
+#endif /* !CPU_DISABLE_AVX */
+
 #define start_emulating()       __asm("smsw %%ax; orb %0,%%al; lmsw %%ax" \
 				      : : "n" (CR0_TS) : "ax")
 #define stop_emulating()        __asm("clts")
@@ -109,14 +117,13 @@ __read_mostly uint64_t npx_xcr0_mask = 0;
  * Probe the npx_mxcsr_mask as described in the intel document
  * "Intel processor identification and the CPUID instruction" Section 7
  * "Denormals are Zero".
- * Note that for fxsave to work reliably, the os support bit for 
+ * Note that for fxsave to work reliably, the os support bit for
  * FXSAVE/FXRESTORE operations in CR4 has to be set as per
  * Intel 64 and IA-32 Architectures Developer's Manual: Vol. 1,
  * 10.5.1.2.
  */
 void npxprobemask(void)
 {
-	/*64-Byte alignment required for xsave*/
 	static union savefpu dummy __aligned(64);
 
 	crit_enter();
@@ -133,7 +140,6 @@ void npxprobemask(void)
  */
 void npxinit(void)
 {
-	/*64-Byte alignment required for xsave*/
 	static union savefpu dummy __aligned(64);
 	u_short control = __INITIAL_FPUCW__;
 	u_int mxcsr = __INITIAL_MXCSR__;
@@ -165,11 +171,11 @@ npxexit(void)
 }
 
 #if 0
-/* 
+/*
  * The following mechanism is used to ensure that the FPE_... value
  * that is passed as a trapcode to the signal handler of the user
  * process does not have more than one bit set.
- * 
+ *
  * Multiple bits may be set if the user process modifies the control
  * word while a status word bit is already set.  While this is a sign
  * of bad coding, we have no choise than to narrow them down to one
@@ -203,7 +209,7 @@ npxexit(void)
  *      (FP_X_INV, FP_X_DZ)
  * 4  Denormal operand (FP_X_DNML)
  * 5  Numeric over/underflow (FP_X_OFL, FP_X_UFL)
- * 6  Inexact result (FP_X_IMP) 
+ * 6  Inexact result (FP_X_IMP)
  */
 static char fpetable[128] = {
 	0,
@@ -339,7 +345,7 @@ static char fpetable[128] = {
 #endif
 
 /*
- * Implement the device not available (DNA) exception.  gd_npxthread had 
+ * Implement the device not available (DNA) exception.  gd_npxthread had
  * better be NULL.  Restore the current thread's FP state and set gd_npxthread
  * to curthread.
  *
@@ -548,7 +554,7 @@ npxpop(mcontext_t *mctx)
 {
 	thread_t td = curthread;
 
-	switch(mctx->mc_ownedfp) {
+	switch (mctx->mc_ownedfp) {
 	case _MC_FPOWNED_NONE:
 		/*
 		 * If the signal handler used the FP unit but the interrupted
@@ -605,10 +611,10 @@ npxpop(mcontext_t *mctx)
  * In order to avoid leaking this information across processes, we clean
  * these values by performing a dummy load before executing fxrstor().
  */
-static	double	dummy_variable = 0.0;
 static void
 fpu_clean_state(void)
 {
+	static double dummy_variable = 0.0;
 	u_short status;
 
 	/*
@@ -642,4 +648,3 @@ fpurstor(union savefpu *addr)
 		frstor(addr);
 	}
 }
-

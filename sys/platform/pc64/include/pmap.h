@@ -82,20 +82,20 @@
  * NUPTs	512 * 512 * 512		number of PTs in user page table
  * NUPTEs	512 * 512 * 512 * 512	number of PTEs in user page table
  *
- * NUPDP_USER 	number of PDPs reserved for userland
+ * NUPDP_USER	number of PDPs reserved for userland
  * NUPTE_USER	number of PTEs reserved for userland (big number)
  */
-#define	NUPDP_USER	(NPML4EPG/2)
-#define	NUPDP_TOTAL	(NPML4EPG)
-#define	NUPD_TOTAL	(NPDPEPG * NUPDP_TOTAL)
-#define	NUPT_TOTAL	(NPDEPG * NUPD_TOTAL)
+#define NUPDP_USER	(NPML4EPG/2)
+#define NUPDP_TOTAL	(NPML4EPG)
+#define NUPD_TOTAL	(NPDPEPG * NUPDP_TOTAL)
+#define NUPT_TOTAL	(NPDEPG * NUPD_TOTAL)
 #define NUPTE_TOTAL	((vm_pindex_t)NPTEPG * NUPT_TOTAL)
 #define NUPTE_USER	((vm_pindex_t)NPTEPG * NPDEPG * NPDPEPG * NUPDP_USER)
 
 /*
- * Number of 512G dmap PML4 slots.  There are 512 slots of which 256 are
+ * Number of 512G DMAP PML4 slots.  There are 512 slots of which 256 are
  * used by the kernel.  Of those 256 we allow up to 128 to be used by the
- * DMAP (for 64TB of ram), leaving 128 for the kernel and other incidentals.
+ * DMAP (for 64TB of RAM), leaving 128 for the kernel and other incidentals.
  */
 #define	NDMPML4E	128
 
@@ -103,10 +103,10 @@
  * The *PML4I values control the layout of virtual memory.  Each PML4
  * entry represents 512G.
  */
-#define	PML4PML4I	(NPML4EPG/2)	/* Index of recursive pml4 mapping */
+#define	PML4PML4I	(NPML4EPG/2)	/* Index of recursive PML4 mapping */
 
 #define	KPML4I		(NPML4EPG-NKPML4E) /* Start of KVM */
-#define	DMPML4I		(KPML4I-NDMPML4E) /* Next 512GBxN down for dmap */
+#define	DMPML4I		(KPML4I-NDMPML4E) /* Next N*512GB down for DMAP */
 
 /*
  * Make sure the kernel map and DMAP don't overflow the 256 PDP entries
@@ -136,8 +136,8 @@
 /*
  * XXX doesn't really belong here I guess...
  */
-#define ISA_HOLE_START    0xa0000
-#define ISA_HOLE_LENGTH (0x100000-ISA_HOLE_START)
+#define ISA_HOLE_START	0xa0000
+#define ISA_HOLE_LENGTH	(0x100000-ISA_HOLE_START)
 
 #ifndef LOCORE
 
@@ -303,14 +303,15 @@ struct pmap {
 };
 
 #define PMAP_FLAG_SIMPLE	0x00000001
-#define PMAP_EMULATE_AD_BITS	0x00000002
-#define PMAP_HVM		0x00000004
+#define PMAP_EMULATE_AD_BITS	0x00000002	/* emulate A/D bits for EPT */
+#define PMAP_HVM		0x00000004	/* hardware virtual machine */
 #define PMAP_SEGSHARED		0x00000008	/* segment shared opt */
 #define PMAP_MULTI		0x00000010	/* multi-threaded use */
 
-#define pmap_resident_count(pmap) ((pmap)->pm_stats.resident_count)
-#define pmap_resident_tlnw_count(pmap) ((pmap)->pm_stats.resident_count - \
-					(pmap)->pm_stats.wired_count)
+#define pmap_resident_count(pmap)	\
+	((pmap)->pm_stats.resident_count)
+#define pmap_resident_tlnw_count(pmap)	\
+	((pmap)->pm_stats.resident_count - (pmap)->pm_stats.wired_count)
 
 typedef struct pmap	*pmap_t;
 
@@ -347,7 +348,7 @@ typedef struct pv_entry {
 
 #ifdef	_KERNEL
 
-extern caddr_t	CADDR1;
+extern caddr_t CADDR1;
 extern pt_entry_t *CMAP1;
 extern vm_paddr_t avail_end;
 extern vm_paddr_t avail_start;

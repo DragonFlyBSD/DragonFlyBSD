@@ -107,7 +107,7 @@
  */
 #ifdef PMAP_DEBUG
 
-#define PMAP_DEBUG_DECL		,const char *func, int lineno
+#define PMAP_DEBUG_DECL		, const char *func, int lineno
 #define PMAP_DEBUG_ARGS		, __func__, __LINE__
 #define PMAP_DEBUG_COPY		, func, lineno
 
@@ -139,10 +139,10 @@
 /*
  * Get PDEs and PTEs for user/kernel address space
  */
-#define pdir_pde(m, v) (m[(vm_offset_t)(v) >> PDRSHIFT])
+#define pdir_pde(m, v)		(m[(vm_offset_t)(v) >> PDRSHIFT])
 
-#define pmap_pde_v(pmap, pte)	\
-		((*(pd_entry_t *)pte & pmap->pmap_bits[PG_V_IDX]) != 0)
+#define pmap_pde_v(pmap, pde)	\
+		((*(pd_entry_t *)pde & pmap->pmap_bits[PG_V_IDX]) != 0)
 #define pmap_pte_w(pmap, pte)	\
 		((*(pt_entry_t *)pte & pmap->pmap_bits[PG_W_IDX]) != 0)
 #define pmap_pte_m(pmap, pte)	\
@@ -229,16 +229,17 @@ vm_paddr_t avail_start;		/* PA of first available physical page */
 vm_paddr_t avail_end;		/* PA of last available physical page */
 vm_offset_t virtual2_start;	/* cutout free area prior to kernel start */
 vm_offset_t virtual2_end;
-vm_offset_t virtual_start;	/* VA of first avail page (after kernel bss) */
+vm_offset_t virtual_start;	/* VA of first avail page (after kernel BSS) */
 vm_offset_t virtual_end;	/* VA of last avail page (end of kernel AS) */
 vm_offset_t KvaStart;		/* VA start of KVA space */
 vm_offset_t KvaEnd;		/* VA end of KVA space (non-inclusive) */
-vm_offset_t KvaSize;		/* max size of kernel virtual address space */
+vm_offset_t KvaSize;		/* max size of KVA space */
 vm_offset_t DMapMaxAddress;
+
 /* Has pmap_init completed? */
 __read_frequently static boolean_t pmap_initialized = FALSE;
 //static int pgeflag;		/* PG_G or-in */
-static uint64_t PatMsr;
+static uint64_t PatMsr;		/* value of MSR_PAT */
 
 static int ndmpdp;
 static vm_paddr_t dmaplimit;
@@ -249,13 +250,13 @@ static pt_entry_t pat_pde_index[PAT_INDEX_SIZE];	/* PAT -> PG_ bits */
 
 static uint64_t KPTbase;
 static uint64_t KPTphys;
-static uint64_t	KPDphys;	/* phys addr of kernel level 2 */
-static uint64_t	KPDbase;	/* phys addr of kernel level 2 @ KERNBASE */
+static uint64_t KPDphys;	/* phys addr of kernel level 2 */
+static uint64_t KPDbase;	/* phys addr of kernel level 2 @ KERNBASE */
 uint64_t KPDPphys;		/* phys addr of kernel level 3 */
 uint64_t KPML4phys;		/* phys addr of kernel level 4 */
 
-static uint64_t	DMPDphys;	/* phys addr of direct mapped level 2 */
-static uint64_t	DMPDPphys;	/* phys addr of direct mapped level 3 */
+static uint64_t DMPDphys;	/* phys addr of direct mapped level 2 */
+static uint64_t DMPDPphys;	/* phys addr of direct mapped level 3 */
 
 /*
  * Data for the pv entry allocation mechanism
@@ -271,7 +272,7 @@ static struct pv_entry *pvinit;
 pt_entry_t *CMAP1 = NULL;
 caddr_t CADDR1 = NULL, ptvmmap = NULL;
 static pt_entry_t *msgbufmap, *ptmmap;
-struct msgbuf *msgbufp=NULL;
+struct msgbuf *msgbufp = NULL;
 
 /*
  * PG_* bits for regular (x86) pmap.
@@ -2347,6 +2348,7 @@ pmap_pinit(struct pmap *pmap)
 	int j;
 
 	if (pmap->pm_pmlpv) {
+		/* Completely clear the cached pmap if not REGULAR_PMAP. */
 		if (pmap->pmap_bits[TYPE_IDX] != REGULAR_PMAP) {
 			pmap_puninit(pmap);
 		}
