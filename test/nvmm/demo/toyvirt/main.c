@@ -265,6 +265,7 @@ toyvirt_mess(void *arg __unused)
 		sleep(3);
 
 		/* Inject a #GP */
+		printf("[+] Inject #GP event\n");
 		event.type = NVMM_VCPU_EVENT_EXCP;
 		event.vector = 13;
 		event.u.excp.error = 0;
@@ -273,6 +274,7 @@ toyvirt_mess(void *arg __unused)
 		sleep(3);
 
 		/* Inject an #NMI */
+		printf("[+] Inject #NMI event\n");
 		event.type = NVMM_VCPU_EVENT_INTR;
 		event.vector = 2;
 		toyvirt_event_inject(mach, vcpu, &event);
@@ -281,6 +283,7 @@ toyvirt_mess(void *arg __unused)
 
 		/* Inject an interrupt */
 		if (15 > toyvirt_prio) {
+			printf("[+] Inject hardware interrupt event\n");
 			event.type = NVMM_VCPU_EVENT_INTR;
 			event.vector = 200;
 			toyvirt_event_inject(mach, vcpu, &event);
@@ -384,6 +387,7 @@ toyvirt_run(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 		case NVMM_VCPU_EXIT_INT_READY:
 		case NVMM_VCPU_EXIT_NMI_READY:
+			printf("[+] Machine ready to INT/NMI\n");
 			toyvirt_event_reinject(mach, vcpu);
 			return;
 

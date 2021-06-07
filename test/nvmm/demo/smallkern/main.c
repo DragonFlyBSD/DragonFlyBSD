@@ -132,7 +132,7 @@ trap(struct smallframe *sf)
 	char *buf;
 
 	f += 1.0f;
-	if (ntrap++ == 10) {
+	if (ntrap++ == 6) {
 		triple_fault();
 	}
 	if (ntrap != (int)f) {
@@ -155,6 +155,7 @@ trap(struct smallframe *sf)
 	print_ext(RED_ON_BLACK, buf);
 	print("\n");
 	print_ext(RED_ON_BLACK, "****************************\n");
+	print("\n");
 
 	sti();
 
