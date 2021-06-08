@@ -29,6 +29,7 @@
  */
 
 #define _LOCORE
+#define LOCORE /* DragonFly */
 
 #include "asm.h"
 #include "trap.h"

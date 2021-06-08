@@ -29,9 +29,22 @@
 #ifndef SMALLKERN_H_
 #define SMALLKERN_H_
 
+/*
+ * Must define _KERNEL on DragonFly, otherwise some necessary bits/headers
+ * won't be pulled in.  However, don't define _KERNEL on NetBSD, because it
+ * would try to pull in kernel headers not installed in /usr/include.
+ */
+#ifdef __DragonFly__
+#define _KERNEL
+#endif
+
 #include <sys/cdefs.h>
 #include <sys/param.h>
+#ifdef __NetBSD__
 #include <sys/stdbool.h>
+#else /* DragonFly */
+#include <sys/stdint.h>
+#endif
 
 #define MM_PROT_READ	0x00
 #define MM_PROT_WRITE	0x01

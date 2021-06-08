@@ -29,9 +29,18 @@
 #ifndef PDIR_H_
 #define PDIR_H_
 
+#ifndef PAGE_SIZE
 #define PAGE_SIZE	4096
+#endif
 #define PDE_SIZE	8
 #define FRAMESIZE	8
+
+#ifdef __DragonFly__
+#define PGSHIFT		12
+#define NBPG		(1 << PGSHIFT)		/* bytes/page */
+#define PGOFSET		(NBPG - 1)		/* byte offset into page */
+#define USPACE		(UPAGES * NBPG)		/* total size of u-area */
+#endif /* __DragonFly__ */
 
 #define IOM_BEGIN	0x0a0000		/* Start of I/O Memory "hole" */
 #define IOM_END		0x100000		/* End of I/O Memory "hole" */

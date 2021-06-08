@@ -30,6 +30,7 @@
 #include "pdir.h"
 #include "trap.h"
 
+#include <sys/bitops.h>
 #include <machine/reg.h>
 #include <machine/specialreg.h>
 #include <machine/frame.h>
@@ -41,6 +42,15 @@
 #define SMALLKERN_GDT_CS_OFF	(1 * 8)
 #define SMALLKERN_GDT_DS_OFF	(2 * 8)
 #define SMALLKERN_GDT_TSS_OFF	(3 * 8)
+
+#ifdef __DragonFly__
+#define SDT_SYS386TSS		SDT_SYSTSS	/*  9: system 64-bit TSS available */
+#define SDT_SYS386IGT		SDT_SYSIGT	/* 14: system 64-bit interrupt gate */
+#define APICBASE_PHYSADDR	APICBASE_ADDRESS /* 0xfffff000: physical address */
+#define sys_segment_descriptor	system_segment_descriptor
+#define x86_64_tss		x86_64tss
+#define __arraycount(x)		nitems(x)
+#endif /* __DragonFly__ */
 
 void fatal(char *msg)
 {
@@ -169,10 +179,12 @@ setgate(struct gate_descriptor *gd, void *func, int ist, int type, int dpl,
 	gd->gd_dpl = dpl;
 	gd->gd_p = 1;
 	gd->gd_hioffset = (uint64_t)func >> 16;
-	gd->gd_zero = 0;
 	gd->gd_xx1 = 0;
+#ifdef __NetBSD__
+	gd->gd_zero = 0;
 	gd->gd_xx2 = 0;
 	gd->gd_xx3 = 0;
+#endif
 }
 
 static void
@@ -203,7 +215,11 @@ set_sys_gdt(int slotoff, void *base, size_t limit, int type, int dpl, int gran)
 static void init_tss(void)
 {
 	memset(&smallkern_tss, 0, sizeof(smallkern_tss));
+#ifdef __NetBSD__
 	smallkern_tss.tss_ist[0] = (uintptr_t)(&faultstack[PAGE_SIZE-1]) & ~0xf;
+#else /* DragonFly */
+	smallkern_tss.tss_ist1 = (uintptr_t)(&faultstack[PAGE_SIZE-1]) & ~0xf;
+#endif
 
 	set_sys_gdt(SMALLKERN_GDT_TSS_OFF, &smallkern_tss,
 	    sizeof(struct x86_64_tss) - 1, SDT_SYS386TSS, SEL_KPL, 0);
