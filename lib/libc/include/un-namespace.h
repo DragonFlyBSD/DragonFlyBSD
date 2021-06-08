@@ -56,6 +56,7 @@
 #undef		nanosleep
 #undef		open
 #undef		openat
+#undef		mkdirat
 #undef		unlink
 #undef		unlinkat
 #undef		poll
