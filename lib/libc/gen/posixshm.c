@@ -31,13 +31,17 @@
 
 #include "namespace.h"
 #include <sys/types.h>
+#include <sys/param.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 #include "un-namespace.h"
+
+static int mkintermediatedirs(int dfd, const char *path);
 
 int
 shm_open(const char *path, int flags, mode_t mode)
@@ -51,14 +55,27 @@ shm_open(const char *path, int flags, mode_t mode)
 		return (-1);
 	}
 
+	while (*path == '/')
+		++path;
+
+	/*
+	 * Expect a tmpfs filesystem for our shm base.  If for some reason
+	 * it does not exist (it really should), fall-back to /tmp.
+	 */
 	dfd = _open("/var/run/shm", O_RDONLY|O_DIRECTORY);
+	if (dfd < 0)
+		dfd = _open("/tmp", O_RDONLY|O_DIRECTORY);
+
 	if (dfd >= 0) {
-		while (*path == '/')
-			++path;
 		fd = _openat(dfd, path, flags, mode);
+		if (fd < 0 && errno == ENOENT &&
+		    mkintermediatedirs(dfd, path) == 0)
+		{
+			fd = _openat(dfd, path, flags, mode);
+		}
 		_close(dfd);
 	} else {
-		fd = _open(path, flags, mode);
+		fd = -1;
 	}
 
 	if (fd != -1) {
@@ -83,14 +100,49 @@ shm_unlink(const char *path)
 	int res;
 	int dfd;
 
+	while (*path == '/')
+		++path;
+
+	/*
+	 * Expect a tmpfs filesystem for our shm base.  If for some reason
+	 * it does not exist (it really should), fall-back to /tmp.
+	 */
 	dfd = _open("/var/run/shm", O_RDONLY|O_DIRECTORY);
+	if (dfd < 0)
+		dfd = _open("/tmp", O_RDONLY|O_DIRECTORY);
+
 	if (dfd >= 0) {
-		while (*path == '/')
-			++path;
 		res = _unlinkat(dfd, path, 0);
 		_close(dfd);
 	} else {
-		res = _unlink(path);
+		res = -1;
+	}
+	return res;
+}
+
+/*
+ * Create any missing intermediate directories, modes 1777
+ */
+static int
+mkintermediatedirs(int dfd, const char *path)
+{
+	const char *eptr;
+	char buf[PATH_MAX+1];
+	size_t len;
+	int res = 0;
+
+	eptr = path - 1;
+	while ((eptr = strchr(eptr + 1, '/')) != NULL) {
+		len = eptr - path;
+		if (len > PATH_MAX) {
+			errno = EINVAL;
+			return -1;
+		}
+		bcopy(path, buf, len);
+		buf[len] = 0;
+		res = _mkdirat(dfd, buf, 01777);
+		if (res < 0 && errno != EEXIST)
+			break;
 	}
 	return res;
 }
