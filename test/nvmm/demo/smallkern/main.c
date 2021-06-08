@@ -27,35 +27,20 @@
  */
 
 #include "smallkern.h"
+#include "pdir.h"
+#include "trap.h"
 
 #include <machine/reg.h>
 #include <machine/specialreg.h>
 #include <machine/frame.h>
-
-#define _KERNEL
-#include <machine/bootinfo.h>
-#undef _KERNEL
-
 #include <machine/tss.h>
 #include <machine/segments.h>
-
-extern uint32_t nox_flag;
-extern uint64_t *gdt64_start;
-extern vaddr_t lapicbase;
-uint8_t idtstore[PAGE_SIZE];
-uint8_t faultstack[PAGE_SIZE];
-struct x86_64_tss smallkern_tss;
 
 /* GDT offsets */
 #define SMALLKERN_GDT_NUL_OFF	(0 * 8)
 #define SMALLKERN_GDT_CS_OFF	(1 * 8)
 #define SMALLKERN_GDT_DS_OFF	(2 * 8)
 #define SMALLKERN_GDT_TSS_OFF	(3 * 8)
-
-#define IDTVEC(name) __CONCAT(X, name)
-typedef void (vector)(void);
-extern vector *x86_exceptions[];
-extern uint64_t Xintr;
 
 void fatal(char *msg)
 {
@@ -88,14 +73,6 @@ static void set_sys_gdt(int, void *, size_t, int, int, int);
 static void init_tss(void);
 static void init_idt(void);
 
-void trap(struct smallframe *);
-void vmmcall(void);
-void clts(void);
-void sti(void);
-void lcr8(uint64_t);
-uint64_t rdmsr(uint64_t);
-void cpuid(uint32_t, uint32_t, uint32_t *);
-
 static char *trap_type[] = {
 	"privileged instruction fault",		/*  0 T_PRIVINFLT */
 	"breakpoint trap",			/*  1 T_BPTFLT */
@@ -120,6 +97,10 @@ static char *trap_type[] = {
 	"hardware interrupt",			/* 20 T_RESERVED */
 };
 size_t	trap_types = __arraycount(trap_type);
+
+static uint8_t idtstore[PAGE_SIZE] __aligned(PAGE_SIZE);
+static uint8_t faultstack[PAGE_SIZE] __aligned(PAGE_SIZE);
+static struct x86_64_tss smallkern_tss;
 
 static void
 triple_fault(void)

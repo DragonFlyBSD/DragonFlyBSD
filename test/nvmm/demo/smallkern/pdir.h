@@ -26,12 +26,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define PAGE_SIZE 4096
-#define PDE_SIZE 8
-#define FRAMESIZE 8
-#define	IOM_BEGIN	0x0a0000		/* Start of I/O Memory "hole" */
-#define	IOM_END		0x100000		/* End of I/O Memory "hole" */
-#define	IOM_SIZE	(IOM_END - IOM_BEGIN)
+#ifndef PDIR_H_
+#define PDIR_H_
+
+#define PAGE_SIZE	4096
+#define PDE_SIZE	8
+#define FRAMESIZE	8
+
+#define IOM_BEGIN	0x0a0000		/* Start of I/O Memory "hole" */
+#define IOM_END		0x100000		/* End of I/O Memory "hole" */
+#define IOM_SIZE	(IOM_END - IOM_BEGIN)
 
 #define SMALLKERNBASE		0x0
 #define SMALLKERNTEXTOFF	(SMALLKERNBASE + 0x100000)
@@ -83,3 +87,5 @@
 #define pl2_i(va)	(((va) & L2_FRAME) >> L2_SHIFT)
 #define pl3_i(va)	(((va) & L3_FRAME) >> L3_SHIFT)
 #define pl4_i(va)	(((va) & L4_FRAME) >> L4_SHIFT)
+
+#endif /* !PDIR_H_ */

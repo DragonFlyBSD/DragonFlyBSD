@@ -26,43 +26,62 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef SMALLKERN_H_
+#define SMALLKERN_H_
+
 #include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/stdbool.h>
-#include <machine/pte.h>
-
-#include "pdir.h"
 
 #define MM_PROT_READ	0x00
 #define MM_PROT_WRITE	0x01
 #define MM_PROT_EXECUTE	0x02
 
-#define ASSERT(a) if (!(a)) fatal("ASSERT");
-#define memset(d, v, l) __builtin_memset(d, v, l)
-#define memcpy(d, v, l) __builtin_memcpy(d, v, l)
+#define WHITE_ON_BLACK	0x07
+#define RED_ON_BLACK	0x04
+#define GREEN_ON_BLACK	0x02
+
+#define ASSERT(a)	if (!(a)) fatal("ASSERT");
+#define memset(d, v, l)	__builtin_memset(d, v, l)
+#define memcpy(d, v, l)	__builtin_memcpy(d, v, l)
+
 typedef uint64_t paddr_t;
 typedef uint64_t vaddr_t;
 typedef uint64_t pt_entry_t;
 typedef uint64_t pd_entry_t;
 typedef uint64_t pte_prot_t;
-#define WHITE_ON_BLACK 0x07
-#define RED_ON_BLACK 0x04
-#define GREEN_ON_BLACK 0x02
+
+struct smallframe;
 
 /* -------------------------------------------------------------------------- */
 
 /* console.c */
-void init_cons();
-void print_ext(int, char *);
 void print(char *);
+void print_banner(void);
+void print_ext(int, char *);
 void print_state(bool, char *);
-void print_banner();
 
 /* locore.S */
+extern uint32_t nox_flag;
+extern uint64_t *gdt64_start;
+extern vaddr_t lapicbase;
+
+void clts(void);
+void cpuid(uint32_t, uint32_t, uint32_t *);
+void lcr8(uint64_t);
 void lidt(void *);
-uint64_t rdtsc();
-void jump_kernel();
+void outsb(int port, char *buf, size_t size);
+uint64_t rdmsr(uint64_t);
+void sti(void);
+void vmmcall(void);
 
 /* main.c */
 void fatal(char *);
+void trap(struct smallframe *);
 
+/* trap.S */
+typedef void (vector)(void);
+extern vector *x86_exceptions[];
+extern vector Xintr; /* IDTVEC(intr) */
+
+#endif /* !SMALLKERN_H_ */

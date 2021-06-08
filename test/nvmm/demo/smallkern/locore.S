@@ -40,16 +40,12 @@
 #include <machine/psl.h>
 #include <machine/segments.h>
 #include <machine/specialreg.h>
-#include <machine/trap.h>
 
-#define _KERNEL
-#include <machine/bootinfo.h>
-#undef _KERNEL
 
 #include "pdir.h"
 
 /* 32bit version of PG_NX */
-#define PG_NX32	0x80000000
+#define PG_NX32		0x80000000
 
 #define TABLE_L2_ENTRIES (NKL2_KIMG_ENTRIES + 1)
 #define TABLE_L3_ENTRIES NKL3_KIMG_ENTRIES
@@ -120,11 +116,8 @@
 	.globl	_C_LABEL(nox_flag)
 	.globl	_C_LABEL(cpuid_level)
 	.globl	_C_LABEL(PDPpaddr)
-	.globl	_C_LABEL(boothowto)
-	.globl	_C_LABEL(bootinfo)
-	.globl	_C_LABEL(biosbasemem)
-	.globl	_C_LABEL(biosextmem)
 	.globl	_C_LABEL(atdevbase)
+	.globl	_C_LABEL(lapicbase)
 	.globl	_C_LABEL(stkpa)
 	.globl	_C_LABEL(stkva)
 
@@ -452,14 +445,6 @@ ENTRY(lidt)
 	lidt	(%rdi)
 	ret
 END(lidt)
-
-ENTRY(rdtsc)
-	xorq	%rax,%rax
-	rdtsc
-	shlq	$32,%rdx
-	orq	%rdx,%rax
-	ret
-END(rdtsc)
 
 ENTRY(vmmcall)
 	vmmcall
