@@ -75,6 +75,7 @@
 #define		nanosleep			_nanosleep
 #define		open				_open
 #define		openat				_openat
+#define		mkdirat				_mkdirat
 #define		unlink				_unlink
 #define		unlinkat			_unlinkat
 #define		poll				_poll
