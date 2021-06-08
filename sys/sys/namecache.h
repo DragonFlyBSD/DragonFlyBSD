@@ -209,6 +209,8 @@ void	cache_inval_wxok(struct vnode *vp);
 void	vfs_cache_setroot(struct vnode *vp, struct nchandle *nch);
 
 int	cache_resolve(struct nchandle *nch, struct ucred *cred);
+int	cache_resolve_dvp(struct nchandle *nch, struct ucred *cred,
+			struct vnode **dvpp);
 void	cache_purge(struct vnode *vp);
 void	cache_purgevfs (struct mount *mp);
 void	cache_hysteresis(int critpath);

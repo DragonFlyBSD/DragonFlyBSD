@@ -1149,6 +1149,8 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 		error = nlookup(&nd);
 	if (error == 0 && nd.nl_nch.ncp->nc_vp != NULL)
 		error = EADDRINUSE;
+	if (error == 0 && nd.nl_dvp == NULL)	/* e.g. bind <mountpt> */
+		error = EINVAL;
 	if (error)
 		goto done;
 
