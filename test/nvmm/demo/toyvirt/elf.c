@@ -45,8 +45,14 @@
 
 #include "common.h"
 
-#define	ELFSIZE	64
+#ifdef __NetBSD__
+#define ELFSIZE		64
 #include <sys/exec_elf.h>
+#else /* DragonFly */
+#include <sys/elf64.h>
+#define Elf_Ehdr	Elf64_Ehdr
+#define Elf_Phdr	Elf64_Phdr
+#endif /* __NetBSD__ */
 
 #define ELF_MAXPHNUM	128
 #define ELF_MAXSHNUM	32768

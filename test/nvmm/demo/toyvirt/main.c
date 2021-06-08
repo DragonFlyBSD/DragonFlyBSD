@@ -49,6 +49,12 @@
 
 #include "common.h"
 
+#ifdef __DragonFly__
+#define APICBASE_EN	APICBASE_ENABLED	/* 0x00000800: software enable */
+#define PSL_MBO		PSL_RESERVED_DEFAULT	/* 0x00000002 */
+#define SDT_SYS386BSY	SDT_SYSBSY		/* 11: system 64-bit TSS busy */
+#endif
+
 /* -------------------------------------------------------------------------- */
 
 uintptr_t
