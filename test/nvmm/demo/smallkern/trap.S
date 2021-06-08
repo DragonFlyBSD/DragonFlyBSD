@@ -28,16 +28,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define _KERNEL
+#define _LOCORE
 
-/* Override user-land alignment before including asm.h */
-#define	ALIGN_DATA	.align	8
-#define ALIGN_TEXT	.align 16,0x90
-#define _ALIGN_TEXT	ALIGN_TEXT
-
-#include <machine/asm.h>
-
-#include <machine/trap.h>
+#include "asm.h"
+#include "trap.h"
 
 #define	TRAPENTRY(a) \
 	pushq $(a); \

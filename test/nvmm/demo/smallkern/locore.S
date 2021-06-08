@@ -29,20 +29,18 @@
 
 #define _LOCORE
 
-/* Override user-land alignment before including asm.h */
-#define	ALIGN_DATA	.align	8
-#define ALIGN_TEXT	.align 16,0x90
-#define _ALIGN_TEXT	ALIGN_TEXT
+#include "asm.h"
+#include "pdir.h"
 
-#include <machine/asm.h>
 #include <machine/param.h>
-#include <machine/pte.h>
-#include <machine/psl.h>
 #include <machine/segments.h>
 #include <machine/specialreg.h>
 
+#define PSL_MBO		0x00000002	/* must be zero bits */
 
-#include "pdir.h"
+#define PTE_P		0x001	/* P: Valid */
+#define PTE_W		0x002	/* R/W: Read/Write */
+#define PTE_PCD		0x010	/* PCD: Cache disable */
 
 /* 32bit version of PG_NX */
 #define PG_NX32		0x80000000
