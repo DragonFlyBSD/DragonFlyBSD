@@ -4080,6 +4080,13 @@ sys_fsync(struct sysmsg *sysmsg, const struct fsync_args *uap)
 	return (error);
 }
 
+/*
+ * rename op.
+ *
+ * NOTE: error == 0 and nl_dvp is NULL indicates a mount point, operation
+ *	 disallowed.  e.g. /var/cache where /var/cache is a null-mount, for
+ *	 example.
+ */
 int
 kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 {
@@ -4098,6 +4105,13 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	fromnd->nl_flags |= NLC_REFDVP | NLC_RENAME_SRC;
 	if ((error = nlookup(fromnd)) != 0)
 		return (error);
+
+	/*
+	 * Attempt to rename a mount point (from or to)
+	 */
+	if (error == 0 && fromnd->nl_dvp == NULL)
+		return (EINVAL);
+
 	if ((fnchd.ncp = fromnd->nl_nch.ncp->nc_parent) == NULL)
 		return (ENOENT);
 	fnchd.mount = fromnd->nl_nch.mount;
@@ -4135,6 +4149,15 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 		goto done;
 	}
 	tncp_gen = tond->nl_nch.ncp->nc_generation;
+
+	/*
+	 * Attempt to rename a mount point (from or to)
+	 */
+	if (error == 0 && tond->nl_dvp == NULL) {
+		cache_drop(&fnchd);
+		error = ENOENT;
+		goto done;
+	}
 
 	if ((tnchd.ncp = tond->nl_nch.ncp->nc_parent) == NULL) {
 		cache_drop(&fnchd);

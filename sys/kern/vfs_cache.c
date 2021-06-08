@@ -4032,6 +4032,138 @@ cache_resolve_mp(struct mount *mp)
 }
 
 /*
+ * Resolve the parent vnode
+ */
+int
+cache_resolve_dvp(struct nchandle *nch, struct ucred *cred, struct vnode **dvpp)
+{
+	struct namecache *par_tmp;
+	struct namecache *par;
+	struct namecache *ncp;
+	struct nchandle nctmp;
+	struct mount *mp;
+	struct vnode *dvp;
+	int error;
+
+	*dvpp = NULL;
+	ncp = nch->ncp;
+	mp = nch->mount;
+	KKASSERT(_cache_lockstatus(ncp) == LK_EXCLUSIVE);
+
+	/*
+	 * Treat this as a mount point even if it has a parent (e.g.
+	 * null-mount).  Return a NULL dvp and no error.
+	 */
+	if (ncp == mp->mnt_ncmountpt.ncp)
+		return 0;
+
+	/*
+	 * If the ncp was destroyed there is no parent directory, return
+	 * EINVAL.
+	 */
+	if (ncp->nc_flag & NCF_DESTROYED)
+		return(EINVAL);
+
+	/*
+	 * No parent if at the root of a filesystem, no error.  Typically
+	 * not applicable to null-mounts.  This case should have been caught
+	 * in the above ncmountpt check.
+	 */
+	if (ncp->nc_parent == NULL)
+		return 0;
+
+	/*
+	 * Resolve the parent dvp.
+	 *
+	 * The vp's of the parent directories in the chain are held via vhold()
+	 * due to the existance of the child, and should not disappear.
+	 * However, there are cases where they can disappear:
+	 *
+	 *	- due to filesystem I/O errors.
+	 *	- due to NFS being stupid about tracking the namespace and
+	 *	  destroys the namespace for entire directories quite often.
+	 *	- due to forced unmounts.
+	 *	- due to an rmdir (parent will be marked DESTROYED)
+	 *
+	 * When this occurs we have to track the chain backwards and resolve
+	 * it, looping until the resolver catches up to the current node.  We
+	 * could recurse here but we might run ourselves out of kernel stack
+	 * so we do it in a more painful manner.  This situation really should
+	 * not occur all that often, or if it does not have to go back too
+	 * many nodes to resolve the ncp.
+	 */
+	while ((dvp = cache_dvpref(ncp)) == NULL) {
+		/*
+		 * This case can occur if a process is CD'd into a
+		 * directory which is then rmdir'd.  If the parent is marked
+		 * destroyed there is no point trying to resolve it.
+		 */
+		if (ncp->nc_parent->nc_flag & NCF_DESTROYED)
+			return(ENOENT);
+		par = ncp->nc_parent;
+		_cache_hold(par);
+		_cache_lock(par);
+		while ((par_tmp = par->nc_parent) != NULL &&
+		       par_tmp->nc_vp == NULL) {
+			_cache_hold(par_tmp);
+			_cache_lock(par_tmp);
+			_cache_put(par);
+			par = par_tmp;
+		}
+		if (par->nc_parent == NULL) {
+			kprintf("EXDEV case 2 %*.*s\n",
+				par->nc_nlen, par->nc_nlen, par->nc_name);
+			_cache_put(par);
+			return (EXDEV);
+		}
+
+		/*
+		 * The parent is not set in stone, ref and lock it to prevent
+		 * it from disappearing.  Also note that due to renames it
+		 * is possible for our ncp to move and for par to no longer
+		 * be one of its parents.  We resolve it anyway, the loop
+		 * will handle any moves.
+		 */
+		_cache_get(par);	/* additional hold/lock */
+		_cache_put(par);	/* from earlier hold/lock */
+		if (par == nch->mount->mnt_ncmountpt.ncp) {
+			cache_resolve_mp(nch->mount);
+		} else if ((dvp = cache_dvpref(par)) == NULL) {
+			kprintf("[diagnostic] cache_resolve: raced on %*.*s\n",
+				par->nc_nlen, par->nc_nlen, par->nc_name);
+			_cache_put(par);
+			continue;
+		} else {
+			if (par->nc_flag & NCF_UNRESOLVED) {
+				nctmp.mount = mp;
+				nctmp.ncp = par;
+				par->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
+			}
+			vrele(dvp);
+		}
+		if ((error = par->nc_error) != 0) {
+			if (par->nc_error != EAGAIN) {
+				kprintf("EXDEV case 3 %*.*s error %d\n",
+				    par->nc_nlen, par->nc_nlen, par->nc_name,
+				    par->nc_error);
+				_cache_put(par);
+				return(error);
+			}
+			kprintf("[diagnostic] cache_resolve: EAGAIN par %p %*.*s\n",
+				par, par->nc_nlen, par->nc_nlen, par->nc_name);
+		}
+		_cache_put(par);
+		/* loop */
+	}
+
+	/*
+	 * We have a referenced dvp
+	 */
+	*dvpp = dvp;
+	return 0;
+}
+
+/*
  * Clean out negative cache entries when too many have accumulated.
  */
 static void

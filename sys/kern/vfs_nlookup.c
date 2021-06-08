@@ -502,8 +502,16 @@ wantsexcllock(struct nlookupdata *nd, int last_element)
  * plus the sticky check is made.
  *
  * If NLC_REFDVP is set nd->nl_dvp will be set to the directory vnode
- * of the returned entry.  The vnode will be referenced, but not locked,
- * and will be released by nlookup_done() along with everything else.
+ * of the returned entry.  The vnode will be referenced but not locked.
+ *
+ * IF THE PATH REPRESENTS A MOUNT POINT CROSSING THEN NLC_REFDVP WILL SET
+ * NL_DVP TO NULL AND RETURN NO ERROR (ERROR == 0), allowing the operation
+ * to return up the stack.  The nch will only be referenced and not locked.
+ * High level code must check this case and do the right thing since,
+ * typically, it means things like 'mkdir' should fail with EEXIST.  For
+ * example 'mkdir /var/cache' where /var/cache is a null-mount from
+ * /build/var.cache, needs to return EEXIST rather than a mount-crossing
+ * failure.
  *
  * NOTE: As an optimization we attempt to obtain a shared namecache lock
  *	 on any intermediate elements.  On success, the returned element
@@ -1128,42 +1136,63 @@ double_break:
 	 * If NLC_REFDVP is set acquire a referenced parent dvp.  Typically
 	 * used for mkdir/mknod/ncreate/nremove/unlink/rename.
 	 *
-	 * NOTE: nd->nl_nch does not necessarily represent the parent
-	 *	 directory, e.g. due to a mount point transition.
+	 * If a mount-point transition occurs due to ncp being a mount point,
+	 * or a null-mount, nl_dvp will be set to NULL and an error code of
+	 * 0 will be returned.  A NULL nc_parent is not necessarily the only
+	 * indication of a mount-point as null-mounts will also tend to have
+	 * a non-null nc_parent.
 	 *
 	 * nch is locked, standard lock order for the namecache is
 	 * child-to-parent so we can safely lock its parent.  We can
 	 * just use cache_dvpref().
-	 *
-	 * If nc_parent is NULL this is probably a mount point or a deleted
-	 * file and there is no legal parent directory.  However, we do not
-	 * want to fail the nlookup() because a higher level may wish to
-	 * return a better error code, such as mkdir("/mntpt") would want to
-	 * return EEXIST
 	 */
 	if ((nd->nl_flags & NLC_REFDVP) &&
 	    (doretry == FALSE || inretry == TRUE)) {
 		if (nch.ncp->nc_parent) {
-			nd->nl_dvp = cache_dvpref(nch.ncp);
-			if (nd->nl_dvp == NULL) {
+			error = cache_resolve_dvp(&nch, nd->nl_cred,
+						  &nd->nl_dvp);
+			if (error) {
+				kprintf("Parent directory lost during "
+					"nlookup: %s/%s (%08x/%08x)\n",
+					nch.ncp->nc_parent->nc_name,
+					nch.ncp->nc_name,
+					nch.ncp->nc_parent->nc_flag,
+					nch.ncp->nc_flag);
+				cache_put(&nch);
 				error = EINVAL;
-				if (keeperror(nd, error)) {
-					kprintf("Parent directory lost during "
-						"nlookup: %s/%s (%08x/%08x)\n",
-						nch.ncp->nc_parent->nc_name,
-						nch.ncp->nc_name,
-						nch.ncp->nc_parent->nc_flag,
-						nch.ncp->nc_flag);
-					cache_put(&nch);
-					break;
-				}
+				break;
 			}
+
+			/*
+			 * Mount-point, nl_dvp should remain NULL, error 0,
+			 * caller won't be able to use the results so leave
+			 * the ncp referenced but unlocked.
+			 */
+			if (nd->nl_dvp == NULL) {
+				cache_put(&nch);
+				break;
+			}
+
+			/*
+			 * Good directory, fall through to drop-and-cache
+			 * below
+			 */
+			/* */
 		} else {
+			/*
+			 * Mount-point, nl_dvp should remain NULL, error 0,
+			 * caller won't be able to use the results so leave
+			 * the ncp referenced but unlocked.
+			 */
 			error = 0;
 			cache_put(&nch);
 			break;
 		}
 	}
+
+	/*
+	 * ncp left with lock+ref on break, set NLC_NCPISLOCKED flag
+	 */
 	cache_drop_and_cache(&nd->nl_nch, nd->nl_elmno);
 	nd->nl_nch = nch;
 	nd->nl_flags |= NLC_NCPISLOCKED;
@@ -1174,7 +1203,6 @@ double_break:
     /*
      * We are done / or possibly retry
      */
-
     if (hit)
 	++gd->gd_nchstats->ncs_longhits;
     else
