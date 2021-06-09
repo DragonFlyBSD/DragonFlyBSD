@@ -28,7 +28,7 @@
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd May 12, 2019
+.Dd June 10, 2021
 .Dt SYSCONF 3
 .Os
 .Sh NAME
@@ -89,6 +89,11 @@ The maximum number of expressions that can be nested within
 parenthesis by the
 .Xr expr 1
 utility.
+.It Dv _SC_HOST_NAME_MAX
+Maximum length of a host name (not including the terminating null) as
+returned from the
+.Xr gethostname 3 ,
+function.
 .It Dv _SC_IOV_MAX
 The maximum number of elements in the I/O vector used by
 .Xr readv 2 ,
