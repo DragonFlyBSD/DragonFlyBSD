@@ -106,14 +106,10 @@
 
 struct hammer2_io;
 struct hammer2_chain;
-struct hammer2_cluster;
 struct hammer2_inode;
 struct hammer2_depend;
 struct hammer2_dev;
 struct hammer2_pfs;
-struct hammer2_span;
-struct hammer2_msg;
-struct hammer2_thread;
 union hammer2_xop;
 
 /*
