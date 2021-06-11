@@ -36,7 +36,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
-#include <sys/lock.h>
 #include <sys/uuid.h>
 #include <sys/dirent.h>
 

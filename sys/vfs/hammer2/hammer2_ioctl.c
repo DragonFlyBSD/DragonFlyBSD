@@ -42,6 +42,8 @@
 
 #include "hammer2.h"
 
+#include <sys/kern_syscall.h>
+
 static int hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_remote_scan(hammer2_inode_t *ip, void *data);

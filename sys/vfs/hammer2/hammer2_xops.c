@@ -44,18 +44,8 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/fcntl.h>
-#include <sys/buf.h>
 #include <sys/proc.h>
 #include <sys/mount.h>
-#include <sys/vnode.h>
-#include <sys/mountctl.h>
-#include <sys/dirent.h>
-#include <sys/uio.h>
-#include <sys/objcache.h>
-#include <sys/event.h>
-#include <sys/file.h>
-#include <vfs/fifofs/fifo.h>
 
 #include "hammer2.h"
 

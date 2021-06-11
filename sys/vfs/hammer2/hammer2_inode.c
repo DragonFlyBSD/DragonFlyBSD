@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <sys/lock.h>
 #include <sys/uuid.h>
+#include <sys/vnode.h>
 
 #include "hammer2.h"
 

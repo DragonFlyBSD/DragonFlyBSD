@@ -40,10 +40,10 @@
 #include <sys/nlookup.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
-#include <sys/fcntl.h>
 #include <sys/buf.h>
 #include <sys/uuid.h>
 #include <sys/objcache.h>
+#include <sys/lock.h>
 
 #include "hammer2.h"
 

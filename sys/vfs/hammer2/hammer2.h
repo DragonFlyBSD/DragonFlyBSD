@@ -79,20 +79,18 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
-#include <sys/mountctl.h>
 #include <sys/priv.h>
 #include <sys/stat.h>
 #include <sys/thread.h>
-#include <sys/globaldata.h>
 #include <sys/lockf.h>
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/limits.h>
 #include <sys/dmsg.h>
 #include <sys/mutex.h>
-#ifdef _KERNEL
-#include <sys/kern_syscall.h>
-#endif
+#include <sys/lock.h>
+#include <sys/file.h>
+#include <sys/objcache.h>
 
 #ifdef _KERNEL
 #include <sys/signal2.h>

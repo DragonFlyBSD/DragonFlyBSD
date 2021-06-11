@@ -34,12 +34,8 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/fcntl.h>
-#include <sys/buf.h>
 #include <sys/proc.h>
 #include <sys/mount.h>
-#include <sys/vnode.h>
-#include <sys/mountctl.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 

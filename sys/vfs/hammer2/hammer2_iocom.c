@@ -35,23 +35,13 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/vnode.h>
 #include <sys/mount.h>
-#include <sys/fcntl.h>
-#include <sys/buf.h>
 #include <sys/uuid.h>
-#include <sys/vfsops.h>
-#include <sys/sysctl.h>
 #include <sys/socket.h>
-#include <sys/objcache.h>
 #include <sys/proc.h>
-#include <sys/mountctl.h>
-#include <sys/dirent.h>
-#include <sys/uio.h>
+#include <sys/file.h>
 
 #include "hammer2.h"
-#include "hammer2_disk.h"
-#include "hammer2_mount.h"
 
 static int hammer2_rcvdmsg(kdmsg_msg_t *msg);
 static void hammer2_autodmsg(kdmsg_msg_t *msg);

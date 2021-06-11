@@ -57,8 +57,7 @@
 #include <sys/systm.h>
 #include <sys/types.h>
 #include <sys/lock.h>
-#include <sys/kern_syscall.h>
-#include <sys/uuid.h>
+#include <sys/buf.h>
 
 #include <crypto/sha2/sha2.h>
 
