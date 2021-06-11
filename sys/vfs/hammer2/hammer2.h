@@ -1447,7 +1447,6 @@ extern int hammer2_flush_pipe;
 extern int hammer2_dio_count;
 extern int hammer2_dio_limit;
 extern int hammer2_bulkfree_tps;
-extern int hammer2_worker_rmask;
 extern int hammer2_spread_workers;
 extern long hammer2_chain_allocs;
 extern long hammer2_limit_dirty_chains;

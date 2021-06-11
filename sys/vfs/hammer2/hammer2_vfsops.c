@@ -73,7 +73,6 @@ int hammer2_flush_pipe = 100;
 int hammer2_dio_count;
 int hammer2_dio_limit = 256;
 int hammer2_bulkfree_tps = 5000;
-int hammer2_worker_rmask = 3;
 int hammer2_spread_workers;
 long hammer2_chain_allocs;
 long hammer2_limit_dirty_chains;
@@ -128,8 +127,6 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, always_compress, CTLFLAG_RW,
 	   &hammer2_always_compress, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
 	   &hammer2_flush_pipe, 0, "");
-SYSCTL_INT(_vfs_hammer2, OID_AUTO, worker_rmask, CTLFLAG_RW,
-	   &hammer2_worker_rmask, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, bulkfree_tps, CTLFLAG_RW,
 	   &hammer2_bulkfree_tps, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_allocs, CTLFLAG_RW,
