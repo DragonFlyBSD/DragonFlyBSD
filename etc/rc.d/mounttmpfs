@@ -30,8 +30,8 @@ mounttmpfs_start()
 		echo -n "Mounting tmpfs at /var/run/shm"
 		mount_tmpfs -m 01777 dummy /var/run/shm
 		mkdir -p -m 01777 /var/run/shm/tmp
-		mkdir -p -m 01777 /var/run/shm/tmp/dev
-		mkdir -p -m 01777 /var/run/shm/tmp/dev/shm
+		mkdir -p -m 01777 /var/run/shm/dev
+		mkdir -p -m 01777 /var/run/shm/dev/shm
 		echo "."
 	fi
 
