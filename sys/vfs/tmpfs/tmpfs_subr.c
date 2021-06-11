@@ -416,7 +416,8 @@ loop:
 				if (vget(vp, (lkflag & ~LK_RETRY) |
 					     LK_SLEEPFAIL |
 					     LK_EXCLUSIVE) == 0) {
-					vn_unlock(vp);
+					kprintf("tmpfs: vp %p sleepfail\n", vp);
+					vput(vp);
 				}
 				vdrop(vp);
 				TMPFS_NODE_LOCK_SH(dnode);
