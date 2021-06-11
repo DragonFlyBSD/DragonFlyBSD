@@ -428,11 +428,11 @@ hammer2_xop_helper_create(hammer2_pfs_t *pmp)
 	lockmgr(&pmp->lock, LK_EXCLUSIVE);
 	pmp->has_xop_threads = 1;
 
-	pmp->xop_groups = kmalloc(hammer2_xopgroups *
+	pmp->xop_groups = kmalloc(hammer2_xop_nthreads *
 				  sizeof(hammer2_xop_group_t),
 				  M_HAMMER2, M_WAITOK | M_ZERO);
 	for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
-		for (j = 0; j < hammer2_xopgroups; ++j) {
+		for (j = 0; j < hammer2_xop_nthreads; ++j) {
 			if (pmp->xop_groups[j].thrs[i].td)
 				continue;
 			hammer2_thr_create(&pmp->xop_groups[j].thrs[i],
@@ -456,7 +456,7 @@ hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp)
 	}
 
 	for (i = 0; i < pmp->pfs_nmasters; ++i) {
-		for (j = 0; j < hammer2_xopgroups; ++j) {
+		for (j = 0; j < hammer2_xop_nthreads; ++j) {
 			if (pmp->xop_groups[j].thrs[i].td)
 				hammer2_thr_delete(&pmp->xop_groups[j].thrs[i]);
 		}
@@ -489,64 +489,57 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_desc_t *desc,
 		hammer2_xop_helper_create(pmp);
 
 	/*
-	 * The intent of the XOP sequencer is to ensure that ops on the same
-	 * inode execute in the same order.  This is necessary when issuing
-	 * modifying operations to multiple targets because some targets might
-	 * get behind and the frontend is allowed to complete the moment a
-	 * quorum of targets succeed.
+	 * The sequencer assigns a worker thread to the XOP.
 	 *
-	 * Strategy operations:
+	 * (1) The worker threads are partitioned into two sets, one for
+	 *     NON-STRATEGY XOPs, and the other for STRATEGY XOPs.  This
+	 *     guarantees that strategy calls will always be able to make
+	 *     progress and will not deadlock against non-strategy calls.
 	 *
-	 *	(1) Must be segregated from non-strategy operations to
-	 *	    avoid a deadlock.  A vfsync and a bread/bwrite can
-	 *	    deadlock the vfsync's buffer list scan.
-	 *
-	 *	(2) Reads are separated from writes to avoid write stalls
-	 *	    from excessively intefering with reads.  Reads are allowed
-	 *	    to wander across multiple worker threads for potential
-	 *	    single-file concurrency improvements.
-	 *
-	 *	(3) Writes are serialized to a single worker thread (for any
-	 *	    given inode) in order to try to improve block allocation
-	 *	    sequentiality and to reduce lock contention.
+	 * (2) If clustered, non-strategy operations to the same inode must
+	 *     be serialized.  This is to avoid confusion when issuing
+	 *     modifying operations because a XOP completes the instant a
+	 *     quorum is reached.
 	 *
 	 * TODO - RENAME fails here because it is potentially modifying
 	 *	  three different inodes, but we triple-lock the inodes
 	 *	  involved so it shouldn't create a sequencing schism.
 	 */
 	if (xop->flags & HAMMER2_XOP_STRATEGY) {
+		/*
+		 * Use worker space 0 associated with the current cpu
+		 * for strategy ops.
+		 */
 		hammer2_xop_strategy_t *xopst;
+		u_int which;
 
 		xopst = &((hammer2_xop_t *)xop)->xop_strategy;
-		ng = mycpu->gd_cpuid % (hammer2_xopgroups >> 1);
-#if 0
-		hammer2_off_t off;
-		int cdr;
+		which = ((unsigned int)ip1->ihash +
+			 ((unsigned int)xopst->lbase >> HAMMER2_PBUFRADIX)) %
+			hammer2_xop_sgroups;
+		ng = mycpu->gd_cpuid % hammer2_xop_mod +
+		     hammer2_xop_mod * which;
+	} else if (hammer2_spread_workers == 0 && ip1->cluster.nchains == 1) {
+		/*
+		 * For now try to keep the work on the same cpu to reduce
+		 * IPI overhead.  Several threads are assigned to each cpu,
+		 * don't be very smart and select the one to use based on
+		 * the inode hash.
+		 */
+		u_int which;
 
-		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)));
-		if (desc == &hammer2_strategy_read_desc) {
-			off = xopst->lbase / HAMMER2_PBUFSIZE;
-			cdr = hammer2_cluster_data_read;
-			/* sysctl race, load into var */
-			cpu_ccfence();
-			if (cdr)
-				off /= cdr;
-			ng ^= hammer2_icrc32(&off, sizeof(off)) &
-			      (hammer2_worker_rmask << 1);
-			ng |= 1;
-		} else {
-#if 0
-			off = xopst->lbase >> 21;
-			ng ^= hammer2_icrc32(&off, sizeof(off)) & 3;
-#endif
-			ng &= ~1;
-		}
-		ng = ng % (hammer2_xopgroups >> 1);
-		ng += (hammer2_xopgroups >> 1);
-#endif
+		which = (unsigned int)ip1->ihash % hammer2_xop_xgroups;
+		ng = mycpu->gd_cpuid % hammer2_xop_mod +
+		     (which * hammer2_xop_mod) +
+		     hammer2_xop_xbase;
 	} else {
-		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)));
-		ng = (unsigned int)ng % (hammer2_xopgroups >> 1);
+		/*
+		 * Hash based on inode only, must serialize inode to same
+		 * thread regardless of current cpu.
+		 */
+		ng = (unsigned int)ip1->ihash %
+		     (hammer2_xop_mod * hammer2_xop_xgroups) +
+		     hammer2_xop_xbase;
 	}
 	xop->desc = desc;
 

@@ -902,6 +902,11 @@ again:
 	 * Initialize nip's cluster.  A cluster is provided for normal
 	 * inodes but typically not for the super-root or PFS inodes.
 	 */
+	{
+		hammer2_inode_t *nnip = nip;
+		nip->ihash = (int)hammer2_icrc32(&nnip, sizeof(nnip));
+	}
+
 	nip->cluster.refs = 1;
 	nip->cluster.pmp = pmp;
 	nip->cluster.flags |= HAMMER2_CLUSTER_INODE;

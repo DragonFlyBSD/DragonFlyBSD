@@ -77,7 +77,11 @@ struct lock hammer2_mntlk;
 
 int hammer2_supported_version = HAMMER2_VOL_VERSION_DEFAULT;
 int hammer2_debug;
-int hammer2_xopgroups;
+int hammer2_xop_nthreads;
+int hammer2_xop_sgroups;
+int hammer2_xop_xgroups;
+int hammer2_xop_xbase;
+int hammer2_xop_mod;
 long hammer2_debug_inode;
 int hammer2_cluster_meta_read = 1;	/* physical read-ahead */
 int hammer2_cluster_data_read = 4;	/* physical read-ahead */
@@ -89,6 +93,7 @@ int hammer2_dio_count;
 int hammer2_dio_limit = 256;
 int hammer2_bulkfree_tps = 5000;
 int hammer2_worker_rmask = 3;
+int hammer2_spread_workers;
 long hammer2_chain_allocs;
 long hammer2_limit_dirty_chains;
 long hammer2_limit_dirty_inodes;
@@ -128,6 +133,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, debug, CTLFLAG_RW,
 	   &hammer2_debug, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, debug_inode, CTLFLAG_RW,
 	   &hammer2_debug_inode, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, spread_workers, CTLFLAG_RW,
+	   &hammer2_spread_workers, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_meta_read, CTLFLAG_RW,
 	   &hammer2_cluster_meta_read, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_data_read, CTLFLAG_RW,
@@ -255,18 +262,26 @@ hammer2_vfs_init(struct vfsconf *conf)
 	static struct objcache_malloc_args margs_vop;
 
 	int error;
+	int mod;
 
 	error = 0;
 	kmalloc_raise_limit(M_HAMMER2, 0);	/* unlimited */
 
 	/*
-	 * hammer2_xopgroups must be even and is most optimal if
-	 * 2 x ncpus so strategy functions can be queued to the same
-	 * cpu.
+	 * hammer2_xop_nthreads must be a multiple of ncpus,
+	 * minimum 2 * ncpus.
 	 */
-	hammer2_xopgroups = HAMMER2_XOPGROUPS_MIN;
-	if (hammer2_xopgroups < ncpus * 2)
-		hammer2_xopgroups = ncpus * 2;
+	mod = ncpus;
+	hammer2_xop_mod = mod;
+	hammer2_xop_nthreads = mod * 2;
+	while (hammer2_xop_nthreads / mod < HAMMER2_XOPGROUPS_MIN ||
+	       hammer2_xop_nthreads < HAMMER2_XOPTHREADS_MIN)
+        {
+		hammer2_xop_nthreads += mod;
+	}
+	hammer2_xop_sgroups = hammer2_xop_nthreads / mod / 2;
+	hammer2_xop_xgroups = hammer2_xop_nthreads / mod - hammer2_xop_sgroups;
+	hammer2_xop_xbase = hammer2_xop_sgroups * mod;
 
 	/*
 	 * A large DIO cache is needed to retain dedup enablement masks.
@@ -654,7 +669,7 @@ hammer2_pfsdealloc(hammer2_pfs_t *pmp, int clindex, int destroying)
 		 * Terminate all XOP threads for the cluster index.
 		 */
 		if (pmp->xop_groups) {
-			for (j = 0; j < hammer2_xopgroups; ++j) {
+			for (j = 0; j < hammer2_xop_nthreads; ++j) {
 				hammer2_thr_delete(
 					&pmp->xop_groups[j].thrs[clindex]);
 			}
@@ -709,7 +724,7 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 		for (i = 0; i < iroot->cluster.nchains; ++i) {
 			hammer2_thr_delete(&pmp->sync_thrs[i]);
 			if (pmp->xop_groups) {
-				for (j = 0; j < hammer2_xopgroups; ++j)
+				for (j = 0; j < hammer2_xop_nthreads; ++j)
 					hammer2_thr_delete(
 						&pmp->xop_groups[j].thrs[i]);
 			}
@@ -794,7 +809,7 @@ again:
 				continue;
 			hammer2_thr_freeze_async(&pmp->sync_thrs[i]);
 			if (pmp->xop_groups) {
-				for (j = 0; j < hammer2_xopgroups; ++j) {
+				for (j = 0; j < hammer2_xop_nthreads; ++j) {
 					hammer2_thr_freeze_async(
 						&pmp->xop_groups[j].thrs[i]);
 				}
@@ -805,7 +820,7 @@ again:
 				continue;
 			hammer2_thr_freeze(&pmp->sync_thrs[i]);
 			if (pmp->xop_groups) {
-				for (j = 0; j < hammer2_xopgroups; ++j) {
+				for (j = 0; j < hammer2_xop_nthreads; ++j) {
 					hammer2_thr_freeze(
 						&pmp->xop_groups[j].thrs[i]);
 				}
@@ -832,7 +847,7 @@ again:
 				continue;
 			hammer2_thr_delete(&pmp->sync_thrs[i]);
 			if (pmp->xop_groups) {
-				for (j = 0; j < hammer2_xopgroups; ++j) {
+				for (j = 0; j < hammer2_xop_nthreads; ++j) {
 					hammer2_thr_delete(
 						&pmp->xop_groups[j].thrs[i]);
 				}
@@ -897,7 +912,7 @@ again:
 			hammer2_thr_remaster(&pmp->sync_thrs[i]);
 			hammer2_thr_unfreeze(&pmp->sync_thrs[i]);
 			if (pmp->xop_groups) {
-				for (j = 0; j < hammer2_xopgroups; ++j) {
+				for (j = 0; j < hammer2_xop_nthreads; ++j) {
 					hammer2_thr_remaster(
 						&pmp->xop_groups[j].thrs[i]);
 					hammer2_thr_unfreeze(

@@ -562,7 +562,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  */
 #define HAMMER2_XOPFIFO		16
 #define HAMMER2_XOPFIFO_MASK	(HAMMER2_XOPFIFO - 1)
-#define HAMMER2_XOPGROUPS_MIN	32
+#define HAMMER2_XOPTHREADS_MIN	32
+#define HAMMER2_XOPGROUPS_MIN	4
 
 #define HAMMER2_MAXCLUSTER	8
 #define HAMMER2_XOPMASK_CLUSTER	((uint64_t)((1LLU << HAMMER2_MAXCLUSTER) - 1))
@@ -725,6 +726,7 @@ struct hammer2_inode {
 	struct lockf		advlock;
 	u_int			flags;
 	u_int			refs;		/* +vpref, +flushref */
+	int			ihash;		/* xop worker distribution */
 	uint8_t			comp_heuristic;
 	hammer2_inode_meta_t	meta;		/* copy of meta-data */
 	hammer2_off_t		osize;
@@ -1458,7 +1460,11 @@ extern struct lock hammer2_mntlk;
 
 
 extern int hammer2_debug;
-extern int hammer2_xopgroups;
+extern int hammer2_xop_nthreads;
+extern int hammer2_xop_sgroups;
+extern int hammer2_xop_xgroups;
+extern int hammer2_xop_xbase;
+extern int hammer2_xop_mod;
 extern long hammer2_debug_inode;
 extern int hammer2_cluster_meta_read;
 extern int hammer2_cluster_data_read;
@@ -1470,6 +1476,7 @@ extern int hammer2_dio_count;
 extern int hammer2_dio_limit;
 extern int hammer2_bulkfree_tps;
 extern int hammer2_worker_rmask;
+extern int hammer2_spread_workers;
 extern long hammer2_chain_allocs;
 extern long hammer2_limit_dirty_chains;
 extern long hammer2_limit_dirty_inodes;
