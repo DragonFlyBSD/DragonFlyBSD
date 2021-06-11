@@ -206,8 +206,10 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
 	printf(" error=%d", ncp.nc_error);
     if (ncp.nc_flag & NCF_ISMOUNTPT)
 	printf(" MAYBEMOUNT");
-    if (ncp.nc_lockstatus)
-	printf(" LOCKSTATUS(%08x,td=%p)", ncp.nc_lockstatus, ncp.nc_locktd);
+    if (ncp.nc_lock.lk_count & ~LKC_SHARED) {
+	printf(" LOCKSTATUS(%016lx,td=%p)",
+	       ncp.nc_lock.lk_count, ncp.nc_lock.lk_lockholder);
+    }
     printf("]");
 
     if (path) {
