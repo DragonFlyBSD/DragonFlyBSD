@@ -174,12 +174,16 @@ hint.ahci.disabled=1
 .Pp
 The
 .Nm
-driver can be told to force a lower-speed 1.5Gb link speed
+driver can be told to force a lower-speed 1.5Gb or 3.0Gb link speed
 if necessary, and can also be told to refrain from attempting to send
 certain higher-level ATA commands to initialize ATA features which
 some devices might not properly implement.
+Dropping the link speed is sometimes necessary to avoid chipset comm errors
+when a machine's cabling is sub-standard.
 .Bd -literal -offset indent
 hint.ahci.force150=1
+hint.ahci.force300=1
+hint.ahci.force600=1
 hint.ahci.nofeatures=1
 .Ed
 .Pp
