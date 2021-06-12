@@ -44,6 +44,15 @@
 #include <sys/param.h>
 #include <sys/bitops.h>
 
+#ifdef __NetBSD__
+
+#include <machine/pte.h>
+#include <machine/vmparam.h>
+
+#define __cacheline_aligned	__attribute__((__aligned__(64)))
+
+#else /* DragonFly */
+
 #include <machine/pmap.h>
 
 #define __cacheline_aligned	__cachealign
@@ -65,5 +74,7 @@
 #define PTE_PS		X86_PG_PS	/* 0x080: Large Page Size */
 #define PTE_NX		X86_PG_NX	/* 1UL<<63: No Execute */
 #define PTE_FRAME	PG_FRAME	/* 0x000ffffffffff000 */
+
+#endif /* __NetBSD__ */
 
 #endif /* _LIBNVMM_COMPAT_H_ */
