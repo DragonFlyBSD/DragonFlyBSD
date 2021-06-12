@@ -799,7 +799,6 @@ struct hammer2_thread {
 	hammer2_xop_list_t xopq;
 	thread_t	td;
 	uint32_t	flags;
-	int		depth;
 	int		clindex;	/* cluster element index */
 	int		repidx;
 	char		*scratch;	/* MAXPHYS */
