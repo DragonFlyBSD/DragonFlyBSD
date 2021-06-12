@@ -631,36 +631,19 @@ typedef struct hammer2_cluster	hammer2_cluster_t;
 #define HAMMER2_CLUSTER_ANYDATA	( HAMMER2_CLUSTER_RDHARD |	\
 				  HAMMER2_CLUSTER_RDSOFT |	\
 				  HAMMER2_CLUSTER_RDSLAVE)
-
+#if 0
 #define HAMMER2_CLUSTER_RDOK	( HAMMER2_CLUSTER_RDHARD |	\
 				  HAMMER2_CLUSTER_RDSOFT)
 
 #define HAMMER2_CLUSTER_WROK	( HAMMER2_CLUSTER_WRHARD |	\
 				  HAMMER2_CLUSTER_WRSOFT)
-
+#endif
 #define HAMMER2_CLUSTER_ZFLAGS	( HAMMER2_CLUSTER_WRHARD |	\
 				  HAMMER2_CLUSTER_RDHARD |	\
 				  HAMMER2_CLUSTER_WRSOFT |	\
 				  HAMMER2_CLUSTER_RDSOFT |	\
 				  HAMMER2_CLUSTER_MSYNCED |	\
 				  HAMMER2_CLUSTER_SSYNCED)
-
-/*
- * Helper functions (cluster must be locked for flags to be valid).
- */
-static __inline
-int
-hammer2_cluster_rdok(hammer2_cluster_t *cluster)
-{
-	return (cluster->flags & HAMMER2_CLUSTER_RDOK);
-}
-
-static __inline
-int
-hammer2_cluster_wrok(hammer2_cluster_t *cluster)
-{
-	return (cluster->flags & HAMMER2_CLUSTER_WROK);
-}
 
 RB_HEAD(hammer2_inode_tree, hammer2_inode);	/* ip->rbnode */
 TAILQ_HEAD(inoq_head, hammer2_inode);		/* ip->entry */
@@ -1154,23 +1137,6 @@ struct hammer2_dev {
 };
 
 typedef struct hammer2_dev hammer2_dev_t;
-
-/*
- * Helper functions (cluster must be locked for flags to be valid).
- */
-static __inline
-int
-hammer2_chain_rdok(hammer2_chain_t *chain)
-{
-	return (chain->error == 0);
-}
-
-static __inline
-int
-hammer2_chain_wrok(hammer2_chain_t *chain)
-{
-	return (chain->error == 0 && chain->hmp->ronly == 0);
-}
 
 /*
  * Per-cluster management structure.  This structure will be tied to a
