@@ -1187,7 +1187,6 @@ struct hammer2_pfs {
 	hammer2_blockset_t	pfs_iroot_blocksets[HAMMER2_MAXCLUSTER];
 	hammer2_trans_t		trans;
 	struct lock		lock;		/* PFS lock for certain ops */
-	struct lock		lock_nlink;	/* rename and nlink lock */
 	struct netexport	export;		/* nfs export */
 	int			unused00;
 	int			ronly;		/* read-only mount */

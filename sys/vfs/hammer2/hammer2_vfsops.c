@@ -406,7 +406,6 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 		kmalloc_create_obj(&pmp->minode, "HAMMER2-inodes",
 				   sizeof(struct hammer2_inode));
 		lockinit(&pmp->lock, "pfslk", 0, 0);
-		lockinit(&pmp->lock_nlink, "h2nlink", 0, 0);
 		spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
 		spin_init(&pmp->xop_spin, "h2xop");
 		spin_init(&pmp->lru_spin, "h2lru");
