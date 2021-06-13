@@ -102,13 +102,15 @@ vmm_init(void)
 	    OID_AUTO, "vmm",
 	    CTLFLAG_RD, 0, "VMM options");
 
+#if 0 /* Disable for now to avoid overload symbols confusing ddb/kgdb. */
 	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
 		ctl = get_ctl_intel();
 	} else if (cpu_vendor_id == CPU_VENDOR_AMD) {
 		ctl = get_ctl_amd();
 	}
+#endif
 
-	if (ctl->init()) {
+	if (ctl == NULL || ctl->init()) {
 		SYSCTL_ADD_INT(&vmm_sysctl_ctx,
 		    SYSCTL_CHILDREN(vmm_sysctl_tree),
 		    OID_AUTO, "enable", CTLFLAG_RD,
