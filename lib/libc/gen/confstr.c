@@ -124,6 +124,11 @@ confstr(int name, char *buf, size_t len)
 			p = "_POSIX_V7_ILP32_OFFBIG";
 		goto docopy;
 
+	case _CS_V6_ENV:
+	case _CS_V7_ENV:
+		p = "";
+		goto docopy;
+
 docopy:
 		if (len != 0 && buf != NULL)
 			strlcpy(buf, p, len);

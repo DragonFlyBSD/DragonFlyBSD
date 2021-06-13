@@ -368,6 +368,8 @@ typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
 #define	_CS_POSIX_V7_LPBIG_OFFBIG_LDFLAGS	25
 #define	_CS_POSIX_V7_LPBIG_OFFBIG_LIBS		26
 #define	_CS_POSIX_V7_WIDTH_RESTRICTED_ENVS	27
+#define	_CS_V6_ENV				28
+#define	_CS_V7_ENV				29
 #endif
 
 __BEGIN_DECLS
