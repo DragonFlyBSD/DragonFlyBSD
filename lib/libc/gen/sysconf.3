@@ -28,7 +28,7 @@
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd June 10, 2021
+.Dd June 13, 2021
 .Dt SYSCONF 3
 .Os
 .Sh NAME
@@ -58,9 +58,26 @@ Symbolic constants for each name value are found in the include file
 .Pp
 The available values are as follows:
 .Bl -tag -width 6n
+.It Dv _SC_AIO_LISTIO_MAX
+Maximum number of I/O operations in a single list I/O call supported.
+.It Dv _SC_AIO_MAX
+Maximum number of outstanding asynchronous I/O operations supported.
+.It Dv _SC_AIO_PRIO_DELTA_MAX
+The maximum amount by which a process can decrease its asynchronous I/O
+priority level from its own scheduling priority.
 .It Dv _SC_ARG_MAX
 The maximum bytes of argument to
 .Xr execve 2 .
+.It Dv _SC_ATEXIT_MAX
+Maximum number of functions that may be registered with
+.Fn atexit .
+.It Dv _SC_BARRIERS
+The version of
+.St -p1003.1
+and its
+Barriers
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_BC_BASE_MAX
 The maximum ibase/obase values in the
 .Xr bc 1
@@ -81,14 +98,30 @@ utility.
 The maximum number of simultaneous processes per user id.
 .It Dv _SC_CLK_TCK
 The frequency of the statistics clock in ticks per second.
+.It Dv _SC_CLOCK_SELECTION
+Return the POSIX version the implementation of the Clock Selection Option
+on this system conforms to, or \-1 if unavailable.
 .It Dv _SC_COLL_WEIGHTS_MAX
 The maximum number of weights that can be assigned to any entry of
 the LC_COLLATE order keyword in the locale definition file.
+.It Dv _SC_CPUTIME
+The
+.Dv CLOCK_PROCESS_CPUTIME_ID
+clock ID is supported, otherwise \-1.
+.It Dv _SC_DELAYTIMER_MAX
+Maximum number of timer expiration overruns.
 .It Dv _SC_EXPR_NEST_MAX
 The maximum number of expressions that can be nested within
 parenthesis by the
 .Xr expr 1
 utility.
+.It Dv _SC_FSYNC
+Return 1 if the File Synchronization Option is available on this system,
+otherwise \-1.
+.It Dv _SC_GETGR_R_SIZE_MAX
+Suggested initial value for the size of the group entry buffer.
+.It Dv _SC_GETPW_R_SIZE_MAX
+Suggested initial value for the size of the password entry buffer.
 .It Dv _SC_HOST_NAME_MAX
 Maximum length of a host name (not including the terminating null) as
 returned from the
@@ -106,8 +139,25 @@ Return 1 if job control is available on this system, otherwise \-1.
 .It Dv _SC_LINE_MAX
 The maximum length in bytes of a text-processing utility's input
 line.
+.It Dv _SC_LOGIN_NAME_MAX
+Maximum length of a login name.
+.It Dv _SC_MAPPED_FILES
+Return 1 if the Memory Mapped Files Option is available on this system,
+otherwise \-1.
+.It Dv _SC_MEMLOCK
+Return 1 if the Process Memory Locking Option is available on this system,
+otherwise \-1.
+.It Dv _SC_MEMLOCK_RANGE
+Return 1 if the Range Memory Locking Option is available on this system,
+otherwise \-1.
+.It Dv _SC_MEMORY_PROTECTION
+Return 1 if the Memory Protection Option is available on this system,
+otherwise \-1.
 .It Dv _SC_MESSAGE_PASSING
 Whether Message Passing option is supported.
+.It Dv _SC_MONOTONIC_CLOCK
+Return the POSIX version of the implementation of the Monotonic Clock
+option that this system conforms to, or \-1 if unavailable.
 .It Dv _SC_MQ_OPEN_MAX
 The maximum number of open message queue descriptors per process.
 .It Dv _SC_MQ_PRIO_MAX
@@ -121,21 +171,87 @@ The size of a system page in bytes.
 .It Dv _SC_PAGE_SIZE
 Equivalent to
 .Dv _SC_PAGESIZE .
+.It Dv _SC_READER_WRITER_LOCKS
+The version of
+.St -p1003.1
+and its
+Read-Write Locks
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_RE_DUP_MAX
 The maximum number of repeated occurrences of a regular expression
 permitted when using interval notation.
 .It Dv _SC_REGEXP
 Return 1 if the system supports regular expression handling.
+.It Dv _SC_RTSIG_MAX
+Maximum number of realtime signals reserved for application use.
 .It Dv _SC_SAVED_IDS
 Return 1 if saved set-group and saved set-user ID is available,
 otherwise \-1.
+.It Dv _SC_SEMAPHORES
+The version of
+.St -p1003.1
+and its
+Semaphores
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_SEM_NSEMS_MAX
+Maximum number of semaphores that a process may have.
+.It Dv _SC_SEM_VALUE_MAX
+The maximum value a semaphore may have.
 .It Dv _SC_SHELL
 Return 1 if the system supports the
 .Tn POSIX
 shell.
+.It Dv _SC_SIGQUEUE_MAX
+Maximum number of queued signals that a process may send and have pending at
+the receiver(s) at any time.
+.It Dv _SC_SPIN_LOCKS
+The version of
+.St -p1003.1
+and its
+Spin Locks
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_STREAM_MAX
 The minimum maximum number of streams that a process may have open
 at any one time.
+.It Dv _SC_SYMLOOP_MAX
+Maximum number of symbolic links that can be reliably traversed in the
+resolution of a pathname in the absence of a loop.
+.It Dv _SC_SYNCHRONIZED_IO
+Return 1 if the Synchronized I/O Option is available on this system,
+otherwise \-1.
+.It Dv _SC_THREAD_CPUTIME
+The
+.Dv CLOCK_THREAD_CPUTIME_ID
+clock ID is supported, otherwise \-1.
+.It Dv _SC_THREAD_PRIO_PROTECT
+Whether the system supports the priority ceiling protocol for POSIX threads.
+.It Dv _SC_THREADS
+The version of
+.St -p1003.1
+and its
+Threads
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_THREAD_SAFE_FUNCTIONS
+The level of support for thread-safe (re-entrant) functions.
+.It Dv _SC_THREAD_STACK_MIN
+Minimum size in bytes of thread stack storage.
+.It Dv _SC_THREAD_THREADS_MAX
+Maximum number of threads that can be created per process.
+.It Dv _SC_TIMER_MAX
+Maximum number of timers per process supported.
+.It Dv _SC_TIMERS
+The version of
+.St -p1003.1
+and its
+Timers
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_TTY_NAME_MAX
+Maximum length of terminal device name.
 .It Dv _SC_TZNAME_MAX
 The minimum maximum number of types supported for the name of a
 timezone.
@@ -150,6 +266,10 @@ Return 1 if the system supports the
 Shared Memory Feature
 for both compilation and execution, or 0 if only compilation support is
 guaranteed.
+.It Dv _SC_XOPEN_VERSION
+An integer value greater than or equal to 4,
+indicating the version of the X/Open Portability Guide to which this
+system conforms.
 .It Dv _SC_2_C_BIND
 Return 1 if the system's C-language development facilities support the
 C-Language Bindings Option, otherwise \-1.
