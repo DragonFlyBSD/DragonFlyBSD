@@ -921,15 +921,20 @@ vmx_vmclear_remote(struct globaldata *ci, paddr_t vmcs_pa)
 
 	kpreempt_disable();
 	curlwp_bindx(bound);
-#endif /* __NetBSD__ */
+
+#else /* DragonFly */
+	int seq;
 
 	/*
 	 * No need to bind the thread, because any normal kernel thread will
 	 * not migrate to another CPU or be preempted (except by an interrupt
 	 * thread).
 	 */
-	lwkt_send_ipiq(ci, vmx_vmclear_ipi, (void *)vmcs_pa);
-	/* XXX: need any cpu fence ?? */
+	seq = lwkt_send_ipiq(ci, vmx_vmclear_ipi, (void *)vmcs_pa);
+	/* Must wait for completion, otherwise VMCS would be wrong on CPU
+	 * and cause panics. */
+	lwkt_wait_ipiq(ci, seq);
+#endif /* __NetBSD__ */
 }
 
 static void
