@@ -17,11 +17,10 @@ Folders:
 Use:
 
 	$ make
-	# ./toyvirt/toyvirt smallkern/smallkern
+	# /tmp/toyvirt /tmp/smallkern
 
 Expected output:
 
-	# ./toyvirt/toyvirt smallkern/smallkern
 	[+] NVMM initialization succeeded
 	[+] Machine creation succeeded
 	[+] VCPU creation succeeded
