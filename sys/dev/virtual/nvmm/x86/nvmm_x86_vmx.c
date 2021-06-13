@@ -652,6 +652,7 @@ static uint64_t vmx_cr4_fixed0 __read_mostly;
 static uint64_t vmx_cr4_fixed1 __read_mostly;
 
 static bool pmap_ept_has_ad;
+static int vmx_change_cpu_count;
 
 #define VMX_PINBASED_CTLS_ONE	\
 	(PIN_CTLS_INT_EXITING| \
@@ -3469,6 +3470,11 @@ vmx_change_cpu(void *arg1)
 	if (enable) {
 		vmx_vmxon(&vmxoncpu[mycpuid].pa);
 	}
+
+#ifdef __DragonFly__
+	if (atomic_fetchadd_int(&vmx_change_cpu_count, -1) == 1)
+		wakeup(&vmx_change_cpu_count);
+#endif /* __DragonFly__ */
 }
 
 static void
@@ -3561,10 +3567,16 @@ vmx_init(void)
 	uint64_t xc;
 	xc = xc_broadcast(0, vmx_change_cpu, (void *)true, NULL);
 	xc_wait(xc);
-#endif /* __NetBSD__ */
-
+#else /* DragonFly */
+	atomic_swap_int(&vmx_change_cpu_count, ncpus);
 	lwkt_send_ipiq_mask(smp_active_mask, vmx_change_cpu, (void *)true);
-	/* XXX: need any cpu fence ?? */
+	do {
+		cpu_ccfence();
+		tsleep_interlock(&vmx_change_cpu_count, 0);
+		if (vmx_change_cpu_count)
+			tsleep(&vmx_change_cpu_count, PINTERLOCKED, "vmx", hz);
+	} while (vmx_change_cpu_count != 0);
+#endif /* __NetBSD__ */
 }
 
 static void
@@ -3587,10 +3599,16 @@ vmx_fini(void)
 	uint64_t xc;
 	xc = xc_broadcast(0, vmx_change_cpu, (void *)false, NULL);
 	xc_wait(xc);
-#endif /* __NetBSD__ */
-
+#else /* DragonFly */
+	atomic_swap_int(&vmx_change_cpu_count, ncpus);
 	lwkt_send_ipiq_mask(smp_active_mask, vmx_change_cpu, (void *)false);
-	/* XXX: need any cpu fence ?? */
+	do {
+		cpu_ccfence();
+		tsleep_interlock(&vmx_change_cpu_count, 0);
+		if (vmx_change_cpu_count)
+			tsleep(&vmx_change_cpu_count, PINTERLOCKED, "vmx", hz);
+	} while (vmx_change_cpu_count != 0);
+#endif /* __NetBSD__ */
 
 	for (i = 0; i < MAXCPUS; i++) {
 		if (vmxoncpu[i].pa != 0)
