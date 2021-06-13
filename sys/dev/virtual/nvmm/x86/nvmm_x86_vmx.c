@@ -776,7 +776,7 @@ struct vmx_cpudata {
 	struct vmcs *vmcs;
 	paddr_t vmcs_pa;
 	size_t vmcs_refcnt;
-	struct globaldata *vmcs_ci; /* struct cpu_info in NetBSD */
+	int vmcs_cpu; /* 'struct cpu_info *vmcs_ci' in NetBSD */
 	bool vmcs_launched;
 
 	/* MSR bitmap */
@@ -937,6 +937,7 @@ vmx_vmcs_enter(struct nvmm_cpu *vcpu)
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	struct globaldata *vmcs_ci;
+	int vmcs_cpu;
 
 	cpudata->vmcs_refcnt++;
 	if (cpudata->vmcs_refcnt > 1) {
@@ -945,17 +946,18 @@ vmx_vmcs_enter(struct nvmm_cpu *vcpu)
 		return;
 	}
 
-	vmcs_ci = cpudata->vmcs_ci;
-	cpudata->vmcs_ci = (void *)0x00FFFFFFFFFFFFFF; /* clobber */
+	vmcs_cpu = cpudata->vmcs_cpu;
+	cpudata->vmcs_cpu = -2; /* clobber */
 
 	kpreempt_disable();
 
-	if (vmcs_ci == NULL) {
+	if (vmcs_cpu == -1) {
 		/* This VMCS is loaded for the first time. */
 		vmx_vmclear(&cpudata->vmcs_pa);
 		cpudata->vmcs_launched = false;
-	} else if (vmcs_ci != mycpu) {
+	} else if (vmcs_cpu != mycpuid) {
 		/* This VMCS is active on a remote CPU. */
+		vmcs_ci = globaldata_find(vmcs_cpu);
 		vmx_vmclear_remote(vmcs_ci, cpudata->vmcs_pa);
 		cpudata->vmcs_launched = false;
 	} else {
@@ -979,7 +981,7 @@ vmx_vmcs_leave(struct nvmm_cpu *vcpu)
 		return;
 	}
 
-	cpudata->vmcs_ci = mycpu;
+	cpudata->vmcs_cpu = mycpuid;
 	kpreempt_enable();
 }
 
@@ -3015,6 +3017,7 @@ vmx_vcpu_create(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	if (cpudata == NULL)
 		return ENOMEM;
 
+	cpudata->vmcs_cpu = -1;
 	vcpu->cpudata = cpudata;
 
 	/* VMCS */
