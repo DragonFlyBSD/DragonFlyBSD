@@ -78,7 +78,6 @@ struct hammer2_flush_info {
 	long		scan_del_count;
 	long		scan_btype[7];
 #endif
-	hammer2_chain_t	*debug;
 };
 
 typedef struct hammer2_flush_info hammer2_flush_info_t;
@@ -502,14 +501,8 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	 * (1) Optimize downward recursion to locate nodes needing action.
 	 *     Nothing to do if none of these flags are set.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_FLUSH_MASK) == 0) {
-		if (hammer2_debug & 0x200) {
-			if (info->debug == NULL)
-				info->debug = chain;
-		} else {
-			return 0;
-		}
-	}
+	if ((chain->flags & HAMMER2_CHAIN_FLUSH_MASK) == 0)
+		return 0;
 
 	hmp = chain->hmp;
 
@@ -1159,10 +1152,7 @@ skipupdate:
 	 */
 done:
 	KKASSERT(chain->refs > 0);
-	if (hammer2_debug & 0x200) {
-		if (info->debug == chain)
-			info->debug = NULL;
-	}
+
 	return retry;
 }
 
@@ -1274,14 +1264,6 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 		++info->depth;
 		hammer2_flush_core(info, child, info->flags);
 		--info->depth;
-	} else if (hammer2_debug & 0x200) {
-		if (info->debug == NULL)
-			info->debug = child;
-		++info->depth;
-		hammer2_flush_core(info, child, info->flags);
-		--info->depth;
-		if (info->debug == child)
-			info->debug = NULL;
 	}
 
 done:
