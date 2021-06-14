@@ -119,6 +119,7 @@ main(int argc, char *argv[])
 	group = NULL;
 	owner = NULL;
 
+	/* NOTE: please also update 'tools/install.sh' */
 	while ((ch = getopt(argc, argv, "B:bCcD:df:g:L:l:M:m:N:o:pSsUv")) != -1)
 		switch((char)ch) {
 		case 'B':

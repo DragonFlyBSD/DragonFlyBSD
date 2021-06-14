@@ -7,7 +7,7 @@
 # modification, are permitted provided that the following conditions
 # are met:
 # 1. Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer 
+#    notice, this list of conditions and the following disclaimer
 #    in this position and unchanged.
 # 2. Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in the
@@ -27,14 +27,13 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/tools/install.sh,v 1.7 2004/07/07 09:38:14 ru Exp $
-# $DragonFly: src/tools/install.sh,v 1.4 2005/04/09 11:02:35 y0netan1 Exp $
 
 # parse install's options and ignore them completely.
 while [ $# -gt 0 ]; do
     case $1 in
-    -[bCcMpSs]) shift;;
-    -[Bfgmo]) shift; shift;;
-    -[Bfgmo]*) shift;;
+    -[bdCcMpSsUv]) shift;;
+    -[BDfglMmNo])  shift; shift;;
+    -[BDfglMmNo]*) shift;;
     *) break;
     esac
 done
