@@ -43,6 +43,7 @@
 #include <string.h>
 #include <fstab.h>
 #include <assert.h>
+#include <errno.h>
 #include <err.h>
 
 #include <vfs/hammer2/hammer2_disk.h>
@@ -93,6 +94,10 @@ hammer2_uninstall_volume(hammer2_volume_t *vol)
 	hammer2_init_volume(vol);
 }
 
+/*
+ * Locate a valid volume header.  If any of the four volume headers is good,
+ * we have a valid volume header and choose the best one based on mirror_tid.
+ */
 static int
 hammer2_read_volume_header(int fd, const char *path,
 			   hammer2_volume_data_t *voldata)
@@ -111,54 +116,73 @@ hammer2_read_volume_header(int fd, const char *path,
 		if (lseek(fd, i * HAMMER2_ZONE_BYTES64, SEEK_SET) == -1)
 			break;
 		ret = read(fd, &vd, HAMMER2_PBUFSIZE);
-		if (ret == -1)
-			err(1, "read");
-		else if (ret != HAMMER2_PBUFSIZE)
-			errx(1, "%s #%d: failed to read", path, i);
+		if (ret == -1) {
+			fprintf(stderr, "%s #%d: read %s\n",
+				path, i, strerror(errno));
+			continue;
+		}
+		if (ret != HAMMER2_PBUFSIZE) {
+			fprintf(stderr, "%s #%d: read %s\n",
+				path, i, strerror(errno));
+			continue;
+		}
 
 		p = (const char*)&vd;
 		/* verify volume header magic */
 		if ((vd.magic != HAMMER2_VOLUME_ID_HBO) &&
 		    (vd.magic != HAMMER2_VOLUME_ID_ABO))
-			errx(1, "%s #%d: bad magic", path, i);
+		{
+			fprintf(stderr, "%s #%d: bad magic\n", path, i);
+			continue;
+		}
 
 		if (vd.magic == HAMMER2_VOLUME_ID_ABO) {
 			/* XXX: Reversed-endianness filesystem */
-			errx(1, "%s #%d: reverse-endian filesystem detected",
-			     path, i);
+			fprintf(stderr,
+				"%s #%d: reverse-endian filesystem detected",
+				path, i);
+			continue;
 		}
 
 		/* verify volume header CRC's */
 		crc0 = vd.icrc_sects[HAMMER2_VOL_ICRC_SECT0];
 		crc1 = hammer2_icrc32(p + HAMMER2_VOLUME_ICRC0_OFF,
 				      HAMMER2_VOLUME_ICRC0_SIZE);
-		if (crc0 != crc1)
-			errx(1, "%s #%d: volume header crc mismatch sect0 %08x/%08x",
-			     path, i, crc0, crc1);
+		if (crc0 != crc1) {
+			fprintf(stderr,
+				"%s #%d: volume header crc mismatch "
+				"sect0 %08x/%08x\n",
+				path, i, crc0, crc1);
+			continue;
+		}
 
 		crc0 = vd.icrc_sects[HAMMER2_VOL_ICRC_SECT1];
 		crc1 = hammer2_icrc32(p + HAMMER2_VOLUME_ICRC1_OFF,
 				      HAMMER2_VOLUME_ICRC1_SIZE);
-		if (crc0 != crc1)
-			errx(1, "%s #%d: volume header crc mismatch sect1 %08x/%08x",
-			     path, i, crc0, crc1);
+		if (crc0 != crc1) {
+			fprintf(stderr,
+				"%s #%d: volume header crc mismatch "
+				"sect1 %08x/%08x",
+				path, i, crc0, crc1);
+			continue;
+		}
 
 		crc0 = vd.icrc_volheader;
 		crc1 = hammer2_icrc32(p + HAMMER2_VOLUME_ICRCVH_OFF,
 				      HAMMER2_VOLUME_ICRCVH_SIZE);
-		if (crc0 != crc1)
-			errx(1, "%s #%d: volume header crc mismatch vh %08x/%08x",
-			     path, i, crc0, crc1);
-
+		if (crc0 != crc1) {
+			fprintf(stderr,
+				"%s #%d: volume header crc mismatch "
+				"vh %08x/%08x",
+				path, i, crc0, crc1);
+			continue;
+		}
 		if (zone == -1 || mirror_tid < vd.mirror_tid) {
 			bcopy(&vd, voldata, sizeof(vd));
 			mirror_tid = vd.mirror_tid;
 			zone = i;
 		}
 	}
-
-	if (zone == -1)
-		errx(1, "%s has no valid volume headers", path);
 	return(zone);
 }
 
@@ -227,7 +251,7 @@ hammer2_add_volume(const char *path, int rdonly)
 				       voldata.volu_loff[i], voldata.volu_size);
 		fso.total_size += vol->size;
 	} else {
-		errx(1, "Failed to read volume header");
+		errx(1, "No valid volume headers found!");
 	}
 }
 
@@ -279,6 +303,7 @@ hammer2_verify_volumes_common(const hammer2_ondisk_t *fsp)
 			     (intmax_t)vol->size);
 		/* check volume size vs block device size */
 		size = check_volume(vol->fd);
+		printf("checkvolu header %d %016jx/%016jx\n", i, vol->size, size);
 		if (vol->size > size)
 			errx(1, "%s's size 0x%016jx exceeds device size 0x%016jx",
 			     path, (intmax_t)vol->size, size);
@@ -365,10 +390,12 @@ hammer2_verify_volumes_2(const hammer2_ondisk_t *fsp,
 		if (rootvoldata->nvolumes != fso.nvolumes)
 			errx(1, "Volume header requires %d devices, %d specified",
 			     rootvoldata->nvolumes, fso.nvolumes);
-		if (rootvoldata->total_size != fso.total_size)
-			errx(1, "Total size 0x%016jx does not equal sum of "
-			     "volumes 0x%016jx",
-			     rootvoldata->total_size, fso.total_size);
+		if (rootvoldata->total_size != fso.total_size) {
+			fprintf(stderr,
+				"Total size 0x%016jx does not "
+				"equal sum of volumes 0x%016jx",
+			        rootvoldata->total_size, fso.total_size);
+		}
 		for (i = 0; i < nvolumes; ++i) {
 			off = rootvoldata->volu_loff[i];
 			if (off == (hammer2_off_t)-1)
