@@ -1339,7 +1339,7 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 			kprintf("I/O error %d\n", error);
 			return EINVAL;
 		}
-		vfs_bio_clrbuf(bp);
+		bzero(bp->b_data, HAMMER2_VOLUME_BYTES);
 		error = bwrite(bp);
 		if (error) {
 			kprintf("I/O error %d\n", error);
@@ -1348,22 +1348,40 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 		kprintf("\n");
 	}
 
-	kprintf("hammer2: growfs - expand by %jd to %jd\n",
-		(intmax_t)delta, (intmax_t)grow->size);
-
 	hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
 	mtid = hammer2_trans_sub(hmp->spmp);
 
+	kprintf("hammer2: growfs - expand by %jd to %jd mtid %016jx\n",
+		(intmax_t)delta, (intmax_t)grow->size, mtid);
+
+
 	hammer2_voldata_lock(hmp);
 	hammer2_voldata_modify(hmp);
+
+	/*
+	 * NOTE: Just adjusting total_size for a single-volume filesystem
+	 *	 or for the last volume in a multi-volume filesystem, is
+	 *	 fine.  But we can't grow any other partition in a multi-volume
+	 *	 filesystem.  For now we just punt (at the top) on any
+	 *	 multi-volume filesystem.
+	 */
 	hmp->voldata.volu_size = grow->size;
+	hmp->voldata.total_size += delta;
 	hmp->voldata.allocator_size += delta;
 	hmp->voldata.allocator_free += delta;
+	hmp->total_size += delta;
 	hammer2_voldata_unlock(hmp);
 
 	hammer2_trans_done(hmp->spmp, HAMMER2_TRANS_ISFLUSH |
 				      HAMMER2_TRANS_SIDEQ);
 	grow->modified = 1;
+
+	/*
+	 * Flush the mess right here and now.  We could just let the
+	 * filesystem syncer do it, but this was a sensitive operation
+	 * so don't take any chances.
+	 */
+	hammer2_vfs_sync(ip->pmp->mp, MNT_WAIT);
 
 	return 0;
 }

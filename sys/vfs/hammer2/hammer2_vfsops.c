@@ -3113,6 +3113,14 @@ hammer2_voldata_unlock(hammer2_dev_t *hmp)
 	lockmgr(&hmp->vollk, LK_RELEASE);
 }
 
+/*
+ * Caller indicates that the volume header is being modified.  Flag
+ * the related chain and adjust its transaction id.
+ *
+ * The transaction id is set to voldata.mirror_tid + 1, similar to
+ * what hammer2_chain_modify() does.  Be very careful here, volume
+ * data can be updated independently of the rest of the filesystem.
+ */
 void
 hammer2_voldata_modify(hammer2_dev_t *hmp)
 {
@@ -3120,6 +3128,7 @@ hammer2_voldata_modify(hammer2_dev_t *hmp)
 		atomic_add_long(&hammer2_count_modified_chains, 1);
 		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_pfs_memory_inc(hmp->vchain.pmp);
+		hmp->vchain.bref.mirror_tid = hmp->voldata.mirror_tid + 1;
 	}
 }
 
