@@ -71,11 +71,15 @@
 	strw	%ax		;\
 	pushq	%rax
 
+/* In DragonFly, PCPU(tss_gdt) points directly to the gdt[] entry for the
+ * current CPU's TSS descriptor; while NetBSD's CPUVAR(GDT) points to the
+ * gdtstore[] table. */
 #define HOST_RESTORE_TR				\
 	popq	%rax				;\
 	movzwq	%ax,%rdx			;\
 	movq	PCPU(tss_gdt),%rax		;\
-	andq	$~0x0200,4(%rax,%rdx, 1)	;\
+	/* Clear the busy bit for reloading. */	\
+	andq	$~0x0200,4(%rax)		;\
 	ltrw	%dx
 
 #define HOST_SAVE_LDT		\
