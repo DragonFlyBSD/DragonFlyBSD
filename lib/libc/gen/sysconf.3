@@ -321,6 +321,15 @@ supported, \-1 is returned and
 .Va errno
 is not modified.
 Otherwise, the current variable value is returned.
+.Pp
+Because \-1 is a valid return value upon success, applications wishing
+to check for real error conditions should set
+.Va errno
+to 0, then call
+.Fn sysconf ,
+and check
+.Va errno
+if \-1 is returned.
 .Sh ERRORS
 The
 .Fn sysconf
