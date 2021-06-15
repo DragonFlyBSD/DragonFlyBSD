@@ -28,7 +28,7 @@
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd June 13, 2021
+.Dd June 15, 2021
 .Dt SYSCONF 3
 .Os
 .Sh NAME
@@ -214,8 +214,7 @@ Spin Locks
 option to which the system attempts to conform,
 otherwise \-1.
 .It Dv _SC_STREAM_MAX
-The minimum maximum number of streams that a process may have open
-at any one time.
+The maximum number of streams that a process may have open at any one time.
 .It Dv _SC_SYMLOOP_MAX
 Maximum number of symbolic links that can be reliably traversed in the
 resolution of a pathname in the absence of a loop.
@@ -253,8 +252,7 @@ otherwise \-1.
 .It Dv _SC_TTY_NAME_MAX
 Maximum length of terminal device name.
 .It Dv _SC_TZNAME_MAX
-The minimum maximum number of types supported for the name of a
-timezone.
+The maximum number of bytes supported for the name of a timezone.
 .It Dv _SC_VERSION
 The version of
 .St -p1003.1
@@ -358,9 +356,3 @@ The
 .Fn sysconf
 function first appeared in
 .Bx 4.4 .
-.Sh BUGS
-The value for
-.Dv _SC_STREAM_MAX
-is a minimum maximum, and required to be the same as ANSI C's
-.Dv FOPEN_MAX ,
-so the returned value is a ridiculously small and misleading number.
