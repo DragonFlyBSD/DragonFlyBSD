@@ -40,12 +40,28 @@
 #include <sys/mman.h>
 #include <machine/segments.h>
 #include <machine/psl.h>
-#include <machine/pte.h>
-#include <x86/specialreg.h>
 
 #include <nvmm.h>
 
+#ifdef __NetBSD__
+
+#include <machine/pte.h>
+#include <x86/specialreg.h>
+
 #define PAGE_SIZE 4096
+
+#else /* DragonFly */
+
+#include <machine/pmap.h>
+#include <machine/specialreg.h>
+
+#define PTE_P		X86_PG_V	/* 0x001: P (Valid) */
+#define PTE_W		X86_PG_RW	/* 0x002: R/W (Read/Write) */
+#define PSL_MBO		PSL_RESERVED_DEFAULT	/* 0x00000002 */
+#define SDT_SYS386BSY	SDT_SYSBSY	/* 11: system 64-bit TSS busy */
+
+#endif /* __NetBSD__ */
+
 #define IO_SIZE	128
 
 static char iobuf[IO_SIZE];
