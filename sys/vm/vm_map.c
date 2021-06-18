@@ -2504,7 +2504,13 @@ vm_map_inherit(vm_map_t map, vm_offset_t start, vm_offset_t end,
 }
 
 /*
+ * Wiring/Unwiring of memory for user-related operation.
+ *
  * Implement the semantics of mlock
+ *
+ * The name of this function is horrid.  It both wires and unwires, using
+ * user wiring semantics (where as vm_map_wire() both wires and unwires, using
+ * kernel wiring semantics).  XXX change name to vm_map_user_wiring().
  */
 int
 vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
@@ -2674,6 +2680,10 @@ done:
 }
 
 /*
+ * Wiring/Unwiring of memory for kernel-related operation.
+ *
+ * XXX the naming is horrid.  Change name to vm_map_wiring().
+ *
  * Sets the pageability of the specified address range in the target map.
  * Regions specified as not pageable require locked-down physical
  * memory and physical page maps.
