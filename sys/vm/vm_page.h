@@ -495,6 +495,8 @@ void vm_page_soft_activate (vm_page_t);
 
 vm_size_t vm_contig_avail_pages(void);
 vm_page_t vm_page_alloc (struct vm_object *, vm_pindex_t, int);
+vm_page_t vm_page_alloczwq (vm_pindex_t, int);
+void vm_page_freezwq (vm_page_t m);
 vm_page_t vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
                      unsigned long alignment, unsigned long boundary,
 		     unsigned long size, vm_memattr_t memattr);

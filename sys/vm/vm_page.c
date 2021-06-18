@@ -2500,19 +2500,25 @@ vm_page_select_free_or_cache(u_short pg_color, int *fromcachep)
  * routine can block and may return NULL if a race occurs and the page
  * is found to already exist at the specified (object, pindex).
  *
- *	VM_ALLOC_NORMAL		allow use of cache pages, nominal free drain
- *	VM_ALLOC_QUICK		like normal but cannot use cache
- *	VM_ALLOC_SYSTEM		greater free drain
- *	VM_ALLOC_INTERRUPT	allow free list to be completely drained
- *	VM_ALLOC_ZERO		advisory request for pre-zero'd page only
- *	VM_ALLOC_FORCE_ZERO	advisory request for pre-zero'd page only
- *	VM_ALLOC_NULL_OK	ok to return NULL on insertion collision
- *				(see vm_page_grab())
- *	VM_ALLOC_USE_GD		ok to use per-gd cache
+ *	VM_ALLOC_NORMAL		- Allow use of cache pages, nominal free drain
+ *	VM_ALLOC_QUICK		- Like normal but cannot use cache
+ *	VM_ALLOC_SYSTEM		- Greater free drain
+ *	VM_ALLOC_INTERRUPT	- Allow free list to be completely drained
  *
- *	VM_ALLOC_CPU(n)		allocate using specified cpu localization
+ *	VM_ALLOC_CPU(n)		- Allocate using specified cpu localization
+ *
+ *	VM_ALLOC_ZERO		- Zero the page if we have to allocate it.
+ *				  (vm_page_grab() and vm_page_alloczwq() ONLY!)
+ *
+ *	VM_ALLOC_FORCE_ZERO	- Zero the page unconditionally.
+ *				  (vm_page_grab() and vm_page_alloczwq() ONLY!)
+ *
+ *	VM_ALLOC_NULL_OK	- Return NULL on insertion collision, else
+ *				  panic on insertion collisions.
+ *				  (vm_page_grab() and vm_page_alloczwq() ONLY!)
  *
  * The object must be held if not NULL
+ *
  * This routine may not block
  *
  * Additional special handling is required when called from an interrupt
@@ -2567,9 +2573,8 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 
 	pg_color = vm_get_pg_color(cpuid_local, object, pindex);
 
-	KKASSERT(page_req & 
-		(VM_ALLOC_NORMAL|VM_ALLOC_QUICK|
-		 VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
+	KKASSERT(page_req & (VM_ALLOC_NORMAL | VM_ALLOC_QUICK |
+			     VM_ALLOC_INTERRUPT | VM_ALLOC_SYSTEM));
 
 	/*
 	 * Certain system threads (pageout daemon, buf_daemon's) are
@@ -3704,20 +3709,111 @@ vm_page_clear_commit(vm_page_t m)
 }
 
 /*
+ * Allocate a page without an object.  The returned page will be wired and
+ * NOT busy.  The function will block if no page is available, but only loop
+ * if VM_ALLOC_RETRY is specified (else returns NULL after blocking).
+ *
+ * The pindex can be passed as zero, and is typically passed to help the
+ * allocator 'color' the page returned.  That is, select pages that are
+ * cache-friendly if the caller is allocating multiple pages.
+ *
+ *	VM_ALLOC_QUICK		- Allocate from free queue only
+ *	VM_ALLOC_NORMAL		- Allocate from free + cache
+ *	VM_ALLOC_SYSTEM		- Allocation can use system page reserve
+ *	VM_ALLOC_INTERRUPT	- Allocation can use emergency page reserve
+ *
+ *	VM_ALLOC_CPU(n)		- Allocate using specified cpu localization
+ *
+ *	VM_ALLOC_ZERO		- Zero and set page valid.  If not specified,
+ *				  m->valid will be 0 and the page will contain
+ *				  prior garbage.
+ *
+ *	VM_ALLOC_FORCE_ZERO	- (same as VM_ALLOC_ZERO in this case)
+ *
+ *	VM_ALLOC_RETRY		- Retry until a page is available.  If not
+ *				  specified, NULL can be returned.
+ *
+ *	VM_ALLOC_NULL_OK	- Not applicable since there is no object.
+ */
+vm_page_t
+vm_page_alloczwq(vm_pindex_t pindex, int flags)
+{
+	vm_page_t m;
+
+	KKASSERT(flags & (VM_ALLOC_NORMAL | VM_ALLOC_QUICK |
+			  VM_ALLOC_INTERRUPT | VM_ALLOC_SYSTEM));
+	for (;;) {
+		m = vm_page_alloc(NULL, pindex, flags & ~VM_ALLOC_RETRY);
+		if (m)
+			break;
+		vm_wait(0);
+		if ((flags & VM_ALLOC_RETRY) == 0)
+			return NULL;
+	}
+
+	if (flags & (VM_ALLOC_ZERO | VM_ALLOC_FORCE_ZERO)) {
+		pmap_zero_page(VM_PAGE_TO_PHYS(m));
+		m->valid = VM_PAGE_BITS_ALL;
+	}
+
+	vm_page_wire(m);
+	vm_page_wakeup(m);
+
+	return(m);
+
+}
+
+/*
+ * Free a page previously allocated via vm_page_alloczwq().
+ *
+ * Caller should not busy the page.  This function will busy, unwire,
+ * and free the page.
+ */
+void
+vm_page_freezwq(vm_page_t m)
+{
+	vm_page_busy_wait(m, FALSE, "pgzwq");
+	vm_page_unwire(m, 0);
+	vm_page_free(m);
+}
+
+/*
  * Grab a page, blocking if it is busy and allocating a page if necessary.
  * A busy page is returned or NULL.  The page may or may not be valid and
  * might not be on a queue (the caller is responsible for the disposition of
  * the page).
  *
- * If VM_ALLOC_ZERO is specified and the grab must allocate a new page, the
- * page will be zero'd and marked valid.
+ *	VM_ALLOC_QUICK		- Allocate from free queue only
+ *	VM_ALLOC_NORMAL		- Allocate from free + cache
+ *	VM_ALLOC_SYSTEM		- Allocation can use system page reserve
+ *	VM_ALLOC_INTERRUPT	- Allocation can use emergency page reserve
  *
- * If VM_ALLOC_FORCE_ZERO is specified the page will be zero'd and marked
- * valid even if it already exists.
+ *	VM_ALLOC_CPU(n)		- Allocate using specified cpu localization
  *
- * If VM_ALLOC_RETRY is specified this routine will never return NULL.  Also
- * note that VM_ALLOC_NORMAL must be specified if VM_ALLOC_RETRY is specified.
- * VM_ALLOC_NULL_OK is implied when VM_ALLOC_RETRY is specified.
+ *	VM_ALLOC_ZERO		- If the page does not exist and must be
+ *				  allocated, it will be zerod and set valid.
+ *
+ *	VM_ALLOC_FORCE_ZERO	- The page will be zerod and set valid whether
+ *				  it previously existed or had to be allocated.
+ *
+ *	VM_ALLOC_RETRY		- Routine waits and loops until it can obtain
+ *				  the page, never returning NULL.  Also note
+ *				  that VM_ALLOC_NORMAL must also be specified
+ *				  if you use VM_ALLOC_RETRY.
+ *
+ *				  Also, VM_ALLOC_NULL_OK is implied when
+ *				  VM_ALLOC_RETRY is specified, but will simply
+ *				  cause a retry loop and never return NULL.
+ *
+ *	VM_ALLOC_NULL_OK	- Prevent panic on insertion collision.  This
+ *				  flag is implied and need not be set if
+ *				  VM_ALLOC_RETRY is specified.
+ *
+ *				  If VM_ALLOC_RETRY is not specified, the page
+ *				  can still be pre-existing and will be
+ *				  returned if so, but concurrent creation of
+ *				  the same 'new' page can cause one or more
+ *				  grabs to return NULL.
  *
  * This routine may block, but if VM_ALLOC_RETRY is not set then NULL is
  * always returned if we had blocked.  
@@ -3727,20 +3823,20 @@ vm_page_clear_commit(vm_page_t m)
  * No other requirements.
  */
 vm_page_t
-vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
+vm_page_grab(vm_object_t object, vm_pindex_t pindex, int flags)
 {
 	vm_page_t m;
 	int error;
 	int shared = 1;
 
-	KKASSERT(allocflags &
-		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
+	KKASSERT(flags & (VM_ALLOC_NORMAL | VM_ALLOC_QUICK |
+			  VM_ALLOC_INTERRUPT | VM_ALLOC_SYSTEM));
 	vm_object_hold_shared(object);
 	for (;;) {
 		m = vm_page_lookup_busy_try(object, pindex, TRUE, &error);
 		if (error) {
 			vm_page_sleep_busy(m, TRUE, "pgrbwt");
-			if ((allocflags & VM_ALLOC_RETRY) == 0) {
+			if ((flags & VM_ALLOC_RETRY) == 0) {
 				m = NULL;
 				break;
 			}
@@ -3750,14 +3846,14 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 				vm_object_upgrade(object);
 				shared = 0;
 			}
-			if (allocflags & VM_ALLOC_RETRY)
-				allocflags |= VM_ALLOC_NULL_OK;
+			if (flags & VM_ALLOC_RETRY)
+				flags |= VM_ALLOC_NULL_OK;
 			m = vm_page_alloc(object, pindex,
-					  allocflags & ~VM_ALLOC_RETRY);
+					  flags & ~VM_ALLOC_RETRY);
 			if (m)
 				break;
 			vm_wait(0);
-			if ((allocflags & VM_ALLOC_RETRY) == 0)
+			if ((flags & VM_ALLOC_RETRY) == 0)
 				goto failed;
 		} else {
 			/* m found */
@@ -3782,11 +3878,11 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 	 *	  for userland to access the memory.
 	 */
 	if (m->valid == 0) {
-		if (allocflags & (VM_ALLOC_ZERO | VM_ALLOC_FORCE_ZERO)) {
+		if (flags & (VM_ALLOC_ZERO | VM_ALLOC_FORCE_ZERO)) {
 			pmap_zero_page(VM_PAGE_TO_PHYS(m));
 			m->valid = VM_PAGE_BITS_ALL;
 		}
-	} else if (allocflags & VM_ALLOC_FORCE_ZERO) {
+	} else if (flags & VM_ALLOC_FORCE_ZERO) {
 		pmap_zero_page(VM_PAGE_TO_PHYS(m));
 		m->valid = VM_PAGE_BITS_ALL;
 	}
