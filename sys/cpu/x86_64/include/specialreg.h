@@ -107,7 +107,6 @@
 #define	CPUID_MMX	0x00800000	/* MMX supported */
 #define	CPUID_FXSR	0x01000000	/* Fast FP/MMX Save/Restore */
 #define	CPUID_SSE	0x02000000	/* Streaming SIMD Extensions */
-#define	CPUID_XMM	CPUID_SSE
 #define	CPUID_SSE2	0x04000000	/* Streaming SIMD Extensions 2 */
 #define	CPUID_SS	0x08000000	/* Self-Snoop */
 #define	CPUID_HTT	0x10000000	/* Hyper-Threading Technology */

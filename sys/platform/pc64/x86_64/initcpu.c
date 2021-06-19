@@ -211,7 +211,7 @@ initializecpu(int cpu)
 	/*
 	 * Check for FXSR and SSE support and enable if available
 	 */
-	if ((cpu_feature & CPUID_XMM) && (cpu_feature & CPUID_FXSR)) {
+	if ((cpu_feature & CPUID_SSE) && (cpu_feature & CPUID_FXSR)) {
 		load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
 		cpu_fxsr = hw_instruction_sse = 1;
 	}

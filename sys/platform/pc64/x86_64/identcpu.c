@@ -710,10 +710,8 @@ identify_cpu(void)
 	 * We do assume that all CPUs have the same
 	 * SSE/FXSR features
 	 */
-	if ((cpu_feature & CPUID_XMM) &&
-	    (cpu_feature & CPUID_FXSR)) {
+	if ((cpu_feature & CPUID_SSE) && (cpu_feature & CPUID_FXSR))
 		npxprobemask();
-	}
 }
 
 static u_int
