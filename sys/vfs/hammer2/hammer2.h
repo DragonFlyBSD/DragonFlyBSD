@@ -1285,7 +1285,6 @@ hammer2_dedup_mask(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes)
 	       HAMMER2_DEDUP_FRAGRADIX;
 	bits = (int)((bytes + (HAMMER2_DEDUP_FRAG - 1)) >>
 	       HAMMER2_DEDUP_FRAGRADIX);
-	mask = ((uint64_t)1 << bbeg) - 1;
 	if (bbeg + bits == 64)
 		mask = (uint64_t)-1;
 	else
