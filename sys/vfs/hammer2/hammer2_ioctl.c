@@ -1265,7 +1265,8 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 	hmp = ip->pmp->pfs_hmps[0];
 
 	if (hmp->nvolumes > 1) {
-		kprintf("hammer2: growfs unsupported with multiple volumes\n");
+		kprintf("hammer2: growfs currently unsupported "
+			"with multiple volumes\n");
 		return EOPNOTSUPP;
 	}
 
@@ -1370,6 +1371,8 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 	hmp->voldata.allocator_size += delta;
 	hmp->voldata.allocator_free += delta;
 	hmp->total_size += delta;
+	hmp->volumes[0].size += delta;	/* note: indexes first (only) volume */
+
 	hammer2_voldata_unlock(hmp);
 
 	hammer2_trans_done(hmp->spmp, HAMMER2_TRANS_ISFLUSH |
