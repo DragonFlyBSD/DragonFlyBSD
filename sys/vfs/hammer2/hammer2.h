@@ -728,7 +728,7 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_RESIZED		0x0010	/* requires inode_chain_sync */
 #define HAMMER2_INODE_UNUSED0020	0x0020
 #define HAMMER2_INODE_ISUNLINKED	0x0040
-#define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
+#define HAMMER2_INODE_UNUSED0080	0x0080
 #define HAMMER2_INODE_SIDEQ		0x0100	/* on side processing queue */
 #define HAMMER2_INODE_NOSIDEQ		0x0200	/* disable sideq operation */
 #define HAMMER2_INODE_DIRTYDATA		0x0400	/* interlocks inode flush */

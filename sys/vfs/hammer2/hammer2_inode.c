@@ -913,12 +913,10 @@ again:
 		nipdata = &hammer2_xop_gdata(xop)->ipdata;
 		nip->meta = nipdata->meta;
 		hammer2_xop_pdata(xop);
-		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);
 		hammer2_inode_repoint(nip, &xop->cluster);
 	} else {
 		nip->meta.inum = inum;		/* PFS inum is always 1 XXX */
 		/* mtime will be updated when a cluster is available */
-		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);	/*XXX*/
 	}
 
 	nip->pmp = pmp;

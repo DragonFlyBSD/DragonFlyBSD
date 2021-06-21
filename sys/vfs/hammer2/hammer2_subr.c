@@ -268,7 +268,6 @@ int
 hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 		     hammer2_key_t *lbasep, hammer2_key_t *leofp)
 {
-	KKASSERT(ip->flags & HAMMER2_INODE_METAGOOD);
 	if (lbasep)
 		*lbasep = uoff & ~HAMMER2_PBUFMASK64;
 	if (leofp) {
@@ -292,7 +291,6 @@ hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase)
 	int pblksize;
 	int eofbytes;
 
-	KKASSERT(ip->flags & HAMMER2_INODE_METAGOOD);
 	lblksize = hammer2_calc_logical(ip, lbase, NULL, NULL);
 	if (lbase + lblksize <= ip->meta.size)
 		return (lblksize);
