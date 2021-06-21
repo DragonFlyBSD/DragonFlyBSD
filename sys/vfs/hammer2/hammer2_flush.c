@@ -53,8 +53,6 @@
 
 #include "hammer2.h"
 
-#define FLUSH_DEBUG 0
-
 #define HAMMER2_FLUSH_DEPTH_LIMIT	60      /* stack recursion limit */
 
 
