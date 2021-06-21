@@ -318,14 +318,12 @@ hammer2_trans_newinum(hammer2_pfs_t *pmp)
  * Assert that a strategy call is ok here.  Currently we allow strategy
  * calls in all situations, including during flushes.  Previously:
  *	(old) (1) In a normal transaction.
- *	(old) (2) In a flush transaction only if PREFLUSH is also set.
  */
 void
 hammer2_trans_assert_strategy(hammer2_pfs_t *pmp)
 {
 #if 0
-	KKASSERT((pmp->trans.flags & HAMMER2_TRANS_ISFLUSH) == 0 ||
-		 (pmp->trans.flags & HAMMER2_TRANS_PREFLUSH));
+	KKASSERT((pmp->trans.flags & HAMMER2_TRANS_ISFLUSH) == 0);
 #endif
 }
 
