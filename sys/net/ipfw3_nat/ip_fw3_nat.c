@@ -307,7 +307,8 @@ ip_fw3_nat(struct ip_fw_args *args, struct cfg_nat *nat, struct mbuf *m)
 				s->dst_port = *old_port;
 
 				s->alias_addr = alias->ip.s_addr;
-				s->alias_port = htons(s->src_addr % ALIAS_RANGE);
+				s->alias_port = htons(s->src_addr *
+						s->dst_addr % ALIAS_RANGE);
 				dup = RB_INSERT(state_tree, tree_out, s);
 
 				s2 = kmalloc(LEN_NAT_STATE2, M_IPFW3_NAT,
@@ -330,9 +331,14 @@ ip_fw3_nat(struct ip_fw_args *args, struct cfg_nat *nat, struct mbuf *m)
 		}
 	}
 	if (args->oif == NULL) {
-		new_addr.s_addr = s2->src_addr;
-		new_port = s2->src_port;
-		s2->timestamp = time_uptime;
+        if(ip->ip_p == IPPROTO_ICMP) {
+            new_addr.s_addr = s2->alias_addr;
+            new_port = s2->alias_port;
+        }else{
+            new_addr.s_addr = s2->src_addr;
+            new_port = s2->src_port;
+        }
+        s2->timestamp = time_uptime;
 	} else {
 		new_addr.s_addr = s->alias_addr;
 		new_port = s->alias_port;
