@@ -896,8 +896,6 @@ again:
 	nip = kmalloc_obj(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
 	spin_init(&nip->cluster_spin, "h2clspin");
 	atomic_add_long(&pmp->inmem_inodes, 1);
-	if (pmp->spmp_hmp)
-		nip->flags = HAMMER2_INODE_SROOT;
 
 	/*
 	 * Initialize nip's cluster.  A cluster is provided for normal
