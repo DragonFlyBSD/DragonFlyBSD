@@ -129,10 +129,12 @@ check-deprecated-files:
 	fi;
 
 preupgrade:
+.if exists(${DESTDIR}/etc/master.passwed)
 	sh ${.CURDIR}/../tools/pw-update.sh \
 		-d ${DESTDIR}/etc \
 		-g ${.CURDIR}/group \
 		-p ${.CURDIR}/master.passwd
+.endif
 
 upgrade_check:
 	@if [ -n "`grep '^sendmail.*/usr/libexec/sendmail/sendmail' ${DESTDIR}/etc/mail/mailer.conf`" ]; then \
