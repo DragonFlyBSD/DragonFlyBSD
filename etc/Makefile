@@ -129,7 +129,7 @@ check-deprecated-files:
 	fi;
 
 preupgrade:
-.if exists(${DESTDIR}/etc/master.passwed)
+.if exists(${DESTDIR}/etc/master.passwd)
 	sh ${.CURDIR}/../tools/pw-update.sh \
 		-d ${DESTDIR}/etc \
 		-g ${.CURDIR}/group \
