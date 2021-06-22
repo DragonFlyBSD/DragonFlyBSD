@@ -41,6 +41,8 @@
 
 static int show_tab = 2;
 static int show_depth = -1;
+static hammer2_tid_t show_min_mirror_tid = 0;
+static hammer2_tid_t show_min_modify_tid = 0;
 
 static void shell_msghandler(dmsg_msg_t *msg, int unmanaged);
 static void shell_ttymsg(dmsg_iocom_t *iocom);
@@ -435,6 +437,18 @@ cmd_show(const char *devpath, int which)
 		if (errno || show_depth < 0)
 			show_depth = -1;
 	}
+	env = getenv("HAMMER2_SHOW_MIN_MIRROR_TID");
+	if (env != NULL) {
+		show_min_mirror_tid = (hammer2_tid_t)strtoull(env, NULL, 16);
+		if (errno)
+			show_min_mirror_tid = 0;
+	}
+	env = getenv("HAMMER2_SHOW_MIN_MODIFY_TID");
+	if (env != NULL) {
+		show_min_modify_tid = (hammer2_tid_t)strtoull(env, NULL, 16);
+		if (errno)
+			show_min_modify_tid = 0;
+	}
 
 	hammer2_init_volumes(devpath, 1);
 next_volume:
@@ -723,6 +737,17 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 		uint8_t digest[SHA256_DIGEST_LENGTH];
 		uint64_t digest64[SHA256_DIGEST_LENGTH/8];
 	} u;
+
+	/* omit if smaller than mininum mirror_tid threshold */
+	if (bref->mirror_tid < show_min_mirror_tid)
+		return;
+	/* omit if smaller than mininum modify_tid threshold */
+	if (bref->modify_tid < show_min_modify_tid) {
+		if (bref->modify_tid)
+			return;
+		else if (bref->type == HAMMER2_BREF_TYPE_INODE && !bref->leaf_count)
+			return;
+	}
 
 	if (init_tab == -1)
 		init_tab = tab;
