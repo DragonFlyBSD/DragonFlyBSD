@@ -228,6 +228,7 @@ typedef struct globaldata *globaldata_t;
 #define RQB_SPINNING		9	/* 0200 */
 #define RQB_QUICKRET		10	/* 0400 */
 #define RQB_KQUEUE		11	/* 0800 (only used by vkernel) */
+#define RQB_XINVLTLB		12	/* 1000 (nvmm interlock) */
 
 #define RQF_IPIQ		(1 << RQB_IPIQ)
 #define RQF_INTPEND		(1 << RQB_INTPEND)
@@ -240,11 +241,15 @@ typedef struct globaldata *globaldata_t;
 #define RQF_SPINNING		(1 << RQB_SPINNING)
 #define RQF_QUICKRET		(1 << RQB_QUICKRET)
 #define RQF_KQUEUE		(1 << RQB_KQUEUE)
+#define RQF_XINVLTLB		(1 << RQB_XINVLTLB)
 
 #define RQF_AST_MASK		(RQF_AST_OWEUPC|RQF_AST_SIGNAL|\
-				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED)
+				 RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED)
 #define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND|RQF_TIMER|RQF_KQUEUE)
 #define RQF_IDLECHECK_WK_MASK	(RQF_IDLECHECK_MASK|RQF_AST_LWKT_RESCHED)
+#define RQF_SCHED_MASK		(RQF_IDLECHECK_MASK|RQF_AST_USER_RESCHED|\
+				 RQF_AST_LWKT_RESCHED)
+#define RQF_HVM_MASK		(RQF_IDLECHECK_MASK|RQF_AST_MASK|RQF_XINVLTLB)
 
 /*
  * globaldata flags

@@ -91,17 +91,18 @@
     atomic_clear_int(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
 #define	clear_quickret()	\
     atomic_clear_int(&mycpu->gd_reqflags, RQF_QUICKRET)
+#define	clear_xinvltlb()	\
+    atomic_clear_int(&mycpu->gd_reqflags, RQF_XINVLTLB)
 #define	user_resched_wanted()	\
     (mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
 #define	lwkt_resched_wanted()	\
     (mycpu->gd_reqflags & RQF_AST_LWKT_RESCHED)
 #define	any_resched_wanted()	\
     (mycpu->gd_reqflags & (RQF_AST_LWKT_RESCHED|RQF_AST_USER_RESCHED))
-
-#define any_action_wanted_gd(gd)			\
-    ((gd)->gd_reqflags & (RQF_AST_LWKT_RESCHED |	\
-			  RQF_AST_USER_RESCHED |	\
-			  RQF_IDLECHECK_MASK))
+#define	sched_action_wanted_gd(gd) \
+    ((gd)->gd_reqflags & RQF_SCHED_MASK)
+#define	nvmm_break_wanted()	\
+    (mycpu->gd_reqflags & (RQF_HVM_MASK & ~RQF_XINVLTLB))
 
 /*
  * CTL_MACHDEP definitions.

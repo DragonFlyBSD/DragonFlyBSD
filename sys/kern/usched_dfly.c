@@ -338,7 +338,7 @@ dfly_acquire_curproc(struct lwp *lp)
 	 * Quickly return if possible.
 	 */
 	if (__predict_true((td->td_flags & TDF_TSLEEPQ) == 0 &&
-			   !any_action_wanted_gd(gd) &&
+			   !sched_action_wanted_gd(gd) &&
 			   dd->uschedcp == lp)) {
 		return;
 	}
