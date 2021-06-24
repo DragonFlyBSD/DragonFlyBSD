@@ -51,11 +51,19 @@
 #include <sys/namecache.h>
 #include <sys/nlookup.h>
 #include <sys/mountctl.h>
+#include <sys/sysctl.h>
 #include "null.h"
 
 extern struct vop_ops null_vnode_vops;
 
 static MALLOC_DEFINE(M_NULLFSMNT, "NULLFS mount", "NULLFS mount structure");
+
+SYSCTL_NODE(_vfs, OID_AUTO, nullfs, CTLFLAG_RD, 0, "NULLFS filesystem");
+
+static int nullfs_debug;
+TUNABLE_INT("vfs.nullfs.debug", &nullfs_debug);
+SYSCTL_INT(_vfs_nullfs, OID_AUTO, debug, CTLFLAG_RW,
+	   &nullfs_debug, 0, "nullfs debugging");
 
 static int	nullfs_root(struct mount *mp, struct vnode **vpp);
 static int	nullfs_statfs(struct mount *mp, struct statfs *sbp,
@@ -172,25 +180,44 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	mp->mnt_data = (qaddr_t) xmp;
 
 	/*
+	 * Mount path
+	 */
+	copyinstr(args.target, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
+
+	/*
 	 * Try to create a unique but non-random fsid for the nullfs to
-	 * allow it to be exported via NFS.
+	 * allow it to be exported via NFS.  Use a combination of the
+	 * FH for the nullfs root in the underlying filesystem and a
+	 * CRC of the null mount path.
 	 *
 	 * Use val[1] so as not to interfere with the generally unique
 	 * val[0].
 	 */
 	bzero(&fh, sizeof(fh));
 	fh.fh_fsid = rootvp->v_mount->mnt_stat.f_fsid;
+
 	if (VFS_VPTOFH(rootvp, &fh.fh_fid) == 0) {
-		fh.fh_fsid.val[1] ^= crc32(&fh.fh_fid, sizeof(fh.fh_fid));
+		if (nullfs_debug)
+			kprintf("(A)");
 		vfs_setfsid(mp, &fh.fh_fsid);
 	} else {
+		if (nullfs_debug)
+			kprintf("(B)");
 		vfs_getnewfsid(mp);
 	}
+	fh.fh_fsid.val[1] ^= crc32(mp->mnt_stat.f_mntfromname, size);
 
-	(void) copyinstr(args.target, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
-			    &size);
+	if (nullfs_debug) {
+		kprintf("NULLFS FSID %08x.%08x -> %08x.%08x (%*.*s)\n",
+			rootvp->v_mount->mnt_stat.f_fsid.val[0],
+			rootvp->v_mount->mnt_stat.f_fsid.val[1],
+			fh.fh_fsid.val[0],
+			fh.fh_fsid.val[1],
+			(int)size, (int)size, mp->mnt_stat.f_mntfromname);
+	}
+
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void)nullfs_statfs(mp, &mp->mnt_stat, cred);
+	nullfs_statfs(mp, &mp->mnt_stat, cred);
 	NULLFSDEBUG("nullfs_mount: lower %s, alias at %s\n",
 		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntfromname);
 
