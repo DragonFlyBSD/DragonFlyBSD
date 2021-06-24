@@ -823,7 +823,8 @@ struct vmx_cpudata {
 	uint64_t gxcr0;
 	uint64_t gprs[NVMM_X64_NGPR];
 	uint64_t drs[NVMM_X64_NDR];
-	uint64_t gtsc;
+	uint64_t gtsc_offset;
+	uint64_t gtsc_match;
 	union savefpu gfpu __aligned(64);
 
 	/* VCPU configuration. */
@@ -1886,8 +1887,9 @@ vmx_inkernel_handle_msr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			goto handled;
 		}
 	} else {
+		/* All bets are off if MSR_TSC is actually written to. */
 		if (exit->u.wrmsr.msr == MSR_TSC) {
-			cpudata->gtsc = exit->u.wrmsr.val;
+			cpudata->gtsc_offset = exit->u.wrmsr.val - rdtsc();
 			cpudata->gtsc_want_update = true;
 			goto handled;
 		}
@@ -2292,7 +2294,7 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 
 		if (__predict_false(cpudata->gtsc_want_update)) {
-			vmx_vmwrite(VMCS_TSC_OFFSET, cpudata->gtsc - rdtsc());
+			vmx_vmwrite(VMCS_TSC_OFFSET, cpudata->gtsc_offset);
 			cpudata->gtsc_want_update = false;
 		}
 
@@ -2417,8 +2419,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	}
 
 	cpudata->vmcs_launched = launched;
-
-	cpudata->gtsc = vmx_vmread(VMCS_TSC_OFFSET) + rdtsc();
 
 	vmx_vcpu_guest_misc_leave(vcpu);
 	vmx_vcpu_guest_dbregs_leave(vcpu);
@@ -2732,8 +2732,25 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 		vmx_vmwrite(VMCS_GUEST_IA32_SYSENTER_EIP,
 		    state->msrs[NVMM_X64_MSR_SYSENTER_EIP]);
 
-		cpudata->gtsc = state->msrs[NVMM_X64_MSR_TSC];
-		cpudata->gtsc_want_update = true;
+		/*
+		 * QEMU or whatever... probably did NOT want to set the TSC,
+		 * because doing so would destroy tsc mp-synchronization
+		 * across logical cpus.  Try to figure out what qemu meant
+		 * to do.
+		 *
+		 * If writing the last TSC value we reported via getstate,
+		 * assume that the hypervisor does not want to write to the
+		 * TSC.
+		 *
+		 * QEMU appears to issue a setstate with the value 0 after
+		 * a 'reboot', so for now also ignore this case.
+		 */
+		if (state->msrs[NVMM_X64_MSR_TSC] != cpudata->gtsc_match &&
+		    state->msrs[NVMM_X64_MSR_TSC] != 0) {
+			cpudata->gtsc_offset =
+			    state->msrs[NVMM_X64_MSR_TSC] - rdtsc();
+			cpudata->gtsc_want_update = true;
+		}
 
 		/* ENTRY_CTLS_LONG_MODE must match EFER_LMA. */
 		ctls1 = vmx_vmread(VMCS_ENTRY_CTLS);
@@ -2864,7 +2881,10 @@ vmx_vcpu_getstate(struct nvmm_cpu *vcpu)
 		    vmx_vmread(VMCS_GUEST_IA32_SYSENTER_ESP);
 		state->msrs[NVMM_X64_MSR_SYSENTER_EIP] =
 		    vmx_vmread(VMCS_GUEST_IA32_SYSENTER_EIP);
-		state->msrs[NVMM_X64_MSR_TSC] = cpudata->gtsc;
+		state->msrs[NVMM_X64_MSR_TSC] = rdtsc() + cpudata->gtsc_offset;
+
+		/* Save reported TSC value for later setstate hack. */
+		cpudata->gtsc_match = state->msrs[NVMM_X64_MSR_TSC];
 	}
 
 	if (flags & NVMM_X64_STATE_INTR) {
