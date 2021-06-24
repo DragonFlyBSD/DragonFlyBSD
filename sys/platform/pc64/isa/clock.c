@@ -1,10 +1,12 @@
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
- * Copyright (c) 2008 The DragonFly Project.
- * All rights reserved.
+ * Copyright (c) 2008-2021 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * William Jolitz and Don Ahn.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1496,11 +1498,14 @@ tsc_mpsync_ap_thread(void *xinfo)
 static void
 tsc_mpsync_test(void)
 {
+	enum { TSCOK, TSCNEG, TSCSPAN } error = TSCOK;
 	int cpu;
 	int try;
 
 	if (!tsc_invariant) {
 		/* Not even invariant TSC */
+		kprintf("TSC is not invariant, "
+			"no further tests will be performed\n");
 		return;
 	}
 
@@ -1559,13 +1564,80 @@ tsc_mpsync_test(void)
 	 * even if the test fails.  (set forced to -1 to disable entirely).
 	 */
 	kprintf("TSC testing MP synchronization ...\n");
+	kprintf("TSC testing MP: NOTE! CPU pwrsave will inflate latencies!\n");
 
 	/*
-	 * Test TSC MP synchronization on APs.  Try up to 4 times.
+	 * Test that the TSC is monotonically increasing across CPU
+	 * switches.  Otherwise time will get really messed up if the
+	 * TSC is selected as the timebase.
+	 *
+	 * Test 4 times
 	 */
-	for (try = 0; try < 4; ++try) {
+	for (try = 0; tsc_frequency && try < 4; ++try) {
+		tsc_uclock_t last;
+		tsc_uclock_t next;
+		tsc_sclock_t delta;
+		tsc_sclock_t lo_delta = 0x7FFFFFFFFFFFFFFFLL;
+		tsc_sclock_t hi_delta = -0x7FFFFFFFFFFFFFFFLL;
+
+		last = rdtsc();
+		for (cpu = 0; cpu < ncpus; ++cpu) {
+			lwkt_migratecpu(cpu);
+			next = rdtsc();
+			if (cpu == 0) {
+				last = next;
+				continue;
+			}
+
+			delta = next - last;
+			if (delta < 0) {
+				kprintf("TSC cpu-delta NEGATIVE: "
+					"cpu %d to %d (%ld)\n",
+					cpu - 1, cpu, delta);
+				error = TSCNEG;
+			}
+			if (lo_delta > delta)
+				lo_delta = delta;
+			if (hi_delta < delta)
+				hi_delta = delta;
+			last = next;
+		}
+		last = rdtsc();
+		for (cpu = ncpus - 2; cpu >= 0; --cpu) {
+			lwkt_migratecpu(cpu);
+			next = rdtsc();
+			delta = next - last;
+			if (delta <= 0) {
+				kprintf("TSC cpu-delta WAS NEGATIVE! "
+					"cpu %d to %d (%ld)\n",
+					cpu + 1, cpu, delta);
+				error = TSCNEG;
+			}
+			if (lo_delta > delta)
+				lo_delta = delta;
+			if (hi_delta < delta)
+				hi_delta = delta;
+			last = next;
+		}
+		kprintf("TSC cpu-delta test complete, %ldnS to %ldnS ",
+			muldivu64(lo_delta, 1000000000, tsc_frequency),
+			muldivu64(hi_delta, 1000000000, tsc_frequency));
+		if (error != TSCOK) {
+			kprintf("FAILURE\n");
+			break;
+		}
+		kprintf("SUCCESS\n");
+	}
+
+	/*
+	 * Test TSC MP synchronization on APs.
+	 *
+	 * Test 4 times.
+	 */
+	for (try = 0; tsc_frequency && try < 4; ++try) {
 		struct tsc_mpsync_info info;
 		uint64_t last;
+		int64_t xworst;
 		int64_t xdelta;
 		int64_t delta;
 
@@ -1595,28 +1667,37 @@ tsc_mpsync_test(void)
 		 */
 		last = info.tsc_saved[0].v;
 		delta = 0;
+		xworst = 0;
 		for (cpu = 0; cpu < ncpus; ++cpu) {
 			xdelta = (int64_t)(info.tsc_saved[cpu].v - last);
 			last = info.tsc_saved[cpu].v;
 			if (xdelta < 0)
 				xdelta = -xdelta;
+			if (xworst < xdelta)
+				xworst = xdelta;
 			delta += xdelta;
 
 		}
 
 		/*
-		 * Result from attempt.  If its too wild just stop now.
-		 * Also break out if we succeed, no need to try further.
+		 * Result from attempt.  Break-out if we succeeds, otherwise
+		 * try again (up to 4 times).  This might be in a VM so we
+		 * need to be robust.
 		 */
-		kprintf("TSC MPSYNC TEST %jd %d -> %jd (10uS=%jd)\n",
-			delta, ncpus, delta / ncpus,
-			tsc_frequency / 100000);
-		if (delta / ncpus > tsc_frequency / 100)
-			break;
+		kprintf("TSC cpu concurrency test complete, worst=%ldns, "
+			"avg=%ldns ",
+			muldivu64(xworst, 1000000000, tsc_frequency),
+			muldivu64(delta / ncpus, 1000000000, tsc_frequency));
+		if (delta / ncpus > tsc_frequency / 100) {
+			kprintf("FAILURE\n");
+		}
 		if (delta / ncpus < tsc_frequency / 100000) {
-			tsc_mpsync = 1;
+			kprintf("SUCCESS\n");
+			if (error == TSCOK)
+				tsc_mpsync = 1;
 			break;
 		}
+		kprintf("INDETERMINATE\n");
 	}
 
 	if (tsc_mpsync)
