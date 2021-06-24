@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
 .\"
-.Dd July 31, 2020
+.Dd June 24, 2021
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -36,7 +36,7 @@ The source for the
 system and applications is located in
 .Pa /usr/src .
 This directory contains the
-.Dq "base system"
+.Dq base system
 sources, which is loosely defined as the things required to rebuild
 the system to a useful state.
 It also contains the source for the system documentation, including
@@ -54,7 +54,7 @@ The file
 .Pa /usr/Makefile
 has targets for obtaining the dports tree.
 Typing
-.Li make
+.Cm make
 in
 .Pa /usr
 gives specifics on how to obtain the tree for building packages.
@@ -152,12 +152,12 @@ The option -j hw.ncpu is added automatically to optimally utilize the system.
 .Cm installkernel +
 .Cm installworld +
 .Cm upgrade
-.It Cm preupgrade
-Perform certain upgrades that have to be done before
+.It Cm preinstall
+Perform certain operations that have to be done before
 .Cm installworld ,
 such as adding new users and groups.
-.Cm installworld
-will complain if they have not been done.
+This target will be automatically executed by
+.Cm installworld .
 .It Cm upgrade
 Upgrade the files in /etc and also setup the rest of the system for
 the version of

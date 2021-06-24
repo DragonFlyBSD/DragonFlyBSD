@@ -24,9 +24,9 @@
 # installkernel       - Install the kernel and the kernel-modules.
 # reinstallkernel     - Reinstall the kernel and the kernel-modules.
 # kernel              - buildkernel + installkernel.
-# preupgrade          - Do certain upgrades (typically the addition of new
-#                       users and groups used by installed utilities) before
-#                       the installworld.
+# preinstall          - Do certain operations (typically the addition of new
+#                       users and groups used by utilities to be installed)
+#                       before doing installworld.
 # upgrade             - Upgrade the files in /etc and also setup the rest
 #                       of the system for DragonFly. ex. two compilers.
 # build-all           - Runs buildworld and buildkernel both with -j hw.ncpu
@@ -202,11 +202,11 @@ make:
 	@cd ${.CURDIR}/usr.bin/make; \
 		make obj && make depend && make all && make install
 
-# Handle pre-installworld upgrade (e.g., creating of new users/groups).
+# Handle pre-installworld operations (e.g., creating of new users/groups).
 #
-installworld: preupgrade
-preupgrade:
-	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk preupgrade
+installworld: preinstall
+preinstall:
+	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk preinstall
 
 # Handle the upgrade of /etc, post-installworld updating of static files
 # and removing obsolete files.

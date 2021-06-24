@@ -128,7 +128,7 @@ check-deprecated-files:
 		echo "==================================================================" ; \
 	fi;
 
-preupgrade:
+preinstall:
 .if exists(${DESTDIR}/etc/master.passwd)
 	sh ${.CURDIR}/../tools/pw-update.sh \
 		-d ${DESTDIR}/etc \
@@ -148,7 +148,7 @@ upgrade_check:
 		/usr/bin/false ; \
 	fi
 
-upgrade_base:	upgrade_check preupgrade remove-obsolete-files
+upgrade_base:	upgrade_check preinstall remove-obsolete-files
 	# files that should be dirs (not possible with Makefile_upgrade.inc)
 .for f in usr/include/dev/misc/ppi usr/share/initrd/sbin var/db/entropy
 	[ -d ${DESTDIR}/${f} ] || rm -f ${DESTDIR}/${f}
