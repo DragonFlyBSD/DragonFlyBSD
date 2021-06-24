@@ -475,7 +475,8 @@ initclocks_usched(void *dummy)
 
 		/* XXX correct the frequency for scheduler / estcpu tests */
 		systimer_init_periodic_flags(&gd->gd_schedclock, schedclock,
-					  NULL, ESTCPUFREQ, SYSTF_MSSYNC);
+					  NULL, ESTCPUFREQ,
+					  SYSTF_MSSYNC | SYSTF_OFFSETCPU);
 	}
 	lwkt_setcpu_self(ogd);
 }
