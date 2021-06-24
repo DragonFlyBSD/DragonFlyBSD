@@ -217,17 +217,20 @@ vfs_subr_init(void)
  * Knob to control the precision of file timestamps:
  *
  *   0 = seconds only; nanoseconds zeroed.
- *   1 = seconds and nanoseconds, accurate within 1/HZ.
- *   2 = seconds and nanoseconds, truncated to microseconds.
- * >=3 = seconds and nanoseconds, maximum precision.
+ *   1 = microseconds accurate to tick precision
+ *   2 = microseconds accurate to tick precision	(default, hz >= 100)
+ *   3 = nanoseconds accurate to tick precision
+ *   4 = microseconds, maximum precision		(default, hz < 100)
+ *   5 = nanoseconds, maximum precision
  *
  * Note that utimes() precision is microseconds because it takes a timeval
- * structure, so its probably best to default to USEC and not NSEC.
+ * structure, so its probably best to default to USEC or USEC_PRECISE, and
+ * not NSEC.
  */
 enum { TSP_SEC, TSP_HZ, TSP_USEC, TSP_NSEC,
        TSP_USEC_PRECISE, TSP_NSEC_PRECISE };
 
-__read_mostly static int timestamp_precision = TSP_USEC;
+__read_mostly static int timestamp_precision = -1;
 SYSCTL_INT(_vfs, OID_AUTO, timestamp_precision, CTLFLAG_RW,
 		&timestamp_precision, 0, "Precision of file timestamps");
 
@@ -244,11 +247,11 @@ vfs_timestamp(struct timespec *tsp)
 		getnanotime(tsp);
 		tsp->tv_nsec = 0;
 		break;
-	default:
 	case TSP_HZ:		/* ticks precision (limit to microseconds) */
 		getnanotime(tsp);
 		tsp->tv_nsec -= tsp->tv_nsec % 1000;
 		break;
+	default:
 	case TSP_USEC:		/* microseconds (ticks precision) */
 		getnanotime(tsp);
 		tsp->tv_nsec -= tsp->tv_nsec % 1000;
@@ -2668,3 +2671,22 @@ init_va_filerev(void)
 
 	return ret;
 }
+
+/*
+ * Set default timestamp_precision.  If hz is reasonably high we go for
+ * performance and limit vfs timestamps to microseconds with tick resolution.
+ * If hz is too low, however, we lose a bit of performance to get a more
+ * precise timestamp, because the mtime/ctime granularity might just be too
+ * rough otherwise (for make and Makefile's, for example).
+ */
+static void
+vfs_ts_prec_init(void *dummy)
+{
+	if (timestamp_precision < 0) {
+		if (hz >= 100)
+			timestamp_precision = TSP_USEC;
+		else
+			timestamp_precision = TSP_USEC_PRECISE;
+	}
+}
+SYSINIT(vfs_ts_prec_init, SI_SUB_VFS, SI_ORDER_ANY, vfs_ts_prec_init, NULL);
