@@ -38,6 +38,20 @@
 
 /*
  * This function is used to acquire a contested lock.
+ *
+ * There is a performance trade-off between spinning and sleeping.  In
+ * a heavily-multi-threaded program, heavily contested locks that are
+ * sleeping and waking up create a large IPI load on the system.  For
+ * example, qemu with a lot of CPUs configured.  It winds up being much
+ * faster to spin instead.
+ *
+ * So the first optimization here is to hard loop in-scale with the number
+ * of therads.
+ *
+ * The second optimization is to wake-up just one waiter at a time.  This
+ * is frought with issues because waiters can abort and races can result in
+ * nobody being woken up to acquire the released lock, so to smooth things
+ * over sleeps are limited to 1mS before we retry.
  */
 int
 __thr_umtx_lock(volatile umtx_t *mtx, int id, int timo)
@@ -45,7 +59,7 @@ __thr_umtx_lock(volatile umtx_t *mtx, int id, int timo)
 	int v;
 	int errval;
 	int ret = 0;
-	int retry = 4;
+	int retry = _thread_active_threads * 200 + 10;
 
 	v = *mtx;
 	cpu_ccfence();
@@ -59,7 +73,6 @@ __thr_umtx_lock(volatile umtx_t *mtx, int id, int timo)
 			continue;
 		}
 		if (--retry) {
-			sched_yield();
 			v = *mtx;
 			continue;
 		}
@@ -72,9 +85,23 @@ __thr_umtx_lock(volatile umtx_t *mtx, int id, int timo)
 		if (atomic_fcmpset_int(mtx, &v, v|0x40000000) ||
 		    (v & 0x40000000)) {
 			if (timo == 0) {
-				_umtx_sleep_err(mtx, v|0x40000000, timo);
-			} else if ((errval = _umtx_sleep_err(mtx, v|0x40000000, timo)) > 0) {
-				if (errval == EAGAIN) {
+				_umtx_sleep_err(mtx, v|0x40000000, 1000);
+			} else if (timo > 1500) {
+				/*
+				 * Short sleep and retry.  Because umtx
+				 * ops can timeout and abort, wakeup1()
+				 * races can cause a wakeup to be missed.
+				 */
+				_umtx_sleep_err(mtx, v|0x40000000, 1000);
+				timo -= 1000;
+			} else {
+				/*
+				 * Final sleep, do one last attempt to get
+				 * the lock before giving up.
+				 */
+				errval = _umtx_sleep_err(mtx, v|0x40000000,
+							 timo);
+				if (__predict_false(errval == EAGAIN)) {
 					if (atomic_cmpset_acq_int(mtx, 0, id))
 						ret = 0;
 					else
@@ -83,7 +110,7 @@ __thr_umtx_lock(volatile umtx_t *mtx, int id, int timo)
 				}
 			}
 		}
-		retry = 4;
+		retry = _thread_active_threads * 200 + 10;
 	}
 	return (ret);
 }
@@ -96,7 +123,7 @@ void
 __thr_umtx_unlock(volatile umtx_t *mtx, int v, int id)
 {
 	if (v & 0x40000000) {
-		_umtx_wakeup_err(mtx, 0);
+		_umtx_wakeup_err(mtx, 1);
 		v &= 0x3FFFFFFF;
 	}
 	THR_ASSERT(v == id, "thr_umtx_unlock: wrong owner");
