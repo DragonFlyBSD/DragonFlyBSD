@@ -79,8 +79,6 @@ int cpu_fxsr = 0;
 static struct krate badfprate = { 1 };
 
 /*static	int	npx_attach	(device_t dev);*/
-static	void	fpusave		(union savefpu *);
-static	void	fpurstor	(union savefpu *);
 
 uint32_t npx_mxcsr_mask = 0xFFBF;
 
@@ -437,7 +435,7 @@ npxsave(union savefpu *addr)
 	crit_exit();
 }
 
-static void
+void
 fpusave(union savefpu *addr)
 {
 	if (cpu_fxsr)
@@ -564,7 +562,7 @@ fpu_clean_state(void)
 	__asm __volatile("ffree %%st(7); fldl %0" : : "m" (dummy_variable));
 }
 
-static void
+void
 fpurstor(union savefpu *addr)
 {
 	if (cpu_fxsr) {
