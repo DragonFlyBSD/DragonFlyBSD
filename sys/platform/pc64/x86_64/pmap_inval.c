@@ -139,7 +139,7 @@ pmap_inval_init(pmap_t pmap)
 			lwkt_process_ipiq();
 			cpu_pause();
 		}
-		atomic_add_acq_long(&pmap->pm_invgen, 1);
+		atomic_add_64(&pmap->pm_invgen, 1);
 	}
 }
 
@@ -147,7 +147,7 @@ static void
 pmap_inval_done(pmap_t pmap)
 {
 	if (pmap != kernel_pmap) {
-		atomic_add_acq_long(&pmap->pm_invgen, 1);
+		atomic_add_64(&pmap->pm_invgen, 1);
 		atomic_clear_int(&pmap->pm_active_lock, CPULOCK_EXCL);
 	}
 	crit_exit_id("inval");

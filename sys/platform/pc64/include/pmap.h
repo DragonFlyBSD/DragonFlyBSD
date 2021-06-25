@@ -281,7 +281,7 @@ struct pmap {
 	struct pv_entry		*pm_pvhint_pt;	/* pv_entry lookup hint */
 	struct pv_entry		*pm_pvhint_unused;
 	vm_pindex_t		pm_placemarks[PM_PLACEMARKS];
-	long			pm_invgen;
+	uint64_t		pm_invgen;	/* pmap generation id */
 	uint64_t		pmap_bits[PG_BITS_SIZE];
 	uint64_t		protection_codes[PROTECTION_CODES_SIZE];
 	pt_entry_t		pmap_cache_bits_pte[PAT_INDEX_SIZE];

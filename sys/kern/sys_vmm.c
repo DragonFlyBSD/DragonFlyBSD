@@ -206,7 +206,7 @@ sys_vmm_guest_sync_addr(struct sysmsg *sysmsg,
 	 * vmm's managed under this process will issue a
 	 * INVEPT before resuming.
 	 */
-	atomic_add_acq_long(&p->p_vmspace->vm_pmap.pm_invgen, 1);
+	atomic_add_64(&p->p_vmspace->vm_pmap.pm_invgen, 1);
 #endif
 
 	/*
