@@ -39,6 +39,7 @@
 
 #define GIG	(1024LL*1024*1024)
 
+static int show_all_volume_headers = 0;
 static int show_tab = 2;
 static int show_depth = -1;
 static hammer2_tid_t show_min_mirror_tid = 0;
@@ -425,6 +426,12 @@ cmd_show(const char *devpath, int which)
 	memset(TotalAccum64, 0, sizeof(TotalAccum64));
 	TotalUnavail = TotalFreemap = 0;
 
+	env = getenv("HAMMER2_SHOW_ALL_VOLUME_HEADERS");
+	if (env != NULL) {
+		show_all_volume_headers = (int)strtol(env, NULL, 0);
+		if (errno)
+			show_all_volume_headers = 0;
+	}
 	env = getenv("HAMMER2_SHOW_TAB");
 	if (env != NULL) {
 		show_tab = (int)strtol(env, NULL, 0);
@@ -451,6 +458,7 @@ cmd_show(const char *devpath, int which)
 	}
 
 	hammer2_init_volumes(devpath, 1);
+	int all_volume_headers = VerboseOpt >= 3 || show_all_volume_headers;
 next_volume:
 	volu_loff = next_volu_loff;
 	next_volu_loff = -1;
@@ -479,7 +487,7 @@ next_volume:
 			printf("Volume header %d: mirror_tid=%016jx\n",
 			       i, (intmax_t)broot.mirror_tid);
 
-			if (VerboseOpt >= 3) {
+			if (all_volume_headers) {
 				switch(which) {
 				case 0:
 					broot.type = HAMMER2_BREF_TYPE_VOLUME;
@@ -507,7 +515,7 @@ next_volume:
 		goto next_volume;
 	}
 
-	if (VerboseOpt < 3) {
+	if (!all_volume_headers) {
 		switch(which) {
 		case 0:
 			best.type = HAMMER2_BREF_TYPE_VOLUME;
