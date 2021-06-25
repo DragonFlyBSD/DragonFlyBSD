@@ -6339,6 +6339,36 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 }
 
 /*
+ * Used to control the backing vmspace on the host for a guest VM.
+ * The cpumask is needed by the host pager to properly invalidate the
+ * host TLB when paging out the backing memory of a guest VM.
+ *
+ * NOTE: The scheduler might somtimes overload multiple vCPUs on the
+ *       same physical cpu, so operating is not quite as simple as
+ *       calling add_cpu/del_cpu in the core vmrun routines.
+ */
+void
+pmap_add_cpu(struct vmspace *vm, int cpuid)
+{
+	ATOMIC_CPUMASK_ORBIT(vm->vm_pmap.pm_active, mycpu->gd_cpuid);
+	crit_enter();
+	pmap_interlock_wait(vm);
+	crit_exit();
+}
+
+void
+pmap_del_cpu(struct vmspace *vm, int cpuid)
+{
+	ATOMIC_CPUMASK_NANDBIT(vm->vm_pmap.pm_active, mycpu->gd_cpuid);
+}
+
+void
+pmap_del_all_cpus(struct vmspace *vm)
+{
+	CPUMASK_ASSZERO(vm->vm_pmap.pm_active);
+}
+
+/*
  * Called when switching to a locked pmap, used to interlock against pmaps
  * undergoing modifications to prevent us from activating the MMU for the
  * target pmap until all such modifications have completed.  We have to do

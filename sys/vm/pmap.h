@@ -233,6 +233,10 @@ void		 pmap_setlwpvm (struct lwp *, struct vmspace *);
 vm_paddr_t	 pmap_kextract(vm_offset_t);
 void		 pmap_invalidate_range(pmap_t, vm_offset_t, vm_offset_t);
 
+void		 pmap_add_cpu(struct vmspace *vm, int cpuid);
+void		 pmap_del_cpu(struct vmspace *vm, int cpuid);
+void		 pmap_del_all_cpus(struct vmspace *vm);
+
 vm_offset_t	 pmap_addr_hint (vm_object_t obj, vm_offset_t addr, vm_size_t size);
 void		*pmap_kenter_temporary (vm_paddr_t pa, long i);
 void		 pmap_init2 (void);
