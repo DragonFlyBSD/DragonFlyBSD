@@ -583,6 +583,7 @@ void dlogreset(void);
 int dlog00_fd(void);
 void addbuildenv(const char *label, const char *data, int type);
 void delbuildenv(const char *label);
+const char *getbuildenv(const char *label);
 int readlogline(monitorlog_t *log, char **bufp);
 uint32_t crcDirTree(const char *path);
 

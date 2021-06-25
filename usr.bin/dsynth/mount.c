@@ -288,6 +288,7 @@ domount(worker_t *work, int type, const char *spath, const char *dpath,
 	const char *rwstr;
 	const char *optstr;
 	const char *typestr;
+	const char *debug;
 	struct stat st;
 	char *buf;
 	char *tmp;
@@ -316,9 +317,16 @@ domount(worker_t *work, int type, const char *spath, const char *dpath,
 
 	switch(type & MOUNT_TYPE_MASK) {
 	case MOUNT_TYPE_TMPFS:
+		/*
+		 * When creating a tmpfs filesystem, make sure the big ones
+		 * requested are big enough for the worst-case dport (which
+		 * is usually chromium).  If debugging is turned on, its even
+		 * worse.  You'd better have enough swap!
+		 */
+		debug = getbuildenv("WITH_DEBUG");
 		typestr = "tmpfs";
 		if (type & MOUNT_TYPE_BIG)
-			optstr = " -o size=64g";
+			optstr = debug ? " -o size=128g" : " -o size=64g";
 		else
 			optstr = " -o size=16g";
 		break;

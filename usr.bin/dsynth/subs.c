@@ -289,6 +289,21 @@ delbuildenv(const char *label)
 	BuildEnvTail = envp;
 }
 
+const char *
+getbuildenv(const char *label)
+{
+	buildenv_t **envp;
+	buildenv_t *env;
+
+	envp = &BuildEnv;
+	while ((env = *envp) != NULL) {
+		if (strcmp(env->label, label) == 0)
+			return env->data;
+		envp = &env->next;
+	}
+	return NULL;
+}
+
 void
 freestrp(char **strp)
 {
