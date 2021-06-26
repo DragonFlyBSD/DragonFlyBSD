@@ -5,6 +5,10 @@
  *               by running make sysent in the same directory.
  */
 
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
+
 #include <sys/sysproto.h>
 
 union sysunion {

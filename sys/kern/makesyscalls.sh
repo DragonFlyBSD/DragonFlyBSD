@@ -82,6 +82,9 @@ s/\$//g
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysarg
 		printf " *               by running make sysent in the same directory.\n" > sysarg
 		printf " */\n\n" > sysarg
+		printf "#ifndef _KERNEL\n" >sysarg
+		printf "#error \"This file should not be included by userland programs.\"\n" >sysarg
+		printf "#endif\n\n" >sysarg
 		printf "#ifndef %s\n", sysproto_h > sysarg
 		printf "#define\t%s\n\n", sysproto_h > sysarg
 		printf "#include <sys/select.h>\n" > sysarg
@@ -114,6 +117,9 @@ s/\$//g
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysun
 		printf " *               by running make sysent in the same directory.\n" > sysun
 		printf " */\n\n" > sysun
+		printf "#ifndef _KERNEL\n" >sysun
+		printf "#error \"This file should not be included by userland programs.\"\n" >sysun
+		printf "#endif\n\n" >sysun
 		printf "#include <sys/sysproto.h>\n\n" > sysun
 		printf "union sysunion {\n" > sysun
 

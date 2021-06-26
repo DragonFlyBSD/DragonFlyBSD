@@ -5,6 +5,10 @@
  *               by running make sysent in the same directory.
  */
 
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
+
 #ifndef _SYS_SYSPROTO_H_
 #define	_SYS_SYSPROTO_H_
 
