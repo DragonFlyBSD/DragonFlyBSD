@@ -90,9 +90,10 @@ typedef	__uint64_t	pt_entry_t;
 #define	EPT_PG_PS		(1UL << 7)	/* PS: Page size */
 #define	EPT_PG_A		(1UL << 8)	/* A: Accessed */
 #define	EPT_PG_M		(1UL << 9)	/* D: Dirty */
-#define	EPT_PG_AVAIL1		(1UL << 10)
-#define	EPT_PG_AVAIL2		(1UL << 11)
-#define	EPT_PG_AVAIL3		(1UL << 52)
+#define	EPT_PG_EXECUTE_USER	(1UL << 10)	/* XU: Execure for user-mode */
+#define	EPT_PG_AVAIL1		(1UL << 11)	/* ignored */
+#define	EPT_PG_AVAIL2		(1UL << 52)	/* ignored (bits 59-52) */
+#define	EPT_PG_AVAIL3		(1UL << 53)
 	/* Memory Type (MT) definitions */
 #define	EPT_MEM_TYPE_UC		(0UL << 3)	/* Uncacheable */
 #define	EPT_MEM_TYPE_WC		(1UL << 3)	/* Write combining */
