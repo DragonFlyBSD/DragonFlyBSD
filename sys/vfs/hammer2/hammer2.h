@@ -1931,6 +1931,7 @@ void hammer2_cleanup_devvp(hammer2_devvp_list_t *devvpl);
 int hammer2_init_volumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
 			hammer2_volume_t *volumes,
 			hammer2_volume_data_t *rootvoldata,
+			int *rootvolzone,
 			struct vnode **rootvoldevvp);
 hammer2_volume_t *hammer2_get_volume(hammer2_dev_t *hmp, hammer2_off_t offset);
 

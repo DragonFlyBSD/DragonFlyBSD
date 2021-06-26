@@ -575,6 +575,7 @@ int
 hammer2_init_volumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
 		     hammer2_volume_t *volumes,
 		     hammer2_volume_data_t *rootvoldata,
+		     int *rootvolzone,
 		     struct vnode **rootvoldevvp)
 {
 	hammer2_devvp_t *e;
@@ -670,6 +671,7 @@ hammer2_init_volumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
 		vol->size = voldata->volu_size;
 		if (vol->id == HAMMER2_ROOT_VOLUME) {
 			bcopy(voldata, rootvoldata, sizeof(*rootvoldata));
+			*rootvolzone = zone;
 			KKASSERT(*rootvoldevvp == NULL);
 			*rootvoldevvp = e->devvp;
 		}

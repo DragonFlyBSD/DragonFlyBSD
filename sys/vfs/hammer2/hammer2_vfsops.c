@@ -1162,7 +1162,8 @@ next_hmp:
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
 		hmp->devvp = NULL;
 		error = hammer2_init_volumes(mp, &devvpl, hmp->volumes,
-					     &hmp->voldata, &hmp->devvp);
+					     &hmp->voldata, &hmp->volhdrno,
+					     &hmp->devvp);
 		if (error) {
 			hammer2_close_devvp(&devvpl, ronly);
 			hammer2_cleanup_devvp(&devvpl);
@@ -1235,7 +1236,6 @@ next_hmp:
 		 */
 		KKASSERT(hmp->voldata.magic == HAMMER2_VOLUME_ID_HBO ||
 			 hmp->voldata.magic == HAMMER2_VOLUME_ID_ABO);
-		hmp->volhdrno = error;
 		hmp->volsync = hmp->voldata;
 		hmp->free_reserved = hmp->voldata.allocator_size / 20;
 		/*
