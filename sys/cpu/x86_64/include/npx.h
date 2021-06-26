@@ -65,7 +65,7 @@ struct	fpacc87 {
 
 /* Floating point context (i386 fnsave/frstor) */
 struct	save87 {
-	struct	env87 sv_env;	/* floating point control/status */
+	struct	env87	sv_env;		/* floating point control/status */
 	struct	fpacc87	sv_ac[8];	/* accumulator contents, 0-7 */
 	uint8_t		sv_pad0[4];	/* saved status word (now unused) */
 	/*
@@ -79,7 +79,7 @@ struct	save87 {
 	uint8_t		sv_pad[64];
 };
 
-struct envxmm {
+struct	envxmm {
 	uint16_t	en_cw;		/* control word (16bits) */
 	uint16_t	en_sw;		/* status word (16bits) */
 	uint16_t	en_tw;		/* tag word (16bits) */
@@ -123,12 +123,12 @@ struct	envxmm64 {
 };
 
 /* Contents of each SSE extended accumulator */
-struct  xmmacc {
+struct	xmmacc {
 	uint8_t		xmm_bytes[16];
 };
 
 /* Contents of the upper 16 bytes of each AVX extended accumulator */
-struct ymmacc {
+struct	ymmacc {
 	uint8_t		ymm_bytes[16];
 };
 
@@ -136,14 +136,14 @@ struct ymmacc {
  * Floating point context. (i386 fxsave/fxrstor)
  * savexmm is a 512-byte structure
  */
-struct  savexmm {
-	struct	envxmm	sv_env;			/*  32 */
+struct	savexmm {
+	struct	envxmm		sv_env;		/*  32 */
 	struct {
-		struct fpacc87	fp_acc;		/*     -- 10 */
-		uint8_t		fp_pad[6];      /*     -- 6  */
+		struct fpacc87	fp_acc;
+		uint8_t		fp_pad[6];
 	} sv_fp[8];				/* 128 */
-	struct xmmacc	sv_xmm[8];		/* 128 */
-	uint8_t			sv_pad[224];	/* 224 (padding) */
+	struct xmmacc		sv_xmm[8];	/* 128 */
+	uint8_t			sv_pad[224];	/* 224 */
 } __aligned(16);
 
 /*
@@ -156,8 +156,8 @@ struct	savexmm64 {
 		struct fpacc87	fp_acc;
 		uint8_t		fp_pad[6];
 	} sv_fp[8];				/* 128 */
-	struct xmmacc	sv_xmm[8];		/* 128 */
-	uint8_t			sv_pad[224];	/* 224 */
+	struct xmmacc		sv_xmm[16];	/* 256 */
+	uint8_t			sv_pad[96];	/*  96 */
 } __aligned(16);
 
 /* xstate_hdr is a 64-byte structure */
@@ -177,35 +177,35 @@ struct	savexmm_xstate {
 
 /* saveymm is a 832-byte structure (i386) */
 struct	saveymm {
-	struct envxmm	sv_env;			/*  32 */
+	struct envxmm		sv_env;		/*  32 */
 	struct {
 		struct fpacc87	fp_acc;
 		uint8_t		fp_pad[6];
 	} sv_fp[8];				/* 128 */
-	struct xmmacc	sv_xmm[16];		/* 256 */
+	struct xmmacc		sv_xmm[16];	/* 256 */
 	uint8_t			sv_pad[96];	/*  96 */
 	struct savexmm_xstate	sv_xstate;	/* 320 */
 } __aligned(64);
 
 /* saveymm64 is a 832-byte structure (amd64) */
 struct	saveymm64 {
-	struct envxmm64	sv_env;			/*  32 */
+	struct envxmm64		sv_env;		/*  32 */
 	struct {
 		struct fpacc87	fp_acc;
 		int8_t		fp_pad[6];
 	} sv_fp[8];				/* 128 */
-	struct xmmacc	sv_xmm[16];		/* 256 */
+	struct xmmacc		sv_xmm[16];	/* 256 */
 	uint8_t			sv_pad[96];	/*  96 */
 	struct savexmm_xstate	sv_xstate;	/* 320 */
 } __aligned(64);
 
 union	savefpu {
-	struct	save87	sv_87;
-	struct	savexmm	sv_xmm;
-	struct  saveymm sv_ymm;
+	struct	save87		sv_87;
+	struct	savexmm		sv_xmm;
+	struct	saveymm		sv_ymm;
 	struct	savexmm64	sv_xmm64;
 	struct	saveymm64	sv_ymm64;
-	char		sv_savearea[1024];	/* see mcontext_t */
+	char sv_savearea[1024];	/* see mcontext_t */
 };
 
 /*
@@ -237,7 +237,7 @@ union	savefpu {
 struct proc;
 struct trapframe;
 
-extern uint32_t npx_mxcsr_mask; 
+extern uint32_t npx_mxcsr_mask;
 extern uint64_t npx_xcr0_mask;
 
 void	npxprobemask (void);
