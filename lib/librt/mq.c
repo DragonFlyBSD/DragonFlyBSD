@@ -27,8 +27,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/syscall.h>
-#include <sys/sysproto.h>
 #include <sys/mqueue.h>
 
 #include <errno.h>
