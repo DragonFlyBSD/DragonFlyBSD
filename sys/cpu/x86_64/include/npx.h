@@ -94,14 +94,30 @@ struct envxmm {
 	uint32_t	en_mxcsr_mask;	/* valid bits in mxcsr */
 };
 
-struct envxmm64 {
+/* Layout for code/data pointers relating to FP exceptions. */
+union fp_addr {
+	uint64_t fa_64;			/* linear address for 64-bit system */
+	struct {
+		uint32_t fa_off;	/* linear address for 32-bit system */
+		uint16_t fa_seg;	/* code/data (etc) segment */
+		uint16_t fa_opcode;	/* last opcode (sometimes) */
+	} fa_32;
+};
+
+struct	envxmm64 {
 	uint16_t	en_cw;		/* control word (16bits) */
 	uint16_t	en_sw;		/* status word (16bits) */
 	uint8_t		en_tw;		/* tag word (8bits) */
 	uint8_t		en_zero;
 	uint16_t	en_opcode;	/* opcode last executed (11 bits ) */
-	uint64_t	en_rip;		/* fp instruction pointer */
-	uint64_t	en_rdp;		/* fp operand pointer */
+	union {				/* fp instruction pointer */
+		uint64_t	en_rip;
+		union fp_addr	en_ip64;
+	};
+	union {				/* fp operand pointer */
+		uint64_t	en_rdp;
+		union fp_addr	en_dp64;
+	};
 	uint32_t	en_mxcsr;	/* SSE control/status register */
 	uint32_t	en_mxcsr_mask;	/* valid bits in mxcsr */
 };
