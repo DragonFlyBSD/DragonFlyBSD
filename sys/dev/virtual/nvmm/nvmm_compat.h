@@ -317,11 +317,8 @@ enum {
 
 /*
  * Preemption / critical sections
- */
-#define splhigh()		({ crit_enter(); 0; })
-#define splx(x)			crit_exit()
-
-/* In DragonFly, a normal kernel thread will not migrate to another CPU or be
+ *
+ * In DragonFly, a normal kernel thread will not migrate to another CPU or be
  * preempted (except by an interrupt thread), so kpreempt_{disable,enable}()
  * are not needed.  However, we can't use critical section as an instead,
  * because that would also prevent interrupt/reschedule flags from being

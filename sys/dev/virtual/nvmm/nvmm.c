@@ -57,7 +57,7 @@ static const struct nvmm_impl *nvmm_impl_list[] = {
 #endif
 };
 
-static const struct nvmm_impl *nvmm_impl = NULL;
+static const struct nvmm_impl *nvmm_impl __read_mostly = NULL;
 
 static struct nvmm_owner root_owner;
 

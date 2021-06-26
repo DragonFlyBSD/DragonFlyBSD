@@ -144,9 +144,6 @@ ENTRY(vmx_vmlaunch)
 	/* Save the Host GPRs. */
 	HOST_SAVE_GPRS
 
-	/* Disable Host interrupts. */
-	cli
-
 	/* Save the Host LDT. */
 	HOST_SAVE_LDT
 
@@ -168,7 +165,6 @@ ENTRY(vmx_vmlaunch)
 	/* Failure. */
 	addq	$8,%rsp
 	HOST_RESTORE_LDT
-	sti
 	HOST_RESTORE_GPRS
 	movq	$-1,%rax
 	retq
@@ -180,9 +176,6 @@ END(vmx_vmlaunch)
 ENTRY(vmx_vmresume)
 	/* Save the Host GPRs. */
 	HOST_SAVE_GPRS
-
-	/* Disable Host interrupts. */
-	cli
 
 	/* Save the Host LDT. */
 	HOST_SAVE_LDT
@@ -205,7 +198,6 @@ ENTRY(vmx_vmresume)
 	/* Failure. */
 	addq	$8,%rsp
 	HOST_RESTORE_LDT
-	sti
 	HOST_RESTORE_GPRS
 	movq	$-1,%rax
 	retq
@@ -225,9 +217,6 @@ ENTRY(vmx_resume_rip)
 
 	/* Restore the Host LDT. */
 	HOST_RESTORE_LDT
-
-	/* Enable Host interrupts. */
-	sti
 
 	/* Restore the Host GPRs. */
 	HOST_RESTORE_GPRS

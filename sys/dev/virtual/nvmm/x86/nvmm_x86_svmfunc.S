@@ -133,9 +133,6 @@ ENTRY(svm_vmrun)
 	/* Save the Host GPRs. */
 	HOST_SAVE_GPRS
 
-	/* Disable Host interrupts. */
-	clgi
-
 	/* Save the Host TR. */
 	HOST_SAVE_TR
 
@@ -185,9 +182,6 @@ ENTRY(svm_vmrun)
 
 	/* Restore the Host TR. */
 	HOST_RESTORE_TR
-
-	/* Enable Host interrupts. */
-	stgi
 
 	/* Restore the Host GPRs. */
 	HOST_RESTORE_GPRS

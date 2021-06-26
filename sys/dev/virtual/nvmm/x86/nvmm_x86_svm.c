@@ -51,6 +51,18 @@
 
 int svm_vmrun(paddr_t, uint64_t *);
 
+static inline void
+svm_clgi(void)
+{
+	asm volatile ("clgi" ::: "memory");
+}
+
+static inline void
+svm_stgi(void)
+{
+	asm volatile ("stgi" ::: "memory");
+}
+
 #define	MSR_VM_HSAVE_PA	0xC0010117
 
 /* -------------------------------------------------------------------------- */
@@ -548,8 +560,9 @@ struct svm_cpudata {
 	uint64_t sfmask;
 	uint64_t fsbase;
 	uint64_t kernelgsbase;
-	bool ts_set;
-	mcontext_t hmctx;
+#ifdef __DragonFly__
+	mcontext_t hmctx;  /* TODO: remove this like NetBSD */
+#endif
 
 	/* Intr state */
 	bool int_window_exit;
@@ -1338,11 +1351,9 @@ svm_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 
-	cpudata->ts_set = (rcr0() & CR0_TS) != 0;
-
 #ifdef __NetBSD__
-	fpu_area_save(&cpudata->hfpu, svm_xcr0_mask);
-	fpu_area_restore(&cpudata->gfpu, svm_xcr0_mask);
+	fpu_kern_enter();
+	fpu_area_restore(&cpudata->gfpu, svm_xcr0_mask, true);
 #else /* DragonFly */
 	/*
 	 * NOTE: Host FPU state depends on whether the user program used the
@@ -1370,17 +1381,13 @@ svm_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 	}
 
 #ifdef __NetBSD__
-	fpu_area_save(&cpudata->gfpu, svm_xcr0_mask);
-	fpu_area_restore(&cpudata->hfpu, svm_xcr0_mask);
+	fpu_area_save(&cpudata->gfpu, svm_xcr0_mask, true);
+	fpu_kern_leave();
 #else /* DragonFly */
 	fpusave(&cpudata->gfpu, svm_xcr0_mask);
 	stts();
 	npxpop(&cpudata->hmctx);
 #endif
-
-	if (cpudata->ts_set) {
-		stts();
-	}
 }
 
 static void
@@ -1501,7 +1508,7 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t machgen;
-	int hcpu, s;
+	int hcpu;
 
 	svm_vcpu_state_commit(vcpu);
 	comm->state_cached = 0;
@@ -1536,13 +1543,13 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_I);
 		}
 
-		s = splhigh();
-		machgen = svm_htlb_flush(machdata, cpudata);
 		svm_vcpu_guest_fpu_enter(vcpu);
+		svm_clgi();
+		machgen = svm_htlb_flush(machdata, cpudata);
 		svm_vmrun(cpudata->vmcb_pa, cpudata->gprs);
-		svm_vcpu_guest_fpu_leave(vcpu);
 		svm_htlb_flush_ack(cpudata, machgen);
-		splx(s);
+		svm_stgi();
+		svm_vcpu_guest_fpu_leave(vcpu);
 
 		svm_vmcb_cache_default(vmcb);
 
@@ -2422,7 +2429,7 @@ svm_tlb_flush(struct pmap *pm)
 
 	/* Generates IPIs, which cause #VMEXITs. */
 #ifdef __NetBSD__
-	pmap_tlb_shootdown(pmap_kernel(), -1, PTE_G, TLBSHOOT_UPDATE);
+	pmap_tlb_shootdown(pmap_kernel(), -1, PTE_G, TLBSHOOT_NVMM);
 #else /* DragonFly */
 	pmap_inval_smp(NULL, -1, 1, NULL, 0);
 #endif
