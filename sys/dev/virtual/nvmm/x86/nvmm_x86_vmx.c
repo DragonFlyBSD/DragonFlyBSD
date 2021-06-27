@@ -2175,6 +2175,7 @@ vmx_htlb_flush(struct vmx_machdata *machdata, struct vmx_cpudata *cpudata)
 	struct ept_desc ept_desc;
 	uint64_t machgen;
 
+	clear_xinvltlb();
 	machgen = machdata->mach_htlb_gen;
 	if (__predict_true(machgen == cpudata->vcpu_htlb_gen)) {
 		return machgen;
@@ -2290,6 +2291,22 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		vmx_vcpu_guest_fpu_enter(vcpu);
 		vmx_cli();
 		machgen = vmx_htlb_flush(machdata, cpudata);
+
+#ifdef __DragonFly__
+		/*
+		 * Check for pending host events (e.g., interrupt, AST)
+		 * to make the state safe to VM Entry.
+		 */
+		if (__predict_false(gd->gd_reqflags & RQF_HVM_MASK)) {
+			/* INVEPT executed, so ack hTLB flush. */
+			vmx_htlb_flush_ack(cpudata, machgen);
+			vmx_sti();
+			vmx_vcpu_guest_fpu_leave(vcpu);
+			exit->reason = NVMM_VCPU_EXIT_NONE;
+			break;
+		}
+#endif
+
 		lcr2(cpudata->gcr2);
 		if (launched) {
 			ret = vmx_vmresume(cpudata->gprs);

@@ -1469,6 +1469,7 @@ svm_htlb_flush(struct svm_machdata *machdata, struct svm_cpudata *cpudata)
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t machgen;
 
+	clear_xinvltlb();
 	machgen = machdata->mach_htlb_gen;
 	if (__predict_true(machgen == cpudata->vcpu_htlb_gen)) {
 		return machgen;
@@ -1507,6 +1508,7 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	struct svm_machdata *machdata = mach->machdata;
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
+	struct globaldata *gd;
 	uint64_t machgen;
 	int hcpu;
 
@@ -1518,7 +1520,8 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	}
 
 	kpreempt_disable();
-	hcpu = mycpuid;
+	gd = mycpu;
+	hcpu = gd->gd_cpuid;
 
 	svm_gtlb_catchup(vcpu, hcpu);
 	svm_htlb_catchup(vcpu, hcpu);
@@ -1546,6 +1549,21 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		svm_vcpu_guest_fpu_enter(vcpu);
 		svm_clgi();
 		machgen = svm_htlb_flush(machdata, cpudata);
+
+#ifdef __DragonFly__
+		/*
+		 * Check for pending host events (e.g., interrupt, AST)
+		 * to make the state safe to VM Entry.
+		 */
+		if (__predict_false(gd->gd_reqflags & RQF_HVM_MASK)) {
+			/* No hTLB flush ack, because it's not executed. */
+			svm_stgi();
+			svm_vcpu_guest_fpu_leave(vcpu);
+			exit->reason = NVMM_VCPU_EXIT_NONE;
+			break;
+		}
+#endif
+
 		svm_vmrun(cpudata->vmcb_pa, cpudata->gprs);
 		svm_htlb_flush_ack(cpudata, machgen);
 		svm_stgi();
