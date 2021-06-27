@@ -199,7 +199,7 @@ DoWorkerMounts(worker_t *work)
 	domount(work, NULLFS_RO, "$/usr/libexec", "/usr/libexec", NULL);
 	domount(work, NULLFS_RO, "$/usr/sbin", "/usr/sbin", NULL);
 	domount(work, NULLFS_RO, "$/usr/share", "/usr/share", NULL);
-	domount(work, TMPFS_RW,  "dummy", "/usr/local", NULL);
+	domount(work, TMPFS_RW_MED,  "dummy", "/usr/local", NULL);
 	domount(work, NULLFS_RO, "$/usr/games", "/usr/games", NULL);
 	if (UseUsrSrc)
 		domount(work, NULLFS_RO, "$/usr/src", "/usr/src", NULL);
@@ -327,6 +327,8 @@ domount(worker_t *work, int type, const char *spath, const char *dpath,
 		typestr = "tmpfs";
 		if (type & MOUNT_TYPE_BIG)
 			optstr = debug ? " -o size=128g" : " -o size=64g";
+		else if (type & MOUNT_TYPE_MED)
+			optstr = debug ? " -o size=32g" : " -o size=16g";
 		else
 			optstr = " -o size=16g";
 		break;
