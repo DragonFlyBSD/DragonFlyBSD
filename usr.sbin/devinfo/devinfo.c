@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/devinfo/devinfo.c,v 1.7 2007/10/27 13:06:15 jhb Exp $
- * $DragonFly: src/usr.sbin/devinfo/devinfo.c,v 1.1 2008/09/30 12:20:29 hasso Exp $
  */
 
 /*
@@ -139,7 +138,7 @@ print_device(struct devinfo_dev *dev, void *arg)
 
 	if (vflag > 1 ||
 	    (vflag && (dev->dd_flags & DIF_ENABLED)) ||
-	    (dev->dd_name[0] != 0 && dev->dd_state >= DIS_INPROGRESS)) {
+	    (dev->dd_name[0] != 0 && dev->dd_state >= DS_INPROGRESS)) {
 		indent = (int)(intptr_t)arg;
 		for (i = 0; i < indent; i++)
 			printf(" ");
