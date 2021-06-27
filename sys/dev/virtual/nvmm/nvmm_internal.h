@@ -130,10 +130,10 @@ extern const struct nvmm_impl nvmm_x86_vmx;
 static inline bool
 nvmm_return_needed(void)
 {
-	if (preempt_needed()) {
+	if (__predict_false(nvmm_break_wanted())) {
 		return true;
 	}
-	if (curlwp->lwp_mpflags & LWP_MP_URETMASK) {
+	if (__predict_false(curlwp->lwp_mpflags & LWP_MP_URETMASK)) {
 		return true;
 	}
 	return false;

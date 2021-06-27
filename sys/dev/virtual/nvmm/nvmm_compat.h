@@ -329,14 +329,6 @@ enum {
 #define kpreempt_enable()	/* nothing */
 #define kpreempt_disabled()	true
 
-static __inline bool
-preempt_needed(void)
-{
-	/* NOTE: Cannot be use in a critical section, as it would prevent
-	 *       the relevant flags from being set... */
-	return (bool)any_resched_wanted();
-}
-
 /*
  * FPU
  */
