@@ -67,6 +67,8 @@ int	getcontext(ucontext_t *) __returns_twice;
 int	setcontext(const ucontext_t *) __dead2;
 void	makecontext(ucontext_t *, void (*)(void), int, ...);
 int	swapcontext(ucontext_t *, const ucontext_t *);
+#endif
+#if __BSD_VISIBLE
 void	setcontext_quick(ucontext_t *);
 void	makecontext_quick(ucontext_t *);
 void	swapcontext_quick(ucontext_t *, ucontext_t *);
