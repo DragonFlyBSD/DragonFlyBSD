@@ -2282,11 +2282,8 @@ pmap_pinit_defaults(struct pmap *pmap)
 	pmap->swapu64 = std_swapu64;
 	pmap->fuwordadd32 = std_fuwordadd32;
 	pmap->fuwordadd64 = std_fuwordadd64;
-
-	/* Used by NVMM */
-	pmap->pm_data = NULL;
-	pmap->pm_tlb_flush = NULL;
 }
+
 /*
  * Initialize pmap0/vmspace0.
  *

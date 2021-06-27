@@ -398,6 +398,7 @@ uvmspace_alloc(vaddr_t vmin, vaddr_t vmax, bool topdown)
 static __inline void
 uvmspace_free(struct vmspace *space)
 {
+	pmap_del_all_cpus(space);
 	vmspace_rel(space);
 }
 

@@ -2170,13 +2170,13 @@ vmx_htlb_catchup(struct nvmm_cpu *vcpu, int hcpu)
 }
 
 static inline uint64_t
-vmx_htlb_flush(struct vmx_machdata *machdata, struct vmx_cpudata *cpudata)
+vmx_htlb_flush(struct nvmm_machine *mach, struct vmx_cpudata *cpudata)
 {
 	struct ept_desc ept_desc;
 	uint64_t machgen;
 
 	clear_xinvltlb();
-	machgen = machdata->mach_htlb_gen;
+	machgen = mach->vm->vm_pmap.pm_invgen;
 	if (__predict_true(machgen == cpudata->vcpu_htlb_gen)) {
 		return machgen;
 	}
@@ -2229,7 +2229,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     struct nvmm_vcpu_exit *exit)
 {
 	struct nvmm_comm_page *comm = vcpu->comm;
-	struct vmx_machdata *machdata = mach->machdata;
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	struct vpid_desc vpid_desc;
 	struct globaldata *gd;
@@ -2270,6 +2269,15 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		vmx_vmwrite(VMCS_HOST_GS_BASE, rdmsr(MSR_GSBASE));
 		cpudata->gtsc_want_update = true;
 		vcpu->hcpu_last = hcpu;
+
+#ifdef __DragonFly__
+		/*
+		 * XXX: We aren't tracking overloaded CPUs (multiple vCPUs
+		 *      scheduled on the same physical CPU) yet so there are
+		 *      currently no calls to pmap_del_cpu().
+		 */
+		pmap_add_cpu(mach->vm, hcpu);
+#endif
 	}
 
 	vmx_vcpu_guest_dbregs_enter(vcpu);
@@ -2290,7 +2298,7 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 		vmx_cli();
 		vmx_vcpu_guest_fpu_enter(vcpu);
-		machgen = vmx_htlb_flush(machdata, cpudata);
+		machgen = vmx_htlb_flush(mach, cpudata);
 
 #ifdef __DragonFly__
 		/*
@@ -3226,6 +3234,7 @@ vmx_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 
 /* -------------------------------------------------------------------------- */
 
+#ifdef __NetBSD__
 static void
 vmx_tlb_flush(struct pmap *pm)
 {
@@ -3235,12 +3244,9 @@ vmx_tlb_flush(struct pmap *pm)
 	atomic_inc_64(&machdata->mach_htlb_gen);
 
 	/* Generates IPIs, which cause #VMEXITs. */
-#ifdef __NetBSD__
 	pmap_tlb_shootdown(pmap_kernel(), -1, PTE_G, TLBSHOOT_NVMM);
-#else /* DragonFly */
-	pmap_inval_smp(NULL, -1, 1, NULL, 0);
-#endif
 }
+#endif /* __NetBSD__ */
 
 static void
 vmx_machine_create(struct nvmm_machine *mach)
@@ -3251,9 +3257,11 @@ vmx_machine_create(struct nvmm_machine *mach)
 	/* Convert to EPT. */
 	pmap_ept_transform(pmap, pmap_ept_has_ad ? 0 : PMAP_EMULATE_AD_BITS);
 
+#ifdef __NetBSD__
 	/* Fill in pmap info. */
 	pmap->pm_data = (void *)mach;
 	pmap->pm_tlb_flush = vmx_tlb_flush;
+#endif /* __NetBSD__ */
 
 	machdata = kmem_zalloc(sizeof(struct vmx_machdata), KM_SLEEP);
 	mach->machdata = machdata;

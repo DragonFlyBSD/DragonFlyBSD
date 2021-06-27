@@ -275,6 +275,16 @@ nvmm_machine_create(struct nvmm_owner *owner,
 	mach->gpa_end = NVMM_MAX_RAM;
 	mach->vm = uvmspace_alloc(0, mach->gpa_end - mach->gpa_begin, false);
 
+#ifdef __DragonFly__
+	/*
+	 * Set PMAP_MULTI on the backing pmap for the machine.  Only
+	 * pmap changes to the backing pmap for the machine affect the
+	 * guest.  Changes to the host's pmap do not affect the guest's
+	 * backing pmap.
+	 */
+	pmap_maybethreaded(&mach->vm->vm_pmap);
+#endif
+
 	/* Create the comm uobj. */
 	mach->commuobj = uao_create(NVMM_MAX_VCPUS * PAGE_SIZE, 0);
 

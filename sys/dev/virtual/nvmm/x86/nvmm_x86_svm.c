@@ -537,6 +537,7 @@ struct svm_cpudata {
 	/* General */
 	bool shared_asid;
 	bool gtlb_want_flush;
+	bool htlb_want_flush;
 	bool gtsc_want_update;
 	uint64_t vcpu_htlb_gen;
 
@@ -1459,22 +1460,23 @@ svm_htlb_catchup(struct nvmm_cpu *vcpu, int hcpu)
 	 * Nothing to do. If an hTLB flush was needed, either the VCPU was
 	 * executing on this hCPU and the hTLB already got flushed, or it
 	 * was executing on another hCPU in which case the catchup is done
-	 * in svm_gtlb_catchup().
+	 * indirectly when svm_gtlb_catchup() sets gtlb_want_flush.
 	 */
 }
 
 static inline uint64_t
-svm_htlb_flush(struct svm_machdata *machdata, struct svm_cpudata *cpudata)
+svm_htlb_flush(struct nvmm_machine *mach, struct svm_cpudata *cpudata)
 {
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t machgen;
 
 	clear_xinvltlb();
-	machgen = machdata->mach_htlb_gen;
+	machgen = mach->vm->vm_pmap.pm_invgen;
 	if (__predict_true(machgen == cpudata->vcpu_htlb_gen)) {
 		return machgen;
 	}
 
+	cpudata->htlb_want_flush = true;
 	vmcb->ctrl.tlb_ctrl = svm_ctrl_tlb_flush;
 	return machgen;
 }
@@ -1486,6 +1488,7 @@ svm_htlb_flush_ack(struct svm_cpudata *cpudata, uint64_t machgen)
 
 	if (__predict_true(vmcb->ctrl.exitcode != VMCB_EXITCODE_INVALID)) {
 		cpudata->vcpu_htlb_gen = machgen;
+		cpudata->htlb_want_flush = false;
 	}
 }
 
@@ -1505,7 +1508,6 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     struct nvmm_vcpu_exit *exit)
 {
 	struct nvmm_comm_page *comm = vcpu->comm;
-	struct svm_machdata *machdata = mach->machdata;
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
 	struct globaldata *gd;
@@ -1529,13 +1531,24 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	if (vcpu->hcpu_last != hcpu) {
 		svm_vmcb_cache_flush_all(vmcb);
 		cpudata->gtsc_want_update = true;
+
+#ifdef __DragonFly__
+		/*
+		 * XXX: We aren't tracking overloaded CPUs (multiple vCPUs
+		 *      scheduled on the same physical CPU) yet so there are
+		 *      currently no calls to pmap_del_cpu().
+		 */
+		pmap_add_cpu(mach->vm, hcpu);
+#endif
 	}
 
 	svm_vcpu_guest_dbregs_enter(vcpu);
 	svm_vcpu_guest_misc_enter(vcpu);
 
 	while (1) {
-		if (cpudata->gtlb_want_flush) {
+		if (__predict_false(cpudata->gtlb_want_flush ||
+				    cpudata->htlb_want_flush))
+		{
 			vmcb->ctrl.tlb_ctrl = svm_ctrl_tlb_flush;
 		} else {
 			vmcb->ctrl.tlb_ctrl = 0;
@@ -1548,7 +1561,7 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 		svm_clgi();
 		svm_vcpu_guest_fpu_enter(vcpu);
-		machgen = svm_htlb_flush(machdata, cpudata);
+		machgen = svm_htlb_flush(mach, cpudata);
 
 #ifdef __DragonFly__
 		/*
@@ -2437,6 +2450,7 @@ svm_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 
 /* -------------------------------------------------------------------------- */
 
+#ifdef __NetBSD__
 static void
 svm_tlb_flush(struct pmap *pm)
 {
@@ -2446,12 +2460,9 @@ svm_tlb_flush(struct pmap *pm)
 	atomic_inc_64(&machdata->mach_htlb_gen);
 
 	/* Generates IPIs, which cause #VMEXITs. */
-#ifdef __NetBSD__
 	pmap_tlb_shootdown(pmap_kernel(), -1, PTE_G, TLBSHOOT_NVMM);
-#else /* DragonFly */
-	pmap_inval_smp(NULL, -1, 1, NULL, 0);
-#endif
 }
+#endif /* __NetBSD__ */
 
 static void
 svm_machine_create(struct nvmm_machine *mach)
@@ -2462,9 +2473,11 @@ svm_machine_create(struct nvmm_machine *mach)
 	/* Transform pmap. */
 	pmap_npt_transform(pmap, 0);
 
+#ifdef __NetBSD__
 	/* Fill in pmap info. */
 	pmap->pm_data = (void *)mach;
 	pmap->pm_tlb_flush = svm_tlb_flush;
+#endif /* __NetBSD__ */
 
 	machdata = kmem_zalloc(sizeof(struct svm_machdata), KM_SLEEP);
 	mach->machdata = machdata;
