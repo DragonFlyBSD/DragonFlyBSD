@@ -332,6 +332,17 @@ enum {
 /*
  * FPU
  */
+/* Adapt NetBSD's 'struct fxsave' to DragonFly's 'union savefpu' */
+#define fx_cw			sv_ymm64.sv_env.en_cw
+#define fx_sw			sv_ymm64.sv_env.en_sw
+#define fx_tw			sv_ymm64.sv_env.en_tw
+#define fx_zero			sv_ymm64.sv_env.en_zero
+#define fx_mxcsr		sv_ymm64.sv_env.en_mxcsr
+#define fx_mxcsr_mask		sv_ymm64.sv_env.en_mxcsr_mask
+/* Adapt NetBSD's 'struct xsave_header' to DragonFly's 'union savefpu' */
+#define xsh_xstate_bv		sv_ymm64.sv_xstate.sx_hd.xstate_bv
+#define xsh_xcomp_bv		sv_ymm64.sv_xstate.sx_hd.xstate_xcomp_bv
+
 #define x86_xsave_features	npx_xcr0_mask
 #define x86_fpu_mxcsr_mask	npx_mxcsr_mask
 #define stts()			load_cr0(rcr0() | CR0_TS)

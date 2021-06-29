@@ -209,12 +209,12 @@ const struct nvmm_x64_state nvmm_x86_reset_state = {
 		.evt_pending = 0,
 	},
 
-	.fpu.sv_xmm64.sv_env = {
-		.en_cw = 0x0040,
-		.en_sw = 0x0000,
-		.en_tw = 0x55,
-		.en_zero = 0x55,
-		.en_mxcsr = 0x1F80,
+	.fpu = {
+		.fx_cw = 0x0040,
+		.fx_sw = 0x0000,
+		.fx_tw = 0x55,
+		.fx_zero = 0x55,
+		.fx_mxcsr = 0x1F80,
 	}
 };
 

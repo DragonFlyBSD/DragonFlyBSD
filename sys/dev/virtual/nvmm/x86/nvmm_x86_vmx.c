@@ -1400,12 +1400,14 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		case 0:
 			cpudata->gprs[NVMM_X64_GPR_RAX] = vmx_xcr0_mask & 0xFFFFFFFF;
 			if (cpudata->gxcr0 & XCR0_SSE) {
-				cpudata->gprs[NVMM_X64_GPR_RBX] = sizeof(struct savexmm64);
+				cpudata->gprs[NVMM_X64_GPR_RBX] =
+				    sizeof(struct saveymm64);
 			} else {
-				cpudata->gprs[NVMM_X64_GPR_RBX] = sizeof(struct save87);
+				cpudata->gprs[NVMM_X64_GPR_RBX] =
+				    sizeof(struct save87) + 64; /* XSAVE header */
 			}
 			cpudata->gprs[NVMM_X64_GPR_RBX] += 64; /* XSAVE header */
-			cpudata->gprs[NVMM_X64_GPR_RCX] = sizeof(struct savexmm64) + 64;
+			cpudata->gprs[NVMM_X64_GPR_RCX] = sizeof(struct saveymm64);
 			cpudata->gprs[NVMM_X64_GPR_RDX] = vmx_xcr0_mask >> 32;
 			break;
 		case 1:
@@ -2635,7 +2637,7 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 	struct nvmm_comm_page *comm = vcpu->comm;
 	const struct nvmm_x64_state *state = &comm->state;
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
-	struct savexmm64 *fpustate;
+	union savefpu *fpustate;
 	uint64_t ctls1, intstate;
 	uint64_t flags;
 
@@ -2787,16 +2789,14 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 	if (flags & NVMM_X64_STATE_FPU) {
 		memcpy(&cpudata->gfpu, &state->fpu, sizeof(state->fpu));
 
-		fpustate = &cpudata->gfpu.sv_xmm64;
-		fpustate->sv_env.en_mxcsr_mask &= x86_fpu_mxcsr_mask;
-		fpustate->sv_env.en_mxcsr &= fpustate->sv_env.en_mxcsr_mask;
+		fpustate = &cpudata->gfpu;
+		fpustate->fx_mxcsr_mask &= x86_fpu_mxcsr_mask;
+		fpustate->fx_mxcsr &= fpustate->fx_mxcsr_mask;
 
-#ifdef __NetBSD__
 		if (vmx_xcr0_mask != 0) {
 			/* Reset XSTATE_BV, to force a reload. */
 			cpudata->gfpu.xsh_xstate_bv = vmx_xcr0_mask;
 		}
-#endif /* __NetBSD__ */
 	}
 
 	vmx_vmcs_leave(vcpu);
@@ -3072,11 +3072,9 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	cpudata->gmsr_misc_enable |=
 	    (IA32_MISC_BTS_UNAVAIL|IA32_MISC_PEBS_UNAVAIL);
 
-#ifdef __NetBSD__
 	/* Init XSAVE header. */
 	cpudata->gfpu.xsh_xstate_bv = vmx_xcr0_mask;
 	cpudata->gfpu.xsh_xcomp_bv = 0;
-#endif /* __NetBSD__ */
 
 	/* These MSRs are static. */
 	cpudata->star = rdmsr(MSR_STAR);
