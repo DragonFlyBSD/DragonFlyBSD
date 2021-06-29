@@ -227,7 +227,9 @@ This function is NULL safe with regard to the USB transfer structure
 pointer.
 .
 If the transfer was in progress, the callback will called with
-"USB_ST_ERROR" and "error = USB_ERR_CANCELLED".
+.Dv USB_ST_ERROR
+and
+.Dq error = Dv USB_ERR_CANCELLED .
 .
 .Pp
 .
@@ -248,8 +250,12 @@ pointer.
 .
 The USB callback has three states.
 .
-USB_ST_SETUP, USB_ST_TRANSFERRED and USB_ST_ERROR.
-USB_ST_SETUP is the initial state.
+.Dv USB_ST_SETUP ,
+.Dv USB_ST_TRANSFERRED
+and
+.Dv USB_ST_ERROR .
+.Dv USB_ST_SETUP
+is the initial state.
 .
 After the callback has been called with this state it will always be
 called back at a later stage in one of the other two states.
@@ -396,10 +402,15 @@ struct usb_config {
 .Fa type
 field selects the USB pipe type.
 .
-Valid values are: UE_INTERRUPT, UE_CONTROL, UE_BULK,
-UE_ISOCHRONOUS.
+Valid values are:
+.Dv UE_INTERRUPT ,
+.Dv UE_CONTROL ,
+.Dv UE_BULK ,
+.Dv UE_ISOCHRONOUS .
 .
-The special value UE_BULK_INTR will select BULK and INTERRUPT pipes.
+The special value
+.Dv UE_BULK_INTR
+will select BULK and INTERRUPT pipes.
 .
 This field is mandatory.
 .
@@ -407,8 +418,9 @@ This field is mandatory.
 .Fa endpoint
 field selects the USB endpoint number.
 .
-A value of 0xFF, "-1" or "UE_ADDR_ANY" will select the first matching
-endpoint.
+A value of 0xFF, "-1" or
+.Dv UE_ADDR_ANY
+will select the first matching endpoint.
 .
 This field is mandatory.
 .
@@ -416,17 +428,28 @@ This field is mandatory.
 .Fa direction
 field selects the USB endpoint direction.
 .
-A value of "UE_DIR_ANY" will select the first matching endpoint.
+A value of
+.Dv UE_DIR_ANY
+will select the first matching endpoint.
 .
-Else valid values are: "UE_DIR_IN" and "UE_DIR_OUT".
+Else valid values are:
+.Dv UE_DIR_IN
+and
+.Dv UE_DIR_OUT .
 .
-"UE_DIR_IN" and "UE_DIR_OUT" can be binary OR'ed by "UE_DIR_SID" which
-means that the direction will be swapped in case of
-USB_MODE_DEVICE.
+.Dv UE_DIR_IN
+and
+.Dv UE_DIR_OUT
+can be binary OR'ed by
+.Dv UE_DIR_SID
+which means that the direction will be swapped in case of
+.Dv USB_MODE_DEVICE .
 .
-Note that "UE_DIR_IN" refers to the data transfer direction of the
-"IN" tokens and "UE_DIR_OUT" refers to the data transfer direction of
-the "OUT" tokens.
+Note that
+.Dv UE_DIR_IN
+refers to the data transfer direction of the "IN" tokens and
+.Dv UE_DIR_OUT
+refers to the data transfer direction of the "OUT" tokens.
 .
 This field is mandatory.
 .
@@ -438,15 +461,15 @@ The value of this field is given in milliseconds and is independent of
 device speed.
 .
 Depending on the endpoint type, this field has different meaning:
-.Bl -tag -width "UE_ISOCHRONOUS"
-.It UE_INTERRUPT
+.Bl -tag -width ".Dv UE_ISOCHRONOUS"
+.It Dv UE_INTERRUPT
 "0" use the default interrupt interval based on endpoint descriptor.
 "Else" use the given value for polling rate.
-.It UE_ISOCHRONOUS
+.It Dv UE_ISOCHRONOUS
 "0" use default.
 "Else" the value is ignored.
-.It UE_BULK
-.It UE_CONTROL
+.It Dv UE_BULK
+.It Dv UE_CONTROL
 "0" no transfer pre-delay.
 "Else" a delay as given by this field in
 milliseconds is inserted before the hardware is started when
@@ -466,14 +489,14 @@ timeout of 250ms will be used.
 .Fa frames
 field sets the maximum number of frames.
 If zero is specified it will yield the following results:
-.Bl -tag -width "UE_INTERRUPT"
-.It UE_BULK
+.Bl -tag -width ".Dv UE_INTERRUPT"
+.It Dv UE_BULK
 xfer->nframes = 1;
-.It UE_INTERRUPT
+.It Dv UE_INTERRUPT
 xfer->nframes = 1;
-.It UE_CONTROL
+.It Dv UE_CONTROL
 xfer->nframes = 2;
-.It UE_ISOCHRONOUS
+.It Dv UE_ISOCHRONOUS
 Not allowed.
 Will cause an error.
 .El
