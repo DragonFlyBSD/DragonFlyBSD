@@ -2212,6 +2212,8 @@ dsp_kqfilter(struct dev_kqfilter_args *ap)
 			kn->kn_hook = (caddr_t)rdch;
 			bs = rdch->bufsoft;
 			ap->a_result = 0;
+		} else {
+			ap->a_result = EINVAL;
 		}
 		break;
 	case EVFILT_WRITE:
@@ -2220,6 +2222,8 @@ dsp_kqfilter(struct dev_kqfilter_args *ap)
 			kn->kn_hook = (caddr_t)wrch;
 			bs = wrch->bufsoft;
 			ap->a_result = 0;
+		} else {
+			ap->a_result = EINVAL;
 		}
 		break;
 	default:
