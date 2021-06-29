@@ -2288,8 +2288,8 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->gtsc_want_update = false;
 		}
 
-		vmx_vcpu_guest_fpu_enter(vcpu);
 		vmx_cli();
+		vmx_vcpu_guest_fpu_enter(vcpu);
 		machgen = vmx_htlb_flush(machdata, cpudata);
 
 #ifdef __DragonFly__
@@ -2300,8 +2300,8 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		if (__predict_false(gd->gd_reqflags & RQF_HVM_MASK)) {
 			/* INVEPT executed, so ack hTLB flush. */
 			vmx_htlb_flush_ack(cpudata, machgen);
-			vmx_sti();
 			vmx_vcpu_guest_fpu_leave(vcpu);
+			vmx_sti();
 			exit->reason = NVMM_VCPU_EXIT_NONE;
 			break;
 		}
@@ -2315,8 +2315,8 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 		cpudata->gcr2 = rcr2();
 		vmx_htlb_flush_ack(cpudata, machgen);
-		vmx_sti();
 		vmx_vcpu_guest_fpu_leave(vcpu);
+		vmx_sti();
 
 		if (__predict_false(ret != 0)) {
 			vmx_exit_invalid(exit, -1);

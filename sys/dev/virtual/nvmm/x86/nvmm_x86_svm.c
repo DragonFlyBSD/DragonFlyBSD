@@ -1546,8 +1546,8 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_I);
 		}
 
-		svm_vcpu_guest_fpu_enter(vcpu);
 		svm_clgi();
+		svm_vcpu_guest_fpu_enter(vcpu);
 		machgen = svm_htlb_flush(machdata, cpudata);
 
 #ifdef __DragonFly__
@@ -1557,8 +1557,8 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		 */
 		if (__predict_false(gd->gd_reqflags & RQF_HVM_MASK)) {
 			/* No hTLB flush ack, because it's not executed. */
-			svm_stgi();
 			svm_vcpu_guest_fpu_leave(vcpu);
+			svm_stgi();
 			exit->reason = NVMM_VCPU_EXIT_NONE;
 			break;
 		}
@@ -1566,8 +1566,8 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 		svm_vmrun(cpudata->vmcb_pa, cpudata->gprs);
 		svm_htlb_flush_ack(cpudata, machgen);
-		svm_stgi();
 		svm_vcpu_guest_fpu_leave(vcpu);
+		svm_stgi();
 
 		svm_vmcb_cache_default(vmcb);
 
