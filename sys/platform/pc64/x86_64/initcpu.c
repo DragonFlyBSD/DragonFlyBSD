@@ -185,6 +185,8 @@ detect_vmm(void)
 				return VMM_GUEST_HYPERV;
 			else if (strcmp(vmm_vendor, "KVMKVMKVM") == 0)
 				return VMM_GUEST_KVM;
+			else if (strcmp(vmm_vendor, "___ NVMM ___") == 0)
+				return VMM_GUEST_NVMM;
 		} else if (regs[0] == 0) {
 			/* Also detect old KVM versions with regs[0] == 0 */
 			if (strcmp(vendor, "KVMKVMKVM") == 0) {

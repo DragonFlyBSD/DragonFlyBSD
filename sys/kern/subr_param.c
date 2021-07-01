@@ -151,6 +151,7 @@ static const char *const vmm_guest_sysctl_names[] = {
 	"vbox",
 	"parallels",
 	"vkernel",
+	"nvmm",
 	"unknown",
 	NULL
 };
