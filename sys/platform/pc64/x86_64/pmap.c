@@ -1572,8 +1572,9 @@ pmap_init2_iso_pmap(void)
 				    sizeof(ps->common_tss));
 		pmap_init_iso_range(r_idt_arr[n].rd_base,
 				    r_idt_arr[n].rd_limit + 1);
+		pmap_init_iso_range((register_t)ps->mdglobaldata.gd_gdt,
+				    MAXGDT_LIMIT);
 	}
-	pmap_init_iso_range((register_t)gdt, sizeof(gdt));
 	pmap_init_iso_range((vm_offset_t)(int *)btext,
 			    (vm_offset_t)(int *)etext -
 			     (vm_offset_t)(int *)btext);

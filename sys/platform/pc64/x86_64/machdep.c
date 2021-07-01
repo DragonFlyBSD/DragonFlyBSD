@@ -1615,7 +1615,7 @@ SYSCTL_PROC(_machdep, OID_AUTO, efi_map, CTLTYPE_OPAQUE|CTLFLAG_RD, NULL, 0,
  */
 
 int _default_ldt;
-struct user_segment_descriptor gdt[NGDT * MAXCPU];	/* global descriptor table */
+struct user_segment_descriptor gdt_cpu0[MAXGDT_COUNT];
 struct gate_descriptor idt_arr[MAXCPU][NIDT];
 #if 0 /* JG */
 union descriptor ldt[NLDT];		/* local descriptor table */
@@ -2694,13 +2694,18 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	for (x = 0; x < NGDT; x++) {
 		if (x != GPROC0_SEL && x != (GPROC0_SEL + 1))
-			ssdtosd(&gdt_segs[x], &gdt[x]);
+			ssdtosd(&gdt_segs[x], &gdt_cpu0[x]);
 	}
 	ssdtosyssd(&gdt_segs[GPROC0_SEL],
-	    (struct system_segment_descriptor *)&gdt[GPROC0_SEL]);
+	    (struct system_segment_descriptor *)&gdt_cpu0[GPROC0_SEL]);
 
-	r_gdt.rd_limit = NGDT * sizeof(gdt[0]) - 1;
-	r_gdt.rd_base =  (long) gdt;
+	/*
+	 * WARNING!  Due to an Intel quirk, VMX exits set the gdt[] table
+	 *	     limit to 0xFFFF.  To avoid having to do a heavy-weight
+	 *	     reload, we just make ours maximally sized.
+	 */
+	r_gdt.rd_limit = MAXGDT_LIMIT - 1;
+	r_gdt.rd_base = (long)gdt_cpu0;
 	lgdt(&r_gdt);
 
 	wrmsr(MSR_FSBASE, 0);		/* User value */
@@ -2867,7 +2872,8 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	ps->common_tss.tss_iobase = sizeof(struct x86_64tss);
 
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
-	gd->gd_tss_gdt = &gdt[GPROC0_SEL];
+	gd->gd_gdt = &gdt_cpu0[0];
+	gd->gd_tss_gdt = &gd->gd_gdt[GPROC0_SEL];
 	gd->gd_common_tssd = *gd->gd_tss_gdt;
 	ltr(gsel_tss);
 

@@ -66,7 +66,7 @@ struct pv_entry;
 struct mdglobaldata {
 	struct globaldata mi;
 	struct user_segment_descriptor gd_common_tssd;
-	struct user_segment_descriptor *gd_tss_gdt;
+	struct user_segment_descriptor *gd_tss_gdt;	/* gd_gdt[GPROC0_SEL] */
 	struct thread   *gd_npxthread;
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
 	union savefpu	gd_zerofpu;	/* xrstor/fxrstor/frstor zero regs */
@@ -80,7 +80,7 @@ struct mdglobaldata {
 	u_int		gd_unused002;
 	u_int		gd_unused003;
 	u_int		gd_ss_eflags;
-	long		gd_lunused0;
+	struct user_segment_descriptor *gd_gdt; /* pcpu gdt[] table */
 	long		gd_lunused1;
 	long		gd_lunused2;
 	long		gd_lunusde3;

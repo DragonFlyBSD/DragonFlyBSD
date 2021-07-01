@@ -244,8 +244,10 @@ init_secondary(void)
 	u_int64_t msr, cr0;
 	struct mdglobaldata *md;
 	struct privatespace *ps;
+	struct user_segment_descriptor *gdt;
 
 	ps = CPU_prvspace[myid];
+	gdt = ps->mdglobaldata.gd_gdt;
 
 	gdt_segs[GPROC0_SEL].ssd_base = (long)&ps->common_tss;
 	ps->mdglobaldata.mi.gd_prvspace = ps;
@@ -253,14 +255,14 @@ init_secondary(void)
 	/* We fill the 32-bit segment descriptors */
 	for (x = 0; x < NGDT; x++) {
 		if (x != GPROC0_SEL && x != (GPROC0_SEL + 1))
-			ssdtosd(&gdt_segs[x], &gdt[myid * NGDT + x]);
+			ssdtosd(&gdt_segs[x], &gdt[x]);
 	}
 	/* And now a 64-bit one */
 	ssdtosyssd(&gdt_segs[GPROC0_SEL],
-	    (struct system_segment_descriptor *)&gdt[myid * NGDT + GPROC0_SEL]);
+	    (struct system_segment_descriptor *)&gdt[GPROC0_SEL]);
 
-	r_gdt.rd_limit = NGDT * sizeof(gdt[0]) - 1;
-	r_gdt.rd_base = (long) &gdt[myid * NGDT];
+	r_gdt.rd_limit = MAXGDT_LIMIT - 1;
+	r_gdt.rd_base = (long)(intptr_t)gdt;
 	lgdt(&r_gdt);			/* does magic intra-segment return */
 
 	/* lgdt() destroys the GSBASE value, so we load GSBASE after lgdt() */
@@ -280,7 +282,7 @@ init_secondary(void)
 #endif
 
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
-	gdt[myid * NGDT + GPROC0_SEL].sd_type = SDT_SYSTSS;
+	gdt[GPROC0_SEL].sd_type = SDT_SYSTSS;
 
 	md = mdcpu;	/* loaded through %gs:0 (mdglobaldata.mi.gd_prvspace)*/
 
@@ -308,7 +310,7 @@ init_secondary(void)
 #if 0 /* JG XXX */
 	ps->common_tss.tss_ioopt = (sizeof ps->common_tss) << 16;
 #endif
-	md->gd_tss_gdt = &gdt[myid * NGDT + GPROC0_SEL];
+	md->gd_tss_gdt = &gdt[GPROC0_SEL];
 	md->gd_common_tssd = *md->gd_tss_gdt;
 
 	/* double fault stack */
@@ -467,15 +469,21 @@ start_all_aps(u_int boot_addr)
 		/* This is a bit verbose, it will go away soon.  */
 
 		pssize = sizeof(struct privatespace);
-		ps = (void *)kmem_alloc3(kernel_map, pssize, VM_SUBSYS_GD,
-					 KM_CPU(x));
+		ps = (void *)
+			kmem_alloc3(kernel_map, pssize, VM_SUBSYS_GD,
+				    KM_CPU(x));
+		bzero(ps, pssize);
 		CPU_prvspace[x] = ps;
+		gd = &ps->mdglobaldata;
+		gd->mi.gd_prvspace = ps;
+		gd->gd_gdt = (void *)
+			kmem_alloc3(kernel_map, MAXGDT_LIMIT, VM_SUBSYS_GD,
+				    KM_CPU(x));
+		bzero(gd->gd_gdt, MAXGDT_LIMIT);
+
 #if 0
 		kprintf("ps %d %p %d\n", x, ps, pssize);
 #endif
-		bzero(ps, pssize);
-		gd = &ps->mdglobaldata;
-		gd->mi.gd_prvspace = ps;
 
 		/* prime data page for it to use */
 		mi_gdinit(&gd->mi, x);

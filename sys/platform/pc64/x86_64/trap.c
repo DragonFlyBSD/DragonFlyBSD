@@ -1024,7 +1024,7 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 
 	code = frame->tf_err;
 	type = frame->tf_trapno;
-	sdtossd(&gdt[IDXSEL(frame->tf_cs & 0xffff)], &softseg);
+	sdtossd(&mdcpu->gd_gdt[IDXSEL(frame->tf_cs & 0xffff)], &softseg);
 
 	kprintf("\n\nFatal trap %d: ", type);
 	if (type <= MAX_TRAP_MSG)

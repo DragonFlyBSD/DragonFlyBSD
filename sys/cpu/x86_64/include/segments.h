@@ -227,6 +227,11 @@ struct region_descriptor {
 
 /*
  * Entries in the Global Descriptor Table (GDT)
+ *
+ * NOTE 1: Due to quirks in Intel's VMX implementation, the GDT
+ *	   limit is set to 0xFFFF (representing 65536 bytes) on
+ *	   VM exit.  Rather then have to do a heavy-weight reload,
+ *	   we just maximally-size the table.
  */
 #define	GNULL_SEL	0	/* Null Descriptor */
 #define	GCODE_SEL	1	/* Kernel Code Descriptor */
@@ -238,6 +243,8 @@ struct region_descriptor {
 /* slot 7 is second half of GPROC0_SEL */
 #define	GUGS32_SEL	8	/* User 32 bit GS Descriptor */
 #define	NGDT		9
+#define MAXGDT_LIMIT	65536	/* (see note 1 above) */
+#define MAXGDT_COUNT	(MAXGDT_LIMIT / sizeof(struct user_segment_descriptor))
 
 #ifndef LOCORE
 
@@ -246,7 +253,7 @@ extern struct soft_segment_descriptor gdt_segs[];
 extern struct gate_descriptor idt_arr[MAXCPU][NIDT];
 extern struct region_descriptor r_idt_arr[];
 extern struct region_descriptor r_gdt;
-extern struct user_segment_descriptor gdt[NGDT * MAXCPU];
+extern struct user_segment_descriptor gdt_cpu0[MAXGDT_COUNT];
 
 void	lgdt(struct region_descriptor *rdp);
 void	sdtossd(struct user_segment_descriptor *sdp,

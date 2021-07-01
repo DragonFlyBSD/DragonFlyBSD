@@ -223,7 +223,7 @@ typedef struct globaldata	os_cpu_t;
 #define os_curcpu_number()	mycpuid
 #define os_curcpu_tss_sel()	GSEL(GPROC0_SEL, SEL_KPL)
 #define os_curcpu_tss()		&mycpu->gd_prvspace->common_tss
-#define os_curcpu_gdt()		&gdt[hcpu * NGDT]
+#define os_curcpu_gdt()		mdcpu->gd_gdt
 #define os_curcpu_idt()		r_idt_arr[mycpuid].rd_base
 #endif
 
