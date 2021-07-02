@@ -134,12 +134,6 @@ preinstall:
 		-d ${DESTDIR}/etc \
 		-g ${.CURDIR}/group \
 		-p ${.CURDIR}/master.passwd
-.else
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-		${BIN1} group ${DESTDIR}/etc; \
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 600 \
-		master.passwd ${DESTDIR}/etc; \
-	pwd_mkdb -p -d ${DESTDIR}/etc ${DESTDIR}/etc/master.passwd
 .endif
 
 upgrade_check:
