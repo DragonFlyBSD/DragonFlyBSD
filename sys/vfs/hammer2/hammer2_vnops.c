@@ -65,8 +65,6 @@ static int hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 static void hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 static void hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 
-struct objcache *cache_xops;
-
 /*
  * Last reference to a vnode is going away but it is still cached.
  */

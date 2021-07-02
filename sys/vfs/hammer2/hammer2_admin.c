@@ -64,6 +64,8 @@ H2XOPDESCRIPTOR(inode_flush);
 H2XOPDESCRIPTOR(strategy_read);
 H2XOPDESCRIPTOR(strategy_write);
 
+struct objcache *cache_xops;
+
 /*
  * Set flags and wakeup any waiters.
  *
