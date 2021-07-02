@@ -76,22 +76,38 @@
 #define SDL(s) ((struct sockaddr_dl *)s)
 
 /*
- * Note that the check for rt_llinfo is necessary because a cloned
- * route from a parent route that has the L flag (e.g. the default
- * route to a p2p interface) may have the flag, too, while the
- * destination is not actually a neighbor.
- * XXX: we can't use rt->rt_ifp to check for the interface, since
- *      it might be the loopback interface if the entry is for our
- *      own address on a non-loopback interface. Instead, we should
- *      use rt->rt_ifa->ifa_ifp, which would specify the REAL
- *      interface.
+ * Determine if the route entry is a direct neighbor on the specified
+ * interface.  The interface test is not done if ifp is passed as NULL.
+ * The route entry is a neighbor if all of the following are true:
+ *
+ *	RTF_GATEWAY is FALSE
+ *	LLINFO is TRUE
+ *	rt_gateway family is AF_LINK
+ *	rt_llinfo is non-NULL
+ *	The interfaces matches (or ifp is passed as NULL)
+ *
+ *	NOTE: rt_llinfo can be NULL with LLINFO set, so both must be
+ *	      tested.
+ *
+ *	NOTE: We can't use rt->rt_ifp to check for the interface, since
+ *	      it may be the loopback interface if the entry is for our
+ *	      own address on a non-loopback interface.  Instead, we use
+ *	      rt->rt_ifa->ifa_ifp which should specify the REAL interface.
  */
+#define ND6_IFP_MATCHES(ifp, ifa_ifp)				\
+	((ifp) == NULL ||					\
+	 (ifa_ifp) == (ifp) ||					\
+	 (((ifp)->if_flags & IFF_ISBRIDGE) &&			\
+	  (ifa_ifp)->if_bridge == (ifp)->if_softc)		\
+	)
+
 #define ND6_RTENTRY_IS_NEIGHBOR(rt, ifp)			\
-	!(((rt)->rt_flags & RTF_GATEWAY) ||			\
-	  ((rt)->rt_flags & RTF_LLINFO) == 0 ||			\
-	  (rt)->rt_gateway->sa_family != AF_LINK ||		\
-	  (rt)->rt_llinfo == NULL ||				\
-	  ((ifp) != NULL && (rt)->rt_ifa->ifa_ifp != (ifp)))
+	(((rt)->rt_flags & RTF_GATEWAY) == 0 &&			\
+	 ((rt)->rt_flags & RTF_LLINFO) != 0 &&			\
+	 (rt)->rt_gateway->sa_family == AF_LINK &&		\
+	 (rt)->rt_llinfo &&					\
+	 ND6_IFP_MATCHES((ifp), (rt)->rt_ifa->ifa_ifp)		\
+	)
 
 #define ND6_RTENTRY_IS_LLCLONING(rt)				\
 	(((rt)->rt_flags & (RTF_PRCLONING | RTF_LLINFO)) ==	\

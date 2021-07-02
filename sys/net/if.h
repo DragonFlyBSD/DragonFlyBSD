@@ -112,12 +112,13 @@ struct if_data {
 #define	IFF_STATICARP	0x80000		/* static ARP */
 #define	IFF_NPOLLING	0x100000	/* interface is in polling mode */
 #define	IFF_IDIRECT	0x200000	/* direct input */
+#define IFF_ISBRIDGE	0x400000	/* this is actually a bridge(4) */
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \
 	(IFF_BROADCAST|IFF_POINTOPOINT|IFF_RUNNING|IFF_OACTIVE_COMPAT|\
 	 IFF_SIMPLEX|IFF_MULTICAST|IFF_ALLMULTI|IFF_SMART|IFF_POLLING_COMPAT|\
-	 IFF_NPOLLING|IFF_IDIRECT)
+	 IFF_NPOLLING|IFF_IDIRECT|IFF_ISBRIDGE)
 
 #ifndef _KERNEL
 /*
