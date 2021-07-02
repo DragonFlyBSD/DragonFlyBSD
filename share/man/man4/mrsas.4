@@ -244,7 +244,8 @@ driver first appeared in
 and was ported to
 .Dx 3.9 .
 .Bd -ragged
-.Cd "mfi Driver:"
+.Xr mfi 4
+Driver:
 .Xr mfi 4
 is the old
 .Fx
@@ -252,7 +253,8 @@ driver which started with support for Gen-1 Controllers and
 was extended to support up to MR-Fusion (Device ID = 0x005B, 0x005D, 0x005F).
 .Ed
 .Bd -ragged
-.Cd "mrsas Driver:"
+.Nm
+Driver:
 .Nm
 is the new driver reworked by LSI which supports Thunderbolt and onward
 products.
@@ -260,8 +262,8 @@ The SAS+SATA RAID controller with device id 0x005b is referred to as
 the Thunderbolt controller throughout this man page.
 .Ed
 .Bd -ragged
-.Nm cam aware HBA drivers:
-.Fx
+cam aware HBA drivers:
+.Dx
 has a
 .Xr cam 4
 layer which attaches storage devices and provides a common access mechanism to
@@ -280,13 +282,13 @@ driver does not understand the
 .Xr cam 4
 layer and it directly associates storage disks to the block layer.
 .Pp
-.Nm Thunderbolt Controller:
+Thunderbolt Controller:
 This is the 6Gb/s MegaRAID HBA card which has device id 0x005B.
 .Pp
-.Nm Invader Controller:
+Invader Controller:
 This is 12Gb/s MegaRAID HBA card which has device id 0x005D.
 .Pp
-.Nm Fury Controller:
+Fury Controller:
 This is the 12Gb/s MegaRAID HBA card which has device id 0x005F.
 .Ed
 .Sh AUTHORS

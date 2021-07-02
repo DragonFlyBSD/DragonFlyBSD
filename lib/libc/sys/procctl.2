@@ -114,7 +114,9 @@ be delivered to the current process when its parent process exits.
 A value of 0 cancels any previously set signal.
 .Pp
 Any previously set signal is automatically canceled in the child process of
-a fork() or when a suid or sgid program is exec'd.
+a
+.Fn fork
+or when a suid or sgid program is exec'd.
 .Pp
 Only the current process pid or 0 may be specified.  Both have the same effect.
 .It Dv PROC_PDEATHSIG_STATUS

@@ -39,10 +39,8 @@
 .Op Fl a Ar action file
 .Op Fl P Ar pid file
 .Op Fl G Ar ping interval
-.No command ...
-.Oc
+.Ar command ...
 .Sh DESCRIPTION
-.Pp
 .Nm
 is a text-based frontend program for interacting with wpa_supplicant. It is
 used to query current status, change configuration, trigger events, and request
@@ -75,7 +73,6 @@ including the command as a command line parameter. Commands are
 then entered on the wpa_cli prompt. In command line mode, the same
 commands are entered as command line arguments for wpa_cli.
 .Sh "INTERACTIVE AUTHENTICATION PARAMETERS REQUEST"
-.Pp
 When wpa_supplicant need authentication parameters, like
 username and password, which are not present in the configuration
 file, it sends a request message to all attached frontend programs,
@@ -139,7 +136,7 @@ be executed with the first argument set to interface name and
 second to "CONNECTED" or "DISCONNECTED" depending on the event.
 This can be used to execute networking tools required to configure
 the interface.
-
+.Pp
 Additionally, three environmental variables are available to
 the file: WPA_CTRL_DIR, WPA_ID, and WPA_ID_STR. WPA_CTRL_DIR
 contains the absolute path to the ctrl_interface socket. WPA_ID
@@ -151,8 +148,8 @@ file.
 .It Fl G
 Set the interval (in seconds) at which
 wpa_cli pings the supplicant.
+.El
 .Sh Commands
-.Pp
 The following commands are available:
 .Bl -tag -width indent
 .It Ic status
@@ -197,12 +194,11 @@ list configured networks
 terminate \fBwpa_supplicant\fR
 .It Ic quit
 exit wpa_cli
+.El
 .Sh "SEE ALSO"
-.Pp
 .Xr wpa_supplicant.conf 5 ,
 .Xr wpa_supplicant 8
 .Sh AUTHORS
-.Pp
 wpa_supplicant is copyright (c) 2003-2019,
 Jouni Malinen <j@w1.fi> and
 contributors.
