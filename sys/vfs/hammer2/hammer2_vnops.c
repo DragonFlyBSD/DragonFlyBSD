@@ -67,14 +67,6 @@ static void hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 
 struct objcache *cache_xops;
 
-static __inline
-void
-hammer2_knote(struct vnode *vp, int flags)
-{
-	if (flags)
-		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
-}
-
 /*
  * Last reference to a vnode is going away but it is still cached.
  */

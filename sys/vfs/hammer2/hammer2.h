@@ -1974,5 +1974,13 @@ _hammer2_xop_pdata(hammer2_xop_head_t *xop, const char *file, int line)
 		_hammer2_io_putblk(&xop->focus_dio HAMMER2_IO_DEBUG_CALL);
 }
 
+static __inline
+void
+hammer2_knote(struct vnode *vp, int flags)
+{
+	if (flags)
+		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
+}
+
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

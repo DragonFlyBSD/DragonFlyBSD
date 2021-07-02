@@ -57,14 +57,6 @@ hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 	return(0);
 }
 
-static __inline
-void
-hammer2_knote(struct vnode *vp, int flags)
-{
-	if (flags)
-		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
-}
-
 /*
  * Caller holds pmp->list_spin and the inode should be locked.  Merge ip
  * with the specified depend.
