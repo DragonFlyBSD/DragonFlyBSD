@@ -2882,8 +2882,6 @@ hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	} else {
 		error = 0;
 	}
-	if (error)
-		kprintf("fhtovp: %016jx -> %p, %d\n", inum, *vpp, error);
 	return error;
 }
 
