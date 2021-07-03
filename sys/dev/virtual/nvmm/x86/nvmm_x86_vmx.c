@@ -1087,6 +1087,7 @@ vmx_excp_has_error(uint8_t vector)
 	case 13:	/* #GP */
 	case 14:	/* #PF */
 	case 17:	/* #AC */
+	case 21:	/* #CP */
 	case 30:	/* #SX */
 		return 1;
 	default:
