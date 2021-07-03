@@ -215,18 +215,6 @@
 #define 	VMCR_SVMED	VM_CR_SVMDIS
 
 /*
- * PAT modes
- * (NetBSD: /sys/arch/x86/include/pmap.h)
- */
-#define PATENTRY(n, type)	PAT_VALUE(n, type)
-#define PAT_UC			PAT_UNCACHEABLE		/* 0x0ULL */
-#define PAT_WC			PAT_WRITE_COMBINING	/* 0x1ULL */
-#define PAT_WT			PAT_WRITE_THROUGH	/* 0x4ULL */
-#define PAT_WP			PAT_WRITE_PROTECTED	/* 0x5ULL */
-#define PAT_WB			PAT_WRITE_BACK		/* 0x6ULL */
-#define PAT_UCMINUS		PAT_UNCACHED		/* 0x7ULL */
-
-/*
  * Constants, functions, etc.
  */
 

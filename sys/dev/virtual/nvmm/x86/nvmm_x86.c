@@ -30,7 +30,6 @@
 
 #include <machine/param.h> /* MAXCPU */
 #include <machine/specialreg.h>
-#include <machine/segments.h>
 
 #include <dev/virtual/nvmm/nvmm_compat.h>
 #include <dev/virtual/nvmm/nvmm.h>
@@ -128,7 +127,7 @@ const struct nvmm_x64_state nvmm_x86_reset_state = {
 			.base = 0x00000000,
 			.limit = 0xFFFF,
 			.attrib = {
-				.type = SDT_SYSLDT,
+				.type = 2,
 				.s = 0,
 				.p = 1,
 			}
@@ -138,7 +137,7 @@ const struct nvmm_x64_state nvmm_x86_reset_state = {
 			.base = 0x00000000,
 			.limit = 0xFFFF,
 			.attrib = {
-				.type = SDT_SYS286BSY,
+				.type = 3,
 				.s = 0,
 				.p = 1,
 			}
@@ -194,11 +193,7 @@ const struct nvmm_x64_state nvmm_x86_reset_state = {
 		[NVMM_X64_MSR_SYSENTER_CS] = 0x00000000,
 		[NVMM_X64_MSR_SYSENTER_ESP] = 0x00000000,
 		[NVMM_X64_MSR_SYSENTER_EIP] = 0x00000000,
-		[NVMM_X64_MSR_PAT] =
-		    PATENTRY(0, PAT_WB) | PATENTRY(1, PAT_WT) |
-		    PATENTRY(2, PAT_UCMINUS) | PATENTRY(3, PAT_UC) |
-		    PATENTRY(4, PAT_WB) | PATENTRY(5, PAT_WT) |
-		    PATENTRY(6, PAT_UCMINUS) | PATENTRY(7, PAT_UC),
+		[NVMM_X64_MSR_PAT] = 0x0007040600070406,
 		[NVMM_X64_MSR_TSC] = 0,
 	},
 
