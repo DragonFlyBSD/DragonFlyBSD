@@ -598,6 +598,18 @@ vmx_sti(void)
 static void vmx_vcpu_state_provide(struct nvmm_cpu *, uint64_t);
 static void vmx_vcpu_state_commit(struct nvmm_cpu *);
 
+/*
+ * These host values are static, they do not change at runtime and are the same
+ * on all CPUs. We save them here because they are not saved in the VMCS.
+ */
+static struct {
+	uint64_t xcr0;
+	uint64_t star;
+	uint64_t lstar;
+	uint64_t cstar;
+	uint64_t sfmask;
+} vmx_global_hstate __cacheline_aligned;
+
 #define VMX_MSRLIST_STAR		0
 #define VMX_MSRLIST_LSTAR		1
 #define VMX_MSRLIST_CSTAR		2
@@ -780,41 +792,38 @@ static const size_t vmx_vcpu_conf_sizes[NVMM_X86_VCPU_NCONF] = {
 };
 
 struct vmx_cpudata {
-	/* General */
+	/* General. */
 	uint64_t asid;
 	bool gtlb_want_flush;
 	bool gtsc_want_update;
 	uint64_t vcpu_htlb_gen;
 	cpumask_t htlb_want_flush;
 
-	/* VMCS */
+	/* VMCS. */
 	struct vmcs *vmcs;
 	paddr_t vmcs_pa;
 	size_t vmcs_refcnt;
 	int vmcs_cpu; /* 'struct cpu_info *vmcs_ci' in NetBSD */
 	bool vmcs_launched;
 
-	/* MSR bitmap */
+	/* MSR bitmap. */
 	uint8_t *msrbm;
 	paddr_t msrbm_pa;
 
-	/* Host state */
-	uint64_t hxcr0;
-	uint64_t star;
-	uint64_t lstar;
-	uint64_t cstar;
-	uint64_t sfmask;
-	uint64_t kernelgsbase;
+	/* Percpu host state, absent from VMCS. */
+	struct {
+		uint64_t kernelgsbase;
 #ifdef __DragonFly__
-	mcontext_t hmctx;  /* TODO: remove this like NetBSD */
+		mcontext_t hmctx;  /* TODO: remove this like NetBSD */
 #endif
+	} hstate;
 
-	/* Intr state */
+	/* Intr state. */
 	bool int_window_exit;
 	bool nmi_window_exit;
 	bool evt_pending;
 
-	/* Guest state */
+	/* Guest state. */
 	struct msr_entry *gmsr;
 	paddr_t gmsr_pa;
 	uint64_t gmsr_misc_enable;
@@ -2047,13 +2056,12 @@ vmx_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 	 * NOTE: Host FPU state depends on whether the user program used the
 	 *       FPU or not.  Need to use npxpush()/npxpop() to handle this.
 	 */
-	npxpush(&cpudata->hmctx);
+	npxpush(&cpudata->hstate.hmctx);
 	clts();
 	fpurstor(&cpudata->gfpu, vmx_xcr0_mask);
 #endif
 
 	if (vmx_xcr0_mask != 0) {
-		cpudata->hxcr0 = rdxcr(0);
 		wrxcr(0, cpudata->gxcr0);
 	}
 }
@@ -2064,8 +2072,7 @@ vmx_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 
 	if (vmx_xcr0_mask != 0) {
-		cpudata->gxcr0 = rdxcr(0);
-		wrxcr(0, cpudata->hxcr0);
+		wrxcr(0, vmx_global_hstate.xcr0);
 	}
 
 #ifdef __NetBSD__
@@ -2074,7 +2081,7 @@ vmx_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 #else /* DragonFly */
 	fpusave(&cpudata->gfpu, vmx_xcr0_mask);
 	stts();
-	npxpop(&cpudata->hmctx);
+	npxpop(&cpudata->hstate.hmctx);
 #endif
 }
 
@@ -2123,7 +2130,8 @@ vmx_vcpu_guest_misc_enter(struct nvmm_cpu *vcpu)
 	vmx_vmwrite(VMCS_HOST_CR3, rcr3());
 	vmx_vmwrite(VMCS_HOST_CR4, rcr4());
 
-	cpudata->kernelgsbase = rdmsr(MSR_KERNELGSBASE);
+	/* Save the percpu host state. */
+	cpudata->hstate.kernelgsbase = rdmsr(MSR_KERNELGSBASE);
 }
 
 static void
@@ -2131,11 +2139,14 @@ vmx_vcpu_guest_misc_leave(struct nvmm_cpu *vcpu)
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 
-	wrmsr(MSR_STAR, cpudata->star);
-	wrmsr(MSR_LSTAR, cpudata->lstar);
-	wrmsr(MSR_CSTAR, cpudata->cstar);
-	wrmsr(MSR_SFMASK, cpudata->sfmask);
-	wrmsr(MSR_KERNELGSBASE, cpudata->kernelgsbase);
+	/* Restore the global host state. */
+	wrmsr(MSR_STAR, vmx_global_hstate.star);
+	wrmsr(MSR_LSTAR, vmx_global_hstate.lstar);
+	wrmsr(MSR_CSTAR, vmx_global_hstate.cstar);
+	wrmsr(MSR_SFMASK, vmx_global_hstate.sfmask);
+
+	/* Restore the percpu host state. */
+	wrmsr(MSR_KERNELGSBASE, cpudata->hstate.kernelgsbase);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3077,12 +3088,6 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	cpudata->gfpu.xsh_xstate_bv = vmx_xcr0_mask;
 	cpudata->gfpu.xsh_xcomp_bv = 0;
 
-	/* These MSRs are static. */
-	cpudata->star = rdmsr(MSR_STAR);
-	cpudata->lstar = rdmsr(MSR_LSTAR);
-	cpudata->cstar = rdmsr(MSR_CSTAR);
-	cpudata->sfmask = rdmsr(MSR_SFMASK);
-
 	/* Install the RESET state. */
 	memcpy(&vcpu->comm->state, &nvmm_x86_reset_state,
 	    sizeof(nvmm_x86_reset_state));
@@ -3630,6 +3635,15 @@ vmx_init(void)
 
 	/* Init the L1TF mitigation. */
 	vmx_init_l1tf();
+
+	/* Init the global host state. */
+	if (vmx_xcr0_mask != 0) {
+		vmx_global_hstate.xcr0 = rdxcr(0);
+	}
+	vmx_global_hstate.star = rdmsr(MSR_STAR);
+	vmx_global_hstate.lstar = rdmsr(MSR_LSTAR);
+	vmx_global_hstate.cstar = rdmsr(MSR_CSTAR);
+	vmx_global_hstate.sfmask = rdmsr(MSR_SFMASK);
 
 	memset(vmxoncpu, 0, sizeof(vmxoncpu));
 	revision = vmx_get_revision();
