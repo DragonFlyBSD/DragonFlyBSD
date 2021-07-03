@@ -1860,7 +1860,7 @@ svm_vcpu_getstate_seg(struct nvmm_x64_state_seg *seg, struct vmcb_segment *vseg)
 }
 
 static inline bool
-svm_state_tlb_flush(const struct vmcb *vmcb, const struct nvmm_x64_state *state,
+svm_state_gtlb_flush(const struct vmcb *vmcb, const struct nvmm_x64_state *state,
     uint64_t flags)
 {
 	if (flags & NVMM_X64_STATE_CRS) {
@@ -1899,7 +1899,7 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 
 	flags = comm->state_wanted;
 
-	if (svm_state_tlb_flush(vmcb, state, flags)) {
+	if (svm_state_gtlb_flush(vmcb, state, flags)) {
 		cpudata->gtlb_want_flush = true;
 	}
 

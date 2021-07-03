@@ -2649,7 +2649,7 @@ vmx_vcpu_getstate_seg(struct nvmm_x64_state_seg *segs, int idx)
 }
 
 static inline bool
-vmx_state_tlb_flush(const struct nvmm_x64_state *state, uint64_t flags)
+vmx_state_gtlb_flush(const struct nvmm_x64_state *state, uint64_t flags)
 {
 	uint64_t cr0, cr3, cr4, efer;
 
@@ -2693,7 +2693,7 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 
 	vmx_vmcs_enter(vcpu);
 
-	if (vmx_state_tlb_flush(state, flags)) {
+	if (vmx_state_gtlb_flush(state, flags)) {
 		cpudata->gtlb_want_flush = true;
 	}
 

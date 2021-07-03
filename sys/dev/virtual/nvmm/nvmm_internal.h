@@ -64,7 +64,7 @@ struct nvmm_hmapping {
 	bool present;
 	uintptr_t hva;
 	size_t size;
-	struct uvm_object *uobj;
+	struct uvm_object *vmobj;
 };
 
 struct nvmm_machine {
@@ -75,7 +75,7 @@ struct nvmm_machine {
 	krwlock_t lock;
 
 	/* Comm */
-	struct uvm_object *commuobj;
+	struct uvm_object *commvmobj;
 
 	/* Kernel */
 	struct vmspace *vm;

@@ -224,11 +224,11 @@ nvmm_kill_machines(struct nvmm_owner *owner)
 		(*nvmm_impl->machine_destroy)(mach);
 		uvmspace_free(mach->vm);
 
-		/* Drop the kernel UOBJ refs. */
+		/* Drop the kernel vmobj refs. */
 		for (j = 0; j < NVMM_MAX_HMAPPINGS; j++) {
 			if (!mach->hmap[j].present)
 				continue;
-			uao_detach(mach->hmap[j].uobj);
+			uao_detach(mach->hmap[j].vmobj);
 		}
 
 		nvmm_machine_free(mach);
@@ -285,8 +285,8 @@ nvmm_machine_create(struct nvmm_owner *owner,
 	pmap_maybethreaded(&mach->vm->vm_pmap);
 #endif
 
-	/* Create the comm uobj. */
-	mach->commuobj = uao_create(NVMM_MAX_VCPUS * PAGE_SIZE, 0);
+	/* Create the comm vmobj. */
+	mach->commvmobj = uao_create(NVMM_MAX_VCPUS * PAGE_SIZE, 0);
 
 	(*nvmm_impl->machine_create)(mach);
 
@@ -325,11 +325,11 @@ nvmm_machine_destroy(struct nvmm_owner *owner,
 	/* Free the machine vmspace. */
 	uvmspace_free(mach->vm);
 
-	/* Drop the kernel UOBJ refs. */
+	/* Drop the kernel vmobj refs. */
 	for (i = 0; i < NVMM_MAX_HMAPPINGS; i++) {
 		if (!mach->hmap[i].present)
 			continue;
-		uao_detach(mach->hmap[i].uobj);
+		uao_detach(mach->hmap[i].vmobj);
 	}
 
 	nvmm_machine_free(mach);
@@ -390,13 +390,13 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 	if (error)
 		goto out;
 
-	/* Allocate the comm page. */
-	uao_reference(mach->commuobj);
+	/* Map the comm page on the kernel side, as wired. */
+	uao_reference(mach->commvmobj);
 	error = uvm_map(kernel_map, (vaddr_t *)&vcpu->comm, PAGE_SIZE,
-	    mach->commuobj, args->cpuid * PAGE_SIZE, 0, UVM_MAPFLAG(UVM_PROT_RW,
+	    mach->commvmobj, args->cpuid * PAGE_SIZE, 0, UVM_MAPFLAG(UVM_PROT_RW,
 	    UVM_PROT_RW, UVM_INH_SHARE, UVM_ADV_RANDOM, 0));
 	if (error) {
-		uao_detach(mach->commuobj);
+		uao_detach(mach->commvmobj);
 		nvmm_vcpu_free(mach, vcpu);
 		nvmm_vcpu_put(vcpu);
 		goto out;
@@ -627,7 +627,7 @@ out:
 /* -------------------------------------------------------------------------- */
 
 static struct uvm_object *
-nvmm_hmapping_getuobj(struct nvmm_machine *mach, uintptr_t hva, size_t size,
+nvmm_hmapping_getvmobj(struct nvmm_machine *mach, uintptr_t hva, size_t size,
    size_t *off)
 {
 	struct nvmm_hmapping *hmapping;
@@ -641,7 +641,7 @@ nvmm_hmapping_getuobj(struct nvmm_machine *mach, uintptr_t hva, size_t size,
 		if (hva >= hmapping->hva &&
 		    hva + size <= hmapping->hva + hmapping->size) {
 			*off = hva - hmapping->hva;
-			return hmapping->uobj;
+			return hmapping->vmobj;
 		}
 	}
 
@@ -722,9 +722,9 @@ nvmm_hmapping_free(struct nvmm_machine *mach, uintptr_t hva, size_t size)
 
 		uvm_unmap(&vmspace->vm_map, hmapping->hva,
 		    hmapping->hva + hmapping->size);
-		uao_detach(hmapping->uobj);
+		uao_detach(hmapping->vmobj);
 
-		hmapping->uobj = NULL;
+		hmapping->vmobj = NULL;
 		hmapping->present = false;
 
 		return 0;
@@ -758,18 +758,16 @@ nvmm_hva_map(struct nvmm_owner *owner, struct nvmm_ioc_hva_map *args)
 
 	hmapping->hva = args->hva;
 	hmapping->size = args->size;
-	hmapping->uobj = uao_create(hmapping->size, 0);
+	hmapping->vmobj = uao_create(hmapping->size, 0);
 	uva = hmapping->hva;
 
-	/* Take a reference for the user. */
-	uao_reference(hmapping->uobj);
-
-	/* Map the uobj into the user address space, as pageable. */
-	error = uvm_map(&vmspace->vm_map, &uva, hmapping->size, hmapping->uobj,
+	/* Map the vmobj into the user address space, as pageable. */
+	uao_reference(hmapping->vmobj);
+	error = uvm_map(&vmspace->vm_map, &uva, hmapping->size, hmapping->vmobj,
 	    0, 0, UVM_MAPFLAG(UVM_PROT_RW, UVM_PROT_RW, UVM_INH_SHARE,
 	    UVM_ADV_RANDOM, UVM_FLAG_FIXED|UVM_FLAG_UNMAP));
 	if (error) {
-		uao_detach(hmapping->uobj);
+		uao_detach(hmapping->vmobj);
 	}
 
 out:
@@ -799,7 +797,7 @@ static int
 nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 {
 	struct nvmm_machine *mach;
-	struct uvm_object *uobj;
+	struct uvm_object *vmobj;
 	gpaddr_t gpa;
 	size_t off;
 	int error;
@@ -836,25 +834,23 @@ nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 	}
 	gpa = args->gpa;
 
-	uobj = nvmm_hmapping_getuobj(mach, args->hva, args->size, &off);
-	if (uobj == NULL) {
+	vmobj = nvmm_hmapping_getvmobj(mach, args->hva, args->size, &off);
+	if (vmobj == NULL) {
 		error = EINVAL;
 		goto out;
 	}
 
-	/* Take a reference for the machine. */
-	uao_reference(uobj);
-
-	/* Map the uobj into the machine address space, as pageable. */
-	error = uvm_map(&mach->vm->vm_map, &gpa, args->size, uobj, off, 0,
+	/* Map the vmobj into the machine address space, as pageable. */
+	uao_reference(vmobj);
+	error = uvm_map(&mach->vm->vm_map, &gpa, args->size, vmobj, off, 0,
 	    UVM_MAPFLAG(args->prot, UVM_PROT_RWX, UVM_INH_NONE,
 	    UVM_ADV_RANDOM, UVM_FLAG_FIXED|UVM_FLAG_UNMAP));
 	if (error) {
-		uao_detach(uobj);
+		uao_detach(vmobj);
 		goto out;
 	}
 	if (gpa != args->gpa) {
-		uao_detach(uobj);
+		uao_detach(vmobj);
 		printf("[!] uvm_map problem\n");
 		error = EINVAL;
 		goto out;
@@ -1072,7 +1068,7 @@ nvmm_mmap_single(struct dev_mmap_single_args *ap)
 	vm_ooffset_t *offp = ap->a_offset;
 	size_t size = ap->a_size;
 	int prot = ap->a_nprot;
-	struct vm_object **uobjp = ap->a_object;
+	struct vm_object **vmobjp = ap->a_object;
 	struct file *fp = ap->a_fp;
 	struct nvmm_owner *owner = NULL;
 	struct nvmm_machine *mach;
@@ -1097,8 +1093,8 @@ nvmm_mmap_single(struct dev_mmap_single_args *ap)
 	if (error)
 		return error;
 
-	uao_reference(mach->commuobj);
-	*uobjp = mach->commuobj;
+	uao_reference(mach->commvmobj);
+	*vmobjp = mach->commvmobj;
 	*offp = cpuid * PAGE_SIZE;
 
 	nvmm_machine_put(mach);
