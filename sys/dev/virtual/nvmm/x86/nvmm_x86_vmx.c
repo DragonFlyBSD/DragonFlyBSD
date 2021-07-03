@@ -1303,27 +1303,27 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	case 0x00000001:
 		cpudata->gprs[NVMM_X64_GPR_RAX] &= nvmm_cpuid_00000001.eax;
 
-		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_LOCAL_APIC_ID;
+		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_0_01_EBX_LOCAL_APIC_ID;
 		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(vcpu->cpuid,
-		    CPUID_LOCAL_APIC_ID);
+		    CPUID_0_01_EBX_LOCAL_APIC_ID);
 
 		ncpus = atomic_load_acq_int(&mach->ncpus);
-		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_HTT_CORES;
+		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_0_01_EBX_HTT_CORES;
 		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(ncpus,
-		    CPUID_HTT_CORES);
+		    CPUID_0_01_EBX_HTT_CORES);
 
 		cpudata->gprs[NVMM_X64_GPR_RCX] &= nvmm_cpuid_00000001.ecx;
-		cpudata->gprs[NVMM_X64_GPR_RCX] |= CPUID2_RAZ;
+		cpudata->gprs[NVMM_X64_GPR_RCX] |= CPUID_0_01_ECX_RAZ;
 		if (vmx_procbased_ctls2 & PROC_CTLS2_INVPCID_ENABLE) {
-			cpudata->gprs[NVMM_X64_GPR_RCX] |= CPUID2_PCID;
+			cpudata->gprs[NVMM_X64_GPR_RCX] |= CPUID_0_01_ECX_PCID;
 		}
 
 		cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_00000001.edx;
 
-		/* CPUID2_OSXSAVE depends on CR4. */
+		/* CPUID_0_01_ECX_OSXSAVE depends on CR4. */
 		cr4 = vmx_vmread(VMCS_GUEST_CR4);
 		if (!(cr4 & CR4_OSXSAVE)) {
-			cpudata->gprs[NVMM_X64_GPR_RCX] &= ~CPUID2_OSXSAVE;
+			cpudata->gprs[NVMM_X64_GPR_RCX] &= ~CPUID_0_01_ECX_OSXSAVE;
 		}
 		break;
 	case 0x00000002:
@@ -1337,22 +1337,22 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	case 0x00000004: /* Deterministic Cache Parameters */
 		ncpus = atomic_load_acq_int(&mach->ncpus);
 		clevel = __SHIFTOUT(cpudata->gprs[NVMM_X64_GPR_RAX],
-		    CPUID_DCP_CACHELEVEL);
+		    CPUID_0_04_EAX_CACHELEVEL);
 
-		cpudata->gprs[NVMM_X64_GPR_RAX] &= ~CPUID_DCP_SHARING;
+		cpudata->gprs[NVMM_X64_GPR_RAX] &= ~CPUID_0_04_EAX_SHARING;
 		if (clevel >= 3) {
 			/* L3 and above: all CPUs. */
 			cpudata->gprs[NVMM_X64_GPR_RAX] |=
-			    __SHIFTIN(ncpus - 1, CPUID_DCP_SHARING);
+			    __SHIFTIN(ncpus - 1, CPUID_0_04_EAX_SHARING);
 		} else {
 			/* L2 and below: one LP per CPU. */
 			cpudata->gprs[NVMM_X64_GPR_RAX] |=
-			    __SHIFTIN(0, CPUID_DCP_SHARING);
+			    __SHIFTIN(0, CPUID_0_04_EAX_SHARING);
 		}
 
-		cpudata->gprs[NVMM_X64_GPR_RAX] &= ~CPUID_DCP_CORE_P_PKG;
+		cpudata->gprs[NVMM_X64_GPR_RAX] &= ~CPUID_0_04_EAX_CORE_P_PKG;
 		cpudata->gprs[NVMM_X64_GPR_RAX] |=
-		    __SHIFTIN(ncpus - 1, CPUID_DCP_CORE_P_PKG);
+		    __SHIFTIN(ncpus - 1, CPUID_0_04_EAX_CORE_P_PKG);
 		break;
 	case 0x00000005: /* MONITOR/MWAIT */
 	case 0x00000006: /* Thermal and Power Management */
@@ -1369,7 +1369,7 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->gprs[NVMM_X64_GPR_RCX] &= nvmm_cpuid_00000007.ecx;
 			cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_00000007.edx;
 			if (vmx_procbased_ctls2 & PROC_CTLS2_INVPCID_ENABLE) {
-				cpudata->gprs[NVMM_X64_GPR_RBX] |= CPUID_SEF_INVPCID;
+				cpudata->gprs[NVMM_X64_GPR_RBX] |= CPUID_0_07_EBX_INVPCID;
 			}
 			break;
 		default:
@@ -1399,8 +1399,8 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->gprs[NVMM_X64_GPR_RAX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RBX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RCX] =
-			    __SHIFTIN(ecx, CPUID_TOP_LVLNUM) |
-			    __SHIFTIN(CPUID_TOP_LVLTYPE_SMT, CPUID_TOP_LVLTYPE);
+			    __SHIFTIN(ecx, CPUID_0_0B_ECX_LVLNUM) |
+			    __SHIFTIN(CPUID_0_0B_ECX_LVLTYPE_SMT, CPUID_0_0B_ECX_LVLTYPE);
 			cpudata->gprs[NVMM_X64_GPR_RDX] = vcpu->cpuid;
 			break;
 		case 1: /* Cores */
@@ -1408,8 +1408,8 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->gprs[NVMM_X64_GPR_RAX] = ilog2(ncpus);
 			cpudata->gprs[NVMM_X64_GPR_RBX] = ncpus;
 			cpudata->gprs[NVMM_X64_GPR_RCX] =
-			    __SHIFTIN(ecx, CPUID_TOP_LVLNUM) |
-			    __SHIFTIN(CPUID_TOP_LVLTYPE_CORE, CPUID_TOP_LVLTYPE);
+			    __SHIFTIN(ecx, CPUID_0_0B_ECX_LVLNUM) |
+			    __SHIFTIN(CPUID_0_0B_ECX_LVLTYPE_CORE, CPUID_0_0B_ECX_LVLTYPE);
 			cpudata->gprs[NVMM_X64_GPR_RDX] = vcpu->cpuid;
 			break;
 		default:
@@ -1446,8 +1446,9 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			break;
 		case 1:
 			cpudata->gprs[NVMM_X64_GPR_RAX] &=
-			    (CPUID_PES1_XSAVEOPT | CPUID_PES1_XSAVEC |
-			     CPUID_PES1_XGETBV);
+			    (CPUID_0_0D_ECX1_EAX_XSAVEOPT |
+			     CPUID_0_0D_ECX1_EAX_XSAVEC |
+			     CPUID_0_0D_ECX1_EAX_XGETBV);
 			cpudata->gprs[NVMM_X64_GPR_RBX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RCX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RDX] = 0;
@@ -1902,7 +1903,7 @@ vmx_inkernel_handle_msr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 				goto error;
 			}
 			x86_cpuid(7, descs);
-			if (!(descs[3] & CPUID_SEF_ARCH_CAP)) {
+			if (!(descs[3] & CPUID_0_07_EDX_ARCH_CAP)) {
 				goto error;
 			}
 			val = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
@@ -3424,7 +3425,7 @@ vmx_ident(void)
 	uint64_t msr;
 	int ret;
 
-	if (!(cpu_feature2 & CPUID2_VMX)) {
+	if (!(cpu_feature2 & CPUID_0_01_ECX_VMX)) {
 		return false;
 	}
 
@@ -3601,7 +3602,7 @@ vmx_init_l1tf(void)
 
 	x86_cpuid(7, descs);
 
-	if (descs[3] & CPUID_SEF_ARCH_CAP) {
+	if (descs[3] & CPUID_0_07_EDX_ARCH_CAP) {
 		msr = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
 		if (msr & IA32_ARCH_SKIP_L1DFL_VMENTRY) {
 			/* No mitigation needed. */
@@ -3609,7 +3610,7 @@ vmx_init_l1tf(void)
 		}
 	}
 
-	if (descs[3] & CPUID_SEF_L1D_FLUSH) {
+	if (descs[3] & CPUID_0_07_EDX_L1D_FLUSH) {
 		/* Enable hardware mitigation. */
 		vmx_msrlist_entry_nmsr += 1;
 	}

@@ -874,24 +874,24 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	case 0x00000001:
 		cpudata->vmcb->state.rax &= nvmm_cpuid_00000001.eax;
 
-		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_LOCAL_APIC_ID;
+		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_0_01_EBX_LOCAL_APIC_ID;
 		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(vcpu->cpuid,
-		    CPUID_LOCAL_APIC_ID);
+		    CPUID_0_01_EBX_LOCAL_APIC_ID);
 
 		ncpus = atomic_load_acq_int(&mach->ncpus);
-		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_HTT_CORES;
+		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_0_01_EBX_HTT_CORES;
 		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(ncpus,
-		    CPUID_HTT_CORES);
+		    CPUID_0_01_EBX_HTT_CORES);
 
 		cpudata->gprs[NVMM_X64_GPR_RCX] &= nvmm_cpuid_00000001.ecx;
-		cpudata->gprs[NVMM_X64_GPR_RCX] |= CPUID2_RAZ;
+		cpudata->gprs[NVMM_X64_GPR_RCX] |= CPUID_0_01_ECX_RAZ;
 
 		cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_00000001.edx;
 
-		/* CPUID2_OSXSAVE depends on CR4. */
+		/* CPUID_0_01_ECX_OSXSAVE depends on CR4. */
 		cr4 = cpudata->vmcb->state.cr4;
 		if (!(cr4 & CR4_OSXSAVE)) {
-			cpudata->gprs[NVMM_X64_GPR_RCX] &= ~CPUID2_OSXSAVE;
+			cpudata->gprs[NVMM_X64_GPR_RCX] &= ~CPUID_0_01_ECX_OSXSAVE;
 		}
 		break;
 	case 0x00000002: /* Empty */
@@ -949,8 +949,9 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			break;
 		case 1:
 			cpudata->vmcb->state.rax &=
-			    (CPUID_PES1_XSAVEOPT | CPUID_PES1_XSAVEC |
-			     CPUID_PES1_XGETBV);
+			    (CPUID_0_0D_ECX1_EAX_XSAVEOPT |
+			     CPUID_0_0D_ECX1_EAX_XSAVEC |
+			     CPUID_0_0D_ECX1_EAX_XGETBV);
 			cpudata->gprs[NVMM_X64_GPR_RBX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RCX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RDX] = 0;
@@ -1000,8 +1001,8 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->vmcb->state.rax &= nvmm_cpuid_80000008.eax;
 		cpudata->gprs[NVMM_X64_GPR_RBX] &= nvmm_cpuid_80000008.ebx;
 		cpudata->gprs[NVMM_X64_GPR_RCX] =
-		    __SHIFTIN(ilog2(NVMM_MAX_VCPUS), CPUID_CAPEX_ApicIdSize) |
-		    __SHIFTIN(ncpus - 1, CPUID_CAPEX_NC);
+		    __SHIFTIN(ncpus - 1, CPUID_8_08_ECX_NC) |
+		    __SHIFTIN(ilog2(NVMM_MAX_VCPUS), CPUID_8_08_ECX_ApicIdSize);
 		cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_80000008.edx;
 		break;
 	case 0x80000009: /* Empty */
@@ -2544,7 +2545,7 @@ svm_ident(void)
 	if (cpu_vendor_id != CPU_VENDOR_AMD) {
 		return false;
 	}
-	if (!(amd_feature2 & CPUID_SVM)) {
+	if (!(amd_feature2 & CPUID_8_01_ECX_SVM)) {
 		printf("NVMM: SVM not supported\n");
 		return false;
 	}
@@ -2556,24 +2557,24 @@ svm_ident(void)
 	x86_cpuid(0x8000000a, descs);
 
 	/* Expect revision 1. */
-	if (__SHIFTOUT(descs[0], CPUID_AMD_SVM_REV) != 1) {
+	if (__SHIFTOUT(descs[0], CPUID_8_0A_EAX_SvmRev) != 1) {
 		printf("NVMM: SVM revision not supported\n");
 		return false;
 	}
 
 	/* Want Nested Paging. */
-	if (!(descs[3] & CPUID_AMD_SVM_NP)) {
+	if (!(descs[3] & CPUID_8_0A_EDX_NP)) {
 		printf("NVMM: SVM-NP not supported\n");
 		return false;
 	}
 
 	/* Want nRIP. */
-	if (!(descs[3] & CPUID_AMD_SVM_NRIPS)) {
+	if (!(descs[3] & CPUID_8_0A_EDX_NRIPS)) {
 		printf("NVMM: SVM-NRIPS not supported\n");
 		return false;
 	}
 
-	svm_decode_assist = (descs[3] & CPUID_AMD_SVM_DecodeAssist) != 0;
+	svm_decode_assist = (descs[3] & CPUID_8_0A_EDX_DecodeAssists) != 0;
 
 	msr = rdmsr(MSR_VMCR);
 	if ((msr & VMCR_SVMED) && (msr & VMCR_LOCK)) {
@@ -2650,7 +2651,7 @@ svm_init(void)
 	x86_cpuid(0x8000000a, descs);
 
 	/* The guest TLB flush command. */
-	if (descs[3] & CPUID_AMD_SVM_FlushByASID) {
+	if (descs[3] & CPUID_8_0A_EDX_FlushByASID) {
 		svm_ctrl_tlb_flush = VMCB_CTRL_TLB_CTRL_FLUSH_GUEST;
 	} else {
 		svm_ctrl_tlb_flush = VMCB_CTRL_TLB_CTRL_FLUSH_ALL;
