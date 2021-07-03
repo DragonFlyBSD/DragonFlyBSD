@@ -1276,6 +1276,7 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	unsigned int ncpus;
+	uint32_t clevel;
 	uint64_t cr4;
 
 	if (eax < 0x40000000) {
@@ -1329,7 +1330,25 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gprs[NVMM_X64_GPR_RDX] = 0;
 		break;
 	case 0x00000004: /* Deterministic Cache Parameters */
-		break; /* TODO? */
+		ncpus = atomic_load_acq_int(&mach->ncpus);
+		clevel = __SHIFTOUT(cpudata->gprs[NVMM_X64_GPR_RAX],
+		    CPUID_DCP_CACHELEVEL);
+
+		cpudata->gprs[NVMM_X64_GPR_RAX] &= ~CPUID_DCP_SHARING;
+		if (clevel >= 3) {
+			/* L3 and above: all CPUs. */
+			cpudata->gprs[NVMM_X64_GPR_RAX] |=
+			    __SHIFTIN(ncpus - 1, CPUID_DCP_SHARING);
+		} else {
+			/* L2 and below: one LP per CPU. */
+			cpudata->gprs[NVMM_X64_GPR_RAX] |=
+			    __SHIFTIN(0, CPUID_DCP_SHARING);
+		}
+
+		cpudata->gprs[NVMM_X64_GPR_RAX] &= ~CPUID_DCP_CORE_P_PKG;
+		cpudata->gprs[NVMM_X64_GPR_RAX] |=
+		    __SHIFTIN(ncpus - 1, CPUID_DCP_CORE_P_PKG);
+		break;
 	case 0x00000005: /* MONITOR/MWAIT */
 	case 0x00000006: /* Thermal and Power Management */
 		cpudata->gprs[NVMM_X64_GPR_RAX] = 0;

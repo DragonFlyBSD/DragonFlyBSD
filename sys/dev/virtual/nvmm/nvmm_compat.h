@@ -86,6 +86,15 @@
 #define CPUID2_RAZ		CPUID2_VMM
 
 /*
+ * Intel Deterministic Cache Parameters
+ * CPUID Fn0000_0004
+ */
+/* %eax */
+#define CPUID_DCP_CACHELEVEL	__BITS(7, 5)	/* Cache level (start at 1) */
+#define CPUID_DCP_SHARING	__BITS(25, 14)	/* Sharing */
+#define CPUID_DCP_CORE_P_PKG	__BITS(31, 26)	/* Cores/package */
+
+/*
  * Intel/AMD Structured Extended Feature
  * CPUID Fn0000_0007
  */
