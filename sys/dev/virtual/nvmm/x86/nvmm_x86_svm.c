@@ -590,7 +590,7 @@ struct svm_cpudata {
 	uint64_t drs[NVMM_X64_NDR];
 	uint64_t gtsc_offset;
 	uint64_t gtsc_match;
-	union savefpu gfpu __aligned(64);
+	struct nvmm_x86_xsave gxsave __aligned(64);
 
 	/* VCPU configuration. */
 	bool cpuidpresent[SVM_NCPUIDS];
@@ -940,16 +940,13 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 		switch (ecx) {
 		case 0:
+			/* Supported XCR0 bits. */
 			cpudata->vmcb->state.rax = svm_xcr0_mask & 0xFFFFFFFF;
-			if (cpudata->gxcr0 & XCR0_SSE) {
-				cpudata->gprs[NVMM_X64_GPR_RBX] =
-				    sizeof(struct saveymm64);
-			} else {
-				cpudata->gprs[NVMM_X64_GPR_RBX] =
-				    sizeof(struct save87) + 64; /* XSAVE header */
-			}
-			cpudata->gprs[NVMM_X64_GPR_RCX] = sizeof(struct saveymm64);
 			cpudata->gprs[NVMM_X64_GPR_RDX] = svm_xcr0_mask >> 32;
+			/* XSAVE size for currently enabled XCR0 features. */
+			cpudata->gprs[NVMM_X64_GPR_RBX] = nvmm_x86_xsave_size(cpudata->gxcr0);
+			/* XSAVE size for all supported XCR0 features. */
+			cpudata->gprs[NVMM_X64_GPR_RCX] = nvmm_x86_xsave_size(svm_xcr0_mask);
 			break;
 		case 1:
 			cpudata->vmcb->state.rax &=
@@ -1384,7 +1381,7 @@ svm_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 
 #ifdef __NetBSD__
 	fpu_kern_enter();
-	fpu_area_restore(&cpudata->gfpu, svm_xcr0_mask, true);
+	fpu_area_restore(&cpudata->gxsave, svm_xcr0_mask, true);
 #else /* DragonFly */
 	/*
 	 * NOTE: Host FPU state depends on whether the user program used the
@@ -1392,7 +1389,7 @@ svm_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 	 */
 	npxpush(&cpudata->hstate.hmctx);
 	clts();
-	fpurstor(&cpudata->gfpu, svm_xcr0_mask);
+	fpurstor((union savefpu *)&cpudata->gxsave, svm_xcr0_mask);
 #endif
 
 	if (svm_xcr0_mask != 0) {
@@ -1410,10 +1407,10 @@ svm_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 	}
 
 #ifdef __NetBSD__
-	fpu_area_save(&cpudata->gfpu, svm_xcr0_mask, true);
+	fpu_area_save(&cpudata->gxsave, svm_xcr0_mask, true);
 	fpu_kern_leave();
 #else /* DragonFly */
-	fpusave(&cpudata->gfpu, svm_xcr0_mask);
+	fpusave((union savefpu *)&cpudata->gxsave, svm_xcr0_mask);
 	stts();
 	npxpop(&cpudata->hstate.hmctx);
 #endif
@@ -1897,7 +1894,7 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 	const struct nvmm_x64_state *state = &comm->state;
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
-	union savefpu *fpustate;
+	struct nvmm_x64_state_fpu *fpustate;
 	uint64_t flags;
 
 	flags = comm->state_wanted;
@@ -2027,17 +2024,17 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 		}
 	}
 
-	CTASSERT(sizeof(cpudata->gfpu) == sizeof(state->fpu));
+	CTASSERT(sizeof(cpudata->gxsave.fpu) == sizeof(state->fpu));
 	if (flags & NVMM_X64_STATE_FPU) {
-		memcpy(&cpudata->gfpu, &state->fpu, sizeof(state->fpu));
+		memcpy(&cpudata->gxsave.fpu, &state->fpu, sizeof(state->fpu));
 
-		fpustate = &cpudata->gfpu;
+		fpustate = (struct nvmm_x64_state_fpu *)&cpudata->gxsave.fpu;
 		fpustate->fx_mxcsr_mask &= x86_fpu_mxcsr_mask;
 		fpustate->fx_mxcsr &= fpustate->fx_mxcsr_mask;
 
 		if (svm_xcr0_mask != 0) {
 			/* Reset XSTATE_BV, to force a reload. */
-			cpudata->gfpu.xsh_xstate_bv = svm_xcr0_mask;
+			cpudata->gxsave.xstate_bv = svm_xcr0_mask;
 		}
 	}
 
@@ -2143,9 +2140,9 @@ svm_vcpu_getstate(struct nvmm_cpu *vcpu)
 		state->intr.evt_pending = cpudata->evt_pending;
 	}
 
-	CTASSERT(sizeof(cpudata->gfpu) == sizeof(state->fpu));
+	CTASSERT(sizeof(cpudata->gxsave.fpu) == sizeof(state->fpu));
 	if (flags & NVMM_X64_STATE_FPU) {
-		memcpy(&state->fpu, &cpudata->gfpu, sizeof(state->fpu));
+		memcpy(&state->fpu, &cpudata->gxsave.fpu, sizeof(state->fpu));
 	}
 
 	comm->state_wanted = 0;
@@ -2336,8 +2333,8 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmcb->ctrl.n_cr3 = vtophys(vmspace_pmap(mach->vm)->pm_pml4);
 
 	/* Init XSAVE header. */
-	cpudata->gfpu.xsh_xstate_bv = svm_xcr0_mask;
-	cpudata->gfpu.xsh_xcomp_bv = 0;
+	cpudata->gxsave.xstate_bv = svm_xcr0_mask;
+	cpudata->gxsave.xcomp_bv = 0;
 
 	/* Install the RESET state. */
 	memcpy(&vcpu->comm->state, &nvmm_x86_reset_state,

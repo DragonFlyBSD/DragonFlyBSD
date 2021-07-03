@@ -26,7 +26,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 17, 2021
+.Dd July 3, 2021
 .Dt LIBNVMM 3
 .Os
 .Sh NAME
@@ -415,7 +415,7 @@ struct nvmm_x64_state {
 	uint64_t drs[NVMM_X64_NDR];
 	uint64_t msrs[NVMM_X64_NMSR];
 	struct nvmm_x64_state_intr intr;
-	union savefpu fpu;
+	struct nvmm_x64_state_fpu fpu;
 };
 #define nvmm_vcpu_state nvmm_x64_state
 .Ed

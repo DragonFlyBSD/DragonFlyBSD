@@ -143,8 +143,8 @@ struct nvmm_cap_md {
 /* -------------------------------------------------------------------------- */
 
 /*
- * Segment state indexes. We use X64 as naming convention, not to confuse with
- * X86 which originally implied 32bit.
+ * State indexes. We use X64 as naming convention, not to confuse with X86
+ * which originally implied 32bit.
  */
 
 /* Segments. */
@@ -216,8 +216,8 @@ struct nvmm_cap_md {
 #ifndef ASM_NVMM
 
 #include <sys/types.h>
-#include <machine/npx.h>
 
+/* Segment state. */
 struct nvmm_x64_state_seg {
 	uint16_t selector;
 	struct {		/* hidden */
@@ -235,6 +235,7 @@ struct nvmm_x64_state_seg {
 	uint64_t base;		/* hidden */
 };
 
+/* Interrupt state. */
 struct nvmm_x64_state_intr {
 	uint64_t int_shadow:1;
 	uint64_t int_window_exiting:1;
@@ -242,6 +243,44 @@ struct nvmm_x64_state_intr {
 	uint64_t evt_pending:1;
 	uint64_t rsvd:60;
 };
+
+/* FPU state structures. */
+union nvmm_x64_state_fpu_addr {
+	uint64_t fa_64;
+	struct {
+		uint32_t fa_off;
+		uint16_t fa_seg;
+		uint16_t fa_opcode;
+	} fa_32;
+};
+CTASSERT(sizeof(union nvmm_x64_state_fpu_addr) == 8);
+struct nvmm_x64_state_fpu_mmreg {
+	uint64_t mm_significand;
+	uint16_t mm_exp_sign;
+	uint8_t  mm_rsvd[6];
+};
+CTASSERT(sizeof(struct nvmm_x64_state_fpu_mmreg) == 16);
+struct nvmm_x64_state_fpu_xmmreg {
+	uint8_t xmm_bytes[16];
+};
+CTASSERT(sizeof(struct nvmm_x64_state_fpu_xmmreg) == 16);
+
+/* FPU state (x87 + SSE). */
+struct nvmm_x64_state_fpu {
+	uint16_t fx_cw;		/* Control Word */
+	uint16_t fx_sw;		/* Status Word */
+	uint8_t fx_tw;		/* Tag Word */
+	uint8_t fx_zero;
+	uint16_t fx_opcode;
+	union nvmm_x64_state_fpu_addr fx_ip;	/* Instruction Pointer */
+	union nvmm_x64_state_fpu_addr fx_dp;	/* Data pointer */
+	uint32_t fx_mxcsr;
+	uint32_t fx_mxcsr_mask;
+	struct nvmm_x64_state_fpu_mmreg fx_87_ac[8];	/* x87 registers */
+	struct nvmm_x64_state_fpu_xmmreg fx_xmm[16];	/* XMM registers */
+	uint8_t fx_rsvd[96];
+} __aligned(16);
+CTASSERT(sizeof(struct nvmm_x64_state_fpu) == 512);
 
 /* Flags. */
 #define NVMM_X64_STATE_SEGS	0x01
@@ -263,8 +302,10 @@ struct nvmm_x64_state {
 	uint64_t drs[NVMM_X64_NDR];
 	uint64_t msrs[NVMM_X64_NMSR];
 	struct nvmm_x64_state_intr intr;
-	union savefpu fpu;
+	struct nvmm_x64_state_fpu fpu;
 };
+
+/* -------------------------------------------------------------------------- */
 
 #define NVMM_VCPU_CONF_CPUID	NVMM_VCPU_CONF_MD_BEGIN
 #define NVMM_VCPU_CONF_TPR	(NVMM_VCPU_CONF_MD_BEGIN + 1)
@@ -603,20 +644,34 @@ struct nvmm_vcpu_conf_tpr {
 #ifdef _KERNEL
 #define NVMM_X86_MACH_NCONF	0
 #define NVMM_X86_VCPU_NCONF	2
+
 struct nvmm_x86_cpuid_mask {
 	uint32_t eax;
 	uint32_t ebx;
 	uint32_t ecx;
 	uint32_t edx;
 };
+
+/* FPU area + XSAVE header. */
+struct nvmm_x86_xsave {
+	struct nvmm_x64_state_fpu fpu;
+	uint64_t xstate_bv;
+	uint64_t xcomp_bv;
+	uint8_t rsvd0[8];
+	uint8_t rsvd[40];
+};
+CTASSERT(sizeof(struct nvmm_x86_xsave) == 512 + 64);
+
 extern const struct nvmm_x64_state nvmm_x86_reset_state;
 extern const struct nvmm_x86_cpuid_mask nvmm_cpuid_00000001;
 extern const struct nvmm_x86_cpuid_mask nvmm_cpuid_00000007;
 extern const struct nvmm_x86_cpuid_mask nvmm_cpuid_80000001;
 extern const struct nvmm_x86_cpuid_mask nvmm_cpuid_80000007;
 extern const struct nvmm_x86_cpuid_mask nvmm_cpuid_80000008;
+
 bool nvmm_x86_pat_validate(uint64_t);
-#endif
+uint32_t nvmm_x86_xsave_size(uint64_t);
+#endif /* _KERNEL */
 
 #endif /* ASM_NVMM */
 

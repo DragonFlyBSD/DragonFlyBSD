@@ -31,6 +31,7 @@
 #ifndef _NVMM_H_
 #define _NVMM_H_
 
+#include <sys/cdefs.h>
 #include <sys/types.h>
 
 #ifndef _KERNEL
@@ -42,6 +43,11 @@ typedef uint64_t	gvaddr_t;
 
 typedef uint32_t	nvmm_machid_t;
 typedef uint32_t	nvmm_cpuid_t;
+
+#undef CTASSERT
+#define CTASSERT(x)		NVMM_CTASSERT(x, __LINE__)
+#define NVMM_CTASSERT(x, y)	NVMM__CTASSERT(x, y)
+#define NVMM__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1] __unused
 
 #if defined(__x86_64__)
 #include <dev/virtual/nvmm/x86/nvmm_x86.h>

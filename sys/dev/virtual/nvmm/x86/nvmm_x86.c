@@ -474,3 +474,18 @@ nvmm_x86_pat_validate(uint64_t val)
 
 	return true;
 }
+
+uint32_t
+nvmm_x86_xsave_size(uint64_t xcr0)
+{
+	uint32_t size;
+
+	if (xcr0 & XCR0_SSE) {
+		size = 512; /* x87 + SSE */
+	} else {
+		size = 108; /* x87 */
+	}
+	size += 64; /* XSAVE header */
+
+	return size;
+}
