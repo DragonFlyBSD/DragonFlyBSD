@@ -186,6 +186,5 @@ ENTRY(svm_vmrun)
 	/* Restore the Host GPRs. */
 	HOST_RESTORE_GPRS
 
-	xorq	%rax,%rax
 	retq
 END(svm_vmrun)

@@ -50,7 +50,7 @@
 #include <dev/virtual/nvmm/nvmm_internal.h>
 #include <dev/virtual/nvmm/x86/nvmm_x86.h>
 
-int svm_vmrun(paddr_t, uint64_t *);
+void svm_vmrun(paddr_t, uint64_t *);
 
 static inline void
 svm_clgi(void)
