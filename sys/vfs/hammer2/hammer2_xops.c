@@ -186,7 +186,7 @@ hammer2_xop_readdir(hammer2_xop_t *arg, void *scratch, int clindex)
 
 	lkey = xop->lkey;
 	if (hammer2_debug & 0x0020)
-		kprintf("xop_readdir %p lkey=%016jx\n", xop, lkey);
+		kprintf("xop_readdir: %p lkey=%016jx\n", xop, lkey);
 
 	/*
 	 * The inode's chain is the iterator.  If we cannot acquire it our
@@ -338,7 +338,7 @@ again:
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {
-		kprintf("xop_nresolve: NULL parent\n");
+		kprintf("xop_unlink: NULL parent\n");
 		error = HAMMER2_ERROR_EIO;
 		goto done;
 	}
@@ -463,7 +463,7 @@ again:
 						  clindex, 0,
 						  &parent, &chain);
 		if (error2) {
-			kprintf("inode_find: %016jx %p failed\n",
+			kprintf("xop_unlink: %016jx %p failed\n",
 				lhc, chain);
 			error2 = 0;	/* silently ignore */
 		}
@@ -609,7 +609,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, void *scratch, int clindex)
 
 	if (chain == NULL) {
 		/* XXX shouldn't happen, but does under fsstress */
-		kprintf("hammer2_xop_nrename: \"%s\" -> \"%s\"  ENOENT\n",
+		kprintf("xop_nrename: \"%s\" -> \"%s\"  ENOENT\n",
 			xop->head.name1,
 			xop->head.name2);
 		if (error == 0)
@@ -814,7 +814,7 @@ hammer2_xop_scanlhc(hammer2_xop_t *arg, void *scratch, int clindex)
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent == NULL) {
-		kprintf("xop_nresolve: NULL parent\n");
+		kprintf("xop_scanlhc: NULL parent\n");
 		chain = NULL;
 		error = HAMMER2_ERROR_EIO;
 		goto done;
@@ -980,7 +980,7 @@ hammer2_xop_scanall(hammer2_xop_t *arg, void *scratch, int clindex)
 	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     xop->resolve_flags);
 	if (parent == NULL) {
-		kprintf("xop_readdir: NULL parent\n");
+		kprintf("xop_scanall: NULL parent\n");
 		goto done;
 	}
 
@@ -1029,7 +1029,7 @@ hammer2_xop_inode_mkdirent(hammer2_xop_t *arg, void *scratch, int clindex)
 	int error;
 
 	if (hammer2_debug & 0x0001)
-		kprintf("dirent_create lhc %016jx clindex %d\n",
+		kprintf("xop_inode_mkdirent: lhc %016jx clindex %d\n",
 			xop->lhc, clindex);
 
 	parent = hammer2_inode_chain(xop->head.ip1, clindex,
@@ -1111,7 +1111,7 @@ hammer2_xop_inode_create(hammer2_xop_t *arg, void *scratch, int clindex)
 	int error;
 
 	if (hammer2_debug & 0x0001)
-		kprintf("inode_create lhc %016jx clindex %d\n",
+		kprintf("xop_inode_create: lhc %016jx clindex %d\n",
 			xop->lhc, clindex);
 
 	parent = hammer2_inode_chain(xop->head.ip1, clindex,
@@ -1177,7 +1177,7 @@ hammer2_xop_inode_create_det(hammer2_xop_t *arg, void *scratch, int clindex)
 	int error;
 
 	if (hammer2_debug & 0x0001)
-		kprintf("inode_create_det lhc %016jx clindex %d\n",
+		kprintf("xop_inode_create_det: lhc %016jx clindex %d\n",
 			xop->lhc, clindex);
 
 	pip = xop->head.ip1;
@@ -1250,7 +1250,7 @@ hammer2_xop_inode_create_ins(hammer2_xop_t *arg, void *scratch, int clindex)
 	int error;
 
 	if (hammer2_debug & 0x0001)
-		kprintf("inode_create_ins lhc %016jx clindex %d\n",
+		kprintf("xop_inode_create_ins: lhc %016jx clindex %d\n",
 			xop->lhc, clindex);
 
 	/*
@@ -1590,7 +1590,7 @@ hammer2_xop_inode_chain_sync(hammer2_xop_t *arg, void *scratch, int clindex)
 			parent = hammer2_inode_chain(xop->head.ip1,
 						     clindex,
 						     HAMMER2_RESOLVE_ALWAYS);
-			kprintf("hammer2: TRUNCATE RESET on '%s'\n",
+			kprintf("xop_inode_chain_sync: TRUNCATE RESET on '%s'\n",
 				parent->data->ipdata.filename);
 		}
 	}
