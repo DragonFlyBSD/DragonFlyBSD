@@ -7,8 +7,12 @@ src/crypto/.gitignore
 src/crypto/Makefile
 src/drivers/.gitignore
 src/drivers/Makefile
+src/drivers/driver_ndis.c
+src/drivers/driver_ndis.h
+src/drivers/driver_ndis_.c
 src/drivers/drivers.mak
 src/drivers/drivers.mk
+src/drivers/ndis_events.c
 src/eap_common/Makefile
 src/eap_peer/Makefile
 src/eap_server/Makefile
@@ -16,6 +20,7 @@ src/eapol_auth/Makefile
 src/eapol_supp/Makefile
 src/fst/Makefile
 src/l2_packet/Makefile
+src/l2_packet/l2_packet_ndis.c
 src/lib.rules
 src/p2p/Makefile
 src/pae/Makefile

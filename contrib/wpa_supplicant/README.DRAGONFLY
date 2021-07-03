@@ -18,7 +18,6 @@ The following files have been patched:
 
 	modified:   src/common/dhcp.h
 	modified:   src/crypto/crypto_openssl.c
-	modified:   src/drivers/driver_ndis.c
 	modified:   src/l2_packet/l2_packet_freebsd.c
 	modified:   wpa_supplicant/main.c
 	modified:   wpa_supplicant/op_classes.c
