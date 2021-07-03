@@ -434,7 +434,7 @@ const struct nvmm_x86_cpuid_mask nvmm_cpuid_80000008 = {
 	    /* CPUID_CAPEX_RDPRU excluded */
 	    /* CPUID_CAPEX_MCOMMIT excluded */
 	    CPUID_CAPEX_WBNOINVD,
-	.ecx = ~0, /* TODO? */
+	.ecx = 0,
 	.edx = 0
 };
 

@@ -178,6 +178,14 @@
 #define CPUID_TOP_LVLTYPE_CORE	2		/* Core */
 
 /*
+ * AMD Processor Capacity Parameters and Extended Features
+ * CPUID Fn8000_0008
+ */
+/* %ecx */
+#define CPUID_CAPEX_NC		__BITS(7, 0)
+#define CPUID_CAPEX_ApicIdSize	__BITS(15, 12)
+
+/*
  * Registers
  */
 

@@ -31,6 +31,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 
+#include <sys/bitops.h>
 #include <sys/globaldata.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h> /* contigmalloc, contigfree */
@@ -842,9 +843,11 @@ svm_inkernel_exec_cpuid(struct svm_cpudata *cpudata, uint32_t eax, uint32_t ecx)
 }
 
 static void
-svm_inkernel_handle_cpuid(struct nvmm_cpu *vcpu, uint32_t eax, uint32_t ecx)
+svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
+    uint32_t eax, uint32_t ecx)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
+	unsigned int ncpus;
 	uint64_t cr4;
 
 	if (eax < 0x40000000) {
@@ -988,9 +991,12 @@ svm_inkernel_handle_cpuid(struct nvmm_cpu *vcpu, uint32_t eax, uint32_t ecx)
 		cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_80000007.edx;
 		break;
 	case 0x80000008: /* Processor Capacity Parameters and Ext Feat Ident */
+		ncpus = atomic_load_acq_int(&mach->ncpus);
 		cpudata->vmcb->state.rax &= nvmm_cpuid_80000008.eax;
 		cpudata->gprs[NVMM_X64_GPR_RBX] &= nvmm_cpuid_80000008.ebx;
-		cpudata->gprs[NVMM_X64_GPR_RCX] &= nvmm_cpuid_80000008.ecx;
+		cpudata->gprs[NVMM_X64_GPR_RCX] =
+		    __SHIFTIN(ilog2(NVMM_MAX_VCPUS), CPUID_CAPEX_ApicIdSize) |
+		    __SHIFTIN(ncpus - 1, CPUID_CAPEX_NC);
 		cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_80000008.edx;
 		break;
 	case 0x80000009: /* Empty */
@@ -1058,7 +1064,7 @@ svm_exit_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	eax = (cpudata->vmcb->state.rax & 0xFFFFFFFF);
 	ecx = (cpudata->gprs[NVMM_X64_GPR_RCX] & 0xFFFFFFFF);
 	svm_inkernel_exec_cpuid(cpudata, eax, ecx);
-	svm_inkernel_handle_cpuid(vcpu, eax, ecx);
+	svm_inkernel_handle_cpuid(mach, vcpu, eax, ecx);
 
 	for (i = 0; i < SVM_NCPUIDS; i++) {
 		if (!cpudata->cpuidpresent[i]) {
