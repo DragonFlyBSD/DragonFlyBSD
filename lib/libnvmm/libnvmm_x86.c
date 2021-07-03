@@ -864,7 +864,6 @@ static void x86_func_test(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
 static void x86_func_mov(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
 static void x86_func_stos(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
 static void x86_func_lods(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
-static void x86_func_movs(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
 
 static const struct x86_emul x86_emul_or = {
 	.readreg = true,
@@ -912,10 +911,6 @@ static const struct x86_emul x86_emul_stos = {
 
 static const struct x86_emul x86_emul_lods = {
 	.func = x86_func_lods
-};
-
-static const struct x86_emul x86_emul_movs = {
-	.func = x86_func_movs
 };
 
 /* Legacy prefixes. */
@@ -1446,7 +1441,7 @@ static const struct x86_opcode primary_opcode_table[256] __cacheline_aligned = {
 		.movs = true,
 		.szoverride = false,
 		.defsize = OPSIZE_BYTE,
-		.emul = &x86_emul_movs
+		.emul = NULL /* assist_mem_double_movs */
 	},
 	[0xA5] = {
 		/* Yv, Xv */
@@ -1454,7 +1449,7 @@ static const struct x86_opcode primary_opcode_table[256] __cacheline_aligned = {
 		.movs = true,
 		.szoverride = true,
 		.defsize = -1,
-		.emul = &x86_emul_movs
+		.emul = NULL /* assist_mem_double_movs */
 	},
 
 	/*
@@ -2961,23 +2956,6 @@ x86_func_lods(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 	}
 }
 
-static void
-x86_func_movs(struct nvmm_vcpu *vcpu __unused, struct nvmm_mem *mem, uint64_t *gprs)
-{
-	/*
-	 * Special instruction: double memory operand. Don't call the cb,
-	 * because the storage has already been performed earlier.
-	 */
-
-	if (gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) {
-		gprs[NVMM_X64_GPR_RSI] -= mem->size;
-		gprs[NVMM_X64_GPR_RDI] -= mem->size;
-	} else {
-		gprs[NVMM_X64_GPR_RSI] += mem->size;
-		gprs[NVMM_X64_GPR_RDI] += mem->size;
-	}
-}
-
 /* -------------------------------------------------------------------------- */
 
 static inline uint64_t
@@ -3139,12 +3117,14 @@ fetch_instruction(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	return 0;
 }
 
+/*
+ * Double memory operand, MOVS only.
+ */
 static int
-assist_mem_double(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
+assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     struct x86_instr *instr)
 {
 	struct nvmm_x64_state *state = vcpu->state;
-	struct nvmm_mem mem;
 	uint8_t data[8];
 	gvaddr_t gva;
 	size_t size;
@@ -3168,12 +3148,20 @@ assist_mem_double(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	if (ret == -1)
 		return -1;
 
-	mem.size = size;
-	(*instr->emul->func)(vcpu, &mem, state->gprs);
+	if (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) {
+		state->gprs[NVMM_X64_GPR_RSI] -= size;
+		state->gprs[NVMM_X64_GPR_RDI] -= size;
+	} else {
+		state->gprs[NVMM_X64_GPR_RSI] += size;
+		state->gprs[NVMM_X64_GPR_RDI] += size;
+	}
 
 	return 0;
 }
 
+/*
+ * Single memory operand, covers most instructions.
+ */
 static int
 assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     struct x86_instr *instr)
@@ -3344,7 +3332,7 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	}
 
 	if (instr.opcode->movs) {
-		ret = assist_mem_double(mach, vcpu, &instr);
+		ret = assist_mem_double_movs(mach, vcpu, &instr);
 	} else {
 		ret = assist_mem_single(mach, vcpu, &instr);
 	}
