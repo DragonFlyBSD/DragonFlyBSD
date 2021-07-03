@@ -358,6 +358,7 @@ struct vmcb_ctrl {
 #define VMCB_CTRL_ENABLE_SEV		__BIT(1)
 #define VMCB_CTRL_ENABLE_ES_SEV		__BIT(2)
 #define VMCB_CTRL_ENABLE_GMET		__BIT(3)
+#define VMCB_CTRL_ENABLE_SSS		__BIT(4)
 #define VMCB_CTRL_ENABLE_VTE		__BIT(5)
 
 	uint64_t avic;
@@ -391,6 +392,7 @@ struct vmcb_ctrl {
 #define VMCB_CTRL_VMCB_CLEAN_CR2	__BIT(9)
 #define VMCB_CTRL_VMCB_CLEAN_LBR	__BIT(10)
 #define VMCB_CTRL_VMCB_CLEAN_AVIC	__BIT(11)
+#define VMCB_CTRL_VMCB_CLEAN_CET	__BIT(12)
 
 	uint32_t rsvd2;
 	uint64_t nrip;
@@ -446,7 +448,9 @@ struct vmcb_state {
 	uint64_t rip;
 	uint8_t	 rsvd4[88];
 	uint64_t rsp;
-	uint8_t	 rsvd5[24];
+	uint64_t s_cet;
+	uint64_t ssp;
+	uint64_t isst_addr;
 	uint64_t rax;
 	uint64_t star;
 	uint64_t lstar;
