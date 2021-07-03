@@ -280,26 +280,21 @@ nvmm_vcpu_create(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
     struct nvmm_vcpu *vcpu)
 {
 	struct nvmm_ioc_vcpu_create args;
-	struct nvmm_comm_page *comm;
 	int ret;
 
 	args.machid = mach->machid;
 	args.cpuid = cpuid;
+	args.comm = NULL;
 
 	ret = ioctl(nvmm_fd, NVMM_IOC_VCPU_CREATE, &args);
 	if (ret == -1)
 		return -1;
 
-	comm = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_FILE,
-	    nvmm_fd, NVMM_COMM_OFF(mach->machid, cpuid));
-	if (comm == MAP_FAILED)
-		return -1;
-
-	mach->pages[cpuid] = comm;
+	mach->pages[cpuid] = args.comm;
 
 	vcpu->cpuid = cpuid;
-	vcpu->state = &comm->state;
-	vcpu->event = &comm->event;
+	vcpu->state = &args.comm->state;
+	vcpu->event = &args.comm->event;
 	vcpu->exit = malloc(sizeof(*vcpu->exit));
 
 	return 0;
@@ -309,7 +304,6 @@ int
 nvmm_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
 	struct nvmm_ioc_vcpu_destroy args;
-	struct nvmm_comm_page *comm;
 	int ret;
 
 	args.machid = mach->machid;
@@ -319,8 +313,6 @@ nvmm_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	if (ret == -1)
 		return -1;
 
-	comm = mach->pages[vcpu->cpuid];
-	munmap(comm, PAGE_SIZE);
 	free(vcpu->exit);
 
 	return 0;

@@ -378,6 +378,7 @@ out:
 static int
 nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 {
+	struct vmspace *vmspace = curproc->p_vmspace;
 	struct nvmm_machine *mach;
 	struct nvmm_cpu *vcpu;
 	int error;
@@ -409,6 +410,18 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 		goto out;
 	}
 	memset(vcpu->comm, 0, PAGE_SIZE);
+
+	/* Map the comm page on the user side, as pageable. */
+	uao_reference(mach->commvmobj);
+	error = uvm_map(&vmspace->vm_map, (vaddr_t *)&args->comm, PAGE_SIZE,
+	    mach->commvmobj, args->cpuid * PAGE_SIZE, 0, UVM_MAPFLAG(UVM_PROT_RW,
+	    UVM_PROT_RW, UVM_INH_SHARE, UVM_ADV_RANDOM, 0));
+	if (error) {
+		uao_detach(mach->commvmobj);
+		nvmm_vcpu_free(mach, vcpu);
+		nvmm_vcpu_put(vcpu);
+		goto out;
+	}
 
 	error = (*nvmm_impl->vcpu_create)(mach, vcpu);
 	if (error) {
@@ -1010,14 +1023,12 @@ nvmm_fini(void)
 
 static d_open_t nvmm_open;
 static d_ioctl_t nvmm_ioctl;
-static d_mmap_single_t nvmm_mmap_single;
 static d_priv_dtor_t nvmm_dtor;
 
 static struct dev_ops nvmm_ops = {
 	{ "nvmm", 0, D_MPSAFE },
 	.d_open		= nvmm_open,
 	.d_ioctl	= nvmm_ioctl,
-	.d_mmap_single	= nvmm_mmap_single,
 };
 
 static int
@@ -1060,45 +1071,6 @@ nvmm_dtor(void *arg)
 	if (owner != &root_owner) {
 		kmem_free(owner, sizeof(*owner));
 	}
-}
-
-static int
-nvmm_mmap_single(struct dev_mmap_single_args *ap)
-{
-	vm_ooffset_t *offp = ap->a_offset;
-	size_t size = ap->a_size;
-	int prot = ap->a_nprot;
-	struct vm_object **vmobjp = ap->a_object;
-	struct file *fp = ap->a_fp;
-	struct nvmm_owner *owner = NULL;
-	struct nvmm_machine *mach;
-	nvmm_machid_t machid;
-	nvmm_cpuid_t cpuid;
-	int error;
-
-	devfs_get_cdevpriv(fp, (void **)&owner);
-	KASSERT(owner != NULL);
-
-	if (prot & PROT_EXEC)
-		return EACCES;
-	if (size != PAGE_SIZE)
-		return EINVAL;
-
-	cpuid = NVMM_COMM_CPUID(*offp);
-	if (__predict_false(cpuid >= NVMM_MAX_VCPUS))
-		return EINVAL;
-
-	machid = NVMM_COMM_MACHID(*offp);
-	error = nvmm_machine_get(owner, machid, &mach, false);
-	if (error)
-		return error;
-
-	uao_reference(mach->commvmobj);
-	*vmobjp = mach->commvmobj;
-	*offp = cpuid * PAGE_SIZE;
-
-	nvmm_machine_put(mach);
-	return 0;
 }
 
 static int

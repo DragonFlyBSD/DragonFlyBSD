@@ -53,7 +53,7 @@ typedef uint32_t	nvmm_cpuid_t;
 #include <dev/virtual/nvmm/x86/nvmm_x86.h>
 #endif
 
-#define NVMM_KERN_VERSION		1
+#define NVMM_KERN_VERSION		2
 
 struct nvmm_capability {
 	uint32_t version;
@@ -88,21 +88,8 @@ struct nvmm_comm_page {
 	struct nvmm_vcpu_event event;
 };
 
-/*
- * Bits 20:27 -> machid
- * Bits 12:19 -> cpuid
- */
-#define NVMM_COMM_OFF(machid, cpuid)	\
-	((((uint64_t)machid & 0xFFULL) << 20) | (((uint64_t)cpuid & 0xFFULL) << 12))
-
-#define NVMM_COMM_MACHID(off)		\
-	((off >> 20) & 0xFF)
-
-#define NVMM_COMM_CPUID(off)		\
-	((off >> 12) & 0xFF)
-
 #ifdef _KERNEL
-/* At most one page, for the NVMM_COMM_* macros. */
+/* At most one page, otherwise nvmm_vcpu_create() must be updated. */
 CTASSERT(sizeof(struct nvmm_comm_page) <= PAGE_SIZE);
 #endif
 
