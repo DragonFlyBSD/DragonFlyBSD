@@ -1307,6 +1307,11 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(vcpu->cpuid,
 		    CPUID_LOCAL_APIC_ID);
 
+		ncpus = atomic_load_acq_int(&mach->ncpus);
+		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_HTT_CORES;
+		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(ncpus,
+		    CPUID_HTT_CORES);
+
 		cpudata->gprs[NVMM_X64_GPR_RCX] &= nvmm_cpuid_00000001.ecx;
 		cpudata->gprs[NVMM_X64_GPR_RCX] |= CPUID2_RAZ;
 		if (vmx_procbased_ctls2 & PROC_CTLS2_INVPCID_ENABLE) {
