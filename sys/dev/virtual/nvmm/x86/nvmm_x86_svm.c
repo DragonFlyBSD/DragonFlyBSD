@@ -830,7 +830,7 @@ static uint32_t svm_cpuid_max_basic __read_mostly;
 static uint32_t svm_cpuid_max_extended __read_mostly;
 
 static void
-svm_inkernel_exec_cpuid(struct svm_cpudata *cpudata, uint64_t eax, uint64_t ecx)
+svm_inkernel_exec_cpuid(struct svm_cpudata *cpudata, uint32_t eax, uint32_t ecx)
 {
 	u_int descs[4];
 
@@ -842,7 +842,7 @@ svm_inkernel_exec_cpuid(struct svm_cpudata *cpudata, uint64_t eax, uint64_t ecx)
 }
 
 static void
-svm_inkernel_handle_cpuid(struct nvmm_cpu *vcpu, uint64_t eax, uint64_t ecx)
+svm_inkernel_handle_cpuid(struct nvmm_cpu *vcpu, uint32_t eax, uint32_t ecx)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	uint64_t cr4;
@@ -1052,11 +1052,11 @@ svm_exit_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct nvmm_vcpu_conf_cpuid *cpuid;
-	uint64_t eax, ecx;
+	uint32_t eax, ecx;
 	size_t i;
 
-	eax = cpudata->vmcb->state.rax;
-	ecx = cpudata->gprs[NVMM_X64_GPR_RCX];
+	eax = (cpudata->vmcb->state.rax & 0xFFFFFFFF);
+	ecx = (cpudata->gprs[NVMM_X64_GPR_RCX] & 0xFFFFFFFF);
 	svm_inkernel_exec_cpuid(cpudata, eax, ecx);
 	svm_inkernel_handle_cpuid(vcpu, eax, ecx);
 
