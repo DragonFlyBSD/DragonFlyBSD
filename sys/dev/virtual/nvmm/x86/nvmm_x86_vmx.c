@@ -53,20 +53,9 @@
 #include <dev/virtual/nvmm/nvmm_internal.h>
 #include <dev/virtual/nvmm/x86/nvmm_x86.h>
 
-int _vmx_vmxon(paddr_t *pa);
-int _vmx_vmxoff(void);
 int vmx_vmlaunch(uint64_t *gprs);
 int vmx_vmresume(uint64_t *gprs);
 void vmx_resume_rip(void);
-
-#define vmx_vmxon(a) \
-	if (__predict_false(_vmx_vmxon(a) != 0)) { \
-		panic("%s: VMXON failed", __func__); \
-	}
-#define vmx_vmxoff() \
-	if (__predict_false(_vmx_vmxoff() != 0)) { \
-		panic("%s: VMXOFF failed", __func__); \
-	}
 
 struct ept_desc {
 	uint64_t eptp;
@@ -77,6 +66,32 @@ struct vpid_desc {
 	uint64_t vpid;
 	uint64_t addr;
 } __packed;
+
+static inline void
+vmx_vmxon(paddr_t *pa)
+{
+	asm volatile (
+		"vmxon		%[pa];"
+		"jz		vmx_insn_failvalid;"
+		"jc		vmx_insn_failinvalid;"
+		:
+		: [pa] "m" (*pa)
+		: "memory", "cc"
+	);
+}
+
+static inline void
+vmx_vmxoff(void)
+{
+	asm volatile (
+		"vmxoff;"
+		"jz		vmx_insn_failvalid;"
+		"jc		vmx_insn_failinvalid;"
+		:
+		:
+		: "memory", "cc"
+	);
+}
 
 static inline void
 vmx_invept(uint64_t op, struct ept_desc *desc)

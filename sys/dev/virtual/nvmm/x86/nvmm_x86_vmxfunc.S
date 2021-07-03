@@ -39,34 +39,6 @@
 
 	.text
 
-/*
- * %rdi = *pa
- */
-ENTRY(_vmx_vmxon)
-	vmxon	(%rdi)
-	jz	.Lfail_vmxon
-	jc	.Lfail_vmxon
-	xorq	%rax,%rax
-	retq
-.Lfail_vmxon:
-	movq	$-1,%rax
-	retq
-END(_vmx_vmxon)
-
-/*
- * no arg
- */
-ENTRY(_vmx_vmxoff)
-	vmxoff
-	jz	.Lfail_vmxoff
-	jc	.Lfail_vmxoff
-	xorq	%rax,%rax
-	retq
-.Lfail_vmxoff:
-	movq	$-1,%rax
-	retq
-END(_vmx_vmxoff)
-
 /* redef */
 #define VMCS_HOST_RSP				0x00006C14
 
