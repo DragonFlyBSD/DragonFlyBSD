@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man9/ieee80211.9 233648 2012-03-29 05:02:12Z eadler $
 .\"
-.Dd May 26, 2016
+.Dd July 3, 2021
 .Dt IEEE80211 9
 .Os
 .Sh NAME
@@ -50,10 +50,7 @@ applications interact with 802.11 devices.
 Most drivers depend on the
 .Nm
 layer for protocol services but devices that off-load functionality
-may bypass the layer to connect directly to the device
-(e.g. the
-.Xr ndis 4
-emulation support does this).
+may bypass the layer to connect directly to the device.
 .Pp
 A
 .Nm
@@ -552,7 +549,6 @@ Device supports Reduced Inter Frame Spacing (RIFS).
 .El
 .Sh SEE ALSO
 .Xr ioctl 2 ,
-.Xr ndis 4 ,
 .\".Xr ieee80211_amrr 9 ,
 .Xr ieee80211_beacon 9 ,
 .Xr ieee80211_bmiss 9 ,

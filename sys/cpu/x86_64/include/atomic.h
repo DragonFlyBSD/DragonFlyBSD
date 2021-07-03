@@ -173,9 +173,8 @@ atomic_readandclear_int(volatile u_int *addr)
  *				has already been acquired.
  * atomic_poll_release_int(P)
  *
- * These support the NDIS driver and are also used for IPIQ interlocks
- * between cpus.  Both the acquisition and release must be 
- * cache-synchronizing instructions.
+ * These are used for IPIQ interlocks between CPUs.
+ * Both the acquisition and release must be cache-synchronizing instructions.
  */
 
 static __inline int

@@ -193,7 +193,6 @@ MAN=	aac.4 \
 	natapicam.4 \
 	nataraid.4 \
 	ncr.4 \
-	ndis.4 \
 	netgraph.4 \
 	netintro.4 \
 	nfe.4 \

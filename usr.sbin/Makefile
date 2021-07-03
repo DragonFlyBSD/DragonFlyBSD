@@ -69,7 +69,6 @@ SUBDIR= 802_11 \
 	mptutil \
 	mtest \
 	mtree \
-	ndiscvt \
 	ndp \
 	newsyslog \
 	ngctl \

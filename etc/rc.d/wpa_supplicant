@@ -31,8 +31,6 @@ else
 	wpa_supplicant_enable="YES"
 	if is_wired_interface ${ifn} ; then
 		driver="wired"
-	elif is_ndis_interface ${ifn} ; then
-		driver="ndis"
 	else
 		driver="bsd"
 	fi

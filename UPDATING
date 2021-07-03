@@ -9,6 +9,17 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 6.0 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+NDIS DRIVER REMOVED
+-------------------
+
+The ndis(4) driver has been removed. The NDISAPI kernel option has been
+made a no-op and will be removed at a later point in time. Users with a
+custom kernel configuration can remove this option from it now.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 5.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 

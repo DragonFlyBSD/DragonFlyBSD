@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd September 17, 2020
+.Dd July 3, 2021
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -56,15 +56,6 @@ see
 .It Pa modules.local/
 local loadable kernel modules and wrapped external firmware images; see
 .Xr firmware 9
-.El
-.It Pa /compat/
-files related to compatibility layers
-.Pp
-.Bl -tag -width ".Pa ndis/" -compact
-.It Pa ndis/
-firmware for
-.Xr ndis 4
-drivers
 .El
 .It Pa /dev/
 block and character device files

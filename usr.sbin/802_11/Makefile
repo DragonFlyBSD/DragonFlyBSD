@@ -1,4 +1,4 @@
-SUBDIR=	ndis_events wpa_cli wpa_passphrase wpa_supplicant
+SUBDIR=	wpa_cli wpa_passphrase wpa_supplicant
 
 SUBDIR_ORDERED=		# maximum parallelism
 

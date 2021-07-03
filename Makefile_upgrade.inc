@@ -3901,6 +3901,17 @@ TO_REMOVE+=/usr/share/examples/etc/bsd-style-copyright
 TO_REMOVE+=/etc/periodic/daily/220.snapshot-hammer2
 TO_REMOVE+=/etc/periodic/monthly/220.snapshot-hammer2
 TO_REMOVE+=/etc/periodic/weekly/220.snapshot-hammer2
+TO_REMOVE+=/boot/kernel/if_ndis.ko
+TO_REMOVE+=/boot/kernel/ndis.ko
+TO_REMOVE+=/compat
+TO_REMOVE+=/usr/sbin/ndiscvt
+TO_REMOVE+=/usr/sbin/ndis_events
+TO_REMOVE+=/usr/sbin/ndisgen
+TO_REMOVE+=/usr/share/man/man4/ndis.4.gz
+TO_REMOVE+=/usr/share/man/man8/ndiscvt.8.gz
+TO_REMOVE+=/usr/share/man/man8/ndis_events.8.gz
+TO_REMOVE+=/usr/share/man/man8/ndisgen.8.gz
+TO_REMOVE+=/usr/share/misc/windrv_stub.c
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -682,4 +682,4 @@ SYSCTL_DEBUG		opt_sysctl.h
 
 # Obsolete options (will be removed in the future)
 #
-# [none at the moment]
+NDISAPI			opt_dontuse.h
