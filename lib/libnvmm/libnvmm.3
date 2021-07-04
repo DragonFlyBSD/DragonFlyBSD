@@ -1,6 +1,5 @@
-.\"	$NetBSD: libnvmm.3,v 1.27 2020/09/05 07:22:25 maxv Exp $
 .\"
-.\" Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+.\" Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
 .\" All rights reserved.
 .\"
 .\" This code is part of the NVMM hypervisor.
@@ -26,12 +25,12 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd July 3, 2021
+.Dd July 4, 2021
 .Dt LIBNVMM 3
 .Os
 .Sh NAME
 .Nm libnvmm
-.Nd NetBSD Virtualization API
+.Nd NVMM Virtualization API
 .Sh LIBRARY
 .Lb libnvmm
 .Sh SYNOPSIS
@@ -345,12 +344,28 @@ Currently, no parameters are implemented.
 Emulator software can configure several parameters of a VCPU by using
 .Fn nvmm_vcpu_configure ,
 which can take the following operations:
-.Bd -literal
-#define NVMM_VCPU_CONF_CALLBACKS	0
-	...
-.Ed
 .Pp
-The higher fields depend on the architecture.
+.Bl -bullet -offset indent -compact
+.It
+.Cd NVMM_VCPU_CONF_CALLBACKS :
+register assist callbacks.
+See
+.Sx Assist Callbacks
+below for details.
+.El
+.Pp
+The other fields depend on the architecture.
+.Pp
+On x86 there are two additional operations available:
+.Pp
+.Bl -bullet -offset indent -compact
+.It
+.Cd NVMM_VCPU_CONF_CPUID :
+configure the information returned to the guest by the CPUID instruction.
+.It
+.Cd NVMM_VCPU_CONF_TPR :
+configure whether to return to the emulator when the guest updates its TPR.
+.El
 .Ss Guest-Host Mappings
 Each virtual machine has an associated guest physical memory.
 Emulator software is allowed to modify this guest physical memory by mapping
@@ -425,8 +440,8 @@ Refer to functional examples to see precisely how to use this structure.
 A VCPU state area is divided in sub-states.
 A
 .Fa flags
-parameter is used to set and get the VCPU state; it acts as a bitmap which
-indicates which sub-states to set or get.
+parameter is used to get and set the VCPU state; it acts as a bitmap which
+indicates which sub-states to get or set.
 .Pp
 During VM exits, a partial VCPU state area is provided in
 .Va exitstate ,

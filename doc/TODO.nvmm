@@ -8,8 +8,11 @@ Known issues in NVMM, low priority in most cases.
 
  * AMD: we don't support VCPU_CONF_TPR, would be nice to.
 
- * AMD: need to do comprehensive CPUID filtering, like we already do on
-   Intel.
+ * AMD: need to do filter CR4 like we already do on Intel.
+
+ * It would be useful to expose a way for the guests to lock certain of their
+   registers. Typically via a hypercall that locks CR4. Useful as exploit
+   mitigation technique in certain cases.
 
 ====== LIBNVMM ======
 
@@ -20,3 +23,6 @@ Known issues in NVMM, low priority in most cases.
 
  * Maybe the __areas should have a rwlock? I don't think Qemu unmaps memory
    while VCPUs are running, but still.
+
+ * We can improve performance by using a new nvmm_vcpu_kick() function and
+   not using signals in Qemu anymore.
