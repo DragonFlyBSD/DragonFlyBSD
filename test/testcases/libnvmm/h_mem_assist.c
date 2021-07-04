@@ -1,7 +1,5 @@
-/*	$NetBSD: h_mem_assist.c,v 1.20 2020/12/27 20:56:14 reinoud Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -168,6 +166,7 @@ run_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	} else {
 		printf("Test '%s' failed, wanted 0x%lx, got 0x%lx\n", test->name,
 		    test->wanted, *res);
+		errx(-1, "run_test failed");
 	}
 }
 

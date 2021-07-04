@@ -1,11 +1,8 @@
-/*	$NetBSD: main.c,v 1.1 2018/09/12 00:00:00 maxv Exp $	*/
-
 /*
- * Copyright (c) 2018-2019 The NetBSD Foundation, Inc.
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
- * This code is derived from software contributed to The NetBSD Foundation
- * by Maxime Villard.
+ * This code is part of the NVMM hypervisor.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,17 +13,17 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
- * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
 
 #include <assert.h>
@@ -42,8 +39,6 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <machine/segments.h>
-#include <machine/psl.h>
 #include <machine/specialreg.h>
 #include <pthread.h>
 #include <nvmm.h>
@@ -52,8 +47,6 @@
 
 #ifdef __DragonFly__
 #define APICBASE_EN	APICBASE_ENABLED	/* 0x00000800: software enable */
-#define PSL_MBO		PSL_RESERVED_DEFAULT	/* 0x00000002 */
-#define SDT_SYS386BSY	SDT_SYSBSY		/* 11: system 64-bit TSS busy */
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -137,28 +130,51 @@ toyvirt_event_reinject(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 /* -------------------------------------------------------------------------- */
 
-/* Stolen from x86/pmap.c */
-#define	PATENTRY(n, type)	(type << ((n) * 8))
-#define	PAT_UC		0x0ULL
-#define	PAT_WC		0x1ULL
-#define	PAT_WT		0x4ULL
-#define	PAT_WP		0x5ULL
-#define	PAT_WB		0x6ULL
-#define	PAT_UCMINUS	0x7ULL
+static void
+toycpu_io_callback(struct nvmm_io *io)
+{
+	/* Hand over to toydev. */
+	toydev_io(io->port, io->in, io->data, io->size);
+}
 
 static void
-toyvirt_configure_cpuid(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+toyvirt_mem_callback(struct nvmm_mem *mem)
+{
+	/* Hand over to toydev. */
+	toydev_mmio(mem->gpa, mem->write, mem->data, mem->size);
+}
+
+static struct nvmm_assist_callbacks callbacks = {
+	.io = toycpu_io_callback,
+	.mem = toyvirt_mem_callback
+};
+
+/* -------------------------------------------------------------------------- */
+
+static void
+toyvirt_vcpu_configure(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
 	struct nvmm_vcpu_conf_cpuid cpuid;
+	int ret;
 
-	/* Disable PG_NX. No particular reason, just to demonstrate. */
+	/*
+	 * Register the assist callbacks.
+	 */
+	ret = nvmm_vcpu_configure(mach, vcpu, NVMM_VCPU_CONF_CALLBACKS,
+	    &callbacks);
+	if (ret == -1)
+		err(EXIT_FAILURE, "nvmm_vcpu_configure");
+
+	/*
+	 * Hide the No-Execute bit. No particular reason, just to demonstrate.
+	 */
 	memset(&cpuid, 0, sizeof(cpuid));
 	cpuid.mask = 1;
 	cpuid.leaf = 0x80000001;
-	cpuid.u.mask.del.edx = CPUID_NOX;
-
-	if (nvmm_vcpu_configure(mach, vcpu, NVMM_VCPU_CONF_CPUID, &cpuid) == -1)
-		err(EXIT_FAILURE, "nvmm_vcpu_configure(CPUID)");
+	cpuid.u.mask.del.edx = CPUID_8_01_EDX_XD;
+	ret = nvmm_vcpu_configure(mach, vcpu, NVMM_VCPU_CONF_CPUID, &cpuid);
+	if (ret == -1)
+		err(EXIT_FAILURE, "nvmm_vcpu_configure");
 }
 
 static void
@@ -188,59 +204,37 @@ toyvirt_init(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		errx(EXIT_FAILURE, "nvmm_vcpu_getstate");
 
 	/* Default. */
-	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_CS], SDT_MEMERA, 0, 0xFFFFFFFF);
-	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_SS], SDT_MEMRWA, 0, 0xFFFFFFFF);
-	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_DS], SDT_MEMRWA, 0, 0xFFFFFFFF);
-	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_ES], SDT_MEMRWA, 0, 0xFFFFFFFF);
-	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_FS], SDT_MEMRWA, 0, 0xFFFFFFFF);
-	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_GS], SDT_MEMRWA, 0, 0xFFFFFFFF);
+	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_CS],
+	    27 /* memory execute read accessed */, 0, 0xFFFFFFFF);
+	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_SS],
+	    19 /* memory read write accessed */, 0, 0xFFFFFFFF);
+	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_DS],
+	    19 /* memory read write accessed */, 0, 0xFFFFFFFF);
+	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_ES],
+	    19 /* memory read write accessed */, 0, 0xFFFFFFFF);
+	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_FS],
+	    19 /* memory read write accessed */, 0, 0xFFFFFFFF);
+	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_GS],
+	    19 /* memory read write accessed */, 0, 0xFFFFFFFF);
 
 	/* Blank. */
 	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_GDT], 0, 0, 0x0000FFFF);
 	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_IDT], 0, 0, 0x0000FFFF);
-	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_LDT], SDT_SYSLDT, 0, 0xFFFFFFFF);
-	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_TR], SDT_SYS386BSY, 0, 0xFFFFFFFF);
+	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_LDT], 2, 0, 0xFFFFFFFF);
+	toyvirt_init_seg(&state->segs[NVMM_X64_SEG_TR], 11, 0, 0xFFFFFFFF);
 
 	/* Protected mode enabled. */
 	state->crs[NVMM_X64_CR_CR0] = CR0_PE | CR0_ET | CR0_NW | CR0_CD;
-
-	state->msrs[NVMM_X64_MSR_PAT] =
-	    PATENTRY(0, PAT_WB) | PATENTRY(1, PAT_WT) |
-	    PATENTRY(2, PAT_UCMINUS) | PATENTRY(3, PAT_UC) |
-	    PATENTRY(4, PAT_WB) | PATENTRY(5, PAT_WT) |
-	    PATENTRY(6, PAT_UCMINUS) | PATENTRY(7, PAT_UC);
 
 	/* Map the VM. */
 	if (elf_map(mach, path, &rip) != 0)
 		errx(EXIT_FAILURE, "unable to map the vm");
 
 	state->gprs[NVMM_X64_GPR_RIP] = rip; /* jump here */
-	state->gprs[NVMM_X64_GPR_RFLAGS] = PSL_MBO;
 
 	if (nvmm_vcpu_setstate(mach, vcpu, NVMM_X64_STATE_ALL) == -1)
 		err(EXIT_FAILURE, "nvmm_vcpu_setstate");
 }
-
-/* -------------------------------------------------------------------------- */
-
-static void
-toycpu_io_callback(struct nvmm_io *io)
-{
-	/* Hand over to toydev. */
-	toydev_io(io->port, io->in, io->data, io->size);
-}
-
-static void
-toyvirt_mem_callback(struct nvmm_mem *mem)
-{
-	/* Hand over to toydev. */
-	toydev_mmio(mem->gpa, mem->write, mem->data, mem->size);
-}
-
-static struct nvmm_assist_callbacks callbacks = {
-	.io = toycpu_io_callback,
-	.mem = toyvirt_mem_callback
-};
 
 /* -------------------------------------------------------------------------- */
 
@@ -299,16 +293,12 @@ toyvirt_mess(void *arg __unused)
  * Support one MSR: MSR_APICBASE.
  */
 static int
-toycpu_msr(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+toycpu_rdmsr(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
 	struct nvmm_vcpu_state *state = vcpu->state;
 	struct nvmm_vcpu_exit *exit = vcpu->exit;
 	uint64_t val;
 
-	if (exit->reason != NVMM_VCPU_EXIT_RDMSR) {
-		printf("Expected rdmsr!\n");
-		return -1;
-	}
 	if (exit->u.rdmsr.msr != MSR_APICBASE) {
 		printf("Unknown MSR!\n");
 		return -1;
@@ -375,8 +365,7 @@ toyvirt_run(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 			continue;
 
 		case NVMM_VCPU_EXIT_RDMSR:
-		case NVMM_VCPU_EXIT_WRMSR:
-			toycpu_msr(mach, vcpu);
+			toycpu_rdmsr(mach, vcpu);
 			continue;
 
 		case NVMM_VCPU_EXIT_MEMORY:
@@ -424,13 +413,8 @@ int main(int argc, char *argv[])
 		err(EXIT_FAILURE, "nvmm_vcpu_create");
 	printf("[+] VCPU creation succeeded\n");
 
-	if (nvmm_vcpu_configure(&mach, &vcpu, NVMM_VCPU_CONF_CALLBACKS,
-				&callbacks) == -1) {
-		err(EXIT_FAILURE, "nvmm_vcpu_configure(CALLBACKS)");
-	};
-	printf("[+] VCPU callbacks configuration succeeded\n");
-
-	toyvirt_configure_cpuid(&mach, &vcpu);
+	toyvirt_vcpu_configure(&mach, &vcpu);
+	printf("[+] VCPU configuration succeeded\n");
 
 	toyvirt_init(&mach, &vcpu, argv[1]);
 	printf("[+] State set\n");

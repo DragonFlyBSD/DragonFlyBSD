@@ -1,7 +1,5 @@
-/*	$NetBSD: h_io_assist_asm.S,v 1.3 2020/09/05 07:22:26 maxv Exp $	*/
-
 /*
- * Copyright (c) 2019-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2019-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.

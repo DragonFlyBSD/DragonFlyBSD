@@ -44,9 +44,5 @@ SECTIONS
 
 	_end = . ;
 	PROVIDE (end = .) ;
-	.note.netbsd.ident :
-	{
-		KEEP(*(.note.netbsd.ident));
-	}
 }
 

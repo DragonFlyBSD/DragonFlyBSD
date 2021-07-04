@@ -1,7 +1,5 @@
-/*	$NetBSD: h_mem_assist_asm.S,v 1.10 2020/12/27 20:56:14 reinoud Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.

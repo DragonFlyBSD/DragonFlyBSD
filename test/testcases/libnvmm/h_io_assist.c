@@ -1,7 +1,5 @@
-/*	$NetBSD: h_io_assist.c,v 1.12 2020/09/05 07:22:26 maxv Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -331,6 +329,7 @@ run_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	} else {
 		printf("Test '%s' failed, wanted '%s', got '%s'\n", test->name,
 		    test->wanted, res);
+		errx(-1, "run_test failed");
 	}
 }
 
