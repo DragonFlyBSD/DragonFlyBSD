@@ -36,7 +36,7 @@
 #endif
 
 #define NVMM_MAX_MACHINES	128
-#define NVMM_MAX_VCPUS		256
+#define NVMM_MAX_VCPUS		128
 #define NVMM_MAX_HMAPPINGS	32
 #define NVMM_MAX_RAM		(128ULL * 1024ULL * (1 << 30))
 
