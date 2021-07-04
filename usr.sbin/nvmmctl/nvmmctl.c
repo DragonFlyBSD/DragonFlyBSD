@@ -1,7 +1,5 @@
-/*	$NetBSD: nvmmctl.c,v 1.2 2020/09/05 07:22:26 maxv Exp $	*/
-
 /*
- * Copyright (c) 2019-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2019-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -42,8 +40,6 @@
 #include <time.h>
 #include <util.h>
 #include <nvmm.h>
-
-#include <machine/specialreg.h>
 
 __dead2 static void usage(void);
 static void nvmm_identify(char **);
