@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  */
 
-#include "../nvmm_compat.h"
 #include "../nvmm.h"
 #include "../nvmm_internal.h"
 #include "nvmm_x86.h"

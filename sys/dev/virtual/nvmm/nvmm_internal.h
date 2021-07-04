@@ -33,6 +33,8 @@
 #error "This file should not be included by userland programs."
 #endif
 
+#include "nvmm_os.h"
+
 #define NVMM_MAX_MACHINES	128
 #define NVMM_MAX_VCPUS		128
 #define NVMM_MAX_HMAPPINGS	32
@@ -46,7 +48,7 @@ struct nvmm_cpu {
 	/* Shared. */
 	bool present;
 	nvmm_cpuid_t cpuid;
-	kmutex_t lock;
+	os_mtx_t lock;
 
 	/* Comm page. */
 	struct nvmm_comm_page *comm;
@@ -62,7 +64,7 @@ struct nvmm_hmapping {
 	bool present;
 	uintptr_t hva;
 	size_t size;
-	struct uvm_object *vmobj;
+	os_vmobj_t *vmobj;
 };
 
 struct nvmm_machine {
@@ -70,10 +72,10 @@ struct nvmm_machine {
 	nvmm_machid_t machid;
 	time_t time;
 	struct nvmm_owner *owner;
-	krwlock_t lock;
+	os_rwl_t lock;
 
 	/* Comm */
-	struct uvm_object *commvmobj;
+	os_vmobj_t *commvmobj;
 
 	/* Kernel */
 	struct vmspace *vm;
@@ -124,17 +126,5 @@ struct nvmm_impl {
 extern const struct nvmm_impl nvmm_x86_svm;
 extern const struct nvmm_impl nvmm_x86_vmx;
 #endif
-
-static inline bool
-nvmm_return_needed(void)
-{
-	if (__predict_false(nvmm_break_wanted())) {
-		return true;
-	}
-	if (__predict_false(curlwp->lwp_mpflags & LWP_MP_URETMASK)) {
-		return true;
-	}
-	return false;
-}
 
 #endif /* _NVMM_INTERNAL_H_ */

@@ -3027,6 +3027,7 @@ dev/virtual/hyperv/vmbus/vmbus.c	optional vmbus
 # NVMM support
 #
 dev/virtual/nvmm/nvmm.c			optional nvmm
+dev/virtual/nvmm/nvmm_os.c		optional nvmm
 dev/virtual/nvmm/x86/nvmm_x86.c		optional nvmm
 dev/virtual/nvmm/x86/nvmm_x86_svm.c	optional nvmm
 dev/virtual/nvmm/x86/nvmm_x86_svmfunc.S	optional nvmm
