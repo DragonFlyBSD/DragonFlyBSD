@@ -38,6 +38,7 @@ SUBDIR=	alias \
 	column \
 	comm \
 	compress \
+	covid \
 	cpio \
 	crunch \
 	csplit \
