@@ -1021,8 +1021,8 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 				parent->bref.modify_tid =
 					chain->bref.modify_tid;
 			}
-			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_BMAPPED |
-							HAMMER2_CHAIN_BMAPUPD);
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_BLKMAPPED |
+							HAMMER2_CHAIN_BLKMAPUPD);
 			goto skipupdate;
 		}
 
@@ -1119,8 +1119,8 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 * adjustments designated for the current and upper level
 		 * are synchronized.
 		 */
-		if (base && (chain->flags & HAMMER2_CHAIN_BMAPUPD)) {
-			if (chain->flags & HAMMER2_CHAIN_BMAPPED) {
+		if (base && (chain->flags & HAMMER2_CHAIN_BLKMAPUPD)) {
+			if (chain->flags & HAMMER2_CHAIN_BLKMAPPED) {
 				hammer2_spin_ex(&parent->core.spin);
 				hammer2_base_delete(parent, base, count, chain,
 						    NULL);
@@ -1128,15 +1128,15 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 				/* base_delete clears both bits */
 			} else {
 				atomic_clear_int(&chain->flags,
-						 HAMMER2_CHAIN_BMAPUPD);
+						 HAMMER2_CHAIN_BLKMAPUPD);
 			}
 		}
-		if (base && (chain->flags & HAMMER2_CHAIN_BMAPPED) == 0) {
+		if (base && (chain->flags & HAMMER2_CHAIN_BLKMAPPED) == 0) {
 			hammer2_spin_ex(&parent->core.spin);
 			hammer2_base_insert(parent, base, count,
 					    chain, &chain->bref);
 			hammer2_spin_unex(&parent->core.spin);
-			/* base_insert sets BMAPPED */
+			/* base_insert sets BLKMAPPED */
 		}
 	}
 skipupdate:

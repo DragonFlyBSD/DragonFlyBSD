@@ -342,9 +342,9 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *		  an update.  Prevents chain free on lastdrop if still in
  *		  the topology.
  *
- * BMAPPED	- Indicates that the chain is present in the parent blockmap.
+ * BLKMAPPED	- Indicates that the chain is present in the parent blockmap.
  *
- * BMAPUPD	- Indicates that the chain is present but needs to be updated
+ * BLKMAPUPD	- Indicates that the chain is present but needs to be updated
  *		  in the parent blockmap.
  */
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
@@ -365,8 +365,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONLRU		0x00008000	/* on LRU list */
 #define HAMMER2_CHAIN_UNUSED10000	0x00010000
 #define HAMMER2_CHAIN_RELEASE		0x00020000	/* don't keep around */
-#define HAMMER2_CHAIN_BMAPPED		0x00040000	/* present in blkmap */
-#define HAMMER2_CHAIN_BMAPUPD		0x00080000	/* +needs updating */
+#define HAMMER2_CHAIN_BLKMAPPED		0x00040000	/* present in blkmap */
+#define HAMMER2_CHAIN_BLKMAPUPD		0x00080000	/* +needs updating */
 #define HAMMER2_CHAIN_IOINPROG		0x00100000	/* I/O interlock */
 #define HAMMER2_CHAIN_IOSIGNAL		0x00200000	/* I/O interlock */
 #define HAMMER2_CHAIN_PFSBOUNDARY	0x00400000	/* super->pfs inode */

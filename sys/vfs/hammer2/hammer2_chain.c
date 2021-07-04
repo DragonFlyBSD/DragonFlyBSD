@@ -745,15 +745,15 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 		 * Remove chain from the parent.
 		 *
 		 * If the chain is being removed from the parent's btree but
-		 * is not bmapped, we have to adjust live_count downward.  If
-		 * it is bmapped then the blockref is retained in the parent
+		 * is not blkmapped, we have to adjust live_count downward.  If
+		 * it is blkmapped then the blockref is retained in the parent
 		 * as is its associated live_count.  This case can occur when
 		 * a chain added to the topology is unable to flush and is
 		 * then later deleted.
 		 */
 		if (chain->flags & HAMMER2_CHAIN_ONRBTREE) {
 			if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) &&
-			    (chain->flags & HAMMER2_CHAIN_BMAPPED) == 0) {
+			    (chain->flags & HAMMER2_CHAIN_BLKMAPPED) == 0) {
 				atomic_add_int(&parent->core.live_count, -1);
 			}
 			RB_REMOVE(hammer2_chain_tree,
@@ -1593,7 +1593,7 @@ hammer2_chain_resize(hammer2_chain_t *chain,
 	 * might be in a logical block, but compressed or encrypted data is
 	 * another matter.
 	 *
-	 * NOTE: The modify will set BMAPUPD for us if BMAPPED is set.
+	 * NOTE: The modify will set BLKMAPUPD for us if BLKMAPPED is set.
 	 */
 	error = hammer2_chain_modify(chain, mtid, dedup_off, 0);
 	if (error)
@@ -1923,14 +1923,14 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		chain->bref.modify_tid = mtid;
 
 	/*
-	 * Set BMAPUPD to tell the flush code that an existing blockmap entry
+	 * Set BLKMAPUPD to tell the flush code that an existing blockmap entry
 	 * requires updating as well as to tell the delete code that the
 	 * chain's blockref might not exactly match (in terms of physical size
 	 * or block offset) the one in the parent's blocktable.  The base key
 	 * of course will still match.
 	 */
-	if (chain->flags & HAMMER2_CHAIN_BMAPPED)
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPUPD);
+	if (chain->flags & HAMMER2_CHAIN_BLKMAPPED)
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_BLKMAPUPD);
 
 	/*
 	 * Short-cut data block handling when the caller does not need an
@@ -2297,7 +2297,7 @@ hammer2_chain_get(hammer2_chain_t *parent, int generation,
 	 * Flag that the chain is in the parent's blockmap so delete/flush
 	 * knows what to do with it.
 	 */
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPPED);
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_BLKMAPPED);
 
 	/*
 	 * chain must be locked to avoid unexpected ripouts
@@ -3712,8 +3712,8 @@ hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
  * be a modified chain.  Otherwise stuff will leak into the flush that
  * the flush code's FLUSH_INODE_STOP flag is unable to catch.
  *
- * It is EXTREMELY important that we properly set CHAIN_BMAPUPD and
- * CHAIN_UPDATE.  We must set BMAPUPD if the bref does not match, and
+ * It is EXTREMELY important that we properly set CHAIN_BLKMAPUPD and
+ * CHAIN_UPDATE.  We must set BLKMAPUPD if the bref does not match, and
  * we must clear CHAIN_UPDATE (that was likely set by the chain_rename) if
  * it does.  Otherwise we can end up in a situation where H2 is unable to
  * clean up the in-memory chain topology.
@@ -3737,12 +3737,12 @@ hammer2_chain_rename_obref(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		hammer2_blockref_t *tbase;
 		int tcount;
 
-		KKASSERT((chain->flags & HAMMER2_CHAIN_BMAPPED) == 0);
+		KKASSERT((chain->flags & HAMMER2_CHAIN_BLKMAPPED) == 0);
 		hammer2_chain_modify(*parentp, mtid, 0, 0);
 		tbase = hammer2_chain_base_and_count(*parentp, &tcount);
 		hammer2_base_insert(*parentp, tbase, tcount, chain, obref);
 		if (bcmp(obref, &chain->bref, sizeof(chain->bref))) {
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPUPD |
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_BLKMAPUPD |
 						      HAMMER2_CHAIN_UPDATE);
 		} else {
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
@@ -3770,7 +3770,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	KKASSERT(chain->parent == parent);
 	hmp = chain->hmp;
 
-	if (chain->flags & HAMMER2_CHAIN_BMAPPED) {
+	if (chain->flags & HAMMER2_CHAIN_BLKMAPPED) {
 		/*
 		 * Chain is blockmapped, so there must be a parent.
 		 * Atomically remove the chain from the parent and remove
@@ -5399,7 +5399,7 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	scan = &base[i];
 	if (i == count || scan->type == HAMMER2_BREF_TYPE_EMPTY ||
 	    scan->key != elm->key ||
-	    ((chain->flags & HAMMER2_CHAIN_BMAPUPD) == 0 &&
+	    ((chain->flags & HAMMER2_CHAIN_BLKMAPUPD) == 0 &&
 	     scan->keybits != elm->keybits)) {
 		hammer2_spin_unex(&parent->core.spin);
 		panic("delete base %p element not found at %d/%d elm %p\n",
@@ -5476,8 +5476,8 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	/*
 	 * Clear appropriate blockmap flags in chain.
 	 */
-	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_BMAPPED |
-					HAMMER2_CHAIN_BMAPUPD);
+	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_BLKMAPPED |
+					HAMMER2_CHAIN_BLKMAPUPD);
 }
 
 /*
@@ -5523,7 +5523,7 @@ hammer2_base_insert(hammer2_chain_t *parent,
 	 * Set appropriate blockmap flags in chain (if not NULL)
 	 */
 	if (chain)
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPPED);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_BLKMAPPED);
 
 	/*
 	 * Update stats and zero the entry
