@@ -22,47 +22,27 @@ SUBDIR=
 # /libexec/ld-elf.so.2 needs to be installed first
 # Otherwise, install(1) beeing a dynamically linked binary will fail
 # during the first upgrade from a static to a dynamic world
-.if exists(${.CURDIR}/libexec)
 SUBDIR+= libexec
-.endif
 
 # We need to do include and lib early.
 #
-.if exists(${.CURDIR}/include)
 SUBDIR+= include
-.endif
-.if exists(${.CURDIR}/lib)
 SUBDIR+= lib
-.endif
 
-.if exists(${.CURDIR}/bin)
 SUBDIR+= bin
-.endif
-.if exists(${.CURDIR}/games) && !defined(NO_GAMES)
+.if !defined(NO_GAMES)
 SUBDIR+= games
 .endif
-.if exists(${.CURDIR}/gnu)
 SUBDIR+= gnu
-.endif
-.if exists(${.CURDIR}/sbin)
 SUBDIR+= sbin
-.endif
-.if exists(${.CURDIR}/share) && !defined(NO_SHARE)
+.if !defined(NO_SHARE)
 SUBDIR+= share
 .endif
-.if exists(${.CURDIR}/sys)
 SUBDIR+= sys
-.endif
-.if exists(${.CURDIR}/usr.bin)
 SUBDIR+= usr.bin
-.endif
-.if exists(${.CURDIR}/usr.sbin)
 SUBDIR+= usr.sbin
-.endif
 
-.if exists(${.CURDIR}/etc)
 SUBDIR+= etc
-.endif
 
 # These are last, since it is nice to at least get the base system
 # rebuilt before you do them.
