@@ -121,7 +121,6 @@
 
 #define DIAGNOSTIC		INVARIANTS
 #define MAXCPUS			SMP_MAXCPU
-#define asm			__asm__
 #define curlwp			(curthread->td_lwp)
 #define printf			kprintf
 #define __cacheline_aligned	__cachealign

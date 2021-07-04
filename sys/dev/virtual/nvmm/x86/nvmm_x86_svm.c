@@ -1,7 +1,5 @@
-/*	$NetBSD: nvmm_x86_svm.c,v 1.83 2021/03/26 15:59:53 reinoud Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -45,23 +43,23 @@
 #include <machine/pmap_inval.h> /* pmap_inval_smp() */
 #include <machine/specialreg.h>
 
-#include <dev/virtual/nvmm/nvmm_compat.h>
-#include <dev/virtual/nvmm/nvmm.h>
-#include <dev/virtual/nvmm/nvmm_internal.h>
-#include <dev/virtual/nvmm/x86/nvmm_x86.h>
+#include "../nvmm_compat.h"
+#include "../nvmm.h"
+#include "../nvmm_internal.h"
+#include "nvmm_x86.h"
 
 void svm_vmrun(paddr_t, uint64_t *);
 
 static inline void
 svm_clgi(void)
 {
-	asm volatile ("clgi" ::: "memory");
+	__asm volatile ("clgi" ::: "memory");
 }
 
 static inline void
 svm_stgi(void)
 {
-	asm volatile ("stgi" ::: "memory");
+	__asm volatile ("stgi" ::: "memory");
 }
 
 #define	MSR_VM_HSAVE_PA	0xC0010117
@@ -2547,31 +2545,31 @@ svm_ident(void)
 		return false;
 	}
 	if (!(amd_feature2 & CPUID_8_01_ECX_SVM)) {
-		printf("NVMM: SVM not supported\n");
+		printf("nvmm: SVM not supported\n");
 		return false;
 	}
 
 	if (cpu_exthigh < 0x8000000a) {
-		printf("NVMM: CPUID leaf not available\n");
+		printf("nvmm: CPUID leaf not available\n");
 		return false;
 	}
 	x86_cpuid(0x8000000a, descs);
 
 	/* Expect revision 1. */
 	if (__SHIFTOUT(descs[0], CPUID_8_0A_EAX_SvmRev) != 1) {
-		printf("NVMM: SVM revision not supported\n");
+		printf("nvmm: SVM revision not supported\n");
 		return false;
 	}
 
 	/* Want Nested Paging. */
 	if (!(descs[3] & CPUID_8_0A_EDX_NP)) {
-		printf("NVMM: SVM-NP not supported\n");
+		printf("nvmm: SVM-NP not supported\n");
 		return false;
 	}
 
 	/* Want nRIP. */
 	if (!(descs[3] & CPUID_8_0A_EDX_NRIPS)) {
-		printf("NVMM: SVM-NRIPS not supported\n");
+		printf("nvmm: SVM-NRIPS not supported\n");
 		return false;
 	}
 
@@ -2579,7 +2577,7 @@ svm_ident(void)
 
 	msr = rdmsr(MSR_VMCR);
 	if ((msr & VMCR_SVMED) && (msr & VMCR_LOCK)) {
-		printf("NVMM: SVM disabled in BIOS\n");
+		printf("nvmm: SVM disabled in BIOS\n");
 		return false;
 	}
 

@@ -1,7 +1,5 @@
-/*	$NetBSD: nvmm_x86_vmx.c,v 1.82 2021/03/26 15:59:53 reinoud Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -48,10 +46,10 @@
 #include <machine/smp.h> /* smp_active_mask */
 #include <machine/specialreg.h>
 
-#include <dev/virtual/nvmm/nvmm_compat.h>
-#include <dev/virtual/nvmm/nvmm.h>
-#include <dev/virtual/nvmm/nvmm_internal.h>
-#include <dev/virtual/nvmm/x86/nvmm_x86.h>
+#include "../nvmm_compat.h"
+#include "../nvmm.h"
+#include "../nvmm_internal.h"
+#include "nvmm_x86.h"
 
 int vmx_vmlaunch(uint64_t *gprs);
 int vmx_vmresume(uint64_t *gprs);
@@ -70,7 +68,7 @@ struct vpid_desc {
 static inline void
 vmx_vmxon(paddr_t *pa)
 {
-	asm volatile (
+	__asm volatile (
 		"vmxon		%[pa];"
 		"jz		vmx_insn_failvalid;"
 		"jc		vmx_insn_failinvalid;"
@@ -83,7 +81,7 @@ vmx_vmxon(paddr_t *pa)
 static inline void
 vmx_vmxoff(void)
 {
-	asm volatile (
+	__asm volatile (
 		"vmxoff;"
 		"jz		vmx_insn_failvalid;"
 		"jc		vmx_insn_failinvalid;"
@@ -96,7 +94,7 @@ vmx_vmxoff(void)
 static inline void
 vmx_invept(uint64_t op, struct ept_desc *desc)
 {
-	asm volatile (
+	__asm volatile (
 		"invept		%[desc],%[op];"
 		"jz		vmx_insn_failvalid;"
 		"jc		vmx_insn_failinvalid;"
@@ -109,7 +107,7 @@ vmx_invept(uint64_t op, struct ept_desc *desc)
 static inline void
 vmx_invvpid(uint64_t op, struct vpid_desc *desc)
 {
-	asm volatile (
+	__asm volatile (
 		"invvpid	%[desc],%[op];"
 		"jz		vmx_insn_failvalid;"
 		"jc		vmx_insn_failinvalid;"
@@ -124,7 +122,7 @@ vmx_vmread(uint64_t field)
 {
 	uint64_t value;
 
-	asm volatile (
+	__asm volatile (
 		"vmread		%[field],%[value];"
 		"jz		vmx_insn_failvalid;"
 		"jc		vmx_insn_failinvalid;"
@@ -139,7 +137,7 @@ vmx_vmread(uint64_t field)
 static inline void
 vmx_vmwrite(uint64_t field, uint64_t value)
 {
-	asm volatile (
+	__asm volatile (
 		"vmwrite	%[value],%[field];"
 		"jz		vmx_insn_failvalid;"
 		"jc		vmx_insn_failinvalid;"
@@ -155,7 +153,7 @@ vmx_vmptrst(void)
 {
 	paddr_t pa;
 
-	asm volatile (
+	__asm volatile (
 		"vmptrst	%[pa];"
 		:
 		: [pa] "m" (*(paddr_t *)&pa)
@@ -169,7 +167,7 @@ vmx_vmptrst(void)
 static inline void
 vmx_vmptrld(paddr_t *pa)
 {
-	asm volatile (
+	__asm volatile (
 		"vmptrld	%[pa];"
 		"jz		vmx_insn_failvalid;"
 		"jc		vmx_insn_failinvalid;"
@@ -182,7 +180,7 @@ vmx_vmptrld(paddr_t *pa)
 static inline void
 vmx_vmclear(paddr_t *pa)
 {
-	asm volatile (
+	__asm volatile (
 		"vmclear	%[pa];"
 		"jz		vmx_insn_failvalid;"
 		"jc		vmx_insn_failinvalid;"
@@ -195,13 +193,13 @@ vmx_vmclear(paddr_t *pa)
 static inline void
 vmx_cli(void)
 {
-	asm volatile ("cli" ::: "memory");
+	__asm volatile ("cli" ::: "memory");
 }
 
 static inline void
 vmx_sti(void)
 {
-	asm volatile ("sti" ::: "memory");
+	__asm volatile ("sti" ::: "memory");
 }
 
 #define MSR_IA32_FEATURE_CONTROL	0x003A
@@ -3443,17 +3441,17 @@ vmx_ident(void)
 	msr = rdmsr(MSR_IA32_FEATURE_CONTROL);
 	if ((msr & IA32_FEATURE_CONTROL_LOCK) != 0 &&
 	    (msr & IA32_FEATURE_CONTROL_OUT_SMX) == 0) {
-		printf("NVMM: VMX disabled in BIOS\n");
+		printf("nvmm: VMX disabled in BIOS\n");
 		return false;
 	}
 
 	msr = rdmsr(MSR_IA32_VMX_BASIC);
 	if ((msr & IA32_VMX_BASIC_IO_REPORT) == 0) {
-		printf("NVMM: I/O reporting not supported\n");
+		printf("nvmm: I/O reporting not supported\n");
 		return false;
 	}
 	if (__SHIFTOUT(msr, IA32_VMX_BASIC_MEM_TYPE) != MEM_TYPE_WB) {
-		printf("NVMM: WB memory not supported\n");
+		printf("nvmm: WB memory not supported\n");
 		return false;
 	}
 
@@ -3462,7 +3460,7 @@ vmx_ident(void)
 	vmx_cr0_fixed1 = rdmsr(MSR_IA32_VMX_CR0_FIXED1) | (CR0_PG|CR0_PE);
 	ret = vmx_check_cr(rcr0(), vmx_cr0_fixed0, vmx_cr0_fixed1);
 	if (ret == -1) {
-		printf("NVMM: CR0 requirements not satisfied\n");
+		printf("nvmm: CR0 requirements not satisfied\n");
 		return false;
 	}
 
@@ -3470,7 +3468,7 @@ vmx_ident(void)
 	vmx_cr4_fixed1 = rdmsr(MSR_IA32_VMX_CR4_FIXED1);
 	ret = vmx_check_cr(rcr4() | CR4_VMXE, vmx_cr4_fixed0, vmx_cr4_fixed1);
 	if (ret == -1) {
-		printf("NVMM: CR4 requirements not satisfied\n");
+		printf("nvmm: CR4 requirements not satisfied\n");
 		return false;
 	}
 
@@ -3480,7 +3478,7 @@ vmx_ident(void)
 	    VMX_PINBASED_CTLS_ONE, VMX_PINBASED_CTLS_ZERO,
 	    &vmx_pinbased_ctls);
 	if (ret == -1) {
-		printf("NVMM: pin-based-ctls requirements not satisfied\n");
+		printf("nvmm: pin-based-ctls requirements not satisfied\n");
 		return false;
 	}
 	ret = vmx_init_ctls(
@@ -3488,7 +3486,7 @@ vmx_ident(void)
 	    VMX_PROCBASED_CTLS_ONE, VMX_PROCBASED_CTLS_ZERO,
 	    &vmx_procbased_ctls);
 	if (ret == -1) {
-		printf("NVMM: proc-based-ctls requirements not satisfied\n");
+		printf("nvmm: proc-based-ctls requirements not satisfied\n");
 		return false;
 	}
 	ret = vmx_init_ctls(
@@ -3496,7 +3494,7 @@ vmx_ident(void)
 	    VMX_PROCBASED_CTLS2_ONE, VMX_PROCBASED_CTLS2_ZERO,
 	    &vmx_procbased_ctls2);
 	if (ret == -1) {
-		printf("NVMM: proc-based-ctls2 requirements not satisfied\n");
+		printf("nvmm: proc-based-ctls2 requirements not satisfied\n");
 		return false;
 	}
 	ret = vmx_check_ctls(
@@ -3510,7 +3508,7 @@ vmx_ident(void)
 	    VMX_ENTRY_CTLS_ONE, VMX_ENTRY_CTLS_ZERO,
 	    &vmx_entry_ctls);
 	if (ret == -1) {
-		printf("NVMM: entry-ctls requirements not satisfied\n");
+		printf("nvmm: entry-ctls requirements not satisfied\n");
 		return false;
 	}
 	ret = vmx_init_ctls(
@@ -3518,21 +3516,21 @@ vmx_ident(void)
 	    VMX_EXIT_CTLS_ONE, VMX_EXIT_CTLS_ZERO,
 	    &vmx_exit_ctls);
 	if (ret == -1) {
-		printf("NVMM: exit-ctls requirements not satisfied\n");
+		printf("nvmm: exit-ctls requirements not satisfied\n");
 		return false;
 	}
 
 	msr = rdmsr(MSR_IA32_VMX_EPT_VPID_CAP);
 	if ((msr & IA32_VMX_EPT_VPID_WALKLENGTH_4) == 0) {
-		printf("NVMM: 4-level page tree not supported\n");
+		printf("nvmm: 4-level page tree not supported\n");
 		return false;
 	}
 	if ((msr & IA32_VMX_EPT_VPID_INVEPT) == 0) {
-		printf("NVMM: INVEPT not supported\n");
+		printf("nvmm: INVEPT not supported\n");
 		return false;
 	}
 	if ((msr & IA32_VMX_EPT_VPID_INVVPID) == 0) {
-		printf("NVMM: INVVPID not supported\n");
+		printf("nvmm: INVVPID not supported\n");
 		return false;
 	}
 	if ((msr & IA32_VMX_EPT_VPID_FLAGS_AD) != 0) {
@@ -3541,7 +3539,7 @@ vmx_ident(void)
 		pmap_ept_has_ad = false;
 	}
 	if (!(msr & IA32_VMX_EPT_VPID_UC) && !(msr & IA32_VMX_EPT_VPID_WB)) {
-		printf("NVMM: EPT UC/WB memory types not supported\n");
+		printf("nvmm: EPT UC/WB memory types not supported\n");
 		return false;
 	}
 

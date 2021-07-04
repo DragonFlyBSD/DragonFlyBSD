@@ -1,7 +1,5 @@
-/*	$NetBSD: nvmm_x86_vmxfunc.S,v 1.6 2020/09/05 07:22:26 maxv Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -35,7 +33,7 @@
 #define _C_LABEL(x)	x
 
 #define ASM_NVMM
-#include <dev/virtual/nvmm/x86/nvmm_x86.h>
+#include "nvmm_x86.h"
 
 	.text
 

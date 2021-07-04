@@ -1,7 +1,5 @@
-/*	$NetBSD: nvmm.c,v 1.43 2021/04/12 09:22:58 mrg Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -39,10 +37,10 @@
 #include <sys/module.h>
 #include <sys/thread.h>
 
-#include <dev/virtual/nvmm/nvmm_compat.h>
-#include <dev/virtual/nvmm/nvmm.h>
-#include <dev/virtual/nvmm/nvmm_internal.h>
-#include <dev/virtual/nvmm/nvmm_ioctl.h>
+#include "nvmm_compat.h"
+#include "nvmm.h"
+#include "nvmm_internal.h"
+#include "nvmm_ioctl.h"
 
 MALLOC_DEFINE(M_NVMM, "nvmm", "NVMM data");
 
@@ -272,7 +270,7 @@ nvmm_machine_create(struct nvmm_owner *owner,
 	/* Create the machine vmspace. */
 	mach->gpa_begin = 0;
 	mach->gpa_end = NVMM_MAX_RAM;
-	mach->vm = uvmspace_alloc(0, mach->gpa_end - mach->gpa_begin, false);
+	mach->vm = uvmspace_alloc(mach->gpa_begin, mach->gpa_end, false);
 
 #ifdef __DragonFly__
 	/*

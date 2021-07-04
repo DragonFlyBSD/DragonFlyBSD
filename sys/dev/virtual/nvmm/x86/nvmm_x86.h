@@ -1,7 +1,5 @@
-/*	$NetBSD: nvmm_x86.h,v 1.21 2021/03/26 15:59:53 reinoud Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -111,6 +109,7 @@ struct nvmm_x86_exit {
 		uint64_t rsvd:60;
 	} exitstate;
 };
+#define nvmm_vcpu_exit		nvmm_x86_exit
 
 #define NVMM_VCPU_EVENT_EXCP	0
 #define NVMM_VCPU_EVENT_INTR	1
@@ -124,6 +123,7 @@ struct nvmm_x86_event {
 		} excp;
 	} u;
 };
+#define nvmm_vcpu_event		nvmm_x86_event
 
 struct nvmm_cap_md {
 	uint64_t mach_conf_support;
@@ -138,7 +138,7 @@ struct nvmm_cap_md {
 	uint64_t rsvd[6];
 };
 
-#endif
+#endif /* ASM_NVMM */
 
 /* -------------------------------------------------------------------------- */
 
@@ -304,6 +304,7 @@ struct nvmm_x64_state {
 	struct nvmm_x64_state_intr intr;
 	struct nvmm_x64_state_fpu fpu;
 };
+#define nvmm_vcpu_state		nvmm_x64_state
 
 /* -------------------------------------------------------------------------- */
 
@@ -342,10 +343,6 @@ struct nvmm_vcpu_conf_tpr {
 	uint32_t exit_changed:1;
 	uint32_t rsvd:31;
 };
-
-#define nvmm_vcpu_exit		nvmm_x86_exit
-#define nvmm_vcpu_event		nvmm_x86_event
-#define nvmm_vcpu_state		nvmm_x64_state
 
 /* -------------------------------------------------------------------------- */
 

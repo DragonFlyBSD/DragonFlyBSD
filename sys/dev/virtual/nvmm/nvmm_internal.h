@@ -1,7 +1,5 @@
-/*	$NetBSD: nvmm_internal.h,v 1.20 2021/03/26 15:59:53 reinoud Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.

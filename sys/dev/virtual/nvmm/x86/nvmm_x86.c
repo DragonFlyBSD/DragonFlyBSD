@@ -1,7 +1,5 @@
-/*	$NetBSD: nvmm_x86.c,v 1.21 2020/09/08 16:58:38 maxv Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -28,10 +26,10 @@
  * SUCH DAMAGE.
  */
 
-#include <dev/virtual/nvmm/nvmm_compat.h>
-#include <dev/virtual/nvmm/nvmm.h>
-#include <dev/virtual/nvmm/nvmm_internal.h>
-#include <dev/virtual/nvmm/x86/nvmm_x86.h>
+#include "../nvmm_compat.h"
+#include "../nvmm.h"
+#include "../nvmm_internal.h"
+#include "nvmm_x86.h"
 
 /*
  * Code shared between x86-SVM and x86-VMX.

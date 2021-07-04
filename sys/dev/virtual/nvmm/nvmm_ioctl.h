@@ -1,7 +1,5 @@
-/*	$NetBSD: nvmm_ioctl.h,v 1.12 2020/09/08 16:58:38 maxv Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
