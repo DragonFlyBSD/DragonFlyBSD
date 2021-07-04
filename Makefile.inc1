@@ -109,10 +109,12 @@ WORLD_CCVER?=		gcc80
 WORLD_LDVER?=		ld.bfd
 WORLD_BINUTILSVER?=	binutils234
 
+.if !defined(NO_BACKUP)
 # Set the backup parameters if they are not already defined
 #
 WORLD_BACKUP?=		/var/backups/world_backup
 AUTO_BACKUP?=		${OBJTREE}/world_backup/${DESTDIR}
+.endif
 
 TARGET_ARCH?=	${MACHINE_ARCH}
 .if ${TARGET_ARCH} == ${MACHINE_ARCH}
@@ -526,12 +528,13 @@ installcheck: _iwinit
 # Installs everything compiled by a 'buildworld'.
 #
 installworld: installcheck
+.if !defined(NO_BACKUP)
 	-@mkdir -p ${AUTO_BACKUP} > /dev/null 2>&1
 	@cd ${.CURDIR}; \
 	    (touch ${AUTO_BACKUP}/.updating > /dev/null 2>&1 && \
 	     ${IMAKE} backupworld-auto) || \
 	    echo "Cannot write to ${AUTO_BACKUP} - world not backed up"
-
+.endif
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc \
 	    ${DESTDIR}/etc/upgrade/
@@ -1168,6 +1171,7 @@ xmake:
 xmakeenv:
 	@echo '${XMAKEENV} /bin/sh'
 
+.if !defined(NO_BACKUP)
 backupworld: backup-clean
 	@mkdir -p ${WORLD_BACKUP}
 .if (exists(${DESTDIR}/sbin) && exists(${DESTDIR}/bin) && \
@@ -1179,7 +1183,6 @@ backupworld: backup-clean
 .endif
 
 backupworld-auto:
-.if !defined(NO_BACKUP)
 	rm -f ${AUTO_BACKUP}/binaries.tar.gz
 	@mkdir -p ${AUTO_BACKUP}
 .if (exists(${DESTDIR}/sbin) && exists(${DESTDIR}/bin) && \
@@ -1188,7 +1191,6 @@ backupworld-auto:
 	/usr/bin/tar -czf ${AUTO_BACKUP}/binaries.tar.gz -C ${DESTDIR}/ \
 		--options gzip:compression-level=1 \
 		sbin bin usr/sbin usr/bin usr/lib usr/libexec
-.endif
 .endif
 
 backup-auto-clean:
@@ -1217,6 +1219,7 @@ restoreworld-auto:
 		${DESTDIR}/usr/sbin ${DESTDIR}/usr/bin \
 		${DESTDIR}/usr/lib ${DESTDIR}/usr/libexec
 	tar -xzf ${AUTO_BACKUP}/binaries.tar.gz -C ${DESTDIR}/
+.endif
 .endif
 
 # Take advantage of bmake error response
