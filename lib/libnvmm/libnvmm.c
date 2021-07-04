@@ -40,12 +40,15 @@
 #include <errno.h>
 
 #include "nvmm.h"
-#include "nvmm_compat.h"
 
 static struct nvmm_capability __capability;
 
 #ifdef __x86_64__
 #include "libnvmm_x86.c"
+#endif
+
+#ifdef __DragonFly__
+#define LIST_FOREACH_SAFE	LIST_FOREACH_MUTABLE
 #endif
 
 typedef struct __area {

@@ -34,8 +34,14 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include <sys/bitops.h>
 #include <machine/psl.h>
 #include <machine/specialreg.h>
+
+#define MIN(X, Y)		(((X) < (Y)) ? (X) : (Y))
+#define __cacheline_aligned	__attribute__((__aligned__(64)))
+#undef __BIT
+#define __BIT(__n)		(((__n) == 64) ? 0 : ((uint64_t)1 << (__n)))
 
 /* -------------------------------------------------------------------------- */
 
@@ -90,6 +96,39 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 	return 0;
 }
+
+/* -------------------------------------------------------------------------- */
+
+/*
+ * x86 page size.
+ */
+#define PAGE_SIZE	0x1000
+#define PAGE_MASK	(PAGE_SIZE - 1)
+
+/*
+ * x86 PTE/PDE bits.
+ */
+#define PTE_P		0x0000000000000001	/* Present */
+#define PTE_W		0x0000000000000002	/* Write */
+#define PTE_U		0x0000000000000004	/* User */
+#define PTE_PWT		0x0000000000000008	/* Write-Through */
+#define PTE_PCD		0x0000000000000010	/* Cache-Disable */
+#define PTE_A		0x0000000000000020	/* Accessed */
+#define PTE_D		0x0000000000000040	/* Dirty */
+#define PTE_PAT		0x0000000000000080	/* PAT on 4KB Pages */
+#define PTE_PS		0x0000000000000080	/* Large Page Size */
+#define PTE_G		0x0000000000000100	/* Global Translation */
+#define PTE_AVL1	0x0000000000000200	/* Ignored by Hardware */
+#define PTE_AVL2	0x0000000000000400	/* Ignored by Hardware */
+#define PTE_AVL3	0x0000000000000800	/* Ignored by Hardware */
+#define PTE_LGPAT	0x0000000000001000	/* PAT on Large Pages */
+#define PTE_NX		0x8000000000000000	/* No Execute */
+
+#define PTE_4KFRAME	0x000ffffffffff000
+#define PTE_2MFRAME	0x000fffffffe00000
+#define PTE_1GFRAME	0x000fffffc0000000
+
+#define PTE_FRAME	PTE_4KFRAME
 
 /* -------------------------------------------------------------------------- */
 
