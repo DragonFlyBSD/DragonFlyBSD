@@ -1,7 +1,5 @@
-/*	$NetBSD: libnvmm.c,v 1.20 2021/04/06 08:40:17 reinoud Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -65,8 +63,7 @@ static int nvmm_fd = -1;
 /* -------------------------------------------------------------------------- */
 
 static bool
-__area_isvalid(struct nvmm_machine *mach, uintptr_t hva __unused, gpaddr_t gpa,
-    size_t size)
+__area_isvalid(struct nvmm_machine *mach, gpaddr_t gpa, size_t size)
 {
 	area_list_t *areas = mach->areas;
 	area_t *ent;
@@ -104,7 +101,7 @@ __area_add(struct nvmm_machine *mach, uintptr_t hva, gpaddr_t gpa, size_t size,
 	if (prot & PROT_EXEC)
 		nprot |= NVMM_PROT_EXEC;
 
-	if (!__area_isvalid(mach, hva, gpa, size)) {
+	if (!__area_isvalid(mach, gpa, size)) {
 		errno = EINVAL;
 		return -1;
 	}

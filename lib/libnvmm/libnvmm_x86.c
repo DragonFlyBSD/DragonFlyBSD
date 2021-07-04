@@ -1,7 +1,5 @@
-/*	$NetBSD: libnvmm_x86.c,v 1.43 2020/12/27 20:56:14 reinoud Exp $	*/
-
 /*
- * Copyright (c) 2018-2020 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -28,10 +26,7 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,7 +58,7 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	if (ret == -1)
 		return -1;
 
-	printf("+ VCPU id=%d\n", (int)vcpu->cpuid);
+	printf("+ VCPU id=%u\n", vcpu->cpuid);
 	printf("| -> RAX=%"PRIx64"\n", state->gprs[NVMM_X64_GPR_RAX]);
 	printf("| -> RCX=%"PRIx64"\n", state->gprs[NVMM_X64_GPR_RCX]);
 	printf("| -> RDX=%"PRIx64"\n", state->gprs[NVMM_X64_GPR_RDX]);
@@ -73,7 +68,7 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	printf("| -> RSI=%"PRIx64"\n", state->gprs[NVMM_X64_GPR_RSI]);
 	printf("| -> RDI=%"PRIx64"\n", state->gprs[NVMM_X64_GPR_RDI]);
 	printf("| -> RIP=%"PRIx64"\n", state->gprs[NVMM_X64_GPR_RIP]);
-	printf("| -> RFLAGS=%p\n", (void *)state->gprs[NVMM_X64_GPR_RFLAGS]);
+	printf("| -> RFLAGS=%"PRIx64"\n", state->gprs[NVMM_X64_GPR_RFLAGS]);
 	for (i = 0; i < NVMM_X64_NSEG; i++) {
 		attr = (uint16_t *)&state->segs[i].attrib;
 		printf("| -> %s: sel=0x%x base=%"PRIx64", limit=%x, "
@@ -110,7 +105,7 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 #define pte32_l1idx(va)	(((va) & PTE32_L1_MASK) >> PTE32_L1_SHIFT)
 #define pte32_l2idx(va)	(((va) & PTE32_L2_MASK) >> PTE32_L2_SHIFT)
 
-#define CR3_FRAME_32BIT	__BITS(31, 12)
+#define CR3_FRAME_32BIT	0xfffff000
 
 typedef uint32_t pte_32bit_t;
 
@@ -183,7 +178,7 @@ x86_gva_to_gpa_32bit(struct nvmm_machine *mach, uint64_t cr3,
 #define pte32_pae_l2idx(va)	(((va) & PTE32_PAE_L2_MASK) >> PTE32_PAE_L2_SHIFT)
 #define pte32_pae_l3idx(va)	(((va) & PTE32_PAE_L3_MASK) >> PTE32_PAE_L3_SHIFT)
 
-#define CR3_FRAME_32BIT_PAE	__BITS(31, 5)
+#define CR3_FRAME_32BIT_PAE	0xffffffe0
 
 typedef uint64_t pte_32bit_pae_t;
 
@@ -275,7 +270,7 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, uint64_t cr3,
 #define pte64_l3idx(va)	(((va) & PTE64_L3_MASK) >> PTE64_L3_SHIFT)
 #define pte64_l4idx(va)	(((va) & PTE64_L4_MASK) >> PTE64_L4_SHIFT)
 
-#define CR3_FRAME_64BIT	__BITS(51, 12)
+#define CR3_FRAME_64BIT	0x000ffffffffff000
 
 typedef uint64_t pte_64bit_t;
 
@@ -2144,7 +2139,7 @@ node_sib(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 }
 
 static const struct x86_reg *
-get_register_reg(struct x86_instr *instr, const struct x86_opcode *opcode __unused)
+get_register_reg(struct x86_instr *instr)
 {
 	uint8_t enc = instr->regmodrm.reg;
 	const struct x86_reg *reg;
@@ -2161,7 +2156,7 @@ get_register_reg(struct x86_instr *instr, const struct x86_opcode *opcode __unus
 }
 
 static const struct x86_reg *
-get_register_rm(struct x86_instr *instr, const struct x86_opcode *opcode __unused)
+get_register_rm(struct x86_instr *instr)
 {
 	uint8_t enc = instr->regmodrm.rm;
 	const struct x86_reg *reg;
@@ -2294,7 +2289,7 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	}
 
 	if (!opcode->immediate) {
-		reg = get_register_reg(instr, opcode);
+		reg = get_register_reg(instr);
 		if (reg == NULL) {
 			return -1;
 		}
@@ -2344,7 +2339,7 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		return 0;
 	}
 
-	reg = get_register_rm(instr, opcode);
+	reg = get_register_rm(instr);
 	if (reg == NULL) {
 		return -1;
 	}
