@@ -57,7 +57,7 @@
 #define		dup2				_dup2
 #define		execve				_execve
 #define		fcntl				_fcntl
-/*#define		flock				_flock */
+/*#define		flock				_flock*/
 #define		flockfile			_flockfile
 #define		fstat				_fstat
 #define		fstatfs				_fstatfs
@@ -70,7 +70,7 @@
 #define		getsockname			_getsockname
 #define		getsockopt			_getsockopt
 #define		ioctl				_ioctl
-/* #define		kevent				_kevent */
+/*#define		kevent				_kevent*/
 #define		listen				_listen
 #define		nanosleep			_nanosleep
 #define		open				_open

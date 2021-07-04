@@ -38,7 +38,7 @@
 #undef		dup2
 #undef		execve
 #undef		fcntl
-#undef		flock
+/*#undef		flock*/
 #undef		flockfile
 #undef		fstat
 #undef		fstatfs
@@ -51,7 +51,7 @@
 #undef		getsockname
 #undef		getsockopt
 #undef		ioctl
-#undef		kevent
+/*#undef		kevent*/
 #undef		listen
 #undef		nanosleep
 #undef		open
@@ -208,7 +208,7 @@
 #undef		sendmsg
 #undef		sendto
 #undef		setsockopt
-#undef		sigaction
+/*#undef		sigaction*/
 #undef		sigprocmask
 #undef		sigsuspend
 #undef		socket
