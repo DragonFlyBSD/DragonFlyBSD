@@ -4707,13 +4707,13 @@ hammer2_chain_indkey_file(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	*keyp = key;
 
 	switch(ncount) {
-	case HAMMER2_IND_BYTES_MIN / sizeof(hammer2_blockref_t):
+	case HAMMER2_IND_COUNT_MIN:
 		nradix = HAMMER2_IND_RADIX_MIN - HAMMER2_BLOCKREF_RADIX;
 		break;
-	case HAMMER2_IND_BYTES_NOM / sizeof(hammer2_blockref_t):
+	case HAMMER2_IND_COUNT_NOM:
 		nradix = HAMMER2_IND_RADIX_NOM - HAMMER2_BLOCKREF_RADIX;
 		break;
-	case HAMMER2_IND_BYTES_MAX / sizeof(hammer2_blockref_t):
+	case HAMMER2_IND_COUNT_MAX:
 		nradix = HAMMER2_IND_RADIX_MAX - HAMMER2_BLOCKREF_RADIX;
 		break;
 	default:

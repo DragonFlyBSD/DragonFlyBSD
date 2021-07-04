@@ -115,6 +115,8 @@
 #define HAMMER2_IND_RADIX_MAX	HAMMER2_PBUFRADIX
 #define HAMMER2_IND_COUNT_MIN	(HAMMER2_IND_BYTES_MIN / \
 				 sizeof(hammer2_blockref_t))
+#define HAMMER2_IND_COUNT_NOM	(HAMMER2_IND_BYTES_NOM / \
+				 sizeof(hammer2_blockref_t))
 #define HAMMER2_IND_COUNT_MAX	(HAMMER2_IND_BYTES_MAX / \
 				 sizeof(hammer2_blockref_t))
 
