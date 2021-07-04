@@ -159,8 +159,6 @@ struct pagerops *pagertab[] = {
 	&deadpagerops		/* OBJT_DEAD */
 };
 
-int npagers = NELEM(pagertab);
-
 /*
  * Kernel address space for mapping pages.
  * Used by pagers where KVAs are needed for IO.
