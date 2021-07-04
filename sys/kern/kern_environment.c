@@ -57,9 +57,9 @@
 char		*kern_envp;		/* <sys/systm.h> */
 
 /* local variables */
-char		**kenv_dynp;
-int		kenv_isdynamic;
-struct spinlock	kenv_dynlock;
+static char		**kenv_dynp;
+static int		kenv_isdynamic;
+static struct spinlock	kenv_dynlock;
 
 /* constants */
 MALLOC_DEFINE(M_KENV, "kenv", "kernel environment dynamic storage");

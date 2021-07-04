@@ -55,7 +55,7 @@
 
 #include <vm/vm_zone.h>
 
-struct lock acct_lock = LOCK_INITIALIZER("acct_lock", 0, 0);
+static struct lock acct_lock = LOCK_INITIALIZER("acct_lock", 0, 0);
 
 /*
  * The routines implemented in this file are described in:
