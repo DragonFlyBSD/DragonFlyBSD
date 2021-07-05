@@ -1,5 +1,4 @@
 /* $OpenBSD: sensors.h,v 1.23 2007/03/22 16:55:31 deraadt Exp $ */
-/* $DragonFly: src/sys/sys/sensors.h,v 1.1 2007/10/02 12:57:01 hasso Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Alexander Yurchenko <grange@openbsd.org>
@@ -30,7 +29,7 @@
 #ifndef _SYS_SENSORS_H_
 #define _SYS_SENSORS_H_
 
-#define SENSORS_DEBUG
+#include <sys/types.h>
 
 /* Sensor types */
 enum sensor_type {
