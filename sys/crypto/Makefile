@@ -1,14 +1,14 @@
 # $FreeBSD: src/sys/modules/crypto/Makefile,v 1.6 2007/05/09 19:37:01 gnn Exp $
 
 .PATH:	${.CURDIR}/../opencrypto
-.PATH:	${.CURDIR}/../crypto
-.PATH:	${.CURDIR}/../crypto/blowfish
-.PATH:	${.CURDIR}/../crypto/des
-.PATH:	${.CURDIR}/../crypto/rijndael
-.PATH:	${.CURDIR}/../crypto/sha2
-.PATH:	${.CURDIR}/../crypto/camellia
-.PATH:	${.CURDIR}/../crypto/twofish
-.PATH:	${.CURDIR}/../crypto/serpent
+.PATH:	${.CURDIR}
+.PATH:	${.CURDIR}/blowfish
+.PATH:	${.CURDIR}/des
+.PATH:	${.CURDIR}/rijndael
+.PATH:	${.CURDIR}/sha2
+.PATH:	${.CURDIR}/camellia
+.PATH:	${.CURDIR}/twofish
+.PATH:	${.CURDIR}/serpent
 
 KMOD	= crypto
 SRCS	= crypto.c cryptodev_if.c gmac.c

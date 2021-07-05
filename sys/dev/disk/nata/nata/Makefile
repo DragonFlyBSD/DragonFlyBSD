@@ -1,4 +1,4 @@
-.PATH:	${.CURDIR}/../../../../dev/disk/nata
+.PATH:	${.CURDIR}/..
 
 KMOD=	nata
 SRCS=	ata-all.c ata-queue.c ata-lowlevel.c ata_if.c
