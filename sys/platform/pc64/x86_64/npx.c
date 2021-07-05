@@ -68,34 +68,36 @@
 #define	fnstcw(addr)		__asm __volatile("fnstcw %0" : "=m" (*(addr)))
 #define	fnstsw(addr)		__asm __volatile("fnstsw %0" : "=m" (*(addr)))
 #define	frstor(addr)		__asm("frstor %0" : : "m" (*(addr)))
-#define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
-#define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
+#define	fxrstor(addr)		__asm("fxrstor64 %0" : : "m" (*(addr)))
+#define	fxsave(addr)		__asm __volatile("fxsave64 %0" : "=m" (*(addr)))
 
 #ifndef CPU_DISABLE_AVX
 static inline void
 xrstor(const void *addr, uint64_t mask)
 {
+	const uint8_t *area = addr;
 	uint32_t low, high;
 
 	low = mask;
 	high = mask >> 32;
 
-	__asm __volatile(".byte 0x0f,0xae,0x2f"
+	__asm __volatile("xrstor64 %[area]"
 			 :
-			 : "D" (addr), "a" (low), "d" (high));
+			 : [area] "m" (*area), "a" (low), "d" (high));
 }
 
 static inline void
 xsave(void *addr, uint64_t mask)
 {
+	uint8_t *area = addr;
 	uint32_t low, high;
 
 	low = mask;
 	high = mask >> 32;
 
-	__asm __volatile(".byte 0x0f,0xae,0x27"
-			 :
-			 : "D" (addr), "a" (low), "d" (high)
+	__asm __volatile("xsave64 %[area]"
+			 : [area] "=m" (*area)
+			 : "a" (low), "d" (high)
 			 : "memory");
 }
 #endif /* !CPU_DISABLE_AVX */
