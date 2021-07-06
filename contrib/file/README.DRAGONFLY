@@ -1,18 +1,18 @@
-FILE 5.39
+FILE 5.40
 =========
 
-This directory contains a selected set of files from file 5.39.
+This directory contains a selected set of files from file 5.40
 
 Original source can be downloaded from:
 http://ftp.astron.com/pub/file/
 
-file = file-5.39.tar.gz
-date = 15 Jun 2020
-size = 954266
-sha1 = a5a8941a8e4c436fe22933db6a71c5161c3fb10b
+file = file-5.40.tar.gz
+date = 31 Mar 2021
+size = 1004214
+sha1 = 8a5d51c59cf090f09b00c2d75e50a194ee43250e
 
 A list of the omitted files and directories can be found in
 README.DELETED.
 
 This is used in lib/libmagic and usr.bin/file.  When upgrading, remember
-to update config.h in lib/libmagic.
+to update config.h in lib/libmagic/libmagic.
