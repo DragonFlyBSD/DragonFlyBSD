@@ -489,7 +489,7 @@ main(int argc, char **argv)
 	}
 
 	if (pipe2(signalpipe, O_CLOEXEC) != 0) {
-		syslog(LOG_ERR, "pipe: %m");
+		syslog(LOG_ERR, "pipe2 (O_CLOEXEC): %m");
 		exit(EX_OSERR);
 	}
 	FD_SET(signalpipe[0], &allsock);
