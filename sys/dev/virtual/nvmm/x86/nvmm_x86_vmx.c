@@ -2247,6 +2247,7 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	uint64_t intstate;
 	uint64_t machgen;
 	int hcpu, ret;
+	int error = 0;
 	bool launched;
 
 	vmx_vmcs_enter(vcpu);
@@ -2254,10 +2255,12 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	vmx_vcpu_state_commit(vcpu);
 	comm->state_cached = 0;
 
+#ifndef __DragonFly__
 	if (__predict_false(vmx_vcpu_event_commit(vcpu) != 0)) {
 		vmx_vmcs_leave(vcpu);
 		return EINVAL;
 	}
+#endif
 
 	hcpu = os_curcpu_number();
 	launched = cpudata->vmcs_launched;
@@ -2306,7 +2309,13 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 #ifdef __DragonFly__
 		/*
 		 * Check for pending host events (e.g., interrupt, AST)
-		 * to make the state safe to VM Entry.
+		 * to make the state safe to VM Entry.  This check must
+		 * be done after the cli to avoid gd_reqflags pending
+		 * races.
+		 *
+		 * QEMU may assume that event injection succeeds, but we
+		 * have to return to process these events.  To deal with
+		 * this, use ERESTART mechanics.
 		 */
 		if (__predict_false(mycpu->gd_reqflags & RQF_HVM_MASK)) {
 			/* INVEPT executed, so ack hTLB flush. */
@@ -2314,6 +2323,21 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			vmx_vcpu_guest_fpu_leave(vcpu);
 			vmx_sti();
 			exit->reason = NVMM_VCPU_EXIT_NONE;
+			error = ERESTART;
+			break;
+		}
+
+		/*
+		 * Only commit event requests when we are absolutely
+		 * sure that we can issue the vmlaunch/vmresume.
+		 */
+		if (__predict_false(vmx_vcpu_event_commit(vcpu) != 0)) {
+			/* INVEPT executed, so ack hTLB flush. */
+			vmx_htlb_flush_ack(cpudata, machgen);
+			vmx_vcpu_guest_fpu_leave(vcpu);
+			vmx_sti();
+			exit->reason = NVMM_VCPU_EXIT_NONE;
+			error = EINVAL;
 			break;
 		}
 #endif
@@ -2435,7 +2459,7 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 	vmx_vmcs_leave(vcpu);
 
-	return 0;
+	return error;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -1531,13 +1531,16 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t machgen;
 	int hcpu;
+	int error = 0;
 
 	svm_vcpu_state_commit(vcpu);
 	comm->state_cached = 0;
 
+#ifndef __DragonFly__
 	if (__predict_false(svm_vcpu_event_commit(vcpu) != 0)) {
 		return EINVAL;
 	}
+#endif
 
 	os_preempt_disable();
 	hcpu = os_curcpu_number();
@@ -1583,13 +1586,34 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 #ifdef __DragonFly__
 		/*
 		 * Check for pending host events (e.g., interrupt, AST)
-		 * to make the state safe to VM Entry.
+		 * to make the state safe to VM Entry.  This check must
+		 * be done after the clgi to avoid gd_reqflags pending
+		 * races.
+		 *
+		 * QEMU may assume that event injection succeeds, but we
+		 * have to return to process these events.  To deal with
+		 * this, use ERESTART mechanics.
 		 */
 		if (__predict_false(mycpu->gd_reqflags & RQF_HVM_MASK)) {
 			/* No hTLB flush ack, because it's not executed. */
 			svm_vcpu_guest_fpu_leave(vcpu);
 			svm_stgi();
 			exit->reason = NVMM_VCPU_EXIT_NONE;
+			error = ERESTART;
+			break;
+		}
+
+		/*
+		 * Don't try to inject an event until we are absolutely
+		 * sure that the vmrun will be executed, otherwise we
+		 * might overwrite/miss an event.
+		 */
+		if (__predict_false(svm_vcpu_event_commit(vcpu) != 0)) {
+			/* No hTLB flush ack, because it's not executed. */
+			svm_vcpu_guest_fpu_leave(vcpu);
+			svm_stgi();
+			exit->reason = NVMM_VCPU_EXIT_NONE;
+			error = EINVAL;
 			break;
 		}
 #endif
@@ -1696,7 +1720,7 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->exitstate.nmi_window_exiting = cpudata->nmi_window_exit;
 	exit->exitstate.evt_pending = cpudata->evt_pending;
 
-	return 0;
+	return error;
 }
 
 /* -------------------------------------------------------------------------- */
