@@ -28,6 +28,7 @@ install:
 .for inc in ${INCS}
 ${inc}: ${inc}.in
 	sed -e 's,X.YY,${VER:S,",,g:S,.,,g},g' ${.ALLSRC} > ${.TARGET}
+CLEANFILES+=	${inc}
 .endfor
 
 .include <bsd.hostprog.mk>
