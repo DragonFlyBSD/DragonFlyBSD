@@ -244,8 +244,8 @@ void	npxprobemask (void);
 void	npxexit (void);
 void	npxinit (void);
 void	npxsave (union savefpu *addr);
-void	fpusave (union savefpu *addr);
-void	fpurstor (union savefpu *addr);
+void	fpusave (union savefpu *addr, uint64_t mask);
+void	fpurstor (union savefpu *addr, uint64_t mask);
 #endif
 
 #endif /* !_CPU_NPX_H_ */

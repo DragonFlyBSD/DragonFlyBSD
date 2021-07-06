@@ -154,7 +154,7 @@ void npxinit(void)
 	stop_emulating();
 	fldcw(&control);
 	ldmxcsr(mxcsr);
-	fpusave(curthread->td_savefpu);
+	fpusave(curthread->td_savefpu, npx_xcr0_mask);
 	mdcpu->gd_npxthread = NULL;
 	start_emulating();
 	crit_exit();
@@ -423,7 +423,7 @@ npxdna(void)
 		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= npx_mxcsr_mask;
 		lwpsignal(td->td_proc, td->td_lwp, SIGFPE);
 	}
-	fpurstor(td->td_savefpu);
+	fpurstor(td->td_savefpu, npx_xcr0_mask);
 	crit_exit();
 
 	return (1);
@@ -448,7 +448,7 @@ npxdna_quick(thread_t newtd)
 		newtd->td_savefpu->sv_xmm.sv_env.en_mxcsr &= npx_mxcsr_mask;
 		lwpsignal(newtd->td_proc, newtd->td_lwp, SIGFPE);
 	}
-	fpurstor(newtd->td_savefpu);
+	fpurstor(newtd->td_savefpu, npx_xcr0_mask);
 }
 
 /*
@@ -479,20 +479,20 @@ npxsave(union savefpu *addr)
 	md = mdcpu;
 	crit_enter();
 	stop_emulating();
-	fpusave(addr);
+	fpusave(addr, npx_xcr0_mask);
 	md->gd_npxthread = NULL;
 	fninit();
-	fpurstor(&md->gd_zerofpu);	/* security wipe */
+	fpurstor(&md->gd_zerofpu, npx_xcr0_mask);	/* security wipe */
 	start_emulating();
 	crit_exit();
 }
 
 void
-fpusave(union savefpu *addr)
+fpusave(union savefpu *addr, uint64_t mask)
 {
 #ifndef CPU_DISABLE_AVX
 	if (cpu_xsave)
-		xsave(addr, npx_xcr0_mask);
+		xsave(addr, mask);
 	else
 #endif
 	if (cpu_fxsr)
@@ -633,11 +633,11 @@ fpu_clean_state(void)
 }
 
 void
-fpurstor(union savefpu *addr)
+fpurstor(union savefpu *addr, uint64_t mask)
 {
 #ifndef CPU_DISABLE_AVX
 	if (cpu_xsave)
-		xrstor(addr, npx_xcr0_mask);
+		xrstor(addr, mask);
 	else
 #endif
 	if (cpu_fxsr) {

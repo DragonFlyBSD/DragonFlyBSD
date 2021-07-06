@@ -145,7 +145,7 @@ void npxinit(void)
 	/*stop_emulating();*/
 	fldcw(&control);
 	ldmxcsr(mxcsr);
-	fpusave(curthread->td_savefpu);
+	fpusave(curthread->td_savefpu, 0);
 	mdcpu->gd_npxthread = NULL;
 	/*start_emulating();*/
 	crit_exit();
@@ -397,7 +397,7 @@ npxdna(struct trapframe *frame)
 		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
 		lwpsignal(curproc, curthread->td_lwp, SIGFPE);
 	}
-	fpurstor(curthread->td_savefpu);
+	fpurstor(curthread->td_savefpu, 0);
 	crit_exit();
 
 	return (1);
@@ -428,7 +428,7 @@ npxsave(union savefpu *addr)
 {
 	crit_enter();
 	/*stop_emulating();*/
-	fpusave(addr);
+	fpusave(addr, 0);
 	mdcpu->gd_npxthread = NULL;
 	fninit();
 	/*start_emulating();*/
@@ -436,7 +436,7 @@ npxsave(union savefpu *addr)
 }
 
 void
-fpusave(union savefpu *addr)
+fpusave(union savefpu *addr, uint64_t mask __unused)
 {
 	if (cpu_fxsr)
 		fxsave(addr);
@@ -562,7 +562,7 @@ fpu_clean_state(void)
 }
 
 void
-fpurstor(union savefpu *addr)
+fpurstor(union savefpu *addr, uint64_t mask __unused)
 {
 	if (cpu_fxsr) {
 		fpu_clean_state();
