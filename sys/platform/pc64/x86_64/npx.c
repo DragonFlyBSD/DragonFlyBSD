@@ -614,7 +614,6 @@ npxpop(mcontext_t *mctx)
 static void
 fpu_clean_state(void)
 {
-	static double dummy_variable = 0.0;
 	u_short status;
 
 	/*
@@ -630,7 +629,7 @@ fpu_clean_state(void)
 	 * the x87 stack, but we don't care since we're about to call
 	 * fxrstor() anyway.
 	 */
-	__asm __volatile("ffree %%st(7); flds %0" : : "m" (dummy_variable));
+	__asm __volatile("ffree %%st(7); fldz");
 }
 
 void

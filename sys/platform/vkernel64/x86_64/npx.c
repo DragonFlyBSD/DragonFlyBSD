@@ -540,7 +540,6 @@ npxpop(mcontext_t *mctx)
  * In order to avoid leaking this information across processes, we clean
  * these values by performing a dummy load before executing fxrstor().
  */
-static	double	dummy_variable = 0.0;
 static void
 fpu_clean_state(void)
 {
@@ -559,7 +558,7 @@ fpu_clean_state(void)
 	 * the x87 stack, but we don't care since we're about to call
 	 * fxrstor() anyway.
 	 */
-	__asm __volatile("ffree %%st(7); fldl %0" : : "m" (dummy_variable));
+	__asm __volatile("ffree %%st(7); fldz");
 }
 
 void
