@@ -436,8 +436,6 @@ typedef uint32_t hammer2_crc32_t;
 #define HAMMER2_TID_MAX		0xFFFFFFFFFFFFFFFFULL
 #define HAMMER2_KEY_MIN		0ULL
 #define HAMMER2_KEY_MAX		0xFFFFFFFFFFFFFFFFULL
-#define HAMMER2_OFFSET_MIN	0ULL
-#define HAMMER2_OFFSET_MAX	0xFFFFFFFFFFFFFFFFULL
 
 /*
  * HAMMER2 data offset special cases and masking.
