@@ -28,7 +28,7 @@
 .\"     @(#)mknod.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/mknod.2,v 1.18 2008/04/16 13:03:12 kib Exp $
 .\"
-.Dd August 6, 2010
+.Dd July 7, 2021
 .Dt MKNOD 2
 .Os
 .Sh NAME
@@ -52,6 +52,17 @@ The access permissions are modified by the process's umask value.
 .Pp
 If
 .Fa mode
+is
+.Dv S_IFIFO ,
+.Fn mknod
+and
+.Fn mknodat
+are equivalent to
+.Fn mkfifo
+and
+.Fn mkfifoat .
+If
+.Fa mode
 indicates a block or character special file,
 .Fa dev
 is a configuration dependent specification denoting a particular device
@@ -63,7 +74,10 @@ is ignored.
 The
 .Fn mknod
 system call
-requires super-user privileges.
+requires super-user privileges except when creating a new fifo.
+See
+.Xr mkfifo 2
+for more information.
 .Pp
 The
 .Fn mknodat
@@ -175,7 +189,7 @@ system call follows The Open Group Extended API Set 2 specification.
 The
 .Fn mknod
 function appeared in
-.At v6 .
+.At v4 .
 The
 .Fn mknodat
 system call appeared in

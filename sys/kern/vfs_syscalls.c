@@ -2262,6 +2262,9 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_DIR, 0);
 		vattr.va_type = VDIR;
 		break;
+	case S_IFIFO:
+		return (kern_mkfifo(nd, mode));
+		break;
 	default:
 		error = EINVAL;
 		break;
