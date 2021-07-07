@@ -69,32 +69,29 @@
 #define	frstor(addr)		__asm("frstor %0" : : "m" (*(addr)))
 #define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
 #define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
+#define	ldmxcsr(csr)		__asm __volatile("ldmxcsr %0" : : "m" (csr))
 
-typedef u_char bool_t;
 static	void	fpu_clean_state(void);
-#define ldmxcsr(csr)            __asm __volatile("ldmxcsr %0" : : "m" (csr))
-
-int cpu_fxsr = 0;
+/*static	int	npx_attach	(device_t dev);*/
 
 static struct krate badfprate = { 1 };
 
-/*static	int	npx_attach	(device_t dev);*/
-
+int cpu_fxsr = 0;
 uint32_t npx_mxcsr_mask = 0xFFBF;
 
 int mmxopt = 1;
 SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
 	"MMX/XMM optimized bcopy/copyin/copyout support");
 
-static int      hw_instruction_sse;
+static int hw_instruction_sse;
 SYSCTL_INT(_hw, OID_AUTO, instruction_sse, CTLFLAG_RD,
-    &hw_instruction_sse, 0, "SIMD/MMX2 instructions available in CPU");
+	&hw_instruction_sse, 0, "SIMD/MMX2 instructions available in CPU");
 
 #if 0
 /*
  * Attach routine - announce which it is, and wire into system
  */
-int
+static int
 npx_attach(device_t dev)
 {
 	npxinit();
@@ -114,15 +111,15 @@ init_fpu(int supports_sse)
  */
 void npxprobemask(void)
 {
-        /*64-Byte alignment required for xsave*/
-        static union savefpu dummy __aligned(64);
+	/*64-Byte alignment required for xsave*/
+	static union savefpu dummy __aligned(64);
 
-        crit_enter();
+	crit_enter();
 	/*stop_emulating();*/
-        fxsave(&dummy);
-        npx_mxcsr_mask = ((uint32_t *)&dummy)[7];
+	fxsave(&dummy);
+	npx_mxcsr_mask = ((uint32_t *)&dummy)[7];
 	/*stop_emulating();*/
-        crit_exit();
+	crit_exit();
 }
 
 
@@ -350,7 +347,7 @@ npxdna(struct trapframe *frame)
 
 	if (mdcpu->gd_npxthread != NULL) {
 		kprintf("npxdna: npxthread = %p, curthread = %p\n",
-		       mdcpu->gd_npxthread, td);
+			mdcpu->gd_npxthread, td);
 		panic("npxdna");
 	}
 
@@ -392,7 +389,7 @@ npxdna(struct trapframe *frame)
 	 */
 	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) && cpu_fxsr) {
 		krateprintf(&badfprate,
-			    "FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
+			    "FXRSTOR: illegal FP MXCSR %08x didinit = %d\n",
 			    td->td_savefpu->sv_xmm.sv_env.en_mxcsr, didinit);
 		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
 		lwpsignal(curproc, curthread->td_lwp, SIGFPE);

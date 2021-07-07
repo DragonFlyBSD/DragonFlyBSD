@@ -70,6 +70,10 @@
 #define	frstor(addr)		__asm("frstor %0" : : "m" (*(addr)))
 #define	fxrstor(addr)		__asm("fxrstor64 %0" : : "m" (*(addr)))
 #define	fxsave(addr)		__asm __volatile("fxsave64 %0" : "=m" (*(addr)))
+#define	ldmxcsr(csr)		__asm __volatile("ldmxcsr %0" : : "m" (csr))
+#define	start_emulating()	__asm("smsw %%ax; orb %0,%%al; lmsw %%ax" \
+				      : : "n" (CR0_TS) : "ax")
+#define	stop_emulating()	__asm("clts")
 
 #ifndef CPU_DISABLE_AVX
 static inline void
@@ -102,13 +106,7 @@ xsave(void *addr, uint64_t mask)
 }
 #endif /* !CPU_DISABLE_AVX */
 
-#define start_emulating()       __asm("smsw %%ax; orb %0,%%al; lmsw %%ax" \
-				      : : "n" (CR0_TS) : "ax")
-#define stop_emulating()        __asm("clts")
-
-typedef u_char bool_t;
 static	void	fpu_clean_state(void);
-#define ldmxcsr(csr)            __asm __volatile("ldmxcsr %0" : : "m" (csr))
 
 static struct krate badfprate = { 1 };
 
@@ -419,7 +417,7 @@ npxdna(void)
 	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask) &&
 	    cpu_fxsr) {
 		krateprintf(&badfprate,
-			    "%s: FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
+			    "%s: FXRSTOR: illegal FP MXCSR %08x didinit = %d\n",
 			    td->td_comm, td->td_savefpu->sv_xmm.sv_env.en_mxcsr,
 			    didinit);
 		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= npx_mxcsr_mask;
@@ -444,7 +442,7 @@ npxdna_quick(thread_t newtd)
 	if ((newtd->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask) &&
 	    cpu_fxsr) {
 		krateprintf(&badfprate,
-			    "%s: FXRSTR: illegal FP MXCSR %08x\n",
+			    "%s: FXRSTOR: illegal FP MXCSR %08x\n",
 			    newtd->td_comm,
 			    newtd->td_savefpu->sv_xmm.sv_env.en_mxcsr);
 		newtd->td_savefpu->sv_xmm.sv_env.en_mxcsr &= npx_mxcsr_mask;
