@@ -54,12 +54,12 @@ case "${snap_enable}" in
 		fi
 		_df=$(df ${dir} | grep -oE "[0-9]+%")
 		_pcnt=${_df%%%}
-		if [ ${_pcnt} -gt ${snap_capacity} ]; then
-			echo "omitted, not enough free space"
-			continue
+		if [ ${_pcnt} -le ${snap_capacity} ]; then
+			hammer2 snapshot ${dir} ${dir}.${snap_tag}.$(date +%Y%m%d.%H:%M) \
+				|| rc=1
+		else
+			echo "snapshot creation omitted, not enough free space"
 		fi
-		hammer2 snapshot ${dir} ${dir}.${snap_tag}.$(date +%Y%m%d.%H:%M) \
-			|| rc=1
 		_keep=${snap_keep}
 		if [ "${_keep}" = "auto" ]; then
 			# adjust number of snapshots dynamically, according to free space
