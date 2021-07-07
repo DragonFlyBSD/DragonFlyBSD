@@ -631,7 +631,7 @@ fpu_clean_state(void)
 	 * the x87 stack, but we don't care since we're about to call
 	 * fxrstor() anyway.
 	 */
-	__asm __volatile("ffree %%st(7); fldz");
+	__asm __volatile("ffree %st(7); fldz");
 }
 
 void
