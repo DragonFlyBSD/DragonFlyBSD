@@ -58,7 +58,7 @@ typedef void (*get_t)(void);
 static get_t get_ident, get_machine, get_hostname, get_arch;
 static get_t get_release, get_sysname, get_version, get_pkgabi;
 static get_t get_kernvers, get_uservers;
-  
+
 static void native_ident(void);
 static void native_machine(void);
 static void native_hostname(void);
@@ -328,6 +328,6 @@ native_uservers(void)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: uname [-aimnprsv]\n");
+	fprintf(stderr, "usage: uname [-aiKmnprsUvP]\n");
 	exit(1);
 }
