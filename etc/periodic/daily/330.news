@@ -18,9 +18,7 @@ case "$daily_news_expire_enable" in
     [Yy][Ee][Ss])
 	if [ ! -f /etc/news.expire ]
 	then
-	    echo '$daily_news_expire_enable is set but /etc/news.expire' \
-		"doesn't exist"
-	    rc=2
+	    rc=0	# nothing to do
 	else
 	    echo ""
 	    echo "Running news.expire:"

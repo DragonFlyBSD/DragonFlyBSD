@@ -15,9 +15,7 @@ case "$daily_accounting_enable" in
     [Yy][Ee][Ss])
 	if [ ! -f /var/account/acct ]
 	then
-	    echo '$daily_accounting_enable is set but /var/account/acct' \
-		"doesn't exist"
-	    rc=2
+	    rc=0	# nothing to do
 	elif [ -z "$daily_accounting_save" ]
 	then
 	    echo '$daily_accounting_enable is set but ' \
