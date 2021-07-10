@@ -30,9 +30,6 @@ do
 		echo "Running $script:"
 
 		sh $script || rc=3
-	    else
-		echo "$script: No such file"
-		[ $rc -lt 2 ] && rc=2
 	    fi;;
 	*)
 	    echo "$script: Not an absolute path"
