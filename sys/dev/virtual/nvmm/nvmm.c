@@ -37,10 +37,6 @@
 #include "nvmm_internal.h"
 #include "nvmm_ioctl.h"
 
-#if defined(__DragonFly__)
-MALLOC_DEFINE(M_NVMM, "nvmm", "NVMM data");
-#endif
-
 static struct nvmm_machine machines[NVMM_MAX_MACHINES];
 static volatile unsigned int nmachines __cacheline_aligned;
 
