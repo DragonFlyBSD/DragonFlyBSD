@@ -2995,7 +2995,7 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmx_vmwrite(VMCS_CR4_SHADOW, 0);
 
 	/* Set the Host state for resuming. */
-	vmx_vmwrite(VMCS_HOST_RIP, (uint64_t)vmx_resume_rip);
+	vmx_vmwrite(VMCS_HOST_RIP, (uint64_t)(uintptr_t)vmx_resume_rip);
 	vmx_vmwrite(VMCS_HOST_CS_SELECTOR, GSEL(GCODE_SEL, SEL_KPL));
 	vmx_vmwrite(VMCS_HOST_SS_SELECTOR, GSEL(GDATA_SEL, SEL_KPL));
 	vmx_vmwrite(VMCS_HOST_DS_SELECTOR, GSEL(GDATA_SEL, SEL_KPL));
