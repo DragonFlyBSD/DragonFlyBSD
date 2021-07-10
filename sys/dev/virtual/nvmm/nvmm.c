@@ -651,6 +651,8 @@ nvmm_hmapping_validate(struct nvmm_machine *mach, uintptr_t hva, size_t size)
 {
 	struct nvmm_hmapping *hmapping;
 	size_t i;
+	uintptr_t hva_end;
+	uintptr_t hmap_end;
 
 	if ((hva % PAGE_SIZE) != 0 || (size % PAGE_SIZE) != 0) {
 		return EINVAL;
@@ -659,29 +661,33 @@ nvmm_hmapping_validate(struct nvmm_machine *mach, uintptr_t hva, size_t size)
 		return EINVAL;
 	}
 
+	/*
+	 * Overflow tests MUST be done very carefully to avoid compiler
+	 * optimizations from effectively deleting the test.
+	 */
+	hva_end = hva + size;
+	if (hva_end <= hva)
+		return EINVAL;
+
+	/*
+	 * Overlap tests
+	 */
 	for (i = 0; i < NVMM_MAX_HMAPPINGS; i++) {
 		hmapping = &mach->hmap[i];
+
 		if (!hmapping->present) {
 			continue;
 		}
+		hmap_end = hmapping->hva + hmapping->size;
 
-		if (hva >= hmapping->hva &&
-		    hva + size <= hmapping->hva + hmapping->size) {
+		if (hva >= hmapping->hva && hva_end <= hmap_end)
 			break;
-		}
-
-		if (hva >= hmapping->hva &&
-		    hva < hmapping->hva + hmapping->size) {
+		if (hva >= hmapping->hva && hva < hmap_end)
 			return EEXIST;
-		}
-		if (hva + size > hmapping->hva &&
-		    hva + size <= hmapping->hva + hmapping->size) {
+		if (hva_end > hmapping->hva && hva_end <= hmap_end)
 			return EEXIST;
-		}
-		if (hva <= hmapping->hva &&
-		    hva + size >= hmapping->hva + hmapping->size) {
+		if (hva <= hmapping->hva && hva_end >= hmap_end)
 			return EEXIST;
-		}
 	}
 
 	return 0;
@@ -791,6 +797,7 @@ nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 	struct nvmm_machine *mach;
 	os_vmobj_t *vmobj;
 	gpaddr_t gpa;
+	gpaddr_t gpa_end;
 	size_t off;
 	int error;
 
@@ -803,7 +810,18 @@ nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 		goto out;
 	}
 
-	if ((args->gpa % PAGE_SIZE) != 0 || (args->size % PAGE_SIZE) != 0 ||
+	/*
+	 * Overflow tests MUST be done very carefully to avoid compiler
+	 * optimizations from effectively deleting the test.
+	 */
+	gpa = args->gpa;
+	gpa_end = gpa + args->size;
+	if (gpa_end <= gpa) {
+		error = EINVAL;
+		goto out;
+	}
+
+	if ((gpa % PAGE_SIZE) != 0 || (args->size % PAGE_SIZE) != 0 ||
 	    (args->hva % PAGE_SIZE) != 0) {
 		error = EINVAL;
 		goto out;
@@ -812,19 +830,15 @@ nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 		error = EINVAL;
 		goto out;
 	}
-	if (args->gpa < mach->gpa_begin || args->gpa >= mach->gpa_end) {
+
+	if (gpa < mach->gpa_begin || gpa >= mach->gpa_end) {
 		error = EINVAL;
 		goto out;
 	}
-	if (args->gpa + args->size <= args->gpa) {
+	if (gpa_end  > mach->gpa_end) {
 		error = EINVAL;
 		goto out;
 	}
-	if (args->gpa + args->size > mach->gpa_end) {
-		error = EINVAL;
-		goto out;
-	}
-	gpa = args->gpa;
 
 	vmobj = nvmm_hmapping_getvmobj(mach, args->hva, args->size, &off);
 	if (vmobj == NULL) {
@@ -847,29 +861,36 @@ nvmm_gpa_unmap(struct nvmm_owner *owner, struct nvmm_ioc_gpa_unmap *args)
 {
 	struct nvmm_machine *mach;
 	gpaddr_t gpa;
+	gpaddr_t gpa_end;
 	int error;
 
 	error = nvmm_machine_get(owner, args->machid, &mach, false);
 	if (error)
 		return error;
 
-	if ((args->gpa % PAGE_SIZE) != 0 || (args->size % PAGE_SIZE) != 0) {
-		error = EINVAL;
-		goto out;
-	}
-	if (args->gpa < mach->gpa_begin || args->gpa >= mach->gpa_end) {
-		error = EINVAL;
-		goto out;
-	}
-	if (args->gpa + args->size <= args->gpa) {
-		error = EINVAL;
-		goto out;
-	}
-	if (args->gpa + args->size >= mach->gpa_end) {
-		error = EINVAL;
-		goto out;
-	}
+	/*
+	 * Overflow tests MUST be done very carefully to avoid compiler
+	 * optimizations from effectively deleting the test.
+	 */
 	gpa = args->gpa;
+	gpa_end = gpa + args->size;
+	if (gpa_end <= gpa) {
+		error = EINVAL;
+		goto out;
+	}
+
+	if ((gpa % PAGE_SIZE) != 0 || (args->size % PAGE_SIZE) != 0) {
+		error = EINVAL;
+		goto out;
+	}
+	if (gpa < mach->gpa_begin || gpa >= mach->gpa_end) {
+		error = EINVAL;
+		goto out;
+	}
+	if (gpa_end >= mach->gpa_end) {
+		error = EINVAL;
+		goto out;
+	}
 
 	/* Unmap the memory from the machine. */
 	os_vmobj_unmap(&mach->vm->vm_map, gpa, gpa + args->size, false);
