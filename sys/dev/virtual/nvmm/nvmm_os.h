@@ -358,7 +358,17 @@ os_ipi_unicast(os_cpu_t *cpu, void (*func)(void *), void *arg)
 	lwkt_wait_ipiq(cpu, seq);
 }
 
-/* TODO: implement os_ipi_broadcast. */
+static inline void
+os_ipi_broadcast(void (*func)(void *), void *arg)
+{
+	cpumask_t mask;
+	int i;
+
+	for (i = 0; i < ncpus; i++) {
+		CPUMASK_ASSBIT(mask, i);
+		lwkt_cpusync_simple(mask, func, arg);
+	}
+}
 
 /*
  * On DragonFly, no need to bind the thread, because any normal kernel

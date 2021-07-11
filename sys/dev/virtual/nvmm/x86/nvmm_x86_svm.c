@@ -506,8 +506,6 @@ static uint32_t svm_ctrl_tlb_flush __read_mostly;
 #define SVM_XCR0_MASK_DEFAULT	(XCR0_X87|XCR0_SSE)
 static uint64_t svm_xcr0_mask __read_mostly;
 
-static int svm_change_cpu_count;
-
 #define SVM_NCPUIDS	32
 
 #define VMCB_NPAGES	1
@@ -2589,11 +2587,6 @@ OS_IPI_FUNC(svm_change_cpu)
 	if (enable) {
 		wrmsr(MSR_VM_HSAVE_PA, hsave[os_curcpu_number()].pa);
 	}
-
-#ifdef __DragonFly__
-	if (atomic_fetchadd_int(&svm_change_cpu_count, -1) == 1)
-		wakeup(&svm_change_cpu_count);
-#endif
 }
 
 static void
@@ -2639,18 +2632,7 @@ svm_init(void)
 		hsave[os_cpu_number(cpu)].pa = os_pa_zalloc();
 	}
 
-#if defined(__NetBSD__)
 	os_ipi_broadcast(svm_change_cpu, (void *)true);
-#elif defined(__DragonFly__)
-	atomic_swap_int(&svm_change_cpu_count, ncpus);
-	lwkt_send_ipiq_mask(smp_active_mask, svm_change_cpu, (void *)true);
-	do {
-		cpu_ccfence();
-		tsleep_interlock(&svm_change_cpu_count, 0);
-		if (svm_change_cpu_count)
-			tsleep(&svm_change_cpu_count, PINTERLOCKED, "vmx", hz);
-	} while (svm_change_cpu_count != 0);
-#endif
 }
 
 static void
@@ -2669,18 +2651,7 @@ svm_fini(void)
 {
 	size_t i;
 
-#if defined(__NetBSD__)
 	os_ipi_broadcast(svm_change_cpu, (void *)false);
-#elif defined(__DragonFly__)
-	atomic_swap_int(&svm_change_cpu_count, ncpus);
-	lwkt_send_ipiq_mask(smp_active_mask, svm_change_cpu, (void *)false);
-	do {
-		cpu_ccfence();
-		tsleep_interlock(&svm_change_cpu_count, 0);
-		if (svm_change_cpu_count)
-			tsleep(&svm_change_cpu_count, PINTERLOCKED, "vmx", hz);
-	} while (svm_change_cpu_count != 0);
-#endif
 
 	for (i = 0; i < OS_MAXCPUS; i++) {
 		if (hsave[i].pa != 0)
