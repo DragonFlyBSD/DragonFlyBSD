@@ -657,6 +657,7 @@ CTASSERT(VPID_MAX-1 >= NVMM_MAX_MACHINES * NVMM_MAX_VCPUS);
 static uint64_t vmx_tlb_flush_op __read_mostly;
 static uint64_t vmx_ept_flush_op __read_mostly;
 static uint64_t vmx_eptp_type __read_mostly;
+static bool vmx_ept_has_ad __read_mostly;
 
 static uint64_t vmx_pinbased_ctls __read_mostly;
 static uint64_t vmx_procbased_ctls __read_mostly;
@@ -668,8 +669,6 @@ static uint64_t vmx_cr0_fixed0 __read_mostly;
 static uint64_t vmx_cr0_fixed1 __read_mostly;
 static uint64_t vmx_cr4_fixed0 __read_mostly;
 static uint64_t vmx_cr4_fixed1 __read_mostly;
-
-static bool pmap_ept_has_ad;
 
 #define VMX_PINBASED_CTLS_ONE	\
 	(PIN_CTLS_INT_EXITING| \
@@ -3015,7 +3014,7 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	eptp =
 	    __SHIFTIN(vmx_eptp_type, EPTP_TYPE) |
 	    __SHIFTIN(4-1, EPTP_WALKLEN) |
-	    (pmap_ept_has_ad ? EPTP_FLAGS_AD : 0) |
+	    (vmx_ept_has_ad ? EPTP_FLAGS_AD : 0) |
 	    os_vmspace_pdirpa(mach->vm);
 	vmx_vmwrite(VMCS_EPTP, eptp);
 
@@ -3218,16 +3217,16 @@ vmx_tlb_flush(struct pmap *pm)
 static void
 vmx_machine_create(struct nvmm_machine *mach)
 {
-	struct pmap *pmap = vmspace_pmap(mach->vm);
+	struct pmap *pmap = os_vmspace_pmap(mach->vm);
 	struct vmx_machdata *machdata;
 
 	/* Transform into an EPT pmap. */
-	pmap_ept_transform(pmap, pmap_ept_has_ad ? 0 : PMAP_EMULATE_AD_BITS);
-
-#ifdef __NetBSD__
-	/* Fill in pmap info. */
-	pmap->pm_data = (void *)mach;
+#if defined(__NetBSD__)
+	pmap_ept_transform(pmap);
+	os_pmap_mach(pmap) = (void *)mach;
 	pmap->pm_tlb_flush = vmx_tlb_flush;
+#elif defined(__DragonFly__)
+	pmap_ept_transform(pmap, vmx_ept_has_ad ? 0 : PMAP_EMULATE_AD_BITS);
 #endif
 
 	machdata = os_mem_zalloc(sizeof(struct vmx_machdata));
@@ -3444,10 +3443,13 @@ vmx_ident(void)
 		return false;
 	}
 	if ((msr & IA32_VMX_EPT_VPID_FLAGS_AD) != 0) {
-		pmap_ept_has_ad = true;
+		vmx_ept_has_ad = true;
 	} else {
-		pmap_ept_has_ad = false;
+		vmx_ept_has_ad = false;
 	}
+#ifdef __NetBSD__
+	pmap_ept_has_ad = vmx_ept_has_ad;
+#endif
 	if (!(msr & IA32_VMX_EPT_VPID_UC) && !(msr & IA32_VMX_EPT_VPID_WB)) {
 		os_printf("nvmm: EPT UC/WB memory types not supported\n");
 		return false;

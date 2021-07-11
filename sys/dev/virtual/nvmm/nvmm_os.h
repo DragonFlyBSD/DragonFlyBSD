@@ -178,9 +178,12 @@ MALLOC_DECLARE(M_NVMM);
 
 /* Pmap. */
 #if defined(__NetBSD__)
+extern bool pmap_ept_has_ad;
+#define os_vmspace_pmap(vm)	((vm)->vm_map.pmap)
 #define os_vmspace_pdirpa(vm)	((vm)->vm_map.pmap->pm_pdirpa[0])
 #define os_pmap_mach(pm)	((pm)->pm_data)
 #elif defined(__DragonFly__)
+#define os_vmspace_pmap(vm)	vmspace_pmap(vm)
 #define os_vmspace_pdirpa(vm)	(vtophys(vmspace_pmap(vm)->pm_pml4))
 #endif
 

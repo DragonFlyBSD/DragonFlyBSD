@@ -2447,16 +2447,15 @@ svm_tlb_flush(struct pmap *pm)
 static void
 svm_machine_create(struct nvmm_machine *mach)
 {
-	struct pmap *pmap = vmspace_pmap(mach->vm);
+	struct pmap *pmap = os_vmspace_pmap(mach->vm);
 	struct svm_machdata *machdata;
 
 	/* Transform pmap. */
-	pmap_npt_transform(pmap, 0);
-
-#ifdef __NetBSD__
-	/* Fill in pmap info. */
-	pmap->pm_data = (void *)mach;
+#if defined(__NetBSD__)
+	os_pmap_mach(pmap) = (void *)mach;
 	pmap->pm_tlb_flush = svm_tlb_flush;
+#elif defined(__DragonFly__)
+	pmap_npt_transform(pmap, 0);
 #endif
 
 	machdata = os_mem_zalloc(sizeof(struct svm_machdata));
