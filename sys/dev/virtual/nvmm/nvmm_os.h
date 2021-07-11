@@ -191,7 +191,6 @@ typedef struct cpu_info		os_cpu_t;
 #define OS_MAXCPUS		MAXCPUS
 #define OS_CPU_FOREACH(cpu)	for (CPU_INFO_FOREACH(, cpu))
 #define os_cpu_number(cpu)	cpu_index(cpu)
-#define os_cpu_lookup(idx)	cpu_lookup(idx)
 #define os_curcpu()		curcpu()
 #define os_curcpu_number()	cpu_number()
 #define os_curcpu_tss_sel()	curcpu()->ci_tss_sel
@@ -206,7 +205,6 @@ typedef struct globaldata	os_cpu_t;
 #define OS_CPU_FOREACH(cpu)	\
 	for (int idx = 0; idx < ncpus && (cpu = globaldata_find(idx)); idx++)
 #define os_cpu_number(cpu)	(cpu)->gd_cpuid
-#define os_cpu_lookup(idx)	globaldata_find(idx)
 #define os_curcpu()		mycpu
 #define os_curcpu_number()	mycpuid
 #define os_curcpu_tss_sel()	GSEL(GPROC0_SEL, SEL_KPL)
