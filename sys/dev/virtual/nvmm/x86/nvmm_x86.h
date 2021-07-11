@@ -841,7 +841,7 @@ x86_curthread_restore_dbregs(uint64_t *drs)
 	})
 #define x86_restore_fpu(a, m)				\
 	({						\
-		__asm__("clts");			\
+		__asm volatile("clts" ::: "memory");	\
 		fpurstor((union savefpu *)(a), m);	\
 	})
 
