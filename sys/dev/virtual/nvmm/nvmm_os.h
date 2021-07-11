@@ -54,7 +54,7 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_param.h> /* KERN_SUCCESS, etc. */
 #include <vm/pmap.h> /* pmap_ept_transform, pmap_npt_transform */
-#include <machine/cpu.h> /* nvmm_break_wanted */
+#include <machine/cpu.h> /* hvm_break_wanted */
 #include <machine/cpufunc.h> /* ffsl, ffs, etc. */
 #endif
 
@@ -301,7 +301,7 @@ os_return_needed(void)
 	}
 	return false;
 #elif defined(__DragonFly__)
-	if (__predict_false(nvmm_break_wanted())) {
+	if (__predict_false(hvm_break_wanted())) {
 		return true;
 	}
 	if (__predict_false(curthread->td_lwp->lwp_mpflags & LWP_MP_URETMASK)) {

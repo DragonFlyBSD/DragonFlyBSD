@@ -101,7 +101,7 @@
     (mycpu->gd_reqflags & (RQF_AST_LWKT_RESCHED|RQF_AST_USER_RESCHED))
 #define	sched_action_wanted_gd(gd) \
     ((gd)->gd_reqflags & RQF_SCHED_MASK)
-#define	nvmm_break_wanted()	\
+#define	hvm_break_wanted()	\
     (mycpu->gd_reqflags & (RQF_HVM_MASK & ~RQF_XINVLTLB))
 
 /*

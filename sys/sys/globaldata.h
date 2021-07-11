@@ -228,7 +228,7 @@ typedef struct globaldata *globaldata_t;
 #define RQB_SPINNING		9	/* 0200 */
 #define RQB_QUICKRET		10	/* 0400 */
 #define RQB_KQUEUE		11	/* 0800 (only used by vkernel) */
-#define RQB_XINVLTLB		12	/* 1000 (nvmm interlock) */
+#define RQB_XINVLTLB		12	/* 1000 (HVM interlock) */
 
 #define RQF_IPIQ		(1 << RQB_IPIQ)
 #define RQF_INTPEND		(1 << RQB_INTPEND)

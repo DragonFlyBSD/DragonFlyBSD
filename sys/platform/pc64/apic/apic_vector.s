@@ -197,7 +197,7 @@ Xinvltlb:
 	incl    TD_CRITCOUNT(%rbx)
 	subq	$8,%rsp			/* make same as interrupt frame */
 	movq	%rsp,%rdi		/* pass frame by reference */
-	orl	$RQF_XINVLTLB,PCPU(reqflags) /* nvmm interlock */
+	orl	$RQF_XINVLTLB,PCPU(reqflags) /* HVM interlock */
 	call	smp_inval_intr		/* called w/interrupts disabled */
 	addq	$8,%rsp			/* turn into trapframe */
 	decl	TD_CRITCOUNT(%rbx)
