@@ -2051,9 +2051,9 @@ vmx_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 
-#ifdef __NetBSD__
+#if defined(__NetBSD__)
 	x86_curthread_save_fpu();
-#else /* DragonFly */
+#elif defined(__DragonFly__)
 	/*
 	 * NOTE: Host FPU state depends on whether the user program used the
 	 *       FPU or not.  Need to use npxpush()/npxpop() to handle this.
@@ -2077,9 +2077,9 @@ vmx_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 	}
 	x86_save_fpu(&cpudata->gxsave, vmx_xcr0_mask);
 
-#ifdef __NetBSD__
+#if defined(__NetBSD__)
 	x86_curthread_restore_fpu();
-#else /* DragonFly */
+#elif defined(__DragonFly__)
 	npxpop(&cpudata->hstate.hmctx);
 #endif
 }
@@ -3215,7 +3215,7 @@ vmx_tlb_flush(struct pmap *pm)
 	 */
 	os_ipi_kickall();
 }
-#endif /* __NetBSD__ */
+#endif
 
 static void
 vmx_machine_create(struct nvmm_machine *mach)
@@ -3230,7 +3230,7 @@ vmx_machine_create(struct nvmm_machine *mach)
 	/* Fill in pmap info. */
 	pmap->pm_data = (void *)mach;
 	pmap->pm_tlb_flush = vmx_tlb_flush;
-#endif /* __NetBSD__ */
+#endif
 
 	machdata = os_mem_zalloc(sizeof(struct vmx_machdata));
 	mach->machdata = machdata;
@@ -3508,7 +3508,7 @@ OS_IPI_FUNC(vmx_change_cpu)
 #ifdef __DragonFly__
 	if (atomic_fetchadd_int(&vmx_change_cpu_count, -1) == 1)
 		wakeup(&vmx_change_cpu_count);
-#endif /* __DragonFly__ */
+#endif
 }
 
 static void
@@ -3609,9 +3609,9 @@ vmx_init(void)
 		vmxon->ident = __SHIFTIN(revision, VMXON_IDENT_REVISION);
 	}
 
-#ifdef __NetBSD__
+#if defined(__NetBSD__)
 	os_ipi_broadcast(vmx_change_cpu, (void *)true);
-#else /* DragonFly */
+#elif defined(__DragonFly__)
 	atomic_swap_int(&vmx_change_cpu_count, ncpus);
 	lwkt_send_ipiq_mask(smp_active_mask, vmx_change_cpu, (void *)true);
 	do {
@@ -3620,7 +3620,7 @@ vmx_init(void)
 		if (vmx_change_cpu_count)
 			tsleep(&vmx_change_cpu_count, PINTERLOCKED, "vmx", hz);
 	} while (vmx_change_cpu_count != 0);
-#endif /* __NetBSD__ */
+#endif
 }
 
 static void
@@ -3639,9 +3639,9 @@ vmx_fini(void)
 {
 	size_t i;
 
-#ifdef __NetBSD__
+#if defined(__NetBSD__)
 	os_ipi_broadcast(vmx_change_cpu, (void *)false);
-#else /* DragonFly */
+#elif defined(__DragonFly__)
 	atomic_swap_int(&vmx_change_cpu_count, ncpus);
 	lwkt_send_ipiq_mask(smp_active_mask, vmx_change_cpu, (void *)false);
 	do {
@@ -3650,7 +3650,7 @@ vmx_fini(void)
 		if (vmx_change_cpu_count)
 			tsleep(&vmx_change_cpu_count, PINTERLOCKED, "vmx", hz);
 	} while (vmx_change_cpu_count != 0);
-#endif /* __NetBSD__ */
+#endif
 
 	for (i = 0; i < OS_MAXCPUS; i++) {
 		if (vmxoncpu[i].pa != 0)

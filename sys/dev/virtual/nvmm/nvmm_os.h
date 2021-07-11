@@ -58,7 +58,6 @@
 #include <machine/cpufunc.h> /* ffsl, ffs, etc. */
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Types. */
 #if defined(__NetBSD__)
 typedef struct vmspace		os_vmspace_t;
@@ -77,7 +76,6 @@ typedef vm_size_t		vsize_t;
 typedef vm_paddr_t		paddr_t;
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Attributes. */
 #if defined(__DragonFly__)
 #define DIAGNOSTIC		INVARIANTS
@@ -85,14 +83,12 @@ typedef vm_paddr_t		paddr_t;
 #define __diagused		__debugvar
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Macros. */
 #if defined(__DragonFly__)
 #define __arraycount(__x)	(sizeof(__x) / sizeof(__x[0]))
 #define __insn_barrier()	__asm __volatile("":::"memory")
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Bitops. */
 #if defined(__NetBSD__)
 #include <sys/bitops.h>
@@ -106,14 +102,12 @@ typedef vm_paddr_t		paddr_t;
 #endif /* __x86_64__ */
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Maps. */
 #if defined(__NetBSD__) || defined(__DragonFly__)
 #define os_kernel_map		kernel_map
 #define os_curproc_map		&curproc->p_vmspace->vm_map
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* R/W locks. */
 #if defined(__NetBSD__)
 #define os_rwl_init(lock)	rw_init(lock)
@@ -131,7 +125,6 @@ typedef vm_paddr_t		paddr_t;
 #define os_rwl_wheld(lock)	(lockstatus(lock, curthread) == LK_EXCLUSIVE)
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Mutexes. */
 #if defined(__NetBSD__)
 #define os_mtx_init(lock)	mutex_init(lock, MUTEX_DEFAULT, IPL_NONE)
@@ -147,7 +140,6 @@ typedef vm_paddr_t		paddr_t;
 #define os_mtx_owned(lock)	(lockstatus(lock, curthread) == LK_EXCLUSIVE)
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Malloc. */
 #if defined(__NetBSD__)
 #include <sys/kmem.h>
@@ -162,7 +154,6 @@ MALLOC_DECLARE(M_NVMM);
 #define os_mem_free(ptr, size)	kfree(ptr, M_NVMM)
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Printf. */
 #if defined(__NetBSD__)
 #define os_printf		printf
@@ -170,7 +161,6 @@ MALLOC_DECLARE(M_NVMM);
 #define os_printf		kprintf
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Atomics. */
 #if defined(__NetBSD__)
 #include <sys/atomic.h>
@@ -186,7 +176,6 @@ MALLOC_DECLARE(M_NVMM);
 #define os_atomic_inc_64(x)	atomic_add_64(x, 1)
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Pmap. */
 #if defined(__NetBSD__)
 #define os_vmspace_pdirpa(vm)	((vm)->vm_map.pmap->pm_pdirpa[0])
@@ -195,7 +184,6 @@ MALLOC_DECLARE(M_NVMM);
 #define os_vmspace_pdirpa(vm)	(vtophys(vmspace_pmap(vm)->pm_pml4))
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* CPU. */
 #if defined(__NetBSD__)
 #include <sys/cpu.h>
@@ -227,7 +215,6 @@ typedef struct globaldata	os_cpu_t;
 #define os_curcpu_idt()		r_idt_arr[mycpuid].rd_base
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Cpusets. */
 #if defined(__NetBSD__)
 #include <sys/kcpuset.h>
@@ -249,7 +236,6 @@ typedef cpumask_t		os_cpuset_t;
 #define os_cpuset_setrunning(s)	ATOMIC_CPUMASK_ORMASK(*(s), smp_active_mask)
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Preemption. */
 #if defined(__NetBSD__)
 #define os_preempt_disable()	kpreempt_disable()
@@ -269,7 +255,6 @@ typedef cpumask_t		os_cpuset_t;
 #define os_preempt_disabled()	true
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Asserts. */
 #if defined(__NetBSD__)
 #define OS_ASSERT		KASSERT
@@ -277,7 +262,6 @@ typedef cpumask_t		os_cpuset_t;
 #define OS_ASSERT		KKASSERT
 #endif
 
-/* -------------------------------------------------------------------------- */
 /* Misc. */
 #if defined(__DragonFly__)
 #define ilog2(n)		((sizeof(n) > 4 ? ffsl(n) : ffs(n)) - 1)
@@ -285,6 +269,7 @@ typedef cpumask_t		os_cpuset_t;
 #endif
 
 /* -------------------------------------------------------------------------- */
+
 os_vmspace_t *	os_vmspace_create(vaddr_t, vaddr_t);
 void		os_vmspace_destroy(os_vmspace_t *);
 int		os_vmspace_fault(os_vmspace_t *, vaddr_t, vm_prot_t);
@@ -329,6 +314,7 @@ os_return_needed(void)
 }
 
 /* -------------------------------------------------------------------------- */
+
 /* IPIs. */
 
 #if defined(__NetBSD__)

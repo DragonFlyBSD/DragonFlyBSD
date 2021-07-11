@@ -35,9 +35,7 @@
 
 #if defined(__DragonFly__)
 MALLOC_DEFINE(M_NVMM, "nvmm", "NVMM data");
-#endif
 
-#if defined(__DragonFly__)
 /*
  * NVMM expects VM functions to return 0 on success, but DragonFly's VM
  * functions return KERN_SUCCESS.  Although it's also defined to be 0,
@@ -388,7 +386,7 @@ error:
 	*va = (vaddr_t)addr;
 	*pa = vtophys(addr);
 	return 0;
-#endif /* __NetBSD__ */
+#endif
 }
 
 void
