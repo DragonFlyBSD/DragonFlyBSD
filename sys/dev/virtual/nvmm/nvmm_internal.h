@@ -47,6 +47,9 @@
 #error "OS dependency for NVMM_MAX_RAM required"
 #endif
 
+#define NVMM_COMM_PAGE_SIZE	\
+	(roundup(sizeof(struct nvmm_comm_page), PAGE_SIZE))
+
 struct nvmm_owner {
 	pid_t pid;
 };

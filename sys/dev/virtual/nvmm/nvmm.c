@@ -156,11 +156,11 @@ nvmm_vcpu_free(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vcpu->present = false;
 	if (vcpu->comm != NULL) {
 		os_vmobj_unmap(os_kernel_map, (vaddr_t)vcpu->comm,
-		    (vaddr_t)vcpu->comm + PAGE_SIZE, true);
+		    (vaddr_t)vcpu->comm + NVMM_COMM_PAGE_SIZE, true);
 	}
 	if (vcpu->comm_user != NULL) {
 		os_vmobj_unmap(os_curproc_map, (vaddr_t)vcpu->comm_user,
-		    (vaddr_t)vcpu->comm_user + PAGE_SIZE, false);
+		    (vaddr_t)vcpu->comm_user + NVMM_COMM_PAGE_SIZE, false);
 	}
 }
 
@@ -285,7 +285,8 @@ nvmm_machine_create(struct nvmm_owner *owner,
 #endif
 
 	/* Create the comm vmobj. */
-	mach->commvmobj = os_vmobj_create(NVMM_MAX_VCPUS * PAGE_SIZE);
+	mach->commvmobj = os_vmobj_create(
+	    NVMM_MAX_VCPUS * NVMM_COMM_PAGE_SIZE);
 
 	(*nvmm_impl->machine_create)(mach);
 
@@ -390,8 +391,9 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 		goto out;
 
 	/* Map the comm page on the kernel side, as wired. */
-	error = os_vmobj_map(os_kernel_map, (vaddr_t *)&vcpu->comm, PAGE_SIZE,
-	    mach->commvmobj, args->cpuid * PAGE_SIZE, true /* wired */,
+	error = os_vmobj_map(os_kernel_map, (vaddr_t *)&vcpu->comm,
+	    NVMM_COMM_PAGE_SIZE, mach->commvmobj,
+	    args->cpuid * NVMM_COMM_PAGE_SIZE, true /* wired */,
 	    false /* !fixed */, true /* shared */, PROT_READ | PROT_WRITE,
 	    PROT_READ | PROT_WRITE);
 	if (error) {
@@ -400,12 +402,12 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 		goto out;
 	}
 
-	memset(vcpu->comm, 0, PAGE_SIZE);
+	memset(vcpu->comm, 0, NVMM_COMM_PAGE_SIZE);
 
 	/* Map the comm page on the user side, as pageable. */
 	error = os_vmobj_map(os_curproc_map, (vaddr_t *)&vcpu->comm_user,
-	    PAGE_SIZE, mach->commvmobj,
-	    args->cpuid * PAGE_SIZE, false /* !wired */,
+	    NVMM_COMM_PAGE_SIZE, mach->commvmobj,
+	    args->cpuid * NVMM_COMM_PAGE_SIZE, false /* !wired */,
 	    false /* !fixed */, true /* shared */, PROT_READ | PROT_WRITE,
 	    PROT_READ | PROT_WRITE);
 	if (error) {

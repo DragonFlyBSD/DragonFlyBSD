@@ -90,9 +90,4 @@ struct nvmm_comm_page {
 	struct nvmm_vcpu_event event;
 };
 
-#ifdef _KERNEL
-/* At most one page, otherwise nvmm_vcpu_create() must be updated. */
-CTASSERT(sizeof(struct nvmm_comm_page) <= PAGE_SIZE);
-#endif
-
 #endif
