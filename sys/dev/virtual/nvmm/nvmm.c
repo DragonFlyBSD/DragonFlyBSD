@@ -143,6 +143,7 @@ nvmm_vcpu_alloc(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
 
 	vcpu->present = true;
 	vcpu->comm = NULL;
+	vcpu->comm_user = NULL;
 	vcpu->hcpu_last = -1;
 	*ret = vcpu;
 	return 0;
@@ -156,6 +157,10 @@ nvmm_vcpu_free(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	if (vcpu->comm != NULL) {
 		os_vmobj_unmap(os_kernel_map, (vaddr_t)vcpu->comm,
 		    (vaddr_t)vcpu->comm + PAGE_SIZE, true);
+	}
+	if (vcpu->comm_user != NULL) {
+		os_vmobj_unmap(os_curproc_map, (vaddr_t)vcpu->comm_user,
+		    (vaddr_t)vcpu->comm_user + PAGE_SIZE, false);
 	}
 }
 
@@ -398,8 +403,9 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 	memset(vcpu->comm, 0, PAGE_SIZE);
 
 	/* Map the comm page on the user side, as pageable. */
-	error = os_vmobj_map(os_curproc_map, (vaddr_t *)&args->comm, PAGE_SIZE,
-	    mach->commvmobj, args->cpuid * PAGE_SIZE, false /* !wired */,
+	error = os_vmobj_map(os_curproc_map, (vaddr_t *)&vcpu->comm_user,
+	    PAGE_SIZE, mach->commvmobj,
+	    args->cpuid * PAGE_SIZE, false /* !wired */,
 	    false /* !fixed */, true /* shared */, PROT_READ | PROT_WRITE,
 	    PROT_READ | PROT_WRITE);
 	if (error) {
@@ -415,6 +421,7 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 		goto out;
 	}
 
+	args->comm = vcpu->comm_user;
 	nvmm_vcpu_put(vcpu);
 	os_atomic_inc_uint(&mach->ncpus);
 
