@@ -1,10 +1,5 @@
 # $FreeBSD: src/sys/Makefile,v 1.20.2.1 2000/07/10 08:22:34 obrien Exp $
 
-# The boot loader
-.if	exists(${.CURDIR}/boot)
-SUBDIR=	boot
-.endif
-
 # Loadable kernel modules
 #
 .if defined(MODULES_WITH_WORLD)

@@ -18,6 +18,6 @@ The following files have been patched:
 
 This is used by:
 lib/libbz2/
-lib/libstand/
+stand/lib/
 usr.bin/bzip2/
 usr.bin/bzip2recover/

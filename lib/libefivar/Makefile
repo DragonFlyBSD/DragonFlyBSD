@@ -24,7 +24,7 @@
 #
 # $FreeBSD: head/lib/libefivar/Makefile 326458 2017-12-02 07:29:19Z imp $
 
-EFIBOOT=${.CURDIR}/../../sys/boot/efi
+EFIBOOT=${.CURDIR}/../../stand/boot/efi
 EDK2INC=${.CURDIR}/../../sys/contrib/edk2/Include
 
 .PATH:	${EFIBOOT}/libefi

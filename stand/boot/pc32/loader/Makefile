@@ -1,7 +1,7 @@
-# Works like the normal loader except the kernel, modules, and other loader
-# files are loaded via TFTP instead of NFS.
+# $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
+#
 
-PROG=		loader_tftp
+PROG=		loader
 STRIP=
 NEWVERSWHAT=	"bootstrap loader" i386
 BINDIR?=	/boot
@@ -14,12 +14,12 @@ INSTALLFLAGS=	-b
 # boot1->boot2 stage (XXX what about the use in cdboot and pxeboot?)
 #
 
-.PATH:		${.CURDIR}/../loader
 # architecture-specific loader code
 SRCS=		main.c conf.c
 
-CFLAGS+=	-DLOADER_TFTP_SUPPORT
-#CFLAGS+=	-DLOADER_NFS_SUPPORT
+# Enable PXE TFTP or NFS support, not both.
+#CFLAGS+=	-DLOADER_TFTP_SUPPORT
+CFLAGS+=	-DLOADER_NFS_SUPPORT
 
 # Enable PnP and ISA-PnP code.
 HAVE_PNP=	yes
@@ -35,6 +35,9 @@ LIBDLOADER=	${.CURDIR}/../../dloader32/libdloader32.a
 
 .if defined(LOADER_BZIP2_SUPPORT)
 CFLAGS+=	-DLOADER_BZIP2_SUPPORT
+.endif
+.if defined(LOADER_HAMMER1_SUPPORT)
+CFLAGS+=	-DLOADER_HAMMER1_SUPPORT
 .endif
 .if defined(LOADER_SPLITFS_SUPPORT)
 CFLAGS+=	-DLOADER_SPLITFS_SUPPORT
@@ -53,7 +56,7 @@ CLEANFILES+=	vers.c vers.o ${PROG}.list ${PROG}.bin ${PROG}.sym ${PROG}.help
 
 CFLAGS+=		-Wall
 COMPILER_LDFLAGS=	-nostdlib -static
-COMPILER_LDFLAGS+=	-Wl,--script,${.CURDIR}/../loader/loader.ldscript
+COMPILER_LDFLAGS+=	-Wl,--script,${.CURDIR}/loader.ldscript
 
 # i386 standalone support library
 LIBI386=	${.OBJDIR}/../libi386/libi386.a
@@ -65,7 +68,7 @@ LIBSTAND=	${.CURDIR}/../../libstand32/libstand32.a
 .if !exists(${LIBSTAND})
 LIBSTAND=	${.OBJDIR}/../../libstand32/libstand32.a
 .endif
-CFLAGS+=	-I${.CURDIR}/../../../../lib/libstand/
+CFLAGS+=	-I${.CURDIR}/../../../lib
 
 # BTX components
 .if exists(${.OBJDIR}/../btx)
@@ -99,12 +102,13 @@ ${PROG}.help: help.common help.i386
 	cat ${.ALLSRC} | awk -f ${.CURDIR}/../../common/merge_help.awk > ${.TARGET}
 
 .PATH: ${.CURDIR}/../../dloader
-FILES=	${PROG}.help loader.conf loader-bootp.conf
+FILES=	${PROG}.help loader.conf loader-bootp.conf dloader.menu
 FILESDIR_loader.conf=	/boot/defaults
 FILESDIR_loader-bootp.conf=	/boot/defaults
+FILESDIR_dloader.menu=	/boot/defaults
 
 .if !exists(${DESTDIR}/boot/dloader.rc)
-FILES+=	${.CURDIR}/../loader/dloader.rc
+FILES+=	${.CURDIR}/dloader.rc
 .endif
 
 .include "../Makefile.inc"

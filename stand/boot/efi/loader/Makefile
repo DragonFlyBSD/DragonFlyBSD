@@ -34,16 +34,17 @@ BOOT_DLOADER=	yes
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.CURDIR}/arch/${MACHINE}
 CFLAGS+=	-I${.CURDIR}/../include
-CFLAGS+=	-I${.CURDIR}/../../../contrib/dev/acpica/source/include
-CFLAGS+=	-I${.CURDIR}/../../..
+CFLAGS+=	-I${.CURDIR}/../../../../sys/contrib/dev/acpica/source/include
+CFLAGS+=	-I${.CURDIR}/../../../../sys
 CFLAGS+=	-I${.CURDIR}/../../pc32/libi386
 CFLAGS+=	-I${.CURDIR}/../../dloader
+CFLAGS+=	-I${.CURDIR}/../../../lib
 CFLAGS+=	-DNO_PCI -DEFI
 
 # make buildenv doesn't set DESTDIR, this means LIBSTAND
 # will be wrong when crossbuilding.
-.if exists(${.OBJDIR}/../../../../lib/libstand/libstand.a)
-LIBSTAND=	${.OBJDIR}/../../../../lib/libstand/libstand.a
+.if exists(${.OBJDIR}/../../../lib/libstand.a)
+LIBSTAND=	${.OBJDIR}/../../../lib/libstand.a
 .endif
 
 .if exists(${.OBJDIR}/../../dloader/libdloader.a)

@@ -45,7 +45,7 @@
 #include "btx.h"
 #include "elfh.h"
 
-#define BTX_PATH		"/sys/boot/i386/btx"
+#define BTX_PATH		"/stand/boot/i386/btx"
 
 #define I_LDR	0		/* BTX loader */
 #define I_BTX	1		/* BTX kernel */

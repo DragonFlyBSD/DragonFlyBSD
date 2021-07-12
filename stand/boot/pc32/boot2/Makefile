@@ -13,8 +13,8 @@ NXLDFLAGS=
 
 .PATH: ${.CURDIR}/..
 .PATH: ${.CURDIR}/../../common
-.PATH: ${.CURDIR}/../../../../lib/libstand
-.PATH: ${.CURDIR}/../../../libkern
+.PATH: ${.CURDIR}/../../../lib
+.PATH: ${.CURDIR}/../../../../sys/libkern
 
 # A value of 0x80 enables LBA support.
 B1FLAGS=	0x80
@@ -49,7 +49,7 @@ CFLAGS=	-Os \
 	-fno-asynchronous-unwind-tables \
 	-DBOOT2 \
 	-I${.CURDIR}/../../common \
-	-I${.CURDIR}/../../../../lib/libstand \
+	-I${.CURDIR}/../../../lib \
 	-I${.CURDIR}/../btx/lib -I. \
 	-Wall -Waggregate-return -Wbad-function-cast -Wcast-align \
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
@@ -113,7 +113,7 @@ boot1$s.o: boot1.S
 	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -DFLAGS=${B1FLAGS} \
 		${BOOT_CCASM_FLAGS} ${.ALLSRC} -o ${.TARGET} -c
 
-#${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../../lib/libstand/hammer2.c
+#${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../lib/hammer2.c
 
 boot2$s.s: boot2.c boot2$s.h ufsread.c hammer2.c scrc32.c
 	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -S -o boot2$s.s.tmp ${.CURDIR}/boot2.c

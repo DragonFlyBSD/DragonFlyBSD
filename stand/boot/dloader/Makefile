@@ -37,10 +37,11 @@ OBJS+=		stack_protector.o
 LIB?=		dloader
 INTERNALLIB=	yes
 
-stack_protector.o: ../../libkern/stack_protector.c
+stack_protector.o: ../../../sys/libkern/stack_protector.c
 
 .include <bsd.lib.mk>
 .endif
 
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.CURDIR}/../common
+CFLAGS+=	-I${.CURDIR}/../../lib

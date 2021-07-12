@@ -1,6 +1,6 @@
 # $FreeBSD: head/usr.sbin/efibootmgr/Makefile 326725 2017-12-09 06:52:20Z imp $
-EFIBOOT=${.CURDIR}/../../sys/boot/efi
-EFIINCL=${.CURDIR}/../../sys/boot/efi/include
+EFIBOOT=${.CURDIR}/../../stand/boot/efi
+EFIINCL=${.CURDIR}/../../stand/boot/efi/include
 EFIVAR=${.CURDIR}/../efivar
 .PATH: ${EFIBOOT}/libefi ${EFIVAR}
 CFLAGS+= -I${EFIVAR} -I${EFIINCL}

@@ -38,6 +38,7 @@ SUBDIR+= sbin
 .if !defined(NO_SHARE)
 SUBDIR+= share
 .endif
+SUBDIR+= stand
 SUBDIR+= sys
 SUBDIR+= usr.bin
 SUBDIR+= usr.sbin

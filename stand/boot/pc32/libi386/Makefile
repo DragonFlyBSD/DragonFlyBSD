@@ -2,7 +2,7 @@
 #
 LIB=			i386
 INTERNALLIB=		true
-SYSDIR?=		${.CURDIR}/../../..
+SYSDIR?=		${.CURDIR}/../../../../sys
 .include "${SYSDIR}/conf/acpi.mk"
 
 SRCS=	biosacpi.c bioscd.c biosdisk.c biosmem.c biospnp.c \
@@ -32,6 +32,8 @@ CFLAGS+=	-I${.CURDIR}/../../common -I${.CURDIR}/../btx/lib \
 		-I"${SYSDIR}/${OSACPI_MI_DIR}" \
 		-I${.CURDIR}/../../.. -I.
 # the location of libstand
-CFLAGS+=	-I${.CURDIR}/../../../../lib/libstand/
+CFLAGS+=	-I${.CURDIR}/../../../lib
+# we need some kernel headers
+CFLAGS+=	-I${SYSDIR}
 
 .include <bsd.lib.mk>

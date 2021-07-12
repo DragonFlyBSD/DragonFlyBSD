@@ -1,4 +1,4 @@
-# Common defines for all of /sys/boot/i386/
+# Common defines for all of /stand/boot/i386/
 
 .if !target(__pc32__) && !defined(__no_pc32_defines)
 __pc32__:

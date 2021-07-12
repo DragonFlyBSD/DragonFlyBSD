@@ -1,6 +1,6 @@
 # decompression functionality from libz for libstand
 
-# relative to lib/libstand
+# relative to stand/lib
 ZLIBDIR= ${LIBSTAND_SRC}/../../contrib/zlib-1.2
 .PATH: ${ZLIBDIR}
 

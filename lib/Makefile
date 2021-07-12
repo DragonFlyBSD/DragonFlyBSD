@@ -85,7 +85,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libsmb \
 	${_libsmdb} \
 	${_libsmutil} \
-	libstand \
 	libstdbuf \
 	libtcplay \
 	libtelnet \

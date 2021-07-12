@@ -413,7 +413,7 @@ pxe_perror(int err)
 	return;
 }
 
-/* To prevent LTO warnings. Must match libstand/nfs.c struct. */
+/* To prevent LTO warnings. Must match stand/lib/nfs.c struct. */
 struct nfsv2_fattrs {
 	n_long	fa_type;
 	n_long	fa_mode;

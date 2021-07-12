@@ -28,7 +28,6 @@
  *
  *	from: @(#)exec.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/imgact_aout.h,v 1.13 1999/12/29 04:24:41 peter Exp $
- * $DragonFly: src/sys/sys/imgact_aout.h,v 1.6 2007/02/03 09:56:04 y0netan1 Exp $
  */
 
 #ifndef	_IMGACT_AOUT_H_
@@ -111,7 +110,7 @@
  * only manipulate the a_midmag field via the
  * N_SETMAGIC/N_GET{MAGIC,MID,FLAG} macros in a.out.h
  *
- * AOUT_H_FORCE32 is used by btxld and sys/boot when compiling
+ * AOUT_H_FORCE32 is used by btxld and stand/boot when compiling
  * from a 64 bit environment to generate a 32 bit a.out.h header.
  */
 
