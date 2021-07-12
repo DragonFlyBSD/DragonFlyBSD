@@ -8,9 +8,8 @@
 #
 
 LIB?=		stand
-NOPROFILE=	YES
+INTERNALLIB=
 NOPIC=		YES
-INCS?=		stand.h
 MAN?=		libstand.3
 CSTD?=		c99
 WARNS?=		2

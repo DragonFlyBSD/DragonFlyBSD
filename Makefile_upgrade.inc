@@ -3912,6 +3912,8 @@ TO_REMOVE+=/usr/share/man/man8/ndiscvt.8.gz
 TO_REMOVE+=/usr/share/man/man8/ndis_events.8.gz
 TO_REMOVE+=/usr/share/man/man8/ndisgen.8.gz
 TO_REMOVE+=/usr/share/misc/windrv_stub.c
+TO_REMOVE+=/usr/include/stand.h
+TO_REMOVE+=/usr/lib/libstand.a
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
