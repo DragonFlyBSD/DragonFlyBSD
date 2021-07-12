@@ -1050,14 +1050,12 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
  * flags to hammer2_xop_alloc()
  *
  * MODIFYING	- This is a modifying transaction, allocate a mtid.
- * RECURSE	- Recurse top-level inode (for root flushes)
  */
 #define HAMMER2_XOP_MODIFYING		0x00000001
 #define HAMMER2_XOP_STRATEGY		0x00000002
 #define HAMMER2_XOP_INODE_STOP		0x00000004
 #define HAMMER2_XOP_VOLHDR		0x00000008
 #define HAMMER2_XOP_FSSYNC		0x00000010
-#define HAMMER2_XOP_IROOT		0x00000020
 
 /*
  * Device vnode management structure
