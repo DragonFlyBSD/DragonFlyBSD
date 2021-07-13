@@ -33,8 +33,8 @@
  */
 
 
-#include <stand.h>
 #include <uuid.h>
+#include "stand.h"
 
 static int
 hex2int(int ch)

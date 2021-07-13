@@ -33,8 +33,8 @@
  * Copyright (c) 2002 Hiten Mahesh Pandya
  */
 
-#include <stand.h>
 #include <uuid.h>
+#include "stand.h"
 
 /*
  * Dump len characters into *buf from val as hex and update *buf
