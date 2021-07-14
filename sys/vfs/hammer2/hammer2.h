@@ -500,8 +500,10 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * hammer2_freemap_adjust()
  */
 #define HAMMER2_FREEMAP_DORECOVER	1
+#if 0
 #define HAMMER2_FREEMAP_DOMAYFREE	2
 #define HAMMER2_FREEMAP_DOREALFREE	3
+#endif
 
 /*
  * HAMMER2 cluster - A set of chains representing the same entity.

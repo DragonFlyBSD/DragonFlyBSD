@@ -1089,8 +1089,10 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	 */
 	if (radix < HAMMER2_FREEMAP_BLOCK_RADIX) {
 		count = 1;
+#if 0
 		if (how == HAMMER2_FREEMAP_DOREALFREE)
 			how = HAMMER2_FREEMAP_DOMAYFREE;
+#endif
 	} else {
 		count = 1 << (radix - HAMMER2_FREEMAP_BLOCK_RADIX);
 	}
@@ -1191,6 +1193,7 @@ again:
 		bmmask10 <<= 2;
 		bmmask11 <<= 2;
 	}
+#if 0
 #if HAMMER2_BMAP_ELEMENTS != 8
 #error "hammer2_freemap.c: HAMMER2_BMAP_ELEMENTS expected to be 8"
 #endif
@@ -1211,6 +1214,7 @@ again:
 			bmap->class = 0;
 		}
 	}
+#endif
 
 	/*
 	 * chain->bref.check.freemap.bigmask (XXX)
