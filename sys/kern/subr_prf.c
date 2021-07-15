@@ -401,7 +401,7 @@ kputchar(int c, void *arg)
 		msglogchar(c, ap->pri);
 	if ((flags & TOCONS) && c)
 		cnputc(c);
-	if (flags & TOWAKEUP)
+	if ((flags & TOWAKEUP) && mycpu->gd_intr_nesting_level == 0)
 		wakeup(constty_td);
 }
 
@@ -564,20 +564,6 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, __va_list ap)
 	int usespin;
 	int ddb_active;
 
-	/*
-	 * Make a supreme effort to avoid reentrant panics or deadlocks.
-	 *
-	 * NOTE!  Do nothing that would access mycpu/gd/fs unless the
-	 *	  function is the normal kputchar(), which allows us to
-	 *	  use this function for very early debugging with a special
-	 *	  function.
-	 */
-	if (func == kputchar) {
-		if (mycpu->gd_flags & GDF_KPRINTF)
-			return(0);
-		atomic_set_long(&mycpu->gd_flags, GDF_KPRINTF);
-	}
-
 #ifdef DDB
 	ddb_active = db_active;
 #else
@@ -593,13 +579,23 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, __va_list ap)
 	if (fmt == NULL)
 		fmt = "(fmt null)\n";
 
+	/*
+	 * For kputchar just straight-out don't spin, even if it means losing
+	 * output from several cpu's posting at the same time.  This allows
+	 * us to call debugging / warning kprintf()s from the likes of
+	 * the Xinvltlb hard interrupt which ignore critical sections.
+	 *
+	 * This also avoids deadlocking on nested kprintf()s.
+	 */
 	usespin = (func == kputchar &&
 		   (kprintf_logging & TONOSPIN) == 0 &&
 		   panic_cpu_gd != mycpu &&
 		   (((struct putchar_arg *)arg)->flags & TOTTY) == 0);
 	if (usespin) {
 		crit_enter_hard();
-		spin_lock(&cons_spin);
+		if (spin_trylock(&cons_spin) == 0) {
+			goto headoncrash;	/* failed */
+		}
 	}
 
 	for (;;) {
@@ -887,10 +883,9 @@ done:
 	/*
 	 * Cleanup reentrancy issues.
 	 */
-	if (func == kputchar)
-		atomic_clear_long(&mycpu->gd_flags, GDF_KPRINTF);
 	if (usespin) {
 		spin_unlock(&cons_spin);
+headoncrash:
 		crit_exit_hard();
 	}
 	return (retval);
@@ -906,7 +901,6 @@ void
 kvcreinitspin(void)
 {
 	spin_init(&cons_spin, "kvcre");
-	atomic_clear_long(&mycpu->gd_flags, GDF_KPRINTF);
 }
 
 /*
@@ -942,7 +936,7 @@ constty_daemon(void)
 		if (xindex == mbp->msg_bufx ||
 		    mbp == NULL ||
 		    msgbufmapped == 0) {
-			tsleep(constty_td, 0, "waiting", hz*60);
+			tsleep(constty_td, 0, "waiting", hz);
 			crit_exit();
 			continue;
 		}
@@ -1001,7 +995,9 @@ SYSINIT(bufdaemon, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY,
 /*
  * Put character in log buffer with a particular priority.
  *
- * MPSAFE
+ * MPSAFE, HARD INTERRUPT SAFE, NESTING SAFE
+ * CRITICAL SECTIONS MIGHT BE IGNORED!  MUST NOT USE NORMAL
+ * SPIN_LOCK MECHANISMS.
  */
 static void
 msglogchar(int c, int pri)
@@ -1039,7 +1035,9 @@ msglogchar(int c, int pri)
  * Put char in log buffer.   Make sure nothing blows up beyond repair if
  * we have an MP race.
  *
- * MPSAFE.
+ * MPSAFE, HARD INTERRUPT SAFE, NESTING SAFE
+ * CRITICAL SECTIONS MIGHT BE IGNORED!  MUST NOT USE NORMAL
+ * SPIN_LOCK MECHANISMS.
  */
 static void
 msgaddchar(int c, void *dummy)

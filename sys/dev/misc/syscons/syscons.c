@@ -1877,7 +1877,8 @@ sccnputc(void *private, int c)
 
     /* assert(sc_console != NULL) */
 
-    syscons_lock();
+    if (syscons_lock_nonblock() != 0)
+	return;
 #ifndef SC_NO_HISTORY
     if (scp == scp->sc->cur_scp && scp->status & SLKED) {
 	scp->status &= ~SLKED;
