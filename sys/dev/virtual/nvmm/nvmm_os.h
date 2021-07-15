@@ -244,16 +244,19 @@ typedef cpumask_t		os_cpuset_t;
 #define os_preempt_disabled()	kpreempt_disabled()
 #elif defined(__DragonFly__)
 /*
- * In DragonFly, a normal kernel thread will not migrate to another CPU or be
- * preempted (except by an interrupt thread), so kpreempt_{disable,enable}()
- * are not needed.  However, we can't use critical section as an instead,
- * because that would also prevent interrupt/reschedule flags from being
- * set, which would be a problem for nvmm_return_needed() that's called from
- * vcpu_run() loop.
+ * In DragonFly, a thread in kernel mode will not be preemptively migrated
+ * to another CPU or preemptively switched to another normal kernel thread,
+ * but can be preemptively switched to an interrupt thread (which switches
+ * back to the kernel thread it preempted the instant it is done or blocks).
+ *
+ * However, we still need to use a critical section to prevent this nominal
+ * interrupt thread preemption to avoid exposing interrupt threads to
+ * guest DB and FP register state.  We operate under the assumption that
+ * the hard interrupt code won't mess with this state.
  */
-#define os_preempt_disable()	/* nothing */
-#define os_preempt_enable()	/* nothing */
-#define os_preempt_disabled()	true
+#define os_preempt_disable()	crit_enter()
+#define os_preempt_enable()	crit_exit()
+#define os_preempt_disabled()	(curthread->td_critcount != 0)
 #endif
 
 /* Asserts. */
