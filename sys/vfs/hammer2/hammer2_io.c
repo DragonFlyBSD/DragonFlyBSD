@@ -704,8 +704,10 @@ _hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				   HAMMER2_DOP_READ HAMMER2_IO_DEBUG_CALL);
 #ifdef HAMMER2_IO_DEBUG
 	if ((dio = *diop) != NULL) {
+#if 0
 		int i = (dio->debug_index - 1) & HAMMER2_IO_DEBUG_MASK;
 		dio->debug_data[i] = debug_data;
+#endif
 	}
 #endif
 	return ((*diop)->error);
