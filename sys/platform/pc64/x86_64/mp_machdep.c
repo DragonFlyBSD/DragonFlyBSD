@@ -1249,7 +1249,8 @@ loop:
 			 * invmask	- IPI in progress
 			 * invltlb_mask - which ones are TLB invalidations?
 			 */
-			kprintf("smp_inval_intr %d inv=%08jx tlbm=%08jx "
+			kprintf("smp_inval_intr %2d, WARNING blocked >1 sec "
+				"inv=%08jx tlbm=%08jx "
 				"smurf=%08jx "
 #ifdef LOOPMASK_IN
 				"in=%08jx "

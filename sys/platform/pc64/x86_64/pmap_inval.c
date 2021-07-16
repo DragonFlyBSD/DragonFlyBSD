@@ -698,7 +698,9 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 		cpu_lfence();
 #ifdef LOOPRECOVER
 		if (toolong) {
-			kprintf("pminvl %d->%d %08jx %08jx mode=%d\n",
+			kprintf("pm_inval_intr: WARNING, taking too long "
+				"cpus=%d->%d done=%08jx mask=%08jx "
+				"mode=%d\n",
 				cpu, n, info->done.ary[0], info->mask.ary[0],
 				info->mode);
 		}

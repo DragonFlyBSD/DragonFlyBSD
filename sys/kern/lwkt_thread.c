@@ -705,8 +705,13 @@ lwkt_switch(void)
 		indefinite_init(&gd->gd_indefinite, NULL, 0, 't');
 #ifdef LOOPMASK
 	    if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
-		    kprintf("lwkt_switch: excessive contended %d "
-			    "thread %p\n", ntd->td_contended, ntd);
+		    kprintf("lwkt_switch: WARNING, excessive token contention "
+			    "cpu %d, %d sec, "
+			    "td %p (%s)\n",
+			    gd->gd_cpuid,
+			    ntd->td_contended,
+			    ntd,
+			    ntd->td_comm);
 		    tsc_base = rdtsc();
 	    }
 #endif
