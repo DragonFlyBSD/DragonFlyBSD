@@ -78,6 +78,9 @@
 #define BIOS_RESET		(0x0f)
 #define BIOS_WARM		(0x0a)
 
+#define INVLPG_TIMEOUT_DEFAULT	10
+#define INVLPG_TIMEOUT_VM	60
+
 /*
  * this code MUST be enabled here and in mpboot.s.
  * it follows the very early stages of AP boot by placing values in CMOS ram.
@@ -188,6 +191,9 @@ SYSCTL_INT(_machdep, OID_AUTO, optimized_invltlb, CTLFLAG_RW,
 static int	all_but_self_ipi_enable = 1;
 SYSCTL_INT(_machdep, OID_AUTO, all_but_self_ipi_enable, CTLFLAG_RW,
 	&all_but_self_ipi_enable, 0, "");
+static int	invlpg_timeout = INVLPG_TIMEOUT_DEFAULT;
+SYSCTL_INT(_machdep, OID_AUTO, invlpg_timeout, CTLFLAG_RW,
+	&invlpg_timeout, 0, "");
 
 /* Local data for detecting CPU TOPOLOGY */
 static int core_bits = 0;
@@ -463,6 +469,14 @@ start_all_aps(u_int boot_addr)
 	if (smibest)
 		kprintf("SMI Frequency (worst case): %d Hz (%d us)\n",
 			1000000 / smibest, smibest);
+
+	/*
+	 * This is nasty but if we are a guest in a virtual machine,
+	 * give the smpinvl synchronization code up to 60 seconds
+	 */
+
+	if (vmm_guest != VMM_GUEST_NONE)
+		invlpg_timeout = INVLPG_TIMEOUT_VM;
 
 	/* start each AP */
 	for (x = 1; x <= naps; ++x) {
@@ -1009,13 +1023,15 @@ smp_invltlb(void)
 			 * cpuid 	- cpu doing the waiting
 			 * invltlb_mask - IPI in progress
 			 */
-			kprintf("smp_invltlb %d: waited too long inv=%08jx "
+			kprintf("smp_invltlb %2d: WARNING blocked %d sec: "
+				"inv=%08jx "
 				"smurf=%08jx "
 #ifdef LOOPMASK_IN
 				"in=%08jx "
 #endif
 				"idle=%08jx/%08jx\n",
 				md->mi.gd_cpuid,
+				repeats + 1,
 				smp_invltlb_mask.ary[0],
 				smp_smurf_mask.ary[0],
 #ifdef LOOPMASK_IN
@@ -1027,8 +1043,13 @@ smp_invltlb(void)
 			ATOMIC_CPUMASK_NANDMASK(smp_smurf_mask,
 						smp_invltlb_mask);
 			smp_invlpg(&smp_active_mask);
+
+			/*
+			 * Reload tsc_base for retry, give up after
+			 * 10 seconds (60 seconds if in VM).
+			 */
 			tsc_base = rdtsc();
-			if (++repeats > 10) {
+			if (++repeats > invlpg_timeout) {
 				kprintf("smp_invltlb: giving up\n");
 				CPUMASK_ASSZERO(smp_invltlb_mask);
 			}
