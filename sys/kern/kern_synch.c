@@ -732,9 +732,11 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 
 	/*
 	 * Cleanup the timeout.  If the timeout has already occured thandle
-	 * has already been stopped, otherwise stop thandle.  If the timeout
-	 * is running (the callout thread must be blocked trying to get
-	 * lwp_token) then wait for us to get scheduled.
+	 * has already been stopped, otherwise stop thandle.
+	 *
+	 * If the timeout is still running the callout thread must be blocked
+	 * trying to get lwp_token, or this is a VM where cpu-cpu races are
+	 * common, then wait for us to get scheduled.
 	 */
 	if (timo) {
 		while (td->td_flags & TDF_TIMEOUT_RUNNING) {
@@ -744,7 +746,6 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			lwkt_deschedule_self(td);
 			td->td_wmesg = "tsrace";
 			lwkt_switch();
-			kprintf("td %p %s: timeout race\n", td, td->td_comm);
 		}
 		if (td->td_flags & TDF_TIMEOUT) {
 			td->td_flags &= ~TDF_TIMEOUT;
