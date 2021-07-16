@@ -169,29 +169,29 @@ static int	smitest(void);
 static void	mp_bsp_simple_setup(void);
 
 /* which cpus have been started */
-static cpumask_t smp_startup_mask = CPUMASK_INITIALIZER_ONLYONE;
+__read_mostly static cpumask_t smp_startup_mask = CPUMASK_INITIALIZER_ONLYONE;
 /* which cpus have lapic been inited */
-static cpumask_t smp_lapic_mask = CPUMASK_INITIALIZER_ONLYONE;
+__read_mostly static cpumask_t smp_lapic_mask = CPUMASK_INITIALIZER_ONLYONE;
 /* which cpus are ready for IPIs etc? */
-cpumask_t smp_active_mask = CPUMASK_INITIALIZER_ONLYONE;
-cpumask_t smp_finalize_mask = CPUMASK_INITIALIZER_ONLYONE;
+__read_mostly cpumask_t smp_active_mask = CPUMASK_INITIALIZER_ONLYONE;
+__read_mostly cpumask_t smp_finalize_mask = CPUMASK_INITIALIZER_ONLYONE;
 
 SYSCTL_OPAQUE(_machdep, OID_AUTO, smp_active, CTLFLAG_RD,
 	      &smp_active_mask, sizeof(smp_active_mask), "LU", "");
 static u_int	bootMP_size;
-static u_int	report_invlpg_src;
+__read_mostly static u_int	report_invlpg_src;
 SYSCTL_INT(_machdep, OID_AUTO, report_invlpg_src, CTLFLAG_RW,
 	&report_invlpg_src, 0, "");
-static u_int	report_invltlb_src;
+__read_mostly static u_int	report_invltlb_src;
 SYSCTL_INT(_machdep, OID_AUTO, report_invltlb_src, CTLFLAG_RW,
 	&report_invltlb_src, 0, "");
-static int	optimized_invltlb;
+__read_mostly static int	optimized_invltlb;
 SYSCTL_INT(_machdep, OID_AUTO, optimized_invltlb, CTLFLAG_RW,
 	&optimized_invltlb, 0, "");
-static int	all_but_self_ipi_enable = 1;
+__read_mostly static int	all_but_self_ipi_enable = 1;
 SYSCTL_INT(_machdep, OID_AUTO, all_but_self_ipi_enable, CTLFLAG_RW,
 	&all_but_self_ipi_enable, 0, "");
-static int	invlpg_timeout = INVLPG_TIMEOUT_DEFAULT;
+__read_mostly static int	invlpg_timeout = INVLPG_TIMEOUT_DEFAULT;
 SYSCTL_INT(_machdep, OID_AUTO, invlpg_timeout, CTLFLAG_RW,
 	&invlpg_timeout, 0, "");
 
