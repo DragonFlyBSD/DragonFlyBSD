@@ -121,9 +121,9 @@ madt_check(vm_paddr_t madt_paddr)
 	KKASSERT(madt != NULL);
 
 	/*
-	 * MADT in ACPI specification 1.0 - 5.0
+	 * MADT in ACPI specification 1.0 - 6.4
 	 */
-	if (madt->Header.Revision < 1 || madt->Header.Revision > 3) {
+	if (madt->Header.Revision < 1 || madt->Header.Revision > 5) {
 		kprintf("madt_check: unknown MADT revision %d\n",
 			madt->Header.Revision);
 	}
