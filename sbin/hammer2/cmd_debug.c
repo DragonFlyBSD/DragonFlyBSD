@@ -1117,10 +1117,11 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 #if HAMMER2_BMAP_ELEMENTS != 8
 #error "cmd_debug.c: HAMMER2_BMAP_ELEMENTS expected to be 8"
 #endif
-			tabprintf(tab + 4, "%016jx %04d.%04x (avail=%7d) "
+			tabprintf(tab + 4, "%016jx %04d.%04x linear=%06x avail=%06x "
 				  "%016jx %016jx %016jx %016jx "
 				  "%016jx %016jx %016jx %016jx\n",
 				  data_off, i, media.bmdata[i].class,
+				  media.bmdata[i].linear,
 				  media.bmdata[i].avail,
 				  media.bmdata[i].bitmapq[0],
 				  media.bmdata[i].bitmapq[1],
