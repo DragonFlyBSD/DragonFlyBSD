@@ -2184,10 +2184,12 @@ vmx_htlb_flush(struct nvmm_machine *mach, struct vmx_cpudata *cpudata)
 	struct ept_desc ept_desc;
 	uint64_t machgen;
 
-#ifdef __DragonFly__
+#if defined(__NetBSD__)
+	machgen = ((struct vmx_machdata *)mach->machdata)->mach_htlb_gen;
+#elif defined(__DragonFly__)
 	clear_xinvltlb();
+	machgen = vmspace_pmap(mach->vm)->pm_invgen;
 #endif
-	machgen = mach->vm->vm_pmap.pm_invgen;
 	if (__predict_true(machgen == cpudata->vcpu_htlb_gen)) {
 		return machgen;
 	}

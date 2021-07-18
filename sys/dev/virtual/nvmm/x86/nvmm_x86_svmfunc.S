@@ -26,10 +26,21 @@
  * SUCH DAMAGE.
  */
 
+#if defined(__NetBSD__)
+/* Override user-land alignment before including asm.h */
+#define ALIGN_DATA	.align	8
+#define ALIGN_TEXT	.align 16,0x90
+#define _ALIGN_TEXT	ALIGN_TEXT
+#define _LOCORE
+#include "assym.h"
+#include <machine/asm.h>
+#elif defined(__DragonFly__)
 #define LOCORE
 #include <machine/asmacros.h>
-#include <machine/segments.h>
 #include "assym.s"
+#endif
+
+#include <machine/segments.h>
 
 #define ASM_NVMM
 #include "nvmm_x86.h"
@@ -68,6 +79,15 @@
 	strw	%ax		;\
 	pushq	%rax
 
+#if defined(__NetBSD__)
+#define HOST_RESTORE_TR				\
+	popq	%rax				;\
+	movzwq	%ax,%rdx			;\
+	movq	CPUVAR(GDT),%rax		;\
+	/* Clear the busy bit for reloading. */	\
+	andq	$~0x0200,4(%rax,%rdx, 1)	;\
+	ltrw	%dx
+#elif defined(__DragonFly__)
 /* In DragonFly, PCPU(tss_gdt) points directly to the gdt[] entry for the
  * current CPU's TSS descriptor; while NetBSD's CPUVAR(GDT) points to the
  * gdtstore[] table. */
@@ -78,6 +98,7 @@
 	/* Clear the busy bit for reloading. */	\
 	andq	$~0x0200,4(%rax)		;\
 	ltrw	%dx
+#endif
 
 #define HOST_SAVE_LDT		\
 	sldtw	%ax		;\
