@@ -1,5 +1,5 @@
 KMOD=	nvmm
-SRCS=	nvmm.c nvmm_os.c
+SRCS=	nvmm.c nvmm_dragonfly.c
 
 .if ${MACHINE_ARCH} == "x86_64"
 .PATH:	${.CURDIR}/x86
