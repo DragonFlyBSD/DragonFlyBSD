@@ -39,7 +39,9 @@
 #include <sys/kernel.h>
 #include <sys/mman.h>
 
+#include "nvmm.h"
 #include "nvmm_os.h"
+#include "nvmm_internal.h"
 
 MALLOC_DEFINE(M_NVMM, "nvmm", "NVMM data");
 
@@ -254,3 +256,154 @@ os_contigpa_free(paddr_t pa __unused, vaddr_t va, size_t npages)
 {
 	contigfree((void *)va, npages * PAGE_SIZE, M_NVMM);
 }
+
+/* -------------------------------------------------------------------------- */
+
+#include <sys/conf.h>
+#include <sys/devfs.h>
+#include <sys/device.h>
+#include <sys/fcntl.h>
+#include <sys/module.h>
+
+static d_open_t dfbsd_nvmm_open;
+static d_ioctl_t dfbsd_nvmm_ioctl;
+static d_priv_dtor_t dfbsd_nvmm_dtor;
+
+static struct dev_ops nvmm_ops = {
+	{ "nvmm", 0, D_MPSAFE },
+	.d_open = dfbsd_nvmm_open,
+	.d_ioctl = dfbsd_nvmm_ioctl,
+};
+
+static int
+dfbsd_nvmm_open(struct dev_open_args *ap)
+{
+	int flags = ap->a_oflags;
+	struct nvmm_owner *owner;
+	struct file *fp;
+	int error;
+
+	if (__predict_false(nvmm_impl == NULL))
+		return ENXIO;
+	if (!(flags & O_CLOEXEC))
+		return EINVAL;
+
+	if (OFLAGS(flags) & O_WRONLY) {
+		owner = &nvmm_root_owner;
+	} else {
+		owner = os_mem_alloc(sizeof(*owner));
+		owner->pid = curthread->td_proc->p_pid;
+	}
+
+	fp = ap->a_fpp ? *ap->a_fpp : NULL;
+	error = devfs_set_cdevpriv(fp, owner, dfbsd_nvmm_dtor);
+	if (error) {
+		dfbsd_nvmm_dtor(owner);
+		return error;
+	}
+
+	return 0;
+}
+
+static void
+dfbsd_nvmm_dtor(void *arg)
+{
+	struct nvmm_owner *owner = arg;
+
+	OS_ASSERT(owner != NULL);
+	nvmm_kill_machines(owner);
+	if (owner != &nvmm_root_owner) {
+		os_mem_free(owner, sizeof(*owner));
+	}
+}
+
+static int
+dfbsd_nvmm_ioctl(struct dev_ioctl_args *ap)
+{
+	unsigned long cmd = ap->a_cmd;
+	void *data = ap->a_data;
+	struct file *fp = ap->a_fp;
+	struct nvmm_owner *owner = NULL;
+
+	devfs_get_cdevpriv(fp, (void **)&owner);
+	OS_ASSERT(owner != NULL);
+
+	return nvmm_ioctl(owner, cmd, data);
+}
+
+/* -------------------------------------------------------------------------- */
+
+static int
+nvmm_attach(void)
+{
+	int error;
+
+	error = nvmm_init();
+	if (error)
+		panic("%s: impossible", __func__);
+	os_printf("nvmm: attached, using backend %s\n", nvmm_impl->name);
+
+	return 0;
+}
+
+static int
+nvmm_detach(void)
+{
+	if (os_atomic_load_uint(&nmachines) > 0)
+		return EBUSY;
+
+	nvmm_fini();
+	return 0;
+}
+
+static int
+nvmm_modevent(module_t mod __unused, int type, void *data __unused)
+{
+	static cdev_t dev = NULL;
+	int error;
+
+	switch (type) {
+	case MOD_LOAD:
+		if (nvmm_ident() == NULL) {
+			os_printf("nvmm: cpu not supported\n");
+			return ENOTSUP;
+		}
+		error = nvmm_attach();
+		if (error)
+			return error;
+
+		dev = make_dev(&nvmm_ops, 0, UID_ROOT, GID_NVMM, 0640, "nvmm");
+		if (dev == NULL) {
+			os_printf("nvmm: unable to create device\n");
+			error = ENOMEM;
+		}
+		break;
+
+	case MOD_UNLOAD:
+		if (dev == NULL)
+			return 0;
+		error = nvmm_detach();
+		if (error == 0)
+			destroy_dev(dev);
+		break;
+
+	case MOD_SHUTDOWN:
+		error = 0;
+		break;
+
+	default:
+		error = EOPNOTSUPP;
+		break;
+	}
+
+	return error;
+}
+
+static moduledata_t nvmm_moddata = {
+	.name = "nvmm",
+	.evhand = nvmm_modevent,
+	.priv = NULL,
+};
+
+DECLARE_MODULE(nvmm, nvmm_moddata, SI_SUB_PSEUDO, SI_ORDER_ANY);
+MODULE_VERSION(nvmm, NVMM_KERN_VERSION);
