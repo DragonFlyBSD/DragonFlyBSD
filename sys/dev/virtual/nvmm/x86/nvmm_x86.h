@@ -768,6 +768,17 @@ typedef struct {
 
 /* Debug registers. */
 #if defined(__NetBSD__)
+#include <x86/dbregs.h>
+static inline void
+x86_curthread_save_dbregs(uint64_t *drs __unused)
+{
+	x86_dbregs_save(curlwp);
+}
+static inline void
+x86_curthread_restore_dbregs(uint64_t *drs __unused)
+{
+	x86_dbregs_restore(curlwp);
+}
 #define x86_get_dr0()		rdr0()
 #define x86_get_dr1()		rdr1()
 #define x86_get_dr2()		rdr2()
@@ -781,6 +792,37 @@ typedef struct {
 #define x86_set_dr6(v)		ldr6(v)
 #define x86_set_dr7(v)		ldr7(v)
 #elif defined(__DragonFly__)
+#include <sys/proc.h> /* struct lwp */
+static inline void
+x86_curthread_save_dbregs(uint64_t *drs)
+{
+	struct pcb *pcb = curthread->td_lwp->lwp_thread->td_pcb;
+
+	if (__predict_true(!(pcb->pcb_flags & PCB_DBREGS)))
+		return;
+
+	drs[NVMM_X64_DR_DR0] = rdr0();
+	drs[NVMM_X64_DR_DR1] = rdr1();
+	drs[NVMM_X64_DR_DR2] = rdr2();
+	drs[NVMM_X64_DR_DR3] = rdr3();
+	drs[NVMM_X64_DR_DR6] = rdr6();
+	drs[NVMM_X64_DR_DR7] = rdr7();
+}
+static inline void
+x86_curthread_restore_dbregs(uint64_t *drs)
+{
+	struct pcb *pcb = curthread->td_lwp->lwp_thread->td_pcb;
+
+	if (__predict_true(!(pcb->pcb_flags & PCB_DBREGS)))
+		return;
+
+	load_dr0(drs[NVMM_X64_DR_DR0]);
+	load_dr1(drs[NVMM_X64_DR_DR1]);
+	load_dr2(drs[NVMM_X64_DR_DR2]);
+	load_dr3(drs[NVMM_X64_DR_DR3]);
+	load_dr6(drs[NVMM_X64_DR_DR6]);
+	load_dr7(drs[NVMM_X64_DR_DR7]);
+}
 #define x86_get_dr0()		rdr0()
 #define x86_get_dr1()		rdr1()
 #define x86_get_dr2()		rdr2()
@@ -794,28 +836,6 @@ typedef struct {
 #define x86_set_dr6(v)		load_dr6(v)
 #define x86_set_dr7(v)		load_dr7(v)
 #endif
-
-static inline void
-x86_curthread_save_dbregs(uint64_t *drs)
-{
-	drs[NVMM_X64_DR_DR0] = x86_get_dr0();
-	drs[NVMM_X64_DR_DR1] = x86_get_dr1();
-	drs[NVMM_X64_DR_DR2] = x86_get_dr2();
-	drs[NVMM_X64_DR_DR3] = x86_get_dr3();
-	drs[NVMM_X64_DR_DR6] = x86_get_dr6();
-	drs[NVMM_X64_DR_DR7] = x86_get_dr7();
-}
-
-static inline void
-x86_curthread_restore_dbregs(uint64_t *drs)
-{
-	x86_set_dr0(drs[NVMM_X64_DR_DR0]);
-	x86_set_dr1(drs[NVMM_X64_DR_DR1]);
-	x86_set_dr2(drs[NVMM_X64_DR_DR2]);
-	x86_set_dr3(drs[NVMM_X64_DR_DR3]);
-	x86_set_dr6(drs[NVMM_X64_DR_DR6]);
-	x86_set_dr7(drs[NVMM_X64_DR_DR7]);
-}
 
 /* FPU. */
 #if defined(__NetBSD__)
