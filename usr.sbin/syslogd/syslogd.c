@@ -768,14 +768,18 @@ printline(const char *hname, char *msg, int flags)
 
 /*
  * Read /dev/klog while data are available, split into lines.
+ *
+ * Only dump whole lines, fixing potential write/read races that can
+ * cause lines to be split up due to the speed.
  */
 static void
 readklog(void)
 {
-	char *p, *q, line[MAXLINE + 1];
-	int len, i;
+	static char line[MAXLINE + 1];
+	static int len = 0;
+	char *p, *q;
+	int i;
 
-	len = 0;
 	for (;;) {
 		i = read(fklog, line + len, MAXLINE - 1 - len);
 		if (i > 0) {
@@ -800,8 +804,6 @@ readklog(void)
 		if (len > 0)
 			memmove(line, p, len + 1);
 	}
-	if (len > 0)
-		printsys(line);
 }
 
 /*
