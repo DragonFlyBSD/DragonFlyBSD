@@ -316,6 +316,7 @@ int
 nvmm_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
 	struct nvmm_ioc_vcpu_destroy args;
+	struct nvmm_comm_page *comm;
 	int ret;
 
 	args.machid = mach->machid;
@@ -324,6 +325,14 @@ nvmm_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	ret = ioctl(nvmm_fd, NVMM_IOC_VCPU_DESTROY, &args);
 	if (ret == -1)
 		return -1;
+
+	/*
+	 * Need to unmap the comm page on the user side, because the
+	 * kernel has no guarantee to get the correct address space to
+	 * do the unmapping at the point of closing fd.
+	 */
+	comm = mach->pages[vcpu->cpuid];
+	munmap(comm, __capability.comm_size);
 
 	free(vcpu->exit);
 

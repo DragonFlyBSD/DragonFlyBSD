@@ -119,6 +119,7 @@ nvmm_identify(char **argv __unused)
 
 	printf("nvmm: Kernel API version %u\n", cap.version);
 	printf("nvmm: State size %u\n", cap.state_size);
+	printf("nvmm: Comm size %u\n", cap.comm_size);
 	printf("nvmm: Max machines %u\n", cap.max_machines);
 	printf("nvmm: Max VCPUs per machine %u\n", cap.max_vcpus);
 

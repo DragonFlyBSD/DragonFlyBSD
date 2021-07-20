@@ -55,11 +55,12 @@ typedef uint32_t	nvmm_cpuid_t;
 #endif
 #endif /* __x86_64__ */
 
-#define NVMM_KERN_VERSION		2
+#define NVMM_KERN_VERSION		3
 
 struct nvmm_capability {
 	uint32_t version;
 	uint32_t state_size;
+	uint32_t comm_size;
 	uint32_t max_machines;
 	uint32_t max_vcpus;
 	uint64_t max_ram;

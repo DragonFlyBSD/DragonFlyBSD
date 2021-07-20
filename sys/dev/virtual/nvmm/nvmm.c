@@ -143,7 +143,6 @@ nvmm_vcpu_alloc(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
 
 	vcpu->present = true;
 	vcpu->comm = NULL;
-	vcpu->comm_user = NULL;
 	vcpu->hcpu_last = -1;
 	*ret = vcpu;
 	return 0;
@@ -157,10 +156,11 @@ nvmm_vcpu_free(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	if (vcpu->comm != NULL) {
 		os_vmobj_unmap(os_kernel_map, (vaddr_t)vcpu->comm,
 		    (vaddr_t)vcpu->comm + NVMM_COMM_PAGE_SIZE, true);
-	}
-	if (vcpu->comm_user != NULL) {
-		os_vmobj_unmap(os_curproc_map, (vaddr_t)vcpu->comm_user,
-		    (vaddr_t)vcpu->comm_user + NVMM_COMM_PAGE_SIZE, false);
+		/*
+		 * Require userland to unmap the comm page from its address
+		 * space, because os_curproc_map at this point (fd close)
+		 * is not guaranteed to be the correct address space.
+		 */
 	}
 }
 
@@ -243,6 +243,7 @@ nvmm_capability(struct nvmm_owner *owner, struct nvmm_ioc_capability *args)
 {
 	args->cap.version = NVMM_KERN_VERSION;
 	args->cap.state_size = nvmm_impl->state_size;
+	args->cap.comm_size = NVMM_COMM_PAGE_SIZE;
 	args->cap.max_machines = NVMM_MAX_MACHINES;
 	args->cap.max_vcpus = NVMM_MAX_VCPUS;
 	args->cap.max_ram = NVMM_MAX_RAM;
@@ -405,7 +406,7 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 	memset(vcpu->comm, 0, NVMM_COMM_PAGE_SIZE);
 
 	/* Map the comm page on the user side, as pageable. */
-	error = os_vmobj_map(os_curproc_map, (vaddr_t *)&vcpu->comm_user,
+	error = os_vmobj_map(os_curproc_map, (vaddr_t *)&args->comm,
 	    NVMM_COMM_PAGE_SIZE, mach->commvmobj,
 	    args->cpuid * NVMM_COMM_PAGE_SIZE, false /* !wired */,
 	    false /* !fixed */, true /* shared */, PROT_READ | PROT_WRITE,
@@ -423,7 +424,6 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 		goto out;
 	}
 
-	args->comm = vcpu->comm_user;
 	nvmm_vcpu_put(vcpu);
 	os_atomic_inc_uint(&mach->ncpus);
 

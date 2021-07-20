@@ -62,7 +62,6 @@ struct nvmm_cpu {
 
 	/* Comm page. */
 	struct nvmm_comm_page *comm;
-	struct nvmm_comm_page *comm_user;
 
 	/* Last host CPU on which the VCPU ran. */
 	int hcpu_last;
