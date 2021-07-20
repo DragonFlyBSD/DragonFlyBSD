@@ -2,6 +2,8 @@
  * These macros are partially based on Linux-PAM's <security/_pam_macros.h>,
  * which were organized by Cristian Gafton and I believe are in the public
  * domain.
+ *
+ * - Solar Designer
  */
 
 #ifndef PAM_PASSWDQC_MACROS_H__
