@@ -15,8 +15,15 @@ are inconsistent with pam_passwdqc's, you may tell pam_passwdqc to ask
 for the old password as well, with "ask_oldauthtok".  In that case the
 option to use with the password changing module is "use_first_pass".
 
-There's a number of supported options which can be used to modify the
+There are a number of supported options, which can be used to modify the
 behavior of pam_passwdqc (defaults are given in square brackets):
+
+	config=FILE			[]
+
+Load the specified configuration FILE, which must be in the
+passwdqc.conf format (described in the passwdqc.conf(5) manual page).
+This file may define any options described in here, including load of
+yet another configuration file, but loops are not allowed.
 
 	min=N0,N1,N2,N3,N4		[min=disabled,24,11,8,7]
 
@@ -49,7 +56,7 @@ In addition to being sufficiently long, passwords are required to
 contain enough different characters for the character classes and
 the minimum length they have been checked against.
 
-	max=N				[max=40]
+	max=N				[max=72]
 
 The maximum allowed password length.  This can be used to prevent
 users from setting passwords that may be too long for some system
@@ -76,7 +83,7 @@ at least partially based on information found in a character string,
 or 0 to disable the substring search.  Note that the password will not
 be rejected once a weak substring is found; it will instead be
 subjected to the usual strength requirements with the weak substring
-removed.
+partially discounted.
 
 The substring search is case-insensitive and is able to detect and
 remove a common substring spelled backwards.
@@ -85,12 +92,45 @@ remove a common substring spelled backwards.
 
 Whether a new password is allowed to be similar to the old one.  The
 passwords are considered to be similar when there is a sufficiently
-long common substring and the new password with the substring removed
-would be weak.
+long common substring and the new password with the substring partially
+discounted would be weak.
 
-	random=N[,only]			[random=42]
+	wordlist=FILE			[]
 
-The size of randomly-generated passphrases in bits (24 to 72), or 0 to
+Deny passwords that are based on lines of a tiny external text file,
+which can reasonably be e.g. a list of a few thousand common passwords.
+Common dictionary words may also reasonably be included, especially in a
+local language other than English, or longer yet common English words.
+(passwdqc includes a list of a few thousand common English words of
+lengths from 3 to 6 built in.  Any word list possibly specified with
+this option is used in addition to the built-in word list.)
+
+Substring matching and discounting will be used if the "match" setting
+above is non-zero.  Please note that this is very inefficient, and isn't
+to be used with large wordlists.
+
+	denylist=FILE			[]
+
+Deny passwords or passphrases directly appearing in a tiny external text
+file.  That file can reasonably be e.g. a list of common passwords if
+only a relaxed policy is desired and stricter checks are thus disabled
+(using their separate options).  Such policy would only be somewhat
+effective against online/remote attacks, but not against offline attacks
+on hashed passwords.
+
+	filter=FILE			[]
+
+Deny passwords or passphrases directly appearing in a maybe huge binary
+filter file created with pwqfilter.  This is very efficient, needing at
+most two random disk reads per query.  A filter created from millions of
+leaked passwords can reasonably be used on top of passwdqc's other
+checks to further reduce the number of passing yet weak passwords
+without causing unreasonable inconvenience (as e.g. higher minimum
+lengths and character set requirements could).
+
+	random=N[,only]			[random=47]
+
+The size of randomly-generated passphrases in bits (24 to 136), or 0 to
 disable this feature.  Any passphrase that contains the offered
 randomly-generated string will be allowed regardless of other possible
 restrictions.
@@ -142,7 +182,8 @@ This disables user interaction within pam_passwdqc.  With this module,
 the only difference between "use_first_pass" and "use_authtok" is that
 the former is incompatible with "ask_oldauthtok".
 
--- 
-Solar Designer <solar at openwall.com>
+	noaudit				[]
 
-$Owl: Owl/packages/pam_passwdqc/pam_passwdqc/README,v 1.11 2008/02/12 19:43:33 solar Exp $
+If audit is enabled at build time, the PAM module logs audit events once
+user tries to change their credentials.  This option disables that audit
+logging.

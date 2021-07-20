@@ -1,18 +1,28 @@
-pam_passwdqc.8 is under the 3-clause BSD-style license as specified
-within the file itself.
+Two manual pages (pam_passwdqc.8 and passwdqc.conf.5) are under the
+3-clause BSD-style license as specified within the files themselves.
 
-wordset_4k.c is in the public domain.
+concat.c, wordset_4k.c, wordset_4k.h, pam_macros.h, and pwqcheck.php
+are in the public domain, but at your option they may also be used under
+this package's license below.
 
-The rest of the files in this package fall under the following terms:
+Files in ci directory (install-dependencies.sh and run-build-and-tests.sh)
+are provided under the terms of the GNU General Public License version 2 or
+later.  These files are not included in passwdqc release tarballs.
 
-You're allowed to do whatever you like with this software (including
-re-distribution in source and/or binary form, with or without
-modification), provided that credit is given where it is due and any
-modified versions are marked as such.  There's absolutely no warranty.
+The rest of the files in this package fall under the following terms
+(heavily cut-down "BSD license"):
 
-Note that you don't have to re-distribute this software under these
-same relaxed terms.  In particular, you're free to place modified
-versions under (L)GPL, thus disallowing further re-distribution in
-binary-only form.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted.
 
-$Owl: Owl/packages/pam_passwdqc/pam_passwdqc/LICENSE,v 1.3 2005/11/16 13:28:57 solar Exp $
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
