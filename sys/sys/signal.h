@@ -251,20 +251,15 @@ struct	sigaction {
 
 typedef	void __siginfohandler_t (int, siginfo_t *, void *);
 
-#endif
-
-/* XXX this should really be under __BSD_VISIBLE */
 typedef	__sighandler_t	*sig_t;	/* type of pointer to a signal function */
 
-/* #if __XSI_VISIBLE */
 /*
  * Structure used in sigaltstack call.
  */
-#if __BSD_VISIBLE
 typedef	struct sigaltstack {
-#else
+#else /* !__BSD_VISIBLE */
 typedef	struct {
-#endif
+#endif /* __BSD_VISIBLE */
 	void	*ss_sp;			/* signal stack base */
 	size_t	ss_size;		/* signal stack length */
 	int	ss_flags;		/* SS_DISABLE and/or SS_ONSTACK */
@@ -274,7 +269,6 @@ typedef	struct {
 #define	SS_DISABLE	0x0004	/* disable taking signals on alternate stack */
 #define	MINSIGSTKSZ	8192			/* minimum allowable stack */
 #define	SIGSTKSZ	(MINSIGSTKSZ + 32768)	/* recommended stack size */
-/* #endif */
 
 /* Have enough typedefs for this now.  XXX */
 #include <sys/ucontext.h>
@@ -297,19 +291,15 @@ struct	sigvec {
 #define	SV_NOCLDSTOP	SA_NOCLDSTOP
 #define	SV_SIGINFO	SA_SIGINFO
 #define	sv_onstack sv_flags	/* isn't compatibility wonderful! */
-#endif
 
-#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
 /*
  * Macro for converting signal number to a mask suitable for
  * sigblock().
  */
 #define	sigmask(m)	(1 << ((m)-1))
-#endif
 
-#if __BSD_VISIBLE
 #define	BADSIG		SIG_ERR
-#endif
+#endif /* __BSD_VISIBLE */
 
 #if __POSIX_VISIBLE
 /*
