@@ -1,0 +1,19 @@
+PASSWDQC 2.0.2
+==============
+
+This directory contains a selected set of files from passwdqc 2.0.2
+
+Original source can be downloaded from:
+https://www.openwall.com/passwdqc/
+
+file = passwdqc-2.0.2
+date = 4 Apr 2021
+size = 88796
+sha1 = 70d439a470bff19b3c29ce402daede989657c983
+
+A list of the omitted files and directories can be found in README.DELETED.
+
+This is used in lib/libpam/modules/pam_passwdqc.
+
+Use "git diff vendor/PAM_PASSWDQC contrib/pam_passwdqc" to see local
+modifications.
