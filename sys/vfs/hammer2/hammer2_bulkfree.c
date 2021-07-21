@@ -91,7 +91,7 @@ static int h2_bulkfree_test(hammer2_bulkfree_info_t *info,
  */
 static
 int
-hammer2_bulk_scan(hammer2_chain_t *parent,
+hammer2_bulkfree_scan(hammer2_chain_t *parent,
 		  int (*func)(hammer2_bulkfree_info_t *info,
 			      hammer2_blockref_t *bref),
 		  hammer2_bulkfree_info_t *info)
@@ -253,8 +253,8 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 				hammer2_chain_unlock(chain);
 				hammer2_chain_unlock(parent);
 				info->pri = 0;
-				rup_error |= hammer2_bulk_scan(chain,
-							       func, info);
+				rup_error |= hammer2_bulkfree_scan(chain,
+								   func, info);
 				info->pri += savepri;
 				hammer2_chain_lock(parent,
 						   HAMMER2_RESOLVE_ALWAYS |
@@ -297,7 +297,7 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 			TAILQ_REMOVE(&info->list, save, entry);
 			opri = info->pri;
 			info->pri = 0;
-			rup_error |= hammer2_bulk_scan(save->chain, func, info);
+			rup_error |= hammer2_bulkfree_scan(save->chain, func, info);
 			hammer2_chain_drop(save->chain);
 			kfree(save, M_HAMMER2);
 			info->pri = opri;
@@ -575,16 +575,16 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		cbinfo.mtid = 0;
 #endif
 		cbinfo.pri = 0;
-		error |= hammer2_bulk_scan(vchain,
-					   h2_bulkfree_callback, &cbinfo);
+		error |= hammer2_bulkfree_scan(vchain,
+					       h2_bulkfree_callback, &cbinfo);
 
 		while ((save = TAILQ_FIRST(&cbinfo.list)) != NULL &&
 		       (error & ~HAMMER2_ERROR_CHECK) == 0) {
 			TAILQ_REMOVE(&cbinfo.list, save, entry);
 			cbinfo.pri = 0;
-			error |= hammer2_bulk_scan(save->chain,
-						   h2_bulkfree_callback,
-						   &cbinfo);
+			error |= hammer2_bulkfree_scan(save->chain,
+						       h2_bulkfree_callback,
+						       &cbinfo);
 			hammer2_chain_drop(save->chain);
 			kfree(save, M_HAMMER2);
 		}
