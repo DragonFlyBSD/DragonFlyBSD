@@ -76,7 +76,6 @@ typedef struct hammer2_bulkfree_info {
 	int			bulkfree_ticks;
 	hammer2_off_t		adj_free;
 	hammer2_tid_t		mtid;
-	hammer2_tid_t		saved_mirror_tid;
 	time_t			save_time;
 	hammer2_chain_save_list_t list;
 	hammer2_dedup_t		*dedup;
@@ -490,8 +489,6 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 
 	cbinfo.hmp = hmp;
 	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size, VM_SUBSYS_HAMMER);
-	cbinfo.saved_mirror_tid = hmp->voldata.mirror_tid;
-
 	cbinfo.dedup = kmalloc(sizeof(*cbinfo.dedup) * HAMMER2_DEDUP_HEUR_SIZE,
 			       M_HAMMER2, M_WAITOK | M_ZERO);
 
