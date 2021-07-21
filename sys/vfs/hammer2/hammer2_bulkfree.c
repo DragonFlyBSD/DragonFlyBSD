@@ -47,7 +47,6 @@
 typedef struct hammer2_chain_save {
 	TAILQ_ENTRY(hammer2_chain_save)	entry;
 	hammer2_chain_t	*chain;
-	int pri;
 } hammer2_chain_save_t;
 
 TAILQ_HEAD(hammer2_chain_save_list, hammer2_chain_save);
