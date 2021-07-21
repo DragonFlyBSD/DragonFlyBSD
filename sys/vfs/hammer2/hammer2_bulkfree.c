@@ -662,7 +662,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		kprintf("    ERR(00)->allocated %ld\n", cbinfo.count_00_11);
 		kprintf("    ERR(01)->allocated %ld\n", cbinfo.count_01_11);
 		kprintf("    staged->allocated  %ld\n", cbinfo.count_10_11);
-		kprintf("    ~2MB segs cleaned  %ld\n", cbinfo.count_l0cleans);
+		kprintf("    ~4MB segs cleaned  %ld\n", cbinfo.count_l0cleans);
 		kprintf("    linear adjusts     %ld\n",
 			cbinfo.count_linadjusts);
 		kprintf("    dedup factor       %ld\n",
