@@ -78,7 +78,6 @@ typedef vm_paddr_t		paddr_t;
 
 /* Attributes. */
 #if defined(__DragonFly__)
-#define DIAGNOSTIC		INVARIANTS
 #define __cacheline_aligned	__cachealign
 #define __diagused		__debugvar
 #endif

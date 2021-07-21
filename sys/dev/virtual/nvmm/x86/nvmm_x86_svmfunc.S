@@ -35,7 +35,6 @@
 #include "assym.h"
 #include <machine/asm.h>
 #elif defined(__DragonFly__)
-#define LOCORE
 #include <machine/asmacros.h>
 #include "assym.s"
 #endif
