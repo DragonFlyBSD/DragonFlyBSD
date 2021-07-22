@@ -350,9 +350,9 @@ done:
  * synchronize any modified chains (otherwise their blocks might be improperly
  * freed).
  *
- * Temporary memory in multiples of 64KB is required to reconstruct the leaf
+ * Temporary memory in multiples of 32KB is required to reconstruct the leaf
  * hammer2_bmap_data blocks so they can later be compared against the live
- * freemap.  Each 64KB block represents 128 x 16KB x 1024 = ~2 GB of storage.
+ * freemap.  Each 32KB represents 256 x 16KB x 256 = ~1 GB of storage.
  * A 32MB save area thus represents around ~1 TB.  The temporary memory
  * allocated can be specified.  If it is not sufficient multiple topology
  * passes will be made.
@@ -496,8 +496,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		(intmax_t)size / (1024 * 1024));
 
 	/*
-	 * Normalize start point to a 2GB boundary.  We operate on a
-	 * 64KB leaf bitmap boundary which represents 2GB of storage.
+	 * Normalize start point to a 1GB boundary.  We operate on a
+	 * 32KB leaf bitmap boundary which represents 1GB of storage.
 	 */
 	cbinfo.sbase = bfi->sbase;
 	if (cbinfo.sbase > hmp->total_size)
@@ -515,7 +515,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	while (cbinfo.sbase < hmp->total_size) {
 		/*
 		 * We have enough ram to represent (incr) bytes of storage.
-		 * Each 64KB of ram represents 2GB of storage.
+		 * Each 32KB of ram represents 1GB of storage.
 		 *
 		 * We must also clean out our de-duplication heuristic for
 		 * each (incr) bytes of storage, otherwise we wind up not
@@ -758,8 +758,8 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	 * Calculate the information needed to generate the in-memory
 	 * freemap record.
 	 *
-	 * Hammer2 does not allow allocations to cross the L1 (2GB) boundary,
-	 * it's a problem if it does.  (Or L0 (2MB) for that matter).
+	 * Hammer2 does not allow allocations to cross the L1 (1GB) boundary,
+	 * it's a problem if it does.  (Or L0 (4MB) for that matter).
 	 */
 	radix = (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	KKASSERT(radix != 0);
@@ -767,7 +767,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	class = (bref->type << 8) | HAMMER2_PBUFRADIX;
 
 	if (data_off + bytes > cbinfo->sstop) {
-		kprintf("hammer2_bulkfree_scan: illegal 2GB boundary "
+		kprintf("hammer2_bulkfree_scan: illegal 1GB boundary "
 			"%016jx %016jx/%d\n",
 			(intmax_t)bref->data_off,
 			(intmax_t)bref->key,
