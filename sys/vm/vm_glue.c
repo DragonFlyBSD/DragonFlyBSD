@@ -199,7 +199,7 @@ void
 vsunlock(caddr_t addr, u_int len)
 {
 	if (len) {
-		/* wire the pages */
+		/* unwire the pages */
 		vm_map_kernel_wiring(&curproc->p_vmspace->vm_map,
 				     trunc_page((vm_offset_t)addr),
 				     round_page((vm_offset_t)addr + len),
