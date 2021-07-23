@@ -1013,7 +1013,9 @@ sys_mlock(struct sysmsg *sysmsg, const struct mlock_args *uap)
 		return (error);
 	}
 #endif
-	error = vm_map_unwire(&p->p_vmspace->vm_map, addr, addr + size, FALSE);
+	/* wire the pages */
+	error = vm_map_user_wiring(&p->p_vmspace->vm_map,
+				   addr, addr + size, FALSE);
 	return (error == KERN_SUCCESS ? 0 : ENOMEM);
 }
 
@@ -1154,8 +1156,9 @@ sys_munlock(struct sysmsg *sysmsg, const struct munlock_args *uap)
 	if (error)
 		return (error);
 #endif
-
-	error = vm_map_unwire(&p->p_vmspace->vm_map, addr, addr + size, TRUE);
+	/* unwire the pages */
+	error = vm_map_user_wiring(&p->p_vmspace->vm_map,
+				   addr, addr + size, TRUE);
 	return (error == KERN_SUCCESS ? 0 : ENOMEM);
 }
 
@@ -1447,9 +1450,10 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		}
 	}
 
+
 	/* If a process has marked all future mappings for wiring, do so */
 	if ((rv == KERN_SUCCESS) && (map->flags & MAP_WIREFUTURE))
-		vm_map_unwire(map, *addr, *addr + size, FALSE);
+		vm_map_user_wiring(map, *addr, *addr + size, FALSE);
 
 	/*
 	 * Set the access time on the vnode

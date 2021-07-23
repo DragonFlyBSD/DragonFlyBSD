@@ -101,7 +101,8 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval)
 	if (!rv) {
 		vm_object_reference XXX (object);
 
-		rv = vm_map_wire (kernel_map, kva, kva + PAGE_SIZE, 0);
+		/* wire the pages */
+		rv = vm_map_kernel_wiring(kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {
 			*retval = 0;
 			bcopy ((caddr_t)kva + page_offset,
@@ -194,7 +195,8 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum)
 	if (!rv) {
 		vm_object_reference XXX (object);
 
-		rv = vm_map_wire (kernel_map, kva, kva + PAGE_SIZE, 0);
+		/* wire the pages */
+		rv = vm_map_kernel_wiring(kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {
 		  bcopy (&datum, (caddr_t)kva + page_offset, sizeof datum);
 		}

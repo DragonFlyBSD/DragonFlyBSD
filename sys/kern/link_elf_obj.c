@@ -671,9 +671,10 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 		ef->object = NULL;
 		goto out;
 	}
+
 	/* Wire the pages */
-	error = vm_map_wire(kernel_map, mapbase,
-			    mapbase + round_page(mapsize), 0);
+	error = vm_map_kernel_wiring(kernel_map, mapbase,
+				     mapbase + round_page(mapsize), 0);
 #endif
 	if (error != KERN_SUCCESS) {
 		error = ENOMEM;

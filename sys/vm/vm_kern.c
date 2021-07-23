@@ -266,20 +266,20 @@ kmem_alloc3(vm_map_t map, vm_size_t size, vm_subsys_t id, int kmflags)
 
 	/*
 	 * Guarantee that there are pages already in this object before
-	 * calling vm_map_wire.  This is to prevent the following
+	 * calling vm_map_kernel_wiring().  This is to prevent the following
 	 * scenario:
 	 *
 	 * 1) Threads have swapped out, so that there is a pager for the
 	 * kernel_object. 2) The kmsg zone is empty, and so we are
-	 * kmem_allocing a new page for it. 3) vm_map_wire calls vm_fault;
-	 * there is no page, but there is a pager, so we call
+	 * kmem_allocing a new page for it. 3) vm_map_kernel_wiring() calls
+	 * vm_fault(); there is no page, but there is a pager, so we call
 	 * pager_data_request.  But the kmsg zone is empty, so we must
 	 * kmem_alloc. 4) goto 1 5) Even if the kmsg zone is not empty: when
 	 * we get the data back from the pager, it will be (very stale)
 	 * non-zero data.  kmem_alloc is defined to return zero-filled memory.
 	 *
 	 * We're intentionally not activating the pages we allocate to prevent a
-	 * race with page-out.  vm_map_wire will wire the pages.
+	 * race with page-out.  vm_map_kernel_wiring() will wire the pages.
 	 */
 	vm_object_hold(kernel_object);
 	for (i = gstart; i < size; i += PAGE_SIZE) {
@@ -294,11 +294,12 @@ kmem_alloc3(vm_map_t map, vm_size_t size, vm_subsys_t id, int kmflags)
 	vm_object_drop(kernel_object);
 
 	/*
-	 * And finally, mark the data as non-pageable.
+	 * And finally, mark the data as pageable or non-pageable (unwiring
+	 * or wiring the pages), according to the passed-in kmflags.
 	 *
-	 * NOTE: vm_map_wire() handles any kstack guard.
+	 * NOTE: vm_map_kernel_wiring() handles any kstack guard.
 	 */
-	vm_map_wire(map, addr, addr + size, kmflags);
+	vm_map_kernel_wiring(map, addr, addr + size, kmflags);
 
 	return (addr);
 }
@@ -455,7 +456,10 @@ kmem_alloc_attr(vm_map_t map, vm_size_t size, vm_subsys_t id,
 			pmap_zero_page(VM_PAGE_TO_PHYS(m));
 		m->valid = VM_PAGE_BITS_ALL;
 	}
-	vm_map_wire(map, addr, addr + size, 0);
+
+	/* wire the pages */
+	vm_map_kernel_wiring(map, addr, addr + size, 0);
+
 	return (addr);
 }
 

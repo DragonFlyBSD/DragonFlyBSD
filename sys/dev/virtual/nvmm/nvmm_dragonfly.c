@@ -178,7 +178,7 @@ os_vmobj_map(struct vm_map *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 	}
 
 	if (wired) {
-		rv = vm_map_wire(map, start, start + size, 0);
+		rv = vm_map_kernel_wiring(map, start, start + size, 0);
 		if (rv != KERN_SUCCESS) {
 			os_vmobj_unmap(map, start, start + size, false);
 			return rv;
@@ -194,7 +194,7 @@ os_vmobj_unmap(struct vm_map *map, vaddr_t start, vaddr_t end, bool wired)
 {
 	if (wired) {
 		/* Unwire kernel mappings before removing. */
-		vm_map_wire(map, start, end, KM_PAGEABLE);
+		vm_map_kernel_wiring(map, start, end, KM_PAGEABLE);
 	}
 	vm_map_remove(map, start, end);
 }

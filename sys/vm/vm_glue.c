@@ -184,9 +184,11 @@ void
 vslock(caddr_t addr, u_int len)
 {
 	if (len) {
-		vm_map_wire(&curproc->p_vmspace->vm_map,
-			    trunc_page((vm_offset_t)addr),
-			    round_page((vm_offset_t)addr + len), 0);
+		/* wire the pages */
+		vm_map_kernel_wiring(&curproc->p_vmspace->vm_map,
+				     trunc_page((vm_offset_t)addr),
+				     round_page((vm_offset_t)addr + len),
+				     0);
 	}
 }
 
@@ -197,10 +199,11 @@ void
 vsunlock(caddr_t addr, u_int len)
 {
 	if (len) {
-		vm_map_wire(&curproc->p_vmspace->vm_map,
-			    trunc_page((vm_offset_t)addr),
-			    round_page((vm_offset_t)addr + len),
-			    KM_PAGEABLE);
+		/* wire the pages */
+		vm_map_kernel_wiring(&curproc->p_vmspace->vm_map,
+				     trunc_page((vm_offset_t)addr),
+				     round_page((vm_offset_t)addr + len),
+				     KM_PAGEABLE);
 	}
 }
 

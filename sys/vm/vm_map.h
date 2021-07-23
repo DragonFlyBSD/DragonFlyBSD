@@ -619,8 +619,8 @@ int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t,
 		vm_pindex_t *, vm_pindex_t *, vm_prot_t *, int *);
 void vm_map_lookup_done (vm_map_t, vm_map_entry_t, int);
 boolean_t vm_map_lookup_entry (vm_map_t, vm_offset_t, vm_map_entry_t *);
-int vm_map_wire (vm_map_t, vm_offset_t, vm_offset_t, int);
-int vm_map_unwire (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
+int vm_map_kernel_wiring (vm_map_t, vm_offset_t, vm_offset_t, int);
+int vm_map_user_wiring (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
 int vm_map_clean (vm_map_t, vm_offset_t, vm_offset_t, boolean_t, boolean_t);
 int vm_map_protect (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t, boolean_t);
 int vm_map_remove (vm_map_t, vm_offset_t, vm_offset_t);
