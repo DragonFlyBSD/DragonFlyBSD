@@ -2678,8 +2678,6 @@ done:
 /*
  * Wiring/Unwiring of memory for kernel-related operation.
  *
- * XXX the naming is horrid.  Change name to vm_map_wiring().
- *
  * Sets the pageability of the specified address range in the target map.
  * Regions specified as not pageable require locked-down physical
  * memory and physical page maps.
