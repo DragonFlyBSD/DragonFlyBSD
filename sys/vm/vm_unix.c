@@ -146,7 +146,7 @@ sys_sbrk(struct sysmsg *sysmsg, const struct sbrk_args *uap)
 	base_end = nbase + round_page(incr);
 	sysmsg->sysmsg_resultp = (void *)nbase;
 	if (vm->vm_map.flags & MAP_WIREFUTURE)
-		vm_map_wire(&vm->vm_map, base, base_end, FALSE);
+		vm_map_wire(&vm->vm_map, base, base_end, 0);
 
 	/*
 	 * Adjust dsize upwards only
@@ -228,7 +228,7 @@ sys_obreak(struct sysmsg *sysmsg, const struct obreak_args *uap)
 			goto done;
 		}
 		if (vm->vm_map.flags & MAP_WIREFUTURE)
-			vm_map_wire(&vm->vm_map, old, new, FALSE);
+			vm_map_wire(&vm->vm_map, old, new, 0);
 
 		vm->vm_dsize += diff;
 	} else if (new < old) {
