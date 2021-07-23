@@ -11,8 +11,8 @@ nvmm_x86_svmfunc.o nvmm_x86_vmxfunc.o:
 	${CC} -c -x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto} ${.IMPSRC}
 
 .if !defined(BUILDING_WITH_KERNEL)
-SRCS+=	assym.s
 SRCS+=	bus_if.h device_if.h opt_nfs.h  # required by 'genassym.c'
+SRCS+=	assym.s
 nvmm_x86_svmfunc.o nvmm_x86_vmxfunc.o: assym.s
 .endif # !BUILDING_WITH_KERNEL
 .endif
