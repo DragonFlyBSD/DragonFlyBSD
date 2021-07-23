@@ -1455,7 +1455,7 @@ ext2_fhtovp(struct mount *mp, struct vnode *rootvp, struct fid *fhp,
 	    ufhp->ufid_ino > fs->e2fs_gcount * fs->e2fs_ipg)
 		return (ESTALE);
 
-	error = VFS_VGET(mp, NULL, LK_EXCLUSIVE, &nvp);
+	error = VFS_VGET(mp, NULL, ufhp->ufid_ino, &nvp);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);
