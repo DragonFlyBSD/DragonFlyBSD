@@ -34,14 +34,10 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include <sys/bitops.h>
 #include <machine/psl.h>
-#include <machine/specialreg.h>
 
 #define MIN(X, Y)		(((X) < (Y)) ? (X) : (Y))
 #define __cacheline_aligned	__attribute__((__aligned__(64)))
-#undef __BIT
-#define __BIT(__n)		(((__n) == 64) ? 0 : ((uint64_t)1 << (__n)))
 
 /* -------------------------------------------------------------------------- */
 
