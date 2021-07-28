@@ -1900,7 +1900,6 @@ vmx_inkernel_handle_msr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			goto handled;
 		}
 	} else {
-		/* All bets are off if MSR_TSC is actually written to. */
 		if (exit->u.wrmsr.msr == MSR_TSC) {
 			cpudata->gtsc_offset = exit->u.wrmsr.val - rdtsc();
 			cpudata->gtsc_want_update = true;
@@ -2314,8 +2313,8 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		 * be done after the cli to avoid gd_reqflags pending
 		 * races.
 		 *
-		 * QEMU may assume that event injection succeeds, but we
-		 * have to return to process these events.  To deal with
+		 * Emulators may assume that event injection succeeds, but
+		 * we have to return to process these events.  To deal with
 		 * this, use ERESTART mechanics.
 		 */
 		if (__predict_false(mycpu->gd_reqflags & RQF_HVM_MASK)) {
@@ -2689,17 +2688,13 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 		    state->msrs[NVMM_X64_MSR_SYSENTER_EIP]);
 
 		/*
-		 * QEMU or whatever... probably did NOT want to set the TSC,
-		 * because doing so would destroy tsc mp-synchronization
-		 * across logical cpus.  Try to figure out what qemu meant
-		 * to do.
+		 * The emulator might NOT want to set the TSC, because doing
+		 * so would destroy TSC MP-synchronization across CPUs.  Try
+		 * to figure out what the emulator meant to do.
 		 *
-		 * If writing the last TSC value we reported via getstate,
-		 * assume that the hypervisor does not want to write to the
-		 * TSC.
-		 *
-		 * QEMU appears to issue a setstate with the value 0 after
-		 * a 'reboot', so for now also ignore this case.
+		 * If writing the last TSC value we reported via getstate or
+		 * a zero value, assume that the emulator does not want to
+		 * write to the TSC.
 		 */
 		if (state->msrs[NVMM_X64_MSR_TSC] != cpudata->gtsc_match &&
 		    state->msrs[NVMM_X64_MSR_TSC] != 0) {
@@ -2838,7 +2833,7 @@ vmx_vcpu_getstate(struct nvmm_cpu *vcpu)
 		    vmx_vmread(VMCS_GUEST_IA32_SYSENTER_EIP);
 		state->msrs[NVMM_X64_MSR_TSC] = rdtsc() + cpudata->gtsc_offset;
 
-		/* Save reported TSC value for later setstate hack. */
+		/* Save reported TSC value for later setstate check. */
 		cpudata->gtsc_match = state->msrs[NVMM_X64_MSR_TSC];
 	}
 
