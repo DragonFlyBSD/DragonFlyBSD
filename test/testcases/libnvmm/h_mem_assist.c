@@ -44,15 +44,11 @@
 #ifdef __NetBSD__
 
 #include <machine/pte.h>
-#include <x86/specialreg.h>
-
 #define PAGE_SIZE 4096
 
 #else /* DragonFly */
 
 #include <machine/pmap.h>
-#include <machine/specialreg.h>
-
 #define PTE_P		X86_PG_V	/* 0x001: P (Valid) */
 #define PTE_W		X86_PG_RW	/* 0x002: R/W (Read/Write) */
 #define PSL_MBO		PSL_RESERVED_DEFAULT	/* 0x00000002 */
