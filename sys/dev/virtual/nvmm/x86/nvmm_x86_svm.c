@@ -2429,7 +2429,6 @@ svm_tlb_flush(struct pmap *pm)
 	struct nvmm_machine *mach = os_pmap_mach(pm);
 	struct svm_machdata *machdata = mach->machdata;
 
-	// TODO: uint64_t gen = os_pmap_gen(pm);
 	os_atomic_inc_64(&machdata->mach_htlb_gen);
 
 	/*
