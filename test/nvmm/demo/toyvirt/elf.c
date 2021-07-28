@@ -26,19 +26,15 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include <err.h>
+#include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
-#include <err.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <nvmm.h>
 
 #include "common.h"
 

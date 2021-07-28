@@ -26,28 +26,26 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+#include <sys/mman.h>
+
 #include <assert.h>
+#include <err.h>
+#include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
-#include <err.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <machine/specialreg.h>
-#include <pthread.h>
-#include <nvmm.h>
 
 #include "common.h"
 
-#ifdef __DragonFly__
-#define APICBASE_EN	APICBASE_ENABLED	/* 0x00000800: software enable */
-#endif
+#undef  MSR_APICBASE
+#define MSR_APICBASE	0x01b
+#undef  APICBASE_BSP
+#define APICBASE_BSP	0x00000100 /* bootstrap processor */
+#undef  APICBASE_EN
+#define APICBASE_EN	0x00000800 /* software enable */
 
 /* -------------------------------------------------------------------------- */
 

@@ -30,6 +30,8 @@
  * Shared stuff within toyvirt.
  */
 
+#include <nvmm.h>
+
 #define PAGE_SIZE	4096
 #define rounddown(x,y)	(((x)/(y))*(y))
 #define roundup(x, y)	((((x)+((y)-1))/(y))*(y))

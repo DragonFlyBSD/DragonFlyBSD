@@ -31,17 +31,10 @@
  * other is an IO device.
  */
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
-#include <err.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <nvmm.h>
 
 #include "common.h"
 
