@@ -55,7 +55,19 @@ CTASSERT(KERN_SUCCESS == 0);
 os_vmspace_t *
 os_vmspace_create(vaddr_t vmin, vaddr_t vmax)
 {
-	return vmspace_alloc(vmin, vmax);
+	struct vmspace *vm;
+
+	vm = vmspace_alloc(vmin, vmax);
+
+	/*
+	 * Set PMAP_MULTI on the backing pmap for the machine.  Only
+	 * pmap changes to the backing pmap for the machine affect the
+	 * guest.  Changes to the host's pmap do not affect the guest's
+	 * backing pmap.
+	 */
+	pmap_maybethreaded(&vm->vm_pmap);
+
+	return vm;
 }
 
 void
