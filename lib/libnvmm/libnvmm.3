@@ -29,7 +29,27 @@
 .Dt LIBNVMM 3
 .Os
 .Sh NAME
-.Nm libnvmm
+.Nm libnvmm ,
+.Nm nvmm_init ,
+.Nm nvmm_capability ,
+.Nm nvmm_machine_create ,
+.Nm nvmm_machine_destroy ,
+.Nm nvmm_machine_configure ,
+.Nm nvmm_vcpu_create ,
+.Nm nvmm_vcpu_destroy ,
+.Nm nvmm_vcpu_configure ,
+.Nm nvmm_vcpu_getstate ,
+.Nm nvmm_vcpu_setstate ,
+.Nm nvmm_vcpu_inject ,
+.Nm nvmm_vcpu_run ,
+.Nm nvmm_hva_map ,
+.Nm nvmm_hva_unmap ,
+.Nm nvmm_gpa_map ,
+.Nm nvmm_gpa_unmap ,
+.Nm nvmm_gva_to_gpa ,
+.Nm nvmm_gpa_to_hva ,
+.Nm nvmm_assist_io ,
+.Nm nvmm_assist_mem
 .Nd NVMM Virtualization API
 .Sh LIBRARY
 .Lb libnvmm
