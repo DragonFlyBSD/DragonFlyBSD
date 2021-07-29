@@ -110,13 +110,13 @@ provides a library for emulator software to handle hardware-accelerated virtual
 machines in
 .Nx .
 A virtual machine is described by an opaque structure,
-.Cd nvmm_machine .
+.Vt nvmm_machine .
 Emulator software should not attempt to modify this structure directly, and
 should use the API provided by
 .Nm
 to manage virtual machines.
 A virtual CPU is described by a public structure,
-.Cd nvmm_vcpu .
+.Vt nvmm_vcpu .
 .Pp
 .Fn nvmm_init
 initializes NVMM.
@@ -322,7 +322,7 @@ It is to be noted that
 may perform non-re-entrant operations, and should be called only once.
 .Ss NVMM Capability
 The
-.Cd nvmm_capability
+.Vt nvmm_capability
 structure helps emulator software identify the capabilities offered by NVMM on
 the host:
 .Bd -literal
@@ -340,9 +340,9 @@ struct nvmm_capability {
 .Ed
 .Pp
 For example, the
-.Cd max_machines
+.Fa max_machines
 field indicates the maximum number of virtual machines supported, while
-.Cd max_vcpus
+.Fa max_vcpus
 indicates the maximum number of VCPUs supported per virtual machine.
 .Ss Machine Ownership
 When a process creates a virtual machine via
@@ -368,7 +368,7 @@ which can take the following operations:
 .Pp
 .Bl -bullet -offset indent -compact
 .It
-.Cd NVMM_VCPU_CONF_CALLBACKS :
+.Dv NVMM_VCPU_CONF_CALLBACKS :
 register assist callbacks.
 See
 .Sx Assist Callbacks
@@ -381,7 +381,7 @@ On x86 there are two additional operations available:
 .Pp
 .Bl -bullet -offset indent -compact
 .It
-.Cd NVMM_VCPU_CONF_CPUID :
+.Dv NVMM_VCPU_CONF_CPUID :
 configure the information returned to the guest by the CPUID instruction.
 .It
 .Cd NVMM_VCPU_CONF_TPR :
@@ -471,7 +471,7 @@ see
 below for details.
 .Ss VCPU Programming Model
 A VCPU is described by a public structure,
-.Cd nvmm_vcpu :
+.Vt nvmm_vcpu :
 .Bd -literal
 struct nvmm_vcpu {
 	nvmm_cpuid_t cpuid;
@@ -511,7 +511,7 @@ Emulator software should not modify the state of a VCPU with several
 different threads.
 .Ss Exit Reasons
 The
-.Cd nvmm_vcpu_exit
+.Vt nvmm_vcpu_exit
 structure is used to handle VM exits:
 .Bd -literal
 /* Generic. */
@@ -556,7 +556,7 @@ to retrieve certain state values.
 It is possible that a VM exit was caused by a reason internal to the host
 kernel, and that emulator software should not be concerned with.
 In this case, the exit reason is set to
-.Cd NVMM_VCPU_EXIT_NONE .
+.Dv NVMM_VCPU_EXIT_NONE .
 This gives a chance for emulator software to halt the VM in its tracks.
 .Pp
 Refer to functional examples to see precisely how to handle VM exits.
@@ -603,9 +603,9 @@ Emulator software can manage interrupt and NMI window-exiting via the
 .Va intr
 component of the VCPU state.
 When such window-exiting is enabled, NVMM will cause a VM exit with reason
-.Cd NVMM_VCPU_EXIT_INT_READY
+.Dv NVMM_VCPU_EXIT_INT_READY
 or
-.Cd NVMM_VCPU_EXIT_NMI_READY
+.Dv NVMM_VCPU_EXIT_NMI_READY
 to indicate that the guest is now able to handle the corresponding class
 of interrupts.
 .Ss Assist Callbacks
@@ -633,7 +633,7 @@ Emulator software that does not intend to use either of these assists can put
 in the callbacks.
 .Ss I/O Assist
 When a VM exit occurs with reason
-.Cd NVMM_VCPU_EXIT_IO ,
+.Dv NVMM_VCPU_EXIT_IO ,
 it is necessary for emulator software to emulate the associated I/O operation.
 .Nm
 provides an easy way for emulator software to perform that.
@@ -642,7 +642,7 @@ provides an easy way for emulator software to perform that.
 will call the registered
 .Fa io
 callback function and give it a
-.Cd nvmm_io
+.Vt nvmm_io
 structure as argument.
 This structure describes an I/O transaction:
 .Bd -literal
@@ -681,7 +681,7 @@ will indicate if the operation is an input, and
 will indicate the size of the access.
 .Ss Mem Assist
 When a VM exit occurs with reason
-.Cd NVMM_VCPU_EXIT_MEMORY ,
+.Dv NVMM_VCPU_EXIT_MEMORY ,
 it is necessary for emulator software to emulate the associated memory
 operation.
 .Nm
@@ -692,7 +692,7 @@ Assist.
 will call the registered
 .Fa mem
 callback function and give it a
-.Cd nvmm_mem
+.Vt nvmm_mem
 structure as argument.
 This structure describes a Mem transaction:
 .Bd -literal
