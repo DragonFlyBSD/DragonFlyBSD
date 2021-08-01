@@ -27,14 +27,12 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-#	@(#)mkdep.sh	8.1 (Berkeley) 6/6/93
-#
-
-PATH=/bin:/usr/bin:/usr/ucb:/usr/old/bin
-export PATH
+#	@(#)mkdep.gcc.sh	8.1 (Berkeley) 6/6/93
+# $FreeBSD: src/usr.bin/mkdep/mkdep.gcc.sh,v 1.18 1999/08/28 01:04:04 peter Exp $
 
 D=.depend			# default dependency file is .depend
 append=0
+pflag=
 
 while :
 	do case "$1" in
@@ -51,57 +49,48 @@ while :
 		# the -p flag produces "program: program.c" style dependencies
 		# so .o's don't get produced
 		-p)
-			SED='s;\.o ; ;'
+			pflag=p
 			shift ;;
 		*)
 			break ;;
 	esac
 done
 
-if [ $# = 0 ] ; then
-	echo 'usage: mkdep [-p] [-f depend_file] [cc_flags] file ...'
-	exit 1
-fi
+case $# in 0)
+	echo 'usage: mkdep [-ap] [-f file] [flags] file ...' >&2
+	exit 1;;
+esac
 
-TMP=/tmp/mkdep$$
-
+TMP=_mkdep$$
 trap 'rm -f $TMP ; trap 2 ; kill -2 $$' 1 2 3 13 15
+trap 'rm -f $TMP' 0
 
-cc -M $* |
-sed "
-	s; \./; ;g
-	/\.c:$/d
-	$SED" |
-awk '{
-	if ($1 != prev) {
-		if (rec != "")
-			print rec;
-		rec = $0;
-		prev = $1;
-	}
-	else {
-		if (length(rec $2) > 78) {
-			print rec;
-			rec = $0;
-		}
-		else
-			rec = rec " " $2
-	}
-}
-END {
-	print rec
-}' > $TMP
+# For C sources, mkdep must use exactly the same cpp and predefined flags
+# as the compiler would.  This is easily arranged by letting the compiler
+# pick the cpp.  mkdep must be told the cpp to use for exceptional cases.
+CC=${CC-"cc"}
+MKDEP_CPP=${MKDEP_CPP-"${CC} -E"}
+MKDEP_CPP_OPTS=${MKDEP_CPP_OPTS-"-M"};
 
-if [ $? != 0 ]; then
-	echo 'mkdep: compile failed.'
-	rm -f $TMP
+echo "# $@" > $TMP	# store arguments for debugging
+
+if $MKDEP_CPP $MKDEP_CPP_OPTS "$@" >> $TMP; then :
+else
+	echo 'mkdep: compile failed' >&2
 	exit 1
 fi
 
-if [ $append = 1 ]; then
-	cat $TMP >> $D
-	rm -f $TMP
-else
-	mv $TMP $D
-fi
-exit 0
+case x$pflag in
+	x) case $append in
+		0) sed -e 's; \./; ;g' < $TMP >  $D;;
+		*) sed -e 's; \./; ;g' < $TMP >> $D;;
+	   esac
+	;;
+	*) case $append in
+		0) sed -e 's;\.o:;:;' -e 's; \./; ;g' < $TMP >  $D;;
+		*) sed -e 's;\.o:;:;' -e 's; \./; ;g' < $TMP >> $D;;
+	   esac
+	;;
+esac
+
+exit $?
