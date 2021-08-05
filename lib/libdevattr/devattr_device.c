@@ -40,11 +40,11 @@
 #include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/un.h>
-#include <cpu/inttypes.h>
 
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <libgen.h>
 #include <regex.h>
 #include <signal.h>

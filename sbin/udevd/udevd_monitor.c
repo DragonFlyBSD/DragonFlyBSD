@@ -39,14 +39,15 @@
 #include <sys/poll.h>
 #include <sys/queue.h>
 #include <sys/un.h>
-#include <cpu/inttypes.h>
-#include <assert.h>
 
+#include <assert.h>
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <libgen.h>
+#include <pthread.h>
 #include <regex.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -55,7 +56,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <libprop/proplib.h>
 #include <sys/udev.h>

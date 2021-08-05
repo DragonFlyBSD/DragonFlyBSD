@@ -38,7 +38,6 @@
 #include <sys/poll.h>
 #include <sys/queue.h>
 #include <sys/un.h>
-#include <cpu/inttypes.h>
 
 #include <err.h>
 #include <errno.h>
