@@ -28,13 +28,14 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signal2.h,v 1.3 2008/10/14 21:25:14 swildner Exp $
  */
 
-#ifndef _SYS_SIGNAL2_H
-#define _SYS_SIGNAL2_H
+#ifndef _SYS_SIGNAL2_H_
+#define _SYS_SIGNAL2_H_
 
+#include <sys/param.h>
 #include <sys/proc.h>
+#include <sys/signalvar.h>
 
 /*
  * Inline functions:
@@ -168,4 +169,4 @@ __cursig(struct lwp *lp, int mayblock, int maytrace, int *ptok)
 	return(r);
 }
 
-#endif
+#endif /* !_SYS_SIGNAL2_H_ */

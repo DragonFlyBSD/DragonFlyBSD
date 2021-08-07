@@ -45,6 +45,7 @@ typedef int sig_atomic_t;
 
 #if __BSD_VISIBLE
 
+#include <sys/_sigset.h>
 #include <machine/trap.h>	/* codes for SIGILL, SIGFPE */
 
 /*

@@ -31,6 +31,10 @@
 #ifndef _CPU_SIGFRAME_H_
 #define	_CPU_SIGFRAME_H_
 
+#include <sys/_siginfo.h>
+#include <sys/signal.h>
+#include <sys/ucontext.h>
+
 /*
  * Signal frames, arguments passed to application signal handlers.
  *
