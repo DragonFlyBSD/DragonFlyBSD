@@ -193,9 +193,16 @@ static __inline int *__error(void)
 
 #if __BSD_VISIBLE
 #define	ENOMEDIUM	93		/* linux */
+#endif
 
-/* Error numbers 94 to 98 (inclusive) are unused. */
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE >= 700
+#define	ENOTRECOVERABLE	94		/* State not recoverable */
+#define	EOWNERDEAD	95		/* Previous owner died */
+#endif
 
+/* Error numbers 96 to 98 (inclusive) are unused. */
+
+#if __BSD_VISIBLE
 #define	EASYNC		99		/* XXX */
 
 #define	ELAST		99		/* Must be equal largest errno */

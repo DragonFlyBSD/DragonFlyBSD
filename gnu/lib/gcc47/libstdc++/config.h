@@ -86,7 +86,7 @@
 /* #undef HAVE_ENOSTR */
 
 /* Define if ENOTRECOVERABLE exists. */
-/* #undef HAVE_ENOTRECOVERABLE */
+#define HAVE_ENOTRECOVERABLE 1
 
 /* Define if ENOTSUP exists. */
 #define HAVE_ENOTSUP 1
@@ -95,7 +95,7 @@
 #define HAVE_EOVERFLOW 1
 
 /* Define if EOWNERDEAD exists. */
-/* #undef HAVE_EOWNERDEAD */
+#define HAVE_EOWNERDEAD 1
 
 /* Define if EPERM exists. */
 #define HAVE_EPERM 1

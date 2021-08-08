@@ -148,6 +148,8 @@ const char *const sys_errlist[] = {
 	"Link has been severed",		/* 91 - ENOLINK */
 	"Protocol error",			/* 92 - EPROTO */
 	"No medium found",			/* 93 - ENOMEDIUM */
+	"State not recoverable",		/* 94 - ENOTRECOVERABLE */
+	"Previous owner died",			/* 95 - EOWNERDEAD */
 };
 __thread int errno;
 const int sys_nerr = sizeof(sys_errlist) / sizeof(sys_errlist[0]);
