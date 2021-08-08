@@ -28,7 +28,7 @@
 .\"     @(#)intro.2	8.5 (Berkeley) 2/27/95
 .\" $FreeBSD: src/lib/libc/sys/intro.2,v 1.48 2007/01/09 00:28:14 imp Exp $
 .\"
-.Dd May 16, 2018
+.Dd August 8, 2021
 .Dt INTRO 2
 .Os
 .Sh NAME
@@ -475,6 +475,10 @@ This error code is unused, but present for compatibility with other systems.
 A device or socket encountered an unrecoverable protocol error.
 .It Er 93 ENOMEDIUM Em "No medium found" .
 This error code is unused, but present for compatibility with other systems.
+.It Er 94 ENOTRECOVERABLE Em "State not recoverable" .
+The state protected by a robust mutex is not recoverable.
+.It Er 95 EOWNERDEAD Em "Previous owner died" .
+The owner of a robust mutex terminated while holding the mutex lock.
 .El
 .Sh DEFINITIONS
 .Bl -tag -width Ds

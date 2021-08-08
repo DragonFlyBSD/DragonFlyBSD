@@ -191,6 +191,10 @@ $ EPROTO
 92 Protocol error
 $ ENOMEDIUM
 93 No medium found
+$ ENOTRECOVERABLE
+94 State not recoverable
+$ EOWNERDEAD
+95 Previous owner died
 $
 $ strsignal() support catalog
 $
