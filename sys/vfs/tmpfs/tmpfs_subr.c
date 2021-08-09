@@ -407,16 +407,17 @@ loop:
 			/*
 			 * Special-case handling to avoid deadlocking against
 			 * dnode.  This case has been validated and occurs
-			 * every so often during synth builds.
+			 * every so often during synth builds and in other
+			 * situations.
 			 */
 			if (vget(vp, (lkflag & ~LK_RETRY) |
 				     LK_NOWAIT |
-				     LK_EXCLUSIVE) != 0) {
+				     LK_EXCLUSIVE) != 0)
+			{
 				TMPFS_NODE_UNLOCK(dnode);
 				if (vget(vp, (lkflag & ~LK_RETRY) |
 					     LK_SLEEPFAIL |
 					     LK_EXCLUSIVE) == 0) {
-					kprintf("tmpfs: vp %p sleepfail\n", vp);
 					vput(vp);
 				}
 				vdrop(vp);
