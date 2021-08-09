@@ -75,12 +75,13 @@ SYSCTL_INT(_debug, OID_AUTO, rman_debug, CTLFLAG_RW,
 
 static MALLOC_DEFINE(M_RMAN, "rman", "Resource manager");
 
-struct	rman_head rman_head;
-static	struct lwkt_token rman_tok; /* mutex to protect rman_head */
-static	int int_rman_activate_resource(struct rman *rm, struct resource *r,
+TAILQ_HEAD(rman_head, rman);
+static struct rman_head rman_head;
+static struct lwkt_token rman_tok;	/* mutex to protect rman_head */
+static int int_rman_activate_resource(struct rman *rm, struct resource *r,
 				       struct resource **whohas);
-static	int int_rman_deactivate_resource(struct resource *r);
-static	int int_rman_release_resource(struct rman *rm, struct resource *r);
+static int int_rman_deactivate_resource(struct resource *r);
+static int int_rman_release_resource(struct rman *rm, struct resource *r);
 
 int
 rman_init(struct rman *rm, int cpuid)
@@ -105,10 +106,12 @@ rman_init(struct rman *rm, int cpuid)
 	lwkt_token_init(rm->rm_slock, "rmanslock");
 
 	rm->rm_cpuid = cpuid;
+	rm->rm_hold = 0;
 
 	lwkt_gettoken(&rman_tok);
 	TAILQ_INSERT_TAIL(&rman_head, rm, rm_link);
 	lwkt_reltoken(&rman_tok);
+
 	return 0;
 }
 
@@ -153,6 +156,9 @@ rman_fini(struct rman *rm)
 {
 	struct resource *r;
 
+	/*
+	 * All resources must already have been deallocated.
+	 */
 	lwkt_gettoken(rm->rm_slock);
 	TAILQ_FOREACH(r, &rm->rm_list, r_link) {
 		if (r->r_flags & RF_ALLOCATED) {
@@ -162,21 +168,35 @@ rman_fini(struct rman *rm)
 	}
 
 	/*
-	 * There really should only be one of these if we are in this
-	 * state and the code is working properly, but it can't hurt.
+	 * Protected list removal.  Once removed, wait for any temporary
+	 * holds to be dropped before actually destroying the resource.
 	 */
-	while (!TAILQ_EMPTY(&rm->rm_list)) {
-		r = TAILQ_FIRST(&rm->rm_list);
+	lwkt_gettoken(&rman_tok);
+	TAILQ_REMOVE(&rman_head, rm, rm_link);
+	lwkt_reltoken(&rman_tok);
+
+	if (rm->rm_hold) {
+		kprintf("debug: rman_fini(): rm_hold race fixed on %s\n",
+			rm->rm_descr);
+		while (rm->rm_hold)
+			tsleep(rm, 0, "rmfree", 2);
+	}
+
+	/*
+	 * Destroy all elements remaining on rm_list
+	 */
+	while ((r = TAILQ_FIRST(&rm->rm_list)) != NULL) {
 		TAILQ_REMOVE(&rm->rm_list, r, r_link);
 		kfree(r, M_RMAN);
 	}
 	lwkt_reltoken(rm->rm_slock);
 
-	/* XXX what's the point of this if we are going to free the struct? */
-	lwkt_gettoken(&rman_tok);
-	TAILQ_REMOVE(&rman_head, rm, rm_link);
-	lwkt_reltoken(&rman_tok);
+	/*
+	 * Final cleanup
+	 */
+	lwkt_token_uninit(rm->rm_slock);
 	kfree(rm->rm_slock, M_RMAN);
+	rm->rm_slock = NULL;
 
 	return 0;
 }
@@ -645,12 +665,15 @@ sysctl_rman(SYSCTL_HANDLER_ARGS)
 	/*
 	 * Find the indexed resource manager
 	 */
+	error = ENOENT;
+	lwkt_gettoken(&rman_tok);
+
 	TAILQ_FOREACH(rm, &rman_head, rm_link) {
 		if (rman_idx-- == 0)
 			break;
 	}
 	if (rm == NULL)
-		return (ENOENT);
+		goto done;
 
 	/*
 	 * If the resource index is -1, we want details on the
@@ -664,12 +687,15 @@ sysctl_rman(SYSCTL_HANDLER_ARGS)
 		urm.rm_type = rm->rm_type;
 
 		error = SYSCTL_OUT(req, &urm, sizeof(urm));
-		return (error);
+		goto done;
 	}
 
 	/*
 	 * Find the indexed resource and return it.
 	 */
+	atomic_add_int(&rm->rm_hold, 1);	/* temp prevent destruction */
+	lwkt_gettoken(rm->rm_slock);
+
 	TAILQ_FOREACH(res, &rm->rm_list, r_link) {
 		if (res_idx-- == 0) {
 			ures.r_handle = (uintptr_t)res;
@@ -693,9 +719,14 @@ sysctl_rman(SYSCTL_HANDLER_ARGS)
 			ures.r_flags = res->r_flags;
 
 			error = SYSCTL_OUT(req, &ures, sizeof(ures));
-			return (error);
+			break;
 		}
 	}
+	lwkt_reltoken(rm->rm_slock);
+	atomic_add_int(&rm->rm_hold, -1);
+done:
+	lwkt_reltoken(&rman_tok);
+
 	return (ENOENT);
 }
 

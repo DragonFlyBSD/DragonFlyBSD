@@ -121,8 +121,8 @@ struct	rman {
 	enum	rman_type rm_type; /* what type of resource this is */
 	const	char *rm_descr;	/* text descripion of this resource */
 	int	rm_cpuid;	/* owner cpuid */
+	int	rm_hold;	/* destruction interlock */
 };
-TAILQ_HEAD(rman_head, rman);
 
 int	rman_activate_resource(struct resource *r);
 #if 0
@@ -155,7 +155,6 @@ uint32_t rman_make_alignment_flags(size_t size);
 #define rman_is_region_manager(r,rm) ((r)->r_rm == rm)
 #define rman_get_cpuid(r)	((r)->r_rm->rm_cpuid)
 
-extern	struct rman_head rman_head;
 #endif /* _KERNEL */
 
 #endif /* !_SYS_RMAN_H_ */
