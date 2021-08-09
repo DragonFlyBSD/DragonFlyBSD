@@ -564,6 +564,7 @@ show_volhdr(hammer2_volume_data_t *voldata, int bi)
 	char *str;
 	char *name;
 	char *buf;
+	uuid_t uuid;
 
 	printf("\nVolume header %d {\n", bi);
 	printf("    magic          0x%016jx\n", (intmax_t)voldata->magic);
@@ -589,13 +590,15 @@ show_volhdr(hammer2_volume_data_t *voldata, int bi)
 	printf("    nvolumes       %d\n", voldata->nvolumes);
 
 	str = NULL;
-	hammer2_uuid_to_str(&voldata->fsid, &str);
+	uuid = voldata->fsid;
+	hammer2_uuid_to_str(&uuid, &str);
 	printf("    fsid           %s\n", str);
 	free(str);
 
 	str = NULL;
 	name = NULL;
-	hammer2_uuid_to_str(&voldata->fstype, &str);
+	uuid = voldata->fstype;
+	hammer2_uuid_to_str(&uuid, &str);
 	printf("    fstype         %s\n", str);
 	uuid_addr_lookup(&voldata->fstype, &name, &status);
 	if (name == NULL)
@@ -739,6 +742,7 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 	uint32_t cv;
 	uint64_t cv64;
 	static int init_tab = -1;
+	uuid_t uuid;
 
 	SHA256_CTX hash_ctx;
 	union {
@@ -1017,10 +1021,12 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 			  hammer2_time64_to_str(media.ipdata.meta.atime, &str));
 		tabprintf(tab, "btime    %s\n",
 			  hammer2_time64_to_str(media.ipdata.meta.btime, &str));
+		uuid = media.ipdata.meta.uid;
 		tabprintf(tab, "uid      %s\n",
-			  hammer2_uuid_to_str(&media.ipdata.meta.uid, &str));
+			  hammer2_uuid_to_str(&uuid, &str));
+		uuid = media.ipdata.meta.gid;
 		tabprintf(tab, "gid      %s\n",
-			  hammer2_uuid_to_str(&media.ipdata.meta.gid, &str));
+			  hammer2_uuid_to_str(&uuid, &str));
 		tabprintf(tab, "type     %s\n",
 			  hammer2_iptype_to_str(media.ipdata.meta.type));
 		tabprintf(tab, "opflgs   0x%02x\n",
@@ -1063,12 +1069,12 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 				  hammer2_pfstype_to_str(media.ipdata.meta.pfs_type));
 			tabprintf(tab, "pfs_inum 0x%016jx\n",
 				  (uintmax_t)media.ipdata.meta.pfs_inum);
+			uuid = media.ipdata.meta.pfs_clid;
 			tabprintf(tab, "pfs_clid %s\n",
-				  hammer2_uuid_to_str(&media.ipdata.meta.pfs_clid,
-						      &str));
+				  hammer2_uuid_to_str(&uuid, &str));
+			uuid = media.ipdata.meta.pfs_fsid;
 			tabprintf(tab, "pfs_fsid %s\n",
-				  hammer2_uuid_to_str(&media.ipdata.meta.pfs_fsid,
-						      &str));
+				  hammer2_uuid_to_str(&uuid, &str));
 			tabprintf(tab, "pfs_lsnap_tid 0x%016jx\n",
 				  (uintmax_t)media.ipdata.meta.pfs_lsnap_tid);
 		}

@@ -182,8 +182,10 @@ info_callback2(const void *data,
 	char *pfs_id_str = NULL;
 	const char *type_str;
 	struct pfs_entry *p, *e;
+	uuid_t uuid;
 
-	hammer2_uuid_to_str(&meta->pfs_clid, &pfs_id_str);
+	uuid = meta->pfs_clid;
+	hammer2_uuid_to_str(&uuid, &pfs_id_str);
 	if (meta->pfs_type == HAMMER2_PFSTYPE_MASTER) {
 		if (meta->pfs_subtype == HAMMER2_PFSSUBTYPE_NONE)
 			type_str = "MASTER";

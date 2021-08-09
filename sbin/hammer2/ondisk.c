@@ -207,6 +207,7 @@ hammer2_add_volume(const char *path, int rdonly)
 	hammer2_volume_t *vol;
 	struct stat st;
 	int fd, i;
+	uuid_t uuid;
 
 	fd = open(path, rdonly ? O_RDONLY : O_RDWR);
 	if (fd == -1)
@@ -237,13 +238,15 @@ hammer2_add_volume(const char *path, int rdonly)
 			if (fso.nvolumes != voldata.nvolumes)
 				errx(1, "Volume count mismatch %d vs %d",
 				     fso.nvolumes, voldata.nvolumes);
-			if (!uuid_equal(&fso.fsid, &voldata.fsid, NULL))
+			uuid = voldata.fsid;
+			if (!uuid_equal(&fso.fsid, &uuid, NULL))
 				hammer2_err_uuid_mismatch(&fso.fsid,
-							  &voldata.fsid,
+							  &uuid,
 							  "fsid");
-			if (!uuid_equal(&fso.fstype, &voldata.fstype, NULL))
+			uuid = voldata.fstype;
+			if (!uuid_equal(&fso.fstype, &uuid, NULL))
 				hammer2_err_uuid_mismatch(&fso.fstype,
-							  &voldata.fstype,
+							  &uuid,
 							  "fstype");
 		}
 		/* all per-volume tests passed */

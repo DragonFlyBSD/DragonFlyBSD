@@ -1025,9 +1025,11 @@ print_pfs(const hammer2_inode_data_t *ipdata)
 	const hammer2_inode_meta_t *meta = &ipdata->meta;
 	char *f, *pfs_id_str = NULL;
 	const char *type_str;
+	uuid_t uuid;
 
 	f = get_inode_filename(ipdata);
-	hammer2_uuid_to_str(&meta->pfs_clid, &pfs_id_str);
+	uuid = meta->pfs_clid;
+	hammer2_uuid_to_str(&uuid, &pfs_id_str);
 	if (meta->pfs_type == HAMMER2_PFSTYPE_MASTER) {
 		if (meta->pfs_subtype == HAMMER2_PFSSUBTYPE_NONE)
 			type_str = "MASTER";
@@ -1146,6 +1148,7 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 	const hammer2_inode_data_t *ipdata;
 	int i, bcount, namelen;
 	char *str = NULL;
+	uuid_t uuid;
 
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_INODE:
@@ -1174,10 +1177,10 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 		    hammer2_time64_to_str(ipdata->meta.atime, &str));
 		tfprintf(fp, tab, "btime %s\n",
 		    hammer2_time64_to_str(ipdata->meta.btime, &str));
-		tfprintf(fp, tab, "uid %s\n",
-		    hammer2_uuid_to_str(&ipdata->meta.uid, &str));
-		tfprintf(fp, tab, "gid %s\n",
-		    hammer2_uuid_to_str(&ipdata->meta.gid, &str));
+		uuid = ipdata->meta.uid;
+		tfprintf(fp, tab, "uid %s\n", hammer2_uuid_to_str(&uuid, &str));
+		uuid = ipdata->meta.gid;
+		tfprintf(fp, tab, "gid %s\n", hammer2_uuid_to_str(&uuid, &str));
 		tfprintf(fp, tab, "type %s\n",
 		    hammer2_iptype_to_str(ipdata->meta.type));
 		tfprintf(fp, tab, "op_flags 0x%02x\n", ipdata->meta.op_flags);
@@ -1210,10 +1213,12 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 			    hammer2_pfstype_to_str(ipdata->meta.pfs_type));
 			tfprintf(fp, tab, "pfs_inum 0x%016jx\n",
 			    (uintmax_t)ipdata->meta.pfs_inum);
+			uuid = ipdata->meta.pfs_clid;
 			tfprintf(fp, tab, "pfs_clid %s\n",
-			    hammer2_uuid_to_str(&ipdata->meta.pfs_clid, &str));
+			    hammer2_uuid_to_str(&uuid, &str));
+			uuid = ipdata->meta.pfs_fsid;
 			tfprintf(fp, tab, "pfs_fsid %s\n",
-			    hammer2_uuid_to_str(&ipdata->meta.pfs_fsid, &str));
+			    hammer2_uuid_to_str(&uuid, &str));
 			tfprintf(fp, tab, "pfs_lsnap_tid 0x%016jx\n",
 			    (uintmax_t)ipdata->meta.pfs_lsnap_tid);
 		}
