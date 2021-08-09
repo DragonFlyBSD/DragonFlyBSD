@@ -904,8 +904,17 @@ mds_check_support(void)
 		p[2] = 0;
 		p[3] = 0;
 		cpuid_count(7, 0, p);
+
+		/*
+		 * Some hypervisors fail to implement
+		 * MSR_IA32_ARCH_CAPABILITIES.
+		 */
 		if (p[3] & CPUID_STDEXT3_ARCH_CAP) {
-			msr = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
+			msr = 0;
+			if (rdmsr_safe(MSR_IA32_ARCH_CAPABILITIES, &msr)) {
+				kprintf("Warning: MSR_IA32_ARCH_CAPABILITIES "
+					"cannot be accessed\n");
+			}
 			if (msr & IA32_ARCH_CAP_MDS_NO)
 				rv = MDS_NOT_REQUIRED;
 		}

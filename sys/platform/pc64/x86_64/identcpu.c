@@ -624,7 +624,8 @@ EVENTHANDLER_DEFINE(cpufreq_post_change, tsc_freq_changed, NULL,
 void
 identify_cpu(void)
 {
-	u_int regs[4], cpu_stdext_disable;
+	u_int regs[4];
+	u_int cpu_stdext_disable;
 
 	do_cpuid(0, regs);
 	cpu_high = regs[0];
@@ -669,16 +670,27 @@ identify_cpu(void)
 		 */
 		if (cpu_feature2 & CPUID2_VMM) {
 			cpu_stdext_disable = CPUID_STDEXT_FSGSBASE |
-			    CPUID_STDEXT_SMEP;
-		} else
+					     CPUID_STDEXT_SMEP;
+		} else {
 			cpu_stdext_disable = 0;
+		}
 		TUNABLE_INT_FETCH("hw.cpu_stdext_disable", &cpu_stdext_disable);
+
+		/*
+		 * Some hypervisors fail to implement
+		 * MSR_IA32_ARCH_CAPABILITIES, catch any problems.
+		 */
 		cpu_stdext_feature &= ~cpu_stdext_disable;
 		cpu_stdext_feature2 = regs[2];
 		cpu_stdext_feature3 = regs[3];
-
-		if (cpu_stdext_feature3 & CPUID_STDEXT3_ARCH_CAP)
-			cpu_ia32_arch_caps = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
+		if (cpu_stdext_feature3 & CPUID_STDEXT3_ARCH_CAP) {
+			if (rdmsr_safe(MSR_IA32_ARCH_CAPABILITIES,
+				       &cpu_ia32_arch_caps))
+			{
+				kprintf("Warning: MSR_IA32_ARCH_CAPABILITIES "
+					"cannot be accessed\n");
+			}
+		}
 	}
 
 	if (cpu_vendor_id == CPU_VENDOR_INTEL ||
