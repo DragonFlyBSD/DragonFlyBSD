@@ -74,13 +74,15 @@ main(int argc, char **argv)
 	}
 
 	while ((ch = getopt(argc, argv,
-	    (isgroups || iswhoami) ? "" : "PGgnpru")) != -1)
+	    (isgroups || iswhoami) ? "" : "PGagnpru")) != -1)
 		switch(ch) {
 		case 'G':
 			Gflag = 1;
 			break;
 		case 'P':
 			Pflag = 1;
+			break;
+		case 'a:
 			break;
 		case 'g':
 			gflag = 1;
