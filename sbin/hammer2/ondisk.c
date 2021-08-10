@@ -130,8 +130,7 @@ hammer2_read_volume_header(int fd, const char *path,
 		p = (const char*)&vd;
 		/* verify volume header magic */
 		if ((vd.magic != HAMMER2_VOLUME_ID_HBO) &&
-		    (vd.magic != HAMMER2_VOLUME_ID_ABO))
-		{
+		    (vd.magic != HAMMER2_VOLUME_ID_ABO)) {
 			fprintf(stderr, "%s #%d: bad magic\n", path, i);
 			continue;
 		}
@@ -393,12 +392,10 @@ hammer2_verify_volumes_2(const hammer2_ondisk_t *fsp,
 		if (rootvoldata->nvolumes != fso.nvolumes)
 			errx(1, "Volume header requires %d devices, %d specified",
 			     rootvoldata->nvolumes, fso.nvolumes);
-		if (rootvoldata->total_size != fso.total_size) {
-			fprintf(stderr,
-				"Total size 0x%016jx does not "
-				"equal sum of volumes 0x%016jx",
-			        rootvoldata->total_size, fso.total_size);
-		}
+		if (rootvoldata->total_size != fso.total_size)
+			errx(1, "Total size 0x%016jx does not equal sum of "
+			     "volumes 0x%016jx",
+			     rootvoldata->total_size, fso.total_size);
 		for (i = 0; i < nvolumes; ++i) {
 			off = rootvoldata->volu_loff[i];
 			if (off == (hammer2_off_t)-1)
