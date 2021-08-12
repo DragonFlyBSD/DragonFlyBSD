@@ -449,7 +449,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 			}
 
 			/*
-			 * Calculate bmap pointer from thart starting index
+			 * Calculate bmap pointer from the starting index
 			 * backwards (locality).
 			 *
 			 * Must recalculate after potentially having called
@@ -494,9 +494,13 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 
 		/*
 		 * We only know for sure that we can clear the bitmap bit
-		 * if we scanned the entire array (start == 0).
+		 * if we scanned the entire array (start == 0) in relaxed
+		 * mode.
 		 */
-		if (error == HAMMER2_ERROR_ENOSPC && start == 0) {
+		if (error == HAMMER2_ERROR_ENOSPC &&
+		    start == 0 &&
+		    iter->relaxed)
+		{
 			chain->bref.check.freemap.bigmask &=
 				(uint32_t)~((size_t)1 << radix);
 		}
