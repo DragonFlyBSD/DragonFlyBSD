@@ -82,7 +82,7 @@ main(int argc, char **argv)
 		case 'P':
 			Pflag = 1;
 			break;
-		case 'a:
+		case 'a':
 			break;
 		case 'g':
 			gflag = 1;
