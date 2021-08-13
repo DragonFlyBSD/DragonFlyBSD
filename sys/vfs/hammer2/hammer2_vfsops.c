@@ -58,6 +58,7 @@ struct lock hammer2_mntlk;
 
 int hammer2_supported_version = HAMMER2_VOL_VERSION_DEFAULT;
 int hammer2_debug;
+int hammer2_aux_flags;
 int hammer2_xop_nthreads;
 int hammer2_xop_sgroups;
 int hammer2_xop_xgroups;
@@ -109,6 +110,8 @@ SYSCTL_NODE(_vfs, OID_AUTO, hammer2, CTLFLAG_RW, 0, "HAMMER2 filesystem");
 
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, supported_version, CTLFLAG_RD,
 	   &hammer2_supported_version, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, aux_flags, CTLFLAG_RW,
+	   &hammer2_aux_flags, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, debug, CTLFLAG_RW,
 	   &hammer2_debug, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, debug_inode, CTLFLAG_RW,

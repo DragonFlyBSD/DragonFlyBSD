@@ -84,6 +84,8 @@ typedef struct hammer2_bulkfree_info {
 
 static int h2_bulkfree_test(hammer2_bulkfree_info_t *info,
 			hammer2_blockref_t *bref, int pri, int saved_error);
+static uint32_t bigmask_get(hammer2_bmap_data_t *bmap);
+static int bigmask_good(hammer2_bmap_data_t *bmap, uint32_t live_bigmask);
 
 /*
  * General bulk scan function with callback.  Called with a referenced
@@ -1013,12 +1015,19 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		 */
 		if (bcmp(live->bitmapq, bmap->bitmapq,
 			 sizeof(bmap->bitmapq)) == 0 &&
-		    live->linear >= bmap->linear) {
+		    live->linear >= bmap->linear &&
+		    (hammer2_aux_flags & 1) == 0 &&
+		    bigmask_good(bmap, live_chain->bref.check.freemap.bigmask))
+		{
 			goto next;
 		}
 		if (hammer2_debug & 1) {
-			kprintf("live %016jx %04d.%04x (avail=%d)\n",
-				data_off, bmapindex, live->class, live->avail);
+			kprintf("live %016jx %04d.%04x (avail=%d) "
+				"bigmask %08x->%08x\n",
+				data_off, bmapindex, live->class, live->avail,
+				live_chain->bref.check.freemap.bigmask,
+				live_chain->bref.check.freemap.bigmask |
+				bigmask_get(bmap));
 		}
 
 		hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0);
@@ -1275,4 +1284,61 @@ h2_bulkfree_test(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref,
 	dedup[best].saved_error = saved_error;
 
 	return 0;
+}
+
+/*
+ * Calculate what the bigmask should be.  bigmask is permissive, so the
+ * bits returned must be set at a minimum in the live bigmask.  Other bits
+ * might also be set in the live bigmask.
+ */
+static uint32_t
+bigmask_get(hammer2_bmap_data_t *bmap)
+{
+	hammer2_bitmap_t mask;	/* 64-bit mask to check */
+	hammer2_bitmap_t scan;
+	uint32_t bigmask;
+	uint32_t radix_mask;
+	int iter;
+	int i;
+	int j;
+
+	bigmask = 0;
+	for (i = 0; i < HAMMER2_BMAP_ELEMENTS; ++i) {
+		mask = bmap->bitmapq[i];
+
+		radix_mask = 1U << HAMMER2_FREEMAP_BLOCK_RADIX;
+		radix_mask |= radix_mask - 1;
+		iter = 2;	/* each bitmap entry is 2 bits. 2, 4, 8... */
+		while (iter <= HAMMER2_BMAP_BITS_PER_ELEMENT) {
+			if (iter == HAMMER2_BMAP_BITS_PER_ELEMENT)
+				scan = -1;
+			else
+				scan = (1LU << iter) - 1;
+			j = 0;
+			while (j < HAMMER2_BMAP_BITS_PER_ELEMENT) {
+				/*
+				 * Check if all bits are 0 (free block).
+				 * If so, set the bit in bigmask for the
+				 * allocation radix under test.
+				 */
+				if ((scan & mask) == 0) {
+					bigmask |= radix_mask;
+				}
+				scan <<= iter;
+				j += iter;
+			}
+			iter <<= 1;
+			radix_mask = (radix_mask << 1) | 1;
+		}
+	}
+	return bigmask;
+}
+
+static int
+bigmask_good(hammer2_bmap_data_t *bmap, uint32_t live_bigmask)
+{
+	uint32_t bigmask;
+
+	bigmask = bigmask_get(bmap);
+	return ((live_bigmask & bigmask) == bigmask);
 }

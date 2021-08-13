@@ -1389,7 +1389,7 @@ extern struct vop_ops hammer2_fifo_vops;
 extern struct hammer2_pfslist hammer2_pfslist;
 extern struct lock hammer2_mntlk;
 
-
+extern int hammer2_aux_flags;
 extern int hammer2_debug;
 extern int hammer2_xop_nthreads;
 extern int hammer2_xop_sgroups;
