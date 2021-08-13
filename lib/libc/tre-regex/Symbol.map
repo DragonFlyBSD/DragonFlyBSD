@@ -16,5 +16,4 @@ DF404.0 {
     tre_version;
     tre_config;
     tre_have_backrefs;
-    tre_have_approx;
 };

@@ -136,7 +136,7 @@ DFprivate_1.0 {
     __nss_compat_setpwent;
     __rcmd_errstr;
     _nsdbtaddsrc;
-    _nsdbtdump;
+    _nsdbtdump;		/* only with -D_NSS_DEBUG */
     _nsdbtput;
     _nsdispatch;
     _nsyyerror;

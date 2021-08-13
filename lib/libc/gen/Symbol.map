@@ -77,7 +77,6 @@ DF404.0 {
     pthread_getprio;
     pthread_getschedparam;
     pthread_getspecific;
-    pthread_init;
     pthread_init_early;
     pthread_join;
     pthread_key_create;

@@ -20,8 +20,6 @@ DF404.0 {
     shmaddrs;
     shmchild;
     shmres;
-    sysv_cond_wait;
-    sysv_cond_signal;
     sysv_mutex_init;
     sysv_mutex_lock;
     sysv_mutex_unlock;
