@@ -38,7 +38,11 @@
 
 #include <sys/cdefs.h>
 #include <sys/_null.h>
+#if __BSD_VISIBLE
 #include <sys/types.h>
+#else
+#include <machine/stdint.h>
+#endif
 #include <machine/stdarg.h> /* for __va_list */
 
 typedef	__off_t		fpos_t;
@@ -55,7 +59,8 @@ typedef	size_t		rsize_t;
 #endif
 #endif
 
-#if __POSIX_VISIBLE >= 200809
+/* Should be '__POSIX_VISIBLE >= 200809' but stick with fseeko()/ftello() */
+#if __XSI_VISIBLE >= 500 || __POSIX_VISIBLE >= 200112
 #ifndef _OFF_T_DECLARED
 #define	_OFF_T_DECLARED
 typedef	__off_t		off_t;
@@ -320,8 +325,8 @@ size_t	 fwrite_unlocked(const void * __restrict, size_t, size_t,
 #endif
 
 #if __XSI_VISIBLE >= 500 || __POSIX_VISIBLE >= 200112
-int	 fseeko(FILE *, __off_t, int);
-__off_t	 ftello(FILE *);
+int	 fseeko(FILE *, off_t, int);
+off_t	 ftello(FILE *);
 #endif
 
 #if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 600)
