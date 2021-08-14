@@ -32,16 +32,6 @@
 
 #include <sys/param.h>
 #include <sys/gmon.h>
-#ifdef _KERNEL
-#include <sys/systm.h>
-#include <vm/vm.h>
-#include <vm/vm_param.h>
-#include <vm/pmap.h>
-void	bintr(void);
-void	btrap(void);
-void	eintr(void);
-void	user(void);
-#endif
 
 /*
  * mcount is called on entry to each function compiled with the profiling
@@ -61,113 +51,21 @@ void	user(void);
 /* _mcount; may be static, inline, etc */
 _MCOUNT_DECL(u_long frompc, u_long selfpc)
 {
-#ifdef GUPROF
-	u_int delta;
-#endif
 	u_long frompci;
 	u_short *frompcindex;
 	struct tostruct *top, *prevtop;
 	struct gmonparam *p;
 	long toindex;
-#ifdef _KERNEL
-	MCOUNT_DECL(s)
-#endif
 
 	p = &_gmonparam;
-#ifndef GUPROF			/* XXX */
 	/*
 	 * check that we are profiling
 	 * and that we aren't recursively invoked.
 	 */
 	if (p->state != GMON_PROF_ON)
 		return;
-#endif
-#ifdef _KERNEL
-	MCOUNT_ENTER(s);
-#else
 	p->state = GMON_PROF_BUSY;	/* XXX */
-#endif
 	frompci = frompc - p->lowpc;
-
-#ifdef _KERNEL
-	/*
-	 * When we are called from an exception handler, frompci may be
-	 * for a user address.  Convert such frompci's to the index of
-	 * user() to merge all user counts.
-	 */
-	if (frompci >= p->textsize) {
-		if (frompci + p->lowpc
-		    >= (u_long)(VM_MAXUSER_ADDRESS + UPAGES * PAGE_SIZE))
-			goto done;
-		frompci = (u_long)user - p->lowpc;
-		if (frompci >= p->textsize)
-		    goto done;
-	}
-#endif
-
-#ifdef GUPROF
-	if (p->state != GMON_PROF_HIRES)
-		goto skip_guprof_stuff;
-	/*
-	 * Look at the clock and add the count of clock cycles since the
-	 * clock was last looked at to a counter for frompc.  This
-	 * solidifies the count for the function containing frompc and
-	 * effectively starts another clock for the current function.
-	 * The count for the new clock will be solidified when another
-	 * function call is made or the function returns.
-	 *
-	 * We use the usual sampling counters since they can be located
-	 * efficiently.  4-byte counters are usually necessary.
-	 *
-	 * There are many complications for subtracting the profiling
-	 * overheads from the counts for normal functions and adding
-	 * them to the counts for mcount(), mexitcount() and cputime().
-	 * We attempt to handle fractional cycles, but the overheads
-	 * are usually underestimated because they are calibrated for
-	 * a simpler than usual setup.
-	 */
-	delta = cputime() - p->mcount_overhead;
-	p->cputime_overhead_resid += p->cputime_overhead_frac;
-	p->mcount_overhead_resid += p->mcount_overhead_frac;
-	if ((int)delta < 0)
-		*p->mcount_count += delta + p->mcount_overhead
-				    - p->cputime_overhead;
-	else if (delta != 0) {
-		if (p->cputime_overhead_resid >= CALIB_SCALE) {
-			p->cputime_overhead_resid -= CALIB_SCALE;
-			++*p->cputime_count;
-			--delta;
-		}
-		if (delta != 0) {
-			if (p->mcount_overhead_resid >= CALIB_SCALE) {
-				p->mcount_overhead_resid -= CALIB_SCALE;
-				++*p->mcount_count;
-				--delta;
-			}
-			KCOUNT(p, frompci) += delta;
-		}
-		*p->mcount_count += p->mcount_overhead_sub;
-	}
-	*p->cputime_count += p->cputime_overhead;
-skip_guprof_stuff:
-#endif /* GUPROF */
-
-#ifdef _KERNEL
-	/*
-	 * When we are called from an exception handler, frompc is faked
-	 * to be for where the exception occurred.  We've just solidified
-	 * the count for there.  Now convert frompci to the index of btrap()
-	 * for trap handlers and bintr() for interrupt handlers to make
-	 * exceptions appear in the call graph as calls from btrap() and
-	 * bintr() instead of calls from all over.
-	 */
-	if ((selfpc >= (u_long)btrap) && (selfpc < (u_long)eintr)) {
-		if (selfpc >= (u_long)bintr)
-			frompci = (u_long)bintr - p->lowpc;
-		else
-			frompci = (u_long)btrap - p->lowpc;
-	}
-#endif
 
 	/*
 	 * check that frompc is a reasonable pc value.
@@ -249,17 +147,10 @@ skip_guprof_stuff:
 
 	}
 done:
-#ifdef _KERNEL
-	MCOUNT_EXIT(s);
-#else
 	p->state = GMON_PROF_ON;	/* XXX */
-#endif
 	return;
 overflow:
 	p->state = GMON_PROF_ERROR;	/* XXX */
-#ifdef _KERNEL
-	MCOUNT_EXIT(s);
-#endif
 	return;
 }
 
@@ -268,47 +159,3 @@ overflow:
  * which is included by <sys/gmon.h>.
  */
 MCOUNT
-
-#ifdef GUPROF
-void
-mexitcount(u_long selfpc)
-{
-	struct gmonparam *p;
-	u_long selfpcdiff;
-
-	p = &_gmonparam;
-	selfpcdiff = selfpc - p->lowpc;
-	if (selfpcdiff < p->textsize) {
-		u_int delta;
-
-		/*
-		 * Solidify the count for the current function.
-		 */
-		delta = cputime() - p->mexitcount_overhead;
-		p->cputime_overhead_resid += p->cputime_overhead_frac;
-		p->mexitcount_overhead_resid += p->mexitcount_overhead_frac;
-		if ((int)delta < 0)
-			*p->mexitcount_count += delta + p->mexitcount_overhead
-						- p->cputime_overhead;
-		else if (delta != 0) {
-			if (p->cputime_overhead_resid >= CALIB_SCALE) {
-				p->cputime_overhead_resid -= CALIB_SCALE;
-				++*p->cputime_count;
-				--delta;
-			}
-			if (delta != 0) {
-				if (p->mexitcount_overhead_resid
-				    >= CALIB_SCALE) {
-					p->mexitcount_overhead_resid
-					    -= CALIB_SCALE;
-					++*p->mexitcount_count;
-					--delta;
-				}
-				KCOUNT(p, selfpcdiff) += delta;
-			}
-			*p->mexitcount_count += p->mexitcount_overhead_sub;
-		}
-		*p->cputime_count += p->cputime_overhead;
-	}
-}
-#endif /* GUPROF */

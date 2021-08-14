@@ -20,7 +20,7 @@ LDFLAGS+= -nodefaultlibs
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${CMAPS}
 
-KSRCS=	bcmp.c ffs.c index.c mcount.c rindex.c strcat.c strcmp.c strcpy.c \
+KSRCS=	bcmp.c ffs.c index.c rindex.c strcat.c strcmp.c strcpy.c \
 	strlen.c strncpy.c
 
 libkern: libkern.gen libkern.${MACHINE_ARCH}
