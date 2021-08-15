@@ -1,5 +1,6 @@
 #define _KERNEL_STRUCTURES
 #include <sys/types.h>
+#include <sys/signal.h>
 #include <sys/ucontext.h>
 #include <sys/assym.h>
 #include <machine/frame.h>

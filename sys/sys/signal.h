@@ -252,26 +252,18 @@ struct	sigaction {
 typedef	void __siginfohandler_t (int, siginfo_t *, void *);
 
 typedef	__sighandler_t	*sig_t;	/* type of pointer to a signal function */
-
-/*
- * Structure used in sigaltstack call.
- */
-typedef	struct sigaltstack {
-#else /* !__BSD_VISIBLE */
-typedef	struct {
-#endif /* __BSD_VISIBLE */
-	void	*ss_sp;			/* signal stack base */
-	size_t	ss_size;		/* signal stack length */
-	int	ss_flags;		/* SS_DISABLE and/or SS_ONSTACK */
-} stack_t;
+#endif
 
 #define	SS_ONSTACK	0x0001	/* take signal on alternate stack */
 #define	SS_DISABLE	0x0004	/* disable taking signals on alternate stack */
 #define	MINSIGSTKSZ	8192			/* minimum allowable stack */
 #define	SIGSTKSZ	(MINSIGSTKSZ + 32768)	/* recommended stack size */
 
-/* Have enough typedefs for this now.  XXX */
+#ifdef _KERNEL
 #include <sys/ucontext.h>
+#elif __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
+#include <sys/_ucontext.h>
+#endif
 
 #if __BSD_VISIBLE
 /*

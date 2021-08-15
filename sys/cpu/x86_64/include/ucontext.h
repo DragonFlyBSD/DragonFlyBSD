@@ -35,6 +35,8 @@
 
 #include <sys/cdefs.h>
 
+#include <machine/stdint.h>
+
 struct __mcontext {
 	/*
 	 * The first 20 fields must match the definition of

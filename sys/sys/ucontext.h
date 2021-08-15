@@ -31,32 +31,11 @@
 #ifndef _SYS_UCONTEXT_H_
 #define	_SYS_UCONTEXT_H_
 
-#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#if __BSD_VISIBLE
+#include <sys/_siginfo.h>
 #endif
-#ifndef _SYS_SIGNAL_H_
-#include <sys/signal.h>
-#endif
-#include <machine/ucontext.h>
-
-typedef struct __ucontext {
-	/*
-	 * Keep the order of the first two fields. Also,
-	 * keep them the first two fields in the structure.
-	 * This way we can have a union with struct
-	 * sigcontext and ucontext_t. This allows us to
-	 * support them both at the same time.
-	 * note: the union is not defined, though.
-	 */
-	sigset_t	uc_sigmask;
-	mcontext_t	uc_mcontext;
-
-	struct __ucontext *uc_link;
-	stack_t		uc_stack;
-	void		(*uc_cofunc)(struct __ucontext *, void *);
-	void		*uc_arg;
-	int		__spare__[4];
-} ucontext_t;
+#include <sys/_ucontext.h>
 
 #ifndef _KERNEL
  

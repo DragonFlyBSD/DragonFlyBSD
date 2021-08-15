@@ -33,7 +33,7 @@
 
 #include <sys/_siginfo.h>
 #include <sys/signal.h>
-#include <sys/ucontext.h>
+#include <sys/_ucontext.h>
 
 /*
  * Signal frames, arguments passed to application signal handlers.
