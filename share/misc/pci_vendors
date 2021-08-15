@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2021.07.05
-#	Date:    2021-07-05 03:15:02
+#	Version: 2021.07.25
+#	Date:    2021-07-25 03:15:02
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at https://pci-ids.ucw.cz/.
@@ -808,6 +808,9 @@
 		1d49 0206  ThinkSystem 440-16e SAS/SATA PCIe Gen4 12Gb HBA
 		1d49 0207  ThinkSystem 440-8i SAS/SATA PCIe Gen4 12Gb HBA
 		1d49 0208  ThinkSystem 440-16i SAS/SATA PCIe Gen4 12Gb HBA
+		1d49 0209  ThinkSystem 440-8e SAS/SATA PCIe Gen4 12Gb HBA
+		8086 4050  Storage Controller RS3P4QF160F
+		8086 4070  Storage Controller RS3P4GF016F
 	00e7  Fusion-MPT 12GSAS/PCIe Unsupported SAS38xx
 # Tampered part
 		1028 200b  HBA355i Adapter Tampered
@@ -934,6 +937,8 @@
 		1d49 060e  ThinkSystem RAID 940-32i 8GB Flash PCIe Gen4 12Gb Adapter
 		1d49 060f  ThinkSystem RAID 940-8e 4GB Flash PCIe Gen4 12Gb Adapter
 		1d49 0610  ThinkSystem RAID 940-16i 4GB Flash PCIe Gen4 12Gb Adapter
+		8086 4000  RAID Controller RS3P4TF160F
+		8086 4020  RAID Controller RS3P4MF088F
 	10e3  MegaRAID 12GSAS/PCIe Unsupported SAS39xx
 		1028 1ae0  PERC H755 Adapter - Tampered Device
 		1028 1ae1  PERC H755 Front - Tampered Device
@@ -1003,6 +1008,7 @@
 	131c  Kaveri [Radeon R7 Graphics]
 	131d  Kaveri [Radeon R6 Graphics]
 	13e9  Ariel
+	13fe  Cyan Skillfish
 	1478  Navi 10 XL Upstream Port of PCI Express Switch
 	1479  Navi 10 XL Downstream Port of PCI Express Switch
 	154c  Kryptos [Radeon RX 350]
@@ -1029,6 +1035,7 @@
 	15df  Raven/Raven2/Fenghuang/Renoir Cryptographic Coprocessor
 		103c 8615  Pavilion Laptop 15-cw1xxx
 		ea50 ce19  mCOM10-L1900
+	15e7  Barcelo
 	15ff  Fenghuang [Zhongshan Subor Z+]
 	1607  Arden
 	1636  Renoir
@@ -1037,6 +1044,7 @@
 	163f  VanGogh
 	164c  Lucienne
 	164d  Rembrandt
+	1681  Rembrandt
 	1714  BeaverCreek HDMI Audio [Radeon HD 6500D and 6400G-6600G series]
 		103c 168b  ProBook 4535s
 	3150  RV380/M24 [Mobility Radeon X600]
@@ -8707,13 +8715,18 @@
 	8717  PEX 8717 16-lane, 8-Port PCI Express Gen 3 (8.0 GT/s) Switch with DMA
 	8718  PEX 8718 16-Lane, 5-Port PCI Express Gen 3 (8.0 GT/s) Switch
 	8724  PEX 8724 24-Lane, 6-Port PCI Express Gen 3 (8 GT/s) Switch, 19 x 19mm FCBGA
+	8725  PEX 8725 24-Lane, 10-Port PCI Express Gen 3 (8.0 GT/s) Multi-Root Switch with DMA
 	8732  PEX 8732 32-lane, 8-Port PCI Express Gen 3 (8.0 GT/s) Switch
 	8734  PEX 8734 32-lane, 8-Port PCI Express Gen 3 (8.0GT/s) Switch
 	8747  PEX 8747 48-Lane, 5-Port PCI Express Gen 3 (8.0 GT/s) Switch
 	8748  PEX 8748 48-Lane, 12-Port PCI Express Gen 3 (8 GT/s) Switch, 27 x 27mm FCBGA
-# This is the Non-Transparent-Bridge Virtualized Port as presented by the PLX PEX 8732 chip, the physical bridges show up at 10b5:8732
-	87b0  PEX 8732 32-lane, 8-Port PCI Express Gen 3 (8.0 GT/s) Switch
+	8749  PEX 8749 48-Lane, 18-Port PCI Express Gen 3 (8.0 GT/s) Multi-Root Switch with DMA
+	87a0  PEX PCI Express Switch NT0 Port Link Interface
+	87a1  PEX PCI Express Switch NT1 Port Link Interface
+	87b0  PEX PCI Express Switch NT0 Port Virtual Interface
 		1093 7761  PXIe-8830mc
+	87b1  PEX PCI Express Switch NT1 Port Virtual Interface
+	87d0  PEX PCI Express Switch DMA interface
 	9016  PLX 9016 8-port serial controller
 	9030  PCI9030 32-bit 33MHz PCI <-> IOBus Bridge
 		10b5 2695  Hilscher CIF50-PB/DPS Profibus
@@ -9060,7 +9073,7 @@
 	1449  M1449
 	1451  M1451
 	1461  M1461
-	1489  M1489
+	1489  M1489 Cache-Memory PCI Controller (CMP) [FinALi 486] CPU to PCI bridge
 	1511  M1511 [Aladdin]
 	1512  M1512 [Aladdin]
 	1513  M1513 [Aladdin]
@@ -12325,7 +12338,7 @@
 		10de 146d  GA102 [GeForce RTX 3080 20GB]
 		1462 3892  RTX 3080 10GB GAMING X TRIO
 	2208  GA102 [GeForce RTX 3080 Ti]
-	220d  GA102 [GeForce RTX 3080 Lite Hash Rate]
+	220d  GA102 [CMP 90HX]
 	2216  GA102 [GeForce RTX 3080 Lite Hash Rate]
 	222b  GA102 [GeForce RTX 3090 Engineering Sample]
 	222f  GA102 [GeForce RTX 3080 11GB / 12GB Engineering Sample]
@@ -12347,6 +12360,7 @@
 	2486  GA104 [GeForce RTX 3060 Ti]
 	2488  GA104 [GeForce RTX 3070 Lite Hash Rate]
 	2489  GA104 [GeForce RTX 3060 Ti Lite Hash Rate]
+	248a  GA104 [CMP 70HX]
 	249c  GA104M [GeForce RTX 3080 Mobile / Max-Q 8GB/16GB]
 	249d  GA104M [GeForce RTX 3070 Mobile / Max-Q]
 	249f  GA104M
@@ -17812,7 +17826,7 @@
 	c000  OXPCIe840 Parallel Port
 	c004  OXPCIe840 Parallel Port
 	c006  OXPCIe840 GPIO
-# Multifunction device with 7 function bits in ID
+# Multifunction device with reset straps and function bits in ID
 	c100  OXPCIe952 Parallel Port
 	c101  OXPCIe952 Legacy 950 UART
 	c104  OXPCIe952 Parallel Port
@@ -19877,6 +19891,7 @@
 	b960  Broadcom BCM56960 Switch ASIC
 # Tomahawk4
 	b990  BCM56990 Switch ASIC
+	c909  BCM78909 Switch ASIC
 	d802  BCM58802 Stingray 50Gb Ethernet SoC
 		14e4 8021  Stingray Dual-Port 25Gb Ethernet PCIe SmartNIC w16GB DRAM (Part No BCM958802A8046C)
 		14e4 8023  PS410T-H04 NetXtreme-S 4x10G 10GBaseT PCIe SmartNIC
@@ -23050,7 +23065,8 @@
 1ae3  SANBlaze Technology, Inc.
 1ae7  First Wise Media GmbH
 	0520  HFC-S PCI A [X-TENSIONS XC-520]
-1ae8  Silicon Software GmbH
+# nee Silicon Software GmbH
+1ae8  Basler AG
 # CameraLink frame grabber for Visual Applets
 	0751  mE5 marathon VCL
 # CameraLink HS frame grabber
@@ -23099,6 +23115,12 @@
 	0b61  mE6 Abacus 4TG
 # CoaXpress frame grabber
 	0b63  CXP-12 Interface Card 1C
+# CoaXpress frame grabber
+	0b64  CXP-12 Interface Card 4C
+# CoaXpress frame grabber
+	0b65  CXP-12 Interface Card 2C
+# CoaXpress Thunderbolt frame grabber
+	0b66  CXP-12 LightBridge 2C
 # GigE Vision frame grabber
 	0e42  microEnable IV AQ4-GE
 # GigE Vision frame grabber for Visual Applets
@@ -23725,6 +23747,8 @@
 1d21  Allo
 1d22  Baidu Technology
 	1380  Cloud Storage Device
+	3684  Kunlun AI Accelerator
+	3685  Kunlun2 AI Accelerator [VF]
 1d26  Kalray Inc.
 	0040  Turbocard2 Accelerator
 	0080  Open Network Interface Card 80G
@@ -23746,6 +23770,9 @@
 1d62  Nebbiolo Technologies
 1d65  Imagine Communications Corp.
 	04de  Taurus/McKinley
+1d69  Celeno Communications
+	2432  CL2432
+	2440  CL2440
 1d6a  Aquantia Corp.
 	0001  AQC107 NBase-T/IEEE 802.3bz Ethernet Controller [AQtion]
 	00b1  AQC100 10G Ethernet MAC controller [AQtion]
@@ -23788,6 +23815,7 @@
 	101a  AR-ARK-SRIOV-FX0 [Arkville 32B Primary Physical Function]
 	101b  AR-ARK-SRIOV-FX1 [Arkville 64B Primary Physical Function]
 	101c  AR-ARK-SRIOV-VF [Arkville Virtual Function]
+	101d  AR-ARK-NIC [Arkville ArkNIC Kernel Path Device]
 	4200  A5PL-E1-10GETI [10 GbE Ethernet Traffic Instrument]
 1d72  Xiaomi
 1d78  DERA Storage
@@ -24085,6 +24113,8 @@
 # nee Thinci, Inc
 1e38  Blaize, Inc
 	0102  Xplorer X1600
+# https://www.medion.com/
+1e39  MEDION AG
 1e3b  Shenzhen DAPU Microelectronics Co., Ltd
 	1098  Haishen NVMe SSD
 		1e3b 0001  Enterprise NVMe SSD U.2 0.8TB (H2100)
@@ -24170,6 +24200,15 @@
 1ee9  SUSE LLC
 1eec  Viscore Technologies Ltd
 1efb  Flexxon Pte Ltd
+1f02  Beijing Dayu Technology
+1f03  Shenzhen Shichuangyi Electronics Co., Ltd
+	1202  MAP1202-Based NVMe SSD
+	2262  SM2262EN-based OEM SSD
+	2263  SM2263XT-Base NVMe SSD
+	5216  IG5216-based NVMe SSD
+	5220  IG5220-Based NVMe SSD
+	5236  IG5236-Based NVMe SSD
+	5636  IG5636-Based NVMe SSD
 # nee Tumsan Oy
 1fc0  Ascom (Finland) Oy
 	0300  E2200 Dual E1/Rawpipe Card
@@ -24646,6 +24685,8 @@
 	0010  [mvHYPERION-16R16/-32R16] 16 Video Channel PCI Express x4 Frame Grabber
 	0020  [mvHYPERION-HD-SDI] HD-SDI PCI Express x4 Frame Grabber
 	0030  [mvHYPERION-HD-SDI-Merger] HD-SDI PCI Express x4 Frame Grabber
+	7014  [mvBlueNAOS BVS CA-BN] PCIe Gen1 x4 Camera
+	7024  [mvBlueNAOS BVS CA-BN] PCIe Gen2 x4 Camera
 4ddc  ILC Data Device Corp
 	0100  DD-42924I5-300 (ARINC 429 Data Bus)
 	0300  SB-3620 Motion Feedback Device
@@ -27169,6 +27210,8 @@
 		8086 0009  Ethernet Network Adapter E810-XXV-2 for OCP 2.0
 		8086 000a  Ethernet 25G 4P E810-XXV Adapter
 		8086 000c  Ethernet Network Adapter E810-XXV-4 for OCP 3.0
+		8086 000d  Ethernet 25G 4P E810-XXV OCP
+		8086 000e  Ethernet Network Adapter E810-XXV-4T
 	1599  Ethernet Controller E810-XXV for backplane
 	159a  Ethernet Controller E810-XXV for QSFP
 	159b  Ethernet Controller E810-XXV for SFP
@@ -27554,6 +27597,7 @@
 		1028 04aa  XPS 8300
 		1028 04b2  Vostro 3350
 		1028 04da  Vostro 3750
+# Realtek ALC656
 		103c 2abf  HP Pavilion p6-2100 Desktop PC Series
 		1043 8418  P8P67 Deluxe Motherboard
 		1043 841b  P8H67 Series Motherboard
@@ -33201,7 +33245,8 @@
 8322  Sodick America Corp.
 8384  SigmaTel
 8401  TRENDware International Inc.
-8686  ScaleMP
+# nee ScaleMP
+8686  SAP
 	1010  vSMP Foundation controller [vSMP CTL]
 	1011  vSMP Foundation MEX/FLX controller [vSMP CTL]
 8800  Trigem Computer Inc.
