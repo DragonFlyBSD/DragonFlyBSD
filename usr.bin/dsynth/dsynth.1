@@ -32,7 +32,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 3, 2021
+.Dd August 21, 2021
 .Dt DSYNTH 1
 .Os
 .Sh NAME
@@ -325,6 +325,73 @@ This is the same as 'build' but leaves the chroot mounts intact
 upon completion.
 .It Cm monitor Op Ar datfile
 Monitors a running dsynth instance.
+.El
+.Sh HOOKS
+.Nm
+provides several hooks that trigger at specific stages during the
+package building process.
+.Pp
+At the moment hooks are not configurable so the exact executable file is
+expected in the configuration directory with one of the names in the
+the list below.
+Hooks are run via
+.Xr execve 2 .
+.Bl -tag -width indent
+.It Cm hook_run_start
+This hook triggers when the overall build process starts.
+.It Cm hook_run_end
+This hook is called when the overall build process ends.
+.It Cm hook_pkg_success
+For each successful port built this hook will trigger.
+.It Cm hook_pkg_failure
+This hook will trigger for each port that fails to build.
+.It Cm hook_pkg_ignored
+Each port that is marked as ignored will make this hook to trigger.
+.It Cm hook_pkg_skipped
+Each skipped port will trigger this hook.
+.El
+.Pp
+A number of environment variables are available for hooks, always in the context
+of an ongoing build and within a specific configuration profile, unless
+overridden from the command-line.
+Some are only available for a specific hook.
+.Bl -tag -width DIR_REPOSITORY
+.It Ev PROFILE
+The configuration profile.
+.It Ev DIR_PACKAGES
+The packages base directory, i.e where index files are generated.
+.It Ev DIR_REPOSITORY
+The packages repository, where the actual package files are stored.
+.It Ev DIR_PORTS
+The ports directory.
+.It Ev DIR_OPTIONS
+The options directory.
+.It Ev DIR_DISTFILES
+The distfiles directory, where the distribution files are stored.
+.It Ev DIR_LOGS
+The logs directory, which is also where the html Report is generated.
+.It Ev DIR_BUILDBASE
+The build base directory.
+.It Ev PORTS_QUEUED
+The number of ports queued to be built (only for hook_run_start).
+.It Ev PORTS_BUILT
+The number of successfully built ports (only for hook_run_end).
+.It Ev PORTS_FAILED
+The number of ports for which the build failed (only for hook_run_end).
+.It Ev PORTS_IGNORED
+The number of ports that where ignored and, hence, not built
+(only for hook_run_end).
+.It Ev PORTS_SKIPPED
+The number of ports that were skipped in the build (only for hook_run_end).
+.It Ev RESULT
+The result (success, failure, ignored, skipped) for the build of an individual
+port (only for port specific hooks).
+.It Ev ORIGIN
+The origin of a port (only for port specific hooks).
+.It Ev FLAVOR
+The flavor of a port (only for port specific hooks).
+.It Ev PKGNAME
+The port name (only for port specific hooks).
 .El
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
