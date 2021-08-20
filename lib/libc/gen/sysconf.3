@@ -28,7 +28,7 @@
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd June 15, 2021
+.Dd August 20, 2021
 .Dt SYSCONF 3
 .Os
 .Sh NAME
@@ -58,6 +58,13 @@ Symbolic constants for each name value are found in the include file
 .Pp
 The available values are as follows:
 .Bl -tag -width 6n
+.It Dv _SC_ADVISORY_INFO
+The version of
+.St -p1003.1
+and its
+Advisory Information
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_AIO_LISTIO_MAX
 Maximum number of I/O operations in a single list I/O call supported.
 .It Dv _SC_AIO_MAX
@@ -65,6 +72,13 @@ Maximum number of outstanding asynchronous I/O operations supported.
 .It Dv _SC_AIO_PRIO_DELTA_MAX
 The maximum amount by which a process can decrease its asynchronous I/O
 priority level from its own scheduling priority.
+.It Dv _SC_ASYNCHRONOUS_IO
+The version of
+.St -p1003.1
+and its
+Asynchronous Input and Output
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_ARG_MAX
 The maximum bytes of argument to
 .Xr execve 2 .
@@ -134,6 +148,13 @@ The maximum number of elements in the I/O vector used by
 .Xr recvmsg 2 ,
 and
 .Xr sendmsg 2 .
+.It Dv _SC_IPV6
+The version of
+.St -p1003.1
+and its
+IPv6
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_JOB_CONTROL
 Return 1 if job control is available on this system, otherwise \-1.
 .It Dv _SC_LINE_MAX
@@ -171,11 +192,39 @@ The size of a system page in bytes.
 .It Dv _SC_PAGE_SIZE
 Equivalent to
 .Dv _SC_PAGESIZE .
+.It Dv _SC_PRIORITIZED_IO
+The version of
+.St -p1003.1
+and its
+Prioritized Input and Output
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_PRIORITY_SCHEDULING
+The version of
+.St -p1003.1
+and its
+Process Scheduling
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_RAW_SOCKETS
+The version of
+.St -p1003.1
+and its
+Raw Sockets
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_READER_WRITER_LOCKS
 The version of
 .St -p1003.1
 and its
 Read-Write Locks
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_REALTIME_SIGNALS
+The version of
+.St -p1003.1
+and its
+Realtime Signals Extension
 option to which the system attempts to conform,
 otherwise \-1.
 .It Dv _SC_RE_DUP_MAX
@@ -199,6 +248,13 @@ otherwise \-1.
 Maximum number of semaphores that a process may have.
 .It Dv _SC_SEM_VALUE_MAX
 The maximum value a semaphore may have.
+.It Dv _SC_SHARED_MEMORY_OBJECTS
+The version of
+.St -p1003.1
+and its
+Shared Memory Objects
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_SHELL
 Return 1 if the system supports the
 .Tn POSIX
@@ -206,11 +262,25 @@ shell.
 .It Dv _SC_SIGQUEUE_MAX
 Maximum number of queued signals that a process may send and have pending at
 the receiver(s) at any time.
+.It Dv _SC_SPAWN
+The version of
+.St -p1003.1
+and its
+Spawn
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_SPIN_LOCKS
 The version of
 .St -p1003.1
 and its
 Spin Locks
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_SPORADIC_SERVER
+The version of
+.St -p1003.1
+and its
+Process Sporadic Server
 option to which the system attempts to conform,
 otherwise \-1.
 .It Dv _SC_STREAM_MAX
@@ -221,12 +291,61 @@ resolution of a pathname in the absence of a loop.
 .It Dv _SC_SYNCHRONIZED_IO
 Return 1 if the Synchronized I/O Option is available on this system,
 otherwise \-1.
+.It Dv _SC_THREAD_ATTR_STACKADDR
+The version of
+.St -p1003.1
+and its
+Thread Stack Address Attribute
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_THREAD_ATTR_STACKSIZE
+The version of
+.St -p1003.1
+and its
+Thread Stack Size Attribute
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_THREAD_CPUTIME
 The
 .Dv CLOCK_THREAD_CPUTIME_ID
 clock ID is supported, otherwise \-1.
+.It Dv _SC_THREAD_PRIO_INHERIT
+The version of
+.St -p1003.1
+and its
+Thread Priority Inheritance
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_THREAD_PRIO_PROTECT
 Whether the system supports the priority ceiling protocol for POSIX threads.
+.It Dv _SC_THREAD_PRIORITY_SCHEDULING
+The version of
+.St -p1003.1
+and its
+Thread Execution Scheduling
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_THREAD_PROCESS_SHARED
+The version of
+.St -p1003.1
+and its
+Thread Process-Shared Synchronization
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_THREAD_ROBUST_PRIO_INHERIT
+The version of
+.St -p1003.1
+and its
+Robust Mutex Priority Inheritance
+option to which the system attempts to conform,
+otherwise \-1.
+.It Dv _SC_THREAD_ROBUST_PRIO_PROTECT
+The version of
+.St -p1003.1
+and its
+Robust Mutex Priority Protection
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_THREADS
 The version of
 .St -p1003.1
@@ -236,10 +355,24 @@ option to which the system attempts to conform,
 otherwise \-1.
 .It Dv _SC_THREAD_SAFE_FUNCTIONS
 The level of support for thread-safe (re-entrant) functions.
+.It Dv _SC_THREAD_SPORADIC_SERVER
+The version of
+.St -p1003.1
+and its
+Thread Sporadic Server
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_THREAD_STACK_MIN
 Minimum size in bytes of thread stack storage.
 .It Dv _SC_THREAD_THREADS_MAX
 Maximum number of threads that can be created per process.
+.It Dv _SC_TIMEOUTS
+The version of
+.St -p1003.1
+and its
+Timeouts
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_TIMER_MAX
 Maximum number of timers per process supported.
 .It Dv _SC_TIMERS
@@ -251,6 +384,13 @@ option to which the system attempts to conform,
 otherwise \-1.
 .It Dv _SC_TTY_NAME_MAX
 Maximum length of terminal device name.
+.It Dv _SC_TYPED_MEMORY_OBJECTS
+The version of
+.St -p1003.1
+and its
+Typed Memory Objects
+option to which the system attempts to conform,
+otherwise \-1.
 .It Dv _SC_TZNAME_MAX
 The maximum number of bytes supported for the name of a timezone.
 .It Dv _SC_VERSION
