@@ -48,7 +48,6 @@
 #define OFF_FLAGS       0x1bb   /* offset: option flags */
 #define OFF_TICKS       0x1bc   /* offset: clock ticks */
 #define OFF_PTBL        0x1be   /* offset: partition table */
-#define OFF_MAGIC       0x1fe   /* offset: magic number */
 
 #define cv2(p)  ((p)[0] | (p)[1] << 010)
 
@@ -226,7 +225,7 @@ read_mbr(const char *disk, u_int8_t **mbr, int check_version)
         err(1, "read %s", disk);
     if (n != MBRSIZE)
         errx(1, "%s: short read", disk);
-    if (cv2(buf + OFF_MAGIC) != 0xaa55)
+    if (cv2(buf + DOSMAGICOFF) != DOSMAGIC)
         errx(1, "%s: bad magic", disk);
 
     if (!boot0bs(buf)) {

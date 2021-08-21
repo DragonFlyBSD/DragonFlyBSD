@@ -39,7 +39,7 @@
 #define	DOSPARTSIZE	16
 #define	NDOSPART	4
 #define	NEXTDOSPART	32
-#define	DOSMAGICOFFSET	510
+#define	DOSMAGICOFF	510
 #define	DOSMAGIC	0xAA55
 
 /*
