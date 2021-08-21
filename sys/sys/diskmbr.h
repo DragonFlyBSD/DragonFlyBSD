@@ -57,6 +57,7 @@
 #define	DOSPTYP_EXT	0x05	/* DOS extended partition */
 #define	DOSPTYP_EXTLBA	0x0f	/* DOS extended partition */
 
+#ifndef _STANDALONE
 static const struct dos_ptype
 {
 	unsigned char type;
@@ -149,6 +150,7 @@ static const struct dos_ptype
 	{ 0xFE, "SpeedStor >1024 cyl. or LANstep" },
 	{ 0xFF, "BBT (Bad Blocks Table)" }
 };
+#endif /* !_STANDALONE */
 
 /*
  * Note that sector numbers in a legacy MBR DOS partition start at 1 instead
