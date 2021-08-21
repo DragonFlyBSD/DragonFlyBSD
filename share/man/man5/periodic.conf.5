@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man5/periodic.conf.5 323550 2017-09-13 16:35:16Z gordon $
 .\"
-.Dd October 18, 2020
+.Dd August 21, 2021
 .Dt PERIODIC.CONF 5
 .Os
 .Sh NAME
@@ -124,11 +124,7 @@ If these variables are set to neither
 nor
 .Dq Li NO ,
 they default to
-.Dq Li YES ,
-.Dq Li YES
-and
-.Dq Li NO
-respectively.
+.Dq Li YES .
 .Pp
 Refer to the
 .Xr periodic 8
@@ -331,7 +327,7 @@ daily.
 .Pq Vt bool
 Set to
 .Dq Li YES
-if you want to rotate your daily accounting files.
+if you want to rotate your daily process accounting files.
 No rotations are necessary unless
 .Va accounting_enable
 is enabled in
