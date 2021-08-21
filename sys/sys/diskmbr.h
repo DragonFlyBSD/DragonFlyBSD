@@ -101,8 +101,8 @@ static const struct dos_ptype
 	{ 0x54, "DM6" },
 	{ 0x55, "EZ-Drive (disk manager)" },
 	{ 0x56, "GB" },
-	{ 0x5C, "Priam Edisk (disk manager)" } /* according to S. Widlake */
-	,{ 0x61, "Speed" },
+	{ 0x5C, "Priam Edisk (disk manager)" }, /* according to S. Widlake */
+	{ 0x61, "Speed" },
 	{ 0x63, "ISC UNIX, other System V/386, GNU HURD or Mach" },
 	{ 0x64, "Novell Netware 2.xx" },
 	{ 0x65, "Novell Netware 3.xx" },
