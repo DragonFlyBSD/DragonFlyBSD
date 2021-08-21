@@ -7,7 +7,6 @@ MAN=	tftpd.8
 
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
-NO_STRICT_ALIASING=
 
 CFLAGS+=-I${.CURDIR}/../../usr.bin/tftp
 .PATH:	${.CURDIR}/../../usr.bin/tftp
