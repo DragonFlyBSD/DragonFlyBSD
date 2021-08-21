@@ -54,8 +54,101 @@
 #define	DOSPTYP_LINUX	0x83	/* Linux partition */
 #define	DOSPTYP_PMBR	0xee	/* GPT Protective MBR */
 #define	DOSPTYP_EFI	0xef	/* EFI system partition */
-#define	DOSPTYP_EXT	5	/* DOS extended partition */
-#define	DOSPTYP_EXTLBA	15	/* DOS extended partition */
+#define	DOSPTYP_EXT	0x05	/* DOS extended partition */
+#define	DOSPTYP_EXTLBA	0x0f	/* DOS extended partition */
+
+static const struct dos_ptype
+{
+	unsigned char type;
+	const char *name;
+} dos_ptypes[] = {
+	{ 0x00, "unused" },
+	{ 0x01, "Primary DOS with 12 bit FAT" },
+	{ 0x02, "XENIX / filesystem" },
+	{ 0x03, "XENIX /usr filesystem" },
+	{ 0x04, "Primary DOS with 16 bit FAT (<= 32MB)" },
+	{ DOSPTYP_EXT, "Extended DOS" },
+	{ 0x06, "Primary 'big' DOS (> 32MB)" },
+	{ 0x07, "OS/2 HPFS, NTFS, QNX-2 (16 bit) or Advanced UNIX" },
+	{ 0x08, "AIX filesystem" },
+	{ 0x09, "AIX boot partition or Coherent" },
+	{ 0x0A, "OS/2 Boot Manager or OPUS" },
+	{ 0x0B, "DOS or Windows 95 with 32 bit FAT" },
+	{ 0x0C, "DOS or Windows 95 with 32 bit FAT, LBA" },
+	{ 0x0E, "Primary 'big' DOS (> 32MB, LBA)" },
+	{ DOSPTYP_EXTLBA, "Extended DOS, LBA" },
+	{ 0x10, "OPUS" },
+	{ 0x11, "OS/2 BM: hidden DOS with 12-bit FAT" },
+	{ 0x12, "Compaq diagnostics" },
+	{ 0x14, "OS/2 BM: hidden DOS with 16-bit FAT (< 32MB)" },
+	{ 0x16, "OS/2 BM: hidden DOS with 16-bit FAT (>= 32MB)" },
+	{ 0x17, "OS/2 BM: hidden IFS (e.g. HPFS)" },
+	{ 0x18, "AST Windows swapfile" },
+	{ 0x24, "NEC DOS" },
+	{ 0x39, "plan9" },
+	{ 0x3C, "PartitionMagic recovery" },
+	{ 0x40, "VENIX 286" },
+	{ 0x41, "Linux/MINIX (sharing disk with DRDOS)" },
+	{ 0x42, "SFS or Linux swap (sharing disk with DRDOS)" },
+	{ 0x43, "Linux native (sharing disk with DRDOS)" },
+	{ 0x4D, "QNX 4.2 Primary" },
+	{ 0x4E, "QNX 4.2 Secondary" },
+	{ 0x4F, "QNX 4.2 Tertiary" },
+	{ 0x50, "DM" },
+	{ 0x51, "DM" },
+	{ 0x52, "CP/M or Microport SysV/AT" },
+	{ 0x53, "DM6 Aux3" },
+	{ 0x54, "DM6" },
+	{ 0x55, "EZ-Drive (disk manager)" },
+	{ 0x56, "GB" },
+	{ 0x5C, "Priam Edisk (disk manager)" } /* according to S. Widlake */
+	,{ 0x61, "Speed" },
+	{ 0x63, "ISC UNIX, other System V/386, GNU HURD or Mach" },
+	{ 0x64, "Novell Netware 2.xx" },
+	{ 0x65, "Novell Netware 3.xx" },
+	{ DOSPTYP_DFLYBSD, "DragonFly BSD" },
+	{ 0x70, "DiskSecure Multi-Boot" },
+	{ 0x75, "PCIX" },
+	{ 0x77, "QNX4.x" },
+	{ 0x78, "QNX4.x 2nd part" },
+	{ 0x79, "QNX4.x 3rd part" },
+	{ 0x80, "Minix 1.1 ... 1.4a" },
+	{ 0x81, "Minix 1.4b ... 1.5.10" },
+	{ DOSPTYP_LINSWP, "Linux swap or Solaris x86" },
+	{ DOSPTYP_LINUX, "Linux filesystem" },
+	{ 0x84, "OS/2 hidden C: drive" },
+	{ 0x85, "Linux extended" },
+	{ 0x86, "NTFS volume set??" },
+	{ 0x87, "NTFS volume set??" },
+	{ 0x93, "Amoeba filesystem" },
+	{ 0x94, "Amoeba bad block table" },
+	{ 0x9F, "BSD/OS" },
+	{ 0xA0, "Suspend to Disk" },
+	{ DOSPTYP_386BSD, "DragonFly/FreeBSD/NetBSD/386BSD" },
+	{ DOSPTYP_OPENBSD, "OpenBSD" },
+	{ 0xA7, "NEXTSTEP" },
+	{ DOSPTYP_NETBSD, "NetBSD" },
+	{ 0xAC, "IBM JFS" },
+	{ 0xB7, "BSDI BSD/386 filesystem" },
+	{ 0xB8, "BSDI BSD/386 swap" },
+	{ 0xBE, "Solaris x86 boot" },
+	{ 0xC1, "DRDOS/sec with 12-bit FAT" },
+	{ 0xC4, "DRDOS/sec with 16-bit FAT (< 32MB)" },
+	{ 0xC6, "DRDOS/sec with 16-bit FAT (>= 32MB)" },
+	{ 0xC7, "Syrinx" },
+	{ 0xDB, "Concurrent CPM or C.DOS or CTOS" },
+	{ 0xE1, "Speed" },
+	{ 0xE3, "Speed" },
+	{ 0xE4, "Speed" },
+	{ 0xEB, "BeOS file system" },
+	{ DOSPTYP_PMBR, "EFI GPT" },
+	{ DOSPTYP_EFI, "EFI System Partition" },
+	{ 0xF1, "Speed" },
+	{ 0xF2, "DOS 3.3+ Secondary" },
+	{ 0xF4, "Speed" },
+	{ 0xFE, "SpeedStor >1024 cyl. or LANstep" },
+	{ 0xFF, "BBT (Bad Blocks Table)" }
+};
 
 /*
  * Note that sector numbers in a legacy MBR DOS partition start at 1 instead

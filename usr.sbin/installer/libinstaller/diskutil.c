@@ -37,6 +37,8 @@
  * $Id: diskutil.c,v 1.44 2005/02/07 06:41:42 cpressey Exp $
  */
 
+#include <sys/diskmbr.h>
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,7 +57,6 @@
 
 #include "commands.h"
 #include "functions.h"
-#include "sysids.h"
 #include "uiutil.h"
 
 static int	disk_description_is_better(const char *, const char *);
@@ -376,11 +377,11 @@ slice_new(struct disk *d, int number, int type, int flags,
 	s->size = size;
 
 	for (i = 0; ; i++) {
-		if (part_types[i].type == type) {
-			sysid_desc = part_types[i].name;
+		if (dos_ptypes[i].type == type) {
+			sysid_desc = dos_ptypes[i].name;
 			break;
 		}
-		if (part_types[i].type == 255)
+		if (dos_ptypes[i].type == 255)
 			break;
 	}
 	if (sysid_desc == NULL) {
