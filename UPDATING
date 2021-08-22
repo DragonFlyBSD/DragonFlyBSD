@@ -12,6 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 6.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+ACPI_NO_SEMAPHORES OPTION REMOVED
+---------------------------------
+
+The ACPI_NO_SEMAPHORES kernel configuration option has been removed. It
+was never part of our default kernel config.
+
 NDIS DRIVER REMOVED
 -------------------
 

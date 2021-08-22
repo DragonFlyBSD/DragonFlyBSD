@@ -40,7 +40,6 @@ TWA_DEBUG		opt_twa.h
 
 #options for ACPI support
 ACPI_DEBUG		opt_acpi.h
-ACPI_NO_SEMAPHORES	opt_acpi.h
 ACPI_ENABLE_PCI		opt_acpi.h
 
 # Miscellaneous options.

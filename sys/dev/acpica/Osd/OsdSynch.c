@@ -69,7 +69,6 @@ struct acpi_semaphore {
     UINT32	as_timeouts;
 };
 
-#ifndef ACPI_NO_SEMAPHORES
 #ifndef ACPI_SEMAPHORES_MAX_PENDING
 #define ACPI_SEMAPHORES_MAX_PENDING	0x1FFFFFFF
 #endif
@@ -77,13 +76,11 @@ static int	acpi_semaphore_debug = 0;
 TUNABLE_INT("debug.acpi_semaphore_debug", &acpi_semaphore_debug);
 SYSCTL_INT(_debug_acpi, OID_AUTO, semaphore_debug, CTLFLAG_RW,
 	   &acpi_semaphore_debug, 0, "Enable ACPI semaphore debug messages");
-#endif /* !ACPI_NO_SEMAPHORES */
 
 ACPI_STATUS
 AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
     ACPI_HANDLE *OutHandle)
 {
-#ifndef ACPI_NO_SEMAPHORES
     struct acpi_semaphore	*as;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
@@ -105,9 +102,6 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
 	as, InitialUnits, MaxUnits));
 
     *OutHandle = (ACPI_HANDLE)as;
-#else
-    *OutHandle = (ACPI_HANDLE)OutHandle;
-#endif /* !ACPI_NO_SEMAPHORES */
 
     return_ACPI_STATUS (AE_OK);
 }
@@ -115,7 +109,6 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
 ACPI_STATUS
 AcpiOsDeleteSemaphore(ACPI_HANDLE Handle)
 {
-#ifndef ACPI_NO_SEMAPHORES
     struct acpi_semaphore *as = (struct acpi_semaphore *)Handle;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
@@ -123,7 +116,6 @@ AcpiOsDeleteSemaphore(ACPI_HANDLE Handle)
     ACPI_DEBUG_PRINT((ACPI_DB_MUTEX, "destroyed semaphore %p\n", as));
     spin_uninit(&as->as_spin);
     kfree(as, M_ACPISEM);
-#endif /* !ACPI_NO_SEMAPHORES */
 
     return_ACPI_STATUS (AE_OK);
 }
@@ -131,7 +123,6 @@ AcpiOsDeleteSemaphore(ACPI_HANDLE Handle)
 ACPI_STATUS
 AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 {
-#ifndef ACPI_NO_SEMAPHORES
     ACPI_STATUS			result;
     struct acpi_semaphore	*as = (struct acpi_semaphore *)Handle;
     int				rv, tmo;
@@ -288,15 +279,11 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 
     AS_UNLOCK(as);
     return_ACPI_STATUS (result);
-#else
-    return_ACPI_STATUS (AE_OK);
-#endif /* !ACPI_NO_SEMAPHORES */
 }
 
 ACPI_STATUS
 AcpiOsSignalSemaphore(ACPI_HANDLE Handle, UINT32 Units)
 {
-#ifndef ACPI_NO_SEMAPHORES
     struct acpi_semaphore	*as = (struct acpi_semaphore *)Handle;
     AS_LOCK_DECL;
 
@@ -323,7 +310,6 @@ AcpiOsSignalSemaphore(ACPI_HANDLE Handle, UINT32 Units)
 
     wakeup(as);
     AS_UNLOCK(as);
-#endif /* !ACPI_NO_SEMAPHORES */
 
     return_ACPI_STATUS (AE_OK);
 }

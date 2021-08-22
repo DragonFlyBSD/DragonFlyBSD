@@ -2168,7 +2168,6 @@ options		EVDEV_DEBUG	# enable event debug messages
 # More undocumented options for linting.
 # Note that documenting these are not considered an affront.
 
-#options	ACPI_NO_SEMAPHORES
 #options 	BKTR_ALLOC_PAGES=xxx
 options 	CAM_DEBUG_DELAY
 options 	CLUSTERDEBUG
