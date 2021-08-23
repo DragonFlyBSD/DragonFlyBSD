@@ -265,7 +265,7 @@ the guest virtual address given in
 .Fa gva
 into a guest physical address returned in
 .Fa gpa .
-The associated page premissions are returned in
+The associated page permissions are returned in
 .Fa prot .
 .Fa gva
 must be page-aligned.
@@ -277,7 +277,7 @@ the guest physical address indicated in
 .Fa gpa
 into a host virtual address returned in
 .Fa hva .
-The associated page premissions are returned in
+The associated page permissions are returned in
 .Fa prot .
 .Fa gpa
 must be page-aligned.
@@ -750,7 +750,7 @@ Regression test cases for the
 .Nm
 library.
 .It Pa src/test/nvmm/calc-vm.c
-A minimal exmaple that uses the
+A minimal example that uses the
 .Nm
 API to create a VM and perform a calculation within it.
 .It Pa src/test/nvmm/demo
