@@ -1,5 +1,5 @@
 PROG=	fstyp
-SRCS=	apfs.c cd9660.c exfat.c ext2fs.c fstyp.c hfsplus.c msdosfs.c ntfs.c ufs.c hammer.c hammer2.c
+SRCS=	apfs.c befs.c cd9660.c exfat.c ext2fs.c fstyp.c hfsplus.c msdosfs.c ntfs.c ufs.c hammer.c hammer2.c
 
 MAN=	fstyp.8
 
