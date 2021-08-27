@@ -28,11 +28,13 @@
  *
  *	@(#)fts.h	8.3 (Berkeley) 8/14/94
  * $FreeBSD: src/include/fts.h,v 1.12 2008/01/26 17:09:40 yar Exp $
- * $DragonFly: src/include/fts.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef	_FTS_H_
 #define	_FTS_H_
+
+#include <sys/cdefs.h>
+#include <sys/types.h>
 
 typedef struct {
 	struct _ftsent *fts_cur;	/* current node */
@@ -115,8 +117,6 @@ typedef struct _ftsent {
 	char *fts_name;			/* file name */
 	FTS *fts_fts;			/* back pointer to main FTS */
 } FTSENT;
-
-#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 FTSENT	*fts_children(FTS *, int);

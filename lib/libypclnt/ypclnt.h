@@ -36,6 +36,8 @@
 
 #ifndef _YPCLNT_H_INCLUDED
 
+#include <sys/cdefs.h>
+
 typedef struct ypclnt ypclnt_t;
 struct ypclnt {
 	char	*domain;	/* Domain name */
