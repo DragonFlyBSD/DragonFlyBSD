@@ -629,9 +629,14 @@ hammer2_xop_nrename(hammer2_xop_t *arg, void *scratch, int clindex)
 	 * modification and the media is full.
 	 */
 	error = hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
-	hammer2_chain_unlock(parent);
-	hammer2_chain_drop(parent);
-	parent = NULL;		/* safety */
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+		parent = NULL;		/* safety */
+	} else {
+		kprintf("hammer2_xop_nrename() (debugging): parent was NULL\n");
+		error = EINVAL;
+	}
 	if (error)
 		goto done;
 
