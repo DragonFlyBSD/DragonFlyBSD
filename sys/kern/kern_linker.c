@@ -1615,5 +1615,5 @@ linker_load_dependencies(linker_file_t lf)
     if (error)
 	return (error);
     linker_addmodules(lf, start, stop, 0);
-    return (error);
+    return (0);
 }

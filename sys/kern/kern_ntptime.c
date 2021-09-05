@@ -430,7 +430,7 @@ sys_ntp_adjtime(struct sysmsg *sysmsg, const struct ntp_adjtime_args *uap)
 	} else {
 		sysmsg->sysmsg_result = time_state;
 	}
-	return (error);
+	return (0);
 }
 
 /*

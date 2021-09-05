@@ -740,7 +740,7 @@ sys_kqueue(struct sysmsg *sysmsg, const struct kqueue_args *uap)
 	fsetfd(kq->kq_fdp, fp, fd);
 	sysmsg->sysmsg_result = fd;
 	fdrop(fp);
-	return (error);
+	return (0);
 }
 
 /*
