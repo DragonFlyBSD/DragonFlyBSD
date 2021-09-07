@@ -37,6 +37,8 @@
  * $Id: fn_disk.c,v 1.40 2005/03/13 01:53:58 cpressey Exp $
  */
 
+#include <sys/diskmbr.h>
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -720,7 +722,7 @@ format_slice(struct i_fn_args *a)
 	command_add(cmds, "%s%s 'p %d %d %lu %lu' >>%snew.fdisk",
 	    a->os_root, cmd_name(a, "ECHO"),
 	    slice_get_number(storage_get_selected_slice(a->s)),
-	    108,
+	    DOSPTYP_DFLYBSD,
 	    slice_get_start(storage_get_selected_slice(a->s)),
 	    slice_get_size(storage_get_selected_slice(a->s)),
 	    a->tmp);
