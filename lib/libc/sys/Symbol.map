@@ -290,8 +290,6 @@ DF404.0 {
     varsym_list;
     varsym_set;
     vfork;
-    vmm_guest_ctl;
-    vmm_guest_sync_addr;
     vmspace_create;
     vmspace_ctl;
     vmspace_destroy;
@@ -628,8 +626,6 @@ DFprivate_1.0 {
     __sys_varsym_list;
     __sys_varsym_set;
     __sys_vfork;
-    __sys_vmm_guest_ctl;
-    __sys_vmm_guest_sync_addr;
     __sys_vmspace_create;
     __sys_vmspace_ctl;
     __sys_vmspace_destroy;
@@ -933,8 +929,6 @@ DFprivate_1.0 {
     _varsym_list;
     _varsym_set;
     _vfork;
-    _vmm_guest_ctl;
-    _vmm_guest_sync_addr;
     _vmspace_create;
     _vmspace_ctl;
     _vmspace_destroy;

@@ -55,7 +55,6 @@
 #include <machine/smp.h>
 #include <machine/pcb.h>
 #include <machine/thread.h>
-#include <machine/vmm.h>
 
 /*
  * set a TLS descriptor.  For x86_64 descriptor 0 identifies %fs and
@@ -170,10 +169,6 @@ set_user_TLS(void)
 	if (gd->gd_user_gs != td->td_pcb->pcb_gsbase) {
 		gd->gd_user_gs = td->td_pcb->pcb_gsbase;
 		wrmsr(MSR_KGSBASE, gd->gd_user_gs);
-	}
-
-	if (td->td_vmm) {
-		vmm_vm_set_tls_area();
 	}
 
 	clear_quickret();

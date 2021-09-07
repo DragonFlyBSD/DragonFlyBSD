@@ -231,9 +231,10 @@
  * 600101 - kernel_{map,pmap,object} and {buffer,clean,pager}_map globals
  *          become pointers
  * 600102 - add nvmm(4) and libnvmm(3)
+ * 600103 - remove the old vmm code
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600102	/* propagated to newvers */
+#define __DragonFly_version 600103	/* propagated to newvers */
 
 #include <sys/_null.h>
 

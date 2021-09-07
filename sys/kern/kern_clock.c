@@ -1003,9 +1003,6 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 			 * The vkernel doesn't do a good job providing trap
 			 * frames that we can test.  If the GDF_VIRTUSER
 			 * flag is set we probably interrupted user mode.
-			 *
-			 * We also use this flag on the host when entering
-			 * VMM mode.
 			 */
 			td->td_uticks += bump;
 

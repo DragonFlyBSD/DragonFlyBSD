@@ -67,8 +67,6 @@
 
 #include <vm/vm_page2.h>
 
-#include <machine/vmm.h>
-
 /*
  * Improve umtx performance by polling for 4000nS before going to sleep.
  * This can avoid many IPIs in typical pthreads mutex situations.
@@ -124,12 +122,6 @@ sys_umtx_sleep(struct sysmsg *sysmsg, const struct umtx_sleep_args *uap)
     if (uap->timeout < 0)
 	return (EINVAL);
     td = curthread;
-
-    if (td->td_vmm) {
-	register_t gpa;
-	vmm_vm_get_gpa(td->td_proc, &gpa, (register_t)ptr);
-	ptr = (const int *)gpa;
-    }
 
     uptr = __DEQUALIFY(void *, ptr);
     if ((vm_offset_t)uptr & (sizeof(int) - 1))
@@ -267,12 +259,6 @@ sys_umtx_wakeup(struct sysmsg *sysmsg, const struct umtx_wakeup_args *uap)
     thread_t td;
 
     td = curthread;
-
-    if (td->td_vmm) {
-	register_t gpa;
-	vmm_vm_get_gpa(td->td_proc, &gpa, (register_t)ptr);
-	ptr = (const int *)gpa;
-    }
 
     /*
      * WARNING! We can only use vm_fault_page*() for reading data.  We

@@ -64,7 +64,6 @@
 #include <machine/segments.h>
 #include <machine/globaldata.h>	/* npxthread */
 #include <machine/specialreg.h>
-#include <machine/vmm.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -263,14 +262,8 @@ cpu_prepare_lwp(struct lwp *lp, struct lwp_params *params)
 	if (error)
 		return (error);
 
-	if (lp->lwp_proc->p_vmm) {
-		lp->lwp_thread->td_pcb->pcb_cr3 = KPML4phys;
-		cpu_set_fork_handler(lp,
-		    (void (*)(void *, struct trapframe *))vmm_lwp_return, lp);
-	} else {
-		cpu_set_fork_handler(lp,
-		    (void (*)(void *, struct trapframe *))generic_lwp_return, lp);
-	}
+	cpu_set_fork_handler(lp,
+	    (void (*)(void *, struct trapframe *))generic_lwp_return, lp);
 	return (0);
 }
 

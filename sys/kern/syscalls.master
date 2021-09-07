@@ -715,8 +715,8 @@
 				char *path2, int flags); }
 532	STD	{ int eaccess(char *path, int flags); }
 533	STD	{ int lpathconf(char *path, int name); }
-534	STD	{ int vmm_guest_ctl(int op, struct vmm_guest_options *options); }
-535	STD	{ int vmm_guest_sync_addr(long *dstaddr, long *srcaddr); }
+534	OBSOL	vmm_guest_ctl
+535	OBSOL	vmm_guest_sync_addr
 536	STD	{ int procctl(idtype_t idtype, id_t id, int cmd, void *data); }
 537	STD	{ int chflagsat(int fd, const char *path, u_long flags, int atflags);}
 538	STD	{ int pipe2(int *fildes, int flags); }

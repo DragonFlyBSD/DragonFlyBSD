@@ -39,7 +39,6 @@
 #include <sys/memrange.h>
 #include <sys/tls.h>
 #include <sys/types.h>
-#include <sys/vmm.h>
 
 #include <vm/vm_extern.h>
 #include <vm/vm_kern.h>
@@ -64,8 +63,6 @@
 #include <stdio.h>
 
 extern pt_entry_t *KPTphys;
-
-extern int vmm_enabled;
 
 volatile cpumask_t stopped_cpus;
 /* which cpus are ready for IPIs etc? */
@@ -393,7 +390,6 @@ start_all_aps(u_int boot_addr)
 	struct privatespace *ps;
 	vm_page_t m;
 	vm_offset_t va;
-	void *stack;
 	pthread_attr_t attr;
 	size_t ipiq_size;
 #if 0
@@ -464,16 +460,6 @@ start_all_aps(u_int boot_addr)
 		 * have already been enabled.
 		 */
 		cpu_disable_intr();
-
-		if (vmm_enabled) {
-			stack = mmap(NULL, KERNEL_STACK_SIZE,
-				     PROT_READ|PROT_WRITE|PROT_EXEC,
-				     MAP_ANON, -1, 0);
-			if (stack == MAP_FAILED) {
-				panic("Unable to allocate stack for thread %d\n", x);
-			}
-			pthread_attr_setstack(&attr, stack, KERNEL_STACK_SIZE);
-		}
 
 		pthread_create(&ap_tids[x], &attr, start_ap, NULL);
 		cpu_enable_intr();

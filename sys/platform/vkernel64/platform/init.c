@@ -53,7 +53,6 @@
 #include <vm/vm_map.h>
 #include <sys/mplock2.h>
 #include <sys/wait.h>
-#include <sys/vmm.h>
 
 #include <machine/cpu.h>
 #include <machine/globaldata.h>
@@ -123,7 +122,6 @@ int real_ncpus;		/* number of real CPUs */
 int next_cpu;		/* next real CPU to lock a virtual CPU to */
 int vkernel_b_arg;	/* no of logical CPU bits - only SMP */
 int vkernel_B_arg;	/* no of core bits - only SMP */
-int vmm_enabled;	/* VMM HW assisted enable */
 int use_precise_timer = 0;	/* use a precise timer (more expensive) */
 struct privatespace *CPU_prvspace;
 
@@ -137,7 +135,6 @@ static void *proc0paddr;
 
 static void init_sys_memory(char *imageFile);
 static void init_kern_memory(void);
-static void init_kern_memory_vmm(void);
 static void init_globaldata(void);
 static void init_vkernel(void);
 static void init_disk(char **diskExp, int *diskFlags, int diskFileNum, enum vkdisk_type type);
@@ -182,7 +179,6 @@ main(int ac, char **av)
 	int isq;
 	int pos;
 	int eflag;
-	int dflag = 0;		/* disable vmm */
 	int real_vkernel_enable;
 	int supports_sse;
 	uint32_t mxcsr_mask;
@@ -268,11 +264,8 @@ main(int ac, char **av)
 	if (ac < 2)
 		usage_help(false);
 
-	while ((c = getopt(ac, av, "c:hsvztTl:m:n:r:R:e:i:p:I:Ud")) != -1) {
+	while ((c = getopt(ac, av, "c:hsvztTl:m:n:r:R:e:i:p:I:U")) != -1) {
 		switch(c) {
-		case 'd':
-			dflag = 1;
-			break;
 		case 'e':
 			/*
 			 * name=value:name=value:name=value...
@@ -446,24 +439,10 @@ main(int ac, char **av)
 		}
 	}
 
-	/*
-	 * Check VMM presence
-	 */
-	vsize = sizeof(vmm_enabled);
-	sysctlbyname("hw.vmm.enable", &vmm_enabled, &vsize, NULL, 0);
-	vmm_enabled = (vmm_enabled && !dflag);
-
 	writepid();
 	cpu_disable_intr();
-	if (vmm_enabled) {
-		/* use a MAP_ANON directly */
-		printf("VMM is available\n");
-		init_kern_memory_vmm();
-	} else {
-		printf("VMM is not available\n");
-		init_sys_memory(memImageFile);
-		init_kern_memory();
-	}
+	init_sys_memory(memImageFile);
+	init_kern_memory();
 	init_globaldata();
 	init_vkernel();
 	setrealcpu();
@@ -731,131 +710,6 @@ init_kern_memory(void)
 	ptvmmap = (caddr_t)virtual_start;
 	virtual_start += PAGE_SIZE;
 }
-
-static
-void
-init_kern_memory_vmm(void)
-{
-	int i;
-	void *firstfree;
-	struct vmm_guest_options options;
-	void *dmap_address;
-
-	KvaStart = (vm_offset_t)KERNEL_KVA_START;
-	KvaSize = KERNEL_KVA_SIZE;
-	KvaEnd = KvaStart + KvaSize;
-
-	Maxmem = Maxmem_bytes >> PAGE_SHIFT;
-	physmem = Maxmem;
-
-	if (Maxmem_bytes < 64 * 1024 * 1024 || (Maxmem_bytes & SEG_MASK)) {
-		errx(1, "Bad maxmem specification: 64MB minimum, "
-		       "multiples of %dMB only",
-		       SEG_SIZE / 1024 / 1024);
-		/* NOT REACHED */
-	}
-
-	/* Call the vmspace_create to allocate the internal
-	 * vkernel structures. Won't do anything else (no new
-	 * vmspace)
-	 */
-	if (vmspace_create(NULL, 0, NULL) < 0)
-		panic("vmspace_create() failed");
-
-
-	/*
-	 * MAP_ANON the region of the VKERNEL phyisical memory
-	 * (known as GPA - Guest Physical Address
-	 */
-	dmap_address = mmap(NULL, Maxmem_bytes,
-			    PROT_READ|PROT_WRITE|PROT_EXEC,
-			    MAP_ANON|MAP_SHARED, -1, 0);
-	if (dmap_address == MAP_FAILED) {
-		err(1, "Unable to mmap() RAM region!");
-		/* NOT REACHED */
-	}
-	if (prezeromem)
-		bzero(dmap_address, Maxmem_bytes);
-
-	/* Alloc a new stack in the lowmem */
-	vkernel_stack = mmap(NULL, KERNEL_STACK_SIZE,
-			     PROT_READ|PROT_WRITE|PROT_EXEC,
-			     MAP_ANON, -1, 0);
-	if (vkernel_stack == MAP_FAILED) {
-		err(1, "Unable to allocate stack\n");
-	}
-
-	/*
-	 * Bootstrap the kernel_pmap
-	 */
-	firstfree = dmap_address;
-	dmap_min_address = NULL; /* VIRT == PHYS in the first 512G */
-	pmap_bootstrap((vm_paddr_t *)&firstfree, (uint64_t)KvaStart);
-
-	/*
-	 * Enter VMM mode
-	 */
-	bzero(&options, sizeof(options));
-	options.guest_cr3 = (register_t) KPML4phys;
-	options.new_stack = (uint64_t) vkernel_stack + KERNEL_STACK_SIZE;
-	options.master = 1;
-	if (vmm_guest_ctl(VMM_GUEST_RUN, &options)) {
-		err(1, "Unable to enter VMM mode.");
-	}
-
-	/*
-	 * phys_avail[] represents unallocated physical memory.  MI code
-	 * will use phys_avail[] to create the vm_page array.
-	 */
-	phys_avail[0].phys_beg = (vm_paddr_t)firstfree;
-	phys_avail[0].phys_beg = (phys_avail[0].phys_beg + PAGE_MASK) &
-				 ~(vm_paddr_t)PAGE_MASK;
-	phys_avail[0].phys_end = (vm_paddr_t)dmap_address + Maxmem_bytes;
-
-	/*
-	 * pmap_growkernel() will set the correct value.
-	 */
-	kernel_vm_end = 0;
-
-	/*
-	 * Allocate space for process 0's UAREA.
-	 */
-	proc0paddr = (void *)virtual_start;
-	for (i = 0; i < UPAGES; ++i) {
-		pmap_kenter_quick(virtual_start, phys_avail[0].phys_beg);
-		virtual_start += PAGE_SIZE;
-		phys_avail[0].phys_beg += PAGE_SIZE;
-	}
-
-	/*
-	 * crashdumpmap
-	 */
-	crashdumpmap = virtual_start;
-	virtual_start += MAXDUMPPGS * PAGE_SIZE;
-
-	/*
-	 * msgbufp maps the system message buffer
-	 */
-	assert((MSGBUF_SIZE & PAGE_MASK) == 0);
-	msgbufp = (void *)virtual_start;
-	for (i = 0; i < (MSGBUF_SIZE >> PAGE_SHIFT); ++i) {
-
-		pmap_kenter_quick(virtual_start, phys_avail[0].phys_beg);
-		virtual_start += PAGE_SIZE;
-		phys_avail[0].phys_beg += PAGE_SIZE;
-	}
-
-	msgbufinit(msgbufp, MSGBUF_SIZE);
-
-	/*
-	 * used by kern_memio for /dev/mem access
-	 */
-	ptvmmap = (caddr_t)virtual_start;
-	virtual_start += PAGE_SIZE;
-
-	printf("vmm: Hardware pagetable enabled for guest\n");
-}
-
 
 /*
  * Map the per-cpu globaldata for cpu #0.  Allocate the space using

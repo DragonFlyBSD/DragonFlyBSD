@@ -306,9 +306,9 @@ struct	proc {
 	u_short		p_depth;	/* Used to downscale resource limits */
 
 	int		p_ionice;
-	void		*p_unused02;
+	void		*p_unused01;
 /* End area that is copied on creation. */
-#define	p_endcopy	p_unused02
+#define	p_endcopy	p_unused01
 	u_short		p_acflag;	/* Accounting flags. */
 
 	int		p_lock;		/* Prevent proc destruction */
@@ -330,9 +330,7 @@ struct	proc {
 	struct lwkt_token p_token;	/* Token for LWP access to proc */
 	struct sem_undo	*p_sem_undo;	/* Fast semaphore tracking lookup */
 	void		*p_drv_priv;	/* scp linkage (for syscons) */
-	void		*p_vmm;
-	cpulock_t	p_vmm_cpulock;	/* count cpus in and kickout lock */
-	cpumask_t	p_vmm_cpumask;	/* cpus entering or in vmm */
+	char		p_unused02[44];
 	struct sys_upmap *p_upmap;	/* user RW mappable per-process page */
 	forkid_t	p_forkid;	/* unique forkid */
 	struct sysreaper *p_reaper;	/* reaper control */

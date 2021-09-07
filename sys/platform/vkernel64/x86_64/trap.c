@@ -95,7 +95,6 @@ int (*pmath_emulate) (struct trapframe *);
 static int trap_pfault (struct trapframe *, int, vm_offset_t);
 static void trap_fatal (struct trapframe *, int, vm_offset_t);
 void dblfault_handler (void);
-extern int vmm_enabled;
 
 static struct krate segfltrate = { 1 };
 
@@ -1401,10 +1400,7 @@ go_user(struct intrframe *frame)
 		 * Set PGEX_U unconditionally, indicating a user frame (the
 		 * bit is normally set only by T_PAGEFLT).
 		 */
-		if (vmm_enabled)
-			id = (void *)vtophys(curproc->p_vmspace->vm_pmap.pm_pml4);
-		else
-			id = &curproc->p_vmspace->vm_pmap;
+		id = &curproc->p_vmspace->vm_pmap;
 
 		/*
 		 * The GDF_VIRTUSER hack helps statclock() figure out who

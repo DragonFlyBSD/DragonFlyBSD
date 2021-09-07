@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/vkernel/platform/pmap_inval.c,v 1.4 2007/07/02 02:22:58 dillon Exp $
  */
 
 /*
@@ -59,7 +57,6 @@
 #include <sys/cdefs.h>
 #include <sys/mman.h>
 #include <sys/vmspace.h>
-#include <sys/vmm.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -77,42 +74,8 @@
 
 #include <vm/vm_page2.h>
 
-extern int vmm_enabled;
-
-/*
- * Invalidate the TLB on the current cpu
- *
- * (VMM enabled only)
- */
-static __inline
-void
-vmm_cpu_invltlb(void)
-{
-#if 0
-	/* not directly supported */
-	cpu_invltlb();
-#else
-	/* vmm_guest_sync_addr(NULL, NULL); */
-	/* For VMM mode forces vmmexit/resume */
-	uint64_t rax = -1;
-	__asm __volatile("syscall;"
-			:
-			: "a" (rax)
-			:);
-#endif
-}
-
-static __inline
-void
-vmm_cpu_invlpg(void *addr __unused)
-{
-	vmm_cpu_invltlb();
-}
-
 /*
  * Invalidate va in the TLB on the current cpu
- *
- * (VMM disabled only)
  */
 static __inline
 void
@@ -123,69 +86,6 @@ pmap_inval_cpu(struct pmap *pmap, vm_offset_t va, size_t bytes)
 	} else {
 		vmspace_mcontrol(pmap, (void *)va, bytes, MADV_INVAL, 0);
 	}
-}
-
-/*
- * This is a bit of a mess because we don't know what virtual cpus are
- * mapped to real cpus.  Basically try to optimize the degenerate cases
- * (primarily related to user processes with only one thread or only one
- * running thread), and shunt all the rest to the host cpu.  The host cpu
- * will invalidate all real cpu's the vkernel is running on.
- *
- * This can't optimize situations where a pmap is only mapped to some of
- * the virtual cpus, though shunting to the real host will still be faster
- * if the virtual kernel processes are running on fewer real-host cpus.
- * (And probably will be faster anyway since there's no round-trip signaling
- * overhead).
- *
- * NOTE: The critical section protects against preemption while the pmap
- *	 is locked, which could otherwise result in a deadlock.
- */
-static __inline
-void
-guest_sync_addr(struct pmap *pmap, volatile vpte_t *ptep, vpte_t *srcv)
-{
-	globaldata_t gd = mycpu;
-	cpulock_t olock;
-	cpulock_t nlock;
-
-	/*
-	 * Lock the pmap
-	 */
-	crit_enter();
-	for (;;) {
-		olock = pmap->pm_active_lock;
-		cpu_ccfence();
-		if ((olock & CPULOCK_EXCL) == 0) {
-			nlock = olock | CPULOCK_EXCL;
-			if (atomic_cmpset_int(&pmap->pm_active_lock,
-					      olock, nlock)) {
-				break;
-			}
-		}
-		cpu_pause();
-		lwkt_process_ipiq();
-		vkernel_yield();
-	}
-
-	/*
-	 * Update the pte and synchronize with other cpus.  If we can update
-	 * it trivially, do so.
-	 */
-	if (CPUMASK_TESTZERO(pmap->pm_active) ||
-	    CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
-		if (ptep)
-			*srcv = atomic_swap_long(ptep, *srcv);
-		vmm_cpu_invltlb();
-	} else {
-		vmm_guest_sync_addr(__DEVOLATILE(void *, ptep), srcv);
-	}
-
-	/*
-	 * Unlock the pmap
-	 */
-	atomic_clear_int(&pmap->pm_active_lock, CPULOCK_EXCL);
-	crit_exit();
 }
 
 /*
@@ -202,15 +102,8 @@ guest_sync_addr(struct pmap *pmap, volatile vpte_t *ptep, vpte_t *srcv)
 void
 pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
-	vpte_t pte;
-
-	if (vmm_enabled == 0) {
-		atomic_swap_long(ptep, 0);
-		pmap_inval_cpu(pmap, va, PAGE_SIZE);
-	} else {
-		pte = 0;
-		guest_sync_addr(pmap, ptep, &pte);
-	}
+	atomic_swap_long(ptep, 0);
+	pmap_inval_cpu(pmap, va, PAGE_SIZE);
 }
 
 /*
@@ -221,10 +114,7 @@ void
 pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
 	atomic_swap_long(ptep, 0);
-	if (vmm_enabled == 0)
-		pmap_inval_cpu(pmap, va, PAGE_SIZE);
-	else
-		vmm_cpu_invltlb();
+	pmap_inval_cpu(pmap, va, PAGE_SIZE);
 }
 
 /*
@@ -234,11 +124,7 @@ pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 void
 pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
-	if (vmm_enabled == 0) {
-		pmap_inval_cpu(pmap, sva, eva - sva);
-	} else {
-		guest_sync_addr(pmap, NULL, NULL);
-	}
+	pmap_inval_cpu(pmap, sva, eva - sva);
 }
 
 /*
@@ -249,19 +135,8 @@ pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 void
 pmap_inval_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
-	vpte_t pte;
-
-	if (vmm_enabled == 0) {
-		atomic_swap_long(ptep, 0);
-		pmap_inval_cpu(pmap, va, SEG_SIZE);
-	} else if (CPUMASK_TESTMASK(pmap->pm_active,
-				    mycpu->gd_other_cpus) == 0) {
-		atomic_swap_long(ptep, 0);
-		vmm_cpu_invltlb();
-	} else {
-		pte = 0;
-		guest_sync_addr(pmap, ptep, &pte);
-	}
+	atomic_swap_long(ptep, 0);
+	pmap_inval_cpu(pmap, va, SEG_SIZE);
 }
 
 void
@@ -333,22 +208,15 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va,
 		break;
 	}
 
-	if (vmm_enabled == 0) {
-		for (;;) {
-			pte = *ptep;
-			cpu_ccfence();
-			if ((pte & VPTE_RW) == 0)
-				break;
-			if (atomic_cmpset_long(ptep,
-					       pte,
-					       pte & ~(VPTE_RW | VPTE_M))) {
-				pmap_inval_cpu(pmap, va, PAGE_SIZE);
-				break;
-			}
+	for (;;) {
+		pte = *ptep;
+		cpu_ccfence();
+		if ((pte & VPTE_RW) == 0)
+			break;
+		if (atomic_cmpset_long(ptep, pte, pte & ~(VPTE_RW | VPTE_M))) {
+			pmap_inval_cpu(pmap, va, PAGE_SIZE);
+			break;
 		}
-	} else {
-		pte = *ptep & ~(VPTE_RW | VPTE_M);
-		guest_sync_addr(pmap, ptep, &pte);
 	}
 
 	if (m) {
@@ -377,32 +245,21 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 {
 	vpte_t pte;
 
-	if (vmm_enabled == 0) {
-		pte = atomic_swap_long(ptep, 0);
-		pmap_inval_cpu(pmap, va, PAGE_SIZE);
-	} else {
-		pte = 0;
-		guest_sync_addr(pmap, ptep, &pte);
-	}
+	pte = atomic_swap_long(ptep, 0);
+	pmap_inval_cpu(pmap, va, PAGE_SIZE);
 	return(pte);
 }
 
 void
 cpu_invlpg(void *addr)
 {
-	if (vmm_enabled)
-		vmm_cpu_invlpg(addr);
-	else
-		madvise(addr, PAGE_SIZE, MADV_INVAL);
+	madvise(addr, PAGE_SIZE, MADV_INVAL);
 }
 
 void
 cpu_invltlb(void)
 {
-	if (vmm_enabled)
-		vmm_cpu_invltlb(); /* For VMM mode forces vmmexit/resume */
-	else
-		madvise((void *)KvaStart, KvaEnd - KvaStart, MADV_INVAL);
+	madvise((void *)KvaStart, KvaEnd - KvaStart, MADV_INVAL);
 }
 
 /*

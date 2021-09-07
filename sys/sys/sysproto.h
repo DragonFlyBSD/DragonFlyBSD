@@ -1343,14 +1343,6 @@ struct	lpathconf_args {
 	char *	path;	char path_[PAD_(char *)];
 	int	name;	char name_[PAD_(int)];
 };
-struct	vmm_guest_ctl_args {
-	int	op;	char op_[PAD_(int)];
-	struct vmm_guest_options *	options;	char options_[PAD_(struct vmm_guest_options *)];
-};
-struct	vmm_guest_sync_addr_args {
-	long *	dstaddr;	char dstaddr_[PAD_(long *)];
-	long *	srcaddr;	char srcaddr_[PAD_(long *)];
-};
 struct	procctl_args {
 	idtype_t	idtype;	char idtype_[PAD_(idtype_t)];
 	id_t	id;	char id_[PAD_(id_t)];
@@ -1747,8 +1739,6 @@ int	sys_vquotactl (struct sysmsg *sysmsg, const struct vquotactl_args *);
 int	sys_linkat (struct sysmsg *sysmsg, const struct linkat_args *);
 int	sys_eaccess (struct sysmsg *sysmsg, const struct eaccess_args *);
 int	sys_lpathconf (struct sysmsg *sysmsg, const struct lpathconf_args *);
-int	sys_vmm_guest_ctl (struct sysmsg *sysmsg, const struct vmm_guest_ctl_args *);
-int	sys_vmm_guest_sync_addr (struct sysmsg *sysmsg, const struct vmm_guest_sync_addr_args *);
 int	sys_procctl (struct sysmsg *sysmsg, const struct procctl_args *);
 int	sys_chflagsat (struct sysmsg *sysmsg, const struct chflagsat_args *);
 int	sys_pipe2 (struct sysmsg *sysmsg, const struct pipe2_args *);

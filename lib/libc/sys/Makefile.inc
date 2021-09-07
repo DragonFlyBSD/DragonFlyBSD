@@ -100,7 +100,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 bind.2 \
 	truncate.2 tls.2 umask.2 umtx.2 undelete.2 \
 	unlink.2 unlinkat.2 utimensat.2 utimes.2 utrace.2 usched_set.2 \
 	uuidgen.2 \
-	varsym.2 vfork.2 vmm.2 vquotactl.2 wait.2 write.2
+	varsym.2 vfork.2 vquotactl.2 wait.2 write.2
 
 MLINKS+=accept.2 accept4.2
 MLINKS+=access.2 eaccess.2 \
@@ -234,8 +234,6 @@ MLINKS+=utimes.2 futimes.2 \
 MLINKS+=varsym.2 varsym_get.2 \
 	varsym.2 varsym_list.2 \
 	varsym.2 varsym_set.2
-MLINKS+=vmm.2 vmm_guest_ctl.2 \
-	vmm.2 vmm_guest_sync_addr.2
 MLINKS+=wait.2 wait3.2 \
 	wait.2 wait4.2 \
 	wait.2 wait6.2 \

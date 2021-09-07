@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 5, 2019
+.Dd September 7, 2021
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -45,7 +45,7 @@
 .Cd "device vke"
 .Pp
 .Pa /var/vkernel/boot/kernel/kernel
-.Op Fl hdstUvz
+.Op Fl hstUvz
 .Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .Op Fl i Ar file
@@ -82,9 +82,6 @@ or
 .Fl c
 option specified on the command line will be the boot disk.
 The CD9660 filesystem is assumed when booting from this media.
-.It Fl d
-Disables hardware pagetable for
-.Nm .
 .It Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 Specify an environment to be used by the kernel.
 This option can be specified more than once.

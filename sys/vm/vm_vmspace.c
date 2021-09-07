@@ -51,7 +51,6 @@
 #include <vm/pmap.h>
 
 #include <machine/vmparam.h>
-#include <machine/vmm.h>
 
 static struct vmspace_entry *vkernel_find_vmspace(struct vkernel_proc *vkp,
 						  void *id, int havetoken);
@@ -107,9 +106,6 @@ sys_vmspace_create(struct sysmsg *sysmsg,
 		}
 		lwkt_reltoken(&p->p_token);
 	}
-
-	if (curthread->td_vmm)
-		return 0;
 
 	/*
 	 * Create a new VMSPACE, disallow conflicting ids
@@ -196,16 +192,12 @@ sys_vmspace_ctl(struct sysmsg *sysmsg,
 		return (EINVAL);
 
 	/*
-	 * ve only matters when VMM is not used.
-	 *
 	 * NOTE: We have to copy *uap into ua because uap is an aliased
 	 *	 pointer into the sysframe, which we are replacing.
 	 */
-	if (curthread->td_vmm == NULL) {
-		if ((ve = vkernel_find_vmspace(vkp, ua.id, 0)) == NULL) {
-			error = ENOENT;
-			goto done;
-		}
+	if ((ve = vkernel_find_vmspace(vkp, ua.id, 0)) == NULL) {
+		error = ENOENT;
+		goto done;
 	}
 
 	switch(ua.cmd) {
@@ -249,20 +241,9 @@ sys_vmspace_ctl(struct sysmsg *sysmsg,
 			      sizeof(vklp->save_vextframe.vx_tls));
 			set_user_TLS();
 		} else {
-			/*
-			 * If it's a VMM thread just set the CR3. We also set
-			 * the vklp->ve to a key to be able to distinguish
-			 * when a vkernel user process runs and when not
-			 * (when it's NULL)
-			 */
-			if (curthread->td_vmm == NULL) {
-				vklp->ve = ve;
-				atomic_add_int(&ve->refs, 1);
-				pmap_setlwpvm(lp, ve->vmspace);
-			} else {
-				vklp->ve = ua.id;
-				vmm_vm_set_guest_cr3((register_t)ua.id);
-			}
+			vklp->ve = ve;
+			atomic_add_int(&ve->refs, 1);
+			pmap_setlwpvm(lp, ve->vmspace);
 			set_user_TLS();
 			set_vkernel_fp(sysmsg->sysmsg_frame);
 			error = EJUSTRETURN;
@@ -776,23 +757,16 @@ vkernel_lwp_exit(struct lwp *lp)
 	struct vmspace_entry *ve;
 
 	if ((vklp = lp->lwp_vkernel) != NULL) {
-		if (lp->lwp_thread->td_vmm == NULL) {
-			/*
-			 * vkernel thread
-			 */
-			if ((ve = vklp->ve) != NULL) {
-				kprintf("Warning, pid %d killed with "
-					"active VC!\n", lp->lwp_proc->p_pid);
-				pmap_setlwpvm(lp, lp->lwp_proc->p_vmspace);
-				vklp->ve = NULL;
-				KKASSERT(ve->refs > 0);
-				vmspace_entry_drop(ve);
-			}
-		} else {
-			/*
-			 * guest thread
-			 */
+		/*
+		 * vkernel thread
+		 */
+		if ((ve = vklp->ve) != NULL) {
+			kprintf("Warning, pid %d killed with "
+			    "active VC!\n", lp->lwp_proc->p_pid);
+			pmap_setlwpvm(lp, lp->lwp_proc->p_vmspace);
 			vklp->ve = NULL;
+			KKASSERT(ve->refs > 0);
+			vmspace_entry_drop(ve);
 		}
 		if ((ve = vklp->ve_cache) != NULL) {
 			vklp->ve_cache = NULL;
@@ -824,23 +798,17 @@ vkernel_trap(struct lwp *lp, struct trapframe *frame)
 	vklp = lp->lwp_vkernel;
 	KKASSERT(vklp);
 
-	/* If it's a VMM thread just set the vkernel CR3 back */
-	if (curthread->td_vmm == NULL) {
-		ve = vklp->ve;
-		KKASSERT(ve != NULL);
+	ve = vklp->ve;
+	KKASSERT(ve != NULL);
 
-		/*
-		 * Switch the LWP vmspace back to the virtual kernel's VM space.
-		 */
-		vklp->ve = NULL;
-		pmap_setlwpvm(lp, p->p_vmspace);
-		KKASSERT(ve->refs > 0);
-		vmspace_entry_drop(ve);
-		/* ve is invalid once we kill our ref */
-	} else {
-		vklp->ve = NULL;
-		vmm_vm_set_guest_cr3(p->p_vkernel->vkernel_cr3);
-	}
+	/*
+	 * Switch the LWP vmspace back to the virtual kernel's VM space.
+	 */
+	vklp->ve = NULL;
+	pmap_setlwpvm(lp, p->p_vmspace);
+	KKASSERT(ve->refs > 0);
+	vmspace_entry_drop(ve);
+	/* ve is invalid once we kill our ref */
 
 	/*
 	 * Copy the emulated process frame to the virtual kernel process.

@@ -140,7 +140,6 @@ static uint64_t	KPDphys;	/* phys addr of kernel level 2 */
 uint64_t		KPDPphys;	/* phys addr of kernel level 3 */
 uint64_t		KPML4phys;	/* phys addr of kernel level 4 */
 
-extern int vmm_enabled;
 extern void *vkernel_stack;
 
 /*
@@ -385,83 +384,6 @@ allocpages(vm_paddr_t *firstaddr, int n)
 }
 
 static void
-create_dmap_vmm(vm_paddr_t *firstaddr)
-{
-	void *stack_addr;
-	int pml4_stack_index;
-	int pdp_stack_index;
-	int pd_stack_index;
-	long i,j;
-	int regs[4];
-	int amd_feature;
-
-	uint64_t KPDP_DMAP_phys = allocpages(firstaddr, NDMPML4E);
-	uint64_t KPDP_VSTACK_phys = allocpages(firstaddr, 1);
-	uint64_t KPD_VSTACK_phys = allocpages(firstaddr, 1);
-
-	pml4_entry_t *KPML4virt = (pml4_entry_t *)PHYS_TO_DMAP(KPML4phys);
-	pdp_entry_t *KPDP_DMAP_virt = (pdp_entry_t *)PHYS_TO_DMAP(KPDP_DMAP_phys);
-	pdp_entry_t *KPDP_VSTACK_virt = (pdp_entry_t *)PHYS_TO_DMAP(KPDP_VSTACK_phys);
-	pd_entry_t *KPD_VSTACK_virt = (pd_entry_t *)PHYS_TO_DMAP(KPD_VSTACK_phys);
-
-	bzero(KPDP_DMAP_virt, NDMPML4E * PAGE_SIZE);
-	bzero(KPDP_VSTACK_virt, 1 * PAGE_SIZE);
-	bzero(KPD_VSTACK_virt, 1 * PAGE_SIZE);
-
-	do_cpuid(0x80000001, regs);
-	amd_feature = regs[3];
-
-	/* Build the mappings for the first 512GB */
-	if (amd_feature & AMDID_PAGE1GB) {
-		/* In pages of 1 GB, if supported */
-		for (i = 0; i < NPDPEPG; i++) {
-			KPDP_DMAP_virt[i] = ((uint64_t)i << PDPSHIFT);
-			KPDP_DMAP_virt[i] |= VPTE_RW | VPTE_V | VPTE_PS | VPTE_U;
-		}
-	} else {
-		/* In page of 2MB, otherwise */
-		for (i = 0; i < NPDPEPG; i++) {
-			uint64_t KPD_DMAP_phys;
-			pd_entry_t *KPD_DMAP_virt;
-
-			KPD_DMAP_phys = allocpages(firstaddr, 1);
-			KPD_DMAP_virt =
-				(pd_entry_t *)PHYS_TO_DMAP(KPD_DMAP_phys);
-
-			bzero(KPD_DMAP_virt, PAGE_SIZE);
-
-			KPDP_DMAP_virt[i] = KPD_DMAP_phys;
-			KPDP_DMAP_virt[i] |= VPTE_RW | VPTE_V | VPTE_U;
-
-			/* For each PD, we have to allocate NPTEPG PT */
-			for (j = 0; j < NPTEPG; j++) {
-				KPD_DMAP_virt[j] = (i << PDPSHIFT) |
-						   (j << PDRSHIFT);
-				KPD_DMAP_virt[j] |= VPTE_RW | VPTE_V |
-						    VPTE_PS | VPTE_U;
-			}
-		}
-	}
-
-	/* DMAP for the first 512G */
-	KPML4virt[0] = KPDP_DMAP_phys;
-	KPML4virt[0] |= VPTE_RW | VPTE_V | VPTE_U;
-
-	/* create a 2 MB map of the new stack */
-	pml4_stack_index = (uint64_t)&stack_addr >> PML4SHIFT;
-	KPML4virt[pml4_stack_index] = KPDP_VSTACK_phys;
-	KPML4virt[pml4_stack_index] |= VPTE_RW | VPTE_V | VPTE_U;
-
-	pdp_stack_index = ((uint64_t)&stack_addr & PML4MASK) >> PDPSHIFT;
-	KPDP_VSTACK_virt[pdp_stack_index] = KPD_VSTACK_phys;
-	KPDP_VSTACK_virt[pdp_stack_index] |= VPTE_RW | VPTE_V | VPTE_U;
-
-	pd_stack_index = ((uint64_t)&stack_addr & PDPMASK) >> PDRSHIFT;
-	KPD_VSTACK_virt[pd_stack_index] = (uint64_t) vkernel_stack;
-	KPD_VSTACK_virt[pd_stack_index] |= VPTE_RW | VPTE_V | VPTE_U | VPTE_PS;
-}
-
-static void
 create_pagetables(vm_paddr_t *firstaddr, int64_t ptov_offset)
 {
 	int i;
@@ -551,11 +473,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	 */
 	create_pagetables(firstaddr, ptov_offset);
 
-	/* Create the DMAP for the VMM */
-	if (vmm_enabled) {
-		create_dmap_vmm(firstaddr);
-	}
-
 	virtual_start = KvaStart;
 	virtual_end = KvaEnd;
 
@@ -617,10 +534,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	virtual_start = va;
 
 	*CMAP1 = 0;
-	/* Not ready to do an invltlb yet for VMM*/
-	if (!vmm_enabled)
-		cpu_invltlb();
-
+	cpu_invltlb();
 }
 
 /*
@@ -1735,13 +1649,6 @@ cpu_vmspace_alloc(struct vmspace *vm)
 	void *rp;
 	vpte_t vpte;
 
-	/*
-	 * If VMM enable, don't do nothing, we
-	 * are able to use real page tables
-	 */
-	if (vmm_enabled)
-		return;
-
 #define USER_SIZE	(VM_MAX_USER_ADDRESS - VM_MIN_USER_ADDRESS)
 
 	if (vmspace_create(&vm->vm_pmap, 0, NULL) < 0)
@@ -1766,13 +1673,6 @@ cpu_vmspace_alloc(struct vmspace *vm)
 void
 cpu_vmspace_free(struct vmspace *vm)
 {
-	/*
-	 * If VMM enable, don't do nothing, we
-	 * are able to use real page tables
-	 */
-	if (vmm_enabled)
-		return;
-
 	if (vmspace_destroy(&vm->vm_pmap) < 0)
 		panic("vmspace_destroy() failed");
 }

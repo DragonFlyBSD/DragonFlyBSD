@@ -297,8 +297,6 @@ MIASM =  \
 	linkat.o \
 	eaccess.o \
 	lpathconf.o \
-	vmm_guest_ctl.o \
-	vmm_guest_sync_addr.o \
 	procctl.o \
 	chflagsat.o \
 	pipe2.o \
