@@ -87,4 +87,4 @@ __END_DECLS
 
 #endif /* !_KERNEL */
 
-#endif /* _SYS_SCHED_H_ */
+#endif /* !_SYS_SCHED_H_ */

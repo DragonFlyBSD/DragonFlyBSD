@@ -83,4 +83,4 @@ int get_cpu_core_id(int cpuid);
 int get_cpu_phys_id(int cpuid);
 
 #endif /* _KERNEL */
-#endif /* _SYS_CPU_TOPOLOGY_H_ */
+#endif /* !_SYS_CPU_TOPOLOGY_H_ */

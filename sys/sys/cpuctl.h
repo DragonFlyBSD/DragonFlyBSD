@@ -61,4 +61,4 @@ typedef struct {
 #define	CPUCTL_MSRCBIT	_IOWR('c', 6, cpuctl_msr_args_t)
 #define	CPUCTL_CPUID_COUNT _IOWR('c', 7, cpuctl_cpuid_count_args_t)
 
-#endif /* _SYS_CPUCTL_H_ */
+#endif /* !_SYS_CPUCTL_H_ */

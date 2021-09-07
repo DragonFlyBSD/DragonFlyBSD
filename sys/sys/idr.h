@@ -91,4 +91,4 @@ static inline void idr_preload_end(void)
 
 #endif /* _KERNEL */
 
-#endif /* _SYS_IDR_H_ */
+#endif /* !_SYS_IDR_H_ */
