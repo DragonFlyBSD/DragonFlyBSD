@@ -43,8 +43,8 @@
  */
 
 
-#ifndef _IDR_H_
-#define _IDR_H_
+#ifndef _SYS_IDR_H_
+#define _SYS_IDR_H_
 
 #ifdef _KERNEL
 
@@ -91,4 +91,4 @@ static inline void idr_preload_end(void)
 
 #endif /* _KERNEL */
 
-#endif /* _IDR_H_ */
+#endif /* _SYS_IDR_H_ */

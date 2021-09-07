@@ -32,8 +32,8 @@
  * $FreeBSD: src/sys/posix4/posix4.h,v 1.6 1999/12/27 10:22:09 bde Exp $
  */
 
-#ifndef _P1003_1B_P1003_1B_H_
-#define _P1003_1B_P1003_1B_H_
+#ifndef _SYS_POSIX4_H_
+#define _SYS_POSIX4_H_
 
 #ifndef _KERNEL
 
@@ -103,4 +103,4 @@ int ksched_rr_get_interval(register_t *, struct ksched *,
 #endif /* _KPOSIX_PRIORITY_SCHEDULING */
 
 #endif /* !_KERNEL */
-#endif /* !_P1003_1B_P1003_1B_H_ */
+#endif /* !_SYS_POSIX4_H_ */

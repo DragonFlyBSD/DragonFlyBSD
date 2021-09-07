@@ -26,8 +26,8 @@
  * $FreeBSD: head/sys/sys/cpuctl.h 267673 2014-06-20 13:13:38Z kib $
  */
 
-#ifndef _CPUCTL_H_
-#define	_CPUCTL_H_
+#ifndef _SYS_CPUCTL_H_
+#define	_SYS_CPUCTL_H_
 
 #include <sys/types.h>
 #include <sys/ioccom.h>
@@ -61,4 +61,4 @@ typedef struct {
 #define	CPUCTL_MSRCBIT	_IOWR('c', 6, cpuctl_msr_args_t)
 #define	CPUCTL_CPUID_COUNT _IOWR('c', 7, cpuctl_cpuid_count_args_t)
 
-#endif /* _CPUCTL_H_ */
+#endif /* _SYS_CPUCTL_H_ */

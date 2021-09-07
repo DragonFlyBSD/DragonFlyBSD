@@ -32,8 +32,8 @@
  * $FreeBSD: src/sys/sys/mpt_ioctl.h,v 1.1 2008/05/06 20:49:52 jhb Exp $
  */
 
-#ifndef _MPT_IOCTL_H_
-#define	_MPT_IOCTL_H_
+#ifndef _SYS_MPT_IOCTL_H_
+#define	_SYS_MPT_IOCTL_H_
 
 #include <sys/ioccom.h>
 
@@ -131,4 +131,4 @@ struct mpt_raid_action32 {
 #define	MPTIO_RAID_ACTION32	_IOWR('M', 105, struct mpt_raid_action32)
 #endif
 
-#endif /* !_MPT_IOCTL_H_ */
+#endif /* !_SYS_MPT_IOCTL_H_ */

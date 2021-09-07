@@ -29,8 +29,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _CPU_TOPOLOGY_H_
-#define _CPU_TOPOLOGY_H_
+#ifndef _SYS_CPU_TOPOLOGY_H_
+#define _SYS_CPU_TOPOLOGY_H_
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -83,4 +83,4 @@ int get_cpu_core_id(int cpuid);
 int get_cpu_phys_id(int cpuid);
 
 #endif /* _KERNEL */
-#endif /* _CPU_TOPOLOGY_H_ */
+#endif /* _SYS_CPU_TOPOLOGY_H_ */

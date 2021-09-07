@@ -740,7 +740,7 @@ int	__sys_ioctl(int, unsigned long, ...);
 #endif
 
 /* #include <sched.h> */
-#ifdef	_SCHED_H_
+#ifdef	_SYS_SCHED_H_
 int	__sys_sched_yield(void);
 #endif
 

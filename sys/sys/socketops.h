@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _SOCKETOPS_H_
-#define _SOCKETOPS_H_
+#ifndef _SYS_SOCKETOPS_H_
+#define _SYS_SOCKETOPS_H_
 
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
@@ -128,4 +128,4 @@ so_pru_senda(struct socket *so, int flags, struct mbuf *m,
 	}
 }
 
-#endif	/* _SYS_SOCKETOPS_H_ */
+#endif	/* !_SYS_SOCKETOPS_H_ */

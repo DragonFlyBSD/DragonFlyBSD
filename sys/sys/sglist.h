@@ -36,8 +36,8 @@
  * length.
  */
 
-#ifndef __SGLIST_H__
-#define	__SGLIST_H__
+#ifndef _SYS_SGLIST_H_
+#define	_SYS_SGLIST_H_
 
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
@@ -105,4 +105,4 @@ int	sglist_slice(struct sglist *original, struct sglist **slice,
 int	sglist_split(struct sglist *original, struct sglist **head,
 	    size_t length, int mflags);
 
-#endif	/* !__SGLIST_H__ */
+#endif	/* !_SYS_SGLIST_H_ */

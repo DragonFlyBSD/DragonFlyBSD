@@ -30,8 +30,8 @@
  * $FreeBSD: src/sys/sys/imgact_aout.h,v 1.13 1999/12/29 04:24:41 peter Exp $
  */
 
-#ifndef	_IMGACT_AOUT_H_
-#define	_IMGACT_AOUT_H_
+#ifndef	_SYS_IMGACT_AOUT_H_
+#define	_SYS_IMGACT_AOUT_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -161,4 +161,4 @@ struct proc;
 struct vnode;
 #endif
 
-#endif /* !_IMGACT_AOUT_H_ */
+#endif /* !_SYS_IMGACT_AOUT_H_ */

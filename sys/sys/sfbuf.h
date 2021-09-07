@@ -24,8 +24,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _SFBUF_H_
-#define _SFBUF_H_
+#ifndef _SYS_SFBUF_H_
+#define _SYS_SFBUF_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -56,4 +56,4 @@ int		sf_buf_free(void *);
 
 #endif
 
-#endif
+#endif /* !_SYS_SFBUF_H_ */

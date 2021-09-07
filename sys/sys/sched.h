@@ -35,8 +35,8 @@
 
 /* sched.h: POSIX 1003.1b Process Scheduling header */
 
-#ifndef _SCHED_H_
-#define	_SCHED_H_
+#ifndef _SYS_SCHED_H_
+#define	_SYS_SCHED_H_
 
 /* Scheduling policies
  */
@@ -87,4 +87,4 @@ __END_DECLS
 
 #endif /* !_KERNEL */
 
-#endif /* _SCHED_H_ */
+#endif /* _SYS_SCHED_H_ */
