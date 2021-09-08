@@ -1432,6 +1432,11 @@ struct	fexecve_args {
 	char **	argv;	char argv_[PAD_(char **)];
 	char **	envv;	char envv_[PAD_(char **)];
 };
+struct	posix_fallocate_args {
+	int	fd;	char fd_[PAD_(int)];
+	off_t	offset;	char offset_[PAD_(off_t)];
+	off_t	len;	char len_[PAD_(off_t)];
+};
 
 #undef PAD_
 
@@ -1756,6 +1761,7 @@ int	sys_lwp_getname (struct sysmsg *sysmsg, const struct lwp_getname_args *);
 int	sys_getrandom (struct sysmsg *sysmsg, const struct getrandom_args *);
 int	sys___realpath (struct sysmsg *sysmsg, const struct __realpath_args *);
 int	sys_fexecve (struct sysmsg *sysmsg, const struct fexecve_args *);
+int	sys_posix_fallocate (struct sysmsg *sysmsg, const struct posix_fallocate_args *);
 
 #endif /* _KERNEL */
 

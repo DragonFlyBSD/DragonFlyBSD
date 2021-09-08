@@ -528,6 +528,7 @@ int	vop_stdmountctl(struct vop_mountctl_args *ap);
 int	vop_stdgetpages(struct vop_getpages_args *ap);
 int	vop_stdputpages(struct vop_putpages_args *ap);
 int	vop_stdmarkatime(struct vop_markatime_args *ap);
+int	vop_stdallocate(struct vop_allocate_args *ap);
 int	vop_stdnoread(struct vop_read_args *ap);
 int	vop_stdnowrite(struct vop_write_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);

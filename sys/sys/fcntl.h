@@ -341,9 +341,7 @@ int	flock(int, int);
 #endif /* __BSD_VISIBLE */
 #if __POSIX_VISIBLE >= 200112
 int	posix_fadvise(int, off_t, off_t, int);
-#if 0 /* XXX missing */
 int	posix_fallocate(int, off_t, off_t);
-#endif
 #endif
 __END_DECLS
 #endif

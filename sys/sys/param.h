@@ -232,9 +232,10 @@
  *          become pointers
  * 600102 - add nvmm(4) and libnvmm(3)
  * 600103 - remove the old vmm code
+ * 600104 - add posix_fallocate()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600103	/* propagated to newvers */
+#define __DragonFly_version 600104	/* propagated to newvers */
 
 #include <sys/_null.h>
 

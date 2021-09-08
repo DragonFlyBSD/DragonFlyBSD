@@ -332,6 +332,7 @@ DF504.0 {
 DF510.0 {
     clock_nanosleep;
     fexecve;
+    posix_fallocate;
 };
 
 DFprivate_1.0 {
@@ -533,6 +534,7 @@ DFprivate_1.0 {
     __sys_pipe;
     __sys_pipe2;
     __sys_poll;
+    __sys_posix_fallocate;
     __sys_ppoll;
     __sys_procctl;
     __sys_profil;
@@ -836,6 +838,7 @@ DFprivate_1.0 {
     _pipe;
     _pipe2;
     _poll;
+    _posix_fallocate;
     _ppoll;
     _procctl;
     _profil;

@@ -736,3 +736,4 @@
 550	STD	{ ssize_t getrandom(void *buf, size_t len, unsigned flags); }
 551	STD	{ ssize_t __realpath(const char *path, char *buf, size_t len); }
 552	STD	{ int fexecve(int fd, char **argv, char **envv); }
+553	STD	{ int posix_fallocate(int fd, off_t offset, off_t len); }

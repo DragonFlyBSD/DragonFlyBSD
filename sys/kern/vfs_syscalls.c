@@ -5338,3 +5338,58 @@ done:
 
 	return error;
 }
+
+int
+sys_posix_fallocate(struct sysmsg *sysmsg, const struct posix_fallocate_args *uap)
+{
+	return (kern_posix_fallocate(uap->fd, uap->offset, uap->len));
+}
+
+int
+kern_posix_fallocate(int fd, off_t offset, off_t len)
+{
+	struct thread *td = curthread;
+	struct vnode *vp;
+	struct file *fp;
+	int error;
+
+	if (offset < 0 || len <= 0)
+		return (EINVAL);
+	/* Check for wrap. */
+	if (offset > OFF_MAX - len)
+		return (EFBIG);
+
+	fp = holdfp(td, fd, -1);
+	if (fp == NULL)
+		return (EBADF);
+
+	switch (fp->f_type) {
+	case DTYPE_VNODE:
+		break;
+	case DTYPE_PIPE:
+	case DTYPE_FIFO:
+		error = ESPIPE;
+		goto out;
+	default:
+		error = ENODEV;
+		goto out;
+	}
+
+	if ((fp->f_flag & FWRITE) == 0) {
+		error = EBADF;
+		goto out;
+	}
+
+	vp = fp->f_data;
+	if (vp->v_type != VREG) {
+		error = ENODEV;
+		goto out;
+	}
+
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+	error = VOP_ALLOCATE(vp, offset, len);
+	vn_unlock(vp);
+out:
+	dropfp(td, fd, fp);
+	return (error);
+}

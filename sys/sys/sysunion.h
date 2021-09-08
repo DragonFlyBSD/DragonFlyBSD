@@ -320,4 +320,5 @@ union sysunion {
 	struct	getrandom_args getrandom;
 	struct	__realpath_args __realpath;
 	struct	fexecve_args fexecve;
+	struct	posix_fallocate_args posix_fallocate;
 };

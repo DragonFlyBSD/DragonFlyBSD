@@ -134,6 +134,7 @@ VNODEOP_DESC_INIT(getextattr);
 VNODEOP_DESC_INIT(setextattr);
 VNODEOP_DESC_INIT(mountctl);
 VNODEOP_DESC_INIT(markatime);
+VNODEOP_DESC_INIT(allocate);
 
 VNODEOP_DESC_INIT(nresolve);
 VNODEOP_DESC_INIT(nlookupdotdot);
@@ -1310,6 +1311,29 @@ vop_markatime(struct vop_ops *ops, struct vnode *vp, struct ucred *cred)
 }
 
 /*
+ * MPSAFE
+ */
+int
+vop_allocate(struct vop_ops *ops, struct vnode *vp, off_t offset, off_t len)
+{
+	struct vop_allocate_args ap;
+	VFS_MPLOCK_DECLARE;
+	int error;
+
+	ap.a_head.a_desc = &vop_allocate_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_vp = vp;
+	ap.a_offset = 0;
+	ap.a_len = len;
+
+	VFS_MPLOCK(vp->v_mount);
+	DO_OPS(ops, error, &ap, vop_allocate);
+	VFS_MPUNLOCK();
+
+	return(error);
+}
+
+/*
  * NEW API FUNCTIONS
  *
  * nresolve takes a locked ncp, a referenced but unlocked dvp, and a cred,
@@ -2055,6 +2079,15 @@ vop_markatime_ap(struct vop_markatime_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_markatime);
+	return(error);
+}
+
+int
+vop_allocate_ap(struct vop_allocate_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_allocate);
 	return(error);
 }
 

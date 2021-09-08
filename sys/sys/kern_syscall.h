@@ -169,6 +169,7 @@ int kern_unlink(struct nlookupdata *nd);
 int kern_utimensat(struct nlookupdata *nd, const struct timespec *ts, int flag);
 int kern_utimes(struct nlookupdata *nd, struct timeval *tptr);
 struct uuid *kern_uuidgen(struct uuid *store, size_t count);
+int kern_posix_fallocate(int fd, off_t offset, off_t len);
 
 /*
  * Prototypes for syscalls in kern/kern_time.c
