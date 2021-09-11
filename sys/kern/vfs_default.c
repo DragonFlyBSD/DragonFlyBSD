@@ -138,117 +138,6 @@ vop_stdmarkatime(struct vop_markatime_args *ap)
 }
 
 int
-vop_stdallocate(struct vop_allocate_args *ap)
-{
-	struct thread *td;
-	struct vnode *vp;
-	struct vattr vattr, *vap;
-	struct uio auio;
-	struct iovec aiov;
-	uint8_t *buf;
-	off_t offset, len, fsize;
-	size_t iosize;
-	int error;
-
-	td = curthread;
-	vap = &vattr;
-	buf = NULL;
-
-	vp = ap->a_vp;
-	offset = ap->a_offset;
-	len = ap->a_len;
-
-	error = VOP_GETATTR(vp, vap);
-	if (error != 0)
-		goto out;
-	fsize = vap->va_size;
-	iosize = vap->va_blocksize;
-	if (iosize == 0)
-		iosize = BLKDEV_IOSIZE;
-	if (iosize > vmaxiosize(vp))
-		iosize = vmaxiosize(vp);
-	buf = kmalloc(iosize, M_TEMP, M_WAITOK);
-
-	if (offset + len > vap->va_size) {
-		/*
-		 * Test offset + len against the filesystem's maxfilesize.
-		 */
-		VATTR_NULL(&vattr);
-		vap->va_size = offset + len;
-		error = VOP_SETATTR(vp, vap, td->td_ucred);
-		if (error != 0)
-			goto out;
-		VATTR_NULL(&vattr);
-		vap->va_size = fsize;
-		error = VOP_SETATTR(vp, vap, td->td_ucred);
-		if (error != 0)
-			goto out;
-	}
-
-	for (;;) {
-		/*
-		 * Read and write back anything below the nominal file
-		 * size.  There's currently no way outside the filesystem
-		 * to know whether this area is sparse or not.
-		 */
-		off_t cur = iosize;
-		if ((offset % iosize) != 0)
-			cur -= (offset % iosize);
-		if (cur > len)
-			cur = len;
-		if (offset < fsize) {
-			aiov.iov_base = buf;
-			aiov.iov_len = cur;
-			auio.uio_iov = &aiov;
-			auio.uio_iovcnt = 1;
-			auio.uio_offset = offset;
-			auio.uio_resid = cur;
-			auio.uio_segflg = UIO_SYSSPACE;
-			auio.uio_rw = UIO_READ;
-			auio.uio_td = td;
-			error = VOP_READ(vp, &auio, 0, td->td_ucred);
-			if (error != 0)
-				break;
-			if (auio.uio_resid > 0) {
-				bzero(buf + cur - auio.uio_resid,
-				    auio.uio_resid);
-			}
-		} else {
-			bzero(buf, cur);
-		}
-
-		aiov.iov_base = buf;
-		aiov.iov_len = cur;
-		auio.uio_iov = &aiov;
-		auio.uio_iovcnt = 1;
-		auio.uio_offset = offset;
-		auio.uio_resid = cur;
-		auio.uio_segflg = UIO_SYSSPACE;
-		auio.uio_rw = UIO_WRITE;
-		auio.uio_td = td;
-
-		error = VOP_WRITE(vp, &auio, 0, td->td_ucred);
-		if (error != 0)
-			break;
-
-		len -= cur;
-		offset += cur;
-		if (len == 0)
-			break;
-		/*
-		if (should_yield())
-			break;
-		*/
-	}
-out:
-	ap->a_offset = offset;
-	ap->a_len = len;
-	kfree(buf, M_TEMP);
-
-	return (error);
-}
-
-int
 vop_null(struct vop_generic_args *ap)
 {
 	return (0);
@@ -1436,6 +1325,117 @@ vop_stdmountctl(struct vop_mountctl_args *ap)
 		error = EOPNOTSUPP;
 		break;
 	}
+	return (error);
+}
+
+int
+vop_stdallocate(struct vop_allocate_args *ap)
+{
+	struct thread *td;
+	struct vnode *vp;
+	struct vattr vattr, *vap;
+	struct uio auio;
+	struct iovec aiov;
+	uint8_t *buf;
+	off_t offset, len, fsize;
+	size_t iosize;
+	int error;
+
+	td = curthread;
+	vap = &vattr;
+	buf = NULL;
+
+	vp = ap->a_vp;
+	offset = ap->a_offset;
+	len = ap->a_len;
+
+	error = VOP_GETATTR(vp, vap);
+	if (error != 0)
+		goto out;
+	fsize = vap->va_size;
+	iosize = vap->va_blocksize;
+	if (iosize == 0)
+		iosize = BLKDEV_IOSIZE;
+	if (iosize > vmaxiosize(vp))
+		iosize = vmaxiosize(vp);
+	buf = kmalloc(iosize, M_TEMP, M_WAITOK);
+
+	if (offset + len > vap->va_size) {
+		/*
+		 * Test offset + len against the filesystem's maxfilesize.
+		 */
+		VATTR_NULL(&vattr);
+		vap->va_size = offset + len;
+		error = VOP_SETATTR(vp, vap, td->td_ucred);
+		if (error != 0)
+			goto out;
+		VATTR_NULL(&vattr);
+		vap->va_size = fsize;
+		error = VOP_SETATTR(vp, vap, td->td_ucred);
+		if (error != 0)
+			goto out;
+	}
+
+	for (;;) {
+		/*
+		 * Read and write back anything below the nominal file
+		 * size.  There's currently no way outside the filesystem
+		 * to know whether this area is sparse or not.
+		 */
+		off_t cur = iosize;
+		if ((offset % iosize) != 0)
+			cur -= (offset % iosize);
+		if (cur > len)
+			cur = len;
+		if (offset < fsize) {
+			aiov.iov_base = buf;
+			aiov.iov_len = cur;
+			auio.uio_iov = &aiov;
+			auio.uio_iovcnt = 1;
+			auio.uio_offset = offset;
+			auio.uio_resid = cur;
+			auio.uio_segflg = UIO_SYSSPACE;
+			auio.uio_rw = UIO_READ;
+			auio.uio_td = td;
+			error = VOP_READ(vp, &auio, 0, td->td_ucred);
+			if (error != 0)
+				break;
+			if (auio.uio_resid > 0) {
+				bzero(buf + cur - auio.uio_resid,
+				    auio.uio_resid);
+			}
+		} else {
+			bzero(buf, cur);
+		}
+
+		aiov.iov_base = buf;
+		aiov.iov_len = cur;
+		auio.uio_iov = &aiov;
+		auio.uio_iovcnt = 1;
+		auio.uio_offset = offset;
+		auio.uio_resid = cur;
+		auio.uio_segflg = UIO_SYSSPACE;
+		auio.uio_rw = UIO_WRITE;
+		auio.uio_td = td;
+
+		error = VOP_WRITE(vp, &auio, 0, td->td_ucred);
+		if (error != 0)
+			break;
+
+		len -= cur;
+		offset += cur;
+		if (len == 0)
+			break;
+		/*
+		if (should_yield())
+			break;
+		*/
+	}
+out:
+	ap->a_offset = offset;
+	ap->a_len = len;
+	kfree(buf, M_TEMP);
+
 	return (error);
 }
 
