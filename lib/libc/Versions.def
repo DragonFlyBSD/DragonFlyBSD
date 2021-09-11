@@ -53,6 +53,10 @@ DF508.0 {
 DF510.0 {
 } DF508.0;
 
+# version for DragonFly 6.1
+DF602.0 {
+} DF510.0;
+
 # This is our private namespace.  Any global interfaces that are
 # strictly for use only by other DragonFly applications and libraries
 # are listed here.  We use a separate namespace so we can write

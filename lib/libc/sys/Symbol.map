@@ -332,6 +332,9 @@ DF504.0 {
 DF510.0 {
     clock_nanosleep;
     fexecve;
+};
+
+DF602.0 {
     posix_fallocate;
 };
 
