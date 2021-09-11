@@ -94,7 +94,7 @@ typedef struct {
 __BEGIN_DECLS
 extern const _RuneLocale _DefaultRuneLocale;
 extern const _RuneLocale *_CurrentRuneLocale;
-#if defined(__NO_TLS) || defined(__RUNETYPE_INTERNAL)
+#if defined(__RUNETYPE_INTERNAL)
 extern const _RuneLocale *__getCurrentRuneLocale(void);
 #else
 extern __thread const _RuneLocale *_ThreadRuneLocale;
@@ -107,7 +107,7 @@ static __inline const _RuneLocale *__getCurrentRuneLocale(void)
 		return _CurrentRuneLocale;
 	return &_DefaultRuneLocale;
 }
-#endif /* __NO_TLS || __RUNETYPE_INTERNAL */
+#endif /* __RUNETYPE_INTERNAL */
 #define _CurrentRuneLocale (__getCurrentRuneLocale())
 __END_DECLS
 

@@ -56,12 +56,10 @@ extern struct xlocale_component __xlocale_global_messages;
 extern struct xlocale_component __xlocale_C_collate;
 extern struct xlocale_component __xlocale_C_ctype;
 
-#ifndef __NO_TLS
 /*
  * The locale for this thread.
  */
 __thread locale_t __thread_locale;
-#endif
 /*
  * Flag indicating that one or more per-thread locales exist.
  */
@@ -143,16 +141,6 @@ get_thread_locale(void)
 		_pthread_getspecific(locale_info_key));
 }
 
-#ifdef __NO_TLS
-locale_t
-__get_locale(void)
-{
-	locale_t l = get_thread_locale();
-	return (l ? l : &__xlocale_global_locale);
-
-}
-#endif
-
 static void
 set_thread_locale(locale_t loc)
 {
@@ -172,10 +160,8 @@ set_thread_locale(locale_t loc)
 	} else {
 		_pthread_setspecific(locale_info_key, l);
 	}
-#ifndef __NO_TLS
 	__thread_locale = l;
 	__set_thread_rune_locale(loc);
-#endif
 }
 
 /**

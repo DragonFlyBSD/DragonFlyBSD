@@ -54,12 +54,10 @@
 
 #undef _CurrentRuneLocale
 extern _RuneLocale const *_CurrentRuneLocale;
-#ifndef __NO_TLS
 /*
  * A cached version of the runes for this thread.  Used by ctype.h
  */
 __thread const _RuneLocale *_ThreadRuneLocale;
-#endif
 
 extern _RuneLocale	*_Read_RuneMagi(const char *);
 
@@ -178,7 +176,6 @@ __wrap_setrunelocale(const char *locale)
 	return (_LDP_LOADED);
 }
 
-#ifndef __NO_TLS
 void
 __set_thread_rune_locale(locale_t loc)
 {
@@ -191,7 +188,6 @@ __set_thread_rune_locale(locale_t loc)
 		_ThreadRuneLocale = XLOCALE_CTYPE(loc)->runes;
 	}
 }
-#endif
 
 void *
 __ctype_load(const char *locale, locale_t unused __unused)
