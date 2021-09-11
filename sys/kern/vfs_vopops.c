@@ -106,6 +106,7 @@ VNODEOP_DESC_INIT(poll);
 VNODEOP_DESC_INIT(kqfilter);
 VNODEOP_DESC_INIT(mmap);
 VNODEOP_DESC_INIT(fsync);
+VNODEOP_DESC_INIT(fdatasync);
 VNODEOP_DESC_INIT(old_remove);
 VNODEOP_DESC_INIT(old_link);
 VNODEOP_DESC_INIT(old_rename);
@@ -615,6 +616,31 @@ vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags,
 
 	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_fsync);
+	VFS_MPUNLOCK();
+
+	return(error);
+}
+
+/*
+ * MPSAFE
+ */
+int
+vop_fdatasync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags,
+	struct file *fp)
+{
+	struct vop_fdatasync_args ap;
+	VFS_MPLOCK_DECLARE;
+	int error;
+
+	ap.a_head.a_desc = &vop_fdatasync_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_vp = vp;
+	ap.a_waitfor = waitfor;
+	ap.a_flags = flags;
+	ap.a_fp = fp;
+
+	VFS_MPLOCK(vp->v_mount);
+	DO_OPS(ops, error, &ap, vop_fdatasync);
 	VFS_MPUNLOCK();
 
 	return(error);
@@ -1890,6 +1916,15 @@ vop_fsync_ap(struct vop_fsync_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_fsync);
+	return(error);
+}
+
+int
+vop_fdatasync_ap(struct vop_fdatasync_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_fdatasync);
 	return(error);
 }
 

@@ -1437,6 +1437,9 @@ struct	posix_fallocate_args {
 	off_t	offset;	char offset_[PAD_(off_t)];
 	off_t	len;	char len_[PAD_(off_t)];
 };
+struct	fdatasync_args {
+	int	fd;	char fd_[PAD_(int)];
+};
 
 #undef PAD_
 
@@ -1762,6 +1765,7 @@ int	sys_getrandom (struct sysmsg *sysmsg, const struct getrandom_args *);
 int	sys___realpath (struct sysmsg *sysmsg, const struct __realpath_args *);
 int	sys_fexecve (struct sysmsg *sysmsg, const struct fexecve_args *);
 int	sys_posix_fallocate (struct sysmsg *sysmsg, const struct posix_fallocate_args *);
+int	sys_fdatasync (struct sysmsg *sysmsg, const struct fdatasync_args *);
 
 #endif /* _KERNEL */
 

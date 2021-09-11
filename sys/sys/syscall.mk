@@ -314,4 +314,5 @@ MIASM =  \
 	getrandom.o \
 	__realpath.o \
 	fexecve.o \
-	posix_fallocate.o
+	posix_fallocate.o \
+	fdatasync.o

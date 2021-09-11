@@ -336,6 +336,7 @@ DF510.0 {
 
 DF602.0 {
     posix_fallocate;
+    fdatasync;
 };
 
 DFprivate_1.0 {
@@ -408,6 +409,7 @@ DFprivate_1.0 {
     __sys_fchown;
     __sys_fchownat;
     __sys_fcntl;
+    __sys_fdatasync;
     __sys_fexecve;
     __sys_fhopen;
     __sys_fhstat;
@@ -712,6 +714,7 @@ DFprivate_1.0 {
     _fchown;
     _fchownat;
     _fcntl;
+    _fdatasync;
     _fexecve;
     _fhopen;
     _fhstat;

@@ -414,4 +414,6 @@ global:
 	clock_nanosleep
 	pthread_getname_np;
 	pthread_setname_np;
+	__fdatasync;
+	fdatasync;
 };

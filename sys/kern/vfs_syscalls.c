@@ -4050,13 +4050,8 @@ sys_ftruncate(struct sysmsg *sysmsg, const struct ftruncate_args *uap)
 	return (error);
 }
 
-/*
- * fsync(int fd)
- *
- * Sync an open file.
- */
 int
-sys_fsync(struct sysmsg *sysmsg, const struct fsync_args *uap)
+kern_fsync(int fd, bool fullsync)
 {
 	struct thread *td = curthread;
 	struct vnode *vp;
@@ -4064,7 +4059,7 @@ sys_fsync(struct sysmsg *sysmsg, const struct fsync_args *uap)
 	vm_object_t obj;
 	int error;
 
-	if ((error = holdvnode(td, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(td, fd, &fp)) != 0)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
@@ -4074,13 +4069,37 @@ sys_fsync(struct sysmsg *sysmsg, const struct fsync_args *uap)
 			vm_object_page_clean(obj, 0, 0, 0);
 		}
 	}
-	error = VOP_FSYNC_FP(vp, MNT_WAIT, VOP_FSYNC_SYSCALL, fp);
+	error = fullsync ?
+		VOP_FSYNC_FP(vp, MNT_WAIT, VOP_FSYNC_SYSCALL, fp) :
+		VOP_FDATASYNC_FP(vp, MNT_WAIT, VOP_FSYNC_SYSCALL, fp);
 	if (error == 0 && vp->v_mount)
 		error = buf_fsync(vp);
 	vn_unlock(vp);
 	fdrop(fp);
 
 	return (error);
+}
+
+/*
+ * fsync(int fd)
+ *
+ * Sync an open file.
+ */
+int
+sys_fsync(struct sysmsg *sysmsg, const struct fsync_args *uap)
+{
+	return (kern_fsync(uap->fd, true));
+}
+
+/*
+ * fdatasync(int fd)
+ *
+ * Data-sync an open file.
+ */
+int
+sys_fdatasync(struct sysmsg *sysmsg, const struct fdatasync_args *uap)
+{
+	return (kern_fsync(uap->fd, false));
 }
 
 /*

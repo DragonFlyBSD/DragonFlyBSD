@@ -532,6 +532,7 @@ int	vop_stdallocate(struct vop_allocate_args *ap);
 int	vop_stdnoread(struct vop_read_args *ap);
 int	vop_stdnowrite(struct vop_write_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
+int	vop_stdfdatasync(struct vop_fdatasync_args *ap);
 int	vop_eopnotsupp (struct vop_generic_args *ap);
 int	vop_ebadf (struct vop_generic_args *ap);
 int	vop_einval (struct vop_generic_args *ap);

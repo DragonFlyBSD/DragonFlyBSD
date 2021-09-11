@@ -104,6 +104,7 @@ extern int	__sys_aio_suspend(const struct aiocb * const[], int,
 extern int	__sys_accept(int, struct sockaddr *, socklen_t *);
 extern int	__sys_connect(int, const struct sockaddr *, socklen_t);
 extern int	__sys_fsync(int);
+extern int	__sys_fdatasync(int);
 extern int	__sys_msync(void *, size_t, int);
 extern int	__sys_poll(struct pollfd *, unsigned, int);
 extern int	__sys_ppoll(struct pollfd *, unsigned, const struct timespec *,
@@ -127,6 +128,7 @@ int	__close(int);
 int	__connect(int, const struct sockaddr *, socklen_t);
 int	__fcntl(int, int,...);
 int	__fsync(int);
+int	__fdatasync(int);
 int	__msync(void *, size_t, int);
 int	__nanosleep(const struct timespec *, struct timespec *);
 int	__clock_nanosleep(clock_t, int, const struct timespec *,
@@ -293,6 +295,22 @@ __fsync(int fd)
 }
 
 __strong_reference(__fsync, fsync);
+
+int
+__fdatasync(int fd)
+{
+	pthread_t curthread = tls_get_curthread();
+	int	oldcancel;
+	int	ret;
+
+	oldcancel = _thr_cancel_enter(curthread);
+	ret = __sys_fdatasync(fd);
+	_thr_cancel_leave(curthread, oldcancel);
+
+	return (ret);
+}
+
+__strong_reference(__fdatasync, fdatasync);
 
 int
 __msync(void *addr, size_t len, int flags)

@@ -224,6 +224,14 @@ struct vop_fsync_args {
 	struct file *a_fp; /* FUSE */
 };
 
+struct vop_fdatasync_args {
+	struct vop_generic_args a_head;
+	struct vnode *a_vp;
+	int a_waitfor;
+	int a_flags;
+	struct file *a_fp; /* FUSE */
+};
+
 struct vop_old_remove_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
@@ -622,6 +630,7 @@ struct vop_ops {
 	int	(*vop_unused01)(void *);	/* was vop_revoke */
 	int	(*vop_mmap)(struct vop_mmap_args *);
 	int	(*vop_fsync)(struct vop_fsync_args *);
+	int	(*vop_fdatasync)(struct vop_fdatasync_args *);
 	int	(*vop_old_remove)(struct vop_old_remove_args *);
 	int	(*vop_old_link)(struct vop_old_link_args *);
 	int	(*vop_old_rename)(struct vop_old_rename_args *);
@@ -703,6 +712,7 @@ union vop_args_union {
 	struct vop_kqfilter_args vu_kqfilter;
 	struct vop_mmap_args vu_mmap;
 	struct vop_fsync_args vu_fsync;
+	struct vop_fdatasync_args vu_fdatasync;
 	struct vop_old_remove_args vu_remove;
 	struct vop_old_link_args vu_link;
 	struct vop_old_rename_args vu_rename;
@@ -791,6 +801,8 @@ int vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn);
 int vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags,
 		struct ucred *cred);
 int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags,
+		struct file *fp);
+int vop_fdatasync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags,
 		struct file *fp);
 int vop_old_remove(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode *vp, struct componentname *cnp);
@@ -907,6 +919,7 @@ int vop_poll_ap(struct vop_poll_args *ap);
 int vop_kqfilter_ap(struct vop_kqfilter_args *ap);
 int vop_mmap_ap(struct vop_mmap_args *ap);
 int vop_fsync_ap(struct vop_fsync_args *ap);
+int vop_fdatasync_ap(struct vop_fdatasync_args *ap);
 int vop_old_remove_ap(struct vop_old_remove_args *ap);
 int vop_old_link_ap(struct vop_old_link_args *ap);
 int vop_old_rename_ap(struct vop_old_rename_args *ap);
@@ -971,6 +984,7 @@ extern struct syslink_desc vop_poll_desc;
 extern struct syslink_desc vop_kqfilter_desc;
 extern struct syslink_desc vop_mmap_desc;
 extern struct syslink_desc vop_fsync_desc;
+extern struct syslink_desc vop_fdatasync_desc;
 extern struct syslink_desc vop_old_remove_desc;
 extern struct syslink_desc vop_old_link_desc;
 extern struct syslink_desc vop_old_rename_desc;
@@ -1059,6 +1073,10 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_fsync(*(vp)->v_ops, vp, waitfor, flags, fp) /* FUSE*/
 #define VOP_FSYNC(vp, waitfor, flags)			\
 	VOP_FSYNC_FP(vp, waitfor, flags, NULL)
+#define VOP_FDATASYNC_FP(vp, waitfor, flags, fp)	\
+	vop_fdatasync(*(vp)->v_ops, vp, waitfor, flags, fp) /* FUSE*/
+#define VOP_FDATASYNC(vp, waitfor, flags, fp)	\
+	VOP_FDATASYNC_FP(*(vp)->v_ops, vp, waitfor, flags, NULL)
 #define VOP_READDIR_FP(vp, uio, cred, eofflag, ncookies, cookies, fp)	\
 	vop_readdir(*(vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies, fp) /* FUSE */
 #define VOP_READDIR(vp, uio, cred, eofflag, ncookies, cookies)		\

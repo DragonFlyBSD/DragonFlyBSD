@@ -389,4 +389,5 @@
 #define	SYS___realpath	551
 #define	SYS_fexecve	552
 #define	SYS_posix_fallocate	553
-#define	SYS_MAXSYSCALL	554
+#define	SYS_fdatasync	554
+#define	SYS_MAXSYSCALL	555

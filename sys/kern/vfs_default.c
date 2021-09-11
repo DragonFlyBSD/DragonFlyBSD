@@ -74,6 +74,7 @@ struct vop_ops default_vnode_vops = {
 	.vop_default		= vop_eopnotsupp,
 	.vop_advlock		= (void *)vop_einval,
 	.vop_fsync		= (void *)vop_null,
+	.vop_fdatasync		= vop_stdfdatasync,
 	.vop_ioctl		= (void *)vop_enotty,
 	.vop_mmap		= (void *)vop_einval,
 	.vop_old_lookup		= vop_nolookup,
@@ -1437,6 +1438,12 @@ out:
 	kfree(buf, M_TEMP);
 
 	return (error);
+}
+
+int
+vop_stdfdatasync(struct vop_fdatasync_args *ap)
+{
+	return (VOP_FSYNC_FP(ap->a_vp, ap->a_waitfor, ap->a_flags, ap->a_fp));
 }
 
 int	

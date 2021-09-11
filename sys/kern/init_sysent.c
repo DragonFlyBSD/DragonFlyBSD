@@ -568,4 +568,5 @@ struct sysent sysent[] = {
 	{ AS(__realpath_args), (sy_call_t *)sys___realpath },	/* 551 = __realpath */
 	{ AS(fexecve_args), (sy_call_t *)sys_fexecve },	/* 552 = fexecve */
 	{ AS(posix_fallocate_args), (sy_call_t *)sys_posix_fallocate },	/* 553 = posix_fallocate */
+	{ AS(fdatasync_args), (sy_call_t *)sys_fdatasync },	/* 554 = fdatasync */
 };

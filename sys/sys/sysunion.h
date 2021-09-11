@@ -321,4 +321,5 @@ union sysunion {
 	struct	__realpath_args __realpath;
 	struct	fexecve_args fexecve;
 	struct	posix_fallocate_args posix_fallocate;
+	struct	fdatasync_args fdatasync;
 };

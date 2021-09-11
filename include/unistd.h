@@ -435,9 +435,7 @@ extern int optind, opterr, optopt;
 
 /* ISO/IEC 9945-1: 1996 */
 #if __POSIX_VISIBLE >= 199506 || __XSI_VISIBLE
-#if 0 /* XXX missing */
 int	 fdatasync(int);
-#endif
 int	 fsync(int);
 
 /*

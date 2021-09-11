@@ -737,3 +737,4 @@
 551	STD	{ ssize_t __realpath(const char *path, char *buf, size_t len); }
 552	STD	{ int fexecve(int fd, char **argv, char **envv); }
 553	STD	{ int posix_fallocate(int fd, off_t offset, off_t len); }
+554	STD	{ int fdatasync(int fd); }
