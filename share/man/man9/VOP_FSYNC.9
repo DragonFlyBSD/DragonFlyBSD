@@ -26,15 +26,18 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/VOP_FSYNC.9,v 1.6.2.2 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd October 8, 2014
+.Dd September 14, 2021
 .Dt VOP_FSYNC 9
 .Os
 .Sh NAME
+.Nm VOP_FDATASYNC ,
 .Nm VOP_FSYNC
 .Nd flush filesystem buffers for a file
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/vnode.h
+.Ft int
+.Fn VOP_FDATASYNC "struct vnode *vp" "int waitfor" "int flags"
 .Ft int
 .Fn VOP_FSYNC "struct vnode *vp" "int waitfor" "int flags"
 .Sh DESCRIPTION
@@ -80,6 +83,18 @@ call.
 The only supported flag at the moment is
 .Dv VOP_FSYNC_SYSCALL
 which indicates the file synchronization was requested from userland.
+.Pp
+.Fn VOP_FDATASYNC
+is similar, but it does not require that all of the file's metadata be flushed.
+It only requires that the file's data be recoverable after a crash.
+That implies that the data itself must be flushed to disk, as well as some
+metadata such as the file's size but not necessarily its attributes.
+.Fn VOP_FDATASYNC
+should always wait for I/O to complete, as if called with
+.Dv MNT_WAIT .
+.Fn VOP_FDATASYNC
+is used to implement
+.Xr fdatasync 2 .
 .Sh RETURN VALUES
 Zero is returned if the call is successful, otherwise an appropriate
 error code is returned.

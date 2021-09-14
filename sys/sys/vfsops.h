@@ -1075,7 +1075,7 @@ extern struct syslink_desc vop_nrename_desc;
 	VOP_FSYNC_FP(vp, waitfor, flags, NULL)
 #define VOP_FDATASYNC_FP(vp, waitfor, flags, fp)	\
 	vop_fdatasync(*(vp)->v_ops, vp, waitfor, flags, fp) /* FUSE*/
-#define VOP_FDATASYNC(vp, waitfor, flags, fp)	\
+#define VOP_FDATASYNC(vp, waitfor, flags)		\
 	VOP_FDATASYNC_FP(*(vp)->v_ops, vp, waitfor, flags, NULL)
 #define VOP_READDIR_FP(vp, uio, cred, eofflag, ncookies, cookies, fp)	\
 	vop_readdir(*(vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies, fp) /* FUSE */

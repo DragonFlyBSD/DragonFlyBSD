@@ -29,9 +29,6 @@
  * 
  * http://oss.sgi.com/projects/GenInfo/SGIGPLNoticeExplan/
  */
-/*
- * $DragonFly: src/test/stress/fsstress/global.h,v 1.2 2007/05/12 21:46:49 swildner Exp $
- */
  
 #ifndef GLOBAL_H
 #define GLOBAL_H
@@ -81,7 +78,6 @@ typedef off_t	off64_t;
 #define ftruncate64	ftruncate
 #define truncate64	truncate
 #define readdir64	readdir
-#define fdatasync	fsync
 
 static __inline
 void *
