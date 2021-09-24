@@ -18,7 +18,7 @@ SRCS+=	arch.c chars.c mandoc.c mandoc_aux.c mandoc_msg.c mandoc_ohash.c \
 # mandoc
 SRCS+=	eqn_html.c html.c man_html.c mdoc_html.c roff_html.c tbl_html.c
 SRCS+=	eqn_term.c man_term.c mdoc_term.c roff_term.c term.c term_ascii.c \
-	term_ps.c term_tab.c tbl_term.c
+	term_ps.c term_tab.c term_tag.c tbl_term.c
 SRCS+=	dbm.c dbm_map.c mansearch.c
 SRCS+=	dba.c dba_array.c dba_read.c dba_write.c mandocdb.c
 SRCS+=	main.c manpath.c mdoc_man.c mdoc_markdown.c out.c tag.c tree.c
