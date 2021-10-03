@@ -278,8 +278,7 @@ main(int argc, char *argv[])
 	{
 		struct dos_partition *partp;
 
-		if (read_s0())
-			err(1, "read_s0");
+		read_s0();
 		reset_boot();
 		partp = (struct dos_partition *) (&mboot.parts[0]);
 		partp->dp_typ = DOSPTYP_DFLYBSD;
