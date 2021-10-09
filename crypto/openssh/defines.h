@@ -304,6 +304,12 @@ typedef long long intmax_t;
 typedef unsigned long long uintmax_t;
 #endif
 
+#if SIZEOF_TIME_T == SIZEOF_LONG_LONG_INT
+# define SSH_TIME_T_MAX LLONG_MAX
+#else
+# define SSH_TIME_T_MAX INT_MAX
+#endif
+
 #ifndef HAVE_U_CHAR
 typedef unsigned char u_char;
 # define HAVE_U_CHAR
@@ -829,10 +835,6 @@ struct winsize {
 # define getgroups(a,b) ((a)==0 && (b)==NULL ? NGROUPS_MAX : getgroups((a),(b)))
 #endif
 
-#if defined(HAVE_MMAP) && defined(BROKEN_MMAP)
-# undef HAVE_MMAP
-#endif
-
 #ifndef IOV_MAX
 # if defined(_XOPEN_IOV_MAX)
 #  define	IOV_MAX		_XOPEN_IOV_MAX
@@ -898,4 +900,11 @@ struct winsize {
 # define USE_SYSTEM_GLOB
 #endif
 
+/*
+ * sntrup761 uses variable length arrays and c99-style declarations after code,
+ * so only enable if the compiler supports them.
+ */
+#if defined(VARIABLE_LENGTH_ARRAYS) && defined(VARIABLE_DECLARATION_AFTER_CODE)
+# define USE_SNTRUP761X25519 1
+#endif
 #endif /* _DEFINES_H */

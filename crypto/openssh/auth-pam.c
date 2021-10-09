@@ -375,7 +375,11 @@ import_environments(struct sshbuf *b)
 			error("PAM: pam_putenv: %s",
 			    pam_strerror(sshpam_handle, r));
 		}
-		/* XXX leak env? */
+		/*
+		 * XXX this possibly leaks env because it is not documented
+		 * what pam_putenv() does with it. Does it copy it? Does it
+		 * take ownweship? We don't know, so it's safest just to leak.
+		 */
 	}
 #endif
 }
@@ -685,6 +689,12 @@ sshpam_init(struct ssh *ssh, Authctxt *authctxt)
 	const char *pam_user, *user = authctxt->user;
 	const char **ptr_pam_user = &pam_user;
 
+#if defined(PAM_SUN_CODEBASE) && defined(PAM_MAX_RESP_SIZE)
+	/* Protect buggy PAM implementations from excessively long usernames */
+	if (strlen(user) >= PAM_MAX_RESP_SIZE)
+		fatal("Username too long from %s port %d",
+		    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh));
+#endif
 	if (sshpam_handle == NULL) {
 		if (ssh == NULL) {
 			fatal("%s: called initially with no "
@@ -717,9 +727,9 @@ sshpam_init(struct ssh *ssh, Authctxt *authctxt)
 		 */
 		sshpam_rhost = xstrdup(auth_get_canonical_hostname(ssh,
 		    options.use_dns));
-	        sshpam_laddr = get_local_ipaddr(
+		sshpam_laddr = get_local_ipaddr(
 		    ssh_packet_get_connection_in(ssh));
-	        xasprintf(&sshpam_conninfo, "SSH_CONNECTION=%.50s %d %.50s %d",
+		xasprintf(&sshpam_conninfo, "SSH_CONNECTION=%.50s %d %.50s %d",
 		    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh),
 		    sshpam_laddr, ssh_local_port(ssh));
 	}
@@ -876,6 +886,7 @@ sshpam_query(void *ctx, char **name, char **info,
 		case PAM_AUTH_ERR:
 			debug3("PAM: %s", pam_strerror(sshpam_handle, type));
 			if (**prompts != NULL && strlen(**prompts) != 0) {
+				free(*info);
 				*info = **prompts;
 				**prompts = NULL;
 				*num = 0;
@@ -1382,6 +1393,5 @@ sshpam_set_maxtries_reached(int reached)
 	sshpam_maxtries_reached = 1;
 	options.password_authentication = 0;
 	options.kbd_interactive_authentication = 0;
-	options.challenge_response_authentication = 0;
 }
 #endif /* USE_PAM */
