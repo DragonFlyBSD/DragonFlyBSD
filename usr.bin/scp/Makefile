@@ -4,6 +4,7 @@
 PROG=	scp
 SRCS=	scp.c
 SRCS+=	progressmeter.c
+SRCS+=	sftp-common.c sftp-client.c sftp-glob.c
 WARNS?=	3
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh

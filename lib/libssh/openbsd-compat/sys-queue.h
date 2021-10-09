@@ -87,6 +87,7 @@
 #undef SIMPLEQ_INSERT_TAIL
 #undef SIMPLEQ_INSERT_AFTER
 #undef SIMPLEQ_REMOVE_HEAD
+#undef TAILQ_CONCAT
 #undef TAILQ_HEAD
 #undef TAILQ_HEAD_INITIALIZER
 #undef TAILQ_ENTRY
@@ -525,6 +526,15 @@ struct {								\
 	*(elm2)->field.tqe_prev = (elm2);				\
 	_Q_INVALIDATE((elm)->field.tqe_prev);				\
 	_Q_INVALIDATE((elm)->field.tqe_next);				\
+} while (0)
+
+#define TAILQ_CONCAT(head1, head2, field) do {				\
+	if (!TAILQ_EMPTY(head2)) {					\
+		*(head1)->tqh_last = (head2)->tqh_first;		\
+		(head2)->tqh_first->field.tqe_prev = (head1)->tqh_last;	\
+		(head1)->tqh_last = (head2)->tqh_last;			\
+		TAILQ_INIT((head2));					\
+	}								\
 } while (0)
 
 /*

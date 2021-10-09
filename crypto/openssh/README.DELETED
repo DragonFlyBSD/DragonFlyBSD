@@ -1,4 +1,5 @@
 .depend
+.github/
 .gitignore
 .skipped-commit-ids
 ChangeLog
@@ -37,6 +38,7 @@ contrib/cygwin/
 contrib/findssl.sh
 contrib/gnome-ssh-askpass1.c
 contrib/gnome-ssh-askpass2.c
+contrib/gnome-ssh-askpass3.c
 contrib/hpux/
 contrib/redhat/
 contrib/solaris/
@@ -50,7 +52,9 @@ gss-genr.c
 gss-serv-krb5.c
 gss-serv.c
 install-sh
+int32_minmax.inc
 logintest.c
+m4/
 md5crypt.c
 md5crypt.h
 mdoc2man.awk
@@ -76,7 +80,7 @@ scp.0
 sftp-server.0
 sftp.0
 sk-usbhid.c
-sntrup4591761.sh
+sntrup761.sh
 ssh-add.0
 ssh-agent.0
 ssh-gss.h

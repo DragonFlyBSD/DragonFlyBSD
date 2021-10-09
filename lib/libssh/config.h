@@ -133,6 +133,12 @@
 /* Enable for PKCS#11 support */
 /* #undef ENABLE_PKCS11 */
 
+/* Enable for U2F/FIDO support */
+/* #undef ENABLE_SK */
+
+/* Enable for built-in U2F/FIDO support */
+/* #undef ENABLE_SK_INTERNAL */
+
 /* define if fflush(NULL) does not work */
 /* #undef FFLUSH_NULL_BUG */
 
@@ -467,7 +473,7 @@
 #define HAVE_ENDGRENT 1
 
 /* Define to 1 if you have the <endian.h> header file. */
-/* #undef HAVE_ENDIAN_H */
+#define HAVE_ENDIAN_H 1
 
 /* Define to 1 if you have the `endutent' function. */
 /* #undef HAVE_ENDUTENT */
@@ -495,6 +501,9 @@
 
 /* Define to 1 if you have the `EVP_CIPHER_CTX_get_iv' function. */
 #define HAVE_EVP_CIPHER_CTX_GET_IV 1
+
+/* Define to 1 if you have the `EVP_CIPHER_CTX_get_updated_iv' function. */
+/* #undef HAVE_EVP_CIPHER_CTX_GET_UPDATED_IV */
 
 /* Define to 1 if you have the `EVP_CIPHER_CTX_iv' function. */
 /* #undef HAVE_EVP_CIPHER_CTX_IV */
@@ -544,6 +553,9 @@
 /* Define to 1 if you have the `explicit_bzero' function. */
 #define HAVE_EXPLICIT_BZERO 1
 
+/* Define to 1 if you have the `explicit_memset' function. */
+/* #undef HAVE_EXPLICIT_MEMSET */
+
 /* Define to 1 if you have the `fchmod' function. */
 #define HAVE_FCHMOD 1
 
@@ -567,6 +579,21 @@
 
 /* Define to 1 if you have the <features.h> header file. */
 /* #undef HAVE_FEATURES_H */
+
+/* Define to 1 if you have the `fido_cred_prot' function. */
+/* #undef HAVE_FIDO_CRED_PROT */
+
+/* Define to 1 if you have the `fido_cred_set_prot' function. */
+/* #undef HAVE_FIDO_CRED_SET_PROT */
+
+/* Define to 1 if you have the `fido_dev_get_touch_begin' function. */
+/* #undef HAVE_FIDO_DEV_GET_TOUCH_BEGIN */
+
+/* Define to 1 if you have the `fido_dev_get_touch_status' function. */
+/* #undef HAVE_FIDO_DEV_GET_TOUCH_STATUS */
+
+/* Define to 1 if you have the `fido_dev_supports_cred_prot' function. */
+/* #undef HAVE_FIDO_DEV_SUPPORTS_CRED_PROT */
 
 /* Define to 1 if you have the <floatingpoint.h> header file. */
 #define HAVE_FLOATINGPOINT_H 1
@@ -886,6 +913,9 @@
 /* Define to 1 if you have the `login_getcapbool' function. */
 #define HAVE_LOGIN_GETCAPBOOL 1
 
+/* Define to 1 if you have the `login_getpwclass' function. */
+#define HAVE_LOGIN_GETPWCLASS 1
+
 /* Define to 1 if you have the <login.h> header file. */
 /* #undef HAVE_LOGIN_H */
 
@@ -1032,11 +1062,17 @@
 /* Define to 1 if you have the <priv.h> header file. */
 /* #undef HAVE_PRIV_H */
 
+/* Define to 1 if you have the `procctl' function. */
+#define HAVE_PROCCTL 1
+
 /* Define if you have /proc/$pid/fd */
 /* #undef HAVE_PROC_PID */
 
 /* Define to 1 if you have the `proc_pidinfo' function. */
 /* #undef HAVE_PROC_PIDINFO */
+
+/* Define to 1 if you have the `pselect' function. */
+#define HAVE_PSELECT 1
 
 /* Define to 1 if you have the `pstat' function. */
 /* #undef HAVE_PSTAT */
@@ -1246,6 +1282,9 @@
 /* Define to 1 if you have the `sigaction' function. */
 #define HAVE_SIGACTION 1
 
+/* Define to 1 if the system has the type `sighandler_t'. */
+/* #undef HAVE_SIGHANDLER_T */
+
 /* Define to 1 if you have the `sigvec' function. */
 #define HAVE_SIGVEC 1
 
@@ -1269,6 +1308,9 @@
 
 /* Fields in struct sockaddr_storage */
 #define HAVE_SS_FAMILY_IN_SS 1
+
+/* Define if you have ut_ss in utmpx.h */
+#define HAVE_SS_IN_UTMPX 1
 
 /* Define to 1 if you have the `statfs' function. */
 #define HAVE_STATFS 1
@@ -1296,9 +1338,6 @@
 
 /* Define to 1 if you have the `strftime' function. */
 #define HAVE_STRFTIME 1
-
-/* Silly mkstemp() */
-/* #undef HAVE_STRICT_MKSTEMP */
 
 /* Define to 1 if you have the <strings.h> header file. */
 #define HAVE_STRINGS_H 1
@@ -1449,6 +1488,9 @@
 
 /* Define to 1 if you have the <sys/prctl.h> header file. */
 /* #undef HAVE_SYS_PRCTL_H */
+
+/* Define to 1 if you have the <sys/procctl.h> header file. */
+#define HAVE_SYS_PROCCTL_H 1
 
 /* Define to 1 if you have the <sys/pstat.h> header file. */
 /* #undef HAVE_SYS_PSTAT_H */
@@ -1851,6 +1893,9 @@
 /* The size of `short int', as computed by sizeof. */
 #define SIZEOF_SHORT_INT 2
 
+/* The size of `time_t', as computed by sizeof. */
+#define SIZEOF_TIME_T 8
+
 /* Define as const if snprintf() can declare const char *fmt */
 #define SNPRINTF_CONST const
 
@@ -1906,9 +1951,6 @@
 /* Support routing domains using Linux VRF */
 /* #undef SYS_RDOMAIN_LINUX */
 
-/* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
-#define TIME_WITH_SYS_TIME 1
-
 /* Support passwords > 8 chars */
 /* #undef UNIXWARE_LONG_PASSWORDS */
 
@@ -1947,6 +1989,12 @@
 
 /* Define if you have Solaris projects */
 /* #undef USE_SOLARIS_PROJECTS */
+
+/* compiler variable declarations after code */
+#define VARIABLE_DECLARATION_AFTER_CODE 1
+
+/* compiler supports variable length arrays */
+#define VARIABLE_LENGTH_ARRAYS 1
 
 /* Define if you shouldn't strip 'tty' from your ttyname in [uw]tmp */
 /* #undef WITH_ABBREV_NO_TTY */
