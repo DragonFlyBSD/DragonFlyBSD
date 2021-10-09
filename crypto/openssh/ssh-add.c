@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-add.c,v 1.155 2020/03/16 02:17:02 dtucker Exp $ */
+/* $OpenBSD: ssh-add.c,v 1.160 2021/04/03 06:18:41 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -67,6 +67,7 @@
 #include "ssherr.h"
 #include "digest.h"
 #include "ssh-sk.h"
+#include "sk-api.h"
 
 /* argv0 */
 extern char *__progname;
@@ -90,7 +91,7 @@ static char *default_files[] = {
 static int fingerprint_hash = SSH_FP_HASH_DEFAULT;
 
 /* Default lifetime (0 == forever) */
-static long lifetime = 0;
+static int lifetime = 0;
 
 /* User has to confirm key use */
 static int confirm = 0;
@@ -111,25 +112,69 @@ clear_pass(void)
 }
 
 static int
+delete_one(int agent_fd, const struct sshkey *key, const char *comment,
+    const char *path, int qflag)
+{
+	int r;
+
+	if ((r = ssh_remove_identity(agent_fd, key)) != 0) {
+		fprintf(stderr, "Could not remove identity \"%s\": %s\n",
+		    path, ssh_err(r));
+		return r;
+	}
+	if (!qflag) {
+		fprintf(stderr, "Identity removed: %s %s (%s)\n", path,
+		    sshkey_type(key), comment);
+	}
+	return 0;
+}
+
+static int
+delete_stdin(int agent_fd, int qflag)
+{
+	char *line = NULL, *cp;
+	size_t linesize = 0;
+	struct sshkey *key = NULL;
+	int lnum = 0, r, ret = -1;
+
+	while (getline(&line, &linesize, stdin) != -1) {
+		lnum++;
+		sshkey_free(key);
+		key = NULL;
+		line[strcspn(line, "\n")] = '\0';
+		cp = line + strspn(line, " \t");
+		if (*cp == '#' || *cp == '\0')
+			continue;
+		if ((key = sshkey_new(KEY_UNSPEC)) == NULL)
+			fatal_f("sshkey_new");
+		if ((r = sshkey_read(key, &cp)) != 0) {
+			error_r(r, "(stdin):%d: invalid key", lnum);
+			continue;
+		}
+		if (delete_one(agent_fd, key, cp, "(stdin)", qflag) == 0)
+			ret = 0;
+	}
+	sshkey_free(key);
+	free(line);
+	return ret;
+}
+
+static int
 delete_file(int agent_fd, const char *filename, int key_only, int qflag)
 {
 	struct sshkey *public, *cert = NULL;
 	char *certpath = NULL, *comment = NULL;
 	int r, ret = -1;
 
+	if (strcmp(filename, "-") == 0)
+		return delete_stdin(agent_fd, qflag);
+
 	if ((r = sshkey_load_public(filename, &public,  &comment)) != 0) {
 		printf("Bad key file %s: %s\n", filename, ssh_err(r));
 		return -1;
 	}
-	if ((r = ssh_remove_identity(agent_fd, public)) == 0) {
-		if (!qflag) {
-			fprintf(stderr, "Identity removed: %s (%s)\n",
-			    filename, comment);
-		}
+	if (delete_one(agent_fd, public, comment, filename, qflag) == 0)
 		ret = 0;
-	} else
-		fprintf(stderr, "Could not remove identity \"%s\": %s\n",
-		    filename, ssh_err(r));
 
 	if (key_only)
 		goto out;
@@ -140,8 +185,7 @@ delete_file(int agent_fd, const char *filename, int key_only, int qflag)
 	xasprintf(&certpath, "%s-cert.pub", filename);
 	if ((r = sshkey_load_public(certpath, &cert, &comment)) != 0) {
 		if (r != SSH_ERR_SYSTEM_ERROR || errno != ENOENT)
-			error("Failed to load certificate \"%s\": %s",
-			    certpath, ssh_err(r));
+			error_r(r, "Failed to load certificate \"%s\"", certpath);
 		goto out;
 	}
 
@@ -149,15 +193,8 @@ delete_file(int agent_fd, const char *filename, int key_only, int qflag)
 		fatal("Certificate %s does not match private key %s",
 		    certpath, filename);
 
-	if ((r = ssh_remove_identity(agent_fd, cert)) == 0) {
-		if (!qflag) {
-			fprintf(stderr, "Identity removed: %s (%s)\n",
-			    certpath, comment);
-		}
+	if (delete_one(agent_fd, cert, comment, certpath, qflag) == 0)
 		ret = 0;
-	} else
-		fprintf(stderr, "Could not remove identity \"%s\": %s\n",
-		    certpath, ssh_err(r));
 
  out:
 	sshkey_free(cert);
@@ -299,10 +336,10 @@ add_file(int agent_fd, const char *filename, int key_only, int qflag,
 			fprintf(stderr, "Skipping update: ");
 			if (left == minleft) {
 				fprintf(stderr,
-				   "required signatures left (%d).\n", left);
+				    "required signatures left (%d).\n", left);
 			} else {
 				fprintf(stderr,
-				   "more signatures left (%d) than"
+				    "more signatures left (%d) than"
 				    " required (%d).\n", left, minleft);
 			}
 			ssh_free_identitylist(idlist);
@@ -311,12 +348,20 @@ add_file(int agent_fd, const char *filename, int key_only, int qflag,
 		ssh_free_identitylist(idlist);
 	}
 
-	if (!sshkey_is_sk(private))
-		skprovider = NULL; /* Don't send constraint for other keys */
-	else if (skprovider == NULL) {
-		fprintf(stderr, "Cannot load authenticator-hosted key %s "
-		    "without provider\n", filename);
-		goto out;
+	if (sshkey_is_sk(private)) {
+		if (skprovider == NULL) {
+			fprintf(stderr, "Cannot load FIDO key %s "
+			    "without provider\n", filename);
+			goto out;
+		}
+		if ((private->sk_flags & SSH_SK_USER_VERIFICATION_REQD) != 0) {
+			fprintf(stderr, "FIDO verify-required key %s is not "
+			    "currently supported by ssh-agent\n", filename);
+			goto out;
+		}
+	} else {
+		/* Don't send provider constraint for other keys */
+		skprovider = NULL;
 	}
 
 	if ((r = ssh_add_identity_constrained(agent_fd, private, comment,
@@ -327,7 +372,7 @@ add_file(int agent_fd, const char *filename, int key_only, int qflag,
 			    filename, comment);
 			if (lifetime != 0) {
 				fprintf(stderr,
-				    "Lifetime set to %ld seconds\n", lifetime);
+				    "Lifetime set to %d seconds\n", lifetime);
 			}
 			if (confirm != 0) {
 				fprintf(stderr, "The user must confirm "
@@ -347,8 +392,7 @@ add_file(int agent_fd, const char *filename, int key_only, int qflag,
 	xasprintf(&certpath, "%s-cert.pub", filename);
 	if ((r = sshkey_load_public(certpath, &cert, NULL)) != 0) {
 		if (r != SSH_ERR_SYSTEM_ERROR || errno != ENOENT)
-			error("Failed to load certificate \"%s\": %s",
-			    certpath, ssh_err(r));
+			error_r(r, "Failed to load certificate \"%s\"", certpath);
 		goto out;
 	}
 
@@ -361,12 +405,12 @@ add_file(int agent_fd, const char *filename, int key_only, int qflag,
 
 	/* Graft with private bits */
 	if ((r = sshkey_to_certified(private)) != 0) {
-		error("%s: sshkey_to_certified: %s", __func__, ssh_err(r));
+		error_fr(r, "sshkey_to_certified");
 		sshkey_free(cert);
 		goto out;
 	}
 	if ((r = sshkey_cert_copy(cert, private)) != 0) {
-		error("%s: sshkey_cert_copy: %s", __func__, ssh_err(r));
+		error_fr(r, "sshkey_cert_copy");
 		sshkey_free(cert);
 		goto out;
 	}
@@ -374,8 +418,8 @@ add_file(int agent_fd, const char *filename, int key_only, int qflag,
 
 	if ((r = ssh_add_identity_constrained(agent_fd, private, comment,
 	    lifetime, confirm, maxsign, skprovider)) != 0) {
-		error("Certificate %s (%s) add failed: %s", certpath,
-		    private->cert->key_id, ssh_err(r));
+		error_r(r, "Certificate %s (%s) add failed", certpath,
+		    private->cert->key_id);
 		goto out;
 	}
 	/* success */
@@ -383,7 +427,7 @@ add_file(int agent_fd, const char *filename, int key_only, int qflag,
 		fprintf(stderr, "Certificate added: %s (%s)\n", certpath,
 		    private->cert->key_id);
 		if (lifetime != 0) {
-			fprintf(stderr, "Lifetime set to %ld seconds\n",
+			fprintf(stderr, "Lifetime set to %d seconds\n",
 			    lifetime);
 		}
 		if (confirm != 0) {
@@ -438,20 +482,18 @@ test_key(int agent_fd, const char *filename)
 	char data[1024];
 
 	if ((r = sshkey_load_public(filename, &key, NULL)) != 0) {
-		error("Couldn't read public key %s: %s", filename, ssh_err(r));
+		error_r(r, "Couldn't read public key %s", filename);
 		return -1;
 	}
 	arc4random_buf(data, sizeof(data));
 	if ((r = ssh_agent_sign(agent_fd, key, &sig, &slen, data, sizeof(data),
 	    NULL, 0)) != 0) {
-		error("Agent signature failed for %s: %s",
-		    filename, ssh_err(r));
+		error_r(r, "Agent signature failed for %s", filename);
 		goto done;
 	}
 	if ((r = sshkey_verify(key, sig, slen, data, sizeof(data),
 	    NULL, 0, NULL)) != 0) {
-		error("Signature verification failed for %s: %s",
-		    filename, ssh_err(r));
+		error_r(r, "Signature verification failed for %s", filename);
 		goto done;
 	}
 	/* success */
@@ -546,13 +588,13 @@ load_resident_keys(int agent_fd, const char *skprovider, int qflag)
 	pass = read_passphrase("Enter PIN for authenticator: ", RP_ALLOW_STDIN);
 	if ((r = sshsk_load_resident(skprovider, NULL, pass,
 	    &keys, &nkeys)) != 0) {
-		error("Unable to load resident keys: %s", ssh_err(r));
+		error_r(r, "Unable to load resident keys");
 		return r;
 	}
 	for (i = 0; i < nkeys; i++) {
 		if ((fp = sshkey_fingerprint(keys[i],
 		    fingerprint_hash, SSH_FP_DEFAULT)) == NULL)
-			fatal("%s: sshkey_fingerprint failed", __func__);
+			fatal_f("sshkey_fingerprint failed");
 		if ((r = ssh_add_identity_constrained(agent_fd, keys[i], "",
 		    lifetime, confirm, maxsign, skprovider)) != 0) {
 			error("Unable to add key %s %s",
@@ -568,7 +610,7 @@ load_resident_keys(int agent_fd, const char *skprovider, int qflag)
 			    sshkey_type(keys[i]), fp);
 			if (lifetime != 0) {
 				fprintf(stderr,
-				    "Lifetime set to %ld seconds\n", lifetime);
+				    "Lifetime set to %d seconds\n", lifetime);
 			}
 			if (confirm != 0) {
 				fprintf(stderr, "The user must confirm "

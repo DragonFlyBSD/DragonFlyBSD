@@ -1,4 +1,4 @@
-/* $OpenBSD: sk-api.h,v 1.9 2020/04/28 04:02:29 djm Exp $ */
+/* $OpenBSD: sk-api.h,v 1.12 2021/02/18 02:15:07 djm Exp $ */
 /*
  * Copyright (c) 2019 Google LLC
  *
@@ -47,6 +47,8 @@ struct sk_enroll_response {
 	size_t signature_len;
 	uint8_t *attestation_cert;
 	size_t attestation_cert_len;
+	uint8_t *authdata;
+	size_t authdata_len;
 };
 
 struct sk_sign_response {
@@ -63,6 +65,7 @@ struct sk_resident_key {
 	size_t slot;
 	char *application;
 	struct sk_enroll_response key;
+	uint8_t flags;
 };
 
 struct sk_option {
@@ -71,7 +74,7 @@ struct sk_option {
 	uint8_t required;
 };
 
-#define SSH_SK_VERSION_MAJOR		0x00050000 /* current API version */
+#define SSH_SK_VERSION_MAJOR		0x00070000 /* current API version */
 #define SSH_SK_VERSION_MAJOR_MASK	0xffff0000
 
 /* Return the version of the middleware API */
@@ -83,7 +86,7 @@ int sk_enroll(uint32_t alg, const uint8_t *challenge, size_t challenge_len,
     struct sk_option **options, struct sk_enroll_response **enroll_response);
 
 /* Sign a challenge */
-int sk_sign(uint32_t alg, const uint8_t *message, size_t message_len,
+int sk_sign(uint32_t alg, const uint8_t *data, size_t data_len,
     const char *application, const uint8_t *key_handle, size_t key_handle_len,
     uint8_t flags, const char *pin, struct sk_option **options,
     struct sk_sign_response **sign_response);
