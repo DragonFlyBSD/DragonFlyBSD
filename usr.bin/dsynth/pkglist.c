@@ -1113,6 +1113,9 @@ childGetPackageInfo(bulk_t *bulk)
  * Query the package (at least to make sure it hasn't been truncated)
  * and mark it as PACKAGED if found.
  *
+ * This is a pre-req prior to doing builds, so we cannot assume that
+ * the template has its pkg-static binary yet.
+ *
  * Threaded function
  */
 static void
@@ -1145,15 +1148,24 @@ childGetBinaryDistInfo(bulk_t *bulk)
 		if (len == 0 || ptr[len-1] != '\n')
 			continue;
 		ptr[len-1] = 0;
-		snprintf(buf, sizeof(buf), "%s%s", ptr, UsePkgSufx);
 
+		/*
+		 * As of pkg 1.17 the binary dist files use a .pkg suffix
+		 * regardless of the compression format, so always check
+		 * those.
+		 */
+		snprintf(buf, sizeof(buf), "%s%s", ptr, ".pkg");
 		pkg = pkg_find(buf);
+		if (pkg == NULL) {
+			snprintf(buf, sizeof(buf), "%s%s", ptr, UsePkgSufx);
+			pkg = pkg_find(buf);
+		}
 		if (pkg) {
 			pkg->flags |= PKGF_PACKAGED;
 			deleteme = 0;
 		} else {
 			ddprintf(0, "Note: package scan, not in list, "
-				    "skipping %s\n", buf);
+				    "skipping %s{.%s,.pkg}\n", ptr, UsePkgSufx);
 		}
 	}
 	if (dexec_close(fp, pid)) {
@@ -1280,7 +1292,18 @@ scan_binary_repo(const char *path)
 
 		suffix = strrchr(den->d_name, '.');
 		if (suffix && suffix != den->d_name &&
-		    strcmp(suffix, UsePkgSufx) == 0) {
+		    strcmp(suffix, UsePkgSufx) == 0)
+		{
+			queuebulk(den->d_name, NULL, NULL, NULL);
+			++count;
+		}
+
+		/*
+		 * As of 1.17, pkg generates .pkg files.
+		 */
+		if (suffix && suffix != den->d_name &&
+		    strcmp(suffix, ".pkg") == 0)
+		{
 			queuebulk(den->d_name, NULL, NULL, NULL);
 			++count;
 		}

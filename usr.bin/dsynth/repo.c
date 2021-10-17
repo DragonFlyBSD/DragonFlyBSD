@@ -128,11 +128,19 @@ childRebuildRepo(bulk_t *bulk)
 	size_t len;
 	pid_t pid;
 	const char *cav[MAXCAC];
+	char *pkg_path;
 	int cac;
 	int repackage_mode = 0;
 
+	/*
+	 * We have to use the pkg-static that we built as part of the
+	 * build process to rebuild the repo because the system pkg might
+	 * not be compatible with the repo format changes made in 1.17.
+	 */
+	asprintf(&pkg_path, "%s/Template/usr/local/sbin/pkg-static", BuildBase);
+
 	cac = 0;
-	cav[cac++] = PKG_BINARY;
+	cav[cac++] = pkg_path;
 	cav[cac++] = "repo";
 	cav[cac++] = "-m";
 	cav[cac++] = bulk->s1;
@@ -161,7 +169,7 @@ childRebuildRepo(bulk_t *bulk)
 	 * the repo directive always generated .txz files.
 	 */
 	cac = 0;
-	cav[cac++] = PKG_BINARY;
+	cav[cac++] = pkg_path;
 	cav[cac++] = "-v";
 	fp = dexec_open(NULL, cav, cac, &pid, NULL, 1, 0);
 	if ((ptr = fgetln(fp, &len)) != NULL && len > 0) {
@@ -170,6 +178,7 @@ childRebuildRepo(bulk_t *bulk)
 
 		ptr[len-1] = 0;
 		if (sscanf(ptr, "%d.%d", &v1, &v2) == 2) {
+			printf("pkg repo - pkg version: %d.%d\n", v1, v2);
 			if (v1 > 1 || (v1 == 1 && v2 >= 12))
 				repackage_mode = 1;
 		}
@@ -237,6 +246,7 @@ childRebuildRepo(bulk_t *bulk)
 			  UsePkgSufx, ".txz",
 			  decomp, comp);
 	}
+	free (pkg_path);
 }
 
 static
