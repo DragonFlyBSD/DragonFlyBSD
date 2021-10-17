@@ -54,6 +54,7 @@ DoCreateTemplate(int force)
 	struct stat st;
 	char *goodbuf;
 	char *buf;
+	const char *reason = "";
 	int rc;
 	int fd;
 	int n;
@@ -65,12 +66,16 @@ DoCreateTemplate(int force)
 	 * Conditionally create the template and discrete copies of certain
 	 * directories if we think we are missing things.
 	 */
+	if (force == 1)
+		reason = " (Asked to force template creation)";
 	if (force == 0) {
 		time_t ls_mtime;
 
 		asprintf(&buf, "%s/Template", BuildBase);
-		if (stat(buf, &st) < 0)
+		if (stat(buf, &st) < 0) {
 			force = 1;
+			reason = " (Template file missing)";
+		}
 		free(buf);
 
 		/*
@@ -86,17 +91,22 @@ DoCreateTemplate(int force)
 
 		for (n = 0; n < MaxWorkers; ++n) {
 			asprintf(&buf, "%s/bin.%03d/ls", BuildBase, n);
-			if (stat(buf, &st) < 0 || st.st_mtime != ls_mtime)
+			if (stat(buf, &st) < 0 || st.st_mtime != ls_mtime) {
 				force = 1;
+				reason = " (/bin/ls mtime mismatch)";
+			}
 			free(buf);
 		}
 
-		if (stat(goodbuf, &st) < 0)
+		if (stat(goodbuf, &st) < 0) {
 			force = 1;
+			reason = " (.template.good file missing)";
+		}
 	}
 
-	dlog(DLOG_ALL, "Check Template: %s\n",
-	     (force ? "Must-Create" : "Good"));
+	dlog(DLOG_ALL, "Check Template: %s%s\n",
+	     (force ? "Must-Create" : "Good"),
+	     reason);
 
 	/*
 	 * Create the template

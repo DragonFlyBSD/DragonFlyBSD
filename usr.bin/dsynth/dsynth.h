@@ -105,6 +105,9 @@ struct pkglink;
  * NOTE: Decompression speed does effect bulk builds since each slot has
  *	 to install pre-reqs before building any particular package.  Set
  *	 the default to .txz to remain close to synth's default.
+ *
+ * NOTE: As of version 1.17 of pkg, all package files use the .pkg suffix
+ *	 regardless of the compression format.
  */
 #define USE_PKG_SUFX		".txz"
 
