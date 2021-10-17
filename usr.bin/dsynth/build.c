@@ -34,6 +34,9 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#include <netdb.h>
+
 #include "dsynth.h"
 
 static worker_t WorkerAry[MAXWORKERS];
@@ -2260,6 +2263,26 @@ WorkerProcess(int ac, char **av)
 	}
 }
 
+static int
+check_dns(void)
+{
+	char check_domains[4][24] = {
+		"www.dragonflybsd.org",
+		"www.freebsd.org",
+		"www.openbsd.org",
+		"www.netbsd.org",
+	};
+	int failures = 0;
+
+	for (int i = 0; i < 4; i++)
+		if (gethostbyname (check_domains[i]) == NULL)
+			failures++;
+	if (failures > 1)
+		return -1;
+
+	return 0;
+}
+
 static void
 dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 {
@@ -2441,6 +2464,10 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 			dfatal_errno("chdir in phase initialization");
 		if (chroot(work->basedir) < 0)
 			dfatal_errno("chroot in phase initialization");
+
+		/* Explicitly fail when DNS is not working */
+		if (check_dns() != 0)
+			dfatal("DNS resolution not working");
 
 		/*
 		 * We have a choice here on how to handle stdin (fd 0).
