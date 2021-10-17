@@ -97,6 +97,7 @@ int BuildFailCount;
 int BuildSuccessCount;
 int BuildMissingCount;
 int BuildMetaCount;
+int PkgVersionPkgSuffix;
 
 /*
  * Initialize the WorkerAry[]
@@ -232,7 +233,7 @@ DoBuild(pkg_t *pkgs)
 	RunStatsReset();
 
 	/*
-	 * Build pkg/pkg-static.
+	 * Build pkg/pkg-static
 	 */
 	if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0) {
 		build_list = scan;
@@ -268,6 +269,20 @@ DoBuild(pkg_t *pkgs)
 		if (rc)
 			dfatal("Command failed: %s\n", buf);
 		freestrp(&buf);
+	}
+
+	/*
+	 * Figure out pkg version
+	 */
+	if (scan->version) {
+		int v1;
+		int v2;
+
+		dlog(DLOG_ALL, "[XXX] pkg version %s\n", scan->version);
+		if (sscanf(scan->version, "%d.%d", &v1, &v2) == 2) {
+			if ((v1 == 1 && v2 >= 17) || v1 > 1)
+			    PkgVersionPkgSuffix = 1;
+		}
 	}
 
 	/*
@@ -1464,11 +1479,17 @@ childBuilderThread(void *arg)
 			 * the package is flagged for debugging.
 			 */
 			flags = WorkerProcFlags;
-			if (work->pkg->flags & PKGF_DEBUGSTOP) {
+
+			if (work->pkg->flags & PKGF_DEBUGSTOP)
 				flags |= WORKER_PROC_DEBUGSTOP;
-			} else {
+			else
 				flags &= ~WORKER_PROC_DEBUGSTOP;
-			}
+
+			if (PkgVersionPkgSuffix)
+				flags |= WORKER_PROC_PKGV17;
+			else
+				flags &= ~WORKER_PROC_PKGV17;
+
 			snprintf(flagsbuf, sizeof(flagsbuf), "%d", flags);
 
 			/*
@@ -1931,6 +1952,9 @@ WorkerProcess(int ac, char **av)
 	}
 	WorkerProcFlags = strtol(av[5], NULL, 0);
 
+	if (WorkerProcFlags & WORKER_PROC_PKGV17)
+		PkgVersionPkgSuffix = 1;
+
 	bzero(&wmsg, sizeof(wmsg));
 
 	setproctitle("[%02d] WORKER STARTUP  %s%s",
@@ -1955,6 +1979,9 @@ WorkerProcess(int ac, char **av)
 	/*
 	 * NOTE: PKG_SUFX - pkg versions older than 1.17
 	 *	 PKG_COMPRESSION_FORMAT - pkg versions >= 1.17
+	 *
+	 *	 Avoid WARNING messages in the logs by omitting
+	 *	 PKG_SUFX when we know the pkg version is >= 1.17.
 	 */
 	addbuildenv("USE_PACKAGE_DEPENDS_ONLY", "yes", BENV_MAKECONF);
 	addbuildenv("PORTSDIR", "/xports", BENV_MAKECONF);
@@ -1962,7 +1989,13 @@ WorkerProcess(int ac, char **av)
 	addbuildenv("PKG_DBDIR", "/var/db/pkg", BENV_MAKECONF);
 	addbuildenv("PKG_CACHEDIR", "/var/cache/pkg", BENV_MAKECONF);
 	addbuildenv("PKG_COMPRESSION_FORMAT", UsePkgSufx, BENV_MAKECONF);
-	addbuildenv("PKG_SUFX", UsePkgSufx, BENV_MAKECONF);
+	if (PkgVersionPkgSuffix == 0)
+		addbuildenv("PKG_SUFX", UsePkgSufx, BENV_MAKECONF);
+
+	/*
+	 * We are exec'ing the worker process so various bits of global
+	 * state that we want to inherit have to be passed in.
+	 */
 	if (WorkerProcFlags & WORKER_PROC_DEVELOPER)
 		addbuildenv("DEVELOPER", "1", BENV_MAKECONF);
 

@@ -450,6 +450,7 @@ typedef enum os_id os_id_t;
 #define WORKER_PROC_CHECK_PLIST	0x0004
 #define WORKER_PROC_INSTALL	0x0008
 #define WORKER_PROC_DEINSTALL	0x0010
+#define WORKER_PROC_PKGV17	0x0020
 
 /*
  * Misc
