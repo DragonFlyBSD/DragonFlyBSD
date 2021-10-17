@@ -195,10 +195,15 @@ main(int ac, char **av)
 	 * Setup some environment for bulk operations (pkglist scan).
 	 * These are not used by the builder (the builder will replicate
 	 * all of these).
+	 *
+	 * NOTE: PKG_SUFX - pkg versions older than 1.17
+	 *	 PKG_COMPRESSION_FORMAT - pkg versions >= 1.17
 	 */
 	addbuildenv("PORTSDIR", DPortsPath,
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
 	addbuildenv("BATCH", "yes",
+		    BENV_ENVIRONMENT | BENV_PKGLIST);
+	addbuildenv("PKG_COMPRESSION_FORMAT", UsePkgSufx,
 		    BENV_ENVIRONMENT | BENV_PKGLIST);
 	addbuildenv("PKG_SUFX", UsePkgSufx,
 		    BENV_ENVIRONMENT | BENV_PKGLIST);

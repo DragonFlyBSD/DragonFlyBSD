@@ -1952,11 +1952,16 @@ WorkerProcess(int ac, char **av)
 	setenv("LANG", "C", 1);
 	setenv("SSL_NO_VERIFY_PEER", "1", 1);
 
+	/*
+	 * NOTE: PKG_SUFX - pkg versions older than 1.17
+	 *	 PKG_COMPRESSION_FORMAT - pkg versions >= 1.17
+	 */
 	addbuildenv("USE_PACKAGE_DEPENDS_ONLY", "yes", BENV_MAKECONF);
 	addbuildenv("PORTSDIR", "/xports", BENV_MAKECONF);
 	addbuildenv("PORT_DBDIR", "/options", BENV_MAKECONF);
 	addbuildenv("PKG_DBDIR", "/var/db/pkg", BENV_MAKECONF);
 	addbuildenv("PKG_CACHEDIR", "/var/cache/pkg", BENV_MAKECONF);
+	addbuildenv("PKG_COMPRESSION_FORMAT", UsePkgSufx, BENV_MAKECONF);
 	addbuildenv("PKG_SUFX", UsePkgSufx, BENV_MAKECONF);
 	if (WorkerProcFlags & WORKER_PROC_DEVELOPER)
 		addbuildenv("DEVELOPER", "1", BENV_MAKECONF);
