@@ -624,8 +624,6 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	struct ucred *cred = NULL;
 	int wild = 0;
 
-	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) /* XXX broken! */
-		return (EADDRNOTAVAIL);
 	if (inp->inp_lport != 0 || inp->inp_laddr.s_addr != INADDR_ANY)
 		return (EINVAL);	/* already bound */
 

@@ -108,8 +108,6 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	struct sockaddr_in6 jsin6;
 	int error;
 
-	if (!in6_ifaddr) /* XXX broken! */
-		return (EADDRNOTAVAIL);
 	if (inp->inp_lport || !IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
 		return (EINVAL);
 
