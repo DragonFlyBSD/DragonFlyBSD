@@ -1,6 +1,6 @@
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.\" Copyright (c) 2006-2020 Roy Marples
+.\" Copyright (c) 2006-2021 Roy Marples
 .\" All rights reserved
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd November 25, 2020
+.Dd August 23, 2021
 .Dt DHCPCD 8
 .Os
 .Sh NAME
@@ -172,7 +172,7 @@ discovers available Ethernet interfaces that can be configured.
 When
 .Nm
 not limited to one interface on the command line,
-it is running in Master mode.
+it is running in Manager mode.
 The
 .Nm dhcpcd-ui
 project expects dhcpcd to be running this way.
@@ -192,9 +192,9 @@ Using a single interface also affects the
 and
 .Fl x
 options, where the same interface will need to be specified, as a lack of an
-interface will imply Master mode which this is not.
-To force starting in Master mode with only one interface, the
-.Fl M , Fl Fl master
+interface will imply Manager mode which this is not.
+To force starting in Manager mode with only one interface, the
+.Fl M , Fl Fl manager
 option can be used.
 .Pp
 Interfaces are preferred by carrier, DHCP lease/IPv4LL and then lowest metric.
@@ -213,16 +213,16 @@ To work with these devices they either need to be specified on the command line,
 be listed in
 .Fl Fl allowinterfaces
 or have an interface directive in
-.Pa @SYSCONFDIR@/dhcpcd.conf .
+.Pa /etc/dhcpcd.conf .
 .Ss Hooking into events
 .Nm
 runs
-.Pa @SCRIPT@ ,
+.Pa /usr/libexec/dhcpcd-run-hooks ,
 or the script specified by the
 .Fl c , Fl Fl script
 option.
 This script runs each script found in
-.Pa @HOOKDIR@
+.Pa /usr/libexec/dhcpcd-hooks
 in a lexical order.
 The default installation supplies the scripts
 .Pa 01-test ,
@@ -240,9 +240,9 @@ for details on how these scripts work.
 currently ignores the exit code of the script.
 .Pp
 More scripts are supplied in
-.Pa @DATADIR@/dhcpcd/hooks
+.Pa /usr/share/dhcpcd/hooks
 and need to be copied to
-.Pa @HOOKDIR@
+.Pa /usr/libexec/dhcpcd-hooks
 if you intend to use them.
 For example, you could install
 .Pa 29-lookup-hostname
@@ -263,7 +263,7 @@ carrier status.
 Use this
 .Ar script
 instead of the default
-.Pa @SCRIPT@ .
+.Pa /usr/libexec/dhcpcd-run-hooks .
 .It Fl D , Fl Fl duid Op Ar ll | lt | uuid | value
 Use a DHCP Unique Identifier.
 If a system UUID is available, that will be used to create a DUID-UUID,
@@ -271,7 +271,7 @@ otheriwse if persistent storage is available then a DUID-LLT
 (link local address + time) is generated,
 otherwise DUID-LL is generated (link local address).
 The DUID type can be hinted as an optional parameter if the file
-.Pa @DBDIR@/duid
+.Pa /var/db/dhcpcd/duid
 does not exist.
 If not
 .Va ll ,
@@ -284,7 +284,7 @@ will be converted from 00:11:22:33 format.
 This, plus the IAID will be used as the
 .Fl I , Fl Fl clientid .
 The DUID generated will be held in
-.Pa @DBDIR@/duid
+.Pa /var/db/dhcpcd/duid
 and should not be copied to other hosts.
 This file also takes precedence over the above rules except for setting a value.
 .It Fl d , Fl Fl debug
@@ -333,7 +333,7 @@ encodes the FQDN hostname as specified in
 .Li RFC 1035 .
 .It Fl f , Fl Fl config Ar file
 Specify a config to load instead of
-.Pa @SYSCONFDIR@/dhcpcd.conf .
+.Pa /etc/dhcpcd.conf .
 .Nm
 always processes the config file before any command line options.
 .It Fl h , Fl Fl hostname Ar hostname
@@ -393,7 +393,7 @@ regardless of the
 option.
 If no
 .Ar interface
-is specified then this applies to all interfaces in Master mode.
+is specified then this applies to all interfaces in Manager mode.
 If no interfaces are left running,
 .Nm
 will exit.
@@ -406,17 +406,18 @@ By default
 .Nm
 does not request any lease time and leaves it in the hands of the
 DHCP server.
-.It Fl M , Fl Fl master
+.It Fl M , Fl Fl manager
 Start
 .Nm
-in Master mode even if only one interface specified on the command line.
+in Manager mode even if only one interface specified on the command line.
 See the Multiple Interfaces section above.
 .It Fl m , Fl Fl metric Ar metric
 Metrics are used to prefer an interface over another one, lowest wins.
 .Nm
-will supply a default metic of 200 +
+will supply a default metric of 1000 +
 .Xr if_nametoindex 3 .
-An extra 100 will be added for wireless interfaces.
+This will be offset by 2000 for wireless interfaces, with additional offsets
+of 1000000 for IPv4LL and 2000000 for roaming interfaces.
 .It Fl n , Fl Fl rebind Op Ar interface
 Notifies
 .Nm
@@ -424,7 +425,7 @@ to reload its configuration and rebind the specified
 .Ar interface .
 If no
 .Ar interface
-is specified then this applies to all interfaces in Master mode.
+is specified then this applies to all interfaces in Manager mode.
 If
 .Nm
 is not running, then it starts up as normal.
@@ -435,7 +436,7 @@ to renew existing addresses on the specified
 .Ar interface .
 If no
 .Ar interface
-is specified then this applies to all interfaces in Master mode.
+is specified then this applies to all interfaces in Manager mode.
 If
 .Nm
 is not running, then it starts up as normal.
@@ -448,7 +449,7 @@ is not reloaded.
 Request the DHCP
 .Ar option
 variable for use in
-.Pa @SCRIPT@ .
+.Pa /usr/libexec/dhcpcd-run-hooks .
 .It Fl p , Fl Fl persistent
 .Nm
 normally de-configures the
@@ -578,7 +579,7 @@ process running on the
 to exit.
 If no
 .Ar interface
-is specified, then the above is applied to all interfaces in Master mode.
+is specified, then the above is applied to all interfaces in Manager mode.
 See the
 .Fl p , Fl Fl persistent
 option to control configuration persistence on exit,
@@ -689,7 +690,7 @@ These messages are still logged via
 .Xr syslog 3 .
 .It Fl T , Fl Fl test
 On receipt of DHCP messages just call
-.Pa @SCRIPT@
+.Pa /usr/libexec/dhcpcd-run-hooks
 with the reason of TEST which echos the DHCP variables found in the message
 to the console.
 The interface configuration isn't touched and neither are any configuration
@@ -747,7 +748,7 @@ then it is still denied.
 Don't start any interfaces other than those specified on the command line.
 This allows
 .Nm
-to be started in Master mode and then wait for subsequent
+to be started in Manager mode and then wait for subsequent
 .Nm
 commands to start each interface as required.
 .It Fl Fl configure
@@ -811,55 +812,57 @@ option
 .Nm
 sends to match.
 If using a DUID in place of the ClientID, edit
-.Pa @DBDIR@/duid
+.Pa /var/db/dhcpcd/duid
 accordingly.
 .Sh FILES
 .Bl -ohang
-.It Pa @SYSCONFDIR@/dhcpcd.conf
+.It Pa /etc/dhcpcd.conf
 Configuration file for dhcpcd.
 If you always use the same options, put them here.
-.It Pa @SCRIPT@
+.It Pa /usr/libexec/dhcpcd-run-hooks
 Bourne shell script that is run to configure or de-configure an interface.
-.It Pa @LIBDIR@/dhcpcd/dev
+.It Pa /lib/dhcpcd/dev
 Linux
 .Pa /dev
 management modules.
-.It Pa @HOOKDIR@
+.It Pa /usr/libexec/dhcpcd-hooks
 A directory containing bourne shell scripts that are run by the above script.
 Each script can be disabled by using the
 .Fl C , Fl Fl nohook
 option described above.
-.It Pa @DBDIR@/duid
+.It Pa /var/db/dhcpcd/duid
 Text file that holds the DUID used to identify the host.
-.It Pa @DBDIR@/secret
+.It Pa /var/db/dhcpcd/secret
 Text file that holds a secret key known only to the host.
-.It Pa @DBDIR@/ Ns Ar interface Ns Ar -ssid Ns .lease
+.It Pa /var/db/dhcpcd/ Ns Ar interface Ns Ar -ssid Ns .lease
 The actual DHCP message sent by the server.
 We use this when reading the last
 lease and use the file's mtime as when it was issued.
-.It Pa @DBDIR@/ Ns Ar interface Ns Ar -ssid Ns .lease6
+.It Pa /var/db/dhcpcd/ Ns Ar interface Ns Ar -ssid Ns .lease6
 The actual DHCPv6 message sent by the server.
 We use this when reading the last
 lease and use the file's mtime as when it was issued.
-.It Pa @DBDIR@/rdm_monotonic
+.It Pa /var/db/dhcpcd/rdm_monotonic
 Stores the monotonic counter used in the
 .Ar replay
 field in Authentication Options.
-.It Pa @RUNDIR@/pid
+.It Pa /var/run/dhcpcd/pid
 Stores the PID of
 .Nm
 running on all interfaces.
-.It Pa @RUNDIR@/ Ns Ar interface Ns .pid
+.It Pa /var/run/dhcpcd/ Ns Ar interface Ns .pid
 Stores the PID of
 .Nm
 running on the
 .Ar interface .
-.It Pa @RUNDIR@/sock
-Control socket to the master daemon.
-.It Pa @RUNDIR@/unpriv.sock
-Unprivileged socket to the master daemon, only allows state retrieval.
-.It Pa @RUNDIR@/ Ns Ar interface Ns .sock
+.It Pa /var/run/dhcpcd/sock
+Control socket to the manager daemon.
+.It Pa /var/run/dhcpcd/unpriv.sock
+Unprivileged socket to the manager daemon, only allows state retrieval.
+.It Pa /var/run/dhcpcd/ Ns Ar interface Ns .sock
 Control socket to per interface daemon.
+.It Pa /var/run/dhcpcd/ Ns Ar interface Ns .unpriv.sock
+Unprivileged socket to per interface daemon, only allows state retrieval.
 .El
 .Sh SEE ALSO
 .Xr fnmatch 3 ,
