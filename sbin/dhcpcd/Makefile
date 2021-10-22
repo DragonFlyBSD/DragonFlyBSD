@@ -64,27 +64,7 @@ CFLAGS+=	-DSYSCONFDIR='"${_SYSCONFDIR}"' \
 
 _DATADIR=	/usr/share/examples
 _HOOKDIR=	${_LIBEXECDIR}/dhcpcd-hooks
-_SED_CMDS=	-e 's:@SYSCONFDIR@:${_SYSCONFDIR}:g' \
-		-e 's:@DATADIR@:${_DATADIR}:g' \
-		-e 's:@DBDIR@:${_DBDIR}:g' \
-		-e 's:@LIBDIR@:${_LIBDIR}:g' \
-		-e 's:@RUNDIR@:${_RUNDIR}:g' \
-		-e 's:@HOOKDIR@:${_HOOKDIR}:g' \
-		-e 's:@SCRIPT@:${_LIBEXECDIR}/dhcpcd-run-hooks:g' \
-		-e 's:@SERVICEEXISTS@::g' \
-		-e 's:@SERVICECMD@::g' \
-		-e 's:@SERVICESTATUS@::g' \
-		-e 's:@STATUSARG@::g' \
-		-e 's:@DEFAULT_HOSTNAME@::g' \
-		-e 's:@YPDOMAIN_DIR@::g' \
-		-e 's:@YPDOMAIN_SUFFIX@::g'
-
 MAN=		dhcpcd.conf.5 dhcpcd.8
-.for f in dhcpcd.conf.5 dhcpcd.8
-CLEANFILES+=	${f}
-${f}: ${f}.in
-	sed ${_SED_CMDS} ${SRCDIR}/${f}.in > $@
-.endfor
 
 # NOTE:
 # The configuration file 'dhcpcd.conf' is installed by 'etc/Makefile'
@@ -107,12 +87,6 @@ FILESDIR=	${_HOOKDIR}
 .for f in 10-wpa_supplicant 15-timezone 29-lookup-hostname 50-ypbind
 FILES+=		${f}
 FILESDIR_${f}=	${_DATADIR}/dhcpcd/hooks
-.endfor
-
-.for f in dhcpcd-run-hooks dhcpcd-run-hooks.8 30-hostname 50-ypbind
-CLEANFILES+=	${f}
-${f}: ${f}.in
-	sed ${_SED_CMDS} ${HOOKSRC}/${f}.in > $@
 .endfor
 
 .include <bsd.prog.mk>
