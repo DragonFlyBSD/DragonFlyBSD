@@ -4,9 +4,8 @@
 : ${ypbind_restart_cmd:=service_command ypbind restart}
 : ${ypbind_stop_cmd:=service_condcommand ypbind stop}
 ypbind_dir="$state_dir/ypbind"
-: ${ypdomain_dir:=@YPDOMAIN_DIR@}
-: ${ypdomain_suffix:=@YPDOMAIN_SUFFIX@}
-
+: ${ypdomain_dir:=}
+: ${ypdomain_suffix:=}
 
 best_domain()
 {
