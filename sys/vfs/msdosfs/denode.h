@@ -145,7 +145,9 @@ struct denode {
 	struct vnode *de_vnode;	/* addr of vnode we are part of */
 	struct vnode *de_devvp;	/* vnode of blk dev we live on */
 	u_long de_flag;		/* flag bits */
+#ifndef MAKEFS
 	cdev_t de_dev;		/* device where direntry lives */
+#endif /* MAKEFS */
 	u_long de_dirclust;	/* cluster of the directory file containing this entry */
 	u_long de_diroffset;	/* offset of this entry in the directory cluster */
 	u_long de_fndoffset;	/* offset of found dir entry */
@@ -216,7 +218,7 @@ struct denode {
 	     0 : (dep)->de_FileSize), \
 	 putushort((dp)->deHighClust, (dep)->de_StartCluster >> 16))
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(MAKEFS)
 
 #define	VTODE(vp)	((struct denode *)(vp)->v_data)
 #define	DETOV(de)	((de)->de_vnode)
@@ -263,16 +265,19 @@ struct defid {
 #endif
 };
 
+#ifdef _KERNEL
 int msdosfs_init(struct vfsconf *vfsp);
 int msdosfs_uninit(struct vfsconf *vfsp);
 
 int msdosfs_lookup(struct vop_old_lookup_args *);
 int msdosfs_inactive(struct vop_inactive_args *);
 int msdosfs_reclaim(struct vop_reclaim_args *);
+#endif
 
 /*
  * Internal service routine prototypes.
  */
+struct componentname;
 int deget(struct msdosfsmount *, u_long, u_long, struct denode **);
 int uniqdosname(struct denode *, struct componentname *, u_char *);
 
@@ -290,6 +295,6 @@ int deupdat(struct denode *dep, int waitfor);
 int removede(struct denode *pdep, struct denode *dep);
 int detrunc(struct denode *dep, u_long length, int flags);
 int doscheckpath( struct denode *source, struct denode *target);
-#endif	/* _KERNEL */
+#endif	/* _KERNEL || MAKEFS */
 
 #endif	/* !_FS_MSDOSFS_DENODE_H_ */

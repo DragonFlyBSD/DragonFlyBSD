@@ -60,7 +60,7 @@ MALLOC_DECLARE(M_MSDOSFSMNT);
 #endif
 #endif
 #include <sys/iconv.h>
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES) || defined(MAKEFS)
 
 #define msdosfs_iconv msdos_iconv
 
@@ -76,7 +76,9 @@ struct msdosfsmount {
 	mode_t pm_dirmask;	/* mask to and with file protection bits
 				   for directories */
 	struct vnode *pm_devvp;	/* vnode for character device mounted */
+#ifndef MAKEFS
 	cdev_t pm_dev;		/* character device mounted */
+#endif /* MAKEFS */
 	struct bpb50 pm_bpb;	/* BIOS parameter blk for this fs */
 	u_long pm_BlkPerSec;	/* How many DEV_BSIZE blocks fit inside a physical sector */
 	u_long pm_FATsecs;	/* actual number of FAT sectors */
@@ -101,7 +103,9 @@ struct msdosfsmount {
 	u_int pm_curfat;	/* current FAT for FAT32 (0 otherwise) */
 	u_int *pm_inusemap;	/* ptr to bitmap of in-use clusters */
 	u_int pm_flags;		/* see below */
+#ifndef MAKEFS
 	struct netexport pm_export;	/* export information */
+#endif /* MAKEFS */
 	void *pm_u2w;	/* Local->Unicode iconv handle */
 	void *pm_w2u;	/* Unicode->Local iconv handle */
 	void *pm_u2d;	/* Unicode->DOS iconv handle */
@@ -213,8 +217,9 @@ struct msdosfsmount {
 #define	MSDOSFS_UNLOCK_MP(pmp)
 #define	MSDOSFS_ASSERT_MP_LOCKED(pmp)
 
-#endif /* _KERNEL || _KERNEL_STRUCTURES */
+#endif /* _KERNEL || _KERNEL_STRUCTURES || MAKEFS */
 
+#ifndef MAKEFS
 /*
  *  Arguments to mount MSDOS filesystems.
  */
@@ -229,6 +234,7 @@ struct msdosfs_args {
 	char cs_dos[ICONV_CSNMAXLEN];
 	mode_t	dirmask;	/* dir  mask to be applied for msdosfs perms */
 };
+#endif /* MAKEFS */
 
 /*
  * Msdosfs mount options:

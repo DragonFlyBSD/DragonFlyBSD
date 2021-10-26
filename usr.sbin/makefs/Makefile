@@ -4,7 +4,7 @@ PROG=	makefs
 
 CFLAGS+=-I${.CURDIR}
 
-SRCS=	cd9660.c ffs.c \
+SRCS=	cd9660.c ffs.c msdos.c \
 	makefs.c \
 	mtree.c \
 	walk.c
@@ -14,6 +14,7 @@ WARNS?=	2
 
 .include "${.CURDIR}/cd9660/Makefile.inc"
 .include "${.CURDIR}/ffs/Makefile.inc"
+.include "${.CURDIR}/msdos/Makefile.inc"
 
 CFLAGS+=-DHAVE_NBTOOL_CONFIG_H=0
 CFLAGS+=-DHAVE_NETDB_H=1
