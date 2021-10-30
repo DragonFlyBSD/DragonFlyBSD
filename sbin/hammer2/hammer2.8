@@ -231,7 +231,8 @@ Dump a list of all cluster link entries configured in the volume header.
 Compute and print the directory hash for any number of filenames.
 .\" ==== dhash ====
 .It Cm dhash Op filename...
-Compute and print the data hash for long directory entry for any number of filenames.
+Compute and print the data hash for long directory entry for any number of
+filenames.
 .\" ==== pfs-list ====
 .It Cm pfs-list Op path...
 List all PFSs associated with all mounted hammer2 storage devices.
@@ -239,8 +240,9 @@ The list may be restricted to a particular filesystem using
 .Fl s Ar mount .
 .Pp
 Note that hammer2 PFSs associated with storage devices which have not been
-mounted in any fashion will not be listed.  At least one hammer2 label must
-be mounted for the PFSs on that device to be visible.
+mounted in any fashion will not be listed.
+At least one hammer2 label must be mounted for the PFSs on that device to be
+visible.
 .\" ==== pfs-clid ====
 .It Cm pfs-clid Ar label
 Print the cluster id for a PFS specified by name.
@@ -346,10 +348,10 @@ Manual intervention may be required if a conflict occurs during
 synchronization.
 .\" ==== pfs-delete ====
 .It Cm pfs-delete Op label...
-Destroy a PFS by name.  All hammer2 mount points will be checked, however
-this directive will refuse to delete a PFS whos name is duplicated on
-multiple mount points.  A specific mount point may be specified to restrict
-the deletion via the
+Destroy a PFS by name.
+All hammer2 mount points will be checked, however this directive will refuse to
+delete a PFS whos name is duplicated on multiple mount points.
+A specific mount point may be specified to restrict the deletion via the
 .Fl s Ar mount
 option.
 .\" ==== snapshot ====
@@ -430,8 +432,9 @@ The list may be restricted to a particular filesystem using
 .Fl s Ar mount .
 .Pp
 Note that hammer2 volumes associated with storage devices which have not been
-mounted in any fashion will not be listed.  At least one hammer2 label must
-be mounted for the volumes on that device to be visible.
+mounted in any fashion will not be listed.
+At least one hammer2 label must be mounted for the volumes on that device to be
+visible.
 .\" ==== setcomp ====
 .It Cm setcomp Ar mode[:level] Ar path...
 Set the compression mode as specified for any newly created elements at or
@@ -465,8 +468,9 @@ Set the check code as specified for any newly created elements at or under
 the path if not overridden by deeper elements.
 Available codes are default, disabled, crc32, xxhash64, or sha192.
 .Pp
-Normally HAMMER2 does not overwrite data blocks on the media in order
-to ensure snapshot integrity.  Replacement data blocks will be reallocated.
+Normally HAMMER2 does not overwrite data blocks on the media in order to ensure
+snapshot integrity.
+Replacement data blocks will be reallocated.
 However, if the compression mode is set to
 .Sq none
 and the check code is set to
@@ -513,23 +517,23 @@ Dump in-memory chain topology.
 .El
 .Sh SYSCTLS
 .Bl -tag -width indent
-.It Va vfs.hammer2.dedup_enable (default on)
+.It Va vfs.hammer2.dedup_enable "(default on)"
 Enables live de-duplication.
 Any recently read data that is on-media
 (already synchronized to media) is tested against pending writes for
 compatibility.
 If a match is found, the write will reference the
 existing on-media data instead of writing new data.
-.It Va vfs.hammer2.always_compress (default off)
+.It Va vfs.hammer2.always_compress "(default off)"
 This disables the H2 compression heuristic and forces H2 to always
 try to compress data blocks, even if they look uncompressable.
 Enabling this option reduces performance but has higher de-duplication
 repeatability.
-.It Va vfs.hammer2.cluster_data_read (default 4)
-.It Va vfs.hammer2.cluster_meta_read (default 1)
+.It Va vfs.hammer2.cluster_data_read "(default 4)"
+.It Va vfs.hammer2.cluster_meta_read "(default 1)"
 Set the amount of read-ahead clustering to perform on data and meta-data
 blocks.
-.It Va vfs.hammer2.cluster_write (default 0)
+.It Va vfs.hammer2.cluster_write "(default 0)"
 Set the amount of write-behind clustering to perform in buffers.
 Each buffer represents 64KB.
 The default is 4 and higher values typically do not improve performance.
@@ -538,7 +542,7 @@ This variable applies to the underlying media device, not to logical
 file writes, so it should not interfere with temporary file optimization.
 Generally speaking you want this enabled to generate smoothly pipelined
 writes to the media.
-.It Va vfs.hammer2.bulkfree_tps (default 5000)
+.It Va vfs.hammer2.bulkfree_tps "(default 5000)"
 Set bulkfree's maximum scan rate.
 This is primarily intended to limit
 I/O utilization on SSDs and CPU utilization when the meta-data is mostly
