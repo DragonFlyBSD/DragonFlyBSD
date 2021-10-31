@@ -407,6 +407,7 @@ MAN=	aac.4 \
 	wpi.4 \
 	wsp.4 \
 	xe.4 \
+	xdisk.4 \
 	xhci.4 \
 	xl.4 \
 	xpt.4 \

@@ -2,6 +2,7 @@
 
 SUBDIR= ahci ccd dm iscsi isp md mmcsd mpt nata
 SUBDIR+= nvme sbp sdhci sili sym trm vn vpo
+SUBDIR+= xdisk
 
 .for dir in ${SUBDIR}
 .if empty(DEV_SUPPORT:Mdisk) && \
