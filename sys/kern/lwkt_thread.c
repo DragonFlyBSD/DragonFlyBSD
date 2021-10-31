@@ -86,6 +86,7 @@ KTR_INFO(KTR_CTXSW, ctxsw, newtd, 2, "#threads[%p].name = %s", struct thread *td
 KTR_INFO(KTR_CTXSW, ctxsw, deadtd, 3, "#threads[%p].name = <dead>", struct thread *td);
 
 static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
+MALLOC_DEFINE(M_FPUCTX, "fpuctx", "kernel FPU contexts");
 
 #ifdef	INVARIANTS
 static int panic_on_cscount = 0;
@@ -509,7 +510,13 @@ lwkt_free_thread(thread_t td)
 {
     KKASSERT(td->td_refs == 0);
     KKASSERT((td->td_flags & (TDF_RUNNING | TDF_PREEMPT_LOCK |
-			      TDF_RUNQ | TDF_TSLEEPQ)) == 0);
+			      TDF_RUNQ | TDF_TSLEEPQ | TDF_KERNELFP)) == 0);
+
+    if (td->td_kfpuctx) {
+	kfree(td->td_kfpuctx, M_FPUCTX);
+	td->td_kfpuctx = NULL;
+    }
+
     if (td->td_flags & TDF_ALLOCATED_THREAD) {
     	objcache_put(thread_cache, td);
     } else if (td->td_flags & TDF_ALLOCATED_STACK) {

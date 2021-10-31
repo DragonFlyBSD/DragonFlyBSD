@@ -138,7 +138,8 @@ void npxprobemask(void)
 /*
  * Initialize the floating point unit.
  */
-void npxinit(void)
+void
+npxinit(void)
 {
 	static union savefpu dummy __aligned(64);
 	u_short control = __INITIAL_FPUCW__;
@@ -382,7 +383,7 @@ npxdna(void)
 	 * signal handler and uses FP in the handler.
 	 */
 	crit_enter();
-	if ((td->td_flags & (TDF_USINGFP | TDF_KERNELFP)) == 0) {
+	if ((td->td_flags & TDF_USINGFP) == 0) {
 		td->td_flags |= TDF_USINGFP;
 		npxinit();
 		didinit = 1;
@@ -512,8 +513,6 @@ npxpush(mcontext_t *mctx)
 {
 	thread_t td = curthread;
 
-	KKASSERT((td->td_flags & TDF_KERNELFP) == 0);
-
 	if (td->td_flags & TDF_USINGFP) {
 		if (mdcpu->gd_npxthread == td) {
 			/*
@@ -601,6 +600,42 @@ npxpop(mcontext_t *mctx)
 	}
 }
 
+/*
+ * Allow kernel to use FP unit.  This function is not re-entrant.
+ * Saves the current FP state and reinitializes the FP unit.
+ *
+ * XXX really not well optimized, goes through a lot unecessarily.
+ */
+void
+kernel_fpu_begin(void)
+{
+	thread_t td = curthread;
+
+	KASSERT((td->td_flags & TDF_KERNELFP) == 0,
+		("Recursive call to kernel_fpu_begin()"));
+	atomic_set_int(&td->td_flags, TDF_KERNELFP);
+	if (td->td_kfpuctx == NULL) {
+		td->td_kfpuctx = kmalloc(sizeof(*td->td_kfpuctx), M_FPUCTX,
+					 M_INTWAIT | M_ZERO | M_POWEROF2);
+	}
+	npxpush(td->td_kfpuctx);
+	npxdna();
+}
+
+/*
+ * Indicate that the kernel is no longer using the FP unit.  Restores
+ * the previous FP state.
+ */
+void
+kernel_fpu_end(void)
+{
+	thread_t td = curthread;
+
+	KASSERT((td->td_flags & TDF_KERNELFP) != 0,
+		("kernel_fpu_end() without kernel_fpu_begin()"));
+	npxpop(td->td_kfpuctx);
+	atomic_clear_int(&td->td_flags, TDF_KERNELFP);
+}
 
 /*
  * On AuthenticAMD processors, the fxrstor instruction does not restore

@@ -31,6 +31,7 @@
 #endif
 #include <machine/thread.h>	/* md_thread */
 #include <machine/stdint.h>
+#include <machine/ucontext.h>
 
 struct globaldata;
 struct lwp;
@@ -292,7 +293,7 @@ struct thread {
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
     struct ucred *td_ucred;	/* synchronized from proc->p_ucred */
-    void	*td_unused04;
+    mcontext_t	*td_kfpuctx;	/* kernel_fpu_begin()/kernel_fpu_end() */
     lwkt_tokref_t td_toks_have;		/* tokens we own */
     lwkt_tokref_t td_toks_stop;		/* tokens we want */
     struct lwkt_tokref td_toks_array[LWKT_MAXTOKENS];
