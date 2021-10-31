@@ -145,7 +145,8 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 	bbsize =        BBSIZE;
 	sbsize =        SBLOCKSIZE;
 
-	strlcpy(sblock.fs_volname, ffs_opts->label, sizeof(sblock.fs_volname));
+	strlcpy((char *)sblock.fs_volname, ffs_opts->label,
+	    sizeof(sblock.fs_volname));
 
 #ifndef __DragonFly__ /* XXX dead code */
 	if (Oflag == 0) {
