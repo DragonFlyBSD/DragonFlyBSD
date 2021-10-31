@@ -249,7 +249,7 @@ so_pru_connect_async(struct socket *so, struct sockaddr *nam, struct thread *td)
 }
 
 int
-so_pru_connect2(struct socket *so1, struct socket *so2)
+so_pru_connect2(struct socket *so1, struct socket *so2, struct ucred *cred)
 {
 	struct netmsg_pru_connect2 msg;
 	int error;
@@ -258,6 +258,7 @@ so_pru_connect2(struct socket *so1, struct socket *so2)
 		    0, so1->so_proto->pr_usrreqs->pru_connect2);
 	msg.nm_so1 = so1;
 	msg.nm_so2 = so2;
+	msg.nm_cred = cred;
 	error = lwkt_domsg(so1->so_port, &msg.base.lmsg, 0);
 	return (error);
 }

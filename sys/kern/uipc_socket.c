@@ -714,11 +714,11 @@ soconnect(struct socket *so, struct sockaddr *nam, struct thread *td,
 }
 
 int
-soconnect2(struct socket *so1, struct socket *so2)
+soconnect2(struct socket *so1, struct socket *so2, struct ucred *cred)
 {
 	int error;
 
-	error = so_pru_connect2(so1, so2);
+	error = so_pru_connect2(so1, so2, cred);
 	return (error);
 }
 

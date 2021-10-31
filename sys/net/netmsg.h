@@ -174,6 +174,7 @@ struct netmsg_pru_connect2 {
 	struct netmsg_base	base;
 	struct socket		*nm_so1;
 	struct socket		*nm_so2;
+	struct ucred		*nm_cred;
 };
 
 struct netmsg_pru_control {
