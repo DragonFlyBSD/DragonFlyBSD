@@ -99,8 +99,10 @@ void	fpstate_drop(struct thread *td);
 
 int     npxdna(void);
 void	npxdna_quick(struct thread *td);
-void npxpush(struct __mcontext *mctx);
-void npxpop(struct __mcontext *mctx);
+void	npxpush(struct __mcontext *mctx);
+void	npxpop(struct __mcontext *mctx);
+void	kernel_fpu_begin(void);
+void	kernel_fpu_end(void);
 
 void	cpu_heavy_restore (void);
 void	cpu_kthread_restore (void);/* cannot be called from C */
