@@ -217,7 +217,7 @@ struct dmsg_hdr {
 
 	uint64_t	msgid;		/* 08 message transaction id */
 	uint64_t	circuit;	/* 10 circuit id or 0	*/
-	uint64_t	reserved18;	/* 18 */
+	uint64_t	link_verifier;	/* 18 link verifier */
 
 	uint32_t	cmd;		/* 20 flags | cmd | hdr_size / ALIGN */
 	uint32_t	aux_crc;	/* 24 auxillary data crc */

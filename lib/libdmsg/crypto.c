@@ -43,6 +43,7 @@ static pthread_mutex_t *crypto_locks;
 int crypto_count;
 
 static int dmsg_crypto_gcm_init(dmsg_ioq_t *, char *, int, char *, int, int);
+static void dmsg_crypto_gcm_uninit(dmsg_ioq_t *);
 static int dmsg_crypto_gcm_encrypt_chunk(dmsg_ioq_t *, char *, char *, int, int *);
 static int dmsg_crypto_gcm_decrypt_chunk(dmsg_ioq_t *, char *, char *, int, int *);
 
@@ -54,12 +55,13 @@ static struct crypto_algo crypto_algos[] = {
 	{
 		.name      = "aes-256-gcm",
 		.keylen    = DMSG_CRYPTO_GCM_KEY_SIZE,
-		.taglen    = DMSG_CRYPTO_GCM_TAG_SIZE,
+		.unused01  = 0,
 		.init      = dmsg_crypto_gcm_init,
+		.uninit    = dmsg_crypto_gcm_uninit,
 		.enc_chunk = dmsg_crypto_gcm_encrypt_chunk,
 		.dec_chunk = dmsg_crypto_gcm_decrypt_chunk
 	},
-	{ NULL, 0, 0, NULL, NULL, NULL }
+	{ NULL, 0, 0, NULL, NULL, NULL, NULL }
 };
 
 static
@@ -114,14 +116,17 @@ dmsg_crypto_gcm_init(dmsg_ioq_t *ioq, char *key, int klen,
 		dmx_printf(6, "%02x", (unsigned char)iv_fixed[i]);
 	dmx_printf(6, "%s\n", " (fixed part only)");
 
-	EVP_CIPHER_CTX_init(&ioq->ctx);
+	memset(ioq->iv, 0, DMSG_CRYPTO_GCM_IV_SIZE);
+	memcpy(ioq->iv, iv_fixed, DMSG_CRYPTO_GCM_IV_FIXED_SIZE);
+
+	ioq->ctx = EVP_CIPHER_CTX_new();
 
 	if (enc)
-		ok = EVP_EncryptInit_ex(&ioq->ctx, EVP_aes_256_gcm(), NULL,
-					(unsigned char*)key, NULL);
+		ok = EVP_EncryptInit_ex(ioq->ctx, EVP_aes_256_gcm(), NULL,
+					(unsigned char*)key, ioq->iv);
 	else
-		ok = EVP_DecryptInit_ex(&ioq->ctx, EVP_aes_256_gcm(), NULL,
-					(unsigned char*)key, NULL);
+		ok = EVP_DecryptInit_ex(ioq->ctx, EVP_aes_256_gcm(), NULL,
+					(unsigned char*)key, ioq->iv);
 	if (!ok)
 		goto fail;
 
@@ -143,13 +148,10 @@ dmsg_crypto_gcm_init(dmsg_ioq_t *ioq, char *key, int klen,
 	 * With a chunk size of 64 bytes, this adds up to 1 zettabyte of
 	 * traffic.
 	 */
-	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_SET_IVLEN,
+	ok = EVP_CIPHER_CTX_ctrl(ioq->ctx, EVP_CTRL_GCM_SET_IVLEN,
 				 DMSG_CRYPTO_GCM_IV_SIZE, NULL);
 	if (!ok)
 		goto fail;
-
-	memset(ioq->iv, 0, DMSG_CRYPTO_GCM_IV_SIZE);
-	memcpy(ioq->iv, iv_fixed, DMSG_CRYPTO_GCM_IV_FIXED_SIZE);
 
 	/*
 	 * Strictly speaking, padding is irrelevant with a counter mode
@@ -159,13 +161,21 @@ dmsg_crypto_gcm_init(dmsg_ioq_t *ioq, char *key, int klen,
 	 * as GCM, will cause an error in _finish if the pt/ct size is not
 	 * a multiple of the cipher block size.
 	 */
-	EVP_CIPHER_CTX_set_padding(&ioq->ctx, 0);
+	EVP_CIPHER_CTX_set_padding(ioq->ctx, 0);
 
 	return 0;
 
 fail:
 	dm_printf(1, "%s\n", "Error during _gcm_init");
 	return -1;
+}
+
+static
+void
+dmsg_crypto_gcm_uninit(dmsg_ioq_t *ioq)
+{
+	EVP_CIPHER_CTX_free(ioq->ctx);
+	ioq->ctx = NULL;
 }
 
 static
@@ -198,31 +208,22 @@ dmsg_crypto_gcm_encrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 				 int in_size, int *out_size)
 {
 	int ok;
-	int u_len, f_len;
+	int u_len;
 
 	*out_size = 0;
 
-	/* Re-initialize with new IV (but without redoing the key schedule) */
-	ok = EVP_EncryptInit_ex(&ioq->ctx, NULL, NULL, NULL,
-		(unsigned char*)ioq->iv);
+	/*
+	 * Change running IV for each block
+	 */
+	ok = EVP_CIPHER_CTX_set_iv(ioq->ctx, (unsigned char *)ioq->iv,
+				   DMSG_CRYPTO_GCM_IV_SIZE);
+
 	if (!ok)
 		goto fail;
 
 	u_len = 0;	/* safety */
-	ok = EVP_EncryptUpdate(&ioq->ctx, (unsigned char*)ct, &u_len,
+	ok = EVP_EncryptUpdate(ioq->ctx, (unsigned char*)ct, &u_len,
 		(unsigned char*)pt, in_size);
-	if (!ok)
-		goto fail;
-
-	f_len = 0;	/* safety */
-	ok = EVP_EncryptFinal_ex(&ioq->ctx, (unsigned char*)ct + u_len, &f_len);
-	if (!ok)
-		goto fail;
-
-	/* Retrieve auth tag */
-	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_GET_TAG,
-				 DMSG_CRYPTO_GCM_TAG_SIZE,
-				 ct + u_len + f_len);
 	if (!ok)
 		goto fail;
 
@@ -232,15 +233,13 @@ dmsg_crypto_gcm_encrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 		goto fail_out;
 	}
 
-	*out_size = u_len + f_len + DMSG_CRYPTO_GCM_TAG_SIZE;
-	EVP_CIPHER_CTX_reset(&ioq->ctx);
+	*out_size = u_len;
 
 	return 0;
 
 fail:
 	ioq->error = DMSG_IOQ_ERROR_ALGO;
 fail_out:
-	EVP_CIPHER_CTX_reset(&ioq->ctx);
 	dm_printf(1, "%s\n", "error during encrypt_chunk");
 	return -1;
 }
@@ -251,32 +250,22 @@ dmsg_crypto_gcm_decrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 				 int out_size, int *consume_size)
 {
 	int ok;
-	int u_len, f_len;
+	int u_len;
 
 	*consume_size = 0;
 
-	/* Re-initialize with new IV (but without redoing the key schedule) */
-	ok = EVP_DecryptInit_ex(&ioq->ctx, NULL, NULL, NULL,
-		(unsigned char*)ioq->iv);
+	/*
+	 * Change running IV for each block
+	 */
+	ok = EVP_CIPHER_CTX_set_iv(ioq->ctx, (unsigned char *)ioq->iv,
+				   DMSG_CRYPTO_GCM_IV_SIZE);
 	if (!ok) {
 		ioq->error = DMSG_IOQ_ERROR_ALGO;
 		goto fail_out;
 	}
 
-	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_SET_TAG,
-				 DMSG_CRYPTO_GCM_TAG_SIZE,
-				 ct + out_size);
-	if (!ok) {
-		ioq->error = DMSG_IOQ_ERROR_ALGO;
-		goto fail_out;
-	}
-
-	ok = EVP_DecryptUpdate(&ioq->ctx, (unsigned char*)pt, &u_len,
+	ok = EVP_DecryptUpdate(ioq->ctx, (unsigned char*)pt, &u_len,
 		(unsigned char*)ct, out_size);
-	if (!ok)
-		goto fail;
-
-	ok = EVP_DecryptFinal_ex(&ioq->ctx, (unsigned char*)pt + u_len, &f_len);
 	if (!ok)
 		goto fail;
 
@@ -286,15 +275,13 @@ dmsg_crypto_gcm_decrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 		goto fail_out;
 	}
 
-	*consume_size = u_len + f_len + DMSG_CRYPTO_GCM_TAG_SIZE;
-	EVP_CIPHER_CTX_reset(&ioq->ctx);
+	*consume_size = u_len;
 
 	return 0;
 
 fail:
 	ioq->error = DMSG_IOQ_ERROR_MACFAIL;
 fail_out:
-	EVP_CIPHER_CTX_reset(&ioq->ctx);
 	dm_printf(1, "%s\n",
 		  "error during decrypt_chunk "
 		  "(likely authentication error)");
@@ -673,6 +660,13 @@ done:
 		RSA_free(keys[2]);
 }
 
+void
+dmsg_crypto_terminate(dmsg_iocom_t *iocom)
+{
+	crypto_algos[DMSG_CRYPTO_ALGO].uninit(&iocom->ioq_rx);
+	crypto_algos[DMSG_CRYPTO_ALGO].uninit(&iocom->ioq_tx);
+}
+
 /*
  * Decrypt pending data in the ioq's fifo.  The data is decrypted in-place.
  */
@@ -693,11 +687,8 @@ dmsg_crypto_decrypt(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq)
 	if (p_len == 0)
 		return;
 
-	while (p_len >= crypto_algos[DMSG_CRYPTO_ALGO].taglen +
-	    DMSG_CRYPTO_CHUNK_SIZE) {
-		bcopy(ioq->buf + ioq->fifo_cdn, buf,
-		      crypto_algos[DMSG_CRYPTO_ALGO].taglen +
-		      DMSG_CRYPTO_CHUNK_SIZE);
+	while (p_len >= DMSG_CRYPTO_CHUNK_SIZE) {
+		bcopy(ioq->buf + ioq->fifo_cdn, buf, DMSG_CRYPTO_CHUNK_SIZE);
 		error = crypto_algos[DMSG_CRYPTO_ALGO].dec_chunk(
 		    ioq, buf,
 		    ioq->buf + ioq->fifo_cdx,
@@ -744,8 +735,8 @@ dmsg_crypto_encrypt(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq,
 		assert((p_len & DMSG_ALIGNMASK) == 0);
 
 		while (p_len >= DMSG_CRYPTO_CHUNK_SIZE &&
-		    nmax >= DMSG_CRYPTO_CHUNK_SIZE +
-		    (size_t)crypto_algos[DMSG_CRYPTO_ALGO].taglen) {
+		    nmax >= DMSG_CRYPTO_CHUNK_SIZE)
+		{
 			error = crypto_algos[DMSG_CRYPTO_ALGO].enc_chunk(
 			    ioq,
 			    ioq->buf + ioq->fifo_cdx,

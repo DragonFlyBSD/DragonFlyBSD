@@ -1,0 +1,17 @@
+
+				    TODO
+
+#1 The encryption is really just a place-holder.  link_verifier is meant
+   to be a per-message link-level verifier, meaning that the physical
+   link (a tcp connection in this case) can modify it and then use it as
+   a verifier on the other end.  It should be set to 0 in the original
+   message.
+
+   This is not yet implemented.  At the moment we rely on the 32-bit CRC
+   as our verifier, and it is not really good enough for the task.
+
+   - link verifier not yet implemented
+   - kill link on link verifier error
+   - Differentiate between end-to-end crc and link verifier
+
+#2 the circuit stuff is a bit of a mess.

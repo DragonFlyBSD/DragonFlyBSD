@@ -221,6 +221,7 @@ dmsg_iocom_signal(dmsg_iocom_t *iocom)
 void
 dmsg_iocom_done(dmsg_iocom_t *iocom)
 {
+	dmsg_crypto_terminate(iocom);
 	if (iocom->sock_fd >= 0) {
 		close(iocom->sock_fd);
 		iocom->sock_fd = -1;
@@ -2570,7 +2571,7 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 	}
 	rmsg->any.head.error = lmsg->any.head.error;
 	rmsg->any.head.reserved02 = lmsg->any.head.reserved02;
-	rmsg->any.head.reserved18 = lmsg->any.head.reserved18;
+	rmsg->any.head.link_verifier = lmsg->any.head.link_verifier;
 	rmsg->aux_size = lmsg->aux_size;
 	rmsg->aux_data = lmsg->aux_data;
 	lmsg->aux_data = NULL;
@@ -2746,7 +2747,7 @@ dmsg_bswap_head(dmsg_hdr_t *head)
 
 	head->msgid	= bswap64(head->msgid);
 	head->circuit	= bswap64(head->circuit);
-	head->reserved18= bswap64(head->reserved18);
+	head->link_verifier= bswap64(head->link_verifier);
 
 	head->cmd	= bswap32(head->cmd);
 	head->aux_crc	= bswap32(head->aux_crc);
