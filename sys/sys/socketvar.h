@@ -431,7 +431,7 @@ int	socket_wait (struct socket *so, struct timespec *ts, int *res);
 int	soclose (struct socket *so, int fflags);
 int	soconnect (struct socket *so, struct sockaddr *nam, struct thread *td,
 	    boolean_t sync);
-int	soconnect2 (struct socket *so1, struct socket *so2);
+int	soconnect2 (struct socket *so1, struct socket *so2, struct ucred *cred);
 int	socreate (int dom, struct socket **aso, int type, int proto,
 	    struct thread *td);
 int	sodisconnect (struct socket *so);

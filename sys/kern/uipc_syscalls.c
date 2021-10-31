@@ -675,6 +675,7 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	struct filedesc *fdp;
 	struct file *fp1, *fp2;
 	struct socket *so1, *so2;
+	struct ucred *cred = curthread->td_ucred;
 	int fd1, fd2, error;
 	u_int fflags = 0;
 	int oflags = 0;
@@ -705,14 +706,14 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 		goto free3;
 	fp2->f_data = so2;
 	sv[1] = fd2;
-	error = soconnect2(so1, so2);
+	error = soconnect2(so1, so2, cred);
 	if (error)
 		goto free4;
 	if (type == SOCK_DGRAM) {
 		/*
 		 * Datagram socket connection is asymmetric.
 		 */
-		 error = soconnect2(so2, so1);
+		 error = soconnect2(so2, so1, cred);
 		 if (error)
 			goto free4;
 	}

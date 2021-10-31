@@ -430,7 +430,8 @@ uipc_connect2(netmsg_t msg)
 {
 	int error;
 
-	error = unp_connect2(msg->connect2.nm_so1, msg->connect2.nm_so2);
+	error = unp_connect2(msg->connect2.nm_so1, msg->connect2.nm_so2,
+			     msg->connect2.nm_cred);
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -1299,7 +1300,7 @@ failed:
  *	 pool token also be held.
  */
 int
-unp_connect2(struct socket *so, struct socket *so2)
+unp_connect2(struct socket *so, struct socket *so2, struct ucred *cred)
 {
 	struct unpcb *unp, *unp2;
 	int error;
@@ -1311,6 +1312,11 @@ unp_connect2(struct socket *so, struct socket *so2)
 	}
 	unp = unp_getsocktoken(so);
 	unp2 = unp_getsocktoken(so2);
+
+	cru2x(cred, &unp->unp_peercred);
+	cru2x(cred, &unp2->unp_peercred);
+	unp_setflags(unp, UNP_HAVEPC);
+	unp_setflags(unp2, UNP_HAVEPC);
 
 	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;

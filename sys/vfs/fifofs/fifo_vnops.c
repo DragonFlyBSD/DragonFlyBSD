@@ -207,7 +207,7 @@ fifo_fip_create(int *errorp)
 	}
 	wso->so_options &= ~SO_LINGER;
 	fip->fi_writesock = wso;
-	*errorp = unp_connect2(wso, rso);
+	*errorp = unp_connect2(wso, rso, td->td_ucred);
 	if (*errorp) {
 		soclose(wso, FNONBLOCK);
 		soclose(rso, FNONBLOCK);

@@ -62,7 +62,7 @@ union netmsg;
 int	uipc_usrreq(struct socket *so, int req, struct mbuf *m,
 	    struct mbuf *nam, struct mbuf *control);
 void	uipc_ctloutput(union netmsg *msg);
-int	unp_connect2(struct socket *so, struct socket *so2);
+int	unp_connect2(struct socket *so, struct socket *so2, struct ucred *cred);
 void	unp_dispose(struct mbuf *m);
 int	unp_externalize(struct mbuf *rights, int flags);
 void	unp_init(void);
