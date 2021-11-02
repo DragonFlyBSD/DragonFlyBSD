@@ -86,7 +86,8 @@ possibly not across power failures if the target drive loses buffered
 write data for completed I/Os.
 .Pp
 Over a 1Gbe network, synchronous D1 latency still allows for around
-30-40 MBytes/sec.  Filesystem mounts can usually max-out the line rate
+30-40 MBytes/sec.
+Filesystem mounts can usually max-out the line rate
 (in excess of 100 MBytes/sec) due to filesystem read-ahead and write
 buffering.
 .Pp
@@ -95,9 +96,9 @@ The
 service daemon is used as an intermediary and must be running on all
 machines in question.
 .Sh SEE ALSO
-.Xr hammer2 8 ,
 .Xr ahci 4 ,
-.Xr nvme 4 .
+.Xr nvme 4 ,
+.Xr hammer2 8
 .Sh HISTORY
 The
 .Nm
