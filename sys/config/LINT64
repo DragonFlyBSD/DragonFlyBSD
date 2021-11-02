@@ -962,6 +962,10 @@ device          nvme
 #
 device		sili
 
+# Network controlled disks
+#
+device		xdisk
+
 # The 'NATA' driver supports all ATA and ATAPI devices.
 # You only need one "device nata" for it to find all
 # PCI ATA/ATAPI devices on modern machines.

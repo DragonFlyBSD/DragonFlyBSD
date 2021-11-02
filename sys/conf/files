@@ -129,6 +129,7 @@ dev/disk/nvme/nvme_attach.c		optional nvme
 dev/disk/nvme/nvme_admin.c		optional nvme
 dev/disk/nvme/nvme_disk.c		optional nvme
 dev/disk/nvme/nvme_ioctl.c		optional nvme
+dev/disk/xdisk/xdisk.c			optional xdisk
 dev/disk/nata/ata_if.m			optional nata
 dev/disk/nata/ata-all.c			optional nata
 dev/disk/nata/ata-card.c		optional nata pccard
