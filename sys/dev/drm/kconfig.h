@@ -20,6 +20,8 @@
 
 #define CONFIG_DRM_FBDEV_OVERALLOC	100	/* percents */
 
+#define CONFIG_DRM_AMD_DC 1
+
 // CONFIG_GENERIC_ATOMIC64 is not set on x86
 
 /*
