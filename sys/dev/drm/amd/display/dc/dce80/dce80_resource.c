@@ -63,6 +63,8 @@
 #include "gmc/gmc_7_1_sh_mask.h"
 #endif
 
+#include "dce80/dce80_resource.h"
+
 #ifndef mmDP_DPHY_INTERNAL_CTRL
 #define mmDP_DPHY_INTERNAL_CTRL                         0x1CDE
 #define mmDP0_DP_DPHY_INTERNAL_CTRL                     0x1CDE
@@ -464,6 +466,7 @@ static struct output_pixel_processor *dce80_opp_create(
 	return &opp->base;
 }
 
+static
 struct aux_engine *dce80_aux_engine_create(
 	struct dc_context *ctx,
 	uint32_t inst)
@@ -603,6 +606,7 @@ static const struct encoder_feature_support link_enc_feature = {
 		.flags.bits.IS_YCBCR_CAPABLE = true
 };
 
+static
 struct link_encoder *dce80_link_encoder_create(
 	const struct encoder_init_data *enc_init_data)
 {
@@ -621,6 +625,7 @@ struct link_encoder *dce80_link_encoder_create(
 	return &enc110->base;
 }
 
+static
 struct clock_source *dce80_clock_source_create(
 	struct dc_context *ctx,
 	struct dc_bios *bios,
@@ -644,6 +649,7 @@ struct clock_source *dce80_clock_source_create(
 	return NULL;
 }
 
+static
 void dce80_clock_source_destroy(struct clock_source **clk_src)
 {
 	kfree(TO_DCE110_CLK_SRC(*clk_src));
@@ -727,6 +733,7 @@ static void destruct(struct dce110_resource_pool *pool)
 	}
 }
 
+static
 bool dce80_validate_bandwidth(
 	struct dc *dc,
 	struct dc_state *context)
@@ -758,6 +765,7 @@ static bool dce80_validate_surface_sets(
 	return true;
 }
 
+static
 enum dc_status dce80_validate_global(
 		struct dc *dc,
 		struct dc_state *context)

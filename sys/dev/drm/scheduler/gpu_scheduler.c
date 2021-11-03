@@ -72,7 +72,7 @@ static void drm_sched_process_job(struct dma_fence *f, struct dma_fence_cb *cb);
 static void drm_sched_rq_init(struct drm_gpu_scheduler *sched,
 			      struct drm_sched_rq *rq)
 {
-	spin_lock_init(&rq->lock);
+	spin_init(&rq->lock, "dsrql");
 	INIT_LIST_HEAD(&rq->entities);
 	rq->current_entity = NULL;
 	rq->sched = sched;
@@ -188,7 +188,7 @@ int drm_sched_entity_init(struct drm_sched_entity *entity,
 	entity->guilty = guilty;
 	entity->last_scheduled = NULL;
 
-	spin_lock_init(&entity->rq_lock);
+	spin_init(&entity->rq_lock, "dserql");
 	spsc_queue_init(&entity->job_queue);
 
 	atomic_set(&entity->fence_seq, 0);
@@ -260,7 +260,9 @@ static void drm_sched_entity_kill_jobs_cb(struct dma_fence *f,
 long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 {
 	struct drm_gpu_scheduler *sched;
+#if 0
 	struct task_struct *last_user;
+#endif
 	long ret = timeout;
 
 	sched = entity->rq->sched;
@@ -268,20 +270,24 @@ long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 	 * The client will not queue more IBs during this fini, consume existing
 	 * queued IBs or discard them on SIGKILL
 	*/
-	if (current->flags & PF_EXITING) {
-		if (timeout)
+	if (current->dfly_td->td_flags & TDF_EXITING) {
+		if (timeout) {
 			ret = wait_event_timeout(
 					sched->job_scheduled,
 					drm_sched_entity_is_idle(entity),
 					timeout);
-	} else
-		wait_event_killable(sched->job_scheduled, drm_sched_entity_is_idle(entity));
+		}
+	} else {
+		wait_event_interruptible(sched->job_scheduled, drm_sched_entity_is_idle(entity));
+	}
 
 
 	/* For killed process disable any more IBs enqueue right now */
+#if 0
 	last_user = cmpxchg(&entity->last_user, current->group_leader, NULL);
-	if ((!last_user || last_user == current->group_leader) &&
-	    (current->flags & PF_EXITING) && (current->exit_code == SIGKILL))
+#endif
+	if (/*(!last_user || last_user == current->group_leader) && */
+	    (current->dfly_td->td_flags & TDF_EXITING) && fatal_signal_pending(current))
 		drm_sched_rq_remove_entity(entity->rq, entity);
 
 	return ret;
@@ -520,9 +526,13 @@ void drm_sched_entity_push_job(struct drm_sched_job *sched_job,
 	struct drm_gpu_scheduler *sched = sched_job->sched;
 	bool first = false;
 
+#if 0
 	trace_drm_sched_job(sched_job, entity);
+#endif
 
+#if 0
 	WRITE_ONCE(entity->last_user, current->group_leader);
+#endif
 	first = spsc_queue_push(&entity->job_queue, &sched_job->queue_node);
 
 	/* first job wakes up scheduler */
@@ -815,7 +825,9 @@ static void drm_sched_process_job(struct dma_fence *f, struct dma_fence_cb *cb)
 	atomic_dec(&sched->hw_rq_count);
 	drm_sched_fence_finished(s_fence);
 
+#if 0
 	trace_drm_sched_process_job(s_fence);
+#endif
 	dma_fence_put(&s_fence->finished);
 	wake_up_interruptible(&sched->wake_up_worker);
 }
@@ -846,11 +858,15 @@ static bool drm_sched_blocked(struct drm_gpu_scheduler *sched)
  */
 static int drm_sched_main(void *param)
 {
+#if 0
 	struct sched_param sparam = {.sched_priority = 1};
+#endif
 	struct drm_gpu_scheduler *sched = (struct drm_gpu_scheduler *)param;
 	int r;
 
+#if 0
 	sched_setscheduler(current, SCHED_FIFO, &sparam);
+#endif
 
 	while (!kthread_should_stop()) {
 		struct drm_sched_entity *entity = NULL;
@@ -928,7 +944,7 @@ int drm_sched_init(struct drm_gpu_scheduler *sched,
 	init_waitqueue_head(&sched->wake_up_worker);
 	init_waitqueue_head(&sched->job_scheduled);
 	INIT_LIST_HEAD(&sched->ring_mirror_list);
-	spin_lock_init(&sched->job_list_lock);
+	spin_init(&sched->job_list_lock, "dgsjll");
 	atomic_set(&sched->hw_rq_count, 0);
 	atomic64_set(&sched->job_id_count, 0);
 

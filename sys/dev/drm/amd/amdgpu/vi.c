@@ -842,8 +842,10 @@ static int vi_set_vce_clocks(struct amdgpu_device *adev, u32 evclk, u32 ecclk)
 
 static void vi_pcie_gen3_enable(struct amdgpu_device *adev)
 {
+#if 0
 	if (pci_is_root_bus(adev->pdev->bus))
 		return;
+#endif
 
 	if (amdgpu_pcie_gen2 == 0)
 		return;

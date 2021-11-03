@@ -24,6 +24,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/fb.h>
 #include "atom.h"
 #include "ppatomctrl.h"
 #include "atombios.h"

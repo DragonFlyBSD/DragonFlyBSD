@@ -47,7 +47,9 @@
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#if 0
 #include <linux/version.h>
+#endif
 #include <linux/types.h>
 #include <linux/pm_runtime.h>
 
@@ -376,7 +378,7 @@ static void amdgpu_dm_fbc_init(struct drm_connector *connector)
 	if (max_size) {
 		int r = amdgpu_bo_create_kernel(adev, max_size * 4, PAGE_SIZE,
 			    AMDGPU_GEM_DOMAIN_GTT, &compressor->bo_ptr,
-			    &compressor->gpu_addr, &compressor->cpu_addr);
+			    (u64 *)&compressor->gpu_addr, &compressor->cpu_addr);
 
 		if (r)
 			DRM_ERROR("DM: Failed to initialize FBC\n");
@@ -1441,6 +1443,7 @@ static int amdgpu_dm_mode_config_init(struct amdgpu_device *adev)
 #if defined(CONFIG_BACKLIGHT_CLASS_DEVICE) ||\
 	defined(CONFIG_BACKLIGHT_CLASS_DEVICE_MODULE)
 
+#if 0
 static int amdgpu_dm_backlight_update_status(struct backlight_device *bd)
 {
 	struct amdgpu_display_manager *dm = bl_get_data(bd);
@@ -1467,10 +1470,12 @@ static const struct backlight_ops amdgpu_dm_backlight_ops = {
 	.get_brightness = amdgpu_dm_backlight_get_brightness,
 	.update_status	= amdgpu_dm_backlight_update_status,
 };
+#endif
 
 static void
 amdgpu_dm_register_backlight_device(struct amdgpu_display_manager *dm)
 {
+#if 0
 	char bl_name[16];
 	struct backlight_properties props = { 0 };
 
@@ -1491,6 +1496,7 @@ amdgpu_dm_register_backlight_device(struct amdgpu_display_manager *dm)
 		DRM_ERROR("DM: Backlight registration failed!\n");
 	else
 		DRM_DEBUG_DRIVER("DM: Registered Backlight device: %s\n", bl_name);
+#endif
 }
 
 #endif
@@ -1984,7 +1990,7 @@ static int get_fb_info(const struct amdgpu_framebuffer *amdgpu_fb,
 	}
 
 	if (tiling_flags)
-		amdgpu_bo_get_tiling_flags(rbo, tiling_flags);
+		amdgpu_bo_get_tiling_flags(rbo, (u64 *)tiling_flags);
 
 	amdgpu_bo_unreserve(rbo);
 
@@ -2880,11 +2886,12 @@ static void amdgpu_dm_connector_destroy(struct drm_connector *connector)
 
 #if defined(CONFIG_BACKLIGHT_CLASS_DEVICE) ||\
 	defined(CONFIG_BACKLIGHT_CLASS_DEVICE_MODULE)
-
 	if ((link->connector_signal & (SIGNAL_TYPE_EDP | SIGNAL_TYPE_LVDS)) &&
 	    link->type != dc_connection_none &&
 	    dm->backlight_dev) {
+#if 0
 		backlight_device_unregister(dm->backlight_dev);
+#endif
 		dm->backlight_dev = NULL;
 	}
 #endif
@@ -3184,6 +3191,7 @@ dm_drm_plane_duplicate_state(struct drm_plane *plane)
 	return &dm_plane_state->base;
 }
 
+static
 void dm_drm_plane_destroy_state(struct drm_plane *plane,
 				struct drm_plane_state *state)
 {
@@ -3660,7 +3668,7 @@ void amdgpu_dm_connector_init_helper(struct amdgpu_display_manager *dm,
 	aconnector->base.stereo_allowed = false;
 	aconnector->base.dpms = DRM_MODE_DPMS_OFF;
 	aconnector->hpd.hpd = AMDGPU_HPD_NONE; /* not used */
-	mutex_init(&aconnector->hpd_lock);
+	lockinit(&aconnector->hpd_lock, "agdchpdl", 0, LK_CANRECURSE);
 
 	/* configure support HPD hot plug connector_>polled default value is 0
 	 * which means HPD hot plug not supported
@@ -3758,8 +3766,10 @@ create_i2c(struct ddc_service *ddc_service,
 	i2c = kzalloc(sizeof(struct amdgpu_i2c_adapter), GFP_KERNEL);
 	if (!i2c)
 		return NULL;
+#if 0
 	i2c->base.owner = THIS_MODULE;
 	i2c->base.class = I2C_CLASS_DDC;
+#endif
 	i2c->base.dev.parent = &adev->pdev->dev;
 	i2c->base.algo = &amdgpu_dm_i2c_algo;
 	snprintf(i2c->base.name, sizeof(i2c->base.name), "AMDGPU DM i2c hw bus %d", link_index);
@@ -3827,7 +3837,7 @@ static int amdgpu_dm_connector_init(struct amdgpu_display_manager *dm,
 		link,
 		link_index);
 
-	drm_connector_attach_encoder(
+	drm_mode_connector_attach_encoder(
 		&aconnector->base, &aencoder->base);
 
 	drm_connector_register(&aconnector->base);
@@ -4497,8 +4507,9 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_state *state)
 
 			if (dm_old_crtc_state->stream)
 				remove_stream(adev, acrtc, dm_old_crtc_state->stream);
-
+#if 0
 			pm_runtime_get_noresume(dev->dev);
+#endif
 
 			acrtc->enabled = true;
 			acrtc->hw_mode = new_crtc_state->mode;
@@ -4815,12 +4826,12 @@ static int do_aquire_global_lock(struct drm_device *dev,
 		return ret;
 
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
-		spin_lock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_EXCLUSIVE);
 		commit = list_first_entry_or_null(&crtc->commit_list,
 				struct drm_crtc_commit, commit_entry);
 		if (commit)
 			drm_crtc_commit_get(commit);
-		spin_unlock(&crtc->commit_lock);
+		lockmgr(&crtc->commit_lock, LK_RELEASE);
 
 		if (!commit)
 			continue;

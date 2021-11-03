@@ -34,8 +34,10 @@ static int amdgpu_ctx_priority_permit(struct drm_file *filp,
 	if (priority <= DRM_SCHED_PRIORITY_NORMAL)
 		return 0;
 
+#if 0
 	if (capable(CAP_SYS_NICE))
 		return 0;
+#endif
 
 	if (drm_is_current_master(filp))
 		return 0;
@@ -61,13 +63,13 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->adev = adev;
 	kref_init(&ctx->refcount);
-	spin_lock_init(&ctx->ring_lock);
+	spin_init(&ctx->ring_lock, "agcrl");
 	ctx->fences = kcalloc(amdgpu_sched_jobs * AMDGPU_MAX_RINGS,
 			      sizeof(struct dma_fence*), GFP_KERNEL);
 	if (!ctx->fences)
 		return -ENOMEM;
 
-	mutex_init(&ctx->lock);
+	lockinit(&ctx->lock, "agctxl", 0, LK_CANRECURSE);
 
 	for (i = 0; i < AMDGPU_MAX_RINGS; ++i) {
 		ctx->rings[i].sequence = 1;
@@ -142,7 +144,7 @@ static int amdgpu_ctx_alloc(struct amdgpu_device *adev,
 	struct amdgpu_ctx *ctx;
 	int r;
 
-	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
+	ctx = kmalloc(sizeof(*ctx), M_DRM, GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
 
@@ -438,7 +440,7 @@ int amdgpu_ctx_wait_prev_fence(struct amdgpu_ctx *ctx, unsigned ring_id)
 
 void amdgpu_ctx_mgr_init(struct amdgpu_ctx_mgr *mgr)
 {
-	mutex_init(&mgr->lock);
+	lockinit(&mgr->lock, "agml", 0, LK_CANRECURSE);
 	idr_init(&mgr->ctx_handles);
 }
 

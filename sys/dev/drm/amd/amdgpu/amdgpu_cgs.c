@@ -485,7 +485,7 @@ static const struct cgs_ops amdgpu_cgs_ops = {
 struct cgs_device *amdgpu_cgs_create_device(struct amdgpu_device *adev)
 {
 	struct amdgpu_cgs_device *cgs_device =
-		kmalloc(sizeof(*cgs_device), GFP_KERNEL);
+		kmalloc(sizeof(*cgs_device), M_DRM, GFP_KERNEL);
 
 	if (!cgs_device) {
 		DRM_ERROR("Couldn't allocate CGS device structure\n");

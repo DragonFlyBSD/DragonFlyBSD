@@ -29,4 +29,6 @@
 
 #include <linux/mm.h>
 
+#define PFN_UP(x)       (((x) + PAGE_SIZE-1) >> PAGE_SHIFT) 
+
 #endif	/* _LINUX_PFN_T_H */

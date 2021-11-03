@@ -72,7 +72,7 @@ struct dc_plane_state *dc_create_plane_state(struct dc *dc)
 {
 	struct dc *core_dc = dc;
 
-	struct dc_plane_state *plane_state = kvzalloc(sizeof(*plane_state),
+	struct dc_plane_state *plane_state = kzalloc(sizeof(*plane_state),
 						      GFP_KERNEL);
 
 	if (NULL == plane_state)
@@ -164,7 +164,7 @@ void dc_gamma_release(struct dc_gamma **gamma)
 
 struct dc_gamma *dc_create_gamma(void)
 {
-	struct dc_gamma *gamma = kvzalloc(sizeof(*gamma), GFP_KERNEL);
+	struct dc_gamma *gamma = kzalloc(sizeof(*gamma), GFP_KERNEL);
 
 	if (gamma == NULL)
 		goto alloc_fail;
@@ -194,7 +194,7 @@ void dc_transfer_func_release(struct dc_transfer_func *tf)
 
 struct dc_transfer_func *dc_create_transfer_func(void)
 {
-	struct dc_transfer_func *tf = kvzalloc(sizeof(*tf), GFP_KERNEL);
+	struct dc_transfer_func *tf = kzalloc(sizeof(*tf), GFP_KERNEL);
 
 	if (tf == NULL)
 		goto alloc_fail;

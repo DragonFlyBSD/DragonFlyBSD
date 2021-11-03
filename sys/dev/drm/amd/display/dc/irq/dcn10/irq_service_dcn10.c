@@ -38,6 +38,7 @@
 
 #include "ivsrcid/irqsrcs_dcn_1_0.h"
 
+static
 enum dc_irq_source to_dal_irq_source_dcn10(
 		struct irq_service *irq_service,
 		uint32_t src_id,

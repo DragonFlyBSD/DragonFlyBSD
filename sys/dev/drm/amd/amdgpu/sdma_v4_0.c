@@ -455,7 +455,7 @@ static void sdma_v4_0_ring_emit_hdp_flush(struct amdgpu_ring *ring)
  * the fence seq number and DMA trap packet to generate
  * an interrupt if needed (VEGA10).
  */
-static void sdma_v4_0_ring_emit_fence(struct amdgpu_ring *ring, u64 addr, u64 seq,
+static void sdma_v4_0_ring_emit_fence(struct amdgpu_ring *ring, uint64_t addr, uint64_t seq,
 				      unsigned flags)
 {
 	bool write64bit = flags & AMDGPU_FENCE_FLAG_64BIT;
@@ -1261,7 +1261,7 @@ static int sdma_v4_0_sw_init(void *handle)
 			(AMDGPU_DOORBELL64_sDMA_ENGINE0 << 1) //get DWORD offset
 			: (AMDGPU_DOORBELL64_sDMA_ENGINE1 << 1); // get DWORD offset
 
-		sprintf(ring->name, "sdma%d", i);
+		ksprintf(ring->name, "sdma%d", i);
 		r = amdgpu_ring_init(adev, ring, 1024,
 				     &adev->sdma.trap_irq,
 				     (i == 0) ?

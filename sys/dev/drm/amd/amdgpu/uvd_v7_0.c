@@ -284,6 +284,8 @@ err:
  * Close up a stream for HW test or if userspace failed to do so
  */
 int uvd_v7_0_enc_get_destroy_msg(struct amdgpu_ring *ring, uint32_t handle,
+				 bool direct, struct dma_fence **fence);
+int uvd_v7_0_enc_get_destroy_msg(struct amdgpu_ring *ring, uint32_t handle,
 				 bool direct, struct dma_fence **fence)
 {
 	const unsigned ib_size_dw = 16;
@@ -452,7 +454,7 @@ static int uvd_v7_0_sw_init(void *handle)
 			continue;
 		if (!amdgpu_sriov_vf(adev)) {
 			ring = &adev->uvd.inst[j].ring;
-			sprintf(ring->name, "uvd<%d>", j);
+			ksprintf(ring->name, "uvd<%d>", j);
 			r = amdgpu_ring_init(adev, ring, 512, &adev->uvd.inst[j].irq, 0);
 			if (r)
 				return r;
@@ -460,7 +462,7 @@ static int uvd_v7_0_sw_init(void *handle)
 
 		for (i = 0; i < adev->uvd.num_enc_rings; ++i) {
 			ring = &adev->uvd.inst[j].ring_enc[i];
-			sprintf(ring->name, "uvd_enc%d<%d>", i, j);
+			ksprintf(ring->name, "uvd_enc%d<%d>", i, j);
 			if (amdgpu_sriov_vf(adev)) {
 				ring->use_doorbell = true;
 
@@ -799,7 +801,7 @@ static int uvd_v7_0_sriov_start(struct amdgpu_device *adev)
 				continue;
 			ring = &adev->uvd.inst[i].ring;
 			ring->wptr = 0;
-			size = AMDGPU_GPU_PAGE_ALIGN(adev->uvd.fw->size + 4);
+			size = AMDGPU_GPU_PAGE_ALIGN(adev->uvd.fw->datasize + 4);
 
 			MMSCH_V1_0_INSERT_DIRECT_RD_MOD_WT(SOC15_REG_OFFSET(UVD, i, mmUVD_STATUS),
 							   0xFFFFFFFF, 0x00000004);
@@ -1152,7 +1154,7 @@ static void uvd_v7_0_stop(struct amdgpu_device *adev)
  *
  * Write a fence and a trap command to the ring.
  */
-static void uvd_v7_0_ring_emit_fence(struct amdgpu_ring *ring, u64 addr, u64 seq,
+static void uvd_v7_0_ring_emit_fence(struct amdgpu_ring *ring, uint64_t addr, uint64_t seq,
 				     unsigned flags)
 {
 	struct amdgpu_device *adev = ring->adev;
@@ -1191,8 +1193,8 @@ static void uvd_v7_0_ring_emit_fence(struct amdgpu_ring *ring, u64 addr, u64 seq
  *
  * Write enc a fence and a trap command to the ring.
  */
-static void uvd_v7_0_enc_ring_emit_fence(struct amdgpu_ring *ring, u64 addr,
-			u64 seq, unsigned flags)
+static void uvd_v7_0_enc_ring_emit_fence(struct amdgpu_ring *ring, uint64_t addr,
+			uint64_t seq, unsigned flags)
 {
 
 	WARN_ON(flags & AMDGPU_FENCE_FLAG_64BIT);

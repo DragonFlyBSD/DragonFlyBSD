@@ -30,11 +30,14 @@
 #include "atom.h"
 #include <linux/power_supply.h>
 #include <linux/hwmon.h>
+#if 0
 #include <linux/hwmon-sysfs.h>
 #include <linux/nospec.h>
+#endif
 
 static int amdgpu_debugfs_pm_init(struct amdgpu_device *adev);
 
+#if 0
 static const struct cg_flag_name clocks[] = {
 	{AMD_CG_SUPPORT_GFX_MGCG, "Graphics Medium Grain Clock Gating"},
 	{AMD_CG_SUPPORT_GFX_MGLS, "Graphics Medium Grain memory Light Sleep"},
@@ -62,6 +65,7 @@ static const struct cg_flag_name clocks[] = {
 	{AMD_CG_SUPPORT_DF_MGCG, "Data Fabric Medium Grain Clock Gating"},
 	{0, NULL},
 };
+#endif
 
 void amdgpu_pm_acpi_event_handler(struct amdgpu_device *adev)
 {
@@ -111,7 +115,7 @@ void amdgpu_pm_acpi_event_handler(struct amdgpu_device *adev)
  * longer provided on newer GPUs so the option does nothing in that case.
  *
  */
-
+#if 0
 static ssize_t amdgpu_get_dpm_state(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
@@ -387,6 +391,7 @@ static ssize_t amdgpu_set_pp_force_state(struct device *dev,
 		const char *buf,
 		size_t count)
 {
+#if 0
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = ddev->dev_private;
 	enum amd_pm_state_type state = 0;
@@ -418,6 +423,8 @@ static ssize_t amdgpu_set_pp_force_state(struct device *dev,
 	}
 fail:
 	return count;
+#endif
+	return -EINVAL;
 }
 
 /**
@@ -769,6 +776,46 @@ static ssize_t amdgpu_set_pp_sclk_od(struct device *dev,
 		adev->pm.dpm.current_ps = adev->pm.dpm.boot_ps;
 		amdgpu_pm_compute_clocks(adev);
 	}
+
+fail:
+	return count;
+}
+
+static ssize_t amdgpu_get_pp_sclk_od(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	struct drm_device *ddev = dev_get_drvdata(dev);
+	struct amdgpu_device *adev = ddev->dev_private;
+	uint32_t value = 0;
+
+	if (adev->pp_enabled)
+		value = amdgpu_dpm_get_sclk_od(adev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", value);
+}
+
+static ssize_t amdgpu_set_pp_sclk_od(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf,
+		size_t count)
+{
+	struct drm_device *ddev = dev_get_drvdata(dev);
+	struct amdgpu_device *adev = ddev->dev_private;
+	int ret;
+	long int value;
+
+	ret = kstrtol(buf, 0, &value);
+
+	if (ret) {
+		count = -EINVAL;
+		goto fail;
+	}
+
+	if (adev->pp_enabled)
+		amdgpu_dpm_set_sclk_od(adev, (uint32_t)value);
+
+	amdgpu_dpm_dispatch_task(adev, AMD_PP_EVENT_READJUST_POWER_STATE, NULL, NULL);
 
 fail:
 	return count;
@@ -1475,6 +1522,7 @@ static const struct attribute_group *hwmon_groups[] = {
 	&hwmon_attrgroup,
 	NULL
 };
+#endif
 
 void amdgpu_dpm_thermal_work_handler(struct work_struct *work)
 {
@@ -1791,6 +1839,7 @@ int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 	if (adev->pm.dpm_enabled == 0)
 		return 0;
 
+#if 0
 	adev->pm.int_hwmon_dev = hwmon_device_register_with_groups(adev->dev,
 								   DRIVER_NAME, adev,
 								   hwmon_groups);
@@ -1809,6 +1858,11 @@ int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 	ret = device_create_file(adev->dev, &dev_attr_power_dpm_force_performance_level);
 	if (ret) {
 		DRM_ERROR("failed to create device file for dpm state\n");
+		return ret;
+	}
+	ret = device_create_file(adev->dev, &dev_attr_pp_mclk_od);
+	if (ret) {
+		DRM_ERROR("failed to create device file pp_mclk_od\n");
 		return ret;
 	}
 
@@ -1854,11 +1908,6 @@ int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 		DRM_ERROR("failed to create device file pp_sclk_od\n");
 		return ret;
 	}
-	ret = device_create_file(adev->dev, &dev_attr_pp_mclk_od);
-	if (ret) {
-		DRM_ERROR("failed to create device file pp_mclk_od\n");
-		return ret;
-	}
 	ret = device_create_file(adev->dev,
 			&dev_attr_pp_power_profile_mode);
 	if (ret) {
@@ -1880,12 +1929,20 @@ int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 				"gpu_busy_level\n");
 		return ret;
 	}
+#endif
+
 	ret = amdgpu_debugfs_pm_init(adev);
 	if (ret) {
 		DRM_ERROR("Failed to register debugfs file for dpm!\n");
 		return ret;
 	}
-
+#if 0
+	ret = device_create_file(adev->dev, &dev_attr_pp_sclk_od);
+	if (ret) {
+		DRM_ERROR("failed to create device file pp_sclk_od\n");
+		return ret;
+	}
+#endif
 	adev->pm.sysfs_initialized = true;
 
 	return 0;
@@ -1893,6 +1950,7 @@ int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 
 void amdgpu_pm_sysfs_fini(struct amdgpu_device *adev)
 {
+#if 0
 	if (adev->pm.dpm_enabled == 0)
 		return;
 
@@ -1916,6 +1974,7 @@ void amdgpu_pm_sysfs_fini(struct amdgpu_device *adev)
 	device_remove_file(adev->dev,
 			&dev_attr_pp_od_clk_voltage);
 	device_remove_file(adev->dev, &dev_attr_gpu_busy_percent);
+#endif
 }
 
 void amdgpu_pm_compute_clocks(struct amdgpu_device *adev)

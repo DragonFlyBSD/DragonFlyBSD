@@ -27,7 +27,7 @@
 
 struct amdgpu_gtt_mgr {
 	struct drm_mm mm;
-	spinlock_t lock;
+	struct spinlock lock;
 	atomic64_t available;
 };
 
@@ -58,7 +58,7 @@ static int amdgpu_gtt_mgr_init(struct ttm_mem_type_manager *man,
 	start = AMDGPU_GTT_MAX_TRANSFER_SIZE * AMDGPU_GTT_NUM_TRANSFER_WINDOWS;
 	size = (adev->gmc.gart_size >> PAGE_SHIFT) - start;
 	drm_mm_init(&mgr->mm, start, size);
-	spin_lock_init(&mgr->lock);
+	spin_init(&mgr->lock, "aggmml");
 	atomic64_set(&mgr->available, p_size);
 	man->priv = mgr;
 	return 0;
@@ -286,7 +286,7 @@ static void amdgpu_gtt_mgr_debug(struct ttm_mem_type_manager *man,
 	drm_mm_print(&mgr->mm, printer);
 	spin_unlock(&mgr->lock);
 
-	drm_printf(printer, "man size:%llu pages, gtt available:%lld pages, usage:%lluMB\n",
+	drm_printf(printer, "man size:%lu pages, gtt available:%lld pages, usage:%luMB\n",
 		   man->size, (u64)atomic64_read(&mgr->available),
 		   amdgpu_gtt_mgr_usage(man) >> 20);
 }

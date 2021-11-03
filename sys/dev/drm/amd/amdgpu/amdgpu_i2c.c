@@ -173,12 +173,14 @@ struct amdgpu_i2c_chan *amdgpu_i2c_create(struct drm_device *dev,
 		return NULL;
 
 	i2c->rec = *rec;
+#if 0
 	i2c->adapter.owner = THIS_MODULE;
 	i2c->adapter.class = I2C_CLASS_DDC;
+#endif
 	i2c->adapter.dev.parent = &dev->pdev->dev;
 	i2c->dev = dev;
 	i2c_set_adapdata(&i2c->adapter, i2c);
-	mutex_init(&i2c->mutex);
+	lockinit(&i2c->mutex, "agim", 0, LK_CANRECURSE);
 	if (rec->hw_capable &&
 	    amdgpu_hw_i2c) {
 		/* hw i2c using atom */

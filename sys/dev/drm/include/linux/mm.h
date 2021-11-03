@@ -188,4 +188,18 @@ void * kvmalloc_array(size_t n, size_t size, gfp_t flags);
 
 #define FOLL_WRITE	0x01
 
+struct sysinfo {
+	uint64_t totalram;
+	uint64_t totalhigh;
+	uint32_t mem_unit;
+};
+
+void si_meminfo(struct sysinfo *si);
+
+long get_user_pages(unsigned long start, unsigned long nr_pages,
+		    unsigned int gup_flags, struct page **pages,
+		    struct vm_area_struct **vmas);
+
+void release_pages(struct page **pages, unsigned long nr_pages);
+
 #endif	/* _LINUX_MM_H_ */

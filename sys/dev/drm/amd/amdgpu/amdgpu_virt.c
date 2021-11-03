@@ -53,7 +53,7 @@ int amdgpu_allocate_static_csa(struct amdgpu_device *adev)
 
 	r = amdgpu_bo_create_kernel(adev, AMDGPU_CSA_SIZE, PAGE_SIZE,
 				AMDGPU_GEM_DOMAIN_VRAM, &adev->virt.csa_obj,
-				&adev->virt.csa_vmid0_addr, &ptr);
+				(u64 *)&adev->virt.csa_vmid0_addr, &ptr);
 	if (r)
 		return r;
 
@@ -63,7 +63,7 @@ int amdgpu_allocate_static_csa(struct amdgpu_device *adev)
 
 void amdgpu_free_static_csa(struct amdgpu_device *adev) {
 	amdgpu_bo_free_kernel(&adev->virt.csa_obj,
-						&adev->virt.csa_vmid0_addr,
+						(u64 *)&adev->virt.csa_vmid0_addr,
 						NULL);
 }
 
@@ -164,11 +164,17 @@ uint32_t amdgpu_virt_kiq_rreg(struct amdgpu_device *adev, uint32_t reg)
 	 *
 	 * also don't wait anymore for IRQ context
 	 * */
+#if 0
 	if (r < 1 && (adev->in_gpu_reset || in_interrupt()))
 		goto failed_kiq_read;
 
 	if (in_interrupt())
 		might_sleep();
+#endif
+	kprintf("amdgpu_virt_kiq_rreg: implement in_interrupt() function\n");
+	if (r < 1 && (adev->in_gpu_reset))
+		goto failed_kiq_read;
+
 
 	while (r < 1 && cnt++ < MAX_KIQ_REG_TRY) {
 		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
@@ -212,11 +218,16 @@ void amdgpu_virt_kiq_wreg(struct amdgpu_device *adev, uint32_t reg, uint32_t v)
 	 *
 	 * also don't wait anymore for IRQ context
 	 * */
+#if 0
 	if (r < 1 && (adev->in_gpu_reset || in_interrupt()))
 		goto failed_kiq_write;
 
 	if (in_interrupt())
 		might_sleep();
+#endif
+	kprintf("amdgpu_virt_kiq_wreg: implement in_interrupt() function\n");
+	if (r < 1 && (adev->in_gpu_reset))
+		goto failed_kiq_write;
 
 	while (r < 1 && cnt++ < MAX_KIQ_REG_TRY) {
 
@@ -332,7 +343,7 @@ int amdgpu_virt_alloc_mm_table(struct amdgpu_device *adev)
 	r = amdgpu_bo_create_kernel(adev, PAGE_SIZE, PAGE_SIZE,
 				    AMDGPU_GEM_DOMAIN_VRAM,
 				    &adev->virt.mm_table.bo,
-				    &adev->virt.mm_table.gpu_addr,
+				    (u64 *)&adev->virt.mm_table.gpu_addr,
 				    (void *)&adev->virt.mm_table.cpu_addr);
 	if (r) {
 		DRM_ERROR("failed to alloc mm table and error = %d.\n", r);
@@ -340,7 +351,7 @@ int amdgpu_virt_alloc_mm_table(struct amdgpu_device *adev)
 	}
 
 	memset((void *)adev->virt.mm_table.cpu_addr, 0, PAGE_SIZE);
-	DRM_INFO("MM table gpu addr = 0x%llx, cpu addr = %p.\n",
+	DRM_INFO("MM table gpu addr = 0x%lx, cpu addr = %p.\n",
 		 adev->virt.mm_table.gpu_addr,
 		 adev->virt.mm_table.cpu_addr);
 	return 0;
@@ -357,7 +368,7 @@ void amdgpu_virt_free_mm_table(struct amdgpu_device *adev)
 		return;
 
 	amdgpu_bo_free_kernel(&adev->virt.mm_table.bo,
-			      &adev->virt.mm_table.gpu_addr,
+			      (u64 *)&adev->virt.mm_table.gpu_addr,
 			      (void *)&adev->virt.mm_table.cpu_addr);
 	adev->virt.mm_table.gpu_addr = 0;
 }

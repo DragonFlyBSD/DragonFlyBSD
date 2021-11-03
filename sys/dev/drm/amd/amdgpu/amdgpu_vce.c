@@ -180,7 +180,7 @@ int amdgpu_vce_sw_init(struct amdgpu_device *adev, unsigned long size)
 
 	r = amdgpu_bo_create_kernel(adev, size, PAGE_SIZE,
 				    AMDGPU_GEM_DOMAIN_VRAM, &adev->vce.vcpu_bo,
-				    &adev->vce.gpu_addr, &adev->vce.cpu_addr);
+				    (u64 *)&adev->vce.gpu_addr, &adev->vce.cpu_addr);
 	if (r) {
 		dev_err(adev->dev, "(%d) failed to allocate VCE bo\n", r);
 		return r;
@@ -192,7 +192,7 @@ int amdgpu_vce_sw_init(struct amdgpu_device *adev, unsigned long size)
 	}
 
 	INIT_DELAYED_WORK(&adev->vce.idle_work, amdgpu_vce_idle_work_handler);
-	mutex_init(&adev->vce.idle_mutex);
+	lockinit(&adev->vce.idle_mutex, "agavim", 0, LK_CANRECURSE);
 
 	return 0;
 }
@@ -213,7 +213,7 @@ int amdgpu_vce_sw_fini(struct amdgpu_device *adev)
 
 	drm_sched_entity_destroy(&adev->vce.entity);
 
-	amdgpu_bo_free_kernel(&adev->vce.vcpu_bo, &adev->vce.gpu_addr,
+	amdgpu_bo_free_kernel(&adev->vce.vcpu_bo, (u64 *)&adev->vce.gpu_addr,
 		(void **)&adev->vce.cpu_addr);
 
 	for (i = 0; i < adev->vce.num_rings; i++)
@@ -305,8 +305,8 @@ int amdgpu_vce_resume(struct amdgpu_device *adev)
 
 	hdr = (const struct common_firmware_header *)adev->vce.fw->data;
 	offset = le32_to_cpu(hdr->ucode_array_offset_bytes);
-	memcpy_toio(cpu_addr, adev->vce.fw->data + offset,
-		    adev->vce.fw->size - offset);
+	memcpy_toio(cpu_addr, (adev->vce.fw->data) + offset,
+		    (adev->vce.fw->datasize) - offset);
 
 	amdgpu_bo_kunmap(adev->vce.vcpu_bo);
 
@@ -596,7 +596,7 @@ static int amdgpu_vce_validate_bo(struct amdgpu_cs_parser *p, uint32_t ib_idx,
 
 	r = amdgpu_cs_find_mapping(p, addr, &bo, &mapping);
 	if (r) {
-		DRM_ERROR("Can't find BO for addr 0x%010Lx %d %d %d %d\n",
+		DRM_ERROR("Can't find BO for addr 0x%010lx %d %d %d %d\n",
 			  addr, lo, hi, size, index);
 		return r;
 	}
@@ -637,14 +637,14 @@ static int amdgpu_vce_cs_reloc(struct amdgpu_cs_parser *p, uint32_t ib_idx,
 
 	r = amdgpu_cs_find_mapping(p, addr, &bo, &mapping);
 	if (r) {
-		DRM_ERROR("Can't find BO for addr 0x%010Lx %d %d %d %d\n",
+		DRM_ERROR("Can't find BO for addr 0x%010lx %d %d %d %d\n",
 			  addr, lo, hi, size, index);
 		return r;
 	}
 
 	if ((addr + (uint64_t)size) >
 	    (mapping->last + 1) * AMDGPU_GPU_PAGE_SIZE) {
-		DRM_ERROR("BO to small for addr 0x%010Lx %d %d\n",
+		DRM_ERROR("BO to small for addr 0x%010lx %d %d\n",
 			  addr, lo, hi);
 		return -EINVAL;
 	}
@@ -1048,7 +1048,7 @@ void amdgpu_vce_ring_emit_ib(struct amdgpu_ring *ring, struct amdgpu_ib *ib,
  * @fence: the fence
  *
  */
-void amdgpu_vce_ring_emit_fence(struct amdgpu_ring *ring, u64 addr, u64 seq,
+void amdgpu_vce_ring_emit_fence(struct amdgpu_ring *ring, uint64_t addr, uint64_t seq,
 				unsigned flags)
 {
 	WARN_ON(flags & AMDGPU_FENCE_FLAG_64BIT);

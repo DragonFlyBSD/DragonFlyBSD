@@ -395,11 +395,11 @@ static int soc15_asic_reset(struct amdgpu_device *adev)
 	/* disable BM */
 	pci_clear_master(adev->pdev);
 
-	pci_save_state(adev->pdev);
+	pci_save_state(device_get_parent(adev->dev->bsddev));
 
 	psp_gpu_reset(adev);
 
-	pci_restore_state(adev->pdev);
+	pci_restore_state(device_get_parent(adev->dev->bsddev));
 
 	/* wait for asic to come out of reset */
 	for (i = 0; i < adev->usec_timeout; i++) {
@@ -443,8 +443,10 @@ static int soc15_set_vce_clocks(struct amdgpu_device *adev, u32 evclk, u32 ecclk
 
 static void soc15_pcie_gen3_enable(struct amdgpu_device *adev)
 {
+#if 0
 	if (pci_is_root_bus(adev->pdev->bus))
 		return;
+#endif
 
 	if (amdgpu_pcie_gen2 == 0)
 		return;

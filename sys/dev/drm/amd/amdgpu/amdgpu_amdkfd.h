@@ -48,7 +48,7 @@ struct kfd_bo_va_list {
 };
 
 struct kgd_mem {
-	struct mutex lock;
+	struct lock lock;
 	struct amdgpu_bo *bo;
 	struct list_head bo_va_list;
 	/* protected by amdkfd_process_info.lock */
@@ -91,7 +91,7 @@ struct amdkfd_process_info {
 	struct list_head userptr_valid_list;
 	struct list_head userptr_inval_list;
 	/* Lock to protect kfd_bo_list */
-	struct mutex lock;
+	struct lock lock;
 
 	/* Number of VMs */
 	unsigned int n_vms;

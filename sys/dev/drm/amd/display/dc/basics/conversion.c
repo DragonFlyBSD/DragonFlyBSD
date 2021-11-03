@@ -25,6 +25,8 @@
 
 #include "dm_services.h"
 
+#include "conversion.h"
+
 #define DIVIDER 10000
 
 /* S2D13 value in [-3.00...0.9999] */

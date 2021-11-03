@@ -41,6 +41,8 @@
 #include "soc15_hw_ip.h"
 #include "vega10_ip_offset.h"
 
+#include "i2caux_dce120.h"
+
 /* begin *********************
  * macros to expend register list macro defined in HW object header file */
 

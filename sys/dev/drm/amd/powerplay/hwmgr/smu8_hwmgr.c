@@ -1833,6 +1833,7 @@ static int smu8_enable_disable_uvd_dpm(struct pp_hwmgr *hwmgr, bool enable)
 	return 0;
 }
 
+int smu8_dpm_update_uvd_dpm(struct pp_hwmgr *hwmgr, bool bgate);
 int smu8_dpm_update_uvd_dpm(struct pp_hwmgr *hwmgr, bool bgate)
 {
 	struct smu8_hwmgr *data = hwmgr->backend;
@@ -1975,6 +1976,7 @@ static const struct pp_hwmgr_func smu8_hwmgr_funcs = {
 	.get_thermal_temperature_range = smu8_get_thermal_temperature_range,
 };
 
+int smu8_init_function_pointers(struct pp_hwmgr *hwmgr);
 int smu8_init_function_pointers(struct pp_hwmgr *hwmgr)
 {
 	hwmgr->hwmgr_func = &smu8_hwmgr_funcs;

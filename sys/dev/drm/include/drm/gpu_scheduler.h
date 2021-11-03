@@ -75,7 +75,7 @@ enum drm_sched_priority {
 struct drm_sched_entity {
 	struct list_head		list;
 	struct drm_sched_rq		*rq;
-	spinlock_t			rq_lock;
+	struct spinlock			rq_lock;
 
 	struct spsc_queue		job_queue;
 
@@ -102,7 +102,7 @@ struct drm_sched_entity {
  * the next entity to emit commands from.
  */
 struct drm_sched_rq {
-	spinlock_t			lock;
+	struct spinlock			lock;
 	struct drm_gpu_scheduler	*sched;
 	struct list_head		entities;
 	struct drm_sched_entity		*current_entity;
@@ -272,7 +272,7 @@ struct drm_gpu_scheduler {
 	atomic64_t			job_id_count;
 	struct task_struct		*thread;
 	struct list_head		ring_mirror_list;
-	spinlock_t			job_list_lock;
+	struct spinlock			job_list_lock;
 	int				hang_limit;
 };
 

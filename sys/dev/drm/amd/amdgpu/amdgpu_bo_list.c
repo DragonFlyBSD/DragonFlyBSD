@@ -73,7 +73,7 @@ int amdgpu_bo_list_create(struct amdgpu_device *adev, struct drm_file *filp,
 
 	size = sizeof(struct amdgpu_bo_list);
 	size += num_entries * sizeof(struct amdgpu_bo_list_entry);
-	list = kvmalloc(size, GFP_KERNEL);
+	list = kmalloc(size, M_DRM, GFP_KERNEL);
 	if (!list)
 		return -ENOMEM;
 

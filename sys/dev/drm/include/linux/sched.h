@@ -222,8 +222,8 @@ wake_up_process(struct task_struct *tsk)
 	ostate = tsk->state;
 	tsk->state = TASK_RUNNING;
 	spin_unlock(&tsk->kt_spin);
-	if (ostate != TASK_RUNNING)
-		wakeup(tsk);
+	/* if (ostate != TASK_RUNNING) */
+	wakeup(tsk);
 
 	return 1;	/* Always indicate the process was woken up */
 }

@@ -40,7 +40,7 @@ struct amdgpu_mm_table {
 
 /* struct error_entry - amdgpu VF error information. */
 struct amdgpu_vf_error_buffer {
-	struct mutex lock;
+	struct lock lock;
 	int read_count;
 	int write_count;
 	uint16_t code[AMDGPU_VF_ERROR_ENTRY_SIZE];

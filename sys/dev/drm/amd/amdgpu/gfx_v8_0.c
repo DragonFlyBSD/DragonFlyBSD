@@ -838,6 +838,7 @@ static int gfx_v8_0_ring_test_ring(struct amdgpu_ring *ring)
 	unsigned i;
 	int r;
 
+kprintf("gfx_v8_0_ring_test_ring: ring=%p\n", ring);
 	r = amdgpu_gfx_scratch_get(adev, &scratch);
 	if (r) {
 		DRM_ERROR("amdgpu: cp failed to get scratch reg (%d).\n", r);
@@ -1105,7 +1106,7 @@ static int gfx_v8_0_init_microcode(struct amdgpu_device *adev)
 
 	adev->gfx.rlc.register_list_format =
 			kmalloc(adev->gfx.rlc.reg_list_format_size_bytes +
-					adev->gfx.rlc.reg_list_size_bytes, GFP_KERNEL);
+					adev->gfx.rlc.reg_list_size_bytes, M_DRM, GFP_KERNEL);
 
 	if (!adev->gfx.rlc.register_list_format) {
 		err = -ENOMEM;
@@ -1390,7 +1391,7 @@ static int gfx_v8_0_rlc_init(struct amdgpu_device *adev)
 		r = amdgpu_bo_create_reserved(adev, dws * 4, PAGE_SIZE,
 					      AMDGPU_GEM_DOMAIN_VRAM,
 					      &adev->gfx.rlc.clear_state_obj,
-					      &adev->gfx.rlc.clear_state_gpu_addr,
+					      (u64 *)&adev->gfx.rlc.clear_state_gpu_addr,
 					      (void **)&adev->gfx.rlc.cs_ptr);
 		if (r) {
 			dev_warn(adev->dev, "(%d) create RLC c bo failed\n", r);
@@ -1407,11 +1408,11 @@ static int gfx_v8_0_rlc_init(struct amdgpu_device *adev)
 
 	if ((adev->asic_type == CHIP_CARRIZO) ||
 	    (adev->asic_type == CHIP_STONEY)) {
-		adev->gfx.rlc.cp_table_size = ALIGN(96 * 5 * 4, 2048) + (64 * 1024); /* JT + GDS */
+		adev->gfx.rlc.cp_table_size = (96 * 5 * 4) + (64 * 1024); /* JT + GDS */
 		r = amdgpu_bo_create_reserved(adev, adev->gfx.rlc.cp_table_size,
 					      PAGE_SIZE, AMDGPU_GEM_DOMAIN_VRAM,
 					      &adev->gfx.rlc.cp_table_obj,
-					      &adev->gfx.rlc.cp_table_gpu_addr,
+					      (u64 *)&adev->gfx.rlc.cp_table_gpu_addr,
 					      (void **)&adev->gfx.rlc.cp_table_ptr);
 		if (r) {
 			dev_warn(adev->dev, "(%d) create RLC cp table bo failed\n", r);
@@ -2003,7 +2004,7 @@ static int gfx_v8_0_compute_ring_init(struct amdgpu_device *adev, int ring_id,
 	ring->doorbell_index = AMDGPU_DOORBELL_MEC_RING0 + ring_id;
 	ring->eop_gpu_addr = adev->gfx.mec.hpd_eop_gpu_addr
 				+ (ring_id * GFX8_MEC_HPD_SIZE);
-	sprintf(ring->name, "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	ksprintf(ring->name, "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	irq_type = AMDGPU_CP_IRQ_COMPUTE_MEC1_PIPE0_EOP
 		+ ((ring->me - 1) * adev->gfx.mec.num_pipe_per_mec)
@@ -2112,7 +2113,7 @@ static int gfx_v8_0_sw_init(void *handle)
 	for (i = 0; i < adev->gfx.num_gfx_rings; i++) {
 		ring = &adev->gfx.gfx_ring[i];
 		ring->ring_obj = NULL;
-		sprintf(ring->name, "gfx");
+		ksprintf(ring->name, "gfx");
 		/* no gfx doorbells on iceland */
 		if (adev->asic_type != CHIP_TOPAZ) {
 			ring->use_doorbell = true;
@@ -2210,12 +2211,12 @@ static int gfx_v8_0_sw_fini(void *handle)
 	gfx_v8_0_mec_fini(adev);
 	gfx_v8_0_rlc_fini(adev);
 	amdgpu_bo_free_kernel(&adev->gfx.rlc.clear_state_obj,
-				&adev->gfx.rlc.clear_state_gpu_addr,
+				(u64 *)&adev->gfx.rlc.clear_state_gpu_addr,
 				(void **)&adev->gfx.rlc.cs_ptr);
 	if ((adev->asic_type == CHIP_CARRIZO) ||
 	    (adev->asic_type == CHIP_STONEY)) {
 		amdgpu_bo_free_kernel(&adev->gfx.rlc.cp_table_obj,
-				&adev->gfx.rlc.cp_table_gpu_addr,
+				(u64 *)&adev->gfx.rlc.cp_table_gpu_addr,
 				(void **)&adev->gfx.rlc.cp_table_ptr);
 	}
 	gfx_v8_0_free_microcode(adev);
@@ -4058,7 +4059,7 @@ static int gfx_v8_0_init_save_restore_list(struct amdgpu_device *adev)
 
 	int list_size;
 	unsigned int *register_list_format =
-		kmalloc(adev->gfx.rlc.reg_list_format_size_bytes, GFP_KERNEL);
+		kmalloc(adev->gfx.rlc.reg_list_format_size_bytes, M_DRM, GFP_KERNEL);
 	if (!register_list_format)
 		return -ENOMEM;
 	memcpy(register_list_format, adev->gfx.rlc.register_list_format,
@@ -4851,6 +4852,8 @@ static int gfx_v8_0_mqd_init(struct amdgpu_ring *ring)
 	return 0;
 }
 
+int gfx_v8_0_mqd_commit(struct amdgpu_device *adev,
+			struct vi_mqd *mqd);
 int gfx_v8_0_mqd_commit(struct amdgpu_device *adev,
 			struct vi_mqd *mqd)
 {
@@ -6279,12 +6282,12 @@ static int gfx_v8_0_set_clockgating_state(void *handle,
 	return 0;
 }
 
-static u64 gfx_v8_0_ring_get_rptr(struct amdgpu_ring *ring)
+static uint64_t gfx_v8_0_ring_get_rptr(struct amdgpu_ring *ring)
 {
 	return ring->adev->wb.wb[ring->rptr_offs];
 }
 
-static u64 gfx_v8_0_ring_get_wptr_gfx(struct amdgpu_ring *ring)
+static uint64_t gfx_v8_0_ring_get_wptr_gfx(struct amdgpu_ring *ring)
 {
 	struct amdgpu_device *adev = ring->adev;
 
@@ -6399,8 +6402,8 @@ static void gfx_v8_0_ring_emit_ib_compute(struct amdgpu_ring *ring,
 	amdgpu_ring_write(ring, control);
 }
 
-static void gfx_v8_0_ring_emit_fence_gfx(struct amdgpu_ring *ring, u64 addr,
-					 u64 seq, unsigned flags)
+static void gfx_v8_0_ring_emit_fence_gfx(struct amdgpu_ring *ring, uint64_t addr,
+					 uint64_t seq, unsigned flags)
 {
 	bool write64bit = flags & AMDGPU_FENCE_FLAG_64BIT;
 	bool int_sel = flags & AMDGPU_FENCE_FLAG_INT;
@@ -6479,7 +6482,7 @@ static void gfx_v8_0_ring_emit_vm_flush(struct amdgpu_ring *ring,
 	}
 }
 
-static u64 gfx_v8_0_ring_get_wptr_compute(struct amdgpu_ring *ring)
+static uint64_t gfx_v8_0_ring_get_wptr_compute(struct amdgpu_ring *ring)
 {
 	return ring->adev->wb.wb[ring->wptr_offs];
 }
@@ -6592,7 +6595,7 @@ static void gfx_v8_0_ring_set_priority_compute(struct amdgpu_ring *ring,
 }
 
 static void gfx_v8_0_ring_emit_fence_compute(struct amdgpu_ring *ring,
-					     u64 addr, u64 seq,
+					     uint64_t addr, uint64_t seq,
 					     unsigned flags)
 {
 	bool write64bit = flags & AMDGPU_FENCE_FLAG_64BIT;
@@ -6612,8 +6615,8 @@ static void gfx_v8_0_ring_emit_fence_compute(struct amdgpu_ring *ring,
 	amdgpu_ring_write(ring, upper_32_bits(seq));
 }
 
-static void gfx_v8_0_ring_emit_fence_kiq(struct amdgpu_ring *ring, u64 addr,
-					 u64 seq, unsigned int flags)
+static void gfx_v8_0_ring_emit_fence_kiq(struct amdgpu_ring *ring, uint64_t addr,
+					 uint64_t seq, unsigned int flags)
 {
 	/* we only allocate 32bit for each seq wb address */
 	BUG_ON(flags & AMDGPU_FENCE_FLAG_64BIT);

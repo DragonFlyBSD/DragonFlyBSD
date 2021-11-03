@@ -31,6 +31,7 @@ SRCS	= \
 	drm_fourcc.c \
 	drm_framebuffer.c \
 	drm_gem.c \
+	drm_gem_framebuffer_helper.c \
 	drm_global.c \
 	drm_hashtab.c \
 	drm_ioctl.c \
@@ -68,6 +69,7 @@ SRCS	= \
 	linux_dma-buf.c \
 	linux_dmi.c \
 	linux_fence.c \
+	linux_fence-array.c \
 	linux_hdmi.c \
 	linux_hrtimer.c \
 	linux_i2c.c \
@@ -103,6 +105,7 @@ SRCS	= \
 
 # if CONFIG_AGP is set
 #SRCS+=	drm_agpsupport.c \
+#SRCS+=	ttm_agp_backend.c \
 
 SRCS	+= \
 	opt_ddb.h \
@@ -117,5 +120,6 @@ KCFLAGS+= -I${SYSDIR}/dev/drm/include/drm
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/uapi
 KCFLAGS+= -include ${SYSDIR}/dev/drm/kconfig.h
 KCFLAGS+= -DKBUILD_MODNAME=\"${KMOD}\"
+# KCFLAGS+= -DDRM_DEBUG=2
 
 .include <bsd.kmod.mk>

@@ -309,7 +309,7 @@ int amdgpu_dm_irq_init(struct amdgpu_device *adev)
 
 	DRM_DEBUG_KMS("DM_IRQ\n");
 
-	spin_lock_init(&adev->dm.irq_handler_list_table_lock);
+	lockinit(&adev->dm.irq_handler_list_table_lock, "agdmihltl", 0, LK_CANRECURSE);
 
 	for (src = 0; src < DAL_IRQ_SOURCES_NUMBER; src++) {
 		/* low context handler list init */

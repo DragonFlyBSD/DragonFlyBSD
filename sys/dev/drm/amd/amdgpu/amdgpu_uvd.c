@@ -257,7 +257,7 @@ int amdgpu_uvd_sw_init(struct amdgpu_device *adev)
 			continue;
 		r = amdgpu_bo_create_kernel(adev, bo_size, PAGE_SIZE,
 					    AMDGPU_GEM_DOMAIN_VRAM, &adev->uvd.inst[j].vcpu_bo,
-					    &adev->uvd.inst[j].gpu_addr, &adev->uvd.inst[j].cpu_addr);
+					    (u64 *)&adev->uvd.inst[j].gpu_addr, &adev->uvd.inst[j].cpu_addr);
 		if (r) {
 			dev_err(adev->dev, "(%d) failed to allocate UVD bo\n", r);
 			return r;
@@ -305,7 +305,7 @@ int amdgpu_uvd_sw_fini(struct amdgpu_device *adev)
 		kvfree(adev->uvd.inst[j].saved_bo);
 
 		amdgpu_bo_free_kernel(&adev->uvd.inst[j].vcpu_bo,
-				      &adev->uvd.inst[j].gpu_addr,
+				      (u64 *)&adev->uvd.inst[j].gpu_addr,
 				      (void **)&adev->uvd.inst[j].cpu_addr);
 
 		amdgpu_ring_fini(&adev->uvd.inst[j].ring);
@@ -368,7 +368,7 @@ int amdgpu_uvd_suspend(struct amdgpu_device *adev)
 		size = amdgpu_bo_size(adev->uvd.inst[j].vcpu_bo);
 		ptr = adev->uvd.inst[j].cpu_addr;
 
-		adev->uvd.inst[j].saved_bo = kvmalloc(size, GFP_KERNEL);
+		adev->uvd.inst[j].saved_bo = kmalloc(size, M_DRM, GFP_KERNEL);
 		if (!adev->uvd.inst[j].saved_bo)
 			return -ENOMEM;
 
@@ -483,7 +483,7 @@ static int amdgpu_uvd_cs_pass1(struct amdgpu_uvd_cs_ctx *ctx)
 
 	r = amdgpu_cs_find_mapping(ctx->parser, addr, &bo, &mapping);
 	if (r) {
-		DRM_ERROR("Can't find BO for addr 0x%08Lx\n", addr);
+		DRM_ERROR("Can't find BO for addr 0x%08lx\n", addr);
 		return r;
 	}
 
@@ -811,7 +811,7 @@ static int amdgpu_uvd_cs_pass2(struct amdgpu_uvd_cs_ctx *ctx)
 
 	r = amdgpu_cs_find_mapping(ctx->parser, addr, &bo, &mapping);
 	if (r) {
-		DRM_ERROR("Can't find BO for addr 0x%08Lx\n", addr);
+		DRM_ERROR("Can't find BO for addr 0x%08lx\n", addr);
 		return r;
 	}
 
@@ -851,14 +851,14 @@ static int amdgpu_uvd_cs_pass2(struct amdgpu_uvd_cs_ctx *ctx)
 
 	if (!ctx->parser->adev->uvd.address_64_bit) {
 		if ((start >> 28) != ((end - 1) >> 28)) {
-			DRM_ERROR("reloc %LX-%LX crossing 256MB boundary!\n",
+			DRM_ERROR("reloc %lX-%lX crossing 256MB boundary!\n",
 				  start, end);
 			return -EINVAL;
 		}
 
 		if ((cmd == 0 || cmd == 0x3) &&
 		    (start >> 28) != (ctx->parser->adev->uvd.inst->gpu_addr >> 28)) {
-			DRM_ERROR("msg/fb buffer %LX-%LX out of 256MB segment!\n",
+			DRM_ERROR("msg/fb buffer %lX-%lX out of 256MB segment!\n",
 				  start, end);
 			return -EINVAL;
 		}

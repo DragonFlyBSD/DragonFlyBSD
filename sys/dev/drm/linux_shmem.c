@@ -33,6 +33,7 @@
 #include <vm/vm_page.h>
 #include <vm/vm_page2.h>
 #include <vm/vm_pager.h>
+#include <vm/vm_extern.h>
 
 #include <linux/err.h>
 #include <linux/shmem_fs.h>
@@ -114,3 +115,64 @@ pagecache_write_end(struct vm_object *obj, struct address_space *mapping,
 	return copied;
 }
 
+/*
+ * userptr support
+ */
+long
+get_user_pages(unsigned long start, unsigned long nr_pages,
+	       unsigned int gup_flags, struct page **pages,
+	       struct vm_area_struct **vmas)
+{
+	thread_t td;
+	vm_page_t m;
+	vm_map_t map;
+	long i;
+	int error;
+	int busied;
+	int fault_type = VM_PROT_READ;
+
+	/* returning related vmas not yet supported */
+	td = curthread;
+	KKASSERT(vmas == NULL);
+	KKASSERT(td->td_proc == NULL);
+	map = &td->td_proc->p_vmspace->vm_map;
+
+	if (gup_flags)
+		fault_type |= VM_PROT_WRITE;
+
+	error = 0;
+	for (i = 0; i < nr_pages; ++i) {
+		m = vm_fault_page(map, start + i * PAGE_SIZE,
+				  fault_type, VM_FAULT_NORMAL,
+				  &error, &busied);
+		if (error)
+			break;
+		if (busied) {
+			vm_page_wire(m);
+		} else {
+			vm_page_busy_wait(m, TRUE, "drmgup");
+			vm_page_wire(m);
+			vm_page_unhold(m);
+		}
+		vm_page_wakeup(m);
+		pages[i] = (void *)m;
+	}
+	if (error) {
+		while (--i >= 0) {
+			put_page(pages[i]);
+			pages[i] = NULL;
+		}
+		i = -error;
+	}
+	return i;
+}
+
+void
+release_pages(struct page **pages, unsigned long nr_pages)
+{
+	while (nr_pages > 0) {
+		--nr_pages;
+		put_page(pages[nr_pages]);
+		pages[nr_pages] = NULL;
+	}
+}

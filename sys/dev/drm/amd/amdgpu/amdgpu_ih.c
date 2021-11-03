@@ -43,7 +43,7 @@ static int amdgpu_ih_ring_alloc(struct amdgpu_device *adev)
 		r = amdgpu_bo_create_kernel(adev, adev->irq.ih.ring_size,
 					    PAGE_SIZE, AMDGPU_GEM_DOMAIN_GTT,
 					    &adev->irq.ih.ring_obj,
-					    &adev->irq.ih.gpu_addr,
+					    (u64 *)&adev->irq.ih.gpu_addr,
 					    (void **)&adev->irq.ih.ring);
 		if (r) {
 			DRM_ERROR("amdgpu: failed to create ih ring buffer (%d).\n", r);
@@ -131,7 +131,7 @@ void amdgpu_ih_ring_fini(struct amdgpu_device *adev)
 		}
 	} else {
 		amdgpu_bo_free_kernel(&adev->irq.ih.ring_obj,
-				      &adev->irq.ih.gpu_addr,
+				      (u64 *)&adev->irq.ih.gpu_addr,
 				      (void **)&adev->irq.ih.ring);
 		amdgpu_device_wb_free(adev, adev->irq.ih.wptr_offs);
 		amdgpu_device_wb_free(adev, adev->irq.ih.rptr_offs);

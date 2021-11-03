@@ -64,7 +64,6 @@ typedef struct {
 
 int amdgpu_atom_debug = 0;
 static int amdgpu_atom_execute_table_locked(struct atom_context *ctx, int index, uint32_t * params);
-int amdgpu_atom_execute_table(struct atom_context *ctx, int index, uint32_t * params);
 
 static uint32_t atom_arg_mask[8] =
     { 0xFFFFFFFF, 0xFFFF, 0xFFFF00, 0xFFFF0000, 0xFF, 0xFF00, 0xFF0000,

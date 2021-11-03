@@ -40,6 +40,7 @@ struct dce80_hw_seq_reg_offsets {
 	uint32_t crtc;
 };
 
+#if 0
 static const struct dce80_hw_seq_reg_offsets reg_offsets[] = {
 {
 	.crtc = (mmCRTC0_CRTC_GSL_CONTROL - mmCRTC_GSL_CONTROL),
@@ -60,6 +61,7 @@ static const struct dce80_hw_seq_reg_offsets reg_offsets[] = {
 	.crtc = (mmCRTC5_CRTC_GSL_CONTROL - mmCRTC_GSL_CONTROL),
 }
 };
+#endif
 
 #define HW_REG_CRTC(reg, id)\
 	(reg + reg_offsets[id].crtc)

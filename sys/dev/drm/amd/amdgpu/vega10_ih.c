@@ -276,23 +276,28 @@ static bool vega10_ih_prescreen_iv(struct amdgpu_device *adev)
 		goto ignore_iv;
 
 	/* Track retry faults in per-VM fault FIFO. */
-	spin_lock(&adev->vm_manager.pasid_lock);
+	lockmgr(&adev->vm_manager.pasid_lock, LK_EXCLUSIVE);
 	vm = idr_find(&adev->vm_manager.pasid_idr, pasid);
 	if (!vm) {
 		/* VM not found, process it normally */
-		spin_unlock(&adev->vm_manager.pasid_lock);
+		lockmgr(&adev->vm_manager.pasid_lock, LK_RELEASE);
 		amdgpu_ih_clear_fault(adev, key);
 		return true;
 	}
+#if 0
 	/* No locking required with single writer and single reader */
 	r = kfifo_put(&vm->faults, key);
 	if (!r) {
 		/* FIFO is full. Ignore it until there is space */
-		spin_unlock(&adev->vm_manager.pasid_lock);
 		amdgpu_ih_clear_fault(adev, key);
 		goto ignore_iv;
 	}
-	spin_unlock(&adev->vm_manager.pasid_lock);
+#else
+	kprintf("vega10_ih.c: kfifo_put(&vm->faults, key); is not implemented\n");
+	lockmgr(&adev->vm_manager.pasid_lock, LK_RELEASE);
+	goto ignore_iv;
+#endif
+	lockmgr(&adev->vm_manager.pasid_lock, LK_RELEASE);
 
 	/* It's the first fault for this address, process it normally */
 	return true;
@@ -386,12 +391,12 @@ static int vega10_ih_sw_init(void *handle)
 	adev->irq.ih.use_doorbell = true;
 	adev->irq.ih.doorbell_index = AMDGPU_DOORBELL64_IH << 1;
 
-	adev->irq.ih.faults = kmalloc(sizeof(*adev->irq.ih.faults), GFP_KERNEL);
+	adev->irq.ih.faults = kmalloc(sizeof(*adev->irq.ih.faults), M_DRM, GFP_KERNEL);
 	if (!adev->irq.ih.faults)
 		return -ENOMEM;
 	INIT_CHASH_TABLE(adev->irq.ih.faults->hash,
 			 AMDGPU_PAGEFAULT_HASH_BITS, 8, 0);
-	spin_lock_init(&adev->irq.ih.faults->lock);
+	lockinit(&adev->irq.ih.faults->lock, "agdiihfl", 0, LK_CANRECURSE);
 	adev->irq.ih.faults->count = 0;
 
 	r = amdgpu_irq_init(adev);

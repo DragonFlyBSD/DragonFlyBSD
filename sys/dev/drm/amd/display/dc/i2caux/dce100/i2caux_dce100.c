@@ -39,6 +39,8 @@
 #include "dce/dce_10_0_d.h"
 #include "dce/dce_10_0_sh_mask.h"
 
+#include "i2caux_dce100.h"
+
 /* set register offset */
 #define SR(reg_name)\
 	.reg_name = mm ## reg_name

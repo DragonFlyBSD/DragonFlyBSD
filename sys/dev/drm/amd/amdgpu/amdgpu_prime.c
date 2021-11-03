@@ -106,6 +106,9 @@ void amdgpu_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
  */
 int amdgpu_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 {
+	return -ENODEV;
+
+#if 0
 	struct amdgpu_bo *bo = gem_to_amdgpu_bo(obj);
 	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->tbo.bdev);
 	unsigned asize = amdgpu_bo_size(bo);
@@ -136,6 +139,7 @@ int amdgpu_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma
 	drm_vma_node_revoke(&obj->vma_node, vma->vm_file->private_data);
 
 	return ret;
+#endif
 }
 
 /**
@@ -189,6 +193,7 @@ error:
 	return ERR_PTR(ret);
 }
 
+#if 0
 static int
 __reservation_object_make_exclusive(struct reservation_object *obj)
 {
@@ -319,6 +324,7 @@ static void amdgpu_gem_map_detach(struct dma_buf *dma_buf,
 error:
 	drm_gem_map_detach(dma_buf, attach);
 }
+#endif
 
 /**
  * amdgpu_gem_prime_res_obj - &drm_driver.gem_prime_res_obj implementation
@@ -346,6 +352,7 @@ struct reservation_object *amdgpu_gem_prime_res_obj(struct drm_gem_object *obj)
  * Returns:
  * 0 on success or negative error code.
  */
+#if 0
 static int amdgpu_gem_begin_cpu_access(struct dma_buf *dma_buf,
 				       enum dma_data_direction direction)
 {
@@ -387,6 +394,7 @@ static const struct dma_buf_ops amdgpu_dmabuf_ops = {
 	.vmap = drm_gem_dmabuf_vmap,
 	.vunmap = drm_gem_dmabuf_vunmap,
 };
+#endif
 
 /**
  * amdgpu_gem_prime_export - &drm_driver.gem_prime_export implementation
@@ -413,8 +421,10 @@ struct dma_buf *amdgpu_gem_prime_export(struct drm_device *dev,
 
 	buf = drm_gem_prime_export(dev, gobj, flags);
 	if (!IS_ERR(buf)) {
+#if 0
 		buf->file->f_mapping = dev->anon_inode->i_mapping;
 		buf->ops = &amdgpu_dmabuf_ops;
+#endif
 	}
 
 	return buf;

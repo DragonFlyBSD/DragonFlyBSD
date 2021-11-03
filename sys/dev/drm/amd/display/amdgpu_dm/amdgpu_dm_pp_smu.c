@@ -475,6 +475,7 @@ bool dm_pp_get_static_clocks(
 	return true;
 }
 
+static
 void pp_rv_set_display_requirement(struct pp_smu *pp,
 		struct pp_smu_display_requirement_rv *req)
 {
@@ -496,6 +497,7 @@ void pp_rv_set_display_requirement(struct pp_smu *pp,
 	pp_funcs->display_clock_voltage_request(pp_handle, &clock);
 }
 
+static
 void pp_rv_set_wm_ranges(struct pp_smu *pp,
 		struct pp_smu_wm_range_sets *ranges)
 {
@@ -546,6 +548,7 @@ void pp_rv_set_wm_ranges(struct pp_smu *pp,
 	pp_funcs->set_watermarks_for_clocks_ranges(pp_handle, &wm_with_clock_ranges);
 }
 
+static
 void pp_rv_set_pme_wa_enable(struct pp_smu *pp)
 {
 	struct dc_context *ctx = pp->ctx;

@@ -134,8 +134,8 @@ void finish_wait(wait_queue_head_t *q, wait_queue_entry_t *wait);
 		} else {						\
 			ret = tsleep(current, PINTERLOCKED|flags, "lwe", hz);\
 			if (ret == EWOULDBLOCK) {			\
-				kprintf("F");				\
-				print_backtrace(-1);			\
+				/*kprintf("F");*/			\
+				/*print_backtrace(-1);*/		\
 				ret = 0;				\
 			}						\
 		}							\

@@ -183,7 +183,7 @@ static int vega10_smu_init(struct pp_hwmgr *hwmgr)
 			PAGE_SIZE,
 			AMDGPU_GEM_DOMAIN_VRAM,
 			&priv->smu_tables.entry[PPTABLE].handle,
-			&priv->smu_tables.entry[PPTABLE].mc_addr,
+			(u64 *)&priv->smu_tables.entry[PPTABLE].mc_addr,
 			&priv->smu_tables.entry[PPTABLE].table);
 	if (ret)
 		goto free_backend;
@@ -198,7 +198,7 @@ static int vega10_smu_init(struct pp_hwmgr *hwmgr)
 			PAGE_SIZE,
 			AMDGPU_GEM_DOMAIN_VRAM,
 			&priv->smu_tables.entry[WMTABLE].handle,
-			&priv->smu_tables.entry[WMTABLE].mc_addr,
+			(u64 *)&priv->smu_tables.entry[WMTABLE].mc_addr,
 			&priv->smu_tables.entry[WMTABLE].table);
 
 	if (ret)
@@ -214,7 +214,7 @@ static int vega10_smu_init(struct pp_hwmgr *hwmgr)
 			PAGE_SIZE,
 			AMDGPU_GEM_DOMAIN_VRAM,
 			&priv->smu_tables.entry[AVFSTABLE].handle,
-			&priv->smu_tables.entry[AVFSTABLE].mc_addr,
+			(u64 *)&priv->smu_tables.entry[AVFSTABLE].mc_addr,
 			&priv->smu_tables.entry[AVFSTABLE].table);
 
 	if (ret)
@@ -231,7 +231,7 @@ static int vega10_smu_init(struct pp_hwmgr *hwmgr)
 				PAGE_SIZE,
 				AMDGPU_GEM_DOMAIN_VRAM,
 				&priv->smu_tables.entry[TOOLSTABLE].handle,
-				&priv->smu_tables.entry[TOOLSTABLE].mc_addr,
+				(u64 *)&priv->smu_tables.entry[TOOLSTABLE].mc_addr,
 				&priv->smu_tables.entry[TOOLSTABLE].table);
 		if (ret)
 			goto err2;
@@ -246,7 +246,7 @@ static int vega10_smu_init(struct pp_hwmgr *hwmgr)
 			PAGE_SIZE,
 			AMDGPU_GEM_DOMAIN_VRAM,
 			&priv->smu_tables.entry[AVFSFUSETABLE].handle,
-			&priv->smu_tables.entry[AVFSFUSETABLE].mc_addr,
+			(u64 *)&priv->smu_tables.entry[AVFSFUSETABLE].mc_addr,
 			&priv->smu_tables.entry[AVFSFUSETABLE].table);
 	if (ret)
 		goto err3;
@@ -261,19 +261,19 @@ static int vega10_smu_init(struct pp_hwmgr *hwmgr)
 err3:
 	if (priv->smu_tables.entry[TOOLSTABLE].table)
 		amdgpu_bo_free_kernel(&priv->smu_tables.entry[TOOLSTABLE].handle,
-				&priv->smu_tables.entry[TOOLSTABLE].mc_addr,
+				(u64 *)&priv->smu_tables.entry[TOOLSTABLE].mc_addr,
 				&priv->smu_tables.entry[TOOLSTABLE].table);
 err2:
 	amdgpu_bo_free_kernel(&priv->smu_tables.entry[AVFSTABLE].handle,
-				&priv->smu_tables.entry[AVFSTABLE].mc_addr,
+				(u64 *)&priv->smu_tables.entry[AVFSTABLE].mc_addr,
 				&priv->smu_tables.entry[AVFSTABLE].table);
 err1:
 	amdgpu_bo_free_kernel(&priv->smu_tables.entry[WMTABLE].handle,
-				&priv->smu_tables.entry[WMTABLE].mc_addr,
+				(u64 *)&priv->smu_tables.entry[WMTABLE].mc_addr,
 				&priv->smu_tables.entry[WMTABLE].table);
 err0:
 	amdgpu_bo_free_kernel(&priv->smu_tables.entry[PPTABLE].handle,
-			&priv->smu_tables.entry[PPTABLE].mc_addr,
+			(u64 *)&priv->smu_tables.entry[PPTABLE].mc_addr,
 			&priv->smu_tables.entry[PPTABLE].table);
 free_backend:
 	kfree(hwmgr->smu_backend);
@@ -287,20 +287,20 @@ static int vega10_smu_fini(struct pp_hwmgr *hwmgr)
 
 	if (priv) {
 		amdgpu_bo_free_kernel(&priv->smu_tables.entry[PPTABLE].handle,
-				&priv->smu_tables.entry[PPTABLE].mc_addr,
+				(u64 *)&priv->smu_tables.entry[PPTABLE].mc_addr,
 				&priv->smu_tables.entry[PPTABLE].table);
 		amdgpu_bo_free_kernel(&priv->smu_tables.entry[WMTABLE].handle,
-					&priv->smu_tables.entry[WMTABLE].mc_addr,
+					(u64 *)&priv->smu_tables.entry[WMTABLE].mc_addr,
 					&priv->smu_tables.entry[WMTABLE].table);
 		amdgpu_bo_free_kernel(&priv->smu_tables.entry[AVFSTABLE].handle,
-					&priv->smu_tables.entry[AVFSTABLE].mc_addr,
+					(u64 *)&priv->smu_tables.entry[AVFSTABLE].mc_addr,
 					&priv->smu_tables.entry[AVFSTABLE].table);
 		if (priv->smu_tables.entry[TOOLSTABLE].table)
 			amdgpu_bo_free_kernel(&priv->smu_tables.entry[TOOLSTABLE].handle,
-					&priv->smu_tables.entry[TOOLSTABLE].mc_addr,
+					(u64 *)&priv->smu_tables.entry[TOOLSTABLE].mc_addr,
 					&priv->smu_tables.entry[TOOLSTABLE].table);
 		amdgpu_bo_free_kernel(&priv->smu_tables.entry[AVFSFUSETABLE].handle,
-					&priv->smu_tables.entry[AVFSFUSETABLE].mc_addr,
+					(u64 *)&priv->smu_tables.entry[AVFSFUSETABLE].mc_addr,
 					&priv->smu_tables.entry[AVFSFUSETABLE].table);
 		kfree(hwmgr->smu_backend);
 		hwmgr->smu_backend = NULL;

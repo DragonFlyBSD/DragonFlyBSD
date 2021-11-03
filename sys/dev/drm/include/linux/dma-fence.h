@@ -132,6 +132,9 @@ signed long dma_fence_default_wait(struct dma_fence *fence,
 				   bool intr, signed long timeout);
 signed long dma_fence_wait_timeout(struct dma_fence *,
 				   bool intr, signed long timeout);
+signed long dma_fence_wait_any_timeout(struct dma_fence **fences,
+				       uint32_t count,
+				       bool intr, signed long timeout, uint32_t *idx);
 
 static inline signed long
 dma_fence_wait(struct dma_fence *fence, bool intr)

@@ -27,7 +27,7 @@
 #define PRECISION 5 /* Change this value to change the number of decimal places in the final output - 5 is a good default */
 
 #define SHIFTED_2 (2 << SHIFT_AMOUNT)
-#define MAX (1 << (SHIFT_AMOUNT - 1)) - 1 /* 32767 - Might change in the future */
+#define POWERPLAY_MAX (1 << (SHIFT_AMOUNT - 1)) - 1 /* 32767 - Might change in the future */
 
 /* -------------------------------------------------------------------------------
  * NEW TYPE - fINT
@@ -85,7 +85,6 @@ static fInt fDecodeLeakageID (uint32_t leakageID_fuse, fInt ln_max_div_min, fInt
  * Some of the following functions take two INTs as their input - This is unsafe for a variety of reasons.
  */
 static fInt Divide (int, int);                            /* Divide two INTs and return result as FINT */
-static fInt fNegate(fInt);
 
 static int uGetScaledDecimal (fInt);                      /* Internal function */
 static int GetReal (fInt A);                              /* Internal function */
@@ -93,8 +92,8 @@ static int GetReal (fInt A);                              /* Internal function *
 /* -------------------------------------------------------------------------------------
  * TROUBLESHOOTING INFORMATION
  * -------------------------------------------------------------------------------------
- * 1) ConvertToFraction - InputOutOfRangeException: Only accepts numbers smaller than MAX (default: 32767)
- * 2) fAdd - OutputOutOfRangeException: Output bigger than MAX (default: 32767)
+ * 1) ConvertToFraction - InputOutOfRangeException: Only accepts numbers smaller than POWERPLAY_MAX (default: 32767)
+ * 2) fAdd - OutputOutOfRangeException: Output bigger than POWERPLAY_MAX (default: 32767)
  * 3) fMultiply - OutputOutOfRangeException:
  * 4) fGetSquare - OutputOutOfRangeException:
  * 5) fDivide - DivideByZeroException
@@ -219,7 +218,7 @@ static fInt ConvertToFraction(int X) /*Add all range checking here. Is it possib
 {
 	fInt temp;
 
-	if (X <= MAX)
+	if (X <= POWERPLAY_MAX)
 		temp.full = (X << SHIFT_AMOUNT);
 	else
 		temp.full = 0;
@@ -237,7 +236,7 @@ static fInt Convert_ULONG_ToFraction(uint32_t X)
 {
 	fInt temp;
 
-	if (X <= MAX)
+	if (X <= POWERPLAY_MAX)
 		temp.full = (X << SHIFT_AMOUNT);
 	else
 		temp.full = 0;
@@ -265,14 +264,14 @@ static fInt GetScaledFraction(int X, int factor)
 		bNEGATED = !bNEGATED; /*If bNEGATED = true due to X < 0, this will cover the case of negative cancelling negative */
 	}
 
-	if ((X > MAX) || factor > MAX) {
-		if ((X/factor) <= MAX) {
-			while (X > MAX) {
+	if ((X > POWERPLAY_MAX) || factor > POWERPLAY_MAX) {
+		if ((X/factor) <= POWERPLAY_MAX) {
+			while (X > POWERPLAY_MAX) {
 				X = X >> 1;
 				times_shifted++;
 			}
 
-			while (factor > MAX) {
+			while (factor > POWERPLAY_MAX) {
 				factor = factor >> 1;
 				factor_shifted++;
 			}

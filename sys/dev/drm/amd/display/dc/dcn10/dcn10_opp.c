@@ -340,6 +340,7 @@ void opp1_program_stereo(
 	*/
 }
 
+#if 0
 void opp1_program_oppbuf(
 	struct output_pixel_processor *opp,
 	struct oppbuf_params *oppbuf)
@@ -366,6 +367,7 @@ void opp1_program_oppbuf(
 	REG_UPDATE(OPPBUF_CONTROL, OPPBUF_PIXEL_REPETITION, oppbuf->pixel_repetition);
 
 }
+#endif
 
 void opp1_pipe_clock_control(struct output_pixel_processor *opp, bool enable)
 {

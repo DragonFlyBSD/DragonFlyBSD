@@ -288,7 +288,7 @@ static int init_powerplay_table_information(
 	copy_clock_limits_array(hwmgr, &pptable_information->power_saving_clock_max, powerplay_table->PowerSavingClockMax);
 	copy_clock_limits_array(hwmgr, &pptable_information->power_saving_clock_min, powerplay_table->PowerSavingClockMin);
 
-	pptable_information->smc_pptable = (PPTable_t *)kmalloc(sizeof(PPTable_t), GFP_KERNEL);
+	pptable_information->smc_pptable = (PPTable_t *)kmalloc(sizeof(PPTable_t), M_DRM, GFP_KERNEL);
 	if (pptable_information->smc_pptable == NULL)
 		return -ENOMEM;
 
@@ -299,6 +299,7 @@ static int init_powerplay_table_information(
 	return result;
 }
 
+int vega12_pp_tables_initialize(struct pp_hwmgr *hwmgr);
 int vega12_pp_tables_initialize(struct pp_hwmgr *hwmgr)
 {
 	int result = 0;

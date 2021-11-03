@@ -1,27 +1,30 @@
 /*
- * Copyright 2017 Advanced Micro Devices, Inc.
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
+ * All rights reserved.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice unmodified, this list of conditions, and the following
+ *    disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
- * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !defined(_GPU_SCHED_TRACE_H) || defined(TRACE_HEADER_MULTI_READ)
+#ifndef _GPU_SCHED_TRACE_H_
 #define _GPU_SCHED_TRACE_H_
 
 #include <linux/stringify.h>
@@ -30,53 +33,7 @@
 
 #include <drm/drmP.h>
 
-#undef TRACE_SYSTEM
-#define TRACE_SYSTEM gpu_scheduler
-#define TRACE_INCLUDE_FILE gpu_scheduler_trace
+#define trace_amd_sched_job(job)
+#define trace_amd_sched_process_job(job)
 
-TRACE_EVENT(drm_sched_job,
-	    TP_PROTO(struct drm_sched_job *sched_job, struct drm_sched_entity *entity),
-	    TP_ARGS(sched_job, entity),
-	    TP_STRUCT__entry(
-			     __field(struct drm_sched_entity *, entity)
-			     __field(struct dma_fence *, fence)
-			     __field(const char *, name)
-			     __field(uint64_t, id)
-			     __field(u32, job_count)
-			     __field(int, hw_job_count)
-			     ),
-
-	    TP_fast_assign(
-			   __entry->entity = entity;
-			   __entry->id = sched_job->id;
-			   __entry->fence = &sched_job->s_fence->finished;
-			   __entry->name = sched_job->sched->name;
-			   __entry->job_count = spsc_queue_count(&entity->job_queue);
-			   __entry->hw_job_count = atomic_read(
-				   &sched_job->sched->hw_rq_count);
-			   ),
-	    TP_printk("entity=%p, id=%llu, fence=%p, ring=%s, job count:%u, hw job count:%d",
-		      __entry->entity, __entry->id,
-		      __entry->fence, __entry->name,
-		      __entry->job_count, __entry->hw_job_count)
-);
-
-TRACE_EVENT(drm_sched_process_job,
-	    TP_PROTO(struct drm_sched_fence *fence),
-	    TP_ARGS(fence),
-	    TP_STRUCT__entry(
-		    __field(struct dma_fence *, fence)
-		    ),
-
-	    TP_fast_assign(
-		    __entry->fence = &fence->finished;
-		    ),
-	    TP_printk("fence=%p signaled", __entry->fence)
-);
-
-#endif
-
-/* This part must be outside protection */
-#undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH ../../drivers/gpu/drm/scheduler
-#include <trace/define_trace.h>
+#endif	/* _GPU_SCHED_TRACE_H_ */

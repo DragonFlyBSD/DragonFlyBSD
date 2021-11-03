@@ -403,9 +403,12 @@ unlock:
 		shared = NULL;
 	}
 
-	*pshared_count = shared_count;
-	*pshared = shared;
-	*pfence_excl = fence_excl;
+	if (pshared_count)
+		*pshared_count = shared_count;
+	if (pshared)
+		*pshared = shared;
+	if (pfence_excl)
+		*pfence_excl = fence_excl;
 
 	return ret;
 }

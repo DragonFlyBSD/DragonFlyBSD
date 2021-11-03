@@ -62,7 +62,9 @@ static const struct dce110_compressor_reg_offsets reg_offsets[] = {
 }
 };
 
+#if 0
 static const uint32_t dce11_one_lpt_channel_max_resolution = 2560 * 1600;
+#endif
 
 enum fbc_idle_force {
 	/* Bit 0 - Display registers updated */
@@ -440,6 +442,7 @@ void dce110_compressor_destroy(struct compressor **compressor)
 	*compressor = NULL;
 }
 
+#if 0
 bool dce110_get_required_compressed_surfacesize(struct fbc_input_info fbc_input_info,
 						struct fbc_requested_compressed_size size)
 {
@@ -468,7 +471,7 @@ bool dce110_get_required_compressed_surfacesize(struct fbc_input_info fbc_input_
 
 	return result;
 }
-
+#endif
 
 void get_max_support_fbc_buffersize(unsigned int *max_x, unsigned int *max_y)
 {
@@ -484,6 +487,7 @@ void get_max_support_fbc_buffersize(unsigned int *max_x, unsigned int *max_y)
 }
 
 
+#if 0
 unsigned int controller_id_to_index(enum controller_id controller_id)
 {
 	unsigned int index = 0;
@@ -506,6 +510,7 @@ unsigned int controller_id_to_index(enum controller_id controller_id)
 	}
 	return index;
 }
+#endif
 
 
 static const struct compressor_funcs dce110_compressor_funcs = {

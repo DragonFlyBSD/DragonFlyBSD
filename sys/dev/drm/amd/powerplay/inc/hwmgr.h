@@ -709,7 +709,7 @@ struct pp_hwmgr {
 	uint32_t smu_version;
 	bool not_vf;
 	bool pm_en;
-	struct mutex smu_lock;
+	struct lock smu_lock;
 
 	uint32_t pp_table_version;
 	void *device;

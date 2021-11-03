@@ -220,10 +220,10 @@ static int smu10_smu_fini(struct pp_hwmgr *hwmgr)
 		smu10_smc_disable_sdma(hwmgr);
 		smu10_smc_disable_vcn(hwmgr);
 		amdgpu_bo_free_kernel(&priv->smu_tables.entry[SMU10_WMTABLE].handle,
-					&priv->smu_tables.entry[SMU10_WMTABLE].mc_addr,
+					(u64 *)&priv->smu_tables.entry[SMU10_WMTABLE].mc_addr,
 					&priv->smu_tables.entry[SMU10_WMTABLE].table);
 		amdgpu_bo_free_kernel(&priv->smu_tables.entry[SMU10_CLOCKTABLE].handle,
-					&priv->smu_tables.entry[SMU10_CLOCKTABLE].mc_addr,
+					(u64 *)&priv->smu_tables.entry[SMU10_CLOCKTABLE].mc_addr,
 					&priv->smu_tables.entry[SMU10_CLOCKTABLE].table);
 		kfree(hwmgr->smu_backend);
 		hwmgr->smu_backend = NULL;
@@ -265,7 +265,7 @@ static int smu10_smu_init(struct pp_hwmgr *hwmgr)
 			PAGE_SIZE,
 			AMDGPU_GEM_DOMAIN_VRAM,
 			&priv->smu_tables.entry[SMU10_WMTABLE].handle,
-			&priv->smu_tables.entry[SMU10_WMTABLE].mc_addr,
+			(u64 *)&priv->smu_tables.entry[SMU10_WMTABLE].mc_addr,
 			&priv->smu_tables.entry[SMU10_WMTABLE].table);
 
 	if (r)
@@ -281,7 +281,7 @@ static int smu10_smu_init(struct pp_hwmgr *hwmgr)
 			PAGE_SIZE,
 			AMDGPU_GEM_DOMAIN_VRAM,
 			&priv->smu_tables.entry[SMU10_CLOCKTABLE].handle,
-			&priv->smu_tables.entry[SMU10_CLOCKTABLE].mc_addr,
+			(u64 *)&priv->smu_tables.entry[SMU10_CLOCKTABLE].mc_addr,
 			&priv->smu_tables.entry[SMU10_CLOCKTABLE].table);
 
 	if (r)
@@ -295,7 +295,7 @@ static int smu10_smu_init(struct pp_hwmgr *hwmgr)
 
 err1:
 	amdgpu_bo_free_kernel(&priv->smu_tables.entry[SMU10_WMTABLE].handle,
-				&priv->smu_tables.entry[SMU10_WMTABLE].mc_addr,
+				(u64 *)&priv->smu_tables.entry[SMU10_WMTABLE].mc_addr,
 				&priv->smu_tables.entry[SMU10_WMTABLE].table);
 err0:
 	kfree(priv);

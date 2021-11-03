@@ -229,7 +229,7 @@ struct amdgpu_i2c_chan {
 	struct amdgpu_i2c_bus_rec rec;
 	struct drm_dp_aux aux;
 	bool has_aux;
-	struct mutex mutex;
+	struct lock mutex;
 };
 
 struct amdgpu_fbdev;

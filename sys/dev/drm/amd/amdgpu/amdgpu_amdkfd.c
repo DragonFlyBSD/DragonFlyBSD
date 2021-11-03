@@ -46,7 +46,9 @@ int amdgpu_amdkfd_init(void)
 
 	ret = kgd2kfd_init_p(KFD_INTERFACE_VERSION, &kgd2kfd);
 	if (ret) {
+#if 0
 		symbol_put(kgd2kfd_init);
+#endif
 		kgd2kfd = NULL;
 	}
 
@@ -73,7 +75,9 @@ void amdgpu_amdkfd_fini(void)
 {
 	if (kgd2kfd) {
 		kgd2kfd->exit();
+#if 0
 		symbol_put(kgd2kfd_init);
+#endif
 	}
 }
 
@@ -356,6 +360,8 @@ void free_gtt_mem(struct kgd_dev *kgd, void *mem_obj)
 void get_local_mem_info(struct kgd_dev *kgd,
 			struct kfd_local_mem_info *mem_info)
 {
+	STUB();
+#if 0
 	struct amdgpu_device *adev = (struct amdgpu_device *)kgd;
 	uint64_t address_mask = adev->dev->dma_mask ? ~*adev->dev->dma_mask :
 					     ~((1ULL << 32) - 1);
@@ -372,7 +378,7 @@ void get_local_mem_info(struct kgd_dev *kgd,
 	}
 	mem_info->vram_width = adev->gmc.vram_width;
 
-	pr_debug("Address base: %pap limit %pap public 0x%llx private 0x%llx\n",
+	pr_debug("Address base: %pap limit %pap public 0x%lx private 0x%lx\n",
 			&adev->gmc.aper_base, &aper_limit,
 			mem_info->local_mem_size_public,
 			mem_info->local_mem_size_private);
@@ -383,6 +389,7 @@ void get_local_mem_info(struct kgd_dev *kgd,
 		mem_info->mem_clk_max = amdgpu_dpm_get_mclk(adev, false) / 100;
 	else
 		mem_info->mem_clk_max = 100;
+#endif
 }
 
 uint64_t get_gpu_clock_counter(struct kgd_dev *kgd)

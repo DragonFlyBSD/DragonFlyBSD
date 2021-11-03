@@ -49,6 +49,7 @@
 #define U16_MAX		((u16)~0U)
 #define U32_MAX		((u32)~0U)
 #define U64_MAX		((u64)~0ULL)
+#define S64_MAX		((s64)(U64_MAX>>1))
 
 #include <machine/limits.h>	/* LONG_MAX etc... */
 
@@ -238,5 +239,7 @@ static inline void
 add_taint(unsigned flag, enum lockdep_ok lo)
 {
 }
+
+#define STUB() do { kprintf("%s: stub\n", __func__); } while(0);
 
 #endif	/* _LINUX_KERNEL_H_ */

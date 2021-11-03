@@ -117,6 +117,7 @@ amdgpu_atombios_encoder_set_backlight_level(struct amdgpu_encoder *amdgpu_encode
 
 #if defined(CONFIG_BACKLIGHT_CLASS_DEVICE) || defined(CONFIG_BACKLIGHT_CLASS_DEVICE_MODULE)
 
+#if 0
 static u8 amdgpu_atombios_encoder_backlight_level(struct backlight_device *bd)
 {
 	u8 level;
@@ -158,18 +159,62 @@ static const struct backlight_ops amdgpu_atombios_encoder_backlight_ops = {
 	.get_brightness = amdgpu_atombios_encoder_get_backlight_brightness,
 	.update_status	= amdgpu_atombios_encoder_update_backlight_status,
 };
+#endif
+
+/*
+ * Read max backlight level
+ */
+static int
+sysctl_backlight_max(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+
+	val = AMDGPU_MAX_BL_LEVEL;
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	return(err);
+}
+
+/*
+ * Read/write backlight level
+ */
+static int
+sysctl_backlight_handler(SYSCTL_HANDLER_ARGS)
+{
+	struct amdgpu_encoder *encoder;
+	struct amdgpu_encoder_atom_dig *dig;
+	int err, val;
+
+	encoder = (struct amdgpu_encoder *)arg1;
+	dig = encoder->enc_priv;
+	val = dig->backlight_level;
+
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL) {
+		return(err);
+	}
+	if (dig->backlight_level != val && val >= 0 &&
+	    val <= AMDGPU_MAX_BL_LEVEL) {
+		amdgpu_atombios_encoder_set_backlight_level(encoder, val);
+	}
+
+	return(err);
+}
 
 void amdgpu_atombios_encoder_init_backlight(struct amdgpu_encoder *amdgpu_encoder,
 				     struct drm_connector *drm_connector)
 {
 	struct drm_device *dev = amdgpu_encoder->base.dev;
 	struct amdgpu_device *adev = dev->dev_private;
+#if 0
 	struct backlight_device *bd;
 	struct backlight_properties props;
 	struct amdgpu_backlight_privdata *pdata;
+#endif
 	struct amdgpu_encoder_atom_dig *dig;
 	u8 backlight_level;
+#if 0
 	char bl_name[16];
+#endif
 
 	/* Mac laptops with multiple GPUs use the gmux driver for backlight
 	 * so don't register a backlight device
@@ -184,7 +229,8 @@ void amdgpu_atombios_encoder_init_backlight(struct amdgpu_encoder *amdgpu_encode
 	if (!(adev->mode_info.firmware_flags & ATOM_BIOS_INFO_BL_CONTROLLED_BY_GPU))
 		return;
 
-	pdata = kmalloc(sizeof(struct amdgpu_backlight_privdata), GFP_KERNEL);
+#if 0
+	pdata = kmalloc(sizeof(struct amdgpu_backlight_privdata), M_DRM, GFP_KERNEL);
 	if (!pdata) {
 		DRM_ERROR("Memory allocation failed\n");
 		goto error;
@@ -203,28 +249,53 @@ void amdgpu_atombios_encoder_init_backlight(struct amdgpu_encoder *amdgpu_encode
 	}
 
 	pdata->encoder = amdgpu_encoder;
+#endif
 
 	backlight_level = amdgpu_atombios_encoder_get_backlight_level_from_reg(adev);
 
 	dig = amdgpu_encoder->enc_priv;
+#if 0
 	dig->bl_dev = bd;
 
 	bd->props.brightness = amdgpu_atombios_encoder_get_backlight_brightness(bd);
 	bd->props.power = FB_BLANK_UNBLANK;
 	backlight_update_status(bd);
+#endif
 
 	DRM_INFO("amdgpu atom DIG backlight initialized\n");
 
+#ifdef __DragonFly__
+	dig->backlight_level = backlight_level;
+
+	adev->mode_info.bl_encoder = amdgpu_encoder;
+
+	SYSCTL_ADD_PROC(&drm_connector->dev->sysctl->ctx, &sysctl__hw_children,
+			OID_AUTO, "backlight_max",
+			CTLTYPE_INT | CTLFLAG_RD | CTLFLAG_ANYBODY,
+			amdgpu_encoder, sizeof(int),
+			sysctl_backlight_max,
+			"I", "Max backlight level");
+	SYSCTL_ADD_PROC(&drm_connector->dev->sysctl->ctx, &sysctl__hw_children,
+			OID_AUTO, "backlight_level",
+			CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_ANYBODY,
+			amdgpu_encoder, sizeof(int),
+			sysctl_backlight_handler,
+			"I", "Backlight level");
+#endif
+
 	return;
 
-error:
-	kfree(pdata);
-	return;
+#if 0
+ error:
+ 	kfree(pdata);
+ 	return;
+#endif
 }
 
 void
 amdgpu_atombios_encoder_fini_backlight(struct amdgpu_encoder *amdgpu_encoder)
 {
+#if 0
 	struct drm_device *dev = amdgpu_encoder->base.dev;
 	struct amdgpu_device *adev = dev->dev_private;
 	struct backlight_device *bd = NULL;
@@ -249,6 +320,7 @@ amdgpu_atombios_encoder_fini_backlight(struct amdgpu_encoder *amdgpu_encoder)
 
 		DRM_INFO("amdgpu atom LVDS backlight unloaded\n");
 	}
+#endif
 }
 
 #else /* !CONFIG_BACKLIGHT_CLASS_DEVICE */
@@ -2097,7 +2169,7 @@ amdgpu_atombios_encoder_get_lcd_info(struct amdgpu_encoder *encoder)
 						struct edid *edid;
 						int edid_size =
 							max((int)EDID_LENGTH, (int)fake_edid_record->ucFakeEDIDLength);
-						edid = kmalloc(edid_size, GFP_KERNEL);
+						edid = kmalloc(edid_size, M_DRM, GFP_KERNEL);
 						if (edid) {
 							memcpy((u8 *)edid, (u8 *)&fake_edid_record->ucFakeEDIDString[0],
 							       fake_edid_record->ucFakeEDIDLength);

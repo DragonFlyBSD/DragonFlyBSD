@@ -39,6 +39,8 @@
 #include "../hw_ddc.h"
 #include "../hw_hpd.h"
 
+#include "hw_factory_diag.h"
+
 /* function table */
 static const struct hw_factory_funcs funcs = {
 	.create_ddc_data = NULL,

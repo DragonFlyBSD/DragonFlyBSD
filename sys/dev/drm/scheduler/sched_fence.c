@@ -156,13 +156,13 @@ struct drm_sched_fence *drm_sched_fence_create(struct drm_sched_entity *entity,
 	struct drm_sched_fence *fence = NULL;
 	unsigned seq;
 
-	fence = kmem_cache_zalloc(sched_fence_slab, GFP_KERNEL);
+	fence = kzalloc(sizeof(struct drm_sched_fence), GFP_KERNEL);
 	if (fence == NULL)
 		return NULL;
 
 	fence->owner = owner;
 	fence->sched = entity->rq->sched;
-	spin_lock_init(&fence->lock);
+	lockinit(&fence->lock, "dscl", 0, LK_CANRECURSE);
 
 	seq = atomic_inc_return(&entity->fence_seq);
 	dma_fence_init(&fence->scheduled, &drm_sched_fence_ops_scheduled,

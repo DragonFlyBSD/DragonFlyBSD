@@ -595,7 +595,7 @@ int smu7_init(struct pp_hwmgr *hwmgr)
 		PAGE_SIZE,
 		AMDGPU_GEM_DOMAIN_VRAM,
 		&smu_data->header_buffer.handle,
-		&smu_data->header_buffer.mc_addr,
+		(u64 *)&smu_data->header_buffer.mc_addr,
 		&smu_data->header_buffer.kaddr);
 
 	if (r)
@@ -610,12 +610,12 @@ int smu7_init(struct pp_hwmgr *hwmgr)
 		PAGE_SIZE,
 		AMDGPU_GEM_DOMAIN_VRAM,
 		&smu_data->smu_buffer.handle,
-		&smu_data->smu_buffer.mc_addr,
+		(u64 *)&smu_data->smu_buffer.mc_addr,
 		&smu_data->smu_buffer.kaddr);
 
 	if (r) {
 		amdgpu_bo_free_kernel(&smu_data->header_buffer.handle,
-					&smu_data->header_buffer.mc_addr,
+					(u64 *)&smu_data->header_buffer.mc_addr,
 					&smu_data->header_buffer.kaddr);
 		return -EINVAL;
 	}
@@ -632,12 +632,12 @@ int smu7_smu_fini(struct pp_hwmgr *hwmgr)
 	struct smu7_smumgr *smu_data = (struct smu7_smumgr *)(hwmgr->smu_backend);
 
 	amdgpu_bo_free_kernel(&smu_data->header_buffer.handle,
-					&smu_data->header_buffer.mc_addr,
+					(u64 *)&smu_data->header_buffer.mc_addr,
 					&smu_data->header_buffer.kaddr);
 
 	if (hwmgr->not_vf)
 		amdgpu_bo_free_kernel(&smu_data->smu_buffer.handle,
-					&smu_data->smu_buffer.mc_addr,
+					(u64 *)&smu_data->smu_buffer.mc_addr,
 					&smu_data->smu_buffer.kaddr);
 
 

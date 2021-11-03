@@ -1130,6 +1130,7 @@ static int init_dpm_2_parameters(
 	return result;
 }
 
+int vega10_pp_tables_initialize(struct pp_hwmgr *hwmgr);
 int vega10_pp_tables_initialize(struct pp_hwmgr *hwmgr)
 {
 	int result = 0;

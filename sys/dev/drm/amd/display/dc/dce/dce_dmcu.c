@@ -60,6 +60,7 @@ static bool dce_dmcu_init(struct dmcu *dmcu)
 	return true;
 }
 
+static
 bool dce_dmcu_load_iram(struct dmcu *dmcu,
 		unsigned int start_offset,
 		const char *src,

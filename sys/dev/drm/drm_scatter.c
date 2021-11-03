@@ -41,7 +41,7 @@ static void drm_sg_cleanup(struct drm_sg_mem * entry)
 		return;
 
 	if (entry->vaddr != 0)
-		kmem_free(kernel_map, entry->vaddr, IDX_TO_OFF(entry->pages));
+		kmem_free(&kernel_map, entry->vaddr, IDX_TO_OFF(entry->pages));
 
 	kfree(entry->busaddr);
 	kfree(entry);
@@ -81,7 +81,7 @@ int drm_legacy_sg_alloc(struct drm_device *dev, void *data,
 	entry->busaddr = kmalloc(entry->pages * sizeof(*entry->busaddr),
 	    M_DRM, M_WAITOK | M_ZERO);
 
-	entry->vaddr = kmem_alloc_attr(kernel_map, size,
+	entry->vaddr = kmem_alloc_attr(&kernel_map, size,
 				       VM_SUBSYS_DRM_SCAT, M_WAITOK | M_ZERO,
 				       0, BUS_SPACE_MAXADDR_32BIT,
 				       VM_MEMATTR_WRITE_COMBINING);

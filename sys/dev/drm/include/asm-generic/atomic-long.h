@@ -27,6 +27,36 @@
 #ifndef _ASM_ATOMIC_LONG_H_
 #define _ASM_ATOMIC_LONG_H_
 
+typedef struct {
+        volatile long counter;
+} atomic_long_t;
+
+static inline void
+atomic_long_set(atomic_long_t *v, long i)
+{
+        WRITE_ONCE(v->counter, i);
+}
+
+static inline long
+atomic_long_xchg(atomic_long_t *v, long val)
+{
+        return atomic_swap_long(&v->counter, val);
+}
+
+static inline long
+atomic_long_cmpxchg(atomic_long_t *v, long old, long new)
+{
+        long ret = old;
+
+        for (;;) {
+                if (atomic_fcmpset_long(&v->counter, &ret, new))
+                        break;
+                if (ret != old)
+                        break;
+        }
+        return (ret);
+}
+
 static inline int
 atomic_long_add_unless(atomic64_t *v, long a, long u)
 {

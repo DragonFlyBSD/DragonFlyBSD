@@ -108,9 +108,6 @@ void dal_i2caux_release_engine(
 void dal_i2caux_destruct(
 	struct i2caux *i2caux);
 
-void dal_i2caux_destroy(
-	struct i2caux **ptr);
-
 struct i2c_engine *dal_i2caux_acquire_i2c_sw_engine(
 	struct i2caux *i2caux,
 	struct ddc *ddc);

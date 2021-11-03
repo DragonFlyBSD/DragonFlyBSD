@@ -25,7 +25,9 @@
 
 #include <linux/string.h>
 #include <linux/acpi.h>
+#if 0
 #include <linux/version.h>
+#endif
 #include <linux/i2c.h>
 
 #include <drm/drmP.h>

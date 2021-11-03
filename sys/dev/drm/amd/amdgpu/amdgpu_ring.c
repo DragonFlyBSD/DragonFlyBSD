@@ -308,7 +308,7 @@ int amdgpu_ring_init(struct amdgpu_device *adev, struct amdgpu_ring *ring,
 		r = amdgpu_bo_create_kernel(adev, ring->ring_size + ring->funcs->extra_dw, PAGE_SIZE,
 					    AMDGPU_GEM_DOMAIN_GTT,
 					    &ring->ring_obj,
-					    &ring->gpu_addr,
+					    (u64 *)&ring->gpu_addr,
 					    (void **)&ring->ring);
 		if (r) {
 			dev_err(adev->dev, "(%d) ring create failed\n", r);
@@ -319,7 +319,7 @@ int amdgpu_ring_init(struct amdgpu_device *adev, struct amdgpu_ring *ring,
 
 	ring->max_dw = max_dw;
 	ring->priority = DRM_SCHED_PRIORITY_NORMAL;
-	mutex_init(&ring->priority_mutex);
+	lockinit(&ring->priority_mutex, "agrpm", 0, LK_CANRECURSE);
 	INIT_LIST_HEAD(&ring->lru_list);
 	amdgpu_ring_lru_touch(adev, ring);
 
@@ -356,7 +356,7 @@ void amdgpu_ring_fini(struct amdgpu_ring *ring)
 	amdgpu_device_wb_free(ring->adev, ring->fence_offs);
 
 	amdgpu_bo_free_kernel(&ring->ring_obj,
-			      &ring->gpu_addr,
+			      (u64 *)&ring->gpu_addr,
 			      (void **)&ring->ring);
 
 	amdgpu_debugfs_ring_fini(ring);

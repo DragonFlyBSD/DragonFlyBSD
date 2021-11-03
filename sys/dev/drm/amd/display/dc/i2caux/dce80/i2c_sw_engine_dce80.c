@@ -50,6 +50,7 @@
  * This unit
  */
 
+/* not used
 static const uint32_t ddc_hw_status_addr[] = {
 	mmDC_I2C_DDC1_HW_STATUS,
 	mmDC_I2C_DDC2_HW_STATUS,
@@ -59,6 +60,7 @@ static const uint32_t ddc_hw_status_addr[] = {
 	mmDC_I2C_DDC6_HW_STATUS,
 	mmDC_I2C_DDCVGA_HW_STATUS
 };
+*/
 
 /*
  * @brief

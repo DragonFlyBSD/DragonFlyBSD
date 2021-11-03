@@ -45,6 +45,8 @@
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"
 
+static void drm_events_release(struct drm_file *file_priv);
+
 /* from BKL pushdown */
 DEFINE_MUTEX(drm_global_mutex);
 
@@ -189,6 +191,95 @@ err_undo:
 	return retcode;
 }
 EXPORT_SYMBOL(drm_open);
+
+/*
+ * close() function
+ */
+int
+drm_close(struct dev_close_args *ap)
+{
+#ifdef __DragonFly__
+	struct file *filp = ap->a_fp;
+	struct inode *inode = filp->f_data;	/* A Linux inode is a Unix vnode */
+#endif
+	struct drm_file *file_priv = filp->private_data;
+	struct drm_minor *minor = drm_minor_acquire(iminor(inode));
+	struct drm_device *dev = minor->dev;
+
+	mutex_lock(&drm_global_mutex);
+
+	DRM_DEBUG("open_count = %d\n", dev->open_count);
+
+	mutex_lock(&dev->filelist_mutex);
+	list_del(&file_priv->lhead);
+	mutex_unlock(&dev->filelist_mutex);
+
+	if (drm_core_check_feature(dev, DRIVER_LEGACY) &&
+	    dev->driver->preclose)
+		dev->driver->preclose(dev, file_priv);
+
+	/* ========================================================
+	 * Begin inline drm_release
+	 */
+
+	DRM_DEBUG("pid = %d, device = 0x%p, open_count = %d\n",
+		  curproc->p_pid,
+		  dev,
+		  dev->open_count);
+
+	if (drm_core_check_feature(dev, DRIVER_LEGACY))
+		drm_legacy_lock_release(dev, filp);
+
+	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA))
+		drm_legacy_reclaim_buffers(dev, file_priv);
+
+	drm_events_release(file_priv);
+
+	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
+		drm_fb_release(file_priv);
+		drm_property_destroy_user_blobs(dev, file_priv);
+	}
+
+	if (drm_core_check_feature(dev, DRIVER_SYNCOBJ))
+		drm_syncobj_release(file_priv);
+
+	if (drm_core_check_feature(dev, DRIVER_GEM))
+		drm_gem_release(dev, file_priv);
+
+	drm_legacy_ctxbitmap_flush(dev, file_priv);
+
+	if (drm_is_primary_client(file_priv))
+		drm_master_release(file_priv);
+
+	if (dev->driver->postclose)
+		dev->driver->postclose(dev, file_priv);
+
+	if (drm_core_check_feature(dev, DRIVER_PRIME))
+		drm_prime_destroy_file_private(&file_priv->prime);
+
+	WARN_ON(!list_empty(&file_priv->event_list));
+
+	put_pid(file_priv->pid);
+	kfree(file_priv);
+
+	/* ========================================================
+	 * End inline drm_release
+	 */
+
+	if (!--dev->open_count) {
+		drm_lastclose(dev);
+#if 0	/* XXX: drm_put_dev() not implemented */
+		if (drm_dev_is_unplugged(dev))
+			drm_put_dev(dev);
+#endif
+	}
+	mutex_unlock(&drm_global_mutex);
+
+	drm_minor_release(minor);
+
+	return 0;
+}
+EXPORT_SYMBOL(drm_close);
 
 /*
  * Check whether DRI will run on this CPU.

@@ -533,8 +533,10 @@ static int amdgpu_cs_list_validate(struct amdgpu_cs_parser *p,
 		struct mm_struct *usermm;
 
 		usermm = amdgpu_ttm_tt_get_usermm(bo->tbo.ttm);
+#if 0
 		if (usermm && usermm != current->mm)
 			return -EPERM;
+#endif
 
 		/* Check if we have user pages and nobody bound the BO already */
 		if (amdgpu_ttm_tt_userptr_needs_pages(bo->tbo.ttm) &&
@@ -681,8 +683,8 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 		list_splice(&need_pages, &p->validated);
 	}
 
-	amdgpu_cs_get_threshold_for_moves(p->adev, &p->bytes_moved_threshold,
-					  &p->bytes_moved_vis_threshold);
+	amdgpu_cs_get_threshold_for_moves(p->adev, (u64 *)&p->bytes_moved_threshold,
+					  (u64 *)&p->bytes_moved_vis_threshold);
 	p->bytes_moved = 0;
 	p->bytes_moved_vis = 0;
 	p->evictable = list_last_entry(&p->validated,
@@ -1253,7 +1255,9 @@ static int amdgpu_cs_submit(struct amdgpu_cs_parser *p,
 
 	amdgpu_job_free_resources(job);
 
+#if 0
 	trace_amdgpu_cs_ioctl(job);
+#endif
 	amdgpu_vm_bo_trace_cs(&fpriv->vm, &p->ticket);
 	priority = job->base.s_priority;
 	drm_sched_entity_push_job(&job->base, entity);
@@ -1282,7 +1286,7 @@ int amdgpu_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	union drm_amdgpu_cs *cs = data;
 	struct amdgpu_cs_parser parser = {};
 	bool reserved_buffers = false;
-	int i, r;
+	int r;
 
 	if (!adev->accel_working)
 		return -EBUSY;
@@ -1317,8 +1321,10 @@ int amdgpu_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out;
 	}
 
+#if 0
 	for (i = 0; i < parser.job->num_ibs; i++)
 		trace_amdgpu_cs(&parser, i);
+#endif
 
 	r = amdgpu_cs_ib_vm_chunk(adev, &parser);
 	if (r)

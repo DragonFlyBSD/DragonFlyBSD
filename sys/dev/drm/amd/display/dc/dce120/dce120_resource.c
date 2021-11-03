@@ -362,6 +362,7 @@ static const struct dce110_clk_src_mask cs_mask = {
 		CS_COMMON_MASK_SH_LIST_DCE_112(_MASK)
 };
 
+static
 struct output_pixel_processor *dce120_opp_create(
 	struct dc_context *ctx,
 	uint32_t inst)
@@ -376,6 +377,8 @@ struct output_pixel_processor *dce120_opp_create(
 			     ctx, inst, &opp_regs[inst], &opp_shift, &opp_mask);
 	return &opp->base;
 }
+
+static
 struct aux_engine *dce120_aux_engine_create(
 	struct dc_context *ctx,
 	uint32_t inst)
@@ -408,6 +411,7 @@ static const struct dc_debug_options debug_defaults = {
 		.disable_clock_gate = true,
 };
 
+static
 struct clock_source *dce120_clock_source_create(
 	struct dc_context *ctx,
 	struct dc_bios *bios,
@@ -431,13 +435,14 @@ struct clock_source *dce120_clock_source_create(
 	return NULL;
 }
 
+static
 void dce120_clock_source_destroy(struct clock_source **clk_src)
 {
 	kfree(TO_DCE110_CLK_SRC(*clk_src));
 	*clk_src = NULL;
 }
 
-
+static
 bool dce120_hw_sequencer_create(struct dc *dc)
 {
 	/* All registers used by dce11.2 match those in dce11 in offset and

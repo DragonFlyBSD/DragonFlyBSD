@@ -196,6 +196,7 @@ static int drm_alloc_resource(struct drm_device *dev, int resource)
 	DRM_LOCK(dev);
 	if (res == NULL) {
 		DRM_ERROR("Couldn't find resource 0x%x\n", resource);
+		DRM_UNLOCK(dev);
 		return 1;
 	}
 

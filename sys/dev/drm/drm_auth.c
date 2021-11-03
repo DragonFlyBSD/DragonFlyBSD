@@ -181,8 +181,6 @@ int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 {
 	int ret = 0;
 
-	kprintf("drm_setmaster_ioctl\n");
-
 	mutex_lock(&dev->master_mutex);
 	if (drm_is_current_master(file_priv))
 		goto out_unlock;

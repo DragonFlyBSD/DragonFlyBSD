@@ -47,6 +47,10 @@
 #define MODULE_VERSION(name)
 #endif
 
+#ifndef MODULE_LICENSE
+#define MODULE_LICENSE(name)
+#endif
+
 #define	THIS_MODULE	((struct module *)0)
 
 #define MODULE_FIRMWARE(name)

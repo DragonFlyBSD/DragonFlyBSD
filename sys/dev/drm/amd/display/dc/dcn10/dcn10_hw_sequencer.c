@@ -61,6 +61,7 @@
 #define DTN_INFO_MICRO_SEC(ref_cycle) \
 	print_microsec(dc_ctx, ref_cycle)
 
+static
 void print_microsec(struct dc_context *dc_ctx, uint32_t ref_cycle)
 {
 	const uint32_t ref_clk_mhz = dc_ctx->dc->res_pool->ref_clock_inKhz / 1000;
@@ -86,6 +87,7 @@ static void log_mpc_crc(struct dc *dc)
 		REG_READ(DPP_TOP0_DPP_CRC_VAL_B_A), REG_READ(DPP_TOP0_DPP_CRC_VAL_R_G));
 }
 
+static
 void dcn10_log_hubbub_state(struct dc *dc)
 {
 	struct dc_context *dc_ctx = dc->ctx;
@@ -228,6 +230,7 @@ static void dcn10_log_hubp_states(struct dc *dc)
 	DTN_INFO("\n");
 }
 
+static
 void dcn10_log_hw_state(struct dc *dc)
 {
 	struct dc_context *dc_ctx = dc->ctx;
@@ -1861,6 +1864,7 @@ static uint16_t fixed_point_to_int_frac(
 	return result;
 }
 
+static
 void build_prescale_params(struct  dc_bias_and_scale *bias_and_scale,
 		const struct dc_plane_state *plane_state)
 {

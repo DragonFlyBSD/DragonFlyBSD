@@ -103,7 +103,7 @@ static bool igp_read_bios_from_vram(struct amdgpu_device *adev)
 		return false;
 	}
 
-	adev->bios = kmalloc(size, GFP_KERNEL);
+	adev->bios = kmalloc(size, M_DRM, GFP_KERNEL);
 	if (!adev->bios) {
 		iounmap(bios);
 		return false;
@@ -171,7 +171,7 @@ static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 	/* valid vbios, go on */
 	len = AMD_VBIOS_LENGTH(header);
 	len = ALIGN(len, 4);
-	adev->bios = kmalloc(len, GFP_KERNEL);
+	adev->bios = kmalloc(len, M_DRM, GFP_KERNEL);
 	if (!adev->bios) {
 		DRM_ERROR("no memory to allocate for BIOS\n");
 		return false;
@@ -191,6 +191,8 @@ static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 
 static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 {
+	return false;
+#if 0
 	phys_addr_t rom = adev->pdev->rom;
 	size_t romlen = adev->pdev->romlen;
 	void __iomem *bios;
@@ -220,6 +222,7 @@ static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 free_bios:
 	kfree(adev->bios);
 	return false;
+#endif
 }
 
 #ifdef CONFIG_ACPI
@@ -240,33 +243,33 @@ free_bios:
  * vbios image on PX systems (all asics).
  * Returns the length of the buffer fetched.
  */
-static int amdgpu_atrm_call(acpi_handle atrm_handle, uint8_t *bios,
+static int amdgpu_atrm_call(ACPI_HANDLE atrm_handle, uint8_t *bios,
 			    int offset, int len)
 {
-	acpi_status status;
-	union acpi_object atrm_arg_elements[2], *obj;
-	struct acpi_object_list atrm_arg;
-	struct acpi_buffer buffer = { ACPI_ALLOCATE_BUFFER, NULL};
+	ACPI_STATUS status;
+	ACPI_OBJECT atrm_arg_elements[2], *obj;
+	ACPI_OBJECT_LIST atrm_arg;
+	ACPI_BUFFER buffer = { ACPI_ALLOCATE_BUFFER, NULL};
 
-	atrm_arg.count = 2;
-	atrm_arg.pointer = &atrm_arg_elements[0];
+	atrm_arg.Count = 2;
+	atrm_arg.Pointer = &atrm_arg_elements[0];
 
-	atrm_arg_elements[0].type = ACPI_TYPE_INTEGER;
-	atrm_arg_elements[0].integer.value = offset;
+	atrm_arg_elements[0].Type = ACPI_TYPE_INTEGER;
+	atrm_arg_elements[0].Integer.Value = offset;
 
-	atrm_arg_elements[1].type = ACPI_TYPE_INTEGER;
-	atrm_arg_elements[1].integer.value = len;
+	atrm_arg_elements[1].Type = ACPI_TYPE_INTEGER;
+	atrm_arg_elements[1].Integer.Value = len;
 
-	status = acpi_evaluate_object(atrm_handle, NULL, &atrm_arg, &buffer);
+	status = AcpiEvaluateObject(atrm_handle, NULL, &atrm_arg, &buffer);
 	if (ACPI_FAILURE(status)) {
-		printk("failed to evaluate ATRM got %s\n", acpi_format_exception(status));
+		printk("failed to evaluate ATRM got %s\n", AcpiFormatException(status));
 		return -ENODEV;
 	}
 
-	obj = (union acpi_object *)buffer.pointer;
-	memcpy(bios+offset, obj->buffer.pointer, obj->buffer.length);
-	len = obj->buffer.length;
-	kfree(buffer.pointer);
+	obj = (ACPI_OBJECT *)buffer.Pointer;
+	memcpy(bios+offset, obj->Buffer.Pointer, obj->Buffer.Length);
+	len = obj->Buffer.Length;
+	AcpiOsFree(buffer.Pointer);
 	return len;
 }
 
@@ -275,27 +278,50 @@ static bool amdgpu_atrm_get_bios(struct amdgpu_device *adev)
 	int ret;
 	int size = 256 * 1024;
 	int i;
-	struct pci_dev *pdev = NULL;
-	acpi_handle dhandle, atrm_handle;
-	acpi_status status;
+	device_t dev;
+	ACPI_HANDLE dhandle, atrm_handle;
+	ACPI_STATUS status;
 	bool found = false;
 
 	/* ATRM is for the discrete card only */
 	if (adev->flags & AMD_IS_APU)
 		return false;
 
+#if 0
 	while ((pdev = pci_get_class(PCI_CLASS_DISPLAY_VGA << 8, pdev)) != NULL) {
-		dhandle = ACPI_HANDLE(&pdev->dev);
+#endif
+	if ((dev = pci_find_class(PCIC_DISPLAY, PCIS_DISPLAY_VGA)) != NULL) {
+		DRM_INFO("%s: pci_find_class() found: %d:%d:%d:%d, vendor=%04x, device=%04x\n",
+		    __func__,
+		    pci_get_domain(dev),
+		    pci_get_bus(dev),
+		    pci_get_slot(dev),
+		    pci_get_function(dev),
+		    pci_get_vendor(dev),
+		    pci_get_device(dev));
+		DRM_INFO("%s: Get ACPI device handle\n", __func__);
+		dhandle = acpi_get_handle(dev);
 		if (!dhandle)
-			continue;
+#ifndef __DragonFly__
+ 			continue;
+#else
+			return false;
+#endif
 
-		status = acpi_get_handle(dhandle, "ATRM", &atrm_handle);
+		DRM_INFO("%s: Get ACPI handle for \"ATRM\"\n", __func__);
+		status = AcpiGetHandle(dhandle, "ATRM", &atrm_handle);
 		if (!ACPI_FAILURE(status)) {
 			found = true;
+#if 0
 			break;
+#endif
+		} else {
+			DRM_INFO("%s: Failed to get \"ATRM\" handle: %s\n",
+			    __func__, AcpiFormatException(status));
 		}
 	}
 
+#if 0
 	if (!found) {
 		while ((pdev = pci_get_class(PCI_CLASS_DISPLAY_OTHER << 8, pdev)) != NULL) {
 			dhandle = ACPI_HANDLE(&pdev->dev);
@@ -309,11 +335,12 @@ static bool amdgpu_atrm_get_bios(struct amdgpu_device *adev)
 			}
 		}
 	}
+#endif
 
 	if (!found)
 		return false;
 
-	adev->bios = kmalloc(size, GFP_KERNEL);
+	adev->bios = kmalloc(size, M_DRM, GFP_KERNEL);
 	if (!adev->bios) {
 		DRM_ERROR("Unable to allocate bios\n");
 		return false;
@@ -353,14 +380,21 @@ static bool amdgpu_read_disabled_bios(struct amdgpu_device *adev)
 #ifdef CONFIG_ACPI
 static bool amdgpu_acpi_vfct_bios(struct amdgpu_device *adev)
 {
-	struct acpi_table_header *hdr;
-	acpi_size tbl_size;
+	ACPI_TABLE_HEADER *hdr;
+	ACPI_SIZE tbl_size;
 	UEFI_ACPI_VFCT *vfct;
 	unsigned offset;
+	ACPI_STATUS status;
 
-	if (!ACPI_SUCCESS(acpi_get_table("VFCT", 1, &hdr)))
+#ifndef __DragonFly__
+ 	if (!ACPI_SUCCESS(acpi_get_table_with_size("VFCT", 1, &hdr, &tbl_size)))
+ 		return false;
+#else
+	status = AcpiGetTable("VFCT", 1, &hdr);
+	if (!ACPI_SUCCESS(status))
 		return false;
-	tbl_size = hdr->length;
+#endif
+	tbl_size = hdr->Length;
 	if (tbl_size < sizeof(UEFI_ACPI_VFCT)) {
 		DRM_ERROR("ACPI VFCT table present but broken (too short #1)\n");
 		return false;

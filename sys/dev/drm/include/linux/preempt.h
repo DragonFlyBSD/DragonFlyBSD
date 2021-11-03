@@ -36,4 +36,6 @@
 
 #define in_atomic()	(curthread->td_flags & TDF_NOFAULT)
 
+#define in_task() (curthread->td_pri >= TDPRI_SOFT_NORM)
+
 #endif	/* _LINUX_PREEMPT_H_ */

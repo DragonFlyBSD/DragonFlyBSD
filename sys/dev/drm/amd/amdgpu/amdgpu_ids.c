@@ -69,8 +69,10 @@ int amdgpu_pasid_alloc(unsigned int bits)
 			break;
 	}
 
+#if 0
 	if (pasid >= 0)
 		trace_amdgpu_pasid_allocated(pasid);
+#endif
 
 	return pasid;
 }
@@ -81,7 +83,9 @@ int amdgpu_pasid_alloc(unsigned int bits)
  */
 void amdgpu_pasid_free(unsigned int pasid)
 {
+#if 0
 	trace_amdgpu_pasid_freed(pasid);
+#endif
 	ida_simple_remove(&amdgpu_pasid_ida, pasid);
 }
 
@@ -137,7 +141,7 @@ void amdgpu_pasid_free_delayed(struct reservation_object *resv,
 		fence = &array->base;
 	}
 
-	cb = kmalloc(sizeof(*cb), GFP_KERNEL);
+	cb = kmalloc(sizeof(*cb), M_DRM, GFP_KERNEL);
 	if (!cb) {
 		/* Last resort when we are OOM */
 		dma_fence_wait(fence, false);
@@ -567,7 +571,7 @@ void amdgpu_vmid_mgr_init(struct amdgpu_device *adev)
 		struct amdgpu_vmid_mgr *id_mgr =
 			&adev->vm_manager.id_mgr[i];
 
-		mutex_init(&id_mgr->lock);
+		lockinit(&id_mgr->lock, "agdimgrl", 0, LK_CANRECURSE);
 		INIT_LIST_HEAD(&id_mgr->ids_lru);
 		atomic_set(&id_mgr->reserved_vmid_num, 0);
 

@@ -60,6 +60,8 @@
 #include "gmc/gmc_8_2_sh_mask.h"
 #endif
 
+#include "dce100/dce100_resource.h"
+
 #ifndef mmDP_DPHY_INTERNAL_CTRL
 	#define mmDP_DPHY_INTERNAL_CTRL 0x4aa7
 	#define mmDP0_DP_DPHY_INTERNAL_CTRL 0x4aa7
@@ -553,6 +555,7 @@ static const struct encoder_feature_support link_enc_feature = {
 		.flags.bits.IS_YCBCR_CAPABLE = true
 };
 
+static
 struct link_encoder *dce100_link_encoder_create(
 	const struct encoder_init_data *enc_init_data)
 {
@@ -571,6 +574,7 @@ struct link_encoder *dce100_link_encoder_create(
 	return &enc110->base;
 }
 
+static
 struct output_pixel_processor *dce100_opp_create(
 	struct dc_context *ctx,
 	uint32_t inst)
@@ -586,6 +590,7 @@ struct output_pixel_processor *dce100_opp_create(
 	return &opp->base;
 }
 
+static
 struct aux_engine *dce100_aux_engine_create(
 	struct dc_context *ctx,
 	uint32_t inst)
@@ -603,6 +608,7 @@ struct aux_engine *dce100_aux_engine_create(
 	return &aux_engine->base;
 }
 
+static
 struct clock_source *dce100_clock_source_create(
 	struct dc_context *ctx,
 	struct dc_bios *bios,
@@ -626,6 +632,7 @@ struct clock_source *dce100_clock_source_create(
 	return NULL;
 }
 
+static
 void dce100_clock_source_destroy(struct clock_source **clk_src)
 {
 	kfree(TO_DCE110_CLK_SRC(*clk_src));
@@ -709,6 +716,7 @@ static enum dc_status build_mapped_resource(
 	return DC_OK;
 }
 
+static
 bool dce100_validate_bandwidth(
 	struct dc  *dc,
 	struct dc_state *context)
@@ -753,6 +761,7 @@ static bool dce100_validate_surface_sets(
 	return true;
 }
 
+static
 enum dc_status dce100_validate_global(
 		struct dc  *dc,
 		struct dc_state *context)

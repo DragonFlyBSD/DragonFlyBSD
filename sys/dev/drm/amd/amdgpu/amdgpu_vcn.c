@@ -117,7 +117,7 @@ int amdgpu_vcn_sw_init(struct amdgpu_device *adev)
 		bo_size += AMDGPU_GPU_PAGE_ALIGN(le32_to_cpu(hdr->ucode_size_bytes) + 8);
 	r = amdgpu_bo_create_kernel(adev, bo_size, PAGE_SIZE,
 				    AMDGPU_GEM_DOMAIN_VRAM, &adev->vcn.vcpu_bo,
-				    &adev->vcn.gpu_addr, &adev->vcn.cpu_addr);
+				    (u64 *)&adev->vcn.gpu_addr, &adev->vcn.cpu_addr);
 	if (r) {
 		dev_err(adev->dev, "(%d) failed to allocate vcn bo\n", r);
 		return r;
@@ -133,7 +133,7 @@ int amdgpu_vcn_sw_fini(struct amdgpu_device *adev)
 	kvfree(adev->vcn.saved_bo);
 
 	amdgpu_bo_free_kernel(&adev->vcn.vcpu_bo,
-			      &adev->vcn.gpu_addr,
+			      (u64 *)&adev->vcn.gpu_addr,
 			      (void **)&adev->vcn.cpu_addr);
 
 	amdgpu_ring_fini(&adev->vcn.ring_dec);
@@ -161,7 +161,7 @@ int amdgpu_vcn_suspend(struct amdgpu_device *adev)
 	size = amdgpu_bo_size(adev->vcn.vcpu_bo);
 	ptr = adev->vcn.cpu_addr;
 
-	adev->vcn.saved_bo = kvmalloc(size, GFP_KERNEL);
+	adev->vcn.saved_bo = kmalloc(size, M_DRM, GFP_KERNEL);
 	if (!adev->vcn.saved_bo)
 		return -ENOMEM;
 

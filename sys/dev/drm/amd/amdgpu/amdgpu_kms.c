@@ -60,8 +60,10 @@ void amdgpu_driver_unload_kms(struct drm_device *dev)
 		amdgpu_virt_request_full_gpu(adev, false);
 
 	if (amdgpu_device_is_px(dev)) {
+#if 0
 		pm_runtime_get_sync(dev->dev);
 		pm_runtime_forbid(dev->dev);
+#endif
 	}
 
 	amdgpu_acpi_fini(adev);
@@ -92,13 +94,18 @@ int amdgpu_driver_load_kms(struct drm_device *dev, unsigned long flags)
 		return -ENOMEM;
 	}
 	dev->dev_private = (void *)adev;
+	kprintf("amdgpu_driver_load_kms(): flags=%ld drm_device=%p adev=%p\n",
+		flags, dev, adev);
 
 	if ((amdgpu_runtime_pm != 0) &&
 	    amdgpu_has_atpx() &&
 	    (amdgpu_is_atpx_hybrid() ||
 	     amdgpu_has_atpx_dgpu_power_cntl()) &&
-	    ((flags & AMD_IS_APU) == 0) &&
-	    !pci_is_thunderbolt_attached(dev->pdev))
+	    ((flags & AMD_IS_APU) == 0)
+#if 0
+	    && !pci_is_thunderbolt_attached(dev->pdev)
+#endif
+	    )
 		flags |= AMD_IS_PX;
 
 	/* amdgpu_device_init should report only fatal error
@@ -125,19 +132,27 @@ int amdgpu_driver_load_kms(struct drm_device *dev, unsigned long flags)
 
 	if (amdgpu_device_is_px(dev)) {
 		dev_pm_set_driver_flags(dev->dev, DPM_FLAG_NEVER_SKIP);
+#if 0
 		pm_runtime_use_autosuspend(dev->dev);
 		pm_runtime_set_autosuspend_delay(dev->dev, 5000);
+#endif
 		pm_runtime_set_active(dev->dev);
+#if 0
 		pm_runtime_allow(dev->dev);
+#endif
 		pm_runtime_mark_last_busy(dev->dev);
+#if 0
 		pm_runtime_put_autosuspend(dev->dev);
+#endif
 	}
 
 out:
 	if (r) {
 		/* balance pm_runtime_get_sync in amdgpu_driver_unload_kms */
+#if 0
 		if (adev->rmmio && amdgpu_device_is_px(dev))
 			pm_runtime_put_noidle(dev->dev);
+#endif
 		amdgpu_driver_unload_kms(dev);
 	}
 
@@ -813,7 +828,10 @@ static int amdgpu_info_ioctl(struct drm_device *dev, void *data, struct drm_file
  */
 void amdgpu_driver_lastclose_kms(struct drm_device *dev)
 {
+#if 0
+	// empty function as of 4.19
 	drm_fb_helper_lastclose(dev);
+#endif
 	vga_switcheroo_process_delayed_switch();
 }
 
@@ -837,9 +855,11 @@ int amdgpu_driver_open_kms(struct drm_device *dev, struct drm_file *file_priv)
 
 	file_priv->driver_priv = NULL;
 
+#if 0
 	r = pm_runtime_get_sync(dev->dev);
 	if (r < 0)
 		goto pm_put;
+#endif
 
 	fpriv = kzalloc(sizeof(*fpriv), GFP_KERNEL);
 	if (unlikely(!fpriv)) {
@@ -868,7 +888,7 @@ int amdgpu_driver_open_kms(struct drm_device *dev, struct drm_file *file_priv)
 			goto error_vm;
 	}
 
-	mutex_init(&fpriv->bo_list_lock);
+	lockinit(&fpriv->bo_list_lock, "agfbll", 0, LK_CANRECURSE);
 	idr_init(&fpriv->bo_list_handles);
 
 	amdgpu_ctx_mgr_init(&fpriv->ctx_mgr);
@@ -887,8 +907,10 @@ error_pasid:
 
 out_suspend:
 	pm_runtime_mark_last_busy(dev->dev);
+#if 0
 pm_put:
 	pm_runtime_put_autosuspend(dev->dev);
+#endif
 
 	return r;
 }

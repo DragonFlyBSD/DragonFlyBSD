@@ -288,17 +288,4 @@ void dc_stream_set_static_screen_events(struct dc *dc,
 void dc_stream_set_dither_option(struct dc_stream_state *stream,
 				 enum dc_dither_option option);
 
-
-bool dc_stream_adjust_vmin_vmax(struct dc *dc,
-				struct dc_stream_state **stream,
-				int num_streams,
-				int vmin,
-				int vmax);
-
-bool dc_stream_get_crtc_position(struct dc *dc,
-				 struct dc_stream_state **stream,
-				 int num_streams,
-				 unsigned int *v_pos,
-				 unsigned int *nom_v_pos);
-
 #endif /* DC_STREAM_H_ */

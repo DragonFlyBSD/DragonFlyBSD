@@ -27,7 +27,7 @@
 
 struct amdgpu_vram_mgr {
 	struct drm_mm mm;
-	spinlock_t lock;
+	struct spinlock lock;
 	atomic64_t usage;
 	atomic64_t vis_usage;
 };
@@ -50,7 +50,7 @@ static int amdgpu_vram_mgr_init(struct ttm_mem_type_manager *man,
 		return -ENOMEM;
 
 	drm_mm_init(&mgr->mm, 0, p_size);
-	spin_lock_init(&mgr->lock);
+	spin_init(&mgr->lock, "agvrml");
 	man->priv = mgr;
 	return 0;
 }
@@ -307,7 +307,7 @@ static void amdgpu_vram_mgr_debug(struct ttm_mem_type_manager *man,
 	drm_mm_print(&mgr->mm, printer);
 	spin_unlock(&mgr->lock);
 
-	drm_printf(printer, "man size:%llu pages, ram usage:%lluMB, vis usage:%lluMB\n",
+	drm_printf(printer, "man size:%lu pages, ram usage:%luMB, vis usage:%luMB\n",
 		   man->size, amdgpu_vram_mgr_usage(man) >> 20,
 		   amdgpu_vram_mgr_vis_usage(man) >> 20);
 }

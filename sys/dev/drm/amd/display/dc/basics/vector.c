@@ -50,6 +50,7 @@ bool dal_vector_construct(
 	return true;
 }
 
+static
 bool dal_vector_presized_costruct(
 	struct vector *vector,
 	struct dc_context *ctx,
@@ -290,7 +291,7 @@ bool dal_vector_reserve(struct vector *vector, uint32_t capacity)
 		return true;
 
 	new_container = krealloc(vector->container,
-				 capacity * vector->struct_size, GFP_KERNEL);
+				 capacity * vector->struct_size, M_DRM, GFP_KERNEL);
 
 	if (new_container) {
 		vector->container = new_container;

@@ -42,12 +42,16 @@
 #include <linux/swap.h>
 #include <linux/pagemap.h>
 #include <linux/debugfs.h>
+#if 0
 #include <linux/iommu.h>
+#endif
 #include "amdgpu.h"
 #include "amdgpu_object.h"
 #include "amdgpu_trace.h"
 #include "amdgpu_amdkfd.h"
 #include "bif/bif_4_1_d.h"
+
+#include <linux/pfn_t.h>
 
 #define DRM_FILE_PAGE_OFFSET (0x100000000ULL >> PAGE_SHIFT)
 
@@ -132,7 +136,7 @@ static int amdgpu_ttm_global_init(struct amdgpu_device *adev)
 		goto error_bo;
 	}
 
-	mutex_init(&adev->mman.gtt_window_lock);
+	lockinit(&adev->mman.gtt_window_lock, "agmgtwl", 0, LK_CANRECURSE);
 
 	adev->mman.mem_global_referenced = true;
 
@@ -789,7 +793,7 @@ struct amdgpu_ttm_tt {
 	uint64_t		userptr;
 	struct task_struct	*usertask;
 	uint32_t		userflags;
-	spinlock_t              guptasklock;
+	struct spinlock		guptasklock;
 	struct list_head        guptasks;
 	atomic_t		mmu_invalidations;
 	uint32_t		last_set_pages;
@@ -819,6 +823,7 @@ int amdgpu_ttm_tt_get_user_pages(struct ttm_tt *ttm, struct page **pages)
 
 	down_read(&mm->mmap_sem);
 
+#if 0
 	if (gtt->userflags & AMDGPU_GEM_USERPTR_ANONONLY) {
 		/*
 		 * check that we only use anonymous memory to prevent problems
@@ -833,6 +838,7 @@ int amdgpu_ttm_tt_get_user_pages(struct ttm_tt *ttm, struct page **pages)
 			return -EPERM;
 		}
 	}
+#endif
 
 	/* loop enough times using contiguous pages of memory */
 	do {
@@ -846,12 +852,16 @@ int amdgpu_ttm_tt_get_user_pages(struct ttm_tt *ttm, struct page **pages)
 		list_add(&guptask.list, &gtt->guptasks);
 		spin_unlock(&gtt->guptasklock);
 
+		r = get_user_pages(userptr, num_pages, flags, p, NULL);
+
+#if 0
 		if (mm == current->mm)
 			r = get_user_pages(userptr, num_pages, flags, p, NULL);
 		else
 			r = get_user_pages_remote(gtt->usertask,
 					mm, userptr, num_pages,
 					flags, p, NULL, NULL);
+#endif
 
 		spin_lock(&gtt->guptasklock);
 		list_del(&guptask.list);
@@ -983,6 +993,9 @@ static void amdgpu_ttm_tt_unpin_userptr(struct ttm_tt *ttm)
 	sg_free_table(ttm->sg);
 }
 
+int amdgpu_ttm_gart_bind(struct amdgpu_device *adev,
+				struct ttm_buffer_object *tbo,
+				uint64_t flags);
 int amdgpu_ttm_gart_bind(struct amdgpu_device *adev,
 				struct ttm_buffer_object *tbo,
 				uint64_t flags)
@@ -1322,10 +1335,13 @@ int amdgpu_ttm_tt_set_userptr(struct ttm_tt *ttm, uint64_t addr,
 
 	if (gtt->usertask)
 		put_task_struct(gtt->usertask);
+kprintf("amdgpu_ttm_tt_set_userptr: gtt->usertask will not be set\n");
+#if 0
 	gtt->usertask = current->group_leader;
 	get_task_struct(gtt->usertask);
+#endif
 
-	spin_lock_init(&gtt->guptasklock);
+	spin_init(&gtt->guptasklock, "agttgutl");
 	INIT_LIST_HEAD(&gtt->guptasks);
 	atomic_set(&gtt->mmu_invalidations, 0);
 	gtt->last_set_pages = 0;
@@ -1725,13 +1741,17 @@ int amdgpu_ttm_init(struct amdgpu_device *adev)
 	r = ttm_bo_device_init(&adev->mman.bdev,
 			       adev->mman.bo_global_ref.ref.object,
 			       &amdgpu_bo_driver,
+#if 0
 			       adev->ddev->anon_inode->i_mapping,
+#endif
+			       NULL,
 			       DRM_FILE_PAGE_OFFSET,
 			       adev->need_dma32);
 	if (r) {
 		DRM_ERROR("failed initializing buffer object driver(%d).\n", r);
 		return r;
 	}
+	adev->ddev->drm_ttm_bdev = &adev->mman.bdev;
 	adev->mman.initialized = true;
 
 	/* We opt to avoid OOM on system pages allocations */

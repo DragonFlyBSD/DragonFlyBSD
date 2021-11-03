@@ -52,7 +52,7 @@
 #elif DRM_DEBUG_DEFAULT_ON == 2
 #define DRM_DEBUGBITS_ON (DRM_UT_CORE | DRM_UT_DRIVER | DRM_UT_KMS |	\
 			  DRM_UT_PRIME| DRM_UT_ATOMIC | DRM_UT_FIOCTL |	\
-			  DRM_UT_PID  | DRM_UT_IOCTL  | DRM_UT_VBLANK)
+			  DRM_UT_PID  | DRM_UT_IOCTL  )
 #else
 #define DRM_DEBUGBITS_ON (0x0)
 #endif
@@ -1216,14 +1216,6 @@ drm_create_cdevs(device_t kdev)
 #endif
 
 devclass_t drm_devclass;
-
-/*
- * Stub is needed for devfs
- */
-int drm_close(struct dev_close_args *ap)
-{
-	return 0;
-}
 
 /* XXX: this is supposed to be drm_release() */
 void drm_cdevpriv_dtor(void *cd)

@@ -58,6 +58,8 @@ uint32_t generic_reg_update_ex(const struct dc_context *ctx,
 }
 
 uint32_t generic_reg_get(const struct dc_context *ctx, uint32_t addr,
+		uint8_t shift, uint32_t mask, uint32_t *field_value);
+uint32_t generic_reg_get(const struct dc_context *ctx, uint32_t addr,
 		uint8_t shift, uint32_t mask, uint32_t *field_value)
 {
 	uint32_t reg_val = dm_read_reg(ctx, addr);
@@ -65,6 +67,9 @@ uint32_t generic_reg_get(const struct dc_context *ctx, uint32_t addr,
 	return reg_val;
 }
 
+uint32_t generic_reg_get2(const struct dc_context *ctx, uint32_t addr,
+		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
+		uint8_t shift2, uint32_t mask2, uint32_t *field_value2);
 uint32_t generic_reg_get2(const struct dc_context *ctx, uint32_t addr,
 		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
 		uint8_t shift2, uint32_t mask2, uint32_t *field_value2)
@@ -78,6 +83,10 @@ uint32_t generic_reg_get2(const struct dc_context *ctx, uint32_t addr,
 uint32_t generic_reg_get3(const struct dc_context *ctx, uint32_t addr,
 		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
 		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
+		uint8_t shift3, uint32_t mask3, uint32_t *field_value3);
+uint32_t generic_reg_get3(const struct dc_context *ctx, uint32_t addr,
+		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
+		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
 		uint8_t shift3, uint32_t mask3, uint32_t *field_value3)
 {
 	uint32_t reg_val = dm_read_reg(ctx, addr);
@@ -87,6 +96,11 @@ uint32_t generic_reg_get3(const struct dc_context *ctx, uint32_t addr,
 	return reg_val;
 }
 
+uint32_t generic_reg_get4(const struct dc_context *ctx, uint32_t addr,
+		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
+		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
+		uint8_t shift3, uint32_t mask3, uint32_t *field_value3,
+		uint8_t shift4, uint32_t mask4, uint32_t *field_value4);
 uint32_t generic_reg_get4(const struct dc_context *ctx, uint32_t addr,
 		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
 		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
@@ -106,6 +120,12 @@ uint32_t generic_reg_get5(const struct dc_context *ctx, uint32_t addr,
 		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
 		uint8_t shift3, uint32_t mask3, uint32_t *field_value3,
 		uint8_t shift4, uint32_t mask4, uint32_t *field_value4,
+		uint8_t shift5, uint32_t mask5, uint32_t *field_value5);
+uint32_t generic_reg_get5(const struct dc_context *ctx, uint32_t addr,
+		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
+		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
+		uint8_t shift3, uint32_t mask3, uint32_t *field_value3,
+		uint8_t shift4, uint32_t mask4, uint32_t *field_value4,
 		uint8_t shift5, uint32_t mask5, uint32_t *field_value5)
 {
 	uint32_t reg_val = dm_read_reg(ctx, addr);
@@ -117,6 +137,13 @@ uint32_t generic_reg_get5(const struct dc_context *ctx, uint32_t addr,
 	return reg_val;
 }
 
+uint32_t generic_reg_get6(const struct dc_context *ctx, uint32_t addr,
+		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
+		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
+		uint8_t shift3, uint32_t mask3, uint32_t *field_value3,
+		uint8_t shift4, uint32_t mask4, uint32_t *field_value4,
+		uint8_t shift5, uint32_t mask5, uint32_t *field_value5,
+		uint8_t shift6, uint32_t mask6, uint32_t *field_value6);
 uint32_t generic_reg_get6(const struct dc_context *ctx, uint32_t addr,
 		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
 		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
@@ -142,6 +169,14 @@ uint32_t generic_reg_get7(const struct dc_context *ctx, uint32_t addr,
 		uint8_t shift4, uint32_t mask4, uint32_t *field_value4,
 		uint8_t shift5, uint32_t mask5, uint32_t *field_value5,
 		uint8_t shift6, uint32_t mask6, uint32_t *field_value6,
+		uint8_t shift7, uint32_t mask7, uint32_t *field_value7);
+uint32_t generic_reg_get7(const struct dc_context *ctx, uint32_t addr,
+		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
+		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
+		uint8_t shift3, uint32_t mask3, uint32_t *field_value3,
+		uint8_t shift4, uint32_t mask4, uint32_t *field_value4,
+		uint8_t shift5, uint32_t mask5, uint32_t *field_value5,
+		uint8_t shift6, uint32_t mask6, uint32_t *field_value6,
 		uint8_t shift7, uint32_t mask7, uint32_t *field_value7)
 {
 	uint32_t reg_val = dm_read_reg(ctx, addr);
@@ -155,6 +190,15 @@ uint32_t generic_reg_get7(const struct dc_context *ctx, uint32_t addr,
 	return reg_val;
 }
 
+uint32_t generic_reg_get8(const struct dc_context *ctx, uint32_t addr,
+		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
+		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
+		uint8_t shift3, uint32_t mask3, uint32_t *field_value3,
+		uint8_t shift4, uint32_t mask4, uint32_t *field_value4,
+		uint8_t shift5, uint32_t mask5, uint32_t *field_value5,
+		uint8_t shift6, uint32_t mask6, uint32_t *field_value6,
+		uint8_t shift7, uint32_t mask7, uint32_t *field_value7,
+		uint8_t shift8, uint32_t mask8, uint32_t *field_value8);
 uint32_t generic_reg_get8(const struct dc_context *ctx, uint32_t addr,
 		uint8_t shift1, uint32_t mask1, uint32_t *field_value1,
 		uint8_t shift2, uint32_t mask2, uint32_t *field_value2,
@@ -213,7 +257,7 @@ uint32_t generic_reg_wait(const struct dc_context *ctx,
 	const char *func_name, int line)
 {
 	uint32_t field_value;
-	uint32_t reg_val;
+	uint32_t reg_val = 0;
 	int i;
 
 	/* something is terribly wrong if time out is > 200ms. (5Hz) */
@@ -258,12 +302,18 @@ uint32_t generic_reg_wait(const struct dc_context *ctx,
 
 void generic_write_indirect_reg(const struct dc_context *ctx,
 		uint32_t addr_index, uint32_t addr_data,
+		uint32_t index, uint32_t data);
+void generic_write_indirect_reg(const struct dc_context *ctx,
+		uint32_t addr_index, uint32_t addr_data,
 		uint32_t index, uint32_t data)
 {
 	dm_write_reg(ctx, addr_index, index);
 	dm_write_reg(ctx, addr_data, data);
 }
 
+uint32_t generic_read_indirect_reg(const struct dc_context *ctx,
+		uint32_t addr_index, uint32_t addr_data,
+		uint32_t index);
 uint32_t generic_read_indirect_reg(const struct dc_context *ctx,
 		uint32_t addr_index, uint32_t addr_data,
 		uint32_t index)
@@ -276,7 +326,11 @@ uint32_t generic_read_indirect_reg(const struct dc_context *ctx,
 	return value;
 }
 
-
+uint32_t generic_indirect_reg_update_ex(const struct dc_context *ctx,
+		uint32_t addr_index, uint32_t addr_data,
+		uint32_t index, uint32_t reg_val, int n,
+		uint8_t shift1, uint32_t mask1, uint32_t field_value1,
+		...);
 uint32_t generic_indirect_reg_update_ex(const struct dc_context *ctx,
 		uint32_t addr_index, uint32_t addr_data,
 		uint32_t index, uint32_t reg_val, int n,

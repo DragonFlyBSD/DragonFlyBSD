@@ -1908,7 +1908,7 @@ static int dce_v11_0_crtc_do_set_base(struct drm_crtc *crtc,
 	}
 	fb_location = amdgpu_bo_gpu_offset(abo);
 
-	amdgpu_bo_get_tiling_flags(abo, &tiling_flags);
+	amdgpu_bo_get_tiling_flags(abo, (u64 *)&tiling_flags);
 	amdgpu_bo_unreserve(abo);
 
 	pipe_config = AMDGPU_TILING_GET(tiling_flags, PIPE_CONFIG);

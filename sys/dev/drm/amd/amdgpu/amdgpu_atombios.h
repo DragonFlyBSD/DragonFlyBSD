@@ -207,11 +207,6 @@ int amdgpu_atombios_get_leakage_vddc_based_on_leakage_idx(struct amdgpu_device *
 						      u16 leakage_idx);
 void amdgpu_atombios_get_default_voltages(struct amdgpu_device *adev,
 					  u16 *vddc, u16 *vddci, u16 *mvdd);
-int amdgpu_atombios_get_clock_dividers(struct amdgpu_device *adev,
-				       u8 clock_type,
-				       u32 clock,
-				       bool strobe_mode,
-				       struct atom_clock_dividers *dividers);
 int amdgpu_atombios_get_svi2_info(struct amdgpu_device *adev,
 			      u8 voltage_type,
 			      u8 *svd_gpio_id, u8 *svc_gpio_id);

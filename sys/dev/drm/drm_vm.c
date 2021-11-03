@@ -41,19 +41,24 @@
 
 #include <sys/mutex2.h>
 
-int drm_mmap(struct dev_mmap_args *ap)
+int
+drm_mmap(struct dev_mmap_args *ap)
 {
 	struct file *filp = ap->a_fp;
-	struct drm_file *priv = filp->private_data;
+	struct drm_file *priv;
 	struct cdev *kdev = ap->a_head.a_dev;
 	vm_offset_t offset = ap->a_offset;
 	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	struct drm_local_map *map = NULL;
 	struct drm_hash_item *hash;
-
 	enum drm_map_type type;
 	vm_paddr_t phys;
 
+	/*
+	 * NOTE: If ddev->drm_ttm_bdev is not setup properly, this path
+	 *	 may be hit with a NULL filp and panic.
+	 */
+	priv = filp->private_data;
 	if (!priv->authenticated)
 		return -EACCES;
 
@@ -85,6 +90,7 @@ int drm_mmap(struct dev_mmap_args *ap)
 
 	if (drm_ht_find_item(&dev->map_hash, offset, &hash)) {
 		DRM_ERROR("Could not find map\n");
+		DRM_UNLOCK(dev);
 		return -EINVAL;
 	}
 

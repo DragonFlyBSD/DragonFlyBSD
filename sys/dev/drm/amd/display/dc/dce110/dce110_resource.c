@@ -604,6 +604,7 @@ static struct output_pixel_processor *dce110_opp_create(
 	return &opp->base;
 }
 
+static
 struct aux_engine *dce110_aux_engine_create(
 	struct dc_context *ctx,
 	uint32_t inst)
@@ -621,6 +622,7 @@ struct aux_engine *dce110_aux_engine_create(
 	return &aux_engine->base;
 }
 
+static
 struct clock_source *dce110_clock_source_create(
 	struct dc_context *ctx,
 	struct dc_bios *bios,
@@ -644,6 +646,7 @@ struct clock_source *dce110_clock_source_create(
 	return NULL;
 }
 
+static
 void dce110_clock_source_destroy(struct clock_source **clk_src)
 {
 	struct dce110_clk_src *dce110_clk_src;
@@ -876,6 +879,7 @@ static bool dce110_validate_bandwidth(
 	return result;
 }
 
+static
 enum dc_status dce110_validate_plane(const struct dc_plane_state *plane_state,
 				     struct dc_caps *caps)
 {
@@ -931,6 +935,7 @@ static bool dce110_validate_surface_sets(
 	return true;
 }
 
+static
 enum dc_status dce110_validate_global(
 		struct dc *dc,
 		struct dc_state *context)
@@ -1135,6 +1140,7 @@ static void bw_calcs_data_update_from_pplib(struct dc *dc)
 		1000);
 }
 
+static
 const struct resource_caps *dce110_resource_cap(
 	struct hw_asic_id *asic_id)
 {

@@ -71,4 +71,7 @@ bool dal_hw_factory_init(
 	enum dce_version dce_version,
 	enum dce_environment dce_environment);
 
+void dal_hw_factory_destroy(
+	struct dc_context *ctx,
+	struct hw_factory **factory);
 #endif

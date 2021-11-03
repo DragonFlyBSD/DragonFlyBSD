@@ -163,7 +163,7 @@ static int psp_tmr_init(struct psp_context *psp)
 	 */
 	ret = amdgpu_bo_create_kernel(psp->adev, 0x300000, 0x100000,
 				      AMDGPU_GEM_DOMAIN_VRAM,
-				      &psp->tmr_bo, &psp->tmr_mc_addr, &psp->tmr_buf);
+				      &psp->tmr_bo, (u64 *)&psp->tmr_mc_addr, &psp->tmr_buf);
 
 	return ret;
 }
@@ -218,7 +218,7 @@ static int psp_asd_init(struct psp_context *psp)
 	ret = amdgpu_bo_create_kernel(psp->adev, PSP_ASD_SHARED_MEM_SIZE,
 				      PAGE_SIZE, AMDGPU_GEM_DOMAIN_VRAM,
 				      &psp->asd_shared_bo,
-				      &psp->asd_shared_mc_addr,
+				      (u64 *)&psp->asd_shared_mc_addr,
 				      &psp->asd_shared_buf);
 
 	return ret;
@@ -339,7 +339,7 @@ static int psp_load_fw(struct amdgpu_device *adev)
 	ret = amdgpu_bo_create_kernel(adev, PSP_1_MEG, PSP_1_MEG,
 					AMDGPU_GEM_DOMAIN_GTT,
 					&psp->fw_pri_bo,
-					&psp->fw_pri_mc_addr,
+					(u64 *)&psp->fw_pri_mc_addr,
 					&psp->fw_pri_buf);
 	if (ret)
 		goto failed;
@@ -347,14 +347,14 @@ static int psp_load_fw(struct amdgpu_device *adev)
 	ret = amdgpu_bo_create_kernel(adev, PSP_FENCE_BUFFER_SIZE, PAGE_SIZE,
 					AMDGPU_GEM_DOMAIN_VRAM,
 					&psp->fence_buf_bo,
-					&psp->fence_buf_mc_addr,
+					(u64 *)&psp->fence_buf_mc_addr,
 					&psp->fence_buf);
 	if (ret)
 		goto failed_mem2;
 
 	ret = amdgpu_bo_create_kernel(adev, PSP_CMD_BUFFER_SIZE, PAGE_SIZE,
 				      AMDGPU_GEM_DOMAIN_VRAM,
-				      &psp->cmd_buf_bo, &psp->cmd_buf_mc_addr,
+				      &psp->cmd_buf_bo, (u64 *)&psp->cmd_buf_mc_addr,
 				      (void **)&psp->cmd_buf_mem);
 	if (ret)
 		goto failed_mem1;
@@ -386,14 +386,14 @@ skip_memalloc:
 
 failed_mem:
 	amdgpu_bo_free_kernel(&psp->cmd_buf_bo,
-			      &psp->cmd_buf_mc_addr,
+			      (u64 *)&psp->cmd_buf_mc_addr,
 			      (void **)&psp->cmd_buf_mem);
 failed_mem1:
 	amdgpu_bo_free_kernel(&psp->fence_buf_bo,
-			      &psp->fence_buf_mc_addr, &psp->fence_buf);
+			      (u64 *)&psp->fence_buf_mc_addr, &psp->fence_buf);
 failed_mem2:
 	amdgpu_bo_free_kernel(&psp->fw_pri_bo,
-			      &psp->fw_pri_mc_addr, &psp->fw_pri_buf);
+			      (u64 *)&psp->fw_pri_mc_addr, &psp->fw_pri_buf);
 failed:
 	kfree(psp->cmd);
 	psp->cmd = NULL;
@@ -445,14 +445,14 @@ static int psp_hw_fini(void *handle)
 
 	psp_ring_destroy(psp, PSP_RING_TYPE__KM);
 
-	amdgpu_bo_free_kernel(&psp->tmr_bo, &psp->tmr_mc_addr, &psp->tmr_buf);
+	amdgpu_bo_free_kernel(&psp->tmr_bo, (u64 *)&psp->tmr_mc_addr, &psp->tmr_buf);
 	amdgpu_bo_free_kernel(&psp->fw_pri_bo,
-			      &psp->fw_pri_mc_addr, &psp->fw_pri_buf);
+			      (u64 *)&psp->fw_pri_mc_addr, &psp->fw_pri_buf);
 	amdgpu_bo_free_kernel(&psp->fence_buf_bo,
-			      &psp->fence_buf_mc_addr, &psp->fence_buf);
-	amdgpu_bo_free_kernel(&psp->asd_shared_bo, &psp->asd_shared_mc_addr,
+			      (u64 *)&psp->fence_buf_mc_addr, &psp->fence_buf);
+	amdgpu_bo_free_kernel(&psp->asd_shared_bo, (u64 *)&psp->asd_shared_mc_addr,
 			      &psp->asd_shared_buf);
-	amdgpu_bo_free_kernel(&psp->cmd_buf_bo, &psp->cmd_buf_mc_addr,
+	amdgpu_bo_free_kernel(&psp->cmd_buf_bo, (u64 *)&psp->cmd_buf_mc_addr,
 			      (void **)&psp->cmd_buf_mem);
 
 	kfree(psp->cmd);

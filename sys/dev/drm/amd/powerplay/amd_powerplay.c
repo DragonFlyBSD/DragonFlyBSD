@@ -50,7 +50,7 @@ static int amd_powerplay_create(struct amdgpu_device *adev)
 	hwmgr->not_vf = !amdgpu_sriov_vf(adev);
 	hwmgr->pm_en = (amdgpu_dpm && hwmgr->not_vf) ? true : false;
 	hwmgr->device = amdgpu_cgs_create_device(adev);
-	mutex_init(&hwmgr->smu_lock);
+	lockinit(&hwmgr->smu_lock, "adhwmgrsmul", 0, LK_CANRECURSE);
 	hwmgr->chip_family = adev->family;
 	hwmgr->chip_id = adev->asic_type;
 	hwmgr->feature_mask = adev->powerplay.pp_feature;
@@ -155,7 +155,7 @@ static void pp_reserve_vram_for_smu(struct amdgpu_device *adev)
 	if (amdgpu_bo_create_kernel(adev, adev->pm.smu_prv_buffer_size,
 						PAGE_SIZE, AMDGPU_GEM_DOMAIN_GTT,
 						&adev->pm.smu_prv_buffer,
-						&gpu_addr,
+						(u64 *)&gpu_addr,
 						&cpu_ptr)) {
 		DRM_ERROR("amdgpu: failed to create smu prv buffer\n");
 		return;

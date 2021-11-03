@@ -114,7 +114,7 @@ static int uvd_v5_0_sw_init(void *handle)
 		return r;
 
 	ring = &adev->uvd.inst->ring;
-	sprintf(ring->name, "uvd");
+	ksprintf(ring->name, "uvd");
 	r = amdgpu_ring_init(adev, ring, 512, &adev->uvd.inst->irq, 0);
 	if (r)
 		return r;
@@ -462,7 +462,7 @@ static void uvd_v5_0_stop(struct amdgpu_device *adev)
  *
  * Write a fence and a trap command to the ring.
  */
-static void uvd_v5_0_ring_emit_fence(struct amdgpu_ring *ring, u64 addr, u64 seq,
+static void uvd_v5_0_ring_emit_fence(struct amdgpu_ring *ring, uint64_t addr, uint64_t seq,
 				     unsigned flags)
 {
 	WARN_ON(flags & AMDGPU_FENCE_FLAG_64BIT);

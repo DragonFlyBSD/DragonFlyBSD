@@ -128,4 +128,6 @@ print_hex_dump(const char *level, const char *prefix_str, int prefix_type,
 	hexdump(buf, len, prefix_str, flags);
 }
 
+#define printk_ratelimit()	1
+
 #endif	/* _LINUX_PRINTK_H_ */

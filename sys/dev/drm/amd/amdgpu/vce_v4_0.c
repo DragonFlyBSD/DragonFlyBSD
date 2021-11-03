@@ -439,7 +439,7 @@ static int vce_v4_0_sw_init(void *handle)
 		const struct common_firmware_header *hdr;
 		unsigned size = amdgpu_bo_size(adev->vce.vcpu_bo);
 
-		adev->vce.saved_bo = kvmalloc(size, GFP_KERNEL);
+		adev->vce.saved_bo = kmalloc(size, M_DRM, GFP_KERNEL);
 		if (!adev->vce.saved_bo)
 			return -ENOMEM;
 
@@ -457,7 +457,7 @@ static int vce_v4_0_sw_init(void *handle)
 
 	for (i = 0; i < adev->vce.num_rings; i++) {
 		ring = &adev->vce.ring[i];
-		sprintf(ring->name, "vce%d", i);
+		ksprintf(ring->name, "vce%d", i);
 		if (amdgpu_sriov_vf(adev)) {
 			/* DOORBELL only works under SRIOV */
 			ring->use_doorbell = true;
@@ -956,8 +956,8 @@ static void vce_v4_0_ring_emit_ib(struct amdgpu_ring *ring,
 	amdgpu_ring_write(ring, ib->length_dw);
 }
 
-static void vce_v4_0_ring_emit_fence(struct amdgpu_ring *ring, u64 addr,
-			u64 seq, unsigned flags)
+static void vce_v4_0_ring_emit_fence(struct amdgpu_ring *ring, uint64_t addr,
+			uint64_t seq, unsigned flags)
 {
 	WARN_ON(flags & AMDGPU_FENCE_FLAG_64BIT);
 

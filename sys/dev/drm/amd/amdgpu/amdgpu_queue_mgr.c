@@ -35,7 +35,7 @@ static int amdgpu_queue_mapper_init(struct amdgpu_queue_mapper *mapper,
 		return -EINVAL;
 
 	mapper->hw_ip = hw_ip;
-	mutex_init(&mapper->lock);
+	lockinit(&mapper->lock, "aqml", 0, LK_CANRECURSE);
 
 	memset(mapper->queue_map, 0, sizeof(mapper->queue_map));
 

@@ -146,7 +146,7 @@ void amdgpu_atombios_i2c_init(struct amdgpu_device *adev)
 			i2c = amdgpu_atombios_get_bus_rec_for_i2c_gpio(gpio);
 
 			if (i2c.valid) {
-				sprintf(stmp, "0x%x", i2c.i2c_id);
+				ksprintf(stmp, "0x%x", i2c.i2c_id);
 				adev->i2c_bus[i] = amdgpu_i2c_create(adev->ddev, &i2c, stmp);
 			}
 			gpio = (ATOM_GPIO_I2C_ASSIGMENT *)
@@ -1938,6 +1938,7 @@ static uint32_t cail_ioreg_read(struct card_info *info, uint32_t reg)
 	return r;
 }
 
+#if 0
 static ssize_t amdgpu_atombios_get_vbios_version(struct device *dev,
 						 struct device_attribute *attr,
 						 char *buf)
@@ -1951,6 +1952,7 @@ static ssize_t amdgpu_atombios_get_vbios_version(struct device *dev,
 
 static DEVICE_ATTR(vbios_version, 0444, amdgpu_atombios_get_vbios_version,
 		   NULL);
+#endif
 
 /**
  * amdgpu_atombios_fini - free the driver info and callbacks for atombios
@@ -1971,7 +1973,9 @@ void amdgpu_atombios_fini(struct amdgpu_device *adev)
 	adev->mode_info.atom_context = NULL;
 	kfree(adev->mode_info.atom_card_info);
 	adev->mode_info.atom_card_info = NULL;
+#if 0
 	device_remove_file(adev->dev, &dev_attr_vbios_version);
+#endif
 }
 
 /**
@@ -1988,7 +1992,9 @@ int amdgpu_atombios_init(struct amdgpu_device *adev)
 {
 	struct card_info *atom_card_info =
 	    kzalloc(sizeof(struct card_info), GFP_KERNEL);
+#if 0
 	int ret;
+#endif
 
 	if (!atom_card_info)
 		return -ENOMEM;
@@ -2017,7 +2023,7 @@ int amdgpu_atombios_init(struct amdgpu_device *adev)
 		return -ENOMEM;
 	}
 
-	mutex_init(&adev->mode_info.atom_context->mutex);
+	lockinit(&adev->mode_info.atom_context->mutex, "agmiacm", 0, LK_CANRECURSE);
 	if (adev->is_atom_fw) {
 		amdgpu_atomfirmware_scratch_regs_init(adev);
 		amdgpu_atomfirmware_allocate_fb_scratch(adev);
@@ -2026,11 +2032,13 @@ int amdgpu_atombios_init(struct amdgpu_device *adev)
 		amdgpu_atombios_allocate_fb_scratch(adev);
 	}
 
+#if 0
 	ret = device_create_file(adev->dev, &dev_attr_vbios_version);
 	if (ret) {
 		DRM_ERROR("Failed to create device file for VBIOS version\n");
 		return ret;
 	}
+#endif
 
 	return 0;
 }

@@ -85,7 +85,7 @@ struct amdgpu_mn {
 	/* objects protected by lock */
 	struct rw_semaphore	lock;
 	struct rb_root_cached	objects;
-	struct mutex		read_lock;
+	struct lock		read_lock;
 	atomic_t		recursion;
 };
 

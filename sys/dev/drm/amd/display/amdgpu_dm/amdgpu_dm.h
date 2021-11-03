@@ -170,7 +170,7 @@ struct amdgpu_dm_connector {
 	/*freesync caps*/
 	struct mod_freesync_caps caps;
 
-	struct mutex hpd_lock;
+	struct lock hpd_lock;
 
 	bool fake_enable;
 };

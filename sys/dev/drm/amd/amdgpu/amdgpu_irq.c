@@ -205,17 +205,23 @@ int amdgpu_irq_init(struct amdgpu_device *adev)
 {
 	int r = 0;
 
-	spin_lock_init(&adev->irq.lock);
+	lockinit(&adev->irq.lock, "agail", 0, LK_CANRECURSE);
 
 	/* Enable MSI if not disabled by module parameter */
-	adev->irq.msi_enabled = false;
+#ifndef __DragonFly__
+ 	adev->irq.msi_enabled = false;
+#else
+	adev->irq.msi_enabled = (adev->ddev->pdev->_irq_type == PCI_INTR_TYPE_MSI);
+#endif
 
 	if (amdgpu_msi_ok(adev)) {
+#ifndef __DragonFly__
 		int ret = pci_enable_msi(adev->pdev);
 		if (!ret) {
 			adev->irq.msi_enabled = true;
 			dev_dbg(adev->dev, "amdgpu: using MSI.\n");
 		}
+#endif
 	}
 
 	if (!amdgpu_device_has_dc_support(adev)) {
@@ -266,8 +272,10 @@ void amdgpu_irq_fini(struct amdgpu_device *adev)
 	if (adev->irq.installed) {
 		drm_irq_uninstall(adev->ddev);
 		adev->irq.installed = false;
+#ifndef __DragonFly__
 		if (adev->irq.msi_enabled)
 			pci_disable_msi(adev->pdev);
+#endif
 		if (!amdgpu_device_has_dc_support(adev))
 			flush_work(&adev->hotplug_work);
 		cancel_work_sync(&adev->reset_work);
@@ -365,7 +373,9 @@ void amdgpu_irq_dispatch(struct amdgpu_device *adev,
 	struct amdgpu_irq_src *src;
 	int r;
 
+#if 0
 	trace_amdgpu_iv(entry);
+#endif
 
 	if (client_id >= AMDGPU_IH_CLIENTID_MAX) {
 		DRM_DEBUG("Invalid client_id in IV: %d\n", client_id);
@@ -378,7 +388,9 @@ void amdgpu_irq_dispatch(struct amdgpu_device *adev,
 	}
 
 	if (adev->irq.virq[src_id]) {
+#if 0
 		generic_handle_irq(irq_find_mapping(adev->irq.domain, src_id));
+#endif
 	} else {
 		if (!adev->irq.client[client_id].sources) {
 			DRM_DEBUG("Unregistered interrupt client_id: %d src_id: %d\n",
@@ -543,6 +555,7 @@ bool amdgpu_irq_enabled(struct amdgpu_device *adev, struct amdgpu_irq_src *src,
 	return !!atomic_read(&src->enabled_types[type]);
 }
 
+#if 0
 /* XXX: Generic IRQ handling */
 static void amdgpu_irq_mask(struct irq_data *irqd)
 {
@@ -589,6 +602,7 @@ static int amdgpu_irqdomain_map(struct irq_domain *d,
 static const struct irq_domain_ops amdgpu_hw_irqdomain_ops = {
 	.map = amdgpu_irqdomain_map,
 };
+#endif
 
 /**
  * amdgpu_irq_add_domain - create a linear IRQ domain
@@ -603,12 +617,14 @@ static const struct irq_domain_ops amdgpu_hw_irqdomain_ops = {
  */
 int amdgpu_irq_add_domain(struct amdgpu_device *adev)
 {
+#if 0
 	adev->irq.domain = irq_domain_add_linear(NULL, AMDGPU_MAX_IRQ_SRC_ID,
 						 &amdgpu_hw_irqdomain_ops, adev);
 	if (!adev->irq.domain) {
 		DRM_ERROR("GPU irq add domain failed\n");
 		return -ENODEV;
 	}
+#endif
 
 	return 0;
 }
@@ -623,10 +639,12 @@ int amdgpu_irq_add_domain(struct amdgpu_device *adev)
  */
 void amdgpu_irq_remove_domain(struct amdgpu_device *adev)
 {
+#if 0
 	if (adev->irq.domain) {
 		irq_domain_remove(adev->irq.domain);
 		adev->irq.domain = NULL;
 	}
+#endif
 }
 
 /**
@@ -644,7 +662,10 @@ void amdgpu_irq_remove_domain(struct amdgpu_device *adev)
  */
 unsigned amdgpu_irq_create_mapping(struct amdgpu_device *adev, unsigned src_id)
 {
-	adev->irq.virq[src_id] = irq_create_mapping(adev->irq.domain, src_id);
-
-	return adev->irq.virq[src_id];
+#if 0
+ 	adev->irq.virq[src_id] = irq_create_mapping(adev->irq.domain, src_id);
+ 
+ 	return adev->irq.virq[src_id];
+#endif
+	return 0;
 }

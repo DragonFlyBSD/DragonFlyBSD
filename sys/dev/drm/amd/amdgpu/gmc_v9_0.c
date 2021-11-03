@@ -850,7 +850,7 @@ static int gmc_v9_0_sw_init(void *handle)
 	gfxhub_v1_0_init(adev);
 	mmhub_v1_0_init(adev);
 
-	spin_lock_init(&adev->gmc.invalidate_lock);
+	spin_init(&adev->gmc.invalidate_lock, "aggmcil");
 
 	adev->gmc.vram_type = amdgpu_atomfirmware_get_vram_type(adev);
 	switch (adev->asic_type) {
@@ -911,7 +911,15 @@ static int gmc_v9_0_sw_init(void *handle)
 		pci_set_consistent_dma_mask(adev->pdev, DMA_BIT_MASK(32));
 		printk(KERN_WARNING "amdgpu: No coherent DMA available.\n");
 	}
+#if 0
 	adev->need_swiotlb = drm_get_max_iomem() > ((u64)1 << dma_bits);
+#endif
+	/* XXX DragonFly: FreeBSD implementation returns false
+	 * drm-kmod excerpt:
+	 * Only used in combination with CONFIG_SWIOTLB in v4.17
+	 * BSDFIXME: Let's say we can dma all physical memory...
+	 */
+	adev->need_swiotlb = false;
 
 	r = gmc_v9_0_mc_init(adev);
 	if (r)

@@ -57,4 +57,15 @@ bitmap_weight(unsigned long *bitmap, unsigned int nbits)
 	return (retval);
 }
 
+static inline void
+bitmap_complement(void *d, void *s, u_int n)
+{
+        u_int *dst = d;
+        u_int *src = s;
+        u_int b;
+
+        for (b = 0; b < n; b += 32)
+                dst[b >> 5] = ~src[b >> 5];
+}
+
 #endif	/* _LINUX_BITMAP_H_ */

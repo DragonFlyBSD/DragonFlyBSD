@@ -25,6 +25,7 @@
  */
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/fb.h>
 #include <linux/pm_runtime.h>
 
 #include <drm/drmP.h>
@@ -45,6 +46,7 @@
    the helper contains a pointer to amdgpu framebuffer baseclass.
 */
 
+#if 0
 static int
 amdgpufb_open(struct fb_info *info, int user)
 {
@@ -69,15 +71,20 @@ amdgpufb_release(struct fb_info *info, int user)
 	pm_runtime_put_autosuspend(adev->ddev->dev);
 	return 0;
 }
+#endif
 
 static struct fb_ops amdgpufb_ops = {
+#if 0
 	.owner = THIS_MODULE,
+#endif
 	DRM_FB_HELPER_DEFAULT_OPS,
+#if 0
 	.fb_open = amdgpufb_open,
 	.fb_release = amdgpufb_release,
 	.fb_fillrect = drm_fb_helper_cfb_fillrect,
 	.fb_copyarea = drm_fb_helper_cfb_copyarea,
 	.fb_imageblit = drm_fb_helper_cfb_imageblit,
+#endif
 };
 
 
@@ -206,7 +213,7 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	struct drm_gem_object *gobj = NULL;
 	struct amdgpu_bo *abo = NULL;
 	int ret;
-	unsigned long tmp;
+	device_t vga_dev = device_get_parent(adev->dev->bsddev);
 
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height;
@@ -233,7 +240,9 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	}
 
 	info->par = rfbdev;
-	info->skip_vt_switch = true;
+#if 0
+ 	info->skip_vt_switch = true;
+#endif
 
 	ret = amdgpu_display_framebuffer_init(adev->ddev, &rfbdev->rfb,
 					      &mode_cmd, gobj);
@@ -246,6 +255,19 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 
 	/* setup helper */
 	rfbdev->helper.fb = fb;
+
+#ifdef __DragonFly__
+	info->width = sizes->fb_width;
+	info->height = sizes->fb_height;
+	info->stride = fb->pitches[0];
+	info->depth = sizes->surface_bpp;
+	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
+	info->fbops = amdgpufb_ops;
+
+	unsigned long tmp = amdgpu_bo_gpu_offset(abo) - adev->gmc.vram_start;
+	info->vaddr = (vm_offset_t)amdgpu_bo_kptr(abo);
+	info->paddr = adev->gmc.aper_base + tmp;
+#else
 
 	strcpy(info->fix.id, "amdgpudrmfb");
 
@@ -271,8 +293,9 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 		ret = -ENOSPC;
 		goto out;
 	}
+#endif
 
-	DRM_INFO("fb mappable at 0x%lX\n",  info->fix.smem_start);
+	DRM_INFO("fb mappable at 0x%lX\n",  info->paddr);
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)adev->gmc.aper_base);
 	DRM_INFO("size %lu\n", (unsigned long)amdgpu_bo_size(abo));
 	DRM_INFO("fb depth is %d\n", fb->format->depth);
@@ -375,9 +398,11 @@ void amdgpu_fbdev_fini(struct amdgpu_device *adev)
 
 void amdgpu_fbdev_set_suspend(struct amdgpu_device *adev, int state)
 {
+#if 0
 	if (adev->mode_info.rfbdev)
 		drm_fb_helper_set_suspend_unlocked(&adev->mode_info.rfbdev->helper,
 						   state);
+#endif
 }
 
 int amdgpu_fbdev_total_size(struct amdgpu_device *adev)

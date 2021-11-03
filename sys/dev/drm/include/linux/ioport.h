@@ -32,5 +32,6 @@
 
 #define IORESOURCE_IO	0x00000100
 #define IORESOURCE_MEM	0x00000200
+#define IORESOURCE_UNSET        0x20000000      /* No address assigned yet */
 
 #endif	/* _LINUX_IOPORT_H */

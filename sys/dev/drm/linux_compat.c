@@ -93,3 +93,13 @@ pid_t get_task_pid(struct task_struct *task, enum pid_type type)
 
 	return task->dfly_td->td_proc->p_pid;
 }
+
+#include <linux/mm.h>
+
+void
+si_meminfo(struct sysinfo *si)
+{
+        si->totalram = physmem;
+        si->totalhigh = 0;
+        si->mem_unit = PAGE_SIZE;
+}

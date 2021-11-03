@@ -42,6 +42,7 @@
 #include <uapi/linux/pci.h>
 
 #include <linux/pci_ids.h>
+#include <linux/pci_regs.h>
 
 #include <sys/pciio.h>
 #include <sys/rman.h>
@@ -384,6 +385,23 @@ pci_pcie_cap(struct pci_dev *pdev)
 #include <uapi/linux/pci_regs.h>
 
 /* From FreeBSD */
+
+static inline int
+pci_enable_device(struct pci_dev *pdev)
+{
+
+	pci_enable_io(pdev->dev.bsddev, SYS_RES_IOPORT);
+	pci_enable_io(pdev->dev.bsddev, SYS_RES_MEMORY);
+	return (0);
+}
+
+static inline void
+pci_disable_device(struct pci_dev *pdev)
+{
+
+	pci_disable_busmaster(pdev->dev.bsddev);
+}
+
 static inline bool pcie_cap_has_devctl(const struct pci_dev *dev)
 {
 		return true;
@@ -513,13 +531,90 @@ pci_resource_flags(struct pci_dev *pdev, int bar)
 }
 
 enum pci_bus_speed {
-	PCIE_SPEED_2_5GT	= 0x14,
-	PCIE_SPEED_5_0GT	= 0x15,
-	PCIE_SPEED_8_0GT	= 0x16,
-	PCI_SPEED_UNKNOWN	= 0xff,
+	PCIE_SPEED_2_5GT		= 0x14,
+	PCIE_SPEED_5_0GT		= 0x15,
+	PCIE_SPEED_8_0GT		= 0x16,
+	PCIE_SPEED_16_0GT		= 0x17,
+	PCI_SPEED_UNKNOWN		= 0xff,
+};
+
+/* Values from Link Status register, PCIe r3.1, sec 7.8.8 */
+enum pcie_link_width {
+	PCIE_LNK_WIDTH_RESRV	= 0x00,
+	PCIE_LNK_X1		= 0x01,
+	PCIE_LNK_X2		= 0x02,
+	PCIE_LNK_X4		= 0x04,
+	PCIE_LNK_X8		= 0x08,
+	PCIE_LNK_X12		= 0x0c,
+	PCIE_LNK_X16		= 0x10,
+	PCIE_LNK_X32		= 0x20,
+	PCIE_LNK_WIDTH_UNKNOWN	= 0xff,
 };
 
 int pcie_capability_read_dword(struct pci_dev *dev, int pos, u32 *val);
+
+#define	PCIER_LINK_CAP		0xc
+
+static inline enum pci_bus_speed
+pcie_get_speed_cap(struct pci_dev *dev)
+{
+	device_t root;
+	uint32_t lnkcap, lnkcap2;
+	int error, pos;
+
+	root = device_get_parent(dev->dev.bsddev);
+	if (root == NULL)
+		return (PCI_SPEED_UNKNOWN);
+	root = device_get_parent(root);
+	if (root == NULL)
+		return (PCI_SPEED_UNKNOWN);
+	root = device_get_parent(root);
+	if (root == NULL)
+		return (PCI_SPEED_UNKNOWN);
+
+	if (pci_get_vendor(root) == PCI_VENDOR_ID_VIA ||
+	    pci_get_vendor(root) == PCI_VENDOR_ID_SERVERWORKS)
+		return (PCI_SPEED_UNKNOWN);
+
+	if ((error = pci_find_extcap(root, PCIY_EXPRESS, &pos)) != 0)
+		return (PCI_SPEED_UNKNOWN);
+
+	lnkcap2 = pci_read_config(root, pos + PCIER_LINK_CAP2, 4);
+
+	if (lnkcap2) {	/* PCIe r3.0-compliant */
+		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_2_5GB)
+			return (PCIE_SPEED_2_5GT);
+		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_5_0GB)
+			return (PCIE_SPEED_5_0GT);
+		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_8_0GB)
+			return (PCIE_SPEED_8_0GT);
+		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_16_0GB)
+			return (PCIE_SPEED_16_0GT);
+	} else {	/* pre-r3.0 */
+		lnkcap = pci_read_config(root, pos + PCIER_LINK_CAP, 4);
+		if (lnkcap & PCI_EXP_LNKCAP_SLS_2_5GB)
+			return (PCIE_SPEED_2_5GT);
+		if (lnkcap & PCI_EXP_LNKCAP_SLS_5_0GB)
+			return (PCIE_SPEED_5_0GT);
+		if (lnkcap & PCI_EXP_LNKCAP_SLS_8_0GB)
+			return (PCIE_SPEED_8_0GT);
+		if (lnkcap & PCI_EXP_LNKCAP_SLS_16_0GB)
+			return (PCIE_SPEED_16_0GT);
+	}
+	return (PCI_SPEED_UNKNOWN);
+}
+
+static inline enum pcie_link_width
+pcie_get_width_cap(struct pci_dev *dev)
+{
+	uint32_t lnkcap;
+
+	pcie_capability_read_dword(dev, PCI_EXP_LNKCAP, &lnkcap);
+	if (lnkcap)
+		return ((lnkcap & PCI_EXP_LNKCAP_MLW) >> 4);
+
+	return (PCIE_LNK_WIDTH_UNKNOWN);
+}
 
 #include <linux/pci-dma-compat.h>
 

@@ -37,4 +37,13 @@ atomic64_add_return(int64_t i, atomic64_t *v)
 	return i + atomic_fetchadd_64(&v->counter, i);
 }
 
+/* From Linux */
+static inline void
+atomic64_inc(atomic64_t *v)
+{
+       __asm __volatile(MPLOCKED "incq %0"
+                    : "=m" (v->counter)
+                    : "m" (v->counter));
+}
+
 #endif	/* _ASM_ATOMIC64_64_H_ */

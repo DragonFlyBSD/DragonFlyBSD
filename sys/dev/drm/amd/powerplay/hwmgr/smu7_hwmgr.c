@@ -1477,6 +1477,7 @@ static int smu7_update_avfs(struct pp_hwmgr *hwmgr)
 	return 0;
 }
 
+int smu7_disable_dpm_tasks(struct pp_hwmgr *hwmgr);
 int smu7_disable_dpm_tasks(struct pp_hwmgr *hwmgr)
 {
 	int tmp_result, result = 0;
@@ -1542,6 +1543,7 @@ int smu7_disable_dpm_tasks(struct pp_hwmgr *hwmgr)
 	return result;
 }
 
+int smu7_reset_asic_tasks(struct pp_hwmgr *hwmgr);
 int smu7_reset_asic_tasks(struct pp_hwmgr *hwmgr)
 {
 
@@ -5116,6 +5118,7 @@ uint8_t smu7_get_sleep_divider_id_from_clock(uint32_t clock,
 	return i;
 }
 
+int smu7_init_function_pointers(struct pp_hwmgr *hwmgr);
 int smu7_init_function_pointers(struct pp_hwmgr *hwmgr)
 {
 	int ret = 0;

@@ -220,4 +220,38 @@ _kfifo_in(struct kfifo_meta *meta, void *buf, const void *ptr, size_t size)
 	return copied;
 }
 
+struct __kfifo {
+	unsigned int	in;
+	unsigned int	out;
+	unsigned int	mask;
+	unsigned int	esize;
+	void		*data;
+};
+
+#define __STRUCT_KFIFO_COMMON(datatype, recsize, ptrtype) \
+	union { \
+		struct __kfifo	kfifo; \
+		datatype	*type; \
+		const datatype	*const_type; \
+		char		(*rectype)[recsize]; \
+		ptrtype		*ptr; \
+		ptrtype const	*ptr_const; \
+	}
+
+#define __STRUCT_KFIFO(type, size, recsize, ptrtype) \
+{ \
+	__STRUCT_KFIFO_COMMON(type, recsize, ptrtype); \
+	type		buf[((size < 2) || (size & (size - 1))) ? -1 : size]; \
+}
+
+#define _KFIFO_TYPE(TYPE, SIZE) \
+	struct __STRUCT_KFIFO(TYPE, SIZE, 0, TYPE)
+/**
+ * DECLARE_KFIFO - macro to declare a fifo object
+ * @fifo: name of the declared fifo
+ * @type: type of the fifo elements
+ * @size: the number of elements in the fifo, this must be a power of 2
+ */
+#define DECLARE_KFIFO(FIFO, TYPE, SIZE)	_KFIFO_TYPE(TYPE, SIZE) FIFO 
+
 #endif	/* _LINUX_KFIFO_H_ */

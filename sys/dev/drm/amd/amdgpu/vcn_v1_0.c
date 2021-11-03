@@ -116,21 +116,21 @@ static int vcn_v1_0_sw_init(void *handle)
 		return r;
 
 	ring = &adev->vcn.ring_dec;
-	sprintf(ring->name, "vcn_dec");
+	ksprintf(ring->name, "vcn_dec");
 	r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.irq, 0);
 	if (r)
 		return r;
 
 	for (i = 0; i < adev->vcn.num_enc_rings; ++i) {
 		ring = &adev->vcn.ring_enc[i];
-		sprintf(ring->name, "vcn_enc%d", i);
+		ksprintf(ring->name, "vcn_enc%d", i);
 		r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.irq, 0);
 		if (r)
 			return r;
 	}
 
 	ring = &adev->vcn.ring_jpeg;
-	sprintf(ring->name, "vcn_jpeg");
+	ksprintf(ring->name, "vcn_jpeg");
 	r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.irq, 0);
 	if (r)
 		return r;
@@ -275,7 +275,7 @@ static int vcn_v1_0_resume(void *handle)
  */
 static void vcn_v1_0_mc_resume(struct amdgpu_device *adev)
 {
-	uint32_t size = AMDGPU_GPU_PAGE_ALIGN(adev->vcn.fw->size + 4);
+	uint32_t size = AMDGPU_GPU_PAGE_ALIGN(adev->vcn.fw->datasize + 4);
 	uint32_t offset;
 
 	if (adev->firmware.load_type == AMDGPU_FW_LOAD_PSP) {
@@ -952,7 +952,7 @@ static void vcn_v1_0_dec_ring_insert_end(struct amdgpu_ring *ring)
  *
  * Write a fence and a trap command to the ring.
  */
-static void vcn_v1_0_dec_ring_emit_fence(struct amdgpu_ring *ring, u64 addr, u64 seq,
+static void vcn_v1_0_dec_ring_emit_fence(struct amdgpu_ring *ring, uint64_t addr, uint64_t seq,
 				     unsigned flags)
 {
 	struct amdgpu_device *adev = ring->adev;
@@ -1124,8 +1124,8 @@ static void vcn_v1_0_enc_ring_set_wptr(struct amdgpu_ring *ring)
  *
  * Write enc a fence and a trap command to the ring.
  */
-static void vcn_v1_0_enc_ring_emit_fence(struct amdgpu_ring *ring, u64 addr,
-			u64 seq, unsigned flags)
+static void vcn_v1_0_enc_ring_emit_fence(struct amdgpu_ring *ring, uint64_t addr,
+			uint64_t seq, unsigned flags)
 {
 	WARN_ON(flags & AMDGPU_FENCE_FLAG_64BIT);
 
@@ -1278,7 +1278,7 @@ static void vcn_v1_0_jpeg_ring_insert_end(struct amdgpu_ring *ring)
  *
  * Write a fence and a trap command to the ring.
  */
-static void vcn_v1_0_jpeg_ring_emit_fence(struct amdgpu_ring *ring, u64 addr, u64 seq,
+static void vcn_v1_0_jpeg_ring_emit_fence(struct amdgpu_ring *ring, uint64_t addr, uint64_t seq,
 				     unsigned flags)
 {
 	struct amdgpu_device *adev = ring->adev;

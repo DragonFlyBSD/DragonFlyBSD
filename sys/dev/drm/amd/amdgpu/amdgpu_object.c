@@ -38,6 +38,11 @@
 #include "amdgpu_trace.h"
 #include "amdgpu_amdkfd.h"
 
+/* undo vm namespace pollution  */
+#undef min_offset
+#undef max_offset
+
+
 /**
  * DOC: amdgpu_object
  *
@@ -415,7 +420,7 @@ static bool amdgpu_bo_validate_size(struct amdgpu_device *adev,
 	return true;
 
 fail:
-	DRM_DEBUG("BO size %lu > total memory in domain: %llu\n", size,
+	DRM_DEBUG("BO size %lu > total memory in domain: %lu\n", size,
 		  man->size << PAGE_SHIFT);
 	return false;
 }
@@ -1246,7 +1251,9 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
 {
 	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->bdev);
 	struct amdgpu_bo *abo;
+#if 0
 	struct ttm_mem_reg *old_mem = &bo->mem;
+#endif
 
 	if (!amdgpu_bo_is_amdgpu_bo(bo))
 		return;

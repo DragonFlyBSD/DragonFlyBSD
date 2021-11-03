@@ -478,7 +478,7 @@ unsigned long drm_get_resource_start(struct drm_device *dev,
 unsigned long drm_get_resource_len(struct drm_device *dev,
 				   unsigned int resource);
 
-int ttm_bo_mmap_single(struct drm_device *dev, vm_ooffset_t *offset,
+int ttm_bo_mmap_single(struct file *fp, struct drm_device *dev, vm_ooffset_t *offset,
     vm_size_t size, struct vm_object **obj_res, int nprot);
 
 int drm_gem_mmap_single(struct drm_device *dev, vm_ooffset_t *offset,

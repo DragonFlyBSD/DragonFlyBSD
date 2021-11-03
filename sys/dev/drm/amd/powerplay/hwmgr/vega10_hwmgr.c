@@ -73,6 +73,8 @@ static const uint32_t channel_number[] = {1, 2, 0, 4, 0, 8, 0, 16, 2};
 static const ULONG PhwVega10_Magic = (ULONG)(PHM_VIslands_Magic);
 
 struct vega10_power_state *cast_phw_vega10_power_state(
+				  struct pp_hw_power_state *hw_ps);
+struct vega10_power_state *cast_phw_vega10_power_state(
 				  struct pp_hw_power_state *hw_ps)
 {
 	PP_ASSERT_WITH_CODE((PhwVega10_Magic == hw_ps->magic),
@@ -82,6 +84,8 @@ struct vega10_power_state *cast_phw_vega10_power_state(
 	return (struct vega10_power_state *)hw_ps;
 }
 
+const struct vega10_power_state *cast_const_phw_vega10_power_state(
+				 const struct pp_hw_power_state *hw_ps);
 const struct vega10_power_state *cast_const_phw_vega10_power_state(
 				 const struct pp_hw_power_state *hw_ps)
 {
@@ -640,7 +644,7 @@ static int vega10_patch_voltage_dependency_tables_with_lookup_table(
 			table_info->vdd_dep_on_mclk;
 
 	for (i = 0; i < 6; i++) {
-		struct phm_ppt_v1_clock_voltage_dependency_table *vdt;
+		struct phm_ppt_v1_clock_voltage_dependency_table *vdt = NULL;
 		switch (i) {
 			case 0: vdt = table_info->vdd_dep_on_socclk; break;
 			case 1: vdt = table_info->vdd_dep_on_sclk; break;
@@ -3736,6 +3740,8 @@ static void vega10_notify_smc_display_change(struct pp_hwmgr *hwmgr,
 }
 
 int vega10_display_clock_voltage_request(struct pp_hwmgr *hwmgr,
+		struct pp_display_clock_request *clock_req);
+int vega10_display_clock_voltage_request(struct pp_hwmgr *hwmgr,
 		struct pp_display_clock_request *clock_req)
 {
 	int result = 0;
@@ -4341,6 +4347,7 @@ static int vega10_display_configuration_changed_task(struct pp_hwmgr *hwmgr)
 	return result;
 }
 
+int vega10_enable_disable_uvd_dpm(struct pp_hwmgr *hwmgr, bool enable);
 int vega10_enable_disable_uvd_dpm(struct pp_hwmgr *hwmgr, bool enable)
 {
 	struct vega10_hwmgr *data = hwmgr->backend;
@@ -4930,6 +4937,7 @@ int vega10_enable_smc_features(struct pp_hwmgr *hwmgr,
 			msg, feature_mask);
 }
 
+int vega10_hwmgr_init(struct pp_hwmgr *hwmgr);
 int vega10_hwmgr_init(struct pp_hwmgr *hwmgr)
 {
 	hwmgr->hwmgr_func = &vega10_hwmgr_funcs;

@@ -71,7 +71,7 @@ struct amdgpu_gmc_funcs {
 				     uint32_t flags);
 	/* get the pde for a given mc addr */
 	void (*get_vm_pde)(struct amdgpu_device *adev, int level,
-			   u64 *dst, u64 *flags);
+			   uint64_t *dst, uint64_t *flags);
 };
 
 struct amdgpu_gmc {
@@ -104,7 +104,7 @@ struct amdgpu_gmc {
 	u64			private_aperture_start;
 	u64			private_aperture_end;
 	/* protects concurrent invalidation */
-	spinlock_t		invalidate_lock;
+	struct spinlock		invalidate_lock;
 	bool			translate_further;
 	struct kfd_vm_fault_info *vm_fault_info;
 	atomic_t		vm_fault_info_updated;

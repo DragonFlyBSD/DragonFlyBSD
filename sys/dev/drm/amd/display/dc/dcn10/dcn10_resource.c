@@ -594,6 +594,7 @@ static struct output_pixel_processor *dcn10_opp_create(
 	return &opp->base;
 }
 
+static
 struct aux_engine *dcn10_aux_engine_create(
 	struct dc_context *ctx,
 	uint32_t inst)
@@ -677,6 +678,7 @@ static const struct encoder_feature_support link_enc_feature = {
 		.flags.bits.IS_YCBCR_CAPABLE = true
 };
 
+static
 struct link_encoder *dcn10_link_encoder_create(
 	const struct encoder_init_data *enc_init_data)
 {
@@ -698,6 +700,7 @@ struct link_encoder *dcn10_link_encoder_create(
 	return &enc10->base;
 }
 
+static
 struct clock_source *dcn10_clock_source_create(
 	struct dc_context *ctx,
 	struct dc_bios *bios,
@@ -795,6 +798,7 @@ static const struct resource_create_funcs res_create_maximus_funcs = {
 	.create_hwseq = dcn10_hwseq_create,
 };
 
+static
 void dcn10_clock_source_destroy(struct clock_source **clk_src)
 {
 	kfree(TO_DCE110_CLK_SRC(*clk_src));
@@ -993,6 +997,7 @@ static enum dc_status build_mapped_resource(
 	return DC_OK;
 }
 
+static
 enum dc_status dcn10_add_stream_to_ctx(
 		struct dc *dc,
 		struct dc_state *new_ctx,

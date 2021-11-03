@@ -52,6 +52,21 @@ struct rb_root {
 };
 
 /*
+ * Leftmost-cached rbtrees.
+ *
+ * We do not cache the rightmost node based on footprint
+ * size vs number of potential users that could benefit
+ * from O(1) rb_last(). Just not worth it, users that want
+ * this feature can always implement the logic explicitly.
+ * Furthermore, users that want to cache both pointers may
+ * find it a bit asymmetric, but that's ok.
+ */
+struct rb_root_cached {
+	struct rb_root rb_root;
+	struct rb_node *rb_leftmost;
+};
+
+/*
  * In linux all of the comparisons are done by the caller.
  */
 int panic_cmp(struct rb_node *one, struct rb_node *two);
@@ -81,6 +96,12 @@ RB_PROTOTYPE(linux_root, rb_node, __entry, panic_cmp);
 #define	rb_prev(node)	RB_PREV(linux_root, NULL, (node))
 #define	rb_first(root)	RB_MIN(linux_root, (struct linux_root *)(root))
 #define	rb_last(root)	RB_MAX(linux_root, (struct linux_root *)(root))
+
+#define	rb_insert_color_cached(node, root, leftmost)			\
+	linux_root_RB_INSERT_COLOR((struct linux_root *)(&(root)->rb_root), (node))
+#define	rb_erase_cached(node, root)						\
+	linux_root_RB_REMOVE((struct linux_root *)(&(root)->rb_root), (node))
+#define	rb_first_cached(root)	RB_MIN(linux_root, (struct linux_root *)(&(root)->rb_root))
 
 static inline struct rb_node *
 __rb_deepest_left(struct rb_node *node)
@@ -148,5 +169,7 @@ rb_replace_node(struct rb_node *victim, struct rb_node *new,
 }
 
 #define LINUX_RB_ROOT		(struct rb_root) { NULL }
+
+#define LINUX_RB_ROOT_CACHED (struct rb_root_cached) { {NULL, }, NULL }
 
 #endif	/* _LINUX_RBTREE_H_ */

@@ -862,6 +862,8 @@ static bool submit_request(
 
 	return result;
 }
+
+static
 enum i2caux_engine_type get_engine_type(
 		const struct aux_engine *engine)
 {
