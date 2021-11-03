@@ -1291,7 +1291,8 @@ drm_mmap_single(struct dev_mmap_single_args *ap)
 
 	dev = drm_get_device_from_kdev(kdev);
 	if (dev->drm_ttm_bdev != NULL) {
-		return (ttm_bo_mmap_single(dev, offset, size, obj_res, nprot));
+		return (ttm_bo_mmap_single(ap->a_fp, dev,
+					   offset, size, obj_res, nprot));
 	} else if ((dev->driver->driver_features & DRIVER_GEM) != 0) {
 		return (drm_gem_mmap_single(dev, offset, size, obj_res, nprot));
 	} else {

@@ -30,10 +30,9 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <ttm/ttm_module.h>
-#include <ttm/ttm_bo_driver.h>
-#include <ttm/ttm_bo_api.h>
-#include <ttm/ttm_placement.h>
+#include <drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_bo_driver.h>
+#include <drm/ttm/ttm_placement.h>
 #include <drm/drm_vma_manager.h>
 #include <linux/mm.h>
 #include <linux/pfn_t.h>
@@ -73,11 +72,11 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 		if (vmf->flags & FAULT_FLAG_RETRY_NOWAIT)
 			goto out_unlock;
 
-		ttm_bo_reference(bo);
-		up_read(&vma->vm_mm->mmap_sem);
+		ttm_bo_get(bo);
+		up_read(&vmf->vma->vm_mm->mmap_sem);
 		(void) dma_fence_wait(bo->moving, true);
 		ttm_bo_unreserve(bo);
-		ttm_bo_unref(&bo);
+		ttm_bo_put(bo);
 		goto out_unlock;
 	}
 
@@ -234,12 +233,19 @@ static int ttm_bo_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
 						cvma.vm_page_prot);
 	} else {
+		struct ttm_operation_ctx ctx = {
+			.interruptible = false,
+			.no_wait_gpu = false,
+			.flags = TTM_OPT_FLAG_FORCE_ALLOC
+
+		};
+
 		ttm = bo->ttm;
 		cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
 						cvma.vm_page_prot);
 
 		/* Allocate all page at once, most common usage */
-		if (ttm->bdev->driver->ttm_tt_populate(ttm)) {
+		if (ttm_tt_populate(ttm, &ctx)) {
 			retval = VM_FAULT_OOM;
 			goto out_io_unlock;
 		}
@@ -307,7 +313,7 @@ static void ttm_bo_vm_open(struct vm_area_struct *vma)
 	WARN_ON(bo->bdev->dev_mapping != vma->vm_file->f_mapping);
 #endif
 
-	(void)ttm_bo_reference(bo);
+	ttm_bo_get(bo);
 }
 
 /* ttm_bo_vm_ops not currently used, no entry should occur */
@@ -315,7 +321,7 @@ static void ttm_bo_vm_close(struct vm_area_struct *vma)
 {
 	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)vma->vm_private_data;
 
-	ttm_bo_unref(&bo);
+	ttm_bo_put(bo);
 	vma->vm_private_data = NULL;
 }
 
@@ -427,14 +433,6 @@ static struct ttm_buffer_object *ttm_bo_vm_lookup(struct ttm_bo_device *bdev,
 	return bo;
 }
 
-unsigned long ttm_bo_default_io_mem_pfn(struct ttm_buffer_object *bo,
-					unsigned long page_offset)
-{
-	return ((bo->mem.bus.base + bo->mem.bus.offset) >> PAGE_SHIFT)
-		+ page_offset;
-}
-EXPORT_SYMBOL(ttm_bo_default_io_mem_pfn);
-
 int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
 		struct ttm_bo_device *bdev)
 {
@@ -475,7 +473,7 @@ int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
 	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 	return 0;
 out_unref:
-	ttm_bo_unref(&bo);
+	ttm_bo_put(bo);
 	return ret;
 }
 EXPORT_SYMBOL(ttm_bo_mmap);
@@ -485,8 +483,10 @@ int ttm_fbdev_mmap(struct vm_area_struct *vma, struct ttm_buffer_object *bo)
 	if (vma->vm_pgoff != 0)
 		return -EACCES;
 
+	ttm_bo_get(bo);
+
 	vma->vm_ops = &ttm_bo_vm_ops;
-	vma->vm_private_data = ttm_bo_reference(bo);
+	vma->vm_private_data = bo;
 	vma->vm_flags |= VM_MIXEDMAP;
 	vma->vm_flags |= VM_IO | VM_DONTEXPAND;
 	return 0;
@@ -670,7 +670,13 @@ retry:
 						cvma.vm_page_prot);
 
 		/* Allocate all page at once, most common usage */
-		if (ttm->bdev->driver->ttm_tt_populate(ttm)) {
+		struct ttm_operation_ctx ctx = {
+			.interruptible = false,
+			.no_wait_gpu = false,
+			.flags = TTM_OPT_FLAG_FORCE_ALLOC
+
+		};
+		if (ttm_tt_populate(ttm, &ctx)) {
 			retval = VM_PAGER_ERROR;
 			goto out_io_unlock1;
 		}
@@ -756,8 +762,9 @@ static struct cdev_pager_ops ttm_pager_ops = {
  * ttm_bo_mmap() are not currently used.
  */
 int
-ttm_bo_mmap_single(struct drm_device *dev, vm_ooffset_t *offset,
-		   vm_size_t size, struct vm_object **obj_res, int nprot)
+ttm_bo_mmap_single(struct file *fp, struct drm_device *dev,
+		   vm_ooffset_t *offset, vm_size_t size,
+		   struct vm_object **obj_res, int nprot)
 {
 	struct ttm_bo_device *bdev = dev->drm_ttm_bdev;
 	struct ttm_buffer_object *bo;
@@ -779,7 +786,7 @@ ttm_bo_mmap_single(struct drm_device *dev, vm_ooffset_t *offset,
 	 * setup our own VM object and ignore what the linux code did other
 	 * then supplying us the 'bo'.
 	 */
-	ret = ttm_bo_mmap(NULL, &vma, bdev);
+	ret = ttm_bo_mmap(fp, &vma, bdev);
 
 	if (ret == 0) {
 		bo = vma.vm_private_data;

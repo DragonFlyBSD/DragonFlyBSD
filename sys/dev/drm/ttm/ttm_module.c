@@ -94,8 +94,9 @@ static void __exit ttm_exit(void)
 	 * Refuse to unload until the TTM device is released.
 	 * Not sure this is 100% needed.
 	 */
-
+	kprintf("#10#begin#: ttm_exit.wait_event\n");
 	wait_event(exit_q, atomic_read(&device_released) == 1);
+	kprintf("#10#end#: ttm_exit.wait_event\n");
 }
 
 module_init(ttm_init);

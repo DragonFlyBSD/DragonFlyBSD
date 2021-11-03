@@ -211,35 +211,33 @@ static bool ttm_zones_above_swap_target(struct ttm_mem_global *glob,
  */
 
 static void ttm_shrink(struct ttm_mem_global *glob, bool from_wq,
-		       uint64_t extra)
+			uint64_t extra, struct ttm_operation_ctx *ctx)
 {
 	int ret;
-	struct ttm_mem_shrink *shrink;
 
 	lockmgr(&glob->lock, LK_EXCLUSIVE);
-	if (glob->shrink == NULL)
-		goto out;
 
 	while (ttm_zones_above_swap_target(glob, from_wq, extra)) {
-		shrink = glob->shrink;
 		lockmgr(&glob->lock, LK_RELEASE);
-		ret = shrink->do_shrink(shrink);
+		ret = ttm_bo_swapout(glob->bo_glob, ctx);
 		lockmgr(&glob->lock, LK_EXCLUSIVE);
 		if (unlikely(ret != 0))
-			goto out;
+			break;
 	}
-out:
+
 	lockmgr(&glob->lock, LK_RELEASE);
 }
 
-
-
 static void ttm_shrink_work(struct work_struct *work)
 {
+	struct ttm_operation_ctx ctx = {
+		.interruptible = false,
+		.no_wait_gpu = false
+	};
 	struct ttm_mem_global *glob =
 	    container_of(work, struct ttm_mem_global, work);
 
-	ttm_shrink(glob, true, 0ULL);
+	ttm_shrink(glob, true, 0ULL, &ctx);
 }
 
 static int ttm_mem_init_kernel_zone(struct ttm_mem_global *glob,
@@ -397,6 +395,7 @@ static void ttm_check_swapping(struct ttm_mem_global *glob)
 			break;
 		}
 	}
+
 	lockmgr(&glob->lock, LK_RELEASE);
 
 	if (unlikely(needs_swapping))
@@ -427,6 +426,39 @@ void ttm_mem_global_free(struct ttm_mem_global *glob,
 	return ttm_mem_global_free_zone(glob, NULL, amount);
 }
 EXPORT_SYMBOL(ttm_mem_global_free);
+
+/*
+ * check if the available mem is under lower memory limit
+ *
+ * a. if no swap disk at all or free swap space is under swap_mem_limit
+ * but available system mem is bigger than sys_mem_limit, allow TTM
+ * allocation;
+ *
+ * b. if the available system mem is less than sys_mem_limit but free
+ * swap disk is bigger than swap_mem_limit, allow TTM allocation.
+ */
+bool
+ttm_check_under_lowerlimit(struct ttm_mem_global *glob,
+			uint64_t num_pages,
+			struct ttm_operation_ctx *ctx)
+{
+	STUB();
+	return false;
+#if 0
+	int64_t available;
+
+	if (ctx->flags & TTM_OPT_FLAG_FORCE_ALLOC)
+		return false;
+
+	available = get_nr_swap_pages() + si_mem_available();
+	available -= num_pages;
+	if (available < glob->lower_mem_limit)
+		return true;
+
+	return false;
+#endif
+}
+EXPORT_SYMBOL(ttm_check_under_lowerlimit);
 
 static int ttm_mem_global_reserve(struct ttm_mem_global *glob,
 				  struct ttm_mem_zone *single_zone,
@@ -471,7 +503,7 @@ out_unlock:
 static int ttm_mem_global_alloc_zone(struct ttm_mem_global *glob,
 				     struct ttm_mem_zone *single_zone,
 				     uint64_t memory,
-				     bool no_wait, bool interruptible)
+				     struct ttm_operation_ctx *ctx)
 {
 	int count = TTM_MEMORY_ALLOC_RETRIES;
 
@@ -479,33 +511,32 @@ static int ttm_mem_global_alloc_zone(struct ttm_mem_global *glob,
 					       single_zone,
 					       memory, true)
 			!= 0)) {
-		if (no_wait)
+		if (ctx->no_wait_gpu)
 			return -ENOMEM;
 		if (unlikely(count-- == 0))
 			return -ENOMEM;
-		ttm_shrink(glob, false, memory + (memory >> 2) + 16);
+		ttm_shrink(glob, false, memory + (memory >> 2) + 16, ctx);
 	}
 
 	return 0;
 }
 
 int ttm_mem_global_alloc(struct ttm_mem_global *glob, uint64_t memory,
-			 bool no_wait, bool interruptible)
+			 struct ttm_operation_ctx *ctx)
 {
 	/**
 	 * Normal allocations of kernel memory are registered in
 	 * all zones.
 	 */
 
-	return ttm_mem_global_alloc_zone(glob, NULL, memory, no_wait,
-					 interruptible);
+	return ttm_mem_global_alloc_zone(glob, NULL, memory, ctx);
 }
 EXPORT_SYMBOL(ttm_mem_global_alloc);
 
 int ttm_mem_global_alloc_page(struct ttm_mem_global *glob,
-			      struct page *page, uint64_t size)
+			      struct page *page, uint64_t size,
+			      struct ttm_operation_ctx *ctx)
 {
-
 	struct ttm_mem_zone *zone = NULL;
 
 	/**
@@ -520,7 +551,7 @@ int ttm_mem_global_alloc_page(struct ttm_mem_global *glob,
 	if (glob->zone_dma32 && page_to_pfn(page) > 0x00100000UL)
 		zone = glob->zone_kernel;
 #endif
-	return ttm_mem_global_alloc_zone(glob, zone, size, false, false);
+	return ttm_mem_global_alloc_zone(glob, zone, size, ctx);
 }
 
 void ttm_mem_global_free_page(struct ttm_mem_global *glob, struct page *page,
