@@ -51,13 +51,13 @@ static void gmc_v8_0_set_gmc_funcs(struct amdgpu_device *adev);
 static void gmc_v8_0_set_irq_funcs(struct amdgpu_device *adev);
 static int gmc_v8_0_wait_for_idle(void *handle);
 
-MODULE_FIRMWARE("amdgpu/tonga_mc.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_mc.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_mc.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_mc.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_k_mc.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_k_mc.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_k_mc.bin");
+MODULE_FIRMWARE("amdgpufw_tonga_mc");
+MODULE_FIRMWARE("amdgpufw_polaris11_mc");
+MODULE_FIRMWARE("amdgpufw_polaris10_mc");
+MODULE_FIRMWARE("amdgpufw_polaris12_mc");
+MODULE_FIRMWARE("amdgpufw_polaris11_k_mc");
+MODULE_FIRMWARE("amdgpufw_polaris10_k_mc");
+MODULE_FIRMWARE("amdgpufw_polaris12_k_mc");
 
 static const u32 golden_settings_tonga_a11[] =
 {
@@ -268,7 +268,7 @@ static int gmc_v8_0_init_microcode(struct amdgpu_device *adev)
 	default: BUG();
 	}
 
-	snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_mc.bin", chip_name);
+	snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_mc", chip_name);
 	err = request_firmware(&adev->gmc.fw, fw_name, adev->dev);
 	if (err)
 		goto out;

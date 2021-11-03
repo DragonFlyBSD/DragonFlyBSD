@@ -94,81 +94,81 @@ enum {
 
 #define RLC_FormatDirectRegListLength        14
 
-MODULE_FIRMWARE("amdgpu/carrizo_ce.bin");
-MODULE_FIRMWARE("amdgpu/carrizo_pfp.bin");
-MODULE_FIRMWARE("amdgpu/carrizo_me.bin");
-MODULE_FIRMWARE("amdgpu/carrizo_mec.bin");
-MODULE_FIRMWARE("amdgpu/carrizo_mec2.bin");
-MODULE_FIRMWARE("amdgpu/carrizo_rlc.bin");
+MODULE_FIRMWARE("amdgpufw_carrizo_ce");
+MODULE_FIRMWARE("amdgpufw_carrizo_pfp");
+MODULE_FIRMWARE("amdgpufw_carrizo_me");
+MODULE_FIRMWARE("amdgpufw_carrizo_mec");
+MODULE_FIRMWARE("amdgpufw_carrizo_mec2");
+MODULE_FIRMWARE("amdgpufw_carrizo_rlc");
 
-MODULE_FIRMWARE("amdgpu/stoney_ce.bin");
-MODULE_FIRMWARE("amdgpu/stoney_pfp.bin");
-MODULE_FIRMWARE("amdgpu/stoney_me.bin");
-MODULE_FIRMWARE("amdgpu/stoney_mec.bin");
-MODULE_FIRMWARE("amdgpu/stoney_rlc.bin");
+MODULE_FIRMWARE("amdgpufw_stoney_ce");
+MODULE_FIRMWARE("amdgpufw_stoney_pfp");
+MODULE_FIRMWARE("amdgpufw_stoney_me");
+MODULE_FIRMWARE("amdgpufw_stoney_mec");
+MODULE_FIRMWARE("amdgpufw_stoney_rlc");
 
-MODULE_FIRMWARE("amdgpu/tonga_ce.bin");
-MODULE_FIRMWARE("amdgpu/tonga_pfp.bin");
-MODULE_FIRMWARE("amdgpu/tonga_me.bin");
-MODULE_FIRMWARE("amdgpu/tonga_mec.bin");
-MODULE_FIRMWARE("amdgpu/tonga_mec2.bin");
-MODULE_FIRMWARE("amdgpu/tonga_rlc.bin");
+MODULE_FIRMWARE("amdgpufw_tonga_ce");
+MODULE_FIRMWARE("amdgpufw_tonga_pfp");
+MODULE_FIRMWARE("amdgpufw_tonga_me");
+MODULE_FIRMWARE("amdgpufw_tonga_mec");
+MODULE_FIRMWARE("amdgpufw_tonga_mec2");
+MODULE_FIRMWARE("amdgpufw_tonga_rlc");
 
-MODULE_FIRMWARE("amdgpu/topaz_ce.bin");
-MODULE_FIRMWARE("amdgpu/topaz_pfp.bin");
-MODULE_FIRMWARE("amdgpu/topaz_me.bin");
-MODULE_FIRMWARE("amdgpu/topaz_mec.bin");
-MODULE_FIRMWARE("amdgpu/topaz_rlc.bin");
+MODULE_FIRMWARE("amdgpufw_topaz_ce");
+MODULE_FIRMWARE("amdgpufw_topaz_pfp");
+MODULE_FIRMWARE("amdgpufw_topaz_me");
+MODULE_FIRMWARE("amdgpufw_topaz_mec");
+MODULE_FIRMWARE("amdgpufw_topaz_rlc");
 
-MODULE_FIRMWARE("amdgpu/fiji_ce.bin");
-MODULE_FIRMWARE("amdgpu/fiji_pfp.bin");
-MODULE_FIRMWARE("amdgpu/fiji_me.bin");
-MODULE_FIRMWARE("amdgpu/fiji_mec.bin");
-MODULE_FIRMWARE("amdgpu/fiji_mec2.bin");
-MODULE_FIRMWARE("amdgpu/fiji_rlc.bin");
+MODULE_FIRMWARE("amdgpufw_fiji_ce");
+MODULE_FIRMWARE("amdgpufw_fiji_pfp");
+MODULE_FIRMWARE("amdgpufw_fiji_me");
+MODULE_FIRMWARE("amdgpufw_fiji_mec");
+MODULE_FIRMWARE("amdgpufw_fiji_mec2");
+MODULE_FIRMWARE("amdgpufw_fiji_rlc");
 
-MODULE_FIRMWARE("amdgpu/polaris10_ce.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_ce_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_pfp.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_pfp_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_me.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_me_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_mec.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_mec_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_mec2.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_mec2_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris10_rlc.bin");
+MODULE_FIRMWARE("amdgpufw_polaris10_ce");
+MODULE_FIRMWARE("amdgpufw_polaris10_ce_2");
+MODULE_FIRMWARE("amdgpufw_polaris10_pfp");
+MODULE_FIRMWARE("amdgpufw_polaris10_pfp_2");
+MODULE_FIRMWARE("amdgpufw_polaris10_me");
+MODULE_FIRMWARE("amdgpufw_polaris10_me_2");
+MODULE_FIRMWARE("amdgpufw_polaris10_mec");
+MODULE_FIRMWARE("amdgpufw_polaris10_mec_2");
+MODULE_FIRMWARE("amdgpufw_polaris10_mec2");
+MODULE_FIRMWARE("amdgpufw_polaris10_mec2_2");
+MODULE_FIRMWARE("amdgpufw_polaris10_rlc");
 
-MODULE_FIRMWARE("amdgpu/polaris11_ce.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_ce_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_pfp.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_pfp_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_me.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_me_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_mec.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_mec_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_mec2.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_mec2_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris11_rlc.bin");
+MODULE_FIRMWARE("amdgpufw_polaris11_ce");
+MODULE_FIRMWARE("amdgpufw_polaris11_ce_2");
+MODULE_FIRMWARE("amdgpufw_polaris11_pfp");
+MODULE_FIRMWARE("amdgpufw_polaris11_pfp_2");
+MODULE_FIRMWARE("amdgpufw_polaris11_me");
+MODULE_FIRMWARE("amdgpufw_polaris11_me_2");
+MODULE_FIRMWARE("amdgpufw_polaris11_mec");
+MODULE_FIRMWARE("amdgpufw_polaris11_mec_2");
+MODULE_FIRMWARE("amdgpufw_polaris11_mec2");
+MODULE_FIRMWARE("amdgpufw_polaris11_mec2_2");
+MODULE_FIRMWARE("amdgpufw_polaris11_rlc");
 
-MODULE_FIRMWARE("amdgpu/polaris12_ce.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_ce_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_pfp.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_pfp_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_me.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_me_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_mec.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_mec_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_mec2.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_mec2_2.bin");
-MODULE_FIRMWARE("amdgpu/polaris12_rlc.bin");
+MODULE_FIRMWARE("amdgpufw_polaris12_ce");
+MODULE_FIRMWARE("amdgpufw_polaris12_ce_2");
+MODULE_FIRMWARE("amdgpufw_polaris12_pfp");
+MODULE_FIRMWARE("amdgpufw_polaris12_pfp_2");
+MODULE_FIRMWARE("amdgpufw_polaris12_me");
+MODULE_FIRMWARE("amdgpufw_polaris12_me_2");
+MODULE_FIRMWARE("amdgpufw_polaris12_mec");
+MODULE_FIRMWARE("amdgpufw_polaris12_mec_2");
+MODULE_FIRMWARE("amdgpufw_polaris12_mec2");
+MODULE_FIRMWARE("amdgpufw_polaris12_mec2_2");
+MODULE_FIRMWARE("amdgpufw_polaris12_rlc");
 
-MODULE_FIRMWARE("amdgpu/vegam_ce.bin");
-MODULE_FIRMWARE("amdgpu/vegam_pfp.bin");
-MODULE_FIRMWARE("amdgpu/vegam_me.bin");
-MODULE_FIRMWARE("amdgpu/vegam_mec.bin");
-MODULE_FIRMWARE("amdgpu/vegam_mec2.bin");
-MODULE_FIRMWARE("amdgpu/vegam_rlc.bin");
+MODULE_FIRMWARE("amdgpufw_vegam_ce");
+MODULE_FIRMWARE("amdgpufw_vegam_pfp");
+MODULE_FIRMWARE("amdgpufw_vegam_me");
+MODULE_FIRMWARE("amdgpufw_vegam_mec");
+MODULE_FIRMWARE("amdgpufw_vegam_mec2");
+MODULE_FIRMWARE("amdgpufw_vegam_rlc");
 
 static const struct amdgpu_gds_reg_offset amdgpu_gds_reg_offset[] =
 {
@@ -1005,14 +1005,14 @@ static int gfx_v8_0_init_microcode(struct amdgpu_device *adev)
 	}
 
 	if (adev->asic_type >= CHIP_POLARIS10 && adev->asic_type <= CHIP_POLARIS12) {
-		snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_pfp_2.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_pfp_2", chip_name);
 		err = request_firmware(&adev->gfx.pfp_fw, fw_name, adev->dev);
 		if (err == -ENOENT) {
-			snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_pfp.bin", chip_name);
+			snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_pfp", chip_name);
 			err = request_firmware(&adev->gfx.pfp_fw, fw_name, adev->dev);
 		}
 	} else {
-		snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_pfp.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_pfp", chip_name);
 		err = request_firmware(&adev->gfx.pfp_fw, fw_name, adev->dev);
 	}
 	if (err)
@@ -1025,14 +1025,14 @@ static int gfx_v8_0_init_microcode(struct amdgpu_device *adev)
 	adev->gfx.pfp_feature_version = le32_to_cpu(cp_hdr->ucode_feature_version);
 
 	if (adev->asic_type >= CHIP_POLARIS10 && adev->asic_type <= CHIP_POLARIS12) {
-		snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_me_2.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_me_2", chip_name);
 		err = request_firmware(&adev->gfx.me_fw, fw_name, adev->dev);
 		if (err == -ENOENT) {
-			snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_me.bin", chip_name);
+			snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_me", chip_name);
 			err = request_firmware(&adev->gfx.me_fw, fw_name, adev->dev);
 		}
 	} else {
-		snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_me.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_me", chip_name);
 		err = request_firmware(&adev->gfx.me_fw, fw_name, adev->dev);
 	}
 	if (err)
@@ -1046,14 +1046,14 @@ static int gfx_v8_0_init_microcode(struct amdgpu_device *adev)
 	adev->gfx.me_feature_version = le32_to_cpu(cp_hdr->ucode_feature_version);
 
 	if (adev->asic_type >= CHIP_POLARIS10 && adev->asic_type <= CHIP_POLARIS12) {
-		snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_ce_2.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_ce_2", chip_name);
 		err = request_firmware(&adev->gfx.ce_fw, fw_name, adev->dev);
 		if (err == -ENOENT) {
-			snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_ce.bin", chip_name);
+			snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_ce", chip_name);
 			err = request_firmware(&adev->gfx.ce_fw, fw_name, adev->dev);
 		}
 	} else {
-		snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_ce.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_ce", chip_name);
 		err = request_firmware(&adev->gfx.ce_fw, fw_name, adev->dev);
 	}
 	if (err)
@@ -1076,7 +1076,7 @@ static int gfx_v8_0_init_microcode(struct amdgpu_device *adev)
 	} else
 		adev->virt.chained_ib_support = false;
 
-	snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_rlc.bin", chip_name);
+	snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_rlc", chip_name);
 	err = request_firmware(&adev->gfx.rlc_fw, fw_name, adev->dev);
 	if (err)
 		goto out;
@@ -1126,14 +1126,14 @@ static int gfx_v8_0_init_microcode(struct amdgpu_device *adev)
 		adev->gfx.rlc.register_restore[i] = le32_to_cpu(tmp[i]);
 
 	if (adev->asic_type >= CHIP_POLARIS10 && adev->asic_type <= CHIP_POLARIS12) {
-		snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_mec_2.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_mec_2", chip_name);
 		err = request_firmware(&adev->gfx.mec_fw, fw_name, adev->dev);
 		if (err == -ENOENT) {
-			snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_mec.bin", chip_name);
+			snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_mec", chip_name);
 			err = request_firmware(&adev->gfx.mec_fw, fw_name, adev->dev);
 		}
 	} else {
-		snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_mec.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_mec", chip_name);
 		err = request_firmware(&adev->gfx.mec_fw, fw_name, adev->dev);
 	}
 	if (err)
@@ -1148,14 +1148,14 @@ static int gfx_v8_0_init_microcode(struct amdgpu_device *adev)
 	if ((adev->asic_type != CHIP_STONEY) &&
 	    (adev->asic_type != CHIP_TOPAZ)) {
 		if (adev->asic_type >= CHIP_POLARIS10 && adev->asic_type <= CHIP_POLARIS12) {
-			snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_mec2_2.bin", chip_name);
+			snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_mec2_2", chip_name);
 			err = request_firmware(&adev->gfx.mec2_fw, fw_name, adev->dev);
 			if (err == -ENOENT) {
-				snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_mec2.bin", chip_name);
+				snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_mec2", chip_name);
 				err = request_firmware(&adev->gfx.mec2_fw, fw_name, adev->dev);
 			}
 		} else {
-			snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_mec2.bin", chip_name);
+			snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_mec2", chip_name);
 			err = request_firmware(&adev->gfx.mec2_fw, fw_name, adev->dev);
 		}
 		if (!err) {

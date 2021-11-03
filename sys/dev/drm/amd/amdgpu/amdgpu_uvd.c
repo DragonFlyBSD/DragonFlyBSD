@@ -53,24 +53,24 @@
 
 /* Firmware Names */
 #ifdef CONFIG_DRM_AMDGPU_CIK
-#define FIRMWARE_BONAIRE	"amdgpu/bonaire_uvd.bin"
-#define FIRMWARE_KABINI	"amdgpu/kabini_uvd.bin"
-#define FIRMWARE_KAVERI	"amdgpu/kaveri_uvd.bin"
-#define FIRMWARE_HAWAII	"amdgpu/hawaii_uvd.bin"
-#define FIRMWARE_MULLINS	"amdgpu/mullins_uvd.bin"
+#define FIRMWARE_BONAIRE	"amdgpufw_bonaire_uvd"
+#define FIRMWARE_KABINI	"amdgpufw_kabini_uvd"
+#define FIRMWARE_KAVERI	"amdgpufw_kaveri_uvd"
+#define FIRMWARE_HAWAII	"amdgpufw_hawaii_uvd"
+#define FIRMWARE_MULLINS	"amdgpufw_mullins_uvd"
 #endif
-#define FIRMWARE_TONGA		"amdgpu/tonga_uvd.bin"
-#define FIRMWARE_CARRIZO	"amdgpu/carrizo_uvd.bin"
-#define FIRMWARE_FIJI		"amdgpu/fiji_uvd.bin"
-#define FIRMWARE_STONEY		"amdgpu/stoney_uvd.bin"
-#define FIRMWARE_POLARIS10	"amdgpu/polaris10_uvd.bin"
-#define FIRMWARE_POLARIS11	"amdgpu/polaris11_uvd.bin"
-#define FIRMWARE_POLARIS12	"amdgpu/polaris12_uvd.bin"
-#define FIRMWARE_VEGAM		"amdgpu/vegam_uvd.bin"
+#define FIRMWARE_TONGA		"amdgpufw_tonga_uvd"
+#define FIRMWARE_CARRIZO	"amdgpufw_carrizo_uvd"
+#define FIRMWARE_FIJI		"amdgpufw_fiji_uvd"
+#define FIRMWARE_STONEY		"amdgpufw_stoney_uvd"
+#define FIRMWARE_POLARIS10	"amdgpufw_polaris10_uvd"
+#define FIRMWARE_POLARIS11	"amdgpufw_polaris11_uvd"
+#define FIRMWARE_POLARIS12	"amdgpufw_polaris12_uvd"
+#define FIRMWARE_VEGAM		"amdgpufw_vegam_uvd"
 
-#define FIRMWARE_VEGA10		"amdgpu/vega10_uvd.bin"
-#define FIRMWARE_VEGA12		"amdgpu/vega12_uvd.bin"
-#define FIRMWARE_VEGA20		"amdgpu/vega20_uvd.bin"
+#define FIRMWARE_VEGA10		"amdgpufw_vega10_uvd"
+#define FIRMWARE_VEGA12		"amdgpufw_vega12_uvd"
+#define FIRMWARE_VEGA20		"amdgpufw_vega20_uvd"
 
 /* These are common relative offsets for all asics, from uvd_7_0_offset.h,  */
 #define UVD_GPCOM_VCPU_CMD		0x03c3

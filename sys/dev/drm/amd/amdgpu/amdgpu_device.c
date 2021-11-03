@@ -58,9 +58,9 @@
 #include "amdgpu_amdkfd.h"
 #include "amdgpu_pm.h"
 
-MODULE_FIRMWARE("amdgpu/vega10_gpu_info.bin");
-MODULE_FIRMWARE("amdgpu/vega12_gpu_info.bin");
-MODULE_FIRMWARE("amdgpu/raven_gpu_info.bin");
+MODULE_FIRMWARE("amdgpufw_vega10_gpu_info");
+MODULE_FIRMWARE("amdgpufw_vega12_gpu_info");
+MODULE_FIRMWARE("amdgpufw_raven_gpu_info");
 
 #define AMDGPU_RESUME_MS		2000
 
@@ -817,7 +817,7 @@ bool amdgpu_device_need_post(struct amdgpu_device *adev)
 		if (adev->asic_type == CHIP_FIJI) {
 			int err;
 			uint32_t fw_ver;
-			err = request_firmware(&adev->pm.fw, "amdgpu/fiji_smc.bin", adev->dev);
+			err = request_firmware(&adev->pm.fw, "amdgpufw_fiji_smc", adev->dev);
 			/* force vPost if error occured */
 			if (err)
 				return true;
@@ -1408,7 +1408,7 @@ static int amdgpu_device_parse_gpu_info_fw(struct amdgpu_device *adev)
 		break;
 	}
 
-	snprintf(fw_name, sizeof(fw_name), "amdgpu/%s_gpu_info.bin", chip_name);
+	snprintf(fw_name, sizeof(fw_name), "amdgpufw_%s_gpu_info", chip_name);
 	err = request_firmware(&adev->firmware.gpu_info_fw, fw_name, adev->dev);
 	if (err) {
 		dev_err(adev->dev,

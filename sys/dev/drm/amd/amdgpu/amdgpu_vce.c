@@ -40,24 +40,24 @@
 
 /* Firmware Names */
 #ifdef CONFIG_DRM_AMDGPU_CIK
-#define FIRMWARE_BONAIRE	"amdgpu/bonaire_vce.bin"
-#define FIRMWARE_KABINI	"amdgpu/kabini_vce.bin"
-#define FIRMWARE_KAVERI	"amdgpu/kaveri_vce.bin"
-#define FIRMWARE_HAWAII	"amdgpu/hawaii_vce.bin"
-#define FIRMWARE_MULLINS	"amdgpu/mullins_vce.bin"
+#define FIRMWARE_BONAIRE	"amdgpufw_bonaire_vce"
+#define FIRMWARE_KABINI	"amdgpufw_kabini_vce"
+#define FIRMWARE_KAVERI	"amdgpufw_kaveri_vce"
+#define FIRMWARE_HAWAII	"amdgpufw_hawaii_vce"
+#define FIRMWARE_MULLINS	"amdgpufw_mullins_vce"
 #endif
-#define FIRMWARE_TONGA		"amdgpu/tonga_vce.bin"
-#define FIRMWARE_CARRIZO	"amdgpu/carrizo_vce.bin"
-#define FIRMWARE_FIJI		"amdgpu/fiji_vce.bin"
-#define FIRMWARE_STONEY		"amdgpu/stoney_vce.bin"
-#define FIRMWARE_POLARIS10	"amdgpu/polaris10_vce.bin"
-#define FIRMWARE_POLARIS11	"amdgpu/polaris11_vce.bin"
-#define FIRMWARE_POLARIS12	"amdgpu/polaris12_vce.bin"
-#define FIRMWARE_VEGAM		"amdgpu/vegam_vce.bin"
+#define FIRMWARE_TONGA		"amdgpufw_tonga_vce"
+#define FIRMWARE_CARRIZO	"amdgpufw_carrizo_vce"
+#define FIRMWARE_FIJI		"amdgpufw_fiji_vce"
+#define FIRMWARE_STONEY		"amdgpufw_stoney_vce"
+#define FIRMWARE_POLARIS10	"amdgpufw_polaris10_vce"
+#define FIRMWARE_POLARIS11	"amdgpufw_polaris11_vce"
+#define FIRMWARE_POLARIS12	"amdgpufw_polaris12_vce"
+#define FIRMWARE_VEGAM		"amdgpufw_vegam_vce"
 
-#define FIRMWARE_VEGA10		"amdgpu/vega10_vce.bin"
-#define FIRMWARE_VEGA12		"amdgpu/vega12_vce.bin"
-#define FIRMWARE_VEGA20		"amdgpu/vega20_vce.bin"
+#define FIRMWARE_VEGA10		"amdgpufw_vega10_vce"
+#define FIRMWARE_VEGA12		"amdgpufw_vega12_vce"
+#define FIRMWARE_VEGA20		"amdgpufw_vega20_vce"
 
 #ifdef CONFIG_DRM_AMDGPU_CIK
 MODULE_FIRMWARE(FIRMWARE_BONAIRE);
