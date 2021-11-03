@@ -2705,3 +2705,17 @@ int __init drm_fb_helper_modinit(void)
 	return 0;
 }
 EXPORT_SYMBOL(drm_fb_helper_modinit);
+
+/**
+ * drm_fb_helper_output_poll_changed - DRM mode config \.output_poll_changed
+ *                                     helper for fbdev emulation
+ * @dev: DRM device
+ *
+ * This function can be used as the
+ * &drm_mode_config_funcs.output_poll_changed callback for drivers that only
+ * need to call drm_fb_helper_hotplug_event().
+ */
+void drm_fb_helper_output_poll_changed(struct drm_device *dev)
+{
+}
+EXPORT_SYMBOL(drm_fb_helper_output_poll_changed);

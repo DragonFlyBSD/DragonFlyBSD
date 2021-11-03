@@ -838,7 +838,6 @@ static int gfx_v8_0_ring_test_ring(struct amdgpu_ring *ring)
 	unsigned i;
 	int r;
 
-kprintf("gfx_v8_0_ring_test_ring: ring=%p\n", ring);
 	r = amdgpu_gfx_scratch_get(adev, &scratch);
 	if (r) {
 		DRM_ERROR("amdgpu: cp failed to get scratch reg (%d).\n", r);

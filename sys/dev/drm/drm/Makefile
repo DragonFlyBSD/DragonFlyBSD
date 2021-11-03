@@ -93,18 +93,18 @@ SRCS	= \
 	linux_wait.c \
 	linux_workqueue.c \
 	linux_wwmutex.c \
-	ttm_memory.o \
-	ttm_tt.o \
-	ttm_bo.o \
-	ttm_bo_util.o \
-	ttm_bo_vm.o \
-	ttm_module.o \
-	ttm_object.o \
-	ttm_lock.o \
-	ttm_execbuf_util.o \
-	ttm_page_alloc.o \
-	ttm_bo_manager.o \
-	ttm_page_alloc_dma.o
+	ttm_memory.c \
+	ttm_tt.c \
+	ttm_bo.c \
+	ttm_bo_util.c \
+	ttm_bo_vm.c \
+	ttm_module.c \
+	ttm_object.c \
+	ttm_lock.c \
+	ttm_execbuf_util.c \
+	ttm_page_alloc.c \
+	ttm_bo_manager.c \
+	ttm_page_alloc_dma.c
 
 # if CONFIG_AGP is set
 #SRCS+=	drm_agpsupport.c \

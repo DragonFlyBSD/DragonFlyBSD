@@ -258,7 +258,7 @@ int radeon_bo_create(struct radeon_device *rdev,
 	/* Kernel allocation are uninterruptible */
 	down_read(&rdev->pm.mclk_lock);
 	r = ttm_bo_init(&rdev->mman.bdev, &bo->tbo, size, type,
-			&bo->placement, page_align, !kernel, NULL,
+			&bo->placement, page_align, !kernel,
 			acc_size, sg, resv, &radeon_ttm_bo_destroy);
 	up_read(&rdev->pm.mclk_lock);
 	if (unlikely(r != 0)) {
@@ -329,6 +329,7 @@ void radeon_bo_unref(struct radeon_bo **bo)
 int radeon_bo_pin_restricted(struct radeon_bo *bo, u32 domain, u64 max_offset,
 			     u64 *gpu_addr)
 {
+	struct ttm_operation_ctx ctx = { false, false };
 	int r, i;
 
 	if (bo->pin_count) {
@@ -368,7 +369,7 @@ int radeon_bo_pin_restricted(struct radeon_bo *bo, u32 domain, u64 max_offset,
 		bo->placements[i].flags |= TTM_PL_FLAG_NO_EVICT;
 	}
 
-	r = ttm_bo_validate(&bo->tbo, &bo->placement, false, false);
+	r = ttm_bo_validate(&bo->tbo, &bo->placement, &ctx);
 	if (likely(r == 0)) {
 		bo->pin_count = 1;
 		if (gpu_addr != NULL)
@@ -390,6 +391,7 @@ int radeon_bo_pin(struct radeon_bo *bo, u32 domain, u64 *gpu_addr)
 
 int radeon_bo_unpin(struct radeon_bo *bo)
 {
+	struct ttm_operation_ctx ctx = { false, false };
 	int r, i;
 
 	if (!bo->pin_count) {
@@ -403,7 +405,7 @@ int radeon_bo_unpin(struct radeon_bo *bo)
 		bo->placements[i].lpfn = 0;
 		bo->placements[i].flags &= ~TTM_PL_FLAG_NO_EVICT;
 	}
-	r = ttm_bo_validate(&bo->tbo, &bo->placement, false, false);
+	r = ttm_bo_validate(&bo->tbo, &bo->placement, &ctx);
 	if (likely(r == 0)) {
 		if (bo->tbo.mem.mem_type == TTM_PL_VRAM)
 			bo->rdev->vram_pin_size -= radeon_bo_size(bo);
@@ -530,6 +532,7 @@ int radeon_bo_list_validate(struct radeon_device *rdev,
 			    struct ww_acquire_ctx *ticket,
 			    struct list_head *head, int ring)
 {
+	struct ttm_operation_ctx ctx = { true, false };
 	struct radeon_bo_list *lobj;
 	struct list_head duplicates;
 	int r;
@@ -571,7 +574,7 @@ int radeon_bo_list_validate(struct radeon_device *rdev,
 				radeon_uvd_force_into_uvd_segment(bo, allowed);
 
 			initial_bytes_moved = atomic64_read(&rdev->num_bytes_moved);
-			r = ttm_bo_validate(&bo->tbo, &bo->placement, true, false);
+			r = ttm_bo_validate(&bo->tbo, &bo->placement, &ctx);
 			bytes_moved += atomic64_read(&rdev->num_bytes_moved) -
 				       initial_bytes_moved;
 
@@ -791,6 +794,7 @@ void radeon_bo_move_notify(struct ttm_buffer_object *bo,
 
 int radeon_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 {
+	struct ttm_operation_ctx ctx = { false, false };
 	struct radeon_device *rdev;
 	struct radeon_bo *rbo;
 	unsigned long offset, size, lpfn;
@@ -822,10 +826,10 @@ int radeon_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 		    (!rbo->placements[i].lpfn || rbo->placements[i].lpfn > lpfn))
 			rbo->placements[i].lpfn = lpfn;
 	}
-	r = ttm_bo_validate(bo, &rbo->placement, false, false);
+	r = ttm_bo_validate(bo, &rbo->placement, &ctx);
 	if (unlikely(r == -ENOMEM)) {
 		radeon_ttm_placement_from_domain(rbo, RADEON_GEM_DOMAIN_GTT);
-		return ttm_bo_validate(bo, &rbo->placement, false, false);
+		return ttm_bo_validate(bo, &rbo->placement, &ctx);
 	} else if (unlikely(r != 0)) {
 		return r;
 	}
