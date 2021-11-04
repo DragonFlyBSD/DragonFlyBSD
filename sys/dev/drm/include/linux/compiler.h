@@ -152,6 +152,9 @@ __volatile_write(volatile void *var, int size, void *value)
 
 #define __rcu
 
+/* Workaround to protect from the 'DEBUG' kernel config option */
+#undef DEBUG
+
 #endif	/* __KERNEL__ */
 
 #define GCC_VERSION	\

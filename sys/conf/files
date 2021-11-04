@@ -2336,6 +2336,7 @@ dev/drm/linux_dma.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm
 dev/drm/linux_dma-buf.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_dmi.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_fence.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
+dev/drm/linux_fence-array.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_hdmi.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_hrtimer.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_i2c.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
