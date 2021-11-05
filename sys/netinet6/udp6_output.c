@@ -186,9 +186,11 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 				error = EADDRNOTAVAIL;
 			goto release;
 		}
-		if (in6p->in6p_lport == 0 &&
-		    (error = in6_pcbsetlport(laddr, in6p, td)) != 0)
-			goto release;
+		if (in6p->in6p_lport == 0) {
+			if ((error = in6_pcbsetlport(laddr, in6p, td)) != 0)
+				goto release;
+			in_pcbinswildcardhash(in6p);
+		}
 	} else {
 		if (IN6_IS_ADDR_UNSPECIFIED(&in6p->in6p_faddr)) {
 			error = ENOTCONN;
