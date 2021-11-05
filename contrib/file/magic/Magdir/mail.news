@@ -81,4 +81,4 @@
 # File format spec: https://wiki.dovecot.org/Design/Dcrypt/#File_format
 # From: Stephen Gildea
 0	string	CRYPTED\003\007		Dovecot encrypted message
->9	byte	xu			\b, dcrypt version %d
+>9	byte	x			\b, dcrypt version %d
