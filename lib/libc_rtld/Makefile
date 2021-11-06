@@ -35,11 +35,6 @@ HIDDEN_SYSCALLS= aio_suspend.o accept.o bind.o close.o connect.o dup.o dup2.o \
 #
 .include "${.CURDIR}/../libc/Makefile.inc"
 
-.PATH:  ${.CURDIR}/../libc/inet
-.PATH:  ${.CURDIR}/../libc/isc
-.PATH:  ${.CURDIR}/../libc/nameser
-.PATH:  ${.CURDIR}/../libc/resolv
-
 .include <bsd.lib.mk>
 
 # Disable warnings in contributed sources.

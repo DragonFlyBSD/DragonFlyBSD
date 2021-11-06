@@ -1,7 +1,7 @@
 #	Makefile.inc,v 1.2 1994/09/13 21:26:01 wollman Exp
 # $FreeBSD: head/lib/libc/stdtime/Makefile.inc 248672 2013-03-24 01:35:37Z dim $
 
-.PATH:	${.CURDIR}/../libc/stdtime ${.CURDIR}/../locale
+.PATH:	${.CURDIR}/../libc/stdtime
 
 CMAPS+=	${.CURDIR}/stdtime/Symbol.map
 

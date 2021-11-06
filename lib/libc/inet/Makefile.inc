@@ -1,4 +1,4 @@
-.PATH:	${.CURDIR}/inet
+.PATH: ${.CURDIR}/../libc/inet
 
 CMAPS+=	${.CURDIR}/inet/Symbol.map
 

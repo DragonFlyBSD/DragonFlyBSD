@@ -1,9 +1,7 @@
 # Makefile.inc
 #
 
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/upmap ${.CURDIR}/../libc/upmap
-
-CFLAGS+=-I${.CURDIR}/../libc/sysvipc
+.PATH: ${.CURDIR}/../libc/upmap
 
 CMAPS+=	${.CURDIR}/upmap/Symbol.map
 

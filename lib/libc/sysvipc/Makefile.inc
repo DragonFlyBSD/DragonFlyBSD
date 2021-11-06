@@ -1,4 +1,6 @@
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sysvipc ${.CURDIR}/../libc/sysvipc
+.PATH: ${.CURDIR}/../libc/sysvipc
 
 CMAPS+=	${.CURDIR}/sysvipc/Symbol.map
-SRCS+=	lock.c lock_generic.c sysvipc_hash.c ipc.c shm.c msg.c sem.c sockets.c utils.c
+
+SRCS+=	ipc.c lock.c lock_generic.c msg.c sem.c shm.c sockets.c
+SRCS+=	sysvipc_hash.c utils.c
