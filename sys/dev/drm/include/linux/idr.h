@@ -51,6 +51,7 @@ struct ida {
 
 #define DEFINE_IDA(name)		\
 	struct ida name = {		\
+		.idr = { .idr_token = LWKT_TOKEN_INITIALIZER("idrtok") }, \
 		.free_bitmap = NULL	\
 	}				\
 

@@ -2755,7 +2755,7 @@ int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 		unsigned long flags;
 
 		spin_lock_irqsave(&adev->vm_manager.pasid_lock, flags);
-		r = idr_alloc(&adev->vm_manager.pasid_idr, vm, 1, 0,
+		r = idr_alloc(&adev->vm_manager.pasid_idr, vm, pasid, pasid + 1,
 			      GFP_ATOMIC);
 		spin_unlock_irqrestore(&adev->vm_manager.pasid_lock, flags);
 		if (r < 0)
