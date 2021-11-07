@@ -216,7 +216,6 @@ idr_find_free(struct idr *idp, int want, int lim)
 	 * leaf node.  The leaf node will be free but will not necessarily
 	 * have an allocated field of 0.
 	 */
-
 	/* move up the tree looking for a subtree with a free node */
 	for (id = max(want, idp->idr_freeindex); id < min(idp->idr_count, lim);
 			id = right_ancestor(id)) {
@@ -380,13 +379,13 @@ grow_again:
 	 * possible to exceed the limit due to the way array growth
 	 * works.
 	 */
-	id = idr_find_free(idp, start, lim);
+	id = idr_find_free(idp, start, INT_MAX);
 	if (id == -1) {
 		want = idp->idr_count;
 		goto grow_again;
 	}
 
-	if (id >= lim) {
+	if (id > lim) {
 		result = -ENOSPC;
 		goto done;
 	}
