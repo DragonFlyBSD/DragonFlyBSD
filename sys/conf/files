@@ -2267,7 +2267,6 @@ opencrypto/skipjack.c			optional crypto
 opencrypto/xform.c			optional crypto
 dev/crypto/hifn/hifn7751.c		optional hifn
 dev/crypto/ubsec/ubsec.c		optional ubsec
-dev/drm/ati_pcigart.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 # drm_agpsupport.c must be included if CONFIG_AGP is set
 #dev/drm/drm_agpsupport.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/drm_atomic.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"

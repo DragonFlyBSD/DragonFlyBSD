@@ -1,7 +1,6 @@
 .PATH:	${.CURDIR}/.. ${.CURDIR}/../ttm
 KMOD	= drm
 SRCS	= \
-	ati_pcigart.c \
 	drm_atomic.c \
 	drm_atomic_helper.c \
 	drm_auth.c \
