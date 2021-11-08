@@ -806,7 +806,7 @@ static unsigned gmc_v9_0_get_vbios_fb_size(struct amdgpu_device *adev)
 	 * TODO Remove once GART corruption is resolved
 	 * Check related code in gmc_v9_0_sw_fini
 	 * */
-	size = 9 * 1024 * 1024;
+	size = 64 * 1024 * 1024;
 
 #if 0
 	if (REG_GET_FIELD(d1vga_control, D1VGA_CONTROL, D1VGA_MODE_ENABLE)) {
