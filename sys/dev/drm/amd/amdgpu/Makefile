@@ -334,9 +334,6 @@ SRCS+= \
 #TODO: remove when Timing Sync feature is complete
 KCFLAGS+= -DBUILD_FEATURE_TIMING_SYNC=0
 
-# fix display/include/link_service_types.h
-KCFLAGS+= -DLITTLEENDIAN_CPU
-
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/drm
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/uapi
