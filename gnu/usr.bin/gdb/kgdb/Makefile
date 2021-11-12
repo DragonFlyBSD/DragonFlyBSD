@@ -18,7 +18,7 @@ LDADD+= -L../libdecnumber -ldecnumber
 LDADD+= -L../libgnu -lgnu
 LDADD+= -lprivate_ncurses -lm -lz -lkvm -llzma
 
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv
+CFLAGS+=	${PRIVATELIB_CFLAGS}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 WARNS?=	2

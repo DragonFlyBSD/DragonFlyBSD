@@ -15,8 +15,8 @@ BINMODE=	550
 .if defined(GAMESCRYPTO)
 LDADD+=		-lprivate_crypto
 DPADD+=		${LIBCRYPTO}
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv
-LDFLAGS+=       ${PRIVATELIB_LDFLAGS}
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 
 # Handle libncurses dependency
