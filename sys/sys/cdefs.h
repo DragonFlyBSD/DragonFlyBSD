@@ -149,7 +149,7 @@
 #ifndef __GNUC__
 #define	__inline			/* delete GCC keyword */
 #endif /* !__GNUC__ */
-#endif /* !__cplusplus */
+#endif /* __cplusplus */
 
 #else	/* !(__STDC__ || __cplusplus) */
 #define	__P(protos)	()		/* traditional C preprocessor */
