@@ -67,9 +67,9 @@ static int hammer2_freemap_iterate(hammer2_chain_t **parentp,
  * Calculate the device offset for the specified FREEMAP_NODE or FREEMAP_LEAF
  * bref.  Return a combined media offset and physical size radix.  Freemap
  * chains use fixed storage offsets in the 4MB reserved area at the
- * beginning of each 2GB zone
+ * beginning of each 1GB zone.
  *
- * Rotate between four possibilities.  Theoretically this means we have three
+ * Rotate between eight possibilities.  Theoretically this means we have seven
  * good freemaps in case of a crash which we can use as a base for the fixup
  * scan at mount-time.
  */
