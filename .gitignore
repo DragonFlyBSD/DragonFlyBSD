@@ -8,6 +8,7 @@
 *.old
 *.orig
 *.patch
+*.plist
 *.rej
 *.swap
 *~
