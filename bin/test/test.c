@@ -194,6 +194,7 @@ static enum	token t_lex(char *);
 int
 main(int argc, char **argv)
 {
+	int	res;
 	char	*p;
 
 	if ((p = strrchr(argv[0], '/')) == NULL)
