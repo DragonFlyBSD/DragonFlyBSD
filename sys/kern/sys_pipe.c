@@ -1302,10 +1302,6 @@ pipe_kqfilter(struct file *fp, struct knote *kn)
 		break;
 	case EVFILT_WRITE:
 		kn->kn_fop = &pipe_wfiltops;
-		if (wpb->state & PIPE_CLOSED) {
-			/* other end of pipe has been closed */
-			return (EPIPE);
-		}
 		break;
 	default:
 		return (EOPNOTSUPP);
