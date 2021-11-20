@@ -18,12 +18,6 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 WARNS?=		2
 
-# DO NOT ENABLE
-.if 0
-VERSION_DEF=	${.CURDIR}/Versions.def
-SYMBOL_MAPS=	${.CURDIR}/Symbol.map
-.endif
-
 SRCS+=		chared.c \
 		common.c \
 		el.c \
