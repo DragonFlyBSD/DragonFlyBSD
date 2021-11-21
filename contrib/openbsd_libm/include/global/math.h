@@ -18,6 +18,7 @@
 #define _MATH_H_
 
 #include <machine/limits.h>
+#include <machine/stdint.h>
 
 __BEGIN_DECLS
 /*
@@ -34,8 +35,8 @@ extern char __infinity[];
  * C99
  */
 #if __ISO_C_VISIBLE >= 1999
-typedef	double	double_t;
-typedef	float	float_t;
+typedef	__double_t	double_t;
+typedef	__float_t	float_t;
 
 #if __GNUC_PREREQ__(3, 3)
 #define	HUGE_VALF	__builtin_huge_valf()

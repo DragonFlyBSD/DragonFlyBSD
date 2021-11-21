@@ -68,6 +68,9 @@ __extension__
 typedef	unsigned long long __uint64_t;
 #endif
 
+typedef	double		__double_t;
+typedef	float		__float_t;
+
 /*
  * Basic signed and unsigned LP types.  We support LP64 and ILP32 models only.
  */
