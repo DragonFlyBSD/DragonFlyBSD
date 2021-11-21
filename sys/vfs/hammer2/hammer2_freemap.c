@@ -834,16 +834,10 @@ void
 hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
 		     hammer2_chain_t *chain)
 {
-	hammer2_off_t l1size;
 	hammer2_off_t lokey;
 	hammer2_off_t hikey;
 	hammer2_bmap_data_t *bmap;
 	int count;
-
-	/*
-	 * LEVEL1 is 1GB, there are two level1 1GB freemaps per 2GB zone.
-	 */
-	l1size = HAMMER2_FREEMAP_LEVEL1_SIZE;
 
 	/*
 	 * Calculate the portion of the 1GB map that should be initialized
@@ -962,7 +956,6 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	hammer2_bmap_data_t *bmap;
 	hammer2_key_t key;
 	hammer2_key_t key_dummy;
-	hammer2_off_t l0size;
 	hammer2_off_t l1size;
 	hammer2_off_t l1mask;
 	hammer2_tid_t mtid;
@@ -1009,7 +1002,6 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	 * Lookup the level1 freemap chain.  The chain must exist.
 	 */
 	key = H2FMBASE(data_off, HAMMER2_FREEMAP_LEVEL1_RADIX);
-	l0size = HAMMER2_FREEMAP_LEVEL0_SIZE;
 	l1size = HAMMER2_FREEMAP_LEVEL1_SIZE;
 	l1mask = l1size - 1;
 
