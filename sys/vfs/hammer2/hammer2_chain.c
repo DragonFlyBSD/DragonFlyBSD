@@ -76,7 +76,7 @@ static hammer2_chain_t *hammer2_combined_find(
 		hammer2_blockref_t *base, int count,
 		hammer2_key_t *key_nextp,
 		hammer2_key_t key_beg, hammer2_key_t key_end,
-		hammer2_blockref_t **bresp);
+		hammer2_blockref_t **brefp);
 static hammer2_chain_t *hammer2_chain_lastdrop(hammer2_chain_t *chain,
 				int depth);
 static void hammer2_chain_lru_flush(hammer2_pfs_t *pmp);
@@ -5272,12 +5272,12 @@ hammer2_base_find(hammer2_chain_t *parent,
 
 /*
  * Do a combined search and return the next match either from the blockref
- * array or from the in-memory chain.  Sets *bresp to the returned bref in
+ * array or from the in-memory chain.  Sets *brefp to the returned bref in
  * both cases, or sets it to NULL if the search exhausted.  Only returns
  * a non-NULL chain if the search matched from the in-memory chain.
  *
  * When no in-memory chain has been found and a non-NULL bref is returned
- * in *bresp.
+ * in *brefp.
  *
  *
  * The returned chain is not locked or referenced.  Use the returned bref
@@ -5292,7 +5292,7 @@ hammer2_combined_find(hammer2_chain_t *parent,
 		      hammer2_blockref_t *base, int count,
 		      hammer2_key_t *key_nextp,
 		      hammer2_key_t key_beg, hammer2_key_t key_end,
-		      hammer2_blockref_t **bresp)
+		      hammer2_blockref_t **brefp)
 {
 	hammer2_blockref_t *bref;
 	hammer2_chain_t *chain;
@@ -5310,7 +5310,7 @@ hammer2_combined_find(hammer2_chain_t *parent,
 	 * Neither matched
 	 */
 	if (i == count && chain == NULL) {
-		*bresp = NULL;
+		*brefp = NULL;
 		return(NULL);
 	}
 
@@ -5359,10 +5359,10 @@ hammer2_combined_find(hammer2_chain_t *parent,
 	 */
 found:
 	if (bref->key > key_end) {
-		*bresp = NULL;
+		*brefp = NULL;
 		chain = NULL;
 	} else {
-		*bresp = bref;
+		*brefp = bref;
 	}
 	return(chain);
 }
