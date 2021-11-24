@@ -36,7 +36,7 @@
 #
 # This tool packs the (statically linked) rescue tools (at /rescue by
 # default) and contents specified by "-c <content_dirs>", such as the
-# necessary etc files, into an UFS-formatted VN image.  This image is
+# necessary etc files, into an UFS-formatted image.  This image is
 # installed at /boot/kernel/initrd.img.gz and used as the initial ramdisk
 # to help mount the real root filesystem when it is encrypted or on LVM.
 #
@@ -121,29 +121,9 @@ calc_initrd_size() {
 	echo $((${isize_mb} + 1))
 }
 
-create_vn() {
-	kldstat -qm vn || kldload -n vn ||
-	    error 1 "Failed to load vn kernel module"
-
-	VN_DEV=$(vnconfig -c -S ${INITRD_SIZE}m -Z -T vn ${INITRD_FILE}) &&
-	    echo "Configured ${VN_DEV}" ||
-	    error 1 "Failed to configure VN device"
-
-	newfs -i 131072 -m 0 /dev/${VN_DEV}s0 &&
-	    echo "Formatted initrd image with UFS" ||
-	    error 1 "Failed to format the initrd image"
-	mount_ufs /dev/${VN_DEV}s0 ${BUILD_DIR} &&
-	    echo "Mounted initrd image on ${BUILD_DIR}" ||
-	    error 1 "Failed to mount initrd image on ${BUILD_DIR}"
-}
-
-destroy_vn() {
-	umount /dev/${VN_DEV}s0 &&
-	    echo "Unmounted initrd image" ||
-	    error 1 "Failed to umount initrd image"
-	vnconfig -u ${VN_DEV} &&
-	    echo "Unconfigured ${VN_DEV}" ||
-	    error 1 "Failed to unconfigure ${VN_DEV}"
+make_img() {
+	makefs -m ${INITRD_SIZE}m -M ${INITRD_SIZE}m -t ffs -o density=131072 \
+	    -o minfree=0 ${INITRD_FILE} ${BUILD_DIR}
 }
 
 make_hier() {
@@ -180,7 +160,6 @@ copy_content() {
 
 print_info() {
 	lt ${BUILD_DIR}
-	df -h ${BUILD_DIR}
 }
 
 # Check the validity of the created initrd image before moving over.
@@ -194,7 +173,6 @@ check_initrd()
 	[ -x "${BUILD_DIR}/sbin/oinit" ] &&
 	[ -x "${BUILD_DIR}/bin/sh" ] &&
 	[ -x "${BUILD_DIR}/etc/rc" ] || {
-		destroy_vn
 		error 1 "Invalid initrd image!"
 	}
 }
@@ -246,7 +224,6 @@ shift $((OPTIND - 1))
 [ -z "${BOOT_DIR}" -o -z "${RESCUE_DIR}" -o -z "${CONTENT_DIRS}" ] && usage
 check_dirs ${BOOT_DIR} ${RESCUE_DIR} ${CONTENT_DIRS}
 
-VN_DEV=""
 INITRD_SIZE=${INITRD_SIZE%[mM]}  # MB
 INITRD_SIZE_MAX=${INITRD_SIZE_MAX%[mM]}  # MB
 
@@ -271,12 +248,11 @@ if [ -n "${INITRD_SIZE_MAX}" -a "${INITRD_SIZE_MAX}" != "0" ] && \
 	error 1 "Exceeded the maximum size (${INITRD_SIZE_MAX} MB)"
 fi
 
-create_vn
 make_hier
 copy_rescue
 copy_content
 print_info
-destroy_vn
+make_img
 rm -rf ${BUILD_DIR}
 
 echo -n "Compressing ${INITRD_FILE} ..."
