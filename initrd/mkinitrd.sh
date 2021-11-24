@@ -195,7 +195,7 @@ check_initrd()
 	[ -x "${BUILD_DIR}/bin/sh" ] &&
 	[ -x "${BUILD_DIR}/etc/rc" ] || {
 		destroy_vn
-		error 1 "Ivalid initrd image!"
+		error 1 "Invalid initrd image!"
 	}
 }
 
