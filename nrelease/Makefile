@@ -331,6 +331,7 @@ pkgs:
 .endif  # !empty(DPORTS_PACKAGES)
 
 mkiso:
+.if ${WORLD_VERSION} < 600106
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
 	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
 	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
@@ -342,6 +343,14 @@ mkiso:
 	mkdir -p ${IMGMNT}/EFI/BOOT
 	cp ${ISOROOT}/boot/loader.efi ${IMGMNT}/EFI/BOOT/BOOTX64.EFI
 	umount ${IMGMNT}
+.else
+	( tmpdir=`mktemp -d -t nrelease` && mkdir -p "$${tmpdir}/EFI/BOOT" && \
+	    cp ${ISOROOT}/boot/loader.efi $${tmpdir}/EFI/BOOT/BOOTX64.EFI && \
+	    makefs -t msdos -o fat_type=12 -o sectors_per_cluster=1 \
+		-o volume_label=EFI -o media_descriptor=248 -s 400k \
+		${ISOROOT}/boot/efiboot.img $${tmpdir} && \
+	    rm -rf $${tmpdir} )
+.endif
 	( cd ${ISOROOT}; mkisofs -R -J -o ${ISOFILE} \
 	    -b boot/cdboot -no-emul-boot \
 	    -eltorito-alt-boot -eltorito-platform efi \
