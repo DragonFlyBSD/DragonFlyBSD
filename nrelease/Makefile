@@ -140,6 +140,12 @@ check:
 	@echo "Your machine does not have cdrtools installed.  You can install it with:"
 	@echo "    pkg install cdrtools"
 .endif
+
+.if make(nopkgs)
+	@echo Not building packages.
+.elif make(binpkgs)
+	@echo Using binary packages from a mirror.
+.else
 	@if [ ! -d ${DPORTS_PATH} ]; then \
 		echo "${DPORTS_PATH} does not exist."; \
 		echo ""; \
@@ -147,11 +153,14 @@ check:
 		echo "package building. The default is /usr/dports. See the Makefile in"; \
 		echo "/usr if you are unfamiliar with dports."; \
 		/usr/bin/false; \
+	else \
+		echo "Using ${DPORTS_PATH} as the dports tree."; \
 	fi
+.endif
+
 .if !exists(/usr/local/bin/mkisofs) && !exists(/usr/pkg/bin/mkisofs)
 	@/usr/bin/false
 .endif
-	@echo "Using ${DPORTS_PATH} as the dports tree."
 
 buildworld1 buildworld2:
 	( cd ${SRCDIR}; \
