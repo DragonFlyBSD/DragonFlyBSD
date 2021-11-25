@@ -22,6 +22,7 @@ NREL_MAKE_JOBS?= $$(sysctl -n hw.ncpu)
 .if !defined(NOFSCHG)
 MTREE_FSCHG=	-i
 .endif
+WORLD_VERSION!=	${AWK} '/^\#define[[:blank:]]__DragonFly_version/ {print $$3}' < /usr/include/sys/param.h
 
 GITREV!=	sh ${SRCDIR}/tools/gitrev.sh
 
