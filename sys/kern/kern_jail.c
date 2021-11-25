@@ -111,14 +111,14 @@ SYSCTL_BIT64(_jail_defaults, OID_AUTO, vfs_mount_tmpfs, CTLFLAG_RW,
     &prison_default_caps, 0, PRISON_CAP_VFS_MOUNT_TMPFS,
     "Process in jail can mount tmpfs(5) filesystems");
 
-int	lastprid = 0;
-int	prisoncount = 0;
+static int	lastprid = 0;
+static int	prisoncount = 0;
 
 static struct lock jail_lock =
        LOCK_INITIALIZER("jail", 0, LK_CANRECURSE);
 
 LIST_HEAD(prisonlist, prison);
-struct	prisonlist allprison = LIST_HEAD_INITIALIZER(&allprison);
+static struct prisonlist allprison = LIST_HEAD_INITIALIZER(&allprison);
 
 static int
 kern_jail_attach(int jid)

@@ -91,8 +91,8 @@ struct lwkt_pool_token {
 } __cachealign;
 
 static struct lwkt_pool_token	pool_tokens[LWKT_POOL_TOKENS];
-struct spinlock tok_debug_spin = SPINLOCK_INITIALIZER(&tok_debug_spin,
-						      "tok_debug_spin");
+static struct spinlock		tok_debug_spin =
+    SPINLOCK_INITIALIZER(&tok_debug_spin, "tok_debug_spin");
 
 #define TOKEN_STRING	"REF=%p TOK=%p TD=%p"
 #define TOKEN_ARGS	lwkt_tokref_t ref, lwkt_token_t tok, struct thread *td
@@ -182,7 +182,7 @@ SYSCTL_LONG(_lwkt, OID_AUTO, tty_collisions, CTLFLAG_RW,
 SYSCTL_LONG(_lwkt, OID_AUTO, vnode_collisions, CTLFLAG_RW,
     &vnode_token.t_collisions, 0, "Collision counter of vnode_token");
 
-int tokens_debug_output;
+static int tokens_debug_output;
 SYSCTL_INT(_lwkt, OID_AUTO, tokens_debug_output, CTLFLAG_RW,
     &tokens_debug_output, 0, "Generate stack trace N times");
 

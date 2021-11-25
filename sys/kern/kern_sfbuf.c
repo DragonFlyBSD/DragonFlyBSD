@@ -46,7 +46,10 @@ SYSINIT(sock_sf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, sf_buf_init, NULL);
 static struct objcache *sf_buf_cache;
 
 MALLOC_DEFINE(M_SFBUF, "sfbuf", "Sendfile buffer structures");
-struct objcache_malloc_args sf_buf_malloc_args = { sizeof(struct sf_buf), M_SFBUF };
+static struct objcache_malloc_args sf_buf_malloc_args = {
+	sizeof(struct sf_buf),
+	M_SFBUF
+};
 
 
 static boolean_t

@@ -53,7 +53,7 @@
 
 MALLOC_DEFINE(M_VARSYM, "varsym", "variable sets for variant symlinks");
 
-struct varsymset	varsymset_sys;
+static struct varsymset varsymset_sys;
 
 /*
  * Initialize the variant symlink subsystem

@@ -159,8 +159,10 @@ static struct dev_ops disk2_ops = {
 
 static struct objcache 	*disk_msg_cache;
 
-struct objcache_malloc_args disk_msg_malloc_args = {
-	sizeof(struct disk_msg), M_DISK };
+static struct objcache_malloc_args disk_msg_malloc_args = {
+	sizeof(struct disk_msg),
+	M_DISK
+};
 
 static struct lwkt_port disk_dispose_port;
 static struct lwkt_port disk_msg_port;

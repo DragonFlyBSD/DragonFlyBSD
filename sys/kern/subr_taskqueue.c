@@ -44,7 +44,7 @@ MALLOC_DEFINE(M_TASKQUEUE, "taskqueue", "Task Queues");
 
 static STAILQ_HEAD(taskqueue_list, taskqueue) taskqueue_queues;
 static struct lock	taskqueue_queues_lock;
-struct spinlock		taskqueue_queues_spin;
+static struct spinlock	taskqueue_queues_spin;
 
 struct taskqueue {
 	STAILQ_ENTRY(taskqueue)	tq_link;

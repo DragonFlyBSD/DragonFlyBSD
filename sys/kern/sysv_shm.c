@@ -64,8 +64,7 @@ static int shmget_existing(struct proc *p, struct sysmsg *sysmsg,
 #define	SHMSEG_ALLOCATED	0x0800
 #define	SHMSEG_WANTED		0x1000
 
-static int shm_last_free, shm_committed, shmalloced;
-int shm_nused;
+static int shm_last_free, shm_committed, shmalloced, shm_nused;
 static struct shmid_ds	*shmsegs;
 static struct lwkt_token shm_token = LWKT_TOKEN_INITIALIZER(shm_token);
 

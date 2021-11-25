@@ -49,7 +49,7 @@
 
 #include <sys/devfs.h>
 
-int dev_ref_debug = 0;
+static int dev_ref_debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, dev_refs, CTLFLAG_RW, &dev_ref_debug, 0,
     "Toggle device reference debug output");
 

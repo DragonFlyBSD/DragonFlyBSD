@@ -75,7 +75,7 @@ static u_int			mq_max_msgsize = 16 * MQ_DEF_MSGSIZE;
 static u_int			mq_def_maxmsg = 32;
 static u_int			mq_max_maxmsg = 16 * 32;
 
-struct lock			mqlist_mtx;
+static struct lock		mqlist_mtx;
 static LIST_HEAD(, mqueue)	mqueue_head =
 	LIST_HEAD_INITIALIZER(mqueue_head);
 

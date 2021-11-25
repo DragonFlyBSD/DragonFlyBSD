@@ -66,7 +66,7 @@
 #include <sys/rman.h>
 #include <sys/sysctl.h>
 
-int	rman_debug = 0;
+static int rman_debug = 0;
 TUNABLE_INT("debug.rman_debug", &rman_debug);
 SYSCTL_INT(_debug, OID_AUTO, rman_debug, CTLFLAG_RW,
     &rman_debug, 0, "rman debug");
