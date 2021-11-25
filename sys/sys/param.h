@@ -234,9 +234,10 @@
  * 600103 - remove the old vmm code
  * 600104 - add posix_fallocate()
  * 600105 - add fdatasync()
+ * 600106 - msdosfs support in makefs(8)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600105	/* propagated to newvers */
+#define __DragonFly_version 600106	/* propagated to newvers */
 
 #include <sys/_null.h>
 
