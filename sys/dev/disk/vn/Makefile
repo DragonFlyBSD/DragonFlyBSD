@@ -3,7 +3,7 @@
 KMOD=   vn
 SRCS=   vn.c use_vn.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 use_vn.h:
 	echo "#define	NVN	4" > ${.TARGET}
 .endif

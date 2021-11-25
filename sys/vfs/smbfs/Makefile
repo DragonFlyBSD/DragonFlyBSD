@@ -19,7 +19,7 @@ SRCS+=	des_ecb.c des_enc.c des_setkey.c
 # Build with INET support (1|0)
 SMB_INET?=	1
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_inet.h:
 	touch ${.TARGET}
 .if ${SMB_INET} > 0

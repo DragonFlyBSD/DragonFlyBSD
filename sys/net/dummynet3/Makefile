@@ -2,7 +2,7 @@ KMOD=	dummynet3
 SRCS=	ip_dummynet3.c
 SRCS+=	opt_ipfw.h opt_inet.h
 
-.ifndef BUILDING_WITH_KERNEL
+.ifndef KERNBUILDDIR
 opt_inet.h:
 	echo '#define INET 1' > ${.OBJDIR}/${.TARGET}
 

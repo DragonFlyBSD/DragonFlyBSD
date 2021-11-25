@@ -3,7 +3,7 @@
 KMOD=   if_tun
 SRCS=   if_tun.c opt_inet.h opt_inet6.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_inet.h:
 	echo "#define INET 1" > ${.TARGET}
 

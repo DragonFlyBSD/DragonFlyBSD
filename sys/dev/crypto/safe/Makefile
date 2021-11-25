@@ -31,7 +31,7 @@ SRCS	= safe.c opt_safe.h
 SRCS   += device_if.h bus_if.h pci_if.h
 SRCS   += cryptodev_if.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_safe.h:
 	echo "#define SAFE_DEBUG 1" > ${.TARGET}
 .endif

@@ -2,7 +2,7 @@ KMOD=	ipfw3_layer4
 SRCS=	ip_fw3_layer4.c
 SRCS+=	opt_ipfw.h opt_inet.h
 
-.ifndef BUILDING_WITH_KERNEL
+.ifndef KERNBUILDDIR
 opt_inet.h:
 	echo '#define INET 1' > ${.OBJDIR}/${.TARGET}
 

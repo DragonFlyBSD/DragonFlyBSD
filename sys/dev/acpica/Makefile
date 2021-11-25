@@ -83,7 +83,7 @@ SRCS+=  opt_acpi.h opt_ddb.h opt_ktr.h
 SRCS+=  device_if.h bus_if.h pci_if.h pcib_if.h isa_if.h acpi_if.h
 SRCS+=  acpi_quirks.h acpi_wmi_if.h cpu_if.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 .if ACPI_DEBUG
 KCFLAGS+=-DACPI_DEBUG
 opt_ddb.h: Makefile

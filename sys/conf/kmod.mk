@@ -41,6 +41,9 @@
 #		Set to the name of the license the user has to agree on in
 #		order to use this firmware. See /usr/share/doc/legal
 #
+# KERNBUILDDIR	Set to the location of the kernel build directory where
+#		the opt_*.h files, .o's and kernel wind up.
+#
 # +++ targets +++
 #
 # 	install:
@@ -118,9 +121,9 @@ CFLAGS+=	-I. -I@
 
 # Add -I paths for headers in the kernel build directory
 #
-.if defined(BUILDING_WITH_KERNEL)
-CFLAGS+=	-I${BUILDING_WITH_KERNEL}
-_MACHINE_FWD=	${BUILDING_WITH_KERNEL}
+.if defined(KERNBUILDDIR)
+CFLAGS+=	-I${KERNBUILDDIR}
+_MACHINE_FWD=	${KERNBUILDDIR}
 .else
 .if defined(MAKEOBJDIRPREFIX)
 _MACHINE_FWD=	${MAKEOBJDIRPREFIX}/${SYSDIR}/forwarder_${MACHINE_ARCH}
@@ -147,9 +150,9 @@ CFLAGS+=	-I${DESTDIR}/usr/include
 CFLAGS+=	-I@/../include -I${DESTDIR}/usr/include
 .endif # @
 
-.if defined(BUILDING_WITH_KERNEL) && \
-    exists(${BUILDING_WITH_KERNEL}/opt_global.h)
-CFLAGS+=	-DHAVE_KERNEL_OPTION_HEADERS -include ${BUILDING_WITH_KERNEL}/opt_global.h
+.if defined(KERNBUILDDIR) && \
+    exists(${KERNBUILDDIR}/opt_global.h)
+CFLAGS+=	-DHAVE_KERNEL_OPTION_HEADERS -include ${KERNBUILDDIR}/opt_global.h
 .endif
 
 CFLAGS+=	${DEBUG_FLAGS}
@@ -217,7 +220,7 @@ ${PROG}: ${OBJS}
 # links to platform and cpu architecture include files.  If we are
 # building with a kernel these already exist in the kernel build dir.
 # '@' is a link to the system source.
-.if defined(BUILDING_WITH_KERNEL)
+.if defined(KERNBUILDDIR)
 _ILINKS=@
 .else
 _ILINKS=@ machine_base machine cpu_base cpu
@@ -310,15 +313,15 @@ unload:
 .for _src in ${SRCS:Mopt_*.h} ${SRCS:Muse_*.h}
 CLEANFILES+=	${_src}
 .if !target(${_src})
-.if defined(BUILDING_WITH_KERNEL) && exists(${BUILDING_WITH_KERNEL}/${_src})
-${_src}: ${BUILDING_WITH_KERNEL}/${_src}
+.if defined(KERNBUILDDIR) && exists(${KERNBUILDDIR}/${_src})
+${_src}: ${KERNBUILDDIR}/${_src}
 # we do not have to copy these files any more, the kernel build
 # directory is included in the path now.
-#	cp ${BUILDING_WITH_KERNEL}/${_src} ${.TARGET}
+#	cp ${KERNBUILDDIR}/${_src} ${.TARGET}
 .else
 ${_src}:
 	touch ${.TARGET}
-.endif	# BUILDING_WITH_KERNEL
+.endif	# KERNBUILDDIR
 .endif
 .endfor
 
@@ -350,8 +353,8 @@ ${_src}: @
 ${_src}: @/tools/makeobjops.awk @/${_srcsrc}
 .endif
 
-.if defined(BUILDING_WITH_KERNEL) && \
-    exists(${BUILDING_WITH_KERNEL}/${_src})
+.if defined(KERNBUILDDIR) && \
+    exists(${KERNBUILDDIR}/${_src})
 .else
 	awk -f @/tools/makeobjops.awk -- -${_ext} @/${_srcsrc}
 .endif
@@ -423,7 +426,7 @@ acpi_quirks.h: @/tools/acpi_quirks2h.awk @/dev/acpica/acpi_quirks
 .if !empty(SRCS:Massym.s)
 CLEANFILES+=	assym.s genassym.o
 assym.s: genassym.o
-.if defined(BUILDING_WITH_KERNEL)
+.if defined(KERNBUILDDIR)
 genassym.o: opt_global.h
 .endif
 .if !exists(@)

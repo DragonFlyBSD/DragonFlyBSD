@@ -3,7 +3,7 @@
 KMOD=	snp
 SRCS=	snp.c use_snp.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 use_snp.h:
 	echo "#define	NSNP	4" > ${.TARGET}
 .endif

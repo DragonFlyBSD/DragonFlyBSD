@@ -1,11 +1,10 @@
 # $FreeBSD: src/sys/modules/ipfw/Makefile,v 1.11.2.1 2003/02/14 14:09:21 maxim Exp $
-# $DragonFly: src/sys/net/ipfw/Makefile,v 1.6 2008/09/16 12:16:08 sephe Exp $
 
 KMOD=	ipfw
 SRCS=	ip_fw2.c
 SRCS+=	opt_ipfw.h opt_inet.h
 
-.ifndef BUILDING_WITH_KERNEL
+.ifndef KERNBUILDDIR
 opt_inet.h:
 	echo '#define INET 1' > ${.OBJDIR}/${.TARGET}
 

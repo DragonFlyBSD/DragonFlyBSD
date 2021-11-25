@@ -7,7 +7,7 @@ SRCS+=	opt_icmp_bandlim.h
 use_pflog.h:
 	echo "#define NPFLOG 1" > ${.TARGET}
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_carp.h:
 	touch ${.TARGET}
 
@@ -20,7 +20,7 @@ opt_inet6.h:
 use_bpf.h:
 	echo "#define NBPF 1" > ${.TARGET}
 
-.endif	# !BUILDING_WITH_KERNEL
+.endif	# !KERNBUILDDIR
 
 
 .include <bsd.kmod.mk>

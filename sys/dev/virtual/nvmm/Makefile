@@ -10,11 +10,11 @@ SRCS+=	nvmm_x86_vmx.c nvmm_x86_vmxfunc.S
 nvmm_x86_svmfunc.o nvmm_x86_vmxfunc.o:
 	${CC} -c -x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto} ${.IMPSRC}
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 SRCS+=	bus_if.h device_if.h opt_nfs.h  # required by 'genassym.c'
 SRCS+=	assym.s
 nvmm_x86_svmfunc.o nvmm_x86_vmxfunc.o: assym.s
-.endif # !BUILDING_WITH_KERNEL
+.endif # !KERNBUILDDIR
 .endif
 
 # Header files are installed by 'include/Makefile'.

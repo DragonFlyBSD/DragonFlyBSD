@@ -31,7 +31,7 @@ KMOD=	if_rum
 SRCS=	opt_usb.h device_if.h bus_if.h usbdevs.h \
 	if_rum.c
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_inet.h:
 	echo "#define INET 1" > ${.TARGET}
 .endif

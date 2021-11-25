@@ -8,7 +8,7 @@ SRCS	= dcons.c dcons_os.c
 SRCS	+= opt_dcons.h opt_ddb.h opt_comconsole.h
 SRCS	+= device_if.h bus_if.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_ddb.h:
 	echo "#define DDB 1" > ${.TARGET}
 .endif

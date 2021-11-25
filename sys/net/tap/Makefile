@@ -5,7 +5,7 @@
 KMOD=		if_tap
 SRCS=		if_tap.c opt_inet.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_inet.h:
 	echo "#define INET 1" > ${.TARGET}
 .endif

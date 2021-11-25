@@ -3,7 +3,7 @@
 KMOD=	trm
 SRCS=	trm.c opt_cam.h device_if.h bus_if.h pci_if.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_scsi.h:
 	echo "#define SCSI_DELAY 15000" > ${.TARGET}
 .endif

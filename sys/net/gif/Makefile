@@ -6,7 +6,7 @@ KMOD=	if_gif
 SRCS=	if_gif.c in_gif.c in6_gif.c opt_inet.h opt_inet6.h
 SRCS+=	device_if.h bus_if.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_inet.h:
 	echo "#define INET 1" > ${.TARGET}
 

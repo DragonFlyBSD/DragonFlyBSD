@@ -15,7 +15,7 @@ EXPORT_SYMS=	sppp_attach	\
 		sppp_isempty	\
 		sppp_flush
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_inet.h:
 	echo "#define INET 1" > ${.TARGET}
 

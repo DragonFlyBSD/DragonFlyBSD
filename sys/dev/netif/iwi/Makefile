@@ -6,7 +6,7 @@ SRCS    = if_iwi.c \
 
 SUBDIR	= fw
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_inet.h:
 	echo "#define INET 1" > ${.TARGET}
 .endif

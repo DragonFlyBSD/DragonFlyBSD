@@ -5,7 +5,7 @@ SRCS=	if_mxge.c
 SRCS+=	device_if.h bus_if.h pci_if.h
 SRCS+=	opt_inet.h opt_ifpoll.h
 
-.ifndef BUILDING_WITH_KERNEL
+.ifndef KERNBUILDDIR
 
 opt_ifpoll.h:
 	echo '#define IFPOLL_ENABLE 1' > ${.OBJDIR}/${.TARGET}

@@ -9,7 +9,7 @@ SRCS	+= bus_if.h device_if.h pci_if.h opt_inet.h opt_inet6.h
 # uncomment for lock profiling statistics
 #KCFLAGS	+= -DLOCK_PROFILING
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_inet.h:
 	echo "#define INET 1" > ${.TARGET}
 

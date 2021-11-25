@@ -14,7 +14,7 @@ SRCS	+= ieee80211_wds.c
 SRCS	+= opt_inet.h opt_inet6.h opt_wlan.h
 SRCS	+= opt_tdma.h opt_ddb.h
 
-.if !defined(BUILDING_WITH_KERNEL)
+.if !defined(KERNBUILDDIR)
 opt_inet.h:
 	echo "#define INET	1" > ${.TARGET}
 
