@@ -443,17 +443,24 @@ exit1(int rv)
 			 * terminal, and revoke access to the controlling
 			 * terminal.
 			 *
-			 * NOTE: while waiting for the process group to exit
-			 * it is possible that one of the processes in the
-			 * group will revoke the tty, so the ttyclosesession()
-			 * function will re-check sp->s_ttyvp.
+			 * NOTE: While waiting for the process group to exit
+			 *	 it is possible that one of the processes in
+			 *	 the group will revoke the tty, so the
+			 *	 ttyclosesession() function will re-check
+			 *	 sp->s_ttyvp.
+			 *
+			 * NOTE: Force a timeout of one second when draining
+			 *	 the controlling terminal.  PCATCH won't work
+			 *	 in exit1().
 			 */
 			if (sp->s_ttyp && (sp->s_ttyp->t_session == sp)) {
 				if (sp->s_ttyp->t_pgrp)
 					pgsignal(sp->s_ttyp->t_pgrp, SIGHUP, 1);
+				sp->s_ttyp->t_timeout = hz;
 				ttywait(sp->s_ttyp);
 				ttyclosesession(sp, 1); /* also revoke */
 			}
+
 			/*
 			 * Release the tty.  If someone has it open via
 			 * /dev/tty then close it (since they no longer can
