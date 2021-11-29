@@ -163,10 +163,10 @@ struct pci_controller;
 #define DRM_UT_FIOCTL		0x200
 #define DRM_UT_IOCTL		0x400
 
-extern __printflike(2, 3)
+extern __printf(2, 3)
 void drm_ut_debug_printk(const char *function_name,
 			 const char *format, ...);
-extern __printflike(2, 3)
+extern __printf(2, 3)
 void drm_err(const char *func, const char *format, ...);
 #endif
 
