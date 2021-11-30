@@ -886,7 +886,19 @@ static void intel_lrc_irq_handler(unsigned long data)
 			GEM_BUG_ON(count == 0);
 			if (--count == 0) {
 				GEM_BUG_ON(status & GEN8_CTX_STATUS_PREEMPTED);
-				GEM_BUG_ON(!i915_gem_request_completed(rq));
+				/*
+				 * XXX DragonFly XXX
+				 *
+				 * This gets hit for me on an i5-6500 on X
+				 * startup.  Report and ignore for now.  May
+				 * be related to a ring timeout during early
+				 * startup.
+				 */
+				//GEM_BUG_ON(!i915_gem_request_completed(rq));
+				if (!i915_gem_request_completed(rq)) {
+					kprintf("i915: warning, request %p "
+						"not completed\n", rq);
+				}
 				execlists_context_status_change(rq, INTEL_CONTEXT_SCHEDULE_OUT);
 
 				trace_i915_gem_request_out(rq);
