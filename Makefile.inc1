@@ -676,7 +676,7 @@ maybe_bk_tools:
 .for _kernel in ${BUILDKERNELS}
 	@if [ ! -f ${KRNLOBJDIR}/${_kernel}/.nativekernel_run ]; then \
 	    if [ ! -f ${WORLDDEST}/.libraries_done ]; then \
-		echo "The kernel was build using buildworld tools which no" ; \
+		echo "The kernel was built using buildworld tools which no" ; \
 		echo "longer appear to exist, (real)quickkernel failed!" ; \
 		/usr/bin/false; \
 	    fi; \
