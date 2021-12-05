@@ -1,3 +1,3 @@
-SUBDIR=	dev vfs
+SUBDIR=	dev
 
 .include <bsd.subdir.mk>

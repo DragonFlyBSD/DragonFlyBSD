@@ -32,8 +32,8 @@
 #define _KERNEL_STRUCTURES
 #include <sys/vnode.h>
 #include <sys/mount.h>
-#include <gnu/vfs/ext2fs/quota.h>
-#include <gnu/vfs/ext2fs/inode.h>
+#include <vfs/ext2fs/inode.h>
+#define VTOI(vp)	((struct inode *)(vp)->v_data)
 #undef _KERNEL_STRUCTURES
 
 #include <stdio.h>
@@ -53,7 +53,7 @@ ext2fs_filestat(struct vnode *vp, struct filestat *fsp)
 	}
 	fsp->mode = ino.i_mode | mtrans(vp->v_type);
 	fsp->rdev = fsp->fsid = fstat_dev2udev(ino.i_dev);
-	fsp->size = ino.i_din.di_size;
+	fsp->size = ino.i_size;
 	fsp->fileid = ino.i_number;
 
 	return 1;

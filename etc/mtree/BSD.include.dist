@@ -235,12 +235,6 @@
             ..
         ..
     ..
-    gnu
-        vfs
-            ext2fs
-            ..
-        ..
-    ..
     libprop
     ..
     lzma
@@ -443,6 +437,8 @@
     ..
     vfs
         autofs
+        ..
+        ext2fs
         ..
         hammer
         ..

@@ -65,7 +65,6 @@ LSUBDIRS= \
 	dev/smbus/smb \
 	dev/video/bktr dev/video/meteor \
 	dev/virtual/nvmm dev/virtual/nvmm/x86 \
-	gnu/vfs/ext2fs \
 	libprop \
 	net/bridge net/tap net/tun net/ppp_layer net/sl \
 	net/pf net/altq \
@@ -92,7 +91,7 @@ LSUBDIRS= \
 	vfs/isofs/cd9660 \
 	vfs/msdosfs vfs/nfs vfs/ntfs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2 \
-	vfs/autofs vfs/fuse vfs/tmpfs
+	vfs/autofs vfs/fuse vfs/tmpfs vfs/ext2fs
 
 # For SHARED=symlinks, adjust LSYMSUBDIRS to remove subdirectories whos
 # parent directory is also symlinked, avoiding the source tree being

@@ -235,9 +235,10 @@
  * 600104 - add posix_fallocate()
  * 600105 - add fdatasync()
  * 600106 - msdosfs support in makefs(8)
+ * 600107 - remove sys/gnu/vfs/ext2fs
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600106	/* propagated to newvers */
+#define __DragonFly_version 600107	/* propagated to newvers */
 
 #include <sys/_null.h>
 

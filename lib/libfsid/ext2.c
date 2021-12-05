@@ -32,24 +32,28 @@
  * SUCH DAMAGE.
  */
 
-#include <gnu/vfs/ext2fs/ext2_fs.h>
-#include <gnu/vfs/ext2fs/fs.h>
-
 #include "libfsid.h"
 
-static char buffer[sizeof(struct ext2_super_block)*2];
+#include <vfs/ext2fs/ext2fs.h>
+#include <vfs/ext2fs/fs.h>
+
+/*
+ * struct ext2fs is actually ext4 compatible,
+ * whereas it used to be using the real ext2 superblock struct.
+ */
+static char buffer[sizeof(struct ext2fs)*2];
 
 fsid_t
 ext2_probe(const char *dev)
 {
-	static struct ext2_super_block *fs;
+	static struct ext2fs *fs;
 
 	if (fsid_dev_read(dev, SBOFF, sizeof(buffer), buffer) != 0)
 		return FSID_UNKNOWN;
 
-	fs = (struct ext2_super_block *)&buffer;
+	fs = (struct ext2fs *)&buffer;
 
-	if (fs->s_magic == EXT2_SUPER_MAGIC)
+	if (fs->e2fs_magic == E2FS_MAGIC)
 		return FSID_EXT2;
 
 	return FSID_UNKNOWN;
@@ -58,17 +62,17 @@ ext2_probe(const char *dev)
 char *
 ext2_volname(const char *dev)
 {
-	static struct ext2_super_block *fs;
+	static struct ext2fs *fs;
 
 	if (fsid_dev_read(dev, SBOFF, sizeof(buffer), buffer) != 0)
 		return NULL;
 
-	fs = (struct ext2_super_block *)&buffer;
+	fs = (struct ext2fs *)&buffer;
 
-	if (fs->s_magic != EXT2_SUPER_MAGIC || fs->s_volume_name[0] == '\0')
+	if (fs->e2fs_magic != E2FS_MAGIC || fs->e2fs_vname[0] == '\0')
 		return NULL;
 
-	fs->s_volume_name[sizeof(fs->s_volume_name) - 1] = '\0';
+	fs->e2fs_vname[sizeof(fs->e2fs_vname) - 1] = '\0';
 
-	return fs->s_volume_name;
+	return fs->e2fs_vname;
 }
