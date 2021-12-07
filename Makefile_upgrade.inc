@@ -3919,6 +3919,7 @@ TO_REMOVE+=/usr/include/sys/vmm.h
 TO_REMOVE+=/usr/share/man/man2/vmm.2.gz
 TO_REMOVE+=/usr/share/man/man2/vmm_guest_ctl.2.gz
 TO_REMOVE+=/usr/share/man/man2/vmm_guest_sync_addr.2.gz
+TO_REMOVE+=/usr/include/gnu
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
