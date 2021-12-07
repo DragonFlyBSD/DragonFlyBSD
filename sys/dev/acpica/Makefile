@@ -17,9 +17,7 @@ KCFLAGS+=	-DACPI_DEBUG_CACHE
 .PATH:	${.OBJDIR}					\
 	${SYSDIR}/${OSACPI_MD_DIR}			\
 	${SYSDIR}/platform/${MACHINE_PLATFORM}/isa	\
-	${SYSDIR}/bus/pci 				\
 	${.CURDIR}/Osd					\
-	${.CURDIR}					\
 	${ACPICA_KERN_PATHS}
 
 KMOD	= acpi
